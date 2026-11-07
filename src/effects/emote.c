@@ -208,10 +208,10 @@ void emote_appendGfx(void* effect) {
     Gfx* dlist;
     Gfx* dlist2;
     Mtx* matrix;
-    s32 w;
-    s32 h;
-    s32 uls;
-    s32 ult;
+    s32 w = 0; /* types other than 0, 2, 3, 4 leave the size unset: zero-size tile */
+    s32 h = 0;
+    s32 uls = 0;
+    s32 ult = 0;
     s32 idx;
     Matrix4f sp18;
     Matrix4f sp58;

@@ -126,6 +126,8 @@ void nd_tex_handle_set(int index, const void* gfx, const void* raster, const voi
                        unsigned wrap_w, unsigned wrap_h, unsigned masks, unsigned maskt, unsigned extra, int has_aux);
 /* the descriptor of handle index when its list (gfx) is the one set; NULL otherwise */
 const NdTexDesc* nd_tex_handle_desc(int index, const void* gfx);
+unsigned nd_tex_handle_extra(int index, const void* gfx); /* MDL-5a: the header extraTiles of a handle (9 none) */
+extern unsigned nd_mdl_cur_x;
 int nd_tex_handle_miss(int index, const void* gfx); /* S3L-2: fallback code of a handle with no desc (9 form, 10 index or gfx) */
 
 /* CORE-2a-2: the texture and tile state types (moved from pm_gbi.c; layout unchanged). */
@@ -376,12 +378,11 @@ const NdNat* nd_model_native(unsigned j);
 #define NDMC_SW 64
 typedef struct NdMKey { uint32_t w[NDMC_RW + NDMC_SW]; uint32_t h; uint32_t rp; } NdMKey; /* S3N-7: h = hash of w (nd_mc_hash), rp = the record address (not compared) */
 #define ND_RAW_MAX 16
-typedef struct __attribute__((aligned(32))) NdMEnt { NdMKey k; NdRng raw[ND_RAW_MAX]; uint32_t geom; int hs; unsigned hg; uint16_t off, n, nraw; uint8_t used, tex, neg, why; uint32_t ep; } NdMEnt; /* raw: the static ranges the draws were cut from (the hit compares them with the fresh ones) */
+typedef struct __attribute__((aligned(32))) NdMEnt { NdMKey k; NdRng raw[ND_RAW_MAX]; uint32_t geom; int hs; unsigned hg; uint16_t off, n, nraw; uint8_t used, tex, why; uint32_t ep; } NdMEnt; /* raw: the static ranges the draws were cut from (the hit compares them with the fresh ones) */
 unsigned nd_handle_gen(void);                                   /* bumped by each texture handle write (nd_tex_handle_set) */
 NdMEnt* nd_mc_find(const NdMKey* k);                           /* the entry of key k, NULL when none */
 NdMEnt* nd_mc_store(const NdMKey* k, int tex, int hs, unsigned hg); /* the draws and ranges of the last nd_model_draw (it returned >= 0); NULL when more than ND_RAW_MAX ranges */
 NdNat* nd_mc_nat(NdMEnt* e, unsigned j);                       /* draw j of an entry (j < e->n) */
-NdMEnt* nd_mc_store_neg(const NdMKey* k, unsigned ep, unsigned why); /* S3N-7: a stored fallback (any reason): the record skips the model draw while the texture epoch ep holds. S3L-1: why = the fallback code (NdMState.why) */
 uint32_t nd_mc_hash(const NdMKey* k);                          /* S3N-7: the hash of the key words, set in pm_gpu_model_key */
 void nd_mc_miss(const NdMKey* k);                              /* S3N-7: the class of one miss (diagnostic counters) */
 unsigned nd_mc_size(void);                                     /* S3N-7 diagnostic: table size */

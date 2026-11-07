@@ -1117,6 +1117,8 @@ ApiStatus evt_handle_does_script_exist(Evt* script) {
 }
 
 s32 evt_trigger_on_activate_lock(Trigger* trigger) {
+    s32 exists;
+
     if (trigger->runningScript == nullptr) {
         Evt* newScript = start_script(trigger->onTriggerEvt, trigger->priority, EVT_FLAG_RUN_IMMEDIATELY);
         trigger->runningScript = newScript;
@@ -1127,10 +1129,15 @@ s32 evt_trigger_on_activate_lock(Trigger* trigger) {
         newScript->owner2.trigger = trigger;
     }
 
-    if (!does_script_exist(trigger->runningScriptID)) {
+    exists = does_script_exist(trigger->runningScriptID);
+    if (!exists) {
         trigger->runningScript = nullptr;
         trigger->flags &= ~TRIGGER_ACTIVATED;
     }
+
+    // N64 (ver/us 0x802C6AD0): returns 1 while the script runs, else the updated trigger->flags.
+    // update_triggers clears TRIGGER_ACTIVATED when the result is 0.
+    return exists ? 1 : trigger->flags;
 }
 
 ApiStatus evt_handle_bind_lock(Evt* script) {

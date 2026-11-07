@@ -42,7 +42,9 @@ s32 entity_ArrowSign_handle_collision(Entity* entity) {
     if (!(gPlayerStatus.animFlags & PA_FLAG_USING_WATT) &&
         (entity->collisionFlags & ENTITY_COLLISION_PLAYER_TOUCH_WALL)) {
         entity_start_script(entity);
+        return true;
     }
+    return false;
 }
 
 EntityScript Entity_ArrowSign_Script = {

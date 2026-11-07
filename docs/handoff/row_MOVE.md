@@ -79,3 +79,7 @@ Each MV row: pure cut and paste plus prototypes, about 150 lines. Gate: mac_01 b
 (c) Census gate: wcen_mac01 (prof=4, det), scene frames 0-700 (two 300-frame windows). Pass: prod lines with the module column print for windows 1 and 2; per-producer op totals within 2% of the pre-WK-4b base.
 (d) Phase: prof=4 with opsplit, cold, det, wcen_mac01 and wcen_iwa10; mean gbi-phase us per frame over scene frames 100-400, base before the train vs head after each MV row. Gate: at most +3% per row (Azahar direction only). Past +3%: put the hot handler pair back in one TU or static inline in nd_int.h, measure again.
 Order: (b), MV-7, MV-8, MV-9, MV-10, (a), (c), (d). Delete this file in the last commit.
+
+## MOVE-5 state (2026-11-07, orchestrator)
+Branch move5 head 5c783aa14 (code 4fd23d765, base nds1 9d978d836): pm_gbi_combined_ptr to nd_mtx_set.c; dual_boost_on, combchk_run, lcg_s/lcg_f to nd_comb.c (lcg_f is live); nd_tex.c split into nd_tex.c (host-tested table) and nd_tex_set.c (walker ops, target only); nd_model_draw to nd_model_set.c; -Werror fixes; nd_host passes. Gate spot_mac01_det 12/12 byte-equal.
+Not merged yet: nd_model.c conflicts with MDL-5a (model_draw R13 unit 1) in nds1, and MDL-5e and SBKW edit the model path now. Merge order: MDL-5e and SBKW first, then rebase move5 on nds1 (resolve by keeping the nds1 logic inside the moved functions), rerun nd_host and spot_mac01_det, then merge.

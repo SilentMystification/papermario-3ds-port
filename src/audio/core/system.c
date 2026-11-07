@@ -117,7 +117,7 @@ void nuAuMgr(void* arg) {
     OSMesg auRtnMesgBuf;
     NUScMsg* mesg_type;
     s32 cmdList_len;
-    Acmd* cmdListAfter_ptr;
+    Acmd* cmdListAfter_ptr = nullptr; /* set by alAudioFrame before any read (cmdList_len guard) */
     s32 cmdListIndex;
     s32 bufferIndex;
     s32 sampleSize;

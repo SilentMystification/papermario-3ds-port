@@ -355,7 +355,7 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
     s32 tmem = 0x100;
     u32 bgScrollOffsetX, bgScrollOffsetY;
 
-    s32 foo;
+    s32 foo = 255; /* never set: full alpha, so alpha is opacity */
     s32 alpha = foo * opacity / 255;
 
     if (windowStyle.defaultStyleID <= WINDOW_STYLE_MAX && windowStyle.defaultStyleID >= 0) {

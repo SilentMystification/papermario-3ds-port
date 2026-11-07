@@ -4,9 +4,9 @@ API_CALLABLE(N(SetPassengerPos)) {
     Bytecode* args = script->ptrReadPos;
     Npc* partner;
     f32 x, y, z;
-    f32 yBase;
-    f32 angle;
-    f32 radius;
+    f32 yBase = 0.0f;
+    f32 angle = 0.0f;
+    f32 radius = 0.0f;
 
     if (isInitialCall) {
         script->functionTemp[0] = evt_get_variable(script, *args++);

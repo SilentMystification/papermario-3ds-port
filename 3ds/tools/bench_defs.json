@@ -2685,6 +2685,57 @@
       "gates": []
     },
     {
+      "name": "fb_sky_mac00_det_pic",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "FB-1 ring gate: mac_00 sky, cold det run, shots 200 to 205. Byte-equal between the ring build and nds1 (the default ring).",
+      "scenario": "fb_sky_mac00_det",
+      "cap": 45,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "fb1"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fb_sky_mac00_ring_det_pic",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "FB-1 ring gate: mac_00 sky, cold det run, ringsmall=64 (ring_wrap runs). rr_why 5 0, shots 200 to 205 byte-equal to fb_sky_mac00_det_pic.",
+      "scenario": "fb_sky_mac00_ring_det",
+      "cap": 45,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "fb1"
+      ],
+      "gates": []
+    },
+    {
+      "name": "nok11_det_ring_pic",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "FB-1 ring gate: nok_11 splash, cold det run, ringsmall=64 (ring_wrap runs, grab quad native). rr_why 5 0, shots and dumps byte-equal to nok11_det.",
+      "scenario": "nok11_det_ring",
+      "cap": 45,
+      "until": "fxtest: shot 1 effect 89 water_splash",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "fb1"
+      ],
+      "gates": []
+    },
+    {
       "name": "fb_pause_spin_grab_pic",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -3068,6 +3119,21 @@
       "gates": []
     },
     {
+      "name": "sbkw_dlchash_sbk56",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SBKW-M measurement: sbk_56 cold det with dlchash, dlch lines per frame 200 to 211 (live Vtx hash against the static copy hash).",
+      "scenario": "sbkw_dlchash_sbk56",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "sbkw"
+      ],
+      "gates": []
+    },
+    {
       "name": "mdl5_sbk56_ref",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -3121,6 +3187,66 @@
       "scenario": "mdl5_battle_det_ref",
       "cap": 60,
       "until": "shot \\d+ frame 182\\b",
+      "tags": [
+        "azahar",
+        "mdl5"
+      ],
+      "gates": []
+    },
+    {
+      "name": "golden_multi_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MDL-5e census: golden tour (6 maps) cold det, ndm fb per 300 frames.",
+      "scenario": "golden_multi_det",
+      "cap": 90,
+      "until": "tour: done",
+      "tags": [
+        "azahar",
+        "mdl5"
+      ],
+      "gates": []
+    },
+    {
+      "name": "tour10_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MDL-5e census: tour10 (10 maps) cold det, ndm fb per 300 frames.",
+      "scenario": "tour10_det",
+      "cap": 90,
+      "until": "tour: done",
+      "tags": [
+        "azahar",
+        "mdl5"
+      ],
+      "gates": []
+    },
+    {
+      "name": "tour10_det_ref",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MDL-5f byte reference: tour10 (10 maps) cold det with nomodelnat, shots 0 to 10 byte-equal to tour10_det.",
+      "scenario": "tour10_det_ref",
+      "cap": 90,
+      "until": "tour: done",
+      "tags": [
+        "azahar",
+        "mdl5"
+      ],
+      "gates": []
+    },
+    {
+      "name": "battle_fb_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MDL-5e census: battle kmr_03 cold det to frame 300, ndm fb of the window.",
+      "scenario": "battle_fb_det",
+      "cap": 45,
+      "until": "ndm f\\d+ native",
       "tags": [
         "azahar",
         "mdl5"
@@ -3281,6 +3407,22 @@
       "scenario": "battle_start_t1cold",
       "cap": 60,
       "until": "shot \\d+ frame 182\\b",
+      "tags": [
+        "azahar",
+        "det",
+        "cold"
+      ],
+      "gates": []
+    },
+    {
+      "name": "battle_start_pm5draw_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FB-3 halo: battle 182 to 189 with pm5all and the pm5draw log (per frame sum, per use5 draw with a vertex flag above 0: producer, npal, vmax, box, pm5 uniforms). Log only.",
+      "scenario": "battle_start_pm5draw",
+      "cap": 45,
+      "until": "pm5sum f188 use5",
       "tags": [
         "azahar",
         "det",

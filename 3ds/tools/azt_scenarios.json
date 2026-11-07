@@ -9027,6 +9027,85 @@
       "reason": "FB-1 mac_00 picture of the textured rect path (no prof, shots 200 to 205)."
     },
     {
+      "name": "fb_sky_mac00_det",
+      "status": "unverified",
+      "subject": "mac_00 at -135 0 85, cold det start: textured rects (sky and HUD), shots at frames 200 to 205 (the picture).",
+      "proves": "FB-1 ring gate reference: a cold det run of the default ring; two builds give byte-equal shots.",
+      "debug": "warp=mac_00:0 pos=-135:0:85 shots shotwin=200:6 loglevel=debug fixedseed fast fs1off det",
+      "extra": ["-Turbo", "-NoWarm"],
+      "until": "shot \\d+ frame 205\\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 0"
+        },
+        {
+          "name": "shot at 205",
+          "regex": "shot \\d+ frame 205\\b"
+        }
+      ],
+      "reason": "FB-1 ring gate: cold det sky picture, default ring."
+    },
+    {
+      "name": "fb_sky_mac00_ring_det",
+      "status": "unverified",
+      "subject": "mac_00 at -135 0 85, cold det start with ringsmall=64: the raw ring wraps (ring_wrap, ringwrap lines) in the frames of the shot window.",
+      "proves": "FB-1 ring gate: rr_why 5 0 with wraps above 0, and the picture byte-equal to fb_sky_mac00_det.",
+      "debug": "warp=mac_00:0 pos=-135:0:85 shots shotwin=200:6 loglevel=debug fixedseed fast fs1off det ringsmall=64",
+      "extra": ["-Turbo", "-NoWarm"],
+      "until": "shot \\d+ frame 205\\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 0"
+        },
+        {
+          "name": "shot at 205",
+          "regex": "shot \\d+ frame 205\\b"
+        }
+      ],
+      "reason": "FB-1 ring gate: cold det sky picture with the small ring."
+    },
+    {
+      "name": "nok11_det_ring",
+      "status": "unverified",
+      "subject": "DET nok_11 splash run (as nok11_det) with ringsmall=64: the raw ring wraps before the splash shot at frame 412.",
+      "proves": "FB-1 ring gate: rr_why 5 0 and wrap count above 0 on a grab scene; shots byte-equal to nok11_det.",
+      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 shots loglevel=debug grablog offdump=410 fixedseed fast fs1off det ringsmall=64",
+      "extra": ["-NoWarm"],
+      "until": "fxtest: shot 1 effect 89 water_splash",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: nok_11 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: nok_11 entry 0"
+        },
+        {
+          "name": "spawn",
+          "regex": "fxtest: spawn 89 water_splash"
+        },
+        {
+          "name": "shot a",
+          "regex": "fxtest: shot 1 effect 89 water_splash"
+        }
+      ],
+      "reason": "FB-1 ring gate: the splash picture with the small ring."
+    },
+    {
       "name": "mem_reenter",
       "status": "unverified",
       "subject": "Mario in hos_01, tour to mac_00 and back to hos_01 (a map entered twice). The second entry restores the .data block (2 changing symbols) and zeroes the .bss block of hos_01.",
@@ -9447,6 +9526,23 @@
       "reason": "MDL-5 gate: MDL-5 sbk_56 native (census, shots). Cold start (-NoWarm) so det shots are a function of the build."
     },
     {
+      "name": "sbkw_dlchash_sbk56",
+      "status": "unverified",
+      "subject": "sbk_56, Mario at 20 0 440, cold det, dlch lines per frame 200 to 211 (live Vtx bytes against the static copy hash).",
+      "proves": "SBKW-M: which map lists have live Vtx bytes that differ from their static pool copy (water ripple).",
+      "debug": "warp=sbk_56:0 pos=20:0:440 prof=4 shots shotwin=200:6 loglevel=debug det dlchash",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 60,
+      "deadline": 50,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "reason": "SBKW step 2 measurement: live Vtx hash against the static copy hash per frame 200 to 211. Cold start (-NoWarm)."
+    },
+    {
       "name": "mdl5_sbk56_det_ref",
       "status": "unverified",
       "subject": "sbk_56 cold det with nomodelnat: the byte reference of mdl5_sbk56_det.",
@@ -9499,7 +9595,7 @@
       "expected_events": [
         {
           "name": "frame 182",
-          "regex": "shot \\d+ frame 182\b"
+          "regex": "shot \\d+ frame 182\\b"
         }
       ]
     },
@@ -9521,10 +9617,85 @@
       "expected_events": [
         {
           "name": "frame 182",
-          "regex": "shot \\d+ frame 182\b"
+          "regex": "shot \\d+ frame 182\\b"
         }
       ],
       "reason": "MDL-5 gate: MDL-5 byte reference: battle with nomodelnat. Cold start (-NoWarm) so det shots are a function of the build."
+    },
+    {
+      "name": "golden_multi_det",
+      "status": "unverified",
+      "subject": "Six maps in one start (golden_multi tour), cold det, prof=4: one ndm line per 300 frames with the native draw and fallback (fb) counts of the window.",
+      "proves": "MDL-5e census: ndm fb 0 on the golden tour (every model record drawn natively).",
+      "debug": "preset=yard tour=mac_00:4,tik_03:0,isk_04:0,kzn_19:0,mac_01:0 tourshot=30 shots fixedseed fast loglevel=debug profdisk=1 det",
+      "extra": ["-Turbo", "-NoWarm"],
+      "until": "tour: done",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "tour",
+      "needs_picture": true,
+      "expected_events": [
+        {"name": "first map", "regex": "warp: kmr_20 entry 4"},
+        {"name": "last shot", "regex": "shot 6 frame \\d+"}
+      ],
+      "reason": "MDL-5e census: six map changes (golden_multi list), cold start so the fb count is a function of the build. Cap as golden_multi."
+    },
+    {
+      "name": "tour10_det",
+      "status": "unverified",
+      "subject": "Mario in each of 10 maps of the tour list, cold det, prof=4: one ndm line per 300 frames (native draws and fallback count).",
+      "proves": "MDL-5e census: ndm fb 0 on the tour10 list (every model record drawn natively).",
+      "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0,dgb_01:1,kmr_09:0,kmr_20:4,hos_00:0,kmr_02:0,kmr_10:0,trd_01:0,mac_00:0 shots shotwin=999999:1 shotmode=4:21 phase phasecsv profdisk=1 det fixedseed loglevel=debug mdl0",
+      "extra": ["-NoWarm"],
+      "until": "tour: done",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "tour",
+      "needs_picture": true,
+      "expected_events": [
+        {"name": "warp", "regex": "warp: mac_00 entry 4"},
+        {"name": "tour done", "regex": "tour: done, 10 maps"}
+      ],
+      "reason": "MDL-5e census: ten map changes (tour10 list), cold start so the fb count is a function of the build. Cap as tour10."
+    },
+    {
+      "name": "tour10_det_ref",
+      "status": "unverified",
+      "subject": "Mario in each of 10 maps of the tour list, cold det, the walker geometry of every model record (nomodelnat): the byte reference of tour10_det shots 0 to 10.",
+      "proves": "MDL-5f byte gate: the native state-only custom list records of the tour (shots 4 to 6) equal the walker geometry.",
+      "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0,dgb_01:1,kmr_09:0,kmr_20:4,hos_00:0,kmr_02:0,kmr_10:0,trd_01:0,mac_00:0 shots shotwin=999999:1 shotmode=4:21 profdisk=1 det fixedseed loglevel=debug mdl0 nomodelnat",
+      "extra": ["-NoWarm"],
+      "until": "tour: done",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "tour",
+      "needs_picture": true,
+      "expected_events": [
+        {"name": "warp", "regex": "warp: mac_00 entry 4"},
+        {"name": "tour done", "regex": "tour: done, 10 maps"}
+      ],
+      "reason": "MDL-5f byte reference: tour10_det with nomodelnat (walker geometry of every model record), cold start so the shots are a function of the build. Cap as tour10."
+    },
+    {
+      "name": "battle_fb_det",
+      "status": "unverified",
+      "subject": "Battle kmr_03 (one Goomba), cold det, profdisk: runs to frame 300 so the first ndm window line (native and fallback counts) is in the log.",
+      "proves": "MDL-5e census: ndm fb of the battle window 0 to 300 (every model record drawn natively).",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 det profdisk=1",
+      "extra": ["-NoWarm"],
+      "until": "ndm f\\d+ native",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {"name": "ndm window", "regex": "ndm f300 native"}
+      ],
+      "reason": "MDL-5e census: battle window to frame 300 (the window line of the fb count). Cold start so the count is a function of the build."
     },
     {
       "name": "battle_start_sprcheck",
@@ -9687,6 +9858,29 @@
         }
       ],
       "reason": "FB-3 forcing switch pm5all (every model draw without light takes program 5). Cap as battle_start."
+    },
+    {
+      "name": "battle_start_pm5draw",
+      "status": "unverified",
+      "reason": "FB-3 step 1: one log start naming the pm5all halo draw (log only, no fix). Cold det; window 182 to 190 covers shots 0000 to 0008 of battle_start_pm5all.",
+      "subject": "Battle scene (kmr_03, one Goomba), cold det start, pm5all, frames 182 to 189 (no shots: a shot file per frame is too slow for the window). pm5draw log: per program 5 model draw with a vertex flag above 0 (producer, npal, vmax, screen box of flag 0 vertices, uvso/cmul/cadd, zmix, lflag, fogu), and a pm5sum line per frame (use5 draws, vflag>0 draws).",
+      "proves": "FB-3 halo: the use5 draws (pm5all) that cover x185-202 y4-127 named by value (npal, vflag max, pm5 uniforms).",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 det fixedseed fast fs1off pm5all pm5draw phase loglevel=debug",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "pm5sum f188 use5",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "frame 188 sum",
+          "regex": "pm5sum f188 use5"
+        }
+      ]
     },
     {
       "name": "battle_start_t1cold",

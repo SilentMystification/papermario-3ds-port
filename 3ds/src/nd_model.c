@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include "nd.h"
 #include "nd_ops.h"
+#include "variables.h"
 
 float nd_shift_mul(unsigned n) {
     return n == 0 ? 1.f : n <= 10 ? 1.f / (float)(1 << n) : (float)(1 << (16 - n));
@@ -93,6 +94,7 @@ int nd_r13_texonly(const uint32_t* aw, unsigned n, uint32_t* cw, int* has_cb) {
 static NdTexDesc hd_desc[ND_HANDLE_N];
 static const void* hd_gfx[ND_HANDLE_N];
 static uint8_t hd_ok[ND_HANDLE_N];
+static uint8_t hd_extra[ND_HANDLE_N]; /* MDL-5a census: the header extraTiles of each handle */
 static unsigned hd_gen = 1; /* S3N-6: bumped by each handle write */
 
 void nd_tex_handle_set(int index, const void* gfx, const void* raster, const void* palette, unsigned w, unsigned h, unsigned fmt, unsigned siz,
@@ -101,7 +103,7 @@ void nd_tex_handle_set(int index, const void* gfx, const void* raster, const voi
     NdTexDesc d;
     memset(&d, 0, sizeof d);
     int ok = !(!raster || w == 0 || h == 0 || siz > 3); /* B4 (S3L-2): the desc is tile 0 (the main raster), so every extra form has it: mipmaps (extra 1), aux (2, 3). Tile 1 facts are not in the desc: a combine that reads tile 1 falls back (why 6, nd_model_state) */
-    (void)extra; (void)has_aux;
+    (void)has_aux;
     if (ok) {
         d.img = raster; d.pal = palette;
         d.fmt = (uint8_t)fmt; d.siz = (uint8_t)siz; d.cms = (uint8_t)wrap_w; d.cmt = (uint8_t)wrap_h; d.masks = (uint8_t)masks; d.maskt = (uint8_t)maskt;
@@ -116,9 +118,11 @@ void nd_tex_handle_set(int index, const void* gfx, const void* raster, const voi
         static unsigned nform; if (!ok && nform++ < 16u) pm_log_prof_line("ndmform idx %d w %u h %u fmt %u siz %u extra %u aux %d raster %d pal %d", index, w, h, fmt, siz, extra, has_aux, raster != NULL, palette != NULL);
     }
 #endif
-    hd_gfx[index] = gfx; hd_ok[index] = (uint8_t)ok;
+    hd_gfx[index] = gfx; hd_ok[index] = (uint8_t)ok; hd_extra[index] = (uint8_t)extra;
     if (ok) hd_desc[index] = d;
 }
+
+unsigned nd_tex_handle_extra(int index, const void* gfx) { return index < 0 || index >= ND_HANDLE_N || hd_gfx[index] != gfx ? 9u : hd_extra[index] & 3u; }
 
 const NdTexDesc* nd_tex_handle_desc(int index, const void* gfx) {
     if (index < 0 || index >= ND_HANDLE_N || !hd_ok[index] || hd_gfx[index] != gfx) return NULL;
@@ -213,6 +217,8 @@ static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, Nd
 static unsigned mw_cnt[32], mw_ok, mw_f = 100u; /* mw_f: the frame of the last line + 300 */
 /* MDL-5 census: why 6 fallbacks of the window by producer (the record address) and sub-case; top 8 per mdlw line, then reset */
 unsigned nd_nat_sub;
+unsigned nd_mdl_cur_x; /* MDL-5a census: extraTiles of the handle of the draw in model_draw */
+static unsigned mf_bx[4]; /* sub b by extraTiles (cumulative) */
 static struct { uint32_t p; unsigned s, n; } mf_e[32]; static unsigned mf_k, mf_tot[5]; /* mf_tot: cumulative per sub-case (a 1, b 2, c 3, d 4) */
 void nd_mdlfb_note(uint32_t prod, unsigned sub) {
     mf_tot[sub & 7u]++;
@@ -229,10 +235,46 @@ int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st
         extern unsigned nd_r13_nohit; pm_log_prof_line("mdlw f%u ok %u why%s r13nohit %u", f, mw_ok, n ? b : " none", nd_r13_nohit); nd_r13_nohit = 0; memset(mw_cnt, 0, sizeof mw_cnt); mw_ok = 0;
         for (int t = 0; t < 8; t++) { unsigned bi = 32; for (unsigned i = 0; i < mf_k; i++) if (mf_e[i].n && (bi == 32 || mf_e[i].n > mf_e[bi].n)) bi = i; if (bi == 32) break;
             pm_log_prof_line("mdlfb f%u %08x sub %c %u", f, (unsigned)mf_e[bi].p, "-abcd"[mf_e[bi].s & 3], mf_e[bi].n); mf_e[bi].n = 0; }
-        pm_log_prof_line("mdlsub f%u a %u b %u c %u d %u", f, mf_tot[1], mf_tot[2], mf_tot[3], mf_tot[4]);
+        pm_log_prof_line("mdlsub f%u a %u b %u c %u d %u bx0 %u bx1 %u bx2 %u bx3 %u", f, mf_tot[1], mf_tot[2], mf_tot[3], mf_tot[4], mf_bx[0], mf_bx[1], mf_bx[2], mf_bx[3]);
         mf_k = 0; }
     return r;
 }
+/* MDL-5f: a custom gfx list of a record (pre or post, rec[22] or rec[23]) with state ops only: no geometry, no G_DL. The walker runs it on the
+ * state side (rec_apply runs the pre list before the native draw; rec_run runs the post after it), so the native draw reads the state it sets.
+ * 0 address: no list (1). Ops: G_SETOTHERMODE_H/L, SETPRIMCOLOR, SETENVCOLOR, SETCOMBINE, SETBLENDCOLOR, SETFOGCOLOR, the syncs, G_ENDDL (0xdf). */
+static int nd_gfx_state_only(uint32_t addr) {
+    if (!addr) return 1;
+    const uint32_t* p = (const uint32_t*)(uintptr_t)addr;
+    for (unsigned i = 0; i < 16u; i++, p += 2) {
+        switch (p[0] >> 24) {
+        case 0xdfu: return 1; /* G_ENDDL */
+        case 0xe3u: case 0xe2u: /* G_SETOTHERMODE_H, _L */
+        case 0xfau: case 0xfbu: case 0xfcu: case 0xf9u: case 0xf8u: /* SETPRIMCOLOR, SETENVCOLOR, SETCOMBINE, SETBLENDCOLOR, SETFOGCOLOR */
+        case 0xe7u: case 0xe6u: case 0xe8u: /* RDPPIPESYNC, RDPLOADSYNC, RDPTILESYNC */
+            break;
+        default: return 0;
+        }
+    }
+    return 0;
+}
+/* MDL-5f: the state the native draw takes from a state-only pre list (nd_gfx_state_only true): the last SETCOMBINE words (cw, has_cb 1) and
+ * the SETOTHERMODE ops (mo, 2 words each, nmo <= 4). The record runs the list before the draw (rec_apply); its combine and mode state replace the
+ * record's own (rec_run composes the mode list). 0: no list. */
+int nd_r11_state(uint32_t addr, uint32_t* cw, int* has_cb, uint32_t* mo, unsigned* nmo) {
+    if (has_cb) *has_cb = 0;
+    if (nmo) *nmo = 0;
+    if (!addr) return 0;
+    const uint32_t* p = (const uint32_t*)(uintptr_t)addr;
+    for (unsigned i = 0; i < 16u; i++, p += 2) {
+        uint32_t op = p[0] >> 24;
+        if (op == 0xdfu) break;
+        if (op == 0xfcu) { if (cw) { cw[0] = p[0]; cw[1] = p[1]; } if (has_cb) *has_cb = 1; continue; }
+        if ((op == 0xe3u || op == 0xe2u) && nmo && mo && *nmo < 4u) { mo[2 * *nmo] = p[0]; mo[2 * *nmo + 1] = p[1]; (*nmo)++; }
+    }
+    return 1;
+}
+int pm_gpu_noise_ok(void);
+void pm_gpu_noise_draw(NdUnit* u, float* nzo);
 static int nd_pm5all(void) { static int v = -1; if (v < 0) v = pm_debug_has("pm5all"); return v; }
 static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st) {
     st->why = 0; nd_nat_sub = 0;
@@ -242,9 +284,11 @@ static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, Nd
     if (rec[26] != 0 && !c->aux_ok) { /* MDL-0 count (switch mdl0): the first 12 why 2 records, their R13 words */
         static unsigned m2_ = 0; if (m2_ < 12u && pm_debug_has("mdl0")) { const uint32_t* aw = rec + NDMC_RW; m2_++; pm_log_d("mdl2 n %u w0 %08x %08x w1 %08x %08x gfx %d", (unsigned)rec[26], aw[0], aw[1], aw[2], aw[3], c->aux_ok); }
         return (st->why = 2, 0); } /* R13: words after the record (special tile list, untextured ops); S3L-3: the untextured form is decoded by the caller (aux_ok) */
-    if (rec[22] != 0 || rec[23] != 0) { /* MDL-0 count (switch mdl0): the first 12 why 3 records: list addresses and the first two words of each list */
+    if (!nd_gfx_state_only(rec[22]) || !nd_gfx_state_only(rec[23])) { /* MDL-0 count (switch mdl0): the first 12 why 3 records: list addresses and the first two words of each list */
         static unsigned m3_ = 0; if (m3_ < 12u && pm_debug_has("mdl0")) { m3_++; const uint32_t* a = rec[22] ? (const uint32_t*)(uintptr_t)rec[22] : NULL; const uint32_t* b = rec[23] ? (const uint32_t*)(uintptr_t)rec[23] : NULL;
-            pm_log_d("mdl3 pre %08x post %08x pre w %08x %08x post w %08x %08x", (unsigned)rec[22], (unsigned)rec[23], a ? a[0] : 0u, a ? a[1] : 0u, b ? b[0] : 0u, b ? b[1] : 0u); }
+            /* MDL-5e: the map, and the first 6 words (3 ops) of each custom list: the ops that run on the state side */
+            pm_log_d("mdl3 f%u map %d:%d pre %08x post %08x pre w %08x %08x %08x %08x %08x %08x post w %08x %08x %08x %08x", pm_frame_count(), (int)gGameStatusPtr->areaID, (int)gGameStatusPtr->mapID, (unsigned)rec[22], (unsigned)rec[23],
+                a ? a[0] : 0u, a ? a[1] : 0u, a ? a[2] : 0u, a ? a[3] : 0u, a ? a[4] : 0u, a ? a[5] : 0u, b ? b[0] : 0u, b ? b[1] : 0u, b ? b[2] : 0u, b ? b[3] : 0u); }
         return (st->why = 3, 0); } /* R11: custom gfx pre and post */
     const int tex_u = c->u0 != NULL && c->u0->dim != 0; /* the unit exists: tex_on of the combine decision */
     const uint32_t w0 = c->mode->has_cb ? c->mode->cw0 : c->comb_w0, w1 = c->mode->has_cb ? c->mode->cw1 : c->comb_w1; /* B9: the list combine wins (the render mode list runs after the entry) */
@@ -271,7 +315,9 @@ static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, Nd
     const int combine = co.plan_on ? 8 : co.leg;
     const int tex = tex_u && combine >= 2; /* the walker reads a texel in the combine modes 2 and up only */
     /* MDL-1b: tex1 is native when the R13 ctx has unit 1 (the walker's plan reads it); noise and pm5 with tex1 stay why 6 (named) */
-    if (combine == 8 && (co.plan.uses_noise || (co.plan.uses_tex1 && (!c->u1 || (c->gv && c->gv->fxon))))) { nd_nat_sub = co.plan.uses_noise ? 1u : (c->gv && c->gv->fxon) ? 4u : 2u; return (st->why = 6, 0); }
+    const int nz = combine == 8 && co.plan.uses_noise; /* FB-3 part 2: noise is native (unit 2, nzo) when the walker has its noise texture */
+    if (nz && !pm_gpu_noise_ok()) { nd_nat_sub = 1u; return (st->why = 6, 0); }
+    if (combine == 8 && co.plan.uses_tex1 && (!c->u1 || (c->gv && c->gv->fxon))) { nd_nat_sub = (c->gv && c->gv->fxon) ? 4u : 2u; if (nd_nat_sub == 2u) mf_bx[nd_mdl_cur_x & 3u]++; return (st->why = 6, 0); }
     const int t1n = combine == 8 && co.plan.uses_tex1;
     if (c->zmark && zb && r->decal) return (st->why = 15, 0); /* S5-2: zmark with decal (the walker's pass 2 bias): named fallback */
     NdTmplKey k;
@@ -286,7 +332,7 @@ static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, Nd
     k.rgb_scale = (uint8_t)c->rgb_scale; k.r_mix = (uint8_t)c->r_mix; k.draw_3d = (uint8_t)c->draw_3d; k.rect_2d = 0;
     k.dview = c->dview != 0; k.off_active = 0; k.off_i8 = 0;
     k.r_memblend = (uint8_t)(r->set_memb ? r->memb : c->r_memblend);
-    k.r_replace = (uint8_t)c->r_replace; k.r_blend = r->blend; k.noise = 0;
+    k.r_replace = (uint8_t)c->r_replace; k.r_blend = r->blend; k.noise = (uint8_t)nz;
     k.w0 = combine == 8 ? w0 : 0; k.w1 = combine == 8 ? w1 : 0; k.two = combine == 8 ? (uint8_t)two : 0; k.t1only = (uint8_t)(t1n ? c->t1only : 0);
     int id = nd_tmpl_build(&k);
     if (id < 0) return (st->why = 7, 0);
@@ -298,6 +344,7 @@ static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, Nd
     for (int i = 0; i < 6; i++) d->tev_col[i] = to.st[i][3];
     d->buf_col = to.buf_color; d->has_buf = (uint8_t)to.buf_set;
     if (tex) d->u[0] = *c->u0;
+    if (nz) { pm_gpu_noise_draw(&d->u[2], d->nzo); d->has_nzo = 1; } /* FB-3 part 2 */
     if (t1n) { d->u[1] = *c->u1; memcpy(d->uvx, c->uvx, 16); d->loc_uvx = c->loc_uvx; d->has_uvx = 1; } /* MDL-1b: unit 1 and its uv map (the raw path's lines) */
     d->u[0].force = 0;
     if (c->gv) {
@@ -392,12 +439,6 @@ static void mc_note(const NdMKey* k, const NdMEnt* e) { /* S3N-7: the last entry
     unsigned s = (k->rp >> 2) & (NDMC_LAST - 1u);
     mc_lastp[s] = k->rp; mc_lasti[s] = (uint16_t)(e - mc_tab); mc_lastg[s] = mc_clears_n;
 }
-NdMEnt* nd_mc_store_neg(const NdMKey* k, unsigned ep, unsigned why) {
-    NdMEnt* e = mc_slot(k);
-    e->neg = 1; e->why = (uint8_t)(why & 127u); /* bits 0-3 the why, bits 4-6 the MDL-5 sub-case */ e->ep = ep; e->tex = 0; e->hs = -1; e->hg = 0; e->n = 0; e->nraw = 0; e->off = mc_pool_n; e->geom = 0;
-    mc_note(k, e);
-    return e;
-}
 NdMEnt* nd_mc_store(const NdMKey* k, int tex, int hs, unsigned hg) {
     if (nat_nr > ND_RAW_MAX || nat_nr < 0) { mg_cls[7]++; return NULL; }
     if (nat_n > (int)ND_NAT_MAX) { mg_cls[8]++; return NULL; }
@@ -405,7 +446,7 @@ NdMEnt* nd_mc_store(const NdMKey* k, int tex, int hs, unsigned hg) {
     if (mc_pool_n + (unsigned)nat_n > NDMC_POOL) { mc_clear_all(); e = mc_slot(k); }
     memcpy(e->raw, nat_rng, sizeof(NdRng) * (unsigned)nat_nr);
     e->nraw = (unsigned)nat_nr; e->geom = nat_geom;
-    e->tex = (uint8_t)(tex != 0); e->hs = hs; e->hg = hg; e->neg = 0;
+    e->tex = (uint8_t)(tex != 0); e->hs = hs; e->hg = hg;
     e->off = mc_pool_n; e->n = (unsigned)nat_n;
     for (int j = 0; j < nat_n; j++) {
         NdNat* q = &mc_pool[mc_pool_n + (unsigned)j];

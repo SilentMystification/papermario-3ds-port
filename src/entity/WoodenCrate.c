@@ -216,7 +216,7 @@ void entity_WoodenCrate_setupGfx(s32 entityIndex) {
     gMainGfxPos = gfxPos;
 }
 
-s32 entity_WoodenCrate_idle(Entity* entity) {
+void entity_WoodenCrate_idle(Entity* entity) {
     PlayerStatus* playerStatus = &gPlayerStatus;
     s32 shouldBreak = false;
 
