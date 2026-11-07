@@ -7,6 +7,40 @@
   },
   "benches": [
     {
+      "name": "sprshade_hos01_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SPR4 step 3 gate: hos_01 shaded sprites, native, cold det, shots 200 to 205. Byte-equal to the walker reference (nosprnat, removed in SPR4-4).",
+      "scenario": "sprshade_hos01_pic",
+      "cap": 40,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "spr",
+        "det",
+        "cold"
+      ],
+      "gates": []
+    },
+    {
+      "name": "sprshade_hos01_log",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SPR4 step 3: hos_01 (shaded profile) sprnat why 3 count at frame 300 (log only).",
+      "scenario": "sprshade_hos01",
+      "cap": 30,
+      "until": "spr5 f\\d+ nopal",
+      "tags": [
+        "azahar",
+        "spr",
+        "log"
+      ],
+      "gates": []
+    },
+    {
       "name": "battle_spr5_pic",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -1145,6 +1179,24 @@
       ]
     },
     {
+      "name": "sbk56_orbdbg_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FX1 plan 5: sbk_56 super block cold det run with the orbdbg tags. Glow frames by tag (orbdbg enter, orbdbg draw) and the register shadow at the first glow frame (orbreg 524). A person reads the shots 520 to 531.",
+      "scenario": "sbk56_orbdbg_det",
+      "cap": 45,
+      "until": "superblock: effects done",
+      "tags": [
+        "azahar",
+        "pic",
+        "det",
+        "cold",
+        "fx1"
+      ],
+      "gates": []
+    },
+    {
       "name": "sbk56_superblock_pic",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -1242,45 +1294,6 @@
         {
           "metric": "ndm_eq",
           "op": ">",
-          "value": 0
-        }
-      ]
-    },
-    {
-      "name": "battle_start_sprcheck",
-      "kind": "azahar_pic",
-      "speed": "normal",
-      "default": false,
-      "purpose": "Battle scene sprcheck (S4-2): sprite record native build vs walker batch. Gate eq above 0, diff 0.",
-      "scenario": "battle_start_sprcheck",
-      "cap": 40,
-      "until": "sprcheck f\\d+ recs",
-      "tags": [
-        "azahar",
-        "sprcheck",
-        "battle"
-      ],
-      "log_metrics": [
-        {
-          "name": "spr_eq",
-          "regex": "sprcheck f\\d+ recs \\d+ eq (\\d+) diff \\d+ fb",
-          "pick": "last"
-        },
-        {
-          "name": "spr_diff",
-          "regex": "sprcheck f\\d+ recs \\d+ eq \\d+ diff (\\d+) fb",
-          "pick": "last"
-        }
-      ],
-      "gates": [
-        {
-          "metric": "spr_eq",
-          "op": ">",
-          "value": 0
-        },
-        {
-          "metric": "spr_diff",
-          "op": "==",
           "value": 0
         }
       ]
@@ -1553,45 +1566,6 @@
         {
           "metric": "seg_native",
           "op": ">",
-          "value": 0
-        }
-      ]
-    },
-    {
-      "name": "spot_mac01_sprcheck",
-      "kind": "azahar_pic",
-      "speed": "normal",
-      "default": false,
-      "purpose": "Toad Town mac_01 sprcheck (S4-1): sprite record key vs walker key. Gate eq above 0, diff 0.",
-      "scenario": "spot_mac01_sprcheck",
-      "cap": 25,
-      "until": "ndmcheck f\\d+ recs",
-      "tags": [
-        "azahar",
-        "sprcheck",
-        "spot"
-      ],
-      "log_metrics": [
-        {
-          "name": "spr_eq",
-          "regex": "sprcheck f\\d+ recs \\d+ eq (\\d+) diff \\d+ fb",
-          "pick": "last"
-        },
-        {
-          "name": "spr_diff",
-          "regex": "sprcheck f\\d+ recs \\d+ eq \\d+ diff (\\d+) fb",
-          "pick": "last"
-        }
-      ],
-      "gates": [
-        {
-          "metric": "spr_eq",
-          "op": ">",
-          "value": 0
-        },
-        {
-          "metric": "spr_diff",
-          "op": "==",
           "value": 0
         }
       ]
@@ -2248,7 +2222,11 @@
       "scenario": "spot_mac01_det",
       "cap": 35,
       "until": "prof f\\d+ w\\d+ at ",
-      "tags": ["azahar", "det", "cold"],
+      "tags": [
+        "azahar",
+        "det",
+        "cold"
+      ],
       "gates": []
     },
     {
@@ -2260,7 +2238,11 @@
       "scenario": "wcen_mac01_det",
       "cap": 45,
       "until": "opsplit f",
-      "tags": ["azahar", "det", "cold"],
+      "tags": [
+        "azahar",
+        "det",
+        "cold"
+      ],
       "gates": []
     },
     {
@@ -2272,7 +2254,11 @@
       "scenario": "phase_mac01_det",
       "cap": 45,
       "until": "fsplit f",
-      "tags": ["azahar", "det", "cold"],
+      "tags": [
+        "azahar",
+        "det",
+        "cold"
+      ],
       "gates": []
     },
     {
@@ -2284,7 +2270,11 @@
       "scenario": "phase_iwa10_det",
       "cap": 45,
       "until": "fsplit f",
-      "tags": ["azahar", "det", "cold"],
+      "tags": [
+        "azahar",
+        "det",
+        "cold"
+      ],
       "gates": []
     },
     {
@@ -2436,58 +2426,6 @@
         "pic",
         "off",
         "grab"
-      ],
-      "gates": []
-    },
-    {
-      "name": "spot_mac01_nosprnat_pic",
-      "kind": "azahar_pic",
-      "speed": "normal",
-      "default": false,
-      "purpose": "Toad Town mac_01 at pos 0 0 200, walker reference (nosprnat). Shots at frames 200 to 205 for the SPR4 byte compare.",
-      "scenario": "spot_mac01_nosprnat_pic",
-      "cap": 60,
-      "until": "prof f\\d+ w\\d+ at ",
-      "tags": [
-        "azahar",
-        "pic",
-        "spot",
-        "nosprnat"
-      ],
-      "gates": []
-    },
-    {
-      "name": "spot_iwa10_nosprnat_pic",
-      "kind": "azahar_pic",
-      "speed": "normal",
-      "default": false,
-      "purpose": "iwa_10 at entry 1, walker reference (nosprnat). Shots at frames 200 to 205 for the SPR4 byte compare.",
-      "scenario": "spot_iwa10_nosprnat_pic",
-      "cap": 60,
-      "until": "prof f\\d+ w\\d+ at ",
-      "tags": [
-        "azahar",
-        "pic",
-        "iwa10",
-        "nosprnat"
-      ],
-      "gates": []
-    },
-    {
-      "name": "pause_spin_nosprnat_w300",
-      "kind": "azahar_pic",
-      "speed": "normal",
-      "default": false,
-      "purpose": "Pause spin with grab (frames 140 to 179), walker reference (nosprnat). Shots as pause_spin_grab for the SPR4 byte compare.",
-      "scenario": "pause_spin_nosprnat_w300",
-      "cap": 45,
-      "until": "nrawwhy f300 ",
-      "tags": [
-        "azahar",
-        "pic",
-        "off",
-        "grab",
-        "nosprnat"
       ],
       "gates": []
     },
@@ -2818,6 +2756,25 @@
       "gates": []
     },
     {
+      "name": "pause_spin_grab_det_w300",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SPR4 det gate, cold start (-NoWarm), det switch: OFF-2 census: pause spin with grab (pause_spin_grab) run to frame 300. The nrawwhy line gives the cumulative raw refusals (grab, off, unit 0). A person reads the spin shots.",
+      "scenario": "pause_spin_grab_det_w300",
+      "cap": 45,
+      "until": "nrawwhy f300 ",
+      "tags": [
+        "azahar",
+        "pic",
+        "off",
+        "grab",
+        "det",
+        "cold"
+      ],
+      "gates": []
+    },
+    {
       "name": "fb_nok11_nat_pic",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -3046,6 +3003,241 @@
         "det",
         "cold",
         "verify"
+      ],
+      "gates": []
+    },
+    {
+      "name": "mdl5_iwa10_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MDL-5 census and picture: iwa_10 cold det, mdlfb and mdlsub lines, shots 200 to 205.",
+      "scenario": "mdl5_iwa10_det",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "mdl5"
+      ],
+      "gates": []
+    },
+    {
+      "name": "mdl5_iwa10_ref",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MDL-5 byte reference: iwa_10 cold det with nomodelnat, shots 200 to 205.",
+      "scenario": "mdl5_iwa10_det_ref",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "mdl5"
+      ],
+      "gates": []
+    },
+    {
+      "name": "mdl5_sbk56_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MDL-5 census and picture: sbk_56 cold det, mdlfb and mdlsub lines, shots 200 to 205.",
+      "scenario": "mdl5_sbk56_det",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "mdl5"
+      ],
+      "gates": []
+    },
+    {
+      "name": "mdl5_sbk56_ref",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MDL-5 byte reference: sbk_56 cold det with nomodelnat, shots 200 to 205.",
+      "scenario": "mdl5_sbk56_det_ref",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "mdl5"
+      ],
+      "gates": []
+    },
+    {
+      "name": "mdl5_mac01_ref",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MDL-5 byte reference: mac_01 cold det with nomodelnat, shots 200 to 205.",
+      "scenario": "mdl5_mac01_det_ref",
+      "cap": 35,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "mdl5"
+      ],
+      "gates": []
+    },
+    {
+      "name": "mdl5_battle_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MDL-5 census and picture: battle kmr_03 cold det, mdlfb and mdlsub lines, shot 182.",
+      "scenario": "mdl5_battle_det",
+      "cap": 60,
+      "until": "shot \\d+ frame 182\\b",
+      "tags": [
+        "azahar",
+        "mdl5"
+      ],
+      "gates": []
+    },
+    {
+      "name": "mdl5_battle_ref",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MDL-5 byte reference: battle kmr_03 cold det with nomodelnat, shot 182.",
+      "scenario": "mdl5_battle_det_ref",
+      "cap": 60,
+      "until": "shot \\d+ frame 182\\b",
+      "tags": [
+        "azahar",
+        "mdl5"
+      ],
+      "gates": []
+    },
+    {
+      "name": "battle_start_sprcheck",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "Battle scene sprcheck (S4-2): sprite record native build vs walker batch. Gate eq above 0, diff 0.",
+      "scenario": "battle_start_sprcheck",
+      "cap": 40,
+      "until": "sprcheck f\\d+ recs",
+      "tags": [
+        "azahar",
+        "sprcheck",
+        "battle"
+      ],
+      "log_metrics": [
+        {
+          "name": "spr_eq",
+          "regex": "sprcheck f\\d+ recs \\d+ eq (\\d+) diff \\d+ fb",
+          "pick": "last"
+        },
+        {
+          "name": "spr_diff",
+          "regex": "sprcheck f\\d+ recs \\d+ eq \\d+ diff (\\d+) fb",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "spr_eq",
+          "op": ">",
+          "value": 0
+        },
+        {
+          "metric": "spr_diff",
+          "op": "==",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "name": "spot_mac01_sprcheck",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "Toad Town mac_01 sprcheck (S4-1): sprite record key vs walker key. Gate eq above 0, diff 0.",
+      "scenario": "spot_mac01_sprcheck",
+      "cap": 25,
+      "until": "ndmcheck f\\d+ recs",
+      "tags": [
+        "azahar",
+        "sprcheck",
+        "spot"
+      ],
+      "log_metrics": [
+        {
+          "name": "spr_eq",
+          "regex": "sprcheck f\\d+ recs \\d+ eq (\\d+) diff \\d+ fb",
+          "pick": "last"
+        },
+        {
+          "name": "spr_diff",
+          "regex": "sprcheck f\\d+ recs \\d+ eq \\d+ diff (\\d+) fb",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "spr_eq",
+          "op": ">",
+          "value": 0
+        },
+        {
+          "metric": "spr_diff",
+          "op": "==",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "name": "spot_mac01_nosprnat_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "Toad Town mac_01 at pos 0 0 200, walker reference (nosprnat). Shots at frames 200 to 205 for the SPR4 byte compare.",
+      "scenario": "spot_mac01_nosprnat_pic",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "pic",
+        "spot",
+        "nosprnat"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_iwa10_nosprnat_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "iwa_10 at entry 1, walker reference (nosprnat). Shots at frames 200 to 205 for the SPR4 byte compare.",
+      "scenario": "spot_iwa10_nosprnat_pic",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "pic",
+        "iwa10",
+        "nosprnat"
+      ],
+      "gates": []
+    },
+    {
+      "name": "pause_spin_nosprnat_w300",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "Pause spin with grab (frames 140 to 179), walker reference (nosprnat). Shots as pause_spin_grab for the SPR4 byte compare.",
+      "scenario": "pause_spin_nosprnat_w300",
+      "cap": 45,
+      "until": "nrawwhy f300 ",
+      "tags": [
+        "azahar",
+        "pic",
+        "off",
+        "grab",
+        "nosprnat"
       ],
       "gates": []
     },

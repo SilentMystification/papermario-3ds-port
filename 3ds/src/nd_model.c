@@ -211,6 +211,14 @@ void pm_log_prof_line(const char* fmt, ...);
 static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st);
 /* MDL-0b: every why code of nd_model_state, uncapped, one line per 300 frames (mdlw) */
 static unsigned mw_cnt[32], mw_ok, mw_f = 100u; /* mw_f: the frame of the last line + 300 */
+/* MDL-5 census: why 6 fallbacks of the window by producer (the record address) and sub-case; top 8 per mdlw line, then reset */
+unsigned nd_nat_sub;
+static struct { uint32_t p; unsigned s, n; } mf_e[32]; static unsigned mf_k, mf_tot[5]; /* mf_tot: cumulative per sub-case (a 1, b 2, c 3, d 4) */
+void nd_mdlfb_note(uint32_t prod, unsigned sub) {
+    mf_tot[sub & 7u]++;
+    for (unsigned i = 0; i < mf_k; i++) if (mf_e[i].p == prod && mf_e[i].s == sub) { mf_e[i].n++; return; }
+    if (mf_k < 32u) { mf_e[mf_k].p = prod; mf_e[mf_k].s = sub; mf_e[mf_k].n = 1; mf_k++; }
+}
 unsigned pm_frame_count(void);
 int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st) {
     int r = nd_model_state_in(rec, c, d, st);
@@ -218,12 +226,16 @@ int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st
     unsigned f = pm_frame_count();
     if (f >= mw_f) { mw_f = f - f % 100u + 100u; /* the next line at the next multiple of 100 frames (pm_frame_count, the shot frame) */
         char b[200]; unsigned n = 0; for (unsigned i = 0; i < 32; i++) if (mw_cnt[i]) n += (unsigned)snprintf(b + n, sizeof b - n, " %u:%u", i, mw_cnt[i]);
-        extern unsigned nd_r13_nohit; pm_log_prof_line("mdlw f%u ok %u why%s r13nohit %u", f, mw_ok, n ? b : " none", nd_r13_nohit); nd_r13_nohit = 0; memset(mw_cnt, 0, sizeof mw_cnt); mw_ok = 0; }
+        extern unsigned nd_r13_nohit; pm_log_prof_line("mdlw f%u ok %u why%s r13nohit %u", f, mw_ok, n ? b : " none", nd_r13_nohit); nd_r13_nohit = 0; memset(mw_cnt, 0, sizeof mw_cnt); mw_ok = 0;
+        for (int t = 0; t < 8; t++) { unsigned bi = 32; for (unsigned i = 0; i < mf_k; i++) if (mf_e[i].n && (bi == 32 || mf_e[i].n > mf_e[bi].n)) bi = i; if (bi == 32) break;
+            pm_log_prof_line("mdlfb f%u %08x sub %c %u", f, (unsigned)mf_e[bi].p, "-abcd"[mf_e[bi].s & 3], mf_e[bi].n); mf_e[bi].n = 0; }
+        pm_log_prof_line("mdlsub f%u a %u b %u c %u d %u", f, mf_tot[1], mf_tot[2], mf_tot[3], mf_tot[4]);
+        mf_k = 0; }
     return r;
 }
 static int nd_pm5all(void) { static int v = -1; if (v < 0) v = pm_debug_has("pm5all"); return v; }
 static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st) {
-    st->why = 0;
+    st->why = 0; nd_nat_sub = 0;
     const uint32_t f = rec[6]; /* R3 w0 flags */
     if (!c->mode || !c->mode->ok || (!c->has_comb && !c->mode->has_cb)) return (st->why = 1, 0);
     if (c->gv && c->gv->fxon && (!c->nrm_ok || pm_debug_has("pm5off"))) return (st->why = 4, 0); /* lit or fog without the walker normal rows (PM5-3: with them the range is a pm5 draw) */
@@ -259,7 +271,7 @@ static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, Nd
     const int combine = co.plan_on ? 8 : co.leg;
     const int tex = tex_u && combine >= 2; /* the walker reads a texel in the combine modes 2 and up only */
     /* MDL-1b: tex1 is native when the R13 ctx has unit 1 (the walker's plan reads it); noise and pm5 with tex1 stay why 6 (named) */
-    if (combine == 8 && (co.plan.uses_noise || (co.plan.uses_tex1 && !c->u1))) return (st->why = 6, 0); /* FB-3: pm5 takes tex1 (uvx uniform); noise stays why 6 until FB-2 */
+    if (combine == 8 && (co.plan.uses_noise || (co.plan.uses_tex1 && (!c->u1 || c->gv && c->gv->fxon)))) { nd_nat_sub = co.plan.uses_noise ? 1u : (c->gv && c->gv->fxon) ? 4u : 2u; return (st->why = 6, 0); }
     const int t1n = combine == 8 && co.plan.uses_tex1;
     if (c->zmark && zb && r->decal) return (st->why = 15, 0); /* S5-2: zmark with decal (the walker's pass 2 bias): named fallback */
     NdTmplKey k;
@@ -382,7 +394,7 @@ static void mc_note(const NdMKey* k, const NdMEnt* e) { /* S3N-7: the last entry
 }
 NdMEnt* nd_mc_store_neg(const NdMKey* k, unsigned ep, unsigned why) {
     NdMEnt* e = mc_slot(k);
-    e->neg = 1; e->why = (uint8_t)(why & 15u); e->ep = ep; e->tex = 0; e->hs = -1; e->hg = 0; e->n = 0; e->nraw = 0; e->off = mc_pool_n; e->geom = 0;
+    e->neg = 1; e->why = (uint8_t)(why & 127u); /* bits 0-3 the why, bits 4-6 the MDL-5 sub-case */ e->ep = ep; e->tex = 0; e->hs = -1; e->hg = 0; e->n = 0; e->nraw = 0; e->off = mc_pool_n; e->geom = 0;
     mc_note(k, e);
     return e;
 }

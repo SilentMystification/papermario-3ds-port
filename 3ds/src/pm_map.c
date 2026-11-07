@@ -551,7 +551,7 @@ void __wrap_set_game_mode(s16 mode) {
         char sm[16];
         pm_log_d("game mode %d frame %u", mode, pm_frame_count());
         pm_ph_scene_mode(mode);
-        if (pm_debug_value("shotmode", sm, sizeof sm) && atoi(sm) == mode) { /* X01: shotmode=<mode>:<n> one shot per frame for n frames from the change to <mode> */
+        if (pm_debug_value("shotmode", sm, sizeof sm) && atoi(sm) == mode) { /* X01: shotmode=<mode>:<n> the window of n frames from the change to <mode>; one shot file, its last frame (SHOT-1, pm_gpu.c dump_shot) */
             const char* c = strchr(sm, ':');
             extern void pm_gpu_shot_burst(int n);
             pm_gpu_shot_burst(c ? atoi(c + 1) : 60);

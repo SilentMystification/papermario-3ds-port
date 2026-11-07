@@ -239,6 +239,13 @@ void energy_orb_wave_appendGfx(void* effect) {
         extern void pm_log(const char* fmt, ...);
         extern unsigned pm_frame_count(void);
         if (pm_debug_has("orbdbg")) {
+            extern void pm_gbi_dbg_reg(const void* l, unsigned tag);
+            /* FX1-3: the five lists of this effect get tags 1 to 5; orb_log (pm_gpu.c) logs each draw inside them */
+            pm_gbi_dbg_reg(D_09001000_3A5320, 1);
+            pm_gbi_dbg_reg(D_090010A8_3A53C8, 2);
+            pm_gbi_dbg_reg(D_090011D0_3A54F0, 3);
+            pm_gbi_dbg_reg(D_090011F0_3A5510, 4);
+            pm_gbi_dbg_reg(D_09001210_3A5530, 5);
             static char orbBuf[640];
             int n = 0;
             const Gfx* g = D_09001000_3A5320;

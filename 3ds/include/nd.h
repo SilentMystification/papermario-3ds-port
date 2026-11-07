@@ -365,6 +365,8 @@ int pm_dlc_native_ranges(const void* list, uint32_t entry, NdRng* out, unsigned 
 #define ND_NAT_MAX 64
 typedef struct NdNat { NdDraw d; NdMState s; float pal[16]; const uint16_t* sd; unsigned nidx; uint8_t zp; float zn; NdTmplKey tk; /* FB-2: the key of d.tmpl: a cache hit builds the id again (the LRU may have taken it over) */ } NdNat; /* S5-2: zp 1 = zmark pass 2, pal row 2 := zn * row 3 (rebuilt on a hit) */
 extern int nd_nat_why;
+extern unsigned nd_nat_sub; /* MDL-5 census: sub-case of why 6 (1 a noise, 2 b tex1 no unit 1, 3 c aux off-screen, 4 d pm5 tex1), 0 other whys */
+void nd_mdlfb_note(uint32_t prod, unsigned sub); /* MDL-5 census: one why 6 fallback of record prod (its address) */
 int nd_model_draw(const uint32_t* rec, const NdMCtx* c, const void* list, int emit);
 const NdNat* nd_model_native(unsigned j);
 /* S3N-6: the native model cache. The key: the 14 record words (R0 to R13) and the walker state the draw reads before the record is applied (pm_gpu.c
