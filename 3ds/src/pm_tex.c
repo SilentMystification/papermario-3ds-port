@@ -121,6 +121,7 @@ void pm_tex_origin(int* x, int* y) {
 }
 static const C3D_Tex* tb_last; /* DR1 bind shadow, see pm_tex_bind */
 static int tb_f, tb_ws, tb_wt;
+static unsigned tb_sg; /* STALE2 cause 4: the slot generation of the shadowed bind; a slot changed under the same texture pointer is bound again */
 static const C3D_Tex* au_last; /* DC2 bind shadow of unit 1, see pm_tex_bind_aux */
 static int au_f, au_ws, au_wt;
 static GPU_TEXTURE_WRAP_PARAM wrap_s = GPU_REPEAT;
@@ -829,7 +830,7 @@ int pm_tex_bind_slot(int i) {
     const C3D_Tex* tp = tex_for_draw(&slots[i]);
     pm_dc_c[DC_TB0]++;
     C3D_TexBind(0, tp);
-    tb_last = slot_draws_stage(&slots[i]) ? NULL : &slots[i].tex;
+    tb_last = slot_draws_stage(&slots[i]) ? NULL : &slots[i].tex; tb_sg = slots[i].sgen;
     pm_tex_epoch_v++;
     return 1;
 }
@@ -1836,7 +1837,7 @@ int pm_tex_bind(void) {
     td3_parse();
     if (td3_wrap >= 0) ws = wt = (GPU_TEXTURE_WRAP_PARAM)td3_wrap;
     GPU_TEXTURE_FILTER_PARAM ff = td3_near ? GPU_NEAREST : tex_filt;
-    if (!slot_draws_stage(&slots[cur]) && tb_last == &slots[cur].tex && tb_f == (int)ff && tb_ws == (int)ws && tb_wt == (int)wt) return 1;
+    if (!slot_draws_stage(&slots[cur]) && tb_last == &slots[cur].tex && tb_f == (int)ff && tb_ws == (int)ws && tb_wt == (int)wt && tb_sg == slots[cur].sgen) return 1;
     texword_dump(&slots[cur]); /* TEXD1: pm_tex_bind is the path the draws use (pm_tex_bind_slot is not) */
     if (bind_probe < 0) bind_probe = pm_debug_has("texbind");
     if (bind_probe) bind_probe_one(cur, &slots[cur]);
@@ -1855,7 +1856,7 @@ int pm_tex_bind(void) {
         if (on) pm_log_d("imglog f%d gpubind slot w %d h %d stride %d gpu w %d h %d data %p fmt %u", (int)tc_frame,slots[cur].w, slots[cur].h, slots[cur].stride, (int)tp->width, (int)tp->height, (void*)tp->data, (unsigned)slots[cur].fmt);
     }
     tb_last = slot_draws_stage(&slots[cur]) ? NULL : &slots[cur].tex;
-    tb_f = (int)ff; tb_ws = (int)ws; tb_wt = (int)wt;
+    tb_f = (int)ff; tb_ws = (int)ws; tb_wt = (int)wt; tb_sg = slots[cur].sgen;
     return 1;
 }
 
