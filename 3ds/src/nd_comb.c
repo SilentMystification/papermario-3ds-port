@@ -16,6 +16,35 @@
 #include "variables.h"
 #include "nd_ops.h"
 
+/* GLOB: definitions moved here from pm_gbi.c (layout only). */
+unsigned conv_k4; /* G_SETCONVERT K4 (8 bit part), the combiner input K4 */
+unsigned keyc, keys; /* B6: G_SETKEYR/G_SETKEYGB chroma key CENTER, 0xRRGGBB00. Only the combiner input CENTER reads it. */
+int dual_on;
+int box_prod; PM_HOTD int box_folded;
+unsigned comb_gen, cmb_gen_seen;
+int box_pat; /* D03: (PRIM - ENV) * TEXEL0 + ENV with alpha from TEXEL1 only: window with a tile 0 pattern */
+unsigned box_save[4];
+float dual_gain[3];
+int comb_set;
+int comb_alpha_shade = 1;
+int plan_active; /* S25: the general combiner (mode 8) draws, not the legacy mode */
+PmPlan cur_plan;
+void sync_combine(void);
+int comb_dry;
+const char* const cc_nm_a[8] = { "CMB", "T0", "T1", "PRIM", "SHADE", "ENV", "1", "NOISE" };
+const char* const cc_nm_b[8] = { "CMB", "T0", "T1", "PRIM", "SHADE", "ENV", "KEYC", "K4" };
+const char* const cc_nm_c[16] = { "CMB", "T0", "T1", "PRIM", "SHADE", "ENV", "KEYS", "CMBA", "T0A", "T1A", "PRIMA", "SHADEA", "ENVA", "LODF", "PLODF", "K5" };
+const char* const cc_nm_d[8] = { "CMB", "T0", "T1", "PRIM", "SHADE", "ENV", "1", "0" };
+const char* const cc_nm_aa[8] = { "CMBA", "T0A", "T1A", "PRIMA", "SHADEA", "ENVA", "1", "0" };
+const char* const cc_nm_ac[8] = { "LODF", "T0A", "T1A", "PRIMA", "SHADEA", "ENVA", "PLODF", "0" };
+typedef struct { unsigned key; int use, why; float el, ep; PmPlan plan; } Dec;
+int ls_use = -9, ls_why, ls_cyc, ls_dual, ls_frame;
+unsigned sc_sig; PM_HOTD int sc_ok; /* DIP2: the inputs of the last sync_combine and whether its result is still what pm_gpu holds */
+typedef struct { unsigned sg; int ok, leg, mode5, pat, use, why, cyc, dual, plan_on, cc_on, env_on; unsigned cc; PmPlan plan; } ScMemo;
+unsigned* const tst_f[16] = { &nd_ws.tst1.comb_a, &nd_ws.tst1.comb_b, &nd_ws.tst1.comb_c, &nd_ws.tst1.comb_d, &nd_ws.tst1.comb_aa, &nd_ws.tst1.comb_ab, &nd_ws.tst1.comb_ac, &nd_ws.tst1.comb_ad,
+    &nd_ws.tst1.comb2_a, &nd_ws.tst1.comb2_b, &nd_ws.tst1.comb2_c, &nd_ws.tst1.comb2_d, &nd_ws.tst1.comb2_aa, &nd_ws.tst1.comb2_ab, &nd_ws.tst1.comb2_ac, &nd_ws.tst1.comb2_ad };
+unsigned aux_key;
+
 
 /* globals of the combine state, owned by pm_gbi.c until their group moves (D10 debt, listed in the ST-2 commit) */
 extern unsigned aux_key, box_save[4];
@@ -37,8 +66,6 @@ static void sync_combine_work(void);
 #define pm_gpu_flush() pm_gpu_flush_at(__LINE__) /* PG0: the flush counter by cause (prof mode) */
 
 typedef struct { float t0[4], t1[4], sh[4], pr[4], en[4], ke[4], ks[4]; float k4; } CcIn;
-typedef struct { unsigned key; int use, why; float el, ep; PmPlan plan; } Dec;
-typedef struct { unsigned sg; int ok, leg, mode5, pat, use, why, cyc, dual, plan_on, cc_on, env_on; unsigned cc; PmPlan plan; } ScMemo;
 void set_leg(int m);
 void sync_legacy(void);
 int combchk_on(void);

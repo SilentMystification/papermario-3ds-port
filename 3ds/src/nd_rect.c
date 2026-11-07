@@ -13,6 +13,32 @@
 #include "pm_port.h"
 #include "nd_int.h"
 
+/* GLOB: definitions moved here from pm_gbi.c (layout only). */
+int fold_axis(int plo, float width, float a0, float a1, float mw, int flip, int negclamp, FoldSeg* out) {
+    float b[8];
+    int nb = 0, n = 0, i;
+    if (!(a1 > a0) || width < 1.f) return 0;
+    b[nb++] = a0;
+    for (i = -2; i <= 2; i++) if (i * mw > a0 && i * mw < a1) b[nb++] = i * mw;
+    b[nb++] = a1;
+    for (i = 0; i + 1 < nb; i++) {
+        float x = b[i], y = b[i + 1], mid = (x + y) * 0.5f;
+        FoldSeg* g = &out[n];
+        g->p0 = plo + (int)((x - a0) / (a1 - a0) * width + 0.5f);
+        g->p1 = plo + (int)((y - a0) / (a1 - a0) * width + 0.5f);
+        if (g->p1 <= g->p0) continue;
+        if (mid < -2.f * mw || mid >= 2.f * mw || (negclamp && mid < 0.f)) g->u0 = g->u1 = 0.f;
+        else {
+            int k = (int)floorf(mid / mw);
+            if (k & 1) { g->u0 = ((k + 1) * mw - x) / mw; g->u1 = ((k + 1) * mw - y) / mw; }
+            else { g->u0 = (x - k * mw) / mw; g->u1 = (y - k * mw) / mw; }
+        }
+        if (flip && !(mid < -2.f * mw || mid >= 2.f * mw || (negclamp && mid < 0.f))) { g->u0 = 1.f - g->u0; g->u1 = 1.f - g->u1; }
+        n++;
+    }
+    return n;
+}
+
 /* CORE-3 census: calls of each handler (the census counts ops by handler module: nd_rect here, pm_gbi.c for the rest) */
 /* nd_rect_tex_n, nd_rect_fill_n: defined in nd_core.c (host-linked census counters, ST host fix) */
 

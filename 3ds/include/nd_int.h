@@ -336,9 +336,9 @@ enum { GPL_A, GPL_ENSURE, GPL_DUAL, GPL_EARLY, GPL_SYNC, GPL_EMIT, GPL_OLD, GPL_
 #define GP_START() do { if (gp_on()) gp_last = pm_ticks(); } while (0)
 #define GP_LAP(id) do { if (gp_on()) { unsigned n_ = pm_ticks(); gp_acc[id] += n_ - gp_last; gp_last = n_; } } while (0)
 extern unsigned gp_acc[8], gp_last;
-extern unsigned gv_fb[GVR_N], gv_load_n, gv_tri_n, gv_rej_n, gv_xf_n;
+extern unsigned gv_fb[GVR_N], gv_load_n, gv_tri_n;
 extern unsigned tri_drop[2];
-extern unsigned gp1_ld_in, gp1_ld_out, gp1_ld_cross, gp1_vx_in, gp1_vx_out, gp1_vx_cross, gp1_subset;
+extern unsigned gp1_ld_in, gp1_ld_out, gp1_ld_cross, gp1_vx_in, gp1_vx_out, gp1_vx_cross;
 extern unsigned st_lit, st_fogg, st_fogb, st_blc, st_tgen, st_tri, st_gpu_tri, dlc_dirty;
 extern u8 vert_gvf[64];
 extern int pm_nolight;
@@ -402,4 +402,26 @@ extern u32 dlc_words[];
 uint8_t* nd_env_valloc(unsigned n, unsigned* first);
 uint16_t* nd_env_ialloc(unsigned n);
 void pm_gpu_gidxs_commit(const unsigned short* p, unsigned n);
+
+/* GLOB: prototypes and externs moved from pm_gbi.c. */
+int pm_gpu_spr_native(const uint32_t* rec); /* SPR4: native sprite draw at the final vertex word (nd_walk.c G_VTX arm, pm_gpu.c) */
+extern int pm_tex_tagi; /* STALE2 texsrc: bind path tag */
+extern u16 DepthCopyBuffer[16];
+extern unsigned short* nuGfxZBuffer;
+void pm_depth_query(const void* timg, int x, int id); /* F03, pm_depth.c */
+extern unsigned int __ctru_heap;
+extern unsigned int __ctru_heap_size;
+extern unsigned int __ctru_linear_heap;
+extern unsigned int __ctru_linear_heap_size;
+extern int pm_is_cfb(const void* p);
+extern void pm_cfb_capture_prev(void);
+extern void pm_cfb_capture_prev_cpu_for(const void* fill);
+extern void pm_cfb_capture_prev_cpu(void);
+extern void pm_zbuf_need(void);
+extern unsigned pm_frame_count(void);
+extern int pm_fb_native(const void* p);
+extern u8 gMapShapeData[], TextureHeap[], pm_world_entity_heap[], heap_generalHead[], heap_spriteHead[];
+extern unsigned short** nuGfxCfb;
+extern unsigned nuGfxCfbNum;
+extern int pm_wide;
 #endif

@@ -22,6 +22,14 @@ unsigned gp_opt[256], gp_opn[256], gp_opt_last; int gp_prev_op = -1; /* time bet
 #include "pm_tex.h"
 #include "pm_port.h"
 #include "variables.h"
+
+/* GLOB: definitions moved here from pm_gbi.c (layout only). */
+unsigned pm_gbi_sync_ticks, pm_gbi_gv_ticks, pm_gbi_tex_ticks;
+int rm_frame;
+u8 seen[256];
+char stats_line[96];
+unsigned op_cnt[256];
+int n_cut, n_keep, sample_x, have_sample;
 void note(unsigned op) {
     unsigned n = ++op_cnt[op];
     seen[op] = 1;

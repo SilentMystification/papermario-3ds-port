@@ -15,6 +15,26 @@
 #include "pm_port.h"
 #include "variables.h"
 
+/* GLOB: definitions moved here from pm_gbi.c (layout only). */
+u8 vert_live[64];
+int tri_since_vtx;
+u8 vert_scr[64];
+s16 vert_sx[64], vert_sy[64];
+unsigned char vert_cb[64]; /* DIP1: clip bits of vert_p, made once at G_VTX */
+float vert_p[64][4]; /* PO2: clip space x y z w of a vertex, transformed once when it is loaded (G_VTX) */
+u8 vert_litf[64]; /* GV5: bit 0 = loaded lit, bit 1 = loaded lit with texgen, bit 2 = the lights changed since (the colour was made then): the CPU path only */
+u8 vert_gvf[64]; /* GV1: bit 0 = vert_p valid, bit 1 = the ring copy's S, T and colour read (gv_xf, GM-3). 3 for every vertex made. */
+unsigned seam_obj, seam_clip; /* SEAM: CPU path triangles by position route, `seamstat` logs them */
+unsigned gv_fb[GVR_N], gv_load_n, gv_tri_n;
+unsigned gp1_ld_in, gp1_ld_out, gp1_ld_cross, gp1_vx_in, gp1_vx_out, gp1_vx_cross;
+unsigned short vert_ring[64], vert_gmi[64];
+unsigned vert_tss[64];
+unsigned st_gpu_tri; /* triangles drawn by the raw path */
+unsigned st_vx, st_cor; /* PO2: vertices transformed at G_VTX, triangle corners read (the old code transformed one matrix product per corner) */
+int pm_nolight = -1; /* F11-10: -1 = read the switch at first use, the Options row sets 0 or 1 */
+unsigned st_lit, st_fogg, st_fogb, st_blc, st_tgen, st_tri; /* S25: draws that use lights, fog, blend colour, texgen */
+int n_cmd, n_in, n_drop, n_out;
+
 typedef NdGvP GvP;
 
 
@@ -104,7 +124,6 @@ void gv_xf(int sl) {
         p[2] = m[0][2] * x + m[1][2] * y + m[2][2] * z + m[3][2];
         p[3] = m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3];
         vert_cb[sl] = (unsigned char)clip_bits4(p);
-        gv_xf_n++;
     }
     vert_gvf[sl] = 3;
 }
@@ -172,12 +191,12 @@ void gv_epoch_enter(void) {
 int gv_tri(const int* idx) {
     int a = idx[0], b = idx[1], c = idx[2];
     int why = -1;
-    if ((vert_cb[a] & vert_cb[b] & vert_cb[c]) & 0x2f) { n_out++; gv_rej_n++; PH_ADD(C_GVREJ, 1); GP_LAP(GPL_EARLY); return 1; }
+    if ((vert_cb[a] & vert_cb[b] & vert_cb[c]) & 0x2f) { n_out++; PH_ADD(C_GVREJ, 1); GP_LAP(GPL_EARLY); return 1; }
     if ((vert_cb[a] | vert_cb[b] | vert_cb[c]) & 0x2f) {
         if (!(vert_gvf[a] & 1) && vert_cb[a]) gv_xf(a);
         if (!(vert_gvf[b] & 1) && vert_cb[b]) gv_xf(b);
         if (!(vert_gvf[c] & 1) && vert_cb[c]) gv_xf(c);
-        if ((vert_cb[a] & vert_cb[b] & vert_cb[c]) & 0x2f) { gp1_subset++; n_out++; gv_rej_n++; PH_ADD(C_GVREJ, 1); GP_LAP(GPL_EARLY); return 1; }
+        if ((vert_cb[a] & vert_cb[b] & vert_cb[c]) & 0x2f) { n_out++; PH_ADD(C_GVREJ, 1); GP_LAP(GPL_EARLY); return 1; }
     }
     if (vert_scr[a] | vert_scr[b] | vert_scr[c]) why = GVR_SCR;
     else if (vert_tss[a] != vert_tss[b] || vert_tss[a] != vert_tss[c]) why = GVR_TSS;

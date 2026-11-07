@@ -8,9 +8,9 @@ User decision 2026-11-06: commit to S10. Model (oracle review 5b2ee3c48): the N6
 - pm_gbi.h: every function it declares is defined in nd_walk.c, nd_cen.c or nd_mtx_set.c. pm_gbi_run (nd_walk.c) is the phase wrapper and stays.
 
 ## Rows (order)
-1. GLOB + END-1 (one agent, row_GLOB.md; both touch nd_cen.c): globals of pm_gbi.c to their writing module (D10); fold_axis to nd_rect.c, pm_gbi_bind_tile1 to nd_tex_set.c. END-1: delete walker case labels with no macro producer and 0 hits in a whole-run ophit count.
+1. GLOB: DONE (globals placed by D10, dead globals and write-only counters deleted). END-1: closed with no delete (the walker cases with 0 hits in 4 whole runs may still come from ROM display lists; no src proof possible).
 2. S10-2 BRIDGE: DONE (36048ea64). gbi_task calls pm_gbi_run directly (eye 2 under stereo); nd_core.c record/emit/order/eye_copy code and ND_LEGACY/NdRec deleted; nd_frame_begin, nd_st_log and the pm_pf_nd_add timing stay.
-3. S10-1 DELETE (after GLOB): pm_gbi.c and pm_gbi.h deleted; the 6 prototypes move into nd.h; names pm_gbi_* stay (no rename).
+3. S10-1 DELETE (next): pm_gbi.c (comment blocks only) and pm_gbi.h deleted; unreferenced seam_obj, seam_clip, st_cor deleted; the 6 prototypes move into nd.h; names pm_gbi_* stay (no rename).
 4. S10-3 HOT (after S10-1 and S10-2, Sonnet): new .text hot list in 3ds/ld/3dsx.ld.in from the sampled top ops (nd_walk_run, nd_geom_vtx, draw_tri, gv_tri, gv_epoch_enter, gtrip/gappend, nd_native_submit, nd_raw_native, flush_draw, tex_op, ensure_tile, load_mtx, sync_combine, dlc_try, pm_tex_bind); cold nd files -Os. Gate: byte gates, nd_size_test.sh, gbi-phase us at wcen_mac01 no worse; one console prof push with user consent.
 5. S10-4 FULL: epic merge run (full catalog once, console prof push). Ask the user first (CLAUDE.md rule 5). Orchestrator only.
 Byte gates for every row (cold det): spot_mac01_det, mdl5_iwa10_det, battle_start_f182_cold, nok11_det 0000-0015, pause_spin_grab_det_w300. Not byte gates: spot_mac00_*, super_text_pic, nok11 shot 0016 (layout or run dependent, row_UB1.md).

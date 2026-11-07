@@ -17,7 +17,6 @@ Live files only. Older logs are in archive/ (agent_*, diag_*, inv_*, plan_*, tra
 - design_native_draw.md, design_producer_models.md: fidelity rule and producer record design.
 - frame_budget.md: 16.7 ms stage budget and O3DS XL baseline.
 - agent_nds_s0.md to agent_nds_s1e.md, agent_nds1_e6.md: logs of finished agents (state at their end).
-- plan_walker_end.md: plan WEND (oracle 2026-11-06): every remaining walker GPU draw goes native; streams CEN, RECT, TRI, OFF, PM5, MDL, decisions D1 to D10.
 - plan_s10_path.md: plan for S10 (oracle 2026-11-06): producers write NdRec records (streams CORE, UI, FXW, WBO), then pm_gbi.c is deleted; decisions D1 to D10.
 - agent_S7.md: WBO-1 site list (custom gfx builders in src/world and src/battle: 57 sites, kinds, scenario candidates) and the WBO-2a to WBO-3 row groups.
 - agent_s10.md: S10 epic handoff (orchestrator, 2026-11-07): merged rows, open rows, parked bugs, size and push state, next command.
