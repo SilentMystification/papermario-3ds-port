@@ -77,6 +77,11 @@ extern unsigned int __ctru_heap_size;
 extern unsigned int __ctru_linear_heap;
 extern unsigned int __ctru_linear_heap_size;
 
+/* CORE-2b: the geometry mode setter. Every G_GEOMETRYMODE path writes through here (gv_epoch stays with the callers that bumped it). */
+static void set_geom(u32 w0, u32 w1) {
+    nd_ws.geom = (nd_ws.geom & (w0 & 0xffffffu)) | w1;
+    pm_gpu_set_mode((nd_ws.geom & G_ZBUFFER) != 0, (nd_ws.geom & G_LIGHTING) != 0);
+}
 static float combined[4][4];
 /* Viewport scale/translate after the 2-bit fraction. Full 320x240 until a display list sets one. */
 static float vp_sx = 160.f, vp_sy = 120.f, vp_sz = 127.75f;
@@ -2069,8 +2074,7 @@ static __attribute__((noinline)) void dlc_run_group(const Gfx* l, const DlcGrp* 
             draw_tri(w1);
             break;
         case G_GEOMETRYMODE:
-            nd_ws.geom = (nd_ws.geom & (w0 & 0xffffffu)) | w1;
-            pm_gpu_set_mode((nd_ws.geom & G_ZBUFFER) != 0, (nd_ws.geom & G_LIGHTING) != 0);
+            set_geom(w0, w1);
             gv_epoch++;
             break;
         default:
@@ -3787,7 +3791,7 @@ static int g2_same(unsigned op, u32 w0, u32 w1) {
  * SETOTHERMODE_L/H, GEOMETRYMODE and ENDDL. Its effects run here in list order, with the same state writes and the same
  * side-effect calls as the handlers for those ops (filter flush, sync_combine on the cycle type, pm_gpu_set_mode).
  * Returns 0 without any effect when the list has another op; the caller then runs it as a G_DL. */
-static void op_setcombine(u32 w0, u32 w1); static void op_texture(u32 w0, u32 w1); /* M4 */
+static void op_setcombine(u32 w0, u32 w1); static void op_texture(u32 w0, u32 w1); static void op_setothermode(unsigned op, u32 w0, u32 w1); /* M4, CORE-2b */
 static int rm_gen; /* M4 texdiff: 1 runs the SETCOMBINE and TEXTURE words through tex_op as before */
 static int rm_apply_impl(u32 w1) {
     const Gfx* g = (const Gfx*)w1;
@@ -3801,8 +3805,7 @@ static int rm_apply_impl(u32 w1) {
         u32 a0 = g[k].words.w0, a1 = g[k].words.w1;
         unsigned op = a0 >> 24;
         if (op == G_GEOMETRYMODE) {
-            nd_ws.geom = (nd_ws.geom & (a0 & 0xffffffu)) | a1;
-            pm_gpu_set_mode((nd_ws.geom & G_ZBUFFER) != 0, (nd_ws.geom & G_LIGHTING) != 0);
+            set_geom(a0, a1);
             continue;
         }
         if (rm_gen && (op == G_SETCOMBINE || op == G_TEXTURE)) { tex_op(a0, a1); continue; }
@@ -3812,23 +3815,7 @@ static int rm_apply_impl(u32 w1) {
             continue;
         }
         if (op == G_TEXTURE) { tex_gen++; pm_gbi_cur_op = op; op_texture(a0, a1); sync_combine(); continue; }
-        unsigned len = (a0 & 0xff) + 1, field = (a0 >> 8) & 0xff, sft = 32 - field - len;
-        unsigned mask = (len >= 32) ? 0xffffffffu : (((1u << len) - 1u) << sft);
-        if (op == G_SETOTHERMODE_H) {
-            unsigned old_tf = nd_ws.omode_h & (3u << 12);
-            nd_ws.omode_h = (nd_ws.omode_h & ~mask) | (a1 & mask);
-            nd_ws.om_kh |= mask; /* B8 known bits (nd_ws.om_kh) */
-            if ((nd_ws.omode_h & (3u << 12)) != old_tf) {
-                int f_on = pm_ph_on && sp0_cur == 1; unsigned f0 = f_on ? pm_ticks() : 0; /* SPLIT0C2: flush time in the tex kind */
-                pm_gpu_flush();
-                if (f_on) sp0_F += (unsigned)(pm_ticks() - f0);
-                pm_tex_set_filter((nd_ws.omode_h & (3u << 12)) != 0);
-            }
-            if (sft <= G_MDSFT_CYCLETYPE && sft + len > G_MDSFT_CYCLETYPE) sync_combine();
-        } else {
-            nd_ws.omode_l = (nd_ws.omode_l & ~mask) | (a1 & mask);
-            nd_ws.om_kl |= mask;
-        }
+        if (op == G_SETOTHERMODE_H || op == G_SETOTHERMODE_L) { op_setothermode(op, a0, a1); continue; }
     }
     return 1;
 }
@@ -5065,8 +5052,7 @@ static void gbi_run_body(void* list, unsigned nbytes) {
             gbi_popmtx(w1);
             break;
         case G_GEOMETRYMODE:
-            nd_ws.geom = (nd_ws.geom & (w0 & 0xffffffu)) | w1;
-            pm_gpu_set_mode((nd_ws.geom & G_ZBUFFER) != 0, (nd_ws.geom & G_LIGHTING) != 0);
+            set_geom(w0, w1);
             break;
         case G_TEXTURE:
         case G_SETOTHERMODE_H:
