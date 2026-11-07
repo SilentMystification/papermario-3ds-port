@@ -431,8 +431,8 @@ void spr_appendGfx_component(
     if (quad != nullptr) {
         spr_appendGfx_component_flat(quad, cache->image, palette, width, height, rotY, mtxTransform, (u8) opacity);
 #ifdef TARGET_3DS
-        if (sprRec != nullptr) { /* S4-3: the flat path ends with gSPVertex, gSP2Triangles, gDPPipeSync: the vertex word is 3 words before the end. Header low 16 bits = its offset from the record */
-            sprRec[0].words.w0 |= (u32)(gMainGfxPos - 3 - sprRec);
+        if (sprRec != nullptr) { /* S4-3: the flat path ends with gSPVertex, gSP2Triangles, gDPPipeSync: the vertex word is 3 words before the end. Header bits 0 to 7 = its offset from the record (the alpha byte is bits 8 to 15) */
+            sprRec[0].words.w0 |= (u32)(gMainGfxPos - 3 - sprRec) & 0xffu;
         }
 #endif
     } else {

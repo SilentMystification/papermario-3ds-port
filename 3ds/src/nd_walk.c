@@ -159,7 +159,7 @@ void nd_walk_run(void* list, unsigned nbytes) {
             if (pm_ph_on) pk_rec[pmx_cur]++; /* WCEN2 */
             if (pm_gpu_spr_native((const uint32_t*)srec)) {
                 if (pm_ph_on) pk_nat[pmx_cur]++;
-                const u32 k = srec[0].words.w0 & 0xffffu;
+                const u32 k = srec[0].words.w0 & 0xffu; /* SPR4-0: header bits 0 to 7 = offset (alpha is bits 8 to 15) */
                 srec[k].words.w0 = 0; srec[k].words.w1 = 0;
                 srec[k + 1].words.w0 = 0; srec[k + 1].words.w1 = 0;
             }
