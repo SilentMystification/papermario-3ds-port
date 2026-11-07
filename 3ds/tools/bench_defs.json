@@ -223,10 +223,10 @@
       "kind": "azahar_pic",
       "speed": "normal",
       "default": false,
-      "purpose": "PSHIFT-1: pause background offset. mac_01 pos 0 0 200, START opens the pause; shots at frames 120 to 149 (shotwin 120:30). Offset of the grab against the live frame is computed from the shot files (dx, dy). A person reads the shot.",
+      "purpose": "PSHIFT-1: pause background offset. mac_01 pos 0 0 200, START opens the pause; shots at frames 92 to 135 (shotwin 92:44): live 92 and 95, pause from 96, menu open from about 105. Offset of the grab against the live frame is computed from the shot files (dx, dy). A person reads the shot.",
       "scenario": "pause_shift",
       "cap": 45,
-      "until": "shot \\d+ frame 149\\b",
+      "until": "shot \\d+ frame 1(3[4-9])\\b",
       "tags": [
         "azahar",
         "pic",
