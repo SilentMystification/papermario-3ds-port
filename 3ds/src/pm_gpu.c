@@ -3578,7 +3578,6 @@ static __attribute__((noinline)) int ndc_compare(const NdMKey* k, const NdTexDes
     }
     return 1;
 }
-/* S3N-7: a stored fallback (rec_run, the entry has neg): the walker geometry runs, no model draw attempt. Counted as a fallback. */
 /* S3N-7 diagnostic (sampled misses): the stored entry of the same model (R0 word 0 and R12 word 0 equal) and the first key word that differs. */
 static unsigned mdg_miss, mdg_printed;
 void pm_gpu_model_miss_diag(const NdMKey* k) {
@@ -3596,12 +3595,11 @@ void pm_gpu_model_miss_diag(const NdMKey* k) {
     }
     pm_log_prof_line("ndmnew r0 %08x r0b %08x r12 %08x r2b %08x rp %08x", k->w[0], k->w[1], k->w[24], k->w[5], k->rp);
 }
-void pm_gpu_model_fb_cached(unsigned why, uint32_t rp) { ndn_fb++; ndn_miss++; ndn_why[why & 15u]++; ndn_log(); if (why >> 4) nd_mdlfb_note(rp, why >> 4); }
 int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, const NdMKey* mk) {
     int mode_ok = 0;
     int n = model_draw(rec, modew, combw, gfx, texidx, geo, 1, &mode_ok, mk);
     if (n >= 0) { ndn_rec++; ndn_draws += (unsigned)n; }
-    else { ndn_fb++; ndn_why[nd_nat_why & 15]++; const unsigned sub = nd_nat_why == 6 ? nd_nat_sub : 0u; nd_mc_store_neg(mk, pm_tex_epoch(), (unsigned)nd_nat_why | (sub << 4)); if (sub) nd_mdlfb_note(mk->rp, sub); } /* S3N-7: a fallback is stored for this key (every early return of model_draw too): not drawn again while the texture epoch holds, so a texture that loads later gets the native path then */
+    else { ndn_fb++; ndn_why[nd_nat_why & 15]++; const unsigned sub = nd_nat_why == 6 ? nd_nat_sub : 0u; if (sub) nd_mdlfb_note(mk->rp, sub); } /* S3N-7: a fallback is stored for this key (every early return of model_draw too): not drawn again while the texture epoch holds, so a texture that loads later gets the native path then */
     ndn_miss++;
     ndn_log();
     return n;
@@ -3611,7 +3609,6 @@ int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32
  * applies the record (its matrix ops are done). */
 int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
     if (!e) { ndn_nokey++; return 0; }
-    if (e->neg) return 0; /* a stored fallback: the record is not drawn (rec_run runs the walker geometry) */
     NdRng rng[ND_RAW_MAX];
     NdtT tr = pm_gpu_ndt_begin(); /* S3N-7: the hit-path range check */
     int nr = pm_dlc_native_ranges((const void*)(uintptr_t)k->w[24], e->geom, rng, ND_RAW_MAX);

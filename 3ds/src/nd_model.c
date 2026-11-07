@@ -439,12 +439,6 @@ static void mc_note(const NdMKey* k, const NdMEnt* e) { /* S3N-7: the last entry
     unsigned s = (k->rp >> 2) & (NDMC_LAST - 1u);
     mc_lastp[s] = k->rp; mc_lasti[s] = (uint16_t)(e - mc_tab); mc_lastg[s] = mc_clears_n;
 }
-NdMEnt* nd_mc_store_neg(const NdMKey* k, unsigned ep, unsigned why) {
-    NdMEnt* e = mc_slot(k);
-    e->neg = 1; e->why = (uint8_t)(why & 127u); /* bits 0-3 the why, bits 4-6 the MDL-5 sub-case */ e->ep = ep; e->tex = 0; e->hs = -1; e->hg = 0; e->n = 0; e->nraw = 0; e->off = mc_pool_n; e->geom = 0;
-    mc_note(k, e);
-    return e;
-}
 NdMEnt* nd_mc_store(const NdMKey* k, int tex, int hs, unsigned hg) {
     if (nat_nr > ND_RAW_MAX || nat_nr < 0) { mg_cls[7]++; return NULL; }
     if (nat_n > (int)ND_NAT_MAX) { mg_cls[8]++; return NULL; }
@@ -452,7 +446,7 @@ NdMEnt* nd_mc_store(const NdMKey* k, int tex, int hs, unsigned hg) {
     if (mc_pool_n + (unsigned)nat_n > NDMC_POOL) { mc_clear_all(); e = mc_slot(k); }
     memcpy(e->raw, nat_rng, sizeof(NdRng) * (unsigned)nat_nr);
     e->nraw = (unsigned)nat_nr; e->geom = nat_geom;
-    e->tex = (uint8_t)(tex != 0); e->hs = hs; e->hg = hg; e->neg = 0;
+    e->tex = (uint8_t)(tex != 0); e->hs = hs; e->hg = hg;
     e->off = mc_pool_n; e->n = (unsigned)nat_n;
     for (int j = 0; j < nat_n; j++) {
         NdNat* q = &mc_pool[mc_pool_n + (unsigned)j];
