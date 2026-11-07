@@ -31,7 +31,6 @@ extern unsigned int __ctru_heap_size;
 extern unsigned int __ctru_linear_heap;
 extern unsigned int __ctru_linear_heap_size;
 
-void pm_tex_set_filter(int linear);
 int rm_frame;
 
 /* SUNFIX debug switch suntile=<first frame>:<count>: tile 1 state at each dual_bind, the vertex S T of each triangle, and the sun
@@ -73,8 +72,6 @@ extern int pm_fb_native(const void* p);
  * same 4-bit image (tile 0 reads the shading palette, tile 1 the sprite palette). */
 M1Rec m1;
 int dual_on;
-/* RDP shift field: 1..10 divide by 2^n, 11..15 multiply by 2^(16-n). */
-float shift_mul(unsigned n) { return nd_shift_mul(n); } /* S3N-1: nd_model.c */
 int comb_mode5; /* (PRIM - ENV) * TEXEL + ENV */
 /* draw_box (H04): cycle 1 = TEXEL0 * TEXEL1 (tile 0 window background, tile 1 corner image),
  * alpha = TEXEL1 alpha, cycle 2 = (PRIM - ENV) * COMBINED + ENV. box_prod marks that form.
@@ -194,7 +191,6 @@ void sync_legacy(void) {
 /* L01: RSP light table. G_MW_NUMLIGHT sets the count, G_MOVEMEM index G_MV_LIGHT fills slots (slot 0 is light 1, slot nlights is the ambient light). */
 NdLight lt[9];
 unsigned lt_n;
-void nd_light_count(u32 w1) { lit_freeze(); lt_n = w1 / 24; if (lt_n > 7) lt_n = 7; } /* ST-1: G_MW_NUMLIGHT; group M owns lt_n */
 s8 lk[2][3]; /* T01: look-at X and Y vectors (G_MOVEMEM slots -2 and -1) */
 float vert_st[64][2]; /* S and T in 10.5 units after the RSP scale or texgen, set when the vertex is loaded */
 /* SUN3 debug (suntile switch): the tile 0 source of a draw, its state, and the first 16 bytes of rows 0 to 11 of the source. */
@@ -427,8 +423,6 @@ typedef struct { unsigned sg; int ok, leg, mode5, pat, use, why, cyc, dual, plan
 /* S3N-3d: the combiner fields of tst1 that the combine work reads (nd_comb_decide inputs). */
 unsigned* const tst_f[16] = { &nd_ws.tst1.comb_a, &nd_ws.tst1.comb_b, &nd_ws.tst1.comb_c, &nd_ws.tst1.comb_d, &nd_ws.tst1.comb_aa, &nd_ws.tst1.comb_ab, &nd_ws.tst1.comb_ac, &nd_ws.tst1.comb_ad,
     &nd_ws.tst1.comb2_a, &nd_ws.tst1.comb2_b, &nd_ws.tst1.comb2_c, &nd_ws.tst1.comb2_d, &nd_ws.tst1.comb2_aa, &nd_ws.tst1.comb2_ab, &nd_ws.tst1.comb2_ac, &nd_ws.tst1.comb2_ad };
-/* S3N-3d: debug switch combchk. Each combine work of sync_combine runs nd_comb_decide on its inputs and compares the outputs with the walker state. */
-int combchk_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("combchk"); return v; }
 void pm_log_prof_line(const char* fmt, ...); /* pm_log.c: the one line of prof=4 mode */
 unsigned cc_runs, cc_diff; static int cc_last_b = -1; /* the 300 frame bucket of the last log line */
 __attribute__((cold, noinline)) void combchk_run(const NdCombIn* in, int worked) { /* worked: the work ran (sl_* are set); a memo hit replays the outputs only */

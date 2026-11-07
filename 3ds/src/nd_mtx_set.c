@@ -180,3 +180,7 @@ void mtx_elem(Mtx* dst, int r, int c, float v) {
     m[idx] = (m[idx] & ~mask) | ((((u32)(fixed >> 16)) & 0xffffu) << sh);
     m[idx + 8] = (m[idx + 8] & ~mask) | (((u32)fixed & 0xffffu) << sh);
 }
+
+/* ---- MV-10: light count, cut from pm_gbi.c (no change; target only, calls lit_freeze) ---- */
+extern unsigned lt_n;
+void nd_light_count(u32 w1) { lit_freeze(); lt_n = w1 / 24; if (lt_n > 7) lt_n = 7; } /* ST-1: G_MW_NUMLIGHT; group M owns lt_n */
