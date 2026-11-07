@@ -18,10 +18,13 @@ CORE-1 RECORD MODE, CORE-2 NdRec KINDS, CORE-3 RECT/FILL (after RECT-1 lands: gr
 3. CORE-3: background.c, background_gfx.c opted in; walker ops of camera_render and the 2 background lists 0 (WCEN census); mac_00 sky right by eye.
 4. CORE-4: walking_dust.c opted in; its walker ops 0; dust right by eye at mac_01.
 
-## State (2026-11-06, after CORE agent 2)
-CORE-1 done (1f5e0db04). Branch core (worktree build3ds/wt/core): 2a-1 d5e07bd11 and 2a-2 643d7b501, both byte-equal at spot_mac01_pic (nd_ws.X renames; #define aliases collide with struct members). Not merged into nds1 yet (shared pm_gbi.c holds the super block agent's debug hunks; the orchestrator merges when that agent is done). Rebase on nds1 before each gate.
-Decision for 2a-3 (orchestrator, 2026-11-06): route (a). Delete nd_st. Allowed outside the Touch list for this row only: the nd_st readers in 3ds/src/pm_gpu.c (~3016-3062, ~3539-3542: om_h, om_l, om_kh, om_kl, geom, prim, prim_lod) read nd_ws instead; host tests 3ds/tools/nd_gbi_test.c and nd_rec_test.c compare against nd_ws; the nd_core.c ndst log reads nd_ws. Add om_kh, om_kl (B8 known bits) and prim_lod to NdWs and set them in the walker SETOTHERMODE / RDPSETOTHERMODE / SETPRIMCOLOR paths. Gate: spot_mac01_pic byte-equal to 2a-2; if not equal, name the field whose walk-time value differs from the old macro-time nd_st value and fix that setter (2 tries), then continue.
-Then 2b and 2c per the oracle plan. The 150-line guideline does not apply to pure renames.
+## State (2026-11-06, after CORE agent 2, round 2)
+Branch core head e6bec7e73 (worktree build3ds/wt/core): 2a-1 a63423977, 2a-2 ed88f0c44, 2a-3 e6bec7e73 (nd_st deleted, om_kh/om_kl/prim_lod in NdWs, g2_note on skipped ops), each spot_mac01_pic byte-equal. Not merged into nds1 yet (shared pm_gbi.c held by the super block agent).
+Decision on the record word (orchestrator, 2026-11-06), replaces the G_PM_ND encoding of the oracle plan for one-slot leaves:
+- A one-slot STATE leaf keeps its N64 word as its record: the opcode byte is the setter id and the 64 bits are the payload. The walker case for that opcode calls the setter (2b) with the decoded fields. No re-encoding, so no bit-width problem. At S10 this setter table moves to nd_state.c as the record dispatcher (plan_s10_path.md D3: the decoder that stays).
+- G_PM_ND is used only where a record must carry more than the leaf's words or a pointer read at emit time (texrect by value, vertex pointer records): 2-slot or n-slot form, skip = nslots - 1, payload in the following slots.
+- So CORE-2c shrinks to: the record-mode predicate covers mainGfx and backgroundGfx of both display contexts; opt in main_loop.c and cam_main.c; host test (a leaf writes exactly nslots slots; record replay state equals word state); gates as the plan says.
+2b scope: all setter groups, but gate in batches: one spot_mac01_pic byte-equal run per 4 to 5 setter groups (one commit per batch). If a batch differs, bisect inside it. Setters stay static in pm_gbi.c for now (2b); they move to nd_state.c with CORE-5 to CORE-8.
 
 ## Oracle plan CORE-2 (2026-11-06, Opus; replaces CORE-2 to CORE-4 of plan_s10_path.md Stream CORE)
 The CORE-1 leaves decode at macro time, and that is the root of (a) and (b). State decoded at macro time is not the state at walk time: replays walk the same memory again, the walker has its own globals, and the bg and key lists run later. So a record-mode leaf must encode a record into its own slots, and the state change must happen when the record runs, through the one owner of the state.
