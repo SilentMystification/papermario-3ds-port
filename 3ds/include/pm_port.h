@@ -152,6 +152,7 @@ int pm_rom_init(void);
 enum { PMB_MAIN, PMB_THREAD, PMB_LOG, PMB_OPT, PMB_ROM_OPEN, PMB_ROM_READ, PMB_GFX, PMB_AUDIO, PMB_DRAW, PMB_TITLE, PMB_N };
 void pm_boot_mark(int id, unsigned arg);
 void pm_rom_drop_stat(void);
+void pm_heaphi_line(unsigned frame); /* MEM-B: pm_heaphi.c */
 void pm_fatal_screen(const char* msg);
 void pm_crash_selftest(void);
 void pm_crash_install(void* stack, unsigned size);
