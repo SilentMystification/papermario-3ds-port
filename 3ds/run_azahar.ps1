@@ -198,7 +198,7 @@ $p = $null
 $gdbProc = $null
 if ($env:PM_SLOT_HELD -and $Slot -gt 0) { $slotK = $Slot }
 else {
-    $slotK = Get-Slot $Slot $LockWait $x3dsx $Turbo.IsPresent $(if ($Turbo) { $TurboLimit } else { 0 })
+    $slotK = Get-Slot $Slot $LockWait $Turbo.IsPresent $(if ($Turbo) { $TurboLimit } else { 0 })
     if (-not $slotK) { End-Run 3 "LOCK TIMEOUT: no free Azahar slot after $LockWait s. Nothing was run." }
     $heldHere = $true
     Write-Output "Azahar slot $slotK taken."
@@ -206,6 +206,8 @@ else {
 $sl = Ensure-Slot $slotK
 Sync-Slot $slotK
 $sd = $sl.sd; $cfg = $sl.cfg; $exe = $sl.exe; $emuLog = $sl.emuLog; $log = "$sd\log.txt"; $pidFile = $sl.pidFile
+# AZT3-1: the 3dsx of every lane is copied to the slot rom path, and Azahar boots that path (cold) or restarts it (warm)
+$romFile = $sl.rom; $stopReq = "$($sl.dir)\stop.request" # stopReq: azt.ps1 ends this run early (marker, stall, attract, guard); the Azahar is kept (AZT3-2)
 $cfgBak = "$($sl.dir)\qt-config.orig"; $optFile = "$sd\options.ini"; $optBak = "$($sl.dir)\options.orig"
 if (Test-Path "$sdMaster\options.ini") { Copy-Item "$sdMaster\options.ini" $optFile -Force } # the user's game settings, the slot copy is edited below
 $outLane = $out
@@ -214,8 +216,8 @@ New-Item -ItemType Directory -Force -Path $out | Out-Null
 # AZT-2: an Azahar kept by an earlier run (-Keep) is reused when it is the same build file and the same speed settings
 $keepOn = $Keep.IsPresent -or [bool]$env:PM_AZ_KEEP
 $kept = Get-KeptAzahar $slotK
-# AZT2: the warm decision and its reason (azslot line below). Reasons: no kept, closed, other lane, turbo, option, restart failed
-$warmWhy = if ($NoWarm -or $Interactive -or $Gdb -or $FaultStop) { "option" } else { Get-WarmState $slotK $x3dsx $Turbo.IsPresent $(if ($Turbo) { $TurboLimit } else { 0 }) }
+# AZT2: the warm decision and its reason (azslot line below). Reasons: no kept, closed, turbo, option, restart failed (AZT3-1: no lane reason)
+$warmWhy = if ($NoWarm -or $Interactive -or $Gdb -or $FaultStop) { "option" } else { Get-WarmState $slotK $Turbo.IsPresent $(if ($Turbo) { $TurboLimit } else { 0 }) }
 $warm = ($warmWhy -eq "warm")
 if (-not $warm) { Remove-Item $sl.keepFile -ErrorAction SilentlyContinue }
 # From here this script owns the slot. Any earlier run on this slot that was killed: kill its Azahar, put the config back.
@@ -238,9 +240,9 @@ try {
     if (Test-Path $optFile) { Copy-Item $optFile $optBak -Force } # UI1a: saved before any edit of options.ini
     if ($Turbo) { Set-Turbo }
 
-New-Item -ItemType Directory -Force -Path $sd | Out-Null
-try { Copy-Item $in3dsx "$sd\$x3dsx" -Force -ErrorAction Stop }
-catch { if ($warm) { Write-Output "Warm: the 3dsx in the kept Azahar is locked ($($_.Exception.Message)). Cold start."; $warm = $false; $warmWhy = "restart failed"; Kill-Azahar $kept.Id; Copy-Item $in3dsx "$sd\$x3dsx" -Force } else { throw } }
+New-Item -ItemType Directory -Force -Path $sd, $sl.romDir | Out-Null
+try { Copy-Item $in3dsx $romFile -Force -ErrorAction Stop }
+catch { if ($warm) { Write-Output "Warm: the 3dsx in the kept Azahar is locked ($($_.Exception.Message)). Cold start."; $warm = $false; $warmWhy = "restart failed"; Kill-Azahar $kept.Id; Copy-Item $in3dsx $romFile -Force } else { throw } }
 $oldLogCT = [datetime]::MinValue
 if ($warm) { if (Test-Path $log) { $oldLogCT = (Get-Item $log).CreationTimeUtc } } # the kept game holds log.txt open: the restart makes a new one
 else { Remove-Item $log -ErrorAction SilentlyContinue }
@@ -320,7 +322,7 @@ $azLine = if ($warm) { "azslot: slot $slotK warm" } else { "azslot: slot $slotK 
 Set-Content "$($sl.dir)\azslot.line" $azLine
 Write-Output $azLine
 if (-not $p) {
-    $p = Start-Process $exe -ArgumentList "`"$sd\$x3dsx`"" -PassThru
+    $p = Start-Process $exe -ArgumentList "`"$romFile`"" -PassThru
     Set-Content $pidFile $p.Id
 }
 if ($Gdb) {

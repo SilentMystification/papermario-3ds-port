@@ -18,6 +18,7 @@ function Get-SlotPaths([int]$k) {
     return @{
         k = $k; dir = $d; exe = "$d\azahar.exe"; user = "$d\user"
         cfg = "$d\user\config\qt-config.ini"; sd = "$d\user\sdmc\3ds\PaperMario"
+        rom = "$d\rom\pm_3ds.3dsx"; romDir = "$d\rom" # AZT3-1: every lane's 3dsx is copied here, so a kept Azahar always restarts this one path
         emuLog = "$d\user\log\azahar_log.txt"; pidFile = "$d\slot.pid"; keepFile = "$d\keep.json"
         mutexName = "Global\pm_azahar_slot$k"
     }
@@ -85,21 +86,21 @@ function Exit-Slot([int]$k) {
     if ($script:SlotMutex.ContainsKey($k)) { try { $script:SlotMutex[$k].ReleaseMutex() } catch {} }
 }
 
-function Get-WarmState([int]$k, [string]$x3dsx, [bool]$turbo, [int]$turbolimit) {
-    # AZT2: can a run of this lane and turbo setting restart in slot k? Returns "warm" or the reason it cannot:
-    # "no kept" (no Azahar kept in the slot), "closed" (keep.json, but its Azahar is gone), "other lane" (kept Azahar runs another 3dsx), "turbo" (other turbo setting).
+function Get-WarmState([int]$k, [bool]$turbo, [int]$turbolimit) {
+    # AZT2: can a run restart in slot k? Returns "warm" or the reason it cannot:
+    # "no kept" (no Azahar kept in the slot), "closed" (keep.json, but its Azahar is gone), "turbo" (other turbo setting).
+    # AZT3-1: no lane check. Every lane's 3dsx is copied to the slot rom path and the restart loads that path.
     $kept = Get-KeptAzahar $k
     $info = Get-KeepInfo $k
     if (-not $kept) { if ($info) { return "closed" } else { return "no kept" } }
     if (-not $info -or [int]$info.pid -ne $kept.Id) { return "no kept" }
-    if ([string]$info.x3dsx -ne $x3dsx) { return "other lane" }
     if ([bool]$info.turbo -ne $turbo -or [int]$info.turbolimit -ne $turbolimit) { return "turbo" }
     return "warm"
 }
 
-function Get-Slot([int]$want, [int]$waitSec, [string]$x3dsx = "", [bool]$turbo = $false, [int]$turbolimit = 0) {
+function Get-Slot([int]$want, [int]$waitSec, [bool]$turbo = $false, [int]$turbolimit = 0) {
     # $want > 0 takes that slot. 0 takes the first free slot in this order (AZT2 affinity):
-    #   1. a free slot whose kept Azahar restarts this run (same x3dsx, turbo setting): warm
+    #   1. a free slot whose kept Azahar restarts this run (same turbo setting, any lane: AZT3-1): warm
     #   2. a free slot with no kept Azahar (cold start, no other lane is disturbed)
     #   3. any other free slot (its kept Azahar belongs to another lane or turbo setting)
     # Waits only when all slots are busy. Returns the slot number, 0 on timeout.
@@ -109,7 +110,7 @@ function Get-Slot([int]$want, [int]$waitSec, [string]$x3dsx = "", [bool]$turbo =
     while ($true) {
         $order = @(if ($want -gt 0) { $want } else {
             $all = @(1..$n)
-            $warmK = @($all | Where-Object { $x3dsx -and (Get-WarmState $_ $x3dsx $turbo $turbolimit) -eq "warm" })
+            $warmK = @($all | Where-Object { (Get-WarmState $_ $turbo $turbolimit) -eq "warm" })
             $freeK = @($all | Where-Object { $warmK -notcontains $_ -and -not (Get-KeptAzahar $_) })
             $warmK + $freeK + @($all | Where-Object { $warmK -notcontains $_ -and $freeK -notcontains $_ })
         })
@@ -143,11 +144,51 @@ function Get-SlotHotkey([int]$k, [string]$action) {
     return ""
 }
 
+# AZT3-1: Azahar's shortcuts (Restart Emulation, Pause) are window shortcuts: Qt fires them only while Azahar is the active window.
+# A posted key alone did nothing when another window had the focus (the warm restart then fell back to a cold start).
+if (-not ([System.Management.Automation.PSTypeName]'AzFg').Type) {
+    Add-Type @"
+using System; using System.Runtime.InteropServices;
+public class AzFg {
+  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, IntPtr pid);
+  [DllImport("user32.dll")] public static extern bool AttachThreadInput(uint a, uint b, bool f);
+  [DllImport("kernel32.dll")] public static extern uint GetCurrentThreadId();
+  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+  [DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr h);
+}
+"@
+}
+
+function Set-AzForeground([IntPtr]$h) {
+    # Makes window h the foreground window (attach to the foreground thread: the foreground lock allows it). Returns $true when it is.
+    $fg = [AzFg]::GetForegroundWindow()
+    if ($fg -eq $h) { return $true }
+    $fgT = [AzFg]::GetWindowThreadProcessId($fg, [IntPtr]::Zero)
+    $me = [AzFg]::GetCurrentThreadId()
+    [void][AzFg]::AttachThreadInput($me, $fgT, $true)
+    [void][AzFg]::BringWindowToTop($h)
+    $ok = [AzFg]::SetForegroundWindow($h)
+    [void][AzFg]::AttachThreadInput($me, $fgT, $false)
+    return $ok
+}
+
 function Send-AzHotkey($proc, [string]$seq) {
-    # Posts the key to the Azahar main window (no focus change). Returns $false when the key or the window is unknown.
+    # Posts the key to the Azahar main window. Azahar is made the foreground window for the keys, then the previous foreground window gets the focus back.
     $proc.Refresh()
     $h = $proc.MainWindowHandle
     if ($h -eq [IntPtr]::Zero -or -not $seq) { return $false }
+    $prevFg = [AzFg]::GetForegroundWindow()
+    [void](Set-AzForeground $h)
+    Start-Sleep -Milliseconds 150
+    try { return (Send-AzHotkeyKeys $h $seq) }
+    finally {
+        Start-Sleep -Milliseconds 150
+        if ($prevFg -ne [IntPtr]::Zero -and $prevFg -ne $h) { [void](Set-AzForeground $prevFg) }
+    }
+}
+
+function Send-AzHotkeyKeys([IntPtr]$h, [string]$seq) {
     $mods = @(); $key = ""
     foreach ($part in $seq.Split("+")) {
         switch ($part.ToLower()) { "ctrl" { $mods += 0x11 } "shift" { $mods += 0x10 } "alt" { $mods += 0x12 } default { $key = $part } }
