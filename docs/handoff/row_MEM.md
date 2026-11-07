@@ -54,5 +54,26 @@ Shared with BOOT: items 1, 2 and 4 also shorten the 3dsx load and the ROM read.
 MEM-A FILE SIZE (first, urgent): 3ds/tools/map_sizes.py (map totals, top 30 .data/.bss/.text objects) on the current build; item 2 (.mapstat NOLOAD, keep the boundary symbols); item 6 (unused N64 buffers: grep proof, then delete); item 1 (-Os for game TUs except the hot list, hot list from the census/prof files named in item 1; gbi-phase and step time within +2 percent at mac_01 and iwa_10). Gate: 3dsx at most 12.5 MB; mac_01 byte-equal; golden_multi (title) and one map change by eye. Hand back the branch at once when the 3dsx is under 12.5 MB: the orchestrator pushes to the console.
 MEM-B RUNTIME: item 9 (live-log buffer only with the livelog switch; push_3ds.sh passes livelog so console pushes still get the live log), item 3 (pristine map copies), item 4 (effect_gfx ROM ranges, with the drop counter evidence), item 5 (heap high-water lines, then sizes), item 7 (pools from high marks, census/prof tables in one cold calloc), item 8 check (CPU vertex batch allocation deleted with RECT-3/TRI-4; coordinate, do not delete it yourself). Gate per item as the plan says; peak heap after a 10-map tour lower by at least 3 MB.
 
+## Oracle plan MEM-B v2
+Accepted: premises a-e were wrong. Netloader: only the 3dsx file size counts (the launcher buffers the file); .bss is not in the file, so MEM-B does not touch the netloader limit. That is MEM-A. MEM-B is about the game's own peak.
+That peak does matter on O3DS today. The log says "MODE = O3DS / 64MB cap". pm_rom_init (pm_os.c) leaves only 3458 KB of heap after the 26.3 MB packed ROM; the ROMFIT note records that a 3584 KB leave was 94 KB short. The image, .bss (9.6 MB), the linear heap and the ROM share that cap, so every MB of .bss returned is margin for the ROM and runtime allocations.
+Real large users (in .bss unless noted):
+- N64 heaps enlarged for 3DS (include/macros.h:140-152): GENERAL_HEAP_SIZE 0x180000 (N64: 0x54000, so 1.17 MB extra), SPRITE_HEAP_SIZE 0x100000 (N64: 0x40000; the comment cites the intro cast at about 386 KB decoded). Also the display contexts D_80164000 (1.34 MB), TextureHeap (0.42 MB), AuHeapBase (0.35 MB), pm_shape_buf (256 KB), pm_hud_aux_cache.
+- Port tables, about 3.7 MB: nd_* pools (model cache, dlc and entity pools), pm_tex tables, nd_mv, the log queue and buffers, census and prof tables.
+Instrumentation (one row, cold, no hot-path cost above an add):
+- Heaps: link-wrap _heap_malloc, _heap_malloc_tail and _heap_free (src/43F0.c:78, :150; --wrap as the port already does for other functions). Per head pointer (general, sprite, battle = gFrameBuf2, collision, world entity, the map/auxiliary heaps) keep: used (plus the size on malloc, minus the HeapNode length on free), hi_used, and hi_top (the highest block end above the base, which is the fragmentation-relevant number).
+- Display lists: per context, the max of gMainGfxPos - mainGfx per frame.
+- Port pools: one `poolhi` line with the existing high marks (ring vtx and idx, gv_palmax, tmpl_n, nd_mc entries and pool bytes, entity and dlc pool bytes, pm_tex slots, nd_mv entries, the log queue depth max).
+- Print `heaphi f<n> <heap> used/hi_used/hi_top/size ...` and `poolhi ...` every 300 frames, at exit and in the crash line.
+Shrink rule:
+- New size = max(hi_top over the gate runs) x 1.25, rounded to 16 KB. Never below the N64 size for the N64 heaps.
+- Census and prof tables move to one cold calloc made only when prof or census is switched on; they cost 0 in a normal run.
+- Pools sized from poolhi, with the same 1.25 margin. A pool that overflows takes its existing named path (flush or recompile) and logs it, and never corrupts.
+Gate:
+- Runs: a 10-map tour (the existing tour scenario), battle_start plus one boss battle, pause_spin, intro_native (the intro cast for the sprite heap), golden_multi.
+- Every hi_top below 80% of its new size; no heap-full or ASSERT line; mac_01 byte-equal.
+- The boot mem line shows the heap free after the ROM grown by the .bss saved. One O3DS push for the same lines.
+Decision on the 2 unused decomp symbols: delete them. In src/heaps.c, put the pm_unused_shape_data (gMapShapeData copy, 32 KB) and pm_unused_80200000 (16 KB) definitions under `#ifndef TARGET_3DS`, and drop the -D renames in CMakeLists.txt. Proof: a grep shows no reader (the renames guarantee it; heaps.c is the only user). Gain 48 KB.
+
 ## Rules
 Code first (CLAUDE.md rule 5). Own worktree per row (mema, memb) from nds1; copy assets/us and ver/us/build. No toggles (switches only for debug/measure), no stubs, no attribution lines, never commit 3ds/src/map_restore_table.c (the map_restore md5 rule stays). Keep Azahar open. Rebase on nds1 before each commit; check merge markers per commit. Delete this file when both rows are done.
