@@ -53,8 +53,13 @@ extern int pm_is_cur_cfb(const void* p);
 /* B2: role T2. A 16 bit texture window inside the frame buffer being drawn (water ripples, crystal ball, bulb glow). Copy it into
  * the grab slot before the load, so that the load finds the slot like any off-screen image (T1). A window inside an older frame
  * buffer is T3: G_SETTIMG fetched it with pm_cfb_capture_prev. */
-int splash_on; /* HANG1a: set by the PM_SPLASH_ON / PM_SPLASH_OFF marks (water_splash.c) */
+int splash_on; /* HANG1a: set by the G_PM_ND_SPLASH record (water_splash.c, nd_native_rec) */
 unsigned splash_grab_f = ~0u;
+/* LS-4: the G_PM_ND payload kinds (gbi_custom.h), called by the walker (nd_walk.c). w0 = G_PM_ND << 24 | kind << 16 | arg. */
+void nd_native_rec(u32 w0) {
+    unsigned kind = (w0 >> 16) & 0xffu;
+    if (kind == G_PM_ND_SPLASH) splash_on = (int)(w0 & 1u);
+}
 void grab_cur(const void* src, int w, int h) {
     tex_gen++; /* TBREP */
     int x, y, r;

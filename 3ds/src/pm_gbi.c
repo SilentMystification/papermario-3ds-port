@@ -918,7 +918,7 @@ __attribute__((noinline)) int box_pattern_rect(int xl, int yl, int xh, int yh, u
     return 1;
 }
 
-/* G1: ops with an empty handler (sync and no-op). The loop skips them before the prologue. G_NOOP is not here: the HANG1a splash marks are G_NOOP words. */
+/* G1: ops with an empty handler (sync and no-op). The loop skips them before the prologue. */
 
 
 /* G2: a state op that leaves the live state as it is. The loop skips it before the prologue. Ops that call sync_combine

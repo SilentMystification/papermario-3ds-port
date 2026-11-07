@@ -243,6 +243,7 @@ extern unsigned short** nuGfxCfb; extern unsigned nuGfxCfbNum;
 /* owner: pm_gbi.c (LoadTile window; G_LOADTILE writes it in tex_op_impl (nd_tex.c) and the snapshot ts_load (pm_gbi.c) until TX-3 moves ts_*) */
 extern unsigned ldrec_n;
 void grab_cur(const void* src, int w, int h);       /* pm_gbi.c, target group */
+void nd_native_rec(u32 w0);                         /* nd_target.c, LS-4: G_PM_ND records */
 int load_shaded_sprite(int dx4, int dy4);           /* pm_gbi.c, TX-3 */
 int glyph_atlas_bound(void);                        /* pm_gbi.c, TX-3 */
 void op_setcombine(u32 w0, u32 w1);                 /* pm_gbi.c, combine group */
