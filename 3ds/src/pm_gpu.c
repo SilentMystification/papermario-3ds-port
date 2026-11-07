@@ -1194,7 +1194,8 @@ static const uint32_t* spr_pend;
 static unsigned spr_recs_n, spr_eq_n, spr_diff_n, spr_fb_n, spr_why_last, spr_dfield_last, spr_f_last;
 static unsigned spr_dfc[8], spr_fbc[16]; /* S4-2 diagnosis: diffs per field, fallbacks per reason */
 const float (*pm_gbi_combined_ptr(void))[4];
-static float spr_comb[4][4]; /* S4-2: the walker combined matrix at the record (pm_gpu_spr_rec); the batch goes out later, combined has moved on */
+static uint32_t spr_omh, spr_oml, spr_geo, spr_cw0, spr_cw1; /* SPR4 diag: nd_ws at the record (sprst line) */
+static NdDraw spr_nd; static NdMState spr_nst; static float spr_nal0[16]; static int spr_nok, spr_nwhy; /* SPR4 sprcheck: the native build of the pending record (pm_gpu_spr_rec) */
 static NdTmplKey spr_wk; /* S4-1 sprcheck: the walker template key of the last raw batch (nd_raw_native), for the key diff log */
 static void spr_check(const NdDraw* w);
 static unsigned nraw_why[10]; /* SGEN-1: nd_raw_native refusals (the old close draws): 1 command buffer, 2 offscreen, 3 grab, 4 zmark, 5 nozt, 6 plan tex1, 7 plan noise, 8 unit 0 (offscreen image or debug override), 9 template */
@@ -3554,6 +3555,7 @@ static void spr_nat_log(void) {
         spr_nat_fb[2], spr_nat_fb[3], spr_nat_fb[4], spr_nat_fb[5], spr_nat_fb[1] + spr_nat_fb[20] + spr_nat_fb[11] + spr_nat_fb[12]);
     pm_log_prof_line("spr5 f%u nopal %u off %u grab %u zmark %u nozt %u", f, spr5_sub[1], spr5_sub[2], spr5_sub[3], spr5_sub[4], spr5_sub[5]);
 }
+int pm_gpu_spr_checking(void) { static int on = -1; if (on < 0) on = pm_debug_has("sprcheck"); return on; }
 int pm_gpu_spr_native(const uint32_t* rec) {
     static int on = -1;
     if (on < 0) on = pm_debug_has("sprcheck");
@@ -3572,14 +3574,24 @@ void pm_gpu_spr_rec(const uint32_t* rec) {
     if (on < 0) on = pm_debug_has("sprcheck");
     if (!on) return;
     pm_gpu_flush();
-    memcpy(spr_comb, pm_gbi_combined_ptr(), sizeof spr_comb);
     spr_pend = rec; spr_recs_n++;
+    /* SPR4: the native build of the draw is made now, from the live state (the walker's final vertex word), and spr_check compares it at the batch */
+    spr_nok = nd_sprite_draw(rec, 0, &spr_nd, &spr_nst, spr_nal0, &spr_nwhy);
+    spr_omh = nd_ws.omode_h; spr_oml = nd_ws.omode_l; spr_geo = nd_ws.geom; spr_cw0 = nd_ws.comb_w0; spr_cw1 = nd_ws.comb_w1;
+}
+static unsigned spr_hit_n, spr_miss_n; /* SPR4 diag: the sprite triangle's flush checked the sprite (hit) or not (miss: the sprite was not in a raw batch) */
+void pm_gpu_spr_flush(void) {
+    const unsigned gni0 = gni;
+    pm_gpu_flush();
+    if (spr_pend) { spr_miss_n++; spr_pend = NULL; static unsigned pr; if (pr++ < 6u) pm_log_prof_line("sprmiss f%u gni %u draw_3d %d nverts %d", pm_frame_count(), gni0, draw_3d, nverts); }
+    else spr_hit_n++;
 }
 static void spr_log(void) {
     unsigned f = pm_frame_count();
     if (f % 300u || f == spr_f_last) return;
     spr_f_last = f;
     pm_log_prof_line("sprcheck f%u recs %u eq %u diff %u fb %u why %u dfield %u", f, spr_recs_n, spr_eq_n, spr_diff_n, spr_fb_n, spr_why_last, spr_dfield_last);
+    pm_log_prof_line("sprflush f%u hit %u miss %u", f, spr_hit_n, spr_miss_n);
     pm_log_prof_line("sprdf f%u by field: 1 %u 2 %u 3 %u 4 %u 5 %u 6 %u 7 %u; fb why 2 %u, other %u", f, spr_dfc[1], spr_dfc[2], spr_dfc[3], spr_dfc[4], spr_dfc[5], spr_dfc[6], spr_dfc[7], spr_fbc[2], spr_fb_n - spr_fbc[2]);
 }
 /* 0 equal, else 1 + the first field that differs (1 key, 2 TEV, 3 unit 0, 4 uv and colour uniforms, 5 z mix, 6 index count; 7 palette 0 is checked by the caller) */
@@ -3611,14 +3623,15 @@ static void spr_keylog(const NdTmplKey* a, const NdTmplKey* b, const NdDraw* nd,
 int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16], int* why) {
     NdSprRec r;
     nd_sprite_decode(rec, &r);
+    /* SPR4: the record's render mode list and final list ran on the walker before this vertex word, so the draw state is nd_ws live and the mode adds nothing */
     NdMode mode;
-    if (!nd_sprite_mode(&r, &mode)) { *why = 1; return 0; }
+    memset(&mode, 0, sizeof mode);
+    mode.ok = 1; mode.gand = 0xFFFFFFFFu;
     { /* MDL-3a: class 5 by sub-reason, each flag counted on its own (a record can hold several) */
         const int nopal = !(g_pal && !g_use5 && gv4_on), noz = nozt_on();
         spr5_sub[1] += (unsigned)nopal; spr5_sub[2] += (unsigned)(off_active != 0); spr5_sub[3] += (unsigned)(grab_bind != 0); spr5_sub[4] += (unsigned)(r_zmark != 0); spr5_sub[5] += (unsigned)noz;
         if (nopal || off_active || grab_bind || r_zmark || noz) { *why = 5; return 0; } /* the walker raw path refusals (nd_raw_native) */
     }
-    if (r.flags & 4u) { *why = 4; return 0; } /* spr_battle: battle context sprites (the native key differs from the walker key: combine 8 vs 2, cull, no atest); the walker draws them */
     if (r.flags & 1u) { *why = 3; return 0; } /* S4-2 plan default: a shaded sprite (SPR_SHADING_FLAG_ENABLED) runs the walker: the flat path there binds the shading palette (create_shading_palette) and tile 4 */
     NdTexDesc ds;
     NdUnit un;
@@ -3650,16 +3663,14 @@ int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16
     c.tex_w = tw; c.tex_h = th; c.tss = mode.has_tx ? mode.tw1 : sw_tss;
     c.geom_base = sw_geo; c.wind = gv_wind; c.geom_at_set = 0;
     c.draw_3d = 1; c.dview = dv_mode(); c.r_mix = r_mix; c.r_memblend = r_memblend; c.r_replace = r_replace;
-    uint32_t env, prim;
-    nd_sprite_colors(&r, env_col, nd_ws.prim, &env, &prim);
-    c.env = env; c.prim = prim; c.prim_lod = nd_ws.prim_lod; c.cconst = cconst; c.mixcol = r_mixcol;
+    c.env = nd_ws.envc; c.prim = nd_ws.prim; c.prim_lod = nd_ws.prim_lod; c.cconst = cconst; c.mixcol = r_mixcol;
     { float db = decal_bias(); memcpy(&c.dbias, &db, 4); }
     c.base_oh = nd_ws.omode_h; c.base_ol = nd_ws.omode_l; c.known_h = nd_ws.om_kh; c.known_l = nd_ws.om_kl;
     uint32_t zr[27];
     memset(zr, 0, sizeof zr); /* the record words the model state reads (R3 flags, R11, R13) are zero: a sprite has none */
     if (nd_model_state(zr, &c, n, st) != 1) { *why = 10 + st->why; return 0; }
     n->nidx = 6; /* pm_gpu_spr_submit: two triangles of the quad */
-    pm_gpu_pcomp_native(pal0, spr_comb);
+    pm_gpu_pcomp_native(pal0, pm_gbi_combined_ptr());
     return 1;
 }
 /* S4-2: the native submit of a sprite (nd_sprite_draw with emit): flush the open walker batch, the four vertices of the record quad into the ring with palette
@@ -3682,13 +3693,13 @@ int pm_gpu_spr_submit(NdDraw* d, const void* quad, int tex) {
     return 1;
 }
 static void spr_check(const NdDraw* w) {
-    const uint32_t* rec = spr_pend;
     spr_pend = NULL;
-    NdDraw n;
-    NdMState st;
+    NdDraw n = spr_nd;
+    NdMState st = spr_nst;
     float pal0[16];
-    int why = 0;
-    if (!nd_sprite_draw(rec, 0, &n, &st, pal0, &why)) { spr_fb_n++; spr_fbc[why & 15]++; spr_why_last = (unsigned)why; spr_log(); return; }
+    memcpy(pal0, spr_nal0, sizeof pal0);
+    const int why = spr_nwhy;
+    if (!spr_nok) { spr_fb_n++; spr_fbc[why & 15]++; spr_why_last = (unsigned)why; spr_log(); return; }
     unsigned df = spr_cmp(&n, w);
     if (!df) { /* palette 0 of the sprite against the walker palette entry its first vertex names (ring word 6) */
         const unsigned wk = gidx && gi_start < gidx_n ? *(unsigned short*)(gring + 16u * (unsigned)gidx[gi_start] + 6) : 0u;
@@ -3701,6 +3712,9 @@ static void spr_check(const NdDraw* w) {
     if (df == 6) { static unsigned nn; if (nn++ < 3u) pm_log_prof_line("sprnid k%u nat %u walk %u gi %u", nn, n.nidx, w->nidx, gi_start); } /* S4-2 diagnosis: index counts of the first 3 diffs */
     if (df == 1) spr_keylog(&st.k, &spr_wk, &n, w); /* S4-1: the first 10 key diffs, field by field */
     if (df) { spr_diff_n++; spr_dfield_last = df; spr_dfc[df & 7]++; } else spr_eq_n++;
+    { static unsigned sd_; if (df == 1 && sd_++ < 3u) pm_log_prof_line("sprst k%u nd omh %08x oml %08x geo %08x cw %08x %08x | walk dbg_oml %08x cull %d zupd %d zcmp %d atest %d blend %d decal %d cmb %d geo %08x | nat cull %d zupd %d atest %d blend %d", sd_,
+        (unsigned)spr_omh, (unsigned)spr_oml, (unsigned)spr_geo, (unsigned)spr_cw0, (unsigned)spr_cw1, (unsigned)dbg_omode_l, (int)g_cullm, (int)r_zupd, (int)r_zcmp, (int)(r_atest >= 0), (int)r_blend, (int)r_decal, (int)combine, (unsigned)nd_ws.geom,
+        (int)st.k.cull, (int)st.k.zupd, (int)st.k.atest_on, (int)st.k.r_blend); }
     spr_log();
 }
 const char* pm_gpu_last_flush(int* line) { *line = fl_line; return fl_fn; } /* the hang watchdog prints it */
