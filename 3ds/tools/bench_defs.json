@@ -1113,22 +1113,6 @@
       ]
     },
     {
-      "name": "nok11_splash_pic",
-      "kind": "azahar_pic",
-      "speed": "normal",
-      "default": false,
-      "purpose": "SIZE-1 gate: nok_11 water splash (fxtest 89, effect graphics from the ROM copy). Shot 1 at 12 frames after the spawn; a person reads the splash, byte compare with the reference build.",
-      "scenario": "nok11_splash",
-      "cap": 20,
-      "until": "fxtest: shot 1 effect 89 water_splash",
-      "tags": [
-        "azahar",
-        "pic",
-        "size"
-      ],
-      "gates": []
-    },
-    {
       "name": "sbk56_superblock_pic",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -2863,6 +2847,125 @@
         "pic",
         "off",
         "unit"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_mac00_det_pic",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "VERIFY check 1: mac_00 cold det run, shots 200 to 205. Byte-equal between HEAD and the det base 9ddd6a818.",
+      "scenario": "spot_mac00_det",
+      "cap": 25,
+      "until": "shot \\d+ frame 205",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "verify"
+      ],
+      "gates": []
+    },
+    {
+      "name": "battle_start_r13off_det_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "VERIFY check 2: battle kmr_03 cold det run with r13off, shot 182 (walker R13).",
+      "scenario": "battle_start_r13off_det",
+      "cap": 60,
+      "until": "shot \\d+ frame 182\b",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "verify"
+      ],
+      "gates": []
+    },
+    {
+      "name": "battle_start_pm5off_det_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "VERIFY check 2: battle kmr_03 cold det run with pm5off, shot 182 (walker pm5).",
+      "scenario": "battle_start_pm5off_det",
+      "cap": 60,
+      "until": "shot \\d+ frame 182\b",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "verify"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_iwa10_det_pic",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "VERIFY check 2: iwa_10 cold det run, shots 200 to 205, native draws.",
+      "scenario": "spot_iwa10_det",
+      "cap": 45,
+      "until": "shot \\d+ frame 205",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "verify"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_iwa10_det_r13off_pic",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "VERIFY check 2: iwa_10 cold det run, shots 200 to 205, r13off (walker R13).",
+      "scenario": "spot_iwa10_det_r13off",
+      "cap": 45,
+      "until": "shot \\d+ frame 205",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "verify"
+      ],
+      "gates": []
+    },
+    {
+      "name": "rect_post_det_pic",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "VERIFY check 2: mac_01 cold det run, native textured rects, shots 200 to 205.",
+      "scenario": "rect_post_det",
+      "cap": 45,
+      "until": "shot \\d+ frame 205",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "verify"
+      ],
+      "gates": []
+    },
+    {
+      "name": "rect_nr_det_pic",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "VERIFY check 2: mac_01 cold det run, CPU textured rects (norectraw), shots 200 to 205.",
+      "scenario": "rect_nr_det",
+      "cap": 45,
+      "until": "shot \\d+ frame 205",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "verify"
       ],
       "gates": []
     }
