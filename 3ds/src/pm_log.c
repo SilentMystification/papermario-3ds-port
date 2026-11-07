@@ -406,7 +406,7 @@ void pm_log_console_ready(void) {
     LightLock_Unlock(&con_lock);
     LightEvent_Signal(&ev_sink); /* U3: one header draw, also when the queue is off at boot */
 }
-static LightEvent ev_wake, ev_started, ev_flushed;
+static LightEvent ev_wake, ev_started, ev_flushed, ev_quiet;
 static volatile int io_drain_req;
 static void wake_writer(void) { if (writer_th) LightEvent_Signal(&ev_wake); }
 
@@ -759,7 +759,7 @@ static void sink_main(void* arg) {
         if (pm_io_quiet) continue;
         if (!qon()) { /* lines queued before the gate went off: write them once, then sleep again */
             LightLock_Lock(&fsink_lock);
-            fb_write_locked(0);
+            if (!pm_io_quiet) fb_write_locked(0);
             LightLock_Unlock(&fsink_lock);
             con_flush();
             continue;
@@ -769,7 +769,7 @@ static void sink_main(void* arg) {
         if (++dtick >= 3 || fb_used() >= 32768u) {
             dtick = 0;
             LightLock_Lock(&fsink_lock);
-            fb_write_locked(32768u);
+            if (!pm_io_quiet) fb_write_locked(32768u); /* SLEEP2: checked under the lock the gate drain takes */
             LightLock_Unlock(&fsink_lock);
         }
         con_flush();
@@ -913,6 +913,8 @@ static void writer_main(void* arg) {
         writer_hb++;
         writer_beat();
         if (io_drain_req && __atomic_load_n(&writer_on, __ATOMIC_ACQUIRE)) {
+            /* SLEEP2: the gate is set before the drain, so the sink cannot start an SD write while this batch syncs. */
+            pm_io_quiet = 1;
             LightLock_Lock(&drain_lock);
             accept_client();
             read_cmd(); /* QUIT1 */
@@ -921,8 +923,8 @@ static void writer_main(void* arg) {
             }
             fb_sync_all();
             io_drain_req = 0;
-            pm_io_quiet = 1;
             LightLock_Unlock(&drain_lock);
+            LightEvent_Signal(&ev_quiet); /* SLEEP2: io_gate(1) waits for this */
             continue;
         }
         if (!__atomic_load_n(&writer_on, __ATOMIC_ACQUIRE)) continue;
@@ -976,19 +978,28 @@ static Result cpu_apply(int v, const char* why) {
  * log writer (fsync, soc) or the flash thread runs into a sleeping system module. The hook drains the queue and syncs the file first, then sets
  * the gate. The writer and the flash thread idle while it is set. Lines logged after the gate stay in the queue until the gate opens. */
 volatile int pm_io_quiet;
-static void io_gate(int on) {
+/* SLEEP2: io_gate(1) is synchronous. It asks the writer to drain and sync, then waits (at most 500 ms) for ev_quiet. Returns the
+ * drain time in ms, or -1 on the deadline (the gate is closed anyway: the writer may still be in its fsync). */
+static int io_gate(int on) {
     if (on) {
         if (__atomic_load_n(&writer_on, __ATOMIC_ACQUIRE)) {
+            unsigned long long t0 = svcGetSystemTick();
+            LightEvent_Clear(&ev_quiet);
             io_drain_req = 1;
             LightEvent_Signal(&ev_wake);
-        } else
+            if (LightEvent_WaitTimeout(&ev_quiet, 500000000LL) == 0) return (int)((svcGetSystemTick() - t0) / CPU_TICKS_PER_MSEC);
             pm_io_quiet = 1;
-    } else {
-        pm_io_quiet = 0;
-        io_drain_req = 0;
-        LightEvent_Signal(&ev_wake);
+            return -1;
+        }
+        pm_io_quiet = 1;
+        return 0;
     }
+    pm_io_quiet = 0;
+    io_drain_req = 0;
+    LightEvent_Signal(&ev_wake);
+    return 0;
 }
+
 /* Sleep and exit steps that touch the SD card run on a worker thread, so the caller waits at most ms (pm_step_timed).
  * One worker per slot, made on first use and kept. The worker signals done before it clears busy: a new request never sees an old signal. */
 typedef struct { void (*fn)(void*); void* arg; LightEvent go, done; volatile int busy, made; Thread th; } PmStep;
@@ -1027,48 +1038,75 @@ int pm_step_timed(int slot, void (*fn)(void*), void* arg, unsigned ms) {
 #define SLEEP_AUDIO_NS 300000000ULL
 #define SLEEP_AU2_NS 200000000ULL
 #define SLEEP_FLASH_MS 400u
+#define SLEEP_IDLE_MS 300u /* SLEEP3: wait for the step slot and a save in flight, after the flash step */
 #define WAKE_AUDIO_NS 300000000ULL
 #define WAKE_AU2_NS 200000000ULL
 
 static unsigned ms_since(unsigned long long t0) { return (unsigned)((svcGetSystemTick() - t0) / CPU_TICKS_PER_MSEC); }
 static void flush_step(void* why) { pm_flash_flush((const char*)why); }
 
-/* APT sleep: everything the game thread waits for is bounded. Log lines are queued before the gate; the gate drains them. */
-static void sleep_enter_hook(void) {
+/* SLEEP3: one bounded enter sequence for HOME (suspend) and sleep. Every wait has a deadline. Order: audio join, render sync, flash step,
+ * step slot and save idle, io gate (synchronous, drain and fsync done), then the 30 % core 1 limit. No core 1 I/O may run after the limit drops. */
+static int step_slot_idle(int slot, unsigned ms) {
     unsigned long long t0 = svcGetSystemTick();
-    pm_wd_sleep_tick = (unsigned)(t0 / CPU_TICKS_PER_MSEC);
+    for (;;) {
+        if (!__atomic_load_n(&steps[slot & 1].busy, __ATOMIC_ACQUIRE) && !pm_wd_hold) return 1;
+        if (ms_since(t0) >= ms) return 0;
+        svcSleepThread(5000000LL);
+    }
+}
+
+static void quiet_enter(const char* tag, const char* why) {
+    unsigned long long t0 = svcGetSystemTick();
+    if (pm_audio_join_timed(0, SLEEP_AUDIO_NS) == 0) pm_log("%s: audio join done, %u ms", tag, ms_since(t0));
+    else pm_log("%s: audio join timeout, %u ms", tag, ms_since(t0));
+    if (pm_au2_sync_timed(3, SLEEP_AU2_NS) == 0) pm_log("%s: render sync done, %u ms", tag, ms_since(t0));
+    else pm_log("%s: render sync timeout, %u ms", tag, ms_since(t0));
+    unsigned long long tf = svcGetSystemTick();
+    int fr = pm_step_timed(PM_STEP_FLASH, flush_step, (void*)why, SLEEP_FLASH_MS);
+    if (fr == 1) pm_log("%s: flash flush done, %u ms", tag, ms_since(tf));
+    else if (fr == 0) pm_log("%s: flash flush timeout, %u ms", tag, ms_since(tf));
+    else pm_log("%s: flash flush skipped, worker busy or not started", tag);
+    if (step_slot_idle(PM_STEP_FLASH, SLEEP_IDLE_MS)) pm_log("%s: step slot idle, %u ms", tag, ms_since(t0));
+    else pm_log("%s: step slot still busy, %u ms", tag, ms_since(t0));
+    int dr = io_gate(1);
+    if (dr >= 0) pm_log("%s: io drain done, %d ms", tag, dr);
+    else pm_log("%s: io drain timeout, gate closed anyway, %u ms", tag, ms_since(t0));
+    cpu_apply(30, why);
+    pm_log("%s: gate closed, %u ms", tag, ms_since(t0));
+}
+
+static void sleep_enter_hook(void) {
+    pm_wd_sleep_tick = (unsigned)(svcGetSystemTick() / CPU_TICKS_PER_MSEC);
     pm_wd_asleep = 1; /* SLP2: the watchdog notes the sleep and does not end the process */
     pm_wd_slept = 1; /* SLP2: the audio and render joins are bounded from now on */
     pm_log("sleep: enter");
-    if (pm_audio_join_timed(0, SLEEP_AUDIO_NS) == 0) pm_log("sleep: audio join done, %u ms", ms_since(t0));
-    else pm_log("sleep: audio join timeout, %u ms", ms_since(t0));
-    if (pm_au2_sync_timed(3, SLEEP_AU2_NS) == 0) pm_log("sleep: render sync done, %u ms", ms_since(t0));
-    else pm_log("sleep: render sync timeout, %u ms", ms_since(t0));
-    unsigned long long tf = svcGetSystemTick();
-    int fr = pm_step_timed(PM_STEP_FLASH, flush_step, (void*)"sleep", SLEEP_FLASH_MS);
-    if (fr == 1) pm_log("sleep: flash flush done, %u ms", ms_since(tf));
-    else if (fr == 0) pm_log("sleep: flash flush timeout, %u ms", ms_since(tf));
-    else pm_log("sleep: flash flush skipped, worker busy or not started");
-    cpu_apply(30, "sleep");
-    io_gate(1);
-    pm_log("sleep: gate closed, %u ms", ms_since(t0));
+    quiet_enter("sleep", "sleep");
 }
 
 /* APT wake: the gate opens first, then the audio job and the render queue are joined (bounded). Channels are set up again only when both are idle. */
 /* SLP2: the wake line goes straight to crash.txt and is fsynced in a bounded step, so it is on the SD card even when a later wait
- * blocks. The buffer is static: a step that misses its deadline still uses it. */
+ * blocks. The buffer is static: a step that misses its deadline still uses it.
+ * SLEEP1: the watchdog notes kept in RAM while asleep follow the wake line, in the same step. */
 static char wake_buf[120];
 static void wake_line_step(void* unused) {
     (void)unused;
     int fd = open("crash.txt", O_WRONLY | O_CREAT | O_APPEND, 0666);
-    if (fd < 0) return;
-    write(fd, wake_buf, strlen(wake_buf));
-    fsync(fd);
-    close(fd);
+    if (fd >= 0) {
+        write(fd, wake_buf, strlen(wake_buf));
+        fsync(fd);
+        close(fd);
+    }
+    pm_wd_flush_notes();
+}
+static void notes_step(void* unused) {
+    (void)unused;
+    pm_wd_flush_notes();
 }
 static void wake_hook(void) {
     unsigned long long t0 = svcGetSystemTick();
     pm_wd_asleep = 0;
+    pm_wd_quiet = 0; /* SLEEP1: with the gate open the watchdog writes again */
     pm_wd_wake_frames = 120; /* SLP2: frame begin without the GPU sync wait for these frames (pm_gpu.c) */
     io_gate(0);
     pm_log("sleep: wake");
@@ -1087,9 +1125,14 @@ static void wake_hook(void) {
 static void cpu_hook(APT_HookType h, void* param) {
     (void)param;
     switch (h) {
-    case APTHOOK_ONSUSPEND: pm_audio_drain(3); pm_flash_flush("HOME menu opens"); cpu_apply(30, "HOME menu opens"); io_gate(1); break;
+    case APTHOOK_ONSUSPEND: pm_wd_quiet = 1; pm_log("home: suspend"); quiet_enter("home", "HOME menu opens"); break;
     case APTHOOK_ONSLEEP: sleep_enter_hook(); break;
-    case APTHOOK_ONRESTORE: io_gate(0); cpu_apply(cpu_game, "HOME menu closed"); break;
+    case APTHOOK_ONRESTORE:
+        io_gate(0);
+        pm_wd_quiet = 0;
+        pm_step_timed(PM_STEP_FLASH, notes_step, NULL, 400); /* SLEEP1: the HOME notes go to crash.txt now, bounded */
+        cpu_apply(cpu_game, "HOME menu closed");
+        break;
     case APTHOOK_ONWAKEUP: wake_hook(); break;
     case APTHOOK_ONEXIT: pm_audio_drain(3); pm_flash_flush("exit hook"); if (cpu_now != 30) cpu_apply(30, "exit"); break;
     default: break;
@@ -1109,6 +1152,7 @@ void pm_log_start(void) {
     LightEvent_Init(&ev_wake, RESET_ONESHOT);
     LightEvent_Init(&ev_started, RESET_ONESHOT);
     LightEvent_Init(&ev_flushed, RESET_ONESHOT);
+    LightEvent_Init(&ev_quiet, RESET_ONESHOT);
     LightEvent_Init(&ev_sink, RESET_ONESHOT);
     LightLock_Init(&drain_lock);
     /* Core 1 (system core): a thread there is allowed only after APT_SetAppCpuTimeLimit (libctru thread.h). */
