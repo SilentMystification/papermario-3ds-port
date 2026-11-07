@@ -3,9 +3,11 @@
 ## Goal
 nd_model_draw still falls back to rec_apply (walker) for some model records: why 2 (R13 aux words), why 3 (R11 custom gfx pre/post), why 6 (tex1/noise), why 15 (zmark+decal), why 11/12. Make them native, then delete the walker geometry fallback in rec_run. Plan: docs/handoff/plan_walker_end.md rows MDL-1 to MDL-4, decisions D2, D8 to D10.
 
-## State (2026-11-07, after MDL agent 1)
-Merged in nds1: MDL-0/0b and MDL-1 (1b9b9d119), MDL-1b (456f7fb79: R13 tile-1 records native, two units). Remaining walker fallback for model/sprite records at iwa_10: class 5 = spr_build raw refusal (pm_gpu.c spr_build: off-screen target, grab, zmark, nozt, or no g_pal), 1632 per 300 frames. Other named counted fallbacks: pm5 tex1, noise, aux-off unit 1 (why 6), r13nohit (cache no-hit for R13 bound-slot records).
-Next: MDL-3 SPRITE: split class 5 into its sub-reasons with a counter per reason (code first: read spr_build and each refusal line), fix the largest reasons natively (as nd_raw_native handles off-screen, grab and zmark after OFF-1..3 and TRI), gate per reason (count to 0, iwa_10 and battle_start byte-equal to a pm reference switch, mac_01 byte-equal). Then MDL-4 when fb is 0 apart from the named counted fallbacks.
+## State (2026-11-07, after MDL-3a on branch mdl3)
+Sprite class 5 (spr_build raw refusal, pm_gpu.c pm_gpu_spr_build) split by flag (spr5 line every 300 frames): nopal, off, grab, zmark, nozt. Measured 0 on every flag in default native scenes: iwa_10 (spot_iwa10_pic, f300), battle kmr_03 (battle_spr5_pic, f300). History: sprnat fb 0 at spot_mac01, spot_mac00, spot_sbk56. Pause (pause_spr5_pic, mac_01) drew no sprite records: no spr5 or sprnat line at f300. Class 5 is nonzero only in the walker-switch scene spot_sbk56_walk_pic (581 and 1181 per 300, no flag split then). The old claim "class 5 1632 per 300 at iwa_10" is not reproduced; mdlw has no why 5 (nd_model_state never sets it).
+Real sprite walker fallback in default native scenes: why 4 (spr_battle, battle context sprites, nd_sprite.c / pm_gpu_spr_build): 555 per 300 frames in battle (battle_spr5_pic sprnat f300). Not class 5.
+MDL-3: no class 5 to fix natively, no native change made; counters kept (debug). MDL-4: not started, its condition fails (battle fb 555 per 300 from why 4, not a named counted fallback).
+Next: a decision for the orchestrator: a row for why 4 (battle sprite key: combine 8 vs 2, cull, no atest; spr_battle flag 4) or accept it as a named counted fallback, then MDL-4 after that.
 
 ## Start state
 nds1 plus branch pm5 (8a00b82c4: PM5-3 done, why 4 = 0 at iwa_10, ndmcheck works: spot_iwa10_ndmcheck f600 diff 455 of 33026 keys). Work in a new worktree from branch pm5: git worktree add build3ds/wt/mdl -b mdl pm5; copy assets/us and ver/us/build; build there (PM_LANE=mdl); azt -Build <worktree 3dsx>.
