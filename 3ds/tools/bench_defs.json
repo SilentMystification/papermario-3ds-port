@@ -1294,7 +1294,107 @@
       "purpose": "WCEN producer census (phase mode): walker ops and sampled us per producer, window 0 to 300, Toad Town mac_01 at pos 0 0 200. A person reads the shot.",
       "scenario": "wcen_mac01",
       "cap": 45,
-      "until": "prod f\\d+ sum \\d+ ops \\d+",
+      "until": "wcen4 end f\\d+ wd \\d+",
+      "tags": [
+        "azahar",
+        "pic",
+        "wcen",
+        "census"
+      ],
+      "log_metrics": [
+        {
+          "name": "walker_ops",
+          "regex": "prod f\\d+ sum \\d+ ops (\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": []
+    },
+
+    {
+      "name": "wcen_pause",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CEN-1a why census (phase mode): walker draws per producer by why code, window 0 to 300, pause menu open from frame 96. A person reads the shot.",
+      "scenario": "wcen_pause",
+      "cap": 45,
+      "until": "wcen4 end f\\d+ wd \\d+",
+      "tags": [
+        "azahar",
+        "pic",
+        "wcen",
+        "census"
+      ],
+      "log_metrics": [
+        {
+          "name": "walker_ops",
+          "regex": "prod f\\d+ sum \\d+ ops (\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": []
+    },
+
+    {
+      "name": "wcen_text",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CEN-1a why census (phase mode): walker draws per producer by why code, window 0 to 300, pause text dialog. A person reads the shot.",
+      "scenario": "wcen_text",
+      "cap": 45,
+      "until": "wcen4 end f\\d+ wd \\d+",
+      "tags": [
+        "azahar",
+        "pic",
+        "wcen",
+        "census"
+      ],
+      "log_metrics": [
+        {
+          "name": "walker_ops",
+          "regex": "prod f\\d+ sum \\d+ ops (\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": []
+    },
+
+    {
+      "name": "wcen_golden",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CEN-1a why census (phase mode): walker draws per producer by why code, window 0 to 300, the golden tour from kmr_20. A person reads the shot.",
+      "scenario": "wcen_golden",
+      "cap": 45,
+      "until": "wcen4 end f\\d+ wd \\d+",
+      "tags": [
+        "azahar",
+        "pic",
+        "wcen",
+        "census"
+      ],
+      "log_metrics": [
+        {
+          "name": "walker_ops",
+          "regex": "prod f\\d+ sum \\d+ ops (\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": []
+    },
+
+    {
+      "name": "wcen_nok11",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CEN-1a why census (phase mode): walker draws per producer by why code, window 0 to 300, nok_11 water splash. A person reads the shot.",
+      "scenario": "wcen_nok11",
+      "cap": 45,
+      "until": "wcen4 end f\\d+ wd \\d+",
       "tags": [
         "azahar",
         "pic",
@@ -1318,7 +1418,7 @@
       "purpose": "WCEN producer census (phase mode): walker ops and sampled us per producer, window 0 to 300, mac_00 at pos -135 0 85. A person reads the shot.",
       "scenario": "wcen_mac00",
       "cap": 45,
-      "until": "prod f\\d+ sum \\d+ ops \\d+",
+      "until": "wcen4 end f\\d+ wd \\d+",
       "tags": [
         "azahar",
         "pic",
@@ -1342,7 +1442,7 @@
       "purpose": "WCEN producer census (phase mode): walker ops and sampled us per producer, window 0 to 300, sbk_56 at pos 20 0 440. A person reads the shot.",
       "scenario": "wcen_sbk56",
       "cap": 45,
-      "until": "prod f\\d+ sum \\d+ ops \\d+",
+      "until": "wcen4 end f\\d+ wd \\d+",
       "tags": [
         "azahar",
         "pic",
@@ -1366,7 +1466,7 @@
       "purpose": "WCEN producer census (phase mode): walker ops and sampled us per producer, window 0 to 300, iwa_10 at -586 1 530. A person reads the shot.",
       "scenario": "wcen_iwa10",
       "cap": 45,
-      "until": "prod f\\d+ sum \\d+ ops \\d+",
+      "until": "wcen4 end f\\d+ wd \\d+",
       "tags": [
         "azahar",
         "pic",
@@ -1390,7 +1490,7 @@
       "purpose": "WCEN producer census (phase mode): walker ops and sampled us per producer, window 0 to 300, battle on kmr_03 (battle from scene frame 100). A person reads the shot.",
       "scenario": "wcen_battle",
       "cap": 45,
-      "until": "prod f\\d+ sum \\d+ ops \\d+",
+      "until": "wcen4 end f\\d+ wd \\d+",
       "tags": [
         "azahar",
         "pic",

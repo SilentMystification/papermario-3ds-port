@@ -476,6 +476,20 @@ static void cen_add(const TevKey* tk, int z, int graw, int prog, unsigned cull, 
     h = (h ^ cull) * 16777619u;
     cen_put(h, id0, id1, tris);
 }
+/* CEN-1a: why each walker GPU draw (wd) is not native (pm_gbi.c os_report, lines wcen4). cen_fb marks the CPU triangles of the open batch (CEN_FB_*, set by the CPU fallbacks). flush_draw moves it to cen_fbv, clears it and sets cen_why, the code of the walker draws of that batch. */
+enum { CW_OTHER, CW_RECT, CW_CLIP, CW_SEAM, CW_WIDE, CW_RING, CW_PM5, CW_NR1, CW_NR2, CW_NR3, CW_NR4, CW_NR5, CW_NR6, CW_NR7, CW_NR8, CW_NR9, CW_N };
+#define CW_NRK(k) ((unsigned)(CW_NR1 - 1 + (k)))
+#define CEN_FB_CLIP 1u
+#define CEN_FB_SEAM 2u
+#define CEN_FB_WIDE 4u
+#define CEN_FB_RING 8u
+static unsigned cen_fb, cen_fbv, cen_why;
+void pm_gpu_cen_mark(unsigned bit) { cen_fb |= bit; }
+unsigned pm_gpu_cen_why(void) { return cen_why; }
+const char* pm_gpu_cen_name(unsigned c) {
+    static const char* const nm[CW_N] = { "other", "rect", "clip", "seam", "wide", "ring", "pm5", "nr1", "nr2", "nr3", "nr4", "nr5", "nr6", "nr7", "nr8", "nr9" };
+    return c < CW_N ? nm[c] : "?";
+}
 /* NDREF1: reference draw stream, switch ndref=<frame> (pm_gbi.c pm_gbi_ndref_frame). The draws and producer tags of that frame go to a
  * buffer. cen_frame_end writes sdmc:/3ds/PaperMario/ndref.bin. Layout: 3ds/tests/ndref/FORMAT.md. */
 int pm_gbi_ndref_frame(void);
@@ -1006,18 +1020,18 @@ static void spr_check(const NdDraw* w);
 static unsigned nraw_why[10]; /* SGEN-1: nd_raw_native refusals (the old close draws): 1 command buffer, 2 offscreen, 3 grab, 4 zmark, 5 nozt, 6 plan tex1, 7 plan noise, 8 unit 0 (offscreen image or debug override), 9 template */
 void pm_gpu_nraw_why(unsigned* o) { for (unsigned i = 0; i < 10; i++) o[i] = nraw_why[i]; }
 static int nd_raw_native(void) {
-    if (!graw_is_pm4()) return 0;
-    { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); if (coff + ND_EMIT_MAX + 1024u >= csz) { nd_native_refused++; nraw_why[1]++; return 0; } } /* GPUCMD_AddRawCommands does no bounds check: near the end of the command buffer the old path draws */
-    if (off_active || grab_bind || r_zmark || nozt_on() || (combine == 8 && plan.uses_noise)) { nd_native_refused++; nraw_why[off_active ? 2 : grab_bind ? 3 : r_zmark ? 4 : nozt_on() ? 5 : 7]++; return 0; }
+    if (!graw_is_pm4()) { cen_why = g_use5 ? CW_PM5 : CW_OTHER; return 0; } /* CEN-1a */
+    { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); if (coff + ND_EMIT_MAX + 1024u >= csz) { nd_native_refused++; nraw_why[1]++; cen_why = CW_NRK(1); return 0; } } /* GPUCMD_AddRawCommands does no bounds check: near the end of the command buffer the old path draws */
+    if (off_active || grab_bind || r_zmark || nozt_on() || (combine == 8 && plan.uses_noise)) { nd_native_refused++; nraw_why[off_active ? 2 : grab_bind ? 3 : r_zmark ? 4 : nozt_on() ? 5 : 7]++; cen_why = CW_NRK(off_active ? 2 : grab_bind ? 3 : r_zmark ? 4 : nozt_on() ? 5 : 7); return 0; }
     int z = z_on && (!rect_2d || rect_z);
     NdUnit u0;
     memset(&u0, 0, sizeof u0);
     int t = 0;
-    if (combine >= 2) { t = pm_tex_native_unit0(&u0); if (t < 0) { nd_native_refused++; nraw_why[8]++; return 0; } }
+    if (combine >= 2) { t = pm_tex_native_unit0(&u0); if (t < 0) { nd_native_refused++; nraw_why[8]++; cen_why = CW_NRK(8); return 0; } }
     NdUnit u1;
     memset(&u1, 0, sizeof u1);
     int t1 = 0;
-    if (combine == 8 && plan.uses_tex1) { t1 = pm_tex_native_unit1(&u1); if (t1 < 0) { nd_native_refused++; nraw_why[6]++; return 0; } } /* SGEN-2: unit 1 words and the uv map uniform */
+    if (combine == 8 && plan.uses_tex1) { t1 = pm_tex_native_unit1(&u1); if (t1 < 0) { nd_native_refused++; nraw_why[6]++; cen_why = CW_NRK(6); return 0; } } /* SGEN-2: unit 1 words and the uv map uniform */
     const int tex = t > 0, i8_0 = tex && pm_tex_i8(0), tex1 = t1 > 0, i8_1 = tex1 && pm_tex_i8(1);
     NdTmplKey nk;
     memset(&nk, 0, sizeof nk);
@@ -1032,7 +1046,7 @@ static int nd_raw_native(void) {
     if (decal2) nk.pass = 2;
     if (combine == 8) { nk.w0 = plan_k[0]; nk.w1 = plan_k[1]; nk.two = (uint8_t)plan_k[2]; nk.t1only = (uint8_t)plan_k[3]; }
     int id = nd_tmpl_build(&nk);
-    if (id < 0) { nd_native_refused++; nraw_why[9]++; return 0; }
+    if (id < 0) { nd_native_refused++; nraw_why[9]++; cen_why = CW_NRK(9); return 0; }
     spr_wk = nk;
     if (combine == 8) ndplan_check(nk.w0, nk.w1, nk.two, nk.t1only);
     /* from here the batch is drawn natively */
@@ -1098,6 +1112,7 @@ static int nd_raw_native(void) {
     return 1;
 }
 static void flush_draw(void) {
+    cen_fbv = cen_fb; cen_fb = 0; /* CEN-1a */
     int graw = gni > 0;
     if (graw) flush_gen++; /* PO3b: the open batch is a raw Vtx batch */
     if (fl_on() && gpu_ok) flush_fl_dbg(graw);
@@ -1127,6 +1142,7 @@ static void flush_draw(void) {
         if (snap0 || snap1) off_snapshot(off_cur);
         if (!offs[off_cur].snap_ready) snap0 = snap1 = 0;
     }
+    cen_why = graw ? CW_OTHER : rect_2d ? CW_RECT : (cen_fbv & CEN_FB_CLIP) ? CW_CLIP : (cen_fbv & CEN_FB_SEAM) ? CW_SEAM : (cen_fbv & CEN_FB_WIDE) ? CW_WIDE : (cen_fbv & CEN_FB_RING) ? CW_RING : CW_OTHER; /* CEN-1a */
     if (graw && nd_raw_native()) return;
     if (graw && spr_pend) spr_pend = NULL, spr_fb_n++; /* S4-1: the sprite of this batch fell back to the walker draw */
     if (graw && ndm_live) ndm_old++, ndm_refused_total++; /* S3N-3c: a batch of the record the native raw path refused (the walker drew it on the old path): not compared */
@@ -2506,8 +2522,8 @@ int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4
             unsigned short t3[3];
             if (g[1] != g[0] || g[2] != g[0] || ri[0] > 0xffffu || ri[1] > 0xffffu || ri[2] > 0xffffu) return 0;
             t3[0] = (unsigned short)ri[0]; t3[1] = (unsigned short)ri[1]; t3[2] = (unsigned short)ri[2];
-            if (wide_edge_k(tab[g[0]], t3, 3) != 0) return 0;
-        } else for (int i = 0; i < 3; i++) { const float(*m)[4] = tab[g[i]]; if (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f) return 0; }
+            if (wide_edge_k(tab[g[0]], t3, 3) != 0) { cen_fb |= CEN_FB_WIDE; return 0; } /* CEN-1a */
+        } else for (int i = 0; i < 3; i++) { const float(*m)[4] = tab[g[i]]; if (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f) { cen_fb |= CEN_FB_WIDE; return 0; } }
     }
     if (gidx_n + 3 > GRING_IDX) return 0;
     if (!draw_3d) { flush(); draw_3d = 1; }
@@ -3454,6 +3470,7 @@ void pm_gpu_tri3d(float x0, float y0, float z0, float u0, float v0, unsigned c0,
         flush();
         draw_3d = 1;
     }
+    cen_fb |= CEN_FB_SEAM; /* CEN-1a */
     put(x0, y0, z0, u0, v0, c0);
     put(x1, y1, z1, u1, v1, c1);
     put(x2, y2, z2, u2, v2, c2);
@@ -3467,6 +3484,7 @@ void pm_gpu_vert_clip(float x, float y, float z, float w, float u, float v, unsi
     }
     /* F07-7: a UI (orthographic) vertex on the left or right screen edge goes to the 400 px screen edge: bars, fades and overlay quads fill the gutters. Same rule as the fill rectangle. */
     if (pm_wide && !off_active && ui_ortho && w > 0.f && (x >= w * 0.999f || x <= -w * 0.999f)) x *= 1.25f;
+    cen_fb |= CEN_FB_CLIP; /* CEN-1a */
     put4(x, y, z, w, u, v, c);
 }
 

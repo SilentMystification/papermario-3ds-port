@@ -1692,6 +1692,7 @@ static int gv_tri(const int* idx) {
 extern u8 gMapShapeData[], TextureHeap[], pm_world_entity_heap[], heap_generalHead[], heap_spriteHead[];
 /* PF1: software prefetch (PLD) of the display list, list targets and vertex data. The ARM11 of the O3DS has no hardware prefetcher and a small L1. Azahar has no cache model: no change there. */
 static PM_HOTD int tri_prep_ok; /* PG4: off_screen_check and box_fold_sync ran for this op */
+void pm_gpu_cen_mark(unsigned bit); /* CEN-1a (pm_gpu.c) */
 static void draw_tri(unsigned w);
 /* DLC1: the static list compiler and the group runner (S3F-4: the former dlc include, inlined here, same unit) */
 /* DLC1: compile and replay of the map shape display lists (docs/plans/DLC.md, kind G). Included by pm_gbi.c after draw_tri, so it reads the statics of the interpreter.
@@ -2832,6 +2833,7 @@ static void draw_tri(unsigned w) {
         if (vert_ring[i0] != GV_NONE && vert_ring[i1] != GV_NONE && vert_ring[i2] != GV_NONE && gv_tri(idx)) return;
     }
     draw_tri_cpu(idx);
+    pm_gpu_cen_mark(8u); /* CEN-1a: CEN_FB_RING, a CPU triangle of this batch (the ring did not take it) */
 }
 
 /* SR2: unpacked model matrices by slot (header w1 bits 0 to 7). A tag is 0x10000 | pmMtxVer when valid, 0 when not. */
@@ -2904,6 +2906,9 @@ static int pmk_all_n;
 #define MAIN_GFX_N ((int)(sizeof gDisplayContext->mainGfx / sizeof(Gfx)))
 static unsigned pmx_cur, pk_key[PK_SLOTS], pk_set[PK_SLOTS], pk_ops[PK_SLOTS], pk_tk[PK_SLOTS], pk_sn[PK_SLOTS];
 static unsigned pk_wd[PK_SLOTS], pk_nd[PK_SLOTS]; /* WCEN3: GPU draws per producer, walker (wd) and native (nd) */
+#define CW_NW 16 /* CEN-1a: why codes (pm_gpu.c CW_*) */
+unsigned pm_gpu_cen_why(void); const char* pm_gpu_cen_name(unsigned c);
+static unsigned pk_wdw[PK_SLOTS][CW_NW]; /* CEN-1a: walker draws per producer by why code */
 static unsigned pk_rec[PK_SLOTS], pk_nat[PK_SLOTS]; /* WCEN2: per producer, record headers run (pk_rec) and records drawn natively (pk_nat) */
 
 static unsigned pk_slot(unsigned a) {
@@ -2923,7 +2928,7 @@ int pm_gbi_ndref_frame(void) {
 }
 void pm_gbi_draw_note(int native) { /* WCEN3: one GPU draw of the walker (native 0) or a native draw, counted to the producer under the cursor */
     if (!pm_ph_on) return;
-    if (native) pk_nd[pmx_cur]++; else pk_wd[pmx_cur]++;
+    if (native) pk_nd[pmx_cur]++; else { pk_wd[pmx_cur]++; unsigned w_ = pm_gpu_cen_why(); pk_wdw[pmx_cur][w_ < CW_NW ? w_ : 0]++; }
 }
 void pm_gbi_prod_mark(unsigned a) { /* called by pm_interp_open under phase */
     const Gfx* p = gMainGfxPos;
@@ -3250,7 +3255,7 @@ void pm_pos_text(char* out); /* pm_route.c */
 static void os_win_clear(void) {
     memset(os_op_n, 0, sizeof os_op_n); memset(os_nn, 0, sizeof os_nn); memset(os_tk, 0, sizeof os_tk); memset(os_sn, 0, sizeof os_sn); memset(os_fl, 0, sizeof os_fl);
     memset(pk_ops, 0, sizeof pk_ops); memset(pk_tk, 0, sizeof pk_tk); memset(pk_sn, 0, sizeof pk_sn);
-    memset(pk_rec, 0, sizeof pk_rec); memset(pk_nat, 0, sizeof pk_nat); memset(pk_wd, 0, sizeof pk_wd); memset(pk_nd, 0, sizeof pk_nd);
+    memset(pk_rec, 0, sizeof pk_rec); memset(pk_nat, 0, sizeof pk_nat); memset(pk_wd, 0, sizeof pk_wd); memset(pk_nd, 0, sizeof pk_nd); memset(pk_wdw, 0, sizeof pk_wdw);
     gm_steps = 0;
 }
 static const Gfx* pre_w0; static const Gfx* pre_mk0; static int pre_mkn; /* WCEN2 diag: the last outer walk's list start, its first mark and mark count */
@@ -3294,6 +3299,18 @@ static void os_report(void) {
         pk_ops[best] = 0;
     }
     { const Gfx* mb = gDisplayContext ? gDisplayContext->mainGfx : NULL; pm_log_hw("pre f%d walk0 %d mk0 %d marks %d", rm_frame, mb ? (int)(pre_w0 - mb) : -99999, mb && pre_mk0 ? (int)(pre_mk0 - mb) : -99999, pre_mkn); } /* WCEN2 diag */
+    { /* CEN-1a: walker draws per producer by why code (window totals; the why counts of a line add up to its wd). The end line is the until line. */
+      unsigned long long wt = 0, nt = 0;
+      for (int s = 0; s < PK_SLOTS; s++) {
+          wt += pk_wd[s]; nt += pk_nd[s];
+          if (!pk_wd[s]) continue;
+          char nm[48], w[200]; int m = 0;
+          pk_name((unsigned)s, nm, sizeof nm);
+          for (int c = 0; c < CW_NW; c++) if (pk_wdw[s][c]) m += snprintf(w + m, sizeof w - m, " %s:%u", pm_gpu_cen_name((unsigned)c), pk_wdw[s][c]);
+          pm_log_hw("wcen4 f%d %s wd %u why%s", rm_frame, nm, pk_wd[s], w);
+      }
+      pm_log_hw("wcen4 end f%d wd %u nd %u", rm_frame, (unsigned)wt, (unsigned)nt);
+    }
     os_win_clear();
 }
 
