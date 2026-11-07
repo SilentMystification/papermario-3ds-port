@@ -233,4 +233,24 @@ void lit_freeze(void);
 extern s8 lk[2][3];
 extern unsigned lt_n;
 
+/* TX-2 (nd_tex.c). owner: nd_tex.c unless noted. */
+extern unsigned long long tx_t[256], tx_f[256]; extern unsigned tx_n[256]; /* owner: pm_gbi.c (sp0 report) */
+extern const void* ens_img[2]; extern const void* ens_src; extern const void* ens_pal;
+extern unsigned ens_fmt, ens_siz; extern unsigned ens_wrap[4]; extern int ens_sz[4];
+void unpack8(unsigned c, float o[4]);
+void pal_rgba(const void* base, unsigned i, float o[4]);
+int tile_texel(int n, int s, int t, unsigned char o[4]);
+int tile_bound(int n);
+const u8* fb_prev_base(int n);
+void ens_clear(void);
+extern unsigned short** nuGfxCfb; extern unsigned nuGfxCfbNum;
+/* owner: pm_gbi.c (LoadTile window; G_LOADTILE writes it in tex_op_impl (nd_tex.c) and the snapshot ts_load (pm_gbi.c) until TX-3 moves ts_*) */
+extern unsigned ldrec_n;
+void grab_cur(const void* src, int w, int h);       /* pm_gbi.c, target group */
+int load_shaded_sprite(int dx4, int dy4);           /* pm_gbi.c, TX-3 */
+int glyph_atlas_bound(void);                        /* pm_gbi.c, TX-3 */
+void op_setcombine(u32 w0, u32 w1);                 /* pm_gbi.c, combine group */
+void op_setothermode(unsigned op, u32 w0, u32 w1);  /* pm_gbi.c, state group */
+void op_setprimcolor(u32 w0, u32 w1);               /* pm_gbi.c, state group */
+unsigned long long pm_gpu_fl_acc(void);             /* pm_gpu.c */
 #endif

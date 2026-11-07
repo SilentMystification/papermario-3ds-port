@@ -228,7 +228,7 @@ extern int pm_is_cur_cfb(const void* p);
  * buffer is T3: G_SETTIMG fetched it with pm_cfb_capture_prev. */
 int splash_on; /* HANG1a: set by the PM_SPLASH_ON / PM_SPLASH_OFF marks (water_splash.c) */
 unsigned splash_grab_f = ~0u;
-static void grab_cur(const void* src, int w, int h) {
+void grab_cur(const void* src, int w, int h) {
     tex_gen++; /* TBREP */
     int x, y, r;
     if (!src || w < 1 || !pm_is_cur_cfb(src)) return;
@@ -346,9 +346,6 @@ unsigned comb_gen, cmb_gen_seen;
 int box_pat; /* D03: (PRIM - ENV) * TEXEL0 + ENV with alpha from TEXEL1 only: window with a tile 0 pattern */
 unsigned box_save[4];
 float dual_gain[3];
-static void unpack8(unsigned c, float o[4]);
-void ensure_tile(int n);
-static void ens_clear(void);
 Vtx verts[64];
 /* A display list may only draw vertices its own G_VTX loaded. Slots left by
  * the previous model otherwise connect the two meshes into long triangles. */
@@ -2964,17 +2961,8 @@ static inline int sp0_tex(unsigned op) {
 unsigned long long pm_gbi_sp0_dlc(void) { return sp0_T[2]; } /* PF2: read by pm_phase.c pf_take, dlc group ticks */
 void pm_pmu_sp0(unsigned out[3]); /* pm_phase.c, CAP2 */
 /* S3-2 measurement: ticks and calls of tex_op per op code, phase on only (line sp0x of sp0_report) */
-unsigned long long tx_t[256], tx_f[256]; static unsigned tx_n[256];
+unsigned long long tx_t[256], tx_f[256]; unsigned tx_n[256]; /* owner: pm_gbi.c (sp0 report); tex_op in nd_tex.c adds to them */
 unsigned long long pm_gpu_fl_acc(void); /* pm_gpu.c */
-static void tex_op_impl(u32 w0, u32 w1);
-void tex_op(u32 w0, u32 w1) {
-    if (!pm_ph_on) { tex_op_impl(w0, w1); return; }
-    unsigned op = w0 >> 24, t0 = pm_ticks();
-    unsigned long long f0 = pm_gpu_fl_acc();
-    tex_op_impl(w0, w1);
-    unsigned dt = (unsigned)(pm_ticks() - t0), df = (unsigned)(pm_gpu_fl_acc() - f0);
-    tx_t[op] += dt - (df < dt ? df : dt); tx_f[op] += df; tx_n[op]++; /* own time without the draw closes inside the op, and the close time */
-}
 static __attribute__((cold, noinline)) void sp0_report(void) {
     unsigned pmv[3];
     { /* the six tex ops with the most time: op code, us per frame, calls per frame (window 300 frames) */
@@ -3291,12 +3279,6 @@ void pm_gbi_init(void) {
 
 
 /* ---- RDP color combiner, one cycle, for work the display list does off screen ---- */
-static void unpack8(unsigned c, float o[4]) {
-    o[0] = pm_f255[(c >> 24) & 255u];
-    o[1] = pm_f255[(c >> 16) & 255u];
-    o[2] = pm_f255[(c >> 8) & 255u];
-    o[3] = pm_f255[c & 255u];
-}
 
 static float cc_rgb_in(unsigned sel, int ch, const float* t0, const float* t1, const float* pr,
                        const float* en, int a_ok) {
@@ -3351,17 +3333,6 @@ static void cc_cycle1(const float* t0, const float* t1, float out[4]) {
     }
 }
 
-static void pal_rgba(const void* base, unsigned i, float o[4]) {
-    const u8* p = (const u8*)base;
-    unsigned c = 0;
-    if (p) {
-        p += (i & 15u) * 2u;
-        c = ((unsigned)p[0] << 8) | p[1];
-    }
-    float r = (float)((c >> 11) & 31u) / 31.f, g = (float)((c >> 6) & 31u) / 31.f,
-          b = (float)((c >> 1) & 31u) / 31.f;
-    o[0] = r; o[1] = g; o[2] = b; o[3] = (c & 1u) ? 1.f : 0.f;
-}
 
 /* A texture rectangle into an off-screen color image, sampled from a TLUT held in TMEM. The
  * shaded-sprite code draws its 16-entry shadow/highlight palette this way. Returns 1 if done. */
@@ -3407,7 +3378,7 @@ __attribute__((noinline)) int rect_to_image(int xl, int yl, int xh, int yh, unsi
 /* Tile 0 reads the shading palette, tile 1 the sprite palette, both through the same 4-bit
  * indices, and the first combiner cycle multiplies them. Build the 16 x 16 result the
  * combiner would give, and let pm_tex apply it per texel. Returns 1 if the texture is bound. */
-static int load_shaded_sprite(int dx4, int dy4) {
+int load_shaded_sprite(int dx4, int dy4) {
     const void* sp = tlut_pal[nd_ws.tst1.tile_pal[1] & 15];
     const void* sh = tlut_pal[nd_ws.tst1.tile_pal[0] & 15];
     unsigned lut[256];
@@ -3439,22 +3410,9 @@ static int load_shaded_sprite(int dx4, int dy4) {
 }
 
 /* Bind the texture of tile n (0 or 1) for the next draw. */
-const void* ens_img[2];
-const void* ens_src;
-const void* ens_pal;
-unsigned ens_fmt, ens_siz;
-unsigned ens_wrap[4];
-int ens_sz[4];
-static void ens_clear(void) { ens_src = NULL; ens_pal = NULL; }
-static int tile_bound(int n) {
-    if (!nd_ws.td[n].valid || pm_tex_cur_idx() < 0 || !ens_src) return 0;
-    if (ens_src != nd_ws.td[n].src || ens_pal != nd_ws.td[n].pal || ens_fmt != nd_ws.td[n].fmt || ens_siz != nd_ws.td[n].siz) return 0;
-    if (memcmp(nd_ws.tst1.tile_wrap[n], ens_wrap, sizeof ens_wrap) || memcmp(nd_ws.tst1.tile_sz[n], ens_sz, sizeof ens_sz)) return 0;
-    return 1;
-}
 /* GA1: a glyph (4 bit CI, message font) is one cell of the sheet atlas. When the atlas of its sheet and palette is the bound
  * texture, the glyph needs no flush and no wrap call: tile_bound compares the raster, which differs per glyph. */
-static int glyph_atlas_bound(void) {
+int glyph_atlas_bound(void) {
     int gx, gy;
     if (!nd_ws.td[0].valid || !nd_ws.td[0].src || nd_ws.td[0].fmt != 2 || nd_ws.td[0].siz != 0 || !ens_src) { return 0; }
     if (ens_pal != nd_ws.td[0].pal || ens_fmt != 2 || ens_siz != 0) { return 0; }
@@ -3467,128 +3425,9 @@ extern unsigned nuGfxCfbNum;
 extern int pm_wide;
 /* FB1: the frame buffer base of the previous colour buffer when tile n is a clamp window of it (no mask), else NULL. The strip rows
  * start at base + (y0 * 320 + x0) * 2 (stride 320, 16 bit). */
-static const u8* fb_prev_base(int n) {
-    const u8* base;
-    unsigned i;
-    if (pm_wide || !nd_ws.td[n].valid || nd_ws.td[n].fmt != 0 || nd_ws.td[n].siz != 2 || nd_ws.td[n].stride != 320) return NULL;
-    if (nd_ws.tst1.tile_wrap[n][2] || nd_ws.tst1.tile_wrap[n][3]) return NULL;
-    base = (const u8*)nd_ws.td[n].src - ((size_t)nd_ws.td[n].y0 * 320u + (size_t)nd_ws.td[n].x0) * 2u;
-    for (i = 0; i < nuGfxCfbNum; i++)
-        if ((const u8*)nuGfxCfb[i] == base) break;
-    if (i == nuGfxCfbNum || pm_is_cur_cfb(base)) return NULL;
-    return base;
-}
-void ensure_tile(int n) {
-    if (!nd_ws.td[n].valid) return;
-    nd_ws.tile_fx = (float)(nd_ws.tst1.tile_sz[n][0] & 3) * 0.25f; /* PT38 */
-    nd_ws.tile_fy = (float)(nd_ws.tst1.tile_sz[n][1] & 3) * 0.25f;
-    { /* FB1 debug switch fbbind: one line per 16 bit RGBA bind (source, window, size); pm_tex.c load_impl adds hit or miss */
-        static int fbon = -1;
-        if (fbon < 0) fbon = pm_debug_has("fbbind");
-        if (fbon && nd_ws.td[n].fmt == 0 && nd_ws.td[n].siz == 2) pm_log_d("fbbind n%d src %p xy %d,%d wh %dx%d st %d", n, (const void*)nd_ws.td[n].src, nd_ws.td[n].x0, nd_ws.td[n].y0, nd_ws.td[n].w, nd_ws.td[n].h, nd_ws.td[n].stride);
-    }
-    {   /* FB1: a clamp window of the previous colour buffer (the transition strips, 6 rows each) samples one texture of the whole 320 x 240
-         * buffer. The key is the buffer, so every strip after the first is a bind hit (no flush, no load). Texels are absolute: tile_x0 = tile_y0 = 0. */
-        const u8* fb = fb_prev_base(n);
-        if (fb) {
-            static const int fb_sz[4] = { -1, -1, -1, -1 }; /* a window size no SetTileSize writes: tile_bound never matches it */
-            if (ens_src == fb && ens_pal == nd_ws.td[n].pal && ens_fmt == 0 && ens_siz == 2 && pm_tex_cur_idx() >= 0 &&
-                !memcmp(ens_sz, fb_sz, sizeof ens_sz) && !memcmp(nd_ws.tst1.tile_wrap[n], ens_wrap, sizeof ens_wrap)) {
-                nd_ws.tile_x0 = nd_ws.tile_y0 = 0;
-                nd_ws.cur_tile = n;
-                return;
-            }
-            pm_gpu_flush();
-            pm_tex_set_wrap(nd_ws.tst1.tile_wrap[n][0], nd_ws.tst1.tile_wrap[n][1], nd_ws.tst1.tile_wrap[n][2], nd_ws.tst1.tile_wrap[n][3]);
-            tex_gen++; /* TBREP: a load changes TMEM */
-            pm_tex_load(fb, 0, 2, 320, 240, nd_ws.td[n].pal, nd_ws.td[n].pal_n, 320);
-            { /* FB1 debug switch fbbind: the bind as the texture layer gives it: size (pm_tex_size), source, slot (off) or CPU texture (cur) */
-                static int fbon = -1;
-                int tw1 = 0, th1 = 0;
-                if (fbon < 0) fbon = pm_debug_has("fbbind");
-                if (fbon) { pm_tex_size(&tw1, &th1); pm_log_d("fbbind bind n%d fb %p fmt RGBA16 size %dx%d off %d cur %d", n, (const void*)fb, tw1, th1, pm_tex_off_idx(), pm_tex_cur_idx()); }
-            }
-            nd_ws.tile_x0 = nd_ws.tile_y0 = 0;
-            ens_src = fb; ens_pal = nd_ws.td[n].pal; ens_fmt = 0; ens_siz = 2;
-            memcpy(ens_wrap, nd_ws.tst1.tile_wrap[n], sizeof ens_wrap);
-            memcpy(ens_sz, fb_sz, sizeof ens_sz);
-            ens_img[n] = fb;
-            nd_ws.cur_tile = n;
-            return;
-        }
-    }
-    if (n == 0 && !tile_bound(0) && glyph_atlas_bound()) {
-        nd_ws.cur_tile = 0;
-        return;
-    }
-    if (tile_bound(n)) {
-        nd_ws.cur_tile = n;
-        return;
-    }
-    pm_gpu_flush();
-    pm_tex_set_wrap(nd_ws.tst1.tile_wrap[n][0], nd_ws.tst1.tile_wrap[n][1], nd_ws.tst1.tile_wrap[n][2], nd_ws.tst1.tile_wrap[n][3]);
-    if (nd_ws.td[n].fmt == 0 && nd_ws.td[n].siz == 2) grab_cur(nd_ws.td[n].src, nd_ws.td[n].w, nd_ws.td[n].h);
-    tex_gen++; /* TBREP: a load changes TMEM */
-    pm_tex_load(nd_ws.td[n].src, nd_ws.td[n].fmt, nd_ws.td[n].siz, nd_ws.td[n].w, nd_ws.td[n].h, nd_ws.td[n].pal, nd_ws.td[n].pal_n, nd_ws.td[n].stride);
-    {   /* V05: a window of an off-screen texture starts at (ox, oy) in it */
-        int ox, oy, gox, goy;
-        pm_tex_origin(&ox, &oy);
-        pm_tex_glyph_ofs(&gox, &goy);
-        nd_ws.tile_x0 = nd_ws.td[n].x0 - ox - (n == 0 ? gox : 0);
-        nd_ws.tile_y0 = nd_ws.td[n].y0 - oy - (n == 0 ? goy : 0);
-        if (n == 0) {
-            tsz_last.ox = ox - gox;
-            tsz_last.oy = oy - goy;
-            tsz_last.ep = pm_tex_epoch();
-            tsz_last.ok = pm_tex_off_idx() < 0;
-        }
-    }
-    ens_src = nd_ws.td[n].src;
-    ens_pal = nd_ws.td[n].pal;
-    ens_fmt = nd_ws.td[n].fmt;
-    ens_siz = nd_ws.td[n].siz;
-    memcpy(ens_wrap, nd_ws.tst1.tile_wrap[n], sizeof ens_wrap);
-    memcpy(ens_sz, nd_ws.tst1.tile_sz[n], sizeof ens_sz);
-    ens_img[n] = nd_ws.td[n].src;
-    nd_ws.cur_tile = n;
-}
 
 /* D03: one texel of tile n as RGBA 0..255. Tile 0 wraps, tile 1 clamps (draw_box: pattern and corner image).
  * Returns 0 for a format not handled. */
-static int tile_texel(int n, int s, int t, unsigned char o[4]) {
-    const u8* p = nd_ws.td[n].src;
-    int w = nd_ws.td[n].w, h = nd_ws.td[n].h;
-    if (n == 0) {
-        s %= w; if (s < 0) s += w;
-        t %= h; if (t < 0) t += h;
-    } else {
-        if (s < 0) s = 0; else if (s >= w) s = w - 1;
-        if (t < 0) t = 0; else if (t >= h) t = h - 1;
-    }
-    size_t i = (size_t)t * (size_t)nd_ws.td[n].stride + (size_t)s;
-    unsigned c;
-    switch (nd_ws.td[n].fmt * 4 + nd_ws.td[n].siz) {
-    case 4 * 4 + 0: { u8 b = p[i >> 1]; unsigned v = ((i & 1) ? (b & 15u) : (b >> 4)) * 17u; o[0] = o[1] = o[2] = o[3] = (u8)v; return 1; }
-    case 4 * 4 + 1: o[0] = o[1] = o[2] = o[3] = p[i]; return 1;
-    case 3 * 4 + 0: { u8 b = p[i >> 1]; unsigned v = (i & 1) ? (b & 15u) : (b >> 4); o[0] = o[1] = o[2] = (u8)((v >> 1) * 36u); o[3] = (v & 1u) ? 255 : 0; return 1; }
-    case 3 * 4 + 1: o[0] = o[1] = o[2] = (u8)((p[i] >> 4) * 17u); o[3] = (u8)((p[i] & 15u) * 17u); return 1;
-    case 3 * 4 + 2: o[0] = o[1] = o[2] = p[i * 2]; o[3] = p[i * 2 + 1]; return 1;
-    case 0 * 4 + 2: c = ((unsigned)p[i * 2] << 8) | p[i * 2 + 1]; break;
-    case 2 * 4 + 0: case 2 * 4 + 1: {
-        unsigned idx;
-        if (!nd_ws.td[n].pal) return 0;
-        if (nd_ws.td[n].siz == 0) { u8 b = p[i >> 1]; idx = (i & 1) ? (b & 15u) : (b >> 4); } else idx = p[i];
-        c = ((unsigned)((const u8*)nd_ws.td[n].pal)[idx * 2] << 8) | ((const u8*)nd_ws.td[n].pal)[idx * 2 + 1];
-        break;
-    }
-    default: return 0;
-    }
-    o[0] = (u8)(((c >> 11) & 31u) * 255u / 31u);
-    o[1] = (u8)(((c >> 6) & 31u) * 255u / 31u);
-    o[2] = (u8)(((c >> 1) & 31u) * 255u / 31u);
-    o[3] = (c & 1u) ? 255 : 0;
-    return 1;
-}
 
 /* D03: a draw_box window with the bg_tile pattern. The combiner is (PRIM - ENV) * (TEXEL0 * TEXEL1) + ENV, alpha
  * TEXEL1: tile 0 is the wrapped pattern, tile 1 the corner image, clamped, so its edge texels make the border.
@@ -3649,7 +3488,6 @@ __attribute__((noinline)) int box_pattern_rect(int xl, int yl, int xh, int yh, u
 
 /* G1: ops with an empty handler (sync and no-op). The loop skips them before the prologue. G_NOOP is not here: the HANG1a splash marks are G_NOOP words. */
 
-void tex_op(u32 w0, u32 w1);
 /* GLYPH: runs n texture-load words after a G_PM_TEXI header, with the tex_op handlers. Syncs are skipped as in G1. */
 void tb_inline(const Gfx* g, unsigned n) {
     for (; n; n--, g++) {
@@ -3678,7 +3516,7 @@ int lt_mem_same(u32 w0, u32 w1) {
  * SETOTHERMODE_L/H, GEOMETRYMODE and ENDDL. Its effects run here in list order, with the same state writes and the same
  * side-effect calls as the handlers for those ops (filter flush, sync_combine on the cycle type, pm_gpu_set_mode).
  * Returns 0 without any effect when the list has another op; the caller then runs it as a G_DL. */
-static void op_setcombine(u32 w0, u32 w1); static void op_setothermode(unsigned op, u32 w0, u32 w1); /* M4, CORE-2b */
+void op_setcombine(u32 w0, u32 w1); void op_setothermode(unsigned op, u32 w0, u32 w1); /* M4, CORE-2b */
 int rm_gen; /* M4 texdiff: 1 runs the SETCOMBINE and TEXTURE words through tex_op as before */
 static int rm_apply_impl(u32 w1) {
     const Gfx* g = (const Gfx*)w1;
@@ -3720,118 +3558,10 @@ void gbi_cold_modifyvtx(u32 w0, u32 w1) { /* B5: F3DEX2 w0 = op, where, vertex *
     }
 }
 /* TEXH: cold and per-tile parts of tex_op, moved out of line. The same operations run in the same order. */
-__attribute__((cold, noinline)) void tex_win_s25(int* p_uls, int* p_ult, int* p_lrs, int* p_lrt) {
-    int uls = *p_uls, ult = *p_ult, lrs = *p_lrs, lrt = *p_lrt;
-                /* S25: a window with a negative start (a scrolled texture) is 12 bit two's complement. Texel 0 is
-                 * still the first texel of the loaded image, so keep the size and start at 0. */
-                int su = uls & 0x800 ? uls - 0x1000 : uls, st = ult & 0x800 ? ult - 0x1000 : ult;
-                int sr = lrs & 0x800 ? lrs - 0x1000 : lrs, sl = lrt & 0x800 ? lrt - 0x1000 : lrt;
-                if (sr >= su && sl >= st) {
-                    lrs = (su < 0 ? 0 : su) + (sr - su);
-                    lrt = (st < 0 ? 0 : st) + (sl - st);
-                    uls = su < 0 ? 0 : su;
-                    ult = st < 0 ? 0 : st;
-                }
-    *p_uls = uls; *p_ult = ult; *p_lrs = lrs; *p_lrt = lrt;
-}
-__attribute__((noinline)) void tlut_v20(unsigned slot) {
-                    for (int n = 0; n < 2; n++)
-                        if (nd_ws.td[n].valid && nd_ws.td[n].fmt == 2 && (nd_ws.tst1.tile_pal[n] & 15) == (int)slot && nd_ws.td[n].pal != nd_ws.timg) {
-                            pm_gpu_flush();
-                            nd_ws.td[n].pal = nd_ws.timg;
-                            nd_ws.td[n].pal_n = nd_ws.tlut_n;
-                            if (n == nd_ws.cur_tile) nd_ws.cur_tile = -1;
-                        }
-}
-__attribute__((noinline)) void tex_tile1(unsigned tile, int uls, int ult, int lrs, int lrt) {
-            if (tile == 1 && nd_ws.tst1.tile_fmt[1] == 2 && nd_ws.tst1.tile_siz[1] == 0 && ld_valid && nd_ws.timg) {
-                /* Second tile on the same 4-bit image: remember the raster for the shaded sprite. */
-                m1.valid = 1;
-                m1.src = (const u8*)nd_ws.timg + (size_t)ld_y * (size_t)nd_ws.tst1.timg_stride + (size_t)ld_x;
-                m1.stride = nd_ws.tst1.timg_stride * 2;
-                m1.w = ((lrs - uls) >> 2) + 1;
-                m1.h = ((lrt - ult) >> 2) + 1;
-                m1.x0 = uls >> 2;
-                m1.y0 = ult >> 2;
-            }
-            if (tile == 1) {
-                int w = ((lrs - uls) >> 2) + 1, h = ((lrt - ult) >> 2) + 1;
-                if (nd_ws.tst1.tile_wrap[1][2] && !(nd_ws.tst1.tile_wrap[1][0] & 2) && ld_valid) { /* VIS3: the same as PT09 for tile 1. The RDP reads (s - sl) through the mask, a mirrored or wrapped read of a window to the right of the image start (walking dust frame i + 1) needs the sheet from its start. */
-                    int per = 1 << nd_ws.tst1.tile_wrap[1][2];
-                    int ldw = nd_ws.tst1.tile_siz[1] == 0 ? ld_w * 2 : ld_w;
-                    if (per > w && per <= 256 && ldw > w) w = ldw < per ? ldw : per;
-                }
-                int stride = nd_ws.tst1.timg_stride > w ? nd_ws.tst1.timg_stride : w;
-                int bpp = nd_ws.tst1.tile_siz[1] >= 3 ? 4 : nd_ws.tst1.tile_siz[1] == 2 ? 2 : nd_ws.tst1.tile_siz[1] == 0 ? 0 : 1;
-                const u8* src = (const u8*)nd_ws.timg;
-                int l1x = ld_x, l1y = ld_y, l1stride = nd_ws.tst1.timg_stride, l1v = ld_valid;
-                for (unsigned k = 0; k < 4; k++) {
-                    if (nd_ws.tst1.ldrec[k].img && nd_ws.tst1.ldrec[k].tmem == nd_ws.tst1.tile_tmem[1]) {
-                        src = (const u8*)nd_ws.tst1.ldrec[k].img; l1x = nd_ws.tst1.ldrec[k].x; l1y = nd_ws.tst1.ldrec[k].y; l1stride = nd_ws.tst1.ldrec[k].stride; l1v = 1;
-                        stride = l1stride > w ? l1stride : w;
-                    }
-                }
-                int t1x = uls >> 2; /* texel column of the window origin; the V21 branch lowers it to the loaded origin */
-                int boff = 0; /* V13: tile 1 inside an earlier block load: the image start moves by the TMEM difference */
-                for (unsigned k = 0; k < 4; k++)
-                    if (nd_ws.tst1.blk[k].img && nd_ws.tst1.blk[k].tmem < nd_ws.tst1.tile_tmem[1] && (nd_ws.tst1.tile_tmem[1] - nd_ws.tst1.blk[k].tmem) * 8u < nd_ws.tst1.blk[k].bytes && nd_ws.tst1.blk[k].tmem == nd_ws.tst1.tile_tmem[0] && src == (const u8*)nd_ws.tst1.blk[k].img)
-                        boff = (int)((nd_ws.tst1.tile_tmem[1] - nd_ws.tst1.blk[k].tmem) * 8u);
-                nd_ws.td[1].valid = 0;
-                if (nd_ws.cur_tile == 1) nd_ws.cur_tile = -1; /* a new tile 1 image: bind it again */
-                /* The image offset is the LoadTile origin. SetTileSize uls and ult only place
-                 * it: gDPLoadMultiTile (draw_box corners) loads at 0,0 and moves tiles 1 to 3
-                 * to the far side of the window by SetTileSize. */
-                if (src && bpp && l1v) src += (size_t)(l1y * stride + l1x) * (size_t)bpp;
-                else if (src && bpp) src += (size_t)boff; /* V13: a block load puts the image at TMEM start, SetTileSize only moves the coordinates */
-                else if (src && nd_ws.tst1.tile_siz[1] == 0 && !l1v) src += (size_t)boff; /* PT82: the same for a 4 bit image (gDPScrollTextureBlockHalfHeight_4b: tile 1 is the lower half of one block load, mim_darkgreen2tif) */
-                else if (src && l1v) {
-                    /* V21: SetTileSize uls and ult are the window origin in the image (fire_breath scrolls tile 1 by imgFrame*32+32).
-                     * This branch is 4 bit only (bpp 0). uls >> 2 counts texels, two per byte, so the byte offset is half of it.
-                     * A byte pointer cannot start on an odd texel: the loaded origin is the even texel at or before the window
-                     * origin. td[1].x0 uses the same origin, so the UV map and the loaded data agree. */
-                    t1x = (uls >> 2) & ~1;
-                    src += (size_t)(ult >> 2) * (size_t)l1stride + (size_t)(t1x >> 1);
-                    stride = l1stride * 2;
-                }
-                if (src && w > 0 && h > 0) {
-                    nd_ws.td[1].valid = 1;
-                    nd_ws.td[1].src = src;
-                    nd_ws.td[1].fmt = nd_ws.tst1.tile_fmt[1];
-                    nd_ws.td[1].siz = nd_ws.tst1.tile_siz[1];
-                    nd_ws.td[1].w = w;
-                    nd_ws.td[1].h = h;
-                    nd_ws.td[1].stride = stride;
-                    nd_ws.td[1].x0 = t1x;
-                    nd_ws.td[1].y0 = ult >> 2;
-                    nd_ws.td[1].pal = tlut_pal[nd_ws.tst1.tile_pal[1] & 15] ? tlut_pal[nd_ws.tst1.tile_pal[1] & 15] : nd_ws.tlut;
-                    nd_ws.td[1].pal_n = nd_ws.tlut_n;
-                }
-            }
-}
-__attribute__((cold, noinline)) int tex_shaded0(int uls, int ult) {
-            if (m1.valid && nd_ws.tst1.tile_fmt[0] == 2 && nd_ws.tst1.tile_siz[0] == 0 && nd_ws.tst1.tile_pal[0] != nd_ws.tst1.tile_pal[1] &&
-                nd_ws.tst1.comb_a == G_CCMUX_TEXEL0 && nd_ws.tst1.comb_c == G_CCMUX_TEXEL1 &&
-                m1.w > 0 && m1.h > 0) {
-                /* Tile 0 starts 256 texels in (the vertices carry that) plus the light offset. */
-                int dx4 = uls - (m1.x0 << 2);
-                int dy4 = ult - (m1.y0 << 2);
-                m1.valid = 0;
-                pm_gpu_flush();
-                nd_ws.tile_x0 = m1.x0;
-                nd_ws.tile_y0 = m1.y0;
-                nd_ws.tile_fx = nd_ws.tile_fy = 0.f;
-                if (load_shaded_sprite(dx4, dy4)) {
-                    dual_on = 1;
-                    sync_combine();
-                    return 1;
-                }
-            }
-    return 0;
-}
 
 /* C1-0: texture and combine state ops, out of the dispatch loop. Uses only w0, w1 and file state. */
 /* CORE-2b: G_SETPRIMCOLOR, one owner (the walker switch and the record both run it). */
-static void op_setprimcolor(u32 w0, u32 w1) {
+void op_setprimcolor(u32 w0, u32 w1) {
     GP_SET(1, nd_ws.prim == w1 && aud_prim_lod == (u8)(w0 & 0xff));
     aud_prim_lod = (u8)(w0 & 0xff);
     nd_ws.prim = w1;
@@ -3839,7 +3569,7 @@ static void op_setprimcolor(u32 w0, u32 w1) {
     pm_gpu_set_prim(nd_ws.prim);
     sync_combine();
 }
-static void op_setothermode(unsigned op, u32 w0, u32 w1) {
+void op_setothermode(unsigned op, u32 w0, u32 w1) {
             unsigned len = (w0 & 0xff) + 1;
             unsigned field = (w0 >> 8) & 0xff;
             unsigned sft = 32 - field - len;
@@ -3857,7 +3587,7 @@ static void op_setothermode(unsigned op, u32 w0, u32 w1) {
             /* S25: the cycle type decides 1 or 2 cycles of the combiner. */
             if (op == G_SETOTHERMODE_H && sft <= G_MDSFT_CYCLETYPE && sft + len > G_MDSFT_CYCLETYPE) sync_combine();
 }
-static void op_setcombine(u32 w0, u32 w1) {
+void op_setcombine(u32 w0, u32 w1) {
             GP_SET(0, nd_ws.comb_w0 == w0 && nd_ws.comb_w1 == w1 && comb_set);
             /* POND 3a: an open batch is drawn with the combine it was queued with. A new combine closes it first (the copy record's combine closed the blocker batch with the water combine). */
             if (!(nd_ws.comb_w0 == w0 && nd_ws.comb_w1 == w1 && comb_set)) pm_gpu_flush();
@@ -3914,36 +3644,6 @@ static void op_setcombine(u32 w0, u32 w1) {
             cmb_gen_seen = comb_gen; /* R2B */
 }
 
-static __attribute__((noinline)) void tex_op_impl(u32 w0, u32 w1) {
-    unsigned op = w0 >> 24;
-    tex_gen++; /* TBREP */
-    switch (op) {
-        case G_SETTIMG: op_settimg(w0, w1); break;
-        case G_SETTILE: op_settile(w0, w1); break;
-        case G_LOADBLOCK: op_loadblock(w0, w1); break;
-        case G_LOADTILE:
-            ld_valid = 1;
-            ld_x = (int)((w0 >> 12) & 0xfff) >> 2;
-            {
-                unsigned tm = nd_ws.tst1.tile_tmem[(w1 >> 24) & 7], k;
-                for (k = 0; k < 4 && !(nd_ws.tst1.ldrec[k].img && nd_ws.tst1.ldrec[k].tmem == tm); k++) {}
-                if (k == 4) k = ldrec_n++ & 3;
-                nd_ws.tst1.ldrec[k].tmem = tm; nd_ws.tst1.ldrec[k].img = nd_ws.timg; nd_ws.tst1.ldrec[k].stride = nd_ws.tst1.timg_stride;
-                nd_ws.tst1.ldrec[k].x = (int)((w0 >> 12) & 0xfff) >> 2; nd_ws.tst1.ldrec[k].y = (int)(w0 & 0xfff) >> 2;
-            }
-            ld_y = (int)(w0 & 0xfff) >> 2;
-            ld_h = (((int)(w1 & 0xfff) - (int)(w0 & 0xfff)) >> 2) + 1;
-            ld_w = ((((int)(w1 >> 12) & 0xfff) - ((int)(w0 >> 12) & 0xfff)) >> 2) + 1;
-            break;
-        case G_LOADTLUT: op_loadtlut(w0, w1); break;
-        case G_SETTILESIZE: op_settilesize(w0, w1); break;
-        case G_TEXTURE: op_texture(w0, w1); sync_combine(); break;
-        case G_SETOTHERMODE_H:
-        case G_SETOTHERMODE_L: op_setothermode(op, w0, w1); break;
-        case G_SETPRIMCOLOR: op_setprimcolor(w0, w1); break;
-        case G_SETCOMBINE: op_setcombine(w0, w1); sync_combine(); break;
-    }
-}
 
 /* M4: the texture bind list of a model (make_texture_gfx: SETTIMG SETTILE LOADTLUT, SETCOMBINE, TEXTURE, SETTIMG SETTILE LOADBLOCK SETTILE SETTILESIZE). tb_ops_generic runs it
  * word by word through tex_op, as before. tb_ops runs the same op functions in list order without the dispatch (tex_op wrapper, tex_op_impl switch, one tex_gen step per op) and
