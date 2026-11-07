@@ -44,6 +44,40 @@
       "gates": []
     },
     {
+      "name": "spot_mac01_nosprnat_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SPR4 step 3 gate: mac_01 cold det walker reference (nosprnat), shots 200 to 205; byte-equal to spot_mac01_det.",
+      "scenario": "spot_mac01_nosprnat_det",
+      "cap": 35,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "nosprnat"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_iwa10_nosprnat_det",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "SPR4 step 3 gate: iwa_10 cold det walker reference (nosprnat), shots 200 to 205; byte-equal to spot_iwa10_det_pic.",
+      "scenario": "spot_iwa10_nosprnat_det",
+      "cap": 45,
+      "until": "shot \\d+ frame 205",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "nosprnat"
+      ],
+      "gates": []
+    },
+    {
       "name": "sprshade_hos01_log",
       "kind": "azahar_pic",
       "speed": "normal",

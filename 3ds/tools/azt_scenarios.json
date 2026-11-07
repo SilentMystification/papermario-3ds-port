@@ -8586,6 +8586,61 @@
       "reason": "SPR4 step 3 reference: same scenario with nosprnat (pm_gpu_spr_native returns 0, walker draws every sprite record)."
     },
     {
+      "name": "spot_mac01_nosprnat_det",
+      "status": "unverified",
+      "subject": "SPR4 det gate reference: spot_mac01_det with the nosprnat switch (walker draws every sprite record). Cold.",
+      "proves": "DET cold spot: the mac_01 picture per shot is a function of the build (det), so a base and a head build give byte-equal shots (MOVE census and phase gates).",
+      "debug": "warp=mac_01:0 pos=0:0:200 prof=4 shots shotwin=200:6 loglevel=debug det nosprnat",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at mac_01 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 0 0 200 pos -?\\d+ -?\\d+ -?\\d+( disp w[01] s[01] f\\d+)?$"
+        }
+      ],
+      "reason": "SPR4 step 3 gate reference: cold det mac_01, walker sprite draw; compare with spot_mac01_det (same build)."
+    },
+    {
+      "name": "spot_iwa10_nosprnat_det",
+      "status": "unverified",
+      "subject": "SPR4 det gate reference: spot_iwa10_det with the nosprnat switch (walker draws every sprite record). Cold.",
+      "proves": "VERIFY check: cold det run, the shots are a function of the build, so two builds compare byte for byte.",
+      "debug": "warp=iwa_10:1 pos=-586:1:530 shots shotwin=200:6 loglevel=debug fixedseed fast fs1off det nosprnat",
+      "extra": [
+        "-Turbo",
+        "-NoWarm"
+      ],
+      "until": "shot \\d+ frame 205",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: iwa_10 entry 1",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: iwa_10 entry 1"
+        },
+        {
+          "name": "shot 205",
+          "regex": "shot \\d+ frame 205"
+        }
+      ],
+      "reason": "SPR4 step 3 gate reference: cold det iwa_10, walker sprite draw; compare with spot_iwa10_det (same build)."
+    },
+    {
       "name": "sprshade_hos01",
       "status": "unverified",
       "subject": "Map hos_01 (SHADING_HOS_01 profile, set in src/world/area_hos/hos_01/main.c:117), log only: the sprnat and spr5 lines at scene frame 300 (shaded sprite records: why 3).",
