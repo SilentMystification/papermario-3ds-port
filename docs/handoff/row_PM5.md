@@ -14,6 +14,10 @@ PM5-3 MODEL: nd_model_state drops why 4 (gv->fxon to the pm5 template). Gate: nd
 PM5-4 DELETE: the g_use5 citro3d block of flush_draw, sh5_* and u5_* without callers.
 Hand back with the branch head after PM5-4 or a failed gate.
 
+## State (2026-11-06)
+Branch pm5 head 64000207d (worktree build3ds/wt/pm5): PM5-2 done (program change clears the native shadow; pm5 with tex1 or noise refused and named; no pm4 uv row on pm5 draws). battle_start_pic, super_text_pic (43 frames), mac_01 f200-202 identical native vs pm5off. wcen_battle census not read: phase census stall after the LOG5 merge (row LOGFIX). Not merged yet.
+PM5-3 route (agent finding, accepted): (1) NdDraw carries the pm5 rows: per palette entry the 3 normal rows (pal_ntab[gm] at the producer), a use5 flag, and the fx block (lflag, fogu, light table) per draw; (2) the native submit (pm_gpu.c ~1163) does the pm5 upload from the NdDraw fields when use5 (same calls as pm5_upload, values from the draw, not walker globals); (3) nd_model_state drops why 4 for fxon only, keeps it where no normal rows exist; (4) gate: ndmcheck iwa_10 why 4 to 0, spot_mac01_pic byte-equal, fog and lit maps by eye.
+
 ## Oracle plan PM5 (2026-11-06, Opus; after PM5-2 picture fail on branch pm5 dad2564d3: census 1800 to 0, battle_start_pic dark square, label missing, glow)
 Diff dad2564d3 vs 2206cd0a0, as read:
 - pm5_upload stages the pm5 uniforms through citro3d. They go out in C3Di_UpdateContext inside nd_native_submit, so the order is right.
