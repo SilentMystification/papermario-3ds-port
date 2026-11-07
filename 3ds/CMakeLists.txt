@@ -363,6 +363,7 @@ set(PORT_SRC
     src/pm_gbi.c
     src/pm_comb.c
     src/nd_mtx.c
+    src/nd_mtx_set.c
     src/nd_core.c
     src/nd_tmpl.c
     src/nd_tex.c

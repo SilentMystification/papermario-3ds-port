@@ -121,6 +121,7 @@ extern u8 vert_gvf[64];
 extern u8 vert_litf[64];
 extern u8 vert_live[64];
 extern u8 vert_scr[64];
+extern s16 vert_sx[64], vert_sy[64];
 extern unsigned blendc;
 extern unsigned char vert_cb[64];
 extern unsigned cmb_gen_seen;
