@@ -3545,12 +3545,14 @@ void pm_gpu_flush(void) { flush(); }
  * component to G_NOOP, the state words still run. Returns 1 when the sprite drew natively. sprcheck on: compare only (walker draws, pm_gpu_spr_rec). */
 void pm_gpu_spr_rec(const uint32_t* rec);
 static unsigned spr_nat_n, spr_nat_fb[16], spr_nat_f_last;
+static unsigned spr5_sub[8]; /* MDL-3a: class 5 refusals per flag: 1 no pm4 palette path (g_pal, g_use5, gv4_on), 2 off-screen target, 3 grab, 4 zmark, 5 nozt */
 static void spr_nat_log(void) {
     unsigned f = pm_frame_count();
     if (f % 300u || f == spr_nat_f_last) return;
     spr_nat_f_last = f;
     pm_log_prof_line("sprnat f%u native %u fb %u why 2 %u why 3 %u why 4 %u why 5 %u other %u", f, spr_nat_n, spr_nat_fb[1] + spr_nat_fb[2] + spr_nat_fb[3] + spr_nat_fb[4] + spr_nat_fb[5] + spr_nat_fb[20] + spr_nat_fb[11] + spr_nat_fb[12],
         spr_nat_fb[2], spr_nat_fb[3], spr_nat_fb[4], spr_nat_fb[5], spr_nat_fb[1] + spr_nat_fb[20] + spr_nat_fb[11] + spr_nat_fb[12]);
+    pm_log_prof_line("spr5 f%u nopal %u off %u grab %u zmark %u nozt %u", f, spr5_sub[1], spr5_sub[2], spr5_sub[3], spr5_sub[4], spr5_sub[5]);
 }
 int pm_gpu_spr_native(const uint32_t* rec) {
     static int on = -1;
@@ -3611,7 +3613,11 @@ int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16
     nd_sprite_decode(rec, &r);
     NdMode mode;
     if (!nd_sprite_mode(&r, &mode)) { *why = 1; return 0; }
-    if (!(g_pal && !g_use5 && gv4_on) || off_active || grab_bind || r_zmark || nozt_on()) { *why = 5; return 0; } /* the walker raw path refusals (nd_raw_native) */
+    { /* MDL-3a: class 5 by sub-reason, each flag counted on its own (a record can hold several) */
+        const int nopal = !(g_pal && !g_use5 && gv4_on), noz = nozt_on();
+        spr5_sub[1] += (unsigned)nopal; spr5_sub[2] += (unsigned)(off_active != 0); spr5_sub[3] += (unsigned)(grab_bind != 0); spr5_sub[4] += (unsigned)(r_zmark != 0); spr5_sub[5] += (unsigned)noz;
+        if (nopal || off_active || grab_bind || r_zmark || noz) { *why = 5; return 0; } /* the walker raw path refusals (nd_raw_native) */
+    }
     if (r.flags & 4u) { *why = 4; return 0; } /* spr_battle: battle context sprites (the native key differs from the walker key: combine 8 vs 2, cull, no atest); the walker draws them */
     if (r.flags & 1u) { *why = 3; return 0; } /* S4-2 plan default: a shaded sprite (SPR_SHADING_FLAG_ENABLED) runs the walker: the flat path there binds the shading palette (create_shading_palette) and tile 4 */
     NdTexDesc ds;

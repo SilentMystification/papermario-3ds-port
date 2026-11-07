@@ -218,7 +218,7 @@ int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st
     unsigned f = pm_frame_count();
     if (f >= mw_f) { mw_f = f - f % 100u + 100u; /* the next line at the next multiple of 100 frames (pm_frame_count, the shot frame) */
         char b[200]; unsigned n = 0; for (unsigned i = 0; i < 32; i++) if (mw_cnt[i]) n += (unsigned)snprintf(b + n, sizeof b - n, " %u:%u", i, mw_cnt[i]);
-        extern unsigned nd_r13_nohit; pm_log_prof_line("mdlw f%u ok %u why%s r13nohit %u [why 5 = spr_build raw refusal: off, grab, zmark, nozt or no g_pal (pm_gpu.c spr_build)]", f, mw_ok, n ? b : " none", nd_r13_nohit); nd_r13_nohit = 0; memset(mw_cnt, 0, sizeof mw_cnt); mw_ok = 0; }
+        extern unsigned nd_r13_nohit; pm_log_prof_line("mdlw f%u ok %u why%s r13nohit %u", f, mw_ok, n ? b : " none", nd_r13_nohit); nd_r13_nohit = 0; memset(mw_cnt, 0, sizeof mw_cnt); mw_ok = 0; }
     return r;
 }
 static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st) {
