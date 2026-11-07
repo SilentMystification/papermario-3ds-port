@@ -9841,6 +9841,29 @@
       "reason": "FB-3 forcing switch pm5all (every model draw without light takes program 5). Cap as battle_start."
     },
     {
+      "name": "battle_start_pm5draw",
+      "status": "unverified",
+      "reason": "FB-3 step 1: one log start naming the pm5all halo draw (log only, no fix). Cold det; window 182 to 190 covers shots 0000 to 0008 of battle_start_pm5all.",
+      "subject": "Battle scene (kmr_03, one Goomba), cold det start, pm5all, frames 182 to 189 (no shots: a shot file per frame is too slow for the window). pm5draw log: per program 5 model draw with a vertex flag above 0 (producer, npal, vmax, screen box of flag 0 vertices, uvso/cmul/cadd, zmix, lflag, fogu), and a pm5sum line per frame (use5 draws, vflag>0 draws).",
+      "proves": "FB-3 halo: the use5 draws (pm5all) that cover x185-202 y4-127 named by value (npal, vflag max, pm5 uniforms).",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 det fixedseed fast fs1off pm5all pm5draw phase loglevel=debug",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "pm5sum f188 use5",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "frame 188 sum",
+          "regex": "pm5sum f188 use5"
+        }
+      ]
+    },
+    {
       "name": "battle_start_t1cold",
       "status": "unverified",
       "subject": "Battle scene (one Goomba on kmr_03), cold det start, shot 182. t1log: one t1draw line per native tex1 draw (u1 words and uvx sent). pm4 for unlit draws, pm5 tex1 for lit draws.",

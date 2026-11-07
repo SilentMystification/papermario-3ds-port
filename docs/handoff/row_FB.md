@@ -104,7 +104,23 @@ MAC00 trace (partial, row not closed): the sky is a COPY-mode texrect (nd_rect.c
 Next: log xl, xh, s0, rx0 of the texrect covering (181,0) at frames 200-205 (debug line in nd_rect.c, one build each on 599c48970 and 55a41fa6b with e954, 2 starts). Then name the value: edge (line 84) or texel (line 85/90).
 
 ## FB-3 state (2026-11-07; part 1 merged in nds1 02a6cecbd)
-The per-entry palette premise is refuted by code: nd_model.c 460, 465, 475 set dd.npal = 1 on every NdNat (pal0 = the combined model matrix); pm_gpu.c 1162 and 1391 copy with npal 0 after the upload; nd_emit.c:84 (pm4) uploads the same single entry. The pm5all battle halo (x185-202 y4-127, 65 px, shots 0001-0007) has no named cause. Decision (orchestrator): the halo appears only under the pm5all forcing switch and default runs are byte-equal, so it does not block FB-3. One log start names the draw (producer, npal, vertex flag max, uvso/cmul/cadd, zmix, lflag, fx5 per use5 draw in battle frames 1-7); write the result here, no fix in FB-3. Then step 3 (pm5tex1 log line) and step 4 (pm5 noise) with their gates.
+The per-entry palette premise is refuted by code: nd_model.c 460, 465, 475 set dd.npal = 1 on every NdNat (pal0 = the combined model matrix); pm_gpu.c copies with npal 0 after the upload; nd_emit.c:84 (pm4) uploads the same single entry.
+
+Step 1 result (pm5draw log, debug switch, battle_start_pm5draw_pic, cold det, pm5all, frames 182 to 188; 626 draws of program 5 in the log, 74 to 82 per frame, 4 sprite quads per frame among them):
+- Every draw: npal 1, vertex flag max 0 (no vertex reads pal5[7k] with k > 0). The stale-palette-entry cause (per-entry palette) is refuted for battle.
+- Every draw: zmix 1 0, cmul 1 1 1, cadd 0, lflag 0, fogu 0. The pm5 uniforms do not tell the halo draw apart.
+- Not named: the screen box (flag 0 vertices, pal[0] rows 0, 1, 3, divided by row 3) still has outliers (sw small and positive: x -3083, y -15). Dropping vertices with w <= 0.05 (run 8, frame 182, 74 draws, 60 with a behind-or-cut vertex) leaves a box x -3083..1.3, y -16..6: the cut is not enough. Overlaps with the halo window (NDC x -0.98..-0.36 or 0.36..0.98, y 0.55..0.69 or -0.69..-0.55, the shot as PICA colour buffer 240 by 400, flips unknown): no draw covers it in the no-flip case; the flipY case has one model draw (00182608, 69 vertices) with a partly valid box and one 1 px sprite quad; the flipX case has one model draw (0018619c, 252 vertices) with a box that is not a 124 by 18 px strip. None is named.
+- Next: the halo draw is named by its geometry (needs the exact viewport and clip mapping, and a w cut that keeps the clip test), or by a per-draw switch (one draw at a time off, pixel count of the halo window). Both need a decision of the orchestrator; the bench budget of FB-3 was reset once (8 starts used after reset: 4 of the pm5draw log, 3 of the gates, 1 of the mac_01 reference).
+
+Step 3 (pm5tex1 log line, commit 0ef7b18e2): once per producer when a program 5 draw with tex1 is submitted. Not yet seen in a run: iwa_10 (fogged) and the tex1 tours and sbk_56 show 0 lines (pm5 tex1 needs a fogged model with tex1, or a raw tex1 draw with fog; no catalog scene has one). The line is in; its first real hit is open.
+
+Step 4 (pm5 noise, native): the raw path refusal for program 5 noise is removed (pm_gpu.c), the noise offset of a draw uses u5_nzo for program 5, nd_model_state takes a plan with noise (unit 2 from pm_gpu_noise_draw, nzo, key noise), refusal only when the walker has no noise texture (pm_gpu_noise_ok). pm5.v.pica already had outtc2 from nzo as pm4.
+Gates (fb3 build of the step 4 change vs 6cb36367a, the build before it; the log-only change of step 3 is in both):
+- nrawwhy noise 0 on nok_11 (nok11_det run): pm5 noise refusals 0.
+- nok11_det: 40 of 40 shots byte-equal to 6cb36367a.
+- fb_mac01_det_pic: 12 of 12 shots byte-equal.
+- battle_start_f182_cold: 1 of 1 shot byte-equal.
+Open: no catalog scene is known to draw pm5 noise, so the byte gates prove no change on the scenes that run noise, not that the pm5 noise path draws. The check needs a pm5 noise draw counter (not added).
 
 ## Oracle review mac_00 layout-dependent sky row (2026-11-07; row MAC00 continues)
 Plain 55a41fa6b^ and 55a41fa6b are byte-equal; with FB-2 e954bc9d1 applied to both, row 58 (framebuffer column 181) differs, and the FB-1 ring build moves other rows: a layout-sensitive effect. Only undefined behaviour can do that: an uninitialised read, an out-of-bounds read, or an address-derived value.
