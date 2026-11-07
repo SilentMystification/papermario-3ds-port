@@ -2222,6 +2222,58 @@
       "gates": []
     },
     {
+      "name": "spot_mac01_nosprnat_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "Toad Town mac_01 at pos 0 0 200, walker reference (nosprnat). Shots at frames 200 to 205 for the SPR4 byte compare.",
+      "scenario": "spot_mac01_nosprnat_pic",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "pic",
+        "spot",
+        "nosprnat"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_iwa10_nosprnat_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "iwa_10 at entry 1, walker reference (nosprnat). Shots at frames 200 to 205 for the SPR4 byte compare.",
+      "scenario": "spot_iwa10_nosprnat_pic",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "pic",
+        "iwa10",
+        "nosprnat"
+      ],
+      "gates": []
+    },
+    {
+      "name": "pause_spin_nosprnat_w300",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "Pause spin with grab (frames 140 to 179), walker reference (nosprnat). Shots as pause_spin_grab for the SPR4 byte compare.",
+      "scenario": "pause_spin_nosprnat_w300",
+      "cap": 45,
+      "until": "nrawwhy f300 ",
+      "tags": [
+        "azahar",
+        "pic",
+        "off",
+        "grab",
+        "nosprnat"
+      ],
+      "gates": []
+    },
+    {
       "name": "intro_native_w600",
       "kind": "azahar_pic",
       "speed": "normal",
