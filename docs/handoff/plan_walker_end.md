@@ -1,3 +1,5 @@
+# Plan WEND (status 2026-11-06: RECT-1/2, TRI-1..3, OFF-1..3, PM5-1..3 DONE; open: RECT-3, PM5-4, TRI-4 CPU deletes, MDL-1..4, CEN-2, END-1; the pm_gbi.c moves and S10 are in plan_s10_path.md)
+
 # Plan WEND: every walker GPU draw goes native (oracle, 2026-11-06)
 
 Walker work = a walker GPU draw: wd in the WCEN3 census (cen_add in pm_gpu.c), any draw that does not close through nd_native_submit. Model records, sprite records, entity segments and ent_gdl draw natively already (interpretation cost only).
