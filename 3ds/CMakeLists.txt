@@ -334,8 +334,9 @@ set_property(SOURCE ${EFFECT_GFX_SRC} APPEND PROPERTY COMPILE_OPTIONS -fno-data-
 # (pm_map.c) and heaps.c gets its copy renamed.
 set_property(SOURCE ${DECOMP}/src/heaps.c APPEND PROPERTY COMPILE_OPTIONS -DgMapShapeData=pm_unused_shape_data -DD_80200000=pm_unused_80200000)
 set_property(SOURCE ${DECOMP}/src/world/partners.c APPEND PROPERTY COMPILE_OPTIONS -include common.h)
-# S2: the bridge form of the gSP and gDP macros (nd_gbi.h): the words are written as before and decoded into the native state (nd_st)
-set_property(SOURCE ${DECOMP}/src/main_loop.c ${DECOMP}/src/cam_main.c ${DECOMP}/src/background_gfx.c ${DECOMP}/src/background.c APPEND PROPERTY COMPILE_OPTIONS -include nd_gbi.h)
+# S2: the bridge form of the gSP and gDP macros (nd_gbi.h). CORE-2c: main_loop.c and cam_main.c use the record form (nd_rec.h), the rest the bridge.
+set_property(SOURCE ${DECOMP}/src/main_loop.c ${DECOMP}/src/cam_main.c APPEND PROPERTY COMPILE_OPTIONS -include nd_rec.h)
+set_property(SOURCE ${DECOMP}/src/background_gfx.c ${DECOMP}/src/background.c APPEND PROPERTY COMPILE_OPTIONS -include nd_gbi.h)
 file(GLOB PAUSE_SRC ${DECOMP}/src/pause/pause_*.c)
 set_property(SOURCE ${PAUSE_SRC} APPEND PROPERTY COMPILE_OPTIONS -include common.h)
 

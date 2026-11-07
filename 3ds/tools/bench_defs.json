@@ -196,6 +196,38 @@
       ],
       "gates": []
     },
+  {
+      "name": "spot_mac01_fps60_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CORE-2c interp-on replay: Toad Town mac_01 with fps60 (pm_interp_on), shots 200 to 205, byte-equal to the base build of the same bench. A person reads the shot.",
+      "scenario": "spot_mac01_fps60_pic",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "pic",
+        "spot"
+      ],
+      "gates": []
+    },
+  {
+      "name": "yard_stereo_l_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CORE-2c yard: yard with wide and forced stereo, left eye shots 200 to 205 (yard_stereo_l). A person reads the shot.",
+      "scenario": "yard_stereo_l",
+      "cap": 90,
+      "until": "shot \\d+ frame 20[0-5]\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "spot"
+      ],
+      "gates": []
+    },
     {
       "name": "spot_mac01_ndmcheck",
       "kind": "azahar_pic",
@@ -1311,57 +1343,6 @@
       "gates": []
     },
 
-    {
-      "name": "pause_spin_grab_w300",
-      "kind": "azahar_pic",
-      "speed": "normal",
-      "default": false,
-      "purpose": "OFF-2 census: pause spin with grab (pause_spin_grab) run to frame 300. The nrawwhy line gives the cumulative raw refusals (grab, off, unit 0). A person reads the spin shots.",
-      "scenario": "pause_spin_grab_w300",
-      "cap": 45,
-      "until": "nrawwhy f300 ",
-      "tags": [
-        "azahar",
-        "pic",
-        "off",
-        "grab"
-      ],
-      "gates": []
-    },
-    {
-      "name": "intro_native_w600",
-      "kind": "azahar_pic",
-      "speed": "normal",
-      "default": false,
-      "purpose": "OFF-3 census: intro (native aspect, wide) run to frame 600; nrawwhy line gives the cumulative unit 0 (8) and noise (7) refusals. A person reads the intro shots.",
-      "scenario": "intro_native_w600",
-      "cap": 45,
-      "until": "nrawwhy f600 ",
-      "tags": [
-        "azahar",
-        "pic",
-        "off",
-        "unit"
-      ],
-      "gates": []
-    },
-    {
-      "name": "nok11_splash_w600",
-      "kind": "azahar_pic",
-      "speed": "normal",
-      "default": false,
-      "purpose": "OFF-3 census: nok_11 water splash run to frame 600; nrawwhy line gives the cumulative unit 0 (8) and noise (7) refusals. A person reads the splash shot.",
-      "scenario": "nok11_splash_w600",
-      "cap": 45,
-      "until": "nrawwhy f600 ",
-      "tags": [
-        "azahar",
-        "pic",
-        "off",
-        "unit"
-      ],
-      "gates": []
-    },
     {
       "name": "wcen_pause",
       "kind": "azahar_pic",

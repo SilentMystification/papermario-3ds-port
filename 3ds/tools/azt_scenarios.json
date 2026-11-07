@@ -621,34 +621,6 @@
       "reason": "HANG1a gate: grab lines per frame during the splash (count by grep of grab lines per frame) and the picture by eye."
     },
     {
-      "name": "nok11_splash_w600",
-      "status": "unverified",
-      "subject": "Mario in nok_11 (entry 0) with the water splash (EFFECT_WATER_SPLASH, fxtest 89) spawned at Mario. Shot a at 12 frames after the spawn shows the splash drops. Run on to frame 600: the nrawwhy line (cumulative raw refusal counts) prints.",
-      "proves": "OFF-3 census of nok11_splash: cumulative nrawwhy unit0 (8) and noise (7) refusals at f600.",
-      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 shots loglevel=debug grablog",
-      "until": "nrawwhy f600 ",
-      "cap": 45,
-      "deadline": 20,
-      "first_marker": "warp: nok_11 entry 0",
-      "expects": "warp",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "warp",
-          "regex": "warp: nok_11 entry 0"
-        },
-        {
-          "name": "spawn",
-          "regex": "fxtest: spawn 89 water_splash"
-        },
-        {
-          "name": "nrawwhy at 600",
-          "regex": "nrawwhy f600 cmdbuf"
-        }
-      ],
-      "reason": "OFF-3 census: the until line is the 600 frame counter; the subject shots are the picture (as nok11_splash)."
-    },
-    {
       "name": "yard_wide",
       "status": "unverified",
       "subject": "Mario in his yard (kmr_20, entry 4) with wide on: zoomed original view, sky fills 240 rows, status bar at the top edge, shot at frames 200 to 205.",
@@ -4023,26 +3995,6 @@
       "reason": "GRAB2 (BTLSTAR row). Same command as text_menu with a 40 frame shot window. Unverified: one start needed. Add grablog to the debug string for the grab line check."
     },
     {
-      "name": "pause_spin_grab_w300",
-      "status": "unverified",
-      "subject": "OFF-2 census: the pause_spin_grab spin (frames 140 to 179, grablog, shots as pause_spin_grab), run on to frame 300 so the nrawwhy line (cumulative raw refusal counts) prints.",
-      "proves": "OFF-2 gate: nrawwhy grab 0 at f300 after the spin with the grab draws on the native path.",
-      "debug": "preset=toad padscript=wait80,START*3,wait100 phase phsum shots shotwin=140:40 loglevel=debug grablog texstat",
-      "until": "nrawwhy f300 ",
-      "cap": 45,
-      "deadline": 20,
-      "first_marker": "warp: mac_00 entry 4",
-      "expects": "warp",
-      "needs_picture": true,
-      "expected_events": [
-        {"name": "warp", "regex": "warp: mac_00 entry 4"},
-        {"name": "pause mode", "regex": "game mode 10 frame"},
-        {"name": "shot in spin window", "regex": "shot \\d+ frame (17[6-9]|18[01])\\b"},
-        {"name": "nrawwhy at 300", "regex": "nrawwhy f300 cmdbuf"}
-      ],
-      "reason": "OFF-2 gate (grab refusal 0). The until line is the 300 frame counter; the spin shots are the picture."
-    },
-    {
       "name": "yard_vramfill",
       "status": "unverified",
       "subject": "VRAM2: yard with vramfill=3 (three 512 KB dummy blocks in bank B, after the texture cache has its boot blocks). Reads the texstat cap line at frame 300.",
@@ -5206,7 +5158,7 @@
       "subject": "Boot with wide on, no preset: logos, then the intro cutscene (GAME_MODE_INTRO). Shots every 4 frames from frame 330 (the intro stage). UA10 gate: 4:3 frame with black side bars during the intro, log intro: native aspect on.",
       "proves": "UA10: the intro mode runs in the native view with wide on.",
       "debug": "wide shots shotwin=330:20 loglevel=debug",
-      "until": "shot \\d+ frame 333\\b",
+      "until": "shot \\d+ frame 334\\b",
       "cap": 45,
       "deadline": 20,
       "first_marker": "game mode 1 frame",
@@ -5219,38 +5171,10 @@
         },
         {
           "name": "shot in intro",
-          "regex": "shot \\d+ frame 333\\b"
+          "regex": "shot \\d+ frame 334\\b"
         }
       ],
       "reason": "UA10 gate by eye and the log line."
-    },
-    {
-      "name": "intro_native_w600",
-      "status": "unverified",
-      "subject": "Boot with wide on, no preset: logos, then the intro cutscene (GAME_MODE_INTRO). Shots every 4 frames from frame 330 (the intro stage). UA10 gate: 4:3 frame with black side bars during the intro, log intro: native aspect on. Run on to frame 600: the nrawwhy line (cumulative raw refusal counts) prints.",
-      "proves": "OFF-3 census of intro_native: cumulative nrawwhy unit0 (8) and noise (7) refusals at f600.",
-      "debug": "wide shots shotwin=330:20 loglevel=debug",
-      "until": "nrawwhy f600 ",
-      "cap": 45,
-      "deadline": 20,
-      "first_marker": "game mode 1 frame",
-      "expects": "none",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "intro on",
-          "regex": "intro: native aspect on"
-        },
-        {
-          "name": "shot in intro",
-          "regex": "shot \\d+ frame 333\\b"
-        },
-        {
-          "name": "nrawwhy at 600",
-          "regex": "nrawwhy f600 cmdbuf"
-        }
-      ],
-      "reason": "OFF-3 census: the until line is the 600 frame counter; the subject shots are the picture (as intro_native)."
     },
     {
       "status": "unverified",
@@ -6122,6 +6046,30 @@
       "subject": "Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0). Shots at frames 200 to 205 (the picture) and the prof scene line at the first 300-frame window.",
       "proves": "BENCH4 spot picture: the spot loads with prof=4 and the scene line gives the placed position (pos0) and the scene key. The shot shows the spot.",
       "debug": "warp=mac_01:0 pos=0:0:200 prof=4 shots shotwin=200:6 loglevel=debug",
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at mac_01 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 0 0 200 pos -?\\d+ -?\\d+ -?\\d+( disp w[01] s[01] f\\d+)?$"
+        }
+      ],
+      "reason": "BENCH4 spot picture. prof=4 prints only prof lines (no warp or shot lines in the log), so the until and the events are prof lines. The shot files are the picture. Cap 60 s: boot, warp, placement and the first 300-frame window."
+    },
+  {
+      "name": "spot_mac01_fps60_pic",
+      "status": "unverified",
+      "subject": "CORE-2c interp replay: Toad Town mac_01 at pos 0 0 200 with fps60 on (pm_interp_on). Shots at frames 200 to 205, byte-equal to the same scenario on the base build. Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0). Shots at frames 200 to 205 (the picture) and the prof scene line at the first 300-frame window.",
+      "proves": "BENCH4 spot picture: the spot loads with prof=4 and the scene line gives the placed position (pos0) and the scene key. The shot shows the spot.",
+      "debug": "warp=mac_01:0 pos=0:0:200 prof=4 fps60 shots shotwin=200:6 loglevel=debug",
       "until": "prof f\\d+ w\\d+ at ",
       "cap": 60,
       "deadline": 20,

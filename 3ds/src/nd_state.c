@@ -12,11 +12,9 @@ ND_HOTD NdWs nd_ws = { .geom = 0, .omode_h = 0, .omode_l = 0x00000030u, .cimg = 
 #define MW_SEGMENT 0x06
 #define MV_VIEWPORT 8
 
-/* CORE-2a-3: the record-mode leaf (nd_rec.h). The record of a leaf in the main list is CORE-2c. Until then the leaf writes its words
- * outside the main list and nothing inside it. */
-void nd_rec_leaf(void* at, const void* w, unsigned nops, unsigned nslots, int in_main) {
-    (void)nops;
-    if (!in_main) memcpy(at, w, (size_t)nslots * 8u);
+/* CORE-2c: the record-mode leaf (nd_rec.h). A one-slot leaf's record is its word (the walker case is the setter), so the slots take the words. */
+void nd_rec_leaf(void* at, const void* w, unsigned nslots) {
+    memcpy(at, w, (size_t)nslots * 8u);
 }
 
 void nd_words(const unsigned* w, unsigned n) {

@@ -83,7 +83,7 @@ def write_rec(macros, leaf, out):
         again = "".join("(void)(%s); " % params[0] for _ in range(max(uses, 1) - 1))
         o.append("#undef %s" % n)
         o.append("#define %s(%s) { Gfx* _ndq = (Gfx*)(%s); %sGfx _ndt[ND_TMP_WORDS]; Gfx* _ndp = _ndt; ND_O_%s(%s); "
-                 "nd_rec_leaf(_ndq, _ndt, (unsigned)(_ndp - _ndt), (unsigned)(_ndp - _ndt) + %d, ND_IN_MAIN(_ndq)); }"
+                 "nd_rec_leaf(_ndq, _ndt, (unsigned)(_ndp - _ndt) + %d); }"
                  % (n, pl, params[0], again, n, args, extra))
     o.append("#endif")
     open(out, "w", newline="\n").write("\n".join(o) + "\n")
