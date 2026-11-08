@@ -353,7 +353,7 @@ typedef struct { const char* fn; int line; unsigned n, e; } FlCause; /* n = flus
 static FlCause fl_tab[48];
 static int fl_nt;
 static int fl_prev_rect; static unsigned fl_rects, fl_consec; /* PG0: texture rectangles, and those that follow another with no other flush call between */
-#define fl_on() (pm_ph_on)
+#define fl_on() (pm_ph_cen) /* PROF2-2: the flush tracer is phase mode only */
 extern unsigned pm_frame_count(void);
 static void fl_count(int empty) {
     for (int i = 0; i < fl_nt; i++) if (fl_tab[i].fn == fl_fn && fl_tab[i].line == fl_line) { fl_tab[i].n++; fl_tab[i].e += empty; return; }
@@ -605,9 +605,9 @@ static void kick_check(void) {
     if (want_clear) { C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0); want_clear = 0; } /* queue order: the clear comes before the first part */
     sh_clear();
     PH_PUSH(PH_GPU);
-    { unsigned k0 = pm_ph_on ? pm_ticks() : 0; /* PI4: the split is timed on its own */
+    { unsigned k0 = pm_ph_cen ? pm_ticks() : 0; /* PI4: the split is timed on its own (phase mode only) */
       ndunit_scan(); rd_sync(); C3D_FrameSplit(GX_CMDLIST_FLUSH);
-      if (pm_ph_on) pm_ph_kick_us += (pm_ticks() - k0) / 268u; }
+      if (pm_ph_cen) pm_ph_kick_us += (pm_ticks() - k0) / 268u; }
     PH_POP();
     kick_n++;
     pm_ph_kick_n++;
@@ -623,7 +623,7 @@ void pm_gpu_flush_from(const char* fn, int line) { fl_fn = fn; fl_line = line; f
 void fl_rect_note(void) { if (fl_on()) { fl_rects++; if (fl_prev_rect) fl_consec++; } }
 void fl_rect_done(void) { fl_prev_rect = 1; }
 static void flush_impl(void) {
-    if (!pm_ph_on) { flush_impl_body(); return; }
+    if (!pm_ph_cen) { flush_impl_body(); return; } /* PROF2-2: fl_acc feeds the tex_op timer only (phase mode) */
     unsigned t0 = pm_ticks();
     flush_impl_body();
     fl_acc += (unsigned)(pm_ticks() - t0);
@@ -3328,20 +3328,20 @@ void pm_gpu_flush_at(int line) { /* PG0: a flush asked for by the display list i
     if (nb.gni <= 0) {
         unsigned s0 = pm_svc_n;
         pm_ec_n++;
-        if (pm_ph_on) { int c = pm_gbi_flush_class(); pm_fl_n[c]++; pm_fl_e[c]++; }
+        if (pm_ph_cen) { int c = pm_gbi_flush_class(); pm_fl_n[c]++; pm_fl_e[c]++; }
         flush_impl();
         pm_ec_svc += pm_svc_n - s0; /* 0 when the path makes no svc call */
         return;
     }
     pm_dc_c[DC_CL]++;
     int c = 0;
-    if (pm_ph_on) { c = pm_gbi_flush_class(); pm_fl_n[c]++; { extern void pm_gbi_census_close(void); pm_gbi_census_close(); } } /* T2b: non-empty close per producer */
-    dc_on = (dc_seq++ & 7) == 0 && (pm_ph_on || pm_dcs_on); /* DC1: one close in 8 is sampled, with phase or dcsum */
+    if (pm_ph_cen) { c = pm_gbi_flush_class(); pm_fl_n[c]++; { extern void pm_gbi_census_close(void); pm_gbi_census_close(); } } /* T2b: non-empty close per producer */
+    dc_on = (dc_seq++ & 7) == 0 && (pm_ph_cen || pm_dcs_on); /* DC1: one close in 8 is sampled, with phase mode or dcsum (PROF2-2: not in a prof sample) */
     if (!dc_on) { flush_impl(); return; } /* W2: the flush timer uses the DC1 sample, one close in 8, scaled by 8 */
-    unsigned t0 = pm_ph_on ? pm_ticks() : 0; /* the per-class flush time is phase only */
+    unsigned t0 = pm_ph_cen ? pm_ticks() : 0; /* the per-class flush time is phase only */
     flush_impl();
     dc_on = 0;
-    if (pm_ph_on) pm_fl_us[c] += (pm_ticks() - t0) * 8u / 268u;
+    if (pm_ph_cen) pm_fl_us[c] += (pm_ticks() - t0) * 8u / 268u;
 }
 /* DS0: cold. Called once per drawn frame from pm_gbi_end_frame (phase or dcsum on). It takes and clears pm_dc_c and pm_dc_us. Every 300 frames it prints one dcsum line. */
 void pm_gpu_dcsum_frame(unsigned frame) {

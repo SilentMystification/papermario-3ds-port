@@ -142,7 +142,6 @@ extern unsigned pm_dc_c[DC_N], pm_dc_us[DCU_N];
 void pm_fl_dc(const void* p, unsigned n);
 extern unsigned pm_fl_gsp_n;
 extern unsigned pm_svc_n, pm_ec_n, pm_ec_svc; /* EC2: svc reads, empty closes, svc reads inside empty closes (phase on, per drawn frame) */ /* PI2: batch closes, empty closes, us per class, us of the empty closes */
-void pm_tex_th_frame(unsigned* o); /* PI3 */
 enum {
     CS_PLAN, CS_MODE, CS_PRIM, CS_ENV, CS_LAY, CS_CON,
     CS_PF_N, CS_PF_G, CS_PF_CNAME, CS_PF_BUFNAME, CS_PF_VTXNAME,
