@@ -93,7 +93,6 @@ static float cmd_max;
 static DVLB_s* dvlb;
 /* PO3b (switch gpuvtx): raw Vtx path. A ring of the 16 byte Vtx records of this frame and a u16 index ring. A batch is the triangles that share one
  * matrix and one uv map. Program prog4 (matrix palette) or prog5 reads the Vtx as they are. The batch is drawn by flush() when gni > 0. */
-enum { GRING_VTX = 16384, GRING_IDX = 65536, GSTAT_VTX = 16384 }; /* DLC2: the static vertex area follows the ring in the same buffer (indices GRING_VTX and up) */
 static unsigned gstat_n; /* DLC2: static vertices in use */
 /* FB-1 ring_wrap: the raw ring is a chunk list. Chunk 0 is the boot allocation; its tail is the static area (GRING_VTX and up). ring_cur is the chunk the
  * open batch and the fills use: gring and gidx point to it. stamp = the frame that used the chunk; a chunk with stamp < ring_done is finished on the GPU
@@ -142,7 +141,6 @@ static void rd_sync(void); /* RECT-1b diag: parse the GPUCMD words since the las
 static unsigned post_gen = 1;
 static unsigned* rgen;          /* per ring vertex: the palette generation in which its flag was set (0 = never) */
 static unsigned char* rk;       /* per ring vertex: the flag value */
-enum { RECT_GM = 256 }; /* RECT-1a: palette slot of a fill rectangle batch (screen pixels): pcomp[RECT_GM] = projection with the depth folded in, see pcomp_calc */
 static C3D_Mtx pcomp[257];      /* palette entry per game matrix index: post x game */
 static const float (*pal_tab)[4][4];
 static unsigned gv_recopy_n, gv_palup_n, gv_palmax, gv_palflush;
@@ -233,7 +231,7 @@ static void gpu_flush_written(void) {
     if (dc_on) dcs_gt += (pm_ticks() - g0) * 8u;
 }
 /* B2: queue order is clear of the main target, then every part. The first split of a frame queues the clear first. */
-static void split_frame(void) {
+void split_frame(void) {
     gpu_flush_written(); /* GV0b: the GPU runs the first part now, its vertices must be in memory */
     if (!grab_split++ && want_clear) {
         C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0);
@@ -556,10 +554,10 @@ static void gp2_clip_init(void) {
 /* DR1: O2 merges consecutive texture rectangles and fills with equal state into one draw.
  * rect_open: the open batch holds rectangles. Their draw state (effective combine mode, rect_z) is kept in rect_ec and rect_zb and
  * flush_impl puts it in place for the draw, then restores the caller's state. pm_gpu_drew and the grab and off-screen entry points flush it first. */
-static void rect_log(unsigned f);
 void nd_tridrop_log(unsigned f); /* DEL (nd_geom.c) */
 static unsigned plan_gen; /* DR1: counts changes of `plan`, the texenv key compares this instead of the plan */
-static unsigned dr1_merged, dr1_breaks, kick_n; /* the dr1 log line (kick_n: KICK1 splits) */
+unsigned dr1_merged, dr1_breaks; /* the dr1 log line */
+static unsigned kick_n; /* KICK1 splits */
 void pm_tex_cur_slots(int* a, int* b);
 int pm_tex_cur_vram_pending(void); int pm_tex_aux_vram_pending(void);
 /* S3 M3: the native raw draw (nd_raw_native) writes the effect, TEV, texture unit and uniform registers itself. The GPU then holds state that citro3d did not write. nd_leave_native
@@ -618,6 +616,11 @@ static void flush_draw(void);
 static unsigned long long fl_acc;
 unsigned long long pm_gpu_fl_acc(void) { return fl_acc; }
 static void flush_impl_body(void);
+/* C8: flush for pm_gpu_rect.c (the flush tracer fl_fn and fl_line stays in this file) */
+void pm_gpu_flush_from(const char* fn, int line) { fl_fn = fn; fl_line = line; flush_impl(); }
+/* PG0: the texture rectangle counts of the flush tracer (pm_gpu_tex_rect) */
+void fl_rect_note(void) { if (fl_on()) { fl_rects++; if (fl_prev_rect) fl_consec++; } }
+void fl_rect_done(void) { fl_prev_rect = 1; }
 static void flush_impl(void) {
     if (!pm_ph_on) { flush_impl_body(); return; }
     unsigned t0 = pm_ticks();
@@ -626,11 +629,10 @@ static void flush_impl(void) {
 }
 /* FB-1 RSIG (debug switch rectsig): the render state a raw rectangle batch was opened with (rect_sig_fill at the open), compared with the live state at
  * every merge and at the close. The close draws the batch with the live state, so a field that differs names a setter that does not flush an open batch. */
-typedef struct { int filt, ws, wt, cur, sx0, sy0, sx1, sy1, bl, rep, zc, zu, at, dec, noc, zon, mem, mix, comb, rgbs, pgen, mixc, prim, cc, env; } RectSig;
-static RectSig rsig_open;
-static unsigned rsig_chk, rsig_diff;
+RectSig rsig_open;
+unsigned rsig_chk, rsig_diff;
 extern void pm_tex_unit0_param(uint32_t* ws, uint32_t* wt, unsigned* filter);
-static void rect_sig_fill(RectSig* s) {
+void rect_sig_fill(RectSig* s) {
     uint32_t ws = 0, wt = 0; unsigned f = 0;
     pm_tex_unit0_param(&ws, &wt, &f);
     s->filt = (int)f; s->ws = (int)ws; s->wt = (int)wt; s->cur = pm_tex_cur_idx();
@@ -639,7 +641,7 @@ static void rect_sig_fill(RectSig* s) {
     s->zon = gs.z_on; s->mem = r_memblend; s->mix = gs.r_mix; s->comb = gs.combine; s->rgbs = rgb_scale; s->pgen = plan_gen;
     s->mixc = (int)r_mixcol; s->prim = (int)prim; s->cc = (int)cconst; s->env = (int)gs.env_col;
 }
-static void rect_sig_check(const char* where) {
+void rect_sig_check(const char* where) {
     if (!PMDL("rectsig")) return;
     RectSig n;
     rect_sig_fill(&n);
@@ -780,7 +782,8 @@ static __attribute__((noinline)) void scissor_off(void) {
 static u32 rd_reg[0x400];
 static u32 rd_uf[256][4];
 static unsigned rd_uidx, rd_ucnt, rd_last, rd_fr = 0xffffffffu, rd_nl, rd_pairs;
-static int rd_tex, rd_st = -1;
+int rd_tex;
+static int rd_st = -1;
 static void rd_wr(unsigned id, unsigned mk, u32 v) { /* mk: header bits 16-19, byte b of the register is written when bit b is set */
     if (id >= 0x400u) return;
     if (id == 0x2C0u) { rd_uidx = v & 0xFFu; rd_ucnt = 0; return; }
@@ -827,9 +830,8 @@ static void orbreg_dump(void) {
     for (int st = 0; st < 6; st++) pm_log("orbreg f%u stage %d base %03x src %08x op %08x fn %08x col %08x sc %08x", f, st, tb[st], rd_reg[tb[st]], rd_reg[tb[st] + 1], rd_reg[tb[st] + 2], rd_reg[tb[st] + 3], rd_reg[tb[st] + 4]);
     pm_log("orbreg f%u e0 %08x fd %08x 100 %08x 101 %08x 102 %08x 103 %08x 104 %08x 105 %08x 106 %08x 107 %08x", f, rd_reg[0xE0], rd_reg[0xFD], rd_reg[0x100], rd_reg[0x101], rd_reg[0x102], rd_reg[0x103], rd_reg[0x104], rd_reg[0x105], rd_reg[0x106], rd_reg[0x107]);
 }
-#define RQ_MAX 64
-static int rq_n, rq_cur, rq_slot[RQ_MAX], rq_b[RQ_MAX];
-static short rq_st[RQ_MAX][4];
+int rq_n, rq_cur, rq_slot[RQ_MAX], rq_b[RQ_MAX];
+short rq_st[RQ_MAX][4];
 static unsigned rd_ncl;
 const void* pm_tex_slot_img(int idx);
 static __attribute__((cold, noinline)) void rd_close(unsigned addr, unsigned dim, unsigned type, int tex) {
@@ -1879,71 +1881,6 @@ void pm_gx_drain(void) {
     gxCmdQueueStop(q);
     gxCmdQueueClear(q);
 }
-/* FB-1 ring_wrap: the raw vertex and index ring has no room for the next rectangle or grab quad. The limits are GRING_VTX and GRING_IDX (the ringsmall
- * switch was deleted in DEL). The walker paths keep the real limits. A wrap closes the open
- * batch, submits the queued part (split_frame) and moves the ring to a chunk the GPU has finished, else to a new one. No wait for the GPU happens here: the
- * mid-frame gspWaitForP3D hung on a list that citro3d had not started (FB-1 oracle decision). */
-static unsigned ring_wraps;
-/* the chunk c becomes the ring. The caller has flushed the open batch. */
-static void ring_set(int c) {
-    nb.ring_cur = c;
-    nb.gring = nb.rchunk[c].vtx; nb.gidx = nb.rchunk[c].idx;
-    nb.gring_n = nb.gidx_n = nb.gring_fl = nb.gidx_fl = nb.gi_start = nb.gni = 0;
-    nb.buf_cur = 0;
-}
-/* a frame begins on chunk 0 with empty fills */
-static void ring_frame_begin(void) {
-    nb.ring_fr++;
-    nb.rchunk[0].stamp = nb.ring_fr;
-    ring_set(0);
-}
-/* FB-1: the open batch takes kind k. A batch of the other kind is closed first, off chunk 0 only (on chunk 0 both kinds share the vertex base). */
-static void gi_kind_set(int k) {
-    if (nb.gni == 0) nb.gi_kind = k;
-    else if (nb.ring_cur && nb.gi_kind != k) { flush(); nb.gi_kind = k; }
-}
-/* a chunk other than the one in use: finished on the GPU (stamp < ring_done), or never used. A new chunk is linearAlloc'd (counted, logged). -1 when none. */
-static __attribute__((cold, noinline)) int ring_pick(void) {
-    for (int c = 0; c < nb.rchunk_n; c++) {
-        if (c == nb.ring_cur || (nb.rchunk[c].used && nb.rchunk[c].stamp >= nb.ring_done)) continue;
-        nb.rchunk[c].used = 1; nb.rchunk[c].stamp = nb.ring_fr;
-        return c;
-    }
-    if (nb.rchunk_n >= RING_CHUNK_MAX) return -1;
-    unsigned char* v = (unsigned char*)linearAlloc(GRING_VTX * 16u);
-    unsigned short* x = (unsigned short*)linearAlloc(GRING_IDX * 2u);
-    if (!v || !x) {
-        if (v) linearFree(v);
-        if (x) linearFree(x);
-        pm_log_e("ring: chunk %d failed (linear)", nb.rchunk_n);
-        return -1;
-    }
-    const int c = nb.rchunk_n++;
-    nb.rchunk[c].vtx = v; nb.rchunk[c].idx = x; nb.rchunk[c].used = 1; nb.rchunk[c].stamp = nb.ring_fr;
-    pm_log_w("ring: chunk %d allocated, %u chunks in use (%u KB each)", c, (unsigned)nb.rchunk_n, (unsigned)((GRING_VTX * 16u + GRING_IDX * 2u) >> 10));
-    return c;
-}
-static __attribute__((cold, noinline)) int ring_wrap(void) {
-    const int was_off = gs.off_active, prev = gs.off_cur;
-    flush();
-    if (was_off) pm_gpu_off_end(); /* the split runs on the main target, as grab_impl does */
-    pm_gx_room();
-    split_frame();
-    const int c = ring_pick();
-    if (c >= 0) {
-        ring_set(c);
-        ring_wraps++;
-        pm_log_d("ringwrap f%u wraps %u chunk %d", pm_frame_count(), ring_wraps, c);
-    }
-    if (was_off) pm_gpu_off_begin(gs.offs[prev].base, gs.offs[prev].w == 64 ? 64 : 320, gs.offs[prev].siz);
-    return c >= 0;
-}
-/* FB-1: 1 when nv vertices and ni indices fit the ring, after a ring_wrap when they do not. 0 when they cannot fit an empty chunk or no chunk is free. */
-static int ring_need(unsigned nv, unsigned ni) {
-    if (nb.gring_n + nv <= GRING_VTX && nb.gidx_n + ni <= GRING_IDX) return 1;
-    if (nv > GRING_VTX || ni > GRING_IDX) return 0;
-    return ring_wrap();
-}
 /* queue the copy of the colour buffer strips (all 400 screen columns with wide, else the 320 game columns) into grab_tex */
 static void grab_queue_copy(void) {
     const int mo = pm_wide ? 0 : 40, x1 = pm_wide ? 400 : 320;
@@ -1983,7 +1920,6 @@ static void grab_log(const void* cfb, int y0, int y1, int reuse) {
     if (on < 0) on = pm_debug_has("grablog");
     if (on) pm_log_d("grab %d src %p rows %d-%d frame %u reuse %s", grab_n, cfb, y0, y1, pm_frame_count(), reuse ? "yes" : "no");
 }
-static void rect_raw_open(int ec, float fz, const float uvso[4]); /* RECT-1a, defined below */
 /* FB-1 GRAB: the copy quad as four ring vertices (rect_raw_quad form, identity positions as the off-screen rect path). uv = tc / 256, shorts 256 - row / 2
  * (mo + x is even at both edges): s runs along y (240 at the top, 0 at the bottom), t along x, as the CPU quad. */
 static void grab_raw_quad(int x1, int mo) {
@@ -3423,195 +3359,6 @@ void pm_gpu_set_scissor(int x0, int y0, int x1, int y1) {
 
 
 
-
-/* Game pixels are y-down. The ortho matrix is y-up, and 320px is centered in 400. */
-static float px(int x) { return gs.off_active ? (float)x : 40.f + (float)x; } /* F07-3: 2D is 1:1 and centered, also with wide */
-static float py(int y) { return gs.off_active ? (float)y : 240.f - (float)y; }
-
-static float fill_z = 0.5f;
-/* RECT-1a: fill rectangles as raw Vtx batches (agent_s6.md RECT-1). Four Vtx in the ring: x, y screen pixels, z 0, s t 0, colour in the N64 Vtx layout (r in byte 12).
- * Palette entry RECT_GM (pcomp_calc) is the projection with the depth folded in. The batch closes through nd_raw_native with
- * rect_2d set (flush_impl_body rect branch). Merge key as rect_raw_open, plus the depth. rect_c: fill, tex, native, merged, cpu, ring high mark. */
-static unsigned rect_c[6];
-static unsigned rr_why[8]; /* RECT-2b diag: why a textured or fill rectangle is refused (dropped, rect_c[4]): 1 gpu, 2 off, 3 grab, 4 zmark, 5 ring full, 6 norectraw, 7 texcoord range */
-static int rect_raw_ok(void) {
-    if (!(gs.gpu_vtx_on && gs.gpu_ok && gs.gv4_on)) { rr_why[1]++; return 0; }
-    if (!ring_need(4, 6)) { rr_why[5]++; return 0; }
-    return 1;
-}
-static void rect_raw_open(int ec, float fz, const float uvso[4]) {
-    int rtx = pm_tex_cur_idx();
-    rq_cur = rd_tex ? rtx : -1; /* RECT diag: the queue-time slot of this rectangle */
-    if (nb.rect_open && nb.gni > 0 && nb.rect_ec == ec && nb.rect_zb == nb.rect_z && nb.rect_tex == rtx && fz == nb.rect_pal_z && !memcmp(nb.g_uvso, uvso, sizeof(nb.g_uvso)) && !PMDL("rectnomerge")) { dr1_merged++; rect_c[3]++; rect_sig_check("merge"); return; }
-    if (nb.rect_open) dr1_breaks++;
-    flush();
-    nb.gi_kind = 0;
-    nb.draw_3d = 0;
-    nb.rect_ec = ec; nb.rect_zb = nb.rect_z; nb.rect_tex = rtx; nb.rect_open = 1; rq_n = 0;
-    if (fz != nb.rect_pal_z) { /* the palette entry and the register caches hold the matrix of the old depth */
-        nb.rect_pal_z = fz; gs.pcomp_gen[RECT_GM] = 0;
-    }
-    memcpy(nb.g_uvso, uvso, sizeof(nb.g_uvso));
-    nb.g_vp[0] = gs.vp_sx; nb.g_vp[1] = gs.vp_sy; nb.g_vp[2] = gs.vp_tx; nb.g_vp[3] = gs.vp_ty;
-    for (int i = 0; i < 4; i++) { nb.g_cmul[i] = 1.f; nb.g_cadd[i] = 0.f; }
-    nb.g_zmix[0] = 1.f; nb.g_zmix[1] = 0.f;
-    nb.g_ct = 0; nb.g_cullm = GPU_CULL_NONE; nb.g_pal = 1; nb.g_use5 = 0;
-    nb.pal_n = 1; nb.pal_g[0] = RECT_GM; nb.pal_gen++;
-    if (PMDL("rectsig")) rect_sig_fill(&rsig_open);
-}
-static void rect_raw_quad(int xa, int ya, int xb, int yb, short s0, short t0, short s1, short t1, unsigned c) {
-    short v[32];
-    const int px_[4] = { xa, xb, xb, xa }, py_[4] = { ya, ya, yb, yb };
-    const short ps[4] = { s0, s1, s1, s0 }, pt[4] = { t0, t0, t1, t1 };
-    for (int i = 0; i < 4; i++) {
-        short* q = v + 8 * i;
-        unsigned char* cb = (unsigned char*)q;
-        q[0] = (short)px_[i]; q[1] = (short)py_[i]; q[2] = 0; q[3] = 0; q[4] = ps[i]; q[5] = pt[i];
-        cb[12] = (unsigned char)(c >> 24); cb[13] = (unsigned char)(c >> 16); cb[14] = (unsigned char)(c >> 8); cb[15] = (unsigned char)c;
-    }
-    const int b = pm_gpu_gvtx_load(v, 4);
-    unsigned short* ix = nb.gidx + nb.gidx_n;
-    ix[0] = (unsigned short)b; ix[1] = (unsigned short)(b + 1); ix[2] = (unsigned short)(b + 2);
-    ix[3] = (unsigned short)b; ix[4] = (unsigned short)(b + 2); ix[5] = (unsigned short)(b + 3);
-    nb.gidx_n += 6; nb.gni += 6;
-    if (rq_n < RQ_MAX) { rq_slot[rq_n] = rq_cur; rq_b[rq_n] = b; rq_st[rq_n][0] = s0; rq_st[rq_n][1] = t0; rq_st[rq_n][2] = s1; rq_st[rq_n][3] = t1; }
-    rq_n++;
-    rect_c[2]++;
-    if ((unsigned)nb.gring_n > rect_c[5]) rect_c[5] = (unsigned)nb.gring_n;
-}
-static void rect_log(unsigned f) { if (PMDL("rectsig")) pm_log_d("rsig sum f%u chk %u diff %u", f, rsig_chk, rsig_diff); pm_log_d("rect f%u fill %u tex %u native %u merged %u drop %u ring %u", f, rect_c[0], rect_c[1], rect_c[2], rect_c[3], rect_c[4], rect_c[5]); pm_log_d("rectwhy f%u gpu %u off %u grab %u zmark %u ring %u norect %u range %u", f, rr_why[1], rr_why[2], rr_why[3], rr_why[4], rr_why[5], rr_why[6], rr_why[7]); memset(rr_why, 0, sizeof rr_why); memset(rect_c, 0, sizeof rect_c);
-    nd_tridrop_log(f);
-}
-void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba) {
-    if (PMDL("zmforce")) { gs.z_on = 1; nb.rect_z = 1; gs.r_zmark = 1; gs.r_zmark_zn = 0.5f; } /* FB-1 ZM forcing: every rectangle is a zmark rectangle (CPU and native alike) */
-    if (x1 < x0) { int t = x0; x0 = x1; x1 = t; }
-    if (y1 < y0) { int t = y0; y0 = y1; y1 = t; }
-    rect_c[0]++;
-    rd_tex = 0;
-    if (rect_raw_ok()) {
-        static const float uv0[4] = { 1.f, 1.f, 0.f, 0.f };
-        /* F07-3: a fill from the game edge reaches the screen edge. OFF-1: an off-screen pass is px and py (no wide, no 40 pixel margin) */
-        int xa = gs.off_active ? x0 : (pm_wide && x0 <= 0) ? 0 : 40 + x0;
-        int xb = gs.off_active ? x1 + 1 : (pm_wide && x1 >= 319) ? 400 : 40 + x1 + 1;
-        int ya = gs.off_active ? y0 : 240 - y0, yb = gs.off_active ? y1 + 1 : 240 - (y1 + 1);
-        rect_raw_open(0, fill_z, uv0);
-        rect_raw_quad(xa, ya, xb, yb, 0, 0, 0, 0, rgba);
-        if (!gs.off_active) gs.grab_dirty = 1; /* a fill draws rows the grab does not track (rect_y0 and rect_y1 are for texture rectangles): the next grab copies */
-        return;
-    }
-    rect_c[4]++; /* no CPU rectangle path: a refused rectangle is dropped and counted (rect log: drop) */
-    return;
-}
-
-void pm_gpu_fill_rect_z(int x0, int y0, int x1, int y1, unsigned rgba, float d) {
-    fill_z = d; /* the batch in flight keeps its own depth state: rect_raw_open draws it first when rect_z differs */
-    nb.rect_z = 1;
-    pm_gpu_fill_rect(x0, y0, x1, y1, rgba);
-    nb.rect_z = 0;
-    fill_z = 0.5f;
-}
-
-/* B3: a fill into the z-buffer image: depth d in the rectangle, colour untouched, no depth test (r_nocol, r_zupd, no r_zcmp). */
-void pm_gpu_fill_depth(int x0, int y0, int x1, int y1, float d) {
-    int s_nc = gs.r_nocol, s_zc = gs.r_zcmp, s_zu = gs.r_zupd, s_bl = gs.r_blend, s_at = gs.r_atest, s_de = gs.r_decal, s_z = gs.z_on, s_mix = gs.r_mix;
-    flush();
-    int s_zm = gs.r_zmark; gs.r_zmark = 0;
-    gs.r_nocol = 1; gs.r_zcmp = 0; gs.r_zupd = 1; gs.r_blend = 0; gs.r_atest = -1; gs.r_decal = 0; gs.z_on = 1; gs.r_mix = 0;
-    pm_gpu_fill_rect_z(x0, y0, x1, y1, 0, d);
-    flush(); /* DR1: the rectangle is drawn with the temporary render state */
-    gs.r_zmark = s_zm;
-    gs.r_nocol = s_nc; gs.r_zcmp = s_zc; gs.r_zupd = s_zu; gs.r_blend = s_bl; gs.r_atest = s_at; gs.r_decal = s_de; gs.z_on = s_z; gs.r_mix = s_mix;
-}
-
-/* RECT-1b: a texture rectangle as a raw batch (agent_s6.md RECT-1b). s and t are normalized: the ring gets shorts s * sc, the batch uvso is {1 / sc, 1 / sc, 0, 0} (pica uv = tc * uvso.xy + uvso.zw).
- * sc is 4096, 1024 or 256 by the largest |s| or |t| (the short range): above 127 the piece is refused (returns 0, rr_why 7). */
-static short tex_st(float v, float sc) { float f = v * sc; return (short)(f >= 0.f ? f + 0.5f : f - 0.5f); }
-/* SC-1 (FB-1): one textured piece as a raw batch. Coordinates at or above 127 take the base form: the shorts hold s - bs and uvso.zw = bs (pica uv = tc * uvso.xy + uvso.zw),
- * bs = floor of the lower s (bt for t). Below 127 the base is 0 and the batch is as before. sc follows the largest value that the shorts hold.
- * Returns 0 when the piece is still too wide (tex_raw_rect splits first, so this is not reached in practice). */
-static int tex_raw_piece(int xa, int ya, int xb, int yb, float s0, float t0, float s1, float t1, int y0, int y1) {
-    const int saved = gs.combine;
-    const int ec = (saved == 5 || saved == 6 || saved == 7 || saved == 8) ? saved : 2;
-    float mx = 0.f;
-    const float av[4] = { s0 < 0.f ? -s0 : s0, s1 < 0.f ? -s1 : s1, t0 < 0.f ? -t0 : t0, t1 < 0.f ? -t1 : t1 };
-    for (int i = 0; i < 4; i++) if (av[i] > mx) mx = av[i];
-    float bs = 0.f, bt = 0.f;
-    if (mx >= 127.f) { bs = floorf(s0 < s1 ? s0 : s1); bt = floorf(t0 < t1 ? t0 : t1); }
-    const float r0s = s0 - bs, r1s = s1 - bs, r0t = t0 - bt, r1t = t1 - bt;
-    const float rv[4] = { r0s < 0.f ? -r0s : r0s, r1s < 0.f ? -r1s : r1s, r0t < 0.f ? -r0t : r0t, r1t < 0.f ? -r1t : r1t };
-    float rmx = 0.f;
-    for (int i = 0; i < 4; i++) if (rv[i] > rmx) rmx = rv[i];
-    float sc, inv;
-    if (rmx < 7.9f) { sc = 4096.f; inv = 0.000244140625f; }
-    else if (rmx < 31.9f) { sc = 1024.f; inv = 0.0009765625f; }
-    else if (rmx < 127.f) { sc = 256.f; inv = 0.00390625f; }
-    else { rr_why[7]++; return 0; }
-    unsigned c = (saved == 5 || saved == 7) ? gs.env_col : (saved == 8 && gs.plan.vtxname != PM_NM_SHADE) ? gs.plan.vtx : 0xffffffffu;
-    const float uvso[4] = { inv, inv, bs, bt };
-    rect_raw_open(ec, fill_z, uvso);
-    rect_raw_quad(xa, ya, xb, yb, tex_st(r0s, sc), tex_st(r0t, sc), tex_st(r1s, sc), tex_st(r1t, sc), c);
-    { /* R13c: the rows this rectangle draws (the close reads them for the grab) */
-        int ry0 = y0 < 0 ? 0 : y0, ry1 = y1 + 1;
-        if (nb.rect_y1 > nb.rect_y0) { if (ry0 < nb.rect_y0) nb.rect_y0 = ry0; if (ry1 > nb.rect_y1) nb.rect_y1 = ry1; }
-        else { nb.rect_y0 = ry0; nb.rect_y1 = ry1; }
-    }
-    return 1;
-}
-/* RECT-1b: a texture rectangle as a raw batch (agent_s6.md RECT-1b). s and t are normalized: the ring gets shorts s * sc, the batch uvso is {1 / sc, 1 / sc, bs, bt}.
- * A rectangle whose s or t span needs more than about 120 texels is split into equal pieces along that axis (SC-1). */
-static int tex_raw_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s1, float t1) {
-    if (!rect_raw_ok()) return 0;
-    float xa = px(x0), xb = px(x1 + 1);
-    if (pm_wide && !gs.off_active && xb > xa) { /* F07-7: a rectangle on the game edge reaches the screen edge */
-        float ds = (s1 - s0) / (xb - xa);
-        if (x0 == 0) { s0 -= ds * xa; xa = 0.f; }
-        if (x1 == 319) { s1 += ds * (400.f - xb); xb = 400.f; }
-    }
-    const float ya = py(y0), yb = py(y1 + 1);
-    const int ixa = (int)xa, ixb = (int)xb, iya = (int)ya, iyb = (int)yb;
-    /* split count: the base form is needed when the magnitude is at or above 127; a piece holds a span of about 120 texels */
-    float mx = 0.f;
-    const float av[4] = { s0 < 0.f ? -s0 : s0, s1 < 0.f ? -s1 : s1, t0 < 0.f ? -t0 : t0, t1 < 0.f ? -t1 : t1 };
-    for (int i = 0; i < 4; i++) if (av[i] > mx) mx = av[i];
-    int nx = 1, ny = 1;
-    if (mx >= 127.f) {
-        const float spanS = s0 < s1 ? s1 - s0 : s0 - s1, spanT = t0 < t1 ? t1 - t0 : t0 - t1;
-        if (spanS >= 120.f || spanT >= 120.f) { nx = 1 + (int)(spanS / 120.f); ny = 1 + (int)(spanT / 120.f); }
-    }
-    if (nx == 1 && ny == 1) return tex_raw_piece(ixa, iya, ixb, iyb, s0, t0, s1, t1, y0, y1);
-    const int W = ixb - ixa, H = iyb - iya;
-    if (W == 0 || H == 0 || (W < 0 ? -W : W) < nx || (H < 0 ? -H : H) < ny) { rr_why[7]++; return 0; }
-    if (!ring_need(4u * (unsigned)nx * (unsigned)ny, 6u * (unsigned)nx * (unsigned)ny)) { rr_why[5]++; return 0; } /* the pieces must fit the ring together */
-    for (int j = 0; j < ny; j++) {
-        const int ja = iya + H * j / ny, jb = iya + H * (j + 1) / ny;
-        const float ta = t0 + (t1 - t0) * (float)(ja - iya) / (float)H, tb = t0 + (t1 - t0) * (float)(jb - iya) / (float)H;
-        for (int i = 0; i < nx; i++) {
-            const int ia = ixa + W * i / nx, ib = ixa + W * (i + 1) / nx;
-            const float sa = s0 + (s1 - s0) * (float)(ia - ixa) / (float)W, sb = s0 + (s1 - s0) * (float)(ib - ixa) / (float)W;
-            tex_raw_piece(ia, ja, ib, jb, sa, ta, sb, tb, y0, y1);
-        }
-    }
-    return 1;
-}
-void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s1, float t1) {
-    if (PMDL("zmforce")) { gs.z_on = 1; nb.rect_z = 1; gs.r_zmark = 1; gs.r_zmark_zn = 0.5f; } /* FB-1 ZM forcing (as pm_gpu_fill_rect) */
-    if (x1 < x0) { int t = x0; x0 = x1; x1 = t; float s = s0; s0 = s1; s1 = s; }
-    if (y1 < y0) { int t = y0; y0 = y1; y1 = t; float s = t0; t0 = t1; t1 = s; }
-    if (fl_on()) { fl_rects++; if (fl_prev_rect) fl_consec++; }
-    rect_c[1]++;
-    rd_tex = 1;
-    if (tex_raw_rect(x0, y0, x1, y1, s0, t0, s1, t1)) { fl_prev_rect = 1; return; }
-    rect_c[4]++; /* no CPU rectangle path: a refused rectangle is dropped and counted (rect log: drop) */
-    fl_prev_rect = 1;
-}
-
-void pm_gpu_tex_rect_z(int x0, int y0, int x1, int y1, float s0, float t0, float s1, float t1, float d) {
-    fill_z = d;
-    nb.rect_z = 1;
-    pm_gpu_tex_rect(x0, y0, x1, y1, s0, t0, s1, t1);
-    nb.rect_z = 0;
-    fill_z = 0.5f;
-}
 
 /* F03: one pixel of the last finished depth buffer (D24S8, same tiling and rotation as pm_gpu_read_frame). */
 /* CORE2-3a: walker side entry (nd_wq.c): the game thread calls it, the body runs on the walker side. */

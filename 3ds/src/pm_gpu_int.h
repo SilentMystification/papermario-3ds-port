@@ -65,3 +65,19 @@ typedef struct PmGpuSt {
     PmOffImg offs[OFF_ALL];    /* the off-screen images */
 } PmGpuSt;
 extern PmGpuSt gs;
+enum { GRING_VTX = 16384, GRING_IDX = 65536, GSTAT_VTX = 16384 }; /* DLC2: the static vertex area follows the ring in the same buffer (indices GRING_VTX and up) */
+enum { RECT_GM = 256 }; /* RECT-1a: palette slot of a fill rectangle batch (screen pixels): pcomp[RECT_GM] = projection with the depth folded in, see pcomp_calc */
+/* C8: the functions and the rectangle diagnostics that pm_gpu.c and pm_gpu_rect.c (ring, rectangle queue) share */
+void pm_gpu_flush_from(const char* fn, int line); /* flush of the open batch, with the caller for the flush tracer */
+void fl_rect_note(void); void fl_rect_done(void); /* PG0 tracer counts of texture rectangles */
+void split_frame(void); void pm_gx_room(void);
+void ring_frame_begin(void); void gi_kind_set(int k); int ring_need(unsigned nv, unsigned ni);
+void rect_raw_open(int ec, float fz, const float uvso[4]); void rect_log(unsigned f);
+void nd_tridrop_log(unsigned f); /* nd_geom.c */
+extern int pm_wide;
+typedef struct { int filt, ws, wt, cur, sx0, sy0, sx1, sy1, bl, rep, zc, zu, at, dec, noc, zon, mem, mix, comb, rgbs, pgen, mixc, prim, cc, env; } RectSig;
+extern RectSig rsig_open; extern unsigned rsig_chk, rsig_diff; /* FB-1 RSIG (switch rectsig) */
+void rect_sig_fill(RectSig* s); void rect_sig_check(const char* where);
+#define RQ_MAX 64
+extern int rd_tex, rq_n, rq_cur, rq_slot[RQ_MAX], rq_b[RQ_MAX]; extern short rq_st[RQ_MAX][4]; /* RECT diag: the queued rectangles of the batch */
+extern unsigned dr1_merged, dr1_breaks;
