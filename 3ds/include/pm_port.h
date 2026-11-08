@@ -155,7 +155,6 @@ void pm_boot_mark(int id, unsigned arg);
 void pm_rom_drop_stat(void);
 void pm_heaphi_line(unsigned frame); /* MEM-B: pm_heaphi.c */
 void pm_fatal_screen(const char* msg);
-void pm_crash_selftest(void);
 void pm_crash_install(void* stack, unsigned size);
 void pm_stack_register(int id, const char* name, unsigned size);
 unsigned pm_stack_used(int id, unsigned* size);
@@ -165,7 +164,6 @@ void pm_gpu_log_stats(const char* tag);
 void* pm_soc_buffer(unsigned* size);
 int pm_started_by_netload(void);
 void pm_soc_free(void);
-void pm_exit_mark(const char* what);
 void pm_audio_shutdown(void);
 void pm_log_soc_exit(void);
 const unsigned char* pm_rom_ptr(unsigned addr, unsigned len);
@@ -196,7 +194,6 @@ void pm_audio_retrace_send(void);
 void pm_audio_tick_end(void);
 unsigned pm_audio_retraces(void);
 unsigned pm_audio_pending(void);
-int pm_audio_lock(void);
 void pm_audio_hash_log(void);
 void pm_audio_drain(int reason); /* AU2: join the control job, then wait for the render thread (reason: AU2_SYNC_* in pm_au2.h) */
 int pm_audio_join_timed(int site, unsigned long long ns); /* sleep hook: 0 = idle, -1 = deadline */

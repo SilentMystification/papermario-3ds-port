@@ -30,9 +30,6 @@ static Ent ents[MAXENT];
 static unsigned cache_budget = 1536u * 1024u, cache_used, cache_peak;
 static unsigned c_hit, c_miss, c_evict, c_fail, c_late, dec_us_sum, dec_us_max, dec_n;
 
-static int fx_off, aux_late;
-static float gain_scale = 1.0f; /* switch dspgain=<percent>: scales every voice mix (clip test) */
-static int dsp_flush_each; /* switch dspflush: flush the sample before every wave buffer add */
 static volatile unsigned ax_total; /* aux callbacks since the start */
 static volatile int fx_flip;       /* the first aux callback ran: the render thread sets the mixes again */
 static unsigned ax_core;
@@ -141,11 +138,11 @@ static Ent* cache_get(const DspaSample* s) {
 }
 
 /* ---------- channels ---------- */
-/* PT22: the aux callback never ran on the O3DS (build 970 log), so the wet part of every voice was lost. While no aux callback has run (or with dspfx=off)
- * the wet and the delay sends are added to the main mix. dspgain=<percent> scales the result. */
+/* PT22: the aux callback never ran on the O3DS (build 970 log), so the wet part of every voice was lost. While no aux callback has run
+ * the wet and the delay sends are added to the main mix. */
 static float raw_mix[PM_DSPA_VOICES][12];
 static void mix_out(const float in[12], float out[12]) {
-    int fold = fx_off || ax_total == 0;
+    int fold = ax_total == 0;
     for (int k = 0; k < 12; k++) out[k] = in[k];
     if (fold) {
         { /* A5: the fold adds up to 5 sends to the dry gain and ndsp has no limiter. The user hears this mix and it sounds right: no behaviour change, one log line when a voice can pass 1.0 */
@@ -157,7 +154,6 @@ static void mix_out(const float in[12], float out[12]) {
         out[1] = in[1] + in[5] + in[7] + in[9] + in[11];
         for (int k = 4; k < 12; k++) out[k] = 0.0f;
     }
-    if (gain_scale != 1.0f) for (int k = 0; k < 12; k++) out[k] *= gain_scale;
 }
 static void chan_add(int ch, s16* data, unsigned n, int loop) {
     Chan* c = &chn[ch];
@@ -168,14 +164,12 @@ static void chan_add(int ch, s16* data, unsigned n, int loop) {
     w->nsamples = n;
     w->looping = loop;
     w->status = NDSP_WBUF_FREE;
-    if (dsp_flush_each) DSP_FlushDataCache(data, n * 2);
     ndspChnWaveBufAdd(ch, w);
 }
 
 int pm_dspa_voice_start(int ch, const DspaSample* s, float rate, const float mix[12]) {
     Chan* c = &chn[ch];
     Ent* e = cache_get(s);
-    if (aux_late) { aux_late = 0; ndspAuxSetCallback(0, aux0_cb, NULL); ndspAuxSetCallback(1, aux1_cb, NULL); pm_log("dspaudio: aux callbacks registered after the first voice start"); }
     if (c->e) { c->e->pins--; c->e = NULL; }
     ndspChnWaveBufClear(ch);
     c->nb = 0;
@@ -414,29 +408,17 @@ int pm_dspa_init(void) {
     unsigned want = pm_debug_value("dspcache", kv, sizeof kv) > 0 ? (unsigned)atoi(kv) : 1536u;
     if (want < 256) want = 256;
     cache_budget = want * 1024u;
-    { char v[16];
-      fx_off = pm_debug_value("dspfx", v, sizeof v) && strcmp(v, "off") == 0;
-      if (pm_debug_value("dspgain", v, sizeof v)) { int pc = atoi(v); if (pc > 0 && pc <= 400) gain_scale = (float)pc / 100.0f; }
-      dsp_flush_each = pm_debug_has("dspflush"); }
-    if (gain_scale != 1.0f || dsp_flush_each) pm_log("dspaudio: switches gain %.2f flush each add %d", gain_scale, dsp_flush_each);
     LightLock_Init(&fx_lock);
     fxmem = (s16*)linearMemAlign(FXR_BUFS * FXFRAME * 4, 128);
     if (!fxmem) { pm_log_e("dspaudio: linearAlloc for the effect return failed"); return 0; }
     memset(fxmem, 0, FXR_BUFS * FXFRAME * 4);
     chan_setup();
-    if (!fx_off) {
-        char av[16];
-        unsigned am = pm_debug_value("dspaux", av, sizeof av) ? (unsigned)atoi(av) : 0; /* PT22 test: bit 0 keep the aux volume at the libctru default 0.0 (the old build 970 behaviour; now the volume is set to 1.0), bit 1 front bypass off, bit 2 output count 2, bit 3 callbacks after the first voice start */
-        for (int i = 0; i < 2; i++) {
-            ndspAuxSetEnable(i, true);
-            if (!(am & 1)) ndspAuxSetVolume(i, 1.0f); /* the libctru default is 0.0 */
-            if (am & 2) ndspAuxSetFrontBypass(i, false);
-        }
-        if (am & 4) ndspSetOutputCount(2);
-        aux_late = (am & 8) != 0;
-        if (!aux_late) { ndspAuxSetCallback(0, aux0_cb, NULL); ndspAuxSetCallback(1, aux1_cb, NULL); }
-        pm_log("dspaudio: aux mask %u enabled %d %d volume %.2f %.2f late %d", am, ndspAuxIsEnabled(0), ndspAuxIsEnabled(1), ndspAuxGetVolume(0), ndspAuxGetVolume(1), aux_late);
-    } else pm_log("dspaudio: dspfx off, no aux callback, the wet part of every voice goes to the main mix");
+    for (int i = 0; i < 2; i++) {
+        ndspAuxSetEnable(i, true);
+        ndspAuxSetVolume(i, 1.0f); /* the libctru default is 0.0 */
+    }
+    ndspAuxSetCallback(0, aux0_cb, NULL); ndspAuxSetCallback(1, aux1_cb, NULL);
+    pm_log("dspaudio: aux enabled %d %d volume %.2f %.2f", ndspAuxIsEnabled(0), ndspAuxIsEnabled(1), ndspAuxGetVolume(0), ndspAuxGetVolume(1));
     ndspSetMasterVol(1.0f);
     pm_dspa_enabled = 1;
     pm_log("dspaudio: on, 23 voices on ndsp channels 0 to 22, effect return on channel 23, cache %u KB", cache_budget / 1024);

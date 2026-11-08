@@ -401,14 +401,7 @@ static int fl_nt;
 static int fl_prev_rect; static unsigned fl_rects, fl_consec; /* PG0: texture rectangles, and those that follow another with no other flush call between */
 #define fl_on() (pm_ph_on)
 extern unsigned pm_frame_count(void);
-/* Debug tool, switch flushlog=<frame>: one log line per flush call of that frame (function, line, raw batch triangles, CPU vertices): finds what ends a batch. */
-static void fl_trace(int empty) {
-    static int fr = -2;
-    char v[16];
-    if (fr == -2) fr = pm_debug_value("flushlog", v, sizeof v) ? atoi(v) : -1;
-}
 static void fl_count(int empty) {
-    fl_trace(empty);
     for (int i = 0; i < fl_nt; i++) if (fl_tab[i].fn == fl_fn && fl_tab[i].line == fl_line) { fl_tab[i].n++; fl_tab[i].e += empty; return; }
     if (fl_nt < 48) { fl_tab[fl_nt].fn = fl_fn; fl_tab[fl_nt].line = fl_line; fl_tab[fl_nt].n = 1; fl_tab[fl_nt].e = empty; fl_nt++; }
 }
@@ -426,12 +419,8 @@ void pm_gpu_gbiprof_report(unsigned frames) { /* the six most frequent causes si
     fl_rects = fl_consec = 0;
     for (int i = 0; i < fl_nt; i++) fl_tab[i].n = fl_tab[i].e = 0;
 }
-/* V19: decal depth bias, switch decalbias=<float> (default 0.001 as before; 0.00003 is about 2 float24 steps at mid range, to test on the device) */
-static float decal_bias(void) {
-    static float dbias = -1.f;
-    if (dbias < 0.f) { char dv[24]; dbias = pm_debug_value("decalbias", dv, sizeof dv) ? (float)atof(dv) : 0.001f; }
-    return dbias;
-}
+/* V19: decal depth bias (0.00003 would be about 2 float24 steps at mid range) */
+static float decal_bias(void) { return 0.001f; }
 /* V16b: an N64 decal (Z_CMP, ZMODE_DEC) passes only where the stored depth is close to the depth of the decal. GPU_GEQUAL with a bias passes everywhere the decal is
  * nearer, so an overlay on a sprite also landed on the wall behind it (Thunder Rage on Shy Guys: a flickering rectangle). Two passes with the stencil: pass 1 marks the
  * pixels where the stored depth is not farther than decal - DECAL_EPS, pass 2 draws where the mark is set and the usual test (decal + bias is not behind) passes. */
@@ -987,7 +976,6 @@ void pm_gpu_ndt_end(NdtT s, int k) {
 static unsigned ndn_tgen;
 static void pm5_upload_draw(const NdDraw* d);
 static void t1log_draw(const NdDraw* d);
-static void pm5draw_all(const NdDraw* d);
 static void pm5tex1_log(const NdDraw* d);
 /* FX1-3 orbdbg (debug tool): one line per draw inside an effect list (the tag from pm_gbi_dbg_orb_tag, nd_walk.c). path: walk (flush_draw) or native (nd_raw_native). */
 static __attribute__((cold, noinline)) void orb_log(const char* path, int z, int memb, int i8_0, int i8_1, unsigned tris, int graw) {
@@ -1004,7 +992,6 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
     pm_gbi_draw_note(1); /* WCEN3: a native draw (per producer, the former pm_gbi.c) */
     /* FB-3: every program 5 draw (model, sprite, raw) writes its pm5 block here, once. The copy keeps the caller's NdDraw; uvx goes to the pm5 uniform. */
     NdDraw d5;
-    pm5draw_all(dp);
     if (dp->use5 && !dp->no_uni) { d5 = *dp; pm5_upload_draw(&d5); d5.no_uni = 1; d5.npal = 0; if (d5.has_uvx) d5.loc_uvx = (unsigned)u5_uvx; dp = &d5; }
     t1log_draw(dp);
     pm5tex1_log(dp);
@@ -1073,49 +1060,6 @@ static void t1log_draw(const NdDraw* d) {
     if (t1l_on < 0) t1l_on = pm_debug_has("t1log");
     if (t1l_on && d->has_uvx && d->use5 && pm_frame_count() >= 100 && t1l_n++ < 400) pm_log("t1draw f%u use5 %d loc_uvx %u u1 dim %x addr %x param %x lod %x type %x uvx %.4f %.4f %.4f %.4f", pm_frame_count(), d->use5, d->loc_uvx, d->u[1].dim, d->u[1].addr, d->u[1].param, d->u[1].lod, d->u[1].type, d->uvx[0], d->uvx[1], d->uvx[2], d->uvx[3]);
 }
-/* FB-3 pm5draw (debug switch, log only): frames 182 to 189. Per frame one sum line (pm5sum: every program 5 draw of nd_native_submit, the model
- * draws of pm_gpu_native_submit_draw, the largest vertex flag over the model draws vmax1), then up to 90 draws of 1 line each (box, zmix, cmul, cadd). The vertex flag of a
- * vertex is its palette index k (pm5.v.pica: pal5[7k]). box: the screen box (sx / sw, OrthoTilt units 0..400 x 0..240) of the flag 0 vertices, rows 0, 1, 3 of pal[0]. */
-static unsigned p5_f, p5_all, p5_mdl, p5_vmax1, p5_log;
-static int p5_on = -1;
-static int pm5draw_on(void) { extern unsigned pm_frame_count(void); if (p5_on < 0) p5_on = pm_debug_has("pm5draw"); if (!p5_on) return 0; const unsigned f = pm_frame_count(); return f >= 182u && f <= 189u; }
-static void pm5draw_frame(unsigned f) {
-    if (f == p5_f) return;
-    if (p5_f) pm_log("pm5sum f%u use5 all %u model %u vmax1 %u logged %u", p5_f, p5_all, p5_mdl, p5_vmax1, p5_log);
-    p5_f = f; p5_all = p5_mdl = p5_vmax1 = p5_log = 0;
-}
-/* every program 5 draw (model, sprite, raw) of nd_native_submit: the count per frame */
-static void pm5draw_all(const NdDraw* d) { extern unsigned pm_frame_count(void); if (!d->use5 || !pm5draw_on()) return; pm5draw_frame(pm_frame_count()); p5_all++; }
-static void pm5draw_log(const NdDraw* d, const uint16_t* sd, unsigned nidx) {
-    extern unsigned pm_frame_count(void); extern void pm_gbi_cur_prod_name(char* b, int n);
-    if (!d->use5 || !pm5draw_on() || !sd || !nidx || !d->pal) return;
-    const unsigned f = pm_frame_count();
-    pm5draw_frame(f);
-    p5_mdl++;
-    unsigned vmax = 0, n0 = 0, nb = 0;
-    float x0 = 1e9f, x1 = -1e9f, y0 = 1e9f, y1 = -1e9f;
-    const float* p = d->pal[0];
-    for (unsigned i = 0; i < nidx; i++) {
-        const unsigned ix = sd[i];
-        if (ix >= GRING_VTX + GSTAT_VTX) { vmax = 0xffffu; break; }
-        const int16_t* v = (const int16_t*)(gring + 16u * ix);
-        const unsigned k = (uint16_t)v[3];
-        if (k > vmax) vmax = k;
-        if (k != 0) continue;
-        const float px = (float)v[0], py = (float)v[1], pz = (float)v[2];
-        const float sw = p[12] * px + p[13] * py + p[14] * pz + p[15];
-        if (sw <= 0.05f) { nb++; continue; }
-        const float sx = (p[0] * px + p[1] * py + p[2] * pz + p[3]) / sw, sy = (p[4] * px + p[5] * py + p[6] * pz + p[7]) / sw;
-        n0++;
-        if (sx < x0) x0 = sx; if (sx > x1) x1 = sx; if (sy < y0) y0 = sy; if (sy > y1) y1 = sy;
-    }
-    if (vmax > p5_vmax1 && vmax < 0xffffu) p5_vmax1 = vmax;
-    if (f != 182u || p5_log >= 90) return; /* FB-3 halo: frame 182 only, the box with w > 0.05 (nb: the vertices behind or at the w cut) */
-    p5_log++;
-    char prod[48]; pm_gbi_cur_prod_name(prod, sizeof prod);
-    pm_log("pm5draw f%u p %.8s n%u v%u nv %u nb %u box %.3f %.3f %.3f %.3f zm %.3f %.3f cm %.2f %.2f %.2f ca %.2f %.2f %.2f",
-           f, prod, nidx, vmax, n0, nb, x0, x1, y0, y1, d->zmix[0], d->zmix[1], d->cmul[0], d->cmul[1], d->cmul[2], d->cadd[0], d->cadd[1], d->cadd[2]);
-}
 /* FB-3 pm5tex1: one line per producer the first time it submits a program 5 draw with tex1 (the unit 1 uv map, uvx): the pm5 tex1 path is in use */
 void pm_gbi_cur_prod_name(char* b, int n);
 static void pm5tex1_log(const NdDraw* d) {
@@ -1133,7 +1077,6 @@ void pm_gpu_native_submit_draw(NdDraw* d, const uint16_t* sd, unsigned nidx, int
     if (d->has_nzo) d->loc_nzo = (unsigned)(d->use5 ? u5_nzo : u4_nzo); /* FB-3 part 2: the noise offset of the program of the draw */
     d->idx_word = 0x80000000u | ((uint32_t)osConvertVirtToPhys((void*)sd) - 0x18000000u);
     d->nidx = nidx;
-    pm5draw_log(d, sd, nidx);
     ndt_mdl = 1;
     nd_native_submit(d, tex);
     ndt_mdl = 0;
@@ -1859,12 +1802,7 @@ static void dump_shot(void) {
     unsigned char* row;
     const unsigned char* src;
     int x, y;
-    static int skip = -1;
     if (!pm_debug_has("shots")) return;
-    if (skip < 0) { /* shotskip=<n>: no shot in the first n frames (a later scene, such as the second intro after the demo) */
-        char v[16];
-        skip = pm_debug_value("shotskip", v, sizeof v) ? atoi(v) : 0;
-    }
     {   /* X01: shotwin=<first frame>:<count> takes one shot per game frame (frame = pm_frame_count) */
         extern unsigned pm_frame_count(void);
         if (shot_w0 == -2) {
@@ -1893,7 +1831,7 @@ static void dump_shot(void) {
             snprintf(msg, sizeof msg, "shot %u frame %u", n, fc);
         } else if (shot_armed) {
             return; /* SHOT-1: a burst or window ran: no shot outside it */
-        } else if (frames++ < (unsigned)skip || (frames % 30) != 0 || n >= 200) return;
+        } else if ((++frames % 30) != 0 || n >= 200) return;
     }
     src = (const unsigned char*)((pm_debug_has("shoteye") && targetR ? targetR : target)->frameBuf.colorBuf); /* shoteye: the right eye */
     if (!src) { pm_log_w("shot: no colour buffer (target %p)", (void*)target); return; } /* ROUTE diag */
@@ -2391,7 +2329,7 @@ void pm_gpu_begin_wait(void) {
     want_clear = begin_clear;
     noise_off[0] = (float)(noise_next() & 1023u) / 1024.f; noise_off[1] = (float)(noise_next() & 1023u) / 1024.f; /* PT07: one new offset per drawn frame */
     prev_pre = 0;
-    if (prev_want && !PMDL("prevcpu") && grab_tex_init()) { grab_queue_copy(); prev_pre = 1; } /* PT12: first entry of the queue, before the clear */
+    if (prev_want && grab_tex_init()) { grab_queue_copy(); prev_pre = 1; } /* PT12: first entry of the queue, before the clear */
     if (prev_want) prev_want--;
     eye_slider = osGet3DSliderState(); /* STEREO: the slider decides per frame. At 0 the frame is mono: one pass, the original perspective, no shift. */
     if (PMDL("stereo")) eye_slider = 1.f;
@@ -2419,10 +2357,6 @@ void pm_gpu_end(void) {
     flush();
     cen_frame_end();
     if (off_active) pm_gpu_off_end();
-    { static int gt_done; if (drew && PMDL("grabtest") && !gt_done) { /* B2 test switch: grab the whole finished frame once (row 4: the buffers then go idle), `offdump` then shows it next to the shot. Row 5: a grab that fails (no VRAM) is tried again next frame */
-        extern unsigned short* nuGfxCfb_ptr;
-        gt_done = pm_gpu_grab(nuGfxCfb_ptr, 0, 240);
-    } }
     /* X01: a frame the game did not draw (it skips gfx_draw_frame while the pause screen takes the picture) keeps the last
      * picture on screen, as the N64 does when no task swaps the buffer. A clear here would show black for that frame. The clear
      * is a GX memory fill that runs before the command list queued by C3D_FrameEnd, so it can come after the draw calls. */
@@ -3576,7 +3510,6 @@ int pm_gpu_spr_submit(NdDraw* d, const void* quad, int tex) {
     d->loc_pal = (unsigned)u4_pal; d->loc_var = (unsigned)u4_uvso;
     d->idx_word = 0x80000000u | ((uint32_t)osConvertVirtToPhys(ix) - 0x18000000u);
     d->nidx = 6;
-    pm5draw_log(d, ix, 6); /* FB-3 pm5draw: a sprite quad (nidx 6) of program 5 */
     nd_native_submit(d, tex);
     return 1;
 }
@@ -3770,7 +3703,6 @@ static int tex_raw_piece(int xa, int ya, int xb, int yb, float s0, float t0, flo
     else if (rmx < 127.f) { sc = 256.f; inv = 0.00390625f; }
     else { rr_why[7]++; return 0; }
     unsigned c = (saved == 5 || saved == 7) ? env_col : (saved == 8 && plan.vtxname != PM_NM_SHADE) ? plan.vtx : 0xffffffffu;
-    if (PMDL("rectred")) c = 0xff0000ffu; /* RECT diag: native textured rect in red (texel colour times red) */
     const float uvso[4] = { inv, inv, bs, bt };
     rect_raw_open(ec, fill_z, uvso);
     rect_raw_quad(xa, ya, xb, yb, tex_st(r0s, sc), tex_st(r0t, sc), tex_st(r1s, sc), tex_st(r1t, sc), c);

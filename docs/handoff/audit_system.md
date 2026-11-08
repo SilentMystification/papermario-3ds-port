@@ -120,7 +120,7 @@ Fix: make the walker setters and nd_words one function.
 
 **[done W10] C3 (local, S). pm.v.pica is built and never bound.** pm.v.pica (DVLE 0) is built into pm_shaderall (3ds/CMakeLists.txt:338), but only DVLE[1] is bound (pm_gpu.c:1470). The comment at pm_gpu.c:1451 ("one DVLB ... a program switch sends no shader code") is stale, because pm4 and pm5 are in different DVLBs (:1486-1488).
 
-**C4 (local, S). 66 of 210 debug words are referenced by no bench, scenario, row file or tool:**
+**[done C4] C4 (local, S). 66 of 210 debug words are referenced by no bench, scenario, row file or tool:**
 au2off au2trace audiohash audiolock battlelist battlen btlstatus camlog coreprobe crashframe crashtest crashtest_audio crashtest_audio_call crashtest_call creditsseek decalbias demobattle depthview dspaux dspflush dspfx dspgain emlog entlog entskip exitframe faulttest fillcyc fillog flashfake flashheavy flushlog fpslog fs1delay fs1old fxdx fxlist grabtest imglog lognull mapflags mashlog mashx modeldump msgtest noaudio padov padrand pauseskip pm5draw prevcpu prevtest profstall ptrcheck ptrtest rectred romstrict runaway shotskip simlog texnearest texrlog tourfx tx1check warptest wdog.
 Deleting them is a user decision, because CLAUDE.md rule 7 says debug tools may stay.
 
@@ -147,9 +147,11 @@ Deleting them is a user decision, because CLAUDE.md rule 7 says debug tools may 
 | W7 | A6 texture slot index | same | done: byte-equal; a lookup miss walks one chain of a 2,048-bucket index (hb_head, hb_next) instead of every slot below slot_hi. The CI palette hash per call stays (the key needs it) |
 | W8 | B2, B3 seams (pixels change) | before and after shot of the subject, byte-equal elsewhere | not done. B2: from the matrices (Mtx_OrthoTilt row 2 = (0, 0, 1, -1), from the libcitro3d disassembly, and the view row 2 = (0, 0, 0.5, 0.5), pm_gpu.c rebuild_3d), a normal triangle and the prim-depth rectangle both give depth 1 - p/32767, while the shader zmix path gives -nd_prim_ndc_z(p) = 1 - 2(p-1)/32767. The pond blocker (p 0x7FF0) draws in Azahar, so the zmix path must be checked by a depth readback (pm_gpu_depth_at) at toad_pond before any edit. B3: s and t stay below 7.9 texture repeats in the texrects of the det scenes (sc 4096), so no shot can show the change; edit only with a scene that tiles past 7.9 |
 | W9 | A9 combine fact owner, B4 decoder merge | same as W1 | B4 done (nd_words masks prim depth like the walker). A9 not done: moving the plan owner touches nd_comb, pm_gpu and nd_tmpl together, and the gain is one 192-byte compare per plan change; it needs its own row |
-| W10 | C3, C8, C9 (structure); C4 and the stereo double walk wait for the user | ask first | C3 and C9 done (byte-equal). pm4.v.pica now declares uvso, cmul, cadd, zmix in a row: nd_emit_draw writes them as one block, and the old shared DVLB had kept them adjacent only by chance. gv4_on now checks the layout at init. C8, C4 and the stereo walk wait for the user |
+| W10 | C3, C8, C9 (structure); C4 and the stereo double walk wait for the user | ask first (user 2026-11-08: C4 yes, C8 yes, stereo later) | C3 and C9 done (byte-equal). pm4.v.pica now declares uvso, cmul, cadd, zmix in a row: nd_emit_draw writes them as one block, and the old shared DVLB had kept them adjacent only by chance. gv4_on now checks the layout at init. C8, C4 and the stereo walk wait for the user |
 
 Speed check (Azahar, direction only): wcen_mac01 gbi phase avg/p95 is 5.9/15.0 ms on base 53e5a553e (2 runs) and 5.9/14.9 ms on W1-W10 (3 runs), with walker_ops 595 on both builds. Azahar has no cache model, so the cut in per-batch work and data does not show there. Open: one console_prof pair (base vs W1-W10) on the O3DS at spot_mac01_prof needs the user.
+
+C4 (user decision, D9): 61 of the 64 words that no scenario, bench, open row or plan names are deleted with the code they gated. Kept: depthview (a key byte of NdTmplKey, the ndref TevKey format and 4 host tests replay it), ptrcheck (the PTRCHECK macro sits in src/msg.c, a file with the user's uncommitted edits), and the new CORE2 audiohash path. Gates: build, nd_host PASS, spot_mac01_det, mdl5_iwa10_det, battle_start_f182_cold, nok11_det 0000-0015 byte-equal to base b234c3b3d; pause_spin_grab differs only in the known grab block (x 115, y 33 to 40).
 
 ## 5. Known open items (links only)
 

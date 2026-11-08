@@ -42,17 +42,6 @@ int fold_axis(int plo, float width, float a0, float a1, float mw, int flip, int 
 /* nd_rect_tex_n, nd_rect_fill_n: defined in nd_core.c (host-linked census counters, ST host fix) */
 
 
-/* HUDB1 debug switch texrlog: one line per texrect that returns before pm_gpu_tex_rect. why 1 depth copy, 2 rect_to_image, 3 box_pattern_rect,
- * 4 empty rectangle (lower right left of upper left after the 1-cycle step). At most 400 lines, repeats of the last line are not logged. */
-static void texr_early(int why, int xl, int yl, int xh, int yh) {
-    static int nlog = 0;
-    static int lwhy = -1, lxl, lyl, lxh, lyh;
-    if (nlog < 400 && PMDL("texrlog") && !(why == lwhy && xl == lxl && yl == lyl && xh == lxh && yh == lyh)) {
-        nlog++;
-        lwhy = why; lxl = xl; lyl = yl; lxh = xh; lyh = yh;
-        pm_log_d("texrlog f%u why %d rect %d,%d-%d,%d cyc %u", pm_frame_count(), why, xl / 4, yl / 4, xh / 4, yh / 4, (unsigned)((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3));
-    }
-}
 
 /* A texture rectangle into an off-screen color image, sampled from a TLUT held in TMEM. The
  * shaded-sprite code draws its 16-entry shadow/highlight palette this way. Returns 1 if done. */
@@ -162,8 +151,8 @@ __attribute__((noinline)) void nd_texrect(u32 w0, u32 w1, u32 hs, u32 hd) {
     if (xl & 0x800) xl |= ~0xfff;
     if (yl & 0x800) yl |= ~0xfff;
     /* F03: the decomp copies one z-buffer pixel into DepthCopyBuffer[id] (scissor x0 = id). Read the PICA depth. */
-    if (nd_ws.cimg == (void*)DepthCopyBuffer) { pm_depth_query(nd_ws.timg, (int)((s16)(hs >> 16) >> 5), sci_x0); texr_early(1, xl, yl, xh, yh); return; }
-    if (rect_to_image(xl, yl, xh, yh, (w1 >> 24) & 7, hs, hd)) { texr_early(2, xl, yl, xh, yh); return; }
+    if (nd_ws.cimg == (void*)DepthCopyBuffer) { pm_depth_query(nd_ws.timg, (int)((s16)(hs >> 16) >> 5), sci_x0); return; }
+    if (rect_to_image(xl, yl, xh, yh, (w1 >> 24) & 7, hs, hd)) { return; }
     { /* FB3 debug switch texlog: one line per texrect: size, combine, render and tile formats, z source, alpha compare (ball debug) */
         static int tlon = -1;
         if (tlon < 0) tlon = pm_debug_has("texlog");
@@ -178,7 +167,7 @@ __attribute__((noinline)) void nd_texrect(u32 w0, u32 w1, u32 hs, u32 hd) {
     off_screen_check();
     box_fold_sync();
     sync_render(); /* V25: the rectangle carries the blender, depth and alpha test of its own mode */
-    if (box_pattern_rect(xl, yl, xh, yh, hs, hd)) { texr_early(3, xl, yl, xh, yh); return; }
+    if (box_pattern_rect(xl, yl, xh, yh, hs, hd)) { return; }
     /* V23: the texrect names its tile. The pause map draws its path dots with tile 1 (the small marker). Tile 0 holds the big location circle. */
     int rtile = (nd_ws.use_t1 || (((w1 >> 24) & 7) == 1 && nd_ws.td[1].valid)) ? 1 : 0;
     if (!rtile) gp3_t0_surv();
@@ -244,7 +233,7 @@ __attribute__((noinline)) void nd_texrect(u32 w0, u32 w1, u32 hs, u32 hd) {
                 }
             }
             pm_gpu_tex_rect(rx0, ry0, ex, ey, s0, t0, s1, t1);
-        } else texr_early(4, xl, yl, xh, yh);
+        }
     }
     rect_done:
     zcol = 0;
@@ -258,22 +247,6 @@ int lrx = FILL_SX10(w0 >> 14);
 int lry = FILL_SX10(w0 >> 2);
 int ulx = FILL_SX10(w1 >> 14);
 int uly = FILL_SX10(w1 >> 2);
-if (PMDL("fillog")) { /* HUDB1 debug switch fillog: one line per fill with a wrapped field (raw 512 or more) */
-    static int nlog = 0;
-    if (nlog < 400 && (((w0 >> 14) & 0x3ff) >= 512 || ((w0 >> 2) & 0x3ff) >= 512 || ((w1 >> 14) & 0x3ff) >= 512 || ((w1 >> 2) & 0x3ff) >= 512)) {
-        nlog++;
-        pm_log_d("fillog f%u raw ul %u,%u lr %u,%u signed ul %d,%d lr %d,%d", pm_frame_count(), (unsigned)((w1 >> 14) & 0x3ff), (unsigned)((w1 >> 2) & 0x3ff),
-                 (unsigned)((w0 >> 14) & 0x3ff), (unsigned)((w0 >> 2) & 0x3ff), ulx, uly, lrx, lry);
-    }
-}
-if (PMDL("fillcyc")) { /* HUDB1 debug switch fillcyc: one line per fill with the cycle type in force (0 1cycle, 1 2cycle, 2 copy, 3 fill) */
-    static int ncyc = 0;
-    if (ncyc < 1500) {
-        ncyc++;
-        pm_log_d("fillcyc f%u cyc %u ul %d,%d lr %d,%d prim %08x fill %08x", pm_frame_count(), (unsigned)((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3),
-                 ulx, uly, lrx, lry, (unsigned)nd_ws.prim, (unsigned)nd_ws.fill);
-    }
-}
 /* D03: the pause screen extracts per-pixel edge coverage of the scene into a frame buffer with
  * the VISCVG render mode (the RDP writes it as the pixel alpha bits). The PICA has no edge
  * coverage, so every pixel is a full pixel: write the full-coverage value (gray, alpha 1) to

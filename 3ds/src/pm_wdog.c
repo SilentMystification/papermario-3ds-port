@@ -147,8 +147,6 @@ static void wd_main(void* arg) {
 }
 
 void pm_wd_start(void) {
-    char v[16];
-    if (pm_debug_value("wdog", v, sizeof v)) limit_s = (unsigned)atoi(v);
     if (wd_th) return;
     LightLock_Init(&wd_lock);
     wd_th = threadCreate(wd_main, NULL, 8 * 1024, 0x3F, 1, false);

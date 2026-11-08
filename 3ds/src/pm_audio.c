@@ -11,14 +11,10 @@ static int ready;
 static unsigned rate = 32000;
 
 /* CORE2-1: switch audiohash (or det) = FNV-1a of every AU2 command the control side emits (pm_au2.c au2_hash), the audio decisions of the
- * engine in order. A line every 120 steps under det (pm_main.c) and one at smoke end. Switch audiolock = exactly 2 ticks per drawn step and
- * osAiGetLength 0, so the hash does not depend on the clock. */
-int pm_audio_lock(void) { static int v = -1; if (v < 0) v = pm_debug_has("audiolock"); return v; }
-void au2_trace_dump(void);
+ * engine in order. A line every 120 steps under det (pm_main.c) and one at smoke end. */
 void au2_post_exec(void* pcm, unsigned bytes) { pm_audio_post(pcm, bytes, 0); }
 void pm_audio_hash_log(void) {
     pm_au2_sync(AU2_SYNC_SHUTDOWN);
-    au2_trace_dump();
     unsigned n, h = pm_au2_hash(&n);
     if (pm_debug_has("audiohash")) pm_log_evt("audiohash cmds %u fnv %08x (final)", n, h);
 }
@@ -30,9 +26,7 @@ void pm_audio_shutdown(void) {
     pm_dspa_shutdown();
     if (!ready) return;
     ready = 0;
-    pm_exit_mark("audio: reset");
     ndspChnReset(0);
-    pm_exit_mark("audio: exit");
     ndspExit();
 }
 
@@ -59,8 +53,7 @@ void pm_audio_init(void) {
     }
     ndspSetOutputMode(NDSP_OUTPUT_STEREO);
     /* A5: the 3DS DSP is the only audio path (docs/plans/AUD_DSP.md). It needs the AU2 queue. A failure is logged once and the game runs without sound. */
-    if (pm_debug_has("au2off")) pm_log_e("dspaudio: needs the AU2 queue, switch au2off is set: audio is silent");
-    else if (pm_dspa_init()) { ready = 1; return; }
+    if (pm_dspa_init()) { ready = 1; return; }
     else pm_log_e("dspaudio: init failed, audio is silent");
     ndspExit();
 }
@@ -133,11 +126,6 @@ int pm_au_thread_started(void) { return au_thread != NULL; }
 /* Called by the audio thread when it waits on an empty queue. Returns 0 on any other thread. */
 int pm_au_thread_yield(void) {
     if (!au_thread || threadGetCurrent() != au_thread) return 0;
-    {
-        static unsigned yields;
-        if (yields == 299 && pm_debug_has("crashtest_audio_call")) pm_crash_selftest();
-        if (++yields == 300 && pm_debug_has("crashtest_audio")) __asm__ volatile(".word 0xe7f000f0"); /* class E: deliberate undefined instruction on the audio thread */
-    }
     for (;;) {
         if (pm_audio_serve()) return 1; /* an audio task was answered: nuAuMgr can go on */
         pm_audio_tick_end();
@@ -296,7 +284,6 @@ unsigned pm_audio_pending(void) {
     if (det < 0) det = pm_debug_has("det");
     if (det) return 0;
     if (pm_dspa_enabled) { unsigned n = pm_dspa_backlog_blocks() * 184u; return n > PM_AU_LEAD ? (n - PM_AU_LEAD) * 4 : 0; } /* samples the timeline still has to play */
-    if (pm_audio_lock()) return 0; /* audiolock: osAiGetLength 0 so the PCM does not depend on the clock */
     return 0; /* no DSP: nothing is queued */
 }
 

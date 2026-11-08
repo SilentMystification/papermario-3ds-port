@@ -54,7 +54,6 @@ static u32 q_head;    /* next slot to reserve (producers, compare and swap) */
 static u32 q_tail;    /* next slot to read (writer or crash flush, under drain_lock) */
 static u32 wr_file_max, wr_sock_max, con_skipped; /* HWM1: longest single step of the writer in us, since the last logstat line */
 static u32 sink_file_max, sink_con_max; /* PI6: the sink thread's longest write and console step in us */
-static int sw_lognull;
 /* LOG3: one level per sink: -1 off, 0 error, 1 warn, 2 info, 3 debug. A line reaches a sink when its level is at or below that sink's level. */
 static int lv_live = 1; /* the live socket and the ring that replays to a reconnect */
 static int lv_disk = 1; /* log.txt (fb) */
@@ -253,7 +252,6 @@ void pm_log_set_switches(const char* s) {
     dbg_cache_clear();
     switches[0] = 0;
     if (s) strncat(switches, s, sizeof(switches) - 1);
-    sw_lognull = pm_debug_has("lognull");
     pm_log_apply_switch_levels();
 }
 
@@ -899,10 +897,9 @@ static void drain_locked(void) {
             int n = line_of(sl, line, sizeof line);
             int pad = (sl->flags & 1) != 0, lvl = sl->lv;
             st_bytes += (unsigned)n + 8;
-            int skip = sw_lognull && !strstr(line, "CRASH") && !strstr(line, "FATAL") && !strstr(line, "logstat"); /* lognull: writer drops */
             int evt = (sl->flags & 4) != 0;
-            int tf = !skip && (evt || (pad ? prof_disk : lvl <= dl)); /* U2: a profiling line (pad 1) goes to log.txt only with prof_disk on; SIZE-0: an event line always */
-            int tl = !skip && (evt || pad || lvl <= ll), tc = !skip && (pad || lvl <= cl); /* U2: profiling lines go to the live log and the console */
+            int tf = (evt || (pad ? prof_disk : lvl <= dl)); /* U2: a profiling line (pad 1) goes to log.txt only with prof_disk on; SIZE-0: an event line always */
+            int tl = (evt || pad || lvl <= ll), tc = (pad || lvl <= cl); /* U2: profiling lines go to the live log and the console */
             cnt_disk += (unsigned)tf; cnt_live += (unsigned)tl; cnt_con += (unsigned)tc; /* LOG3: counted per slot, the beat and drop lines are not */
             int cskip = 0, cn = 0;
             if (tc) { /* the console text is the line after "#<seq> " */

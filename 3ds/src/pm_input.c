@@ -11,10 +11,9 @@ int pm_fa_get(void);
 static unsigned short held;
 static unsigned short down;
 static unsigned short press_seen; /* presses since the last read: a tap shorter than one game frame still counts as held once */
-static unsigned tap_injected, tap_seen;
 static signed char stick_x;
 static signed char stick_y;
-static int rand_on, rand_x, rand_y; /* padrand switch */
+static int rand_on, rand_x, rand_y; /* padscript: the stick of the current step */
 static unsigned select_scan = 0x80000000u; /* F11-3: scan of the last Select press. A port flag, never an N64 bit. */
 static int select_pending; /* F11-6: a Select press that no game code took opens the port menu */
 static unsigned ps_menu_edge; /* F11-6: padscript edge of this scan, drives the port menu in tests */
@@ -285,30 +284,6 @@ void pm_pad_scan(void) {
                 edge |= 0x8000;
             }
         }
-        /* taptest switch: a press that lasts one scan, once per 60 scans. Half of them land on a scan the game never reads. */
-        if (pm_debug_has("taptest") && pm_pad_scans % 60 == 0) {
-            b |= 0x8000;
-            edge |= 0x8000;
-            tap_injected++;
-        }
-        /* padrand switch (slice F01): a seeded random walk. The stick holds one direction for 20 to 60
-         * scans, B and START and Z tap now and then. With autoa this jumps, bumps walls and walks into loading zones. */
-        if (pm_debug_has("padrand")) {
-            static unsigned rng = 12345, left;
-            if (left == 0) {
-                rng = rng * 1103515245u + 12345u;
-                unsigned r = rng >> 8;
-                left = 20 + r % 41;
-                int dir = (r >> 6) % 9;
-                rand_x = dir == 8 ? 0 : (int)(70 * __builtin_cosf(dir * 0.7853982f));
-                rand_y = dir == 8 ? 0 : (int)(70 * __builtin_sinf(dir * 0.7853982f));
-            }
-            left--;
-            rand_on = 1;
-            if (pm_pad_scans % 97 < 3) { b |= 0x4000; edge |= 0x4000; }
-            if (pm_pad_scans % 701 < 3) { b |= 0x1000; edge |= 0x1000; }
-            if (pm_pad_scans % 211 < 3) { b |= 0x2000; edge |= 0x2000; }
-        }
         {
             if (ps_run) {
                 ps_menu_edge = ps[ps_i].b & ~ps_prev;
@@ -332,11 +307,6 @@ void pm_pad_scan(void) {
                     if (ps_i >= ps_n) { ps_run = 0; rand_on = 0; ps_prev = 0; pm_log("padscript: done at scan %u f%u", pm_pad_scans, pm_frame_count()); if (ps_route[0]) pm_log("route: end f%u", pm_frame_count()); }
                 }
             }
-        }
-        /* faulttest switch (slice F01): one read of address 0x10 at scan 300, to check the fault detector */
-        if (pm_debug_has("faulttest") && pm_pad_scans == 300) {
-            pm_log_d("faulttest read 0x10");
-            pm_log_d("faulttest value %u", *(volatile unsigned*)0x10);
         }
         pm_pad_scans++;
     }
@@ -387,10 +357,6 @@ void pm_pad_read(unsigned short* buttons, signed char* x, signed char* y, unsign
     if (x) *x = stick_x;
     if (y) *y = stick_y;
     if (trigger) *trigger = down;
-    if ((down & 0x8000) && pm_debug_has("taptest")) {
-        tap_seen++;
-        if (tap_seen % 5 == 0) pm_log_d("taptest injected %u seen %u", tap_injected, tap_seen);
-    }
     down = 0;
     press_seen = 0;
 }

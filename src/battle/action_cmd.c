@@ -113,9 +113,6 @@ s32 adjust_action_command_difficulty(s32 difficultyLevel) {
     return difficultyLevel;
 }
 
-void pm_mash_log(s32 posX, s32 posY, s32 fillValue, s32 showHud); /* 3ds/src/pm_warp.c, HUDB1 debug switch mashlog */
-s32 pm_mash_posx(s32 posX); /* 3ds/src/pm_warp.c, HUDB1 debug switch mashx */
-
 void draw_mash_meter(s32 posX, s32 posY, s32 fillValue, s32 colorMode) {
     ActionCommandStatus* acs = &gActionCommandStatus;
     s32 maxCutOff;
@@ -126,8 +123,6 @@ void draw_mash_meter(s32 posX, s32 posY, s32 fillValue, s32 colorMode) {
     s32 filledWidth;
     s32 r, g, b;
 
-    posX = pm_mash_posx(posX);
-    pm_mash_log(posX, posY, fillValue, acs->showHud);
     if (!acs->showHud) {
         return;
     }
