@@ -25,6 +25,6 @@ STATE
 11. CORE2-2 (merged 554b9b941): one N3DS prof run (core2 probe line, ft_ms) decides CORE2-3 (walker thread on core 2).
 12. audiohash is a near-equality check (+-2 commands run to run, DSP voice ends feed back): accept, or make voice ends deterministic under det?
 13. AUDIT B2 (merged): mac_00 pond blocker now draws (prim depth fix). Look at build3ds/audit_shots/b2_pond_before_after.png: the screen bottom is now flat dark blue where the hedge texture showed. Is that the correct look (N64)? If not, revert merge of 899127979.
-14. AUDIT next step: a render-state struct (combine, plan, env_col, z_on, r_* flags, off-screen, viewport, ring chunks: 49 pm_gpu.c statics) so the rect queue and ring can leave pm_gpu.c. It is a code change, no pixel change. Do it?
+14. AUDIT next step: a render-state struct (combine, plan, env_col, z_on, r_* flags, off-screen, viewport, ring chunks: 49 pm_gpu.c statics) so the rect queue and ring can leave pm_gpu.c. It is a code change, no pixel change. Decided by the orchestrator overnight: started (audit agent).
 (Decided by the orchestrator overnight: pause_spin_grab_det_w300 accepted as layout-sensitive with the CORE2-1 control build (row_UB1.md); B2 depth readback in Azahar yes; delete 66 unused debug switches per D9 yes; split pm_gpu.c as a pure move yes.)
 
