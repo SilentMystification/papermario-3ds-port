@@ -2920,7 +2920,7 @@ int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32
 int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
     if (!e) { ndn_nokey++; return 0; }
     if (!model_vis_same(k, e)) { ndn_rng++; return 0; }
-    if (!e->n) ndn_empty++;
+    if (!e->n) { ndn_empty++; ndn_rec++; ndn_hit++; ndn_log(); return 1; } /* PERF1-4c: no draw (no group in view, or all culled): no texture lookup, template build, matrix product or flush */
     NdUnit u; memset(&u, 0, sizeof u);
     if (e->tex) {
         const NdTexDesc* ds = nd_tex_handle_desc((int)((k->w[0] >> 8) & 0x7fu), (const void*)(uintptr_t)k->w[1]);
@@ -2929,8 +2929,12 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
         if (id < 0 || !nd_tex_unit_hint(id, &e->hs, &e->hg, &u)) { ndn_texf++; return 0; }
     }
     /* FB-2: the template ids of the cached draws are built again before any draw goes out (the LRU may have taken an id over since the store): a full table falls back */
-    nd_tmpl_pin();
-    for (unsigned j = 0; j < e->n; j++) { int id = nd_tmpl_build(&nd_mc_nat(e, j)->tk); if (id < 0) return 0; nd_mc_nat(e, j)->d.tmpl = id; }
+    /* PERF1-4c: only when an eviction happened since the last build of these ids (nd_tmpl_gen); else the ids hold and only their LRU clock moves */
+    if (e->tgen != nd_tmpl_gen()) {
+        nd_tmpl_pin();
+        for (unsigned j = 0; j < e->n; j++) { int id = nd_tmpl_build(&nd_mc_nat(e, j)->tk); if (id < 0) return 0; nd_mc_nat(e, j)->d.tmpl = id; }
+        e->tgen = nd_tmpl_gen();
+    } else for (unsigned j = 0; j < e->n; j++) nd_tmpl_touch(nd_mc_nat(e, j)->d.tmpl);
     float comb[4][4], pal0[16];
     nd_mtx_combine(comb, pm_eye_e, pm_eye_conv);
     pm_gpu_pcomp_native(pal0, comb);
