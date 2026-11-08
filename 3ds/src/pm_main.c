@@ -422,10 +422,10 @@ void pm_frame_loop(void) {
         pm_pad_scan();
         if (pm_menu_open) { /* MN1: the Select menu pauses the game: no step, no draw, no audio tick. The menu text is presented here. */
             if (!menu_frozen) { /* MN2, PAUSE AUDIO */
-                extern unsigned pm_gx_qpend(void);
+                extern unsigned pm_gx_qpend(void); extern void pm_gpu_menu_dirty_set(void);
                 menu_frozen = 1; pm_log("menu: game paused at frame %u", frame);
                 pm_log("menu: grey qpend %u lastdraw %d frame %u", pm_gx_qpend(), lastdraw, frame);
-                pm_gpu_menu_grey(); pm_audio_mute(1);
+                pm_gpu_menu_dirty_set(); pm_gpu_menu_present(); pm_audio_mute(1); /* GREY: a forced present waits for the queued game frame (FrameBegin SYNCDRAW), then greys after its own transfer */
                 top_after_due = 1;
             }
             gspWaitForVBlank();
