@@ -783,14 +783,33 @@ static __attribute__((cold, noinline)) void flush_fl_dbg(int graw) {
     fl_count(!graw);
     if (fl_fn != (const char*)"pm_gpu_tex_rect" && strcmp(fl_fn, "pm_gpu_tex_rect") != 0) fl_prev_rect = 0;
 }
-static __attribute__((noinline)) void flush_light_tab(void) {
-                    C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_lamb, g_fx.amb[0], g_fx.amb[1], g_fx.amb[2], g_fx.amb[3]);
-                    for (int i = 0; i < 7; i++) {
-                        C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_lcol + i, g_fx.col[i][0], g_fx.col[i][1], g_fx.col[i][2], g_fx.col[i][3]);
-                        C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_ldir + i, g_fx.dir[i][0], g_fx.dir[i][1], g_fx.dir[i][2], g_fx.dir[i][3]);
-                    }
-                    C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_lk0, g_fx.lk0[0], g_fx.lk0[1], g_fx.lk0[2], g_fx.lk0[3]);
-                    C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_lk1, g_fx.lk1[0], g_fx.lk1[1], g_fx.lk1[2], g_fx.lk1[3]);
+/* PM5 uniforms go through citro3d (C3D_FVUnif). A setter call marks the vector dirty and C3Di_UpdateContext sends it again, even with the same value. u5set and u5mtx
+ * write only a vector that differs from citro3d's copy, except in the first pm5 batch after a program change (u5_valid 0): the pm4 path writes the shared
+ * uniform registers directly, so citro3d's copy is not what the GPU holds then. */
+static int u5_valid;
+static NdShadow ndn_sh; /* the GPU registers a native draw wrote (nd_emit_draw) */
+static void u5vec(int id, float x, float y, float z, float w) {
+    const C3D_FVec* c = &C3D_FVUnif[GPU_VERTEX_SHADER][id];
+    if (u5_valid && c->x == x && c->y == y && c->z == z && c->w == w) return;
+    C3D_FVUnifSet(GPU_VERTEX_SHADER, id, x, y, z, w);
+}
+static void u5set(int id, const float v[4]) { u5vec(id, v[0], v[1], v[2], v[3]); }
+static void u5mtx(int id, const C3D_Mtx* m) {
+    if (u5_valid && memcmp(&C3D_FVUnif[GPU_VERTEX_SHADER][id], m, sizeof *m) == 0) return;
+    C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, id, m);
+}
+/* the program of the next native draw: a change clears the native shadow (pm4 and pm5 share the uniform registers, and citro3d marks every uniform dirty at a bind) */
+static void prog_use(int p) {
+    if (bound == p) return;
+    pm_dc_c[DC_PRG]++; C3D_BindProgram(p == 4 ? &prog5 : &prog4); C3D_SetAttrInfo(&attr4); bound = p;
+    nd_shadow_reset(&ndn_sh); ndn_mode = 1; u5_valid = 0;
+}
+/* the pm5 light table of a draw (u5set: only the vectors that differ from citro3d's copy are marked dirty) */
+static __attribute__((noinline)) void flush_light_tab(const PmFx* fx) {
+    u5set(u5_lamb, fx->amb);
+    for (int i = 0; i < 7; i++) { u5set(u5_lcol + i, fx->col[i]); u5set(u5_ldir + i, fx->dir[i]); }
+    u5set(u5_lk0, fx->lk0);
+    u5set(u5_lk1, fx->lk1);
 }
 /* N4 2b: the palette product post x game, one function for the live path (pcomp) and the per-eye fill. Same order of products. */
 static void pal_mul(C3D_Mtx* o, const float (*m)[4]) { nd_mtx_pcomp(o->m, gv_post.m, m); } /* S1-4 */
@@ -944,7 +963,7 @@ static inline int graw_is_pm4(void) { return gni > 0 && g_pal && !g_use5 && gv4_
 extern void C3Di_UpdateContext(void);
 int pm_tex_native_unit0(NdUnit* u);
 int pm_tex_native_unit1(NdUnit* u);
-static NdShadow ndn_sh; static NdTevOut ndn_to; static int ndn_to_ok;
+static NdTevOut ndn_to; static int ndn_to_ok;
 unsigned nd_native_draws, nd_native_refused;
 static void ndplan_check(unsigned w0, unsigned w1, int two, int t1only); /* switch ndplan */
 static void ndm_cmp(const NdTmplKey* wk, const NdDraw* wd); /* S3N-3b: switch ndmcheck */
@@ -991,11 +1010,7 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
     pm5tex1_log(dp);
     const NdDraw* d = dp;
     if (ndn_tgen != nd_tmpl_gen()) { ndn_tgen = nd_tmpl_gen(); nd_shadow_reset(&ndn_sh); } /* FB-2: a template id was taken over by another key (LRU): the id shadow is stale */
-    /* PM5 cause 3: a program change clears the whole native shadow (the citro3d uniform file is one file for all programs, and the template shadow does not know the program) */
-    if (d->use5) {
-        if (bound != 4) { pm_dc_c[DC_PRG]++; C3D_BindProgram(&prog5); C3D_SetAttrInfo(&attr4); bound = 4; }
-        nd_shadow_reset(&ndn_sh); ndn_mode = 1;
-    } else if (bound != 3) { pm_dc_c[DC_PRG]++; C3D_BindProgram(&prog4); C3D_SetAttrInfo(&attr4); bound = 3; nd_shadow_reset(&ndn_sh); ndn_mode = 1; }
+    prog_use(d->use5 ? 4 : 3);
     { /* FB-1: a model draw indexes the static area (chunk 0), a walker draw the ring chunk in use */
         const void* bb = (ndt_mdl || gi_kind == 1) ? (const void*)rchunk[0].vtx : (const void*)gring;
         if (buf_cur != 2 || buf_bp != bb) { C3D_BufInfo* gb = C3D_GetBufInfo(); BufInfo_Init(gb); BufInfo_Add(gb, bb, 16, 3, 0x210); buf_cur = 2; buf_bp = bb; }
@@ -1042,17 +1057,14 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
 void pm_gpu_pcomp_native(float o[16], const float m[4][4]) { NdtT t = pm_gpu_ndt_begin(); nd_mtx_pcomp(o, gv_post.m, m); pm_gpu_ndt_end(t, NDT_MTX); }
 /* PM5-3: the pm5 block of a model draw from its NdDraw fields (the same calls as pm5_upload, values of the draw) */
 static void pm5_upload_draw(const NdDraw* d) {
-    pm_dc_c[DC_PRG]++; C3D_BindProgram(&prog5); C3D_SetAttrInfo(&attr4); bound = 4;
-    C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_uvso, d->uvso[0], d->uvso[1], d->uvso[2], d->uvso[3]);
-    C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_cmul, d->cmul[0], d->cmul[1], d->cmul[2], d->cmul[3]);
-    C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_cadd, d->cadd[0], d->cadd[1], d->cadd[2], d->cadd[3]);
-    C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_zmix, d->zmix[0], zmix_y_dbg(d->zmix[1]), 0.f, 0.f);
-    C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_lflag, d->fx5.lflag[0], d->fx5.lflag[1], d->fx5.lflag[2], d->fx5.lflag[3]);
-    C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_fogu, d->fx5.fogu[0], d->fx5.fogu[1], d->fx5.fogu[2], d->fx5.fogu[3]);
-    if (d->fx5.lflag[0] != 0.f) { /* the light table of the draw: the walker's flush_light_tab reads g_fx; the model range carries the same block */
-        const PmFx* sv = &g_fx; PmFx tmp = d->fx5; g_fx = tmp; flush_light_tab(); g_fx = *sv; }
-    C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, u5_pal, (const C3D_Mtx*)d->pal[0]);
-    for (int r = 0; r < 3; r++) C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_pal + 4 + r, d->nrm5[r][0], d->nrm5[r][1], d->nrm5[r][2], 0.f);
+    prog_use(4);
+    u5set(u5_uvso, d->uvso); u5set(u5_cmul, d->cmul); u5set(u5_cadd, d->cadd);
+    u5vec(u5_zmix, d->zmix[0], zmix_y_dbg(d->zmix[1]), 0.f, 0.f);
+    u5set(u5_lflag, d->fx5.lflag); u5set(u5_fogu, d->fx5.fogu);
+    if (d->fx5.lflag[0] != 0.f) flush_light_tab(&d->fx5); /* the model range carries its own light block */
+    u5mtx(u5_pal, (const C3D_Mtx*)d->pal[0]);
+    for (int r = 0; r < 3; r++) u5vec(u5_pal + 4 + r, d->nrm5[r][0], d->nrm5[r][1], d->nrm5[r][2], 0.f);
+    u5_valid = 1;
     gv_palup_n++; pm_dc_c[DC_PALUP]++;
 }
 /* FB-3 t1log (debug switch, log only): one line per tex1 draw of a native record or raw batch, with the unit 1 words and the uvx values sent */
@@ -1147,21 +1159,19 @@ static int grab_native_unit0(NdUnit* u) { return tex_native_words(u, &grab_tex);
 /* PM5-2: the program 5 uniform block of the walker state (the same calls as flush_draw's pm5 block, no cache: the native batch writes them
  * in order before its draw). Palette entries: the pm5 register layout, 7 rows per entry (4 position, 3 normal). */
 static void pm5_upload(void) {
-    pm_dc_c[DC_PRG]++; C3D_BindProgram(&prog5); C3D_SetAttrInfo(&attr4); bound = 4;
-    C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_uvso, g_uvso[0], g_uvso[1], g_uvso[2], g_uvso[3]);
-    C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_cmul, g_cmul[0], g_cmul[1], g_cmul[2], g_cmul[3]);
-    C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_cadd, g_cadd[0], g_cadd[1], g_cadd[2], g_cadd[3]);
-    C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_zmix, g_zmix[0], zmix_y_dbg(g_zmix[1]), 0.f, 0.f);
-    C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_lflag, g_fx.lflag[0], g_fx.lflag[1], g_fx.lflag[2], g_fx.lflag[3]);
-    C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_fogu, g_fx.fogu[0], g_fx.fogu[1], g_fx.fogu[2], g_fx.fogu[3]);
-    if (g_fx.lflag[0] != 0.f) flush_light_tab();
+    prog_use(4);
+    u5set(u5_uvso, g_uvso); u5set(u5_cmul, g_cmul); u5set(u5_cadd, g_cadd);
+    u5vec(u5_zmix, g_zmix[0], zmix_y_dbg(g_zmix[1]), 0.f, 0.f);
+    u5set(u5_lflag, g_fx.lflag); u5set(u5_fogu, g_fx.fogu);
+    if (g_fx.lflag[0] != 0.f) flush_light_tab(&g_fx);
     for (unsigned k = 0; k < pal_n; k++) {
         unsigned gm = pal_g[k];
         if (pcomp_gen[gm] != post_gen) pcomp_calc(gm);
-        C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, u5_pal + 7 * (int)k, &pcomp[gm]);
-        if (pal_ntab) for (int r = 0; r < 3; r++) C3D_FVUnifSet(GPU_VERTEX_SHADER, u5_pal + 7 * (int)k + 4 + r, pal_ntab[gm][r][0], pal_ntab[gm][r][1], pal_ntab[gm][r][2], 0.f);
+        u5mtx(u5_pal + 7 * (int)k, &pcomp[gm]);
+        if (pal_ntab) for (int r = 0; r < 3; r++) u5vec(u5_pal + 7 * (int)k + 4 + r, pal_ntab[gm][r][0], pal_ntab[gm][r][1], pal_ntab[gm][r][2], 0.f);
         gv_palup_n++; pm_dc_c[DC_PALUP]++;
     }
+    u5_valid = 1;
 }
 static unsigned cmd_split_n;
 unsigned pm_gpu_cmd_split_n(void) { return cmd_split_n; }
@@ -1268,7 +1278,7 @@ static int nd_raw_native(void) {
     cen_draws++; cen_tris += gni / 3u;
     dc_on = 0;
     float palk[ND_NPAL][16];
-    unsigned npal = pal_n < ND_NPAL ? pal_n : ND_NPAL;
+    unsigned npal = g_use5 ? 0u : pal_n < ND_NPAL ? pal_n : ND_NPAL; /* pm5: pm5_upload sends the palette (A4: no copy here) */
     for (unsigned k = 0; k < npal; k++) {
         unsigned gm = pal_g[k];
         if (pcomp_gen[gm] != post_gen) pcomp_calc(gm);

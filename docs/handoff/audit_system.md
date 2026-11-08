@@ -44,11 +44,11 @@ Fix: read drawcensus once at boot, and call cen_add and the memset only when it 
 nd_raw_native builds NdTmplKey (44 B: memset and 30 stores, pm_gpu.c:1215-1225). It then builds TevKey from the same globals (76 B: memset, 19 stores and a 76-byte memcmp, pm_gpu.c:1233-1237). TevKey adds only prim, cconst, mixcol and plan_gen. nd_tmpl_build copies the key again (`NdTmplKey kk = *in`) and hashes it one byte at a time (44 FNV steps, nd_tmpl.c:309-313). cen_add hashes TevKey a third time (A1). flush_tev_rebuild builds the same two keys (pm_gpu.c:734-747).
 Fix: keep one key (NdTmplKey plus the 3 colour words) in pm_gpu state. The setters update it and mark it dirty. nd_raw_native rebuilds and looks it up only when it is dirty. Hash by word.
 
-**A3 (batch close, M). pm5 draws clear the command shadow on every draw.**
+**[done W3] A3 (batch close, M). pm5 draws clear the command shadow on every draw.**
 nd_native_submit calls `nd_shadow_reset(&ndn_sh)` for every use5 draw, even when prog5 is already bound (pm_gpu.c:1001-1003). The shadow is 1,848 B, and the reset clears all of it. After a reset, nd_emit_draw writes every template register (up to 64) and every unit block again (nd_emit.c:37-77). The pm5 uniforms go through C3D_FVUnifSet (pm5_upload pm_gpu.c:1155-1170, pm5_upload_draw :1050-1062), and citro3d sends them again at C3Di_UpdateContext. A model pm5 draw also copies its 588-byte NdDraw into d5 (pm_gpu.c:995).
 Fix: reset the shadow only when the program changes. Write the pm5 uniforms with nd_emit `uni()` against the shadow, at the u5_* locations.
 
-**A4 (batch close, S). pm5 raw batches copy palettes that the draw then discards.**
+**[done W3] A4 (batch close, S). pm5 raw batches copy palettes that the draw then discards.**
 pm_gpu.c:1248-1252 copies up to 21 x 64 B of pcomp into palk. pm_gpu.c:1268 then sets `d.npal = 0` for g_use5, and pm5_upload computes and uploads the same pcomp entries again.
 Fix: skip the palk loop when g_use5 is set.
 
@@ -140,7 +140,7 @@ Deleting them is a user decision, because CLAUDE.md rule 7 says debug tools may 
 |---|---|---|---|
 | W1 | A1 census gated; C1, C2, C6 dead state | build, nd_host, 5 det byte gates | done (all 5 byte-equal to base) |
 | W2 | A2 one draw key, A5 cold debug blocks out of nd_raw_native | same, plus wcen_mac01 prof=4 gbi phase | done: byte-equal; nd_raw_native 8,996 to 6,332 B, close path 19,288 to 16,832 B; TevKey built only for ndref and drawcensus; nd_tmpl_build repeats the last key with no hash |
-| W3 | A3, A4 pm5 through the shadow | same | open |
+| W3 | A3, A4 pm5 through the shadow | same | done: byte-equal (battle_start_f182 has pm5 draws); the shadow resets only at a program change (prog_use); pm5 uniforms are marked dirty only when they differ from citro3d's copy (u5set, u5mtx); no palk copy for pm5. The 588 B d5 copy stays (nd_emit needs no_uni and loc_uvx) |
 | W4 | B1 ring reuse at 30 fps | same (a ring wrap scenario if one exists, else code trace) | open |
 | W5 | A7, A8, A11 gtrip and gappend lookups | same | open |
 | W6 | A10, A12, C5 combine hash and switch macros | same | open |
