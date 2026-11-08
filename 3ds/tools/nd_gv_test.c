@@ -18,7 +18,7 @@ static float rf(void) { return (float)(int)(rnd() % 2001u) / 1000.f - 1.f; }
 
 /* the old walker function, expression for expression (the flags come in as the walker's own values) */
 static float old_shift_mul(unsigned n) { return n == 0 ? 1.f : n <= 10 ? 1.f / (float)(1 << n) : (float)(1 << (16 - n)); }
-static float old_prim_ndc_z(unsigned pz) { return 2.f * (float)(pz ? pz - 1u : 0u) / 32767.f - 1.f; }
+static float old_prim_clip_z(unsigned pz) { return (float)(pz ? pz - 1u : 0u) / 32767.f - 1.f; } /* B2: PICA clip z / w */
 static void old_gv(const NdGvIn* g, const float en[4], const float vc[4], NdGvP* o_) {
     int comb_mode5 = g->comb5, plan_active = g->plan_active, comb_alpha_shade = g->alpha_shade, dual_boost = g->boost;
     int env = comb_mode5 && !plan_active;
@@ -49,7 +49,7 @@ static void old_gv(const NdGvIn* g, const float en[4], const float vc[4], NdGvP*
     else if (plan) { for (int q = 0; q < 4; q++) { o2->cm[q] = 0.f; o2->ca[q] = vc[q]; } }
     if (a255) { o2->cm[3] = 0.f; o2->ca[3] = 1.f; }
     if (boost) for (int q = 0; q < 3; q++) { o2->ca[q] = o2->ca[q] * 0.5f + (1.f - en[q]) * 0.5f; o2->cm[q] *= 0.5f; }
-    if (primz) { o2->zm[0] = 0.f; o2->zm[1] = old_prim_ndc_z(g->prim_z); }
+    if (primz) { o2->zm[0] = 0.f; o2->zm[1] = old_prim_clip_z(g->prim_z); }
     o2->boost = boost;
     o2->fxon = 0;
     if (g->lighting) { nd_lights(&o2->fx, g->texgen != 0, g->lt, g->lt_n, g->lk); o2->fxon = 1; }

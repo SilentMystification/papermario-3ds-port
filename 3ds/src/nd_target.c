@@ -19,9 +19,6 @@ void pm_zbuf_need(void);
 int pm_fb_native(const void* p);
 int pm_is_cur_cfb(const void* p);
 
-/* PRIMZFIX: the primitive depth is one unit (512 units of the 24-bit depth) nearer than G_SETPRIMDEPTH. The console rounds a 0x7FF0 blocker
- * behind the far background (water in the Toad Town pond). One helper for both NDC z uses; clamped at 0. */
-float prim_ndc_z(void) { return nd_prim_ndc_z(nd_ws.prim_z); }
 /* V05: the colour image is a game buffer (not a frame buffer, not the saved frame): the draw goes to an off-screen render
  * texture, which a later draw reads as an image (draw_box: the contents of a rotating window). */
 /* B1: the one decision for a colour image (docs/plans/buffer_bridge.md table 1.2). for_fill = 1 at G_FILLRECT.

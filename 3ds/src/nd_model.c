@@ -11,7 +11,10 @@ float nd_shift_mul(unsigned n) {
     return n == 0 ? 1.f : n <= 10 ? 1.f / (float)(1 << n) : (float)(1 << (16 - n));
 }
 
-float nd_prim_ndc_z(unsigned prim_z) { return 2.f * (float)(prim_z ? prim_z - 1u : 0u) / 32767.f - 1.f; }
+/* B2: the PICA clip z / w of the prim depth (G_ZS_PRIM): the shader writes z = zmix.y * w after the full palette (OrthoTilt row 2 is z - w, the view row 2
+ * is 0.5 z + 0.5 w), so a triangle at N64 screen depth p must get 0.5 * ndc - 0.5 = p / 32767 - 1, the value the rectangle path gives (depth 1 - p / 32767).
+ * PRIMZFIX: one unit nearer (p - 1). The N64 NDC value 2 p / 32767 - 1 put every prim depth above 16384 outside the clip volume. */
+float nd_prim_clip_z(unsigned prim_z) { return (float)(prim_z ? prim_z - 1u : 0u) / 32767.f - 1.f; }
 
 void nd_gv_params(const NdGvIn* in, NdGvP* o) {
     int env = in->comb5 && !in->plan_active;
@@ -43,7 +46,7 @@ void nd_gv_params(const NdGvIn* in, NdGvP* o) {
     else if (plan) { const float* vc = in->vc; for (int q = 0; q < 4; q++) { o->cm[q] = 0.f; o->ca[q] = vc[q]; } }
     if (a255) { o->cm[3] = 0.f; o->ca[3] = 1.f; }
     if (boost) for (int q = 0; q < 3; q++) { o->ca[q] = o->ca[q] * 0.5f + (1.f - en[q]) * 0.5f; o->cm[q] *= 0.5f; }
-    if (primz) { o->zm[0] = 0.f; o->zm[1] = nd_prim_ndc_z(in->prim_z); }
+    if (primz) { o->zm[0] = 0.f; o->zm[1] = nd_prim_clip_z(in->prim_z); }
     o->boost = boost;
     o->fxon = 0; /* o->fx is read only when fxon: it is cleared where it is filled */
     if (in->lighting) { /* GV5: the RSP light table (ambient is slot lt_n), the look-at vectors for texgen */

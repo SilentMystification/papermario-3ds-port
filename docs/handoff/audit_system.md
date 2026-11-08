@@ -92,7 +92,7 @@ ring_done is set only when the frame begin waited with SYNCDRAW: `if (fb_flags) 
 Class: dropped draws, and up to 2.7 MB of linear memory held.
 Fix: set ring_done = ring_fr after any frame begin that waited for the GX queue, or stamp chunks against pm_gx_done().
 
-**[open: needs a measurement] B2 (seam, S). Prim depth has two formulas: rectangle path vs triangle path.**
+**[done B2] B2 (seam, S). Prim depth has two formulas: rectangle path vs triangle path.**
 Triangles use nd_prim_ndc_z = 2(p-1)/32767 - 1 (nd_model.c:14). The `- 1` is PRIMZFIX, one unit nearer, and nd_target.c:22 gives one unit as 512 of the 24-bit depth. The G_ZS_PRIM texrect and the fill use prim_z / 32767 without the unit (nd_rect.c:236, 312), and they go through another matrix (the RECT_GM palette, pcomp_calc pm_gpu.c:803-807).
 Class: edge (depth). A prim-depth decal drawn as a texrect and one drawn as triangles land 1 unit apart.
 Fix: one helper for both paths, with a host test that compares the PICA depth of both paths for p in {1, 16384, 32734}.
@@ -152,6 +152,8 @@ Deleting them is a user decision, because CLAUDE.md rule 7 says debug tools may 
 Speed check (Azahar, direction only): wcen_mac01 gbi phase avg/p95 is 5.9/15.0 ms on base 53e5a553e (2 runs) and 5.9/14.9 ms on W1-W10 (3 runs), with walker_ops 595 on both builds. Azahar has no cache model, so the cut in per-batch work and data does not show there. Open: one console_prof pair (base vs W1-W10) on the O3DS at spot_mac01_prof needs the user.
 
 C4 (user decision, D9): 61 of the 64 words that no scenario, bench, open row or plan names are deleted with the code they gated. Kept: depthview (a key byte of NdTmplKey, the ndref TevKey format and 4 host tests replay it), ptrcheck (the PTRCHECK macro sits in src/msg.c, a file with the user's uncommitted edits), and the new CORE2 audiohash path. Gates: build, nd_host PASS, spot_mac01_det, mdl5_iwa10_det, battle_start_f182_cold, nok11_det 0000-0015 byte-equal to base b234c3b3d; pause_spin_grab differs only in the known grab block (x 115, y 33 to 40).
+
+B2 result: the shader zmix path took the N64 NDC value 2(p-1)/32767-1 as the PICA clip z / w. The full palette (OrthoTilt row 2 = z - w after the view row 0.5 z + 0.5 w) needs (p-1)/32767-1, the value the rectangle path already gives (depth 1 - p/32767). Every G_ZS_PRIM triangle with p above 16384 was outside the clip volume: the mac_00 pond blocker (prim 0x7FF0, Z_CMP, colour only; wdraw zs 1 in pond_mac00_wlog) never drew, and the pond showed the hedge behind it. After nd_prim_clip_z the shot pond_mac00_wlog frame 204 shows the pond colour (rows 94 to 400 of the left 38 columns, 8,340 pixels change; build3ds/audit_shots/b2_pond_before_after.png). The 4 byte gates are unchanged (none has a G_ZS_PRIM triangle). Console check of the pond is open (POND row).
 
 ## 5. Known open items (links only)
 

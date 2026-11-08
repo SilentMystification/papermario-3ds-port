@@ -68,7 +68,7 @@ typedef struct NdGvIn {
 } NdGvIn;
 void nd_gv_params(const NdGvIn* in, NdGvP* o);
 float nd_shift_mul(unsigned n);     /* tile shift to scale: 1 for 0, 1 / 2^n for n up to 10 */
-float nd_prim_ndc_z(unsigned prim_z);
+float nd_prim_clip_z(unsigned prim_z);
 
 
 /* S3N-1 (B5, B6): a render mode list (ModelRenderModes[i], Gfx pairs ending in G_ENDDL) as a native state. ok 1 only when the list has SETOTHERMODE_H/L ops
