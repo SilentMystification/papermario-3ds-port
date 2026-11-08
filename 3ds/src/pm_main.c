@@ -417,12 +417,26 @@ void pm_frame_loop(void) {
         /* The retrace builds a display list only every other call. Presenting
          * the idle call shows the other framebuffer, which was never drawn. */
         int draw = D_80073E0A != 0 || !ever;
+        static int prev_draw; const int lastdraw = prev_draw; prev_draw = draw; /* GREY: draw flag of the previous pass */
+        static int top_after_due; static unsigned top_after_k;
         PM_WD_PHASE(2);
         pm_log_poll();
         pm_pad_scan();
         if (pm_menu_open) { /* MN1: the Select menu pauses the game: no step, no draw, no audio tick. The menu text is presented here. */
-            if (!menu_frozen) { menu_frozen = 1; pm_log("menu: game paused at frame %u", frame); pm_gpu_menu_grey(); pm_audio_mute(1); } /* MN2, PAUSE AUDIO */
+            if (!menu_frozen) { /* MN2, PAUSE AUDIO */
+                extern unsigned pm_gx_qpend(void); extern void pm_gpu_menu_dirty_set(void);
+                menu_frozen = 1; pm_log("menu: game paused at frame %u", frame);
+                pm_log("menu: grey qpend %u lastdraw %d frame %u", pm_gx_qpend(), lastdraw, frame);
+                pm_gpu_menu_dirty_set(); pm_gpu_menu_present(); pm_audio_mute(1); /* GREY: a forced present waits for the queued game frame (FrameBegin SYNCDRAW), then greys after its own transfer */
+                top_after_due = 1;
+            }
             gspWaitForVBlank();
+            if (top_after_due) { /* GREY: the displayed top buffer one vblank after the pause */
+                extern void pm_gpu_shot_top_displayed(const char* name);
+                char tn[24];
+                top_after_due = 0;
+                if (pm_debug_has("shotgrey")) { snprintf(tn, sizeof tn, "top_after%04u", top_after_k++); pm_gpu_shot_top_displayed(tn); }
+            }
             pm_gpu_menu_present();
             { /* B1 repro: shotfrozen=<n> takes the bottom screen on the n-th frozen pass (bot_fz<n>), then the event line */
                 static int fz_want = -2;

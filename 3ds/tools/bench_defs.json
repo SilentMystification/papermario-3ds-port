@@ -3171,6 +3171,22 @@
       "gates": []
     },
     {
+      "name": "menu_seltap_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "GREY (MN2): quick Select open/close/open at mac_01; menu: game paused count, qpend per pause, top_after shots grey.",
+      "scenario": "menu_seltap_det",
+      "cap": 20,
+      "until": "seltap: done",
+      "tags": [
+        "azahar",
+        "menu",
+        "det"
+      ],
+      "gates": []
+    },
+    {
       "name": "menu_open_det",
       "kind": "azahar_pic",
       "speed": "normal",

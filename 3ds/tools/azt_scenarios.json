@@ -9386,6 +9386,37 @@
       "reason": "FB-3 part 1 tex1 subject (sbk_56, cold det). Cap 25 as the other det spots."
     },
     {
+      "name": "menu_seltap_det",
+      "status": "unverified",
+      "subject": "Mac_01 (warp entry 0, pos 0 0 200), the debug switch seltap presses Select twice per 12 scans, 6 cycles from scan 400: menu open, close, open. Each pause logs the GX queue (qpend) and takes top_after, the displayed top buffer one vblank after the pause.",
+      "proves": "GREY MN2: the top screen is grey at every menu open, also on a quick reopen (every top_after shot r = g = b).",
+      "debug": "warp=mac_01:0 pos=0:0:200 seltap=400:6 shotgrey loglevel=debug det fixedseed fast fs1off",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "seltap: done",
+      "cap": 20,
+      "deadline": 18,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "paused",
+          "regex": "menu: game paused at frame"
+        },
+        {
+          "name": "done",
+          "regex": "seltap: done"
+        }
+      ],
+      "reason": "GREY repro: quick Select presses; cap 20 s: boot, warp, 400 scans, 6 cycles of 12 scans."
+    },
+    {
       "name": "cfg1_prof_off",
       "status": "unverified",
       "subject": "Launch word prof=off with the saved profmode=prof in options.ini (the slot copy). Log only: the boot line prints run prof off with source F.",
@@ -9472,7 +9503,7 @@
     {
       "name": "cfg2_panel_a",
       "status": "unverified",
-      "reason": "broken: no until in 40 s (AZT11-5, 2026-11-08)",
+      "reason": "CFG-2 gate a. Master options.ini: profmode=prof, levels default (restored after). The shot is the bottom screen row, read by a person.",
       "subject": "Launch words prof=off and loglevel=debug over the saved profmode=prof: bottom screen panel row and the echo line. Shot at frame 240 (bottom and top).",
       "proves": "CFG-2 gate a: the panel shows live D F, disk D F, con I I, P off F; the echo line panel: prints the same text at boot.",
       "debug": "prof=off loglevel=debug shots shotbottom=240:1",
@@ -9491,8 +9522,7 @@
           "name": "prof off from the launch word",
           "regex": "options: run prof off src F"
         }
-      ],
-      "reason": "CFG-2 gate a. Master options.ini: profmode=prof, levels default (restored after). The shot is the bottom screen row, read by a person."
+      ]
     },
     {
       "name": "cfg2_panel_b",
@@ -9537,7 +9567,7 @@
     {
       "name": "menu_open_det",
       "status": "unverified",
-      "reason": "broken: no until in 15 s (AZT11-5, 2026-11-08)",
+      "reason": "B1 repro (row MENUB). Until is the frozen shot line. Cap 15 s.",
       "subject": "Toad mac_01 at pos 0 0 200, cold det start, Select opens the menu; the frozen pass 60 takes the bottom screen (bot_fz0060). B1 repro: sinkslow widens the console race window.",
       "proves": "B1 check: after the menu opens, console writes of the log batch that were queued before the open land on the bottom screen (late console writes, the menu: late console writes line at close); the shot shows the stale log text over the menu.",
       "debug": "warp=mac_01:0 pos=0:0:200 padscript=wait200,SELECT,wait30 shotfrozen=60 loglevel=debug conlevel=debug det fixedseed fast fs1off sinkslow",
@@ -9556,8 +9586,7 @@
           "name": "frozen shot",
           "regex": "menu: frozen shot 60"
         }
-      ],
-      "reason": "B1 repro (row MENUB). Until is the frozen shot line. Cap 15 s."
+      ]
     }
   ]
 }
