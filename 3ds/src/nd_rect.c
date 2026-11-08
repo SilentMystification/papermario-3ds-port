@@ -97,7 +97,11 @@ __attribute__((noinline)) int box_pattern_rect(int xl, int yl, int xh, int yh, u
     unsigned char tst[4];
     if (!box_pat || !nd_ws.td[0].valid || !nd_ws.td[1].valid || !nd_ws.td[0].src || !nd_ws.td[1].src) return 0;
     if (!tile_texel(0, 0, 0, tst) || !tile_texel(1, 0, 0, tst)) return 0;
-    int cx0 = X0 < 0 ? 0 : X0, cy0 = Y0 < 0 ? 0 : Y0, cx1 = X1 > 320 ? 320 : X1, cy1 = Y1 > 240 ? 240 : Y1;
+    /* HUD3: with wide the frame shows game x -40..359 (px maps x to 40 + x). A window that reaches into the side strips is composed there too, so its border and
+     * corners sit where draw_box puts them. Clipped at 0 and 320, the chunk on the game edge took the edge rule of tex_raw_rect, which extends s past the
+     * clamped composite: the corner column 0 (the light border texel) smeared over the 40 px strip as a yellow bar. */
+    const int xlo = (pm_wide && pm_is_cfb(nd_ws.cimg)) ? -40 : 0, xhi = (pm_wide && pm_is_cfb(nd_ws.cimg)) ? 360 : 320;
+    int cx0 = X0 < xlo ? xlo : X0, cy0 = Y0 < 0 ? 0 : Y0, cx1 = X1 > xhi ? xhi : X1, cy1 = Y1 > 240 ? 240 : Y1;
     pm_gpu_flush();
     pm_gpu_set_combine(5);
     sc_ok = 0; nd_sr_forget(); /* DIP2: pm_gpu holds a combine mode sync_combine did not set */

@@ -34,7 +34,10 @@ This is the entry point for every test and profiling run (it replaces the text t
   python 3ds/tools/bench.py trend <bench> [<metric>] [area filters]           (no metric: the prof_record.py trend layout, fps and ft)
   python 3ds/tools/bench.py check <run_id>                    (evaluate the gates of one run)
   python 3ds/tools/bench.py rebuild                           (drop and rebuild bench.db from runs.jsonl and bench_defs.json)
-  python 3ds/tools/bench.py tour-report <run_id>              (one row per map of a tour ingest: ft_ms, wk, o34 and its share, gbi, draws, tris; ranked by ft_ms then o34)
+  python 3ds/tools/bench.py tour-report <run_id>              (one row per map of a tour ingest: ft_ms, wk, o34 and its share (o34 over the clean frames), gbi, draws, tris; ranked by ft_ms then o34)
+  python 3ds/tools/bench.py tour-curate <run_id> [--slow-ms 33.3] [--top 20] [--per-area 2] [--dry-run]
+        Writes 3ds/tours/curated.txt: maps with ft_ms over --slow-ms (top --top) plus the top --per-area maps of each area (ft_ms, then o34).
+        gen_tour_lists.py compiles it (tourlist=curated).
         A tour log (TOUR1 `prof f<n> w<n> tour <i>/<n> <map>:<entry>` lines) ingests as one run record per map: tour_idx and kind
         (map) in the window's extra_json; the bench tags tour_full, tour_curated or tour_battle are copied to the records.
 
@@ -918,6 +921,106 @@ def queue_line():
         print("QUEUE: summary failed (%s)" % e)
 
 
+def main_folder():
+    """The main checkout (parent of the git common dir): the Azahar slot pool and pool.log live there for every worktree."""
+    try:
+        gcd = subprocess.run(["git", "-C", str(REPO), "rev-parse", "--path-format=absolute", "--git-common-dir"],
+                             capture_output=True, text=True, timeout=20).stdout.strip()
+        if gcd:
+            return Path(gcd).parent
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return REPO
+
+
+def all_tree_runs_files():
+    """runs.jsonl of the main folder and of every worktree (each tree appends to its own copy until a merge)."""
+    files = [main_folder() / "3ds" / "logs" / "perf" / "runs.jsonl"]
+    try:
+        out = subprocess.run(["git", "-C", str(REPO), "worktree", "list", "--porcelain"], capture_output=True, text=True, timeout=20).stdout
+        for ln in out.splitlines():
+            if ln.startswith("worktree "):
+                files.append(Path(ln[9:].strip()) / "3ds" / "logs" / "perf" / "runs.jsonl")
+    except (OSError, subprocess.SubprocessError):
+        pass
+    seen, uniq = set(), []
+    for f in files:
+        k = str(f.resolve()).lower()
+        if k not in seen and f.exists():
+            seen.add(k)
+            uniq.append(f)
+    return uniq
+
+
+def qstats(vals):
+    v = sorted(x for x in vals if x is not None)
+    if not v:
+        return "n 0"
+    p90 = v[min(len(v) - 1, int(round(0.9 * (len(v) - 1))))]
+    return "n %d median %.1f p90 %.1f max %.1f sum %.0f" % (len(v), v[len(v) // 2], p90, v[-1], sum(v))
+
+
+def cmd_azstat(a):
+    """AZT12: Azahar test throughput since --since (default today): runs of every tree's runs.jsonl (azahar host, one record per
+    start: a tour start writes several records with the same ts and log), cold and warm, queue wait_s, boot_s, until_s, wall_s;
+    then the slot pool events of build3ds/azslots/pool.log (cold starts by reason, kills by reason, warm restarts, stale boots)."""
+    since = a.since or datetime.date.today().isoformat()
+    runs = {}
+    for f in all_tree_runs_files():
+        for x in f.read_text(encoding="utf-8", errors="replace").splitlines():
+            if not x.strip():
+                continue
+            try:
+                r = json.loads(x)
+            except ValueError:
+                continue
+            if "run_id" not in r or norm_host(r.get("host")) != "azahar" or str(r.get("ts", "")) < since:
+                continue
+            if a.row and str(r.get("row", "")).lower() != a.row.lower():
+                continue
+            runs.setdefault((r.get("ts"), r.get("log_path"), r.get("row"), r.get("label")), r)  # the same start in two trees (merged copy) or a tour's records
+    rs = list(runs.values())
+    print("azstat since %s%s: %d Azahar starts (runs.jsonl of %d trees)" % (since, " row " + a.row if a.row else "", len(rs), len(all_tree_runs_files())))
+    warm = sum(1 for r in rs if r.get("warm") == 1)
+    cold = sum(1 for r in rs if r.get("warm") == 0)
+    print("  warm %d, cold %d, unknown %d" % (warm, cold, len(rs) - warm - cold))
+    for k in ("wait_s", "boot_s", "until_s", "wall_s"):
+        print("  %-8s %s" % (k, qstats([r.get(k, (r.get("timing") or {}).get(k)) for r in rs])))
+    for kind, wv in (("warm", 1), ("cold", 0)):
+        print("  boot_s %-4s %s" % (kind, qstats([r.get("boot_s") for r in rs if r.get("warm") == wv])))
+    pl = main_folder() / "build3ds" / "azslots" / "pool.log"
+    tree = (os.sep + "wt" + os.sep + a.row.lower()) if a.row else ""  # --row: pool.log lines of the worktree build3ds/wt/<row>
+    if not pl.exists():
+        print("no pool.log at %s" % pl)
+        return 0
+    ev = collections.Counter()
+    for ln in pl.read_text(encoding="utf-8", errors="replace").splitlines():
+        if ln[:19] < since or (tree and tree not in ln.lower()):
+            continue
+        m = re.match(r"^\S+ .*? slot\d+ pid \S+ -> \S+ (.*)$", ln)
+        if not m:
+            continue
+        t = m.group(1)
+        if t.startswith("start cold:"):
+            ev["cold start: " + t[11:].strip()] += 1
+        elif t.startswith("kill "):
+            ev["kill: " + t[5:].strip()] += 1
+        elif t.startswith("warm restart") or t.startswith("warm restart,"):
+            ev["warm restart ok"] += 1
+        elif t.startswith("warm wait") and "nonce none" in t:
+            ev["warm restart try without boot"] += 1
+        elif t.startswith("stale "):
+            ev["stale run booted"] += 1
+        elif t.startswith("close "):
+            ev["close kept (cap or GPU retry)"] += 1
+        elif t.startswith("exit "):
+            ev["Azahar exit or crash"] += 1
+    print("pool.log events since %s:" % since)
+    for k, n in sorted(ev.items(), key=lambda kv: (-kv[1], kv[0])):
+        print("  %5d  %s" % (n, k))
+    return 0
+
+
 def cmd_slow(a):
     """AZT11-5: scenarios whose measured until (median of the recorded runs) is above --min s, with the until line and its frame.
     broken = runs that reached the cap without the until line (rc 10). Read-only."""
@@ -1215,7 +1318,7 @@ def cmd_ingest_last(a):
     b, c = resolve_build(p, text, a.build, a.commit, "azahar")
     result = "log_pass" if a.rc == 0 else ("broken" if a.rc == 10 else "fail:%d" % a.rc) # AZT11-5: rc 10 = no until line in the cap (broken, not a code fail)
     note = "picture: a person reads the shot" if bd and bd["kind"] == "azahar_pic" else ""
-    shot = a.shots or str(SHOTS / s)
+    shot = a.shots or str(SHOTS / s / (os.environ.get("PM_LANE") or "main"))  # SHOTLANE: per scenario and build
     dv = os.environ.get("PM_BENCH_DIRTY")
     lb, _ = log_build(text)
     if a.build is not None and lb is not None and lb != a.build:  # BF-4: the boot line is not the build that was run
@@ -1223,35 +1326,99 @@ def cmd_ingest_last(a):
         return 1
     return ingest_file(p, bench, "azahar", b, c, a.row, a.label or s, result, note, shot, [], device=DEVICE["azahar"],
                        kind=bd["kind"] if bd else "adhoc", speed=a.speed, frame_limit=a.frame_limit,
-                       timing={"wall_s": a.wall_s, "until_s": a.until_s, "end_after_until_s": a.end_after_until_s},
+                       timing={"wall_s": a.wall_s, "until_s": a.until_s, "end_after_until_s": a.end_after_until_s,
+                               "wait_s": a.wait_s, "boot_s": a.boot_s},
                        dirty=None if dv is None else dv == "1", warm=a.warm)
 
 
-def cmd_tour_report(a):
-    """One row per map of the tour that run_id belongs to (the records with the same log and ingest time), ranked by ft_ms then o34."""
+def tour_group(run_id):
+    """The map records of the tour that run_id belongs to (same log and ingest time), by tour_idx. (None, None) when run_id is not a tour window."""
     recs = read_runs()
-    me = next((r for r in recs if r["run_id"] == a.run_id), None)
+    me = next((r for r in recs if r["run_id"] == run_id), None)
     if me is None or not any("tour_idx" in w for w in me.get("windows", [])):
-        print("run %d is not a tour window (no tour_idx)" % a.run_id)
-        return 4
+        return None, None
     rows = [r for r in recs if r.get("log_path") == me.get("log_path") and r.get("ts") == me.get("ts")
             and any("tour_idx" in w for w in r.get("windows", []))]
     rows.sort(key=lambda r: r["windows"][0]["tour_idx"])
+    return me, rows
+
+
+def tour_rank(r):
+    """Sort key of a map record, slowest first: ft_ms then o34 (plan_tours.md). wk and gbi are columns only."""
+    m = r.get("run", {})
+    return (-(m.get("ft_ms") or 0.0), -(m.get("o34") or 0.0))
+
+
+def tour_area(r):
+    """Area of a map record: the map prefix before the first `_` (mac_00 is mac)."""
+    return r["windows"][0]["map"].split("_")[0]
+
+
+def cmd_tour_report(a):
+    """One row per map of the tour that run_id belongs to, ranked by tour_rank (ft_ms, then o34). o34% = o34 over the clean frames of the window (wsize)."""
+    me, rows = tour_group(a.run_id)
+    if me is None:
+        print("run %d is not a tour window (no tour_idx)" % a.run_id)
+        return 4
     print("tour-report run %d: %s build %s commit %s, %d map windows (log %s)" % (
         a.run_id, me["bench"], me.get("build_no"), me.get("commit"), len(rows), me.get("log_path")))
     print("%3s %-3s %-16s %-14s %6s %6s %6s %6s %6s %6s %5s" % ("#", "run", "map", "entry", "ft_ms", "wk", "o34", "o34%", "gbi", "draws", "tris"))
-    out = []
-    for r in rows:
-        m = r.get("run", {})
-        ft, o34 = m.get("ft_ms") or 0.0, m.get("o34") or 0.0
-        share = 100.0 * o34 / ft if ft else 0.0
-        out.append((ft, o34, r, share))
-    out.sort(key=lambda t: (-t[0], -t[1]))
-    for ft, o34, r, share in out:
+    for r in sorted(rows, key=tour_rank):
         m, w = r.get("run", {}), r["windows"][0]
+        clean = w.get("wsize") or 0
+        o34 = m.get("o34") or 0.0
+        share = 100.0 * o34 / clean if clean else 0.0
         print("%3d %-3d %-16s %-14s %6.2f %6.2f %6.2f %5.1f%% %6.2f %6.0f %5.0f" % (
-            w["tour_idx"], r["run_id"], w["map"], "e%s" % w["entry"], ft, m.get("wk") or 0.0, o34, share,
+            w["tour_idx"], r["run_id"], w["map"], "e%s" % w["entry"], m.get("ft_ms") or 0.0, m.get("wk") or 0.0, o34, share,
             m.get("gbi") or 0.0, m.get("draws") or 0.0, m.get("tris") or 0.0))
+    return 0
+
+
+TOURS = REPO / "3ds" / "tours"
+CURATED = TOURS / "curated.txt"
+
+
+def cmd_tour_curate(a):
+    """Writes 3ds/tours/curated.txt from the tour of run_id: every map with wk over --slow-ms (the top --top by tour_rank), plus the
+    top --per-area maps of each area by tour_rank. One item per map, in tour order. gen_tour_lists.py compiles it (tourlist=curated)."""
+    me, rows = tour_group(a.run_id)
+    if me is None:
+        print("run %d is not a tour window (no tour_idx). Nothing written." % a.run_id)
+        return 4
+    ranked = sorted(rows, key=tour_rank)
+    chosen = {}
+    for r in [r for r in ranked if (r.get("run", {}).get("ft_ms") or 0.0) > a.slow_ms][:a.top]:
+        chosen[r["run_id"]] = r
+    per = {}
+    for r in ranked:
+        ar = tour_area(r)
+        if per.get(ar, 0) < a.per_area:
+            per[ar] = per.get(ar, 0) + 1
+            chosen[r["run_id"]] = r
+    picked = sorted(chosen.values(), key=lambda r: r["windows"][0]["tour_idx"])
+    seen, items = set(), []
+    for r in picked:
+        if r["windows"][0]["map"] not in seen:
+            seen.add(r["windows"][0]["map"])
+            items.append(r)
+    hdr = ["# curated tour list (tourlist=curated). One map per line, map:entry; gen_tour_lists.py compiles it into 3ds/src/pm_tour_lists.h.",
+           "# source: run %d, %s, build %s commit %s, %d map windows of the tour" % (
+               a.run_id, me.get("log_path"), me.get("build_no"), me.get("commit"), len(rows)),
+           "# rule: ft_ms over %g ms (top %d), plus the top %d maps of each area (area = map prefix); rank ft_ms, then o34." % (
+               a.slow_ms, a.top, a.per_area)]
+    if me.get("host") == "azahar":
+        hdr.append("# seed from Azahar tour10_det, replace after tour_full_prof" if "tour10" in (me.get("label") or "") else
+                   "# source is an Azahar run: replace after tour_full_prof")
+    lines = hdr + ["%s:%s  # tour %d, wk %.2f, gbi %.2f, draws %.0f" % (
+        r["windows"][0]["map"], r["windows"][0]["entry"], r["windows"][0]["tour_idx"], r["run"].get("wk") or 0.0,
+        r["run"].get("gbi") or 0.0, r["run"].get("draws") or 0.0) for r in items]
+    if a.dry_run:
+        print("\n".join(lines))
+        return 0
+    TOURS.mkdir(parents=True, exist_ok=True)
+    with open(CURATED, "w", encoding="utf-8", newline="\n") as f:
+        f.write("\n".join(lines) + "\n")
+    print("tour-curate: %d maps (of %d) -> %s" % (len(items), len(rows), CURATED.relative_to(REPO)))
     return 0
 
 
@@ -1590,6 +1757,7 @@ def main(argv):
     x.add_argument("--speed", choices=SPEEDS, default="unknown"); x.add_argument("--frame-limit", type=float)
     x.add_argument("--warm", type=int, choices=[0, 1])  # AZT2: 1 warm restart in a kept Azahar, 0 cold; absent when unknown
     x.add_argument("--wall-s", type=float); x.add_argument("--until-s", type=float); x.add_argument("--end-after-until-s", type=float)  # AZT10b-2: run timing
+    x.add_argument("--wait-s", type=float); x.add_argument("--boot-s", type=float)  # AZT12: queue wait (enqueue to grant), boot (Azahar start to the first game line)
     x.set_defaults(f=cmd_ingest_last)
     x = sub.add_parser("build-at"); x.add_argument("commit"); x.add_argument("bench"); x.add_argument("--row", required=True)
     x.add_argument("--why", default=""); x.add_argument("--label", default=""); x.add_argument("--dry-run", action="store_true")
@@ -1602,8 +1770,12 @@ def main(argv):
     x = sub.add_parser("trend"); x.add_argument("bench"); x.add_argument("metric", nargs="?"); add_area(x); x.set_defaults(f=cmd_trend)
     x = sub.add_parser("check"); x.add_argument("run_id", type=int); x.set_defaults(f=cmd_check)
     x = sub.add_parser("slow"); x.add_argument("--min", type=float, default=8.0, help="list scenarios with a median until_s above this (AZT11-5)"); x.set_defaults(f=cmd_slow)
+    x = sub.add_parser("azstat"); x.add_argument("--since", default="", help="ISO date or time (default today)"); x.add_argument("--row", default="", help="one row (its runs and the pool.log lines of build3ds/wt/<row>)"); x.set_defaults(f=cmd_azstat)
     x = sub.add_parser("rebuild"); x.set_defaults(f=cmd_rebuild)
     x = sub.add_parser("tour-report"); x.add_argument("run_id", type=int); x.set_defaults(f=cmd_tour_report)
+    x = sub.add_parser("tour-curate"); x.add_argument("run_id", type=int); x.add_argument("--slow-ms", type=float, default=33.3)
+    x.add_argument("--top", type=int, default=20); x.add_argument("--per-area", type=int, default=2)
+    x.add_argument("--dry-run", action="store_true", help="print the list, write nothing"); x.set_defaults(f=cmd_tour_curate)
     x = sub.add_parser("correct"); x.add_argument("run_id", type=int); x.add_argument("--why", required=True); x.add_argument("--row", default="BENCHFIX")
     x.set_defaults(f=cmd_correct)
     a = p.parse_args(argv)
