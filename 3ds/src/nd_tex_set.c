@@ -11,7 +11,6 @@
 #include "variables.h"
 
 /* GLOB: definitions moved here from the former pm_gbi.c (layout only). */
-unsigned tex_gen;
 int ld_valid, ld_x, ld_y, ld_h, ld_w; /* last LoadTile window, in 8-bit texels of the source image */
 unsigned ldrec_n;
 M1Rec m1;
@@ -335,7 +334,6 @@ void ensure_tile(int n) {
             }
             pm_gpu_flush();
             pm_tex_set_wrap(nd_ws.tst1.tile_wrap[n][0], nd_ws.tst1.tile_wrap[n][1], nd_ws.tst1.tile_wrap[n][2], nd_ws.tst1.tile_wrap[n][3]);
-            tex_gen++; /* TBREP: a load changes TMEM */
             pm_tex_load(fb, 0, 2, 320, 240, nd_ws.td[n].pal, nd_ws.td[n].pal_n, 320);
             { /* FB1 debug switch fbbind: the bind as the texture layer gives it: size (pm_tex_size), source, slot (off) or CPU texture (cur) */
                 static int fbon = -1;
@@ -363,7 +361,6 @@ void ensure_tile(int n) {
     pm_gpu_flush();
     pm_tex_set_wrap(nd_ws.tst1.tile_wrap[n][0], nd_ws.tst1.tile_wrap[n][1], nd_ws.tst1.tile_wrap[n][2], nd_ws.tst1.tile_wrap[n][3]);
     if (nd_ws.td[n].fmt == 0 && nd_ws.td[n].siz == 2) grab_cur(nd_ws.td[n].src, nd_ws.td[n].w, nd_ws.td[n].h);
-    tex_gen++; /* TBREP: a load changes TMEM */
     pm_tex_load(nd_ws.td[n].src, nd_ws.td[n].fmt, nd_ws.td[n].siz, nd_ws.td[n].w, nd_ws.td[n].h, nd_ws.td[n].pal, nd_ws.td[n].pal_n, nd_ws.td[n].stride);
     {   /* V05: a window of an off-screen texture starts at (ox, oy) in it */
         int ox, oy, gox, goy;
@@ -502,7 +499,6 @@ __attribute__((cold, noinline)) void tex_win_s25(int* p_uls, int* p_ult, int* p_
 
 __attribute__((noinline)) void tex_op_impl(u32 w0, u32 w1) {
     unsigned op = w0 >> 24;
-    tex_gen++; /* TBREP */
     switch (op) {
         case G_SETTIMG: op_settimg(w0, w1); break;
         case G_SETTILE: op_settile(w0, w1); break;
@@ -552,7 +548,6 @@ __attribute__((noinline)) void tb_ops_generic(const Gfx* g) {
 }
 
 __attribute__((noinline)) void tb_ops(const Gfx* g) {
-    tex_gen++;
     for (const Gfx* h = g;; h++) {
         u32 w0 = h->words.w0, w1 = h->words.w1;
         unsigned op = w0 >> 24;

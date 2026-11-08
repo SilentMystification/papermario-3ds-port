@@ -36,23 +36,23 @@ Ranked by how much they cut cross-system cost or coupling. Tag: the interface ro
 
 ### A. Console performance (per-op cross-module work, duplicated state)
 
-**A1 (batch close, S). The draw census runs on every native batch with no switch.**
+**[done W1] A1 (batch close, S). The draw census runs on every native batch with no switch.**
 pm_gpu.c:441 says "The accumulation has no switch test". `cen_add(&tk, ...)` at pm_gpu.c:1244 runs on every native raw batch. For each batch it copies a 76-byte TevKey, hashes 18 words with FNV (pm_gpu.c:456-465), calls pm_tex_census_id, and probes the 256 x 20 B table (5,120 B, pm_gpu.c:444-454). cen_frame_end clears the 5,120 bytes every frame (`if (cen_nt) memset(cen_tab, 0, sizeof cen_tab)`, pm_gpu.c:595). The table only prints at the frame given by drawcensus=<frame> (pm_gpu.c:589).
 Fix: read drawcensus once at boot, and call cen_add and the memset only when it is set.
 
-**A2 (batch close, M). One draw state becomes three keys per batch.**
+**[done W2] A2 (batch close, M). One draw state becomes three keys per batch.**
 nd_raw_native builds NdTmplKey (44 B: memset and 30 stores, pm_gpu.c:1215-1225). It then builds TevKey from the same globals (76 B: memset, 19 stores and a 76-byte memcmp, pm_gpu.c:1233-1237). TevKey adds only prim, cconst, mixcol and plan_gen. nd_tmpl_build copies the key again (`NdTmplKey kk = *in`) and hashes it one byte at a time (44 FNV steps, nd_tmpl.c:309-313). cen_add hashes TevKey a third time (A1). flush_tev_rebuild builds the same two keys (pm_gpu.c:734-747).
 Fix: keep one key (NdTmplKey plus the 3 colour words) in pm_gpu state. The setters update it and mark it dirty. nd_raw_native rebuilds and looks it up only when it is dirty. Hash by word.
 
-**A3 (batch close, M). pm5 draws clear the command shadow on every draw.**
+**[done W3] A3 (batch close, M). pm5 draws clear the command shadow on every draw.**
 nd_native_submit calls `nd_shadow_reset(&ndn_sh)` for every use5 draw, even when prog5 is already bound (pm_gpu.c:1001-1003). The shadow is 1,848 B, and the reset clears all of it. After a reset, nd_emit_draw writes every template register (up to 64) and every unit block again (nd_emit.c:37-77). The pm5 uniforms go through C3D_FVUnifSet (pm5_upload pm_gpu.c:1155-1170, pm5_upload_draw :1050-1062), and citro3d sends them again at C3Di_UpdateContext. A model pm5 draw also copies its 588-byte NdDraw into d5 (pm_gpu.c:995).
 Fix: reset the shadow only when the program changes. Write the pm5 uniforms with nd_emit `uni()` against the shadow, at the u5_* locations.
 
-**A4 (batch close, S). pm5 raw batches copy palettes that the draw then discards.**
+**[done W3] A4 (batch close, S). pm5 raw batches copy palettes that the draw then discards.**
 pm_gpu.c:1248-1252 copies up to 21 x 64 B of pcomp into palk. pm_gpu.c:1268 then sets `d.npal = 0` for g_use5, and pm5_upload computes and uploads the same pcomp entries again.
 Fix: skip the palk loop when g_use5 is set.
 
-**A5 (batch close, M). The hot code is larger than the L1I.**
+**[partly done W2] A5 (batch close, M). The hot code is larger than the L1I.**
 The batch close path is 19,288 B of code: flush_draw 1,524 + nd_raw_native 8,996 + nd_native_submit 4,184 + nd_emit_draw 2,040 + C3Di_UpdateContext 1,256 + nd_tmpl_build 996 + ndunit_after 200 + GPUCMD_AddRawCommands 92. The L1I is 16,384 B (hw_guidelines rule 1). The per-triangle walker path is another 11,228 B: nd_walk_run 3,268, draw_tri 604, gv_tri 1,788, gappend 676, gtrip 3,108, nd_geom_vtx 1,784.
 nd_raw_native contains debug blocks inline: the wl_on wdraw/wsurf logs (pm_gpu.c:1274-1287, a 40-argument pm_log and a vertex loop), orb_log (:1230), ndplan_check (:1229), the ndm_cmp call (:1273) and grablog (:1204).
 Fix: move each debug block into a cold, noinline function behind one flag test. Together with A2, which removes TevKey, nd_raw_native should fall under 4 KB.
@@ -108,9 +108,9 @@ Fix: make the walker setters and nd_words one function.
 
 ### C. Maintainability
 
-**C1 (local, S). tex_gen is written and never read.** It is incremented at 10 sites in 5 files (nd_comb.c:642, nd_rect.c:61,107,159,260, nd_target.c:66, nd_tex_set.c:338,366,505,555). It is declared at nd_tex_set.c:14 and nd_int.h:14. No code reads it. Fix: delete it.
+**[done W1] C1 (local, S). tex_gen is written and never read.** It is incremented at 10 sites in 5 files (nd_comb.c:642, nd_rect.c:61,107,159,260, nd_target.c:66, nd_tex_set.c:338,366,505,555). It is declared at nd_tex_set.c:14 and nd_int.h:14. No code reads it. Fix: delete it.
 
-**C2 (local, S). Unreachable or no-op code:**
+**[done W1] C2 (local, S). Unreachable or no-op code:**
 - nd_walk.c:193-195: `pc += w0 & 0xffffu; break;` comes after the G_PM_ENT `break`.
 - nd_walk.c:202-203: the G_DL prefetch runs twice.
 - nd_walk.c:326-334: the switch cases G_SPNOOP and RDP*SYNC never run, because g1_skip (nd_walk.c:32) skips them first.
@@ -126,7 +126,7 @@ Deleting them is a user decision, because CLAUDE.md rule 7 says debug tools may 
 
 **C5 (local, S). PMD is defined 4 times and never sees a change.** The same PMD macro is defined at nd_comb.c:63, nd_rect.c:44, nd_set.c:18 and pm_main.c:14. It caches a word forever, so it never sees an options-panel change. PMDL (pm_port.h:68) does see it. Fix: use one macro, PMDL.
 
-**C6 (local, S). Counters print slots and names that are no longer true.** Only slots 4, 6, 8 and 9 of nraw_why are written (pm_gpu.c:1197, 1206, 1211, 1228), but nd_ent.c:288 and pm_heaphi.c:76 print slots 1, 2, 3, 5 and 7, which are always 0. rect_log prints rect_c[4] as "cpu" (pm_gpu.c:3678), but the counter now counts dropped rectangles (:3698, :3801).
+**[done W1] C6 (local, S). Counters print slots and names that are no longer true.** Only slots 4, 6, 8 and 9 of nraw_why are written (pm_gpu.c:1197, 1206, 1211, 1228), but nd_ent.c:288 and pm_heaphi.c:76 print slots 1, 2, 3, 5 and 7, which are always 0. rect_log prints rect_c[4] as "cpu" (pm_gpu.c:3678), but the counter now counts dropped rectangles (:3698, :3801).
 
 **C7 (local, M). Comments name rows instead of reasons.** There are 524 row-code tags ("FB-2:", "S3N-3c:", ...) in nd_*.c, pm_gpu.c and pm_tex.c, and 1,098 in all of 3ds/src. Many of these comments give the row and not the reason. Fix: rewrite them as reasons when the file is next edited. Git history keeps the row.
 
@@ -136,18 +136,18 @@ Deleting them is a user decision, because CLAUDE.md rule 7 says debug tools may 
 
 ## 4. Work list (this agent, in order; ownership first)
 
-| Id | Findings | Gate |
-|---|---|---|
-| W1 | A1 census gated; C1, C2, C6 dead state | build, nd_host, 5 det byte gates |
-| W2 | A2 one draw key, A5 cold debug blocks out of nd_raw_native | same, plus wcen_mac01 prof=4 gbi phase |
-| W3 | A3, A4 pm5 through the shadow | same |
-| W4 | B1 ring reuse at 30 fps | same (a ring wrap scenario if one exists, else code trace) |
-| W5 | A7, A8, A11 gtrip and gappend lookups | same |
-| W6 | A10, A12, C5 combine hash and switch macros | same |
-| W7 | A6 texture slot index | same |
-| W8 | B2, B3 seams (pixels change) | before and after shot of the subject, byte-equal elsewhere |
-| W9 | A9 combine fact owner, B4 decoder merge | same as W1 |
-| W10 | C3, C8, C9 (structure); C4 and the stereo double walk wait for the user | ask first |
+| Id | Findings | Gate | Status |
+|---|---|---|---|
+| W1 | A1 census gated; C1, C2, C6 dead state | build, nd_host, 5 det byte gates | done (all 5 byte-equal to base) |
+| W2 | A2 one draw key, A5 cold debug blocks out of nd_raw_native | same, plus wcen_mac01 prof=4 gbi phase | done: byte-equal; nd_raw_native 8,996 to 6,332 B, close path 19,288 to 16,832 B; TevKey built only for ndref and drawcensus; nd_tmpl_build repeats the last key with no hash |
+| W3 | A3, A4 pm5 through the shadow | same | done: byte-equal (battle_start_f182 has pm5 draws); the shadow resets only at a program change (prog_use); pm5 uniforms are marked dirty only when they differ from citro3d's copy (u5set, u5mtx); no palk copy for pm5. The 588 B d5 copy stays (nd_emit needs no_uni and loc_uvx) |
+| W4 | B1 ring reuse at 30 fps | same (a ring wrap scenario if one exists, else code trace) | open |
+| W5 | A7, A8, A11 gtrip and gappend lookups | same | open |
+| W6 | A10, A12, C5 combine hash and switch macros | same | open |
+| W7 | A6 texture slot index | same | open |
+| W8 | B2, B3 seams (pixels change) | before and after shot of the subject, byte-equal elsewhere | open |
+| W9 | A9 combine fact owner, B4 decoder merge | same as W1 | open |
+| W10 | C3, C8, C9 (structure); C4 and the stereo double walk wait for the user | ask first | open |
 
 ## 5. Known open items (links only)
 

@@ -190,9 +190,6 @@ void nd_walk_run(void* list, unsigned nbytes) {
             if (pm_ph_on) pk_rec[pmx_cur]++; /* WCEN2 */
             pc += G_PM_ENT_WORDS - 1 + nd_ent_case(pc - 1, w0, w1); /* the drawn record skips its own words and its G_DL */
             break;
-            pc += w0 & 0xffffu;
-            break;
-            /* fall through */
         case G_DL: {
             Gfx* next = (Gfx*)ptr_of(w1);
             if (next && !is_host((u32)next)) {
@@ -200,7 +197,6 @@ void nd_walk_run(void* list, unsigned nbytes) {
                 break;
             }
             if (next) { __builtin_prefetch(next); __builtin_prefetch(next + 4); } /* H4: the G_DL target */
-            __builtin_prefetch(next); __builtin_prefetch(next + 4);
             unsigned ot_sv = orb_tag; /* FX1-3: the tag of the list this G_DL runs in */
             int ow_ = 0; /* FX1-3: a tagged list under orbdbg runs in the walker (no ent or DLC path) */
             if (orb_lst_n && PMDL("orbdbg")) {
@@ -322,12 +318,7 @@ void nd_walk_run(void* list, unsigned nbytes) {
         case G_PM_ND: /* LS-4: native-only payload record (gbi_custom.h), dispatched by kind in nd_target.c */
             nd_native_rec(w0);
             break;
-        case G_NOOP:
-        case G_SPNOOP:
-        case G_RDPFULLSYNC:
-        case G_RDPTILESYNC:
-        case G_RDPPIPESYNC:
-        case G_RDPLOADSYNC:
+        case G_NOOP: /* G_SPNOOP and the RDP syncs never get here: g1_skip skips them */
         case G_SETZIMG:
         case G_RDPHALF_1:
         case G_RDPHALF_2:
@@ -383,11 +374,8 @@ int lt_mem_same(u32 w0, u32 w1) {
 }
 void gbi_cold_modifyvtx(u32 w0, u32 w1) { /* B5: F3DEX2 w0 = op, where, vertex * 2. Only G_MWO_POINT_XYSCREEN is used by the game (underwater.c) */
     unsigned where = (w0 >> 16) & 0xff, vi = (w0 & 0xffffu) / 2;
-    if (where == G_MWO_POINT_XYSCREEN && vi < 64) {
-        vert_sx[vi] = (s16)(w1 >> 16);
-        vert_sy[vi] = (s16)(w1 & 0xffffu);
-        vert_scr[vi] = 1;
-    }
+    /* w1 (the screen position) is not used: a triangle with such a vertex is dropped (gv_tri GVR_SCR) */
+    if (where == G_MWO_POINT_XYSCREEN && vi < 64) vert_scr[vi] = 1;
 }
 /* W1/P1: the outer call sets the producer cursor state. Nested calls (dlc replay) run inside the outer op. */
 void pm_gbi_run(void* list, unsigned nbytes) {

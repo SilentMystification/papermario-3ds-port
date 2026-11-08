@@ -8020,7 +8020,7 @@
         },
         {
           "name": "nrawwhy at 600",
-          "regex": "nrawwhy f600 cmdbuf"
+          "regex": "nrawwhy f600 zmark"
         }
       ],
       "reason": "OFF-3 census: the until line is the 600 frame counter; the subject shots are the picture (as nok11_splash)."
@@ -8052,7 +8052,7 @@
         },
         {
           "name": "nrawwhy at 300",
-          "regex": "nrawwhy f300 cmdbuf"
+          "regex": "nrawwhy f300 zmark"
         }
       ],
       "reason": "OFF-2 gate (grab refusal 0). The until line is the 300 frame counter; the spin shots are the picture."
@@ -8081,7 +8081,7 @@
         },
         {
           "name": "nrawwhy at 600",
-          "regex": "nrawwhy f600 cmdbuf"
+          "regex": "nrawwhy f600 zmark"
         }
       ]
     },
@@ -8810,7 +8810,7 @@
         },
         {
           "name": "nrawwhy at 300",
-          "regex": "nrawwhy f300 cmdbuf"
+          "regex": "nrawwhy f300 zmark"
         }
       ],
       "reason": "SPR4 det gate (pause, cold start, det switch): same as pause_spin_grab_w300.",
@@ -9305,7 +9305,7 @@
         },
         {
           "name": "nrawwhy at 300",
-          "regex": "nrawwhy f300 cmdbuf"
+          "regex": "nrawwhy f300 zmark"
         }
       ],
       "reason": "SPR4 reference: same scenario as pause_spin_grab_w300 with the nosprnat switch (pm_gpu_spr_native returns 0, the walker draws every sprite record). Cold run."

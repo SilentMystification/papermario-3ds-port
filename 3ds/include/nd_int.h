@@ -11,7 +11,6 @@
 
 typedef struct { int p0, p1; float u0, u1; } FoldSeg;
 
-extern unsigned tex_gen;
 
 /* the image roles of img_role (the former pm_gbi.c) */
 enum { ROLE_MAIN, ROLE_DEPTHQ, ROLE_CPUFILL, ROLE_DEPTH, ROLE_CPUPAL, ROLE_SLOT };
@@ -124,7 +123,6 @@ extern u8 vert_gvf[64];
 extern u8 vert_litf[64];
 extern u8 vert_live[64];
 extern u8 vert_scr[64];
-extern s16 vert_sx[64], vert_sy[64];
 extern unsigned blendc;
 extern unsigned char vert_cb[64];
 extern unsigned cmb_gen_seen;

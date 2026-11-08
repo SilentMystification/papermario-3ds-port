@@ -639,7 +639,6 @@ void dual_bind(void) {
         pm_gpu_flush();
         pm_tex_set_wrap(nd_ws.tst1.tile_wrap[1][0], nd_ws.tst1.tile_wrap[1][1], nd_ws.tst1.tile_wrap[1][2], nd_ws.tst1.tile_wrap[1][3]);
         if (nd_ws.td[1].fmt == 0 && nd_ws.td[1].siz == 2) grab_cur(nd_ws.td[1].src, nd_ws.td[1].w, nd_ws.td[1].h);
-        tex_gen++; /* TBREP */
         pm_tex_load(nd_ws.td[1].src, nd_ws.td[1].fmt, nd_ws.td[1].siz, nd_ws.td[1].w, nd_ws.td[1].h, nd_ws.td[1].pal, nd_ws.td[1].pal_n, nd_ws.td[1].stride);
         pm_tex_set_aux(nd_ws.tst1.tile_wrap[1][0], nd_ws.tst1.tile_wrap[1][1], nd_ws.tst1.tile_wrap[1][2], nd_ws.tst1.tile_wrap[1][3]);
         aux_key = key;
