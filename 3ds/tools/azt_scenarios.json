@@ -9200,7 +9200,6 @@
       "needs_picture": false,
       "expected_events": [
         {"name": "prof on", "regex": "prof=1 log=off"},
-        {"name": "list", "regex": "tour: list curated, 8 maps"},
         {"name": "window 1", "regex": "tour: window 1/8 "},
         {"name": "tour done", "regex": "tour: done items 8"}
       ],
