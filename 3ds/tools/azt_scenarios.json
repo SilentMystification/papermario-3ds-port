@@ -9781,6 +9781,110 @@
         }
       ],
       "reason": "Verified 2026-11-08 (pos1, run 3): Mario on the ground in all 3 shots, outdoors; mac_01 and sbk_02 centred, kmr_20 at the left edge because the entry 0 script holds the camera at story ch0."
+    },
+    {
+      "name": "msgbox_talk",
+      "status": "unverified",
+      "subject": "Yard (kmr_20). uishow=talk opens MSG_MAC_Plaza_0000 (style right box at the top; its first page waits with the next-page star) and the tattle bubble MSG_EntityTattle_HammerBlock1_CanBreak with its origin at x -30 (the bubble clamps to the left edge). Shot at frame 260. Wide on.",
+      "proves": "MSGBOX faults 1 and 4: the star sits inside the lower right corner of the box (its y follows the box), and the tattle bubble shows all its text from the left curve on (the text clip follows the wide edges).",
+      "debug": "preset=yard wide uishow=talk shots shotwin=260:1 loglevel=debug",
+      "until": "shot \\d+ frame 260\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "hook",
+          "regex": "debug uishow: talk opened f200"
+        }
+      ],
+      "reason": "MSGBOX row. The debug hook uishow (pm_warp.c) opens the messages at frame 200 with no input; one shot after the text is printed. Cap 30 s: cold start 12 to 16 s plus about 9 s of game time."
+    },
+    {
+      "name": "msgbox_talk_nowide",
+      "status": "unverified",
+      "subject": "Yard (kmr_20). uishow=talk opens MSG_MAC_Plaza_0000 (style right box at the top; its first page waits with the next-page star) and the tattle bubble MSG_EntityTattle_HammerBlock1_CanBreak with its origin at x -30 (the bubble clamps to the left edge). Shot at frame 260. Wide off (nowide).",
+      "proves": "MSGBOX wide-off gate: the same scene byte-equal to the base build (the fixes of faults 1 and 4 add 0 in 4:3).",
+      "debug": "preset=yard nowide uishow=talk shots shotwin=260:1 loglevel=debug",
+      "until": "shot \\d+ frame 260\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "hook",
+          "regex": "debug uishow: talk opened f200"
+        }
+      ],
+      "reason": "MSGBOX row. The debug hook uishow (pm_warp.c) opens the messages at frame 200 with no input; one shot after the text is printed. Cap 30 s: cold start 12 to 16 s plus about 9 s of game time."
+    },
+    {
+      "name": "msgbox_choice",
+      "status": "unverified",
+      "subject": "Yard (kmr_20). uishow=choice opens the save choice MSG_Choice_000A; Save is the selected option (rainbow, wave, drop shadow). drawcensus at frame 238, shot at frame 240. Wide on.",
+      "proves": "MSGBOX faults 2 and 3: the selected option has one coloured copy and a grey shadow at +2,+2 (no second coloured copy); the cen summary line gives the draws (batches) of frame 238.",
+      "debug": "preset=yard wide uishow=choice drawcensus=238 shots shotwin=240:1 loglevel=debug",
+      "until": "shot \\d+ frame 240\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "hook",
+          "regex": "debug uishow: choice opened f200"
+        },
+        {
+          "name": "census",
+          "regex": "cen f238 summary batches \\d+"
+        }
+      ],
+      "reason": "MSGBOX row. The debug hook uishow (pm_warp.c) opens the messages at frame 200 with no input; one shot after the text is printed. Cap 30 s: cold start 12 to 16 s plus about 9 s of game time."
+    },
+    {
+      "name": "msgbox_choice_nowide",
+      "status": "unverified",
+      "subject": "Yard (kmr_20). uishow=choice opens the save choice MSG_Choice_000A; Save is the selected option (rainbow, wave, drop shadow). drawcensus at frame 238, shot at frame 240. Wide off (nowide).",
+      "proves": "MSGBOX faults 2 and 3: the selected option has one coloured copy and a grey shadow at +2,+2 (no second coloured copy); the cen summary line gives the draws (batches) of frame 238.",
+      "debug": "preset=yard nowide uishow=choice drawcensus=238 shots shotwin=240:1 loglevel=debug",
+      "until": "shot \\d+ frame 240\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "hook",
+          "regex": "debug uishow: choice opened f200"
+        },
+        {
+          "name": "census",
+          "regex": "cen f238 summary batches \\d+"
+        }
+      ],
+      "reason": "MSGBOX row. The debug hook uishow (pm_warp.c) opens the messages at frame 200 with no input; one shot after the text is printed. Cap 30 s: cold start 12 to 16 s plus about 9 s of game time."
     }
   ]
 }

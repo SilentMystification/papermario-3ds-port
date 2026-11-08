@@ -1463,6 +1463,17 @@ void pm_warp_tick(unsigned frame) {
             msg_get_printer_for_msg(MSG_Choice_000A, &uishow_choice_closed);
             pm_log_d("debug uishow: choice opened f%u", f);
         }
+        /* MSGBOX debug: uishow=talk opens a style right message (MSG_MAC_Plaza_0000: its first page waits with the next-page star) and a tattle
+         * bubble (MSG_EntityTattle_HammerBlock1_CanBreak) whose origin is left of the 4:3 area (x -30, y 220), so the bubble clamps to the left edge */
+        if (f == 200 && pm_debug_value("uishow", uv, sizeof uv) && uv[0] == 't' && uv[1] == 'a') {
+            static bool uishow_talk_closed, uishow_tattle_closed;
+            extern MessagePrintState* msg_get_printer_for_msg(s32 msgID, bool* donePrintingWriteback);
+            MessagePrintState* tp;
+            msg_get_printer_for_msg(MSG_MAC_Plaza_0000, &uishow_talk_closed);
+            tp = msg_get_printer_for_msg(MSG_EntityTattle_HammerBlock1_CanBreak, &uishow_tattle_closed);
+            if (tp != NULL) msg_printer_set_origin_pos(tp, -30, 220);
+            pm_log_d("debug uishow: talk opened f%u", f);
+        }
     }
     if (f % 300 == 0) {
         pm_log_d("warp: scene f%u t=%u pos %d %d %d inputDisabled %d actionState %u vy %d maxJump %d walk %d run %d wall %d push %d", f, pm_uptime_ms(), (int)gPlayerStatus.pos.x, (int)gPlayerStatus.pos.y,
