@@ -110,7 +110,7 @@ static int save_block;
 static const char* save_why = "";
 /* WARPFIX2 Boss tab in the world: the values of the loaded save that the fight changes, restored after it */
 static int boss_keep_on, boss_fight, boss_seen_battle, boss_wf, boss_bf;
-static s32 bk_story, bk_hmhp, bk_cmhp, bk_chp, bk_hmfp, bk_cmfp, bk_cfp, bk_pen, bk_cur;
+static s32 bk_story, bk_hmhp, bk_cmhp, bk_chp, bk_hmfp, bk_cmfp, bk_cfp, bk_pen, bk_cur, bk_ac;
 void pm_save_block(const char* why) {
     save_block = 1;
     save_why = why;
@@ -401,6 +401,7 @@ static void tour_parse(void) {
     pm_log("tour: %d items, settle %d frames, window %u frames, seed %08x", tour_total, TOUR_SETTLE, tour_len, TOUR_SEED);
 }
 
+static void bt_parse(void);
 int pm_warp_active(void) {
     char v[40];
     int has_preset = pm_debug_value("preset", v, sizeof v);
@@ -448,6 +449,7 @@ int pm_warp_active(void) {
     }
     if (pm_debug_value("partner", v, sizeof v)) w_partner = atoi(v); /* partner=<n>: PARTNER_* id, 1 = Goombario */
     tour_parse();
+    bt_parse(); /* BT1 */
     /* F01: a tour visits maps at story 0 with a new file (no partner). The real game has a partner at trd_06 and later maps (trd_06 InitializeFallingPartner, partner_walking_enable need one), so the tour uses Goombario unless partner= says otherwise. */
     if (tour_next != NULL && w_partner == 0) w_partner = 1;
     /* H06e: a warp past the prologue also needs a partner. tik_01_CheckDripCollisionWithNPC reads the partner npc, the real game has one in the sewers. */
@@ -781,6 +783,16 @@ static const struct { const char* label; const char* battle; s32 story; } boss_t
 };
 static int boss_pending = -1;
 static unsigned boss_frames;
+/* BT1: the damage popup slots of the battle (src/battle/190B20.c) outlive a battle that a debug path ends early (bossend, battletour, the
+ * Select menu bypass): BATTLE_STATE_END_BATTLE frees every effect (remove_all_effects), but a popup younger than its 40 frames keeps its slot.
+ * update_damage_popups of the next battle then writes timeLeft = 5 through the freed effect (a wild write: Azahar unmapped Write32 5, or a
+ * clobbered asset name and an endless load_asset_by_name). The real game ends a battle only after the popups expired. Cleared before a debug start. */
+extern EffectInstance* gDamageCountEffects[24];
+extern s32 gDamageCountTimers[24];
+static void battle_popups_clear(void) {
+    memset(gDamageCountEffects, 0, sizeof(EffectInstance*) * 24);
+    memset(gDamageCountTimers, 0, sizeof(s32) * 24);
+}
 int pm_boss_count(void) { return (int)ARRAY_COUNT(boss_tab); }
 const char* pm_boss_label(int i) { return i >= 0 && i < pm_boss_count() ? boss_tab[i].label : ""; }
 int pm_boss_launch(int i) {
@@ -801,7 +813,7 @@ static int pm_boss_launch_now(int i) {
         bk_story = evt_get_variable(NULL, GB_StoryProgress);
         bk_hmhp = gPlayerData.hardMaxHP; bk_cmhp = gPlayerData.curMaxHP; bk_chp = gPlayerData.curHP;
         bk_hmfp = gPlayerData.hardMaxFP; bk_cmfp = gPlayerData.curMaxFP; bk_cfp = gPlayerData.curFP;
-        bk_pen = gPlayerData.partners[1].enabled; bk_cur = gPlayerData.curPartner;
+        bk_pen = gPlayerData.partners[1].enabled; bk_cur = gPlayerData.curPartner; bk_ac = gPlayerData.hasActionCommands;
         pm_warp_stat("warpstat before boss");
         gGameStatusPtr->areaID = areaID;
         gGameStatusPtr->mapID = mapID;
@@ -811,6 +823,7 @@ static int pm_boss_launch_now(int i) {
         gPlayerData.curPartner = 1;
         gPlayerData.hardMaxHP = gPlayerData.curMaxHP = gPlayerData.curHP = 75;
         gPlayerData.hardMaxFP = gPlayerData.curMaxFP = gPlayerData.curFP = 30;
+        gPlayerData.hasActionCommands = true; /* BT1: every boss comes after the Goompa tutorial; without it the action commands and guards are off (AC_MODE_NOT_LEARNED) */
         warp_end_intro(mode);
         boss_pending = i;
         boss_frames = 0;
@@ -831,6 +844,7 @@ static int pm_boss_launch_now(int i) {
     warp_setup(areaID, mapID);
     gPlayerData.hardMaxHP = gPlayerData.curMaxHP = gPlayerData.curHP = 75;
     gPlayerData.hardMaxFP = gPlayerData.curMaxFP = gPlayerData.curFP = 30;
+    gPlayerData.hasActionCommands = true; /* BT1: as in the world launch */
     fio_serialize_state();
     warp_end_intro(mode);
     boss_pending = i;
@@ -859,6 +873,7 @@ static void boss_tick(void) {
     stage = battle_name_value(c ? c + 1 : "", c ? (unsigned)strlen(c + 1) : 0, BTL_KMR_1_STAGE_01);
     pm_log("boss: start battle formation %d stage %d", (int)formation, (int)stage);
     boss_pending = -1;
+    battle_popups_clear();
     gEncounterState = ENCOUNTER_STATE_NONE;
     set_battle_stage(stage);
     load_battle(formation);
@@ -950,6 +965,7 @@ static void battle_tick(void) {
     stage = battle_name_value(c ? c + 1 : "", c ? (unsigned)strlen(c + 1) : 0, BTL_KMR_1_STAGE_01);
     pm_log("battle: start formation %d stage %d", (int)formation, (int)stage);
     bt_pending = -1;
+    battle_popups_clear();
     gEncounterState = ENCOUNTER_STATE_NONE;
     set_battle_stage(stage);
     load_battle(formation);
@@ -957,26 +973,32 @@ static void battle_tick(void) {
 
 /* WARPFIX2: the fight is over when the world is back after the battle. Then the saved story, HP/FP and partner come back. Debug switch
  * bossend=<n>: the battle ends by the real BATTLE_STATE_END_BATTLE after n battle frames (test only; a player ends the fight in the battle). */
+/* BT1: the end of a boss fight by the real BATTLE_STATE_END_BATTLE (bossend switch and the battle tour). */
+static void boss_end(const char* why) {
+    btl_set_state(BATTLE_STATE_END_BATTLE);
+    pm_log("boss: %s, the battle ends now", why);
+}
+/* The saved story, HP/FP, partner and action commands of a world launch come back. */
+static void boss_restore(void) {
+    pm_warp_stat("warpstat before boss restore");
+    evt_set_variable(NULL, GB_StoryProgress, bk_story);
+    gPlayerData.hardMaxHP = bk_hmhp; gPlayerData.curMaxHP = bk_cmhp; gPlayerData.curHP = bk_chp;
+    gPlayerData.hardMaxFP = bk_hmfp; gPlayerData.curMaxFP = bk_cmfp; gPlayerData.curFP = bk_cfp;
+    gPlayerData.partners[1].enabled = bk_pen; gPlayerData.curPartner = bk_cur; gPlayerData.hasActionCommands = bk_ac;
+    boss_fight = 0;
+    boss_keep_on = 0;
+    pm_warp_stat("warpstat after boss restore");
+}
 static void boss_restore_tick(void) {
     char bv[12];
     if (!boss_fight) return;
     if (get_game_mode() == GAME_MODE_BATTLE) {
         boss_seen_battle = 1;
-        if (pm_debug_value("bossend", bv, sizeof bv) && (unsigned)atoi(bv) == ++boss_bf) {
-            btl_set_state(BATTLE_STATE_END_BATTLE);
-            pm_log("boss: bossend switch, the battle ends now");
-        }
+        if (pm_debug_value("bossend", bv, sizeof bv) && (unsigned)atoi(bv) == ++boss_bf) boss_end("bossend switch");
         return;
     }
     if (!boss_seen_battle || get_game_mode() != GAME_MODE_WORLD || ++boss_wf < 10) return;
-    pm_warp_stat("warpstat before boss restore");
-    evt_set_variable(NULL, GB_StoryProgress, bk_story);
-    gPlayerData.hardMaxHP = bk_hmhp; gPlayerData.curMaxHP = bk_cmhp; gPlayerData.curHP = bk_chp;
-    gPlayerData.hardMaxFP = bk_hmfp; gPlayerData.curMaxFP = bk_cmfp; gPlayerData.curFP = bk_cfp;
-    gPlayerData.partners[1].enabled = bk_pen; gPlayerData.curPartner = bk_cur;
-    boss_fight = 0;
-    boss_keep_on = 0;
-    pm_warp_stat("warpstat after boss restore");
+    boss_restore();
 }
 
 /* PT66: Return to Title Screen. The game own soft reset: the Mario overlay fades in, the game sounds stop, then GAME_MODE_STARTUP runs
@@ -1113,6 +1135,123 @@ static void tour_tick(unsigned frame) {
             tour_ts = frame;
             tour_step();
         }
+    }
+}
+
+/* BT1: boss battle tour. battletour=all|i,j,.. (indices of pm_boss_table.h) runs the bosses one after the other in one session, after warp= (or
+ * preset=) has loaded its first map. Per boss: LAUNCH (in the world: gRandSeed = TOUR_SEED, pm_boss_launch, the world launch that keeps and
+ * restores the player state) -> WAITBATTLE (GAME_MODE_BATTLE, then TOUR_SETTLE frames; no battle within BT_TIMEOUT: `battletour: <label> FAIL`,
+ * next) -> PLAY (prof window, tourtime=<s>; the scenario presses A with autoa) -> END (boss_end: the real BATTLE_STATE_END_BATTLE) -> RESTORE
+ * (boss_restore_tick back in the world, then 10 frames) -> CLOSE (line `battletour: battle <i>/<n> <label> closed`) -> next LAUNCH.
+ * End line `battletour: done items <n> fail <k>`. Window label `battle <i>/<n> <label>`. Debug tool only (class E). */
+#define BT_TIMEOUT 600 /* frames, 20 s */
+enum { BT_OFF, BT_START, BT_LAUNCH, BT_WAITBATTLE, BT_PLAY, BT_END, BT_RESTORE };
+static unsigned char bt_idx[64];
+static int bt_st, bt_n, bt_total, bt_fail, bt_cur, bt_shot = -1;
+static unsigned bt_f0, bt_bf, bt_wf;
+static char bt_label[48];
+static void bt_parse(void) {
+    char v[200];
+    const char* c;
+    if (!pm_debug_value("battletour", v, sizeof v)) return;
+    bt_total = 0;
+    if (strcmp(v, "all") == 0) {
+        for (; bt_total < pm_boss_count() && bt_total < (int)sizeof bt_idx; bt_total++) bt_idx[bt_total] = (unsigned char)bt_total;
+    } else {
+        for (c = v; *c && bt_total < (int)sizeof bt_idx;) {
+            int i = atoi(c);
+            if (i >= 0 && i < pm_boss_count()) bt_idx[bt_total++] = (unsigned char)i;
+            else pm_log_w("battletour: boss %d not in the table (%d bosses)", i, pm_boss_count());
+            while (*c && *c != ',') c++;
+            if (*c == ',') c++;
+        }
+    }
+    if (pm_debug_value("tourtime", v, sizeof v)) { float t = strtof(v, NULL); if (t > 0.f) tour_len = (unsigned)(t * 30.f); }
+    if (pm_debug_value("tourshot", v, sizeof v)) bt_shot = atoi(v); /* tourshot=<k>: one shot k frames after each battle starts (k >= TOUR_SETTLE: inside the window) */
+    if (!bt_total) return;
+    bt_st = BT_START;
+    { extern void pm_ph_tour_mode(int on); pm_ph_tour_mode(1); }
+    pm_log("battletour: %d bosses, settle %d frames, window %u frames, timeout %d frames, seed %08x", bt_total, TOUR_SETTLE, tour_len, BT_TIMEOUT, TOUR_SEED);
+}
+static void bt_fail_item(const char* why) {
+    bt_fail++;
+    pm_log_evt("battletour: %s FAIL (%s, game mode %d)", bt_label, why, (int)get_game_mode());
+}
+/* the next boss, or the end line */
+static void bt_launch(unsigned frame) {
+    if (get_game_mode() != GAME_MODE_WORLD) return; /* the launch is a world launch: wait for the world */
+    if (bt_n >= bt_total) {
+        { extern void pm_ph_tour_mode(int on); pm_ph_tour_mode(0); }
+        pm_log_evt("battletour: done items %d fail %d", bt_n, bt_fail);
+        bt_st = BT_OFF;
+        return;
+    }
+    bt_cur = bt_idx[bt_n++];
+    snprintf(bt_label, sizeof bt_label, "battle %d/%d %s", bt_n, bt_total, pm_boss_label(bt_cur));
+    gRandSeed = TOUR_SEED; /* every launch starts from one seed */
+    bt_f0 = frame;
+    bt_bf = 0;
+    if (!pm_boss_launch(bt_cur)) { bt_fail_item("launch refused"); return; }
+    pm_log_evt("battletour: launch %s (boss %d) f%u t=%u ms", bt_label, bt_cur, frame, pm_uptime_ms());
+    bt_st = BT_WAITBATTLE;
+}
+static void bt_tick(unsigned frame) {
+    extern void pm_ph_window_open(const char* label);
+    extern void pm_ph_window_close(void);
+    int mode = get_game_mode();
+    switch (bt_st) {
+    case BT_START: /* the warp= map is not an item: TOUR_SETTLE frames in it, then the first boss */
+        if (mode == GAME_MODE_WORLD && frame - (unsigned)scene_f0 >= TOUR_SETTLE) bt_st = BT_LAUNCH;
+        break;
+    case BT_LAUNCH:
+        bt_launch(frame);
+        break;
+    case BT_WAITBATTLE:
+        if (mode == GAME_MODE_BATTLE) {
+            if (!bt_bf) {
+                extern void pm_gpu_shot_window(unsigned from, unsigned n);
+                bt_bf = frame;
+                pm_log_evt("battletour: %s in battle f%u t=%u ms", bt_label, frame, pm_uptime_ms());
+                if (bt_shot >= 0) pm_gpu_shot_window(frame + (unsigned)bt_shot, 1);
+            }
+            if (frame - bt_bf >= TOUR_SETTLE) {
+                pm_ph_window_open(bt_label);
+                pm_log_evt("battletour: window %s open f%u rng %08x", bt_label, frame, (unsigned)gRandSeed);
+                bt_f0 = frame;
+                bt_st = BT_PLAY;
+            }
+        } else if (frame - bt_f0 > BT_TIMEOUT) {
+            bt_fail_item("no battle within 20 s");
+            boss_pending = -1;
+            if (boss_keep_on && !boss_fight) boss_restore(); /* the launch never reached the battle: its saved player state comes back */
+            bt_st = BT_LAUNCH;
+        }
+        break;
+    case BT_PLAY:
+        if (mode != GAME_MODE_BATTLE || frame - bt_f0 >= tour_len) {
+            if (mode != GAME_MODE_BATTLE) pm_log_w("battletour: battle left after %u frames, window closed early", frame - bt_f0);
+            pm_ph_window_close();
+            bt_st = BT_END;
+        }
+        break;
+    case BT_END:
+        if (mode == GAME_MODE_BATTLE) boss_end("battletour");
+        bt_f0 = frame;
+        bt_wf = 0;
+        bt_st = BT_RESTORE;
+        break;
+    case BT_RESTORE: /* boss_restore_tick restores the player state 10 world frames after the battle; 10 frames more, then the next boss */
+        if (!boss_fight && mode == GAME_MODE_WORLD) {
+            if (++bt_wf >= 10) {
+                pm_log_evt("battletour: %s closed f%u", bt_label, frame);
+                bt_st = BT_LAUNCH;
+            }
+        } else if (frame - bt_f0 > BT_TIMEOUT) {
+            bt_fail_item("no return to the world within 20 s");
+            bt_st = BT_OFF;
+            pm_log_evt("battletour: done items %d fail %d", bt_n, bt_fail);
+        }
+        break;
     }
 }
 
@@ -1411,6 +1550,7 @@ void pm_warp_tick(unsigned frame) {
     pm_cheat_tick(); /* CH6: moon jump, after the game logic of this step */
     if (scene_f0 < 0) return;
     if (tour_next) tour_tick(frame);
+    if (bt_st != BT_OFF) bt_tick(frame); /* BT1 */
     unsigned f = frame - (unsigned)scene_f0;
     pm_sweep_tick(f); /* SWEEP: markers and end of one item of the full sweep (pm_sweep.c, switch sweep=<name>) */
     battle_hooks(f);
