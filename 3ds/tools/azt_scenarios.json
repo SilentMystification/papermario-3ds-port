@@ -7,7 +7,7 @@
       "status": "unverified",
       "subject": "BTLUI bug 1: battle on kmr_20 (one Goomba formation), Mario's first jump with autoa hits; shots every 20 frames from frame 40 to 320. The picture is the subject: the coloured star burst behind the damage number must show in the shots after the hit.",
       "proves": "BTLUI: the damage_indicator star corners (D_09002150..80 vertex loads, D_090021A8 and D_09002190 triangle lists) draw on the port: the star is in the shot.",
-      "debug": "warp=kmr_20:0 battle=BTL_KMR_1_FORMATION_00:BTL_KMR_1_STAGE_01 battlef=30 autoa det fixedseed shots shotwin=40:15:20 loglevel=debug",
+      "debug": "warp=kmr_20:0 battle=BTL_KMR_1_FORMATION_00:BTL_KMR_1_STAGE_01 battlef=30 autoa det fixedseed shots shotwin=40:281:20 loglevel=debug",
       "until": "shot \\d+ frame 320\\b",
       "cap": 45,
       "deadline": 40,
