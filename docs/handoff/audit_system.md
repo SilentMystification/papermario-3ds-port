@@ -159,6 +159,8 @@ C8 result (D12, pure move): the bottom screen text (menu lines, HUD rows, footer
 
 A5 result: the batch close path is 13,424 B (flush_draw 1,496, nd_raw_native 5,072, nd_native_submit 2,048, nd_emit_draw 2,040, C3Di_UpdateContext 1,256, nd_tmpl_build 1,220, ndunit_after 200, GPUCMD_AddRawCommands 92), was 16,832 B. The decal pass A and zmark pass 3 of a raw batch, pm5_upload and pm5_upload_draw are out of line; t1log_draw, pm5tex1_log and stc_set are cold. 3dsx.ld.in places the close after the walker span in call order (map: 0x1000ac to 0x1066e8). Azahar gbi phase 5.9 ms before and after (no cache model); the I-cache effect needs the console pair.
 
+NdBatch (3b4f392d5) holds the 32 batch and ring variables. The rectangle queue and ring move was tried as a pure move and reverted: the moved code still uses 49 other pm_gpu.c statics, the render state (combine, plan, env_col, z_on, r_zcmp, r_zupd, r_blend, r_atest, r_decal, r_nocol, r_mix, r_zmark, r_zmark_zn), the off-screen state (off_active, off_cur, offs), the viewport (vp_sx, vp_sy, vp_tx, vp_ty), the ring chunks (rchunk, rchunk_n, ring_cur, ring_fr, ring_done, buf_cur), the flush tracer (flush, fl_on, fl_rects, fl_consec, fl_prev_rect) and the rectangle diagnostics (rq_*, rsig_*, rd_tex, dr1_*). Exporting them would undo the file's encapsulation. The split needs a render-state struct (NdRender state of pm_gpu.c) first: a code change of its own.
+
 ## 5. Known open items (links only)
 
 - Console regression a3c5ec093 -> 7be88729b (runs 25158, 25044): left open by the user.
