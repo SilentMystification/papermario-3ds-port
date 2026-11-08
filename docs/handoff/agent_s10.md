@@ -3,7 +3,7 @@
 STATE
 - nds1 head: see `git log -1 nds1` (this file is committed on it). pm_gbi.c after GM-3.
 - Done this session (all merged, byte gates cold det): DET (det switch), sprfix + SPR4 (native sprites incl. shaded), FB-1 (grab native, chunked ring), FB-2 (noise unit 2, template LRU), FB-3 (pm5 tex1/noise, sprite pm5 uniforms), MDL-5a/5f/5e (model records fully native, walker model fallback deleted), MOVE 1-10 + MOVE-4/5, LS-4 splash record, ENCCRASH, SIZE-4 hint, SIZE-3 step 1 (sqrtf -Os hang, UB fixes), SHOT, SCN, AZT11/12, PUSHHINT.
-- Open rows: none in S10. S10-4: no full-catalog tool exists (bench.py runs one bench per call; sweep.py is cutscenes only; golden.py forbidden), so S10-4 was the console prof push only. Merged this session: DEL+T1F, TDC, LS-3, RS3, S10B, S10C, GLOB (END-1 closed, no delete), S10-1, S10-3.
+- Open rows: AUDIT (one Opus agent, row_AUDIT.md, report docs/handoff/audit_system.md, then its own fixes in worktree audit; no subagents). B2 (row_MENUB.md: warp-tab noise, console run needed; check commit on branch grey). S10 is complete. Merged 2026-11-08: CFG-3 4b8f2896c, GREY ae8176ad6 (no console check, user decision), CFG-1/CFG-2/B1 61c952e64.
 - Parked bugs: layout-dependent pictures (mac_00 sky row, nok11 shot 0016: row_UB1.md, not byte gates), SBKW sbk_56 water residual (row_SBKW.md), FX1 super block (row_FX1.md: needs a menu-walk scenario). pm5all halo dropped (switch deleted in FB-4 C1).
 - Size: 3dsx 13,316,040 B (build 2952, 7be88729b). Push to the O3DS XL works: 3dslink prints the compressed size ("3160810 sent (23.74%)" = zlib ratio, not a stopped upload); the earlier "failed at 23.84%" was the same ratio.
 - Unmerged branches with useful work: ub1 (stale unit-1 cache patch, sprnat OOB patch).
