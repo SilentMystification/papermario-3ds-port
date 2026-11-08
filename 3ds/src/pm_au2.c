@@ -59,7 +59,23 @@ void pm_au2_commit(void) {
     LightSemaphore_Release(&sem_full, 1);
 }
 
+/* CORE2-1: audio hash (switch audiohash or det): FNV-1a over every emitted command. One producer at a time (see the top), so plain words. */
+static int h_on = -1;
+static unsigned h_fnv = 2166136261u, h_n;
+unsigned pm_au2_hash(unsigned* n) { *n = h_n; return h_fnv; }
+static void au2_hash(const AuCmd* c) {
+    AuCmd t = *c; /* no addresses: they move with the code size of a build. An instrument is hashed by its sample length and loop (Instrument +4, +12, +16). */
+    if (t.op == AUC_START_PARAMS || t.op == AUC_SET_WAVETABLE) { const uint32_t* in = (const uint32_t*)(uintptr_t)t.v0; t.v0 = in ? (int32_t)(in[1] ^ (in[3] << 1) ^ (in[4] << 2)) : 0; }
+    else if (t.op == AUC_BLOCK || t.op == AUC_POST) t.v0 = 0;
+    const uint8_t* p = (const uint8_t*)&t;
+    unsigned h = h_fnv;
+    for (unsigned i = 0; i < sizeof(AuCmd); i++) h = (h ^ p[i]) * 16777619u;
+    h_fnv = h; h_n++;
+}
+
 void pm_au2_emit(const AuCmd* c) {
+    if (h_on < 0) h_on = pm_debug_has("audiohash") || pm_debug_has("det");
+    if (h_on) au2_hash(c);
     int st = stats();
     unsigned t0 = st ? pm_ticks() : 0;
     if (!open_) {

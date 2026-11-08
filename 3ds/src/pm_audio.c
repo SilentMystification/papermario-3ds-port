@@ -10,18 +10,17 @@
 static int ready;
 static unsigned rate = 32000;
 
-/* AU1a: switch audiohash = FNV-1a of every PCM buffer that pm_audio_post receives (before the full queue drop), one log line per 120 posts
- * and one at smoke end. Switch audiolock = exactly 2 ticks per drawn step and osAiGetLength 0, so the hash does not depend on the clock. */
+/* CORE2-1: switch audiohash (or det) = FNV-1a of every AU2 command the control side emits (pm_au2.c au2_hash), the audio decisions of the
+ * engine in order. A line every 120 steps under det (pm_main.c) and one at smoke end. Switch audiolock = exactly 2 ticks per drawn step and
+ * osAiGetLength 0, so the hash does not depend on the clock. */
 int pm_audio_lock(void) { static int v = -1; if (v < 0) v = pm_debug_has("audiolock"); return v; }
-static unsigned au_hash = 2166136261u, au_posts, au_dropped, au_underrun;
-#define au_posts_all au_posts_n
-static volatile unsigned au_posts_n, au_underrun_all, au_dropped_all;
 void au2_trace_dump(void);
 void au2_post_exec(void* pcm, unsigned bytes) { pm_audio_post(pcm, bytes, 0); }
 void pm_audio_hash_log(void) {
-    pm_au2_sync(AU2_SYNC_SHUTDOWN); /* AU2: count the posts the render thread still owes */
+    pm_au2_sync(AU2_SYNC_SHUTDOWN);
     au2_trace_dump();
-    if (pm_debug_has("audiohash")) pm_log("audiohash posts %u fnv %08x dropped %u underrun %u (final)", au_posts, au_hash, au_dropped, au_underrun);
+    unsigned n, h = pm_au2_hash(&n);
+    if (pm_debug_has("audiohash")) pm_log_evt("audiohash cmds %u fnv %08x (final)", n, h);
 }
 /* PT14: feed statistics (switch audiostat), written by the posting thread, read by the stats line. */
 
@@ -73,8 +72,10 @@ void pm_audio_post(const void* pcm, unsigned bytes, unsigned hz) { (void)pcm; (v
  * The game thread does two things only: pm_audio_kick(n) (start n 60 Hz ticks) and pm_audio_join() (wait until they are done).
  * The audio thread plays the driver role in pm_au_thread_yield: when nuAuMgr blocks it answers the audio tasks it submitted,
  * sends the next retrace message while ticks are left, and when nothing is left it signals "done" and sleeps until the next kick.
- * Game code and the audio thread never run at the same time: kick at the main nuGfxTaskStart, join at the next entry of
- * pm_gfx_retrace, step_game_loop and pm_warp_tick. Same code and same order as the lockstep version, so the PCM hash is equal. */
+ * Game code and the sound engine never run at the same time: kick at the main nuGfxTaskStart, join at the next snd_* call of the game
+ * (pm_audio_gate, CORE2-1: one step ahead, the job overlaps the walk, the frame wait and the game logic up to its first engine call),
+ * at the next kick, and before map change, save, sleep and exit (pm_audio_drain, pm_audio_join_timed). Same engine order as the
+ * lockstep version. */
 static Thread au_thread;
 static LightEvent au_start, au_done;
 static volatile int au_ticks_left, au_busy;
@@ -88,6 +89,11 @@ static unsigned au_w_n, au_w_sum, au_w_max, au_j_sum, au_j_max, au_j_t0, au_g_su
 static u8 au_crash_stack[0x4000] __attribute__((aligned(8)));
 
 int pm_on_audio(void) { return (au_thread && threadGetCurrent() == au_thread) || pm_au2_on_render(); }
+
+/* CORE2-1: called by every wrapped snd_* function (pm_audio_gate.c) before it touches the engine. A no-op on the audio and render threads. */
+void pm_audio_gate(void) {
+    if (au_busy && !pm_on_audio()) pm_audio_join_at(1);
+}
 
 static void au_main(void* unused) {
     (void)unused;
@@ -185,7 +191,7 @@ static void au_stats_log(void) {
                           au_pr_n, (unsigned)((unsigned long long)au_pr_min * 1000 / 268112), (unsigned)((unsigned long long)au_pr_sum * 1000 / au_pr_n / 268112),
                           (unsigned)((unsigned long long)au_pr_max * 1000 / 268112), au_core);
     au_pr_n = au_pr_sum = au_pr_max = 0; /* min stays: it is the free core speed */
-    pm_log_d("audio join sites (count, avg us): kick %u %u, retrace %u %u, step %u %u, main %u %u", au_site_n[0], au_site_n[0] ? au_site_sum[0] / au_site_n[0] / 268 : 0, au_site_n[1], au_site_n[1] ? au_site_sum[1] / au_site_n[1] / 268 : 0, au_site_n[2], au_site_n[2] ? au_site_sum[2] / au_site_n[2] / 268 : 0, au_site_n[3], au_site_n[3] ? au_site_sum[3] / au_site_n[3] / 268 : 0);
+    pm_log_d("audio join sites (count, avg us): kick %u %u, snd %u %u", au_site_n[0], au_site_n[0] ? au_site_sum[0] / au_site_n[0] / 268 : 0, au_site_n[1], au_site_n[1] ? au_site_sum[1] / au_site_n[1] / 268 : 0);
     pm_au2_stats_log();
     pm_dspa_stats_log();
     au_w_n = au_w_sum = au_w_max = au_j_sum = au_j_max = au_g_sum = au_k_n = 0;
@@ -284,6 +290,11 @@ unsigned pm_audio_retraces(void) {
 
 /* Bytes of PCM that were posted and not played yet. This is what osAiGetLength reports. */
 unsigned pm_audio_pending(void) {
+    /* CORE2-1: under det the backlog is 0 too: nuAuMgr (system.c) picks the frame size from it, and a frame size that follows the DSP clock
+     * moves the sequencer, so the music events and the music-driven scene animations, with the timing of the run. */
+    static int det = -1;
+    if (det < 0) det = pm_debug_has("det");
+    if (det) return 0;
     if (pm_dspa_enabled) { unsigned n = pm_dspa_backlog_blocks() * 184u; return n > PM_AU_LEAD ? (n - PM_AU_LEAD) * 4 : 0; } /* samples the timeline still has to play */
     if (pm_audio_lock()) return 0; /* audiolock: osAiGetLength 0 so the PCM does not depend on the clock */
     return 0; /* no DSP: nothing is queued */

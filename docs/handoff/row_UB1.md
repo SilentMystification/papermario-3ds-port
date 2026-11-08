@@ -1,6 +1,6 @@
 # Row UB1: layout-dependent pictures (MAC00 sky row, nok11 shot 0016) and the UB audit
 
-Moved from row_FB.md when DEL (FB-4, GM-3) merged (2026-11-07). Open, parked. Scenes whose picture moves with code layout: spot_mac00_det (sky row), nok11_det shot 0016 (differs base vs base on 1e915fa5b). Not byte gates until fixed.
+Moved from row_FB.md when DEL (FB-4, GM-3) merged (2026-11-07). Open, parked. Scenes whose picture moves with code layout: spot_mac00_det (sky row), nok11_det shot 0016 (differs base vs base on 1e915fa5b). Not byte gates until fixed. pause_spin_grab_det_w300 joined this class on 2026-11-08: CORE2-1 (6001f31f5) and a control build (wrappers linked, old audio joins kept) both change 1 grab block (fb x115 y33-40) in all 40 shots, so the pause grab picture follows code layout or timing.
 
 ## Oracle review mac_00 layout-dependent sky row (2026-11-07; row MAC00 continues)
 Plain 55a41fa6b^ and 55a41fa6b are byte-equal; with FB-2 e954bc9d1 applied to both, row 58 (framebuffer column 181) differs, and the FB-1 ring build moves other rows: a layout-sensitive effect. Only undefined behaviour can do that: an uninitialised read, an out-of-bounds read, or an address-derived value.

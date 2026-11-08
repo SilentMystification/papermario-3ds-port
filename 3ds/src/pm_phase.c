@@ -799,7 +799,6 @@ extern void __real_gfx_draw_frame(void);
 
 unsigned pm_step_calls; /* PC01: game logic steps, counted always (not only with the phase switch) */
 void __wrap_step_game_loop(void) {
-    pm_audio_join_at(2); /* AU1d: game logic may touch the audio state */
     pm_step_calls++;
     pm_interp_start();
     PH_PUSH(PH_LOGIC);
