@@ -158,27 +158,31 @@ static unsigned mk_ws, mk_wt;  /* mask width in texels, 0 = none */
 static unsigned mk_ms, mk_mt;  /* mirror flags */
 static int mk_on;              /* the next load is a render tile load (pm_tex_load), not the shaded or rgba8 loads */
 
-/* C7: one GPU texture per message font sheet; consecutive glyphs keep the same bind for DR1 rectangle batches. */
+/* MSGBOX 3: message glyphs draw from one cell texture. Each (glyph, palette) pair the text uses is decoded once into a 16 x 16 cell of a
+ * 512 x 512 RGBA5551 texture in linear memory (1024 cells). Glyphs of any palette bind the same texture, so a run of glyphs in several
+ * colours (rainbow text: one palette per glyph) is one rectangle batch. The old path built a whole 256 x 256 sheet atlas per palette
+ * (41,472 texels decoded and 128 KB uploaded per palette, ten palettes for rainbow text) and broke the batch at every palette change.
+ * A cell is written only when it is new; a cell used in this frame or the previous one (the GPU may still read it) is never replaced. */
 extern u8 MsgCharImgNormal[];
 extern u8 MsgCharImgTitle[];
 extern u8 MsgCharImgSubtitle[];
 typedef struct {
     const u8* base;
     unsigned size;
-    int gw, gh, raster, cols;
+    int gw, gh, raster;
     unsigned id;
 } GlyphSheet;
 
 static const GlyphSheet glyph_sheets[] = {
-    { MsgCharImgNormal, 0x5100u, 16, 16, 128, 16, 1u },
-    { MsgCharImgTitle, 0xF60u, 12, 15, 96, 16, 2u },
-    { MsgCharImgSubtitle, 0xB88u, 12, 12, 72, 16, 3u },
+    { MsgCharImgNormal, 0x5100u, 16, 16, 128, 1u },
+    { MsgCharImgTitle, 0xF60u, 12, 15, 96, 2u },
+    { MsgCharImgSubtitle, 0xB88u, 12, 12, 72, 3u },
 };
-
-#define GLYPH_DKEY(id) (0xC7000000u | (id))
 
 static unsigned rd16(const u8* p);
 static void write5551(u8* dst, unsigned c);
+static unsigned tiled16(int x, int y, int pw);
+static void pend_add(u8* p, unsigned len);
 
 static int glyph_ox, glyph_oy;
 
@@ -197,86 +201,130 @@ static int glyph_resolve(const u8* img, int w, int h, unsigned fmt, unsigned siz
     return 0;
 }
 
-static int glyph_atlas_dims(const GlyphSheet* g, int* aw, int* ah) {
-    int n = (int)(g->size / (unsigned)g->raster);
-    int rows = (n + g->cols - 1) / g->cols;
-    *aw = g->cols * g->gw;
-    *ah = rows * g->gh;
-    return n;
+#define CELL_DIM 512
+#define CELL_COLS (CELL_DIM / 16)
+#define CELL_N (CELL_COLS * CELL_COLS)
+#define CELL_HN 512 /* hash chains */
+static int cell_si = -1; /* the slot of the cell texture, -1 before the first glyph */
+static unsigned cell_ph[CELL_N], cell_fr[CELL_N];
+static unsigned short cell_key[CELL_N]; /* sheet id << 8 | glyph index */
+static short cell_head[CELL_HN], cell_next[CELL_N]; /* values are cell + 1, 0 ends a chain */
+static unsigned cell_used, cell_new_n, cell_evict_n, cell_full_n;
+static unsigned cell_hash(unsigned key, unsigned ph) { unsigned h = ph ^ key * 2654435761u; return (h ^ h >> 15) & (CELL_HN - 1u); }
+static unsigned glyph_phash(const void* tlut, int tlut_n) {
+    unsigned phash = 2166136261u;
+    const u16* pl = (const u16*)tlut;
+    int i = 0;
+    for (; i + 1 < tlut_n; i += 2) phash = (phash ^ ((unsigned)pl[i] | ((unsigned)pl[i + 1] << 16))) * 16777619u;
+    if (i < tlut_n) phash = (phash ^ pl[i]) * 16777619u;
+    return phash ^ (unsigned)tlut_n * 0x9E3779B1u;
 }
-
-static int glyph_build_atlas(const GlyphSheet* g, const u8* tlut, int tlut_n, int pw, int ph) {
-    int aw, ah, ng, i;
-    ng = glyph_atlas_dims(g, &aw, &ah);
-    if (pw < aw || ph < ah) return 0;
-    memset(scratch, 0, (size_t)pw * (size_t)ph * 2u);
-    for (i = 0; i < ng; i++) {
-        const u8* gsrc = g->base + (size_t)i * (size_t)g->raster;
-        int gx = (i % g->cols) * g->gw;
-        int gy = (i / g->cols) * g->gh;
-        int y;
-        for (y = 0; y < g->gh; y++) {
-            int x;
-            for (x = 0; x < g->gw; x++) {
-                unsigned byte = gsrc[(y * g->gw + x) >> 1];
-                unsigned idx = ((y * g->gw + x) & 1) ? (byte & 15u) : (byte >> 4);
-                unsigned pix = (tlut && (int)idx < tlut_n) ? rd16(tlut + idx * 2) : 0xffffu;
-                write5551(scratch + ((gy + y) * pw + (gx + x)) * 2, pix);
-            }
+/* The cell texture as a cache slot that is never evicted (evict_oldest_done skips it) and never invalidated (no source address). */
+static int cell_slot_init(void) {
+    int i = -1;
+    for (int w = 0; w < SBIT_W; w++) if (~live_bits[w]) { i = w * 32 + (int)__builtin_ctz(~live_bits[w]); break; }
+    if (i < 0) return -1;
+    Slot* s = &slots[i];
+    memset(&s->tex, 0, sizeof s->tex);
+    if (!C3D_TexInit(&s->tex, CELL_DIM, CELL_DIM, GPU_RGBA5551)) { memset(&s->tex, 0, sizeof s->tex); return -1; }
+    memset(s->tex.data, 0, s->tex.size);
+    pm_fl_dc(s->tex.data, s->tex.size);
+    C3D_TexSetFilter(&s->tex, GPU_NEAREST, GPU_NEAREST);
+    s->img = NULL; s->tlut = NULL; s->fmt = FMT_CI; s->siz = SIZ_4; s->w = s->h = s->stride = CELL_DIM; s->bytes = 0; s->phash = 0; s->dkey = 0;
+    s->shash = 0; s->slen = 0; s->tlen = 0; s->dirty = 0; s->native = 0; s->stamp = ++stamp; s->epoch = epoch; s->sgen++; s->uses = 0; s->last_frame = tc_frame;
+    s->slab = 0; s->vram_up = 0; s->vram_stage = NULL; s->tex_vram_ptr = NULL; s->up_frame = 0; s->stage_n = 0; s->stale = 0; s->live = 1;
+    sbit_set(live_bits, i);
+    slot_nlive++;
+    if (slot_nlive > slot_peak) slot_peak = slot_nlive;
+    if (i + 1 > slot_hi) slot_hi = i + 1;
+    memset(cell_head, 0, sizeof cell_head);
+    cell_used = 0;
+    pm_log_d("glyph cells: slot %d %dx%d", i, CELL_DIM, CELL_DIM);
+    return i;
+}
+/* Decode glyph idx of sheet g with the palette into cell c (texels past the glyph repeat its edge, as the RDP clamps), then queue the flush
+ * of the two tile rows the cell covers (256 bytes each) for the next command list submit. */
+static void cell_write(int c, const GlyphSheet* g, int idx, const u8* tlut, int tlut_n) {
+    u8* d = (u8*)slots[cell_si].tex.data;
+    const u8* src = g->base + (size_t)idx * (size_t)g->raster;
+    const int X0 = (c & (CELL_COLS - 1)) * 16, Y0 = (c / CELL_COLS) * 16;
+    for (int y = 0; y < 16; y++) {
+        const int sy = y < g->gh ? y : g->gh - 1;
+        for (int x = 0; x < 16; x++) {
+            const int sx = x < g->gw ? x : g->gw - 1, k = sy * g->gw + sx;
+            const unsigned b = src[k >> 1], ci = (k & 1) ? (b & 15u) : (b >> 4);
+            write5551(d + tiled16(X0 + x, CELL_DIM - 1 - (Y0 + y), CELL_DIM), (int)ci < tlut_n ? rd16(tlut + ci * 2u) : 0xffffu);
         }
     }
-    return 1;
-}
-
-static int glyph_remap(const void** img, int* width, int* height, int* stride, unsigned* dkey,
-                       unsigned fmt, unsigned siz) {
-    const GlyphSheet* g;
-    int idx;
-    int aw, ah;
-    if (!glyph_resolve((const u8*)*img, *width, *height, fmt, siz, &g, &idx)) {
-        glyph_ox = glyph_oy = 0;
-        return 0;
+    for (int k = 0; k < 2; k++) {
+        const unsigned ty = (unsigned)(CELL_DIM - 16 - Y0) / 8u + (unsigned)k;
+        pend_add(d + (ty * (CELL_DIM / 8u) + (unsigned)(X0 >> 3)) * 128u, 256u);
     }
-    glyph_atlas_dims(g, &aw, &ah);
-    glyph_ox = (idx % g->cols) * g->gw;
-    glyph_oy = (idx / g->cols) * g->gh;
-    *img = g->base;
-    *width = aw;
-    *height = ah;
-    if (*stride < aw) *stride = aw;
-    *dkey = GLYPH_DKEY(g->id);
+}
+/* The cell of glyph idx of sheet g with this palette: found, or written into a free cell or the least recent cell not used in the last two frames. -1 when none is free. */
+static int cell_get(const GlyphSheet* g, int idx, const void* tlut, int tlut_n) {
+    const unsigned key = g->id << 8 | (unsigned)idx, ph = glyph_phash(tlut, tlut_n), h = cell_hash(key, ph);
+    int c;
+    for (c = cell_head[h] - 1; c >= 0; c = cell_next[c] - 1)
+        if (cell_key[c] == key && cell_ph[c] == ph) { cell_fr[c] = tc_frame; return c; }
+    if (cell_used < CELL_N) c = (int)cell_used++;
+    else {
+        unsigned best = 0;
+        c = -1;
+        for (int k = 0; k < CELL_N; k++) {
+            if (cell_fr[k] + 2u > tc_frame) continue;
+            if (c < 0 || cell_fr[k] < best) { c = k; best = cell_fr[k]; }
+        }
+        if (c < 0) {
+            if (cell_full_n++ < 4) pm_log_w("glyph cells: all %d cells used in the last two frames, the glyph loads as its own texture", CELL_N);
+            return -1;
+        }
+        short* p = &cell_head[cell_hash(cell_key[c], cell_ph[c])];
+        while (*p && *p != c + 1) p = &cell_next[*p - 1];
+        if (*p) *p = cell_next[c];
+        cell_evict_n++;
+    }
+    cell_key[c] = (unsigned short)key; cell_ph[c] = ph; cell_fr[c] = tc_frame;
+    cell_next[c] = cell_head[h]; cell_head[h] = (short)(c + 1);
+    cell_write(c, g, idx, (const u8*)tlut, tlut_n);
+    cell_new_n++;
+    return c;
+}
+/* Bind the cell of a glyph load (load_impl). 1 when the image is a glyph with a palette and its cell is ready. */
+static int cell_load(const void* img, unsigned fmt, unsigned siz, int w, int h, const void* tlut, int tlut_n) {
+    const GlyphSheet* g;
+    int idx, c;
+    if (!tlut || !glyph_resolve((const u8*)img, w, h, fmt, siz, &g, &idx)) return 0;
+    if (cell_si < 0 || !slots[cell_si].live) cell_si = cell_slot_init();
+    if (cell_si < 0 || (c = cell_get(g, idx, tlut, tlut_n)) < 0) return 0;
+    glyph_ox = (c & (CELL_COLS - 1)) * 16;
+    glyph_oy = (c / CELL_COLS) * 16;
+    have = 1; cur = cell_si; off_cur = -1; shr_s = shr_t = 0;
+    TC_HIT(&slots[cell_si]);
+    TOUCH(&slots[cell_si]);
     return 1;
 }
+int pm_tex_cell_bound(void) { return have && off_cur < 0 && cur >= 0 && cur == cell_si; }
+void pm_tex_cell_log(unsigned f) { pm_log_d("glyph cells f%u used %u new %u evict %u full %u", f, cell_used, cell_new_n, cell_evict_n, cell_full_n); cell_new_n = cell_evict_n = 0; }
 
 void pm_tex_glyph_ofs(int* x, int* y) {
     if (x) *x = glyph_ox;
     if (y) *y = glyph_oy;
 }
 
+/* The walker's glyph tile: 2 when the cell texture is bound and the glyph's cell (any palette) is ready, so the open batch goes on. */
 int pm_tex_glyph_same(const void* img, unsigned fmt, unsigned siz, int w, int h, const void* tlut, int tlut_n, int* gx, int* gy) {
     const GlyphSheet* g;
-    int idx, aw, ah;
-    unsigned phash = 0;
-    Slot* s;
-    if (!glyph_resolve((const u8*)img, w, h, fmt, siz, &g, &idx)) return 0;
-    if (!have || cur < 0 || cur >= SLOTS) return 0;
-    s = &slots[cur];
-    glyph_atlas_dims(g, &aw, &ah);
-    if (fmt == FMT_CI && tlut) {
-        phash = 2166136261u;
-        { const u16* pl = (const u16*)tlut; int i = 0;
-          for (; i + 1 < tlut_n; i += 2) phash = (phash ^ ((unsigned)pl[i] | ((unsigned)pl[i + 1] << 16))) * 16777619u;
-          if (i < tlut_n) phash = (phash ^ pl[i]) * 16777619u; }
-    }
-    if (!s->live || s->img != g->base || s->dkey != GLYPH_DKEY(g->id) || s->fmt != fmt || s->siz != siz || s->w != aw || s->h != ah ||
-        s->tlut != tlut || s->phash != phash || !slot_valid(s)) return 0;
-    glyph_ox = (idx % g->cols) * g->gw;
-    glyph_oy = (idx / g->cols) * g->gh;
+    int idx, c;
+    if (!tlut || !pm_tex_cell_bound() || !glyph_resolve((const u8*)img, w, h, fmt, siz, &g, &idx)) return 0;
+    if ((c = cell_get(g, idx, tlut, tlut_n)) < 0) return 0;
+    glyph_ox = (c & (CELL_COLS - 1)) * 16;
+    glyph_oy = (c / CELL_COLS) * 16;
     if (gx) *gx = glyph_ox;
     if (gy) *gy = glyph_oy;
-    TC_HIT(s);
-    TOUCH(s);
-    return 1;
+    TC_HIT(&slots[cell_si]);
+    TOUCH(&slots[cell_si]);
+    return 2;
 }
 
 void pm_tex_set_wrap(unsigned cms, unsigned cmt, unsigned masks, unsigned maskt) {
@@ -862,7 +910,7 @@ static unsigned tc_ev_cause[3];
 static int evict_oldest_done(int cause) {
     int oldest = -1;
     for (int i = 0; i < slot_hi; i++) {
-        if (!slots[i].live || slots[i].epoch == epoch || slots[i].epoch + 1u == epoch) continue;
+        if (!slots[i].live || slots[i].epoch == epoch || slots[i].epoch + 1u == epoch || i == cell_si) continue; /* MSGBOX 3: the glyph cell texture stays */
         if (oldest < 0 || (int)(slots[i].stamp - slots[oldest].stamp) < 0) oldest = i; /* wrap-safe: stamp is a use counter, lowest = least recent */
     }
     if (oldest < 0) return 0;
@@ -1257,15 +1305,13 @@ static int load_impl(const void* img, unsigned fmt, unsigned siz, int width, int
     unsigned t0 = pm_ph_on ? pm_ticks() : 0; /* PI3: timed with phase on too */
     ph_miss = 0;
     PH_ADD(C_TEXCALL, 1);
-    if (!lut && dkey == 0) {
-        const void* gimg = img;
-        int gw = width, gh = height, gstride = stride;
-        unsigned gdkey = dkey;
-        if (glyph_remap(&gimg, &gw, &gh, &gstride, &gdkey, fmt, siz))
-            img = gimg, width = gw, height = gh, stride = gstride, dkey = gdkey;
-    } else
+    if (!lut && dkey == 0 && cell_load(img, fmt, siz, width, height, tlut, tlut_n)) { /* MSGBOX 3: a message glyph binds the cell texture */
+        fail_last = 0;
+        r = 1;
+    } else {
         glyph_ox = glyph_oy = 0;
-    r = load_inner(img, fmt, siz, width, height, tlut, tlut_n, stride, lut, dx4, dy4, dkey);
+        r = load_inner(img, fmt, siz, width, height, tlut, tlut_n, stride, lut, dx4, dy4, dkey);
+    }
     if (ph_miss) PH_POP();
     if (pm_ph_on) { /* PG2 measure: ticks inside pm_tex_load, hit and miss, per 300 frames (reported by pm_tex_prof_report) */
         unsigned dt = pm_ticks() - t0;
@@ -1330,15 +1376,8 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
     unsigned tex_bytes_need = tex_gpu_bytes(pw, ph, gf);
     int tx1 = tex_bytes_need <= TEX_SCRATCH_PLANE && pw <= TX1_MAXD && ph <= TX1_MAXD;
     unsigned tx1_t0 = tc_on > 0 ? pm_ticks() : 0;
-    if (tx1 && (dkey & 0xFF000000u) != 0xC7000000u) {
+    if (tx1) {
         /* TX1: Morton-tiled upload buffer filled below, no linear expand */
-    } else if ((dkey & 0xFF000000u) == 0xC7000000u) {
-        const GlyphSheet* gs = NULL;
-        unsigned k;
-        for (k = 0; k < sizeof glyph_sheets / sizeof glyph_sheets[0]; k++)
-            if (glyph_sheets[k].id == (dkey & 0xffu)) { gs = &glyph_sheets[k]; break; }
-        if (!gs || !glyph_build_atlas(gs, (const u8*)tlut, tlut_n, pw, ph)) return 0;
-        gf = GPU_RGBA5551;
     } else if (lut) {
         if (!expand_dual((const u8*)img, width, height, stride, lut, dx4, dy4, pw, ph)) return 0;
     } else if (!native_tex && !expand((const u8*)img, fmt, siz, width, height, stride, (const u8*)tlut, tlut_n, pw, ph, gf))
@@ -1429,17 +1468,7 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
     C3D_TexSetWrap(&s->tex, GPU_REPEAT, GPU_REPEAT);
     if (tx1) { /* TX1: tile in linear scratch; VRAM slot is filled by C3D_TexLoadImage (O3DS cannot CPU-store into vramMemAlign) */
         u8* t1dst = scratch + TEX_SCRATCH_PLANE;
-        if ((dkey & 0xFF000000u) == 0xC7000000u) {
-            for (int y = 0; y < ph; y++) {
-                int sy = ph - 1 - y;
-                for (int x = 0; x < pw; x++) {
-                    unsigned s0 = ((unsigned)sy * (unsigned)pw + (unsigned)x) * 2u;
-                    unsigned d0 = tiled16(x, y, pw);
-                    t1dst[d0] = scratch[s0];
-                    t1dst[d0 + 1] = scratch[s0 + 1];
-                }
-            }
-        } else if (lut) tx1_build_dual(t1dst, (const u8*)img, width, height, stride, lut, dx4, dy4, pw, ph);
+        if (lut) tx1_build_dual(t1dst, (const u8*)img, width, height, stride, lut, dx4, dy4, pw, ph);
         else {
             int mw1 = (mk_on && mk_ws && (int)mk_ws < width) ? (int)mk_ws : 0;
             int mh1 = (mk_on && mk_wt && (int)mk_wt < height) ? (int)mk_wt : 0;
