@@ -22,10 +22,10 @@ API_CALLABLE(N(DrawAppearSparkles)) {
 API_CALLABLE(N(StarFxLine)) {
     extern void pm_log_evt(const char* fmt, ...); extern unsigned pm_frame_count(void); extern unsigned pm_uptime_ms(void);
     extern void pm_gpu_mdl_stat(unsigned* miss, unsigned* clears);
-    static const char* const names[] = { "pre", "popin start", "popin steady", "?" };
+    static const char* const fmts[] = { "starfx: pre f%u t%u miss %u clr %u", "starfx: popin start f%u t%u miss %u clr %u", "starfx: popin steady f%u t%u miss %u clr %u", "starfx: ? f%u t%u miss %u clr %u" };
     unsigned miss, clears;
     pm_gpu_mdl_stat(&miss, &clears);
-    pm_log_evt("starfx: %s f%u t%u miss %u clr %u", names[evt_get_variable(script, *script->ptrReadPos) & 3], pm_frame_count(), pm_uptime_ms(), miss, clears);
+    pm_log_evt(fmts[evt_get_variable(script, *script->ptrReadPos) & 3], pm_frame_count(), pm_uptime_ms(), miss, clears);
     return ApiStatus_DONE2;
 }
 #endif
