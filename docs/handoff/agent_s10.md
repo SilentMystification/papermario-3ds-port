@@ -19,4 +19,7 @@ STATE
 5. toad_standing recipe still has loglevel=debug: drop it?
 6. CORE2-0 console run: include one prof run without the core-1 probe thread? (if the kernel counts the probe against the core-1 limit, it can slow audio; only that pair shows it)
 7. HUD2 (merged): the status bar is edge to edge in wide, items at 4:3 size. The left end column is extended by the wide edge rule: check the bar ends by eye on the console. Spread the items across the bar too?
+8. AUDIT: one console_prof pair at spot_mac01_prof, base 53e5a553e vs nds1 with W1-W10 (Azahar shows no change: 5.9 ms both; it has no cache model).
+9. AUDIT: should the stereo second walk become a replay of the first walk (pm_nusys.c:94)? It changes how eye 2 draws.
+(Decided by the orchestrator overnight: B2 depth readback in Azahar yes; delete 66 unused debug switches per D9 yes; split pm_gpu.c as a pure move yes.)
 
