@@ -33,7 +33,6 @@ SECTIONS
 		*(.text.tex_op .text.tex_op.* .text.ensure_tile .text.ensure_tile.* .text.load_mtx .text.sync_combine .text.sync_combine_work .text.g2_same .text.flush_draw)
 		*(.text.nd_raw_native .text.nd_native_submit .text.nd_tmpl_build .text.nd_emit_draw .text.ndunit_after) /* A5: the batch close in call order */
 		*libcitro3d.a:*(.text.C3Di_UpdateContext .text.C3D_TexBind .text.C3D_UpdateUniforms)
-		*libctru.a:*(.text.GPUCMD_AddRawCommands)
 		*(.text.unlikely.*)
 		*(.text)
 		*(.text.*)

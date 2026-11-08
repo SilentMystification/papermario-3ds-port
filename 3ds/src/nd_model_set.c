@@ -11,7 +11,7 @@
 #include "nd.h"
 #include "nd_ops.h"
 
-extern NdNat nat[ND_NAT_MAX]; extern int nat_n; extern NdRng nat_rng[ND_RAW_MAX]; extern int nat_nr; extern uint32_t nat_geom;
+extern NdNat nat[ND_NAT_MAX]; extern int nat_n; extern uint64_t nat_vm; extern int nat_vm_ok; extern int nat_nr; extern uint32_t nat_geom;
 
 extern float pm_eye_e, pm_eye_conv;
 void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, NdGvP* o);
@@ -31,7 +31,7 @@ int nd_model_draw(const uint32_t* rec, const NdMCtx* c0, const void* list, int e
     int nr = pm_dlc_native_ranges(list, entry, rng, 512u);
     if (nr < 0) return (nd_nat_why = nr == -2 ? 11 : 12, -1);
     nat_nr = nr <= ND_RAW_MAX ? nr : -1; nat_geom = entry;
-    if (nat_nr >= 0) memcpy(nat_rng, rng, sizeof(NdRng) * (unsigned)nr);
+    nat_vm = pm_dlc_vm; nat_vm_ok = pm_dlc_vm_ok;
     for (int r = 0; r < nr; r++) {
         NdMCtx c = *c0;
         NdGvP gv;

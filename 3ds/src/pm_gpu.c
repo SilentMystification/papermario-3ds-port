@@ -715,8 +715,12 @@ static void dc_end(void) {
     dcs_smp++;
     dc_on = 0;
 }
-static void dc_kick(void) {
+static __attribute__((cold, noinline)) void dc_kick_smp(void);
+static inline void dc_kick(void) {
     if (!dc_on) { kick_check(); return; }
+    dc_kick_smp();
+}
+static __attribute__((cold, noinline)) void dc_kick_smp(void) { /* PERF1: the sampled close (one in 8 with phase or dcsum) out of the hot callers */
     DC_T(6);
     { u32 w1; GPUCMD_GetBuffer(NULL, NULL, &w1); if (w1 >= dc_w0) dcs_cmd += w1 - dc_w0; } /* DS0: words of the close, before its own kick */
     kick_check();
@@ -904,7 +908,7 @@ static void stage_scissor(void) {
 }
 static inline int graw_is_pm4(void) { return nb.gni > 0 && nb.g_pal && !nb.g_use5 && gs.gv4_on; }
 /* S3 M3: the native raw close. A raw batch with the palette program (pm4, no lights) on the main target, one texture unit at most, no stencil pass: the effect, TEV, texture unit
- * and uniform words come from nd_emit_draw (host tested against the real command stream) and go into the command buffer with GPUCMD_AddRawCommands. The state that is not in
+ * and uniform words come from nd_emit_draw (host tested against the real command stream) and go into the command buffer in place (PERF1-6). The state that is not in
  * those words (program, buffer info, scissor, user clip) is staged through citro3d as before, and C3Di_UpdateContext writes it first. Returns 0 when the batch needs the old close. */
 extern void C3Di_UpdateContext(void);
 int pm_tex_native_unit0(NdUnit* u);
@@ -917,22 +921,25 @@ static int ndm_live; /* S3N-3b: a model record is open (set by pm_gpu_ndm_begin)
 static unsigned ndm_old, ndm_refused_total, ndm_nraw_log, ndm_w_n; static unsigned ndm_geo, ndm_dlc0[10]; void pm_gbi_dlcc(unsigned* o); /* S3N-3c: batches of open records that the native raw path refused; walker batches of the record; its geometry */
 void pm_log_prof_line(const char* fmt, ...); /* the one line that prints in prof=4 mode (pm_log.c) */
 static void ndunit_after(void);
-/* S3N-7: exclusive tick timers of the native model path. ndt_all: the exclusive ticks added so far; a region's exclusive ticks are its total less the ticks of the
- * regions timed inside it. Read only on sampled frames (pm_ph_on). ndt_mdl: the submit is a model draw (the walker raw path is not counted). */
-static uint64_t ndt_sum[NDT_N], ndt_all;
+/* PERF1: the producer class timers (nd.h NDT_*). pm_gpu_ndt_all: the exclusive ticks added so far; a region's exclusive ticks are its total less the ticks
+ * of the regions timed inside it. Sampled frames only (NDT_B, nd.h, reads the tick only with pm_ph_on). ndt_mdl: the submit is a model draw. */
+static uint64_t ndt_sum[NDT_N];
+static uint64_t pm_gpu_ndt_all;
 static int ndt_mdl;
-NdtT pm_gpu_ndt_begin(void) { NdtT s; s.on = pm_ph_on; s.t = pm_ph_on ? svcGetSystemTick() : 0; s.all = ndt_all; return s; }
-void pm_gpu_ndt_end(NdtT s, int k) {
-    if (!s.on) return;
-    uint64_t tot = svcGetSystemTick() - s.t, in = ndt_all - s.all;
+__attribute__((cold, noinline)) NdtT pm_gpu_ndt_begin(void) { NdtT s; s.on = 1; s.t = svcGetSystemTick(); s.all = pm_gpu_ndt_all; return s; } /* sampled frames only: out of the hot callers */
+__attribute__((cold, noinline)) void pm_gpu_ndt_add(NdtT s, int k) {
+    uint64_t tot = svcGetSystemTick() - s.t, in = pm_gpu_ndt_all - s.all;
     uint64_t ex = tot > in ? tot - in : 0;
-    ndt_sum[k] += ex; ndt_all += ex;
+    ndt_sum[k] += ex; pm_gpu_ndt_all += ex;
 }
+void pm_gpu_ndt_take(uint64_t o[NDT_N]) { for (int k = 0; k < NDT_N; k++) { o[k] = ndt_sum[k]; ndt_sum[k] = 0; } }
 /* S3N-2: the submit of one native draw, moved from nd_raw_native as it was (the state staging, the shadow, citro3d's context update, the emit and the
  * counters). The palette and the NdDraw are built by the caller before. Model draws (nd_model.c, S3N-4) use this too. */
 static unsigned ndn_tgen;
 static __attribute__((noinline)) void pm5_upload_draw(const NdDraw* d);
 static __attribute__((cold, noinline)) void t1log_draw(const NdDraw* d);
+static int t1l_on = -1; /* switch t1log: -1 until t1log_draw reads it */
+static __attribute__((cold, noinline)) void submit_dbg(const NdDraw* d, int tex);
 static __attribute__((cold, noinline)) void pm5tex1_log(const NdDraw* d);
 /* FX1-3 orbdbg (debug tool): one line per draw inside an effect list (the tag from pm_gbi_dbg_orb_tag, nd_walk.c). path: walk (flush_draw) or native (nd_raw_native). */
 static __attribute__((cold, noinline)) void orb_log(const char* path, int z, int memb, int i8_0, int i8_1, unsigned tris, int graw) {
@@ -945,13 +952,33 @@ static __attribute__((cold, noinline)) void orb_log(const char* path, int z, int
            la ? la->src[0] : 99u, la ? la->src[1] : 99u, la ? la->src[2] : 99u, la ? la->op[0] : 99u, la ? la->op[1] : 99u, la ? la->op[2] : 99u,
            la ? la->func : 99u, la ? la->scale : 99u);
 }
+/* PERF1-6: C3Di_UpdateContext writes nothing when (objdump of libcitro3d.a, this devkitPro): no flag it tests is set in the context word at +32 (frame buffer,
+ * viewport, scissor, program, attribute and buffer info, effect, texture units, texture status, proc tex, texenv buffer, gas, texenvs, light env), no light
+ * env is bound (+268: it calls C3Di_LightEnvUpdate whenever one is), no fixed attribute is dirty (+0x208), the gas mode (+412 bits 0 to 2) is not 7 (it calls
+ * C3Di_GasUpdate then), and no uniform is dirty (C3D_UpdateUniforms of both shaders sends only dirty ones; a program bind sets the program flag). Then the call
+ * is skipped: the command stream is the same. Uniform arrays not word aligned: always update. */
+#define C3D_UPD_FLAGS (0x4u | 0x8u | 0x10u | 0x20u | 0x40u | 0x80u | 0x100u | 0x200u | 0x400u | 0x4000u | 0x718000u | 0x20000u | 0x3800000u | 0xfc000000u)
+static int c3d_upd_needed(void) {
+    const unsigned char* c = __C3D_Context;
+    if (*(const volatile unsigned*)(c + 32) & C3D_UPD_FLAGS) return 1;
+    if (*(void* const*)(c + 268)) return 1;
+    if (*(const uint16_t*)(c + 0x208)) return 1;
+    if ((*(const unsigned*)(c + 412) & 7u) == 7u) return 1;
+    if (((uintptr_t)C3D_FVUnifDirty | (uintptr_t)C3D_IVUnifDirty) & 3u) return 1;
+    const uint32_t* f = (const uint32_t*)(const void*)C3D_FVUnifDirty;
+    const uint32_t* iv = (const uint32_t*)(const void*)C3D_IVUnifDirty;
+    uint32_t a = iv[0] | iv[1] | C3D_BoolUnifsDirty[0] | C3D_BoolUnifsDirty[1];
+    for (unsigned i = 0; i < 2u * C3D_FVUNIF_COUNT / 4u; i++) a |= f[i];
+    return a != 0;
+}
+static __attribute__((cold, noinline)) void cmd_split_forced(void);
 static void nd_native_submit(const NdDraw* dp, int tex) {
+    NDT_B(tsub); /* PERF1: the native submit class */
+    { u32 *cb_, csz_, coff_; GPUCMD_GetBuffer(&cb_, &csz_, &coff_); if (coff_ + ND_EMIT_MAX + 1024u >= csz_) cmd_split_forced(); } /* PERF1-6: the draw words go straight into the command buffer: near its end the frame is split first (as nd_raw_native) */
     pm_gbi_draw_note(1); /* WCEN3: a native draw (per producer, the former pm_gbi.c) */
     /* FB-3: every program 5 draw (model, sprite, raw) writes its pm5 block here, once. The copy keeps the caller's NdDraw; uvx goes to the pm5 uniform. */
     NdDraw d5;
     if (dp->use5 && !dp->no_uni) { d5 = *dp; pm5_upload_draw(&d5); d5.no_uni = 1; d5.npal = 0; if (d5.has_uvx) d5.loc_uvx = (unsigned)u5_uvx; dp = &d5; }
-    t1log_draw(dp);
-    pm5tex1_log(dp);
     const NdDraw* d = dp;
     if (ndn_tgen != nd_tmpl_gen()) { ndn_tgen = nd_tmpl_gen(); nd_shadow_reset(&ndn_sh); } /* FB-2: a template id was taken over by another key (LRU): the id shadow is stale */
     prog_use(d->use5 ? 4 : 3);
@@ -964,16 +991,8 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
     if (stencil_on) { stc_set(6, false, GPU_ALWAYS, 0, 0xff, 0); stencil_on = 0; } /* the citro3d effect copy says off too, as flush_draw does: nd_leave_native sends that copy again */
     if (!ndn_mode) { nd_shadow_reset(&ndn_sh); ndn_mode = 1; }
     if (*(volatile unsigned*)(__C3D_Context + 32) & 0x3800000u) { ndn_sh.cfg_valid = 0; ndn_sh.u_on[0] = ndn_sh.u_on[1] = 0; } /* a dirty texture bind: C3Di_UpdateContext rebuilds the unit enable word from the units citro3d holds (a null unit 0 after a slot drop writes it off) and sends their blocks: the native shadow of both is stale, the native words write them again */
-    NdtT t1 = ndt_mdl ? pm_gpu_ndt_begin() : (NdtT){ 0, 0, 0 };
-    C3Di_UpdateContext(); /* what citro3d staged (program, buffers, scissor, an older TEV) goes out first, the native words then overwrite it */
-    pm_gpu_ndt_end(t1, NDT_UPD);
-    static uint32_t out[ND_EMIT_MAX];
-    NdtT t2 = ndt_mdl ? pm_gpu_ndt_begin() : (NdtT){ 0, 0, 0 };
-    unsigned nw = nd_emit_draw(out, &ndn_sh, d);
-    pm_gpu_ndt_end(t2, NDT_EMIT);
-    NdtT t3 = ndt_mdl ? pm_gpu_ndt_begin() : (NdtT){ 0, 0, 0 };
-    GPUCMD_AddRawCommands(out, nw);
-    pm_gpu_ndt_end(t3, NDT_ADD);
+    if (c3d_upd_needed()) C3Di_UpdateContext(); /* what citro3d staged (program, buffers, scissor, an older TEV) goes out first, the native words then overwrite it */
+    { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); GPUCMD_SetBufferOffset(coff + nd_emit_draw(cb + coff, &ndn_sh, d)); } /* PERF1-6: emitted in place (no copy) */
     if (tex) ndunit_after();
     *(volatile unsigned*)(__C3D_Context + 32) |= 2u; /* C3DiF_DrawUsed, as the citro3d draw sets it: citro3d then sends the framebuffer flush at a target change, a split and the frame end */
     if (ndref_on) ndref_cmd();
@@ -991,14 +1010,21 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
         else if (grab_dy1 <= grab_dy0) { grab_dy0 = nb.rect_y0; grab_dy1 = nb.rect_y1; }
         else { if (nb.rect_y0 < grab_dy0) grab_dy0 = nb.rect_y0; if (nb.rect_y1 > grab_dy1) grab_dy1 = nb.rect_y1; }
     }
-    rp_tmpl_ = d->tmpl; rp_u0_ = d->u[0].dim != 0;
-    rp_draw("nat", tex);
+    if (__builtin_expect(t1l_on | rp_on_ | (d->use5 & d->has_uvx), 0)) submit_dbg(d, tex); /* PERF1: the debug logs are tested here (cached switches, the draw flags), not called per draw */
     dc_kick();
+    NDT_E(tsub, NDT_SUB);
+}
+/* the debug logs of one native submit (t1log, pm5tex1, rectpost) */
+static __attribute__((cold, noinline)) void submit_dbg(const NdDraw* d, int tex) {
+    if (t1l_on) t1log_draw(d);
+    pm5tex1_log(d);
+    rp_tmpl_ = d->tmpl; rp_u0_ = d->u[0].dim != 0;
+    if (rp_on_) rp_draw("nat", tex); /* -1 until the first read */
 }
 
 /* S3N-3c: the palette 0 product post x game (the native model draw, nd_model.c) and the submit of one native model draw (emit 1, S3N-4):
  * the attribute locations and the index address of its static range. */
-void pm_gpu_pcomp_native(float o[16], const float m[4][4]) { NdtT t = pm_gpu_ndt_begin(); nd_mtx_pcomp(o, gv_post.m, m); pm_gpu_ndt_end(t, NDT_MTX); }
+void pm_gpu_pcomp_native(float o[16], const float m[4][4]) { nd_mtx_pcomp(o, gv_post.m, m); }
 /* PM5-3: the pm5 block of a model draw from its NdDraw fields (the same calls as pm5_upload, values of the draw) */
 static __attribute__((noinline)) void pm5_upload_draw(const NdDraw* d) {
     prog_use(4);
@@ -1013,7 +1039,7 @@ static __attribute__((noinline)) void pm5_upload_draw(const NdDraw* d) {
 }
 /* FB-3 t1log (debug switch, log only): one line per tex1 draw of a native record or raw batch, with the unit 1 words and the uvx values sent */
 static __attribute__((cold, noinline)) void t1log_draw(const NdDraw* d) {
-    static int t1l_on = -1, t1l_n; extern unsigned pm_frame_count(void);
+    static int t1l_n; extern unsigned pm_frame_count(void);
     if (t1l_on < 0) t1l_on = pm_debug_has("t1log");
     if (t1l_on && d->has_uvx && d->use5 && pm_frame_count() >= 100 && t1l_n++ < 400) pm_log("t1draw f%u use5 %d loc_uvx %u u1 dim %x addr %x param %x lod %x type %x uvx %.4f %.4f %.4f %.4f", pm_frame_count(), d->use5, d->loc_uvx, d->u[1].dim, d->u[1].addr, d->u[1].param, d->u[1].lod, d->u[1].type, d->uvx[0], d->uvx[1], d->uvx[2], d->uvx[3]);
 }
@@ -1021,7 +1047,7 @@ static __attribute__((cold, noinline)) void t1log_draw(const NdDraw* d) {
 void pm_gbi_cur_prod_name(char* b, int n);
 static __attribute__((cold, noinline)) void pm5tex1_log(const NdDraw* d) {
     static char seen[24][48]; static unsigned nseen;
-    if (!d->use5 || !d->has_uvx) return;
+    if (!d->use5 || !d->has_uvx || pm_log_level() < 2) return; /* pm_log is an info line */
     char prod[48]; pm_gbi_cur_prod_name(prod, sizeof prod);
     for (unsigned i = 0; i < nseen; i++) if (strcmp(seen[i], prod) == 0) return;
     if (nseen < 24) { strncpy(seen[nseen], prod, 47); seen[nseen][47] = 0; nseen++; }
@@ -1149,7 +1175,7 @@ static __attribute__((noinline)) void raw_zmark_pass(const NdTmplKey* nk, const 
 static int nd_raw_native(void) {
     nd_tmpl_pin(); /* FB-2: the template ids of this batch stay valid until its submit */
     if (!(nb.gni > 0 && nb.g_pal && gs.gv4_on && (!nb.g_use5 || gv5_on))) { cen_why = nb.g_use5 ? CW_PM5 : CW_OTHER; return 0; } /* CEN-1a; PM5-2: program 5 batches go native too */
-    { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); if (coff + ND_EMIT_MAX + 1024u >= csz) cmd_split_forced(); } /* FB-2: GPUCMD_AddRawCommands does no bounds check: near the end of the command buffer the batch is split first (nraw1 is no longer a refusal) */
+    { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); if (coff + ND_EMIT_MAX + 1024u >= csz) cmd_split_forced(); } /* FB-2: the draw words go into the command buffer with no bounds check: near its end the batch is split first (nraw1 is no longer a refusal) */
     /* CEN-1b: one refusal line per reason, same order and counters as the old combined line */
     if (gs.r_zmark && nb.g_use5) { nd_native_refused++; nraw_why[4]++; cen_why = CW_NRK(4); return 0; } /* FB-1 ZM: pm4 zmark is native (two pass); pm5 zmark stays on the CPU path (FB-3) */
     int z = gs.z_on && (!nb.rect_2d || nb.rect_z) && !gs.off_active; /* OFF-1: as flush_draw, no depth test on an off-screen target */
@@ -2682,8 +2708,8 @@ void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) {
     s[i++] = nd_handle_gen(); s[i++] = pm_dlc_gen;
     i += pm_gbi_gvkey(s + i, NDMC_SW - i);
     while (i < NDMC_SW) s[i++] = 0;
-    k->rp = (uint32_t)(uintptr_t)rec; /* S3N-7: the record address (diagnostic classes only) */
-    k->h = nd_mc_hash(k);
+    k->rp = (uint32_t)(uintptr_t)rec; /* S3N-7: the record address (PERF1-4a: the lookup memo, nd_mc_find_rec) */
+    k->h = 0; /* set by nd_mc_find_rec */
 }
 static int ndc_compare(const NdMKey* k, const NdTexDesc* ds, int id, int hs, unsigned hg); /* S3N-6 check: 1 when the entry is valid */
 unsigned nd_r13_nohit; /* MDL-1: R13 texture records without a desc, stored no-hit (mdlw r13nohit) */
@@ -2721,7 +2747,7 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
      * desc, unit 0 is the bound slot (pm_tex_native_unit0), the raw path's rule. */
     uint32_t r13cw[4] = { 0, 0, 0, 0 }; int r13cb = 0; int r13 = 0;
     r13_last = 0; /* MDL-5a: r13u1_ok and r13i8_1 are set by pm_gpu_set_r13_t1 (rec_run, before this draw); clearing them here made every bound R13 tile 1 a why 6 sub b */
-    if (rec[26] != 0 && !ax_ok && !pm_debug_has("r13off") && nd_r13_texonly(rec + NDMC_RW, rec[26], r13cw, &r13cb)) {
+    if (rec[26] != 0 && !ax_ok && !PMDL("r13off") && nd_r13_texonly(rec + NDMC_RW, rec[26], r13cw, &r13cb)) {
         r13_last = 1;
         r13 = 1;
         if (ds == NULL && gfx == NULL) {
@@ -2790,12 +2816,11 @@ void pm_gpu_ndm_begin(const uint32_t* rec, const uint32_t* modew, const uint32_t
 }
 /* S3N-4: the switch. One model record drawn natively (emit 1) after rec_apply; a fallback returns -1 and the record runs the walker geometry.
  * The counters print every 300 frames: native records, fallback records, native draws (the ranges; the wref class is not split in this mode). */
-static unsigned ndn_rec, ndn_fb, ndn_draws, ndn_f_last, ndn_hit, ndn_miss, ndn_nokey, ndn_rng, ndn_texf;
+static unsigned ndn_rec, ndn_fb, ndn_draws, ndn_f_last, ndn_hit, ndn_miss, ndn_nokey, ndn_rng, ndn_texf, ndn_empty; /* PERF1: empty = hits with no draw */
 void pm_gbi_dnr_take(unsigned* o, unsigned n);
 static unsigned ndn_why[16]; /* S3L-1: fallback records of the window by code (0 = nost: no state bit known, the record words are not read) */
 /* S3N-7: the counters of one 300-frame window (reset at the print). ndmt: ms per sampled frame of each region (ticks / 268112 per ms / frames). */
-static unsigned ndn_clr0, ndn_smp0;
-static double ndt_ms(int k, unsigned ns) { return ns ? (double)ndt_sum[k] / ((double)ns * 268112.0) : 0.0; }
+static unsigned ndn_clr0;
 /* MDL-5e debug: the window so far at the end of a tour (a tour shorter than 300 frames has no ndm window line). */
 /* CORE2-3a: walker side entry (nd_wq.c): the game thread posts it, the body runs on the walker side. */
 static void pm_gpu_ndn_window_end_w(void);
@@ -2812,35 +2837,32 @@ static void pm_gpu_ndn_window_end_w(void) {
 }
 static void ndn_log(void) {
     unsigned f = pm_frame_count();
-    if (f % 300u == 0 && f != ndn_f_last) {
+    if (f != ndn_f_last) { /* PERF1: one frame compare per record; the modulo once per frame */
         ndn_f_last = f;
-        unsigned clr = nd_mc_clears(), smp = pm_ph_smp_count(), ns = smp - ndn_smp0;
+        if (f % 300u) return;
+        unsigned clr = nd_mc_clears();
         wide_log(f);
         rect_log(f);
         char wb[160]; unsigned wn = 0; wb[0] = 0; /* S3L-1: the codes of the window, nonzero only */
         for (unsigned c = 0; c < 16u; c++) if (ndn_why[c]) { if (!wn) wn += (unsigned)snprintf(wb, sizeof wb, " why"); wn += (unsigned)snprintf(wb + wn, sizeof wb - wn, " %u:%u", c, ndn_why[c]); }
         pm_log_prof_line("ndm f%u native %u fb %u wref %u hit %u miss %u clears %u%s", f, ndn_rec, ndn_fb, ndn_draws, ndn_hit, ndn_miss, clr - ndn_clr0, wb);
-        pm_log_prof_line("ndmhit f%u nokey %u rng %u tex %u", f, ndn_nokey, ndn_rng, ndn_texf);
+        pm_log_prof_line("ndmhit f%u nokey %u rng %u tex %u empty %u", f, ndn_nokey, ndn_rng, ndn_texf, ndn_empty);
         { static int szd; if (!szd) { szd = 1; pm_log_prof_line("ndmsz entry %u draw %u", (unsigned)sizeof(NdMEnt), (unsigned)sizeof(NdNat)); } }
         { unsigned dg[15]; nd_mc_diag_take(dg);
           pm_log_prof_line("ndmmiss f%u new %u clr %u rec %u st %u hd %u gv %u same %u rcap %u ncap %u ins %u ent %u pool %u ehi %u phi %u cap %u", f, dg[0], dg[1], dg[2], dg[3], dg[4], dg[5], dg[6], dg[7], dg[8], dg[9], dg[10], dg[11], dg[12], dg[13], dg[14]); }
-        pm_log_prof_line("ndmt f%u keyb %.2f find %.2f rng %.2f apply %.2f fb %.2f upd %.2f emit %.2f add %.2f mtx %.2f draws %u smp %u", f,
-            ndt_ms(NDT_KEYB, ns), ndt_ms(NDT_FIND, ns), ndt_ms(NDT_RNG, ns), ndt_ms(NDT_APPLY, ns), ndt_ms(NDT_FB, ns), ndt_ms(NDT_UPD, ns), ndt_ms(NDT_EMIT, ns), ndt_ms(NDT_ADD, ns), ndt_ms(NDT_MTX, ns), ndn_draws, ns);
         { unsigned dr[16]; pm_gbi_dnr_take(dr, 16u); /* S4-1: the refusal classes of the native ranges (code 12 = any of them) */
           pm_log_prof_line("ndmr f%u c1 %u c2 %u c3 %u c4 %u c5 %u c6 %u c7 %u c8 %u c9 %u c10 %u", f, dr[1], dr[2], dr[3], dr[4], dr[5], dr[6], dr[7], dr[8], dr[9], dr[10]);
           pm_log_prof_line("ndmr2 f%u c11 %u c12 %u c13 %u c14 %u c15 %u", f, dr[11], dr[12], dr[13], dr[14], dr[15]); }
-        ndn_clr0 = clr; ndn_smp0 = smp;
-        ndn_rec = ndn_fb = ndn_draws = ndn_hit = ndn_miss = ndn_nokey = ndn_rng = ndn_texf = 0;
+        ndn_clr0 = clr;
+        ndn_rec = ndn_fb = ndn_draws = ndn_hit = ndn_miss = ndn_nokey = ndn_rng = ndn_texf = ndn_empty = 0;
         memset(ndn_why, 0, sizeof ndn_why);
-        memset(ndt_sum, 0, sizeof ndt_sum);
     }
 }
-/* S3N-6: the static ranges of a cached entry against the fresh ones (pm_dlc_native_ranges with the list and the geometry of the key). The matrix enters
- * only here: the box test and the room of the ranges read it. */
-static int model_ranges_eq(const NdMEnt* e, const NdRng* r, int nr) {
-    if (nr != (int)e->nraw) return 0;
-    for (int i = 0; i < nr; i++) if (r[i].sd != e->raw[i].sd || r[i].nidx != e->raw[i].nidx || r[i].geom != e->raw[i].geom) return 0;
-    return 1;
+/* PERF1-4b: a cached entry holds when the groups of its list in view now are the groups its draws were cut from (the box test of each group under the
+ * combined matrix). The cut reads only those groups and the state in the key, so equal masks give the stored ranges; the re-walk of the ranges is gone. */
+static int model_vis_same(const NdMKey* k, const NdMEnt* e) {
+    uint64_t vm;
+    return pm_dlc_vis_mask((const void*)(uintptr_t)k->w[24], &vm) == 0 && vm == e->vmask;
 }
 /* S3N-6 check (ndmcheck, emit 0): a cached entry of key k that the hit would take (same ranges) against the fresh draws of this record: every field the draw
  * sends. hit / miss counts the entries; diff counts the differing fields (the first 20 lines are printed). The unit words are the hinted ones, as the hit sends them. */
@@ -2859,9 +2881,7 @@ static __attribute__((cold, noinline)) void ndc_cmp(const char* nm, unsigned a, 
 static __attribute__((noinline)) int ndc_compare(const NdMKey* k, const NdTexDesc* ds, int id, int hs, unsigned hg) {
     (void)hs; (void)hg;
     NdMEnt* e = nd_mc_find(k);
-    NdRng rng[ND_RAW_MAX];
-    int nr = e ? pm_dlc_native_ranges((const void*)(uintptr_t)k->w[24], e->geom, rng, ND_RAW_MAX) : -3;
-    if (!e || !model_ranges_eq(e, rng, nr)) { ndc_miss++; return 0; }
+    if (!e || !model_vis_same(k, e)) { ndc_miss++; return 0; }
     ndc_hit++;
     ndc_k = k; ndc_e = e;
     NdUnit u; memset(&u, 0, sizeof u);
@@ -2886,9 +2906,11 @@ static __attribute__((noinline)) int ndc_compare(const NdMKey* k, const NdTexDes
     return 1;
 }
 /* S3N-7 diagnostic (sampled misses): the stored entry of the same model (R0 word 0 and R12 word 0 equal) and the first key word that differs. */
-static unsigned mdg_miss, mdg_printed;
+static unsigned mdg_cd, mdg_printed;
 void pm_gpu_model_miss_diag(const NdMKey* k) {
-    if ((mdg_miss++ % 400u) != 0u || mdg_printed >= 16u) return;
+    if (mdg_printed >= 16u) return;
+    if (mdg_cd) { mdg_cd--; return; } /* PERF1: one miss in 400 (a countdown, no modulo per miss) */
+    mdg_cd = 399u;
     mdg_printed++;
     unsigned n = nd_mc_size();
     for (unsigned i = 0; i < n; i++) {
@@ -2916,12 +2938,8 @@ int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32
  * applies the record (its matrix ops are done). */
 int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
     if (!e) { ndn_nokey++; return 0; }
-    NdRng rng[ND_RAW_MAX];
-    NdtT tr = pm_gpu_ndt_begin(); /* S3N-7: the hit-path range check */
-    int nr = pm_dlc_native_ranges((const void*)(uintptr_t)k->w[24], e->geom, rng, ND_RAW_MAX);
-    int same = model_ranges_eq(e, rng, nr);
-    pm_gpu_ndt_end(tr, NDT_RNG);
-    if (!same) { ndn_rng++; return 0; }
+    if (!model_vis_same(k, e)) { ndn_rng++; return 0; }
+    if (!e->n) { ndn_empty++; ndn_rec++; ndn_hit++; ndn_log(); return 1; } /* PERF1-4c: no draw (no group in view, or all culled): no texture lookup, template build, matrix product or flush */
     NdUnit u; memset(&u, 0, sizeof u);
     if (e->tex) {
         const NdTexDesc* ds = nd_tex_handle_desc((int)((k->w[0] >> 8) & 0x7fu), (const void*)(uintptr_t)k->w[1]);
@@ -2930,8 +2948,12 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
         if (id < 0 || !nd_tex_unit_hint(id, &e->hs, &e->hg, &u)) { ndn_texf++; return 0; }
     }
     /* FB-2: the template ids of the cached draws are built again before any draw goes out (the LRU may have taken an id over since the store): a full table falls back */
-    nd_tmpl_pin();
-    for (unsigned j = 0; j < e->n; j++) { int id = nd_tmpl_build(&nd_mc_nat(e, j)->tk); if (id < 0) return 0; nd_mc_nat(e, j)->d.tmpl = id; }
+    /* PERF1-4c: only when an eviction happened since the last build of these ids (nd_tmpl_gen); else the ids hold and only their LRU clock moves */
+    if (e->tgen != nd_tmpl_gen()) {
+        nd_tmpl_pin();
+        for (unsigned j = 0; j < e->n; j++) { int id = nd_tmpl_build(&nd_mc_nat(e, j)->tk); if (id < 0) return 0; nd_mc_nat(e, j)->d.tmpl = id; }
+        e->tgen = nd_tmpl_gen();
+    } else for (unsigned j = 0; j < e->n; j++) nd_tmpl_touch(nd_mc_nat(e, j)->d.tmpl);
     float comb[4][4], pal0[16];
     nd_mtx_combine(comb, pm_eye_e, pm_eye_conv);
     pm_gpu_pcomp_native(pal0, comb);
@@ -3193,8 +3215,9 @@ static unsigned spr_nat_n, spr_nat_fb[16], spr_nat_f_last;
 static unsigned spr5_sub[8]; /* MDL-3a: class 5 refusals per flag: 1 no pm4 palette path (g_pal, g_use5, gv4_on), 2 off-screen target, 3 grab, 4 zmark, 5 nozt */
 static void spr_nat_log(void) {
     unsigned f = pm_frame_count();
-    if (f % 300u || f == spr_nat_f_last) return;
+    if (f == spr_nat_f_last) return; /* PERF1: one frame compare per sprite; the modulo once per frame */
     spr_nat_f_last = f;
+    if (f % 300u) return;
     pm_log_prof_line("sprnat f%u native %u fb %u why 2 %u why 3 %u why 4 %u why 5 %u other %u", f, spr_nat_n, spr_nat_fb[1] + spr_nat_fb[2] + spr_nat_fb[3] + spr_nat_fb[4] + spr_nat_fb[5] + spr_nat_fb[20] + spr_nat_fb[11] + spr_nat_fb[12],
         spr_nat_fb[2], spr_nat_fb[3], spr_nat_fb[4], spr_nat_fb[5], spr_nat_fb[1] + spr_nat_fb[20] + spr_nat_fb[11] + spr_nat_fb[12]);
     pm_log_prof_line("spr5 f%u nopal %u off %u grab %u zmark %u nozt %u", f, spr5_sub[1], spr5_sub[2], spr5_sub[3], spr5_sub[4], spr5_sub[5]);
@@ -3268,7 +3291,7 @@ int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16
     c.base_oh = nd_ws.omode_h; c.base_ol = nd_ws.omode_l; c.known_h = nd_ws.om_kh; c.known_l = nd_ws.om_kl;
     uint32_t zr[27];
     memset(zr, 0, sizeof zr); /* the record words the model state reads (R3 flags, R11, R13) are zero: a sprite has none */
-    if (nd_model_state(zr, &c, n, st) != 1) { *why = 10 + st->why; return 0; }
+    if (nd_model_state_spr(zr, &c, n, st) != 1) { *why = 10 + st->why; return 0; } /* PERF1-5: through the sprite state memo */
     n->nidx = 6; /* pm_gpu_spr_submit: two triangles of the quad */
     pm_gpu_pcomp_native(pal0, pm_gbi_combined_ptr());
     return 1;

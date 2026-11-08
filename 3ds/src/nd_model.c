@@ -213,6 +213,7 @@ static int nd_comb_native(uint32_t w0, uint32_t w1, uint32_t oh, uint32_t prim, 
 
 /* ---- S3N-3a: the state of one model record as a native draw (pure: record words and NdMCtx) ---- */
 int pm_debug_has(const char* name);
+static int mdl0_sw(void) { static int v = -1; if (v < 0) v = pm_debug_has("mdl0") ? 1 : 0; return v; } /* PERF1: switch mdl0, read once (a log switch of the launch) */
 void pm_log_d(const char* fmt, ...);
 void pm_log_prof_line(const char* fmt, ...);
 static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st);
@@ -294,10 +295,10 @@ static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, Nd
     if (!c->mode || !c->mode->ok || (!c->has_comb && !c->mode->has_cb)) return (st->why = 1, 0);
     if (c->gv && c->gv->fxon && !c->nrm_ok) return (st->why = 4, 0); /* lit or fog without the walker normal rows (PM5-3: with them the range is a pm5 draw) */
     if (rec[26] != 0 && !c->aux_ok) { /* MDL-0 count (switch mdl0): the first 12 why 2 records, their R13 words */
-        static unsigned m2_ = 0; if (m2_ < 12u && pm_debug_has("mdl0")) { const uint32_t* aw = rec + NDMC_RW; m2_++; pm_log_d("mdl2 n %u w0 %08x %08x w1 %08x %08x gfx %d", (unsigned)rec[26], aw[0], aw[1], aw[2], aw[3], c->aux_ok); }
+        static unsigned m2_ = 0; if (m2_ < 12u && mdl0_sw()) { const uint32_t* aw = rec + NDMC_RW; m2_++; pm_log_d("mdl2 n %u w0 %08x %08x w1 %08x %08x gfx %d", (unsigned)rec[26], aw[0], aw[1], aw[2], aw[3], c->aux_ok); }
         return (st->why = 2, 0); } /* R13: words after the record (special tile list, untextured ops); S3L-3: the untextured form is decoded by the caller (aux_ok) */
     if (!nd_r11_ok(rec[22], 1) || !nd_r11_ok(rec[23], 0)) { /* MDL-0 count (switch mdl0): the first 12 why 3 records: list addresses and the first two words of each list */
-        static unsigned m3_ = 0; if (m3_ < 12u && pm_debug_has("mdl0")) { m3_++; const uint32_t* a = rec[22] ? (const uint32_t*)(uintptr_t)rec[22] : NULL; const uint32_t* b = rec[23] ? (const uint32_t*)(uintptr_t)rec[23] : NULL;
+        static unsigned m3_ = 0; if (m3_ < 12u && mdl0_sw()) { m3_++; const uint32_t* a = rec[22] ? (const uint32_t*)(uintptr_t)rec[22] : NULL; const uint32_t* b = rec[23] ? (const uint32_t*)(uintptr_t)rec[23] : NULL;
             /* MDL-5e: the map, and the first 6 words (3 ops) of each custom list: the ops that run on the state side */
             pm_log_d("mdl3 f%u map %d:%d pre %08x post %08x pre w %08x %08x %08x %08x %08x %08x post w %08x %08x %08x %08x", pm_frame_count(), (int)gGameStatusPtr->areaID, (int)gGameStatusPtr->mapID, (unsigned)rec[22], (unsigned)rec[23],
                 a ? a[0] : 0u, a ? a[1] : 0u, a ? a[2] : 0u, a ? a[3] : 0u, a ? a[4] : 0u, a ? a[5] : 0u, b ? b[0] : 0u, b ? b[1] : 0u, b ? b[2] : 0u, b ? b[3] : 0u); }
@@ -368,13 +369,48 @@ static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, Nd
     return 1;
 }
 
+/* PERF1-5: the sprite state memo. pm_gpu_spr_build calls nd_model_state with a fixed context (record words 0, the sprite mode: ok, gand all ones, no list
+ * ops; has_comb 1, draw_3d 1, nrm_ok 0, zmark 0, i8_0 0, no tile 1), so the state is a function of the walker values below; the combine decision, render
+ * state, template key and TEV words of an equal key are the stored ones. 16 entries, direct mapped by a hash of the key. A hit needs the template id
+ * still valid (nd_tmpl_gen unchanged since the store) and, for a noise plan, the noise texture. Only native results (1) are stored. */
+#define SPRM_N 16u
+#define SPRM_W 21u
+typedef struct { uint32_t kw[SPRM_W]; NdTmplKey k; NdTevOut to; int id; unsigned tgen; uint8_t used; } SprMemo;
+static SprMemo sprm[SPRM_N];
+int nd_model_state_spr(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st) {
+    uint32_t w[SPRM_W];
+    w[0] = c->comb_w0; w[1] = c->comb_w1; w[2] = c->geom_base; w[3] = (uint32_t)c->wind; w[4] = c->base_oh; w[5] = c->base_ol; w[6] = c->known_h; w[7] = c->known_l;
+    w[8] = c->prim; w[9] = c->env; w[10] = c->prim_lod; w[11] = (uint32_t)(c->u0 != NULL && c->u0->dim != 0); w[12] = (uint32_t)(c->gv && c->gv->fxon); w[13] = c->dbias;
+    w[14] = (uint32_t)c->rgb_scale; w[15] = (uint32_t)c->r_mix; w[16] = (uint32_t)c->dview; w[17] = (uint32_t)c->r_memblend; w[18] = (uint32_t)c->r_replace; w[19] = c->cconst; w[20] = c->mixcol;
+    uint32_t h = 2166136261u;
+    for (unsigned i = 0; i < SPRM_W; i++) h = (h ^ w[i]) * 16777619u;
+    SprMemo* m = &sprm[(h ^ (h >> 16)) & (SPRM_N - 1u)];
+    if (m->used && m->tgen == nd_tmpl_gen() && memcmp(m->kw, w, sizeof w) == 0 && (!m->k.noise || pm_gpu_noise_ok())) {
+        /* the tail of nd_model_state_in for these values (no tile 1, no pm5: fxon is 0 in a stored key) */
+        st->why = 0; nd_nat_sub = 0; mw_ok++;
+        nd_tmpl_touch(m->id);
+        memset(d, 0, sizeof *d);
+        d->tmpl = m->id;
+        for (int i = 0; i < 6; i++) d->tev_col[i] = m->to.st[i][3];
+        d->buf_col = m->to.buf_color; d->has_buf = (uint8_t)m->to.buf_set;
+        if (m->k.tex) d->u[0] = *c->u0;
+        if (m->k.noise) { pm_gpu_noise_draw(&d->u[2], d->nzo); d->has_nzo = 1; }
+        d->u[0].force = 0;
+        if (c->gv) { memcpy(d->uvso, c->gv->uvso, 16); memcpy(d->cmul, c->gv->cm, 16); memcpy(d->cadd, c->gv->ca, 16); d->zmix[0] = c->gv->zm[0]; d->zmix[1] = c->gv->zm[1]; }
+        memcpy(&st->k, &m->k, sizeof m->k); st->to = m->to; st->tmpl = m->id;
+        return 1;
+    }
+    int r = nd_model_state(rec, c, d, st);
+    if (r == 1) { memcpy(m->kw, w, sizeof w); memcpy(&m->k, &st->k, sizeof st->k); m->to = st->to; m->id = st->tmpl; m->tgen = nd_tmpl_gen(); m->used = 1; }
+    return r;
+}
 /* ---- S3N-3c: a model record as native draws. The palette 0 is post x the combined matrix of the walker's stack; the ranges are the static groups of the
  * shape list in view (the former pm_gbi.c pm_dlc_native_ranges). Ranges with the same state key and contiguous indices merge into one draw. ---- */
 NdNat nat[ND_NAT_MAX]; /* MOVE-5: the draw state of nd_model_draw (nd_model_set.c) */
 int nat_n;
 int nd_nat_why; /* the reason of the last fallback: the nd_model_state why, or 11 too many draws, 12 the list is not static */
 const NdNat* nd_model_native(unsigned j) { return j < (unsigned)nat_n ? &nat[j] : NULL; }
-NdRng nat_rng[ND_RAW_MAX]; /* S3N-6: the static ranges of the last nd_model_draw (copied at its start) */
+uint64_t nat_vm; int nat_vm_ok; /* PERF1-4b: the groups in view of the last nd_model_draw (pm_dlc_vm) */
 int nat_nr; uint32_t nat_geom;
 
 /* ---- S3N-6: the native model cache (see nd.h NdMKey). The draws of an entry live in a pool; an entry names its first draw and the count. ---- */
@@ -450,13 +486,25 @@ static void mc_note(const NdMKey* k, const NdMEnt* e) { /* S3N-7: the last entry
     unsigned s = (k->rp >> 2) & (NDMC_LAST - 1u);
     mc_lastp[s] = k->rp; mc_lasti[s] = (uint16_t)(e - mc_tab); mc_lastg[s] = mc_clears_n;
 }
+/* PERF1-4a: rec_run's lookup. The entry this record address found or stored last (mc_lastp, same clear generation) is compared first: an equal key needs no
+ * hash and no probe. Else the hash (k->h, read by the probe and the store) and the probe; a found entry becomes the record's memo. */
+NdMEnt* nd_mc_find_rec(NdMKey* k) {
+    unsigned s = (k->rp >> 2) & (NDMC_LAST - 1u);
+    if (mc_lastp[s] == k->rp && mc_lastg[s] == mc_clears_n) {
+        NdMEnt* m = &mc_tab[mc_lasti[s]];
+        if (m->used && mc_eq(&m->k, k)) { k->h = m->k.h; return m; }
+    }
+    k->h = nd_mc_hash(k);
+    NdMEnt* e = nd_mc_find(k);
+    if (e) mc_note(k, e);
+    return e;
+}
 NdMEnt* nd_mc_store(const NdMKey* k, int tex, int hs, unsigned hg) {
-    if (nat_nr > ND_RAW_MAX || nat_nr < 0) { mg_cls[7]++; return NULL; }
+    if (nat_nr > ND_RAW_MAX || nat_nr < 0 || !nat_vm_ok) { mg_cls[7]++; return NULL; }
     if (nat_n > (int)ND_NAT_MAX) { mg_cls[8]++; return NULL; }
     NdMEnt* e = mc_slot(k);
     if (mc_pool_n + (unsigned)nat_n > NDMC_POOL) { mc_clear_all(); e = mc_slot(k); }
-    memcpy(e->raw, nat_rng, sizeof(NdRng) * (unsigned)nat_nr);
-    e->nraw = (unsigned)nat_nr; e->geom = nat_geom;
+    e->vmask = nat_vm; e->geom = nat_geom; e->tgen = ~0u; /* the first hit builds the template ids */
     e->tex = (uint8_t)(tex != 0); e->hs = hs; e->hg = hg;
     e->off = mc_pool_n; e->n = (unsigned)nat_n;
     for (int j = 0; j < nat_n; j++) {
