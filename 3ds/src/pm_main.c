@@ -10,6 +10,8 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include "pm_port.h"
+unsigned pm_log_late_con(void); /* pm_log.c: B1 check */
+unsigned pm_log_con_copies(void), pm_log_con_nomenu(void), pm_log_late_drop(void);
 /* O6: a switch word read once. Not for the words the options panel changes at run time (nofog, nolight). */
 #define PMD(word) ({ static int v_ = -1; if (v_ < 0) v_ = pm_debug_has(word); v_; })
 #include "pm_gpu.h"
@@ -436,6 +438,22 @@ void pm_frame_loop(void) {
                 if (pm_debug_has("shotgrey")) { snprintf(tn, sizeof tn, "top_after%04u", top_after_k++); pm_gpu_shot_top_displayed(tn); }
             }
             pm_gpu_menu_present();
+            { /* B1 repro: shotfrozen=<n> takes the bottom screen on the n-th frozen pass (bot_fz<n>), then the event line */
+                static int fz_want = -2;
+                static unsigned fz_n;
+                if (fz_want == -2) {
+                    char fv[16];
+                    int k = -1;
+                    if (pm_debug_value("shotfrozen", fv, sizeof fv)) sscanf(fv, "%d", &k);
+                    fz_want = k;
+                }
+                if (fz_want > 0 && ++fz_n == (unsigned)fz_want) {
+                    char bname[32];
+                    snprintf(bname, sizeof bname, "bot_fz%04u", fz_n);
+                    pm_gpu_shot_bottom(bname);
+                    pm_log_evt("menu: frozen shot %u late %u drop %u copies %u nomenu %u", fz_n, pm_log_late_con(), pm_log_late_drop(), pm_log_con_copies(), pm_log_con_nomenu());
+                }
+            }
             continue;
         }
         if (menu_frozen) { /* MN1: resume: the schedule starts again, no catch-up steps */
@@ -641,6 +659,7 @@ void pm_frame_loop(void) {
                 char bname[32];
                 snprintf(bname, sizeof bname, "bot_%04u", frame);
                 pm_gpu_shot_bottom(bname); /* MN0: the writer is pm_gpu_shot_bottom */
+                pm_log_evt("shotbottom bot_%04u frame %u", frame, frame); /* CFG-2: test-event line, the until of the panel scenarios (the file alone is not logged) */
             }
         }
         PM_WD_PHASE(10);
@@ -714,33 +733,29 @@ static void game_thread(void* arg) {
     pm_stack_register(0, "game", 256 * 1024);
     char sw[256]; /* H06d: a bigger array here stops the boot (FX3a, H06d: _svfprintf_r PC 0), so the limit stays and a cut is handled */
     memset(sw, 0, sizeof(sw));
-    FILE* f = fopen("debug3ds.txt", "r");
+    /* CFG-1: the launch arguments come first, then debug3ds.txt. Every switch read takes the first match (pm_debug_value, debug_scan),
+     * so a push flag wins over the same word in debug3ds.txt. */
+    if (args[0]) strncpy(sw, args, sizeof(sw) - 1);
+    size_t base = strlen(sw);
+    int sep = base && base + 1 < sizeof(sw);
+    if (sep) sw[base++] = ' ';
     int sw_cut = 0;
+    FILE* f = fopen("debug3ds.txt", "r");
     if (f) {
-        size_t got = fread(sw, 1, sizeof(sw) - 1, f);
-        sw_cut = got == sizeof(sw) - 1 && fgetc(f) != EOF;
+        size_t cap = sizeof(sw) - 1 - base;
+        size_t got = fread(sw + base, 1, cap, f);
+        sw[base + got] = 0;
+        sw_cut = got == cap && fgetc(f) != EOF;
         fclose(f);
-        if (sw_cut) { /* H06d: never keep half a word (tour=...iwa_01 became iwa_0): cut back to the last space */
-            char* sp = strrchr(sw, ' ');
+        if (sw_cut) { /* H06d: never keep half a word (tour=...iwa_01 became iwa_0): cut back to the last space of the file text */
+            char* sp = strrchr(sw + base, ' ');
             if (sp) *sp = 0;
         }
     }
-    if (args[0]) {
-        size_t n = strlen(sw);
-        if (n && n + 1 < sizeof(sw)) sw[n++] = ' ';
-        strncat(sw, args, sizeof(sw) - strlen(sw) - 1);
-    }
+    if (sep && !sw[base]) sw[base - 1] = 0; /* no file text: drop the separator */
     /* MEM-B item 9: the live log (socket, 17492) is opt-in: the livelog word from debug3ds.txt or a launch argument (push_3ds.sh passes it).
      * A netload alone no longer starts it. Read after the args are appended, so the argument word counts. */
     int live = strstr(sw, "livelog") != NULL;
-    { /* PROF4: options.ini prof=1 adds the word prof, as a launch argument does. pm_options_init runs later and re-applies it. */
-        FILE* oi = fopen("options.ini", "r");
-        static char ln[32];
-        if (oi) {
-            while (fgets(ln, sizeof ln, oi)) if (!strncmp(ln, "prof=1", 6) && strlen(sw) + 6 < sizeof sw) { strcat(sw, " prof"); break; }
-            fclose(oi);
-        }
-    }
     pm_log_set_switches(sw);
     pm_log_init(live);
     pm_log_start();

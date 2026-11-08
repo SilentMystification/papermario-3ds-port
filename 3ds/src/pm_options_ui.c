@@ -84,8 +84,14 @@ void pm_menu_msg(const char* fmt, ...) {
     if (pm_menu_open) draw();
 }
 
+unsigned pm_log_late_con(void); /* pm_log.c: B1 check */
+int pm_log_sinkslow(void); /* pm_log.c: B1 repro switch */
 void pm_menu_set(int on) {
     if (on == pm_menu_open) return;
+    if (on && pm_log_sinkslow()) { /* B1 repro: a line queued 150 ms before the flag, so a console batch is copied just before the open */
+        pm_log_w("menu: open pending (sinkslow)");
+        svcSleepThread(300000000ll); /* the writer drains on its 250 ms timer, so the line reaches cb before the flag and the sink copies it at the next 100 ms tick */
+    }
     pm_menu_open = on;
     pm_optui_disarm();
     memset(&rep_x, 0, sizeof rep_x);
@@ -95,6 +101,7 @@ void pm_menu_set(int on) {
         pm_log("menu: open");
         draw();
     } else {
+        pm_log("menu: late console writes %u", pm_log_late_con()); /* B1 check */
         if (tab == PM_OPT_SUB) tab = home_tab; /* the menu opens on the tab it was in */
         pm_options_close(); /* saves options.ini when something changed */
         pm_gpu_menu_draw("");

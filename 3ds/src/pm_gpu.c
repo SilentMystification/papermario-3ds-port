@@ -1745,14 +1745,16 @@ void pm_gpu_hud(const char* line0, const char* stats, char (*mem)[40], const cha
 /* BOTLAYOUT: the separator, the log header and the footer. Absolute rows (ANSI), window the whole screen while they print, then the log window again.
  * The separator is 39 columns: a 40th column would wrap. */
 static void frame_draw(PrintConsole* c) {
-    char sep[40], left[24], right[20], hdr[40];
+    char sep[40], top[40], panel[40], live[24];
     memset(sep, '-', 39);
     sep[39] = 0;
-    pm_log_header(left, sizeof left, right, sizeof right); /* U3: "Console: <level or Profiling>" and "Live log: On, waiting or Off" */
-    snprintf(hdr, sizeof hdr, "%-*s%s", 39 - (int)strlen(right), left, right);
+    pm_log_header(panel, sizeof panel, live, sizeof live); /* CFG-2: the panel row, and the live connection on the separator above it */
+    memcpy(top, sep, sizeof top);
+    int ll = (int)strlen(live), at = 39 - (ll + 2);
+    if (at >= 0) { top[at] = ' '; memcpy(top + at + 1, live, (size_t)ll); top[at + 1 + ll] = ' '; }
     consoleSetWindow(c, 0, 0, 40, 30);
-    printf("\x1b[%d;1H\x1b[0m%s", LOG_TOP - 2, sep);
-    printf("\x1b[%d;1H\x1b[0m%s", LOG_TOP - 1, hdr);
+    printf("\x1b[%d;1H\x1b[0m%s", LOG_TOP - 2, top);
+    printf("\x1b[%d;1H\x1b[0m%-39s", LOG_TOP - 1, panel);
     printf("\x1b[27;1H\x1b[0m%s", sep);
     printf("\x1b[30;1H%39s", "");
     consoleSetWindow(c, 1, LOG_TOP, 40, LOG_ROWS);
@@ -1777,10 +1779,14 @@ void pm_gpu_hud_flush(void) {
     int hud = hud_new, foot = foot_new;
     int frame = frame_key != pm_log_header_key() || frame_lay != LAY_KEY;
     int lay = frame_lay != LAY_KEY; /* the layout changed (poshud or stats row), the log window and cursor restart at its top */
-    if (!(hud || foot || frame) || !c->consoleInitialised || menu_on) return;
+    if (!(hud || foot || frame) || !c->consoleInitialised) return;
+    pm_con_lock();
+    if (menu_on) { /* B1: the menu test is under con_lock (pm_gpu_menu_draw draws under this lock): the flags stay set for the close */
+        pm_con_unlock();
+        return;
+    }
     hud_new = 0;
     foot_new = 0;
-    pm_con_lock();
     cx = c->cursorX;
     cy = c->cursorY;
     wx = c->windowX;

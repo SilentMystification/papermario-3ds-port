@@ -160,6 +160,14 @@ static int debug_scan(const char* word) {
     }
     return 0;
 }
+/* CFG-1: a switch word with a value: -1 absent, 0 off (key=off or key=0), 1 on (a bare key or any other value). The value is read first, so
+ * key=off wins over a bare key elsewhere in the string (the first match of each form, args before debug3ds.txt). */
+int pm_debug_mode(const char* key) {
+    extern int pm_debug_value(const char* key, char* out, unsigned n);
+    char v[16];
+    if (pm_debug_value(key, v, sizeof v)) return (!strcmp(v, "off") || !strcmp(v, "0")) ? 0 : 1;
+    return pm_debug_has(key) ? 1 : -1;
+}
 int pm_debug_has(const char* word) {
     PH_ADD(C_DBG, 1);
     if (!word || !switches[0]) return 0;
@@ -527,28 +535,39 @@ void pm_log_prof_row(int mode) {
 }
 /* PROF4: the launch word prof=1 (boot_line 1 prints "prof=1 log=off"). U2: it turns logging off for this run. */
 void pm_log_prof_apply(int boot_line) {
-    char v[16];
     base_save();
-    if (!(pm_debug_has("prof") || pm_debug_value("prof", v, sizeof v))) return;
+    if (pm_debug_mode("prof") != 1) return; /* CFG-1: prof=off or prof=0 is not a profiling run */
     pm_log_prof_row(1);
     if (boot_line) pm_log_prof_line("prof=1 log=off");
 }
-/* U3: the bottom screen header. con: "Console: Profiling" while profiling, else "Console: <level or Off>" (Off when logging is off).
- * live: "Live log: On" (a client is connected), "Live log: waiting" (the live log is on with no client), else "Live log: Off". */
-static const char* const hdr_lvl[5] = { "Error", "Warn", "Info", "Debug", "Off" };
-static int live_state(void) { /* 0 off, 1 waiting, 2 on */
-    if (!(prof_mode || (log_file_on && lv_live >= 0))) return 0;
+/* CFG-2: the bottom screen panel. panel = "L:D F SD:- I C:I D P:off D": the live, disk and console level (E W I D, - off) and its source
+ * (F launch word or debug3ds.txt, I options.ini or the menu, D default), then the Profiling row (off, prof, phase) and its source.
+ * live = the connection text ("Live log: On", "Live log: waiting" or "Live log: Off"), drawn on the separator row above the panel. */
+static const char* const prof_nm[3] = { "off", "prof", "phase" };
+void pm_options_src(char* out4); /* pm_options.c: live, disk, con, prof source letters */
+int pm_options_prof_row(void);
+static int live_state(void) { /* 0 off (no socket: the livelog word is not set), 1 waiting, 2 on */
+    if (listen_fd < 0 || !(prof_mode || (log_file_on && lv_live >= 0))) return 0;
     return client >= 0 ? 2 : 1;
 }
-void pm_log_header(char* con, int nc, char* live, int nl) {
-    if (prof_mode) snprintf(con, (size_t)nc, "Console: Profiling");
-    else snprintf(con, (size_t)nc, "Console: %s", hdr_lvl[log_file_on && lv_con >= 0 ? lv_con : 4]);
-    int s = live_state();
-    snprintf(live, (size_t)nl, "Live log: %s", s == 2 ? "On" : s == 1 ? "waiting" : "Off");
+static char lvl_letter(int lv, int on) { return !on || lv < 0 || lv > 3 ? '-' : "EWID"[lv]; }
+void pm_log_header(char* panel, int np, char* live, int nl) {
+    char s[4];
+    int on = prof_mode || log_file_on; /* logging off (log=off, or Profiling with no level): every level shows off */
+    pm_options_src(s);
+    snprintf(panel, (size_t)np, "L:%c %c SD:%c %c C:%c %c P:%s %c", lvl_letter(lv_live, on), s[0], lvl_letter(lv_disk, on), s[1],
+             lvl_letter(lv_con, on), s[2], prof_nm[pm_options_prof_row() % 3], s[3]);
+    int st = live_state();
+    snprintf(live, (size_t)nl, "Live log: %s", st == 2 ? "On" : st == 1 ? "waiting" : "Off");
 }
-/* U3: a key of the header text; the bottom screen redraws its header when it changes. */
+/* CFG-2: the redraw key of the panel (pm_gpu_hud_flush): every field the panel text shows. */
 int pm_log_header_key(void) {
-    return (prof_mode ? 1 << 12 : 0) | (log_file_on ? 1 << 11 : 0) | ((lv_con + 1) & 7) << 8 | live_state() << 4 | (client >= 0 ? 1 : 0);
+    char s[4];
+    unsigned sk = 0;
+    pm_options_src(s);
+    for (int i = 0; i < 4; i++) sk = sk << 2 | (s[i] == 'F' ? 2u : s[i] == 'I' ? 1u : 0u);
+    return ((lv_live + 1) & 7) | (((lv_disk + 1) & 7) << 3) | (((lv_con + 1) & 7) << 6) | ((pm_options_prof_row() & 3) << 9) |
+           (prof_mode ? 1 << 11 : 0) | (log_file_on ? 1 << 12 : 0) | (live_state() << 13) | (client >= 0 ? 1 << 15 : 0) | (int)(sk << 16);
 }
 int pm_log_prof_mode(void) { return prof_mode; }
 PM_LOG_FN(pm_log, 2) /* an old call is info */
@@ -731,6 +750,20 @@ static void out_batch(const char* dk, int dn, const char* lv, int ln, const char
 
 /* Sink thread: file and console, every 100 ms. Never runs while the app is suspended (pm_io_quiet, PT68). */
 void pm_gpu_hud_flush(void);
+/* B1 check: console writes that land while the menu is open (con_flush, under con_lock). Printed when the menu closes (menu: late console writes). */
+static unsigned late_con, late_drop; /* late_con: console writes with the menu open; late_drop: batches dropped for that (B1) */
+unsigned pm_log_late_con(void) { return late_con; }
+unsigned pm_log_late_drop(void) { return late_drop; }
+static unsigned cf_copy, cf_nomenu; /* B1 diag: con_flush batches copied, and the copies with the menu closed */
+unsigned pm_log_con_copies(void) { return cf_copy; }
+unsigned pm_log_con_nomenu(void) { return cf_nomenu; }
+/* B1 repro switch sinkslow: 120 ms between the fb_lock section and con_lock in con_flush (the window of the menu race). */
+static int sink_slow(void) {
+    static int v = -1;
+    if (v < 0) v = pm_debug_has("sinkslow");
+    return v;
+}
+int pm_log_sinkslow(void) { return sink_slow(); }
 static void con_flush(void) {
     static char cw[CB_SIZE];
     unsigned n = 0;
@@ -739,12 +772,19 @@ static void con_flush(void) {
     if (pm_menu_open) cb_n = 0;
     else { n = cb_n; memcpy(cw, cb, n); cb_n = 0; }
     LightLock_Unlock(&fb_lock);
+    if (n) { cf_copy++; if (!pm_menu_open) cf_nomenu++; }
+    if (n && sink_slow()) svcSleepThread(120000000ll); /* 120 ms: the flush period is 100 ms, so an open in the window hits a batch it already copied (30 ms missed in run 2) */
     if (n) {
         u64 t0 = svcGetSystemTick();
         LightLock_Lock(&con_lock); /* PT65: the log goes on while the menu is open (it owns rows 3 to 14) */
-        fwrite(cw, 1, n, stdout);
-        fflush(stdout);
-        for (unsigned i = 0; i < n; i++) con_lines += cw[i] == '\n';
+        /* B1: the menu test is under con_lock. pm_menu_set draws the menu under this lock, so a batch copied before the open is dropped here
+         * and never written over the menu (the stale log text). late_con: writes with the menu open (0 after this rule). */
+        if (pm_menu_open) late_drop++;
+        else {
+            fwrite(cw, 1, n, stdout);
+            fflush(stdout);
+            for (unsigned i = 0; i < n; i++) con_lines += cw[i] == '\n';
+        }
         LightLock_Unlock(&con_lock);
         u32 d = us_since(t0);
         if (d > sink_con_max) sink_con_max = d;

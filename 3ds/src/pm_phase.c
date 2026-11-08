@@ -465,9 +465,10 @@ static void pf_start(void) {
              pmu_us, 6.0 * pmu_us / (double)pf_every, (unsigned)pf_rc);
 }
 
+int pm_debug_mode(const char* key); /* CFG-1, pm_log.c */
 static void pf_init(void) {
     char v[16];
-    pf_want = pm_debug_has("prof") || pm_debug_value("prof", v, sizeof v);
+    pf_want = pm_debug_mode("prof") == 1; /* CFG-1: prof=off or prof=0 samples nothing */
     if (pm_debug_value("prof", v, sizeof v)) { unsigned n = (unsigned)atoi(v); if (n >= 4 && n <= 255) pf_every = n; }
     pf_set = pm_debug_has("profstall") ? 's' : 'm';
     pm_pf_on = pf_want && pm_log_file();
@@ -502,7 +503,7 @@ static void ph_start(void) {
 void pm_ph_init(void) {
     char rv[40];
     ps_on = pm_debug_has("phsum");
-    ph_want = pm_debug_has("phase") || ps_on;
+    ph_want = pm_debug_mode("phase") == 1 || ps_on; /* CFG-1: phase=off or phase=0 turns the phase timers off */
     pm_ph_on = ph_want && pm_log_file();
     dcs_want = pm_debug_has("dcsum");
     pm_dcs_on = dcs_want && pm_log_file();
