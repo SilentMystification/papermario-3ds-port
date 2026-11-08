@@ -917,17 +917,18 @@ static int ndm_live; /* S3N-3b: a model record is open (set by pm_gpu_ndm_begin)
 static unsigned ndm_old, ndm_refused_total, ndm_nraw_log, ndm_w_n; static unsigned ndm_geo, ndm_dlc0[10]; void pm_gbi_dlcc(unsigned* o); /* S3N-3c: batches of open records that the native raw path refused; walker batches of the record; its geometry */
 void pm_log_prof_line(const char* fmt, ...); /* the one line that prints in prof=4 mode (pm_log.c) */
 static void ndunit_after(void);
-/* S3N-7: exclusive tick timers of the native model path. ndt_all: the exclusive ticks added so far; a region's exclusive ticks are its total less the ticks of the
- * regions timed inside it. Read only on sampled frames (pm_ph_on). ndt_mdl: the submit is a model draw (the walker raw path is not counted). */
-static uint64_t ndt_sum[NDT_N], ndt_all;
+/* PERF1: the producer class timers (nd.h NDT_*). pm_gpu_ndt_all: the exclusive ticks added so far; a region's exclusive ticks are its total less the ticks
+ * of the regions timed inside it. Sampled frames only (NDT_B, nd.h, reads the tick only with pm_ph_on). ndt_mdl: the submit is a model draw. */
+static uint64_t ndt_sum[NDT_N];
+static uint64_t pm_gpu_ndt_all;
 static int ndt_mdl;
-NdtT pm_gpu_ndt_begin(void) { NdtT s; s.on = pm_ph_on; s.t = pm_ph_on ? svcGetSystemTick() : 0; s.all = ndt_all; return s; }
-void pm_gpu_ndt_end(NdtT s, int k) {
-    if (!s.on) return;
-    uint64_t tot = svcGetSystemTick() - s.t, in = ndt_all - s.all;
+NdtT pm_gpu_ndt_begin(void) { NdtT s; s.on = 1; s.t = svcGetSystemTick(); s.all = pm_gpu_ndt_all; return s; }
+void pm_gpu_ndt_add(NdtT s, int k) {
+    uint64_t tot = svcGetSystemTick() - s.t, in = pm_gpu_ndt_all - s.all;
     uint64_t ex = tot > in ? tot - in : 0;
-    ndt_sum[k] += ex; ndt_all += ex;
+    ndt_sum[k] += ex; pm_gpu_ndt_all += ex;
 }
+void pm_gpu_ndt_take(uint64_t o[NDT_N]) { for (int k = 0; k < NDT_N; k++) { o[k] = ndt_sum[k]; ndt_sum[k] = 0; } }
 /* S3N-2: the submit of one native draw, moved from nd_raw_native as it was (the state staging, the shadow, citro3d's context update, the emit and the
  * counters). The palette and the NdDraw are built by the caller before. Model draws (nd_model.c, S3N-4) use this too. */
 static unsigned ndn_tgen;
@@ -946,6 +947,7 @@ static __attribute__((cold, noinline)) void orb_log(const char* path, int z, int
            la ? la->func : 99u, la ? la->scale : 99u);
 }
 static void nd_native_submit(const NdDraw* dp, int tex) {
+    NDT_B(tsub); /* PERF1: the native submit class */
     pm_gbi_draw_note(1); /* WCEN3: a native draw (per producer, the former pm_gbi.c) */
     /* FB-3: every program 5 draw (model, sprite, raw) writes its pm5 block here, once. The copy keeps the caller's NdDraw; uvx goes to the pm5 uniform. */
     NdDraw d5;
@@ -964,16 +966,10 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
     if (stencil_on) { stc_set(6, false, GPU_ALWAYS, 0, 0xff, 0); stencil_on = 0; } /* the citro3d effect copy says off too, as flush_draw does: nd_leave_native sends that copy again */
     if (!ndn_mode) { nd_shadow_reset(&ndn_sh); ndn_mode = 1; }
     if (*(volatile unsigned*)(__C3D_Context + 32) & 0x3800000u) { ndn_sh.cfg_valid = 0; ndn_sh.u_on[0] = ndn_sh.u_on[1] = 0; } /* a dirty texture bind: C3Di_UpdateContext rebuilds the unit enable word from the units citro3d holds (a null unit 0 after a slot drop writes it off) and sends their blocks: the native shadow of both is stale, the native words write them again */
-    NdtT t1 = ndt_mdl ? pm_gpu_ndt_begin() : (NdtT){ 0, 0, 0 };
     C3Di_UpdateContext(); /* what citro3d staged (program, buffers, scissor, an older TEV) goes out first, the native words then overwrite it */
-    pm_gpu_ndt_end(t1, NDT_UPD);
     static uint32_t out[ND_EMIT_MAX];
-    NdtT t2 = ndt_mdl ? pm_gpu_ndt_begin() : (NdtT){ 0, 0, 0 };
     unsigned nw = nd_emit_draw(out, &ndn_sh, d);
-    pm_gpu_ndt_end(t2, NDT_EMIT);
-    NdtT t3 = ndt_mdl ? pm_gpu_ndt_begin() : (NdtT){ 0, 0, 0 };
     GPUCMD_AddRawCommands(out, nw);
-    pm_gpu_ndt_end(t3, NDT_ADD);
     if (tex) ndunit_after();
     *(volatile unsigned*)(__C3D_Context + 32) |= 2u; /* C3DiF_DrawUsed, as the citro3d draw sets it: citro3d then sends the framebuffer flush at a target change, a split and the frame end */
     if (ndref_on) ndref_cmd();
@@ -994,11 +990,12 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
     rp_tmpl_ = d->tmpl; rp_u0_ = d->u[0].dim != 0;
     rp_draw("nat", tex);
     dc_kick();
+    NDT_E(tsub, NDT_SUB);
 }
 
 /* S3N-3c: the palette 0 product post x game (the native model draw, nd_model.c) and the submit of one native model draw (emit 1, S3N-4):
  * the attribute locations and the index address of its static range. */
-void pm_gpu_pcomp_native(float o[16], const float m[4][4]) { NdtT t = pm_gpu_ndt_begin(); nd_mtx_pcomp(o, gv_post.m, m); pm_gpu_ndt_end(t, NDT_MTX); }
+void pm_gpu_pcomp_native(float o[16], const float m[4][4]) { nd_mtx_pcomp(o, gv_post.m, m); }
 /* PM5-3: the pm5 block of a model draw from its NdDraw fields (the same calls as pm5_upload, values of the draw) */
 static __attribute__((noinline)) void pm5_upload_draw(const NdDraw* d) {
     prog_use(4);
@@ -2794,8 +2791,7 @@ static unsigned ndn_rec, ndn_fb, ndn_draws, ndn_f_last, ndn_hit, ndn_miss, ndn_n
 void pm_gbi_dnr_take(unsigned* o, unsigned n);
 static unsigned ndn_why[16]; /* S3L-1: fallback records of the window by code (0 = nost: no state bit known, the record words are not read) */
 /* S3N-7: the counters of one 300-frame window (reset at the print). ndmt: ms per sampled frame of each region (ticks / 268112 per ms / frames). */
-static unsigned ndn_clr0, ndn_smp0;
-static double ndt_ms(int k, unsigned ns) { return ns ? (double)ndt_sum[k] / ((double)ns * 268112.0) : 0.0; }
+static unsigned ndn_clr0;
 /* MDL-5e debug: the window so far at the end of a tour (a tour shorter than 300 frames has no ndm window line). */
 /* CORE2-3a: walker side entry (nd_wq.c): the game thread posts it, the body runs on the walker side. */
 static void pm_gpu_ndn_window_end_w(void);
@@ -2814,7 +2810,7 @@ static void ndn_log(void) {
     unsigned f = pm_frame_count();
     if (f % 300u == 0 && f != ndn_f_last) {
         ndn_f_last = f;
-        unsigned clr = nd_mc_clears(), smp = pm_ph_smp_count(), ns = smp - ndn_smp0;
+        unsigned clr = nd_mc_clears();
         wide_log(f);
         rect_log(f);
         char wb[160]; unsigned wn = 0; wb[0] = 0; /* S3L-1: the codes of the window, nonzero only */
@@ -2824,15 +2820,12 @@ static void ndn_log(void) {
         { static int szd; if (!szd) { szd = 1; pm_log_prof_line("ndmsz entry %u draw %u", (unsigned)sizeof(NdMEnt), (unsigned)sizeof(NdNat)); } }
         { unsigned dg[15]; nd_mc_diag_take(dg);
           pm_log_prof_line("ndmmiss f%u new %u clr %u rec %u st %u hd %u gv %u same %u rcap %u ncap %u ins %u ent %u pool %u ehi %u phi %u cap %u", f, dg[0], dg[1], dg[2], dg[3], dg[4], dg[5], dg[6], dg[7], dg[8], dg[9], dg[10], dg[11], dg[12], dg[13], dg[14]); }
-        pm_log_prof_line("ndmt f%u keyb %.2f find %.2f rng %.2f apply %.2f fb %.2f upd %.2f emit %.2f add %.2f mtx %.2f draws %u smp %u", f,
-            ndt_ms(NDT_KEYB, ns), ndt_ms(NDT_FIND, ns), ndt_ms(NDT_RNG, ns), ndt_ms(NDT_APPLY, ns), ndt_ms(NDT_FB, ns), ndt_ms(NDT_UPD, ns), ndt_ms(NDT_EMIT, ns), ndt_ms(NDT_ADD, ns), ndt_ms(NDT_MTX, ns), ndn_draws, ns);
         { unsigned dr[16]; pm_gbi_dnr_take(dr, 16u); /* S4-1: the refusal classes of the native ranges (code 12 = any of them) */
           pm_log_prof_line("ndmr f%u c1 %u c2 %u c3 %u c4 %u c5 %u c6 %u c7 %u c8 %u c9 %u c10 %u", f, dr[1], dr[2], dr[3], dr[4], dr[5], dr[6], dr[7], dr[8], dr[9], dr[10]);
           pm_log_prof_line("ndmr2 f%u c11 %u c12 %u c13 %u c14 %u c15 %u", f, dr[11], dr[12], dr[13], dr[14], dr[15]); }
-        ndn_clr0 = clr; ndn_smp0 = smp;
+        ndn_clr0 = clr;
         ndn_rec = ndn_fb = ndn_draws = ndn_hit = ndn_miss = ndn_nokey = ndn_rng = ndn_texf = 0;
         memset(ndn_why, 0, sizeof ndn_why);
-        memset(ndt_sum, 0, sizeof ndt_sum);
     }
 }
 /* S3N-6: the static ranges of a cached entry against the fresh ones (pm_dlc_native_ranges with the list and the geometry of the key). The matrix enters
@@ -2917,10 +2910,8 @@ int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32
 int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
     if (!e) { ndn_nokey++; return 0; }
     NdRng rng[ND_RAW_MAX];
-    NdtT tr = pm_gpu_ndt_begin(); /* S3N-7: the hit-path range check */
     int nr = pm_dlc_native_ranges((const void*)(uintptr_t)k->w[24], e->geom, rng, ND_RAW_MAX);
     int same = model_ranges_eq(e, rng, nr);
-    pm_gpu_ndt_end(tr, NDT_RNG);
     if (!same) { ndn_rng++; return 0; }
     NdUnit u; memset(&u, 0, sizeof u);
     if (e->tex) {

@@ -357,12 +357,16 @@ unsigned nd_mc_size(void);                                     /* S3N-7 diagnost
 const NdMEnt* nd_mc_ent(unsigned i);                           /* S3N-7 diagnostic: entry i */
 void nd_mc_diag_take(unsigned o[15]);                          /* S3N-7: the miss classes of the window (0 new, 1 clr, 2 rec, 3 st, 4 hd, 5 gv, 6 same, 7 rcap, 8 ncap: stores refused), then reset them; table use */
 unsigned nd_mc_clears(void);
-/* S3N-7: exclusive tick timers of the native model path (pm_gpu.c). Sampled frames only (pm_ph_on). A region's ticks less the regions timed inside it. */
+/* PERF1: exclusive tick timers, one per producer class of the walk (pm_gpu.c). Sampled frames only (pm_ph_on). A region's ticks less the regions timed
+ * inside it. rec: G_PM_REC (rec_run); ent: G_PM_ENT and ent_gdl; spr: the native sprite draw; dlc: dlc_try; sub: every native submit.
+ * NDT_B declares the timer v (a clean frame: one load of pm_ph_on and no call); NDT_E adds its exclusive ticks to class k. */
 typedef struct NdtT { uint64_t t, all; int on; } NdtT;
-enum { NDT_KEYB, NDT_FIND, NDT_RNG, NDT_APPLY, NDT_FB, NDT_UPD, NDT_EMIT, NDT_ADD, NDT_MTX, NDT_N }; /* keyb: record key build; find: cache lookup; apply: the non-hit path (rec_apply, the fallback or the model call) */
-unsigned pm_ph_smp_count(void); /* S3N-7: pm_phase.c, sampled frames so far */
+enum { NDT_REC, NDT_ENT, NDT_SPR, NDT_DLC, NDT_SUB, NDT_N };
 NdtT pm_gpu_ndt_begin(void);
-void pm_gpu_ndt_end(NdtT s, int k);
+void pm_gpu_ndt_add(NdtT s, int k);
+#define NDT_B(v) NdtT v = { 0, 0, 0 }; if (pm_ph_on) v = pm_gpu_ndt_begin()
+#define NDT_E(v, k) do { if ((v).on) pm_gpu_ndt_add((v), (k)); } while (0)
+void pm_gpu_ndt_take(uint64_t o[NDT_N]); /* the ticks of the window, then reset (pm_phase.c prof report) */
 unsigned pm_gbi_gvkey(uint32_t* o, unsigned max); /* S3N-6 (the former pm_gbi.c): the walker gv, tile, vp and plan state (pre-apply) */
 void pm_gpu_model_key(const uint32_t* rec, NdMKey* k); /* S3N-6 (pm_gpu.c) */
 /* S3N-3d: the combine choice of one draw (the former pm_gbi.c nd_comb_decide). In: the combine words, the walker flags and the 16 combiner fields of tst1 (comb_a..d, comb_aa..ad,

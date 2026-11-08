@@ -51,7 +51,7 @@ static __attribute__((noinline)) void rec_dl(const Gfx* l) {
     if (!l) return;
     if (!is_host((u32)(uintptr_t)l)) { gbi_cold_bad_next((u32)(uintptr_t)l, (u32)G_DL << 24, 0); return; }
     if (dlc_on && dlc_try(l)) { /* DLC1: a compiled list, as G_DL */
-        if (pm_ph_on) { os_dlc_hit(); mr0_dlc_hit = 1; }
+        if (pm_ph_cen) { os_dlc_hit(); mr0_dlc_hit = 1; }
         return;
     }
     pm_gbi_run((void*)l, 0);
@@ -112,17 +112,13 @@ int rec_nat_last; /* WCEN2: 1 when the last rec_run drew natively */
 static int nmn_sw(void) { static int v = -1; if (v < 0) v = pm_debug_has("nomodelnat") ? 1 : 0; return v; } /* MDL-5: switch nomodelnat, the walker geometry of every model record (the byte reference) */
 unsigned rec_run(const Gfx* q) {
     NdMKey mk;
-    NdtT tk = pm_gpu_ndt_begin(); /* S3N-7: key build */
     pm_gpu_model_key((const uint32_t*)q, &mk); /* S3N-6: the cache key, from the walker state before the record is applied */
-    pm_gpu_ndt_end(tk, NDT_KEYB);
-    NdtT tf0 = pm_gpu_ndt_begin(); /* S3N-7: cache lookup */
     NdMEnt* mce = nd_mc_find(&mk);
     int cached = mce != NULL;
-    pm_gpu_ndt_end(tf0, NDT_FIND);
     if (!cached) { nd_mc_miss(&mk); extern void pm_gpu_model_miss_diag(const NdMKey* k); pm_gpu_model_miss_diag(&mk); } /* S3N-7: the miss class (diagnostic) */
     int ndm = pm_gpu_ndm_on();
     int nat = 0, mdone = 0, hit = 0;
-    if (cached) { NdtT tm = pm_gpu_ndt_begin(); rec_matrix(q); pm_gpu_ndt_end(tm, NDT_MTX); mdone = 1; } /* S3N-6: a cached key: its matrix first, the hit test reads the matrix */
+    if (cached) { rec_matrix(q); mdone = 1; } /* S3N-6: a cached key: its matrix first, the hit test reads the matrix */
     /* MDL-5f: a record with a custom gfx pre list (state-only, drawn natively) never takes the hit path: rec_apply runs the pre list (its state op); the hit path skips rec_apply. The post list runs in both paths (rec_run). */
     if (!ndm && mdone && q[12].words.w0 && !q[11].words.w0 && pm_gpu_model_hit(&mk, mce)) {
         /* S3N-6 hit: the record state is the cached one (rec_apply is not run; its matrix ops ran above). The sticky shadows are cleared as after a native draw.
@@ -132,7 +128,6 @@ unsigned rec_run(const Gfx* q) {
         nat = 1; hit = 1;
         sc_ok = 0; nd_sr_forget();
     } else {
-    NdtT tmi = pm_gpu_ndt_begin(); /* S3N-7: apply: the non-hit path, rec_apply and the fallback or the model call (exclusive of the submit and the matrix) */
     rec_apply(q, mdone);
     { /* MDL-1b v2: once per record after rec_aux, before the ndm and model branches. SBKW: every record, not only R13 texture-only ones: the walker's
        * tile 1 step (ensure_tile(1) of a plan that reads TEXEL1) runs for all records, so the native combine decision sees td[1].valid (sbk_56 water) */
@@ -170,13 +165,12 @@ unsigned rec_run(const Gfx* q) {
         nat = 1;
         sc_ok = 0; nd_sr_forget();
     }
-    pm_gpu_ndt_end(tmi, NDT_APPLY);
     }
     if (q[12].words.w0 == 0 && PMDL("waterlog") && pm_frame_count() >= 200u && pm_frame_count() <= 201u) { /* POND-M1: copy record with no geometry; hit taken or not, the combine after the decision */
         unsigned tss_, geo_, cw0_, cw1_; pm_gbi_sticky(&tss_, &geo_, &cw0_, &cw1_);
         pm_log("wrec f%u copy hit %d nat %d cw %08x %08x", pm_frame_count(), hit, nat, cw0_, cw1_);
     }
-    if (!nat && (ndm || nmn_sw())) { NdtT tf = pm_gpu_ndt_begin(); rec_dl((const Gfx*)(uintptr_t)q[12].words.w0); pm_gpu_ndt_end(tf, NDT_FB); }  /* S3G-1: geometry (0 when none); S3N-7: the fallback walk */
+    if (!nat && (ndm || nmn_sw())) rec_dl((const Gfx*)(uintptr_t)q[12].words.w0); /* S3G-1: geometry (0 when none) */
     rec_dl((const Gfx*)(uintptr_t)q[11].words.w1);  /* S3G-1: custom gfx post */
     if (q[12].words.w1) gbi_popmtx(64u);            /* S3G-1: gSPPopMatrix(G_MTX_MODELVIEW), one matrix */
     if (ndm) pm_gpu_ndm_end();
