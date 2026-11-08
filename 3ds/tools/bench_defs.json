@@ -3428,6 +3428,78 @@
         "overlay"
       ],
       "gates": []
+    },
+    {
+      "name": "tour_battle3",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BT1 premise and picture: battle tour of 3 bosses (0, 16, 32) in one start, one prof window and one shot per battle.",
+      "scenario": "tour_battle3",
+      "cap": 30,
+      "until": "battletour: done items",
+      "tags": [
+        "azahar",
+        "pic",
+        "battle",
+        "tour",
+        "tour_battle"
+      ],
+      "gates": []
+    },
+    {
+      "name": "tour_battle",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BT1: battle tour of all 33 bosses in one start (cheats=action,hp autoa), one prof window per battle, FAIL lines named; the Mario cheat line.",
+      "scenario": "tour_battle",
+      "cap": 100,
+      "until": "battletour: done items",
+      "tags": [
+        "azahar",
+        "battle",
+        "tour",
+        "tour_battle"
+      ],
+      "gates": []
+    },
+    {
+      "name": "tour_battle_prof",
+      "kind": "console_prof",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BT1: battle tour of all 33 bosses on the O3DS in prof mode: one prof window per battle (frame cost of every boss battle).",
+      "scene_match": null,
+      "recipe": "warp=mac_00:4 story=ch0_toad_town battletour=all tourtime=4 cheats=action,hp autoa prof=4",
+      "scenario": "tour_battle",
+      "host": "o3ds",
+      "cap": 600,
+      "until": "battletour: done items",
+      "tags": [
+        "console",
+        "prof",
+        "tour",
+        "tour_battle"
+      ],
+      "gates": []
+    },
+    {
+      "name": "tour_battle_cheat",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BT1 cheat proof: Goomba King with a 20 s window, cheats=action,hp autoa; Mario command, partner command and guard lines.",
+      "scenario": "tour_battle_cheat",
+      "cap": 25,
+      "until": "battletour: done items",
+      "tags": [
+        "azahar",
+        "battle",
+        "tour",
+        "cheat"
+      ],
+      "gates": []
     }
   ],
   "legacy": {

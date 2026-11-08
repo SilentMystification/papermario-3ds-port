@@ -568,13 +568,13 @@ TOUR_TAGS = ("tour_full", "tour_curated", "tour_battle")  # bench tags copied to
 
 def window_rec(w):
     """One window of a run record: the scene line (map, area, mode, story, battle, entry, pos0, pos) and the metrics.
-    A tour window (TOUR1 label) also has tour_idx and kind (map)."""
+    A tour window (TOUR1 label) also has tour_idx and kind (map, or battle for a `battle:<boss>` label)."""
     r = {"win": "f%d w%d" % (w["frame"], w.get("wsize", 0)), "frame": w["frame"], "wsize": w.get("wsize", 0), "chg": bool(w["chg"]),
          "map": w["map"], "area": w["area"], "mode": w["mode"], "story": w["story"], "battle": w["battle"], "entry": w["entry"],
          "pos0": list(w["pos0"]) if w["pos0"] else None, "pos": list(w["pos"]) if w["pos"] else None, "m": win_metrics(w),
          "disp": list(w["disp"]) if w.get("disp") else None}
-    if "tour_idx" in w:
-        r["tour_idx"], r["kind"] = w["tour_idx"], "map"
+    if "tour_idx" in w:  # BT1: a battle tour window label is `<i>/<n> battle:<boss>`, a map tour label `<i>/<n> <map>:<entry>`
+        r["tour_idx"], r["kind"] = w["tour_idx"], "battle" if w.get("tour_label", "").startswith("battle:") else "map"
     return r
 
 
