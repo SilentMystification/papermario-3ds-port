@@ -8,5 +8,5 @@ STATE
 - Size: 3dsx 13,316,040 B (build 2952, 7be88729b). Push to the O3DS XL works: 3dslink prints the compressed size ("3160810 sent (23.74%)" = zlib ratio, not a stopped upload); the earlier "failed at 23.84%" was the same ratio.
 - Unmerged branches with useful work: ub1 (stale unit-1 cache patch, sprnat OOB patch).
 - Process rules updated: orchestrator_rules.md "Process fixes".
-- Next: console result at mac_01 pos 0 0 200 (run 25044, O3DS XL, 7be88729b): fps 28.0, gbi 37.4, o34 22. Last same-spot console run (342, O3DS .170, a3c5ec093, 2026-11-06): fps 29.3, gbi 30.2, o34 8. Different console: a push of a3c5ec093 to the O3DS XL tells if the +7 ms gbi is the build or the device (user decides).
+- Open regression (user: leave open, 2026-11-08): same O3DS XL, mac_01 0 0 200 prof=4: a3c5ec093 run 25158 gbi 30.2 ms, fps 29.4, o34 2-9; 7be88729b run 25044 gbi 37.4 ms, fps 28.0, o34 18-30 (oh 8.0 -> 12.8, amort 2000 -> 3200). 407 first-parent commits between them (77 merges). Options: console bisect (about 9 pushes) or an oracle code read of the prof fields first.
 - Disk: folders build3ds/wt/fb3, fb4, tdc, ls3 are held by a process (Azahar or a shell): run wt_gc.sh --apply again when Azahar is closed (it now removes stale folders; it keeps fresh branches, use --only for a fast-forwarded one).
