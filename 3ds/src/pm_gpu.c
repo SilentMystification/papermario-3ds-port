@@ -223,6 +223,8 @@ static int want_clear; /* see below */
 static int dc_on;
 /* DS0: cold counters for pm_gpu_dcsum_frame. Ticks and counts in this file's flushes, sampled closes and cmd words; sums over 300 drawn frames. */
 static unsigned dcs_gt, dcs_fl, dcs_cmd, dcs_smp, dcs_cl, dcs_us[DCU_N], dcs_n, dcs_c[DC_N];
+/* PERF2: submit counters over 300 drawn frames (subcnt line): program switches, native shadow resets, C3Di_UpdateContext calls, command list splits, program 5 draws, native draws */
+static unsigned sc_prg, sc_shr, sc_upd, sc_spl, sc_d5, sc_nat;
 static void gpu_flush_written(void) {
     unsigned g0 = dc_on ? pm_ticks() : 0;
     pm_tex_flush_pend_only();
@@ -239,7 +241,7 @@ void split_frame(void) {
     }
     sh_clear();
     ndunit_scan();
-    rd_sync(); C3D_FrameSplit(GX_CMDLIST_FLUSH);
+    rd_sync(); C3D_FrameSplit(GX_CMDLIST_FLUSH); sc_spl++;
 }
 
 /* Boot arena for the 64 x 64 RGBA8 textures (4 small slots, 2 eight bit slots, and a snap of each): 12 blocks of 16 KB, 6 per bank.
@@ -592,20 +594,20 @@ static void flush_impl(void);
  * C3D_FrameSplit when about 55 percent of the draws of the last frame are queued starts the GPU on the first part while the CPU builds the rest.
  * Cost: one more cache flush and one more command list submit on the CPU. Only on the main target (an off-screen pass and a grab split on their own).
  * Switch nokick turns it off. */
-static unsigned prev_draws, kick_at, kick_at2;
-static int kick_done; /* splits done in this frame: KICK2 adds a second one at 85 percent */
+static unsigned prev_draws, kick_at;
+static int kick_done; /* PERF2: the one split of this frame is done (KICK2's second split at 85 percent is deleted: each split costs a cache flush and a GSP submit on the CPU) */
 extern int pm_ph_on;
 void pm_gbi_draw_note(int native); /* WCEN3 */
 extern unsigned pm_ph_kick_n, pm_ph_kick_us, pm_ph_draws; /* PI4 */
 static void kick_check(void) {
-    if (kick_done >= 2 || gs.off_active || !kick_at || draws_frame < (kick_done ? kick_at2 : kick_at) || nb.rect_open || nb.gni > 0) return;
-    kick_done++;
+    if (kick_done || gs.off_active || !kick_at || draws_frame < kick_at || nb.rect_open || nb.gni > 0) return;
+    kick_done = 1;
     gpu_flush_written();
     if (want_clear) { C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0); want_clear = 0; } /* queue order: the clear comes before the first part */
     sh_clear();
     PH_PUSH(PH_GPU);
     { unsigned k0 = pm_ph_on ? pm_ticks() : 0; /* PI4: the split is timed on its own */
-      ndunit_scan(); rd_sync(); C3D_FrameSplit(GX_CMDLIST_FLUSH);
+      ndunit_scan(); rd_sync(); C3D_FrameSplit(GX_CMDLIST_FLUSH); sc_spl++;
       if (pm_ph_on) pm_ph_kick_us += (pm_ticks() - k0) / 268u; }
     PH_POP();
     kick_n++;
@@ -752,7 +754,7 @@ static void u5mtx(int id, const C3D_Mtx* m) {
 static void prog_use(int p) {
     if (bound == p) return;
     pm_dc_c[DC_PRG]++; C3D_BindProgram(p == 4 ? &prog5 : &prog4); C3D_SetAttrInfo(&attr4); bound = p;
-    nd_shadow_reset(&ndn_sh); ndn_mode = 1; u5_valid = 0;
+    nd_shadow_reset(&ndn_sh); ndn_mode = 1; u5_valid = 0; sc_prg++; sc_shr++;
 }
 /* the pm5 light table of a draw (u5set: only the vectors that differ from citro3d's copy are marked dirty) */
 static __attribute__((noinline)) void flush_light_tab(const PmFx* fx) {
@@ -960,10 +962,13 @@ static __attribute__((cold, noinline)) void orb_log(const char* path, int z, int
 #define C3D_UPD_FLAGS (0x4u | 0x8u | 0x10u | 0x20u | 0x40u | 0x80u | 0x100u | 0x200u | 0x400u | 0x4000u | 0x718000u | 0x20000u | 0x3800000u | 0xfc000000u)
 static int c3d_upd_needed(void) {
     const unsigned char* c = __C3D_Context;
-    if (*(const volatile unsigned*)(c + 32) & C3D_UPD_FLAGS) return 1;
+    const unsigned gm = *(const unsigned*)(c + 412) & 7u;
+    /* PERF2: the fog LUT flag (0x20000) is cleared by C3Di_UpdateContext only when the fog mode (+412 bits 0 to 2) is not 0; with fog off it writes nothing
+     * and the flag stays set (nd_leave_native sets it). It counted as dirty at every native draw (subcnt: upd equal to nat), so the call ran per draw. */
+    if (*(const volatile unsigned*)(c + 32) & (gm ? C3D_UPD_FLAGS : C3D_UPD_FLAGS & ~0x20000u)) return 1;
     if (*(void* const*)(c + 268)) return 1;
     if (*(const uint16_t*)(c + 0x208)) return 1;
-    if ((*(const unsigned*)(c + 412) & 7u) == 7u) return 1;
+    if (gm == 7u) return 1;
     if (((uintptr_t)C3D_FVUnifDirty | (uintptr_t)C3D_IVUnifDirty) & 3u) return 1;
     const uint32_t* f = (const uint32_t*)(const void*)C3D_FVUnifDirty;
     const uint32_t* iv = (const uint32_t*)(const void*)C3D_IVUnifDirty;
@@ -980,7 +985,7 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
     NdDraw d5;
     if (dp->use5 && !dp->no_uni) { d5 = *dp; pm5_upload_draw(&d5); d5.no_uni = 1; d5.npal = 0; if (d5.has_uvx) d5.loc_uvx = (unsigned)u5_uvx; dp = &d5; }
     const NdDraw* d = dp;
-    if (ndn_tgen != nd_tmpl_gen()) { ndn_tgen = nd_tmpl_gen(); nd_shadow_reset(&ndn_sh); } /* FB-2: a template id was taken over by another key (LRU): the id shadow is stale */
+    if (ndn_tgen != nd_tmpl_gen()) { ndn_tgen = nd_tmpl_gen(); nd_shadow_reset(&ndn_sh); sc_shr++; } /* FB-2: a template id was taken over by another key (LRU): the id shadow is stale */
     prog_use(d->use5 ? 4 : 3);
     { /* FB-1: a model draw indexes the static area (chunk 0), a walker draw the ring chunk in use */
         const void* bb = (ndt_mdl || nb.gi_kind == 1) ? (const void*)nb.rchunk[0].vtx : (const void*)nb.gring;
@@ -989,14 +994,14 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
     if (gs.off_active) scissor_off(); else stage_scissor(); /* OFF-1: an off-screen target has its own scissor (citro3d state, not in the template words) */
     sh_user_clip(1);
     if (stencil_on) { stc_set(6, false, GPU_ALWAYS, 0, 0xff, 0); stencil_on = 0; } /* the citro3d effect copy says off too, as flush_draw does: nd_leave_native sends that copy again */
-    if (!ndn_mode) { nd_shadow_reset(&ndn_sh); ndn_mode = 1; }
+    if (!ndn_mode) { nd_shadow_reset(&ndn_sh); ndn_mode = 1; sc_shr++; }
     if (*(volatile unsigned*)(__C3D_Context + 32) & 0x3800000u) { ndn_sh.cfg_valid = 0; ndn_sh.u_on[0] = ndn_sh.u_on[1] = 0; } /* a dirty texture bind: C3Di_UpdateContext rebuilds the unit enable word from the units citro3d holds (a null unit 0 after a slot drop writes it off) and sends their blocks: the native shadow of both is stale, the native words write them again */
-    if (c3d_upd_needed()) C3Di_UpdateContext(); /* what citro3d staged (program, buffers, scissor, an older TEV) goes out first, the native words then overwrite it */
+    if (c3d_upd_needed()) { C3Di_UpdateContext(); sc_upd++; } /* what citro3d staged (program, buffers, scissor, an older TEV) goes out first, the native words then overwrite it */
     { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); GPUCMD_SetBufferOffset(coff + nd_emit_draw(cb + coff, &ndn_sh, d)); } /* PERF1-6: emitted in place (no copy) */
     if (tex) ndunit_after();
     *(volatile unsigned*)(__C3D_Context + 32) |= 2u; /* C3DiF_DrawUsed, as the citro3d draw sets it: citro3d then sends the framebuffer flush at a target change, a split and the frame end */
     if (ndref_on) ndref_cmd();
-    nd_native_draws++;
+    nd_native_draws++; sc_nat++; sc_d5 += d->use5;
     dv_draw++;
     draws_frame++;
     PH_ADD(C_DRAW, 1);
@@ -1992,7 +1997,7 @@ static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
             want_clear = 0;
         }
         pm_tex_flush_pend_only();
-        sh_clear(); ndunit_scan(); rd_sync(); C3D_FrameSplit(GX_CMDLIST_FLUSH);
+        sh_clear(); ndunit_scan(); rd_sync(); C3D_FrameSplit(GX_CMDLIST_FLUSH); sc_spl++;
     }
     if (!prev_frame) grab_queue_copy(); /* PT12: the old frame was copied at pm_gpu_begin */
     pm_gpu_off_begin(cfb, 320, 2);
@@ -2168,7 +2173,6 @@ static void pm_gpu_end_w(void) {
         frames_seen++;
         if (draws_frame > draws_max) draws_max = draws_frame;
         prev_draws = draws_frame; kick_at = draws_frame >= 48 ? draws_frame * 55 / 100 : 0; /* KICK1 */
-        kick_at2 = draws_frame >= 48 ? draws_frame * 85 / 100 : 0; /* KICK2 */
         if (cmd > cmd_max) cmd_max = cmd;
         pm_ph_cmd_pm = (unsigned)(cmd * 1000.f);
         pm_ph_draws = draws_frame; /* PI4 */
@@ -2178,6 +2182,10 @@ static void pm_gpu_end_w(void) {
         }
     }
     pm_gbi_end_frame();
+    if (frames_seen % 300u == 0) { /* PERF2: the subcnt line (per drawn frame, 300 frames) */
+        pm_log_prof_line("subcnt f%u prg %u shr %u upd %u spl %u d5 %u nat %u (x100 per frame)", pm_frame_count(), sc_prg / 3u, sc_shr / 3u, sc_upd / 3u, sc_spl / 3u, sc_d5 / 3u, sc_nat / 3u);
+        sc_prg = sc_shr = sc_upd = sc_spl = sc_d5 = sc_nat = 0;
+    }
     /* Without this flag citro3d flushes the entire linear heap. That heap is
      * the 20MB port pool, so every frame was writing it back through the cache. */
     if (jt_on) { /* JT1: debug tool, see jt_queue. One action per frame: read the last jump, or queue the next one once a second has passed */
