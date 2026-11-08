@@ -227,7 +227,12 @@ if (-not $warm) { Remove-Item $sl.keepFile -ErrorAction SilentlyContinue }
 if (-not $warm -and (Test-Path $pidFile)) {
     $old = [int](Get-Content $pidFile -ErrorAction SilentlyContinue)
     $op = Get-Process -Id $old -ErrorAction SilentlyContinue
-    if ($op -and $op.ProcessName -eq "azahar") { Write-Output "Recovery: killing orphan Azahar $old."; Kill-Azahar $old "orphan of a killed run" }
+    # AZT12-3: the keep path leaves the kept Azahar's pid in slot.pid, so a cold start finds it here. That is a kept Azahar replaced by this
+    # cold start (the reason is the cold reason), not an orphan: only a pid that is not the kept Azahar is left by a killed run.
+    if ($op -and $op.ProcessName -eq "azahar" -and $op.Path -eq $exe) { # AZT12-4: a stale slot.pid whose pid now is another slot's Azahar is not this slot's
+        if ($kept -and $kept.Id -eq $old) { Write-Output "Cold start ($warmWhy): closing the kept Azahar $old."; Kill-Azahar $old "kept replaced, cold: $warmWhy" }
+        else { Write-Output "Recovery: killing orphan Azahar $old."; Kill-Azahar $old "orphan of a killed run" }
+    }
     Remove-Item $pidFile -ErrorAction SilentlyContinue
 }
 if (Test-Path $cfgBak) { Write-Output "Recovery: restoring qt-config.ini saved by a killed run."; Restore-Cfg }
@@ -308,27 +313,31 @@ if ($warm) {
     # AZT-2 warm restart: Azahar > Emulation > Restart (hotkey of the slot config) boots the same 3dsx again.
     # AZT11-4: the boot is found by this run's nonce (bootid=, the first word of the switches line). The old boot never prints it, whatever the
     # log file does on a restart (AZT9d-2 and AZT11-4a: a log overwritten in place from offset 0, same banner count and size, was never seen as new).
-    # Four key methods per round (posted, keybd_event, keybd_event again, SwitchToThisWindow + keybd_event). A boot that is not this run
+    # Two key methods per round (posted, SwitchToThisWindow + keybd_event; AZT12-5). A boot that is not this run
     # (other switches, or another build than this lane 3dsx) gets a second round in the kept Azahar with a new nonce (switches only);
     # a stale build is cold at once. A cold start is the last resort.
     $hk = Get-SlotHotkey $slotK "Restart Emulation"
     $warmDone = $false
     for ($round = 1; $round -le 2; $round++) {
-        $start = Get-Date
-        Set-Content "$($sl.dir)\warm.start" $start.Ticks # azt.ps1 starts its clock on this file
         Set-Content $pidFile $kept.Id
         $boot = $null
-        for ($try = 1; $try -le 4 -and -not $boot; $try++) {
+        for ($try = 1; $try -le 2 -and -not $boot; $try++) {
+            # AZT12-5: the run clock starts at each try (a restart key that took no effect is no part of the run): run_azahar's cap ($start),
+            # azt.ps1's deadline and the queue's runT (azt.ps1 restarts both when warm.start changes). Per round, four failed tries
+            # (up to 66 s) ran past cap + 30 s and the queue sweep of another run killed this run (no end line).
+            $start = Get-Date
+            Set-Content "$($sl.dir)\warm.start" $start.Ticks # azt.ps1 starts its clock on this file
             $script:AzLastFg = $false
             $kept.Refresh()
-            $method = @("posted", "keybd_event", "keybd_event", "switch_to_window")[$try - 1]
+            # AZT12-5: two tries (posted key, then SwitchToThisWindow + keybd_event). pool.log to 2026-11-08: try 1 booted 270 of 314; of the 44 misses
+            # try 2 booted 13, tries 3 and 4 (keybd_event again, switch) 7 more for 27 more misses of 15 s each: a cold start (16 s) is cheaper.
+            $method = @("posted", "switch_to_window")[$try - 1]
             if ($try -eq 1) { $sent = Send-AzHotkey $kept $hk }
-            elseif ($try -eq 4) { $sent = Send-AzKeyEventSwitch $kept.MainWindowHandle $hk }
-            else { $sent = Send-AzKeyEvent $kept.MainWindowHandle $hk }
+            else { $sent = Send-AzKeyEventSwitch $kept.MainWindowHandle $hk }
             $fgTxt = if ($script:AzLastFg) { "foreground" } else { "no foreground" }
             Write-PoolLog $slotK "warm try" $kept.Id $kept.Id ("round {0} try {1} {2} hotkey {3} sent={4} {5} title '{6}'" -f $round, $try, $method, $hk, $sent, $fgTxt, $kept.MainWindowTitle)
             if (-not $sent) { continue }
-            for ($w = 0; $w -lt 60 -and -not $boot; $w++) {
+            for ($w = 0; $w -lt 32 -and -not $boot; $w++) { # AZT12-5: 8 s per try (pool.log: 290 boots found 1.7 to 6.6 s after the key, p95 3.2 s; was 15 s)
                 Start-Sleep -Milliseconds 250
                 $boot = Find-BootNonce $log $bootNonce
             }
