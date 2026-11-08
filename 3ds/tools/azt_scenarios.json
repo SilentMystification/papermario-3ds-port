@@ -9247,7 +9247,7 @@
           "regex": "tour: done items \\d+"
         }
       ],
-      "reason": "Soak: 411 maps x (60 settle frames = 2 s + tourtime 4 s) = about 2470 s, plus the cold boot and the 45 s scene loads. Cap 2600 s, the one scenario over 45 s. The full tour runs only when the user asks (plan_tours.md)."
+      "reason": "Soak: 412 maps (gAreas, no tst_, kkj_26 twice as gAreas lists it) x (60 settle frames = 2 s + tourtime 4 s) = about 2470 s, plus the cold boot and the 45 s scene loads. Cap 2600 s, the one scenario over 45 s. The full tour runs only when the user asks (plan_tours.md)."
     },
     {
       "name": "tour_curated",
