@@ -3375,7 +3375,7 @@
       "purpose": "MSGBOX: MSGBOX faults 1 and 4: the star sits inside the lower right corner of the box (its y follows the box), and the tattle bubble shows all its text from the left curve on (the text clip follows the wide edges).",
       "scenario": "msgbox_talk",
       "cap": 30,
-      "until": "shot \\d+ frame 260\\b",
+      "until": "shot \\d+ frame 330\\b",
       "tags": [
         "azahar",
         "pic",
@@ -3391,7 +3391,7 @@
       "purpose": "MSGBOX: MSGBOX wide-off gate: the same scene byte-equal to the base build (the fixes of faults 1 and 4 add 0 in 4:3).",
       "scenario": "msgbox_talk_nowide",
       "cap": 30,
-      "until": "shot \\d+ frame 260\\b",
+      "until": "shot \\d+ frame 330\\b",
       "tags": [
         "azahar",
         "pic",
@@ -3404,10 +3404,10 @@
       "kind": "azahar_pic",
       "speed": "normal",
       "default": false,
-      "purpose": "MSGBOX: MSGBOX faults 2 and 3: the selected option has one coloured copy and a grey shadow at +2,+2 (no second coloured copy); the cen summary line gives the draws (batches) of frame 238.",
+      "purpose": "MSGBOX: MSGBOX faults 2 and 3: the selected option has one coloured copy and a grey shadow at +2,+2 (no second coloured copy); the cen summary line gives the draws (batches) of frame 298.",
       "scenario": "msgbox_choice",
       "cap": 30,
-      "until": "shot \\d+ frame 240\\b",
+      "until": "shot \\d+ frame 300\\b",
       "tags": [
         "azahar",
         "pic",
@@ -3416,12 +3416,12 @@
       "log_metrics": [
         {
           "name": "batches",
-          "regex": "cen f238 summary batches (\\d+)",
+          "regex": "cen f298 summary batches (\\d+)",
           "pick": "last"
         },
         {
           "name": "tris",
-          "regex": "cen f238 summary batches \\d+ tris (\\d+)",
+          "regex": "cen f298 summary batches \\d+ tris (\\d+)",
           "pick": "last"
         }
       ],
@@ -3432,10 +3432,10 @@
       "kind": "azahar_pic",
       "speed": "normal",
       "default": false,
-      "purpose": "MSGBOX: MSGBOX faults 2 and 3: the selected option has one coloured copy and a grey shadow at +2,+2 (no second coloured copy); the cen summary line gives the draws (batches) of frame 238.",
+      "purpose": "MSGBOX: MSGBOX faults 2 and 3: the selected option has one coloured copy and a grey shadow at +2,+2 (no second coloured copy); the cen summary line gives the draws (batches) of frame 298.",
       "scenario": "msgbox_choice_nowide",
       "cap": 30,
-      "until": "shot \\d+ frame 240\\b",
+      "until": "shot \\d+ frame 300\\b",
       "tags": [
         "azahar",
         "pic",
@@ -3444,12 +3444,12 @@
       "log_metrics": [
         {
           "name": "batches",
-          "regex": "cen f238 summary batches (\\d+)",
+          "regex": "cen f298 summary batches (\\d+)",
           "pick": "last"
         },
         {
           "name": "tris",
-          "regex": "cen f238 summary batches \\d+ tris (\\d+)",
+          "regex": "cen f298 summary batches \\d+ tris (\\d+)",
           "pick": "last"
         }
       ],

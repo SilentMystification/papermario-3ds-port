@@ -621,7 +621,15 @@ void pm_gpu_flush_from(const char* fn, int line) { fl_fn = fn; fl_line = line; f
 /* PG0: the texture rectangle counts of the flush tracer (pm_gpu_tex_rect) */
 void fl_rect_note(void) { if (fl_on()) { fl_rects++; if (fl_prev_rect) fl_consec++; } }
 void fl_rect_done(void) { fl_prev_rect = 1; }
+/* MSGBOX debug switch flushlog=<frame>: one line per flush of a non-empty batch in that frame: caller, line, kind, combine class, texture slot, indices */
+static __attribute__((cold, noinline)) void flushlog_line(void) {
+    static int fr = -2;
+    if (fr == -2) { char v[16]; fr = pm_debug_value("flushlog", v, sizeof v) ? atoi(v) : -1; }
+    if (fr < 0 || (int)pm_frame_count() != fr || nb.gni <= 0) return;
+    pm_log_d("flushlog f%d %s:%d rect %d ec %d tex %d comb %d gni %d", fr, fl_fn, fl_line, nb.rect_open, nb.rect_ec, nb.rect_tex, gs.combine, nb.gni);
+}
 static void flush_impl(void) {
+    flushlog_line();
     if (!pm_ph_on) { flush_impl_body(); return; }
     unsigned t0 = pm_ticks();
     flush_impl_body();
@@ -2146,7 +2154,7 @@ typedef struct { int unused; } Wq_pm_gpu_end;
 static void wq_pm_gpu_end(void* a) { Wq_pm_gpu_end* q = (Wq_pm_gpu_end*)a; (void)q; pm_gpu_end_w(); }
 void pm_gpu_end(void) { Wq_pm_gpu_end q = { 0 }; pm_wq_post(wq_pm_gpu_end, &q, sizeof q); }
 static void pm_gpu_end_w(void) {
-    if (pm_frame_count() % 100u == 0) rect_log(pm_frame_count()); /* RECT-2b diag: rect and rectwhy lines every 100 frames */
+    if (pm_frame_count() % 100u == 0) { rect_log(pm_frame_count()); pm_tex_cell_log(pm_frame_count()); } /* RECT-2b diag: rect and rectwhy lines every 100 frames; MSGBOX 3 glyph cells */
     pm_gpu_begin_wait();
     if (!gs.gpu_ok) return;
     FS_MARK(FS_FLUSH);
@@ -2327,13 +2335,22 @@ static void wide_log(unsigned f) { /* called from ndn_log every 300 frames; the 
     pm_log_prof_line("wide f%u ortho %u native %u edge %u big %u all %u copy %u", f, wide_c.ortho, wide_c.nat, wide_c.edge, wide_c.big, wide_c.all, wide_c.copy);
     memset(&wide_c, 0, sizeof wide_c);
 }
-/* TRI-2: the screen-edge rule of the vertex copy for object vertex v under the matrix m: cxo gets the clip x; the result is 1 when x sits on the game edge (w > 0, x at +-w * 0.999). */
-static int wide_on_edge(const float m[4][4], unsigned v, float* cxo) {
+/* MSGBOX 4: the draw under test (wide_edge_k) has vertices at or past both game edges (a full-width quad such as a fade). Only then does a vertex past an edge move. */
+static int wide_span;
+static void wide_clip(const float m[4][4], unsigned v, float* cx, float* cw) {
     const short* p = (const short*)(nb.gring + 16u * v);
     float x = (float)p[0], y = (float)p[1], z = (float)p[2];
-    float cx = m[0][0] * x + m[1][0] * y + m[2][0] * z + m[3][0], cw = m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3];
+    *cx = m[0][0] * x + m[1][0] * y + m[2][0] * z + m[3][0]; *cw = m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3];
+}
+/* TRI-2: the screen-edge rule of the vertex copy for object vertex v under the matrix m: cxo gets the clip x; the result is 1 when x sits on the game edge (w > 0, x at +-w * 0.999 to 1.001).
+ * MSGBOX 4: a vertex past the edge (|x| > w * 1.001) is a UI part placed in the wide margin (a message bubble clamped to pm_wide_left(18)): it keeps its place (1:1) unless
+ * the draw spans both edges (wide_span). Moving it stretched the bubble's end curve into a blank box. */
+static int wide_on_edge(const float m[4][4], unsigned v, float* cxo) {
+    float cx, cw;
+    wide_clip(m, v, &cx, &cw);
     if (cxo) *cxo = cx;
-    return cw > 0.f && (cx >= cw * 0.999f || cx <= -cw * 0.999f);
+    if (!(cw > 0.f) || (cx < cw * 0.999f && cx > -cw * 0.999f)) return 0;
+    return wide_span || (cx <= cw * 1.001f && cx >= -cw * 1.001f);
 }
 /* TRI-2: a new ring slot with a copy of src whose clip x is 1.25 times the CPU clip x. For the orthographic kind only the object x moves: x' = x + 0.25 * cx / m00 keeps cw.
  * The short x is rounded (at most 0.5 raw unit). The caller sets the flag and rgen of the slot. src stays as it was (the CPU path reads it). Returns the slot or -1. */
@@ -2367,7 +2384,12 @@ static int wide_edge_k(const float m[4][4], const unsigned short* idx, unsigned 
     if (!idx || !nb.gring || !rgen) r = 2;
     else if (!wz || !ui_ortho) r = 1;
     else if (n > WIDE_MAXV) r = 2;
-    else for (unsigned i = 0; i < n; i++) if (wide_on_edge(m, idx[i], NULL)) ne++;
+    else {
+        int lo = 0, hi = 0; /* MSGBOX 4: wide_span for this draw */
+        for (unsigned i = 0; i < n; i++) { float cx, cw; wide_clip(m, idx[i], &cx, &cw); if (cw > 0.f) { lo |= cx <= -cw * 0.999f; hi |= cx >= cw * 0.999f; } }
+        wide_span = lo && hi;
+        for (unsigned i = 0; i < n; i++) if (wide_on_edge(m, idx[i], NULL)) ne++;
+    }
     if (r == 0 && ne) { /* TRI-2: edge vertices are copied with x moved (wide_copy_vtx) when m00 moves them and the ring has room */
         if (m[0][0] == 0.f || nb.gring_n + ne > GRING_VTX) r = 1;
         else r = ne == n ? 3 : 4;
@@ -3203,7 +3225,7 @@ void pm_gpu_set_env(unsigned rgba) {
 /* SPR4-env: cconst is in the TEV key of combine 4 and 8 (the batch draws with the cconst of its flush). */
 void pm_gpu_set_const(unsigned rgba) {
     if (rgba == cconst) return;
-    if (gs.combine == 4 || gs.combine == 8) flush();
+    if (gs.combine == 4 || gs.combine == 8 || (nb.rect_open && nb.rect_ec == 4)) flush(); /* MSGBOX 2: an open class 4 rectangle batch draws with the cconst of its flush */
     cconst = rgba;
 }
 
