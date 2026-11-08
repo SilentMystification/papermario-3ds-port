@@ -252,6 +252,17 @@ if ($SelfTest) {
     $kNew = Get-StaleReason (Get-QState $pK) (Get-NowMs)
     QCheck "clock: process 80 s old with cap 45 is c before the clock restart, fresh after it (before '$kOld', after '$kNew')" (($kOld -eq "c") -and ($kNew -eq ""))
     Remove-Item $qdir -Recurse -Force
+    # T10 AZT12-4: only slot 3 is free. An older entry of tools with 2 slots (no slots field) is not granted it; a younger entry of 3-slot tools is
+    New-Item -ItemType Directory -Force -Path $qdir | Out-Null
+    $pO = New-FakeQ "O10" 1000 "x"; $pN = New-FakeQ "N10" 2000 "y"
+    $n = Get-QState $pN; $n | Add-Member -NotePropertyName slots -NotePropertyValue 3 -Force; Save-QEntry $pN $n
+    $script:fakeFree = @{ 1 = $false; 2 = $false; 3 = $true }; $script:fakeLane = @{ 1 = ""; 2 = ""; 3 = "" }
+    $env:PM_AZ_SLOTS = "3"
+    Invoke-QGrant
+    Remove-Item Env:PM_AZ_SLOTS -ErrorAction SilentlyContinue
+    $o = Get-QState $pO; $n = Get-QState $pN
+    QCheck "slots: slot 3 goes to the 3-slot entry, the older 2-slot entry waits" (($o.state -eq "wait") -and ($n.state -eq "granted") -and ([int]$n.slot -eq 3))
+    Remove-Item $qdir -Recurse -Force
     Remove-Item Env:PM_AZQUEUE_DIR -ErrorAction SilentlyContinue
     if ($qFails) { Write-Output "QUEUE SELFTEST: $qFails FAILED" } else { Write-Output "QUEUE SELFTEST: all pass" }
     $fails += $qFails
@@ -478,6 +489,8 @@ function Exit-Run([int]$code) {
     if ($null -ne $wallS) { $ia += @("--wall-s", [string]$wallS) } # AZT10b-2: the run timing (bench record)
     if ($null -ne $untilS) { $ia += @("--until-s", [string]$untilS) }
     if ($null -ne $afterS) { $ia += @("--end-after-until-s", [string]$afterS) }
+    if ($null -ne $qWaitS) { $ia += @("--wait-s", [string]$qWaitS) } # AZT12: queue wait, enqueue to grant
+    if ($null -ne $script:bootS) { $ia += @("--boot-s", [string]$script:bootS) } # AZT12: Azahar start (cold launch or warm round) to the first game line of this boot
     & python @ia
     if ($LASTEXITCODE -ne 0) { Write-Output "BENCH: run not recorded (bench.py exit $LASTEXITCODE)" }
     if ($script:slotK) { Exit-Slot $script:slotK; $script:slotK = 0 } # the slot is free for the next run once the logs are read and recorded
@@ -592,6 +605,7 @@ $capGuard = $cap + 120
 $startKind = ""
 $deadlineEff = $deadline
 $script:bootLine = $null
+$script:bootS = $null
 while (-not $child.HasExited) {
     Start-Sleep -Milliseconds 500
     if (((Get-Date) - $qHb).TotalSeconds -ge 2) { Set-QFields $qPath @{ hb = (Get-NowMs) }; $qHb = Get-Date } # AZT11-2: heartbeat
@@ -618,7 +632,7 @@ while (-not $child.HasExited) {
         # AZT12: a second warm round (run_azahar.ps1 rewrites warm.start) restarts the run's cap clock too, as run_azahar.ps1 does.
         if (Test-Path $warmFile) {
             try { $ws = (Get-Content $warmFile -Raw).Trim() } catch { $ws = $warmStamp }
-            if ($ws -and $ws -ne $warmStamp) { $warmStamp = $ws; Set-QRunClock $qPath }
+            if ($ws -and $ws -ne $warmStamp) { $warmStamp = $ws; Set-QRunClock $qPath; $azStart = Get-Date; $lastNew = $azStart } # AZT12-5: run_azahar.ps1 writes warm.start at each restart try: the deadline clock restarts too
         }
         if (Test-Path $okFile) { $warmReady = $true; $script:pos = 0; $script:carry = ""; $script:logCT = $null }
         elseif (Test-Path $azLineFile) {
@@ -632,6 +646,7 @@ while (-not $child.HasExited) {
     $chunk = Read-LogChunk
     if ($chunk) {
         $lastNew = Get-Date
+        if ($null -eq $script:bootS) { $script:bootS = [math]::Round(($lastNew - $azStart).TotalSeconds, 1) } # AZT12: boot_s
         # AZT3-3: a boot starts at its banner line. The marker counts only after the newest banner, so an old boot's line is never a marker.
         $bi = $chunk.LastIndexOf("#0 log: writer id")
         if ($bi -ge 0) { $mtext = $chunk.Substring($bi) } else { $mtext += $chunk }
@@ -653,7 +668,9 @@ if ($stop) {
     Write-Output "AZT: stopping the run ($stop). run_azahar.ps1 ends it; the Azahar is kept unless -NoKeep."
     Set-Content $stopFile $stop
 }
-if (-not $child.WaitForExit(150000)) {
+# AZT12-5: the wait for run_azahar.ps1 keeps the queue heartbeat (a silent wait over 60 s looked stale to the sweep of another run)
+for ($wi = 0; $wi -lt 75 -and -not $child.WaitForExit(2000); $wi++) { Set-QFields $qPath @{ hb = (Get-NowMs) } }
+if (-not $child.HasExited) {
     Stop-Process -Id $child.Id -Force -ErrorAction SilentlyContinue
     Write-Output "NOT ENDED: run_azahar.ps1 (PID $($child.Id)) did not end. It was stopped by force. Check for an Azahar with Get-Process azahar."
 }
@@ -677,6 +694,10 @@ if (Test-Path $bf) {
             break
         }
     }
+}
+if (-not $endRow -and -not (Test-Path $qPath)) {
+    # AZT12-5: the queue entry is gone while this run ran: the sweep of another run booted it as stale (pool.log "stale") and killed run_azahar.ps1
+    Leave-Queue; Write-Output "BOOTED: the queue sweep of another run stopped this run as stale (build3ds\azslots\pool.log, event stale). run_azahar.ps1 wrote no end line. Rerun it."; exit 1
 }
 if (-not $endRow) { Leave-Queue; Write-Output "NO END LINE: run_azahar.ps1 wrote no end line for row $Row after this start. It did not run (lock timeout, switch error or budget). Nothing was checked."; exit 1 }
 # AZT-GPU: Azahar died before the first marker with the GPU stream buffer failure (Vulkan "Failed to allocate Stream buffer") or exit 0xC000001D (-1073741795).

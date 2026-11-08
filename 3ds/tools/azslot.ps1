@@ -3,7 +3,7 @@ azslot.ps1 - Azahar slot pool (AZT-1). Dot-sourced by 3ds/run_azahar.ps1 and 3ds
 
 A slot is a private portable copy of the Azahar install: build3ds/azslots/slot<k>/ (gitignored) with azahar.exe and a
 `user` folder next to it. Azahar then keeps config, nand, sdmc, shaders and logs in slot<k>/user and nothing in %APPDATA%.
-One named mutex per slot (Global\pm_azahar_slot<k>) lets one run use a slot at a time. N slots: env PM_AZ_SLOTS (default 2; the GPU is shared with other apps).
+One named mutex per slot (Global\pm_azahar_slot<k>) lets one run use a slot at a time. N slots: env PM_AZ_SLOTS (default 3, AZT12-4; the GPU is shared with other apps).
 The user's C:\Program Files\Azahar and %APPDATA%\Azahar are only read (copied from), never written.
 #>
 $script:AzRepo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
@@ -18,11 +18,14 @@ $script:SlotMutex = @{}
 $script:AzIdleSec = 900
 
 # AZT4-1: the cap on live azahar.exe processes of the slot pool, all slots of all worktrees and agents. A constant, not an env value.
-$script:AzCap = 2
+# AZT12-4 (2026-11-08, Ryzen 3950X, RTX 2070 SUPER 8 GB, 64 GB RAM, with the user's apps open): a turbo load Azahar ran 4.2 % slower per
+# 300 frames with 3 active Azahars than with 2 (3.805 s vs 3.651 s); a 4th live Azahar failed at start ("Failed to allocate Stream buffer",
+# the GPU host-visible heap). So 3, not 4.
+$script:AzCap = 3
 $script:CapSaid = $false
 
 function Get-SlotCount {
-    $n = if ($env:PM_AZ_SLOTS) { [int]$env:PM_AZ_SLOTS } else { 2 }
+    $n = if ($env:PM_AZ_SLOTS) { [int]$env:PM_AZ_SLOTS } else { 3 }
     if ($n -gt $script:AzCap) {
         if (-not $script:CapSaid) { Write-Host "azslot: PM_AZ_SLOTS=$n is above the cap $($script:AzCap) live Azahars: using $($script:AzCap) slots"; $script:CapSaid = $true }
         $n = $script:AzCap
@@ -403,6 +406,7 @@ function New-QEntry([string]$scenario, [string]$row, [string]$lane, [string]$spe
         t = $t; tree = $tree; lane = $lane; speed = $speed; scenario = $scenario; row = $row; want = $want
         owner = [int]$PID; ownerStart = (Get-ProcStart $PID); parent = $par; parentStart = (Get-ProcStart $par)
         hb = (Get-NowMs); state = "wait"; slot = 0; runner = 0; runnerStart = [long]0; cap = 0; runT = [long]0; skipped = 0
+        slots = (Get-SlotCount) # AZT12-4: the slot count of the enqueuer's tools; a slot above it is not granted to this entry (older tools: 2)
     }
 }
 
@@ -468,7 +472,8 @@ function Invoke-QGrant {
         $ents = @(Read-QEntries)
         for ($k = 1; $k -le $n; $k++) {
             if (@($ents | Where-Object { ([string]$_.state -eq "granted" -or [string]$_.state -eq "running") -and [int]$_.slot -eq $k }).Count) { continue }
-            $waiting = @($ents | Where-Object { [string]$_.state -eq "wait" -and ([int]$_.want -eq 0 -or [int]$_.want -eq $k) })
+            # AZT12-4: an entry of older tools (no slots field: cap 2) is not granted slot 3, its Get-Slot would wait for its own cap
+            $waiting = @($ents | Where-Object { [string]$_.state -eq "wait" -and ([int]$_.want -eq 0 -or [int]$_.want -eq $k) -and $k -le $(if ($_.PSObject.Properties.Name -contains "slots") { [int]$_.slots } else { 2 }) })
             if (-not $waiting.Count) { continue }
             if (-not (Test-SlotFree $k)) { continue }
             $key = Get-SlotLane $k
