@@ -616,6 +616,60 @@
       "reason": "MOVE gate: DET cold start (-NoWarm, a cold start takes 12 to 16 s to the first marker, as nok11_det). Cap 35 s, deadline 30 s. Picture is the subject; the prof scene line is the until."
     },
     {
+      "name": "spot_mac01_selfchk_prof",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario placed at pos 0 0 200, det, prof=30: the first 300-frame prof window (wk, fts, wks, oh, amort, csvc, ssvc). Log only.",
+      "proves": "PROF2-6 self-check, prof side: the clean-frame work ms (wk) and the prof cost (oh, amort, csvc 0) with prof=30. Compare wk with spot_mac01_selfchk_off (pacewk). Azahar: direction only.",
+      "debug": "warp=mac_01:0 pos=0:0:200 prof=30 det",
+      "extra": [],
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "self-check",
+          "regex": "prof f\\d+ w\\d+ s\\d+ fts \\d+\\.\\d+ wks \\d+\\.\\d+ oh -?\\d+\\.\\d+ amort \\d+ csvc 0 ssvc \\d+"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at mac_01 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 0 0 200 "
+        }
+      ],
+      "reason": "PROF2-6 self-check pair with spot_mac01_selfchk_off. Same spot, same switches but prof. Cap 35 s: boot, warp, placement and the first 300-frame window (until)."
+    },
+    {
+      "name": "spot_mac01_selfchk_off",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario placed at pos 0 0 200, det, prof off, pacestat: the pacewk line (mean work ms of a drawn frame per 5 s pace window) at frame 400 or later. Log only.",
+      "proves": "PROF2-6 self-check, prof-off side: the work ms of a drawn frame without prof (pacewk wk), to compare with wk of spot_mac01_selfchk_prof. Azahar: direction only.",
+      "debug": "warp=mac_01:0 pos=0:0:200 pacestat loglevel=debug det",
+      "extra": [],
+      "until": "pacewk f([4-9]\\d\\d|[1-9]\\d{3,}) ",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "pacewk",
+          "regex": "pacewk f([4-9]\\d\\d|[1-9]\\d{3,}) wk \\d+\\.\\d+ drawn \\d+"
+        }
+      ],
+      "reason": "PROF2-6 self-check pair with spot_mac01_selfchk_prof. The pace windows are 5 s; the line at frame 400 or later covers the placed spot only. Cap 35 s."
+    },
+    {
       "name": "wcen_mac01_det",
       "status": "unverified",
       "subject": "Toad Town mac_01, Mario at pos 0 0 200, cold start with det. Census window 0 to 300: the opsplit line with the per-producer ops and the mod column (module per op, nd_cen.c op_module).",

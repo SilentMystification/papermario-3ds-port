@@ -2253,6 +2253,38 @@
       "gates": []
     },
     {
+      "name": "spot_mac01_selfchk_prof",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "PROF2-6 self-check, prof side: mac_01 spot, det, prof=30, first window wk, oh, amort, csvc, ssvc. Pair with spot_mac01_selfchk_off (wk against pacewk). Direction only.",
+      "scenario": "spot_mac01_selfchk_prof",
+      "cap": 35,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "prof",
+        "selfcheck"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_mac01_selfchk_off",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "PROF2-6 self-check, prof-off side: mac_01 spot, det, pacestat, pacewk wk (mean work ms of a drawn frame) at frame 400 or later. Pair with spot_mac01_selfchk_prof. Direction only.",
+      "scenario": "spot_mac01_selfchk_off",
+      "cap": 35,
+      "until": "pacewk f([4-9]\\d\\d|[1-9]\\d{3,}) ",
+      "tags": [
+        "azahar",
+        "prof",
+        "selfcheck"
+      ],
+      "gates": []
+    },
+    {
       "name": "moon_tap_pic",
       "kind": "azahar_pic",
       "speed": "normal",

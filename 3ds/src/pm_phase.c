@@ -59,15 +59,16 @@ static const char* const ab_words[] = { "base", "phasegbi" }; /* rule 19: a stat
 static int ab_st[BK_N], ab_n, ab_every, ab_cur, ab_steps, ab_skip, ab_seq;
 static int sc_mode = -1, sc_area = -1, sc_map = -1; /* the scene of the open buckets */
 static int cur_mode = -1, cur_area = -1, cur_map = -1; /* set by the game hooks */
+static int pf_scene_seen; /* PROF2-6: 0 after a scene event (mode, map, window start) until the prof scene note. Zero-initialised (.bss): a .data word would move the initialised data of the image */
 unsigned pm_ph_gpu_us[2];
 unsigned pm_ph_cmd_pm;
 unsigned pm_ph_kick_n, pm_ph_kick_us, pm_ph_draws, pm_ph_iv, pm_ph_hud_us; /* PI4, PI5: per frame, reset in pm_ph_frame_end */
 
-void pm_ph_scene_mode(int mode) { cur_mode = mode; }
+void pm_ph_scene_mode(int mode) { cur_mode = mode; pf_scene_seen = 0; }
 static void fs_win_reset(void);
 void pm_gbi_win_reset(void);
 /* CAP1: a map load starts the opsplit, mr0, ms0 and fsplit windows */
-void pm_ph_scene_map(int area, int map) { cur_area = area; cur_map = map; pm_gbi_win_reset(); fs_win_reset(); }
+void pm_ph_scene_map(int area, int map) { cur_area = area; cur_map = map; pf_scene_seen = 0; pm_gbi_win_reset(); fs_win_reset(); }
 void pm_ph_scene_get(int* mode, int* area, int* map) { *mode = cur_mode; *area = cur_area; *map = cur_map; }
 void pm_ph_gpu_note(void) {
     if (!pm_ph_on) return;
@@ -367,6 +368,7 @@ static void pf_reset(void) {
     pf_dlc_t = 0;
     pf_vb0 = C3D_FrameCounter(0);
     pf_st0 = pm_step_calls;
+    pf_scene_seen = 0; /* PROF2-6: the next drawn frame notes the scene and the start position */
 }
 /* PROF: the harness placed Mario (pos= switch, pm_warp.c pm_pos_log): a new window starts at the placed position */
 void pm_ph_scene_moved(void) { pf_reset(); }
@@ -509,7 +511,7 @@ void pm_pf_frame(unsigned long long t0, unsigned long long t1) {
     pf_total++;
     pf_w++;
     if (pf_tour) return; /* TOUR1: the tour opens and closes the window */
-    pf_scene_note();
+    if (!pf_scene_seen) { pf_scene_seen = 1; pf_scene_note(); } /* PROF2-6: only after a scene event (pm_ph_scene_map, pm_ph_scene_mode, pf_reset), one flag test per frame */
     if (pf_w >= 300) pf_report();
 }
 void pm_ph_window_open(const char* label) {

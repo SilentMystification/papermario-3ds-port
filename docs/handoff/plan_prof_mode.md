@@ -44,6 +44,8 @@ PMN0 and PMN1 are the only event counters. CCNT counts cycles. The user asks for
 - Parsed once in `pm_ph_init` with the existing `pm_debug_has` and `pm_debug_value` pattern. `pm_debug_has("prof")` does not match `prof=16` (debug_scan needs a word edge, pm_log.c:105-108), so both calls are needed.
 - `pm_pf_on = want && pm_log_file()`. `pm_ph_log_gate` (pm_phase.c:288) sets it again when the options panel turns the log on or off.
 - The main loop reads `pm_pf_on` once per iteration: `if (pm_pf_on && !last_step_skipped) pm_pf_frame(step_start, now);`. No per-op read of any prof flag.
+- PROF2-6: pm_pf_frame notes the scene (pf_scene_note: map, mode, start position) only after a scene event (pm_ph_scene_map, pm_ph_scene_mode, a window start), one flag test per frame.
+- PROF2-5: the walker reads one debug word (pm_walk_dbg, nd.h WD_*) once per list; in a clean frame each op tests one register and calls nothing. The class timers keep a 4-deep u32 tick stack in pm_gpu.c.
 
 ### 2.4 No picture change (requirement 7)
 
@@ -174,6 +176,8 @@ Affected scenario: only `mac01t_prof` (new). No other scenario: no draw code cha
 - Scenario `mac01t_prof` (added in PF3 to 3ds/tools/azt_scenarios.json and the docs/handoff/test_catalog.md table, same commit). Copy of `mac01t_cap1` with debug `warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 shots shotwin=500:1 prof=16`. No `loglevel=debug`, no `phase`. until `prof f\d+ w300 `. Subject: Mario in mac_01 at frame 500 and one prof line.
 - One Azahar start after PF3: `PM_ROW=PF3 powershell -File 3ds/tools/azt.ps1 mac01t_prof -Row PF3 -Try`. Pass: the cal line and one prof line print, `s` is about 18 (300 / 16), gbi and tex are not 0, the shot shows Mario in Toad Town. On Azahar the pmu fields may be 0 (Azahar may not model the PMU). That is not a fail. Azahar times show direction only.
 - One console push after the epic passes: `PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds.sh --no-build --ip 192.168.1.170 prof`. Read the cal line, `fps`, `ft`, `oh`, `amort`, and pmu `m`. A second push with `prof profstall` gives the stall share.
+
+Self-check pair (PROF2-6): benches spot_mac01_selfchk_prof (prof=30: wk, oh, amort, csvc, ssvc of the first window) and spot_mac01_selfchk_off (prof off, pacestat: the pacewk line, mean work ms of a drawn frame per 5 s pace window, at frame 400 or later). wk of the prof run against pacewk wk of the off run is the prof cost on clean frames. Azahar shows direction only; the console run (spot_mac01_prof) is the measure.
 
 ## 8. Open decisions for the user
 
