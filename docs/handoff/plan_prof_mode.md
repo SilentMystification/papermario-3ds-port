@@ -62,13 +62,18 @@ PMN0 and PMN1 are the only event counters. CCNT counts cycles. The user asks for
 
 ## 3. The prof line (exact)
 
-Per window of 300 drawn frames (pm_log_prof_line): the main line, the ph line, the pmu line and the producer class line (a line longer than the 160 byte slot string area is cut):
+Per window of 300 drawn frames (pm_log_prof_line). PROF2-4: every value is an integer (a time is ms x 100 from u64 ticks, printed %u.%02u; a sign is a %s word), every line is at most 16 argument words with no refused conversion, so the game thread only copies words into the log slot (pm_logfmt.h lf_scan, lf_copy) and the writer formats them: no double and no vsnprintf on the game thread. Lines:
 
 ```
-prof f%u w%u fps %.1f | ft %.2f max %.1f o34 %u wk %.2f | s%u fts %.2f wks %.2f oh %.2f amort %u csvc %u ssvc %u
-prof f%u w%u ph gbi %.2f dlc %.2f tex %.2f gpu %.2f | st %u vb %u iv %u %u %u %u
+prof f%u w%u fps %u.%u | ft %u.%02u max %u.%u o34 %u wk %u.%02u
+prof f%u w%u s%u fts %u.%02u wks %u.%02u oh %s%u.%02u amort %u csvc %u ssvc %u
+prof f%u w%u ph gbi %u.%02u dlc %u.%02u tex %u.%02u gpu %u.%02u | st %u vb %u iv %u %u %u %u
 prof f%u w%u pmu %c %u %u cyc %u pm %u %u
-prof f%u w%u cls rec %.2f ent %.2f spr %.2f dlc %.2f sub %.2f rest %.2f
+prof f%u w%u cls rec %u.%02u ent %u.%02u spr %u.%02u dlc %u.%02u sub %u.%02u rest %s%u.%02u
+prof f%u w%u nd %u.%02u lg %u.%02u dr %u tc %u tw %u tri %u leg %u gb %u.%02u
+prof f%u w%u budget tgt ... | meas nd %u.%02u lg %u.%02u gb %u.%02u
+prof f%u w%u at %s %d:%d m%d sp%d b%d e%d chg0 pos0 %d %d %d pos %d %d %d disp %s
+prof f%u w%u writer beats %u | aujoin_us %u aujoin_max %u
 ```
 
 Example (made-up numbers, for the shape only):
@@ -111,7 +116,7 @@ prof f9000 w300 cls rec 2.90 ent 1.70 spr 0.30 dlc 0.00 sub 1.50 rest 7.80
 Calibration line, once at init (cold, boot time):
 
 ```
-pm_log_w("prof cal every %u set %c tick %.2f us pmu %.2f us base %.2f us rc %08x", N, set, tick_us, pmu_us, base_us, rc);
+pm_log_prof_line("prof cal every %u set %c tick %u.%02u us pmu %u.%02u us base %u.%02u us rc %08x", ...); /* integers, us x 100 */
 ```
 
 - tick_us: mean of 200 `pm_ticks()` reads. pmu_us: mean of 50 GET_VALUE reads (one register). base_us = 6 x pmu_us / N (two 3-register reads per N frames). The pattern is pm_phase.c:310-321.
