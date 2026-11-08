@@ -7,9 +7,10 @@
 #include "pm_port.h"
 #include "pm_dspaud.h"
 
-/* AUDDSP A3: the N64 voices play on ndsp channels 0 to 22 as mono PCM16. The CPU decodes the VADPCM once, when a sample first plays,
+/* AUDDSP A3: the 24 N64 voices play on ndsp channels 0 to 22 as mono PCM16 (dsp_voice.c gives a voice the lowest free channel at its start). The CPU decodes the VADPCM once, when a sample first plays,
  * into a cache in linear memory. Channel 23 plays the effect return. See docs/plans/AUD_DSP.md. */
 volatile int pm_dspa_enabled;
+volatile unsigned pm_dspa_epoch;
 
 #define BLK_TICKS 1541641ull          /* 184 samples at 32000 Hz in ARM11 ticks (268111856 Hz) */
 #define MAXBUF 8
@@ -402,6 +403,7 @@ void pm_dspa_rearm(void) {
     }
     for (int i = 0; i < FXR_BUFS; i++) fxw[i].status = NDSP_WBUF_FREE; /* the effect return buffers are dropped with the channel */
     chan_setup();
+    pm_dspa_epoch++;
 }
 
 int pm_dspa_init(void) {
@@ -424,7 +426,7 @@ int pm_dspa_init(void) {
     pm_log("dspaudio: aux enabled %d %d volume %.2f %.2f", ndspAuxIsEnabled(0), ndspAuxIsEnabled(1), ndspAuxGetVolume(0), ndspAuxGetVolume(1));
     ndspSetMasterVol(1.0f);
     pm_dspa_enabled = 1;
-    pm_log("dspaudio: on, 23 voices on ndsp channels 0 to 22, effect return on channel 23, cache %u KB", cache_budget / 1024);
+    pm_log("dspaudio: on, 24 engine voices on 23 ndsp channels 0 to 22 (lowest free at start), effect return on channel 23, cache %u KB", cache_budget / 1024);
     return 1;
 }
 

@@ -18,6 +18,7 @@ typedef struct {
 
 int pm_dspa_init(void);                                           /* after ndspInit; 0 = failed */
 void pm_dspa_shutdown(void);
+extern volatile unsigned pm_dspa_epoch;                           /* pm_dspa_rearm count: the voice map drops its channels when it changes */
 void pm_dspa_rearm(void);                                         /* after sleep: game thread, audio and render idle. Clears and sets up the channels again. */
 void pm_dspa_pace(void);                                          /* render thread: wait until the next block is due */
 int pm_dspa_voice_start(int ch, const DspaSample* s, float rate, const float mix[12]);    /* 1 = started, 0 = no cache entry: ch stays silent, the caller retries */
