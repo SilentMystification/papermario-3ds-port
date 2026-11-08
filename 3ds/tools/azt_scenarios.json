@@ -10103,6 +10103,30 @@
         }
       ],
       "reason": "MSGBOX row. The debug hook uishow (pm_warp.c) opens the messages at scene frame 200 (global frame about 249) with no input; one shot after the text is printed. Cap 30 s: cold start 12 to 16 s plus about 9 s of game time."
+    },
+    {
+      "name": "magi_hit",
+      "status": "unverified",
+      "subject": "Magikoopa Flying battle (BTL_HOS_FORMATION_03, stage hos_02) from hos_00 with autoa: Mario jumps, the Magikoopa casts Magic Blast; the shape_spell reaching Mario marks the hit (fspk mark). Per-frame fspk lines for 16 frames before and 48 after the hit; shots of the 6 frames after the hit.",
+      "proves": "MAGI: draws, triangles, TEV rebuilds, texture binds and misses, entity key compiles and model misses per frame at the spell hit (Azahar counts valid, ms direction only); the shots show the spell burst and the hit on Mario.",
+      "debug": "warp=hos_00:0 story=ch0_toad_town battle=BTL_HOS_FORMATION_03:BTL_HOS_STAGE_02 battlef=100 cheats=hp autoa fspk shots loglevel=debug",
+      "until": "fspk: done hit f\\d+",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: hos_00 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "battle",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "hit",
+          "regex": "fspk: mark shape_spell hit"
+        }
+      ],
+      "reason": "Cap 45: battle load at f100, Mario's jump turn and the Magikoopa cast (about 25 s game time at autoa); the until line is the end of the 48-frame window after the hit."
     }
   ]
 }

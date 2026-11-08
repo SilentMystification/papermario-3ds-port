@@ -511,7 +511,9 @@ static __attribute__((cold, noinline)) void ndref_end(void) { /* end of frame: w
  * triangles of the frame. gb: GPU busy ticks of the sampled frames, from the submit (pm_gpu_end) to the sync (the frame begin after it). */
 static unsigned long long pfd_sum[4], gb_sum, gb_n, gb_sub;
 static int gb_on;
+unsigned pm_gpu_fr_last[4]; /* MAGI fspk: draws, TEV rebuilds, texture binds, triangles of the last finished frame */
 static void pfd_add(void) {
+    pm_gpu_fr_last[0] = cen_draws; pm_gpu_fr_last[1] = pm_dc_c[DC_TEVR]; pm_gpu_fr_last[2] = pm_dc_c[DC_TB0] + pm_dc_c[DC_TB1]; pm_gpu_fr_last[3] = cen_tris;
     pfd_sum[0] += cen_draws; pfd_sum[1] += pm_dc_c[DC_TEVR]; pfd_sum[2] += pm_dc_c[DC_TB0] + pm_dc_c[DC_TB1]; pfd_sum[3] += cen_tris;
 }
 /* out: draws, TEV rebuilds, texture binds, triangles (summed since the last read), GPU busy ticks and sample count. Reads reset the sums. */

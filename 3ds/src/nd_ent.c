@@ -396,3 +396,6 @@ int nd_ent_case(const Gfx* rec, u32 w0, u32 w1) {
     }
     return 0;
 }
+
+/* MAGI fspk (debug): lifetime entity key compiles, static G_DL lists met, lists drawn from the pools, segments drawn by the walker */
+void nd_ent_stat(unsigned o[4]) { o[0] = ent_c.comp; o[1] = gdl_c.lists; o[2] = gdl_c.nat; o[3] = ent_c.segi; }

@@ -821,3 +821,49 @@ void __wrap_gfx_draw_frame(void) {
     __real_gfx_draw_frame();
     PH_POP();
 }
+
+/* MAGI fspk (debug tool, switch fspk): per-frame lines around a game event (pm_fspk_mark, e.g. the Magikoopa spell hit). A ring keeps
+ * the last FSPK_PRE frames; the mark prints them, then FSPK_POST more frames, then "fspk: done". Line: frame, step ms (Azahar: direction
+ * only), draws, triangles, TEV rebuilds, texture binds of the last finished frame, and the per-frame deltas of texture misses, uploaded
+ * KB, entity key compiles, static G_DL lists, walker-drawn entity segments and model cache misses. Frames over 34 ms carry " o34". */
+#define FSPK_PRE 16
+#define FSPK_POST 48
+typedef struct { unsigned f, dr, tri, tevr, tb, txm, txkb, entc, gdl, segi, mdlm; float ms; } FspkRec;
+static FspkRec fspk_ring[FSPK_PRE];
+static unsigned fspk_n, fspk_left, fspk_hit, fspk_o34, fspk_maxf;
+static float fspk_max;
+static int fspk_on = -1;
+static unsigned fspk_prev[6];
+extern unsigned pm_gpu_fr_last[4];
+void pm_tex_tot(unsigned* miss, unsigned* up);
+void nd_ent_stat(unsigned o[4]);
+void pm_gpu_mdl_stat(unsigned* miss, unsigned* clears);
+static void fspk_print(const FspkRec* r) {
+    pm_log_evt("fspk f%u ms %.1f dr %u tri %u tevr %u tb %u txm %u txkb %u entc %u gdl %u segi %u mdlm %u%s", r->f, (double)r->ms, r->dr, r->tri, r->tevr, r->tb,
+               r->txm, r->txkb, r->entc, r->gdl, r->segi, r->mdlm, r->ms > 34.f ? " o34" : "");
+}
+void pm_fspk_mark(const char* what) {
+    if (fspk_on <= 0 || fspk_left) return;
+    fspk_hit = pm_frame_count();
+    pm_log_evt("fspk: mark %s f%u", what, fspk_hit);
+    unsigned k0 = fspk_n > FSPK_PRE ? fspk_n - FSPK_PRE : 0;
+    for (unsigned k = k0; k < fspk_n; k++) fspk_print(&fspk_ring[k % FSPK_PRE]);
+    fspk_o34 = 0; fspk_max = 0.f; fspk_maxf = 0;
+    fspk_left = FSPK_POST;
+    if (pm_debug_has("shots")) { extern void pm_gpu_shot_window(unsigned from, unsigned n); pm_gpu_shot_window(fspk_hit + 1, 6); } /* the effect at the hit */
+}
+void pm_fspk_frame(unsigned f, float ms) {
+    if (fspk_on < 0) fspk_on = pm_debug_has("fspk");
+    if (!fspk_on) return;
+    unsigned c[6], e[4], mm, cl;
+    pm_tex_tot(&c[0], &c[1]); nd_ent_stat(e); pm_gpu_mdl_stat(&mm, &cl);
+    c[1] >>= 10; c[2] = e[0]; c[3] = e[1]; c[4] = e[3]; c[5] = mm;
+    FspkRec r = { f, pm_gpu_fr_last[0], pm_gpu_fr_last[3], pm_gpu_fr_last[1], pm_gpu_fr_last[2],
+                  c[0] - fspk_prev[0], c[1] - fspk_prev[1], c[2] - fspk_prev[2], c[3] - fspk_prev[3], c[4] - fspk_prev[4], c[5] - fspk_prev[5], ms };
+    memcpy(fspk_prev, c, sizeof c);
+    if (!fspk_left) { fspk_ring[fspk_n++ % FSPK_PRE] = r; return; }
+    fspk_print(&r);
+    if (ms > 34.f) fspk_o34++;
+    if (ms > fspk_max) { fspk_max = ms; fspk_maxf = f; }
+    if (--fspk_left == 0) { pm_log_evt("fspk: done hit f%u frames %u o34 %u max %.1f ms f%u", fspk_hit, FSPK_POST, fspk_o34, (double)fspk_max, fspk_maxf); fspk_n = 0; }
+}

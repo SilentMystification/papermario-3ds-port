@@ -101,6 +101,9 @@ void shape_spell_update(EffectInstance* effect) {
     isChild = part->isChild;
 
     if (!isChild && part->timeLeft == 0) {
+#ifdef TARGET_3DS
+        { extern void pm_fspk_mark(const char* what); pm_fspk_mark("shape_spell hit"); } /* MAGI: the spell reaches its target */
+#endif
         ShapeSpellFXData* newPart = shape_spell_main(
             1,
             part->pos.x + part->unk_10,
