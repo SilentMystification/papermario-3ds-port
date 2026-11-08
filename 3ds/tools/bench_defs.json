@@ -3382,6 +3382,36 @@
         "tour"
       ],
       "gates": []
+    },
+    {
+      "name": "dark_kgr01",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "DARK: kgr_01 world darkness overlay, wide. Shot shows the screen dark except a lit circle around Mario.",
+      "scenario": "dark_kgr01",
+      "cap": 30,
+      "until": "shot 0 frame \\d+",
+      "tags": [
+        "azahar",
+        "overlay"
+      ],
+      "gates": []
+    },
+    {
+      "name": "dark_kgr01_watt",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "DARK: kgr_01 darkness with Watt's ability (alpha 255 to 90), wide. Shot after the alpha 90 line shows a larger lit circle, the rest dark.",
+      "scenario": "dark_kgr01_watt",
+      "cap": 35,
+      "until": "shot 0 frame \\d+",
+      "tags": [
+        "azahar",
+        "overlay"
+      ],
+      "gates": []
     }
   ],
   "legacy": {

@@ -9756,6 +9756,62 @@
         }
       ],
       "reason": "Verified 2026-11-08 (pos1, run 3): Mario on the ground in all 3 shots, outdoors; mac_01 and sbk_02 centred, kmr_20 at the left edge because the entry 0 script holds the camera at story ch0."
+    },
+    {
+      "name": "dark_kgr01",
+      "status": "unverified",
+      "subject": "kgr_01 (inside the whale, entry 0), wide on. EVS_CreateDarkness draws the world darkness overlay (appendGfx_darkness_stencil, OVERLAY_WORLD_DARKNESS) every frame. One shot at frame 150: the screen dark except a soft lit circle around Mario.",
+      "proves": "DARK: the darkness stencil quads draw into the 64 x 64 image in the z-buffer memory (off-screen slot), not on the screen, and the final rectangle darkens the whole screen around the lit circle.",
+      "debug": "warp=kgr_01:0 wide shots shotwin=150:1 loglevel=debug",
+      "until": "shot 0 frame \\d+",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: kgr_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kgr_01 entry 0"
+        },
+        {
+          "name": "darkness",
+          "regex": "X02: darkness world 1 alpha 255"
+        },
+        {
+          "name": "shot 0",
+          "regex": "shot 0 frame \\d+"
+        }
+      ],
+      "reason": "DARK row picture gate. Cap 30 s: map load plus 150 frames plus a cold start margin."
+    },
+    {
+      "name": "dark_kgr01_watt",
+      "status": "unverified",
+      "subject": "kgr_01 entry 0, wide on, partner Watt (partner=6). The padscript presses C-down (Watt's ability), DarkRoomUpdate lowers the overlay alpha from 255 to 90 in steps of 8. One shot at frame 230, after the X02 alpha 90 line shows a larger lit circle, the rest still dark.",
+      "proves": "DARK: the darkness overlay follows the alpha (texScale and the centre move) with Watt's ability on.",
+      "debug": "warp=kgr_01:0 partner=6 wide padscript=wait200,cdown*4 shots shotwin=230:1 loglevel=debug",
+      "until": "shot 0 frame \\d+",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "warp: kgr_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kgr_01 entry 0"
+        },
+        {
+          "name": "watt on",
+          "regex": "X02: darkness world 1 alpha 90 .*partnerAction [1-9]"
+        },
+        {
+          "name": "shot 0",
+          "regex": "shot 0 frame \\d+"
+        }
+      ],
+      "reason": "DARK row Watt case (user fact 2026-11-08). Cap 35 s: map load plus 230 frames plus a cold start margin."
     }
   ]
 }
