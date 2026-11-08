@@ -1344,7 +1344,12 @@ static void jt_result(void) {
     jt_state = 0;
 }
 
-void pm_gpu_init(void) {
+/* CORE2-3a: walker side entry (nd_wq.c): the game thread calls it, the body runs on the walker side. */
+static void pm_gpu_init_w(void);
+typedef struct { int unused; } Wq_pm_gpu_init;
+static void wq_pm_gpu_init(void* a) { Wq_pm_gpu_init* q = (Wq_pm_gpu_init*)a; (void)q; pm_gpu_init_w(); }
+void pm_gpu_init(void) { Wq_pm_gpu_init q = { 0 }; pm_wq_call(wq_pm_gpu_init, &q, sizeof q); }
+static void pm_gpu_init_w(void) {
     init_f_tables();
     gp2_clip_init();
     if (gpu_ok) return;
@@ -1466,7 +1471,12 @@ void pm_gpu_init(void) {
 /* MN1: the game is frozen while the menu is open, so no game frame ends and nothing presents the menu text. This frame has no draw:
  * the target still holds the last picture (no clear is queued for a frame without draws), the display transfer at C3D_FrameEnd puts it
  * on the top screen again, and the swap shows the bottom console text. Called by the frozen pass when a menu draw happened. */
-void pm_gpu_menu_present(void) {
+/* CORE2-3a: walker side entry (nd_wq.c): the game thread posts it, the body runs on the walker side. */
+static void pm_gpu_menu_present_w(void);
+typedef struct { int unused; } Wq_pm_gpu_menu_present;
+static void wq_pm_gpu_menu_present(void* a) { Wq_pm_gpu_menu_present* q = (Wq_pm_gpu_menu_present*)a; (void)q; pm_gpu_menu_present_w(); }
+void pm_gpu_menu_present(void) { Wq_pm_gpu_menu_present q = { 0 }; pm_wq_post(wq_pm_gpu_menu_present, &q, sizeof q); }
+static void pm_gpu_menu_present_w(void) {
     if (!menu_dirty || !gpu_ok || !target) return;
     menu_dirty = 0;
     eye_slider = osGet3DSliderState();
@@ -1490,7 +1500,12 @@ unsigned pm_gx_qpend(void) {
     gxCmdQueue_s* q = (gxCmdQueue_s*)&__C3D_Context;
     return (unsigned)(q->numEntries - q->curEntry);
 }
-void pm_gpu_menu_dirty_set(void) { menu_dirty = 1; }
+/* CORE2-3a: walker side entry (nd_wq.c): the game thread posts it, the body runs on the walker side. */
+static void pm_gpu_menu_dirty_set_w(void);
+typedef struct { int unused; } Wq_pm_gpu_menu_dirty_set;
+static void wq_pm_gpu_menu_dirty_set(void* a) { Wq_pm_gpu_menu_dirty_set* q = (Wq_pm_gpu_menu_dirty_set*)a; (void)q; pm_gpu_menu_dirty_set_w(); }
+void pm_gpu_menu_dirty_set(void) { Wq_pm_gpu_menu_dirty_set q = { 0 }; pm_wq_post(wq_pm_gpu_menu_dirty_set, &q, sizeof q); }
+static void pm_gpu_menu_dirty_set_w(void) { menu_dirty = 1; }
 
 /* MN2: the top screen goes grey while the menu is open. One CPU pass over the top back buffer (BGR8, luma (77 r + 150 g + 29 b) >> 8 into all
  * three bytes), then one data cache flush, then the swap shows it. Called at the pause and after each menu present (the transfer is done first). */
@@ -1516,7 +1531,12 @@ void pm_gpu_menu_grey(void) {
 }
 
 /* GREY: shot of the DISPLAYED top buffer (the one gfxGetFramebuffer does not return), as top_after<k>. */
-void pm_gpu_shot_top_displayed(const char* name) {
+/* CORE2-3a: walker side entry (nd_wq.c): the game thread calls it, the body runs on the walker side. */
+static void pm_gpu_shot_top_displayed_w(const char* name);
+typedef struct { const char* name; } Wq_pm_gpu_shot_top_displayed;
+static void wq_pm_gpu_shot_top_displayed(void* a) { Wq_pm_gpu_shot_top_displayed* q = (Wq_pm_gpu_shot_top_displayed*)a; (void)q; pm_gpu_shot_top_displayed_w(q->name); }
+void pm_gpu_shot_top_displayed(const char* name) { Wq_pm_gpu_shot_top_displayed q = { name }; pm_wq_call(wq_pm_gpu_shot_top_displayed, &q, sizeof q); }
+static void pm_gpu_shot_top_displayed_w(const char* name) {
     u16 tw, th;
     u8* back = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, &tw, &th);
     u8* fb;
@@ -1557,7 +1577,12 @@ void pm_gpu_shot_top(const char* name) {
 }
 
 /* MN0: the bottom screen as sdmc:/3ds/PaperMario/shots/<name>.ppm (240x320 RGB565 rotated to P6). Used by shotbottom (pm_main.c) and shotmenu (pm_options_ui.c). */
-void pm_gpu_shot_bottom(const char* name) {
+/* CORE2-3a: walker side entry (nd_wq.c): the game thread calls it, the body runs on the walker side. */
+static void pm_gpu_shot_bottom_w(const char* name);
+typedef struct { const char* name; } Wq_pm_gpu_shot_bottom;
+static void wq_pm_gpu_shot_bottom(void* a) { Wq_pm_gpu_shot_bottom* q = (Wq_pm_gpu_shot_bottom*)a; (void)q; pm_gpu_shot_bottom_w(q->name); }
+void pm_gpu_shot_bottom(const char* name) { Wq_pm_gpu_shot_bottom q = { name }; pm_wq_call(wq_pm_gpu_shot_bottom, &q, sizeof q); }
+static void pm_gpu_shot_bottom_w(const char* name) {
     u16 bw, bh;
     u8* fb = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, &bw, &bh);
     char bpath[96];
@@ -1585,10 +1610,20 @@ static unsigned shot_burst_w1;      /* first frame after the window */
 static unsigned shot_burst_f = ~0u; /* the game frame of the last burst call (a game frame may begin the GPU more than once) */
 /* SHOT-1: set by a window scene (shotmode=, shotwin=, pm_gpu_shot_window). Then only the window's frames are shot: the periodic one-per-30-frames dump (no window) stays off. A single burst (fxtest) is no window. */
 static int shot_armed;
-void pm_gpu_shot_burst(int n) { extern unsigned pm_frame_count(void); shot_burst_on = 1; shot_burst_w1 = pm_frame_count() + (unsigned)n; shot_burst_f = ~0u; }
+/* CORE2-3a: walker side entry (nd_wq.c): the game thread posts it, the body runs on the walker side. */
+static void pm_gpu_shot_burst_w(int n);
+typedef struct { int n; } Wq_pm_gpu_shot_burst;
+static void wq_pm_gpu_shot_burst(void* a) { Wq_pm_gpu_shot_burst* q = (Wq_pm_gpu_shot_burst*)a; (void)q; pm_gpu_shot_burst_w(q->n); }
+void pm_gpu_shot_burst(int n) { Wq_pm_gpu_shot_burst q = { n }; pm_wq_post(wq_pm_gpu_shot_burst, &q, sizeof q); }
+static void pm_gpu_shot_burst_w(int n) { extern unsigned pm_frame_count(void); shot_burst_on = 1; shot_burst_w1 = pm_frame_count() + (unsigned)n; shot_burst_f = ~0u; }
 /* encwarp: one shot per frame for the frames from..from+n-1 (overrides shotwin) */
 static int shot_w0 = -2, shot_w1;
-void pm_gpu_shot_window(unsigned from, unsigned n) { shot_w0 = (int)from; shot_w1 = (int)(from + n); shot_armed = 1; }
+/* CORE2-3a: walker side entry (nd_wq.c): the game thread posts it, the body runs on the walker side. */
+static void pm_gpu_shot_window_w(unsigned from, unsigned n);
+typedef struct { unsigned from; unsigned n; } Wq_pm_gpu_shot_window;
+static void wq_pm_gpu_shot_window(void* a) { Wq_pm_gpu_shot_window* q = (Wq_pm_gpu_shot_window*)a; (void)q; pm_gpu_shot_window_w(q->from, q->n); }
+void pm_gpu_shot_window(unsigned from, unsigned n) { Wq_pm_gpu_shot_window q = { from, n }; pm_wq_post(wq_pm_gpu_shot_window, &q, sizeof q); }
+static void pm_gpu_shot_window_w(unsigned from, unsigned n) { shot_w0 = (int)from; shot_w1 = (int)(from + n); shot_armed = 1; }
 void pm_route_mapid(int* area, int* map);
 extern unsigned pm_uptime_ms(void);
 static void dump_shot(void) {
@@ -1663,6 +1698,7 @@ static void dump_shot(void) {
 unsigned short pm_wide_side[2][40 * 240];
 unsigned short pm_wide_side_pause[2][40 * 240]; /* the copy the pause screen draws (src/background_gfx.c) */
 void pm_gpu_read_frame(unsigned short* dst) {
+    PM_WALK_OWN(); /* CORE2-3a */
     pm_gpu_begin_wait();
     if (nb.rect_open) flush(); /* DR1 */
     const unsigned char* src;
@@ -1801,6 +1837,7 @@ void pm_gpu_off_end(void) {
 int pm_gpu_stereo(void) { pm_gpu_begin_wait(); return stereo_frame; }
 int pm_gpu_stereo_flag(void) { return stereo_frame; } /* read only (the prof line): pm_gpu_stereo waits and changes draw state */
 void pm_gpu_eye(int right) {
+    PM_WALK_OWN(); /* CORE2-3a */
     if (!stereo_frame || !gpu_ok) return;
     flush();
     if (off_active) pm_gpu_off_end();
@@ -1941,14 +1978,21 @@ int pm_gpu_grab(const void* cfb, int y0, int y1) { return grab_impl(cfb, y0, y1,
  * first frame of a run of requests, or a frame with an earlier T2 grab (it overwrites grab_tex), returns 0: the caller reads with the CPU.
  * Returns 2 if the old frame is in the slot of prev_cfb. */
 int pm_gpu_grab_prev(const void* prev_cfb) {
+    PM_WALK_OWN(); /* CORE2-3a */
     prev_want = 2; /* BTRANS: the request holds for 2 drawn frames: a replay draw (interp) takes the copy and does not capture */
     if (!target || !gpu_ok) return 0;
     return grab_impl(prev_cfb, 0, 240, 1);
 }
 /* BTRANS fix 3: an encounter start (pre-battle init) asks for the copy of the frame before the star wipe, at the next two begins. */
-void pm_gpu_want_prev(void) { prev_want = 2; }
+/* CORE2-3a: walker side entry (nd_wq.c): the game thread posts it, the body runs on the walker side. */
+static void pm_gpu_want_prev_w(void);
+typedef struct { int unused; } Wq_pm_gpu_want_prev;
+static void wq_pm_gpu_want_prev(void* a) { Wq_pm_gpu_want_prev* q = (Wq_pm_gpu_want_prev*)a; (void)q; pm_gpu_want_prev_w(); }
+void pm_gpu_want_prev(void) { Wq_pm_gpu_want_prev q = { 0 }; pm_wq_post(wq_pm_gpu_want_prev, &q, sizeof q); }
+static void pm_gpu_want_prev_w(void) { prev_want = 2; }
 /* BTRANS caplog: the capture state read by cfb_capture_prev (pm_main.c, switch caplog). */
 void pm_gpu_cap_state(int* o) {
+    PM_WALK_OWN(); /* CORE2-3a */
     o[0] = prev_pre; o[1] = grab_n; o[2] = grab_split; o[3] = kick_done; o[4] = want_clear; o[5] = (int)draws_frame; o[6] = off_fail; o[7] = (gpu_ok && target) ? 1 : 0;
 }
 /* K1: debug switch grablog. One line per grab call: id (grab_n of the frame), source colour buffer, rows, frame, reuse yes or no. */
@@ -2080,6 +2124,7 @@ static void off_dump(void) {
  * logic and the display list build run before the wait for the GPU tail of the last frame. */
 static int begin_pend, begin_clear;
 void pm_gpu_begin_wait(void) {
+    PM_WALK_OWN(); /* CORE2-3a */
     if (!begin_pend) return;
     begin_pend = 0;
     if ((off_mask_f || off_sused) && off_trace_n++ < 400) pm_log_d("offuse f%u full %d mask %x small %d", pm_frame_count(), off_used, off_mask_f, off_sused); /* VRAM3 trace */
@@ -2139,14 +2184,24 @@ void pm_gpu_begin_wait(void) {
     PH_POP();
 }
 
-void pm_gpu_begin(int clear) {
+/* CORE2-3a: walker side entry (nd_wq.c): the game thread posts it, the body runs on the walker side. */
+static void pm_gpu_begin_w(int clear);
+typedef struct { int clear; } Wq_pm_gpu_begin;
+static void wq_pm_gpu_begin(void* a) { Wq_pm_gpu_begin* q = (Wq_pm_gpu_begin*)a; (void)q; pm_gpu_begin_w(q->clear); }
+void pm_gpu_begin(int clear) { Wq_pm_gpu_begin q = { clear }; pm_wq_post(wq_pm_gpu_begin, &q, sizeof q); }
+static void pm_gpu_begin_w(int clear) {
     ndref_begin();
     begin_clear = clear;
     begin_pend = 1;
     if (pm_interp_on > 0) pm_gpu_begin_wait();
 }
 
-void pm_gpu_end(void) {
+/* CORE2-3a: walker side entry (nd_wq.c): the game thread posts it, the body runs on the walker side. */
+static void pm_gpu_end_w(void);
+typedef struct { int unused; } Wq_pm_gpu_end;
+static void wq_pm_gpu_end(void* a) { Wq_pm_gpu_end* q = (Wq_pm_gpu_end*)a; (void)q; pm_gpu_end_w(); }
+void pm_gpu_end(void) { Wq_pm_gpu_end q = { 0 }; pm_wq_post(wq_pm_gpu_end, &q, sizeof q); }
+static void pm_gpu_end_w(void) {
     if (pm_frame_count() % 100u == 0) rect_log(pm_frame_count()); /* RECT-2b diag: rect and rectwhy lines every 100 frames */
     pm_gpu_begin_wait();
     if (!gpu_ok) return;
@@ -2193,7 +2248,12 @@ void pm_gpu_end(void) {
 }
 
 void pm_gpu_rect_sync(void) { if (nb.rect_open) flush(); }
-int pm_gpu_drew(void) { pm_gpu_begin_wait(); if (nb.rect_open) flush(); return drew; }
+/* CORE2-3a: walker side entry (nd_wq.c): the game thread calls it, the body runs on the walker side. */
+static int pm_gpu_drew_w(void);
+typedef struct { int ret; } Wq_pm_gpu_drew;
+static void wq_pm_gpu_drew(void* a) { Wq_pm_gpu_drew* q = (Wq_pm_gpu_drew*)a; (void)q; q->ret = pm_gpu_drew_w(); }
+int pm_gpu_drew(void) { Wq_pm_gpu_drew q = { 0 }; pm_wq_call(wq_pm_gpu_drew, &q, sizeof q); return q.ret; }
+static int pm_gpu_drew_w(void) { pm_gpu_begin_wait(); if (nb.rect_open) flush(); return drew; }
 
 void pm_gpu_log_stats(const char* tag) {
     pm_log_d("mem %s gpu max per frame: draws %u, command buffer %d%%", tag, draws_max, (int)(cmd_max * 100.f));
@@ -2819,7 +2879,12 @@ static unsigned ndn_why[16]; /* S3L-1: fallback records of the window by code (0
 static unsigned ndn_clr0, ndn_smp0;
 static double ndt_ms(int k, unsigned ns) { return ns ? (double)ndt_sum[k] / ((double)ns * 268112.0) : 0.0; }
 /* MDL-5e debug: the window so far at the end of a tour (a tour shorter than 300 frames has no ndm window line). */
-void pm_gpu_ndn_window_end(void) {
+/* CORE2-3a: walker side entry (nd_wq.c): the game thread posts it, the body runs on the walker side. */
+static void pm_gpu_ndn_window_end_w(void);
+typedef struct { int unused; } Wq_pm_gpu_ndn_window_end;
+static void wq_pm_gpu_ndn_window_end(void* a) { Wq_pm_gpu_ndn_window_end* q = (Wq_pm_gpu_ndn_window_end*)a; (void)q; pm_gpu_ndn_window_end_w(); }
+void pm_gpu_ndn_window_end(void) { Wq_pm_gpu_ndn_window_end q = { 0 }; pm_wq_post(wq_pm_gpu_ndn_window_end, &q, sizeof q); }
+static void pm_gpu_ndn_window_end_w(void) {
     unsigned f = pm_frame_count();
     char wb[160]; unsigned wn = 0; wb[0] = 0;
     for (unsigned c = 0; c < 16u; c++) if (ndn_why[c]) { if (!wn) wn += (unsigned)snprintf(wb, sizeof wb, " why"); wn += (unsigned)snprintf(wb + wn, sizeof wb - wn, " %u:%u", c, ndn_why[c]); }
@@ -3567,7 +3632,12 @@ void pm_gpu_tex_rect_z(int x0, int y0, int x1, int y1, float s0, float t0, float
 }
 
 /* F03: one pixel of the last finished depth buffer (D24S8, same tiling and rotation as pm_gpu_read_frame). */
-int pm_gpu_depth_at(int x, int y, unsigned* d24) {
+/* CORE2-3a: walker side entry (nd_wq.c): the game thread calls it, the body runs on the walker side. */
+static int pm_gpu_depth_at_w(int x, int y, unsigned* d24);
+typedef struct { int x; int y; unsigned* d24; int ret; } Wq_pm_gpu_depth_at;
+static void wq_pm_gpu_depth_at(void* a) { Wq_pm_gpu_depth_at* q = (Wq_pm_gpu_depth_at*)a; (void)q; q->ret = pm_gpu_depth_at_w(q->x, q->y, q->d24); }
+int pm_gpu_depth_at(int x, int y, unsigned* d24) { Wq_pm_gpu_depth_at q = { x, y, d24 }; pm_wq_call(wq_pm_gpu_depth_at, &q, sizeof q); return q.ret; }
+static int pm_gpu_depth_at_w(int x, int y, unsigned* d24) {
     pm_gpu_begin_wait();
     if (nb.rect_open) flush(); /* DR1 */
     const unsigned char* src;

@@ -100,8 +100,12 @@ static void gbi_walk(Gfx* gfxList, u32 n) {
     if (pm_ph_on) pm_pf_nd_add(svcGetSystemTick() - t0, 1);
 }
 
-/* PI1: walk one task. */
-static void gbi_task(Gfx* gfxList, u32 n) {
+/* PI1: walk one task. CORE2-3a: the walk is walker-side work: the game thread posts the task (nd_wq.c; CORE2-3c queues it). */
+typedef struct { Gfx* list; u32 n; } WqTask;
+static void gbi_task_w(Gfx* gfxList, u32 n);
+static void wq_task(void* a) { WqTask* t = (WqTask*)a; gbi_task_w(t->list, t->n); }
+static void gbi_task(Gfx* gfxList, u32 n) { WqTask t = { gfxList, n }; pm_wq_post(wq_task, &t, sizeof t); }
+static void gbi_task_w(Gfx* gfxList, u32 n) {
     if (pm_fs_on) pm_fs_tasks++; /* WMODEL: render tasks per frame, fsplit only */
     pm_gpu_begin_wait(); /* LB1: every gbi task (also the key replay of pm_interp_key_draw) waits for the GPU tail of the last frame */
     FS_MARK(FS_GBI); /* LB1b: the walk after the wait is gbi work, not rest (fsplit label only) */
@@ -154,8 +158,8 @@ void pm_gfx_bg_flush(void) { if (bg_pend) bg_run(); }
 void pm_interp_drop_keys(void) { nkey = 0; } /* F11-10 */
 
 /* F06-2: the key frame of the last step, drawn without replacements. Returns 0 when the step built no list. */
-int pm_interp_key_draw(void) {
-    if (!nkey) return 0;
+static void wq_key_draw(void* a) { /* CORE2-3a: the key frame (begin, tasks, end) is one walker-side message */
+    (void)a;
     pm_fs_q = 1; /* FS2: a key frame is not a drawn frame: no fsplit mark */
     pm_gpu_begin(1);
     PH_PUSH(PH_GBI);
@@ -164,6 +168,10 @@ int pm_interp_key_draw(void) {
     nkey = 0;
     pm_gpu_end();
     pm_fs_q = 0;
+}
+int pm_interp_key_draw(void) {
+    if (!nkey) return 0;
+    pm_wq_post(wq_key_draw, NULL, 0);
     return 1;
 }
 

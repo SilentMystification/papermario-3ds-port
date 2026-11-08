@@ -376,6 +376,7 @@ static inline void* ptr_res(u32 w) {
 void* pm_gbi_ptr_of(u32 w) { return ptr_of(w); } /* MDL-1: the walker's segment resolver, for the R13 texture block (nd_model.c nd_r13_desc) */
 void pm_gbi_init(void) {
     nd_c2_init();
+    if (pm_c2own < 0) pm_c2own = pm_debug_has("c2own"); /* CORE2-3a: ownership check (nd_wq.c) */
     nd_mtx_reset();
     memset(vert_live, 0, sizeof vert_live);
     nd_ws.geom = G_SHADE | G_SHADING_SMOOTH;
@@ -398,20 +399,20 @@ void gbi_cold_modifyvtx(u32 w0, u32 w1) { /* B5: F3DEX2 w0 = op, where, vertex *
 static void gbi_run1(void* list, unsigned nbytes);
 void nd_c2_walked(void);
 void nd_c2_drain(const char* why);
-static int walking; /* a walk is running (nested runs included) */
 void pm_gbi_run(void* list, unsigned nbytes) {
-    walking++;
+    PM_WALK_OWN(); /* CORE2-3a: a walk runs on the walker side only (gbi_task, a posted message) */
+    pm_walk_side++;
     if (nd_c2_on > 0) { nd_c2_task(list); gbi_run1(list, nbytes); nd_c2_walked(); }
     else gbi_run1(list, nbytes);
-    walking--;
+    pm_walk_side--;
 }
 /* CORE2-3b: the game thread is about to write memory that the walk of the last frame may have read: a ROM read into RAM, a decode, a map
  * load, a game mode change (load writes, the CORE2-2 census hazard 4). The walker must be idle from here on. With the serial walker every
  * task is walked inside nuGfxTaskStart, so it is idle at every call outside a walk; the census (switch c2haz) checks the writes made
- * before this point and starts the frame clean. The threaded walker (CORE2-3c) waits for its queue here. Calls made inside a walk (the
- * walker's own reads) do nothing. */
+ * before this point and starts the frame clean. The threaded walker (CORE2-3c) waits for its queue here. Calls made on the walker side
+ * (the walker's own reads) do nothing. */
 void pm_walk_drain(const char* why) {
-    if (walking) return;
+    if (pm_walk_side) return;
     if (nd_c2_on > 0) nd_c2_drain(why);
 }
 static void gbi_run1(void* list, unsigned nbytes) {
