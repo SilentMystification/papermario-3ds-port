@@ -1,19 +1,38 @@
-# Row MERLEE: Merlee's upgrade spell in dro_02 soft-hangs (the card effect does not play)
+# Row MERLEE: Merlee spell cutscene in dro_02 (cards, fade, lag)
 
-## Facts (user, O3DS console, 2026-11-06, build of nds1 around b09ac893c or later)
-In dro_02 (Merlee), casting the upgrade spell: the card effect does not play, then the spell animation sequence never ends (soft hang: the game runs, the script waits forever).
+## User facts (bug, 2026-11-08, console, wide mode)
+Trigger: dro_02, Merlee near -110 0 -421; talk, pay, she casts the spell (src/world/area_dro/dro_02/npc_merlee.c). The whole cutscene runs, with three faults:
+1. CARDS: the cards do not move correctly when shuffled; their movement in general is buggy (RitualCards, imgfx IMGFX_ANIM_SHUFFLE_CARDS and FLIP_CARD_1..3, npc_merlee.c:172-280, appendGfx_ritual_card).
+2. FADE: the screen does not fade to black; instead the transparency of all on-screen objects is off for the time of the cutscene.
+3. LAG: very slow at the start (after she spins and the light around Merlee starts) and at the end (the star effect on Mario).
+Reproducing scenario: merlee_spell (azt_scenarios.json:7147, status unverified; padscript pad_merlee.txt, until "merlee: ritual state D (spell done)").
 
-## Second bug in the same row (user, 2026-11-06)
-Super block upgrade: when Mario hits a super block and picks a partner, the visuals draw wrong: the flash effect and the dots that move onto the partner (the upgrade effect). Trace it in the same way in step 1 (the super block script in src/entity or src/world, the effect ids it plays, their render functions in src/effects/, what draw path they take on the 3DS now: native sprite records S4, native model records S3N, or the walker with which fallback). Name what is wrong (texture, blend, matrix, depth, a missing draw) with file:line. Both bugs go in docs/handoff/diag_fx.md (one section each).
+## Goal
+Each fault traced by code to a file, line and value first (CLAUDE.md rule 5), then fixed.
+1. Cards: the imgfx shuffle anim drives vertex positions per frame (imgfx anim keyframes); name what the port does with the anim vertices / matrix (interp, fp precision, the cached imgfx vertex buffer, the native draw of imgfx components) and why the motion is wrong.
+2. Fade: find the call that fades the screen (set_screen_overlay / the ritual's fade, or a fill with alpha) and the render state the port uses; name why it switches off blending of other draws (a stuck render mode, combine or alpha compare left set, a fullscreen fill drawn without blend).
+3. Lag: with prof=30 or a cls line in Azahar (direction only) find which producer class or effect (the light effect, the star effect: fx_* in src/effects) costs the frames; the console decides. Name the per-frame work (e.g. an effect rebuilt each frame, a texture re-upload, a fallback path).
 
-## Step 1: READ-ONLY trace (no edit, no build)
-- Find the spell script: src/world/area_dro/dro_02 (Merlee scripts, grep `Merlee` / `PlayEffect` / `EFFECT_` in that folder) and the effect it plays for the card (grep the effect id in src/effects/, the effect's update and render functions, and the effect table in src/effects.c).
-- Find what the script waits on (the effect's end, a flag the effect sets, a timer, a battle-state or a sprite animation end).
-- Check the port side for that effect: is it compiled in (3ds/CMakeLists.txt, any port stub or skip list, effect overlay loading in 3ds/src), does its spawn return NULL on the 3DS (allocation, a missing overlay, a refused data pointer), does its update run (effect_update list), does its render go through a path that the native draw work changed (G_PM_* words, the record arms in pm_gbi.c, nd_sprite or nd_model fallbacks).
-- Write docs/handoff/diag_fx.md: the wait condition with file:line, the reason it is never met on the 3DS (or the 2 most likely reasons), and the Azahar scenario that reproduces it (warp=dro_02:<entry> story=<value with Merlee available>, padscript to talk and pick the spell, until-line the effect spawn log or the hang). Commit only that file.
+## Start state
+Worktree build3ds/wt/merlee, branch merlee from nds1 (current). Copy assets/us and ver/us/build into it.
 
-## Step 2: fix (a code agent, after step 1)
-The fix named in diag_merlee.md, with the gate: the scenario shows the card effect in a shot and the script reaches its end (log line). Lane merlee: `PM_LANE=merlee`, azt `-Build merlee`.
+## Touch only
+The paths the traces name. src/ game code only under #ifdef TARGET_3DS and only if the port path cannot express it. Do not edit src/msg.c.
+
+## Done criteria
+1. Traces for all three in the handback.
+2. Build; nd_host PASS.
+3. merlee_spell: shots of the shuffle show the cards in the N64 motion (3 cards moving apart and swapping), the fade shot shows the screen going dark with objects keeping their transparency; the scenario becomes verified.
+4. Lag: the cls/prof numbers of the two slow parts before and after (Azahar direction); a console prof run is the final judge (the user pushes).
+5. The 4 byte gates (spot_mac01_det, mdl5_iwa10_det, battle_start_f182_cold, nok11_det 0000-0015) byte-equal unless the trace shows they use the changed path (then name the pixels).
+Affected scenarios (no others): merlee_spell, the 4 byte gates.
 
 ## Rules
-Main folder, branch nds1. Other code agents work here (S6: entities, MENU: menu files): do not edit their files. Pathspec commits only, own hunks only, JSON files stay valid. Never `git add -N`, `git add -A`, `git commit -a`, `git reset`, `git stash`, `git checkout`, `git restore`, `bench.py build-at`. No toggles, no stubs, no git push, no console push, no attribution. Never commit 3ds/src/map_restore_table.c (md5 437b90efe5f32b82394ce2ece094210e). Game source only inside `#ifdef TARGET_3DS`.
+CLAUDE.md rules 5, 7, 9, 11. PM_LANE=merlee PM_ROW=merlee on every build.sh and bench call. No git stash. No toggles, no stubs. 2 tries per named cause; a fault that fails twice on two causes goes to the handback, the others continue.
+
+## Commands
+- Build: python 3ds/tools/gen_map_restore.py; PM_ROW=merlee PM_LANE=merlee sh 3ds/build.sh; restore 3ds/src/map_restore_table.c.
+- Test: PM_ROW=merlee PM_LANE=merlee python 3ds/tools/bench.py run <bench> --row merlee --lane merlee --why "<text>"
+
+## At the end
+Delete this row file and .wt_keep in the last commit. SendMessage main "merlee ready <hash>".

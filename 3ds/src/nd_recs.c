@@ -107,7 +107,7 @@ extern void pm_gpu_model_key(const uint32_t* rec, NdMKey* k); /* S3N-6 */
 extern void pm_gpu_ndm_end(void);
 extern int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, const NdMKey* mk); /* S3N-4: the switch */
 extern int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e);
-extern int nd_r11_state(uint32_t addr, uint32_t* cw, int* has_cb, uint32_t* mo, unsigned* nmo); /* MDL-5f */
+extern int nd_r11_state(uint32_t addr, const uint32_t** nr, uint32_t* cw, int* has_cb, uint32_t* mo, unsigned* nmo); /* MDL-5f; POND: nr */
 int rec_nat_last; /* WCEN2: 1 when the last rec_run drew natively */
 static int nmn_sw(void) { static int v = -1; if (v < 0) v = pm_debug_has("nomodelnat") ? 1 : 0; return v; } /* MDL-5: switch nomodelnat, the walker geometry of every model record (the byte reference) */
 unsigned rec_run(const Gfx* q) {
@@ -138,28 +138,35 @@ unsigned rec_run(const Gfx* q) {
     /* MDL-5f: the walker order is record combine, render mode list, pre list (rec_apply), so a state-only pre list's SETCOMBINE and SETOTHERMODE
      * ops win over the record's words. The native draw gets them in the same order: its combine replaces cwp, the render mode list is copied
      * without its SETCOMBINE (when the pre list has one) and its SETOTHERMODE ops are followed by the pre list's ops, then ENDDL. */
-    const uint32_t* mwp = (const uint32_t*)ModelRenderModes[(q->words.w0 >> 16) & 0xffu];
-    const uint32_t* cwp = q[4].words.w1 ? (const uint32_t*)(uintptr_t)q[4].words.w1 : NULL;
+    /* POND: a pre list with a nested model record (the mac_00 water copy, nd_model.c nd_r11_walk): that record set the draw state last, so the draw
+     * takes its words (flags, prim, bind, R13 words, render mode list, combine); the geometry stays this record's. */
+    const Gfx* qs = q;
+    const uint32_t* mwp;
+    const uint32_t* cwp;
     uint32_t mcomp[2 * 24], cwr[2];
+    int hcb = 0; unsigned nmo = 0; uint32_t mo[8];
     if (q[11].words.w0) {
-        int hcb = 0; unsigned nmo = 0; uint32_t mo[8];
-        nd_r11_state((uint32_t)q[11].words.w0, cwr, &hcb, mo, &nmo);
-        if (hcb) cwp = cwr;
-        if (hcb || nmo) {
-            unsigned k = 0;
-            for (unsigned i = 0; i < 16u && (mwp[2 * i] >> 24) != 0xdfu; i++) {
-                if (hcb && (mwp[2 * i] >> 24) == 0xfcu) continue; /* G_SETCOMBINE: the pre list's combine replaces it */
-                mcomp[2 * k] = mwp[2 * i]; mcomp[2 * k + 1] = mwp[2 * i + 1]; k++;
-            }
-            for (unsigned j = 0; j < nmo; j++, k++) { mcomp[2 * k] = mo[2 * j]; mcomp[2 * k + 1] = mo[2 * j + 1]; }
-            mcomp[2 * k] = 0xdfu << 24; mcomp[2 * k + 1] = 0;
-            mwp = mcomp;
-        }
+        const uint32_t* nr = NULL;
+        nd_r11_state((uint32_t)q[11].words.w0, &nr, cwr, &hcb, mo, &nmo);
+        if (nr) qs = (const Gfx*)nr;
     }
-    if (ndm) pm_gpu_ndm_begin((const uint32_t*)q, mwp,
-        q[4].words.w1 ? (const uint32_t*)(uintptr_t)q[4].words.w1 : NULL, (const void*)(uintptr_t)q->words.w1, (q->words.w0 >> 8) & 0x7fu, (const void*)(uintptr_t)q[12].words.w0, &mk);
-    else if (!nmn_sw() && pm_gpu_model_native((const uint32_t*)q, mwp,
-        cwp, (const void*)(uintptr_t)q->words.w1, (q->words.w0 >> 8) & 0x7fu, (const void*)(uintptr_t)q[12].words.w0, &mk) >= 0) {
+    mwp = (const uint32_t*)ModelRenderModes[(qs->words.w0 >> 16) & 0xffu];
+    cwp = qs[4].words.w1 ? (const uint32_t*)(uintptr_t)qs[4].words.w1 : NULL;
+    if (hcb) cwp = cwr;
+    if (hcb || nmo) {
+        unsigned k = 0;
+        for (unsigned i = 0; i < 16u && (mwp[2 * i] >> 24) != 0xdfu; i++) {
+            if (hcb && (mwp[2 * i] >> 24) == 0xfcu) continue; /* G_SETCOMBINE: the pre list's combine replaces it */
+            mcomp[2 * k] = mwp[2 * i]; mcomp[2 * k + 1] = mwp[2 * i + 1]; k++;
+        }
+        for (unsigned j = 0; j < nmo; j++, k++) { mcomp[2 * k] = mo[2 * j]; mcomp[2 * k + 1] = mo[2 * j + 1]; }
+        mcomp[2 * k] = 0xdfu << 24; mcomp[2 * k + 1] = 0;
+        mwp = mcomp;
+    }
+    if (ndm) pm_gpu_ndm_begin((const uint32_t*)qs, mwp,
+        qs[4].words.w1 ? (const uint32_t*)(uintptr_t)qs[4].words.w1 : NULL, (const void*)(uintptr_t)qs->words.w1, (qs->words.w0 >> 8) & 0x7fu, (const void*)(uintptr_t)q[12].words.w0, &mk);
+    else if (!nmn_sw() && pm_gpu_model_native((const uint32_t*)qs, mwp,
+        cwp, (const void*)(uintptr_t)qs->words.w1, (qs->words.w0 >> 8) & 0x7fu, (const void*)(uintptr_t)q[12].words.w0, &mk) >= 0) {
         /* S3N-4: the record drew natively (nd_model_draw): no walker geometry. The native draws set the TEV and the texture unit, so the walker
          * sends its combine and render mode again at its next op (the shadows of those ops are cleared). */
         nat = 1;
