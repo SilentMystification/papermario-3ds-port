@@ -356,7 +356,6 @@ int ent_run(const Gfx* l, EntKey* k, u32 segid) {
         }
     } else if (k->st == ENT_REF && k->why == 6 && f >= k->retry) { ent_compile(k, l); }
     k->ndraw++; k->segid = segid;
-    { static unsigned msk = 0xffffffffu; if (msk == 0xffffffffu) { char b[16]; msk = pm_debug_value("entskip", b, sizeof b) ? (unsigned)strtoul(b, NULL, 16) : 0u; } if (k->id < 32u && (msk >> k->id & 1u)) return 0; } /* debug switch entskip=<hex mask of key ids>: those keys run the walker (bisect aid) */
     if (k->st != ENT_OK) { ent_c.fb++; if (k->st == ENT_REF) ent_c.why[k->why < 12 ? k->why : 0]++; ent_log(); return 0; }
     if (entchk_on()) { ent_c.nat++; ent_log(); return 0; }
     for (unsigned s = 0; s < k->nseg; s++) {

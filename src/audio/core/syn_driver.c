@@ -63,34 +63,7 @@ extern Acmd* AlCmdListBuffers[3];
 static u8 AuStereoReq = true, AuStereoPending;
 static u16 AuGlobalVolumeCtl = AU_MAX_VOLUME_16;
 
-/* AU2 trace (switch au2trace): per audio block, FNV of the commands as the control side makes them (c), as the render side runs them (r),
- * and of the PCM block (p). Same code for au2off and AU2 on. Commands hash by value: pointers are replaced by the instrument content. */
-static int au2_tr = -1;
-#define AU2_TR_MAX 8192
-static u32 au2_tr_c[AU2_TR_MAX], au2_tr_r[AU2_TR_MAX], au2_tr_p[AU2_TR_MAX], au2_tr_nc, au2_tr_nr, au2_cur_c = 2166136261u, au2_cur_r = 2166136261u;
-static u32 au2_fnv(u32 h, const void* p, u32 n) { const u8* q = p; while (n--) h = (h ^ *q++) * 16777619u; return h; }
-static u32 au2_cmd_hash(const AuCmd* c) {
-    u32 h = 2166136261u;
-    AuCmd t = *c;
-    if (t.op == AUC_BLOCK || t.op == AUC_START_PARAMS || t.op == AUC_SET_WAVETABLE) t.v0 = 0;
-    h = au2_fnv(h, &t, sizeof t);
-    if ((c->op == AUC_START_PARAMS || c->op == AUC_SET_WAVETABLE) && c->v0) {
-        const Instrument* in = (const Instrument*)(uintptr_t)c->v0;
-        h = au2_fnv(h, &in->wavData, 4); h = au2_fnv(h, &in->wavDataLength, 4); h = au2_fnv(h, &in->loopStart, 4); h = au2_fnv(h, &in->loopEnd, 4);
-        h = au2_fnv(h, &in->loopCount, 4); h = au2_fnv(h, &in->codebookSize, 4); h = au2_fnv(h, &in->type, 1);
-        if (in->predictor) h = au2_fnv(h, in->predictor, 64);
-        if (in->loopState) h = au2_fnv(h, in->loopState, 32);
-    }
-    return h;
-}
 static void au2_put(AuCmd* c) {
-    if (au2_tr < 0) au2_tr = pm_debug_has("au2trace");
-    if (au2_tr) {
-        u32 h = au2_cmd_hash(c);
-        if (au2_tr_nc >= 1534 * 3 && au2_tr_nc <= 1536 * 3 + 2) pm_log("au2cmd blk %u op %u idx %u b1 %u b2 %u s1 %d s2 %d v0 %d v1 %d v2 %d", au2_tr_nc, c->op, c->idx, c->b1, c->b2, c->s1, c->s2, c->op == AUC_BLOCK || c->op == AUC_START_PARAMS || c->op == AUC_SET_WAVETABLE ? 0 : c->v0, c->v1, c->v2);
-        au2_cur_c = au2_fnv(au2_cur_c, &h, 4);
-        if (c->op == AUC_BLOCK) { if (au2_tr_nc < AU2_TR_MAX) au2_tr_c[au2_tr_nc] = au2_cur_c; au2_tr_nc++; au2_cur_c = 2166136261u; }
-    }
     if (c->op == AUC_START_VOICE || c->op == AUC_START_PARAMS) au2_vgen_c[c->idx]++;
     if (c->op == AUC_BLOCK) au2_blk_emit++;
     if (pm_au2_active) pm_au2_emit(c); else au2_exec(c);
@@ -125,15 +98,6 @@ static void au2_frame_end(void) {
     au2_hist_blk[au2_frame_no & 3] = au2_blk_emit;
     au2_hist_job[au2_frame_no & 3] = pm_au2_committed();
     au2_frame_no++;
-}
-void au2_trace_dump(void) {
-    u32 t;
-    if (!au2_tr) return;
-    pm_log("au2trace blocks control %u render %u", au2_tr_nc, au2_tr_nr);
-    for (t = 1400; t < 1600 && t * 3 + 2 < au2_tr_nr && t * 3 + 2 < AU2_TR_MAX; t++) {
-        u32 b = t * 3;
-        pm_log("au2trace tick %u c %08x %08x %08x r %08x %08x %08x p %08x %08x %08x", t, au2_tr_c[b], au2_tr_c[b + 1], au2_tr_c[b + 2], au2_tr_r[b], au2_tr_r[b + 1], au2_tr_r[b + 2], au2_tr_p[b], au2_tr_p[b + 1], au2_tr_p[b + 2]);
-    }
 }
 #else
 #define AU2_X(name) name
@@ -1070,7 +1034,6 @@ void au_init_delay_channel(s16 channel) {
 
 /* Render side: run one command. Same functions, same arguments, same order as the calls above. */
 void au2_exec(const AuCmd* c) {
-    if (au2_tr > 0 && c->op != AUC_CLEAN_DMA && c->op != AUC_POST) { u32 h = au2_cmd_hash(c); au2_cur_r = au2_fnv(au2_cur_r, &h, 4); }
     switch (c->op) {
         case AUC_STOP_VOICE: au_syn_stop_voice_x(c->idx); break;
         case AUC_START_VOICE: au2_vgen_r[c->idx]++; au_syn_start_voice_x(c->idx); break;
@@ -1099,11 +1062,6 @@ void au2_exec(const AuCmd* c) {
             if (pm_dspa_enabled) { pm_dspa_pace(); au_dsp_block(); }
             else au_render_block_x(AlCmdListBuffers[0], (s16*)(uintptr_t)c->v0);
             au2_blk_done++;
-            if (au2_tr > 0) {
-                if (au2_tr_nr < AU2_TR_MAX) { au2_tr_r[au2_tr_nr] = au2_cur_r; au2_tr_p[au2_tr_nr] = au2_fnv(2166136261u, (void*)(uintptr_t)c->v0, 4 * AUDIO_SAMPLES); }
-                au2_tr_nr++;
-                au2_cur_r = 2166136261u;
-            }
             break;
         case AUC_CLEAN_DMA: au2_clean_dma_exec(); break;
         case AUC_POST: au2_post_exec((void*)(uintptr_t)c->v0, (unsigned)c->v1); break;

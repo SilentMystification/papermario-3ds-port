@@ -92,9 +92,6 @@ static int warp_on, warp_done, scene_f0 = -1, smoke_on;
    map of the list, TOUR_FRAMES frames each. Log lines "tour: ...". Debug tool only (class E). */
 #define TOUR_FRAMES 40
 static char tour[6000];
-static char blist[8000];
-static const char* blist_next;
-static int bl_state, bl_n, bl_t;
 static const char* tour_next;
 static unsigned tour_f0, tour_ts;
 static int tour_n, tour_wait;
@@ -380,15 +377,6 @@ int pm_warp_active(void) {
             }
         }
     }
-    if (pm_debug_value("battlelist", v, sizeof v) && v[0] == '@') { /* C2R: battlelist=@file, one <formation>:<stage> per line, one Azahar start for the whole list (battlen=<frames> each, default 30) */
-        FILE* bf = fopen(v + 1, "r");
-        if (bf) {
-            size_t n = fread(blist, 1, sizeof blist - 1, bf);
-            fclose(bf);
-            blist[n] = 0;
-            blist_next = blist;
-        }
-    }
     /* F01: a tour visits maps at story 0 with a new file (no partner). The real game has a partner at trd_06 and later maps (trd_06 InitializeFallingPartner, partner_walking_enable need one), so the tour uses Goombario unless partner= says otherwise. */
     if (tour_next != NULL && w_partner == 0) w_partner = 1;
     /* H06e: a warp past the prologue also needs a partner. tik_01_CheckDripCollisionWithNPC reads the partner npc, the real game has one in the sewers. */
@@ -450,10 +438,6 @@ static void warp_setup(s16 areaID, s16 mapID) {
     gGameStatusPtr->entryID = (s16)w_entry;
     if ((w_loadslot < 0 && !sf_ok) || w_story_set) evt_set_variable(NULL, GB_StoryProgress, w_story); /* WARPFIX: a loaded save keeps its story */
     if (w_flag && w_loadslot < 0 && !sf_ok) evt_set_variable(NULL, w_flag, 1);
-    if (pm_debug_has("mapflags")) { /* V23b: mapflags sets every GF_MAP_* flag (visited spaces) so the pause map shows the path dots */
-        s32 mi;
-        for (mi = GF_MAP_ToadTown; mi <= GF_MAP_MariosHouse; mi++) evt_set_variable(NULL, mi, 1);
-    }
     if (w_partner > 0 && w_partner < 12 && w_loadslot < 0 && !sf_ok) { /* slice F02: a map script that calls EnablePartnerAI needs a partner (WARPFIX: a loaded save keeps its partners) */
         gPlayerData.partners[w_partner].enabled = 1;
         gPlayerData.curPartner = w_partner;
@@ -469,8 +453,8 @@ static void warp_setup(s16 areaID, s16 mapID) {
 int pm_warp_preset_count(void) { return (int)ARRAY_COUNT(presets); }
 
 /* PT01b: test maps (area_tst, ids tst_*) are cut content. tst_12 fills the 96 effect slots and crashed the N3DS (docs/plans/n3crash.md, Q-F10 option B).
- * The list of maps for the Warp-to option and the options.ini reader do not offer them, and a saved or switch value is ignored. Switch warptest allows them. */
-int pm_warp_is_test_map(const char* id) { return id && strncmp(id, "tst_", 4) == 0 && !pm_debug_has("warptest"); }
+ * The list of maps for the Warp-to option and the options.ini reader do not offer them, and a saved or switch value is ignored. */
+int pm_warp_is_test_map(const char* id) { return id && strncmp(id, "tst_", 4) == 0; }
 
 /* PT01: every map of gAreas as one flat list (area order, map order), without the test maps. */
 int pm_warp_map_count(void) {
@@ -1015,10 +999,7 @@ static void tour_step(void) {
     gGameStatusPtr->areaID = areaID;
     gGameStatusPtr->mapID = mapID;
     gGameStatusPtr->entryID = (s16)entry;
-    {   /* X01: tourfx=<n> uses ScreenTransition n for the tour changes (default TRANSITION_STANDARD) */
-        char fx[8];
-        set_map_transition_effect(pm_debug_value("tourfx", fx, sizeof fx) ? (ScreenTransition)atoi(fx) : TRANSITION_STANDARD);
-    }
+    set_map_transition_effect(TRANSITION_STANDARD);
     set_game_mode(GAME_MODE_CHANGE_MAP);
     tour_wait = 1;
 }
@@ -1045,49 +1026,6 @@ static s32 battle_name_value(const char* s, unsigned n, s32 dflt) {
     return (s32)strtol(t, NULL, 0);
 }
 
-/* C2R: battlelist runs one battle after the other in one process. A battle ends through the real BATTLE_STATE_END_BATTLE (the way a won battle ends). */
-static void battlelist_tick(unsigned f) {
-    char vn[16];
-    unsigned per = pm_debug_value("battlen", vn, sizeof vn) ? (unsigned)atoi(vn) : 30;
-    if (!blist_next) return;
-    if (bl_state == 0 && get_game_mode() == GAME_MODE_WORLD && f >= (unsigned)bl_t) {
-        char line[96];
-        unsigned i = 0;
-        while (*blist_next == '\n' || *blist_next == '\r' || *blist_next == ' ') blist_next++;
-        if (!*blist_next) {
-            pm_log("battlelist: done, %d battles", bl_n);
-            blist_next = NULL;
-            return;
-        }
-        while (*blist_next && *blist_next != '\n' && *blist_next != '\r' && i + 1 < sizeof line) line[i++] = *blist_next++;
-        line[i] = 0;
-        const char* c = strchr(line, ':');
-        s32 formation = battle_name_value(line, c ? (unsigned)(c - line) : i, BTL_KMR_1_FORMATION_00);
-        s32 stage = battle_name_value(c ? c + 1 : "", c ? (unsigned)strlen(c + 1) : 0, BTL_KMR_1_STAGE_01);
-        pm_log("battlelist: %d start %s (formation %d stage %d) at scene frame %u", bl_n, line, (int)formation, (int)stage, f);
-        bl_n++;
-        gEncounterState = ENCOUNTER_STATE_NONE;
-        set_battle_stage(stage);
-        load_battle(formation);
-        bl_state = 1;
-        bl_t = (int)f;
-    } else if (bl_state == 1 && get_game_mode() == GAME_MODE_BATTLE && f - (unsigned)bl_t >= per) {
-        btl_set_state(BATTLE_STATE_END_BATTLE);
-        bl_state = 2;
-        bl_t = (int)f;
-    } else if (bl_state == 2) {
-        if (get_game_mode() == GAME_MODE_WORLD) {
-            bl_state = 0;
-            bl_t = (int)f + 10;
-        } else if (f - (unsigned)bl_t > 900) {
-            pm_log_w("battlelist: battle %d did not end in 900 frames, mode %d, stop", bl_n - 1, (int)get_game_mode());
-            blist_next = NULL;
-        }
-    } else if (bl_state == 1 && f - (unsigned)bl_t > 900) {
-        pm_log_w("battlelist: battle %d never reached the battle mode, mode %d, stop", bl_n - 1, (int)get_game_mode());
-        blist_next = NULL;
-    }
-}
 
 /* ENCCRASH: the side effects of a real touch (encounter.c update_encounters_neutral, START_BATTLE, ENCOUNTER_TRIGGER_NONE). Without them
  * the touched enemy's AI and aux scripts keep running into the battle, and the hit scripts never start. Mirror of that case; the game
@@ -1210,19 +1148,6 @@ static void battle_hooks(unsigned f) {
         set_battle_stage(stage);
         load_battle(formation);
     }
-    if (f >= at + 10 && pm_debug_has("runaway") && get_game_mode() == GAME_MODE_BATTLE) { /* HUDB1 debug: the menu Run choice (btl_states_menus.c:3802) without input, from the player menu state. It sets the move and enters BATTLE_STATE_RUN_AWAY, which runs EVS_RunAwayStart (mash meter, flee.c N(draw)). The auto flee contact at BEGIN_TURN is never read while the menu waits for input. */
-        static int once;
-        if (!once && gBattleState == BATTLE_STATE_PLAYER_MENU) {
-            once = 1;
-            gBattleStatus.moveCategory = BTL_MENU_TYPE_RUN_AWAY;
-            gBattleStatus.selectedMoveID = MOVE_RUN_AWAY;
-            gBattleStatus.actionCommandMode = AC_MODE_LEARNED; /* without it EVS_RunAwayStart takes EVS_RunAwayNoCommand: no mash meter */
-            btl_set_state(BATTLE_STATE_RUN_AWAY);
-            pm_log_d("debug runaway: run away chosen from the player menu at scene frame %u", f);
-        } else if (!once && f == at + 60) {
-            pm_log_d("debug runaway: not in the player menu at scene frame %u, state %d", f, (int)gBattleState);
-        }
-    }
     if (f == at + 10 && pm_debug_has("battlemenu") && get_game_mode() == GAME_MODE_BATTLE) { /* UI2 debug: battlemenu sets BS_FLAGS1_MENU_OPEN 10 frames after the battle starts, so the enemy HP bar draws (16C8E0.c:905). The bar also needs the enemy tattled (181810.c is_actor_health_bar_visible): save_tattle_flags is the real Tattle path. */
         int bi;
         extern void save_tattle_flags(s32 actorType);
@@ -1232,23 +1157,8 @@ static void battle_hooks(unsigned f) {
         }
         pm_log_d("debug battlemenu: menu flag set and enemies tattled f%u", f);
     }
-    if (pm_debug_value("flashheavy", v, sizeof v)) { /* V16b2: `flashheavy=<scene frame>` forces a heavy flash (damage 7) on every enemy part, again every 40 frames, with the real part_flash_on path */
-        unsigned ff = (unsigned)atoi(v);
-        if (f >= ff && (f - ff) % 40 == 0 && get_game_mode() == GAME_MODE_BATTLE) {
-            int i;
-            gBattleStatus.lastAttackDamage = 7;
-            for (i = 0; i < ARRAY_COUNT(gBattleStatus.enemyActors); i++) {
-                Actor* a = gBattleStatus.enemyActors[i];
-                ActorPart* p = a ? a->partsTable : NULL;
-                for (; p; p = p->nextPart) {
-                    if (p->decorationTable) { p->decorationTable->flashState = 1; p->decorationTable->flashStateChanged = true; }
-                }
-            }
-            pm_log("debug flashheavy at scene frame %u", f);
-        }
-    }
-    if (f == at && (pm_debug_has("demobattle") || pm_debug_value("demoscene", v, sizeof v))) { /* demoscene=<n>: any real demo scene (index in DemoScenes of src/state_demo.c; 0 nok_12, 5 jan_04 is unchecked) */
-        s32 ds = pm_debug_has("demobattle") ? 1 : atoi(v);
+    if (f == at && pm_debug_value("demoscene", v, sizeof v)) { /* demoscene=<n>: any real demo scene (index in DemoScenes of src/state_demo.c; 0 nok_12, 5 jan_04 is unchecked) */
+        s32 ds = atoi(v);
         pm_log("debug demo: enter GAME_MODE_DEMO at demo scene %d", (int)ds);
         gGameStatusPtr->demoState = DEMO_STATE_ACTIVE;
         gGameStatusPtr->nextDemoScene = ds;
@@ -1256,27 +1166,9 @@ static void battle_hooks(unsigned f) {
     }
 }
 
-/* PT26L: switch camlog logs the default camera and the player once per game step: step, map, area, story, camera update mode, target, lookAt eye and
- * object, yaw, boom yaw, pitch, length, settings pointer, interp alpha, player pos and action state. At most 30 lines per second (one per step). No cost when off. */
-static void pm_camlog(unsigned f) {
-    static int on = -1;
-    static unsigned sec0, n_sec;
-    if (on < 0) on = pm_debug_has("camlog");
-    if (!on) return;
-    unsigned now = pm_uptime_ms();
-    if (now - sec0 >= 1000u) { sec0 = now; n_sec = 0; }
-    if (n_sec++ >= 60) return;
-    Camera* c = &gCameras[CAM_DEFAULT];
-    pm_log("camlog f%u map %d area %d story %d mode %d tgt %.1f %.1f %.1f eye %.1f %.1f %.1f obj %.1f %.1f %.1f yaw %.1f byaw %.1f pitch %.1f len %.1f set %08x alpha %.3f pl %.1f %.1f %.1f as %d",
-           f, (int)gGameStatusPtr->mapID, (int)gGameStatusPtr->areaID, (int)evt_get_variable(NULL, GB_StoryProgress), (int)c->updateMode,
-           c->targetPos.x, c->targetPos.y, c->targetPos.z, c->lookAt_eye.x, c->lookAt_eye.y, c->lookAt_eye.z, c->lookAt_obj.x, c->lookAt_obj.y, c->lookAt_obj.z,
-           c->curYaw, c->curBoomYaw, c->curBoomPitch, c->curBoomLength, (unsigned)(uintptr_t)c->curSettings, c->interpAlpha,
-           gPlayerStatus.pos.x, gPlayerStatus.pos.y, gPlayerStatus.pos.z, (int)gPlayerStatus.actionState);
-}
 
 /* Once per drawn frame (pm_frame_loop). */
 static void pm_statehash(unsigned f) {
-    pm_camlog(f);
     { /* MA1 step 0: switch statehash=<n> logs an FNV-1a hash of the game state every n steps (default 10), and a running hash over all samples.
          * Fields only, no pointers, so the value is equal between builds when the game logic is equal. Use it as the replay check for MA1 edits. */
         static unsigned sh_every, sh_run = 2166136261u, sh_n;
@@ -1306,35 +1198,12 @@ static void pm_statehash(unsigned f) {
 
 void pm_sweep_tick(unsigned f);
 #include "model.h"
-/* Debug tool, switch modeldump=<scene frame>: one log line per model of the map (id, flags, texture id, render mode, display list) and the IA4 texture loads
- * found in its list. Finds a model that the map has but the draw list does not show (PT40). */
+/* Debug switch modellog=<hex model id>: the id whose draws the model code logs (pm_model_log_id) */
 int pm_model_log_id(void) {
     static int id = -2;
     char v[16];
     if (id == -2) id = pm_debug_value("modellog", v, sizeof v) ? (int)strtol(v, NULL, 16) : -1;
     return id;
-}
-static void model_dump(unsigned f) {
-    char v[16];
-    int i;
-    if (!pm_debug_value("modeldump", v, sizeof v) || f != (unsigned)atoi(v)) return;
-    for (i = 0; i < MAX_MODELS; i++) {
-        Model* m = (*gCurrentModels)[i];
-        Gfx* dl;
-        int n, ia4 = 0;
-        if (!m) continue;
-        dl = (m->modelNode && m->modelNode->displayData) ? m->modelNode->displayData->displayList : NULL;
-        for (n = 0; dl && n < 400; n++) {
-            u32 w0 = dl[n].words.w0;
-            if ((w0 >> 24) == 0xDF) break; /* G_ENDDL */
-            if ((w0 >> 24) == 0xFD && ((w0 >> 21) & 7) == 3 && ((w0 >> 19) & 3) == 0) ia4++; /* G_SETTIMG IA 4b */
-        }
-        {
-            ModelNodeProperty* tn = m->modelNode ? get_model_property(m->modelNode, MODEL_PROP_KEY_TEXTURE_NAME) : NULL;
-            pm_log("modeldump %d id %x flags %04x tex %d var %d rm %d cgfx %d dl %p ia4loads %d center %.0f %.0f %.0f texname %s", i, (unsigned)m->modelID, (unsigned)m->flags, (int)m->textureID, (int)m->textureVariation, (int)m->renderMode, (int)m->customGfxIndex, (void*)dl, ia4, m->center.x, m->center.y, m->center.z,
-                   tn && tn->data.p ? (const char*)tn->data.p : "-");
-        }
-    }
 }
 
 /* WARPFIX test switch livewarp=<scene frame>:<map>:<entry>: at that frame of the scene, the warp of the Select menu (pm_warp_live, the call of
@@ -1423,7 +1292,6 @@ static void bosstest_hook(unsigned f) {
 
 void pm_warp_tick(unsigned frame) {
     pm_statehash(frame); /* MA1 step 0: runs in every scene, also without warp */
-    model_dump(frame);
     boss_tick();
     battle_tick(); /* BT2 */
     bypass_tick();
@@ -1441,35 +1309,14 @@ void pm_warp_tick(unsigned frame) {
     unsigned f = frame - (unsigned)scene_f0;
     pm_sweep_tick(f); /* SWEEP: markers and end of one item of the full sweep (pm_sweep.c, switch sweep=<name>) */
     battle_hooks(f);
-    battlelist_tick(f);
     livewarp_hook(f); /* WARPFIX test switch */
     fswarp_hook(f); /* WARPFIX2 test switch */
     bosstest_hook(f); /* WARPFIX2 test switch */
     boss_restore_tick(); /* WARPFIX2 */
-    { /* V24b: btlstatus=poison|paralyze|static|dizzy: every frame in a battle the first enemy actor gets that status, to see the palette effect of actor_rendering.c */
-        char sv[12];
-        if (pm_debug_value("btlstatus", sv, sizeof sv) && get_game_mode() == GAME_MODE_BATTLE && gBattleStatus.enemyActors[0]) {
-            Actor* ea = gBattleStatus.enemyActors[0];
-            if (!strcmp(sv, "flicker")) { ActorPart* ap; for (ap = ea->partsTable; ap; ap = ap->nextPart) ap->opacity = 128; } /* V16: the damage flicker */
-            else if (!strcmp(sv, "static")) { ea->staticStatus = STATUS_KEY_STATIC; ea->staticDuration = 99; }
-            else {
-                ea->debuff = !strcmp(sv, "poison") ? STATUS_KEY_POISON : !strcmp(sv, "paralyze") ? STATUS_KEY_PARALYZE : STATUS_KEY_DIZZY;
-                ea->debuffDuration = 99;
-            }
-        }
-    }
     char ti[8];
     if (f == 30 && pm_debug_value("testitem", ti, sizeof ti)) { /* V07 debug: a real item entity beside the player */
         make_item_entity_nodelay(ti[0] == 'c' ? ITEM_COIN : ti[0] == 's' ? ITEM_STAR_PIECE : ti[0] == 'k' ? ITEM_PULSE_STONE : ITEM_MUSHROOM, gPlayerStatus.pos.x + 60.0f, gPlayerStatus.pos.y, gPlayerStatus.pos.z, ITEM_SPAWN_MODE_FIXED_NEVER_VANISH, 0);
     }
-    if (pm_debug_has("simlog") && f >= 110 && f <= 150) { /* V26: every step, Mario and demo Bills */
-        extern unsigned pm_step_calls;
-        char b[120] = ""; int n = 0, i;
-        for (i = 0; i < 8; i++) { Npc* np = get_npc_safe(i); if (np) n += snprintf(b + n, sizeof b - n, " n%d:%d,%d,%d", i, (int)np->pos.x, (int)np->pos.y, (int)np->pos.z); }
-        pm_log("simstep f%u steps %u mx %d my %d st %u btn %x%s", f, pm_step_calls, (int)gPlayerStatus.pos.x, (int)gPlayerStatus.pos.y, (unsigned)gPlayerStatus.actionState, (unsigned)gGameStatusPtr->demoButtonInput, b);
-    }
-    if (pm_debug_has("simlog") && f % 10 == 0) /* V26: game state per 10 steps, to compare default, fps60 and wide */
-        pm_log("simlog f%u seed %08x pos %d %d %d state %u dstate %d", f, (unsigned)gRandSeed, (int)gPlayerStatus.pos.x, (int)gPlayerStatus.pos.y, (int)gPlayerStatus.pos.z, (unsigned)gPlayerStatus.actionState, (int)gGameStatusPtr->demoState);
     if (pm_debug_has("marlog") && f == 100) { /* UA1 numeric check: 2D px (40 + get_screen_coords x) and the 3D draw px, 100 units to each side of Mario. Values in tenths of a px. */
         extern void get_screen_coords(s32 camID, f32 x, f32 y, f32 z, s32* sx, s32* sy, s32* sz);
         extern float pm_debug_draw_px(s32 camID, float x, float y, float z);
@@ -1514,33 +1361,6 @@ void pm_warp_tick(unsigned frame) {
                (int)gPlayerStatus.pos.z, (gPlayerStatus.flags & PS_FLAG_INPUT_DISABLED) != 0, (unsigned)gPlayerStatus.actionState,
                (int)(gPlayerStatus.gravityIntegrator[0] * 100), (int)(gPlayerStatus.maxJumpSpeed * 1000), (int)(gPlayerStatus.walkSpeed * 100), (int)(gPlayerStatus.runSpeed * 100), (int)gCollisionStatus.curWall, (int)gCollisionStatus.pushingAgainstWall);
     }
-    /* D03 check: switch prevtest turns on the game's own previous-frame blur overlay (OVERLAY_BLUR, real
-     * set_screen_overlay_params_front) from scene frame 100 on (each frame), so the frame-buffer read can be seen. */
-    if (f >= 100 && pm_debug_has("prevtest")) {
-        set_screen_overlay_params_front(12, 200.0f);
-        set_screen_overlay_center(0, 0, 20, 20);
-        set_screen_overlay_center(0, 1, 300, 220);
-    }
-    /* PT08 check: switch msgtest shows MSG_MAC_Bridge_0026 ([Static 50][Shake][Wave][PrintRising]) at the screen position 100, 100 at scene frame 60. */
-    if (f == 60 && pm_debug_has("msgtest")) {
-        static bool msg_done;
-        MessagePrintState* pr = msg_get_printer_for_msg(MSG_MAC_Bridge_0026, &msg_done);
-        msg_printer_set_origin_pos(pr, 100, 100);
-    }
-    /* P02 control: switch ptrtest feeds a host pointer value to each ptrcheck site once, to prove the check logs. Needs ptrcheck. */
-    if (f == 50 && pm_debug_has("ptrtest")) {
-        get_npc_safe(0x200000);
-        evt_get_float_variable(NULL, 0x200000);
-        evt_set_variable(NULL, 0x200000, 1);
-        evt_set_float_variable(NULL, 0x200000, 1.0f);
-    }
-    /* P02 control for the fixes: an Npc pointer must come back from resolve_npc, a raw message buffer must be measured. */
-    if (f == 60 && pm_debug_has("ptrtest")) {
-        extern u8 MessagePlural[];
-        Npc* n = get_npc_safe(NPC_PARTNER);
-        s32 w = get_msg_width((s32)MessagePlural, 0);
-        pm_log("ptrtest: resolve_npc(ptr) %s, partner npc %08x, get_msg_width(raw buffer) %d", (n != NULL && resolve_npc(NULL, (s32)n) == n) ? "ok" : "FAIL", (unsigned)n, (int)w);
-    }
     if (smoke_on && f == smoke_frames) pm_audio_hash_log();
     if (smoke_on && f == smoke_frames) pm_log("warp: smoke done (%d frames in the scene) t=%u ms", smoke_frames, pm_uptime_ms());
 }
@@ -1581,21 +1401,6 @@ void pm_x02_log(int isWorld, int alpha, int x, int y) {
     }
 }
 
-/* HUDB1 debug switch mashlog: one line per draw_mash_meter call (the position it gets, the fill value, the HUD flag) */
-void pm_mash_log(s32 posX, s32 posY, s32 fillValue, s32 showHud) {
-    static int nlog = 0;
-    if (nlog < 300 && pm_debug_has("mashlog")) {
-        nlog++;
-        pm_log_d("mashlog posX %d posY %d fill %d showHud %d", (int)posX, (int)posY, (int)fillValue, (int)showHud);
-    }
-}
-
-/* HUDB1 debug switch mashx=<x>: draw_mash_meter draws at posX x (a slide position the Azahar run did not reach) */
-s32 pm_mash_posx(s32 posX) {
-    char v[16];
-    if (pm_debug_value("mashx", v, sizeof v)) return (s32)atoi(v);
-    return posX;
-}
 
 /* BTRANS caplog: the star wipe state of the encounter (state * 1000 + fadeOutAmount, 0 when no encounter runs). */
 int pm_enc_wipe(void) { return (int)gEncounterState * 1000 + (int)gCurrentEncounter.fadeOutAmount; }

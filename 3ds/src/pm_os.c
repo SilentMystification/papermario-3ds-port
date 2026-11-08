@@ -290,20 +290,14 @@ static void rom_suspect(const char* why, u32 addr, u32 n, u32 req, u32 size) {
         if (seen[i] == addr) return;
     if (cnt < 512) seen[cnt++] = addr;
     pm_log_w("ROM READ %s %08x n %u (req %08x n %u)", why, addr, n, req, size);
-    if (pm_debug_has("romstrict")) {
-        char m[80];
-        snprintf(m, sizeof(m), "romstrict, ROM read %s at %08x n %u", why, addr, n);
-        pm_fatal_stop(m);
-    }
 }
 
 /* ROMKEEP: a read in a dropped range is counted, not logged per read. pm_rom_drop_stat prints the count of each 300 frames.
- * romstrict still stops at the first such read (rom_suspect). */
+ */
 static u32 rom_drop_n, rom_drop_b, rom_drop_all;
 static void rom_drop_count(u32 addr, u32 n, u32 req, u32 size) {
     __atomic_fetch_add(&rom_drop_n, 1, __ATOMIC_RELAXED);
     __atomic_fetch_add(&rom_drop_b, n, __ATOMIC_RELAXED);
-    if (pm_debug_has("romstrict")) rom_suspect("IN DROPPED RANGE", addr, n, req, size);
 }
 void pm_rom_drop_stat(void) {
     u32 n = __atomic_exchange_n(&rom_drop_n, 0, __ATOMIC_RELAXED), b = __atomic_exchange_n(&rom_drop_b, 0, __ATOMIC_RELAXED);
@@ -564,7 +558,6 @@ static void flash_selftest(void) {
     for (i = 0; i < FLASH_PAGE; i++) pg[i] = (u8)(0xA5 + i);
     flash_wr_src = pg;
     osFlashWriteArray(0);
-    if (pm_debug_has("flashfake")) pm_flash_flush("fake suspend");
     for (i = 0; i < FLASH_SIZE; i++) crc = crc * 31u + flash_mem[i];
     pm_log("flash selftest: ram hash %08x", crc);
 }

@@ -131,24 +131,6 @@ void pm_fatal_stop(const char* msg) {
     for (;;) {}
 }
 
-/* Class E test: Azahar stops on a real CPU exception itself and never calls the guest handler, so the handler has a direct
- * entry. It gets made-up registers and the live sp. On hardware use the switches crashtest and crashtest_audio instead (real fault). */
-void pm_crash_selftest(void) {
-    ERRF_ExceptionInfo e;
-    CpuRegisters r;
-    memset(&e, 0, sizeof(e));
-    memset(&r, 0, sizeof(r));
-    e.type = ERRF_EXCEPTION_DATA_ABORT;
-    e.fsr = 0x805;
-    e.far = 4;
-    for (int i = 0; i < 13; i++) r.r[i] = 0x1000u + (u32)i;
-    r.sp = (u32)(uintptr_t)&e;
-    r.lr = (u32)(uintptr_t)__builtin_return_address(0);
-    r.pc = (u32)(uintptr_t)&pm_crash_selftest;
-    r.cpsr = 0x60000010u;
-    crash_handler(&e, &r);
-}
-
 void pm_crash_install(void* stack, unsigned size) {
     threadOnException(crash_handler, (u8*)stack + size, WRITE_DATA_TO_HANDLER_STACK);
 }
@@ -247,10 +229,8 @@ static void cap_note(int cpu, const char* path) {
 }
 static void cfb_capture_prev(int cpu) {
     static unsigned done = ~0u, done_gpu = ~0u;
-    static int nocpu = -1;
     unsigned i;
-    if (nocpu < 0) nocpu = pm_debug_has("prevcpu");
-    if (!cpu && !nocpu) {
+    if (!cpu) {
         if (done_gpu == pm_frame_n || done == pm_frame_n) { cap_note(cpu, "done"); return; }
         for (i = 0; i < nuGfxCfbNum; i++) {
             if (nuGfxCfb[i] == nuGfxCfb_ptr) {
@@ -306,8 +286,7 @@ static int pm_det_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("det
 void pm_audio_step(void) {
     if (au_kicked) return;
     au_kicked = 1;
-    if (PMDL("noaudio")) return;
-    unsigned n = pm_audio_lock() || pm_det_on() ? 2u : pm_audio_retraces(); /* DET: 2 a step */
+    unsigned n = pm_det_on() ? 2u : pm_audio_retraces(); /* DET: 2 a step */
     pm_audio_last_n = n;
     PH_ADD(C_ATICK, n);
     pace_ticks += n;
@@ -316,8 +295,8 @@ void pm_audio_step(void) {
 static unsigned pace_iv[4]; /* vblanks between two drawn iterations: 1, 2, 3, 4 or more */
 /* FS1 */
 #define FS1_MAX_RUN 3 /* FS1b: 3 skips cover a stall of 7 vblanks */
-static unsigned fs1_steps, fs1_skipped, fs1_logged, fs1_last_iv, fs1_run, fs1_force, fs1_delay;
-static int fs1_off, fs1_on_log, fs1_old;
+static unsigned fs1_steps, fs1_skipped, fs1_logged, fs1_last_iv, fs1_run, fs1_force;
+static int fs1_off, fs1_on_log;
 void pm_fskip_set(int on) { fs1_off = !on || pm_debug_has("fs1off"); } /* options panel row 9: takes effect at the next step */
 /* PC01: vblanks per game step. 2 = 30 fps. A later 60 fps option (F06) changes only this value. Needs more work
  * than a changed number for 1: FrameBegin(SYNCDRAW) then has to stop waiting for the vblank (not done, not in scope). */
@@ -387,27 +366,18 @@ void pm_frame_loop(void) {
     u64 stat_t0 = 0;
     int pace_on = 0; /* PROFROW: read each frame below, the Profiling row can switch it */
     const int pos_dbg = pm_debug_has("poshud"); /* POSHUD: the poshud switch, same as the option */
-    { /* FS1 switches: fs1off, fs1force=<n> (skip every n-th step), fs1delay=<ms> (sleep after every drawn step), fs1old (the old rule) */
+    { /* FS1 switches: fs1off, fs1force=<n> (skip every n-th step) */
         char fv[16];
         fs1_off = pm_debug_has("fs1off") || !pm_opt.fskip;
-        fs1_old = pm_debug_has("fs1old"); /* FS1b: the FS1 rule of build 926 (skip only after a drawn step of 3 or more vblanks, 2 in a row), for comparison */
         fs1_force = pm_debug_value("fs1force", fv, sizeof fv) ? (unsigned)atoi(fv) : 0;
-        fs1_delay = pm_debug_value("fs1delay", fv, sizeof fv) ? (unsigned)atoi(fv) : 0;
         fs1_on_log = pm_log_level() >= 3;
     }
-    char exv[16];
-    const unsigned exit_at = pm_debug_value("exitframe", exv, sizeof exv) ? (unsigned)atoi(exv) : 0; /* HW7 test switch: leave the loop like an APT exit request */
-    char cv[16];
-    const int crash_n = pm_debug_value("crashtest", cv, sizeof cv) ? atoi(cv) : pm_debug_has("crashtest") ? 3 : 0;
-    unsigned crash_at = crash_n ? 300u : 0xFFFFFFFFu;
-    if (crash_n && pm_debug_value("crashframe", cv, sizeof cv)) crash_at = (unsigned)atoi(cv);
     /* PT88: the game step schedule is time, not the vblank count. A step is due every 1/29.92 s (sched_next). The idle pass waits until the next step is due, a pass
      * draws unless a whole step or more is owed, then only its draw is skipped. The frame begin no longer waits for a vblank (pm_gpu_begin), so a heavy scene
      * (cpu 55 ms and 11 ms of vblank wait) draws as often as the CPU allows, 18 a second instead of 15. With fps60 the old vblank schedule stays (two draws a step). */
     u64 sched_next = 0;
     const u64 step_period = tick_hz * 1000ull / 29920ull;
     while (aptMainLoop() && !pm_exit_request) {
-        if (exit_at && frame >= exit_at) { pm_log("exitframe: leaving the main loop at frame %u", frame); break; }
         pm_wd_prog++;
         pm_wd_armed = 1;
         PM_WD_PHASE(1);
@@ -518,20 +488,9 @@ void pm_frame_loop(void) {
             fs1_steps++;
             /* FS1b: skip the draw whenever a whole step of the schedule has passed since the last drawn or skipped step (the step is at least one vblank late).
              * A skip pays two vblanks (step_vb += 2), so the draws stay on the schedule and the game logic runs at the full rate. */
-            { /* PT78 test switch pauseskip: skip the draw of the first step that has the pause state 0 on frame buffer 1 (the parity test of state_step_pause passes in a skipped step) */
-                static int ps = -1, ps_done;
-                if (ps < 0) ps = pm_debug_has("pauseskip");
-                if (ps && !ps_done && pm_game_mode_now() == 10 /* GAME_MODE_PAUSE */ && nuGfxCfb[1] == nuGfxCfb_ptr) { ps_done = 1; fs_force_skip = 1; pm_log("pauseskip: draw of step %u skipped", frame); }
-            }
             if (pm_interp_on <= 0) fs_skip = fs_force_skip || (now >= sched_next + step_period) || (fs1_force && fs1_steps % fs1_force == 0); /* PT88: a whole step or more is owed */
-            else fs_skip = fs_force_skip || (C3D_FrameCounter(0) - step_vb >= PM_VBLANKS_PER_STEP && (!fs1_old || fs1_last_iv > PM_VBLANKS_PER_STEP)) || (fs1_force && fs1_steps % fs1_force == 0);
-            if (fs_skip && fs1_run >= (fs1_old ? 2u : FS1_MAX_RUN)) fs_skip = 0;
-        }
-        { /* PT33 debug switch creditsseek=<step>: no draw until the game has run <step> steps since boot (the credits parade of warp=end_00:0 scrolls with the steps, so the 1000 step wait costs only the game logic). The game logic runs as in an FS1 skip. */
-            static unsigned seek = 0xffffffffu;
-            if (seek == 0xffffffffu) { char sv[16]; seek = pm_debug_value("creditsseek", sv, sizeof sv) ? (unsigned)atoi(sv) : 0; if (seek) pm_log("creditsseek: no draw until step %u", seek); }
-            if (ever && frame < seek) fs_skip = 1;
-            else if (seek && frame == seek) { seek = 0; pm_log("creditsseek: reached step %u, drawing again", frame); }
+            else fs_skip = fs_force_skip || C3D_FrameCounter(0) - step_vb >= PM_VBLANKS_PER_STEP || (fs1_force && fs1_steps % fs1_force == 0);
+            if (fs_skip && fs1_run >= FS1_MAX_RUN) fs_skip = 0;
         }
         last_step_skipped = fs_skip;
         if (fs_skip) {
@@ -577,7 +536,6 @@ void pm_frame_loop(void) {
         pm_gpu_end();
         pm_log_frame_tick();
         pm_boot_title_check(); /* BOOT-1 */
-        if (fs1_delay) svcSleepThread((s64)fs1_delay * 1000000ll); /* test switch fs1delay=<ms>: a fake slow draw (a skipped step does not pay it) */
         pm_ph_frame_end();
         }
         if (fs1_on_log && (fs1_steps % 300) == 0 && fs1_steps != fs1_logged) { fs1_logged = fs1_steps; pm_log_hw("fs1 skipped %u of %u steps", fs1_skipped, fs1_steps); }
@@ -614,8 +572,7 @@ void pm_frame_loop(void) {
             if (vbn - fps_vb0 >= 60) { /* PT87: a window of one second (was two) */
                 fps = (float)presents * 60.f / (float)(vbn - fps_vb0);
                 fps_draw = (float)drawn * 60.f / (float)(vbn - fps_vb0);
-                if (PMDL("fpslog")) pm_log_d("hud fps: drawn %u steps %u vblanks %u -> %.1f/%.1f", drawn, presents, vbn - fps_vb0, fps_draw, fps);
-                late_pct = drawn ? (int)(100u * late_n / drawn) : 0; /* late_n counts drawn steps only */
+                                late_pct = drawn ? (int)(100u * late_n / drawn) : 0; /* late_n counts drawn steps only */
                 presents = 0;
                 drawn = 0;
                 late_n = 0;
@@ -666,13 +623,6 @@ void pm_frame_loop(void) {
             }
         }
         PM_WD_PHASE(10);
-        if (frame == 300 && pm_debug_has("crashtest_call")) pm_crash_selftest();
-        if (frame == crash_at) { /* LB4: crashtest=1 null write (data abort), crashtest=2 busy hang loop, crashtest=3 undefined instruction. crashframe=<n> (default 300). */
-            pm_log("crashtest=%d at frame %u", crash_n, frame);
-            if (crash_n == 1) { *(volatile int*)0 = 1; }
-            else if (crash_n == 2) { for (;;) { __asm__ volatile("" ::: "memory"); } }
-            else __asm__ volatile(".word 0xe7f000f0");
-        }
         if (pm_debug_has("scripts") && frame % 120 == 0) pm_dump_scripts();
         {
             char top[48];
@@ -794,12 +744,6 @@ static void game_thread(void* arg) {
 /* HW7: libctru exit frees the heap, and the GSP event thread (stack in that heap) still runs unless gfxExit stops it. Dump 37 on the
  * O3DS was that crash at HOME close. Reverse order of the init: flash, audio job, ndsp, log writer, citro3d, gfx, soc. One call (guard).
  * Called after the game thread ended, that is after aptMainLoop returned false (also for the APT exit request from HOME). */
-void pm_exit_mark(const char* what) {
-    char v[16];
-    if (!pm_debug_value("exitframe", v, sizeof v)) return; /* test only */
-    FILE* f = fopen("exit_done.txt", "a");
-    if (f) { fputs(what, f); fputs("\n", f); fclose(f); }
-}
 
 static void pm_shutdown(void) {
     static int done;
@@ -810,15 +754,10 @@ static void pm_shutdown(void) {
     pm_cpu_limit_exit(); /* CPULIM-UI: core 1 limit back to 30 */
     pm_log("exit: audio job done, saving flushed, shutting down ndsp, citro3d, gfx, soc");
     pm_audio_shutdown();
-    pm_exit_mark("audio");
     pm_log_stop(); /* write what is left, then stop the writer thread. The last log line. */
-    pm_exit_mark("log");
     C3D_Fini();
-    pm_exit_mark("c3d");
     gfxExit();
-    pm_exit_mark("gfx");
     pm_log_soc_exit();
-    pm_exit_mark("soc: shutdown complete");
 }
 
 int main(int argc, char** argv) {

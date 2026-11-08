@@ -14,8 +14,7 @@ void pm_gpu_rect_sync(void); /* pm_gpu.c */
 enum { FMT_RGBA, FMT_YUV, FMT_CI, FMT_IA, FMT_I };
 enum { SIZ_4, SIZ_8, SIZ_16, SIZ_32 };
 #include "pm_tex_tx1.h" /* TX1 */
-static unsigned tx1_miss, tx1_kb, tx1_ticks, tx1_mismatch; /* per 300 frames, see tc_report */
-static u8* tx1_chk; /* switch tx1check: the new result, compared with the old path */
+static unsigned tx1_miss, tx1_kb, tx1_ticks; /* per 300 frames, see tc_report */
 
 /* One frame can draw more distinct textures than the N64 TMEM suggests: a Bowser silhouette (many
  * background strips) plus a line of message glyphs went past 128 and the glyph quads drew white (V03). */
@@ -235,18 +234,12 @@ static int glyph_remap(const void** img, int* width, int* height, int* stride, u
     int idx;
     int aw, ah;
     if (!glyph_resolve((const u8*)*img, *width, *height, fmt, siz, &g, &idx)) {
-        { static int onf = -1; if (onf < 0) onf = pm_debug_has("imglog");
-          if (onf && fmt == FMT_CI && siz == SIZ_4 && *width == 16 && *height == 16) {
-              unsigned k; long off = -1; for (k = 0; k < sizeof glyph_sheets / sizeof glyph_sheets[0]; k++) if ((const u8*)*img >= glyph_sheets[k].base && (const u8*)*img < glyph_sheets[k].base + glyph_sheets[k].size) off = (long)((const u8*)*img - glyph_sheets[k].base);
-              pm_log_d("glyphmiss src %p off %ld stride %d", (void*)*img, off, *stride); } }
         glyph_ox = glyph_oy = 0;
         return 0;
     }
     glyph_atlas_dims(g, &aw, &ah);
     glyph_ox = (idx % g->cols) * g->gw;
     glyph_oy = (idx / g->cols) * g->gh;
-    { static int on = -1; if (on < 0) on = pm_debug_has("imglog"); /* glyph log: source char index, atlas cell, source address */
-      if (on) pm_log_d("glyphmap sheet %u idx %d cell %d,%d src %p w %d h %d stride %d", g->id, idx, glyph_ox, glyph_oy, (void*)*img, *width, *height, *stride); }
     *img = g->base;
     *width = aw;
     *height = ah;
@@ -346,7 +339,6 @@ static unsigned tiled16(int x, int y, int pw) {
 static inline int wrap_mod(int y, int m) { return (m & (m - 1)) == 0 ? (y & (m - 1)) : y % m; }
 
 static void td3_parse(void); /* TEXD3, defined before pm_tex_bind */
-static int td3_padoff;
 static int expand(const u8* src, unsigned fmt, unsigned siz, int w, int h, int stride,
                   const u8* tlut, int tlut_n, int pw, int ph, GPU_TEXCOLOR gf) {
     if ((fmt == FMT_I && (siz == SIZ_8 || siz == SIZ_4)) || (fmt == FMT_IA && (siz == SIZ_8 || siz == SIZ_4)))
@@ -394,7 +386,7 @@ static int expand(const u8* src, unsigned fmt, unsigned siz, int w, int h, int s
     /* A tile mask makes the image repeat or mirror past the window (bulb glow: window 65 in a 128 texture, mask 64, mirror),
      * so the pad follows the mask. */
     td3_parse(); /* TEXD3 switch padov=off: no mask follow in the pad */
-    int pmh = td3_padoff ? 0 : mh, pmw = td3_padoff ? 0 : mw;
+    int pmh = mh, pmw = mw;
     for (int y = 0; y < ph; y++) {
         int sy = y < h ? y : h - 1;
         if (pmh) { int r = wrap_mod(y, mk_mt ? 2 * pmh : pmh); sy = (mk_mt && r >= pmh) ? 2 * pmh - 1 - r : r; }
@@ -1003,7 +995,6 @@ static void tc_report(void) {
         if (top[t] >= 0) pm_log_d("texstat largest %d: %dx%d fmt %u siz %u %uKB uses %u age %u", t, slots[top[t]].w, slots[top[t]].h, slots[top[t]].fmt, slots[top[t]].siz,
                                   slots[top[t]].bytes >> 10, slots[top[t]].uses, tc_frame - slots[top[t]].last_frame);
     pm_log_hw("tx1 f%u miss %u KB %u us %u ns/B %u%s", tc_frame, tx1_miss, tx1_kb, tx1_ticks / 268u, tx1_kb ? (unsigned)((unsigned long long)tx1_ticks * 1000ull / 268ull / (tx1_kb * 1024ull)) : 0u, "");
-    if (PMDL("tx1check")) pm_log_hw("tx1check mismatch %u", tx1_mismatch);
     tx1_miss = tx1_kb = tx1_ticks = 0;
     pm_log_hw("texghost f%u: evict-hit %u/%uKB diff-hit %u/%uKB upload ops %u us %u", tc_frame, gh_ev_hit, gh_ev_kb, gh_df_hit, gh_df_kb, gh_up_n, gh_up_t / 268u);
     gh_ev_hit = gh_ev_kb = gh_df_hit = gh_df_kb = gh_up_n = gh_up_t = 0;
@@ -1323,15 +1314,13 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
         uint64_t key = tb_key(&q, (const u8*)tlut, (const u8*)img);
         if (tb_mode & TBM_DUMP) tb_dump_req(key, &q, (const u8*)tlut, (const u8*)img);
     }
-    /* TX1: one pass expand and tile into the texture. Switch tx1check runs the old expand as well and compares (a test tool). */
+    /* TX1: one pass expand and tile into the texture (the linear expand below is for a texture over TX1_MAXD or the scratch plane) */
     int native_tex = (gf == GPU_L8 || gf == GPU_L4 || gf == GPU_LA4);
     unsigned bpp0 = (gf == GPU_RGBA8) ? 4u : native_tex ? 1u : 2u;
     unsigned tex_bytes_need = tex_gpu_bytes(pw, ph, gf);
     int tx1 = tex_bytes_need <= TEX_SCRATCH_PLANE && pw <= TX1_MAXD && ph <= TX1_MAXD;
-    int tx1_chkon = tx1 && PMDL("tx1check");
-    if (tx1_chkon && !tx1_chk) { tx1_chk = (u8*)malloc(512 * 1024); if (!tx1_chk) { tx1 = 0; tx1_chkon = 0; } }
     unsigned tx1_t0 = tc_on > 0 ? pm_ticks() : 0;
-    if (tx1 && !tx1_chkon && (dkey & 0xFF000000u) != 0xC7000000u) {
+    if (tx1 && (dkey & 0xFF000000u) != 0xC7000000u) {
         /* TX1: Morton-tiled upload buffer filled below, no linear expand */
     } else if ((dkey & 0xFF000000u) == 0xC7000000u) {
         const GlyphSheet* gs = NULL;
@@ -1429,7 +1418,7 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
     C3D_TexSetFilter(&s->tex, GPU_NEAREST, GPU_NEAREST);
     C3D_TexSetWrap(&s->tex, GPU_REPEAT, GPU_REPEAT);
     if (tx1) { /* TX1: tile in linear scratch; VRAM slot is filled by C3D_TexLoadImage (O3DS cannot CPU-store into vramMemAlign) */
-        u8* t1dst = tx1_chkon ? tx1_chk : (scratch + TEX_SCRATCH_PLANE);
+        u8* t1dst = scratch + TEX_SCRATCH_PLANE;
         if ((dkey & 0xFF000000u) == 0xC7000000u) {
             for (int y = 0; y < ph; y++) {
                 int sy = ph - 1 - y;
@@ -1459,7 +1448,7 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
         }
     }
     const u8* staged = scratch + TEX_SCRATCH_PLANE;
-    if (!tx1 || tx1_chkon) {
+    if (!tx1) {
         const void* upload = scratch;
         /* Scratch is two 256KB halves. The linear image fills the first, the
          * Morton copy the second. A 512x256 RGBA5551 background is 256KB, so the
@@ -1527,9 +1516,6 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
     s->vram_up = 1;
     sbit_set(vup_bits, (int)(s - slots));
     if (PMDL("fl1log")) { unsigned h = 2166136261u; const u8* q = (const u8*)s->tex.data; for (unsigned i = 0; i < reserve; i++) h = (h ^ q[i]) * 16777619u; fl1_sum += h * (fl1_n + 1u); fl1_n++; if (fl1_n <= 400) pm_log_w("fl1log up %u slot %d %dx%d fmt %u siz %u bytes %u hash %08x src %dx%d stride %d img %p srchash %08x", fl1_n, slot, pw, ph, fmt, siz, reserve, h, width, height, stride, img, fl1_srchash(img, width, height, stride, siz)); }
-    if (tx1_chkon && memcmp(tx1_chk, s->vram_stage, gpu_size) != 0) {
-        if (tx1_mismatch++ < 8) pm_log_w("tx1check: bytes differ fmt %u siz %u %dx%d stride %d lut %d", fmt, siz, width, height, stride, lut != NULL);
-    }
     if (tx1_t0) { tx1_miss++; tx1_kb += reserve >> 10; tx1_ticks += pm_ticks() - tx1_t0; }
     s->img = img;
     s->tlut = tlut;
@@ -1755,7 +1741,7 @@ void pm_tex_bind_reset(void) { tb_last = NULL; au_last = NULL; nd_lt = NULL; nd_
 extern unsigned pm_dbg_gen;
 int pm_debug_value(const char* key, char* out, unsigned n);
 static unsigned td3_gen;
-static int td3_wrap = -1, td3_near, td3_nlog;
+static int td3_wrap = -1, td3_nlog;
 static void td3_parse(void) {
     char v[16];
     if (td3_gen == pm_dbg_gen) return;
@@ -1767,8 +1753,6 @@ static void td3_parse(void) {
         else if (!strcmp(v, "clamp")) td3_wrap = GPU_CLAMP_TO_BORDER;
         else if (!strcmp(v, "edge")) td3_wrap = GPU_CLAMP_TO_EDGE;
     }
-    td3_near = pm_debug_value("texnearest", v, sizeof v) && v[0] == '1';
-    td3_padoff = pm_debug_value("padov", v, sizeof v) && !strcmp(v, "off");
 }
 /* S1-6: the wrap and filter pm_tex_bind programs for unit 0 (without the debug overrides): nd_tex_get patches them into the param word of the unit block */
 void pm_tex_unit0_param(uint32_t* ws, uint32_t* wt, unsigned* filter) {
@@ -1781,7 +1765,7 @@ static int nu0_impl(NdUnit* u, int touch) {
     if (have && off_cur >= 0) return -1;
     if (!have || cur < 0 || !slots[cur].live) return 0;
     td3_parse();
-    if (td3_wrap >= 0 || td3_near || PMDL("texclamp") || PMDL("texnear")) return -1;
+    if (td3_wrap >= 0 || PMDL("texclamp") || PMDL("texnear")) return -1;
     if (touch) { slots[cur].stamp = ++stamp; slots[cur].last_frame = tc_frame; }
     uint32_t ws = nd_tex_wrap_final(shr_s, mk_ms, wrap_s), wt = nd_tex_wrap_final(shr_t, mk_mt, wrap_t);
     const C3D_Tex* tp = tex_for_draw(&slots[cur]);
@@ -1823,7 +1807,7 @@ int pm_tex_native_unit1(NdUnit* u) {
     }
     if (aux < 0 || !slots[aux].live) return 0;
     td3_parse();
-    if (td3_wrap >= 0 || td3_near || PMDL("texclamp") || PMDL("texnear") || PMDL("texclamp1") || PMDL("texrep1")) return -1;
+    if (td3_wrap >= 0 || PMDL("texclamp") || PMDL("texnear") || PMDL("texclamp1") || PMDL("texrep1")) return -1;
     slots[aux].stamp = ++stamp;
     TOUCH(&slots[aux]);
     uint32_t ws = nd_tex_wrap_final(aux_shr_s, mk_ms, aux_ws), wt = nd_tex_wrap_final(aux_shr_t, mk_mt, aux_wt);
@@ -1886,7 +1870,7 @@ int pm_tex_bind(void) {
     GPU_TEXTURE_WRAP_PARAM ws = (GPU_TEXTURE_WRAP_PARAM)nd_tex_wrap_final(shr_s, mk_ms, wrap_s), wt = (GPU_TEXTURE_WRAP_PARAM)nd_tex_wrap_final(shr_t, mk_mt, wrap_t);
     td3_parse();
     if (td3_wrap >= 0) ws = wt = (GPU_TEXTURE_WRAP_PARAM)td3_wrap;
-    GPU_TEXTURE_FILTER_PARAM ff = td3_near ? GPU_NEAREST : tex_filt;
+    GPU_TEXTURE_FILTER_PARAM ff = tex_filt;
     if (!slot_draws_stage(&slots[cur]) && tb_last == &slots[cur].tex && tb_f == (int)ff && tb_ws == (int)ws && tb_wt == (int)wt && tb_sg == slots[cur].sgen) return 1;
     texword_dump(&slots[cur]); /* TEXD1: pm_tex_bind is the path the draws use (pm_tex_bind_slot is not) */
     if (bind_probe < 0) bind_probe = pm_debug_has("texbind");
@@ -1896,15 +1880,10 @@ int pm_tex_bind(void) {
     if (PMDL("texclamp")) ws = wt = GPU_CLAMP_TO_EDGE;
     C3D_TexSetFilter(tp, PMDL("texnear") ? GPU_NEAREST : ff, PMDL("texnear") ? GPU_NEAREST : ff);
     C3D_TexSetWrap(tp, ws, wt);
-    if ((td3_wrap >= 0 || td3_near) && td3_nlog < 16) { td3_nlog++; pm_log_d("td3 bind unit0 slot %d programmed ws %d wt %d filter %d", cur, (int)ws, (int)wt, (int)ff); } /* first 16 binds only */
+    if (td3_wrap >= 0 && td3_nlog < 16) { td3_nlog++; pm_log_d("td3 bind unit0 slot %d programmed ws %d wt %d filter %d", cur, (int)ws, (int)wt, (int)ff); } /* first 16 binds only */
     pm_dc_c[DC_TB0]++; if (slot_draws_stage(&slots[cur])) pm_dc_c[DC_TBS]++;
     C3D_TexBind(0, tp);
     nd_lt = NULL; /* citro3d holds a texture the native draws did not see: the next native draw writes its unit block and clears the cache */
-    {   /* imglog: the GPU texture the draw binds (slot size, GPU size and address) */
-        static int on = -1;
-        if (on < 0) on = pm_debug_has("imglog");
-        if (on) pm_log_d("imglog f%d gpubind slot w %d h %d stride %d gpu w %d h %d data %p fmt %u", (int)tc_frame,slots[cur].w, slots[cur].h, slots[cur].stride, (int)tp->width, (int)tp->height, (void*)tp->data, (unsigned)slots[cur].fmt);
-    }
     tb_last = slot_draws_stage(&slots[cur]) ? NULL : &slots[cur].tex;
     tb_f = (int)ff; tb_ws = (int)ws; tb_wt = (int)wt; tb_sg = slots[cur].sgen;
     return 1;
