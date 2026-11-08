@@ -18,4 +18,5 @@ STATE
 4. GREY, B2 and the args-vs-debug3ds order: one console session with debug logging (quick Select taps, warp tab scroll).
 5. toad_standing recipe still has loglevel=debug: drop it?
 6. CORE2-0 console run: include one prof run without the core-1 probe thread? (if the kernel counts the probe against the core-1 limit, it can slow audio; only that pair shows it)
+7. HUD2 (merged): the status bar is edge to edge in wide, items at 4:3 size. The left end column is extended by the wide edge rule: check the bar ends by eye on the console. Spread the items across the bar too?
 
