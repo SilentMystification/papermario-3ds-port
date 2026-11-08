@@ -7166,10 +7166,10 @@
     {
       "name": "merlee_spell",
       "status": "unverified",
-      "subject": "Merlee (dro_02, NPC at -130 0 -400) casts the upgrade spell. Mario walks to her by padscript, talks, picks the first choice (50 coins from warpitems). The card shuffle (3 cards, imgfx SHUFFLE_CARDS) shows in the shots from the cast start.",
+      "subject": "Merlee (dro_02, NPC at -130 0 -400) casts the upgrade spell. Mario walks to her by padscript, talks, picks the first choice (50 coins from warpitems). One shot every 6 frames from f596 to f1015: the world fading to black (darken f601 to f632), the card shuffle and flips (f653 to about f850), the fade back (undarken about f970 to f1003).",
       "proves": "FX1 row 1: the cast reaches state D (log merlee: ritual state D), so the script does not hang; the shuffle ret line shows the card imgfx returns 1 or 2 on the 3DS; the picture shows the shuffle.",
-      "debug": "warp=kmr_02:0 story=ch0_toad_town livewarp=120:dro_02:0 warpitems padscript=@pad_merlee.txt shots loglevel=debug",
-      "until": "merlee: ritual state D [(]spell done[)]",
+      "debug": "warp=kmr_02:0 story=ch0_toad_town livewarp=120:dro_02:0 warpitems padscript=@pad_merlee.txt shots shotwin=596:420:6 loglevel=debug",
+      "until": "merlee: undarken done",
       "cap": 45,
       "deadline": 20,
       "first_marker": "livewarp: scene frame 120 to dro_02 entry 0",
