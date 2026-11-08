@@ -152,7 +152,7 @@ void render_frame(s32 isSecondPass) {
             s32 lrx;
             s32 lry;
 
-            gSPViewport(gMainGfxPos++, &camera->vp);
+            gSPViewport(gMainGfxPos++, PM_VP(&camera->vp));
             gSPClearGeometryMode(gMainGfxPos++, G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN |
                                     G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
             gSPTexture(gMainGfxPos++, 0, 0, 0, G_TX_RENDERTILE, G_OFF);

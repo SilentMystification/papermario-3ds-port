@@ -425,8 +425,10 @@ const unsigned char* pm_rom_ptr(unsigned addr, unsigned len) {
  * lies inside the table. Asset data is not touched. */
 #define ASSET_TABLE_START 0x1E40020u
 #define ASSET_ENTRY_SIZE 0x1Cu
+void pm_walk_drain(const char* why); /* nd_walk.c, CORE2-3b */
 void nuPiReadRom(u32 rom_addr, void* buf, u32 size) {
     static u32 table_bytes;
+    if (!pm_on_audio()) pm_walk_drain("rom"); /* CORE2-3b: a ROM read writes RAM that the last walk may have read */
     pi_read_raw(rom_addr, buf, size);
     if (!buf || !size || (unsigned)buf < 0x00100000u) return;
     /* S19b: s16 data (Lava Piranha animation scripts). The ROM is big-endian, the reader wants native s16.

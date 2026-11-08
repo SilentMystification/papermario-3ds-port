@@ -245,7 +245,7 @@ void spr_appendGfx_component_flat(
             if (gGameStatusPtr->context == CONTEXT_PAUSE) {
                 gSPViewport(gMainGfxPos++, &SpritePauseVpAlt);
             } else {
-                gSPViewport(gMainGfxPos++, &camera->vpAlt);
+                gSPViewport(gMainGfxPos++, PM_VP(&camera->vpAlt));
             }
 
             if (alpha == 255) {
@@ -272,7 +272,7 @@ void spr_appendGfx_component_flat(
             if (gGameStatusPtr->context == CONTEXT_PAUSE) {
                 gSPViewport(gMainGfxPos++, &SpritePauseVpAlt);
             } else {
-                gSPViewport(gMainGfxPos++, &camera->vpAlt);
+                gSPViewport(gMainGfxPos++, PM_VP(&camera->vpAlt));
             }
             if (alpha == 255) {
                 gDPSetRenderMode(gMainGfxPos++, AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA | ALPHA_CVG_SEL | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM), AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA | ALPHA_CVG_SEL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM));
@@ -310,7 +310,7 @@ void spr_appendGfx_component_flat(
             SpritePauseVpAlt.vp.vtrans[0] = SpritePauseVp.vp.vtrans[0] + gGameStatusPtr->altViewportOffset.x;
             SpritePauseVpAlt.vp.vtrans[1] = SpritePauseVp.vp.vtrans[1] + gGameStatusPtr->altViewportOffset.y;
         } else {
-            gSPViewport(gMainGfxPos++, &camera->vp);
+            gSPViewport(gMainGfxPos++, PM_VP(&camera->vp));
         }
     }
 

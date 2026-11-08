@@ -1605,7 +1605,7 @@ void imgfx_appendGfx_mesh_basic(ImgFXState* state, Matrix4f mtx) {
                     if (gGameStatusPtr->context == CONTEXT_PAUSE) {
                         gSPViewport(gMainGfxPos++, &D_8014EE50);
                     } else {
-                        gSPViewport(gMainGfxPos++, &cam->vpAlt);
+                        gSPViewport(gMainGfxPos++, PM_VP(&cam->vpAlt));
                     }
 
                     gDPSetRenderMode(gMainGfxPos++, G_RM_PASS, state->otherModeL);
@@ -1644,7 +1644,7 @@ void imgfx_appendGfx_mesh_basic(ImgFXState* state, Matrix4f mtx) {
                     if (gGameStatusPtr->context == CONTEXT_PAUSE) {
                         gSPViewport(gMainGfxPos++, &D_8014EE50);
                     } else {
-                        gSPViewport(gMainGfxPos++, &cam->vpAlt);
+                        gSPViewport(gMainGfxPos++, PM_VP(&cam->vpAlt));
                     }
 
                     if (alpha2 == 255) {
@@ -1701,7 +1701,7 @@ void imgfx_appendGfx_mesh_basic(ImgFXState* state, Matrix4f mtx) {
                 D_8014EE50.vp.vtrans[0] = D_8014EE40.vp.vtrans[0] + gGameStatusPtr->altViewportOffset.x;
                 D_8014EE50.vp.vtrans[1] = D_8014EE40.vp.vtrans[1] + gGameStatusPtr->altViewportOffset.y;
             } else {
-                gSPViewport(gMainGfxPos++, &cam->vp);
+                gSPViewport(gMainGfxPos++, PM_VP(&cam->vp));
             }
         }
 

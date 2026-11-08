@@ -16,6 +16,7 @@
 
 extern int nd_c2_on; /* CORE2-2 census (nd_c2haz.c, switch c2haz) */
 void nd_c2_rec(const Gfx* rec, unsigned words);
+void nd_c2_src(const Gfx* at);
 /* GLOB: definitions moved here from the former pm_gbi.c (layout only). */
 unsigned pm_gbi_cur_op; /* PI2: op of the display list step now running (one store per op) */
 
@@ -196,6 +197,7 @@ void nd_walk_run(void* list, unsigned nbytes) {
             pc += G_PM_ENT_WORDS - 1 + nd_ent_case(pc - 1, w0, w1); /* the drawn record skips its own words and its G_DL */
             break;
         case G_DL: {
+            if (nd_c2_on > 0) nd_c2_src(pc - 1);
             Gfx* next = (Gfx*)ptr_of(w1);
             if (next && !is_host((u32)next)) {
                 gbi_cold_bad_next(w1, w0, (u32)list);
@@ -393,8 +395,26 @@ void gbi_cold_modifyvtx(u32 w0, u32 w1) { /* B5: F3DEX2 w0 = op, where, vertex *
     if (where == G_MWO_POINT_XYSCREEN && vi < 64) vert_scr[vi] = 1;
 }
 /* W1/P1: the outer call sets the producer cursor state. Nested calls (dlc replay) run inside the outer op. */
+static void gbi_run1(void* list, unsigned nbytes);
+void nd_c2_walked(void);
+void nd_c2_drain(const char* why);
+static int walking; /* a walk is running (nested runs included) */
 void pm_gbi_run(void* list, unsigned nbytes) {
-    if (nd_c2_on > 0) nd_c2_task(list);
+    walking++;
+    if (nd_c2_on > 0) { nd_c2_task(list); gbi_run1(list, nbytes); nd_c2_walked(); }
+    else gbi_run1(list, nbytes);
+    walking--;
+}
+/* CORE2-3b: the game thread is about to write memory that the walk of the last frame may have read: a ROM read into RAM, a decode, a map
+ * load, a game mode change (load writes, the CORE2-2 census hazard 4). The walker must be idle from here on. With the serial walker every
+ * task is walked inside nuGfxTaskStart, so it is idle at every call outside a walk; the census (switch c2haz) checks the writes made
+ * before this point and starts the frame clean. The threaded walker (CORE2-3c) waits for its queue here. Calls made inside a walk (the
+ * walker's own reads) do nothing. */
+void pm_walk_drain(const char* why) {
+    if (walking) return;
+    if (nd_c2_on > 0) nd_c2_drain(why);
+}
+static void gbi_run1(void* list, unsigned nbytes) {
     if (!pm_ph_on) { nd_walk_run(list, nbytes); return; }
     if (os_nest == 0) { pre_w0 = (const Gfx*)list; pmx_main = gDisplayContext && list == (void*)gDisplayContext->mainGfx;
         pmk_n = 0; /* WCEN3: the walk copy holds the marks of this list only */
