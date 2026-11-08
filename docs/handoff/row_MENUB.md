@@ -1,0 +1,21 @@
+# Row MENUB: bottom-screen menu bugs B1 (stale log text on first open) and B2 (noise pixels in the warp tab)
+
+## User facts (2026-11-08, console only, Azahar not checked)
+B1: open the menu with Select: the bottom screen still shows the old log text; the options appear only after L or R. B2: in the warp tab the bottom screen sometimes shows noise pixels (random coloured pixels, not text); no crash, it recovers.
+
+## B1 (agent of cfg1, after CFG-2, same worktree build3ds/wt/cfg1; Haiku)
+Cause (oracle, nds1 c3afc51a2): con_flush (pm_log.c:739-747) tests pm_menu_open under fb_lock, copies the pending lines (cw, n) and unlocks, then takes con_lock (743) and writes cw (745). If the game thread opens the menu in between, pm_menu_set(1) (pm_options_ui.c:89-96) draws the menu (pm_gpu_menu_draw, pm_gpu.c:1564) under con_lock, then the sink writes the stale batch over it. pm_gpu_menu_draw skips a row equal to menu_prev[i] (pm_gpu.c:1558), so only an L/R tab change repairs it. The batch is never empty: pm_menu_set logs "menu: open" (95). pm_gpu_hud_flush has the same race (menu_on tested 1741, lock 1744).
+Check first: debug counter late_con: after LightLock_Lock(&con_lock) in con_flush, `if (pm_menu_open) late_con++`; print in pm_menu_set(0) `menu: late console writes %u`. Above 0 in the repro before the fix.
+Repro: debug switch `sinkslow` (svcSleepThread 30 ms between the fb_lock section and con_lock in con_flush); debug switch `shotfrozen=<n>` (pm_main.c ~421-426 frozen branch: pm_gpu_shot_bottom("bot_fz%04u") on the n-th frozen pass, then event `menu: frozen shot`). Scenario menu_open_det: `warp=mac_01:0 pos=0:0:200 padscript=wait200,SELECT,wait30 shotfrozen=1 loglevel=debug det fixedseed fast fs1off sinkslow`, until `menu: frozen shot`, cap 15 s. Scenario and bench in the same commit.
+Fix (one rule): test the menu state after taking con_lock: in con_flush move the pm_menu_open test inside con_lock and drop cw when the menu is open; in pm_gpu_hud_flush move the menu_on test after pm_con_lock().
+Gate: menu_open_det bot_fz shot shows the tab line and option rows with no log text; late console writes 0 after the fix; spot_mac01_det byte-equal (no game picture change).
+
+## B2 (agent of grey, after GREY, same worktree build3ds/wt/grey; Sonnet)
+No named cause yet. The code rules out: a console writer without con_lock, a CPU writer of the bottom framebuffer (only pm_gpu_shot_bottom reads it), a second consoleInit, gfxSetWide/ScreenFormat. Noise (colours outside the 16 console colours) means non-glyph memory reached the bottom framebuffer.
+Candidates: (1) a GX copy to a stale linear address during the frozen present (pm_gpu_menu_present runs C3D_FrameBegin/End; queued vram_stage, grab, off-screen or ring copies run then); (2) a stack overflow in a menu buffer: menu_fit (pm_gpu.c:1538-1553) copies an ESC sequence (1547) with no bound; draw() (pm_options_ui.c:44-60) uses `n += snprintf` with no clamp (n past 2400 wraps `sizeof out - n`); the warp tab is the longest page.
+Check first: at boot log the bottom framebuffer address range and each linearAlloc block (gring chunks, vram_stage, grab_tex, pm_tex slabs); in draw() log n and the longest line per draw. n > 2400 or a line > MENU_LN = candidate 2. Shared or adjacent ranges = candidate 1.
+Repro: scenario menu_warp_det: `warp=mac_01:0 pos=0:0:200 padscript=wait200,SELECT,wait10,<dDown to the Warp area row, count from pm_options.c ~346>,A,wait5,B,wait5,ddown*60,wait10 shotmenu shotfrozen=1 loglevel=debug det fixedseed fast fs1off`, until the last `menu: warp area` event plus the frozen shot, cap 25 s. Gate check: a python count of pixels outside the 16 console colours over all bot_m and bot_fz shots: > 0 before the fix, 0 after. If Azahar never shows noise after 3 starts, it is console-only: record the check lines and hand back (console run needs the user).
+Fix: at the line the check names. 2 tries per named cause.
+
+## Rules
+CLAUDE.md rules 5, 7, 8, 9, 11. PM_LANE = the worktree name. No git stash. Never commit runs.jsonl or 3ds/src/map_restore_table.c. Wait for runs in the foreground. The last of the two fix commits (B1 or B2) deletes this row file; the first one says "B1 done" or "B2 done" in place.
