@@ -508,6 +508,40 @@
       ]
     },
     {
+      "name": "tour_full",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "Full map tour (every map of gAreas, one session, fixed seed per warp, prof window per map, tourtime 4 s). Perf DB: one run record per map (tour_idx), bench.py tour-report <run> ranks the maps. Soak, about 45 min.",
+      "scenario": "tour_full",
+      "cap": 2600,
+      "until": "tour: done items",
+      "tags": [
+        "azahar",
+        "tour_full"
+      ],
+      "gates": []
+    },
+    {
+      "name": "tour_full_prof",
+      "kind": "console_prof",
+      "speed": "normal",
+      "default": false,
+      "purpose": "Full map tour on the O3DS console (192.168.1.170): prof mode, one window per map, the same tour as tour_full. Ingest the live log after the push. Soak, about 45 min.",
+      "scene_match": null,
+      "recipe": "warp=arn_02:0 story=ch0_toad_town tourlist=all prof=4",
+      "scenario": null,
+      "host": "o3ds",
+      "cap": 2600,
+      "until": "tour: done items",
+      "tags": [
+        "console",
+        "prof",
+        "tour_full"
+      ],
+      "gates": []
+    },
+    {
       "name": "spot_mac01_prof",
       "kind": "console_prof",
       "speed": "normal",

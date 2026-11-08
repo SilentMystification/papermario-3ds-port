@@ -9166,6 +9166,26 @@
       "reason": "MDL-5f byte reference: tour10_det with nomodelnat (walker geometry of every model record), cold start so the shots are a function of the build. Cap as tour10."
     },
     {
+      "name": "tour_full",
+      "status": "unverified",
+      "subject": "Mario in every map of gAreas (tourlist=all, no tst_ maps), one session, no reboot, fixed seed at each warp (gRandSeed = TOUR_SEED). Per map: WARP, SETTLE 60 frames, one prof window of tourtime (default 4 s), CLOSE with the label line prof f<n> w<n> tour <i>/<n> <map>:<entry>. Spot per map from 3ds/tours/spots.txt (or entry 0).",
+      "proves": "The full tour: one window record per map for the perf DB (bench.py tour-report ranks the maps by ft_ms). Finds the laggy maps. Not a pass/fail gate: the result is the per-map frame cost.",
+      "debug": "warp=arn_02:0 story=ch0_toad_town tourlist=all prof=4",
+      "extra": ["-NoWarm"],
+      "until": "tour: done items",
+      "cap": 2600,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "tour",
+      "needs_picture": false,
+      "expected_events": [
+        {"name": "prof on", "regex": "prof=1 log=off"},
+        {"name": "window 1", "regex": "tour: window 1/\\d+ "},
+        {"name": "tour done", "regex": "tour: done items \\d+"}
+      ],
+      "reason": "Soak: 411 maps x (60 settle frames = 2 s + tourtime 4 s) = about 2470 s, plus the cold boot and the 45 s scene loads. Cap 2600 s, the one scenario over 45 s. The full tour runs only when the user asks (plan_tours.md)."
+    },
+    {
       "name": "battle_fb_det",
       "status": "unverified",
       "subject": "Battle kmr_03 (one Goomba), cold det, profdisk: runs to frame 300 so the first ndm window line (native and fallback counts) is in the log.",
