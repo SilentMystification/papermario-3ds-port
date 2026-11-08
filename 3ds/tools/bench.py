@@ -1218,7 +1218,7 @@ def cmd_ingest_last(a):
     b, c = resolve_build(p, text, a.build, a.commit, "azahar")
     result = "log_pass" if a.rc == 0 else ("broken" if a.rc == 10 else "fail:%d" % a.rc) # AZT11-5: rc 10 = no until line in the cap (broken, not a code fail)
     note = "picture: a person reads the shot" if bd and bd["kind"] == "azahar_pic" else ""
-    shot = a.shots or str(SHOTS / s)
+    shot = a.shots or str(SHOTS / s / (os.environ.get("PM_LANE") or "main"))  # SHOTLANE: per scenario and build
     dv = os.environ.get("PM_BENCH_DIRTY")
     lb, _ = log_build(text)
     if a.build is not None and lb is not None and lb != a.build:  # BF-4: the boot line is not the build that was run

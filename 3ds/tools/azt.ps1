@@ -323,6 +323,8 @@ if ($Build) {
     else { Write-Output "BUILD: '$Build' is not a lane name or build3ds/lane-<name>/*.3dsx. Nothing was run."; exit 5 }
 }
 $outDir = if ($lane) { Join-Path $repo "build3ds\lane-$lane" } else { Join-Path $repo "build3ds" }
+# SHOTLANE: the shot archive is per scenario AND build (build3ds\azt\shots\<scenario>\<build>): the lane name, or main without -Build
+$buildName = if ($lane) { $lane } else { "main" }
 $lastLog = Join-Path $outDir "last_log.txt"
 # AZT-1: the slot is taken below, just before the start; these paths then point into the slot (slot<k> folder of the lane)
 $shotDir = Join-Path $outDir "shots"
@@ -411,7 +413,7 @@ function Show-Checks([string]$file, [string]$shots, [datetime]$since) {
     }
     if ($since -gt [datetime]::MinValue -and $shotFiles.Count -gt 0) {
         # Keep this run's shots per scenario: the shared shots folder is overwritten by the next run
-        $arch = Join-Path $repo "build3ds\azt\shots\$($sc.name)"
+        $arch = Join-Path $repo "build3ds\azt\shots\$($sc.name)\$buildName"
         New-Item -ItemType Directory -Force -Path $arch | Out-Null
         Remove-Item (Join-Path $arch "*") -Force -ErrorAction SilentlyContinue
         foreach ($f in $shotFiles) { Copy-Item $f.FullName $arch }
@@ -466,7 +468,7 @@ function Set-ScenarioStatus([string]$name, [string]$status, [string]$reason) {
 function Exit-Run([int]$code) {
     # Records this scenario start in 3ds/logs/perf/runs.jsonl (bench.py ingest-last): under the bench of this scenario, else adhoc:<scenario>.
     $ia = @((Join-Path $repo "3ds\tools\bench.py"), "ingest-last", "--log", $lastLog, "--scenario", $sc.name, "--row", $Row,
-            "--rc", [string]$code, "--shots", (Join-Path $repo "build3ds\azt\shots\$($sc.name)"))
+            "--rc", [string]$code, "--shots", (Join-Path $repo "build3ds\azt\shots\$($sc.name)\$buildName"))
     if ($env:PM_BENCH_LABEL) { $ia += @("--label", $env:PM_BENCH_LABEL) }
     if ($env:PM_BENCH_BUILD) { $ia += @("--build", $env:PM_BENCH_BUILD) }
     if ($env:PM_BENCH_COMMIT) { $ia += @("--commit", $env:PM_BENCH_COMMIT) }
@@ -553,9 +555,9 @@ $slotInfo = Ensure-Slot $slotK
 $sd = $slotInfo.sd; $logPath = Join-Path $sd "log.txt"; $pidFile = $slotInfo.pidFile
 $lastLog = Join-Path $outDir "slot$slotK\last_log.txt"
 $shotDir = Join-Path $outDir "slot$slotK\shots"
-# AZT7-1: this start's shot output starts empty: the slot's shots folder and the scenario archive hold no file of an earlier run
+# AZT7-1: this start's shot output starts empty: the slot's shots folder and this build's archive hold no file of an earlier run
 Remove-Item $shotDir -Recurse -Force -ErrorAction SilentlyContinue
-Remove-Item (Join-Path $repo "build3ds\azt\shots\$($sc.name)") -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item (Join-Path $repo "build3ds\azt\shots\$($sc.name)\$buildName") -Recurse -Force -ErrorAction SilentlyContinue
 $env:PM_SLOT_HELD = "1"
 $argv += @("-Slot", [string]$slotK)
 if (-not $NoKeep) { $argv += @("-Keep") } # AZT-3b: kept by default. AZT3-2: run_azahar keeps it after any run that did not crash or exit.
