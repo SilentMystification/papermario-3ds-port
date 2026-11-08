@@ -209,6 +209,8 @@ void pm_cheat_set(int k, int on) {
     if (on) cheat_bits |= cheat_bit[k]; else cheat_bits &= ~cheat_bit[k];
     pm_log("cheat: %s %s", cheat_name[k], on ? "on" : "off");
 }
+extern f32 GravityParamsStartJump[]; /* src/world/actions.c */
+#define MOON_RISE (GravityParamsStartJump[0] * 0.5f) /* MOON3: the rise velocity of a hold or a tap push, half the jump start */
 void pm_cheat_tick(void) {
     PlayerStatus* ps = &gPlayerStatus;
     PlayerData* p = &gPlayerData;
@@ -223,25 +225,38 @@ void pm_cheat_tick(void) {
         for (k = 0; k < 6; k++) if ((cheat_bits & ~cheat_seen) & cheat_bit[k]) pm_log("cheat: %s active, star power %d, walk %.2f", cheat_name[k], (int)p->starPower, ps->walkSpeed);
         cheat_seen = cheat_bits;
     }
-    /* MOON2 (user, one held press): while A is held in the jump action, Mario rises at the jump start rate: the vertical integrators are held
-     * (velocity = GravityParamsStartJump[0], accelerations 0), timeInAir is held at 1 (update_player puts Mario back on lastGoodPos above 100), and the
-     * action stays JUMP, so the air control of the jump runs. On release the normal arc resumes: the accelerations go back to the jump start values
-     * and the velocity decays, so Mario falls at the normal rate. A new press in the air does nothing. */
+    /* MOON3 (user): with the moon jump on, A raises Mario in the air (JUMPING or FALLING, not FLYING). A press of A (the rising edge) gives an
+     * upward push: if he is falling, the action goes back to JUMP (flags JUMPING on, FALLING off; the action is not re-initialized, because
+     * set_action_state would reset the integrator to the full start jump on the next step). The push is velocity MOON_RISE (half of
+     * GravityParamsStartJump[0]) with the normal arc accelerations, so the arc decays. Holding A in JUMP keeps the velocity at MOON_RISE with
+     * accelerations 0, so he rises at a constant MOON_RISE per step, and timeInAir is held at 1 (update_player puts Mario back on lastGoodPos
+     * above 100). The game's own release (A up in JUMP switches to HOP, a fast fall) runs as before. On release in JUMP the normal arc resumes
+     * (the accelerations go back to the jump start values). Cheat off: no change. */
     {
         static int moon_held;
-        extern f32 GravityParamsStartJump[];
+        const int moon = pm_cheat_moon_get();
         const int held = (ps->curButtons & BUTTON_A) != 0;
-        const int air = (ps->flags & (PS_FLAG_JUMPING | PS_FLAG_FALLING)) != 0;
-        const int rising = air && pm_cheat_moon_get() && held && ps->actionState == ACTION_STATE_JUMP;
+        const int air = ((ps->flags & (PS_FLAG_JUMPING | PS_FLAG_FALLING)) != 0) && !(ps->flags & PS_FLAG_FLYING);
+        const int pushed = moon && air && (ps->pressedButtons & BUTTON_A) != 0;
+        int rising;
+        if (pushed && ps->actionState != ACTION_STATE_JUMP) {
+            ps->prevActionState = ps->actionState;
+            ps->actionState = ACTION_STATE_JUMP;
+            ps->flags &= ~PS_FLAG_FALLING;
+            ps->flags |= PS_FLAG_JUMPING;
+            pm_log("cheat: moon jump re-entered JUMP from a fall, y %.1f", ps->pos.y);
+        }
+        if (pushed) pm_log("cheat: moon jump tap y %.1f", ps->pos.y);
+        rising = moon && air && held && ps->actionState == ACTION_STATE_JUMP;
         if (rising) {
-            ps->gravityIntegrator[0] = GravityParamsStartJump[0];
+            ps->gravityIntegrator[0] = MOON_RISE;
             ps->gravityIntegrator[1] = 0.0f;
             ps->gravityIntegrator[2] = 0.0f;
             ps->gravityIntegrator[3] = 0.0f;
             ps->timeInAir = 1;
             pm_log_d("cheat: moon jump y %.1f x %.1f", ps->pos.y, ps->pos.x);
         } else {
-            if (air && moon_held && pm_cheat_moon_get() && ps->actionState == ACTION_STATE_JUMP) {
+            if (air && moon_held && moon && ps->actionState == ACTION_STATE_JUMP) {
                 ps->gravityIntegrator[1] = GravityParamsStartJump[1];
                 ps->gravityIntegrator[2] = GravityParamsStartJump[2];
                 ps->gravityIntegrator[3] = GravityParamsStartJump[3];

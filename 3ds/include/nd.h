@@ -291,6 +291,7 @@ typedef struct NdTevOut {
     uint32_t st[6][5];
     uint32_t buf_color;           /* texenv buffer colour (ABGR), used when buf_set */
     int n, memb, buf_set;
+    int mix_st;                   /* MERLEE: the stage of the V06 colour mix (its colour word is the mix colour), -1 none */
 } NdTevOut;
 void nd_tev_build(const NdTevIn* in, NdTevOut* out);
 static inline uint32_t nd_abgr(uint32_t c) { return ((c & 255u) << 24) | (((c >> 8) & 255u) << 16) | (((c >> 16) & 255u) << 8) | (c >> 24); }
