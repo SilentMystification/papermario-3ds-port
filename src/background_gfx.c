@@ -267,6 +267,9 @@ void gfx_transfer_frame_to_depth(u16* frameBuffer0, u16* frameBuffer1, u16* zBuf
     s32 y;
     s32 x;
 
+#ifdef TARGET_3DS
+    { void pm_walk_drain(const char* why); pm_walk_drain("cfb"); } /* CORE2-3a: the filter reads the frame buffers the last walk drew (pause) */
+#endif
     for (y = 1; y < SCREEN_HEIGHT - 1; y++) {
         for (x = 2; x < SCREEN_WIDTH - 2; x++) {
             s32 pixel = SCREEN_WIDTH * y + x;
