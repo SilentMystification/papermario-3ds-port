@@ -571,9 +571,7 @@
       "subject": "sbk_56, Mario placed at pos 20 0 440 (warp entry 0), cold start with the det switch (the sun scene). Shots at frames 200 to 205 and the prof scene line of the first 300-frame window.",
       "proves": "DET cold spot, sbk_56 (sun overlay): the sbk_56 picture per shot is a function of the build (det), so a base and a head build give byte-equal shots (MOVE4 gate after the suntile removal).",
       "debug": "warp=sbk_56:0 pos=20:0:440 prof=4 shots shotwin=200:6 loglevel=debug det",
-      "extra": [
-        "-NoWarm"
-      ],
+      "extra": [],
       "until": "prof f\\d+ w\\d+ at ",
       "cap": 35,
       "deadline": 30,
@@ -598,9 +596,7 @@
       "subject": "Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0), cold start with the det switch. Shots at frames 200 to 205 and the prof scene line of the first 300-frame window.",
       "proves": "DET cold spot: the mac_01 picture per shot is a function of the build (det), so a base and a head build give byte-equal shots (MOVE census and phase gates).",
       "debug": "warp=mac_01:0 pos=0:0:200 prof=4 shots shotwin=200:6 loglevel=debug det",
-      "extra": [
-        "-NoWarm"
-      ],
+      "extra": [],
       "until": "prof f\\d+ w\\d+ at ",
       "cap": 35,
       "deadline": 30,
@@ -625,9 +621,7 @@
       "subject": "Toad Town mac_01, Mario at pos 0 0 200, cold start with det. Census window 0 to 300: the opsplit line with the per-producer ops and the mod column (module per op, nd_cen.c op_module).",
       "proves": "MOVE (a) census: the mod column prints with det, so base and head per-op totals compare in the log.",
       "debug": "warp=mac_01:0 pos=0:0:200 phase opsplit loglevel=debug det",
-      "extra": [
-        "-NoWarm"
-      ],
+      "extra": [],
       "until": "opsplit f",
       "cap": 45,
       "deadline": 30,
@@ -652,9 +646,7 @@
       "subject": "Toad Town mac_01, Mario at pos 0 0 200, cold start with det and phase fsplit (no picture). The fsplit line carries gbi ms per window.",
       "proves": "MOVE gate (d): the gbi phase ms of the window (fsplit gbi) for the base and the head build, same harness.",
       "debug": "warp=mac_01:0 pos=0:0:200 phase fsplit loglevel=debug det",
-      "extra": [
-        "-NoWarm"
-      ],
+      "extra": [],
       "until": "fsplit f",
       "cap": 45,
       "deadline": 30,
@@ -679,9 +671,7 @@
       "subject": "iwa_10, Mario at -586 1 530, cold start with det and phase fsplit (no picture). The fsplit line carries gbi ms per window.",
       "proves": "MOVE gate (d): the gbi phase ms of the window for the base and the head build on iwa_10.",
       "debug": "warp=iwa_10:1 pos=-586:1:530 phase fsplit loglevel=debug det",
-      "extra": [
-        "-NoWarm"
-      ],
+      "extra": [],
       "until": "fsplit f",
       "cap": 45,
       "deadline": 30,
@@ -708,8 +698,7 @@
       "proves": "DET: the frame schedule is a function of the game steps (no FS1 skip, no interp skip on the vblank count, 2 audio ticks a step), so two cold runs of one build are byte-equal.",
       "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 shots loglevel=debug grablog offdump=410 fixedseed fast fs1off det",
       "extra": [
-        "-Turbo",
-        "-NoWarm"
+        "-Turbo"
       ],
       "until": "shot 16 frame \\d+",
       "cap": 45,
@@ -740,8 +729,7 @@
       "proves": "DET-1: the first game step where two cold runs of one build differ, and the field that differs (keys, draws, iv, skip, aud, rng, noise, evict).",
       "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 shots loglevel=debug grablog offdump=410 fixedseed fast fs1off detlog",
       "extra": [
-        "-Turbo",
-        "-NoWarm"
+        "-Turbo"
       ],
       "until": "fxtest: shot 1 effect 89 water_splash",
       "cap": 45,
@@ -7244,9 +7232,7 @@
       "until": "superblock: effects done",
       "cap": 45,
       "deadline": 45,
-      "extra": [
-        "-NoWarm"
-      ],
+      "extra": [],
       "first_marker": "warp: sbk_56 entry 0",
       "expects": "warp",
       "needs_picture": true,
@@ -7992,9 +7978,7 @@
       "subject": "battle_start_f182 as a cold start (-NoWarm, a new Azahar process): Battle scene, one Goomba on kmr_03, shots with det. Two cold runs must give byte-equal shots.",
       "proves": "DET gate: the battle picture per shot is a function of the build with the det switch, cold start to cold start.",
       "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 det",
-      "extra": [
-        "-NoWarm"
-      ],
+      "extra": [],
       "until": "shot \\d+ frame 182\\b",
       "cap": 60,
       "deadline": 45,
@@ -8155,9 +8139,7 @@
       "subject": "Map hos_01 at pos -400 0 410 (SHADING_HOS_01 profile), cold det start: shots at frames 200 to 205 (the picture). Shaded sprite records (why 3 before SPR4-3).",
       "proves": "SPR4 step 3 gate: cold det run, native shaded sprites byte-equal to the walker reference.",
       "debug": "warp=hos_01:0 pos=-400:0:410 shots shotwin=200:6 loglevel=debug det",
-      "extra": [
-        "-NoWarm"
-      ],
+      "extra": [],
       "until": "shot \\d+ frame 205\\b",
       "cap": 40,
       "deadline": 30,
@@ -8525,8 +8507,7 @@
       "proves": "FB-1 gate 3: the native grab change does not change a scene without a grab; shots equal the pre-row build in a cold det run.",
       "debug": "warp=mac_01:0 pos=0:0:200 shots shotwin=200:6 loglevel=debug fixedseed fast fs1off det",
       "extra": [
-        "-Turbo",
-        "-NoWarm"
+        "-Turbo"
       ],
       "until": "shot \\d+ frame 205",
       "cap": 25,
@@ -8656,7 +8637,7 @@
       "subject": "mac_00 at -135 0 85, cold det start: textured rects (sky and HUD), shots at frames 200 to 205 (the picture).",
       "proves": "FB-1 ring gate reference: a cold det run of the default ring; two builds give byte-equal shots.",
       "debug": "warp=mac_00:0 pos=-135:0:85 shots shotwin=200:6 loglevel=debug fixedseed fast fs1off det",
-      "extra": ["-Turbo", "-NoWarm"],
+      "extra": ["-Turbo"],
       "until": "shot \\d+ frame 205\\b",
       "cap": 45,
       "deadline": 20,
@@ -8846,9 +8827,7 @@
         }
       ],
       "reason": "SPR4 det gate (pause, cold start, det switch): same as pause_spin_grab_w300.",
-      "extra": [
-        "-NoWarm"
-      ]
+      "extra": []
     },
     {
       "name": "spot_mac00_det",
@@ -8857,8 +8836,7 @@
       "proves": "VERIFY check: cold det run, the shots are a function of the build, so two builds compare byte for byte.",
       "debug": "warp=mac_00:0 pos=-135:0:85 shots shotwin=200:6 loglevel=debug fixedseed fast fs1off det",
       "extra": [
-        "-Turbo",
-        "-NoWarm"
+        "-Turbo"
       ],
       "until": "shot \\d+ frame 205",
       "cap": 25,
@@ -8884,9 +8862,7 @@
       "subject": "Battle scene (one Goomba on kmr_03), cold det start, walker R13 (r13off): shot at frame 182. VERIFY check 2 walker reference.",
       "proves": "VERIFY check: cold det run, the shots are a function of the build, so two builds compare byte for byte.",
       "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 r13off det",
-      "extra": [
-        "-NoWarm"
-      ],
+      "extra": [],
       "until": "shot \\d+ frame 182\\b",
       "cap": 60,
       "deadline": 45,
@@ -8912,8 +8888,7 @@
       "proves": "VERIFY check: cold det run, the shots are a function of the build, so two builds compare byte for byte.",
       "debug": "warp=iwa_10:1 pos=-586:1:530 shots shotwin=200:6 loglevel=debug fixedseed fast fs1off det",
       "extra": [
-        "-Turbo",
-        "-NoWarm"
+        "-Turbo"
       ],
       "until": "shot \\d+ frame 205",
       "cap": 45,
@@ -8940,8 +8915,7 @@
       "proves": "VERIFY check: cold det run, the shots are a function of the build, so two builds compare byte for byte.",
       "debug": "warp=iwa_10:1 pos=-586:1:530 shots shotwin=200:6 loglevel=debug r13off fixedseed fast fs1off det",
       "extra": [
-        "-Turbo",
-        "-NoWarm"
+        "-Turbo"
       ],
       "until": "shot \\d+ frame 205",
       "cap": 45,
@@ -8968,8 +8942,7 @@
       "proves": "VERIFY check: cold det run, the shots are a function of the build, so two builds compare byte for byte.",
       "debug": "warp=mac_01:0 pos=0:0:200 shots shotwin=200:6 loglevel=debug rectpost=200 fixedseed fast fs1off det",
       "extra": [
-        "-Turbo",
-        "-NoWarm"
+        "-Turbo"
       ],
       "until": "shot \\d+ frame 205",
       "cap": 45,
@@ -8995,9 +8968,7 @@
       "subject": "iwa_10, Mario at -586 1 530, cold det, shots 200 to 205, prof lines (mdlfb, mdlsub).",
       "proves": "MDL-5 iwa_10 native (census, shots).",
       "debug": "warp=iwa_10:1 pos=-586:1:530 prof=4 shots shotwin=200:6 loglevel=debug det",
-      "extra": [
-        "-NoWarm"
-      ],
+      "extra": [],
       "until": "prof f\\d+ w\\d+ at ",
       "cap": 60,
       "deadline": 50,
@@ -9012,9 +8983,7 @@
       "subject": "iwa_10 cold det with nomodelnat (walker geometry of every model record): the byte reference of mdl5_iwa10_det.",
       "proves": "MDL-5 byte reference iwa_10 (nomodelnat).",
       "debug": "warp=iwa_10:1 pos=-586:1:530 prof=4 shots shotwin=200:6 loglevel=debug det nomodelnat",
-      "extra": [
-        "-NoWarm"
-      ],
+      "extra": [],
       "until": "prof f\\d+ w\\d+ at ",
       "cap": 60,
       "deadline": 50,
@@ -9029,9 +8998,7 @@
       "subject": "sbk_56, Mario at 20 0 440, cold det, shots 200 to 205, prof lines (mdlfb, mdlsub).",
       "proves": "MDL-5 sbk_56 native (census, shots).",
       "debug": "warp=sbk_56:0 pos=20:0:440 prof=4 shots shotwin=200:6 loglevel=debug det",
-      "extra": [
-        "-NoWarm"
-      ],
+      "extra": [],
       "until": "prof f\\d+ w\\d+ at ",
       "cap": 60,
       "deadline": 50,
@@ -9046,9 +9013,7 @@
       "subject": "sbk_56, Mario at 20 0 440, cold det, dlch lines per frame 200 to 211 (live Vtx bytes against the static copy hash).",
       "proves": "SBKW-M: which map lists have live Vtx bytes that differ from their static pool copy (water ripple).",
       "debug": "warp=sbk_56:0 pos=20:0:440 prof=4 shots shotwin=200:6 loglevel=debug det dlchash",
-      "extra": [
-        "-NoWarm"
-      ],
+      "extra": [],
       "until": "prof f\\d+ w\\d+ at ",
       "cap": 60,
       "deadline": 50,
@@ -9063,9 +9028,7 @@
       "subject": "sbk_56 cold det with nomodelnat: the byte reference of mdl5_sbk56_det.",
       "proves": "MDL-5 byte reference sbk_56 (nomodelnat).",
       "debug": "warp=sbk_56:0 pos=20:0:440 prof=4 shots shotwin=200:6 loglevel=debug det nomodelnat",
-      "extra": [
-        "-NoWarm"
-      ],
+      "extra": [],
       "until": "prof f\\d+ w\\d+ at ",
       "cap": 60,
       "deadline": 50,
@@ -9080,9 +9043,7 @@
       "subject": "Toad Town mac_01 at 0 0 200, cold det with nomodelnat: the byte reference of spot_mac01_det.",
       "proves": "MDL-5 byte reference mac_01 (nomodelnat).",
       "debug": "warp=mac_01:0 pos=0:0:200 prof=4 shots shotwin=200:6 loglevel=debug det nomodelnat",
-      "extra": [
-        "-NoWarm"
-      ],
+      "extra": [],
       "until": "prof f\\d+ w\\d+ at ",
       "cap": 35,
       "deadline": 30,
@@ -9098,9 +9059,7 @@
       "subject": "Battle kmr_03 (one Goomba), cold det, profdisk: mdlfb and mdlsub lines to disk.",
       "proves": "MDL-5 census and picture: battle mdlfb and mdlsub lines (profdisk).",
       "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 det profdisk=1",
-      "extra": [
-        "-NoWarm"
-      ],
+      "extra": [],
       "until": "shot \\d+ frame 182\\b",
       "cap": 60,
       "deadline": 45,
@@ -9120,9 +9079,7 @@
       "subject": "Battle kmr_03 (one Goomba), cold det, profdisk: mdlfb and mdlsub lines to disk with nomodelnat (walker geometry of every model record): the byte reference.",
       "proves": "MDL-5 byte reference: battle with nomodelnat.",
       "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 det profdisk=1 nomodelnat",
-      "extra": [
-        "-NoWarm"
-      ],
+      "extra": [],
       "until": "shot \\d+ frame 182\\b",
       "cap": 60,
       "deadline": 45,
@@ -9143,7 +9100,7 @@
       "subject": "Six maps in one start (golden_multi tour), cold det, prof=4: one ndm line per 300 frames with the native draw and fallback (fb) counts of the window.",
       "proves": "MDL-5e census: ndm fb 0 on the golden tour (every model record drawn natively).",
       "debug": "preset=yard tour=mac_00:4,tik_03:0,isk_04:0,kzn_19:0,mac_01:0 tourshot=30 shots fixedseed fast loglevel=debug profdisk=1 det",
-      "extra": ["-Turbo", "-NoWarm"],
+      "extra": ["-Turbo"],
       "until": "tour: done",
       "cap": 90,
       "deadline": 20,
@@ -9162,7 +9119,7 @@
       "subject": "Mario in each of 10 maps of the tour list, cold det, prof=4, tourtime=1: one prof window per map (line prof f<n> w<n> tour <i>/<n> <map>:<entry>) and one tourshot 50 frames after each map is in (after the spot placement at 30, before the window at 60, so the shot cost is not in the window). mac_01 (item 2) and mac_00 (item 10) have a position 60 above the floor: Mario stands on the floor (tour: at <map> y <snapped>). ndm census lines per 300 frames.",
       "proves": "TOUR1: the tour state machine (settle, window open and close per map, no window across two maps, y snap of a spot) and the MDL-5e census (ndm fb 0 on the tour10 list).",
       "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0@0:60:200,dgb_01:1,kmr_09:0,kmr_20:4,hos_00:0,kmr_02:0,kmr_10:0,trd_01:0,mac_00:0@-135:60:85 tourtime=1 tourshot=50 shots shotwin=99999:1 prof=4 profdisk=1 det",
-      "extra": ["-NoWarm"],
+      "extra": [],
       "until": "tour: done items",
       "cap": 90,
       "deadline": 20,
@@ -9184,7 +9141,7 @@
       "subject": "Mario in each of 10 maps of the tour list, cold det, the walker geometry of every model record (nomodelnat): the byte reference of tour10_det shots 0 to 10.",
       "proves": "MDL-5f byte gate: the native state-only custom list records of the tour (shots 4 to 6) equal the walker geometry.",
       "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0,dgb_01:1,kmr_09:0,kmr_20:4,hos_00:0,kmr_02:0,kmr_10:0,trd_01:0,mac_00:0 shots shotwin=999999:1 shotmode=4:21 profdisk=1 det fixedseed loglevel=debug mdl0 nomodelnat",
-      "extra": ["-NoWarm"],
+      "extra": [],
       "until": "tour: done",
       "cap": 90,
       "deadline": 20,
@@ -9203,7 +9160,7 @@
       "subject": "Mario in every map of gAreas (tourlist=all, no tst_ maps), one session, no reboot, fixed seed at each warp (gRandSeed = TOUR_SEED). Per map: WARP, SETTLE 60 frames, one prof window of tourtime (default 4 s), CLOSE with the label line prof f<n> w<n> tour <i>/<n> <map>:<entry>. Spot per map from 3ds/tours/spots.txt (or entry 0).",
       "proves": "The full tour: one window record per map for the perf DB (bench.py tour-report ranks the maps by ft_ms). Finds the laggy maps. Not a pass/fail gate: the result is the per-map frame cost.",
       "debug": "warp=arn_02:0 story=ch0_toad_town tourlist=all prof=4",
-      "extra": ["-NoWarm"],
+      "extra": [],
       "until": "tour: done items",
       "cap": 2600,
       "deadline": 20,
@@ -9223,7 +9180,7 @@
       "subject": "Mario in each map of the curated list (tourlist=curated, 3ds/tours/curated.txt compiled into pm_tour_lists.h), one session, no reboot, fixed seed at each warp. Per map: WARP, SETTLE 60 frames, one prof window of tourtime (default 4 s), CLOSE with the label line prof f<n> w<n> tour <i>/<n> <map>:<entry>.",
       "proves": "The curated tour: one window record per map, n = the list length (tour: done items n). Perf per map for bench.py tour-report and the curated list gate (tour_full_prof decides the final list).",
       "debug": "warp=arn_02:0 story=ch0_toad_town tourlist=curated prof=4",
-      "extra": ["-NoWarm"],
+      "extra": [],
       "until": "tour: done items",
       "cap": 90,
       "deadline": 20,
@@ -9243,7 +9200,7 @@
       "subject": "Battle kmr_03 (one Goomba), cold det, profdisk: runs to frame 300 so the first ndm window line (native and fallback counts) is in the log.",
       "proves": "MDL-5e census: ndm fb of the battle window 0 to 300 (every model record drawn natively).",
       "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 det profdisk=1",
-      "extra": ["-NoWarm"],
+      "extra": [],
       "until": "ndm f\\d+ native",
       "cap": 45,
       "deadline": 40,
@@ -9391,9 +9348,7 @@
       "subject": "Battle scene (one Goomba on kmr_03), cold det start, shot 182. t1log: one t1draw line per native tex1 draw (u1 words and uvx sent). pm4 for unlit draws, pm5 tex1 for lit draws.",
       "proves": "FB-3 part 1: pm5 tex1 native draws reproduce the pm4 picture (unlit draws) and send the unit 1 uv map (uvx).",
       "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 det fixedseed fast fs1off t1log loglevel=debug",
-      "extra": [
-        "-NoWarm"
-      ],
+      "extra": [],
       "until": "shot \\d+ frame 182\\b",
       "cap": 60,
       "deadline": 45,
@@ -9439,8 +9394,7 @@
       "proves": "FB-3 part 1 tex1 subject: the tex1 raw draws of program 5 on sbk_56 (use5 1 with has_uvx) and their shots; the walker reference is spot_sbk56_t1det_notex1nat.",
       "debug": "warp=sbk_56:0 pos=20:0:440 shots shotwin=200:6 loglevel=debug fixedseed fast fs1off det t1log",
       "extra": [
-        "-Turbo",
-        "-NoWarm"
+        "-Turbo"
       ],
       "until": "shot \\d+ frame 205",
       "cap": 25,
@@ -9466,9 +9420,7 @@
       "subject": "Mac_01 (warp entry 0, pos 0 0 200), the debug switch seltap presses Select twice per 12 scans, 6 cycles from scan 400: menu open, close, open. Each pause logs the GX queue (qpend) and takes top_after, the displayed top buffer one vblank after the pause.",
       "proves": "GREY MN2: the top screen is grey at every menu open, also on a quick reopen (every top_after shot r = g = b).",
       "debug": "warp=mac_01:0 pos=0:0:200 seltap=400:6 shotgrey loglevel=debug det fixedseed fast fs1off",
-      "extra": [
-        "-NoWarm"
-      ],
+      "extra": [],
       "until": "seltap: done",
       "cap": 20,
       "deadline": 18,
@@ -9669,9 +9621,7 @@
       "subject": "Toad Town mac_01, Mario at 0 0 200 walking right then left (padscript), det, census switch c2haz. 240 checked frames.",
       "proves": "CORE2-2 census: the game memory the walk of frame N reads and the game rewrites before the walk of frame N+1 (c2haz new lines, c2haz sum line).",
       "debug": "warp=mac_01:0 pos=0:0:200 padscript=wait60,RIGHT*60,LEFT*60 loglevel=debug det c2haz c2own",
-      "extra": [
-        "-NoWarm"
-      ],
+      "extra": [],
       "until": "c2haz sum f\\d+ frames 240 ",
       "cap": 35,
       "deadline": 30,
@@ -9692,9 +9642,7 @@
       "subject": "Battle, one Goomba on kmr_03 (battle switch), det, census switch c2haz, to the first census sum after the battle start.",
       "proves": "CORE2-2 census: the game memory the walk of frame N reads and the game rewrites before the walk of frame N+1 (c2haz new lines, c2haz sum line).",
       "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 loglevel=debug det c2haz c2own",
-      "extra": [
-        "-NoWarm"
-      ],
+      "extra": [],
       "until": "c2haz sum f\\d+ frames 240 ",
       "cap": 45,
       "deadline": 40,
@@ -9716,8 +9664,7 @@
       "proves": "CORE2-2 census: the game memory the walk of frame N reads and the game rewrites before the walk of frame N+1 (c2haz new lines, c2haz sum line).",
       "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 loglevel=debug fixedseed fast fs1off det c2haz c2own",
       "extra": [
-        "-Turbo",
-        "-NoWarm"
+        "-Turbo"
       ],
       "until": "c2haz sum f\\d+ frames 420 ",
       "cap": 45,
@@ -9739,9 +9686,7 @@
       "subject": "Toad Town preset, START opens the pause menu at frame 80 and moves the tabs (padscript), det, census switch c2haz.",
       "proves": "CORE2-2 census: the game memory the walk of frame N reads and the game rewrites before the walk of frame N+1 (c2haz new lines, c2haz sum line).",
       "debug": "preset=toad padscript=wait80,START*3,wait30,RIGHT*3,wait30,RIGHT*3,wait60 loglevel=debug det c2haz c2own",
-      "extra": [
-        "-NoWarm"
-      ],
+      "extra": [],
       "until": "c2haz sum f\\d+ frames 240 ",
       "cap": 40,
       "deadline": 30,
@@ -9762,9 +9707,7 @@
       "subject": "Toad Town mac_01 at 0 0 200, det, switch c2own with the positive control c2ownprobe: at frame 60 the game side calls pm_gpu_cap_state, an owned walker entry.",
       "proves": "CORE2-3a: the ownership check works: the c2own line for pm_gpu_cap_state prints (the c2haz scenarios, without the probe, print none).",
       "debug": "warp=mac_01:0 pos=0:0:200 loglevel=debug det c2own c2ownprobe",
-      "extra": [
-        "-NoWarm"
-      ],
+      "extra": [],
       "until": "c2ownprobe: pm_gpu_cap_state called",
       "cap": 30,
       "deadline": 25,
