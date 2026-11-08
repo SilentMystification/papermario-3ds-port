@@ -46,9 +46,12 @@ int pm_tex_aux_valid(void);
 void pm_tex_aux_origin(int* x, int* y); /* V12c: window start inside an off-screen TEXEL1 slot */
 void pm_tex_unbind_aux(void);
 void pm_tex_aux_size(int* w, int* h);
-/* C7: message and UI font glyphs share one atlas texture per sheet; cell origin in texels for the last load. */
+/* MSGBOX 3: message and UI font glyphs of every palette share one cell texture; cell origin in texels for the last load.
+ * pm_tex_glyph_same returns 2 when the cell texture is bound and the glyph's cell is ready (the open batch goes on). */
 int pm_tex_glyph_same(const void* img, unsigned fmt, unsigned siz, int w, int h, const void* tlut, int tlut_n, int* gx, int* gy);
 void pm_tex_glyph_ofs(int* x, int* y);
+int pm_tex_cell_bound(void); /* 1 while unit 0 holds the glyph cell texture */
+void pm_tex_cell_log(unsigned f); /* the glyph cells line (rect log, every 100 frames) */
 
 #endif
 

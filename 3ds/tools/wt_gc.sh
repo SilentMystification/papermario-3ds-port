@@ -1,14 +1,14 @@
 #!/bin/sh
 # wt_gc.sh: remove the build3ds disk use of finished work.
-# Removes, for every worktree under build3ds/wt whose branch is merged into nds1 (or whose HEAD is detached):
+# Removes, for every worktree under build3ds/wt whose branch is merged into main (or whose HEAD is detached):
 #   the worktree (git worktree remove --force), its lane folder build3ds/lane-<name>, and its docker volumes
 #   pm3ds-src-<name> and pm3ds-build-<name>.
 #   its pm_3ds_<name>.3dsx copies (the Azahar sdmc folder and build3ds/azslots/slot*/user/sdmc/3ds/PaperMario)
 #   and its shot folders build3ds/azt/shots/*/<name>.
 # Also removes build-at folders build3ds/at_* and lanes build3ds/lane-* that have no worktree.
 # Keeps: worktrees with a .wt_keep file (an agent works there; it deleted core20 mid-row on 2026-11-08) or uncommitted
-# tracked changes, worktrees whose branch has commits not in nds1 (unmerged work), worktrees whose branch tip is on the
-# first-parent line of nds1 (a fresh branch with no commit of its own yet: an agent may work in it; ls3 was
+# tracked changes, worktrees whose branch has commits not in main (unmerged work), worktrees whose branch tip is on the
+# first-parent line of main (a fresh branch with no commit of its own yet: an agent may work in it; ls3 was
 # deleted that way on 2026-11-07; remove a fast-forwarded one with --only), names given with --keep, the main lane
 # (build3ds itself), build3ds/azslots, build3ds/azt, build3ds/archive.
 # Before a removal, the uncommitted diff of a dirty worktree is saved to build3ds/archive/wt_<name>_dirty.patch,
@@ -58,11 +58,11 @@ for w in build3ds/wt/*/; do
     fi
     if [ -n "$ONLY" ]; then case "$ONLY" in *",$n,"*) ;; *) keep_wt="$keep_wt$n,"; continue ;; esac; fi
     b=$(git -C "$w" symbolic-ref --short -q HEAD || echo DETACHED)
-    if [ -z "$ONLY" ] && [ "$b" != DETACHED ] && git rev-list --first-parent nds1 | grep -qx "$(git rev-parse "$b")"; then
+    if [ -z "$ONLY" ] && [ "$b" != DETACHED ] && git rev-list --first-parent main | grep -qx "$(git rev-parse "$b")"; then
         keep_wt="$keep_wt$n,"; echo "keep $n (branch $b has no commit of its own: fresh worktree, use --only to remove)"; continue
     fi
-    if [ "$b" != DETACHED ] && ! git merge-base --is-ancestor "$b" nds1 2>/dev/null; then
-        keep_wt="$keep_wt$n,"; echo "keep $n (branch $b has $(git rev-list --count nds1.."$b") commits not in nds1)"; continue
+    if [ "$b" != DETACHED ] && ! git merge-base --is-ancestor "$b" main 2>/dev/null; then
+        keep_wt="$keep_wt$n,"; echo "keep $n (branch $b has $(git rev-list --count main.."$b") commits not in main)"; continue
     fi
     if [ -n "$(git -C "$w" status --porcelain -- . ':!3ds/src/map_restore_table.c' ':!3ds/logs/perf/runs.jsonl' 2>/dev/null | grep -v '^??')" ]; then
         run sh -c "git -C '$w' diff -- . ':!3ds/src/map_restore_table.c' ':!3ds/logs/perf/runs.jsonl' > build3ds/archive/wt_${n}_dirty.patch"
