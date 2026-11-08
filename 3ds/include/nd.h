@@ -348,7 +348,8 @@ typedef struct NdMKey { uint32_t w[NDMC_RW + NDMC_SW]; uint32_t h; uint32_t rp; 
 #define ND_RAW_MAX 16
 typedef struct __attribute__((aligned(32))) NdMEnt { NdMKey k; NdRng raw[ND_RAW_MAX]; uint32_t geom; int hs; unsigned hg; uint16_t off, n, nraw; uint8_t used, tex, why; uint32_t ep; } NdMEnt; /* raw: the static ranges the draws were cut from (the hit compares them with the fresh ones) */
 unsigned nd_handle_gen(void);                                   /* bumped by each texture handle write (nd_tex_handle_set) */
-NdMEnt* nd_mc_find(const NdMKey* k);                           /* the entry of key k, NULL when none */
+NdMEnt* nd_mc_find(const NdMKey* k);                           /* the entry of key k (k->h set), NULL when none */
+NdMEnt* nd_mc_find_rec(NdMKey* k);                             /* PERF1-4a: rec_run's lookup: the record address memo first, else sets k->h and probes */
 NdMEnt* nd_mc_store(const NdMKey* k, int tex, int hs, unsigned hg); /* the draws and ranges of the last nd_model_draw (it returned >= 0); NULL when more than ND_RAW_MAX ranges */
 NdNat* nd_mc_nat(NdMEnt* e, unsigned j);                       /* draw j of an entry (j < e->n) */
 uint32_t nd_mc_hash(const NdMKey* k);                          /* S3N-7: the hash of the key words, set in pm_gpu_model_key */

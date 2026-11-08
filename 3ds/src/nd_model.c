@@ -441,6 +441,19 @@ static void mc_note(const NdMKey* k, const NdMEnt* e) { /* S3N-7: the last entry
     unsigned s = (k->rp >> 2) & (NDMC_LAST - 1u);
     mc_lastp[s] = k->rp; mc_lasti[s] = (uint16_t)(e - mc_tab); mc_lastg[s] = mc_clears_n;
 }
+/* PERF1-4a: rec_run's lookup. The entry this record address found or stored last (mc_lastp, same clear generation) is compared first: an equal key needs no
+ * hash and no probe. Else the hash (k->h, read by the probe and the store) and the probe; a found entry becomes the record's memo. */
+NdMEnt* nd_mc_find_rec(NdMKey* k) {
+    unsigned s = (k->rp >> 2) & (NDMC_LAST - 1u);
+    if (mc_lastp[s] == k->rp && mc_lastg[s] == mc_clears_n) {
+        NdMEnt* m = &mc_tab[mc_lasti[s]];
+        if (m->used && mc_eq(&m->k, k)) { k->h = m->k.h; return m; }
+    }
+    k->h = nd_mc_hash(k);
+    NdMEnt* e = nd_mc_find(k);
+    if (e) mc_note(k, e);
+    return e;
+}
 NdMEnt* nd_mc_store(const NdMKey* k, int tex, int hs, unsigned hg) {
     if (nat_nr > ND_RAW_MAX || nat_nr < 0) { mg_cls[7]++; return NULL; }
     if (nat_n > (int)ND_NAT_MAX) { mg_cls[8]++; return NULL; }

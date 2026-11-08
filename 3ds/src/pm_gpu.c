@@ -2689,8 +2689,8 @@ void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) {
     s[i++] = nd_handle_gen(); s[i++] = pm_dlc_gen;
     i += pm_gbi_gvkey(s + i, NDMC_SW - i);
     while (i < NDMC_SW) s[i++] = 0;
-    k->rp = (uint32_t)(uintptr_t)rec; /* S3N-7: the record address (diagnostic classes only) */
-    k->h = nd_mc_hash(k);
+    k->rp = (uint32_t)(uintptr_t)rec; /* S3N-7: the record address (PERF1-4a: the lookup memo, nd_mc_find_rec) */
+    k->h = 0; /* set by nd_mc_find_rec */
 }
 static int ndc_compare(const NdMKey* k, const NdTexDesc* ds, int id, int hs, unsigned hg); /* S3N-6 check: 1 when the entry is valid */
 unsigned nd_r13_nohit; /* MDL-1: R13 texture records without a desc, stored no-hit (mdlw r13nohit) */
@@ -2797,7 +2797,7 @@ void pm_gpu_ndm_begin(const uint32_t* rec, const uint32_t* modew, const uint32_t
 }
 /* S3N-4: the switch. One model record drawn natively (emit 1) after rec_apply; a fallback returns -1 and the record runs the walker geometry.
  * The counters print every 300 frames: native records, fallback records, native draws (the ranges; the wref class is not split in this mode). */
-static unsigned ndn_rec, ndn_fb, ndn_draws, ndn_f_last, ndn_hit, ndn_miss, ndn_nokey, ndn_rng, ndn_texf;
+static unsigned ndn_rec, ndn_fb, ndn_draws, ndn_f_last, ndn_hit, ndn_miss, ndn_nokey, ndn_rng, ndn_texf, ndn_empty; /* PERF1: empty = hits with no draw */
 void pm_gbi_dnr_take(unsigned* o, unsigned n);
 static unsigned ndn_why[16]; /* S3L-1: fallback records of the window by code (0 = nost: no state bit known, the record words are not read) */
 /* S3N-7: the counters of one 300-frame window (reset at the print). ndmt: ms per sampled frame of each region (ticks / 268112 per ms / frames). */
@@ -2827,7 +2827,7 @@ static void ndn_log(void) {
         char wb[160]; unsigned wn = 0; wb[0] = 0; /* S3L-1: the codes of the window, nonzero only */
         for (unsigned c = 0; c < 16u; c++) if (ndn_why[c]) { if (!wn) wn += (unsigned)snprintf(wb, sizeof wb, " why"); wn += (unsigned)snprintf(wb + wn, sizeof wb - wn, " %u:%u", c, ndn_why[c]); }
         pm_log_prof_line("ndm f%u native %u fb %u wref %u hit %u miss %u clears %u%s", f, ndn_rec, ndn_fb, ndn_draws, ndn_hit, ndn_miss, clr - ndn_clr0, wb);
-        pm_log_prof_line("ndmhit f%u nokey %u rng %u tex %u", f, ndn_nokey, ndn_rng, ndn_texf);
+        pm_log_prof_line("ndmhit f%u nokey %u rng %u tex %u empty %u", f, ndn_nokey, ndn_rng, ndn_texf, ndn_empty);
         { static int szd; if (!szd) { szd = 1; pm_log_prof_line("ndmsz entry %u draw %u", (unsigned)sizeof(NdMEnt), (unsigned)sizeof(NdNat)); } }
         { unsigned dg[15]; nd_mc_diag_take(dg);
           pm_log_prof_line("ndmmiss f%u new %u clr %u rec %u st %u hd %u gv %u same %u rcap %u ncap %u ins %u ent %u pool %u ehi %u phi %u cap %u", f, dg[0], dg[1], dg[2], dg[3], dg[4], dg[5], dg[6], dg[7], dg[8], dg[9], dg[10], dg[11], dg[12], dg[13], dg[14]); }
@@ -2835,7 +2835,7 @@ static void ndn_log(void) {
           pm_log_prof_line("ndmr f%u c1 %u c2 %u c3 %u c4 %u c5 %u c6 %u c7 %u c8 %u c9 %u c10 %u", f, dr[1], dr[2], dr[3], dr[4], dr[5], dr[6], dr[7], dr[8], dr[9], dr[10]);
           pm_log_prof_line("ndmr2 f%u c11 %u c12 %u c13 %u c14 %u c15 %u", f, dr[11], dr[12], dr[13], dr[14], dr[15]); }
         ndn_clr0 = clr;
-        ndn_rec = ndn_fb = ndn_draws = ndn_hit = ndn_miss = ndn_nokey = ndn_rng = ndn_texf = 0;
+        ndn_rec = ndn_fb = ndn_draws = ndn_hit = ndn_miss = ndn_nokey = ndn_rng = ndn_texf = ndn_empty = 0;
         memset(ndn_why, 0, sizeof ndn_why);
     }
 }
@@ -2926,6 +2926,7 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
     int nr = pm_dlc_native_ranges((const void*)(uintptr_t)k->w[24], e->geom, rng, ND_RAW_MAX);
     int same = model_ranges_eq(e, rng, nr);
     if (!same) { ndn_rng++; return 0; }
+    if (!e->n) ndn_empty++;
     NdUnit u; memset(&u, 0, sizeof u);
     if (e->tex) {
         const NdTexDesc* ds = nd_tex_handle_desc((int)((k->w[0] >> 8) & 0x7fu), (const void*)(uintptr_t)k->w[1]);

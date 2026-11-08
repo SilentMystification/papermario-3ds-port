@@ -113,7 +113,7 @@ static int nmn_sw(void) { static int v = -1; if (v < 0) v = pm_debug_has("nomode
 unsigned rec_run(const Gfx* q) {
     NdMKey mk;
     pm_gpu_model_key((const uint32_t*)q, &mk); /* S3N-6: the cache key, from the walker state before the record is applied */
-    NdMEnt* mce = nd_mc_find(&mk);
+    NdMEnt* mce = nd_mc_find_rec(&mk); /* PERF1-4a: the record address memo, else hash and probe */
     int cached = mce != NULL;
     if (!cached) { nd_mc_miss(&mk); extern void pm_gpu_model_miss_diag(const NdMKey* k); pm_gpu_model_miss_diag(&mk); } /* S3N-7: the miss class (diagnostic) */
     int ndm = pm_gpu_ndm_on();
