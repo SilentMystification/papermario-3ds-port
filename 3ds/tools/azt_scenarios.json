@@ -2526,6 +2526,38 @@
       "reason": "CH6 gate: peak y of the moon run (cheat: moon jump y) against the normal run (cheat: jump y), and the top shot at the peak."
     },
     {
+      "name": "moon_tap",
+      "status": "unverified",
+      "subject": "Toad Town (mac_00 entry 4), moon jump on: A held 12 scans from the ground (Mario rises at MOON_RISE per step), release (he falls), then 5 taps of A 10 scans apart in the fall. Each tap raises him again: cheat: moon jump y rises after each tap (a tap from a fall re-enters JUMP). One shot in the hover (shotwin 110:40) shows him above the floor.",
+      "proves": "MOON3: pm_cheat_tick (pm_dbg_game.c) pushes on the A rising edge while JUMPING or FALLING (a fall goes back to JUMP) and holds the rise at MOON_RISE = 0.5 x GravityParamsStartJump[0].",
+      "debug": "preset=toad moonjump padscript=wait80,A*12,wait25,A,wait9,A,wait9,A,wait9,A,wait9,A,wait9,wait30 shots shotwin=110:40 loglevel=debug",
+      "until": "padscript: done",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "jump",
+          "regex": "cheat: (moon )?jump y -?[0-9.]+"
+        },
+        {
+          "name": "tap",
+          "regex": "cheat: moon jump tap y -?[0-9.]+"
+        },
+        {
+          "name": "done",
+          "regex": "padscript: done"
+        }
+      ],
+      "reason": "MOON3 gate: y before and after each tap (cheat: moon jump tap y, then cheat: moon jump y), and the shot in the hover."
+    },
+    {
       "name": "menu_cheats7",
       "status": "verified",
       "subject": "Yard, Mario at HP 1 (hp=1), launch cheats=hp,fp,sp,nobattle,speed: one log line per cheat (active), the HP refill from 1 to the max, speed x2 at the walk value.",
