@@ -7167,18 +7167,22 @@
       "name": "merlee_spell_prof",
       "status": "unverified",
       "subject": "Merlee (dro_02) casts the upgrade spell as in merlee_spell, with prof=30 windows and no shots: the frame time of the cast start (orb glow, world darkening) and of the end (energy_in_out star on Mario).",
-      "proves": "MERLEE lag: the prof windows before the shuffle ret line (cast start) and before the state D line (star effect) give fps and the cls split (Azahar direction only).",
+      "proves": "MERLEE lag: the merlee darken/undarken start and done lines carry frame, time (ms) and the native model cache misses and clears since boot; their differences are the cost of the two fades (cast start and star end). Azahar direction only; the prof ndm lines give the window totals.",
       "debug": "warp=kmr_02:0 story=ch0_toad_town livewarp=120:dro_02:0 warpitems padscript=@pad_merlee.txt prof=30 loglevel=debug",
-      "until": "merlee: ritual state D [(]spell done[)]",
+      "until": "merlee: undarken done",
       "cap": 45,
       "deadline": 20,
-      "first_marker": "livewarp: scene frame 120 to dro_02 entry 0",
+      "first_marker": "prof cal every 30",
       "expects": "warp",
       "needs_picture": false,
       "expected_events": [
         {
-          "name": "map",
-          "regex": "livewarp: scene frame 120 to dro_02 entry 0"
+          "name": "darken start",
+          "regex": "merlee: darken start f\\d+"
+        },
+        {
+          "name": "darken done",
+          "regex": "merlee: darken done f\\d+"
         },
         {
           "name": "shuffle start",
@@ -7187,6 +7191,10 @@
         {
           "name": "spell done",
           "regex": "merlee: ritual state D [(]spell done[)]"
+        },
+        {
+          "name": "undarken done",
+          "regex": "merlee: undarken done f\\d+"
         }
       ],
       "reason": "MERLEE row (lag). Same route as merlee_spell; no shots, so the prof windows carry no shot cost. Cap 45 s (upper limit): about 20 s walk and talk, then about 17 s of spell."

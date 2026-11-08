@@ -1627,7 +1627,7 @@ static void wq_pm_gpu_shot_burst(void* a) { Wq_pm_gpu_shot_burst* q = (Wq_pm_gpu
 void pm_gpu_shot_burst(int n) { Wq_pm_gpu_shot_burst q = { n }; pm_wq_post(wq_pm_gpu_shot_burst, &q, sizeof q); }
 static void pm_gpu_shot_burst_w(int n) { extern unsigned pm_frame_count(void); shot_burst_on = 1; shot_burst_w1 = pm_frame_count() + (unsigned)n; shot_burst_f = ~0u; }
 /* encwarp: one shot per frame for the frames from..from+n-1 (overrides shotwin) */
-static int shot_w0 = -2, shot_w1;
+static int shot_w0 = -2, shot_w1, shot_ws = 1; /* shot_ws: shotwin=<first>:<count>:<step>, one shot every step frames of the window (default 1) */
 /* CORE2-3a: walker side entry (nd_wq.c): the game thread posts it, the body runs on the walker side. */
 static void pm_gpu_shot_window_w(unsigned from, unsigned n);
 typedef struct { unsigned from; unsigned n; } Wq_pm_gpu_shot_window;
@@ -1651,7 +1651,7 @@ static void dump_shot(void) {
             char v[24];
             shot_w0 = -1;
             if (pm_debug_value("shotmode", v, sizeof v)) shot_armed = 1; /* SHOT-1: a shotmode scene has no shot before its burst (the periodic dump is for a run without a window) */
-            if (pm_debug_value("shotwin", v, sizeof v) && sscanf(v, "%d:%d", &shot_w0, &shot_w1) == 2) { shot_w1 += shot_w0; shot_armed = 1; }
+            if (pm_debug_value("shotwin", v, sizeof v) && sscanf(v, "%d:%d:%d", &shot_w0, &shot_w1, &shot_ws) >= 2) { shot_w1 += shot_w0; shot_armed = 1; if (shot_ws < 1) shot_ws = 1; }
             else shot_w0 = -1;
         }
         if (shot_burst_on) { /* shotmode: one file, the settle frame (the last frame of the window). Every other drawn frame logs t, C_CMD and C_FLUSH of the frame before (pm_ph_cnt is per frame). */
@@ -1669,7 +1669,7 @@ static void dump_shot(void) {
             snprintf(msg, sizeof msg, "shot %u frame %u map %d:%d t=%u ms cmd %u flush %u", n, fc, ma, mm, pm_uptime_ms(), pm_ph_prev(C_CMD), pm_ph_prev(C_FLUSH));
         } else if (shot_w0 >= 0) {
             unsigned fc = pm_frame_count();
-            if ((int)fc < shot_w0 || (int)fc >= shot_w1) return;
+            if ((int)fc < shot_w0 || (int)fc >= shot_w1 || ((int)fc - shot_w0) % shot_ws) return;
             snprintf(msg, sizeof msg, "shot %u frame %u", n, fc);
         } else if (shot_armed) {
             return; /* SHOT-1: a burst or window ran: no shot outside it */
@@ -2829,6 +2829,8 @@ void pm_gpu_ndm_begin(const uint32_t* rec, const uint32_t* modew, const uint32_t
  * The counters print every 300 frames: native records, fallback records, native draws (the ranges; the wref class is not split in this mode). */
 static unsigned ndn_rec, ndn_fb, ndn_draws, ndn_f_last, ndn_hit, ndn_miss, ndn_nokey, ndn_rng, ndn_texf, ndn_empty; /* PERF1: empty = hits with no draw */
 void pm_gbi_dnr_take(unsigned* o, unsigned n);
+static unsigned ndn_miss_all; /* MERLEE: model cache misses since boot (pm_gpu_mdl_stat) */
+void pm_gpu_mdl_stat(unsigned* miss, unsigned* clears) { *miss = ndn_miss_all; *clears = nd_mc_clears(); } /* MERLEE: the fade lines of dro_02 npc_merlee.c */
 static unsigned ndn_why[16]; /* S3L-1: fallback records of the window by code (0 = nost: no state bit known, the record words are not read) */
 /* S3N-7: the counters of one 300-frame window (reset at the print). ndmt: ms per sampled frame of each region (ticks / 268112 per ms / frames). */
 static unsigned ndn_clr0;
@@ -2938,6 +2940,7 @@ void pm_gpu_model_miss_diag(const NdMKey* k) {
 int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, const NdMKey* mk) {
     int mode_ok = 0;
     int n = model_draw(rec, modew, combw, gfx, texidx, geo, 1, &mode_ok, mk);
+    ndn_miss_all++;
     if (n >= 0) { ndn_rec++; ndn_draws += (unsigned)n; }
     else { ndn_fb++; ndn_why[nd_nat_why & 15]++; const unsigned sub = nd_nat_why == 6 ? nd_nat_sub : 0u; if (sub) nd_mdlfb_note(mk->rp, sub); } /* S3N-7: a fallback is stored for this key (every early return of model_draw too): not drawn again while the texture epoch holds, so a texture that loads later gets the native path then */
     ndn_miss++;

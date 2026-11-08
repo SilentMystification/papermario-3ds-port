@@ -288,10 +288,10 @@
       "kind": "azahar_stream",
       "speed": "normal",
       "default": false,
-      "purpose": "MERLEE lag: Merlee spell in dro_02 with prof=30 (no shots). Windows before the shuffle line = cast start (orb glow, darkening); before state D = star effect. Azahar direction only.",
+      "purpose": "MERLEE lag: Merlee spell in dro_02 with prof=30 (no shots). The merlee darken/undarken lines give frames, ms and model cache misses and clears of the two fades (cast start, star end). Azahar direction only.",
       "scenario": "merlee_spell_prof",
       "cap": 45,
-      "until": "merlee: ritual state D [(]spell done[)]",
+      "until": "merlee: undarken done",
       "tags": [
         "azahar",
         "prof",
