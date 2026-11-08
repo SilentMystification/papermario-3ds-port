@@ -15,9 +15,9 @@ batch mode. gdb runs -GdbScript (gdb commands, e.g. "break boot_main"), then "co
 When the game stops (breakpoint or fault), gdb prints a backtrace, the registers and the stack.
 Output: build3ds/last_gdb.txt. The run ends when gdb exits or at -Timeout. Log-silence
 detection is off, because a stopped game is silent.
--Turbo: (slice W01) raise Azahar's speed limit for this run only: frame_limit=1000 (percent) and use_vsync=false in
-qt-config.ini. The four original lines are saved in build3ds/qt-config.turbo-backup and put back at the end (also after a
-killed run: the next start restores first). The game then runs as fast as the PC allows. Game logic is frame driven, so the same
+-Turbo: (slice W01) raise Azahar's speed limit for this run only: frame_limit=TurboLimit (percent) and use_vsync=false in the
+slot qt-config.ini, put back at the end (also after a killed run: the next start restores first). A slot config that already runs
+frame_limit=0 (unthrottled) and vsync off is not edited (AZT13, Get-SlotSpeed in azslot.ps1). The game then runs as fast as the PC allows. Game logic is frame driven, so the same
 scans give the same maps. NOT valid for performance numbers: ms per frame, phase times, fps and the audio budget (the audio
 thread works against real time) all change. -Timeout and -Until keep their normal-speed meaning: the run waits Timeout/TurboFactor s.
 -TurboFactor <n> (default 3): the assumed speedup. The script prints the wall time, and the game log has t= in ms.
@@ -180,7 +180,12 @@ function Set-GdbStub([bool]$on) {
                              'instant_debug_log\default' = "false"; "instant_debug_log" = "true" }) "Debugging"
 }
 function Set-Turbo {
-    Set-CfgKeys ([ordered]@{ 'frame_limit\default' = "false"; "frame_limit" = "$TurboLimit"; 'use_vsync\default' = "false"; "use_vsync" = "false" })
+    # AZT13: the turbo speed of Get-SlotSpeed (azslot.ps1); no edit when the slot config already runs it (frame_limit 0, vsync off)
+    $sp = [regex]::Match((Get-SlotSpeed $slotK $true $TurboLimit), '^fl(\d+) vs(\d)$')
+    $fl = $sp.Groups[1].Value
+    if ((Get-SlotSpeed $slotK $false 0) -ne (Get-SlotSpeed $slotK $true $TurboLimit)) {
+        Set-CfgKeys ([ordered]@{ 'frame_limit\default' = "false"; "frame_limit" = "$fl"; 'use_vsync\default' = "false"; "use_vsync" = "false" })
+    }
 }
 
 # U2 (user decision): a run with profiling writes its prof lines to log.txt too (profdisk=1), so the scenario lines and the until stay on the disk copy.
@@ -219,7 +224,7 @@ New-Item -ItemType Directory -Force -Path $out | Out-Null
 # AZT-2: an Azahar kept by an earlier run (-Keep) is reused when it is the same build file and the same speed settings
 $keepOn = $Keep.IsPresent -or [bool]$env:PM_AZ_KEEP
 $kept = Get-KeptAzahar $slotK
-# AZT2: the warm decision and its reason (azslot line below). Reasons: no kept, closed, turbo, option, restart failed (AZT3-1: no lane reason)
+# AZT2: the warm decision and its reason (azslot line below). Reasons: no kept, closed, speed, option, restart failed (AZT3-1: no lane reason)
 $warmWhy = if ($NoWarm -or $Interactive -or $Gdb -or $FaultStop) { "option" } else { Get-WarmState $slotK $Turbo.IsPresent $(if ($Turbo) { $TurboLimit } else { 0 }) }
 $warm = ($warmWhy -eq "warm")
 if (-not $warm) { Remove-Item $sl.keepFile -ErrorAction SilentlyContinue }
@@ -246,6 +251,7 @@ try {
     Set-Content $pidFile $PID # the script PID until Azahar starts, then the Azahar PID
     Copy-Item $cfg $cfgBak -Force # every run edits the config (Set-GdbStub), so every run saves it first
     if (Test-Path $optFile) { Copy-Item $optFile $optBak -Force } # UI1a: saved before any edit of options.ini
+    $keepSpeed = Get-SlotSpeed $slotK $Turbo.IsPresent $TurboLimit # AZT13: the speed this Azahar runs (a warm restart: the kept one's, the same key)
     if ($Turbo) { Set-Turbo }
 
 New-Item -ItemType Directory -Force -Path $sd, $sl.romDir | Out-Null
@@ -310,59 +316,57 @@ $p = $null
 $warmDone = $false
 $start = Get-Date
 if ($warm) {
-    # AZT-2 warm restart: Azahar > Emulation > Restart (hotkey of the slot config) boots the same 3dsx again.
-    # AZT11-4: the boot is found by this run's nonce (bootid=, the first word of the switches line). The old boot never prints it, whatever the
-    # log file does on a restart (AZT9d-2 and AZT11-4a: a log overwritten in place from offset 0, same banner count and size, was never seen as new).
-    # Two key methods per round (posted, SwitchToThisWindow + keybd_event; AZT12-5). A boot that is not this run
-    # (other switches, or another build than this lane 3dsx) gets a second round in the kept Azahar with a new nonce (switches only);
-    # a stale build is cold at once. A cold start is the last resort.
+    # AZT-2 warm restart: Azahar > Emulation > Restart (hotkey of the slot config) boots the slot ROM path again (AZT8-3: the ROM copy
+    # there is this lane's 3dsx by hash, and debug3ds.txt holds this run's switches, both written before the key).
+    # AZT13: one key, posted with its own focus messages to the window of the kept pid (Send-AzHotkey, azslot.ps1): no foreground change,
+    # so no other agent's window swap can drop it. The new boot is proven by two facts after the key, not by a game log line:
+    #  1. the emulator log has Azahar's BootGame line ("Azahar starting...", instant_debug_log writes each line at once): the key arrived;
+    #  2. log.old is back: the run deletes it before the key, and the game's pm_log_init (pm_log.c) unlinks log.old, renames log.txt to
+    #     log.old and opens a new log.txt. From then on log.txt is this boot's file, and azt.ps1 reads it from its first byte (warm.ok).
+    # The old proof (AZT11-4) was this run's nonce on the switches line of log.txt. A boot with the prof switch never writes that line:
+    # pm_log_prof_apply sets the disk level to -1 (pm_log.c pm_log_prof_row, "if (mode == 1) lv_live = lv_disk = lv_con = -1") before the
+    # writer thread takes the boot lines from its queue, so log.txt starts at "#15 prof=1 log=off" (warmfail_log.txt, 2026-11-08). Every
+    # prof run then failed its warm restart after a key that had restarted the game (warmfail_emu.txt: BootGame 0.1 s after the key) and
+    # went cold as "restart failed": the "lost key" of pool.log was mostly this. The nonce stays the first switch word (shot lines anchor).
     $hk = Get-SlotHotkey $slotK "Restart Emulation"
     $warmDone = $false
-    for ($round = 1; $round -le 2; $round++) {
-        Set-Content $pidFile $kept.Id
-        $boot = $null
-        for ($try = 1; $try -le 2 -and -not $boot; $try++) {
-            # AZT12-5: the run clock starts at each try (a restart key that took no effect is no part of the run): run_azahar's cap ($start),
-            # azt.ps1's deadline and the queue's runT (azt.ps1 restarts both when warm.start changes). Per round, four failed tries
-            # (up to 66 s) ran past cap + 30 s and the queue sweep of another run killed this run (no end line).
-            $start = Get-Date
-            Set-Content "$($sl.dir)\warm.start" $start.Ticks # azt.ps1 starts its clock on this file
-            $script:AzLastFg = $false
-            $kept.Refresh()
-            # AZT12-5: two tries (posted key, then SwitchToThisWindow + keybd_event). pool.log to 2026-11-08: try 1 booted 270 of 314; of the 44 misses
-            # try 2 booted 13, tries 3 and 4 (keybd_event again, switch) 7 more for 27 more misses of 15 s each: a cold start (16 s) is cheaper.
-            $method = @("posted", "switch_to_window")[$try - 1]
-            if ($try -eq 1) { $sent = Send-AzHotkey $kept $hk }
-            else { $sent = Send-AzKeyEventSwitch $kept.MainWindowHandle $hk }
-            $fgTxt = if ($script:AzLastFg) { "foreground" } else { "no foreground" }
-            Write-PoolLog $slotK "warm try" $kept.Id $kept.Id ("round {0} try {1} {2} hotkey {3} sent={4} {5} title '{6}'" -f $round, $try, $method, $hk, $sent, $fgTxt, $kept.MainWindowTitle)
-            if (-not $sent) { continue }
-            for ($w = 0; $w -lt 32 -and -not $boot; $w++) { # AZT12-5: 8 s per try (pool.log: 290 boots found 1.7 to 6.6 s after the key, p95 3.2 s; was 15 s)
-                Start-Sleep -Milliseconds 250
-                $boot = Find-BootNonce $log $bootNonce
-            }
-            Write-PoolLog $slotK "warm wait" $kept.Id $kept.Id ("round {0} try {1} nonce {2} after {3:N1} s" -f $round, $try, $(if ($boot) { "found" } else { "none" }), ((Get-Date) - $start).TotalSeconds)
-        }
-        if (-not $boot) { $warmWhy = "restart failed"; break }
-        $buildOk = Test-Build3dsx $in3dsx ([string]$boot.build) # AZT11-4a: the lane 3dsx holds the boot's build id
-        $swOk = Test-SwitchWords ([string]$boot.switches) $Debug.Trim() # AZT11-4b: every switch word of this run is in the boot
-        if ($buildOk -and $swOk) {
-            $p = $kept; $warmDone = $true
-            Write-Output ("Warm restart ok after {0:N1} s (hotkey {1}, round {2})." -f ((Get-Date) - $start).TotalSeconds, $hk, $round)
-            Set-Content "$($sl.dir)\warm.ok" "ok" # AZT3-3: azt.ps1 reads this boot's log from its first byte after this line
-            Write-PoolLog $slotK "warm" $kept.Id $kept.Id "restart, this run's switches"
-            break
-        }
-        $warmWhy = if (-not $buildOk) { "stale rom" } else { "switch mismatch" }
-        Write-Output ("Warm restart: the boot is not this run ({0}; boot build '{1}', boot switches '{2}'), round {3} of 2." -f $warmWhy, $boot.build, $boot.switches, $round)
-        if (-not $buildOk -or $round -eq 2) { break }
-        # round 2: the old boot prints the old nonce, so the next boot gets a new one (the switches file is rewritten with it)
-        $bootNonce = [guid]::NewGuid().ToString("N").Substring(0, 10)
-        $Debug = ("bootid=$bootNonce " + ($Debug -replace '^bootid=\S+\s*', '')).Trim()
-        Set-Content "$sd\debug3ds.txt" $Debug
+    Set-Content $pidFile $kept.Id
+    # AZT12-5: the run clock starts at the key (run_azahar's cap ($start), azt.ps1's deadline and the queue's runT: azt.ps1 restarts
+    # both when warm.start changes).
+    $start = Get-Date
+    Set-Content "$($sl.dir)\warm.start" $start.Ticks # azt.ps1 starts its clock on this file
+    $logOld = "$sd\log.old"
+    Remove-Item $logOld -Force -ErrorAction SilentlyContinue
+    $keyOff = if (Test-Path $emuLog) { (Get-Item $emuLog).Length } else { 0L }
+    $sent = (-not (Test-Path $logOld)) -and (Send-AzHotkey $kept $hk)
+    Write-PoolLog $slotK "warm try" $kept.Id $kept.Id ("posted focus+key {0} sent={1} title '{2}'" -f $hk, $sent, $kept.MainWindowTitle)
+    $booted = $false; $rotated = $false
+    while ($sent -and -not ($booted -and $rotated)) {
+        Start-Sleep -Milliseconds 250
+        $el = ((Get-Date) - $start).TotalSeconds
+        if (-not $booted) { $booted = Test-EmuBoot $emuLog $keyOff }
+        if ($booted -and -not $rotated) { $rotated = Test-Path $logOld }
+        if (-not $booted -and $el -gt 8) { break } # Azahar logs BootGame about 0.1 s after the key: 8 s means the key did not arrive
+        if ($el -gt 20) { break } # the game rotates its log about 1 s after BootGame (AZT12-5: boots seen 1.7 to 6.6 s after the key)
     }
+    Write-PoolLog $slotK "warm wait" $kept.Id $kept.Id ("boot {0} log rotated {1} after {2:N1} s" -f $(if ($booted) { "yes" } else { "no" }), $(if ($rotated) { "yes" } else { "no" }), ((Get-Date) - $start).TotalSeconds)
+    if ($booted -and $rotated) {
+        $p = $kept; $warmDone = $true
+        Write-Output ("Warm restart ok after {0:N1} s (hotkey {1})." -f ((Get-Date) - $start).TotalSeconds, $hk)
+        Set-Content "$($sl.dir)\warm.ok" "ok" # AZT3-3: azt.ps1 reads this boot's log from its first byte after this line
+        Write-PoolLog $slotK "warm" $kept.Id $kept.Id "restart, this run's switches"
+    }
+    else { $warmWhy = "restart failed" }
     if (-not $warmDone) {
         Write-Output "Warm restart failed ($warmWhy): cold start."
+        if ($warmWhy -eq "restart failed") { # AZT13: what the kept Azahar wrote after the key (its log is deleted below): slot<k>\warmfail_emu.txt and the last line in pool.log
+            $emuTail = ""
+            try { $fs = [IO.File]::Open($emuLog, 'Open', 'Read', 'ReadWrite'); try { [void]$fs.Seek([Math]::Min($emuOff, $fs.Length), 'Begin'); $emuTail = (New-Object IO.StreamReader($fs)).ReadToEnd() } finally { $fs.Close() } } catch {}
+            Set-Content "$($sl.dir)\warmfail_emu.txt" $emuTail
+            Copy-Item $log "$($sl.dir)\warmfail_log.txt" -Force -ErrorAction SilentlyContinue # the game log at the failure
+            $lastEmu = @($emuTail -split "`r?`n" | Where-Object { $_.Trim() } | Select-Object -Last 2) -join ' | '
+            Write-PoolLog $slotK "warm fail emu" $kept.Id $kept.Id ("{0} B after the key, windows {1} {2}, last: {3}" -f $emuTail.Length, [AzEnum]::Count([uint32]$kept.Id), [AzEnum]::Titles, $lastEmu)
+        }
         Kill-Azahar $kept.Id $warmWhy
         Remove-Item $log, $emuLog -ErrorAction SilentlyContinue
         $emuOff = 0L
@@ -444,7 +448,7 @@ $marks = @()
         try {
             $logTxt = Read-Tail $log 4194304
             $anch = $logTxt.LastIndexOf("bootid=$bootNonce") # SHOTCOPY1: the shot lines of this start follow this run's switches line (warm starts keep the file)
-            if ($anch -ge 0) { $logTxt = $logTxt.Substring($anch) } else { $logTxt = "" }
+            if ($anch -ge 0) { $logTxt = $logTxt.Substring($anch) } # AZT13: no bootid line (a prof boot drops it): log.txt is this boot's file (pm_log_init rotates it at each boot)
             $logged = @([regex]::Matches($logTxt, '(?m)^#\d+ shot (\d+) frame \d+') | ForEach-Object { [int]$_.Groups[1].Value } | Sort-Object -Unique)
         } catch { Write-Output "SHOT COPY FAILED: the game log could not be read for its shot lines: $($_.Exception.Message)" }
         # The burst writer (shotmode) gives every logged frame the same counter, so a logged number is checked against the files on disk, not one file per line.
@@ -506,7 +510,7 @@ public class AzWin {
     if ($keepNow) {
         # AZT-2: pause the game (no CPU while idle) and leave Azahar open; the idle reaper closes it after AzIdleSec (900 s, AZT3-4)
         if (-not $pausedAtUntil) { [void](Send-AzHotkey $p (Get-SlotHotkey $slotK "Continue\Pause Emulation")) } # S10C-1: already paused at the until line
-        @{ pid = $p.Id; x3dsx = $x3dsx; turbo = $Turbo.IsPresent; turbolimit = $(if ($Turbo) { $TurboLimit } else { 0 }); time = (Get-Date).ToString("s") } | ConvertTo-Json | Set-Content $sl.keepFile
+        @{ pid = $p.Id; x3dsx = $x3dsx; speed = $keepSpeed; time = (Get-Date).ToString("s") } | ConvertTo-Json | Set-Content $sl.keepFile # AZT13: speed of Get-SlotSpeed
         Start-SlotReaper $slotK
     }
     elseif ($p) { Kill-Azahar $p.Id; Remove-Item $sl.keepFile -ErrorAction SilentlyContinue }
