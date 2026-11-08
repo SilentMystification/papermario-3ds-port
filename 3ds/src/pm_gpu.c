@@ -1779,10 +1779,14 @@ void pm_gpu_hud_flush(void) {
     int hud = hud_new, foot = foot_new;
     int frame = frame_key != pm_log_header_key() || frame_lay != LAY_KEY;
     int lay = frame_lay != LAY_KEY; /* the layout changed (poshud or stats row), the log window and cursor restart at its top */
-    if (!(hud || foot || frame) || !c->consoleInitialised || menu_on) return;
+    if (!(hud || foot || frame) || !c->consoleInitialised) return;
+    pm_con_lock();
+    if (menu_on) { /* B1: the menu test is under con_lock (pm_gpu_menu_draw draws under this lock): the flags stay set for the close */
+        pm_con_unlock();
+        return;
+    }
     hud_new = 0;
     foot_new = 0;
-    pm_con_lock();
     cx = c->cursorX;
     cy = c->cursorY;
     wx = c->windowX;

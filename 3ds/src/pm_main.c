@@ -11,7 +11,7 @@
 #include <sys/stat.h>
 #include "pm_port.h"
 unsigned pm_log_late_con(void); /* pm_log.c: B1 check */
-unsigned pm_log_con_copies(void), pm_log_con_nomenu(void);
+unsigned pm_log_con_copies(void), pm_log_con_nomenu(void), pm_log_late_drop(void);
 /* O6: a switch word read once. Not for the words the options panel changes at run time (nofog, nolight). */
 #define PMD(word) ({ static int v_ = -1; if (v_ < 0) v_ = pm_debug_has(word); v_; })
 #include "pm_gpu.h"
@@ -451,7 +451,7 @@ void pm_frame_loop(void) {
                     char bname[32];
                     snprintf(bname, sizeof bname, "bot_fz%04u", fz_n);
                     pm_gpu_shot_bottom(bname);
-                    pm_log_evt("menu: frozen shot %u late %u copies %u nomenu %u", fz_n, pm_log_late_con(), pm_log_con_copies(), pm_log_con_nomenu());
+                    pm_log_evt("menu: frozen shot %u late %u drop %u copies %u nomenu %u", fz_n, pm_log_late_con(), pm_log_late_drop(), pm_log_con_copies(), pm_log_con_nomenu());
                 }
             }
             continue;

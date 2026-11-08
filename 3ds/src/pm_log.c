@@ -751,8 +751,9 @@ static void out_batch(const char* dk, int dn, const char* lv, int ln, const char
 /* Sink thread: file and console, every 100 ms. Never runs while the app is suspended (pm_io_quiet, PT68). */
 void pm_gpu_hud_flush(void);
 /* B1 check: console writes that land while the menu is open (con_flush, under con_lock). Printed when the menu closes (menu: late console writes). */
-static unsigned late_con;
+static unsigned late_con, late_drop; /* late_con: console writes with the menu open; late_drop: batches dropped for that (B1) */
 unsigned pm_log_late_con(void) { return late_con; }
+unsigned pm_log_late_drop(void) { return late_drop; }
 static unsigned cf_copy, cf_nomenu; /* B1 diag: con_flush batches copied, and the copies with the menu closed */
 unsigned pm_log_con_copies(void) { return cf_copy; }
 unsigned pm_log_con_nomenu(void) { return cf_nomenu; }
@@ -776,10 +777,14 @@ static void con_flush(void) {
     if (n) {
         u64 t0 = svcGetSystemTick();
         LightLock_Lock(&con_lock); /* PT65: the log goes on while the menu is open (it owns rows 3 to 14) */
-        if (pm_menu_open) late_con++;
-        fwrite(cw, 1, n, stdout);
-        fflush(stdout);
-        for (unsigned i = 0; i < n; i++) con_lines += cw[i] == '\n';
+        /* B1: the menu test is under con_lock. pm_menu_set draws the menu under this lock, so a batch copied before the open is dropped here
+         * and never written over the menu (the stale log text). late_con: writes with the menu open (0 after this rule). */
+        if (pm_menu_open) late_drop++;
+        else {
+            fwrite(cw, 1, n, stdout);
+            fflush(stdout);
+            for (unsigned i = 0; i < n; i++) con_lines += cw[i] == '\n';
+        }
         LightLock_Unlock(&con_lock);
         u32 d = us_since(t0);
         if (d > sink_con_max) sink_con_max = d;
