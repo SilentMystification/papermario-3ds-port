@@ -167,7 +167,7 @@ void render_effects_UI(void) {
                             Camera* camera = &gCameras[gCurrentCameraID];
 
                             gDPPipeSync(gMainGfxPos++);
-                            gSPViewport(gMainGfxPos++, &camera->vp);
+                            gSPViewport(gMainGfxPos++, PM_VP(&camera->vp));
                             gSPClearGeometryMode(gMainGfxPos++, G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG |
                                                 G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD |
                                                 G_SHADING_SMOOTH | G_CLIPPING | 0x40F9FA);

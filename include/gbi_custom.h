@@ -232,4 +232,13 @@
 #define G_PM_ND_SPLASH 1
 #define gPmNdSplash(pkt, on) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = ((u32)G_PM_ND << 24) | ((u32)G_PM_ND_SPLASH << 16) | ((on) ? 1u : 0u); _g->words.w1 = 0; }
 
+/* CORE2-3: a camera viewport (Camera.vp, Camera.vpAlt) is rewritten in place by the game. A list takes a copy made at list build
+ * (pm_nusys.c pm_vp_snap, one pool per display context), so a walk of the list one frame later reads the value of its own frame. */
+#ifdef TARGET_3DS
+Vp* pm_vp_snap(const Vp* v);
+#define PM_VP(v) pm_vp_snap(v)
+#else
+#define PM_VP(v) (v)
+#endif
+
 #endif

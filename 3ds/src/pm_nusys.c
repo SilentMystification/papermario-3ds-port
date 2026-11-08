@@ -4,6 +4,22 @@
 #include "nd.h"
 
 static NUGfxFunc gfx_func;
+
+/* CORE2-3: viewport copies for the list (gbi_custom.h PM_VP). One pool per display context; a pool is reused when its context is built
+ * again, two frames later, after the walk of the frame that used it. Full pool: the original pointer (one warning). */
+#define PM_VP_POOL 32
+extern s32 gCurrentDisplayContextIndex;
+Vp* pm_vp_snap(const Vp* v) {
+    static Vp pool[2][PM_VP_POOL];
+    static unsigned n, last_f = ~0u;
+    static int warned;
+    unsigned f = pm_frame_count();
+    if (f != last_f) { last_f = f; n = 0; }
+    if (n >= PM_VP_POOL) { if (!warned) { warned = 1; pm_log_w("vp pool full (%u viewports in one frame): original pointer", n); } return (Vp*)v; }
+    Vp* c = &pool[gCurrentDisplayContextIndex & 1][n++];
+    *c = *v;
+    return c;
+}
 static int display_on;
 
 void nuGfxInitEX2(void) {

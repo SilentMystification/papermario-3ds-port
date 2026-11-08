@@ -824,7 +824,7 @@ void tattle_cam_pre_render(Camera* camera) {
         }
     }
 
-    gSPViewport(gMainGfxPos++, &cam->vp);
+    gSPViewport(gMainGfxPos++, PM_VP(&cam->vp));
     gSPClearGeometryMode(gMainGfxPos++, G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
     gSPTexture(gMainGfxPos++, 0, 0, 0, G_TX_RENDERTILE, G_OFF);
     gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
