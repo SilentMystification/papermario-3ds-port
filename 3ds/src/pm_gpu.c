@@ -3303,11 +3303,41 @@ void pm_gpu_flush(void) { flush(); }
 extern int dual_on; void ensure_tile(int n); void dual_bind(void); int dual_boost_on(void);
 static unsigned spr_nat_n, spr_nat_fb[16], spr_nat_f_last;
 static unsigned spr5_sub[8]; /* MDL-3a: class 5 refusals per flag: 1 no pm4 palette path (g_pal, g_use5, gv4_on), 2 off-screen target, 3 grab, 4 zmark, 5 nozt */
+static unsigned spc_texget, spc_rh0[2]; /* PERF2: full texture lookups of sprites and the dirty-slot rehash totals at the last sprcost line */
+/* PERF2 step 5: the sprite texture memo. Key: raster, palette, width and height of the record; value: the block id (valid in its nd_tex_gen) and the slot hint
+ * (hs, hg) of nd_tex_unit_hint, which checks the slot (clean, key, generation) at each draw. 32 entries, direct mapped. A miss is the old lookup (nd_tex_get). */
+typedef struct { uint32_t raster, pal, wh; unsigned gen; int id, hs; unsigned hg; } SprTexMemo;
+static SprTexMemo sptm[32];
+static unsigned spck_on = 2, spck_recs, spck_eq, spck_diff, spck_fb; /* sprcheck switch (2 unread): the memo unit words against a fresh lookup */
+static __attribute__((cold, noinline)) void spr_tex_check(const NdTexDesc* ds, const NdUnit* got) {
+    NdUnit u; int id = nd_tex_get(ds);
+    spck_recs++;
+    if (id < 0 || !nd_tex_unit(id, &u)) { spck_fb++; return; }
+    if (u.dim == got->dim && u.param == got->param && u.lod == got->lod && u.addr == got->addr && u.type == got->type) spck_eq++;
+    else { spck_diff++; if (spck_diff <= 8) pm_log_prof_line("sprcheck diff f%u dim %x/%x param %x/%x addr %x/%x type %x/%x", pm_frame_count(), u.dim, got->dim, u.param, got->param, u.addr, got->addr, u.type, got->type); }
+}
+static int spr_tex_unit(const NdTexDesc* ds, uint32_t raster, uint32_t pal, uint32_t wh, NdUnit* un) {
+    const uint32_t h = (raster >> 4) ^ (raster >> 11) ^ (pal >> 5) ^ wh;
+    SprTexMemo* m = &sptm[(h ^ (h >> 16)) & 31u];
+    const unsigned g = nd_tex_gen();
+    if (m->raster != raster || m->pal != pal || m->wh != wh || m->gen != g || m->id < 0) {
+        m->id = nd_tex_get(ds); spc_texget++;
+        m->raster = raster; m->pal = pal; m->wh = wh; m->gen = nd_tex_gen(); m->hs = -1; m->hg = 0;
+        if (m->id < 0) return -1;
+    }
+    if (!nd_tex_unit_hint(m->id, &m->hs, &m->hg, un)) return 0;
+    if (__builtin_expect(spck_on != 0, 0)) { if (spck_on == 2) spck_on = pm_debug_has("sprcheck") ? 1u : 0u; if (spck_on) spr_tex_check(ds, un); }
+    return 1;
+}
 static void spr_nat_log(void) {
     unsigned f = pm_frame_count();
     if (f == spr_nat_f_last) return; /* PERF1: one frame compare per sprite; the modulo once per frame */
     spr_nat_f_last = f;
     if (f % 300u) return;
+    { void pm_tex_rehash_counts(unsigned* same, unsigned* diff); unsigned rs, rd; pm_tex_rehash_counts(&rs, &rd);
+      pm_log_prof_line("sprcost f%u spr %u texget %u rehash same %u diff %u (spr total, the rest per 300 frames)", f, spr_nat_n, spc_texget, rs - spc_rh0[0], rd - spc_rh0[1]);
+      spc_rh0[0] = rs; spc_rh0[1] = rd; spc_texget = 0; }
+    if (spck_on == 1) pm_log_prof_line("sprcheck f%u recs %u eq %u diff %u fb %u", f, spck_recs, spck_eq, spck_diff, spck_fb);
     pm_log_prof_line("sprnat f%u native %u fb %u why 2 %u why 3 %u why 4 %u why 5 %u other %u", f, spr_nat_n, spr_nat_fb[1] + spr_nat_fb[2] + spr_nat_fb[3] + spr_nat_fb[4] + spr_nat_fb[5] + spr_nat_fb[20] + spr_nat_fb[11] + spr_nat_fb[12],
         spr_nat_fb[2], spr_nat_fb[3], spr_nat_fb[4], spr_nat_fb[5], spr_nat_fb[1] + spr_nat_fb[20] + spr_nat_fb[11] + spr_nat_fb[12]);
     pm_log_prof_line("spr5 f%u nopal %u off %u grab %u zmark %u nozt %u", f, spr5_sub[1], spr5_sub[2], spr5_sub[3], spr5_sub[4], spr5_sub[5]);
@@ -3355,10 +3385,10 @@ int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16
         ds.img = (const void*)(uintptr_t)r.raster; ds.pal = (const void*)(uintptr_t)r.palette;
         ds.fmt = 2; ds.siz = 0; ds.cms = 2; ds.cmt = 2; ds.masks = 8; ds.maskt = 8; /* G_IM_FMT_CI, G_IM_SIZ_4b, G_TX_CLAMP (gbi.h values; nd_model.c uses the numbers too) */
         ds.w = (uint16_t)r.w; ds.h = (uint16_t)r.h; ds.stride = (uint16_t)r.w; ds.pal_n = 16;
-        int id = nd_tex_get(&ds);
+        const int ur = spr_tex_unit(&ds, r.raster, r.palette, r.w << 16 | r.h, &un); /* PERF2: through the sprite texture memo */
         { extern int pm_tex_tagi; pm_tex_tagi = 3; } /* STALE2 texsrc path tag: spr */
-        if (id < 0 || !nd_tex_unit(id, &un)) { /* S4-2 diagnosis: the first 3 texture refusals (record size, id) */
-            static unsigned tn; if (tn++ < 3u) pm_log_prof_line("sprtex %u w %u h %u raster %08x pal %08x id %d unit %d", tn, r.w, r.h, (unsigned)r.raster, (unsigned)r.palette, id, id >= 0 ? nd_tex_unit(id, &un) : -9);
+        if (ur != 1) { /* S4-2 diagnosis: the first 3 texture refusals (record size, result) */
+            static unsigned tn; if (tn++ < 3u) pm_log_prof_line("sprtex %u w %u h %u raster %08x pal %08x unit %d", tn, r.w, r.h, (unsigned)r.raster, (unsigned)r.palette, ur);
             *why = 2; return 0; }
         while (tw < (int)r.w) tw <<= 1;
         while (th < (int)r.h) th <<= 1;

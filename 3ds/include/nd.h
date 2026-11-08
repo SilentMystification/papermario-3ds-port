@@ -91,6 +91,7 @@ uint32_t nd_tex_wrap_final(int shr, unsigned mirror, uint32_t wrap);
 uint32_t nd_tex_param(uint32_t param, unsigned filter, uint32_t ws, uint32_t wt);
 uint32_t nd_tex_dim(unsigned w, unsigned h);
 void nd_tex_reset(void);
+unsigned nd_tex_gen(void);                   /* PERF2: the reset generation of the block ids */
 int nd_tex_get(const NdTexDesc* d);          /* block id, loading the image through pm_tex.c on a miss; -1 when it fails or the table is full */
 const uint32_t* nd_tex_block(int id);        /* dim, param, lodParam, data address >> 3 */
 /* S3N-1 (B4): the texture descriptor of a map model handle, set once when load_texture_impl builds the handle (model.c, TARGET_3DS). S3L-2: the desc is the tile 0 facts for every
