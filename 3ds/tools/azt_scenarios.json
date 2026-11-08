@@ -9384,6 +9384,37 @@
         }
       ],
       "reason": "FB-3 part 1 tex1 subject (sbk_56, cold det). Cap 25 as the other det spots."
+    },
+    {
+      "name": "menu_seltap_det",
+      "status": "unverified",
+      "subject": "Mac_01 (warp entry 0, pos 0 0 200), the debug switch seltap presses Select twice per 12 scans, 6 cycles from scan 400: menu open, close, open. Each pause logs the GX queue (qpend) and takes top_after, the displayed top buffer one vblank after the pause.",
+      "proves": "GREY MN2: the top screen is grey at every menu open, also on a quick reopen (every top_after shot r = g = b).",
+      "debug": "warp=mac_01:0 pos=0:0:200 seltap=400:6 shotgrey loglevel=debug det fixedseed fast fs1off",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "seltap: done",
+      "cap": 20,
+      "deadline": 18,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "paused",
+          "regex": "menu: game paused at frame"
+        },
+        {
+          "name": "done",
+          "regex": "seltap: done"
+        }
+      ],
+      "reason": "GREY repro: quick Select presses; cap 20 s: boot, warp, 400 scans, 6 cycles of 12 scans."
     }
   ]
 }

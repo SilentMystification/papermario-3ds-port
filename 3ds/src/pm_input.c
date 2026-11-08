@@ -260,6 +260,21 @@ void pm_pad_scan(void) {
     b |= sh;
     edge |= sh & ~prev_sh;
     prev_sh = sh;
+    /* seltap switch (row GREY): seltap=<start>:<n> presses Select for one scan at start + 12k and start + 12k + 6, k < n. Logs seltap: done after the last cycle. */
+    {
+        static int st_init, st_run;
+        static unsigned st_s, st_n;
+        if (!st_init) {
+            char v[24];
+            st_init = 1;
+            if (pm_debug_value("seltap", v, sizeof v) && sscanf(v, "%u:%u", &st_s, &st_n) == 2) st_run = 1;
+        }
+        if (st_run && pm_pad_scans >= st_s) {
+            unsigned rel = pm_pad_scans - st_s;
+            if (rel < 12u * st_n && (rel % 12u == 0 || rel % 12u == 6)) d |= KEY_SELECT;
+            else if (rel >= 12u * st_n + 12u) { st_run = 0; pm_log("seltap: done"); }
+        }
+    }
     if ((d & KEY_SELECT) && !pm_menu_open) { select_scan = pm_pad_scans; select_pending = 1; }
     /* autoa switch: press A on two of every four scans, so Azahar runs leave the menus fast.
      * The old pattern was 1 scan in 240. */
