@@ -24,9 +24,9 @@ static int light_on;
 /* RDP render mode: depth compare, depth update, alpha blend, alpha cut-off (-1 none), decal. */
 int pm_debug_value(const char* key, char* out, unsigned n);
 static int dview = -1; /* V02 depth view mode, see dv_color */
-static int dv_mode(void) { /* RECT-1b: read the switch on first use in any path (the key fields below read it before put4 ever ran in a native-only frame: -1 keyed as depth view) */
-    if (dview < 0) { char vv[8]; dview = pm_debug_value("depthview", vv, sizeof vv) ? atoi(vv) : 0; }
-    return dview;
+static __attribute__((cold, noinline)) int dv_read(void) { char vv[8]; dview = pm_debug_value("depthview", vv, sizeof vv) ? atoi(vv) : 0; return dview; }
+static inline int dv_mode(void) { /* RECT-1b: read the switch on first use in any path (the key fields below read it before put4 ever ran in a native-only frame: -1 keyed as depth view). PERF2: the read out of line */
+    return __builtin_expect(dview >= 0, 1) ? dview : dv_read();
 }
 static unsigned dv_draw;
 static unsigned rs_src[3]; /* S1-3: other mode words and depth image flag of the last sync_render, for the ndref oracle */
@@ -43,7 +43,7 @@ void pm_gpu_dbg_mode(unsigned m) { dbg_omode_l = m; }
  * branch of a draw: fn 0 test off, 1 GREATER, 2 GEQUAL, 3 ALWAYS; wr 0 colour only, 1 depth only, 2 colour and depth (as the walker and the native words set it). */
 static unsigned wl_primz;
 void pm_gpu_dbg_primz(unsigned z) { wl_primz = z; }
-static int wl_on(void) { extern unsigned pm_frame_count(void); unsigned f = pm_frame_count(); return f >= 200u && f <= 201u && PMDL("waterlog"); }
+static int wl_on(void) { extern unsigned pm_frame_count(void); if (__builtin_expect(!PMDL("waterlog"), 1)) return 0; unsigned f = pm_frame_count(); return f >= 200u && f <= 201u; } /* PERF2: the cached switch first */
 static void wl_depth(int z, int zmark, int zcmp, int zupd, int decal, int nocol, unsigned* fn, unsigned* wr) {
     *fn = 0; *wr = 0;
     if (!z) return;
@@ -599,8 +599,12 @@ static int kick_done; /* PERF2: the one split of this frame is done (KICK2's sec
 extern int pm_ph_on;
 void pm_gbi_draw_note(int native); /* WCEN3 */
 extern unsigned pm_ph_kick_n, pm_ph_kick_us, pm_ph_draws; /* PI4 */
-static void kick_check(void) {
+static void kick_split(void);
+static inline void kick_check(void) { /* PERF2 step 4: the test per draw inline, the split (once a frame) out of line */
     if (kick_done || gs.off_active || !kick_at || draws_frame < kick_at || nb.rect_open || nb.gni > 0) return;
+    kick_split();
+}
+static __attribute__((noinline)) void kick_split(void) {
     kick_done = 1;
     gpu_flush_written();
     if (want_clear) { C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0); want_clear = 0; } /* queue order: the clear comes before the first part */
@@ -624,14 +628,15 @@ void pm_gpu_flush_from(const char* fn, int line) { fl_fn = fn; fl_line = line; f
 void fl_rect_note(void) { if (fl_on()) { fl_rects++; if (fl_prev_rect) fl_consec++; } }
 void fl_rect_done(void) { fl_prev_rect = 1; }
 /* MSGBOX debug switch flushlog=<frame>: one line per flush of a non-empty batch in that frame: caller, line, kind, combine class, texture slot, indices */
+static int flushlog_fr = -2; /* PERF2: -2 unread, -1 off, else the frame; flush_impl calls the cold line only while it is not -1 */
 static __attribute__((cold, noinline)) void flushlog_line(void) {
-    static int fr = -2;
-    if (fr == -2) { char v[16]; fr = pm_debug_value("flushlog", v, sizeof v) ? atoi(v) : -1; }
+    int fr = flushlog_fr;
+    if (fr == -2) { char v[16]; fr = flushlog_fr = pm_debug_value("flushlog", v, sizeof v) ? atoi(v) : -1; }
     if (fr < 0 || (int)pm_frame_count() != fr || nb.gni <= 0) return;
     pm_log_d("flushlog f%d %s:%d rect %d ec %d tex %d comb %d gni %d", fr, fl_fn, fl_line, nb.rect_open, nb.rect_ec, nb.rect_tex, gs.combine, nb.gni);
 }
 static void flush_impl(void) {
-    flushlog_line();
+    if (__builtin_expect(flushlog_fr != -1, 0)) flushlog_line(); /* PERF2: an unconditional call of a cold function made GCC predict every flush path never executed (.text.unlikely) */
     if (!pm_ph_on) { flush_impl_body(); return; }
     unsigned t0 = pm_ticks();
     flush_impl_body();
@@ -828,7 +833,7 @@ static void rd_sync(void) {
 }
 void pm_log_prof_line(const char* fmt, ...);
 /* FX1-2 plan 5 orbreg=<frame>: at the glow draws (effect tags 3, 4) of that frame, the register shadow: unit 0 block, the 6 TEV stages, 0xE0, 0xFD, 0x100 to 0x107, 0x2C0 to 0x2C1 uniforms. */
-static void orbreg_dump(void) {
+static __attribute__((cold, noinline)) void orbreg_dump(void) {
     extern unsigned pm_gbi_dbg_orb_tag(void);
     extern void pm_log(const char* fmt, ...);
     static int nd_lines;
@@ -926,6 +931,7 @@ int pm_tex_native_unit1(NdUnit* u);
 static NdTevOut ndn_to; static int ndn_to_ok;
 unsigned nd_native_draws, nd_native_refused;
 static void ndplan_check(unsigned w0, unsigned w1, int two, int t1only); /* switch ndplan */
+static int ndplan_on = -1; /* PERF2: -1 unread; the close calls the cold check only while it is not 0 */
 static void ndm_cmp(const NdTmplKey* wk, const NdDraw* wd); /* S3N-3b: switch ndmcheck */
 static int ndm_live; /* S3N-3b: a model record is open (set by pm_gpu_ndm_begin) */
 static unsigned ndm_old, ndm_refused_total, ndm_nraw_log, ndm_w_n; static unsigned ndm_geo, ndm_dlc0[10]; void pm_gbi_dlcc(unsigned* o); /* S3N-3c: batches of open records that the native raw path refused; walker batches of the record; its geometry */
@@ -985,13 +991,18 @@ static int c3d_upd_needed(void) {
     return a != 0;
 }
 static __attribute__((cold, noinline)) void cmd_split_forced(void);
+/* FB-3: a program 5 draw (model, sprite) writes its pm5 block here, once; the copy keeps the caller's NdDraw; uvx goes to the pm5 uniform (PERF2: cold, out of line) */
+static __attribute__((cold, noinline)) const NdDraw* sub_pm5(const NdDraw* dp, NdDraw* d5) {
+    *d5 = *dp; pm5_upload_draw(d5); d5->no_uni = 1; d5->npal = 0; if (d5->has_uvx) d5->loc_uvx = (uint16_t)u5_uvx;
+    return d5;
+}
 static void nd_native_submit(const NdDraw* dp, int tex) {
     NDT_B(tsub); /* PERF1: the native submit class */
     { u32 *cb_, csz_, coff_; GPUCMD_GetBuffer(&cb_, &csz_, &coff_); if (coff_ + ND_EMIT_MAX + 1024u >= csz_) cmd_split_forced(); } /* PERF1-6: the draw words go straight into the command buffer: near its end the frame is split first (as nd_raw_native) */
     pm_gbi_draw_note(1); /* WCEN3: a native draw (per producer, the former pm_gbi.c) */
     /* FB-3: every program 5 draw (model, sprite, raw) writes its pm5 block here, once. The copy keeps the caller's NdDraw; uvx goes to the pm5 uniform. */
     NdDraw d5;
-    if (dp->use5 && !dp->no_uni) { d5 = *dp; pm5_upload_draw(&d5); d5.no_uni = 1; d5.npal = 0; if (d5.has_uvx) d5.loc_uvx = (unsigned)u5_uvx; dp = &d5; }
+    if (__builtin_expect(dp->use5 && !dp->no_uni, 0)) dp = sub_pm5(dp, &d5); /* PERF2: out of line */
     const NdDraw* d = dp;
     if (ndn_tgen != nd_tmpl_gen()) { ndn_tgen = nd_tmpl_gen(); nd_shadow_reset(&ndn_sh); sc_shr++; } /* FB-2: a template id was taken over by another key (LRU): the id shadow is stale */
     prog_use(d->use5 ? 4 : 3);
@@ -1185,6 +1196,28 @@ static __attribute__((noinline)) void raw_zmark_pass(const NdTmplKey* nk, const 
         nd_native_submit(&db, tex);
     }
 }
+/* PERF2 step 4: the rare parts of nd_raw_native, out of line (cold): the pm4 one-unit close stays in the hot span */
+static __attribute__((cold, noinline)) int raw_unit0_rare(NdUnit* u0) { /* OFF-2 grab copy, OFF-3 the snapshot of the target of this pass */
+    int t = grab_bind ? grab_native_unit0(u0) : pm_tex_native_unit0(u0);
+    if (grab_bind && PMDL("grablog")) pm_log_d("grabw f%u nat dim %08x param %08x lod %08x addr %08x type %u", pm_frame_count(), u0->dim, u0->param, u0->lod, u0->addr, u0->type); /* FB-1 GRAB: the words of the grab slot, native */
+    if (t == 2 && gs.off_active && pm_tex_off_idx() == gs.off_cur && gs.offs[gs.off_cur].snap_ready) t = tex_native_words(u0, &gs.offs[gs.off_cur].snap);
+    return t;
+}
+static __attribute__((cold, noinline)) int raw_unit1(NdUnit* u1) { /* SGEN-2: unit 1 words; FB-2: the aux image is the target of this pass: its snapshot (OFF-3, as flush_draw) */
+    int t1 = pm_tex_native_unit1(u1);
+    if (t1 == 2 && gs.off_active && pm_tex_aux_off_idx() == gs.off_cur && gs.offs[gs.off_cur].snap_ready) t1 = tex_native_words(u1, &gs.offs[gs.off_cur].snap);
+    return t1;
+}
+static __attribute__((cold, noinline)) void raw_draw_rare(NdDraw* d, const NdUnit* u1, int noise, int tex1) {
+    d->u[1] = *u1;
+    if (noise) { /* FB-2: unit 2 (the noise texture) and its offset uniform, as the walker's noise block of flush_draw */
+        noise_native_words(&d->u[2]);
+        d->nzo[0] = 120.f / 64.f; d->nzo[1] = 200.f / 64.f; d->nzo[2] = noise_off[0]; d->nzo[3] = noise_off[1];
+        d->loc_nzo = (uint16_t)(nb.g_use5 ? u5_nzo : u4_nzo); d->has_nzo = (nb.g_use5 ? u5_nzo : u4_nzo) >= 0;
+    }
+    if (tex1) { memcpy(d->uvx, t1_s, 16); d->loc_uvx = (uint16_t)(nb.g_use5 ? u5_uvx : u4_uvx); d->has_uvx = 1; }
+    if (nb.g_use5) { pm5_upload(); d->use5 = 1; d->no_uni = 1; d->npal = 0; } /* PM5-2; FB-3: the uvx uniform of pm5 is d->loc_uvx (set above) */
+}
 static int nd_raw_native(void) {
     nd_tmpl_pin(); /* FB-2: the template ids of this batch stay valid until its submit */
     if (!(nb.gni > 0 && nb.g_pal && gs.gv4_on && (!nb.g_use5 || gv5_on))) { cen_why = nb.g_use5 ? CW_PM5 : CW_OTHER; return 0; } /* CEN-1a; PM5-2: program 5 batches go native too */
@@ -1196,16 +1229,13 @@ static int nd_raw_native(void) {
     memset(&u0, 0, sizeof u0);
     int t = 0;
     if (gs.combine >= 2) { /* OFF-2: a grab draw binds the copy. OFF-3: an off-screen image (2) that is the target of this pass is read from its snapshot (FX2a, flush_draw made it) */
-        t = grab_bind ? grab_native_unit0(&u0) : pm_tex_native_unit0(&u0);
-        if (grab_bind && PMDL("grablog")) pm_log_d("grabw f%u nat dim %08x param %08x lod %08x addr %08x type %u", pm_frame_count(), u0.dim, u0.param, u0.lod, u0.addr, u0.type); /* FB-1 GRAB: the words of the grab slot, native */
-        if (t == 2 && gs.off_active && pm_tex_off_idx() == gs.off_cur && gs.offs[gs.off_cur].snap_ready) t = tex_native_words(&u0, &gs.offs[gs.off_cur].snap);
+        t = (grab_bind | gs.off_active) ? raw_unit0_rare(&u0) : pm_tex_native_unit0(&u0); /* PERF2: the grab and off-screen sources out of line */
         if (t < 0) { nd_native_refused++; nraw_why[8]++; cen_why = CW_NRK(8); return 0; }
     }
     NdUnit u1;
     memset(&u1, 0, sizeof u1);
     int t1 = 0;
-    if (gs.combine == 8 && gs.plan.uses_tex1) { t1 = pm_tex_native_unit1(&u1); if (t1 < 0) { nd_native_refused++; nraw_why[6]++; cen_why = CW_NRK(6); return 0; } } /* SGEN-2: unit 1 words and the uv map uniform */
-    if (t1 == 2 && gs.off_active && pm_tex_aux_off_idx() == gs.off_cur && gs.offs[gs.off_cur].snap_ready) t1 = tex_native_words(&u1, &gs.offs[gs.off_cur].snap); /* FB-2: the aux image is the target of this pass: its snapshot (OFF-3, as flush_draw) */
+    if (gs.combine == 8 && gs.plan.uses_tex1) { t1 = raw_unit1(&u1); if (t1 < 0) { nd_native_refused++; nraw_why[6]++; cen_why = CW_NRK(6); return 0; } } /* SGEN-2: unit 1 words and the uv map uniform (PERF2: out of line) */
     const int tex = t > 0, i8_0 = tex && pm_tex_i8(0), tex1 = t1 > 0, i8_1 = tex1 && pm_tex_i8(1);
     const int noise = gs.combine == 8 && gs.plan.uses_noise && noise_init(); /* FB-2: as flush_draw; noise_init 0 (no memory): the walker draws without it, so does the native draw */
     NdTmplKey nk;
@@ -1222,8 +1252,8 @@ static int nd_raw_native(void) {
     if (gs.combine == 8) { nk.w0 = plan_k[0]; nk.w1 = plan_k[1]; nk.two = (uint8_t)plan_k[2]; nk.t1only = (uint8_t)plan_k[3]; }
     int id = nd_tmpl_build(&nk);
     if (id < 0) { nd_native_refused++; nraw_why[9]++; cen_why = CW_NRK(9); return 0; }
-    if (gs.combine == 8) ndplan_check(nk.w0, nk.w1, nk.two, nk.t1only);
-    orb_log("native", z, -1, i8_0, i8_1, nb.gni / 3u, 1); /* FX1-3 */
+    if (gs.combine == 8 && __builtin_expect(ndplan_on != 0, 0)) ndplan_check(nk.w0, nk.w1, nk.two, nk.t1only);
+    { extern unsigned pm_gbi_dbg_orb_tag(void); if (__builtin_expect(pm_gbi_dbg_orb_tag() != 0, 0)) orb_log("native", z, -1, i8_0, i8_1, nb.gni / 3u, 1); } /* FX1-3; PERF2: the cold call only for a tagged list (else GCC predicts the close never executed) */
     /* from here the batch is drawn natively */
     if (grab_bind) pm_tex_bind_reset(); /* as flush_draw: the next walker bind of unit 0 sends its own words */
     { /* the stage words with the colours, built when an input of nd_tev_build changes: the TEV bytes of nk, the colours and the plan */
@@ -1253,15 +1283,8 @@ static int nd_raw_native(void) {
     for (int i = 0; i < 6; i++) d.tev_col[i] = ndn_to.st[i][3];
     d.buf_col = ndn_to.buf_color; d.has_buf = (uint8_t)ndn_to.buf_set;
     d.u[0] = u0;
-    d.u[1] = u1;
-    if (noise) { /* FB-2: unit 2 (the noise texture) and its offset uniform, as the walker's noise block of flush_draw */
-        noise_native_words(&d.u[2]);
-        d.nzo[0] = 120.f / 64.f; d.nzo[1] = 200.f / 64.f; d.nzo[2] = noise_off[0]; d.nzo[3] = noise_off[1];
-        d.loc_nzo = (unsigned)(nb.g_use5 ? u5_nzo : u4_nzo); d.has_nzo = (nb.g_use5 ? u5_nzo : u4_nzo) >= 0;
-    }
-    if (tex1) { memcpy(d.uvx, t1_s, 16); d.loc_uvx = (unsigned)(nb.g_use5 ? u5_uvx : u4_uvx); d.has_uvx = 1; }
     d.pal = (const float(*)[16])palk; d.npal = npal; d.loc_pal = (unsigned)u4_pal; d.loc_var = (unsigned)u4_uvso;
-    if (nb.g_use5) { pm5_upload(); d.use5 = 1; d.no_uni = 1; d.npal = 0; } /* PM5-2; FB-3: the uvx uniform of pm5 is d.loc_uvx (set above) */
+    if (__builtin_expect(noise | tex1 | nb.g_use5 | (u1.dim != 0), 0)) raw_draw_rare(&d, &u1, noise, tex1); /* PERF2: unit 1, the noise unit and pm5 out of line */
     memcpy(d.uvso, nb.g_uvso, 16); memcpy(d.cmul, nb.g_cmul, 16); memcpy(d.cadd, nb.g_cadd, 16);
     d.zmix[0] = nb.g_zmix[0]; d.zmix[1] = zmix_y_dbg(nb.g_zmix[1]);
     d.idx_word = 0x80000000u | ((uint32_t)osConvertVirtToPhys(nb.gidx + nb.gi_start) - 0x18000000u);
@@ -1273,6 +1296,16 @@ static int nd_raw_native(void) {
     if (z && gs.r_zmark) raw_zmark_pass(&nk, &d, (const float(*)[16])palk, npal, tex);
     if (rd_st == 2) orbreg_dump(); /* FX1-2 plan 5 orbreg: the register shadow at a glow draw */
     return 1;
+}
+/* PERF2 step 4: the rare parts of flush_draw out of line */
+static __attribute__((cold, noinline)) void flush_h03_log(void) {
+    extern unsigned pm_gbi_dbg_orb_tag(void); unsigned ot_ = pm_gbi_dbg_orb_tag();
+    if (ot_ && PMDL("orbdbg")) pm_log("orbdbg skip f%u list %u H03 cmb %d", pm_frame_count(), ot_, gs.combine);
+}
+static __attribute__((cold, noinline)) void flush_off_snap(void) {
+    const int snap0 = gs.combine >= 2 && !grab_bind && pm_tex_off_idx() == gs.off_cur;
+    const int snap1 = gs.combine == 8 && gs.plan.uses_tex1 && pm_tex_aux_off_idx() == gs.off_cur;
+    if (snap0 || snap1) off_snapshot(gs.off_cur);
 }
 static void flush_draw(void) {
     int graw = nb.gni > 0;
@@ -1290,19 +1323,12 @@ static void flush_draw(void) {
     }
     /* H03: the texture of this batch failed to load (cache full). Skip the batch, a white quad is worse than a missing one. */
     if (gs.combine >= 2 && !grab_bind && pm_tex_failed() && (gs.combine != 8 || gs.plan.uses_tex || gs.plan.uses_tex1)) {
-        { extern unsigned pm_gbi_dbg_orb_tag(void); unsigned ot_ = pm_gbi_dbg_orb_tag(); /* FX1-3: a skipped draw of an effect list is logged too */
-          if (ot_ && PMDL("orbdbg")) pm_log("orbdbg skip f%u list %u H03 cmb %d", pm_frame_count(), ot_, gs.combine); }
+        flush_h03_log(); /* FX1-3: a skipped draw of an effect list is logged too (PERF2: out of line) */
         nb.gni = 0; nb.gi_start = nb.gidx_n;
         batch_identity = 0;
         return;
     }
-    int snap0 = 0, snap1 = 0;
-    if (gs.off_active) { /* FX2a: this batch reads the slot it writes */
-        snap0 = gs.combine >= 2 && !grab_bind && pm_tex_off_idx() == gs.off_cur;
-        snap1 = gs.combine == 8 && gs.plan.uses_tex1 && pm_tex_aux_off_idx() == gs.off_cur;
-        if (snap0 || snap1) off_snapshot(gs.off_cur);
-        if (!gs.offs[gs.off_cur].snap_ready) snap0 = snap1 = 0;
-    }
+    if (gs.off_active) flush_off_snap(); /* FX2a: this batch reads the slot it writes (PERF2: out of line) */
     cen_why = CW_OTHER; /* the batch is raw here (the !graw case returned above) */
     if (nd_raw_native()) return;
     if (ndm_live) ndm_old++, ndm_refused_total++; /* S3N-3c: a raw batch the native path refused is dropped (nd_raw_native counted the reason, census 0 at the DEL row) */
@@ -2412,6 +2438,45 @@ static int wide_edge_k(const float m[4][4], const unsigned short* idx, unsigned 
 }
 /* 0: native (no vertex on the edge, or the edge vertices are copies: wide_copy_list, pm_gpu_gtrip). 1 and 2: the CPU path keeps the draw. 3 (every vertex on the edge) is the wedge of pm_gpu_grange. */
 static int wide_edge(const float m[4][4], const unsigned short* idx, unsigned n) { int r = wide_edge_k(m, idx, n); return r == 3 || r == 4 ? 0 : r; }
+/* PERF2 step 4: the cold parts of pm_gpu_gtrip. gtrip_wide: F07-7 the CPU path moves edge vertices of UI quads; the wide post matrix is made for a perspective game
+ * matrix. -1 refused, else the mask of edge vertices (TRI-2: copied in the loop). gtrip_copy: the slot is in use by another palette index, or already flushed: a copy. */
+static __attribute__((cold, noinline)) int gtrip_wide(const float (*tab)[4][4], const unsigned g[3], const unsigned ri[3]) {
+    unsigned mvm = 0;
+    if (ui_ortho) { /* WIDE1-3: one matrix for the three vertices, no vertex on the game edge (an edge triangle keeps the CPU path) */
+        unsigned short t3[3];
+        if (g[1] != g[0] || g[2] != g[0] || ri[0] > 0xffffu || ri[1] > 0xffffu || ri[2] > 0xffffu) return -1;
+        t3[0] = (unsigned short)ri[0]; t3[1] = (unsigned short)ri[1]; t3[2] = (unsigned short)ri[2];
+        const int we = wide_edge_k(tab[g[0]], t3, 3); /* TRI-2: 3 or 4 = edge vertices, copied in the loop below */
+        if (we == 1 || we == 2) return -1;
+        if (we) for (int i = 0; i < 3; i++) if (wide_on_edge(tab[g[0]], ri[i], NULL)) mvm |= 1u << i;
+    } else for (int i = 0; i < 3; i++) { const float(*m)[4] = tab[g[i]]; if (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f) return -1; }
+    return (int)mvm;
+}
+static __attribute__((noinline)) void gtrip_open(const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct, const PmFx* fx, int use5) {
+    memcpy(nb.g_uvso, uvso, sizeof(nb.g_uvso));
+    memcpy(nb.g_vp, vp, sizeof(nb.g_vp));
+    memcpy(nb.g_cmul, cmul, sizeof(nb.g_cmul));
+    memcpy(nb.g_cadd, cadd, sizeof(nb.g_cadd));
+    memcpy(nb.g_zmix, zmix, sizeof(nb.g_zmix));
+    nb.g_ct = ct; nb.g_pal = 1; nb.pal_n = 0; nb.pal_gen++;
+    nb.g_use5 = use5; if (use5) nb.g_fx = *fx;
+    if (vp[0] != gs.vp_sx || vp[1] != gs.vp_sy || vp[2] != gs.vp_tx || vp[3] != gs.vp_ty) { gs.vp_sx = vp[0]; gs.vp_sy = vp[1]; gs.vp_tx = vp[2]; gs.vp_ty = vp[3]; rebuild_3d(); }
+    if (ct) {
+        int ccw = gv_wind <= 0; /* golden yard and toad: the first sign was inverted. */
+        if (ct == 2) ccw = !ccw;
+        nb.g_cullm = ccw ? GPU_CULL_BACK_CCW : GPU_CULL_FRONT_CCW;
+    } else nb.g_cullm = GPU_CULL_NONE;
+}
+static __attribute__((cold, noinline)) int gtrip_copy(unsigned r, unsigned k, unsigned* ro) {
+    if (nb.gring_n + 1 > GRING_VTX) return 0;
+    unsigned n = nb.gring_n++;
+    memcpy(nb.gring + 16u * n, nb.gring + 16u * r, 16);
+    *(unsigned short*)(nb.gring + 16u * n + 6) = (unsigned short)k;
+    rgen[n] = nb.pal_gen; rk[n] = (unsigned char)k;
+    *ro = n;
+    gv_recopy_n++;
+    return 1;
+}
 int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct,
                  const PmFx* fx, const unsigned ri[3], unsigned ro[3], unsigned* mv) {
     if (!gs.gv4_on || !gs.gpu_ok) return 0;
@@ -2422,16 +2487,7 @@ int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4
     if (mv) *mv = 0;
     if (gs.r_zmark) return 0; /* B3b depth pass: the second pass needs the CPU vertices */
     if (gs.r_decal && gs.r_blend) return 0; /* V16b: a decal is drawn in two passes from the CPU vertices */
-    if (pm_wide && !gs.off_active) { /* F07-7: the CPU path moves edge vertices of UI quads. The wide post matrix is made for a perspective game matrix. */
-        if (ui_ortho) { /* WIDE1-3: one matrix for the three vertices, no vertex on the game edge (an edge triangle keeps the CPU path) */
-            unsigned short t3[3];
-            if (g[1] != g[0] || g[2] != g[0] || ri[0] > 0xffffu || ri[1] > 0xffffu || ri[2] > 0xffffu) return 0;
-            t3[0] = (unsigned short)ri[0]; t3[1] = (unsigned short)ri[1]; t3[2] = (unsigned short)ri[2];
-            const int we = wide_edge_k(tab[g[0]], t3, 3); /* TRI-2: 3 or 4 = edge vertices, copied in the loop below */
-            if (we == 1 || we == 2) return 0;
-            if (we) for (int i = 0; i < 3; i++) if (wide_on_edge(tab[g[0]], ri[i], NULL)) mvm |= 1u << i;
-        } else for (int i = 0; i < 3; i++) { const float(*m)[4] = tab[g[i]]; if (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f) return 0; }
-    }
+    if (pm_wide && !gs.off_active) { int w_ = gtrip_wide(tab, g, ri); if (w_ < 0) return 0; mvm = (unsigned)w_; } /* PERF2: the wide edge test out of line */
     if (nb.gidx_n + 3 > GRING_IDX) return 0;
     if (!nb.draw_3d) { flush(); nb.draw_3d = 1; }
     unsigned kf[3]; /* one palette search per vertex: the fit test and the index assignment below use it */
@@ -2444,21 +2500,7 @@ int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4
         }
     }
     if (nb.gni == 0) kf[0] = kf[1] = kf[2] = PAL_NONE; /* a new batch: an empty palette */
-    if (nb.gni == 0) {
-        memcpy(nb.g_uvso, uvso, sizeof(nb.g_uvso));
-        memcpy(nb.g_vp, vp, sizeof(nb.g_vp));
-        memcpy(nb.g_cmul, cmul, sizeof(nb.g_cmul));
-        memcpy(nb.g_cadd, cadd, sizeof(nb.g_cadd));
-        memcpy(nb.g_zmix, zmix, sizeof(nb.g_zmix));
-        nb.g_ct = ct; nb.g_pal = 1; nb.pal_n = 0; nb.pal_gen++;
-        nb.g_use5 = use5; if (use5) nb.g_fx = *fx;
-        if (vp[0] != gs.vp_sx || vp[1] != gs.vp_sy || vp[2] != gs.vp_tx || vp[3] != gs.vp_ty) { gs.vp_sx = vp[0]; gs.vp_sy = vp[1]; gs.vp_tx = vp[2]; gs.vp_ty = vp[3]; rebuild_3d(); }
-        if (ct) {
-            int ccw = gv_wind <= 0; /* golden yard and toad: the first sign was inverted. */
-            if (ct == 2) ccw = !ccw;
-            nb.g_cullm = ccw ? GPU_CULL_BACK_CCW : GPU_CULL_FRONT_CCW;
-        } else nb.g_cullm = GPU_CULL_NONE;
-    }
+    if (nb.gni == 0) gtrip_open(vp, uvso, cmul, cadd, zmix, ct, fx, use5); /* PERF2: once per batch, out of line */
     pal_tab = tab;
     unsigned k3[3];
     for (int i = 0; i < 3; i++) {
@@ -2488,15 +2530,7 @@ int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4
             rgen[r] = nb.pal_gen; rk[r] = (unsigned char)k3[i];
             continue;
         }
-        if (nb.gring_n + 1 > GRING_VTX) return 0;
-        {   /* the slot is in use by another palette index, or already flushed: use a copy */
-            unsigned n = nb.gring_n++;
-            memcpy(nb.gring + 16u * n, nb.gring + 16u * r, 16);
-            *(unsigned short*)(nb.gring + 16u * n + 6) = (unsigned short)k3[i];
-            rgen[n] = nb.pal_gen; rk[n] = (unsigned char)k3[i];
-            ro[i] = n;
-            gv_recopy_n++;
-        }
+        if (!gtrip_copy(r, k3[i], &ro[i])) return 0; /* PERF2: the slot copy out of line */
     }
     nb.gidx[nb.gidx_n++] = (unsigned short)ro[0];
     nb.gidx[nb.gidx_n++] = (unsigned short)ro[1];
@@ -2549,6 +2583,29 @@ static int grange_batch_open(unsigned gm, const float vp[4], const float uvso[4]
 }
 
 unsigned char pm_ent_decal_ok; /* S6-2c-3: set by the entity segment draw (the former pm_gbi.c ent_seg_native) around dlc_seg */
+/* PERF2 step 4: the wide screen edge test of pm_gpu_grange (cold, out of line). 0 refused, 1 drawn alone with the edge scale (WIDE1-2), 2 go on with *idx
+ * (TRI-2: a copy with the edge vertices moved, in a static buffer: the wedge recursion skips this test). */
+static __attribute__((cold, noinline)) int grange_wide(const float (*tab)[4][4], unsigned gm, const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct,
+                  const PmFx* fx, const unsigned short** idx, unsigned nidx) {
+    static unsigned short wide_idx[WIDE_MAXV]; /* TRI-2: the range with its edge vertices copied */
+    const float(*m)[4] = tab[gm];
+    if (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f)) {
+        int wr = wide_edge_k(m, *idx, nidx); /* WIDE1-1 */
+        if (wr == 3) { /* WIDE1-2: every vertex on the game edge: draw it alone with x scale 1.25 in the post matrix, as the CPU path moves each vertex */
+            int r2;
+            if (!nb.draw_3d) { flush(); nb.draw_3d = 1; }
+            flush();
+            wedge_x = 1; rebuild_3d();
+            r2 = pm_gpu_grange(tab, gm, vp, uvso, cmul, cadd, zmix, ct, fx, *idx, nidx);
+            flush();
+            wedge_x = 0; rebuild_3d();
+            return r2 ? 1 : 0;
+        }
+        if (wr == 4) { if (!wide_copy_list(m, *idx, nidx, wide_idx)) return 0; *idx = wide_idx; } /* TRI-2 */
+        else if (wr) return 0;
+    }
+    return 2;
+}
 int pm_gpu_grange(const float (*tab)[4][4], unsigned gm, const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct,
                   const PmFx* fx, const unsigned short* idx, unsigned nidx) {
     if (!gs.gv4_on || !gs.gpu_ok) return 0;
@@ -2556,25 +2613,7 @@ int pm_gpu_grange(const float (*tab)[4][4], unsigned gm, const float vp[4], cons
     if (use5 && !gv5_on) return 0;
     if (gs.r_zmark) return 0;
     if (gs.r_decal && gs.r_blend && !pm_ent_decal_ok) return 0; /* S6: the native raw close draws a decal with blend in two passes (nd_raw_native); the entity segment path allows it */
-    unsigned short wide_idx[WIDE_MAXV]; /* TRI-2: the range with its edge vertices copied */
-    if (pm_wide && !gs.off_active && !wedge_x) {
-        const float(*m)[4] = tab[gm];
-        if (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f)) {
-            int wr = wide_edge_k(m, idx, nidx); /* WIDE1-1 */
-            if (wr == 3) { /* WIDE1-2: every vertex on the game edge: draw it alone with x scale 1.25 in the post matrix, as the CPU path moves each vertex */
-                int r2;
-                if (!nb.draw_3d) { flush(); nb.draw_3d = 1; }
-                flush();
-                wedge_x = 1; rebuild_3d();
-                r2 = pm_gpu_grange(tab, gm, vp, uvso, cmul, cadd, zmix, ct, fx, idx, nidx);
-                flush();
-                wedge_x = 0; rebuild_3d();
-                return r2 ? 1 : 0;
-            }
-            if (wr == 4) { if (!wide_copy_list(m, idx, nidx, wide_idx)) return 0; idx = wide_idx; } /* TRI-2 */
-            else if (wr) return 0;
-        }
-    }
+    if (pm_wide && !gs.off_active && !wedge_x) { int wr = grange_wide(tab, gm, vp, uvso, cmul, cadd, zmix, ct, fx, &idx, nidx); if (wr < 2) return wr; } /* PERF2: the wide edge path out of line */
     if (nb.gidx_n + nidx > GRING_IDX) return 0;
     if (!nb.draw_3d) { flush(); nb.draw_3d = 1; }
     gi_kind_set(1); /* FB-1: static indices name chunk 0 vertices */
@@ -3124,9 +3163,9 @@ static __attribute__((noinline)) void ndm_cmp(const NdTmplKey* wk, const NdDraw*
 /* debug switch ndplan: the layout of the plan that pm_comb_build gives for the key words of a native draw against the plan the old path draws with. A mismatch means the template of that key holds another TEV layout. */
 extern int pm_comb_build(unsigned w0, unsigned w1, int two, int t1only, PmPlan* out);
 static __attribute__((cold, noinline)) void ndplan_check(unsigned w0, unsigned w1, int two, int t1only) {
-    static int on = -1; static unsigned bad, runs;
-    if (on < 0) on = pm_debug_has("ndplan");
-    if (!on) return;
+    static unsigned bad, runs;
+    if (ndplan_on < 0) ndplan_on = pm_debug_has("ndplan");
+    if (!ndplan_on) return;
     PmPlan pp;
     memset(&pp, 0, sizeof pp);
     runs++;
