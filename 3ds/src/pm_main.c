@@ -627,6 +627,7 @@ void pm_frame_loop(void) {
                 char bname[32];
                 snprintf(bname, sizeof bname, "bot_%04u", frame);
                 pm_gpu_shot_bottom(bname); /* MN0: the writer is pm_gpu_shot_bottom */
+                pm_log_evt("shotbottom bot_%04u frame %u", frame, frame); /* CFG-2: test-event line, the until of the panel scenarios (the file alone is not logged) */
             }
         }
         PM_WD_PHASE(10);

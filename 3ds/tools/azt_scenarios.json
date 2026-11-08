@@ -9468,6 +9468,71 @@
         }
       ],
       "reason": "CFG-1 gate c. Master options.ini values set for this run (restored after). profmode=off in the master (a saved key, so the prof source is I). The debug word zloglevel=none stops run_azahar from adding loglevel=debug (it adds it when no loglevel= word is present); the parser ignores it (no edge before loglevel)."
+    },
+    {
+      "name": "cfg2_panel_a",
+      "status": "unverified",
+      "reason": "broken: no until in 40 s (AZT11-5, 2026-11-08)",
+      "subject": "Launch words prof=off and loglevel=debug over the saved profmode=prof: bottom screen panel row and the echo line. Shot at frame 240 (bottom and top).",
+      "proves": "CFG-2 gate a: the panel shows live D F, disk D F, con I I, P off F; the echo line panel: prints the same text at boot.",
+      "debug": "prof=off loglevel=debug shots shotbottom=240:1",
+      "until": "shotbottom bot_0240 frame 240",
+      "cap": 40,
+      "deadline": 25,
+      "first_marker": "Paper Mario 3DS",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "panel echo at boot",
+          "regex": "panel: L:D F SD:D F C:W I P:off F Live log: Off"
+        },
+        {
+          "name": "prof off from the launch word",
+          "regex": "options: run prof off src F"
+        }
+      ],
+      "reason": "CFG-2 gate a. Master options.ini: profmode=prof, levels default (restored after). The shot is the bottom screen row, read by a person."
+    },
+    {
+      "name": "cfg2_panel_b",
+      "status": "unverified",
+      "subject": "Launch word loglevel=debug over saved live_level=1 disk_level=1, profmode=off: panel row shows the flag levels D F and the saved con and prof I.",
+      "proves": "CFG-2 gate b: the panel row shows the run levels and their sources (F over I).",
+      "debug": "loglevel=debug shots shotbottom=240:1",
+      "until": "shotbottom bot_0240 frame 240",
+      "cap": 40,
+      "deadline": 25,
+      "first_marker": "Paper Mario 3DS",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "panel echo at boot",
+          "regex": "panel: L:D F SD:D F C:W I P:off I Live log: Off"
+        }
+      ],
+      "reason": "CFG-2 gate b. Master options.ini: live_level=1 disk_level=1, profmode=off (restored after)."
+    },
+    {
+      "name": "cfg2_panel_c",
+      "status": "unverified",
+      "subject": "No launch flag over saved live_level=2 disk_level=1 con_level=0: panel row shows I I, W I, E I and P off I.",
+      "proves": "CFG-2 gate c: with no flag every panel source is I and the levels are the saved ones.",
+      "debug": "zloglevel=none shots shotbottom=240:1",
+      "until": "shotbottom bot_0240 frame 240",
+      "cap": 40,
+      "deadline": 25,
+      "first_marker": "Paper Mario 3DS",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "panel echo at boot",
+          "regex": "panel: L:I I SD:W I C:E I P:off I Live log: Off"
+        }
+      ],
+      "reason": "CFG-2 gate c. Master options.ini: live_level=2 disk_level=1 con_level=0, profmode=off (restored after). zloglevel=none stops the harness loglevel=debug word."
     }
   ]
 }

@@ -540,22 +540,34 @@ void pm_log_prof_apply(int boot_line) {
     pm_log_prof_row(1);
     if (boot_line) pm_log_prof_line("prof=1 log=off");
 }
-/* U3: the bottom screen header. con: "Console: Profiling" while profiling, else "Console: <level or Off>" (Off when logging is off).
- * live: "Live log: On" (a client is connected), "Live log: waiting" (the live log is on with no client), else "Live log: Off". */
-static const char* const hdr_lvl[5] = { "Error", "Warn", "Info", "Debug", "Off" };
-static int live_state(void) { /* 0 off, 1 waiting, 2 on */
-    if (!(prof_mode || (log_file_on && lv_live >= 0))) return 0;
+/* CFG-2: the bottom screen panel. panel = "L:D F SD:- I C:I D P:off D": the live, disk and console level (E W I D, - off) and its source
+ * (F launch word or debug3ds.txt, I options.ini or the menu, D default), then the Profiling row (off, prof, phase) and its source.
+ * live = the connection text ("Live log: On", "Live log: waiting" or "Live log: Off"), drawn on the separator row above the panel. */
+static const char* const prof_nm[3] = { "off", "prof", "phase" };
+void pm_options_src(char* out4); /* pm_options.c: live, disk, con, prof source letters */
+int pm_options_prof_row(void);
+static int live_state(void) { /* 0 off (no socket: the livelog word is not set), 1 waiting, 2 on */
+    if (listen_fd < 0 || !(prof_mode || (log_file_on && lv_live >= 0))) return 0;
     return client >= 0 ? 2 : 1;
 }
-void pm_log_header(char* con, int nc, char* live, int nl) {
-    if (prof_mode) snprintf(con, (size_t)nc, "Console: Profiling");
-    else snprintf(con, (size_t)nc, "Console: %s", hdr_lvl[log_file_on && lv_con >= 0 ? lv_con : 4]);
-    int s = live_state();
-    snprintf(live, (size_t)nl, "Live log: %s", s == 2 ? "On" : s == 1 ? "waiting" : "Off");
+static char lvl_letter(int lv, int on) { return !on || lv < 0 || lv > 3 ? '-' : "EWID"[lv]; }
+void pm_log_header(char* panel, int np, char* live, int nl) {
+    char s[4];
+    int on = prof_mode || log_file_on; /* logging off (log=off, or Profiling with no level): every level shows off */
+    pm_options_src(s);
+    snprintf(panel, (size_t)np, "L:%c %c SD:%c %c C:%c %c P:%s %c", lvl_letter(lv_live, on), s[0], lvl_letter(lv_disk, on), s[1],
+             lvl_letter(lv_con, on), s[2], prof_nm[pm_options_prof_row() % 3], s[3]);
+    int st = live_state();
+    snprintf(live, (size_t)nl, "Live log: %s", st == 2 ? "On" : st == 1 ? "waiting" : "Off");
 }
-/* U3: a key of the header text; the bottom screen redraws its header when it changes. */
+/* CFG-2: the redraw key of the panel (pm_gpu_hud_flush): every field the panel text shows. */
 int pm_log_header_key(void) {
-    return (prof_mode ? 1 << 12 : 0) | (log_file_on ? 1 << 11 : 0) | ((lv_con + 1) & 7) << 8 | live_state() << 4 | (client >= 0 ? 1 : 0);
+    char s[4];
+    unsigned sk = 0;
+    pm_options_src(s);
+    for (int i = 0; i < 4; i++) sk = sk << 2 | (s[i] == 'F' ? 2u : s[i] == 'I' ? 1u : 0u);
+    return ((lv_live + 1) & 7) | (((lv_disk + 1) & 7) << 3) | (((lv_con + 1) & 7) << 6) | ((pm_options_prof_row() & 3) << 9) |
+           (prof_mode ? 1 << 11 : 0) | (log_file_on ? 1 << 12 : 0) | (live_state() << 13) | (client >= 0 ? 1 << 15 : 0) | (int)(sk << 16);
 }
 int pm_log_prof_mode(void) { return prof_mode; }
 PM_LOG_FN(pm_log, 2) /* an old call is info */

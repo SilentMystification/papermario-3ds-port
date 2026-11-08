@@ -28,6 +28,19 @@ static int prof_row, sv_prof;
  * ini_bits: the keys options.ini gave (1 log, 2 live, 4 disk, 8 con, 16 profmode). prof_src: the source of prof_row. */
 static int ini_bits;
 static char prof_src = 'D';
+static char src_lv[3] = { 'D', 'D', 'D' }; /* CFG-2: live, disk, con level sources (the panel) */
+void pm_log_header(char* panel, int np, char* live, int nl); /* pm_log.c */
+/* CFG-2: the panel text to the log, at boot and after each menu change of a level or the Profiling row (event line "panel: ..."). */
+static void panel_echo(void) {
+    char p[40], l[24];
+    pm_log_header(p, sizeof p, l, sizeof l);
+    pm_log_w("panel: %s %s", p, l);
+}
+/* CFG-2: the source letters of the panel: out[0..2] live, disk, con; out[3] Profiling. F launch word, I options.ini or menu, D default. */
+void pm_options_src(char* out) {
+    out[0] = src_lv[0]; out[1] = src_lv[1]; out[2] = src_lv[2]; out[3] = prof_src;
+}
+int pm_options_prof_row(void) { return prof_row; }
 void pm_prof_row_set(int mode); /* pm_phase.c: applies at the next drawn frame end */
 
 /* F11-5: N64 button masks by name, the cycle order of the menu, and the 3DS input names (options.txt keys map.<input>=<button>) */
@@ -216,8 +229,10 @@ void pm_options_init(void) {
         char v[16];
         int fl = pm_debug_value("log", v, sizeof v), fll = pm_debug_value("loglevel", v, sizeof v), fv = pm_debug_value("livelevel", v, sizeof v);
         int fd = pm_debug_value("disklevel", v, sizeof v), fc = pm_debug_value("conlevel", v, sizeof v);
-        pm_log_w("options: src log %c live %c disk %c con %c", fl ? 'F' : ini_bits & 1 ? 'I' : 'D', fll || fv ? 'F' : ini_bits & 2 ? 'I' : 'D',
-                 fll || fd ? 'F' : ini_bits & 4 ? 'I' : 'D', fc ? 'F' : ini_bits & 8 ? 'I' : 'D');
+        src_lv[0] = fll || fv ? 'F' : ini_bits & 2 ? 'I' : 'D';
+        src_lv[1] = fll || fd ? 'F' : ini_bits & 4 ? 'I' : 'D';
+        src_lv[2] = fc ? 'F' : ini_bits & 8 ? 'I' : 'D';
+        pm_log_w("options: src log %c live %c disk %c con %c", fl ? 'F' : ini_bits & 1 ? 'I' : 'D', src_lv[0], src_lv[1], src_lv[2]);
     }
     pm_log("options: fps60=%d wide=%d hud=%d stats=%d nofog=%d nolight=%d (%s)", pm_opt.fps60, pm_opt.wide, pm_opt.dbg_hud,
            pm_opt.dbg_stats, pm_opt.dbg_nofog, pm_opt.dbg_nolight, have ? (from_txt ? "read from options.txt, written as options.ini" : "read from options.ini") : "defaults");
@@ -236,10 +251,12 @@ void pm_options_touch(void) { changed = 1; }
 /* PROFROW: a row change saves the mode and applies it at the next drawn frame. */
 static void prof_set(int m) {
     prof_row = sv_prof = m;
+    prof_src = 'I';
     pm_options_touch();
     pm_prof_row_set(m);
     pm_log("options: profiling %s", prof_name[m]);
     if (m) { pm_opt.log = sv_log = 0; pm_log_set_file(0); } /* U2: Profiling turns logging off (one choice) */
+    panel_echo();
 }
 /* PROFROW: at boot a launch word (prof or phase) sets this run's mode, as ARG1 does for the log. Without one the saved mode is applied. */
 void pm_options_prof_boot(void) {
@@ -252,6 +269,7 @@ void pm_options_prof_boot(void) {
     prof_src = pm >= 0 || ph >= 0 ? 'F' : ini_bits & 16 ? 'I' : 'D';
     if (prof_row) pm_opt.log = 0; /* U2: Profiling and logging are one choice; this run has logging off */
     pm_log_w("options: run prof %s src %c", prof_name[prof_row], prof_src);
+    panel_echo();
 }
 
 int pm_options_get(int row) {
@@ -332,10 +350,12 @@ static int lvl_step(int v, int dir) { int i = (v + 1 + dir + 5) % 5; return i - 
 static void log_on_set(int on) {
     if (!on) pm_log("options: logging off"); /* logged while the queue is still on */
     pm_opt.log = sv_log = on != 0;
-    if (on && prof_row) { prof_row = sv_prof = 0; pm_prof_row_set(0); } /* U2: logging on turns Profiling off */
+    if (on && prof_row) { prof_row = sv_prof = 0; prof_src = 'I'; pm_prof_row_set(0); } /* U2: logging on turns Profiling off */
     pm_log_set_levels(pm_opt.log, pm_opt.livelevel, pm_opt.disklevel, pm_opt.conlevel);
+    src_lv[0] = src_lv[1] = src_lv[2] = 'I'; /* CFG-2: the menu values are the saved ones */
     pm_options_touch();
     if (on) pm_log("options: logging on");
+    panel_echo();
 }
 static void prof_disk_set(int on) { /* U2: Profile to disk, the Logging page row 4 */
     pm_opt.prof_disk = sv_prof_disk = on != 0;
@@ -347,7 +367,9 @@ static void log_level_set(int id, int v) {
     *f = v;
     if (f == &pm_opt.livelevel) sv_live = v; else if (f == &pm_opt.disklevel) sv_disk = v; else sv_con = v;
     pm_log_set_levels(pm_opt.log, pm_opt.livelevel, pm_opt.disklevel, pm_opt.conlevel);
+    src_lv[f == &pm_opt.livelevel ? 0 : f == &pm_opt.disklevel ? 1 : 2] = 'I'; /* CFG-2 */
     pm_options_touch();
+    panel_echo();
 }
 static int tab_ids(int tab, int mode, int* ids) {
     int n = 0, i;
