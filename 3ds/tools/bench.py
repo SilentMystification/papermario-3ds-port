@@ -1040,6 +1040,10 @@ def cmd_azstat(a):
             ev["warm restart ok"] += 1
         elif t.startswith("warm wait") and "nonce none" in t:
             ev["warm restart try without boot"] += 1
+        elif t.startswith("warm wait") and "boot no" in t:  # AZT13: no BootGame line after the key (the key did not arrive)
+            ev["warm restart key not taken"] += 1
+        elif t.startswith("warm wait") and "log rotated no" in t:  # AZT13: booted, but the game did not rotate its log
+            ev["warm restart booted, no game log"] += 1
         elif t.startswith("stale "):
             ev["stale run booted"] += 1
         elif t.startswith("close "):

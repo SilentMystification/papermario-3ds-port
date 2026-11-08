@@ -353,7 +353,7 @@ typedef struct { const char* fn; int line; unsigned n, e; } FlCause; /* n = flus
 static FlCause fl_tab[48];
 static int fl_nt;
 static int fl_prev_rect; static unsigned fl_rects, fl_consec; /* PG0: texture rectangles, and those that follow another with no other flush call between */
-#define fl_on() (pm_ph_on)
+#define fl_on() (pm_ph_cen) /* PROF2-2: the flush tracer is phase mode only */
 extern unsigned pm_frame_count(void);
 static void fl_count(int empty) {
     for (int i = 0; i < fl_nt; i++) if (fl_tab[i].fn == fl_fn && fl_tab[i].line == fl_line) { fl_tab[i].n++; fl_tab[i].e += empty; return; }
@@ -511,6 +511,7 @@ static __attribute__((cold, noinline)) void ndref_end(void) { /* end of frame: w
  * triangles of the frame. gb: GPU busy ticks of the sampled frames, from the submit (pm_gpu_end) to the sync (the frame begin after it). */
 static unsigned long long pfd_sum[4], gb_sum, gb_n, gb_sub;
 static int gb_on;
+extern unsigned pm_pf_late; /* PROF2-1, pm_phase.c */
 static void pfd_add(void) {
     pfd_sum[0] += cen_draws; pfd_sum[1] += pm_dc_c[DC_TEVR]; pfd_sum[2] += pm_dc_c[DC_TB0] + pm_dc_c[DC_TB1]; pfd_sum[3] += cen_tris;
 }
@@ -604,9 +605,9 @@ static void kick_check(void) {
     if (want_clear) { C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0); want_clear = 0; } /* queue order: the clear comes before the first part */
     sh_clear();
     PH_PUSH(PH_GPU);
-    { unsigned k0 = pm_ph_on ? pm_ticks() : 0; /* PI4: the split is timed on its own */
+    { unsigned k0 = pm_ph_cen ? pm_ticks() : 0; /* PI4: the split is timed on its own (phase mode only) */
       ndunit_scan(); rd_sync(); C3D_FrameSplit(GX_CMDLIST_FLUSH);
-      if (pm_ph_on) pm_ph_kick_us += (pm_ticks() - k0) / 268u; }
+      if (pm_ph_cen) pm_ph_kick_us += (pm_ticks() - k0) / 268u; }
     PH_POP();
     kick_n++;
     pm_ph_kick_n++;
@@ -621,8 +622,16 @@ void pm_gpu_flush_from(const char* fn, int line) { fl_fn = fn; fl_line = line; f
 /* PG0: the texture rectangle counts of the flush tracer (pm_gpu_tex_rect) */
 void fl_rect_note(void) { if (fl_on()) { fl_rects++; if (fl_prev_rect) fl_consec++; } }
 void fl_rect_done(void) { fl_prev_rect = 1; }
+/* MSGBOX debug switch flushlog=<frame>: one line per flush of a non-empty batch in that frame: caller, line, kind, combine class, texture slot, indices */
+static __attribute__((cold, noinline)) void flushlog_line(void) {
+    static int fr = -2;
+    if (fr == -2) { char v[16]; fr = pm_debug_value("flushlog", v, sizeof v) ? atoi(v) : -1; }
+    if (fr < 0 || (int)pm_frame_count() != fr || nb.gni <= 0) return;
+    pm_log_d("flushlog f%d %s:%d rect %d ec %d tex %d comb %d gni %d", fr, fl_fn, fl_line, nb.rect_open, nb.rect_ec, nb.rect_tex, gs.combine, nb.gni);
+}
 static void flush_impl(void) {
-    if (!pm_ph_on) { flush_impl_body(); return; }
+    flushlog_line();
+    if (!pm_ph_cen) { flush_impl_body(); return; } /* PROF2-2: fl_acc feeds the tex_op timer only (phase mode) */
     unsigned t0 = pm_ticks();
     flush_impl_body();
     fl_acc += (unsigned)(pm_ticks() - t0);
@@ -921,16 +930,24 @@ static int ndm_live; /* S3N-3b: a model record is open (set by pm_gpu_ndm_begin)
 static unsigned ndm_old, ndm_refused_total, ndm_nraw_log, ndm_w_n; static unsigned ndm_geo, ndm_dlc0[10]; void pm_gbi_dlcc(unsigned* o); /* S3N-3c: batches of open records that the native raw path refused; walker batches of the record; its geometry */
 void pm_log_prof_line(const char* fmt, ...); /* the one line that prints in prof=4 mode (pm_log.c) */
 static void ndunit_after(void);
-/* PERF1: the producer class timers (nd.h NDT_*). pm_gpu_ndt_all: the exclusive ticks added so far; a region's exclusive ticks are its total less the ticks
- * of the regions timed inside it. Sampled frames only (NDT_B, nd.h, reads the tick only with pm_ph_on). ndt_mdl: the submit is a model draw. */
+/* PERF1, PROF2-5: the producer class timers (nd.h NDT_*). A 4-deep stack of u32 start ticks and of the ticks of the regions timed inside each open
+ * region: a region's exclusive ticks are its total less its children. A deeper nest is counted (ndt_sp) but not timed. Sampled frames only (NDT_B and
+ * NDT_BD read the tick only with pm_ph_on). ndt_mdl: the submit is a model draw. */
 static uint64_t ndt_sum[NDT_N];
-static uint64_t pm_gpu_ndt_all;
+static uint32_t ndt_t0[4], ndt_in[4];
+static unsigned ndt_sp;
 static int ndt_mdl;
-__attribute__((cold, noinline)) NdtT pm_gpu_ndt_begin(void) { NdtT s; s.on = 1; s.t = svcGetSystemTick(); s.all = pm_gpu_ndt_all; return s; } /* sampled frames only: out of the hot callers */
-__attribute__((cold, noinline)) void pm_gpu_ndt_add(NdtT s, int k) {
-    uint64_t tot = svcGetSystemTick() - s.t, in = pm_gpu_ndt_all - s.all;
-    uint64_t ex = tot > in ? tot - in : 0;
-    ndt_sum[k] += ex; pm_gpu_ndt_all += ex;
+__attribute__((cold, noinline)) void pm_gpu_ndt_push(void) { /* sampled frames only: out of the hot callers */
+    if (ndt_sp < 4u) { ndt_t0[ndt_sp] = (uint32_t)svcGetSystemTick(); ndt_in[ndt_sp] = 0; }
+    ndt_sp++;
+}
+__attribute__((cold, noinline)) void pm_gpu_ndt_pop(int k) {
+    if (!ndt_sp) return;
+    unsigned i = --ndt_sp;
+    if (i >= 4u) return;
+    uint32_t tot = (uint32_t)svcGetSystemTick() - ndt_t0[i], in = ndt_in[i];
+    ndt_sum[k] += tot > in ? tot - in : 0u;
+    if (i) ndt_in[i - 1] += tot;
 }
 void pm_gpu_ndt_take(uint64_t o[NDT_N]) { for (int k = 0; k < NDT_N; k++) { o[k] = ndt_sum[k]; ndt_sum[k] = 0; } }
 /* S3N-2: the submit of one native draw, moved from nd_raw_native as it was (the state staging, the shadow, citro3d's context update, the emit and the
@@ -2103,7 +2120,7 @@ void pm_gpu_begin_wait(void) {
     if (pm_wd_wake_frames) pm_wd_wake_frames--;
     raw1_reset(); sh_clear(); C3D_FrameBegin(fb_flags);
     nb.ring_done = nb.ring_fr; /* FB-1: C3D_FrameBegin waits for the GX queue (C3Di_WaitAndClearQueue) with or without SYNCDRAW: every chunk used before this frame is finished */
-    if (gb_on) { gb_sum += pm_ticks() - gb_sub; gb_n++; gb_on = 0; } /* S0-6: the sync of the previous frame returned */ /* PT88: at 30 steps the loop paces itself by time and the frame begin waits only for the GPU (the previous frame, so the buffers are free); with fps60 the begin waits for the vblank as before: two draws a step, one per vblank */
+    if (gb_on) { gb_sum += pm_ticks() - gb_sub; gb_n++; gb_on = 0; pm_pf_late++; } /* S0-6: the sync of the previous frame returned. PROF2-1: this read belongs to the sample (ssvc), it lands in the next frame */ /* PT88: at 30 steps the loop paces itself by time and the frame begin waits only for the GPU (the previous frame, so the buffers are free); with fps60 the begin waits for the vblank as before: two draws a step, one per vblank */
     FS_MARK(FS_REST);
     PH_POP();
     pm_ph_gpu_note();
@@ -2142,11 +2159,13 @@ static void pm_gpu_begin_w(int clear) {
 
 /* CORE2-3a: walker side entry (nd_wq.c): the game thread posts it, the body runs on the walker side. */
 static void pm_gpu_end_w(void);
+static void cen_lines_frame(void);
 typedef struct { int unused; } Wq_pm_gpu_end;
 static void wq_pm_gpu_end(void* a) { Wq_pm_gpu_end* q = (Wq_pm_gpu_end*)a; (void)q; pm_gpu_end_w(); }
 void pm_gpu_end(void) { Wq_pm_gpu_end q = { 0 }; pm_wq_post(wq_pm_gpu_end, &q, sizeof q); }
 static void pm_gpu_end_w(void) {
-    if (pm_frame_count() % 100u == 0) rect_log(pm_frame_count()); /* RECT-2b diag: rect and rectwhy lines every 100 frames */
+    if (__builtin_expect(pm_cen_lines, 0)) cen_lines_frame(); /* PROF2-3: the census lines, once per frame at the frame end (rect_log every 100 frames there) */
+    if (pm_frame_count() % 100u == 0) pm_tex_cell_log(pm_frame_count()); /* MSGBOX 3: glyph cells every 100 frames (debug level) */
     pm_gpu_begin_wait();
     if (!gs.gpu_ok) return;
     FS_MARK(FS_FLUSH);
@@ -2324,16 +2343,25 @@ static unsigned pal_lookup(const unsigned g[3], unsigned kf[3]) {
 #define WIDE_MAXV 192u
 static struct { unsigned ortho, nat, edge, big, all, copy; } wide_c;
 static void wide_log(unsigned f) { /* called from ndn_log every 300 frames; the window counts reset at the print */
-    pm_log_prof_line("wide f%u ortho %u native %u edge %u big %u all %u copy %u", f, wide_c.ortho, wide_c.nat, wide_c.edge, wide_c.big, wide_c.all, wide_c.copy);
+    pm_log_w("wide f%u ortho %u native %u edge %u big %u all %u copy %u", f, wide_c.ortho, wide_c.nat, wide_c.edge, wide_c.big, wide_c.all, wide_c.copy);
     memset(&wide_c, 0, sizeof wide_c);
 }
-/* TRI-2: the screen-edge rule of the vertex copy for object vertex v under the matrix m: cxo gets the clip x; the result is 1 when x sits on the game edge (w > 0, x at +-w * 0.999). */
-static int wide_on_edge(const float m[4][4], unsigned v, float* cxo) {
+/* MSGBOX 4: the draw under test (wide_edge_k) has vertices at or past both game edges (a full-width quad such as a fade). Only then does a vertex past an edge move. */
+static int wide_span;
+static void wide_clip(const float m[4][4], unsigned v, float* cx, float* cw) {
     const short* p = (const short*)(nb.gring + 16u * v);
     float x = (float)p[0], y = (float)p[1], z = (float)p[2];
-    float cx = m[0][0] * x + m[1][0] * y + m[2][0] * z + m[3][0], cw = m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3];
+    *cx = m[0][0] * x + m[1][0] * y + m[2][0] * z + m[3][0]; *cw = m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3];
+}
+/* TRI-2: the screen-edge rule of the vertex copy for object vertex v under the matrix m: cxo gets the clip x; the result is 1 when x sits on the game edge (w > 0, x at +-w * 0.999 to 1.001).
+ * MSGBOX 4: a vertex past the edge (|x| > w * 1.001) is a UI part placed in the wide margin (a message bubble clamped to pm_wide_left(18)): it keeps its place (1:1) unless
+ * the draw spans both edges (wide_span). Moving it stretched the bubble's end curve into a blank box. */
+static int wide_on_edge(const float m[4][4], unsigned v, float* cxo) {
+    float cx, cw;
+    wide_clip(m, v, &cx, &cw);
     if (cxo) *cxo = cx;
-    return cw > 0.f && (cx >= cw * 0.999f || cx <= -cw * 0.999f);
+    if (!(cw > 0.f) || (cx < cw * 0.999f && cx > -cw * 0.999f)) return 0;
+    return wide_span || (cx <= cw * 1.001f && cx >= -cw * 1.001f);
 }
 /* TRI-2: a new ring slot with a copy of src whose clip x is 1.25 times the CPU clip x. For the orthographic kind only the object x moves: x' = x + 0.25 * cx / m00 keeps cw.
  * The short x is rounded (at most 0.5 raw unit). The caller sets the flag and rgen of the slot. src stays as it was (the CPU path reads it). Returns the slot or -1. */
@@ -2367,7 +2395,12 @@ static int wide_edge_k(const float m[4][4], const unsigned short* idx, unsigned 
     if (!idx || !nb.gring || !rgen) r = 2;
     else if (!wz || !ui_ortho) r = 1;
     else if (n > WIDE_MAXV) r = 2;
-    else for (unsigned i = 0; i < n; i++) if (wide_on_edge(m, idx[i], NULL)) ne++;
+    else {
+        int lo = 0, hi = 0; /* MSGBOX 4: wide_span for this draw */
+        for (unsigned i = 0; i < n; i++) { float cx, cw; wide_clip(m, idx[i], &cx, &cw); if (cw > 0.f) { lo |= cx <= -cw * 0.999f; hi |= cx >= cw * 0.999f; } }
+        wide_span = lo && hi;
+        for (unsigned i = 0; i < n; i++) if (wide_on_edge(m, idx[i], NULL)) ne++;
+    }
     if (r == 0 && ne) { /* TRI-2: edge vertices are copied with x moved (wide_copy_vtx) when m00 moves them and the ring has room */
         if (m[0][0] == 0.f || nb.gring_n + ne > GRING_VTX) r = 1;
         else r = ne == n ? 3 : 4;
@@ -2844,7 +2877,7 @@ void pm_gpu_ndm_begin(const uint32_t* rec, const uint32_t* modew, const uint32_t
 }
 /* S3N-4: the switch. One model record drawn natively (emit 1) after rec_apply; a fallback returns -1 and the record runs the walker geometry.
  * The counters print every 300 frames: native records, fallback records, native draws (the ranges; the wref class is not split in this mode). */
-static unsigned ndn_rec, ndn_fb, ndn_draws, ndn_f_last, ndn_hit, ndn_miss, ndn_nokey, ndn_rng, ndn_texf, ndn_empty; /* PERF1: empty = hits with no draw */
+static unsigned ndn_rec, ndn_fb, ndn_draws, ndn_hit, ndn_miss, ndn_nokey, ndn_rng, ndn_texf, ndn_empty; /* PERF1: empty = hits with no draw */
 void pm_gbi_dnr_take(unsigned* o, unsigned n);
 static unsigned ndn_miss_all; /* MERLEE: model cache misses since boot (pm_gpu_mdl_stat) */
 void pm_gpu_mdl_stat(unsigned* miss, unsigned* clears) { *miss = ndn_miss_all; *clears = nd_mc_clears(); } /* MERLEE: the fade lines of dro_02 npc_merlee.c */
@@ -2861,28 +2894,25 @@ static void pm_gpu_ndn_window_end_w(void) {
     unsigned f = pm_frame_count();
     char wb[160]; unsigned wn = 0; wb[0] = 0;
     for (unsigned c = 0; c < 16u; c++) if (ndn_why[c]) { if (!wn) wn += (unsigned)snprintf(wb, sizeof wb, " why"); wn += (unsigned)snprintf(wb + wn, sizeof wb - wn, " %u:%u", c, ndn_why[c]); }
-    pm_log_prof_line("ndm end f%u native %u fb %u wref %u hit %u miss %u%s", f, ndn_rec, ndn_fb, ndn_draws, ndn_hit, ndn_miss, wb);
+    if (pm_cen_lines) pm_log_w("ndm end f%u native %u fb %u wref %u hit %u miss %u%s", f, ndn_rec, ndn_fb, ndn_draws, ndn_hit, ndn_miss, wb);
     ndn_rec = ndn_fb = ndn_draws = ndn_hit = ndn_miss = ndn_nokey = ndn_rng = ndn_texf = 0;
     for (unsigned c = 0; c < 16u; c++) ndn_why[c] = 0;
 }
-static void ndn_log(void) {
-    unsigned f = pm_frame_count();
-    if (f != ndn_f_last) { /* PERF1: one frame compare per record; the modulo once per frame */
-        ndn_f_last = f;
+static void ndn_log(unsigned f) { /* PROF2-3: census lines, from cen_lines_frame (frame end) */
+    {
         if (f % 300u) return;
         unsigned clr = nd_mc_clears();
         wide_log(f);
-        rect_log(f);
         char wb[160]; unsigned wn = 0; wb[0] = 0; /* S3L-1: the codes of the window, nonzero only */
         for (unsigned c = 0; c < 16u; c++) if (ndn_why[c]) { if (!wn) wn += (unsigned)snprintf(wb, sizeof wb, " why"); wn += (unsigned)snprintf(wb + wn, sizeof wb - wn, " %u:%u", c, ndn_why[c]); }
-        pm_log_prof_line("ndm f%u native %u fb %u wref %u hit %u miss %u clears %u%s", f, ndn_rec, ndn_fb, ndn_draws, ndn_hit, ndn_miss, clr - ndn_clr0, wb);
-        pm_log_prof_line("ndmhit f%u nokey %u rng %u tex %u empty %u", f, ndn_nokey, ndn_rng, ndn_texf, ndn_empty);
-        { static int szd; if (!szd) { szd = 1; pm_log_prof_line("ndmsz entry %u draw %u", (unsigned)sizeof(NdMEnt), (unsigned)sizeof(NdNat)); } }
+        pm_log_w("ndm f%u native %u fb %u wref %u hit %u miss %u clears %u%s", f, ndn_rec, ndn_fb, ndn_draws, ndn_hit, ndn_miss, clr - ndn_clr0, wb);
+        pm_log_w("ndmhit f%u nokey %u rng %u tex %u empty %u", f, ndn_nokey, ndn_rng, ndn_texf, ndn_empty);
+        { static int szd; if (!szd) { szd = 1; pm_log_w("ndmsz entry %u draw %u", (unsigned)sizeof(NdMEnt), (unsigned)sizeof(NdNat)); } }
         { unsigned dg[15]; nd_mc_diag_take(dg);
-          pm_log_prof_line("ndmmiss f%u new %u clr %u rec %u st %u hd %u gv %u same %u rcap %u ncap %u ins %u ent %u pool %u ehi %u phi %u cap %u", f, dg[0], dg[1], dg[2], dg[3], dg[4], dg[5], dg[6], dg[7], dg[8], dg[9], dg[10], dg[11], dg[12], dg[13], dg[14]); }
+          pm_log_w("ndmmiss f%u new %u clr %u rec %u st %u hd %u gv %u same %u rcap %u ncap %u ins %u ent %u pool %u ehi %u phi %u cap %u", f, dg[0], dg[1], dg[2], dg[3], dg[4], dg[5], dg[6], dg[7], dg[8], dg[9], dg[10], dg[11], dg[12], dg[13], dg[14]); }
         { unsigned dr[16]; pm_gbi_dnr_take(dr, 16u); /* S4-1: the refusal classes of the native ranges (code 12 = any of them) */
-          pm_log_prof_line("ndmr f%u c1 %u c2 %u c3 %u c4 %u c5 %u c6 %u c7 %u c8 %u c9 %u c10 %u", f, dr[1], dr[2], dr[3], dr[4], dr[5], dr[6], dr[7], dr[8], dr[9], dr[10]);
-          pm_log_prof_line("ndmr2 f%u c11 %u c12 %u c13 %u c14 %u c15 %u", f, dr[11], dr[12], dr[13], dr[14], dr[15]); }
+          pm_log_w("ndmr f%u c1 %u c2 %u c3 %u c4 %u c5 %u c6 %u c7 %u c8 %u c9 %u c10 %u", f, dr[1], dr[2], dr[3], dr[4], dr[5], dr[6], dr[7], dr[8], dr[9], dr[10]);
+          pm_log_w("ndmr2 f%u c11 %u c12 %u c13 %u c14 %u c15 %u", f, dr[11], dr[12], dr[13], dr[14], dr[15]); }
         ndn_clr0 = clr;
         ndn_rec = ndn_fb = ndn_draws = ndn_hit = ndn_miss = ndn_nokey = ndn_rng = ndn_texf = ndn_empty = 0;
         memset(ndn_why, 0, sizeof ndn_why);
@@ -2961,7 +2991,6 @@ int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32
     if (n >= 0) { ndn_rec++; ndn_draws += (unsigned)n; }
     else { ndn_fb++; ndn_why[nd_nat_why & 15]++; const unsigned sub = nd_nat_why == 6 ? nd_nat_sub : 0u; if (sub) nd_mdlfb_note(mk->rp, sub); } /* S3N-7: a fallback is stored for this key (every early return of model_draw too): not drawn again while the texture epoch holds, so a texture that loads later gets the native path then */
     ndn_miss++;
-    ndn_log();
     return n;
 }
 /* S3N-6: the hit. The cached draws of key k go out (after pm_gpu_flush) when the fresh ranges are the cached ones: each with the palette of the current view
@@ -2971,7 +3000,7 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
     if (!e) { ndn_nokey++; return 0; }
     if (!model_vis_same(k, e)) { ndn_rng++; return 0; }
     if (e->mver && e->mver != ((((const uint32_t*)(uintptr_t)k->rp)[3] >> 16) | 0x10000u)) { ndn_rng++; return 0; } /* MAPX-2: a lit entry whose matrix moved: the miss path stores it again in place */
-    if (!e->n) { ndn_empty++; ndn_rec++; ndn_hit++; ndn_log(); return 1; } /* PERF1-4c: no draw (no group in view, or all culled): no texture lookup, template build, matrix product or flush */
+    if (!e->n) { ndn_empty++; ndn_rec++; ndn_hit++; return 1; } /* PERF1-4c: no draw (no group in view, or all culled): no texture lookup, template build, matrix product or flush */
     NdUnit u; memset(&u, 0, sizeof u);
     if (e->tex) {
         const NdTexDesc* ds = nd_tex_handle_desc((int)((k->w[0] >> 8) & 0x7fu), (const void*)(uintptr_t)k->w[1]);
@@ -3002,7 +3031,6 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
         pm_gpu_native_submit_draw(&q->d, q->sd, q->nidx, q->d.u[0].dim != 0);
     }
     ndn_rec++; ndn_draws += e->n; ndn_hit++;
-    ndn_log();
     return 1;
 }
 /* S3N-3d: diff count per compared field (the first 20 lines are printed; the counts show every field) */
@@ -3239,7 +3267,7 @@ void pm_gpu_set_env(unsigned rgba) {
 /* SPR4-env: cconst is in the TEV key of combine 4 and 8 (the batch draws with the cconst of its flush). */
 void pm_gpu_set_const(unsigned rgba) {
     if (rgba == cconst) return;
-    if (gs.combine == 4 || gs.combine == 8) flush();
+    if (gs.combine == 4 || gs.combine == 8 || (nb.rect_open && nb.rect_ec == 4)) flush(); /* MSGBOX 2: an open class 4 rectangle batch draws with the cconst of its flush */
     cconst = rgba;
 }
 
@@ -3247,26 +3275,35 @@ void pm_gpu_flush(void) { flush(); }
 
 /* SPR4-3: shaded sprites (nd_int.h is not included here; the former pm_gbi.c, nd_tex.c and nd_geom.c own these) */
 extern int dual_on; void ensure_tile(int n); void dual_bind(void); int dual_boost_on(void);
-static unsigned spr_nat_n, spr_nat_fb[16], spr_nat_f_last;
+static unsigned spr_nat_n, spr_nat_fb[16];
 static unsigned spr5_sub[8]; /* MDL-3a: class 5 refusals per flag: 1 no pm4 palette path (g_pal, g_use5, gv4_on), 2 off-screen target, 3 grab, 4 zmark, 5 nozt */
-static void spr_nat_log(void) {
-    unsigned f = pm_frame_count();
-    if (f == spr_nat_f_last) return; /* PERF1: one frame compare per sprite; the modulo once per frame */
-    spr_nat_f_last = f;
+static void spr_nat_log(unsigned f) { /* PROF2-3: census lines, from cen_lines_frame (frame end) */
     if (f % 300u) return;
-    pm_log_prof_line("sprnat f%u native %u fb %u why 2 %u why 3 %u why 4 %u why 5 %u other %u", f, spr_nat_n, spr_nat_fb[1] + spr_nat_fb[2] + spr_nat_fb[3] + spr_nat_fb[4] + spr_nat_fb[5] + spr_nat_fb[20] + spr_nat_fb[11] + spr_nat_fb[12],
+    pm_log_w("sprnat f%u native %u fb %u why 2 %u why 3 %u why 4 %u why 5 %u other %u", f, spr_nat_n, spr_nat_fb[1] + spr_nat_fb[2] + spr_nat_fb[3] + spr_nat_fb[4] + spr_nat_fb[5] + spr_nat_fb[20] + spr_nat_fb[11] + spr_nat_fb[12],
         spr_nat_fb[2], spr_nat_fb[3], spr_nat_fb[4], spr_nat_fb[5], spr_nat_fb[1] + spr_nat_fb[20] + spr_nat_fb[11] + spr_nat_fb[12]);
-    pm_log_prof_line("spr5 f%u nopal %u off %u grab %u zmark %u nozt %u", f, spr5_sub[1], spr5_sub[2], spr5_sub[3], spr5_sub[4], spr5_sub[5]);
+    pm_log_w("spr5 f%u nopal %u off %u grab %u zmark %u nozt %u", f, spr5_sub[1], spr5_sub[2], spr5_sub[3], spr5_sub[4], spr5_sub[5]);
 }
 int pm_gpu_spr_native(const uint32_t* rec) {
     NdDraw n;
     NdMState st;
     float pal0[16];
     int why = 0;
-    if (!nd_sprite_draw(rec, 1, &n, &st, pal0, &why)) { spr_nat_fb[why & 15]++; spr_nat_log(); return 0; }
+    if (!nd_sprite_draw(rec, 1, &n, &st, pal0, &why)) { spr_nat_fb[why & 15]++; return 0; }
     spr_nat_n++;
-    spr_nat_log();
     return 1;
+}
+/* PROF2-3: the census lines, once per frame at the frame end (pm_gpu_end_w), only with pm_cen_lines (phase mode or the census word, never prof mode).
+ * They print with pm_log_w, not as prof lines. The counters stay on every path; the record paths no longer test the frame. */
+void ent_log(void); /* nd_ent.c */
+void nd_model_log(unsigned f); /* nd_model.c */
+static __attribute__((cold, noinline)) void cen_lines_frame(void) {
+    unsigned f = pm_frame_count();
+    if (!f) return; /* the boot frame: no window yet (the record paths printed no window line at frame 0) */
+    if (f % 100u == 0) rect_log(f); /* RECT-2b diag: rect and rectwhy lines every 100 frames */
+    ndn_log(f);
+    spr_nat_log(f);
+    ent_log();
+    nd_model_log(f);
 }
 void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, NdGvP* o);
 /* S4-2: the sprite record as a native draw (nd_sprite_draw, nd_sprite.c). The walker inputs of the draw (sticky state, gv, env and prim of the record),
@@ -3363,20 +3400,20 @@ void pm_gpu_flush_at(int line) { /* PG0: a flush asked for by the display list i
     if (nb.gni <= 0) {
         unsigned s0 = pm_svc_n;
         pm_ec_n++;
-        if (pm_ph_on) { int c = pm_gbi_flush_class(); pm_fl_n[c]++; pm_fl_e[c]++; }
+        if (pm_ph_cen) { int c = pm_gbi_flush_class(); pm_fl_n[c]++; pm_fl_e[c]++; }
         flush_impl();
         pm_ec_svc += pm_svc_n - s0; /* 0 when the path makes no svc call */
         return;
     }
     pm_dc_c[DC_CL]++;
     int c = 0;
-    if (pm_ph_on) { c = pm_gbi_flush_class(); pm_fl_n[c]++; { extern void pm_gbi_census_close(void); pm_gbi_census_close(); } } /* T2b: non-empty close per producer */
-    dc_on = (dc_seq++ & 7) == 0 && (pm_ph_on || pm_dcs_on); /* DC1: one close in 8 is sampled, with phase or dcsum */
+    if (pm_ph_cen) { c = pm_gbi_flush_class(); pm_fl_n[c]++; { extern void pm_gbi_census_close(void); pm_gbi_census_close(); } } /* T2b: non-empty close per producer */
+    dc_on = (dc_seq++ & 7) == 0 && (pm_ph_cen || pm_dcs_on); /* DC1: one close in 8 is sampled, with phase mode or dcsum (PROF2-2: not in a prof sample) */
     if (!dc_on) { flush_impl(); return; } /* W2: the flush timer uses the DC1 sample, one close in 8, scaled by 8 */
-    unsigned t0 = pm_ph_on ? pm_ticks() : 0; /* the per-class flush time is phase only */
+    unsigned t0 = pm_ph_cen ? pm_ticks() : 0; /* the per-class flush time is phase only */
     flush_impl();
     dc_on = 0;
-    if (pm_ph_on) pm_fl_us[c] += (pm_ticks() - t0) * 8u / 268u;
+    if (pm_ph_cen) pm_fl_us[c] += (pm_ticks() - t0) * 8u / 268u;
 }
 /* DS0: cold. Called once per drawn frame from pm_gbi_end_frame (phase or dcsum on). It takes and clears pm_dc_c and pm_dc_us. Every 300 frames it prints one dcsum line. */
 void pm_gpu_dcsum_frame(unsigned frame) {

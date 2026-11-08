@@ -136,8 +136,8 @@ int pm_au_thread_yield(void) {
         }
         pm_au2_commit(); /* before au_busy = 0: after that the game thread may emit or commit */
         if (au_busy) {
-            if (pm_au_tk()) {
-                unsigned dt = pm_ticks() - au_j_t0;
+            if (au_j_t0) { /* PROF2-1: the job was timed at its kick (a job kicked untimed is not timed at its end) */
+                unsigned dt = (unsigned)svcGetSystemTick() - au_j_t0; /* audio thread: not a game thread read (pm_svc_n) */
                 if ((int)dt < 0) dt = 0; /* the tick counters of two cores can differ by a few ticks */
                 if (pm_ph_on) __atomic_fetch_add(&pm_ph_cnt[C_AJOB], dt / 268u, __ATOMIC_RELAXED); /* PG0: kick to done of the job in us, a pc field (core 1 wall time, an upper bound of its CPU time) */
                 au_j_sum += dt;
@@ -154,9 +154,9 @@ int pm_au_thread_yield(void) {
             static unsigned jobs;
             if ((++jobs & 15) == 0) {
                 volatile unsigned x = 0;
-                unsigned t0 = pm_ticks();
+                unsigned t0 = (unsigned)svcGetSystemTick();
                 for (unsigned i = 0; i < 100000; i++) x += i * 3u;
-                unsigned dt = pm_ticks() - t0;
+                unsigned dt = (unsigned)svcGetSystemTick() - t0;
                 au_pr_n++;
                 au_pr_sum += dt;
                 if (dt < au_pr_min) au_pr_min = dt;
@@ -202,8 +202,9 @@ void pm_audio_kick(unsigned n) {
  * thread may still run the job; its later "done" sets au_busy to 0 again and signals au_done, which nobody waits for. Before any sleep the
  * wait is untimed, as before: a 2 s bound fired on every step in Azahar yard (86 times in one run). */
 #define AU_STUCK_NS 2000000000LL
-/* CORE2-0: prof mode (pm_pf_on) sums every join wait of the game thread over the prof window, in ticks: sum and the longest single wait.
- * The prof report (pm_phase.c pf_report) prints them per drawn frame and pf_reset clears them. Game thread only. */
+/* CORE2-0, PROF2-1: prof mode sums every join wait of the game thread in the sampled frames (pm_pf_on and pm_ph_on: a clean frame reads
+ * no tick), in ticks: sum and the longest single wait. The prof report (pm_phase.c pf_report) prints them per sampled frame and pf_reset
+ * clears them. Game thread only. */
 extern int pm_pf_on;
 unsigned long long pm_au_pf_sum;
 unsigned pm_au_pf_max;
@@ -211,7 +212,7 @@ static inline void au_pf_add(unsigned dt) { pm_au_pf_sum += dt; if (dt > pm_au_p
 void pm_audio_join_at(int site) {
     if (!au_busy) return;
     int tk = pm_au_tk(); /* the audio tick reads: audiostat or phase only */
-    int pf = pm_pf_on;
+    int pf = pm_pf_on & pm_ph_on;
     unsigned t0 = (tk | pf) ? pm_ticks() : 0;
     if (tk) au_g_sum += (int)(t0 - au_j_t0) > 0 ? t0 - au_j_t0 : 0; /* core 0 work between kick and join */
     PH_PUSH(PH_AUDIO);
@@ -236,7 +237,7 @@ void pm_audio_join_at(int site) {
 /* Sleep hook: wait at most ns for the audio job. 0 = idle, -1 = the job still runs at the deadline. It goes on after the wait. */
 int pm_audio_join_timed(int site, unsigned long long ns) {
     if (!au_busy) return 0;
-    int tk = pm_au_tk(), pf = pm_pf_on;
+    int tk = pm_au_tk(), pf = pm_pf_on & pm_ph_on;
     unsigned t0 = (tk | pf) ? pm_ticks() : 0;
     PH_PUSH(PH_AUDIO);
     int to = LightEvent_WaitTimeout(&au_done, (s64)ns);

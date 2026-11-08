@@ -302,6 +302,7 @@ void pm_fskip_set(int on) { fs1_off = !on || pm_debug_has("fs1off"); } /* option
  * than a changed number for 1: FrameBegin(SYNCDRAW) then has to stop waiting for the vblank (not done, not in scope). */
 #define PM_VBLANKS_PER_STEP 2
 unsigned pm_pace_drawn; /* PT24: all steps with a draw since the start (the pace line prints the difference) */
+static u64 pace_wk; static unsigned pace_wkn; /* PROF2-6: work ticks (step start to frame end, no idle) and count of the drawn frames since the last pace line */
 static void pace_stat(u64 now, u64 hz, unsigned frame) {
     static u64 t0;
     static unsigned s0, f0, v0, a0, d0, i0[4];
@@ -312,6 +313,8 @@ static void pace_stat(u64 now, u64 hz, unsigned frame) {
     pm_log_d("pace: wall %.1f ms steps %u iterations %u drawn %u vblanks %u audio ticks %u  (steps/s %.2f) intervals 1:%u 2:%u 3:%u 4+:%u total 1:%u 2:%u 3:%u 4+:%u late steps (3+, over 33.3 ms) %u of %u", wall, pm_step_calls - s0,
            frame - f0, pm_pace_drawn - d0, v - v0, pace_ticks - a0, (float)(pm_step_calls - s0) * 1000.f / wall, pace_iv[0] - i0[0],
            pace_iv[1] - i0[1], pace_iv[2] - i0[2], pace_iv[3] - i0[3], pace_iv[0], pace_iv[1], pace_iv[2], pace_iv[3], pace_iv[2] + pace_iv[3], pace_iv[0] + pace_iv[1] + pace_iv[2] + pace_iv[3]);
+    { unsigned wk = pace_wkn ? (unsigned)(pace_wk * 100ull / ((u64)pace_wkn * (hz / 1000ull))) : 0u; /* PROF2-6: mean work ms x 100 of a drawn frame, the prof-off side of the prof self-check (prof wk) */
+      pm_log_d("pacewk f%u wk %u.%02u drawn %u", frame, wk / 100u, wk % 100u, pace_wkn); pace_wk = 0; pace_wkn = 0; }
     for (int i = 0; i < 4; i++) i0[i] = pace_iv[i];
     t0 = now; s0 = pm_step_calls; f0 = frame; v0 = v; a0 = pace_ticks; d0 = pm_pace_drawn;
 }
@@ -572,6 +575,7 @@ void pm_frame_loop(void) {
         frame_ms = (float)(now - step_start) * 1000.f / (float)tick_hz;
         if (pm_pf_on && !last_step_skipped) pm_pf_frame(step_start, now); /* PF1: switch prof */
         pm_xfer_step(step_start, now); /* MAPX-1: the xfer line of a door or map change */
+        if (pace_on && !last_step_skipped) { pace_wk += now - step_start; pace_wkn++; } /* PROF2-6: pacestat work time of a drawn frame */
         if (frame_ms > 50.f) { sp_n++; if (frame_ms > sp_max) sp_max = frame_ms; }
         { /* PT15: steps per second against the retrace (steps * 60 / vblanks, 120 vblanks) and the share of steps that took 3 or more vblanks */
             unsigned vbn = C3D_FrameCounter(0);

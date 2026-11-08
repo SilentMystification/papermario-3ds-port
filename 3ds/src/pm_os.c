@@ -5,6 +5,7 @@
 #include <3ds/types.h>
 #include <3ds/env.h>
 #include <3ds/services/apt.h>
+#include <3ds/svc.h>
 #include "ultra64.h"
 #include "nu/nusys.h"
 #include "enums.h"
@@ -48,7 +49,7 @@ u32 osGetCount(void) {
     static u32 t0;
     static int started;
     static u32 salt;
-    u32 t = pm_ticks();
+    u32 t = (u32)svcGetSystemTick(); /* PROF2-1: the game clock, not a measurement read: not in pm_svc_n (the prof csvc self-check) */
     if (!started) { started = 1; t0 = t; salt = (pm_debug_has("fixedseed") || pm_debug_has("det") || pm_opt.fixedseed) ? 0 : t * 2654435761u; /* DET: det implies the fixed seed */ } /* R-SEED: random start seed each boot, the switch fixedseed (tests, golden, smoke) keeps it the same */
     return salt + (u32)((unsigned long long)(t - t0) * 46875u / 268111u);
 }
@@ -159,7 +160,7 @@ void pm_audio_retrace_send(void) {
         nusched.retraceMsg = NU_SC_RETRACE_MSG;
     }
     a_in = pm_au_tk();
-    if (a_in) a_t0 = pm_ticks();
+    if (a_in) a_t0 = (unsigned)svcGetSystemTick(); /* PROF2-1: audio thread reads are not game thread reads (pm_svc_n, prof csvc) */
     osSendMesg(au_client->msgQ, (OSMesg)&nusched.retraceMsg, OS_MESG_NOBLOCK);
 }
 
@@ -169,7 +170,7 @@ void pm_audio_tick_end(void) {
     static unsigned long long sum;
     if (!a_in) return;
     a_in = 0;
-    unsigned dt = pm_ticks() - a_t0;
+    unsigned dt = (unsigned)svcGetSystemTick() - a_t0;
     sum += dt;
     if (dt > worst) worst = dt;
     /* L01: every 2 s with the audiostat switch, else every 20 s (S28 reads this line on hardware) */

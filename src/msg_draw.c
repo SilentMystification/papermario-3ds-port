@@ -52,6 +52,39 @@ static IMG_BIN D_801544A0[120][128];
 static MessageDrawState D_80155D20;
 static MessageDrawState* msg_drawState;
 
+#ifdef TARGET_3DS
+/* MSGBOX 3: drop shadow text in two passes. N64 draws shadow, glyph, shadow, glyph; each switch between the shadow combine (PM_CC_07)
+ * and the glyph combine closes a draw on the 3DS (two draws per glyph). The glyphs of a run of shadowed characters are kept here and
+ * drawn after the last shadow of the run, so the run is one shadow draw and one glyph draw. A shadow at +2,+2 lies to the right of
+ * and below its own glyph, never over the glyph before it, so the picture is the same. The run ends at any other code or character. */
+typedef struct { s16 x, y; s16 ch; u8 pal; f32 sx, sy; } MsgShadowGlyph;
+static MsgShadowGlyph msg_sh[64];
+static s32 msg_sh_n;
+void msg_draw_char(MessagePrintState* printer, MessageDrawState* drawState, s32 charIndex, s32 palette, s32 posX, s32 posY);
+static void msg_shadow_flush(MessagePrintState* printer, s16* curPal) {
+    Vec2f keep = msg_drawState->charScale;
+    s32 i;
+
+    if (msg_sh_n == 0) {
+        return;
+    }
+    gDPPipeSync(gMainGfxPos++);
+    gDPSetRenderMode(gMainGfxPos++, G_RM_TEX_EDGE, G_RM_TEX_EDGE2);
+    gDPSetCombineMode(gMainGfxPos++, G_CC_DECALRGBA, G_CC_DECALRGBA);
+    for (i = 0; i < msg_sh_n; i++) {
+        if (msg_sh[i].pal != *curPal) {
+            *curPal = msg_sh[i].pal;
+            msg_drawState->printModeFlags |= MSG_PRINT_FLAG_10;
+        }
+        msg_drawState->charScale.x = msg_sh[i].sx;
+        msg_drawState->charScale.y = msg_sh[i].sy;
+        msg_draw_char(printer, msg_drawState, msg_sh[i].ch, msg_sh[i].pal, msg_sh[i].x, msg_sh[i].y);
+    }
+    msg_drawState->charScale = keep;
+    msg_sh_n = 0;
+}
+#endif
+
 Vtx gMsgSpeechBoxLQuad[4] = {
     { .v = { .ob = {1, 0, 0},           .tc = {0, 0},           .cn = {255, 255, 248, 255} } },
     { .v = { .ob = {0x20, 0, 0},        .tc = {0x400, 0},       .cn = {255, 255, 248, 255} } },
@@ -302,6 +335,9 @@ void appendGfx_message(MessagePrintState* printer, s16 posX, s16 posY, u16 addit
     s8 rasterOffsetY;
 #endif
     s16 baseOffsetY;
+#ifdef TARGET_3DS
+    s32 shDefer = false;
+#endif
 
     msg_drawState = &D_80155D20;
     msg_drawState->printBuffer = printer->printBuffer;
@@ -362,6 +398,14 @@ void appendGfx_message(MessagePrintState* printer, s16 posX, s16 posY, u16 addit
 
         switch (byte)
 #else
+#ifdef TARGET_3DS
+        if (msg_sh_n != 0 && msg_drawState->printBuffer[msg_drawState->drawBufferPos] >= MSG_CHAR_PRINT_ENDL &&
+            msg_drawState->printBuffer[msg_drawState->drawBufferPos] != MSG_CHAR_PRINT_SPACE &&
+            msg_drawState->printBuffer[msg_drawState->drawBufferPos] != MSG_CHAR_PRINT_FULL_SPACE &&
+            msg_drawState->printBuffer[msg_drawState->drawBufferPos] != MSG_CHAR_PRINT_HALF_SPACE) {
+            msg_shadow_flush(printer, &sp9E);
+        }
+#endif
         switch (msg_drawState->printBuffer[msg_drawState->drawBufferPos])
 #endif
         {
@@ -424,7 +468,11 @@ void appendGfx_message(MessagePrintState* printer, s16 posX, s16 posY, u16 addit
                             msg_drawState->textStartPos[0] = 26;
                             msg_drawState->textStartPos[1] = MSG_NORMAL_TEXT_Y;
                             printer->rewindArrowPos.x = MSG_NORMAL_ARROW_X;
+#ifdef TARGET_3DS
+                            printer->rewindArrowPos.y = MSG_NORMAL_ARROW_Y + pm_wide_top(13) - 13; /* MSGBOX 1: the star follows the box when wide moves it up (UA2) */
+#else
                             printer->rewindArrowPos.y = MSG_NORMAL_ARROW_Y;
+#endif
                             curveWidth = 32;
                             height = MSG_NORMAL_HEIGHT_CAP;
                         } else {
@@ -489,7 +537,11 @@ void appendGfx_message(MessagePrintState* printer, s16 posX, s16 posY, u16 addit
                             }
                             printer->windowSize.y = height;
 
+#ifdef TARGET_3DS
+                            temp_a2 = (s16)printer->openStartPos.x - printer->windowSize.x / 2; /* MSGBOX 4: openStartPos is unsigned; a wide origin left of x 0 (PT58) wrapped to 65k and put the bubble at the right edge */
+#else
                             temp_a2 = printer->openStartPos.x - printer->windowSize.x / 2;
+#endif
                             if (temp_a2 < pm_wide_left(18)) { /* UA2: bubble clamps follow the wide edges */
                                 temp_a2 = pm_wide_left(18);
                             }
@@ -562,10 +614,18 @@ void appendGfx_message(MessagePrintState* printer, s16 posX, s16 posY, u16 addit
                         }
 
                         if (printer->windowState != MSG_WINDOW_STATE_CLOSING) {
+#ifdef TARGET_3DS
+                            msg_drawState->clipX[0] = pm_wide_left(20); /* MSGBOX 4: the bubble clamps to the wide edges, so the text clip does too */
+#else
                             msg_drawState->clipX[0] = 20;
+#endif
                             msg_drawState->clipY[0] = printer->windowOffsetPos.y + printer->windowBasePos.y +
                                                       msg_drawState->textStartPos[1];
+#ifdef TARGET_3DS
+                            msg_drawState->clipX[1] = pm_wide_right(SCREEN_WIDTH - 20);
+#else
                             msg_drawState->clipX[1] = SCREEN_WIDTH - 20;
+#endif
                             msg_drawState->clipY[1] = msg_drawState->clipY[0] + printer->windowSize.y - 16;
                         }
                         msg_reset_gfx_state();
@@ -1349,6 +1409,13 @@ void appendGfx_message(MessagePrintState* printer, s16 posX, s16 posY, u16 addit
                     if (msg_drawState->effectFlags & MSG_FX_FLAG_GLOBAL_RAINBOW) {
                         palette = abs(msg_drawState->visiblePrintedCount - (u16)(gGameStatusPtr->frameCounter / 3)) % 10;
                     }
+#ifdef TARGET_3DS
+                    shDefer = (msg_drawState->effectFlags & MSG_FX_FLAG_DROP_SHADOW) && phi_s2_5 == 0xFF &&
+                              !(msg_drawState->effectFlags & (MSG_FX_FLAG_BLUR | MSG_FX_FLAG_DITHER_FADE));
+                    if (!shDefer) {
+                        msg_shadow_flush(printer, &sp9E);
+                    }
+#endif
                     if (msg_drawState->effectFlags & MSG_FX_FLAG_DITHER_FADE) {
                         gDPSetAlphaDither(gMainGfxPos++, G_AD_NOISE);
                         gDPSetAlphaCompare(gMainGfxPos++, G_AC_DITHER);
@@ -1531,6 +1598,21 @@ void appendGfx_message(MessagePrintState* printer, s16 posX, s16 posY, u16 addit
                                           msg_drawState->printBuffer[msg_drawState->drawBufferPos],
                                           palette, charPosX + 2, charPosY + 2);
 #endif
+#ifdef TARGET_3DS
+                            if (shDefer) {
+                                if (msg_sh_n == ARRAY_COUNT(msg_sh)) {
+                                    msg_shadow_flush(printer, &sp9E);
+                                }
+                                msg_sh[msg_sh_n].x = charPosX;
+                                msg_sh[msg_sh_n].y = charPosY;
+                                msg_sh[msg_sh_n].ch = msg_drawState->printBuffer[msg_drawState->drawBufferPos];
+                                msg_sh[msg_sh_n].pal = palette;
+                                msg_sh[msg_sh_n].sx = msg_drawState->charScale.x;
+                                msg_sh[msg_sh_n].sy = msg_drawState->charScale.y;
+                                msg_sh_n++;
+                            } else
+#endif
+                            {
                             gDPPipeSync(gMainGfxPos++);
                             if (phi_s2_5 < 0xFF) {
                                 gDPSetRenderMode(gMainGfxPos++, G_RM_XLU_SURF, G_RM_XLU_SURF2);
@@ -1538,6 +1620,7 @@ void appendGfx_message(MessagePrintState* printer, s16 posX, s16 posY, u16 addit
                             } else {
                                 gDPSetRenderMode(gMainGfxPos++, G_RM_TEX_EDGE, G_RM_TEX_EDGE2);
                                 gDPSetCombineMode(gMainGfxPos++, G_CC_DECALRGBA, G_CC_DECALRGBA);
+                            }
                             }
                         }
 
@@ -1579,6 +1662,9 @@ void appendGfx_message(MessagePrintState* printer, s16 posX, s16 posY, u16 addit
                                               palette, charPosX + 2, charPosY + 2);
                             }
 #else
+#ifdef TARGET_3DS
+                            if (!shDefer)
+#endif
                             msg_draw_char(printer, msg_drawState,
                                           msg_drawState->printBuffer[msg_drawState->drawBufferPos], palette, charPosX,
                                           charPosY);
@@ -1602,6 +1688,9 @@ void appendGfx_message(MessagePrintState* printer, s16 posX, s16 posY, u16 addit
                 break;
         }
     }
+#ifdef TARGET_3DS
+    msg_shadow_flush(printer, &sp9E);
+#endif
 
     varImgHasBorder = false;
     if (printer->varImageScreenPos.x != 0) {

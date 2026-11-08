@@ -519,12 +519,12 @@ int dlc_try(const Gfx* l) {
         const DlcGrp* g = &e->grp[k];
         if (k + 1 < e->ngrp) { __builtin_prefetch(g + 1); __builtin_prefetch(g[1].sd); }
         dlc_c.grp++;
-        if (pm_ph_on) sp0_grp++;
+        if (pm_ph_cen) sp0_grp++;
         if (dlc_box_out(g, m)) {
             tri_since_vtx = g->tsv_exit;
             skipped_last = skipped_any = 1;
             dlc_c.skip++;
-            if (pm_ph_on) sp0_skip++;
+            if (pm_ph_cen) sp0_skip++;
             continue;
         }
         skipped_last = 0;

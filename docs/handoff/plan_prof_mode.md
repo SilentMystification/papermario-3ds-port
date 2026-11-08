@@ -16,7 +16,7 @@ Inputs: CLAUDE.md, inv_pmu_events.md, agent_cap2.md, agent_split0c2.md, hw_guide
 One switch `prof`. It runs three parts:
 
 1. Every drawn frame (clean frames): zero new tick reads, zero svc calls. The main loop already reads the tick twice per iteration (pm_main.c:366 `now`, kept as `step_start` at 406, and pm_main.c:489 `now` after the frame). `pm_pf_frame(step_start, now)` takes both values. Wall time of a drawn frame = `step_start` minus the `step_start` of the last drawn frame. Work time = `now - step_start` (no idle wait).
-2. One drawn frame in N (sampled frame, default N = 30): `pm_ph_on` is set to 1 for that frame only. The phase timers run in that frame (PH stack, gbi_task tick pair, sp0 tex/dlc/rest split, texture timers) and one tick pair per producer class site (cls line); the per-op census hooks of the walk (opsplit, model census, streaks) run in phase mode only (pm_ph_cen, PERF1). The other N-1 frames run with `pm_ph_on` 0, the same as a log-off build.
+2. One drawn frame in N (sampled frame, default N = 30): `pm_ph_on` is set to 1 for that frame only. The phase timers run in that frame (PH stack, gbi_task tick pair, GPU busy submit tick) and one tick pair per producer class site (cls line). Every timer and census with a phase-mode reader only (tex_op and fused-op timers, flush_impl, flush class and census close, DC1 close sample, kick split, sync_combine, sp0 split and counters, the PERF-GBI gp timers per triangle, pm_tex_load and the flush tracer) tests pm_ph_cen, so it runs in phase mode only (PERF1, PROF2-2). The other N-1 frames run with `pm_ph_on` 0, the same as a log-off build. The census lines (ndm, ndmhit, ndmmiss, ndmr, wide, rect, sprnat, spr5, entnat, nrawwhy, gdl, mdlw, mdlfb, mdlsub) print only with `pm_cen_lines` (phase mode, or the `census` word with logging on; never in prof mode), with pm_log_w, once per frame at the frame end (pm_gpu.c cen_lines_frame); their counters run on every path (PROF2-3).
 3. PMU: one fixed counter set for the whole run (no window toggle). The counters are read only at the two edges of each sampled frame. So the clean frames and the sampled frames get separate counts, and the phase code does not pollute the clean I-cache counts.
 
 The prof line prints at warn level (`pm_log_w`, level 1). `loglevel=debug` is not needed. The push uses only `prof`: no debug line, no other stat switch.
@@ -44,6 +44,8 @@ PMN0 and PMN1 are the only event counters. CCNT counts cycles. The user asks for
 - Parsed once in `pm_ph_init` with the existing `pm_debug_has` and `pm_debug_value` pattern. `pm_debug_has("prof")` does not match `prof=16` (debug_scan needs a word edge, pm_log.c:105-108), so both calls are needed.
 - `pm_pf_on = want && pm_log_file()`. `pm_ph_log_gate` (pm_phase.c:288) sets it again when the options panel turns the log on or off.
 - The main loop reads `pm_pf_on` once per iteration: `if (pm_pf_on && !last_step_skipped) pm_pf_frame(step_start, now);`. No per-op read of any prof flag.
+- PROF2-6: pm_pf_frame notes the scene (pf_scene_note: map, mode, start position) only after a scene event (pm_ph_scene_map, pm_ph_scene_mode, a window start), one flag test per frame.
+- PROF2-5: the walker reads one debug word (pm_walk_dbg, nd.h WD_*) once per list; in a clean frame each op tests one register and calls nothing. The class timers keep a 4-deep u32 tick stack in pm_gpu.c.
 
 ### 2.4 No picture change (requirement 7)
 
@@ -62,20 +64,28 @@ PMN0 and PMN1 are the only event counters. CCNT counts cycles. The user asks for
 
 ## 3. The prof line (exact)
 
-Per window of 300 drawn frames (pm_log_prof_line): the main line, then the pmu line and the producer class line (PERF1: the 256 byte log slot cut the pmu fields off the main line):
+Per window of 300 drawn frames (pm_log_prof_line). PROF2-4: every value is an integer (a time is ms x 100 from u64 ticks, printed %u.%02u; a sign is a %s word), every line is at most 16 argument words with no refused conversion, so the game thread only copies words into the log slot (pm_logfmt.h lf_scan, lf_copy) and the writer formats them: no double and no vsnprintf on the game thread. Lines:
 
 ```
-prof f%u w%u fps %.1f | ft %.2f max %.1f o34 %u wk %.2f | s%u fts %.2f wks %.2f oh %.2f amort %u | gbi %.2f dlc %.2f tex %.2f gpu %.2f | st %u vb %u iv %u %u %u %u
+prof f%u w%u fps %u.%u | ft %u.%02u max %u.%u o34 %u wk %u.%02u
+prof f%u w%u s%u fts %u.%02u wks %u.%02u oh %s%u.%02u amort %u csvc %u ssvc %u
+prof f%u w%u ph gbi %u.%02u dlc %u.%02u tex %u.%02u gpu %u.%02u | st %u vb %u iv %u %u %u %u
 prof f%u w%u pmu %c %u %u cyc %u pm %u %u
-prof f%u w%u cls rec %.2f ent %.2f spr %.2f dlc %.2f sub %.2f rest %.2f
+prof f%u w%u cls rec %u.%02u ent %u.%02u spr %u.%02u dlc %u.%02u sub %u.%02u rest %s%u.%02u
+prof f%u w%u nd %u.%02u lg %u.%02u dr %u tc %u tw %u tri %u leg %u gb %u.%02u
+prof f%u w%u budget tgt ... | meas nd %u.%02u lg %u.%02u gb %u.%02u
+prof f%u w%u at %s %d:%d m%d sp%d b%d e%d chg0 pos0 %d %d %d pos %d %d %d disp %s
+prof f%u w%u writer beats %u | aujoin_us %u aujoin_max %u
 ```
 
-Example (made-up numbers, for the shape only):
+Example (Azahar, spot_mac01_det, prof=4, for the shape only):
 
 ```
-prof f9000 w300 fps 26.4 | ft 37.80 max 61.2 o34 141 wk 35.10 | s10 fts 46.20 wks 43.90 oh 8.80 amort 293 | gbi 14.20 dlc 2.10 tex 3.40 gpu 5.10 | st 330 vb 682 iv 0 241 52 7
-prof f9000 w300 pmu m 150863 54478 cyc 9900000 pm 15 5
-prof f9000 w300 cls rec 2.90 ent 1.70 spr 0.30 dlc 0.00 sub 1.50 rest 7.80
+prof f388 w300 fps 27.6 | ft 36.20 max 172.0 o34 133 wk 35.98
+prof f388 w300 s75 fts 36.68 wks 36.53 oh 0.55 amort 137 csvc 0 ssvc 35
+prof f388 w300 ph gbi 7.20 dlc 0.00 tex 0.03 gpu 0.01 | st 299 vb 650 iv 7 266 19 8
+prof f388 w300 pmu m 0 0 cyc 0 pm 0 0
+prof f388 w300 cls rec 1.63 ent 0.86 spr 0.28 dlc 0.00 sub 1.44 rest 2.99
 ```
 
 | Field | Meaning | Source |
@@ -91,6 +101,8 @@ prof f9000 w300 cls rec 2.90 ent 1.70 spr 0.30 dlc 0.00 sub 1.50 rest 7.80
 | fts, wks | mean wall and work ms of a sampled frame | main loop ticks |
 | oh | wks - wk: ms that the full timers add to one sampled frame (self-check) | window end |
 | amort | prof cost in us per frame: oh x 1000 / N + base (base from the cal line) | window end |
+| csvc | game thread svc tick reads (pm_svc_n) in all clean frames of the window: the self-check, target 0. The game clock (osGetCount) and the audio thread read the tick without pm_ticks, so they are not counted | pm_pf_frame |
+| ssvc | game thread tick reads per sampled frame, with the GPU done read of the sample (pm_gpu.c gb, made at the next frame begin) | pm_pf_frame |
 | gbi, tex, gpu | mean exclusive ms per sampled frame of PH_GBI, PH_TEX, PH_GPU | Rec r->ms at pm_phase.c:502 |
 | dlc | mean ms per sampled frame of dlc replay inside G_PM_MODEL groups (sp0 kind 2, a part of gbi time) | delta of sp0_T[2] |
 | pmu c | counter set: m or s | switch |
@@ -108,7 +120,7 @@ prof f9000 w300 cls rec 2.90 ent 1.70 spr 0.30 dlc 0.00 sub 1.50 rest 7.80
 Calibration line, once at init (cold, boot time):
 
 ```
-pm_log_w("prof cal every %u set %c tick %.2f us pmu %.2f us base %.2f us rc %08x", N, set, tick_us, pmu_us, base_us, rc);
+pm_log_prof_line("prof cal every %u set %c tick %u.%02u us pmu %u.%02u us base %u.%02u us rc %08x", ...); /* integers, us x 100 */
 ```
 
 - tick_us: mean of 200 `pm_ticks()` reads. pmu_us: mean of 50 GET_VALUE reads (one register). base_us = 6 x pmu_us / N (two 3-register reads per N frames). The pattern is pm_phase.c:310-321.
@@ -164,6 +176,8 @@ Affected scenario: only `mac01t_prof` (new). No other scenario: no draw code cha
 - Scenario `mac01t_prof` (added in PF3 to 3ds/tools/azt_scenarios.json and the docs/handoff/test_catalog.md table, same commit). Copy of `mac01t_cap1` with debug `warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0 shots shotwin=500:1 prof=16`. No `loglevel=debug`, no `phase`. until `prof f\d+ w300 `. Subject: Mario in mac_01 at frame 500 and one prof line.
 - One Azahar start after PF3: `PM_ROW=PF3 powershell -File 3ds/tools/azt.ps1 mac01t_prof -Row PF3 -Try`. Pass: the cal line and one prof line print, `s` is about 18 (300 / 16), gbi and tex are not 0, the shot shows Mario in Toad Town. On Azahar the pmu fields may be 0 (Azahar may not model the PMU). That is not a fail. Azahar times show direction only.
 - One console push after the epic passes: `PM_ROW=PUSH sh /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/3ds/push_3ds.sh --no-build --ip 192.168.1.170 prof`. Read the cal line, `fps`, `ft`, `oh`, `amort`, and pmu `m`. A second push with `prof profstall` gives the stall share.
+
+Self-check pair (PROF2-6): benches spot_mac01_selfchk_prof (prof=30: wk, oh, amort, csvc, ssvc of the first window) and spot_mac01_selfchk_off (prof off, pacestat: the pacewk line, mean work ms of a drawn frame per 5 s pace window, at frame 400 or later). wk of the prof run against pacewk wk of the off run is the prof cost on clean frames. Azahar shows direction only; the console run (spot_mac01_prof) is the measure.
 
 ## 8. Open decisions for the user
 
