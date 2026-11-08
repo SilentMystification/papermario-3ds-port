@@ -53,9 +53,10 @@ F. Database lost or stale: `bench.py rebuild` makes bench.db from runs.jsonl and
 - `ingest <log> --bench B --host azahar|o3ds|n3ds [--build N] [--commit H] [--row R] [--label L] [--speed S]`, `ingest-last` (called by azt.ps1), `import-csv`
 - `where`, `spots`, `compare <bench> [A B | --last 2]`, `trend <bench> [metric]`: area filters `--map --mode --story --battle --entry --x --y --z --host`, plus `--speed turbo|normal|unknown|any`, `--chg` (include scene-change windows)
 - `check <run_id>`, `rebuild`
+- `azstat [--since <ISO date or time>]` (default today): Azahar throughput of every tree's runs.jsonl (starts, warm and cold, wait_s, boot_s, until_s, wall_s: median, p90, max) and the slot pool events of build3ds/azslots/pool.log (cold starts by reason, kills by reason, warm restarts, stale boots).
 
 ## Fields of a run
-bench, host (azahar, o3ds, n3ds, host), device, build_no, commit, date, ts, row, label, result, speed (turbo, normal, unknown), frame_limit, warm (1 warm restart, 0 cold, absent: unknown), dirty (true: a tracked file changed, except map_restore_table.c and 3ds/logs/; false: clean; null: old run), scene, log_path, shot_path, metrics. Per window (sample): frame, map, area, mode, story, battle, entry, chg, position at start and end (x y z), fps, ft_ms, nd_ms, lg_ms, gb_ms.
+bench, host (azahar, o3ds, n3ds, host), device, build_no, commit, date, ts, row, label, result, speed (turbo, normal, unknown), frame_limit, warm (1 warm restart, 0 cold, absent: unknown), wait_s (queue wait, enqueue to grant), boot_s (Azahar start or warm restart to the first game line of the boot), until_s, wall_s, dirty (true: a tracked file changed, except map_restore_table.c and 3ds/logs/; false: clean; null: old run), scene, log_path, shot_path, metrics. Per window (sample): frame, map, area, mode, story, battle, entry, chg, position at start and end (x y z), fps, ft_ms, nd_ms, lg_ms, gb_ms.
 
 ## Rules
 - Turbo and normal rows are never averaged. Old runs have speed unknown.

@@ -478,6 +478,8 @@ function Exit-Run([int]$code) {
     if ($null -ne $wallS) { $ia += @("--wall-s", [string]$wallS) } # AZT10b-2: the run timing (bench record)
     if ($null -ne $untilS) { $ia += @("--until-s", [string]$untilS) }
     if ($null -ne $afterS) { $ia += @("--end-after-until-s", [string]$afterS) }
+    if ($null -ne $qWaitS) { $ia += @("--wait-s", [string]$qWaitS) } # AZT12: queue wait, enqueue to grant
+    if ($null -ne $script:bootS) { $ia += @("--boot-s", [string]$script:bootS) } # AZT12: Azahar start (cold launch or warm round) to the first game line of this boot
     & python @ia
     if ($LASTEXITCODE -ne 0) { Write-Output "BENCH: run not recorded (bench.py exit $LASTEXITCODE)" }
     if ($script:slotK) { Exit-Slot $script:slotK; $script:slotK = 0 } # the slot is free for the next run once the logs are read and recorded
@@ -592,6 +594,7 @@ $capGuard = $cap + 120
 $startKind = ""
 $deadlineEff = $deadline
 $script:bootLine = $null
+$script:bootS = $null
 while (-not $child.HasExited) {
     Start-Sleep -Milliseconds 500
     if (((Get-Date) - $qHb).TotalSeconds -ge 2) { Set-QFields $qPath @{ hb = (Get-NowMs) }; $qHb = Get-Date } # AZT11-2: heartbeat
@@ -632,6 +635,7 @@ while (-not $child.HasExited) {
     $chunk = Read-LogChunk
     if ($chunk) {
         $lastNew = Get-Date
+        if ($null -eq $script:bootS) { $script:bootS = [math]::Round(($lastNew - $azStart).TotalSeconds, 1) } # AZT12: boot_s
         # AZT3-3: a boot starts at its banner line. The marker counts only after the newest banner, so an old boot's line is never a marker.
         $bi = $chunk.LastIndexOf("#0 log: writer id")
         if ($bi -ge 0) { $mtext = $chunk.Substring($bi) } else { $mtext += $chunk }
