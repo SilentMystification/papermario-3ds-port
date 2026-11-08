@@ -3,6 +3,27 @@
   "note": "Read by 3ds/tools/azt.ps1. debug = the -Debug switch string of run_azahar.ps1, until = its -Until regex, cap = -Timeout in s, extra = more run_azahar.ps1 switches. first_marker is a log regex that must appear within deadline s after the Azahar start. expects = warp | tour | none (warp and tour turn on the attract-loop check). expected_events are log regexes that must all appear. An expected_event with max is a numeric gate: capture group 1 of its regex must be at most max (pick last takes the last matching line, else the first). status = verified | unverified | completion_only | fail_demo | pending.",
   "scenarios": [
     {
+      "name": "dmg_star",
+      "status": "unverified",
+      "subject": "BTLUI bug 1: battle on kmr_20 (one Goomba formation), Mario's first jump with autoa hits; shots every 20 frames from frame 40 to 320. The picture is the subject: the coloured star burst behind the damage number must show in the shots after the hit.",
+      "proves": "BTLUI: the damage_indicator star corners (D_09002150..80 vertex loads, D_090021A8 and D_09002190 triangle lists) draw on the port: the star is in the shot.",
+      "debug": "warp=kmr_20:0 battle=BTL_KMR_1_FORMATION_00:BTL_KMR_1_STAGE_01 battlef=30 autoa det fixedseed shots shotwin=40:15:20 loglevel=debug",
+      "until": "shot \\d+ frame 320\\b",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: kmr_20 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "shot 320",
+          "regex": "shot \\d+ frame 320\\b"
+        }
+      ],
+      "reason": "BTLUI gate: battle damage star. Until is the last shot of the window (the battle: start line comes before the first jump)."
+    },
+
+    {
       "name": "logbench_boot",
       "status": "unverified",
       "subject": "Boot with the logbench switch: four timed loops of the log producer (plain line, four arguments, two %s, dropped line), cycles per line in the log.",

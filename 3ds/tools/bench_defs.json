@@ -12,6 +12,22 @@
   },
   "benches": [
     {
+      "name": "dmg_star",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "BTLUI bug 1: battle damage star behind the damage number. Shots 40 to 320 every 20 frames (kmr_20 battle, autoa); the star shows after the first jump hit.",
+      "scenario": "dmg_star",
+      "cap": 45,
+      "until": "shot \\d+ frame 320\\b",
+      "tags": [
+        "azahar",
+        "battle",
+        "btlui"
+      ],
+      "gates": []
+    },
+    {
       "name": "sprshade_hos01_pic",
       "kind": "azahar_pic",
       "speed": "normal",
