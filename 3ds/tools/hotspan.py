@@ -17,10 +17,12 @@ def parse(path):
     i = next(k for k, l in enumerate(lines) if l.startswith(".text ") or l.startswith(".text\t") or l.strip() == ".text")
     groups, cur, fns, lo, hi = [], None, [], None, None
     k = i + 1
-    pend = None
     while k < len(lines):
         l = lines[k]
-        if l.startswith(" *(") or l.startswith(" *lib") or l.startswith(" *"):
+        if l.startswith(" *fill*"):
+            k += 1
+            continue
+        if l.startswith(" *"):
             if ".text.unlikely" in l:
                 break
             if "(.text." in l:

@@ -113,6 +113,7 @@ static unsigned orb_tag_of(const void* l) {
     return 0;
 }
 unsigned pm_gbi_dbg_orb_tag(void) { return orb_tag; }
+static int walk_keep; /* PERF2: set by nd_walk_ops for the next nd_walk_run only */
 void nd_walk_run(void* list, unsigned nbytes) {
     gv_epoch++; /* GV1b */
     dlc_on = 1;
@@ -123,7 +124,8 @@ void nd_walk_run(void* list, unsigned nbytes) {
     unsigned guard = 0;
     u32 pc_lo = 0, pc_hi = 0;
     gp_prev_op = -1; /* PG4: the time between two lists is not an op cost */
-    sc_ok = 0; sr_ok = 0; /* DIP2: a new display list starts with a full sync */
+    if (!walk_keep) { sc_ok = 0; sr_ok = 0; } /* DIP2: a new display list starts with a full sync (not the pieces of one flattened list, nd_walk_ops) */
+    walk_keep = 0;
     if (!pc) { gv_streak_flush(); tex_streak_flush(); return; }
     while (pc && guard++ < 200000) {
         if (end && sp == 0 && pc >= end) break;
@@ -409,6 +411,10 @@ void pm_gbi_run(void* list, unsigned nbytes) {
     else gbi_run1(list, nbytes);
     pm_walk_side--;
 }
+/* PERF2: the ops of a flattened entity list (ent_run, nd_ent.c) between its native segments. The pieces are one list: the walker's combine and
+ * render shadows (sc_ok, sr_ok) stay valid across them (a native segment keeps them as dlc_try does inside a walk), so the first combine or
+ * render op of a piece is not a full sync. ent_run made 37 walks and 40 full combine syncs per frame on mac_01 (entsync line). */
+void nd_walk_ops(void* list, unsigned nbytes) { walk_keep = 1; pm_gbi_run(list, nbytes); }
 /* CORE2-3b: the game thread is about to write memory that the walk of the last frame may have read: a ROM read into RAM, a decode, a map
  * load, a game mode change (load writes, the CORE2-2 census hazard 4). The walker must be idle from here on. With the serial walker every
  * task is walked inside nuGfxTaskStart, so it is idle at every call outside a walk; the census (switch c2haz) checks the writes made

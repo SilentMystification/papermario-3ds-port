@@ -185,6 +185,7 @@ extern int fog_fm, fog_fo, fogmix_on;        /* ST-1: nd_state.c, F08 fog factor
 int ent_gdl(const Gfx* l);
 extern u8 gMapShapeData[];
 extern int sc_ok, gp_prev_op, box_folded;
+extern unsigned nd_ent_in, nd_ent_cfull, nd_ent_rfull, nd_ent_gbi; /* PERF2: inside ent_run; full combine and render syncs and walks run there (entsync line) */
 
 
 /* ---- T: texture group (plan_s10_path TX). TX-1 cut the setters to nd_tex.c; globals not yet moved stay in the former pm_gbi.c (extern here). ---- */
