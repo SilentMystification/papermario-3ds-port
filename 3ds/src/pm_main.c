@@ -700,33 +700,29 @@ static void game_thread(void* arg) {
     pm_stack_register(0, "game", 256 * 1024);
     char sw[256]; /* H06d: a bigger array here stops the boot (FX3a, H06d: _svfprintf_r PC 0), so the limit stays and a cut is handled */
     memset(sw, 0, sizeof(sw));
-    FILE* f = fopen("debug3ds.txt", "r");
+    /* CFG-1: the launch arguments come first, then debug3ds.txt. Every switch read takes the first match (pm_debug_value, debug_scan),
+     * so a push flag wins over the same word in debug3ds.txt. */
+    if (args[0]) strncpy(sw, args, sizeof(sw) - 1);
+    size_t base = strlen(sw);
+    int sep = base && base + 1 < sizeof(sw);
+    if (sep) sw[base++] = ' ';
     int sw_cut = 0;
+    FILE* f = fopen("debug3ds.txt", "r");
     if (f) {
-        size_t got = fread(sw, 1, sizeof(sw) - 1, f);
-        sw_cut = got == sizeof(sw) - 1 && fgetc(f) != EOF;
+        size_t cap = sizeof(sw) - 1 - base;
+        size_t got = fread(sw + base, 1, cap, f);
+        sw[base + got] = 0;
+        sw_cut = got == cap && fgetc(f) != EOF;
         fclose(f);
-        if (sw_cut) { /* H06d: never keep half a word (tour=...iwa_01 became iwa_0): cut back to the last space */
-            char* sp = strrchr(sw, ' ');
+        if (sw_cut) { /* H06d: never keep half a word (tour=...iwa_01 became iwa_0): cut back to the last space of the file text */
+            char* sp = strrchr(sw + base, ' ');
             if (sp) *sp = 0;
         }
     }
-    if (args[0]) {
-        size_t n = strlen(sw);
-        if (n && n + 1 < sizeof(sw)) sw[n++] = ' ';
-        strncat(sw, args, sizeof(sw) - strlen(sw) - 1);
-    }
+    if (sep && !sw[base]) sw[base - 1] = 0; /* no file text: drop the separator */
     /* MEM-B item 9: the live log (socket, 17492) is opt-in: the livelog word from debug3ds.txt or a launch argument (push_3ds.sh passes it).
      * A netload alone no longer starts it. Read after the args are appended, so the argument word counts. */
     int live = strstr(sw, "livelog") != NULL;
-    { /* PROF4: options.ini prof=1 adds the word prof, as a launch argument does. pm_options_init runs later and re-applies it. */
-        FILE* oi = fopen("options.ini", "r");
-        static char ln[32];
-        if (oi) {
-            while (fgets(ln, sizeof ln, oi)) if (!strncmp(ln, "prof=1", 6) && strlen(sw) + 6 < sizeof sw) { strcat(sw, " prof"); break; }
-            fclose(oi);
-        }
-    }
     pm_log_set_switches(sw);
     pm_log_init(live);
     pm_log_start();

@@ -160,6 +160,14 @@ static int debug_scan(const char* word) {
     }
     return 0;
 }
+/* CFG-1: a switch word with a value: -1 absent, 0 off (key=off or key=0), 1 on (a bare key or any other value). The value is read first, so
+ * key=off wins over a bare key elsewhere in the string (the first match of each form, args before debug3ds.txt). */
+int pm_debug_mode(const char* key) {
+    extern int pm_debug_value(const char* key, char* out, unsigned n);
+    char v[16];
+    if (pm_debug_value(key, v, sizeof v)) return (!strcmp(v, "off") || !strcmp(v, "0")) ? 0 : 1;
+    return pm_debug_has(key) ? 1 : -1;
+}
 int pm_debug_has(const char* word) {
     PH_ADD(C_DBG, 1);
     if (!word || !switches[0]) return 0;
@@ -527,9 +535,8 @@ void pm_log_prof_row(int mode) {
 }
 /* PROF4: the launch word prof=1 (boot_line 1 prints "prof=1 log=off"). U2: it turns logging off for this run. */
 void pm_log_prof_apply(int boot_line) {
-    char v[16];
     base_save();
-    if (!(pm_debug_has("prof") || pm_debug_value("prof", v, sizeof v))) return;
+    if (pm_debug_mode("prof") != 1) return; /* CFG-1: prof=off or prof=0 is not a profiling run */
     pm_log_prof_row(1);
     if (boot_line) pm_log_prof_line("prof=1 log=off");
 }
