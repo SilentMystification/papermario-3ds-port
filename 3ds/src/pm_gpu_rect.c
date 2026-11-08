@@ -184,7 +184,7 @@ static short tex_st(float v, float sc) { float f = v * sc; return (short)(f >= 0
  * Returns 0 when the piece is still too wide (tex_raw_rect splits first, so this is not reached in practice). */
 static int tex_raw_piece(int xa, int ya, int xb, int yb, float s0, float t0, float s1, float t1, int y0, int y1) {
     const int saved = gs.combine;
-    const int ec = (saved == 5 || saved == 6 || saved == 7 || saved == 8) ? saved : 2;
+    const int ec = (saved == 4 || saved == 5 || saved == 6 || saved == 7 || saved == 8) ? saved : 2; /* MSGBOX 2 (UI1): class 4 (PM_CC_07 drop shadow, constant colour times texel alpha) keeps its class; as class 2 it drew the glyph texels */
     float mx = 0.f;
     const float av[4] = { s0 < 0.f ? -s0 : s0, s1 < 0.f ? -s1 : s1, t0 < 0.f ? -t0 : t0, t1 < 0.f ? -t1 : t1 };
     for (int i = 0; i < 4; i++) if (av[i] > mx) mx = av[i];
@@ -215,7 +215,7 @@ static int tex_raw_piece(int xa, int ya, int xb, int yb, float s0, float t0, flo
 static int tex_raw_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s1, float t1) {
     if (!rect_raw_ok()) return 0;
     float xa = px(x0), xb = px(x1 + 1);
-    if (pm_wide && !gs.off_active && xb > xa) { /* F07-7: a rectangle on the game edge reaches the screen edge */
+    if (pm_wide && !gs.off_active && xb > xa && !pm_tex_cell_bound()) { /* F07-7: a rectangle on the game edge reaches the screen edge. MSGBOX 4: not a glyph: a glyph at game x 0 (wide bubble text) drew 40 px of the cells left of it */
         float ds = (s1 - s0) / (xb - xa);
         if (x0 == 0) { s0 -= ds * xa; xa = 0.f; }
         if (x1 == 319) { s1 += ds * (400.f - xb); xb = 400.f; }

@@ -454,7 +454,7 @@ __attribute__((noinline)) void tex_tile1(unsigned tile, int uls, int ult, int lr
 __attribute__((noinline)) void tlut_v20(unsigned slot) {
                     for (int n = 0; n < 2; n++)
                         if (nd_ws.td[n].valid && nd_ws.td[n].fmt == 2 && (nd_ws.tst1.tile_pal[n] & 15) == slot && nd_ws.td[n].pal != nd_ws.timg) {
-                            pm_gpu_flush();
+                            if (!pm_tex_cell_bound()) pm_gpu_flush(); /* MSGBOX 3: the queued glyphs sample only their own cells on unit 0, which a new palette does not change (flushlog: a stale tile 1 record split every rainbow glyph) */
                             nd_ws.td[n].pal = nd_ws.timg;
                             nd_ws.td[n].pal_n = nd_ws.tlut_n;
                             if (n == nd_ws.cur_tile) nd_ws.cur_tile = -1;
@@ -625,7 +625,7 @@ __attribute__((cold, noinline)) void tb_diff(const Gfx* g) {
 int glyph_atlas_bound(void) {
     int gx, gy;
     if (!nd_ws.td[0].valid || !nd_ws.td[0].src || nd_ws.td[0].fmt != 2 || nd_ws.td[0].siz != 0 || !ens_src) { return 0; }
-    if (ens_pal != nd_ws.td[0].pal || ens_fmt != 2 || ens_siz != 0) { return 0; }
+    if (ens_fmt != 2 || ens_siz != 0) { return 0; } /* MSGBOX 3: the palette may differ; the cell texture holds a cell per palette */
     if (memcmp(nd_ws.tst1.tile_wrap[0], ens_wrap, sizeof ens_wrap) || memcmp(nd_ws.tst1.tile_sz[0], ens_sz, sizeof ens_sz)) { return 0; }
     if (!pm_tex_glyph_same(nd_ws.td[0].src, nd_ws.td[0].fmt, nd_ws.td[0].siz, nd_ws.td[0].w, nd_ws.td[0].h, nd_ws.td[0].pal, nd_ws.td[0].pal_n, &gx, &gy)) { return 0; }
     return 1;
