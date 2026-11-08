@@ -10,3 +10,11 @@ STATE
 - Process rules updated: orchestrator_rules.md "Process fixes".
 - Open regression (user: leave open, 2026-11-08): same O3DS XL, mac_01 0 0 200 prof=4: a3c5ec093 run 25158 gbi 30.2 ms, fps 29.4, o34 2-9; 7be88729b run 25044 gbi 37.4 ms, fps 28.0, o34 18-30 (oh 8.0 -> 12.8, amort 2000 -> 3200). 407 first-parent commits between them (77 merges). Options: console bisect (about 9 pushes) or an oracle code read of the prof fields first.
 - Disk: folders build3ds/wt/fb3, fb4, tdc, ls3 are held by a process (Azahar or a shell): run wt_gc.sh --apply again when Azahar is closed (it now removes stale folders; it keeps fresh branches, use --only for a fast-forwarded one).
+
+## Questions for the user (collected overnight 2026-11-08)
+1. Push target: memory says O3DS .170 since 2026-11-05; this session pushed to O3DS XL .131. Which one from now on?
+2. Console prof push of nds1 (audit W1-W6 merged): does the 7.2 ms gbi regression (runs 25158 vs 25044) close?
+3. CORE2-0/CORE2-1 console measurement (aujoin, core1 busy, ft): push when ready.
+4. GREY, B2 and the args-vs-debug3ds order: one console session with debug logging (quick Select taps, warp tab scroll).
+5. toad_standing recipe still has loglevel=debug: drop it?
+
