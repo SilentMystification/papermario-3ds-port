@@ -2391,10 +2391,10 @@ void pm_gpu_begin_wait(void) {
     want_clear = begin_clear;
     noise_off[0] = (float)(noise_next() & 1023u) / 1024.f; noise_off[1] = (float)(noise_next() & 1023u) / 1024.f; /* PT07: one new offset per drawn frame */
     prev_pre = 0;
-    if (prev_want && !pm_debug_has("prevcpu") && grab_tex_init()) { grab_queue_copy(); prev_pre = 1; } /* PT12: first entry of the queue, before the clear */
+    if (prev_want && !PMDL("prevcpu") && grab_tex_init()) { grab_queue_copy(); prev_pre = 1; } /* PT12: first entry of the queue, before the clear */
     if (prev_want) prev_want--;
     eye_slider = osGet3DSliderState(); /* STEREO: the slider decides per frame. At 0 the frame is mono: one pass, the original perspective, no shift. */
-    if (pm_debug_has("stereo")) eye_slider = 1.f;
+    if (PMDL("stereo")) eye_slider = 1.f;
     stereo_frame = targetR && eye_slider > 0.02f;
     gfxSet3D(stereo_frame);
     r_wantclear = begin_clear; r_cleared = 0;
@@ -2419,7 +2419,7 @@ void pm_gpu_end(void) {
     flush();
     cen_frame_end();
     if (off_active) pm_gpu_off_end();
-    { static int gt_done; if (drew && pm_debug_has("grabtest") && !gt_done) { /* B2 test switch: grab the whole finished frame once (row 4: the buffers then go idle), `offdump` then shows it next to the shot. Row 5: a grab that fails (no VRAM) is tried again next frame */
+    { static int gt_done; if (drew && PMDL("grabtest") && !gt_done) { /* B2 test switch: grab the whole finished frame once (row 4: the buffers then go idle), `offdump` then shows it next to the shot. Row 5: a grab that fails (no VRAM) is tried again next frame */
         extern unsigned short* nuGfxCfb_ptr;
         gt_done = pm_gpu_grab(nuGfxCfb_ptr, 0, 240);
     } }

@@ -73,7 +73,7 @@ Fix: pass the epoch id instead of the parameters, and search the palette once.
 The same fact is kept as nd_ws.comb_w0/w1, nd_comb cur_plan (192 B), ScMemo.plan x 16 (244 B each, nd_comb.c:42), pm_gpu plan + plan_k + plan_gen (pm_gpu_set_plan does a 192-byte memcmp and copy, pm_gpu.c:3380-3398), and NdTmplKey w0/w1 (nd_tmpl_build rebuilds the plan from the words, nd_tmpl.c pm_comb_build). The owner is nd_comb.c.
 Fix: pm_gpu keeps a plan id (memo index) and the words only.
 
-**A10 (walker, S). sync_combine hashes its inputs twice and scans the memo.**
+**[partly done W6] A10 (walker, S). sync_combine hashes its inputs twice and scans the memo.**
 sync_combine hashes 11 words (sc_sig_now, nd_comb.c:467-473), then 10 more words (scm_sig, :436-442). scm_find then scans the 16 x 244 B memo by key (:444-447). The sc_sig hash is also copied inline at :582-585 instead of calling sc_sig_now.
 Fix: compute one hash and index the memo by its low bits.
 
@@ -81,7 +81,7 @@ Fix: compute one hash and index the memo by its low bits.
 t1_fold_tri (nd_comb.c:696-716) calls pm_tex_size and does 6 float divides per vertex on every triangle when ep_t1f is set. It recomputes uv with nd_gv_params's formula in a different operation order (nd_model.c:31-36).
 Fix: use ep_p.uvso (u = tc * uvso.xy + uvso.zw).
 
-**A12 (game loop, S). Switch lookups run per frame and per kick.**
+**[done W6] A12 (game loop, S). Switch lookups run per frame and per kick.**
 pm_debug_has runs every frame for "pacestat" (pm_main.c:472), "fpslog" (:614) and "logstat" (:639), for "prevcpu", "stereo" and "grabtest" (pm_gpu.c:2374, 2377, 2402), and on every audio kick for "audiostat" (pm_audio.c:198). Each lookup costs a hash plus a strcmp (pm_log.c:171-185).
 Fix: use PMDL (pm_port.h:68), which costs one compare.
 
@@ -124,7 +124,7 @@ Fix: make the walker setters and nd_words one function.
 au2off au2trace audiohash audiolock battlelist battlen btlstatus camlog coreprobe crashframe crashtest crashtest_audio crashtest_audio_call crashtest_call creditsseek decalbias demobattle depthview dspaux dspflush dspfx dspgain emlog entlog entskip exitframe faulttest fillcyc fillog flashfake flashheavy flushlog fpslog fs1delay fs1old fxdx fxlist grabtest imglog lognull mapflags mashlog mashx modeldump msgtest noaudio padov padrand pauseskip pm5draw prevcpu prevtest profstall ptrcheck ptrtest rectred romstrict runaway shotskip simlog texnearest texrlog tourfx tx1check warptest wdog.
 Deleting them is a user decision, because CLAUDE.md rule 7 says debug tools may stay.
 
-**C5 (local, S). PMD is defined 4 times and never sees a change.** The same PMD macro is defined at nd_comb.c:63, nd_rect.c:44, nd_set.c:18 and pm_main.c:14. It caches a word forever, so it never sees an options-panel change. PMDL (pm_port.h:68) does see it. Fix: use one macro, PMDL.
+**[done W6] C5 (local, S). PMD is defined 4 times and never sees a change.** The same PMD macro is defined at nd_comb.c:63, nd_rect.c:44, nd_set.c:18 and pm_main.c:14. It caches a word forever, so it never sees an options-panel change. PMDL (pm_port.h:68) does see it. Fix: use one macro, PMDL.
 
 **[done W1] C6 (local, S). Counters print slots and names that are no longer true.** Only slots 4, 6, 8 and 9 of nraw_why are written (pm_gpu.c:1197, 1206, 1211, 1228), but nd_ent.c:288 and pm_heaphi.c:76 print slots 1, 2, 3, 5 and 7, which are always 0. rect_log prints rect_c[4] as "cpu" (pm_gpu.c:3678), but the counter now counts dropped rectangles (:3698, :3801).
 
@@ -143,7 +143,7 @@ Deleting them is a user decision, because CLAUDE.md rule 7 says debug tools may 
 | W3 | A3, A4 pm5 through the shadow | same | done: byte-equal (battle_start_f182 has pm5 draws); the shadow resets only at a program change (prog_use); pm5 uniforms are marked dirty only when they differ from citro3d's copy (u5set, u5mtx); no palk copy for pm5. The 588 B d5 copy stays (nd_emit needs no_uni and loc_uvx) |
 | W4 | B1 ring reuse at 30 fps | same (a ring wrap scenario if one exists, else code trace) | done: byte-equal; no scenario wraps the ring, so the proof is the code trace: C3D_FrameBegin without NONBLOCK calls gxCmdQueueWait(-1) (libcitro3d renderqueue.o disassembly), so ring_done = ring_fr at every begin |
 | W5 | A7, A8, A11 gtrip and gappend lookups | same | done for A7 and the palette part of A8: byte-equal; one palette search per vertex (pal_lookup), wide check once per triangle. The parameter memcmp of A8 stays (gtrip has one caller, a later epoch id is a small gain). A11 not done: t1_fold_tri runs only for a TEXEL1 window fold (ep_t1f), and its uv feeds a floor, so the other rounding order could move a fold |
-| W6 | A10, A12, C5 combine hash and switch macros | same | open |
+| W6 | A10, A12, C5 combine hash and switch macros | same | done: byte-equal; PMD removed (PMDL everywhere, it follows option changes); the per-frame and per-kick lookups use PMDL; the inline sc_sig copy calls sc_sig_now. The two combine hashes stay: scm_sig misses keyc, keys and conv_k4, so a merged key or a hash-indexed memo would change which entry replays |
 | W7 | A6 texture slot index | same | open |
 | W8 | B2, B3 seams (pixels change) | before and after shot of the subject, byte-equal elsewhere | open |
 | W9 | A9 combine fact owner, B4 decoder merge | same as W1 | open |

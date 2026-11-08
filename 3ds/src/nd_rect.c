@@ -41,14 +41,13 @@ int fold_axis(int plo, float width, float a0, float a1, float mw, int flip, int 
 /* CORE-3 census: calls of each handler (the census counts ops by handler module: nd_rect here, the former pm_gbi.c for the rest) */
 /* nd_rect_tex_n, nd_rect_fill_n: defined in nd_core.c (host-linked census counters, ST host fix) */
 
-#define PMD(word) ({ static int v_ = -1; if (v_ < 0) v_ = pm_debug_has(word); v_; })
 
 /* HUDB1 debug switch texrlog: one line per texrect that returns before pm_gpu_tex_rect. why 1 depth copy, 2 rect_to_image, 3 box_pattern_rect,
  * 4 empty rectangle (lower right left of upper left after the 1-cycle step). At most 400 lines, repeats of the last line are not logged. */
 static void texr_early(int why, int xl, int yl, int xh, int yh) {
     static int nlog = 0;
     static int lwhy = -1, lxl, lyl, lxh, lyh;
-    if (nlog < 400 && PMD("texrlog") && !(why == lwhy && xl == lxl && yl == lyl && xh == lxh && yh == lyh)) {
+    if (nlog < 400 && PMDL("texrlog") && !(why == lwhy && xl == lxl && yl == lyl && xh == lxh && yh == lyh)) {
         nlog++;
         lwhy = why; lxl = xl; lyl = yl; lxh = xh; lyh = yh;
         pm_log_d("texrlog f%u why %d rect %d,%d-%d,%d cyc %u", pm_frame_count(), why, xl / 4, yl / 4, xh / 4, yh / 4, (unsigned)((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3));
@@ -259,7 +258,7 @@ int lrx = FILL_SX10(w0 >> 14);
 int lry = FILL_SX10(w0 >> 2);
 int ulx = FILL_SX10(w1 >> 14);
 int uly = FILL_SX10(w1 >> 2);
-if (PMD("fillog")) { /* HUDB1 debug switch fillog: one line per fill with a wrapped field (raw 512 or more) */
+if (PMDL("fillog")) { /* HUDB1 debug switch fillog: one line per fill with a wrapped field (raw 512 or more) */
     static int nlog = 0;
     if (nlog < 400 && (((w0 >> 14) & 0x3ff) >= 512 || ((w0 >> 2) & 0x3ff) >= 512 || ((w1 >> 14) & 0x3ff) >= 512 || ((w1 >> 2) & 0x3ff) >= 512)) {
         nlog++;
@@ -267,7 +266,7 @@ if (PMD("fillog")) { /* HUDB1 debug switch fillog: one line per fill with a wrap
                  (unsigned)((w0 >> 14) & 0x3ff), (unsigned)((w0 >> 2) & 0x3ff), ulx, uly, lrx, lry);
     }
 }
-if (PMD("fillcyc")) { /* HUDB1 debug switch fillcyc: one line per fill with the cycle type in force (0 1cycle, 1 2cycle, 2 copy, 3 fill) */
+if (PMDL("fillcyc")) { /* HUDB1 debug switch fillcyc: one line per fill with the cycle type in force (0 1cycle, 1 2cycle, 2 copy, 3 fill) */
     static int ncyc = 0;
     if (ncyc < 1500) {
         ncyc++;

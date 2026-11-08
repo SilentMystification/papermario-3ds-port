@@ -195,7 +195,7 @@ static void au_stats_log(void) {
 void pm_audio_kick(unsigned n) {
     if (!au_thread || !n) return;
     pm_audio_join_at(0);
-    if (++au_k_n == (pm_debug_has("audiostat") ? 300u : 600u)) au_stats_log();
+    if (++au_k_n == (PMDL("audiostat") ? 300u : 600u)) au_stats_log();
     au_ticks_left = (int)n;
     au_busy = 1;
     au_j_t0 = pm_au_tk() ? pm_ticks() : 0;
