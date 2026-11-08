@@ -921,6 +921,106 @@ def queue_line():
         print("QUEUE: summary failed (%s)" % e)
 
 
+def main_folder():
+    """The main checkout (parent of the git common dir): the Azahar slot pool and pool.log live there for every worktree."""
+    try:
+        gcd = subprocess.run(["git", "-C", str(REPO), "rev-parse", "--path-format=absolute", "--git-common-dir"],
+                             capture_output=True, text=True, timeout=20).stdout.strip()
+        if gcd:
+            return Path(gcd).parent
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return REPO
+
+
+def all_tree_runs_files():
+    """runs.jsonl of the main folder and of every worktree (each tree appends to its own copy until a merge)."""
+    files = [main_folder() / "3ds" / "logs" / "perf" / "runs.jsonl"]
+    try:
+        out = subprocess.run(["git", "-C", str(REPO), "worktree", "list", "--porcelain"], capture_output=True, text=True, timeout=20).stdout
+        for ln in out.splitlines():
+            if ln.startswith("worktree "):
+                files.append(Path(ln[9:].strip()) / "3ds" / "logs" / "perf" / "runs.jsonl")
+    except (OSError, subprocess.SubprocessError):
+        pass
+    seen, uniq = set(), []
+    for f in files:
+        k = str(f.resolve()).lower()
+        if k not in seen and f.exists():
+            seen.add(k)
+            uniq.append(f)
+    return uniq
+
+
+def qstats(vals):
+    v = sorted(x for x in vals if x is not None)
+    if not v:
+        return "n 0"
+    p90 = v[min(len(v) - 1, int(round(0.9 * (len(v) - 1))))]
+    return "n %d median %.1f p90 %.1f max %.1f sum %.0f" % (len(v), v[len(v) // 2], p90, v[-1], sum(v))
+
+
+def cmd_azstat(a):
+    """AZT12: Azahar test throughput since --since (default today): runs of every tree's runs.jsonl (azahar host, one record per
+    start: a tour start writes several records with the same ts and log), cold and warm, queue wait_s, boot_s, until_s, wall_s;
+    then the slot pool events of build3ds/azslots/pool.log (cold starts by reason, kills by reason, warm restarts, stale boots)."""
+    since = a.since or datetime.date.today().isoformat()
+    runs = {}
+    for f in all_tree_runs_files():
+        for x in f.read_text(encoding="utf-8", errors="replace").splitlines():
+            if not x.strip():
+                continue
+            try:
+                r = json.loads(x)
+            except ValueError:
+                continue
+            if "run_id" not in r or norm_host(r.get("host")) != "azahar" or str(r.get("ts", "")) < since:
+                continue
+            if a.row and str(r.get("row", "")).lower() != a.row.lower():
+                continue
+            runs.setdefault((r.get("ts"), r.get("log_path"), r.get("row"), r.get("label")), r)  # the same start in two trees (merged copy) or a tour's records
+    rs = list(runs.values())
+    print("azstat since %s%s: %d Azahar starts (runs.jsonl of %d trees)" % (since, " row " + a.row if a.row else "", len(rs), len(all_tree_runs_files())))
+    warm = sum(1 for r in rs if r.get("warm") == 1)
+    cold = sum(1 for r in rs if r.get("warm") == 0)
+    print("  warm %d, cold %d, unknown %d" % (warm, cold, len(rs) - warm - cold))
+    for k in ("wait_s", "boot_s", "until_s", "wall_s"):
+        print("  %-8s %s" % (k, qstats([r.get(k, (r.get("timing") or {}).get(k)) for r in rs])))
+    for kind, wv in (("warm", 1), ("cold", 0)):
+        print("  boot_s %-4s %s" % (kind, qstats([r.get("boot_s") for r in rs if r.get("warm") == wv])))
+    pl = main_folder() / "build3ds" / "azslots" / "pool.log"
+    tree = (os.sep + "wt" + os.sep + a.row.lower()) if a.row else ""  # --row: pool.log lines of the worktree build3ds/wt/<row>
+    if not pl.exists():
+        print("no pool.log at %s" % pl)
+        return 0
+    ev = collections.Counter()
+    for ln in pl.read_text(encoding="utf-8", errors="replace").splitlines():
+        if ln[:19] < since or (tree and tree not in ln.lower()):
+            continue
+        m = re.match(r"^\S+ .*? slot\d+ pid \S+ -> \S+ (.*)$", ln)
+        if not m:
+            continue
+        t = m.group(1)
+        if t.startswith("start cold:"):
+            ev["cold start: " + t[11:].strip()] += 1
+        elif t.startswith("kill "):
+            ev["kill: " + t[5:].strip()] += 1
+        elif t.startswith("warm restart") or t.startswith("warm restart,"):
+            ev["warm restart ok"] += 1
+        elif t.startswith("warm wait") and "nonce none" in t:
+            ev["warm restart try without boot"] += 1
+        elif t.startswith("stale "):
+            ev["stale run booted"] += 1
+        elif t.startswith("close "):
+            ev["close kept (cap or GPU retry)"] += 1
+        elif t.startswith("exit "):
+            ev["Azahar exit or crash"] += 1
+    print("pool.log events since %s:" % since)
+    for k, n in sorted(ev.items(), key=lambda kv: (-kv[1], kv[0])):
+        print("  %5d  %s" % (n, k))
+    return 0
+
+
 def cmd_slow(a):
     """AZT11-5: scenarios whose measured until (median of the recorded runs) is above --min s, with the until line and its frame.
     broken = runs that reached the cap without the until line (rc 10). Read-only."""
@@ -1226,7 +1326,8 @@ def cmd_ingest_last(a):
         return 1
     return ingest_file(p, bench, "azahar", b, c, a.row, a.label or s, result, note, shot, [], device=DEVICE["azahar"],
                        kind=bd["kind"] if bd else "adhoc", speed=a.speed, frame_limit=a.frame_limit,
-                       timing={"wall_s": a.wall_s, "until_s": a.until_s, "end_after_until_s": a.end_after_until_s},
+                       timing={"wall_s": a.wall_s, "until_s": a.until_s, "end_after_until_s": a.end_after_until_s,
+                               "wait_s": a.wait_s, "boot_s": a.boot_s},
                        dirty=None if dv is None else dv == "1", warm=a.warm)
 
 
@@ -1656,6 +1757,7 @@ def main(argv):
     x.add_argument("--speed", choices=SPEEDS, default="unknown"); x.add_argument("--frame-limit", type=float)
     x.add_argument("--warm", type=int, choices=[0, 1])  # AZT2: 1 warm restart in a kept Azahar, 0 cold; absent when unknown
     x.add_argument("--wall-s", type=float); x.add_argument("--until-s", type=float); x.add_argument("--end-after-until-s", type=float)  # AZT10b-2: run timing
+    x.add_argument("--wait-s", type=float); x.add_argument("--boot-s", type=float)  # AZT12: queue wait (enqueue to grant), boot (Azahar start to the first game line)
     x.set_defaults(f=cmd_ingest_last)
     x = sub.add_parser("build-at"); x.add_argument("commit"); x.add_argument("bench"); x.add_argument("--row", required=True)
     x.add_argument("--why", default=""); x.add_argument("--label", default=""); x.add_argument("--dry-run", action="store_true")
@@ -1668,6 +1770,7 @@ def main(argv):
     x = sub.add_parser("trend"); x.add_argument("bench"); x.add_argument("metric", nargs="?"); add_area(x); x.set_defaults(f=cmd_trend)
     x = sub.add_parser("check"); x.add_argument("run_id", type=int); x.set_defaults(f=cmd_check)
     x = sub.add_parser("slow"); x.add_argument("--min", type=float, default=8.0, help="list scenarios with a median until_s above this (AZT11-5)"); x.set_defaults(f=cmd_slow)
+    x = sub.add_parser("azstat"); x.add_argument("--since", default="", help="ISO date or time (default today)"); x.add_argument("--row", default="", help="one row (its runs and the pool.log lines of build3ds/wt/<row>)"); x.set_defaults(f=cmd_azstat)
     x = sub.add_parser("rebuild"); x.set_defaults(f=cmd_rebuild)
     x = sub.add_parser("tour-report"); x.add_argument("run_id", type=int); x.set_defaults(f=cmd_tour_report)
     x = sub.add_parser("tour-curate"); x.add_argument("run_id", type=int); x.add_argument("--slow-ms", type=float, default=33.3)

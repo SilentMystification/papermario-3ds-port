@@ -69,10 +69,19 @@ print(p[n])'
     if [ "$PYP" = python3 ]; then pw=$(python3 -c "$PROF_PY" "$profname"); else pw=$("$PYP" -3 -c "$PROF_PY" "$profname"); fi
     for w in $pw; do set -- "$@" "$w"; done
 fi
+# CLEANB: keep the newest 3 .3dsx archives in $adir. "dry" lists what would go, "run" deletes;
+# $2 (the archive just written or checked) is never deleted.
+prune_archives() {
+    adir=${PM_ARCHIVE_DIR:-3ds/logs/builds}
+    ls -t "$adir"/pm_3ds_*.3dsx 2>/dev/null | awk -v keep="$2" 'NR>3 && $0!=keep' | while read -r old; do
+        if [ "$1" = dry ]; then echo "would prune archive $old"; else rm -f -- "$old" && echo "pruned archive $old"; fi
+    done
+}
 if [ "$dry" -eq 1 ]; then
     dip=${ipopt:-${N3DS_IP:-${PM_O3DS_IP:-<netloader broadcast>}}}
     echo "dry run: nothing built, nothing sent"
     echo "3dslink argv: ${PM_3DSLINK:-/opt/devkitpro/tools/bin/3dslink} -a $dip $SRC3DSX -- --verbose livelog $*"
+    prune_archives dry ""
     exit 0
 fi
 # Archive the 3dsx this push sends: 3ds/logs/builds/pm_3ds_<build>_<git hash>.3dsx (build = the number
@@ -102,26 +111,14 @@ archive_build() {
     fi
     bytes=$(wc -c <"$dst" | tr -d ' ')
     printf '%s  %s  %s bytes  sha256 %s  build %s  git %s  flags: %s\n' "$(date '+%Y-%m-%d %H:%M')" "$name" "$bytes" "$sha" "$build" "$hash" "$1" >>"$plog"
+    prune_archives run "$dst"
     echo "ARCHIVED $dst (sha256 $sha)"
 }
 
-# Build only when build3ds/pm_3ds.3dsx is older than its inputs (same input list as Invoke-Build in
-# 3ds/go.ps1) or the build number in pm_build.h differs from the one build.sh would write now.
+# build.sh is the only stale check (content key, BSTALE): it skips the build when nothing changed.
 # This script never stashes or changes user files.
 if [ "$nobuild" -eq 0 ] && [ "$attach" -eq 0 ] && [ -z "$checklog" ] && [ -z "$checksend" ]; then
-    OUT=build3ds; [ -n "$PM_LANE" ] && OUT=build3ds/lane-$PM_LANE
-    read V0 C0 <<EOF2
-$(tr -d '\015' < 3ds/build_base.txt)
-EOF2
-    BN=$((V0 + $(git rev-list --count HEAD) - C0))
-    if [ -n "$PM_LANE" ] || [ "$(git branch --show-current)" = "lane-b" ]; then BN="$BN-laneB"; fi
-    stale=0
-    if [ ! -f "$OUT/pm_3ds.3dsx" ] || [ ! -f 3ds/include/pm_build.h ]; then stale=1
-    elif ! grep -q "\"$BN\"" 3ds/include/pm_build.h; then stale=1
-    elif [ -n "$(find 3ds/src 3ds/include 3ds/shaders src include 3ds/CMakeLists.txt 3ds/build_base.txt -type f -newer "$OUT/pm_3ds.3dsx" -not -name pm_build.h 2>/dev/null | head -1)" ]; then stale=1
-    fi
-    if [ "$stale" -eq 1 ]; then echo "--- building (3dsx older than inputs) ---"; sh 3ds/build.sh
-    else echo "--- build up to date, skipping ---"; fi
+    sh 3ds/build.sh
 fi
 if [ "$archonly" -eq 1 ]; then archive_build "archive-only" || exit 1; exit 0; fi
 # PYTHON_EXE lets a caller (3ds/go.ps1) pass a reliably-resolved interpreter path: bash's own PATH

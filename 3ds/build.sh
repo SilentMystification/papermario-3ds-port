@@ -24,16 +24,51 @@ BN=$((V0 + $(git rev-list --count "$REV") - C0))
 if [ -n "$PM_LANE" ]; then BN="$BN-$PM_LANE"; elif [ -z "$PM_BUILD_REV" ] && [ "$(git branch --show-current)" = "lane-b" ]; then BN="$BN-laneB"; fi
 # AZT9c-1: a lane build carries a unique tag (time and pid): a dirty build with the same number has its own build id, so a warm restart proves the new ROM by the boot line
 if [ -n "$PM_LANE" ]; then BN="${BN}_$(date +%H%M%S)$$"; fi
-printf '#define PM_BUILD_STR "%s"\n' "$BN" > 3ds/include/pm_build.h.tmp
-printf '#define PM_GIT_HASH "%s"\n' "$(git rev-parse --short "$REV")" >> 3ds/include/pm_build.h.tmp
-# Rewrite pm_build.h only when the number changed: a new mtime would rebuild every file that includes it.
-cmp -s 3ds/include/pm_build.h.tmp 3ds/include/pm_build.h && rm -f 3ds/include/pm_build.h.tmp || mv -f 3ds/include/pm_build.h.tmp 3ds/include/pm_build.h
 
 # The inputs CMake reads (3ds/CMakeLists.txt, DECOMP = repo root). Nothing else reaches the build.
 SRC_DIRS="3ds/CMakeLists.txt 3ds/effects.cmake 3ds/battle.cmake 3ds/maps.cmake 3ds/map_syms.lds LaunchIcon.png 3ds/ld 3ds/shaders 3ds/stub_include 3ds/include 3ds/src src include assets/us ver/us/build"
 for p in $SRC_DIRS; do
     [ -e "$p" ] || { echo "missing build input: $p" >&2; exit 1; }
 done
+# BSTALE: skip the build when the inputs have the same content as at the last successful build of this output folder.
+# The key covers the tracked inputs by git tree id and by their uncommitted diff, the untracked files by content, the
+# docker recipe, and the size and mtime of the ignored inputs (assets/us, ver/us/build: not in git). pm_build.h is not
+# in the key: a commit that only changes the build number does not rebuild. A PM_BUILD_REV build (bench build-at) always builds.
+# build.sh is the only stale check: go.ps1 Invoke-Build and push_3ds.sh call it and never compare times themselves.
+KEY_IN="3ds/CMakeLists.txt 3ds/effects.cmake 3ds/battle.cmake 3ds/maps.cmake 3ds/map_syms.lds LaunchIcon.png 3ds/ld 3ds/shaders 3ds/stub_include 3ds/include 3ds/src src include docker/Dockerfile.build 3ds/build.sh"
+KEY_FILE=$OUT/build_key.txt
+key_now() {
+    {
+        git ls-tree -r HEAD -- $KEY_IN
+        git diff HEAD -- $KEY_IN
+        git ls-files -o --exclude-standard -- $KEY_IN | while read -r f; do sha1sum "$f"; done
+        find assets/us ver/us/build -type f -printf '%p %s %T@\n' | sort
+    } | sha1sum | cut -d' ' -f1
+}
+# Azahar loads from its own SD card, not from build3ds/.
+publish_3dsx() {
+    if [ -z "$PM_LANE" ] && [ -n "$APPDATA" ] && [ -f build3ds/pm_3ds.3dsx ]; then
+        dest="$(cygpath -u "$APPDATA" 2>/dev/null || printf '%s' "$APPDATA")/Azahar/sdmc/3ds/PaperMario"
+        mkdir -p "$dest"
+        cp -f build3ds/pm_3ds.3dsx "$dest/pm_3ds.3dsx"
+    fi
+}
+if [ -z "$PM_BUILD_REV" ]; then
+    KEY=$(key_now)
+    if [ -f $OUT/pm_3ds.3dsx ] && [ "$(cat $KEY_FILE 2>/dev/null)" = "$KEY" ]; then
+        echo "--- build up to date (key $(echo "$KEY" | cut -c1-12)), skipping ---"
+        publish_3dsx
+        exit 0
+    fi
+fi
+# pm_build.h describes the 3dsx that is built (push_3ds.sh archives from it, bench.py checks its mtime), so it is written
+# here, after the skip check: a skipped build keeps the header of the 3dsx it kept. Rewritten only when the number changed,
+# since a new mtime would rebuild every file that includes it.
+printf '#define PM_BUILD_STR "%s"\n' "$BN" > 3ds/include/pm_build.h.tmp
+printf '#define PM_GIT_HASH "%s"\n' "$(git rev-parse --short "$REV")" >> 3ds/include/pm_build.h.tmp
+cmp -s 3ds/include/pm_build.h.tmp 3ds/include/pm_build.h && rm -f 3ds/include/pm_build.h.tmp || mv -f 3ds/include/pm_build.h.tmp 3ds/include/pm_build.h
+# A failed build must not leave the old key behind: the key file is written only after a successful build.
+rm -f $KEY_FILE
 IMG=pm3ds-build:1
 docker build -q -t $IMG -f docker/Dockerfile.build docker >/dev/null
 
@@ -89,30 +124,28 @@ MSYS_NO_PATHCONV=1 docker run --rm --name "$NAME" -v $SRCVOL:/src:ro \
     cmake --build /work/build --parallel "$(nproc)" -- -k 0 '"$*"' || status=$?
     stage compile-link
     cp -f /work/build/pm_3ds.3dsx /work/build/pm_3ds.smdh /work/build/pm_3ds.map /work/build/pm_3ds.elf /out/ 2>/dev/null || true
-    # Keep the compile cache only: drop object files. ccache restores them on the next build.
-    find /work/build -name "*.o" -delete
+    # The objects stay: ninja then rebuilds only the sources whose mtime is newer (BSTALE). ccache is the cache for a clean build.
     stage copy-out
     exit $status
 ' || rc=$?
 kill "$wdpid" 2>/dev/null || true
 if [ -n "$PM_BUILD_REV" ]; then docker volume rm $SRCVOL >/dev/null 2>&1 || true; fi
 if [ "$rc" -ne 0 ]; then echo "BUILD FAILED exit $rc (container $NAME; stage timings above)" >&2; exit "$rc"; fi
+if [ -z "$PM_BUILD_REV" ]; then echo "$KEY" > $KEY_FILE; fi
 # HW5: keep the ELF of each build under its build number, so a Luma crash dump can be decoded later (3ds/tools/decode_dump.py).
 if [ -f $OUT/pm_3ds.elf ]; then
     mkdir -p 3ds/logs/builds
     cp -f $OUT/pm_3ds.elf "3ds/logs/builds/pm_3ds_$BN.elf"
     cp -f $OUT/pm_3ds.map "3ds/logs/builds/pm_3ds_$BN.map" 2>/dev/null || true
-    # Keep the newest 10 .elf/.map pairs. All .3dsx archives stay (push_3ds.sh writes those).
-    ls -t 3ds/logs/builds/pm_3ds_*.elf 2>/dev/null | tail -n +11 | while read -r old; do
+    # CLEANB: keep the newest 3 .elf/.map pairs (maps are capped alone too). The .3dsx archives are capped by push_3ds.sh.
+    ls -t 3ds/logs/builds/pm_3ds_*.elf 2>/dev/null | tail -n +4 | while read -r old; do
         rm -f "$old" "${old%.elf}.map"
     done
+    ls -t 3ds/logs/builds/pm_3ds_*.map 2>/dev/null | tail -n +4 | while read -r old; do
+        rm -f "$old"
+    done
 fi
-# Azahar loads from its own SD card, not from build3ds/.
-if [ -z "$PM_LANE" ] && [ -n "$APPDATA" ] && [ -f build3ds/pm_3ds.3dsx ]; then
-    dest="$(cygpath -u "$APPDATA" 2>/dev/null || printf '%s' "$APPDATA")/Azahar/sdmc/3ds/PaperMario"
-    mkdir -p "$dest"
-    cp -f build3ds/pm_3ds.3dsx "$dest/pm_3ds.3dsx"
-fi
+publish_3dsx
 # Cap the lane volume sets: keep the newest PM_LANE_KEEP lanes (default 5), by creation time.
 # The base volumes (pm3ds-build, pm3ds-src, pm3ds-work, pm3ds-ccache) and the current lane are never removed.
 KEEP=${PM_LANE_KEEP:-5}

@@ -745,9 +745,9 @@ void update_status_bar(void) {
     gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, pm_wide ? 0 : 12, pm_wide ? 0 : 20, pm_wide ? SCREEN_WIDTH : SCREEN_WIDTH - 12, pm_wide ? SCREEN_HEIGHT : SCREEN_HEIGHT - 20) /* PT58: the wide view is the whole 240 rows */;
     x = statusBar->drawPosX;
     y = statusBar->drawPosY;
-    /* wide: the box ends sit on the game edge (x 0 and 320); the screen-edge rule of the vertex copy (pm_gpu.c wide_copy_vtx) moves only those edge vertices out to the screen edge, so the bar background reaches x 0..399 and the art keeps its size */
-    draw_box(0, WINDOW_STYLE_5, pm_wide ? 0 : x, y, 0, pm_wide ? 174 + x : 174, 35, 255, 0, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, nullptr, nullptr, nullptr, SCREEN_WIDTH, SCREEN_HEIGHT, nullptr);
-    draw_box(0, WINDOW_STYLE_6, x + 174, y, 0, pm_wide ? SCREEN_WIDTH - (x + 174) : 122, 25, 255, 0, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, nullptr, nullptr, nullptr, SCREEN_WIDTH, SCREEN_HEIGHT, nullptr);
+    /* wide: the box ends sit on the screen edges (game x -40 and 360, screen x 0 and 399), so the end caps of the frame art are at the screen edges; the join of box 5 and 6 and the items keep their 4:3 place */
+    draw_box(0, WINDOW_STYLE_5, pm_wide ? pm_wide_left(0) : x, y, 0, pm_wide ? 174 + x - pm_wide_left(0) : 174, 35, 255, 0, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, nullptr, nullptr, nullptr, SCREEN_WIDTH, SCREEN_HEIGHT, nullptr);
+    draw_box(0, WINDOW_STYLE_6, x + 174, y, 0, pm_wide ? pm_wide_right(SCREEN_WIDTH) - (x + 174) : 122, 25, 255, 0, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, nullptr, nullptr, nullptr, SCREEN_WIDTH, SCREEN_HEIGHT, nullptr);
 
     if (statusBar->hpBlinkTimeLeft > 0) {
         statusBar->hpBlinkTimeLeft--;
