@@ -2253,6 +2253,22 @@
       "gates": []
     },
     {
+      "name": "moon_tap_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MOON3: moon jump hold rises at MOON_RISE per step, and each A tap in the fall (JUMPING or FALLING) raises Mario again. Log y per step, one shot in the hover.",
+      "scenario": "moon_tap",
+      "cap": 25,
+      "until": "padscript: done",
+      "tags": [
+        "azahar",
+        "moon",
+        "pic"
+      ],
+      "gates": []
+    },
+    {
       "name": "wcen_mac01_det",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -3380,6 +3396,36 @@
         "azahar",
         "pic",
         "tour"
+      ],
+      "gates": []
+    },
+    {
+      "name": "dark_kgr01",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "DARK: kgr_01 world darkness overlay, wide. Shot shows the screen dark except a lit circle around Mario.",
+      "scenario": "dark_kgr01",
+      "cap": 30,
+      "until": "shot 0 frame \\d+",
+      "tags": [
+        "azahar",
+        "overlay"
+      ],
+      "gates": []
+    },
+    {
+      "name": "dark_kgr01_watt",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "DARK: kgr_01 darkness with Watt's ability (alpha 255 to 90), wide. Shot after the alpha 90 line shows a larger lit circle, the rest dark.",
+      "scenario": "dark_kgr01_watt",
+      "cap": 35,
+      "until": "shot 0 frame \\d+",
+      "tags": [
+        "azahar",
+        "overlay"
       ],
       "gates": []
     }
