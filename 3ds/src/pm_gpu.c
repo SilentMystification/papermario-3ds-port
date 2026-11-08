@@ -1620,6 +1620,19 @@ void pm_gpu_menu_present(void) {
     pm_gpu_menu_grey(); /* PAUSE GREY: the present drew the colour frame on the top screen; grey the next top buffer and swap it, so every present while paused shows grey */
 }
 
+/* GREY test aid: the two top buffers seen as the back buffer (gfxGetFramebuffer returns the back one). The displayed one is the other. */
+static u8* top_seen[2];
+static void top_note(u8* fb) {
+    if (fb == top_seen[0] || fb == top_seen[1]) return;
+    top_seen[top_seen[0] ? 1 : 0] = fb;
+}
+/* GREY: entries still queued in the GX queue (numEntries - curEntry, as pm_gx_room reads it). */
+unsigned pm_gx_qpend(void) {
+    gxCmdQueue_s* q = (gxCmdQueue_s*)&__C3D_Context;
+    return (unsigned)(q->numEntries - q->curEntry);
+}
+void pm_gpu_menu_dirty_set(void) { menu_dirty = 1; }
+
 /* MN2: the top screen goes grey while the menu is open. One CPU pass over the top back buffer (BGR8, luma (77 r + 150 g + 29 b) >> 8 into all
  * three bytes), then one data cache flush, then the swap shows it. Called at the pause and after each menu present (the transfer is done first). */
 void pm_gpu_shot_top(const char* name);
@@ -1630,6 +1643,7 @@ void pm_gpu_menu_grey(void) {
     if (!gpu_ok) return;
     gspWaitForPPF(); /* the display transfer of the menu present is done */
     fb = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, &w, &h);
+    top_note(fb);
     n = (size_t)w * h * 3;
     for (i = 0; i + 2 < n; i += 3) {
         unsigned y = (77u * fb[i + 2] + 150u * fb[i + 1] + 29u * fb[i]) >> 8;
@@ -1638,7 +1652,31 @@ void pm_gpu_menu_grey(void) {
     GSPGPU_FlushDataCache(fb, (u32)n);
     if (pm_debug_has("shotgrey")) { static char gn[24]; static unsigned gk; snprintf(gn, sizeof gn, "top_grey%04u", gk++); pm_gpu_shot_top(gn); }
     gfxScreenSwapBuffers(GFX_TOP, false);
+    { u16 w2, h2; top_note(gfxGetFramebuffer(GFX_TOP, GFX_LEFT, &w2, &h2)); }
     pm_log_d("menu: grey top %u x %u", (unsigned)w, (unsigned)h);
+}
+
+/* GREY: shot of the DISPLAYED top buffer (the one gfxGetFramebuffer does not return), as top_after<k>. */
+void pm_gpu_shot_top_displayed(const char* name) {
+    u16 tw, th;
+    u8* back = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, &tw, &th);
+    u8* fb;
+    char tpath[96];
+    FILE* sf;
+    unsigned x, y;
+    top_note(back);
+    fb = back == top_seen[0] ? top_seen[1] : top_seen[0];
+    if (!fb) { pm_log_d("top_after: displayed buffer unknown"); return; }
+    mkdir("sdmc:/3ds/PaperMario/shots", 0777);
+    snprintf(tpath, sizeof tpath, "sdmc:/3ds/PaperMario/shots/%s.ppm", name);
+    sf = fopen(tpath, "wb");
+    if (sf) {
+        fprintf(sf, "P6\n%u %u\n255\n", (unsigned)th, (unsigned)tw);
+        for (y = 0; y < tw; y++)
+            for (x = 0; x < th; x++) { const u8* px = fb + ((size_t)x * tw + (tw - 1 - y)) * 3; fputc(px[2], sf); fputc(px[1], sf); fputc(px[0], sf); }
+        fclose(sf);
+    }
+    pm_log("shot: %s", name);
 }
 
 /* MN2 test aid: the top back buffer (what the grey pass wrote) as sdmc:/3ds/PaperMario/shots/<name>.ppm, 400 x 240, rows as the bottom shot. */
