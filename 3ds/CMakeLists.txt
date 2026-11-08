@@ -372,6 +372,7 @@ set(PORT_SRC
     src/nd_comb.c
     src/nd_rect.c
     src/nd_walk.c
+    src/nd_c2haz.c
     src/nd_cen.c
     src/nd_target.c
     src/nd_geom.c
@@ -427,7 +428,7 @@ list(REMOVE_DUPLICATES PM_NO_SHORT_ENUM_SRC)
 list(REMOVE_ITEM PM_NO_SHORT_ENUM_SRC src/pm_main.c src/pm_mem.c src/pm_log.c src/pm_flash.c src/pm_wdog.c src/pm_input.c src/pm_gpu.c src/pm_tex.c src/pm_audio.c src/pm_au2.c src/pm_dspaud.c)
 set_property(SOURCE ${PM_NO_SHORT_ENUM_SRC} APPEND PROPERTY COMPILE_OPTIONS -fno-short-enums)
 # S103, hw_guidelines rule 1: cold code outside the hot span (the census, warp and sweep test drivers, the debug game hooks, fxtest): size over speed.
-set_property(SOURCE src/nd_cen.c src/pm_warp.c src/pm_sweep.c src/pm_dbg_game.c src/pm_fxtest.c APPEND PROPERTY COMPILE_OPTIONS -Os)
+set_property(SOURCE src/nd_cen.c src/nd_c2haz.c src/pm_warp.c src/pm_sweep.c src/pm_dbg_game.c src/pm_fxtest.c APPEND PROPERTY COMPILE_OPTIONS -Os)
 
 add_executable(pm_3ds
     ${PORT_SRC}
