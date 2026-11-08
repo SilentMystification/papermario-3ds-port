@@ -2950,10 +2950,10 @@
       "kind": "azahar_pic",
       "speed": "normal",
       "default": false,
-      "purpose": "MDL-5e census: tour10 (10 maps) cold det, ndm fb per 300 frames.",
+      "purpose": "TOUR1 gate and MDL-5e census: tour10 (10 maps) cold det, one prof window per map, y snap on 2 maps, ndm fb per 300 frames.",
       "scenario": "tour10_det",
       "cap": 90,
-      "until": "tour: done",
+      "until": "tour: done items",
       "tags": [
         "azahar",
         "mdl5"

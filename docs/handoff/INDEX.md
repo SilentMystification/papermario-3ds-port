@@ -32,5 +32,6 @@ Live files only. Older logs are in archive/ (agent_*, diag_*, inv_*, plan_*, tra
 - route_test.md, sweep_420.md: tour and sweep how-to.
 - audit_system.md: system audit of the 3DS runtime (row AUDIT, 2026-11-08): interface map with the 8 threads, findings A (console cost), B (correctness and seams), C (maintainability) with file:line, and the work list W1 to W10 with each one done or open.
 - plan_core2.md: plan CORE2 (oracle 2026-11-08): more work off the game thread (audio one step ahead, walker thread on N3DS core 2, texture worker), rows CORE2-0 to CORE2-4.
+- plan_tours.md: plan TOURS (oracle 2026-11-08): map tour and boss battle tour in one session with prof windows per warp, curated list, perfect action cheat; rows TOUR1, CHEATA, TOUR2, BT1, CUR1.
 - audit_warm_runs.md: audit of warm restarts (stale ROM, AZT8 and AZT9c) and picture gates (stale shot, AZT7) for 2026-11-06 12:00 to AZT9c: per gate OK or SUSPECT with run lines, and the rerun list.
 - work_queue.md: older queue (stale; check git log first).
