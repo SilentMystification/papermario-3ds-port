@@ -3530,7 +3530,7 @@
       "default": false,
       "purpose": "MAPX: Merlon's house door on mac_01 (enter and exit) on the O3DS in prof mode. Pass: max under 50 ms, o34 0.",
       "scene_match": null,
-      "recipe": "warp=mac_01:0 story=ch0_toad_town pos=-203:20:-206 padscript=go_-203_-280_200,up*60,wait120,go_-203_-200_200,down*60,wait120 prof=30",
+      "recipe": "warp=mac_01:0 story=ch1_start pos=-203:20:-206 padscript=go_-203_-280_100,A,wait400,go_-190_-262_150,A,wait300 prof=30",
       "scenario": null,
       "host": "o3ds",
       "cap": 60,
