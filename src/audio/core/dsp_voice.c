@@ -110,7 +110,7 @@ void au_dsp_block(void) {
             if (v->on) { pm_dspa_voice_stop(i); v->on = 0; stops++; }
             continue;
         }
-        if (ins->type != AL_ADPCM_WAVE) { if (v->on) { pm_dspa_voice_stop(i); v->on = 0; } continue; }
+        if (ins->type != AL_ADPCM_WAVE) { if (v->on) { pm_dspa_voice_stop(i); v->on = 0; } if (!v->on && v->gen != au2_vgen_get(i)) { v->gen = au2_vgen_get(i); pm_dspa_vcount(DSPA_VC_NONADPCM); } continue; }
         nv++;
 
         /* envelope: same ramp data as the RSP mixer (cvol, ltgt, rate, delta) */
@@ -177,6 +177,7 @@ void au_dsp_block(void) {
                 } else if (++v->retry > AU2_START_RETRY) {
                     /* give up: silent until the sample generation changes */
                     v->on = 1; v->gen = g; v->retry = 0;
+                    pm_dspa_vcount(DSPA_VC_GIVEUP);
                 }
             }
         } else {
@@ -201,6 +202,14 @@ void au_dsp_block(void) {
             pm_dspa_voice_stop(i);
             v->on = 0;
             ends++;
+        }
+    }
+    {   /* AUDV census: an engine voice past the ndsp voice channels starts and gets no channel */
+        static u32 nc_gen[24];
+        for (i = PM_DSPA_VOICES; i < drv->num_pvoice && i < 24; i++) {
+            AuPVoice* pv = &drv->pvoices[i];
+            u32 g = au2_vgen_get(i);
+            if (pv->envMixer.motion == AL_PLAYING && pv->decoder.instrument != nullptr && nc_gen[i] != g) { nc_gen[i] = g; pm_dspa_vcount(DSPA_VC_NOCHAN); }
         }
     }
     pm_dspa_block_done(nv, starts, stops, ends, 0);

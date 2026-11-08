@@ -39,6 +39,7 @@ typedef struct { Ent* e; ndspWaveBuf wb[MAXBUF]; int nb; int active; } Chan;
 static Chan chn[PM_DSPA_VOICES];
 
 static unsigned st_blocks, st_voice_sum, st_voice_max, st_starts, st_stops, st_ends, st_cost_sum, st_cost_max, st_late, st_bl_sum, st_bl_max, st_sets, st_set_us;
+static unsigned vc_n[DSPA_VC_N], vc_loopcap, vc_win;
 static unsigned long long next_due;
 static unsigned long long t_blk0;
 
@@ -188,7 +189,7 @@ int pm_dspa_voice_start(int ch, const DspaSample* s, float rate, const float mix
         if (e->loopCount == -1) chan_add(ch, e->body, e->nbody, 1);
         else {
             int reps = e->loopCount + 1;
-            if (reps > 4) reps = 4;
+            if (reps > 4) { reps = 4; vc_loopcap++; }
             for (int i = 0; i < reps; i++) chan_add(ch, e->body, e->nbody, 0);
             chan_add(ch, e->tail, e->ntail, 0);
         }
@@ -224,6 +225,8 @@ int pm_dspa_voice_ended(int ch) {
     }
     return 1;
 }
+
+void pm_dspa_vcount(int what) { if ((unsigned)what < DSPA_VC_N) vc_n[what]++; }
 
 void pm_dspa_master(float vol) { ndspSetMasterVol(vol); }
 
@@ -475,6 +478,12 @@ void pm_dspa_stats_log(void) {
              ndspGetFrameCount(), ndspGetDroppedFrames());
     pm_log_d("audio dsp: aux callbacks bus0 %u bus1 %u core %u cost avg %u max %u us, effect frames queued %u dropped %u",
              ax_n[0], ax_n[1], ax_core, (ax_n[0] + ax_n[1]) ? ax_us_sum / (ax_n[0] + ax_n[1]) : 0, ax_us_max, fx_emitted, fx_dropped);
+    if (pm_debug_has("audiostat")) {
+        pm_log_d("audio voices w%u: starts %u no channel %u cut %u (cache give-up %u, loop cap %u), non-adpcm %u, playing max %u",
+                 ++vc_win, st_starts, vc_n[DSPA_VC_NOCHAN], vc_n[DSPA_VC_GIVEUP] + vc_loopcap, vc_n[DSPA_VC_GIVEUP], vc_loopcap, vc_n[DSPA_VC_NONADPCM], st_voice_max);
+        memset(vc_n, 0, sizeof vc_n);
+        vc_loopcap = 0;
+    }
     st_blocks = st_voice_sum = st_voice_max = st_starts = st_stops = st_ends = st_cost_sum = st_cost_max = st_late = st_bl_sum = st_bl_max = st_sets = st_set_us = 0;
     c_hit = c_miss = c_evict = c_fail = dec_n = dec_us_sum = dec_us_max = 0;
     ax_us_sum = ax_us_max = 0; ax_n[0] = ax_n[1] = 0;

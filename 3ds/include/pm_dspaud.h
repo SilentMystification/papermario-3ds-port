@@ -32,6 +32,9 @@ void pm_dspa_delay_set(int bus, int side, int blocks);
 void pm_dspa_block_done(int voices, int starts, int stops, int ends, unsigned costTicks);
 unsigned pm_dspa_backlog_blocks(void);                            /* blocks emitted by control and not yet processed */
 void pm_dspa_stats_log(void);
+/* AUDV census (switch audiostat): engine voice events that leave a voice silent. One line per stats window. */
+enum { DSPA_VC_NOCHAN, DSPA_VC_GIVEUP, DSPA_VC_NONADPCM, DSPA_VC_N };
+void pm_dspa_vcount(int what);
 void pm_dspa_log_once(const char* fmt, ...);
 
 /* decomp side (src/audio/core/dsp_voice.c) */
