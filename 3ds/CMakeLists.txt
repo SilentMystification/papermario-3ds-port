@@ -388,6 +388,7 @@ set(PORT_SRC
     src/pm_nusys.c
     src/pm_os.c
     src/pm_audio.c
+    src/pm_audio_gate.c
     src/pm_au2.c
     src/pm_dspaud.c
     src/pm_rsp_audio.c
@@ -399,6 +400,16 @@ set(PORT_SRC
     src/game_stubs.c
     src/effect_loads.c
 )
+
+# CORE2-1: every non-static snd_* function of snd_interface.c is wrapped (src/pm_audio_gate.c joins the audio job first). A new
+# snd_* function without a wrapper in pm_audio_gate.c fails the link (undefined __wrap_).
+file(STRINGS ${DECOMP}/src/audio/snd_interface.c SND_DEF_LINES REGEX "^[A-Za-z][A-Za-z0-9_* ]* snd_[A-Za-z0-9_]+[(].*[)] {")
+foreach(line ${SND_DEF_LINES})
+    if(NOT line MATCHES "^static")
+        string(REGEX MATCH "snd_[A-Za-z0-9_]+" fn "${line}")
+        list(APPEND SND_GATE_WRAPS "-Wl,--wrap=${fn}")
+    endif()
+endforeach()
 
 file(STRINGS ${DECOMP}/src/effect_shims.yaml EFFECT_SHIM_LINES REGEX "^- shim_")
 foreach(line ${EFFECT_SHIM_LINES})
@@ -431,6 +442,7 @@ target_link_options(pm_3ds PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/map_syms.lds -B${
     -Wl,--wrap=set_game_mode -Wl,--wrap=load_map_by_IDs -Wl,--wrap=dma_copy -Wl,--wrap=load_asset_by_name
     -Wl,--wrap=step_game_loop -Wl,--wrap=gfx_draw_frame -Wl,--wrap=gfx_task_background -Wl,--wrap=appendGfx_darkness_stencil
     -Wl,--wrap=_heap_create
+    ${SND_GATE_WRAPS}
     -Wl,--defsym,heap_battleHead=gFrameBuf2
     -Wl,--defsym,sprite_shading_profiles_ROM_START=0x315B80
     -Wl,--defsym,sprite_shading_profiles_data_ROM_START=0x315D50

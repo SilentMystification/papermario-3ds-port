@@ -600,7 +600,6 @@ void pm_frame_loop(void) {
         }
         pm_wd_prog++;
         PM_WD_PHASE(8);
-        pm_audio_join_at(3); /* AU1d: warp and fxtest can call game code */
         PM_WD_PHASE(9);
         pm_warp_tick(frame);
         { extern void pm_fxtest_tick(unsigned); pm_fxtest_tick(frame); } /* FX1a, switch fxtest */

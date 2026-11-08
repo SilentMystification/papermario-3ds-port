@@ -72,8 +72,10 @@ void pm_audio_post(const void* pcm, unsigned bytes, unsigned hz) { (void)pcm; (v
  * The game thread does two things only: pm_audio_kick(n) (start n 60 Hz ticks) and pm_audio_join() (wait until they are done).
  * The audio thread plays the driver role in pm_au_thread_yield: when nuAuMgr blocks it answers the audio tasks it submitted,
  * sends the next retrace message while ticks are left, and when nothing is left it signals "done" and sleeps until the next kick.
- * Game code and the audio thread never run at the same time: kick at the main nuGfxTaskStart, join at the next entry of
- * pm_gfx_retrace, step_game_loop and pm_warp_tick. Same code and same order as the lockstep version, so the PCM hash is equal. */
+ * Game code and the sound engine never run at the same time: kick at the main nuGfxTaskStart, join at the next snd_* call of the game
+ * (pm_audio_gate, CORE2-1: one step ahead, the job overlaps the walk, the frame wait and the game logic up to its first engine call),
+ * at the next kick, and before map change, save, sleep and exit (pm_audio_drain, pm_audio_join_timed). Same engine order as the
+ * lockstep version. */
 static Thread au_thread;
 static LightEvent au_start, au_done;
 static volatile int au_ticks_left, au_busy;
@@ -87,6 +89,11 @@ static unsigned au_w_n, au_w_sum, au_w_max, au_j_sum, au_j_max, au_j_t0, au_g_su
 static u8 au_crash_stack[0x4000] __attribute__((aligned(8)));
 
 int pm_on_audio(void) { return (au_thread && threadGetCurrent() == au_thread) || pm_au2_on_render(); }
+
+/* CORE2-1: called by every wrapped snd_* function (pm_audio_gate.c) before it touches the engine. A no-op on the audio and render threads. */
+void pm_audio_gate(void) {
+    if (au_busy && !pm_on_audio()) pm_audio_join_at(1);
+}
 
 static void au_main(void* unused) {
     (void)unused;
@@ -184,7 +191,7 @@ static void au_stats_log(void) {
                           au_pr_n, (unsigned)((unsigned long long)au_pr_min * 1000 / 268112), (unsigned)((unsigned long long)au_pr_sum * 1000 / au_pr_n / 268112),
                           (unsigned)((unsigned long long)au_pr_max * 1000 / 268112), au_core);
     au_pr_n = au_pr_sum = au_pr_max = 0; /* min stays: it is the free core speed */
-    pm_log_d("audio join sites (count, avg us): kick %u %u, retrace %u %u, step %u %u, main %u %u", au_site_n[0], au_site_n[0] ? au_site_sum[0] / au_site_n[0] / 268 : 0, au_site_n[1], au_site_n[1] ? au_site_sum[1] / au_site_n[1] / 268 : 0, au_site_n[2], au_site_n[2] ? au_site_sum[2] / au_site_n[2] / 268 : 0, au_site_n[3], au_site_n[3] ? au_site_sum[3] / au_site_n[3] / 268 : 0);
+    pm_log_d("audio join sites (count, avg us): kick %u %u, snd %u %u", au_site_n[0], au_site_n[0] ? au_site_sum[0] / au_site_n[0] / 268 : 0, au_site_n[1], au_site_n[1] ? au_site_sum[1] / au_site_n[1] / 268 : 0);
     pm_au2_stats_log();
     pm_dspa_stats_log();
     au_w_n = au_w_sum = au_w_max = au_j_sum = au_j_max = au_g_sum = au_k_n = 0;
