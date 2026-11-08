@@ -99,6 +99,7 @@ void pm_ph_frame_end(void);
 extern int pm_pf_on; /* PF1: switch prof (clean-frame profile), see pm_phase.c */
 extern int pm_pf_arm; /* PF2: prof samples frames (prof on, phase off) */
 extern int pm_ph_cen; /* PERF1: phase mode on (not a prof sample): the per-op census hooks of the walk (W1, MDL1, WCEN2) */
+extern int pm_cen_lines; /* PROF2-3: the census lines (ndm, wide, rect, sprnat, spr5, entnat, nrawwhy, gdl, mdlw) print: phase mode or the census word, logging on. Never in prof mode */
 void pm_pf_frame(unsigned long long t0, unsigned long long t1); /* main loop, once per drawn frame: step start and work end ticks */
 /* HWM1: scene tag for the phs lines, GPU numbers of the last frame, command buffer fill */
 void pm_ph_scene_mode(int mode);

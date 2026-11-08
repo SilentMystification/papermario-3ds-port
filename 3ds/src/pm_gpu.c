@@ -2143,11 +2143,12 @@ static void pm_gpu_begin_w(int clear) {
 
 /* CORE2-3a: walker side entry (nd_wq.c): the game thread posts it, the body runs on the walker side. */
 static void pm_gpu_end_w(void);
+static void cen_lines_frame(void);
 typedef struct { int unused; } Wq_pm_gpu_end;
 static void wq_pm_gpu_end(void* a) { Wq_pm_gpu_end* q = (Wq_pm_gpu_end*)a; (void)q; pm_gpu_end_w(); }
 void pm_gpu_end(void) { Wq_pm_gpu_end q = { 0 }; pm_wq_post(wq_pm_gpu_end, &q, sizeof q); }
 static void pm_gpu_end_w(void) {
-    if (pm_frame_count() % 100u == 0) rect_log(pm_frame_count()); /* RECT-2b diag: rect and rectwhy lines every 100 frames */
+    if (__builtin_expect(pm_cen_lines, 0)) cen_lines_frame(); /* PROF2-3: the census lines, once per frame at the frame end */
     pm_gpu_begin_wait();
     if (!gs.gpu_ok) return;
     FS_MARK(FS_FLUSH);
@@ -2325,7 +2326,7 @@ static unsigned pal_lookup(const unsigned g[3], unsigned kf[3]) {
 #define WIDE_MAXV 192u
 static struct { unsigned ortho, nat, edge, big, all, copy; } wide_c;
 static void wide_log(unsigned f) { /* called from ndn_log every 300 frames; the window counts reset at the print */
-    pm_log_prof_line("wide f%u ortho %u native %u edge %u big %u all %u copy %u", f, wide_c.ortho, wide_c.nat, wide_c.edge, wide_c.big, wide_c.all, wide_c.copy);
+    pm_log_w("wide f%u ortho %u native %u edge %u big %u all %u copy %u", f, wide_c.ortho, wide_c.nat, wide_c.edge, wide_c.big, wide_c.all, wide_c.copy);
     memset(&wide_c, 0, sizeof wide_c);
 }
 /* TRI-2: the screen-edge rule of the vertex copy for object vertex v under the matrix m: cxo gets the clip x; the result is 1 when x sits on the game edge (w > 0, x at +-w * 0.999). */
@@ -2817,7 +2818,7 @@ void pm_gpu_ndm_begin(const uint32_t* rec, const uint32_t* modew, const uint32_t
 }
 /* S3N-4: the switch. One model record drawn natively (emit 1) after rec_apply; a fallback returns -1 and the record runs the walker geometry.
  * The counters print every 300 frames: native records, fallback records, native draws (the ranges; the wref class is not split in this mode). */
-static unsigned ndn_rec, ndn_fb, ndn_draws, ndn_f_last, ndn_hit, ndn_miss, ndn_nokey, ndn_rng, ndn_texf, ndn_empty; /* PERF1: empty = hits with no draw */
+static unsigned ndn_rec, ndn_fb, ndn_draws, ndn_hit, ndn_miss, ndn_nokey, ndn_rng, ndn_texf, ndn_empty; /* PERF1: empty = hits with no draw */
 void pm_gbi_dnr_take(unsigned* o, unsigned n);
 static unsigned ndn_why[16]; /* S3L-1: fallback records of the window by code (0 = nost: no state bit known, the record words are not read) */
 /* S3N-7: the counters of one 300-frame window (reset at the print). ndmt: ms per sampled frame of each region (ticks / 268112 per ms / frames). */
@@ -2832,28 +2833,25 @@ static void pm_gpu_ndn_window_end_w(void) {
     unsigned f = pm_frame_count();
     char wb[160]; unsigned wn = 0; wb[0] = 0;
     for (unsigned c = 0; c < 16u; c++) if (ndn_why[c]) { if (!wn) wn += (unsigned)snprintf(wb, sizeof wb, " why"); wn += (unsigned)snprintf(wb + wn, sizeof wb - wn, " %u:%u", c, ndn_why[c]); }
-    pm_log_prof_line("ndm end f%u native %u fb %u wref %u hit %u miss %u%s", f, ndn_rec, ndn_fb, ndn_draws, ndn_hit, ndn_miss, wb);
+    if (pm_cen_lines) pm_log_w("ndm end f%u native %u fb %u wref %u hit %u miss %u%s", f, ndn_rec, ndn_fb, ndn_draws, ndn_hit, ndn_miss, wb);
     ndn_rec = ndn_fb = ndn_draws = ndn_hit = ndn_miss = ndn_nokey = ndn_rng = ndn_texf = 0;
     for (unsigned c = 0; c < 16u; c++) ndn_why[c] = 0;
 }
-static void ndn_log(void) {
-    unsigned f = pm_frame_count();
-    if (f != ndn_f_last) { /* PERF1: one frame compare per record; the modulo once per frame */
-        ndn_f_last = f;
+static void ndn_log(unsigned f) { /* PROF2-3: census lines, from cen_lines_frame (frame end) */
+    {
         if (f % 300u) return;
         unsigned clr = nd_mc_clears();
         wide_log(f);
-        rect_log(f);
         char wb[160]; unsigned wn = 0; wb[0] = 0; /* S3L-1: the codes of the window, nonzero only */
         for (unsigned c = 0; c < 16u; c++) if (ndn_why[c]) { if (!wn) wn += (unsigned)snprintf(wb, sizeof wb, " why"); wn += (unsigned)snprintf(wb + wn, sizeof wb - wn, " %u:%u", c, ndn_why[c]); }
-        pm_log_prof_line("ndm f%u native %u fb %u wref %u hit %u miss %u clears %u%s", f, ndn_rec, ndn_fb, ndn_draws, ndn_hit, ndn_miss, clr - ndn_clr0, wb);
-        pm_log_prof_line("ndmhit f%u nokey %u rng %u tex %u empty %u", f, ndn_nokey, ndn_rng, ndn_texf, ndn_empty);
-        { static int szd; if (!szd) { szd = 1; pm_log_prof_line("ndmsz entry %u draw %u", (unsigned)sizeof(NdMEnt), (unsigned)sizeof(NdNat)); } }
+        pm_log_w("ndm f%u native %u fb %u wref %u hit %u miss %u clears %u%s", f, ndn_rec, ndn_fb, ndn_draws, ndn_hit, ndn_miss, clr - ndn_clr0, wb);
+        pm_log_w("ndmhit f%u nokey %u rng %u tex %u empty %u", f, ndn_nokey, ndn_rng, ndn_texf, ndn_empty);
+        { static int szd; if (!szd) { szd = 1; pm_log_w("ndmsz entry %u draw %u", (unsigned)sizeof(NdMEnt), (unsigned)sizeof(NdNat)); } }
         { unsigned dg[15]; nd_mc_diag_take(dg);
-          pm_log_prof_line("ndmmiss f%u new %u clr %u rec %u st %u hd %u gv %u same %u rcap %u ncap %u ins %u ent %u pool %u ehi %u phi %u cap %u", f, dg[0], dg[1], dg[2], dg[3], dg[4], dg[5], dg[6], dg[7], dg[8], dg[9], dg[10], dg[11], dg[12], dg[13], dg[14]); }
+          pm_log_w("ndmmiss f%u new %u clr %u rec %u st %u hd %u gv %u same %u rcap %u ncap %u ins %u ent %u pool %u ehi %u phi %u cap %u", f, dg[0], dg[1], dg[2], dg[3], dg[4], dg[5], dg[6], dg[7], dg[8], dg[9], dg[10], dg[11], dg[12], dg[13], dg[14]); }
         { unsigned dr[16]; pm_gbi_dnr_take(dr, 16u); /* S4-1: the refusal classes of the native ranges (code 12 = any of them) */
-          pm_log_prof_line("ndmr f%u c1 %u c2 %u c3 %u c4 %u c5 %u c6 %u c7 %u c8 %u c9 %u c10 %u", f, dr[1], dr[2], dr[3], dr[4], dr[5], dr[6], dr[7], dr[8], dr[9], dr[10]);
-          pm_log_prof_line("ndmr2 f%u c11 %u c12 %u c13 %u c14 %u c15 %u", f, dr[11], dr[12], dr[13], dr[14], dr[15]); }
+          pm_log_w("ndmr f%u c1 %u c2 %u c3 %u c4 %u c5 %u c6 %u c7 %u c8 %u c9 %u c10 %u", f, dr[1], dr[2], dr[3], dr[4], dr[5], dr[6], dr[7], dr[8], dr[9], dr[10]);
+          pm_log_w("ndmr2 f%u c11 %u c12 %u c13 %u c14 %u c15 %u", f, dr[11], dr[12], dr[13], dr[14], dr[15]); }
         ndn_clr0 = clr;
         ndn_rec = ndn_fb = ndn_draws = ndn_hit = ndn_miss = ndn_nokey = ndn_rng = ndn_texf = ndn_empty = 0;
         memset(ndn_why, 0, sizeof ndn_why);
@@ -2931,7 +2929,6 @@ int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32
     if (n >= 0) { ndn_rec++; ndn_draws += (unsigned)n; }
     else { ndn_fb++; ndn_why[nd_nat_why & 15]++; const unsigned sub = nd_nat_why == 6 ? nd_nat_sub : 0u; if (sub) nd_mdlfb_note(mk->rp, sub); } /* S3N-7: a fallback is stored for this key (every early return of model_draw too): not drawn again while the texture epoch holds, so a texture that loads later gets the native path then */
     ndn_miss++;
-    ndn_log();
     return n;
 }
 /* S3N-6: the hit. The cached draws of key k go out (after pm_gpu_flush) when the fresh ranges are the cached ones: each with the palette of the current view
@@ -2940,7 +2937,7 @@ int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32
 int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
     if (!e) { ndn_nokey++; return 0; }
     if (!model_vis_same(k, e)) { ndn_rng++; return 0; }
-    if (!e->n) { ndn_empty++; ndn_rec++; ndn_hit++; ndn_log(); return 1; } /* PERF1-4c: no draw (no group in view, or all culled): no texture lookup, template build, matrix product or flush */
+    if (!e->n) { ndn_empty++; ndn_rec++; ndn_hit++; return 1; } /* PERF1-4c: no draw (no group in view, or all culled): no texture lookup, template build, matrix product or flush */
     NdUnit u; memset(&u, 0, sizeof u);
     if (e->tex) {
         const NdTexDesc* ds = nd_tex_handle_desc((int)((k->w[0] >> 8) & 0x7fu), (const void*)(uintptr_t)k->w[1]);
@@ -2967,7 +2964,6 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
         pm_gpu_native_submit_draw(&q->d, q->sd, q->nidx, q->d.u[0].dim != 0);
     }
     ndn_rec++; ndn_draws += e->n; ndn_hit++;
-    ndn_log();
     return 1;
 }
 /* S3N-3d: diff count per compared field (the first 20 lines are printed; the counts show every field) */
@@ -3212,26 +3208,35 @@ void pm_gpu_flush(void) { flush(); }
 
 /* SPR4-3: shaded sprites (nd_int.h is not included here; the former pm_gbi.c, nd_tex.c and nd_geom.c own these) */
 extern int dual_on; void ensure_tile(int n); void dual_bind(void); int dual_boost_on(void);
-static unsigned spr_nat_n, spr_nat_fb[16], spr_nat_f_last;
+static unsigned spr_nat_n, spr_nat_fb[16];
 static unsigned spr5_sub[8]; /* MDL-3a: class 5 refusals per flag: 1 no pm4 palette path (g_pal, g_use5, gv4_on), 2 off-screen target, 3 grab, 4 zmark, 5 nozt */
-static void spr_nat_log(void) {
-    unsigned f = pm_frame_count();
-    if (f == spr_nat_f_last) return; /* PERF1: one frame compare per sprite; the modulo once per frame */
-    spr_nat_f_last = f;
+static void spr_nat_log(unsigned f) { /* PROF2-3: census lines, from cen_lines_frame (frame end) */
     if (f % 300u) return;
-    pm_log_prof_line("sprnat f%u native %u fb %u why 2 %u why 3 %u why 4 %u why 5 %u other %u", f, spr_nat_n, spr_nat_fb[1] + spr_nat_fb[2] + spr_nat_fb[3] + spr_nat_fb[4] + spr_nat_fb[5] + spr_nat_fb[20] + spr_nat_fb[11] + spr_nat_fb[12],
+    pm_log_w("sprnat f%u native %u fb %u why 2 %u why 3 %u why 4 %u why 5 %u other %u", f, spr_nat_n, spr_nat_fb[1] + spr_nat_fb[2] + spr_nat_fb[3] + spr_nat_fb[4] + spr_nat_fb[5] + spr_nat_fb[20] + spr_nat_fb[11] + spr_nat_fb[12],
         spr_nat_fb[2], spr_nat_fb[3], spr_nat_fb[4], spr_nat_fb[5], spr_nat_fb[1] + spr_nat_fb[20] + spr_nat_fb[11] + spr_nat_fb[12]);
-    pm_log_prof_line("spr5 f%u nopal %u off %u grab %u zmark %u nozt %u", f, spr5_sub[1], spr5_sub[2], spr5_sub[3], spr5_sub[4], spr5_sub[5]);
+    pm_log_w("spr5 f%u nopal %u off %u grab %u zmark %u nozt %u", f, spr5_sub[1], spr5_sub[2], spr5_sub[3], spr5_sub[4], spr5_sub[5]);
 }
 int pm_gpu_spr_native(const uint32_t* rec) {
     NdDraw n;
     NdMState st;
     float pal0[16];
     int why = 0;
-    if (!nd_sprite_draw(rec, 1, &n, &st, pal0, &why)) { spr_nat_fb[why & 15]++; spr_nat_log(); return 0; }
+    if (!nd_sprite_draw(rec, 1, &n, &st, pal0, &why)) { spr_nat_fb[why & 15]++; return 0; }
     spr_nat_n++;
-    spr_nat_log();
     return 1;
+}
+/* PROF2-3: the census lines, once per frame at the frame end (pm_gpu_end_w), only with pm_cen_lines (phase mode or the census word, never prof mode).
+ * They print with pm_log_w, not as prof lines. The counters stay on every path; the record paths no longer test the frame. */
+void ent_log(void); /* nd_ent.c */
+void nd_model_log(unsigned f); /* nd_model.c */
+static __attribute__((cold, noinline)) void cen_lines_frame(void) {
+    unsigned f = pm_frame_count();
+    if (!f) return; /* the boot frame: no window yet (the record paths printed no window line at frame 0) */
+    if (f % 100u == 0) rect_log(f); /* RECT-2b diag: rect and rectwhy lines every 100 frames */
+    ndn_log(f);
+    spr_nat_log(f);
+    ent_log();
+    nd_model_log(f);
 }
 void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, NdGvP* o);
 /* S4-2: the sprite record as a native draw (nd_sprite_draw, nd_sprite.c). The walker inputs of the draw (sticky state, gv, env and prim of the record),

@@ -15,6 +15,8 @@
 
 int pm_ph_on;
 int pm_ph_cen; /* PERF1: phase mode (pm_port.h) */
+int pm_cen_lines; /* PROF2-3 (pm_port.h) */
+static int cen_want; /* PROF2-3: switch census */
 int pm_ph_fine;
 unsigned pm_ph_cnt[C_N];
 static unsigned prev_cnt[C_N]; /* counters of the last finished frame: pm_ph_cnt is zero again at the next frame begin */
@@ -544,6 +546,7 @@ int pm_dcs_on; /* DS0: switch dcsum. Only the sampled draw and flush timers and 
 void pm_ph_log_gate(int on) {
     pm_ph_on = on && ph_want;
     pm_ph_cen = pm_ph_on;
+    pm_cen_lines = on && (pm_ph_cen || cen_want);
     pm_pf_on = on && pf_want;
     pm_pf_arm = pm_pf_on && !ph_want;
     if (!on) pf_samp = 0;
@@ -569,6 +572,8 @@ void pm_ph_init(void) {
     ph_want = pm_debug_mode("phase") == 1 || ps_on; /* CFG-1: phase=off or phase=0 turns the phase timers off */
     pm_ph_on = ph_want && pm_log_file();
     pm_ph_cen = pm_ph_on;
+    cen_want = pm_debug_has("census");
+    pm_cen_lines = pm_log_file() && (pm_ph_cen || cen_want);
     dcs_want = pm_debug_has("dcsum");
     pm_dcs_on = dcs_want && pm_log_file();
     ps_init(); /* only parses the abtog switch, so it runs even while logging is off */
