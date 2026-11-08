@@ -313,6 +313,8 @@ static Result pf_rc; /* last svc result of the counter edges */
 static u64 pf_base[3]; /* PF3: PMN0, PMN1, CCNT at the last sample end. Zero at init (the counters are reset there). */
 static unsigned long long pf_pe[3]; /* PF3: clean-interval sums of PMN0, PMN1, CCNT in the window */
 static unsigned pf_pfr, pf_run; /* PF3: clean frames summed in the window; clean frames since the last sample end */
+unsigned pm_pf_late;
+static unsigned pf_svc0, pf_csvc, pf_ssvc; /* PROF2-1: pm_svc_n at the last pm_pf_frame; window sums of the svc tick reads in clean and in sampled frames */
 /* PF3: one svc per register. The counters are not reset here, so each edge is a plain read. */
 static void pf_pmu_read(u64 out[3]) {
     pf_rc = svcControlPerformanceCounter(&out[0], PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_0, 0);
@@ -352,6 +354,7 @@ static void pf_reset(void) {
     pf_sc[0] = pf_sc[1] = pf_sc[2] = -1; pf_chg = 0; /* the next window starts in the scene now */
     pf_pe[0] = pf_pe[1] = pf_pe[2] = 0;
     pf_pfr = 0;
+    pf_csvc = pf_ssvc = 0;
     pf_wsum = pf_wmax = pf_wksum = 0;
     pf_wn = pf_wkn = pf_o34 = pf_w = 0;
     memset(pf_iv, 0, sizeof pf_iv);
@@ -400,8 +403,11 @@ static void pf_report(void) {
     unsigned cy = pf_pfr ? (unsigned)(pf_pe[2] / pf_pfr) : 0u; /* CCNT per clean frame */
     unsigned p0 = pf_pe[2] ? (unsigned)(pf_pe[0] * 1000ull / pf_pe[2]) : 0u; /* permille of cycles */
     unsigned p1 = pf_pe[2] ? (unsigned)(pf_pe[1] * 1000ull / pf_pe[2]) : 0u;
-    pm_log_prof_line("prof f%u w%u fps %.1f | ft %.2f max %.1f o34 %u wk %.2f | s%u fts %.2f wks %.2f oh %.2f amort %u | gbi %.2f dlc %.2f tex %.2f gpu %.2f | st %u vb %u iv %u %u %u %u",
-             pf_total, pf_w, fps, ft, (float)pf_wmax / TICKS_MS, pf_o34, wk, pf_s, fts, wks, oh, amort,
+    /* PROF2-1: the self-check csvc (svc tick reads of all clean frames of the window, target 0) and ssvc (per sampled frame) next to oh and
+     * amort. The phase sums and the step counts are on the ph line: one line cut the tail off at the slot string area (160 B). */
+    pm_log_prof_line("prof f%u w%u fps %.1f | ft %.2f max %.1f o34 %u wk %.2f | s%u fts %.2f wks %.2f oh %.2f amort %u csvc %u ssvc %u",
+             pf_total, pf_w, fps, ft, (float)pf_wmax / TICKS_MS, pf_o34, wk, pf_s, fts, wks, oh, amort, pf_csvc, pf_s ? pf_ssvc / pf_s : 0u);
+    pm_log_prof_line("prof f%u w%u ph gbi %.2f dlc %.2f tex %.2f gpu %.2f | st %u vb %u iv %u %u %u %u", pf_total, pf_w,
              pf_sms[0] / sn, (float)((double)pf_dlc_t / TICKS_MS) / sn, pf_sms[1] / sn, pf_sms[2] / sn,
              pm_step_calls - pf_st0, (unsigned)vb, pf_iv[0], pf_iv[1], pf_iv[2], pf_iv[3]);
     /* PERF1: the counters on their own line (the 256 byte log slot cut the D-cache field off the line above) */
@@ -424,10 +430,10 @@ static void pf_report(void) {
         pm_log_prof_line("prof f%u w%u budget tgt logic 3.3 dl 4.4 nd 2.0 fe 1.5 au 0.5 cpu 11.7 slack 5.0 gb 14.0 frame 16.7 | meas nd %.2f lg %.2f gb %.2f",
             pf_total, pf_w, (float)((double)pf_nd_t / TICKS_MS) / sn, pf_sms[0] / sn, gbm);
         pm_log_prof_line("prof f%u w%u%s", pf_total, pf_w, wh); /* the scene line: the first line is too long to carry it (256 byte log slot) */
-        /* U1: the writer heartbeat count (grows only while the queue runs). CORE2-0: aujoin_us = game thread audio join wait per drawn frame,
-         * aujoin_max = longest single join (us). */
+        /* U1: the writer heartbeat count (grows only while the queue runs). CORE2-0: aujoin_us = game thread audio join wait per sampled frame
+         * (PROF2-1: timed in sampled frames only), aujoin_max = longest single join (us). */
         pm_log_prof_line("prof f%u w%u writer beats %u | aujoin_us %u aujoin_max %u", pf_total, pf_w, pm_log_writer_hb(),
-            pf_w ? (unsigned)(pm_au_pf_sum * 1000ull / 268112ull / pf_w) : 0u, (unsigned)((unsigned long long)pm_au_pf_max * 1000ull / 268112ull));
+            pf_s ? (unsigned)(pm_au_pf_sum * 1000ull / 268112ull / pf_s) : 0u, (unsigned)((unsigned long long)pm_au_pf_max * 1000ull / 268112ull));
     }
     pf_reset();
 }
@@ -455,6 +461,12 @@ static void pf_take(const Rec* r) {
 }
 void pm_pf_frame(unsigned long long t0, unsigned long long t1) {
     int cur_s = pf_samp; /* this drawn frame is a sample */
+    unsigned sv = pm_svc_n; /* PROF2-1: the tick reads since the last call belong to this frame (a sample's arm read is in its own interval) */
+    if (!pf_total) pf_svc0 = sv; /* the boot reads are not a frame */
+    unsigned late = pm_pf_late; /* the GPU done read of the last sample (pm_gpu.c gb), made at the next frame begin */
+    pm_pf_late = 0;
+    if (cur_s) pf_ssvc += sv - pf_svc0; else { pf_csvc += sv - pf_svc0 - late; pf_ssvc += late; }
+    pf_svc0 = sv;
     if (!pf_total) { pf_vb0 = C3D_FrameCounter(0); pf_st0 = pm_step_calls; }
     if (pf_last) { /* wall of the previous drawn frame: its start to this start */
         unsigned long long w = t0 - pf_last;
@@ -512,6 +524,7 @@ static void pf_start(void) {
     { static int c2_done; if (!c2_done) { c2_done = 1; c2_probe(); } } /* PERF1: the core-1 load probe is gone (it spun on the GSP and DSP core); the core 2 probe line stays */
     pm_log_prof_line("prof cal every %u set %c tick %.2f us pmu %.2f us base %.2f us rc %08x", pf_every, pf_set, (double)dt / 200.0 / 268.112,
              pmu_us, 6.0 * pmu_us / (double)pf_every, (unsigned)pf_rc);
+    pf_svc0 = pm_svc_n; /* PROF2-1: the svc count starts after the calibration reads */
 }
 
 int pm_debug_mode(const char* key); /* CFG-1, pm_log.c */

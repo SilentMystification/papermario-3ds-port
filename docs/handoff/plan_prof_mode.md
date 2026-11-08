@@ -62,10 +62,11 @@ PMN0 and PMN1 are the only event counters. CCNT counts cycles. The user asks for
 
 ## 3. The prof line (exact)
 
-Per window of 300 drawn frames (pm_log_prof_line): the main line, then the pmu line and the producer class line (PERF1: the 256 byte log slot cut the pmu fields off the main line):
+Per window of 300 drawn frames (pm_log_prof_line): the main line, the ph line, the pmu line and the producer class line (a line longer than the 160 byte slot string area is cut):
 
 ```
-prof f%u w%u fps %.1f | ft %.2f max %.1f o34 %u wk %.2f | s%u fts %.2f wks %.2f oh %.2f amort %u | gbi %.2f dlc %.2f tex %.2f gpu %.2f | st %u vb %u iv %u %u %u %u
+prof f%u w%u fps %.1f | ft %.2f max %.1f o34 %u wk %.2f | s%u fts %.2f wks %.2f oh %.2f amort %u csvc %u ssvc %u
+prof f%u w%u ph gbi %.2f dlc %.2f tex %.2f gpu %.2f | st %u vb %u iv %u %u %u %u
 prof f%u w%u pmu %c %u %u cyc %u pm %u %u
 prof f%u w%u cls rec %.2f ent %.2f spr %.2f dlc %.2f sub %.2f rest %.2f
 ```
@@ -91,6 +92,8 @@ prof f9000 w300 cls rec 2.90 ent 1.70 spr 0.30 dlc 0.00 sub 1.50 rest 7.80
 | fts, wks | mean wall and work ms of a sampled frame | main loop ticks |
 | oh | wks - wk: ms that the full timers add to one sampled frame (self-check) | window end |
 | amort | prof cost in us per frame: oh x 1000 / N + base (base from the cal line) | window end |
+| csvc | game thread svc tick reads (pm_svc_n) in all clean frames of the window: the self-check, target 0. The game clock (osGetCount) and the audio thread read the tick without pm_ticks, so they are not counted | pm_pf_frame |
+| ssvc | game thread tick reads per sampled frame, with the GPU done read of the sample (pm_gpu.c gb, made at the next frame begin) | pm_pf_frame |
 | gbi, tex, gpu | mean exclusive ms per sampled frame of PH_GBI, PH_TEX, PH_GPU | Rec r->ms at pm_phase.c:502 |
 | dlc | mean ms per sampled frame of dlc replay inside G_PM_MODEL groups (sp0 kind 2, a part of gbi time) | delta of sp0_T[2] |
 | pmu c | counter set: m or s | switch |
