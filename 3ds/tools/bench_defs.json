@@ -2237,6 +2237,22 @@
       "gates": []
     },
     {
+      "name": "moon_tap_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MOON3: moon jump hold rises at MOON_RISE per step, and each A tap in the fall (JUMPING or FALLING) raises Mario again. Log y per step, one shot in the hover.",
+      "scenario": "moon_tap",
+      "cap": 25,
+      "until": "padscript: done",
+      "tags": [
+        "azahar",
+        "moon",
+        "pic"
+      ],
+      "gates": []
+    },
+    {
       "name": "wcen_mac01_det",
       "kind": "azahar_pic",
       "speed": "normal",
