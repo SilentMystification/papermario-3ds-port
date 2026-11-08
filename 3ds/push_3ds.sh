@@ -9,6 +9,9 @@
 # After a send failure the log's boot line "build N git H" must equal the sent build (PM_SENT_BUILD, PM_SENT_GIT, set by
 # bench.py build-at; else 3ds/include/pm_build.h). Otherwise the log is from another binary: STALE BINARY, no ingest hint.
 # "--check-log <file>" runs only that check (tests).
+# "--profile prof|log|none" appends the named profile words of bench_defs.json "profiles" after the game args
+# (the first match wins, so game args given by hand override the profile). "--dry" prints the 3dslink argv and exits:
+# no build, no ip lookup, no send.
 # NETLOADER REFUSED: a 3dslink output with a "N sent (P%)" line below 100 is a partial send (the console
 # refused or closed the upload, typically not enough free RAM in applet mode). Then the instruction block is printed
 # with the 3dsx size and the last line of pushed_builds.txt. "--check-send <3dslink output file>" runs only that check (tests).
@@ -32,6 +35,8 @@ attach=0
 checklog=""
 checksend=""
 partial_pct=""
+profname=""
+dry=0
 while :; do
     case "$1" in
         -t) secs=$2; shift 2 ;;
@@ -41,12 +46,35 @@ while :; do
         --attach) attach=1; shift ;;
         --check-log) checklog=$2; shift 2 ;;
         --check-send) checksend=$2; shift 2 ;;
+        --profile) profname=$2; shift 2 ;;
+        --dry) dry=1; shift ;;
         *) break ;;
     esac
 done
 
 # The 3dsx this push sends: build3ds/pm_3ds.3dsx, or PM_SRC3DSX (bench.py build-at sends a lane build from its scratch folder).
 SRC3DSX=${PM_SRC3DSX:-build3ds/pm_3ds.3dsx}
+
+# The profile words (bench_defs.json "profiles") go after the game args, so the game args given by hand come first and win.
+if [ -n "$profname" ]; then
+    PROF_PY='import json, sys
+p = json.load(open("3ds/tools/bench_defs.json", encoding="utf-8")).get("profiles", {})
+n = sys.argv[1]
+if n not in p:
+    print("push_3ds.sh: unknown --profile %s (prof, log, none)" % n, file=sys.stderr)
+    sys.exit(2)
+print(p[n])'
+    PYP=${PYTHON_EXE:-py}
+    if [ -z "$PYTHON_EXE" ] && ! command -v py >/dev/null 2>&1; then PYP=python3; fi
+    if [ "$PYP" = python3 ]; then pw=$(python3 -c "$PROF_PY" "$profname"); else pw=$("$PYP" -3 -c "$PROF_PY" "$profname"); fi
+    for w in $pw; do set -- "$@" "$w"; done
+fi
+if [ "$dry" -eq 1 ]; then
+    dip=${ipopt:-${N3DS_IP:-${PM_O3DS_IP:-<netloader broadcast>}}}
+    echo "dry run: nothing built, nothing sent"
+    echo "3dslink argv: ${PM_3DSLINK:-/opt/devkitpro/tools/bin/3dslink} -a $dip $SRC3DSX -- --verbose livelog $*"
+    exit 0
+fi
 # Archive the 3dsx this push sends: 3ds/logs/builds/pm_3ds_<build>_<git hash>.3dsx (build = the number
 # before the first "-" in PM_BUILD_STR, the boot line's build number). An existing archive with the same
 # name must have the same sha256, or the archive is skipped (ARCHIVE WARNING). One line goes to 3ds/logs/perf/pushed_builds.txt.
