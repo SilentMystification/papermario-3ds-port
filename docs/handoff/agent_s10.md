@@ -1,15 +1,13 @@
 # Handoff S10 epic (orchestrator, 2026-11-07)
 
 STATE
-- nds1 head: see `git log -1 nds1` (this file is committed on it). pm_gbi.c after GM-3.
-- Done this session (all merged, byte gates cold det): DET (det switch), sprfix + SPR4 (native sprites incl. shaded), FB-1 (grab native, chunked ring), FB-2 (noise unit 2, template LRU), FB-3 (pm5 tex1/noise, sprite pm5 uniforms), MDL-5a/5f/5e (model records fully native, walker model fallback deleted), MOVE 1-10 + MOVE-4/5, LS-4 splash record, ENCCRASH, SIZE-4 hint, SIZE-3 step 1 (sqrtf -Os hang, UB fixes), SHOT, SCN, AZT11/12, PUSHHINT.
-- Open rows: none running. AUDIT done (W1-W10, C4, B2, C8, A5, NdBatch, PmGpuSt, pm_gpu_rect.c; merged up to 932990016; open: B3 no visible case, console checks, stereo replay question). CORE2 done up to 3a (nd_wq.c walker side, hazard fixes, c2own check); 3c waits for the N3DS run. B2 menu noise needs the console. main = nds1.
-- Parked bugs: layout-dependent pictures (mac_00 sky row, nok11 shot 0016: row_UB1.md, not byte gates), SBKW sbk_56 water residual (row_SBKW.md), FX1 super block (row_FX1.md: needs a menu-walk scenario). pm5all halo dropped (switch deleted in FB-4 C1).
-- Size: 3dsx 13,316,040 B (build 2952, 7be88729b). Push to the O3DS XL works: 3dslink prints the compressed size ("3160810 sent (23.74%)" = zlib ratio, not a stopped upload); the earlier "failed at 23.84%" was the same ratio.
-- Unmerged branches with useful work: ub1 (stale unit-1 cache patch, sprnat OOB patch).
-- Process rules updated: orchestrator_rules.md "Process fixes".
-- Open regression (user: leave open, 2026-11-08): same O3DS XL, mac_01 0 0 200 prof=4: a3c5ec093 run 25158 gbi 30.2 ms, fps 29.4, o34 2-9; 7be88729b run 25044 gbi 37.4 ms, fps 28.0, o34 18-30 (oh 8.0 -> 12.8, amort 2000 -> 3200). 407 first-parent commits between them (77 merges). Options: console bisect (about 9 pushes) or an oracle code read of the prof fields first.
-- Disk: folders build3ds/wt/fb3, fb4, tdc, ls3 are held by a process (Azahar or a shell): run wt_gc.sh --apply again when Azahar is closed (it now removes stale folders; it keeps fresh branches, use --only for a fast-forwarded one).
+- nds1 head: see `git log -1 nds1`. main = nds1. Push target O3DS XL .131 (user, 2026-11-08); a push-ready main build is kept after each merge (orchestrator_rules step 6).
+- Done 2026-11-08 day: PERF1, TOUR1/2, POS1, CUR1, CHEATA, BT1, POND, HUD3, DARK, MERLEE, MOON3, SHOTLANE, BSTALE, CLEANB, AZT12 (all merged).
+- Running rows: PERF2, PROF2, MAPX, MSGBOX, CUR2 (row files in docs/handoff).
+- Console regression: closed by PERF1 (mac_01 spot gbi 21.9 ms, 30.1 fps, run of 2026-11-08 on .131).
+- Next epic DIRECT (user): the game code calls the native producers directly, no display lists; oracle (Opus) plans, ONE Opus agent implements, after PERF2 and its console push.
+- Open: refused-record host scan (user go), MOON2 release code question, core 1 walker oracle check, N3DS push, console pushes tour_battle_prof / merlee_spell_prof.
+- Parked bugs: row_UB1.md (layout pictures), row_SBKW.md, row_FX1.md, MENUB B2 (branch grey b0853165f, console).
 
 ## Questions for the user (collected overnight 2026-11-08)
 1. Push target: memory says O3DS .170 since 2026-11-05; this session pushed to O3DS XL .131. Which one from now on?

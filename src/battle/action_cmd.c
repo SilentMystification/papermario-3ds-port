@@ -3,6 +3,7 @@
 
 #ifdef TARGET_3DS
 int pm_cheat_action_on(void); /* Perfect action commands cheat (3ds/src/pm_dbg_game.c) */
+void pm_log_evt(const char* fmt, ...); /* test-event line, passes the log gate in prof mode (3ds/src/pm_log.c) */
 #endif
 
 u8 mashMeter_bgColors[15] = {
@@ -290,6 +291,7 @@ void action_command_init_status(void) {
 #ifdef TARGET_3DS
     if (pm_cheat_action_on()) {
         acs->autoSucceed = true; /* CH9: every action command of Mario and partners succeeds; showHud unchanged */
+        pm_log_evt("cheat: perfect action command, auto success (%s)", (gBattleStatus.flags1 & BS_FLAGS1_PARTNER_ACTING) ? "partner" : "mario");
     }
 #endif
 }
@@ -577,6 +579,7 @@ s32 check_block_input(s32 buttonMask) {
 #ifdef TARGET_3DS
     if (pm_cheat_action_on()) { /* CH9: every guard succeeds (Mario and partners) */
         battleStatus->blockResult = BLOCK_RESULT_SUCCESS;
+        pm_log_evt("cheat: perfect guard");
         if (!acs->hitsTakenIsMax) {
             playerData->hitsBlocked++;
         }

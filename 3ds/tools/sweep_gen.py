@@ -70,11 +70,13 @@ for d in sorted(os.listdir(base)):
         hit = [a for a in actors if BOSS.search(a)]
         if not hit: continue
         bf = 'BTL_%s_FORMATION_%02X' % (pre, i)
-        si = stages.index(st) if st in stages else (snames.index(st) if st in snames else 0) # a stage that is not in the list: stage 00 (the arena is only a backdrop)
-        bs = 'BTL_%s_STAGE_%02X' % (pre, si)
-        if bf not in names or bs not in open(os.path.join(root, 'src/battle/stage_names.h'), encoding='utf-8', errors='replace').read(): continue
+        si = stages.index(st) if st in stages else (snames.index(st) if st in snames else -1)
+        # BT1: a stage that is not in the area's list (Jr. Troopa: nok_01, mim_01, ...): no stage part, the start uses the battle's own stage
+        # (set_battle_stage(-1)). Stage 00 was the old pick; kmr_part_3 stage 00 is kmr_02, whose shape the ROM lacks (decomp @bug).
+        bs = 'BTL_%s_STAGE_%02X' % (pre, si) if si >= 0 else ''
+        if bf not in names or (bs and bs not in open(os.path.join(root, 'src/battle/stage_names.h'), encoding='utf-8', errors='replace').read()): continue
         key = pre.lower()
-        rows.append('boss_%s_f%02X kind=boss battle=%s:%s story=%d cap=1500 note=%s' % (hit[0], i, bf, bs, STORY.get(key, 0), '+'.join(actors)))
+        rows.append('boss_%s_f%02X kind=boss battle=%s%s story=%d cap=1500 note=%s' % (hit[0], i, bf, ':' + bs if bs else '', STORY.get(key, 0), '+'.join(actors)))
 if mode == 'battletable':
     # BT1: every formation of every area (not only bosses). Label from the actor blueprints (count per name), the formation and the stage.
     # Written to 3ds/src/pm_battle_table.h (the Battles folder under Boss, BT2). Do not edit the output.
@@ -98,9 +100,9 @@ if mode == 'battletable':
             actors = forms.get(f, [])
             if not actors: continue
             bf = 'BTL_%s_FORMATION_%02X' % (pre, i)
-            si = stages.index(st) if st in stages else (snames.index(st) if st in snames else 0)
-            bs = 'BTL_%s_STAGE_%02X' % (pre, si)
-            if bf not in names or bs not in stage_txt: continue
+            si = stages.index(st) if st in stages else (snames.index(st) if st in snames else -1)
+            bs = 'BTL_%s_STAGE_%02X' % (pre, si) if si >= 0 else ''  # BT1: not in the list: the battle's own stage (no stage part)
+            if bf not in names or (bs and bs not in stage_txt): continue
             counts = {}
             for a_ in actors: counts[a_] = counts.get(a_, 0) + 1
             parts = []
@@ -108,7 +110,7 @@ if mode == 'battletable':
                 nm = k.replace('_', ' ').title()
                 parts.append('%s x%d' % (nm, v) if v > 1 else nm)
             lab = ' + '.join(parts)[:22]
-            out.append('    { "%s", "%s:%s", "%s" },' % (lab, bf, bs, d))
+            out.append('    { "%s", "%s%s", "%s" },' % (lab, bf, ':' + bs if bs else '', d))
     hdr = ('/* Every battle formation of the decomp (not only bosses): label, battle=<formation>:<stage> (names of battle_names.h and stage_names.h), area dir.\n'
            ' * Written by 3ds/tools/sweep_gen.py battletable from the decomp (src/battle/area/NAME/area.c). Do not edit. */\n')
     open(os.path.join(root, '3ds', 'src', 'pm_battle_table.h'), 'w', newline='\n').write(hdr + '\n'.join(out) + '\n')

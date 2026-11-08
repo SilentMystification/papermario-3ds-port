@@ -19,18 +19,18 @@ Only the orchestrator reads this file. Shared rules are in CLAUDE.md. Style hook
 
 ## Agents and worktrees
 - At most 6 code agents (2 Azahar slots); read-only agents do not count. One agent per epic; reuse a live agent for its epic; a row of about 30 lines goes to a live agent.
-- One agent, one worktree: `git worktree add build3ds/wt/<row> -b <row> nds1`. Before a new agent uses an existing worktree, stop the old one (TaskStop). Every build.sh and bench call in a worktree sets PM_LANE=<row>; without it the shared main volume is used and the main build breaks.
+- One agent, one worktree: `git worktree add build3ds/wt/<row> -b <row> main`. Before a new agent uses an existing worktree, stop the old one (TaskStop). Every build.sh and bench call in a worktree sets PM_LANE=<row>; without it the shared main volume is used and the main build breaks.
 - No git stash anywhere (the stash list is shared by all worktrees).
 - Done means the whole row set passes. A handback with work left is not allowed; the prompt says to wait for background runs in the foreground. An early handback is resumed once with the same row.
 - An agent silent for over 2 hours: collect its state into the row file, stop it.
 
 ## Merge procedure
 1. Check every commit in the range (markers, attribution trailers, WIP commits: squash those).
-2. `git merge-tree --write-tree --name-only nds1 <branch>`: exit code 1 means conflicts (paths on line 2 and later); never use line 1 then. The branch owner resolves source conflicts; the orchestrator resolves only doc and JSON conflicts (JSON by name: nds1 plus the branch's new entries, then a duplicate-name check).
+2. `git merge-tree --write-tree --name-only main <branch>`: exit code 1 means conflicts (paths on line 2 and later); never use line 1 then. The branch owner resolves source conflicts; the orchestrator resolves only doc and JSON conflicts (JSON by name: main plus the branch's new entries, then a duplicate-name check).
 3. commit-tree plus update-ref; sync the changed files into the shared folder; reset runs.jsonl in the index.
-4. Tell running agents whose files changed to merge nds1.
+4. Tell running agents whose files changed to merge main.
 5. Clean up: `sh 3ds/tools/wt_gc.sh --apply --only <merged worktree>` (it also deletes that lane's `pm_3ds_<lane>.3dsx` copies in the Azahar sdmc folder and the azslots, and its `build3ds/azt/shots/*/<lane>` folders). A partial merge of a running agent's branch makes the branch look merged: every agent worktree gets a `.wt_keep` file at creation, and wt_gc keeps it (core20 and ls3 were deleted mid-row on 2026-11-07/08). Delete `.wt_keep` when the row is complete.
-6. Keep a push-ready build (user, 2026-11-08): after each merge that changes a build input, run the main build in the background (`sh 3ds/build.sh`, no PM_LANE, after gen_map_restore.py; restore map_restore_table.c). build3ds/pm_3ds.3dsx then matches nds1 and a console push needs no build.
+6. Keep a push-ready build (user, 2026-11-08): after each merge that changes a build input, run the main build in the background (`sh 3ds/build.sh`, no PM_LANE, after gen_map_restore.py; restore map_restore_table.c). build3ds/pm_3ds.3dsx then matches main and a console push needs no build.
 
 ## Gates
 - Byte gates run cold with det. A scene whose picture moves with code layout is not a byte gate until that cause is fixed (mac_00 since FB-2, row_FB.md MAC00).
