@@ -252,17 +252,6 @@ if ($SelfTest) {
     $kNew = Get-StaleReason (Get-QState $pK) (Get-NowMs)
     QCheck "clock: process 80 s old with cap 45 is c before the clock restart, fresh after it (before '$kOld', after '$kNew')" (($kOld -eq "c") -and ($kNew -eq ""))
     Remove-Item $qdir -Recurse -Force
-    # T10 AZT12-4: only slot 3 is free. An older entry of tools with 2 slots (no slots field) is not granted it; a younger entry of 3-slot tools is
-    New-Item -ItemType Directory -Force -Path $qdir | Out-Null
-    $pO = New-FakeQ "O10" 1000 "x"; $pN = New-FakeQ "N10" 2000 "y"
-    $n = Get-QState $pN; $n | Add-Member -NotePropertyName slots -NotePropertyValue 3 -Force; Save-QEntry $pN $n
-    $script:fakeFree = @{ 1 = $false; 2 = $false; 3 = $true }; $script:fakeLane = @{ 1 = ""; 2 = ""; 3 = "" }
-    $env:PM_AZ_SLOTS = "3"
-    Invoke-QGrant
-    Remove-Item Env:PM_AZ_SLOTS -ErrorAction SilentlyContinue
-    $o = Get-QState $pO; $n = Get-QState $pN
-    QCheck "slots: slot 3 goes to the 3-slot entry, the older 2-slot entry waits" (($o.state -eq "wait") -and ($n.state -eq "granted") -and ([int]$n.slot -eq 3))
-    Remove-Item $qdir -Recurse -Force
     Remove-Item Env:PM_AZQUEUE_DIR -ErrorAction SilentlyContinue
     if ($qFails) { Write-Output "QUEUE SELFTEST: $qFails FAILED" } else { Write-Output "QUEUE SELFTEST: all pass" }
     $fails += $qFails

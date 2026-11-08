@@ -2253,6 +2253,38 @@
       "gates": []
     },
     {
+      "name": "spot_mac01_selfchk_prof",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "PROF2-6 self-check, prof side: mac_01 spot, det, prof=30, first window wk, oh, amort, csvc, ssvc. Pair with spot_mac01_selfchk_off (wk against pacewk). Direction only.",
+      "scenario": "spot_mac01_selfchk_prof",
+      "cap": 35,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "prof",
+        "selfcheck"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_mac01_selfchk_off",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "PROF2-6 self-check, prof-off side: mac_01 spot, det, pacestat, pacewk wk (mean work ms of a drawn frame) at frame 400 or later. Pair with spot_mac01_selfchk_prof. Direction only.",
+      "scenario": "spot_mac01_selfchk_off",
+      "cap": 35,
+      "until": "pacewk f([4-9]\\d\\d|[1-9]\\d{3,}) ",
+      "tags": [
+        "azahar",
+        "prof",
+        "selfcheck"
+      ],
+      "gates": []
+    },
+    {
       "name": "moon_tap_pic",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -3586,6 +3618,42 @@
           "regex": "cen f298 summary batches \\d+ tris (\\d+)",
           "pick": "last"
         }
+      ],
+      "gates": []
+    },
+    {
+      "name": "magi_hit_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MAGI: Magikoopa Magic Blast hit on Mario (HOS formation 03). fspk lines: per-frame draws, binds, misses around the hit; 6 shots after the hit. Azahar counts valid, ms direction only.",
+      "scenario": "magi_hit",
+      "cap": 45,
+      "until": "fspk: done hit f\\d+",
+      "tags": [
+        "azahar",
+        "pic",
+        "magi",
+        "battle"
+      ],
+      "gates": []
+    },
+    {
+      "name": "magi_hit_prof",
+      "kind": "console_prof",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MAGI: Magikoopa Flying battle (HOS formation 03) on the O3DS console, prof mode, autoa; the fspk lines give the step ms of each frame around the Magic Blast hit. Ingest the live log after the push.",
+      "scene_match": null,
+      "recipe": "warp=hos_00:0 story=ch0_toad_town battle=BTL_HOS_FORMATION_03:BTL_HOS_STAGE_02 battlef=100 cheats=hp autoa fspk prof=30",
+      "scenario": null,
+      "host": "o3ds",
+      "cap": 45,
+      "until": "fspk: done hit f\\d+",
+      "tags": [
+        "console",
+        "prof",
+        "magi"
       ],
       "gates": []
     },

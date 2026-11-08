@@ -616,6 +616,60 @@
       "reason": "MOVE gate: DET cold start (-NoWarm, a cold start takes 12 to 16 s to the first marker, as nok11_det). Cap 35 s, deadline 30 s. Picture is the subject; the prof scene line is the until."
     },
     {
+      "name": "spot_mac01_selfchk_prof",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario placed at pos 0 0 200, det, prof=30: the first 300-frame prof window (wk, fts, wks, oh, amort, csvc, ssvc). Log only.",
+      "proves": "PROF2-6 self-check, prof side: the clean-frame work ms (wk) and the prof cost (oh, amort, csvc 0) with prof=30. Compare wk with spot_mac01_selfchk_off (pacewk). Azahar: direction only.",
+      "debug": "warp=mac_01:0 pos=0:0:200 prof=30 det",
+      "extra": [],
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "self-check",
+          "regex": "prof f\\d+ w\\d+ s\\d+ fts \\d+\\.\\d+ wks \\d+\\.\\d+ oh -?\\d+\\.\\d+ amort \\d+ csvc 0 ssvc \\d+"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at mac_01 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 0 0 200 "
+        }
+      ],
+      "reason": "PROF2-6 self-check pair with spot_mac01_selfchk_off. Same spot, same switches but prof. Cap 35 s: boot, warp, placement and the first 300-frame window (until)."
+    },
+    {
+      "name": "spot_mac01_selfchk_off",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario placed at pos 0 0 200, det, prof off, pacestat: the pacewk line (mean work ms of a drawn frame per 5 s pace window) at frame 400 or later. Log only.",
+      "proves": "PROF2-6 self-check, prof-off side: the work ms of a drawn frame without prof (pacewk wk), to compare with wk of spot_mac01_selfchk_prof. Azahar: direction only.",
+      "debug": "warp=mac_01:0 pos=0:0:200 pacestat loglevel=debug det",
+      "extra": [],
+      "until": "pacewk f([4-9]\\d\\d|[1-9]\\d{3,}) ",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "pacewk",
+          "regex": "pacewk f([4-9]\\d\\d|[1-9]\\d{3,}) wk \\d+\\.\\d+ drawn \\d+"
+        }
+      ],
+      "reason": "PROF2-6 self-check pair with spot_mac01_selfchk_prof. The pace windows are 5 s; the line at frame 400 or later covers the placed spot only. Cap 35 s."
+    },
+    {
       "name": "wcen_mac01_det",
       "status": "unverified",
       "subject": "Toad Town mac_01, Mario at pos 0 0 200, cold start with det. Census window 0 to 300: the opsplit line with the per-producer ops and the mod column (module per op, nd_cen.c op_module).",
@@ -6368,18 +6422,14 @@
       "status": "pending",
       "subject": "Koopa Village kmr_03 (warp entry 0, default placement). Coin block and entity models on screen, drawn natively from the static pools (S6-2c-3). Shots at frames 200 to 205 and the entnat window line.",
       "proves": "S6-2c-3 switch: entity model lists draw from the pools (entnat segs native above 0), the picture is the walker picture. Gate: native above 0, the shot shows the scene.",
-      "debug": "warp=kmr_03:0 prof=4 shots shotwin=200:6 loglevel=debug",
+      "debug": "warp=kmr_03:0 census shots shotwin=200:6 loglevel=debug",
       "until": "entnat f\\d+ draws",
       "cap": 25,
       "deadline": 20,
-      "first_marker": "prof=1 log=off",
-      "expects": "none",
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
       "needs_picture": true,
       "expected_events": [
-        {
-          "name": "prof on",
-          "regex": "prof=1 log=off"
-        },
         {
           "name": "native entity draws above 0",
           "regex": "entnat f\\d+ draws \\d+ native [1-9]\\d* fb \\d+ segs native [1-9]\\d* ",
@@ -6393,18 +6443,14 @@
       "status": "pending",
       "subject": "Toad Town mac_01, Mario at pos 0 0 200, a coin item entity spawned beside Mario at frame 30 (debug testitem=c). The item quad list is drawn from the static pools (S6-3). Shots at frames 200 to 205 and the entnat window line.",
       "proves": "S6-3 item entities: the item quad lists (D_8014C678, D_8014C6A0) go through the entity draw record; entnat segs native above 0, the shot shows the coins.",
-      "debug": "warp=mac_01:0 pos=0:0:200 prof=4 testitem=c shots shotwin=200:6 loglevel=debug",
+      "debug": "warp=mac_01:0 pos=0:0:200 census testitem=c shots shotwin=200:6 loglevel=debug",
       "until": "entnat f\\d+ draws",
       "cap": 30,
       "deadline": 20,
-      "first_marker": "prof=1 log=off",
-      "expects": "none",
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
       "needs_picture": true,
       "expected_events": [
-        {
-          "name": "prof on",
-          "regex": "prof=1 log=off"
-        },
         {
           "name": "native entity draws above 0",
           "regex": "entnat f\\d+ draws \\d+ native [1-9]\\d* fb \\d+ segs native [1-9]\\d* ",
@@ -6418,18 +6464,14 @@
       "status": "pending",
       "subject": "Shiver City entry sam_11 (warp entry 0): animated props (animator node lists, entnat key lines with seg 256). Shots at frames 200 to 205 and the entnat window line.",
       "proves": "S6-4 animators: the static node lists (vertexStartOffset below 0) go through the entity draw record; entnat segs native above 0, the shot shows the models.",
-      "debug": "warp=sam_11:0 prof=4 shots shotwin=200:6 loglevel=debug",
+      "debug": "warp=sam_11:0 census shots shotwin=200:6 loglevel=debug",
       "until": "entnat f\\d+ draws",
       "cap": 30,
       "deadline": 20,
-      "first_marker": "prof=1 log=off",
-      "expects": "none",
+      "first_marker": "warp: sam_11 entry 0",
+      "expects": "warp",
       "needs_picture": true,
       "expected_events": [
-        {
-          "name": "prof on",
-          "regex": "prof=1 log=off"
-        },
         {
           "name": "native entity draws above 0",
           "regex": "entnat f\\d+ draws \\d+ native [1-9]\\d* fb \\d+ segs native [1-9]\\d* ",
@@ -8141,7 +8183,7 @@
       "status": "verified",
       "subject": "Battle scene (default formation: one Goomba on kmr_03), shots at frames 153 to 182 after the battle mode starts.",
       "proves": "The battle debug switch starts a real battle from a warp.",
-      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 profdisk=1 mdl0",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 profdisk=1 mdl0 census",
       "until": "shot \\d+ frame 182\\b",
       "cap": 25,
       "deadline": 20,
@@ -8198,7 +8240,7 @@
       "status": "unverified",
       "subject": "Map hos_01 (SHADING_HOS_01 profile, set in src/world/area_hos/hos_01/main.c:117), log only: the sprnat and spr5 lines at scene frame 300 (shaded sprite records: why 3).",
       "proves": "SPR4 step 3: how many sprite records of a shaded-profile map take the native path, and how many refuse on flags & 1 (why 3).",
-      "debug": "warp=hos_01:0 profdisk=1",
+      "debug": "warp=hos_01:0 profdisk=1 census",
       "until": "spr5 f\\d+ nopal",
       "cap": 30,
       "deadline": 20,
@@ -8222,7 +8264,7 @@
       "status": "unverified",
       "subject": "Battle scene (default formation: one Goomba on kmr_03), log only: the spr5 line at scene frame 300 (sprite class 5 refusals by flag).",
       "proves": "MDL-3a: class 5 sub-reasons in battle, the window at frame 300 (the mdlw_battle until stops at frame 299).",
-      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 profdisk=1",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 profdisk=1 census",
       "until": "spr5 f\\d+ nopal",
       "cap": 45,
       "deadline": 20,
@@ -9002,7 +9044,7 @@
     {
       "name": "mdl5_iwa10_det",
       "status": "unverified",
-      "subject": "iwa_10, Mario at -586 1 530, cold det, shots 200 to 205, prof lines (mdlfb, mdlsub).",
+      "subject": "iwa_10, Mario at -586 1 530, cold det, shots 200 to 205, the prof scene line (PROF2-3: the mdlfb and mdlsub census lines need the census switch without prof mode).",
       "proves": "MDL-5 iwa_10 native (census, shots).",
       "debug": "warp=iwa_10:1 pos=-586:1:530 prof=4 shots shotwin=200:6 loglevel=debug det",
       "extra": [],
@@ -9032,7 +9074,7 @@
     {
       "name": "mdl5_sbk56_det",
       "status": "unverified",
-      "subject": "sbk_56, Mario at 20 0 440, cold det, shots 200 to 205, prof lines (mdlfb, mdlsub).",
+      "subject": "sbk_56, Mario at 20 0 440, cold det, shots 200 to 205, the prof scene line (PROF2-3: the mdlfb and mdlsub census lines need the census switch without prof mode).",
       "proves": "MDL-5 sbk_56 native (census, shots).",
       "debug": "warp=sbk_56:0 pos=20:0:440 prof=4 shots shotwin=200:6 loglevel=debug det",
       "extra": [],
@@ -9136,7 +9178,7 @@
       "status": "unverified",
       "subject": "Six maps in one start (golden_multi tour), cold det, prof=4: one ndm line per 300 frames with the native draw and fallback (fb) counts of the window.",
       "proves": "MDL-5e census: ndm fb 0 on the golden tour (every model record drawn natively).",
-      "debug": "preset=yard tour=mac_00:4,tik_03:0,isk_04:0,kzn_19:0,mac_01:0 tourshot=30 shots fixedseed fast loglevel=debug profdisk=1 det",
+      "debug": "preset=yard tour=mac_00:4,tik_03:0,isk_04:0,kzn_19:0,mac_01:0 tourshot=30 shots fixedseed fast loglevel=debug profdisk=1 det census",
       "extra": [
         "-Turbo"
       ],
@@ -9161,8 +9203,8 @@
     {
       "name": "tour10_det",
       "status": "unverified",
-      "subject": "Mario in each of 10 maps of the tour list, cold det, prof=4, tourtime=1: one prof window per map (line prof f<n> w<n> tour <i>/<n> <map>:<entry>) and one tourshot 50 frames after each map is in (after the spot placement at 30, before the window at 60, so the shot cost is not in the window). mac_01 (item 2) and mac_00 (item 10) have a position 60 above the floor: Mario stands on the floor (tour: at <map> y <snapped>). ndm census lines per 300 frames.",
-      "proves": "TOUR1: the tour state machine (settle, window open and close per map, no window across two maps, y snap of a spot) and the MDL-5e census (ndm fb 0 on the tour10 list).",
+      "subject": "Mario in each of 10 maps of the tour list, cold det, prof=4, tourtime=1: one prof window per map (line prof f<n> w<n> tour <i>/<n> <map>:<entry>) and one tourshot 50 frames after each map is in (after the spot placement at 30, before the window at 60, so the shot cost is not in the window). mac_01 (item 2) and mac_00 (item 10) have a position 60 above the floor: Mario stands on the floor (tour: at <map> y <snapped>).",
+      "proves": "TOUR1: the tour state machine (settle, window open and close per map, no window across two maps, y snap of a spot) and the native model path on the tour10 list (PROF2-3: the ndm census lines need the census switch without prof mode).",
       "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0@0:60:200,dgb_01:1,kmr_09:0,kmr_20:4,hos_00:0,kmr_02:0,kmr_10:0,trd_01:0,mac_00:0@-135:60:85 tourtime=1 tourshot=50 shots shotwin=99999:1 prof=4 profdisk=1 det",
       "extra": [],
       "until": "tour: done items",
@@ -9283,7 +9325,7 @@
       "status": "unverified",
       "subject": "Battle kmr_03 (one Goomba), cold det, profdisk: runs to frame 300 so the first ndm window line (native and fallback counts) is in the log.",
       "proves": "MDL-5e census: ndm fb of the battle window 0 to 300 (every model record drawn natively).",
-      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 det profdisk=1",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 det profdisk=1 census",
       "extra": [],
       "until": "ndm f\\d+ native",
       "cap": 45,
@@ -10103,6 +10145,30 @@
         }
       ],
       "reason": "MSGBOX row. The debug hook uishow (pm_warp.c) opens the messages at scene frame 200 (global frame about 249) with no input; one shot after the text is printed. Cap 30 s: cold start 12 to 16 s plus about 9 s of game time."
+    },
+    {
+      "name": "magi_hit",
+      "status": "unverified",
+      "subject": "Magikoopa Flying battle (BTL_HOS_FORMATION_03, stage hos_02) from hos_00 with autoa: Mario jumps, the Magikoopa casts Magic Blast; the shape_spell reaching Mario marks the hit (fspk mark). Per-frame fspk lines for 16 frames before and 48 after the hit; shots of the 6 frames after the hit.",
+      "proves": "MAGI: draws, triangles, TEV rebuilds, texture binds and misses, entity key compiles and model misses per frame at the spell hit (Azahar counts valid, ms direction only); the shots show the spell burst and the hit on Mario.",
+      "debug": "warp=hos_00:0 story=ch0_toad_town battle=BTL_HOS_FORMATION_03:BTL_HOS_STAGE_02 battlef=100 cheats=hp autoa fspk shots loglevel=debug",
+      "until": "fspk: done hit f\\d+",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: hos_00 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "battle",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "hit",
+          "regex": "fspk: mark shape_spell hit"
+        }
+      ],
+      "reason": "Cap 45: battle load at f100, Mario's jump turn and the Magikoopa cast (about 25 s game time at autoa); the until line is the end of the 48-frame window after the hit."
     },
     {
       "name": "magi_hit",

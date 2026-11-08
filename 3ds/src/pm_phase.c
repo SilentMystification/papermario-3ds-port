@@ -15,6 +15,8 @@
 
 int pm_ph_on;
 int pm_ph_cen; /* PERF1: phase mode (pm_port.h) */
+int pm_cen_lines; /* PROF2-3 (pm_port.h) */
+static int cen_want; /* PROF2-3: switch census */
 int pm_ph_fine;
 unsigned pm_ph_cnt[C_N];
 static unsigned prev_cnt[C_N]; /* counters of the last finished frame: pm_ph_cnt is zero again at the next frame begin */
@@ -57,15 +59,16 @@ static const char* const ab_words[] = { "base", "phasegbi" }; /* rule 19: a stat
 static int ab_st[BK_N], ab_n, ab_every, ab_cur, ab_steps, ab_skip, ab_seq;
 static int sc_mode = -1, sc_area = -1, sc_map = -1; /* the scene of the open buckets */
 static int cur_mode = -1, cur_area = -1, cur_map = -1; /* set by the game hooks */
+static int pf_scene_seen; /* PROF2-6: 0 after a scene event (mode, map, window start) until the prof scene note. Zero-initialised (.bss): a .data word would move the initialised data of the image */
 unsigned pm_ph_gpu_us[2];
 unsigned pm_ph_cmd_pm;
 unsigned pm_ph_kick_n, pm_ph_kick_us, pm_ph_draws, pm_ph_iv, pm_ph_hud_us; /* PI4, PI5: per frame, reset in pm_ph_frame_end */
 
-void pm_ph_scene_mode(int mode) { cur_mode = mode; }
+void pm_ph_scene_mode(int mode) { cur_mode = mode; pf_scene_seen = 0; }
 static void fs_win_reset(void);
 void pm_gbi_win_reset(void);
 /* CAP1: a map load starts the opsplit, mr0, ms0 and fsplit windows */
-void pm_ph_scene_map(int area, int map) { cur_area = area; cur_map = map; pm_gbi_win_reset(); fs_win_reset(); }
+void pm_ph_scene_map(int area, int map) { cur_area = area; cur_map = map; pf_scene_seen = 0; pm_gbi_win_reset(); fs_win_reset(); }
 void pm_ph_scene_get(int* mode, int* area, int* map) { *mode = cur_mode; *area = cur_area; *map = cur_map; }
 void pm_ph_gpu_note(void) {
     if (!pm_ph_on) return;
@@ -78,6 +81,7 @@ static void ab_apply(int st, int announce) {
     for (int i = 1; i < (int)(sizeof ab_words / sizeof *ab_words); i++) pm_log_switch(ab_words[i], 0);
     if (st > 0) pm_log_switch(ab_words[st], 1);
     pm_ph_fine = pm_ph_on && (st == 1 || pm_debug_has("phasegbi"));
+    pm_walk_dbg_set();
     if (announce) pm_log_hw("abtog %d %s f%u", ab_seq, ab_words[st], frame_no);
     ab_seq++;
 }
@@ -313,6 +317,8 @@ static Result pf_rc; /* last svc result of the counter edges */
 static u64 pf_base[3]; /* PF3: PMN0, PMN1, CCNT at the last sample end. Zero at init (the counters are reset there). */
 static unsigned long long pf_pe[3]; /* PF3: clean-interval sums of PMN0, PMN1, CCNT in the window */
 static unsigned pf_pfr, pf_run; /* PF3: clean frames summed in the window; clean frames since the last sample end */
+unsigned pm_pf_late;
+static unsigned pf_svc0, pf_csvc, pf_ssvc; /* PROF2-1: pm_svc_n at the last pm_pf_frame; window sums of the svc tick reads in clean and in sampled frames */
 /* PF3: one svc per register. The counters are not reset here, so each edge is a plain read. */
 static void pf_pmu_read(u64 out[3]) {
     pf_rc = svcControlPerformanceCounter(&out[0], PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_0, 0);
@@ -326,7 +332,7 @@ void pm_pf_nd_add(unsigned long long ticks, unsigned legacy) { pf_nd_t += ticks;
 /* PROF: the scene of the window. Every prof line of a window ends with it, so runs of one room or event compare by key (map, mode, story, battle).
  * A scene change inside a window drops the window and starts a new one, so chg stays 0 (kept in the line for older readers). */
 void pm_prof_where(const char** name, int* story, int* btl, int* entry, float pos[3]); /* pm_route.c */
-static int pf_sc[3] = { -1, -1, -1 }, pf_chg;
+static int pf_sc[3] = { -1, -1, -1 };
 static float pf_pos0[3]; /* Mario position at the first frame of the window */
 /* CORE2-2 premise: on the N3DS, can the game create a thread on core 2 (the planned walker thread)? One short thread at prof start
  * stores its processor id; the line says created and the id, or refused. */
@@ -349,9 +355,10 @@ static void pf_reset(void) {
     pm_au_pf_sum = 0; pm_au_pf_max = 0;
     { uint64_t ct[NDT_N]; pm_gpu_ndt_take(ct); } /* PERF1: the class timers start with the window (a tour window, a scene change) */
     pf_nd_t = 0; pf_leg = 0;
-    pf_sc[0] = pf_sc[1] = pf_sc[2] = -1; pf_chg = 0; /* the next window starts in the scene now */
+    pf_sc[0] = pf_sc[1] = pf_sc[2] = -1; /* the next window starts in the scene now */
     pf_pe[0] = pf_pe[1] = pf_pe[2] = 0;
     pf_pfr = 0;
+    pf_csvc = pf_ssvc = 0;
     pf_wsum = pf_wmax = pf_wksum = 0;
     pf_wn = pf_wkn = pf_o34 = pf_w = 0;
     memset(pf_iv, 0, sizeof pf_iv);
@@ -361,6 +368,7 @@ static void pf_reset(void) {
     pf_dlc_t = 0;
     pf_vb0 = C3D_FrameCounter(0);
     pf_st0 = pm_step_calls;
+    pf_scene_seen = 0; /* PROF2-6: the next drawn frame notes the scene and the start position */
 }
 /* PROF: the harness placed Mario (pos= switch, pm_warp.c pm_pos_log): a new window starts at the placed position */
 void pm_ph_scene_moved(void) { pf_reset(); }
@@ -377,57 +385,75 @@ static void pf_scene_note(void) {
     }
     else if (pf_sc[0] != cur_area || pf_sc[1] != cur_map || pf_sc[2] != cur_mode) { pf_reset(); pf_scene_note(); } /* the scene changed: drop the window, start again in the new scene */
 }
-static void pf_where(char* o, unsigned n) {
+/* PROF2-4: the report lines carry integers. A time is ms x 100 (printed %u.%02u) from u64 ticks, TICKS_MS 268112; no double. Each line is at
+ * most 16 argument words with no refused conversion, so the log queue copies its words (pm_logfmt.h lf_scan) and the writer formats it:
+ * the game thread makes no vsnprintf. Cold: once per window. */
+#define PF_TPM 268112ull /* ticks per ms */
+static unsigned pf_cs(unsigned long long ticks, unsigned n) { /* mean ms x 100 of n frames */
+    return n ? (unsigned)(ticks * 100ull / ((unsigned long long)n * PF_TPM)) : 0u;
+}
+static unsigned pf_fcs(float ms, float n) { return ms > 0.f ? (unsigned)(ms * 100.f / n + 0.5f) : 0u; } /* a float ms sum (phase record) as ms x 100 */
+static int pf_ri(float x) { return (int)(x < 0.f ? x - 0.5f : x + 0.5f); }
+static const char* const pf_disp[8] = { "w0 s0 f30", "w0 s0 f60", "w0 s1 f30", "w0 s1 f60", "w1 s0 f30", "w1 s0 f60", "w1 s1 f30", "w1 s1 f60" };
+/* The scene line: the static map name, positions rounded to integers, the display mode as one static string. chg is always 0 (a scene change
+ * drops the window), kept in the text for older readers. */
+static void pf_where_line(void) {
     const char* nm = "?"; int story = 0, btl = 0, en = 0; float pos[3] = { 0.f, 0.f, 0.f };
     if (cur_area >= 0 && cur_map >= 0) pm_prof_where(&nm, &story, &btl, &en, pos);
     extern int pm_wide; int pm_gpu_stereo_flag(void); /* disp: the display mode at print time (read only) */
-    snprintf(o, n, " at %s %d:%d m%d sp%d b%d e%d chg%d pos0 %.0f %.0f %.0f pos %.0f %.0f %.0f disp w%d s%d f%d", nm, cur_area, cur_map, cur_mode, story, btl, en, pf_chg, pf_pos0[0], pf_pos0[1], pf_pos0[2], pos[0], pos[1], pos[2], pm_wide, pm_gpu_stereo_flag(), pm_interp_on > 0 ? 60 : 30);
+    unsigned dm = (pm_wide ? 4u : 0u) | (pm_gpu_stereo_flag() ? 2u : 0u) | (pm_interp_on > 0 ? 1u : 0u);
+    pm_log_prof_line("prof f%u w%u at %s %d:%d m%d sp%d b%d e%d chg0 pos0 %d %d %d pos %d %d %d disp %s", pf_total, pf_w, nm, cur_area, cur_map, cur_mode,
+        story, btl, en, pf_ri(pf_pos0[0]), pf_ri(pf_pos0[1]), pf_ri(pf_pos0[2]), pf_ri(pos[0]), pf_ri(pos[1]), pf_ri(pos[2]), pf_disp[dm]);
 }
 static void pf_report(void) {
-    char wh[160];
-    pf_where(wh, sizeof wh);
-    unsigned long long vb = C3D_FrameCounter(0) - pf_vb0;
-    float fps = vb ? (float)pf_w * 60.f / (float)vb : 0.f;
-    float ft = pf_wn ? (float)((double)pf_wsum / pf_wn / TICKS_MS) : 0.f;
-    float wk = pf_wkn ? (float)((double)pf_wksum / pf_wkn / TICKS_MS) : 0.f;
-    float fts = pf_sw_n ? (float)((double)pf_sw_fts / pf_sw_n / TICKS_MS) : 0.f;
-    float wks = pf_s ? (float)((double)pf_sw_wks / pf_s / TICKS_MS) : 0.f;
-    float oh = wks - wk; /* ms that the sampled timers add to one sampled frame */
-    unsigned amort = oh > 0.f ? (unsigned)(oh * 1000.f / (float)pf_every) : 0u; /* us per drawn frame */
+    unsigned vb = (unsigned)(C3D_FrameCounter(0) - pf_vb0);
+    unsigned fps10 = vb ? pf_w * 600u / vb : 0u; /* fps x 10 */
+    unsigned ft = pf_cs(pf_wsum, pf_wn), wk = pf_cs(pf_wksum, pf_wkn), fts = pf_cs(pf_sw_fts, pf_sw_n), wks = pf_cs(pf_sw_wks, pf_s);
+    unsigned mx10 = (unsigned)(pf_wmax * 10ull / PF_TPM); /* max ms x 10 */
+    int oh = (int)wks - (int)wk; /* ms x 100 that the sampled timers add to one sampled frame */
+    unsigned oha = oh < 0 ? (unsigned)-oh : (unsigned)oh;
+    unsigned amort = oh > 0 ? (unsigned)oh * 10u / pf_every : 0u; /* us per drawn frame: oh ms x 1000 / N */
     float sn = pf_s ? (float)pf_s : 1.f;
     unsigned e0 = pf_pfr ? (unsigned)(pf_pe[0] / pf_pfr) : 0u; /* PMN0 per clean frame */
     unsigned e1 = pf_pfr ? (unsigned)(pf_pe[1] / pf_pfr) : 0u; /* PMN1 per clean frame */
     unsigned cy = pf_pfr ? (unsigned)(pf_pe[2] / pf_pfr) : 0u; /* CCNT per clean frame */
     unsigned p0 = pf_pe[2] ? (unsigned)(pf_pe[0] * 1000ull / pf_pe[2]) : 0u; /* permille of cycles */
     unsigned p1 = pf_pe[2] ? (unsigned)(pf_pe[1] * 1000ull / pf_pe[2]) : 0u;
-    pm_log_prof_line("prof f%u w%u fps %.1f | ft %.2f max %.1f o34 %u wk %.2f | s%u fts %.2f wks %.2f oh %.2f amort %u | gbi %.2f dlc %.2f tex %.2f gpu %.2f | st %u vb %u iv %u %u %u %u",
-             pf_total, pf_w, fps, ft, (float)pf_wmax / TICKS_MS, pf_o34, wk, pf_s, fts, wks, oh, amort,
-             pf_sms[0] / sn, (float)((double)pf_dlc_t / TICKS_MS) / sn, pf_sms[1] / sn, pf_sms[2] / sn,
-             pm_step_calls - pf_st0, (unsigned)vb, pf_iv[0], pf_iv[1], pf_iv[2], pf_iv[3]);
-    /* PERF1: the counters on their own line (the 256 byte log slot cut the D-cache field off the line above) */
+    unsigned gbi = pf_fcs(pf_sms[0], sn), tex = pf_fcs(pf_sms[1], sn), gpu = pf_fcs(pf_sms[2], sn), dlc = pf_cs(pf_dlc_t, pf_s);
+    pm_log_prof_line("prof f%u w%u fps %u.%u | ft %u.%02u max %u.%u o34 %u wk %u.%02u", pf_total, pf_w, fps10 / 10u, fps10 % 10u,
+        ft / 100u, ft % 100u, mx10 / 10u, mx10 % 10u, pf_o34, wk / 100u, wk % 100u);
+    /* PROF2-1: the self-check csvc (svc tick reads of all clean frames of the window, target 0) and ssvc (per sampled frame) next to oh and amort */
+    pm_log_prof_line("prof f%u w%u s%u fts %u.%02u wks %u.%02u oh %s%u.%02u amort %u csvc %u ssvc %u", pf_total, pf_w, pf_s, fts / 100u, fts % 100u,
+        wks / 100u, wks % 100u, oh < 0 ? "-" : "", oha / 100u, oha % 100u, amort, pf_csvc, pf_s ? pf_ssvc / pf_s : 0u);
+    pm_log_prof_line("prof f%u w%u ph gbi %u.%02u dlc %u.%02u tex %u.%02u gpu %u.%02u | st %u vb %u iv %u %u %u %u", pf_total, pf_w,
+        gbi / 100u, gbi % 100u, dlc / 100u, dlc % 100u, tex / 100u, tex % 100u, gpu / 100u, gpu % 100u,
+        pm_step_calls - pf_st0, vb, pf_iv[0], pf_iv[1], pf_iv[2], pf_iv[3]);
+    /* PERF1: the counters on their own line */
     pm_log_prof_line("prof f%u w%u pmu %c %u %u cyc %u pm %u %u", pf_total, pf_w, pf_set, e0, e1, cy, p0, p1);
     { /* PERF1: ms per sampled frame of each producer class (exclusive, nd.h NDT_*); rest = gbi less the classes (the walker ops, state, other lists) */
         uint64_t ct[NDT_N]; pm_gpu_ndt_take(ct);
-        float cm[NDT_N], csum = 0.f;
-        for (int k = 0; k < NDT_N; k++) { cm[k] = (float)((double)ct[k] / TICKS_MS) / sn; csum += cm[k]; }
-        pm_log_prof_line("prof f%u w%u cls rec %.2f ent %.2f spr %.2f dlc %.2f sub %.2f rest %.2f", pf_total, pf_w,
-            cm[NDT_REC], cm[NDT_ENT], cm[NDT_SPR], cm[NDT_DLC], cm[NDT_SUB], pf_sms[0] / sn - csum);
+        unsigned cm[NDT_N], csum = 0;
+        for (int k = 0; k < NDT_N; k++) { cm[k] = pf_cs(ct[k], pf_s); csum += cm[k]; }
+        int rest = (int)gbi - (int)csum; unsigned ra = rest < 0 ? (unsigned)-rest : (unsigned)rest;
+        pm_log_prof_line("prof f%u w%u cls rec %u.%02u ent %u.%02u spr %u.%02u dlc %u.%02u sub %u.%02u rest %s%u.%02u", pf_total, pf_w,
+            cm[NDT_REC] / 100u, cm[NDT_REC] % 100u, cm[NDT_ENT] / 100u, cm[NDT_ENT] % 100u, cm[NDT_SPR] / 100u, cm[NDT_SPR] % 100u,
+            cm[NDT_DLC] / 100u, cm[NDT_DLC] % 100u, cm[NDT_SUB] / 100u, cm[NDT_SUB] % 100u, rest < 0 ? "-" : "", ra / 100u, ra % 100u);
     }
     { /* S0-6: stage line. nd: native emit ms per sampled frame. lg: legacy walker (gbi) ms per sampled frame. dr, tc, tw, tri: per drawn frame. leg: LEGACY records per drawn frame. gb: GPU busy ms per sampled frame. */
         unsigned long long pv[6]; pm_gpu_pf_read(pv);
-        float pw = pf_w ? (float)pf_w : 1.f;
-        float gbm = pv[5] ? (float)((double)pv[4] / pv[5] / TICKS_MS) : 0.f;
-        pm_log_prof_line("prof f%u w%u nd %.2f lg %.2f dr %u tc %u tw %u tri %u leg %u gb %.2f",
-            pf_total, pf_w, (float)((double)pf_nd_t / TICKS_MS) / sn, pf_sms[0] / sn,
-            (unsigned)(pv[0] / pw), (unsigned)(pv[1] / pw), (unsigned)(pv[2] / pw), (unsigned)(pv[3] / pw), (unsigned)(pf_leg / pw), gbm);
+        unsigned pw = pf_w ? pf_w : 1u;
+        unsigned nd = pf_cs(pf_nd_t, pf_s), gb = pf_cs(pv[4], (unsigned)pv[5]);
+        pm_log_prof_line("prof f%u w%u nd %u.%02u lg %u.%02u dr %u tc %u tw %u tri %u leg %u gb %u.%02u", pf_total, pf_w, nd / 100u, nd % 100u,
+            gbi / 100u, gbi % 100u, (unsigned)(pv[0] / pw), (unsigned)(pv[1] / pw), (unsigned)(pv[2] / pw), (unsigned)(pv[3] / pw), pf_leg / pw,
+            gb / 100u, gb % 100u);
         /* S0-8: frame budget targets (docs/handoff/frame_budget.md, phase off ms) next to the measured nd, lg and gb of this window. */
-        pm_log_prof_line("prof f%u w%u budget tgt logic 3.3 dl 4.4 nd 2.0 fe 1.5 au 0.5 cpu 11.7 slack 5.0 gb 14.0 frame 16.7 | meas nd %.2f lg %.2f gb %.2f",
-            pf_total, pf_w, (float)((double)pf_nd_t / TICKS_MS) / sn, pf_sms[0] / sn, gbm);
-        pm_log_prof_line("prof f%u w%u%s", pf_total, pf_w, wh); /* the scene line: the first line is too long to carry it (256 byte log slot) */
-        /* U1: the writer heartbeat count (grows only while the queue runs). CORE2-0: aujoin_us = game thread audio join wait per drawn frame,
-         * aujoin_max = longest single join (us). */
+        pm_log_prof_line("prof f%u w%u budget tgt logic 3.3 dl 4.4 nd 2.0 fe 1.5 au 0.5 cpu 11.7 slack 5.0 gb 14.0 frame 16.7 | meas nd %u.%02u lg %u.%02u gb %u.%02u",
+            pf_total, pf_w, nd / 100u, nd % 100u, gbi / 100u, gbi % 100u, gb / 100u, gb % 100u);
+        pf_where_line(); /* the scene line */
+        /* U1: the writer heartbeat count (grows only while the queue runs). CORE2-0: aujoin_us = game thread audio join wait per sampled frame
+         * (PROF2-1: timed in sampled frames only), aujoin_max = longest single join (us). */
         pm_log_prof_line("prof f%u w%u writer beats %u | aujoin_us %u aujoin_max %u", pf_total, pf_w, pm_log_writer_hb(),
-            pf_w ? (unsigned)(pm_au_pf_sum * 1000ull / 268112ull / pf_w) : 0u, (unsigned)((unsigned long long)pm_au_pf_max * 1000ull / 268112ull));
+            pf_s ? (unsigned)(pm_au_pf_sum * 1000ull / PF_TPM / pf_s) : 0u, (unsigned)((unsigned long long)pm_au_pf_max * 1000ull / PF_TPM));
     }
     pf_reset();
 }
@@ -445,6 +471,7 @@ static void pf_arm(void) {
     pf_samp = 1;
     cold_need(); /* SPRFIX: pm_ph_frame_end reads cold->win for a sampled frame; prof mode 1 never allocates cold otherwise (NULL read at pf_take) */
     pm_ph_on = 1;
+    pm_walk_dbg_set();
 }
 /* PF2: one sampled frame, at its end. r is the frame record: it is not stored in the phase window. */
 static void pf_take(const Rec* r) {
@@ -455,6 +482,12 @@ static void pf_take(const Rec* r) {
 }
 void pm_pf_frame(unsigned long long t0, unsigned long long t1) {
     int cur_s = pf_samp; /* this drawn frame is a sample */
+    unsigned sv = pm_svc_n; /* PROF2-1: the tick reads since the last call belong to this frame (a sample's arm read is in its own interval) */
+    if (!pf_total) pf_svc0 = sv; /* the boot reads are not a frame */
+    unsigned late = pm_pf_late; /* the GPU done read of the last sample (pm_gpu.c gb), made at the next frame begin */
+    pm_pf_late = 0;
+    if (cur_s) pf_ssvc += sv - pf_svc0; else { pf_csvc += sv - pf_svc0 - late; pf_ssvc += late; }
+    pf_svc0 = sv;
     if (!pf_total) { pf_vb0 = C3D_FrameCounter(0); pf_st0 = pm_step_calls; }
     if (pf_last) { /* wall of the previous drawn frame: its start to this start */
         unsigned long long w = t0 - pf_last;
@@ -467,6 +500,7 @@ void pm_pf_frame(unsigned long long t0, unsigned long long t1) {
     if (cur_s) { /* sample end: its work, then the phase timers off again */
         pf_s++; pf_sw_wks += wk;
         pf_samp = 0; pm_ph_on = 0; pf_cd = pf_every - 1;
+        pm_walk_dbg_set();
         pf_pmu_read(pf_base); pf_run = 0;
     } else {
         pf_wksum += wk; pf_wkn++; pf_run++;
@@ -477,7 +511,7 @@ void pm_pf_frame(unsigned long long t0, unsigned long long t1) {
     pf_total++;
     pf_w++;
     if (pf_tour) return; /* TOUR1: the tour opens and closes the window */
-    pf_scene_note();
+    if (!pf_scene_seen) { pf_scene_seen = 1; pf_scene_note(); } /* PROF2-6: only after a scene event (pm_ph_scene_map, pm_ph_scene_mode, pf_reset), one flag test per frame */
     if (pf_w >= 300) pf_report();
 }
 void pm_ph_window_open(const char* label) {
@@ -508,10 +542,13 @@ static void pf_start(void) {
     unsigned p0 = pm_ticks();
     for (int i = 0; i < 50; i++) pf_rc = svcControlPerformanceCounter(&out, PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_0, 0);
     unsigned p1 = pm_ticks();
-    double pmu_us = (double)(p1 - p0) / 50.0 / 268.112;
+    unsigned tick_c = (unsigned)((unsigned long long)dt * 100000ull / (200ull * 268112ull)); /* us x 100 per read */
+    unsigned pmu_c = (unsigned)((unsigned long long)(p1 - p0) * 100000ull / (50ull * 268112ull));
+    unsigned base_c = 6u * pmu_c / pf_every; /* two 3-register reads per N frames */
     { static int c2_done; if (!c2_done) { c2_done = 1; c2_probe(); } } /* PERF1: the core-1 load probe is gone (it spun on the GSP and DSP core); the core 2 probe line stays */
-    pm_log_prof_line("prof cal every %u set %c tick %.2f us pmu %.2f us base %.2f us rc %08x", pf_every, pf_set, (double)dt / 200.0 / 268.112,
-             pmu_us, 6.0 * pmu_us / (double)pf_every, (unsigned)pf_rc);
+    pm_log_prof_line("prof cal every %u set %c tick %u.%02u us pmu %u.%02u us base %u.%02u us rc %08x", pf_every, pf_set, tick_c / 100u, tick_c % 100u,
+             pmu_c / 100u, pmu_c % 100u, base_c / 100u, base_c % 100u, (unsigned)pf_rc);
+    pf_svc0 = pm_svc_n; /* PROF2-1: the svc count starts after the calibration reads */
 }
 
 int pm_debug_mode(const char* key); /* CFG-1, pm_log.c */
@@ -531,6 +568,7 @@ int pm_dcs_on; /* DS0: switch dcsum. Only the sampled draw and flush timers and 
 void pm_ph_log_gate(int on) {
     pm_ph_on = on && ph_want;
     pm_ph_cen = pm_ph_on;
+    pm_cen_lines = on && (pm_ph_cen || cen_want);
     pm_pf_on = on && pf_want;
     pm_pf_arm = pm_pf_on && !ph_want;
     if (!on) pf_samp = 0;
@@ -538,6 +576,7 @@ void pm_ph_log_gate(int on) {
     pm_ph_fine = pm_ph_on && pm_debug_has("phasegbi");
     if (on && fs_want && !pm_fs_on) fs_arm();
     pm_fs_on = on && fs_want;
+    pm_walk_dbg_set();
 }
 
 /* PROFROW: the phase timers start from now (boot, and a row change to phase). */
@@ -556,6 +595,8 @@ void pm_ph_init(void) {
     ph_want = pm_debug_mode("phase") == 1 || ps_on; /* CFG-1: phase=off or phase=0 turns the phase timers off */
     pm_ph_on = ph_want && pm_log_file();
     pm_ph_cen = pm_ph_on;
+    cen_want = pm_debug_has("census");
+    pm_cen_lines = pm_log_file() && (pm_ph_cen || cen_want);
     dcs_want = pm_debug_has("dcsum");
     pm_dcs_on = dcs_want && pm_log_file();
     ps_init(); /* only parses the abtog switch, so it runs even while logging is off */
@@ -567,6 +608,7 @@ void pm_ph_init(void) {
     pmu_init();
     pf_init();
     pm_pf_arm = pm_pf_on && !ph_want;
+    pm_walk_dbg_set();
     if (!pm_ph_on) return;
     /* cost of the switch lookup that the game path makes per call (strstr over the switch string) */
     unsigned t0 = pm_ticks();

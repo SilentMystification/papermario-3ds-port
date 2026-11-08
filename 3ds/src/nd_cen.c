@@ -71,8 +71,8 @@ int pm_gbi_ndref_frame(void) {
     char v[16];
     return pm_debug_value("ndref", v, sizeof v) ? atoi(v) : -1;
 }
-void pm_gbi_draw_note(int native) { /* WCEN3: one GPU draw of the walker (native 0) or a native draw, counted to the producer under the cursor */
-    if (!pm_ph_on) return;
+void pm_gbi_draw_note(int native) { /* WCEN3: one GPU draw of the walker (native 0) or a native draw, counted to the producer under the cursor (phase mode) */
+    if (!pm_ph_cen) return;
     if (native) pk_nd[pmx_cur]++; else { pk_wd[pmx_cur]++; unsigned w_ = pm_gpu_cen_why(); pk_wdw[pmx_cur][w_ < CW_NW ? w_ : 0]++; }
 }
 void pm_gbi_prod_mark(unsigned a) { /* called by pm_interp_open under phase */
@@ -494,7 +494,7 @@ void pm_gbi_end_frame(void) {
              n_cmd, n_in, n_cut, n_drop, n_out, n_keep, have_sample ? sample_x : 0, n_splits, pm_gpu_off_count(), n_grabs);
     PH_ADD(C_CMD, n_ops);
     { static unsigned dlc_fr; if (dlc_on && ++dlc_fr >= 300) { dlc_fr = 0; dlc_report(); } }
-    if (pm_ph_on || pm_dcs_on) pm_gpu_dcsum_frame(rm_frame); /* DS0: dcsum runs without phase; it must clear pm_dc_c and pm_dc_us every frame */
+    if (pm_ph_cen || pm_dcs_on) pm_gpu_dcsum_frame(rm_frame); /* DS0: dcsum runs without phase; it must clear pm_dc_c and pm_dc_us every frame */
     if (pm_ph_cen) { if (os_fr == 0) os_calibrate(); mdc_frame_end(); if (++os_fr >= 300) { os_report(); mdc_report(); sp0_report(); os_fr = 0; } pmk_n = 0; }
     n_ops = 0;
     ep_flush_stats(); gv_epoch++; ep_open = 0;
@@ -575,7 +575,7 @@ void gv_streak_flush(void) {
 }
 void gv_streak_op(unsigned op) {
     if (op == G_TRI1 || op == G_TRI2) {
-        if (pm_ph_on && !gv_run) { gv_run = 1; if (ph_pick()) { gv_streak_t0 = pm_ticks(); gv_streak = 1; } }
+        if (pm_ph_cen && !gv_run) { gv_run = 1; if (ph_pick()) { gv_streak_t0 = pm_ticks(); gv_streak = 1; } }
     } else
         gv_streak_flush();
 }
@@ -589,7 +589,7 @@ void tex_streak_flush(void) {
 }
 void tex_streak_op(unsigned op) {
     if (op == G_SETTIMG || op == G_SETTILE || op == G_SETTILESIZE || op == G_LOADTILE || op == G_LOADBLOCK || op == G_LOADTLUT || op == G_TEXTURE ) {
-        if (pm_ph_on && !tex_run) { tex_run = 1; if (ph_pick()) { tex_streak_t0 = pm_ticks(); tex_streak = 1; } }
+        if (pm_ph_cen && !tex_run) { tex_run = 1; if (ph_pick()) { tex_streak_t0 = pm_ticks(); tex_streak = 1; } }
     } else
         tex_streak_flush();
 }
