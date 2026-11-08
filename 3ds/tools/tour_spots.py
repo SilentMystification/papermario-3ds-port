@@ -15,10 +15,15 @@ Method:
   Mario can reach, so the grid replaces them.)
 - Standable: the 4 grid neighbours have floor within STEP_DY of the candidate height, and no
   wall triangle cuts the segment to them at knee and head height.
+- Camera: the camera zone under the spot (hit file zone section, CameraControlSettings) gives the view
+  direction (fixed orientation A->B, look at point, between points) and the boom; no zone: toward -z.
+  A zone that does not keep Mario in frame (fixed position, frozen line) rejects the spot.
+- Visible: no model triangle cuts the segments from Mario (12 and 30 units up) to the camera eye;
+  a spot behind a foreground tree or bush is rejected.
 - Outdoors: a vertical ray up from the candidate meets no collision or model triangle between
   ROOF_GAP and ROOF_H units above it (inside a building or under a roof is rejected).
 - Score: content = models (box centre) plus ENT_W times entities/NPCs (map source positions) inside
-  the default camera view box around the candidate; score = content / the best content of the map
+  the view box of the zone camera around the candidate; score = content / the best content of the map
   minus DIST_W times the distance to the floor centre over the floor radius. Best candidate wins.
 - A map with floor but no outdoor candidate takes the best standable candidate with ROOF_MIN
   clearance (reason "indoor"). No floor or no standable candidate: entry 0 (reason given).
@@ -56,6 +61,7 @@ VIEW_ZB = 380.0                  # toward the back (-z)
 VIEW_ZF = 120.0                  # toward the camera (+z)
 VIEW_YD = 80.0
 VIEW_YU = 300.0
+CAM_UP_BASE = 20.0               # camera target height over Mario's feet (the eye is boom length back at boom pitch)
 DIST_W = 0.5                     # score = content / best content - DIST_W * distance to the floor centre / floor radius
 ENT_W = 2.0
 
@@ -149,6 +155,61 @@ def read_hit(path):
         return None
     idx = np.array(tris, dtype=np.int64)
     return verts[idx], np.array(flags, dtype=np.int64)
+
+
+def read_zones(path):
+    """Camera zones of the hit file (zone section): list of (settings, tris). For a zone the bounding box offset points
+    at its CameraControlSettings (common_structs.h): type, boomLength, boomPitch, points A B (6 floats), viewPitch, flag."""
+    b = open(path, "rb").read()
+    zo = struct.unpack_from(">I", b, 4)[0]
+    if zo == 0:
+        return []
+    nc, c_off, nv, v_off, nbb, bb_off = struct.unpack_from(">h2xih2xih2xi", b, zo)
+    verts = np.array(struct.unpack_from(">%dh" % (nv * 3), b, v_off), dtype=np.float64).reshape(nv, 3)
+    out = []
+    for i in range(nc):
+        bbo, _, _, nt, t_off = struct.unpack_from(">hhhhi", b, c_off + i * 12)
+        if nt <= 0 or bbo < 0:
+            continue
+        cs = struct.unpack_from(">i2f6ffi", b, bb_off + bbo * 4)
+        idx = [(p & 0x3FF, (p >> 10) & 0x3FF, (p >> 20) & 0x3FF) for p in struct.unpack_from(">%dI" % nt, b, t_off)]
+        out.append((cs, verts[np.array(idx, dtype=np.int64)]))
+    return out
+
+
+def camera_at(p, zones):
+    """Camera of the zone under p (highest zone floor at or below p y + 50, as test_ray_zones casts down):
+    (forward unit vector in x z, boom length, boom pitch in degrees, follows). Follows is False for the zone types
+    that do not keep Mario in frame (fixed position, frozen line)."""
+    best = None
+    for cs, tr in zones:
+        y = floor_at(p[0], p[2], p[1] + 50.0, tr)
+        if y is not None and (best is None or y > best[0]):
+            best = (y, cs)
+    fwd = np.array([0.0, -1.0])
+    if best is None:
+        return fwd, 450.0, 15.0, True
+    typ, boom, pitch, ax, ay, az, bx, by, bz, vpitch, flag = best[1]
+    follows = True
+    if typ == 0:                      # CAM_CONTROL_FIXED_ORIENTATION: yaw along A -> B
+        d = np.array([bx - ax, bz - az])
+        if np.hypot(*d) > 1e-3:
+            fwd = d / np.hypot(*d)
+        follows = flag == 0
+    elif typ == 1:                    # LOOK_AT_POINT: toward point A (away with a negative boom)
+        d = np.array([ax - p[0], az - p[2]]) * (1.0 if boom >= 0 else -1.0)
+        if np.hypot(*d) > 1e-3:
+            fwd = d / np.hypot(*d)
+    elif typ in (2, 4, 5):            # constrained to a line or fixed: Mario need not be in frame
+        follows = typ != 4 and flag == 0
+    elif typ == 6:                    # between points: yaw perpendicular to A B, facing -z side
+        d = np.array([bz - az, -(bx - ax)])
+        if np.hypot(*d) > 1e-3:
+            fwd = d / np.hypot(*d)
+            if fwd[1] > 0:
+                fwd = -fwd
+        follows = flag == 0
+    return fwd, abs(boom) if boom else 450.0, pitch, follows
 
 
 def tri_normals(t):
@@ -432,11 +493,22 @@ def spot_for_map(name):
         mc = np.zeros((0, 3))
     ents = content_points(srcs)
 
-    def view_count(p, pts):
+    zones = read_zones(hp)
+    cams = {}
+
+    def cam(k):
+        if k not in cams:
+            cams[k] = camera_at(P[k], zones)
+        return cams[k]
+
+    def view_count(p, pts, fwd):
+        """Points inside the view box of the camera looking along fwd (x z) at p."""
         if len(pts) == 0:
             return 0
         dx, dy, dz = pts[:, 0] - p[0], pts[:, 1] - p[1], pts[:, 2] - p[2]
-        return int(((np.abs(dx) <= VIEW_X) & (dz >= -VIEW_ZB) & (dz <= VIEW_ZF) & (dy >= -VIEW_YD) & (dy <= VIEW_YU)).sum())
+        f = dx * fwd[0] + dz * fwd[1]
+        r = dx * fwd[1] - dz * fwd[0]
+        return int(((np.abs(r) <= VIEW_X) & (f <= VIEW_ZB) & (f >= -VIEW_ZF) & (dy >= -VIEW_YD) & (dy <= VIEW_YU)).sum())
 
     def standable(i):
         ix, iz, y = nodes[i]
@@ -450,32 +522,59 @@ def spot_for_map(name):
                     return False
         return True
 
-    content = np.array([view_count(p, mc) + ENT_W * view_count(p, ents) for p in P], dtype=np.float64)
+    content = np.array([view_count(P[k], mc, cam(k)[0]) + ENT_W * view_count(P[k], ents, cam(k)[0]) for k in range(len(P))], dtype=np.float64)
     dist = np.hypot(P[:, 0] - fc[0], P[:, 2] - fc[2]) / radius
     sc_all = content / max(content.max(), 1.0) - DIST_W * dist
     scored = [(float(sc_all[k]), k) for k in range(len(idx))]
     scored.sort(key=lambda t: -t[0])
 
-    def pick(clear):
-        for sc, k in scored:
+    def visible(k):
+        """The zone camera keeps Mario in frame, and no model triangle cuts the segments from Mario (12 and 30 units up)
+        to the camera eye (foreground trees and bushes)."""
+        fwd, boom, pitch, follows = cam(k)
+        if not follows:
+            return False
+        p = P[k]
+        a = np.radians(pitch)
+        eye = p + np.array([-fwd[0] * boom * np.cos(a), CAM_UP_BASE + boom * np.sin(a), -fwd[1] * boom * np.cos(a)])
+        return not any(seg_hits(p + np.array([0.0, h, 0.0]), eye, mtris) for h in (12.0, 30.0))
+
+    memo = {}
+
+    def check(k, what):
+        key = (k, what)
+        if key not in memo:
             p = P[k]
-            roof = covered_height(p[0:1], p[1:2], p[2:3], above)[0] - p[1]
-            if roof >= clear and standable(idx[k]):
-                return sc, k, roof
+            if what == "roof":
+                memo[key] = covered_height(p[0:1], p[1:2], p[2:3], above)[0] - p[1]
+            elif what == "stand":
+                memo[key] = standable(idx[k])
+            else:
+                memo[key] = visible(k)
+        return memo[key]
+
+    def pick(clear, need_vis):
+        for sc, k in scored:
+            if check(k, "roof") >= clear and check(k, "stand") and (not need_vis or check(k, "vis")):
+                return sc, k, check(k, "roof")
         return None
 
-    r = pick(ROOF_H)
-    reason = "outdoor"
-    if r is None:
-        r = pick(ROOF_MIN)
-        reason = "indoor (no spot without geometry above)"
+    # Order: outdoors and seen by the camera, then indoors and seen, then the same without the camera test.
+    r = None
+    for clear, need_vis, why in ((ROOF_H, True, "outdoor"), (ROOF_MIN, True, "indoor (no spot without geometry above)"),
+                                 (ROOF_H, False, "outdoor, camera view blocked or not following"),
+                                 (ROOF_MIN, False, "indoor, camera view blocked or not following")):
+        r = pick(clear, need_vis)
+        if r is not None:
+            reason = why
+            break
     if r is None:
         res["reason"] = "no standable spot"
         return res
     sc, k, roof = r
     p = P[k]
     res.update(pos=(float(p[0]), float(p[1]), float(p[2])), score=float(sc), reason=reason + reach_note,
-               roof=float(roof), models=view_count(p, mc), ents=view_count(p, ents))
+               roof=float(roof), models=view_count(p, mc, cam(k)[0]), ents=view_count(p, ents, cam(k)[0]), cam=cam(k))
     return res
 
 
