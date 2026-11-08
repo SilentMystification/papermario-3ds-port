@@ -976,9 +976,11 @@ def cmd_azstat(a):
                 continue
             if "run_id" not in r or norm_host(r.get("host")) != "azahar" or str(r.get("ts", "")) < since:
                 continue
+            if a.row and str(r.get("row", "")).lower() != a.row.lower():
+                continue
             runs.setdefault((r.get("ts"), r.get("log_path"), r.get("row"), r.get("label")), r)  # the same start in two trees (merged copy) or a tour's records
     rs = list(runs.values())
-    print("azstat since %s: %d Azahar starts (runs.jsonl of %d trees)" % (since, len(rs), len(all_tree_runs_files())))
+    print("azstat since %s%s: %d Azahar starts (runs.jsonl of %d trees)" % (since, " row " + a.row if a.row else "", len(rs), len(all_tree_runs_files())))
     warm = sum(1 for r in rs if r.get("warm") == 1)
     cold = sum(1 for r in rs if r.get("warm") == 0)
     print("  warm %d, cold %d, unknown %d" % (warm, cold, len(rs) - warm - cold))
@@ -987,12 +989,13 @@ def cmd_azstat(a):
     for kind, wv in (("warm", 1), ("cold", 0)):
         print("  boot_s %-4s %s" % (kind, qstats([r.get("boot_s") for r in rs if r.get("warm") == wv])))
     pl = main_folder() / "build3ds" / "azslots" / "pool.log"
+    tree = (os.sep + "wt" + os.sep + a.row.lower()) if a.row else ""  # --row: pool.log lines of the worktree build3ds/wt/<row>
     if not pl.exists():
         print("no pool.log at %s" % pl)
         return 0
     ev = collections.Counter()
     for ln in pl.read_text(encoding="utf-8", errors="replace").splitlines():
-        if ln[:19] < since:
+        if ln[:19] < since or (tree and tree not in ln.lower()):
             continue
         m = re.match(r"^\S+ .*? slot\d+ pid \S+ -> \S+ (.*)$", ln)
         if not m:
@@ -1767,7 +1770,7 @@ def main(argv):
     x = sub.add_parser("trend"); x.add_argument("bench"); x.add_argument("metric", nargs="?"); add_area(x); x.set_defaults(f=cmd_trend)
     x = sub.add_parser("check"); x.add_argument("run_id", type=int); x.set_defaults(f=cmd_check)
     x = sub.add_parser("slow"); x.add_argument("--min", type=float, default=8.0, help="list scenarios with a median until_s above this (AZT11-5)"); x.set_defaults(f=cmd_slow)
-    x = sub.add_parser("azstat"); x.add_argument("--since", default="", help="ISO date or time (default today)"); x.set_defaults(f=cmd_azstat)
+    x = sub.add_parser("azstat"); x.add_argument("--since", default="", help="ISO date or time (default today)"); x.add_argument("--row", default="", help="one row (its runs and the pool.log lines of build3ds/wt/<row>)"); x.set_defaults(f=cmd_azstat)
     x = sub.add_parser("rebuild"); x.set_defaults(f=cmd_rebuild)
     x = sub.add_parser("tour-report"); x.add_argument("run_id", type=int); x.set_defaults(f=cmd_tour_report)
     x = sub.add_parser("tour-curate"); x.add_argument("run_id", type=int); x.add_argument("--slow-ms", type=float, default=33.3)
