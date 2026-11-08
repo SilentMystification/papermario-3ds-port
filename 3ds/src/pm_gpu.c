@@ -2518,12 +2518,12 @@ int pm_gpu_gappend(unsigned i0, unsigned i1, unsigned i2, unsigned g0, unsigned 
     if (gni == 0 || gidx_n + 3 > GRING_IDX || !g_pal) return 0;
     if (ring_cur && gi_kind != 0) return 0; /* FB-1: a static batch on chunk k takes no ring triangles */
     const unsigned r3[3] = { i0, i1, i2 }, g3[3] = { g0, g1, g2 };
-    for (int i = 0; i < 3; i++) {
-        unsigned r = r3[i];
-    if (pm_wide && !off_active && ui_ortho) { /* WIDE1-3: the same edge test as pm_gpu_gtrip, the slow path decides */
+    if (pm_wide && !off_active && ui_ortho) { /* WIDE1-3: the same edge test as pm_gpu_gtrip, the slow path decides (once per triangle) */
         unsigned short t3[3] = { (unsigned short)i0, (unsigned short)i1, (unsigned short)i2 };
         if (g1 != g0 || g2 != g0 || i0 > 0xffffu || i1 > 0xffffu || i2 > 0xffffu || wide_edge_k(pal_tab[g0], t3, 3) != 0) return 0;
     }
+    for (int i = 0; i < 3; i++) {
+        unsigned r = r3[i];
         if (rgen[r] == pal_gen) continue;
         unsigned k; for (k = 0; k < pal_n; k++) if (pal_g[k] == g3[i]) break;
         if (k == pal_n) return 0; /* a matrix that is not in the palette yet: the slow path adds it */
@@ -2562,19 +2562,23 @@ void pm_gpu_note_mvp(const float m[4][4], float sx, float sy, float tx, float ty
     pm_gpu_set_mvp(m, sx, sy, tx, ty);
 }
 
-static int gtrip_batch_open(int use5, const PmFx* fx, const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct,
-                            const unsigned g[3]) {
+/* the open raw batch has the draw parameters of this triangle */
+static int gtrip_params_same(int use5, const PmFx* fx, const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct) {
     if (!g_pal || use5 != g_use5) return 0;
     if (use5 && memcmp(&g_fx, fx, sizeof g_fx)) return 0;
-    if (memcmp(g_uvso, uvso, sizeof(g_uvso)) || memcmp(g_vp, vp, sizeof(g_vp)) || memcmp(g_cmul, cmul, sizeof(g_cmul)) || memcmp(g_cadd, cadd, sizeof(g_cadd)) ||
-        memcmp(g_zmix, zmix, sizeof(g_zmix)) || g_ct != ct)
-        return 0;
+    return !(memcmp(g_uvso, uvso, sizeof(g_uvso)) || memcmp(g_vp, vp, sizeof(g_vp)) || memcmp(g_cmul, cmul, sizeof(g_cmul)) || memcmp(g_cadd, cadd, sizeof(g_cadd)) ||
+             memcmp(g_zmix, zmix, sizeof(g_zmix)) || g_ct != ct);
+}
+#define PAL_NONE 0xffffffffu
+/* the palette entry of each game matrix (PAL_NONE: not in the palette); returns the count of distinct matrices that are not in it */
+static unsigned pal_lookup(const unsigned g[3], unsigned kf[3]) {
     unsigned miss = 0;
     for (int i = 0; i < 3; i++) {
         unsigned k; for (k = 0; k < pal_n; k++) if (pal_g[k] == g[i]) break;
+        kf[i] = k < pal_n ? k : PAL_NONE;
         if (k == pal_n && !(i > 0 && g[i] == g[0]) && !(i > 1 && g[i] == g[1])) miss++;
     }
-    return pal_n + miss <= (use5 ? GPAL5 : GPAL);
+    return miss;
 }
 
 /* GV1c: one triangle of ring vertices ri[3], vertex i with game matrix tab[g[i]]. ro[3] gets the ring indices to use from now on (a vertex whose palette index
@@ -2665,17 +2669,16 @@ int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4
     }
     if (gidx_n + 3 > GRING_IDX) return 0;
     if (!draw_3d) { flush(); draw_3d = 1; }
-    if (gni > 0 && !gtrip_batch_open(use5, fx, vp, uvso, cmul, cadd, zmix, ct, g)) {
-        if (pal_n) { /* count a palette overflow only when the matrices do not fit */
-            unsigned miss = 0;
-            for (int i = 0; i < 3; i++) {
-                unsigned k; for (k = 0; k < pal_n; k++) if (pal_g[k] == g[i]) break;
-                if (k == pal_n && !(i > 0 && g[i] == g[0]) && !(i > 1 && g[i] == g[1])) miss++;
-            }
-            if (pal_n + miss > (use5 ? GPAL5 : GPAL)) gv_palflush++;
+    unsigned kf[3]; /* one palette search per vertex: the fit test and the index assignment below use it */
+    if (gni > 0) {
+        const unsigned miss = pal_lookup(g, kf);
+        const int fits = pal_n + miss <= (use5 ? GPAL5 : GPAL);
+        if (!fits || !gtrip_params_same(use5, fx, vp, uvso, cmul, cadd, zmix, ct)) {
+            if (pal_n && !fits) gv_palflush++; /* a palette overflow: the matrices do not fit */
+            flush();
         }
-        flush();
     }
+    if (gni == 0) kf[0] = kf[1] = kf[2] = PAL_NONE; /* a new batch: an empty palette */
     if (gni == 0) {
         memcpy(g_uvso, uvso, sizeof(g_uvso));
         memcpy(g_vp, vp, sizeof(g_vp));
@@ -2694,8 +2697,12 @@ int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4
     pal_tab = tab;
     unsigned k3[3];
     for (int i = 0; i < 3; i++) {
-        unsigned k; for (k = 0; k < pal_n; k++) if (pal_g[k] == g[i]) break;
-        if (k == pal_n) { pal_g[pal_n++] = g[i]; if (pal_n > gv_palmax) gv_palmax = pal_n; }
+        unsigned k = kf[i];
+        if (k == PAL_NONE) {
+            if (i > 0 && g[i] == g[0]) k = k3[0];
+            else if (i > 1 && g[i] == g[1]) k = k3[1];
+            else { k = pal_n; pal_g[pal_n++] = g[i]; if (pal_n > gv_palmax) gv_palmax = pal_n; }
+        }
         k3[i] = k;
     }
     for (int i = 0; i < 3; i++) {

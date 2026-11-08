@@ -61,11 +61,11 @@ Fix: move each debug block into a cold, noinline function behind one flag test. 
 In load_inner, a load that misses the 256-entry direct index (pm_tex.c:1631) and the recent list (:1643) scans every slot below slot_hi (pm_tex.c:1656). That is up to 1,024 x 136 B = 139,264 B, before load_miss. A true miss always pays the full scan. Every call also hashes the full CI palette, hits included (pm_tex.c:1608-1625).
 Fix: use an open-addressing index keyed by (img, tlut, w, h, fmt, siz, stride, dkey), in the same form as gm_idx (nd_mtx_set.c:47) and tmpl_idx (nd_tmpl.c:300). The table is then never scanned.
 
-**A7 (walker -> ring, S). gappend runs the wide check 3 times per triangle.**
+**[done W5] A7 (walker -> ring, S). gappend runs the wide check 3 times per triangle.**
 In pm_gpu_gappend, the `if (pm_wide && ...)` block is inside the per-vertex loop (pm_gpu.c:2502-2506). It calls wide_edge_k(pal_tab[g0], t3, 3) 3 times per appended triangle. That is 9 vertex transforms instead of 3, and wide_c.ortho counts 3 times too high.
 Fix: move the block above the loop.
 
-**A8 (walker -> ring, M). The palette search runs 3 times per triangle.**
+**[partly done W5] A8 (walker -> ring, M). The palette search runs 3 times per triangle.**
 pm_gpu_gtrip searches pal_g in gtrip_batch_open (pm_gpu.c:2552-2556), again in the copy of the overflow count (:2650-2655), and again in the assignment loop (:2676-2680). gtrip_batch_open also runs 5 memcmp of draw parameters on each call, plus a 304-byte PmFx memcmp for pm5 (:2547-2551). gv_tri already knows that the parameters are unchanged (ep_pepoch, nd_geom.c gv_tri).
 Fix: pass the epoch id instead of the parameters, and search the palette once.
 
@@ -77,7 +77,7 @@ Fix: pm_gpu keeps a plan id (memo index) and the words only.
 sync_combine hashes 11 words (sc_sig_now, nd_comb.c:467-473), then 10 more words (scm_sig, :436-442). scm_find then scans the 16 x 244 B memo by key (:444-447). The sc_sig hash is also copied inline at :582-585 instead of calling sc_sig_now.
 Fix: compute one hash and index the memo by its low bits.
 
-**A11 (walker, S). t1_fold_tri repeats the uv formula per triangle, with divides.**
+**[not done] A11 (walker, S). t1_fold_tri repeats the uv formula per triangle, with divides.**
 t1_fold_tri (nd_comb.c:696-716) calls pm_tex_size and does 6 float divides per vertex on every triangle when ep_t1f is set. It recomputes uv with nd_gv_params's formula in a different operation order (nd_model.c:31-36).
 Fix: use ep_p.uvso (u = tc * uvso.xy + uvso.zw).
 
@@ -142,7 +142,7 @@ Deleting them is a user decision, because CLAUDE.md rule 7 says debug tools may 
 | W2 | A2 one draw key, A5 cold debug blocks out of nd_raw_native | same, plus wcen_mac01 prof=4 gbi phase | done: byte-equal; nd_raw_native 8,996 to 6,332 B, close path 19,288 to 16,832 B; TevKey built only for ndref and drawcensus; nd_tmpl_build repeats the last key with no hash |
 | W3 | A3, A4 pm5 through the shadow | same | done: byte-equal (battle_start_f182 has pm5 draws); the shadow resets only at a program change (prog_use); pm5 uniforms are marked dirty only when they differ from citro3d's copy (u5set, u5mtx); no palk copy for pm5. The 588 B d5 copy stays (nd_emit needs no_uni and loc_uvx) |
 | W4 | B1 ring reuse at 30 fps | same (a ring wrap scenario if one exists, else code trace) | done: byte-equal; no scenario wraps the ring, so the proof is the code trace: C3D_FrameBegin without NONBLOCK calls gxCmdQueueWait(-1) (libcitro3d renderqueue.o disassembly), so ring_done = ring_fr at every begin |
-| W5 | A7, A8, A11 gtrip and gappend lookups | same | open |
+| W5 | A7, A8, A11 gtrip and gappend lookups | same | done for A7 and the palette part of A8: byte-equal; one palette search per vertex (pal_lookup), wide check once per triangle. The parameter memcmp of A8 stays (gtrip has one caller, a later epoch id is a small gain). A11 not done: t1_fold_tri runs only for a TEXEL1 window fold (ep_t1f), and its uv feeds a floor, so the other rounding order could move a fold |
 | W6 | A10, A12, C5 combine hash and switch macros | same | open |
 | W7 | A6 texture slot index | same | open |
 | W8 | B2, B3 seams (pixels change) | before and after shot of the subject, byte-equal elsewhere | open |
