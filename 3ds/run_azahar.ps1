@@ -229,7 +229,7 @@ if (-not $warm -and (Test-Path $pidFile)) {
     $op = Get-Process -Id $old -ErrorAction SilentlyContinue
     # AZT12-3: the keep path leaves the kept Azahar's pid in slot.pid, so a cold start finds it here. That is a kept Azahar replaced by this
     # cold start (the reason is the cold reason), not an orphan: only a pid that is not the kept Azahar is left by a killed run.
-    if ($op -and $op.ProcessName -eq "azahar") {
+    if ($op -and $op.ProcessName -eq "azahar" -and $op.Path -eq $exe) { # AZT12-4: a stale slot.pid whose pid now is another slot's Azahar is not this slot's
         if ($kept -and $kept.Id -eq $old) { Write-Output "Cold start ($warmWhy): closing the kept Azahar $old."; Kill-Azahar $old "kept replaced, cold: $warmWhy" }
         else { Write-Output "Recovery: killing orphan Azahar $old."; Kill-Azahar $old "orphan of a killed run" }
     }
