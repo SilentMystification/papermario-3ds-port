@@ -284,6 +284,22 @@
       "gates": []
     },
     {
+      "name": "merlee_spell_prof",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MERLEE lag: Merlee spell in dro_02 with prof=30 (no shots). Windows before the shuffle line = cast start (orb glow, darkening); before state D = star effect. Azahar direction only.",
+      "scenario": "merlee_spell_prof",
+      "cap": 45,
+      "until": "merlee: ritual state D [(]spell done[)]",
+      "tags": [
+        "azahar",
+        "prof",
+        "merlee"
+      ],
+      "gates": []
+    },
+    {
       "name": "log_sinks_mixed",
       "kind": "azahar_stream",
       "speed": "normal",
