@@ -715,8 +715,12 @@ static void dc_end(void) {
     dcs_smp++;
     dc_on = 0;
 }
-static void dc_kick(void) {
+static __attribute__((cold, noinline)) void dc_kick_smp(void);
+static inline void dc_kick(void) {
     if (!dc_on) { kick_check(); return; }
+    dc_kick_smp();
+}
+static __attribute__((cold, noinline)) void dc_kick_smp(void) { /* PERF1: the sampled close (one in 8 with phase or dcsum) out of the hot callers */
     DC_T(6);
     { u32 w1; GPUCMD_GetBuffer(NULL, NULL, &w1); if (w1 >= dc_w0) dcs_cmd += w1 - dc_w0; } /* DS0: words of the close, before its own kick */
     kick_check();
@@ -922,8 +926,8 @@ static void ndunit_after(void);
 static uint64_t ndt_sum[NDT_N];
 static uint64_t pm_gpu_ndt_all;
 static int ndt_mdl;
-NdtT pm_gpu_ndt_begin(void) { NdtT s; s.on = 1; s.t = svcGetSystemTick(); s.all = pm_gpu_ndt_all; return s; }
-void pm_gpu_ndt_add(NdtT s, int k) {
+__attribute__((cold, noinline)) NdtT pm_gpu_ndt_begin(void) { NdtT s; s.on = 1; s.t = svcGetSystemTick(); s.all = pm_gpu_ndt_all; return s; } /* sampled frames only: out of the hot callers */
+__attribute__((cold, noinline)) void pm_gpu_ndt_add(NdtT s, int k) {
     uint64_t tot = svcGetSystemTick() - s.t, in = pm_gpu_ndt_all - s.all;
     uint64_t ex = tot > in ? tot - in : 0;
     ndt_sum[k] += ex; pm_gpu_ndt_all += ex;
@@ -935,6 +939,7 @@ static unsigned ndn_tgen;
 static __attribute__((noinline)) void pm5_upload_draw(const NdDraw* d);
 static __attribute__((cold, noinline)) void t1log_draw(const NdDraw* d);
 static int t1l_on = -1; /* switch t1log: -1 until t1log_draw reads it */
+static __attribute__((cold, noinline)) void submit_dbg(const NdDraw* d, int tex);
 static __attribute__((cold, noinline)) void pm5tex1_log(const NdDraw* d);
 /* FX1-3 orbdbg (debug tool): one line per draw inside an effect list (the tag from pm_gbi_dbg_orb_tag, nd_walk.c). path: walk (flush_draw) or native (nd_raw_native). */
 static __attribute__((cold, noinline)) void orb_log(const char* path, int z, int memb, int i8_0, int i8_1, unsigned tris, int graw) {
@@ -953,8 +958,6 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
     /* FB-3: every program 5 draw (model, sprite, raw) writes its pm5 block here, once. The copy keeps the caller's NdDraw; uvx goes to the pm5 uniform. */
     NdDraw d5;
     if (dp->use5 && !dp->no_uni) { d5 = *dp; pm5_upload_draw(&d5); d5.no_uni = 1; d5.npal = 0; if (d5.has_uvx) d5.loc_uvx = (unsigned)u5_uvx; dp = &d5; }
-    if (t1l_on) t1log_draw(dp); /* PERF1: the debug calls are tested at the call site (a cached switch, the draw flags), not called per draw */
-    if (dp->use5 && dp->has_uvx) pm5tex1_log(dp);
     const NdDraw* d = dp;
     if (ndn_tgen != nd_tmpl_gen()) { ndn_tgen = nd_tmpl_gen(); nd_shadow_reset(&ndn_sh); } /* FB-2: a template id was taken over by another key (LRU): the id shadow is stale */
     prog_use(d->use5 ? 4 : 3);
@@ -988,10 +991,16 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
         else if (grab_dy1 <= grab_dy0) { grab_dy0 = nb.rect_y0; grab_dy1 = nb.rect_y1; }
         else { if (nb.rect_y0 < grab_dy0) grab_dy0 = nb.rect_y0; if (nb.rect_y1 > grab_dy1) grab_dy1 = nb.rect_y1; }
     }
-    rp_tmpl_ = d->tmpl; rp_u0_ = d->u[0].dim != 0;
-    if (rp_on_) rp_draw("nat", tex); /* -1 until the first read */
+    if (__builtin_expect(t1l_on | rp_on_ | (d->use5 & d->has_uvx), 0)) submit_dbg(d, tex); /* PERF1: the debug logs are tested here (cached switches, the draw flags), not called per draw */
     dc_kick();
     NDT_E(tsub, NDT_SUB);
+}
+/* the debug logs of one native submit (t1log, pm5tex1, rectpost) */
+static __attribute__((cold, noinline)) void submit_dbg(const NdDraw* d, int tex) {
+    if (t1l_on) t1log_draw(d);
+    pm5tex1_log(d);
+    rp_tmpl_ = d->tmpl; rp_u0_ = d->u[0].dim != 0;
+    if (rp_on_) rp_draw("nat", tex); /* -1 until the first read */
 }
 
 /* S3N-3c: the palette 0 product post x game (the native model draw, nd_model.c) and the submit of one native model draw (emit 1, S3N-4):
