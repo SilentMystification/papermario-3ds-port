@@ -76,12 +76,14 @@ prof f%u w%u at %s %d:%d m%d sp%d b%d e%d chg0 pos0 %d %d %d pos %d %d %d disp %
 prof f%u w%u writer beats %u | aujoin_us %u aujoin_max %u
 ```
 
-Example (made-up numbers, for the shape only):
+Example (Azahar, spot_mac01_det, prof=4, for the shape only):
 
 ```
-prof f9000 w300 fps 26.4 | ft 37.80 max 61.2 o34 141 wk 35.10 | s10 fts 46.20 wks 43.90 oh 8.80 amort 293 | gbi 14.20 dlc 2.10 tex 3.40 gpu 5.10 | st 330 vb 682 iv 0 241 52 7
-prof f9000 w300 pmu m 150863 54478 cyc 9900000 pm 15 5
-prof f9000 w300 cls rec 2.90 ent 1.70 spr 0.30 dlc 0.00 sub 1.50 rest 7.80
+prof f388 w300 fps 27.6 | ft 36.20 max 172.0 o34 133 wk 35.98
+prof f388 w300 s75 fts 36.68 wks 36.53 oh 0.55 amort 137 csvc 0 ssvc 35
+prof f388 w300 ph gbi 7.20 dlc 0.00 tex 0.03 gpu 0.01 | st 299 vb 650 iv 7 266 19 8
+prof f388 w300 pmu m 0 0 cyc 0 pm 0 0
+prof f388 w300 cls rec 1.63 ent 0.86 spr 0.28 dlc 0.00 sub 1.44 rest 2.99
 ```
 
 | Field | Meaning | Source |
