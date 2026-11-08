@@ -3,12 +3,13 @@
 ; Same output as pm3.v.pica. uvso: uv = tc * uvso.xy + uvso.zw.
 
 .fvec pal[84]
-.fvec uvx
+; uvso, cmul, cadd and zmix are 4 registers in a row: nd_emit_draw writes them as one block (pm_gpu.c checks the locations at init)
 .fvec uvso
 .fvec cmul ; colour = vertex colour * cmul + cadd (overrides: ENV, plan constant, alpha 255, boost)
 .fvec cadd
-.fvec nzo ; PT07: noise coordinates = ndc * nzo.xy + nzo.zw
 .fvec zmix ; z = z * zmix.x + w * zmix.y (G_ZS_PRIM: x 0, y = prim depth; else x 1, y 0)
+.fvec uvx
+.fvec nzo ; PT07: noise coordinates = ndc * nzo.xy + nzo.zw
 
 .constf myconst(0.0, 1.0, 0.00392156862745098, 4.0)
 .alias zeros myconst.xxxx

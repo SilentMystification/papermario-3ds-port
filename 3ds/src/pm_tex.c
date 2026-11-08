@@ -65,6 +65,26 @@ static unsigned used;
 static short recent_slot[RECENT_N] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 static unsigned recent_n;
 static int slot_hi; /* every live slot index is below this, so scans stay short while few slots are live */
+/* A6: chained hash index of the slots by their load key (img, tlut, size, format, stride, dkey). A load that misses lidx and the recent list walks one
+ * chain instead of every slot below slot_hi (up to 1,024 x 136 B). A slot is linked when it is loaded and unlinked when it is dropped or loaded again;
+ * a slot whose image was cleared (invalidation) stays linked and fails the full compare. Values are slot + 1, 0 ends a chain. */
+#define HB_N 2048
+static short hb_head[HB_N], hb_next[SLOTS], hb_of[SLOTS];
+static unsigned hb_key(const void* img, const void* tlut, int w, int h, unsigned fmt, unsigned siz, int stride, unsigned dkey) {
+    unsigned k = (unsigned)(uintptr_t)img * 2654435761u ^ (unsigned)(uintptr_t)tlut * 0x85EBCA6Bu ^ ((unsigned)w | (unsigned)h << 12 | fmt << 24 | siz << 28) ^ (unsigned)stride * 0x27D4EB2Du ^ dkey;
+    return (k ^ k >> 15) & (HB_N - 1u);
+}
+static void hb_unlink(int i) {
+    if (!hb_of[i]) return;
+    short* p = &hb_head[hb_of[i] - 1];
+    while (*p && *p != i + 1) p = &hb_next[*p - 1];
+    if (*p) *p = hb_next[i];
+    hb_next[i] = 0; hb_of[i] = 0;
+}
+static void hb_link(int i, unsigned b) {
+    hb_unlink(i);
+    hb_next[i] = hb_head[b]; hb_head[b] = (short)(i + 1); hb_of[i] = (short)(b + 1u);
+}
 static unsigned slot_nlive, slot_peak; /* SLOT1: live slots now and the highest count of this run */
 unsigned pm_tex_pool_peak(void) { return slot_peak; } /* MEM-B v2 poolhi */
 static unsigned used_peak; /* M02 measurement */
@@ -703,6 +723,7 @@ static void drop(Slot* s) {
     else used = 0;
     s->sgen++;
     s->live = 0;
+    hb_unlink((int)(s - slots));
     sbit_clr(live_bits, (int)(s - slots));
     slot_nlive--;
     s->stale = 0;
@@ -1546,6 +1567,7 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
     cur = slot;
     recent_slot[recent_n++ % RECENT_N] = (short)slot; /* PG2 */
     lidx[lk] = (short)slot;
+    hb_link(slot, hb_key(img, tlut, width, height, fmt, siz, stride, dkey));
     have = 1;
     return 1;
 }
@@ -1653,8 +1675,9 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
             return 1;
         }
     }
-    for (int i = 0; i < slot_hi; i++) {
+    for (int i = hb_head[hb_key(img, tlut, width, height, fmt, siz, stride, dkey)] - 1; i >= 0;) {
         Slot* s = &slots[i];
+        const int nx = hb_next[i] - 1; /* before slot_valid, which may drop the slot and unlink it */
         if (s->live && s->img == img && s->tlut == tlut && s->phash == phash && s->fmt == fmt && s->siz == siz &&
             s->w == width && s->h == height && s->stride == stride && s->dkey == dkey && slot_valid(s)) {
             TC_HIT(s);
@@ -1665,6 +1688,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
             lidx[lk] = (short)i;
             return 1;
         }
+        i = nx;
     }
     ph_miss = 1;
     return load_miss(img, fmt, siz, width, height, tlut, tlut_n, stride, lut, dx4, dy4, dkey, phash, lk);

@@ -12,7 +12,7 @@ void pm_gx_room(void); /* HANG1a */
 #include "pm_shader5_shbin.h"
 #include "nd.h"
 #include "nd_sprite.h"
-#include "pm_shaderall_shbin.h"
+#include "pm_shader4_shbin.h"
 #include "pm_gpu.h"
 #include "pm_tex.h"
 #include "pm_port.h"
@@ -1468,9 +1468,9 @@ void pm_gpu_init(void) {
             GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO));
     } else pm_log_w("stereo: right eye target failed, mono only");
     full_reserve(); /* VRAM2: the copy block and the full images, after all targets and before the texture cache takes the rest (pm_tex_init) */
-    dvlb_all = DVLB_ParseFile((u32*)pm_shaderall_shbin, pm_shaderall_shbin_size); /* RAW1: one DVLB for the programs pm (CPU vertices) and pm4 (raw Vtx, matrix palette): a program switch sends no shader code */
-    raw_dvlb_ok = dvlb_all && dvlb_all->numDVLE >= 2;
-    pm_log("raw1: one DVLB %s (%d entries)", raw_dvlb_ok ? "on" : "FAILED", dvlb_all ? (int)dvlb_all->numDVLE : 0);
+    dvlb_all = DVLB_ParseFile((u32*)pm_shader4_shbin, pm_shader4_shbin_size); /* the pm4 program (raw Vtx, matrix palette); pm5 has its own DVLB below */
+    raw_dvlb_ok = dvlb_all && dvlb_all->numDVLE >= 1;
+    pm_log("raw1: pm4 DVLB %s (%d entries)", raw_dvlb_ok ? "on" : "FAILED", dvlb_all ? (int)dvlb_all->numDVLE : 0);
     if (!raw_dvlb_ok) { pm_log_e("shader library failed"); return; }
     dvlb = dvlb_all;
     /* y grows up, matching the citro3d immediate example. 320 game pixels sit in the middle. */
@@ -1487,7 +1487,7 @@ void pm_gpu_init(void) {
         gpu_vtx_on = gring && gidx;
         if (gpu_vtx_on) { /* GV1c: the palette program */
             shaderProgramInit(&prog4);
-            shaderProgramSetVsh(&prog4, &dvlb_all->DVLE[1]);
+            shaderProgramSetVsh(&prog4, &dvlb_all->DVLE[0]);
             u4_pal = shaderInstanceGetUniformLocation(prog4.vertexShader, "pal");
             u4_uvx = shaderInstanceGetUniformLocation(prog4.vertexShader, "uvx");
             u4_uvso = shaderInstanceGetUniformLocation(prog4.vertexShader, "uvso");
@@ -1501,7 +1501,7 @@ void pm_gpu_init(void) {
             AttrInfo_AddLoader(&attr4, 2, GPU_UNSIGNED_BYTE, 4);
             rgen = (unsigned*)calloc(GRING_VTX, sizeof(unsigned));
             rk = (unsigned char*)calloc(GRING_VTX, 1);
-            gv4_on = rgen && rk && prog4.vertexShader && u4_pal >= 0 && u4_uvso >= 0 && u4_cmul >= 0 && u4_cadd >= 0 && u4_zmix >= 0;
+            gv4_on = rgen && rk && prog4.vertexShader && u4_pal >= 0 && u4_uvso >= 0 && u4_cmul == u4_uvso + 1 && u4_cadd == u4_uvso + 2 && u4_zmix == u4_uvso + 3; /* nd_emit_draw writes uvso, cmul, cadd, zmix as one block */
             if (gv4_on) { /* GV5 */
                 dvlb5 = DVLB_ParseFile((u32*)pm_shader5_shbin, pm_shader5_shbin_size);
                 shaderProgramInit(&prog5);
