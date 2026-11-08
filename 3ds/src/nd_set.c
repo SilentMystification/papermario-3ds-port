@@ -115,6 +115,14 @@ void gbi_moveword(u32 w0, u32 w1) {
     }
 }
 
+/* V06 rule, one owner (sync_render and the native model state, pm_gpu.c model_draw): the first blender cycle P * A_FOG + IN * (1 - A_FOG), P = BL or FOG.
+ * 1 with *col = the mix colour (RGB of P, alpha = the fog colour alpha), else 0. */
+int nd_mix1(unsigned ol, unsigned* col) {
+    unsigned p = (ol >> 30) & 3u;
+    if ((p != 2u && p != 3u) || ((ol >> 26) & 3u) != 1u || ((ol >> 22) & 3u) != 0u || ((ol >> 18) & 3u) != 0u) return 0;
+    *col = ((p == 2u ? blendc : fogc) & 0xffffff00u) | (fogc & 0xffu);
+    return 1;
+}
 void nd_sr_forget(void) { sr_ok = 0; }
 void sync_render(void) {
     unsigned sg = nd_ws.omode_l ^ (nd_ws.omode_h * 2654435761u) ^ nd_ws.geom ^ (unsigned)img_role(0);
@@ -130,9 +138,9 @@ void sync_render(void) {
      * colour alpha: (P * A + M * (1 - A)), P = BL or FOG, A = A_FOG, M = IN, B = 1MA. The room shroud (PM_RM_SHROUD) fades the
      * world to black this way. Other blenders are not touched. */
     {
-        unsigned p = (m >> 30) & 3u, a = (m >> 26) & 3u, mm = (m >> 22) & 3u, b = (m >> 18) & 3u;
-        if ((p == 2u || p == 3u) && a == 1u && mm == 0u && b == 0u)
-            pm_gpu_set_mix(1, ((p == 2u ? blendc : fogc) & 0xffffff00u) | (fogc & 0xffu));
+        unsigned p = (m >> 30) & 3u, a = (m >> 26) & 3u, mm = (m >> 22) & 3u, b = (m >> 18) & 3u, mixc;
+        if (nd_mix1(m, &mixc))
+            pm_gpu_set_mix(1, mixc);
         else if (!PMDL("nofog") && p == 3u && a == 2u && mm == 0u && b == 0u) {
             /* F08: G_RM_FOG_SHADE_A, the weight is the shade alpha (the vertex fog factor, see draw_tri) */
             pm_gpu_set_mix(2, (fogc & 0xffffff00u) | 0xffu);

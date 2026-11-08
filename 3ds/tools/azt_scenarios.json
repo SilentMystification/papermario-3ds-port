@@ -7165,11 +7165,11 @@
     },
     {
       "name": "merlee_spell",
-      "status": "unverified",
-      "subject": "Merlee (dro_02, NPC at -130 0 -400) casts the upgrade spell. Mario walks to her by padscript, talks, picks the first choice (50 coins from warpitems). The card shuffle (3 cards, imgfx SHUFFLE_CARDS) shows in the shots from the cast start.",
+      "status": "verified",
+      "subject": "Merlee (dro_02, NPC at -130 0 -400) casts the upgrade spell. Mario walks to her by padscript, talks, picks the first choice (50 coins from warpitems). One shot every 6 frames from f596 to f1015: the world fading to black (darken f601 to f632), the card shuffle and flips (f653 to about f850), the fade back (undarken about f970 to f1003).",
       "proves": "FX1 row 1: the cast reaches state D (log merlee: ritual state D), so the script does not hang; the shuffle ret line shows the card imgfx returns 1 or 2 on the 3DS; the picture shows the shuffle.",
-      "debug": "warp=kmr_02:0 story=ch0_toad_town livewarp=120:dro_02:0 warpitems padscript=@pad_merlee.txt shots loglevel=debug",
-      "until": "merlee: ritual state D [(]spell done[)]",
+      "debug": "warp=kmr_02:0 story=ch0_toad_town livewarp=120:dro_02:0 warpitems padscript=@pad_merlee.txt shots shotwin=596:420:6 loglevel=debug",
+      "until": "merlee: undarken done",
       "cap": 45,
       "deadline": 20,
       "first_marker": "livewarp: scene frame 120 to dro_02 entry 0",
@@ -7194,6 +7194,42 @@
         }
       ],
       "reason": "FX1 row 1 (MERLEE). Live warp to dro_02 at frame 120 gives 50 coins (warpitems; plain warp= does not, the coin count was 0 in start 2). Mario is placed by pos_ at -130 0 -370 (30 units from Merlee at -130 0 -400, npc.c), then go_ walks him the last 6 units, facing her. Cap 45 s (upper limit): about 20 s walk and talk, then about 17 s of spell. The until line ends the run when the spell ends. Without the fix the run stops at the cap (the hang)."
+    },
+    {
+      "name": "merlee_spell_prof",
+      "status": "verified",
+      "subject": "Merlee (dro_02) casts the upgrade spell as in merlee_spell, with prof=30 windows and no shots: the frame time of the cast start (orb glow, world darkening) and of the end (energy_in_out star on Mario).",
+      "proves": "MERLEE lag: the merlee darken/undarken start and done lines carry frame, time (ms) and the native model cache misses and clears since boot; their differences are the cost of the two fades (cast start and star end). Azahar direction only; the prof ndm lines give the window totals.",
+      "debug": "warp=kmr_02:0 story=ch0_toad_town livewarp=120:dro_02:0 warpitems padscript=@pad_merlee.txt prof=30 loglevel=debug",
+      "until": "merlee: undarken done",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "prof cal every 30",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "darken start",
+          "regex": "merlee: darken start f\\d+"
+        },
+        {
+          "name": "darken done",
+          "regex": "merlee: darken done f\\d+"
+        },
+        {
+          "name": "shuffle start",
+          "regex": "merlee: shuffle ret [12], state 3"
+        },
+        {
+          "name": "spell done",
+          "regex": "merlee: ritual state D [(]spell done[)]"
+        },
+        {
+          "name": "undarken done",
+          "regex": "merlee: undarken done f\\d+"
+        }
+      ],
+      "reason": "MERLEE row (lag). Same route as merlee_spell; no shots, so the prof windows carry no shot cost. Cap 45 s (upper limit): about 20 s walk and talk, then about 17 s of spell."
     },
     {
       "name": "ui1_sbk56",
@@ -9758,9 +9794,65 @@
       "reason": "Verified 2026-11-08 (pos1, run 3): Mario on the ground in all 3 shots, outdoors; mac_01 and sbk_02 centred, kmr_20 at the left edge because the entry 0 script holds the camera at story ch0."
     },
     {
+      "name": "dark_kgr01",
+      "status": "unverified",
+      "subject": "kgr_01 (inside the whale, entry 0), wide on. EVS_CreateDarkness draws the world darkness overlay (appendGfx_darkness_stencil, OVERLAY_WORLD_DARKNESS) every frame. One shot at frame 150: the screen dark except a soft lit circle around Mario.",
+      "proves": "DARK: the darkness stencil quads draw into the 64 x 64 image in the z-buffer memory (off-screen slot), not on the screen, and the final rectangle darkens the whole screen around the lit circle.",
+      "debug": "warp=kgr_01:0 wide shots shotwin=150:1 loglevel=debug",
+      "until": "shot 0 frame \\d+",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: kgr_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kgr_01 entry 0"
+        },
+        {
+          "name": "darkness",
+          "regex": "X02: darkness world 1 alpha 255"
+        },
+        {
+          "name": "shot 0",
+          "regex": "shot 0 frame \\d+"
+        }
+      ],
+      "reason": "DARK row picture gate. Cap 30 s: map load plus 150 frames plus a cold start margin."
+    },
+    {
+      "name": "dark_kgr01_watt",
+      "status": "unverified",
+      "subject": "kgr_01 entry 0, wide on, partner Watt (partner=6). The padscript presses C-down (Watt's ability), DarkRoomUpdate lowers the overlay alpha from 255 to 90 in steps of 8. One shot at frame 230, after the X02 alpha 90 line shows a larger lit circle, the rest still dark.",
+      "proves": "DARK: the darkness overlay follows the alpha (texScale and the centre move) with Watt's ability on.",
+      "debug": "warp=kgr_01:0 partner=6 wide padscript=wait200,cdown*4 shots shotwin=230:1 loglevel=debug",
+      "until": "shot 0 frame \\d+",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "warp: kgr_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kgr_01 entry 0"
+        },
+        {
+          "name": "watt on",
+          "regex": "X02: darkness world 1 alpha 90 .*partnerAction [1-9]"
+        },
+        {
+          "name": "shot 0",
+          "regex": "shot 0 frame \\d+"
+        }
+      ],
+      "reason": "DARK row Watt case (user fact 2026-11-08). Cap 35 s: map load plus 230 frames plus a cold start margin."
+    },
+    {
       "name": "xfer_door_mac01",
       "status": "unverified",
-"reason": "broken: no until in 40 s (AZT11-5, 2026-11-08)",
+      "reason": "MAPX-1 measure and the MAPX-2 gate (door key churn). Walk 60 to 120 frames, door 60, tail 30, twice: about 15 s after the warp. Cap 40 s.",
       "subject": "Merlon's house door on mac_01 (story ch0): Mario placed south of the door (-203 20 -206), walks into the doorway and pushes (room enter: the walls swing open), waits, then walks back and pushes the door from inside (room exit). det. One xfer line per door.",
       "proves": "MAPX-1: the xfer door lines of the enter and the exit (steps, longest step, o34, model cache misses and clears, dlc, entity and texture loads in the transition) and the ndm census lines of the room.",
       "debug": "warp=mac_01:0 story=ch0_toad_town pos=-203:20:-206 padscript=go_-203_-280_200,up*60,wait120,go_-203_-200_200,down*60,wait120 profdisk=1 loglevel=debug det",
@@ -9779,13 +9871,12 @@
           "name": "door exit line",
           "regex": "xfer door \\S+:in->\\S+:out f\\d+"
         }
-      ],
-      "reason": "MAPX-1 measure and the MAPX-2 gate (door key churn). Walk 60 to 120 frames, door 60, tail 30, twice: about 15 s after the warp. Cap 40 s."
+      ]
     },
     {
       "name": "xfer_map_mac01",
       "status": "unverified",
-"reason": "broken: no until in 35 s (AZT11-5, 2026-11-08)",
+      "reason": "MAPX-1 measure and the MAPX-3/4/5 gate. Walk about 60 frames, fade 13, load 6, tail 30: about 5 s after the warp. Cap 35 s.",
       "subject": "Toad Town mac_01 at pos 0 0 200, Mario walks south into the mac_02 loading zone (z 600, exit trigger deilis). det. The xfer map line of mac_01->mac_02 (fade out, load, first drawn frame, 30 steps).",
       "proves": "MAPX-1: the xfer map line (steps, longest step, o34 outside the load, fade, load, rom, yay0, inv, au, init, dlc, mdl, ent, tex).",
       "debug": "warp=mac_01:0 story=ch0_toad_town pos=0:0:200 padscript=go_0_700_300,wait150 profdisk=1 loglevel=debug det",
@@ -9800,8 +9891,7 @@
           "name": "map line",
           "regex": "xfer map mac_01->mac_02 f\\d+ max"
         }
-      ],
-      "reason": "MAPX-1 measure and the MAPX-3/4/5 gate. Walk about 60 frames, fade 13, load 6, tail 30: about 5 s after the warp. Cap 35 s."
+      ]
     }
   ]
 }

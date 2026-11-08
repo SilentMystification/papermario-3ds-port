@@ -275,10 +275,26 @@
       "purpose": "FX1 row 1: Merlee upgrade spell in dro_02 (live warp, 50 coins, pad file pad_merlee.txt). Shows the card shuffle and reaches the ritual end (state D). Picture check by eye.",
       "scenario": "merlee_spell",
       "cap": 45,
-      "until": "merlee: ritual state D [(]spell done[)]",
+      "until": "merlee: undarken done",
       "tags": [
         "azahar",
         "pic",
+        "merlee"
+      ],
+      "gates": []
+    },
+    {
+      "name": "merlee_spell_prof",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MERLEE lag: Merlee spell in dro_02 with prof=30 (no shots). The merlee darken/undarken lines give frames, ms and model cache misses and clears of the two fades (cast start, star end). Azahar direction only.",
+      "scenario": "merlee_spell_prof",
+      "cap": 45,
+      "until": "merlee: undarken done",
+      "tags": [
+        "azahar",
+        "prof",
         "merlee"
       ],
       "gates": []
@@ -3380,6 +3396,36 @@
         "azahar",
         "pic",
         "tour"
+      ],
+      "gates": []
+    },
+    {
+      "name": "dark_kgr01",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "DARK: kgr_01 world darkness overlay, wide. Shot shows the screen dark except a lit circle around Mario.",
+      "scenario": "dark_kgr01",
+      "cap": 30,
+      "until": "shot 0 frame \\d+",
+      "tags": [
+        "azahar",
+        "overlay"
+      ],
+      "gates": []
+    },
+    {
+      "name": "dark_kgr01_watt",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "DARK: kgr_01 darkness with Watt's ability (alpha 255 to 90), wide. Shot after the alpha 90 line shows a larger lit circle, the rest dark.",
+      "scenario": "dark_kgr01_watt",
+      "cap": 35,
+      "until": "shot 0 frame \\d+",
+      "tags": [
+        "azahar",
+        "overlay"
       ],
       "gates": []
     },

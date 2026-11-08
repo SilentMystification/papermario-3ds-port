@@ -153,12 +153,16 @@ unsigned rec_run(const Gfx* q) {
     mwp = (const uint32_t*)ModelRenderModes[(qs->words.w0 >> 16) & 0xffu];
     cwp = qs[4].words.w1 ? (const uint32_t*)(uintptr_t)qs[4].words.w1 : NULL;
     if (hcb) cwp = cwr;
-    if (hcb || nmo) {
+    /* MERLEE: a shroud record sets PM_RM_SHROUD after its render mode list (rec_apply order), so the native draw gets that word after the list ops too;
+     * else the list's G_RM_PASS first cycle replaced it and the native models never darkened. */
+    const int shr = (qs[3].words.w0 & 32u) != 0;
+    if (hcb || nmo || shr) {
         unsigned k = 0;
         for (unsigned i = 0; i < 16u && (mwp[2 * i] >> 24) != 0xdfu; i++) {
             if (hcb && (mwp[2 * i] >> 24) == 0xfcu) continue; /* G_SETCOMBINE: the pre list's combine replaces it */
             mcomp[2 * k] = mwp[2 * i]; mcomp[2 * k + 1] = mwp[2 * i + 1]; k++;
         }
+        if (shr) { Gfx t; gDPSetRenderMode(&t, PM_RM_SHROUD, qs[7].words.w1); mcomp[2 * k] = t.words.w0; mcomp[2 * k + 1] = t.words.w1; k++; }
         for (unsigned j = 0; j < nmo; j++, k++) { mcomp[2 * k] = mo[2 * j]; mcomp[2 * k + 1] = mo[2 * j + 1]; }
         mcomp[2 * k] = 0xdfu << 24; mcomp[2 * k + 1] = 0;
         mwp = mcomp;
