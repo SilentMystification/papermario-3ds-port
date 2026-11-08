@@ -109,6 +109,13 @@ extern unsigned pm_ph_cmd_pm;    /* command buffer fill of this frame in 1/1000 
 void pm_ph_gpu_note(void);       /* call right after C3D_FrameBegin returns */
 #define PHF_PUSH(id) do { if (pm_ph_fine) pm_ph_push(id); } while (0)
 #define PHF_POP() do { if (pm_ph_fine) pm_ph_pop(); } while (0)
+/* CORE2-3a: the walker side (nd_wq.c). */
+extern int pm_walk_side, pm_c2own;
+void pm_wq_post(void (*fn)(void*), void* arg, unsigned size);
+void pm_wq_call(void (*fn)(void*), void* arg, unsigned size);
+void pm_walk_drain(const char* why);
+void pm_walk_own(const char* fn);
+#define PM_WALK_OWN() do { if (pm_c2own > 0 && !pm_walk_side) pm_walk_own(__func__); } while (0)
 #define PH_PUSH(id) do { if (pm_ph_on) pm_ph_push(id); } while (0)
 #define PH_POP() do { if (pm_ph_on) pm_ph_pop(); } while (0)
 #define PH_ADD(c, n) do { if (pm_ph_on) pm_ph_cnt[c] += (unsigned)(n); } while (0)

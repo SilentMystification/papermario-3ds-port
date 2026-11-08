@@ -374,6 +374,7 @@ set(PORT_SRC
     src/nd_rect.c
     src/nd_walk.c
     src/nd_c2haz.c
+    src/nd_wq.c
     src/nd_cen.c
     src/nd_target.c
     src/nd_geom.c

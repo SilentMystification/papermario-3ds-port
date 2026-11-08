@@ -335,6 +335,18 @@ extern volatile int pm_exit_request; /* PT28 */
 extern unsigned pm_ph_iv, pm_ph_hud_us; /* PI4, PI5 */
 extern int pm_ph_on;
 void pm_boot_title_check(void); /* BOOT-1: prints the boot ms line at the first title-screen step */
+/* CORE2-3a: the end of a drawn frame on the walker side: the boot fallback picture when the step drew nothing, the BOOT-1 mark, the
+ * frame end and present. arg: the address of the frame loop's "ever" flag (the loop never returns; the game reads it at the next pass). */
+static void wq_frame_end(void* a) {
+    int* ever = *(int**)a;
+    if (!pm_gpu_drew()) {
+        if (!*ever) pm_gbi_fallback();
+    } else {
+        if (!*ever) pm_boot_mark(PMB_DRAW, 0); /* BOOT-1 */
+        *ever = 1;
+    }
+    pm_gpu_end();
+}
 void pm_frame_loop(void) {
     unsigned frame = 0;
     pm_uptime_ms(); /* start the clock */
@@ -527,13 +539,7 @@ void pm_frame_loop(void) {
         PM_WD_PHASE(6);
         pm_audio_step(); /* AU1b: no main task in this step: run the ticks now */
         PM_WD_PHASE(7);
-        if (!pm_gpu_drew()) {
-            if (!ever) pm_gbi_fallback();
-        } else {
-            if (!ever) pm_boot_mark(PMB_DRAW, 0); /* BOOT-1 */
-            ever = 1;
-        }
-        pm_gpu_end();
+        { int* ev = &ever; pm_wq_post(wq_frame_end, &ev, sizeof ev); } /* CORE2-3a: the frame end (fallback picture, present) is walker-side work */
         pm_log_frame_tick();
         pm_boot_title_check(); /* BOOT-1 */
         pm_ph_frame_end();
@@ -745,6 +751,7 @@ static void game_thread(void* arg) {
  * O3DS was that crash at HOME close. Reverse order of the init: flash, audio job, ndsp, log writer, citro3d, gfx, soc. One call (guard).
  * Called after the game thread ended, that is after aptMainLoop returned false (also for the APT exit request from HOME). */
 
+static void wq_fini(void* a) { (void)a; C3D_Fini(); }
 static void pm_shutdown(void) {
     static int done;
     if (done) return;
@@ -755,7 +762,7 @@ static void pm_shutdown(void) {
     pm_log("exit: audio job done, saving flushed, shutting down ndsp, citro3d, gfx, soc");
     pm_audio_shutdown();
     pm_log_stop(); /* write what is left, then stop the writer thread. The last log line. */
-    C3D_Fini();
+    pm_wq_call(wq_fini, NULL, 0); /* CORE2-3a: the walker owns citro3d */
     gfxExit();
     pm_log_soc_exit();
 }

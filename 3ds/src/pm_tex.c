@@ -1011,7 +1011,12 @@ static const char* const tsrc_name[6] = {"walk", "model", "hit", "spr", "ent_dra
 static const u8* tsrc_lo[4];
 static unsigned tsrc_len[4], tsrc_nr;
 static unsigned tsrc_b[6], tsrc_now[6], tsrc_spr[6], tsrc_memo[6], tsrc_cold[6];
-void pm_tex_sprite_range(const void* p, unsigned n) { if (p && n && tsrc_nr < 4) { tsrc_lo[tsrc_nr] = (const u8*)p; tsrc_len[tsrc_nr] = n; tsrc_nr++; } }
+/* CORE2-3a: walker side entry (nd_wq.c): the game thread posts it, the body runs on the walker side. */
+static void pm_tex_sprite_range_w(const void* p, unsigned n);
+typedef struct { const void* p; unsigned n; } Wq_pm_tex_sprite_range;
+static void wq_pm_tex_sprite_range(void* a) { Wq_pm_tex_sprite_range* q = (Wq_pm_tex_sprite_range*)a; (void)q; pm_tex_sprite_range_w(q->p, q->n); }
+void pm_tex_sprite_range(const void* p, unsigned n) { Wq_pm_tex_sprite_range q = { p, n }; pm_wq_post(wq_pm_tex_sprite_range, &q, sizeof q); }
+static void pm_tex_sprite_range_w(const void* p, unsigned n) { if (p && n && tsrc_nr < 4) { tsrc_lo[tsrc_nr] = (const u8*)p; tsrc_len[tsrc_nr] = n; tsrc_nr++; } }
 static int tsrc_in_spr(const void* p) {
     for (unsigned k = 0; k < tsrc_nr; k++) if ((const u8*)p >= tsrc_lo[k] && (const u8*)p < tsrc_lo[k] + tsrc_len[k]) return 1;
     return 0;
@@ -1178,7 +1183,12 @@ static void tex_invalidate_body(const void* ptr, unsigned size) {
     }
 }
 
-void pm_tex_invalidate(const void* ptr, unsigned size) {
+/* CORE2-3a: walker side entry (nd_wq.c): the game thread posts it, the body runs on the walker side. */
+static void pm_tex_invalidate_w(const void* ptr, unsigned size);
+typedef struct { const void* ptr; unsigned size; } Wq_pm_tex_invalidate;
+static void wq_pm_tex_invalidate(void* a) { Wq_pm_tex_invalidate* q = (Wq_pm_tex_invalidate*)a; (void)q; pm_tex_invalidate_w(q->ptr, q->size); }
+void pm_tex_invalidate(const void* ptr, unsigned size) { Wq_pm_tex_invalidate q = { ptr, size }; pm_wq_post(wq_pm_tex_invalidate, &q, sizeof q); }
+static void pm_tex_invalidate_w(const void* ptr, unsigned size) {
     unsigned t0 = tc_on > 0 ? pm_ticks() : 0;
     tex_invalidate_body(ptr, size);
     if (t0) tot_inv_t += pm_ticks() - t0;
