@@ -208,10 +208,17 @@ void pm_audio_kick(unsigned n) {
  * thread may still run the job; its later "done" sets au_busy to 0 again and signals au_done, which nobody waits for. Before any sleep the
  * wait is untimed, as before: a 2 s bound fired on every step in Azahar yard (86 times in one run). */
 #define AU_STUCK_NS 2000000000LL
+/* CORE2-0: prof mode (pm_pf_on) sums every join wait of the game thread over the prof window, in ticks: sum and the longest single wait.
+ * The prof report (pm_phase.c pf_report) prints them per drawn frame and pf_reset clears them. Game thread only. */
+extern int pm_pf_on;
+unsigned long long pm_au_pf_sum;
+unsigned pm_au_pf_max;
+static inline void au_pf_add(unsigned dt) { pm_au_pf_sum += dt; if (dt > pm_au_pf_max) pm_au_pf_max = dt; }
 void pm_audio_join_at(int site) {
     if (!au_busy) return;
     int tk = pm_au_tk(); /* the audio tick reads: audiostat or phase only */
-    unsigned t0 = tk ? pm_ticks() : 0;
+    int pf = pm_pf_on;
+    unsigned t0 = (tk | pf) ? pm_ticks() : 0;
     if (tk) au_g_sum += (int)(t0 - au_j_t0) > 0 ? t0 - au_j_t0 : 0; /* core 0 work between kick and join */
     PH_PUSH(PH_AUDIO);
     if (!pm_wd_slept) LightEvent_Wait(&au_done);
@@ -222,9 +229,11 @@ void pm_audio_join_at(int site) {
         return;
     }
     PH_POP();
-    if (!tk) return;
+    if (!(tk | pf)) return;
     unsigned dt = pm_ticks() - t0;
     if ((int)dt < 0) dt = 0;
+    if (pf) au_pf_add(dt);
+    if (!tk) return;
     au_site_n[site & 3]++; au_site_sum[site & 3] += dt;
     au_w_sum += dt;
     if (dt > au_w_max) au_w_max = dt;
@@ -233,15 +242,17 @@ void pm_audio_join_at(int site) {
 /* Sleep hook: wait at most ns for the audio job. 0 = idle, -1 = the job still runs at the deadline. It goes on after the wait. */
 int pm_audio_join_timed(int site, unsigned long long ns) {
     if (!au_busy) return 0;
-    int tk = pm_au_tk();
-    unsigned t0 = tk ? pm_ticks() : 0;
+    int tk = pm_au_tk(), pf = pm_pf_on;
+    unsigned t0 = (tk | pf) ? pm_ticks() : 0;
     PH_PUSH(PH_AUDIO);
     int to = LightEvent_WaitTimeout(&au_done, (s64)ns);
     PH_POP();
     if (to) return -1;
-    if (!tk) return 0;
+    if (!(tk | pf)) return 0;
     unsigned dt = pm_ticks() - t0;
     if ((int)dt < 0) dt = 0;
+    if (pf) au_pf_add(dt);
+    if (!tk) return 0;
     au_site_n[site & 3]++; au_site_sum[site & 3] += dt;
     au_w_sum += dt;
     if (dt > au_w_max) au_w_max = dt;

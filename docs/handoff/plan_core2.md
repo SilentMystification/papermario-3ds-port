@@ -18,7 +18,7 @@ Premise: core 0 is walk-bound and part of its time waits on core 1. Check (0 sta
 
 ## Rows (in order)
 All CORE2 rows: one Opus agent (user, 2026-11-08), worktree core20, no subagents. Console pushes only with user consent.
-- CORE2-0 measure: prof line fields `aujoin us/frame` and `core1 busy %` (idle-tick probe thread at the lowest priority on core 1). One console push (user consent).
+- CORE2-0 measure (done): the prof writer line ends with `aujoin_us <us per drawn frame> aujoin_max <longest single join, us> core1_busy <% or n/a>` (pm_audio.c au_pf_add, pm_phase.c c1_main; bench keys aujoin_us, aujoin_max, core1_busy). The probe thread exists in prof mode only. Console run still owed (user consent): spot_mac01_prof and spot_iwa10_prof on the O3DS, then the same on the N3DS; read aujoin_us against ft_ms and core1_busy. CORE2-1 is worth its risk only when aujoin_us is a visible part of ft_ms; core1_busy near 100 means core 1 has no room for more work. The probe yields after each 20 us chunk; if the kernel counts its time against the app core-1 limit, it can slow the audio job: one run with and one without prof shows that through ft_ms.
 - CORE2-1 audio one step ahead. Gate: det byte gates, audiohash equal under det, console ft gain.
 - CORE2-2 design document for the walker thread on N3DS core 2 (ownership, list of in-place rewritten buffers).
 - CORE2-3 implementation.
