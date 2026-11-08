@@ -24,10 +24,6 @@ BN=$((V0 + $(git rev-list --count "$REV") - C0))
 if [ -n "$PM_LANE" ]; then BN="$BN-$PM_LANE"; elif [ -z "$PM_BUILD_REV" ] && [ "$(git branch --show-current)" = "lane-b" ]; then BN="$BN-laneB"; fi
 # AZT9c-1: a lane build carries a unique tag (time and pid): a dirty build with the same number has its own build id, so a warm restart proves the new ROM by the boot line
 if [ -n "$PM_LANE" ]; then BN="${BN}_$(date +%H%M%S)$$"; fi
-printf '#define PM_BUILD_STR "%s"\n' "$BN" > 3ds/include/pm_build.h.tmp
-printf '#define PM_GIT_HASH "%s"\n' "$(git rev-parse --short "$REV")" >> 3ds/include/pm_build.h.tmp
-# Rewrite pm_build.h only when the number changed: a new mtime would rebuild every file that includes it.
-cmp -s 3ds/include/pm_build.h.tmp 3ds/include/pm_build.h && rm -f 3ds/include/pm_build.h.tmp || mv -f 3ds/include/pm_build.h.tmp 3ds/include/pm_build.h
 
 # The inputs CMake reads (3ds/CMakeLists.txt, DECOMP = repo root). Nothing else reaches the build.
 SRC_DIRS="3ds/CMakeLists.txt 3ds/effects.cmake 3ds/battle.cmake 3ds/maps.cmake 3ds/map_syms.lds LaunchIcon.png 3ds/ld 3ds/shaders 3ds/stub_include 3ds/include 3ds/src src include assets/us ver/us/build"
@@ -39,7 +35,7 @@ done
 # docker recipe, and the size and mtime of the ignored inputs (assets/us, ver/us/build: not in git). pm_build.h is not
 # in the key: a commit that only changes the build number does not rebuild. A PM_BUILD_REV build (bench build-at) always builds.
 # build.sh is the only stale check: go.ps1 Invoke-Build and push_3ds.sh call it and never compare times themselves.
-KEY_IN="3ds/CMakeLists.txt 3ds/effects.cmake 3ds/battle.cmake 3ds/maps.cmake 3ds/map_syms.lds LaunchIcon.png 3ds/ld 3ds/shaders 3ds/stub_include 3ds/include 3ds/src src include docker/Dockerfile.build"
+KEY_IN="3ds/CMakeLists.txt 3ds/effects.cmake 3ds/battle.cmake 3ds/maps.cmake 3ds/map_syms.lds LaunchIcon.png 3ds/ld 3ds/shaders 3ds/stub_include 3ds/include 3ds/src src include docker/Dockerfile.build 3ds/build.sh"
 KEY_FILE=$OUT/build_key.txt
 key_now() {
     {
@@ -65,6 +61,12 @@ if [ -z "$PM_BUILD_REV" ]; then
         exit 0
     fi
 fi
+# pm_build.h describes the 3dsx that is built (push_3ds.sh archives from it, bench.py checks its mtime), so it is written
+# here, after the skip check: a skipped build keeps the header of the 3dsx it kept. Rewritten only when the number changed,
+# since a new mtime would rebuild every file that includes it.
+printf '#define PM_BUILD_STR "%s"\n' "$BN" > 3ds/include/pm_build.h.tmp
+printf '#define PM_GIT_HASH "%s"\n' "$(git rev-parse --short "$REV")" >> 3ds/include/pm_build.h.tmp
+cmp -s 3ds/include/pm_build.h.tmp 3ds/include/pm_build.h && rm -f 3ds/include/pm_build.h.tmp || mv -f 3ds/include/pm_build.h.tmp 3ds/include/pm_build.h
 # A failed build must not leave the old key behind: the key file is written only after a successful build.
 rm -f $KEY_FILE
 IMG=pm3ds-build:1
