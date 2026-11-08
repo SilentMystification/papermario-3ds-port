@@ -13,6 +13,7 @@ AT = re.compile(r"prof f(\d+) w\d+ at (\S+) (-?\d+):(-?\d+) m(-?\d+) sp(-?\d+) b
 F1 = re.compile(r"prof f(\d+) w\d+ fps ([\d.]+) \| ft ([\d.]+)")
 F2 = re.compile(r"prof f(\d+) w\d+ nd ([\d.]+) lg ([\d.]+) .* gb ([\d.]+)")
 PROF = re.compile(r"prof f(\d+) w(\d+) (.*)")
+TOUR = re.compile(r"prof f(\d+) w\d+ tour (\d+)/(\d+) (\S+)")  # TOUR1 window label: one per map of a tour (pm_ph_window_close)
 NUM = re.compile(r"-?\d+(\.\d+)?")
 
 
@@ -34,7 +35,8 @@ def fields(rest):
 
 def parse_windows(path):
     """Every prof window of one log, in frame order (chg windows included). Each window: frame, wsize, fps, ft, nd, lg, gb,
-    fields (the m values), key, map, area (`<area>:<map id>`), mode, story, battle, entry, chg (bool), pos0, pos (x y z tuples or None)."""
+    fields (the m values), key, map, area (`<area>:<map id>`), mode, story, battle, entry, chg (bool), pos0, pos (x y z tuples or None).
+    A tour window (TOUR1 label line) also has tour_idx, tour_n and tour_label (`<map>:<entry>`)."""
     win = collections.OrderedDict()  # frame -> dict
     for ln in open(path, errors="replace"):
         mp = PROF.search(ln)
@@ -42,7 +44,10 @@ def parse_windows(path):
             w = win.setdefault(int(mp.group(1)), {})
             w["wsize"] = int(mp.group(2))
             w.setdefault("fields", {}).update(fields(mp.group(3)))
-        m1, m2, a = F1.search(ln), F2.search(ln), AT.search(ln)
+        m1, m2, a, t = F1.search(ln), F2.search(ln), AT.search(ln), TOUR.search(ln)
+        if t:
+            w = win.setdefault(int(t.group(1)), {})
+            w["tour_idx"], w["tour_n"], w["tour_label"] = int(t.group(2)), int(t.group(3)), t.group(4)
         if m1:
             w = win.setdefault(int(m1.group(1)), {})
             w["fps"], w["ft"] = float(m1.group(2)), float(m1.group(3))

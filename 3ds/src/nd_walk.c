@@ -142,11 +142,11 @@ void nd_walk_run(void* list, unsigned nbytes) {
         if (g2_same(op, w0, w1)) { g2_note(op, w0); pc++; continue; }
         pm_gbi_cur_op = op;
         int fp = 0;
-        if (pm_ph_on) { gv_streak_op(op); tex_streak_op(op); }
+        if (pm_ph_cen) { gv_streak_op(op); tex_streak_op(op); } /* PERF1: the per-op census hooks run in phase mode only, not in prof samples */
         pc++;
         if (!((u32)pc & 31u)) { __builtin_prefetch(pc + 4); __builtin_prefetch(pc + 8); }
         n_ops++;
-        if (gp_on()) {
+        if (pm_ph_cen) {
             unsigned t = pm_ticks();
             if (gp_prev_op >= 0) { gp_opt[gp_prev_op] += t - gp_opt_last; gp_opn[gp_prev_op]++; }
             gp_opt_last = t;
@@ -160,13 +160,12 @@ void nd_walk_run(void* list, unsigned nbytes) {
         if (op != G_VTX && op != G_TRI1 && op != G_TRI2 && op != G_MTX && op != G_POPMTX && op != G_DL && op != G_ENDDL && op != G_MODIFYVTX) {
             gv_epoch++; /* GV1b */
         }
-        if (pm_ph_on) os_op_hook(pc - 1, sp, op); /* W1: after the prologue, so a sample is the handler only */
-        if (pm_ph_on) mdc_op(pc - 1, sp, op, w0, w1); /* MDL1: model census, counts only */
+        if (pm_ph_cen) { os_op_hook(pc - 1, sp, op); mdc_op(pc - 1, sp, op, w0, w1); } /* W1: after the prologue, so a sample is the handler only; MDL1: model census, counts only */
         switch (op) {
         case G_ENDDL:
             if (sp == 0) {
-                if (gp_on() && gp_prev_op >= 0) { gp_opt[gp_prev_op] += pm_ticks() - gp_opt_last; gp_opn[gp_prev_op]++; gp_prev_op = -1; }
-                if (pm_ph_on) mr0_walk_end(); /* MR0 */
+                if (pm_ph_cen && gp_prev_op >= 0) { gp_opt[gp_prev_op] += pm_ticks() - gp_opt_last; gp_opn[gp_prev_op]++; gp_prev_op = -1; }
+                if (pm_ph_cen) mr0_walk_end(); /* MR0 */
                 if (fp) pm_ph_pop();
                 gv_streak_flush();
                 tex_streak_flush();
@@ -178,14 +177,14 @@ void nd_walk_run(void* list, unsigned nbytes) {
             break;
         case G_PM_REC: /* M4-2, S3F-4: producer record of a model (model.c) */
             if (nd_c2_on > 0) nd_c2_rec(pc - 1, G_PM_REC_WORDS);
-            if (pm_ph_on) pk_rec[pmx_cur]++; /* WCEN2 */
-            pc += rec_run(pc - 1);
-            if (pm_ph_on && rec_nat_last) pk_nat[pmx_cur]++;
+            if (pm_ph_cen) pk_rec[pmx_cur]++; /* WCEN2 */
+            { NDT_B(tr); pc += rec_run(pc - 1); NDT_E(tr, NDT_REC); }
+            if (pm_ph_cen && rec_nat_last) pk_nat[pmx_cur]++;
             break;
         case G_PM_SPR: { /* S4-1, S4-3, SPR4: producer record of a sprite component (sprite.c). The record is not run here: the state words after it run on the walker, and the final draw is built at its vertex word (G_VTX arm below), where the live state is the draw state. */
             Gfx* srec = pc - 1;
             if (nd_c2_on > 0) nd_c2_rec(srec, G_PM_SPR_WORDS);
-            if (pm_ph_on) pk_rec[pmx_cur]++; /* WCEN2 */
+            if (pm_ph_cen) pk_rec[pmx_cur]++; /* WCEN2 */
             spr_rec = srec;
             spr_at = srec + (srec[0].words.w0 & 0xffu); /* header bits 0 to 7: the offset of the final gSPVertex word */
             pc += G_PM_SPR_WORDS - 1;
@@ -193,8 +192,8 @@ void nd_walk_run(void* list, unsigned nbytes) {
         }
         case G_PM_ENT: /* S6-1: producer record of an entity model draw (nd_ent.c). The record is not run; the old words draw unless nd_ent_case draws it. */
             if (nd_c2_on > 0) nd_c2_rec(pc - 1, G_PM_ENT_WORDS);
-            if (pm_ph_on) pk_rec[pmx_cur]++; /* WCEN2 */
-            pc += G_PM_ENT_WORDS - 1 + nd_ent_case(pc - 1, w0, w1); /* the drawn record skips its own words and its G_DL */
+            if (pm_ph_cen) pk_rec[pmx_cur]++; /* WCEN2 */
+            { NDT_B(te); pc += G_PM_ENT_WORDS - 1 + nd_ent_case(pc - 1, w0, w1); NDT_E(te, NDT_ENT); } /* the drawn record skips its own words and its G_DL */
             break;
         case G_DL: {
             if (nd_c2_on > 0) nd_c2_src(pc - 1);
@@ -211,14 +210,17 @@ void nd_walk_run(void* list, unsigned nbytes) {
                 if (t_) { if (t_ != orb_tag) pm_gpu_flush(); orb_tag = t_; ow_ = 1; pm_log("orbdbg enter f%u tag %u ptr %p", pm_frame_count(), t_, (void*)next); }
             }
             if (ent_skipgen) ent_skipgen = 0;
-            else if (!ow_ && next && dlc_on && !((u32)next - (u32)gMapShapeData < 0x40000u) && (pm_tex_tagi = 5, ent_gdl(next))) { /* SGEN-1: any other static list, the entity path */
-                if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = (Gfx*)dlc_end;
-                break;
+            else if (!ow_ && next && dlc_on && !((u32)next - (u32)gMapShapeData < 0x40000u)) { /* SGEN-1: any other static list, the entity path */
+                NDT_B(te); pm_tex_tagi = 5; int eh = ent_gdl(next); NDT_E(te, NDT_ENT);
+                if (eh) { if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = (Gfx*)dlc_end; break; }
             }
-            if (!ow_ && dlc_on && dlc_try(next)) { /* DLC1: a compiled map shape list. A G_DL_NOPUSH ends the list that holds it, as G_ENDDL. */
-                if (pm_ph_on) { os_dlc_hit(); mr0_dlc_hit = 1; }
-                if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = (Gfx*)dlc_end;
-                break;
+            if (!ow_ && dlc_on) { /* DLC1: a compiled map shape list. A G_DL_NOPUSH ends the list that holds it, as G_ENDDL. */
+                NDT_B(td); int dh = dlc_try(next); NDT_E(td, NDT_DLC);
+                if (dh) {
+                    if (pm_ph_cen) { os_dlc_hit(); mr0_dlc_hit = 1; }
+                    if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = (Gfx*)dlc_end;
+                    break;
+                }
             }
             if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) { pc = next; }
             else if (sp < 12) {
@@ -231,8 +233,9 @@ void nd_walk_run(void* list, unsigned nbytes) {
         case G_VTX:
             if (pc - 1 == spr_at) { /* SPR4: the final draw of a sprite record. Native: the vertex and triangle words are skipped. Else the walker loads and draws them. */
                 spr_at = NULL;
-                if (pm_gpu_spr_native((const uint32_t*)spr_rec)) {
-                    if (pm_ph_on) pk_nat[pmx_cur]++;
+                NDT_B(ts); int sh = pm_gpu_spr_native((const uint32_t*)spr_rec); NDT_E(ts, NDT_SPR);
+                if (sh) {
+                    if (pm_ph_cen) pk_nat[pmx_cur]++;
                     pc += 1;
                     break;
                 }
@@ -416,7 +419,7 @@ void pm_walk_drain(const char* why) {
     if (nd_c2_on > 0) nd_c2_drain(why);
 }
 static void gbi_run1(void* list, unsigned nbytes) {
-    if (!pm_ph_on) { nd_walk_run(list, nbytes); return; }
+    if (!pm_ph_cen) { nd_walk_run(list, nbytes); return; }
     if (os_nest == 0) { pre_w0 = (const Gfx*)list; pmx_main = gDisplayContext && list == (void*)gDisplayContext->mainGfx;
         pmk_n = 0; /* WCEN3: the walk copy holds the marks of this list only */
         if (pmx_main) for (int i = 0; i < pmk_all_n && pmk_n < PK_MARKS; i++) if (pmk_all[i].p >= (const Gfx*)list && pmk_all[i].p < (const Gfx*)list + MAIN_GFX_N) { pmk[pmk_n].p = pmk_all[i].p; pmk[pmk_n].s = pmk_all[i].s; pmk_n++; }

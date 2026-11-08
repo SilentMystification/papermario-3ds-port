@@ -266,6 +266,7 @@ int nd_tmpl_build(const NdTmplKey* k);
  * nd_tmpl_gen counts evictions: an id then names another key, so a shadow of the ids is stale. nd_tmpl_pin marks the start of a batch of builds. */
 void nd_tmpl_pin(void);
 unsigned nd_tmpl_gen(void);
+void nd_tmpl_touch(int id); /* PERF1-4c: a use of id without a build (the LRU clock as a build hit; the caller saw no eviction since its build) */
 unsigned nd_tmpl_hi(void);       /* the most entries in use (log) */
 /* the register writes of template id; returns the count (ND_TMPL_WORDS max) */
 unsigned nd_tmpl_words(int id, const NdTmplWord** out);
@@ -327,9 +328,12 @@ typedef struct NdMCtx {
 } NdMCtx;
 typedef struct NdMState { NdTmplKey k; NdTevOut to; int tmpl; int why; } NdMState; /* why: fallback code 1 mode or combine entry, 2 aux words, 3 custom gfx, 4 lit or fog, 5 combiner refused, 6 tex1 or noise, 7 template full, 8 combine needs tile 1, the box product or a key value */
 int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st); /* 1 native, 0 fallback, -1 nost (B8: a read other mode bit has no value) */
+int nd_model_state_spr(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st); /* PERF1-5: nd_model_state for the sprite context (pm_gpu_spr_build) through a 16-entry memo */
 /* S3N-3c: the static ranges of a shape list (the former pm_gbi.c pm_dlc_native_ranges): index pool pointer, index count, geometry mode of the batch. */
 typedef struct NdRng { const uint16_t* sd; unsigned nidx; uint32_t geom; } NdRng;
 int pm_dlc_native_ranges(const void* list, uint32_t entry, NdRng* out, unsigned max); /* -1 the walker would not replay the list statically, -2 out full */
+extern uint64_t pm_dlc_vm; extern int pm_dlc_vm_ok; /* PERF1-4b: the groups in view of the last pm_dlc_native_ranges (bit k: group k); ok when it returned >= 0 for 64 groups or fewer */
+int pm_dlc_vis_mask(const void* list, uint64_t* out); /* PERF1-4b: the groups of the list in view now (box test only); -1 when the list has no built static entry */
 /* S3N-3c: a model record as native draws. c: the record state (geom_at is set per range). list: the geometry list (R12). emit 0: build only (ndmcheck);
  * emit 1: flush, then submit each draw (S3N-4). Returns the draw count, -1 fallback (nd_nat_why), -2 nost. Draws are read with nd_model_native. */
 #define ND_NAT_MAX 64
@@ -346,10 +350,11 @@ const NdNat* nd_model_native(unsigned j);
 #define NDMC_SW 64
 typedef struct NdMKey { uint32_t w[NDMC_RW + NDMC_SW]; uint32_t h; uint32_t rp; } NdMKey; /* S3N-7: h = hash of w (nd_mc_hash), rp = the record address (not compared) */
 #define ND_RAW_MAX 16
-typedef struct __attribute__((aligned(32))) NdMEnt { NdMKey k; NdRng raw[ND_RAW_MAX]; uint32_t geom; int hs; unsigned hg; uint16_t off, n, nraw; uint8_t used, tex, why; uint32_t ep; } NdMEnt; /* raw: the static ranges the draws were cut from (the hit compares them with the fresh ones) */
+typedef struct __attribute__((aligned(32))) NdMEnt { NdMKey k; uint64_t vmask; uint32_t geom; int hs; unsigned hg; uint32_t tgen; uint16_t off, n; uint8_t used, tex, why; uint32_t ep; } NdMEnt; /* vmask: the groups in view the draws were cut from (PERF1-4b: the hit compares the groups in view now; the key holds the state the cut reads); tgen: nd_tmpl_gen at the last template build of the draws (PERF1-4c) */
 unsigned nd_handle_gen(void);                                   /* bumped by each texture handle write (nd_tex_handle_set) */
-NdMEnt* nd_mc_find(const NdMKey* k);                           /* the entry of key k, NULL when none */
-NdMEnt* nd_mc_store(const NdMKey* k, int tex, int hs, unsigned hg); /* the draws and ranges of the last nd_model_draw (it returned >= 0); NULL when more than ND_RAW_MAX ranges */
+NdMEnt* nd_mc_find(const NdMKey* k);                           /* the entry of key k (k->h set), NULL when none */
+NdMEnt* nd_mc_find_rec(NdMKey* k);                             /* PERF1-4a: rec_run's lookup: the record address memo first, else sets k->h and probes */
+NdMEnt* nd_mc_store(const NdMKey* k, int tex, int hs, unsigned hg); /* the draws and group mask of the last nd_model_draw (it returned >= 0); NULL when more than ND_RAW_MAX ranges or no mask */
 NdNat* nd_mc_nat(NdMEnt* e, unsigned j);                       /* draw j of an entry (j < e->n) */
 uint32_t nd_mc_hash(const NdMKey* k);                          /* S3N-7: the hash of the key words, set in pm_gpu_model_key */
 void nd_mc_miss(const NdMKey* k);                              /* S3N-7: the class of one miss (diagnostic counters) */
@@ -357,12 +362,16 @@ unsigned nd_mc_size(void);                                     /* S3N-7 diagnost
 const NdMEnt* nd_mc_ent(unsigned i);                           /* S3N-7 diagnostic: entry i */
 void nd_mc_diag_take(unsigned o[15]);                          /* S3N-7: the miss classes of the window (0 new, 1 clr, 2 rec, 3 st, 4 hd, 5 gv, 6 same, 7 rcap, 8 ncap: stores refused), then reset them; table use */
 unsigned nd_mc_clears(void);
-/* S3N-7: exclusive tick timers of the native model path (pm_gpu.c). Sampled frames only (pm_ph_on). A region's ticks less the regions timed inside it. */
+/* PERF1: exclusive tick timers, one per producer class of the walk (pm_gpu.c). Sampled frames only (pm_ph_on). A region's ticks less the regions timed
+ * inside it. rec: G_PM_REC (rec_run); ent: G_PM_ENT and ent_gdl; spr: the native sprite draw; dlc: dlc_try; sub: every native submit.
+ * NDT_B declares the timer v (a clean frame: one load of pm_ph_on and no call); NDT_E adds its exclusive ticks to class k. */
 typedef struct NdtT { uint64_t t, all; int on; } NdtT;
-enum { NDT_KEYB, NDT_FIND, NDT_RNG, NDT_APPLY, NDT_FB, NDT_UPD, NDT_EMIT, NDT_ADD, NDT_MTX, NDT_N }; /* keyb: record key build; find: cache lookup; apply: the non-hit path (rec_apply, the fallback or the model call) */
-unsigned pm_ph_smp_count(void); /* S3N-7: pm_phase.c, sampled frames so far */
+enum { NDT_REC, NDT_ENT, NDT_SPR, NDT_DLC, NDT_SUB, NDT_N };
 NdtT pm_gpu_ndt_begin(void);
-void pm_gpu_ndt_end(NdtT s, int k);
+void pm_gpu_ndt_add(NdtT s, int k);
+#define NDT_B(v) NdtT v = { 0, 0, 0 }; if (pm_ph_on) v = pm_gpu_ndt_begin()
+#define NDT_E(v, k) do { if ((v).on) pm_gpu_ndt_add((v), (k)); } while (0)
+void pm_gpu_ndt_take(uint64_t o[NDT_N]); /* the ticks of the window, then reset (pm_phase.c prof report) */
 unsigned pm_gbi_gvkey(uint32_t* o, unsigned max); /* S3N-6 (the former pm_gbi.c): the walker gv, tile, vp and plan state (pre-apply) */
 void pm_gpu_model_key(const uint32_t* rec, NdMKey* k); /* S3N-6 (pm_gpu.c) */
 /* S3N-3d: the combine choice of one draw (the former pm_gbi.c nd_comb_decide). In: the combine words, the walker flags and the 16 combiner fields of tst1 (comb_a..d, comb_aa..ad,

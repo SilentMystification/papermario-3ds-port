@@ -384,7 +384,7 @@ int nd_ent_case(const Gfx* rec, u32 w0, u32 w1) {
     if (w0 & G_PM_ENT_END) { pm_gbi_ent_texchk((const uint32_t*)(const void*)(uintptr_t)w1); pm_gbi_ent_segchk((const uint32_t*)(const void*)(uintptr_t)w1); return 0; }
     if (w0 & G_PM_ENT_DRAW) {
         pm_tex_tagi = 4;
-        if (ent_draw(rec)) { if (pm_ph_on) pk_nat[pmx_cur]++; return 1; }
+        if (ent_draw(rec)) { if (pm_ph_cen) pk_nat[pmx_cur]++; return 1; }
         ent_skipgen = 1;
     }
     return 0;

@@ -34,6 +34,9 @@ This is the entry point for every test and profiling run (it replaces the text t
   python 3ds/tools/bench.py trend <bench> [<metric>] [area filters]           (no metric: the prof_record.py trend layout, fps and ft)
   python 3ds/tools/bench.py check <run_id>                    (evaluate the gates of one run)
   python 3ds/tools/bench.py rebuild                           (drop and rebuild bench.db from runs.jsonl and bench_defs.json)
+  python 3ds/tools/bench.py tour-report <run_id>              (one row per map of a tour ingest: ft_ms, wk, o34 and its share, gbi, draws, tris; ranked by ft_ms then o34)
+        A tour log (TOUR1 `prof f<n> w<n> tour <i>/<n> <map>:<entry>` lines) ingests as one run record per map: tour_idx and kind
+        (map) in the window's extra_json; the bench tags tour_full, tour_curated or tour_battle are copied to the records.
 
 Speed: every run record holds speed (turbo | normal | unknown) and frame_limit (percent, or null). azt.ps1 sets them for its start:
   -Speed, else -Turbo in the scenario's extra args (turbo), else normal. Old runs are "unknown" (not guessed). The bench default
@@ -313,6 +316,14 @@ def run_disp_tuple(r):
     return (d.get("wide"), d.get("stereo"), d.get("fps_target"))
 
 
+def window_extra(w):
+    """extra_json of a window sample: wsize, and tour_idx and kind for a tour window."""
+    x = {"wsize": w.get("wsize")}
+    if w.get("tour_idx") is not None:
+        x["tour_idx"], x["kind"] = w["tour_idx"], w.get("kind", "map")
+    return x
+
+
 def sample_rows(r):
     """Sample rows of one run record (the sample table, see the module docstring)."""
     rid, ts, bn, host = r["run_id"], r.get("ts"), r.get("build_no"), r.get("host")
@@ -328,7 +339,7 @@ def sample_rows(r):
         m = w.get("m", {})
         rows.append((rid, w["win"], w.get("frame"), ts, bn, host, f["map"], f["area"], f["mode"], f["story"], f["battle"], f["entry"],
                      1 if w.get("chg") else 0, p0[0], p0[1], p0[2], p[0], p[1], p[2],
-                     m.get("fps"), m.get("ft_ms"), m.get("nd_ms"), m.get("lg_ms"), m.get("gb_ms"), json.dumps({"wsize": w.get("wsize")})))
+                     m.get("fps"), m.get("ft_ms"), m.get("nd_ms"), m.get("lg_ms"), m.get("gb_ms"), json.dumps(window_extra(w))))
         dsp.append(tuple(w["disp"]) if w.get("disp") else run_disp_tuple(r))
     nw = int((r.get("run") or {}).get("windows") or 0)
     if not r.get("windows") and nw > 0:
@@ -549,12 +560,19 @@ def win_metrics(w):
     return m
 
 
+TOUR_TAGS = ("tour_full", "tour_curated", "tour_battle")  # bench tags copied to the run records of a tour ingest
+
+
 def window_rec(w):
-    """One window of a run record: the scene line (map, area, mode, story, battle, entry, pos0, pos) and the metrics."""
-    return {"win": "f%d w%d" % (w["frame"], w.get("wsize", 0)), "frame": w["frame"], "wsize": w.get("wsize", 0), "chg": bool(w["chg"]),
-            "map": w["map"], "area": w["area"], "mode": w["mode"], "story": w["story"], "battle": w["battle"], "entry": w["entry"],
-            "pos0": list(w["pos0"]) if w["pos0"] else None, "pos": list(w["pos"]) if w["pos"] else None, "m": win_metrics(w),
-            "disp": list(w["disp"]) if w.get("disp") else None}
+    """One window of a run record: the scene line (map, area, mode, story, battle, entry, pos0, pos) and the metrics.
+    A tour window (TOUR1 label) also has tour_idx and kind (map)."""
+    r = {"win": "f%d w%d" % (w["frame"], w.get("wsize", 0)), "frame": w["frame"], "wsize": w.get("wsize", 0), "chg": bool(w["chg"]),
+         "map": w["map"], "area": w["area"], "mode": w["mode"], "story": w["story"], "battle": w["battle"], "entry": w["entry"],
+         "pos0": list(w["pos0"]) if w["pos0"] else None, "pos": list(w["pos"]) if w["pos"] else None, "m": win_metrics(w),
+         "disp": list(w["disp"]) if w.get("disp") else None}
+    if "tour_idx" in w:
+        r["tour_idx"], r["kind"] = w["tour_idx"], "map"
+    return r
 
 
 def pos_ranges(ws):
@@ -697,14 +715,18 @@ def ingest_file(path, bench, host, build, commit, row, label, result="imported",
     kind = kind or bd.get("kind", "ingest")
     rel = posix(p.resolve().relative_to(REPO)) if REPO in p.resolve().parents else str(path)
     by = collections.OrderedDict()
+    tour = any("tour_idx" in w for w in wins)  # a tour: one run record per window (per map), keyed by tour_idx
     for w in wins:
         if "fps" in w:
-            by.setdefault(w["key"], []).append(w)
+            by.setdefault(w.get("tour_idx") if tour else w["key"], []).append(w)
     dropped = sum(1 for w in wins if "fps" in w and w["chg"])
     if not by:
         by = {"": []}
+    if tour:
+        tags = tags or [t for t in bd.get("tags", []) if t in TOUR_TAGS]
     recs = []
-    for scene, ws in by.items():
+    for gk, ws in by.items():
+        scene = ws[0]["key"] if tour and ws else gk
         good = [w for w in ws if not w["chg"]]
         gm = [win_metrics(w) for w in good]
         keys = sorted({k for m in gm for k in m})
@@ -1205,6 +1227,34 @@ def cmd_ingest_last(a):
                        dirty=None if dv is None else dv == "1", warm=a.warm)
 
 
+def cmd_tour_report(a):
+    """One row per map of the tour that run_id belongs to (the records with the same log and ingest time), ranked by ft_ms then o34."""
+    recs = read_runs()
+    me = next((r for r in recs if r["run_id"] == a.run_id), None)
+    if me is None or not any("tour_idx" in w for w in me.get("windows", [])):
+        print("run %d is not a tour window (no tour_idx)" % a.run_id)
+        return 4
+    rows = [r for r in recs if r.get("log_path") == me.get("log_path") and r.get("ts") == me.get("ts")
+            and any("tour_idx" in w for w in r.get("windows", []))]
+    rows.sort(key=lambda r: r["windows"][0]["tour_idx"])
+    print("tour-report run %d: %s build %s commit %s, %d map windows (log %s)" % (
+        a.run_id, me["bench"], me.get("build_no"), me.get("commit"), len(rows), me.get("log_path")))
+    print("%3s %-3s %-16s %-14s %6s %6s %6s %6s %6s %6s %5s" % ("#", "run", "map", "entry", "ft_ms", "wk", "o34", "o34%", "gbi", "draws", "tris"))
+    out = []
+    for r in rows:
+        m = r.get("run", {})
+        ft, o34 = m.get("ft_ms") or 0.0, m.get("o34") or 0.0
+        share = 100.0 * o34 / ft if ft else 0.0
+        out.append((ft, o34, r, share))
+    out.sort(key=lambda t: (-t[0], -t[1]))
+    for ft, o34, r, share in out:
+        m, w = r.get("run", {}), r["windows"][0]
+        print("%3d %-3d %-16s %-14s %6.2f %6.2f %6.2f %5.1f%% %6.2f %6.0f %5.0f" % (
+            w["tour_idx"], r["run_id"], w["map"], "e%s" % w["entry"], ft, m.get("wk") or 0.0, o34, share,
+            m.get("gbi") or 0.0, m.get("draws") or 0.0, m.get("tris") or 0.0))
+    return 0
+
+
 def cmd_import_csv(a):
     existing = {r.get("src") for r in read_runs()}
     recs = []
@@ -1553,6 +1603,7 @@ def main(argv):
     x = sub.add_parser("check"); x.add_argument("run_id", type=int); x.set_defaults(f=cmd_check)
     x = sub.add_parser("slow"); x.add_argument("--min", type=float, default=8.0, help="list scenarios with a median until_s above this (AZT11-5)"); x.set_defaults(f=cmd_slow)
     x = sub.add_parser("rebuild"); x.set_defaults(f=cmd_rebuild)
+    x = sub.add_parser("tour-report"); x.add_argument("run_id", type=int); x.set_defaults(f=cmd_tour_report)
     x = sub.add_parser("correct"); x.add_argument("run_id", type=int); x.add_argument("--why", required=True); x.add_argument("--row", default="BENCHFIX")
     x.set_defaults(f=cmd_correct)
     a = p.parse_args(argv)

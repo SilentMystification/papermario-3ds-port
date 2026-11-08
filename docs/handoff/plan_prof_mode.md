@@ -16,7 +16,7 @@ Inputs: CLAUDE.md, inv_pmu_events.md, agent_cap2.md, agent_split0c2.md, hw_guide
 One switch `prof`. It runs three parts:
 
 1. Every drawn frame (clean frames): zero new tick reads, zero svc calls. The main loop already reads the tick twice per iteration (pm_main.c:366 `now`, kept as `step_start` at 406, and pm_main.c:489 `now` after the frame). `pm_pf_frame(step_start, now)` takes both values. Wall time of a drawn frame = `step_start` minus the `step_start` of the last drawn frame. Work time = `now - step_start` (no idle wait).
-2. One drawn frame in N (sampled frame, default N = 30): `pm_ph_on` is set to 1 for that frame only. All the existing phase timers run in that frame (PH stack, gbi_task tick pair, sp0 tex/dlc/rest split, texture timers). No new timer site in the hot code. The other N-1 frames run with `pm_ph_on` 0, the same as a log-off build.
+2. One drawn frame in N (sampled frame, default N = 30): `pm_ph_on` is set to 1 for that frame only. The phase timers run in that frame (PH stack, gbi_task tick pair, sp0 tex/dlc/rest split, texture timers) and one tick pair per producer class site (cls line); the per-op census hooks of the walk (opsplit, model census, streaks) run in phase mode only (pm_ph_cen, PERF1). The other N-1 frames run with `pm_ph_on` 0, the same as a log-off build.
 3. PMU: one fixed counter set for the whole run (no window toggle). The counters are read only at the two edges of each sampled frame. So the clean frames and the sampled frames get separate counts, and the phase code does not pollute the clean I-cache counts.
 
 The prof line prints at warn level (`pm_log_w`, level 1). `loglevel=debug` is not needed. The push uses only `prof`: no debug line, no other stat switch.
@@ -62,16 +62,20 @@ PMN0 and PMN1 are the only event counters. CCNT counts cycles. The user asks for
 
 ## 3. The prof line (exact)
 
-One line per window of 300 drawn frames, at warn level:
+Per window of 300 drawn frames (pm_log_prof_line): the main line, then the pmu line and the producer class line (PERF1: the 256 byte log slot cut the pmu fields off the main line):
 
 ```
-pm_log_w("prof f%u w%u fps %.1f | ft %.2f max %.1f o34 %u wk %.2f | s%u fts %.2f wks %.2f oh %.2f amort %u | gbi %.2f dlc %.2f tex %.2f gpu %.2f | pmu %c %u %u cyc %u pm %u %u | st %u vb %u iv %u %u %u %u", ...);
+prof f%u w%u fps %.1f | ft %.2f max %.1f o34 %u wk %.2f | s%u fts %.2f wks %.2f oh %.2f amort %u | gbi %.2f dlc %.2f tex %.2f gpu %.2f | st %u vb %u iv %u %u %u %u
+prof f%u w%u pmu %c %u %u cyc %u pm %u %u
+prof f%u w%u cls rec %.2f ent %.2f spr %.2f dlc %.2f sub %.2f rest %.2f
 ```
 
 Example (made-up numbers, for the shape only):
 
 ```
-prof f9000 w300 fps 26.4 | ft 37.80 max 61.2 o34 141 wk 35.10 | s10 fts 46.20 wks 43.90 oh 8.80 amort 293 | gbi 14.20 dlc 2.10 tex 3.40 gpu 5.10 | pmu m 150863 54478 cyc 9900000 pm 15 5 | st 330 vb 682 iv 0 241 52 7
+prof f9000 w300 fps 26.4 | ft 37.80 max 61.2 o34 141 wk 35.10 | s10 fts 46.20 wks 43.90 oh 8.80 amort 293 | gbi 14.20 dlc 2.10 tex 3.40 gpu 5.10 | st 330 vb 682 iv 0 241 52 7
+prof f9000 w300 pmu m 150863 54478 cyc 9900000 pm 15 5
+prof f9000 w300 cls rec 2.90 ent 1.70 spr 0.30 dlc 0.00 sub 1.50 rest 7.80
 ```
 
 | Field | Meaning | Source |
@@ -96,6 +100,8 @@ prof f9000 w300 fps 26.4 | ft 37.80 max 61.2 o34 141 wk 35.10 | s10 fts 46.20 wk
 | st | game steps in the window (pm_step_calls delta) | pm_phase.c:526 |
 | vb | vblanks in the window (C3D_FrameCounter(0) delta) | window end |
 | iv | drawn frames by vblank interval 1, 2, 3, 4+ (pm_ph_iv, pm_main.c:450) | per frame bin |
+| cls rec ent spr dlc sub | exclusive ms per sampled frame of each producer class of the walk: rec_run (G_PM_REC), nd_ent_case and ent_gdl, the native sprite draw, dlc_try, every native submit (nd.h NDT_*; one tick pair per class site, no per-op hook in a prof sample) | pm_gpu.c pm_gpu_ndt_add |
+| cls rest | gbi less the classes: the walker ops, the state ops and the other lists | window end |
 
 `st - w` is the count of skipped draws (FS1). The pace line fields (steps, drawn, vblanks, intervals) are in the prof line, so `pacestat` and `loglevel=debug` are not needed.
 
