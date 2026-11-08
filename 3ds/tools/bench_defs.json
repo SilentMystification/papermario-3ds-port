@@ -621,7 +621,7 @@
       "scenario": null,
       "host": "o3ds",
       "cap": 60,
-      "until": "prof c1probe ",
+      "until": "prof c1probe pause ",
       "tags": [
         "console",
         "prof",
@@ -635,7 +635,7 @@
         },
         {
           "name": "wake_med_us",
-          "regex": "prof c1probe .*? wake n \\d+ med (\\d+)",
+          "regex": "prof c1probe .*? wake med (\\d+)",
           "pick": "last"
         },
         {
@@ -650,17 +650,17 @@
         },
         {
           "name": "pause_n",
-          "regex": "prof c1probe .*? pause n (\\d+)",
+          "regex": "prof c1probe pause n (\\d+)",
           "pick": "last"
         },
         {
           "name": "pause_per_ms",
-          "regex": "prof c1probe .*? pause n \\d+ per ([0-9.]+)",
+          "regex": "prof c1probe pause n \\d+ per ([0-9.]+)",
           "pick": "last"
         },
         {
           "name": "pause_len_ms",
-          "regex": "prof c1probe .*? len ([0-9.]+)",
+          "regex": "prof c1probe pause .*? len ([0-9.]+)",
           "pick": "last"
         }
       ],
@@ -2316,6 +2316,38 @@
         "azahar",
         "det",
         "cold"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_mac01_selfchk_prof",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "PROF2-6 self-check, prof side: mac_01 spot, det, prof=30, first window wk, oh, amort, csvc, ssvc. Pair with spot_mac01_selfchk_off (wk against pacewk). Direction only.",
+      "scenario": "spot_mac01_selfchk_prof",
+      "cap": 35,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "prof",
+        "selfcheck"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_mac01_selfchk_off",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "PROF2-6 self-check, prof-off side: mac_01 spot, det, pacestat, pacewk wk (mean work ms of a drawn frame) at frame 400 or later. Pair with spot_mac01_selfchk_prof. Direction only.",
+      "scenario": "spot_mac01_selfchk_off",
+      "cap": 35,
+      "until": "pacewk f([4-9]\\d\\d|[1-9]\\d{3,}) ",
+      "tags": [
+        "azahar",
+        "prof",
+        "selfcheck"
       ],
       "gates": []
     },

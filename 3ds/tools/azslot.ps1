@@ -15,17 +15,19 @@ $script:AzInstall = "C:\Program Files\Azahar"
 $script:AzMaster = "$env:APPDATA\Azahar"
 $script:SlotMutex = @{}
 # AZT3-4: the one idle time of a kept Azahar. azreap.ps1 (dot-sources this file) closes it after this many seconds without a run.
-$script:AzIdleSec = 900
+# AZT13 (user, 2026-11-08: reuse instances): 60 min, so a session keeps its Azahars between runs (was 15 min).
+$script:AzIdleSec = 3600
 
 # AZT4-1: the cap on live azahar.exe processes of the slot pool, all slots of all worktrees and agents. A constant, not an env value.
 # AZT12-4 (2026-11-08, Ryzen 3950X, RTX 2070 SUPER 8 GB, 64 GB RAM, with the user's apps open): a turbo load Azahar ran 4.2 % slower per
 # 300 frames with 3 active Azahars than with 2 (3.805 s vs 3.651 s); a 4th live Azahar failed at start ("Failed to allocate Stream buffer",
-# the GPU host-visible heap). So 3, not 4.
-$script:AzCap = 3
+# the GPU host-visible heap). Cap 2 (user, 2026-11-08): with 3 live Azahars cold starts failed with 0xC000001D (GPU fault) and the
+# fault retry closed the other kept instances.
+$script:AzCap = 2
 $script:CapSaid = $false
 
 function Get-SlotCount {
-    $n = if ($env:PM_AZ_SLOTS) { [int]$env:PM_AZ_SLOTS } else { 3 }
+    $n = if ($env:PM_AZ_SLOTS) { [int]$env:PM_AZ_SLOTS } else { 2 }
     if ($n -gt $script:AzCap) {
         if (-not $script:CapSaid) { Write-Host "azslot: PM_AZ_SLOTS=$n is above the cap $($script:AzCap) live Azahars: using $($script:AzCap) slots"; $script:CapSaid = $true }
         $n = $script:AzCap
@@ -66,20 +68,6 @@ function Close-IdleKept([int]$except = 0) {
         } finally { Exit-Slot $num }
     }
     return $closed
-}
-
-# AZT11-4a: does the 3dsx hold the boot's build id as a NUL-terminated string (PM_BUILD_STR)? The restart is the lane's build when it does.
-function Test-Build3dsx([string]$path, [string]$build) {
-    if (-not $build) { return $false }
-    $t = [Text.Encoding]::GetEncoding(28591).GetString([IO.File]::ReadAllBytes($path))
-    return $t.Contains($build + [char]0)
-}
-# AZT11-4b: every word of the run's switches is a word of the boot's switches line (the boot line adds the launch arguments and the
-# line may end with a CR). A substring test missed a word at a line end and forced a cold start.
-function Test-SwitchWords([string]$printed, [string]$want) {
-    $have = @($printed -split '\s+' | Where-Object { $_ })
-    foreach ($w in @($want -split '\s+' | Where-Object { $_ })) { if ($have -notcontains $w) { return $false } }
-    return $true
 }
 
 function Get-SlotPaths([int]$k) {
@@ -155,15 +143,28 @@ function Exit-Slot([int]$k) {
     if ($script:SlotMutex.ContainsKey($k)) { try { $script:SlotMutex[$k].ReleaseMutex() } catch {} }
 }
 
+# AZT13: the speed an Azahar of slot k runs at: the frame_limit and use_vsync it starts with (qt-config.ini, read only at the Azahar start).
+# Normal is the slot config. Turbo (W01) is vsync off and the limit TurboLimit, unless the slot config limit is already 0: Azahar's 0 is
+# "unthrottled" (2026-11-08: a normal cold spot_mac01_det ran the 300-frame window in about 5 s, 2x the 3DS rate), which no limit
+# raises, so turbo keeps 0. With the user's config (frame_limit=0, use_vsync=false) turbo and normal are the same speed and one kept Azahar
+# restarts both (the old turbo flag forced a cold start at each change). Returns "fl<limit> vs<0|1>".
+function Get-SlotSpeed([int]$k, [bool]$turbo, [int]$turbolimit) {
+    $t = Get-Content (Get-SlotPaths $k).cfg -Raw
+    $fl = [int][regex]::Match($t, '(?m)^frame_limit=(\d+)').Groups[1].Value
+    $vs = [regex]::Match($t, '(?m)^use_vsync=(\w+)').Groups[1].Value -eq "true"
+    if ($turbo) { $vs = $false; if ($fl -ne 0) { $fl = $turbolimit } }
+    return ("fl{0} vs{1}" -f $fl, [int]$vs)
+}
+
 function Get-WarmState([int]$k, [bool]$turbo, [int]$turbolimit) {
     # AZT2: can a run restart in slot k? Returns "warm" or the reason it cannot:
-    # "no kept" (no Azahar kept in the slot), "closed" (keep.json, but its Azahar is gone), "turbo" (other turbo setting).
-    # AZT3-1: no lane check. Every lane's 3dsx is copied to the slot rom path and the restart loads that path.
+    # "no kept" (no Azahar kept in the slot), "closed" (keep.json, but its Azahar is gone), "speed" (AZT13: the kept Azahar runs another
+    # frame_limit or vsync, Get-SlotSpeed). AZT3-1: no lane check. Every lane's 3dsx is copied to the slot rom path and the restart loads that path.
     $kept = Get-KeptAzahar $k
     $info = Get-KeepInfo $k
     if (-not $kept) { if ($info) { return "closed" } else { return "no kept" } }
     if (-not $info -or [int]$info.pid -ne $kept.Id) { return "no kept" }
-    if ([bool]$info.turbo -ne $turbo -or [int]$info.turbolimit -ne $turbolimit) { return "turbo" }
+    if ([string]$info.speed -ne (Get-SlotSpeed $k $turbo $turbolimit)) { return "speed" }
     return "warm"
 }
 
@@ -198,15 +199,21 @@ function Get-Slot([int]$want, [int]$waitSec, [bool]$turbo = $false, [int]$turbol
 }
 
 # ---- AZT-2: keep an Azahar open after a run and restart emulation in it (warm start) ----
+# AZT13: Azahar's shortcuts (Restart Emulation F6, Continue\Pause F4) have Context=2 in the slot qt-config.ini (Qt::ApplicationShortcut).
+# Qt's shortcut map fires one only while the application has an active window, and Qt's Windows plugin sets that from WM_SETFOCUS and
+# WM_KILLFOCUS, not from the OS foreground. The old path made Azahar the OS foreground window, posted the key, and 150 ms later gave the
+# foreground back; every agent's run did the same for its own Azahar (restart and pause keys). Focus changes are sent messages: Azahar
+# handles them before any posted message. So when the foreground moved again before Azahar's GUI thread read the posted key (the restore
+# 150 ms later, or another agent's swap), Qt saw no active window and dropped the key (pool.log 2026-11-08: try 1 "foreground" and "nonce
+# none" in about 40 % of rounds). The key now goes with its own focus in the same queue: post WM_SETFOCUS, the key down and up, then
+# WM_KILLFOCUS, all to the hwnd of this pid. Azahar handles them in that order whatever window has the OS focus, and no other window moves.
 if (-not ([System.Management.Automation.PSTypeName]'AzKey').Type) {
     Add-Type @"
 using System; using System.Runtime.InteropServices;
 public class AzKey {
   [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h, uint m, IntPtr w, IntPtr l);
   [DllImport("user32.dll")] public static extern uint MapVirtualKey(uint c, uint t);
-  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
-  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int n);
-  [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr h);
+  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
 }
 "@
 }
@@ -220,96 +227,23 @@ function Get-SlotHotkey([int]$k, [string]$action) {
     return ""
 }
 
-# AZT3-1: Azahar's shortcuts (Restart Emulation, Pause) are window shortcuts: Qt fires them only while Azahar is the active window.
-# A posted key alone did nothing when another window had the focus (the warm restart then fell back to a cold start).
-if (-not ([System.Management.Automation.PSTypeName]'AzFg').Type) {
-    Add-Type @"
-using System; using System.Runtime.InteropServices;
-public class AzFg {
-  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
-  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, IntPtr pid);
-  [DllImport("user32.dll")] public static extern bool AttachThreadInput(uint a, uint b, bool f);
-  [DllImport("kernel32.dll")] public static extern uint GetCurrentThreadId();
-  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
-  [DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr h);
-}
-"@
-}
-
-function Set-AzForeground([IntPtr]$h) {
-    # Makes window h the foreground window (attach to the foreground thread: the foreground lock allows it). Returns $true when it is.
-    $fg = [AzFg]::GetForegroundWindow()
-    if ($fg -eq $h) { return $true }
-    $fgT = [AzFg]::GetWindowThreadProcessId($fg, [IntPtr]::Zero)
-    $me = [AzFg]::GetCurrentThreadId()
-    [void][AzFg]::AttachThreadInput($me, $fgT, $true)
-    [void][AzFg]::BringWindowToTop($h)
-    $ok = [AzFg]::SetForegroundWindow($h)
-    [void][AzFg]::AttachThreadInput($me, $fgT, $false)
-    return $ok
-}
-
 function Send-AzHotkey($proc, [string]$seq) {
-    # Posts the key to the Azahar main window. Azahar is made the foreground window for the keys, then the previous foreground window gets the focus back.
+    # Posts the key (one key, no modifier: Qt reads Ctrl, Shift and Alt from the real keyboard state, which a posted message does not set)
+    # between a posted WM_SETFOCUS and WM_KILLFOCUS to the Azahar main window of this process. $true when posted.
     $proc.Refresh()
     $h = $proc.MainWindowHandle
-    if ($h -eq [IntPtr]::Zero -or -not $seq) { return $false }
-    $prevFg = [AzFg]::GetForegroundWindow()
-    $script:AzLastFg = [bool](Set-AzForeground $h) # AZT9-1: the key goes to a foreground window only (Qt window shortcuts)
-    Start-Sleep -Milliseconds 150
-    try { return (Send-AzHotkeyKeys $h $seq) }
-    finally {
-        Start-Sleep -Milliseconds 150
-        if ($prevFg -ne [IntPtr]::Zero -and $prevFg -ne $h) { [void](Set-AzForeground $prevFg) }
-    }
-}
-
-# AZT9-2: the key as keyboard input to the foreground window (keybd_event), for the warm restart tries after a posted key did not restart.
-if (-not ([System.Management.Automation.PSTypeName]'AzKb').Type) {
-    Add-Type @"
-using System; using System.Runtime.InteropServices;
-public class AzKb {
-  [DllImport("user32.dll")] public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
-}
-"@
-}
-function Send-AzKeyEvent([IntPtr]$h, [string]$seq) {
-    $mods = @(); $key = ""
-    foreach ($part in $seq.Split("+")) {
-        switch ($part.ToLower()) { "ctrl" { $mods += 0x11 } "shift" { $mods += 0x10 } "alt" { $mods += 0x12 } default { $key = $part } }
-    }
+    if ($h -eq [IntPtr]::Zero) { return $false }
     $vk = 0
-    if ($key -match '^F(\d{1,2})$') { $vk = 0x6F + [int]$Matches[1] }
-    elseif ($key -match '^[A-Za-z0-9]$') { $vk = [int][char]$key.ToUpper() }
-    if (-not $vk) { return $false }
-    $prevFg = [AzFg]::GetForegroundWindow()
-    [void](Set-AzForeground $h)
-    Start-Sleep -Milliseconds 150
-    foreach ($m in $mods) { [AzKb]::keybd_event([byte]$m, 0, 0, [UIntPtr]::Zero) }
-    [AzKb]::keybd_event([byte]$vk, 0, 0, [UIntPtr]::Zero)
-    Start-Sleep -Milliseconds 60
-    [AzKb]::keybd_event([byte]$vk, 0, 2, [UIntPtr]::Zero)
-    foreach ($m in $mods) { [AzKb]::keybd_event([byte]$m, 0, 2, [UIntPtr]::Zero) }
-    Start-Sleep -Milliseconds 150
-    if ($prevFg -ne [IntPtr]::Zero -and $prevFg -ne $h) { [void](Set-AzForeground $prevFg) }
-    return $true
-}
-function Send-AzHotkeyKeys([IntPtr]$h, [string]$seq) {
-    $mods = @(); $key = ""
-    foreach ($part in $seq.Split("+")) {
-        switch ($part.ToLower()) { "ctrl" { $mods += 0x11 } "shift" { $mods += 0x10 } "alt" { $mods += 0x12 } default { $key = $part } }
-    }
-    $vk = 0
-    if ($key -match '^F(\d{1,2})$') { $vk = 0x6F + [int]$Matches[1] }
-    elseif ($key -match '^[A-Za-z0-9]$') { $vk = [int][char]$key.ToUpper() }
-    if (-not $vk) { return $false }
-    foreach ($m in $mods) { [void][AzKey]::PostMessage($h, 0x100, [IntPtr]$m, [IntPtr][int64](1 + ([AzKey]::MapVirtualKey($m, 0) -shl 16))) }
+    if ($seq -match '^F(\d{1,2})$') { $vk = 0x6F + [int]$Matches[1] }
+    elseif ($seq -match '^[A-Za-z0-9]$') { $vk = [int][char]$seq.ToUpper() }
+    if (-not $vk) { Write-Host "Send-AzHotkey: key '$seq' is not one F key, letter or digit (set a plain key in the slot qt-config.ini)"; return $false }
     $sc = [AzKey]::MapVirtualKey($vk, 0)
-    [void][AzKey]::PostMessage($h, 0x100, [IntPtr]$vk, [IntPtr][int64](1 + ($sc -shl 16)))
-    Start-Sleep -Milliseconds 60
-    [void][AzKey]::PostMessage($h, 0x101, [IntPtr]$vk, [IntPtr][int64](1 + ($sc -shl 16) + 0xC0000000))
-    foreach ($m in $mods) { [void][AzKey]::PostMessage($h, 0x101, [IntPtr]$m, [IntPtr]0) }
-    return $true
+    $ok = [AzKey]::PostMessage($h, 0x0007, [IntPtr]::Zero, [IntPtr]::Zero) # WM_SETFOCUS: Qt's active window is Azahar's main window
+    $ok = $ok -and [AzKey]::PostMessage($h, 0x0100, [IntPtr]$vk, [IntPtr][int64](1 + ($sc -shl 16))) # WM_KEYDOWN
+    $ok = $ok -and [AzKey]::PostMessage($h, 0x0101, [IntPtr]$vk, [IntPtr][int64](1 + ($sc -shl 16) + 0xC0000000)) # WM_KEYUP
+    # WM_KILLFOCUS gives Qt's active window back, unless Azahar is the OS foreground window (the user works in it)
+    if ($ok -and [AzKey]::GetForegroundWindow() -ne $h) { $ok = [AzKey]::PostMessage($h, 0x0008, [IntPtr]::Zero, [IntPtr]::Zero) }
+    return [bool]$ok
 }
 
 function Get-KeepInfo([int]$k) {
@@ -515,49 +449,16 @@ function Get-QueueSummary {
     return $lines
 }
 
-# AZT11-4c: a fourth restart key method. SwitchToThisWindow makes Azahar the foreground window even when the foreground lock refuses
-# SetForegroundWindow (a background agent); then the key goes in as keyboard input (Send-AzKeyEvent).
-if (-not ([System.Management.Automation.PSTypeName]'AzSwitch').Type) {
-    Add-Type @"
-using System; using System.Runtime.InteropServices;
-public class AzSwitch {
-  [DllImport("user32.dll")] public static extern void SwitchToThisWindow(IntPtr h, bool altTab);
-}
-"@
-}
-function Send-AzKeyEventSwitch([IntPtr]$h, [string]$seq) {
-    [AzSwitch]::SwitchToThisWindow($h, $true)
-    Start-Sleep -Milliseconds 200
-    return (Send-AzKeyEvent $h $seq)
-}
 
-# AZT11-4: the boot of this run is the one that prints the run's nonce (bootid=<n>, the first word of its switches line; the game prints
-# the build line just before the switches line). Searches the head of the game log (a restart that writes from offset 0) and its tail
-# (an appended boot). Returns @{ build; switches } once the line is complete, else $null.
-function Find-BootNonce([string]$log, [string]$nonce) {
-    if (-not (Test-Path $log)) { return $null }
-    $needle = "bootid=$nonce"
-    foreach ($where in @("head", "tail")) {
-        $t = ""
+# AZT13: did the Azahar of this emulator log boot a game after byte offset $off? Its BootGame line ("Azahar starting...") proves that a
+# restart key was taken, before the game's own log shows anything.
+function Test-EmuBoot([string]$emuLog, [long]$off) {
+    try {
+        $fs = [IO.File]::Open($emuLog, 'Open', 'Read', 'ReadWrite')
         try {
-            $fs = [IO.File]::Open($log, 'Open', 'Read', 'ReadWrite')
-            try {
-                $n = [int][Math]::Min($fs.Length, 262144)
-                if ($n -le 0) { continue }
-                if ($where -eq "head") { $fs.Seek(0, 'Begin') | Out-Null } else { $fs.Seek(-$n, 'End') | Out-Null }
-                $buf = New-Object byte[] $n
-                $got = $fs.Read($buf, 0, $n)
-                $t = [Text.Encoding]::UTF8.GetString($buf, 0, $got)
-            } finally { $fs.Close() }
-        } catch { continue }
-        $i = $t.IndexOf($needle)
-        if ($i -lt 0) { continue }
-        $eol = $t.IndexOf("`n", $i)
-        if ($eol -lt 0) { return $null } # the switches line is not complete yet
-        $ls = $t.LastIndexOf("`n", $i) + 1
-        $bm = [regex]::Matches($t.Substring(0, $ls), '(?m)^#\d+ build (\S+) git')
-        if ($bm.Count -eq 0) { return $null }
-        return [pscustomobject]@{ build = $bm[$bm.Count - 1].Groups[1].Value; switches = ($t.Substring($ls, $eol - $ls).Trim() -replace '^#\d+ switches ', '') }
-    }
-    return $null
+            if ($fs.Length -le $off) { return $false }
+            [void]$fs.Seek($off, 'Begin')
+            return (New-Object IO.StreamReader($fs)).ReadToEnd().Contains(":BootGame:")
+        } finally { $fs.Close() }
+    } catch { return $false }
 }
