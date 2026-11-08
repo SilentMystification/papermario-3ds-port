@@ -934,6 +934,7 @@ void pm_gpu_ndt_take(uint64_t o[NDT_N]) { for (int k = 0; k < NDT_N; k++) { o[k]
 static unsigned ndn_tgen;
 static __attribute__((noinline)) void pm5_upload_draw(const NdDraw* d);
 static __attribute__((cold, noinline)) void t1log_draw(const NdDraw* d);
+static int t1l_on = -1; /* switch t1log: -1 until t1log_draw reads it */
 static __attribute__((cold, noinline)) void pm5tex1_log(const NdDraw* d);
 /* FX1-3 orbdbg (debug tool): one line per draw inside an effect list (the tag from pm_gbi_dbg_orb_tag, nd_walk.c). path: walk (flush_draw) or native (nd_raw_native). */
 static __attribute__((cold, noinline)) void orb_log(const char* path, int z, int memb, int i8_0, int i8_1, unsigned tris, int graw) {
@@ -952,8 +953,8 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
     /* FB-3: every program 5 draw (model, sprite, raw) writes its pm5 block here, once. The copy keeps the caller's NdDraw; uvx goes to the pm5 uniform. */
     NdDraw d5;
     if (dp->use5 && !dp->no_uni) { d5 = *dp; pm5_upload_draw(&d5); d5.no_uni = 1; d5.npal = 0; if (d5.has_uvx) d5.loc_uvx = (unsigned)u5_uvx; dp = &d5; }
-    t1log_draw(dp);
-    pm5tex1_log(dp);
+    if (t1l_on) t1log_draw(dp); /* PERF1: the debug calls are tested at the call site (a cached switch, the draw flags), not called per draw */
+    if (dp->use5 && dp->has_uvx) pm5tex1_log(dp);
     const NdDraw* d = dp;
     if (ndn_tgen != nd_tmpl_gen()) { ndn_tgen = nd_tmpl_gen(); nd_shadow_reset(&ndn_sh); } /* FB-2: a template id was taken over by another key (LRU): the id shadow is stale */
     prog_use(d->use5 ? 4 : 3);
@@ -988,7 +989,7 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
         else { if (nb.rect_y0 < grab_dy0) grab_dy0 = nb.rect_y0; if (nb.rect_y1 > grab_dy1) grab_dy1 = nb.rect_y1; }
     }
     rp_tmpl_ = d->tmpl; rp_u0_ = d->u[0].dim != 0;
-    rp_draw("nat", tex);
+    if (rp_on_) rp_draw("nat", tex); /* -1 until the first read */
     dc_kick();
     NDT_E(tsub, NDT_SUB);
 }
@@ -1010,7 +1011,7 @@ static __attribute__((noinline)) void pm5_upload_draw(const NdDraw* d) {
 }
 /* FB-3 t1log (debug switch, log only): one line per tex1 draw of a native record or raw batch, with the unit 1 words and the uvx values sent */
 static __attribute__((cold, noinline)) void t1log_draw(const NdDraw* d) {
-    static int t1l_on = -1, t1l_n; extern unsigned pm_frame_count(void);
+    static int t1l_n; extern unsigned pm_frame_count(void);
     if (t1l_on < 0) t1l_on = pm_debug_has("t1log");
     if (t1l_on && d->has_uvx && d->use5 && pm_frame_count() >= 100 && t1l_n++ < 400) pm_log("t1draw f%u use5 %d loc_uvx %u u1 dim %x addr %x param %x lod %x type %x uvx %.4f %.4f %.4f %.4f", pm_frame_count(), d->use5, d->loc_uvx, d->u[1].dim, d->u[1].addr, d->u[1].param, d->u[1].lod, d->u[1].type, d->uvx[0], d->uvx[1], d->uvx[2], d->uvx[3]);
 }
@@ -1018,7 +1019,7 @@ static __attribute__((cold, noinline)) void t1log_draw(const NdDraw* d) {
 void pm_gbi_cur_prod_name(char* b, int n);
 static __attribute__((cold, noinline)) void pm5tex1_log(const NdDraw* d) {
     static char seen[24][48]; static unsigned nseen;
-    if (!d->use5 || !d->has_uvx) return;
+    if (!d->use5 || !d->has_uvx || pm_log_level() < 2) return; /* pm_log is an info line */
     char prod[48]; pm_gbi_cur_prod_name(prod, sizeof prod);
     for (unsigned i = 0; i < nseen; i++) if (strcmp(seen[i], prod) == 0) return;
     if (nseen < 24) { strncpy(seen[nseen], prod, 47); seen[nseen][47] = 0; nseen++; }
@@ -2718,7 +2719,7 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
      * desc, unit 0 is the bound slot (pm_tex_native_unit0), the raw path's rule. */
     uint32_t r13cw[4] = { 0, 0, 0, 0 }; int r13cb = 0; int r13 = 0;
     r13_last = 0; /* MDL-5a: r13u1_ok and r13i8_1 are set by pm_gpu_set_r13_t1 (rec_run, before this draw); clearing them here made every bound R13 tile 1 a why 6 sub b */
-    if (rec[26] != 0 && !ax_ok && !pm_debug_has("r13off") && nd_r13_texonly(rec + NDMC_RW, rec[26], r13cw, &r13cb)) {
+    if (rec[26] != 0 && !ax_ok && !PMDL("r13off") && nd_r13_texonly(rec + NDMC_RW, rec[26], r13cw, &r13cb)) {
         r13_last = 1;
         r13 = 1;
         if (ds == NULL && gfx == NULL) {
@@ -2808,8 +2809,9 @@ static void pm_gpu_ndn_window_end_w(void) {
 }
 static void ndn_log(void) {
     unsigned f = pm_frame_count();
-    if (f % 300u == 0 && f != ndn_f_last) {
+    if (f != ndn_f_last) { /* PERF1: one frame compare per record; the modulo once per frame */
         ndn_f_last = f;
+        if (f % 300u) return;
         unsigned clr = nd_mc_clears();
         wide_log(f);
         rect_log(f);
@@ -2879,9 +2881,11 @@ static __attribute__((noinline)) int ndc_compare(const NdMKey* k, const NdTexDes
     return 1;
 }
 /* S3N-7 diagnostic (sampled misses): the stored entry of the same model (R0 word 0 and R12 word 0 equal) and the first key word that differs. */
-static unsigned mdg_miss, mdg_printed;
+static unsigned mdg_cd, mdg_printed;
 void pm_gpu_model_miss_diag(const NdMKey* k) {
-    if ((mdg_miss++ % 400u) != 0u || mdg_printed >= 16u) return;
+    if (mdg_printed >= 16u) return;
+    if (mdg_cd) { mdg_cd--; return; } /* PERF1: one miss in 400 (a countdown, no modulo per miss) */
+    mdg_cd = 399u;
     mdg_printed++;
     unsigned n = nd_mc_size();
     for (unsigned i = 0; i < n; i++) {
@@ -3184,8 +3188,9 @@ static unsigned spr_nat_n, spr_nat_fb[16], spr_nat_f_last;
 static unsigned spr5_sub[8]; /* MDL-3a: class 5 refusals per flag: 1 no pm4 palette path (g_pal, g_use5, gv4_on), 2 off-screen target, 3 grab, 4 zmark, 5 nozt */
 static void spr_nat_log(void) {
     unsigned f = pm_frame_count();
-    if (f % 300u || f == spr_nat_f_last) return;
+    if (f == spr_nat_f_last) return; /* PERF1: one frame compare per sprite; the modulo once per frame */
     spr_nat_f_last = f;
+    if (f % 300u) return;
     pm_log_prof_line("sprnat f%u native %u fb %u why 2 %u why 3 %u why 4 %u why 5 %u other %u", f, spr_nat_n, spr_nat_fb[1] + spr_nat_fb[2] + spr_nat_fb[3] + spr_nat_fb[4] + spr_nat_fb[5] + spr_nat_fb[20] + spr_nat_fb[11] + spr_nat_fb[12],
         spr_nat_fb[2], spr_nat_fb[3], spr_nat_fb[4], spr_nat_fb[5], spr_nat_fb[1] + spr_nat_fb[20] + spr_nat_fb[11] + spr_nat_fb[12]);
     pm_log_prof_line("spr5 f%u nopal %u off %u grab %u zmark %u nozt %u", f, spr5_sub[1], spr5_sub[2], spr5_sub[3], spr5_sub[4], spr5_sub[5]);

@@ -213,6 +213,7 @@ static int nd_comb_native(uint32_t w0, uint32_t w1, uint32_t oh, uint32_t prim, 
 
 /* ---- S3N-3a: the state of one model record as a native draw (pure: record words and NdMCtx) ---- */
 int pm_debug_has(const char* name);
+static int mdl0_sw(void) { static int v = -1; if (v < 0) v = pm_debug_has("mdl0") ? 1 : 0; return v; } /* PERF1: switch mdl0, read once (a log switch of the launch) */
 void pm_log_d(const char* fmt, ...);
 void pm_log_prof_line(const char* fmt, ...);
 static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st);
@@ -284,10 +285,10 @@ static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, Nd
     if (!c->mode || !c->mode->ok || (!c->has_comb && !c->mode->has_cb)) return (st->why = 1, 0);
     if (c->gv && c->gv->fxon && !c->nrm_ok) return (st->why = 4, 0); /* lit or fog without the walker normal rows (PM5-3: with them the range is a pm5 draw) */
     if (rec[26] != 0 && !c->aux_ok) { /* MDL-0 count (switch mdl0): the first 12 why 2 records, their R13 words */
-        static unsigned m2_ = 0; if (m2_ < 12u && pm_debug_has("mdl0")) { const uint32_t* aw = rec + NDMC_RW; m2_++; pm_log_d("mdl2 n %u w0 %08x %08x w1 %08x %08x gfx %d", (unsigned)rec[26], aw[0], aw[1], aw[2], aw[3], c->aux_ok); }
+        static unsigned m2_ = 0; if (m2_ < 12u && mdl0_sw()) { const uint32_t* aw = rec + NDMC_RW; m2_++; pm_log_d("mdl2 n %u w0 %08x %08x w1 %08x %08x gfx %d", (unsigned)rec[26], aw[0], aw[1], aw[2], aw[3], c->aux_ok); }
         return (st->why = 2, 0); } /* R13: words after the record (special tile list, untextured ops); S3L-3: the untextured form is decoded by the caller (aux_ok) */
     if (!nd_gfx_state_only(rec[22]) || !nd_gfx_state_only(rec[23])) { /* MDL-0 count (switch mdl0): the first 12 why 3 records: list addresses and the first two words of each list */
-        static unsigned m3_ = 0; if (m3_ < 12u && pm_debug_has("mdl0")) { m3_++; const uint32_t* a = rec[22] ? (const uint32_t*)(uintptr_t)rec[22] : NULL; const uint32_t* b = rec[23] ? (const uint32_t*)(uintptr_t)rec[23] : NULL;
+        static unsigned m3_ = 0; if (m3_ < 12u && mdl0_sw()) { m3_++; const uint32_t* a = rec[22] ? (const uint32_t*)(uintptr_t)rec[22] : NULL; const uint32_t* b = rec[23] ? (const uint32_t*)(uintptr_t)rec[23] : NULL;
             /* MDL-5e: the map, and the first 6 words (3 ops) of each custom list: the ops that run on the state side */
             pm_log_d("mdl3 f%u map %d:%d pre %08x post %08x pre w %08x %08x %08x %08x %08x %08x post w %08x %08x %08x %08x", pm_frame_count(), (int)gGameStatusPtr->areaID, (int)gGameStatusPtr->mapID, (unsigned)rec[22], (unsigned)rec[23],
                 a ? a[0] : 0u, a ? a[1] : 0u, a ? a[2] : 0u, a ? a[3] : 0u, a ? a[4] : 0u, a ? a[5] : 0u, b ? b[0] : 0u, b ? b[1] : 0u, b ? b[2] : 0u, b ? b[3] : 0u); }
