@@ -17,4 +17,5 @@ STATE
 3. CORE2-0/CORE2-1 console measurement (aujoin, core1 busy, ft): push when ready.
 4. GREY, B2 and the args-vs-debug3ds order: one console session with debug logging (quick Select taps, warp tab scroll).
 5. toad_standing recipe still has loglevel=debug: drop it?
+6. CORE2-0 console run: include one prof run without the core-1 probe thread? (if the kernel counts the probe against the core-1 limit, it can slow audio; only that pair shows it)
 
