@@ -9741,9 +9741,9 @@
       "needs_picture": true,
       "expected_events": [
         {"name": "prof on", "regex": "prof=1 log=off"},
-        {"name": "window 1", "regex": "prof f\\d+ w\\d+ tour battle 1/3 "},
-        {"name": "window 3", "regex": "prof f\\d+ w\\d+ tour battle 3/3 "},
-        {"name": "closed 3", "regex": "battletour: battle 3/3 .* closed"},
+        {"name": "window 1", "regex": "prof f\\d+ w\\d+ tour 1/3 battle:Tubbas_Heart_0F"},
+        {"name": "window 3", "regex": "prof f\\d+ w\\d+ tour 3/3 battle:"},
+        {"name": "closed 3", "regex": "battletour: 3/3 battle:\\S+ closed"},
         {"name": "tour done", "regex": "battletour: done items 3 fail 0"}
       ],
       "reason": "BT1 premise check and picture gate: three boss launches, each a map change, a battle load, 60 settle frames, a 120-frame window and the return to the world (about 15 s per boss). Cap 75 s for the three bosses plus the boot (above 45 s: three battles in one start is the subject)."

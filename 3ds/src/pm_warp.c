@@ -785,12 +785,12 @@ static int boss_pending = -1;
 static unsigned boss_frames;
 /* BT1: the damage popup slots of the battle (src/battle/190B20.c) outlive a battle that a debug path ends early (bossend, battletour, the
  * Select menu bypass): BATTLE_STATE_END_BATTLE frees every effect (remove_all_effects), but a popup younger than its 40 frames keeps its slot.
- * update_damage_popups of the next battle then writes timeLeft = 5 through the freed effect (a wild write: Azahar unmapped Write32 5, or a
- * clobbered asset name and an endless load_asset_by_name). The real game ends a battle only after the popups expired. Cleared before a debug start. */
-extern EffectInstance* gDamageCountEffects[24];
+ * update_damage_popups of the next battle then writes timeLeft = 5 through the freed effect (a wild write: Azahar unmapped Write32 5 in
+ * btl_update, tour_battle3 run 2). The real game ends a battle only after the popups expired. Cleared before a debug start. */
+extern struct EffectInstance* gDamageCountEffects[24];
 extern s32 gDamageCountTimers[24];
 static void battle_popups_clear(void) {
-    memset(gDamageCountEffects, 0, sizeof(EffectInstance*) * 24);
+    memset(gDamageCountEffects, 0, sizeof(gDamageCountEffects[0]) * 24);
     memset(gDamageCountTimers, 0, sizeof(s32) * 24);
 }
 int pm_boss_count(void) { return (int)ARRAY_COUNT(boss_tab); }
@@ -870,7 +870,7 @@ static void boss_tick(void) {
     strncat(v, boss_tab[boss_pending].battle, sizeof v - 1);
     c = strchr(v, ':');
     formation = battle_name_value(v, c ? (unsigned)(c - v) : (unsigned)strlen(v), BTL_KMR_1_FORMATION_00);
-    stage = battle_name_value(c ? c + 1 : "", c ? (unsigned)strlen(c + 1) : 0, BTL_KMR_1_STAGE_01);
+    stage = c ? battle_name_value(c + 1, (unsigned)strlen(c + 1), BTL_KMR_1_STAGE_01) : -1; /* BT1: a row without a stage part: the battle's own stage (load_battle_section, gCurrentStagePtr NULL) */
     pm_log("boss: start battle formation %d stage %d", (int)formation, (int)stage);
     boss_pending = -1;
     battle_popups_clear();
@@ -962,7 +962,7 @@ static void battle_tick(void) {
     strncat(v, battle_tab[bt_pending].battle, sizeof v - 1);
     c = strchr(v, ':');
     formation = battle_name_value(v, c ? (unsigned)(c - v) : (unsigned)strlen(v), BTL_KMR_1_FORMATION_00);
-    stage = battle_name_value(c ? c + 1 : "", c ? (unsigned)strlen(c + 1) : 0, BTL_KMR_1_STAGE_01);
+    stage = c ? battle_name_value(c + 1, (unsigned)strlen(c + 1), BTL_KMR_1_STAGE_01) : -1; /* BT1: no stage part: the battle's own stage */
     pm_log("battle: start formation %d stage %d", (int)formation, (int)stage);
     bt_pending = -1;
     battle_popups_clear();
@@ -1142,8 +1142,8 @@ static void tour_tick(unsigned frame) {
  * preset=) has loaded its first map. Per boss: LAUNCH (in the world: gRandSeed = TOUR_SEED, pm_boss_launch, the world launch that keeps and
  * restores the player state) -> WAITBATTLE (GAME_MODE_BATTLE, then TOUR_SETTLE frames; no battle within BT_TIMEOUT: `battletour: <label> FAIL`,
  * next) -> PLAY (prof window, tourtime=<s>; the scenario presses A with autoa) -> END (boss_end: the real BATTLE_STATE_END_BATTLE) -> RESTORE
- * (boss_restore_tick back in the world, then 10 frames) -> CLOSE (line `battletour: battle <i>/<n> <label> closed`) -> next LAUNCH.
- * End line `battletour: done items <n> fail <k>`. Window label `battle <i>/<n> <label>`. Debug tool only (class E). */
+ * (boss_restore_tick back in the world, then 10 frames) -> CLOSE (line `battletour: <i>/<n> battle:<label> closed`) -> next LAUNCH.
+ * End line `battletour: done items <n> fail <k>`. Window line `prof f<n> w<n> tour <i>/<n> battle:<label>` (spaces of the label as _). Debug tool only (class E). */
 #define BT_TIMEOUT 600 /* frames, 20 s */
 enum { BT_OFF, BT_START, BT_LAUNCH, BT_WAITBATTLE, BT_PLAY, BT_END, BT_RESTORE };
 static unsigned char bt_idx[64];
@@ -1187,7 +1187,11 @@ static void bt_launch(unsigned frame) {
         return;
     }
     bt_cur = bt_idx[bt_n++];
-    snprintf(bt_label, sizeof bt_label, "battle %d/%d %s", bt_n, bt_total, pm_boss_label(bt_cur));
+    { /* window label `<i>/<n> battle:<boss label>` (spaces as _): the TOUR2 ingest reads `tour <i>/<n> <label>` and takes kind battle from the prefix */
+        char* c;
+        snprintf(bt_label, sizeof bt_label, "%d/%d battle:%s", bt_n, bt_total, pm_boss_label(bt_cur));
+        for (c = strchr(bt_label, ':'); c && *c; c++) if (*c == ' ') *c = '_';
+    }
     gRandSeed = TOUR_SEED; /* every launch starts from one seed */
     bt_f0 = frame;
     bt_bf = 0;
