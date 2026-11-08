@@ -17,6 +17,7 @@ Premise: pm_boss_launch(i) (pm_warp.c) reaches GAME_MODE_BATTLE from the world f
 2. tour_battle reaches `battletour: done items 35` in one start, fail 0, or each FAIL is named with its cause traced in the code.
 3. spot_mac01_det, mdl5_iwa10_det, battle_start_f182_cold, nok11_det 0000-0015 byte-equal to the base (battletour off there).
 4. One shot inside one battle window shows the battle scene.
+5. Cheat proof (moved from CHEATA, merged 2203dfead): in tour_battle with cheats=action, the log shows a Mario command success, a partner command success and an enemy attack guarded. Add log lines at the hook points if none exist (CHEATA's patch: scratchpad cheata_step3_wip.patch has `cheat: perfect action command, auto success` and `cheat: perfect guard`; pick a boss with HP enough to survive the jump).
 Affected scenarios (no others): tour_battle, a 3-boss check, the 4 byte gates.
 
 ## Rules
