@@ -175,13 +175,17 @@ void ent_refcheck(const EntKey* k, const Gfx* l) {
     }
 }
 
+/* CORE2-2 census: a flattened list (fw) is walker memory; when the walker frees it, its census entries go (the game may reuse the block). */
+extern int nd_c2_on;
+void nd_c2_forget_blk(const void* blk);
+static inline void nd_c2_forget(const void* blk) { if (nd_c2_on > 0 && blk) nd_c2_forget_blk(blk); }
 void ent_compile(EntKey* k, const Gfx* l0) {
     unsigned ns = 0, nops = 0;
     u32 bad = 0, ntri = 0;
     const u8 *lo = NULL, *hi = NULL;
     NdObj o;
     free(k->seg); k->seg = NULL; k->nseg = 0;
-    free(k->fw); k->fw = NULL;
+    nd_c2_forget(k->fw); free(k->fw); k->fw = NULL;
     k->st = ENT_REF; k->why = 0; k->fr = pm_frame_count(); k->retry = k->fr + 300u;
     ent_c.comp++;
     if (!ent_flat(l0, &nops, 0)) { k->why = 5; return; }
@@ -228,7 +232,7 @@ void ent_compile(EntKey* k, const Gfx* l0) {
 }
 
 void ent_reset(void) {
-    for (unsigned i = 0; i < ENT_TAB; i++) if (ent_tab[i]) { free(ent_tab[i]->seg); free(ent_tab[i]->fw); free(ent_tab[i]); ent_tab[i] = NULL; }
+    for (unsigned i = 0; i < ENT_TAB; i++) if (ent_tab[i]) { free(ent_tab[i]->seg); nd_c2_forget(ent_tab[i]->fw); free(ent_tab[i]->fw); free(ent_tab[i]); ent_tab[i] = NULL; }
     ent_nent = 0; ent_gen_seen = pm_dlc_gen;
 }
 

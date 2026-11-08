@@ -76,6 +76,43 @@ __attribute__((cold, noinline)) void nd_c2_walked(void) {
     }
 }
 
+/* The walker frees a block of its own (nd_ent.c flattened lists): its entries are not game memory, drop them. */
+#include <malloc.h>
+__attribute__((cold, noinline)) void nd_c2_forget_blk(const void* blk) {
+    unsigned lo = (unsigned)(uintptr_t)blk, hi = lo + (unsigned)malloc_usable_size((void*)blk);
+    for (unsigned i = 0; i < C2_N; i++) if (c2_tab[i].used && c2_tab[i].p >= lo && c2_tab[i].p < hi) c2_tab[i].used = 0;
+}
+
+/* Every recorded entry whose bytes changed since the walk is a hazard: written by the game before the walker could be done with it. */
+static unsigned c2_check(unsigned f, const char* at) {
+    unsigned ch = 0;
+    for (unsigned i = 0; i < C2_N; i++) {
+        C2Ent* e = &c2_tab[i];
+        if (!e->used) continue;
+        c2_checked++;
+        if (c2_hash((const unsigned char*)(uintptr_t)e->p) == e->h) continue;
+        ch++;
+        if (c2_seen_add(e->p)) {
+            const unsigned* w = (const unsigned*)(uintptr_t)e->p;
+            const unsigned* sw = e->src ? (const unsigned*)(uintptr_t)e->src : NULL;
+            c2_new++;
+            pm_log("c2haz new f%u p %08x op %02x src %08x at %s | now %08x %08x %08x %08x | src words %08x %08x", f, e->p, e->op, e->src, at,
+                   w[0], w[1], w[2], w[3], sw ? sw[0] : 0u, sw ? sw[1] : 0u);
+        }
+    }
+    return ch;
+}
+
+/* A drain (pm_walk_drain): the walker is idle from here on, so the writes after it are safe. Check what was written before it, then
+ * forget the frame (its walk is done). */
+static unsigned c2_drains;
+__attribute__((cold, noinline)) void nd_c2_drain(const char* why) {
+    if (c2_n) c2_changed += c2_check(pm_frame_count(), why);
+    memset(c2_tab, 0, sizeof c2_tab);
+    c2_n = 0;
+    c2_drains++;
+}
+
 /* The first walked task of a drawn frame: check the entries of the last recorded frame, then record this one. */
 __attribute__((cold, noinline)) void nd_c2_task(const void* list) {
     unsigned f = pm_frame_count();
@@ -83,18 +120,9 @@ __attribute__((cold, noinline)) void nd_c2_task(const void* list) {
     int sc[3];
     pm_ph_scene_get(&sc[0], &sc[1], &sc[2]);
     if (c2_frame != ~0u && (unsigned)sc[0] == c2_sc[0] && (unsigned)sc[1] == c2_sc[1] && (unsigned)sc[2] == c2_sc[2]) {
-        unsigned ch = 0;
-        for (unsigned i = 0; i < C2_N; i++) {
-            C2Ent* e = &c2_tab[i];
-            if (!e->used) continue;
-            c2_checked++;
-            if (c2_hash((const unsigned char*)(uintptr_t)e->p) == e->h) continue;
-            ch++;
-            if (c2_seen_add(e->p)) { c2_new++; pm_log("c2haz new f%u p %08x op %02x src %08x", f, e->p, e->op, e->src); }
-        }
-        c2_changed += ch;
+        c2_changed += c2_check(f, "task");
         if (++c2_frames % 60u == 0)
-            pm_log("c2haz sum f%u frames %u entries %u changed %u per frame, addresses %u, overflow %u", f, c2_frames, c2_n, c2_changed / 60u, c2_seen_n, c2_over);
+            pm_log("c2haz sum f%u frames %u entries %u changed %u per frame, addresses %u, overflow %u, drains %u", f, c2_frames, c2_n, c2_changed / 60u, c2_seen_n, c2_over, c2_drains);
         if (c2_frames % 60u == 0) c2_changed = 0;
     }
     memset(c2_tab, 0, sizeof c2_tab);

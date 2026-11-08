@@ -369,6 +369,7 @@ void decode_yay0(void* src, void* dst) {
      * (the farther table offset) cut the literal bytes at the end and every decode failed. */
     bound = 0x100000u;
     if (dec > 0x40000u || link < 16u || count < 16u) return;
+    { void pm_walk_drain(const char* why); pm_walk_drain("decode"); } /* CORE2-3b: the decode writes RAM that the last walk may have read */
     if (!yay0_decode(s, bound, dst, dec)) return;
     /* The decode overwrote RAM that cached PICA textures were built from (the background raster and palette sit at one
      * fixed address for every map). The cache keys on address and size, so drop what the decode replaced. */
@@ -544,7 +545,9 @@ extern void __real_load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType);
 extern void __real_set_game_mode(s16 mode);
 
 s16 pm_warp_hook(s16 mode);
+void pm_walk_drain(const char* why); /* nd_walk.c, CORE2-3b */
 void __wrap_set_game_mode(s16 mode) {
+    pm_walk_drain("mode"); /* a mode change loads and frees scene data */
     mode = pm_warp_hook(mode); /* slice W01 debug switches warp, story, preset */
     {
         extern unsigned pm_frame_count(void);
@@ -566,6 +569,7 @@ void __wrap_set_game_mode(s16 mode) {
 }
 
 void __wrap_load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
+    pm_walk_drain("map");
     pm_audio_drain(1); /* AU2: map change drains the mixer queue */
     {
         extern unsigned pm_pad_scans;
