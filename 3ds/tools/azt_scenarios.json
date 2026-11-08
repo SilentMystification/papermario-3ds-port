@@ -9384,6 +9384,90 @@
         }
       ],
       "reason": "FB-3 part 1 tex1 subject (sbk_56, cold det). Cap 25 as the other det spots."
+    },
+    {
+      "name": "cfg1_prof_off",
+      "status": "unverified",
+      "subject": "Launch word prof=off with the saved profmode=prof in options.ini (the slot copy). Log only: the boot line prints run prof off with source F.",
+      "proves": "CFG-1 gate a: a launch word beats the saved mode, prof=off gives mode 0 (no prof=1 log=off line, logging on).",
+      "debug": "prof=off loglevel=debug",
+      "until": "options: run prof",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "Paper Mario 3DS",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "prof off from the launch word",
+          "regex": "options: run prof off src F"
+        },
+        {
+          "name": "sources: loglevel is F, the saved con_level is I",
+          "regex": "options: src log I live F disk F con I"
+        },
+        {
+          "name": "levels run",
+          "regex": "options: levels run log_on=1 live=3 disk=3 con=1"
+        }
+      ],
+      "reason": "CFG-1 gate a. The saved profmode=prof is set in the master options.ini for this run (restored after). Until is the boot prof line."
+    },
+    {
+      "name": "cfg1_flag_over_ini",
+      "status": "unverified",
+      "subject": "Launch word loglevel=debug with options.ini live_level=1 disk_level=1: the flag sets live and disk to debug, source F. Log only.",
+      "proves": "CFG-1 gate b: a launch flag beats the saved level. The info line options: boot dz_cs reaches log.txt only when disk is 2 or more.",
+      "debug": "loglevel=debug",
+      "until": "options: run prof",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "Paper Mario 3DS",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "levels run with the flag",
+          "regex": "options: levels run log_on=1 live=3 disk=3 con=1"
+        },
+        {
+          "name": "sources",
+          "regex": "options: src log I live F disk F con I"
+        },
+        {
+          "name": "info line reaches log.txt",
+          "regex": "options: boot dz_cs=0"
+        }
+      ],
+      "reason": "CFG-1 gate b. The flag-vs-ini order is shown here; the args-vs-debug3ds.txt order needs a console push (Azahar has one switch string). Master options.ini restored after."
+    },
+    {
+      "name": "cfg1_ini_only",
+      "status": "unverified",
+      "subject": "No launch word: the levels come from options.ini (live_level=2 disk_level=1 con_level=0). Log only.",
+      "proves": "CFG-1 gate c: with no flag the saved values run and every source is I.",
+      "debug": "zloglevel=none",
+      "until": "options: run prof",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "Paper Mario 3DS",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "levels run from the ini",
+          "regex": "options: levels run log_on=1 live=2 disk=1 con=0"
+        },
+        {
+          "name": "all sources I",
+          "regex": "options: src log I live I disk I con I"
+        },
+        {
+          "name": "no profiling by default",
+          "regex": "options: run prof off src I"
+        }
+      ],
+      "reason": "CFG-1 gate c. Master options.ini values set for this run (restored after). profmode=off in the master (a saved key, so the prof source is I). The debug word zloglevel=none stops run_azahar from adding loglevel=debug (it adds it when no loglevel= word is present); the parser ignores it (no edge before loglevel)."
     }
   ]
 }
