@@ -19,13 +19,9 @@ void pm_gx_room(void); /* HANG1a */
 #include "pm_gpu_int.h"
 
 static int drew;
-static int gpu_ok;
 /* 3D writes the depth buffer. A later texrect has to win even if the test stays on. */
-static int z_on;
 static int light_on;
 /* RDP render mode: depth compare, depth update, alpha blend, alpha cut-off (-1 none), decal. */
-static int r_zcmp = 1, r_zupd = 1, r_blend = 1, r_atest = -1, r_decal;
-static int combine;
 int pm_debug_value(const char* key, char* out, unsigned n);
 static int dview = -1; /* V02 depth view mode, see dv_color */
 static int dv_mode(void) { /* RECT-1b: read the switch on first use in any path (the key fields below read it before put4 ever ran in a native-only frame: -1 keyed as depth view) */
@@ -35,12 +31,8 @@ static int dv_mode(void) { /* RECT-1b: read the switch on first use in any path 
 static unsigned dv_draw;
 static unsigned rs_src[3]; /* S1-3: other mode words and depth image flag of the last sync_render, for the ndref oracle */
 static unsigned plan_k[4], plan_kp[4]; /* S1-3: the combiner words of the plan: pm_comb_build(w0, w1, two, t1only) gives plan (pending key from pm_gpu_plan_key, set with the plan) */
-static int r_zmark, stencil_on; /* B3b: case 6 model, see flush */
-static float r_zmark_zn; /* B3b: the constant clip depth (z / w) the model writes */
-static int r_nocol; /* S25: the blender gives back the frame buffer colour: depth only */
-static PmPlan plan; /* S25: combine mode 8 */
+static int stencil_on; /* B3b: case 6 model, see flush */
 static int env_hi = 1; /* texenv stages configured so far (stage 0 is always reset) */
-static unsigned env_col = 0xffffffffu; /* combine mode 5: the ENV colour */
 static unsigned cconst;
 static int rgb_scale = 1;
 static int batch_identity;
@@ -60,7 +52,6 @@ static void wl_depth(int z, int zmark, int zcmp, int zupd, int decal, int nocol,
     if (zupd) { *fn = 3; *wr = nocol ? 1 : 2; return; }
 }
 static float game_mvp[4][4];
-static float vp_sx = 160.f, vp_sy = 120.f, vp_tx = 160.f, vp_ty = 120.f;
 static C3D_Mtx shader_3d;
 /* N64 scissor, y down. The 400-wide target is the 320 game plus 40px bars. */
 static int sci_x0, sci_y0, sci_x1 = 320, sci_y1 = 240;
@@ -108,11 +99,6 @@ static unsigned gstat_n; /* DLC2: static vertices in use */
  * open batch and the fills use: gring and gidx point to it. stamp = the frame that used the chunk; a chunk with stamp < ring_done is finished on the GPU
  * (ring_done = the frame of the last begin: C3D_FrameBegin waits for the GX queue). A batch has one vertex base: gi_kind 0 is the ring chunk in use (walker, rect, spr),
  * gi_kind 1 the static area of chunk 0 (grange). Model draws use chunk 0 too. A batch never mixes the kinds off chunk 0. */
-enum { RING_CHUNK_MAX = 8 };
-typedef struct { unsigned char* vtx; unsigned short* idx; unsigned stamp; int used; } RingChunk;
-static RingChunk rchunk[RING_CHUNK_MAX];
-static int rchunk_n = 1, ring_cur;
-static unsigned ring_fr, ring_done;
 static const void* buf_bp; /* FB-1: the vertex base of the buffer info while buf_cur is 2 */
 /* PRIMZFIX repro, switch zround (debug only): zmix.y rounded to 2^-16 steps, the float24 z step of the console (diag_primz.md). The shader multiplies this value. */
 static float zmix_y_dbg(float y) { static int on = -1; if (on < 0) on = pm_debug_has("zround"); return on ? (float)(int)(y * 65536.f + 0.5f) * (1.f / 65536.f) : y; }
@@ -133,10 +119,10 @@ static __attribute__((cold, noinline)) void stc_set(int site, int en, GPU_TESTFU
     stp_lw[site & 7] = w; stp_lc[site & 7] = c; stp_n++;
     pm_log_d("UC2P site %d word105 %08x en %d fn %d ref %d im %02x wm %02x ctxF4 %08x frame %u calls %u", site, w, en ? 1 : 0, (int)fn, ref, im, wm, c, pm_frame_count(), stp_cnt[site & 7]);
 }
-static int gpu_vtx_on;
 /* GV1c: matrix palette. A raw batch (switch gv1) holds up to GPAL game matrices. A Vtx copy in the ring carries its palette index in the flag field (bytes 6 and 7).
  * The vertex shader pm4 reads pal[4 * index]. An entry is the post matrix (OrthoTilt, viewport) times the game matrix. */
-NdBatch nb = { .pal_gen = 1, .rect_pal_z = 0.5f }; /* the open raw batch and the ring (pm_gpu_int.h) */
+NdBatch nb = { .pal_gen = 1, .rect_pal_z = 0.5f, .rchunk_n = 1 }; /* the open raw batch and the ring (pm_gpu_int.h) */
+PmGpuSt gs = { .r_zcmp = 1, .r_zupd = 1, .r_blend = 1, .r_atest = -1, .env_col = 0xffffffffu, .grab_dirty = 1, .vp_sx = 160.f, .vp_sy = 120.f, .vp_tx = 160.f, .vp_ty = 120.f }; /* the render state (pm_gpu_int.h) */
 static shaderProgram_s prog4;
 static C3D_AttrInfo attr4;
 /* GV5: program pm5 (lighting, texgen, fog). A batch with g_use5 holds up to GPAL5 matrices, 7 registers each (4 position rows, 3 normal rows). */
@@ -149,16 +135,15 @@ void pm_gpu_set_ntab(const float (*ntab)[3][4]) { pal_ntab = ntab; }
 int pm_gpu_gv5_ok(void) { return gv5_on; }
 /* RAW1: lean binding. bound = the program citro3d has (0 unknown, 1 cpu, 3 pm4, 4 pm5), buf_cur = the buffer info (0 unknown, 1 CPU pool, 2 raw ring). shadows of the pm4 uniforms
  * and of the palette entries skip a set that holds the value already. They restart at every frame begin. */
-static int bound, buf_cur, raw_dvlb_ok; static DVLB_s* dvlb_all;
-static void raw1_reset(void) { bound = 0; buf_cur = 0; }
-static int u4_pal = -1, u4_uvx = -1, u4_uvso = -1, u4_cmul = -1, u4_cadd = -1, u4_zmix = -1, u4_nzo = -1, gv4_on;
+static int bound, raw_dvlb_ok; static DVLB_s* dvlb_all;
+static void raw1_reset(void) { bound = 0; nb.buf_cur = 0; }
+static int u4_pal = -1, u4_uvx = -1, u4_uvso = -1, u4_cmul = -1, u4_cadd = -1, u4_zmix = -1, u4_nzo = -1;
 static void rd_sync(void); /* RECT-1b diag: parse the GPUCMD words since the last sync (before every submit) */
 static unsigned post_gen = 1;
 static unsigned* rgen;          /* per ring vertex: the palette generation in which its flag was set (0 = never) */
 static unsigned char* rk;       /* per ring vertex: the flag value */
 enum { RECT_GM = 256 }; /* RECT-1a: palette slot of a fill rectangle batch (screen pixels): pcomp[RECT_GM] = projection with the depth folded in, see pcomp_calc */
 static C3D_Mtx pcomp[257];      /* palette entry per game matrix index: post x game */
-static unsigned pcomp_gen[257];
 static const float (*pal_tab)[4][4];
 static unsigned gv_recopy_n, gv_palup_n, gv_palmax, gv_palflush;
 static C3D_Mtx gv_post;
@@ -168,7 +153,6 @@ int pm_wide_cfg; /* F07-5: the user setting. pm_wide is 0 in 4:3 game modes (log
 int pm_wide; /* F07-1: 1 = the 320 px game picture is stretched over the 400 px screen (X scale 1.25). Read once in pm_gpu_init. */
 static int wedge_x; /* WIDE1-2: 1 while pm_gpu_grange draws an edge-only orthographic range with x scale 1.25 in the post matrix */
 static int ui_ortho; /* F07-3: the game matrix is orthographic (UI): drawn 1:1 and centered with wide, not stretched */
-static int off_active; /* V05: drawing goes to an off-screen image (see pm_gpu_off_begin) */
 static C3D_Mtx off_proj;
 
 static void ident(float m[4][4]) {
@@ -183,10 +167,10 @@ static void rebuild_3d(void) {
     C3D_Mtx view;
     Mtx_Zeros(&view);
     /* V05: an off-screen pass is not rotated and has no 40 pixel margin: GPU y is the game y (y runs down) */
-    view.r[0].x = (pm_wide && !off_active && (!ui_ortho || wedge_x)) ? vp_sx * 1.25f : vp_sx; /* WIDE1-2: wedge_x scales the x of an orthographic draw whose vertices all sit on the game edge */
-    view.r[0].w = off_active ? vp_tx : (pm_wide && !ui_ortho) ? vp_tx * 1.25f : 40.f + vp_tx;
-    view.r[1].y = off_active ? -vp_sy : vp_sy;
-    view.r[1].w = off_active ? vp_ty : 240.f - vp_ty;
+    view.r[0].x = (pm_wide && !gs.off_active && (!ui_ortho || wedge_x)) ? gs.vp_sx * 1.25f : gs.vp_sx; /* WIDE1-2: wedge_x scales the x of an orthographic draw whose vertices all sit on the game edge */
+    view.r[0].w = gs.off_active ? gs.vp_tx : (pm_wide && !ui_ortho) ? gs.vp_tx * 1.25f : 40.f + gs.vp_tx;
+    view.r[1].y = gs.off_active ? -gs.vp_sy : gs.vp_sy;
+    view.r[1].w = gs.off_active ? gs.vp_ty : 240.f - gs.vp_ty;
     /* Clip z/w is -1 at the near plane and +1 at the far plane. Citro's
      * ortho then wants near at -1 and far at 0, which is the value GEQUAL
      * keeps. The opposite sign stores the far wall as the nearer depth, so
@@ -196,7 +180,7 @@ static void rebuild_3d(void) {
     view.r[3].w = 1.f;
     {   /* GV1a: orientation of the map from N64 clip (x y w) to PICA clip. The game matrix is applied before, so it does not count. */
         C3D_Mtx* post = &gv_post;
-        Mtx_Multiply(post, off_active ? &off_proj : &projection, &view);
+        Mtx_Multiply(post, gs.off_active ? &off_proj : &projection, &view);
         const C3D_FVec *a = &post->r[0], *b = &post->r[1], *c = &post->r[3];
         float det = a->x * (b->y * c->w - b->w * c->y) - a->y * (b->x * c->w - b->w * c->x) + a->w * (b->x * c->y - b->y * c->x);
         gv_wind = det < 0.f ? -1 : 1;
@@ -208,7 +192,6 @@ static void rebuild_3d(void) {
 /* V05: an off-screen colour image. draw_box renders the contents of a rotating window (pause pages, file select panels)
  * into a game buffer with the color image set to it, then draws that buffer as strips through the rotation matrix.
  * Such a pass renders into a PICA render target that is a texture (VRAM), and pm_tex samples it for the strips. */
-enum { OFF_N = 3, OFF_S = 4, OFF_P = OFF_N + OFF_S, OFF_ALL = OFF_P + 2 }; /* FX2a: slots OFF_P and OFF_P + 1 are the 8 bit images (flame), they keep their pixels from frame to frame like the N64 memory */ /* V05b: slots 0..OFF_N-1 are full size, the next OFF_S are 64 x 64. A slot keeps its size for good: a render target is never deleted in a frame. */ /* R5: OFF_N 4 to 3 (one full image, 512 KiB, back to the texture cache). OFF_S stays 4. */
 /* X02: w x h is the size of the slot (64 x 64 for a game image up to 64 wide, else PM_OFF_W x PM_OFF_H). siz is the game pixel size
  * (3 = 32 bit, 2 = 16 bit, 1 = 8 bit). The same memory can be a 32 bit image and an 8 bit image in one frame: two slots. */
 void pm_vram_note(void); /* pm_mem.c: VRAM low-water mark */
@@ -216,13 +199,12 @@ void pm_vram_alloc_fail(const char* what, unsigned kb); /* pm_mem.c */
 void pm_vram_reg(const void* p, unsigned bytes); /* pm_mem.c: per-bank accounting */
 void pm_vram_unreg(const void* p, unsigned bytes);
 int pm_vram_bank_of(const void* p);
-static struct { C3D_Tex tex; C3D_RenderTarget* rt; const void* base; int w, h, siz; unsigned stride; unsigned last; C3D_Tex snap; int snap_ready; int hdr, snap_hdr; } offs[OFF_ALL];
-static int off_used, off_sused, off_cur, off_fail, off_w = PM_OFF_W, off_h = PM_OFF_H, off_i8; /* off_fail: a VRAM failure, cleared at pm_gpu_begin */
+static int off_used, off_sused, off_fail, off_w = PM_OFF_W, off_h = PM_OFF_H, off_i8; /* off_fail: a VRAM failure, cleared at pm_gpu_begin */
 static unsigned off_mask_f; /* VRAM3 trace: bit i set when full image i is drawn in this frame */
 static unsigned off_trace_n;
 static int prev_want, prev_pre; /* PT12: see pm_gpu_grab_prev */
 extern unsigned pm_frame_count(void);
-static int r_mix; static unsigned r_mixcol; /* V06: see pm_gpu_set_mix */
+static unsigned r_mixcol; /* V06: see pm_gpu_set_mix */
 static int r_replace; /* off-screen fill: the pixel is written, not blended */
 static int r_memblend; /* FX2a: the blender mixes with the memory colour by the memory alpha (G_BL_A_MEM) */
 /* B2: T2 grab state. grab_tex holds a copy of the main target strips (same tiled layout, 256 x 512). grab_bind: flush binds it
@@ -231,7 +213,7 @@ static int r_memblend; /* FX2a: the blender mixes with the memory colour by the 
  * rows per rectangle, the strips do not overlap, so one copy serves them). */
 enum { GRAB_MAX = 8 };
 static C3D_Tex grab_tex;
-static int grab_bind, grab_dirty = 1, grab_dy0, grab_dy1, grab_n, grab_split;
+static int grab_bind, grab_dy0, grab_dy1, grab_n, grab_split;
 
 static void ndunit_scan(void); /* switch ndunit */
 static void sh_clear(void);
@@ -319,11 +301,11 @@ static void copy_guard(void) {
 /* the data of a full image: its reserved block (full_reserve). A failed boot reserve returns 0, the pass draws on the screen. */
 static int full_tex_init(int i) {
     if (!full_blk[i]) return 0;
-    if (!offs[i].hdr) {
-        if (!tex_hdr(&offs[i].tex, PM_OFF_W, PM_OFF_H, GPU_RGBA5551)) return 0;
-        offs[i].hdr = 1;
+    if (!gs.offs[i].hdr) {
+        if (!tex_hdr(&gs.offs[i].tex, PM_OFF_W, PM_OFF_H, GPU_RGBA5551)) return 0;
+        gs.offs[i].hdr = 1;
     }
-    offs[i].tex.data = full_blk[i];
+    gs.offs[i].tex.data = full_blk[i];
     return 1;
 }
 /* a 64 x 64 image takes an arena block (made at boot) */
@@ -337,33 +319,33 @@ static int small_tex_init(C3D_Tex* t) {
  * the pass. The PICA samples the render target itself with no such copy. Copy the slot before the batch and sample the copy. */
 static void off_snapshot(int i) {
     u8* dst;
-    u32 bytes = (u32)offs[i].w * (u32)offs[i].h * (i < OFF_N ? 2u : 4u); /* R4: a full image is 16 bit */
-    if (offs[i].w == 64) {
-        if (!offs[i].snap_ready) {
-            if (!small_tex_init(&offs[i].snap)) { pm_vram_alloc_fail("snap", 16); pm_log_e("FX2a: no arena block for the copy of slot %d", i); return; }
-            C3D_TexSetFilter(&offs[i].snap, GPU_LINEAR, GPU_NEAREST);
-            C3D_TexSetWrap(&offs[i].snap, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
-            offs[i].snap_ready = 1;
+    u32 bytes = (u32)gs.offs[i].w * (u32)gs.offs[i].h * (i < OFF_N ? 2u : 4u); /* R4: a full image is 16 bit */
+    if (gs.offs[i].w == 64) {
+        if (!gs.offs[i].snap_ready) {
+            if (!small_tex_init(&gs.offs[i].snap)) { pm_vram_alloc_fail("snap", 16); pm_log_e("FX2a: no arena block for the copy of slot %d", i); return; }
+            C3D_TexSetFilter(&gs.offs[i].snap, GPU_LINEAR, GPU_NEAREST);
+            C3D_TexSetWrap(&gs.offs[i].snap, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
+            gs.offs[i].snap_ready = 1;
         }
-        dst = offs[i].snap.data;
+        dst = gs.offs[i].snap.data;
     } else {
         /* the copy buffer: this copy overwrites the frame start grab (PT12), so that request is void */
         prev_pre = 0;
         dst = copy_get();
-        if (!dst) { offs[i].snap_ready = 0; pm_log_e("FX2a: no VRAM for the copy of slot %d", i); return; }
-        if (!offs[i].snap_hdr) {
-            if (!tex_hdr(&offs[i].snap, PM_OFF_W, PM_OFF_H, GPU_RGBA5551)) { offs[i].snap_ready = 0; return; } /* R4: the copy of a full image is 5551 too */
-            C3D_TexSetFilter(&offs[i].snap, GPU_LINEAR, GPU_NEAREST);
-            C3D_TexSetWrap(&offs[i].snap, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
-            offs[i].snap_hdr = 1;
+        if (!dst) { gs.offs[i].snap_ready = 0; pm_log_e("FX2a: no VRAM for the copy of slot %d", i); return; }
+        if (!gs.offs[i].snap_hdr) {
+            if (!tex_hdr(&gs.offs[i].snap, PM_OFF_W, PM_OFF_H, GPU_RGBA5551)) { gs.offs[i].snap_ready = 0; return; } /* R4: the copy of a full image is 5551 too */
+            C3D_TexSetFilter(&gs.offs[i].snap, GPU_LINEAR, GPU_NEAREST);
+            C3D_TexSetWrap(&gs.offs[i].snap, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
+            gs.offs[i].snap_hdr = 1;
         }
-        offs[i].snap.data = dst;
-        offs[i].snap_ready = 1;
+        gs.offs[i].snap.data = dst;
+        gs.offs[i].snap_ready = 1;
     }
     split_frame();
     pm_gx_room();
     if (dst == copy_blk) copy_guard();
-    GX_TextureCopy((u32*)offs[i].tex.data, GX_BUFFER_DIM(2048 / 16, 0), (u32*)dst, GX_BUFFER_DIM(2048 / 16, 0), bytes, BIT(3));
+    GX_TextureCopy((u32*)gs.offs[i].tex.data, GX_BUFFER_DIM(2048 / 16, 0), (u32*)dst, GX_BUFFER_DIM(2048 / 16, 0), bytes, BIT(3));
 }
 
 /* PG0 (prof mode): flush count by caller. The macro below records the function and line of the call. */
@@ -472,7 +454,7 @@ static __attribute__((cold, noinline)) void ndref_draw(const TevKey* tk, int z, 
     NdrefDraw d; memset(&d, 0, sizeof d);
     ndref_put(&kind, 4); ndref_put(&n, 4);
     d.z = z; d.graw = graw; d.prog = prog; d.cull = cull;
-    d.decal = r_decal; d.blend = r_blend; d.atest = r_atest;
+    d.decal = gs.r_decal; d.blend = gs.r_blend; d.atest = gs.r_atest;
     d.sx0 = sci_x0; d.sy0 = sci_y0; d.sx1 = sci_x1; d.sy1 = sci_y1;
     pm_tex_cur_slots(&d.sa, &d.sb);
     pm_tex_slot_words(d.sa, d.tw0); pm_tex_slot_words(d.sb, d.tw1);
@@ -484,7 +466,7 @@ static __attribute__((cold, noinline)) void ndref_draw(const TevKey* tk, int z, 
     for (unsigned k = 0; k < np; k++) { ndref_put(&nb.pal_g[k], 4); ndref_put(&pcomp[nb.pal_g[k]], sizeof(C3D_Mtx)); }
     unsigned nv = nb.gni; /* resolved vertices in draw order: 16-byte ring values */
     ndref_put(&nv, 4);
-    for (unsigned i = 0; i < nb.gni; i++) ndref_put((nb.gi_kind == 1 ? rchunk[0].vtx : nb.gring) + 16u * nb.gidx[nb.gi_start + i], 16);
+    for (unsigned i = 0; i < nb.gni; i++) ndref_put((nb.gi_kind == 1 ? nb.rchunk[0].vtx : nb.gring) + 16u * nb.gidx[nb.gi_start + i], 16);
     ndref_patch(at);
     if (np) { /* S1-4 oracle: kind 5, the inputs of the palette product pcomp = post x game of this draw: post (gv_post), then per entry the game matrix (u32 gm, 16 floats pal_tab[gm]) */
         unsigned hd[2] = { 5u, 0u }, at5 = ndref_len;
@@ -499,8 +481,8 @@ static __attribute__((cold, noinline)) void ndref_draw(const TevKey* tk, int z, 
  * texenv buffer update, buffer colour, third buffer word). The words are read from the citro3d context at the draw call, so they are exactly what the flush turns into register writes. */
 static int ndref_nz, ndref_raw;
 static __attribute__((cold, noinline)) void ndref_state(unsigned pass, int z) {
-    unsigned hd[2] = { 4u, 0u }, b[15] = { pass, (unsigned)z, (unsigned)r_zmark, (unsigned)r_zcmp, (unsigned)r_zupd, (unsigned)r_nocol, (unsigned)ndref_nz, (unsigned)ndref_raw,
-        combine == 8 ? plan_k[0] : 0u, combine == 8 ? plan_k[1] : 0u, combine == 8 ? plan_k[2] : 0u, combine == 8 ? plan_k[3] : 0u, rs_src[0], rs_src[1], rs_src[2] };
+    unsigned hd[2] = { 4u, 0u }, b[15] = { pass, (unsigned)z, (unsigned)gs.r_zmark, (unsigned)gs.r_zcmp, (unsigned)gs.r_zupd, (unsigned)gs.r_nocol, (unsigned)ndref_nz, (unsigned)ndref_raw,
+        gs.combine == 8 ? plan_k[0] : 0u, gs.combine == 8 ? plan_k[1] : 0u, gs.combine == 8 ? plan_k[2] : 0u, gs.combine == 8 ? plan_k[3] : 0u, rs_src[0], rs_src[1], rs_src[2] };
     unsigned at = ndref_len;
     ndref_put(hd, 8); ndref_put(b, sizeof b);
     ndref_put(__C3D_Context + 216, 13 * 4); ndref_put(__C3D_Context + 292, 34 * 4);
@@ -618,7 +600,7 @@ extern int pm_ph_on;
 void pm_gbi_draw_note(int native); /* WCEN3 */
 extern unsigned pm_ph_kick_n, pm_ph_kick_us, pm_ph_draws; /* PI4 */
 static void kick_check(void) {
-    if (kick_done >= 2 || off_active || !kick_at || draws_frame < (kick_done ? kick_at2 : kick_at) || nb.rect_open || nb.gni > 0) return;
+    if (kick_done >= 2 || gs.off_active || !kick_at || draws_frame < (kick_done ? kick_at2 : kick_at) || nb.rect_open || nb.gni > 0) return;
     kick_done++;
     gpu_flush_written();
     if (want_clear) { C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0); want_clear = 0; } /* queue order: the clear comes before the first part */
@@ -653,9 +635,9 @@ static void rect_sig_fill(RectSig* s) {
     pm_tex_unit0_param(&ws, &wt, &f);
     s->filt = (int)f; s->ws = (int)ws; s->wt = (int)wt; s->cur = pm_tex_cur_idx();
     s->sx0 = sci_x0; s->sy0 = sci_y0; s->sx1 = sci_x1; s->sy1 = sci_y1;
-    s->bl = r_blend; s->rep = r_replace; s->zc = r_zcmp; s->zu = r_zupd; s->at = r_atest; s->dec = r_decal; s->noc = r_nocol;
-    s->zon = z_on; s->mem = r_memblend; s->mix = r_mix; s->comb = combine; s->rgbs = rgb_scale; s->pgen = plan_gen;
-    s->mixc = (int)r_mixcol; s->prim = (int)prim; s->cc = (int)cconst; s->env = (int)env_col;
+    s->bl = gs.r_blend; s->rep = r_replace; s->zc = gs.r_zcmp; s->zu = gs.r_zupd; s->at = gs.r_atest; s->dec = gs.r_decal; s->noc = gs.r_nocol;
+    s->zon = gs.z_on; s->mem = r_memblend; s->mix = gs.r_mix; s->comb = gs.combine; s->rgbs = rgb_scale; s->pgen = plan_gen;
+    s->mixc = (int)r_mixcol; s->prim = (int)prim; s->cc = (int)cconst; s->env = (int)gs.env_col;
 }
 static void rect_sig_check(const char* where) {
     if (!PMDL("rectsig")) return;
@@ -671,12 +653,12 @@ static void rect_sig_check(const char* where) {
 static void flush_impl_body(void) {
     if (nb.rect_open) { /* DR1: the batch is rectangles: draw it with the state they were queued in */
         rect_sig_check("close");
-        int sc = combine, sr = nb.rect_2d, sz = nb.rect_z;
-        combine = nb.rect_ec; nb.rect_2d = 1; nb.rect_z = nb.rect_zb; nb.rect_open = 0; nb.rect_tex = -1;
+        int sc = gs.combine, sr = nb.rect_2d, sz = nb.rect_z;
+        gs.combine = nb.rect_ec; nb.rect_2d = 1; nb.rect_z = nb.rect_zb; nb.rect_open = 0; nb.rect_tex = -1;
         flush_draw();
-        combine = sc; nb.rect_2d = sr; nb.rect_z = sz;
-        if (!off_active) { /* RECT-1b: the grab rows of this batch (the native raw close returns before flush_draw's bookkeeping) */
-            if (nb.rect_y1 <= nb.rect_y0) grab_dirty = 1;
+        gs.combine = sc; nb.rect_2d = sr; nb.rect_z = sz;
+        if (!gs.off_active) { /* RECT-1b: the grab rows of this batch (the native raw close returns before flush_draw's bookkeeping) */
+            if (nb.rect_y1 <= nb.rect_y0) gs.grab_dirty = 1;
             else if (grab_dy1 <= grab_dy0) { grab_dy0 = nb.rect_y0; grab_dy1 = nb.rect_y1; }
             else { if (nb.rect_y0 < grab_dy0) grab_dy0 = nb.rect_y0; if (nb.rect_y1 > grab_dy1) grab_dy1 = nb.rect_y1; }
         }
@@ -690,18 +672,18 @@ static __attribute__((noinline)) void flush_tev_rebuild(C3D_TexEnv* env, int tex
     TevKey tk;
     const size_t tk_n = sizeof tk;
     memset(&tk, 0, tk_n);
-    tk.combine = combine; tk.tex = tex; tk.tex1 = tex1; tk.i8_0 = i8_0; tk.i8_1 = i8_1; tk.rgb_scale = rgb_scale; tk.r_mix = r_mix; tk.draw_3d = nb.draw_3d; tk.rect_2d = nb.rect_2d;
-    tk.dview = dv_mode(); tk.off_active = off_active; tk.off_i8 = off_i8; tk.r_memblend = r_memblend; tk.r_replace = r_replace; tk.r_blend = r_blend;
+    tk.combine = gs.combine; tk.tex = tex; tk.tex1 = tex1; tk.i8_0 = i8_0; tk.i8_1 = i8_1; tk.rgb_scale = rgb_scale; tk.r_mix = gs.r_mix; tk.draw_3d = nb.draw_3d; tk.rect_2d = nb.rect_2d;
+    tk.dview = dv_mode(); tk.off_active = gs.off_active; tk.off_i8 = off_i8; tk.r_memblend = r_memblend; tk.r_replace = r_replace; tk.r_blend = gs.r_blend;
     tk.prim = prim; tk.cconst = cconst; tk.mixcol = r_mixcol;
-    tk.plan_gen = combine == 8 ? plan_gen : 0;
+    tk.plan_gen = gs.combine == 8 ? plan_gen : 0;
     /* S1-3: the stage words come from nd_tmpl.c nd_tev_build (host tested against the ndref oracle). Stages 0 to max(old, new) - 1 are written: the builder
      * resets every stage, so a stage above the new count returns to the C3D_TexEnvInit words. */
     NdTmplKey nk;
     memset(&nk, 0, sizeof nk);
-    nk.combine = (uint8_t)combine; nk.tex = (uint8_t)tex; nk.tex1 = (uint8_t)tex1; nk.i8_0 = (uint8_t)i8_0; nk.i8_1 = (uint8_t)i8_1; nk.rgb_scale = (uint8_t)rgb_scale;
-    nk.r_mix = (uint8_t)r_mix; nk.draw_3d = (uint8_t)nb.draw_3d; nk.rect_2d = (uint8_t)nb.rect_2d; nk.dview = dv_mode() != 0; nk.off_active = (uint8_t)off_active;
-    nk.off_i8 = (uint8_t)off_i8; nk.r_memblend = (uint8_t)r_memblend; nk.r_replace = (uint8_t)r_replace; nk.r_blend = (uint8_t)r_blend; nk.noise = noise != 0;
-    NdTevIn ti = { &nk, &plan, prim, cconst, r_mixcol };
+    nk.combine = (uint8_t)gs.combine; nk.tex = (uint8_t)tex; nk.tex1 = (uint8_t)tex1; nk.i8_0 = (uint8_t)i8_0; nk.i8_1 = (uint8_t)i8_1; nk.rgb_scale = (uint8_t)rgb_scale;
+    nk.r_mix = (uint8_t)gs.r_mix; nk.draw_3d = (uint8_t)nb.draw_3d; nk.rect_2d = (uint8_t)nb.rect_2d; nk.dview = dv_mode() != 0; nk.off_active = (uint8_t)gs.off_active;
+    nk.off_i8 = (uint8_t)off_i8; nk.r_memblend = (uint8_t)r_memblend; nk.r_replace = (uint8_t)r_replace; nk.r_blend = (uint8_t)gs.r_blend; nk.noise = noise != 0;
+    NdTevIn ti = { &nk, &gs.plan, prim, cconst, r_mixcol };
     NdTevOut to;
     nd_tev_build(&ti, &to);
     _Static_assert(sizeof(C3D_TexEnv) == 20, "C3D_TexEnv is the 5 register words");
@@ -777,11 +759,11 @@ static __attribute__((noinline)) void flush_light_tab(const PmFx* fx) {
 static void pal_mul(C3D_Mtx* o, const float (*m)[4]) { nd_mtx_pcomp(o->m, gv_post.m, m); } /* S1-4 */
 static __attribute__((noinline)) void pcomp_calc(unsigned gm) {
     if (gm == RECT_GM) { /* RECT-1a: a rectangle vertex is (x, y, 0, 1) in screen pixels; P (x, y, z, 1) = P (x, y, 0, 1) + z * column 2 of P */
-        pcomp[gm] = off_active ? off_proj : projection; /* OFF-1: the off-screen pass has its own ortho (pixels of the target) */
+        pcomp[gm] = gs.off_active ? off_proj : projection; /* OFF-1: the off-screen pass has its own ortho (pixels of the target) */
         for (int i = 0; i < 4; i++) pcomp[gm].r[i].w += pcomp[gm].r[i].z * nb.rect_pal_z;
     } else
         pal_mul(&pcomp[gm], pal_tab[gm]);
-                    pcomp_gen[gm] = post_gen;
+                    gs.pcomp_gen[gm] = post_gen;
                     pm_dc_c[DC_PMUL]++;
 }
 static __attribute__((noinline)) void scissor_off(void) {
@@ -881,7 +863,7 @@ static __attribute__((cold, noinline)) void rp_draw(const char* path, int tex) {
     rd_upto(cb, off);
     const int uv = u4_uvso, up = u4_pal;
     pm_log_d("rpD w%u n%u %s f%u rect %d d3 %d comb %d tex %d cur %d rtex %d | 80 %08x 81 %08x 82 %08x 83 %08x 84 %08x 85 %08x 8e %08x c0 %08x c1 %08x c2 %08x",
-        rp_win, rp_n, path, pm_frame_count(), nb.rect_2d, nb.draw_3d, combine, tex, pm_tex_cur_idx(), nb.rect_tex,
+        rp_win, rp_n, path, pm_frame_count(), nb.rect_2d, nb.draw_3d, gs.combine, tex, pm_tex_cur_idx(), nb.rect_tex,
         rd_reg[0x80], rd_reg[0x81], rd_reg[0x82], rd_reg[0x83], rd_reg[0x84], rd_reg[0x85], rd_reg[0x8E], rd_reg[0xC0], rd_reg[0xC1], rd_reg[0xC2]);
     pm_log_d("rpE %u %u %s c3 %08x c4 %08x c8 %08x d0 %08x 100 %08x 101 %08x 102 %08x 103 %08x 104 %08x 200 %08x 201 %08x 202 %08x",
         rp_win, rp_n, path, rd_reg[0xC3], rd_reg[0xC4], rd_reg[0xC8], rd_reg[0xD0], rd_reg[0x100], rd_reg[0x101], rd_reg[0x102], rd_reg[0x103], rd_reg[0x104], rd_reg[0x200], rd_reg[0x201], rd_reg[0x202]);
@@ -898,7 +880,7 @@ static __attribute__((cold, noinline)) void rp_draw(const char* path, int tex) {
     { void pm_gbi_sticky(unsigned* tss, unsigned* geo, unsigned* cw0, unsigned* cw1); unsigned st_tss, st_geo, st_cw0, st_cw1; int tw_ = 1, th_ = 1;
       pm_gbi_sticky(&st_tss, &st_geo, &st_cw0, &st_cw1); pm_tex_size(&tw_, &th_);
       pm_log_d("rpG %u %u %s env %08x cconst %08x mix %08x sticky tss %08x geo %08x cw %08x %08x tex %dx%d plan_gen %u comb %d", rp_win, rp_n, path,
-          env_col, cconst, r_mixcol, st_tss, st_geo, st_cw0, st_cw1, tw_, th_, plan_gen, combine); }
+          gs.env_col, cconst, r_mixcol, st_tss, st_geo, st_cw0, st_cw1, tw_, th_, plan_gen, gs.combine); }
 }
 
 /* the scissor of the main target (flush_draw and the native draw): the game scissor in the rotated 240 x 400 buffer */
@@ -918,7 +900,7 @@ static void stage_scissor(void) {
         else
             sh_scissor(GPU_SCISSOR_NORMAL, 0, pm_wide ? 0 : 40, 240, pm_wide ? 400 : 360);
 }
-static inline int graw_is_pm4(void) { return nb.gni > 0 && nb.g_pal && !nb.g_use5 && gv4_on; }
+static inline int graw_is_pm4(void) { return nb.gni > 0 && nb.g_pal && !nb.g_use5 && gs.gv4_on; }
 /* S3 M3: the native raw close. A raw batch with the palette program (pm4, no lights) on the main target, one texture unit at most, no stencil pass: the effect, TEV, texture unit
  * and uniform words come from nd_emit_draw (host tested against the real command stream) and go into the command buffer with GPUCMD_AddRawCommands. The state that is not in
  * those words (program, buffer info, scissor, user clip) is staged through citro3d as before, and C3Di_UpdateContext writes it first. Returns 0 when the batch needs the old close. */
@@ -955,9 +937,9 @@ static __attribute__((cold, noinline)) void orb_log(const char* path, int z, int
     extern unsigned pm_gbi_dbg_orb_tag(void);
     unsigned ot_ = pm_gbi_dbg_orb_tag();
     if (!ot_ || !PMDL("orbdbg")) return;
-    const PmTevCh* la = combine == 8 && plan.n > 0 ? &plan.st[plan.n - 1].g[1] : NULL; /* the alpha channel of the last stage */
+    const PmTevCh* la = gs.combine == 8 && gs.plan.n > 0 ? &gs.plan.st[gs.plan.n - 1].g[1] : NULL; /* the alpha channel of the last stage */
     pm_log("orbdbg draw %s f%u list %u cmb %d stages %d uses t0 %d t1 %d noise %d i8_0 %d i8_1 %d blend %d memb %d atest %d z %d graw %d tris %u prim %08x cconst %08x afin src %u %u %u op %u %u %u fn %u sc %u",
-           path, pm_frame_count(), ot_, combine, combine == 8 ? plan.n : -1, plan.uses_tex, plan.uses_tex1, plan.uses_noise, i8_0, i8_1, r_blend, memb, r_atest, z, graw, tris, prim, cconst,
+           path, pm_frame_count(), ot_, gs.combine, gs.combine == 8 ? gs.plan.n : -1, gs.plan.uses_tex, gs.plan.uses_tex1, gs.plan.uses_noise, i8_0, i8_1, gs.r_blend, memb, gs.r_atest, z, graw, tris, prim, cconst,
            la ? la->src[0] : 99u, la ? la->src[1] : 99u, la ? la->src[2] : 99u, la ? la->op[0] : 99u, la ? la->op[1] : 99u, la ? la->op[2] : 99u,
            la ? la->func : 99u, la ? la->scale : 99u);
 }
@@ -972,10 +954,10 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
     if (ndn_tgen != nd_tmpl_gen()) { ndn_tgen = nd_tmpl_gen(); nd_shadow_reset(&ndn_sh); } /* FB-2: a template id was taken over by another key (LRU): the id shadow is stale */
     prog_use(d->use5 ? 4 : 3);
     { /* FB-1: a model draw indexes the static area (chunk 0), a walker draw the ring chunk in use */
-        const void* bb = (ndt_mdl || nb.gi_kind == 1) ? (const void*)rchunk[0].vtx : (const void*)nb.gring;
-        if (buf_cur != 2 || buf_bp != bb) { C3D_BufInfo* gb = C3D_GetBufInfo(); BufInfo_Init(gb); BufInfo_Add(gb, bb, 16, 3, 0x210); buf_cur = 2; buf_bp = bb; }
+        const void* bb = (ndt_mdl || nb.gi_kind == 1) ? (const void*)nb.rchunk[0].vtx : (const void*)nb.gring;
+        if (nb.buf_cur != 2 || buf_bp != bb) { C3D_BufInfo* gb = C3D_GetBufInfo(); BufInfo_Init(gb); BufInfo_Add(gb, bb, 16, 3, 0x210); nb.buf_cur = 2; buf_bp = bb; }
     }
-    if (off_active) scissor_off(); else stage_scissor(); /* OFF-1: an off-screen target has its own scissor (citro3d state, not in the template words) */
+    if (gs.off_active) scissor_off(); else stage_scissor(); /* OFF-1: an off-screen target has its own scissor (citro3d state, not in the template words) */
     sh_user_clip(1);
     if (stencil_on) { stc_set(6, false, GPU_ALWAYS, 0, 0xff, 0); stencil_on = 0; } /* the citro3d effect copy says off too, as flush_draw does: nd_leave_native sends that copy again */
     if (!ndn_mode) { nd_shadow_reset(&ndn_sh); ndn_mode = 1; }
@@ -1002,8 +984,8 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
     nb.gni = 0; nb.pal_n = 0;
     batch_identity = 0;
     drew = 1;
-    if (!off_active) { /* B2: the main target changed, the grab slot is old (as flush_draw) */
-        if (nb.rect_y1 <= nb.rect_y0) grab_dirty = 1;
+    if (!gs.off_active) { /* B2: the main target changed, the grab slot is old (as flush_draw) */
+        if (nb.rect_y1 <= nb.rect_y0) gs.grab_dirty = 1;
         else if (grab_dy1 <= grab_dy0) { grab_dy0 = nb.rect_y0; grab_dy1 = nb.rect_y1; }
         else { if (nb.rect_y0 < grab_dy0) grab_dy0 = nb.rect_y0; if (nb.rect_y1 > grab_dy1) grab_dy1 = nb.rect_y1; }
     }
@@ -1082,7 +1064,7 @@ static __attribute__((noinline)) void pm5_upload(void) {
     if (nb.g_fx.lflag[0] != 0.f) flush_light_tab(&nb.g_fx);
     for (unsigned k = 0; k < nb.pal_n; k++) {
         unsigned gm = nb.pal_g[k];
-        if (pcomp_gen[gm] != post_gen) pcomp_calc(gm);
+        if (gs.pcomp_gen[gm] != post_gen) pcomp_calc(gm);
         u5mtx(u5_pal + 7 * (int)k, &pcomp[gm]);
         if (pal_ntab) for (int r = 0; r < 3; r++) u5vec(u5_pal + 7 * (int)k + 4 + r, pal_ntab[gm][r][0], pal_ntab[gm][r][1], pal_ntab[gm][r][2], 0.f);
         gv_palup_n++; pm_dc_c[DC_PALUP]++;
@@ -1117,25 +1099,25 @@ static NdTevK ndn_tk;
 static __attribute__((cold, noinline)) void raw_dbg_keys(int z, int tex, int tex1, int i8_0, int i8_1) {
     TevKey tk;
     memset(&tk, 0, sizeof tk);
-    tk.combine = combine; tk.tex = tex; tk.tex1 = tex1; tk.i8_0 = i8_0; tk.i8_1 = i8_1; tk.rgb_scale = rgb_scale; tk.r_mix = r_mix; tk.draw_3d = nb.draw_3d; tk.rect_2d = nb.rect_2d;
-    tk.dview = dv_mode(); tk.off_active = (uint8_t)off_active; tk.off_i8 = off_i8; tk.r_memblend = r_memblend; tk.r_replace = r_replace; tk.r_blend = r_blend;
-    tk.prim = prim; tk.cconst = cconst; tk.mixcol = r_mixcol; tk.plan_gen = combine == 8 ? plan_gen : 0;
+    tk.combine = gs.combine; tk.tex = tex; tk.tex1 = tex1; tk.i8_0 = i8_0; tk.i8_1 = i8_1; tk.rgb_scale = rgb_scale; tk.r_mix = gs.r_mix; tk.draw_3d = nb.draw_3d; tk.rect_2d = nb.rect_2d;
+    tk.dview = dv_mode(); tk.off_active = (uint8_t)gs.off_active; tk.off_i8 = off_i8; tk.r_memblend = r_memblend; tk.r_replace = r_replace; tk.r_blend = gs.r_blend;
+    tk.prim = prim; tk.cconst = cconst; tk.mixcol = r_mixcol; tk.plan_gen = gs.combine == 8 ? plan_gen : 0;
     if (ndref_on) { ndref_nz = 0; ndref_raw = 1; ndref_draw(&tk, z, 1, 4, (unsigned)nb.g_cullm); ndref_state(0, z); }
     if (cen_fr >= 0) cen_add(&tk, z, 1, 4, (unsigned)nb.g_cullm, grab_bind && tex ? 0x20000000u : tex ? pm_tex_census_id(0) : 0u, 0u, nb.gni / 3u);
 }
 /* POND-M1 and POND-S debug lines of a native raw batch (switch waterlog, frames 200 and 201): out of line, the close only tests wl_on */
 static __attribute__((cold, noinline)) void wl_log(const NdDraw* d, int z, int decal2, int id, int tex, int tex1, const NdUnit* u0, const NdUnit* u1) {
-    unsigned fn, wr; wl_depth(z, 0, r_zcmp, r_zupd, r_decal, r_nocol, &fn, &wr);
+    unsigned fn, wr; wl_depth(z, 0, gs.r_zcmp, gs.r_zupd, gs.r_decal, gs.r_nocol, &fn, &wr);
     extern void pm_gbi_sticky(unsigned* tss, unsigned* geo, unsigned* cw0, unsigned* cw1); unsigned wtss_, wgeo_, wcw0_, wcw1_; pm_gbi_sticky(&wtss_, &wgeo_, &wcw0_, &wcw1_); /* POND-M1: walker combine words */
     pm_log("wdraw f%u nat om %08x zs %u fn %u wr %u dec2 %d zc %d zu %d dec %d z %d bl %d tmpl %d tc %08x t1 %d u0 %08x u1 %08x pz %04x prim %08x cc %08x cmb %u cw %08x %08x zm %.4f %.6f ca %.3f %.3f uvx %.4f %.4f %.4f %.4f ts0 %08x %08x tris %u",
-           pm_frame_count(), dbg_omode_l, (dbg_omode_l >> 2) & 1u, fn, wr, decal2, r_zcmp, r_zupd, r_decal, z, r_blend, id, tex ? pm_tex_census_id(0) : 0u, tex1,
-           (unsigned)u0->addr, (unsigned)u1->addr, wl_primz, prim, cconst, (unsigned)combine, wcw0_, wcw1_,
+           pm_frame_count(), dbg_omode_l, (dbg_omode_l >> 2) & 1u, fn, wr, decal2, gs.r_zcmp, gs.r_zupd, gs.r_decal, z, gs.r_blend, id, tex ? pm_tex_census_id(0) : 0u, tex1,
+           (unsigned)u0->addr, (unsigned)u1->addr, wl_primz, prim, cconst, (unsigned)gs.combine, wcw0_, wcw1_,
            (double)d->zmix[0], (double)d->zmix[1], (double)nb.g_cmul[3], (double)nb.g_cadd[3], (double)t1_s[0], (double)t1_s[1], (double)t1_s[2], (double)t1_s[3],
            (unsigned)ndn_to.st[0][0], (unsigned)ndn_to.st[0][1], nb.gni / 3u); /* G_MDSFT_ZSRCSEL is 2 */
-    if (r_blend && !((dbg_omode_l >> 2) & 1u)) { /* POND-S: one line per surface batch (blend on, not G_ZS_PRIM): texel alpha share and vertex alpha range of the batch */
+    if (gs.r_blend && !((dbg_omode_l >> 2) & 1u)) { /* POND-S: one line per surface batch (blend on, not G_ZS_PRIM): texel alpha share and vertex alpha range of the batch */
         extern int pm_tex_alpha0_permille(int unit);
         unsigned vmin = 255u, vmax = 0u;
-        for (unsigned i = 0; nb.gring && nb.gidx && i < nb.gni; i++) { unsigned a = (nb.gi_kind == 1 ? rchunk[0].vtx : nb.gring)[16u * nb.gidx[nb.gi_start + i] + 15u]; if (a < vmin) vmin = a; if (a > vmax) vmax = a; }
+        for (unsigned i = 0; nb.gring && nb.gidx && i < nb.gni; i++) { unsigned a = (nb.gi_kind == 1 ? nb.rchunk[0].vtx : nb.gring)[16u * nb.gidx[nb.gi_start + i] + 15u]; if (a < vmin) vmin = a; if (a > vmax) vmax = a; }
         pm_log("wsurf f%u a0 %d a1 %d vamin %u vamax %u tris %u tex0 %08x tex1 %08x", pm_frame_count(), pm_tex_alpha0_permille(0), pm_tex_alpha0_permille(1), vmin, vmax, nb.gni / 3u, (unsigned)u0->addr, (unsigned)u1->addr);
     }
 }
@@ -1155,7 +1137,7 @@ static __attribute__((noinline)) void raw_zmark_pass(const NdTmplKey* nk, const 
         float palz[ND_NPAL][16];
         for (unsigned k = 0; k < npal; k++) {
             memcpy(palz[k], palk[k], 64);
-            for (int i = 0; i < 4; i++) palz[k][8 + i] = r_zmark_zn * palk[k][12 + i];
+            for (int i = 0; i < 4; i++) palz[k][8 + i] = gs.r_zmark_zn * palk[k][12 + i];
         }
         NdDraw db = *d;
         db.tmpl = idb; db.pal = (const float(*)[16])palz; db.npal = npal;
@@ -1164,51 +1146,51 @@ static __attribute__((noinline)) void raw_zmark_pass(const NdTmplKey* nk, const 
 }
 static int nd_raw_native(void) {
     nd_tmpl_pin(); /* FB-2: the template ids of this batch stay valid until its submit */
-    if (!(nb.gni > 0 && nb.g_pal && gv4_on && (!nb.g_use5 || gv5_on))) { cen_why = nb.g_use5 ? CW_PM5 : CW_OTHER; return 0; } /* CEN-1a; PM5-2: program 5 batches go native too */
+    if (!(nb.gni > 0 && nb.g_pal && gs.gv4_on && (!nb.g_use5 || gv5_on))) { cen_why = nb.g_use5 ? CW_PM5 : CW_OTHER; return 0; } /* CEN-1a; PM5-2: program 5 batches go native too */
     { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); if (coff + ND_EMIT_MAX + 1024u >= csz) cmd_split_forced(); } /* FB-2: GPUCMD_AddRawCommands does no bounds check: near the end of the command buffer the batch is split first (nraw1 is no longer a refusal) */
     /* CEN-1b: one refusal line per reason, same order and counters as the old combined line */
-    if (r_zmark && nb.g_use5) { nd_native_refused++; nraw_why[4]++; cen_why = CW_NRK(4); return 0; } /* FB-1 ZM: pm4 zmark is native (two pass); pm5 zmark stays on the CPU path (FB-3) */
-    int z = z_on && (!nb.rect_2d || nb.rect_z) && !off_active; /* OFF-1: as flush_draw, no depth test on an off-screen target */
+    if (gs.r_zmark && nb.g_use5) { nd_native_refused++; nraw_why[4]++; cen_why = CW_NRK(4); return 0; } /* FB-1 ZM: pm4 zmark is native (two pass); pm5 zmark stays on the CPU path (FB-3) */
+    int z = gs.z_on && (!nb.rect_2d || nb.rect_z) && !gs.off_active; /* OFF-1: as flush_draw, no depth test on an off-screen target */
     NdUnit u0;
     memset(&u0, 0, sizeof u0);
     int t = 0;
-    if (combine >= 2) { /* OFF-2: a grab draw binds the copy. OFF-3: an off-screen image (2) that is the target of this pass is read from its snapshot (FX2a, flush_draw made it) */
+    if (gs.combine >= 2) { /* OFF-2: a grab draw binds the copy. OFF-3: an off-screen image (2) that is the target of this pass is read from its snapshot (FX2a, flush_draw made it) */
         t = grab_bind ? grab_native_unit0(&u0) : pm_tex_native_unit0(&u0);
         if (grab_bind && PMDL("grablog")) pm_log_d("grabw f%u nat dim %08x param %08x lod %08x addr %08x type %u", pm_frame_count(), u0.dim, u0.param, u0.lod, u0.addr, u0.type); /* FB-1 GRAB: the words of the grab slot, native */
-        if (t == 2 && off_active && pm_tex_off_idx() == off_cur && offs[off_cur].snap_ready) t = tex_native_words(&u0, &offs[off_cur].snap);
+        if (t == 2 && gs.off_active && pm_tex_off_idx() == gs.off_cur && gs.offs[gs.off_cur].snap_ready) t = tex_native_words(&u0, &gs.offs[gs.off_cur].snap);
         if (t < 0) { nd_native_refused++; nraw_why[8]++; cen_why = CW_NRK(8); return 0; }
     }
     NdUnit u1;
     memset(&u1, 0, sizeof u1);
     int t1 = 0;
-    if (combine == 8 && plan.uses_tex1) { t1 = pm_tex_native_unit1(&u1); if (t1 < 0) { nd_native_refused++; nraw_why[6]++; cen_why = CW_NRK(6); return 0; } } /* SGEN-2: unit 1 words and the uv map uniform */
-    if (t1 == 2 && off_active && pm_tex_aux_off_idx() == off_cur && offs[off_cur].snap_ready) t1 = tex_native_words(&u1, &offs[off_cur].snap); /* FB-2: the aux image is the target of this pass: its snapshot (OFF-3, as flush_draw) */
+    if (gs.combine == 8 && gs.plan.uses_tex1) { t1 = pm_tex_native_unit1(&u1); if (t1 < 0) { nd_native_refused++; nraw_why[6]++; cen_why = CW_NRK(6); return 0; } } /* SGEN-2: unit 1 words and the uv map uniform */
+    if (t1 == 2 && gs.off_active && pm_tex_aux_off_idx() == gs.off_cur && gs.offs[gs.off_cur].snap_ready) t1 = tex_native_words(&u1, &gs.offs[gs.off_cur].snap); /* FB-2: the aux image is the target of this pass: its snapshot (OFF-3, as flush_draw) */
     const int tex = t > 0, i8_0 = tex && pm_tex_i8(0), tex1 = t1 > 0, i8_1 = tex1 && pm_tex_i8(1);
-    const int noise = combine == 8 && plan.uses_noise && noise_init(); /* FB-2: as flush_draw; noise_init 0 (no memory): the walker draws without it, so does the native draw */
+    const int noise = gs.combine == 8 && gs.plan.uses_noise && noise_init(); /* FB-2: as flush_draw; noise_init 0 (no memory): the walker draws without it, so does the native draw */
     NdTmplKey nk;
     memset(&nk, 0, sizeof nk);
     nk.pass = 0; nk.raw = 1; nk.cull = (uint8_t)nb.g_cullm;
-    nk.z = (uint8_t)z; nk.zmark = (uint8_t)(z && r_zmark); /* FB-1 ZM: pass 1 tests the model and marks the stencil (nd_tmpl zmark branch) */ nk.zcmp = (uint8_t)r_zcmp; nk.zupd = (uint8_t)r_zupd; nk.nocol = (uint8_t)r_nocol; nk.decal = (uint8_t)r_decal;
+    nk.z = (uint8_t)z; nk.zmark = (uint8_t)(z && gs.r_zmark); /* FB-1 ZM: pass 1 tests the model and marks the stencil (nd_tmpl zmark branch) */ nk.zcmp = (uint8_t)gs.r_zcmp; nk.zupd = (uint8_t)gs.r_zupd; nk.nocol = (uint8_t)gs.r_nocol; nk.decal = (uint8_t)gs.r_decal;
     { float db = decal_bias(); memcpy(&nk.dbias, &db, 4); }
-    nk.atest_on = r_atest >= 0; nk.aref = (uint8_t)(r_atest >= 0 ? r_atest : 0);
-    nk.combine = (uint8_t)combine; nk.tex = (uint8_t)tex; nk.tex1 = (uint8_t)tex1; nk.i8_0 = (uint8_t)i8_0; nk.i8_1 = (uint8_t)i8_1; nk.rgb_scale = (uint8_t)rgb_scale; nk.r_mix = (uint8_t)r_mix;
-    nk.draw_3d = (uint8_t)nb.draw_3d; nk.rect_2d = (uint8_t)nb.rect_2d; nk.dview = dv_mode() != 0; nk.off_active = (uint8_t)off_active; nk.off_i8 = (uint8_t)off_i8; nk.r_memblend = (uint8_t)r_memblend;
-    nk.r_replace = (uint8_t)r_replace; nk.r_blend = (uint8_t)r_blend; nk.noise = (uint8_t)noise;
-    const int decal2 = z && r_zcmp && r_decal && r_blend && !r_nocol && nb.draw_3d && !r_zmark; /* S6-2c-3: as flush_draw: pass A marks the stencil, pass B draws where it is set (nd_model_state, S5-1 b) */
+    nk.atest_on = gs.r_atest >= 0; nk.aref = (uint8_t)(gs.r_atest >= 0 ? gs.r_atest : 0);
+    nk.combine = (uint8_t)gs.combine; nk.tex = (uint8_t)tex; nk.tex1 = (uint8_t)tex1; nk.i8_0 = (uint8_t)i8_0; nk.i8_1 = (uint8_t)i8_1; nk.rgb_scale = (uint8_t)rgb_scale; nk.r_mix = (uint8_t)gs.r_mix;
+    nk.draw_3d = (uint8_t)nb.draw_3d; nk.rect_2d = (uint8_t)nb.rect_2d; nk.dview = dv_mode() != 0; nk.off_active = (uint8_t)gs.off_active; nk.off_i8 = (uint8_t)off_i8; nk.r_memblend = (uint8_t)r_memblend;
+    nk.r_replace = (uint8_t)r_replace; nk.r_blend = (uint8_t)gs.r_blend; nk.noise = (uint8_t)noise;
+    const int decal2 = z && gs.r_zcmp && gs.r_decal && gs.r_blend && !gs.r_nocol && nb.draw_3d && !gs.r_zmark; /* S6-2c-3: as flush_draw: pass A marks the stencil, pass B draws where it is set (nd_model_state, S5-1 b) */
     if (decal2) nk.pass = 2;
-    if (combine == 8) { nk.w0 = plan_k[0]; nk.w1 = plan_k[1]; nk.two = (uint8_t)plan_k[2]; nk.t1only = (uint8_t)plan_k[3]; }
+    if (gs.combine == 8) { nk.w0 = plan_k[0]; nk.w1 = plan_k[1]; nk.two = (uint8_t)plan_k[2]; nk.t1only = (uint8_t)plan_k[3]; }
     int id = nd_tmpl_build(&nk);
     if (id < 0) { nd_native_refused++; nraw_why[9]++; cen_why = CW_NRK(9); return 0; }
-    if (combine == 8) ndplan_check(nk.w0, nk.w1, nk.two, nk.t1only);
+    if (gs.combine == 8) ndplan_check(nk.w0, nk.w1, nk.two, nk.t1only);
     orb_log("native", z, -1, i8_0, i8_1, nb.gni / 3u, 1); /* FX1-3 */
     /* from here the batch is drawn natively */
     if (grab_bind) pm_tex_bind_reset(); /* as flush_draw: the next walker bind of unit 0 sends its own words */
     { /* the stage words with the colours, built when an input of nd_tev_build changes: the TEV bytes of nk, the colours and the plan */
         NdTevK tk;
         memcpy(tk.b, &nk.combine, sizeof tk.b);
-        tk.prim = prim; tk.cconst = cconst; tk.mixcol = r_mixcol; tk.plan_gen = combine == 8 ? plan_gen : 0;
+        tk.prim = prim; tk.cconst = cconst; tk.mixcol = r_mixcol; tk.plan_gen = gs.combine == 8 ? plan_gen : 0;
         if (!ndn_to_ok || memcmp(&tk, &ndn_tk, sizeof tk) != 0) {
-            NdTevIn ti = { &nk, &plan, prim, cconst, r_mixcol };
+            NdTevIn ti = { &nk, &gs.plan, prim, cconst, r_mixcol };
             nd_tev_build(&ti, &ndn_to);
             ndn_tk = tk; ndn_to_ok = 1;
         }
@@ -1220,7 +1202,7 @@ static int nd_raw_native(void) {
     unsigned npal = nb.g_use5 ? 0u : nb.pal_n < ND_NPAL ? nb.pal_n : ND_NPAL; /* pm5: pm5_upload sends the palette (A4: no copy here) */
     for (unsigned k = 0; k < npal; k++) {
         unsigned gm = nb.pal_g[k];
-        if (pcomp_gen[gm] != post_gen) pcomp_calc(gm);
+        if (gs.pcomp_gen[gm] != post_gen) pcomp_calc(gm);
         memcpy(palk[k], pcomp[gm].m, 64);
         gv_palup_n++; pm_dc_c[DC_PALUP]++;
     }
@@ -1247,38 +1229,38 @@ static int nd_raw_native(void) {
     if (wl_on()) wl_log(&d, z, decal2, id, tex, tex1, &u0, &u1);
     if (decal2) raw_decal_pass_a(&nk, &d, tex);
     nd_native_submit(&d, tex);
-    if (z && r_zmark) raw_zmark_pass(&nk, &d, (const float(*)[16])palk, npal, tex);
+    if (z && gs.r_zmark) raw_zmark_pass(&nk, &d, (const float(*)[16])palk, npal, tex);
     if (rd_st == 2) orbreg_dump(); /* FX1-2 plan 5 orbreg: the register shadow at a glow draw */
     return 1;
 }
 static void flush_draw(void) {
     int graw = nb.gni > 0;
     if (graw) flush_gen++; /* PO3b: the open batch is a raw Vtx batch */
-    if (fl_on() && gpu_ok) flush_fl_dbg(graw);
-    if (!graw || !gpu_ok) {
+    if (fl_on() && gs.gpu_ok) flush_fl_dbg(graw);
+    if (!graw || !gs.gpu_ok) {
         nb.gni = 0; nb.gi_start = nb.gidx_n;
         batch_identity = 0;
         return;
     }
-    if (r_nocol && !(z_on && (!nb.rect_2d || nb.rect_z) && r_zupd)) {
+    if (gs.r_nocol && !(gs.z_on && (!nb.rect_2d || nb.rect_z) && gs.r_zupd)) {
         nb.gni = 0; nb.gi_start = nb.gidx_n;
         batch_identity = 0;
         return;
     }
     /* H03: the texture of this batch failed to load (cache full). Skip the batch, a white quad is worse than a missing one. */
-    if (combine >= 2 && !grab_bind && pm_tex_failed() && (combine != 8 || plan.uses_tex || plan.uses_tex1)) {
+    if (gs.combine >= 2 && !grab_bind && pm_tex_failed() && (gs.combine != 8 || gs.plan.uses_tex || gs.plan.uses_tex1)) {
         { extern unsigned pm_gbi_dbg_orb_tag(void); unsigned ot_ = pm_gbi_dbg_orb_tag(); /* FX1-3: a skipped draw of an effect list is logged too */
-          if (ot_ && PMDL("orbdbg")) pm_log("orbdbg skip f%u list %u H03 cmb %d", pm_frame_count(), ot_, combine); }
+          if (ot_ && PMDL("orbdbg")) pm_log("orbdbg skip f%u list %u H03 cmb %d", pm_frame_count(), ot_, gs.combine); }
         nb.gni = 0; nb.gi_start = nb.gidx_n;
         batch_identity = 0;
         return;
     }
     int snap0 = 0, snap1 = 0;
-    if (off_active) { /* FX2a: this batch reads the slot it writes */
-        snap0 = combine >= 2 && !grab_bind && pm_tex_off_idx() == off_cur;
-        snap1 = combine == 8 && plan.uses_tex1 && pm_tex_aux_off_idx() == off_cur;
-        if (snap0 || snap1) off_snapshot(off_cur);
-        if (!offs[off_cur].snap_ready) snap0 = snap1 = 0;
+    if (gs.off_active) { /* FX2a: this batch reads the slot it writes */
+        snap0 = gs.combine >= 2 && !grab_bind && pm_tex_off_idx() == gs.off_cur;
+        snap1 = gs.combine == 8 && gs.plan.uses_tex1 && pm_tex_aux_off_idx() == gs.off_cur;
+        if (snap0 || snap1) off_snapshot(gs.off_cur);
+        if (!gs.offs[gs.off_cur].snap_ready) snap0 = snap1 = 0;
     }
     cen_why = CW_OTHER; /* the batch is raw here (the !graw case returned above) */
     if (nd_raw_native()) return;
@@ -1352,7 +1334,7 @@ void pm_gpu_init(void) { Wq_pm_gpu_init q = { 0 }; pm_wq_call(wq_pm_gpu_init, &q
 static void pm_gpu_init_w(void) {
     init_f_tables();
     gp2_clip_init();
-    if (gpu_ok) return;
+    if (gs.gpu_ok) return;
     jt_on = pm_debug_has("jumptest");
     pm_wide = pm_wide_cfg = (pm_debug_has("wide") || pm_opt.wide) && !pm_debug_has("nowide"); /* nowide: 4:3 layout with wide set in options.ini */
     pm_log("gpu: wide=%d", pm_wide);
@@ -1408,9 +1390,9 @@ static void pm_gpu_init_w(void) {
     { /* GV1: the raw Vtx path: a ring of the Vtx records of the frame and a u16 index ring */
         nb.gring = (unsigned char*)linearAlloc((GRING_VTX + GSTAT_VTX) * 16);
         nb.gidx = (unsigned short*)linearAlloc(GRING_IDX * 2);
-        rchunk[0].vtx = nb.gring; rchunk[0].idx = nb.gidx; rchunk[0].used = 1;
-        gpu_vtx_on = nb.gring && nb.gidx;
-        if (gpu_vtx_on) { /* GV1c: the palette program */
+        nb.rchunk[0].vtx = nb.gring; nb.rchunk[0].idx = nb.gidx; nb.rchunk[0].used = 1;
+        gs.gpu_vtx_on = nb.gring && nb.gidx;
+        if (gs.gpu_vtx_on) { /* GV1c: the palette program */
             shaderProgramInit(&prog4);
             shaderProgramSetVsh(&prog4, &dvlb_all->DVLE[0]);
             u4_pal = shaderInstanceGetUniformLocation(prog4.vertexShader, "pal");
@@ -1426,8 +1408,8 @@ static void pm_gpu_init_w(void) {
             AttrInfo_AddLoader(&attr4, 2, GPU_UNSIGNED_BYTE, 4);
             rgen = (unsigned*)calloc(GRING_VTX, sizeof(unsigned));
             rk = (unsigned char*)calloc(GRING_VTX, 1);
-            gv4_on = rgen && rk && prog4.vertexShader && u4_pal >= 0 && u4_uvso >= 0 && u4_cmul == u4_uvso + 1 && u4_cadd == u4_uvso + 2 && u4_zmix == u4_uvso + 3; /* nd_emit_draw writes uvso, cmul, cadd, zmix as one block */
-            if (gv4_on) { /* GV5 */
+            gs.gv4_on = rgen && rk && prog4.vertexShader && u4_pal >= 0 && u4_uvso >= 0 && u4_cmul == u4_uvso + 1 && u4_cadd == u4_uvso + 2 && u4_zmix == u4_uvso + 3; /* nd_emit_draw writes uvso, cmul, cadd, zmix as one block */
+            if (gs.gv4_on) { /* GV5 */
                 dvlb5 = DVLB_ParseFile((u32*)pm_shader5_shbin, pm_shader5_shbin_size);
                 shaderProgramInit(&prog5);
                 if (dvlb5) shaderProgramSetVsh(&prog5, &dvlb5->DVLE[0]);
@@ -1448,9 +1430,9 @@ static void pm_gpu_init_w(void) {
                 gv5_on = prog5.vertexShader && u5_pal >= 0 && u5_lamb >= 0 && u5_lcol >= 0 && u5_ldir >= 0 && u5_lk0 >= 0 && u5_lk1 >= 0 && u5_lflag >= 0 && u5_fogu >= 0 && u5_uvso >= 0 && u5_cmul >= 0 && u5_cadd >= 0 && u5_nzo >= 0 && u5_zmix >= 0 && u5_uvx >= 0;
                 pm_log("gv5: lighting, texgen and fog program %s (pal %d lcol %d ldir %d)", gv5_on ? "on" : "FAILED", u5_pal, u5_lcol, u5_ldir);
             }
-            pm_log("gv1: palette path %s (pal %d uvso %d cmul %d cadd %d zmix %d nzo %d)", gv4_on ? "on" : "FAILED", u4_pal, u4_uvso, u4_cmul, u4_cadd, u4_zmix, u4_nzo);
+            pm_log("gv1: palette path %s (pal %d uvso %d cmul %d cadd %d zmix %d nzo %d)", gs.gv4_on ? "on" : "FAILED", u4_pal, u4_uvso, u4_cmul, u4_cadd, u4_zmix, u4_nzo);
         }
-        pm_log("gpuvtx: raw Vtx path %s (ring %u vtx, %u idx)", gpu_vtx_on ? "on" : "FAILED", (unsigned)GRING_VTX, (unsigned)GRING_IDX);
+        pm_log("gpuvtx: raw Vtx path %s (ring %u vtx, %u idx)", gs.gpu_vtx_on ? "on" : "FAILED", (unsigned)GRING_VTX, (unsigned)GRING_IDX);
     }
     ident(game_mvp);
     rebuild_3d();
@@ -1462,8 +1444,8 @@ static void pm_gpu_init_w(void) {
     setvbuf(stdout, NULL, _IONBF, 0);
     consoleSetWindow(&bottom_con, 1, LOG_TOP, 40, LOG_ROWS); /* BOTLAYOUT: the log window, rows 9 to 26 */
     pm_con_unlock();
-    gpu_ok = gpu_vtx_on;
-    pm_log_d("gpu %s m %d %d", gpu_ok ? "ok" : "no vertex buffer",
+    gs.gpu_ok = gs.gpu_vtx_on;
+    pm_log_d("gpu %s m %d %d", gs.gpu_ok ? "ok" : "no vertex buffer",
            (int)(projection.r[0].y * 1000.f), (int)(projection.r[0].w * 1000.f));
 }
 
@@ -1477,7 +1459,7 @@ typedef struct { int unused; } Wq_pm_gpu_menu_present;
 static void wq_pm_gpu_menu_present(void* a) { Wq_pm_gpu_menu_present* q = (Wq_pm_gpu_menu_present*)a; (void)q; pm_gpu_menu_present_w(); }
 void pm_gpu_menu_present(void) { Wq_pm_gpu_menu_present q = { 0 }; pm_wq_post(wq_pm_gpu_menu_present, &q, sizeof q); }
 static void pm_gpu_menu_present_w(void) {
-    if (!menu_dirty || !gpu_ok || !target) return;
+    if (!menu_dirty || !gs.gpu_ok || !target) return;
     menu_dirty = 0;
     eye_slider = osGet3DSliderState();
     stereo_frame = targetR && eye_slider > 0.02f;
@@ -1514,7 +1496,7 @@ void pm_gpu_menu_grey(void) {
     u16 w, h;
     u8* fb;
     size_t n, i;
-    if (!gpu_ok) return;
+    if (!gs.gpu_ok) return;
     gspWaitForPPF(); /* the display transfer of the menu present is done */
     fb = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, &w, &h);
     top_note(fb);
@@ -1738,21 +1720,21 @@ int pm_gpu_off_begin(const void* base, int stride, int siz) {
     pm_gpu_begin_wait();
     if (nb.rect_open) flush(); /* DR1 */
     int i, w, h;
-    if (!gpu_ok || off_fail || stride < 1 || stride > PM_OFF_W) return 0;
-    if (off_active && offs[off_cur].base == base && offs[off_cur].siz == siz && (off_cur >= OFF_P || offs[off_cur].stride == (unsigned)stride)) return 1;
+    if (!gs.gpu_ok || off_fail || stride < 1 || stride > PM_OFF_W) return 0;
+    if (gs.off_active && gs.offs[gs.off_cur].base == base && gs.offs[gs.off_cur].siz == siz && (gs.off_cur >= OFF_P || gs.offs[gs.off_cur].stride == (unsigned)stride)) return 1;
     flush();
-    for (i = 0; i < OFF_ALL; i++) if (offs[i].base == base && offs[i].siz == siz) break;
-    if (i < OFF_P && offs[i].stride != (unsigned)stride) {
+    for (i = 0; i < OFF_ALL; i++) if (gs.offs[i].base == base && gs.offs[i].siz == siz) break;
+    if (i < OFF_P && gs.offs[i].stride != (unsigned)stride) {
         /* PT50: the same address with another row width is another image. The N64 draws two windows (item box: 280 x 32 and 136 x 40) one after the other into the same heap address. Here each window gets its own slot, so the second one does not draw over the first. The first slot stays valid for the draws that already read it. */
-        offs[i].base = NULL;
-        pm_tex_set_offscreen(i, NULL, 0, &offs[i].tex, siz, offs[i].w, offs[i].h);
+        gs.offs[i].base = NULL;
+        pm_tex_set_offscreen(i, NULL, 0, &gs.offs[i].tex, siz, gs.offs[i].w, gs.offs[i].h);
         i = OFF_ALL;
     }
     w = stride <= 64 ? 64 : PM_OFF_W; /* X02: the darkness stencil is 64 x 64: 16 KB of VRAM, not 512 KB */
     h = stride <= 64 ? 64 : PM_OFF_H;
-    if (i < OFF_ALL && i >= OFF_P && offs[i].last != pm_frame_count()) { /* FX2a: a kept 8 bit image, back in this frame with last frame's pixels */
-        offs[i].last = pm_frame_count();
-        pm_tex_set_offscreen(i, base, (unsigned)stride, &offs[i].tex, siz, offs[i].w, offs[i].h);
+    if (i < OFF_ALL && i >= OFF_P && gs.offs[i].last != pm_frame_count()) { /* FX2a: a kept 8 bit image, back in this frame with last frame's pixels */
+        gs.offs[i].last = pm_frame_count();
+        pm_tex_set_offscreen(i, base, (unsigned)stride, &gs.offs[i].tex, siz, gs.offs[i].w, gs.offs[i].h);
     }
     if (i == OFF_ALL) {
         if (stride > 64 && siz != 2) { /* R4: a full slot is RGBA5551, it can hold only a 16 bit image. Other sizes draw on the screen. */
@@ -1763,8 +1745,8 @@ int pm_gpu_off_begin(const void* base, int stride, int siz) {
         if (siz == 1 && stride <= 64) {
             /* FX2a: the flame writes D_800B32E0 from its own last frame, so 8 bit images keep their slot and pixels. A slot not named in this frame is taken over. */
             int k;
-            for (k = OFF_P; k < OFF_ALL && offs[k].base; k++) {}
-            if (k == OFF_ALL) for (k = OFF_P; k < OFF_ALL && offs[k].last == pm_frame_count(); k++) {}
+            for (k = OFF_P; k < OFF_ALL && gs.offs[k].base; k++) {}
+            if (k == OFF_ALL) for (k = OFF_P; k < OFF_ALL && gs.offs[k].last == pm_frame_count(); k++) {}
             if (k == OFF_ALL) { pm_log_w("FX2a: more than 2 8 bit images in one frame, the rest draw on the screen"); return 0; }
             i = k;
         } else if (w == 64 && off_sused >= OFF_S) {
@@ -1779,45 +1761,45 @@ int pm_gpu_off_begin(const void* base, int stride, int siz) {
             static int n_over;
             if (n_over++ < 20) pm_log_e("V05 demand: full image %d in frame %u, OFF_N %d: slot %d is used again", off_used + 1, pm_frame_count(), OFF_N, (int)(off_used % OFF_N));
             i = off_used++ % OFF_N;
-            offs[i].base = NULL;
-            pm_tex_set_offscreen(i, NULL, 0, &offs[i].tex, siz, offs[i].w, offs[i].h);
+            gs.offs[i].base = NULL;
+            pm_tex_set_offscreen(i, NULL, 0, &gs.offs[i].tex, siz, gs.offs[i].w, gs.offs[i].h);
         } else i = w == 64 ? OFF_N + off_sused++ : off_used++;
-        if (!offs[i].rt) {
-            if (!(w == 64 ? small_tex_init(&offs[i].tex) : full_tex_init(i))) {
+        if (!gs.offs[i].rt) {
+            if (!(w == 64 ? small_tex_init(&gs.offs[i].tex) : full_tex_init(i))) {
                 pm_vram_alloc_fail("offslot", (unsigned)(w * h * 4 / 1024));
                 pm_log_e("V05: off-screen image %d: no VRAM, off-screen passes stay on the screen", i);
                 off_fail = 1;
                 return 0;
             }
             pm_vram_note();
-            C3D_TexSetFilter(&offs[i].tex, GPU_LINEAR, GPU_NEAREST);
-            C3D_TexSetWrap(&offs[i].tex, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
-            offs[i].rt = C3D_RenderTargetCreateFromTex(&offs[i].tex, GPU_TEXFACE_2D, 0, -1);
-            if (!offs[i].rt) {
+            C3D_TexSetFilter(&gs.offs[i].tex, GPU_LINEAR, GPU_NEAREST);
+            C3D_TexSetWrap(&gs.offs[i].tex, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
+            gs.offs[i].rt = C3D_RenderTargetCreateFromTex(&gs.offs[i].tex, GPU_TEXFACE_2D, 0, -1);
+            if (!gs.offs[i].rt) {
                 pm_log_e("V05: off-screen image %d: render target failed", i);
                 off_fail = 1;
                 return 0;
             }
-            offs[i].w = w;
-            offs[i].h = h;
+            gs.offs[i].w = w;
+            gs.offs[i].h = h;
         }
-        C3D_RenderTargetClear(offs[i].rt, C3D_CLEAR_COLOR, 0, 0);
-        offs[i].base = base;
-        offs[i].siz = siz;
-        offs[i].stride = (unsigned)stride;
-        offs[i].last = pm_frame_count();
+        C3D_RenderTargetClear(gs.offs[i].rt, C3D_CLEAR_COLOR, 0, 0);
+        gs.offs[i].base = base;
+        gs.offs[i].siz = siz;
+        gs.offs[i].stride = (unsigned)stride;
+        gs.offs[i].last = pm_frame_count();
         /* F07-7: the wide grab slot starts at screen column 0, game x 0 is column 40: a read at cfb + x finds column 40 + x */
-        pm_tex_set_offscreen(i, (pm_wide && siz == 2 && stride == 320 && pm_is_cfb(base)) ? (const u8*)base - 80 : base, (unsigned)stride, &offs[i].tex, siz, offs[i].w, offs[i].h);
+        pm_tex_set_offscreen(i, (pm_wide && siz == 2 && stride == 320 && pm_is_cfb(base)) ? (const u8*)base - 80 : base, (unsigned)stride, &gs.offs[i].tex, siz, gs.offs[i].w, gs.offs[i].h);
     }
     if (i < OFF_N) off_mask_f |= 1u << i; /* VRAM3 trace: which full images a frame uses */
-    off_cur = i;
-    off_w = offs[i].w;
-    off_h = offs[i].h;
+    gs.off_cur = i;
+    off_w = gs.offs[i].w;
+    off_h = gs.offs[i].h;
     off_i8 = siz == 1;
     Mtx_Ortho(&off_proj, 0.f, (float)off_w, 0.f, (float)off_h, 0.f, 1.f, true);
-    off_active = 1;
+    gs.off_active = 1;
     rebuild_3d();
-    sh_clear(); C3D_FrameDrawOn(offs[i].rt);
+    sh_clear(); C3D_FrameDrawOn(gs.offs[i].rt);
     return 1;
 }
 
@@ -1825,9 +1807,9 @@ int pm_gpu_off_begin(const void* base, int stride, int siz) {
 int pm_gpu_off_count(void) { return off_used + off_sused; }
 void pm_gpu_off_end(void) {
     if (nb.rect_open) flush(); /* DR1 */
-    if (!off_active) return;
+    if (!gs.off_active) return;
     flush();
-    off_active = 0;
+    gs.off_active = 0;
     off_i8 = 0;
     rebuild_3d();
     sh_clear(); C3D_FrameDrawOn(cur_target);
@@ -1838,11 +1820,11 @@ int pm_gpu_stereo(void) { pm_gpu_begin_wait(); return stereo_frame; }
 int pm_gpu_stereo_flag(void) { return stereo_frame; } /* read only (the prof line): pm_gpu_stereo waits and changes draw state */
 void pm_gpu_eye(int right) {
     PM_WALK_OWN(); /* CORE2-3a */
-    if (!stereo_frame || !gpu_ok) return;
+    if (!stereo_frame || !gs.gpu_ok) return;
     flush();
-    if (off_active) pm_gpu_off_end();
+    if (gs.off_active) pm_gpu_off_end();
     if (right && !r_cleared) { r_cleared = 1; if (r_wantclear) C3D_RenderTargetClear(targetR, C3D_CLEAR_ALL, 0, 0); } /* queue order: the clear comes before every part of the frame */
-    grab_dirty = 1; grab_dy0 = grab_dy1 = 0; /* K2: the copy of the other eye is not this eye's frame, so the next grab copies again */
+    gs.grab_dirty = 1; grab_dy0 = grab_dy1 = 0; /* K2: the copy of the other eye is not this eye's frame, so the next grab copies again */
     cur_target = right ? targetR : target;
     pm_eye_e = (right ? PM_EYE_E : -PM_EYE_E) * eye_slider;
     sh_clear(); C3D_FrameDrawOn(cur_target);
@@ -1904,45 +1886,45 @@ void pm_gx_drain(void) {
 static unsigned ring_wraps;
 /* the chunk c becomes the ring. The caller has flushed the open batch. */
 static void ring_set(int c) {
-    ring_cur = c;
-    nb.gring = rchunk[c].vtx; nb.gidx = rchunk[c].idx;
+    nb.ring_cur = c;
+    nb.gring = nb.rchunk[c].vtx; nb.gidx = nb.rchunk[c].idx;
     nb.gring_n = nb.gidx_n = nb.gring_fl = nb.gidx_fl = nb.gi_start = nb.gni = 0;
-    buf_cur = 0;
+    nb.buf_cur = 0;
 }
 /* a frame begins on chunk 0 with empty fills */
 static void ring_frame_begin(void) {
-    ring_fr++;
-    rchunk[0].stamp = ring_fr;
+    nb.ring_fr++;
+    nb.rchunk[0].stamp = nb.ring_fr;
     ring_set(0);
 }
 /* FB-1: the open batch takes kind k. A batch of the other kind is closed first, off chunk 0 only (on chunk 0 both kinds share the vertex base). */
 static void gi_kind_set(int k) {
     if (nb.gni == 0) nb.gi_kind = k;
-    else if (ring_cur && nb.gi_kind != k) { flush(); nb.gi_kind = k; }
+    else if (nb.ring_cur && nb.gi_kind != k) { flush(); nb.gi_kind = k; }
 }
 /* a chunk other than the one in use: finished on the GPU (stamp < ring_done), or never used. A new chunk is linearAlloc'd (counted, logged). -1 when none. */
 static __attribute__((cold, noinline)) int ring_pick(void) {
-    for (int c = 0; c < rchunk_n; c++) {
-        if (c == ring_cur || (rchunk[c].used && rchunk[c].stamp >= ring_done)) continue;
-        rchunk[c].used = 1; rchunk[c].stamp = ring_fr;
+    for (int c = 0; c < nb.rchunk_n; c++) {
+        if (c == nb.ring_cur || (nb.rchunk[c].used && nb.rchunk[c].stamp >= nb.ring_done)) continue;
+        nb.rchunk[c].used = 1; nb.rchunk[c].stamp = nb.ring_fr;
         return c;
     }
-    if (rchunk_n >= RING_CHUNK_MAX) return -1;
+    if (nb.rchunk_n >= RING_CHUNK_MAX) return -1;
     unsigned char* v = (unsigned char*)linearAlloc(GRING_VTX * 16u);
     unsigned short* x = (unsigned short*)linearAlloc(GRING_IDX * 2u);
     if (!v || !x) {
         if (v) linearFree(v);
         if (x) linearFree(x);
-        pm_log_e("ring: chunk %d failed (linear)", rchunk_n);
+        pm_log_e("ring: chunk %d failed (linear)", nb.rchunk_n);
         return -1;
     }
-    const int c = rchunk_n++;
-    rchunk[c].vtx = v; rchunk[c].idx = x; rchunk[c].used = 1; rchunk[c].stamp = ring_fr;
-    pm_log_w("ring: chunk %d allocated, %u chunks in use (%u KB each)", c, (unsigned)rchunk_n, (unsigned)((GRING_VTX * 16u + GRING_IDX * 2u) >> 10));
+    const int c = nb.rchunk_n++;
+    nb.rchunk[c].vtx = v; nb.rchunk[c].idx = x; nb.rchunk[c].used = 1; nb.rchunk[c].stamp = nb.ring_fr;
+    pm_log_w("ring: chunk %d allocated, %u chunks in use (%u KB each)", c, (unsigned)nb.rchunk_n, (unsigned)((GRING_VTX * 16u + GRING_IDX * 2u) >> 10));
     return c;
 }
 static __attribute__((cold, noinline)) int ring_wrap(void) {
-    const int was_off = off_active, prev = off_cur;
+    const int was_off = gs.off_active, prev = gs.off_cur;
     flush();
     if (was_off) pm_gpu_off_end(); /* the split runs on the main target, as grab_impl does */
     pm_gx_room();
@@ -1953,7 +1935,7 @@ static __attribute__((cold, noinline)) int ring_wrap(void) {
         ring_wraps++;
         pm_log_d("ringwrap f%u wraps %u chunk %d", pm_frame_count(), ring_wraps, c);
     }
-    if (was_off) pm_gpu_off_begin(offs[prev].base, offs[prev].w == 64 ? 64 : 320, offs[prev].siz);
+    if (was_off) pm_gpu_off_begin(gs.offs[prev].base, gs.offs[prev].w == 64 ? 64 : 320, gs.offs[prev].siz);
     return c >= 0;
 }
 /* FB-1: 1 when nv vertices and ni indices fit the ring, after a ring_wrap when they do not. 0 when they cannot fit an empty chunk or no chunk is free. */
@@ -1980,7 +1962,7 @@ int pm_gpu_grab(const void* cfb, int y0, int y1) { return grab_impl(cfb, y0, y1,
 int pm_gpu_grab_prev(const void* prev_cfb) {
     PM_WALK_OWN(); /* CORE2-3a */
     prev_want = 2; /* BTRANS: the request holds for 2 drawn frames: a replay draw (interp) takes the copy and does not capture */
-    if (!target || !gpu_ok) return 0;
+    if (!target || !gs.gpu_ok) return 0;
     return grab_impl(prev_cfb, 0, 240, 1);
 }
 /* BTRANS fix 3: an encounter start (pre-battle init) asks for the copy of the frame before the star wipe, at the next two begins. */
@@ -1993,7 +1975,7 @@ static void pm_gpu_want_prev_w(void) { prev_want = 2; }
 /* BTRANS caplog: the capture state read by cfb_capture_prev (pm_main.c, switch caplog). */
 void pm_gpu_cap_state(int* o) {
     PM_WALK_OWN(); /* CORE2-3a */
-    o[0] = prev_pre; o[1] = grab_n; o[2] = grab_split; o[3] = kick_done; o[4] = want_clear; o[5] = (int)draws_frame; o[6] = off_fail; o[7] = (gpu_ok && target) ? 1 : 0;
+    o[0] = prev_pre; o[1] = grab_n; o[2] = grab_split; o[3] = kick_done; o[4] = want_clear; o[5] = (int)draws_frame; o[6] = off_fail; o[7] = (gs.gpu_ok && target) ? 1 : 0;
 }
 /* K1: debug switch grablog. One line per grab call: id (grab_n of the frame), source colour buffer, rows, frame, reuse yes or no. */
 static void grab_log(const void* cfb, int y0, int y1, int reuse) {
@@ -2024,15 +2006,15 @@ static void grab_raw_quad(int x1, int mo) {
 static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
     pm_gpu_begin_wait();
     if (nb.rect_open) flush(); /* DR1 */
-    int was_off = off_active, prev = off_cur;
+    int was_off = gs.off_active, prev = gs.off_cur;
     static int once;
     /* F07-7: with wide the slot holds all 400 screen columns (slot x = screen x). The game reads game x at slot x + 40 (pm_gpu_off_begin shifts the base). */
     const int x0 = 0, x1 = pm_wide ? 400 : 320, mo = pm_wide ? 0 : 40;
-    if (!gpu_ok || off_fail || y1 <= y0) return 0;
-    if (!(gpu_vtx_on && gv4_on)) return 0;
+    if (!gs.gpu_ok || off_fail || y1 <= y0) return 0;
+    if (!(gs.gpu_vtx_on && gs.gv4_on)) return 0;
     if (grab_n && !prev_frame) {
         /* no draw since the last grab, or only rectangles of other rows: same slot */
-        if (!grab_dirty && (grab_dy1 <= grab_dy0 || y1 <= grab_dy0 || y0 >= grab_dy1)) { grab_log(cfb, y0, y1, 1); return 1; }
+        if (!gs.grab_dirty && (grab_dy1 <= grab_dy0 || y1 <= grab_dy0 || y0 >= grab_dy1)) { grab_log(cfb, y0, y1, 1); return 1; }
         /* K1: a draw dirtied these rows, so the copy is old. Copy again past GRAB_MAX too (the cap used to return the old copy here). */
         if (grab_n >= GRAB_MAX && !once++) pm_log_w("B2: %d grabs in one frame, each copies the frame again", (int)GRAB_MAX);
     }
@@ -2054,10 +2036,10 @@ static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
     pm_gpu_off_begin(cfb, 320, 2);
     {
         int sc[4] = { sci_x0, sci_y0, sci_x1, sci_y1 };
-        int s_comb = combine, s_2d = nb.rect_2d, s_bi = batch_identity, s_rep = r_replace, s_at = r_atest, s_nc = r_nocol, s_mix = r_mix,
+        int s_comb = gs.combine, s_2d = nb.rect_2d, s_bi = batch_identity, s_rep = r_replace, s_at = gs.r_atest, s_nc = gs.r_nocol, s_mix = gs.r_mix,
             s_rs = rgb_scale, s_3d = nb.draw_3d;
         sci_x0 = 0; sci_y0 = 0; sci_x1 = x1; sci_y1 = 240;
-        combine = 3; nb.rect_2d = 1; batch_identity = 1; r_replace = 1; r_atest = -1; r_nocol = 0; r_mix = 0; rgb_scale = 1; nb.draw_3d = 0;
+        gs.combine = 3; nb.rect_2d = 1; batch_identity = 1; r_replace = 1; gs.r_atest = -1; gs.r_nocol = 0; gs.r_mix = 0; rgb_scale = 1; nb.draw_3d = 0;
         grab_bind = 1;
         /* FB-1 GRAB: the copy quad is a native raw batch (rect path at fill depth 0.5, combine 3, unit 0 = grab_tex). */
         static const float uvso_g[4] = { 1.f / 256.f, 1.f / 256.f, 0.f, 0.f };
@@ -2066,14 +2048,14 @@ static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
         flush();
         grab_bind = 0;
         sci_x0 = sc[0]; sci_y0 = sc[1]; sci_x1 = sc[2]; sci_y1 = sc[3];
-        combine = s_comb; nb.rect_2d = s_2d; batch_identity = s_bi; r_replace = s_rep; r_atest = s_at; r_nocol = s_nc; r_mix = s_mix;
+        gs.combine = s_comb; nb.rect_2d = s_2d; batch_identity = s_bi; r_replace = s_rep; gs.r_atest = s_at; gs.r_nocol = s_nc; gs.r_mix = s_mix;
         rgb_scale = s_rs; nb.draw_3d = s_3d;
     }
-    if (was_off) pm_gpu_off_begin(offs[prev].base, offs[prev].w == 64 ? 64 : 320, offs[prev].siz);
+    if (was_off) pm_gpu_off_begin(gs.offs[prev].base, gs.offs[prev].w == 64 ? 64 : 320, gs.offs[prev].siz);
     else pm_gpu_off_end();
     grab_log(cfb, y0, y1, 0);
     if (!prev_frame) { /* PT12: the old frame in grab_tex does not stand for the current frame */
-        grab_dirty = 0;
+        gs.grab_dirty = 0;
         grab_dy0 = grab_dy1 = 0;
         grab_n++;
     }
@@ -2089,30 +2071,30 @@ static void off_dump(void) {
     unsigned char* row;
     const unsigned char* src;
     if (on < 0) { from = pm_debug_value("offdump", v, sizeof v) ? atoi(v) : 0; on = from || pm_debug_has("offdump"); } /* offdump=<first frame> */
-    if (!on || !(off_used + off_sused || offs[OFF_P].base || offs[OFF_P + 1].base) || n >= 12 || (int)pm_frame_count() < from) return;
+    if (!on || !(off_used + off_sused || gs.offs[OFF_P].base || gs.offs[OFF_P + 1].base) || n >= 12 || (int)pm_frame_count() < from) return;
     /* X02: every slot of the frame, 64 x 64 slots too: off<frame>_<slot>.ppm */
   for (k = 0; k < OFF_ALL && n < 12; k++) {
-    if (!offs[k].base) continue;
-    src = (const unsigned char*)offs[k].tex.data;
+    if (!gs.offs[k].base) continue;
+    src = (const unsigned char*)gs.offs[k].tex.data;
     mkdir("shots", 0777);
     char path[48];
     snprintf(path, sizeof path, "shots/off%03u_%d.ppm", pm_frame_count(), k);
     n++;
     f = fopen(path, "wb");
     if (!f) continue;
-    fprintf(f, "P6 %d %d 255\n", offs[k].w, offs[k].h);
-    row = (unsigned char*)malloc(offs[k].w * 3);
-    for (int y = 0; y < offs[k].h; y++) {
-        for (int x = 0; x < offs[k].w; x++) {
+    fprintf(f, "P6 %d %d 255\n", gs.offs[k].w, gs.offs[k].h);
+    row = (unsigned char*)malloc(gs.offs[k].w * 3);
+    for (int y = 0; y < gs.offs[k].h; y++) {
+        for (int x = 0; x < gs.offs[k].w; x++) {
             unsigned mx = x & 7u, my = y & 7u;
             unsigned m = (mx & 1u) | ((my & 1u) << 1) | ((mx & 2u) << 1) | ((my & 2u) << 2) | ((mx & 4u) << 2) | ((my & 4u) << 3);
-            const unsigned char* p = src + ((((unsigned)(y >> 3) * (offs[k].w / 8) + (unsigned)(x >> 3)) * 64u + m) * 4u);
+            const unsigned char* p = src + ((((unsigned)(y >> 3) * (gs.offs[k].w / 8) + (unsigned)(x >> 3)) * 64u + m) * 4u);
             unsigned a = p[0];
             row[x * 3] = (unsigned char)(p[3] * a / 255); row[x * 3 + 1] = (unsigned char)(p[2] * a / 255); row[x * 3 + 2] = (unsigned char)(p[1] * a / 255);
             if (a == 0) row[x * 3] = row[x * 3 + 1] = row[x * 3 + 2] = 40;
-            if (offs[k].siz == 1) row[x * 3] = row[x * 3 + 1] = row[x * 3 + 2] = (unsigned char)p[3]; /* FX2a: an 8 bit image shows its intensity */
+            if (gs.offs[k].siz == 1) row[x * 3] = row[x * 3 + 1] = row[x * 3 + 2] = (unsigned char)p[3]; /* FX2a: an 8 bit image shows its intensity */
         }
-        fwrite(row, 1, offs[k].w * 3, f);
+        fwrite(row, 1, gs.offs[k].w * 3, f);
     }
     free(row);
     fclose(f);
@@ -2130,12 +2112,12 @@ void pm_gpu_begin_wait(void) {
     if ((off_mask_f || off_sused) && off_trace_n++ < 400) pm_log_d("offuse f%u full %d mask %x small %d", pm_frame_count(), off_used, off_mask_f, off_sused); /* VRAM3 trace */
     off_mask_f = 0;
     off_dump();
-    for (int k = 0; k < OFF_P; k++) offs[k].base = NULL; /* FX2a: the 8 bit slots keep their base */
+    for (int k = 0; k < OFF_P; k++) gs.offs[k].base = NULL; /* FX2a: the 8 bit slots keep their base */
     off_used = off_sused = 0;
-    off_active = 0;
+    gs.off_active = 0;
     off_i8 = 0;
     off_fail = 0; /* row 4: a VRAM failure lasts one frame */
-    grab_dirty = 1;
+    gs.grab_dirty = 1;
     copy_used = 0; /* TEXF1 */
     grab_dy0 = grab_dy1 = grab_n = grab_split = 0;
     pm_tex_clear_offscreen();
@@ -2149,7 +2131,7 @@ void pm_gpu_begin_wait(void) {
     sci_x1 = 320;
     sci_y1 = 240;
     nb.draw_3d = 0;
-    if (!gpu_ok) return;
+    if (!gs.gpu_ok) return;
     pm_tex_upload_vram_before_frame();
     FS_MARK(FS_GWAIT);
     PH_PUSH(PH_FBEGIN); /* C3D_FRAME_SYNCDRAW: waits for the previous frame on the GPU */
@@ -2158,7 +2140,7 @@ void pm_gpu_begin_wait(void) {
     unsigned fb_flags = (pm_interp_on > 0 && !pm_wd_wake_frames) ? C3D_FRAME_SYNCDRAW : 0;
     if (pm_wd_wake_frames) pm_wd_wake_frames--;
     raw1_reset(); sh_clear(); C3D_FrameBegin(fb_flags);
-    ring_done = ring_fr; /* FB-1: C3D_FrameBegin waits for the GX queue (C3Di_WaitAndClearQueue) with or without SYNCDRAW: every chunk used before this frame is finished */
+    nb.ring_done = nb.ring_fr; /* FB-1: C3D_FrameBegin waits for the GX queue (C3Di_WaitAndClearQueue) with or without SYNCDRAW: every chunk used before this frame is finished */
     if (gb_on) { gb_sum += pm_ticks() - gb_sub; gb_n++; gb_on = 0; } /* S0-6: the sync of the previous frame returned */ /* PT88: at 30 steps the loop paces itself by time and the frame begin waits only for the GPU (the previous frame, so the buffers are free); with fps60 the begin waits for the vblank as before: two draws a step, one per vblank */
     FS_MARK(FS_REST);
     PH_POP();
@@ -2204,11 +2186,11 @@ void pm_gpu_end(void) { Wq_pm_gpu_end q = { 0 }; pm_wq_post(wq_pm_gpu_end, &q, s
 static void pm_gpu_end_w(void) {
     if (pm_frame_count() % 100u == 0) rect_log(pm_frame_count()); /* RECT-2b diag: rect and rectwhy lines every 100 frames */
     pm_gpu_begin_wait();
-    if (!gpu_ok) return;
+    if (!gs.gpu_ok) return;
     FS_MARK(FS_FLUSH);
     flush();
     cen_frame_end();
-    if (off_active) pm_gpu_off_end();
+    if (gs.off_active) pm_gpu_off_end();
     /* X01: a frame the game did not draw (it skips gfx_draw_frame while the pause screen takes the picture) keeps the last
      * picture on screen, as the N64 does when no task swaps the buffer. A clear here would show black for that frame. The clear
      * is a GX memory fill that runs before the command list queued by C3D_FrameEnd, so it can come after the draw calls. */
@@ -2287,15 +2269,15 @@ void pm_gpu_set_mvp(const float m[4][4], float sx, float sy, float tx, float ty)
     static const float id4[4][4] = { {1,0,0,0}, {0,1,0,0}, {0,0,1,0}, {0,0,0,1} };
     /* F07-3: orthographic = no perspective divide. The clipped-polygon path passes identity and keeps the flag of the last real matrix. */
     int ortho = memcmp(m, id4, sizeof(id4)) == 0 ? ui_ortho : (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f);
-    if (sx == vp_sx && sy == vp_sy && tx == vp_tx && ty == vp_ty && ortho == ui_ortho &&
+    if (sx == gs.vp_sx && sy == gs.vp_sy && tx == gs.vp_tx && ty == gs.vp_ty && ortho == ui_ortho &&
         memcmp(game_mvp, m, sizeof(game_mvp)) == 0) return;
     if (nb.draw_3d && nb.gni > 0) flush();
     ui_ortho = ortho;
     memcpy(game_mvp, m, sizeof(game_mvp));
-    vp_sx = sx;
-    vp_sy = sy;
-    vp_tx = tx;
-    vp_ty = ty;
+    gs.vp_sx = sx;
+    gs.vp_sy = sy;
+    gs.vp_tx = tx;
+    gs.vp_ty = ty;
     rebuild_3d();
 }
 
@@ -2307,9 +2289,9 @@ static int wide_edge_k(const float m[4][4], const unsigned short* idx, unsigned 
  * vertices must already carry a flag of the palette of this batch. */
 int pm_gpu_gappend(unsigned i0, unsigned i1, unsigned i2, unsigned g0, unsigned g1, unsigned g2) {
     if (nb.gni == 0 || nb.gidx_n + 3 > GRING_IDX || !nb.g_pal) return 0;
-    if (ring_cur && nb.gi_kind != 0) return 0; /* FB-1: a static batch on chunk k takes no ring triangles */
+    if (nb.ring_cur && nb.gi_kind != 0) return 0; /* FB-1: a static batch on chunk k takes no ring triangles */
     const unsigned r3[3] = { i0, i1, i2 }, g3[3] = { g0, g1, g2 };
-    if (pm_wide && !off_active && ui_ortho) { /* WIDE1-3: the same edge test as pm_gpu_gtrip, the slow path decides (once per triangle) */
+    if (pm_wide && !gs.off_active && ui_ortho) { /* WIDE1-3: the same edge test as pm_gpu_gtrip, the slow path decides (once per triangle) */
         unsigned short t3[3] = { (unsigned short)i0, (unsigned short)i1, (unsigned short)i2 };
         if (g1 != g0 || g2 != g0 || i0 > 0xffffu || i1 > 0xffffu || i2 > 0xffffu || wide_edge_k(pal_tab[g0], t3, 3) != 0) return 0;
     }
@@ -2349,7 +2331,7 @@ void pm_gpu_gv_stats(unsigned o[4]) { o[0] = gv_palup_n; o[1] = gv_palmax; o[2] 
  * flag still does. */
 void pm_gpu_note_mvp(const float m[4][4], float sx, float sy, float tx, float ty) {
     int ortho = m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f;
-    if (sx == vp_sx && sy == vp_sy && tx == vp_tx && ty == vp_ty && ortho == ui_ortho) return;
+    if (sx == gs.vp_sx && sy == gs.vp_sy && tx == gs.vp_tx && ty == gs.vp_ty && ortho == ui_ortho) return;
     pm_gpu_set_mvp(m, sx, sy, tx, ty);
 }
 
@@ -2440,15 +2422,15 @@ static int wide_edge_k(const float m[4][4], const unsigned short* idx, unsigned 
 static int wide_edge(const float m[4][4], const unsigned short* idx, unsigned n) { int r = wide_edge_k(m, idx, n); return r == 3 || r == 4 ? 0 : r; }
 int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct,
                  const PmFx* fx, const unsigned ri[3], unsigned ro[3], unsigned* mv) {
-    if (!gv4_on || !gpu_ok) return 0;
+    if (!gs.gv4_on || !gs.gpu_ok) return 0;
     gi_kind_set(0);
     const int use5 = fx != NULL;
     if (use5 && !gv5_on) return 0;
     unsigned mvm = 0; /* TRI-2: bit i: ro[i] is a copy with x moved (the caller keeps vert_ring) */
     if (mv) *mv = 0;
-    if (r_zmark) return 0; /* B3b depth pass: the second pass needs the CPU vertices */
-    if (r_decal && r_blend) return 0; /* V16b: a decal is drawn in two passes from the CPU vertices */
-    if (pm_wide && !off_active) { /* F07-7: the CPU path moves edge vertices of UI quads. The wide post matrix is made for a perspective game matrix. */
+    if (gs.r_zmark) return 0; /* B3b depth pass: the second pass needs the CPU vertices */
+    if (gs.r_decal && gs.r_blend) return 0; /* V16b: a decal is drawn in two passes from the CPU vertices */
+    if (pm_wide && !gs.off_active) { /* F07-7: the CPU path moves edge vertices of UI quads. The wide post matrix is made for a perspective game matrix. */
         if (ui_ortho) { /* WIDE1-3: one matrix for the three vertices, no vertex on the game edge (an edge triangle keeps the CPU path) */
             unsigned short t3[3];
             if (g[1] != g[0] || g[2] != g[0] || ri[0] > 0xffffu || ri[1] > 0xffffu || ri[2] > 0xffffu) return 0;
@@ -2478,7 +2460,7 @@ int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4
         memcpy(nb.g_zmix, zmix, sizeof(nb.g_zmix));
         nb.g_ct = ct; nb.g_pal = 1; nb.pal_n = 0; nb.pal_gen++;
         nb.g_use5 = use5; if (use5) nb.g_fx = *fx;
-        if (vp[0] != vp_sx || vp[1] != vp_sy || vp[2] != vp_tx || vp[3] != vp_ty) { vp_sx = vp[0]; vp_sy = vp[1]; vp_tx = vp[2]; vp_ty = vp[3]; rebuild_3d(); }
+        if (vp[0] != gs.vp_sx || vp[1] != gs.vp_sy || vp[2] != gs.vp_tx || vp[3] != gs.vp_ty) { gs.vp_sx = vp[0]; gs.vp_sy = vp[1]; gs.vp_tx = vp[2]; gs.vp_ty = vp[3]; rebuild_3d(); }
         if (ct) {
             int ccw = gv_wind <= 0; /* golden yard and toad: the first sign was inverted. */
             if (ct == 2) ccw = !ccw;
@@ -2535,13 +2517,13 @@ int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4
 /* DLC2: static vertex area. A compiled shape group copies its Vtx here once (flag 0 = palette entry 0). The area is rewritten only after pm_gpu_gstat_reset (a new
  * map), which runs after C3D_FrameBegin(SYNCDRAW) has waited for the GPU. Returns the first vertex index (GRING_VTX and up) or -1. */
 int pm_gpu_gstat_alloc(unsigned n, unsigned char** out) {
-    if (!gpu_vtx_on || !gpu_ok || !gv4_on || gstat_n + n > GSTAT_VTX) return -1;
+    if (!gs.gpu_vtx_on || !gs.gpu_ok || !gs.gv4_on || gstat_n + n > GSTAT_VTX) return -1;
     unsigned first = GRING_VTX + gstat_n;
     gstat_n += n;
-    *out = rchunk[0].vtx + 16u * first;
+    *out = nb.rchunk[0].vtx + 16u * first;
     return (int)first;
 }
-void pm_gpu_gstat_commit(unsigned first, unsigned n) { pm_fl_dc(rchunk[0].vtx + 16u * first, n * 16u); }
+void pm_gpu_gstat_commit(unsigned first, unsigned n) { pm_fl_dc(nb.rchunk[0].vtx + 16u * first, n * 16u); }
 /* DS1: svc flush first; the GSP call only when the svc fails. */
 unsigned pm_fl_gsp_n;
 void pm_fl_dc(const void* p, unsigned n) {
@@ -2551,7 +2533,7 @@ void pm_fl_dc(const void* p, unsigned n) {
 enum { GSTAT_IDX = 131072 };
 static unsigned short* gidxs; static unsigned gidxs_n;
 unsigned short* pm_gpu_gidxs_alloc(unsigned n) {
-    if (!gpu_vtx_on || !gpu_ok) return NULL;
+    if (!gs.gpu_vtx_on || !gs.gpu_ok) return NULL;
     if (!gidxs) gidxs = (unsigned short*)linearAlloc(GSTAT_IDX * 2);
     if (!gidxs || gidxs_n + n > GSTAT_IDX) return NULL;
     unsigned short* p = gidxs + gidxs_n;
@@ -2577,13 +2559,13 @@ static int grange_batch_open(unsigned gm, const float vp[4], const float uvso[4]
 unsigned char pm_ent_decal_ok; /* S6-2c-3: set by the entity segment draw (the former pm_gbi.c ent_seg_native) around dlc_seg */
 int pm_gpu_grange(const float (*tab)[4][4], unsigned gm, const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct,
                   const PmFx* fx, const unsigned short* idx, unsigned nidx) {
-    if (!gv4_on || !gpu_ok) return 0;
+    if (!gs.gv4_on || !gs.gpu_ok) return 0;
     const int use5 = fx != NULL;
     if (use5 && !gv5_on) return 0;
-    if (r_zmark) return 0;
-    if (r_decal && r_blend && !pm_ent_decal_ok) return 0; /* S6: the native raw close draws a decal with blend in two passes (nd_raw_native); the entity segment path allows it */
+    if (gs.r_zmark) return 0;
+    if (gs.r_decal && gs.r_blend && !pm_ent_decal_ok) return 0; /* S6: the native raw close draws a decal with blend in two passes (nd_raw_native); the entity segment path allows it */
     unsigned short wide_idx[WIDE_MAXV]; /* TRI-2: the range with its edge vertices copied */
-    if (pm_wide && !off_active && !wedge_x) {
+    if (pm_wide && !gs.off_active && !wedge_x) {
         const float(*m)[4] = tab[gm];
         if (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f)) {
             int wr = wide_edge_k(m, idx, nidx); /* WIDE1-1 */
@@ -2623,7 +2605,7 @@ int pm_gpu_grange(const float (*tab)[4][4], unsigned gm, const float vp[4], cons
         nb.g_ct = ct; nb.g_pal = 1; nb.pal_n = 1; nb.pal_g[0] = gm; nb.pal_gen++;
         nb.g_use5 = use5; if (use5) nb.g_fx = *fx;
         if (gv_palmax < 1) gv_palmax = 1;
-        if (vp[0] != vp_sx || vp[1] != vp_sy || vp[2] != vp_tx || vp[3] != vp_ty) { vp_sx = vp[0]; vp_sy = vp[1]; vp_tx = vp[2]; vp_ty = vp[3]; rebuild_3d(); }
+        if (vp[0] != gs.vp_sx || vp[1] != gs.vp_sy || vp[2] != gs.vp_tx || vp[3] != gs.vp_ty) { gs.vp_sx = vp[0]; gs.vp_sy = vp[1]; gs.vp_tx = vp[2]; gs.vp_ty = vp[3]; rebuild_3d(); }
         if (ct) {
             int ccw = gv_wind <= 0;
             if (ct == 2) ccw = !ccw;
@@ -2636,33 +2618,33 @@ int pm_gpu_grange(const float (*tab)[4][4], unsigned gm, const float vp[4], cons
     nb.gni += nidx;
     return 1;
 }
-int pm_gpu_gidx_room(unsigned n) { return gv4_on && gpu_ok && nb.gidx_n + n <= GRING_IDX; }
+int pm_gpu_gidx_room(unsigned n) { return gs.gv4_on && gs.gpu_ok && nb.gidx_n + n <= GRING_IDX; }
 /* S3N-3c: the refusals of pm_gpu_grange that come before any state change, for a static batch with matrix m (the same tests, no side effect). 1: grange takes the batch. */
 int pm_gpu_grange_why(const float m[4][4], unsigned nidx, const unsigned short* idx) { /* S4-1: the class of pm_gpu_grange_would's refusal (0 none) */
-    if (!gv4_on || !gpu_ok) return 1;
-    if (r_zmark) return 2;
-    if (r_decal && r_blend && !pm_ent_decal_ok) return 3;
-    if (pm_wide && !off_active && (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f)) && wide_edge(m, idx, nidx)) return 4;
+    if (!gs.gv4_on || !gs.gpu_ok) return 1;
+    if (gs.r_zmark) return 2;
+    if (gs.r_decal && gs.r_blend && !pm_ent_decal_ok) return 3;
+    if (pm_wide && !gs.off_active && (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f)) && wide_edge(m, idx, nidx)) return 4;
     return nb.gidx_n + nidx <= GRING_IDX ? 0 : 5;
 }
 /* S5-1 (b): the native range check. The walker's decal with blend (decal2) is a native two-pass draw (nd_model_draw), so that refusal is not kept here. */
 int pm_gpu_grange_native_would(const float m[4][4], unsigned nidx, const unsigned short* idx) {
-    if (!gv4_on || !gpu_ok) return 0;
-    if (pm_wide && !off_active && (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f)) && wide_edge(m, idx, nidx)) return 0;
+    if (!gs.gv4_on || !gs.gpu_ok) return 0;
+    if (pm_wide && !gs.off_active && (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f)) && wide_edge(m, idx, nidx)) return 0;
     return nb.gidx_n + nidx <= GRING_IDX;
 }
 int pm_gpu_grange_would(const float m[4][4], unsigned nidx, const unsigned short* idx) {
-    if (!gv4_on || !gpu_ok) return 0;
-    if (r_zmark) return 0;
-    if (r_decal && r_blend) return 0;
-    if (pm_wide && !off_active && (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f)) && wide_edge(m, idx, nidx)) return 0;
+    if (!gs.gv4_on || !gs.gpu_ok) return 0;
+    if (gs.r_zmark) return 0;
+    if (gs.r_decal && gs.r_blend) return 0;
+    if (pm_wide && !gs.off_active && (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f)) && wide_edge(m, idx, nidx)) return 0;
     return nb.gidx_n + nidx <= GRING_IDX;
 }
 
 /* DLC1: 1 when the ring has room for n more vertices (and the path is on) */
-int pm_gpu_gv_room(unsigned n) { return gpu_vtx_on && gpu_ok && nb.gring_n + n <= GRING_VTX; }
+int pm_gpu_gv_room(unsigned n) { return gs.gpu_vtx_on && gs.gpu_ok && nb.gring_n + n <= GRING_VTX; }
 int pm_gpu_gvtx_load(const void* vtx, unsigned n) {
-    if (!gpu_vtx_on || !gpu_ok || nb.gring_n + n > GRING_VTX) return -1;
+    if (!gs.gpu_vtx_on || !gs.gpu_ok || nb.gring_n + n > GRING_VTX) return -1;
     memcpy(nb.gring + nb.gring_n * 16, vtx, n * 16);
     unsigned b = nb.gring_n;
     if (rgen) memset(rgen + b, 0, n * sizeof(unsigned));
@@ -2671,37 +2653,37 @@ int pm_gpu_gvtx_load(const void* vtx, unsigned n) {
 }
 
 /* R2B: 1 when pm_gpu_set_mode with these bits would return at once */
-int pm_gpu_mode_is(int zbuffer, int lighting) { return zbuffer == z_on && lighting == light_on; }
+int pm_gpu_mode_is(int zbuffer, int lighting) { return zbuffer == gs.z_on && lighting == light_on; }
 void pm_gpu_set_mode(int zbuffer, int lighting) {
-    if (zbuffer == z_on && lighting == light_on) return;
+    if (zbuffer == gs.z_on && lighting == light_on) return;
     flush();
-    z_on = zbuffer;
+    gs.z_on = zbuffer;
     light_on = lighting;
 }
 
 void pm_gpu_set_nocolor(int on) {
-    if (on == r_nocol) return;
+    if (on == gs.r_nocol) return;
     flush();
-    r_nocol = on;
+    gs.r_nocol = on;
 }
 
 /* B3b: on = the next triangles are a case 6 model (a depth test against the world, a constant depth write). zn = clip z / w of the constant. */
 void pm_gpu_set_zmark(int on, float zn) {
-    if (on == r_zmark && (!on || zn == r_zmark_zn)) return;
+    if (on == gs.r_zmark && (!on || zn == gs.r_zmark_zn)) return;
     flush();
-    r_zmark = on;
-    r_zmark_zn = zn;
+    gs.r_zmark = on;
+    gs.r_zmark_zn = zn;
 }
 
 void pm_gpu_set_render(int zcmp, int zupd, int blend, int atest, int decal) {
-    if (zcmp == r_zcmp && zupd == r_zupd && blend == r_blend && atest == r_atest && decal == r_decal) return;
+    if (zcmp == gs.r_zcmp && zupd == gs.r_zupd && blend == gs.r_blend && atest == gs.r_atest && decal == gs.r_decal) return;
     flush();
-    r_zmark = 0; /* B3b: draw_tri turns it on again for a case 6 model */
-    r_zcmp = zcmp;
-    r_zupd = zupd;
-    r_blend = blend;
-    r_atest = atest;
-    r_decal = decal;
+    gs.r_zmark = 0; /* B3b: draw_tri turns it on again for a case 6 model */
+    gs.r_zcmp = zcmp;
+    gs.r_zupd = zupd;
+    gs.r_blend = blend;
+    gs.r_atest = atest;
+    gs.r_decal = decal;
 }
 
 void pm_gpu_set_tex1(float sx, float sy, float ox, float oy) {
@@ -2758,9 +2740,9 @@ void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) {
     s[i++] = nd_ws.omode_h; s[i++] = nd_ws.omode_l; s[i++] = nd_ws.om_kh; s[i++] = nd_ws.om_kl; s[i++] = nd_ws.geom;
     s[i++] = sw_tss; s[i++] = sw_cw0; s[i++] = sw_cw1;
     s[i++] = nd_ws.prim; s[i++] = nd_ws.prim_lod; s[i++] = aux_hash(rec); /* S3N-7: env_col is not in the key (it changes per draw order; the cached draws do not read it: ndmcheck diff 0). S3L-3: slot 10 = hash of the R13 words (compared) */ s[i++] = cconst; s[i++] = r_mixcol; s[i++] = dbits;
-    s[i++] = (uint32_t)dview; s[i++] = (uint32_t)r_mix; s[i++] = (uint32_t)r_memblend; s[i++] = (uint32_t)r_replace; s[i++] = (uint32_t)gv_wind;
-    { float zb_ = r_zmark ? r_zmark_zn : 0.f; uint32_t zu; memcpy(&zu, &zb_, 4); s[i++] = r_zmark ? (zu | 1u) : 0u; } /* S5-2: zmark on and its depth (bit 0 set when on) */
-    s[i++] = (uint32_t)r_decal; s[i++] = (uint32_t)r_blend; s[i++] = (uint32_t)pm_wide; s[i++] = (uint32_t)off_active; s[i++] = (uint32_t)ui_ortho;
+    s[i++] = (uint32_t)dview; s[i++] = (uint32_t)gs.r_mix; s[i++] = (uint32_t)r_memblend; s[i++] = (uint32_t)r_replace; s[i++] = (uint32_t)gv_wind;
+    { float zb_ = gs.r_zmark ? gs.r_zmark_zn : 0.f; uint32_t zu; memcpy(&zu, &zb_, 4); s[i++] = gs.r_zmark ? (zu | 1u) : 0u; } /* S5-2: zmark on and its depth (bit 0 set when on) */
+    s[i++] = (uint32_t)gs.r_decal; s[i++] = (uint32_t)gs.r_blend; s[i++] = (uint32_t)pm_wide; s[i++] = (uint32_t)gs.off_active; s[i++] = (uint32_t)ui_ortho;
     s[i++] = nd_handle_gen(); s[i++] = pm_dlc_gen;
     i += pm_gbi_gvkey(s + i, NDMC_SW - i);
     while (i < NDMC_SW) s[i++] = 0;
@@ -2839,9 +2821,9 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
     if (r13 && r13cw[3]) c.tss = r13cw[2]; /* MDL-1: the block's G_TEXTURE scale */ /* B9: the list TEXTURE wins; gv per range in nd_model_draw */
     if (ds) { int w = 8, h = 8; while (w < ds->w) w <<= 1; while (h < ds->h) h <<= 1; c.tex_w = w; c.tex_h = h; } /* the size of the record's texture, not the walker-bound slot */
     c.draw_3d = 1; /* S3N-3c: a native batch goes through pm_gpu_grange, which sets draw_3d */
-    c.zmark = r_zmark; c.zn = r_zmark_zn; /* S5-2 (a) */
-    c.dview = dv_mode(); c.r_mix = r_mix; c.r_memblend = r_memblend; c.r_replace = r_replace;
-    c.prim = nd_ws.prim; c.prim_lod = nd_ws.prim_lod; c.env = env_col; c.cconst = cconst; c.mixcol = r_mixcol; /* B9: prim from the bridge state */
+    c.zmark = gs.r_zmark; c.zn = gs.r_zmark_zn; /* S5-2 (a) */
+    c.dview = dv_mode(); c.r_mix = gs.r_mix; c.r_memblend = r_memblend; c.r_replace = r_replace;
+    c.prim = nd_ws.prim; c.prim_lod = nd_ws.prim_lod; c.env = gs.env_col; c.cconst = cconst; c.mixcol = r_mixcol; /* B9: prim from the bridge state */
     { float db = decal_bias(); memcpy(&c.dbias, &db, 4); }
     c.base_oh = ax_ok ? (nd_ws.omode_h & ~ax.wh) | ax.om_h : nd_ws.omode_h; c.base_ol = ax_ok ? (nd_ws.omode_l & ~ax.wl) | ax.om_l : nd_ws.omode_l; /* B8; S3L-3: the R13 mode ops first */
     c.known_h = nd_ws.om_kh | (ax_ok ? ax.wh : 0u); c.known_l = nd_ws.om_kl | (ax_ok ? ax.wl : 0u);
@@ -3140,7 +3122,7 @@ static __attribute__((cold, noinline)) void ndplan_check(unsigned w0, unsigned w
     memset(&pp, 0, sizeof pp);
     runs++;
     int rc = pm_comb_build(w0, w1, two, t1only, &pp);
-    if ((rc != 0 || !plan_same_layout(&plan, &pp)) && bad++ < 40) pm_log("ndplan MISMATCH f%u w0 %08x w1 %08x two %d t1 %d rc %d run %u", pm_frame_count(), w0, w1, two, t1only, rc, runs);
+    if ((rc != 0 || !plan_same_layout(&gs.plan, &pp)) && bad++ < 40) pm_log("ndplan MISMATCH f%u w0 %08x w1 %08x two %d t1 %d rc %d run %u", pm_frame_count(), w0, w1, two, t1only, rc, runs);
     if (!(runs % 3000)) pm_log("ndplan runs %u mismatches %u", runs, bad);
 }
 
@@ -3201,30 +3183,30 @@ static void plan_layout_field_diffs(const PmPlan* a, const PmPlan* b) {
 void pm_gpu_render_src(unsigned omode_h, unsigned omode_l, int depth_img) { rs_src[0] = omode_h; rs_src[1] = omode_l; rs_src[2] = (unsigned)depth_img; }
 void pm_gpu_plan_key(unsigned w0, unsigned w1, int two, int t1only) { plan_kp[0] = w0; plan_kp[1] = w1; plan_kp[2] = (unsigned)two; plan_kp[3] = (unsigned)t1only; }
 void pm_gpu_set_plan(const PmPlan* p) {
-    if (combine == 8 && memcmp(&plan, p, sizeof plan) == 0) return;
+    if (gs.combine == 8 && memcmp(&gs.plan, p, sizeof gs.plan) == 0) return;
     CS_ADD(CS_PLAN, 1);
-    if (combine == 8 && plan_same_layout(&plan, p)) {
+    if (gs.combine == 8 && plan_same_layout(&gs.plan, p)) {
         CS_ADD(CS_CON, 1);
         if (prim != cs_last_prim) CS_ADD(CS_PRIM, 1);
-        if (env_col != cs_last_env) CS_ADD(CS_ENV, 1);
+        if (gs.env_col != cs_last_env) CS_ADD(CS_ENV, 1);
     } else {
         CS_ADD(CS_LAY, 1);
-        if (combine == 8) plan_layout_field_diffs(&plan, p);
+        if (gs.combine == 8) plan_layout_field_diffs(&gs.plan, p);
     }
     flush();
-    plan = *p;
+    gs.plan = *p;
     memcpy(plan_k, plan_kp, sizeof plan_k);
     plan_gen++;
-    combine = 8;
+    gs.combine = 8;
     cs_last_prim = prim;
-    cs_last_env = env_col;
+    cs_last_env = gs.env_col;
 }
 
 void pm_gpu_set_combine(int mode) {
-    if (mode == combine) return;
+    if (mode == gs.combine) return;
     CS_ADD(CS_MODE, 1);
     flush();
-    combine = mode;
+    gs.combine = mode;
 }
 
 /* The RDP can brighten past 1 in the second cycle. Texture * color * 2 gives that range. */
@@ -3239,7 +3221,7 @@ void pm_gpu_set_rgb_scale(int scale) {
  * batch draws with the prim of its flush, so a change while it is open must close it first. */
 static unsigned prim_lod_g = 0xffffffffu;
 void pm_gpu_set_prim(unsigned rgba, unsigned lod) {
-    int reads = combine == 1 || combine == 5 || combine == 6 || combine == 7 || combine == 8;
+    int reads = gs.combine == 1 || gs.combine == 5 || gs.combine == 6 || gs.combine == 7 || gs.combine == 8;
     if (reads && (rgba != prim || lod != prim_lod_g)) flush();
     prim = rgba;
     prim_lod_g = lod;
@@ -3247,23 +3229,23 @@ void pm_gpu_set_prim(unsigned rgba, unsigned lod) {
 
 void pm_gpu_set_mix(int on, unsigned rgba) {
     if (!on) rgba = 0;
-    if (on == r_mix && rgba == r_mixcol) return;
+    if (on == gs.r_mix && rgba == r_mixcol) return;
     flush();
-    r_mix = on;
+    gs.r_mix = on;
     r_mixcol = rgba;
 }
 
 /* SPR4-env: the open batch reads ENV at its flush (combine 5, 7 and the combine 8 plans), so a change while it is open closes it first.
  * The batch-open tests need no env compare: no change can happen while a batch is open. */
 void pm_gpu_set_env(unsigned rgba) {
-    if (rgba != env_col && (nb.gni > 0 || nb.rect_open)) flush();
-    env_col = rgba;
+    if (rgba != gs.env_col && (nb.gni > 0 || nb.rect_open)) flush();
+    gs.env_col = rgba;
 }
 
 /* SPR4-env: cconst is in the TEV key of combine 4 and 8 (the batch draws with the cconst of its flush). */
 void pm_gpu_set_const(unsigned rgba) {
     if (rgba == cconst) return;
-    if (combine == 4 || combine == 8) flush();
+    if (gs.combine == 4 || gs.combine == 8) flush();
     cconst = rgba;
 }
 
@@ -3303,9 +3285,9 @@ int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16
     memset(&mode, 0, sizeof mode);
     mode.ok = 1; mode.gand = 0xFFFFFFFFu;
     { /* MDL-3a: class 5 by sub-reason, each flag counted on its own (a record can hold several) */
-        const int nopal = !(nb.g_pal && !nb.g_use5 && gv4_on);
-        spr5_sub[1] += (unsigned)nopal; spr5_sub[2] += (unsigned)(off_active != 0); spr5_sub[3] += (unsigned)(grab_bind != 0); spr5_sub[4] += (unsigned)(r_zmark != 0);
-        if (nopal || off_active || grab_bind || r_zmark) { *why = 5; return 0; } /* the walker raw path refusals (nd_raw_native) */
+        const int nopal = !(nb.g_pal && !nb.g_use5 && gs.gv4_on);
+        spr5_sub[1] += (unsigned)nopal; spr5_sub[2] += (unsigned)(gs.off_active != 0); spr5_sub[3] += (unsigned)(grab_bind != 0); spr5_sub[4] += (unsigned)(gs.r_zmark != 0);
+        if (nopal || gs.off_active || grab_bind || gs.r_zmark) { *why = 5; return 0; } /* the walker raw path refusals (nd_raw_native) */
     }
     NdTexDesc ds;
     NdUnit un;
@@ -3344,7 +3326,7 @@ int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16
     c.has_comb = 1; c.comb_w0 = sw_cw0; c.comb_w1 = sw_cw1;
     c.tex_w = tw; c.tex_h = th; c.tss = mode.has_tx ? mode.tw1 : sw_tss;
     c.geom_base = sw_geo; c.wind = gv_wind; c.geom_at_set = 0;
-    c.draw_3d = 1; c.dview = dv_mode(); c.r_mix = r_mix; c.r_memblend = r_memblend; c.r_replace = r_replace;
+    c.draw_3d = 1; c.dview = dv_mode(); c.r_mix = gs.r_mix; c.r_memblend = r_memblend; c.r_replace = r_replace;
     c.env = nd_ws.envc; c.prim = nd_ws.prim; c.prim_lod = nd_ws.prim_lod; c.cconst = cconst; c.mixcol = r_mixcol;
     { float db = decal_bias(); memcpy(&c.dbias, &db, 4); }
     c.base_oh = nd_ws.omode_h; c.base_ol = nd_ws.omode_l; c.known_h = nd_ws.om_kh; c.known_l = nd_ws.om_kl;
@@ -3362,7 +3344,7 @@ int pm_gpu_spr_submit(NdDraw* d, const void* quad, int tex) {
     static const unsigned char tri[6] = { 0, 2, 1, 0, 3, 2 };
     flush();
     nb.gi_kind = 0;
-    if (!gpu_vtx_on || !gpu_ok || !ring_need(4, 6)) return 0; /* FB-1: a full ring wraps first */
+    if (!gs.gpu_vtx_on || !gs.gpu_ok || !ring_need(4, 6)) return 0; /* FB-1: a full ring wraps first */
     const int b = pm_gpu_gvtx_load(quad, 4);
     if (b < 0) return 0;
     for (unsigned i = 0; i < 4; i++) *(unsigned short*)(nb.gring + 16u * ((unsigned)b + i) + 6) = 0;
@@ -3443,8 +3425,8 @@ void pm_gpu_set_scissor(int x0, int y0, int x1, int y1) {
 
 
 /* Game pixels are y-down. The ortho matrix is y-up, and 320px is centered in 400. */
-static float px(int x) { return off_active ? (float)x : 40.f + (float)x; } /* F07-3: 2D is 1:1 and centered, also with wide */
-static float py(int y) { return off_active ? (float)y : 240.f - (float)y; }
+static float px(int x) { return gs.off_active ? (float)x : 40.f + (float)x; } /* F07-3: 2D is 1:1 and centered, also with wide */
+static float py(int y) { return gs.off_active ? (float)y : 240.f - (float)y; }
 
 static float fill_z = 0.5f;
 /* RECT-1a: fill rectangles as raw Vtx batches (agent_s6.md RECT-1). Four Vtx in the ring: x, y screen pixels, z 0, s t 0, colour in the N64 Vtx layout (r in byte 12).
@@ -3453,7 +3435,7 @@ static float fill_z = 0.5f;
 static unsigned rect_c[6];
 static unsigned rr_why[8]; /* RECT-2b diag: why a textured or fill rectangle is refused (dropped, rect_c[4]): 1 gpu, 2 off, 3 grab, 4 zmark, 5 ring full, 6 norectraw, 7 texcoord range */
 static int rect_raw_ok(void) {
-    if (!(gpu_vtx_on && gpu_ok && gv4_on)) { rr_why[1]++; return 0; }
+    if (!(gs.gpu_vtx_on && gs.gpu_ok && gs.gv4_on)) { rr_why[1]++; return 0; }
     if (!ring_need(4, 6)) { rr_why[5]++; return 0; }
     return 1;
 }
@@ -3467,10 +3449,10 @@ static void rect_raw_open(int ec, float fz, const float uvso[4]) {
     nb.draw_3d = 0;
     nb.rect_ec = ec; nb.rect_zb = nb.rect_z; nb.rect_tex = rtx; nb.rect_open = 1; rq_n = 0;
     if (fz != nb.rect_pal_z) { /* the palette entry and the register caches hold the matrix of the old depth */
-        nb.rect_pal_z = fz; pcomp_gen[RECT_GM] = 0;
+        nb.rect_pal_z = fz; gs.pcomp_gen[RECT_GM] = 0;
     }
     memcpy(nb.g_uvso, uvso, sizeof(nb.g_uvso));
-    nb.g_vp[0] = vp_sx; nb.g_vp[1] = vp_sy; nb.g_vp[2] = vp_tx; nb.g_vp[3] = vp_ty;
+    nb.g_vp[0] = gs.vp_sx; nb.g_vp[1] = gs.vp_sy; nb.g_vp[2] = gs.vp_tx; nb.g_vp[3] = gs.vp_ty;
     for (int i = 0; i < 4; i++) { nb.g_cmul[i] = 1.f; nb.g_cadd[i] = 0.f; }
     nb.g_zmix[0] = 1.f; nb.g_zmix[1] = 0.f;
     nb.g_ct = 0; nb.g_cullm = GPU_CULL_NONE; nb.g_pal = 1; nb.g_use5 = 0;
@@ -3501,7 +3483,7 @@ static void rect_log(unsigned f) { if (PMDL("rectsig")) pm_log_d("rsig sum f%u c
     nd_tridrop_log(f);
 }
 void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba) {
-    if (PMDL("zmforce")) { z_on = 1; nb.rect_z = 1; r_zmark = 1; r_zmark_zn = 0.5f; } /* FB-1 ZM forcing: every rectangle is a zmark rectangle (CPU and native alike) */
+    if (PMDL("zmforce")) { gs.z_on = 1; nb.rect_z = 1; gs.r_zmark = 1; gs.r_zmark_zn = 0.5f; } /* FB-1 ZM forcing: every rectangle is a zmark rectangle (CPU and native alike) */
     if (x1 < x0) { int t = x0; x0 = x1; x1 = t; }
     if (y1 < y0) { int t = y0; y0 = y1; y1 = t; }
     rect_c[0]++;
@@ -3509,12 +3491,12 @@ void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba) {
     if (rect_raw_ok()) {
         static const float uv0[4] = { 1.f, 1.f, 0.f, 0.f };
         /* F07-3: a fill from the game edge reaches the screen edge. OFF-1: an off-screen pass is px and py (no wide, no 40 pixel margin) */
-        int xa = off_active ? x0 : (pm_wide && x0 <= 0) ? 0 : 40 + x0;
-        int xb = off_active ? x1 + 1 : (pm_wide && x1 >= 319) ? 400 : 40 + x1 + 1;
-        int ya = off_active ? y0 : 240 - y0, yb = off_active ? y1 + 1 : 240 - (y1 + 1);
+        int xa = gs.off_active ? x0 : (pm_wide && x0 <= 0) ? 0 : 40 + x0;
+        int xb = gs.off_active ? x1 + 1 : (pm_wide && x1 >= 319) ? 400 : 40 + x1 + 1;
+        int ya = gs.off_active ? y0 : 240 - y0, yb = gs.off_active ? y1 + 1 : 240 - (y1 + 1);
         rect_raw_open(0, fill_z, uv0);
         rect_raw_quad(xa, ya, xb, yb, 0, 0, 0, 0, rgba);
-        if (!off_active) grab_dirty = 1; /* a fill draws rows the grab does not track (rect_y0 and rect_y1 are for texture rectangles): the next grab copies */
+        if (!gs.off_active) gs.grab_dirty = 1; /* a fill draws rows the grab does not track (rect_y0 and rect_y1 are for texture rectangles): the next grab copies */
         return;
     }
     rect_c[4]++; /* no CPU rectangle path: a refused rectangle is dropped and counted (rect log: drop) */
@@ -3531,14 +3513,14 @@ void pm_gpu_fill_rect_z(int x0, int y0, int x1, int y1, unsigned rgba, float d) 
 
 /* B3: a fill into the z-buffer image: depth d in the rectangle, colour untouched, no depth test (r_nocol, r_zupd, no r_zcmp). */
 void pm_gpu_fill_depth(int x0, int y0, int x1, int y1, float d) {
-    int s_nc = r_nocol, s_zc = r_zcmp, s_zu = r_zupd, s_bl = r_blend, s_at = r_atest, s_de = r_decal, s_z = z_on, s_mix = r_mix;
+    int s_nc = gs.r_nocol, s_zc = gs.r_zcmp, s_zu = gs.r_zupd, s_bl = gs.r_blend, s_at = gs.r_atest, s_de = gs.r_decal, s_z = gs.z_on, s_mix = gs.r_mix;
     flush();
-    int s_zm = r_zmark; r_zmark = 0;
-    r_nocol = 1; r_zcmp = 0; r_zupd = 1; r_blend = 0; r_atest = -1; r_decal = 0; z_on = 1; r_mix = 0;
+    int s_zm = gs.r_zmark; gs.r_zmark = 0;
+    gs.r_nocol = 1; gs.r_zcmp = 0; gs.r_zupd = 1; gs.r_blend = 0; gs.r_atest = -1; gs.r_decal = 0; gs.z_on = 1; gs.r_mix = 0;
     pm_gpu_fill_rect_z(x0, y0, x1, y1, 0, d);
     flush(); /* DR1: the rectangle is drawn with the temporary render state */
-    r_zmark = s_zm;
-    r_nocol = s_nc; r_zcmp = s_zc; r_zupd = s_zu; r_blend = s_bl; r_atest = s_at; r_decal = s_de; z_on = s_z; r_mix = s_mix;
+    gs.r_zmark = s_zm;
+    gs.r_nocol = s_nc; gs.r_zcmp = s_zc; gs.r_zupd = s_zu; gs.r_blend = s_bl; gs.r_atest = s_at; gs.r_decal = s_de; gs.z_on = s_z; gs.r_mix = s_mix;
 }
 
 /* RECT-1b: a texture rectangle as a raw batch (agent_s6.md RECT-1b). s and t are normalized: the ring gets shorts s * sc, the batch uvso is {1 / sc, 1 / sc, 0, 0} (pica uv = tc * uvso.xy + uvso.zw).
@@ -3548,7 +3530,7 @@ static short tex_st(float v, float sc) { float f = v * sc; return (short)(f >= 0
  * bs = floor of the lower s (bt for t). Below 127 the base is 0 and the batch is as before. sc follows the largest value that the shorts hold.
  * Returns 0 when the piece is still too wide (tex_raw_rect splits first, so this is not reached in practice). */
 static int tex_raw_piece(int xa, int ya, int xb, int yb, float s0, float t0, float s1, float t1, int y0, int y1) {
-    const int saved = combine;
+    const int saved = gs.combine;
     const int ec = (saved == 5 || saved == 6 || saved == 7 || saved == 8) ? saved : 2;
     float mx = 0.f;
     const float av[4] = { s0 < 0.f ? -s0 : s0, s1 < 0.f ? -s1 : s1, t0 < 0.f ? -t0 : t0, t1 < 0.f ? -t1 : t1 };
@@ -3564,7 +3546,7 @@ static int tex_raw_piece(int xa, int ya, int xb, int yb, float s0, float t0, flo
     else if (rmx < 31.9f) { sc = 1024.f; inv = 0.0009765625f; }
     else if (rmx < 127.f) { sc = 256.f; inv = 0.00390625f; }
     else { rr_why[7]++; return 0; }
-    unsigned c = (saved == 5 || saved == 7) ? env_col : (saved == 8 && plan.vtxname != PM_NM_SHADE) ? plan.vtx : 0xffffffffu;
+    unsigned c = (saved == 5 || saved == 7) ? gs.env_col : (saved == 8 && gs.plan.vtxname != PM_NM_SHADE) ? gs.plan.vtx : 0xffffffffu;
     const float uvso[4] = { inv, inv, bs, bt };
     rect_raw_open(ec, fill_z, uvso);
     rect_raw_quad(xa, ya, xb, yb, tex_st(r0s, sc), tex_st(r0t, sc), tex_st(r1s, sc), tex_st(r1t, sc), c);
@@ -3580,7 +3562,7 @@ static int tex_raw_piece(int xa, int ya, int xb, int yb, float s0, float t0, flo
 static int tex_raw_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s1, float t1) {
     if (!rect_raw_ok()) return 0;
     float xa = px(x0), xb = px(x1 + 1);
-    if (pm_wide && !off_active && xb > xa) { /* F07-7: a rectangle on the game edge reaches the screen edge */
+    if (pm_wide && !gs.off_active && xb > xa) { /* F07-7: a rectangle on the game edge reaches the screen edge */
         float ds = (s1 - s0) / (xb - xa);
         if (x0 == 0) { s0 -= ds * xa; xa = 0.f; }
         if (x1 == 319) { s1 += ds * (400.f - xb); xb = 400.f; }
@@ -3612,7 +3594,7 @@ static int tex_raw_rect(int x0, int y0, int x1, int y1, float s0, float t0, floa
     return 1;
 }
 void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s1, float t1) {
-    if (PMDL("zmforce")) { z_on = 1; nb.rect_z = 1; r_zmark = 1; r_zmark_zn = 0.5f; } /* FB-1 ZM forcing (as pm_gpu_fill_rect) */
+    if (PMDL("zmforce")) { gs.z_on = 1; nb.rect_z = 1; gs.r_zmark = 1; gs.r_zmark_zn = 0.5f; } /* FB-1 ZM forcing (as pm_gpu_fill_rect) */
     if (x1 < x0) { int t = x0; x0 = x1; x1 = t; float s = s0; s0 = s1; s1 = s; }
     if (y1 < y0) { int t = y0; y0 = y1; y1 = t; float s = t0; t0 = t1; t1 = s; }
     if (fl_on()) { fl_rects++; if (fl_prev_rect) fl_consec++; }
