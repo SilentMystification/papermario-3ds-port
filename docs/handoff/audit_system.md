@@ -57,7 +57,7 @@ The batch close path is 19,288 B of code: flush_draw 1,524 + nd_raw_native 8,996
 nd_raw_native contains debug blocks inline: the wl_on wdraw/wsurf logs (pm_gpu.c:1274-1287, a 40-argument pm_log and a vertex loop), orb_log (:1230), ndplan_check (:1229), the ndm_cmp call (:1273) and grablog (:1204).
 Fix: move each debug block into a cold, noinline function behind one flag test. Together with A2, which removes TevKey, nd_raw_native should fall under 4 KB.
 
-**A6 (texture cache, M). A texture miss scans the whole slot table.**
+**[done W7] A6 (texture cache, M). A texture miss scans the whole slot table.**
 In load_inner, a load that misses the 256-entry direct index (pm_tex.c:1631) and the recent list (:1643) scans every slot below slot_hi (pm_tex.c:1656). That is up to 1,024 x 136 B = 139,264 B, before load_miss. A true miss always pays the full scan. Every call also hashes the full CI palette, hits included (pm_tex.c:1608-1625).
 Fix: use an open-addressing index keyed by (img, tlut, w, h, fmt, siz, stride, dkey), in the same form as gm_idx (nd_mtx_set.c:47) and tmpl_idx (nd_tmpl.c:300). The table is then never scanned.
 
@@ -144,7 +144,7 @@ Deleting them is a user decision, because CLAUDE.md rule 7 says debug tools may 
 | W4 | B1 ring reuse at 30 fps | same (a ring wrap scenario if one exists, else code trace) | done: byte-equal; no scenario wraps the ring, so the proof is the code trace: C3D_FrameBegin without NONBLOCK calls gxCmdQueueWait(-1) (libcitro3d renderqueue.o disassembly), so ring_done = ring_fr at every begin |
 | W5 | A7, A8, A11 gtrip and gappend lookups | same | done for A7 and the palette part of A8: byte-equal; one palette search per vertex (pal_lookup), wide check once per triangle. The parameter memcmp of A8 stays (gtrip has one caller, a later epoch id is a small gain). A11 not done: t1_fold_tri runs only for a TEXEL1 window fold (ep_t1f), and its uv feeds a floor, so the other rounding order could move a fold |
 | W6 | A10, A12, C5 combine hash and switch macros | same | done: byte-equal; PMD removed (PMDL everywhere, it follows option changes); the per-frame and per-kick lookups use PMDL; the inline sc_sig copy calls sc_sig_now. The two combine hashes stay: scm_sig misses keyc, keys and conv_k4, so a merged key or a hash-indexed memo would change which entry replays |
-| W7 | A6 texture slot index | same | open |
+| W7 | A6 texture slot index | same | done: byte-equal; a lookup miss walks one chain of a 2,048-bucket index (hb_head, hb_next) instead of every slot below slot_hi. The CI palette hash per call stays (the key needs it) |
 | W8 | B2, B3 seams (pixels change) | before and after shot of the subject, byte-equal elsewhere | open |
 | W9 | A9 combine fact owner, B4 decoder merge | same as W1 | open |
 | W10 | C3, C8, C9 (structure); C4 and the stereo double walk wait for the user | ask first | open |
