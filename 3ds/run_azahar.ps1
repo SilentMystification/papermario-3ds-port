@@ -227,7 +227,12 @@ if (-not $warm) { Remove-Item $sl.keepFile -ErrorAction SilentlyContinue }
 if (-not $warm -and (Test-Path $pidFile)) {
     $old = [int](Get-Content $pidFile -ErrorAction SilentlyContinue)
     $op = Get-Process -Id $old -ErrorAction SilentlyContinue
-    if ($op -and $op.ProcessName -eq "azahar") { Write-Output "Recovery: killing orphan Azahar $old."; Kill-Azahar $old "orphan of a killed run" }
+    # AZT12-3: the keep path leaves the kept Azahar's pid in slot.pid, so a cold start finds it here. That is a kept Azahar replaced by this
+    # cold start (the reason is the cold reason), not an orphan: only a pid that is not the kept Azahar is left by a killed run.
+    if ($op -and $op.ProcessName -eq "azahar") {
+        if ($kept -and $kept.Id -eq $old) { Write-Output "Cold start ($warmWhy): closing the kept Azahar $old."; Kill-Azahar $old "kept replaced, cold: $warmWhy" }
+        else { Write-Output "Recovery: killing orphan Azahar $old."; Kill-Azahar $old "orphan of a killed run" }
+    }
     Remove-Item $pidFile -ErrorAction SilentlyContinue
 }
 if (Test-Path $cfgBak) { Write-Output "Recovery: restoring qt-config.ini saved by a killed run."; Restore-Cfg }
