@@ -283,6 +283,11 @@ unsigned pm_audio_retraces(void) {
 
 /* Bytes of PCM that were posted and not played yet. This is what osAiGetLength reports. */
 unsigned pm_audio_pending(void) {
+    /* CORE2-1: under det the backlog is 0 too: nuAuMgr (system.c) picks the frame size from it, and a frame size that follows the DSP clock
+     * moves the sequencer, so the music events and the music-driven scene animations, with the timing of the run. */
+    static int det = -1;
+    if (det < 0) det = pm_debug_has("det");
+    if (det) return 0;
     if (pm_dspa_enabled) { unsigned n = pm_dspa_backlog_blocks() * 184u; return n > PM_AU_LEAD ? (n - PM_AU_LEAD) * 4 : 0; } /* samples the timeline still has to play */
     if (pm_audio_lock()) return 0; /* audiolock: osAiGetLength 0 so the PCM does not depend on the clock */
     return 0; /* no DSP: nothing is queued */
