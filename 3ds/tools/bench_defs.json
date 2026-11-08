@@ -3350,6 +3350,22 @@
         "core2"
       ],
       "gates": []
+    },
+    {
+      "name": "tour_spots3",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "POS1 picture gate: Mario at the tour spots of mac_01, kmr_20 and sbk_02, on the ground, outdoors, busy part on screen.",
+      "scenario": "tour_spots3",
+      "cap": 40,
+      "until": "shot 4 frame",
+      "tags": [
+        "azahar",
+        "pic",
+        "tour"
+      ],
+      "gates": []
     }
   ],
   "legacy": {

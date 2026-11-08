@@ -9747,6 +9747,41 @@
         }
       ],
       "reason": "CORE2-3a positive control (orchestrator). Log only."
+    },
+    {
+      "name": "tour_spots3",
+      "status": "verified",
+      "subject": "POS1 picture gate: the tour spots of 3ds/tours/spots.txt for mac_01, kmr_20 and sbk_02 (desert). mac_00 entry 4 first, then the 3 maps with map:0@x:y:z; one shot per map 50 frames after the map is in (the tour places the spot at frame 30 and snaps y with a ray from y + 200).",
+      "proves": "Each spot puts Mario on the ground (the tour: at line: the snapped y is the spots.txt y within 1 unit), outdoors, with the busy part of the map on screen.",
+      "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_01:0@320:20:-112,kmr_20:0@240:0:48,sbk_02:0@48:0:80 tourtime=1 tourshot=50 shots fixedseed loglevel=debug",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "shot 4 frame",
+      "cap": 40,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "tour",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "mac_01 spot",
+          "regex": "tour: at mac_01 y (19\\.[5-9]|20\\.[0-4])"
+        },
+        {
+          "name": "kmr_20 spot",
+          "regex": "tour: at kmr_20 y -?0\\.[0-4]"
+        },
+        {
+          "name": "sbk_02 spot",
+          "regex": "tour: at sbk_02 y -?0\\.[0-4]"
+        },
+        {
+          "name": "last shot",
+          "regex": "shot 4 frame \\d+"
+        }
+      ],
+      "reason": "Verified 2026-11-08 (pos1, run 3): Mario on the ground in all 3 shots, outdoors; mac_01 and sbk_02 centred, kmr_20 at the left edge because the entry 0 script holds the camera at story ch0."
     }
   ]
 }
