@@ -31,5 +31,6 @@ Live files only. Older logs are in archive/ (agent_*, diag_*, inv_*, plan_*, tra
 - test_catalog.md: THE bench process (situations A to F: check a row, before/after, console run, area lookup, add a bench, rebuild). Read it before any test. Old scenario tables: archive/.
 - route_test.md, sweep_420.md: tour and sweep how-to.
 - audit_system.md: system audit of the 3DS runtime (row AUDIT, 2026-11-08): interface map with the 8 threads, findings A (console cost), B (correctness and seams), C (maintainability) with file:line, and the work list W1 to W10 with each one done or open.
+- plan_core2.md: plan CORE2 (oracle 2026-11-08): more work off the game thread (audio one step ahead, walker thread on N3DS core 2, texture worker), rows CORE2-0 to CORE2-4.
 - audit_warm_runs.md: audit of warm restarts (stale ROM, AZT8 and AZT9c) and picture gates (stale shot, AZT7) for 2026-11-06 12:00 to AZT9c: per gate OK or SUSPECT with run lines, and the rerun list.
 - work_queue.md: older queue (stale; check git log first).
