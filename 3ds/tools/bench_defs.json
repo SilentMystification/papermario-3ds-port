@@ -3358,7 +3358,7 @@
       "default": false,
       "purpose": "BT1 premise and picture: battle tour of 3 bosses (0, 16, 32) in one start, one prof window and one shot per battle.",
       "scenario": "tour_battle3",
-      "cap": 75,
+      "cap": 30,
       "until": "battletour: done items",
       "tags": ["azahar", "pic", "battle", "tour", "tour_battle"],
       "gates": []
@@ -3368,9 +3368,9 @@
       "kind": "azahar_stream",
       "speed": "normal",
       "default": false,
-      "purpose": "BT1: battle tour of all 33 bosses in one start (cheats=action,hp autoa), one prof window per battle, FAIL lines named; the cheat proof lines.",
+      "purpose": "BT1: battle tour of all 33 bosses in one start (cheats=action,hp autoa), one prof window per battle, FAIL lines named; the Mario cheat line.",
       "scenario": "tour_battle",
-      "cap": 600,
+      "cap": 100,
       "until": "battletour: done items",
       "tags": ["azahar", "battle", "tour", "tour_battle"],
       "gates": []
@@ -3404,6 +3404,18 @@
         "pic",
         "tour"
       ],
+      "gates": []
+    },
+    {
+      "name": "tour_battle_cheat",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BT1 cheat proof: Goomba King with a 20 s window, cheats=action,hp autoa; Mario command, partner command and guard lines.",
+      "scenario": "tour_battle_cheat",
+      "cap": 25,
+      "until": "battletour: done items",
+      "tags": ["azahar", "battle", "tour", "cheat"],
       "gates": []
     }
   ],

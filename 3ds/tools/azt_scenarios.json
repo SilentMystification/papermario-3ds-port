@@ -9697,7 +9697,7 @@
       "proves": "BT1 premise: pm_boss_launch reaches GAME_MODE_BATTLE from the world for each boss in one session, and the end path plus boss_restore_tick returns to the world; one prof window per battle.",
       "debug": "warp=mac_00:4 story=ch0_toad_town battletour=0,16,32 tourtime=4 tourshot=90 shots shotwin=99999:1 cheats=action,hp autoa prof=4",
       "until": "battletour: done items",
-      "cap": 75,
+      "cap": 30,
       "deadline": 25,
       "first_marker": "prof=1 log=off",
       "expects": "tour",
@@ -9709,16 +9709,16 @@
         {"name": "closed 3", "regex": "battletour: 3/3 battle:\\S+ closed"},
         {"name": "tour done", "regex": "battletour: done items 3 fail 0"}
       ],
-      "reason": "BT1 premise check and picture gate: three boss launches, each a map change, a battle load, 60 settle frames, a 120-frame window and the return to the world (about 15 s per boss). Cap 75 s for the three bosses plus the boot (above 45 s: three battles in one start is the subject)."
+      "reason": "BT1 premise check and picture gate: three boss launches, each a map change, a battle load, 60 settle frames, a 120-frame window and the return to the world. Until line at 22.5 s (run 32523). Cap 30 s."
     },
     {
       "name": "tour_battle",
       "status": "unverified",
-      "subject": "Boss battle tour of every boss of pm_boss_table.h (33) in one start: each is launched from the world at mac_00, plays 4 s with autoa and cheats=action,hp, ends by BATTLE_STATE_END_BATTLE and comes back to the world. Cheat lines: a Mario command and a partner command auto succeed, an enemy attack is guarded.",
-      "proves": "BT1: the battle tour state machine over all bosses (one prof window per battle, FAIL lines with cause), and the CHEATA proof in real turns (perfect action command for Mario and partner, perfect guard).",
+      "subject": "Boss battle tour of every boss of pm_boss_table.h (33) in one start: each is launched from the world at mac_00, plays 4 s with autoa and cheats=action,hp, ends by BATTLE_STATE_END_BATTLE and comes back to the world. Cheat line: a Mario command auto succeeds (the partner and enemy turns come after the 4 s window: tour_battle_cheat).",
+      "proves": "BT1: the battle tour state machine over all bosses (one prof window per battle, FAIL lines with cause), and the Mario part of the CHEATA proof.",
       "debug": "warp=mac_00:4 story=ch0_toad_town battletour=all tourtime=4 cheats=action,hp autoa prof=4",
       "until": "battletour: done items",
-      "cap": 600,
+      "cap": 100,
       "deadline": 25,
       "first_marker": "prof=1 log=off",
       "expects": "tour",
@@ -9726,11 +9726,9 @@
       "expected_events": [
         {"name": "prof on", "regex": "prof=1 log=off"},
         {"name": "mario command", "regex": "cheat: perfect action command, auto success \\(mario\\)"},
-        {"name": "partner command", "regex": "cheat: perfect action command, auto success \\(partner\\)"},
-        {"name": "guard", "regex": "cheat: perfect guard"},
         {"name": "tour done", "regex": "battletour: done items 33"}
       ],
-      "reason": "Soak: 33 boss battles in one session, each a map change, a battle load, 60 settle frames, a 120-frame window and the return to the world (about 15 s per boss, about 500 s). Cap 600 s: the full list in one start is the subject (user requirement, plan_tours.md)."
+      "reason": "Soak: 33 boss battles in one session, each a map change, a battle load, 60 settle frames, a 120-frame window and the return to the world. Until line at 82.1 s (run 34607). Cap 100 s (above 45 s: the full list in one start is the subject, user requirement, plan_tours.md)."
     },
     {
       "name": "tour_spots3",
@@ -9766,6 +9764,27 @@
         }
       ],
       "reason": "Verified 2026-11-08 (pos1, run 3): Mario on the ground in all 3 shots, outdoors; mac_01 and sbk_02 centred, kmr_20 at the left edge because the entry 0 script holds the camera at story ch0."
+    },
+    {
+      "name": "tour_battle_cheat",
+      "status": "unverified",
+      "subject": "Battle tour of one boss, Goomba King (boss 13), with a 20 s window, autoa and cheats=action,hp: Mario's turn (Jump), Goombario's turn (Headbonk) and the enemy turn run; the log shows each action command auto succeed and the enemy attack guarded.",
+      "proves": "CHEATA proof in real turns (moved from row CHEATA to BT1): action_command_init_status sets autoSucceed for Mario and for the partner, check_block_input gives a perfect guard.",
+      "debug": "warp=mac_00:4 story=ch0_toad_town battletour=13 tourtime=20 cheats=action,hp autoa prof=4",
+      "until": "battletour: done items",
+      "cap": 25,
+      "deadline": 25,
+      "first_marker": "prof=1 log=off",
+      "expects": "tour",
+      "needs_picture": false,
+      "expected_events": [
+        {"name": "prof on", "regex": "prof=1 log=off"},
+        {"name": "mario command", "regex": "cheat: perfect action command, auto success \\(mario\\)"},
+        {"name": "partner command", "regex": "cheat: perfect action command, auto success \\(partner\\)"},
+        {"name": "guard", "regex": "cheat: perfect guard"},
+        {"name": "tour done", "regex": "battletour: done items 1 fail 0"}
+      ],
+      "reason": "BT1 cheat proof: one boss launch, 60 settle frames and a 600-frame window so a full round (Mario, partner, enemy) runs, then the return to the world. Until line at 11.6 s warm (run 34827). Cap 25 s."
     }
   ]
 }
