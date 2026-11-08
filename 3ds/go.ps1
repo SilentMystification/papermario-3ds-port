@@ -117,31 +117,7 @@ $gitBash = Resolve-GitBash
 
 function Invoke-Build {
     if ($NoBuild) { return }
-    $target = if ($env:PM_LANE) { "build3ds\lane-$env:PM_LANE\pm_3ds.3dsx" } else { "build3ds\pm_3ds.3dsx" }
-    if (Test-Path $target) {
-        $builtAt = (Get-Item $target).LastWriteTime
-        # Only what actually feeds the compiled binary - not go.ps1/push_3ds.sh/run_azahar.ps1,
-        # 3ds/tools/*.py, or docs, which never need a rebuild to take effect.
-        $srcDirs = "3ds\src", "3ds\include", "3ds\shaders", "src", "include"
-        $srcFiles = "3ds\CMakeLists.txt"
-        $stale = $false
-        foreach ($d in $srcDirs) {
-            if (-not (Test-Path $d)) { continue }
-            $m = Get-ChildItem $d -Recurse -File -ErrorAction SilentlyContinue |
-                 Measure-Object -Property LastWriteTime -Maximum
-            if ($m.Maximum -and $m.Maximum -gt $builtAt) { $stale = $true; break }
-        }
-        if (-not $stale) {
-            foreach ($f in $srcFiles) {
-                if ((Test-Path $f) -and (Get-Item $f).LastWriteTime -gt $builtAt) { $stale = $true; break }
-            }
-        }
-        if (-not $stale) {
-            Write-Output "--- build up to date (build3ds/pm_3ds.3dsx newer than all sources), skipping ---"
-            return
-        }
-    }
-    Write-Output "--- building ---"
+    # build.sh is the only stale check (content key, BSTALE): it prints "build up to date" and returns when nothing changed.
     & $gitBash 3ds/build.sh
     if ($LASTEXITCODE -ne 0) { throw "build failed (exit $LASTEXITCODE)" }
 }
