@@ -2839,12 +2839,11 @@ static void ndn_log(void) {
         memset(ndn_why, 0, sizeof ndn_why);
     }
 }
-/* S3N-6: the static ranges of a cached entry against the fresh ones (pm_dlc_native_ranges with the list and the geometry of the key). The matrix enters
- * only here: the box test and the room of the ranges read it. */
-static int model_ranges_eq(const NdMEnt* e, const NdRng* r, int nr) {
-    if (nr != (int)e->nraw) return 0;
-    for (int i = 0; i < nr; i++) if (r[i].sd != e->raw[i].sd || r[i].nidx != e->raw[i].nidx || r[i].geom != e->raw[i].geom) return 0;
-    return 1;
+/* PERF1-4b: a cached entry holds when the groups of its list in view now are the groups its draws were cut from (the box test of each group under the
+ * combined matrix). The cut reads only those groups and the state in the key, so equal masks give the stored ranges; the re-walk of the ranges is gone. */
+static int model_vis_same(const NdMKey* k, const NdMEnt* e) {
+    uint64_t vm;
+    return pm_dlc_vis_mask((const void*)(uintptr_t)k->w[24], &vm) == 0 && vm == e->vmask;
 }
 /* S3N-6 check (ndmcheck, emit 0): a cached entry of key k that the hit would take (same ranges) against the fresh draws of this record: every field the draw
  * sends. hit / miss counts the entries; diff counts the differing fields (the first 20 lines are printed). The unit words are the hinted ones, as the hit sends them. */
@@ -2863,9 +2862,7 @@ static __attribute__((cold, noinline)) void ndc_cmp(const char* nm, unsigned a, 
 static __attribute__((noinline)) int ndc_compare(const NdMKey* k, const NdTexDesc* ds, int id, int hs, unsigned hg) {
     (void)hs; (void)hg;
     NdMEnt* e = nd_mc_find(k);
-    NdRng rng[ND_RAW_MAX];
-    int nr = e ? pm_dlc_native_ranges((const void*)(uintptr_t)k->w[24], e->geom, rng, ND_RAW_MAX) : -3;
-    if (!e || !model_ranges_eq(e, rng, nr)) { ndc_miss++; return 0; }
+    if (!e || !model_vis_same(k, e)) { ndc_miss++; return 0; }
     ndc_hit++;
     ndc_k = k; ndc_e = e;
     NdUnit u; memset(&u, 0, sizeof u);
@@ -2922,10 +2919,7 @@ int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32
  * applies the record (its matrix ops are done). */
 int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
     if (!e) { ndn_nokey++; return 0; }
-    NdRng rng[ND_RAW_MAX];
-    int nr = pm_dlc_native_ranges((const void*)(uintptr_t)k->w[24], e->geom, rng, ND_RAW_MAX);
-    int same = model_ranges_eq(e, rng, nr);
-    if (!same) { ndn_rng++; return 0; }
+    if (!model_vis_same(k, e)) { ndn_rng++; return 0; }
     if (!e->n) ndn_empty++;
     NdUnit u; memset(&u, 0, sizeof u);
     if (e->tex) {

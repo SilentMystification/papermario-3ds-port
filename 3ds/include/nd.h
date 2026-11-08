@@ -330,6 +330,8 @@ int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st
 /* S3N-3c: the static ranges of a shape list (the former pm_gbi.c pm_dlc_native_ranges): index pool pointer, index count, geometry mode of the batch. */
 typedef struct NdRng { const uint16_t* sd; unsigned nidx; uint32_t geom; } NdRng;
 int pm_dlc_native_ranges(const void* list, uint32_t entry, NdRng* out, unsigned max); /* -1 the walker would not replay the list statically, -2 out full */
+extern uint64_t pm_dlc_vm; extern int pm_dlc_vm_ok; /* PERF1-4b: the groups in view of the last pm_dlc_native_ranges (bit k: group k); ok when it returned >= 0 for 64 groups or fewer */
+int pm_dlc_vis_mask(const void* list, uint64_t* out); /* PERF1-4b: the groups of the list in view now (box test only); -1 when the list has no built static entry */
 /* S3N-3c: a model record as native draws. c: the record state (geom_at is set per range). list: the geometry list (R12). emit 0: build only (ndmcheck);
  * emit 1: flush, then submit each draw (S3N-4). Returns the draw count, -1 fallback (nd_nat_why), -2 nost. Draws are read with nd_model_native. */
 #define ND_NAT_MAX 64
@@ -346,11 +348,11 @@ const NdNat* nd_model_native(unsigned j);
 #define NDMC_SW 64
 typedef struct NdMKey { uint32_t w[NDMC_RW + NDMC_SW]; uint32_t h; uint32_t rp; } NdMKey; /* S3N-7: h = hash of w (nd_mc_hash), rp = the record address (not compared) */
 #define ND_RAW_MAX 16
-typedef struct __attribute__((aligned(32))) NdMEnt { NdMKey k; NdRng raw[ND_RAW_MAX]; uint32_t geom; int hs; unsigned hg; uint16_t off, n, nraw; uint8_t used, tex, why; uint32_t ep; } NdMEnt; /* raw: the static ranges the draws were cut from (the hit compares them with the fresh ones) */
+typedef struct __attribute__((aligned(32))) NdMEnt { NdMKey k; uint64_t vmask; uint32_t geom; int hs; unsigned hg; uint32_t tgen; uint16_t off, n; uint8_t used, tex, why; uint32_t ep; } NdMEnt; /* vmask: the groups in view the draws were cut from (PERF1-4b: the hit compares the groups in view now; the key holds the state the cut reads); tgen: nd_tmpl_gen at the last template build of the draws (PERF1-4c) */
 unsigned nd_handle_gen(void);                                   /* bumped by each texture handle write (nd_tex_handle_set) */
 NdMEnt* nd_mc_find(const NdMKey* k);                           /* the entry of key k (k->h set), NULL when none */
 NdMEnt* nd_mc_find_rec(NdMKey* k);                             /* PERF1-4a: rec_run's lookup: the record address memo first, else sets k->h and probes */
-NdMEnt* nd_mc_store(const NdMKey* k, int tex, int hs, unsigned hg); /* the draws and ranges of the last nd_model_draw (it returned >= 0); NULL when more than ND_RAW_MAX ranges */
+NdMEnt* nd_mc_store(const NdMKey* k, int tex, int hs, unsigned hg); /* the draws and group mask of the last nd_model_draw (it returned >= 0); NULL when more than ND_RAW_MAX ranges or no mask */
 NdNat* nd_mc_nat(NdMEnt* e, unsigned j);                       /* draw j of an entry (j < e->n) */
 uint32_t nd_mc_hash(const NdMKey* k);                          /* S3N-7: the hash of the key words, set in pm_gpu_model_key */
 void nd_mc_miss(const NdMKey* k);                              /* S3N-7: the class of one miss (diagnostic counters) */

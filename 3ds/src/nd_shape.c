@@ -392,8 +392,23 @@ static void sbkw_dlchash(const Gfx* l, const DlcEnt* e) {
 unsigned dnr_c[16];
 int dnr(unsigned k) { dnr_c[k]++; return -1; }
 void pm_gbi_dnr_take(unsigned* o, unsigned n) { for (unsigned i = 0; i < n && i < 16u; i++) { o[i] = dnr_c[i]; dnr_c[i] = 0; } }
+uint64_t pm_dlc_vm; int pm_dlc_vm_ok;
+int pm_dlc_vis_mask(const void* lv, uint64_t* out) {
+    const Gfx* l = (const Gfx*)lv;
+    if (!dlc_on) return -1;
+    if (!is_host((u32)(uintptr_t)l)) { *out = 0; return 0; } /* as pm_dlc_native_ranges: no draw */
+    if ((u32)l - (u32)gMapShapeData >= 0x40000u || ((u32)l & 7) || dlc_seen_gen != pm_dlc_gen) return -1;
+    DlcEnt* e = dlc_find(l);
+    if (!e || e->gen != pm_dlc_gen || e->refused || e->ngrp > 64u || img_role(0) == ROLE_DEPTH) return -1;
+    const float(*m)[4] = combined;
+    uint64_t vm = 0;
+    for (unsigned k = 0; k < e->ngrp; k++) if (!dlc_box_out(&e->grp[k], m)) vm |= 1ull << k;
+    *out = vm;
+    return 0;
+}
 int pm_dlc_native_ranges(const void* lv, uint32_t entry, NdRng* out, unsigned max) {
     const Gfx* l = (const Gfx*)lv;
+    pm_dlc_vm_ok = 0;
     if (PMDL("dlchash")) { /* SBKW-M: calls per frame 200 to 211 and the list address of each (first four) */
         unsigned f = pm_frame_count(); static unsigned lf2, c2, n2;
         if (f >= 200u && f <= 211u) {
@@ -403,7 +418,7 @@ int pm_dlc_native_ranges(const void* lv, uint32_t entry, NdRng* out, unsigned ma
         }
     }
     if (!dlc_on) return dnr(1);
-    if (!is_host((u32)(uintptr_t)l)) return 0; /* rec_dl: a list outside host memory is not run (gbi_cold_bad_next): no draw */
+    if (!is_host((u32)(uintptr_t)l)) { pm_dlc_vm = 0; pm_dlc_vm_ok = 1; return 0; } /* rec_dl: a list outside host memory is not run (gbi_cold_bad_next): no draw */
     if ((u32)l - (u32)gMapShapeData >= 0x40000u || ((u32)l & 7)) return dnr(2);
     if (dlc_seen_gen != pm_dlc_gen) { dlc_reset(); dlc_seen_gen = pm_dlc_gen; }
     DlcEnt* e = dlc_find(l);
@@ -423,9 +438,11 @@ int pm_dlc_native_ranges(const void* lv, uint32_t entry, NdRng* out, unsigned ma
     const u32 bad = fogmix_on && !gv_fog_gpu_ok() ? G_FOG : 0;
     unsigned n = 0, gmi = GV_NONE;
     int gmi_ready = 0;
+    uint64_t vm = 0;
     for (unsigned k = 0; k < e->ngrp; k++) {
         const DlcGrp* g = &e->grp[k];
         if (dlc_box_out(g, m)) continue;
+        if (k < 64u) vm |= 1ull << k;
         const u32 gg = (entry & g->am) | g->om;
         if (!g->sd || !g->nbat || !g->bat_q) return dnr(6);
         if (gg & (G_LIGHTING | bad)) return dnr(7); /* lit groups run through the GPU lights path (S3N later row) */
@@ -453,6 +470,7 @@ int pm_dlc_native_ranges(const void* lv, uint32_t entry, NdRng* out, unsigned ma
             }
         }
     }
+    pm_dlc_vm = vm; pm_dlc_vm_ok = e->ngrp <= 64u;
     return (int)n;
 }
 

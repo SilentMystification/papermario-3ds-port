@@ -365,7 +365,7 @@ NdNat nat[ND_NAT_MAX]; /* MOVE-5: the draw state of nd_model_draw (nd_model_set.
 int nat_n;
 int nd_nat_why; /* the reason of the last fallback: the nd_model_state why, or 11 too many draws, 12 the list is not static */
 const NdNat* nd_model_native(unsigned j) { return j < (unsigned)nat_n ? &nat[j] : NULL; }
-NdRng nat_rng[ND_RAW_MAX]; /* S3N-6: the static ranges of the last nd_model_draw (copied at its start) */
+uint64_t nat_vm; int nat_vm_ok; /* PERF1-4b: the groups in view of the last nd_model_draw (pm_dlc_vm) */
 int nat_nr; uint32_t nat_geom;
 
 /* ---- S3N-6: the native model cache (see nd.h NdMKey). The draws of an entry live in a pool; an entry names its first draw and the count. ---- */
@@ -455,12 +455,11 @@ NdMEnt* nd_mc_find_rec(NdMKey* k) {
     return e;
 }
 NdMEnt* nd_mc_store(const NdMKey* k, int tex, int hs, unsigned hg) {
-    if (nat_nr > ND_RAW_MAX || nat_nr < 0) { mg_cls[7]++; return NULL; }
+    if (nat_nr > ND_RAW_MAX || nat_nr < 0 || !nat_vm_ok) { mg_cls[7]++; return NULL; }
     if (nat_n > (int)ND_NAT_MAX) { mg_cls[8]++; return NULL; }
     NdMEnt* e = mc_slot(k);
     if (mc_pool_n + (unsigned)nat_n > NDMC_POOL) { mc_clear_all(); e = mc_slot(k); }
-    memcpy(e->raw, nat_rng, sizeof(NdRng) * (unsigned)nat_nr);
-    e->nraw = (unsigned)nat_nr; e->geom = nat_geom;
+    e->vmask = nat_vm; e->geom = nat_geom; e->tgen = ~0u; /* the first hit builds the template ids */
     e->tex = (uint8_t)(tex != 0); e->hs = hs; e->hg = hg;
     e->off = mc_pool_n; e->n = (unsigned)nat_n;
     for (int j = 0; j < nat_n; j++) {
