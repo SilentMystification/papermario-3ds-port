@@ -9587,6 +9587,99 @@
           "regex": "menu: frozen shot 60"
         }
       ]
+    },
+    {
+      "name": "c2haz_mac01",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at 0 0 200 walking right then left (padscript), det, census switch c2haz. 240 checked frames.",
+      "proves": "CORE2-2 census: the game memory the walk of frame N reads and the game rewrites before the walk of frame N+1 (c2haz new lines, c2haz sum line).",
+      "debug": "warp=mac_01:0 pos=0:0:200 padscript=wait60,RIGHT*60,LEFT*60 loglevel=debug det c2haz",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "c2haz sum f\\d+ frames 240 ",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "census sum",
+          "regex": "c2haz sum f\\d+ frames"
+        }
+      ],
+      "reason": "CORE2-2 premise check of the walker thread (plan_core2.md). Log only: the c2haz lines are the subject; the picture is the det scene of the base scenario."
+    },
+    {
+      "name": "c2haz_battle",
+      "status": "unverified",
+      "subject": "Battle, one Goomba on kmr_03 (battle switch), det, census switch c2haz, to the first census sum after the battle start.",
+      "proves": "CORE2-2 census: the game memory the walk of frame N reads and the game rewrites before the walk of frame N+1 (c2haz new lines, c2haz sum line).",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 loglevel=debug det c2haz",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "c2haz sum f\\d+ frames 240 ",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "census sum",
+          "regex": "c2haz sum f\\d+ frames"
+        }
+      ],
+      "reason": "CORE2-2 premise check of the walker thread (plan_core2.md). Log only: the c2haz lines are the subject; the picture is the det scene of the base scenario."
+    },
+    {
+      "name": "c2haz_nok11",
+      "status": "unverified",
+      "subject": "nok_11 water splash effect (fxtest 89 at frame 400), det, census switch c2haz, to the census sum after the effect.",
+      "proves": "CORE2-2 census: the game memory the walk of frame N reads and the game rewrites before the walk of frame N+1 (c2haz new lines, c2haz sum line).",
+      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 loglevel=debug fixedseed fast fs1off det c2haz",
+      "extra": [
+        "-Turbo",
+        "-NoWarm"
+      ],
+      "until": "c2haz sum f\\d+ frames 420 ",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: nok_11 entry 0",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "census sum",
+          "regex": "c2haz sum f\\d+ frames"
+        }
+      ],
+      "reason": "CORE2-2 premise check of the walker thread (plan_core2.md). Log only: the c2haz lines are the subject; the picture is the det scene of the base scenario."
+    },
+    {
+      "name": "c2haz_pause",
+      "status": "unverified",
+      "subject": "Toad Town preset, START opens the pause menu at frame 80 and moves the tabs (padscript), det, census switch c2haz.",
+      "proves": "CORE2-2 census: the game memory the walk of frame N reads and the game rewrites before the walk of frame N+1 (c2haz new lines, c2haz sum line).",
+      "debug": "preset=toad padscript=wait80,START*3,wait30,RIGHT*3,wait30,RIGHT*3,wait60 loglevel=debug det c2haz",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "c2haz sum f\\d+ frames 240 ",
+      "cap": 40,
+      "deadline": 30,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "census sum",
+          "regex": "c2haz sum f\\d+ frames"
+        }
+      ],
+      "reason": "CORE2-2 premise check of the walker thread (plan_core2.md). Log only: the c2haz lines are the subject; the picture is the det scene of the base scenario."
     }
   ]
 }

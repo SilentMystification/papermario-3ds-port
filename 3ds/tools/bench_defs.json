@@ -3202,6 +3202,70 @@
         "cold"
       ],
       "gates": []
+    },
+    {
+      "name": "c2haz_mac01",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CORE2-2 census (switch c2haz): walker-read game memory the game rewrites before the next walk. Toad Town mac_01, Mario at 0 0 200 walking right then left (padscript), det, census switch c2haz. 240 checked frames.",
+      "scenario": "c2haz_mac01",
+      "cap": 35,
+      "until": "c2haz sum f\\d+ frames 240 ",
+      "tags": [
+        "azahar",
+        "det",
+        "core2"
+      ],
+      "gates": []
+    },
+    {
+      "name": "c2haz_battle",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CORE2-2 census (switch c2haz): walker-read game memory the game rewrites before the next walk. Battle, one Goomba on kmr_03 (battle switch), det, census switch c2haz, to the first census sum after the battle start.",
+      "scenario": "c2haz_battle",
+      "cap": 45,
+      "until": "c2haz sum f\\d+ frames 240 ",
+      "tags": [
+        "azahar",
+        "det",
+        "core2"
+      ],
+      "gates": []
+    },
+    {
+      "name": "c2haz_nok11",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "CORE2-2 census (switch c2haz): walker-read game memory the game rewrites before the next walk. nok_11 water splash effect (fxtest 89 at frame 400), det, census switch c2haz, to the census sum after the effect.",
+      "scenario": "c2haz_nok11",
+      "cap": 45,
+      "until": "c2haz sum f\\d+ frames 420 ",
+      "tags": [
+        "azahar",
+        "det",
+        "core2"
+      ],
+      "gates": []
+    },
+    {
+      "name": "c2haz_pause",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CORE2-2 census (switch c2haz): walker-read game memory the game rewrites before the next walk. Toad Town preset, START opens the pause menu at frame 80 and moves the tabs (padscript), det, census switch c2haz.",
+      "scenario": "c2haz_pause",
+      "cap": 40,
+      "until": "c2haz sum f\\d+ frames 240 ",
+      "tags": [
+        "azahar",
+        "det",
+        "core2"
+      ],
+      "gates": []
     }
   ],
   "legacy": {
