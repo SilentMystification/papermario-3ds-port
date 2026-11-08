@@ -1043,10 +1043,10 @@ static __attribute__((noinline)) void pm5_upload_draw(const NdDraw* d) {
     prog_use(4);
     u5set(u5_uvso, d->uvso); u5set(u5_cmul, d->cmul); u5set(u5_cadd, d->cadd);
     u5vec(u5_zmix, d->zmix[0], zmix_y_dbg(d->zmix[1]), 0.f, 0.f);
-    u5set(u5_lflag, d->fx5.lflag); u5set(u5_fogu, d->fx5.fogu);
-    if (d->fx5.lflag[0] != 0.f) flush_light_tab(&d->fx5); /* the model range carries its own light block */
+    u5set(u5_lflag, d->p5->fx.lflag); u5set(u5_fogu, d->p5->fx.fogu);
+    if (d->p5->fx.lflag[0] != 0.f) flush_light_tab(&d->p5->fx); /* the model range carries its own light block */
     u5mtx(u5_pal, (const C3D_Mtx*)d->pal[0]);
-    for (int r = 0; r < 3; r++) u5vec(u5_pal + 4 + r, d->nrm5[r][0], d->nrm5[r][1], d->nrm5[r][2], 0.f);
+    for (int r = 0; r < 3; r++) u5vec(u5_pal + 4 + r, d->p5->nrm[r][0], d->p5->nrm[r][1], d->p5->nrm[r][2], 0.f);
     u5_valid = 1;
     gv_palup_n++; pm_dc_c[DC_PALUP]++;
 }
@@ -2917,7 +2917,7 @@ static __attribute__((cold, noinline)) void ndc_cmp(const char* nm, unsigned a, 
     if (a == b) return;
     ndc_diff++;
     unsigned wl[8], nw = 0;
-    if (ndc_e && ndc_k) for (unsigned j = NDMC_RW; j < NDMC_RW + NDMC_SW; j++) if (ndc_e->k.w[j] != ndc_k->w[j]) { ndc_wc[j]++; if (nw < 8) wl[nw++] = j; }
+    if (ndc_e && ndc_k) for (unsigned j = NDMC_RW; j < NDMC_RW + NDMC_SW; j++) if (nd_mc_keyw(ndc_e)[j] != ndc_k->w[j]) { ndc_wc[j]++; if (nw < 8) wl[nw++] = j; }
     if (ndc_lines++ < 20) { char wb[64]; unsigned p = 0; for (unsigned i = 0; i < nw && p < 50; i++) p += (unsigned)snprintf(wb + p, sizeof wb - p, "%u ", wl[i]);
         pm_log_prof_line("ndmcache diff %s cache %x fresh %x walk %s", nm, a, b, wb); }
 }
@@ -2933,7 +2933,7 @@ static __attribute__((noinline)) int ndc_compare(const NdMKey* k, const NdTexDes
     while (nd_model_native(fn)) fn++;
     ndc_cmp("cache.n", e->n, fn);
     for (unsigned j = 0; j < e->n && j < fn; j++) {
-        const NdNat* c = nd_mc_nat(e, j);
+        const NdNatC* c = nd_mc_nat(e, j);
         const NdNat* f = nd_model_native(j);
         ndc_cmp("tmpl", (unsigned)c->d.tmpl, (unsigned)f->d.tmpl);
         for (int i = 0; i < 6; i++) ndc_cmp("tev", c->d.tev_col[i], f->d.tev_col[i]);
@@ -2958,11 +2958,12 @@ void pm_gpu_model_miss_diag(const NdMKey* k) {
     unsigned n = nd_mc_size();
     for (unsigned i = 0; i < n; i++) {
         const NdMEnt* e = nd_mc_ent(i);
-        if (!e->used || e->k.w[0] != k->w[0] || e->k.w[24] != k->w[24]) continue;
+        const uint32_t* ew = nd_mc_keyw(e);
+        if (!e->used || ew[0] != k->w[0] || ew[24] != k->w[24]) continue;
         unsigned j = 0;
-        while (j < NDMC_RW + NDMC_SW && e->k.w[j] == k->w[j]) j++;
+        while (j < NDMC_RW + NDMC_SW && ew[j] == k->w[j]) j++;
         if (j == NDMC_RW + NDMC_SW) { pm_log_prof_line("ndmdiff same key not found rp %08x", k->rp); return; }
-        pm_log_prof_line("ndmdiff w%u cache %08x now %08x rp %08x was %08x", j, e->k.w[j], k->w[j], k->rp, e->k.rp);
+        pm_log_prof_line("ndmdiff w%u cache %08x now %08x rp %08x was %08x", j, ew[j], k->w[j], k->rp, e->rp);
         return;
     }
     pm_log_prof_line("ndmnew r0 %08x r0b %08x r12 %08x r2b %08x rp %08x", k->w[0], k->w[1], k->w[24], k->w[5], k->rp);
@@ -2998,7 +2999,8 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
         for (unsigned j = 0; j < e->n; j++) { int id = nd_tmpl_build(&nd_mc_nat(e, j)->tk); if (id < 0) return 0; nd_mc_nat(e, j)->d.tmpl = id; }
         e->tgen = nd_tmpl_gen();
     } else for (unsigned j = 0; j < e->n; j++) nd_tmpl_touch(nd_mc_nat(e, j)->d.tmpl);
-    float comb[4][4], pal0[16];
+    static float pal0[16], zpal[16]; /* PERF2 step 3: palette 0 of this view and the zmark pass 2 row, shared by the draws (the cache entry keeps no palette) */
+    float comb[4][4];
     nd_mtx_combine(comb, pm_eye_e, pm_eye_conv);
     pm_gpu_pcomp_native(pal0, comb);
     pm_gpu_flush();
@@ -3006,10 +3008,10 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
     const int shr = rw && (rw[6] & 32u);
     const uint32_t shc = shr ? nd_abgr((((rw[6] & 16u) ? rw[14] : blendc) & 0xffffff00u) | (rw[8] & 0xffu)) : 0u;
     for (unsigned j = 0; j < e->n; j++) {
-        NdNat* q = nd_mc_nat(e, j);
-        if (shr && q->tk.r_mix == 1 && q->s.to.mix_st >= 0) q->d.tev_col[q->s.to.mix_st] = shc;
-        memcpy(q->pal, pal0, sizeof pal0);
-        if (q->zp) for (int i = 0; i < 4; i++) q->pal[8 + i] = q->zn * pal0[12 + i]; /* S5-2: zmark pass 2 */
+        NdNatC* q = nd_mc_nat(e, j);
+        if (shr && q->tk.r_mix == 1 && q->mix_st >= 0) q->d.tev_col[q->mix_st] = shc;
+        if (q->zp) { memcpy(zpal, pal0, sizeof pal0); for (int i = 0; i < 4; i++) zpal[8 + i] = q->zn * pal0[12 + i]; q->d.pal = (const float(*)[16])zpal; } /* S5-2: zmark pass 2 */
+        else q->d.pal = (const float(*)[16])pal0;
         if (e->tex) q->d.u[0] = u;
         pm_gpu_native_submit_draw(&q->d, q->sd, q->nidx, q->d.u[0].dim != 0);
     }
@@ -3098,9 +3100,10 @@ static __attribute__((noinline)) void ndm_cmp(const NdTmplKey* wk, const NdDraw*
     }
     /* SBKW-3: the lit and fogged block (pm5 program 5): fx5 (light, fog, texgen), normals, the pm5 flag. Not compared before. */
     NDM_CMP("use5", n->d.use5, wd->use5);
-    NDM_CMP("fx5", memcmp(&n->d.fx5, &wd->fx5, sizeof wd->fx5) != 0, 0);
-    NDM_CMP("nrm5", memcmp(n->d.nrm5, wd->nrm5, sizeof wd->nrm5) != 0, 0);
-    if (n->d.fx5.fogu[0] != wd->fx5.fogu[0] || n->d.fx5.fogu[1] != wd->fx5.fogu[1]) ndm_fn_count("fogu");
+    { static const NdPm5 z5; const NdPm5* a5 = n->d.p5 ? n->d.p5 : &z5; const NdPm5* b5 = wd->p5 ? wd->p5 : &z5; /* PERF2: no block reads as zeros (the walker draw has none) */
+      NDM_CMP("fx5", memcmp(&a5->fx, &b5->fx, sizeof a5->fx) != 0, 0);
+      NDM_CMP("nrm5", memcmp(a5->nrm, b5->nrm, sizeof a5->nrm) != 0, 0);
+      if (a5->fx.fogu[0] != b5->fx.fogu[0] || a5->fx.fogu[1] != b5->fx.fogu[1]) ndm_fn_count("fogu"); }
     for (int i = 0; i < 4; i++) { char nm[16]; snprintf(nm, sizeof nm, "cmul%d", i); NDM_CMPF(nm, n->d.cmul[i], wd->cmul[i]); }
     for (int i = 0; i < 4; i++) { char nm[16]; snprintf(nm, sizeof nm, "cadd%d", i); NDM_CMPF(nm, n->d.cadd[i], wd->cadd[i]); }
     for (int i = 0; i < 2; i++) { char nm[16]; snprintf(nm, sizeof nm, "zmix%d", i); NDM_CMPF(nm, n->d.zmix[i], wd->zmix[i]); }
