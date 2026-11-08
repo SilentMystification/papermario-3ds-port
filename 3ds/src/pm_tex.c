@@ -1118,6 +1118,7 @@ static unsigned src_hash(const void* p, unsigned n) {
     return h;
 }
 static void tex_invalidate_body(const void* ptr, unsigned size) {
+    pm_xf.inv_n++; /* MAPX-1 */
     pm_tex_epoch_v++;
     if (ptr && size && (unsigned)ptr < (unsigned)gMapShapeData + 0x40000u && (unsigned)ptr + size > (unsigned)gMapShapeData) pm_dlc_gen++;
     unsigned start, end;
@@ -1254,7 +1255,7 @@ static int load_impl(const void* img, unsigned fmt, unsigned siz, int width, int
     pm_gpu_rect_sync(); /* DR1 */
     pm_tex_epoch_v++;
     int r;
-    unsigned t0 = pm_ph_on ? pm_ticks() : 0; /* PI3: timed with phase on too */
+    unsigned t0 = pm_ph_on || pm_xf.on ? pm_ticks() : 0; /* PI3: timed with phase on too; MAPX-1: and in a transition */
     ph_miss = 0;
     PH_ADD(C_TEXCALL, 1);
     if (!lut && dkey == 0) {
@@ -1267,6 +1268,7 @@ static int load_impl(const void* img, unsigned fmt, unsigned siz, int width, int
         glyph_ox = glyph_oy = 0;
     r = load_inner(img, fmt, siz, width, height, tlut, tlut_n, stride, lut, dx4, dy4, dkey);
     if (ph_miss) PH_POP();
+    if (ph_miss && pm_xf.on) { pm_xf.tex_n++; pm_xf.tex_t += pm_ticks() - t0; } /* MAPX-1: a miss decodes and uploads */
     if (pm_ph_on) { /* PG2 measure: ticks inside pm_tex_load, hit and miss, per 300 frames (reported by pm_tex_prof_report) */
         unsigned dt = pm_ticks() - t0;
         if (ph_miss) { tprof_miss_t += dt; tprof_miss_n++; } else { tprof_hit_t += dt; tprof_hit_n++; }
@@ -1550,6 +1552,7 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
     tc_miss++;
     tot_miss++;
     tot_up += reserve;
+    pm_xf.tex_b += reserve; /* MAPX-1 */
     tc_up_bytes += reserve;
     frame_bytes += reserve;
     if (frame_bytes > map_wmax) map_wmax = frame_bytes;

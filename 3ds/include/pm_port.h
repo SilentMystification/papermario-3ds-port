@@ -313,4 +313,24 @@ void pm_gpu_shot_bottom(const char* name); /* MN0: writes sdmc:/3ds/PaperMario/s
 void pm_gpu_menu_present(void); /* MN1: shows a menu change while the game is frozen */
 void pm_gpu_menu_grey(void); /* MN2: the top screen grey while the menu is open */
 
+/* MAPX-1: the xfer line (pm_xfer.c). One line per door or map transition: frames, step ms, and the cost of each load stage. The counters
+ * below are cumulative inside one transition (reset at its start); the tick sums run only while a transition is open (pm_xf.on). */
+typedef struct {
+    int on;                       /* a transition is open: the stage ticks run */
+    unsigned rom_n, rom_b;        /* nuPiReadRom on the game thread: calls, bytes */
+    unsigned yay_n, yay_b, yay_t; /* decode_yay0: calls, output bytes, ticks */
+    unsigned inv_n;               /* pm_tex_invalidate calls */
+    unsigned au_t, load_t;        /* map load: pm_audio_drain ticks, whole load_map_by_IDs ticks */
+    unsigned dlc_n, dlc_t;        /* dlc_build calls, ticks */
+    unsigned mdl_miss;            /* model cache misses (nd_recs.c rec_run) */
+    unsigned ent_n;               /* ent_compile calls */
+    unsigned tex_n, tex_b, tex_t; /* texture cache misses (decode and upload): count, bytes, ticks */
+    int load_step;                /* the step in progress ran load_map_by_IDs */
+} PmXf;
+extern PmXf pm_xf;
+void pm_xfer_map_begin(void);                     /* set_game_mode(GAME_MODE_CHANGE_MAP) */
+void pm_xfer_map_load(int area, int map);         /* __wrap_load_map_by_IDs: the target */
+void pm_xfer_door(int state);                     /* rooms.c SetDoorState: 1 entering, 2 exiting, 0 idle */
+void pm_xfer_step(unsigned long long t0, unsigned long long t1); /* pm_main.c: once per game step, its work ticks */
+
 #endif

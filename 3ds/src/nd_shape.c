@@ -427,7 +427,9 @@ int pm_dlc_native_ranges(const void* lv, uint32_t entry, NdRng* out, unsigned ma
     if (e->gen != pm_dlc_gen) {
         dlc_free(e);
         e->gen = pm_dlc_gen; e->refused = 0;
+        unsigned xt0 = pm_xf.on ? pm_ticks() : 0u;
         int r = dlc_build(e, l);
+        if (pm_xf.on) { pm_xf.dlc_n++; pm_xf.dlc_t += pm_ticks() - xt0; } /* MAPX-1 */
         e->hash = dlc_hash(l);
         if (r) e->refused = (u8)r;
     }
@@ -482,7 +484,9 @@ int dlc_try(const Gfx* l) {
     if (e->gen != pm_dlc_gen) {
         dlc_free(e);
         e->gen = pm_dlc_gen; e->refused = 0;
+        unsigned xt0 = pm_xf.on ? pm_ticks() : 0u;
         int r = dlc_build(e, l);
+        if (pm_xf.on) { pm_xf.dlc_n++; pm_xf.dlc_t += pm_ticks() - xt0; } /* MAPX-1 */
         e->hash = dlc_hash(l);
         dlc_c.compile++;
         if (r) { e->refused = (u8)r; dlc_c.refused[r < DLR_N ? r : DLR_LONG]++; }

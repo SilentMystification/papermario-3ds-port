@@ -370,7 +370,9 @@ void decode_yay0(void* src, void* dst) {
     bound = 0x100000u;
     if (dec > 0x40000u || link < 16u || count < 16u) return;
     { void pm_walk_drain(const char* why); pm_walk_drain("decode"); } /* CORE2-3b: the decode writes RAM that the last walk may have read */
+    unsigned xt0 = pm_xf.on ? pm_ticks() : 0u;
     if (!yay0_decode(s, bound, dst, dec)) return;
+    if (pm_xf.on) { pm_xf.yay_n++; pm_xf.yay_b += dec; pm_xf.yay_t += pm_ticks() - xt0; } /* MAPX-1 */
     /* The decode overwrote RAM that cached PICA textures were built from (the background raster and palette sit at one
      * fixed address for every map). The cache keys on address and size, so drop what the decode replaced. */
     pm_tex_invalidate(dst, dec);
@@ -560,6 +562,7 @@ void __wrap_set_game_mode(s16 mode) {
             pm_gpu_shot_burst(c ? atoi(c + 1) : 60);
         }
     }
+    if (mode == GAME_MODE_CHANGE_MAP) pm_xfer_map_begin(); /* MAPX-1: the fade out starts the xfer line */
     if (mode == GAME_MODE_WORLD) {
         extern void pm_warp_world_mode(unsigned frame);
         extern unsigned pm_frame_count(void);
@@ -569,8 +572,10 @@ void __wrap_set_game_mode(s16 mode) {
 }
 
 void __wrap_load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
+    unsigned xt0 = pm_xf.on ? pm_ticks() : 0u; /* MAPX-1: the load and audio stage ticks of the xfer line */
     pm_walk_drain("map");
     pm_audio_drain(1); /* AU2: map change drains the mixer queue */
+    if (pm_xf.on) pm_xf.au_t += pm_ticks() - xt0;
     {
         extern unsigned pm_pad_scans;
         pm_log_d("load map area %d map %d scan %u", areaID, mapID, pm_pad_scans);
@@ -583,6 +588,8 @@ void __wrap_load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
         pm_mapdata_probe(gAreas[pa].maps[pmap].id); /* slice MS01 debug switch dataprobe */
     }
     __real_load_map_by_IDs(areaID, mapID, loadType);
+    if (pm_xf.on) pm_xf.load_t += pm_ticks() - xt0;
+    pm_xfer_map_load(loadType == LOAD_FROM_MAP ? areaID : gGameStatusPtr->areaID, loadType == LOAD_FROM_MAP ? mapID : gGameStatusPtr->mapID);
 }
 
 /* MS01: a linked map has PM_MAP_DMA_TAG as dmaStart and dmaEnd (3ds/stub_include/map_rom_ranges.h), so load_map_by_IDs calls

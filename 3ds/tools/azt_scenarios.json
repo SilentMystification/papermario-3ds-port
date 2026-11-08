@@ -9756,6 +9756,52 @@
         }
       ],
       "reason": "Verified 2026-11-08 (pos1, run 3): Mario on the ground in all 3 shots, outdoors; mac_01 and sbk_02 centred, kmr_20 at the left edge because the entry 0 script holds the camera at story ch0."
+    },
+    {
+      "name": "xfer_door_mac01",
+      "status": "unverified",
+"reason": "broken: no until in 40 s (AZT11-5, 2026-11-08)",
+      "subject": "Merlon's house door on mac_01 (story ch0): Mario placed south of the door (-203 20 -206), walks into the doorway and pushes (room enter: the walls swing open), waits, then walks back and pushes the door from inside (room exit). det. One xfer line per door.",
+      "proves": "MAPX-1: the xfer door lines of the enter and the exit (steps, longest step, o34, model cache misses and clears, dlc, entity and texture loads in the transition) and the ndm census lines of the room.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town pos=-203:20:-206 padscript=go_-203_-280_200,up*60,wait120,go_-203_-200_200,down*60,wait120 profdisk=1 loglevel=debug det",
+      "until": "xfer door \\S+[:]in[-][>]\\S+[:]out",
+      "cap": 40,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "door enter line",
+          "regex": "xfer door \\S+:out->\\S+:in f\\d+"
+        },
+        {
+          "name": "door exit line",
+          "regex": "xfer door \\S+:in->\\S+:out f\\d+"
+        }
+      ],
+      "reason": "MAPX-1 measure and the MAPX-2 gate (door key churn). Walk 60 to 120 frames, door 60, tail 30, twice: about 15 s after the warp. Cap 40 s."
+    },
+    {
+      "name": "xfer_map_mac01",
+      "status": "unverified",
+"reason": "broken: no until in 35 s (AZT11-5, 2026-11-08)",
+      "subject": "Toad Town mac_01 at pos 0 0 200, Mario walks south into the mac_02 loading zone (z 600, exit trigger deilis). det. The xfer map line of mac_01->mac_02 (fade out, load, first drawn frame, 30 steps).",
+      "proves": "MAPX-1: the xfer map line (steps, longest step, o34 outside the load, fade, load, rom, yay0, inv, au, init, dlc, mdl, ent, tex).",
+      "debug": "warp=mac_01:0 story=ch0_toad_town pos=0:0:200 padscript=go_0_700_300,wait150 profdisk=1 loglevel=debug det",
+      "until": "xfer map \\S+[>]mac_02",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "map line",
+          "regex": "xfer map mac_01->mac_02 f\\d+ max"
+        }
+      ],
+      "reason": "MAPX-1 measure and the MAPX-3/4/5 gate. Walk about 60 frames, fade 13, load 6, tail 30: about 5 s after the warp. Cap 35 s."
     }
   ]
 }
