@@ -16,11 +16,41 @@
 ## Premise and check
 Premise: core 0 is walk-bound and part of its time waits on core 1. Check (0 starts): read pm_audio_join_timed (pm_audio.c:234) and its call sites; look for a join-wait figure or coreprobe output in the last console prof log.
 
+## CORE2-2 design: the walker thread on N3DS core 2
+
+### Premise check
+- In code: PASS. The N64 game already lets the RSP read a list while the CPU runs the next frame, so the data of a list is double-buffered (gDisplayContext[gCurrentDisplayContextIndex]: list words, matrix stack, imgfx vertex buffers). The census (below) finds 0 to 1 rewritten entries per frame out of 110 to 400 walker-read pointers, in town walk, battle, pause and an effect scene. Game-thread GPU calls outside the walker are a finite list (Ownership).
+- On the console, still open (prof line `prof core2 probe`, pm_phase.c c2_probe): (a) whether the N3DS lets the game create a thread on core 2; (b) the N3DS frame cost. There is no N3DS prof run in the bench database. At 30 fps the thread gains time only when the N3DS frame is over 33.3 ms. The gain is at most the logic plus the list build of a frame (about 7.7 ms on the O3DS, frame_budget.md; about a third of that on the N3DS). Under 33.3 ms it gains only in 60 fps mode (interp). CORE2-3 starts after one N3DS prof run (spot_mac01_prof, spot_iwa10_prof) shows a created core-2 thread and ft_ms over 33.3 ms (or the user wants 60 fps).
+
+### Census (switch c2haz, nd_c2haz.c; benches c2haz_mac01, c2haz_battle, c2haz_pause, c2haz_nok11)
+Every pointer the walker resolves (ptr_of, plus the pointer words of G_PM_REC, G_PM_SPR and G_PM_ENT records, plus the task list) is hashed (first 64 bytes) when the walk reads it. Hashes are checked again at the first task of the next drawn frame, after the logic and the list build of that frame. One `c2haz new` line per changed address; a `c2haz sum` line every 60 frames. Addresses are named from the elf (nm). Result on 4ebd427f3 plus CORE2-1:
+1. gCameras[n] + 0x5f8, G_MOVEMEM (viewport or light inside the Camera struct), battle frame 158. The game rewrites it in place every frame. Fix: the list gets a copy in the display context (or the task carries a copy).
+2. Heap display lists (linear heap 0x327bxxxx, G_DL): at battle start (frames 158, 160), once in battle (309), and at an effect spawn (nok_11 frame 403, with the G_TRI2 reads of the same list). The game frees a list or buffer and allocates it again one frame later. Fix: a deferred free. heap_free and general_heap_free put the block on a retire list. The block is released after the walker has finished the frame that read it.
+3. Frame buffers: gFrameBuf1 as G_SETCIMG target while the pause menu opens (frame 98). The pause fill (cap_fill) and the CPU captures (pm_cfb_capture_prev*, pm_gpu_read_frame, pm_gpu_grab_prev, BTRANS pm_gpu_want_prev) read or write frame buffers from the game thread. Fix: these become walker messages or drain points.
+4. Load transients: at frames 36 to 41 (after the boot warp) many heap lists change while area, map and mode stay the same. Fix: a drain at every map, battle and area load (pm_map.c drain point, the load_map_by_IDs wrap, the battle area load).
+5. False positives: G_PM_REC words that are counters, not pointers (nok_11: plan, slots, scm, c2_tab). An op 0d line is a hazard only when the word is a pointer field of the record.
+Not seen by the census (code audit): the native caches (model, entity, sprite, texture) after their first build. They are keyed by address and owned by the walker, and their invalidations become messages. The sprite raster caches (PlayerRasterCache, sprite.c pm_tex_sprite_range) are rewritten on a raster miss. They showed no change in a 240-frame town walk; the deferred-free rule does not cover them, so a cache slot is not reused until the walker has finished the frame that read it.
+
+### Ownership
+- Walker thread (core 2, priority 0x2F): nd_ws and all nd_* walker state, pm_gpu (C3D context, command buffers, GX queue, vertex ring), pm_tex (texture cache, VRAM), the model, entity and sprite native caches, C3D_FrameBegin/End and present, shots, grabs and captures, depth reads (pm_gpu_depth_at), HUD and menu present (pm_gpu_hud, pm_gpu_menu_*, pm_gpu_footer), stereo eye walks, interp key draws.
+- Game thread (core 0): logic, list build into the display context, the audio kick and the snd_* gate (CORE2-1), and the queue push.
+- Game-thread calls that become messages, applied in order before the next walk: pm_tex_invalidate (pm_os.c nuPiReadRom, pm_map.c decompress, background_gfx.c pause side copy, pm_main.c captures), pm_tex_sprite_range (sprite.c), pm_gpu_want_prev (encounter.c), pm_gpu_menu_draw and shot requests (pm_options_ui.c, pm_warp.c, debug bursts), and display mode changes (wide, stereo, fps).
+- Read-only counters the game reads for logs (pm_tex_used, pm_gpu_pf_read, C3D_FrameCounter): read as relaxed words. They are not a hazard.
+
+### Handoff
+nuGfxTaskStart(swap) pushes one frame {background list, main list, cfb target, frame number, swap/stereo/key flags, the message block} into a queue of depth 1 and returns. Before the push of frame N+1 the game waits until the walker has finished frame N. So the display context of frame N is reused only after its walk (the N64 rule). Drain (wait until the walker is idle): map, battle and area loads, save, HOME, sleep, exit, pause capture, warp and tour, depth read. Det: the push waits for the walk at once (a serial walk), so det stays byte-equal.
+
+### CORE2-3 steps (after the console premise)
+3a. Queue and ownership with a serial wait in every mode. No overlap, so the behavior is unchanged: det byte gates equal.
+3b. Hazard fixes: Camera viewport copy, deferred free, drains, captures as messages. Det gates equal; c2haz shows no new address at steady state.
+3c. The walker on core 2 with overlap (not det). Proof: N3DS prof, ft_ms and o34.
+3a and 3b edit pm_gpu.c, pm_main.c, pm_nusys.c and the heap free path, so they wait for the audit C8 split of pm_gpu.c.
+
 ## Rows (in order)
 All CORE2 rows: one Opus agent (user, 2026-11-08), worktree core20, no subagents. Console pushes only with user consent.
 - CORE2-0 measure (done): the prof writer line ends with `aujoin_us <us per drawn frame> aujoin_max <longest single join, us> core1_busy <% or n/a>` (pm_audio.c au_pf_add, pm_phase.c c1_main; bench keys aujoin_us, aujoin_max, core1_busy). The probe thread exists in prof mode only. Console run still owed (user consent): spot_mac01_prof and spot_iwa10_prof on the O3DS, then the same on the N3DS; read aujoin_us against ft_ms and core1_busy. CORE2-1 is worth its risk only when aujoin_us is a visible part of ft_ms; core1_busy near 100 means core 1 has no room for more work. The probe yields after each 20 us chunk; if the kernel counts its time against the app core-1 limit, it can slow the audio job: one run with and one without prof shows that through ft_ms.
 - CORE2-1 audio one step ahead (done). Det byte gates equal except pause_spin_grab_det_w300, whose grab block (fb x115 y33-40) and audio command count change with the code size alone: a control build with the wrappers linked and the old joins kept gives the same shots and audiohash as CORE2-1. The audiohash (AU2 commands, det) is a near-equality check: DSP voice ends feed back into the engine, so two runs of one build can differ by a few commands. Console run owed (user consent): spot_mac01_prof and spot_iwa10_prof on the O3DS before and after CORE2-1 (nds1 6ac37d50c against the CORE2-1 commit): aujoin_us and aujoin_max must drop, ft_ms and o34 must not rise.
-- CORE2-2 design document for the walker thread on N3DS core 2 (ownership, list of in-place rewritten buffers).
-- CORE2-3 implementation.
+- CORE2-2 design (done): section above. Census tool c2haz and the core-2 probe line are in the build; console premise owed (N3DS prof run).
+- CORE2-3 implementation, steps 3a to 3c above, after the N3DS premise run and the audit C8 split.
 - CORE2-4 texture decode worker, only if CORE2-0 shows hitches.
 Proof of any gain: console prof only (spot_mac01_prof, spot_iwa10_prof on O3DS; N3DS for CORE2-2/3).

@@ -351,10 +351,25 @@ static void c1_main(void* arg) {
         c1_turns++;
     }
 }
+/* CORE2-2 premise: on the N3DS, can the game create a thread on core 2 (the planned walker thread)? One short thread at prof start
+ * stores its processor id; the line says created and the id, or refused. */
+static volatile int c2_core = -9;
+static void c2_main(void* arg) { (void)arg; c2_core = (int)svcGetProcessorID(); }
+static void c2_probe(void) {
+    bool n3 = false;
+    APT_CheckNew3DS(&n3);
+    if (!n3) { pm_log_prof_line("prof core2 probe: O3DS, no core 2"); return; }
+    Thread t = threadCreate(c2_main, NULL, 4 * 1024, 0x30, 2, false);
+    if (!t) { pm_log_prof_line("prof core2 probe: N3DS, thread on core 2 REFUSED"); return; }
+    threadJoin(t, 1000000000LL);
+    threadFree(t);
+    pm_log_prof_line("prof core2 probe: N3DS, thread on core 2 created, ran on core %d", c2_core);
+}
 static void c1_start(void) {
     if (c1_state) return;
     c1_state = threadCreate(c1_main, NULL, 4 * 1024, 0x3F, 1, true) ? 1 : -1;
     pm_log_prof_line("prof core1 probe %s", c1_state > 0 ? "on core 1 at 0x3F" : "NOT created (core 1 refused): core1_busy n/a");
+    c2_probe();
 }
 static void c1_win_reset(void) { c1_t0 = c1_turns; c1_w0 = svcGetSystemTick(); }
 static int c1_busy(void) {

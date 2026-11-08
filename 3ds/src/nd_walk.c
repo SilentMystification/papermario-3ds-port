@@ -14,6 +14,8 @@
 #include "variables.h"
 #include "nd_int.h"
 
+extern int nd_c2_on; /* CORE2-2 census (nd_c2haz.c, switch c2haz) */
+void nd_c2_rec(const Gfx* rec, unsigned words);
 /* GLOB: definitions moved here from the former pm_gbi.c (layout only). */
 unsigned pm_gbi_cur_op; /* PI2: op of the display list step now running (one store per op) */
 
@@ -174,12 +176,14 @@ void nd_walk_run(void* list, unsigned nbytes) {
             orb_tag = orb_tag_stk[sp];
             break;
         case G_PM_REC: /* M4-2, S3F-4: producer record of a model (model.c) */
+            if (nd_c2_on > 0) nd_c2_rec(pc - 1, G_PM_REC_WORDS);
             if (pm_ph_on) pk_rec[pmx_cur]++; /* WCEN2 */
             pc += rec_run(pc - 1);
             if (pm_ph_on && rec_nat_last) pk_nat[pmx_cur]++;
             break;
         case G_PM_SPR: { /* S4-1, S4-3, SPR4: producer record of a sprite component (sprite.c). The record is not run here: the state words after it run on the walker, and the final draw is built at its vertex word (G_VTX arm below), where the live state is the draw state. */
             Gfx* srec = pc - 1;
+            if (nd_c2_on > 0) nd_c2_rec(srec, G_PM_SPR_WORDS);
             if (pm_ph_on) pk_rec[pmx_cur]++; /* WCEN2 */
             spr_rec = srec;
             spr_at = srec + (srec[0].words.w0 & 0xffu); /* header bits 0 to 7: the offset of the final gSPVertex word */
@@ -187,6 +191,7 @@ void nd_walk_run(void* list, unsigned nbytes) {
             break;
         }
         case G_PM_ENT: /* S6-1: producer record of an entity model draw (nd_ent.c). The record is not run; the old words draw unless nd_ent_case draws it. */
+            if (nd_c2_on > 0) nd_c2_rec(pc - 1, G_PM_ENT_WORDS);
             if (pm_ph_on) pk_rec[pmx_cur]++; /* WCEN2 */
             pc += G_PM_ENT_WORDS - 1 + nd_ent_case(pc - 1, w0, w1); /* the drawn record skips its own words and its G_DL */
             break;
@@ -348,7 +353,16 @@ int is_host(u32 p) {
 
 /* PG3 A15: the host range that holds p (same three ranges as is_host). 0 when p is not host memory. */
 
+void nd_c2_note(const void* p);
+void nd_c2_task(const void* list);
+int nd_c2_init(void);
+static inline void* ptr_res(u32 w);
 void* ptr_of(u32 w) {
+    void* r = ptr_res(w);
+    if (__builtin_expect(nd_c2_on > 0, 0)) nd_c2_note(r);
+    return r;
+}
+static inline void* ptr_res(u32 w) {
     if (!w) return NULL;
     if (is_host(w)) return (void*)w;
     unsigned seg = (w >> 24) & 0xff;
@@ -359,6 +373,7 @@ void* ptr_of(u32 w) {
 }
 void* pm_gbi_ptr_of(u32 w) { return ptr_of(w); } /* MDL-1: the walker's segment resolver, for the R13 texture block (nd_model.c nd_r13_desc) */
 void pm_gbi_init(void) {
+    nd_c2_init();
     nd_mtx_reset();
     memset(vert_live, 0, sizeof vert_live);
     nd_ws.geom = G_SHADE | G_SHADING_SMOOTH;
@@ -379,6 +394,7 @@ void gbi_cold_modifyvtx(u32 w0, u32 w1) { /* B5: F3DEX2 w0 = op, where, vertex *
 }
 /* W1/P1: the outer call sets the producer cursor state. Nested calls (dlc replay) run inside the outer op. */
 void pm_gbi_run(void* list, unsigned nbytes) {
+    if (nd_c2_on > 0) nd_c2_task(list);
     if (!pm_ph_on) { nd_walk_run(list, nbytes); return; }
     if (os_nest == 0) { pre_w0 = (const Gfx*)list; pmx_main = gDisplayContext && list == (void*)gDisplayContext->mainGfx;
         pmk_n = 0; /* WCEN3: the walk copy holds the marks of this list only */
