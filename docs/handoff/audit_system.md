@@ -130,7 +130,7 @@ Deleting them is a user decision, because CLAUDE.md rule 7 says debug tools may 
 
 **C7 (local, M). Comments name rows instead of reasons.** There are 524 row-code tags ("FB-2:", "S3N-3c:", ...) in nd_*.c, pm_gpu.c and pm_tex.c, and 1,098 in all of 3ds/src. Many of these comments give the row and not the reason. Fix: rewrite them as reasons when the file is next edited. Git history keeps the row.
 
-**C8 (local, L). pm_gpu.c holds about 12 subjects in 3,830 lines.** It holds GPU state, the ring, rectangles, sprites, the model cache, censuses, off-screen targets, grab, HUD, menu, screenshots and the fatal screen. Fix: split out pm_hud/pm_shot (UI) and nd_ring/nd_rectq (draw), along the existing seams.
+**[partly done C8] C8 (local, L). pm_gpu.c holds about 12 subjects in 3,830 lines.** It holds GPU state, the ring, rectangles, sprites, the model cache, censuses, off-screen targets, grab, HUD, menu, screenshots and the fatal screen. Fix: split out pm_hud/pm_shot (UI) and nd_ring/nd_rectq (draw), along the existing seams.
 
 **[done W10] C9 (local, S). Only one cold file is compiled with -Os.** Only nd_cen.c gets -Os (3ds/CMakeLists.txt:419). pm_warp.c, pm_dbg_game.c, pm_fxtest.c and pm_sweep.c are debug-only and are built at -O2 (CMakeLists.txt:9). hw_guidelines rule 1 says cold files are built -Os.
 
@@ -154,6 +154,8 @@ Speed check (Azahar, direction only): wcen_mac01 gbi phase avg/p95 is 5.9/15.0 m
 C4 (user decision, D9): 61 of the 64 words that no scenario, bench, open row or plan names are deleted with the code they gated. Kept: depthview (a key byte of NdTmplKey, the ndref TevKey format and 4 host tests replay it), ptrcheck (the PTRCHECK macro sits in src/msg.c, a file with the user's uncommitted edits), and the new CORE2 audiohash path. Gates: build, nd_host PASS, spot_mac01_det, mdl5_iwa10_det, battle_start_f182_cold, nok11_det 0000-0015 byte-equal to base b234c3b3d; pause_spin_grab differs only in the known grab block (x 115, y 33 to 40).
 
 B2 result: the shader zmix path took the N64 NDC value 2(p-1)/32767-1 as the PICA clip z / w. The full palette (OrthoTilt row 2 = z - w after the view row 0.5 z + 0.5 w) needs (p-1)/32767-1, the value the rectangle path already gives (depth 1 - p/32767). Every G_ZS_PRIM triangle with p above 16384 was outside the clip volume: the mac_00 pond blocker (prim 0x7FF0, Z_CMP, colour only; wdraw zs 1 in pond_mac00_wlog) never drew, and the pond showed the hedge behind it. After nd_prim_clip_z the shot pond_mac00_wlog frame 204 shows the pond colour (rows 94 to 400 of the left 38 columns, 8,340 pixels change; build3ds/audit_shots/b2_pond_before_after.png). The 4 byte gates are unchanged (none has a G_ZS_PRIM triangle). Console check of the pond is open (POND row).
+
+C8 result (D12, pure move): the bottom screen text (menu lines, HUD rows, footer, log frame: 180 lines) is pm_gpu_ui.c, with the shared state in pm_gpu_int.h; pm_gpu.c is 3,595 lines. The menu present, the grey pass and the shots stay in pm_gpu.c: they use target, gpu_ok, the stereo state and flush. The rectangle queue and the ring stay too: rect_raw_open alone writes about 30 batch variables of the close (gni, pal_n, pal_g, pal_gen, g_uvso, g_vp, g_cmul, g_cadd, g_zmix, g_ct, g_cullm, g_use5, rect_*, rq_*, gi_kind, draw_3d, pcomp_gen). A file split there needs a batch-state struct first, which changes code and is its own row.
 
 ## 5. Known open items (links only)
 
