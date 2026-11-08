@@ -975,6 +975,11 @@ static void battle_tick(void) {
  * bossend=<n>: the battle ends by the real BATTLE_STATE_END_BATTLE after n battle frames (test only; a player ends the fight in the battle). */
 /* BT1: the end of a boss fight by the real BATTLE_STATE_END_BATTLE (bossend switch and the battle tour). */
 static void boss_end(const char* why) {
+    int w;
+    /* The battle menu windows (moves, strategies, description, popup) close by their own menu code before a real battle end. A forced end
+     * can come with one open: the end's set_windows_visible(WINDOW_GROUP_ALL) then shows it in the world, and its draw (btl_menu_moves_draw_content)
+     * reads menu hud elements that are gone (tour_battle run 32696: unmapped null reads and writes). Clear them as clear_windows does. */
+    for (w = WIN_BTL_MOVES_MENU; w <= WIN_BTL_POPUP; w++) gWindows[w].flags = 0;
     btl_set_state(BATTLE_STATE_END_BATTLE);
     pm_log("boss: %s, the battle ends now", why);
 }
