@@ -621,7 +621,7 @@ while (-not $child.HasExited) {
         # AZT12: a second warm round (run_azahar.ps1 rewrites warm.start) restarts the run's cap clock too, as run_azahar.ps1 does.
         if (Test-Path $warmFile) {
             try { $ws = (Get-Content $warmFile -Raw).Trim() } catch { $ws = $warmStamp }
-            if ($ws -and $ws -ne $warmStamp) { $warmStamp = $ws; Set-QRunClock $qPath }
+            if ($ws -and $ws -ne $warmStamp) { $warmStamp = $ws; Set-QRunClock $qPath; $azStart = Get-Date; $lastNew = $azStart } # AZT12-5: run_azahar.ps1 writes warm.start at each restart try: the deadline clock restarts too
         }
         if (Test-Path $okFile) { $warmReady = $true; $script:pos = 0; $script:carry = ""; $script:logCT = $null }
         elseif (Test-Path $azLineFile) {
@@ -657,7 +657,9 @@ if ($stop) {
     Write-Output "AZT: stopping the run ($stop). run_azahar.ps1 ends it; the Azahar is kept unless -NoKeep."
     Set-Content $stopFile $stop
 }
-if (-not $child.WaitForExit(150000)) {
+# AZT12-5: the wait for run_azahar.ps1 keeps the queue heartbeat (a silent wait over 60 s looked stale to the sweep of another run)
+for ($wi = 0; $wi -lt 75 -and -not $child.WaitForExit(2000); $wi++) { Set-QFields $qPath @{ hb = (Get-NowMs) } }
+if (-not $child.HasExited) {
     Stop-Process -Id $child.Id -Force -ErrorAction SilentlyContinue
     Write-Output "NOT ENDED: run_azahar.ps1 (PID $($child.Id)) did not end. It was stopped by force. Check for an Azahar with Get-Process azahar."
 }
@@ -681,6 +683,10 @@ if (Test-Path $bf) {
             break
         }
     }
+}
+if (-not $endRow -and -not (Test-Path $qPath)) {
+    # AZT12-5: the queue entry is gone while this run ran: the sweep of another run booted it as stale (pool.log "stale") and killed run_azahar.ps1
+    Leave-Queue; Write-Output "BOOTED: the queue sweep of another run stopped this run as stale (build3ds\azslots\pool.log, event stale). run_azahar.ps1 wrote no end line. Rerun it."; exit 1
 }
 if (-not $endRow) { Leave-Queue; Write-Output "NO END LINE: run_azahar.ps1 wrote no end line for row $Row after this start. It did not run (lock timeout, switch error or budget). Nothing was checked."; exit 1 }
 # AZT-GPU: Azahar died before the first marker with the GPU stream buffer failure (Vulkan "Failed to allocate Stream buffer") or exit 0xC000001D (-1073741795).
