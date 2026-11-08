@@ -334,7 +334,8 @@ int nd_model_state_spr(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState
 typedef struct NdRng { const uint16_t* sd; unsigned nidx; uint32_t geom; } NdRng;
 int pm_dlc_native_ranges(const void* list, uint32_t entry, NdRng* out, unsigned max); /* -1 the walker would not replay the list statically, -2 out full */
 extern uint64_t pm_dlc_vm; extern int pm_dlc_vm_ok; /* PERF1-4b: the groups in view of the last pm_dlc_native_ranges (bit k: group k); ok when it returned >= 0 for 64 groups or fewer */
-int pm_dlc_vis_mask(const void* list, uint64_t* out); /* PERF1-4b: the groups of the list in view now (box test only); -1 when the list has no built static entry */
+int pm_dlc_vis_mask(const void* list, uint64_t* out);
+int pm_dlc_geom_keep(const void* list, uint32_t* keep); /* MAPX-2: the entry geometry bits the groups of the list keep; -1 when the list is not built */ /* PERF1-4b: the groups of the list in view now (box test only); -1 when the list has no built static entry */
 /* S3N-3c: a model record as native draws. c: the record state (geom_at is set per range). list: the geometry list (R12). emit 0: build only (ndmcheck);
  * emit 1: flush, then submit each draw (S3N-4). Returns the draw count, -1 fallback (nd_nat_why), -2 nost. Draws are read with nd_model_native. */
 #define ND_NAT_MAX 64
@@ -349,9 +350,14 @@ const NdNat* nd_model_native(unsigned j);
  * Open hash, 1024 entries, no division. Full table (3/4) or a full draw pool: clear all (counted by nd_mc_clears). */
 #define NDMC_RW 28
 #define NDMC_SW 64
+/* the bits nd_render_state reads: om_h cycle type (bits 20, 21); om_l bits 0, 1, 4, 5, 10, 11, 12, 16 to 23, 28 to 31. MAPX-2: cycle type is the only
+ * other mode H field a native model draw reads (nd_model_state, the combine decision); the texture filter and TLUT are in the texture entry (nd_tex_get). */
+#define ND_OMH_READ 0x00300000u
+#define ND_OML_READ 0xF0FF1C33u
 typedef struct NdMKey { uint32_t w[NDMC_RW + NDMC_SW]; uint32_t h; uint32_t rp; } NdMKey; /* S3N-7: h = hash of w (nd_mc_hash), rp = the record address (not compared) */
 #define ND_RAW_MAX 16
-typedef struct __attribute__((aligned(32))) NdMEnt { NdMKey k; uint64_t vmask; uint32_t geom; int hs; unsigned hg; uint32_t tgen; uint16_t off, n; uint8_t used, tex, why; uint32_t ep; } NdMEnt; /* vmask: the groups in view the draws were cut from (PERF1-4b: the hit compares the groups in view now; the key holds the state the cut reads); tgen: nd_tmpl_gen at the last template build of the draws (PERF1-4c) */
+typedef struct __attribute__((aligned(32))) NdMEnt { NdMKey k; uint64_t vmask; uint32_t geom; int hs; unsigned hg; uint32_t tgen; uint16_t off, n; uint8_t used, tex, why; uint32_t ep; uint32_t mver, uf; } NdMEnt; /* vmask: the groups in view the draws were cut from (PERF1-4b: the hit compares the groups in view now; the key holds the state the cut reads); tgen: nd_tmpl_gen at the last template build of the draws (PERF1-4c); mver (MAPX-2): 0, or for an entry with a lit or fogged draw (use5: normal rows and fx block from the matrix) the matrix version of the record | 0x10000, which a hit needs again; uf (MAPX-2): the frame of the last lookup or store (mc_trim) */
+unsigned nd_mc_xdiag(const NdMKey* k); /* MAPX-2 switch xferdiag: the first key word that differs from the closest stored entry of the same model (92: none) */
 unsigned nd_handle_gen(void);                                   /* bumped by each texture handle write (nd_tex_handle_set) */
 NdMEnt* nd_mc_find(const NdMKey* k);                           /* the entry of key k (k->h set), NULL when none */
 NdMEnt* nd_mc_find_rec(NdMKey* k);                             /* PERF1-4a: rec_run's lookup: the record address memo first, else sets k->h and probes */

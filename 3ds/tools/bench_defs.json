@@ -3506,10 +3506,10 @@
       "kind": "azahar_stream",
       "speed": "normal",
       "default": false,
-      "purpose": "MAPX: Merlon's house door on mac_01 (enter and exit), det; xfer door lines (steps, longest step, o34, model cache miss and clears).",
+      "purpose": "MAPX: Merlon's house door on mac_01 (enter and exit, twice), det; xfer door lines (steps, longest step, o34, model cache miss and clears).",
       "scenario": "xfer_door_mac01",
-      "cap": 40,
-      "until": "xfer door \\S+[:]in[-][>]\\S+[:]out",
+      "cap": 45,
+      "until": "xfer2 door n4\\b",
       "tags": [
         "azahar",
         "xfer"
@@ -3527,12 +3527,12 @@
         },
         {
           "name": "xfer_mdl_miss",
-          "regex": "xfer door \\S+ .* mdl (\\d+)/",
+          "regex": "xfer2 door n\\d+ .* mdl (\\d+)/",
           "pick": "last"
         },
         {
           "name": "xfer_mdl_clr",
-          "regex": "xfer door \\S+ .* mdl \\d+/(\\d+)",
+          "regex": "xfer2 door n\\d+ .* mdl \\d+/(\\d+)",
           "pick": "last"
         },
         {
@@ -3574,12 +3574,12 @@
         },
         {
           "name": "xfer_mdl_miss",
-          "regex": "xfer map \\S+ .* mdl (\\d+)/",
+          "regex": "xfer2 map n\\d+ .* mdl (\\d+)/",
           "pick": "last"
         },
         {
           "name": "xfer_mdl_clr",
-          "regex": "xfer map \\S+ .* mdl \\d+/(\\d+)",
+          "regex": "xfer2 map n\\d+ .* mdl \\d+/(\\d+)",
           "pick": "last"
         },
         {
@@ -3600,9 +3600,9 @@
       "kind": "console_prof",
       "speed": "normal",
       "default": false,
-      "purpose": "MAPX: Merlon's house door on mac_01 (enter and exit) on the O3DS in prof mode. Pass: max under 50 ms, o34 0.",
+      "purpose": "MAPX: Merlon's house door on mac_01 (enter and exit, twice) on the O3DS in prof mode. Pass: max under 50 ms, o34 0.",
       "scene_match": null,
-      "recipe": "warp=mac_01:0 story=ch1_start pos=-203:20:-206 padscript=go_-203_-280_100,A,wait400,go_-190_-262_150,A,wait300 prof=30",
+      "recipe": "warp=mac_01:0 story=ch1_start pos=-203:20:-206 padscript=go_-203_-280_100,A,wait400,go_-190_-262_150,A,wait300,go_-235_-195_100,go_-205_-280_100,A,wait400,go_-190_-262_150,A,wait300 prof=30",
       "scenario": null,
       "host": "o3ds",
       "cap": 60,
@@ -3625,12 +3625,12 @@
         },
         {
           "name": "xfer_mdl_miss",
-          "regex": "xfer door \\S+ .* mdl (\\d+)/",
+          "regex": "xfer2 door n\\d+ .* mdl (\\d+)/",
           "pick": "last"
         },
         {
           "name": "xfer_mdl_clr",
-          "regex": "xfer door \\S+ .* mdl \\d+/(\\d+)",
+          "regex": "xfer2 door n\\d+ .* mdl \\d+/(\\d+)",
           "pick": "last"
         },
         {
@@ -3687,12 +3687,12 @@
         },
         {
           "name": "xfer_mdl_miss",
-          "regex": "xfer map \\S+ .* mdl (\\d+)/",
+          "regex": "xfer2 map n\\d+ .* mdl (\\d+)/",
           "pick": "last"
         },
         {
           "name": "xfer_mdl_clr",
-          "regex": "xfer map \\S+ .* mdl \\d+/(\\d+)",
+          "regex": "xfer2 map n\\d+ .* mdl \\d+/(\\d+)",
           "pick": "last"
         },
         {

@@ -326,6 +326,8 @@ typedef struct {
     unsigned ent_n;               /* ent_compile calls */
     unsigned tex_n, tex_b, tex_t; /* texture cache misses (decode and upload): count, bytes, ticks */
     int load_step;                /* the step in progress ran load_map_by_IDs */
+    int diag;                     /* switch xferdiag: each model cache miss is classed by the first key word that differs (nd_mc_xdiag) */
+    unsigned wh[93];              /* xferdiag: misses per first differing key word (92: no stored entry of the same model) */
 } PmXf;
 extern PmXf pm_xf;
 void pm_xfer_map_begin(void);                     /* set_game_mode(GAME_MODE_CHANGE_MAP) */

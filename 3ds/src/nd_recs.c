@@ -115,7 +115,7 @@ unsigned rec_run(const Gfx* q) {
     pm_gpu_model_key((const uint32_t*)q, &mk); /* S3N-6: the cache key, from the walker state before the record is applied */
     NdMEnt* mce = nd_mc_find_rec(&mk); /* PERF1-4a: the record address memo, else hash and probe */
     int cached = mce != NULL;
-    if (!cached) { pm_xf.mdl_miss++; nd_mc_miss(&mk); extern void pm_gpu_model_miss_diag(const NdMKey* k); pm_gpu_model_miss_diag(&mk); } /* S3N-7: the miss class (diagnostic) */
+    if (!cached) { pm_xf.mdl_miss++; if (pm_xf.diag) pm_xf.wh[nd_mc_xdiag(&mk)]++; nd_mc_miss(&mk); extern void pm_gpu_model_miss_diag(const NdMKey* k); pm_gpu_model_miss_diag(&mk); } /* S3N-7: the miss class (diagnostic) */
     int ndm = pm_gpu_ndm_on();
     int nat = 0, mdone = 0, hit = 0;
     if (cached) { rec_matrix(q); mdone = 1; } /* S3N-6: a cached key: its matrix first, the hit test reads the matrix */
