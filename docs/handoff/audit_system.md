@@ -40,7 +40,7 @@ Ranked by how much they cut cross-system cost or coupling. Tag: the interface ro
 pm_gpu.c:441 says "The accumulation has no switch test". `cen_add(&tk, ...)` at pm_gpu.c:1244 runs on every native raw batch. For each batch it copies a 76-byte TevKey, hashes 18 words with FNV (pm_gpu.c:456-465), calls pm_tex_census_id, and probes the 256 x 20 B table (5,120 B, pm_gpu.c:444-454). cen_frame_end clears the 5,120 bytes every frame (`if (cen_nt) memset(cen_tab, 0, sizeof cen_tab)`, pm_gpu.c:595). The table only prints at the frame given by drawcensus=<frame> (pm_gpu.c:589).
 Fix: read drawcensus once at boot, and call cen_add and the memset only when it is set.
 
-**A2 (batch close, M). One draw state becomes three keys per batch.**
+**[done W2] A2 (batch close, M). One draw state becomes three keys per batch.**
 nd_raw_native builds NdTmplKey (44 B: memset and 30 stores, pm_gpu.c:1215-1225). It then builds TevKey from the same globals (76 B: memset, 19 stores and a 76-byte memcmp, pm_gpu.c:1233-1237). TevKey adds only prim, cconst, mixcol and plan_gen. nd_tmpl_build copies the key again (`NdTmplKey kk = *in`) and hashes it one byte at a time (44 FNV steps, nd_tmpl.c:309-313). cen_add hashes TevKey a third time (A1). flush_tev_rebuild builds the same two keys (pm_gpu.c:734-747).
 Fix: keep one key (NdTmplKey plus the 3 colour words) in pm_gpu state. The setters update it and mark it dirty. nd_raw_native rebuilds and looks it up only when it is dirty. Hash by word.
 
@@ -52,7 +52,7 @@ Fix: reset the shadow only when the program changes. Write the pm5 uniforms with
 pm_gpu.c:1248-1252 copies up to 21 x 64 B of pcomp into palk. pm_gpu.c:1268 then sets `d.npal = 0` for g_use5, and pm5_upload computes and uploads the same pcomp entries again.
 Fix: skip the palk loop when g_use5 is set.
 
-**A5 (batch close, M). The hot code is larger than the L1I.**
+**[partly done W2] A5 (batch close, M). The hot code is larger than the L1I.**
 The batch close path is 19,288 B of code: flush_draw 1,524 + nd_raw_native 8,996 + nd_native_submit 4,184 + nd_emit_draw 2,040 + C3Di_UpdateContext 1,256 + nd_tmpl_build 996 + ndunit_after 200 + GPUCMD_AddRawCommands 92. The L1I is 16,384 B (hw_guidelines rule 1). The per-triangle walker path is another 11,228 B: nd_walk_run 3,268, draw_tri 604, gv_tri 1,788, gappend 676, gtrip 3,108, nd_geom_vtx 1,784.
 nd_raw_native contains debug blocks inline: the wl_on wdraw/wsurf logs (pm_gpu.c:1274-1287, a 40-argument pm_log and a vertex loop), orb_log (:1230), ndplan_check (:1229), the ndm_cmp call (:1273) and grablog (:1204).
 Fix: move each debug block into a cold, noinline function behind one flag test. Together with A2, which removes TevKey, nd_raw_native should fall under 4 KB.
@@ -139,7 +139,7 @@ Deleting them is a user decision, because CLAUDE.md rule 7 says debug tools may 
 | Id | Findings | Gate | Status |
 |---|---|---|---|
 | W1 | A1 census gated; C1, C2, C6 dead state | build, nd_host, 5 det byte gates | done (all 5 byte-equal to base) |
-| W2 | A2 one draw key, A5 cold debug blocks out of nd_raw_native | same, plus wcen_mac01 prof=4 gbi phase | open |
+| W2 | A2 one draw key, A5 cold debug blocks out of nd_raw_native | same, plus wcen_mac01 prof=4 gbi phase | done: byte-equal; nd_raw_native 8,996 to 6,332 B, close path 19,288 to 16,832 B; TevKey built only for ndref and drawcensus; nd_tmpl_build repeats the last key with no hash |
 | W3 | A3, A4 pm5 through the shadow | same | open |
 | W4 | B1 ring reuse at 30 fps | same (a ring wrap scenario if one exists, else code trace) | open |
 | W5 | A7, A8, A11 gtrip and gappend lookups | same | open |

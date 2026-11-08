@@ -302,15 +302,16 @@ static unsigned tmpl_n;
 /* FB-2: LRU. tmpl_use[i] is the clock of the last build or hit of entry i. tmpl_pin is the clock at the start of the current batch (nd_tmpl_pin): an entry used since then
  * is never evicted, so the ids of a batch stay valid until it is submitted. tmpl_gen counts evictions (the caller's id shadow is stale after one). */
 static unsigned tmpl_use[ND_TMPL_N], tmpl_clock, tmpl_pin, tmpl_gen, tmpl_hi;
+static NdTmplKey memo_k; static int memo_id = -1; static unsigned memo_gen; /* the key and id of the last nd_tmpl_build */
 void nd_tmpl_pin(void) { tmpl_pin = tmpl_clock; }
 unsigned nd_tmpl_gen(void) { return tmpl_gen; }
 unsigned nd_tmpl_hi(void) { return tmpl_hi; }
 
-static unsigned key_hash(const NdTmplKey* k) {
-    const unsigned char* b = (const unsigned char*)k;
+static unsigned key_hash(const NdTmplKey* k) { /* FNV-1a over the 11 words of the key (no padding, 4-byte aligned) */
+    const uint32_t* w = (const uint32_t*)k;
     unsigned h = 2166136261u;
-    for (unsigned i = 0; i < sizeof *k; i++) h = (h ^ b[i]) * 16777619u;
-    return h;
+    for (unsigned i = 0; i < sizeof *k / 4u; i++) h = (h ^ w[i]) * 16777619u;
+    return h ^ (h >> 15);
 }
 
 static void put(NdTmplEnt* e, unsigned reg, uint32_t val) { e->w[e->n].reg = (uint16_t)reg; e->w[e->n].val = val; e->n++; }
@@ -401,11 +402,13 @@ int nd_tmpl_build(const NdTmplKey* in) {
     memset(kk.pad, 0, sizeof kk.pad);
     if (!kk.decal) kk.dbias = 0; /* the bias is not used without decal: one key for both */
     if (kk.combine != 8) { kk.w0 = kk.w1 = 0; kk.two = kk.t1only = 0; }
+    /* most batches repeat the key of the call before: no hash and no probe (an eviction since then changes tmpl_gen) */
+    if (memo_id >= 0 && memo_gen == tmpl_gen && memcmp(&memo_k, &kk, sizeof kk) == 0) { tmpl_use[memo_id] = ++tmpl_clock; return memo_id; }
     unsigned h = key_hash(&kk) & (ND_TMPL_IDX - 1u);
     for (;;) {
         uint16_t s = tmpl_idx[h];
         if (s == 0) break;
-        if (memcmp(&tmpl_ent[s - 1u].key, &kk, sizeof kk) == 0) { tmpl_use[s - 1u] = ++tmpl_clock; return s - 1; }
+        if (memcmp(&tmpl_ent[s - 1u].key, &kk, sizeof kk) == 0) { tmpl_use[s - 1u] = ++tmpl_clock; memo_k = kk; memo_id = s - 1; memo_gen = tmpl_gen; return s - 1; }
         h = (h + 1u) & (ND_TMPL_IDX - 1u);
     }
     /* FB-2: a full table evicts its least recently used entry (rebuilt from the key). -1 only when every entry was used in the current batch. */
@@ -429,6 +432,7 @@ int nd_tmpl_build(const NdTmplKey* in) {
         tmpl_use[victim] = ++tmpl_clock;
         tmpl_gen++;
         tmpl_index();
+        memo_k = kk; memo_id = victim; memo_gen = tmpl_gen;
         return victim;
     }
     NdTmplEnt* e = &tmpl_ent[tmpl_n];
@@ -437,6 +441,7 @@ int nd_tmpl_build(const NdTmplKey* in) {
     tmpl_use[tmpl_n] = ++tmpl_clock;
     tmpl_idx[h] = (uint16_t)(tmpl_n + 1u);
     if (tmpl_n + 1u > tmpl_hi) tmpl_hi = tmpl_n + 1u;
+    memo_k = kk; memo_id = (int)tmpl_n; memo_gen = tmpl_gen;
     return (int)tmpl_n++;
 }
 
