@@ -7165,7 +7165,7 @@
     },
     {
       "name": "merlee_spell",
-      "status": "unverified",
+      "status": "verified",
       "subject": "Merlee (dro_02, NPC at -130 0 -400) casts the upgrade spell. Mario walks to her by padscript, talks, picks the first choice (50 coins from warpitems). One shot every 6 frames from f596 to f1015: the world fading to black (darken f601 to f632), the card shuffle and flips (f653 to about f850), the fade back (undarken about f970 to f1003).",
       "proves": "FX1 row 1: the cast reaches state D (log merlee: ritual state D), so the script does not hang; the shuffle ret line shows the card imgfx returns 1 or 2 on the 3DS; the picture shows the shuffle.",
       "debug": "warp=kmr_02:0 story=ch0_toad_town livewarp=120:dro_02:0 warpitems padscript=@pad_merlee.txt shots shotwin=596:420:6 loglevel=debug",
@@ -7197,7 +7197,7 @@
     },
     {
       "name": "merlee_spell_prof",
-      "status": "unverified",
+      "status": "verified",
       "subject": "Merlee (dro_02) casts the upgrade spell as in merlee_spell, with prof=30 windows and no shots: the frame time of the cast start (orb glow, world darkening) and of the end (energy_in_out star on Mario).",
       "proves": "MERLEE lag: the merlee darken/undarken start and done lines carry frame, time (ms) and the native model cache misses and clears since boot; their differences are the cost of the two fades (cast start and star end). Azahar direction only; the prof ndm lines give the window totals.",
       "debug": "warp=kmr_02:0 story=ch0_toad_town livewarp=120:dro_02:0 warpitems padscript=@pad_merlee.txt prof=30 loglevel=debug",
