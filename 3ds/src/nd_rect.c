@@ -58,7 +58,6 @@ static void texr_early(int why, int xl, int yl, int xh, int yh) {
 /* A texture rectangle into an off-screen color image, sampled from a TLUT held in TMEM. The
  * shaded-sprite code draws its 16-entry shadow/highlight palette this way. Returns 1 if done. */
 __attribute__((noinline)) int rect_to_image(int xl, int yl, int xh, int yh, unsigned tile, u32 hs, u32 hd) {
-    tex_gen++; /* TBREP: writes an image */
     if (!nd_ws.cimg || pm_is_cfb(nd_ws.cimg) || tile >= 8 || nd_ws.tst1.tile_tmem[tile] < 256) return 0;
     int x0 = xl >> 2, y0 = yl >> 2, x1 = xh >> 2, y1 = yh >> 2;
     if (x0 < sci_x0) x0 = sci_x0;
@@ -104,7 +103,6 @@ __attribute__((noinline)) int rect_to_image(int xl, int yl, int xh, int yh, unsi
 static unsigned char box_buf[128 * 128 * 4];
 extern int box_pat; /* the former pm_gbi.c: the 2-cycle window with a pattern in tile 0 */
 __attribute__((noinline)) int box_pattern_rect(int xl, int yl, int xh, int yh, u32 hs, u32 hd) {
-    tex_gen++; /* TBREP */
     int X0 = xl >> 2, Y0 = yl >> 2, X1 = xh >> 2, Y1 = yh >> 2; /* exclusive lower right, 1-cycle mode */
     float s0 = (float)(s16)(hs >> 16) / 32.f, t0 = (float)(s16)(hs & 0xffff) / 32.f;
     float dsdx = (float)(s16)(hd >> 16) / 1024.f, dtdy = (float)(s16)(hd & 0xffff) / 1024.f;
@@ -156,7 +154,6 @@ __attribute__((noinline)) int box_pattern_rect(int xl, int yl, int xh, int yh, u
 
 __attribute__((noinline)) void nd_texrect(u32 w0, u32 w1, u32 hs, u32 hd) {
     nd_rect_tex_n++;
-    tex_gen++; /* TBREP */
     int xh = (int)((w0 >> 12) & 0xfff);
     int yh = (int)(w0 & 0xfff);
     int xl = (int)((w1 >> 12) & 0xfff);
@@ -257,7 +254,6 @@ __attribute__((noinline)) void nd_texrect(u32 w0, u32 w1, u32 hs, u32 hd) {
 
 __attribute__((noinline)) void nd_fillrect(u32 w0, u32 w1) {
     nd_rect_fill_n++;
-    tex_gen++; /* TBREP */
 #define FILL_SX10(v) ((int)(((v) & 0x3ffu) << 22) >> 22) /* signed 10-bit field: a left edge at x < 0 stays negative (HUDB1: unsigned wrap made ul > lr and swapped a full-width band) */
 int lrx = FILL_SX10(w0 >> 14);
 int lry = FILL_SX10(w0 >> 2);

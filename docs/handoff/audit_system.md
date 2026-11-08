@@ -36,7 +36,7 @@ Ranked by how much they cut cross-system cost or coupling. Tag: the interface ro
 
 ### A. Console performance (per-op cross-module work, duplicated state)
 
-**A1 (batch close, S). The draw census runs on every native batch with no switch.**
+**[done W1] A1 (batch close, S). The draw census runs on every native batch with no switch.**
 pm_gpu.c:441 says "The accumulation has no switch test". `cen_add(&tk, ...)` at pm_gpu.c:1244 runs on every native raw batch. For each batch it copies a 76-byte TevKey, hashes 18 words with FNV (pm_gpu.c:456-465), calls pm_tex_census_id, and probes the 256 x 20 B table (5,120 B, pm_gpu.c:444-454). cen_frame_end clears the 5,120 bytes every frame (`if (cen_nt) memset(cen_tab, 0, sizeof cen_tab)`, pm_gpu.c:595). The table only prints at the frame given by drawcensus=<frame> (pm_gpu.c:589).
 Fix: read drawcensus once at boot, and call cen_add and the memset only when it is set.
 
@@ -108,9 +108,9 @@ Fix: make the walker setters and nd_words one function.
 
 ### C. Maintainability
 
-**C1 (local, S). tex_gen is written and never read.** It is incremented at 10 sites in 5 files (nd_comb.c:642, nd_rect.c:61,107,159,260, nd_target.c:66, nd_tex_set.c:338,366,505,555). It is declared at nd_tex_set.c:14 and nd_int.h:14. No code reads it. Fix: delete it.
+**[done W1] C1 (local, S). tex_gen is written and never read.** It is incremented at 10 sites in 5 files (nd_comb.c:642, nd_rect.c:61,107,159,260, nd_target.c:66, nd_tex_set.c:338,366,505,555). It is declared at nd_tex_set.c:14 and nd_int.h:14. No code reads it. Fix: delete it.
 
-**C2 (local, S). Unreachable or no-op code:**
+**[done W1] C2 (local, S). Unreachable or no-op code:**
 - nd_walk.c:193-195: `pc += w0 & 0xffffu; break;` comes after the G_PM_ENT `break`.
 - nd_walk.c:202-203: the G_DL prefetch runs twice.
 - nd_walk.c:326-334: the switch cases G_SPNOOP and RDP*SYNC never run, because g1_skip (nd_walk.c:32) skips them first.
@@ -126,7 +126,7 @@ Deleting them is a user decision, because CLAUDE.md rule 7 says debug tools may 
 
 **C5 (local, S). PMD is defined 4 times and never sees a change.** The same PMD macro is defined at nd_comb.c:63, nd_rect.c:44, nd_set.c:18 and pm_main.c:14. It caches a word forever, so it never sees an options-panel change. PMDL (pm_port.h:68) does see it. Fix: use one macro, PMDL.
 
-**C6 (local, S). Counters print slots and names that are no longer true.** Only slots 4, 6, 8 and 9 of nraw_why are written (pm_gpu.c:1197, 1206, 1211, 1228), but nd_ent.c:288 and pm_heaphi.c:76 print slots 1, 2, 3, 5 and 7, which are always 0. rect_log prints rect_c[4] as "cpu" (pm_gpu.c:3678), but the counter now counts dropped rectangles (:3698, :3801).
+**[done W1] C6 (local, S). Counters print slots and names that are no longer true.** Only slots 4, 6, 8 and 9 of nraw_why are written (pm_gpu.c:1197, 1206, 1211, 1228), but nd_ent.c:288 and pm_heaphi.c:76 print slots 1, 2, 3, 5 and 7, which are always 0. rect_log prints rect_c[4] as "cpu" (pm_gpu.c:3678), but the counter now counts dropped rectangles (:3698, :3801).
 
 **C7 (local, M). Comments name rows instead of reasons.** There are 524 row-code tags ("FB-2:", "S3N-3c:", ...) in nd_*.c, pm_gpu.c and pm_tex.c, and 1,098 in all of 3ds/src. Many of these comments give the row and not the reason. Fix: rewrite them as reasons when the file is next edited. Git history keeps the row.
 
@@ -136,18 +136,18 @@ Deleting them is a user decision, because CLAUDE.md rule 7 says debug tools may 
 
 ## 4. Work list (this agent, in order; ownership first)
 
-| Id | Findings | Gate |
-|---|---|---|
-| W1 | A1 census gated; C1, C2, C6 dead state | build, nd_host, 5 det byte gates |
-| W2 | A2 one draw key, A5 cold debug blocks out of nd_raw_native | same, plus wcen_mac01 prof=4 gbi phase |
-| W3 | A3, A4 pm5 through the shadow | same |
-| W4 | B1 ring reuse at 30 fps | same (a ring wrap scenario if one exists, else code trace) |
-| W5 | A7, A8, A11 gtrip and gappend lookups | same |
-| W6 | A10, A12, C5 combine hash and switch macros | same |
-| W7 | A6 texture slot index | same |
-| W8 | B2, B3 seams (pixels change) | before and after shot of the subject, byte-equal elsewhere |
-| W9 | A9 combine fact owner, B4 decoder merge | same as W1 |
-| W10 | C3, C8, C9 (structure); C4 and the stereo double walk wait for the user | ask first |
+| Id | Findings | Gate | Status |
+|---|---|---|---|
+| W1 | A1 census gated; C1, C2, C6 dead state | build, nd_host, 5 det byte gates | done (all 5 byte-equal to base) |
+| W2 | A2 one draw key, A5 cold debug blocks out of nd_raw_native | same, plus wcen_mac01 prof=4 gbi phase | open |
+| W3 | A3, A4 pm5 through the shadow | same | open |
+| W4 | B1 ring reuse at 30 fps | same (a ring wrap scenario if one exists, else code trace) | open |
+| W5 | A7, A8, A11 gtrip and gappend lookups | same | open |
+| W6 | A10, A12, C5 combine hash and switch macros | same | open |
+| W7 | A6 texture slot index | same | open |
+| W8 | B2, B3 seams (pixels change) | before and after shot of the subject, byte-equal elsewhere | open |
+| W9 | A9 combine fact owner, B4 decoder merge | same as W1 | open |
+| W10 | C3, C8, C9 (structure); C4 and the stereo double walk wait for the user | ask first | open |
 
 ## 5. Known open items (links only)
 

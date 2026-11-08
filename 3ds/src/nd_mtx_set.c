@@ -106,7 +106,7 @@ void load_mtx(u32 w0, u32 w1, u32 hdr) {
     unsigned slot = hdr & 0xffu;
     int cached = slot != 0 && (hdr & 0x100u) != 0 && !lm; /* a static model matrix: the header says src is that model's savedMtx */
     u32 tag = 0x10000u | (hdr >> 16);
-    if (lm) {}
+    if (lm) { /* the interpolated matrix is in `in` already */ }
     else if (cached && mtx_tag[slot] == tag) memcpy(in, mtx_cache[slot], sizeof(in));
     else {
         nd_mtx_unpack((const uint32_t*)src->m, in);

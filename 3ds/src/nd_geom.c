@@ -18,7 +18,6 @@
 u8 vert_live[64];
 int tri_since_vtx;
 u8 vert_scr[64];
-s16 vert_sx[64], vert_sy[64];
 unsigned char vert_cb[64]; /* DIP1: clip bits of vert_p, made once at G_VTX */
 float vert_p[64][4]; /* PO2: clip space x y z w of a vertex, transformed once when it is loaded (G_VTX) */
 u8 vert_litf[64]; /* GV5: bit 0 = loaded lit, bit 1 = loaded lit with texgen, bit 2 = the lights changed since (the colour was made then): the CPU path only */
@@ -251,7 +250,6 @@ void nd_tridrop_log(unsigned f) {
     tri_drop[0] = tri_drop[1] = 0;
 }
 int tri_prep_ok; /* PG4: off_screen_check and box_fold_sync ran for this op */
-void pm_gpu_cen_mark(unsigned bit); /* CEN-1a (pm_gpu.c) */
 void draw_tri(unsigned w);
 
 void draw_tri(unsigned w) {

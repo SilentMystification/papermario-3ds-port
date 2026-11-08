@@ -63,7 +63,6 @@ void nd_native_rec(u32 w0) {
     if (kind == G_PM_ND_SPLASH) splash_on = (int)(w0 & 1u);
 }
 void grab_cur(const void* src, int w, int h) {
-    tex_gen++; /* TBREP */
     int x, y, r;
     if (!src || w < 1 || !pm_is_cur_cfb(src)) return;
     if (splash_on) { /* HANG1a: a water splash window: one full-height copy per frame, the other windows of the frame read it */

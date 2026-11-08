@@ -438,13 +438,13 @@ static float decal_bias(void) {
 #define DECAL_EPS 0.003f
 typedef struct { int combine, tex, tex1, i8_0, i8_1, rgb_scale, r_mix, draw_3d, rect_2d, dview, off_active, off_i8, r_memblend, r_replace, r_blend; unsigned prim, cconst, mixcol; unsigned plan_gen; } TevKey;
 unsigned pm_tex_census_id(int unit);
-/* CEN1: draw census (debug tool, switch drawcensus=<frame>). Each flush batch adds one entry: template key (TevKey without plan_gen, z, raw, program, cull), texture ids of unit 0 and 1, triangle count. At the end of the frame the switch frame prints one line per distinct entry and a summary. The accumulation has no switch test. The print runs once per frame and only reads the table. */
+/* CEN1: draw census (debug tool, switch drawcensus=<frame>). Each flush batch adds one entry: template key (TevKey without plan_gen, z, raw, program, cull), texture ids of unit 0 and 1, triangle count. At the end of the frame the switch frame prints one line per distinct entry and a summary. Without the switch only the draw and triangle counts of the prof line are kept (no hash, no table). */
 #define CEN_N 256
 typedef struct { unsigned k, tex0, tex1, tris, n; } CenEnt;
 static CenEnt cen_tab[CEN_N];
 static unsigned cen_nt, cen_draws, cen_tris, cen_over;
+static int cen_fr = -2; /* drawcensus frame: -1 off, -2 not read yet (cen_frame_end reads it) */
 static void cen_put(unsigned h, unsigned id0, unsigned id1, unsigned tris) {
-    cen_draws++; cen_tris += tris;
     unsigned i = (h ^ id0 * 0x9E3779B1u ^ id1 * 0x85EBCA6Bu ^ tris * 0xC2B2AE35u) & (CEN_N - 1);
     for (unsigned p = 0; p < CEN_N; p++, i = (i + 1) & (CEN_N - 1)) {
         CenEnt* e = &cen_tab[i];
@@ -463,15 +463,10 @@ static void cen_add(const TevKey* tk, int z, int graw, int prog, unsigned cull, 
     h = (h ^ cull) * 16777619u;
     cen_put(h, id0, id1, tris);
 }
-/* CEN-1a: why each walker GPU draw (wd) is not native (the former pm_gbi.c os_report, lines wcen4). cen_fb marks the CPU triangles of the open batch (CEN_FB_*, set by the CPU fallbacks). flush_draw moves it to cen_fbv, clears it and sets cen_why, the code of the walker draws of that batch. */
+/* CEN-1a: why each walker GPU draw (wd) is not native (the former pm_gbi.c os_report, lines wcen4). Only other, pm5 and the nd_raw_native refusals (nr4, nr6, nr8, nr9) are set now; the other names keep the log columns. */
 enum { CW_OTHER, CW_RECT, CW_CLIP, CW_SEAM, CW_WIDE, CW_RING, CW_PM5, CW_NR1, CW_NR2, CW_NR3, CW_NR4, CW_NR5, CW_NR6, CW_NR7, CW_NR8, CW_NR9, CW_N };
 #define CW_NRK(k) ((unsigned)(CW_NR1 - 1 + (k)))
-#define CEN_FB_CLIP 1u
-#define CEN_FB_SEAM 2u
-#define CEN_FB_WIDE 4u
-#define CEN_FB_RING 8u
-static unsigned cen_fb, cen_fbv, cen_why;
-void pm_gpu_cen_mark(unsigned bit) { cen_fb |= bit; }
+static unsigned cen_why;
 unsigned pm_gpu_cen_why(void) { return cen_why; }
 const char* pm_gpu_cen_name(unsigned c) {
     static const char* const nm[CW_N] = { "other", "rect", "clip", "seam", "wide", "ring", "pm5", "nr1", "nr2", "nr3", "nr4", "nr5", "nr6", "nr7", "nr8", "nr9" };
@@ -584,9 +579,8 @@ void pm_gpu_pf_read(unsigned long long out[6]) {
 static void cen_frame_end(void) {
     ndref_end();
     pfd_add();
-    static int fr = -2;
-    char v[16];
-    if (fr == -2) fr = pm_debug_value("drawcensus", v, sizeof v) ? atoi(v) : -1;
+    if (cen_fr == -2) { char v[16]; cen_fr = pm_debug_value("drawcensus", v, sizeof v) ? atoi(v) : -1; }
+    const int fr = cen_fr;
     if (fr >= 0 && (int)pm_frame_count() == fr) {
         for (unsigned i = 0; i < CEN_N; i++) if (cen_tab[i].n)
             pm_log_d("cen f%u k %08x tex %08x %08x tris %u n %u", fr, cen_tab[i].k, cen_tab[i].tex0, cen_tab[i].tex1, cen_tab[i].tris, cen_tab[i].n);
@@ -1135,7 +1129,7 @@ void pm_gpu_native_submit_draw(NdDraw* d, const uint16_t* sd, unsigned nidx, int
 
 
 const float (*pm_gbi_combined_ptr(void))[4];
-static unsigned nraw_why[10]; /* SGEN-1: nd_raw_native refusals (the old close draws): 1 command buffer (FB-2: no refusal, a forced split), 2 offscreen, 3 grab, 4 zmark, 5 nozt, 6 plan tex1, 7 plan noise, 8 unit 0 (offscreen image or debug override), 9 template */
+static unsigned nraw_why[10]; /* nd_raw_native refusals (the batch is dropped): 4 pm5 zmark, 6 plan tex1 without unit 1 words, 8 unit 0 (off-screen image or debug override), 9 template table full. Slots 1, 2, 3, 5 and 7 are no longer refusals. */
 void pm_gpu_nraw_why(unsigned* o) { for (unsigned i = 0; i < 10; i++) o[i] = nraw_why[i]; }
 void pm_gpu_fb2_stat(unsigned* o); /* FB-2 log: template high mark, evictions, forced splits */
 /* OFF-2: the unit 0 words of the grab copy (grab_tex), as the walker bind (dc_bind) sends them. The copy is one fixed buffer: force keeps the words in
@@ -1241,7 +1235,8 @@ static int nd_raw_native(void) {
         ndn_tk = tk; ndn_to_ok = 1;
     }
     if (ndref_on) { ndref_nz = 0; ndref_raw = 1; ndref_draw(&tk, z, 1, 4, (unsigned)g_cullm); ndref_state(0, z); }
-    cen_add(&tk, z, 1, 4, (unsigned)g_cullm, grab_bind && tex ? 0x20000000u : tex ? pm_tex_census_id(0) : 0u, 0u, gni / 3u);
+    cen_draws++; cen_tris += gni / 3u;
+    if (cen_fr >= 0) cen_add(&tk, z, 1, 4, (unsigned)g_cullm, grab_bind && tex ? 0x20000000u : tex ? pm_tex_census_id(0) : 0u, 0u, gni / 3u);
     dc_on = 0;
     float palk[ND_NPAL][16];
     unsigned npal = pal_n < ND_NPAL ? pal_n : ND_NPAL;
@@ -1311,7 +1306,6 @@ static int nd_raw_native(void) {
     return 1;
 }
 static void flush_draw(void) {
-    cen_fbv = cen_fb; cen_fb = 0; /* CEN-1a */
     int graw = gni > 0;
     if (graw) flush_gen++; /* PO3b: the open batch is a raw Vtx batch */
     if (fl_on() && gpu_ok) flush_fl_dbg(graw);
@@ -1340,9 +1334,9 @@ static void flush_draw(void) {
         if (snap0 || snap1) off_snapshot(off_cur);
         if (!offs[off_cur].snap_ready) snap0 = snap1 = 0;
     }
-    cen_why = graw ? CW_OTHER : rect_2d ? CW_RECT : (cen_fbv & CEN_FB_CLIP) ? CW_CLIP : (cen_fbv & CEN_FB_SEAM) ? CW_SEAM : (cen_fbv & CEN_FB_WIDE) ? CW_WIDE : (cen_fbv & CEN_FB_RING) ? CW_RING : CW_OTHER; /* CEN-1a */
-    if (graw && nd_raw_native()) return;
-    if (graw && ndm_live) ndm_old++, ndm_refused_total++; /* S3N-3c: a raw batch the native path refused is dropped (nd_raw_native counted the reason, census 0 at the DEL row) */
+    cen_why = CW_OTHER; /* the batch is raw here (the !graw case returned above) */
+    if (nd_raw_native()) return;
+    if (ndm_live) ndm_old++, ndm_refused_total++; /* S3N-3c: a raw batch the native path refused is dropped (nd_raw_native counted the reason, census 0 at the DEL row) */
     gni = 0; gi_start = gidx_n; batch_identity = 0;
     return;
 }
@@ -2639,9 +2633,9 @@ int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4
             if (g[1] != g[0] || g[2] != g[0] || ri[0] > 0xffffu || ri[1] > 0xffffu || ri[2] > 0xffffu) return 0;
             t3[0] = (unsigned short)ri[0]; t3[1] = (unsigned short)ri[1]; t3[2] = (unsigned short)ri[2];
             const int we = wide_edge_k(tab[g[0]], t3, 3); /* TRI-2: 3 or 4 = edge vertices, copied in the loop below */
-            if (we == 1 || we == 2) { cen_fb |= CEN_FB_WIDE; return 0; } /* CEN-1a */
+            if (we == 1 || we == 2) return 0;
             if (we) for (int i = 0; i < 3; i++) if (wide_on_edge(tab[g[0]], ri[i], NULL)) mvm |= 1u << i;
-        } else for (int i = 0; i < 3; i++) { const float(*m)[4] = tab[g[i]]; if (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f) { cen_fb |= CEN_FB_WIDE; return 0; } }
+        } else for (int i = 0; i < 3; i++) { const float(*m)[4] = tab[g[i]]; if (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f) return 0; }
     }
     if (gidx_n + 3 > GRING_IDX) return 0;
     if (!draw_3d) { flush(); draw_3d = 1; }
@@ -3675,7 +3669,7 @@ static void rect_raw_quad(int xa, int ya, int xb, int yb, short s0, short t0, sh
     rect_c[2]++;
     if ((unsigned)gring_n > rect_c[5]) rect_c[5] = (unsigned)gring_n;
 }
-static void rect_log(unsigned f) { if (PMDL("rectsig")) pm_log_d("rsig sum f%u chk %u diff %u", f, rsig_chk, rsig_diff); pm_log_d("rect f%u fill %u tex %u native %u merged %u cpu %u ring %u", f, rect_c[0], rect_c[1], rect_c[2], rect_c[3], rect_c[4], rect_c[5]); pm_log_d("rectwhy f%u gpu %u off %u grab %u zmark %u ring %u norect %u range %u", f, rr_why[1], rr_why[2], rr_why[3], rr_why[4], rr_why[5], rr_why[6], rr_why[7]); memset(rr_why, 0, sizeof rr_why); memset(rect_c, 0, sizeof rect_c);
+static void rect_log(unsigned f) { if (PMDL("rectsig")) pm_log_d("rsig sum f%u chk %u diff %u", f, rsig_chk, rsig_diff); pm_log_d("rect f%u fill %u tex %u native %u merged %u drop %u ring %u", f, rect_c[0], rect_c[1], rect_c[2], rect_c[3], rect_c[4], rect_c[5]); pm_log_d("rectwhy f%u gpu %u off %u grab %u zmark %u ring %u norect %u range %u", f, rr_why[1], rr_why[2], rr_why[3], rr_why[4], rr_why[5], rr_why[6], rr_why[7]); memset(rr_why, 0, sizeof rr_why); memset(rect_c, 0, sizeof rect_c);
     nd_tridrop_log(f);
 }
 void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba) {
@@ -3695,7 +3689,7 @@ void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba) {
         if (!off_active) grab_dirty = 1; /* a fill draws rows the grab does not track (rect_y0 and rect_y1 are for texture rectangles): the next grab copies */
         return;
     }
-    rect_c[4]++; /* TRI-4: no CPU rectangle path. A refused rectangle is dropped and counted here (rect_c[4], rect log cpu) */
+    rect_c[4]++; /* no CPU rectangle path: a refused rectangle is dropped and counted (rect log: drop) */
     return;
 }
 
@@ -3798,7 +3792,7 @@ void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s
     rect_c[1]++;
     rd_tex = 1;
     if (tex_raw_rect(x0, y0, x1, y1, s0, t0, s1, t1)) { fl_prev_rect = 1; return; }
-    rect_c[4]++; /* TRI-4: no CPU rectangle path. A refused rectangle is dropped and counted here (rect_c[4], rect log cpu) */
+    rect_c[4]++; /* no CPU rectangle path: a refused rectangle is dropped and counted (rect log: drop) */
     fl_prev_rect = 1;
 }
 
