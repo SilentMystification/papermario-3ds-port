@@ -242,39 +242,49 @@ int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st
         mf_k = 0; }
     return r;
 }
-/* MDL-5f: a custom gfx list of a record (pre or post, rec[22] or rec[23]) with state ops only: no geometry, no G_DL. The walker runs it on the
- * state side (rec_apply runs the pre list before the native draw; rec_run runs the post after it), so the native draw reads the state it sets.
- * 0 address: no list (1). Ops: G_SETOTHERMODE_H/L, SETPRIMCOLOR, SETENVCOLOR, SETCOMBINE, SETBLENDCOLOR, SETFOGCOLOR, the syncs, G_ENDDL (0xdf). */
-static int nd_gfx_state_only(uint32_t addr) {
+/* MDL-5f: a custom gfx list of a record (pre or post, rec[22] or rec[23]). The walker runs it on the state side (rec_apply runs the pre list before
+ * the native draw; rec_run runs the post after it), so the native draw reads the state it sets. Ops: G_SETOTHERMODE_H/L, SETPRIMCOLOR, SETENVCOLOR,
+ * SETCOMBINE, SETBLENDCOLOR, SETFOGCOLOR, the syncs, G_ENDDL (0xdf); at most 16 ops. The state it gives the draw: the last SETCOMBINE words (cw, has_cb 1)
+ * and the SETOTHERMODE ops (mo, 2 words each, nmo <= 4). Returns 1 when the draw can follow the list (no list: 1), 0 for any other op (why 3).
+ * POND: a pre list may also hold a pushed G_DL (0xde, push) and SETPRIMDEPTH (0xee) when a nested model record (G_PM_REC 0x0d) follows them: the
+ * mac_00 water list (gfx_build_water) draws the prim depth blocker, then mdl_draw_hidden_panel_surface appends the record of a copy of the model
+ * with no geometry. That record sets the whole draw state again (bind, combine, render mode list), so the draw takes it as its record (nr) and only
+ * the state ops after it (cw, mo). The record words are skipped (14 words, then its R13 count of words). */
+#define ND_PM_REC_OP 0x0du
+static int nd_r11_walk(uint32_t addr, int pre, const uint32_t** nr, uint32_t* cw, int* has_cb, uint32_t* mo, unsigned* nmo) {
+    *nr = NULL; *has_cb = 0; *nmo = 0;
     if (!addr) return 1;
     const uint32_t* p = (const uint32_t*)(uintptr_t)addr;
-    for (unsigned i = 0; i < 16u; i++, p += 2) {
-        switch (p[0] >> 24) {
-        case 0xdfu: return 1; /* G_ENDDL */
-        case 0xe3u: case 0xe2u: /* G_SETOTHERMODE_H, _L */
-        case 0xfau: case 0xfbu: case 0xfcu: case 0xf9u: case 0xf8u: /* SETPRIMCOLOR, SETENVCOLOR, SETCOMBINE, SETBLENDCOLOR, SETFOGCOLOR */
+    int pend = 0; /* a G_DL or SETPRIMDEPTH with no record after it yet */
+    for (unsigned i = 0; i < 16u; i++) {
+        const uint32_t op = p[0] >> 24;
+        switch (op) {
+        case 0xdfu: return !pend; /* G_ENDDL */
+        case 0xfcu: cw[0] = p[0]; cw[1] = p[1]; *has_cb = 1; break; /* SETCOMBINE */
+        case 0xe3u: case 0xe2u: if (*nmo < 4u) { mo[2 * *nmo] = p[0]; mo[2 * *nmo + 1] = p[1]; (*nmo)++; } break; /* G_SETOTHERMODE_H, _L */
+        case 0xfau: case 0xfbu: case 0xf9u: case 0xf8u: /* SETPRIMCOLOR, SETENVCOLOR, SETBLENDCOLOR, SETFOGCOLOR */
         case 0xe7u: case 0xe6u: case 0xe8u: /* RDPPIPESYNC, RDPLOADSYNC, RDPTILESYNC */
             break;
+        case 0xdeu: if (!pre || ((p[0] >> 16) & 0xffu) != 0u) return 0; pend = 1; break; /* G_DL push (a branch ends the list: not followed) */
+        case 0xeeu: if (!pre) return 0; pend = 1; break; /* SETPRIMDEPTH */
+        case ND_PM_REC_OP:
+            if (!pre) return 0;
+            *nr = p; *has_cb = 0; *nmo = 0; pend = 0;
+            p += NDMC_RW + 2u * p[26]; /* the record (R0 to R13), then its R13 words */
+            continue;
         default: return 0;
         }
+        p += 2;
     }
     return 0;
 }
-/* MDL-5f: the state the native draw takes from a state-only pre list (nd_gfx_state_only true): the last SETCOMBINE words (cw, has_cb 1) and
- * the SETOTHERMODE ops (mo, 2 words each, nmo <= 4). The record runs the list before the draw (rec_apply); its combine and mode state replace the
- * record's own (rec_run composes the mode list). 0: no list. */
-int nd_r11_state(uint32_t addr, uint32_t* cw, int* has_cb, uint32_t* mo, unsigned* nmo) {
-    if (has_cb) *has_cb = 0;
-    if (nmo) *nmo = 0;
-    if (!addr) return 0;
-    const uint32_t* p = (const uint32_t*)(uintptr_t)addr;
-    for (unsigned i = 0; i < 16u; i++, p += 2) {
-        uint32_t op = p[0] >> 24;
-        if (op == 0xdfu) break;
-        if (op == 0xfcu) { if (cw) { cw[0] = p[0]; cw[1] = p[1]; } if (has_cb) *has_cb = 1; continue; }
-        if ((op == 0xe3u || op == 0xe2u) && nmo && mo && *nmo < 4u) { mo[2 * *nmo] = p[0]; mo[2 * *nmo + 1] = p[1]; (*nmo)++; }
-    }
-    return 1;
+/* MDL-5f: the state of the pre list for the native draw (rec_run composes the mode list). nr: the nested record (POND), NULL when none. */
+int nd_r11_state(uint32_t addr, const uint32_t** nr, uint32_t* cw, int* has_cb, uint32_t* mo, unsigned* nmo) {
+    return nd_r11_walk(addr, 1, nr, cw, has_cb, mo, nmo);
+}
+static int nd_r11_ok(uint32_t addr, int pre) {
+    const uint32_t* nr; uint32_t cw[2], mo[8]; int hcb; unsigned nmo;
+    return nd_r11_walk(addr, pre, &nr, cw, &hcb, mo, &nmo);
 }
 int pm_gpu_noise_ok(void);
 void pm_gpu_noise_draw(NdUnit* u, float* nzo);
@@ -286,7 +296,7 @@ static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, Nd
     if (rec[26] != 0 && !c->aux_ok) { /* MDL-0 count (switch mdl0): the first 12 why 2 records, their R13 words */
         static unsigned m2_ = 0; if (m2_ < 12u && pm_debug_has("mdl0")) { const uint32_t* aw = rec + NDMC_RW; m2_++; pm_log_d("mdl2 n %u w0 %08x %08x w1 %08x %08x gfx %d", (unsigned)rec[26], aw[0], aw[1], aw[2], aw[3], c->aux_ok); }
         return (st->why = 2, 0); } /* R13: words after the record (special tile list, untextured ops); S3L-3: the untextured form is decoded by the caller (aux_ok) */
-    if (!nd_gfx_state_only(rec[22]) || !nd_gfx_state_only(rec[23])) { /* MDL-0 count (switch mdl0): the first 12 why 3 records: list addresses and the first two words of each list */
+    if (!nd_r11_ok(rec[22], 1) || !nd_r11_ok(rec[23], 0)) { /* MDL-0 count (switch mdl0): the first 12 why 3 records: list addresses and the first two words of each list */
         static unsigned m3_ = 0; if (m3_ < 12u && pm_debug_has("mdl0")) { m3_++; const uint32_t* a = rec[22] ? (const uint32_t*)(uintptr_t)rec[22] : NULL; const uint32_t* b = rec[23] ? (const uint32_t*)(uintptr_t)rec[23] : NULL;
             /* MDL-5e: the map, and the first 6 words (3 ops) of each custom list: the ops that run on the state side */
             pm_log_d("mdl3 f%u map %d:%d pre %08x post %08x pre w %08x %08x %08x %08x %08x %08x post w %08x %08x %08x %08x", pm_frame_count(), (int)gGameStatusPtr->areaID, (int)gGameStatusPtr->mapID, (unsigned)rec[22], (unsigned)rec[23],
