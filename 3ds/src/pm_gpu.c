@@ -908,7 +908,7 @@ static void stage_scissor(void) {
 }
 static inline int graw_is_pm4(void) { return nb.gni > 0 && nb.g_pal && !nb.g_use5 && gs.gv4_on; }
 /* S3 M3: the native raw close. A raw batch with the palette program (pm4, no lights) on the main target, one texture unit at most, no stencil pass: the effect, TEV, texture unit
- * and uniform words come from nd_emit_draw (host tested against the real command stream) and go into the command buffer with GPUCMD_AddRawCommands. The state that is not in
+ * and uniform words come from nd_emit_draw (host tested against the real command stream) and go into the command buffer in place (PERF1-6). The state that is not in
  * those words (program, buffer info, scissor, user clip) is staged through citro3d as before, and C3Di_UpdateContext writes it first. Returns 0 when the batch needs the old close. */
 extern void C3Di_UpdateContext(void);
 int pm_tex_native_unit0(NdUnit* u);
@@ -952,8 +952,29 @@ static __attribute__((cold, noinline)) void orb_log(const char* path, int z, int
            la ? la->src[0] : 99u, la ? la->src[1] : 99u, la ? la->src[2] : 99u, la ? la->op[0] : 99u, la ? la->op[1] : 99u, la ? la->op[2] : 99u,
            la ? la->func : 99u, la ? la->scale : 99u);
 }
+/* PERF1-6: C3Di_UpdateContext writes nothing when (objdump of libcitro3d.a, this devkitPro): no flag it tests is set in the context word at +32 (frame buffer,
+ * viewport, scissor, program, attribute and buffer info, effect, texture units, texture status, proc tex, texenv buffer, gas, texenvs, light env), no light
+ * env is bound (+268: it calls C3Di_LightEnvUpdate whenever one is), no fixed attribute is dirty (+0x208), the gas mode (+412 bits 0 to 2) is not 7 (it calls
+ * C3Di_GasUpdate then), and no uniform is dirty (C3D_UpdateUniforms of both shaders sends only dirty ones; a program bind sets the program flag). Then the call
+ * is skipped: the command stream is the same. Uniform arrays not word aligned: always update. */
+#define C3D_UPD_FLAGS (0x4u | 0x8u | 0x10u | 0x20u | 0x40u | 0x80u | 0x100u | 0x200u | 0x400u | 0x4000u | 0x718000u | 0x20000u | 0x3800000u | 0xfc000000u)
+static int c3d_upd_needed(void) {
+    const unsigned char* c = __C3D_Context;
+    if (*(const volatile unsigned*)(c + 32) & C3D_UPD_FLAGS) return 1;
+    if (*(void* const*)(c + 268)) return 1;
+    if (*(const uint16_t*)(c + 0x208)) return 1;
+    if ((*(const unsigned*)(c + 412) & 7u) == 7u) return 1;
+    if (((uintptr_t)C3D_FVUnifDirty | (uintptr_t)C3D_IVUnifDirty) & 3u) return 1;
+    const uint32_t* f = (const uint32_t*)(const void*)C3D_FVUnifDirty;
+    const uint32_t* iv = (const uint32_t*)(const void*)C3D_IVUnifDirty;
+    uint32_t a = iv[0] | iv[1] | C3D_BoolUnifsDirty[0] | C3D_BoolUnifsDirty[1];
+    for (unsigned i = 0; i < 2u * C3D_FVUNIF_COUNT / 4u; i++) a |= f[i];
+    return a != 0;
+}
+static __attribute__((cold, noinline)) void cmd_split_forced(void);
 static void nd_native_submit(const NdDraw* dp, int tex) {
     NDT_B(tsub); /* PERF1: the native submit class */
+    { u32 *cb_, csz_, coff_; GPUCMD_GetBuffer(&cb_, &csz_, &coff_); if (coff_ + ND_EMIT_MAX + 1024u >= csz_) cmd_split_forced(); } /* PERF1-6: the draw words go straight into the command buffer: near its end the frame is split first (as nd_raw_native) */
     pm_gbi_draw_note(1); /* WCEN3: a native draw (per producer, the former pm_gbi.c) */
     /* FB-3: every program 5 draw (model, sprite, raw) writes its pm5 block here, once. The copy keeps the caller's NdDraw; uvx goes to the pm5 uniform. */
     NdDraw d5;
@@ -970,10 +991,8 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
     if (stencil_on) { stc_set(6, false, GPU_ALWAYS, 0, 0xff, 0); stencil_on = 0; } /* the citro3d effect copy says off too, as flush_draw does: nd_leave_native sends that copy again */
     if (!ndn_mode) { nd_shadow_reset(&ndn_sh); ndn_mode = 1; }
     if (*(volatile unsigned*)(__C3D_Context + 32) & 0x3800000u) { ndn_sh.cfg_valid = 0; ndn_sh.u_on[0] = ndn_sh.u_on[1] = 0; } /* a dirty texture bind: C3Di_UpdateContext rebuilds the unit enable word from the units citro3d holds (a null unit 0 after a slot drop writes it off) and sends their blocks: the native shadow of both is stale, the native words write them again */
-    C3Di_UpdateContext(); /* what citro3d staged (program, buffers, scissor, an older TEV) goes out first, the native words then overwrite it */
-    static uint32_t out[ND_EMIT_MAX];
-    unsigned nw = nd_emit_draw(out, &ndn_sh, d);
-    GPUCMD_AddRawCommands(out, nw);
+    if (c3d_upd_needed()) C3Di_UpdateContext(); /* what citro3d staged (program, buffers, scissor, an older TEV) goes out first, the native words then overwrite it */
+    { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); GPUCMD_SetBufferOffset(coff + nd_emit_draw(cb + coff, &ndn_sh, d)); } /* PERF1-6: emitted in place (no copy) */
     if (tex) ndunit_after();
     *(volatile unsigned*)(__C3D_Context + 32) |= 2u; /* C3DiF_DrawUsed, as the citro3d draw sets it: citro3d then sends the framebuffer flush at a target change, a split and the frame end */
     if (ndref_on) ndref_cmd();
@@ -1156,7 +1175,7 @@ static __attribute__((noinline)) void raw_zmark_pass(const NdTmplKey* nk, const 
 static int nd_raw_native(void) {
     nd_tmpl_pin(); /* FB-2: the template ids of this batch stay valid until its submit */
     if (!(nb.gni > 0 && nb.g_pal && gs.gv4_on && (!nb.g_use5 || gv5_on))) { cen_why = nb.g_use5 ? CW_PM5 : CW_OTHER; return 0; } /* CEN-1a; PM5-2: program 5 batches go native too */
-    { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); if (coff + ND_EMIT_MAX + 1024u >= csz) cmd_split_forced(); } /* FB-2: GPUCMD_AddRawCommands does no bounds check: near the end of the command buffer the batch is split first (nraw1 is no longer a refusal) */
+    { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); if (coff + ND_EMIT_MAX + 1024u >= csz) cmd_split_forced(); } /* FB-2: the draw words go into the command buffer with no bounds check: near its end the batch is split first (nraw1 is no longer a refusal) */
     /* CEN-1b: one refusal line per reason, same order and counters as the old combined line */
     if (gs.r_zmark && nb.g_use5) { nd_native_refused++; nraw_why[4]++; cen_why = CW_NRK(4); return 0; } /* FB-1 ZM: pm4 zmark is native (two pass); pm5 zmark stays on the CPU path (FB-3) */
     int z = gs.z_on && (!nb.rect_2d || nb.rect_z) && !gs.off_active; /* OFF-1: as flush_draw, no depth test on an off-screen target */
