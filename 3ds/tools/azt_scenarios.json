@@ -10135,9 +10135,9 @@
     {
       "name": "gameover_30",
       "status": "unverified",
-      "subject": "Game over map gv_01 (warp entry 0), 60 fps mode off. The map script turns on the motion blur (SetMotionBlurParams 128, OVERLAY_BLUR: 40 strips that read the previous frame buffer) and drops the GAME OVER letters. Shots every drawn frame of game frames 70 to 89 (two drawn frames per game frame with fps60: the t=0.5 pass and the key frame). Draw census at frame 80.",
+      "subject": "Game over map gv_01 (warp entry 0), 60 fps mode off (det: no FS1 draw skip, so frame 80 is drawn for the census). The map script turns on the motion blur (SetMotionBlurParams 128, OVERLAY_BLUR: 40 strips that read the previous frame buffer) and drops the GAME OVER letters. Shots every drawn frame of game frames 70 to 89 (two drawn frames per game frame with fps60: the t=0.5 pass and the key frame). Draw census at frame 80.",
       "proves": "The game over picture per drawn frame (no alternating frames) and the draw batches per drawn frame (cen summary line).",
-      "debug": "warp=gv_01:0 shots shotwin=70:20 drawcensus=80 caplog loglevel=debug",
+      "debug": "warp=gv_01:0 det shots shotwin=70:20 drawcensus=80 caplog loglevel=debug",
       "until": "shot \\d+ frame 89\\b",
       "cap": 30,
       "deadline": 20,
