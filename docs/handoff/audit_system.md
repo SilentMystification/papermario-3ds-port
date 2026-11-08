@@ -149,6 +149,8 @@ Deleting them is a user decision, because CLAUDE.md rule 7 says debug tools may 
 | W9 | A9 combine fact owner, B4 decoder merge | same as W1 | B4 done (nd_words masks prim depth like the walker). A9 not done: moving the plan owner touches nd_comb, pm_gpu and nd_tmpl together, and the gain is one 192-byte compare per plan change; it needs its own row |
 | W10 | C3, C8, C9 (structure); C4 and the stereo double walk wait for the user | ask first | C3 and C9 done (byte-equal). pm4.v.pica now declares uvso, cmul, cadd, zmix in a row: nd_emit_draw writes them as one block, and the old shared DVLB had kept them adjacent only by chance. gv4_on now checks the layout at init. C8, C4 and the stereo walk wait for the user |
 
+Speed check (Azahar, direction only): wcen_mac01 gbi phase avg/p95 is 5.9/15.0 ms on base 53e5a553e (2 runs) and 5.9/14.9 ms on W1-W10 (3 runs), with walker_ops 595 on both builds. Azahar has no cache model, so the cut in per-batch work and data does not show there. Open: one console_prof pair (base vs W1-W10) on the O3DS at spot_mac01_prof needs the user.
+
 ## 5. Known open items (links only)
 
 - Console regression a3c5ec093 -> 7be88729b (runs 25158, 25044): left open by the user.
