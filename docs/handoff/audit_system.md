@@ -61,11 +61,11 @@ Fix: move each debug block into a cold, noinline function behind one flag test. 
 In load_inner, a load that misses the 256-entry direct index (pm_tex.c:1631) and the recent list (:1643) scans every slot below slot_hi (pm_tex.c:1656). That is up to 1,024 x 136 B = 139,264 B, before load_miss. A true miss always pays the full scan. Every call also hashes the full CI palette, hits included (pm_tex.c:1608-1625).
 Fix: use an open-addressing index keyed by (img, tlut, w, h, fmt, siz, stride, dkey), in the same form as gm_idx (nd_mtx_set.c:47) and tmpl_idx (nd_tmpl.c:300). The table is then never scanned.
 
-**A7 (walker -> ring, S). gappend runs the wide check 3 times per triangle.**
+**[done W5] A7 (walker -> ring, S). gappend runs the wide check 3 times per triangle.**
 In pm_gpu_gappend, the `if (pm_wide && ...)` block is inside the per-vertex loop (pm_gpu.c:2502-2506). It calls wide_edge_k(pal_tab[g0], t3, 3) 3 times per appended triangle. That is 9 vertex transforms instead of 3, and wide_c.ortho counts 3 times too high.
 Fix: move the block above the loop.
 
-**A8 (walker -> ring, M). The palette search runs 3 times per triangle.**
+**[partly done W5] A8 (walker -> ring, M). The palette search runs 3 times per triangle.**
 pm_gpu_gtrip searches pal_g in gtrip_batch_open (pm_gpu.c:2552-2556), again in the copy of the overflow count (:2650-2655), and again in the assignment loop (:2676-2680). gtrip_batch_open also runs 5 memcmp of draw parameters on each call, plus a 304-byte PmFx memcmp for pm5 (:2547-2551). gv_tri already knows that the parameters are unchanged (ep_pepoch, nd_geom.c gv_tri).
 Fix: pass the epoch id instead of the parameters, and search the palette once.
 
@@ -73,21 +73,21 @@ Fix: pass the epoch id instead of the parameters, and search the palette once.
 The same fact is kept as nd_ws.comb_w0/w1, nd_comb cur_plan (192 B), ScMemo.plan x 16 (244 B each, nd_comb.c:42), pm_gpu plan + plan_k + plan_gen (pm_gpu_set_plan does a 192-byte memcmp and copy, pm_gpu.c:3380-3398), and NdTmplKey w0/w1 (nd_tmpl_build rebuilds the plan from the words, nd_tmpl.c pm_comb_build). The owner is nd_comb.c.
 Fix: pm_gpu keeps a plan id (memo index) and the words only.
 
-**A10 (walker, S). sync_combine hashes its inputs twice and scans the memo.**
+**[partly done W6] A10 (walker, S). sync_combine hashes its inputs twice and scans the memo.**
 sync_combine hashes 11 words (sc_sig_now, nd_comb.c:467-473), then 10 more words (scm_sig, :436-442). scm_find then scans the 16 x 244 B memo by key (:444-447). The sc_sig hash is also copied inline at :582-585 instead of calling sc_sig_now.
 Fix: compute one hash and index the memo by its low bits.
 
-**A11 (walker, S). t1_fold_tri repeats the uv formula per triangle, with divides.**
+**[not done] A11 (walker, S). t1_fold_tri repeats the uv formula per triangle, with divides.**
 t1_fold_tri (nd_comb.c:696-716) calls pm_tex_size and does 6 float divides per vertex on every triangle when ep_t1f is set. It recomputes uv with nd_gv_params's formula in a different operation order (nd_model.c:31-36).
 Fix: use ep_p.uvso (u = tc * uvso.xy + uvso.zw).
 
-**A12 (game loop, S). Switch lookups run per frame and per kick.**
+**[done W6] A12 (game loop, S). Switch lookups run per frame and per kick.**
 pm_debug_has runs every frame for "pacestat" (pm_main.c:472), "fpslog" (:614) and "logstat" (:639), for "prevcpu", "stereo" and "grabtest" (pm_gpu.c:2374, 2377, 2402), and on every audio kick for "audiostat" (pm_audio.c:198). Each lookup costs a hash plus a strcmp (pm_log.c:171-185).
 Fix: use PMDL (pm_port.h:68), which costs one compare.
 
 ### B. Correctness and seams
 
-**B1 (memory, ring; S). At 30 fps, ring chunks are never reused.**
+**[done W4] B1 (memory, ring; S). At 30 fps, ring chunks are never reused.**
 ring_done is set only when the frame begin waited with SYNCDRAW: `if (fb_flags) ring_done = ring_fr` (pm_gpu.c:2361). fb_flags is SYNCDRAW only when pm_interp_on > 0 (fps60; pm_gpu.c:2358), and the default is fps60 = 0 (pm_options.c:14). ring_pick skips any used chunk with stamp >= ring_done (pm_gpu.c:2134), and ring_done stays 0. So each ring wrap allocates a new 384 KB linear chunk (16384 x 16 + 65536 x 2, pm_gpu.c:122) that is never freed. After 7 extra chunks (RING_CHUNK_MAX 8, :131), ring_pick returns -1, ring_need returns 0, and rectangles and triangles are refused (rr_why[5], pm_gpu.c:3635, 3781).
 Class: dropped draws, and up to 2.7 MB of linear memory held.
 Fix: set ring_done = ring_fr after any frame begin that waited for the GX queue, or stamp chunks against pm_gx_done().
@@ -124,7 +124,7 @@ Fix: make the walker setters and nd_words one function.
 au2off au2trace audiohash audiolock battlelist battlen btlstatus camlog coreprobe crashframe crashtest crashtest_audio crashtest_audio_call crashtest_call creditsseek decalbias demobattle depthview dspaux dspflush dspfx dspgain emlog entlog entskip exitframe faulttest fillcyc fillog flashfake flashheavy flushlog fpslog fs1delay fs1old fxdx fxlist grabtest imglog lognull mapflags mashlog mashx modeldump msgtest noaudio padov padrand pauseskip pm5draw prevcpu prevtest profstall ptrcheck ptrtest rectred romstrict runaway shotskip simlog texnearest texrlog tourfx tx1check warptest wdog.
 Deleting them is a user decision, because CLAUDE.md rule 7 says debug tools may stay.
 
-**C5 (local, S). PMD is defined 4 times and never sees a change.** The same PMD macro is defined at nd_comb.c:63, nd_rect.c:44, nd_set.c:18 and pm_main.c:14. It caches a word forever, so it never sees an options-panel change. PMDL (pm_port.h:68) does see it. Fix: use one macro, PMDL.
+**[done W6] C5 (local, S). PMD is defined 4 times and never sees a change.** The same PMD macro is defined at nd_comb.c:63, nd_rect.c:44, nd_set.c:18 and pm_main.c:14. It caches a word forever, so it never sees an options-panel change. PMDL (pm_port.h:68) does see it. Fix: use one macro, PMDL.
 
 **[done W1] C6 (local, S). Counters print slots and names that are no longer true.** Only slots 4, 6, 8 and 9 of nraw_why are written (pm_gpu.c:1197, 1206, 1211, 1228), but nd_ent.c:288 and pm_heaphi.c:76 print slots 1, 2, 3, 5 and 7, which are always 0. rect_log prints rect_c[4] as "cpu" (pm_gpu.c:3678), but the counter now counts dropped rectangles (:3698, :3801).
 
@@ -141,9 +141,9 @@ Deleting them is a user decision, because CLAUDE.md rule 7 says debug tools may 
 | W1 | A1 census gated; C1, C2, C6 dead state | build, nd_host, 5 det byte gates | done (all 5 byte-equal to base) |
 | W2 | A2 one draw key, A5 cold debug blocks out of nd_raw_native | same, plus wcen_mac01 prof=4 gbi phase | done: byte-equal; nd_raw_native 8,996 to 6,332 B, close path 19,288 to 16,832 B; TevKey built only for ndref and drawcensus; nd_tmpl_build repeats the last key with no hash |
 | W3 | A3, A4 pm5 through the shadow | same | done: byte-equal (battle_start_f182 has pm5 draws); the shadow resets only at a program change (prog_use); pm5 uniforms are marked dirty only when they differ from citro3d's copy (u5set, u5mtx); no palk copy for pm5. The 588 B d5 copy stays (nd_emit needs no_uni and loc_uvx) |
-| W4 | B1 ring reuse at 30 fps | same (a ring wrap scenario if one exists, else code trace) | open |
-| W5 | A7, A8, A11 gtrip and gappend lookups | same | open |
-| W6 | A10, A12, C5 combine hash and switch macros | same | open |
+| W4 | B1 ring reuse at 30 fps | same (a ring wrap scenario if one exists, else code trace) | done: byte-equal; no scenario wraps the ring, so the proof is the code trace: C3D_FrameBegin without NONBLOCK calls gxCmdQueueWait(-1) (libcitro3d renderqueue.o disassembly), so ring_done = ring_fr at every begin |
+| W5 | A7, A8, A11 gtrip and gappend lookups | same | done for A7 and the palette part of A8: byte-equal; one palette search per vertex (pal_lookup), wide check once per triangle. The parameter memcmp of A8 stays (gtrip has one caller, a later epoch id is a small gain). A11 not done: t1_fold_tri runs only for a TEXEL1 window fold (ep_t1f), and its uv feeds a floor, so the other rounding order could move a fold |
+| W6 | A10, A12, C5 combine hash and switch macros | same | done: byte-equal; PMD removed (PMDL everywhere, it follows option changes); the per-frame and per-kick lookups use PMDL; the inline sc_sig copy calls sc_sig_now. The two combine hashes stay: scm_sig misses keyc, keys and conv_k4, so a merged key or a hash-indexed memo would change which entry replays |
 | W7 | A6 texture slot index | same | open |
 | W8 | B2, B3 seams (pixels change) | before and after shot of the subject, byte-equal elsewhere | open |
 | W9 | A9 combine fact owner, B4 decoder merge | same as W1 | open |

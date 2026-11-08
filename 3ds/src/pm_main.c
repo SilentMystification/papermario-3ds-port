@@ -13,7 +13,6 @@
 unsigned pm_log_late_con(void); /* pm_log.c: B1 check */
 unsigned pm_log_con_copies(void), pm_log_con_nomenu(void), pm_log_late_drop(void);
 /* O6: a switch word read once. Not for the words the options panel changes at run time (nofog, nolight). */
-#define PMD(word) ({ static int v_ = -1; if (v_ < 0) v_ = pm_debug_has(word); v_; })
 #include "pm_gpu.h"
 #include "nd.h"
 
@@ -307,7 +306,7 @@ static int pm_det_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("det
 void pm_audio_step(void) {
     if (au_kicked) return;
     au_kicked = 1;
-    if (PMD("noaudio")) return;
+    if (PMDL("noaudio")) return;
     unsigned n = pm_audio_lock() || pm_det_on() ? 2u : pm_audio_retraces(); /* DET: 2 a step */
     pm_audio_last_n = n;
     PH_ADD(C_ATICK, n);
@@ -469,7 +468,7 @@ void pm_frame_loop(void) {
             fa_state = 2; /* R: one game step, with no catch-up and no wait (sched_next and step_vb_ok as at a resume) */
             sched_next = 0; step_vb_ok = 0;
         }
-        pace_on = pm_debug_has("pacestat");
+        pace_on = PMDL("pacestat");
         if (pace_on) pace_stat(now, tick_hz, frame);
         if (!draw) {
             pm_gfx_retrace();
@@ -482,7 +481,7 @@ void pm_frame_loop(void) {
              * counter. The next drawn iteration waits for one more vblank in C3D_FrameBegin(SYNCDRAW), so this
              * waits until the counter is PM_VBLANKS_PER_STEP - 1 past the last drawn iteration. A slow frame is
              * already past it: no wait and no extra step to catch up. `fast` stays uncapped (debug). */
-            if (!PMD("fast") && step_vb_ok && pm_interp_on <= 0 && sched_next) { /* PT88: wait until the next step is due (sleep, then a short spin) */
+            if (!PMDL("fast") && step_vb_ok && pm_interp_on <= 0 && sched_next) { /* PT88: wait until the next step is due (sleep, then a short spin) */
                 PM_WD_PHASE(3);
                 PH_PUSH(PH_IDLE);
                 for (;;) {
@@ -494,7 +493,7 @@ void pm_frame_loop(void) {
                     else break;
                 }
                 PH_POP();
-            } else if (!PMD("fast") && step_vb_ok && pm_interp_on > 0) {
+            } else if (!PMDL("fast") && step_vb_ok && pm_interp_on > 0) {
                 PM_WD_PHASE(3);
                 int guard = PM_VBLANKS_PER_STEP + 1;
                 PH_PUSH(PH_IDLE);
@@ -515,7 +514,7 @@ void pm_frame_loop(void) {
          * PM_VBLANKS_PER_STEP vblanks and this step starts when that many vblanks have already passed since the last drawn one (on time it starts after 1). At most FS1_MAX_RUN skips in a row.
          * The game logic runs as always (gfxTaskNum 3 in gfxRetrace_Callback), FrameBegin and FrameEnd are not called, the picture on screen stays. */
         int fs_skip = 0, fs_force_skip = 0;
-        if (ever && step_vb_ok && !fs1_off && !PMD("fast") && !pm_det_on()) { /* PT87: also with fps60: a late step skips its draws (the key frame too), the game logic keeps 30 steps a second. Not with fast (uncapped debug runs). */
+        if (ever && step_vb_ok && !fs1_off && !PMDL("fast") && !pm_det_on()) { /* PT87: also with fps60: a late step skips its draws (the key frame too), the game logic keeps 30 steps a second. Not with fast (uncapped debug runs). */
             fs1_steps++;
             /* FS1b: skip the draw whenever a whole step of the schedule has passed since the last drawn or skipped step (the step is at least one vblank late).
              * A skip pays two vblanks (step_vb += 2), so the draws stay on the schedule and the game logic runs at the full rate. */
@@ -582,7 +581,7 @@ void pm_frame_loop(void) {
         pm_ph_frame_end();
         }
         if (fs1_on_log && (fs1_steps % 300) == 0 && fs1_steps != fs1_logged) { fs1_logged = fs1_steps; pm_log_hw("fs1 skipped %u of %u steps", fs1_skipped, fs1_steps); }
-        if (PMD("detlog")) { /* DET: one line per game step: the draw sequence (key and lerp frames), the vblanks since the last step, the audio ticks, the RNG and noise state, texture evictions */
+        if (PMDL("detlog")) { /* DET: one line per game step: the draw sequence (key and lerp frames), the vblanks since the last step, the audio ticks, the RNG and noise state, texture evictions */
             pm_log_d("det step %u keys %u draws %u iv %u skip %d interp_skip %d aud %u rng %08x noise %08x evict %u", frame, det_keys, det_draws, det_iv, fs_skip, pm_interp_skip, pm_audio_last_n, gRandSeed, pm_gpu_noise_state(), pm_tex_evict_n());
             det_keys = det_draws = 0; pm_audio_last_n = 0;
         }
@@ -611,7 +610,7 @@ void pm_frame_loop(void) {
             if (vbn - fps_vb0 >= 60) { /* PT87: a window of one second (was two) */
                 fps = (float)presents * 60.f / (float)(vbn - fps_vb0);
                 fps_draw = (float)drawn * 60.f / (float)(vbn - fps_vb0);
-                if (pm_debug_has("fpslog")) pm_log_d("hud fps: drawn %u steps %u vblanks %u -> %.1f/%.1f", drawn, presents, vbn - fps_vb0, fps_draw, fps);
+                if (PMDL("fpslog")) pm_log_d("hud fps: drawn %u steps %u vblanks %u -> %.1f/%.1f", drawn, presents, vbn - fps_vb0, fps_draw, fps);
                 late_pct = drawn ? (int)(100u * late_n / drawn) : 0; /* late_n counts drawn steps only */
                 presents = 0;
                 drawn = 0;
@@ -636,7 +635,7 @@ void pm_frame_loop(void) {
             pm_mem_log("tick");
             pm_log_d("log writer core %d heartbeat %u dropped %u", pm_log_writer_core(), pm_log_writer_hb(), pm_log_dropped());
         }
-        if (pm_debug_has("logstat")) {
+        if (PMDL("logstat")) {
             if (!stat_t0) stat_t0 = now;
             stat_ms += frame_ms;
             if (++stat_n == 300) {
@@ -681,7 +680,7 @@ void pm_frame_loop(void) {
             if (have_fps) snprintf(top, sizeof(top), "%.0f/%d FPS late%d%% %5.1f ms", fps_draw, pm_interp_on > 0 ? 60 : 30, late_pct, frame_ms);
             else snprintf(top, sizeof(top), "-/- FPS %5.1f ms", frame_ms);
             const char* stat_p = NULL; /* the stats row exists only with the stats option */
-            if (pm_opt.dbg_stats || pm_debug_has("stats") || PMD("fast")) { snprintf(stats, sizeof stats, "%s", pm_gbi_stats()); stat_p = stats; }
+            if (pm_opt.dbg_stats || pm_debug_has("stats") || PMDL("fast")) { snprintf(stats, sizeof stats, "%s", pm_gbi_stats()); stat_p = stats; }
             snprintf(sys, sizeof sys, "apt: %s %s #%s", lim, pm_new3ds ? "N3DS" : "O3DS", PM_BUILD_STR);
             { /* MAPHUD: 2 s of steps after a map change. The step runs with the HUD off too (the map info line and the footer map). */
                 char mapb[3][40]; /* MAPHUD: the map block, HUD rows 4 to 6: the change text for 2 s, else the current map */

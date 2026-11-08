@@ -60,7 +60,6 @@ unsigned lcg_s = 12345u;
 float lcg_f(void) { lcg_s = lcg_s * 1664525u + 1013904223u; return (float)((lcg_s >> 8) & 0xffff) / 65535.f; }
 static void sync_combine_work(void);
 
-#define PMD(word) ({ static int v_ = -1; if (v_ < 0) v_ = pm_debug_has(word); v_; })
 #define GP_SET(k, same) do { if (gp_on()) gp_note(k, (same)); } while (0)
 #define pm_gpu_flush() pm_gpu_flush_at(__LINE__) /* PG0: the flush counter by cause (prof mode) */
 
@@ -579,11 +578,7 @@ void sync_combine(void) {
     if (chk) combchk_run(&cin, !hit);
     sc_ok = 1;
     if (leg_mode != leg0 || box_pat != pat0) {   /* the work may change leg_mode and box_pat (inputs): the signature of the next call must start from the new value (PG4: no other input changes, so the hash is made again only then) */
-        unsigned parts[] = { nd_ws.comb_w0, nd_ws.comb_w1, nd_ws.omode_h, nd_ws.prim, nd_ws.envc, (unsigned)(u8)nd_ws.prim_lod, keyc, keys, conv_k4, (unsigned)leg_mode,
-                             (unsigned)(nd_ws.tex_on | nd_ws.use_t1 << 1 | nd_ws.td[1].valid << 2 | dual_on << 3 | box_prod << 4 | box_pat << 5 | box_folded << 6 | comb_set << 7 | comb_alpha_shade << 8) };
-        unsigned sg = 2166136261u;
-        for (unsigned k = 0; k < sizeof parts / sizeof parts[0]; k++) sg = (sg ^ parts[k]) * 16777619u;
-        sc_sig = sg;
+        sc_sig = sc_sig_now();
     }
 }
 
