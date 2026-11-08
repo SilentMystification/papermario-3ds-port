@@ -402,6 +402,11 @@ static void pf_reset(void) {
 }
 /* PROF: the harness placed Mario (pos= switch, pm_warp.c pm_pos_log): a new window starts at the placed position */
 void pm_ph_scene_moved(void) { pf_reset(); }
+/* TOUR1: tour mode (pm_warp.c map tour). The tour owns the window: no 300-frame report and no scene drop. pm_ph_window_open starts a window
+ * after the load settles; pm_ph_window_close prints it (pf_report divides by pf_w and pf_s, so a short window is valid) before the next warp. */
+static int pf_tour;
+static char pf_tlabel[48];
+void pm_ph_tour_mode(int on) { pf_tour = on; }
 static void pf_scene_note(void) {
     if (pf_sc[0] == -1) {
         pf_sc[0] = cur_area; pf_sc[1] = cur_map; pf_sc[2] = cur_mode;
@@ -501,8 +506,21 @@ void pm_pf_frame(unsigned long long t0, unsigned long long t1) {
     unsigned iv = pm_ph_iv;
     pf_iv[iv < 1 ? 0 : iv > 4 ? 3 : iv - 1]++;
     pf_total++;
+    pf_w++;
+    if (pf_tour) return; /* TOUR1: the tour opens and closes the window */
     pf_scene_note();
-    if (++pf_w >= 300) pf_report();
+    if (pf_w >= 300) pf_report();
+}
+void pm_ph_window_open(const char* label) {
+    snprintf(pf_tlabel, sizeof pf_tlabel, "%s", label);
+    if (!pm_pf_on) return;
+    pf_reset();
+    pf_scene_note(); /* the scene and the start position of this window */
+}
+void pm_ph_window_close(void) {
+    if (!pm_pf_on || !pf_w) return;
+    pm_log_prof_line("prof f%u w%u tour %s", pf_total, pf_w, pf_tlabel);
+    pf_report();
 }
 /* PROFROW: the prof counter setup and the calibration line. Called at boot (pf_init) and when the Profiling row turns prof on. */
 static void pf_start(void) {

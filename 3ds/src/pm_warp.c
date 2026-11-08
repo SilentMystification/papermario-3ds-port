@@ -87,14 +87,20 @@ int pm_debug_value(const char* key, char* out, unsigned n) {
 
 static int smoke_frames = 300, w_loadslot = -1;
 static int warp_on, warp_done, scene_f0 = -1, smoke_on;
-/* S30: tour=<map>:<entry>,<map>:<entry>,... After warp= (or preset=) has loaded its first map, the real GotoMap path
-   (set_map_transition_effect + set_game_mode(GAME_MODE_CHANGE_MAP), as in src/evt/map_api.c goto_map) visits every
-   map of the list, TOUR_FRAMES frames each. Log lines "tour: ...". Debug tool only (class E). */
-#define TOUR_FRAMES 40
-static char tour[6000];
+/* S30, TOUR1: map tour. tour=<map>:<entry>[@x:y:z],... or tour=@file (map:entry list in the SD app folder), or tourlist=all (every map of gAreas
+ * without tst_, the spot of spots.txt in the SD app folder when it has the map, else entry 0). After warp= (or preset=) has loaded its first map,
+ * the real GotoMap path (set_map_transition_effect + set_game_mode(GAME_MODE_CHANGE_MAP), as in src/evt/map_api.c goto_map) visits every map.
+ * Per item: WARP (gRandSeed = TOUR_SEED, map change) -> SETTLE (TOUR_SETTLE frames after the map is in, no window) -> MEASURE (prof window,
+ * tourtime=<s> seconds, default 4) -> CLOSE (window line `prof f<n> w<n> tour <i>/<n> <map>:<entry>`) -> next WARP. A map or mode change
+ * inside MEASURE closes the window early, so no window holds two scenes. End line `tour: done items <n>`. Debug tool only (class E). */
+#define TOUR_SETTLE 60 /* frames: the placed position (POS_DELAY + POS_READBACK = 40) and the texture loads of the first view are done */
+#define TOUR_SEED 0x2A5F3C11u
+enum { TS_START, TS_WAIT, TS_SETTLE, TS_MEASURE };
+static char* tour;
 static const char* tour_next;
-static unsigned tour_f0, tour_ts;
-static int tour_n, tour_wait;
+static unsigned tour_f0, tour_ts, tour_len = 120;
+static int tour_n, tour_total, tour_st, tour_entry, tour_wa, tour_wm;
+static char tour_name[16];
 static s32 w_story = STORY_INTRO;
 static int w_story_set; /* WARPFIX: story= or preset= given. Without it a loaded save keeps its story progress. */
 /* WARPFIX2: a new-file state (boot warp without loadslot, file select or title warp, boss launch outside the world) writes no save.
@@ -139,7 +145,7 @@ static s32 w_entry, w_flag, w_partner;
 static float pos_v[4];
 static int pos_n, pos_on, pos_state, pos_area = -1, pos_map = -1;
 /* POSWARP: a pending position. A warp that starts a load arms it for that map only (pend_arm); pm_warp_world_mode applies it on that map and clears it. */
-static int pend_on, pend_n, pend_area = -1, pend_map = -1;
+static int pend_on, pend_n, pend_area = -1, pend_map = -1, pend_tour, pos_tour;
 static float pend_v[4];
 static void pend_arm(int areaID, int mapID, const float* v, int n) { pend_on = 1; pend_n = n; pend_area = areaID; pend_map = mapID; memcpy(pend_v, v, sizeof pend_v); }
 static unsigned pos_f0, pos_t;
@@ -159,9 +165,9 @@ int pm_pos_parse(const char* s, float* out) {
 
 /* WARPY: the floor under x z. The game's own collider ray (test_ray_colliders, the call of pos_probe) from y + 1000 down, length 2000.
  * *found is 0 when no collider is hit (the caller keeps the given y). */
-static float pos_floor(float x, float y, float z, int* found) {
+static float pos_floor(float x, float y, float z, float up, int* found) {
     f32 hx, hy, hz, hd = 2000.0f, nx, ny, nz;
-    s32 cid = test_ray_colliders(COLLIDER_FLAG_IGNORE_PLAYER, x, y + 1000.0f, z, 0.0f, -1.0f, 0.0f, &hx, &hy, &hz, &hd, &nx, &ny, &nz);
+    s32 cid = test_ray_colliders(COLLIDER_FLAG_IGNORE_PLAYER, x, y + up, z, 0.0f, -1.0f, 0.0f, &hx, &hy, &hz, &hd, &nx, &ny, &nz);
     *found = cid > NO_COLLIDER;
     return *found ? hy : y;
 }
@@ -237,10 +243,11 @@ static void pos_floorscan(void) {
     for (i = 0; i < ne; i++) pm_log("floorscan: edge %d x %.3f y %.3f z %.3f", i, ex[i], ey[i], ez[i]);
 }
 
-void pm_pos_set(const float* v, int n) {
+/* up: the ray starts at y + up. pos= and the padscript use 1000; a tour spot uses 200 (TOUR1), below a roof over the spot. */
+static void pos_place(const float* v, int n, float up) {
     PlayerStatus* ps = &gPlayerStatus;
     int found;
-    float fy = pos_floor(v[0], v[1], v[2], &found); /* WARPY: a warp puts Mario on the floor, not at the given y */
+    float fy = pos_floor(v[0], v[1], v[2], up, &found); /* WARPY: a warp puts Mario on the floor, not at the given y */
     if (found) pm_log("poswarp: floor y %.3f -> %.3f", v[1], fy);
     else pm_log_w("poswarp: floor y %.3f -> no floor under x %.3f z %.3f, y kept", v[1], v[0], v[2]);
     ps->pos.x = v[0];
@@ -255,6 +262,7 @@ void pm_pos_set(const float* v, int n) {
     gCameras[CAM_DEFAULT].targetPos.y = ps->pos.y;
     gCameras[CAM_DEFAULT].targetPos.z = ps->pos.z;
 }
+void pm_pos_set(const float* v, int n) { pos_place(v, n, 1000.0f); }
 
 /* set: the requested position. The settled position is gPlayerStatus now (the ground logic may have moved Mario, e.g. a fall). */
 void pm_ph_scene_moved(void); /* pm_phase.c */
@@ -303,7 +311,10 @@ static void pos_tick(unsigned frame) {
         if (pf == 5 && pm_debug_has("floorscan")) pos_floorscan();
     }
     if (pos_state == 0 && frame - pos_f0 >= POS_DELAY) {
-        pm_pos_set(pos_v, pos_n);
+        if (pos_tour) {
+            pos_place(pos_v, pos_n, 200.0f);
+            pm_log_evt("tour: at %s y %.3f", gAreas[gGameStatusPtr->areaID].maps[gGameStatusPtr->mapID].id, gPlayerStatus.pos.y);
+        } else pm_pos_set(pos_v, pos_n);
         gCameras[CAM_DEFAULT].needsReinit = true; /* MENU3 camera: the zone camera re-inits at the placed spot (cam_mode_zone_interp.c needsReinit block) */
         pos_state = 1;
         pos_t = frame;
@@ -313,6 +324,81 @@ static void pos_tick(unsigned frame) {
         pm_pos_log(pos_v, "readback");
         pos_state = 2;
     }
+}
+
+/* TOUR1: a whole file of the SD app folder, NUL-terminated (malloc, once per run). NULL when it does not open. */
+static char* tour_file(const char* fn) {
+    FILE* f = fopen(fn, "rb");
+    long n;
+    char* b;
+    if (!f) return NULL;
+    fseek(f, 0, SEEK_END); n = ftell(f); fseek(f, 0, SEEK_SET);
+    b = n >= 0 ? malloc((size_t)n + 1) : NULL;
+    if (b) { n = (long)fread(b, 1, (size_t)n, f); b[n] = 0; }
+    fclose(f);
+    return b;
+}
+/* TOUR1: the spot of map id in spots.txt (lines map:entry@x:y:z, more columns after a space, # comments): its first token into o, else id:0. */
+static void tour_spot(const char* sp, const char* id, char* o, unsigned on) {
+    size_t k = strlen(id);
+    const char* l = sp;
+    while (l && *l) {
+        if (strncmp(l, id, k) == 0 && l[k] == ':') {
+            unsigned j = 0;
+            while (l[j] && l[j] != ' ' && l[j] != '\t' && l[j] != '\r' && l[j] != '\n' && j + 1 < on) { o[j] = l[j]; j++; }
+            o[j] = 0;
+            return;
+        }
+        l = strchr(l, '\n');
+        if (l) l++;
+    }
+    snprintf(o, on, "%s:0", id);
+}
+/* TOUR1: the tour switches (tour=, tour=@file, tourlist=all|@file, tourtime=<s>). Items are separated by commas in the tour buffer. */
+static void tour_parse(void) {
+    char v[256];
+    if (pm_debug_value("tourlist", v, sizeof v) && strcmp(v, "all") == 0) {
+        char* sp = tour_file("spots.txt");
+        int i, j, ns = 0;
+        size_t cap = 40u * (size_t)pm_warp_map_count() + 1, len = 0;
+        tour = malloc(cap);
+        if (tour) {
+            tour[0] = 0;
+            for (i = 0; gAreas[i].maps != NULL; i++)
+                for (j = 0; j < gAreas[i].mapCount; j++) {
+                    const char* id = gAreas[i].maps[j].id;
+                    char it[40];
+                    if (pm_warp_is_test_map(id)) continue;
+                    tour_spot(sp, id, it, sizeof it);
+                    ns += strchr(it, '@') != NULL;
+                    len += (size_t)snprintf(tour + len, cap - len, "%s,", it);
+                }
+        }
+        pm_log("tour: list all, %d maps with a spot (spots.txt %s)", ns, sp ? "read" : "absent");
+        free(sp);
+    } else if (pm_debug_value("tourlist", v, sizeof v) || pm_debug_value("tour", v, sizeof v)) {
+        if (v[0] == '@') { /* @file: the switch string is only 256 bytes */
+            char* c;
+            tour = tour_file(v + 1);
+            if (!tour) pm_log_w("tour: file %s not found", v + 1);
+            for (c = tour; c && *c; c++) if (*c == '\n' || *c == '\r' || *c == ' ') *c = ',';
+        } else tour = strdup(v);
+    }
+    if (!tour) return;
+    tour_next = tour;
+    {
+        const char* c = tour;
+        tour_total = 0;
+        while (*c) { /* items: runs of characters between commas */
+            while (*c == ',') c++;
+            if (*c) tour_total++;
+            while (*c && *c != ',') c++;
+        }
+    }
+    if (pm_debug_value("tourtime", v, sizeof v)) { float t = strtof(v, NULL); if (t > 0.f) tour_len = (unsigned)(t * 30.f); }
+    tour_st = TS_START;
+    { extern void pm_ph_tour_mode(int on); pm_ph_tour_mode(1); }
+    pm_log("tour: %d items, settle %d frames, window %u frames, seed %08x", tour_total, TOUR_SETTLE, tour_len, TOUR_SEED);
 }
 
 int pm_warp_active(void) {
@@ -361,22 +447,7 @@ int pm_warp_active(void) {
         if (!found) w_story = atoi(v);
     }
     if (pm_debug_value("partner", v, sizeof v)) w_partner = atoi(v); /* partner=<n>: PARTNER_* id, 1 = Goombario */
-    if (pm_debug_value("tour", tour, sizeof tour)) {
-        tour_next = tour;
-        if (tour[0] == '@') { /* tour=@file: map:entry list in a file of the SD app folder (the switch string is only 256 bytes) */
-            char fn[40];
-            FILE* tf;
-            strncpy(fn, tour + 1, sizeof fn - 1);
-            fn[sizeof fn - 1] = 0;
-            tour[0] = 0;
-            if ((tf = fopen(fn, "r")) != NULL) {
-                size_t n = fread(tour, 1, sizeof tour - 1, tf);
-                fclose(tf);
-                tour[n] = 0;
-                for (n = 0; tour[n]; n++) if (tour[n] == 10 || tour[n] == 13 || tour[n] == ' ') tour[n] = ',';
-            }
-        }
-    }
+    tour_parse();
     /* F01: a tour visits maps at story 0 with a new file (no partner). The real game has a partner at trd_06 and later maps (trd_06 InitializeFallingPartner, partner_walking_enable need one), so the tour uses Goombario unless partner= says otherwise. */
     if (tour_next != NULL && w_partner == 0) w_partner = 1;
     /* H06e: a warp past the prologue also needs a partner. tik_01_CheckDripCollisionWithNPC reads the partner npc, the real game has one in the sewers. */
@@ -936,13 +1007,14 @@ void pm_warp_world_mode(unsigned frame) {
         pend_on = 0;
         pos_n = pend_n; memcpy(pos_v, pend_v, sizeof pos_v); pos_on = 1;
         pos_area = pend_area; pos_map = pend_map;
+        pos_tour = pend_tour; pend_tour = 0;
         pos_f0 = frame;
         pos_state = 0;
     }
-    if (tour_next && warp_on) {
-        tour_f0 = frame; /* a map of the tour is in */
-        tour_wait = 0;
-        { /* NDT3: tourshot=<k> takes one shot k frames after each tour map is in (k below TOUR_FRAMES): one start, one shot per scene */
+    if (tour_next && warp_on && tour_st != TS_MEASURE) {
+        tour_f0 = frame; /* a map of the tour is in: SETTLE (again, when a script changed the map during SETTLE) */
+        tour_st = TS_SETTLE;
+        { /* NDT3: tourshot=<k> takes one shot k frames after each tour map is in: one start, one shot per scene */
             static int tsk = -2; char tsv[16];
             extern void pm_gpu_shot_window(unsigned from, unsigned n);
             if (tsk == -2) tsk = pm_debug_value("tourshot", tsv, sizeof tsv) ? atoi(tsv) : -1;
@@ -967,13 +1039,14 @@ static void tour_step(void) {
     while (*tour_next == ',') tour_next++;
     if (!*tour_next) {
         { extern void pm_gpu_ndn_window_end(void); pm_gpu_ndn_window_end(); } /* MDL-5e debug: the fallback window of the tour */
-        pm_log("tour: done, %d maps", tour_n);
+        { extern void pm_ph_tour_mode(int on); pm_ph_tour_mode(0); }
+        pm_log_evt("tour: done items %d", tour_n); /* test-event line: passes the gate in prof mode */
         tour_next = NULL;
         return;
     }
     while (*tour_next && *tour_next != ':' && *tour_next != ',' && i + 1 < sizeof name) name[i++] = *tour_next++;
     name[i] = 0;
-    if (*tour_next == ':') entry = atoi(++tour_next);
+    if (*tour_next == ':') { entry = atoi(++tour_next); while (*tour_next == '-' || (*tour_next >= '0' && *tour_next <= '9')) tour_next++; } /* TOUR1: past the number, so an @x:y:z after it is read */
     if (*tour_next == '@') { /* POSWARP: map:entry@x:y:z puts Mario at that point on this map */
         char pv[40]; unsigned j = 0;
         tour_next++;
@@ -986,10 +1059,14 @@ static void tour_step(void) {
     tour_n++;
     if (!get_map_IDs_by_name(name, &areaID, &mapID)) {
         pm_log_w("tour: map %s not in gAreas", name);
+        tour_step(); /* the next item */
         return;
     }
     pm_log("tour: next %s entry %d (area %d map %d) t=%u ms", name, entry, areaID, mapID, pm_uptime_ms());
-    if (tpn) pend_arm(areaID, mapID, tpos, tpn); /* POSWARP: this step's position, on its map */
+    if (tpn) { pend_arm(areaID, mapID, tpos, tpn); pend_tour = 1; } /* POSWARP: this step's position, on its map; TOUR1: y snapped from y + 200 */
+    memcpy(tour_name, name, sizeof tour_name);
+    tour_entry = entry;
+    gRandSeed = TOUR_SEED; /* TOUR1: every warp starts from one seed, so the map init draws the same random numbers each run */
     /* F01: the tour skips the exit script of the map (kmr_23 N(func_80240010_907A40)). Do what it does, else the curtain callback runs on the next map. */
     set_curtain_scale_goal(2.0f);
     set_curtain_draw_callback(NULL);
@@ -1001,7 +1078,42 @@ static void tour_step(void) {
     gGameStatusPtr->entryID = (s16)entry;
     set_map_transition_effect(TRANSITION_STANDARD);
     set_game_mode(GAME_MODE_CHANGE_MAP);
-    tour_wait = 1;
+    tour_st = TS_WAIT;
+}
+
+/* TOUR1: the tour state machine, once per step. */
+static void tour_tick(unsigned frame) {
+    extern void pm_ph_window_open(const char* label);
+    extern void pm_ph_window_close(void);
+    if (tour_st == TS_WAIT) {
+        if (frame - tour_ts > 300) { /* the change was refused or never came */
+            pm_log_w("tour: no map change within 300 frames, next item");
+            tour_ts = frame;
+            tour_step();
+        }
+    } else if (tour_st == TS_SETTLE) {
+        if (frame - tour_f0 < TOUR_SETTLE || get_game_mode() != GAME_MODE_WORLD) return;
+        if (tour_n == 0) { /* the warp= map is not an item: go to the first item */
+            tour_ts = frame;
+            tour_step();
+        } else {
+            char lb[48];
+            snprintf(lb, sizeof lb, "%d/%d %s:%d", tour_n, tour_total, tour_name, tour_entry);
+            tour_wa = gGameStatusPtr->areaID; tour_wm = gGameStatusPtr->mapID;
+            pm_ph_window_open(lb);
+            pm_log_evt("tour: window %s open f%u rng %08x", lb, frame, (unsigned)gRandSeed);
+            tour_f0 = frame;
+            tour_st = TS_MEASURE;
+        }
+    } else if (tour_st == TS_MEASURE) {
+        int left = get_game_mode() != GAME_MODE_WORLD || gGameStatusPtr->areaID != tour_wa || gGameStatusPtr->mapID != tour_wm;
+        if (left || frame - tour_f0 >= tour_len) {
+            if (left) pm_log_w("tour: scene left after %u frames, window closed early", frame - tour_f0);
+            pm_ph_window_close();
+            tour_ts = frame;
+            tour_step();
+        }
+    }
 }
 
 /* M03: debug switches `battle` and `demobattle` (class E, no game logic), moved here from the deleted pm_title.c.
@@ -1298,14 +1410,7 @@ void pm_warp_tick(unsigned frame) {
     pos_tick(frame); /* POSWARP */
     pm_cheat_tick(); /* CH6: moon jump, after the game logic of this step */
     if (scene_f0 < 0) return;
-    if (tour_next && !tour_wait && frame - tour_f0 >= TOUR_FRAMES) {
-        tour_ts = frame;
-        tour_step();
-    } else if (tour_next && tour_wait && frame - tour_ts > 300) { /* the change was refused or never came */
-        pm_log_w("tour: no map change within 300 frames");
-        tour_wait = 0;
-        tour_f0 = frame - TOUR_FRAMES + 1;
-    }
+    if (tour_next) tour_tick(frame);
     unsigned f = frame - (unsigned)scene_f0;
     pm_sweep_tick(f); /* SWEEP: markers and end of one item of the full sweep (pm_sweep.c, switch sweep=<name>) */
     battle_hooks(f);
