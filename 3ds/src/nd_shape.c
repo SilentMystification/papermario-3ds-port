@@ -161,8 +161,12 @@ __attribute__((cold, noinline)) int dlc_build(DlcEnt* e, const Gfx* l) {
 
 unsigned dbg_dsg, dbg_seg; /* S3N-3c debug: the static refusal codes */
 /* DLC2: one range of static triangles with the state of the current epoch. Returns 0 when the raw path refuses (nothing was queued). */
+static unsigned seg_osc_ep; /* DARK: the epoch of the last colour image check of a static range */
 __attribute__((noinline)) int dlc_seg(const unsigned short* idx, unsigned nt, unsigned gmi) {
     unsigned tss = ((unsigned)nd_ws.tex_ss << 16) | ((unsigned)nd_ws.tex_ts & 0xffffu);
+    /* DARK: a static range draws into the colour image of its epoch, as draw_tri does. The darkness stencil quad (Gfx_DarknessStencilQuad,
+     * a static list on the SGEN-1 entity path) draws into the 64 x 64 image in the z-buffer memory; without this check it drew on the screen. */
+    if (seg_osc_ep != gv_epoch) { off_screen_check(); seg_osc_ep = gv_epoch; }
     if (ep_epoch != gv_epoch) gv_epoch_enter();
     dbg_seg = 0;
     if (ep_why >= 0) { dbg_seg = 1 + (unsigned)ep_why; return 0; }

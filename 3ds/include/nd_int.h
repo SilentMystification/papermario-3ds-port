@@ -174,6 +174,7 @@ void set_fillcolor(u32 w1);
 void op_setprimcolor(u32 w0, u32 w1);        /* ST-1: nd_state.c */
 void op_setothermode(unsigned op, u32 w0, u32 w1); /* ST-1: nd_state.c */
 void nd_sr_forget(void);                     /* ST-1: nd_state.c, sync_render state forgotten */
+int nd_mix1(unsigned ol, unsigned* col);   /* nd_set.c: the V06 blend colour mix of other mode L (1 and the colour, else 0) */
 void gp_note(int k, int same);               /* PG0 counter, the former pm_gbi.c */
 void lit_freeze(void);                       /* GV5, the former pm_gbi.c */
 extern int sci_x0, sci_y0, sci_x1, sci_y1;   /* ST-1: nd_state.c, scissor of the walker */

@@ -275,10 +275,26 @@
       "purpose": "FX1 row 1: Merlee upgrade spell in dro_02 (live warp, 50 coins, pad file pad_merlee.txt). Shows the card shuffle and reaches the ritual end (state D). Picture check by eye.",
       "scenario": "merlee_spell",
       "cap": 45,
-      "until": "merlee: ritual state D [(]spell done[)]",
+      "until": "merlee: undarken done",
       "tags": [
         "azahar",
         "pic",
+        "merlee"
+      ],
+      "gates": []
+    },
+    {
+      "name": "merlee_spell_prof",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MERLEE lag: Merlee spell in dro_02 with prof=30 (no shots). The merlee darken/undarken lines give frames, ms and model cache misses and clears of the two fades (cast start, star end). Azahar direction only.",
+      "scenario": "merlee_spell_prof",
+      "cap": 45,
+      "until": "merlee: undarken done",
+      "tags": [
+        "azahar",
+        "prof",
         "merlee"
       ],
       "gates": []
@@ -2237,6 +2253,22 @@
       "gates": []
     },
     {
+      "name": "moon_tap_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MOON3: moon jump hold rises at MOON_RISE per step, and each A tap in the fall (JUMPING or FALLING) raises Mario again. Log y per step, one shot in the hover.",
+      "scenario": "moon_tap",
+      "cap": 25,
+      "until": "padscript: done",
+      "tags": [
+        "azahar",
+        "moon",
+        "pic"
+      ],
+      "gates": []
+    },
+    {
       "name": "wcen_mac01_det",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -3364,6 +3396,108 @@
         "azahar",
         "pic",
         "tour"
+      ],
+      "gates": []
+    },
+    {
+      "name": "dark_kgr01",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "DARK: kgr_01 world darkness overlay, wide. Shot shows the screen dark except a lit circle around Mario.",
+      "scenario": "dark_kgr01",
+      "cap": 30,
+      "until": "shot 0 frame \\d+",
+      "tags": [
+        "azahar",
+        "overlay"
+      ],
+      "gates": []
+    },
+    {
+      "name": "dark_kgr01_watt",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "DARK: kgr_01 darkness with Watt's ability (alpha 255 to 90), wide. Shot after the alpha 90 line shows a larger lit circle, the rest dark.",
+      "scenario": "dark_kgr01_watt",
+      "cap": 35,
+      "until": "shot 0 frame \\d+",
+      "tags": [
+        "azahar",
+        "overlay"
+      ],
+      "gates": []
+    },
+    {
+      "name": "tour_battle3",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BT1 premise and picture: battle tour of 3 bosses (0, 16, 32) in one start, one prof window and one shot per battle.",
+      "scenario": "tour_battle3",
+      "cap": 30,
+      "until": "battletour: done items",
+      "tags": [
+        "azahar",
+        "pic",
+        "battle",
+        "tour",
+        "tour_battle"
+      ],
+      "gates": []
+    },
+    {
+      "name": "tour_battle",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BT1: battle tour of all 33 bosses in one start (cheats=action,hp autoa), one prof window per battle, FAIL lines named; the Mario cheat line.",
+      "scenario": "tour_battle",
+      "cap": 100,
+      "until": "battletour: done items",
+      "tags": [
+        "azahar",
+        "battle",
+        "tour",
+        "tour_battle"
+      ],
+      "gates": []
+    },
+    {
+      "name": "tour_battle_prof",
+      "kind": "console_prof",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BT1: battle tour of all 33 bosses on the O3DS in prof mode: one prof window per battle (frame cost of every boss battle).",
+      "scene_match": null,
+      "recipe": "warp=mac_00:4 story=ch0_toad_town battletour=all tourtime=4 cheats=action,hp autoa prof=4",
+      "scenario": "tour_battle",
+      "host": "o3ds",
+      "cap": 600,
+      "until": "battletour: done items",
+      "tags": [
+        "console",
+        "prof",
+        "tour",
+        "tour_battle"
+      ],
+      "gates": []
+    },
+    {
+      "name": "tour_battle_cheat",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BT1 cheat proof: Goomba King with a 20 s window, cheats=action,hp autoa; Mario command, partner command and guard lines.",
+      "scenario": "tour_battle_cheat",
+      "cap": 25,
+      "until": "battletour: done items",
+      "tags": [
+        "azahar",
+        "battle",
+        "tour",
+        "cheat"
       ],
       "gates": []
     }

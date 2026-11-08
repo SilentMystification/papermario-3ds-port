@@ -693,7 +693,7 @@
     {
       "name": "nok11_det",
       "status": "unverified",
-      "reason": "broken: no until in 45 s (AZT11-5, 2026-11-07)",
+      "reason": "DET gate (cold, two runs, byte-equal shots). The splash picture is the subject.",
       "subject": "DET gate cold run: Mario in nok_11 (entry 0), water splash spawned at frame 400, shot 1 at frame 412, with the det switch. Two cold runs must give byte-equal shots.",
       "proves": "DET: the frame schedule is a function of the game steps (no FS1 skip, no interp skip on the vblank count, 2 audio ticks a step), so two cold runs of one build are byte-equal.",
       "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 shots loglevel=debug grablog offdump=410 fixedseed fast fs1off det",
@@ -719,8 +719,7 @@
           "name": "shot a",
           "regex": "fxtest: shot 1 effect 89 water_splash"
         }
-      ],
-      "reason": "DET gate (cold, two runs, byte-equal shots). The splash picture is the subject."
+      ]
     },
     {
       "name": "nok11_detlog",
@@ -2512,6 +2511,38 @@
         }
       ],
       "reason": "CH6 gate: peak y of the moon run (cheat: moon jump y) against the normal run (cheat: jump y), and the top shot at the peak."
+    },
+    {
+      "name": "moon_tap",
+      "status": "unverified",
+      "subject": "Toad Town (mac_00 entry 4), moon jump on: A held 12 scans from the ground (Mario rises at MOON_RISE per step), release (he falls), then 5 taps of A 10 scans apart in the fall. Each tap raises him again: cheat: moon jump y rises after each tap (a tap from a fall re-enters JUMP). One shot in the hover (shotwin 110:40) shows him above the floor.",
+      "proves": "MOON3: pm_cheat_tick (pm_dbg_game.c) pushes on the A rising edge while JUMPING or FALLING (a fall goes back to JUMP) and holds the rise at MOON_RISE = 0.5 x GravityParamsStartJump[0].",
+      "debug": "preset=toad moonjump padscript=wait80,A*12,wait25,A,wait9,A,wait9,A,wait9,A,wait9,A,wait9,wait30 shots shotwin=110:40 loglevel=debug",
+      "until": "padscript: done",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "jump",
+          "regex": "cheat: (moon )?jump y -?[0-9.]+"
+        },
+        {
+          "name": "tap",
+          "regex": "cheat: moon jump tap y -?[0-9.]+"
+        },
+        {
+          "name": "done",
+          "regex": "padscript: done"
+        }
+      ],
+      "reason": "MOON3 gate: y before and after each tap (cheat: moon jump tap y, then cheat: moon jump y), and the shot in the hover."
     },
     {
       "name": "menu_cheats7",
@@ -7121,11 +7152,11 @@
     },
     {
       "name": "merlee_spell",
-      "status": "unverified",
-      "subject": "Merlee (dro_02, NPC at -130 0 -400) casts the upgrade spell. Mario walks to her by padscript, talks, picks the first choice (50 coins from warpitems). The card shuffle (3 cards, imgfx SHUFFLE_CARDS) shows in the shots from the cast start.",
+      "status": "verified",
+      "subject": "Merlee (dro_02, NPC at -130 0 -400) casts the upgrade spell. Mario walks to her by padscript, talks, picks the first choice (50 coins from warpitems). One shot every 6 frames from f596 to f1015: the world fading to black (darken f601 to f632), the card shuffle and flips (f653 to about f850), the fade back (undarken about f970 to f1003).",
       "proves": "FX1 row 1: the cast reaches state D (log merlee: ritual state D), so the script does not hang; the shuffle ret line shows the card imgfx returns 1 or 2 on the 3DS; the picture shows the shuffle.",
-      "debug": "warp=kmr_02:0 story=ch0_toad_town livewarp=120:dro_02:0 warpitems padscript=@pad_merlee.txt shots loglevel=debug",
-      "until": "merlee: ritual state D [(]spell done[)]",
+      "debug": "warp=kmr_02:0 story=ch0_toad_town livewarp=120:dro_02:0 warpitems padscript=@pad_merlee.txt shots shotwin=596:420:6 loglevel=debug",
+      "until": "merlee: undarken done",
       "cap": 45,
       "deadline": 20,
       "first_marker": "livewarp: scene frame 120 to dro_02 entry 0",
@@ -7150,6 +7181,42 @@
         }
       ],
       "reason": "FX1 row 1 (MERLEE). Live warp to dro_02 at frame 120 gives 50 coins (warpitems; plain warp= does not, the coin count was 0 in start 2). Mario is placed by pos_ at -130 0 -370 (30 units from Merlee at -130 0 -400, npc.c), then go_ walks him the last 6 units, facing her. Cap 45 s (upper limit): about 20 s walk and talk, then about 17 s of spell. The until line ends the run when the spell ends. Without the fix the run stops at the cap (the hang)."
+    },
+    {
+      "name": "merlee_spell_prof",
+      "status": "verified",
+      "subject": "Merlee (dro_02) casts the upgrade spell as in merlee_spell, with prof=30 windows and no shots: the frame time of the cast start (orb glow, world darkening) and of the end (energy_in_out star on Mario).",
+      "proves": "MERLEE lag: the merlee darken/undarken start and done lines carry frame, time (ms) and the native model cache misses and clears since boot; their differences are the cost of the two fades (cast start and star end). Azahar direction only; the prof ndm lines give the window totals.",
+      "debug": "warp=kmr_02:0 story=ch0_toad_town livewarp=120:dro_02:0 warpitems padscript=@pad_merlee.txt prof=30 loglevel=debug",
+      "until": "merlee: undarken done",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "prof cal every 30",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "darken start",
+          "regex": "merlee: darken start f\\d+"
+        },
+        {
+          "name": "darken done",
+          "regex": "merlee: darken done f\\d+"
+        },
+        {
+          "name": "shuffle start",
+          "regex": "merlee: shuffle ret [12], state 3"
+        },
+        {
+          "name": "spell done",
+          "regex": "merlee: ritual state D [(]spell done[)]"
+        },
+        {
+          "name": "undarken done",
+          "regex": "merlee: undarken done f\\d+"
+        }
+      ],
+      "reason": "MERLEE row (lag). Same route as merlee_spell; no shots, so the prof windows carry no shot cost. Cap 45 s (upper limit): about 20 s walk and talk, then about 17 s of spell."
     },
     {
       "name": "ui1_sbk56",
@@ -8593,7 +8660,9 @@
       "subject": "mac_00 at -135 0 85, cold det start: textured rects (sky and HUD), shots at frames 200 to 205 (the picture).",
       "proves": "FB-1 ring gate reference: a cold det run of the default ring; two builds give byte-equal shots.",
       "debug": "warp=mac_00:0 pos=-135:0:85 shots shotwin=200:6 loglevel=debug fixedseed fast fs1off det",
-      "extra": ["-Turbo"],
+      "extra": [
+        "-Turbo"
+      ],
       "until": "shot \\d+ frame 205\\b",
       "cap": 45,
       "deadline": 20,
@@ -9056,7 +9125,9 @@
       "subject": "Six maps in one start (golden_multi tour), cold det, prof=4: one ndm line per 300 frames with the native draw and fallback (fb) counts of the window.",
       "proves": "MDL-5e census: ndm fb 0 on the golden tour (every model record drawn natively).",
       "debug": "preset=yard tour=mac_00:4,tik_03:0,isk_04:0,kzn_19:0,mac_01:0 tourshot=30 shots fixedseed fast loglevel=debug profdisk=1 det census",
-      "extra": ["-Turbo"],
+      "extra": [
+        "-Turbo"
+      ],
       "until": "tour: done",
       "cap": 90,
       "deadline": 20,
@@ -9064,8 +9135,14 @@
       "expects": "tour",
       "needs_picture": true,
       "expected_events": [
-        {"name": "first map", "regex": "warp: kmr_20 entry 4"},
-        {"name": "last shot", "regex": "shot 6 frame \\d+"}
+        {
+          "name": "first map",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "last shot",
+          "regex": "shot 6 frame \\d+"
+        }
       ],
       "reason": "MDL-5e census: six map changes (golden_multi list), cold start so the fb count is a function of the build. Cap as golden_multi."
     },
@@ -9083,11 +9160,26 @@
       "expects": "tour",
       "needs_picture": true,
       "expected_events": [
-        {"name": "prof on", "regex": "prof=1 log=off"},
-        {"name": "window mac_01", "regex": "prof f\\d+ w\\d+ tour 2/10 mac_01:0"},
-        {"name": "window trd_01", "regex": "prof f\\d+ w\\d+ tour 9/10 trd_01:0"},
-        {"name": "snap mac_01", "regex": "tour: at mac_01 y "},
-        {"name": "tour done", "regex": "tour: done items 10"}
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "window mac_01",
+          "regex": "prof f\\d+ w\\d+ tour 2/10 mac_01:0"
+        },
+        {
+          "name": "window trd_01",
+          "regex": "prof f\\d+ w\\d+ tour 9/10 trd_01:0"
+        },
+        {
+          "name": "snap mac_01",
+          "regex": "tour: at mac_01 y "
+        },
+        {
+          "name": "tour done",
+          "regex": "tour: done items 10"
+        }
       ],
       "reason": "TOUR1 gate and MDL-5e census: ten map changes, each a load, 60 settle frames and a 30-frame window (about 5 s per map); cold start so the fb count is a function of the build. Cap 90 s for the 10 loads plus the cold boot."
     },
@@ -9105,8 +9197,14 @@
       "expects": "tour",
       "needs_picture": true,
       "expected_events": [
-        {"name": "warp", "regex": "warp: mac_00 entry 4"},
-        {"name": "tour done", "regex": "tour: done items 10"}
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "tour done",
+          "regex": "tour: done items 10"
+        }
       ],
       "reason": "MDL-5f byte reference: tour10_det with nomodelnat (walker geometry of every model record), cold start so the shots are a function of the build. Cap as tour10."
     },
@@ -9124,9 +9222,18 @@
       "expects": "tour",
       "needs_picture": false,
       "expected_events": [
-        {"name": "prof on", "regex": "prof=1 log=off"},
-        {"name": "window 1", "regex": "tour: window 1/\\d+ "},
-        {"name": "tour done", "regex": "tour: done items \\d+"}
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "window 1",
+          "regex": "tour: window 1/\\d+ "
+        },
+        {
+          "name": "tour done",
+          "regex": "tour: done items \\d+"
+        }
       ],
       "reason": "Soak: 411 maps x (60 settle frames = 2 s + tourtime 4 s) = about 2470 s, plus the cold boot and the 45 s scene loads. Cap 2600 s, the one scenario over 45 s. The full tour runs only when the user asks (plan_tours.md)."
     },
@@ -9144,9 +9251,18 @@
       "expects": "tour",
       "needs_picture": false,
       "expected_events": [
-        {"name": "prof on", "regex": "prof=1 log=off"},
-        {"name": "window 1", "regex": "tour: window 1/8 "},
-        {"name": "tour done", "regex": "tour: done items 8"}
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "window 1",
+          "regex": "tour: window 1/8 "
+        },
+        {
+          "name": "tour done",
+          "regex": "tour: done items 8"
+        }
       ],
       "reason": "Curated run: 8 maps x (60 settle frames = 2 s + tourtime 4 s) = about 52 s, plus the cold boot and the scene loads. Cap 90 s, over 45 s for the list length. The n in the until and the expected events is the length of curated.txt: update it with the list."
     },
@@ -9164,7 +9280,10 @@
       "expects": "warp",
       "needs_picture": true,
       "expected_events": [
-        {"name": "ndm window", "regex": "ndm f300 native"}
+        {
+          "name": "ndm window",
+          "regex": "ndm f300 native"
+        }
       ],
       "reason": "MDL-5e census: battle window to frame 300 (the window line of the fb count). Cold start so the count is a function of the build."
     },
@@ -9712,6 +9831,162 @@
         }
       ],
       "reason": "Verified 2026-11-08 (pos1, run 3): Mario on the ground in all 3 shots, outdoors; mac_01 and sbk_02 centred, kmr_20 at the left edge because the entry 0 script holds the camera at story ch0."
+    },
+    {
+      "name": "dark_kgr01",
+      "status": "unverified",
+      "subject": "kgr_01 (inside the whale, entry 0), wide on. EVS_CreateDarkness draws the world darkness overlay (appendGfx_darkness_stencil, OVERLAY_WORLD_DARKNESS) every frame. One shot at frame 150: the screen dark except a soft lit circle around Mario.",
+      "proves": "DARK: the darkness stencil quads draw into the 64 x 64 image in the z-buffer memory (off-screen slot), not on the screen, and the final rectangle darkens the whole screen around the lit circle.",
+      "debug": "warp=kgr_01:0 wide shots shotwin=150:1 loglevel=debug",
+      "until": "shot 0 frame \\d+",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: kgr_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kgr_01 entry 0"
+        },
+        {
+          "name": "darkness",
+          "regex": "X02: darkness world 1 alpha 255"
+        },
+        {
+          "name": "shot 0",
+          "regex": "shot 0 frame \\d+"
+        }
+      ],
+      "reason": "DARK row picture gate. Cap 30 s: map load plus 150 frames plus a cold start margin."
+    },
+    {
+      "name": "dark_kgr01_watt",
+      "status": "unverified",
+      "subject": "kgr_01 entry 0, wide on, partner Watt (partner=6). The padscript presses C-down (Watt's ability), DarkRoomUpdate lowers the overlay alpha from 255 to 90 in steps of 8. One shot at frame 230, after the X02 alpha 90 line shows a larger lit circle, the rest still dark.",
+      "proves": "DARK: the darkness overlay follows the alpha (texScale and the centre move) with Watt's ability on.",
+      "debug": "warp=kgr_01:0 partner=6 wide padscript=wait200,cdown*4 shots shotwin=230:1 loglevel=debug",
+      "until": "shot 0 frame \\d+",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "warp: kgr_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kgr_01 entry 0"
+        },
+        {
+          "name": "watt on",
+          "regex": "X02: darkness world 1 alpha 90 .*partnerAction [1-9]"
+        },
+        {
+          "name": "shot 0",
+          "regex": "shot 0 frame \\d+"
+        }
+      ],
+      "reason": "DARK row Watt case (user fact 2026-11-08). Cap 35 s: map load plus 230 frames plus a cold start margin."
+    },
+    {
+      "name": "tour_battle3",
+      "status": "unverified",
+      "subject": "Boss battle tour of 3 bosses in one start (boss 0 Tubbas Heart, 16 Egg Jr. Troopa, 32 Green Ninja Koopa): each is launched from the world at mac_00, plays 4 s with autoa and cheats=action,hp, ends by BATTLE_STATE_END_BATTLE and comes back to the world. One shot 90 frames after each battle starts (inside the window).",
+      "proves": "BT1 premise: pm_boss_launch reaches GAME_MODE_BATTLE from the world for each boss in one session, and the end path plus boss_restore_tick returns to the world; one prof window per battle.",
+      "debug": "warp=mac_00:4 story=ch0_toad_town battletour=0,16,32 tourtime=4 tourshot=90 shots shotwin=99999:1 cheats=action,hp autoa prof=4",
+      "until": "battletour: done items",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "prof=1 log=off",
+      "expects": "tour",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "window 1",
+          "regex": "prof f\\d+ w\\d+ tour 1/3 battle:Tubbas_Heart_0F"
+        },
+        {
+          "name": "window 3",
+          "regex": "prof f\\d+ w\\d+ tour 3/3 battle:"
+        },
+        {
+          "name": "closed 3",
+          "regex": "battletour: 3/3 battle:\\S+ closed"
+        },
+        {
+          "name": "tour done",
+          "regex": "battletour: done items 3 fail 0"
+        }
+      ],
+      "reason": "BT1 premise check and picture gate: three boss launches, each a map change, a battle load, 60 settle frames, a 120-frame window and the return to the world. Until line at 22.5 s (run 32523). Cap 30 s."
+    },
+    {
+      "name": "tour_battle",
+      "status": "unverified",
+      "subject": "Boss battle tour of every boss of pm_boss_table.h (33) in one start: each is launched from the world at mac_00, plays 4 s with autoa and cheats=action,hp, ends by BATTLE_STATE_END_BATTLE and comes back to the world. Cheat line: a Mario command auto succeeds (the partner and enemy turns come after the 4 s window: tour_battle_cheat).",
+      "proves": "BT1: the battle tour state machine over all bosses (one prof window per battle, FAIL lines with cause), and the Mario part of the CHEATA proof.",
+      "debug": "warp=mac_00:4 story=ch0_toad_town battletour=all tourtime=4 cheats=action,hp autoa prof=4",
+      "until": "battletour: done items",
+      "cap": 100,
+      "deadline": 25,
+      "first_marker": "prof=1 log=off",
+      "expects": "tour",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "mario command",
+          "regex": "cheat: perfect action command, auto success \\(mario\\)"
+        },
+        {
+          "name": "tour done",
+          "regex": "battletour: done items 33"
+        }
+      ],
+      "reason": "Soak: 33 boss battles in one session, each a map change, a battle load, 60 settle frames, a 120-frame window and the return to the world. Until line at 82.1 s (run 34607). Cap 100 s (above 45 s: the full list in one start is the subject, user requirement, plan_tours.md)."
+    },
+    {
+      "name": "tour_battle_cheat",
+      "status": "unverified",
+      "subject": "Battle tour of one boss, Goomba King (boss 13), with a 20 s window, autoa and cheats=action,hp: Mario's turn (Jump), Goombario's turn (Headbonk) and the enemy turn run; the log shows each action command auto succeed and the enemy attack guarded.",
+      "proves": "CHEATA proof in real turns (moved from row CHEATA to BT1): action_command_init_status sets autoSucceed for Mario and for the partner, check_block_input gives a perfect guard.",
+      "debug": "warp=mac_00:4 story=ch0_toad_town battletour=13 tourtime=20 cheats=action,hp autoa prof=4",
+      "until": "battletour: done items",
+      "cap": 25,
+      "deadline": 25,
+      "first_marker": "prof=1 log=off",
+      "expects": "tour",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "mario command",
+          "regex": "cheat: perfect action command, auto success \\(mario\\)"
+        },
+        {
+          "name": "partner command",
+          "regex": "cheat: perfect action command, auto success \\(partner\\)"
+        },
+        {
+          "name": "guard",
+          "regex": "cheat: perfect guard"
+        },
+        {
+          "name": "tour done",
+          "regex": "battletour: done items 1 fail 0"
+        }
+      ],
+      "reason": "BT1 cheat proof: one boss launch, 60 settle frames and a 600-frame window so a full round (Mario, partner, enemy) runs, then the return to the world. Until line at 11.6 s warm (run 34827). Cap 25 s."
     }
   ]
 }
