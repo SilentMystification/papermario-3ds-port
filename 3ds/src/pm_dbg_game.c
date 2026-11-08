@@ -176,9 +176,10 @@ void pm_cheat_moon_set(int on) {
 }
 /* CH7: batch 1 cheats (RAM only): bits in cheat_bits, set at boot by the launch value cheats=<list> (hp, fp, sp, nobattle, speed, comma separated).
  * The tick runs once per step (pm_warp_tick). Each cheat logs once when it first runs, and a refill logs its change. */
-enum { CHB_HP = 1, CHB_FP = 2, CHB_SP = 4, CHB_NOBATTLE = 8, CHB_SPEED = 16 };
-static const char* const cheat_name[5] = { "infinite HP", "infinite FP", "infinite star power", "no battles", "speed x2" };
-static const int cheat_bit[5] = { CHB_HP, CHB_FP, CHB_SP, CHB_NOBATTLE, CHB_SPEED };
+enum { CHB_HP = 1, CHB_FP = 2, CHB_SP = 4, CHB_NOBATTLE = 8, CHB_SPEED = 16, CHB_ACTION = 32 };
+#define PM_CHEAT_ACTION 5 /* index of the Perfect action commands row (RW_CHEAT + 5) */
+static const char* const cheat_name[6] = { "infinite HP", "infinite FP", "infinite star power", "no battles", "speed x2", "perfect action commands" };
+static const int cheat_bit[6] = { CHB_HP, CHB_FP, CHB_SP, CHB_NOBATTLE, CHB_SPEED, CHB_ACTION };
 static int cheat_bits = -1, cheat_seen;
 /* a whole token of the comma list (sp is not speed) */
 static int has_token(const char* list, const char* tok) {
@@ -197,9 +198,12 @@ static void cheat_init(void) {
         if (has_token(v, "sp")) cheat_bits |= CHB_SP;
         if (has_token(v, "nobattle")) cheat_bits |= CHB_NOBATTLE;
         if (has_token(v, "speed")) cheat_bits |= CHB_SPEED;
+        if (has_token(v, "action")) cheat_bits |= CHB_ACTION;
     }
 }
 int pm_cheat_get(int k) { cheat_init(); return (cheat_bits & cheat_bit[k]) != 0; }
+/* Perfect action commands (CH9): read by action_command_init_status and check_block_input (src/battle/action_cmd.c) under TARGET_3DS */
+int pm_cheat_action_on(void) { return pm_cheat_get(PM_CHEAT_ACTION); }
 void pm_cheat_set(int k, int on) {
     cheat_init();
     if (on) cheat_bits |= cheat_bit[k]; else cheat_bits &= ~cheat_bit[k];
@@ -216,7 +220,7 @@ void pm_cheat_tick(void) {
     if (cheat_bits & CHB_SPEED) { ps->walkSpeed *= 2.0f; ps->runSpeed *= 2.0f; } /* the action code sets the speeds each step, so this does not compound */
     if ((cheat_bits & ~cheat_seen) != 0) {
         int k;
-        for (k = 0; k < 5; k++) if ((cheat_bits & ~cheat_seen) & cheat_bit[k]) pm_log("cheat: %s active, star power %d, walk %.2f", cheat_name[k], (int)p->starPower, ps->walkSpeed);
+        for (k = 0; k < 6; k++) if ((cheat_bits & ~cheat_seen) & cheat_bit[k]) pm_log("cheat: %s active, star power %d, walk %.2f", cheat_name[k], (int)p->starPower, ps->walkSpeed);
         cheat_seen = cheat_bits;
     }
     /* MOON2 (user, one held press): while A is held in the jump action, Mario rises at the jump start rate: the vertical integrators are held

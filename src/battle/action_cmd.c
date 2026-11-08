@@ -1,6 +1,10 @@
 #include "common.h"
 #include "ld_addrs.h"
 
+#ifdef TARGET_3DS
+int pm_cheat_action_on(void); /* Perfect action commands cheat (3ds/src/pm_dbg_game.c) */
+#endif
+
 u8 mashMeter_bgColors[15] = {
      33,  33, 117,
      29,  35, 163,
@@ -282,6 +286,12 @@ void action_command_init_status(void) {
         acs->autoSucceed = true;
         acs->showHud = false;
     }
+
+#ifdef TARGET_3DS
+    if (pm_cheat_action_on()) {
+        acs->autoSucceed = true; /* CH9: every action command of Mario and partners succeeds; showHud unchanged */
+    }
+#endif
 }
 
 void action_command_update(void) {
@@ -563,6 +573,16 @@ s32 check_block_input(s32 buttonMask) {
     } else {
         acs->hitsTakenIsMax = true;
     }
+
+#ifdef TARGET_3DS
+    if (pm_cheat_action_on()) { /* CH9: every guard succeeds (Mario and partners) */
+        battleStatus->blockResult = BLOCK_RESULT_SUCCESS;
+        if (!acs->hitsTakenIsMax) {
+            playerData->hitsBlocked++;
+        }
+        return true;
+    }
+#endif
 
     block = false;
     blockWindow = 3;

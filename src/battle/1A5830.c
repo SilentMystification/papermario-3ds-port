@@ -439,7 +439,12 @@ HitResult calc_enemy_damage_target(Actor* attacker) {
                 s32 blocked;
 
                 if (player_team_is_ability_active(target, ABILITY_BERSERKER)) {
+#ifdef TARGET_3DS
+                    extern int pm_cheat_action_on(void); /* CH9: a perfect guard with the Berserker badge too */
+                    blocked = pm_cheat_action_on() ? true : rand_int(1);
+#else
                     blocked = rand_int(1);
+#endif
                 } else {
                     blocked = check_block_input(BUTTON_A);
                 }
