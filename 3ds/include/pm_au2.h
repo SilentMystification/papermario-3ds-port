@@ -51,6 +51,7 @@ extern volatile int pm_au2_active;
 void pm_au2_emit(const AuCmd* c);          /* control thread (or game thread while the audio thread is joined) */
 int pm_au2_idle(void);                     /* 1: render thread idle and no open job. Control thread only. */
 void pm_au2_commit(void);                  /* publish the open job */
+unsigned pm_au2_hash(unsigned* n);         /* CORE2-1: FNV-1a of the emitted commands (switch audiohash or det), n = commands */
 void pm_au2_sync(int reason);              /* commit and wait until the render thread ran everything. Any thread but the render thread. */
 uint32_t pm_au2_committed(void);           /* number of jobs committed so far */
 int pm_au2_sync_timed(int reason, unsigned long long ns); /* as pm_au2_sync, at most ns. 0 = done, -1 = deadline (sleep hook) */

@@ -10,18 +10,17 @@
 static int ready;
 static unsigned rate = 32000;
 
-/* AU1a: switch audiohash = FNV-1a of every PCM buffer that pm_audio_post receives (before the full queue drop), one log line per 120 posts
- * and one at smoke end. Switch audiolock = exactly 2 ticks per drawn step and osAiGetLength 0, so the hash does not depend on the clock. */
+/* CORE2-1: switch audiohash (or det) = FNV-1a of every AU2 command the control side emits (pm_au2.c au2_hash), the audio decisions of the
+ * engine in order. A line every 120 steps under det (pm_main.c) and one at smoke end. Switch audiolock = exactly 2 ticks per drawn step and
+ * osAiGetLength 0, so the hash does not depend on the clock. */
 int pm_audio_lock(void) { static int v = -1; if (v < 0) v = pm_debug_has("audiolock"); return v; }
-static unsigned au_hash = 2166136261u, au_posts, au_dropped, au_underrun;
-#define au_posts_all au_posts_n
-static volatile unsigned au_posts_n, au_underrun_all, au_dropped_all;
 void au2_trace_dump(void);
 void au2_post_exec(void* pcm, unsigned bytes) { pm_audio_post(pcm, bytes, 0); }
 void pm_audio_hash_log(void) {
-    pm_au2_sync(AU2_SYNC_SHUTDOWN); /* AU2: count the posts the render thread still owes */
+    pm_au2_sync(AU2_SYNC_SHUTDOWN);
     au2_trace_dump();
-    if (pm_debug_has("audiohash")) pm_log("audiohash posts %u fnv %08x dropped %u underrun %u (final)", au_posts, au_hash, au_dropped, au_underrun);
+    unsigned n, h = pm_au2_hash(&n);
+    if (pm_debug_has("audiohash")) pm_log_evt("audiohash cmds %u fnv %08x (final)", n, h);
 }
 /* PT14: feed statistics (switch audiostat), written by the posting thread, read by the stats line. */
 

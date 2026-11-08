@@ -581,6 +581,11 @@ void pm_frame_loop(void) {
         pm_ph_frame_end();
         }
         if (fs1_on_log && (fs1_steps % 300) == 0 && fs1_steps != fs1_logged) { fs1_logged = fs1_steps; pm_log_hw("fs1 skipped %u of %u steps", fs1_skipped, fs1_steps); }
+        if (pm_det_on() && frame % 120u == 0) { /* CORE2-1: the audio hash after the job of this step (join first: the job may still run) */
+            pm_audio_join_at(0);
+            extern unsigned pm_au2_hash(unsigned* n); unsigned an, ah = pm_au2_hash(&an);
+            pm_log_evt("audiohash f%u cmds %u fnv %08x", frame, an, ah);
+        }
         if (PMDL("detlog")) { /* DET: one line per game step: the draw sequence (key and lerp frames), the vblanks since the last step, the audio ticks, the RNG and noise state, texture evictions */
             pm_log_d("det step %u keys %u draws %u iv %u skip %d interp_skip %d aud %u rng %08x noise %08x evict %u", frame, det_keys, det_draws, det_iv, fs_skip, pm_interp_skip, pm_audio_last_n, gRandSeed, pm_gpu_noise_state(), pm_tex_evict_n());
             det_keys = det_draws = 0; pm_audio_last_n = 0;
