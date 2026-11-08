@@ -630,6 +630,11 @@ void pm_frame_loop(void) {
         }
         PM_WD_PHASE(10);
         if (pm_debug_has("scripts") && frame % 120 == 0) pm_dump_scripts();
+        if (frame == 60 && pm_debug_has("c2ownprobe")) { /* CORE2-3a positive control of c2own: one owned entry called from the game side; the c2own line must print */
+            int st[8];
+            pm_gpu_cap_state(st);
+            pm_log_evt("c2ownprobe: pm_gpu_cap_state called from the game side at frame %u", frame);
+        }
         {
             char top[48];
             char stats[40] = "";

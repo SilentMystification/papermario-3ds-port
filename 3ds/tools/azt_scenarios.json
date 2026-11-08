@@ -9680,6 +9680,29 @@
         }
       ],
       "reason": "CORE2-2 premise check of the walker thread (plan_core2.md). Log only: the c2haz lines are the subject; the picture is the det scene of the base scenario."
+    },
+    {
+      "name": "c2own_probe",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 at 0 0 200, det, switch c2own with the positive control c2ownprobe: at frame 60 the game side calls pm_gpu_cap_state, an owned walker entry.",
+      "proves": "CORE2-3a: the ownership check works: the c2own line for pm_gpu_cap_state prints (the c2haz scenarios, without the probe, print none).",
+      "debug": "warp=mac_01:0 pos=0:0:200 loglevel=debug det c2own c2ownprobe",
+      "extra": [
+        "-NoWarm"
+      ],
+      "until": "c2ownprobe: pm_gpu_cap_state called",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "own line",
+          "regex": "c2own: pm_gpu_cap_state ran outside the walker side"
+        }
+      ],
+      "reason": "CORE2-3a positive control (orchestrator). Log only."
     }
   ]
 }

@@ -3266,6 +3266,22 @@
         "core2"
       ],
       "gates": []
+    },
+    {
+      "name": "c2own_probe",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CORE2-3a positive control of the c2own ownership check: the probe call must print the c2own line.",
+      "scenario": "c2own_probe",
+      "cap": 30,
+      "until": "c2ownprobe: pm_gpu_cap_state called",
+      "tags": [
+        "azahar",
+        "det",
+        "core2"
+      ],
+      "gates": []
     }
   ],
   "legacy": {
