@@ -342,6 +342,87 @@ static void c2_probe(void) {
     threadFree(t);
     pm_log_prof_line("prof core2 probe: N3DS, thread on core 2 created, ran on core %d", c2_core);
 }
+/* CORE2C C1P probe (switch c1probe, prof mode; deleted after the CORE2C decision). Can a game thread on core 1 carry the logic?
+ * (a) share: a thread on core 1 at the planned logic priority (game thread + 2: below the audio control and mixer threads) spins a
+ *     register-only loop for 2 s while the game draws; its iterations per ms against the same loop on core 0 at boot give s1.
+ * (b) wake: the game thread signals a LightEvent once per drawn frame; the core-1 thread stores tick(wake) - tick(signal).
+ * (c) pause: in (a) a gap over 0.5 ms between two tick reads (about 25 us of work apart) is a pause of the thread (the core-1 time
+ *     limit or a higher-priority thread); the line gives their count, period, mean and max length.
+ * One prof line `prof c1probe`. Pass: s1 >= 0.5 and wake p95 < 1 ms. */
+#define C1_SUB 2048u /* spin iterations between two tick reads */
+#define C1_GAP ((u64)(TICKS_MS / 2.f)) /* 0.5 ms */
+#define C1_WN 150 /* wake samples, one per drawn frame */
+typedef struct { u64 it, wall, psum, pmax, pfirst, plast; unsigned pn; } C1Run;
+static volatile int c1_st; /* 0 off, 1 calibrated (switch on), 2 share run, 3 wake run, 4 thread done, 5 reported */
+static volatile int c1_core = -9;
+static s32 c1_prio;
+static Thread c1_th;
+static LightEvent c1_ev;
+static volatile u32 c1_sig; /* tick of the last signal (low word) */
+static unsigned c1_lat[C1_WN];
+static C1Run c1_r0, c1_r1; /* core 0 calibration (best of 3), core 1 share run */
+static u32 c1_sink;
+__attribute__((noinline)) static u32 c1_spin(u32 x) {
+    for (unsigned i = 0; i < C1_SUB; i++) { x = x * 1664525u + 1013904223u; __asm__ volatile("" : "+r"(x)); }
+    return x;
+}
+static void c1_run(C1Run* r, u64 dur) {
+    u32 x = c1_sink;
+    memset(r, 0, sizeof *r);
+    u64 t0 = svcGetSystemTick(), prev = t0, end = t0 + dur;
+    while (prev < end) {
+        x = c1_spin(x);
+        r->it += C1_SUB;
+        u64 t = svcGetSystemTick(), d = t - prev;
+        if (d > C1_GAP) { if (!r->pn) r->pfirst = prev; r->plast = prev; r->pn++; r->psum += d; if (d > r->pmax) r->pmax = d; }
+        prev = t;
+    }
+    r->wall = prev - t0;
+    c1_sink = x;
+}
+static float c1_rate(const C1Run* r) { return r->wall ? (float)r->it * TICKS_MS / (float)r->wall : 0.f; } /* iterations per ms */
+static void c1_main(void* arg) {
+    (void)arg;
+    c1_core = (int)svcGetProcessorID();
+    c1_run(&c1_r1, (u64)(2000.f * TICKS_MS));
+    c1_st = 3;
+    for (int i = 0; i < C1_WN; i++) { LightEvent_Wait(&c1_ev); c1_lat[i] = (unsigned)((u32)svcGetSystemTick() - c1_sig); }
+    c1_st = 4;
+}
+static void c1_cal(void) { /* boot, game thread on core 0: best of three 20 ms runs */
+    if (c1_st || !pm_debug_has("c1probe")) return;
+    C1Run r;
+    for (int k = 0; k < 3; k++) { c1_run(&r, (u64)(20.f * TICKS_MS)); if (c1_rate(&r) > c1_rate(&c1_r0)) c1_r0 = r; }
+    c1_st = 1;
+}
+static void c1_begin(void) { /* the first prof window is printed: the scene is steady */
+    c1_prio = 0x30;
+    svcGetThreadPriority(&c1_prio, CUR_THREAD_HANDLE);
+    c1_prio += 2;
+    LightEvent_Init(&c1_ev, RESET_ONESHOT);
+    c1_st = 2;
+    c1_th = threadCreate(c1_main, NULL, 8 * 1024, c1_prio, 1, false);
+    if (!c1_th) { c1_st = 5; pm_log_prof_line("prof c1probe: thread on core 1 at prio %02x REFUSED | FAIL", (unsigned)c1_prio); }
+}
+static int c1_cmp(const void* a, const void* b) { unsigned x = *(const unsigned*)a, y = *(const unsigned*)b; return x < y ? -1 : x > y; }
+static void c1_frame(void) { /* game thread, once per drawn frame while the probe runs */
+    if (c1_st == 3) { c1_sig = (u32)svcGetSystemTick(); LightEvent_Signal(&c1_ev); return; }
+    if (c1_st != 4) return;
+    c1_st = 5;
+    threadJoin(c1_th, U64_MAX);
+    threadFree(c1_th);
+    qsort(c1_lat, C1_WN, sizeof c1_lat[0], c1_cmp);
+    const float us = 1000.f / TICKS_MS;
+    float r0 = c1_rate(&c1_r0), r1 = c1_rate(&c1_r1), s1 = r0 > 0.f ? r1 / r0 : 0.f;
+    unsigned p95 = (unsigned)((float)c1_lat[C1_WN * 95 / 100] * us);
+    const C1Run* r = &c1_r1;
+    pm_log_prof_line("prof c1probe core %d prio %02x | s1 %.3f rate0 %.0f rate1 %.0f wall %.0f | wake n %d med %u p95 %u max %u us | pause n %u per %.2f len %.2f max %.2f sum %.1f ms | %s",
+        c1_core, (unsigned)c1_prio, s1, r0, r1, (float)r->wall / TICKS_MS, C1_WN,
+        (unsigned)((float)c1_lat[C1_WN / 2] * us), p95, (unsigned)((float)c1_lat[C1_WN - 1] * us),
+        r->pn, r->pn > 1 ? (float)(r->plast - r->pfirst) / (float)(r->pn - 1) / TICKS_MS : 0.f,
+        r->pn ? (float)r->psum / (float)r->pn / TICKS_MS : 0.f, (float)r->pmax / TICKS_MS, (float)r->psum / TICKS_MS,
+        s1 >= 0.5f && p95 < 1000u ? "PASS" : "FAIL");
+}
 extern unsigned long long pm_au_pf_sum; /* CORE2-0, pm_audio.c: join wait ticks of the window, longest single wait */
 extern unsigned pm_au_pf_max;
 /* PROF: start a new window (after a report, or when the scene changes inside a window: a window holds one scene only, so chg is 0 on every printed line) */
@@ -429,6 +510,7 @@ static void pf_report(void) {
         pm_log_prof_line("prof f%u w%u writer beats %u | aujoin_us %u aujoin_max %u", pf_total, pf_w, pm_log_writer_hb(),
             pf_w ? (unsigned)(pm_au_pf_sum * 1000ull / 268112ull / pf_w) : 0u, (unsigned)((unsigned long long)pm_au_pf_max * 1000ull / 268112ull));
     }
+    if (c1_st == 1) c1_begin(); /* CORE2C C1P */
     pf_reset();
 }
 /* PF2: the next drawn frame is a sample. The phase stack starts clean, so its first push adds no time from before the sample. */
@@ -474,6 +556,7 @@ void pm_pf_frame(unsigned long long t0, unsigned long long t1) {
     }
     unsigned iv = pm_ph_iv;
     pf_iv[iv < 1 ? 0 : iv > 4 ? 3 : iv - 1]++;
+    if (c1_st >= 3) c1_frame(); /* CORE2C C1P */
     pf_total++;
     pf_w++;
     if (pf_tour) return; /* TOUR1: the tour opens and closes the window */
@@ -509,7 +592,8 @@ static void pf_start(void) {
     for (int i = 0; i < 50; i++) pf_rc = svcControlPerformanceCounter(&out, PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_0, 0);
     unsigned p1 = pm_ticks();
     double pmu_us = (double)(p1 - p0) / 50.0 / 268.112;
-    { static int c2_done; if (!c2_done) { c2_done = 1; c2_probe(); } } /* PERF1: the core-1 load probe is gone (it spun on the GSP and DSP core); the core 2 probe line stays */
+    { static int c2_done; if (!c2_done) { c2_done = 1; c2_probe(); } }
+    c1_cal(); /* CORE2C C1P: core 0 rate of the probe loop, once */ /* PERF1: the core-1 load probe is gone (it spun on the GSP and DSP core); the core 2 probe line stays */
     pm_log_prof_line("prof cal every %u set %c tick %.2f us pmu %.2f us base %.2f us rc %08x", pf_every, pf_set, (double)dt / 200.0 / 268.112,
              pmu_us, 6.0 * pmu_us / (double)pf_every, (unsigned)pf_rc);
 }

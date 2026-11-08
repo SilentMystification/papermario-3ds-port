@@ -611,6 +611,73 @@
       "gates": []
     },
     {
+      "name": "c1probe_o3ds",
+      "kind": "console_prof",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CORE2C C1P probe (switch c1probe): can a game thread on core 1 carry the logic? Toad Town mac_01 at 0 0 200, prof mode. After the first prof window, a core-1 thread at game priority + 2 spins 2 s (s1 = its rate against core 0), then records the wake latency of a per-frame LightEvent (150 frames) and the pauses over 0.5 ms. One line `prof c1probe`. Pass: s1 >= 0.5, wake p95 < 1000 us. Deleted with the probe.",
+      "scene_match": null,
+      "recipe": "warp=mac_01:0 pos=0:0:200 prof=30 c1probe",
+      "scenario": null,
+      "host": "o3ds",
+      "cap": 60,
+      "until": "prof c1probe ",
+      "tags": [
+        "console",
+        "prof",
+        "core2"
+      ],
+      "log_metrics": [
+        {
+          "name": "s1",
+          "regex": "prof c1probe .*? s1 ([0-9.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "wake_med_us",
+          "regex": "prof c1probe .*? wake n \\d+ med (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "wake_p95_us",
+          "regex": "prof c1probe .*? p95 (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "wake_max_us",
+          "regex": "prof c1probe .*? p95 \\d+ max (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "pause_n",
+          "regex": "prof c1probe .*? pause n (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "pause_per_ms",
+          "regex": "prof c1probe .*? pause n \\d+ per ([0-9.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "pause_len_ms",
+          "regex": "prof c1probe .*? len ([0-9.]+)",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "s1",
+          "op": ">=",
+          "value": 0.5
+        },
+        {
+          "metric": "wake_p95_us",
+          "op": "<",
+          "value": 1000
+        }
+      ]
+    },
+    {
       "name": "bg_flicker_mac00",
       "kind": "azahar_pic",
       "speed": "normal",
