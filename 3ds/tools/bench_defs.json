@@ -1,7 +1,12 @@
 {
   "version": 1,
-  "note": "Read by 3ds/tools/bench.py. One entry per bench. kind: azahar_pic | azahar_stream | host_test | console_prof. host (console_prof): azahar | o3ds | n3ds | host (o3dsxl is read as o3ds). scenario: the azt_scenarios.json name (azahar kinds run it; console kinds copy its switches as a reference). cap in s. until: the log regex the build prints (copied from the scenario). log_metrics: regex with one capture group, pick last|first. gates: {metric, op, value} or {metric, op, ref: baseline} (baseline = earliest run of the bench with the metric). scene_match: substring of the prof scene key (null = all runs). legacy: scenarios no bench uses (status stays in azt_scenarios.json, not deleted). speed: turbo | normal, the speed the bench runs at (bench.py run --speed overrides it for one run; azt.ps1 -Speed). Azahar benches: normal (no scenario runs -Turbo today). Console and host benches: normal. Queries use it as the default. default: true (absent = true) shows the bench in bench.py list before the others; false is listed last. Spot benches (spot_*) are the defaults for every frame cost query.",
+  "note": "Read by 3ds/tools/bench.py. One entry per bench. kind: azahar_pic | azahar_stream | host_test | console_prof. host (console_prof): azahar | o3ds | n3ds | host (o3dsxl is read as o3ds). scenario: the azt_scenarios.json name (azahar kinds run it; console kinds copy its switches as a reference). cap in s. until: the log regex the build prints (copied from the scenario). log_metrics: regex with one capture group, pick last|first. gates: {metric, op, value} or {metric, op, ref: baseline} (baseline = earliest run of the bench with the metric). scene_match: substring of the prof scene key (null = all runs). legacy: scenarios no bench uses (status stays in azt_scenarios.json, not deleted). speed: turbo | normal, the speed the bench runs at (bench.py run --speed overrides it for one run; azt.ps1 -Speed). Azahar benches: normal (no scenario runs -Turbo today). Console and host benches: normal. Queries use it as the default. default: true (absent = true) shows the bench in bench.py list before the others; false is listed last. Spot benches (spot_*) are the defaults for every frame cost query. profiles: named switch words (prof | log | none) appended after the recipe on a console push (bench.py push_switches, push_3ds.sh --profile, go.ps1 -Profile). Default per kind: console_prof -> prof, azahar_* -> log. A bench may set \"profile\" to override.",
   "push_base": "",
+  "profiles": {
+    "prof": "prof=4 livelevel=err disklevel=off conlevel=off",
+    "log": "prof=off phase=off loglevel=debug conlevel=info",
+    "none": ""
+  },
   "consoles": {
     "o3ds": "192.168.1.170"
   },
@@ -927,7 +932,7 @@
       "speed": "normal",
       "purpose": "Toad Town street, fixed walk by padscript, prof mode: cost while Mario moves.",
       "scene_match": null,
-      "recipe": "warp=mac_01:0 story=ch0_toad_town padscript=go_91_87_900,wait60,go_-300_-300_700 prof=4 loglevel=debug",
+      "recipe": "warp=mac_01:0 story=ch0_toad_town padscript=go_91_87_900,wait60,go_-300_-300_700 prof=4",
       "scenario": null,
       "host": "o3ds",
       "cap": 60,
@@ -945,7 +950,7 @@
       "speed": "normal",
       "purpose": "Battle scene (one Goomba on kmr_03), prof mode: frame cost in battle.",
       "scene_match": null,
-      "recipe": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 prof=4 loglevel=debug",
+      "recipe": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 prof=4",
       "scenario": "battle_start",
       "host": "o3ds",
       "cap": 60,
@@ -963,7 +968,7 @@
       "speed": "normal",
       "purpose": "Pause status menu open, phase windows: cpu ms per frame and closes per frame.",
       "scene_match": null,
-      "recipe": "preset=toad padscript=wait80,START*3,wait615,START*3 prof=4 phase loglevel=debug",
+      "recipe": "preset=toad padscript=wait80,START*3,wait615,START*3 prof=4 phase",
       "scenario": "pause_menu",
       "host": "o3ds",
       "cap": 60,

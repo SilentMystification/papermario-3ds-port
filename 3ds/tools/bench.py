@@ -749,9 +749,29 @@ def cmd_list(a):
     return 0
 
 
+def profile_name(bd):
+    """The profile of a bench: its own "profile", else prof for console_prof, log for azahar_*, none otherwise."""
+    if bd.get("profile"):
+        name = bd["profile"]
+    elif bd["kind"] == "console_prof":
+        name = "prof"
+    elif bd["kind"].startswith("azahar"):
+        name = "log"
+    else:
+        name = "none"
+    if name not in load_defs().get("profiles", {}):
+        raise SystemExit("bench %s: profile %s is not in bench_defs.json profiles" % (bd["name"], name))
+    return name
+
+
+def profile_words(bd):
+    """The profile switch words of a bench (bench_defs.json profiles), appended after the recipe on a push."""
+    return load_defs()["profiles"][profile_name(bd)]
+
+
 def push_cmd(bd):
     ip = load_defs()["consoles"][bd["host"]]
-    parts = [load_defs()["push_base"], bd["recipe"]]
+    parts = [load_defs()["push_base"], bd["recipe"], profile_words(bd)]
     return "PM_ROW=PUSH sh %s/3ds/push_3ds.sh --no-build --ip %s %s" % (posix(REPO), ip, " ".join(p for p in parts if p))
 
 
@@ -987,8 +1007,9 @@ def build_at_numbers(commit):
 
 
 def push_switches(bd):
-    """The bench switches of a console bench (push_base, then the recipe), as argv words."""
-    return [w for w in (load_defs().get("push_base", "") + " " + (bd.get("recipe") or "")).split() if w]
+    """The bench switches of a console bench (push_base, the recipe, then the profile words), as argv words.
+    The recipe comes before the profile words: the first match wins, so a word in the recipe overrides the profile."""
+    return [w for w in (load_defs().get("push_base", "") + " " + (bd.get("recipe") or "") + " " + profile_words(bd)).split() if w]
 
 
 def scratch_build(commit, gitdir, scratch, lane, row):

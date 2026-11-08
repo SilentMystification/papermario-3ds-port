@@ -2,11 +2,14 @@
 go.ps1 - single entry point for pushing to and pulling from O3DS, N3DS, or Azahar.
 
   powershell -File 3ds/go.ps1 push o|n|a|on|ona [-ip <addr>] [-NoBuild] [-Seconds <n>] [-Interactive]
-                              [-GameDebug "switch1 switch2"] [extra args]
+                              [-GameDebug "switch1 switch2"] [-Profile prof|log|none] [extra args]
   powershell -File 3ds/go.ps1 pull o|n          [-ip <addr>]
 
 push o: netload to O3DS, live-echo the game log for -Seconds (default 60).
 push n: same, N3DS.
+-Profile prof|log|none: the named switch words of bench_defs.json "profiles" (prof = profiling on, log = profiling off,
+  debug log), sent after the game args on o/n (push_3ds.sh --profile). Game args given by hand win (first match).
+  Not used by push a.
 push a: run build3ds/pm_3ds.3dsx in Azahar, live-echo the game log.
   Extra args are forwarded to run_azahar.ps1, e.g.: go.ps1 push a -Capture -Timeout 30 (no --
   needed, PowerShell does not use that separator; a literal -- is itself parsed as a parameter).
@@ -56,6 +59,7 @@ param(
     # confirmed directly). Any -Debug "..." on this command line is silently eaten by that common
     # parameter, never reaches $Rest, and the game never sees it - this is why, not a typo.
     [string]$GameDebug = "",
+    [ValidateSet('', 'prof', 'log', 'none')] [string]$Profile = "",
     [Parameter(ValueFromRemainingArguments = $true)] [string[]]$Rest
 )
 $ErrorActionPreference = "Stop"
@@ -158,7 +162,8 @@ function Push-One([string]$t) {
             $env:N3DS_IP = $ip
             $watchSecs = if ($Interactive) { 86400 } else { $Seconds }
             $extra = @($Rest); if ($GameDebug) { $extra += $GameDebug }
-            & $gitBash 3ds/push_3ds.sh -t $watchSecs @extra
+            $profArgs = @(); if ($Profile) { $profArgs = @('--profile', $Profile) }
+            & $gitBash 3ds/push_3ds.sh -t $watchSecs @profArgs @extra
             if ($LASTEXITCODE -ne 0) { throw "push_3ds.sh exited $LASTEXITCODE" }
         }
         Write-Host "=== push ${t}: done ==="
