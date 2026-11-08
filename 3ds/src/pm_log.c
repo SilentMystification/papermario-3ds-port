@@ -750,6 +750,19 @@ static void out_batch(const char* dk, int dn, const char* lv, int ln, const char
 
 /* Sink thread: file and console, every 100 ms. Never runs while the app is suspended (pm_io_quiet, PT68). */
 void pm_gpu_hud_flush(void);
+/* B1 check: console writes that land while the menu is open (con_flush, under con_lock). Printed when the menu closes (menu: late console writes). */
+static unsigned late_con;
+unsigned pm_log_late_con(void) { return late_con; }
+static unsigned cf_copy, cf_nomenu; /* B1 diag: con_flush batches copied, and the copies with the menu closed */
+unsigned pm_log_con_copies(void) { return cf_copy; }
+unsigned pm_log_con_nomenu(void) { return cf_nomenu; }
+/* B1 repro switch sinkslow: 120 ms between the fb_lock section and con_lock in con_flush (the window of the menu race). */
+static int sink_slow(void) {
+    static int v = -1;
+    if (v < 0) v = pm_debug_has("sinkslow");
+    return v;
+}
+int pm_log_sinkslow(void) { return sink_slow(); }
 static void con_flush(void) {
     static char cw[CB_SIZE];
     unsigned n = 0;
@@ -758,9 +771,12 @@ static void con_flush(void) {
     if (pm_menu_open) cb_n = 0;
     else { n = cb_n; memcpy(cw, cb, n); cb_n = 0; }
     LightLock_Unlock(&fb_lock);
+    if (n) { cf_copy++; if (!pm_menu_open) cf_nomenu++; }
+    if (n && sink_slow()) svcSleepThread(120000000ll); /* 120 ms: the flush period is 100 ms, so an open in the window hits a batch it already copied (30 ms missed in run 2) */
     if (n) {
         u64 t0 = svcGetSystemTick();
         LightLock_Lock(&con_lock); /* PT65: the log goes on while the menu is open (it owns rows 3 to 14) */
+        if (pm_menu_open) late_con++;
         fwrite(cw, 1, n, stdout);
         fflush(stdout);
         for (unsigned i = 0; i < n; i++) con_lines += cw[i] == '\n';

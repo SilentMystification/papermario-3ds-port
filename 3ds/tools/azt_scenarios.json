@@ -9533,6 +9533,31 @@
         }
       ],
       "reason": "CFG-2 gate c. Master options.ini: live_level=2 disk_level=1 con_level=0, profmode=off (restored after). zloglevel=none stops the harness loglevel=debug word."
+    },
+    {
+      "name": "menu_open_det",
+      "status": "unverified",
+      "reason": "broken: no until in 15 s (AZT11-5, 2026-11-08)",
+      "subject": "Toad mac_01 at pos 0 0 200, cold det start, Select opens the menu; the frozen pass 60 takes the bottom screen (bot_fz0060). B1 repro: sinkslow widens the console race window.",
+      "proves": "B1 check: after the menu opens, console writes of the log batch that were queued before the open land on the bottom screen (late console writes, the menu: late console writes line at close); the shot shows the stale log text over the menu.",
+      "debug": "warp=mac_01:0 pos=0:0:200 padscript=wait200,SELECT,wait30 shotfrozen=60 loglevel=debug conlevel=debug det fixedseed fast fs1off sinkslow",
+      "until": "menu: frozen shot",
+      "cap": 25,
+      "deadline": 45,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "menu open",
+          "regex": "menu: open"
+        },
+        {
+          "name": "frozen shot",
+          "regex": "menu: frozen shot 60"
+        }
+      ],
+      "reason": "B1 repro (row MENUB). Until is the frozen shot line. Cap 15 s."
     }
   ]
 }

@@ -3169,6 +3169,23 @@
         "fb3"
       ],
       "gates": []
+    },
+    {
+      "name": "menu_open_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "B1 repro and gate (row MENUB): the bottom screen after Select opens the menu, the frozen shot bot_fz0012 and the late console write count.",
+      "scenario": "menu_open_det",
+      "cap": 25,
+      "until": "menu: frozen shot",
+      "tags": [
+        "azahar",
+        "menu",
+        "det",
+        "cold"
+      ],
+      "gates": []
     }
   ],
   "legacy": {

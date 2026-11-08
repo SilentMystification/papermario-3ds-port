@@ -10,6 +10,8 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include "pm_port.h"
+unsigned pm_log_late_con(void); /* pm_log.c: B1 check */
+unsigned pm_log_con_copies(void), pm_log_con_nomenu(void);
 /* O6: a switch word read once. Not for the words the options panel changes at run time (nofog, nolight). */
 #define PMD(word) ({ static int v_ = -1; if (v_ < 0) v_ = pm_debug_has(word); v_; })
 #include "pm_gpu.h"
@@ -422,6 +424,22 @@ void pm_frame_loop(void) {
             if (!menu_frozen) { menu_frozen = 1; pm_log("menu: game paused at frame %u", frame); pm_gpu_menu_grey(); pm_audio_mute(1); } /* MN2, PAUSE AUDIO */
             gspWaitForVBlank();
             pm_gpu_menu_present();
+            { /* B1 repro: shotfrozen=<n> takes the bottom screen on the n-th frozen pass (bot_fz<n>), then the event line */
+                static int fz_want = -2;
+                static unsigned fz_n;
+                if (fz_want == -2) {
+                    char fv[16];
+                    int k = -1;
+                    if (pm_debug_value("shotfrozen", fv, sizeof fv)) sscanf(fv, "%d", &k);
+                    fz_want = k;
+                }
+                if (fz_want > 0 && ++fz_n == (unsigned)fz_want) {
+                    char bname[32];
+                    snprintf(bname, sizeof bname, "bot_fz%04u", fz_n);
+                    pm_gpu_shot_bottom(bname);
+                    pm_log_evt("menu: frozen shot %u late %u copies %u nomenu %u", fz_n, pm_log_late_con(), pm_log_con_copies(), pm_log_con_nomenu());
+                }
+            }
             continue;
         }
         if (menu_frozen) { /* MN1: resume: the schedule starts again, no catch-up steps */
