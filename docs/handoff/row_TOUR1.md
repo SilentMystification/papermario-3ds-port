@@ -20,7 +20,8 @@ If 1 or 3 fails, hand back at once.
 1. Build; nd_host PASS.
 2. tour10_det reaches `tour: done items 10`, one `prof ... tour <i>/<n> <map>:<entry>` line per map, no window across two maps.
 3. spot_mac01_det, mdl5_iwa10_det, battle_start_f182_cold, nok11_det 0000-0015 byte-equal to the base (tour code is off there).
-4. TOUR_FRAMES and the old fixed-frame tour path deleted.
+4. A warp with a position (map:entry@x:y:z) snaps y with a downward collision ray from y+200 (the game raycast), so Mario stands on the surface: log `tour: at <map> y <snapped>`; one shot of 2 tour10 maps shows Mario on the floor. POS1 writes the spot list in parallel (3ds/tours/spots.txt); tourlist=all reads it once it lands, entry 0 until then.
+5. TOUR_FRAMES and the old fixed-frame tour path deleted.
 Affected scenarios (no others): tour10, tour10_det, the 4 byte gates.
 
 ## Rules
