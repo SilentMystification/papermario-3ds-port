@@ -80,6 +80,7 @@ static void ab_apply(int st, int announce) {
     for (int i = 1; i < (int)(sizeof ab_words / sizeof *ab_words); i++) pm_log_switch(ab_words[i], 0);
     if (st > 0) pm_log_switch(ab_words[st], 1);
     pm_ph_fine = pm_ph_on && (st == 1 || pm_debug_has("phasegbi"));
+    pm_walk_dbg_set();
     if (announce) pm_log_hw("abtog %d %s f%u", ab_seq, ab_words[st], frame_no);
     ab_seq++;
 }
@@ -468,6 +469,7 @@ static void pf_arm(void) {
     pf_samp = 1;
     cold_need(); /* SPRFIX: pm_ph_frame_end reads cold->win for a sampled frame; prof mode 1 never allocates cold otherwise (NULL read at pf_take) */
     pm_ph_on = 1;
+    pm_walk_dbg_set();
 }
 /* PF2: one sampled frame, at its end. r is the frame record: it is not stored in the phase window. */
 static void pf_take(const Rec* r) {
@@ -496,6 +498,7 @@ void pm_pf_frame(unsigned long long t0, unsigned long long t1) {
     if (cur_s) { /* sample end: its work, then the phase timers off again */
         pf_s++; pf_sw_wks += wk;
         pf_samp = 0; pm_ph_on = 0; pf_cd = pf_every - 1;
+        pm_walk_dbg_set();
         pf_pmu_read(pf_base); pf_run = 0;
     } else {
         pf_wksum += wk; pf_wkn++; pf_run++;
@@ -571,6 +574,7 @@ void pm_ph_log_gate(int on) {
     pm_ph_fine = pm_ph_on && pm_debug_has("phasegbi");
     if (on && fs_want && !pm_fs_on) fs_arm();
     pm_fs_on = on && fs_want;
+    pm_walk_dbg_set();
 }
 
 /* PROFROW: the phase timers start from now (boot, and a row change to phase). */
@@ -602,6 +606,7 @@ void pm_ph_init(void) {
     pmu_init();
     pf_init();
     pm_pf_arm = pm_pf_on && !ph_want;
+    pm_walk_dbg_set();
     if (!pm_ph_on) return;
     /* cost of the switch lookup that the game path makes per call (strstr over the switch string) */
     unsigned t0 = pm_ticks();

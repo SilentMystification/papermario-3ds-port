@@ -922,16 +922,24 @@ static int ndm_live; /* S3N-3b: a model record is open (set by pm_gpu_ndm_begin)
 static unsigned ndm_old, ndm_refused_total, ndm_nraw_log, ndm_w_n; static unsigned ndm_geo, ndm_dlc0[10]; void pm_gbi_dlcc(unsigned* o); /* S3N-3c: batches of open records that the native raw path refused; walker batches of the record; its geometry */
 void pm_log_prof_line(const char* fmt, ...); /* the one line that prints in prof=4 mode (pm_log.c) */
 static void ndunit_after(void);
-/* PERF1: the producer class timers (nd.h NDT_*). pm_gpu_ndt_all: the exclusive ticks added so far; a region's exclusive ticks are its total less the ticks
- * of the regions timed inside it. Sampled frames only (NDT_B, nd.h, reads the tick only with pm_ph_on). ndt_mdl: the submit is a model draw. */
+/* PERF1, PROF2-5: the producer class timers (nd.h NDT_*). A 4-deep stack of u32 start ticks and of the ticks of the regions timed inside each open
+ * region: a region's exclusive ticks are its total less its children. A deeper nest is counted (ndt_sp) but not timed. Sampled frames only (NDT_B and
+ * NDT_BD read the tick only with pm_ph_on). ndt_mdl: the submit is a model draw. */
 static uint64_t ndt_sum[NDT_N];
-static uint64_t pm_gpu_ndt_all;
+static uint32_t ndt_t0[4], ndt_in[4];
+static unsigned ndt_sp;
 static int ndt_mdl;
-__attribute__((cold, noinline)) NdtT pm_gpu_ndt_begin(void) { NdtT s; s.on = 1; s.t = svcGetSystemTick(); s.all = pm_gpu_ndt_all; return s; } /* sampled frames only: out of the hot callers */
-__attribute__((cold, noinline)) void pm_gpu_ndt_add(NdtT s, int k) {
-    uint64_t tot = svcGetSystemTick() - s.t, in = pm_gpu_ndt_all - s.all;
-    uint64_t ex = tot > in ? tot - in : 0;
-    ndt_sum[k] += ex; pm_gpu_ndt_all += ex;
+__attribute__((cold, noinline)) void pm_gpu_ndt_push(void) { /* sampled frames only: out of the hot callers */
+    if (ndt_sp < 4u) { ndt_t0[ndt_sp] = (uint32_t)svcGetSystemTick(); ndt_in[ndt_sp] = 0; }
+    ndt_sp++;
+}
+__attribute__((cold, noinline)) void pm_gpu_ndt_pop(int k) {
+    if (!ndt_sp) return;
+    unsigned i = --ndt_sp;
+    if (i >= 4u) return;
+    uint32_t tot = (uint32_t)svcGetSystemTick() - ndt_t0[i], in = ndt_in[i];
+    ndt_sum[k] += tot > in ? tot - in : 0u;
+    if (i) ndt_in[i - 1] += tot;
 }
 void pm_gpu_ndt_take(uint64_t o[NDT_N]) { for (int k = 0; k < NDT_N; k++) { o[k] = ndt_sum[k]; ndt_sum[k] = 0; } }
 /* S3N-2: the submit of one native draw, moved from nd_raw_native as it was (the state staging, the shadow, citro3d's context update, the emit and the
