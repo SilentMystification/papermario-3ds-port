@@ -306,7 +306,6 @@ extern char stats_line[96];
 void ep_flush_stats(void);
 void dlc_report(void);
 /* WK-3 (nd_target.c): the colour image role and the z helpers, read by the former pm_gbi.c and the rect and state modules. */
-float prim_ndc_z(void);
 unsigned word_5551(unsigned rgba);
 /* G: the geometry group (nd_geom.c, GM-2): G_VTX (nd_geom_vtx) and G_TRI1/2 (draw_tri), the triangle clip and cull helpers and the epoch state. */
 void nd_geom_vtx(u32 w0, u32 w1, const Gfx* list);
