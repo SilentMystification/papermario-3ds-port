@@ -102,9 +102,12 @@ if [ -f $OUT/pm_3ds.elf ]; then
     mkdir -p 3ds/logs/builds
     cp -f $OUT/pm_3ds.elf "3ds/logs/builds/pm_3ds_$BN.elf"
     cp -f $OUT/pm_3ds.map "3ds/logs/builds/pm_3ds_$BN.map" 2>/dev/null || true
-    # Keep the newest 10 .elf/.map pairs. All .3dsx archives stay (push_3ds.sh writes those).
-    ls -t 3ds/logs/builds/pm_3ds_*.elf 2>/dev/null | tail -n +11 | while read -r old; do
+    # CLEANB: keep the newest 3 .elf/.map pairs (maps are capped alone too). The .3dsx archives are capped by push_3ds.sh.
+    ls -t 3ds/logs/builds/pm_3ds_*.elf 2>/dev/null | tail -n +4 | while read -r old; do
         rm -f "$old" "${old%.elf}.map"
+    done
+    ls -t 3ds/logs/builds/pm_3ds_*.map 2>/dev/null | tail -n +4 | while read -r old; do
+        rm -f "$old"
     done
 fi
 # Azahar loads from its own SD card, not from build3ds/.

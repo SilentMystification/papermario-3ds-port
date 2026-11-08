@@ -69,10 +69,19 @@ print(p[n])'
     if [ "$PYP" = python3 ]; then pw=$(python3 -c "$PROF_PY" "$profname"); else pw=$("$PYP" -3 -c "$PROF_PY" "$profname"); fi
     for w in $pw; do set -- "$@" "$w"; done
 fi
+# CLEANB: keep the newest 3 .3dsx archives in $adir. "dry" lists what would go, "run" deletes;
+# $2 (the archive just written or checked) is never deleted.
+prune_archives() {
+    adir=${PM_ARCHIVE_DIR:-3ds/logs/builds}
+    ls -t "$adir"/pm_3ds_*.3dsx 2>/dev/null | awk -v keep="$2" 'NR>3 && $0!=keep' | while read -r old; do
+        if [ "$1" = dry ]; then echo "would prune archive $old"; else rm -f -- "$old" && echo "pruned archive $old"; fi
+    done
+}
 if [ "$dry" -eq 1 ]; then
     dip=${ipopt:-${N3DS_IP:-${PM_O3DS_IP:-<netloader broadcast>}}}
     echo "dry run: nothing built, nothing sent"
     echo "3dslink argv: ${PM_3DSLINK:-/opt/devkitpro/tools/bin/3dslink} -a $dip $SRC3DSX -- --verbose livelog $*"
+    prune_archives dry ""
     exit 0
 fi
 # Archive the 3dsx this push sends: 3ds/logs/builds/pm_3ds_<build>_<git hash>.3dsx (build = the number
@@ -102,6 +111,7 @@ archive_build() {
     fi
     bytes=$(wc -c <"$dst" | tr -d ' ')
     printf '%s  %s  %s bytes  sha256 %s  build %s  git %s  flags: %s\n' "$(date '+%Y-%m-%d %H:%M')" "$name" "$bytes" "$sha" "$build" "$hash" "$1" >>"$plog"
+    prune_archives run "$dst"
     echo "ARCHIVED $dst (sha256 $sha)"
 }
 

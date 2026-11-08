@@ -3,6 +3,8 @@
 # Removes, for every worktree under build3ds/wt whose branch is merged into nds1 (or whose HEAD is detached):
 #   the worktree (git worktree remove --force), its lane folder build3ds/lane-<name>, and its docker volumes
 #   pm3ds-src-<name> and pm3ds-build-<name>.
+#   its pm_3ds_<name>.3dsx copies (the Azahar sdmc folder and build3ds/azslots/slot*/user/sdmc/3ds/PaperMario)
+#   and its shot folders build3ds/azt/shots/*/<name>.
 # Also removes build-at folders build3ds/at_* and lanes build3ds/lane-* that have no worktree.
 # Keeps: worktrees with a .wt_keep file (an agent works there; it deleted core20 mid-row on 2026-11-08) or uncommitted
 # tracked changes, worktrees whose branch has commits not in nds1 (unmerged work), worktrees whose branch tip is on the
@@ -28,6 +30,19 @@ done
 cd "$(git rev-parse --show-toplevel)" || exit 1
 mkdir -p build3ds/archive
 run() { if [ $APPLY = 1 ]; then "$@"; else echo "would: $*"; fi; }
+# CLEANB: a removed worktree or lane takes its Azahar copies and shot folders with it (one place for this).
+drop_lane_copies() {
+    n=$1
+    az=""
+    [ -n "${APPDATA:-}" ] && az="$(cygpath -u "$APPDATA" 2>/dev/null)/Azahar/sdmc/3ds/PaperMario"
+    for d in "$az" build3ds/azslots/slot*/user/sdmc/3ds/PaperMario; do
+        f="$d/pm_3ds_$n.3dsx"
+        if [ -n "$d" ] && [ -f "$f" ]; then echo "remove copy $f"; run rm -f -- "$f"; fi
+    done
+    for s in build3ds/azt/shots/*/"$n"; do
+        if [ -d "$s" ]; then echo "remove shots $s"; run rm -rf -- "$s"; fi
+    done
+}
 keep_wt=","
 for w in build3ds/wt/*/; do
     [ -d "$w" ] || continue
@@ -55,6 +70,7 @@ for w in build3ds/wt/*/; do
     (cd "$w" && git ls-files --others --exclude-standard | grep -E '\.(patch|diff)$') | while read -r f; do run cp "$w$f" build3ds/archive/; done
     echo "remove worktree $n ($b)"
     run git worktree remove --force --force "build3ds/wt/$n"
+    drop_lane_copies "$n"
 done
 run git worktree prune
 for l in build3ds/lane-* build3ds/at_*; do
@@ -64,6 +80,7 @@ for l in build3ds/lane-* build3ds/at_*; do
     [ -d "build3ds/wt/$n" ] && continue
     echo "remove lane $l"
     run rm -rf -- "$l"
+    drop_lane_copies "$n"
     for v in "pm3ds-src-$n" "pm3ds-build-$n"; do
         if docker volume inspect "$v" >/dev/null 2>&1; then echo "remove volume $v"; run docker volume rm "$v"; fi
     done
