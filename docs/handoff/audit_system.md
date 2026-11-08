@@ -130,7 +130,7 @@ Deleting them is a user decision, because CLAUDE.md rule 7 says debug tools may 
 
 **C7 (local, M). Comments name rows instead of reasons.** There are 524 row-code tags ("FB-2:", "S3N-3c:", ...) in nd_*.c, pm_gpu.c and pm_tex.c, and 1,098 in all of 3ds/src. Many of these comments give the row and not the reason. Fix: rewrite them as reasons when the file is next edited. Git history keeps the row.
 
-**[partly done C8] C8 (local, L). pm_gpu.c holds about 12 subjects in 3,830 lines.** It holds GPU state, the ring, rectangles, sprites, the model cache, censuses, off-screen targets, grab, HUD, menu, screenshots and the fatal screen. Fix: split out pm_hud/pm_shot (UI) and nd_ring/nd_rectq (draw), along the existing seams.
+**[done C8] C8 (local, L). pm_gpu.c holds about 12 subjects in 3,830 lines.** It holds GPU state, the ring, rectangles, sprites, the model cache, censuses, off-screen targets, grab, HUD, menu, screenshots and the fatal screen. Fix: split out pm_hud/pm_shot (UI) and nd_ring/nd_rectq (draw), along the existing seams.
 
 **[done W10] C9 (local, S). Only one cold file is compiled with -Os.** Only nd_cen.c gets -Os (3ds/CMakeLists.txt:419). pm_warp.c, pm_dbg_game.c, pm_fxtest.c and pm_sweep.c are debug-only and are built at -O2 (CMakeLists.txt:9). hw_guidelines rule 1 says cold files are built -Os.
 
@@ -160,6 +160,8 @@ C8 result (D12, pure move): the bottom screen text (menu lines, HUD rows, footer
 A5 result: the batch close path is 13,424 B (flush_draw 1,496, nd_raw_native 5,072, nd_native_submit 2,048, nd_emit_draw 2,040, C3Di_UpdateContext 1,256, nd_tmpl_build 1,220, ndunit_after 200, GPUCMD_AddRawCommands 92), was 16,832 B. The decal pass A and zmark pass 3 of a raw batch, pm5_upload and pm5_upload_draw are out of line; t1log_draw, pm5tex1_log and stc_set are cold. 3dsx.ld.in places the close after the walker span in call order (map: 0x1000ac to 0x1066e8). Azahar gbi phase 5.9 ms before and after (no cache model); the I-cache effect needs the console pair.
 
 NdBatch (3b4f392d5) holds the 32 batch and ring variables. The rectangle queue and ring move was tried as a pure move and reverted: the moved code still uses 49 other pm_gpu.c statics, the render state (combine, plan, env_col, z_on, r_zcmp, r_zupd, r_blend, r_atest, r_decal, r_nocol, r_mix, r_zmark, r_zmark_zn), the off-screen state (off_active, off_cur, offs), the viewport (vp_sx, vp_sy, vp_tx, vp_ty), the ring chunks (rchunk, rchunk_n, ring_cur, ring_fr, ring_done, buf_cur), the flush tracer (flush, fl_on, fl_rects, fl_consec, fl_prev_rect) and the rectangle diagnostics (rq_*, rsig_*, rd_tex, dr1_*). Exporting them would undo the file's encapsulation. The split needs a render-state struct (NdRender state of pm_gpu.c) first: a code change of its own.
+
+C8 complete: pm_gpu.c 3,385 lines; pm_gpu_ui.c (bottom screen text), pm_gpu_rect.c (ring chunks and wrap, rectangle queue: 268 lines), pm_gpu_int.h (NdBatch nb, PmGpuSt gs, the shared functions and rectangle diagnostics). The flush tracer stays in pm_gpu.c (pm_gpu_rect.c flushes through pm_gpu_flush_from).
 
 ## 5. Known open items (links only)
 
