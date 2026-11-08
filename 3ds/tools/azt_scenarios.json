@@ -10103,6 +10103,62 @@
         }
       ],
       "reason": "MSGBOX row. The debug hook uishow (pm_warp.c) opens the messages at scene frame 200 (global frame about 249) with no input; one shot after the text is printed. Cap 30 s: cold start 12 to 16 s plus about 9 s of game time."
+    },
+    {
+      "name": "gameover_fps60",
+      "status": "unverified",
+      "subject": "Game over map gv_01 (warp entry 0), 60 fps mode on (fps60; det: every game step draws the t=0.5 pass and the key frame, no skip). The map script turns on the motion blur (SetMotionBlurParams 128, OVERLAY_BLUR: 40 strips that read the previous frame buffer) and drops the GAME OVER letters. Shots every drawn frame of game frames 70 to 89 (two drawn frames per game frame with fps60: the t=0.5 pass and the key frame). Draw census at frame 80.",
+      "proves": "The game over picture per drawn frame (no alternating frames) and the draw batches per drawn frame (cen summary line).",
+      "debug": "warp=gv_01:0 fps60 det shots shotwin=70:20 drawcensus=80 caplog loglevel=debug",
+      "until": "shot \\d+ frame 89\\b",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: gv_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: gv_01 entry 0"
+        },
+        {
+          "name": "census",
+          "regex": "cen f80 summary batches \\d+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 89\\b"
+        }
+      ],
+      "reason": "Row GAMEOVER (user: game over flickers and lags, 60 fps on). Shot window after the letters start to drop; cap 30 s (boot, warp, 90 frames)."
+    },
+    {
+      "name": "gameover_30",
+      "status": "unverified",
+      "subject": "Game over map gv_01 (warp entry 0), 60 fps mode off. The map script turns on the motion blur (SetMotionBlurParams 128, OVERLAY_BLUR: 40 strips that read the previous frame buffer) and drops the GAME OVER letters. Shots every drawn frame of game frames 70 to 89 (two drawn frames per game frame with fps60: the t=0.5 pass and the key frame). Draw census at frame 80.",
+      "proves": "The game over picture per drawn frame (no alternating frames) and the draw batches per drawn frame (cen summary line).",
+      "debug": "warp=gv_01:0 shots shotwin=70:20 drawcensus=80 caplog loglevel=debug",
+      "until": "shot \\d+ frame 89\\b",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: gv_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: gv_01 entry 0"
+        },
+        {
+          "name": "census",
+          "regex": "cen f80 summary batches \\d+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 89\\b"
+        }
+      ],
+      "reason": "Row GAMEOVER (user: game over flickers and lags, 60 fps on). Shot window after the letters start to drop; cap 30 s (boot, warp, 90 frames)."
     }
   ]
 }

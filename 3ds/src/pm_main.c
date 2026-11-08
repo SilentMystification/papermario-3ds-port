@@ -228,15 +228,16 @@ static void cap_note(int cpu, const char* path) {
              !st[0] ? "prev0" : st[1] ? "grabn" : "setup");
 }
 static void cfb_capture_prev(int cpu) {
-    static unsigned done = ~0u, done_gpu = ~0u;
+    static unsigned done = ~0u;
     unsigned i;
     if (!cpu) {
-        if (done_gpu == pm_frame_n || done == pm_frame_n) { cap_note(cpu, "done"); return; }
+        /* GAMEOVER: the GPU copy is asked in every drawn frame, the t = 0.5 pass (pm_interp_repl) too: pm_gpu_grab_prev knows whether this drawn
+         * frame has its slot. A guard on pm_frame_n (one game step, two drawn frames with fps60) left the t = 0.5 pass without the slot: its blur
+         * strips read the stale frame buffer memory, every second picture differed (the game over flicker). */
         for (i = 0; i < nuGfxCfbNum; i++) {
             if (nuGfxCfb[i] == nuGfxCfb_ptr) {
                 unsigned t0 = pm_ph_on ? pm_ticks() : 0;
                 if (pm_gpu_grab_prev(nuGfxCfb[(i + nuGfxCfbNum - 1) % nuGfxCfbNum]) == 2) {
-                    done_gpu = pm_frame_n;
                     if (pm_ph_on) { unsigned dt = pm_ticks() - t0; pm_b7.cap_n++; pm_b7.cap_ticks += dt; if (dt > pm_b7.cap_max) pm_b7.cap_max = dt; }
                     cap_note(cpu, "gpu2");
                     return;

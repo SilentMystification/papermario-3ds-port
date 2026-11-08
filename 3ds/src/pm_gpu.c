@@ -201,6 +201,7 @@ static int off_used, off_sused, off_fail, off_w = PM_OFF_W, off_h = PM_OFF_H, of
 static unsigned off_mask_f; /* VRAM3 trace: bit i set when full image i is drawn in this frame */
 static unsigned off_trace_n;
 static int prev_want, prev_pre; /* PT12: see pm_gpu_grab_prev */
+static int prev_done; /* GAMEOVER: the slot of the old frame is drawn in this drawn frame (key or t = 0.5 pass). Cleared with the slots (pm_gpu_begin_wait) */
 extern unsigned pm_frame_count(void);
 static unsigned r_mixcol; /* V06: see pm_gpu_set_mix */
 static int r_replace; /* off-screen fill: the pixel is written, not blended */
@@ -1932,9 +1933,14 @@ int pm_gpu_grab(const void* cfb, int y0, int y1) { return grab_impl(cfb, y0, y1,
  * Returns 2 if the old frame is in the slot of prev_cfb. */
 int pm_gpu_grab_prev(const void* prev_cfb) {
     PM_WALK_OWN(); /* CORE2-3a */
-    prev_want = 2; /* BTRANS: the request holds for 2 drawn frames: a replay draw (interp) takes the copy and does not capture */
+    prev_want = 2; /* BTRANS: the request holds for 2 drawn frames */
+    /* GAMEOVER: each strip of a blur asks. The answer of the first ask holds for the drawn frame (prev_pre does not come back in a frame), so the
+     * later asks do not flush: the strips stay one batch. */
+    if (prev_done) return prev_done > 0 ? 2 : 0;
     if (!target || !gs.gpu_ok) return 0;
-    return grab_impl(prev_cfb, 0, 240, 1);
+    const int r = grab_impl(prev_cfb, 0, 240, 1);
+    prev_done = r == 2 ? 1 : -1;
+    return r;
 }
 /* BTRANS fix 3: an encounter start (pre-battle init) asks for the copy of the frame before the star wipe, at the next two begins. */
 /* CORE2-3a: walker side entry (nd_wq.c): the game thread posts it, the body runs on the walker side. */
@@ -2084,6 +2090,7 @@ void pm_gpu_begin_wait(void) {
     off_dump();
     for (int k = 0; k < OFF_P; k++) gs.offs[k].base = NULL; /* FX2a: the 8 bit slots keep their base */
     off_used = off_sused = 0;
+    prev_done = 0; /* GAMEOVER: the old frame slot went with the slots */
     gs.off_active = 0;
     off_i8 = 0;
     off_fail = 0; /* row 4: a VRAM failure lasts one frame */
