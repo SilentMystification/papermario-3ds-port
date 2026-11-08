@@ -7,12 +7,14 @@
 #include <stdlib.h>
 #include <citro3d.h>
 #include "pm_port.h"
+#include "nd.h"
 
 #define TICKS_MS 268112.0f
 #define MAXW 240
 #define OVER_MS 34.0f
 
 int pm_ph_on;
+int pm_ph_cen; /* PERF1: phase mode (pm_port.h) */
 int pm_ph_fine;
 unsigned pm_ph_cnt[C_N];
 static unsigned prev_cnt[C_N]; /* counters of the last finished frame: pm_ph_cnt is zero again at the next frame begin */
@@ -321,36 +323,11 @@ static void pf_pmu_read(u64 out[3]) {
 void pm_gpu_pf_read(unsigned long long out[6]); /* pm_gpu.c: per frame counters and GPU busy ticks, read and reset */
 static unsigned long long pf_nd_t; static unsigned pf_leg; /* S0-6: native emit ticks and LEGACY records of the window (pm_pf_nd_add, from S1) */
 void pm_pf_nd_add(unsigned long long ticks, unsigned legacy) { pf_nd_t += ticks; pf_leg += legacy; }
-static unsigned pm_ph_smp_n; /* S3N-7: frames with pm_ph_on (sampled frames, or every frame in phase mode) */
-unsigned pm_ph_smp_count(void) { return pm_ph_smp_n; }
 /* PROF: the scene of the window. Every prof line of a window ends with it, so runs of one room or event compare by key (map, mode, story, battle).
  * A scene change inside a window drops the window and starts a new one, so chg stays 0 (kept in the line for older readers). */
 void pm_prof_where(const char** name, int* story, int* btl, int* entry, float pos[3]); /* pm_route.c */
 static int pf_sc[3] = { -1, -1, -1 }, pf_chg;
 static float pf_pos0[3]; /* Mario position at the first frame of the window */
-/* CORE2-0: core 1 load. A probe thread on core 1 at the lowest priority (0x3F) runs a fixed chunk of work, yields (svcSleepThread(0): the
- * other 0x3F threads of core 1, watchdog, flash and log sink, still run) and counts the chunk. It runs only while no other thread of core 1
- * wants the core. The shortest chunk (wall ticks) is the chunk on a free core, so idle share = chunks x shortest / window wall and
- * core1_busy = 100 - idle share in % (the system time slice and our core-1 threads: audio, AU2 render, log). Created by pf_start only
- * (prof mode): play and det runs without prof have no probe. It sleeps while prof is off. -1 (printed n/a): no thread on core 1. */
-static int c1_state; /* 0 not started, 1 running, -1 refused */
-static volatile unsigned c1_turns, c1_min = 0xFFFFFFFFu;
-static unsigned c1_t0;
-static unsigned long long c1_w0;
-static void c1_main(void* arg) {
-    (void)arg;
-    unsigned t = (unsigned)svcGetSystemTick();
-    for (;;) {
-        if (!pm_pf_on) { svcSleepThread(100000000LL); t = (unsigned)svcGetSystemTick(); continue; }
-        volatile unsigned x = 0;
-        for (unsigned i = 0; i < 1024u; i++) x += i * 3u;
-        svcSleepThread(0);
-        unsigned n = (unsigned)svcGetSystemTick(), dt = n - t;
-        t = n;
-        if (dt < c1_min) c1_min = dt;
-        c1_turns++;
-    }
-}
 /* CORE2-2 premise: on the N3DS, can the game create a thread on core 2 (the planned walker thread)? One short thread at prof start
  * stores its processor id; the line says created and the id, or refused. */
 static volatile int c2_core = -9;
@@ -365,27 +342,12 @@ static void c2_probe(void) {
     threadFree(t);
     pm_log_prof_line("prof core2 probe: N3DS, thread on core 2 created, ran on core %d", c2_core);
 }
-static void c1_start(void) {
-    if (c1_state) return;
-    c1_state = threadCreate(c1_main, NULL, 4 * 1024, 0x3F, 1, true) ? 1 : -1;
-    pm_log_prof_line("prof core1 probe %s", c1_state > 0 ? "on core 1 at 0x3F" : "NOT created (core 1 refused): core1_busy n/a");
-    c2_probe();
-}
-static void c1_win_reset(void) { c1_t0 = c1_turns; c1_w0 = svcGetSystemTick(); }
-static int c1_busy(void) {
-    unsigned mn = c1_min;
-    if (c1_state != 1 || mn == 0xFFFFFFFFu) return -1;
-    unsigned long long w = svcGetSystemTick() - c1_w0, idle = (unsigned long long)(c1_turns - c1_t0) * mn;
-    if (!w) return -1;
-    int b = 100 - (int)(idle * 100ull / w);
-    return b < 0 ? 0 : b > 100 ? 100 : b;
-}
 extern unsigned long long pm_au_pf_sum; /* CORE2-0, pm_audio.c: join wait ticks of the window, longest single wait */
 extern unsigned pm_au_pf_max;
 /* PROF: start a new window (after a report, or when the scene changes inside a window: a window holds one scene only, so chg is 0 on every printed line) */
 static void pf_reset(void) {
     pm_au_pf_sum = 0; pm_au_pf_max = 0;
-    c1_win_reset();
+    { uint64_t ct[NDT_N]; pm_gpu_ndt_take(ct); } /* PERF1: the class timers start with the window (a tour window, a scene change) */
     pf_nd_t = 0; pf_leg = 0;
     pf_sc[0] = pf_sc[1] = pf_sc[2] = -1; pf_chg = 0; /* the next window starts in the scene now */
     pf_pe[0] = pf_pe[1] = pf_pe[2] = 0;
@@ -438,10 +400,19 @@ static void pf_report(void) {
     unsigned cy = pf_pfr ? (unsigned)(pf_pe[2] / pf_pfr) : 0u; /* CCNT per clean frame */
     unsigned p0 = pf_pe[2] ? (unsigned)(pf_pe[0] * 1000ull / pf_pe[2]) : 0u; /* permille of cycles */
     unsigned p1 = pf_pe[2] ? (unsigned)(pf_pe[1] * 1000ull / pf_pe[2]) : 0u;
-    pm_log_prof_line("prof f%u w%u fps %.1f | ft %.2f max %.1f o34 %u wk %.2f | s%u fts %.2f wks %.2f oh %.2f amort %u | gbi %.2f dlc %.2f tex %.2f gpu %.2f | pmu %c %u %u cyc %u pm %u %u | st %u vb %u iv %u %u %u %u",
+    pm_log_prof_line("prof f%u w%u fps %.1f | ft %.2f max %.1f o34 %u wk %.2f | s%u fts %.2f wks %.2f oh %.2f amort %u | gbi %.2f dlc %.2f tex %.2f gpu %.2f | st %u vb %u iv %u %u %u %u",
              pf_total, pf_w, fps, ft, (float)pf_wmax / TICKS_MS, pf_o34, wk, pf_s, fts, wks, oh, amort,
              pf_sms[0] / sn, (float)((double)pf_dlc_t / TICKS_MS) / sn, pf_sms[1] / sn, pf_sms[2] / sn,
-             pf_set, e0, e1, cy, p0, p1, pm_step_calls - pf_st0, (unsigned)vb, pf_iv[0], pf_iv[1], pf_iv[2], pf_iv[3]);
+             pm_step_calls - pf_st0, (unsigned)vb, pf_iv[0], pf_iv[1], pf_iv[2], pf_iv[3]);
+    /* PERF1: the counters on their own line (the 256 byte log slot cut the D-cache field off the line above) */
+    pm_log_prof_line("prof f%u w%u pmu %c %u %u cyc %u pm %u %u", pf_total, pf_w, pf_set, e0, e1, cy, p0, p1);
+    { /* PERF1: ms per sampled frame of each producer class (exclusive, nd.h NDT_*); rest = gbi less the classes (the walker ops, state, other lists) */
+        uint64_t ct[NDT_N]; pm_gpu_ndt_take(ct);
+        float cm[NDT_N], csum = 0.f;
+        for (int k = 0; k < NDT_N; k++) { cm[k] = (float)((double)ct[k] / TICKS_MS) / sn; csum += cm[k]; }
+        pm_log_prof_line("prof f%u w%u cls rec %.2f ent %.2f spr %.2f dlc %.2f sub %.2f rest %.2f", pf_total, pf_w,
+            cm[NDT_REC], cm[NDT_ENT], cm[NDT_SPR], cm[NDT_DLC], cm[NDT_SUB], pf_sms[0] / sn - csum);
+    }
     { /* S0-6: stage line. nd: native emit ms per sampled frame. lg: legacy walker (gbi) ms per sampled frame. dr, tc, tw, tri: per drawn frame. leg: LEGACY records per drawn frame. gb: GPU busy ms per sampled frame. */
         unsigned long long pv[6]; pm_gpu_pf_read(pv);
         float pw = pf_w ? (float)pf_w : 1.f;
@@ -454,11 +425,9 @@ static void pf_report(void) {
             pf_total, pf_w, (float)((double)pf_nd_t / TICKS_MS) / sn, pf_sms[0] / sn, gbm);
         pm_log_prof_line("prof f%u w%u%s", pf_total, pf_w, wh); /* the scene line: the first line is too long to carry it (256 byte log slot) */
         /* U1: the writer heartbeat count (grows only while the queue runs). CORE2-0: aujoin_us = game thread audio join wait per drawn frame,
-         * aujoin_max = longest single join (us), core1_busy = core 1 load in % (n/a: no probe on core 1). */
-        char c1[8]; int cb = c1_busy();
-        if (cb < 0) snprintf(c1, sizeof c1, "n/a"); else snprintf(c1, sizeof c1, "%d", cb);
-        pm_log_prof_line("prof f%u w%u writer beats %u | aujoin_us %u aujoin_max %u core1_busy %s", pf_total, pf_w, pm_log_writer_hb(),
-            pf_w ? (unsigned)(pm_au_pf_sum * 1000ull / 268112ull / pf_w) : 0u, (unsigned)((unsigned long long)pm_au_pf_max * 1000ull / 268112ull), c1);
+         * aujoin_max = longest single join (us). */
+        pm_log_prof_line("prof f%u w%u writer beats %u | aujoin_us %u aujoin_max %u", pf_total, pf_w, pm_log_writer_hb(),
+            pf_w ? (unsigned)(pm_au_pf_sum * 1000ull / 268112ull / pf_w) : 0u, (unsigned)((unsigned long long)pm_au_pf_max * 1000ull / 268112ull));
     }
     pf_reset();
 }
@@ -540,8 +509,7 @@ static void pf_start(void) {
     for (int i = 0; i < 50; i++) pf_rc = svcControlPerformanceCounter(&out, PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_0, 0);
     unsigned p1 = pm_ticks();
     double pmu_us = (double)(p1 - p0) / 50.0 / 268.112;
-    c1_start();
-    c1_win_reset(); /* the first window starts here (at boot no pf_reset ran) */
+    { static int c2_done; if (!c2_done) { c2_done = 1; c2_probe(); } } /* PERF1: the core-1 load probe is gone (it spun on the GSP and DSP core); the core 2 probe line stays */
     pm_log_prof_line("prof cal every %u set %c tick %.2f us pmu %.2f us base %.2f us rc %08x", pf_every, pf_set, (double)dt / 200.0 / 268.112,
              pmu_us, 6.0 * pmu_us / (double)pf_every, (unsigned)pf_rc);
 }
@@ -562,6 +530,7 @@ static int ph_want, dcs_want;
 int pm_dcs_on; /* DS0: switch dcsum. Only the sampled draw and flush timers and the dcsum line; no other phase site */
 void pm_ph_log_gate(int on) {
     pm_ph_on = on && ph_want;
+    pm_ph_cen = pm_ph_on;
     pm_pf_on = on && pf_want;
     pm_pf_arm = pm_pf_on && !ph_want;
     if (!on) pf_samp = 0;
@@ -586,6 +555,7 @@ void pm_ph_init(void) {
     ps_on = pm_debug_has("phsum");
     ph_want = pm_debug_mode("phase") == 1 || ps_on; /* CFG-1: phase=off or phase=0 turns the phase timers off */
     pm_ph_on = ph_want && pm_log_file();
+    pm_ph_cen = pm_ph_on;
     dcs_want = pm_debug_has("dcsum");
     pm_dcs_on = dcs_want && pm_log_file();
     ps_init(); /* only parses the abtog switch, so it runs even while logging is off */
@@ -775,7 +745,7 @@ static __attribute__((cold, noinline)) void pc_frame(unsigned now, const Rec* r)
     if (--pc_left == 0) pc_end();
 }
 
-/* PROFROW: the Debug tab Profiling row (pm_options.c). Mode 0 off, 1 prof (prof lines only, as prof=4), 2 phase set. The change is applied at the
+/* PROFROW: the Debug tab Profiling row (pm_options.c). Mode 0 off, 1 prof (prof lines only, as prof=30), 2 phase set. The change is applied at the
  * next drawn frame end (pm_ph_frame_end), so no phase push is open while a gate changes. Ceiling: the prof counters stay enabled after prof
  * mode (no svc call stops them); pm_pmu_on stays 0 after a prof row, so a launch pmu word is not restored. */
 static int prof_pend = -1;
@@ -787,7 +757,7 @@ static void prof_row_apply(int m) {
     ph_want = m == 2 || ps_on;
     if (ph_want) cold_need();
     pf_want = m == 1;
-    if (m == 1) pf_every = 4;
+    if (m == 1) pf_every = 30;
     pf_cd = pf_every - 1;
     pm_ph_log_gate(pm_log_file());
     if (!pm_pf_on) pf_samp = 0;
@@ -800,7 +770,6 @@ void pm_ph_frame_end(void) {
     if (pm_pmu_on) pmu_frame_end();
     if (pm_fs_on) fs_frame_end();
     if (!pm_ph_on) return;
-    pm_ph_smp_n++;
     unsigned now = pm_ticks();
     Rec* r = &cold->win[nwin];
     acc[cur] += now - last;

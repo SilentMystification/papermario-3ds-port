@@ -304,6 +304,7 @@ static unsigned tmpl_n;
 static unsigned tmpl_use[ND_TMPL_N], tmpl_clock, tmpl_pin, tmpl_gen, tmpl_hi;
 static NdTmplKey memo_k; static int memo_id = -1; static unsigned memo_gen; /* the key and id of the last nd_tmpl_build */
 void nd_tmpl_pin(void) { tmpl_pin = tmpl_clock; }
+void nd_tmpl_touch(int id) { if (id >= 0 && id < (int)ND_TMPL_N) tmpl_use[id] = ++tmpl_clock; }
 unsigned nd_tmpl_gen(void) { return tmpl_gen; }
 unsigned nd_tmpl_hi(void) { return tmpl_hi; }
 
