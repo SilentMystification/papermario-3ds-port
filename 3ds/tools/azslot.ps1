@@ -21,12 +21,13 @@ $script:AzIdleSec = 3600
 # AZT4-1: the cap on live azahar.exe processes of the slot pool, all slots of all worktrees and agents. A constant, not an env value.
 # AZT12-4 (2026-11-08, Ryzen 3950X, RTX 2070 SUPER 8 GB, 64 GB RAM, with the user's apps open): a turbo load Azahar ran 4.2 % slower per
 # 300 frames with 3 active Azahars than with 2 (3.805 s vs 3.651 s); a 4th live Azahar failed at start ("Failed to allocate Stream buffer",
-# the GPU host-visible heap). So 3, not 4.
-$script:AzCap = 3
+# the GPU host-visible heap). Cap 2 (user, 2026-11-08): with 3 live Azahars cold starts failed with 0xC000001D (GPU fault) and the
+# fault retry closed the other kept instances.
+$script:AzCap = 2
 $script:CapSaid = $false
 
 function Get-SlotCount {
-    $n = if ($env:PM_AZ_SLOTS) { [int]$env:PM_AZ_SLOTS } else { 3 }
+    $n = if ($env:PM_AZ_SLOTS) { [int]$env:PM_AZ_SLOTS } else { 2 }
     if ($n -gt $script:AzCap) {
         if (-not $script:CapSaid) { Write-Host "azslot: PM_AZ_SLOTS=$n is above the cap $($script:AzCap) live Azahars: using $($script:AzCap) slots"; $script:CapSaid = $true }
         $n = $script:AzCap

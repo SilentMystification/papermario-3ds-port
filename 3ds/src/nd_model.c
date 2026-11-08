@@ -215,7 +215,7 @@ static int nd_comb_native(uint32_t w0, uint32_t w1, uint32_t oh, uint32_t prim, 
 int pm_debug_has(const char* name);
 static int mdl0_sw(void) { static int v = -1; if (v < 0) v = pm_debug_has("mdl0") ? 1 : 0; return v; } /* PERF1: switch mdl0, read once (a log switch of the launch) */
 void pm_log_d(const char* fmt, ...);
-void pm_log_prof_line(const char* fmt, ...);
+void pm_log_w(const char* fmt, ...);
 static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st);
 /* MDL-0b: every why code of nd_model_state, uncapped, one line per 300 frames (mdlw) */
 static unsigned mw_cnt[32], mw_ok, mw_f = 100u; /* mw_f: the frame of the last line + 300 */
@@ -233,15 +233,19 @@ unsigned pm_frame_count(void);
 int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st) {
     int r = nd_model_state_in(rec, c, d, st);
     if (r == 1) mw_ok++; else mw_cnt[st->why & 31]++;
-    unsigned f = pm_frame_count();
-    if (f >= mw_f) { mw_f = f - f % 100u + 100u; /* the next line at the next multiple of 100 frames (pm_frame_count, the shot frame) */
-        char b[200]; unsigned n = 0; for (unsigned i = 0; i < 32; i++) if (mw_cnt[i]) n += (unsigned)snprintf(b + n, sizeof b - n, " %u:%u", i, mw_cnt[i]);
-        extern unsigned nd_r13_nohit; pm_log_prof_line("mdlw f%u ok %u why%s r13nohit %u", f, mw_ok, n ? b : " none", nd_r13_nohit); nd_r13_nohit = 0; memset(mw_cnt, 0, sizeof mw_cnt); mw_ok = 0;
-        for (int t = 0; t < 8; t++) { unsigned bi = 32; for (unsigned i = 0; i < mf_k; i++) if (mf_e[i].n && (bi == 32 || mf_e[i].n > mf_e[bi].n)) bi = i; if (bi == 32) break;
-            pm_log_prof_line("mdlfb f%u %08x sub %c %u", f, (unsigned)mf_e[bi].p, "-abcd"[mf_e[bi].s & 3], mf_e[bi].n); mf_e[bi].n = 0; }
-        pm_log_prof_line("mdlsub f%u a %u b %u c %u d %u bx0 %u bx1 %u bx2 %u bx3 %u", f, mf_tot[1], mf_tot[2], mf_tot[3], mf_tot[4], mf_bx[0], mf_bx[1], mf_bx[2], mf_bx[3]);
-        mf_k = 0; }
     return r;
+}
+/* PROF2-3: the mdlw, mdlfb and mdlsub census lines, every 100 frames (pm_frame_count, the shot frame). Called once per frame at the frame end
+ * (pm_gpu.c cen_lines_frame, pm_cen_lines only), not per record. */
+void nd_model_log(unsigned f) {
+    if (f < mw_f) return;
+    mw_f = f - f % 100u + 100u;
+    char b[200]; unsigned n = 0; for (unsigned i = 0; i < 32; i++) if (mw_cnt[i]) n += (unsigned)snprintf(b + n, sizeof b - n, " %u:%u", i, mw_cnt[i]);
+    extern unsigned nd_r13_nohit; pm_log_w("mdlw f%u ok %u why%s r13nohit %u", f, mw_ok, n ? b : " none", nd_r13_nohit); nd_r13_nohit = 0; memset(mw_cnt, 0, sizeof mw_cnt); mw_ok = 0;
+    for (int t = 0; t < 8; t++) { unsigned bi = 32; for (unsigned i = 0; i < mf_k; i++) if (mf_e[i].n && (bi == 32 || mf_e[i].n > mf_e[bi].n)) bi = i; if (bi == 32) break;
+        pm_log_w("mdlfb f%u %08x sub %c %u", f, (unsigned)mf_e[bi].p, "-abcd"[mf_e[bi].s & 3], mf_e[bi].n); mf_e[bi].n = 0; }
+    pm_log_w("mdlsub f%u a %u b %u c %u d %u bx0 %u bx1 %u bx2 %u bx3 %u", f, mf_tot[1], mf_tot[2], mf_tot[3], mf_tot[4], mf_bx[0], mf_bx[1], mf_bx[2], mf_bx[3]);
+    mf_k = 0;
 }
 /* MDL-5f: a custom gfx list of a record (pre or post, rec[22] or rec[23]). The walker runs it on the state side (rec_apply runs the pre list before
  * the native draw; rec_run runs the post after it), so the native draw reads the state it sets. Ops: G_SETOTHERMODE_H/L, SETPRIMCOLOR, SETENVCOLOR,

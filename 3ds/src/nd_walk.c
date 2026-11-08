@@ -105,6 +105,7 @@ void pm_gbi_dbg_reg(const void* l, unsigned tag) {
     for (int i = 0; i < orb_lst_n; i++) if (orb_lst[i] == l) { orb_lst_tag[i] = (unsigned char)tag; return; }
     if (orb_lst_n < 32) {
         orb_lst[orb_lst_n] = l; orb_lst_tag[orb_lst_n] = (unsigned char)tag; orb_lst_n++;
+        pm_walk_dbg_set();
         pm_log("orbdbg reg tag %u ptr %p", tag, l);
     }
 }
@@ -113,8 +114,46 @@ static unsigned orb_tag_of(const void* l) {
     return 0;
 }
 unsigned pm_gbi_dbg_orb_tag(void) { return orb_tag; }
+/* PROF2-5: the walker debug word (pm_port.h, nd.h WD_*). Set where its inputs change, read once per list by nd_walk_run: a clean frame tests one
+ * register per op and calls nothing. The debug work runs in cold functions out of the hot span. */
+unsigned pm_walk_dbg;
+void pm_walk_dbg_set(void) {
+    pm_walk_dbg = (pm_ph_cen ? WD_CEN : 0u) | (pm_ph_fine ? WD_FINE : 0u) | (nd_c2_on > 0 ? WD_C2 : 0u) | (pm_ph_on ? WD_PH : 0u) | (orb_lst_n ? WD_ORB : 0u);
+}
+/* The op prologue of a debug walk: the op count (PH_ADD C_CMD, opsplit sample), the streak and per-op timers of the phase census, the phasegbi timer
+ * (returns its phase id, popped after the handler), the opsplit sample and the model census. */
+static __attribute__((cold, noinline)) int walk_dbg_op(unsigned dbg, const Gfx* at, int sp, unsigned op, u32 w0, u32 w1) {
+    int fp = 0;
+    n_ops++;
+    if (dbg & WD_CEN) {
+        gv_streak_op(op); tex_streak_op(op);
+        unsigned t = pm_ticks();
+        if (gp_prev_op >= 0) { gp_opt[gp_prev_op] += t - gp_opt_last; gp_opn[gp_prev_op]++; }
+        gp_opt_last = t;
+        gp_prev_op = (int)op;
+    }
+    if (dbg & WD_FINE) {
+        /* only these three: the thousands of state ops stay in the gbi phase (a tick read costs 1.3 us in Azahar) */
+        fp = op == G_VTX ? PH_GVTX : (op == G_TRI1 || op == G_TRI2) ? PH_GTRI : op == G_MTX ? PH_GMTX : 0;
+        if (fp) pm_ph_push(fp);
+    }
+    if (dbg & WD_CEN) { os_op_hook(at, sp, op); mdc_op(at, sp, op, w0, w1); } /* W1: after the prologue, so a sample is the handler only; MDL1: model census, counts only */
+    return fp;
+}
+static __attribute__((cold, noinline)) void walk_dbg_end(unsigned dbg) { /* the end of the outer list */
+    if (!(dbg & WD_CEN)) return;
+    if (gp_prev_op >= 0) { gp_opt[gp_prev_op] += pm_ticks() - gp_opt_last; gp_opn[gp_prev_op]++; gp_prev_op = -1; }
+    mr0_walk_end(); /* MR0 */
+}
+static __attribute__((cold, noinline)) void walk_dbg_rec(unsigned dbg, const Gfx* rec, unsigned words) { /* a producer record: CORE2-2 census, WCEN2 count */
+    if (dbg & WD_C2) nd_c2_rec(rec, words);
+    if (dbg & WD_CEN) pk_rec[pmx_cur]++;
+}
+static __attribute__((cold, noinline)) void walk_dbg_nat(void) { pk_nat[pmx_cur]++; } /* WCEN2: a record drawn natively */
+static __attribute__((cold, noinline)) void walk_dbg_dlc(void) { os_dlc_hit(); mr0_dlc_hit = 1; }
 static int walk_keep; /* PERF2: set by nd_walk_ops for the next nd_walk_run only */
 void nd_walk_run(void* list, unsigned nbytes) {
+    const unsigned dbg = pm_walk_dbg; /* PROF2-5: once per list */
     gv_epoch++; /* GV1b */
     dlc_on = 1;
     Gfx* stack[12];
@@ -144,61 +183,44 @@ void nd_walk_run(void* list, unsigned nbytes) {
         if (g2_same(op, w0, w1)) { g2_note(op, w0); pc++; continue; }
         pm_gbi_cur_op = op;
         int fp = 0;
-        if (pm_ph_cen) { gv_streak_op(op); tex_streak_op(op); } /* PERF1: the per-op census hooks run in phase mode only, not in prof samples */
         pc++;
         if (!((u32)pc & 31u)) { __builtin_prefetch(pc + 4); __builtin_prefetch(pc + 8); }
-        n_ops++;
-        if (pm_ph_cen) {
-            unsigned t = pm_ticks();
-            if (gp_prev_op >= 0) { gp_opt[gp_prev_op] += t - gp_opt_last; gp_opn[gp_prev_op]++; }
-            gp_opt_last = t;
-            gp_prev_op = (int)op;
-        }
-        if (pm_ph_fine) {
-            /* only these three: the thousands of state ops stay in the gbi phase (a tick read costs 1.3 us in Azahar) */
-            fp = op == G_VTX ? PH_GVTX : (op == G_TRI1 || op == G_TRI2) ? PH_GTRI : op == G_MTX ? PH_GMTX : 0;
-            if (fp) pm_ph_push(fp);
-        }
         if (op != G_VTX && op != G_TRI1 && op != G_TRI2 && op != G_MTX && op != G_POPMTX && op != G_DL && op != G_ENDDL && op != G_MODIFYVTX) {
             gv_epoch++; /* GV1b */
         }
-        if (pm_ph_cen) { os_op_hook(pc - 1, sp, op); mdc_op(pc - 1, sp, op, w0, w1); } /* W1: after the prologue, so a sample is the handler only; MDL1: model census, counts only */
+        if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, pc - 1, sp, op, w0, w1); /* PROF2-5: phase census, phasegbi, op count */
         switch (op) {
         case G_ENDDL:
             if (sp == 0) {
-                if (pm_ph_cen && gp_prev_op >= 0) { gp_opt[gp_prev_op] += pm_ticks() - gp_opt_last; gp_opn[gp_prev_op]++; gp_prev_op = -1; }
-                if (pm_ph_cen) mr0_walk_end(); /* MR0 */
-                if (fp) pm_ph_pop();
+                if (__builtin_expect(dbg, 0)) walk_dbg_end(dbg);
+                if (__builtin_expect(fp, 0)) pm_ph_pop();
                 gv_streak_flush();
                 tex_streak_flush();
                 return;
             }
             pc = stack[--sp];
-            if (orb_lst_n && orb_tag != orb_tag_stk[sp]) pm_gpu_flush(); /* FX1-3 */
+            if (__builtin_expect(dbg & WD_ORB, 0) && orb_tag != orb_tag_stk[sp]) pm_gpu_flush(); /* FX1-3 */
             orb_tag = orb_tag_stk[sp];
             break;
         case G_PM_REC: /* M4-2, S3F-4: producer record of a model (model.c) */
-            if (nd_c2_on > 0) nd_c2_rec(pc - 1, G_PM_REC_WORDS);
-            if (pm_ph_cen) pk_rec[pmx_cur]++; /* WCEN2 */
-            { NDT_B(tr); pc += rec_run(pc - 1); NDT_E(tr, NDT_REC); }
-            if (pm_ph_cen && rec_nat_last) pk_nat[pmx_cur]++;
+            if (__builtin_expect(dbg, 0)) walk_dbg_rec(dbg, pc - 1, G_PM_REC_WORDS);
+            { NDT_BD(tr, dbg); pc += rec_run(pc - 1); NDT_E(tr, NDT_REC); }
+            if (__builtin_expect(dbg & WD_CEN, 0) && rec_nat_last) walk_dbg_nat();
             break;
         case G_PM_SPR: { /* S4-1, S4-3, SPR4: producer record of a sprite component (sprite.c). The record is not run here: the state words after it run on the walker, and the final draw is built at its vertex word (G_VTX arm below), where the live state is the draw state. */
             Gfx* srec = pc - 1;
-            if (nd_c2_on > 0) nd_c2_rec(srec, G_PM_SPR_WORDS);
-            if (pm_ph_cen) pk_rec[pmx_cur]++; /* WCEN2 */
+            if (__builtin_expect(dbg, 0)) walk_dbg_rec(dbg, srec, G_PM_SPR_WORDS);
             spr_rec = srec;
             spr_at = srec + (srec[0].words.w0 & 0xffu); /* header bits 0 to 7: the offset of the final gSPVertex word */
             pc += G_PM_SPR_WORDS - 1;
             break;
         }
         case G_PM_ENT: /* S6-1: producer record of an entity model draw (nd_ent.c). The record is not run; the old words draw unless nd_ent_case draws it. */
-            if (nd_c2_on > 0) nd_c2_rec(pc - 1, G_PM_ENT_WORDS);
-            if (pm_ph_cen) pk_rec[pmx_cur]++; /* WCEN2 */
-            { NDT_B(te); pc += G_PM_ENT_WORDS - 1 + nd_ent_case(pc - 1, w0, w1); NDT_E(te, NDT_ENT); } /* the drawn record skips its own words and its G_DL */
+            if (__builtin_expect(dbg, 0)) walk_dbg_rec(dbg, pc - 1, G_PM_ENT_WORDS);
+            { NDT_BD(te, dbg); pc += G_PM_ENT_WORDS - 1 + nd_ent_case(pc - 1, w0, w1); NDT_E(te, NDT_ENT); } /* the drawn record skips its own words and its G_DL */
             break;
         case G_DL: {
-            if (nd_c2_on > 0) nd_c2_src(pc - 1);
+            if (__builtin_expect(dbg & WD_C2, 0)) nd_c2_src(pc - 1);
             Gfx* next = (Gfx*)ptr_of(w1);
             if (next && !is_host((u32)next)) {
                 gbi_cold_bad_next(w1, w0, (u32)list);
@@ -207,19 +229,19 @@ void nd_walk_run(void* list, unsigned nbytes) {
             if (next) { __builtin_prefetch(next); __builtin_prefetch(next + 4); } /* H4: the G_DL target */
             unsigned ot_sv = orb_tag; /* FX1-3: the tag of the list this G_DL runs in */
             int ow_ = 0; /* FX1-3: a tagged list under orbdbg runs in the walker (no ent or DLC path) */
-            if (orb_lst_n && PMDL("orbdbg")) {
+            if (__builtin_expect(dbg & WD_ORB, 0) && PMDL("orbdbg")) {
                 unsigned t_ = orb_tag_of(next);
                 if (t_) { if (t_ != orb_tag) pm_gpu_flush(); orb_tag = t_; ow_ = 1; pm_log("orbdbg enter f%u tag %u ptr %p", pm_frame_count(), t_, (void*)next); }
             }
             if (ent_skipgen) ent_skipgen = 0;
             else if (!ow_ && next && dlc_on && !((u32)next - (u32)gMapShapeData < 0x40000u)) { /* SGEN-1: any other static list, the entity path */
-                NDT_B(te); pm_tex_tagi = 5; int eh = ent_gdl(next); NDT_E(te, NDT_ENT);
+                NDT_BD(te, dbg); pm_tex_tagi = 5; int eh = ent_gdl(next); NDT_E(te, NDT_ENT);
                 if (eh) { if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = (Gfx*)dlc_end; break; }
             }
             if (!ow_ && dlc_on) { /* DLC1: a compiled map shape list. A G_DL_NOPUSH ends the list that holds it, as G_ENDDL. */
-                NDT_B(td); int dh = dlc_try(next); NDT_E(td, NDT_DLC);
+                NDT_BD(td, dbg); int dh = dlc_try(next); NDT_E(td, NDT_DLC);
                 if (dh) {
-                    if (pm_ph_cen) { os_dlc_hit(); mr0_dlc_hit = 1; }
+                    if (__builtin_expect(dbg & WD_CEN, 0)) walk_dbg_dlc();
                     if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) pc = (Gfx*)dlc_end;
                     break;
                 }
@@ -235,9 +257,9 @@ void nd_walk_run(void* list, unsigned nbytes) {
         case G_VTX:
             if (pc - 1 == spr_at) { /* SPR4: the final draw of a sprite record. Native: the vertex and triangle words are skipped. Else the walker loads and draws them. */
                 spr_at = NULL;
-                NDT_B(ts); int sh = pm_gpu_spr_native((const uint32_t*)spr_rec); NDT_E(ts, NDT_SPR);
+                NDT_BD(ts, dbg); int sh = pm_gpu_spr_native((const uint32_t*)spr_rec); NDT_E(ts, NDT_SPR);
                 if (sh) {
-                    if (pm_ph_cen) pk_nat[pmx_cur]++;
+                    if (__builtin_expect(dbg & WD_CEN, 0)) walk_dbg_nat();
                     pc += 1;
                     break;
                 }
@@ -339,7 +361,7 @@ void nd_walk_run(void* list, unsigned nbytes) {
             note(op);
             break;
         }
-        if (fp) pm_ph_pop();
+        if (__builtin_expect(fp, 0)) pm_ph_pop();
     }
     gv_streak_flush();
     tex_streak_flush();

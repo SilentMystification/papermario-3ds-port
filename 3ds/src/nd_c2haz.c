@@ -137,6 +137,7 @@ const unsigned char* pm_rom_ptr(unsigned addr, unsigned len); /* pm_os.c */
 int nd_c2_init(void) {
     if (nd_c2_on < 0) {
         nd_c2_on = pm_debug_has("c2haz");
+        pm_walk_dbg_set();
         if (nd_c2_on) pm_log("c2haz on: heap %08x+%x linear %08x+%x rom %08x", __ctru_heap, __ctru_heap_size, __ctru_linear_heap, __ctru_linear_heap_size,
                              (unsigned)(uintptr_t)pm_rom_ptr(0x1000u, 4));
     }

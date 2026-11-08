@@ -532,7 +532,7 @@ void nd_comb_decide(const NdCombIn* in, NdCombOut* out) {
 }
 
 void sync_combine_work_timed(void) {
-    if (!pm_ph_on || !ph_pick()) { sync_combine_work(); return; }
+    if (!pm_ph_cen || !ph_pick()) { sync_combine_work(); return; } /* PROF2-2: phase mode only */
     unsigned t0 = pm_ticks();
     sync_combine_work();
     pm_gbi_sync_ticks += (pm_ticks() - t0) * 8u; /* W2: one call in 8 timed */

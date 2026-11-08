@@ -61,7 +61,7 @@ int clip_bits4(const float* p);
 int dlc_try(const Gfx* l);
 int ent_draw(const Gfx* rec);
 int gp1_box_class(const s16 lo[3], const s16 hi[3], const float (*m)[4], unsigned char* pbits);
-#define gp_on() (pm_ph_on) /* PG0 and PERF-GBI counters: fed in prof mode only */
+#define gp_on() (pm_ph_cen) /* PG0 and PERF-GBI counters: phase mode only (PROF2-2: not in a prof sample) */
 int gv_lit_ok(void);
 int is_host(u32 p);
 int lt_mem_same(u32 w0, u32 w1);
