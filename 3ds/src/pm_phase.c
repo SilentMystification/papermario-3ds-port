@@ -328,8 +328,49 @@ unsigned pm_ph_smp_count(void) { return pm_ph_smp_n; }
 void pm_prof_where(const char** name, int* story, int* btl, int* entry, float pos[3]); /* pm_route.c */
 static int pf_sc[3] = { -1, -1, -1 }, pf_chg;
 static float pf_pos0[3]; /* Mario position at the first frame of the window */
+/* CORE2-0: core 1 load. A probe thread on core 1 at the lowest priority (0x3F) runs a fixed chunk of work, yields (svcSleepThread(0): the
+ * other 0x3F threads of core 1, watchdog, flash and log sink, still run) and counts the chunk. It runs only while no other thread of core 1
+ * wants the core. The shortest chunk (wall ticks) is the chunk on a free core, so idle share = chunks x shortest / window wall and
+ * core1_busy = 100 - idle share in % (the system time slice and our core-1 threads: audio, AU2 render, log). Created by pf_start only
+ * (prof mode): play and det runs without prof have no probe. It sleeps while prof is off. -1 (printed n/a): no thread on core 1. */
+static int c1_state; /* 0 not started, 1 running, -1 refused */
+static volatile unsigned c1_turns, c1_min = 0xFFFFFFFFu;
+static unsigned c1_t0;
+static unsigned long long c1_w0;
+static void c1_main(void* arg) {
+    (void)arg;
+    unsigned t = (unsigned)svcGetSystemTick();
+    for (;;) {
+        if (!pm_pf_on) { svcSleepThread(100000000LL); t = (unsigned)svcGetSystemTick(); continue; }
+        volatile unsigned x = 0;
+        for (unsigned i = 0; i < 1024u; i++) x += i * 3u;
+        svcSleepThread(0);
+        unsigned n = (unsigned)svcGetSystemTick(), dt = n - t;
+        t = n;
+        if (dt < c1_min) c1_min = dt;
+        c1_turns++;
+    }
+}
+static void c1_start(void) {
+    if (c1_state) return;
+    c1_state = threadCreate(c1_main, NULL, 4 * 1024, 0x3F, 1, true) ? 1 : -1;
+    pm_log_prof_line("prof core1 probe %s", c1_state > 0 ? "on core 1 at 0x3F" : "NOT created (core 1 refused): core1_busy n/a");
+}
+static void c1_win_reset(void) { c1_t0 = c1_turns; c1_w0 = svcGetSystemTick(); }
+static int c1_busy(void) {
+    unsigned mn = c1_min;
+    if (c1_state != 1 || mn == 0xFFFFFFFFu) return -1;
+    unsigned long long w = svcGetSystemTick() - c1_w0, idle = (unsigned long long)(c1_turns - c1_t0) * mn;
+    if (!w) return -1;
+    int b = 100 - (int)(idle * 100ull / w);
+    return b < 0 ? 0 : b > 100 ? 100 : b;
+}
+extern unsigned long long pm_au_pf_sum; /* CORE2-0, pm_audio.c: join wait ticks of the window, longest single wait */
+extern unsigned pm_au_pf_max;
 /* PROF: start a new window (after a report, or when the scene changes inside a window: a window holds one scene only, so chg is 0 on every printed line) */
 static void pf_reset(void) {
+    pm_au_pf_sum = 0; pm_au_pf_max = 0;
+    c1_win_reset();
     pf_nd_t = 0; pf_leg = 0;
     pf_sc[0] = pf_sc[1] = pf_sc[2] = -1; pf_chg = 0; /* the next window starts in the scene now */
     pf_pe[0] = pf_pe[1] = pf_pe[2] = 0;
@@ -392,7 +433,12 @@ static void pf_report(void) {
         pm_log_prof_line("prof f%u w%u budget tgt logic 3.3 dl 4.4 nd 2.0 fe 1.5 au 0.5 cpu 11.7 slack 5.0 gb 14.0 frame 16.7 | meas nd %.2f lg %.2f gb %.2f",
             pf_total, pf_w, (float)((double)pf_nd_t / TICKS_MS) / sn, pf_sms[0] / sn, gbm);
         pm_log_prof_line("prof f%u w%u%s", pf_total, pf_w, wh); /* the scene line: the first line is too long to carry it (256 byte log slot) */
-        pm_log_prof_line("prof f%u w%u writer beats %u", pf_total, pf_w, pm_log_writer_hb()); /* U1: the writer heartbeat count (grows only while the queue runs) */
+        /* U1: the writer heartbeat count (grows only while the queue runs). CORE2-0: aujoin_us = game thread audio join wait per drawn frame,
+         * aujoin_max = longest single join (us), core1_busy = core 1 load in % (n/a: no probe on core 1). */
+        char c1[8]; int cb = c1_busy();
+        if (cb < 0) snprintf(c1, sizeof c1, "n/a"); else snprintf(c1, sizeof c1, "%d", cb);
+        pm_log_prof_line("prof f%u w%u writer beats %u | aujoin_us %u aujoin_max %u core1_busy %s", pf_total, pf_w, pm_log_writer_hb(),
+            pf_w ? (unsigned)(pm_au_pf_sum * 1000ull / 268112ull / pf_w) : 0u, (unsigned)((unsigned long long)pm_au_pf_max * 1000ull / 268112ull), c1);
     }
     pf_reset();
 }
@@ -461,6 +507,8 @@ static void pf_start(void) {
     for (int i = 0; i < 50; i++) pf_rc = svcControlPerformanceCounter(&out, PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_0, 0);
     unsigned p1 = pm_ticks();
     double pmu_us = (double)(p1 - p0) / 50.0 / 268.112;
+    c1_start();
+    c1_win_reset(); /* the first window starts here (at boot no pf_reset ran) */
     pm_log_prof_line("prof cal every %u set %c tick %.2f us pmu %.2f us base %.2f us rc %08x", pf_every, pf_set, (double)dt / 200.0 / 268.112,
              pmu_us, 6.0 * pmu_us / (double)pf_every, (unsigned)pf_rc);
 }
