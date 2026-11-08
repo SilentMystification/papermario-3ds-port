@@ -564,7 +564,7 @@
       "default": false,
       "purpose": "Curated map tour (tourlist=curated, 3ds/tours/curated.txt): one window per map, one session, fixed seed per warp. Gate: tour: done items n, n = the list length. Perf DB: one run record per map (tour_idx), bench.py tour-report <run> ranks them.",
       "scenario": "tour_curated",
-      "cap": 90,
+      "cap": 260,
       "until": "tour: done items",
       "tags": [
         "azahar",

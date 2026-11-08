@@ -9247,7 +9247,7 @@
           "regex": "tour: done items \\d+"
         }
       ],
-      "reason": "Soak: 411 maps x (60 settle frames = 2 s + tourtime 4 s) = about 2470 s, plus the cold boot and the 45 s scene loads. Cap 2600 s, the one scenario over 45 s. The full tour runs only when the user asks (plan_tours.md)."
+      "reason": "Soak: 412 maps (gAreas, no tst_, kkj_26 twice as gAreas lists it) x (60 settle frames = 2 s + tourtime 4 s) = about 2470 s, plus the cold boot and the 45 s scene loads. Cap 2600 s, the one scenario over 45 s. The full tour runs only when the user asks (plan_tours.md)."
     },
     {
       "name": "tour_curated",
@@ -9257,7 +9257,7 @@
       "debug": "warp=arn_02:0 story=ch0_toad_town tourlist=curated prof=4",
       "extra": [],
       "until": "tour: done items",
-      "cap": 90,
+      "cap": 260,
       "deadline": 20,
       "first_marker": "prof=1 log=off",
       "expects": "tour",
@@ -9269,14 +9269,14 @@
         },
         {
           "name": "window 1",
-          "regex": "tour: window 1/8 "
+          "regex": "tour: window 1/31 "
         },
         {
           "name": "tour done",
-          "regex": "tour: done items 8"
+          "regex": "tour: done items 31"
         }
       ],
-      "reason": "Curated run: 8 maps x (60 settle frames = 2 s + tourtime 4 s) = about 52 s, plus the cold boot and the scene loads. Cap 90 s, over 45 s for the list length. The n in the until and the expected events is the length of curated.txt: update it with the list."
+      "reason": "Curated run: 31 maps (28 areas, gAreas order of spots.txt; 3 extra laggy maps) x (60 settle frames = 2 s + tourtime 4 s) = about 186 s, plus the cold boot (about 30 s) and the scene loads (about 4 s a map). Cap 260 s, the second scenario over 45 s with that reason. The n in the until and the expected events is the length of curated.txt: update it with the list."
     },
     {
       "name": "battle_fb_det",
