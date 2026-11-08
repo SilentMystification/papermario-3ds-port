@@ -4,15 +4,6 @@
 
 /* ZOOM: the wide world view starts at screen row 0 (the original view started at row 20), so the bar rests 20 rows higher. */
 #define FULLY_EXTENDED_Y  (pm_wide ? -2 : 18)
-/* Wide: the whole status bar is 1.25x the 4:3 size (5 / 4). sb_off scales an offset from the bar origin (drawPosX).
-   sb_set_script re-applies the scale after each hud_element_set_script, because that call resets uniformScale. */
-static s32 sb_off(s32 n) { return pm_wide ? (n * 5) >> 2 : n; }
-static void sb_set_script(s32 id, HudScript* script) {
-    hud_element_set_script(id, script);
-    if (pm_wide) {
-        hud_element_set_scale(id, 1.25f);
-    }
-}
 #define FULLY_RETRACTED_Y -100
 
 enum BlinkModes {
@@ -340,7 +331,7 @@ void initialize_status_bar(void) {
     PlayerData* playerData = &gPlayerData;
     HudElemID hid;
 
-    statusBar->drawPosX = pm_wide ? -25 : 12; /* wide: 160 + (12 - 160) * 1.25 */
+    statusBar->drawPosX = 12;
     ShowingCoinCounter = false;
     HidingCoinCounter = false;
     statusBar->drawPosY = FULLY_RETRACTED_Y;
@@ -473,18 +464,6 @@ void initialize_status_bar(void) {
     hud_element_set_flags(hid, HUD_ELEMENT_FLAG_MANUAL_RENDER);
     hud_element_clear_flags(hid, HUD_ELEMENT_FLAG_FILTER_TEX);
 
-    if (pm_wide) {
-        // these elements only get their script at create; the others get the scale in sb_set_script
-        hud_element_set_scale(statusBar->hpIconHIDs[0], 1.25f);
-        hud_element_set_scale(statusBar->hpIconHIDs[1], 1.25f);
-        hud_element_set_scale(statusBar->fpIconHIDs[0], 1.25f);
-        hud_element_set_scale(statusBar->fpIconHIDs[1], 1.25f);
-        hud_element_set_scale(statusBar->coinIconHID, 1.25f);
-        hud_element_set_scale(statusBar->coinSparkleHID, 1.25f);
-        hud_element_set_scale(statusBar->spIconHID, 1.25f);
-        hud_element_set_scale(statusBar->spShineHID, 1.25f);
-    }
-
     star_power_shimmer_init();
 }
 
@@ -495,10 +474,10 @@ void status_bar_draw_number(s32 iconID, s32 startX, s32 startY, s32 value, s32 n
     s32 digit;
     s32 i;
 
-    sb_set_script(iconID, TimesHudScript);
-    drawX = startX + sb_off(8);
-    drawY = startY + sb_off(8);
-    hud_element_set_render_pos(iconID, drawX, drawY - sb_off(1));
+    hud_element_set_script(iconID, TimesHudScript);
+    drawX = startX + 8;
+    drawY = startY + 8;
+    hud_element_set_render_pos(iconID, drawX, drawY - 1);
     hud_element_clear_flags(iconID, HUD_ELEMENT_FLAG_DISABLED);
     hud_element_draw_next(iconID);
 
@@ -509,16 +488,16 @@ void status_bar_draw_number(s32 iconID, s32 startX, s32 startY, s32 value, s32 n
         value /= 10;
     }
 
-    drawX += sb_off(13);
+    drawX += 13;
     keepDrawing = false;
 
-    for (i = 0; i < numDigits; i++, drawX += sb_off(8)) {
+    for (i = 0; i < numDigits; i++, drawX += 8) {
         digit = digits[i];
 
         // Once we have encountered our first non-zero digit, we need to keep drawing the remaining digits
         if (digit != 0 || keepDrawing || (i == numDigits - 1)) {
             keepDrawing = true;
-            sb_set_script(iconID, DigitHudScripts[digit]);
+            hud_element_set_script(iconID, DigitHudScripts[digit]);
             hud_element_set_render_pos(iconID, drawX, drawY);
             hud_element_clear_flags(iconID, HUD_ELEMENT_FLAG_DISABLED);
             hud_element_draw_next(iconID);
@@ -534,11 +513,11 @@ void status_bar_draw_stat(s32 id, s32 startX, s32 startY, s32 currentValue, s32 
     s32 drawX;
     s32 drawY;
     s32 i = 0;
-    s32 baseX = startX + sb_off(8);
-    s32 baseY = startY + sb_off(8);
+    s32 baseX = startX + 8;
+    s32 baseY = startY + 8;
 
-    sb_set_script(id, SlashHudScript);
-    hud_element_set_render_pos(id, baseX + sb_off(14), baseY + sb_off(1));
+    hud_element_set_script(id, SlashHudScript);
+    hud_element_set_render_pos(id, baseX + 14, baseY + 1);
     hud_element_clear_flags(id, HUD_ELEMENT_FLAG_DISABLED);
     hud_element_draw_next(id);
 
@@ -551,11 +530,11 @@ void status_bar_draw_stat(s32 id, s32 startX, s32 startY, s32 currentValue, s32 
     drawX = baseX;
     drawY = baseY;
     keepDrawing = false;
-    for (i = 0; i < numDigits; i++, drawX += sb_off(8)) {
+    for (i = 0; i < numDigits; i++, drawX += 8) {
         digit = digits[i];
         if (digit != 0 || keepDrawing || i == numDigits - 1) {
             keepDrawing = true;
-            sb_set_script(id, DigitHudScripts[digit]);
+            hud_element_set_script(id, DigitHudScripts[digit]);
             hud_element_set_render_pos(id, drawX, drawY);
             hud_element_clear_flags(id, HUD_ELEMENT_FLAG_DISABLED);
             hud_element_draw_next(id);
@@ -570,11 +549,11 @@ void status_bar_draw_stat(s32 id, s32 startX, s32 startY, s32 currentValue, s32 
     drawX = baseX + 26;
     drawY = baseY;
     keepDrawing = false;
-    for (i = 0; i < numDigits; i++, drawX += sb_off(8)) {
+    for (i = 0; i < numDigits; i++, drawX += 8) {
         digit = digits[i];
         if (digit != 0 || keepDrawing || i == numDigits - 1) {
             keepDrawing = true;
-            sb_set_script(id, DigitHudScripts[digit]);
+            hud_element_set_script(id, DigitHudScripts[digit]);
             hud_element_set_render_pos(id, drawX, drawY);
             hud_element_clear_flags(id, HUD_ELEMENT_FLAG_DISABLED);
             hud_element_draw_next(id);
@@ -766,8 +745,9 @@ void update_status_bar(void) {
     gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, pm_wide ? 0 : 12, pm_wide ? 0 : 20, pm_wide ? SCREEN_WIDTH : SCREEN_WIDTH - 12, pm_wide ? SCREEN_HEIGHT : SCREEN_HEIGHT - 20) /* PT58: the wide view is the whole 240 rows */;
     x = statusBar->drawPosX;
     y = statusBar->drawPosY;
-    draw_box(0, WINDOW_STYLE_5, x,       y, 0, sb_off(174), sb_off(35), 255, 0, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, nullptr, nullptr, nullptr, SCREEN_WIDTH, SCREEN_HEIGHT, nullptr);
-    draw_box(0, WINDOW_STYLE_6, x + sb_off(174), y, 0, sb_off(122), sb_off(25), 255, 0, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, nullptr, nullptr, nullptr, SCREEN_WIDTH, SCREEN_HEIGHT, nullptr);
+    /* wide: the box ends sit on the game edge (x 0 and 320); the screen-edge rule of the vertex copy (pm_gpu.c wide_copy_vtx) moves only those edge vertices out to the screen edge, so the bar background reaches x 0..399 and the art keeps its size */
+    draw_box(0, WINDOW_STYLE_5, pm_wide ? 0 : x, y, 0, pm_wide ? 174 + x : 174, 35, 255, 0, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, nullptr, nullptr, nullptr, SCREEN_WIDTH, SCREEN_HEIGHT, nullptr);
+    draw_box(0, WINDOW_STYLE_6, x + 174, y, 0, pm_wide ? SCREEN_WIDTH - (x + 174) : 122, 25, 255, 0, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, nullptr, nullptr, nullptr, SCREEN_WIDTH, SCREEN_HEIGHT, nullptr);
 
     if (statusBar->hpBlinkTimeLeft > 0) {
         statusBar->hpBlinkTimeLeft--;
@@ -790,19 +770,19 @@ void update_status_bar(void) {
 
     if (showStat) {
         id = statusBar->hpIconHIDs[0];
-        x = statusBar->drawPosX + sb_off(22);
-        y = statusBar->drawPosY + sb_off(13);
+        x = statusBar->drawPosX + 22;
+        y = statusBar->drawPosY + 13;
         hud_element_set_render_pos(id, x, y);
         hud_element_draw_next(id);
 
         id = statusBar->hpIconHIDs[1];
-        x = statusBar->drawPosX + sb_off(37);
-        y = statusBar->drawPosY + sb_off(13);
+        x = statusBar->drawPosX + 37;
+        y = statusBar->drawPosY + 13;
         hud_element_set_render_pos(id, x, y);
         hud_element_draw_next(id);
 
-        x = statusBar->drawPosX + sb_off(48);
-        y = statusBar->drawPosY + sb_off(8);
+        x = statusBar->drawPosX + 48;
+        y = statusBar->drawPosY + 8;
         status_bar_draw_stat(statusBar->hpTimesHID, x, y, statusBar->displayHP, playerData->curMaxHP);
     }
 
@@ -827,19 +807,19 @@ void update_status_bar(void) {
 
     if (showStat) {
         id = statusBar->fpIconHIDs[0];
-        x = statusBar->drawPosX + sb_off(110);
-        y = statusBar->drawPosY + sb_off(13);
+        x = statusBar->drawPosX + 110;
+        y = statusBar->drawPosY + 13;
         hud_element_set_render_pos(id, x, y);
         hud_element_draw_next(id);
 
         id = statusBar->fpIconHIDs[1];
-        x = statusBar->drawPosX + sb_off(125);
-        y = statusBar->drawPosY + sb_off(13);
+        x = statusBar->drawPosX + 125;
+        y = statusBar->drawPosY + 13;
         hud_element_set_render_pos(id, x, y);
         hud_element_draw_next(id);
 
-        x = statusBar->drawPosX + sb_off(136);
-        y = statusBar->drawPosY + sb_off(8);
+        x = statusBar->drawPosX + 136;
+        y = statusBar->drawPosY + 8;
         status_bar_draw_stat(statusBar->fpTimesHID, x, y, statusBar->displayFP, playerData->curMaxFP);
     }
 
@@ -861,19 +841,19 @@ void update_status_bar(void) {
 
     if (showStat) {
         id = statusBar->spIconHID;
-        x = statusBar->drawPosX + sb_off(195);
-        y = statusBar->drawPosY + sb_off(14);
+        x = statusBar->drawPosX + 195;
+        y = statusBar->drawPosY + 14;
         hud_element_set_render_pos(id, x, y);
         hud_element_draw_next(id);
 
         id = statusBar->spShineHID;
-        x = statusBar->drawPosX + sb_off(195);
-        y = statusBar->drawPosY + sb_off(9);
+        x = statusBar->drawPosX + 195;
+        y = statusBar->drawPosY + 9;
         hud_element_set_render_pos(id, x, y);
         hud_element_draw_next(id);
 
-        x = statusBar->drawPosX + sb_off(200);
-        y = statusBar->drawPosY + sb_off(8);
+        x = statusBar->drawPosX + 200;
+        y = statusBar->drawPosY + 8;
         status_bar_draw_number(statusBar->spTimesHID, x, y, playerData->starPoints, 2);
     }
 
@@ -898,19 +878,19 @@ void update_status_bar(void) {
 
     if (showStat) {
         id = statusBar->coinIconHID;
-        x = statusBar->drawPosX + sb_off(244);
-        y = statusBar->drawPosY + sb_off(14);
+        x = statusBar->drawPosX + 244;
+        y = statusBar->drawPosY + 14;
         hud_element_set_render_pos(id, x, y);
         hud_element_draw_next(id);
 
         id = statusBar->coinSparkleHID;
-        x = statusBar->drawPosX + sb_off(244);
-        y = statusBar->drawPosY + sb_off(14);
+        x = statusBar->drawPosX + 244;
+        y = statusBar->drawPosY + 14;
         hud_element_set_render_pos(id, x, y);
         hud_element_draw_next(id);
 
-        x = statusBar->drawPosX + sb_off(247);
-        y = statusBar->drawPosY + sb_off(8);
+        x = statusBar->drawPosX + 247;
+        y = statusBar->drawPosY + 8;
         status_bar_draw_number(statusBar->coinTimesHID, x, y, statusBar->displayCoins, 3);
     }
 
@@ -928,8 +908,8 @@ void update_status_bar(void) {
         statusBar->starPowerBlinkCounter++;
     }
 
-    x = statusBar->drawPosX + sb_off(20);
-    y = statusBar->drawPosY + sb_off(28);
+    x = statusBar->drawPosX + 20;
+    y = statusBar->drawPosY + 28;
 
     spBars = statusBar->displayStarPower / SP_PER_BAR;
     limit = statusBar->displayStarPower % SP_PER_BAR;
@@ -940,7 +920,7 @@ void update_status_bar(void) {
         limit = playerData->starPower % SP_PER_BAR;
         limit = limit / 32;
         limit += spBars * 8;
-        star_power_shimmer_start(0, x + sb_off((limit * 5) >> 1), y, 1.0f);
+        star_power_shimmer_start(0, x + ((limit * 5) >> 1), y, 1.0f);
         statusBar->shimmerState = STATUS_SHIMMER_ON;
     }
 
@@ -997,8 +977,8 @@ void update_status_bar(void) {
         }
         i++;
 
-        sb_set_script(id, SPIncrementHudScripts[sp50]);
-        hud_element_set_render_pos(id, x + sb_off(sp50 * 20 + StatusBarSPIncrementOffsets[0]), y - sb_off(2));
+        hud_element_set_script(id, SPIncrementHudScripts[sp50]);
+        hud_element_set_render_pos(id, x + (sp50 * 20 + StatusBarSPIncrementOffsets[0]), y - 2);
         hud_element_draw_next(id);
 
         s1++;
@@ -1006,42 +986,33 @@ void update_status_bar(void) {
             break;
         }
         i++;
-        sb_set_script(id, SPIncrementHudScripts[sp50]);
+        hud_element_set_script(id, SPIncrementHudScripts[sp50]);
 
-        hud_element_set_render_pos(id, x + sb_off(sp50 * 20 + StatusBarSPIncrementOffsets[1]), y - sb_off(2));
+        hud_element_set_render_pos(id, x + (sp50 * 20 + StatusBarSPIncrementOffsets[1]), y - 2);
         hud_element_draw_next(id);
         s1++;
         if (i >= limit || i >= s7 && !showAddedBar) {
             break;
         }
         i++;
-        sb_set_script(id, SPIncrementHudScripts[sp50]);
-        hud_element_set_render_pos(id, x + sb_off(sp50 * 20 + StatusBarSPIncrementOffsets[2]), y - sb_off(2));
+        hud_element_set_script(id, SPIncrementHudScripts[sp50]);
+        hud_element_set_render_pos(id, x + (sp50 * 20 + StatusBarSPIncrementOffsets[2]), y - 2);
         hud_element_draw_next(id);
         s1++;
         if (i >= limit || i >= s7 && !showAddedBar) {
             break;
         }
         i++;
-        sb_set_script(id, SPIncrementHudScripts[sp50]);
-        hud_element_set_render_pos(id, x + sb_off(sp50 * 20 + StatusBarSPIncrementOffsets[3]), y - sb_off(2));
+        hud_element_set_script(id, SPIncrementHudScripts[sp50]);
+        hud_element_set_render_pos(id, x + (sp50 * 20 + StatusBarSPIncrementOffsets[3]), y - 2);
         hud_element_draw_next(id);
         s1++;
         if (i >= limit || i >= s7 && !showAddedBar) {
             break;
         }
         i++;
-        sb_set_script(id, SPIncrementHudScripts[sp50]);
-        hud_element_set_render_pos(id, x + sb_off(sp50 * 20 + StatusBarSPIncrementOffsets[4]), y - sb_off(2));
-        hud_element_draw_next(id);
-        s1++;
-
-        if (i >= limit || i >= s7 && !showAddedBar) {
-            break;
-        }
-        i++;
-        sb_set_script(id, SPIncrementHudScripts[sp50]);
-        hud_element_set_render_pos(id, x + sb_off(sp50 * 20 + StatusBarSPIncrementOffsets[5]), y - sb_off(2));
+        hud_element_set_script(id, SPIncrementHudScripts[sp50]);
+        hud_element_set_render_pos(id, x + (sp50 * 20 + StatusBarSPIncrementOffsets[4]), y - 2);
         hud_element_draw_next(id);
         s1++;
 
@@ -1049,8 +1020,8 @@ void update_status_bar(void) {
             break;
         }
         i++;
-        sb_set_script(id, SPIncrementHudScripts[sp50]);
-        hud_element_set_render_pos(id, x + sb_off(sp50 * 20 + StatusBarSPIncrementOffsets[6]), y - sb_off(2));
+        hud_element_set_script(id, SPIncrementHudScripts[sp50]);
+        hud_element_set_render_pos(id, x + (sp50 * 20 + StatusBarSPIncrementOffsets[5]), y - 2);
         hud_element_draw_next(id);
         s1++;
 
@@ -1058,8 +1029,17 @@ void update_status_bar(void) {
             break;
         }
         i++;
-        sb_set_script(id, SPStarHudScripts[sp50]);
-        hud_element_set_render_pos(id, x + sb_off(12 + sp50 * 20), y);
+        hud_element_set_script(id, SPIncrementHudScripts[sp50]);
+        hud_element_set_render_pos(id, x + (sp50 * 20 + StatusBarSPIncrementOffsets[6]), y - 2);
+        hud_element_draw_next(id);
+        s1++;
+
+        if (i >= limit || i >= s7 && !showAddedBar) {
+            break;
+        }
+        i++;
+        hud_element_set_script(id, SPStarHudScripts[sp50]);
+        hud_element_set_render_pos(id, x + (12 + sp50 * 20), y);
         hud_element_draw_next(id);
 
         s1 = 0;
@@ -1077,8 +1057,8 @@ void update_status_bar(void) {
         }
         if (s1 == 0) {
             i++;
-            sb_set_script(id, &HES_StatusSPEmptyIncrement);
-            hud_element_set_render_pos(id, x + sb_off(sp50 * 20 + StatusBarSPIncrementOffsets[s1]), y - sb_off(2));
+            hud_element_set_script(id, &HES_StatusSPEmptyIncrement);
+            hud_element_set_render_pos(id, x + (sp50 * 20 + StatusBarSPIncrementOffsets[s1]), y - 2);
             hud_element_draw_next(id);
             if (i >= limit) {
                 break;
@@ -1087,8 +1067,8 @@ void update_status_bar(void) {
         }
         if (s1 == 1) {
             i++;
-            sb_set_script(id, &HES_StatusSPEmptyIncrement);
-            hud_element_set_render_pos(id, x + sb_off(sp50 * 20 + StatusBarSPIncrementOffsets[s1]), y - sb_off(2));
+            hud_element_set_script(id, &HES_StatusSPEmptyIncrement);
+            hud_element_set_render_pos(id, x + (sp50 * 20 + StatusBarSPIncrementOffsets[s1]), y - 2);
             hud_element_draw_next(id);
             if (i >= limit) {
                 break;
@@ -1097,8 +1077,8 @@ void update_status_bar(void) {
         }
         if (s1 == 2) {
             i++;
-            sb_set_script(id, &HES_StatusSPEmptyIncrement);
-            hud_element_set_render_pos(id, x + sb_off(sp50 * 20 + StatusBarSPIncrementOffsets[s1]), y - sb_off(2));
+            hud_element_set_script(id, &HES_StatusSPEmptyIncrement);
+            hud_element_set_render_pos(id, x + (sp50 * 20 + StatusBarSPIncrementOffsets[s1]), y - 2);
             hud_element_draw_next(id);
             if (i >= limit) {
                 break;
@@ -1107,8 +1087,8 @@ void update_status_bar(void) {
         }
         if (s1 == 3) {
             i++;
-            sb_set_script(id, &HES_StatusSPEmptyIncrement);
-            hud_element_set_render_pos(id, x + sb_off(sp50 * 20 + StatusBarSPIncrementOffsets[s1]), y - sb_off(2));
+            hud_element_set_script(id, &HES_StatusSPEmptyIncrement);
+            hud_element_set_render_pos(id, x + (sp50 * 20 + StatusBarSPIncrementOffsets[s1]), y - 2);
             hud_element_draw_next(id);
             if (i >= limit) {
                 break;
@@ -1117,8 +1097,8 @@ void update_status_bar(void) {
         }
         if (s1 == 4) {
             i++;
-            sb_set_script(id, &HES_StatusSPEmptyIncrement);
-            hud_element_set_render_pos(id, x + sb_off(sp50 * 20 + StatusBarSPIncrementOffsets[s1]), y - sb_off(2));
+            hud_element_set_script(id, &HES_StatusSPEmptyIncrement);
+            hud_element_set_render_pos(id, x + (sp50 * 20 + StatusBarSPIncrementOffsets[s1]), y - 2);
             hud_element_draw_next(id);
             if (i >= limit) {
                 break;
@@ -1127,8 +1107,8 @@ void update_status_bar(void) {
         }
         if (s1 == 5) {
             i++;
-            sb_set_script(id, &HES_StatusSPEmptyIncrement);
-            hud_element_set_render_pos(id, x + sb_off(sp50 * 20 + StatusBarSPIncrementOffsets[s1]), y - sb_off(2));
+            hud_element_set_script(id, &HES_StatusSPEmptyIncrement);
+            hud_element_set_render_pos(id, x + (sp50 * 20 + StatusBarSPIncrementOffsets[s1]), y - 2);
             hud_element_draw_next(id);
             if (i >= limit) {
                 break;
@@ -1137,8 +1117,8 @@ void update_status_bar(void) {
         }
         if (s1 == 6) {
             i++;
-            sb_set_script(id, &HES_StatusSPEmptyIncrement);
-            hud_element_set_render_pos(id, x + sb_off(sp50 * 20 + StatusBarSPIncrementOffsets[s1]), y - sb_off(2));
+            hud_element_set_script(id, &HES_StatusSPEmptyIncrement);
+            hud_element_set_render_pos(id, x + (sp50 * 20 + StatusBarSPIncrementOffsets[s1]), y - 2);
             hud_element_draw_next(id);
             if (i >= limit) {
                 break;
@@ -1148,8 +1128,8 @@ void update_status_bar(void) {
 
         if (s1 == 7) {
             i++;
-            sb_set_script(id, &HES_StatusStarEmpty);
-            hud_element_set_render_pos(id, x + sb_off(12 + sp50 * 20), y);
+            hud_element_set_script(id, &HES_StatusStarEmpty);
+            hud_element_set_render_pos(id, x + (12 + sp50 * 20), y);
             hud_element_draw_next(id);
             if (i >= limit) {
                 break;
@@ -1562,7 +1542,7 @@ void reset_status_bar(void) {
     StatusBar* statusBar = &gStatusBar;
     s32 i;
 
-    statusBar->drawPosX = pm_wide ? -25 : 12; /* wide: 160 + (12 - 160) * 1.25 */
+    statusBar->drawPosX = 12;
     statusBar->drawPosY = FULLY_RETRACTED_Y;
     statusBar->hidden = 0;
     statusBar->showTimer = 210;
