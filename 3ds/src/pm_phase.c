@@ -347,6 +347,7 @@ extern unsigned pm_au_pf_max;
 /* PROF: start a new window (after a report, or when the scene changes inside a window: a window holds one scene only, so chg is 0 on every printed line) */
 static void pf_reset(void) {
     pm_au_pf_sum = 0; pm_au_pf_max = 0;
+    { uint64_t ct[NDT_N]; pm_gpu_ndt_take(ct); } /* PERF1: the class timers start with the window (a tour window, a scene change) */
     pf_nd_t = 0; pf_leg = 0;
     pf_sc[0] = pf_sc[1] = pf_sc[2] = -1; pf_chg = 0; /* the next window starts in the scene now */
     pf_pe[0] = pf_pe[1] = pf_pe[2] = 0;
