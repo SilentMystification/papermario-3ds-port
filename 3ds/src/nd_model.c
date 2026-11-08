@@ -359,6 +359,41 @@ static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, Nd
     return 1;
 }
 
+/* PERF1-5: the sprite state memo. pm_gpu_spr_build calls nd_model_state with a fixed context (record words 0, the sprite mode: ok, gand all ones, no list
+ * ops; has_comb 1, draw_3d 1, nrm_ok 0, zmark 0, i8_0 0, no tile 1), so the state is a function of the walker values below; the combine decision, render
+ * state, template key and TEV words of an equal key are the stored ones. 16 entries, direct mapped by a hash of the key. A hit needs the template id
+ * still valid (nd_tmpl_gen unchanged since the store) and, for a noise plan, the noise texture. Only native results (1) are stored. */
+#define SPRM_N 16u
+#define SPRM_W 21u
+typedef struct { uint32_t kw[SPRM_W]; NdTmplKey k; NdTevOut to; int id; unsigned tgen; uint8_t used; } SprMemo;
+static SprMemo sprm[SPRM_N];
+int nd_model_state_spr(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st) {
+    uint32_t w[SPRM_W];
+    w[0] = c->comb_w0; w[1] = c->comb_w1; w[2] = c->geom_base; w[3] = (uint32_t)c->wind; w[4] = c->base_oh; w[5] = c->base_ol; w[6] = c->known_h; w[7] = c->known_l;
+    w[8] = c->prim; w[9] = c->env; w[10] = c->prim_lod; w[11] = (uint32_t)(c->u0 != NULL && c->u0->dim != 0); w[12] = (uint32_t)(c->gv && c->gv->fxon); w[13] = c->dbias;
+    w[14] = (uint32_t)c->rgb_scale; w[15] = (uint32_t)c->r_mix; w[16] = (uint32_t)c->dview; w[17] = (uint32_t)c->r_memblend; w[18] = (uint32_t)c->r_replace; w[19] = c->cconst; w[20] = c->mixcol;
+    uint32_t h = 2166136261u;
+    for (unsigned i = 0; i < SPRM_W; i++) h = (h ^ w[i]) * 16777619u;
+    SprMemo* m = &sprm[(h ^ (h >> 16)) & (SPRM_N - 1u)];
+    if (m->used && m->tgen == nd_tmpl_gen() && memcmp(m->kw, w, sizeof w) == 0 && (!m->k.noise || pm_gpu_noise_ok())) {
+        /* the tail of nd_model_state_in for these values (no tile 1, no pm5: fxon is 0 in a stored key) */
+        st->why = 0; nd_nat_sub = 0; mw_ok++;
+        nd_tmpl_touch(m->id);
+        memset(d, 0, sizeof *d);
+        d->tmpl = m->id;
+        for (int i = 0; i < 6; i++) d->tev_col[i] = m->to.st[i][3];
+        d->buf_col = m->to.buf_color; d->has_buf = (uint8_t)m->to.buf_set;
+        if (m->k.tex) d->u[0] = *c->u0;
+        if (m->k.noise) { pm_gpu_noise_draw(&d->u[2], d->nzo); d->has_nzo = 1; }
+        d->u[0].force = 0;
+        if (c->gv) { memcpy(d->uvso, c->gv->uvso, 16); memcpy(d->cmul, c->gv->cm, 16); memcpy(d->cadd, c->gv->ca, 16); d->zmix[0] = c->gv->zm[0]; d->zmix[1] = c->gv->zm[1]; }
+        memcpy(&st->k, &m->k, sizeof m->k); st->to = m->to; st->tmpl = m->id;
+        return 1;
+    }
+    int r = nd_model_state(rec, c, d, st);
+    if (r == 1) { memcpy(m->kw, w, sizeof w); memcpy(&m->k, &st->k, sizeof st->k); m->to = st->to; m->id = st->tmpl; m->tgen = nd_tmpl_gen(); m->used = 1; }
+    return r;
+}
 /* ---- S3N-3c: a model record as native draws. The palette 0 is post x the combined matrix of the walker's stack; the ranges are the static groups of the
  * shape list in view (the former pm_gbi.c pm_dlc_native_ranges). Ranges with the same state key and contiguous indices merge into one draw. ---- */
 NdNat nat[ND_NAT_MAX]; /* MOVE-5: the draw state of nd_model_draw (nd_model_set.c) */
