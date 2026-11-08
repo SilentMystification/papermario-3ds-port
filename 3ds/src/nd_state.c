@@ -32,7 +32,7 @@ void nd_words(const unsigned* w, unsigned n) {
         case OP_SETPRIMCOLOR: s->prim = w1; s->prim_lod = w0 & 0xFFFFu; break;
         case OP_SETENVCOLOR: s->envc = w1; break;
         case OP_SETFILLCOLOR: s->fill = w1; break;
-        case OP_SETPRIMDEPTH: s->prim_z = w1 >> 16; break;
+        case OP_SETPRIMDEPTH: s->prim_z = (w1 >> 16) & 0x7FFFu; break; /* as the walker (nd_set.c set_primdepth) */
         case OP_TEXTURE: s->tex_on = (w0 & 0xFF) != 0; s->tex_ss = w1 >> 16; s->tex_ts = w1 & 0xFFFFu; break;
         case OP_SETCIMG: s->cimg_siz = (int)((w0 >> 19) & 3); break;
         case OP_SETTIMG: s->timg = (const void*)(uintptr_t)w1; break;

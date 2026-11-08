@@ -69,7 +69,7 @@ Fix: move the block above the loop.
 pm_gpu_gtrip searches pal_g in gtrip_batch_open (pm_gpu.c:2552-2556), again in the copy of the overflow count (:2650-2655), and again in the assignment loop (:2676-2680). gtrip_batch_open also runs 5 memcmp of draw parameters on each call, plus a 304-byte PmFx memcmp for pm5 (:2547-2551). gv_tri already knows that the parameters are unchanged (ep_pepoch, nd_geom.c gv_tri).
 Fix: pass the epoch id instead of the parameters, and search the palette once.
 
-**A9 (batch close, M). One combine fact lives in 5 places.**
+**[not done] A9 (batch close, M). One combine fact lives in 5 places.**
 The same fact is kept as nd_ws.comb_w0/w1, nd_comb cur_plan (192 B), ScMemo.plan x 16 (244 B each, nd_comb.c:42), pm_gpu plan + plan_k + plan_gen (pm_gpu_set_plan does a 192-byte memcmp and copy, pm_gpu.c:3380-3398), and NdTmplKey w0/w1 (nd_tmpl_build rebuilds the plan from the words, nd_tmpl.c pm_comb_build). The owner is nd_comb.c.
 Fix: pm_gpu keeps a plan id (memo index) and the words only.
 
@@ -92,17 +92,17 @@ ring_done is set only when the frame begin waited with SYNCDRAW: `if (fb_flags) 
 Class: dropped draws, and up to 2.7 MB of linear memory held.
 Fix: set ring_done = ring_fr after any frame begin that waited for the GX queue, or stamp chunks against pm_gx_done().
 
-**B2 (seam, S). Prim depth has two formulas: rectangle path vs triangle path.**
+**[open: needs a measurement] B2 (seam, S). Prim depth has two formulas: rectangle path vs triangle path.**
 Triangles use nd_prim_ndc_z = 2(p-1)/32767 - 1 (nd_model.c:14). The `- 1` is PRIMZFIX, one unit nearer, and nd_target.c:22 gives one unit as 512 of the 24-bit depth. The G_ZS_PRIM texrect and the fill use prim_z / 32767 without the unit (nd_rect.c:236, 312), and they go through another matrix (the RECT_GM palette, pcomp_calc pm_gpu.c:803-807).
 Class: edge (depth). A prim-depth decal drawn as a texrect and one drawn as triangles land 1 unit apart.
 Fix: one helper for both paths, with a host test that compares the PICA depth of both paths for p in {1, 16384, 32734}.
 
-**B3 (seam, S). The texrect uv step depends on |s|, not on the span.**
+**[open: no visible case] B3 (seam, S). The texrect uv step depends on |s|, not on the span.**
 tex_raw_piece uses the base form only when mx >= 127 (pm_gpu.c:3735). The quantization step is therefore sc = 4096, 1024 or 256, chosen by the magnitude of s (:3741-3744). s and t are in texture units (nd_rect.c:196-197 divide by tw), so the rounding error is 0.5/sc of the texture. At |s| in [31.9, 127) that is 0.5 x tw/256 texels: 0.5 texel for tw 256. Neighbouring pieces of one split (pm_gpu.c:3783-3790), and neighbouring strips, can get different sc and bs.
 Class: texel. One edge can sample positions that differ by up to 0.5/sc.
 Fix: always use the base form (bs = floor(min s)), so that sc depends only on the span.
 
-**B4 (local, S). The host tests check a decoder the game does not run.**
+**[done W9] B4 (local, S). The host tests check a decoder the game does not run.**
 nd_words (nd_state.c:35) decodes SETPRIMDEPTH as `w1 >> 16`. The walker (nd_set.c:59) uses `(w1 >> 16) & 0x7fff`. nd_words is "never called during the walk" (nd_state.c:2-3), so nd_gbi_test and nd_rec_test check a decoder the game does not run. The two differ when bit 31 is set.
 Fix: make the walker setters and nd_words one function.
 
@@ -118,7 +118,7 @@ Fix: make the walker setters and nd_words one function.
 - vert_sx/vert_sy are written (nd_walk.c:387-388) and never read.
 - `if (lm) {}` at nd_mtx_set.c:109.
 
-**C3 (local, S). pm.v.pica is built and never bound.** pm.v.pica (DVLE 0) is built into pm_shaderall (3ds/CMakeLists.txt:338), but only DVLE[1] is bound (pm_gpu.c:1470). The comment at pm_gpu.c:1451 ("one DVLB ... a program switch sends no shader code") is stale, because pm4 and pm5 are in different DVLBs (:1486-1488).
+**[done W10] C3 (local, S). pm.v.pica is built and never bound.** pm.v.pica (DVLE 0) is built into pm_shaderall (3ds/CMakeLists.txt:338), but only DVLE[1] is bound (pm_gpu.c:1470). The comment at pm_gpu.c:1451 ("one DVLB ... a program switch sends no shader code") is stale, because pm4 and pm5 are in different DVLBs (:1486-1488).
 
 **C4 (local, S). 66 of 210 debug words are referenced by no bench, scenario, row file or tool:**
 au2off au2trace audiohash audiolock battlelist battlen btlstatus camlog coreprobe crashframe crashtest crashtest_audio crashtest_audio_call crashtest_call creditsseek decalbias demobattle depthview dspaux dspflush dspfx dspgain emlog entlog entskip exitframe faulttest fillcyc fillog flashfake flashheavy flushlog fpslog fs1delay fs1old fxdx fxlist grabtest imglog lognull mapflags mashlog mashx modeldump msgtest noaudio padov padrand pauseskip pm5draw prevcpu prevtest profstall ptrcheck ptrtest rectred romstrict runaway shotskip simlog texnearest texrlog tourfx tx1check warptest wdog.
@@ -132,7 +132,7 @@ Deleting them is a user decision, because CLAUDE.md rule 7 says debug tools may 
 
 **C8 (local, L). pm_gpu.c holds about 12 subjects in 3,830 lines.** It holds GPU state, the ring, rectangles, sprites, the model cache, censuses, off-screen targets, grab, HUD, menu, screenshots and the fatal screen. Fix: split out pm_hud/pm_shot (UI) and nd_ring/nd_rectq (draw), along the existing seams.
 
-**C9 (local, S). Only one cold file is compiled with -Os.** Only nd_cen.c gets -Os (3ds/CMakeLists.txt:419). pm_warp.c, pm_dbg_game.c, pm_fxtest.c and pm_sweep.c are debug-only and are built at -O2 (CMakeLists.txt:9). hw_guidelines rule 1 says cold files are built -Os.
+**[done W10] C9 (local, S). Only one cold file is compiled with -Os.** Only nd_cen.c gets -Os (3ds/CMakeLists.txt:419). pm_warp.c, pm_dbg_game.c, pm_fxtest.c and pm_sweep.c are debug-only and are built at -O2 (CMakeLists.txt:9). hw_guidelines rule 1 says cold files are built -Os.
 
 ## 4. Work list (this agent, in order; ownership first)
 
@@ -145,9 +145,9 @@ Deleting them is a user decision, because CLAUDE.md rule 7 says debug tools may 
 | W5 | A7, A8, A11 gtrip and gappend lookups | same | done for A7 and the palette part of A8: byte-equal; one palette search per vertex (pal_lookup), wide check once per triangle. The parameter memcmp of A8 stays (gtrip has one caller, a later epoch id is a small gain). A11 not done: t1_fold_tri runs only for a TEXEL1 window fold (ep_t1f), and its uv feeds a floor, so the other rounding order could move a fold |
 | W6 | A10, A12, C5 combine hash and switch macros | same | done: byte-equal; PMD removed (PMDL everywhere, it follows option changes); the per-frame and per-kick lookups use PMDL; the inline sc_sig copy calls sc_sig_now. The two combine hashes stay: scm_sig misses keyc, keys and conv_k4, so a merged key or a hash-indexed memo would change which entry replays |
 | W7 | A6 texture slot index | same | done: byte-equal; a lookup miss walks one chain of a 2,048-bucket index (hb_head, hb_next) instead of every slot below slot_hi. The CI palette hash per call stays (the key needs it) |
-| W8 | B2, B3 seams (pixels change) | before and after shot of the subject, byte-equal elsewhere | open |
-| W9 | A9 combine fact owner, B4 decoder merge | same as W1 | open |
-| W10 | C3, C8, C9 (structure); C4 and the stereo double walk wait for the user | ask first | open |
+| W8 | B2, B3 seams (pixels change) | before and after shot of the subject, byte-equal elsewhere | not done. B2: from the matrices (Mtx_OrthoTilt row 2 = (0, 0, 1, -1), from the libcitro3d disassembly, and the view row 2 = (0, 0, 0.5, 0.5), pm_gpu.c rebuild_3d), a normal triangle and the prim-depth rectangle both give depth 1 - p/32767, while the shader zmix path gives -nd_prim_ndc_z(p) = 1 - 2(p-1)/32767. The pond blocker (p 0x7FF0) draws in Azahar, so the zmix path must be checked by a depth readback (pm_gpu_depth_at) at toad_pond before any edit. B3: s and t stay below 7.9 texture repeats in the texrects of the det scenes (sc 4096), so no shot can show the change; edit only with a scene that tiles past 7.9 |
+| W9 | A9 combine fact owner, B4 decoder merge | same as W1 | B4 done (nd_words masks prim depth like the walker). A9 not done: moving the plan owner touches nd_comb, pm_gpu and nd_tmpl together, and the gain is one 192-byte compare per plan change; it needs its own row |
+| W10 | C3, C8, C9 (structure); C4 and the stereo double walk wait for the user | ask first | C3 and C9 done (byte-equal). pm4.v.pica now declares uvso, cmul, cadd, zmix in a row: nd_emit_draw writes them as one block, and the old shared DVLB had kept them adjacent only by chance. gv4_on now checks the layout at init. C8, C4 and the stereo walk wait for the user |
 
 ## 5. Known open items (links only)
 
