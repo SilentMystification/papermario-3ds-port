@@ -9186,6 +9186,26 @@
       "reason": "Soak: 411 maps x (60 settle frames = 2 s + tourtime 4 s) = about 2470 s, plus the cold boot and the 45 s scene loads. Cap 2600 s, the one scenario over 45 s. The full tour runs only when the user asks (plan_tours.md)."
     },
     {
+      "name": "tour_curated",
+      "status": "unverified",
+      "subject": "Mario in each map of the curated list (tourlist=curated, 3ds/tours/curated.txt compiled into pm_tour_lists.h), one session, no reboot, fixed seed at each warp. Per map: WARP, SETTLE 60 frames, one prof window of tourtime (default 4 s), CLOSE with the label line prof f<n> w<n> tour <i>/<n> <map>:<entry>.",
+      "proves": "The curated tour: one window record per map, n = the list length (tour: done items n). Perf per map for bench.py tour-report and the curated list gate (tour_full_prof decides the final list).",
+      "debug": "warp=arn_02:0 story=ch0_toad_town tourlist=curated prof=4",
+      "extra": ["-NoWarm"],
+      "until": "tour: done items",
+      "cap": 90,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "tour",
+      "needs_picture": false,
+      "expected_events": [
+        {"name": "prof on", "regex": "prof=1 log=off"},
+        {"name": "window 1", "regex": "tour: window 1/8 "},
+        {"name": "tour done", "regex": "tour: done items 8"}
+      ],
+      "reason": "Curated run: 8 maps x (60 settle frames = 2 s + tourtime 4 s) = about 52 s, plus the cold boot and the scene loads. Cap 90 s, over 45 s for the list length. The n in the until and the expected events is the length of curated.txt: update it with the list."
+    },
+    {
       "name": "battle_fb_det",
       "status": "unverified",
       "subject": "Battle kmr_03 (one Goomba), cold det, profdisk: runs to frame 300 so the first ndm window line (native and fallback counts) is in the log.",

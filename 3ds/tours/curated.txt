@@ -1,0 +1,12 @@
+# curated tour list (tourlist=curated). One map per line, map:entry; gen_tour_lists.py compiles it into 3ds/src/pm_tour_lists.h.
+# source: run 25284, ..\perf1\build3ds\azt\logs\tour10_det.txt, build None commit 37a85b655, 10 map windows of the tour
+# rule: ft_ms over 33.3 ms (top 20), plus the top 2 maps of each area (area = map prefix); rank ft_ms, then o34.
+# seed from Azahar tour10_det, replace after tour_full_prof
+mac_00:4  # tour 1, wk 33.37, gbi 11.51, draws 167
+mac_01:0  # tour 2, wk 33.14, gbi 12.09, draws 124
+dgb_01:1  # tour 3, wk 33.47, gbi 5.11, draws 62
+kmr_09:0  # tour 4, wk 31.99, gbi 3.62, draws 56
+hos_00:0  # tour 6, wk 32.96, gbi 4.41, draws 48
+kmr_02:0  # tour 7, wk 32.53, gbi 6.19, draws 66
+kmr_10:0  # tour 8, wk 33.80, gbi 5.00, draws 76
+trd_01:0  # tour 9, wk 33.27, gbi 3.94, draws 69

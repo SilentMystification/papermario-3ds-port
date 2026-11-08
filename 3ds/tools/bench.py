@@ -34,7 +34,10 @@ This is the entry point for every test and profiling run (it replaces the text t
   python 3ds/tools/bench.py trend <bench> [<metric>] [area filters]           (no metric: the prof_record.py trend layout, fps and ft)
   python 3ds/tools/bench.py check <run_id>                    (evaluate the gates of one run)
   python 3ds/tools/bench.py rebuild                           (drop and rebuild bench.db from runs.jsonl and bench_defs.json)
-  python 3ds/tools/bench.py tour-report <run_id>              (one row per map of a tour ingest: ft_ms, wk, o34 and its share, gbi, draws, tris; ranked by ft_ms then o34)
+  python 3ds/tools/bench.py tour-report <run_id>              (one row per map of a tour ingest: ft_ms, wk, o34 and its share (o34 over the clean frames), gbi, draws, tris; ranked by ft_ms then o34)
+  python 3ds/tools/bench.py tour-curate <run_id> [--slow-ms 33.3] [--top 20] [--per-area 2] [--dry-run]
+        Writes 3ds/tours/curated.txt: maps with ft_ms over --slow-ms (top --top) plus the top --per-area maps of each area (ft_ms, then o34).
+        gen_tour_lists.py compiles it (tourlist=curated).
         A tour log (TOUR1 `prof f<n> w<n> tour <i>/<n> <map>:<entry>` lines) ingests as one run record per map: tour_idx and kind
         (map) in the window's extra_json; the bench tags tour_full, tour_curated or tour_battle are copied to the records.
 
@@ -1227,31 +1230,94 @@ def cmd_ingest_last(a):
                        dirty=None if dv is None else dv == "1", warm=a.warm)
 
 
-def cmd_tour_report(a):
-    """One row per map of the tour that run_id belongs to (the records with the same log and ingest time), ranked by ft_ms then o34."""
+def tour_group(run_id):
+    """The map records of the tour that run_id belongs to (same log and ingest time), by tour_idx. (None, None) when run_id is not a tour window."""
     recs = read_runs()
-    me = next((r for r in recs if r["run_id"] == a.run_id), None)
+    me = next((r for r in recs if r["run_id"] == run_id), None)
     if me is None or not any("tour_idx" in w for w in me.get("windows", [])):
-        print("run %d is not a tour window (no tour_idx)" % a.run_id)
-        return 4
+        return None, None
     rows = [r for r in recs if r.get("log_path") == me.get("log_path") and r.get("ts") == me.get("ts")
             and any("tour_idx" in w for w in r.get("windows", []))]
     rows.sort(key=lambda r: r["windows"][0]["tour_idx"])
+    return me, rows
+
+
+def tour_rank(r):
+    """Sort key of a map record, slowest first: ft_ms then o34 (plan_tours.md). wk and gbi are columns only."""
+    m = r.get("run", {})
+    return (-(m.get("ft_ms") or 0.0), -(m.get("o34") or 0.0))
+
+
+def tour_area(r):
+    """Area of a map record: the map prefix before the first `_` (mac_00 is mac)."""
+    return r["windows"][0]["map"].split("_")[0]
+
+
+def cmd_tour_report(a):
+    """One row per map of the tour that run_id belongs to, ranked by tour_rank (ft_ms, then o34). o34% = o34 over the clean frames of the window (wsize)."""
+    me, rows = tour_group(a.run_id)
+    if me is None:
+        print("run %d is not a tour window (no tour_idx)" % a.run_id)
+        return 4
     print("tour-report run %d: %s build %s commit %s, %d map windows (log %s)" % (
         a.run_id, me["bench"], me.get("build_no"), me.get("commit"), len(rows), me.get("log_path")))
     print("%3s %-3s %-16s %-14s %6s %6s %6s %6s %6s %6s %5s" % ("#", "run", "map", "entry", "ft_ms", "wk", "o34", "o34%", "gbi", "draws", "tris"))
-    out = []
-    for r in rows:
-        m = r.get("run", {})
-        ft, o34 = m.get("ft_ms") or 0.0, m.get("o34") or 0.0
-        share = 100.0 * o34 / ft if ft else 0.0
-        out.append((ft, o34, r, share))
-    out.sort(key=lambda t: (-t[0], -t[1]))
-    for ft, o34, r, share in out:
+    for r in sorted(rows, key=tour_rank):
         m, w = r.get("run", {}), r["windows"][0]
+        clean = w.get("wsize") or 0
+        o34 = m.get("o34") or 0.0
+        share = 100.0 * o34 / clean if clean else 0.0
         print("%3d %-3d %-16s %-14s %6.2f %6.2f %6.2f %5.1f%% %6.2f %6.0f %5.0f" % (
-            w["tour_idx"], r["run_id"], w["map"], "e%s" % w["entry"], ft, m.get("wk") or 0.0, o34, share,
+            w["tour_idx"], r["run_id"], w["map"], "e%s" % w["entry"], m.get("ft_ms") or 0.0, m.get("wk") or 0.0, o34, share,
             m.get("gbi") or 0.0, m.get("draws") or 0.0, m.get("tris") or 0.0))
+    return 0
+
+
+TOURS = REPO / "3ds" / "tours"
+CURATED = TOURS / "curated.txt"
+
+
+def cmd_tour_curate(a):
+    """Writes 3ds/tours/curated.txt from the tour of run_id: every map with wk over --slow-ms (the top --top by tour_rank), plus the
+    top --per-area maps of each area by tour_rank. One item per map, in tour order. gen_tour_lists.py compiles it (tourlist=curated)."""
+    me, rows = tour_group(a.run_id)
+    if me is None:
+        print("run %d is not a tour window (no tour_idx). Nothing written." % a.run_id)
+        return 4
+    ranked = sorted(rows, key=tour_rank)
+    chosen = {}
+    for r in [r for r in ranked if (r.get("run", {}).get("ft_ms") or 0.0) > a.slow_ms][:a.top]:
+        chosen[r["run_id"]] = r
+    per = {}
+    for r in ranked:
+        ar = tour_area(r)
+        if per.get(ar, 0) < a.per_area:
+            per[ar] = per.get(ar, 0) + 1
+            chosen[r["run_id"]] = r
+    picked = sorted(chosen.values(), key=lambda r: r["windows"][0]["tour_idx"])
+    seen, items = set(), []
+    for r in picked:
+        if r["windows"][0]["map"] not in seen:
+            seen.add(r["windows"][0]["map"])
+            items.append(r)
+    hdr = ["# curated tour list (tourlist=curated). One map per line, map:entry; gen_tour_lists.py compiles it into 3ds/src/pm_tour_lists.h.",
+           "# source: run %d, %s, build %s commit %s, %d map windows of the tour" % (
+               a.run_id, me.get("log_path"), me.get("build_no"), me.get("commit"), len(rows)),
+           "# rule: ft_ms over %g ms (top %d), plus the top %d maps of each area (area = map prefix); rank ft_ms, then o34." % (
+               a.slow_ms, a.top, a.per_area)]
+    if me.get("host") == "azahar":
+        hdr.append("# seed from Azahar tour10_det, replace after tour_full_prof" if "tour10" in (me.get("label") or "") else
+                   "# source is an Azahar run: replace after tour_full_prof")
+    lines = hdr + ["%s:%s  # tour %d, wk %.2f, gbi %.2f, draws %.0f" % (
+        r["windows"][0]["map"], r["windows"][0]["entry"], r["windows"][0]["tour_idx"], r["run"].get("wk") or 0.0,
+        r["run"].get("gbi") or 0.0, r["run"].get("draws") or 0.0) for r in items]
+    if a.dry_run:
+        print("\n".join(lines))
+        return 0
+    TOURS.mkdir(parents=True, exist_ok=True)
+    with open(CURATED, "w", encoding="utf-8", newline="\n") as f:
+        f.write("\n".join(lines) + "\n")
+    print("tour-curate: %d maps (of %d) -> %s" % (len(items), len(rows), CURATED.relative_to(REPO)))
     return 0
 
 
@@ -1604,6 +1670,9 @@ def main(argv):
     x = sub.add_parser("slow"); x.add_argument("--min", type=float, default=8.0, help="list scenarios with a median until_s above this (AZT11-5)"); x.set_defaults(f=cmd_slow)
     x = sub.add_parser("rebuild"); x.set_defaults(f=cmd_rebuild)
     x = sub.add_parser("tour-report"); x.add_argument("run_id", type=int); x.set_defaults(f=cmd_tour_report)
+    x = sub.add_parser("tour-curate"); x.add_argument("run_id", type=int); x.add_argument("--slow-ms", type=float, default=33.3)
+    x.add_argument("--top", type=int, default=20); x.add_argument("--per-area", type=int, default=2)
+    x.add_argument("--dry-run", action="store_true", help="print the list, write nothing"); x.set_defaults(f=cmd_tour_curate)
     x = sub.add_parser("correct"); x.add_argument("run_id", type=int); x.add_argument("--why", required=True); x.add_argument("--row", default="BENCHFIX")
     x.set_defaults(f=cmd_correct)
     a = p.parse_args(argv)
