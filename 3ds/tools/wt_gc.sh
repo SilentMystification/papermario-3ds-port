@@ -4,7 +4,8 @@
 #   the worktree (git worktree remove --force), its lane folder build3ds/lane-<name>, and its docker volumes
 #   pm3ds-src-<name> and pm3ds-build-<name>.
 # Also removes build-at folders build3ds/at_* and lanes build3ds/lane-* that have no worktree.
-# Keeps: worktrees whose branch has commits not in nds1 (unmerged work), worktrees whose branch tip is on the
+# Keeps: worktrees with a .wt_keep file (an agent works there; it deleted core20 mid-row on 2026-11-08) or uncommitted
+# tracked changes, worktrees whose branch has commits not in nds1 (unmerged work), worktrees whose branch tip is on the
 # first-parent line of nds1 (a fresh branch with no commit of its own yet: an agent may work in it; ls3 was
 # deleted that way on 2026-11-07; remove a fast-forwarded one with --only), names given with --keep, the main lane
 # (build3ds itself), build3ds/azslots, build3ds/azt, build3ds/archive.
@@ -36,6 +37,10 @@ for w in build3ds/wt/*/; do
         */worktrees/*) ;;
         *) echo "remove stale folder $n (not a registered worktree)"; run rm -rf -- "build3ds/wt/$n"; continue ;;
     esac
+    if [ -e "$w.wt_keep" ]; then keep_wt="$keep_wt$n,"; echo "keep $n (.wt_keep: an agent works here)"; continue; fi
+    if [ -n "$(git -C "$w" status --porcelain -uno -- . ':!3ds/src/map_restore_table.c' ':!3ds/logs/perf/runs.jsonl' 2>/dev/null)" ]; then
+        keep_wt="$keep_wt$n,"; echo "keep $n (uncommitted tracked changes)"; continue
+    fi
     if [ -n "$ONLY" ]; then case "$ONLY" in *",$n,"*) ;; *) keep_wt="$keep_wt$n,"; continue ;; esac; fi
     b=$(git -C "$w" symbolic-ref --short -q HEAD || echo DETACHED)
     if [ -z "$ONLY" ] && [ "$b" != DETACHED ] && git rev-list --first-parent nds1 | grep -qx "$(git rev-parse "$b")"; then
