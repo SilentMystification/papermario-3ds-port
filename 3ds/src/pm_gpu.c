@@ -126,7 +126,7 @@ static unsigned gstat_n; /* DLC2: static vertices in use */
 static unsigned gring_n, gidx_n, gi_start, gni; /* ring fill, index fill, first index of the open batch, indices in the open batch */
 /* FB-1 ring_wrap: the raw ring is a chunk list. Chunk 0 is the boot allocation; its tail is the static area (GRING_VTX and up). ring_cur is the chunk the
  * open batch and the fills use: gring and gidx point to it. stamp = the frame that used the chunk; a chunk with stamp < ring_done is finished on the GPU
- * (ring_done = the frame of the last begin that waited with SYNCDRAW). A batch has one vertex base: gi_kind 0 is the ring chunk in use (walker, rect, spr),
+ * (ring_done = the frame of the last begin: C3D_FrameBegin waits for the GX queue). A batch has one vertex base: gi_kind 0 is the ring chunk in use (walker, rect, spr),
  * gi_kind 1 the static area of chunk 0 (grange). Model draws use chunk 0 too. A batch never mixes the kinds off chunk 0. */
 enum { RING_CHUNK_MAX = 8 };
 typedef struct { unsigned char* vtx; unsigned short* idx; unsigned stamp; int used; } RingChunk;
@@ -2378,7 +2378,7 @@ void pm_gpu_begin_wait(void) {
     unsigned fb_flags = (pm_interp_on > 0 && !pm_wd_wake_frames) ? C3D_FRAME_SYNCDRAW : 0;
     if (pm_wd_wake_frames) pm_wd_wake_frames--;
     raw1_reset(); sh_clear(); C3D_FrameBegin(fb_flags);
-    if (fb_flags) ring_done = ring_fr; /* FB-1: the begin waited for the GPU: every chunk used before this frame is finished */
+    ring_done = ring_fr; /* FB-1: C3D_FrameBegin waits for the GX queue (C3Di_WaitAndClearQueue) with or without SYNCDRAW: every chunk used before this frame is finished */
     if (gb_on) { gb_sum += pm_ticks() - gb_sub; gb_n++; gb_on = 0; } /* S0-6: the sync of the previous frame returned */ /* PT88: at 30 steps the loop paces itself by time and the frame begin waits only for the GPU (the previous frame, so the buffers are free); with fps60 the begin waits for the vblank as before: two draws a step, one per vblank */
     FS_MARK(FS_REST);
     PH_POP();

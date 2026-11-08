@@ -87,7 +87,7 @@ Fix: use PMDL (pm_port.h:68), which costs one compare.
 
 ### B. Correctness and seams
 
-**B1 (memory, ring; S). At 30 fps, ring chunks are never reused.**
+**[done W4] B1 (memory, ring; S). At 30 fps, ring chunks are never reused.**
 ring_done is set only when the frame begin waited with SYNCDRAW: `if (fb_flags) ring_done = ring_fr` (pm_gpu.c:2361). fb_flags is SYNCDRAW only when pm_interp_on > 0 (fps60; pm_gpu.c:2358), and the default is fps60 = 0 (pm_options.c:14). ring_pick skips any used chunk with stamp >= ring_done (pm_gpu.c:2134), and ring_done stays 0. So each ring wrap allocates a new 384 KB linear chunk (16384 x 16 + 65536 x 2, pm_gpu.c:122) that is never freed. After 7 extra chunks (RING_CHUNK_MAX 8, :131), ring_pick returns -1, ring_need returns 0, and rectangles and triangles are refused (rr_why[5], pm_gpu.c:3635, 3781).
 Class: dropped draws, and up to 2.7 MB of linear memory held.
 Fix: set ring_done = ring_fr after any frame begin that waited for the GX queue, or stamp chunks against pm_gx_done().
@@ -141,7 +141,7 @@ Deleting them is a user decision, because CLAUDE.md rule 7 says debug tools may 
 | W1 | A1 census gated; C1, C2, C6 dead state | build, nd_host, 5 det byte gates | done (all 5 byte-equal to base) |
 | W2 | A2 one draw key, A5 cold debug blocks out of nd_raw_native | same, plus wcen_mac01 prof=4 gbi phase | done: byte-equal; nd_raw_native 8,996 to 6,332 B, close path 19,288 to 16,832 B; TevKey built only for ndref and drawcensus; nd_tmpl_build repeats the last key with no hash |
 | W3 | A3, A4 pm5 through the shadow | same | done: byte-equal (battle_start_f182 has pm5 draws); the shadow resets only at a program change (prog_use); pm5 uniforms are marked dirty only when they differ from citro3d's copy (u5set, u5mtx); no palk copy for pm5. The 588 B d5 copy stays (nd_emit needs no_uni and loc_uvx) |
-| W4 | B1 ring reuse at 30 fps | same (a ring wrap scenario if one exists, else code trace) | open |
+| W4 | B1 ring reuse at 30 fps | same (a ring wrap scenario if one exists, else code trace) | done: byte-equal; no scenario wraps the ring, so the proof is the code trace: C3D_FrameBegin without NONBLOCK calls gxCmdQueueWait(-1) (libcitro3d renderqueue.o disassembly), so ring_done = ring_fr at every begin |
 | W5 | A7, A8, A11 gtrip and gappend lookups | same | open |
 | W6 | A10, A12, C5 combine hash and switch macros | same | open |
 | W7 | A6 texture slot index | same | open |
