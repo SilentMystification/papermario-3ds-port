@@ -179,6 +179,13 @@ void ent_refcheck(const EntKey* k, const Gfx* l) {
 extern int nd_c2_on;
 void nd_c2_forget_blk(const void* blk);
 static inline void nd_c2_forget(const void* blk) { if (nd_c2_on > 0 && blk) nd_c2_forget_blk(blk); }
+/* MERLEE: a list in a game heap (the general heap, or the battle heap, which is gFrameBuf2) was built at run time: the imgfx animated mesh lists
+ * (imgfx.c imgfx_load_anim) point at vertex buffers that imgfx_mesh_anim_update rewrites every frame. Its vertex span goes into the per-frame hash
+ * (ent_run), as for a keyed list; without it the first compiled pose was drawn for the whole animation. Static lists (entity, map, overlay data) keep the list-only hash. */
+static int ent_heap_list(const Gfx* l) {
+    extern u8 heap_generalHead[]; extern u16 gFrameBuf2[];
+    return (u32)l - (u32)heap_generalHead < (u32)GENERAL_HEAP_SIZE || (u32)l - (u32)gFrameBuf2 < (u32)BATTLE_HEAP_SIZE;
+}
 void ent_compile(EntKey* k, const Gfx* l0) {
     unsigned ns = 0, nops = 0;
     u32 bad = 0, ntri = 0;
@@ -201,7 +208,7 @@ void ent_compile(EntKey* k, const Gfx* l0) {
     if (ns == 0) { k->why = 8; return; }
     nd_ent_strip(w, dlc_words);
     for (unsigned s = 0; s < ns; s++) ntri += ent_sbuf[s].ntri;
-    if (k->vb) for (unsigned i = 0; i < nops; i++) { /* the vertex span of the vertex array: hashed once per frame */
+    if (k->vb || ent_heap_list(l0)) for (unsigned i = 0; i < nops; i++) { /* the vertex span of the vertex array: hashed once per frame */
         if ((l[i].words.w0 >> 24) != G_VTX) continue;
         const u8* p = (const u8*)ptr_of(l[i].words.w1);
         unsigned n = (l[i].words.w0 >> 12) & 0xff;

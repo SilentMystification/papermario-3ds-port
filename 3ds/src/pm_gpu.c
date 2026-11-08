@@ -1635,7 +1635,7 @@ static void wq_pm_gpu_shot_burst(void* a) { Wq_pm_gpu_shot_burst* q = (Wq_pm_gpu
 void pm_gpu_shot_burst(int n) { Wq_pm_gpu_shot_burst q = { n }; pm_wq_post(wq_pm_gpu_shot_burst, &q, sizeof q); }
 static void pm_gpu_shot_burst_w(int n) { extern unsigned pm_frame_count(void); shot_burst_on = 1; shot_burst_w1 = pm_frame_count() + (unsigned)n; shot_burst_f = ~0u; }
 /* encwarp: one shot per frame for the frames from..from+n-1 (overrides shotwin) */
-static int shot_w0 = -2, shot_w1;
+static int shot_w0 = -2, shot_w1, shot_ws = 1; /* shot_ws: shotwin=<first>:<count>:<step>, one shot every step frames of the window (default 1) */
 /* CORE2-3a: walker side entry (nd_wq.c): the game thread posts it, the body runs on the walker side. */
 static void pm_gpu_shot_window_w(unsigned from, unsigned n);
 typedef struct { unsigned from; unsigned n; } Wq_pm_gpu_shot_window;
@@ -1659,7 +1659,7 @@ static void dump_shot(void) {
             char v[24];
             shot_w0 = -1;
             if (pm_debug_value("shotmode", v, sizeof v)) shot_armed = 1; /* SHOT-1: a shotmode scene has no shot before its burst (the periodic dump is for a run without a window) */
-            if (pm_debug_value("shotwin", v, sizeof v) && sscanf(v, "%d:%d", &shot_w0, &shot_w1) == 2) { shot_w1 += shot_w0; shot_armed = 1; }
+            if (pm_debug_value("shotwin", v, sizeof v) && sscanf(v, "%d:%d:%d", &shot_w0, &shot_w1, &shot_ws) >= 2) { shot_w1 += shot_w0; shot_armed = 1; if (shot_ws < 1) shot_ws = 1; }
             else shot_w0 = -1;
         }
         if (shot_burst_on) { /* shotmode: one file, the settle frame (the last frame of the window). Every other drawn frame logs t, C_CMD and C_FLUSH of the frame before (pm_ph_cnt is per frame). */
@@ -1677,7 +1677,7 @@ static void dump_shot(void) {
             snprintf(msg, sizeof msg, "shot %u frame %u map %d:%d t=%u ms cmd %u flush %u", n, fc, ma, mm, pm_uptime_ms(), pm_ph_prev(C_CMD), pm_ph_prev(C_FLUSH));
         } else if (shot_w0 >= 0) {
             unsigned fc = pm_frame_count();
-            if ((int)fc < shot_w0 || (int)fc >= shot_w1) return;
+            if ((int)fc < shot_w0 || (int)fc >= shot_w1 || ((int)fc - shot_w0) % shot_ws) return;
             snprintf(msg, sizeof msg, "shot %u frame %u", n, fc);
         } else if (shot_armed) {
             return; /* SHOT-1: a burst or window ran: no shot outside it */
@@ -2717,14 +2717,17 @@ static uint32_t aux_hash(const uint32_t* rec) {
 }
 void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) {
     memcpy(k->w, rec, NDMC_RW * sizeof(uint32_t));
+    /* MERLEE: a shroud record (R3 bit 32) changes its fog colour alpha (ShroudTintAmt) and may change its blend colour every frame of a fade. Only the mix colour
+     * reads them, and the hit sets that colour from the record (pm_gpu_model_hit), so they are not in the key: a fade hits instead of rebuilding every model each frame. */
+    if (rec[6] & 32u) { k->w[8] &= 0xffffff00u; k->w[14] = 0; }
     uint32_t* s = k->w + NDMC_RW;
     unsigned sw_tss, sw_geo, sw_cw0, sw_cw1; pm_gbi_sticky(&sw_tss, &sw_geo, &sw_cw0, &sw_cw1);
     float db = decal_bias(); uint32_t dbits; memcpy(&dbits, &db, 4);
     unsigned i = 0;
     s[i++] = nd_ws.omode_h; s[i++] = nd_ws.omode_l; s[i++] = nd_ws.om_kh; s[i++] = nd_ws.om_kl; s[i++] = nd_ws.geom;
     s[i++] = sw_tss; s[i++] = sw_cw0; s[i++] = sw_cw1;
-    s[i++] = nd_ws.prim; s[i++] = nd_ws.prim_lod; s[i++] = aux_hash(rec); /* S3N-7: env_col is not in the key (it changes per draw order; the cached draws do not read it: ndmcheck diff 0). S3L-3: slot 10 = hash of the R13 words (compared) */ s[i++] = cconst; s[i++] = r_mixcol; s[i++] = dbits;
-    s[i++] = (uint32_t)dview; s[i++] = (uint32_t)gs.r_mix; s[i++] = (uint32_t)r_memblend; s[i++] = (uint32_t)r_replace; s[i++] = (uint32_t)gv_wind;
+    s[i++] = nd_ws.prim; s[i++] = nd_ws.prim_lod; s[i++] = aux_hash(rec); /* S3N-7: env_col is not in the key (it changes per draw order; the cached draws do not read it: ndmcheck diff 0). S3L-3: slot 10 = hash of the R13 words (compared) */ s[i++] = cconst; s[i++] = gs.r_mix == 2 ? r_mixcol : 0u; s[i++] = dbits; /* MERLEE: the walker's mix reaches the native draw only as the F08 fog mix (model_draw) */
+    s[i++] = (uint32_t)dview; s[i++] = gs.r_mix == 2 ? 2u : 0u; s[i++] = (uint32_t)r_memblend; s[i++] = (uint32_t)r_replace; s[i++] = (uint32_t)gv_wind;
     { float zb_ = gs.r_zmark ? gs.r_zmark_zn : 0.f; uint32_t zu; memcpy(&zu, &zb_, 4); s[i++] = gs.r_zmark ? (zu | 1u) : 0u; } /* S5-2: zmark on and its depth (bit 0 set when on) */
     s[i++] = (uint32_t)gs.r_decal; s[i++] = (uint32_t)gs.r_blend; s[i++] = (uint32_t)pm_wide; s[i++] = (uint32_t)gs.off_active; s[i++] = (uint32_t)ui_ortho;
     s[i++] = nd_handle_gen(); s[i++] = pm_dlc_gen;
@@ -2747,6 +2750,8 @@ void pm_gpu_set_r13_t1(int bound) {
     if (pm_tex_native_unit1(&r13u1) == 1) { r13u1_ok = 1; r13i8_1 = pm_tex_i8(1); }
     /* FB-2: 2 (an off-screen aux image) stays a fallback here: the model path has no snapshot */
 }
+int nd_mix1(unsigned ol, unsigned* col); /* nd_set.c: the V06 colour mix rule of sync_render */
+extern unsigned fogc, blendc;
 static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, int emit, int* mode_ok, const NdMKey* mk) {
     *mode_ok = modew != NULL && nd_mode_compile(&mdl_mode, (const unsigned*)modew) != 0;
     if (!*mode_ok) { static unsigned mb_; if (mb_++ < 8u) { const uint32_t* mw_ = (const uint32_t*)modew; pm_log_prof_line("modebad modew %p bad %02x w0 %08x w1 %08x w2 %08x w3 %08x", modew, mdl_mode.bad, modew ? mw_[0] : 0u, modew ? mw_[1] : 0u, modew ? mw_[2] : 0u, modew ? mw_[3] : 0u); } }
@@ -2806,11 +2811,17 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
     if (ds) { int w = 8, h = 8; while (w < ds->w) w <<= 1; while (h < ds->h) h <<= 1; c.tex_w = w; c.tex_h = h; } /* the size of the record's texture, not the walker-bound slot */
     c.draw_3d = 1; /* S3N-3c: a native batch goes through pm_gpu_grange, which sets draw_3d */
     c.zmark = gs.r_zmark; c.zn = gs.r_zmark_zn; /* S5-2 (a) */
-    c.dview = dv_mode(); c.r_mix = gs.r_mix; c.r_memblend = r_memblend; c.r_replace = r_replace;
-    c.prim = nd_ws.prim; c.prim_lod = nd_ws.prim_lod; c.env = gs.env_col; c.cconst = cconst; c.mixcol = r_mixcol; /* B9: prim from the bridge state */
+    c.dview = dv_mode(); c.r_memblend = r_memblend; c.r_replace = r_replace; /* MERLEE: r_mix and mixcol below, from the record's other mode */
+    c.prim = nd_ws.prim; c.prim_lod = nd_ws.prim_lod; c.env = gs.env_col; c.cconst = cconst; /* B9: prim from the bridge state */
     { float db = decal_bias(); memcpy(&c.dbias, &db, 4); }
     c.base_oh = ax_ok ? (nd_ws.omode_h & ~ax.wh) | ax.om_h : nd_ws.omode_h; c.base_ol = ax_ok ? (nd_ws.omode_l & ~ax.wl) | ax.om_l : nd_ws.omode_l; /* B8; S3L-3: the R13 mode ops first */
     c.known_h = nd_ws.om_kh | (ax_ok ? ax.wh : 0u); c.known_l = nd_ws.om_kl | (ax_ok ? ax.wl : 0u);
+    { /* MERLEE: the V06 colour mix (the room shroud, PM_RM_SHROUD) from this record's own other mode (the base, then its list; the shroud word is the last list op, nd_recs.c)
+       * and the fog and blend colours rec_apply set. gs.r_mix is the state of the walker's last sync_render, not of this record. The F08 fog mix (2) stays the walker's. */
+        unsigned mixc; const uint32_t ol_ = *mode_ok ? (c.base_ol & ~mdl_mode.wl) | mdl_mode.om_l : c.base_ol;
+        if (nd_mix1(ol_, &mixc)) { c.r_mix = 1; c.mixcol = mixc; }
+        else { c.r_mix = gs.r_mix == 2 ? 2 : 0; c.mixcol = r_mixcol; }
+    }
     /* PM5-3: the normal rows of the walker's matrix (gm_nrm: model view rows 0 to 2, w 0) for a lit or fogged range */
     c.nrm_ok = gv5_on; for (int r_ = 0; r_ < 3; r_++) { c.nrm5[r_][0] = nd_mv[nd_mv_sp][r_][0]; c.nrm5[r_][1] = nd_mv[nd_mv_sp][r_][1]; c.nrm5[r_][2] = nd_mv[nd_mv_sp][r_][2]; c.nrm5[r_][3] = 0.f; }
     nd_mdl_cur_x = nd_tex_handle_extra((int)texidx, gfx); /* MDL-5a census: extraTiles of this draw's handle */
@@ -2840,6 +2851,8 @@ void pm_gpu_ndm_begin(const uint32_t* rec, const uint32_t* modew, const uint32_t
  * The counters print every 300 frames: native records, fallback records, native draws (the ranges; the wref class is not split in this mode). */
 static unsigned ndn_rec, ndn_fb, ndn_draws, ndn_f_last, ndn_hit, ndn_miss, ndn_nokey, ndn_rng, ndn_texf, ndn_empty; /* PERF1: empty = hits with no draw */
 void pm_gbi_dnr_take(unsigned* o, unsigned n);
+static unsigned ndn_miss_all; /* MERLEE: model cache misses since boot (pm_gpu_mdl_stat) */
+void pm_gpu_mdl_stat(unsigned* miss, unsigned* clears) { *miss = ndn_miss_all; *clears = nd_mc_clears(); } /* MERLEE: the fade lines of dro_02 npc_merlee.c */
 static unsigned ndn_why[16]; /* S3L-1: fallback records of the window by code (0 = nost: no state bit known, the record words are not read) */
 /* S3N-7: the counters of one 300-frame window (reset at the print). ndmt: ms per sampled frame of each region (ticks / 268112 per ms / frames). */
 static unsigned ndn_clr0;
@@ -2949,6 +2962,7 @@ void pm_gpu_model_miss_diag(const NdMKey* k) {
 int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, const NdMKey* mk) {
     int mode_ok = 0;
     int n = model_draw(rec, modew, combw, gfx, texidx, geo, 1, &mode_ok, mk);
+    ndn_miss_all++;
     if (n >= 0) { ndn_rec++; ndn_draws += (unsigned)n; }
     else { ndn_fb++; ndn_why[nd_nat_why & 15]++; const unsigned sub = nd_nat_why == 6 ? nd_nat_sub : 0u; if (sub) nd_mdlfb_note(mk->rp, sub); } /* S3N-7: a fallback is stored for this key (every early return of model_draw too): not drawn again while the texture epoch holds, so a texture that loads later gets the native path then */
     ndn_miss++;
@@ -2980,8 +2994,12 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
     nd_mtx_combine(comb, pm_eye_e, pm_eye_conv);
     pm_gpu_pcomp_native(pal0, comb);
     pm_gpu_flush();
+    const uint32_t* rw = (const uint32_t*)(uintptr_t)k->rp; /* MERLEE: the shroud mix colour of this frame (the key leaves it out): blend colour RGB, fog colour alpha, as rec_apply sets them */
+    const int shr = rw && (rw[6] & 32u);
+    const uint32_t shc = shr ? nd_abgr((((rw[6] & 16u) ? rw[14] : blendc) & 0xffffff00u) | (rw[8] & 0xffu)) : 0u;
     for (unsigned j = 0; j < e->n; j++) {
         NdNat* q = nd_mc_nat(e, j);
+        if (shr && q->tk.r_mix == 1 && q->s.to.mix_st >= 0) q->d.tev_col[q->s.to.mix_st] = shc;
         memcpy(q->pal, pal0, sizeof pal0);
         if (q->zp) for (int i = 0; i < 4; i++) q->pal[8 + i] = q->zn * pal0[12 + i]; /* S5-2: zmark pass 2 */
         if (e->tex) q->d.u[0] = u;

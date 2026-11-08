@@ -140,7 +140,7 @@ void nd_tev_build(const NdTevIn* in, NdTevOut* o) {
     int off_active = k->off_active, off_i8 = k->off_i8, r_blend = k->r_blend, r_replace = k->r_replace, env_hi = 1;
     uint32_t* env = o->st[0];
     for (int i = 0; i < 6; i++) ev_init(o->st[i]);
-    o->memb = 0; o->buf_set = 0; o->buf_color = 0;
+    o->memb = 0; o->buf_set = 0; o->buf_color = 0; o->mix_st = -1;
     if (combine == 8 && plan && (!plan->uses_tex || tex) && (!plan->uses_tex1 || tex1) && (!plan->uses_noise || k->noise)) {
         /* S25: general combiner. A stage reads the texture, the vertex colour, its constant, the previous stage or the buffer colour. */
         o->buf_set = 1; o->buf_color = nd_abgr(plan->buf);
@@ -223,6 +223,7 @@ void nd_tev_build(const NdTevIn* in, NdTevOut* o) {
         ev_src(e, M_A, TS_PREV, TS_PREV, TS_PREV);
         ev_func(e, M_A, F_REPLACE);
         e[3] = nd_abgr(in->mixcol);
+        o->mix_st = env_hi;
         env_hi++;
     }
     /* FX2a: an 8 bit image has memory alpha 0xE0 (7/8). The RDP blender then gives (P*a + M*0.88) / (a + 0.88): the weight of P is

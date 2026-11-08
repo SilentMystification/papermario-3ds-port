@@ -9,7 +9,7 @@ Trigger sequence: <inputs, menus, choices>. First wrong frame: <event or frame>.
 <2 to 3 lines.>
 
 ## Start state
-Worktree build3ds/wt/<id>, branch <id> from nds1 <hash>. Copy assets/us and ver/us/build into it. STATE from the previous agent (10 lines or fewer):
+Worktree build3ds/wt/<id>, branch <id> from main <hash>. Copy assets/us and ver/us/build into it. STATE from the previous agent (10 lines or fewer):
 
 ## Premise and its check (oracle plans)
 Premise: <the claim the plan rests on>. Check first: <log line or code read>; if it fails, hand back at once.
