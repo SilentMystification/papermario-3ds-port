@@ -27,3 +27,20 @@ Do not re-investigate (link only): console regression a3c5ec093 -> 7be88729b (ru
 
 ## 5. Limits
 One pass. Read order: pm_gpu.c -> nd_* -> pm_tex.c -> shaders -> producers -> logging and threads. About 150 file reads. Rows CFG (cfg1) and GREY (grey) edit code in worktrees now: audit nds1 as committed.
+
+## A0 detail (oracle, 2026-11-08; replaces the A0 start list above where they differ)
+Threads (grep threadCreate 3ds/src; expect 8): game pm_main.c:804 core 0; audio pm_audio.c:112 core 1 (or system core with audiocore0); audio render pm_au2.c:177; flash/save pm_flash.c:86; log writer pm_log.c:956; log step pm_log.c:1031; log sink pm_log.c:1191; watchdog pm_wdog.c:154. Lock and wait users: pm_au2.c, pm_audio.c, pm_dspaud.c, pm_flash.c, pm_log.c, pm_wdog.c. A different count: rebuild the thread rows first.
+Map columns: interface; producer -> consumer (file:function); data and owner; copies or passes per crossing; frequency; thread crossing (locks, waits, hold time from code); duplicated state; order dependencies in the frame. At most 12 rows, one-line verdict each.
+Interfaces and questions:
+- Game loop and frame pacing: pm_main.c loop (sched_next, step_vb_ok, draw parity), pm_gfx_retrace, pm_interp key draw, pm_gpu_begin_wait, C3D_FrameBegin/End, GX queue (pm_gx_room, pm_gx_drain), vblank waits. Waits per frame; duplicated waits (begin_wait + SYNCDRAW + gspWaitForPPF).
+- Producer -> walker: src/ TARGET_3DS records (G_PM_REC/SPR/ENT/ND) -> pm_nusys.c gbi_task -> pm_gbi_run/nd_walk_run, stereo eye-2 walk, key replay. Walks per list per frame; state rebuilt per walk.
+- Walker -> geometry -> ring -> submit: nd_geom.c -> pm_gpu.c gtrip/gappend/ring chunks -> flush_draw -> nd_raw_native -> nd_tmpl/nd_emit; native model path (nd_model*.c, nd_recs.c), sprite and rect paths. Per-draw key builds and hashes (TevKey, NdTmplKey, NdMKey, scm sig, sc_sig, cen_add hash); state kept twice (nd_ws vs pm_gpu r_*, combine/plan vs citro3d shadow vs ndn_sh register shadow); redundant flushes (setters that call pm_gpu_flush).
+- Texture cache: nd_tex*.c tile state -> pm_tex.c (slot, LRU, stage, upload, pf_add free) -> unit words (pm_tex_native_unit0/1, nd_tex_unit_hint, model cache u[]). Lookups per bind; tex_gen bumped in 4 modules. UB1 suspect 1 is known: link only.
+- Audio: game step -> pm_audio.c, pm_au2.c, pm_dspaud.c, pm_rsp_audio.c. Handoff buffer, locks, ticks per game step (2 per step under det), mute at pause.
+- Input: pm_input.c scan (60 Hz) -> game pad (every second scan) -> menu (pm_menu_key/hold), padscript, Select pending and stale rules.
+- Menu/options: pm_options_ui.c, pm_options.c <-> pm_log levels, prof row, pm_opt reads in hot code (per frame vs cached at change).
+- Logging: callers -> vlog queue -> writer (log.txt), sink (console 10/s, HUD, live socket). fb_lock, con_lock, queue lock. Cost when off (pass_lv). MENUB races known: link only.
+- File I/O and map load/restore: pm_map.c, pm_mapdata.c, pm_os.c ROM reads, map_restore, effect_loads.c, pm_flash.c save thread. Blocking reads on the game thread, read sizes, cache invalidation at map change (nd_mc reset, pm_tex epoch, dlc_reset, ent_reset).
+- Memory: pm_mem.c, pm_buffers.c, pm_heaphi.c, linearAlloc users, VRAM placement. Who frees; per-frame allocations; allocations across threads.
+Checks per row: (a) one owner, a second writer listed; (b) copies or passes, can one go; (c) frequency, can it move lower (per op -> per state change -> per frame); (d) locks and waits across threads, worst-case hold; (e) duplicated fact, which side owns it; (f) implicit order dependencies (a comment "before X") vs enforced.
+Report order: 1 system map; 2 findings ranked by cut in cross-system cost or coupling (per-vertex/per-op cross-module work and duplicated state first, then waits and locks, then correctness and seams, then maintainability), each with its interface row or "local"; 3 rows to create (at most 10), ownership fixes before the optimizations that depend on them; 4 known open items (linked); 5 not checked.
