@@ -392,7 +392,7 @@ static int tab_ids(int tab, int mode, int* ids) {
         ids[n++] = RW_PARTF; /* LAYOUT: Partners folder (Enable partners, CH4 rows) */
         ids[n++] = RW_SPAWNF; /* CH5: Spawn item folder */
         ids[n++] = RW_MOON; /* CH6: Moon jump (On or Off) */
-        for (i = 0; i < 5; i++) ids[n++] = RW_CHEAT + i; /* CH7: Infinite HP, FP, star power, No battles, Speed x2 */
+        for (i = 0; i < 6; i++) ids[n++] = RW_CHEAT + i; /* CH7: Infinite HP, FP, star power, No battles, Speed x2; CH9: Perfect action commands */
         for (i = 0; i < 10; i++) ids[n++] = RW_CH8 + i; /* CH8: boots, hammer, spirits, pieces, story, item, fill, save, load, instant win */
         ids[n++] = RW_FADV; /* FADV: Frame advance (On or Off, takes effect at the menu close) */
     }
@@ -528,7 +528,7 @@ const char* pm_optui_label(int tab, int row, int mode) {
     if (id >= RW_BTLAREA && id < RW_BTLAREA + 100) return pm_battle_area_name(id - RW_BTLAREA); /* BT2 */
     if (id >= RW_BTLROW && id < RW_BTLROW + 1000) return pm_battle_label(id - RW_BTLROW); /* BT2 */
     if (id >= RW_CH8 && id < RW_CH8 + 10) { static const char* const cl8[10] = { "Boots level", "Hammer level", "Max star spirits", "Star pieces", "Story", "Inventory item", "Fill inventory", "Save position", "Load position", "Instant win" }; return cl8[id - RW_CH8]; } /* CH8 */
-    if (id >= RW_CHEAT && id < RW_CHEAT + 5) { static const char* const cl[5] = { "Infinite HP", "Infinite FP", "Infinite star power", "No battles", "Speed x2" }; return cl[id - RW_CHEAT]; } /* CH7 */
+    if (id >= RW_CHEAT && id < RW_CHEAT + 6) { static const char* const cl[6] = { "Infinite HP", "Infinite FP", "Infinite star power", "No battles", "Speed x2", "Perfect action commands" }; return cl[id - RW_CHEAT]; } /* CH7, CH9 */
     if (folder_row(id, &g) >= 0) return folder_row(id, &g) == 0 ? "Toggle all" : pm_item_name(pm_dbgg_item_id(g, folder_row(id, &g) - 1));
     if (id >= RW_WMAP) return pm_warp_map_name(pm_warp_area_map(sub_area, id - RW_WMAP));
     if (id >= RW_SUB) { int r = id - RW_SUB, P = pm_warp_preset_count(); return r < P ? pm_warp_preset_name(r) : pm_warp_area_name(r - P); }
@@ -567,7 +567,7 @@ const char* pm_optui_value(int tab, int row, int mode) {
     if (id >= RW_BTLROW && id < RW_BTLROW + 1000) return "A: fight"; /* BT2 */
     if (id == RW_MOON) return pm_cheat_moon_get() ? "On" : "Off"; /* CH6 */
     if (id == RW_FADV) return pm_fa_get() ? "On" : "Off"; /* FADV */
-    if (id >= RW_CHEAT && id < RW_CHEAT + 5) return pm_cheat_get(id - RW_CHEAT) ? "On" : "Off"; /* CH7 */
+    if (id >= RW_CHEAT && id < RW_CHEAT + 6) return pm_cheat_get(id - RW_CHEAT) ? "On" : "Off"; /* CH7 */
     if (id >= RW_CH8 && id < RW_CH8 + 10) return pm_dbgg_ch8_text(id - RW_CH8); /* CH8 */
     if (folder_row(id, &g) >= 0) return folder_row(id, &g) == 0 ? "A: all" : pm_dbgg_item_has(g, pm_dbgg_item_id(g, folder_row(id, &g) - 1)) ? "On" : "Off";
     if (id >= RW_WMAP) { /* a map row shows its entry and the entry count */
@@ -617,10 +617,10 @@ int pm_optui_step(int tab, int row, int dir, int mode) {
     if (id == RW_BATTLESF || (id >= RW_BTLAREA && id < RW_BTLROW + 1000)) return 0; /* BT2: no value */
     if (id == RW_MOON) { pm_cheat_moon_set(!pm_cheat_moon_get()); return 1; } /* CH6: left or right flips it */
     if (id == RW_FADV) { pm_fa_set(!pm_fa_get()); return 1; } /* FADV: flips */
-    if (id >= RW_CHEAT && id < RW_CHEAT + 5) { pm_cheat_set(id - RW_CHEAT, !pm_cheat_get(id - RW_CHEAT)); return 1; } /* CH7: flips */
+    if (id >= RW_CHEAT && id < RW_CHEAT + 6) { pm_cheat_set(id - RW_CHEAT, !pm_cheat_get(id - RW_CHEAT)); return 1; } /* CH7: flips */
     if (id >= RW_CH8 && id < RW_CH8 + 6) { pm_dbgg_ch8_step(id - RW_CH8, dir); return 1; } /* CH8: value rows step */
     if (id >= RW_CH8 && id < RW_CH8 + 10) return 0;
-    if (id >= RW_CHEAT && id < RW_CHEAT + 5) { pm_cheat_set(id - RW_CHEAT, !pm_cheat_get(id - RW_CHEAT)); return 1; } /* CH7 */
+    if (id >= RW_CHEAT && id < RW_CHEAT + 6) { pm_cheat_set(id - RW_CHEAT, !pm_cheat_get(id - RW_CHEAT)); return 1; } /* CH7 */
     if (id > RW_PART && id <= RW_PART + 11) return pm_dbgg_partner_level(id - RW_PART, dir); /* CH4: left and right change the level of an enabled partner */
     if (id == RW_CSTATS || id == RW_CBADGES || id == RW_CKEYS || fold_index(id) >= 0 || folder_row(id, &g) >= 0) return 0;
     if (id == RW_FPS || id == RW_WIDE || id == RW_DPAD || (id >= RW_MAP && id < RW_MAP + PM_NIN) || (id >= RW_DBG && id < RW_DBG + 11)) { /* LAYOUT: left or right flips or cycles a value row like A */
@@ -671,7 +671,7 @@ int pm_optui_act(int tab, int row, int mode) {
     if (id >= RW_BTLROW && id < RW_BTLROW + 1000) return pm_battle_launch(id - RW_BTLROW) ? 5 : 0; /* BT2: queued, the menu closes */
     if (id == RW_MOON) { pm_cheat_moon_set(!pm_cheat_moon_get()); return 0; } /* CH6 */
     if (id == RW_FADV) { pm_fa_set(!pm_fa_get()); return 0; } /* FADV */
-    if (id >= RW_CHEAT && id < RW_CHEAT + 5) { pm_cheat_set(id - RW_CHEAT, !pm_cheat_get(id - RW_CHEAT)); return 0; } /* CH7 */
+    if (id >= RW_CHEAT && id < RW_CHEAT + 6) { pm_cheat_set(id - RW_CHEAT, !pm_cheat_get(id - RW_CHEAT)); return 0; } /* CH7 */
     if (id >= RW_CH8 && id < RW_CH8 + 10) { pm_dbgg_ch8_act(id - RW_CH8); return 0; } /* CH8 */
     if (id > RW_PART && id <= RW_PART + 11) { /* CH4: A turns the partner on or off */
         pm_dbgg_partner_set(id - RW_PART, !pm_dbgg_partner_on(id - RW_PART));

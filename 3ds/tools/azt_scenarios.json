@@ -3274,7 +3274,7 @@
         },
         {
           "name": "tour done",
-          "regex": "tour: done, 10 maps"
+          "regex": "tour: done items 10"
         }
       ],
       "reason": ""
@@ -3306,7 +3306,7 @@
         },
         {
           "name": "tour done",
-          "regex": "tour: done, 6 maps"
+          "regex": "tour: done items 6"
         }
       ],
       "reason": "Picture check not applicable: the grey page, the Prologue card and the dark text box in 4 of 7 shots are the cutscene overlay of the story state on those maps. Shots: build3ds\\azt\\shots\tour_k30 (run tourshot=30:9, 7 files). Log passes; tex fail delta on kmr_30 is 420 in that run, not 0."
@@ -4311,7 +4311,7 @@
       "expected_events": [
         {
           "name": "tour done",
-          "regex": "tour: done, [0-9]+ maps"
+          "regex": "tour: done items [0-9]+"
         }
       ],
       "reason": "Completion only, not run in this task (budget). The same args ran in budget row sweep420 at 2026-10-29 03:51 (rc 0, tour: done, 143 s). Up to 1800 s per run."
@@ -8674,7 +8674,7 @@
         },
         {
           "name": "tour done",
-          "regex": "tour: done, 3 maps"
+          "regex": "tour: done items 3"
         }
       ],
       "reason": "MEM-A item 2 gate: re-entry of a map with the restore block (the only map re-entry in a short tour)."
@@ -9127,21 +9127,24 @@
     {
       "name": "tour10_det",
       "status": "unverified",
-      "subject": "Mario in each of 10 maps of the tour list, cold det, prof=4: one ndm line per 300 frames (native draws and fallback count).",
-      "proves": "MDL-5e census: ndm fb 0 on the tour10 list (every model record drawn natively).",
-      "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0,dgb_01:1,kmr_09:0,kmr_20:4,hos_00:0,kmr_02:0,kmr_10:0,trd_01:0,mac_00:0 shots shotwin=999999:1 shotmode=4:21 phase phasecsv profdisk=1 det fixedseed loglevel=debug mdl0",
+      "subject": "Mario in each of 10 maps of the tour list, cold det, prof=4, tourtime=1: one prof window per map (line prof f<n> w<n> tour <i>/<n> <map>:<entry>) and one tourshot 50 frames after each map is in (after the spot placement at 30, before the window at 60, so the shot cost is not in the window). mac_01 (item 2) and mac_00 (item 10) have a position 60 above the floor: Mario stands on the floor (tour: at <map> y <snapped>). ndm census lines per 300 frames.",
+      "proves": "TOUR1: the tour state machine (settle, window open and close per map, no window across two maps, y snap of a spot) and the MDL-5e census (ndm fb 0 on the tour10 list).",
+      "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0@0:60:200,dgb_01:1,kmr_09:0,kmr_20:4,hos_00:0,kmr_02:0,kmr_10:0,trd_01:0,mac_00:0@-135:60:85 tourtime=1 tourshot=50 shots shotwin=99999:1 prof=4 profdisk=1 det",
       "extra": ["-NoWarm"],
-      "until": "tour: done",
+      "until": "tour: done items",
       "cap": 90,
       "deadline": 20,
-      "first_marker": "warp: mac_00 entry 4",
+      "first_marker": "prof=1 log=off",
       "expects": "tour",
       "needs_picture": true,
       "expected_events": [
-        {"name": "warp", "regex": "warp: mac_00 entry 4"},
-        {"name": "tour done", "regex": "tour: done, 10 maps"}
+        {"name": "prof on", "regex": "prof=1 log=off"},
+        {"name": "window mac_01", "regex": "prof f\\d+ w\\d+ tour 2/10 mac_01:0"},
+        {"name": "window trd_01", "regex": "prof f\\d+ w\\d+ tour 9/10 trd_01:0"},
+        {"name": "snap mac_01", "regex": "tour: at mac_01 y "},
+        {"name": "tour done", "regex": "tour: done items 10"}
       ],
-      "reason": "MDL-5e census: ten map changes (tour10 list), cold start so the fb count is a function of the build. Cap as tour10."
+      "reason": "TOUR1 gate and MDL-5e census: ten map changes, each a load, 60 settle frames and a 30-frame window (about 5 s per map); cold start so the fb count is a function of the build. Cap 90 s for the 10 loads plus the cold boot."
     },
     {
       "name": "tour10_det_ref",
@@ -9158,9 +9161,29 @@
       "needs_picture": true,
       "expected_events": [
         {"name": "warp", "regex": "warp: mac_00 entry 4"},
-        {"name": "tour done", "regex": "tour: done, 10 maps"}
+        {"name": "tour done", "regex": "tour: done items 10"}
       ],
       "reason": "MDL-5f byte reference: tour10_det with nomodelnat (walker geometry of every model record), cold start so the shots are a function of the build. Cap as tour10."
+    },
+    {
+      "name": "tour_full",
+      "status": "unverified",
+      "subject": "Mario in every map of gAreas (tourlist=all, no tst_ maps), one session, no reboot, fixed seed at each warp (gRandSeed = TOUR_SEED). Per map: WARP, SETTLE 60 frames, one prof window of tourtime (default 4 s), CLOSE with the label line prof f<n> w<n> tour <i>/<n> <map>:<entry>. Spot per map from 3ds/tours/spots.txt (or entry 0).",
+      "proves": "The full tour: one window record per map for the perf DB (bench.py tour-report ranks the maps by ft_ms). Finds the laggy maps. Not a pass/fail gate: the result is the per-map frame cost.",
+      "debug": "warp=arn_02:0 story=ch0_toad_town tourlist=all prof=4",
+      "extra": ["-NoWarm"],
+      "until": "tour: done items",
+      "cap": 2600,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "tour",
+      "needs_picture": false,
+      "expected_events": [
+        {"name": "prof on", "regex": "prof=1 log=off"},
+        {"name": "window 1", "regex": "tour: window 1/\\d+ "},
+        {"name": "tour done", "regex": "tour: done items \\d+"}
+      ],
+      "reason": "Soak: 411 maps x (60 settle frames = 2 s + tourtime 4 s) = about 2470 s, plus the cold boot and the 45 s scene loads. Cap 2600 s, the one scenario over 45 s. The full tour runs only when the user asks (plan_tours.md)."
     },
     {
       "name": "battle_fb_det",
@@ -9352,7 +9375,7 @@
         },
         {
           "name": "tour done",
-          "regex": "tour: done, 10 maps"
+          "regex": "tour: done items 10"
         }
       ],
       "reason": "FB-3 tex1 subject search: the tour10 list with t1log and the cold det switches. Cap 90 as tour10 (10 map changes; the until line is the tour end)."
