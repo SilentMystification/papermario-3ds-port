@@ -25,7 +25,7 @@ pm_warp.c: tour engine (TOUR1: tour_parse, tour_step, tour_tick, pm_warp_world_m
 1. TOUR-1: done (Design, map state machine).
 1b. POS1 (Opus): tour_spots.py, 3ds/tours/spots.txt, compiled into pm_tour_lists.h; the run-time y snap goes into TOUR1. Parallel to TOUR1.
 2. CHEAT-A (Haiku, src line reviewed by the orchestrator): cheat bit, row, token, hooks. Parallel to TOUR-1.
-3. TOUR-2 (Haiku): ingest of tour lines, tour-report, benches tour_full / tour_full_prof, scenario tour_full (soak cap with reason).
+3. TOUR-2: done. Ingest of tour windows (one run record per map, tour_idx and kind in extra_json), bench.py tour-report, scenario tour_full (cap 2600 s, soak), benches tour_full (azahar_stream) and tour_full_prof (console_prof). Premise: the tour10_det log ingests to 10 records with tour_idx 1..10 (checked on a scratch runs file, not appended to the history).
 4. BT-1 (Opus): battle tour, benches tour_battle / tour_battle_prof.
 5. CUR-1 (Haiku): tour-curate, gen_tour_lists.py, 3ds/tours/, tourlist=curated, benches tour_curated / tour_curated_prof.
 6. Full run (user asks): tour_full in Azahar, tour_full_prof on the console, then tour-curate and commit curated.txt.
