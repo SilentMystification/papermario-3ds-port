@@ -130,7 +130,7 @@ extern unsigned char __C3D_Context[]; /* citro3d context, read only: the 0x105 w
 static int stp_on = -1; static unsigned stp_n, stp_lw[8], stp_cnt[8], stp_last, stp_lc[8];
 static unsigned stc_ctx(void) { return *(volatile unsigned*)(__C3D_Context + 0xF4); }
 static int stp_sw(void) { if (stp_on < 0) stp_on = pm_debug_has("stprobe") ? 1 : 0; return stp_on; }
-static void stc_set(int site, int en, GPU_TESTFUNC fn, int ref, int im, int wm) {
+static __attribute__((cold, noinline)) void stc_set(int site, int en, GPU_TESTFUNC fn, int ref, int im, int wm) {
     C3D_StencilTest(en, fn, ref, im, wm);
     if (!stp_sw()) return;
     stp_cnt[site & 7]++;
@@ -960,9 +960,9 @@ void pm_gpu_ndt_end(NdtT s, int k) {
 /* S3N-2: the submit of one native draw, moved from nd_raw_native as it was (the state staging, the shadow, citro3d's context update, the emit and the
  * counters). The palette and the NdDraw are built by the caller before. Model draws (nd_model.c, S3N-4) use this too. */
 static unsigned ndn_tgen;
-static void pm5_upload_draw(const NdDraw* d);
-static void t1log_draw(const NdDraw* d);
-static void pm5tex1_log(const NdDraw* d);
+static __attribute__((noinline)) void pm5_upload_draw(const NdDraw* d);
+static __attribute__((cold, noinline)) void t1log_draw(const NdDraw* d);
+static __attribute__((cold, noinline)) void pm5tex1_log(const NdDraw* d);
 /* FX1-3 orbdbg (debug tool): one line per draw inside an effect list (the tag from pm_gbi_dbg_orb_tag, nd_walk.c). path: walk (flush_draw) or native (nd_raw_native). */
 static __attribute__((cold, noinline)) void orb_log(const char* path, int z, int memb, int i8_0, int i8_1, unsigned tris, int graw) {
     extern unsigned pm_gbi_dbg_orb_tag(void);
@@ -1029,7 +1029,7 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
  * the attribute locations and the index address of its static range. */
 void pm_gpu_pcomp_native(float o[16], const float m[4][4]) { NdtT t = pm_gpu_ndt_begin(); nd_mtx_pcomp(o, gv_post.m, m); pm_gpu_ndt_end(t, NDT_MTX); }
 /* PM5-3: the pm5 block of a model draw from its NdDraw fields (the same calls as pm5_upload, values of the draw) */
-static void pm5_upload_draw(const NdDraw* d) {
+static __attribute__((noinline)) void pm5_upload_draw(const NdDraw* d) {
     prog_use(4);
     u5set(u5_uvso, d->uvso); u5set(u5_cmul, d->cmul); u5set(u5_cadd, d->cadd);
     u5vec(u5_zmix, d->zmix[0], zmix_y_dbg(d->zmix[1]), 0.f, 0.f);
@@ -1041,14 +1041,14 @@ static void pm5_upload_draw(const NdDraw* d) {
     gv_palup_n++; pm_dc_c[DC_PALUP]++;
 }
 /* FB-3 t1log (debug switch, log only): one line per tex1 draw of a native record or raw batch, with the unit 1 words and the uvx values sent */
-static void t1log_draw(const NdDraw* d) {
+static __attribute__((cold, noinline)) void t1log_draw(const NdDraw* d) {
     static int t1l_on = -1, t1l_n; extern unsigned pm_frame_count(void);
     if (t1l_on < 0) t1l_on = pm_debug_has("t1log");
     if (t1l_on && d->has_uvx && d->use5 && pm_frame_count() >= 100 && t1l_n++ < 400) pm_log("t1draw f%u use5 %d loc_uvx %u u1 dim %x addr %x param %x lod %x type %x uvx %.4f %.4f %.4f %.4f", pm_frame_count(), d->use5, d->loc_uvx, d->u[1].dim, d->u[1].addr, d->u[1].param, d->u[1].lod, d->u[1].type, d->uvx[0], d->uvx[1], d->uvx[2], d->uvx[3]);
 }
 /* FB-3 pm5tex1: one line per producer the first time it submits a program 5 draw with tex1 (the unit 1 uv map, uvx): the pm5 tex1 path is in use */
 void pm_gbi_cur_prod_name(char* b, int n);
-static void pm5tex1_log(const NdDraw* d) {
+static __attribute__((cold, noinline)) void pm5tex1_log(const NdDraw* d) {
     static char seen[24][48]; static unsigned nseen;
     if (!d->use5 || !d->has_uvx) return;
     char prod[48]; pm_gbi_cur_prod_name(prod, sizeof prod);
@@ -1087,7 +1087,7 @@ static int tex_native_words(NdUnit* u, const C3D_Tex* tp) {
 static int grab_native_unit0(NdUnit* u) { return tex_native_words(u, &grab_tex); }
 /* PM5-2: the program 5 uniform block of the walker state (the same calls as flush_draw's pm5 block, no cache: the native batch writes them
  * in order before its draw). Palette entries: the pm5 register layout, 7 rows per entry (4 position, 3 normal). */
-static void pm5_upload(void) {
+static __attribute__((noinline)) void pm5_upload(void) {
     prog_use(4);
     u5set(u5_uvso, g_uvso); u5set(u5_cmul, g_cmul); u5set(u5_cadd, g_cadd);
     u5vec(u5_zmix, g_zmix[0], zmix_y_dbg(g_zmix[1]), 0.f, 0.f);
@@ -1150,6 +1150,29 @@ static __attribute__((cold, noinline)) void wl_log(const NdDraw* d, int z, int d
         unsigned vmin = 255u, vmax = 0u;
         for (unsigned i = 0; gring && gidx && i < gni; i++) { unsigned a = (gi_kind == 1 ? rchunk[0].vtx : gring)[16u * gidx[gi_start + i] + 15u]; if (a < vmin) vmin = a; if (a > vmax) vmax = a; }
         pm_log("wsurf f%u a0 %d a1 %d vamin %u vamax %u tris %u tex0 %08x tex1 %08x", pm_frame_count(), pm_tex_alpha0_permille(0), pm_tex_alpha0_permille(1), vmin, vmax, gni / 3u, (unsigned)u0->addr, (unsigned)u1->addr);
+    }
+}
+/* S6-2c-3 decal pass A of a native raw batch: the stencil mark, no colour, no depth write (out of line: rare, keeps nd_raw_native small) */
+static __attribute__((noinline)) void raw_decal_pass_a(const NdTmplKey* nk, const NdDraw* d, int tex) {
+    NdTmplKey ka = *nk;
+    ka.pass = 1;
+    int ida = nd_tmpl_build(&ka);
+    if (ida >= 0) { NdDraw da = *d; da.tmpl = ida; nd_native_submit(&da, tex); }
+}
+/* FB-1 ZM: pass 3 is the same triangles at the constant depth r_zmark_zn (z clip = zn * w: palette row 2 := zn * row 3, as nd_model.c). Stencil EQUAL, cleared as it passes */
+static __attribute__((noinline)) void raw_zmark_pass(const NdTmplKey* nk, const NdDraw* d, const float (*palk)[16], unsigned npal, int tex) {
+    NdTmplKey kb = *nk;
+    kb.pass = 3; kb.zmark = 0;
+    int idb = nd_tmpl_build(&kb);
+    if (idb >= 0) {
+        float palz[ND_NPAL][16];
+        for (unsigned k = 0; k < npal; k++) {
+            memcpy(palz[k], palk[k], 64);
+            for (int i = 0; i < 4; i++) palz[k][8 + i] = r_zmark_zn * palk[k][12 + i];
+        }
+        NdDraw db = *d;
+        db.tmpl = idb; db.pal = (const float(*)[16])palz; db.npal = npal;
+        nd_native_submit(&db, tex);
     }
 }
 static int nd_raw_native(void) {
@@ -1235,28 +1258,9 @@ static int nd_raw_native(void) {
     d.nidx = gni;
     if (ndm_live) ndm_cmp(&nk, &d);
     if (wl_on()) wl_log(&d, z, decal2, id, tex, tex1, &u0, &u1);
-    if (decal2) { /* pass A: the stencil mark, no colour, no depth write */
-        NdTmplKey ka = nk;
-        ka.pass = 1;
-        int ida = nd_tmpl_build(&ka);
-        if (ida >= 0) { NdDraw da = d; da.tmpl = ida; nd_native_submit(&da, tex); }
-    }
+    if (decal2) raw_decal_pass_a(&nk, &d, tex);
     nd_native_submit(&d, tex);
-    if (z && r_zmark) { /* FB-1 ZM: pass 3 is the same triangles at the constant depth r_zmark_zn (z clip = zn * w: palette row 2 := zn * row 3, as nd_model.c). Stencil EQUAL, cleared as it passes */
-        NdTmplKey kb = nk;
-        kb.pass = 3; kb.zmark = 0;
-        int idb = nd_tmpl_build(&kb);
-        if (idb >= 0) {
-            float palz[ND_NPAL][16];
-            for (unsigned k = 0; k < npal; k++) {
-                memcpy(palz[k], palk[k], 64);
-                for (int i = 0; i < 4; i++) palz[k][8 + i] = r_zmark_zn * palk[k][12 + i];
-            }
-            NdDraw db = d;
-            db.tmpl = idb; db.pal = (const float(*)[16])palz; db.npal = npal;
-            nd_native_submit(&db, tex);
-        }
-    }
+    if (z && r_zmark) raw_zmark_pass(&nk, &d, (const float(*)[16])palk, npal, tex);
     if (rd_st == 2) orbreg_dump(); /* FX1-2 plan 5 orbreg: the register shadow at a glow draw */
     return 1;
 }

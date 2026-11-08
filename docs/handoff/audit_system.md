@@ -52,7 +52,7 @@ Fix: reset the shadow only when the program changes. Write the pm5 uniforms with
 pm_gpu.c:1248-1252 copies up to 21 x 64 B of pcomp into palk. pm_gpu.c:1268 then sets `d.npal = 0` for g_use5, and pm5_upload computes and uploads the same pcomp entries again.
 Fix: skip the palk loop when g_use5 is set.
 
-**[partly done W2] A5 (batch close, M). The hot code is larger than the L1I.**
+**[done A5] A5 (batch close, M). The hot code is larger than the L1I.**
 The batch close path is 19,288 B of code: flush_draw 1,524 + nd_raw_native 8,996 + nd_native_submit 4,184 + nd_emit_draw 2,040 + C3Di_UpdateContext 1,256 + nd_tmpl_build 996 + ndunit_after 200 + GPUCMD_AddRawCommands 92. The L1I is 16,384 B (hw_guidelines rule 1). The per-triangle walker path is another 11,228 B: nd_walk_run 3,268, draw_tri 604, gv_tri 1,788, gappend 676, gtrip 3,108, nd_geom_vtx 1,784.
 nd_raw_native contains debug blocks inline: the wl_on wdraw/wsurf logs (pm_gpu.c:1274-1287, a 40-argument pm_log and a vertex loop), orb_log (:1230), ndplan_check (:1229), the ndm_cmp call (:1273) and grablog (:1204).
 Fix: move each debug block into a cold, noinline function behind one flag test. Together with A2, which removes TevKey, nd_raw_native should fall under 4 KB.
@@ -156,6 +156,8 @@ C4 (user decision, D9): 61 of the 64 words that no scenario, bench, open row or 
 B2 result: the shader zmix path took the N64 NDC value 2(p-1)/32767-1 as the PICA clip z / w. The full palette (OrthoTilt row 2 = z - w after the view row 0.5 z + 0.5 w) needs (p-1)/32767-1, the value the rectangle path already gives (depth 1 - p/32767). Every G_ZS_PRIM triangle with p above 16384 was outside the clip volume: the mac_00 pond blocker (prim 0x7FF0, Z_CMP, colour only; wdraw zs 1 in pond_mac00_wlog) never drew, and the pond showed the hedge behind it. After nd_prim_clip_z the shot pond_mac00_wlog frame 204 shows the pond colour (rows 94 to 400 of the left 38 columns, 8,340 pixels change; build3ds/audit_shots/b2_pond_before_after.png). The 4 byte gates are unchanged (none has a G_ZS_PRIM triangle). Console check of the pond is open (POND row).
 
 C8 result (D12, pure move): the bottom screen text (menu lines, HUD rows, footer, log frame: 180 lines) is pm_gpu_ui.c, with the shared state in pm_gpu_int.h; pm_gpu.c is 3,595 lines. The menu present, the grey pass and the shots stay in pm_gpu.c: they use target, gpu_ok, the stereo state and flush. The rectangle queue and the ring stay too: rect_raw_open alone writes about 30 batch variables of the close (gni, pal_n, pal_g, pal_gen, g_uvso, g_vp, g_cmul, g_cadd, g_zmix, g_ct, g_cullm, g_use5, rect_*, rq_*, gi_kind, draw_3d, pcomp_gen). A file split there needs a batch-state struct first, which changes code and is its own row.
+
+A5 result: the batch close path is 13,424 B (flush_draw 1,496, nd_raw_native 5,072, nd_native_submit 2,048, nd_emit_draw 2,040, C3Di_UpdateContext 1,256, nd_tmpl_build 1,220, ndunit_after 200, GPUCMD_AddRawCommands 92), was 16,832 B. The decal pass A and zmark pass 3 of a raw batch, pm5_upload and pm5_upload_draw are out of line; t1log_draw, pm5tex1_log and stc_set are cold. 3dsx.ld.in places the close after the walker span in call order (map: 0x1000ac to 0x1066e8). Azahar gbi phase 5.9 ms before and after (no cache model); the I-cache effect needs the console pair.
 
 ## 5. Known open items (links only)
 
