@@ -17,9 +17,10 @@
 Premise: core 0 is walk-bound and part of its time waits on core 1. Check (0 starts): read pm_audio_join_timed (pm_audio.c:234) and its call sites; look for a join-wait figure or coreprobe output in the last console prof log.
 
 ## Rows (in order)
-- CORE2-0 measure: prof line fields `aujoin us/frame` and `core1 busy %` (idle-tick probe thread at the lowest priority on core 1). One console push (user consent). Haiku.
-- CORE2-1 audio one step ahead. Sonnet. Gate: det byte gates, audiohash equal under det, console ft gain.
-- CORE2-2 design document for the walker thread on N3DS core 2 (ownership, list of in-place rewritten buffers). The Opus audit agent, after its work list.
-- CORE2-3 implementation, several Sonnet rows.
+All CORE2 rows: one Opus agent (user, 2026-11-08), worktree core20, no subagents. Console pushes only with user consent.
+- CORE2-0 measure: prof line fields `aujoin us/frame` and `core1 busy %` (idle-tick probe thread at the lowest priority on core 1). One console push (user consent).
+- CORE2-1 audio one step ahead. Gate: det byte gates, audiohash equal under det, console ft gain.
+- CORE2-2 design document for the walker thread on N3DS core 2 (ownership, list of in-place rewritten buffers).
+- CORE2-3 implementation.
 - CORE2-4 texture decode worker, only if CORE2-0 shows hitches.
 Proof of any gain: console prof only (spot_mac01_prof, spot_iwa10_prof on O3DS; N3DS for CORE2-2/3).
