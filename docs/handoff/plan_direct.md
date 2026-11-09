@@ -79,6 +79,7 @@ Thread rule:
 | D8 FRAME | main_loop.c, main.c, nugfxinit.c, screen overlays, curtains, pause, file menu, the colour and depth image roles (nd_target) | the last NDC_LIST producers | ndc list count 0 in the catalog scenes | menu_open_det, pause_spin_grab_det_w300, gameover_fps60 |
 | D9 DELETE | nd_walk_run, g1_skip, g2_same, the walker G_DL stack, NDC_LIST, mainGfx and backgroundGfx (static size drops) | the walker | the full catalog once, with the user's approval (rule 5) | full catalog, console prof list |
 | D10 WALKER | custom gfx ranges (D10a), flat op ranges on nd_ops_run (D10b), nd_walk_run deleted (D10c); open: load-time compile of static lists, the fallback words, g2_same | nd_rec_sub, nd_walk_run, g1_skip, the G_DL stack | the list kinds that reach the executor (agent_direct.md STATE) | the gate set of agent_direct.md |
+| D11 LISTS | D11a: static state lists recorded in line (nd_rec.c rec_inline, G_PM_LST); open: the model record render mode list (rec_dl), the NDC_ENT and NDC_SPR fallback words, typed ops | the G_DL to a static state list at replay | lstcen census (lstcen_mac00_det, lstcen_btl_det) | the gate set of agent_direct.md |
 
 Order rationale: D0 to D3 move the classes that already have producer records (the largest core 0 class, rec 5.4 ms, and ent, spr); they change structure, not cost. D4 is the first slice that moves decode to core 1 (rect 2.3 ms plus the state ops of the HUD and text files). D5 to D8 widen the redirect to the rest. D9 removes the walker and its hot code.
 
