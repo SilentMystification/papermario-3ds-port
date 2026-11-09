@@ -1385,7 +1385,7 @@
       "status": "unverified",
       "subject": "Map kmr_10 at player position -142 136 221 (the wall band, user report). Frames 200 to 205 with the game camera on Mario. Picture: vertical stripes in the top rows of the low terrain wall next to the ? block.",
       "proves": "pos= switch sets Mario to the position at scene frame 30 on a warped map, and the shots show the wall.",
-      "debug": "warp=kmr_10:0 pos=-142:136:221 story=ch0_toad_town shots shotwin=200:6 loglevel=debug drawlog=200:1",
+      "debug": "warp=kmr_10:0 pos=-142:136:221 story=ch0_toad_town shots shotwin=200:6 loglevel=debug drawlog=200:1 det",
       "until": "shot 5 frame 205",
       "cap": 45,
       "deadline": 20,
@@ -1407,6 +1407,30 @@
         }
       ],
       "reason": ""
+    },
+    {
+      "name": "wall_hos01_pic",
+      "status": "unverified",
+      "reason": "WALLT1 picture gate: the aux pan grows with the frame; frames 200 to 236 (step 4) show the band growth on the old path and its absence on the new path. One shot per frame was about 2.8 s each and hit the cap.",
+      "subject": "Map hos_01 at pos -110 250 -170 (next to the walls o178 x -268..217, z -414..71 and o179), cold det start, shots frames 200 to 236 every 4th frame. Base and new shots must be byte-equal except the wall.",
+      "proves": "WALLT1: the 4-bit aux tile window of the hos_01 walls is the whole mask period of the loaded image (V21 branch now reads from the LoadTile origin); the shot shows the soil tiled with no foreign rows.",
+      "debug": "warp=hos_01:0 story=ch0_toad_town pos=-110:250:-170 shots shotwin=200:37:4 loglevel=debug det",
+      "until": "shot \\d+ frame 236\\b",
+      "cap": 40,
+      "deadline": 30,
+      "first_marker": "warp: hos_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: hos_01 entry 0"
+        },
+        {
+          "name": "shot 236",
+          "regex": "shot \\d+ frame 236\\b"
+        }
+      ]
     },
     {
       "name": "nok14_lake",
@@ -4854,6 +4878,50 @@
         }
       ],
       "reason": "BOOT-1: a cold start takes 12 to 16 s on Azahar, then the logos and the title. Until is the boot ms line. Cap 45 s (upper limit), stated here for the cold start plus the logos."
+    },
+    {
+      "name": "boot_romorder",
+      "status": "unverified",
+      "subject": "BOOT step 0: boot_ms with the switch romorder. Each first touch of a 128 KB ROM chunk (original address >> 17) prints romorder c<idx> f<frame> t<ms>; the boot line is followed by the chunk counts before the first drawn frame and before the title.",
+      "proves": "Which ROM chunks the game reads before its first frame and before the title, in order (input of the stream order).",
+      "debug": "loglevel=debug romorder",
+      "until": "romorder chunks first ",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "boot_main",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "chunk counts at the title",
+          "regex": "romorder chunks first \\d+ title \\d+ of \\d+"
+        }
+      ],
+      "reason": "BOOT step 0: same boot as boot_ms (cold start plus the logos), cap 45 s (upper limit). Until is the count line printed right after the boot ms line."
+    },
+    {
+      "name": "boot_logo_pic",
+      "status": "unverified",
+      "subject": "BOOT: no-warp boot with the ROM streamed. Shot at frame 200 (the logos, about 7 s after main) after the 'rom stream done' line.",
+      "proves": "The streamed boot draws the logos (picture) and the stream ends during them.",
+      "debug": "loglevel=debug shots shotwin=200:1",
+      "until": "shot \\d+ frame 200\\b",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "game mode 1 frame",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "stream done",
+          "regex": "rom stream done ms \\d+"
+        },
+        {
+          "name": "logo shot",
+          "regex": "shot \\d+ frame 200\\b"
+        }
+      ],
+      "reason": "BOOT gate picture: frame 200 is in the logos (game mode 1, frames 15 to 328). Cap 30 s: Azahar start plus about 8 s of boot and logos."
     },
     {
       "name": "boot_memline",
@@ -11486,6 +11554,114 @@
         }
       ],
       "reason": "SEAMFIX picture gate: shots 200 to 205 of one spot; the shot line of frame 205 is the until (cap 25 s: boot about 15 s plus the 6 shots)."
+    },
+    {
+      "name": "pause_thr_prof",
+      "status": "unverified",
+      "subject": "PAUSEDR: threaded pause with prof=4 (prof lines only). Toad Town mac_01 at pos 0 0 200, START opens and closes the pause three times as pause_thr_pic. Log only: the core2 drain line of the first window (dr, drw, wqf per logic step).",
+      "proves": "PAUSEDR: drains per logic step in a threaded pause (pm_wq_idle counters, nd_wq.c) and the msg ROM copy (dma_load_msg, src/msg.c). Log only.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town pos=0:0:200 padscript=wait80,START*3,wait60,START*3,wait60,START*3,wait60,START*3,wait60,START*3,wait60 prof=4 loglevel=debug",
+      "until": "prof f\\d+ w\\d+ core2 drain",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "pause open",
+          "regex": "game mode 10 frame"
+        },
+        {
+          "name": "core2 drain line",
+          "regex": "prof f\\d+ w\\d+ core2 drain"
+        }
+      ],
+      "reason": "PAUSEDR counters: window line after the first pause opens on the logic thread."
+    },
+    {
+      "name": "menuwarp_btl",
+      "status": "unverified",
+      "reason": "MENUWARP step 1 gate: the menu close line and the bypass line come in the same A press (no further input), then the warp live line, then the last shot of the window (shot 15, the 16th shot, after the warp; no menu on it).",
+      "subject": "Battle (kmr_03, one Goomba, battle switch): the Select menu opens in the battle, Debug tab > Warp area (A opens the warning page, B = warp menu), Shooting Star Summit (ddown), A, then the first map of its page (A). The menu closes on that A with no other input, the battle ends and the warp runs. Shots 262 to 300: the destination map with no menu.",
+      "proves": "MENUWARP step 1: a warp from the Select menu in a battle closes the menu (pm_warp_live returns started: pm_optui_act result 5), then bypass_tick runs the warp in the world.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 padscript=@pad_menuwarp_btl.txt shots shotwin=262:40 loglevel=debug",
+      "until": "shot 15 frame \\d+\\b",
+      "cap": 45,
+      "deadline": 25,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "battle",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "menu open",
+          "regex": "menu: open"
+        },
+        {
+          "name": "menu close",
+          "regex": "menu: close"
+        },
+        {
+          "name": "bypass",
+          "regex": "bypass: battle end for kind 1"
+        },
+        {
+          "name": "warp live",
+          "regex": "warp: live to choice"
+        },
+        {
+          "name": "last shot (15)",
+          "regex": "shot 15 frame \\d+\\b"
+        }
+      ]
+    },
+    {
+      "name": "menuwarp_list",
+      "status": "unverified",
+      "reason": "MENUWARP steps 3 and 4 gate: menu shots (shotmenu, one bottom shot per menu draw; the game is paused while the menu is open, so the frame shots do not fire): the row 0 shot shows the level 1 list (Toad Town Tunnels after Toad Town), the row 6 shot after one right press.",
+      "subject": "Port menu Debug tab, row Warp area (row 0, A) opens the Warp area folder at level 1: the rows are the story areas (Goomba Village, Toad Town, Toad Town Tunnels, ...). One shot before and one after a right press: the cursor moves 6 rows.",
+      "proves": "MENUWARP steps 3 and 4: Toad Town Tunnels is the third row (after Toad Town), and left or right on a Warp area row with no value moves 6 rows (pm_optui_step returns 0, pm_menu_hold skips).",
+      "debug": "preset=toad padscript=@pad_menuwarp_list.txt shotmenu loglevel=debug",
+      "until": "menu: tab 4 row 6 ",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "menu open",
+          "regex": "menu: open"
+        },
+        {
+          "name": "level 1 list (row 0 shot)",
+          "regex": "menu: shot bot_m\\d+ tab 4 row 0\\b"
+        },
+        {
+          "name": "skip 6",
+          "regex": "menu: skip 6 row 0 -> 6"
+        },
+        {
+          "name": "row 6 shot",
+          "regex": "menu: shot bot_m\\d+ tab 4 row 6\\b"
+        }
+      ]
     }
   ]
 }

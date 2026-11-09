@@ -79,6 +79,38 @@
       "gates": []
     },
     {
+      "name": "wall_hos01_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WALLT1 gate: hos_01 walls o178/o179 at pos -110 250 -170, det, shots 200 to 236 every 4th frame. Byte-equal to base except the wall.",
+      "scenario": "wall_hos01_pic",
+      "cap": 40,
+      "until": "shot \\d+ frame 236\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "wall"
+      ],
+      "gates": []
+    },
+    {
+      "name": "kmr_10_band",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WALLT1 gate: kmr_10 wall band at -142 136 221, shots 200 to 205. A person reads the shot: the strata stripe on the low cliff next to the ? block is continuous, no garbage rows (compare with o1329).",
+      "scenario": "kmr_10_band",
+      "cap": 45,
+      "until": "shot 5 frame 205",
+      "tags": [
+        "azahar",
+        "pic",
+        "wall"
+      ],
+      "gates": []
+    },
+    {
       "name": "sprshade_hos01_log",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -464,6 +496,22 @@
       "tags": [
         "azahar",
         "pic",
+        "pause"
+      ],
+      "gates": []
+    },
+    {
+      "name": "pause_thr_prof",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "PAUSEDR: threaded pause with prof=4 (mac_01, 3 opens, log only). Measures the core2 drain line: drains per logic step, drains on a non-empty queue, waits on a full queue.",
+      "scenario": "pause_thr_prof",
+      "cap": 30,
+      "until": "prof f\\d+ w\\d+ core2 drain",
+      "tags": [
+        "azahar",
+        "prof",
         "pause"
       ],
       "gates": []
@@ -1170,7 +1218,7 @@
       "name": "boot_ms",
       "kind": "azahar_stream",
       "speed": "normal",
-      "purpose": "BOOT-1: cold boot timing. The boot ms line (main, log, opt, rom read, gfx, audio, first drawn frame, title; ms after main) at the first title frame.",
+      "purpose": "BOOT: cold boot timing. The boot ms line (main, log, opt, rom open to stream start, stream MB/s, gfx, audio, first drawn frame, title, rdone = whole ROM in RAM; ms after main; waits and wms = reads that blocked on a missing chunk) at the first title frame. rdone > 0: the stream ended before the title, so no wait after it.",
       "scenario": "boot_ms",
       "cap": 45,
       "until": "boot ms main ",
@@ -1199,6 +1247,21 @@
           "name": "title_ms",
           "regex": "boot ms .* title (\\d+)",
           "pick": "last"
+        },
+        {
+          "name": "rom_done_ms",
+          "regex": "boot ms .* rdone (\\d+) waits",
+          "pick": "last"
+        },
+        {
+          "name": "rom_waits",
+          "regex": "boot ms .* rdone \\d+ waits (\\d+) wms",
+          "pick": "last"
+        },
+        {
+          "name": "rom_wait_ms",
+          "regex": "boot ms .* waits \\d+ wms (\\d+)",
+          "pick": "last"
         }
       ],
       "gates": [
@@ -1206,8 +1269,61 @@
           "metric": "title_ms",
           "op": ">",
           "value": 0
+        },
+        {
+          "metric": "rom_done_ms",
+          "op": ">",
+          "value": 0
         }
       ]
+    },
+    {
+      "name": "boot_romorder",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BOOT step 0: ROM chunks (128 KB) touched before the first drawn frame and before the title, with the touch order in the log (romorder lines).",
+      "scenario": "boot_romorder",
+      "cap": 45,
+      "until": "romorder chunks first ",
+      "tags": [
+        "azahar",
+        "boot"
+      ],
+      "log_metrics": [
+        {
+          "name": "chunks_first",
+          "regex": "romorder chunks first (\\d+) title",
+          "pick": "last"
+        },
+        {
+          "name": "chunks_title",
+          "regex": "romorder chunks first \\d+ title (\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "chunks_title",
+          "op": ">",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "name": "boot_logo_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BOOT: picture of the no-warp boot at logo frame 200 with the ROM streamed; the stream done line before it.",
+      "scenario": "boot_logo_pic",
+      "cap": 30,
+      "until": "shot \\d+ frame 200\\b",
+      "tags": [
+        "azahar",
+        "boot"
+      ],
+      "gates": []
     },
     {
       "name": "randwarp_pic",
@@ -3316,7 +3432,11 @@
       "scenario": "shop_wide",
       "cap": 45,
       "until": "shot \\d+ frame 26[2-9]\\b",
-      "tags": ["azahar", "pic", "shop"],
+      "tags": [
+        "azahar",
+        "pic",
+        "shop"
+      ],
       "gates": []
     },
     {
@@ -3328,7 +3448,11 @@
       "scenario": "shop_nowide",
       "cap": 45,
       "until": "shot \\d+ frame 26[2-9]\\b",
-      "tags": ["azahar", "pic", "shop"],
+      "tags": [
+        "azahar",
+        "pic",
+        "shop"
+      ],
       "gates": []
     },
     {
@@ -5515,10 +5639,75 @@
       "log_metrics": [],
       "gates": []
     },
-    {"name": "flash_selftest_save", "kind": "azahar_stream", "speed": "normal", "default": false, "purpose": "SAVESAFE: fresh save.flash with the flashselftest pattern and saveerr (two failed writes, retry). Gate: the RAM hash line and the atomic write line.", "scenario": "flash_selftest_save", "cap": 40, "until": "save.flash written \\(atomic\\) \\d+ ms", "tags": ["azahar", "save", "savesafe"], "log_metrics": [], "gates": []},
-    {"name": "savecrash_save", "kind": "azahar_stream", "speed": "normal", "default": false, "purpose": "SAVESAFE: a save, then the crash exit 10 ms after the last write. Gate: the exit flush line and the RAM hash; the file hash is checked after the run.", "scenario": "savecrash_save", "cap": 60, "until": "save\\.flash written at exit \\(atomic\\) \\d+ ms", "tags": ["azahar", "save", "savesafe", "crash"], "log_metrics": [], "gates": []},
-    {"name": "warpfix_boot_save", "kind": "azahar_stream", "speed": "normal", "default": false, "purpose": "SAVESAFE gate 4: boot warp, padscript save_0; the save is blocked and no flash write runs (the new write path is not reached). Save scenario of the row.", "scenario": "warpfix_boot_save", "cap": 45, "until": "warp: save blocked", "tags": ["azahar", "save", "savesafe"], "log_metrics": [], "gates": []},
-    {"name": "savefile_check", "kind": "azahar_stream", "speed": "normal", "default": false, "purpose": "SAVESAFE gate 4: a savetool file loaded by savefile= (checksum, RAM values, save block). Save scenario of the row.", "scenario": "savefile_check", "cap": 60, "until": "warp: \\S+ entry \\d+", "tags": ["azahar", "save", "savesafe"], "log_metrics": [], "gates": []},
+    {
+      "name": "flash_selftest_save",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SAVESAFE: fresh save.flash with the flashselftest pattern and saveerr (two failed writes, retry). Gate: the RAM hash line and the atomic write line.",
+      "scenario": "flash_selftest_save",
+      "cap": 40,
+      "until": "save.flash written \\(atomic\\) \\d+ ms",
+      "tags": [
+        "azahar",
+        "save",
+        "savesafe"
+      ],
+      "log_metrics": [],
+      "gates": []
+    },
+    {
+      "name": "savecrash_save",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SAVESAFE: a save, then the crash exit 10 ms after the last write. Gate: the exit flush line and the RAM hash; the file hash is checked after the run.",
+      "scenario": "savecrash_save",
+      "cap": 60,
+      "until": "save\\.flash written at exit \\(atomic\\) \\d+ ms",
+      "tags": [
+        "azahar",
+        "save",
+        "savesafe",
+        "crash"
+      ],
+      "log_metrics": [],
+      "gates": []
+    },
+    {
+      "name": "warpfix_boot_save",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SAVESAFE gate 4: boot warp, padscript save_0; the save is blocked and no flash write runs (the new write path is not reached). Save scenario of the row.",
+      "scenario": "warpfix_boot_save",
+      "cap": 45,
+      "until": "warp: save blocked",
+      "tags": [
+        "azahar",
+        "save",
+        "savesafe"
+      ],
+      "log_metrics": [],
+      "gates": []
+    },
+    {
+      "name": "savefile_check",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SAVESAFE gate 4: a savetool file loaded by savefile= (checksum, RAM values, save block). Save scenario of the row.",
+      "scenario": "savefile_check",
+      "cap": 60,
+      "until": "warp: \\S+ entry \\d+",
+      "tags": [
+        "azahar",
+        "save",
+        "savesafe"
+      ],
+      "log_metrics": [],
+      "gates": []
+    },
     {
       "name": "seam_mac01_east",
       "kind": "azahar_pic",
@@ -5548,6 +5737,39 @@
         "azahar",
         "det",
         "seam"
+      ],
+      "gates": []
+    },
+    {
+      "name": "menuwarp_btl",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "MENUWARP step 1: a warp from the Select menu in a battle closes the menu. Shots 262 to 301, 16 shots (kmr_03 battle, battle switch); the log gives menu close before bypass before warp live. A person reads the destination shot.",
+      "scenario": "menuwarp_btl",
+      "cap": 45,
+      "until": "shot 15 frame \\d+\\b",
+      "tags": [
+        "azahar",
+        "battle",
+        "menu",
+        "menuwarp"
+      ],
+      "gates": []
+    },
+    {
+      "name": "menuwarp_list",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "MENUWARP steps 3 and 4: Warp area level 1 rows (Toad Town Tunnels after Toad Town) and the left or right skip of 6 rows on a row with no value (menu: skip 6 log line).",
+      "scenario": "menuwarp_list",
+      "cap": 25,
+      "until": "menu: tab 4 row 6 ",
+      "tags": [
+        "azahar",
+        "menu",
+        "menuwarp"
       ],
       "gates": []
     }

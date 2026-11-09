@@ -259,45 +259,9 @@ static void set_texture(unsigned on, unsigned ss, unsigned ts) {
 }
 void op_texture(u32 w0, u32 w1) { set_texture((w0 & 0xff) != 0, w1 >> 16, w1 & 0xffffu); }
 
-/* DIRECT D4b-1: NDC_TEX4 and NDC_TEXRECT (nd_cmd.h), recorded by the nd_gbi_tex.h redirect. The setters of the ops of gDPLoadTLUT_pal16,
- * gDPLoadTextureBlock_4b or gDPLoadTextureTile_4b, and gSPTextureRectangle run in their list order with their decoded fields, each after the
- * walker's op prologue (gv_epoch, pm_gbi_cur_op); the sync ops are skipped as the walker skips them (g1_skip). The word decode ran on the record side. */
+/* DIRECT D4b-1, D5: NDC_TEXRECT (nd_cmd.h), recorded by the nd_gbi.h redirect: the walker's op prologue of G_TEXRECT (gv_epoch,
+ * pm_gbi_cur_op), then the rectangle. */
 #define TX_OP(op) do { gv_epoch++; pm_gbi_cur_op = (op); } while (0)
-void nd_tex4_run(const uint32_t* p) {
-    static const unsigned wr0[4] = { 0, 0, 0, 0 };
-    const unsigned arg = p[0] & 0xffffu, f = p[6];
-    if (arg & 1u) { /* gDPLoadTLUT_pal16(slot, pal) */
-        TX_OP(G_SETTIMG); set_timg(p[2], G_IM_FMT_RGBA, G_IM_SIZ_16b, 1);
-        TX_OP(G_SETTILE); set_tile(G_TX_LOADTILE, 0, 0, 256u + ((f >> 28) & 15u) * 16u, 0, wr0, 0, 0);
-        TX_OP(G_LOADTLUT); set_loadtlut(G_TX_LOADTILE, 15);
-    }
-    if (!(arg & 2u)) return;
-    const unsigned w = p[3] & 0xffffu, h = p[3] >> 16, fmt = f & 7u, rpal = (f >> 24) & 15u, sh0 = (f >> 16) & 15u, sh1 = (f >> 20) & 15u;
-    const unsigned wr[4] = { (f >> 4) & 3u, (f >> 6) & 3u, (f >> 8) & 15u, (f >> 12) & 15u }; /* cms, cmt, masks, maskt (the op_settile order) */
-    if (arg & 8u) { /* gDPLoadTextureTile(raster, fmt, siz, w, h, uls, ult, lrs, lrt, ...) */
-        const unsigned siz = p[7];
-        const int uls = (int)(p[4] & 0xffffu), ult = (int)(p[4] >> 16), lrs = (int)(p[5] & 0xffffu), lrt = (int)(p[5] >> 16);
-        TX_OP(G_SETTIMG); set_timg(p[1], fmt, siz, (int)((w - 1u) & 0xfffu) + 1);
-        TX_OP(G_SETTILE); set_tile(G_TX_LOADTILE, fmt, siz, 0, 0, wr, sh0, sh1);
-        TX_OP(G_LOADTILE); set_loadtile(G_TX_LOADTILE, (uls << 2) & 0xfff, (ult << 2) & 0xfff, (lrs << 2) & 0xfff, (lrt << 2) & 0xfff);
-        TX_OP(G_SETTILE); set_tile(G_TX_RENDERTILE, fmt, siz, 0, rpal, wr, sh0, sh1);
-        TX_OP(G_SETTILESIZE); set_tilesize(G_TX_RENDERTILE, (uls << 2) & 0xfff, (ult << 2) & 0xfff, (lrs << 2) & 0xfff, (lrt << 2) & 0xfff);
-    } else if (arg & 4u) { /* gDPLoadTextureTile_4b(raster, fmt, w, h, uls, ult, lrs, lrt, ...) */
-        const int uls = (int)(p[4] & 0xffffu), ult = (int)(p[4] >> 16), lrs = (int)(p[5] & 0xffffu), lrt = (int)(p[5] >> 16);
-        TX_OP(G_SETTIMG); set_timg(p[1], fmt, G_IM_SIZ_8b, (int)(((w >> 1) - 1u) & 0xfffu) + 1);
-        TX_OP(G_SETTILE); set_tile(G_TX_LOADTILE, fmt, G_IM_SIZ_8b, 0, 0, wr, sh0, sh1);
-        TX_OP(G_LOADTILE); set_loadtile(G_TX_LOADTILE, (uls << 1) & 0xfff, (ult << 2) & 0xfff, (lrs << 1) & 0xfff, (lrt << 2) & 0xfff);
-        TX_OP(G_SETTILE); set_tile(G_TX_RENDERTILE, fmt, G_IM_SIZ_4b, 0, rpal, wr, sh0, sh1);
-        TX_OP(G_SETTILESIZE); set_tilesize(G_TX_RENDERTILE, (uls << 2) & 0xfff, (ult << 2) & 0xfff, (lrs << 2) & 0xfff, (lrt << 2) & 0xfff);
-    } else { /* gDPLoadTextureBlock_4b(raster, fmt, w, h, ...) */
-        unsigned texels = ((w * h + 3u) >> 2) - 1u;
-        TX_OP(G_SETTIMG); set_timg(p[1], fmt, G_IM_SIZ_16b, 1);
-        TX_OP(G_SETTILE); set_tile(G_TX_LOADTILE, fmt, G_IM_SIZ_16b, 0, 0, wr, sh0, sh1);
-        TX_OP(G_LOADBLOCK); set_loadblock(G_TX_LOADTILE, (texels < G_TX_LDBLK_MAX_TXL ? texels : G_TX_LDBLK_MAX_TXL) & 0xfffu);
-        TX_OP(G_SETTILE); set_tile(G_TX_RENDERTILE, fmt, G_IM_SIZ_4b, 0, rpal, wr, sh0, sh1);
-        TX_OP(G_SETTILESIZE); set_tilesize(G_TX_RENDERTILE, 0, 0, (int)(((w - 1u) << 2) & 0xfffu), (int)(((h - 1u) << 2) & 0xfffu));
-    }
-}
 void nd_texrect_run(const uint32_t* p) {
     TX_OP(G_TEXRECT);
     nd_texrect(p[2], p[3], p[4], p[5]);
@@ -498,6 +462,14 @@ static void tex_win1(const NdTst* t, const NdTexM* m, const void* timg, int uls,
     if (src && bpp && l1v) src += (size_t)(l1y * stride + l1x) * (size_t)bpp;
     else if (src && bpp) src += (size_t)boff; /* V13: a block load puts the image at TMEM start, SetTileSize only moves the coordinates */
     else if (src && t->tile_siz[1] == 0 && !l1v) src += (size_t)boff; /* PT82: the same for a 4 bit image (gDPScrollTextureBlockHalfHeight_4b: tile 1 is the lower half of one block load, mim_darkgreen2tif) */
+    else if (src && l1v && t->tile_wrap[1][2] && t->tile_wrap[1][3] &&
+             w == (1 << t->tile_wrap[1][2]) && h == (1 << t->tile_wrap[1][3])) {
+        /* WALLT1: the window is the whole mask period of the loaded image (aux pan: hos_01 walls; model aux offset: kmr_10 cliffs).
+         * The RDP reads (s - sl) & mask from what LoadTile put in TMEM: the source is the LoadTile origin, and SetTileSize
+         * only moves the coordinates (o->x0 and y0 in tex_tile1, as V13). Moving the source by the window origin read past the raster. */
+        src += (size_t)(l1y * l1stride + l1x);
+        stride = l1stride * 2;
+    }
     else if (src && l1v) {
         /* V21: SetTileSize uls and ult are the window origin in the image (fire_breath scrolls tile 1 by imgFrame*32+32).
          * This branch is 4 bit only (bpp 0). uls >> 2 counts texels, two per byte, so the byte offset is half of it.

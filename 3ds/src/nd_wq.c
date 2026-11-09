@@ -83,6 +83,9 @@ void pm_wq_pump_blocked(void) {
  * wq_block wait, [1] the depth 1 frame wait (c_walked). Modular 32 bit: the window reads take differences. Prof only (pm_pf_on). */
 extern int pm_pf_on; /* pm_phase.c */
 static unsigned wq_bw[2];
+/* PAUSEDR: counters for the core2 wait line (pm_phase.c). pm_wq_dr: logic thread drains (pm_wq_idle), pm_wq_drw: those that found the
+ * queue non-empty (they wait), pm_wq_wqf: logic thread waits for a full queue (c_space). Modular 32 bit, a window reads differences. */
+unsigned pm_wq_dr, pm_wq_drw, pm_wq_wqf;
 static int c_walked(void* c);
 /* Logic thread: wait until cond(). The walker runs the queue when it sees wq_blocked (flag, barrier, test on both sides). */
 static void wq_block(int (*cond)(void*), void* c, int kind) {
@@ -111,7 +114,7 @@ static __attribute__((cold, noinline)) void wq_too_big(unsigned size) {
 }
 static void wq_put(void (*fn)(void*), const void* arg, unsigned size) {
     if (size > WQ_ARG) wq_too_big(size);
-    if (wq_tail - wq_head == WQ_N) wq_block(c_space, NULL, WQB_ALL);
+    if (wq_tail - wq_head == WQ_N) { if (pm_wq_on_logic()) pm_wq_wqf++; wq_block(c_space, NULL, WQB_ALL); }
     unsigned t = wq_tail;
     WqEnt* e = &wq_ring[t & (WQ_N - 1u)];
     e->fn = fn;
@@ -165,7 +168,11 @@ void pm_wq_key(const PmKey* k) {
 
 /* pm_walk_drain (nd_walk.c) calls this first: return when the queue is empty and no walk runs. */
 void pm_wq_idle(void) {
-    if (pm_wq_on_logic()) { if (wq_head != wq_tail) wq_block(c_empty, NULL, WQB_ALL); return; }
+    if (pm_wq_on_logic()) {
+        pm_wq_dr++;
+        if (wq_head != wq_tail) { pm_wq_drw++; wq_block(c_empty, NULL, WQB_ALL); }
+        return;
+    }
     if (!pm_walk_side) { pm_lg_quiesce(); wq_pump(); }
 }
 
