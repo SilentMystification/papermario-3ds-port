@@ -28,6 +28,16 @@ per thread or a lock is needed.
 4. Gates: nd_host PASS (with the grep), build OK, memcheck OK, spot_mac01_det byte-equal. Commit; delete this row file.
    Budget: 3 Azahar starts.
 
+## Part 2: on-screen crash screen (user, 2026-11-09: "reuse the debug stack dump print screen that's already in the game")
+The decomp's N64 crash screen is src/crash_screen.c (font glyphs, crash_screen_draw_rect/_draw_glyph/_printf into an RGBA16
+frame buffer, crash_screen_draw prints thread registers). On the 3DS it is stubbed (3ds/src/game_stubs.c:17 crash_screen_init,
+pm_later.c:6 crash_screen_set_draw_info). Reuse it: in crash_handler, after the [CRASH] lines, point crash_screen_set_draw_info at a
+static 320x240 RGBA16 buffer, print with the game's glyph code an ARM page (exception type, thread name, pc, lr, sp, far, fsr, cpsr,
+r0-r12, the code-like stack words, build number, game loop phase), then copy it to the top-screen frame buffer by the CPU
+(gfxGetFramebuffer, rotate for the 3DS layout, gfxFlushBuffers, gfxSwapBuffers; no GPU, no locks). Then wait for A or START (hidScanInput
+polling) or 60 s, then pm_exit_process. Compile only the parts of crash_screen.c it needs (no N64 OSThread code). The handler must
+not take any lock the crashed thread may hold (log queue, linear allocator): CPU writes only.
+
 ## Touch only
 3ds/src/pm_main.c (handler), the threadCreate call sites listed above, a small pm_thread.c/.h, nd_host_test.sh.
 
