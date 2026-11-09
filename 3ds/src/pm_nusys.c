@@ -94,7 +94,6 @@ static u32 key_size[MAX_KEY]; /* their list bytes (log only) */
 static int nkey;
 uint64_t svcGetSystemTick(void);
 void pm_pf_nd_add(unsigned long long ticks, unsigned legacy); /* pm_phase.c: S0-6 window sums (legacy 1 = one walk) */
-void pm_pf_eye2_add(unsigned long long ticks); /* pm_phase.c: STEREO right eye pass ticks */
 
 /* S10-2, DIRECT D0: one replay of the task stream (nd_rec.c). The phase line keeps its format: the walk time goes to pm_pf_nd_add as one legacy span. */
 static void gbi_walk(const uint32_t* s) {
@@ -109,16 +108,21 @@ static void gbi_task_w(const uint32_t* s) {
     pm_gpu_begin_wait(); /* LB1: every gbi task (also the key replay) waits for the GPU tail of the last frame */
     FS_MARK(FS_GBI); /* LB1b: the walk after the wait is gbi work, not rest (fsplit label only) */
     nd_frame_begin();
-    gbi_walk(s);
-    if (pm_gpu_stereo()) { /* STEREO: the same task for the right eye; eye2 of the prof line is its time */
-        uint64_t t0 = pm_ph_on ? svcGetSystemTick() : 0;
-        pm_gpu_eye(1); gbi_walk(s); pm_gpu_eye(0);
-        if (pm_ph_on) pm_pf_eye2_add(svcGetSystemTick() - t0);
-    }
+    gbi_walk(s); /* STEREO: one walk; the right eye replays the GPU entries at the frame end (pm_gpu.c sr_replay) */
 }
 
 /* CORE2C-2: the walker side of one queued frame (nd_wq.c): the background task, then the main task. */
+extern int pm_wide; /* pm_gpu.c, game side */
+/* INTROSNAP debug: the first 8 walked frames whose build-time wide (PMF_WIDE) differs from the live game value. The walker reads the
+ * live pm_wide; __wrap_set_game_mode drains the walk queue before pm_wide changes, so the count should stay 0. Cold: runs only on a mismatch. */
+static __attribute__((cold, noinline)) void wide_walk_note(int built) {
+    static unsigned n;
+    if (n >= 8) return;
+    n++;
+    pm_log("wide: walk f%u built %d live %d", pm_frame_count(), built, pm_wide);
+}
 void pm_frame_walk(const PmFrame* f) {
+    if (__builtin_expect(((f->flags & PMF_WIDE) != 0) != (pm_wide != 0), 0)) wide_walk_note((f->flags & PMF_WIDE) != 0);
     pm_walk_cfb = f->cfb;
     if (f->bg.ptr) gbi_task_w((const uint32_t*)f->bg.ptr);
     if (f->main.ptr) {
@@ -134,6 +138,7 @@ void pm_frame_walk(const PmFrame* f) {
 static PmFrame fr;
 static void fr_push(void) {
     fr.cfb = nuGfxCfb_ptr;
+    if (pm_wide) fr.flags |= PMF_WIDE; /* INTROSNAP debug: the wide state the tasks were built with (wide_walk_note) */
     pm_wq_frame(&fr);
     memset(&fr, 0, sizeof fr);
 }

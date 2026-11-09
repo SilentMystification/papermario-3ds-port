@@ -80,11 +80,11 @@ static int noise_init(void) {
 static float t1_s[4] = { 1.f, 1.f, 0.f, 0.f };
 static int aux_bound;
 static C3D_RenderTarget* target;
-/* STEREO: the right eye target. cur_target is the target of the pass in progress (the left one in a mono frame). pm_eye_conv is the eye distance in world
- * units that has zero parallax (set by the camera); eye_conv is its value for the frame (read at the frame begin, 0 in a mono frame). The eye shift is
- * in the vertex shader (uniforms eye and eyd: eye_set, eyd_sync): the matrices of both eyes are the same. */
-static C3D_RenderTarget *targetR, *cur_target;
-static int stereo_frame, r_wantclear, r_cleared;
+/* STEREO: the right eye target. pm_eye_conv is the eye distance in world units that has zero parallax (set by the camera); eye_conv is its value for the
+ * frame (read at the frame begin, 0 in a mono frame). The eye shift is in the vertex shader (uniforms eye and eyd: eye_put, eyd_sync): the matrices of
+ * both eyes are the same. A stereo frame is walked once, for the left eye; the right eye replays its GX queue entries (S2, sr_* below). */
+static C3D_RenderTarget *targetR;
+static int stereo_frame;
 static float eye_slider, eye_conv;
 float pm_eye_conv = 300.f;
 static int u_eye = -1, u_eyd = -1; /* the same registers in pm4 and pm5 (checked at init) */
@@ -777,7 +777,6 @@ static void eye_vec(int id, float x, float y, float z, float w) {
     if (c->x == x && c->y == y && c->z == z && c->w == w) return;
     C3D_FVUnifSet(GPU_VERTEX_SHADER, id, x, y, z, w);
 }
-static void eye_set(float e) { eye_vec(u_eye, e, 0.f, 0.f, 0.f); }
 /* eyd of the next draw: column 0 of gv_post (the palette of the draw uses this post) and cw = conv x nd_proj_wn (EYECW: the w of the zero parallax
  * point at the convergence distance, for any camera yaw). The same for both eyes. */
 static float eyd_cw_dbg, eyd_p23_dbg, eyd_wn_dbg; /* EYECW log: the last perspective cw of the frame and the p23 of that projection */
@@ -794,6 +793,7 @@ static void u5mtx(int id, const C3D_Mtx* m) {
 static void prog_use(int p) {
     if (bound == p) return;
     pm_dc_c[DC_PRG]++; C3D_BindProgram(p == 4 ? &prog5 : &prog4); C3D_SetAttrInfo(&attr4); bound = p;
+    if (u_eye >= 0) C3D_FVUnifDirty[GPU_VERTEX_SHADER][u_eye] = false; /* STEREO: the eye register is written only by eye_put (the bind of the main target), never by citro3d */
     nd_shadow_reset(&ndn_sh); ndn_mode = 1; u5_valid = 0; sc_prg++; sc_shr++;
 }
 /* the pm5 light table of a draw (u5set: only the vectors that differ from citro3d's copy are marked dirty) */
@@ -1061,7 +1061,7 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
     if (!ndn_mode) { nd_shadow_reset(&ndn_sh); ndn_mode = 1; sc_shr++; }
     if (*(volatile unsigned*)(__C3D_Context + 32) & 0x3800000u) { ndn_sh.cfg_valid = 0; ndn_sh.u_on[0] = ndn_sh.u_on[1] = 0; } /* a dirty texture bind: C3Di_UpdateContext rebuilds the unit enable word from the units citro3d holds (a null unit 0 after a slot drop writes it off) and sends their blocks: the native shadow of both is stale, the native words write them again */
     eyd_sync(); /* STEREO: before the update test (a change marks the uniform dirty) */
-    if (c3d_upd_needed()) { C3Di_UpdateContext(); sc_upd++; } /* what citro3d staged (program, buffers, scissor, an older TEV) goes out first, the native words then overwrite it */
+    if (c3d_upd_needed()) { if (u_eye >= 0) C3D_FVUnifDirty[GPU_VERTEX_SHADER][u_eye] = false; C3Di_UpdateContext(); sc_upd++; } /* what citro3d staged (program, buffers, scissor, an older TEV) goes out first, the native words then overwrite it */
     { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); GPUCMD_SetBufferOffset(coff + nd_emit_draw(cb + coff, &ndn_sh, d)); } /* PERF1-6: emitted in place (no copy) */
     if (tex) ndunit_after();
     *(volatile unsigned*)(__C3D_Context + 32) |= 2u; /* C3DiF_DrawUsed, as the citro3d draw sets it: citro3d then sends the framebuffer flush at a target change, a split and the frame end */
@@ -1479,7 +1479,6 @@ static void pm_gpu_init_w(void) {
         GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGBA8) |
         GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB8) |
         GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO));
-    cur_target = target;
     targetR = C3D_RenderTargetCreate(240, 400, GPU_RB_RGBA8, GPU_RB_DEPTH24_STENCIL8); /* STEREO: the right eye. It draws only in a frame with the 3D slider up. */
     if (targetR) {
         pm_vram_reg(targetR->frameBuf.colorBuf, 240 * 400 * 4);
@@ -1922,6 +1921,139 @@ int pm_gpu_off_begin(const void* base, int stride, int siz) {
     return 1;
 }
 
+/* STEREO S2: a stereo frame is walked once. The left pass records its GX queue entries (command lists, fills, copies); at the frame end the right
+ * eye replays them: the same command lists, the fills and copies of the left target moved to targetR. What differs per eye is outside the recorded
+ * lists: each bind of the main target is its own small list (framebuffer words and the eye uniform, bind_main), and the replay sends the targetR
+ * copy built next to it. The first list of a stereo frame writes all GPU state it uses (sr_force_all), so the replay does not depend on the state the
+ * left pass ended with. Named difference: CPU reads of the target (pm_gpu_read_frame, pm_gpu_depth_at) see the left eye only. */
+#define SR_MAX 256     /* GX entries of one left pass (a frame has a few: kicks, grabs, off-screen passes, uploads) */
+#define SR_FB_MAX 32   /* main target binds of one left pass (the frame begin and each off-screen pass end) */
+#define SR_DRAIN 0xFFu /* a recorded pm_gx_drain (TEXF1: the replay waits at the same point) */
+typedef struct { u32 l, ra, rn; } SrFb; /* left bind list address, the right list address and size (words) */
+static gxCmdEntry_s* sr_ent;
+static SrFb* sr_fb;
+static unsigned sr_n, sr_from, sr_fbn;
+static int sr_on, sr_over;
+static float eye_e;   /* the eye shift of the left pass of this frame (0 in a mono frame); the right pass uses -eye_e */
+static float eye_gpu; /* the eye value the GPU holds */
+void pm_pf_eye2_add(unsigned long long ticks); /* pm_phase.c: eye2 of the prof line */
+/* the eye uniform as words in the command list: (e, 0, 0, 0), memory order w z y x */
+static void eye_put(float e) {
+    u32 w[4] = { 0, 0, 0, 0 };
+    memcpy(&w[3], &e, 4);
+    GPUCMD_AddWrite(GPUREG_VSH_FLOATUNIFORM_CONFIG, 0x80000000u | (u32)u_eye);
+    GPUCMD_AddWrites(GPUREG_VSH_FLOATUNIFORM_DATA, w, 4);
+    eye_gpu = e;
+}
+/* the entries queued since the last take go into the record (called before the queue is cleared: pm_gx_room, pm_gx_drain, and at the frame end) */
+static void sr_take(void) {
+    gxCmdQueue_s* q = (gxCmdQueue_s*)&__C3D_Context;
+    if (!sr_on) { sr_from = 0; return; }
+    if (q->numEntries < sr_from) { sr_over = 1; sr_from = 0; } /* cleared by someone else: entries are lost, the frame cannot replay */
+    for (unsigned i = sr_from; i < q->numEntries; i++) { if (sr_n < SR_MAX) sr_ent[sr_n++] = q->entries[i]; else sr_over = 1; }
+    sr_from = q->numEntries;
+}
+/* a stereo frame begins: every shadow of GPU state is dropped so the next draws write the state they use (citro3d context and uniforms, the native
+ * emit shadow, the program and its code, buffers, scissor, clip, texture binds). The framebuffer is not marked: bind_main writes it in its own list. */
+static void sr_force_all(void) {
+    ndn_mode = 1; sh_clear(); /* nd_leave_native: effect, texenv, texture units dirty; program and buffer info rebound; scissor, user clip, binds */
+    nd_shadow_reset(&ndn_sh); u5_valid = 0; sc_shr++;
+    *(volatile unsigned*)(__C3D_Context + 32) |= 0x4u | 0x8u | 0x10u | 0x40u | 0x80u | 0x100u | 0x200u | 0x800u | 0x4000u | 0x20000u | 0x3800000u | 0xFC000000u; /* attr, buffers, effect, viewport, scissor, program and its code, texenv buffer, texture status, fog LUT, units 0-2, stages */
+    memset(C3D_FVUnifDirty[GPU_VERTEX_SHADER], 1, C3D_FVUNIF_COUNT);
+    memset(C3D_IVUnifDirty[GPU_VERTEX_SHADER], 1, sizeof C3D_IVUnifDirty[GPU_VERTEX_SHADER]);
+    C3D_BoolUnifsDirty[GPU_VERTEX_SHADER] = true;
+    if (u_eye >= 0) C3D_FVUnifDirty[GPU_VERTEX_SHADER][u_eye] = false;
+}
+/* the record starts with the entries queued since C3D_FrameBegin (the old frame copy, PT12) */
+static void sr_frame_begin(void) {
+    sr_on = 0; sr_n = 0; sr_fbn = 0; sr_over = 0; sr_from = 0;
+    if (!stereo_frame) return;
+    if (!sr_ent) { sr_ent = (gxCmdEntry_s*)malloc(SR_MAX * sizeof *sr_ent); sr_fb = (SrFb*)malloc(SR_FB_MAX * sizeof *sr_fb); } /* hw rule 7: heap, at the first stereo frame */
+    sr_on = 1;
+    if (!sr_ent || !sr_fb) { sr_over = 1; return; }
+    sr_force_all();
+}
+/* split_frame without its sh_clear (those dirty marks would go out in the bind lists, not in a recorded list). The clear of the main target goes
+ * first only when the list holds draws: a frame with no draw keeps the last picture (X01), and the first draw split or the frame end clears. */
+static void sr_split(void) {
+    gpu_flush_written();
+    pm_gx_room();
+    if (drew && want_clear && !grab_split) { grab_split++; C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0); want_clear = 0; }
+    rd_sync(); C3D_FrameSplit(GX_CMDLIST_FLUSH); sc_spl++;
+}
+/* the main target becomes the draw target. Mono: as before. Stereo (left pass): the pending state goes out in the current list, then the targetR
+ * bind list with eye -eye_e is built (not queued), then the target bind list with eye eye_e is queued; the replay swaps them. */
+static void bind_main(void) {
+    if (!sr_on || sr_over) {
+        sh_clear(); C3D_FrameDrawOn(target);
+        if (eye_gpu != eye_e) eye_put(eye_e); /* mono after stereo: the eye goes back to 0 */
+        return;
+    }
+    u32 *cb, csz, coff;
+    if (u_eye >= 0) C3D_FVUnifDirty[GPU_VERTEX_SHADER][u_eye] = false;
+    C3Di_UpdateContext();
+    GPUCMD_GetBuffer(&cb, &csz, &coff);
+    if (coff) sr_split();
+    u32* ra; u32 rn;
+    C3D_FrameDrawOn(targetR); C3Di_UpdateContext(); eye_put(-eye_e);
+    GPUCMD_Split(&ra, &rn); /* finalised, queued only by the replay */
+    C3D_FrameDrawOn(target); C3Di_UpdateContext(); eye_put(eye_e);
+    pm_gx_room();
+    rd_sync(); C3D_FrameSplit(GX_CMDLIST_FLUSH); sc_spl++;
+    {
+        gxCmdQueue_s* q = (gxCmdQueue_s*)&__C3D_Context;
+        if (sr_fbn < SR_FB_MAX && q->numEntries) { sr_fb[sr_fbn].l = q->entries[q->numEntries - 1].data[1]; sr_fb[sr_fbn].ra = (u32)ra; sr_fb[sr_fbn].rn = rn; sr_fbn++; }
+        else sr_over = 1;
+    }
+    sh_clear();
+}
+/* a target address of a recorded fill or copy as the same place in targetR (virtual or physical form); other addresses stay */
+static u32 sr_map(u32 a) {
+    const u32 n = 240u * 400u * 4u;
+    const u32 cv = (u32)target->frameBuf.colorBuf, dv = (u32)target->frameBuf.depthBuf;
+    const u32 rcv = (u32)targetR->frameBuf.colorBuf, rdv = (u32)targetR->frameBuf.depthBuf;
+    const u32 cp = osConvertVirtToPhys((void*)cv), dp = osConvertVirtToPhys((void*)dv);
+    if (a - cv <= n) return rcv + (a - cv);
+    if (a - dv <= n) return rdv + (a - dv);
+    if (a - cp <= n) return osConvertVirtToPhys((void*)rcv) + (a - cp);
+    if (a - dp <= n) return osConvertVirtToPhys((void*)rdv) + (a - dp);
+    return a;
+}
+static int sr_vram(u32 a) { return (a - 0x1F000000u < 0x600000u) || (a - 0x18000000u < 0x600000u); }
+static __attribute__((cold, noinline)) void sr_fallback(void) { /* the record overflowed or lost entries: the right eye is the left picture for this frame */
+    static unsigned n;
+    if (n++ < 4u) pm_log_w("stereo: replay record full or lost (%u entries, %u binds), the right eye copies the left (f%u)", sr_n, sr_fbn, pm_frame_count());
+    pm_gx_room();
+    GX_TextureCopy((u32*)target->frameBuf.colorBuf, GX_BUFFER_DIM(7680 / 16, 0), (u32*)targetR->frameBuf.colorBuf, GX_BUFFER_DIM(7680 / 16, 0), 240u * 400u * 4u, BIT(3));
+    C3D_FrameDrawOn(targetR); C3D_FrameDrawOn(target); /* targetR is used: C3D_FrameEnd sends it */
+}
+/* the right eye: the recorded entries again, before C3D_FrameEnd (its display transfer then sends both targets) */
+static void sr_replay(void) {
+    const uint64_t t0 = pm_ph_on ? svcGetSystemTick() : 0;
+    gxCmdQueue_s* q = (gxCmdQueue_s*)&__C3D_Context;
+    sr_split(); /* the rest of the left pass is a recorded list (the end path queued its clear already) */
+    sr_take();
+    sr_on = 0;
+    if (sr_over) sr_fallback();
+    else for (unsigned i = 0; i < sr_n; i++) {
+        gxCmdEntry_s e = sr_ent[i];
+        const u32 id = e.data[0] & 0xFFu;
+        if (id == SR_DRAIN) { pm_gx_drain(); continue; }
+        if (id == 0x01u) { /* a command list: a main target bind list becomes its targetR twin */
+            for (unsigned k = 0; k < sr_fbn; k++)
+                if (e.data[1] == sr_fb[k].l) { e.data[1] = sr_fb[k].ra; e.data[2] = sr_fb[k].rn * 4u; e.data[7] = 1u; break; }
+        } else if (id == 0x02u) { /* a fill: the target buffers become the targetR buffers (start and end of both) */
+            e.data[1] = sr_map(e.data[1]); e.data[3] = sr_map(e.data[3]); e.data[4] = sr_map(e.data[4]); e.data[6] = sr_map(e.data[6]);
+        } else if (id == 0x04u) { /* a copy: a texture upload (source in FCRAM) is done already; a copy of rendered pixels reads targetR */
+            if (!sr_vram(e.data[1])) continue;
+            e.data[1] = sr_map(e.data[1]);
+        } else continue; /* no display transfer or DMA in a recorded pass */
+        pm_gx_room();
+        gxCmdQueueAdd(q, &e);
+    }
+    if (pm_ph_on) pm_pf_eye2_add(svcGetSystemTick() - t0);
+}
+
 /* V05: back to the screen. */
 int pm_gpu_off_count(void) { return off_used + off_sused; }
 void pm_gpu_off_end(void) {
@@ -1931,23 +2063,10 @@ void pm_gpu_off_end(void) {
     gs.off_active = 0;
     off_i8 = 0;
     rebuild_3d();
-    sh_clear(); C3D_FrameDrawOn(cur_target);
+    bind_main();
 }
 
-/* STEREO: one task of the frame runs once per eye (pm_nusys.c gbi_task). A mono frame (3D slider at 0) has one pass with the eye uniform at 0. */
-int pm_gpu_stereo(void) { pm_gpu_begin_wait(); return stereo_frame; }
-int pm_gpu_stereo_flag(void) { return stereo_frame; } /* read only (the prof line): pm_gpu_stereo waits and changes draw state */
-void pm_gpu_eye(int right) {
-    PM_WALK_OWN(); /* CORE2-3a */
-    if (!stereo_frame || !gs.gpu_ok) return;
-    flush();
-    if (gs.off_active) pm_gpu_off_end();
-    if (right && !r_cleared) { r_cleared = 1; if (r_wantclear) C3D_RenderTargetClear(targetR, C3D_CLEAR_ALL, 0, 0); } /* queue order: the clear comes before every part of the frame */
-    gs.grab_dirty = 1; grab_dy0 = grab_dy1 = 0; /* K2: the copy of the other eye is not this eye's frame, so the next grab copies again */
-    cur_target = right ? targetR : target;
-    eye_set((right ? PM_EYE_E : -PM_EYE_E) * eye_slider);
-    sh_clear(); C3D_FrameDrawOn(cur_target);
-}
+int pm_gpu_stereo_flag(void) { return stereo_frame; } /* read only (the prof line) */
 
 void pm_gpu_set_replace(int on) { if (on != r_replace) flush(); r_replace = on; } /* DR1: a queued rectangle batch keeps the blender it was queued with */
 void pm_gpu_set_memblend(int on) { if (on == r_memblend) return; flush(); r_memblend = on; }
@@ -1977,7 +2096,9 @@ static int grab_tex_init(void) {
  * gxQueue is the first member of the citro3d context, so its address is the queue. */
 void pm_gx_room(void) {
     gxCmdQueue_s* q = (gxCmdQueue_s*)&__C3D_Context;
+    sr_take(); /* STEREO: the record holds every entry before the queue is cleared (here, or by a citro3d texture load after this call) */
     if (q->numEntries < 24) return;
+    sr_from = 0;
     gxCmdQueueRun(q);
     gxCmdQueueWait(q, -1);
     gxCmdQueueStop(q);
@@ -1992,6 +2113,9 @@ int pm_gx_done(void) {
 /* TEXF1: run the queue and wait for the GPU, as pm_gx_room does. Every entry added before the call is done after it. */
 void pm_gx_drain(void) {
     gxCmdQueue_s* q = (gxCmdQueue_s*)&__C3D_Context;
+    sr_take();
+    if (sr_on) { if (sr_n < SR_MAX) { memset(&sr_ent[sr_n], 0, sizeof sr_ent[0]); sr_ent[sr_n++].data[0] = SR_DRAIN; } else sr_over = 1; } /* STEREO: the replay waits here too */
+    sr_from = 0;
     gxCmdQueueRun(q);
     gxCmdQueueWait(q, -1);
     gxCmdQueueStop(q);
@@ -2003,7 +2127,7 @@ static void grab_queue_copy(void) {
     int s0 = mo >> 3, s1 = (mo + x1 - 1) >> 3;
     pm_gx_room();
     copy_guard(); /* TEXF1: grab_tex is copy_blk */
-    GX_TextureCopy((u32*)((u8*)cur_target->frameBuf.colorBuf + s0 * 7680), GX_BUFFER_DIM(7680 / 16, 0),
+    GX_TextureCopy((u32*)((u8*)target->frameBuf.colorBuf + s0 * 7680), GX_BUFFER_DIM(7680 / 16, 0),
                    (u32*)((u8*)grab_tex.data + s0 * 8192), GX_BUFFER_DIM(7680 / 16, 512 / 16), (u32)(s1 - s0 + 1) * 7680, BIT(3));
 }
 int pm_gpu_grab(const void* cfb, int y0, int y1) { return grab_impl(cfb, y0, y1, 0); }
@@ -2215,14 +2339,13 @@ void pm_gpu_begin_wait(void) {
     if (prev_want) prev_want--;
     eye_slider = osGet3DSliderState(); /* STEREO: the slider decides per frame. At 0 the frame is mono: one pass, the original perspective, no shift. */
     if (PMDL("stereo")) eye_slider = 1.f;
-    stereo_frame = targetR && eye_slider > 0.02f;
+    stereo_frame = targetR && u_eye >= 0 && eye_slider > 0.02f;
     gfxSet3D(stereo_frame);
-    r_wantclear = begin_clear; r_cleared = 0;
-    cur_target = target;
     eye_conv = stereo_frame ? pm_eye_conv : 0.f; /* the camera of the frame (the logic thread writes it): one value for both eyes; a mono frame keeps eyd.w at 0 */
     nd_eye_cull_e = stereo_frame ? PM_EYE_E * eye_slider : 0.f; nd_eye_cull_k = nd_eye_cull_e * eye_conv; /* culling: the x planes of both eyes */
-    eye_set(stereo_frame ? -PM_EYE_E * eye_slider : 0.f);
-    sh_clear(); C3D_FrameDrawOn(target);
+    eye_e = stereo_frame ? -PM_EYE_E * eye_slider : 0.f; /* the left eye; the replay sends -eye_e */
+    sr_frame_begin();
+    bind_main();
     PH_POP();
 }
 
@@ -2263,7 +2386,7 @@ static void pm_gpu_end_w(void) {
     /* X01: a frame the game did not draw (it skips gfx_draw_frame while the pause screen takes the picture) keeps the last
      * picture on screen, as the N64 does when no task swaps the buffer. A clear here would show black for that frame. The clear
      * is a GX memory fill that runs before the command list queued by C3D_FrameEnd, so it can come after the draw calls. */
-    if (want_clear && drew) C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0);
+    if (want_clear && drew) { C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0); want_clear = 0; }
     /* PO1: the GPU reads the vertex buffer when C3D_FrameEnd runs the command list. One flush of the
      * whole range written this frame replaces one GSPGPU call per draw. Each frame's writes
      * again, and FrameBegin(SYNCDRAW) has waited for the GPU, so no draw of this frame overlaps the
@@ -2292,6 +2415,7 @@ static void pm_gpu_end_w(void) {
     }
     FS_MARK(FS_SWAP);
     PH_PUSH(PH_FEND);
+    if (sr_on) sr_replay(); /* STEREO: the right eye */
     ndunit_scan(); rd_sync(); C3D_FrameEnd(GX_CMDLIST_FLUSH);
     if (pm_ph_on) { gb_sub = pm_ticks(); gb_on = 1; } /* S0-6: submit tick of a sampled frame */
     PH_POP();

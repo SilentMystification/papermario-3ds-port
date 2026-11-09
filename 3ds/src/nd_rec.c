@@ -221,6 +221,7 @@ void nd_gx_w(Gfx* g, uint32_t w0, uint32_t w1) {
 const uint32_t* nd_rec_pos(void) { return wp; }
 const uint32_t* nd_rec_mark(void) {
     nd_rec_cut();
+    st_hdr = NULL; /* a range bound closes the state run: the range starts or ends at a command header */
     return wp;
 }
 void nd_rec_call(const uint32_t* a, const uint32_t* b) {

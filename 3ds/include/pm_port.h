@@ -124,6 +124,7 @@ void pm_walk_drain(const char* why);
 typedef struct { void* ptr; unsigned n; } PmTask;
 typedef struct { PmTask bg, main; void* cfb; unsigned flags; } PmFrame;
 #define PMF_REPL 1u /* F06-2: the main task walks with the t = 0.5 matrix replacements (pm_interp_repl) */
+#define PMF_WIDE 2u /* INTROSNAP debug: pm_wide was 1 when the game pushed the frame (fr_push); pm_frame_walk logs a frame walked with another live value */
 void pm_wq_frame(const PmFrame* f); /* the game side: queue one frame (waits while one is queued) */
 void pm_frame_walk(const PmFrame* f); /* pm_nusys.c, walker side: walk the tasks of one frame */
 typedef struct { PmTask t[4]; } PmKey; /* the tasks of the key frame of one step (MAX_KEY 4 in pm_nusys.c) */
