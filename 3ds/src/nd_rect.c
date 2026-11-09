@@ -277,7 +277,7 @@ int uly = FILL_SX10(w1 >> 2);
  * that memory and draw nothing on the screen. The game filter then leaves each pixel as is. */
 if (img_role(1) == ROLE_CPUFILL) {
     unsigned short* d = (unsigned short*)nd_ws.cimg;
-    if (!pm_interp_repl) pm_cfb_capture_prev_cpu_for(nd_ws.cimg); /* PT78: the fill target decides the buffer. F06-5: key pass only. the filter reads the last frame from the other frame buffer */
+    /* PAUSEOPEN: no CPU readback here. The picture is the GPU copy (background_gfx.c SHOW_PAUSED, pm_gpu_want_prev) */
     for (int y = uly < 0 ? 0 : uly; y <= lry && y < 240; y++)
         for (int x = ulx < 0 ? 0 : ulx; x <= lrx && x < cimg_stride; x++) d[y * cimg_stride + x] = 0x8421;
     return;

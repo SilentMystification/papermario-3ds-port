@@ -257,9 +257,10 @@ void func_80027774(u16* frameBuffer0, u16* frameBuffer1, u16* zBuffer) {
 
 // transfers the framebuffer into the depth buffer and applies filters
 #ifdef TARGET_3DS
-extern u16 pm_wide_side[2][40 * 240]; /* PT56: the gutters of the last frame read */
-extern u16 pm_wide_side_pause[2][40 * 240]; /* the gutters of the paused picture */
 extern void pm_tex_invalidate(const void* ptr, unsigned size);
+extern void pm_gpu_want_prev(void); /* PAUSEOPEN: pm_gpu.c, the GPU copy of the last frame */
+/* PAUSEOPEN: the colour buffer not drawn now: the last frame (its GPU copy is the texture of this address) */
+static const void* pause_cfb_src(void) { return nuGfxCfb_ptr == nuGfxCfb[0] ? nuGfxCfb[1] : nuGfxCfb[0]; }
 #endif
 void gfx_transfer_frame_to_depth(u16* frameBuffer0, u16* frameBuffer1, u16* zBuffer) {
     Color_RGBA8 filterBuf0[6];
@@ -304,7 +305,6 @@ void gfx_transfer_frame_to_depth(u16* frameBuffer0, u16* frameBuffer1, u16* zBuf
             }
         }
     }
-    { s32 k; for (k = 0; k < 2; k++) for (y = 0; y < 40 * 240; y++) pm_wide_side_pause[k][y] = pm_wide_side[k][y]; pm_tex_invalidate(pm_wide_side_pause, sizeof pm_wide_side_pause); }
 #endif
 }
 
@@ -367,40 +367,23 @@ void gfx_draw_background(void) {
             gDPSetDepthSource(gMainGfxPos++, G_ZS_PIXEL);
             gGameStatusPtr->backgroundFlags &= ~BACKGROUND_RENDER_STATE_MASK;
             gGameStatusPtr->backgroundFlags |= BACKGROUND_RENDER_STATE_FILTER_PAUSED;
+#ifdef TARGET_3DS
+            pm_gpu_want_prev(); /* PAUSEOPEN: the picture is the GPU copy of the last frame (SHOW_PAUSED), armed here for the next drawn frames */
+#endif
             break;
         case BACKGROUND_RENDER_STATE_FILTER_PAUSED:
             // Save the framebuffer into the depth buffer and run a filter on it based on the saved coverage values
-#ifdef TARGET_3DS
-            { /* PAUSEC: the z-buffer image is allocated here, not only by the walk of BEGIN_PAUSED (pm_zbuf_need waits for the walker
-               * first). No memory: no saved picture; the pause menu draws over the live frame (SHOW_PAUSED draws nothing). */
-                void pm_zbuf_need(void);
-                void pm_log_prof_line(const char* fmt, ...);
-                pm_zbuf_need();
-                pm_log_prof_line("prof pause filter zbuf %d", nuGfxZBuffer ? 1 : 0); /* PAUSEDR: one line per pause open */
-                if (!nuGfxZBuffer) {
-                    gPauseBackgroundFade = 0;
-                    gGameStatusPtr->backgroundFlags &= ~BACKGROUND_RENDER_STATE_MASK;
-                    gGameStatusPtr->backgroundFlags |= BACKGROUND_RENDER_STATE_SHOW_PAUSED;
-                    break;
-                }
-            }
-            { /* PAUSE5B: filter timing (cold, fsplit only) */
-                extern unsigned pm_pc_t(void);
-                extern void pm_pc_add(int k, unsigned t0);
-                unsigned pc_t0 = pm_pc_t();
-                gfx_transfer_frame_to_depth(nuGfxCfb[0], nuGfxCfb[1], nuGfxZBuffer); // applies filters to the framebuffer
-                pm_pc_add(3, pc_t0);
-            }
-#else
+#ifndef TARGET_3DS
             gfx_transfer_frame_to_depth(nuGfxCfb[0], nuGfxCfb[1], nuGfxZBuffer); // applies filters to the framebuffer
 #endif
+            /* PAUSEOPEN: on the 3DS no CPU filter. The coverage of the fill is full (0x8421), so the filter copied the frame anyway. */
             gPauseBackgroundFade = 0;
             gGameStatusPtr->backgroundFlags &= ~BACKGROUND_RENDER_STATE_MASK;
             gGameStatusPtr->backgroundFlags |= BACKGROUND_RENDER_STATE_SHOW_PAUSED;
             // fallthrough
         case BACKGROUND_RENDER_STATE_SHOW_PAUSED:
 #ifdef TARGET_3DS
-            if (!nuGfxZBuffer) break; /* PAUSEC: no saved picture (see FILTER_PAUSED) */
+            pm_gpu_want_prev(); /* PAUSEOPEN: each drawn frame of the pause asks for its copy (the request holds 2 drawn frames) */
 #endif
             // Draw the saved framebuffer to the background, fading in at a rate of 16 opacity per frame until reaching 128 opacity
             gPauseBackgroundFade += 16;
@@ -428,7 +411,8 @@ void gfx_draw_background(void) {
 
 #ifdef TARGET_3DS
             /* PAUSE4A: the saved picture is one 320 x 240 image. One load and one texrect draw all of it (the strips below are the N64 TMEM split). */
-            gDPLoadTextureTile(gMainGfxPos++, nuGfxZBuffer, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH,
+            /* PAUSEOPEN: the other colour buffer (not the one drawn now) is the last frame. Its texture load is the GPU copy (nd_tex_set.c set_timg). */
+            gDPLoadTextureTile(gMainGfxPos++, pause_cfb_src(), G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH,
                                SCREEN_HEIGHT, 0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1, 0, G_TX_NOMIRROR | G_TX_WRAP,
                                G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
             gSPTextureRectangle(gMainGfxPos++,
@@ -454,19 +438,18 @@ void gfx_draw_background(void) {
             }
 #endif
 #ifdef TARGET_3DS
-            if (pm_wide) { /* PT56: the saved picture is 320 wide. The gutters come from their own copy, so the paused picture keeps the wide coverage. */
+            if (pm_wide) { /* PAUSEOPEN: the gutters are slot columns 0 to 39 (address cfb - 80 bytes) and 360 to 399 (cfb + 640 bytes), from the same copy */
+                static const s32 side_off[2] = { -80, 640 };
                 s32 side;
                 for (side = 0; side < 2; side++) {
-                    for (i = 0; i < 40; i++) {
-                        gDPLoadTextureTile(gMainGfxPos++, pm_wide_side_pause[side] + (i * 40 * SCREEN_COPY_TILE_HEIGHT), G_IM_FMT_RGBA, G_IM_SIZ_16b, 40,
-                                           SCREEN_HEIGHT, 0, 0, 39, SCREEN_COPY_TILE_HEIGHT - 1, 0, G_TX_NOMIRROR | G_TX_WRAP,
-                                           G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
-                        gSPTextureRectangle(gMainGfxPos++,
-                                            (side == 0 ? -40 : SCREEN_WIDTH) << 2, i * a, (side == 0 ? 0 : SCREEN_WIDTH + 40) << 2, a + (i * (SCREEN_COPY_TILE_HEIGHT << 2)),
-                                            G_TX_RENDERTILE,
-                                            0 << 5, 0 << 5, 1 << 10, 1 << 10);
-                        gDPPipeSync(gMainGfxPos++);
-                    }
+                    gDPLoadTextureTile(gMainGfxPos++, (const u8*)pause_cfb_src() + side_off[side], G_IM_FMT_RGBA, G_IM_SIZ_16b, 40,
+                                       SCREEN_HEIGHT, 0, 0, 39, SCREEN_HEIGHT - 1, 0, G_TX_NOMIRROR | G_TX_WRAP,
+                                       G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+                    gSPTextureRectangle(gMainGfxPos++,
+                                        (side == 0 ? -40 : SCREEN_WIDTH) << 2, 0, (side == 0 ? 0 : SCREEN_WIDTH + 40) << 2, SCREEN_HEIGHT << 2,
+                                        G_TX_RENDERTILE,
+                                        0 << 5, 0 << 5, 1 << 10, 1 << 10);
+                    gDPPipeSync(gMainGfxPos++);
                 }
             }
 #endif
