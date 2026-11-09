@@ -45,7 +45,7 @@ M1 colour words out of the model key, patched on hit (pm_gpu_model_key/hit, nd_t
 class word; replaces the MERLEE mask and mix_st (delete old path). MEMORY: NdNatC aligned(32), pool 512: src[6] must fit existing padding
 (_Static_assert). M4 fog position out of key: mask w11, recompute zmix from rec[11] via a one-entry memo (no division steady).
 M2 scroll as texture offset: key keeps tile id and extents of w18-21, drops uls/ult; hit sets uvso/uvx like gv_params_calc; wrap by
-masks; clamp/mirror tiles keep full words. M3 pre-list by content: lists nd_r11_state fully decodes as state-only hash with colour masked;
+masks; clamp/mirror tiles keep full words. Invariant (WATER B1): an entry keeps the tile 0 window it was built with (NdMEnt ww, wh) and the hit binds that window, not the full handle desc; M2 keeps it. M3 pre-list by content: lists nd_r11_state fully decodes as state-only hash with colour masked;
 replaces the STARFX no-store rule for them. T2 in-place rewrite of the same texture identity in load_miss (slot unused 2+ frames,
 no vram_up pending). M5 view id in the compared words (tattle). T1 BTLDIM GPU mix pattern in 16C8E0.c:750-765. T3 shaded sprite on the
 GPU (ramp TLUT as I8 on unit 1, TEV lerp): biggest; at the 2-try limit hand back as its own row with census numbers.
