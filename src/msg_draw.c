@@ -4,7 +4,6 @@
 #include "message_ids.h"
 #include "sprite.h"
 #ifdef TARGET_3DS
-#include "nd_gbi_tex.h" /* DIRECT D4b-1: the texture loads and rectangles of this file are frame stream commands */
 #endif
 
 #include "charset/charset.h"

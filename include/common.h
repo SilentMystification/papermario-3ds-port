@@ -17,6 +17,12 @@
 #include "battle/stage_names.h"
 #include "battle/actor_types.h"
 
+#if defined(TARGET_3DS) && !defined(ND_GBI_WORDS)
+/* DIRECT D5 (docs/handoff/plan_direct.md section 5): the dynamic gbi macros record frame stream commands. A file that defines ND_GBI_WORDS
+ * before its includes keeps list words (named fallback: inline data in the list, lists for later, list position tests). */
+#include "nd_gbi.h"
+#endif
+
 #ifdef PERMUTER
 extern int TEXEL0, TEXEL1, PRIMITIVE, PRIMITIVE_ALPHA;
 #endif

@@ -1,3 +1,4 @@
+#define ND_GBI_WORDS /* DIRECT D5: this file keeps list words (inline data, lists for later or list position tests) */
 #include "../area.h"
 #include "sprite/npc/LavaPiranha.h"
 #include "sprite/npc/BattleKolorado.h"
