@@ -9,6 +9,7 @@
 #include "pm_interp_fi.h"
 #ifdef TARGET_3DS
 #include "nd_cmd.h"
+#include "nd_op.h"
 #endif
 
 // models are rendered in two stages by the RDP:
@@ -2307,7 +2308,11 @@ static void load_texture_header_at(u32 romOffset, TextureHeader* out) {
 }
 #endif
 
+#ifdef TARGET_3DS
+static Gfx pm_tex_unloaded[] = { { .words = { NDO_W0(NDO_END, 0), 0 } } }; /* HC4c: a typed bind list (nd_op.h) */
+#else
 static Gfx pm_tex_unloaded[] = { gsSPEndDisplayList() };
+#endif
 
 void load_texture_impl(u32 romOffset, TextureHandle* handle, TextureHeader* header, s32 mainSize, s32 mainPalSize, s32 auxSize, s32 auxPalSize) {
     Gfx** temp;
@@ -2360,6 +2365,7 @@ void load_texture_impl(u32 romOffset, TextureHandle* handle, TextureHeader* head
     temp = (Gfx**) &TextureHeapPos;
     gSPEndDisplayList((*temp)++);
 #ifdef TARGET_3DS
+    nd_op_type_run((uint32_t*)handle->gfx, (unsigned)((Gfx*)TextureHeapPos - handle->gfx)); /* HC4c (R1): the bind list typed at its producer (rec_apply runs it, nd_bind_run) */
     { /* S3N-1 (B4): the texture descriptor of this handle for the native model draw (3ds/src/nd_model.c) */
         extern void nd_tex_handle_set(int index, const void* gfx, const void* raster, const void* palette, unsigned w, unsigned h, unsigned fmt, unsigned siz,
                                       unsigned wrap_w, unsigned wrap_h, unsigned masks, unsigned maskt, unsigned extra, int has_aux);
@@ -5052,6 +5058,11 @@ RenderTask* queue_render_task(RenderTask* task) {
 #ifdef TARGET_3DS
 extern int pm_ph_on;
 extern void pm_gbi_mdl_mark(unsigned id, int pan);
+/* EFFCEN: per-task cost census (pm_effcen.c), word effcen only */
+extern int pm_effcen_on(void);
+extern unsigned pm_effcen_t0(void);
+extern void pm_effcen_task(const void* fn, const void* arg, const Gfx* g0, unsigned t0);
+extern void pm_effcen_frame(void);
 /* MDL1 task census, phase on only: the ops of a task go to a pseudo model ID, not to the last model mark.
  * 0xF001 render_transform_group, 0xF002 appendGfx_model_group, 0xF0FF other task. 0xF0FE is the tail (pm_gbi.c mdc_*). */
 static __attribute__((cold, noinline)) void census_task_mark(void (*fn)(void*)) {
@@ -5144,6 +5155,11 @@ void execute_render_tasks(void) {
     RenderTask* task2;
     Matrix4f mtxFlipY;
     void (*appendGfx)(void*);
+#ifdef TARGET_3DS
+    int ec_on = pm_effcen_on(); /* EFFCEN: one word read per call */
+    Gfx* ec_g0 = nullptr;
+    unsigned ec_t0 = 0;
+#endif
 
     if (RenderTaskCount == 0) {
         return;
@@ -5230,9 +5246,15 @@ void execute_render_tasks(void) {
 
             /* the key is (draw function, argument): the argument alone is not always an object pointer (PaperBoat note) */
             CENSUS_TASK(appendGfx);
+#ifdef TARGET_3DS
+            if (ec_on) { ec_g0 = gMainGfxPos; ec_t0 = pm_effcen_t0(); }
+#endif
             FI_OPEN(task->appendGfx, task->appendGfxArg);
             appendGfx(task->appendGfxArg);
             FI_CLOSE();
+#ifdef TARGET_3DS
+            if (ec_on) pm_effcen_task(appendGfx, task->appendGfxArg, ec_g0, ec_t0);
+#endif
 
             if (task->renderMode & RENDER_TASK_FLAG_REFLECT_FLOOR) {
                 nd_range_repeat(savedRange, dispMtx, &gDisplayContext->camPerspMatrix[gCurrentCamID]);
@@ -5243,13 +5265,20 @@ void execute_render_tasks(void) {
             task = &taskList[sorted[i]];
             appendGfx = task->appendGfx;
             CENSUS_TASK(appendGfx);
+#ifdef TARGET_3DS
+            if (ec_on) { ec_g0 = gMainGfxPos; ec_t0 = pm_effcen_t0(); }
+#endif
             FI_OPEN(task->appendGfx, task->appendGfxArg);
             appendGfx(task->appendGfxArg);
             FI_CLOSE();
+#ifdef TARGET_3DS
+            if (ec_on) pm_effcen_task(appendGfx, task->appendGfxArg, ec_g0, ec_t0);
+#endif
         }
     }
 #ifdef TARGET_3DS
     if (pm_ph_on) pm_gbi_mdl_mark(0xF0FE, 0); /* tail: ops after the last task */
+    if (ec_on) pm_effcen_frame();
 #endif
 
     RenderTaskListIdx++;

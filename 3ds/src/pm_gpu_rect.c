@@ -1,6 +1,7 @@
 /* pm_gpu_rect.c: the vertex ring (chunks, wrap) and the rectangle queue (fill and texture rectangles as raw batches), moved from pm_gpu.c without change (C8).
  * The batch state is NdBatch nb and the render state PmGpuSt gs (pm_gpu_int.h). */
 #include <3ds.h>
+#include "pm_linear.h"
 #include <citro3d.h>
 #include <math.h>
 #include <string.h>
@@ -42,11 +43,11 @@ static __attribute__((cold, noinline)) int ring_pick(void) {
         return c;
     }
     if (nb.rchunk_n >= RING_CHUNK_MAX) return -1;
-    unsigned char* v = (unsigned char*)linearAlloc(GRING_VTX * 16u);
-    unsigned short* x = (unsigned short*)linearAlloc(GRING_IDX * 2u);
+    unsigned char* v = (unsigned char*)pm_linear_alloc(GRING_VTX * 16u);
+    unsigned short* x = (unsigned short*)pm_linear_alloc(GRING_IDX * 2u);
     if (!v || !x) {
-        if (v) linearFree(v);
-        if (x) linearFree(x);
+        if (v) pm_linear_free(v);
+        if (x) pm_linear_free(x);
         pm_log_e("ring: chunk %d failed (linear)", nb.rchunk_n);
         return -1;
     }

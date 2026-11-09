@@ -18,37 +18,36 @@ void pm_gpu_set_r13_t1(int bound);
  * render mode index << 16 | (texture list index & 0x7f) << 8 (count byte 0); w1 = the bind list. R1: w0 G_MTX flags, w1 header w1. R2: w0 numLights,
  * w1 finalMtx. R3: w0 flags (bit 1 fog, 2 prim, 4 env, 8 blend, 16 shroud render mode, 32 shroud, 64 depth fog, 256 IGNORE_MATRIX), w1 lights group.
  * R4: w0 fog colour word, w1 combine entry (0 when none). R5: w1 fog position word. R6: w0 prim, w1 env. R7: w0 blend, w1 shroud c2.
- * R8: billboard matrix op (0 when none). R9, R10: panner tile size ops (0 when none).
- * rec_apply sets the walker state from them in the old word order: lights, bind list (tb_ops), combine (rec_op), render mode list
+ * R8: billboard matrix op (0 when none). R9, R10: panner tile size ops (0 when none; typed by nd_rec_model). R13: the typed ops after the record.
+ * rec_apply sets the walker state from them in the old word order: lights, bind list (nd_bind_run), combine (rec_op), render mode list
  * (the list runs as G_DL), fog (rec_fog), matrix (load_mtx), panner tiles, billboard. rec_op runs one op through the skip test and handler of the walker. */
-extern Gfx* ModelRenderModes[];
-/* S3F-2: one record op through the skip test and the handler of the walker (the ops the record writes). */
-static __attribute__((noinline)) void rec_op(u32 w0, u32 w1) {
-    unsigned op = w0 >> 24;
-    if (nd_op_sync(op)) return;
-    uint32_t t[2];
-    if (nd_op_xlate(w0, w1, t)) { /* HC4a: a typed scalar op (its own skip test) */
-        if (nd_op_same(t)) return;
-        gv_epoch++; /* GV1b, as the walker */
-        nd_op_apply(t);
-        return;
-    }
-    if (g2_same(op, w0, w1)) return;
+/* HC4b: one typed record op through the skip test and the handler of the walker (nd_set.c). */
+static __attribute__((noinline)) void rec_top(const uint32_t t[2]) {
+    if (nd_op_same(t)) return;
     gv_epoch++; /* GV1b, as the walker */
-    switch (op) {
-    case G_SETCOMBINE: case G_SETTILESIZE: tex_op(w0, w1); break;
-    default: pm_log("rec: op %u is not a record op f%u", op, pm_frame_count()); break;
-    }
+    nd_op_apply(t);
+}
+static void rec_t(unsigned id, uint32_t a, uint32_t b) {
+    const uint32_t t[2] = { NDO_W0(id, a), b };
+    rec_top(t);
+}
+/* S3F-2: the R4 combine entry, a static word (SolidCombineModes, AlphaTestCombineModes): typed on the way (nd_op_xlate) until the static
+ * lists are typed (HC4e). */
+static __attribute__((noinline)) void rec_op(u32 w0, u32 w1) {
+    uint32_t t[2];
+    if (nd_op_xlate(w0, w1, t)) rec_top(t);
 }
 /* S3F-2: the fog of a record: the colour word, then the position word (the MOVEWORD header is built with the gbi macro, no division here). */
-static __attribute__((noinline)) void rec_fogpos(u32 pos) {
-    Gfx t;
-    gMoveWd(&t, G_MW_FOG, G_MWO_FOG, pos);
-    rec_op(t.words.w0, t.words.w1);
-}
+static void rec_fogpos(u32 pos) { rec_t(NDO_MW, NDO_MW_FOG << 16, pos); }
 static __attribute__((noinline)) void rec_fog(u32 col, u32 pos) {
-    rec_op((u32)G_SETFOGCOLOR << 24, col);
+    rec_t(NDO_FOG, 0, col);
     rec_fogpos(pos);
+}
+/* HC4b (W3): the render mode list of index i as the typed ops of the render mode table (nd_rec.c, built by the recorder), run as the list ran
+ * (nd_list_run: the list start rules, then the ops; dlc_try never took a render mode list: it is not map shape data). */
+static __attribute__((noinline)) void rec_rm(unsigned i) {
+    if (__builtin_expect(nd_lc_frame != -1, 0)) nd_lstcen(nd_rm_tab[i], 0u);
+    nd_ops_run(nd_rm_tab[i], nd_rm_n[i], 0);
 }
 /* S3G-1: a model list of a record (the render mode list, the geometry): run as G_DL does (dlc_try first), else on the list executor
  * (nd_list_run, D10c) to its G_ENDDL. */
@@ -62,7 +61,7 @@ static __attribute__((noinline)) void rec_dl(const Gfx* l) {
     if (__builtin_expect(nd_lc_frame != -1, 0)) nd_lstcen(l, 0u);
     nd_list_run(l);
 }
-/* S3G-2: the words after a record: n words run in place (D10b: a flat range on the op executor). */
+/* S3G-2: the R13 ops after a record (HC4c: typed by nd_rec_model): n units run in place (D10b: a flat range on the op executor). */
 static __attribute__((noinline)) void rec_aux(const Gfx* l, unsigned n) {
     nd_ops_run(l, n, 0);
 }
@@ -77,33 +76,31 @@ static __attribute__((noinline)) void rec_apply(const Gfx* q, int mdone) {
     u32 f = q[3].words.w0; /* S3F-2b: the flags of R3 (see model.c appendGfx_model) */
     rec_n++;
     gv_epoch++; /* GV1b: the texture and render mode words it replaces counted here */
-    if (f & 4u) rec_op((u32)G_SETPRIMCOLOR << 24, q[6].words.w0); /* depth and remap: the old words before the lights */
-    if (f & 8u) rec_op((u32)G_SETENVCOLOR << 24, q[6].words.w1);
+    if (f & 4u) rec_t(NDO_PRIM, 0, q[6].words.w0); /* depth and remap: the old words before the lights */
+    if (f & 8u) rec_t(NDO_ENV, 0, q[6].words.w1);
     if (f & 64u) rec_fog(q[4].words.w0, q[5].words.w1);
     if (q[3].words.w1) rec_lights((const Lightsn*)(uintptr_t)q[3].words.w1, q[2].words.w0); /* S3F-1b: lights, as the old word order */
     u32 w0 = q->words.w0;
     const Gfx* tg = (const Gfx*)(uintptr_t)q->words.w1;
-    if (q[13].words.w0) rec_aux(q + G_PM_REC_WORDS, q[13].words.w0); /* S3G-2: the words after the record (special tile list, untextured ops) run in place of the bind */
-    else if (tg) tb_ops(tg);
+    if (q[13].words.w0) rec_aux(q + G_PM_REC_WORDS, q[13].words.w0); /* S3G-2: the typed R13 ops (special tile list, untextured ops) run in place of the bind */
+    else if (tg) nd_bind_run((const uint32_t*)tg); /* HC4c: the typed bind list */
     if (q[4].words.w1) { /* S3F-2: the combine word, after the bind as in the old order */
         const Gfx* e = (const Gfx*)(uintptr_t)q[4].words.w1;
         rec_op(e->words.w0, e->words.w1);
     }
-    rec_dl(ModelRenderModes[(w0 >> 16) & 0xffu]); /* ST-4: the list runs as G_DL (the walker handlers) */
-    if (f & 32u) { /* S3F-2b: shroud: render mode word, fog colour, blend colour, fog position (the old order) */
-        Gfx t;
-        gDPSetRenderMode(&t, PM_RM_SHROUD, q[7].words.w1);
-        rec_op(t.words.w0, t.words.w1);
-        rec_op((u32)G_SETFOGCOLOR << 24, q[4].words.w0);
-        if (f & 16u) rec_op((u32)G_SETBLENDCOLOR << 24, q[7].words.w0);
+    rec_rm((w0 >> 16) & 0xffu); /* ST-4, HC4b: the render mode list (typed table) */
+    if (f & 32u) { /* S3F-2b: shroud: render mode, fog colour, blend colour, fog position (the old order) */
+        rec_t(NDO_OML, NDO_A_RENDERMODE, (u32)(PM_RM_SHROUD) | q[7].words.w1);
+        rec_t(NDO_FOG, 0, q[4].words.w0);
+        if (f & 16u) rec_t(NDO_BLEND, 0, q[7].words.w0);
         rec_fogpos(q[5].words.w1);
     } else if (f & 2u) {
         rec_fog(q[4].words.w0, q[5].words.w1); /* S3F-2: fog after the render mode, as the old word order */
     }
     if (!(f & 256u) && !mdone) load_mtx(q[1].words.w0, q[2].words.w1, q[1].words.w1); /* S3F-1a: the matrix load of the model, the same function as G_MTX (256: IGNORE_MATRIX) */
     if (q[11].words.w0) nd_range_run((const uint32_t*)(uintptr_t)q[11].words.w0); /* S3G-1: custom gfx pre, after the matrix as the old order (D10a: a stream range) */
-    if (q[9].words.w0) rec_op(q[9].words.w0, q[9].words.w1); /* S3F-2c: panner tile size, main then aux, as the old order */
-    if (q[10].words.w0) rec_op(q[10].words.w0, q[10].words.w1);
+    if (q[9].words.w0) rec_top((const uint32_t*)&q[9]); /* S3F-2c: panner tile size, main then aux, as the old order (HC4c: typed by nd_rec_model) */
+    if (q[10].words.w0) rec_top((const uint32_t*)&q[10]);
     if (q[8].words.w0 && !mdone) load_mtx(q[8].words.w0, q[8].words.w1, q[1].words.w1); /* S3F-2c: billboard matrix op (MUL, no push) */
 }
 /* S3F-4: the record is the whole state of the model (the walker model path is gone, no old words follow it). */
@@ -163,7 +160,7 @@ unsigned rec_run(const Gfx* q) {
         nd_r11_state((uint32_t)q[11].words.w0, &nr, cwr, &hcb, mo, &nmo);
         if (nr) qs = (const Gfx*)nr;
     }
-    mwp = (const uint32_t*)ModelRenderModes[(qs->words.w0 >> 16) & 0xffu];
+    mwp = nd_rm_tab[(qs->words.w0 >> 16) & 0xffu]; /* HC4b: typed render mode ops (nd_mode_compile) */
     cwp = qs[4].words.w1 ? (const uint32_t*)(uintptr_t)qs[4].words.w1 : NULL;
     if (hcb) cwp = cwr;
     /* MERLEE: a shroud record sets PM_RM_SHROUD after its render mode list (rec_apply order), so the native draw gets that word after the list ops too;
@@ -171,13 +168,13 @@ unsigned rec_run(const Gfx* q) {
     const int shr = (qs[3].words.w0 & 32u) != 0;
     if (hcb || nmo || shr) {
         unsigned k = 0;
-        for (unsigned i = 0; i < 16u && (mwp[2 * i] >> 24) != 0xdfu; i++) {
-            if (hcb && (mwp[2 * i] >> 24) == 0xfcu) continue; /* G_SETCOMBINE: the pre list's combine replaces it */
+        for (unsigned i = 0; i < 16u && (mwp[2 * i] >> 24) != NDO_END; i++) {
+            if (hcb && (mwp[2 * i] >> 24) == NDO_COMB) continue; /* the pre list's combine replaces it */
             mcomp[2 * k] = mwp[2 * i]; mcomp[2 * k + 1] = mwp[2 * i + 1]; k++;
         }
-        if (shr) { Gfx t; gDPSetRenderMode(&t, PM_RM_SHROUD, qs[7].words.w1); mcomp[2 * k] = t.words.w0; mcomp[2 * k + 1] = t.words.w1; k++; }
+        if (shr) { mcomp[2 * k] = NDO_W0(NDO_OML, NDO_A_RENDERMODE); mcomp[2 * k + 1] = (u32)(PM_RM_SHROUD) | qs[7].words.w1; k++; }
         for (unsigned j = 0; j < nmo; j++, k++) { mcomp[2 * k] = mo[2 * j]; mcomp[2 * k + 1] = mo[2 * j + 1]; }
-        mcomp[2 * k] = 0xdfu << 24; mcomp[2 * k + 1] = 0;
+        mcomp[2 * k] = NDO_W0(NDO_END, 0); mcomp[2 * k + 1] = 0;
         mwp = mcomp;
     }
     if (ndm) pm_gpu_ndm_begin((const uint32_t*)qs, mwp,

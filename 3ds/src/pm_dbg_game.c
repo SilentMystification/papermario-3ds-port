@@ -26,6 +26,78 @@ static void level_sync(void) {
 }
 int pm_dbgg_level_over(void) { return pm_dbgg_level_calc() > 27; }
 
+/* CHEATSAVE2: the Cheats tab record, the values the cheat file holds beside the switches. rec_cur: the values the Cheats rows set since the load or
+ * the last save. rec_saved: the record as loaded or saved last. Dirty (pm_cheatrec_changed) when they differ. Only the rows that set a value are in
+ * it: game changes by play (coins won, badges found) are not. Fixed fields F_*: Set Stats, star power, equipment, Merlee, current partner, partner on
+ * and partner level. Items: iv[0] badges, iv[1] key items, per item id: 1 on, 2 off, 0 not in the record. */
+enum { F_STAT = 0, F_SPW = 8, F_EQ = 11, F_MER = 14, F_CURP = 16, F_PON = 17, F_PLV = 28, F_N = 39 }; /* F_STAT + k: the stat index k of pm_dbgg_stat_get (k 3, Level, is never set) */
+#define REC_IT ((int)(sizeof gItemTable / sizeof gItemTable[0]))
+typedef struct { int fv[F_N]; unsigned char fset[F_N]; unsigned char iv[2][REC_IT]; } CheatRec;
+static CheatRec rec_cur, rec_saved;
+static void rec_put(int f, int v) { rec_cur.fv[f] = v; rec_cur.fset[f] = 1; }
+static void rec_item(int g, int id, int on) { if (id > 0 && id < REC_IT) rec_cur.iv[g - 1][id] = on ? 1 : 2; }
+static const char* const rec_fixed_name[F_PON] = { "stat.maxhp", "stat.maxfp", "stat.bp", "", "stat.coins", "stat.starpts", "stat.starpc", "stat.fort",
+    "sp.max", "sp.power", "sp.beam", "eq.boots", "eq.hammer", "eq.action", "mer.spell", "mer.casts", "curpartner" };
+/* the file key of field f */
+static void rec_key(int f, char* out, unsigned n) {
+    if (f < F_PON) snprintf(out, n, "%s", rec_fixed_name[f]);
+    else if (f < F_PLV) snprintf(out, n, "partner.%d.on", f - F_PON + 1);
+    else snprintf(out, n, "partner.%d.lv", f - F_PLV + 1);
+}
+/* the field of a file key, -1 when none */
+static int rec_find(const char* key) {
+    char nm[24];
+    for (int f = 0; f < F_N; f++) {
+        if (f == F_STAT + 3) continue;
+        rec_key(f, nm, sizeof nm);
+        if (!strcmp(nm, key)) return f;
+    }
+    return -1;
+}
+/* read: one key=value line of the cheat file (pm_cheatsave.c). 1 when the key is a record key; the switch keys are not here. */
+int pm_cheatrec_load_key(const char* key, int v) {
+    int g = 0, f;
+    if (!strncmp(key, "badge.", 6)) { g = 1; key += 6; }
+    else if (!strncmp(key, "key.", 4)) { g = 2; key += 4; }
+    if (g) {
+        const char* d = key;
+        long id = 0;
+        for (; *d >= '0' && *d <= '9'; d++) id = id * 10 + (*d - '0');
+        if (d == key || *d || id <= 0 || id >= REC_IT) return 0;
+        rec_cur.iv[g - 1][id] = v ? 1 : 2;
+        return 1;
+    }
+    f = rec_find(key);
+    if (f < 0) return 0;
+    rec_put(f, v);
+    return 1;
+}
+/* write: entries 0 to pm_cheatrec_count-1. 1 when entry i is in the record: its key and value (an item: 1 on, 0 off). */
+int pm_cheatrec_count(void) { return F_N + 2 * REC_IT; }
+int pm_cheatrec_entry(int i, char* key, unsigned n, int* v) {
+    int g;
+    if (i < F_N) {
+        if (i == F_STAT + 3 || !rec_cur.fset[i]) return 0;
+        rec_key(i, key, n);
+        *v = rec_cur.fv[i];
+        return 1;
+    }
+    i -= F_N;
+    g = i / REC_IT;
+    i %= REC_IT;
+    if (!rec_cur.iv[g][i]) return 0;
+    snprintf(key, n, "%s.%d", g ? "key" : "badge", i);
+    *v = rec_cur.iv[g][i] == 1;
+    return 1;
+}
+int pm_cheatrec_changed(void) { return memcmp(&rec_cur, &rec_saved, sizeof rec_cur) != 0; }
+void pm_cheatrec_commit(void) { rec_saved = rec_cur; } /* the record as loaded or saved */
+/* the apply waits for the first world step: the save data of the slot is still loaded after the mode change to ENTER_WORLD */
+static int rec_pending;
+void pm_cheatrec_pend(void) { rec_pending = 1; }
+void pm_cheatrec_apply(void);
+void pm_cheatrec_clear(void) { memset(&rec_cur, 0, sizeof rec_cur); rec_saved = rec_cur; }
+
 /* PT73: the flag alone also matches entries outside the real ranges (one flagged entry sits before ITEM_FIRST_BADGE, it sorts first and the pause badge list
  * stops at it). The pause menus read only IS_BADGE ids (ITEM_FIRST_BADGE to ITEM_LAST_BADGE) and key items ITEM_FIRST_KEY to ITEM_LAST_KEY. */
 static int is_item(int id, int flag) {
@@ -65,6 +137,7 @@ int pm_dbgg_item_has(int g, int id) {
 }
 /* CH2: on adds id to the first empty slot. Off unequips it first (badges only: pause_badges_try_remove) and closes the hole in the list. */
 void pm_dbgg_item_set(int g, int id, int on) {
+    rec_item(g, id, on);
     PlayerData* p = &gPlayerData;
     s16* a = g == 1 ? p->badges : p->keyItems;
     int j, n = g == 1 ? (int)ARRAY_COUNT(p->badges) : (int)ARRAY_COUNT(p->keyItems), u = 0;
@@ -123,6 +196,8 @@ void pm_dbgg_partner_set(int i, int on) {
         p->curPartner = PARTNER_NONE;
         for (j = 1; j < 12; j++) if (j != i && p->partners[j].enabled) { p->curPartner = (s8)j; break; }
     }
+    rec_put(F_PON + i - 1, on ? 1 : 0);
+    rec_put(F_CURP, p->curPartner);
     { char f[48]; snprintf(f, sizeof f, "%s enabled", pm_partner_name(i)); profile_log(f, was, on ? 1 : 0); }
     partner_entity();
 }
@@ -134,6 +209,7 @@ int pm_dbgg_partner_level(int i, int dir) {
     l = ((p->partners[i].level + dir) % 3 + 3) % 3;
     { char f[48]; snprintf(f, sizeof f, "%s upgrade", pm_partner_name(i)); profile_log(f, p->partners[i].level, l); } /* 0 Normal, 1 Super, 2 Ultra */
     p->partners[i].level = (s8)l;
+    rec_put(F_PLV + i - 1, l);
     return 1;
 }
 
@@ -229,6 +305,7 @@ void pm_cheat_tick(void) {
     PlayerStatus* ps = &gPlayerStatus;
     PlayerData* p = &gPlayerData;
     cheat_init();
+    if (rec_pending && get_game_mode() == GAME_MODE_WORLD) { rec_pending = 0; pm_cheatrec_apply(); }
     if (cheat_bits & CHB_HP && p->curHP != p->curMaxHP) { pm_log("cheat: infinite HP refill %d -> %d", (int)p->curHP, (int)p->curMaxHP); p->curHP = p->curMaxHP; }
     if (cheat_bits & CHB_FP && p->curFP != p->curMaxFP) { pm_log("cheat: infinite FP refill %d -> %d", (int)p->curFP, (int)p->curMaxFP); p->curFP = p->curMaxFP; }
     if (cheat_bits & CHB_SP) p->starPower = (s16)(p->maxStarPower * 256);
@@ -306,9 +383,9 @@ const char* pm_dbgg_eq_value(int k) {
 void pm_dbgg_eq_step(int k, int dir) {
     PlayerData* p = &gPlayerData;
     int old, v;
-    if (k == 0) { old = p->bootsLevel; v = wrap_step(old, dir, -1, 2); p->bootsLevel = (s8)v; profile_log("boots level", old, v); }
-    else if (k == 1) { old = p->hammerLevel; v = wrap_step(old, dir, -1, 2); p->hammerLevel = (s8)v; profile_log("hammer level", old, v); }
-    else { old = p->hasActionCommands; p->hasActionCommands = !old; profile_log("action commands", old, !old); }
+    if (k == 0) { old = p->bootsLevel; v = wrap_step(old, dir, -1, 2); p->bootsLevel = (s8)v; rec_put(F_EQ, v); profile_log("boots level", old, v); }
+    else if (k == 1) { old = p->hammerLevel; v = wrap_step(old, dir, -1, 2); p->hammerLevel = (s8)v; rec_put(F_EQ + 1, v); profile_log("hammer level", old, v); }
+    else { old = p->hasActionCommands; p->hasActionCommands = !old; rec_put(F_EQ + 2, !old); profile_log("action commands", old, !old); }
 }
 /* Star power: 0 max star spirits (0 .. 7), 1 star power (0 .. spirits * 256, a step is one spirit), 2 star beam (None, Star Beam, Peach Beam). */
 const char* pm_dbgg_spw_value(int k) {
@@ -323,14 +400,14 @@ void pm_dbgg_spw_step(int k, int dir) {
     PlayerData* p = &gPlayerData;
     int old, v;
     if (k == 0) {
-        old = p->maxStarPower; v = wrap_step(old, dir, 0, 7); p->maxStarPower = (s8)v;
-        if (p->starPower > v * 256) p->starPower = (s16)(v * 256); /* the power never exceeds the spirits */
+        old = p->maxStarPower; v = wrap_step(old, dir, 0, 7); p->maxStarPower = (s8)v; rec_put(F_SPW, v);
+        if (p->starPower > v * 256) { p->starPower = (s16)(v * 256); rec_put(F_SPW + 1, p->starPower); } /* the power never exceeds the spirits */
         profile_log("max star spirits", old, v);
     } else if (k == 1) {
-        old = p->starPower; v = lvl_clamp(old + dir * 256, 0, p->maxStarPower * 256); p->starPower = (s16)v;
+        old = p->starPower; v = lvl_clamp(old + dir * 256, 0, p->maxStarPower * 256); p->starPower = (s16)v; rec_put(F_SPW + 1, v);
         profile_log("star power", old, v);
     } else {
-        old = p->starBeamLevel; v = wrap_step(old, dir, 0, 2); p->starBeamLevel = (s8)v;
+        old = p->starBeamLevel; v = wrap_step(old, dir, 0, 2); p->starBeamLevel = (s8)v; rec_put(F_SPW + 2, v);
         profile_log("star beam", old, v);
     }
 }
@@ -354,8 +431,8 @@ const char* pm_dbgg_mer_value(int k) {
 void pm_dbgg_mer_step(int k, int dir) {
     PlayerData* p = &gPlayerData;
     int old, v;
-    if (k == 0) { old = p->merleeSpellType; v = wrap_step(old, dir, 0, 4); p->merleeSpellType = (s8)v; profile_log("merlee spell", old, v); }
-    else { old = p->merleeCastsLeft; v = wrap_step(old, dir, 0, 9); p->merleeCastsLeft = (s8)v; profile_log("merlee casts left", old, v); }
+    if (k == 0) { old = p->merleeSpellType; v = wrap_step(old, dir, 0, 4); p->merleeSpellType = (s8)v; rec_put(F_MER, v); profile_log("merlee spell", old, v); }
+    else { old = p->merleeCastsLeft; v = wrap_step(old, dir, 0, 9); p->merleeCastsLeft = (s8)v; rec_put(F_MER + 1, v); profile_log("merlee casts left", old, v); }
 }
 /* Battle: the instant win (battle victory state, in battle only). The infinite and perfect rows are the pm_cheat_* bits (pm_options.c). */
 void pm_dbgg_instant_win(void) {
@@ -393,6 +470,7 @@ void pm_dbgg_curpartner_step(int dir) {
     for (i = 1; i < 12; i++) if (p->partners[i].enabled) list[n++] = i;
     for (i = 0; i < n; i++) if (list[i] == old) pos = i;
     p->curPartner = (s8)list[(pos + (dir > 0 ? 1 : n - 1)) % n];
+    rec_put(F_CURP, p->curPartner);
     profile_log("current partner", old, p->curPartner);
     partner_entity();
 }
@@ -419,13 +497,14 @@ void pm_dbgg_give(int g) {
     int i, j;
     PlayerData* p = &gPlayerData;
     if (g == 0) { /* 11 partners; level 0 stays the base level */
-        for (i = 1; i < 12; i++) p->partners[i].enabled = 1;
-        if (p->curPartner == 0) p->curPartner = PARTNER_GOOMBARIO;
+        for (i = 1; i < 12; i++) { p->partners[i].enabled = 1; rec_put(F_PON + i - 1, 1); }
+        if (p->curPartner == 0) { p->curPartner = PARTNER_GOOMBARIO; rec_put(F_CURP, p->curPartner); }
     } else {
         int n = g == 1 ? (int)ARRAY_COUNT(p->badges) : (int)ARRAY_COUNT(p->keyItems);
         s16* a = g == 1 ? p->badges : p->keyItems;
         for (i = 1; i < (int)ARRAY_COUNT(gItemTable); i++) {
             if (!is_item(i, g == 1 ? ITEM_TYPE_FLAG_BADGE : ITEM_TYPE_FLAG_KEY)) continue;
+            rec_item(g, i, 1);
             for (j = 0; j < n; j++) if (a[j] == i) break;
             if (j < n) continue; /* owned */
             for (j = 0; j < n; j++) if (a[j] == ITEM_NONE) { a[j] = i; break; }
@@ -450,14 +529,9 @@ int pm_dbgg_stat_get(int k) {
 }
 
 /* dir steps by the table step (wraps at both ends); HP and FP are refilled */
-void pm_dbgg_stat_step(int k, int dir) {
+/* sets stat k to v (already in range): HP and FP refill, the game level follows the stats. Used by the rows and by the load. */
+static void stat_put(int k, int v) {
     PlayerData* p = &gPlayerData;
-    int old, v = pm_dbgg_stat_get(k) + dir * rg[k].st;
-    if (dir > 0 && pm_dbgg_stat_get(k) >= rg[k].hi) v = rg[k].lo;
-    if (dir < 0 && pm_dbgg_stat_get(k) <= rg[k].lo) v = rg[k].hi;
-    if (v < rg[k].lo) v = rg[k].lo;
-    if (v > rg[k].hi) v = rg[k].hi;
-    old = pm_dbgg_stat_get(k);
     switch (k) {
         case PM_DBG_MAXHP: p->hardMaxHP = v; enforce_hpfp_limits(); p->curHP = p->curMaxHP; break;
         case PM_DBG_MAXFP: p->hardMaxFP = v; enforce_hpfp_limits(); p->curFP = p->curMaxFP; break;
@@ -469,5 +543,52 @@ void pm_dbgg_stat_step(int k, int dir) {
         default: p->starPoints = v; break;
     }
     if (k <= PM_DBG_BP) level_sync(); /* a stat row changed: the game level follows */
+}
+/* dir steps by the table step (wraps at both ends); HP and FP are refilled */
+void pm_dbgg_stat_step(int k, int dir) {
+    int old, v = pm_dbgg_stat_get(k) + dir * rg[k].st;
+    if (dir > 0 && pm_dbgg_stat_get(k) >= rg[k].hi) v = rg[k].lo;
+    if (dir < 0 && pm_dbgg_stat_get(k) <= rg[k].lo) v = rg[k].hi;
+    if (v < rg[k].lo) v = rg[k].lo;
+    if (v > rg[k].hi) v = rg[k].hi;
+    old = pm_dbgg_stat_get(k);
+    stat_put(k, v);
+    rec_put(F_STAT + k, pm_dbgg_stat_get(k));
     profile_log(pm_dbgg_stat_name[k], old, pm_dbgg_stat_get(k));
+}
+
+/* CHEATSAVE2: the loaded record applied to gPlayerData at each entry into the world (pm_cheat_enter_world, after the save data is loaded). Raw sets:
+ * no partner entity switch (the world spawns the partner of curPartner), no profile log per row. One log line per item: was and now (owned). */
+void pm_cheatrec_apply(void) {
+    PlayerData* p = &gPlayerData;
+    int f, g, id, n = 0;
+    for (f = 0; f < F_N; f++) {
+        int v;
+        if (f == F_STAT + 3 || !rec_cur.fset[f]) continue;
+        v = rec_cur.fv[f];
+        n++;
+        if (f < F_SPW) stat_put(f - F_STAT, v);
+        else if (f == F_SPW) p->maxStarPower = (s8)v;
+        else if (f == F_SPW + 1) p->starPower = (s16)v;
+        else if (f == F_SPW + 2) p->starBeamLevel = (s8)v;
+        else if (f == F_EQ) p->bootsLevel = (s8)v;
+        else if (f == F_EQ + 1) p->hammerLevel = (s8)v;
+        else if (f == F_EQ + 2) p->hasActionCommands = v != 0;
+        else if (f == F_MER) p->merleeSpellType = (s8)v;
+        else if (f == F_MER + 1) p->merleeCastsLeft = (s8)v;
+        else if (f == F_CURP) p->curPartner = (s8)v;
+        else if (f < F_PLV) p->partners[f - F_PON + 1].enabled = v != 0;
+        else p->partners[f - F_PLV + 1].level = (s8)v;
+    }
+    for (g = 0; g < 2; g++) {
+        for (id = 1; id < REC_IT; id++) {
+            int on = rec_cur.iv[g][id], was;
+            if (!on) continue;
+            n++;
+            was = pm_dbgg_item_has(g + 1, id);
+            pm_dbgg_item_set(g + 1, id, on == 1);
+            pm_log("cheats: %s %d was %d now %d", g ? "key" : "badge", id, was, pm_dbgg_item_has(g + 1, id));
+        }
+    }
+    pm_log("cheats: applied %d record fields", n);
 }

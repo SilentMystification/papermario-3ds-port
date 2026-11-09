@@ -1,4 +1,5 @@
 #include <3ds.h>
+#include "pm_linear.h"
 void pm_gx_room(void); /* HANG1a */
 #include <3ds/gpu/gpu.h>
 #include <3ds/gpu/registers.h>
@@ -11,6 +12,7 @@ void pm_gx_room(void); /* HANG1a */
 #include <stdlib.h>
 #include "pm_shader5_shbin.h"
 #include "nd.h"
+#include "nd_op.h"
 #include "nd_sprite.h"
 #include "pm_shader4_shbin.h"
 #include "pm_gpu.h"
@@ -290,7 +292,7 @@ static void full_reserve(void) {
 /* A header whose data is set later. C3D_TexInit takes linear memory for its own data, which is freed at once. */
 static int tex_hdr(C3D_Tex* t, int w, int h, GPU_TEXCOLOR fmt) {
     if (!C3D_TexInit(t, w, h, fmt)) return 0;
-    linearFree(t->data);
+    pm_linear_free(t->data);
     t->data = NULL;
     return 1;
 }
@@ -318,7 +320,7 @@ static int full_tex_init(int i) {
 /* a 64 x 64 image takes an arena block (made at boot) */
 static int small_tex_init(C3D_Tex* t) {
     if (small_next >= small_n || !C3D_TexInit(t, 64, 64, GPU_RGBA8)) return 0;
-    linearFree(t->data);
+    pm_linear_free(t->data);
     t->data = small_blk[small_next++];
     return 1;
 }
@@ -1291,6 +1293,17 @@ static __attribute__((cold, noinline)) void raw_draw_rare(NdDraw* d, const NdUni
     if (tex1) { memcpy(d->uvx, t1_s, 16); d->loc_uvx = (uint16_t)(nb.g_use5 ? u5_uvx : u4_uvx); d->has_uvx = 1; }
     if (nb.g_use5) { pm5_upload(); d->use5 = 1; d->no_uni = 1; d->npal = 0; } /* PM5-2; FB-3: the uvx uniform of pm5 is d->loc_uvx (set above) */
 }
+/* I8AUX debug: unit 1 of a native draw, once per 60 frames: pm_tex_i8(1) (the i8_1 the TEV key gets) and the aux slot fmt, siz and GPU format */
+static __attribute__((cold, noinline)) void i8aux_log(int tex1, int i8_1) {
+    static unsigned last_f = ~0u;
+    const unsigned f = pm_frame_count();
+    if (f % 60u != 0u || f == last_f) return;
+    last_f = f;
+    extern int pm_tex_aux_info(int* fmt, int* siz, int* gpu);
+    int af, as, ag;
+    int k = pm_tex_aux_info(&af, &as, &ag);
+    pm_log("i8aux f%u t1 %d i8_1 %d aux %d fmt %d siz %d gpu %d", f, tex1, i8_1, k, af, as, ag);
+}
 static int nd_raw_native(void) {
     nd_tmpl_pin(); /* FB-2: the template ids of this batch stay valid until its submit */
     if (!(nb.gni > 0 && nb.g_pal && gs.gv4_on && (!nb.g_use5 || gv5_on))) { cen_why = nb.g_use5 ? CW_PM5 : CW_OTHER; return 0; } /* CEN-1a; PM5-2: program 5 batches go native too */
@@ -1310,6 +1323,7 @@ static int nd_raw_native(void) {
     int t1 = 0;
     if (gs.combine == 8 && gs.plan.uses_tex1) { t1 = raw_unit1(&u1); if (t1 < 0) { nd_native_refused++; nraw_why[6]++; cen_why = CW_NRK(6); return 0; } } /* SGEN-2: unit 1 words and the uv map uniform (PERF2: out of line) */
     const int tex = t > 0, i8_0 = tex && pm_tex_i8(0), tex1 = t1 > 0, i8_1 = tex1 && pm_tex_i8(1);
+    if (__builtin_expect(tex1 && pm_frame_count() % 60u == 0u, 0)) i8aux_log(tex1, i8_1); /* I8AUX debug: once per 60 frames */
     const int noise = gs.combine == 8 && gs.plan.uses_noise && noise_init(); /* FB-2: as flush_draw; noise_init 0 (no memory): the walker draws without it, so does the native draw */
     NdTmplKey nk;
     memset(&nk, 0, sizeof nk);
@@ -1432,7 +1446,7 @@ static unsigned jt_frame; /* frame of the last queued jump, for the result line 
 extern u64 pm_loop_tick;
 static void jt_queue(void) {
     u32* buf; u32 size, off, pad;
-    if (!jt_sub) jt_sub = (u32*)linearAlloc(16 * 2);
+    if (!jt_sub) jt_sub = (u32*)pm_linear_alloc(16 * 2);
     if (!jt_sub) { pm_log_e("jumptest: linearAlloc failed"); jt_state = 2; return; }
     jt_last = pm_loop_tick;
     jt_frame = pm_frame_count();
@@ -1529,8 +1543,8 @@ static void pm_gpu_init_w(void) {
     AttrInfo_AddLoader(ai, 1, GPU_FLOAT, 2);
     AttrInfo_AddLoader(ai, 2, GPU_FLOAT, 4);
     { /* GV1: the raw Vtx path: a ring of the Vtx records of the frame and a u16 index ring */
-        nb.gring = (unsigned char*)linearAlloc((GRING_VTX + GSTAT_VTX) * 16);
-        nb.gidx = (unsigned short*)linearAlloc(GRING_IDX * 2);
+        nb.gring = (unsigned char*)pm_linear_alloc((GRING_VTX + GSTAT_VTX) * 16);
+        nb.gidx = (unsigned short*)pm_linear_alloc(GRING_IDX * 2);
         nb.rchunk[0].vtx = nb.gring; nb.rchunk[0].idx = nb.gidx; nb.rchunk[0].used = 1;
         gs.gpu_vtx_on = nb.gring && nb.gidx;
         if (gs.gpu_vtx_on) { /* GV1c: the palette program */
@@ -2776,7 +2790,7 @@ enum { GSTAT_IDX = 131072 };
 static unsigned short* gidxs; static unsigned gidxs_n;
 unsigned short* pm_gpu_gidxs_alloc(unsigned n) {
     if (!gs.gpu_vtx_on || !gs.gpu_ok) return NULL;
-    if (!gidxs) gidxs = (unsigned short*)linearAlloc(GSTAT_IDX * 2);
+    if (!gidxs) gidxs = (unsigned short*)pm_linear_alloc(GSTAT_IDX * 2);
     if (!gidxs || gidxs_n + n > GSTAT_IDX) return NULL;
     unsigned short* p = gidxs + gidxs_n;
     gidxs_n += n;
@@ -2993,11 +3007,10 @@ static uint32_t aux_hash(const uint32_t* rec) {
  * their entry of the other room state (kmr_20: w32 first for 230 to 316 misses per door). */
 static uint32_t rm_wh[256], rm_wl[256], rm_ga[256]; static uint8_t rm_done[256];
 static __attribute__((cold, noinline)) void rm_masks(unsigned i) {
-    extern void* ModelRenderModes[]; /* src/model.c: Gfx* per render mode index */
     NdMode m;
     rm_done[i] = 1;
     rm_ga[i] = 0xFFFFFFFFu;
-    if (nd_mode_compile(&m, (const unsigned*)ModelRenderModes[i])) { rm_wh[i] = m.wh; rm_wl[i] = m.wl; rm_ga[i] = m.gand; }
+    if (i < ND_RM_N && nd_mode_compile(&m, (const unsigned*)nd_rm_tab[i])) { /* HC4b: the typed render mode table (nd_rec.c) */ rm_wh[i] = m.wh; rm_wl[i] = m.wl; rm_ga[i] = m.gand; }
 }
 void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) {
     memcpy(k->w, rec, NDMC_RW * sizeof(uint32_t));
@@ -3041,7 +3054,7 @@ void pm_gpu_set_r13_t1(int bound) {
     /* FB-2: 2 (an off-screen aux image) stays a fallback here: the model path has no snapshot */
 }
 int nd_mix1(unsigned ol, unsigned* col); /* nd_set.c: the V06 colour mix rule of sync_render */
-extern unsigned fogc, blendc;
+extern unsigned fogc, blendc; extern int pm_nofog;
 static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, int emit, int* mode_ok, const NdMKey* mk) {
     *mode_ok = modew != NULL && nd_mode_compile(&mdl_mode, (const unsigned*)modew) != 0;
     if (!*mode_ok) { static unsigned mb_; if (mb_++ < 8u) { const uint32_t* mw_ = (const uint32_t*)modew; pm_log_prof_line("modebad modew %p bad %02x w0 %08x w1 %08x w2 %08x w3 %08x", modew, mdl_mode.bad, modew ? mw_[0] : 0u, modew ? mw_[1] : 0u, modew ? mw_[2] : 0u, modew ? mw_[3] : 0u); } }
@@ -3306,8 +3319,33 @@ int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32
 /* S3N-6: the hit. The cached draws of key k go out (after pm_gpu_flush) when the fresh ranges are the cached ones: each with the palette of the current view
  * and, for a textured record, the unit 0 words of the hinted slot (nd_tex_unit_hint). 1: drawn. 0: no entry, other ranges, or no texture: the caller
  * applies the record (its matrix ops are done). */
+/* FFOG (diagnostic, switch ffog; no effect on the draw): per 60 frames, over the native hits. hit: hits seen; empty: hits of an entry with no draw
+ * (the model is skipped); emptyig: the same for an IGNORE_MATRIX record (flag 256 of R3, the walker matrix is kept, no load); rng: the group mask
+ * now differs from the entry's (rebuilt, not a hit); rngig: the same for IGNORE records; cmis: hits whose `combined` is not the fresh MVP of the
+ * walker stack (nd_mtx_combine); vmz: hits with a zero group mask now. Premise of the suspect: combined is the walker MVP at every hit. */
+int pm_dlc_ons_note(const void* lv, unsigned* culled, unsigned* ons); /* nd_shape.c, FFOG */
+static __attribute__((cold, noinline)) void ffog_note(const NdMKey* k, const NdMEnt* e) {
+    static unsigned f_, hit_, emp_, empig_, rng_, rngig_, cmis_, vmz_, cul_, ons_, onsh_;
+    const unsigned f = pm_frame_count();
+    if (f != f_) {
+        if (f_ && f % 60u < 3u) { pm_log_w("ffog f%u hit %u empty %u emptyig %u rng %u rngig %u cmis %u vmz %u culg %u ons %u onsh %u", f, hit_, emp_, empig_, rng_, rngig_, cmis_, vmz_, cul_, ons_, onsh_); hit_ = emp_ = empig_ = rng_ = rngig_ = cmis_ = vmz_ = cul_ = ons_ = onsh_ = 0; }
+        f_ = f;
+    }
+    const int ig = (((const uint32_t*)(uintptr_t)k->rp)[6] & 256u) != 0;
+    uint64_t vm = 0;
+    const int same = pm_dlc_vis_mask((const void*)(uintptr_t)k->w[24], &vm) == 0 && vm == e->vmask;
+    float fresh[4][4];
+    nd_mtx_combine(fresh);
+    hit_++;
+    if (memcmp(fresh, pm_gbi_combined_ptr(), sizeof fresh) != 0) cmis_++;
+    { unsigned cu = 0, on = 0; if (pm_dlc_ons_note((const void*)(uintptr_t)k->w[24], &cu, &on) == 0) { cul_ += cu; ons_ += on; onsh_ += on != 0; } } /* the box test removed an on-screen group */
+    if (!same) { rng_++; rngig_ += (unsigned)ig; return; }
+    if (!vm) vmz_++;
+    if (!e->n) { emp_++; empig_ += (unsigned)ig; }
+}
 int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
     if (!e) { ndn_nokey++; return 0; }
+    if (PMDL("ffog")) ffog_note(k, e);
     if (!model_vis_same(k, e)) { ndn_rng++; pm_xf.mdl_rng++; return 0; }
     if (e->mver && e->mver != ((((const uint32_t*)(uintptr_t)k->rp)[3] >> 16) | 0x10000u)) { ndn_rng++; pm_xf.mdl_rng++; return 0; } /* MAPX-2: a lit entry whose matrix moved: the miss path stores it again in place */
     if (!e->n) { ndn_empty++; ndn_rec++; ndn_hit++; return 1; } /* PERF1-4c: no draw (no group in view, or all culled): no texture lookup, template build, matrix product or flush */
@@ -3723,8 +3761,18 @@ int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16
     c.env = nd_ws.envc; c.prim = nd_ws.prim; c.prim_lod = nd_ws.prim_lod; c.cconst = cconst; c.mixcol = r_mixcol;
     { float db = decal_bias(); memcpy(&c.dbias, &db, 4); }
     c.base_oh = nd_ws.omode_h; c.base_ol = nd_ws.omode_l; c.known_h = nd_ws.om_kh; c.known_l = nd_ws.om_kl;
+    { /* SHROUD: the mix is the sprite's own othermode (nd_mix1, the F08 fog-shade-alpha case as sync_render), not gs.r_mix of the last model's sync_render:
+       * a sprite drawn after a shrouded model took its shroud (star power). */
+        unsigned mixc; const unsigned ol_ = nd_ws.omode_l, p_ = (ol_ >> 30) & 3u, a_ = (ol_ >> 26) & 3u, mm_ = (ol_ >> 22) & 3u, b_ = (ol_ >> 18) & 3u;
+        if (nd_mix1(ol_, &mixc)) { c.r_mix = 1; c.mixcol = mixc; }
+        else if (!pm_nofog && p_ == 3u && a_ == 2u && mm_ == 0u && b_ == 0u) { c.r_mix = 2; c.mixcol = (fogc & 0xffffff00u) | 0xffu; }
+        else { c.r_mix = 0; c.mixcol = r_mixcol; }
+    }
     uint32_t zr[27];
     memset(zr, 0, sizeof zr); /* the record words the model state reads (R3 flags, R11, R13) are zero: a sprite has none */
+    if (__builtin_expect(PMDL("sprmix"), 0)) { /* SHROUD: gs_r_mix (the last sync_render) and own_r_mix (this sprite's othermode, c.r_mix above) */
+        static unsigned sprmix_n; unsigned f_ = pm_frame_count(); if (f_ >= 415u && f_ <= 565u && sprmix_n++ < 300u) pm_log("sprmix f%u gs_r_mix %d own_r_mix %d mixcol %08x om30 %u ol %08x", f_, gs.r_mix, c.r_mix, c.mixcol, nd_ws.omode_l >> 30, nd_ws.omode_l);
+    }
     if (nd_model_state_spr(zr, &c, n, st) != 1) { *why = 10 + st->why; return 0; } /* PERF1-5: through the sprite state memo */
     n->nidx = 6; /* pm_gpu_spr_submit: two triangles of the quad */
     pm_gpu_pcomp_native(pal0, pm_gbi_combined_ptr());

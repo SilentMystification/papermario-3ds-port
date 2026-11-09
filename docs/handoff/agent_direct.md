@@ -1,10 +1,10 @@
 # Handoff DIRECT (epic: the game calls the native producers directly)
 
 STATE
-- DIRECT completion runs as row HC4 (worktree build3ds/wt/HC4, branch HC4; design plan_hotcode.md section 5, row_HC4.md). Main 13144da1c merged.
-- Done: HC4a ff92aa293 typed scalar state ops (nd_op.h ids 0x20+, nd_op.c nd_op_xlate on the recorder, nd_set.c nd_op_same/nd_op_apply, op_typed in nd_walk_state); g2_note, gbi_moveword and the scalar word cases deleted.
-- Gates HC4a: nd_host PASS; byte-equal vs stored base 13144da1c (bench.py base/cmp): spot_mac01_det 6/6, battle_start_f182_cold 1/1; hotset A 22.8 -> 22.5 KB.
-- Next: HC4b (T_COMB, render mode table W3, recorder shadow dedupe + t4chk), HC4c texture + R1/R2, HC4d matrix/geometry + R3-R10 (deletes g2_same, word cases, row_DIRECT.md), HC4e typed gs* macros, HC4f shape converter, HC5, HC6.
-- Transition rule now: word lists (static, until HC4e) pass nd_op_xlate on core 0 per op; nd_r11_op maps typed othermode back to words (nd_op_om_word) for the native model path until HC4b.
-- hot_order.ld: 5 stale names after HC4a; regenerate (PM_FNCOV=1 lane, 3 fncov benches, hot_order.py) only after HC4d and HC4f. fncov M3 not run yet.
-- Base shots for cmp: build3ds/basecache/13144da1c... (spot_mac01_det, battle_start_f182_cold); a new main merge needs new base shots (bench.py base).
+- DIRECT completion runs as row HC4 (worktree build3ds/wt/HC4, branch HC4; design plan_hotcode.md section 5, row_HC4.md). Main 6df3b5153 merged.
+- Done: HC4a ff92aa293 scalar ops. HC4b 49a27798e combine, render mode table nd_rm_tab, shadow dedupe (t4chk). HC4c 3e80d7229: NDO_TIMG/TILE/TILESIZE/LOADBLOCK/LOADTILE/LOADTLUT (F3DEX2 field layout); bind list typed at texture load (model.c nd_op_type_run, run by nd_bind_run); R9/R10 and R13 typed in the payload by nd_rec_model (syncs dropped, R13 w0 = typed count); nd_aux_state, nd_r13_texonly read typed ops; tex_op, tb_ops, tb_diff, TexSnap, op_* texture wrappers and the walker texture word cases deleted.
+- Gates HC4c vs stored base 6df3b5153: nd_host PASS; spot_mac01_det 6/6, battle_start_f182_cold 1/1 byte-equal; hc4_t4chk_mac01 f200 drops 3298 bad 0; hotset M1 hot 112.6 KB, A 21.7 KB (was 22.5).
+- Next: HC4d matrix/geometry + R3-R10 (deletes g2_same, word cases, rec_dl, row_DIRECT.md), HC4e typed gs*/gDP macros (then nd_op_type_run, nd_rm_tab and the R4 xlate in rec_op go), HC4f shape converter, HC5, HC6.
+- Transition rule now: static word lists (until HC4e) pass nd_op_xlate on core 0 per op; R4 combine entry is a static word typed in rec_op.
+- hot_order.ld: 5 stale names; regenerate (PM_FNCOV=1 lane, 3 fncov benches, hot_order.py) only after HC4d and HC4f. fncov M3 not run yet.
+- Base shots for cmp: build3ds/basecache/6df3b5153... (spot_mac01_det, battle_start_f182_cold, mdl5_iwa10_det, spot_mac00_det_pic). The spot_mac00_det scenario ingests under bench spot_mac00_det_pic: base and cmp that name (base spot_mac00_det builds and runs but stores nothing).

@@ -50,6 +50,104 @@ static void ch_enter(NdChain* c, unsigned i) {
     wp = ch_get(c, i);
     wend = wp + CH_WORDS - 2u;
 }
+/* HC4b (plan_hotcode 5.2): the recorder shadow. The recorder drops a typed op that the walker would skip (its old same-test true): per field
+ * the value of the last op it wrote and a valid bit. Ops whose skip reads only the walker state they set (othermode L, fog, blend, geometry,
+ * light colour) drop while the field is valid; ops whose skip also reads sc_ok and the combine input hash (othermode H, prim, env, texture,
+ * combine) drop only while no word op came between (a draw, tile, load or matrix word may change those inputs: sh_sc) and sc_ok is known 1
+ * (sc1: after an op that runs or skips with a sync). Every other command, a range mark and a task or context start reset it all (sh_all): the
+ * walker state after them is not the recorded one (a model hit or miss, a native draw, a range replayed elsewhere). Core 1 data only. */
+static struct {
+    uint32_t omh_v, omh_k, oml_v, oml_k;  /* othermode value and the bits it holds */
+    uint32_t geom[2], prim[2], tex[2], comb[2], env, fog, blend, lc[9];
+    uint16_t lc_ok;                       /* light colour k valid (bit k) */
+    uint8_t geom_ok, prim_ok, tex_ok, comb_ok, env_ok, fog_ok, blend_ok, sc1;
+} sh;
+static void sh_all(void) { memset(&sh, 0, sizeof sh); }
+static void sh_sc(void) { sh.omh_k = 0; sh.prim_ok = sh.tex_ok = sh.comb_ok = sh.env_ok = sh.sc1 = 0; }
+static int sh_unit(uint32_t* v, uint8_t* ok, const uint32_t* t) {
+    if (*ok && v[0] == t[0] && v[1] == t[1]) return 1;
+    v[0] = t[0]; v[1] = t[1]; *ok = 1;
+    return 0;
+}
+/* 1: drop the typed op t (the walker would skip it); else the shadow takes it. */
+static int sh_drop(const uint32_t* t) {
+    const uint32_t a = t[0] & 0xffffffu, b = t[1];
+    switch (t[0] >> 24) {
+    case NDO_OMH: {
+        const uint32_t m = nd_op_om_mask(a), sft = a & 0xffu, len = (a >> 8) & 0xffu;
+        if (sh.sc1 && !(m & ~sh.omh_k) && !((b ^ sh.omh_v) & m)) return 1;
+        sh.omh_v = (sh.omh_v & ~m) | (b & m); sh.omh_k |= m;
+        if (sft <= G_MDSFT_CYCLETYPE && sft + len > G_MDSFT_CYCLETYPE) sh.sc1 = 1; /* the setter syncs the combine */
+        else sh.tex_ok = sh.comb_ok = 0; /* the combine input hash may differ from the last sync's */
+        return 0;
+    }
+    case NDO_OML: {
+        const uint32_t m = nd_op_om_mask(a);
+        if (!(m & ~sh.oml_k) && !((b ^ sh.oml_v) & m)) return 1;
+        sh.oml_v = (sh.oml_v & ~m) | (b & m); sh.oml_k |= m;
+        return 0;
+    }
+    case NDO_GEOM: return sh_unit(sh.geom, &sh.geom_ok, t);
+    case NDO_PRIM: { const int d = sh_unit(sh.prim, &sh.prim_ok, t); sh.sc1 = 1; return d; }
+    case NDO_TEXTURE: { const int d = sh_unit(sh.tex, &sh.tex_ok, t); sh.sc1 = 1; return d; }
+    case NDO_COMB: { const int d = sh_unit(sh.comb, &sh.comb_ok, t); sh.sc1 = 1; return d; }
+    case NDO_ENV:
+        sh.sc1 = 1;
+        if (sh.env_ok && sh.env == b) return 1;
+        sh.env = b; sh.env_ok = 1;
+        return 0;
+    case NDO_FOG:
+        if (sh.fog_ok && sh.fog == b) return 1;
+        sh.fog = b; sh.fog_ok = 1;
+        return 0;
+    case NDO_BLEND:
+        if (sh.blend_ok && sh.blend == b) return 1;
+        sh.blend = b; sh.blend_ok = 1;
+        return 0;
+    case NDO_MW:
+        if ((a >> 16) == NDO_MW_LIGHTCOL) {
+            const unsigned k = a & 0xffffu;
+            if ((sh.lc_ok >> k & 1u) && !((sh.lc[k] ^ b) & 0xffffff00u)) return 1;
+            sh.lc[k] = b; sh.lc_ok |= (uint16_t)(1u << k);
+        }
+        return 0;
+    case NDO_RARE: sh.sc1 = 1; return 0;
+    case NDO_TIMG: case NDO_TILE: case NDO_TILESIZE: case NDO_LOADBLOCK: case NDO_LOADTILE: case NDO_LOADTLUT:
+        sh_sc(); return 0; /* HC4c: a tile, load or image op may change the combine inputs (td[1].valid, dual_on) */
+    case NDO_VTX: case NDO_TRI1: case NDO_TRI2: case NDO_MTX: case NDO_POPMTX:
+        sh_sc(); return 0; /* HC4d: a draw or matrix op keeps the walker fields but may change the combine inputs (box_fold_sync, dual_bind) */
+    case NDO_MOVEMEM: sh_all(); return 0; /* a light or viewport: the walker state after it is not followed */
+    default: return 0;
+    }
+}
+/* A word op of a state run (a list call, an image, a rectangle, a marker) resets the shadow. */
+static void sh_word(void) { sh_all(); }
+static int t4_sw = -1; /* debug switch t4chk: a dropped op is written after NDO_DROP (nd_walk.c t4_check) */
+
+/* HC4b (W3): the render mode table. Entry i holds the typed ops of ModelRenderModes[i] (src/model.c, 61 static lists) without the syncs,
+ * then NDO_END. Built by the recorder at the first record of index i; the frame push publishes it to core 0; never written again. */
+extern Gfx* ModelRenderModes[];
+#define ND_RM_LISTS 0x3du /* RENDER_MODE_IDX_00 to RENDER_MODE_IDX_3C */
+uint32_t nd_rm_tab[ND_RM_N][2u * ND_RM_OPS];
+uint8_t nd_rm_n[ND_RM_N];
+static uint8_t rm_built[ND_RM_N];
+__attribute__((cold, noinline)) void nd_rm_build(unsigned i) {
+    if (i >= ND_RM_N) return;
+    unsigned n = 0;
+    const Gfx* l = i < ND_RM_LISTS ? ModelRenderModes[i] : NULL;
+    for (unsigned k = 0; l && n + 1u < ND_RM_OPS; k++) {
+        const uint32_t w0 = l[k].words.w0, w1 = l[k].words.w1;
+        if ((w0 >> 24) == G_ENDDL) break;
+        if (((w0 >> 24) >= G_RDPLOADSYNC && (w0 >> 24) <= G_RDPFULLSYNC) || (w0 >> 24) == G_SPNOOP) continue; /* the syncs */
+        nd_op_xlate(w0, w1, &nd_rm_tab[i][2u * n]);
+        n++;
+    }
+    nd_rm_tab[i][2u * n] = NDO_W0(NDO_END, 0);
+    nd_rm_tab[i][2u * n + 1u] = 0;
+    nd_rm_n[i] = (uint8_t)n;
+    rm_built[i] = 1;
+}
+
 /* The context of the build: a new one resets its chain. */
 static void rec_ctx_check(void) {
     int x = (int)(gCurrentDisplayContextIndex & 1);
@@ -58,10 +156,13 @@ static void rec_ctx_check(void) {
     ch_enter(&chain[x], 0);
     task_head = NULL;
     st_hdr = NULL;
+    sh_all();
 }
 /* Room for n words (header and payload): else the chunk ends with NDC_JUMP to the next one. */
+static int st_take; /* HC4b: rec_take of a state op (the shadow stays) */
 static uint32_t* rec_take(unsigned n) {
     st_hdr = NULL; /* any record closes the open state run (nd_rec_state reopens its own) */
+    if (!st_take) sh_all(); /* HC4b: any other command resets the shadow */
     if (wp + n > wend) {
         NdChain* c = &chain[rec_ctx];
         uint32_t* j = wp;
@@ -79,7 +180,7 @@ static uint32_t* rec_take(unsigned n) {
 }
 static void task_open(void) {
     rec_ctx_check();
-    if (!task_head) task_head = wp;
+    if (!task_head) { task_head = wp; sh_all(); }
 }
 /* D9: the game writes no task list. At the top level gMainGfxPos names nd_rec_top: each redirected gbi macro takes its packet back
  * (nd_gx_w), so the pointer is back at nd_rec_top before every record. A pointer past it is a word that no redirect recorded: it is
@@ -101,14 +202,22 @@ static __attribute__((cold, noinline)) void model_bad(unsigned words) {
     pm_log_e("ndc: model record of %u words (most %u)", words, G_PM_REC_WORDS + ND_REC_AUX_MAX);
     pm_fatal_stop("ndc: model record too long");
 }
+/* HC4c (W4): the payload holds typed ops: the panner tile sizes (R9, R10) and the R13 words, typed and without the syncs (nd_op_type_run);
+ * R13 w0 is the count of typed units. The unused room of the dropped syncs goes back to the stream. */
 void nd_rec_model(const void* rec, unsigned words) {
     if (words > G_PM_REC_WORDS + ND_REC_AUX_MAX) model_bad(words);
+    { const unsigned rmi = (((const uint32_t*)rec)[0] >> 16) & 0xffu; if (rmi < ND_RM_N && !rm_built[rmi]) nd_rm_build(rmi); } /* HC4b: W3 */
     rec_open();
     uint32_t* p = rec_take(2u + 2u * words);
     ndc_n[NDC_MODEL]++;
-    p[0] = NDC_HDR(NDC_MODEL, words, 0);
-    p[1] = 0;
     memcpy(p + 2, rec, words * 8u);
+    uint32_t* q = p + 2;
+    for (unsigned r = 9; r <= 10u; r++) if (q[2u * r]) nd_op_xlate(q[2u * r], q[2u * r + 1u], q + 2u * r);
+    const unsigned n = nd_op_type_run(q + 2u * G_PM_REC_WORDS, words - G_PM_REC_WORDS);
+    q[26] = n;
+    wp -= 2u * (words - G_PM_REC_WORDS - n);
+    p[0] = NDC_HDR(NDC_MODEL, G_PM_REC_WORDS + n, 0);
+    p[1] = 0;
 }
 void nd_rec_spr(const void* rec, const void* geo) {
     rec_open();
@@ -152,15 +261,14 @@ void nd_rec_texrect(uint32_t w0, uint32_t w1, uint32_t hs, uint32_t hd) {
     p[5] = hd;
 }
 /* D4b-3: a state op (HC4a: typed by nd_op_xlate) extends the open NDC_STATE run when nothing was recorded after it (no span, no other command) and the chunk has room;
- * else it opens a new run. */
-void nd_rec_state(uint32_t w0, uint32_t w1) {
-    { uint32_t t[2]; nd_op_xlate(w0, w1, t); w0 = t[0]; w1 = t[1]; } /* HC4a: the scalar state ops typed on the recorder (nd_op.h) */
-    rec_open();
-    ndc_sw++;
+ * else it opens a new run. HC4b: a typed op the shadow drops is not written (t4chk: written after NDO_DROP). */
+static void st_put(uint32_t w0, uint32_t w1) {
     uint32_t* h = st_hdr;
+    st_take = 1;
     if (h && wp == st_end && ((h[0] >> 16) & 0xffu) < 255u && wp + 2u <= wend) {
         h[0] += 1u << 16;
         uint32_t* p = rec_take(2);
+        st_take = 0;
         p[0] = w0;
         p[1] = w1;
         st_hdr = h;
@@ -168,6 +276,7 @@ void nd_rec_state(uint32_t w0, uint32_t w1) {
         return;
     }
     uint32_t* p = rec_take(4);
+    st_take = 0;
     ndc_n[NDC_STATE]++;
     p[0] = NDC_HDR(NDC_STATE, 1, 0);
     p[1] = 0;
@@ -175,6 +284,19 @@ void nd_rec_state(uint32_t w0, uint32_t w1) {
     p[3] = w1;
     st_hdr = p;
     st_end = wp;
+}
+void nd_rec_state(uint32_t w0, uint32_t w1) {
+    uint32_t t[2];
+    const int typed = nd_op_xlate(w0, w1, t); /* HC4a: the scalar state ops typed on the recorder (nd_op.h) */
+    rec_open();
+    ndc_sw++;
+    if (!typed) sh_word();
+    else if (sh_drop(t)) {
+        if (t4_sw < 0) t4_sw = pm_debug_has("t4chk") ? 1 : 0;
+        if (!t4_sw) return;
+        st_put(NDO_W0(NDO_DROP, 0), 0);
+    }
+    st_put(t[0], t[1]);
 }
 /* D4b-3, D5: the nd_gbi.h redirect. The packet gMainGfxPos++ is taken back and the op recorded; the RDP syncs are dropped (the walker skips
  * them). A texture rectangle (its op word and the two RDPHALF words, written by one macro) is held until its last word and recorded as
@@ -234,6 +356,7 @@ const uint32_t* nd_rec_pos(void) { return wp; }
 const uint32_t* nd_rec_mark(void) {
     rec_open();
     st_hdr = NULL; /* a range bound closes the state run: the range starts or ends at a command header */
+    sh_all(); /* HC4b: a range replays elsewhere */
     return wp;
 }
 void nd_rec_call(const uint32_t* a, const uint32_t* b) {

@@ -70,24 +70,24 @@ void nd_gv_params(const NdGvIn* in, NdGvP* o) {
     }
 }
 
-/* MDL-1 (oracle decision): an R13 list is the record's texture block when every op is a texture, tile, load, sync, state or NOOP op. The walker
- * runs the list in place before the native draw (rec_aux), so its state is the bound tile state. cw: the combine words (G_SETCOMBINE, 0xFC) and
- * the texture scale (G_TEXTURE, 0xD7, cw[2] w1, cw[3] = 1) of the block. Returns 1 for a texture block, 0 for any other op (why 2, counted). */
+/* MDL-1 (oracle decision): an R13 list is the record's texture block when every op is a texture, tile, load, state or NOOP op. The walker
+ * runs the list in place before the native draw (rec_aux), so its state is the bound tile state. cw: the combine words (the full G_SETCOMBINE
+ * word) and the texture scale (cw[2] = the G_TEXTURE b, cw[3] = 1) of the block. Returns 1 for a texture block, 0 for any other op (why 2,
+ * counted). HC4c: the R13 ops are typed (nd_rec_model; the syncs are dropped there). */
 int nd_r13_texonly(const uint32_t* aw, unsigned n, uint32_t* cw, int* has_cb) {
     *has_cb = 0; cw[3] = 0;
     if (n == 0 || n > 32) return 0;
     for (unsigned i = 0; i < n; i++) {
         const uint32_t w0 = aw[2 * i], w1 = aw[2 * i + 1];
         switch (w0 >> 24) {
-        case 0xFD: case 0xF5: case 0xF2: case 0xF4: case 0xF3: case 0xF0: /* SETTIMG, SETTILE, SETTILESIZE, LOADTILE, LOADBLOCK, LOADTLUT */
-        case 0xE8: case 0xE7: case 0xE6: /* RDPTILESYNC, PIPESYNC, LOADSYNC */
-        case 0xE3: case 0xE2: /* G_SETOTHERMODE_L, _H: the texture block's render state (the block carries one) */
-        case 0x00: /* NOOP */
+        case NDO_TIMG: case NDO_TILE: case NDO_TILESIZE: case NDO_LOADTILE: case NDO_LOADBLOCK: case NDO_LOADTLUT:
+        case NDO_OML: case NDO_OMH: /* the texture block's render state (the block carries one) */
+        case 0x00u: /* G_NOOP */
             break;
-        case 0xFC: /* G_SETCOMBINE */
-            cw[0] = w0; cw[1] = w1; *has_cb = 1; /* the full word, as the walker key has it (the op byte included) */
+        case NDO_COMB:
+            cw[0] = NDO_COMB_W0(w0); cw[1] = w1; *has_cb = 1; /* the full word, as the walker key has it (the op byte included) */
             break;
-        case 0xD7: /* G_TEXTURE: the texture scale */
+        case NDO_TEXTURE: /* the texture scale */
             cw[2] = w1; cw[3] = 1;
             break;
         default:
@@ -145,23 +145,21 @@ int nd_tex_handle_miss(int index, const void* gfx) {
 
 /* ---- S3N-1 (B5, B6): render mode lists ---- */
 
+/* HC4b: the list is typed ops (nd_op.h: the render mode table, the composed list of rec_run) to its NDO_END, at most 8 ops. */
 int nd_mode_compile(NdMode* m, const unsigned* w) {
     uint32_t mh = 0, ml = 0, vh = 0, vl = 0;
     m->ok = 0; m->has_cb = 0; m->has_tx = 0; m->has_g = 0; m->gand = 0xFFFFFFFFu; m->gor = 0; m->bad = 0;
     for (unsigned i = 0; i < 8; i++) {
-        uint32_t w0 = w[2 * i], w1 = w[2 * i + 1];
-        uint32_t op = w0 >> 24;
-        if (op == OP_ENDDL) break;
-        if (op == OP_SETCOMBINE) { m->has_cb = 1; m->cw0 = w0; m->cw1 = w1; continue; }
-        if (op == OP_TEXTURE) { m->has_tx = 1; m->tw1 = w1; continue; }
-        if (op == OP_GEOMETRYMODE) { /* B9: compose (geom & gand) | gor over the list */
-            uint32_t a = w0 & 0xFFFFFFu;
+        const uint32_t w0 = w[2 * i], w1 = w[2 * i + 1], id = w0 >> 24, a = w0 & 0xFFFFFFu;
+        if (id == NDO_END) break;
+        if (id == NDO_COMB) { m->has_cb = 1; m->cw0 = NDO_COMB_W0(a); m->cw1 = w1; continue; }
+        if (id == NDO_TEXTURE) { m->has_tx = 1; m->tw1 = w1; continue; }
+        if (id == NDO_GEOM) { /* B9: compose (geom & gand) | gor over the list */
             m->gor = (m->gor & a) | w1; m->gand &= a; m->has_g = 1; continue;
         }
-        if (op != OP_SETOTHERMODE_H && op != OP_SETOTHERMODE_L) { m->bad = op; return 0; } /* B9: another op is a fallback, its code counted */
-        unsigned len = (w0 & 0xFFu) + 1u, field = (w0 >> 8) & 0xFFu, sft = 32u - field - len;
-        uint32_t mask = len >= 32 ? 0xFFFFFFFFu : ((1u << len) - 1u) << sft;
-        if (op == OP_SETOTHERMODE_H) { mh |= mask; vh = (vh & ~mask) | (w1 & mask); }
+        if (id != NDO_OMH && id != NDO_OML) { m->bad = id; return 0; } /* B9: another op is a fallback, its code counted */
+        const uint32_t mask = nd_op_om_mask(a);
+        if (id == NDO_OMH) { mh |= mask; vh = (vh & ~mask) | (w1 & mask); }
         else { ml |= mask; vl = (vl & ~mask) | (w1 & mask); }
     }
     m->om_h = vh; m->om_l = vl; m->wh = mh; m->wl = ml; /* B8: partial lists compile; the read bits merge at draw (nd_model_state) */
@@ -170,13 +168,13 @@ int nd_mode_compile(NdMode* m, const unsigned* w) {
     return 1;
 }
 
-/* S3L-3: the R13 words (aux, the words the texture block wrote after the record; the walker runs them in place of the bind) as a pre-list mode:
- * the same ops as a render mode list, applied before it. */
+/* S3L-3: the R13 ops (aux, the typed ops the texture block wrote after the record, nd_rec_model; the walker runs them in place of the bind) as a
+ * pre-list mode: the same ops as a render mode list, applied before it. */
 int nd_aux_state(const uint32_t* aw, unsigned n, NdMode* ax) {
     uint32_t tmp[18];
     if (n == 0 || n > 8) return 0;
-    memcpy(tmp, aw, n * 2u * sizeof(uint32_t));
-    if (n < 8) { tmp[2 * n] = (uint32_t)OP_ENDDL << 24; tmp[2 * n + 1] = 0; }
+    memcpy(tmp, aw, n * 8u);
+    if (n < 8) { tmp[2 * n] = NDO_W0(NDO_END, 0); tmp[2 * n + 1] = 0; }
     if (!nd_mode_compile(ax, (const unsigned*)tmp)) return 0;
     return !ax->has_g;
 }
@@ -261,15 +259,12 @@ void nd_model_log(unsigned f) {
  * NDC_MODEL (the nested record, its payload), NDC_JUMP (effect data or the next chunk) and NDC_END (the end of the list, as G_ENDDL). */
 static int nd_r11_op(uint32_t w0, uint32_t w1, int pre, int* pend, int* has_cb, uint32_t* cw, uint32_t* mo, unsigned* nmo) {
     switch (w0 >> 24) {
-    case NDO_OMH: case NDO_OML: /* HC4a: a typed othermode op; the native draw takes the render mode as words (nd_op_om_word) */
-        if (*nmo < 4u) { const uint32_t u[2] = { w0, w1 }; mo[2 * *nmo] = nd_op_om_word(u); mo[2 * *nmo + 1] = w1; (*nmo)++; } return 1;
+    case NDO_OMH: case NDO_OML: /* HC4b: the typed othermode op goes into the composed mode list as it is */
+        if (*nmo < 4u) { mo[2 * *nmo] = w0; mo[2 * *nmo + 1] = w1; (*nmo)++; } return 1;
     case NDO_PRIM: case NDO_ENV: case NDO_BLEND: case NDO_FOG: return 1;
     case NDO_PRIMZ: if (!pre) return 0; *pend = 1; return 1;
-    case 0xfcu: cw[0] = w0; cw[1] = w1; *has_cb = 1; return 1; /* SETCOMBINE */
-    case 0xe3u: case 0xe2u: if (*nmo < 4u) { mo[2 * *nmo] = w0; mo[2 * *nmo + 1] = w1; (*nmo)++; } return 1; /* G_SETOTHERMODE_H, _L */
-    case 0xfau: case 0xfbu: case 0xf9u: case 0xf8u: return 1; /* SETPRIMCOLOR, SETENVCOLOR, SETBLENDCOLOR, SETFOGCOLOR */
+    case NDO_COMB: cw[0] = NDO_COMB_W0(w0); cw[1] = w1; *has_cb = 1; return 1;
     case 0xdeu: if (!pre || ((w0 >> 16) & 0xffu) != 0u) return 0; *pend = 1; return 1; /* G_DL push (a branch ends the list: not followed) */
-    case 0xeeu: if (!pre) return 0; *pend = 1; return 1; /* SETPRIMDEPTH */
     default: return 0;
     }
 }
@@ -286,6 +281,7 @@ static int nd_r11_walk(uint32_t addr, int pre, const uint32_t** nr, uint32_t* cw
         case NDC_JUMP: p = (const uint32_t*)(uintptr_t)p[1]; continue;
         case NDC_STATE:
             for (unsigned k = 0; k < n; k++, i++) {
+                if ((p[2 + 2 * k] >> 24) == NDO_DROP) { k++; i--; continue; } /* HC4b t4chk: a dropped op is not in the list */
                 if (i >= 16u) return 0;
                 if (!nd_r11_op(p[2 + 2 * k], p[3 + 2 * k], pre, &pend, has_cb, cw, mo, nmo)) return 0;
             }

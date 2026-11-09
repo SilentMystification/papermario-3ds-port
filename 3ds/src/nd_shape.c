@@ -10,6 +10,7 @@
 #include "pm_gpu.h"
 #include "nd.h"
 #include "pm_tex.h"
+static __attribute__((cold, noinline)) void dlc_wz_note(const DlcGrp* g, const float (*m)[4], int culled);
 #include "pm_port.h"
 #include "variables.h"
 /* DLC1: the static list compiler and the group runner (S3F-4: the former dlc include, inlined here, same unit) */
@@ -429,6 +430,31 @@ static void sbkw_dlchash(const Gfx* l, const DlcEnt* e) {
 unsigned dnr_c[16];
 int dnr(unsigned k) { dnr_c[k]++; return -1; }
 void pm_gbi_dnr_take(unsigned* o, unsigned n) { for (unsigned i = 0; i < n && i < 16u; i++) { o[i] = dnr_c[i]; dnr_c[i] = 0; } }
+/* FFOG (diagnostic, switch ffog, no effect on the draw): for the entry of list lv under combined, the groups the box test removes (culled) and those
+ * of them with a corner inside the five clip planes that dlc_box_out tests (x +- w, y +- w, z - w <= 0, w > 0). A box test that is exact removes none
+ * of those (box_plane_out removes a group only when every corner is outside one plane). ons > 0 is a wrong cull of an on-screen group. Mono only. */
+int pm_dlc_ons_note(const void* lv, unsigned* culled, unsigned* ons) {
+    const Gfx* l = (const Gfx*)lv;
+    *culled = 0; *ons = 0;
+    if (!dlc_on || !is_host((u32)(uintptr_t)l) || (u32)l - (u32)gMapShapeData >= 0x40000u || ((u32)l & 7) || dlc_seen_gen != pm_dlc_gen) return -1;
+    DlcEnt* e = dlc_find(l);
+    if (!e || e->gen != pm_dlc_gen || e->refused || e->ngrp > 64u) return -1;
+    const float(*m)[4] = combined;
+    for (unsigned k = 0; k < e->ngrp; k++) {
+        const DlcGrp* g = &e->grp[k];
+        if (!dlc_box_out(g, m)) continue;
+        (*culled)++;
+        for (int i = 0; i < 8; i++) {
+            float x = (i & 1) ? (float)g->hi[0] : (float)g->lo[0], y = (i & 2) ? (float)g->hi[1] : (float)g->lo[1], z = (i & 4) ? (float)g->hi[2] : (float)g->lo[2];
+            float cx = m[0][0] * x + m[1][0] * y + m[2][0] * z + m[3][0];
+            float cy = m[0][1] * x + m[1][1] * y + m[2][1] * z + m[3][1];
+            float cz = m[0][2] * x + m[1][2] * y + m[2][2] * z + m[3][2];
+            float cw = m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3];
+            if (cw > 0.f && cx <= cw && cx >= -cw && cy <= cw && cy >= -cw && cz <= cw) { (*ons)++; break; }
+        }
+    }
+    return 0;
+}
 uint64_t pm_dlc_vm; int pm_dlc_vm_ok;
 int pm_dlc_vis_mask(const void* lv, uint64_t* out) {
     const Gfx* l = (const Gfx*)lv;
@@ -439,7 +465,12 @@ int pm_dlc_vis_mask(const void* lv, uint64_t* out) {
     if (!e || e->gen != pm_dlc_gen || e->refused || e->ngrp > 64u || img_role(0) == ROLE_DEPTH) return -1;
     const float(*m)[4] = combined;
     uint64_t vm = 0;
-    for (unsigned k = 0; k < e->ngrp; k++) if (!dlc_box_out(&e->grp[k], m)) vm |= 1ull << k;
+    const int wzd = PMDL("wzcull"); /* FFOG: the cache-hit cull (model_vis_same) also counts (dlc_wz_note) */
+    for (unsigned k = 0; k < e->ngrp; k++) {
+        const int wzc = dlc_box_out(&e->grp[k], m);
+        if (wzd) dlc_wz_note(&e->grp[k], m, wzc);
+        if (!wzc) vm |= 1ull << k;
+    }
     *out = vm;
     return 0;
 }
@@ -485,6 +516,7 @@ int pm_dlc_native_ranges(const void* lv, uint32_t entry, NdRng* out, unsigned ma
     if (e->refused) return dnr(4);
     const float(*m)[4] = combined;
     if (img_role(0) == ROLE_DEPTH) return dnr(5); /* gv_state_why: the z mark pass (fallback) */
+    const int wzd = PMDL("wzcull"); /* FFOG: the diagnostic counts of the box test (dlc_wz_note) */
     const u32 lm = G_TEXTURE_GEN;
     const u32 bad = fogmix_on && !gv_fog_gpu_ok() ? G_FOG : 0;
     unsigned n = 0, gmi = GV_NONE;
@@ -492,7 +524,9 @@ int pm_dlc_native_ranges(const void* lv, uint32_t entry, NdRng* out, unsigned ma
     uint64_t vm = 0;
     for (unsigned k = 0; k < e->ngrp; k++) {
         const DlcGrp* g = &e->grp[k];
-        if (dlc_box_out(g, m)) continue;
+        const int wzc = dlc_box_out(g, m);
+        if (wzd) dlc_wz_note(g, m, wzc);
+        if (wzc) continue;
         if (k < 64u) vm |= 1ull << k;
         const u32 gg = (entry & g->am) | g->om;
         if (!g->sd || !g->nbat || !g->bat_q) return dnr(6);
@@ -543,6 +577,28 @@ __attribute__((cold, noinline)) int pm_dlc_prebuild(const void* lv) {
     if (r) { e->refused = (u8)r; dlc_c.refused[r < DLR_N ? r : DLR_LONG]++; }
     return 1;
 }
+/* FFOG (diagnostic, switch wzcull): per group of a list in view, the clip w range of its box corners under combined, and whether the cull box test
+ * removed it. A group that straddles w = 0 (wmin < 0 < wmax) is the case of a floor triangle with a vertex behind the eye (pm5 fog, cull planes).
+ * One line per 60 frames: groups in view, straddling, culled, culled while straddling, the lowest corner w. */
+static __attribute__((cold, noinline)) void dlc_wz_note(const DlcGrp* g, const float (*m)[4], int culled) {
+    static unsigned f_, n_, s_, c_, cs_; static float wmin_ = 1e30f;
+    float wmin = 1e30f, wmax = -1e30f;
+    for (int i = 0; i < 8; i++) {
+        float x = (i & 1) ? (float)g->hi[0] : (float)g->lo[0], y = (i & 2) ? (float)g->hi[1] : (float)g->lo[1], z = (i & 4) ? (float)g->hi[2] : (float)g->lo[2];
+        float w = m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3];
+        if (w < wmin) wmin = w;
+        if (w > wmax) wmax = w;
+    }
+    unsigned f = pm_frame_count();
+    if (f != f_) {
+        if (f_ && f % 60u < 3u) { pm_log_prof_line("dlcwz f%u grp %u str %u cul %u culstr %u wmin %.2f", f, n_, s_, c_, cs_, (double)wmin_); n_ = s_ = c_ = cs_ = 0; wmin_ = 1e30f; }
+        f_ = f;
+    }
+    n_++;
+    if (wmin < wmax && wmin < 0.f && wmax > 0.f) { s_++; if (culled) cs_++; }
+    if (culled) c_++;
+    if (wmin < wmin_) wmin_ = wmin;
+}
 int dlc_try(const Gfx* l) {
     if ((u32)l - (u32)gMapShapeData >= 0x40000u || ((u32)l & 7)) return 0;
     if (dlc_seen_gen != pm_dlc_gen) { dlc_reset(); dlc_seen_gen = pm_dlc_gen; }
@@ -565,13 +621,16 @@ int dlc_try(const Gfx* l) {
     int gmi_ready = 0, skipped_last = 0, skipped_any = 0;
     dlc_c.lists++;
     dlc_c.opsrep += e->nops;
+    const int wzd = PMDL("wzcull"); /* FFOG: the diagnostic counts of the box test (dlc_wz_note) */
     if (e->ngrp) { __builtin_prefetch(e->grp); __builtin_prefetch(e->gop); }
     for (unsigned k = 0; k < e->ngrp; k++) {
         const DlcGrp* g = &e->grp[k];
         if (k + 1 < e->ngrp) { __builtin_prefetch(g + 1); __builtin_prefetch(g[1].sd); }
         dlc_c.grp++;
         if (pm_ph_cen) sp0_grp++;
-        if (dlc_box_out(g, m)) {
+        const int wzc = dlc_box_out(g, m);
+        if (wzd) dlc_wz_note(g, m, wzc);
+        if (wzc) {
             tri_since_vtx = g->tsv_exit;
             skipped_last = skipped_any = 1;
             dlc_c.skip++;
