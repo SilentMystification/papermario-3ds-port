@@ -367,7 +367,7 @@ static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, Nd
     if (c->gv) {
         memcpy(d->uvso, c->gv->uvso, 16); memcpy(d->cmul, c->gv->cm, 16); memcpy(d->cadd, c->gv->ca, 16);
         d->zmix[0] = c->gv->zm[0]; d->zmix[1] = c->gv->zm[1];
-        if (c->gv->fxon) { d->use5 = 1; d->fx5 = c->gv->fx; memcpy(d->nrm5, c->nrm5, sizeof d->nrm5); }
+        if (c->gv->fxon) { d->use5 = 1; st->p5.fx = c->gv->fx; memcpy(st->p5.nrm, c->nrm5, sizeof st->p5.nrm); d->p5 = &st->p5; } /* PERF2: the block lives in st (the caller repoints a copy) */
     }
     memcpy(&st->k, &k, sizeof k); st->to = to; st->tmpl = id;
     return 1;
@@ -421,7 +421,10 @@ int nat_nr; uint32_t nat_geom;
 #define NDMC_N 1024u
 #define NDMC_POOL 512u
 static NdMEnt mc_tab[NDMC_N];
-static NdNat mc_pool[NDMC_POOL];
+static uint32_t mc_keyw[NDMC_N][NDMC_RW + NDMC_SW]; /* PERF2: the key words of mc_tab[i] (compared only when the hash matched) */
+static NdNatC mc_pool[NDMC_POOL];
+static NdPm5 mc_p5[NDMC_POOL]; /* PERF2: the pm5 block of a pooled draw (use5) */
+const uint32_t* nd_mc_keyw(const NdMEnt* e) { return mc_keyw[e - mc_tab]; }
 static unsigned mc_n, mc_pool_n, mc_clears_n;
 unsigned nd_handle_gen(void) { return hd_gen; }
 unsigned nd_mc_clears(void) { return mc_clears_n; }
@@ -429,7 +432,7 @@ unsigned nd_mc_clears(void) { return mc_clears_n; }
  * for the ndmcache diagnostics (pm_gpu.c ndc_cmp): the words that a diff depends on are added here, with the reason in agent_s3n.md. */
 static const uint8_t ndmc_cmp[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 38, 53, 54 }; /* S3L-3: 38 = the R13 words (hash) */
 #define NDMC_NCMP ((unsigned)(sizeof ndmc_cmp / sizeof ndmc_cmp[0]))
-static int mc_eq(const NdMKey* a, const NdMKey* b) { for (unsigned i = 0; i < NDMC_NCMP; i++) if (a->w[ndmc_cmp[i]] != b->w[ndmc_cmp[i]]) return 0; return 1; }
+static int mc_eq(const uint32_t* a, const NdMKey* b) { for (unsigned i = 0; i < NDMC_NCMP; i++) if (a[ndmc_cmp[i]] != b->w[ndmc_cmp[i]]) return 0; return 1; }
 uint32_t nd_mc_hash(const NdMKey* k) {
     uint32_t h = 2166136261u;
     for (unsigned i = 0; i < NDMC_NCMP; i++) { h ^= k->w[ndmc_cmp[i]]; h *= 16777619u; }
@@ -446,9 +449,9 @@ void nd_mc_miss(const NdMKey* k) {
     unsigned s = (k->rp >> 2) & (NDMC_LAST - 1u);
     if (mc_lastp[s] != k->rp) { mg_cls[0]++; return; }
     if (mc_lastg[s] != mc_clears_n) { mg_cls[1]++; return; }
-    const NdMEnt* e = &mc_tab[mc_lasti[s]];
+    const uint32_t* ew = mc_keyw[mc_lasti[s]];
     for (unsigned j = 0; j < NDMC_RW + NDMC_SW; j++) {
-        if (e->k.w[j] == k->w[j]) continue;
+        if (ew[j] == k->w[j]) continue;
         if (j < NDMC_RW) { mg_cls[2]++; mg_rw[j]++; }
         else if (j == NDMC_RW + 25u || j == NDMC_RW + 26u) mg_cls[4]++;
         else if (j < NDMC_RW + 27u) mg_cls[3]++;
@@ -478,7 +481,7 @@ NdMEnt* nd_mc_find(const NdMKey* k) {
     for (unsigned p = 0; p < NDMC_N; p++, h = (h + 1u) & (NDMC_N - 1u)) {
         NdMEnt* e = &mc_tab[h];
         if (!e->used) return NULL;
-        if (e->k.h == k->h && mc_eq(&e->k, k)) return e;
+        if (e->h == k->h && mc_eq(mc_keyw[h], k)) return e;
     }
     return NULL;
 }
@@ -487,8 +490,8 @@ static NdMEnt* mc_slot(const NdMKey* k) {
     uint32_t h = k->h & (NDMC_N - 1u);
     for (;;) {
         NdMEnt* e = &mc_tab[h];
-        if (!e->used) { e->used = 1; e->k = *k; mc_n++; mc_ins++; if (mc_n > mc_ent_hi) mc_ent_hi = mc_n; return e; }
-        if (e->k.h == k->h && mc_eq(&e->k, k)) return e;
+        if (!e->used) { e->used = 1; e->h = k->h; e->rp = k->rp; memcpy(mc_keyw[h], k->w, sizeof k->w); mc_n++; mc_ins++; if (mc_n > mc_ent_hi) mc_ent_hi = mc_n; return e; }
+        if (e->h == k->h && mc_eq(mc_keyw[h], k)) return e;
         h = (h + 1u) & (NDMC_N - 1u);
     }
 }
@@ -502,7 +505,7 @@ NdMEnt* nd_mc_find_rec(NdMKey* k) {
     unsigned s = (k->rp >> 2) & (NDMC_LAST - 1u);
     if (mc_lastp[s] == k->rp && mc_lastg[s] == mc_clears_n) {
         NdMEnt* m = &mc_tab[mc_lasti[s]];
-        if (m->used && mc_eq(&m->k, k)) { k->h = m->k.h; return m; }
+        if (m->used && mc_eq(mc_keyw[mc_lasti[s]], k)) { k->h = m->h; return m; }
     }
     k->h = nd_mc_hash(k);
     NdMEnt* e = nd_mc_find(k);
@@ -518,13 +521,15 @@ NdMEnt* nd_mc_store(const NdMKey* k, int tex, int hs, unsigned hg) {
     e->tex = (uint8_t)(tex != 0); e->hs = hs; e->hg = hg;
     e->off = mc_pool_n; e->n = (unsigned)nat_n;
     for (int j = 0; j < nat_n; j++) {
-        NdNat* q = &mc_pool[mc_pool_n + (unsigned)j];
-        *q = nat[j];
-        q->d.pal = (const float(*)[16])q->pal; /* the pointer of the copy, not of nat[] */
+        const unsigned pi = mc_pool_n + (unsigned)j;
+        NdNatC* q = &mc_pool[pi];
+        q->d = nat[j].d; q->sd = nat[j].sd; q->nidx = nat[j].nidx; q->zn = nat[j].zn; q->zp = nat[j].zp; q->mix_st = (int8_t)nat[j].s.to.mix_st; q->tk = nat[j].tk;
+        q->d.pal = NULL; /* the hit points it at the palette 0 of its view */
+        if (q->d.use5) { mc_p5[pi] = nat[j].s.p5; q->d.p5 = &mc_p5[pi]; }
     }
     mc_pool_n += (unsigned)nat_n;
     if (mc_pool_n > mc_pool_hi) mc_pool_hi = mc_pool_n;
     mc_note(k, e);
     return e;
 }
-NdNat* nd_mc_nat(NdMEnt* e, unsigned j) { return &mc_pool[e->off + j]; }
+NdNatC* nd_mc_nat(NdMEnt* e, unsigned j) { return &mc_pool[e->off + j]; }
