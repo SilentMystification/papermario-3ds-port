@@ -563,8 +563,8 @@ static void pf_report(void) {
             nd_rec_cnt_take(nc, &sw, &kb);
             for (int k = 0; k < NDC_N; k++) n10[k] = (unsigned)((unsigned long long)nc[k] * 10u / pw);
             sw = (unsigned)((unsigned long long)sw * 10u / pw);
-            pm_log_prof_line("prof f%u w%u ndc list %u.%u model %u.%u spr %u.%u ent %u.%u call %u.%u tex4 %u.%u trect %u.%u st %u.%u sw %u.%u kb %u", pf_total, pf_w,
-                C1(n10[NDC_LIST]), C1(n10[NDC_MODEL]), C1(n10[NDC_SPR]), C1(n10[NDC_ENT]), C1(n10[NDC_CALL]), C1(n10[NDC_TEX4]), C1(n10[NDC_TEXRECT]),
+            pm_log_prof_line("prof f%u w%u ndc list %u.%u model %u.%u spr %u.%u ent %u.%u call %u.%u trect %u.%u st %u.%u sw %u.%u kb %u", pf_total, pf_w,
+                C1(n10[NDC_LIST]), C1(n10[NDC_MODEL]), C1(n10[NDC_SPR]), C1(n10[NDC_ENT]), C1(n10[NDC_CALL]), C1(n10[NDC_TEXRECT]),
                 C1(n10[NDC_STATE]), C1(sw), kb);
         }
 #undef CS
