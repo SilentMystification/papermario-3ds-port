@@ -43,7 +43,9 @@ Read this file at the start and after every compaction; it overrides any summary
 - Never rewrite the shared azt_scenarios.json or bench_defs.json while an agent runs in the shared folder.
 
 ## Status and questions
-- Every turn: RUNNING / READY-NOT-LAUNCHED (with the wait) / BLOCKED-ON-USER. Relay each report in 3 lines or fewer.
+- Every turn: RUNNING / READY-NOT-LAUNCHED (with the wait) / BLOCKED-ON-USER. Each RUNNING item names its type: row and model
+  (KMR10M [Haiku]), [Oracle Opus], [Push], [Build]. Relay each report in 3 lines or fewer.
+- Agent descriptions (the Agent tool `description`) start with the type: "[Haiku] KMR10M: ...", "[Oracle] ...".
 - Ask only with AskUserQuestion (2 to 4 options, recommended first). Do not ask what a rule already decides.
 
 ## Console
