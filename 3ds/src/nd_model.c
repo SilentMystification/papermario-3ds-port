@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include "nd.h"
 #include "nd_ops.h"
+#include "nd_cmd.h"
 #include "variables.h"
 extern int pm_texf_centre; int pm_tex_filt_linear(void); /* TEXF: pm_options.c, pm_tex.c */
 
@@ -255,31 +256,42 @@ void nd_model_log(unsigned f) {
  * mac_00 water list (gfx_build_water) draws the prim depth blocker, then mdl_draw_hidden_panel_surface appends the record of a copy of the model
  * with no geometry. That record sets the whole draw state again (bind, combine, render mode list), so the draw takes it as its record (nr) and only
  * the state ops after it (cw, mo). The record words are skipped (14 words, then its R13 count of words). */
-#define ND_PM_REC_OP 0x0du
+/* D10a: the list is a custom gfx range of the frame stream (nd_rec.c): NDC_STATE runs (the ops above; the syncs were dropped at record),
+ * NDC_MODEL (the nested record, its payload), NDC_JUMP (effect data or the next chunk) and NDC_END (the end of the list, as G_ENDDL). */
+static int nd_r11_op(uint32_t w0, uint32_t w1, int pre, int* pend, int* has_cb, uint32_t* cw, uint32_t* mo, unsigned* nmo) {
+    switch (w0 >> 24) {
+    case 0xfcu: cw[0] = w0; cw[1] = w1; *has_cb = 1; return 1; /* SETCOMBINE */
+    case 0xe3u: case 0xe2u: if (*nmo < 4u) { mo[2 * *nmo] = w0; mo[2 * *nmo + 1] = w1; (*nmo)++; } return 1; /* G_SETOTHERMODE_H, _L */
+    case 0xfau: case 0xfbu: case 0xf9u: case 0xf8u: return 1; /* SETPRIMCOLOR, SETENVCOLOR, SETBLENDCOLOR, SETFOGCOLOR */
+    case 0xdeu: if (!pre || ((w0 >> 16) & 0xffu) != 0u) return 0; *pend = 1; return 1; /* G_DL push (a branch ends the list: not followed) */
+    case 0xeeu: if (!pre) return 0; *pend = 1; return 1; /* SETPRIMDEPTH */
+    default: return 0;
+    }
+}
 static int nd_r11_walk(uint32_t addr, int pre, const uint32_t** nr, uint32_t* cw, int* has_cb, uint32_t* mo, unsigned* nmo) {
     *nr = NULL; *has_cb = 0; *nmo = 0;
     if (!addr) return 1;
     const uint32_t* p = (const uint32_t*)(uintptr_t)addr;
     int pend = 0; /* a G_DL or SETPRIMDEPTH with no record after it yet */
-    for (unsigned i = 0; i < 16u; i++) {
-        const uint32_t op = p[0] >> 24;
-        switch (op) {
-        case 0xdfu: return !pend; /* G_ENDDL */
-        case 0xfcu: cw[0] = p[0]; cw[1] = p[1]; *has_cb = 1; break; /* SETCOMBINE */
-        case 0xe3u: case 0xe2u: if (*nmo < 4u) { mo[2 * *nmo] = p[0]; mo[2 * *nmo + 1] = p[1]; (*nmo)++; } break; /* G_SETOTHERMODE_H, _L */
-        case 0xfau: case 0xfbu: case 0xf9u: case 0xf8u: /* SETPRIMCOLOR, SETENVCOLOR, SETBLENDCOLOR, SETFOGCOLOR */
-        case 0xe7u: case 0xe6u: case 0xe8u: /* RDPPIPESYNC, RDPLOADSYNC, RDPTILESYNC */
+    unsigned i = 0;
+    while (i < 16u) {
+        const uint32_t h = p[0], n = (h >> 16) & 0xffu;
+        switch (h >> 24) {
+        case NDC_END: return !pend;
+        case NDC_JUMP: p = (const uint32_t*)(uintptr_t)p[1]; continue;
+        case NDC_STATE:
+            for (unsigned k = 0; k < n; k++, i++) {
+                if (i >= 16u) return 0;
+                if (!nd_r11_op(p[2 + 2 * k], p[3 + 2 * k], pre, &pend, has_cb, cw, mo, nmo)) return 0;
+            }
             break;
-        case 0xdeu: if (!pre || ((p[0] >> 16) & 0xffu) != 0u) return 0; pend = 1; break; /* G_DL push (a branch ends the list: not followed) */
-        case 0xeeu: if (!pre) return 0; pend = 1; break; /* SETPRIMDEPTH */
-        case ND_PM_REC_OP:
+        case NDC_MODEL:
             if (!pre) return 0;
-            *nr = p; *has_cb = 0; *nmo = 0; pend = 0;
-            p += NDMC_RW + 2u * p[26]; /* the record (R0 to R13), then its R13 words */
-            continue;
+            *nr = p + 2; *has_cb = 0; *nmo = 0; pend = 0;
+            break;
         default: return 0;
         }
-        p += 2;
+        p += 2u + 2u * n;
     }
     return 0;
 }

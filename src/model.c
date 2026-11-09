@@ -1324,6 +1324,9 @@ BSS ModelTransformGroupList wTransformGroups;
 BSS ModelTransformGroupList bTransformGroups;
 
 BSS ModelCustomGfxList wCustomModelGfx;
+#ifdef TARGET_3DS
+static const void* nd_cgfx_rng[ARRAY_COUNT(wCustomModelGfx)]; /* DIRECT D10a: the stream range of each custom gfx list (build_custom_gfx) */
+#endif
 BSS ModelCustomGfxList bCustomModelGfx;
 
 BSS ModelCustomGfxBuilderList wCustomModelGfxBuilders;
@@ -2134,7 +2137,7 @@ void appendGfx_model(void* data) {
     if (flags & MODEL_FLAG_USES_CUSTOM_GFX) {
         customGfxIndex = (model->customGfxIndex & 0xF) * 2;
 #ifdef TARGET_3DS
-        recPre = (*gCurrentCustomModelGfxPtr)[customGfxIndex]; /* S3G-1: the record runs it after the matrix */
+        recPre = (Gfx*)nd_cgfx_rng[customGfxIndex]; /* S3G-1: the record runs it after the matrix; D10a: a stream range */
 #else
         if ((*gCurrentCustomModelGfxPtr)[customGfxIndex] != nullptr) {
             gSPDisplayList((*gfxPos)++, (*gCurrentCustomModelGfxPtr)[customGfxIndex]);
@@ -2232,7 +2235,7 @@ void appendGfx_model(void* data) {
     if (flags & MODEL_FLAG_USES_CUSTOM_GFX) {
         customGfxIndex++;
 #ifdef TARGET_3DS
-        recPost = (*gCurrentCustomModelGfxPtr)[customGfxIndex];
+        recPost = (Gfx*)nd_cgfx_rng[customGfxIndex];
 #else
         if ((*gCurrentCustomModelGfxPtr)[customGfxIndex] != nullptr) {
             gSPDisplayList((*gfxPos)++, (*gCurrentCustomModelGfxPtr)[customGfxIndex]);
@@ -4280,33 +4283,29 @@ void set_custom_gfx_builders(s32 customGfxIndex, ModelCustomGfxBuilderFunc pre, 
 }
 
 #ifdef TARGET_3DS
-/* DIRECT D7: the custom gfx lists are written into stream memory (nd_rec_list_begin), not into the task list, so no branch word goes around
- * them. The builders run with nd_rec_sub > 0: their gbi macros, model records and effect data keep the list form in that memory. */
+/* DIRECT D10a: each custom gfx list is a range of the frame stream: the builder records its commands at the top level (the nd_gbi.h redirect,
+ * model and sprite records, effect data) between nd_rec_mark and an NDC_END; a static list that a map script set (SetCustomGfx) is recorded
+ * as commands (nd_rec_list). The ranges sit inside one NDC_JUMP (the task replay skips them); the model record names its pre and post range
+ * (R11, from nd_cgfx_rng) and the replay runs it (nd_range_run). */
+static void nd_cgfx_one(s32 k, ModelCustomGfxBuilderFunc fn, s32 i) {
+    const Gfx* l = (*gCurrentCustomModelGfxPtr)[k];
+    nd_cgfx_rng[k] = nullptr;
+    if (fn == nullptr && l == nullptr) return;
+    nd_cgfx_rng[k] = nd_rec_mark();
+    if (fn != nullptr) fn(i);
+    else nd_rec_list(l);
+    nd_rec_end();
+}
 void build_custom_gfx(void) {
-    Gfx* mainPos = gMainGfxPos;
-    ModelCustomGfxBuilderFunc preFunc;
-    ModelCustomGfxBuilderFunc postFunc;
+    NdSub sk;
     s32 i;
 
-    gMainGfxPos = nd_rec_list_begin();
-    nd_rec_sub++;
+    nd_sub_open(&sk);
     for (i = 0; i < ARRAY_COUNT(*gCurrentCustomModelGfxPtr) / 2; i++) {
-        preFunc = (*gCurrentCustomModelGfxBuildersPtr)[i * 2];
-        if (preFunc != nullptr) {
-            (*gCurrentCustomModelGfxPtr)[i * 2] = gMainGfxPos;
-            preFunc(i);
-            gSPEndDisplayList(gMainGfxPos++);
-        }
-        postFunc = (*gCurrentCustomModelGfxBuildersPtr)[i * 2 + 1];
-        if (postFunc != nullptr) {
-            (*gCurrentCustomModelGfxPtr)[i * 2 + 1] = gMainGfxPos;
-            postFunc(i);
-            gSPEndDisplayList(gMainGfxPos++);
-        }
+        nd_cgfx_one(i * 2, (*gCurrentCustomModelGfxBuildersPtr)[i * 2], i);
+        nd_cgfx_one(i * 2 + 1, (*gCurrentCustomModelGfxBuildersPtr)[i * 2 + 1], i);
     }
-    nd_rec_sub--;
-    nd_rec_list_end(gMainGfxPos);
-    gMainGfxPos = mainPos;
+    nd_sub_close(&sk);
 }
 #else
 void build_custom_gfx(void) {

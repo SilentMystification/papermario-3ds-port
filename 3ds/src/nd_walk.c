@@ -11,6 +11,7 @@
 #include "nd.h"
 #include "pm_tex.h"
 #include "pm_port.h"
+#include "nd_cmd.h"
 #include "variables.h"
 #include "nd_int.h"
 
@@ -29,8 +30,6 @@ int host_range(u32 p, u32* lo, u32* hi) {
 }
 
 int pm_gpu_spr_native(const uint32_t* rec); /* SPR4 */
-static Gfx* spr_at; /* SPR4: vertex word of the sprite record to draw natively (G_PM_SPR arm sets it, G_VTX arm uses it) */
-static Gfx* spr_rec; /* SPR4: the sprite record of spr_at */
 
 const u8 g1_skip[256] = { [G_SPNOOP] = 1, [G_RDPPIPESYNC] = 1, [G_RDPTILESYNC] = 1, [G_RDPLOADSYNC] = 1, [G_RDPFULLSYNC] = 1 };
 
@@ -178,7 +177,8 @@ static unsigned rec_case(unsigned dbg, const Gfx* q) {
     if (__builtin_expect(dbg & WD_CEN, 0) && rec_nat_last) walk_dbg_nat();
     return n;
 }
-/* DIRECT D1: NDC_MODEL of the frame stream (nd_rec.c), with the walker's op prologue of G_PM_REC (gv_epoch, the census op hook). */
+/* DIRECT D1: NDC_MODEL of the frame stream (nd_rec.c), with the walker's op prologue of G_PM_REC (gv_epoch, the census op hook). D10a: the
+ * only model record path (no list holds a record). */
 void nd_walk_rec_model(const Gfx* q) {
     const unsigned dbg = pm_walk_dbg;
     dlc_on = 1;
@@ -319,6 +319,21 @@ void nd_walk_state(const uint32_t* q, unsigned n) {
     if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1); /* the class span ends with the command */
 }
 static int walk_keep; /* PERF2: set by nd_walk_ops for the next nd_walk_run only */
+/* DIRECT D10a: a custom gfx range of the frame stream (model record R11, build_custom_gfx), run to its NDC_END as the walker ran the list it
+ * replaces: the list start (gv_epoch, dlc_on, a full combine and render sync: DIP2) and the list end (the vertex and texture streak flush). */
+void nd_range_run(const uint32_t* a) {
+    PM_WALK_OWN();
+    gv_epoch++; /* GV1b */
+    dlc_on = 1;
+    gp_prev_op = -1;
+    sc_ok = 0; sr_ok = 0;
+    pm_walk_side++;
+    nd_stream_run(a);
+    pm_walk_side--;
+    if (__builtin_expect(pm_walk_dbg, 0)) walk_dbg_end(pm_walk_dbg);
+    gv_streak_flush();
+    tex_streak_flush();
+}
 void nd_walk_run(void* list, unsigned nbytes) {
     const unsigned dbg = pm_walk_dbg; /* PROF2-5: once per list */
     gv_epoch++; /* GV1b */
@@ -369,21 +384,6 @@ void nd_walk_run(void* list, unsigned nbytes) {
             if (__builtin_expect(dbg & WD_ORB, 0) && orb_tag != orb_tag_stk[sp]) pm_gpu_flush(); /* FX1-3 */
             orb_tag = orb_tag_stk[sp];
             break;
-        case G_PM_REC: /* M4-2, S3F-4: producer record of a model in a list for later (DIRECT D1: a custom gfx builder; the frame stream has the others) */
-            pc += rec_case(dbg, pc - 1);
-            break;
-        case G_PM_SPR: { /* S4-1, S4-3, SPR4: producer record of a sprite component (sprite.c). The record is not run here: the state words after it run on the walker, and the final draw is built at its vertex word (G_VTX arm below), where the live state is the draw state. */
-            Gfx* srec = pc - 1;
-            if (__builtin_expect(dbg, 0)) walk_dbg_rec(dbg, srec, G_PM_SPR_WORDS);
-            spr_rec = srec;
-            spr_at = srec + (srec[0].words.w0 & 0xffu); /* header bits 0 to 7: the offset of the final gSPVertex word */
-            pc += G_PM_SPR_WORDS - 1;
-            break;
-        }
-        case G_PM_ENT: /* S6-1: producer record of an entity model draw (nd_ent.c). The record is not run; the old words draw unless nd_ent_case draws it. */
-            if (__builtin_expect(dbg, 0)) walk_dbg_rec(dbg, pc - 1, G_PM_ENT_WORDS);
-            { NDT_BD(te, dbg); pc += G_PM_ENT_WORDS - 1 + nd_ent_case(pc - 1, w0, w1); NDT_E(te, NDT_ENT); } /* the drawn record skips its own words and its G_DL */
-            break;
         case G_DL: {
             if (__builtin_expect(dbg & WD_C2, 0)) nd_c2_src(pc - 1);
             Gfx* next = (Gfx*)ptr_of(w1);
@@ -420,15 +420,6 @@ void nd_walk_run(void* list, unsigned nbytes) {
             break;
         }
         case G_VTX:
-            if (pc - 1 == spr_at) { /* SPR4: the final draw of a sprite record. Native: the vertex and triangle words are skipped. Else the walker loads and draws them. */
-                spr_at = NULL;
-                NDT_BD(ts, dbg); int sh = pm_gpu_spr_native((const uint32_t*)spr_rec); NDT_E(ts, NDT_SPR);
-                if (sh) {
-                    if (__builtin_expect(dbg & WD_CEN, 0)) walk_dbg_nat();
-                    pc += 1;
-                    break;
-                }
-            }
             nd_geom_vtx(w0, w1, list);
             break;
         case G_MODIFYVTX:

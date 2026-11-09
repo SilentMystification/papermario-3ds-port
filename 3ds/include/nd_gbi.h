@@ -2,8 +2,8 @@
  * every game file (a file that defines ND_GBI_WORDS before its includes keeps list words: the named fallbacks of plan section 5).
  * The base macros are redefined, so every derived and compound macro follows (gDPSetRenderMode, gDPLoadTextureBlock, gSPDisplayList, ...).
  * Each base macro evaluates its packet as gbi.h does (once per word) and calls nd_gx_w (nd_rec.c): a packet that is gMainGfxPos++ is taken
- * back and the op recorded into the open NDC_STATE run of the frame stream; any other packet (a local list) and a list for later
- * (nd_rec_sub > 0) get the word. G_ENDDL and the branch form of G_DL stay words (a branch skips data in the list). The texture rectangle
+ * back and the op recorded into the open NDC_STATE run of the frame stream; any other packet (a local list) gets the word. The branch form
+ * of G_DL stays a word (a branch skips data in the list); a top-level G_ENDDL is dropped (NDC_END ends the task or range). The texture rectangle
  * (G_TEXRECT or G_TEXRECTFLIP and its two RDPHALF words) is recorded as one NDC_TEXRECT. */
 #ifndef ND_GBI_H
 #define ND_GBI_H
