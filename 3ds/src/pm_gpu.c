@@ -2844,7 +2844,7 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
     int valid = 0;
     if (n >= 0 && !emit) valid = ndc_compare(mk, ds, id, hs, hg); /* S3N-6 check: the cached draws of this key against these */
     /* MDL-1: a textured draw without a handle desc (the bound slot, R13 block) stores tex 1: its hit has no desc, so it falls back (ndn_texf) and never reuses the slot of another frame */
-    if (n >= 0 && !valid) { int r13nd_ = (r13_last && ds == NULL && gfx == NULL && tex); if (r13nd_) nd_r13_nohit++; nd_mc_store(mk, ds != NULL || r13nd_, hs, hg); } /* MDL-1 cache (oracle review): only R13 texture records without a desc store tex 1 */ /* S3N-6: the draws and ranges of this key (a miss; a valid entry stays) */
+    if (n >= 0 && !valid && !mk->w[22]) { int r13nd_ = (r13_last && ds == NULL && gfx == NULL && tex); if (r13nd_) nd_r13_nohit++; nd_mc_store(mk, ds != NULL || r13nd_, hs, hg); } /* MDL-1 cache (oracle review): only R13 texture records without a desc store tex 1. STARFX: a record with a pre list (key w22, R11 w0) is never stored (rec_run) */ /* S3N-6: the draws and ranges of this key (a miss; a valid entry stays) */
     return n;
 }
 void pm_gpu_ndm_begin(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, const NdMKey* mk) {

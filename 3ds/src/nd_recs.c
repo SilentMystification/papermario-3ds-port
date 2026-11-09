@@ -113,12 +113,15 @@ static int nmn_sw(void) { static int v = -1; if (v < 0) v = pm_debug_has("nomode
 unsigned rec_run(const Gfx* q) {
     NdMKey mk;
     pm_gpu_model_key((const uint32_t*)q, &mk); /* S3N-6: the cache key, from the walker state before the record is applied */
-    NdMEnt* mce = nd_mc_find_rec(&mk); /* PERF1-4a: the record address memo, else hash and probe */
+    /* STARFX: a record with a custom gfx pre list never takes the hit path (MDL-5f, below), so it is not looked up and not stored (model_draw):
+     * its list pointer is a key word that moves with the frame's display list, and every rebuild stored its draws again into the pool (the hos_01
+     * glowing stars filled the 512-draw pool and cleared the whole cache about every 50 frames). */
+    NdMEnt* mce = q[11].words.w0 ? NULL : nd_mc_find_rec(&mk); /* PERF1-4a: the record address memo, else hash and probe */
     int cached = mce != NULL;
-    if (!cached) { nd_mc_miss(&mk); extern void pm_gpu_model_miss_diag(const NdMKey* k); pm_gpu_model_miss_diag(&mk); } /* S3N-7: the miss class (diagnostic) */
+    if (!cached && !q[11].words.w0) { nd_mc_miss(&mk); extern void pm_gpu_model_miss_diag(const NdMKey* k); pm_gpu_model_miss_diag(&mk); } /* S3N-7: the miss class (diagnostic) */
     int ndm = pm_gpu_ndm_on();
     int nat = 0, mdone = 0, hit = 0;
-    if (cached) { rec_matrix(q); mdone = 1; if (q[11].words.w0) { extern unsigned nd_mc_r11; nd_mc_r11++; } } /* S3N-6: a cached key: its matrix first, the hit test reads the matrix */
+    if (cached) { rec_matrix(q); mdone = 1; } /* S3N-6: a cached key: its matrix first, the hit test reads the matrix */
     /* MDL-5f: a record with a custom gfx pre list (state-only, drawn natively) never takes the hit path: rec_apply runs the pre list (its state op); the hit path skips rec_apply. The post list runs in both paths (rec_run). */
     if (!ndm && mdone && q[12].words.w0 && !q[11].words.w0 && pm_gpu_model_hit(&mk, mce)) {
         /* S3N-6 hit: the record state is the cached one (rec_apply is not run; its matrix ops ran above). The sticky shadows are cleared as after a native draw.

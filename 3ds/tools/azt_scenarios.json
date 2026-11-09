@@ -10150,10 +10150,10 @@
       "name": "starfx_hos01",
       "status": "verified",
       "subject": "Shooting Star Summit (hos_01): Mario talks to Eldstar, the star spirits plea scene starts and the 6 other spirits pop in with their glowing star models (MODEL_1 to MODEL_7) and the appear sparkles.",
-      "proves": "STARFX lag: the starfx pre, popin start and popin steady lines carry frame, time (ms) and the native model cache misses and clears since boot. pre to start: 30 frames before the pop-in (Eldstar jump); start to steady: the 60 frames after it. Misses and clears are counts (valid on Azahar); the time is direction only.",
-      "debug": "warp=hos_01:0 story=ch0_toad_town pos=-110:250:-170 padscript=wait60,go_-36_-170_60,wait10,A,wait40,A,wait40,A,wait40,A prof=30 loglevel=debug",
+      "proves": "STARFX lag: the starfx pre, popin start and popin steady lines carry frame, time (ms) and the native model cache misses and clears since boot. pre to start: 30 frames before the pop-in (Eldstar jump); start to steady: the 210 frames after it (the plea text MSG_HOS_0001 stays open, the scene stands). Misses and clears are counts (valid on Azahar); the time is direction only.",
+      "debug": "warp=hos_01:0 story=ch0_toad_town pos=-110:250:-170 padscript=wait60,go_-36_-170_60,wait10,A,wait40,A,wait40,A prof=30 census loglevel=debug",
       "until": "starfx: popin steady",
-      "cap": 30,
+      "cap": 35,
       "deadline": 20,
       "first_marker": "prof cal every 30",
       "expects": "warp",
@@ -10176,7 +10176,7 @@
           "regex": "starfx: popin steady f\\d+"
         }
       ],
-      "reason": "STARFX row (user, console O3DS XL: the star spirit pop-in lags). Mario is placed 80 units left of Eldstar (-30 260 -170, npc.c); go_ stops 24 units before its target, so he walks about 50 units and ends about 30 units from Eldstar, facing him, then talks. prof mode logs no warp line, so the first marker is the prof calibration line; the A presses page through MSG_HOS_0000. The lines are printed by hos_01 npc.c (3DS only). Cap 30 s: cold start 12 to 16 s plus about 10 s of game time."
+      "reason": "STARFX row (user, console O3DS XL: the star spirit pop-in lags). Mario is placed 80 units left of Eldstar (-30 260 -170, npc.c); go_ stops 24 units before its target, so he walks about 50 units and ends about 30 units from Eldstar, facing him, then talks. prof mode logs no warp line, so the first marker is the prof calibration line; the A presses page through MSG_HOS_0000. The lines are printed by hos_01 npc.c (3DS only). Cap 35 s (cold start 12 to 16 s plus about 15 s of game time)."
     }
   ]
 }

@@ -442,7 +442,6 @@ uint32_t nd_mc_hash(const NdMKey* k) {
 static uint32_t mc_lastp[NDMC_LAST]; static uint16_t mc_lasti[NDMC_LAST]; static unsigned mc_lastg[NDMC_LAST];
 static unsigned mg_cls[9], mc_ent_hi, mc_pool_hi, mc_ins;
 static unsigned mg_rw[NDMC_RW]; /* STARFX: rec class misses by the first differing record word (ndmrw line) */
-unsigned nd_mc_r11; /* STARFX: records with a custom gfx pre list whose key was found (rebuilt anyway, ndmrw line) */
 void nd_mc_miss(const NdMKey* k) {
     unsigned s = (k->rp >> 2) & (NDMC_LAST - 1u);
     if (mc_lastp[s] != k->rp) { mg_cls[0]++; return; }
@@ -464,9 +463,9 @@ void nd_mc_diag_take(unsigned o[15]) {
     for (unsigned i = 0; i < 9; i++) { o[i] = mg_cls[i]; mg_cls[i] = 0; }
     o[9] = mc_ins; mc_ins = 0; o[10] = mc_n; o[11] = mc_pool_n; o[12] = mc_ent_hi; o[13] = mc_pool_hi; o[14] = NDMC_N;
 }
-/* STARFX: the rec class by record word and the found pre list records of the window as text (nonzero words only), then reset */
+/* STARFX: the rec class by record word of the window as text (nonzero words only), then reset */
 void nd_mc_rw_take(char* b, unsigned n) {
-    unsigned p = (unsigned)snprintf(b, n, "r11 %u w", nd_mc_r11); nd_mc_r11 = 0;
+    unsigned p = (unsigned)snprintf(b, n, "w");
     for (unsigned j = 0; j < NDMC_RW && p + 12u < n; j++) if (mg_rw[j]) { p += (unsigned)snprintf(b + p, n - p, " %u:%u", j, mg_rw[j]); mg_rw[j] = 0; }
 }
 static void mc_clear_all(void) {

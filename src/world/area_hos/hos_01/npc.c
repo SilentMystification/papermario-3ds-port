@@ -97,7 +97,7 @@ EvtScript N(EVS_Scene_StarSpiritsPlea) = {
 #ifdef TARGET_3DS
     Call(N(StarFxLine), 1)
     Thread
-        Wait(60)
+        Wait(210)
         Call(N(StarFxLine), 2)
     EndThread
 #endif

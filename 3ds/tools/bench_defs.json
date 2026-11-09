@@ -290,7 +290,7 @@
       "default": false,
       "purpose": "STARFX lag: hos_01 star spirit pop-in with prof=30 (no shots). The starfx pre, popin start and popin steady lines give frames, ms and model cache misses and clears before and after the pop-in. Counts are valid on Azahar; time is direction only.",
       "scenario": "starfx_hos01",
-      "cap": 30,
+      "cap": 35,
       "until": "starfx: popin steady",
       "tags": [
         "azahar",
