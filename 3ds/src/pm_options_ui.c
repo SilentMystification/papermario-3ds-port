@@ -105,7 +105,7 @@ void pm_menu_set(int on) {
         draw();
     } else {
         pm_log("menu: late console writes %u", pm_log_late_con()); /* B1 check */
-        if (tab == PM_OPT_SUB) tab = home_tab; /* the menu opens on the tab it was in */
+        /* MENUGEN part 2: the menu keeps its tab, sub-page and row (tab, sel, top, sub_kind of pm_options.c) for the next open */
         pm_options_close(); /* saves options.ini when something changed */
         pm_gpu_menu_draw("");
         pm_log("menu: close");
