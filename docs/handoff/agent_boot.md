@@ -5,8 +5,12 @@ STATE (row BOOT done, branch BOOT)
   Readers: pi_read_raw reads bytes the stream has not reached straight from the file (exact size); pm_rom_ptr waits for or reads
   the 128 KB chunk. Bench boot_ms (gate rdone > 0: the stream ends before the title, so no wait after it), boot_logo_pic, boot_romorder.
 - Azahar (warm): base run 80966, stream run 81566 (whole chunks), step B run 81869 (boot order, not kept), final runs 82172 and 84827.
+- BOOT2 base (Azahar, cold, 73575adc0): first draw 1836 ms after main, title 12763; 59 chunks and 37 direct reads before the first draw.
+  The bank loads (au_load_BK_to_bank) copy through au_read_rom -> pm_rom_ptr (src/audio/core/engine.c:1428): each touch demands a whole
+  128 KB chunk. Deferring create_audio_system to the first draw does not work as is: the first step (set_game_mode path, sound resets
+  before GAME_MODE_STARTUP) calls snd_set_bgm_volume (src/audio/bgm_control.c:64) and starts the engine on the game thread before frame 0.
 - Open (user, console): boot ms before/after on O3DS XL and N3DS; HOME and sleep during the logos (io_gate waits for the stream read
-  in flight); the cost of the 205 small direct reads behind the 32 KB loader pieces on a real SD card.
+  in flight); the cost of the 37 direct reads and 42 chunk demand reads before the first draw on a real SD card.
 
 ## Boot line
 `boot ms main X log Y opt Z rom R (M MB/s) gfx G audio A first F title T rdone D waits W wms V`, printed once by pm_boot_title_check
