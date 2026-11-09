@@ -3192,22 +3192,6 @@
       "gates": []
     },
     {
-      "name": "ndcspan_mac01",
-      "kind": "azahar_pic",
-      "speed": "normal",
-      "default": false,
-      "purpose": "DIRECT: the LIST span census of mac_01 frame 200 (ndcspan lines: code that still writes list words).",
-      "scenario": "ndcspan_mac01",
-      "cap": 35,
-      "until": "shot \\d+ frame 201\\b",
-      "tags": [
-        "azahar",
-        "det",
-        "direct"
-      ],
-      "gates": []
-    },
-    {
       "name": "ndref_mac00_det",
       "kind": "azahar_pic",
       "speed": "normal",
