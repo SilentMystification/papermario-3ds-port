@@ -41,6 +41,17 @@ in place of the two gutter load/rect pairs: bind the slot pm_gpu_grab_prev fille
 rect_raw quads: screen x 0..39 from copy columns 0..39, x 360..399 from columns 360..399, all 240 rows, uv as grab_raw_quad
 (pm_gpu.c:2171, s along y, t along x, over 256); same combine and fade alpha (gPauseBackgroundFade) as the centre.
 
+## Implementation facts (agent, code read, 2026-11-09)
+1. The gutter draw must run on the walker side: background_gfx.c emits a G_PM_ND payload (G_PM_ND_GUTTER, alpha in arg) that
+   nd_target.c nd_native_rec routes to pm_gpu_pause_gutters; logic-thread calls into pm_gpu are not safe.
+2. Bind: grab_bind (pm_gpu.c:1276, :2263) binds grab_tex (raw tiled copy 256x512) via grab_native_unit0 (:1181); the prev slot
+   texture (gs.offs[i].tex) needs a new bind mode (grab_bind = 2 through raw_unit0, :1276) or the slot tex with pm_tex_bind_reset.
+3. Screen transform: grab_raw_quad (:2219) uses identity positions for the off-screen slot; on the main target the view
+   (:176-177) maps x through 40 + vp_tx; give the quads explicit screen positions (screen x 0..39 and 360..399) so the rect path's
+   x <= 0 clamp does not collapse the left strip.
+4. Fade: gPauseBackgroundFade into the combine colour as for the centre (PM_CC_43/44 with prim colour).
+Branch PAUSEOPEN head b365ea230 still has the failed bracket + pm_gpu_pause_win: delete them.
+
 ## Touch only
 3ds/src/nd_rect.c (CPUFILL arm), pm_main.c (cfb_capture_prev), pm_gpu.c (grab), src/background_gfx.c (FILTER/SHOW_PAUSED, TARGET_3DS).
 
