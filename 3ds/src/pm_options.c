@@ -241,6 +241,7 @@ void pm_options_init(void) {
     pm_log_i("options: boot dz_cs=%d rep_delay=%d rep_rate=%d hud_ms=%d live=%d disk=%d conlevel=%d log=%d", pm_opt.dz_cs, pm_opt.rep_delay,
              pm_opt.rep_rate, pm_opt.hud_ms, sv_live, sv_disk, sv_con, sv_log); /* OPTFIX: the saved values, as read from options.ini or the defaults */
     pm_log_switch("nofog", pm_opt.dbg_nofog); /* a debug word that the code reads each frame */
+    { extern int pm_nofog; pm_nofog = pm_opt.dbg_nofog || pm_debug_has("nofog"); }
     pm_log_switch("nolight", pm_opt.dbg_nolight);
     if (!have || from_txt || migrated) pm_options_write(); /* LOG5: a version 1 file is written as version 2 */
 }
@@ -305,9 +306,10 @@ void pm_options_flip(int row) {
     *f = !*f;
     changed = 1;
     {   /* F11-10: apply now */
-        extern int pm_interp_want, pm_nolight;
+        extern int pm_interp_want, pm_nolight, pm_nofog;
         if (row == 0) pm_interp_want = *f; /* next game step */
         if (row == 5) pm_nolight = *f || pm_debug_has("nolight");
+        if (row == 4) pm_nofog = *f || pm_debug_has("nofog");
         if (row == 4 || row == 5) nd_mc_flush_all(); /* MENUGEN part 2: cached native models keep the fog and light of their build */
         pm_log("options: live row %d value %d", row, *f);
     }
@@ -437,6 +439,7 @@ static const int fl_partners[] = { RW_GIVE + 0, RW_CURP, RW_PART + 1, RW_PART + 
 /* TEXF: Debug > Render > Texture filtering, RAM only (not saved). Filter: 0 Game (the G_TF bits), 1 Bilinear all, 2 Nearest all.
  * Texel centre: 0 Off, 1 On (+0.5 texel on bilinear draws, nd_model.c). Read by pm_tex.c and nd_model.c. */
 int pm_texf_filter, pm_texf_centre;
+int pm_nofog; /* MENUGEN part 3: Disable Fog (option row 4 or the nofog switch), read by nd_set.c (fog blend mix and fog factor) */
 static const char* const texf_lbl[2] = { "Filter", "Texel centre" };
 static const char* const texf_filt_name[3] = { "Game", "Bilinear all", "Nearest all" };
 const char* pm_texf_value(int k) { return k == 0 ? texf_filt_name[pm_texf_filter] : pm_texf_centre ? "On" : "Off"; }

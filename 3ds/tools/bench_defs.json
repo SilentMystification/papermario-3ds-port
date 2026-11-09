@@ -6990,6 +6990,23 @@
       "gates": []
     },
     {
+      "name": "menu_part3",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MENUGEN part 3: Fullscreen field, Debug rows Fixed Seed and Start a Battle, fog, light and texture filter each on and off on the field (mac_01 0 0 200), one run.",
+      "scenario": "menu_part3",
+      "cap": 60,
+      "until": "padscript: done",
+      "tags": [
+        "azahar",
+        "pic",
+        "menu",
+        "menugen"
+      ],
+      "gates": []
+    },
+    {
       "name": "menu_texf",
       "kind": "azahar_pic",
       "speed": "normal",
