@@ -7,6 +7,7 @@
 #   and its shot folders build3ds/azt/shots/*/<name>.
 # Also removes build-at folders build3ds/at_* and lanes build3ds/lane-* that have no worktree, except a build-at folder
 # whose .build_at_in_use marker is under 12 h old (a build-at is running on it).
+# In kept worktrees, deletes the git-ignored copies assets/us and ver/us/build when the main worktree has them (MB printed).
 # Keeps: worktrees with a .wt_keep file (an agent works there; it deleted core20 mid-row on 2026-11-08) or uncommitted
 # tracked changes, worktrees whose branch has commits not in main (unmerged work), worktrees whose branch tip is on the
 # first-parent line of main (a fresh branch with no commit of its own yet: an agent may work in it; ls3 was
@@ -24,6 +25,7 @@ APPLY=0; KEEP=","; ONLY=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --apply) APPLY=1; shift ;;
+        --dry-run) APPLY=0; shift ;;
         --keep) KEEP=",$2,"; shift 2 ;;
         --only) ONLY=",$2,"; shift 2 ;;
         *) echo "unknown option $1"; exit 2 ;;
@@ -82,6 +84,23 @@ for w in build3ds/wt/*/; do
     drop_lane_copies "$n"
     drop_lane_volumes "$n"
 done
+# WTASSETS: a kept worktree may still hold copies of the git-ignored inputs (assets/us, ver/us/build, made before wt_new.sh).
+# build.sh reads them from the main worktree, so a copy goes when the main worktree has it. Only kept worktrees; tracked files untouched.
+MAINW=$(cd "$(git rev-parse --git-common-dir)/.." && pwd)
+asset_mb=0
+for w in build3ds/wt/*/; do
+    [ -d "$w" ] || continue
+    n=$(basename "$w")
+    case "$keep_wt" in *",$n,"*) ;; *) continue ;; esac
+    for d in assets/us ver/us/build; do
+        [ -d "$w$d" ] && [ -d "$MAINW/$d" ] || continue
+        mb=$(du -sm "$w$d" 2>/dev/null | cut -f1); mb=${mb:-0}
+        echo "asset copy $w$d ($mb MB)"
+        run rm -rf -- "$w$d"
+        asset_mb=$((asset_mb + mb))
+    done
+done
+if [ $APPLY = 1 ]; then echo "asset copies removed from kept worktrees: $asset_mb MB"; else echo "asset copies in kept worktrees: $asset_mb MB would be freed"; fi
 run git worktree prune
 # Lane loop: skipped with --only (it names worktrees only). A build-at folder (bench.py scratch_build writes
 # .build_at_in_use at its start, and removes the folder at its end) is kept while the marker is under 12 h old:

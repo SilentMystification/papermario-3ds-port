@@ -23,7 +23,8 @@ Read this file at the start and after every compaction; it overrides any summary
   facts); 3 no reproduction (user or console evidence first); 4 real stall (split the row). Never relaunch an unchanged row.
 
 ## Worktrees
-- `git worktree add build3ds/wt/<row> -b <row> main` and touch `.wt_keep` (wt_gc keeps it until the row is complete). Stop an old
+- `sh 3ds/tools/wt_new.sh <row>` (git worktree add build3ds/wt/<row> -b <row> main, plus `.wt_keep`; wt_gc keeps it until the row
+  is complete). No asset copy: build.sh and nd_host_test.sh read assets/us and ver/us/build from the main worktree. Stop an old
   agent before another uses its worktree. No git stash anywhere.
 
 ## Merge

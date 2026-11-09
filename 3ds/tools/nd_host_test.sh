@@ -3,10 +3,18 @@
 # (Dockerfile docker/Dockerfile.host). Exit 1 on any fail. A missing nd_core.c is a fail, so the row stays red until S1-2.
 cd "$(dirname "$0")/../.." || exit 2
 ROOT=$(pwd -W 2>/dev/null || pwd)
+# WTASSETS: assets/us and ver/us/build are git-ignored. A worktree without them reads them from the main worktree (read
+# only, mounted at /ar). The container cwd /work links the worktree folders and those two; nothing is copied.
+AR=$ROOT
+if [ ! -d assets/us ] || [ ! -d ver/us/build ]; then AR=$(cd "$(git rev-parse --git-common-dir)/.." && pwd -W 2>/dev/null || pwd); fi
 fail=0
 if [ ! -f 3ds/src/nd_core.c ]; then echo "FAIL nd_core missing (3ds/src/nd_core.c, row S1-2)"; fail=1; fi
-MSYS_NO_PATHCONV=1 docker run --rm -v "$ROOT:/w" -w /w pm3ds-host:1 sh -c '
+MSYS_NO_PATHCONV=1 docker run --rm -v "$ROOT:/w" -v "$AR/assets:/ar/assets:ro" -v "$AR/ver/us/build:/ar/ver/us/build:ro" -w /work pm3ds-host:1 sh -c '
   set -e
+  mkdir -p /work/ver/us
+  for d in 3ds include src; do ln -s "/w/$d" "/work/$d"; done
+  ln -s /ar/assets /work/assets
+  ln -s /ar/ver/us/build /work/ver/us/build
   gcc -m32 -Wall -Wextra -o /tmp/ndd 3ds/tools/nd_host_decode_test.c 2>&1 | grep -v "^$" || true
   /tmp/ndd
   gcc -m32 -Wall -c -o /tmp/ndst.o 3ds/tools/nd_host_stubs.c

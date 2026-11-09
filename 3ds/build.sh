@@ -9,6 +9,12 @@
 # Hang guard: a watchdog kills this run's container after PM_BUILD_CAP seconds (default 600).
 set -e
 cd "$(dirname "$0")/.."
+# WTASSETS: assets/us and ver/us/build are git-ignored ROM-derived inputs. A worktree has none: both come from one base,
+# the main worktree (the parent of the git common dir), read only. No copy into the worktree. ASSET_BASE is "." when the
+# worktree has both (the main worktree itself, or a folder with copies).
+MAIN_ROOT=$(cd "$(git rev-parse --git-common-dir)/.." && pwd)
+ASSET_BASE=.
+if [ ! -d assets/us ] || [ ! -d ver/us/build ]; then ASSET_BASE=$MAIN_ROOT; fi
 OUT=build3ds; VOL=pm3ds-build; SRCVOL=pm3ds-src
 if [ -n "$PM_LANE" ]; then OUT=build3ds/lane-$PM_LANE; VOL=pm3ds-build-$PM_LANE; SRCVOL=pm3ds-src-$PM_LANE; fi
 # HC0: PM_FNCOV=1 is the census lane <L>_fncov (needs PM_LANE): its own output folder and build volume, the draw TUs instrumented.
@@ -32,9 +38,14 @@ if [ -n "$PM_LANE" ]; then BN="$BN-$PM_LANE"; elif [ -z "$PM_BUILD_REV" ] && [ "
 if [ -n "$PM_LANE" ]; then BN="${BN}_$(date +%H%M%S)$$"; fi
 
 # The inputs CMake reads (3ds/CMakeLists.txt, DECOMP = repo root). Nothing else reaches the build.
-SRC_DIRS="3ds/CMakeLists.txt 3ds/effects.cmake 3ds/battle.cmake 3ds/maps.cmake 3ds/map_syms.lds LaunchIcon.png 3ds/ld 3ds/shaders 3ds/stub_include 3ds/include 3ds/src src include assets/us ver/us/build"
-for p in $SRC_DIRS; do
+# CODE_DIRS are read from this worktree; ASSET_DIRS from ASSET_BASE (see above).
+CODE_DIRS="3ds/CMakeLists.txt 3ds/effects.cmake 3ds/battle.cmake 3ds/maps.cmake 3ds/map_syms.lds LaunchIcon.png 3ds/ld 3ds/shaders 3ds/stub_include 3ds/include 3ds/src src include"
+ASSET_DIRS="assets/us ver/us/build"
+for p in $CODE_DIRS; do
     [ -e "$p" ] || { echo "missing build input: $p" >&2; exit 1; }
+done
+for p in $ASSET_DIRS; do
+    [ -e "$ASSET_BASE/$p" ] || { echo "missing build input: $ASSET_BASE/$p (assets come from the main worktree)" >&2; exit 1; }
 done
 # BSTALE: skip the build when the inputs have the same content as at the last successful build of this output folder.
 # The key covers the tracked inputs by git tree id and by their uncommitted diff, the untracked files by content, the
@@ -49,7 +60,7 @@ key_now() {
         git ls-tree -r HEAD -- $KEY_IN
         git diff HEAD -- $KEY_IN
         git ls-files -o --exclude-standard -- $KEY_IN | while read -r f; do sha1sum "$f"; done
-        find assets/us ver/us/build -type f -printf '%p %s %T@\n' | sort
+        (cd "$ASSET_BASE" && find $ASSET_DIRS -type f -printf '%p %s %T@\n' | sort)
     } | sha1sum | cut -d' ' -f1
 }
 # Azahar loads from its own SD card, not from build3ds/.
@@ -108,13 +119,17 @@ if [ -n "$PM_BUILD_REV" ]; then docker volume rm $SRCVOL >/dev/null 2>&1 || true
 t0=$(date +%s)
 if vol_match; then SYNCID=$VOLID; else rm -f $MAN; SYNCID="$(date +%s)_$$"; fi
 [ -f $MAN ] || : > $MAN
-find $SRC_DIRS -type f -printf '%p\t%s\t%T@\n' | sort > $OUT/src_now.txt
+{ find $CODE_DIRS -type f -printf '%p\t%s\t%T@\n'; (cd "$ASSET_BASE" && find $ASSET_DIRS -type f -printf '%p\t%s\t%T@\n'); } | sort > $OUT/src_now.txt
 # Changed or new: not equal to the manifest. Deleted: in the manifest, not in the current list.
 awk -F'\t' 'FILENAME==ARGV[1]{old[$1]=$2 "\t" $3; next} (old[$1] != $2 "\t" $3){print $1}' $MAN $OUT/src_now.txt > $OUT/src_changed.txt
 awk -F'\t' 'FILENAME==ARGV[1]{now[$1]=1; next} !($1 in now){print $1}' $OUT/src_now.txt $MAN > $OUT/src_deleted.txt
 nchg=$(wc -l < $OUT/src_changed.txt); ndel=$(wc -l < $OUT/src_deleted.txt)
 if [ -s $OUT/src_changed.txt ]; then
-    tar -cf - -T $OUT/src_changed.txt | MSYS_NO_PATHCONV=1 docker run --rm -i -v $SRCVOL:/src $IMG sh -c "tar -xf - -C /src && printf %s '$SYNCID' > /src/.pm_manifest_id"
+    # Code names are read from this worktree, asset names from ASSET_BASE: one tar with a -C switch between the two lists.
+    LC=$(pwd)/$OUT/src_changed_code.txt; LA=$(pwd)/$OUT/src_changed_asset.txt
+    grep -v -E '^(assets/us|ver/us/build)/' $OUT/src_changed.txt > $LC || true
+    grep -E '^(assets/us|ver/us/build)/' $OUT/src_changed.txt > $LA || true
+    tar -cf - -T $LC -C "$ASSET_BASE" -T $LA | MSYS_NO_PATHCONV=1 docker run --rm -i -v $SRCVOL:/src $IMG sh -c "tar -xf - -C /src && printf %s '$SYNCID' > /src/.pm_manifest_id"
 fi
 if [ -s $OUT/src_deleted.txt ]; then
     MSYS_NO_PATHCONV=1 docker run --rm -i -v $SRCVOL:/src $IMG sh -c 'while read -r f; do rm -f "/src/$f"; done' < $OUT/src_deleted.txt
