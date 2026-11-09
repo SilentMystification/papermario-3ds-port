@@ -5645,6 +5645,103 @@
       ]
     },
     {
+      "name": "battle_wheel5_wide",
+      "status": "unverified",
+"reason": "broken: no until in 45 s (AZT11-5, 2026-11-09)",
+      "subject": "Battle with wide on (one Goomba, kmr_03), spmax=1 adds Star Power, hammer=0 the Hammer: 5 wheel options (Strategies, Items, Jump, Hammer, Star Power). The wheel opens on Jump; two steps right reach Star Power, the right end. The wheel stop line starts a 4 frame shot burst.",
+      "proves": "WIDE4: with the wheel at the right end every element is drawn in the left corner (spots, reel, beam not cut at the 4:3 field), the leftmost options in place.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town spmax=1 hammer=0 battle battlef=100 wide shots loglevel=debug uiburst padscript=wait362,right*4,wait30,right*4,wait60",
+      "until": "debug wheel stop: pos 4 of 5",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "battle formation",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "wheel open",
+          "regex": "debug wheel open: base"
+        },
+        {
+          "name": "wheel at right end",
+          "regex": "debug wheel stop: pos 4 of 5"
+        }
+      ],
+      "reason": "WIDE4 gate (user items 1, 3, 4): the wheel at the right end with 5 options, wide on."
+    },
+    {
+      "name": "battle_wheel5_nowide",
+      "status": "unverified",
+      "subject": "battle_wheel5_wide at 4:3 (nowide): 5 wheel options, two steps right to Star Power. The 4:3 reference picture of the same wheel state.",
+      "proves": "WIDE4: the 4:3 wheel at the right end, for comparison by eye with the wide picture.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town spmax=1 hammer=0 battle battlef=100 nowide shots loglevel=debug uiburst padscript=wait362,right*4,wait30,right*4,wait60",
+      "until": "debug wheel stop: pos 4 of 5",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "battle formation",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "wheel open",
+          "regex": "debug wheel open: base 54 173"
+        },
+        {
+          "name": "wheel at right end",
+          "regex": "debug wheel stop: pos 4 of 5"
+        }
+      ],
+      "reason": "WIDE4 4:3 reference for the right-end wheel."
+    },
+    {
+      "name": "battle_wheel_nowide_det",
+      "status": "unverified",
+      "subject": "Battle at 4:3 (nowide, det), one Goomba on kmr_03: the wheel opens (4 options) and its open line starts an 8 frame shot burst. Runs on builds before WIDE4 (only older switches).",
+      "proves": "WIDE4 byte gate: the 4:3 wheel picture is byte equal to the base build (every WIDE4 change is under pm_wide).",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 nowide shots loglevel=debug uiburst det",
+      "until": "shot \\d+ frame \\d+ map",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "battle formation",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "wheel open",
+          "regex": "debug wheel open: base 54 173"
+        },
+        {
+          "name": "shot at wheel",
+          "regex": "shot \\d+ frame \\d+ map"
+        }
+      ],
+      "reason": "WIDE4 4:3 byte gate for the wheel draw."
+    },
+    {
       "name": "chapter_native",
       "status": "unverified",
       "reason": "WIDE3 gate 3: one kmr_22 shot with wide on.",

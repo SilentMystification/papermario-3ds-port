@@ -1762,6 +1762,8 @@ static void battle_hooks(unsigned f) {
         pm_log("debug battle: formation %d stage %d at scene frame %u", (int)formation, (int)stage, f);
         /* No world enemy started this battle, so there is no encounter to run: the real update_encounters_neutral reads
          * the enemy list of the world map (get_npc_unsafe assert, unmapped reads). ENCOUNTER_STATE_NONE makes update_encounters do nothing. */
+        if (pm_debug_value("spmax", vf, sizeof vf)) gPlayerData.maxStarPower = (s8)atoi(vf); /* WIDE4: spmax=<n> star power bars at the battle start; n > 0 adds the Star Power wheel option */
+        if (pm_debug_value("hammer", vf, sizeof vf)) gPlayerData.hammerLevel = (s8)atoi(vf); /* WIDE4: hammer=<n> hammer level at the battle start (0 = Hammer); the Hammer wheel option */
         gEncounterState = ENCOUNTER_STATE_NONE;
         set_battle_stage(stage);
         load_battle(formation);

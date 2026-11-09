@@ -151,6 +151,7 @@ int pm_wide_cfg; /* F07-5: the user setting. pm_wide is 0 in 4:3 game modes (log
 int pm_wide; /* F07-1: 1 = the 320 px game picture is stretched over the 400 px screen (X scale 1.25). Read once in pm_gpu_init. */
 static void mfr_init(void); extern int mfr_on; /* TIK19 debug (switch mfr) */
 static int wedge_x; /* WIDE1-2: 1 while pm_gpu_grange draws an edge-only orthographic range with x scale 1.25 in the post matrix */
+unsigned char pm_gv_rejm = 0x2f; /* WIDE4: the clip bits gv_tri rejects on (x planes off for a wide orthographic draw) */
 static int ui_ortho; /* F07-3: the game matrix is orthographic (UI): drawn 1:1 and centered with wide, not stretched */
 static C3D_Mtx off_proj;
 
@@ -2311,6 +2312,7 @@ void pm_gpu_set_mvp(const float m[4][4], float sx, float sy, float tx, float ty)
         memcmp(game_mvp, m, sizeof(game_mvp)) == 0) return;
     if (nb.draw_3d && nb.gni > 0) flush();
     ui_ortho = ortho;
+    pm_gv_rejm = (pm_wide && ortho) ? 0x2c : 0x2f; /* WIDE4: nd_geom.c gv_tri trivial reject. A wide UI triangle wholly in the margin (game x -40..0, a battle wheel spot) lies outside clip x = -w but on screen */
     memcpy(game_mvp, m, sizeof(game_mvp));
     gs.vp_sx = sx;
     gs.vp_sy = sy;

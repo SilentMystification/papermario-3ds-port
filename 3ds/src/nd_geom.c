@@ -185,15 +185,17 @@ void gv_epoch_enter(void) {
 }
 
 /* GV1: one triangle of ring vertices. Returns 1 when it is done (rejected or sent to the GPU). Returns 0 when the CPU path must take it (reason in gv_fb). */
+extern unsigned char pm_gv_rejm; /* pm_gpu.c */
 int gv_tri(const int* idx) {
     int a = idx[0], b = idx[1], c = idx[2];
     int why = -1;
-    if ((vert_cb[a] & vert_cb[b] & vert_cb[c]) & 0x2f) { n_out++; PH_ADD(C_GVREJ, 1); GP_LAP(GPL_EARLY); return 1; }
+    const unsigned rm = pm_gv_rejm; /* WIDE4: 0x2c with wide and an orthographic matrix (pm_gpu_set_mvp): the UI spans clip x -1.25..1.25, so the x planes reject nothing (the GPU clips at the screen edge) */
+    if ((vert_cb[a] & vert_cb[b] & vert_cb[c]) & rm) { n_out++; PH_ADD(C_GVREJ, 1); GP_LAP(GPL_EARLY); return 1; }
     if ((vert_cb[a] | vert_cb[b] | vert_cb[c]) & 0x2f) {
         if (!(vert_gvf[a] & 1) && vert_cb[a]) gv_xf(a);
         if (!(vert_gvf[b] & 1) && vert_cb[b]) gv_xf(b);
         if (!(vert_gvf[c] & 1) && vert_cb[c]) gv_xf(c);
-        if ((vert_cb[a] & vert_cb[b] & vert_cb[c]) & 0x2f) { n_out++; PH_ADD(C_GVREJ, 1); GP_LAP(GPL_EARLY); return 1; }
+        if ((vert_cb[a] & vert_cb[b] & vert_cb[c]) & rm) { n_out++; PH_ADD(C_GVREJ, 1); GP_LAP(GPL_EARLY); return 1; }
     }
     if (vert_scr[a] | vert_scr[b] | vert_scr[c]) why = GVR_SCR;
     else if (vert_tss[a] != vert_tss[b] || vert_tss[a] != vert_tss[c]) why = GVR_TSS;

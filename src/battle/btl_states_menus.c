@@ -895,6 +895,13 @@ void btl_main_menu_draw(void) {
             if (!cond) {
                 BattleMenu_WheelSpeed = (BattleMenu_WheelSpeed * (BattleMenu_WheelSpeed + 1.0) * (BattleMenu_WheelSpeed + 1.0));
             } else {
+                if (BattleMenu_WheelMoving) { /* WIDE4 debug: the wheel stops at a new option. One log line; a shot burst with uiburst. */
+                    extern void pm_log_d(const char* fmt, ...);
+                    extern void pm_gpu_shot_burst(int n);
+                    extern int pm_debug_has(const char* word);
+                    pm_log_d("debug wheel stop: pos %d of %d base %d", BattleMenu_CurPos + BattleMenu_HomePos, WheelOptionCount, BattleMenu_BasePosX);
+                    if (pm_debug_has("uiburst")) pm_gpu_shot_burst(4);
+                }
                 BattleMenu_WheelMoving = 0;
                 BattleMenu_WheelSpeed = 0.3f;
             }
