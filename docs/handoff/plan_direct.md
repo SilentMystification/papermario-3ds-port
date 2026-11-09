@@ -21,7 +21,7 @@ Format (3ds/include/nd_cmd.h, new): a command is one 8-byte header plus 0 or mor
 - Ops: NDC_END, NDC_JUMP (next chunk), NDC_LIST (bridge only: walk a span of the task list, word 1 = start, payload 1 unit = byte count), NDC_CALL (replay a stream range again: floor reflection), NDC_MODEL (payload: the model record and its R13 words, the old G_PM_REC layout, so rec_run reads it unchanged), NDC_SPR, NDC_ENT, and the typed state and draw ops of phase B (section 5).
 - Storage: per display context (2), a chain of 32 KB chunks from the heap (malloc at first use, kept and reused; no per-frame malloc, hw rule 7). A chunk that has no room for the next command ends with NDC_JUMP to the next chunk of the chain (allocated once, at the high-water mark). The chain of a context is reset when that context's frame begins (the bg task build), so it lives exactly as long as the list memory of that context (the N64 two-context rule; depth-1 push in nd_wq.c keeps it safe).
 - PmTask (pm_port.h) carries the first command of the task's stream instead of the list pointer. PmFrame stays 32 bytes (nd_wq.c static assert).
-- Replay rule (plan_s10_path D8 kept): the replay reads the stream and writes nothing into it. Eye 2 (stereo) and the interp key frame replay the same stream.
+- Replay rule (plan_s10_path D8 kept): the replay reads the stream and writes nothing into it. The interp key frame replays the same stream. Stereo walks once: the right eye replays the GX queue entries of the left pass (command lists, fills, copies; pm_gpu.c sr_replay), the eye shift is a vertex shader uniform.
 
 Thread rule:
 - Recorder (logic thread, or the game thread in serial mode): nd_rec_* functions write only the stream of the context being built. They read game memory only.
@@ -65,7 +65,7 @@ Thread rule:
 - Det: the serial order is kept (record, push, replay at once). Byte gates compare shots.
 - Census (pm_ph_cen, WCEN, MDL census): the replay calls the cold walk_dbg_rec hook for NDC_MODEL, NDC_SPR, NDC_ENT as the walker does for the in-list records; a LIST span of the main task is a main-list walk for pmx_main.
 - c2haz (CORE2-2): nd_c2_rec scans payload pointer words.
-- Stereo: eye 2 replays the stream (pm_nusys.c gbi_task_w).
+- Stereo: one walk; eye 2 replays the GPU entries (pm_gpu.c sr_replay), not the stream. CPU reads of the target (pm_gpu_read_frame, pm_gpu_depth_at) see the left eye.
 
 ## 7. Slices (one class per slice; each: record, check byte-equal against the old path, switch, delete the old path; one commit or more per slice)
 | Slice | Content | Deletes | Premise check (before code) | Scenes for the byte gate |
