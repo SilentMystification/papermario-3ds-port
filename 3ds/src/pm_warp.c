@@ -1366,6 +1366,8 @@ static void boss_restore_tick(void) {
  * the engine setup again and the logos lead to the title. The flash is flushed and the audio drained first, as for the HOME menu. */
 extern s16 SoftResetOverlayAlpha, SoftResetState;
 void pm_title_return(void) {
+    void pm_lg_quiesce(void); /* pm_logic.c */
+    pm_lg_quiesce(); /* SAVESAFE: the logic writes the save pages, so the join runs after its step boundary */
     pm_flash_flush("return to title");
     pm_audio_drain(3);
     SoftResetOverlayAlpha = 0;

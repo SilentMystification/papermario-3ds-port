@@ -704,6 +704,7 @@ void pm_frame_loop(void) {
             { /* MAPHUD: 2 s of steps after a map change. The step runs with the HUD off too (the map info line and the footer map). */
                 char mapb[3][40]; /* MAPHUD: the map block, HUD rows 4 to 6: the change text for 2 s, else the current map */
                 pm_map_hud_step(frame, 2u * (pm_interp_on > 0 ? 60u : 30u), mapb);
+                if (pm_flash_warn) snprintf(sys, sizeof sys, "Save not written to SD (retrying)"); /* SAVESAFE: a failed save write shows here until the retry works */
                 pm_gpu_footer(pm_map_now(), sys);
                 if (pm_opt.dbg_hud) { /* PI5: the HUD update is timed as hud us */
                     unsigned h0 = pm_ph_on ? pm_ticks() : 0;

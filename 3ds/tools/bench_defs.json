@@ -5096,7 +5096,11 @@
       ],
       "log_metrics": [],
       "gates": []
-    }
+    },
+    {"name": "flash_selftest_save", "kind": "azahar_stream", "speed": "normal", "default": false, "purpose": "SAVESAFE: fresh save.flash with the flashselftest pattern and saveerr (two failed writes, retry). Gate: the RAM hash line and the atomic write line.", "scenario": "flash_selftest_save", "cap": 40, "until": "save.flash written \\(atomic\\) \\d+ ms", "tags": ["azahar", "save", "savesafe"], "log_metrics": [], "gates": []},
+    {"name": "savecrash_save", "kind": "azahar_stream", "speed": "normal", "default": false, "purpose": "SAVESAFE: a save, then the crash exit 10 ms after the last write. Gate: the exit flush line and the RAM hash; the file hash is checked after the run.", "scenario": "savecrash_save", "cap": 60, "until": "save\\.flash written at exit \\(atomic\\) \\d+ ms", "tags": ["azahar", "save", "savesafe", "crash"], "log_metrics": [], "gates": []},
+    {"name": "warpfix_boot_save", "kind": "azahar_stream", "speed": "normal", "default": false, "purpose": "SAVESAFE gate 4: boot warp, padscript save_0; the save is blocked and no flash write runs (the new write path is not reached). Save scenario of the row.", "scenario": "warpfix_boot_save", "cap": 45, "until": "warp: save blocked", "tags": ["azahar", "save", "savesafe"], "log_metrics": [], "gates": []},
+    {"name": "savefile_check", "kind": "azahar_stream", "speed": "normal", "default": false, "purpose": "SAVESAFE gate 4: a savetool file loaded by savefile= (checksum, RAM values, save block). Save scenario of the row.", "scenario": "savefile_check", "cap": 60, "until": "warp: \\S+ entry \\d+", "tags": ["azahar", "save", "savesafe"], "log_metrics": [], "gates": []}
   ],
   "legacy": {
     "note": "Scenarios that no bench uses. Kept for the azt.ps1 route, not run by bench.py.",
