@@ -1266,13 +1266,6 @@ static __attribute__((cold, noinline)) void raw_draw_rare(NdDraw* d, const NdUni
     if (tex1) { memcpy(d->uvx, t1_s, 16); d->loc_uvx = (uint16_t)(nb.g_use5 ? u5_uvx : u4_uvx); d->has_uvx = 1; }
     if (nb.g_use5) { pm5_upload(); d->use5 = 1; d->no_uni = 1; d->npal = 0; } /* PM5-2; FB-3: the uvx uniform of pm5 is d->loc_uvx (set above) */
 }
-static __attribute__((cold, noinline)) void zm_log(int z, int id) {
-    if (rd_st < 0) rd_sync();
-    if (rd_st > 0) { u32* cb; u32 sz, off; GPUCMD_GetBuffer(&cb, &sz, &off); rd_upto(cb, off); pm_log_d("zmlog f%u reg 107 %08x 105 %08x 106 %08x 112 %08x 113 %08x 114 %08x 115 %08x 116 %08x 117 %08x 11c %08x 11d %08x 11e %08x 6d %08x 4d %08x 4e %08x", pm_frame_count(),
-        rd_reg[0x107], rd_reg[0x105], rd_reg[0x106], rd_reg[0x112], rd_reg[0x113], rd_reg[0x114], rd_reg[0x115], rd_reg[0x116], rd_reg[0x117], rd_reg[0x11C], rd_reg[0x11D], rd_reg[0x11E], rd_reg[0x6D], rd_reg[0x4D], rd_reg[0x4E]); }
-    pm_log_d("zmlog f%u raw z %d zmark %d zn %.4f rect %d/%d pal_z %.4f zcmp %d zupd %d decal %d nocol %d blend %d off %d tmpl %d draw %u", pm_frame_count(), z, gs.r_zmark, gs.r_zmark_zn,
-             nb.rect_2d, nb.rect_z, nb.rect_pal_z, gs.r_zcmp, gs.r_zupd, gs.r_decal, gs.r_nocol, gs.r_blend, gs.off_active, id, draws_frame);
-}
 static int nd_raw_native(void) {
     nd_tmpl_pin(); /* FB-2: the template ids of this batch stay valid until its submit */
     if (!(nb.gni > 0 && nb.g_pal && gs.gv4_on && (!nb.g_use5 || gv5_on))) { cen_why = nb.g_use5 ? CW_PM5 : CW_OTHER; return 0; } /* CEN-1a; PM5-2: program 5 batches go native too */
@@ -1349,7 +1342,6 @@ static int nd_raw_native(void) {
     if (decal2) raw_decal_pass_a(&nk, &d, tex);
     nd_native_submit(&d, tex);
     if (z && gs.r_zmark) raw_zmark_pass(&nk, &d, (const float(*)[16])palk, npal, tex);
-    if (__builtin_expect((gs.r_zmark || nb.rect_z) && PMDL("zmlog"), 0)) zm_log(z, id); /* MERLON debug switch zmlog: the zmark draw and the G_ZS_PRIM rectangle */
     if (rd_st == 2) orbreg_dump(); /* FX1-2 plan 5 orbreg: the register shadow at a glow draw */
     return 1;
 }

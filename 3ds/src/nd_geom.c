@@ -181,11 +181,7 @@ void gv_epoch_enter(void) {
          * The mask is the model's silhouette, drawn with no face culling: the ball disc (tama list word D9FFFFFF 00200400, G_CULL_BACK) runs in the
          * custom pre list under the model matrix without the billboard turn (nd_recs.c rec_apply order) and reaches the GPU back-facing (cull 2), so
          * all 10 triangles were culled and no pixel was marked. */
-        if (img_role(0) == ROLE_DEPTH) {
-            ep_ct = 0;
-            pm_gpu_set_zmark(1, 2.f * depth_of_word(word_5551(nd_ws.prim)) - 1.f);
-            if (PMDL("zmlog")) pm_log_d("zmlog f%u epoch prim %08x zn %.4f geom %08x ol %08x", pm_frame_count(), nd_ws.prim, 2.f * depth_of_word(word_5551(nd_ws.prim)) - 1.f, nd_ws.geom, nd_ws.omode_l); /* MERLON debug switch */
-        }
+        if (img_role(0) == ROLE_DEPTH) { ep_ct = 0; pm_gpu_set_zmark(1, 2.f * depth_of_word(word_5551(nd_ws.prim)) - 1.f); }
         /* TEXEL1: the GPU reads tile 1 through the second texture unit and the uv map of dual_bind (uvx). An off-screen TEXEL1 needs the window fold of t1_fold per draw: gv_tri does it per triangle (t1_fold_tri, ep_t1f). */
         if (plan_active && cur_plan.uses_tex1) {
             if (!nd_ws.td[0].valid || !nd_ws.td[1].valid) ep_why = GVR_TEX1;
