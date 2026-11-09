@@ -3140,6 +3140,89 @@
       "gates": []
     },
     {
+      "name": "battle_wide_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WIDE3 gate 2: battle wheel with wide on, base (14, 183): the wheel in the bottom-left corner, the reel and swap icons with it. A person reads the shot.",
+      "scenario": "battle_wide",
+      "cap": 45,
+      "until": "shot \\d+ frame \\d+ map",
+      "tags": [
+        "azahar",
+        "pic",
+        "wide",
+        "battle"
+      ],
+      "gates": []
+    },
+    {
+      "name": "battle_strats_wide_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WIDE3 gate 2b: Strategies list opened from the corner wheel with wide on (StratsMenuPosX = pm_wide_left(20)). A person reads the shot.",
+      "scenario": "battle_strats_wide",
+      "cap": 45,
+      "until": "shot \\d+ frame 2[8-9]\\d\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "wide",
+        "battle"
+      ],
+      "gates": []
+    },
+    {
+      "name": "chapter_native_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WIDE3 gate 3: kmr_22 chapter screen with wide on, 4:3 letterboxed like the intro, log chapter: native aspect on. A person reads the shot.",
+      "scenario": "chapter_native",
+      "cap": 25,
+      "until": "shot \\d+ frame 5[0-9]\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "wide",
+        "chapter"
+      ],
+      "gates": []
+    },
+    {
+      "name": "shop_wide_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WIDE3 shop gate: Toad Town item shop with wide on, prices under the items. A person reads the shot.",
+      "scenario": "shop_wide",
+      "cap": 45,
+      "until": "shot \\d+ frame 26[2-9]\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "shop"
+      ],
+      "gates": []
+    },
+    {
+      "name": "shop_nowide_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WIDE3 shop byte gate: the same shop 4:3 (wide off). Byte equal to the base build.",
+      "scenario": "shop_nowide",
+      "cap": 45,
+      "until": "shot \\d+ frame 26[2-9]\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "shop"
+      ],
+      "gates": []
+    },
+    {
       "name": "intro_native_pic",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -5109,6 +5192,75 @@
         "pic",
         "pause",
         "profile"
+      ],
+      "log_metrics": [],
+      "gates": []
+    },
+    {
+      "name": "flash_selftest_save",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SAVESAFE: fresh save.flash with the flashselftest pattern and saveerr (two failed writes, retry). Gate: the RAM hash line and the atomic write line.",
+      "scenario": "flash_selftest_save",
+      "cap": 40,
+      "until": "save.flash written \\(atomic\\) \\d+ ms",
+      "tags": [
+        "azahar",
+        "save",
+        "savesafe"
+      ],
+      "log_metrics": [],
+      "gates": []
+    },
+    {
+      "name": "savecrash_save",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SAVESAFE: a save, then the crash exit 10 ms after the last write. Gate: the exit flush line and the RAM hash; the file hash is checked after the run.",
+      "scenario": "savecrash_save",
+      "cap": 60,
+      "until": "save\\.flash written at exit \\(atomic\\) \\d+ ms",
+      "tags": [
+        "azahar",
+        "save",
+        "savesafe",
+        "crash"
+      ],
+      "log_metrics": [],
+      "gates": []
+    },
+    {
+      "name": "warpfix_boot_save",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SAVESAFE gate 4: boot warp, padscript save_0; the save is blocked and no flash write runs (the new write path is not reached). Save scenario of the row.",
+      "scenario": "warpfix_boot_save",
+      "cap": 45,
+      "until": "warp: save blocked",
+      "tags": [
+        "azahar",
+        "save",
+        "savesafe"
+      ],
+      "log_metrics": [],
+      "gates": []
+    },
+    {
+      "name": "savefile_check",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SAVESAFE gate 4: a savetool file loaded by savefile= (checksum, RAM values, save block). Save scenario of the row.",
+      "scenario": "savefile_check",
+      "cap": 60,
+      "until": "warp: \\S+ entry \\d+",
+      "tags": [
+        "azahar",
+        "save",
+        "savesafe"
       ],
       "log_metrics": [],
       "gates": []

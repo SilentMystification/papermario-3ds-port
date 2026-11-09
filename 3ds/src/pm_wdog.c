@@ -38,6 +38,7 @@ static void close_step(void* unused) {
 
 void pm_exit_process(void) {
     for (int i = 0; i < 100 && pm_wd_hold; i++) svcSleepThread(10000000LL);
+    pm_flash_crash_flush(); /* SAVESAFE: the save in RAM reaches save.flash.tmp and the rename, no malloc, under trylock */
     /* The close fsync can block on a sleeping SD card: wait 1 s at most, then end the process (the file may lack its last bytes). */
     pm_step_timed(PM_STEP_EXIT, close_step, NULL, 1000);
     svcExitProcess();

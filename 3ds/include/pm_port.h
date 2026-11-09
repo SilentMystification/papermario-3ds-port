@@ -212,9 +212,13 @@ void pm_soc_free(void);
 void pm_audio_shutdown(void);
 void pm_log_soc_exit(void);
 const unsigned char* pm_rom_ptr(unsigned addr, unsigned len);
-void pm_flash_mark(unsigned off, unsigned len);
+void pm_flash_mark_all(void);
+void pm_flash_put(unsigned off, const void* src, unsigned len);
+void pm_flash_fill(unsigned off, unsigned len);
 void pm_flash_attach(unsigned char* mem, unsigned size);
 void pm_flash_flush(const char* why);
+void pm_flash_crash_flush(void);
+extern volatile int pm_flash_warn; /* SAVESAFE: the last save write failed */
 unsigned pm_soc_alloc_rc(void);
 unsigned pm_heap_bytes(void);
 void pm_mem_boot_line(unsigned need, unsigned leave, unsigned cap); /* MEMGATE: the boot memory line (pm_mem.c) */

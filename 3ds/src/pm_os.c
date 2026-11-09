@@ -521,29 +521,51 @@ static u8 flash_mem[FLASH_SIZE];
 static int flash_ready;
 static const void* flash_wr_src;
 
-/* HW2: the SD file work is in pm_flash.c (thread on core 1). */
-static void flash_sync(u32 off, u32 len) { pm_flash_mark(off, len); }
-
+/* HW2: the SD file work is in pm_flash.c (thread on core 1). SAVESAFE: the page and sector changes go through pm_flash_put and
+ * pm_flash_fill, which change flash_mem under the flash lock. */
 static void flash_selftest(void);
 s32 osFlashWriteArray(u32 pageNum);
 s32 osFlashSectorErase(u32 pageNum);
 
 static void flash_init(void) {
     FILE* f;
+    size_t n = 0;
+    int loaded = 0;
     if (flash_ready) return;
     flash_ready = 1;
     pm_flash_attach(flash_mem, sizeof(flash_mem));
     memset(flash_mem, 0xFF, sizeof(flash_mem));
-    f = pm_debug_has("freshsave") ? NULL : fopen("save.flash", "rb");
-    if (f) {
-        size_t n = fread(flash_mem, 1, sizeof(flash_mem), f);
-        fclose(f);
-        pm_log("save.flash loaded %u bytes", (unsigned)n);
-        if (pm_debug_has("flashselftest")) { u32 h = 0, k; for (k = 0; k < FLASH_SIZE; k++) h = h * 31u + flash_mem[k]; pm_log("flash selftest: loaded hash %08x", h); }
-    } else {
-        flash_sync(0, FLASH_SIZE);
+    if (!pm_debug_has("freshsave")) {
+        /* SAVESAFE: a complete save.flash.tmp is newer than save.flash (the write was cut before the rename, or the rename failed). A cut
+         * tmp is short and is not used. */
+        f = fopen("save.flash.tmp", "rb");
+        if (f) {
+            n = fread(flash_mem, 1, sizeof(flash_mem), f);
+            fclose(f);
+        }
+        if (n == sizeof(flash_mem)) {
+            loaded = 1;
+            pm_log("save.flash.tmp loaded: complete image, newer than save.flash (rename did not happen)");
+            pm_flash_mark_all(); /* the join writes it to save.flash */
+        } else {
+            memset(flash_mem, 0xFF, sizeof(flash_mem));
+            f = fopen("save.flash", "rb");
+            if (f) {
+                n = fread(flash_mem, 1, sizeof(flash_mem), f);
+                fclose(f);
+                loaded = 1;
+                pm_log("save.flash loaded %u bytes", (unsigned)n);
+            }
+        }
+    }
+    if (!loaded) {
+        pm_flash_mark_all();
         pm_flash_flush("new file");
         pm_log("save.flash new");
+    } else if (pm_debug_has("flashselftest")) {
+        u32 h = 0, k;
+        for (k = 0; k < FLASH_SIZE; k++) h = h * 31u + flash_mem[k];
+        pm_log("flash selftest: loaded hash %08x", h);
     }
     if (pm_debug_has("flashselftest")) flash_selftest();
 }
@@ -582,16 +604,14 @@ void osFlashWriteBuffer(OSIoMesg* mb, s32 pri, void* dramAddr, OSMesgQueue* mq) 
 s32 osFlashWriteArray(u32 pageNum) {
     flash_init();
     if ((pageNum + 1) * FLASH_PAGE > FLASH_SIZE || !flash_wr_src) return -1;
-    memcpy(flash_mem + pageNum * FLASH_PAGE, flash_wr_src, FLASH_PAGE);
-    flash_sync(pageNum * FLASH_PAGE, FLASH_PAGE);
+    pm_flash_put(pageNum * FLASH_PAGE, flash_wr_src, FLASH_PAGE);
     return 0;
 }
 s32 osFlashSectorErase(u32 pageNum) {
     u32 off = pageNum / 128u * FLASH_SECTOR;
     flash_init();
     if (off + FLASH_SECTOR > FLASH_SIZE) return -1;
-    memset(flash_mem + off, 0xFF, FLASH_SECTOR);
-    flash_sync(off, FLASH_SECTOR);
+    pm_flash_fill(off, FLASH_SECTOR);
     return 0;
 }
 void osInvalDCache(void* addr, s32 nbytes) { (void)addr; (void)nbytes; }

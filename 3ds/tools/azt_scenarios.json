@@ -5255,8 +5255,8 @@
     {
       "name": "battle_wide",
       "status": "unverified",
-      "subject": "Battle with wide on (one Goomba, kmr_03): the battle wheel sits next to Mario (UA4). The wheel log line starts a shot burst of 8 frames; the until-line is that shot.",
-      "proves": "UA4: the battle wheel base position follows the zoomed battle view (pm_wide_vx, pm_wide_vy).",
+      "subject": "Battle with wide on (one Goomba, kmr_03): the battle wheel sits in the bottom-left corner of the wide screen (WIDE3). The wheel log line starts a shot burst of 8 frames; the until-line is that shot.",
+      "proves": "WIDE3: the battle wheel base is pm_wide_left(54) = 14 (y 173, the 4:3 height); the wheel and its reel move with it, 40 px left of the 4:3 place.",
       "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 wide shots loglevel=debug uiburst",
       "until": "shot \\d+ frame \\d+ map",
       "cap": 45,
@@ -5275,14 +5275,14 @@
         },
         {
           "name": "wheel open",
-          "regex": "debug wheel open: base 33 183"
+          "regex": "debug wheel open: base 14 173"
         },
         {
           "name": "shot at wheel",
           "regex": "shot \\d+ frame \\d+ map"
         }
       ],
-      "reason": "UA4 gate. Wide shot of the wheel next to Mario at about (33, 183)."
+      "reason": "WIDE3 gate. Wide shot of the wheel in the corner, base (14, 183)."
     },
     {
       "name": "battle_target_wide",
@@ -5491,6 +5491,126 @@
       "reason": ""
     },
     {
+      "name": "battle_strats_wide",
+      "status": "unverified",
+      "reason": "WIDE3 gate 2b, Strategies list from the corner wheel. Scans are 2 per game frame from scan 68 (f54). Left steps at f235 and f252, A at f282.",
+      "subject": "Battle with wide on (one Goomba, kmr_03): the wheel opens with Jump highlighted. Two steps left (Strategies), A opens the Strategies list (btl_menu_strats_init). Items is disabled in this save (no items).",
+      "proves": "WIDE3: the Strategies list opens at StratsMenuPosX = pm_wide_left(20) next to the corner wheel.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 wide shots loglevel=debug uiburst padscript=wait362,left*4,wait30,left*4,wait60,A*4,wait300",
+      "until": "shot \\d+ frame 2[8-9]\\d\\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "battle formation",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "wheel open",
+          "regex": "debug wheel open: base 14 173"
+        },
+        {
+          "name": "submenu open",
+          "regex": "debug submenu open: strats"
+        },
+        {
+          "name": "shot at submenu",
+          "regex": "shot \\d+ frame 2[8-9]\\d\\b"
+        }
+      ]
+    },
+    {
+      "name": "chapter_native",
+      "status": "unverified",
+      "reason": "WIDE3 gate 3: one kmr_22 shot with wide on.",
+      "subject": "Chapter screen: warp to kmr_22 (the chapter card map) with wide on. The card is drawn in 4:3 with black side bars like the intro (shots at frames 19 to 57; the frame counter skips in this map). Log: chapter: native aspect on.",
+      "proves": "WIDE3: map kmr_22 runs in the native 4:3 view with wide on (set_game_mode rule, chapter_native_on).",
+      "debug": "warp=kmr_22:0 wide shots shotwin=20:40 loglevel=debug",
+      "until": "shot \\d+ frame 5[0-9]\\b",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: kmr_22 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_22 entry 0"
+        },
+        {
+          "name": "chapter on",
+          "regex": "chapter: native aspect on"
+        },
+        {
+          "name": "shot in chapter",
+          "regex": "shot \\d+ frame 5[0-9]\\b"
+        }
+      ]
+    },
+    {
+      "name": "shop_wide",
+      "status": "unverified",
+      "subject": "Toad Town (mac_00) with wide on, uishow=shop turns on the item info of the item shop at frame 200: the prices draw under the shop items (draw_shop_items). The hook is at scene frame 200 (abs 252); shots from abs 262 (shotwin counts absolute frames).",
+      "proves": "WIDE3 shop: the price x follows the 3D item in the wide view (pm_wide_draw_x, the get_screen_coords rule).",
+      "debug": "warp=mac_00:0 story=ch0_toad_town wide uishow=shop shots shotwin=262:20 loglevel=debug",
+      "until": "shot \\d+ frame 26[2-9]\\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 0"
+        },
+        {
+          "name": "shop on",
+          "regex": "debug uishow: shop items f200"
+        },
+        {
+          "name": "shot in shop",
+          "regex": "shot \\d+ frame 26[2-9]\\b"
+        }
+      ],
+      "reason": "WIDE3 shop gate (step 5): one wide shot with the prices under the items."
+    },
+    {
+      "name": "shop_nowide",
+      "status": "unverified",
+      "subject": "Toad Town (mac_00), 4:3 (no wide), uishow=shop at frame 200: the prices at the 4:3 positions. Byte gate for the shop price path with wide off.",
+      "proves": "WIDE3 shop byte gate: pm_wide_draw_x is the identity with wide off.",
+      "debug": "warp=mac_00:0 story=ch0_toad_town nowide uishow=shop shots shotwin=262:20 loglevel=debug",
+      "until": "shot \\d+ frame 26[2-9]\\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 0"
+        },
+        {
+          "name": "shop on",
+          "regex": "debug uishow: shop items f200"
+        },
+        {
+          "name": "shot in shop",
+          "regex": "shot \\d+ frame 26[2-9]\\b"
+        }
+      ],
+      "reason": "WIDE3 shop byte gate (step 5), 4:3."
+    },
+    {
       "name": "chapter_wide",
       "status": "unverified",
       "subject": "Chapter card (fx_chapter_change, the kmr_22 call args 100 100 0 1 0) spawned by fxtest in Toad Town with wide on. Shots A and B show the card with Mario and the foes (UA8 gate: the card sits where the native card sits, relative to the screen centre).",
@@ -5543,7 +5663,7 @@
       ]
     },
     {
-      "status": "unverified",
+      "status": "verified",
       "cap": 45,
       "deadline": 35,
       "expects": "warp",
@@ -6180,7 +6300,7 @@
     },
     {
       "name": "savefile_check",
-      "status": "unverified",
+      "status": "verified",
       "subject": "A savetool file (sdmc:/3ds/PaperMario/savetool.sav: HP 7/13, level 4, 777 coins, story 3) loaded by savefile= with warp=random (the start map is not the subject). The log shows the load, the values in RAM, and the save block.",
       "proves": "savefile= reads a SaveData file, the checksum passes, fio_deserialize_state fills the player data and the story, and the warp keeps the loaded values and blocks saves.",
       "debug": "savefile=sdmc:/3ds/PaperMario/savetool.sav warp=random loglevel=debug",
@@ -11112,6 +11232,58 @@
           "regex": "shot \\d+ frame 130\\b"
         }
       ]
+    },
+    {
+      "name": "flash_selftest_save",
+      "status": "verified",
+      "subject": "Fresh save.flash (freshsave) with the flashselftest save pattern (sector 3 erase, 39 pages, sector 0 erase, one page) and the saveerr switch: the first two image writes fail.",
+      "proves": "SAVESAFE steps 1, 3 and 6: pm_flash_put and pm_flash_fill change the RAM chip under flash_lock; the image is written to save.flash.tmp and renamed over save.flash (log 'save.flash written (atomic)'); a failed write is logged, stays dirty and is written again by the flush thread after 2 s. The RAM hash is the hash of the pattern (3ds/tools/flash_selftest.py, 077e4000); the file equals the RAM image (flash_selftest.py on save.flash).",
+      "debug": "freshsave flashselftest saveerr",
+      "until": "save.flash written \\(atomic\\) \\d+ ms",
+      "cap": 40,
+      "deadline": 30,
+      "first_marker": "MODE = ",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "ram hash of the pattern",
+          "regex": "flash selftest: ram hash 077e4000$"
+        },
+        {
+          "name": "first write failed",
+          "regex": "save\\.flash write FAILED"
+        },
+        {
+          "name": "atomic write after the retry",
+          "regex": "save\\.flash written \\(atomic\\) \\d+ ms \\(core 1 idle\\)$"
+        }
+      ],
+      "reason": "SAVESAFE: the until is the first image write that succeeds (after two failed writes, 2 s apart). Cap 40 s: boot 15 s plus the retries."
+    },
+    {
+      "name": "savecrash_save",
+      "status": "verified",
+      "subject": "A save (loadslot=0, padscript save_0) followed by the savecrash switch: the process ends through pm_exit_process 10 ms after the last save write, while the save is still dirty.",
+      "proves": "SAVESAFE step 4: the crash and watchdog exit writes the dirty RAM image to save.flash.tmp and renames it, with no malloc and under trylock (pm_flash_crash_flush). The RAM hash logged before the exit is checked against the save.flash file on the slot sdmc after the run.",
+      "debug": "loadslot=0 warp=random padscript=wait150,save_0 savecrash loglevel=debug",
+      "until": "save\\.flash written at exit \\(atomic\\) \\d+ ms",
+      "cap": 60,
+      "deadline": 45,
+      "first_marker": "MODE = ",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "savecrash exit with the RAM hash",
+          "regex": "savecrash: exit 10 ms after the save, ram hash [0-9a-f]{8}$"
+        },
+        {
+          "name": "exit flush wrote the image",
+          "regex": "save\\.flash written at exit \\(atomic\\) \\d+ ms$"
+        }
+      ],
+      "reason": "SAVESAFE step 4 gate. Until is the exit flush line, which follows the savecrash line."
     },
     {
       "name": "seam_mac01_east",

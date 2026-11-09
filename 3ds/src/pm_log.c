@@ -1167,7 +1167,10 @@ static void wake_hook(void) {
 void pm_lg_quiesce(void); /* pm_logic.c */
 static void cpu_hook(APT_HookType h, void* param) {
     (void)param;
-    if (h == APTHOOK_ONSUSPEND || h == APTHOOK_ONSLEEP || h == APTHOOK_ONEXIT) pm_lg_quiesce(); /* CORE2C-3: the logic thread stops at a step boundary first (game thread only) */
+    if (h == APTHOOK_ONSUSPEND || h == APTHOOK_ONSLEEP || h == APTHOOK_ONEXIT) { /* CORE2C-3: the logic thread stops at a step boundary first (game thread only) */
+        pm_lg_quiesce();
+        pm_log("save: hook flush after quiesce"); /* SAVESAFE: the flush step below runs after the logic stopped */
+    }
     switch (h) {
     case APTHOOK_ONSUSPEND: pm_wd_quiet = 1; pm_log("home: suspend"); quiet_enter("home", "HOME menu opens"); break;
     case APTHOOK_ONSLEEP: sleep_enter_hook(); break;
