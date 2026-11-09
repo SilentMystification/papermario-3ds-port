@@ -9,6 +9,7 @@
 #include "nd.h"
 #include "pm_texbake.h"
 #include "pm_port.h"
+#include "pm_tex_idx.h"
 void pm_gpu_rect_sync(void); /* pm_gpu.c */
 
 enum { FMT_RGBA, FMT_YUV, FMT_CI, FMT_IA, FMT_I };
@@ -84,6 +85,12 @@ static void hb_link(int i, unsigned b) {
     hb_unlink(i);
     hb_next[i] = hb_head[b]; hb_head[b] = (short)(i + 1); hb_of[i] = (short)(b + 1u);
 }
+/* HC9A: chained index of the live slots by their content key (shash), for pm_tex_slot_find. Linked when a load sets shash and the slot
+ * goes live (shash is not changed while a slot is live); unlinked in drop. A cell slot (shash 0) is never linked. */
+#define SH_N 2048
+static unsigned short sh_head[SH_N], sh_next[SLOTS];
+static void sh_link(int i) { pmidx_link(sh_head, sh_next, pmidx_bucket(slots[i].shash, SH_N - 1u), i); }
+static void sh_unlink(int i) { pmidx_unlink(sh_head, sh_next, pmidx_bucket(slots[i].shash, SH_N - 1u), i); }
 static unsigned slot_nlive, slot_peak; /* SLOT1: live slots now and the highest count of this run */
 unsigned pm_tex_pool_peak(void) { return slot_peak; } /* MEM-B v2 poolhi */
 static unsigned used_peak; /* M02 measurement */
@@ -773,6 +780,7 @@ static void drop(Slot* s) {
     s->sgen++;
     s->live = 0;
     hb_unlink((int)(s - slots));
+    sh_unlink((int)(s - slots));
     sbit_clr(live_bits, (int)(s - slots));
     slot_nlive--;
     s->stale = 0;
@@ -1618,6 +1626,7 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
     recent_slot[recent_n++ % RECENT_N] = (short)slot; /* PG2 */
     lidx[lk] = (short)slot;
     hb_link(slot, hb_key(img, tlut, width, height, fmt, siz, stride, dkey));
+    sh_link(slot);
     have = 1;
     return 1;
 }
@@ -1915,12 +1924,14 @@ int pm_tex_slot_clean(int i, const void* img, const void* tlut) {
 int pm_tex_slot_find(unsigned key, unsigned fmt, unsigned siz, uint32_t dim, const void* img, const void* tlut, NdUnit* u) {
     int best = -1; unsigned best_stamp = 0; NdUnit t;
     if (!key) return -1;
-    for (int i = 0; i < SLOTS; i++) {
-        if (!slots[i].live || slots[i].shash != key || slots[i].fmt != fmt || slots[i].siz != siz) continue;
+    /* the most recent stamp wins; on equal stamps the higher slot (the order a full scan in slot order ends on) */
+    for (int i = sh_head[pmidx_bucket(key, SH_N - 1u)] - 1; i >= 0; i = sh_next[i] - 1) {
+        const Slot* s = &slots[i];
+        if (!s->live || s->shash != key || s->fmt != fmt || s->siz != siz) continue;
         if (!pm_tex_slot_clean(i, img, tlut)) continue;
-        if (best >= 0 && slots[i].stamp < best_stamp) continue;
+        if (best >= 0 && (s->stamp < best_stamp || (s->stamp == best_stamp && i < best))) continue;
         if (pm_tex_slot_unit(i, &t) != 1 || t.dim != dim) continue;
-        best = i; best_stamp = slots[i].stamp; *u = t;
+        best = i; best_stamp = s->stamp; *u = t;
     }
     return best;
 }
