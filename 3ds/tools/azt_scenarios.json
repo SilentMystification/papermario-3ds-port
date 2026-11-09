@@ -12111,6 +12111,86 @@
           "regex": "menu: shot bot_m\\d+ tab 4 row 6\\b"
         }
       ]
+    },
+    {
+      "name": "cheatsave_save",
+      "status": "verified",
+      "subject": "Slot 0 loaded (loadslot=0), Select menu, Cheats tab (L), Moon jump on (A): the bottom shot after the A draw shows the cyan 'Press X to save cheats' footer; X writes cheats_slot0.ini.",
+      "proves": "CHEATSAVE: foot1 shows the footer while pm_cheat_dirty; pm_menu_key KEY_X calls pm_cheat_save, which logs the saved line.",
+      "debug": "loadslot=0 warp=random padscript=wait150,SELECT,wait20,L,wait20,A,wait20,k_X,wait60 shotmenu loglevel=debug",
+      "until": "cheats: saved slot \\d+ \\(\\d+ on\\)",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "MODE = ",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "menu open",
+          "regex": "menu: open"
+        },
+        {
+          "name": "moon jump on",
+          "regex": "cheat: moon jump on"
+        },
+        {
+          "name": "footer shot (tab 3 row 0)",
+          "regex": "menu: shot \\w+ tab 3 row 0"
+        },
+        {
+          "name": "saved slot 0 with 1 on",
+          "regex": "cheats: saved slot 0 \\(1 on\\)"
+        }
+      ],
+      "reason": "CHEATSAVE save gate: the saved line (slot 0, 1 on) and the shot after the A draw with the footer (picture read by a person)."
+    },
+    {
+      "name": "cheatsave_load_on",
+      "status": "verified",
+      "subject": "Slot 0 loaded (loadslot=0) after a reboot: cheats_slot0.ini is applied at the world entry, the Cheats tab shows Moon jump On and no footer.",
+      "proves": "CHEATSAVE load: pm_cheat_enter_world reads the slot file (pm_cheatsave.c read_file) at ENTER_WORLD (pm_map.c wrapper).",
+      "debug": "loadslot=0 warp=random padscript=wait150,SELECT,wait20,L,wait20 shotmenu loglevel=debug",
+      "until": "menu: shot \\w+ tab 3 row 0",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "MODE = ",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "loaded slot 0 with 1 on",
+          "regex": "cheats: loaded slot 0 \\(1 on\\)"
+        },
+        {
+          "name": "moon jump On",
+          "regex": "menu: tab 3 row 0 Moon jump = On"
+        }
+      ],
+      "reason": "CHEATSAVE load gate: loaded slot 0 (1 on) and the Moon jump row value On in the Cheats tab."
+    },
+    {
+      "name": "cheatsave_load_off",
+      "status": "verified",
+      "subject": "Slot 1 (no cheats file) loaded: all persistent cheats start off, the Cheats tab shows Moon jump Off.",
+      "proves": "CHEATSAVE per slot: a slot without a file starts with the set off (read_file found 0, pm_cheat_enter_world).",
+      "debug": "loadslot=1 warp=random padscript=wait150,SELECT,wait20,L,wait20 shotmenu loglevel=debug",
+      "until": "menu: shot \\w+ tab 3 row 0",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "MODE = ",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "loaded slot 1 with 0 on",
+          "regex": "cheats: loaded slot 1 \\(0 on"
+        },
+        {
+          "name": "moon jump Off",
+          "regex": "menu: tab 3 row 0 Moon jump = Off"
+        }
+      ],
+      "reason": "CHEATSAVE per-slot gate: slot 1 starts with 0 on and Moon jump Off."
     }
   ]
 }
