@@ -35,11 +35,13 @@ int n_cmd, n_in, n_drop, n_out;
 typedef NdGvP GvP;
 
 
+float nd_eye_cull_e, nd_eye_cull_k; /* STEREO: the eye shift of the frame (pm_gpu.c begin): e and e * conv (cw = conv * nd_proj_wn); 0 in a mono frame */
 int clip_bits4(const float* p) { /* the same bits as clip_bits, from a clip position x y z w */
     int b = 0;
     float w = p[3];
-    if (p[0] < -w) b |= 1;
-    if (p[0] > w) b |= 2;
+    float wx = w + (w < 0.f ? -w : w) * nd_eye_cull_e + nd_eye_cull_k * nd_proj_wn; /* STEREO: out of an x plane for both eyes (x moves by at most e (|w| + cw)); w in a mono frame */
+    if (p[0] < -wx) b |= 1;
+    if (p[0] > wx) b |= 2;
     if (p[1] < -w) b |= 4;
     if (p[1] > w) b |= 8;
     if (p[2] > w) b |= 32;

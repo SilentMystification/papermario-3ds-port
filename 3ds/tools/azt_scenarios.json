@@ -655,6 +655,374 @@
       "reason": "MOVE4 gate: DET cold start of the sbk_56 sun scene (-NoWarm, as spot_mac01_det). Cap 35 s, deadline 30 s. Picture is the subject; the prof scene line is the until."
     },
     {
+      "name": "mim01_ring_det",
+      "status": "unverified",
+      "subject": "Forever Forest mim_01 (entry 1, x -530), det, mono: Mario runs to (-375, -375), then to (-375, 375) around the ring (radius 530, the four entries), so the camera yaw passes 90. 12 shots, frames 60 to 280.",
+      "proves": "EYECW mono gate: the mim_01 ring run is a function of the build (det); mono pictures do not change with the convergence fix.",
+      "debug": "warp=mim_01:1 det padscript=go_-375_-375_90,wait10,go_-375_375_150 shots shotwin=60:221:20 loglevel=debug",
+      "until": "shot \\d+ frame 280\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: mim_01 entry 1",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mim_01 entry 1"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 280\\b"
+        }
+      ],
+      "reason": "EYECW: padscript run around the ring. camlog was deleted (AUDIT C4); the eyecw line of the stereo variants carries p23 (near 0 at yaw 90)."
+    },
+    {
+      "name": "mim01_ring_stereo_det_l",
+      "status": "unverified",
+      "subject": "mim_01 ring run as mim01_ring_det with forced stereo, left eye shots. The eyecw line every 10 frames: p23 (the old convergence factor, near 0 at yaw 90) and cw (conv x nd_proj_wn).",
+      "proves": "EYECW: the zero-parallax distance does not follow the camera yaw: cw stays about 300 while p23 passes 0; trees and Mario in both eyes.",
+      "debug": "warp=mim_01:1 det stereo padscript=go_-375_-375_90,wait10,go_-375_375_150 shots shotwin=60:221:20 loglevel=debug",
+      "until": "shot \\d+ frame 280\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: mim_01 entry 1",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mim_01 entry 1"
+        },
+        {
+          "name": "eyecw (stereo convergence w, every 10 frames)",
+          "regex": "eyecw f\\d+ p23 -?[0-9.]+ cw [0-9.]+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 280\\b"
+        }
+      ],
+      "reason": "EYECW gate d. Cap 30 s (det start to frame 280)."
+    },
+    {
+      "name": "mim01_ring_stereo_det_r",
+      "status": "unverified",
+      "subject": "mim_01 ring run as mim01_ring_det with forced stereo, right eye shots. The eyecw line every 10 frames: p23 (the old convergence factor, near 0 at yaw 90) and cw (conv x nd_proj_wn).",
+      "proves": "EYECW: the zero-parallax distance does not follow the camera yaw: cw stays about 300 while p23 passes 0; trees and Mario in both eyes.",
+      "debug": "warp=mim_01:1 det stereo shoteye padscript=go_-375_-375_90,wait10,go_-375_375_150 shots shotwin=60:221:20 loglevel=debug",
+      "until": "shot \\d+ frame 280\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: mim_01 entry 1",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mim_01 entry 1"
+        },
+        {
+          "name": "eyecw (stereo convergence w, every 10 frames)",
+          "regex": "eyecw f\\d+ p23 -?[0-9.]+ cw [0-9.]+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 280\\b"
+        }
+      ],
+      "reason": "EYECW gate d. Cap 30 s (det start to frame 280)."
+    },
+    {
+      "name": "kmr11_cut",
+      "status": "unverified",
+      "subject": "Goomba's fortress exterior (kmr_11, entry 0) at story -120: the cutscene EVS_Scene_MeetGoombaKing rotates the camera. Mono, det, shots every 20 frames 41 to 261 (from the GKCAM scenario of 61d04a541, fewer shots).",
+      "proves": "EYECW mono gate: the kmr_11 cutscene pictures (camera rotation) in mono.",
+      "debug": "warp=kmr_11:0 story=-120 det shots shotwin=41:221:20 loglevel=debug",
+      "until": "shot \\d+ frame 261\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: kmr_11 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_11 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 261\\b"
+        }
+      ],
+      "reason": "EYECW gate e. Cap 30 s."
+    },
+    {
+      "name": "kmr11_cut_stereo_det_l",
+      "status": "unverified",
+      "subject": "kmr11_cut with forced stereo, left eye shots at frames 41 to 261 step 20; eyecw lines every 10 frames.",
+      "proves": "EYECW: cw stays about 300 while the cutscene camera turns (f41-61 and f241-261).",
+      "debug": "warp=kmr_11:0 story=-120 det stereo shots shotwin=41:221:20 loglevel=debug",
+      "until": "shot \\d+ frame 261\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: kmr_11 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_11 entry 0"
+        },
+        {
+          "name": "eyecw (stereo convergence w, every 10 frames)",
+          "regex": "eyecw f\\d+ p23 -?[0-9.]+ cw [0-9.]+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 261\\b"
+        }
+      ],
+      "reason": "EYECW gate e. Cap 30 s."
+    },
+    {
+      "name": "kmr11_cut_stereo_det_r",
+      "status": "unverified",
+      "subject": "kmr11_cut with forced stereo, right eye shots at frames 41 to 261 step 20; eyecw lines every 10 frames.",
+      "proves": "EYECW: cw stays about 300 while the cutscene camera turns (f41-61 and f241-261).",
+      "debug": "warp=kmr_11:0 story=-120 det stereo shoteye shots shotwin=41:221:20 loglevel=debug",
+      "until": "shot \\d+ frame 261\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: kmr_11 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_11 entry 0"
+        },
+        {
+          "name": "eyecw (stereo convergence w, every 10 frames)",
+          "regex": "eyecw f\\d+ p23 -?[0-9.]+ cw [0-9.]+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 261\\b"
+        }
+      ],
+      "reason": "EYECW gate e. Cap 30 s."
+    },
+    {
+      "name": "pause_spin_grab_det_w300_stereo_l",
+      "status": "unverified",
+      "subject": "STEREO S2: pause_spin_grab_det_w300 with forced stereo, left eye shots. SPR4 det gate, cold: OFF-2 census: the pause_spin_grab spin (frames 140 to 179, grablog, shots as pause_spin_grab), run on to frame 300 so the nrawwhy line (cumulative raw refusal counts) prints.",
+      "proves": "STEREO S2: the right eye replay (GX entries of the left pass: lists, grabs, off-screen passes, fills) gives the same left eye picture as the two-walk build.",
+      "debug": "preset=toad padscript=wait80,START*3,wait100 phase phsum shots shotwin=140:40 loglevel=debug grablog texstat det stereo",
+      "until": "nrawwhy f300 ",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "pause mode",
+          "regex": "game mode 10 frame"
+        },
+        {
+          "name": "shot in spin window",
+          "regex": "shot \\d+ frame (17[6-9]|18[01])\\b"
+        },
+        {
+          "name": "nrawwhy at 300",
+          "regex": "nrawwhy f300 zmark"
+        }
+      ],
+      "reason": "SPR4 det gate (pause, cold start, det switch): same as pause_spin_grab_w300. STEREO S2 gate (stereo variant of pause_spin_grab_det_w300).",
+      "extra": []
+    },
+    {
+      "name": "pause_spin_grab_det_w300_stereo_r",
+      "status": "unverified",
+      "subject": "STEREO S2: pause_spin_grab_det_w300 with forced stereo, right eye shots. SPR4 det gate, cold: OFF-2 census: the pause_spin_grab spin (frames 140 to 179, grablog, shots as pause_spin_grab), run on to frame 300 so the nrawwhy line (cumulative raw refusal counts) prints.",
+      "proves": "STEREO S2: the right eye replay (GX entries of the left pass: lists, grabs, off-screen passes, fills) gives the same right eye picture as the two-walk build.",
+      "debug": "preset=toad padscript=wait80,START*3,wait100 phase phsum shots shotwin=140:40 loglevel=debug grablog texstat det stereo shoteye",
+      "until": "nrawwhy f300 ",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "pause mode",
+          "regex": "game mode 10 frame"
+        },
+        {
+          "name": "shot in spin window",
+          "regex": "shot \\d+ frame (17[6-9]|18[01])\\b"
+        },
+        {
+          "name": "nrawwhy at 300",
+          "regex": "nrawwhy f300 zmark"
+        }
+      ],
+      "reason": "SPR4 det gate (pause, cold start, det switch): same as pause_spin_grab_w300. STEREO S2 gate (stereo variant of pause_spin_grab_det_w300).",
+      "extra": []
+    },
+    {
+      "name": "nok11_det_stereo_l",
+      "status": "unverified",
+      "reason": "DET gate (cold, two runs, byte-equal shots). The splash picture is the subject. STEREO S2 gate (stereo variant of nok11_det).",
+      "subject": "STEREO S2: nok11_det with forced stereo, left eye shots. DET gate cold run: Mario in nok_11 (entry 0), water splash spawned at frame 400, shot 1 at frame 412, with the det switch. Two cold runs must give byte-equal shots.",
+      "proves": "STEREO S2: the right eye replay (GX entries of the left pass: lists, grabs, off-screen passes, fills) gives the same left eye picture as the two-walk build.",
+      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 shots loglevel=debug grablog offdump=410 fixedseed fast fs1off det stereo",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "shot 16 frame \\d+",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: nok_11 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: nok_11 entry 0"
+        },
+        {
+          "name": "spawn",
+          "regex": "fxtest: spawn 89 water_splash"
+        },
+        {
+          "name": "shot a",
+          "regex": "fxtest: shot 1 effect 89 water_splash"
+        }
+      ]
+    },
+    {
+      "name": "nok11_det_stereo_r",
+      "status": "unverified",
+      "reason": "DET gate (cold, two runs, byte-equal shots). The splash picture is the subject. STEREO S2 gate (stereo variant of nok11_det).",
+      "subject": "STEREO S2: nok11_det with forced stereo, right eye shots. DET gate cold run: Mario in nok_11 (entry 0), water splash spawned at frame 400, shot 1 at frame 412, with the det switch. Two cold runs must give byte-equal shots.",
+      "proves": "STEREO S2: the right eye replay (GX entries of the left pass: lists, grabs, off-screen passes, fills) gives the same right eye picture as the two-walk build.",
+      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 shots loglevel=debug grablog offdump=410 fixedseed fast fs1off det stereo shoteye",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "shot 16 frame \\d+",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: nok_11 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: nok_11 entry 0"
+        },
+        {
+          "name": "spawn",
+          "regex": "fxtest: spawn 89 water_splash"
+        },
+        {
+          "name": "shot a",
+          "regex": "fxtest: shot 1 effect 89 water_splash"
+        }
+      ]
+    },
+    {
+      "name": "gameover_fps60_stereo_l",
+      "status": "unverified",
+      "subject": "STEREO S2: gameover_fps60 with forced stereo, left eye shots. Game over map gv_01 (warp entry 0), 60 fps mode on (fps60; det: every game step draws the t=0.5 pass and the key frame, no skip). The map script turns on the motion blur (SetMotionBlurParams 128, OVERLAY_BLUR: 40 strips that read the previous frame buffer) and drops the GAME OVER letters. Shots every drawn frame of game frames 70 to 89 (two drawn frames per game frame with fps60: the t=0.5 pass and the key frame). Draw census at frame 80.",
+      "proves": "STEREO S2: the right eye replay (GX entries of the left pass: lists, grabs, off-screen passes, fills) gives the same left eye picture as the two-walk build.",
+      "debug": "warp=gv_01:0 fps60 det shots shotwin=70:20 drawcensus=80 caplog loglevel=debug stereo",
+      "until": "shot \\d+ frame 89\\b",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: gv_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: gv_01 entry 0"
+        },
+        {
+          "name": "census",
+          "regex": "cen f80 summary batches \\d+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 89\\b"
+        }
+      ],
+      "reason": "Row GAMEOVER (user: game over flickers and lags, 60 fps on). Shot window after the letters start to drop; cap 30 s (boot, warp, 90 frames). STEREO S2 gate (stereo variant of gameover_fps60)."
+    },
+    {
+      "name": "gameover_fps60_stereo_r",
+      "status": "unverified",
+      "subject": "STEREO S2: gameover_fps60 with forced stereo, right eye shots. Game over map gv_01 (warp entry 0), 60 fps mode on (fps60; det: every game step draws the t=0.5 pass and the key frame, no skip). The map script turns on the motion blur (SetMotionBlurParams 128, OVERLAY_BLUR: 40 strips that read the previous frame buffer) and drops the GAME OVER letters. Shots every drawn frame of game frames 70 to 89 (two drawn frames per game frame with fps60: the t=0.5 pass and the key frame). Draw census at frame 80.",
+      "proves": "STEREO S2: the right eye replay (GX entries of the left pass: lists, grabs, off-screen passes, fills) gives the same right eye picture as the two-walk build.",
+      "debug": "warp=gv_01:0 fps60 det shots shotwin=70:20 drawcensus=80 caplog loglevel=debug stereo shoteye",
+      "until": "shot \\d+ frame 89\\b",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: gv_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: gv_01 entry 0"
+        },
+        {
+          "name": "census",
+          "regex": "cen f80 summary batches \\d+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 89\\b"
+        }
+      ],
+      "reason": "Row GAMEOVER (user: game over flickers and lags, 60 fps on). Shot window after the letters start to drop; cap 30 s (boot, warp, 90 frames). STEREO S2 gate (stereo variant of gameover_fps60)."
+    },
+    {
+      "name": "spot_mac01_eyecw",
+      "status": "unverified",
+      "subject": "mac_01 spot (pos 0 0 200) with forced stereo, det, log on: the eyecw lines (p23, cw, conv, nd_proj_wn, old conv x |p23|) every 10 frames; one shot at frame 200.",
+      "proves": "EYECW: the convergence w at the mac_01 spot, new (conv x nd_proj_wn) against old (conv x |p23|) on the same frames.",
+      "debug": "warp=mac_01:0 pos=0:0:200 stereo det shots shotwin=200:1 loglevel=debug",
+      "until": "shot \\d+ frame 200\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "eyecw",
+          "regex": "eyecw f\\d+ p23 -?[0-9.]+ cw [0-9.]+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 200\\b"
+        }
+      ],
+      "reason": "EYECW: the prof spot benches run with the log off (prof=4); this one keeps the debug log."
+    },
+    {
       "name": "spot_mac01_stereo_det_l",
       "status": "unverified",
       "subject": "Toad Town mac_01, Mario at pos 0 0 200 (warp entry 0), cold det start with forced stereo (3D slider 1): left eye shots at frames 200 to 205 and the prof scene line of the first 300-frame window.",

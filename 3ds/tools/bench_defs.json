@@ -2684,6 +2684,224 @@
       "gates": []
     },
     {
+      "name": "mim01_ring_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "EYECW: Forever Forest mim_01 (entry 1, x -530), det, mono: Mario runs to (-375, -375), then to (-375, 375) around the ring (radius 530, the four entries), so the camera yaw passes 90. 12 shots, frames 60 to 280. A person reads the shot.",
+      "scenario": "mim01_ring_det",
+      "cap": 30,
+      "until": "shot \\d+ frame 280\\b",
+      "tags": [
+        "azahar",
+        "det"
+      ],
+      "gates": []
+    },
+    {
+      "name": "mim01_ring_stereo_det_l",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "EYECW: mim_01 ring run as mim01_ring_det with forced stereo, left eye shots. The eyecw line every 10 frames: p23 (the old convergence factor, near 0 at yaw 90) and cw (conv x nd_proj_wn). A person reads the shot.",
+      "scenario": "mim01_ring_stereo_det_l",
+      "cap": 30,
+      "until": "shot \\d+ frame 280\\b",
+      "tags": [
+        "azahar",
+        "det",
+        "stereo"
+      ],
+      "gates": []
+    },
+    {
+      "name": "mim01_ring_stereo_det_r",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "EYECW: mim_01 ring run as mim01_ring_det with forced stereo, right eye shots. The eyecw line every 10 frames: p23 (the old convergence factor, near 0 at yaw 90) and cw (conv x nd_proj_wn). A person reads the shot.",
+      "scenario": "mim01_ring_stereo_det_r",
+      "cap": 30,
+      "until": "shot \\d+ frame 280\\b",
+      "tags": [
+        "azahar",
+        "det",
+        "stereo"
+      ],
+      "gates": []
+    },
+    {
+      "name": "kmr11_cut",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "EYECW: Goomba's fortress exterior (kmr_11, entry 0) at story -120: the cutscene EVS_Scene_MeetGoombaKing rotates the camera. Mono, det, shots every 20 frames 41 to 261 (from the GKCAM scenario of 61d04a541, fewer shots). A person reads the shot.",
+      "scenario": "kmr11_cut",
+      "cap": 30,
+      "until": "shot \\d+ frame 261\\b",
+      "tags": [
+        "azahar",
+        "det"
+      ],
+      "gates": []
+    },
+    {
+      "name": "kmr11_cut_stereo_det_l",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "EYECW: kmr11_cut with forced stereo, left eye shots at frames 41 to 261 step 20; eyecw lines every 10 frames. A person reads the shot.",
+      "scenario": "kmr11_cut_stereo_det_l",
+      "cap": 30,
+      "until": "shot \\d+ frame 261\\b",
+      "tags": [
+        "azahar",
+        "det",
+        "stereo"
+      ],
+      "gates": []
+    },
+    {
+      "name": "kmr11_cut_stereo_det_r",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "EYECW: kmr11_cut with forced stereo, right eye shots at frames 41 to 261 step 20; eyecw lines every 10 frames. A person reads the shot.",
+      "scenario": "kmr11_cut_stereo_det_r",
+      "cap": 30,
+      "until": "shot \\d+ frame 261\\b",
+      "tags": [
+        "azahar",
+        "det",
+        "stereo"
+      ],
+      "gates": []
+    },
+    {
+      "name": "pause_spin_grab_det_w300_stereo_l",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "STEREO S2 gate: pause_spin_grab_det_w300 with forced stereo, left eye. Byte-equal to the S1/EYECW build. A person reads the shot.",
+      "scenario": "pause_spin_grab_det_w300_stereo_l",
+      "cap": 45,
+      "until": "nrawwhy f300 ",
+      "tags": [
+        "azahar",
+        "pic",
+        "off",
+        "grab",
+        "det",
+        "cold",
+        "stereo"
+      ],
+      "gates": []
+    },
+    {
+      "name": "pause_spin_grab_det_w300_stereo_r",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "STEREO S2 gate: pause_spin_grab_det_w300 with forced stereo, right eye. Byte-equal to the S1/EYECW build. A person reads the shot.",
+      "scenario": "pause_spin_grab_det_w300_stereo_r",
+      "cap": 45,
+      "until": "nrawwhy f300 ",
+      "tags": [
+        "azahar",
+        "pic",
+        "off",
+        "grab",
+        "det",
+        "cold",
+        "stereo"
+      ],
+      "gates": []
+    },
+    {
+      "name": "nok11_det_stereo_l",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "STEREO S2 gate: nok11_det with forced stereo, left eye. Byte-equal to the S1/EYECW build. A person reads the shot.",
+      "scenario": "nok11_det_stereo_l",
+      "cap": 45,
+      "until": "fxtest: shot 1 effect 89 water_splash",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "stereo"
+      ],
+      "gates": []
+    },
+    {
+      "name": "nok11_det_stereo_r",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "STEREO S2 gate: nok11_det with forced stereo, right eye. Byte-equal to the S1/EYECW build. A person reads the shot.",
+      "scenario": "nok11_det_stereo_r",
+      "cap": 45,
+      "until": "fxtest: shot 1 effect 89 water_splash",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "stereo"
+      ],
+      "gates": []
+    },
+    {
+      "name": "gameover_fps60_stereo_l",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "STEREO S2 gate: gameover_fps60 with forced stereo, left eye. Byte-equal to the S1/EYECW build. A person reads the shot.",
+      "scenario": "gameover_fps60_stereo_l",
+      "cap": 30,
+      "until": "shot \\d+ frame 89\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "gameover",
+        "stereo"
+      ],
+      "gates": []
+    },
+    {
+      "name": "gameover_fps60_stereo_r",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "STEREO S2 gate: gameover_fps60 with forced stereo, right eye. Byte-equal to the S1/EYECW build. A person reads the shot.",
+      "scenario": "gameover_fps60_stereo_r",
+      "cap": 30,
+      "until": "shot \\d+ frame 89\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "gameover",
+        "stereo"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_mac01_eyecw",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "EYECW: mac_01 spot (pos 0 0 200) with forced stereo, det, log on: the eyecw lines (p23, cw, conv, nd_proj_wn, old conv x |p23|) every 10 frames; one shot at frame 200.",
+      "scenario": "spot_mac01_eyecw",
+      "cap": 30,
+      "until": "shot \\d+ frame 200\\b",
+      "tags": [
+        "azahar",
+        "stereo",
+        "det"
+      ],
+      "gates": []
+    },
+    {
       "name": "spot_mac01_stereo_det_l",
       "kind": "azahar_pic",
       "speed": "normal",
