@@ -10520,6 +10520,114 @@
         }
       ],
       "reason": "STARFX row picture gate. Same route as starfx_hos01, not in prof mode (the warp line is the first marker), shots 200 to 229. Cap 35 s."
+    },
+    {
+      "name": "tik19_water_walk",
+      "status": "unverified",
+      "subject": "Toad Town Tunnels tik_19, wide mode, Mario placed at -120 -10 -80 walks right to x 424 and back by padscript (TIK19 user trigger). The mfr switch logs every model record per frame (geometry list, indices sent, hit, miss or refused) for frames 60 to 419; shots of every drawn frame at frames 150 to 189 show the water.",
+      "proves": "TIK19: a water or wall model that drops or changes for one frame during the walk shows in the mfr line of that frame and in the shot.",
+      "debug": "warp=tik_19:0 story=ch0_toad_town wide pos=-120:-10:-80 padscript=go_424_-80_300,wait10,go_-120_-80_300 mfr=60:360 shots shotwin=150:40",
+      "extra": [],
+      "until": "mfr done f",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "warp: tik_19 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: tik_19 entry 0"
+        },
+        {
+          "name": "placed readback",
+          "regex": "poswarp: placed Mario at -120"
+        },
+        {
+          "name": "mfr line",
+          "regex": "mfr f\\d+ rec \\d+"
+        }
+      ],
+      "reason": "TIK19 bug row. 420 frames (14 s at 30 fps) plus boot and warp; cap 35 s for the walk window."
+    },
+    {
+      "name": "tik19_wall_walk",
+      "status": "unverified",
+      "subject": "Toad Town Tunnels tik_19, wide mode, Mario placed on the raised floor at 690 (floor y) -40 next to the super block walks up and down (z -110 to 60) by padscript (TIK19 user trigger for the wall flicker). The mfr switch logs every model record per frame for frames 30 to 419; shots at frames 90 to 149 (the walk ends near frame 152).",
+      "proves": "TIK19: a wall model that drops or changes for one frame while Mario walks up and down shows in the mfr line of that frame and in the shot.",
+      "debug": "warp=tik_19:0 story=ch0_toad_town wide pos=690:40:-40 padscript=go_690_-110_60,go_690_60_90,go_690_-110_90,go_690_60_90 mfr=30:390 shots shotwin=90:60",
+      "extra": [],
+      "until": "mfr done f",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "warp: tik_19 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: tik_19 entry 0"
+        },
+        {
+          "name": "placed readback",
+          "regex": "poswarp: placed Mario at 690"
+        },
+        {
+          "name": "mfr line",
+          "regex": "mfr f\\d+ rec \\d+"
+        }
+      ],
+      "reason": "TIK19 bug row. 420 frames plus boot and warp; cap 35 s for the walk window."
+    },
+    {
+      "name": "tik19_water_ndmcheck",
+      "status": "unverified",
+      "subject": "tik_19 water walk of tik19_water_walk (wide, -120 to 424 and back) with the ndmcheck switch: every model record is drawn by the walker, and a cached entry the hit would take is compared field by field with the fresh native draws (ndmcache hit, miss, diff and the first diff lines), profdisk=1 puts these lines in log.txt.",
+      "proves": "TIK19: whether a cache hit of a model during the walk draws other words than a fresh build of the same record (the hit-vs-miss difference that would flicker).",
+      "debug": "warp=tik_19:0 story=ch0_toad_town wide pos=-120:-10:-80 padscript=go_424_-80_300,wait10,go_-120_-80_300 ndmcheck profdisk=1",
+      "extra": [],
+      "until": "ndmcache f300 ",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: tik_19 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: tik_19 entry 0"
+        },
+        {
+          "name": "ndmcache",
+          "regex": "ndmcache f300 hit \\d+"
+        }
+      ],
+      "reason": "TIK19 hit-vs-miss check, 300 frames of the walk; cap 30 s."
+    },
+    {
+      "name": "tik19_wall_ndmcheck",
+      "status": "unverified",
+      "subject": "tik_19 wall walk of tik19_wall_walk (wide, raised floor at the super block, z -110 to 60) with the ndmcheck switch: a cached entry the hit would take is compared field by field with the fresh native draws (ndmcache hit, miss, diff and the first 20 diff lines with the field and the walker key words); profdisk=1 puts these lines in log.txt.",
+      "proves": "TIK19: names the draw field in which a cache hit of a wall model differs from a fresh build of the same record (the dark walls of the hit frames in tik19_wall_walk).",
+      "debug": "warp=tik_19:0 story=ch0_toad_town wide pos=690:40:-40 padscript=go_690_-110_60,go_690_60_90,go_690_-110_90,go_690_60_90 ndmcheck profdisk=1",
+      "extra": [],
+      "until": "ndmcache f300 ",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: tik_19 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: tik_19 entry 0"
+        },
+        {
+          "name": "ndmcache",
+          "regex": "ndmcache f300 hit \\d+"
+        }
+      ],
+      "reason": "TIK19 hit-vs-miss check at the wall flicker spot, 300 frames; cap 30 s."
     }
   ]
 }

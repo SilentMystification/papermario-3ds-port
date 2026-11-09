@@ -149,6 +149,7 @@ static int gv_wind = 1;   /* GV1a: sign of the 3 x 3 determinant (x y w) of the 
 
 int pm_wide_cfg; /* F07-5: the user setting. pm_wide is 0 in 4:3 game modes (logos, title, file select). */
 int pm_wide; /* F07-1: 1 = the 320 px game picture is stretched over the 400 px screen (X scale 1.25). Read once in pm_gpu_init. */
+static void mfr_init(void); extern int mfr_on; /* TIK19 debug (switch mfr) */
 static int wedge_x; /* WIDE1-2: 1 while pm_gpu_grange draws an edge-only orthographic range with x scale 1.25 in the post matrix */
 static int ui_ortho; /* F07-3: the game matrix is orthographic (UI): drawn 1:1 and centered with wide, not stretched */
 static C3D_Mtx off_proj;
@@ -1429,6 +1430,7 @@ static void pm_gpu_init_w(void) {
     gp2_clip_init();
     if (gs.gpu_ok) return;
     jt_on = pm_debug_has("jumptest");
+    mfr_init();
     pm_wide = pm_wide_cfg = (pm_debug_has("wide") || pm_opt.wide) && !pm_debug_has("nowide"); /* nowide: 4:3 layout with wide set in options.ini */
     pm_log("gpu: wide=%d", pm_wide);
     gfxInitDefault();
@@ -2214,10 +2216,12 @@ static void pm_gpu_begin_w(int clear) {
 /* CORE2-3a: walker side entry (nd_wq.c): the game thread posts it, the body runs on the walker side. */
 static void pm_gpu_end_w(void);
 static void cen_lines_frame(void);
+static void mfr_frame(void);
 typedef struct { int unused; } Wq_pm_gpu_end;
 static void wq_pm_gpu_end(void* a) { Wq_pm_gpu_end* q = (Wq_pm_gpu_end*)a; (void)q; pm_gpu_end_w(); }
 void pm_gpu_end(void) { Wq_pm_gpu_end q = { 0 }; pm_wq_post(wq_pm_gpu_end, &q, sizeof q); }
 static void pm_gpu_end_w(void) {
+    if (__builtin_expect(mfr_on, 0)) mfr_frame(); /* TIK19 debug: the mfr line of the frame */
     if (__builtin_expect(pm_cen_lines, 0)) cen_lines_frame(); /* PROF2-3: the census lines, once per frame at the frame end (rect_log every 100 frames there) */
     if (pm_frame_count() % 100u == 0) pm_tex_cell_log(pm_frame_count()); /* MSGBOX 3: glyph cells every 100 frames (debug level) */
     pm_gpu_begin_wait();
@@ -2833,15 +2837,15 @@ void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) {
 static int ndc_compare(const NdMKey* k, const NdTexDesc* ds, int id, int hs, unsigned hg); /* S3N-6 check: 1 when the entry is valid */
 unsigned nd_r13_nohit; /* MDL-1: R13 texture records without a desc, stored no-hit (mdlw r13nohit) */
 static int r13_last;
-static NdUnit r13u1; static int r13u1_ok, r13i8_1; int pm_gbi_bind_tile1(void);
+static NdUnit r13u1; static int r13u1_ok, r13i8_1, r13u1_slot = -1; int pm_gbi_bind_tile1(void);
 /* MDL-1b (oracle decision): pm_gbi_bind_tile1 runs once per R13 record after rec_aux, before the model draw; unit 1 from the live state. */
 static int r13t1b_ok;
 /* MDL-1b v2: called by rec_run after rec_apply with the result of pm_gbi_bind_tile1 (0 for every other record): unit 1 from the live state */
 void pm_gpu_set_r13_t1(int bound) {
-    r13t1b_ok = bound; r13u1_ok = 0; r13i8_1 = 0;
+    r13t1b_ok = bound; r13u1_ok = 0; r13i8_1 = 0; r13u1_slot = -1;
     if (!bound) return;
     memset(&r13u1, 0, sizeof r13u1);
-    if (pm_tex_native_unit1(&r13u1) == 1) { r13u1_ok = 1; r13i8_1 = pm_tex_i8(1); }
+    if (pm_tex_native_unit1(&r13u1) == 1) { r13u1_ok = 1; r13i8_1 = pm_tex_i8(1); int a_; pm_tex_cur_slots(&a_, &r13u1_slot); } /* TIK19: the slot of the unit 1 words (the cache entry keeps it) */
     /* FB-2: 2 (an off-screen aux image) stays a fallback here: the model path has no snapshot */
 }
 int nd_mix1(unsigned ol, unsigned* col); /* nd_set.c: the V06 colour mix rule of sync_render */
@@ -2927,7 +2931,8 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
     int valid = 0;
     if (n >= 0 && !emit) valid = ndc_compare(mk, ds, id, hs, hg); /* S3N-6 check: the cached draws of this key against these */
     /* MDL-1: a textured draw without a handle desc (the bound slot, R13 block) stores tex 1: its hit has no desc, so it falls back (ndn_texf) and never reuses the slot of another frame */
-    if (n >= 0 && !valid && !mk->w[22]) { int r13nd_ = (r13_last && ds == NULL && gfx == NULL && tex); if (r13nd_) nd_r13_nohit++; nd_mc_store(mk, ds != NULL || r13nd_, hs, hg); } /* MDL-1 cache (oracle review): only R13 texture records without a desc store tex 1. STARFX: a record with a pre list (key w22, R11 w0) is never stored (rec_run) */ /* S3N-6: the draws and ranges of this key (a miss; a valid entry stays) */
+    if (n >= 0 && !valid && !mk->w[22]) { int r13nd_ = (r13_last && ds == NULL && gfx == NULL && tex); if (r13nd_) nd_r13_nohit++; NdMEnt* se_ = nd_mc_store(mk, ds != NULL || r13nd_, hs, hg);
+        if (se_) { se_->h1s = (int16_t)(r13u1_ok ? r13u1_slot : -1); se_->h1g = r13u1_ok ? pm_tex_slot_gen(r13u1_slot) : 0u; } } /* TIK19: the unit 1 slot and its generation, the hit reads its words again */ /* MDL-1 cache (oracle review): only R13 texture records without a desc store tex 1. STARFX: a record with a pre list (key w22, R11 w0) is never stored (rec_run) */ /* S3N-6: the draws and ranges of this key (a miss; a valid entry stays) */
     return n;
 }
 void pm_gpu_ndm_begin(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, const NdMKey* mk) {
@@ -3052,12 +3057,53 @@ void pm_gpu_model_miss_diag(const NdMKey* k) {
     }
     pm_log_prof_line("ndmnew r0 %08x r0b %08x r12 %08x r2b %08x rp %08x", k->w[0], k->w[1], k->w[24], k->w[5], k->rp);
 }
+/* TIK19 debug (switch mfr=<first frame>:<count>): per frame of the window one line of the model records in draw order, each as
+ * <geometry list low 20 bits>:<indices sent> with h (cache hit), m (miss drawn) or f<why> (refused, no draw), and the frame totals. A model that drops or
+ * changes for one frame shows as a gap in its column. mfr_idx counts the indices of the native model draws (hit and miss). */
+int mfr_on; unsigned mfr_idx; static unsigned mfr_f0, mfr_f1, mfr_why, mfr_n[4]; static char mfr_b[160]; static unsigned mfr_bn;
+static __attribute__((cold, noinline)) void mfr_init(void) {
+    char v[32]; unsigned a = 0, n = 0;
+    if (pm_debug_value("mfr", v, sizeof v) && sscanf(v, "%u:%u", &a, &n) == 2 && n) { mfr_f0 = a; mfr_f1 = a + n; mfr_on = 1; }
+}
+static struct { uint32_t geo; uint32_t w[NDMC_RW + NDMC_SW]; } mfr_k[32]; static unsigned mfr_kn;
+__attribute__((cold, noinline)) void pm_gpu_mfr_rec(uint32_t geo, int hit, int nat, unsigned idx, const NdMKey* mk) {
+    unsigned f = pm_frame_count();
+    if (f < mfr_f0 || f >= mfr_f1) return;
+    { /* the key words of this model that differ from its key of the last frame (first 6), one mfk line */
+        unsigned j = 0;
+        while (j < mfr_kn && mfr_k[j].geo != geo) j++;
+        if (j == mfr_kn && mfr_kn < 32u) { mfr_k[mfr_kn].geo = geo; memcpy(mfr_k[mfr_kn].w, mk->w, sizeof mk->w); mfr_kn++; }
+        else if (j < mfr_kn) {
+            char kb[150]; unsigned kn = 0, nd = 0; kb[0] = 0;
+            for (unsigned i = 0; i < NDMC_RW + NDMC_SW; i++) if (mfr_k[j].w[i] != mk->w[i]) { if (nd++ < 6u) kn += (unsigned)snprintf(kb + kn, sizeof kb - kn, " w%u %x>%x", i, mfr_k[j].w[i], mk->w[i]); }
+            if (nd) {
+                pm_log_w("mfk f%u %05x n%u%s", f, (unsigned)geo & 0xfffffu, nd, kb);
+                const NdMEnt* e = nd_mc_find(mk); /* the draw this key takes: the first draw's key and colour terms */
+                if (e && e->n) { const NdNatC* q = nd_mc_nat(e, 0u);
+                    pm_log_w("mfd f%u %05x n%u comb %u tex %u tex1 %u w %08x %08x u0 %x %x u1 %x %x %x %x uvx %d %d %d %d", f, (unsigned)geo & 0xfffffu, e->n, q->tk.combine, q->tk.tex, q->tk.tex1, q->tk.w0, q->tk.w1,
+                             q->d.u[0].addr, q->d.u[0].dim, q->d.u[1].addr, q->d.u[1].dim, q->d.u[1].param, q->d.u[1].type, (int)(q->d.uvx[0] * 1000.f), (int)(q->d.uvx[1] * 1000.f), (int)(q->d.uvx[2] * 1000.f), (int)(q->d.uvx[3] * 1000.f)); }
+            }
+            memcpy(mfr_k[j].w, mk->w, sizeof mk->w);
+        }
+    }
+    if (mfr_bn > sizeof mfr_b - 24u) { pm_log_w("mfrc f%u%s", f, mfr_b); mfr_bn = 0; mfr_b[0] = 0; } /* the log copies 160 chars of a %s: continuation line */
+    mfr_n[0]++; mfr_n[hit ? 1 : nat ? 2 : 3]++;
+    if (hit) mfr_bn += (unsigned)snprintf(mfr_b + mfr_bn, sizeof mfr_b - mfr_bn, " %05x:%uh", (unsigned)geo & 0xfffffu, idx);
+    else if (nat) mfr_bn += (unsigned)snprintf(mfr_b + mfr_bn, sizeof mfr_b - mfr_bn, " %05x:%um", (unsigned)geo & 0xfffffu, idx);
+    else mfr_bn += (unsigned)snprintf(mfr_b + mfr_bn, sizeof mfr_b - mfr_bn, " %05x:f%u", (unsigned)geo & 0xfffffu, mfr_why);
+}
+static __attribute__((cold, noinline)) void mfr_frame(void) {
+    unsigned f = pm_frame_count();
+    if (f >= mfr_f0 && f < mfr_f1 && mfr_n[0]) pm_log_w("mfr f%u rec %u hit %u miss %u fb %u idx %u |%s", f, mfr_n[0], mfr_n[1], mfr_n[2], mfr_n[3], mfr_idx, mfr_b);
+    if (f + 1u == mfr_f1) pm_log_evt("mfr done f%u", f);
+    mfr_bn = 0; mfr_b[0] = 0; mfr_idx = 0; memset(mfr_n, 0, sizeof mfr_n);
+}
 int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, const NdMKey* mk) {
     int mode_ok = 0;
     int n = model_draw(rec, modew, combw, gfx, texidx, geo, 1, &mode_ok, mk);
     ndn_miss_all++;
     if (n >= 0) { ndn_rec++; ndn_draws += (unsigned)n; }
-    else { ndn_fb++; ndn_why[nd_nat_why & 15]++; const unsigned sub = nd_nat_why == 6 ? nd_nat_sub : 0u; if (sub) nd_mdlfb_note(mk->rp, sub); } /* S3N-7: a fallback is stored for this key (every early return of model_draw too): not drawn again while the texture epoch holds, so a texture that loads later gets the native path then */
+    else { mfr_why = (unsigned)nd_nat_why; ndn_fb++; ndn_why[nd_nat_why & 15]++; const unsigned sub = nd_nat_why == 6 ? nd_nat_sub : 0u; if (sub) nd_mdlfb_note(mk->rp, sub); } /* S3N-7: a fallback is stored for this key (every early return of model_draw too): not drawn again while the texture epoch holds, so a texture that loads later gets the native path then */
     ndn_miss++;
     return n;
 }
@@ -3076,6 +3122,12 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
         { extern int pm_tex_tagi; pm_tex_tagi = 2; } /* STALE2 texsrc path tag: hit */
         if (id < 0 || !nd_tex_unit_hint(id, &e->hs, &e->hg, &u)) { ndn_texf++; return 0; }
     }
+    /* TIK19: the unit 1 words again from the slot the entry was built with, as unit 0 above: the stored address was that of the store frame. A slot drawn
+     * from its staging copy in its load frame moves to VRAM and the copy is freed two frames later; tik_19's wall aux texture (I4 at 0x102736c, one slot per
+     * stale palette pointer) then drew another texture's bytes as TEXEL1 from every entry stored in such a frame (dark walls, by key, so by draw order).
+     * A dropped or invalidated slot (generation) rebuilds. */
+    NdUnit u1; const int t1 = e->h1s >= 0;
+    if (t1 && !pm_tex_slot_unit1(e->h1s, e->h1g, &u1)) { ndn_texf++; return 0; }
     /* FB-2: the template ids of the cached draws are built again before any draw goes out (the LRU may have taken an id over since the store): a full table falls back */
     /* PERF1-4c: only when an eviction happened since the last build of these ids (nd_tmpl_gen); else the ids hold and only their LRU clock moves */
     if (e->tgen != nd_tmpl_gen()) {
@@ -3097,7 +3149,9 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
         if (q->zp) { memcpy(zpal, pal0, sizeof pal0); for (int i = 0; i < 4; i++) zpal[8 + i] = q->zn * pal0[12 + i]; q->d.pal = (const float(*)[16])zpal; } /* S5-2: zmark pass 2 */
         else q->d.pal = (const float(*)[16])pal0;
         if (e->tex) q->d.u[0] = u;
+        if (t1 && q->d.u[1].dim) { q->d.u[1].dim = u1.dim; q->d.u[1].lod = u1.lod; q->d.u[1].addr = u1.addr; q->d.u[1].type = u1.type; q->d.u[1].force = u1.force; } /* param: the stored wrap and filter */
         pm_gpu_native_submit_draw(&q->d, q->sd, q->nidx, q->d.u[0].dim != 0);
+        mfr_idx += q->nidx;
     }
     ndn_rec++; ndn_draws += e->n; ndn_hit++;
     return 1;

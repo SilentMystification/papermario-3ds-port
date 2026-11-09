@@ -313,6 +313,7 @@ int nd_tex_unit(int id, NdUnit* u);
 /* S3N-6: nd_tex_unit with a slot hint (the slot and its generation, pm_tex.c pm_tex_slot_gen): a valid hint gives the words without the content search. hs < 0: none. */
 int nd_tex_unit_hint(int id, int* hs, unsigned* hg, NdUnit* u);
 unsigned pm_tex_slot_gen(int i); /* S3N-6 (pm_tex.c): the generation of a slot */
+int pm_tex_slot_unit1(int i, unsigned gen, NdUnit* u); /* TIK19 (pm_tex.c): the unit 1 words of a live slot of that generation for a model cache hit (0: rebuild) */
 typedef struct NdMCtx {
     int zmark; float zn;       /* S5-2 (a): walker r_zmark (the zmark pass: pass 1 model depth and stencil mark, pass 2 constant depth zn * w) and its depth zn */
     int aux_ok;                /* S3L-3: the R13 words are decoded into this context (nd_aux_state, base_oh, comb, tss); 0 with R13 words: fallback */
@@ -368,7 +369,8 @@ const NdNat* nd_model_native(unsigned j);
 #define NDMC_SW 64
 typedef struct NdMKey { uint32_t w[NDMC_RW + NDMC_SW]; uint32_t h; uint32_t rp; } NdMKey; /* S3N-7: h = hash of w (nd_mc_hash), rp = the record address (not compared) */
 #define ND_RAW_MAX 16
-typedef struct __attribute__((aligned(32))) NdMEnt { uint32_t h, rp; uint64_t vmask; uint16_t off, n; uint8_t used, tex, why; uint32_t geom; int hs; unsigned hg; uint32_t tgen, ep, mver, uf; } NdMEnt; /* MAPX-2: mver 0, or for an entry with a lit or fogged draw (use5: the pm5 block comes from the matrix) the matrix version of the record | 0x10000, which a hit needs again; uf the frame of the last lookup or store (mc_trim). PERF2 step 3: 64 bytes, the probe reads h and used in the first line; the key words are in a side array (nd_mc_keyw) */ /* vmask: the groups in view the draws were cut from (PERF1-4b: the hit compares the groups in view now; the key holds the state the cut reads); tgen: nd_tmpl_gen at the last template build of the draws (PERF1-4c) */
+typedef struct __attribute__((aligned(32))) NdMEnt { uint32_t h, rp; uint64_t vmask; uint16_t off, n; uint8_t used, tex, why; uint32_t geom; int hs; unsigned hg; uint32_t tgen, ep, mver, uf; unsigned h1g; int16_t h1s; } NdMEnt; /* MAPX-2: mver 0, or for an entry with a lit or fogged draw (use5: the pm5 block comes from the matrix) the matrix version of the record | 0x10000, which a hit needs again; uf the frame of the last lookup or store (mc_trim). TIK19: h1s, h1g the unit 1 slot of the draws and its generation (-1: no unit 1; the hit reads the unit 1 words again). PERF2 step 3: 64 bytes, the probe reads h and used in the first line; the key words are in a side array (nd_mc_keyw) */ /* vmask: the groups in view the draws were cut from (PERF1-4b: the hit compares the groups in view now; the key holds the state the cut reads); tgen: nd_tmpl_gen at the last template build of the draws (PERF1-4c) */
+_Static_assert(sizeof(NdMEnt) == 64, "PERF2: NdMEnt is one 64 byte record (TIK19 h1s and h1g in its tail)");
 unsigned nd_handle_gen(void);                                   /* bumped by each texture handle write (nd_tex_handle_set) */
 NdMEnt* nd_mc_find(const NdMKey* k);                           /* the entry of key k (k->h set), NULL when none */
 NdMEnt* nd_mc_find_rec(NdMKey* k);                             /* PERF1-4a: rec_run's lookup: the record address memo first, else sets k->h and probes */

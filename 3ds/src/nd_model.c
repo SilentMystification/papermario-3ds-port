@@ -601,7 +601,7 @@ NdMEnt* nd_mc_store(const NdMKey* k, int tex, int hs, unsigned hg) {
         off = mc_pool_n; mc_pool_n += (unsigned)nat_n;
     }
     e->vmask = nat_vm; e->geom = nat_geom; e->tgen = ~0u; /* the first hit builds the template ids */
-    e->tex = (uint8_t)(tex != 0); e->hs = hs; e->hg = hg;
+    e->tex = (uint8_t)(tex != 0); e->hs = hs; e->hg = hg; e->h1s = -1; e->h1g = 0; /* TIK19: the caller sets the unit 1 slot */
     e->off = (uint16_t)off; e->n = (unsigned)nat_n;
     e->mver = 0; e->uf = mc_f;
     for (int j = 0; j < nat_n; j++) {
