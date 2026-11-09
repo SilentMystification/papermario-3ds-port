@@ -2800,12 +2800,22 @@ static uint32_t aux_hash(const uint32_t* rec) {
  * walker's other mode as (walker & ~written) | list (nd_model_state, B8), so a written bit of the walker never reaches it: the key leaves those bits out.
  * Before, the walker other mode in the key depended on whether the record before was a cache hit (a hit skips rec_apply, so the walker keeps the older
  * mode): every new or changed record in a door or a room change missed again the records after it, and the misses filled the cache to a clear. */
-static uint32_t rm_wh[256], rm_wl[256]; static uint8_t rm_done[256];
+/* DOORHITCH: the same for the geometry mode. rec_apply runs the render mode list before the geometry list, and every list clears and sets the
+ * shade, cull, fog, lighting, texgen, lod and smooth bits (src/model.c Gfx_RM*): the walker geometry bits before the record reach the draw only
+ * through rm_ga (the AND of the list's G_GEOMETRYMODE keep masks, set_geom). Before, key word 32 held the geometry mode the record before left
+ * (a hit skips rec_apply, a miss runs its list), so in a door the shroud switch of one model made the next models miss too and the store replaced
+ * their entry of the other room state (kmr_20: w32 first for 230 to 316 misses per door). */
+static uint32_t rm_wh[256], rm_wl[256], rm_ga[256]; static uint8_t rm_done[256];
 static __attribute__((cold, noinline)) void rm_masks(unsigned i) {
     extern void* ModelRenderModes[]; /* src/model.c: Gfx* per render mode index */
     NdMode m;
     rm_done[i] = 1;
     if (nd_mode_compile(&m, (const unsigned*)ModelRenderModes[i])) { rm_wh[i] = m.wh; rm_wl[i] = m.wl; }
+    uint32_t ga = 0xFFFFFFFFu;
+    const uint32_t* l = (const uint32_t*)ModelRenderModes[i];
+    for (unsigned j = 0; l && j < 32u && (l[2 * j] >> 24) != 0xdfu; j++)
+        if ((l[2 * j] >> 24) == 0xd9u) ga &= l[2 * j] & 0xffffffu;
+    rm_ga[i] = ga;
 }
 void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) {
     memcpy(k->w, rec, NDMC_RW * sizeof(uint32_t));
@@ -2822,7 +2832,7 @@ void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) {
     unsigned i = 0;
     uint32_t gk = 0xFFFFFFFFu; /* MAPX-2: the walker geometry reaches the draw only through the bits the list's groups keep (gg = (entry & am) | om) */
     if (rec[24] && pm_dlc_geom_keep((const void*)(uintptr_t)rec[24], &gk) != 0) gk = 0xFFFFFFFFu;
-    s[i++] = nd_ws.omode_h & kh; s[i++] = nd_ws.omode_l & kl; s[i++] = nd_ws.om_kh & kh; s[i++] = nd_ws.om_kl & kl; s[i++] = nd_ws.geom & gk;
+    s[i++] = nd_ws.omode_h & kh; s[i++] = nd_ws.omode_l & kl; s[i++] = nd_ws.om_kh & kh; s[i++] = nd_ws.om_kl & kl; s[i++] = nd_ws.geom & gk & rm_ga[rmi];
     s[i++] = sw_tss; s[i++] = sw_cw0; s[i++] = sw_cw1;
     s[i++] = nd_ws.prim; s[i++] = nd_ws.prim_lod; s[i++] = aux_hash(rec); /* S3N-7: env_col is not in the key (it changes per draw order; the cached draws do not read it: ndmcheck diff 0). S3L-3: slot 10 = hash of the R13 words (compared) */ s[i++] = cconst; s[i++] = gs.r_mix == 2 ? r_mixcol : 0u; s[i++] = dbits; /* MERLEE: the walker's mix reaches the native draw only as the F08 fog mix (model_draw) */
     s[i++] = (uint32_t)dview; s[i++] = gs.r_mix == 2 ? 2u : 0u; s[i++] = (uint32_t)r_memblend; s[i++] = (uint32_t)r_replace; s[i++] = (uint32_t)gv_wind;
