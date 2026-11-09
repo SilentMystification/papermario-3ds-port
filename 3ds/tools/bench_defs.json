@@ -672,6 +672,11 @@
           "name": "ser_n",
           "regex": "prof f\\d+ w\\d+ core2 .*? ser (\\d+)",
           "pick": "first"
+        },
+        {
+          "name": "kf",
+          "regex": "prof f\\d+ w\\d+ core2 .*? kf (\\d+)",
+          "pick": "first"
         }
       ]
     },

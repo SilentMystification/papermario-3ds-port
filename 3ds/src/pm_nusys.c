@@ -104,7 +104,7 @@ static void gbi_walk(Gfx* gfxList, u32 n) {
 /* PI1: walk one task (walker side). */
 static void gbi_task_w(Gfx* gfxList, u32 n) {
     if (pm_fs_on) pm_fs_tasks++; /* WMODEL: render tasks per frame, fsplit only */
-    pm_gpu_begin_wait(); /* LB1: every gbi task (also the key replay of pm_interp_key_draw) waits for the GPU tail of the last frame */
+    pm_gpu_begin_wait(); /* LB1: every gbi task (also the key replay) waits for the GPU tail of the last frame */
     FS_MARK(FS_GBI); /* LB1b: the walk after the wait is gbi work, not rest (fsplit label only) */
     nd_frame_begin();
     gbi_walk(gfxList, n);
@@ -138,7 +138,7 @@ void nuGfxTaskStart(Gfx* gfxList, u32 gfxListSize, u32 ucode, u32 flag) {
     if (swap) { FS_MARK(FS_AUDIO); pm_audio_step(); } /* AU1b: the game logic and the display list of this step are done: audio ticks here */
     FS_MARK(FS_GBI);
     PH_PUSH(PH_GBI);
-    /* F06-2: the draw iteration shows the t = 0.5 pass of the swap task. pm_interp_key_draw replays every task of the step without
+    /* F06-2: the draw iteration shows the t = 0.5 pass of the swap task. the key frame replays every task of the step without
      * replacements in the idle iteration. The background task of the step comes before the swap task. */
     if (pm_interp_on > 0 && nkey < MAX_KEY) { key_list[nkey] = gfxList; key_size[nkey++] = gfxListSize; }
     if (!swap) {
@@ -148,7 +148,7 @@ void nuGfxTaskStart(Gfx* gfxList, u32 gfxListSize, u32 ucode, u32 flag) {
         fr.main.ptr = gfxList; fr.main.n = gfxListSize;
         if (pm_interp_on > 0) {
             if (pm_interp_skip) { pm_interp_skip_count(); nkey = 0; } /* F06-5: behind, draw the key frame now */
-            else { pm_interp_lerp(0.5f); fr.flags |= PMF_REPL; }
+            else { pm_wq_frame_slot(); pm_interp_lerp(0.5f); fr.flags |= PMF_REPL; } /* the walker reads rtab: the frames before are walked first */
         }
         fr_push();
     }
@@ -159,24 +159,29 @@ void nuGfxTaskStart(Gfx* gfxList, u32 gfxListSize, u32 ucode, u32 flag) {
 
 void pm_gfx_bg_flush(void) { if (fr.bg.ptr) fr_push(); }
 
+void pm_lg_key_walked(void); /* pm_logic.c */
 void pm_interp_drop_keys(void) { nkey = 0; } /* F11-10 */
 
-/* F06-2: the key frame of the last step, drawn without replacements. Returns 0 when the step built no list. */
-static void wq_key_draw(void* a) { /* CORE2-3a: the key frame (begin, tasks, end) is one walker-side message */
-    (void)a;
+/* F06-2: the key frame of a step, drawn without replacements. The logic thread takes the task list at the step end (the list is its own),
+ * the walker walks the copy: one walker-side message (begin, tasks, end). Returns 0 when the step built no list. */
+int pm_interp_key_take(PmKey* k) {
+    int n = nkey;
+    for (int i = 0; i < MAX_KEY; i++) {
+        k->t[i].ptr = i < n ? key_list[i] : NULL;
+        k->t[i].n = i < n ? key_size[i] : 0u;
+    }
+    nkey = 0;
+    return n != 0;
+}
+void pm_key_walk(const PmKey* k) { /* walker side */
     pm_fs_q = 1; /* FS2: a key frame is not a drawn frame: no fsplit mark */
     pm_gpu_begin(1);
     PH_PUSH(PH_GBI);
-    for (int i = 0; i < nkey; i++) gbi_task_w(key_list[i], key_size[i]);
+    for (int i = 0; i < MAX_KEY && k->t[i].ptr; i++) gbi_task_w((Gfx*)k->t[i].ptr, k->t[i].n);
     PH_POP();
-    nkey = 0;
     pm_gpu_end();
     pm_fs_q = 0;
-}
-int pm_interp_key_draw(void) {
-    if (!nkey) return 0;
-    pm_wq_post(wq_key_draw, NULL, 0);
-    return 1;
+    pm_lg_key_walked();
 }
 
 /* FS1: the same call with gfxTaskNum 3. gfxRetrace_Callback (src/main.c) then runs step_game_loop and skips gfx_task_background and gfx_draw_frame,

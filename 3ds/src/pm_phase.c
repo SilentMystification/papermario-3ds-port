@@ -435,9 +435,9 @@ extern unsigned long long pm_au_pf_sum; /* CORE2-0, pm_audio.c: join wait ticks 
 extern unsigned pm_au_pf_max;
 /* PROF: start a new window (after a report, or when the scene changes inside a window: a window holds one scene only, so chg is 0 on every printed line) */
 /* CORE2C-3: the logic thread totals at the window start (pm_logic.c pm_lg_pf) */
-void pm_lg_pf(unsigned long long* lg_t, unsigned* lg_n, unsigned long long* wait_t, unsigned* ser_n, int* core, unsigned* stk_kb, unsigned long long* pe);
-static unsigned long long lg0_t, lg0_w, lg0_pe[3]; static unsigned lg0_n, lg0_s;
-static void pf_lg_mark(void) { int c; unsigned k; pm_lg_pf(&lg0_t, &lg0_n, &lg0_w, &lg0_s, &c, &k, lg0_pe); }
+void pm_lg_pf(unsigned long long* lg_t, unsigned* lg_n, unsigned long long* wait_t, unsigned* ser_n, int* core, unsigned* stk_kb, unsigned long long* pe, unsigned* kf);
+static unsigned long long lg0_t, lg0_w, lg0_pe[3]; static unsigned lg0_n, lg0_s, lg0_kf;
+static void pf_lg_mark(void) { int c; unsigned k; pm_lg_pf(&lg0_t, &lg0_n, &lg0_w, &lg0_s, &c, &k, lg0_pe, &lg0_kf); }
 static void pf_reset(void) {
     pf_lg_mark();
     pm_au_pf_sum = 0; pm_au_pf_max = 0;
@@ -560,8 +560,8 @@ static void pf_report(void) {
         { /* CORE2C-3: lgms = logic thread ms per step it ran (step_game_loop, list build, audio kick, tail), n = those steps; wwait = game
            * thread ms per drawn frame waiting for the logic (the walk wait); ser = steps run inline (serial: prof sample, det, measurement
            * modes); core and stk = the logic thread core and its stack high-water mark (KB). */
-            unsigned long long lt, wt, pe[3]; unsigned ln, sn, kb; int core;
-            pm_lg_pf(&lt, &ln, &wt, &sn, &core, &kb, pe);
+            unsigned long long lt, wt, pe[3]; unsigned ln, sn, kb, kf; int core;
+            pm_lg_pf(&lt, &ln, &wt, &sn, &core, &kb, pe, &kf);
             unsigned dn = ln - lg0_n;
             unsigned lgc = dn ? (unsigned)((lt - lg0_t) * 100ull / PF_TPM / dn) : 0u;
             unsigned wwc = pf_w ? (unsigned)((wt - lg0_w) * 100ull / PF_TPM / pf_w) : 0u;
@@ -570,8 +570,8 @@ static void pf_report(void) {
             unsigned ic1 = dn ? (unsigned)((pe[0] - lg0_pe[0]) / dn) : 0u;
             unsigned dc1 = dn ? (unsigned)((pe[1] - lg0_pe[1]) / dn) : 0u;
             unsigned cy1 = dn ? (unsigned)((pe[2] - lg0_pe[2]) / dn) : 0u;
-            pm_log_prof_line("prof f%u w%u core2 lgms %u.%02u n %u wwait %u.%02u ser %u core %d stk %u ic1 %u dc1 %u cyc1 %u", pf_total, pf_w,
-                lgc / 100u, lgc % 100u, dn, wwc / 100u, wwc % 100u, sn - lg0_s, core, kb, ic1, dc1, cy1);
+            pm_log_prof_line("prof f%u w%u core2 lgms %u.%02u n %u wwait %u.%02u ser %u core %d stk %u ic1 %u dc1 %u cyc1 %u kf %u", pf_total, pf_w,
+                lgc / 100u, lgc % 100u, dn, wwc / 100u, wwc % 100u, sn - lg0_s, core, kb, ic1, dc1, cy1, kf - lg0_kf);
         }
     }
     if (c1_st == 1) c1_begin(); /* CORE2C C1P */
