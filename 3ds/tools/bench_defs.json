@@ -469,6 +469,18 @@
       "gates": []
     },
     {
+      "name": "pause_thr_prof",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "PAUSEDR: threaded pause with prof=4 (mac_01, 3 opens, log only). Measures the core2 drain line: drains per logic step, drains on a non-empty queue, waits on a full queue.",
+      "scenario": "pause_thr_prof",
+      "cap": 30,
+      "until": "prof f\\d+ w\\d+ core2 drain",
+      "tags": ["azahar", "prof", "pause"],
+      "gates": []
+    },
+    {
       "name": "spot_mac01_pic",
       "kind": "azahar_pic",
       "speed": "normal",

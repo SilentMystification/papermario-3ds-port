@@ -11442,6 +11442,34 @@
         }
       ],
       "reason": "SEAMFIX picture gate: shots 200 to 205 of one spot; the shot line of frame 205 is the until (cap 25 s: boot about 15 s plus the 6 shots)."
+    },
+    {
+      "name": "pause_thr_prof",
+      "status": "unverified",
+      "subject": "PAUSEDR: threaded pause with prof=4 (prof lines only). Toad Town mac_01 at pos 0 0 200, START opens and closes the pause three times as pause_thr_pic. Log only: the core2 drain line of the first window (dr, drw, wqf per logic step).",
+      "proves": "PAUSEDR: drains per logic step in a threaded pause (pm_wq_idle counters, nd_wq.c) and the msg ROM copy (dma_load_msg, src/msg.c). Log only.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town pos=0:0:200 padscript=wait80,START*3,wait60,START*3,wait60,START*3,wait60,START*3,wait60,START*3,wait60 prof=4 loglevel=debug",
+      "until": "prof f\\d+ w\\d+ core2 drain",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "pause open",
+          "regex": "game mode 10 frame"
+        },
+        {
+          "name": "core2 drain line",
+          "regex": "prof f\\d+ w\\d+ core2 drain"
+        }
+      ],
+      "reason": "PAUSEDR counters: window line after the first pause opens on the logic thread."
     }
   ]
 }
