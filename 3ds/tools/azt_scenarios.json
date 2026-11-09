@@ -11112,6 +11112,64 @@
           "regex": "shot \\d+ frame 130\\b"
         }
       ]
+    },
+    {
+      "name": "seam_mac01_east",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 east floor (lists 115 and 180 of the oracle: floor gaps along the T-point edges), det, shots at frames 200 to 205.",
+      "proves": "SEAMFIX picture gate: the floor and wall seams of the T-point edges are closed (nd_dlc_compile inserts the T points); base and head shots compared by region_diff.",
+      "debug": "warp=mac_01:0 pos=360:20:-280 det shots shotwin=200:6 loglevel=debug",
+      "extra": [],
+      "until": "shot \\d+ frame 205\\b",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "seamfix",
+          "regex": "seamfix map mac_01_shape tp \\d+ ins \\d+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 205\\b"
+        }
+      ],
+      "reason": "SEAMFIX picture gate: shots 200 to 205 of one spot; the shot line of frame 205 is the until (cap 25 s: boot about 15 s plus the 6 shots)."
+    },
+    {
+      "name": "seam_mac01_merlon",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 outdoors in front of Merlon's house (PT43 seams), det, shots at frames 200 to 205.",
+      "proves": "SEAMFIX picture gate: the floor and wall seams of the T-point edges are closed (nd_dlc_compile inserts the T points); base and head shots compared by region_diff.",
+      "debug": "warp=mac_01:0 pos=-230:0:-250 det shots shotwin=200:6 loglevel=debug",
+      "extra": [],
+      "until": "shot \\d+ frame 205\\b",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "seamfix",
+          "regex": "seamfix map mac_01_shape tp \\d+ ins \\d+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 205\\b"
+        }
+      ],
+      "reason": "SEAMFIX picture gate: shots 200 to 205 of one spot; the shot line of frame 205 is the until (cap 25 s: boot about 15 s plus the 6 shots)."
     }
   ]
 }

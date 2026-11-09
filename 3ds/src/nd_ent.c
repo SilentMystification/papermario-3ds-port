@@ -224,7 +224,7 @@ void ent_compile(EntKey* k, const Gfx* l0) {
         if (!hi || p + 16u * n > hi) hi = p + 16u * n;
     }
     if (lo && (u32)(hi - lo) > 0x20000u) { k->why = 5; return; }
-    NdDlcEnv env = { ent_env_vtx, nd_env_valloc, nd_env_ialloc };
+    NdDlcEnv env = { ent_env_vtx, nd_env_valloc, nd_env_ialloc, NULL, 0 };
     rc = nd_dlc_compile(&o, dlc_words, &env);
     if (rc != NDR_OK) { k->why = (u8)(rc + 1); return; }
     if (o.nidx != 3u * ntri) { nd_dlc_free(&o); k->why = 7; return; }

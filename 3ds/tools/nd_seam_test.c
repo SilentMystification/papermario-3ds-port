@@ -204,11 +204,11 @@ static int compile_soup(const NdSeamTab* t, NdSeamTab* out, int use_tp) {
         unsigned i;
         for (i = 0; i < ND_DLC_MAXOPS; i++) { memcpy(&lw[2 * i], p + 8 * i, 8); if ((lw[2 * i] >> 24) == 0xDF) break; }
         NdDlcEnv env; memset(&env, 0, sizeof env); env.vtx = c_vtx;
-        (void)use_tp;
+        if (use_tp && L->cnt) { env.tp = t->tp + L->first; env.ntp = L->cnt; }
         NdObj o;
         int rc = nd_dlc_compile(&o, lw, &env);
         if (rc) { c_ref++; continue; }
-        c_lists++;
+        c_lists++; c_ins += o.nins;
         int sl = nd_seam_soup_list(s, L->addr, L->cls, L->t, 1);
         for (unsigned k = 0; k < o.nidx / 3u; k++) {
             int32_t w[3][3];
@@ -382,16 +382,22 @@ static int seam_steps34(int nshape, char** shapes, const char* toad) {
         cbuf = buf; csize = size;
         if (compile_soup(&t, &c0, 0)) { printf("FAIL: %s: compile soup no memory\n", nm); fail = 1; nd_seam_free(&t); continue; }
         printf("seam step 3: %.6s compiled %u lists (refused %u): T points in the compiled output %u\n", nm, c_lists, c_ref, c0.tp_all);
-        if (!strncmp(nm, "mac_01", 6) && toad) {
-            float o[16]; unsigned nskip;
-            if (!ndref_camera(toad, o)) { printf("FAIL: no kind 5 camera in %s\n", toad); fail = 1; }
-            else {
-                unsigned ht;
-                tedges(&t, o);
-                unsigned h0 = raster(o, &nskip, &ht);
-                printf("seam step 4: mac_01 holes %u: on T-point edges %u, other %u (triangles %u, near or guard skip %u, T edges %u)\n", h0, ht, h0 - ht, nctri, nskip, ntseg);
-            }
+        float o[16]; unsigned nskip, ht0 = 0, h0 = 0;
+        int cam = !strncmp(nm, "mac_01", 6) && toad;
+        if (cam && !ndref_camera(toad, o)) { printf("FAIL: no kind 5 camera in %s\n", toad); fail = 1; cam = 0; }
+        if (cam) { tedges(&t, o); h0 = raster(o, &nskip, &ht0); }
+        NdSeamTab c1;
+        if (compile_soup(&t, &c1, 1)) { printf("FAIL: %s: compile soup no memory\n", nm); fail = 1; nd_seam_free(&c0); nd_seam_free(&t); continue; }
+        printf("seam step 3: %.6s with the T points: inserted %u of %u, T points in the compiled output %u (before %u)\n", nm, c_ins, t.ntp, c1.tp_all, c0.tp_all);
+        if (c_ins != t.ntp) { printf("FAIL: %s: the compiler inserted %u of the %u table points\n", nm, c_ins, t.ntp); fail = 1; }
+        if (c1.tp_all * 10u > c0.tp_all) { printf("FAIL: %s: %u T points left in the compiled output (more than 10%% of %u)\n", nm, c1.tp_all, c0.tp_all); fail = 1; }
+        if (cam) {
+            unsigned ht1, h1 = raster(o, &nskip, &ht1);
+            printf("seam step 4: mac_01 holes before %u (on T-point edges %u, other %u), after %u (on T-point edges %u, other %u); triangles %u, near or guard skip %u, T edges %u\n",
+                h0, ht0, h0 - ht0, h1, ht1, h1 - ht1, nctri, nskip, ntseg);
+            if (h1 > h0 || ht1 * 2u > ht0) { printf("FAIL: mac_01 holes on T-point edges did not drop to half\n"); fail = 1; }
         }
+        nd_seam_free(&c1);
         nd_seam_free(&c0);
         nd_seam_free(&t);
         free(buf);

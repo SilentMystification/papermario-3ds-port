@@ -5112,6 +5112,38 @@
       ],
       "log_metrics": [],
       "gates": []
+    },
+    {
+      "name": "seam_mac01_east",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SEAMFIX picture gate: Toad Town mac_01 east floor (lists 115 and 180 of the oracle: floor gaps along the T-point edges), det, shots at frames 200 to 205.",
+      "scenario": "seam_mac01_east",
+      "cap": 25,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": [
+        "azahar",
+        "det",
+        "seam"
+      ],
+      "gates": []
+    },
+    {
+      "name": "seam_mac01_merlon",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SEAMFIX picture gate: Toad Town mac_01 outdoors in front of Merlon's house (PT43 seams), det, shots at frames 200 to 205.",
+      "scenario": "seam_mac01_merlon",
+      "cap": 25,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": [
+        "azahar",
+        "det",
+        "seam"
+      ],
+      "gates": []
     }
   ],
   "legacy": {
