@@ -85,7 +85,7 @@
       "purpose": "MENUWARP steps 3 and 4: Warp area level 1 rows (Toad Town Tunnels after Toad Town) and the left or right skip of 6 rows on a row with no value (menu: skip 6 log line).",
       "scenario": "menuwarp_list",
       "cap": 25,
-      "until": "padscript: done",
+      "until": "menu: tab 4 row 6 ",
       "tags": [
         "azahar",
         "menu",

@@ -897,7 +897,7 @@ static const char* const area_name[] = {
 #define WA_GA 40 /* ceiling of gAreas entries */
 /* STORYMENU: the area rows in story order (gAreas indices, the same index as area_name). The areas not listed here follow in gAreas order
  * (Ending, Minigames, Game Over, Test map). The presets sit between the story areas and the other areas (pm_warp_top_*). */
-static const int story_area[] = { 0, 5, 1, 23, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 3, 17, 18, 19, 20, 21, 22, 2 };
+static const int story_area[] = { 0, 5, 1, 2, 23, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 3, 17, 18, 19, 20, 21, 22 };
 static int wa_n = -1, wa_s, wa_area[WA_MAX], wa_off[WA_MAX], wa_size[WA_MAX], wa_k[WG_MAPS];
 /* adds gAreas entry i with flat map indices from base (test maps skipped) */
 static void wa_add(int i, int base, int* n, int* cnt) {

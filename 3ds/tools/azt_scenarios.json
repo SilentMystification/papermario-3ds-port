@@ -11490,10 +11490,11 @@
     {
       "name": "menuwarp_list",
       "status": "unverified",
+      "reason": "MENUWARP steps 3 and 4 gate: menu shots (shotmenu, one bottom shot per menu draw; the game is paused while the menu is open, so the frame shots do not fire): the row 0 shot shows the level 1 list (Toad Town Tunnels after Toad Town), the row 6 shot after one right press.",
       "subject": "Port menu Debug tab, row Warp area (row 0, A) opens the Warp area folder at level 1: the rows are the story areas (Goomba Village, Toad Town, Toad Town Tunnels, ...). One shot before and one after a right press: the cursor moves 6 rows.",
       "proves": "MENUWARP steps 3 and 4: Toad Town Tunnels is the third row (after Toad Town), and left or right on a Warp area row with no value moves 6 rows (pm_optui_step returns 0, pm_menu_hold skips).",
-      "debug": "preset=toad padscript=@pad_menuwarp_list.txt shots shotbottom=90:110 loglevel=debug",
-      "until": "padscript: done",
+      "debug": "preset=toad padscript=@pad_menuwarp_list.txt shotmenu loglevel=debug",
+      "until": "menu: tab 4 row 6 ",
       "cap": 25,
       "deadline": 20,
       "first_marker": "warp: mac_00 entry 4",
@@ -11509,15 +11510,18 @@
           "regex": "menu: open"
         },
         {
+          "name": "level 1 list (row 0 shot)",
+          "regex": "menu: shot bot_m\\d+ tab 4 row 0\\b"
+        },
+        {
           "name": "skip 6",
           "regex": "menu: skip 6 row 0 -> 6"
         },
         {
-          "name": "done",
-          "regex": "padscript: done"
+          "name": "row 6 shot",
+          "regex": "menu: shot bot_m\\d+ tab 4 row 6\\b"
         }
-      ],
-      "reason": "MENUWARP step 4 gate: the skip log line (row 0 to row 6) after one right press, and the bottom shots before and after the press (step 3: the row order shows Toad Town Tunnels after Toad Town)."
+      ]
     }
   ]
 }
