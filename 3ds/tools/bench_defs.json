@@ -12,6 +12,54 @@
   },
   "benches": [
     {
+      "name": "dmg_jump",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "BTLUI bug 2 step 1: action command prompt of the first jump (kmr_20 battle); shots 180 to 240 every 4 frames; the button icon.",
+      "scenario": "dmg_jump",
+      "cap": 45,
+      "until": "shot \\d+ frame 240\\b",
+      "tags": [
+        "azahar",
+        "battle",
+        "btlui"
+      ],
+      "gates": []
+    },
+    {
+      "name": "dmg_jump_ac",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "RIGHTON: jump action command prompt with the Perfect action commands cheat; the A button only, no Right On! art (kmr_20 battle, autoa).",
+      "scenario": "dmg_jump_ac",
+      "cap": 25,
+      "until": "shot \\d+ frame 198\\b",
+      "tags": [
+        "azahar",
+        "battle",
+        "righton"
+      ],
+      "gates": []
+    },
+    {
+      "name": "dmg_star",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "BTLUI bug 1: battle damage star behind the damage number. Shots 40 to 320 every 20 frames (kmr_20 battle, autoa); the star shows after the first jump hit.",
+      "scenario": "dmg_star",
+      "cap": 45,
+      "until": "shot \\d+ frame 320\\b",
+      "tags": [
+        "azahar",
+        "battle",
+        "btlui"
+      ],
+      "gates": []
+    },
+    {
       "name": "sprshade_hos01_pic",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -609,6 +657,73 @@
         "spot"
       ],
       "gates": []
+    },
+    {
+      "name": "c1probe_o3ds",
+      "kind": "console_prof",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CORE2C C1P probe (switch c1probe): can a game thread on core 1 carry the logic? Toad Town mac_01 at 0 0 200, prof mode. After the first prof window, a core-1 thread at game priority + 2 spins 2 s (s1 = its rate against core 0), then records the wake latency of a per-frame LightEvent (150 frames) and the pauses over 0.5 ms. One line `prof c1probe`. Pass: s1 >= 0.5, wake p95 < 1000 us. Deleted with the probe.",
+      "scene_match": null,
+      "recipe": "warp=mac_01:0 pos=0:0:200 prof=30 c1probe",
+      "scenario": null,
+      "host": "o3ds",
+      "cap": 60,
+      "until": "prof c1probe pause ",
+      "tags": [
+        "console",
+        "prof",
+        "core2"
+      ],
+      "log_metrics": [
+        {
+          "name": "s1",
+          "regex": "prof c1probe .*? s1 ([0-9.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "wake_med_us",
+          "regex": "prof c1probe .*? wake med (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "wake_p95_us",
+          "regex": "prof c1probe .*? p95 (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "wake_max_us",
+          "regex": "prof c1probe .*? p95 \\d+ max (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "pause_n",
+          "regex": "prof c1probe pause n (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "pause_per_ms",
+          "regex": "prof c1probe pause n \\d+ per ([0-9.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "pause_len_ms",
+          "regex": "prof c1probe pause .*? len ([0-9.]+)",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "s1",
+          "op": ">=",
+          "value": 0.5
+        },
+        {
+          "metric": "wake_p95_us",
+          "op": "<",
+          "value": 1000
+        }
+      ]
     },
     {
       "name": "bg_flicker_mac00",
@@ -3770,6 +3885,374 @@
           "value": 0
         }
       ]
+    },
+    {
+      "name": "gameover_fps60",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "GAMEOVER: game over map gv_01 with 60 fps mode on, shots frames 70 to 89 (every drawn frame), draw census at frame 80. A person reads the shot: consecutive shots consistent (no alternating blur), GAME OVER letters.",
+      "scenario": "gameover_fps60",
+      "cap": 30,
+      "until": "shot \\d+ frame 89\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "gameover"
+      ],
+      "gates": []
+    },
+    {
+      "name": "gameover_30",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "GAMEOVER: game over map gv_01 with 60 fps mode off, shots frames 70 to 89 (every drawn frame), draw census at frame 80. A person reads the shot: consecutive shots consistent (no alternating blur), GAME OVER letters.",
+      "scenario": "gameover_30",
+      "cap": 30,
+      "until": "shot \\d+ frame 89\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "gameover"
+      ],
+      "gates": []
+    },
+    {
+      "name": "xfer_door_mac01",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MAPX: Merlon's house door on mac_01 (enter and exit, twice), det; xfer door lines (steps, longest step, o34, model cache miss and clears).",
+      "scenario": "xfer_door_mac01",
+      "cap": 45,
+      "until": "xfer2 door n4\\b",
+      "tags": [
+        "azahar",
+        "xfer"
+      ],
+      "log_metrics": [
+        {
+          "name": "xfer_max_ms",
+          "regex": "xfer door \\S+ f\\d+ max ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_o34",
+          "regex": "xfer door \\S+ f\\d+ max [\\d.]+ o34 (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_mdl_miss",
+          "regex": "xfer2 door n\\d+ .* mdl (\\d+)/",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_mdl_clr",
+          "regex": "xfer2 door n\\d+ .* mdl \\d+/(\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_init_ms",
+          "regex": "xfer door \\S+ .* init ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_load_ms",
+          "regex": "xfer door \\S+ .* load ([\\d.]+)",
+          "pick": "last"
+        }
+      ],
+      "gates": []
+    },
+    {
+      "name": "xfer_map_mac01",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MAPX: mac_01 -> mac_02 loading zone walk, det; the xfer map line (load stages, first drawn frame).",
+      "scenario": "xfer_map_mac01",
+      "cap": 35,
+      "until": "xfer map \\S+[>]mac_02",
+      "tags": [
+        "azahar",
+        "xfer"
+      ],
+      "log_metrics": [
+        {
+          "name": "xfer_max_ms",
+          "regex": "xfer map \\S+ f\\d+ max ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_o34",
+          "regex": "xfer map \\S+ f\\d+ max [\\d.]+ o34 (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_mdl_miss",
+          "regex": "xfer2 map n\\d+ .* mdl (\\d+)/",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_mdl_clr",
+          "regex": "xfer2 map n\\d+ .* mdl \\d+/(\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_init_ms",
+          "regex": "xfer map \\S+ .* init ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_load_ms",
+          "regex": "xfer map \\S+ .* load ([\\d.]+)",
+          "pick": "last"
+        }
+      ],
+      "gates": []
+    },
+    {
+      "name": "xfer_door_prof",
+      "kind": "console_prof",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MAPX: Merlon's house door on mac_01 (enter and exit, twice) on the O3DS in prof mode. Pass: max under 50 ms, o34 0.",
+      "scene_match": null,
+      "recipe": "warp=mac_01:0 story=ch1_start pos=-203:20:-206 padscript=go_-203_-280_100,A,wait400,go_-190_-262_150,A,wait300,go_-235_-195_100,go_-205_-280_100,A,wait400,go_-190_-262_150,A,wait300 prof=30",
+      "scenario": null,
+      "host": "o3ds",
+      "cap": 60,
+      "until": "xfer door \\S+[:]in[-][>]\\S+[:]out",
+      "tags": [
+        "console",
+        "prof",
+        "xfer"
+      ],
+      "log_metrics": [
+        {
+          "name": "xfer_max_ms",
+          "regex": "xfer door \\S+ f\\d+ max ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_o34",
+          "regex": "xfer door \\S+ f\\d+ max [\\d.]+ o34 (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_mdl_miss",
+          "regex": "xfer2 door n\\d+ .* mdl (\\d+)/",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_mdl_clr",
+          "regex": "xfer2 door n\\d+ .* mdl \\d+/(\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_init_ms",
+          "regex": "xfer door \\S+ .* init ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_load_ms",
+          "regex": "xfer door \\S+ .* load ([\\d.]+)",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "xfer_max_ms",
+          "op": "<",
+          "value": 50
+        },
+        {
+          "metric": "xfer_o34",
+          "op": "==",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "name": "xfer_map_prof",
+      "kind": "console_prof",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MAPX: mac_01 -> mac_02 loading zone on the O3DS in prof mode. Pass: max under 50 ms, o34 0 outside the load step.",
+      "scene_match": null,
+      "recipe": "warp=mac_01:0 story=ch0_toad_town pos=0:0:200 padscript=go_0_700_300,wait150 prof=30",
+      "scenario": null,
+      "host": "o3ds",
+      "cap": 60,
+      "until": "xfer map \\S+[>]mac_02",
+      "tags": [
+        "console",
+        "prof",
+        "xfer"
+      ],
+      "log_metrics": [
+        {
+          "name": "xfer_max_ms",
+          "regex": "xfer map \\S+ f\\d+ max ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_o34",
+          "regex": "xfer map \\S+ f\\d+ max [\\d.]+ o34 (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_mdl_miss",
+          "regex": "xfer2 map n\\d+ .* mdl (\\d+)/",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_mdl_clr",
+          "regex": "xfer2 map n\\d+ .* mdl \\d+/(\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_init_ms",
+          "regex": "xfer map \\S+ .* init ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_load_ms",
+          "regex": "xfer map \\S+ .* load ([\\d.]+)",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "xfer_max_ms",
+          "op": "<",
+          "value": 50
+        },
+        {
+          "metric": "xfer_o34",
+          "op": "==",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "name": "xfer_map_shots",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MAPX-3: mac_01 -> mac_02, det, shots 196 to 211 (covered frames black, first uncovered frame equal to base). A person reads the shots.",
+      "scenario": "xfer_map_shots",
+      "cap": 35,
+      "until": "shot \\d+ frame 211\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "xfer"
+      ],
+      "gates": []
+    },
+    {
+      "name": "magi_hit_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MAGI: Magikoopa Magic Blast hit on Mario (HOS formation 03). fspk lines: per-frame draws, binds, misses around the hit; 6 shots after the hit. Azahar counts valid, ms direction only.",
+      "scenario": "magi_hit",
+      "cap": 20,
+      "until": "fspk: done hit f\\d+",
+      "tags": [
+        "azahar",
+        "pic",
+        "magi",
+        "battle"
+      ],
+      "gates": []
+    },
+    {
+      "name": "magi_hit_prof",
+      "kind": "console_prof",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MAGI: Magikoopa Flying battle (HOS formation 03) on the O3DS console, prof mode, autoa; the fspk lines give the step ms of each frame around the Magic Blast hit. Ingest the live log after the push.",
+      "scene_match": null,
+      "recipe": "warp=hos_00:0 story=ch0_toad_town battle=BTL_HOS_FORMATION_03:BTL_HOS_STAGE_02 battlef=100 cheats=hp autoa fspk prof=30",
+      "scenario": null,
+      "host": "o3ds",
+      "cap": 45,
+      "until": "fspk: done hit f\\d+",
+      "tags": [
+        "console",
+        "prof",
+        "magi"
+      ],
+      "gates": []
+    },
+    {
+      "name": "magi_hit_stream",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MAGI: Magikoopa Magic Blast hit (HOS formation 03), fspk per-frame lines with no shots. Azahar counts valid, ms direction only.",
+      "scenario": "magi_hit_noshot",
+      "cap": 20,
+      "until": "fspk: done hit f\\d+",
+      "tags": [
+        "azahar",
+        "magi",
+        "battle"
+      ],
+      "gates": []
+    },
+    {
+      "name": "starfx_hos01",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "STARFX lag: hos_01 star spirit pop-in with prof=30 (no shots). The starfx pre, popin start and popin steady lines give frames, ms and model cache misses and clears before and after the pop-in. Counts are valid on Azahar; time is direction only.",
+      "scenario": "starfx_hos01",
+      "cap": 35,
+      "until": "starfx: popin steady",
+      "tags": [
+        "azahar",
+        "prof",
+        "starfx"
+      ],
+      "gates": []
+    },
+    {
+      "name": "starfx_hos01_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "STARFX picture: hos_01 star spirit pop-in, shots from frame 200 to about 228 (every 4 frames, the shot cost; pop-in at frame 190). A person reads the shot: the spirits and their glowing stars.",
+      "scenario": "starfx_hos01_pic",
+      "cap": 35,
+      "until": "starfx: popin steady",
+      "tags": [
+        "azahar",
+        "starfx"
+      ],
+      "gates": []
+    },
+    {
+      "name": "starfx_hos01_prof",
+      "kind": "console_prof",
+      "speed": "normal",
+      "default": false,
+      "purpose": "STARFX console: hos_01 star spirit pop-in on the O3DS (prof=30), the same route as starfx_hos01. The starfx pre, popin start and popin steady lines give frames, ms and model cache misses and clears; the prof windows give the frame time. Ingest the live log after the push.",
+      "scene_match": null,
+      "recipe": "warp=hos_01:0 story=ch0_toad_town pos=-110:250:-170 padscript=wait60,go_-36_-170_60,wait10,A,wait40,A,wait40,A",
+      "scenario": null,
+      "host": "o3ds",
+      "cap": 45,
+      "until": "starfx: popin steady",
+      "tags": [
+        "console",
+        "prof",
+        "starfx"
+      ],
+      "gates": []
     },
     {
       "name": "tik19_water_walk",

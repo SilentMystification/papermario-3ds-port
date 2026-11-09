@@ -202,6 +202,7 @@ static int off_used, off_sused, off_fail, off_w = PM_OFF_W, off_h = PM_OFF_H, of
 static unsigned off_mask_f; /* VRAM3 trace: bit i set when full image i is drawn in this frame */
 static unsigned off_trace_n;
 static int prev_want, prev_pre; /* PT12: see pm_gpu_grab_prev */
+static int prev_done; /* GAMEOVER: the slot of the old frame is drawn in this drawn frame (key or t = 0.5 pass). Cleared with the slots (pm_gpu_begin_wait) */
 extern unsigned pm_frame_count(void);
 static unsigned r_mixcol; /* V06: see pm_gpu_set_mix */
 static int r_replace; /* off-screen fill: the pixel is written, not blended */
@@ -514,8 +515,10 @@ static __attribute__((cold, noinline)) void ndref_end(void) { /* end of frame: w
  * triangles of the frame. gb: GPU busy ticks of the sampled frames, from the submit (pm_gpu_end) to the sync (the frame begin after it). */
 static unsigned long long pfd_sum[4], gb_sum, gb_n, gb_sub;
 static int gb_on;
+unsigned pm_gpu_fr_last[4]; /* MAGI fspk: draws, TEV rebuilds, texture binds, triangles of the last finished frame */
 extern unsigned pm_pf_late; /* PROF2-1, pm_phase.c */
 static void pfd_add(void) {
+    pm_gpu_fr_last[0] = cen_draws; pm_gpu_fr_last[1] = pm_dc_c[DC_TEVR]; pm_gpu_fr_last[2] = pm_dc_c[DC_TB0] + pm_dc_c[DC_TB1]; pm_gpu_fr_last[3] = cen_tris;
     pfd_sum[0] += cen_draws; pfd_sum[1] += pm_dc_c[DC_TEVR]; pfd_sum[2] += pm_dc_c[DC_TB0] + pm_dc_c[DC_TB1]; pfd_sum[3] += cen_tris;
 }
 /* out: draws, TEV rebuilds, texture binds, triangles (summed since the last read), GPU busy ticks and sample count. Reads reset the sums. */
@@ -1988,9 +1991,14 @@ int pm_gpu_grab(const void* cfb, int y0, int y1) { return grab_impl(cfb, y0, y1,
  * Returns 2 if the old frame is in the slot of prev_cfb. */
 int pm_gpu_grab_prev(const void* prev_cfb) {
     PM_WALK_OWN(); /* CORE2-3a */
-    prev_want = 2; /* BTRANS: the request holds for 2 drawn frames: a replay draw (interp) takes the copy and does not capture */
+    prev_want = 2; /* BTRANS: the request holds for 2 drawn frames */
+    /* GAMEOVER: each strip of a blur asks. The answer of the first ask holds for the drawn frame (prev_pre does not come back in a frame), so the
+     * later asks do not flush: the strips stay one batch. */
+    if (prev_done) return prev_done > 0 ? 2 : 0;
     if (!target || !gs.gpu_ok) return 0;
-    return grab_impl(prev_cfb, 0, 240, 1);
+    const int r = grab_impl(prev_cfb, 0, 240, 1);
+    prev_done = r == 2 ? 1 : -1;
+    return r;
 }
 /* BTRANS fix 3: an encounter start (pre-battle init) asks for the copy of the frame before the star wipe, at the next two begins. */
 /* CORE2-3a: walker side entry (nd_wq.c): the game thread posts it, the body runs on the walker side. */
@@ -2140,6 +2148,7 @@ void pm_gpu_begin_wait(void) {
     off_dump();
     for (int k = 0; k < OFF_P; k++) gs.offs[k].base = NULL; /* FX2a: the 8 bit slots keep their base */
     off_used = off_sused = 0;
+    prev_done = 0; /* GAMEOVER: the old frame slot went with the slots */
     gs.off_active = 0;
     off_i8 = 0;
     off_fail = 0; /* row 4: a VRAM failure lasts one frame */
@@ -2787,8 +2796,23 @@ static uint32_t aux_hash(const uint32_t* rec) {
     for (unsigned k = 0; k < 2u * n && k < 16u; k++) h = (h ^ rec[NDMC_RW + k]) * 16777619u;
     return h;
 }
+/* MAPX-2: the other mode bits the record's render mode list writes (per render mode index, compiled once; the lists are static). The draw merges the
+ * walker's other mode as (walker & ~written) | list (nd_model_state, B8), so a written bit of the walker never reaches it: the key leaves those bits out.
+ * Before, the walker other mode in the key depended on whether the record before was a cache hit (a hit skips rec_apply, so the walker keeps the older
+ * mode): every new or changed record in a door or a room change missed again the records after it, and the misses filled the cache to a clear. */
+static uint32_t rm_wh[256], rm_wl[256]; static uint8_t rm_done[256];
+static __attribute__((cold, noinline)) void rm_masks(unsigned i) {
+    extern void* ModelRenderModes[]; /* src/model.c: Gfx* per render mode index */
+    NdMode m;
+    rm_done[i] = 1;
+    if (nd_mode_compile(&m, (const unsigned*)ModelRenderModes[i])) { rm_wh[i] = m.wh; rm_wl[i] = m.wl; }
+}
 void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) {
     memcpy(k->w, rec, NDMC_RW * sizeof(uint32_t));
+    k->w[3] = 0; /* MAPX-2: R1 w1 (pmSlot, static matrix flag, pmMtxVer) is matrix bookkeeping: a hit runs the matrix of this frame (rec_matrix, the palette); a lit entry keeps its version (NdMEnt mver) */
+    const unsigned rmi = (rec[0] >> 16) & 0xffu;
+    if (!rm_done[rmi]) rm_masks(rmi);
+    const uint32_t kh = ND_OMH_READ & ~rm_wh[rmi], kl = ~rm_wl[rmi]; /* H: only the cycle type is read (nd.h); L: nd_mix1 reads bits 18 to 31 too */
     /* MERLEE: a shroud record (R3 bit 32) changes its fog colour alpha (ShroudTintAmt) and may change its blend colour every frame of a fade. Only the mix colour
      * reads them, and the hit sets that colour from the record (pm_gpu_model_hit), so they are not in the key: a fade hits instead of rebuilding every model each frame. */
     if (rec[6] & 32u) { k->w[8] &= 0xffffff00u; k->w[14] = 0; }
@@ -2796,7 +2820,9 @@ void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) {
     unsigned sw_tss, sw_geo, sw_cw0, sw_cw1; pm_gbi_sticky(&sw_tss, &sw_geo, &sw_cw0, &sw_cw1);
     float db = decal_bias(); uint32_t dbits; memcpy(&dbits, &db, 4);
     unsigned i = 0;
-    s[i++] = nd_ws.omode_h; s[i++] = nd_ws.omode_l; s[i++] = nd_ws.om_kh; s[i++] = nd_ws.om_kl; s[i++] = nd_ws.geom;
+    uint32_t gk = 0xFFFFFFFFu; /* MAPX-2: the walker geometry reaches the draw only through the bits the list's groups keep (gg = (entry & am) | om) */
+    if (rec[24] && pm_dlc_geom_keep((const void*)(uintptr_t)rec[24], &gk) != 0) gk = 0xFFFFFFFFu;
+    s[i++] = nd_ws.omode_h & kh; s[i++] = nd_ws.omode_l & kl; s[i++] = nd_ws.om_kh & kh; s[i++] = nd_ws.om_kl & kl; s[i++] = nd_ws.geom & gk;
     s[i++] = sw_tss; s[i++] = sw_cw0; s[i++] = sw_cw1;
     s[i++] = nd_ws.prim; s[i++] = nd_ws.prim_lod; s[i++] = aux_hash(rec); /* S3N-7: env_col is not in the key (it changes per draw order; the cached draws do not read it: ndmcheck diff 0). S3L-3: slot 10 = hash of the R13 words (compared) */ s[i++] = cconst; s[i++] = gs.r_mix == 2 ? r_mixcol : 0u; s[i++] = dbits; /* MERLEE: the walker's mix reaches the native draw only as the F08 fog mix (model_draw) */
     s[i++] = (uint32_t)dview; s[i++] = gs.r_mix == 2 ? 2u : 0u; s[i++] = (uint32_t)r_memblend; s[i++] = (uint32_t)r_replace; s[i++] = (uint32_t)gv_wind;
@@ -2905,8 +2931,8 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
     int valid = 0;
     if (n >= 0 && !emit) valid = ndc_compare(mk, ds, id, hs, hg); /* S3N-6 check: the cached draws of this key against these */
     /* MDL-1: a textured draw without a handle desc (the bound slot, R13 block) stores tex 1: its hit has no desc, so it falls back (ndn_texf) and never reuses the slot of another frame */
-    if (n >= 0 && !valid) { int r13nd_ = (r13_last && ds == NULL && gfx == NULL && tex); if (r13nd_) nd_r13_nohit++; NdMEnt* se_ = nd_mc_store(mk, ds != NULL || r13nd_, hs, hg);
-        if (se_) { se_->h1s = (int16_t)(r13u1_ok ? r13u1_slot : -1); se_->h1g = r13u1_ok ? pm_tex_slot_gen(r13u1_slot) : 0u; } } /* TIK19: the unit 1 slot and its generation, the hit reads its words again */ /* MDL-1 cache (oracle review): only R13 texture records without a desc store tex 1 */ /* S3N-6: the draws and ranges of this key (a miss; a valid entry stays) */
+    if (n >= 0 && !valid && !mk->w[22]) { int r13nd_ = (r13_last && ds == NULL && gfx == NULL && tex); if (r13nd_) nd_r13_nohit++; NdMEnt* se_ = nd_mc_store(mk, ds != NULL || r13nd_, hs, hg);
+        if (se_) { se_->h1s = (int16_t)(r13u1_ok ? r13u1_slot : -1); se_->h1g = r13u1_ok ? pm_tex_slot_gen(r13u1_slot) : 0u; } } /* TIK19: the unit 1 slot and its generation, the hit reads its words again */ /* MDL-1 cache (oracle review): only R13 texture records without a desc store tex 1. STARFX: a record with a pre list (key w22, R11 w0) is never stored (rec_run) */ /* S3N-6: the draws and ranges of this key (a miss; a valid entry stays) */
     return n;
 }
 void pm_gpu_ndm_begin(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, const NdMKey* mk) {
@@ -2954,7 +2980,8 @@ static void ndn_log(unsigned f) { /* PROF2-3: census lines, from cen_lines_frame
         pm_log_w("ndmhit f%u nokey %u rng %u tex %u empty %u", f, ndn_nokey, ndn_rng, ndn_texf, ndn_empty);
         { static int szd; if (!szd) { szd = 1; pm_log_w("ndmsz entry %u draw %u", (unsigned)sizeof(NdMEnt), (unsigned)sizeof(NdNat)); } }
         { unsigned dg[15]; nd_mc_diag_take(dg);
-          pm_log_w("ndmmiss f%u new %u clr %u rec %u st %u hd %u gv %u same %u rcap %u ncap %u ins %u ent %u pool %u ehi %u phi %u cap %u", f, dg[0], dg[1], dg[2], dg[3], dg[4], dg[5], dg[6], dg[7], dg[8], dg[9], dg[10], dg[11], dg[12], dg[13], dg[14]); }
+          pm_log_w("ndmmiss f%u new %u clr %u rec %u st %u hd %u gv %u same %u rcap %u ncap %u ins %u ent %u pool %u ehi %u phi %u cap %u", f, dg[0], dg[1], dg[2], dg[3], dg[4], dg[5], dg[6], dg[7], dg[8], dg[9], dg[10], dg[11], dg[12], dg[13], dg[14]);
+          { void nd_mc_rw_take(char* b, unsigned n); char rb[200]; nd_mc_rw_take(rb, sizeof rb); pm_log_w("ndmrw f%u %s", f, rb); } }
         { unsigned dr[16]; pm_gbi_dnr_take(dr, 16u); /* S4-1: the refusal classes of the native ranges (code 12 = any of them) */
           pm_log_w("ndmr f%u c1 %u c2 %u c3 %u c4 %u c5 %u c6 %u c7 %u c8 %u c9 %u c10 %u", f, dr[1], dr[2], dr[3], dr[4], dr[5], dr[6], dr[7], dr[8], dr[9], dr[10]);
           pm_log_w("ndmr2 f%u c11 %u c12 %u c13 %u c14 %u c15 %u", f, dr[11], dr[12], dr[13], dr[14], dr[15]); }
@@ -3086,6 +3113,7 @@ int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32
 int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
     if (!e) { ndn_nokey++; return 0; }
     if (!model_vis_same(k, e)) { ndn_rng++; return 0; }
+    if (e->mver && e->mver != ((((const uint32_t*)(uintptr_t)k->rp)[3] >> 16) | 0x10000u)) { ndn_rng++; return 0; } /* MAPX-2: a lit entry whose matrix moved: the miss path stores it again in place */
     if (!e->n) { ndn_empty++; ndn_rec++; ndn_hit++; return 1; } /* PERF1-4c: no draw (no group in view, or all culled): no texture lookup, template build, matrix product or flush */
     NdUnit u; memset(&u, 0, sizeof u);
     if (e->tex) {

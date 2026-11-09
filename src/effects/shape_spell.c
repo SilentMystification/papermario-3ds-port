@@ -101,6 +101,9 @@ void shape_spell_update(EffectInstance* effect) {
     isChild = part->isChild;
 
     if (!isChild && part->timeLeft == 0) {
+#ifdef TARGET_3DS
+        { extern void pm_fspk_mark(const char* what); pm_fspk_mark("shape_spell hit"); } /* MAGI: the spell reaches its target */
+#endif
         ShapeSpellFXData* newPart = shape_spell_main(
             1,
             part->pos.x + part->unk_10,
@@ -147,6 +150,144 @@ s32 func_E00243BC(s32 arg0, s32 arg1) {
     return (f32)((sin_deg(frameCounter + arg1) * -arg0 + -arg0) * 0.5 + arg0);
 }
 
+#ifdef TARGET_3DS
+/* MAGI: the 3DS draws the spell as 9 batches (one per trail step i and colour j) instead of one draw per quad. The N64 list gave every quad
+ * its own matrix (12 copies x 3 steps x 3 colours = 108 quads of the hit burst, 9 for the flying spell), and every matrix is its own draw on
+ * the port. Here the quad corners go through the same float matrices on the CPU (T_j, then A_i, then the copy rotation R_k, row vectors as
+ * guMtxCatF), are stored 32x in s16, and one matrix (the effect position, then 1/32) draws them. Per batch: the colour and tile window of
+ * the old per-quad list, one vertex load (4 x copies) and the triangles. Draw order: step i, then colour j, then copy k (the N64 order
+ * was k, i, j); the trail steps keep their order within each copy. */
+#define SHAPE_SPELL_FIX 32.0f
+static const u16 shape_spell_ult[3] = { 0x0400, 0x0300, 0x0200 }; /* the SetTileSize ult of D_09001128/D_090011A0 (j 0), 1150/11C8 (j 1), 1178/11F0 (j 2); lrt = ult + 0x100 */
+static s16 shape_spell_fix(f32 v) {
+    v *= SHAPE_SPELL_FIX;
+    return (s16)(v >= 0.0f ? v + 0.5f : v - 0.5f);
+}
+void shape_spell_appendGfx(void* effect) {
+    ShapeSpellFXData* data = ((EffectInstance*)effect)->data.shapeSpell;
+    s32 isChild = data->isChild;
+    f32 unk_28 = data->unk_28;
+    f32 unk_10 = data->unk_10;
+    f32 unk_14 = data->unk_14;
+    f32 unk_18 = data->unk_18;
+    s32 timeLeft = data->timeLeft;
+    s32 ncopy = isChild ? 12 : 1;
+    f32 half = isChild ? 10.0f : 15.0f; /* D_09001040 (child) and D_09001000 (flying) corners */
+    f32 angle, factor, yawIn, yawOut;
+    Matrix4f mA, mT, mL, mR[12];
+    f32 corner[3][3][4][3]; /* step i, colour j, corner: position after T_j and A_i */
+    Gfx* jump;
+    Vtx* vbuf;
+    s32 i, j, k, c;
+    static const s16 cx[4] = { -1, 1, 1, -1 }, cy[4] = { -1, -1, 1, 1 };
+    static const s16 ct[4][2] = { { 0, 2048 }, { 2048, 2048 }, { 2048, 0 }, { 0, 0 } };
+    static const u8 cc[4] = { 0, 127, 255, 127 };
+
+    if (!isChild) {
+        angle = timeLeft * 35;
+        factor = 9.0f;
+        yawIn = -gCameras[gCurrentCameraID].curYaw;
+        yawOut = 0.0f;
+    } else {
+        angle = timeLeft * 25;
+        factor = 6.0f;
+        yawIn = 0.0f;
+        yawOut = -gCameras[gCurrentCameraID].curYaw;
+        unk_10 *= unk_28;
+    }
+    for (i = 0; i < 3; i++) {
+        if (i > 0) {
+            if (!isChild) {
+                angle -= 70.0f;
+                unk_10 -= 2.0f * data->unk_1C;
+                unk_14 -= 2.0f * data->unk_20;
+                unk_18 -= 2.0f * data->unk_24;
+            } else {
+                angle -= 50.0f;
+                unk_10 -= data->unk_1C * (100.0 / 83) * 2.0;
+            }
+        }
+        guPositionF(mA, 0.0f, yawIn, 0.0f, unk_28, unk_10, unk_14, unk_18);
+        for (j = 0; j < 3; j++) {
+            guTranslateF(mT, sin_deg(angle) * factor, cos_deg(angle) * factor, 0.0f);
+            angle += 120.0f;
+            guMtxCatF(mT, mA, mL);
+            for (c = 0; c < 4; c++) {
+                guMtxXFMF(mL, cx[c] * half, cy[c] * half, 0.0f, &corner[i][j][c][0], &corner[i][j][c][1], &corner[i][j][c][2]);
+            }
+        }
+        angle -= 120.0f; /* the N64 loop adds 120 twice per step (none after the third T_j); the loop above adds it three times */
+    }
+    for (k = 0; k < ncopy; k++) {
+        if (isChild) {
+            guRotateF(mR[k], 30.0f * (k + 1), 0.0f, 0.0f, 1.0f);
+        } else {
+            guMtxIdentF(mR[k]);
+        }
+    }
+
+    jump = gMainGfxPos++;
+    vbuf = (Vtx*)gMainGfxPos;
+    gMainGfxPos += (9 * 4 * ncopy * sizeof(Vtx)) / sizeof(Gfx);
+    gSPBranchList(jump, gMainGfxPos);
+    for (i = 0; i < 3; i++) {
+        for (j = 0; j < 3; j++) {
+            Vtx* v = vbuf + (i * 3 + j) * 4 * ncopy;
+            for (k = 0; k < ncopy; k++) {
+                for (c = 0; c < 4; c++, v++) {
+                    f32 ox, oy, oz;
+                    guMtxXFMF(mR[k], corner[i][j][c][0], corner[i][j][c][1], corner[i][j][c][2], &ox, &oy, &oz);
+                    v->v.ob[0] = shape_spell_fix(ox);
+                    v->v.ob[1] = shape_spell_fix(oy);
+                    v->v.ob[2] = shape_spell_fix(oz);
+                    v->v.flag = 0;
+                    v->v.tc[0] = ct[c][0];
+                    v->v.tc[1] = ct[c][1];
+                    v->v.cn[0] = v->v.cn[1] = v->v.cn[2] = cc[c];
+                    v->v.cn[3] = 255;
+                }
+            }
+        }
+    }
+
+    gDPPipeSync(gMainGfxPos++);
+    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    gSPDisplayList(gMainGfxPos++, D_09001080_33AFE0);
+
+    guPositionF(mL, 0.0f, yawOut, 0.0f, 1.0f, data->pos.x, data->pos.y, data->pos.z);
+    guMtxF2L(mL, &gDisplayContext->matrixStack[gMatrixListPos]);
+    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    guScaleF(mL, 1.0f / SHAPE_SPELL_FIX, 1.0f / SHAPE_SPELL_FIX, 1.0f / SHAPE_SPELL_FIX);
+    guMtxF2L(mL, &gDisplayContext->matrixStack[gMatrixListPos]);
+    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+
+    for (i = 0; i < 3; i++) {
+        s32 primA = i == 0 ? data->unk_34 : data->unk_34 * 100 / 255;
+        for (j = 0; j < 3; j++) {
+            Vtx* v = vbuf + (i * 3 + j) * 4 * ncopy;
+            gDPSetPrimColor(gMainGfxPos++, 0, 0,
+                func_E00243BC(D_E0024CC0[j].unk_01, D_E0024CC0[j].unk_00),
+                func_E00243BC(D_E0024CC0[j].unk_02, D_E0024CC0[j].unk_00),
+                func_E00243BC(D_E0024CC0[j].unk_03, D_E0024CC0[j].unk_00),
+                primA);
+            gDPSetEnvColor(gMainGfxPos++,
+                func_E0024324(D_E0024CC0[j].unk_01, D_E0024CC0[j].unk_00),
+                func_E0024324(D_E0024CC0[j].unk_02, D_E0024CC0[j].unk_00),
+                func_E0024324(D_E0024CC0[j].unk_03, D_E0024CC0[j].unk_00),
+                255);
+            gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, 0, shape_spell_ult[j], 0x0100, shape_spell_ult[j] + 0x0100);
+            gSPVertex(gMainGfxPos++, v, 4 * ncopy, 0);
+            for (k = 0; k < ncopy; k++) {
+                gSP2Triangles(gMainGfxPos++, 4 * k, 4 * k + 1, 4 * k + 2, 0, 4 * k, 4 * k + 2, 4 * k + 3, 0);
+            }
+            gDPPipeSync(gMainGfxPos++);
+        }
+    }
+
+    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    gDPPipeSync(gMainGfxPos++);
+}
+#else
 void shape_spell_appendGfx(void* effect) {
     ShapeSpellFXData* data = ((EffectInstance*)effect)->data.shapeSpell;
     s32 isChild;
@@ -285,3 +426,4 @@ void shape_spell_appendGfx(void* effect) {
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     gDPPipeSync(gMainGfxPos++);
 }
+#endif

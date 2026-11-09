@@ -3,6 +3,70 @@
   "note": "Read by 3ds/tools/azt.ps1. debug = the -Debug switch string of run_azahar.ps1, until = its -Until regex, cap = -Timeout in s, extra = more run_azahar.ps1 switches. first_marker is a log regex that must appear within deadline s after the Azahar start. expects = warp | tour | none (warp and tour turn on the attract-loop check). expected_events are log regexes that must all appear. An expected_event with max is a numeric gate: capture group 1 of its regex must be at most max (pick last takes the last matching line, else the first). status = verified | unverified | completion_only | fail_demo | pending.",
   "scenarios": [
     {
+      "name": "dmg_star",
+      "status": "unverified",
+      "subject": "BTLUI bug 1: battle on kmr_20 (one Goomba formation), Mario's first jump with autoa hits; shots every 20 frames from frame 40 to 320. The picture is the subject: the coloured star burst behind the damage number must show in the shots after the hit.",
+      "proves": "BTLUI: the damage_indicator star corners (D_09002150..80 vertex loads, D_090021A8 and D_09002190 triangle lists) draw on the port: the star is in the shot.",
+      "debug": "warp=kmr_20:0 battle=BTL_KMR_1_FORMATION_00:BTL_KMR_1_STAGE_01 battlef=30 autoa det fixedseed shots shotwin=40:281:20 loglevel=debug",
+      "until": "shot \\d+ frame 320\\b",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: kmr_20 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "shot 320",
+          "regex": "shot \\d+ frame 320\\b"
+        }
+      ],
+      "reason": "BTLUI gate: battle damage star. Until is the last shot of the window (the battle: start line comes before the first jump)."
+    },
+    {
+      "name": "dmg_jump",
+      "status": "unverified",
+      "subject": "BTLUI bug 2 step 1: the action command prompt of Mario's first jump (kmr_20 battle, autoa). Shots 180 to 240 every 4 frames; the prompt button icon is the subject.",
+      "proves": "BTLUI bug 2: the A button icon of the action command prompt on the port (compare with assets/us/ui/input/a_button_unpressed.png).",
+      "debug": "warp=kmr_20:0 battle=BTL_KMR_1_FORMATION_00:BTL_KMR_1_STAGE_01 battlef=30 autoa det fixedseed shots shotwin=180:61:4 loglevel=debug",
+      "until": "shot \\d+ frame 240\\b",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: kmr_20 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "shot 240",
+          "regex": "shot \\d+ frame 240\\b"
+        }
+      ],
+      "reason": "BTLUI bug 2 step 1: action command prompt shot. Until is the last shot of the window."
+    },
+    {
+      "name": "dmg_jump_ac",
+      "status": "unverified",
+      "subject": "RIGHTON: the jump action command prompt with the Perfect action commands cheat (kmr_20 battle, autoa). The A button must show alone; the Japanese Right On! art (katakana, right of the A button) must not show.",
+      "proves": "RIGHTON: jump.c and hammer.c hide HES_RightOn under the cheat (pm_cheat_action_on); the acmd switch gives the battle the action commands without the Lucky Star.",
+      "debug": "warp=kmr_20:0 battle=BTL_KMR_1_FORMATION_00:BTL_KMR_1_STAGE_01 battlef=30 acmd cheats=action autoa det fixedseed shots shotwin=180:25:6 loglevel=debug",
+      "until": "shot \\d+ frame 198\\b",
+      "cap": 25,
+      "deadline": 40,
+      "first_marker": "warp: kmr_20 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "cheat event",
+          "regex": "cheat: perfect action command, auto success"
+        },
+        {
+          "name": "shot 198",
+          "regex": "shot \\d+ frame 198\\b"
+        }
+      ],
+      "reason": "RIGHTON short gate: cheat event line (action_cmd.c:294) and the Press right before landing popup (Mario jump) in shots 180 to 198. Code trace: Mario basic jump hides the hud (attack.c:106 ShowActionHud false), so the A prompt and the Right On art do not show here; the art path is partner headbonk (goombario.c:928), console check. The guard is jump.c:121-124 and hammer.c:187-190."
+    },
+    {
       "name": "logbench_boot",
       "status": "unverified",
       "subject": "Boot with the logbench switch: four timed loops of the log producer (plain line, four arguments, two %s, dropped line), cycles per line in the log.",
@@ -1755,7 +1819,7 @@
       "status": "unverified",
       "subject": "Map hos_01 at frames 200 to 240: animated wall texture, garbled.",
       "proves": "A preset start loads the yard map and runs steady frames with shots.",
-      "debug": "warp=hos_01:0 shots shotwin=200:40",
+      "debug": "warp=hos_01:0 shots shotwin=200:40 loglevel=debug",
       "until": "shot \\d+ frame 23[0-9]\\b",
       "cap": 90,
       "deadline": 20,
@@ -10220,6 +10284,242 @@
         }
       ],
       "reason": "AUDV census: the second 300-step window (steps 300 to 600, about 22 s at normal speed after the boot) holds the scene audio. Cap 45 s for the boot plus 600 steps."
+    },
+    {
+      "name": "gameover_fps60",
+      "status": "unverified",
+      "subject": "Game over map gv_01 (warp entry 0), 60 fps mode on (fps60; det: every game step draws the t=0.5 pass and the key frame, no skip). The map script turns on the motion blur (SetMotionBlurParams 128, OVERLAY_BLUR: 40 strips that read the previous frame buffer) and drops the GAME OVER letters. Shots every drawn frame of game frames 70 to 89 (two drawn frames per game frame with fps60: the t=0.5 pass and the key frame). Draw census at frame 80.",
+      "proves": "The game over picture per drawn frame (no alternating frames) and the draw batches per drawn frame (cen summary line).",
+      "debug": "warp=gv_01:0 fps60 det shots shotwin=70:20 drawcensus=80 caplog loglevel=debug",
+      "until": "shot \\d+ frame 89\\b",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: gv_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: gv_01 entry 0"
+        },
+        {
+          "name": "census",
+          "regex": "cen f80 summary batches \\d+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 89\\b"
+        }
+      ],
+      "reason": "Row GAMEOVER (user: game over flickers and lags, 60 fps on). Shot window after the letters start to drop; cap 30 s (boot, warp, 90 frames)."
+    },
+    {
+      "name": "gameover_30",
+      "status": "unverified",
+      "subject": "Game over map gv_01 (warp entry 0), 60 fps mode off (det: no FS1 draw skip, so frame 80 is drawn for the census). The map script turns on the motion blur (SetMotionBlurParams 128, OVERLAY_BLUR: 40 strips that read the previous frame buffer) and drops the GAME OVER letters. Shots every drawn frame of game frames 70 to 89 (two drawn frames per game frame with fps60: the t=0.5 pass and the key frame). Draw census at frame 80.",
+      "proves": "The game over picture per drawn frame (no alternating frames) and the draw batches per drawn frame (cen summary line).",
+      "debug": "warp=gv_01:0 det shots shotwin=70:20 drawcensus=80 caplog loglevel=debug",
+      "until": "shot \\d+ frame 89\\b",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: gv_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: gv_01 entry 0"
+        },
+        {
+          "name": "census",
+          "regex": "cen f80 summary batches \\d+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 89\\b"
+        }
+      ],
+      "reason": "Row GAMEOVER (user: game over flickers and lags, 60 fps on). Shot window after the letters start to drop; cap 30 s (boot, warp, 90 frames)."
+    },
+    {
+      "name": "xfer_door_mac01",
+      "status": "unverified",
+      "reason": "MAPX-1 measure and the MAPX-2 gate (door key churn). Walk 60 to 120 frames, door 60, tail 30, twice: about 15 s after the warp. Cap 40 s.",
+      "subject": "Merlon's house door on mac_01 (story ch1_start: the listener lets Mario in): Mario placed south of the door (-203 20 -206), walks to the door and presses A (room enter: the walls swing open), waits, then walks back to the door from inside and presses A (room exit). det. One xfer line per door.",
+      "proves": "MAPX-1: the xfer door lines of the enter and the exit (steps, longest step, o34, model cache misses and clears, dlc, entity and texture loads in the transition) and the ndm census lines of the room.",
+      "debug": "warp=mac_01:0 story=ch1_start pos=-203:20:-206 padscript=go_-203_-280_100,A,wait400,go_-190_-262_150,A,wait300,go_-235_-195_100,go_-205_-280_100,A,wait400,go_-190_-262_150,A,wait300 profdisk=1 xferdiag loglevel=debug det",
+      "until": "xfer2 door n4\\b",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "door enter line",
+          "regex": "xfer door \\S+:out->\\S+:in f\\d+"
+        },
+        {
+          "name": "door exit line",
+          "regex": "xfer door \\S+:in->\\S+:out f\\d+"
+        }
+      ]
+    },
+    {
+      "name": "xfer_map_mac01",
+      "status": "unverified",
+      "reason": "MAPX-1 measure and the MAPX-3/4/5 gate. Walk about 60 frames, fade 13, load 6, tail 30: about 5 s after the warp. Cap 35 s.",
+      "subject": "Toad Town mac_01 at pos 0 0 200, Mario walks south into the mac_02 loading zone (z 600, exit trigger deilis). det. The xfer map line of mac_01->mac_02 (fade out, load, first drawn frame, 30 steps).",
+      "proves": "MAPX-1: the xfer map line (steps, longest step, o34 outside the load, fade, load, rom, yay0, inv, au, init, dlc, mdl, ent, tex).",
+      "debug": "warp=mac_01:0 story=ch0_toad_town pos=0:0:200 padscript=go_0_700_300,wait150 profdisk=1 loglevel=debug det",
+      "until": "xfer map \\S+[>]mac_02",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "map line",
+          "regex": "xfer map mac_01->mac_02 f\\d+ max"
+        }
+      ]
+    },
+    {
+      "name": "xfer_map_shots",
+      "status": "unverified",
+      "subject": "mac_01 -> mac_02 loading zone walk (as xfer_map_mac01), det, one shot per frame from frame 196 to 211: the first drawn frames of mac_02 under the fade-in overlay (covered at progress 255, then fading).",
+      "proves": "MAPX-3 gate: the covered frames are black (the overlay hides the frames that build under a budget) and the first uncovered frame is byte-equal to the base build.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town pos=0:0:200 padscript=go_0_700_300,wait150 shots shotwin=196:16 profdisk=1 loglevel=debug det",
+      "until": "shot \\d+ frame 211\\b",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map line",
+          "regex": "xfer map mac_01->mac_02 f\\d+ max"
+        }
+      ],
+      "reason": "MAPX-3 gate. The map load is at about frame 190 (det): shots 196 to 211 hold the covered frames and the first fade-in frames. Cap 35 s."
+    },
+    {
+      "name": "magi_hit",
+      "status": "unverified",
+      "subject": "Magikoopa Flying battle (BTL_HOS_FORMATION_03, stage hos_02) from hos_00 with autoa: Mario jumps, the Magikoopa casts Magic Blast; the shape_spell reaching Mario marks the hit (fspk mark). Per-frame fspk lines for 16 frames before and 48 after the hit; shots of the 6 frames after the hit.",
+      "proves": "MAGI: draws, triangles, TEV rebuilds, texture binds and misses, entity key compiles and model misses per frame at the spell hit (Azahar counts valid, ms direction only); the shots show the spell burst and the hit on Mario.",
+      "debug": "warp=hos_00:0 story=ch0_toad_town battle=BTL_HOS_FORMATION_03:BTL_HOS_STAGE_02 battlef=100 cheats=hp autoa fspk shots loglevel=debug",
+      "until": "fspk: done hit f\\d+",
+      "cap": 20,
+      "deadline": 30,
+      "first_marker": "warp: hos_00 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "battle",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "hit",
+          "regex": "fspk: mark shape_spell hit"
+        }
+      ],
+      "reason": "Cap 20: the hit comes about 9 s after the start (battle load at f100, Mario's jump turn, the cast); the until line ends the 48-frame window after the hit."
+    },
+    {
+      "name": "magi_hit_noshot",
+      "status": "unverified",
+      "subject": "As magi_hit without shots: the fspk lines of the 16 frames before and 48 after the Magikoopa spell hit, no shot frame in the window. fsplit adds the per-frame parts (logic, dl, gbi, flush, gwait, swap, audio, rest) to each fspk frame.",
+      "proves": "MAGI: per-frame step ms and draw counts at the hit with no shot write in the window (the shot frames of magi_hit stall the pacing).",
+      "debug": "warp=hos_00:0 story=ch0_toad_town battle=BTL_HOS_FORMATION_03:BTL_HOS_STAGE_02 battlef=100 cheats=hp autoa fspk fsplit loglevel=debug",
+      "until": "fspk: done hit f\\d+",
+      "cap": 20,
+      "deadline": 30,
+      "first_marker": "warp: hos_00 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "battle",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "hit",
+          "regex": "fspk: mark shape_spell hit"
+        }
+      ],
+      "reason": "Cap 20: the hit comes about 9 s after the start (battle load at f100, Mario's jump turn, the cast); the until line ends the 48-frame window after the hit."
+    },
+    {
+      "name": "starfx_hos01",
+      "status": "verified",
+      "subject": "Shooting Star Summit (hos_01): Mario talks to Eldstar, the star spirits plea scene starts and the 6 other spirits pop in with their glowing star models (MODEL_1 to MODEL_7) and the appear sparkles.",
+      "proves": "STARFX lag: the starfx pre, popin start and popin steady lines carry frame, time (ms) and the native model cache misses and clears since boot. pre to start: 30 frames before the pop-in (Eldstar jump); start to steady: the 210 frames after it (the plea text MSG_HOS_0001 stays open, the scene stands). Misses and clears are counts (valid on Azahar); the time is direction only.",
+      "debug": "warp=hos_01:0 story=ch0_toad_town pos=-110:250:-170 padscript=wait60,go_-36_-170_60,wait10,A,wait40,A,wait40,A prof=30 census loglevel=debug",
+      "until": "starfx: popin steady",
+      "cap": 35,
+      "deadline": 20,
+      "first_marker": "prof cal every 30",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "prof",
+          "regex": "prof cal every 30"
+        },
+        {
+          "name": "pre",
+          "regex": "starfx: pre f\\d+"
+        },
+        {
+          "name": "popin start",
+          "regex": "starfx: popin start f\\d+"
+        },
+        {
+          "name": "popin steady",
+          "regex": "starfx: popin steady f\\d+"
+        }
+      ],
+      "reason": "STARFX row (user, console O3DS XL: the star spirit pop-in lags). Mario is placed 80 units left of Eldstar (-30 260 -170, npc.c); go_ stops 24 units before its target, so he walks about 50 units and ends about 30 units from Eldstar, facing him, then talks. prof mode logs no warp line, so the first marker is the prof calibration line; the A presses page through MSG_HOS_0000. The lines are printed by hos_01 npc.c (3DS only). Cap 35 s (cold start 12 to 16 s plus about 15 s of game time)."
+    },
+    {
+      "name": "starfx_hos01_pic",
+      "status": "verified",
+      "subject": "starfx_hos01 with shots from frame 200 to about 228 (every 4 frames, the shot cost; pop-in at frame 190): the 6 star spirits fading in over their glowing star models, the appear sparkles at the start.",
+      "proves": "STARFX picture gate: the spirits and the star effect are drawn (the model cache change keeps the picture). A person reads the shot.",
+      "debug": "warp=hos_01:0 story=ch0_toad_town pos=-110:250:-170 padscript=wait60,go_-36_-170_60,wait10,A,wait40,A,wait40,A shots shotwin=200:30 loglevel=debug",
+      "until": "starfx: popin steady",
+      "cap": 35,
+      "deadline": 20,
+      "first_marker": "warp: hos_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: hos_01 entry 0"
+        },
+        {
+          "name": "pre",
+          "regex": "starfx: pre f\\d+"
+        },
+        {
+          "name": "popin start",
+          "regex": "starfx: popin start f\\d+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot [0-9]+ frame 2[2-9][0-9]"
+        },
+        {
+          "name": "popin steady",
+          "regex": "starfx: popin steady f\\d+"
+        }
+      ],
+      "reason": "STARFX row picture gate. Same route as starfx_hos01, not in prof mode (the warp line is the first marker), shots 200 to 229. Cap 35 s."
     },
     {
       "name": "tik19_water_walk",

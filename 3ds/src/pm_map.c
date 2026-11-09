@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdio.h>
 #include "common.h"
 #include "model.h"
 #include "sprite.h"
@@ -339,6 +340,7 @@ static int yay0_decode_raw(const u8* src, u32 src_len, u8* dst, u32 dst_len) {
     return 1;
 }
 
+int pm_yay0_raw(const unsigned char* src, unsigned src_len, unsigned char* dst, unsigned dst_len) { return yay0_decode_raw(src, src_len, dst, dst_len); } /* MAPX-4: the core-1 prefetch */
 /* PT01: phase and counters around the decoder. */
 static int yay0_decode(const u8* src, u32 src_len, u8* dst, u32 dst_len) {
     int r;
@@ -370,7 +372,14 @@ void decode_yay0(void* src, void* dst) {
     bound = 0x100000u;
     if (dec > 0x40000u || link < 16u || count < 16u) return;
     { void pm_walk_drain(const char* why); pm_walk_drain("decode"); } /* CORE2-3b: the decode writes RAM that the last walk may have read */
-    if (!yay0_decode(s, bound, dst, dec)) return;
+    unsigned xt0 = pm_xf.on ? pm_ticks() : 0u;
+    { /* MAPX-4: the core-1 prefetch decoded this asset (same name and size) at the start of the map change: its bytes, else the decode here */
+        extern int pm_prefetch_take(const void* src, void* dst, unsigned dec);
+        int pre = pm_prefetch_take(s, dst, dec);
+        if (pre) pm_xf.yay_pre++;
+        else if (!yay0_decode(s, bound, dst, dec)) return;
+    }
+    if (pm_xf.on) { pm_xf.yay_n++; pm_xf.yay_b += dec; pm_xf.yay_t += pm_ticks() - xt0; } /* MAPX-1 */
     /* The decode overwrote RAM that cached PICA textures were built from (the background raster and palette sit at one
      * fixed address for every map). The cache keys on address and size, so drop what the decode replaced. */
     pm_tex_invalidate(dst, dec);
@@ -541,6 +550,24 @@ void pm_dump_scripts(void) {
 }
 
 /* S30b: all 421 maps are linked, the GotoMap guard is gone. The wraps log the map change (warp hook, shot mode, data probe). */
+/* MAPX-4: post the Yay0 decode of the target map's shape and hit (the names load_map_by_IDs builds, world.c) to the core-1 prefetch. */
+static void map_prefetch(void) {
+    extern void pm_prefetch_post(const char* shape, const unsigned char* ssrc, unsigned scl, unsigned sdec, const char* hit, const unsigned char* hsrc, unsigned hcl, unsigned hdec);
+    s32 a = gGameStatusPtr->areaID, m = gGameStatusPtr->mapID;
+    if (a < 0 || a >= (s32)ARRAY_COUNT(gAreas) || m < 0 || m >= gAreas[a].mapCount) return;
+    char sn[24], hn[24];
+    const unsigned char* src[2] = { NULL, NULL };
+    u32 dec[2] = { 0, 0 }, clen[2] = { 0, 0 };
+    snprintf(sn, sizeof sn, "%s_shape", gAreas[a].maps[m].id);
+    snprintf(hn, sizeof hn, "%s_hit", gAreas[a].maps[m].id);
+    for (int i = 0; i < 2; i++) {
+        u32 off, cl, dl;
+        if (!find_asset(i ? hn : sn, &off, &cl, &dl)) continue;
+        src[i] = pm_rom_ptr(off, cl);
+        dec[i] = dl; clen[i] = cl;
+    }
+    pm_prefetch_post(sn, src[0], clen[0], dec[0], hn, src[1], clen[1], dec[1]);
+}
 extern void __real_load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType);
 extern void __real_set_game_mode(s16 mode);
 
@@ -560,6 +587,7 @@ void __wrap_set_game_mode(s16 mode) {
             pm_gpu_shot_burst(c ? atoi(c + 1) : 60);
         }
     }
+    if (mode == GAME_MODE_CHANGE_MAP) { pm_xfer_map_begin(); map_prefetch(); } /* MAPX-1: the fade out starts the xfer line; MAPX-4: the target's shape and hit decode on core 1 */
     if (mode == GAME_MODE_WORLD) {
         extern void pm_warp_world_mode(unsigned frame);
         extern unsigned pm_frame_count(void);
@@ -569,8 +597,11 @@ void __wrap_set_game_mode(s16 mode) {
 }
 
 void __wrap_load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
+    unsigned xt0 = pm_xf.on ? pm_ticks() : 0u; /* MAPX-1: the load and audio stage ticks of the xfer line */
     pm_walk_drain("map");
-    pm_audio_drain(1); /* AU2: map change drains the mixer queue */
+    pm_audio_join_at(0); /* AU2; MAPX-5b: the control job joins (it may read what the load writes); the mixer render queue is not drained: it reads only
+                          * its own command ring and the sample data (docs/plans/AU2_design.md), and the ROM is in RAM. The drain waited about 100 ms on Azahar. */
+    if (pm_xf.on) pm_xf.au_t += pm_ticks() - xt0;
     {
         extern unsigned pm_pad_scans;
         pm_log_d("load map area %d map %d scan %u", areaID, mapID, pm_pad_scans);
@@ -583,6 +614,8 @@ void __wrap_load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
         pm_mapdata_probe(gAreas[pa].maps[pmap].id); /* slice MS01 debug switch dataprobe */
     }
     __real_load_map_by_IDs(areaID, mapID, loadType);
+    if (pm_xf.on) pm_xf.load_t += pm_ticks() - xt0;
+    pm_xfer_map_load(loadType == LOAD_FROM_MAP ? areaID : gGameStatusPtr->areaID, loadType == LOAD_FROM_MAP ? mapID : gGameStatusPtr->mapID);
 }
 
 /* MS01: a linked map has PM_MAP_DMA_TAG as dmaStart and dmaEnd (3ds/stub_include/map_rom_ranges.h), so load_map_by_IDs calls

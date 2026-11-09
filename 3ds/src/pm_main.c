@@ -166,12 +166,17 @@ unsigned nuGfxCfbNum = 2;
 static int in_buf(const void* p, const unsigned short* b) {
     return (const unsigned short*)p >= b && (const unsigned short*)p < b + CFB_PIXELS;
 }
-/* A color image that is the screen (a frame buffer). Any other color image is memory the game reads back. */
-int pm_is_cfb(const void* p) { return in_buf(p, gFrameBuf0) || in_buf(p, gFrameBuf1) || in_buf(p, gFrameBuf2); }
+/* A color image that is the screen (a frame buffer). Any other color image is memory the game reads back.
+ * MAGI: only gFrameBuf0 and gFrameBuf1. nuGfxCfbNum is 2 and nuGfxSetCfb is empty, so gFrameBuf2 is never drawn or shown on the port;
+ * it is the battle heap (heap_battleHead: actors, the battle HUD cache, run-time data). With gFrameBuf2 here, every 16 bit texture
+ * from the battle heap was taken for an older frame (nd_tex_set.c set_timg: pm_cfb_capture_prev, a full frame copy and a frame split
+ * per load) and read as native u16 pixels instead of its own bytes. */
+int pm_is_cfb(const void* p) { return in_buf(p, gFrameBuf0) || in_buf(p, gFrameBuf1); }
 /* B2: the frame buffer the game draws into now (the T2 grab source). Any other frame buffer holds an older frame (T3). */
 extern int pm_wide;
 /* F07-7: with wide a window may start up to 40 pixels before the buffer (game x -40 of row 0, effects in the gutters) */
-int pm_is_cur_cfb(const void* p) { return nuGfxCfb_ptr && (in_buf(p, nuGfxCfb_ptr) || (pm_wide && in_buf((const u8*)p + 80, nuGfxCfb_ptr))); }
+void* pm_walk_cfb; /* CORE2C-2: set by pm_frame_walk from the frame (the walker reads this, the game side nuGfxCfb_ptr) */
+int pm_is_cur_cfb(const void* p) { const void* c = pm_walk_cfb; return c && (in_buf(p, c) || (pm_wide && in_buf((const u8*)p + 80, c))); }
 /* Frame buffer and saved-frame memory hold native u16 pixels (the game code reads them as u16). Textures
  * from ROM data hold big-endian bytes. pm_tex reads these two kinds differently. */
 extern unsigned short pm_wide_side_pause[2][40 * 240]; /* PT56 */
@@ -228,15 +233,16 @@ static void cap_note(int cpu, const char* path) {
              !st[0] ? "prev0" : st[1] ? "grabn" : "setup");
 }
 static void cfb_capture_prev(int cpu) {
-    static unsigned done = ~0u, done_gpu = ~0u;
+    static unsigned done = ~0u;
     unsigned i;
     if (!cpu) {
-        if (done_gpu == pm_frame_n || done == pm_frame_n) { cap_note(cpu, "done"); return; }
+        /* GAMEOVER: the GPU copy is asked in every drawn frame, the t = 0.5 pass (pm_interp_repl) too: pm_gpu_grab_prev knows whether this drawn
+         * frame has its slot. A guard on pm_frame_n (one game step, two drawn frames with fps60) left the t = 0.5 pass without the slot: its blur
+         * strips read the stale frame buffer memory, every second picture differed (the game over flicker). */
         for (i = 0; i < nuGfxCfbNum; i++) {
-            if (nuGfxCfb[i] == nuGfxCfb_ptr) {
+            if (nuGfxCfb[i] == pm_walk_cfb) {
                 unsigned t0 = pm_ph_on ? pm_ticks() : 0;
                 if (pm_gpu_grab_prev(nuGfxCfb[(i + nuGfxCfbNum - 1) % nuGfxCfbNum]) == 2) {
-                    done_gpu = pm_frame_n;
                     if (pm_ph_on) { unsigned dt = pm_ticks() - t0; pm_b7.cap_n++; pm_b7.cap_ticks += dt; if (dt > pm_b7.cap_max) pm_b7.cap_max = dt; }
                     cap_note(cpu, "gpu2");
                     return;
@@ -251,7 +257,7 @@ static void cfb_capture_prev(int cpu) {
         /* PT78: the pause reads the frame from the buffer that is not the fill target, whatever the parity of the drawn step (a step skipped by FS1 moves the
          * BEGIN_PAUSED draw to the other parity: the old rule, the previous buffer of the drawn one, wrote the fill target and the filter read a stale frame).
          */
-        const void* ref = nuGfxCfb_ptr;
+        const void* ref = pm_walk_cfb;
         if (cpu && cap_fill) ref = cap_fill;
         if (nuGfxCfb[i] == ref) {
             unsigned short* prev = cpu && cap_fill ? nuGfxCfb[(i + 1) % nuGfxCfbNum] : nuGfxCfb[(i + nuGfxCfbNum - 1) % nuGfxCfbNum];
@@ -574,6 +580,8 @@ void pm_frame_loop(void) {
         now = svcGetSystemTick();
         frame_ms = (float)(now - step_start) * 1000.f / (float)tick_hz;
         if (pm_pf_on && !last_step_skipped) pm_pf_frame(step_start, now); /* PF1: switch prof */
+        { extern void pm_fspk_frame(unsigned, float); pm_fspk_frame(frame, frame_ms); } /* MAGI: switch fspk */
+        pm_xfer_step(step_start, now); /* MAPX-1: the xfer line of a door or map change */
         if (pace_on && !last_step_skipped) { pace_wk += now - step_start; pace_wkn++; } /* PROF2-6: pacestat work time of a drawn frame */
         if (frame_ms > 50.f) { sp_n++; if (frame_ms > sp_max) sp_max = frame_ms; }
         { /* PT15: steps per second against the retrace (steps * 60 / vblanks, 120 vblanks) and the share of steps that took 3 or more vblanks */

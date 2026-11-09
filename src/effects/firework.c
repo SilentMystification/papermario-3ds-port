@@ -249,6 +249,57 @@ void func_E00863B4(EffectInstance* effect) {
                 break;
         }
 
+#ifdef TARGET_3DS
+        /* MAGI: the 3DS draws the sparks of one pass as one batch. The N64 list gave each spark its own matrix and its own setup list
+         * (D_E0086AB4: texture load and modes), 8 to 11 sparks x 3 passes = 24 to 33 draws per frame on the port. Here the spark corners
+         * (the quad of D_E0086AA0[temp_s32]: +-16, v from 1024 * temp_s32) go through the same matrix on the CPU (T, then rotY, then
+         * rotZ, row vectors), stored 32x in s16; the pass list loads the setup once, 1/32, then one vertex load and the triangles.
+         * The cond SetTileSize of tile 1 is left out: on the N64 the first spark's setup list sets tile 1 again before any draw. */
+        {
+            s32 nsp = effect->numParts - 1;
+            Gfx* jump = gMainGfxPos++;
+            Vtx* vbuf = (Vtx*)gMainGfxPos;
+            Vtx* v = vbuf;
+            static const s8 cx[4] = { -16, 16, 16, -16 }, cy[4] = { -16, -16, 16, 16 };
+            static const s16 cs[4] = { 0, 1024, 1024, 0 }, ct[4] = { 0, 0, 1024, 1024 };
+            gMainGfxPos += (nsp * 4 * sizeof(Vtx)) / sizeof(Gfx);
+            gSPBranchList(jump, gMainGfxPos);
+            part++;
+            for (i = 0; i < nsp; i++, part++) {
+                s32 c;
+                guRotateF(sp20, part->unk_1C, 0.0f, 0.0f, 1.0f);
+                guRotateF(sp60, part->unk_24, 0.0f, 1.0f, 0.0f);
+                guMtxCatF(sp60, sp20, sp20);
+                guTranslateF(sp60, part->unk_04, part->unk_08, part->unk_0C);
+                guMtxCatF(sp60, sp20, sp20);
+                for (c = 0; c < 4; c++, v++) {
+                    f32 ox, oy, oz;
+                    guMtxXFMF(sp20, cx[c], cy[c], 0.0f, &ox, &oy, &oz);
+                    ox *= 32.0f; oy *= 32.0f; oz *= 32.0f;
+                    v->v.ob[0] = (s16)(ox >= 0.0f ? ox + 0.5f : ox - 0.5f);
+                    v->v.ob[1] = (s16)(oy >= 0.0f ? oy + 0.5f : oy - 0.5f);
+                    v->v.ob[2] = (s16)(oz >= 0.0f ? oz + 0.5f : oz - 0.5f);
+                    v->v.flag = 0;
+                    v->v.tc[0] = cs[c];
+                    v->v.tc[1] = ct[c] + temp_s32 * 1024;
+                    v->v.cn[0] = 120; v->v.cn[1] = 120; v->v.cn[2] = 0; v->v.cn[3] = 255;
+                }
+            }
+            (void)cond;
+            guScaleF(sp20, 1.0f / 32.0f, 1.0f / 32.0f, 1.0f / 32.0f);
+            guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
+
+            savedGfxPos = gMainGfxPos++;
+            gSPDisplayList(gMainGfxPos++, D_E0086AB4[unk_00]);
+            gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+            gSPVertex(gMainGfxPos++, vbuf, nsp * 4, 0);
+            for (i = 0; i < nsp; i++) {
+                gSP2Triangles(gMainGfxPos++, 4 * i, 4 * i + 1, 4 * i + 2, 0, 4 * i, 4 * i + 2, 4 * i + 3, 0);
+            }
+            gDPPipeSync(gMainGfxPos++);
+            gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        }
+#else
         savedGfxPos = gMainGfxPos++;
         gSPDisplayList(gMainGfxPos++, D_E0086AB4[unk_00]);
 
@@ -272,6 +323,8 @@ void func_E00863B4(EffectInstance* effect) {
             gSPDisplayList(gMainGfxPos++, D_E0086AA0[temp_s32]);
             gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         }
+
+#endif
 
         gSPEndDisplayList(gMainGfxPos++);
         gSPBranchList(savedGfxPos, gMainGfxPos);

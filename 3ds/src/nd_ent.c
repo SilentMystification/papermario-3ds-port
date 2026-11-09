@@ -187,6 +187,7 @@ static int ent_heap_list(const Gfx* l) {
     return (u32)l - (u32)heap_generalHead < (u32)GENERAL_HEAP_SIZE || (u32)l - (u32)gFrameBuf2 < (u32)BATTLE_HEAP_SIZE;
 }
 void ent_compile(EntKey* k, const Gfx* l0) {
+    pm_xf.ent_n++; /* MAPX-1 */
     unsigned ns = 0, nops = 0;
     u32 bad = 0, ntri = 0;
     const u8 *lo = NULL, *hi = NULL;
@@ -208,6 +209,12 @@ void ent_compile(EntKey* k, const Gfx* l0) {
     if (ns == 0) { k->why = 8; return; }
     nd_ent_strip(w, dlc_words);
     for (unsigned s = 0; s < ns; s++) ntri += ent_sbuf[s].ntri;
+    /* BTLUI: a list whose vertex loads feed a later list (no triangle after its last G_VTX, e.g. the damage star corners of
+     * damage_indicator D_09002150..80) stays on the walker: ent_run skips loads without triangles and clears the walker slots. */
+    { unsigned lastv = 0, lastt = 0;
+      for (unsigned i = 0; i < nops; i++) { unsigned op = ent_flat_buf[i].words.w0 >> 24;
+          if (op == G_VTX) lastv = i + 1; else if (op == G_TRI1 || op == G_TRI2) lastt = i + 1; }
+      if (ntri == 0 || lastv > lastt) { k->why = 8; return; } }
     if (k->vb || ent_heap_list(l0)) for (unsigned i = 0; i < nops; i++) { /* the vertex span of the vertex array: hashed once per frame */
         if ((l[i].words.w0 >> 24) != G_VTX) continue;
         const u8* p = (const u8*)ptr_of(l[i].words.w1);
@@ -402,3 +409,6 @@ int nd_ent_case(const Gfx* rec, u32 w0, u32 w1) {
     }
     return 0;
 }
+
+/* MAGI fspk (debug): lifetime entity key compiles, static G_DL lists met, lists drawn from the pools, segments drawn by the walker */
+void nd_ent_stat(unsigned o[4]) { o[0] = ent_c.comp; o[1] = gdl_c.lists; o[2] = gdl_c.nat; o[3] = ent_c.segi; }
