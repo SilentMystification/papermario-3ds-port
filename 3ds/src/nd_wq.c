@@ -73,14 +73,27 @@ static void wq_pump(void) { while (pm_wq_pump_one()) {} }
 /* Game thread, at every wait: a logic thread that waits for the walker gets the whole queue run. */
 void pm_wq_pump_blocked(void) { if (wq_blocked) wq_pump(); }
 
+/* C1WAIT: the logic thread's wait for the walker, in ticks of the prof window (pm_phase.c reads it per logic step). [0] every
+ * wq_block wait, [1] the depth 1 frame wait (c_walked). Modular 32 bit: the window reads take differences. Prof only (pm_pf_on). */
+extern int pm_pf_on; /* pm_phase.c */
+static unsigned wq_bw[2];
+static int c_walked(void* c);
 /* Logic thread: wait until cond(). The walker runs the queue when it sees wq_blocked (flag, barrier, test on both sides). */
 static void wq_block(int (*cond)(void*), void* c) {
+    int pf = pm_pf_on;
+    unsigned t0 = pf ? (unsigned)svcGetSystemTick() : 0u;
     wq_blocked = 1;
     __sync_synchronize();
     LightEvent_Signal(&wq_ev_walker);
     while (!cond(c)) LightEvent_Wait(&wq_ev_logic);
     wq_blocked = 0;
+    if (pf) {
+        unsigned d = (unsigned)svcGetSystemTick() - t0;
+        wq_bw[0] += d;
+        if (cond == c_walked) wq_bw[1] += d;
+    }
 }
+void pm_wq_pf(unsigned out[2]) { out[0] = wq_bw[0]; out[1] = wq_bw[1]; }
 static int c_space(void* c) { (void)c; return wq_tail - wq_head < WQ_N; }
 static int c_empty(void* c) { (void)c; return wq_head == wq_tail; }
 static int c_walked(void* c) { (void)c; return wq_fr_walked == wq_fr_push; }
