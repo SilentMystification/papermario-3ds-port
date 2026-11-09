@@ -191,6 +191,7 @@ void pm_flash_attach(unsigned char* mem, unsigned size);
 void pm_flash_flush(const char* why);
 unsigned pm_soc_alloc_rc(void);
 unsigned pm_heap_bytes(void);
+void pm_mem_boot_line(unsigned need, unsigned leave, unsigned cap); /* MEMGATE: the boot memory line (pm_mem.c) */
 unsigned pm_linear_bytes(void);
 void pm_mem_log(const char* tag);
 void pm_gfx_retrace(void);

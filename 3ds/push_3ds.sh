@@ -12,6 +12,9 @@
 # "--profile prof|log|none" appends the named profile words of bench_defs.json "profiles" after the game args
 # (the first match wins, so game args given by hand override the profile). "--dry" prints the 3dslink argv and exits:
 # no build, no ip lookup, no send.
+# MEMGATE: before the send (and in --dry) 3ds/tools/memcheck.py checks the map next to the 3dsx (PM_MEMCHECK_MAP overrides it)
+# against the O3DS XL applet-mode budget (3ds/tools/mem_budget.json). OVER prints a warning and stops the push, exit 4.
+# "--mem-ok" pushes an OVER build anyway: the override is printed and goes into the flags of the pushed_builds.txt line.
 # NETLOADER REFUSED: a 3dslink output with a "N sent (P%)" line below 100 is a partial send (the console
 # refused or closed the upload, typically not enough free RAM in applet mode). Then the instruction block is printed
 # with the 3dsx size and the last line of pushed_builds.txt. "--check-send <3dslink output file>" runs only that check (tests).
@@ -37,6 +40,8 @@ checksend=""
 partial_pct=""
 profname=""
 dry=0
+memok=0
+memflag=""
 while :; do
     case "$1" in
         -t) secs=$2; shift 2 ;;
@@ -48,6 +53,7 @@ while :; do
         --check-send) checksend=$2; shift 2 ;;
         --profile) profname=$2; shift 2 ;;
         --dry) dry=1; shift ;;
+        --mem-ok) memok=1; shift ;;
         *) break ;;
     esac
 done
@@ -77,7 +83,32 @@ prune_archives() {
         if [ "$1" = dry ]; then echo "would prune archive $old"; else rm -f -- "$old" && echo "pruned archive $old"; fi
     done
 }
+# mem_gate: memcheck of the map next to the 3dsx. OVER without --mem-ok: warning block and exit 4. A missing map is a note only.
+mem_gate() {
+    mmap=${PM_MEMCHECK_MAP:-$(dirname "$SRC3DSX")/pm_3ds.map}
+    mrc=0
+    if command -v py >/dev/null 2>&1; then mout=$(py -3 3ds/tools/memcheck.py --map "$mmap") || mrc=$?
+    else mout=$(python3 3ds/tools/memcheck.py --map "$mmap") || mrc=$?; fi
+    printf '%s\n' "$mout"
+    [ "$mrc" -eq 3 ] || return 0
+    mline=$(printf '%s\n' "$mout" | sed -n '1s/^memcheck: //p')
+    if [ "$memok" -eq 1 ]; then
+        echo "MEM OVERRIDE (--mem-ok): pushing an OVER build ($mline)"
+        memflag="mem-ok($mline) "
+        return 0
+    fi
+    echo "=================================================================="
+    echo "MEMORY OVER: $mline"
+    mm=$(printf '%s\n' "$mline" | sed -n 's/.* margin \(-*[0-9]*\) .*/\1/p')
+    if [ "${mm:-0}" -lt 0 ]; then fit="the ROM will not fit"; else fit="the ROM may not fit (margin inside the safety of mem_budget.json)"; fi
+    echo "On the O3DS XL in applet mode (Homebrew Launcher through a game or Download Play) $fit:"
+    echo "the game stops at boot with \"Not enough memory for the ROM\". Push not sent."
+    echo "Make the build smaller (largest .data/.bss above), or push anyway with --mem-ok (go.ps1 -MemOk)."
+    echo "=================================================================="
+    exit 4
+}
 if [ "$dry" -eq 1 ]; then
+    mem_gate
     dip=${ipopt:-${N3DS_IP:-${PM_O3DS_IP:-<netloader broadcast>}}}
     echo "dry run: nothing built, nothing sent"
     echo "3dslink argv: ${PM_3DSLINK:-/opt/devkitpro/tools/bin/3dslink} -a $dip $SRC3DSX -- --verbose livelog $*"
@@ -121,6 +152,7 @@ if [ "$nobuild" -eq 0 ] && [ "$attach" -eq 0 ] && [ -z "$checklog" ] && [ -z "$c
     sh 3ds/build.sh
 fi
 if [ "$archonly" -eq 1 ]; then archive_build "archive-only" || exit 1; exit 0; fi
+if [ "$attach" -eq 0 ] && [ -z "$checklog" ] && [ -z "$checksend" ]; then mem_gate; fi
 # PYTHON_EXE lets a caller (3ds/go.ps1) pass a reliably-resolved interpreter path: bash's own PATH
 # (MSYS) does not always see the Windows "py" launcher even when PowerShell's PATH does.
 PY=${PYTHON_EXE:-py}
@@ -262,7 +294,7 @@ fi
 if [ -n "$PM_SRC3DSX" ]; then
     echo "archive skipped: PM_SRC3DSX is not the main build (3ds/include/pm_build.h describes the main build)"
 else
-    archive_build "ip=$ip $*" || true # best effort: the push goes on without an archive (its warning line is printed above)
+    archive_build "ip=$ip $memflag$*" || true # best effort: the push goes on without an archive (its warning line is printed above)
 fi
 [ -f "$SRC3DSX" ] || { echo "no $SRC3DSX. Nothing was pushed."; exit 1; }
 
