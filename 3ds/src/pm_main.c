@@ -174,9 +174,7 @@ static int in_buf(const void* p, const unsigned short* b) {
  * it is the battle heap (heap_battleHead: actors, the battle HUD cache, run-time data). With gFrameBuf2 here, every 16 bit texture
  * from the battle heap was taken for an older frame (nd_tex_set.c set_timg: pm_cfb_capture_prev, a full frame copy and a frame split
  * per load) and read as native u16 pixels instead of its own bytes. */
-/* PAUSEOPEN: with wide the 40 columns before a frame buffer (address cfb - 80 bytes, slot column 0) are the same picture: a read there is the frame too. */
-extern int pm_wide;
-int pm_is_cfb(const void* p) { return in_buf(p, gFrameBuf0) || in_buf(p, gFrameBuf1) || (pm_wide && (in_buf((const u8*)p + 80, gFrameBuf0) || in_buf((const u8*)p + 80, gFrameBuf1))); }
+int pm_is_cfb(const void* p) { return in_buf(p, gFrameBuf0) || in_buf(p, gFrameBuf1); }
 /* B2: the frame buffer the game draws into now (the T2 grab source). Any other frame buffer holds an older frame (T3). */
 extern int pm_wide;
 /* F07-7: with wide a window may start up to 40 pixels before the buffer (game x -40 of row 0, effects in the gutters) */
