@@ -561,6 +561,12 @@ void status_bar_draw_stat(s32 id, s32 startX, s32 startY, s32 currentValue, s32 
     }
 }
 
+/* WIDE3: the x of a status bar item (the origin of its art; the art keeps its size). With wide the items keep their 4:3 spacing across the
+ * wide bar: x scaled by the width ratio 400 / 320 about the bar centre (game x 160). 4:3: x unchanged. */
+static s32 status_bar_item_x(s32 x) {
+    return pm_wide ? 160 + (((x - 160) * 5) >> 2) : x;
+}
+
 void update_status_bar(void) {
     StatusBar* statusBar = &gStatusBar;
     PlayerData* playerData = &gPlayerData;
@@ -770,18 +776,18 @@ void update_status_bar(void) {
 
     if (showStat) {
         id = statusBar->hpIconHIDs[0];
-        x = statusBar->drawPosX + 22;
+        x = status_bar_item_x(statusBar->drawPosX + 22);
         y = statusBar->drawPosY + 13;
         hud_element_set_render_pos(id, x, y);
         hud_element_draw_next(id);
 
         id = statusBar->hpIconHIDs[1];
-        x = statusBar->drawPosX + 37;
+        x = status_bar_item_x(statusBar->drawPosX + 37);
         y = statusBar->drawPosY + 13;
         hud_element_set_render_pos(id, x, y);
         hud_element_draw_next(id);
 
-        x = statusBar->drawPosX + 48;
+        x = status_bar_item_x(statusBar->drawPosX + 48);
         y = statusBar->drawPosY + 8;
         status_bar_draw_stat(statusBar->hpTimesHID, x, y, statusBar->displayHP, playerData->curMaxHP);
     }
@@ -807,18 +813,18 @@ void update_status_bar(void) {
 
     if (showStat) {
         id = statusBar->fpIconHIDs[0];
-        x = statusBar->drawPosX + 110;
+        x = status_bar_item_x(statusBar->drawPosX + 110);
         y = statusBar->drawPosY + 13;
         hud_element_set_render_pos(id, x, y);
         hud_element_draw_next(id);
 
         id = statusBar->fpIconHIDs[1];
-        x = statusBar->drawPosX + 125;
+        x = status_bar_item_x(statusBar->drawPosX + 125);
         y = statusBar->drawPosY + 13;
         hud_element_set_render_pos(id, x, y);
         hud_element_draw_next(id);
 
-        x = statusBar->drawPosX + 136;
+        x = status_bar_item_x(statusBar->drawPosX + 136);
         y = statusBar->drawPosY + 8;
         status_bar_draw_stat(statusBar->fpTimesHID, x, y, statusBar->displayFP, playerData->curMaxFP);
     }
@@ -841,18 +847,18 @@ void update_status_bar(void) {
 
     if (showStat) {
         id = statusBar->spIconHID;
-        x = statusBar->drawPosX + 195;
+        x = status_bar_item_x(statusBar->drawPosX + 195);
         y = statusBar->drawPosY + 14;
         hud_element_set_render_pos(id, x, y);
         hud_element_draw_next(id);
 
         id = statusBar->spShineHID;
-        x = statusBar->drawPosX + 195;
+        x = status_bar_item_x(statusBar->drawPosX + 195);
         y = statusBar->drawPosY + 9;
         hud_element_set_render_pos(id, x, y);
         hud_element_draw_next(id);
 
-        x = statusBar->drawPosX + 200;
+        x = status_bar_item_x(statusBar->drawPosX + 200);
         y = statusBar->drawPosY + 8;
         status_bar_draw_number(statusBar->spTimesHID, x, y, playerData->starPoints, 2);
     }
@@ -878,18 +884,18 @@ void update_status_bar(void) {
 
     if (showStat) {
         id = statusBar->coinIconHID;
-        x = statusBar->drawPosX + 244;
+        x = status_bar_item_x(statusBar->drawPosX + 244);
         y = statusBar->drawPosY + 14;
         hud_element_set_render_pos(id, x, y);
         hud_element_draw_next(id);
 
         id = statusBar->coinSparkleHID;
-        x = statusBar->drawPosX + 244;
+        x = status_bar_item_x(statusBar->drawPosX + 244);
         y = statusBar->drawPosY + 14;
         hud_element_set_render_pos(id, x, y);
         hud_element_draw_next(id);
 
-        x = statusBar->drawPosX + 247;
+        x = status_bar_item_x(statusBar->drawPosX + 247);
         y = statusBar->drawPosY + 8;
         status_bar_draw_number(statusBar->coinTimesHID, x, y, statusBar->displayCoins, 3);
     }
@@ -908,7 +914,7 @@ void update_status_bar(void) {
         statusBar->starPowerBlinkCounter++;
     }
 
-    x = statusBar->drawPosX + 20;
+    x = status_bar_item_x(statusBar->drawPosX + 20);
     y = statusBar->drawPosY + 28;
 
     spBars = statusBar->displayStarPower / SP_PER_BAR;

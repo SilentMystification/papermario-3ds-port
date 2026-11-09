@@ -602,8 +602,8 @@ s32 btl_main_menu_update(void) {
 
     switch (BattleMenuState) {
         case BTL_MENU_STATE_CREATE:
-            BattleMenu_BasePosX = pm_wide_vx(54); /* UA4: the wheel is placed next to Mario in the zoomed view */
-            BattleMenu_BasePosY = pm_wide_vy(173);
+            BattleMenu_BasePosX = pm_wide_left(54); /* WIDE3: the wheel sits in the left corner of the wide screen, the same 54 px from the edge as in 4:3 */
+            BattleMenu_BasePosY = 173;
             BattleMenu_WheelSpeed = 0.3f;
             BattleMenu_WheelMoving = 0;
             BattleMenu_HomePos = BattleMenu_PrevSelected;
@@ -651,7 +651,7 @@ s32 btl_main_menu_update(void) {
             HID_ProjectorReelA = hid = hud_element_create(&HES_ProjectorReel);
             hud_element_create_transform_B(hid);
             hud_element_set_render_depth(hid, 0);
-            hud_element_set_render_pos(hid, 40, 212);
+            hud_element_set_render_pos(hid, pm_wide_left(40), 212);
             hud_element_set_tint(hid, 0, 91, 127);
             hud_element_set_transform_rotation_pivot(hid, 16, -16);
             hud_element_set_flags(hid, HUD_ELEMENT_FLAG_MANUAL_RENDER);
@@ -661,7 +661,7 @@ s32 btl_main_menu_update(void) {
             HID_ProjectorReelB = hid = hud_element_create(&HES_ProjectorReel);
             hud_element_create_transform_B(hid);
             hud_element_set_render_depth(hid, 2);
-            hud_element_set_render_pos(hid, 39, 212);
+            hud_element_set_render_pos(hid, pm_wide_left(39), 212);
             hud_element_set_tint(hid, 0, 91, 127);
             hud_element_set_transform_rotation_pivot(hid, 16, -16);
             hud_element_set_flags(hid, HUD_ELEMENT_FLAG_MANUAL_RENDER);
@@ -671,7 +671,7 @@ s32 btl_main_menu_update(void) {
             HID_ProjectorBeam = hid = hud_element_create(&HES_ProjectorBeam);
             hud_element_create_transform_B(hid);
             hud_element_set_render_depth(hid, 20);
-            hud_element_set_render_pos(hid, 78, 178);
+            hud_element_set_render_pos(hid, pm_wide_left(78), 178);
             hud_element_set_tint(hid, 255, 255, 255);
             hud_element_set_transform_rotation_pivot(hid, 0, 0);
             hud_element_set_transform_rotation(hid, 0.0f, 0.0f, -45.0f);
@@ -686,7 +686,7 @@ s32 btl_main_menu_update(void) {
 
             HID_SwapBackground = hid = hud_element_create(&HES_SwapBackground);
             hud_element_set_render_depth(hid, 0);
-            hud_element_set_render_pos(hid, 97, 208);
+            hud_element_set_render_pos(hid, pm_wide_left(97), 208);
             hud_element_set_tint(hid, 255, 255, 255);
             hud_element_set_flags(hid, HUD_ELEMENT_FLAG_MANUAL_RENDER);
             hud_element_clear_flags(hid, HUD_ELEMENT_FLAG_FILTER_TEX);
@@ -696,19 +696,19 @@ s32 btl_main_menu_update(void) {
             hud_element_set_render_depth(hid, 5);
             hud_element_clear_flags(hid, HUD_ELEMENT_FLAG_FILTER_TEX);
             hud_element_set_flags(hid, HUD_ELEMENT_FLAG_MANUAL_RENDER);
-            hud_element_set_render_pos(hid, 94, 209);
+            hud_element_set_render_pos(hid, pm_wide_left(94), 209);
 
             HID_SwapArrowLeft = hid = hud_element_create(&HES_SwapArrowLeft);
             hud_element_set_render_depth(hid, 5);
             hud_element_clear_flags(hid, HUD_ELEMENT_FLAG_FILTER_TEX);
             hud_element_set_flags(hid, HUD_ELEMENT_FLAG_MANUAL_RENDER);
-            hud_element_set_render_pos(hid, 81, 210);
+            hud_element_set_render_pos(hid, pm_wide_left(81), 210);
 
             HID_SwapArrowRight = hid = hud_element_create(&HES_SwapArrowRight);
             hud_element_set_render_depth(hid, 5);
             hud_element_clear_flags(hid, HUD_ELEMENT_FLAG_FILTER_TEX);
             hud_element_set_flags(hid, HUD_ELEMENT_FLAG_MANUAL_RENDER);
-            hud_element_set_render_pos(hid, 102, 210);
+            hud_element_set_render_pos(hid, pm_wide_left(102), 210);
             BattleMenu_ReelHidePercent = 100;
             BattleMenu_ReelAppearTimer = 3;
             BattleMenuState = BTL_MENU_STATE_SHOW_REEL;
@@ -863,7 +863,7 @@ void btl_main_menu_draw(void) {
             hud_element_draw_complex_hud_next(id);
             id = HID_ProjectorReelA;
             hud_element_set_alpha(id, (BattleMenu_ReelAlpha * 254) / 255);
-            hud_element_set_render_pos(id, 40 - BattleMenu_ReelHidePercent, BattleMenu_ReelHidePercent + 212);
+            hud_element_set_render_pos(id, pm_wide_left(40) - BattleMenu_ReelHidePercent, BattleMenu_ReelHidePercent + 212);
             hud_element_draw_complex_hud_next(id);
             break;
         case BTL_MENU_STATE_SUBMENU_OPEN:
@@ -949,7 +949,7 @@ void btl_main_menu_draw(void) {
             hud_element_set_scale(id, scale);
             hud_element_set_transform_scale(id, 1.0f, 1.8f, 1.0f);
             hud_element_set_alpha(id, (opacity * 200) / 255);
-            hud_element_set_render_pos(id, 79, 176);
+            hud_element_set_render_pos(id, pm_wide_left(79), 176);
             hud_element_draw_complex_hud_next(id);
 
             id = HID_ProjectorReelB;
@@ -959,12 +959,12 @@ void btl_main_menu_draw(void) {
             hud_element_set_transform_rotation_pivot(id, 18, -20);
             hud_element_set_scale(id, 0.95f);
             hud_element_set_alpha(id, (opacity * 254) / 255);
-            hud_element_set_render_pos(id, 40 - BattleMenu_ReelHidePercent, BattleMenu_ReelHidePercent + 212);
+            hud_element_set_render_pos(id, pm_wide_left(40) - BattleMenu_ReelHidePercent, BattleMenu_ReelHidePercent + 212);
             hud_element_draw_complex_hud_next(id);
 
             id = HID_ProjectorReelA;
             hud_element_set_alpha(id, (opacity * 254) / 255);
-            hud_element_set_render_pos(id, 40 - BattleMenu_ReelHidePercent, BattleMenu_ReelHidePercent + 212);
+            hud_element_set_render_pos(id, pm_wide_left(40) - BattleMenu_ReelHidePercent, BattleMenu_ReelHidePercent + 212);
             hud_element_set_scale(id, 1.0f);
             hud_element_draw_complex_hud_next(id);
 
@@ -1018,6 +1018,13 @@ void btl_main_menu_draw(void) {
 void btl_submenu_moves_init(void) {
     if (MovesPrevSelected >= MovesOptionCount) {
         MovesPrevSelected = MovesOptionCount - 1;
+    }
+    { /* WIDE3 debug: the moves list opens (Moves, Star power and Items share it). One log line and one shot burst with uiburst. */
+        extern void pm_log_d(const char* fmt, ...);
+        extern void pm_gpu_shot_burst(int n);
+        extern int pm_debug_has(const char* word);
+        pm_log_d("debug submenu open: moves");
+        if (pm_debug_has("uiburst")) pm_gpu_shot_burst(8);
     }
 
     MovesMenuState = BTL_SUBMENU_MOVES_STATE_INIT;
@@ -1224,7 +1231,7 @@ s32 btl_submenu_moves_update(void) {
         case BTL_SUBMENU_MOVES_STATE_INIT:
             MovesScrollOffset = -MovesVisibleStart * 13;
             MovesCursorOffset = (MovesCursorPos - MovesVisibleStart) * 13;
-            MovesMenuPosX = POS_X;
+            MovesMenuPosX = pm_wide_left(POS_X);
             MovesMenuPosY = 68;
 
             for (i = 0; i < MovesOptionCount; i++) {
@@ -1384,7 +1391,7 @@ s32 btl_submenu_moves_update(void) {
                 set_window_properties(WIN_BTL_SPIRITS_ICON, moveX + STAR_SPIRITS_ICON_X, new_var - 12, 32, 35, 1, btl_menu_moves_show_icon, 0, -1);
             }
 
-            moveX = POS_X;
+            moveX = pm_wide_left(POS_X);
             moveY = MovesMenuPosY;
             set_window_properties(WIN_BTL_DESC_BOX, moveX, 186, WIDTH_3, 32, WINDOW_PRIORITY_20, btl_menu_moves_show_desc, nullptr, -1);
             set_window_update(WIN_BTL_MOVES_MENU, WINDOW_UPDATE_SHOW);
@@ -1982,6 +1989,14 @@ void btl_menu_strats_init(void) {
     s32 sixTemp;
     s8 temp802AD673;
 
+    { /* WIDE3 debug: the strategies list opens. One log line and one shot burst with uiburst. */
+        extern void pm_log_d(const char* fmt, ...);
+        extern void pm_gpu_shot_burst(int n);
+        extern int pm_debug_has(const char* word);
+        pm_log_d("debug submenu open: strats");
+        if (pm_debug_has("uiburst")) pm_gpu_shot_burst(8);
+    }
+
     StratsMenuState = BTL_SUBMENU_STRATS_STATE_INIT;
     StratsCursorPos = StratsPrevSelected;
     StratsPrevCursorPos = StratsPrevSelected;
@@ -2112,9 +2127,9 @@ s32 btl_submenu_strats_update(void) {
     switch (StratsMenuState) {
         case BTL_SUBMENU_STRATS_STATE_INIT:
 #if VERSION_JP
-            StratsMenuPosX = 32;
+            StratsMenuPosX = pm_wide_left(32);
 #else
-            StratsMenuPosX = 20;
+            StratsMenuPosX = pm_wide_left(20);
 #endif
             StratsMenuPosY = 68;
             StratsScrollOffset = -StratsVisibleStart * 13;

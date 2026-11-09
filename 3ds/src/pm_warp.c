@@ -1956,6 +1956,36 @@ void pm_warp_tick(unsigned frame) {
             pm_log_d("debug uishow: bar opened f%u", f);
         }
     }
+    {   /* WIDE3 debug: uishow=shop turns on the item info of the map's shop at frame 200 (draw_shop_items draws the prices at the items). */
+        char uv[16];
+        if (f == 200 && pm_debug_value("uishow", uv, sizeof uv) && uv[0] == 's' && uv[1] == 'h' && gGameStatusPtr->mapShop != NULL) {
+            gGameStatusPtr->mapShop->flags |= SHOP_FLAG_SHOWING_ITEM_INFO;
+            gGameStatusPtr->mapShop->curItemSlot = 0;
+            pm_log_d("debug uishow: shop items f%u", f);
+            { /* WIDE3 debug: the item positions (world) in the log, and Mario placed on item 0 so the camera has the shop in view */
+                extern void pm_pos_set(const float* v, int n);
+                s32 k;
+                for (k = 0; k < gGameStatusPtr->mapShop->numItems && k < 6; k++) {
+                    ShopItemEntity* e = &gGameStatusPtr->shopItemEntities[k];
+                    pm_log_d("debug uishow: shop item %d at %d %d %d", k, (int) e->pos.x, (int) e->pos.y, (int) e->pos.z);
+                }
+                {
+                    float pv[3];
+                    pv[0] = gGameStatusPtr->shopItemEntities[0].pos.x;
+                    pv[1] = gGameStatusPtr->shopItemEntities[0].pos.y;
+                    pv[2] = gGameStatusPtr->shopItemEntities[0].pos.z;
+                    pm_pos_set(pv, 3);
+                }
+            }
+            { /* WIDE3 debug: the shop item positions (world), one line each, for the pos= of a shop shot */
+                s32 k;
+                for (k = 0; k < gGameStatusPtr->mapShop->numItems && k < 6; k++) {
+                    ShopItemEntity* e = &gGameStatusPtr->shopItemEntities[k];
+                    pm_log_d("debug uishow: shop item %d at %d %d %d", k, (int) e->pos.x, (int) e->pos.y, (int) e->pos.z);
+                }
+            }
+        }
+    }
     {   /* UA3 debug: uishow=coins opens the coin counter window (show_coin_counter, the pickup's own call) at frame 120 */
         char uv[16];
         if (f == 200 && pm_debug_value("uishow", uv, sizeof uv) && uv[0] == 'c' && uv[1] == 'o') {
