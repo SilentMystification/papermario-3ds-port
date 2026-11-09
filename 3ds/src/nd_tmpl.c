@@ -270,6 +270,12 @@ void nd_tev_build(const NdTevIn* in, NdTevOut* o) {
     o->memb = memb;
 }
 
+/* KMR11W: the N64 texture edge with an antialiased blender: AA_EN, IM_RD, CVG_X_ALPHA, ALPHA_CVG_SEL set, FORCE_BL clear, cycle 2 blender M=CLR_MEM
+ * and B=A_MEM (B bits 16 to 17 = 1), not decal. The walker and the native models read it through nd_render_state. */
+int nd_edge_aa(uint32_t m) {
+    return (m & 0x7048u) == 0x3048u && ((m >> 20) & 3u) == 1u && ((m >> 16) & 3u) == 1u && (m & 0xc00u) != 0xc00u;
+}
+
 /* ---- render state rules: moved from the former pm_gbi.c sync_render (RDP other mode to draw flags) ---- */
 #define OM_CYCLETYPE 20 /* G_MDSFT_CYCLETYPE */
 void nd_render_state(uint32_t omode_h, uint32_t m, int depth_img, NdRender* o) {
@@ -280,8 +286,11 @@ void nd_render_state(uint32_t omode_h, uint32_t m, int depth_img, NdRender* o) {
         return;
     }
     o->blend = ((m & (3u << 20)) == (1u << 20) && (m & (3u << 16)) == 0) || ((m & (3u << 22)) == (1u << 22) && (m & (3u << 18)) == 0);
-    if (m & 0x1000u) o->atest = o->blend ? 0x08 : 0x30; /* CVG_X_ALPHA, texture edge */
-    else if ((m & 3u) == 1u) o->atest = 0x08;           /* G_AC_THRESHOLD */
+    /* KMR11W: N64 coverage = alpha x cvg, the AA blender mixes a partial pixel with the frame buffer. A bilinear texel with alpha 0 and a dark
+     * key colour gave a dark rim (alpha x neighbour colour, drawn at full weight). Edge AA: blend on, alpha < 32 dropped, the rest blend by alpha. */
+    if (nd_edge_aa(m)) { o->blend = 1; o->atest = 0x1F; }
+    else if (m & 0x1000u) o->atest = o->blend ? 0x08 : 0x30; /* CVG_X_ALPHA, texture edge */
+    else if ((m & 3u) == 1u) o->atest = 0x08;                /* G_AC_THRESHOLD */
     /* S25: a blender whose both colour inputs are the frame buffer colour (G_BL_CLR_MEM, cycle 1 bits 30 and 22, cycle 2 bits 28 and 20)
      * writes the old colour back: the draw changes depth only (a stencil pass). */
     int two = ((omode_h >> OM_CYCLETYPE) & 3) == 1;
