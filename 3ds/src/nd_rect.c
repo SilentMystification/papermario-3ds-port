@@ -283,47 +283,51 @@ __attribute__((noinline)) void nd_texrect(u32 w0, u32 w1, u32 hs, u32 hd) {
     return;
 }
 
-__attribute__((noinline)) void nd_fillrect(u32 w0, u32 w1) {
-    nd_rect_fill_n++;
-#define FILL_SX10(v) ((int)(((v) & 0x3ffu) << 22) >> 22) /* signed 10-bit field: a left edge at x < 0 stays negative (HUDB1: unsigned wrap made ul > lr and swapped a full-width band) */
-int lrx = FILL_SX10(w0 >> 14);
-int lry = FILL_SX10(w0 >> 2);
-int ulx = FILL_SX10(w1 >> 14);
-int uly = FILL_SX10(w1 >> 2);
-/* D03: the pause screen extracts per-pixel edge coverage of the scene into a frame buffer with
- * the VISCVG render mode (the RDP writes it as the pixel alpha bits). The PICA has no edge
- * coverage, so every pixel is a full pixel: write the full-coverage value (gray, alpha 1) to
- * that memory and draw nothing on the screen. The game filter then leaves each pixel as is. */
-if (img_role(1) == ROLE_CPUFILL) {
+/* HC7 (plan_hotcode HC7): the rare arms of nd_fillrect are cold helpers; the common path is the 1-cycle/fill/2-cycle body. Same expressions, same order. */
+__attribute__((noinline, cold)) static void nd_fillrect_cpu(int ulx, int uly, int lrx, int lry) {
+    /* D03: the pause screen extracts per-pixel edge coverage of the scene into a frame buffer with
+     * the VISCVG render mode (the RDP writes it as the pixel alpha bits). The PICA has no edge
+     * coverage, so every pixel is a full pixel: write the full-coverage value (gray, alpha 1) to
+     * that memory and draw nothing on the screen. The game filter then leaves each pixel as is. */
     unsigned short* d = (unsigned short*)nd_ws.cimg;
     if (!pm_interp_repl) pm_cfb_capture_prev_cpu_for(nd_ws.cimg); /* PT78: the fill target decides the buffer. F06-5: key pass only. the filter reads the last frame from the other frame buffer */
     for (int y = uly < 0 ? 0 : uly; y <= lry && y < 240; y++)
         for (int x = ulx < 0 ? 0 : ulx; x <= lrx && x < cimg_stride; x++) d[y * cimg_stride + x] = 0x8421;
-    return;
 }
-if (img_role(1) == ROLE_DEPTH) { /* B3: case 5, the z-buffer clear is a depth write */
-    pm_gpu_fill_depth(ulx, uly, lrx, lry, depth_of_word(nd_ws.fill));
-    return;
-}
-/* HUDB1: the lower right corner of a fill is inclusive only in G_CYC_FILL and G_CYC_COPY. 1-cycle and 2-cycle fills cover [ul, lr). */
-if (((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) < 2) {
-    lrx--;
-    lry--;
-    if (lrx < ulx || lry < uly) return; /* empty rectangle */
-}
-/* FILL cycle uses the fill register. 1-cycle fills (screen fades) use primitive color. */
-unsigned color =(((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3)
-    ? rgba_from_5551(nd_ws.fill & 0xffff) : nd_ws.prim;
-off_screen_check();
-if (((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) != 3) sync_render(); /* PT71: a 1-cycle fill carries the blender of its mode (the choice box fill fades with its prim alpha), not the state of the last draw */
-pm_gpu_set_replace(((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3);
-/* X01: a fill rect with depth compare and G_ZS_PRIM tests the primitive depth against the depth buffer */
-if ((nd_ws.omode_l & (1u << G_MDSFT_ZSRCSEL)) && (nd_ws.omode_l & 0x10u) && (nd_ws.geom & G_ZBUFFER)) {
+__attribute__((noinline, cold)) static void nd_fillrect_zs(int ulx, int uly, int lrx, int lry, unsigned color) {
+    /* X01: a fill rect with depth compare and G_ZS_PRIM tests the primitive depth against the depth buffer */
     sync_render();
     pm_gpu_fill_rect_z(ulx, uly, lrx, lry, color, (float)nd_ws.prim_z / 32767.f);
-} else
-pm_gpu_fill_rect(ulx, uly, lrx, lry, color);
-pm_gpu_set_replace(0);
-return;
 }
 
+__attribute__((noinline)) void nd_fillrect(u32 w0, u32 w1) {
+    nd_rect_fill_n++;
+#define FILL_SX10(v) ((int)(((v) & 0x3ffu) << 22) >> 22) /* signed 10-bit field: a left edge at x < 0 stays negative (HUDB1: unsigned wrap made ul > lr and swapped a full-width band) */
+    int lrx = FILL_SX10(w0 >> 14);
+    int lry = FILL_SX10(w0 >> 2);
+    int ulx = FILL_SX10(w1 >> 14);
+    int uly = FILL_SX10(w1 >> 2);
+    if (img_role(1) == ROLE_CPUFILL) { nd_fillrect_cpu(ulx, uly, lrx, lry); return; }
+    if (img_role(1) == ROLE_DEPTH) { /* B3: case 5, the z-buffer clear is a depth write */
+        pm_gpu_fill_depth(ulx, uly, lrx, lry, depth_of_word(nd_ws.fill));
+        return;
+    }
+    /* HUDB1: the lower right corner of a fill is inclusive only in G_CYC_FILL and G_CYC_COPY. 1-cycle and 2-cycle fills cover [ul, lr). */
+    if (((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) < 2) {
+        lrx--;
+        lry--;
+        if (lrx < ulx || lry < uly) return; /* empty rectangle */
+    }
+    /* FILL cycle uses the fill register. 1-cycle fills (screen fades) use primitive color. */
+    unsigned color = (((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3)
+        ? rgba_from_5551(nd_ws.fill & 0xffff) : nd_ws.prim;
+    off_screen_check();
+    if (((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) != 3) sync_render(); /* PT71: a 1-cycle fill carries the blender of its mode (the choice box fill fades with its prim alpha), not the state of the last draw */
+    pm_gpu_set_replace(((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3);
+    if ((nd_ws.omode_l & (1u << G_MDSFT_ZSRCSEL)) && (nd_ws.omode_l & 0x10u) && (nd_ws.geom & G_ZBUFFER))
+        nd_fillrect_zs(ulx, uly, lrx, lry, color);
+    else
+        pm_gpu_fill_rect(ulx, uly, lrx, lry, color);
+    pm_gpu_set_replace(0);
+    return;
+}
