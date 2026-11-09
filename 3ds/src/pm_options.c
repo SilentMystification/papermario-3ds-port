@@ -330,7 +330,7 @@ const unsigned char* pm_options_build_msg(void) { return pm_options_msg("Build "
 /* UI1a, PT59: the rows of the Options panel in tabs. The file select panel (mode 0) and the Select menu (mode 1) use the same table, the same value code and
  * the same action code. Tab 0 General, tab 1 Controls, tab 2 Debug. The last row of each tab is Back. Mode 1 adds the rows that only make sense in the
  * port menu (Return to Title Screen, Exit to Homebrew) and its Warp now changes the map at once. */
-enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPAREA, RW_DZPAD, RW_DZCS, RW_RDELAY, RW_RRATE, RW_CLOSE, RW_BOSSFOLDER, RW_MAP = 100, RW_DBG = 200, RW_GIVE = 300, RW_STAT = 310, RW_BOSS = 400, RW_PROF = 220, RW_CSTATS = 320, RW_CBADGES = 331, RW_CKEYS = 332, RW_HUDF = 340, RW_LOGF = 341, RW_RENDERF = 342, RW_GAMEF = 343, RW_BOSSBAT = 344, RW_PARTF = 345, RW_PART = 350, RW_SPAWNF = 346, RW_MOON = 370, RW_CHEAT = 371, RW_CH8 = 380, RW_FADV = 390, RW_BATTLESF = 347, RW_LOGSUB = 348, RW_LOG = 3200, RW_BTLAREA = 2000, RW_BTLROW = 2100, RW_SPAWN = 1300, RW_BADGE = 900, RW_KEY = 1100, RW_SUB = 700, RW_WMAP = 800, RW_STORYF = 3400, RW_STORY = 3410 }; /* STORYMENU: RW_STORYF the Story progress folder row (Debug tab), RW_STORY + row its page rows */ /* RW_BADGE + row: the Badges folder, RW_KEY + row: Key items (row 0 Toggle all, row k item k-1) */
+enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPAREA, RW_DZPAD, RW_DZCS, RW_RDELAY, RW_RRATE, RW_CLOSE, RW_BOSSFOLDER, RW_MAP = 100, RW_DBG = 200, RW_GIVE = 300, RW_STAT = 310, RW_BOSS = 400, RW_PROF = 220, RW_CSTATS = 320, RW_CBADGES = 331, RW_CKEYS = 332, RW_HUDF = 340, RW_LOGF = 341, RW_RENDERF = 342, RW_GAMEF = 343, RW_BOSSBAT = 344, RW_PARTF = 345, RW_PART = 350, RW_SPAWNF = 346, RW_MOON = 370, RW_FADV = 390, RW_EQF = 362, RW_SPWF = 363, RW_INVF = 364, RW_BTLF = 365, RW_MERF = 366, RW_POSF = 367, RW_EQ = 3500, RW_SPW = 3510, RW_INV = 3520, RW_BTL = 3530, RW_MER = 3540, RW_POS = 3550, RW_CURP = 3560, RW_BATTLESF = 347, RW_LOGSUB = 348, RW_LOG = 3200, RW_BTLAREA = 2000, RW_BTLROW = 2100, RW_SPAWN = 1300, RW_BADGE = 900, RW_KEY = 1100, RW_SUB = 700, RW_WMAP = 800, RW_STORYF = 3400, RW_STORY = 3410 }; /* STORYMENU: RW_STORYF the Story progress folder row (Debug tab), RW_STORY + row its page rows */ /* RW_BADGE + row: the Badges folder, RW_KEY + row: Key items (row 0 Toggle all, row k item k-1) */
 /* PT01c, MN6 rest: the Warp area folder rows (tab PM_OPT_SUB): RW_SUB + row, the presets first, then one row per area. RW_WMAP + row is a map row of an area page. */
 int pm_dbgg_spawn_count(void); int pm_dbgg_spawn_id(int row); void pm_dbgg_spawn(int id);
 const char* pm_partner_name(int i); const char* pm_partner_value(int i); int pm_dbgg_partner_on(int i); void pm_dbgg_partner_set(int i, int on); int pm_dbgg_partner_level(int i, int dir);
@@ -339,10 +339,19 @@ int pm_warp_top_count(void); int pm_warp_top_area(int r); int pm_warp_top_preset
 int pm_sp_count(int c); const char* pm_sp_chapter_name(int c); const char* pm_sp_label(int c, int i); int pm_sp_is_current(int c, int i); int pm_sp_current_chapter(void);
 const char* pm_sp_current_label(void); int pm_sp_set(int c, int i); int pm_sp_step(int dir);
 int pm_fa_get(void); void pm_fa_set(int on); /* FADV: frame advance row (pm_dbg_game.c) */
+/* PROFILE: the Cheats folders (pm_dbg_game.c): values, steps and actions of the rows. Cheat bits: pm_cheat_get, pm_cheat_set. */
+const char* pm_dbgg_eq_value(int k); void pm_dbgg_eq_step(int k, int dir);
+const char* pm_dbgg_spw_value(int k); void pm_dbgg_spw_step(int k, int dir);
+const char* pm_dbgg_inv_value(int k); void pm_dbgg_inv_step(int dir); void pm_dbgg_inv_fill(void);
+const char* pm_dbgg_mer_value(int k); void pm_dbgg_mer_step(int k, int dir);
+void pm_dbgg_instant_win(void);
+const char* pm_dbgg_pos_value(int k); void pm_dbgg_pos_save(void); void pm_dbgg_pos_load(void);
+const char* pm_dbgg_curpartner_value(void); void pm_dbgg_curpartner_step(int dir);
+int pm_cheat_get(int k); void pm_cheat_set(int k, int on);
 int pm_dbgg_item_count(int g); int pm_dbgg_item_id(int g, int row); int pm_dbgg_item_has(int g, int id); void pm_dbgg_item_set(int g, int id, int on); void pm_dbgg_toggle_all(int g); const char* pm_item_name(int id);
 void pm_dbgg_count(int g, int* have, int* total); void pm_dbgg_give(int g); int pm_dbgg_stat_get(int k); void pm_dbgg_stat_step(int k, int dir);
 static const char* const give_lbl[3] = { "Enable partners", "All badges", "All key items" };
-static const char* const stat_lbl[6] = { "Max HP", "Max FP", "BP", "Level", "Coins", "Star points" };
+static const char* const stat_lbl[8] = { "Max HP", "Max FP", "BP", "Level", "Coins", "Star points", "Star pieces", "Fortress keys" };
 const char* const pm_lvl_name[5] = { "Error", "Warn", "Info", "Debug", "Off" }; /* Off: only the console level (conlevel 4) */
 static const char* const dbg_lbl[11] = { "HUD", "Stats", "No fog", "No light", "", "", "Fixed seed", "Frame skip", "Position HUD", "", "Position log combo" }; /* LOG5: rows 4, 5 and 9 are on the Logging page */
 /* LOG5: the Logging page (sub kind 14). Row 0 Logging (pm_opt.log), rows 1 to 3 Live log, Log to disk, Console log (-1 off .. 3 debug).
@@ -388,17 +397,20 @@ static int tab_ids(int tab, int mode, int* ids) {
         if (mode) ids[n++] = RW_STORYF; /* STORYMENU: Story progress folder (Select menu only: it sets the game state) */
         ids[n++] = RW_HUDF; ids[n++] = RW_LOGF; ids[n++] = RW_RENDERF; ids[n++] = RW_GAMEF;
         if (mode) ids[n++] = RW_BOSSBAT; /* Boss and Battles (Select menu only) */
-    } else if (tab == 3) { /* CH1: Cheats tab (Select menu only, not in the file select panel) */
-        ids[n++] = RW_CSTATS; /* Set Stats folder */
-        ids[n++] = RW_STAT + 4; /* Coins */
-        ids[n++] = RW_CBADGES; /* CH2: Badges folder */
-        ids[n++] = RW_CKEYS; /* CH3: Key items folder */
-        ids[n++] = RW_PARTF; /* LAYOUT: Partners folder (Enable partners, CH4 rows) */
-        ids[n++] = RW_SPAWNF; /* CH5: Spawn item folder */
-        ids[n++] = RW_MOON; /* CH6: Moon jump (On or Off) */
-        for (i = 0; i < 6; i++) ids[n++] = RW_CHEAT + i; /* CH7: Infinite HP, FP, star power, No battles, Speed x2; CH9: Perfect action commands */
-        for (i = 0; i < 9; i++) ids[n++] = RW_CH8 + i; /* CH8: boots, hammer, spirits, pieces, item, fill, save, load, instant win */
-        ids[n++] = RW_FADV; /* FADV: Frame advance (On or Off, takes effect at the menu close) */
+    } else if (tab == 3) { /* PROFILE: Cheats tab (Select menu only), the top level folders in this order (folders end with " >") */
+        ids[n++] = RW_MOON; /* Moon jump (On or Off) */
+        ids[n++] = RW_SPAWNF; /* Spawn item folder */
+        ids[n++] = RW_EQF; /* Equipment: boots, hammer, action commands */
+        ids[n++] = RW_CSTATS; /* Stats: max HP, max FP, BP, Level, Coins, Star points, Star pieces, Fortress keys */
+        ids[n++] = RW_PARTF; /* Partners: enable, current partner, one row per partner (owned, upgrade level) */
+        ids[n++] = RW_SPWF; /* Star power: star spirits, star power, star beam */
+        ids[n++] = RW_CBADGES; /* Badges folder */
+        ids[n++] = RW_CKEYS; /* Key items folder */
+        ids[n++] = RW_INVF; /* Inventory: item, fill */
+        ids[n++] = RW_BTLF; /* Battle: infinite HP, FP, star power, no battles, perfect action commands, instant win */
+        ids[n++] = RW_MERF; /* Merlee: spell type, casts left */
+        ids[n++] = RW_POSF; /* Position: speed x2, save, load */
+        ids[n++] = RW_FADV; /* Frame advance (On or Off, takes effect at the menu close) */
     }
     ids[n++] = RW_BACK;
     return n;
@@ -407,24 +419,44 @@ static int tab_ids(int tab, int mode, int* ids) {
 static int sub_kind, sub_parent = -1; /* sub_parent: the folder kind a nested page was opened from (Boss, from Boss and Battles), else -1 */
 /* LAYOUT: the Debug and Partners folders (sub kinds 5 to 10). Each row is a row id of this file; the folder rows of the tab are in fold_tab. */
 static const int fl_bossbat[] = { RW_BOSSFOLDER, RW_BATTLESF }; /* BT2: Battles next to Boss */
-static const int fl_partners[] = { RW_GIVE + 0, RW_PART + 1, RW_PART + 2, RW_PART + 3, RW_PART + 4, RW_PART + 5, RW_PART + 6, RW_PART + 7, RW_PART + 8, RW_PART + 9, RW_PART + 10, RW_PART + 11 }; /* CH4: Enable partners, then the 11 partners */
+static const int fl_partners[] = { RW_GIVE + 0, RW_CURP, RW_PART + 1, RW_PART + 2, RW_PART + 3, RW_PART + 4, RW_PART + 5, RW_PART + 6, RW_PART + 7, RW_PART + 8, RW_PART + 9, RW_PART + 10, RW_PART + 11 }; /* CH4: Enable partners, then the 11 partners */
 static const int fl_hud[] = { RW_DBG + 0, RW_DBG + 1, RW_DBG + 8, RW_DBG + 10 };
 static const int fl_log[] = { RW_PROF, RW_LOGSUB }; /* LOG5: Profiling, then the Logging page */
 static const int fl_render[] = { RW_DBG + 2, RW_DBG + 3, RW_DBG + 7 };
 static const int fl_game[] = { RW_DBG + 6 };
-static const int* const fl_ids[6] = { fl_bossbat, fl_partners, fl_hud, fl_log, fl_render, fl_game };
-static const int fl_n[6] = { 2, 12, 4, 2, 3, 1 };
-static const char* const fl_name[12] = { "", "", "", "", "", "Boss and Battles", "Partners", "HUD", "Logging and Profiling", "Render", "Game", "Spawn item" };
+static const int fl_eq[] = { RW_EQ + 0, RW_EQ + 1, RW_EQ + 2 }; /* PROFILE: Equipment */
+static const int fl_spw[] = { RW_SPW + 0, RW_SPW + 1, RW_SPW + 2 }; /* Star power */
+static const int fl_inv[] = { RW_INV + 0, RW_INV + 1 }; /* Inventory */
+static const int fl_btl[] = { RW_BTL + 0, RW_BTL + 1, RW_BTL + 2, RW_BTL + 3, RW_BTL + 4, RW_BTL + 5 }; /* Battle */
+static const int fl_mer[] = { RW_MER + 0, RW_MER + 1 }; /* Merlee */
+static const int fl_pos[] = { RW_POS + 0, RW_POS + 1, RW_POS + 2 }; /* Position */
+/* the folder kinds index these tables directly (sub_kind): 5 to 10 the old folders, 16 to 21 the PROFILE folders */
+static const int* const fl_ids[22] = { [5] = fl_bossbat, [6] = fl_partners, [7] = fl_hud, [8] = fl_log, [9] = fl_render, [10] = fl_game,
+    [16] = fl_eq, [17] = fl_spw, [18] = fl_inv, [19] = fl_btl, [20] = fl_mer, [21] = fl_pos };
+static const int fl_n[22] = { [5] = 2, [6] = 13, [7] = 4, [8] = 2, [9] = 3, [10] = 1, [16] = 3, [17] = 3, [18] = 2, [19] = 6, [20] = 2, [21] = 3 };
+static const char* const fl_name[22] = { [5] = "Boss and Battles", [6] = "Partners", [7] = "HUD", [8] = "Logging and Profiling", [9] = "Render", [10] = "Game",
+    [11] = "Spawn item", [16] = "Equipment", [17] = "Star power", [18] = "Inventory", [19] = "Battle", [20] = "Merlee", [21] = "Position" };
+/* PROFILE: labels of the folder rows and the cheat bits of the Battle and Position rows (pm_cheat_* index) */
+static const char* const eq_lbl[3] = { "Boots", "Hammer", "Action commands" };
+static const char* const spw_lbl[3] = { "Star spirits", "Star power", "Star beam" };
+static const char* const inv_lbl[2] = { "Inventory item", "Fill inventory" };
+static const char* const btl_lbl[6] = { "Infinite HP", "Infinite FP", "Infinite star power", "No battles", "Perfect action commands", "Instant win" };
+static const char* const mer_lbl[2] = { "Spell type", "Casts left" };
+static const char* const pos_lbl[3] = { "Speed x2", "Save position", "Load position" };
+static const int btl_cheat[5] = { 0, 1, 2, 3, 5 }; /* Infinite HP, FP, star power, No battles, Perfect action commands (pm_dbg_game.c cheat_name) */
+#define PM_CHEAT_SPEED 4 /* Speed x2 */
 static const struct { int id, kind; const char* name; } fold_tab[] = {
     { RW_BOSSBAT, 5, "Boss and Battles >" }, { RW_PARTF, 6, "Partners >" }, { RW_HUDF, 7, "HUD >" },
-    { RW_LOGF, 8, "Logging and Profiling >" }, { RW_RENDERF, 9, "Render >" }, { RW_GAMEF, 10, "Game >" }, { RW_SPAWNF, 11, "Spawn item >" }, { RW_LOGSUB, 14, "Logging >" } };
+    { RW_LOGF, 8, "Logging and Profiling >" }, { RW_RENDERF, 9, "Render >" }, { RW_GAMEF, 10, "Game >" }, { RW_SPAWNF, 11, "Spawn item >" }, { RW_LOGSUB, 14, "Logging >" },
+    { RW_EQF, 16, "Equipment >" }, { RW_SPWF, 17, "Star power >" }, { RW_INVF, 18, "Inventory >" }, { RW_BTLF, 19, "Battle >" }, { RW_MERF, 20, "Merlee >" }, { RW_POSF, 21, "Position >" } };
 static int fold_index(int id) { for (unsigned k = 0; k < sizeof fold_tab / sizeof fold_tab[0]; k++) if (fold_tab[k].id == id) return (int)k; return -1; }
-static const int setstat_k[5] = { 0, 1, 2, 3, 5 }; /* Max HP, Max FP, BP, Level, Star points (Coins is a Cheats tab row) */
+static const int setstat_k[8] = { 0, 1, 2, 3, 4, 5, 6, 7 }; /* Max HP, Max FP, BP, Level, Coins, Star points, Star pieces, Fortress keys (PROFILE: the Stats folder) */
+#define SETSTAT_N ((int)(sizeof setstat_k / sizeof setstat_k[0]))
 int pm_optui_sub_kind(void) { return sub_kind; }
 static int bt_row; /* BT2: the area row the formation page was opened from */
 int pm_battle_area_count(void); int pm_battle_area_rows(int a); int pm_battle_area_item(int a, int r); const char* pm_battle_area_name(int a); const char* pm_battle_label(int k); int pm_battle_launch(int k);
 /* Set Stats: the Level row (setstat_k 3) is read only, the cursor skips it */
-int pm_optui_readonly(int tab, int row) { return tab == PM_OPT_SUB && sub_kind == 2 && row >= 0 && row < 5 && setstat_k[row] == 3; }
+int pm_optui_readonly(int tab, int row) { return tab == PM_OPT_SUB && sub_kind == 2 && row >= 0 && row < SETSTAT_N && setstat_k[row] == 3; }
 /* LOG5: the Logging page rows Live log, Log to disk, Console log grey while logging is off (Profiling is on or logging is off). Cursor skip and colour. */
 int pm_optui_grey(int tab, int row) { return tab == PM_OPT_SUB && sub_kind == 14 && row >= 1 && row <= 3 && !pm_opt.log; }
 /* Set Stats: HP, FP, BP and Level draw in red when the computed level is above 27 */
@@ -486,7 +518,7 @@ const char* pm_optui_sub_name(void) {
     }
     if (sub_kind == 3) return "Badges";
     if (sub_kind == 4) return "Key items";
-    if (sub_kind == 2) return "Set Stats";
+    if (sub_kind == 2) return "Stats";
     if (sub_kind == 12) return "Boss and Battles > Battles";
     if (sub_kind == 13) { static char bn[64]; snprintf(bn, sizeof bn, "Boss and Battles > Battles > %s", pm_battle_area_name(sub_area)); return bn; }
     if (sub_kind == 14) return "Logging and Profiling > Logging";
@@ -539,7 +571,7 @@ static int row_id(int tab, int row, int mode) {
     if (tab == PM_OPT_SUB && sub_kind == 12) return RW_BTLAREA + row; /* BT2 */
     if (tab == PM_OPT_SUB && sub_kind == 13) return RW_BTLROW + pm_battle_area_item(sub_area, row);
     if (tab == PM_OPT_SUB && sub_kind == 14) return RW_LOG + row; /* LOG5 */
-    if (tab == PM_OPT_SUB && sub_kind >= 5) return row >= 0 && row < fl_n[sub_kind - 5] ? fl_ids[sub_kind - 5][row] : RW_BACK;
+    if (tab == PM_OPT_SUB && sub_kind >= 5) return row >= 0 && row < fl_n[sub_kind] ? fl_ids[sub_kind][row] : RW_BACK;
     if (tab == PM_OPT_SUB && sub_kind == 2) return RW_STAT + setstat_k[row];
     if (tab == PM_OPT_SUB && sub_kind == 3) return RW_BADGE + row;
     if (tab == PM_OPT_SUB && sub_kind == 4) return RW_KEY + row;
@@ -555,7 +587,7 @@ int pm_optui_rows(int tab, int mode) {
     int ids[48];
     if (tab == PM_OPT_SUB && warp_warn) return 2;
     if (tab == PM_OPT_SUB && sub_kind == 15) return sub_area >= 0 ? pm_sp_count(sub_area) : 13; /* STORYMENU: 10 chapters, current, 2 steps */
-    if (tab == PM_OPT_SUB) return sub_kind == 12 ? pm_battle_area_count() : sub_kind == 13 ? pm_battle_area_rows(sub_area) : sub_kind == 11 ? pm_dbgg_spawn_count() : sub_kind == 14 ? 5 : sub_kind >= 5 ? fl_n[sub_kind - 5] : sub_kind >= 3 ? 1 + pm_dbgg_item_count(sub_kind == 3 ? 1 : 2) : sub_kind == 2 ? 5 : sub_kind ? pm_boss_count() : sub_area >= 0 ? pm_warp_area_size(sub_area) : pm_warp_top_count();
+    if (tab == PM_OPT_SUB) return sub_kind == 12 ? pm_battle_area_count() : sub_kind == 13 ? pm_battle_area_rows(sub_area) : sub_kind == 11 ? pm_dbgg_spawn_count() : sub_kind == 14 ? 5 : sub_kind >= 5 ? fl_n[sub_kind] : sub_kind >= 3 ? 1 + pm_dbgg_item_count(sub_kind == 3 ? 1 : 2) : sub_kind == 2 ? SETSTAT_N : sub_kind ? pm_boss_count() : sub_area >= 0 ? pm_warp_area_size(sub_area) : pm_warp_top_count();
     return tab_ids(tab, mode, ids);
 }
 const char* pm_optui_label(int tab, int row, int mode) {
@@ -565,7 +597,7 @@ const char* pm_optui_label(int tab, int row, int mode) {
     id = row_id(tab, row, mode);
     if (id == RW_STORYF) return "Story progress >"; /* STORYMENU */
     if (id >= RW_LOG && id < RW_LOG + 5) { static const char* const ll[5] = { "Logging", "Live log", "Log to disk", "Console log", "Profile to disk" }; return ll[id - RW_LOG]; } /* LOG5, U2 */
-    if (id == RW_CSTATS) return "Set Stats >";
+    if (id == RW_CSTATS) return "Stats >";
     if (id == RW_CBADGES) return "Badges >";
     if (id == RW_CKEYS) return "Key items >";
     if (fold_index(id) >= 0) return fold_tab[fold_index(id)].name;
@@ -576,8 +608,13 @@ const char* pm_optui_label(int tab, int row, int mode) {
     if (id == RW_BATTLESF) return "Battles >"; /* BT2 */
     if (id >= RW_BTLAREA && id < RW_BTLAREA + 100) return pm_battle_area_name(id - RW_BTLAREA); /* BT2 */
     if (id >= RW_BTLROW && id < RW_BTLROW + 1000) return pm_battle_label(id - RW_BTLROW); /* BT2 */
-    if (id >= RW_CH8 && id < RW_CH8 + 9) { static const char* const cl8[9] = { "Boots level", "Hammer level", "Max star spirits", "Star pieces", "Inventory item", "Fill inventory", "Save position", "Load position", "Instant win" }; return cl8[id - RW_CH8]; } /* CH8 */
-    if (id >= RW_CHEAT && id < RW_CHEAT + 6) { static const char* const cl[6] = { "Infinite HP", "Infinite FP", "Infinite star power", "No battles", "Speed x2", "Perfect action commands" }; return cl[id - RW_CHEAT]; } /* CH7, CH9 */
+    if (id >= RW_EQ && id < RW_EQ + 3) return eq_lbl[id - RW_EQ]; /* PROFILE: the folders */
+    if (id >= RW_SPW && id < RW_SPW + 3) return spw_lbl[id - RW_SPW];
+    if (id >= RW_INV && id < RW_INV + 2) return inv_lbl[id - RW_INV];
+    if (id >= RW_BTL && id < RW_BTL + 6) return btl_lbl[id - RW_BTL];
+    if (id >= RW_MER && id < RW_MER + 2) return mer_lbl[id - RW_MER];
+    if (id >= RW_POS && id < RW_POS + 3) return pos_lbl[id - RW_POS];
+    if (id == RW_CURP) return "Current partner";
     if (folder_row(id, &g) >= 0) return folder_row(id, &g) == 0 ? "Toggle all" : pm_item_name(pm_dbgg_item_id(g, folder_row(id, &g) - 1));
     if (id >= RW_WMAP) return pm_warp_map_name(pm_warp_area_map(sub_area, id - RW_WMAP));
     if (id >= RW_SUB) { int r = id - RW_SUB, a = pm_warp_top_area(r); return a >= 0 ? pm_warp_area_name(a) : pm_warp_preset_name(pm_warp_top_preset(r)); } /* STORYMENU: top rows */
@@ -618,8 +655,15 @@ const char* pm_optui_value(int tab, int row, int mode) {
     if (id >= RW_BTLROW && id < RW_BTLROW + 1000) return "A: fight"; /* BT2 */
     if (id == RW_MOON) return pm_cheat_moon_get() ? "On" : "Off"; /* CH6 */
     if (id == RW_FADV) return pm_fa_get() ? "On" : "Off"; /* FADV */
-    if (id >= RW_CHEAT && id < RW_CHEAT + 6) return pm_cheat_get(id - RW_CHEAT) ? "On" : "Off"; /* CH7 */
-    if (id >= RW_CH8 && id < RW_CH8 + 9) return pm_dbgg_ch8_text(id - RW_CH8); /* CH8 */
+    if (id >= RW_EQ && id < RW_EQ + 3) return pm_dbgg_eq_value(id - RW_EQ); /* PROFILE: the folders */
+    if (id >= RW_SPW && id < RW_SPW + 3) return pm_dbgg_spw_value(id - RW_SPW);
+    if (id >= RW_INV && id < RW_INV + 2) return pm_dbgg_inv_value(id - RW_INV);
+    if (id >= RW_BTL && id < RW_BTL + 5) return pm_cheat_get(btl_cheat[id - RW_BTL]) ? "On" : "Off";
+    if (id == RW_BTL + 5) return "A: do";
+    if (id >= RW_MER && id < RW_MER + 2) return pm_dbgg_mer_value(id - RW_MER);
+    if (id == RW_POS) return pm_cheat_get(PM_CHEAT_SPEED) ? "On" : "Off";
+    if (id == RW_POS + 1 || id == RW_POS + 2) return pm_dbgg_pos_value(id - RW_POS);
+    if (id == RW_CURP) return pm_dbgg_curpartner_value();
     if (folder_row(id, &g) >= 0) return folder_row(id, &g) == 0 ? "A: all" : pm_dbgg_item_has(g, pm_dbgg_item_id(g, folder_row(id, &g) - 1)) ? "On" : "Off";
     if (id >= RW_WMAP) { /* a map row shows its entry and the entry count */
         static char eb[16];
@@ -673,10 +717,14 @@ int pm_optui_step(int tab, int row, int dir, int mode) {
     if (id == RW_BATTLESF || (id >= RW_BTLAREA && id < RW_BTLROW + 1000)) return 0; /* BT2: no value */
     if (id == RW_MOON) { pm_cheat_moon_set(!pm_cheat_moon_get()); return 1; } /* CH6: left or right flips it */
     if (id == RW_FADV) { pm_fa_set(!pm_fa_get()); return 1; } /* FADV: flips */
-    if (id >= RW_CHEAT && id < RW_CHEAT + 6) { pm_cheat_set(id - RW_CHEAT, !pm_cheat_get(id - RW_CHEAT)); return 1; } /* CH7: flips */
-    if (id >= RW_CH8 && id < RW_CH8 + 5) { pm_dbgg_ch8_step(id - RW_CH8, dir); return 1; } /* CH8: value rows step */
-    if (id >= RW_CH8 && id < RW_CH8 + 9) return 0;
-    if (id >= RW_CHEAT && id < RW_CHEAT + 6) { pm_cheat_set(id - RW_CHEAT, !pm_cheat_get(id - RW_CHEAT)); return 1; } /* CH7 */
+    if (id >= RW_EQ && id < RW_EQ + 3) { pm_dbgg_eq_step(id - RW_EQ, dir); return 1; } /* PROFILE: value rows step, the action commands row flips */
+    if (id >= RW_SPW && id < RW_SPW + 3) { pm_dbgg_spw_step(id - RW_SPW, dir); return 1; }
+    if (id == RW_INV) { pm_dbgg_inv_step(dir); return 1; }
+    if (id >= RW_BTL && id < RW_BTL + 5) { pm_cheat_set(btl_cheat[id - RW_BTL], !pm_cheat_get(btl_cheat[id - RW_BTL])); return 1; }
+    if (id >= RW_MER && id < RW_MER + 2) { pm_dbgg_mer_step(id - RW_MER, dir); return 1; }
+    if (id == RW_POS) { pm_cheat_set(PM_CHEAT_SPEED, !pm_cheat_get(PM_CHEAT_SPEED)); return 1; }
+    if (id == RW_CURP) { pm_dbgg_curpartner_step(dir); return 1; }
+    if (id == RW_INV + 1 || id == RW_BTL + 5 || id == RW_POS + 1 || id == RW_POS + 2) return 0; /* act only */
     if (id > RW_PART && id <= RW_PART + 11) return pm_dbgg_partner_level(id - RW_PART, dir); /* CH4: left and right change the level of an enabled partner */
     if (id == RW_CSTATS || id == RW_CBADGES || id == RW_CKEYS || fold_index(id) >= 0 || folder_row(id, &g) >= 0) return 0;
     if (id == RW_FPS || id == RW_WIDE || id == RW_DPAD || (id >= RW_MAP && id < RW_MAP + PM_NIN) || (id >= RW_DBG && id < RW_DBG + 11)) { /* LAYOUT: left or right flips or cycles a value row like A */
@@ -729,8 +777,17 @@ int pm_optui_act(int tab, int row, int mode) {
     if (id >= RW_BTLROW && id < RW_BTLROW + 1000) return pm_battle_launch(id - RW_BTLROW) ? 5 : 0; /* BT2: queued, the menu closes */
     if (id == RW_MOON) { pm_cheat_moon_set(!pm_cheat_moon_get()); return 0; } /* CH6 */
     if (id == RW_FADV) { pm_fa_set(!pm_fa_get()); return 0; } /* FADV */
-    if (id >= RW_CHEAT && id < RW_CHEAT + 6) { pm_cheat_set(id - RW_CHEAT, !pm_cheat_get(id - RW_CHEAT)); return 0; } /* CH7 */
-    if (id >= RW_CH8 && id < RW_CH8 + 9) { pm_dbgg_ch8_act(id - RW_CH8); return 0; } /* CH8 */
+    if (id >= RW_EQ && id < RW_EQ + 3) { pm_dbgg_eq_step(id - RW_EQ, 1); return 0; } /* PROFILE: A steps up, the action commands row flips */
+    if (id >= RW_SPW && id < RW_SPW + 3) { pm_dbgg_spw_step(id - RW_SPW, 1); return 0; }
+    if (id == RW_INV) { pm_dbgg_inv_step(1); return 0; }
+    if (id == RW_INV + 1) { pm_dbgg_inv_fill(); return 0; }
+    if (id >= RW_BTL && id < RW_BTL + 5) { pm_cheat_set(btl_cheat[id - RW_BTL], !pm_cheat_get(btl_cheat[id - RW_BTL])); return 0; }
+    if (id == RW_BTL + 5) { pm_dbgg_instant_win(); return 0; }
+    if (id >= RW_MER && id < RW_MER + 2) { pm_dbgg_mer_step(id - RW_MER, 1); return 0; }
+    if (id == RW_POS) { pm_cheat_set(PM_CHEAT_SPEED, !pm_cheat_get(PM_CHEAT_SPEED)); return 0; }
+    if (id == RW_POS + 1) { pm_dbgg_pos_save(); return 0; }
+    if (id == RW_POS + 2) { pm_dbgg_pos_load(); return 0; }
+    if (id == RW_CURP) { pm_dbgg_curpartner_step(1); return 0; }
     if (id > RW_PART && id <= RW_PART + 11) { /* CH4: A turns the partner on or off */
         pm_dbgg_partner_set(id - RW_PART, !pm_dbgg_partner_on(id - RW_PART));
         return 0;

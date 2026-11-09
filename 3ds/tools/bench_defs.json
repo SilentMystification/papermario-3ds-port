@@ -4636,6 +4636,60 @@
       ],
       "log_metrics": [],
       "gates": []
+    },
+    {
+      "name": "profile_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "PROFILE: Cheats tab folders. Top level order, Equipment (Boots Ultra, Action commands On) and the pause menu after. Log: profile lines. Pictures: the bottom shots.",
+      "scenario": "profile",
+      "cap": 45,
+      "until": "padscript: done",
+      "tags": [
+        "azahar",
+        "pic",
+        "menu",
+        "profile"
+      ],
+      "log_metrics": [],
+      "gates": []
+    },
+    {
+      "name": "profile_btl_on",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "PROFILE battle check, Action commands On: the first jump shows the action command prompt (shots 180 to 240). Pair: dmg_jump (Off, no prompt).",
+      "scenario": "profile_btl_on",
+      "cap": 45,
+      "until": "shot \\d+ frame 240\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "battle",
+        "profile"
+      ],
+      "log_metrics": [],
+      "gates": []
+    },
+    {
+      "name": "profile_pause_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "PROFILE: the pause Stats page after the Equipment edit (Ultra Boots, no hammer). Picture: the shot at frame 130.",
+      "scenario": "profile_pause",
+      "cap": 45,
+      "until": "shot \\d+ frame 130\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "pause",
+        "profile"
+      ],
+      "log_metrics": [],
+      "gates": []
     }
   ],
   "legacy": {

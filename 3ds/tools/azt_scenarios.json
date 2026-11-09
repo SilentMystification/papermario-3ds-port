@@ -10880,6 +10880,102 @@
         }
       ],
       "reason": "STORYMENU gate. The bottom shots (shotmenu, one per draw) show the Warp area list top and bottom, the chapter list, the Prologue page with now, and the Chapter 1 page after the set; read by eye. Log lines give the rows and values. The Story folder is Select menu only (tab 2 row 1)."
+    },
+    {
+      "name": "profile",
+      "status": "unverified",
+      "subject": "Select menu (SELECT), Cheats tab (L): top level order. Row 2 Equipment (A): Boots steps Normal to Super to Ultra (A twice), row 2 Action commands (A): On. B back, SELECT closes, START opens the pause menu (the gear is read by eye).",
+      "proves": "PROFILE: the Cheats folders write gPlayerData (bootsLevel, hasActionCommands) at once and log profile: <field> <old> -> <new>. The top level order of the Cheats tab.",
+      "debug": "preset=toad padscript=@pad_profile.txt shotmenu loglevel=debug",
+      "until": "padscript: done",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "menu: open",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "menu open",
+          "regex": "menu: open"
+        },
+        {
+          "name": "equipment folder row",
+          "regex": "menu: tab 3 row 2 Equipment > = A: open"
+        },
+        {
+          "name": "boots normal to super",
+          "regex": "profile: boots level 0 -> 1"
+        },
+        {
+          "name": "boots super to ultra",
+          "regex": "profile: boots level 1 -> 2"
+        },
+        {
+          "name": "action commands on",
+          "regex": "profile: action commands 0 -> 1"
+        },
+        {
+          "name": "script done",
+          "regex": "padscript: done"
+        }
+      ],
+      "reason": "PROFILE gate: the Cheats top level (shotmenu draws), the Equipment page with Ultra and On, and the pause menu after it. Log lines give the rows and the values. Reads by eye: the top level order and the pause gear."
+    },
+    {
+      "name": "profile_btl_on",
+      "status": "unverified",
+      "subject": "Battle check, Action commands On: the jump action command prompt of the first jump (kmr_20 battle, autoa, acmd switch = hasActionCommands on, as the Lucky Star gives it). Shots 180 to 240 every 4 frames; the prompt button icon is the subject.",
+      "proves": "PROFILE battle check: with hasActionCommands on (the state the Equipment row Action commands sets), the jump shows the action command prompt. Pair: dmg_jump (Off, no prompt).",
+      "debug": "warp=kmr_20:0 battle=BTL_KMR_1_FORMATION_00:BTL_KMR_1_STAGE_01 battlef=30 acmd autoa det fixedseed shots shotwin=180:61:4 loglevel=debug",
+      "until": "shot \\d+ frame 240\\b",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: kmr_20 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_20 entry 0"
+        },
+        {
+          "name": "shot window end",
+          "regex": "shot \\d+ frame 240\\b"
+        }
+      ],
+      "reason": "PROFILE gate, Action commands On half of the battle check (the Off half is dmg_jump: no prompt). Read the shots by eye: the A button prompt shows on the first jump."
+    },
+    {
+      "name": "profile_pause",
+      "status": "unverified",
+      "reason": "PROFILE pause gate: the pause Stats page after Boots Ultra, Hammer None and Action commands On. The shot is the subject (Ultra Boots shown, no hammer).",
+      "subject": "Pause menu after the profile edit: Select menu Equipment (Boots Ultra, Action commands On), B, SELECT closes, START*3 opens the pause at frame 130. The Stats page shows the boots and the hammer icon and text.",
+      "proves": "PROFILE: the pause Stats page reads gPlayerData.bootsLevel and hammerLevel (pause_stats.c) and shows Ultra Boots and no hammer after the Cheats edit.",
+      "debug": "preset=toad padscript=@pad_profile_pause.txt shots shotwin=130:1 loglevel=debug",
+      "until": "shot \\d+ frame 130\\b",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "menu: open",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "equipment folder row",
+          "regex": "menu: tab 3 row 2 Equipment > = A: open"
+        },
+        {
+          "name": "boots super to ultra",
+          "regex": "profile: boots level 1 -> 2"
+        },
+        {
+          "name": "action commands on",
+          "regex": "profile: action commands 0 -> 1"
+        },
+        {
+          "name": "pause shot",
+          "regex": "shot \\d+ frame 130\\b"
+        }
+      ]
     }
   ]
 }
