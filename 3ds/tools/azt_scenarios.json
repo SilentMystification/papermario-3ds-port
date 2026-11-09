@@ -1385,7 +1385,7 @@
       "status": "unverified",
       "subject": "Map kmr_10 at player position -142 136 221 (the wall band, user report). Frames 200 to 205 with the game camera on Mario. Picture: vertical stripes in the top rows of the low terrain wall next to the ? block.",
       "proves": "pos= switch sets Mario to the position at scene frame 30 on a warped map, and the shots show the wall.",
-      "debug": "warp=kmr_10:0 pos=-142:136:221 story=ch0_toad_town shots shotwin=200:6 loglevel=debug drawlog=200:1",
+      "debug": "warp=kmr_10:0 pos=-142:136:221 story=ch0_toad_town shots shotwin=200:6 loglevel=debug drawlog=200:1 det",
       "until": "shot 5 frame 205",
       "cap": 45,
       "deadline": 20,
@@ -1407,6 +1407,30 @@
         }
       ],
       "reason": ""
+    },
+    {
+      "name": "wall_hos01_pic",
+      "status": "unverified",
+      "reason": "WALLT1 picture gate: the aux pan grows with the frame; frames 200 to 236 (step 4) show the band growth on the old path and its absence on the new path. One shot per frame was about 2.8 s each and hit the cap.",
+      "subject": "Map hos_01 at pos -110 250 -170 (next to the walls o178 x -268..217, z -414..71 and o179), cold det start, shots frames 200 to 236 every 4th frame. Base and new shots must be byte-equal except the wall.",
+      "proves": "WALLT1: the 4-bit aux tile window of the hos_01 walls is the whole mask period of the loaded image (V21 branch now reads from the LoadTile origin); the shot shows the soil tiled with no foreign rows.",
+      "debug": "warp=hos_01:0 story=ch0_toad_town pos=-110:250:-170 shots shotwin=200:37:4 loglevel=debug det",
+      "until": "shot \\d+ frame 236\\b",
+      "cap": 40,
+      "deadline": 30,
+      "first_marker": "warp: hos_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: hos_01 entry 0"
+        },
+        {
+          "name": "shot 236",
+          "regex": "shot \\d+ frame 236\\b"
+        }
+      ]
     },
     {
       "name": "nok14_lake",
@@ -5305,8 +5329,8 @@
     {
       "name": "battle_wide",
       "status": "unverified",
-      "subject": "Battle with wide on (one Goomba, kmr_03): the battle wheel sits next to Mario (UA4). The wheel log line starts a shot burst of 8 frames; the until-line is that shot.",
-      "proves": "UA4: the battle wheel base position follows the zoomed battle view (pm_wide_vx, pm_wide_vy).",
+      "subject": "Battle with wide on (one Goomba, kmr_03): the battle wheel sits in the bottom-left corner of the wide screen (WIDE3). The wheel log line starts a shot burst of 8 frames; the until-line is that shot.",
+      "proves": "WIDE3: the battle wheel base is pm_wide_left(54) = 14 (y 173, the 4:3 height); the wheel and its reel move with it, 40 px left of the 4:3 place.",
       "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 wide shots loglevel=debug uiburst",
       "until": "shot \\d+ frame \\d+ map",
       "cap": 45,
@@ -5325,14 +5349,14 @@
         },
         {
           "name": "wheel open",
-          "regex": "debug wheel open: base 33 183"
+          "regex": "debug wheel open: base 14 173"
         },
         {
           "name": "shot at wheel",
           "regex": "shot \\d+ frame \\d+ map"
         }
       ],
-      "reason": "UA4 gate. Wide shot of the wheel next to Mario at about (33, 183)."
+      "reason": "WIDE3 gate. Wide shot of the wheel in the corner, base (14, 183)."
     },
     {
       "name": "battle_target_wide",
@@ -5539,6 +5563,126 @@
         }
       ],
       "reason": ""
+    },
+    {
+      "name": "battle_strats_wide",
+      "status": "unverified",
+      "reason": "WIDE3 gate 2b, Strategies list from the corner wheel. Scans are 2 per game frame from scan 68 (f54). Left steps at f235 and f252, A at f282.",
+      "subject": "Battle with wide on (one Goomba, kmr_03): the wheel opens with Jump highlighted. Two steps left (Strategies), A opens the Strategies list (btl_menu_strats_init). Items is disabled in this save (no items).",
+      "proves": "WIDE3: the Strategies list opens at StratsMenuPosX = pm_wide_left(20) next to the corner wheel.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 wide shots loglevel=debug uiburst padscript=wait362,left*4,wait30,left*4,wait60,A*4,wait300",
+      "until": "shot \\d+ frame 2[8-9]\\d\\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "battle formation",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "wheel open",
+          "regex": "debug wheel open: base 14 173"
+        },
+        {
+          "name": "submenu open",
+          "regex": "debug submenu open: strats"
+        },
+        {
+          "name": "shot at submenu",
+          "regex": "shot \\d+ frame 2[8-9]\\d\\b"
+        }
+      ]
+    },
+    {
+      "name": "chapter_native",
+      "status": "unverified",
+      "reason": "WIDE3 gate 3: one kmr_22 shot with wide on.",
+      "subject": "Chapter screen: warp to kmr_22 (the chapter card map) with wide on. The card is drawn in 4:3 with black side bars like the intro (shots at frames 19 to 57; the frame counter skips in this map). Log: chapter: native aspect on.",
+      "proves": "WIDE3: map kmr_22 runs in the native 4:3 view with wide on (set_game_mode rule, chapter_native_on).",
+      "debug": "warp=kmr_22:0 wide shots shotwin=20:40 loglevel=debug",
+      "until": "shot \\d+ frame 5[0-9]\\b",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: kmr_22 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_22 entry 0"
+        },
+        {
+          "name": "chapter on",
+          "regex": "chapter: native aspect on"
+        },
+        {
+          "name": "shot in chapter",
+          "regex": "shot \\d+ frame 5[0-9]\\b"
+        }
+      ]
+    },
+    {
+      "name": "shop_wide",
+      "status": "unverified",
+      "subject": "Toad Town (mac_00) with wide on, uishow=shop turns on the item info of the item shop at frame 200: the prices draw under the shop items (draw_shop_items). The hook is at scene frame 200 (abs 252); shots from abs 262 (shotwin counts absolute frames).",
+      "proves": "WIDE3 shop: the price x follows the 3D item in the wide view (pm_wide_draw_x, the get_screen_coords rule).",
+      "debug": "warp=mac_00:0 story=ch0_toad_town wide uishow=shop shots shotwin=262:20 loglevel=debug",
+      "until": "shot \\d+ frame 26[2-9]\\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 0"
+        },
+        {
+          "name": "shop on",
+          "regex": "debug uishow: shop items f200"
+        },
+        {
+          "name": "shot in shop",
+          "regex": "shot \\d+ frame 26[2-9]\\b"
+        }
+      ],
+      "reason": "WIDE3 shop gate (step 5): one wide shot with the prices under the items."
+    },
+    {
+      "name": "shop_nowide",
+      "status": "unverified",
+      "subject": "Toad Town (mac_00), 4:3 (no wide), uishow=shop at frame 200: the prices at the 4:3 positions. Byte gate for the shop price path with wide off.",
+      "proves": "WIDE3 shop byte gate: pm_wide_draw_x is the identity with wide off.",
+      "debug": "warp=mac_00:0 story=ch0_toad_town nowide uishow=shop shots shotwin=262:20 loglevel=debug",
+      "until": "shot \\d+ frame 26[2-9]\\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 0"
+        },
+        {
+          "name": "shop on",
+          "regex": "debug uishow: shop items f200"
+        },
+        {
+          "name": "shot in shop",
+          "regex": "shot \\d+ frame 26[2-9]\\b"
+        }
+      ],
+      "reason": "WIDE3 shop byte gate (step 5), 4:3."
     },
     {
       "name": "chapter_wide",
@@ -11068,6 +11212,56 @@
       "reason": "DIRECT D1 byte gate for the floor reflection range (no other det scene enables GLOBAL_OVERRIDES_ENABLE_FLOOR_REFLECTION). Cap as spot_mac01_det: cold det start, scene line at frame 300."
     },
     {
+      "name": "menu_texf",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 at 0 0 200 (as spot_mac01_det): SELECT opens the menu on the General tab (Frame skip row), then Debug > Render > Texture filtering: Filter Game to Bilinear all, close; field shots 200 to 205 with the bilinear filter.",
+      "proves": "TEXF: the General tab holds Frame skip, the Render folder holds Texture filtering, and Filter Bilinear all draws the field with bilinear sampling (the shot differs from the default shot, same frames). Log: texfilt: 0 Bilinear all.",
+      "debug": "warp=mac_01:0 pos=0:0:200 padscript=@pad_menu_texf.txt shotmenu shots shotwin=200:6 loglevel=debug det",
+      "extra": [],
+      "until": "shot \\d+ frame 205\\b",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "filter set",
+          "regex": "texfilt: 0 Bilinear all"
+        },
+        {
+          "name": "frame 200",
+          "regex": "shot \\d+ frame 200\\b"
+        }
+      ],
+      "reason": "TEXF gate: the menu walk sets the filter before the field shots (the menu pauses the game, so the shot window comes after the log line). Picture: field shot 200 against the default spot_mac01_det frame 200 (smoother textures)."
+    },
+    {
+      "name": "menu_texc",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 at 0 0 200 (as menu_texf): Filter Bilinear all, then Texel centre On (Debug > Render > Texture filtering), close; field shots 200 to 205.",
+      "proves": "TEXC: the Texel centre row sets the bilinear texel offset (nd_model.c uvso +0.5 texel). Log: texfilt: 1 On. The field shot 200 differs from menu_texf frame 200 by a sub-texel shift.",
+      "debug": "warp=mac_01:0 pos=0:0:200 padscript=@pad_menu_texc.txt shotmenu shots shotwin=200:6 loglevel=debug det",
+      "extra": [],
+      "until": "shot \\d+ frame 205\\b",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "centre set",
+          "regex": "texfilt: 1 On"
+        },
+        {
+          "name": "frame 200",
+          "regex": "shot \\d+ frame 200\\b"
+        }
+      ],
+      "reason": "TEXC gate: the centre row is set after the filter in the menu walk, so the shot window comes after the log line. Picture: compare with menu_texf frame 200."
+    },
+    {
       "name": "profile",
       "status": "unverified",
       "subject": "Select menu (SELECT), Cheats tab (L): top level order. Row 2 Equipment (A): Boots steps Normal to Super to Ultra (A twice), row 2 Action commands (A): On. B back, SELECT closes, START opens the pause menu (the gear is read by eye).",
@@ -11214,6 +11408,64 @@
         }
       ],
       "reason": "SAVESAFE step 4 gate. Until is the exit flush line, which follows the savecrash line."
+    },
+    {
+      "name": "seam_mac01_east",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 east floor (lists 115 and 180 of the oracle: floor gaps along the T-point edges), det, shots at frames 200 to 205.",
+      "proves": "SEAMFIX picture gate: the floor and wall seams of the T-point edges are closed (nd_dlc_compile inserts the T points); base and head shots compared by region_diff.",
+      "debug": "warp=mac_01:0 pos=360:20:-280 det shots shotwin=200:6 loglevel=debug",
+      "extra": [],
+      "until": "shot \\d+ frame 205\\b",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "seamfix",
+          "regex": "seamfix map mac_01_shape tp \\d+ ins \\d+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 205\\b"
+        }
+      ],
+      "reason": "SEAMFIX picture gate: shots 200 to 205 of one spot; the shot line of frame 205 is the until (cap 25 s: boot about 15 s plus the 6 shots)."
+    },
+    {
+      "name": "seam_mac01_merlon",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 outdoors in front of Merlon's house (PT43 seams), det, shots at frames 200 to 205.",
+      "proves": "SEAMFIX picture gate: the floor and wall seams of the T-point edges are closed (nd_dlc_compile inserts the T points); base and head shots compared by region_diff.",
+      "debug": "warp=mac_01:0 pos=-230:0:-250 det shots shotwin=200:6 loglevel=debug",
+      "extra": [],
+      "until": "shot \\d+ frame 205\\b",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "seamfix",
+          "regex": "seamfix map mac_01_shape tp \\d+ ins \\d+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 205\\b"
+        }
+      ],
+      "reason": "SEAMFIX picture gate: shots 200 to 205 of one spot; the shot line of frame 205 is the until (cap 25 s: boot about 15 s plus the 6 shots)."
     }
   ]
 }

@@ -79,6 +79,38 @@
       "gates": []
     },
     {
+      "name": "wall_hos01_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WALLT1 gate: hos_01 walls o178/o179 at pos -110 250 -170, det, shots 200 to 236 every 4th frame. Byte-equal to base except the wall.",
+      "scenario": "wall_hos01_pic",
+      "cap": 40,
+      "until": "shot \\d+ frame 236\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "wall"
+      ],
+      "gates": []
+    },
+    {
+      "name": "kmr_10_band",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WALLT1 gate: kmr_10 wall band at -142 136 221, shots 200 to 205. A person reads the shot: the strata stripe on the low cliff next to the ? block is continuous, no garbage rows (compare with o1329).",
+      "scenario": "kmr_10_band",
+      "cap": 45,
+      "until": "shot 5 frame 205",
+      "tags": [
+        "azahar",
+        "pic",
+        "wall"
+      ],
+      "gates": []
+    },
+    {
       "name": "sprshade_hos01_log",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -3257,6 +3289,81 @@
       "gates": []
     },
     {
+      "name": "battle_wide_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WIDE3 gate 2: battle wheel with wide on, base (14, 183): the wheel in the bottom-left corner, the reel and swap icons with it. A person reads the shot.",
+      "scenario": "battle_wide",
+      "cap": 45,
+      "until": "shot \\d+ frame \\d+ map",
+      "tags": [
+        "azahar",
+        "pic",
+        "wide",
+        "battle"
+      ],
+      "gates": []
+    },
+    {
+      "name": "battle_strats_wide_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WIDE3 gate 2b: Strategies list opened from the corner wheel with wide on (StratsMenuPosX = pm_wide_left(20)). A person reads the shot.",
+      "scenario": "battle_strats_wide",
+      "cap": 45,
+      "until": "shot \\d+ frame 2[8-9]\\d\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "wide",
+        "battle"
+      ],
+      "gates": []
+    },
+    {
+      "name": "chapter_native_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WIDE3 gate 3: kmr_22 chapter screen with wide on, 4:3 letterboxed like the intro, log chapter: native aspect on. A person reads the shot.",
+      "scenario": "chapter_native",
+      "cap": 25,
+      "until": "shot \\d+ frame 5[0-9]\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "wide",
+        "chapter"
+      ],
+      "gates": []
+    },
+    {
+      "name": "shop_wide_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WIDE3 shop gate: Toad Town item shop with wide on, prices under the items. A person reads the shot.",
+      "scenario": "shop_wide",
+      "cap": 45,
+      "until": "shot \\d+ frame 26[2-9]\\b",
+      "tags": ["azahar", "pic", "shop"],
+      "gates": []
+    },
+    {
+      "name": "shop_nowide_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WIDE3 shop byte gate: the same shop 4:3 (wide off). Byte equal to the base build.",
+      "scenario": "shop_nowide",
+      "cap": 45,
+      "until": "shot \\d+ frame 26[2-9]\\b",
+      "tags": ["azahar", "pic", "shop"],
+      "gates": []
+    },
+    {
       "name": "intro_native_pic",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -5177,6 +5284,40 @@
       "gates": []
     },
     {
+      "name": "menu_texf",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "TEXF: Debug > Render > Texture filtering, Filter Bilinear all set by the menu, field shots 200 to 205 (mac_01 0 0 200). Pair with spot_mac01_det (Game filter, same frames). The General tab Frame skip row is in the shots.",
+      "scenario": "menu_texf",
+      "cap": 45,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "menu",
+        "texf"
+      ],
+      "gates": []
+    },
+    {
+      "name": "menu_texc",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "TEXC: Debug > Render > Texture filtering, Filter Bilinear all and Texel centre On set by the menu, field shots 200 to 205 (mac_01 0 0 200). Compare with menu_texf.",
+      "scenario": "menu_texc",
+      "cap": 45,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "menu",
+        "texf"
+      ],
+      "gates": []
+    },
+    {
       "name": "profile_pic",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -5233,7 +5374,39 @@
     {"name": "flash_selftest_save", "kind": "azahar_stream", "speed": "normal", "default": false, "purpose": "SAVESAFE: fresh save.flash with the flashselftest pattern and saveerr (two failed writes, retry). Gate: the RAM hash line and the atomic write line.", "scenario": "flash_selftest_save", "cap": 40, "until": "save.flash written \\(atomic\\) \\d+ ms", "tags": ["azahar", "save", "savesafe"], "log_metrics": [], "gates": []},
     {"name": "savecrash_save", "kind": "azahar_stream", "speed": "normal", "default": false, "purpose": "SAVESAFE: a save, then the crash exit 10 ms after the last write. Gate: the exit flush line and the RAM hash; the file hash is checked after the run.", "scenario": "savecrash_save", "cap": 60, "until": "save\\.flash written at exit \\(atomic\\) \\d+ ms", "tags": ["azahar", "save", "savesafe", "crash"], "log_metrics": [], "gates": []},
     {"name": "warpfix_boot_save", "kind": "azahar_stream", "speed": "normal", "default": false, "purpose": "SAVESAFE gate 4: boot warp, padscript save_0; the save is blocked and no flash write runs (the new write path is not reached). Save scenario of the row.", "scenario": "warpfix_boot_save", "cap": 45, "until": "warp: save blocked", "tags": ["azahar", "save", "savesafe"], "log_metrics": [], "gates": []},
-    {"name": "savefile_check", "kind": "azahar_stream", "speed": "normal", "default": false, "purpose": "SAVESAFE gate 4: a savetool file loaded by savefile= (checksum, RAM values, save block). Save scenario of the row.", "scenario": "savefile_check", "cap": 60, "until": "warp: \\S+ entry \\d+", "tags": ["azahar", "save", "savesafe"], "log_metrics": [], "gates": []}
+    {"name": "savefile_check", "kind": "azahar_stream", "speed": "normal", "default": false, "purpose": "SAVESAFE gate 4: a savetool file loaded by savefile= (checksum, RAM values, save block). Save scenario of the row.", "scenario": "savefile_check", "cap": 60, "until": "warp: \\S+ entry \\d+", "tags": ["azahar", "save", "savesafe"], "log_metrics": [], "gates": []},
+    {
+      "name": "seam_mac01_east",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SEAMFIX picture gate: Toad Town mac_01 east floor (lists 115 and 180 of the oracle: floor gaps along the T-point edges), det, shots at frames 200 to 205.",
+      "scenario": "seam_mac01_east",
+      "cap": 25,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": [
+        "azahar",
+        "det",
+        "seam"
+      ],
+      "gates": []
+    },
+    {
+      "name": "seam_mac01_merlon",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SEAMFIX picture gate: Toad Town mac_01 outdoors in front of Merlon's house (PT43 seams), det, shots at frames 200 to 205.",
+      "scenario": "seam_mac01_merlon",
+      "cap": 25,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": [
+        "azahar",
+        "det",
+        "seam"
+      ],
+      "gates": []
+    }
   ],
   "legacy": {
     "note": "Scenarios that no bench uses. Kept for the azt.ps1 route, not run by bench.py.",

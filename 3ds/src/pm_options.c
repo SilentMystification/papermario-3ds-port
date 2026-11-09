@@ -330,7 +330,7 @@ const unsigned char* pm_options_build_msg(void) { return pm_options_msg("Build "
 /* UI1a, PT59: the rows of the Options panel in tabs. The file select panel (mode 0) and the Select menu (mode 1) use the same table, the same value code and
  * the same action code. Tab 0 General, tab 1 Controls, tab 2 Debug. The last row of each tab is Back. Mode 1 adds the rows that only make sense in the
  * port menu (Return to Title Screen, Exit to Homebrew) and its Warp now changes the map at once. */
-enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPAREA, RW_DZPAD, RW_DZCS, RW_RDELAY, RW_RRATE, RW_CLOSE, RW_BOSSFOLDER, RW_MAP = 100, RW_DBG = 200, RW_GIVE = 300, RW_STAT = 310, RW_BOSS = 400, RW_PROF = 220, RW_CSTATS = 320, RW_CBADGES = 331, RW_CKEYS = 332, RW_HUDF = 340, RW_LOGF = 341, RW_RENDERF = 342, RW_GAMEF = 343, RW_BOSSBAT = 344, RW_PARTF = 345, RW_PART = 350, RW_SPAWNF = 346, RW_MOON = 370, RW_FADV = 390, RW_EQF = 362, RW_SPWF = 363, RW_INVF = 364, RW_BTLF = 365, RW_MERF = 366, RW_POSF = 367, RW_EQ = 3500, RW_SPW = 3510, RW_INV = 3520, RW_BTL = 3530, RW_MER = 3540, RW_POS = 3550, RW_CURP = 3560, RW_BATTLESF = 347, RW_LOGSUB = 348, RW_LOG = 3200, RW_BTLAREA = 2000, RW_BTLROW = 2100, RW_SPAWN = 1300, RW_BADGE = 900, RW_KEY = 1100, RW_SUB = 700, RW_WMAP = 800, RW_STORYF = 3400, RW_STORY = 3410 }; /* STORYMENU: RW_STORYF the Story progress folder row (Debug tab), RW_STORY + row its page rows */ /* RW_BADGE + row: the Badges folder, RW_KEY + row: Key items (row 0 Toggle all, row k item k-1) */
+enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPAREA, RW_DZPAD, RW_DZCS, RW_RDELAY, RW_RRATE, RW_CLOSE, RW_BOSSFOLDER, RW_MAP = 100, RW_DBG = 200, RW_GIVE = 300, RW_STAT = 310, RW_BOSS = 400, RW_PROF = 220, RW_CSTATS = 320, RW_CBADGES = 331, RW_CKEYS = 332, RW_HUDF = 340, RW_LOGF = 341, RW_RENDERF = 342, RW_GAMEF = 343, RW_BOSSBAT = 344, RW_PARTF = 345, RW_PART = 350, RW_SPAWNF = 346, RW_MOON = 370, RW_FADV = 390, RW_EQF = 362, RW_SPWF = 363, RW_INVF = 364, RW_BTLF = 365, RW_MERF = 366, RW_POSF = 367, RW_EQ = 3500, RW_SPW = 3510, RW_INV = 3520, RW_BTL = 3530, RW_MER = 3540, RW_POS = 3550, RW_CURP = 3560, RW_BATTLESF = 347, RW_LOGSUB = 348, RW_LOG = 3200, RW_BTLAREA = 2000, RW_BTLROW = 2100, RW_SPAWN = 1300, RW_BADGE = 900, RW_KEY = 1100, RW_SUB = 700, RW_WMAP = 800, RW_STORYF = 3400, RW_STORY = 3410, RW_TEXFF = 3570, RW_TEXF = 3580 }; /* STORYMENU: RW_STORYF the Story progress folder row (Debug tab), RW_STORY + row its page rows */ /* RW_BADGE + row: the Badges folder, RW_KEY + row: Key items (row 0 Toggle all, row k item k-1) */
 /* PT01c, MN6 rest: the Warp area folder rows (tab PM_OPT_SUB): RW_SUB + row, the presets first, then one row per area. RW_WMAP + row is a map row of an area page. */
 int pm_dbgg_spawn_count(void); int pm_dbgg_spawn_id(int row); void pm_dbgg_spawn(int id);
 const char* pm_partner_name(int i); const char* pm_partner_value(int i); int pm_dbgg_partner_on(int i); void pm_dbgg_partner_set(int i, int on); int pm_dbgg_partner_level(int i, int dir);
@@ -386,7 +386,7 @@ static void log_level_set(int id, int v) {
 static int tab_ids(int tab, int mode, int* ids) {
     int n = 0, i;
     if (tab == 0) {
-        ids[n++] = RW_FPS; ids[n++] = RW_WIDE;
+        ids[n++] = RW_FPS; ids[n++] = RW_WIDE; ids[n++] = RW_DBG + 7; /* Frame skip (option row 9) moved here from Render */
         if (mode) { ids[n++] = RW_TITLE; ids[n++] = RW_CLOSE; ids[n++] = RW_EXIT; }
     } else if (tab == 1) {
         ids[n++] = RW_DPAD; ids[n++] = RW_DZPAD; ids[n++] = RW_DZCS; ids[n++] = RW_RDELAY; ids[n++] = RW_RRATE;
@@ -420,9 +420,21 @@ static int sub_kind, sub_parent = -1; /* sub_parent: the folder kind a nested pa
 /* LAYOUT: the Debug and Partners folders (sub kinds 5 to 10). Each row is a row id of this file; the folder rows of the tab are in fold_tab. */
 static const int fl_bossbat[] = { RW_BOSSFOLDER, RW_BATTLESF }; /* BT2: Battles next to Boss */
 static const int fl_partners[] = { RW_GIVE + 0, RW_CURP, RW_PART + 1, RW_PART + 2, RW_PART + 3, RW_PART + 4, RW_PART + 5, RW_PART + 6, RW_PART + 7, RW_PART + 8, RW_PART + 9, RW_PART + 10, RW_PART + 11 }; /* CH4: Enable partners, then the 11 partners */
+/* TEXF: Debug > Render > Texture filtering, RAM only (not saved). Filter: 0 Game (the G_TF bits), 1 Bilinear all, 2 Nearest all.
+ * Texel centre: 0 Off, 1 On (+0.5 texel on bilinear draws, nd_model.c). Read by pm_tex.c and nd_model.c. */
+int pm_texf_filter, pm_texf_centre;
+static const char* const texf_lbl[2] = { "Filter", "Texel centre" };
+static const char* const texf_filt_name[3] = { "Game", "Bilinear all", "Nearest all" };
+const char* pm_texf_value(int k) { return k == 0 ? texf_filt_name[pm_texf_filter] : pm_texf_centre ? "On" : "Off"; }
+void pm_texf_step(int k, int dir) {
+    if (k == 0) pm_texf_filter = (pm_texf_filter + (dir > 0 ? 1 : 2)) % 3;
+    else pm_texf_centre = !pm_texf_centre;
+    pm_log("texfilt: %d %s", k, pm_texf_value(k));
+}
 static const int fl_hud[] = { RW_DBG + 0, RW_DBG + 1, RW_DBG + 8, RW_DBG + 10 };
 static const int fl_log[] = { RW_PROF, RW_LOGSUB }; /* LOG5: Profiling, then the Logging page */
-static const int fl_render[] = { RW_DBG + 2, RW_DBG + 3, RW_DBG + 7 };
+static const int fl_render[] = { RW_DBG + 2, RW_DBG + 3, RW_TEXFF };
+static const int fl_texf[] = { RW_TEXF + 0, RW_TEXF + 1 }; /* TEXF: Debug > Render > Texture filtering */
 static const int fl_game[] = { RW_DBG + 6 };
 static const int fl_eq[] = { RW_EQ + 0, RW_EQ + 1, RW_EQ + 2 }; /* PROFILE: Equipment */
 static const int fl_spw[] = { RW_SPW + 0, RW_SPW + 1, RW_SPW + 2 }; /* Star power */
@@ -431,10 +443,10 @@ static const int fl_btl[] = { RW_BTL + 0, RW_BTL + 1, RW_BTL + 2, RW_BTL + 3, RW
 static const int fl_mer[] = { RW_MER + 0, RW_MER + 1 }; /* Merlee */
 static const int fl_pos[] = { RW_POS + 0, RW_POS + 1, RW_POS + 2 }; /* Position */
 /* the folder kinds index these tables directly (sub_kind): 5 to 10 the old folders, 16 to 21 the PROFILE folders */
-static const int* const fl_ids[22] = { [5] = fl_bossbat, [6] = fl_partners, [7] = fl_hud, [8] = fl_log, [9] = fl_render, [10] = fl_game,
+static const int* const fl_ids[23] = { [5] = fl_bossbat, [6] = fl_partners, [7] = fl_hud, [8] = fl_log, [9] = fl_render, [10] = fl_game, [22] = fl_texf,
     [16] = fl_eq, [17] = fl_spw, [18] = fl_inv, [19] = fl_btl, [20] = fl_mer, [21] = fl_pos };
-static const int fl_n[22] = { [5] = 2, [6] = 13, [7] = 4, [8] = 2, [9] = 3, [10] = 1, [16] = 3, [17] = 3, [18] = 2, [19] = 6, [20] = 2, [21] = 3 };
-static const char* const fl_name[22] = { [5] = "Boss and Battles", [6] = "Partners", [7] = "HUD", [8] = "Logging and Profiling", [9] = "Render", [10] = "Game",
+static const int fl_n[23] = { [5] = 2, [6] = 13, [7] = 4, [8] = 2, [9] = 3, [10] = 1, [22] = 2, [16] = 3, [17] = 3, [18] = 2, [19] = 6, [20] = 2, [21] = 3 };
+static const char* const fl_name[23] = { [5] = "Boss and Battles", [6] = "Partners", [7] = "HUD", [8] = "Logging and Profiling", [9] = "Render", [10] = "Game", [22] = "Texture filtering",
     [11] = "Spawn item", [16] = "Equipment", [17] = "Star power", [18] = "Inventory", [19] = "Battle", [20] = "Merlee", [21] = "Position" };
 /* PROFILE: labels of the folder rows and the cheat bits of the Battle and Position rows (pm_cheat_* index) */
 static const char* const eq_lbl[3] = { "Boots", "Hammer", "Action commands" };
@@ -448,7 +460,7 @@ static const int btl_cheat[5] = { 0, 1, 2, 3, 5 }; /* Infinite HP, FP, star powe
 static const struct { int id, kind; const char* name; } fold_tab[] = {
     { RW_BOSSBAT, 5, "Boss and Battles >" }, { RW_PARTF, 6, "Partners >" }, { RW_HUDF, 7, "HUD >" },
     { RW_LOGF, 8, "Logging and Profiling >" }, { RW_RENDERF, 9, "Render >" }, { RW_GAMEF, 10, "Game >" }, { RW_SPAWNF, 11, "Spawn item >" }, { RW_LOGSUB, 14, "Logging >" },
-    { RW_EQF, 16, "Equipment >" }, { RW_SPWF, 17, "Star power >" }, { RW_INVF, 18, "Inventory >" }, { RW_BTLF, 19, "Battle >" }, { RW_MERF, 20, "Merlee >" }, { RW_POSF, 21, "Position >" } };
+    { RW_TEXFF, 22, "Texture filtering >" }, { RW_EQF, 16, "Equipment >" }, { RW_SPWF, 17, "Star power >" }, { RW_INVF, 18, "Inventory >" }, { RW_BTLF, 19, "Battle >" }, { RW_MERF, 20, "Merlee >" }, { RW_POSF, 21, "Position >" } };
 static int fold_index(int id) { for (unsigned k = 0; k < sizeof fold_tab / sizeof fold_tab[0]; k++) if (fold_tab[k].id == id) return (int)k; return -1; }
 static const int setstat_k[8] = { 0, 1, 2, 3, 4, 5, 6, 7 }; /* Max HP, Max FP, BP, Level, Coins, Star points, Star pieces, Fortress keys (PROFILE: the Stats folder) */
 #define SETSTAT_N ((int)(sizeof setstat_k / sizeof setstat_k[0]))
@@ -615,6 +627,7 @@ const char* pm_optui_label(int tab, int row, int mode) {
     if (id >= RW_MER && id < RW_MER + 2) return mer_lbl[id - RW_MER];
     if (id >= RW_POS && id < RW_POS + 3) return pos_lbl[id - RW_POS];
     if (id == RW_CURP) return "Current partner";
+    if (id >= RW_TEXF && id < RW_TEXF + 2) return texf_lbl[id - RW_TEXF];
     if (folder_row(id, &g) >= 0) return folder_row(id, &g) == 0 ? "Toggle all" : pm_item_name(pm_dbgg_item_id(g, folder_row(id, &g) - 1));
     if (id >= RW_WMAP) return pm_warp_map_name(pm_warp_area_map(sub_area, id - RW_WMAP));
     if (id >= RW_SUB) { int r = id - RW_SUB, a = pm_warp_top_area(r); return a >= 0 ? pm_warp_area_name(a) : pm_warp_preset_name(pm_warp_top_preset(r)); } /* STORYMENU: top rows */
@@ -663,6 +676,7 @@ const char* pm_optui_value(int tab, int row, int mode) {
     if (id >= RW_MER && id < RW_MER + 2) return pm_dbgg_mer_value(id - RW_MER);
     if (id == RW_POS) return pm_cheat_get(PM_CHEAT_SPEED) ? "On" : "Off";
     if (id == RW_POS + 1 || id == RW_POS + 2) return pm_dbgg_pos_value(id - RW_POS);
+    if (id >= RW_TEXF && id < RW_TEXF + 2) return pm_texf_value(id - RW_TEXF);
     if (id == RW_CURP) return pm_dbgg_curpartner_value();
     if (folder_row(id, &g) >= 0) return folder_row(id, &g) == 0 ? "A: all" : pm_dbgg_item_has(g, pm_dbgg_item_id(g, folder_row(id, &g) - 1)) ? "On" : "Off";
     if (id >= RW_WMAP) { /* a map row shows its entry and the entry count */
@@ -723,6 +737,7 @@ int pm_optui_step(int tab, int row, int dir, int mode) {
     if (id >= RW_BTL && id < RW_BTL + 5) { pm_cheat_set(btl_cheat[id - RW_BTL], !pm_cheat_get(btl_cheat[id - RW_BTL])); return 1; }
     if (id >= RW_MER && id < RW_MER + 2) { pm_dbgg_mer_step(id - RW_MER, dir); return 1; }
     if (id == RW_POS) { pm_cheat_set(PM_CHEAT_SPEED, !pm_cheat_get(PM_CHEAT_SPEED)); return 1; }
+    if (id >= RW_TEXF && id < RW_TEXF + 2) { pm_texf_step(id - RW_TEXF, dir); return 1; } /* TEXF: left or right cycles or flips */
     if (id == RW_CURP) { pm_dbgg_curpartner_step(dir); return 1; }
     if (id == RW_INV + 1 || id == RW_BTL + 5 || id == RW_POS + 1 || id == RW_POS + 2) return 0; /* act only */
     if (id > RW_PART && id <= RW_PART + 11) return pm_dbgg_partner_level(id - RW_PART, dir); /* CH4: left and right change the level of an enabled partner */
@@ -787,6 +802,7 @@ int pm_optui_act(int tab, int row, int mode) {
     if (id == RW_POS) { pm_cheat_set(PM_CHEAT_SPEED, !pm_cheat_get(PM_CHEAT_SPEED)); return 0; }
     if (id == RW_POS + 1) { pm_dbgg_pos_save(); return 0; }
     if (id == RW_POS + 2) { pm_dbgg_pos_load(); return 0; }
+    if (id >= RW_TEXF && id < RW_TEXF + 2) { pm_texf_step(id - RW_TEXF, 1); return 0; } /* TEXF */
     if (id == RW_CURP) { pm_dbgg_curpartner_step(1); return 0; }
     if (id > RW_PART && id <= RW_PART + 11) { /* CH4: A turns the partner on or off */
         pm_dbgg_partner_set(id - RW_PART, !pm_dbgg_partner_on(id - RW_PART));
