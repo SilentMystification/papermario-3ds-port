@@ -28,6 +28,22 @@
       "gates": []
     },
     {
+      "name": "dmg_jump_ac",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "RIGHTON: jump action command prompt with the Perfect action commands cheat; the A button only, no Right On! art (kmr_20 battle, autoa).",
+      "scenario": "dmg_jump_ac",
+      "cap": 25,
+      "until": "shot \\d+ frame 198\\b",
+      "tags": [
+        "azahar",
+        "battle",
+        "righton"
+      ],
+      "gates": []
+    },
+    {
       "name": "dmg_star",
       "kind": "azahar_pic",
       "speed": "turbo",

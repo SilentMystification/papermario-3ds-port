@@ -971,6 +971,7 @@ static void battle_tick(void) {
     battle_popups_clear();
     gEncounterState = ENCOUNTER_STATE_NONE;
     set_battle_stage(stage);
+    if (pm_debug_has("acmd")) gPlayerData.hasActionCommands = true; /* test: action command prompts without the Lucky Star */
     load_battle(formation);
 }
 
