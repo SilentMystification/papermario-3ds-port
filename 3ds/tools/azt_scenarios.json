@@ -13044,6 +13044,56 @@
         }
       ],
       "reason": "HC0 census: cold det start, the draw functions that run in one walker frame and their call counts (census lane only). Cap 35 s: the first marker takes 12 to 16 s (as spot_mac01_det), then frame 200. Deadline 30 s. Log only; the until is the census done line."
+    },
+    {
+      "name": "menu_part2",
+      "status": "unverified",
+      "reason": "broken: no until in 45 s (AZT11-5, 2026-11-09)",
+      "subject": "Toad Town mac_01 at 0 0 200 (as spot_mac01_det): SELECT on the General tab, Resolution Mode A three times (Native, Fullscreen, Widescreen, Native), Debug tab (R R), Logging page (no Back row), B back, Disable Fog, Disable Light and Texture Filtering (Bilinear all) set by A, B, B (stays open), SELECT closes; field shots 200 to 205.",
+      "proves": "MENUGEN parts 1 and 2: General tab row order and Resolution Mode cycle (menu draw shots), Debug tab order, no Back row on a sub-page, B on a tab does not close (log), Select closes (log), the render flags take effect on the field shot in one run (fog, light, texture filter set in the menu).",
+      "debug": "warp=mac_01:0 pos=0:0:200 padscript=@pad_menu_part2.txt shotmenu shots shotwin=200:6 loglevel=debug det",
+      "extra": [],
+      "until": "shot \\d+ frame 205\\b",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "resolution",
+          "regex": "options: live row 1 value 2"
+        },
+        {
+          "name": "logging page",
+          "regex": "menu: page push"
+        },
+        {
+          "name": "fog on",
+          "regex": "options: live row 4 value 1"
+        },
+        {
+          "name": "light on",
+          "regex": "options: live row 5 value 1"
+        },
+        {
+          "name": "texf",
+          "regex": "texfilt: 0 Bilinear all"
+        },
+        {
+          "name": "B on a tab",
+          "regex": "menu: B on a tab, the menu stays open"
+        },
+        {
+          "name": "select close",
+          "regex": "menu: Select closes"
+        },
+        {
+          "name": "frame 200",
+          "regex": "shot \\d+ frame 200\\b"
+        }
+      ],
+      "reason": "MENUGEN part 2 gate: the field shot 200 shows the three render flags on (compare spot_mac01_det frame 200, same det config); the menu draw shots show the Debug tab order and the Logging page without Back."
     }
   ]
 }

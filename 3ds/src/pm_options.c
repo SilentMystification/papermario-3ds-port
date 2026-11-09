@@ -41,6 +41,7 @@ void pm_options_src(char* out) {
     out[0] = src_lv[0]; out[1] = src_lv[1]; out[2] = src_lv[2]; out[3] = prof_src;
 }
 int pm_options_prof_row(void) { return prof_row; }
+void nd_mc_flush_all(void); /* nd_model.c */
 void pm_prof_row_set(int mode); /* pm_phase.c: applies at the next drawn frame end */
 
 /* F11-5: N64 button masks by name, the cycle order of the menu, and the 3DS input names (options.txt keys map.<input>=<button>) */
@@ -307,6 +308,7 @@ void pm_options_flip(int row) {
         extern int pm_interp_want, pm_nolight;
         if (row == 0) pm_interp_want = *f; /* next game step */
         if (row == 5) pm_nolight = *f || pm_debug_has("nolight");
+        if (row == 4 || row == 5) nd_mc_flush_all(); /* MENUGEN part 2: cached native models keep the fog and light of their build */
         pm_log("options: live row %d value %d", row, *f);
     }
     if (row == 4) pm_log_switch("nofog", *f);
@@ -363,7 +365,7 @@ void pm_dbgg_count(int g, int* have, int* total); void pm_dbgg_give(int g); int 
 static const char* const give_lbl[3] = { "Enable partners", "All badges", "All key items" };
 static const char* const stat_lbl[8] = { "Max HP", "Max FP", "BP", "Level", "Coins", "Star points", "Star pieces", "Fortress keys" };
 const char* const pm_lvl_name[5] = { "Error", "Warn", "Info", "Debug", "Off" }; /* Off: only the console level (conlevel 4) */
-static const char* const dbg_lbl[11] = { "HUD", "Stats", "No fog", "No light", "", "", "Fixed seed", "Frame skip", "Position HUD", "", "Position log combo" }; /* LOG5: rows 4, 5 and 9 are on the Logging page */
+static const char* const dbg_lbl[11] = { "HUD", "Stats", "Disable Fog", "Disable Light", "", "", "Fixed Seed", "Frame skip", "Position HUD", "", "Position log combo" }; /* LOG5: rows 4, 5 and 9 are on the Logging page */
 /* LOG5: the Logging page (sub kind 14). Row 0 Logging (pm_opt.log), rows 1 to 3 Live log, Log to disk, Console log (-1 off .. 3 debug).
  * Logging and Profiling are one choice (U2): Logging on turns Profiling off here, and Profiling on turns logging off (prof_set). */
 void pm_options_touch(void);
@@ -404,9 +406,12 @@ static int tab_ids(int tab, int mode, int* ids) {
         ids[n++] = RW_RESET;
     } else if (tab == 2) { /* LAYOUT: Debug is a list of folders */
         ids[n++] = RW_WARPAREA; /* opens the Warp area folder */
-        if (mode) ids[n++] = RW_STORYF; /* STORYMENU: Story progress folder (Select menu only: it sets the game state) */
-        ids[n++] = RW_HUDF; ids[n++] = RW_LOGF; ids[n++] = RW_RENDERF; ids[n++] = RW_GAMEF;
-        if (mode) ids[n++] = RW_BOSSBAT; /* Boss and Battles (Select menu only) */
+        if (mode) ids[n++] = RW_STORYF; /* STORYMENU: Story Progress folder (Select menu only: it sets the game state) */
+        ids[n++] = RW_HUDF; /* Debug HUD folder */
+        ids[n++] = RW_LOGSUB; ids[n++] = RW_PROF; /* MENUGEN part 2: Logging page and Profiling, top rows */
+        ids[n++] = RW_DBG + 2; ids[n++] = RW_DBG + 3; ids[n++] = RW_TEXFF; /* Disable Fog, Disable Light, Texture Filtering folder */
+        ids[n++] = RW_DBG + 6; /* Fixed Seed */
+        if (mode) ids[n++] = RW_BOSSBAT; /* Start a Battle folder (Select menu only) */
     } else if (tab == 3) { /* PROFILE: Cheats tab (Select menu only), the top level folders in this order (folders end with " >") */
         ids[n++] = RW_MOON; /* Moon jump (On or Off) */
         ids[n++] = RW_SPAWNF; /* Spawn item folder */
@@ -422,13 +427,12 @@ static int tab_ids(int tab, int mode, int* ids) {
         ids[n++] = RW_POSF; /* Position: speed x2, save, load */
         ids[n++] = RW_FADV; /* Frame advance (On or Off, takes effect at the menu close) */
     }
-    if (tab != 0) ids[n++] = RW_BACK; /* MENUGEN: the General tab has no Back row (B closes the menu) */
     return n;
 }
 /* MN4: the folder page (tab PM_OPT_SUB) shows the Warp area rows (0) or the Boss rows (1). CH1: the Set Stats folder (2), stat ids below. */
 static int sub_kind, sub_parent = -1; /* sub_parent: the folder kind a nested page was opened from (Boss, from Boss and Battles), else -1 */
 /* LAYOUT: the Debug and Partners folders (sub kinds 5 to 10). Each row is a row id of this file; the folder rows of the tab are in fold_tab. */
-static const int fl_bossbat[] = { RW_BOSSFOLDER, RW_BATTLESF }; /* BT2: Battles next to Boss */
+static const int fl_bossbat[] = { RW_BATTLESF, RW_BOSSFOLDER }; /* BT2: Enemy Encounters, then Boss Battles (MENUGEN part 2) */
 static const int fl_partners[] = { RW_GIVE + 0, RW_CURP, RW_PART + 1, RW_PART + 2, RW_PART + 3, RW_PART + 4, RW_PART + 5, RW_PART + 6, RW_PART + 7, RW_PART + 8, RW_PART + 9, RW_PART + 10, RW_PART + 11 }; /* CH4: Enable partners, then the 11 partners */
 /* TEXF: Debug > Render > Texture filtering, RAM only (not saved). Filter: 0 Game (the G_TF bits), 1 Bilinear all, 2 Nearest all.
  * Texel centre: 0 Off, 1 On (+0.5 texel on bilinear draws, nd_model.c). Read by pm_tex.c and nd_model.c. */
@@ -439,13 +443,11 @@ const char* pm_texf_value(int k) { return k == 0 ? texf_filt_name[pm_texf_filter
 void pm_texf_step(int k, int dir) {
     if (k == 0) pm_texf_filter = (pm_texf_filter + (dir > 0 ? 1 : 2)) % 3;
     else pm_texf_centre = !pm_texf_centre;
+    nd_mc_flush_all(); /* the texel centre is baked into the native model state (nd_model.c) */
     pm_log("texfilt: %d %s", k, pm_texf_value(k));
 }
 static const int fl_hud[] = { RW_DBG + 0, RW_DBG + 1, RW_DBG + 8, RW_DBG + 10 };
-static const int fl_log[] = { RW_PROF, RW_LOGSUB }; /* LOG5: Profiling, then the Logging page */
-static const int fl_render[] = { RW_DBG + 2, RW_DBG + 3, RW_TEXFF };
 static const int fl_texf[] = { RW_TEXF + 0, RW_TEXF + 1 }; /* TEXF: Debug > Render > Texture filtering */
-static const int fl_game[] = { RW_DBG + 6 };
 static const int fl_eq[] = { RW_EQ + 0, RW_EQ + 1, RW_EQ + 2 }; /* PROFILE: Equipment */
 static const int fl_spw[] = { RW_SPW + 0, RW_SPW + 1, RW_SPW + 2 }; /* Star power */
 static const int fl_inv[] = { RW_INV + 0, RW_INV + 1 }; /* Inventory */
@@ -453,10 +455,10 @@ static const int fl_btl[] = { RW_BTL + 0, RW_BTL + 1, RW_BTL + 2, RW_BTL + 3, RW
 static const int fl_mer[] = { RW_MER + 0, RW_MER + 1 }; /* Merlee */
 static const int fl_pos[] = { RW_POS + 0, RW_POS + 1, RW_POS + 2 }; /* Position */
 /* the folder kinds index these tables directly (sub_kind): 5 to 10 the old folders, 16 to 21 the PROFILE folders */
-static const int* const fl_ids[23] = { [5] = fl_bossbat, [6] = fl_partners, [7] = fl_hud, [8] = fl_log, [9] = fl_render, [10] = fl_game, [22] = fl_texf,
+static const int* const fl_ids[23] = { [5] = fl_bossbat, [6] = fl_partners, [7] = fl_hud, [22] = fl_texf,
     [16] = fl_eq, [17] = fl_spw, [18] = fl_inv, [19] = fl_btl, [20] = fl_mer, [21] = fl_pos };
-static const int fl_n[23] = { [5] = 2, [6] = 13, [7] = 4, [8] = 2, [9] = 3, [10] = 1, [22] = 2, [16] = 3, [17] = 3, [18] = 2, [19] = 6, [20] = 2, [21] = 3 };
-static const char* const fl_name[23] = { [5] = "Boss and Battles", [6] = "Partners", [7] = "HUD", [8] = "Logging and Profiling", [9] = "Render", [10] = "Game", [22] = "Texture filtering",
+static const int fl_n[23] = { [5] = 2, [6] = 13, [7] = 4, [22] = 2, [16] = 3, [17] = 3, [18] = 2, [19] = 6, [20] = 2, [21] = 3 };
+static const char* const fl_name[23] = { [5] = "Start a Battle", [6] = "Partners", [7] = "Debug HUD", [22] = "Texture Filtering",
     [11] = "Spawn item", [16] = "Equipment", [17] = "Star power", [18] = "Inventory", [19] = "Battle", [20] = "Merlee", [21] = "Position" };
 /* PROFILE: labels of the folder rows and the cheat bits of the Battle and Position rows (pm_cheat_* index) */
 static const char* const eq_lbl[3] = { "Boots", "Hammer", "Action commands" };
@@ -468,9 +470,9 @@ static const char* const pos_lbl[3] = { "Speed x2", "Save position", "Load posit
 static const int btl_cheat[5] = { 0, 1, 2, 3, 5 }; /* Infinite HP, FP, star power, No battles, Perfect action commands (pm_dbg_game.c cheat_name) */
 #define PM_CHEAT_SPEED 4 /* Speed x2 */
 static const struct { int id, kind; const char* name; } fold_tab[] = {
-    { RW_BOSSBAT, 5, "Boss and Battles >" }, { RW_PARTF, 6, "Partners >" }, { RW_HUDF, 7, "HUD >" },
-    { RW_LOGF, 8, "Logging and Profiling >" }, { RW_RENDERF, 9, "Render >" }, { RW_GAMEF, 10, "Game >" }, { RW_SPAWNF, 11, "Spawn item >" }, { RW_LOGSUB, 14, "Logging >" },
-    { RW_TEXFF, 22, "Texture filtering >" }, { RW_EQF, 16, "Equipment >" }, { RW_SPWF, 17, "Star power >" }, { RW_INVF, 18, "Inventory >" }, { RW_BTLF, 19, "Battle >" }, { RW_MERF, 20, "Merlee >" }, { RW_POSF, 21, "Position >" } };
+    { RW_BOSSBAT, 5, "Start a Battle >" }, { RW_PARTF, 6, "Partners >" }, { RW_HUDF, 7, "Debug HUD >" },
+    { RW_SPAWNF, 11, "Spawn item >" }, { RW_LOGSUB, 14, "Logging >" },
+    { RW_TEXFF, 22, "Texture Filtering >" }, { RW_EQF, 16, "Equipment >" }, { RW_SPWF, 17, "Star power >" }, { RW_INVF, 18, "Inventory >" }, { RW_BTLF, 19, "Battle >" }, { RW_MERF, 20, "Merlee >" }, { RW_POSF, 21, "Position >" } };
 static int fold_index(int id) { for (unsigned k = 0; k < sizeof fold_tab / sizeof fold_tab[0]; k++) if (fold_tab[k].id == id) return (int)k; return -1; }
 static const int setstat_k[8] = { 0, 1, 2, 3, 4, 5, 6, 7 }; /* Max HP, Max FP, BP, Level, Coins, Star points, Star pieces, Fortress keys (PROFILE: the Stats folder) */
 #define SETSTAT_N ((int)(sizeof setstat_k / sizeof setstat_k[0]))
@@ -490,6 +492,7 @@ static int warp_warn, warp_last_row, sub_area = -1, warp_mem_area = -1, warp_mem
 static char sub_nm[48];
 int pm_optui_warn(void) { return warp_warn; }
 void pm_optui_warn_confirm(void) { warp_warn = 0; }
+static int warp_seen; /* MENUGEN part 2: the warp warning is shown once per session (first Warp area open) */
 /* B or A on the folder: a level 2 page pops to the area list and returns that area row (>= 0); a level 1 page closes the folder (-1). */
 int pm_optui_sub_pop(int row) {
     if (sub_kind == 15) { /* STORYMENU: a chapter page goes back to the chapter list (its row), the list closes the folder */
@@ -497,7 +500,7 @@ int pm_optui_sub_pop(int row) {
         if (c >= 0) { sub_area = -1; return c; }
         return -1;
     }
-    if (sub_kind == 14) { sub_kind = 8; sub_parent = -1; return 1; } /* LOG5: the Logging page back to its folder, row 1 (Logging) */
+    if (sub_kind == 14) { sub_parent = -1; if (!sub_kind) warp_last_row = row; warp_warn = 0; return -1; } /* LOG5, MENUGEN part 2: the Logging page is a top row of the Debug tab, B closes it to the tab */
     if (sub_kind == 13) { sub_kind = 12; sub_area = -1; return bt_row; } /* BT2: formations back to the area list */
     if (sub_kind == 12) { sub_kind = 5; sub_parent = -1; return 1; } /* BT2: area list back to Boss and Battles (row 1, Battles) */
     if (sub_kind == 1 && sub_parent == 5) { sub_kind = 5; sub_parent = -1; warp_warn = 0; return 0; } /* LAYOUT: Boss page back to Boss and Battles (row 0) */
@@ -541,11 +544,11 @@ const char* pm_optui_sub_name(void) {
     if (sub_kind == 3) return "Badges";
     if (sub_kind == 4) return "Key items";
     if (sub_kind == 2) return "Stats";
-    if (sub_kind == 12) return "Boss and Battles > Battles";
-    if (sub_kind == 13) { static char bn[64]; snprintf(bn, sizeof bn, "Boss and Battles > Battles > %s", pm_battle_area_name(sub_area)); return bn; }
-    if (sub_kind == 14) return "Logging and Profiling > Logging";
+    if (sub_kind == 12) return "Start a Battle > Enemy Encounters";
+    if (sub_kind == 13) { static char bn[64]; snprintf(bn, sizeof bn, "Start a Battle > Enemy Encounters > %s", pm_battle_area_name(sub_area)); return bn; }
+    if (sub_kind == 14) return "Logging";
     if (sub_kind >= 5) return fl_name[sub_kind];
-    if (sub_kind == 1) return sub_parent == 5 ? "Boss and Battles > Boss" : "Boss";
+    if (sub_kind == 1) return sub_parent == 5 ? "Start a Battle > Boss Battles" : "Boss Battles";
     if (sub_area < 0) return "Warp area";
     snprintf(sub_nm, sizeof sub_nm, "Warp area > %s", pm_warp_area_name(sub_area));
     return sub_nm;
@@ -617,7 +620,7 @@ const char* pm_optui_label(int tab, int row, int mode) {
     if (tab == PM_OPT_SUB && warp_warn) return row == 0 ? "Warping is dangerous." : "A warp can break the save file.";
     if (tab == PM_OPT_SUB && sub_kind == 15) return story_label(row); /* STORYMENU */
     id = row_id(tab, row, mode);
-    if (id == RW_STORYF) return "Story progress >"; /* STORYMENU */
+    if (id == RW_STORYF) return "Story Progress >"; /* STORYMENU */
     if (id >= RW_LOG && id < RW_LOG + 5) { static const char* const ll[5] = { "Logging", "Live log", "Log to disk", "Console log", "Profile to disk" }; return ll[id - RW_LOG]; } /* LOG5, U2 */
     if (id == RW_CSTATS) return "Stats >";
     if (id == RW_CBADGES) return "Badges >";
@@ -627,7 +630,7 @@ const char* pm_optui_label(int tab, int row, int mode) {
     if (id >= RW_SPAWN && id < RW_SPAWN + 200) return pm_item_name(pm_dbgg_spawn_id(id - RW_SPAWN)); /* CH5 */
     if (id == RW_MOON) return "Moon jump"; /* CH6 */
     if (id == RW_FADV) return "Frame advance"; /* FADV */
-    if (id == RW_BATTLESF) return "Battles >"; /* BT2 */
+    if (id == RW_BATTLESF) return "Enemy Encounters >"; /* BT2 */
     if (id >= RW_BTLAREA && id < RW_BTLAREA + 100) return pm_battle_area_name(id - RW_BTLAREA); /* BT2 */
     if (id >= RW_BTLROW && id < RW_BTLROW + 1000) return pm_battle_label(id - RW_BTLROW); /* BT2 */
     if (id >= RW_EQ && id < RW_EQ + 3) return eq_lbl[id - RW_EQ]; /* PROFILE: the folders */
@@ -660,7 +663,7 @@ const char* pm_optui_label(int tab, int row, int mode) {
         case RW_RRATE: return "Repeat rate";
         case RW_RESET: return "Reset controls";
         case RW_WARPAREA: return "Warp area";
-        case RW_BOSSFOLDER: return "Boss >";
+        case RW_BOSSFOLDER: return "Boss Battles >";
         default: return "Back";
     }
 }
@@ -872,7 +875,7 @@ int pm_optui_act(int tab, int row, int mode) {
             if (armed_id != RW_EXIT) { armed_id = RW_EXIT; pm_log("menu: exit armed, press A again"); return 0; }
             armed_id = 0;
             return 3;
-        case RW_WARPAREA: sub_kind = 0; sub_area = -1; warp_warn = 1; pm_log("menu: warp warning"); return 6; /* the menu opens the submenu (PM_OPT_SUB) */
+        case RW_WARPAREA: sub_kind = 0; sub_area = -1; warp_warn = !warp_seen; warp_seen = 1; pm_log("menu: warp warning %s", warp_warn ? "shown" : "skipped (seen)"); return 6; /* the menu opens the submenu (PM_OPT_SUB) */
         case RW_BOSSFOLDER: sub_parent = tab == PM_OPT_SUB ? sub_kind : -1; sub_kind = 1; sub_area = -1; return 6; /* MN4: the Boss page (PM_OPT_SUB, Boss rows); LAYOUT: from Boss and Battles */
         case RW_DZPAD: case RW_DZCS: case RW_RDELAY: case RW_RRATE: pm_optui_step(tab, row, 1, mode); return 0;
     }
