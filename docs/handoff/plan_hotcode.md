@@ -121,17 +121,15 @@ are deleted; no per-frame word decode on core 0; row_DIRECT.md is deleted.
 | W5 sprite fallback (NDC_SPR vertex and triangle words, nd_walk.c:193) | nd_ops_run | battle, imgfx |
 | W6 entity G_DL fallback (nd_walk.c:209) and a push G_DL in a run (walk_call: ent_gdl, dlc_try, else the executor) | walk_call | entities |
 | W7 ENT_GBI pieces of a flattened entity list (nd_ent.c:372), dlc interpreted group ranges (nd_shape.c:608) | nd_ops_run | refused groups |
-| W8 load-time translator: compile readers on a cache miss (ent_compile, dlc compile), pm_gbi_fallback (boot only) | once per list | not in a steady frame |
+| W8 static list readers: ent_compile and dlc compile on a cache miss, the shape fixup at map load (pm_map.c:63-190 ShapeFix: relocation and byte order), pm_gbi_fallback | once per list or map | not in a steady frame |
 
-W1 to W7 go. W8 load-time translator (accepted 2026-11-09, user review): a cold compile on core 0 that reads a static list once per
-map and writes typed ops (5.1) into its cache entry, so the ranges of W7 replay typed ops. Conditions: (1) no per-frame path reads
-the list words after the compile; (2) the compiler is in .text.unlikely and out of the M1 hot union; (3) check: fncov in a steady
-mac_01 frame shows no word reader.
+W1 to W8 go (user decision 2026-11-09: no N64 display list reader in the ELF, cold code included; reasons: ELF size and any
+performance effect). Static lists are typed before the game runs (5.7 S1, S2); run-time builders call the native path (5.7 R).
 
 ### 5.1 The typed op (NdOp)
 - One 8-byte unit, as the stream unit: w0 = T << 24 | a (24 bits), w1 = b. T = 0x20 + k (k < 32), free of the F3DEX2 and G_PM_* ids
   (nd_cmd_test.c checks it). The NDC_STATE payload holds NdOps only. One translator `nd_op_xlate(w0, w1, out)` (new nd_op.c, host-built;
-  core 1 and the W8 load-time translator) writes 0, 1 or 2 NdOps per word (syncs and G_SPNOOP 0; G_TEXRECT stays NDC_TEXRECT).
+  core 1, the gs* macros of 5.7 S1 and the host converter of 5.7 S2) writes 0, 1 or 2 NdOps per word (syncs and G_SPNOOP 0; G_TEXRECT stays NDC_TEXRECT).
 - Core 0: one table dispatch per op (`nd_op_tab[k]`). The typed same-test of the old g2_same case is the first line of its setter, its
   g2_note part is the skip branch, gv_epoch++ follows the test for the ops the old prologue counted. Ops: T_OM (a = H/L, shift,
   length; b = value), T_GEOM (a = clear mask, b = set bits), T_COMB (a = w0 low 24 bits, b = w1), T_PRIM (a = lod, b), T_ENV, T_FOG,
@@ -146,7 +144,7 @@ mac_01 frame shows no word reader.
   Premise check: stream KB per frame (prof ndc line) before and after, at most 2 chunks more on mac_01; else a recorder-side typed
   cache by list pointer, reset at map load. W5: two typed ops in the NDC_SPR payload. W6: the recorder resolves a push G_DL (host or
   segment address from its segment shadow) to T_CALL; a list that ent_gdl and dlc_try refuse at replay runs the typed ops of its
-  compile (W8), or for a dynamic list the typed range the recorder wrote after T_CALL (nd_rec_list rule).
+  typed static list (5.7), or for a dynamic list the typed range the recorder wrote after T_CALL (nd_rec_list rule).
 - Core 0 then holds no word decoder: nd_walk_state becomes the typed loop nd_ops_exec (<= 0.8 KB with the table); g2_same, g2_note,
   tex_op, tb_ops, the op_* word wrappers and the 51 word cases go in the slice that types their last op.
 
@@ -202,12 +200,53 @@ mac_01 frame shows no word reader.
 |---|---|---|---|
 | HC4a | nd_op.c translator and ids, typed executor for the W1 scalar ops (OM, GEOM, PRIM, ENV, FOG, BLEND, FILL, PRIMZ, SCISSOR, TEXTURE, MW, RARE), typed rec_op/rec_fog/shroud, nd_cmd_test.c | nd_op.c (new), nd_cmd.h, nd_rec.c, nd_walk.c, nd_set.c, nd_recs.c, nd_int.h, 3ds/tools/nd_cmd_test.c, CMakeLists.txt | g2_same/g2_note cases of these ops |
 | HC4b | T_COMB, render mode table (W3), shadow dedupe and t4chk | nd_rec.c, nd_recs.c, nd_comb.c, nd_walk.c | rec_dl list path |
-| HC4c | texture ops typed, bind and R13 ops in the payload (W4), W8 load-time translator writes typed ops (W7) | nd_tex_set.c, nd_recs.c, nd_rec.c, nd_ent.c, nd_shape.c | tex_op, tb_ops, op_* wrappers |
-| HC4d | T_MTX/POPMTX/LIGHT/VTX/TRI, sprite fallback (W5), T_CALL (W6), typed rec_lights | nd_mtx_set.c, nd_geom.c, nd_walk.c, nd_rec.c, nd_ent.c | word cases, g2_same, g2_note, walk_call word path, row_DIRECT.md |
+| HC4c | texture ops typed, bind and R13 ops in the payload (W4), R1 and R2 typed at their producer | nd_tex_set.c, nd_recs.c, nd_rec.c, nd_ent.c, nd_shape.c | tex_op, tb_ops, op_* wrappers |
+| HC4d | T_MTX/POPMTX/LIGHT/VTX/TRI, sprite fallback (W5), T_CALL (W6), typed rec_lights, run-time producers R1-R9 (5.7) | nd_mtx_set.c, nd_geom.c, nd_walk.c, nd_rec.c, nd_ent.c | word cases, g2_same, g2_note, walk_call word path, row_DIRECT.md |
+| HC4e | S1: typed gs* macros (ELF static lists), consumers (ent, dlc, sprite rmList, entity displayList) read typed ops | nd_gbi.h, nd_op.h, nd_ent.c, nd_shape.c, pm_gpu.c (sprite) | the word readers of ent_compile and dlc |
+| HC4f | S2: host shape converter, sidecar loader, node pointers to typed lists | 3ds/tools/nd_shape_conv.c (new, host), build.sh, pm_map.c | ShapeFix word walk (pm_map.c:63-190) |
 | HC5 | combine memo on core 1, T_PLAN/T_SYNC | nd_comb.c, pm_comb.c, nd_rec.c, pm_gpu.c (set_plan) | - |
 | HC6 | hit state, key A/B, fast path, command block | nd_recs.c, pm_gpu.c, nd_model.c, nd_emit.c | - |
 - Gates per slice: nd_host PASS; byte-equal spot_mac01_det and battle_start_f182_cold against stored base shots (plus mdl5_iwa10_det
   and spot_mac00_det for HC4b and HC6; the DIRECT set at the end of HC4d); hotset_size M1 and fncov M3 per class before and after.
-  Targets: class A <= 4 KB after HC4d, B <= 3 KB on core 0 after HC5, C+D <= 8 KB after HC6. Console per stage (user): prof push
+  Done check after HC4f: no function in the ELF compares a list word to a G_* op (a grep of the source for `>> 24` against
+  G_*/OP_* in 3ds/src and src, listed in the slice commit). Targets: class A <= 4 KB after HC4d, B <= 3 KB on core 0 after HC5, C+D <= 8 KB after HC6. Console per stage (user): prof push
   mac_01 0 0 200 (pmu_i, pmu_d, cycles, lgms).
 - A try with no change in the gate quantity is not repeated in that area; the facts go to the orchestrator (user, 2026-11-09).
+
+### 5.7 No display list reader in the ELF (user decision 2026-11-09)
+- One encoding source: nd_op.h defines each typed op as integer constant expressions (`ND_OP_<T>_W0(...)`, `ND_OP_<T>_W1(...)`), used
+  by nd_op.c (host and core 1 translator), by the gs* macros (S1) and by the shape converter (S2). nd_cmd_test.c checks all three
+  give the same units for every F3DEX2 op the game uses.
+- S1, static lists compiled into the ELF [C]: assets/*.gfx.inc.c (856 files, 986 includes), src gs lists (121 files, about 8.7k gs
+  macros: entity 57 files, world 15, battle 11, effects 9, menus), sprite render mode lists (sprite.c rmList, spr_final_list), the entity
+  model lists (entity_model.c:347 model->gfx.displayList). nd_gbi.h redefines the static gs* forms as typed unit initializers (a
+  translation by the compiler: no reader, no host step). gsSPDisplayList becomes T_CALL, gsSPBranchList T_JMP, gsSPEndDisplayList
+  T_END, the syncs a T_NOP unit (a static array keeps its length; the dlc and ent compilers skip T_NOP). Segment addresses stay values:
+  their resolution through the segment table is a pointer step, not a list read. Premise check: the ELF .data size before and after
+  (memcheck line); equal size expected, since every gs macro stays one 8-byte unit.
+- S2, map shapes (ROM data loaded per map into gMapShapeData, pm_map.c:37; pm_map.c:63-190 walks the list words at load to relocate
+  and swap them): a host C converter `3ds/tools/nd_shape_conv.c` (built and run by build.sh; user decision 2026-11-09: build time only,
+  no first-boot path) reads the N64 shape file and writes a sidecar per map:
+  `NdShp { magic, version, n_lists, n_ops, n_reloc; u32 list_off[n_lists] (N64 list offset -> typed op index, sorted); NdOp ops[n_ops];
+  u32 reloc[n_reloc] (op indices whose b is a shape offset) }`, little-endian, 8-byte aligned, position-free (offsets, relocated by one
+  pass over reloc at load: no list read). The loader rewrites each ModelNode display list pointer to its typed list (a node walk, not a
+  word walk). build.sh writes one sidecar per map into romfs next to the shape file.
+  Size [E, measured by the converter's report line per map and in total for the 411 maps]: typed ops <= the N64 list bytes (one unit per
+  word, syncs dropped), plus 4 B per list and 4 B per relocated op; the vertex, matrix, light and texture data stay in the shape file.
+  The gMapShapeData buffer (256 KB) then holds the shape data without its lists plus the typed lists.
+- R, lists that game code builds or changes at run time [C]; each producer calls the native path or writes typed ops (as DIRECT did):
+
+| Id | File:line | What | Size class | Slice |
+|---|---|---|---|---|
+| R1 | src/model.c:3486-3744 make_texture_gfx | texture bind list per handle, at texture load (W4) | medium | HC4c |
+| R2 | src/model.c:1390-2361 appendGfx_model | R13 aux words built with gDP macros (1569-1655, 1901-2195); record fields | medium | HC4c |
+| R3 | src/model.c:3418-3482 render_transform_group(_node) | gSPMatrix/gSPPopMatrix into the group list | small | HC4d |
+| R4 | src/model.c:4487 mdl_local_gfx_update_vtx_pointers | copies a node list, rewrites G_VTX pointers (reads words) | small | HC4d |
+| R5 | src/animator.c:854-973 appendGfx_animator_node | copied mesh list with new vertex buffers per frame (reads words) | medium | HC4d |
+| R6 | src/imgfx.c:1252-1320 imgfx_load_anim | patches vertex pointers in a copied list (reads words) | small | HC4d |
+| R7 | src/sprite.c:325 | spr_geo_out vertex and triangle words (W5) | small | HC4d |
+| R8 | src/os/nusys/nugfxinit.c:75 | boot list (G_DL rdpstateinit_dl, full sync) | small | HC4d |
+| R9 | 3ds/src/nd_mtx_set.c:150-170 rec_lights; nd_walk.c:500 pm_gbi_fallback; nd_rec.c:195/285 rec_inline, nd_list | port-side builders and readers | small | HC4d |
+| R10 | src/effects/hieroglyphs.c:151 (savedGfxPos), src/effects/underwater.c:172-256, src/world/dead/area_flo/flo_10/waterfx.c:308 | position patches and local lists (D5 audit); check each is typed or dead | small | HC4d |
+- Typed static lists change the pointer-typed consumers: dlc compile (nd_shape.c), ent_compile (nd_ent.c), sprite rmList, the model
+  record R12 geometry pointer and ModelRenderModes (W3: then a static typed table from S1, no recorder build).
