@@ -1245,6 +1245,13 @@ static __attribute__((cold, noinline)) void raw_draw_rare(NdDraw* d, const NdUni
     if (tex1) { memcpy(d->uvx, t1_s, 16); d->loc_uvx = (uint16_t)(nb.g_use5 ? u5_uvx : u4_uvx); d->has_uvx = 1; }
     if (nb.g_use5) { pm5_upload(); d->use5 = 1; d->no_uni = 1; d->npal = 0; } /* PM5-2; FB-3: the uvx uniform of pm5 is d->loc_uvx (set above) */
 }
+static __attribute__((cold, noinline)) void zm_log(int z, int id) {
+    if (rd_st < 0) rd_sync();
+    if (rd_st > 0) { u32* cb; u32 sz, off; GPUCMD_GetBuffer(&cb, &sz, &off); rd_upto(cb, off); pm_log_d("zmlog f%u reg 107 %08x 105 %08x 106 %08x 112 %08x 113 %08x 114 %08x 115 %08x 116 %08x 117 %08x 11c %08x 11d %08x 11e %08x 6d %08x 4d %08x 4e %08x", pm_frame_count(),
+        rd_reg[0x107], rd_reg[0x105], rd_reg[0x106], rd_reg[0x112], rd_reg[0x113], rd_reg[0x114], rd_reg[0x115], rd_reg[0x116], rd_reg[0x117], rd_reg[0x11C], rd_reg[0x11D], rd_reg[0x11E], rd_reg[0x6D], rd_reg[0x4D], rd_reg[0x4E]); }
+    pm_log_d("zmlog f%u raw z %d zmark %d zn %.4f rect %d/%d pal_z %.4f zcmp %d zupd %d decal %d nocol %d blend %d off %d tmpl %d draw %u", pm_frame_count(), z, gs.r_zmark, gs.r_zmark_zn,
+             nb.rect_2d, nb.rect_z, nb.rect_pal_z, gs.r_zcmp, gs.r_zupd, gs.r_decal, gs.r_nocol, gs.r_blend, gs.off_active, id, draws_frame);
+}
 static int nd_raw_native(void) {
     nd_tmpl_pin(); /* FB-2: the template ids of this batch stay valid until its submit */
     if (!(nb.gni > 0 && nb.g_pal && gs.gv4_on && (!nb.g_use5 || gv5_on))) { cen_why = nb.g_use5 ? CW_PM5 : CW_OTHER; return 0; } /* CEN-1a; PM5-2: program 5 batches go native too */
@@ -1321,6 +1328,7 @@ static int nd_raw_native(void) {
     if (decal2) raw_decal_pass_a(&nk, &d, tex);
     nd_native_submit(&d, tex);
     if (z && gs.r_zmark) raw_zmark_pass(&nk, &d, (const float(*)[16])palk, npal, tex);
+    if (__builtin_expect((gs.r_zmark || nb.rect_z) && PMDL("zmlog"), 0)) zm_log(z, id); /* MERLON debug switch zmlog: the zmark draw and the G_ZS_PRIM rectangle */
     if (rd_st == 2) orbreg_dump(); /* FX1-2 plan 5 orbreg: the register shadow at a glow draw */
     return 1;
 }
@@ -2519,7 +2527,7 @@ int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4
     if (use5 && !gv5_on) return 0;
     unsigned mvm = 0; /* TRI-2: bit i: ro[i] is a copy with x moved (the caller keeps vert_ring) */
     if (mv) *mv = 0;
-    if (gs.r_zmark) return 0; /* B3b depth pass: the second pass needs the CPU vertices */
+    if (gs.r_zmark && use5) return 0; /* B3b depth pass: pm4 batches draw it natively in two passes (nd_raw_native, raw_zmark_pass); pm5 has no zmark pass */
     if (gs.r_decal && gs.r_blend) return 0; /* V16b: a decal is drawn in two passes from the CPU vertices */
     if (pm_wide && !gs.off_active) { int w_ = gtrip_wide(tab, g, ri); if (w_ < 0) return 0; mvm = (unsigned)w_; } /* PERF2: the wide edge test out of line */
     if (nb.gidx_n + 3 > GRING_IDX) return 0;
@@ -2732,8 +2740,12 @@ void pm_gpu_set_nocolor(int on) {
     gs.r_nocol = on;
 }
 
-/* B3b: on = the next triangles are a case 6 model (a depth test against the world, a constant depth write). zn = clip z / w of the constant. */
+/* B3b: on = the next triangles are a case 6 model (a depth test against the world, a constant depth write). zn = N64 clip z / w of the constant.
+ * MERLON: the zmark pass 2 replaces palette row 2 (the PICA clip z, after gv_post) with zn * row 3, so the constant is stored as PICA z / w: gv_post maps
+ * N64 clip z to PICA z by its row 2 only (z and w terms; the tilt rotates x and y), PICA w = N64 w. zn 0.998 (the ball, PRIM word 0xFFBC) is PICA -0.001,
+ * the depth of the G_ZS_PRIM decal rectangle (pm_gpu_tex_rect_z); unmapped, +0.998 lay outside the PICA clip range [-w, 0] and pass 2 drew nothing. */
 void pm_gpu_set_zmark(int on, float zn) {
+    if (on) zn = gv_post.r[2].z * zn + gv_post.r[2].w;
     if (on == gs.r_zmark && (!on || zn == gs.r_zmark_zn)) return;
     flush();
     gs.r_zmark = on;
@@ -2743,7 +2755,7 @@ void pm_gpu_set_zmark(int on, float zn) {
 void pm_gpu_set_render(int zcmp, int zupd, int blend, int atest, int decal) {
     if (zcmp == gs.r_zcmp && zupd == gs.r_zupd && blend == gs.r_blend && atest == gs.r_atest && decal == gs.r_decal) return;
     flush();
-    gs.r_zmark = 0; /* B3b: draw_tri turns it on again for a case 6 model */
+    gs.r_zmark = 0; /* B3b: gv_epoch_enter (nd_geom.c) turns it on again for a case 6 model */
     gs.r_zcmp = zcmp;
     gs.r_zupd = zupd;
     gs.r_blend = blend;

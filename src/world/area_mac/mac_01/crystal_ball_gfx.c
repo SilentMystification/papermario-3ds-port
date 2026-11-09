@@ -82,6 +82,9 @@ void N(gfx_build_inside_crystal_ball)(void) {
     }
 
     f20 += camera->viewportStartX;
+#ifdef TARGET_3DS
+    f20 = (f32) pm_wide_draw_x(camera, (s32) f20); /* MERLON: the 2D x of the ball (wide: the 3D draw is at 1.25 x, a rectangle and the grab window at x + 40) */
+#endif
     f22 += camera->viewportStartY;
 
     gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);

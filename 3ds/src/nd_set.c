@@ -157,6 +157,7 @@ mixed:
     pm_gpu_set_nocolor(rs.nocol);
     if (rs.set_memb) pm_gpu_set_memblend(rs.memb);
     pm_gpu_set_render(rs.zcmp, rs.zupd, rs.blend, rs.atest, rs.decal);
+    pm_gpu_set_zmark(0, 0.f); /* MERLON: zmark lives one render sync; gv_epoch_enter turns it on after this for a depth-image model */
     pm_gpu_dbg_mode(m); /* FX1-2b: orbdbg log of the glow blend, set after the flush of the old state */
     if (m == 0x00504B50u && PMDL("orbdbg")) { /* FX1-2b: the render state the glow's draws get, once per frame */
         static unsigned orb_sf = ~0u;
