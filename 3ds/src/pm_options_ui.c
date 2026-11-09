@@ -42,7 +42,10 @@ static char fb[2][40];
 void pm_menu_msg(const char* fmt, ...);
 /* CHEATSAVE: the Cheats tab, or a folder opened from it. The bottom row shows "Press X to save cheats" (cyan) while its set is dirty. */
 static int cheat_tab(void) { return tab == 3 || (tab == PM_OPT_SUB && home_tab == 3); }
-static const char* foot1(void) { return !fb[1][0] && cheat_tab() && pm_cheat_dirty() ? "\x1b[1;36mPress X to save cheats\x1b[0m" : fb[1]; }
+static const char* foot1(void) {
+    if (!fb[1][0] && cheat_tab() && pm_cheat_dirty()) { pm_log_d("menu: cheats dirty, footer shown"); return "\x1b[1;36mPress X to save cheats\x1b[0m"; }
+    return fb[1];
+}
 static void draw(void) {
     char out[2400];
     int n = 0, rows = pm_optui_rows(tab, MODE);

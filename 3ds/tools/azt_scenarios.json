@@ -12903,6 +12903,75 @@
       "reason": "CHEATSAVE save gate: two saves (0 on, then 1 on) and the footer shot after the first A (picture read by a person). CHEATSAVE2: the old recipe (one A from the file state) saved 0 on when an earlier run had left moonjump=1 in the azslot, so its expected event failed (runs 104678 and 105394 fail:1)."
     },
     {
+      "name": "cheatsave_key_save",
+      "status": "unverified",
+      "reason": "broken: no until in 30 s (AZT11-5, 2026-11-09)",
+      "subject": "Slot 0 loaded (loadslot=0, warp=random), Select menu, Cheats tab (L), Key items > (7 down, A), the first key item row (down, A): it turns on. The bottom row shows the cyan 'Press X to save cheats' footer (shot on tab 4 row 1). X writes cheats_slot0.ini with the key line.",
+      "proves": "CHEATSAVE2: pm_dbgg_item_set marks the record (rec_item), pm_cheat_dirty reads it (footer, log menu: cheats dirty), pm_cheat_save writes key.<id>=1 (write_file, log cheats: keys).",
+      "debug": "loadslot=0 warp=random padscript=wait150,SELECT,wait20,L,wait20,ddown,wait10,dright,wait10,wait15,A,wait30,ddown,wait10,wait15,A,wait20,k_X,wait40 shotmenu loglevel=debug",
+      "until": "cheats: keys .*key\\.\\d+=1",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "MODE = ",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "menu open",
+          "regex": "menu: open"
+        },
+        {
+          "name": "key item on",
+          "regex": "dbggame: key \\d+ on"
+        },
+        {
+          "name": "footer dirty (log)",
+          "regex": "menu: cheats dirty, footer shown"
+        },
+        {
+          "name": "footer shot (key folder row 1)",
+          "regex": "menu: shot \\w+ tab 4 row 1"
+        },
+        {
+          "name": "saved slot 0",
+          "regex": "cheats: saved slot 0 \\(\\d+ on\\)"
+        },
+        {
+          "name": "keys line with the key item",
+          "regex": "cheats: keys .*key\\.\\d+=1"
+        }
+      ],
+      "reason": "CHEATSAVE2 save gate: the key item toggle makes the set dirty (footer log and shot), X writes the key line to the slot file. The picture of the footer is read by a person."
+    },
+    {
+      "name": "cheatsave_key_load",
+      "status": "unverified",
+      "subject": "Slot 0 loaded (loadslot=0, warp=random) after a reboot with the game save untouched: the record of cheats_slot0.ini is applied at the world entry, so the first key item is owned. Select menu, Cheats tab (L), Key items > (7 down, A), the first key item row shows On.",
+      "proves": "CHEATSAVE2 load: pm_cheat_enter_world reads key lines (pm_cheatrec_load_key), pm_cheatrec_apply sets the item (log cheats: key N was 0 now 1).",
+      "debug": "loadslot=0 warp=random padscript=wait150,SELECT,wait20,L,wait20,ddown,wait10,dright,wait10,wait15,A,wait30,ddown,wait10,wait15 shotmenu loglevel=debug",
+      "until": "menu: shot \\w+ tab 4 row 1",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "MODE = ",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "record applied",
+          "regex": "cheats: applied [1-9]\\d* record fields"
+        },
+        {
+          "name": "key item owned after the load",
+          "regex": "cheats: key \\d+ was 0 now 1"
+        },
+        {
+          "name": "key row reads On",
+          "regex": "menu: tab 4 row 1 .* = On"
+        }
+      ],
+      "reason": "CHEATSAVE2 load gate: the key item from the slot file is owned in the new run (was 0 now 1 in the apply line), and the folder row shows On."
+    },
+    {
       "name": "cheatsave_load_on",
       "status": "verified",
       "subject": "Slot 0 loaded (loadslot=0) after a reboot: cheats_slot0.ini is applied at the world entry, the Cheats tab shows Moon jump On and no footer.",
