@@ -4066,6 +4066,23 @@
       "gates": []
     },
     {
+      "name": "battle_wheel_wide_left_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BATUI facts 2: wide battle wheel at the left end (Strategies), no gap at the left edge, the light on the selected option. A person reads the shot.",
+      "scenario": "battle_wheel_wide_left",
+      "cap": 45,
+      "until": "debug wheel stop: pos 0 of 5",
+      "tags": [
+        "azahar",
+        "pic",
+        "wide",
+        "battle"
+      ],
+      "gates": []
+    },
+    {
       "name": "battle_wheel5_wide_pic",
       "kind": "azahar_pic",
       "speed": "normal",
