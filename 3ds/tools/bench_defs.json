@@ -1782,6 +1782,24 @@
       "gates": []
     },
     {
+      "name": "console_log",
+      "kind": "console_prof",
+      "speed": "normal",
+      "purpose": "BENCHFIX: a console prof log ingested by hand (no run here): any scenes of the log, one record per scene. Holds the PMU and core2 values per window (pmu_i, pmu_d, pmu_cyc, lgms, ic1, dc1, cyc1). Use trend or compare with a metric name.",
+      "scene_match": null,
+      "recipe": "ingest only: python 3ds/tools/bench.py ingest <log> --bench console_log --host o3ds --build <N> --commit <H> --row <row>",
+      "scenario": null,
+      "host": "o3ds",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ fps",
+      "default": false,
+      "tags": [
+        "console",
+        "prof"
+      ],
+      "gates": []
+    },
+    {
       "name": "battle_console",
       "kind": "console_prof",
       "speed": "normal",

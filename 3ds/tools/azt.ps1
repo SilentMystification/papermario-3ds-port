@@ -722,6 +722,11 @@ Write-Output ("run: rc {0}: {1}" -f $rc, (($endRow[6..($endRow.Count - 1)]) -joi
 # AZT10b-2: the run's timing from the run result (run_azahar End-Run text): wall seconds, until seconds, end after the until line
 $runTxt = (($endRow[6..($endRow.Count - 1)]) -join ",")
 $script:shotCopyBad = $runTxt -match 'SHOT COPY FAILED'; # SHOTCOPY1: run_azahar counts the logged shots against the full files
+if ($script:shotCopyBad) {
+    # BENCHFIX: a logged shot without its full file fails the run (rc 1, the record is fail:1, never log_pass), whatever the log checks say
+    Write-Output "SCENARIO FAILED: SHOT COPY FAILED: a logged shot has no full file after 30 s. Its picture is not in the shots folder. Not a pass."
+    Exit-Run 1
+}
 $tmW = [regex]::Match($runTxt, 'stopped after (\d+)s'); $tmU = [regex]::Match($runTxt, 'until at ([\d.]+) s'); $tmA = [regex]::Match($runTxt, '([\d.]+) s after the until line')
 $wallS = if ($tmW.Success) { [double]$tmW.Groups[1].Value } else { $null }
 $untilS = if ($tmU.Success) { [double]$tmU.Groups[1].Value } else { $null }
