@@ -24,17 +24,10 @@ unsigned pm_gbi_cur_op; /* PI2: op of the display list step now running (one sto
 
 int pm_gpu_spr_native(const uint32_t* rec); /* SPR4 */
 
-/* HC4a: the skip test of the ops that are still words (combine, light memory). The typed scalar ops carry their own test (nd_set.c nd_op_same). */
+/* HC4a, HC4b: the skip test of the op that is still a word (light memory). The typed ops carry their own test (nd_set.c nd_op_same). */
 int g2_same(unsigned op, u32 w0, u32 w1) {
-    switch (op) {
-    /* R2B: each case skips only when the handler's writes equal the current state and its calls do nothing (sync_combine: sc_ok and
-     * the same input hash). */
-    case G_SETCOMBINE:
-        return comb_set && nd_ws.comb_w0 == w0 && nd_ws.comb_w1 == w1 && box_folded == 0 && cmb_gen_seen == comb_gen && sc_ok &&
-               sc_sig_now() == sc_sig;
-    case G_MOVEMEM: return (w0 & 0xff) == G_MV_LIGHT && lt_mem_same(w0, w1);
-    default: return 0;
-    }
+    (void)w1;
+    return op == G_MOVEMEM && (w0 & 0xff) == G_MV_LIGHT && lt_mem_same(w0, w1);
 }
 
 void gbi_cold_bad_next(u32 w1, u32 w0, u32 list) {
@@ -223,7 +216,7 @@ __attribute__((cold, noinline)) void nd_lstcen(const void* l, unsigned kind) {
         if (lc_n >= 256u) return;
         lc_n++; lc_tab[i].l = l; lc_tab[i].kind = kind; lc_tab[i].runs = 0;
         const Gfx* g = (const Gfx*)l; unsigned n = 0;
-        while (kind < 3u && n < 4096u && (g[n].words.w0 >> 24) != G_ENDDL) n++;
+        while (kind < 3u && n < 4096u && (g[n].words.w0 >> 24) != G_ENDDL && (g[n].words.w0 >> 24) != NDO_END) n++; /* HC4b: a typed table ends at NDO_END */
         lc_tab[i].ops = n;
         EntKey* k = ent_find((const Gfx*)l, 0);
         lc_tab[i].st = k ? k->st + 1u : 0u; lc_tab[i].why = k ? k->why : 0u;
@@ -270,12 +263,30 @@ static void op_typed(unsigned dbg, const uint32_t* u, const void* at) {
     nd_op_apply(u);
     if (__builtin_expect(fp, 0)) pm_ph_pop();
 }
+/* HC4b t4chk (debug switch, plan_hotcode 5.2): the recorder writes each op its shadow dropped after NDO_DROP. The walker runs the old skip
+ * test on it: a drop it would skip counts as good; else it is bad and runs (so the picture is the one without the dedupe). One log line per
+ * 100 frames: "t4chk f<n> drops <d> bad <b>". Gate: bad 0. */
+static unsigned t4_drops, t4_bad, t4_next = 100u;
+static __attribute__((cold, noinline)) void t4_check(unsigned dbg, const uint32_t* u) {
+    t4_drops++;
+    if (!nd_op_same(u)) {
+        t4_bad++;
+        if (t4_bad <= 8u) pm_log_w("t4chk bad f%u op %08x %08x", pm_frame_count(), (unsigned)u[0], (unsigned)u[1]);
+        op_typed(dbg, u, u);
+    }
+    const unsigned f = pm_frame_count();
+    if (f >= t4_next) { t4_next = (f / 100u + 1u) * 100u; pm_log_evt("t4chk f%u drops %u bad %u", f, t4_drops, t4_bad); }
+}
 void nd_walk_state(const uint32_t* q, unsigned n) {
     const unsigned dbg = pm_walk_dbg;
     for (const uint32_t* e = q + 2u * n; q < e; q += 2) {
         u32 w0 = q[0], w1 = q[1];
         unsigned op = w0 >> 24;
-        if (nd_op_typed(op)) { op_typed(dbg, q, q); continue; } /* HC4a: a typed op of a state run */
+        if (nd_op_typed(op)) { /* HC4a: a typed op of a state run */
+            if (__builtin_expect(op == NDO_DROP, 0)) { q += 2; if (q < e) t4_check(dbg, q); continue; } /* HC4b t4chk: an op the recorder dropped */
+            op_typed(dbg, q, q);
+            continue;
+        }
         if (nd_op_sync(op)) continue; /* the RDP syncs: no work on the 3DS */
         if (op == G_ENDDL) break;
         { uint32_t t[2]; if (nd_op_xlate(w0, w1, t)) { op_typed(dbg, t, q); continue; } } /* a list word of a typed op (static lists until HC4e) */
@@ -306,7 +317,6 @@ void nd_walk_state(const uint32_t* q, unsigned n) {
             walk_call(dbg, (const Gfx*)q, w0, w1);
             if (((w0 >> 16) & 0xffu) == G_DL_NOPUSH) q = e - 2; /* D10c: a branch ends the list that holds it */
             break;
-        case G_SETCOMBINE:
         case G_SETTIMG:
         case G_SETTILE:
         case G_LOADBLOCK:

@@ -142,6 +142,9 @@ int nd_op_same(const uint32_t* u) {
     case NDO_FOG: return fogc == b;
     case NDO_BLEND: return blendc == b;
     case NDO_TEXTURE: return nd_ws.tex_on == (int)a && nd_ws.tex_ss == (b >> 16) && nd_ws.tex_ts == (b & 0xffffu) && sc_ok && sc_sig_now() == sc_sig;
+    case NDO_COMB: /* R2B: the handler's writes equal the state and sync_combine does nothing (sc_ok and the same input hash) */
+        return comb_set && nd_ws.comb_w0 == NDO_COMB_W0(a) && nd_ws.comb_w1 == b && box_folded == 0 && cmb_gen_seen == comb_gen && sc_ok &&
+               sc_sig_now() == sc_sig;
     case NDO_MW: /* R5B: the handler of G_MW_LIGHTCOL writes lt[k].col only (no other effect) */
         return (a >> 16) == NDO_MW_LIGHTCOL && lt[a & 0xffffu].col[0] == (u8)(b >> 24) && lt[a & 0xffffu].col[1] == (u8)(b >> 16) &&
                lt[a & 0xffffu].col[2] == (u8)(b >> 8);
@@ -175,6 +178,7 @@ void nd_op_apply(const uint32_t* u) {
     case NDO_TEXTURE: op_texture(a, b); sync_combine(); break;
     case NDO_MW: set_mw(a >> 16, a & 0xffffu, b); break;
     case NDO_RARE: set_rare(a, b); break;
+    case NDO_COMB: op_setcombine(NDO_COMB_W0(a), b); sync_combine(); break;
     default: break;
     }
 }

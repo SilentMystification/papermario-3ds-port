@@ -1073,6 +1073,27 @@
       "reason": "STEREO gate: DET start as spot_mac01_det (cap 35 s, deadline 30 s). Picture is the subject; the prof scene line (disp s1) is the until."
     },
     {
+      "name": "hc4_t4chk_mac01",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, det, debug switch t4chk: the recorder writes each op its shadow dropped after NDO_DROP; the walker runs the old skip test on it. One shot at frame 200 and the t4chk line of frame 200.",
+      "proves": "HC4b premise (plan_hotcode 5.2): every op the recorder shadow drops is one the walker skips (t4chk bad 0).",
+      "debug": "warp=mac_01:0 pos=0:0:200 shots shotwin=200:1 loglevel=debug det t4chk",
+      "extra": [],
+      "until": "t4chk f2\\d\\d drops \\d+ bad \\d+",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "t4chk line",
+          "regex": "t4chk f2\\d\\d drops \\d+ bad \\d+"
+        }
+      ],
+      "reason": "HC4b dedupe check on the main byte scene (mac_01); the t4chk line at frame 200 is the until (about 12 s cold to the warp). Cap 30 s."
+    },
+    {
       "name": "spot_mac01_det",
       "status": "unverified",
       "subject": "Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0), cold start with the det switch. Shots at frames 200 to 205 and the prof scene line of the first 300-frame window.",
