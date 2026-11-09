@@ -1,12 +1,15 @@
 /* MAPX-4: the map prefetch. A map change knows its target at CHANGE_MAP_INIT (set_game_mode(GAME_MODE_CHANGE_MAP), pm_map.c), about 15 steps
  * before the load. The Yay0 decode of <map>_shape and <map>_hit then runs on a core-1 thread (lowest priority, below the audio threads) into two
- * side buffers, from the asset bytes in the RAM ROM image. decode_yay0 (pm_map.c) takes a buffer whose source bytes and size match: it waits for
+ * side buffers allocated from the heap when the job is posted (skipped when the allocation fails), from the asset bytes in the RAM ROM image. decode_yay0 (pm_map.c) takes a buffer whose source bytes and size match: it waits for
  * the job (it is done long before the load), copies the bytes and does the fix-ups and invalidation as before. The bytes are the decoder's
  * own output for the same source, so the result is the same; a job that failed or never ran leaves decode_yay0 to decode on the game thread.
+ * A taken or failed buffer is freed by decode_yay0's take; a buffer never taken is freed at the next post.
  * The game thread touches a slot only after the job has ended (pf_wait), the worker only between post and its end signal. */
 #include <3ds.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <malloc.h>
 #include "pm_port.h"
 
 int pm_yay0_raw(const unsigned char* src, unsigned src_len, unsigned char* dst, unsigned dst_len); /* pm_map.c */
@@ -14,9 +17,7 @@ void pm_log_prof_line(const char* fmt, ...);
 
 #define PF_N 2
 static const unsigned pf_cap[PF_N] = { 0x40000u, 0x20000u }; /* shape (the shape buffer size), hit */
-static unsigned char pf_shape[0x40000] __attribute__((aligned(16)));
-static unsigned char pf_hit[0x20000] __attribute__((aligned(16)));
-static unsigned char* const pf_buf[PF_N] = { pf_shape, pf_hit };
+static unsigned char* pf_buf[PF_N]; /* heap, game thread only: set in post, freed in take or the next post */
 typedef struct { char name[24]; const unsigned char* src; unsigned clen, dec; volatile int st; } PfSlot; /* st: 0 empty, 1 posted, 2 ready, 3 failed */
 static PfSlot pf[PF_N];
 static Thread pf_th;
@@ -39,9 +40,15 @@ static void pf_main(void* arg) {
 static void pf_wait(void) {
     while (__atomic_load_n(&pf_busy, __ATOMIC_ACQUIRE)) LightEvent_Wait(&pf_done);
 }
+static void pf_release(int i) {
+    free(pf_buf[i]);
+    pf_buf[i] = NULL;
+    pf[i].st = 0;
+}
 /* Game thread, at the start of a map change: names and sources of the two assets (src: their bytes in the ROM image, NULL when not resident). */
 void pm_prefetch_post(const char* shape, const unsigned char* ssrc, unsigned scl, unsigned sdec, const char* hit, const unsigned char* hsrc, unsigned hcl, unsigned hdec) {
     pf_wait();
+    for (int i = 0; i < PF_N; i++) pf_release(i);
     if (!pf_th) {
         LightEvent_Init(&pf_go, RESET_ONESHOT);
         LightEvent_Init(&pf_done, RESET_STICKY);
@@ -55,8 +62,9 @@ void pm_prefetch_post(const char* shape, const unsigned char* ssrc, unsigned scl
     int any = 0;
     for (int i = 0; i < PF_N; i++) {
         PfSlot* s = &pf[i];
-        s->st = 0;
         if (!sr[i] || !dc[i] || dc[i] > pf_cap[i]) continue;
+        pf_buf[i] = memalign(16, dc[i]);
+        if (!pf_buf[i]) { pm_log_w("prefetch: no heap for %s, the game thread decodes it", nm[i]); continue; }
         snprintf(s->name, sizeof s->name, "%s", nm[i]);
         s->src = sr[i]; s->clen = cl[i]; s->dec = dc[i]; s->st = 1; any = 1;
     }
@@ -75,7 +83,7 @@ int pm_prefetch_take(const void* src, void* dst, unsigned dec) {
         pf_wait();
         int ok = s->st == 2;
         if (ok) memcpy(dst, pf_buf[i], dec);
-        s->st = 0;
+        pf_release(i);
         return ok;
     }
     return 0;
