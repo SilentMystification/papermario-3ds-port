@@ -17,6 +17,8 @@ Read this file at the start and after every compaction; it overrides any summary
 - One row file per agent (row_TEMPLATE.md, 60 lines or fewer), a prompt of 10 lines or fewer pointing to it, with the WAITS rule.
   Name commands, expected results and files literally.
 - At most 6 code agents (2 Azahar slots); read-only agents do not count. One agent per epic; reuse a live agent for its epic.
+- No merge conflicts by design (user, 2026-11-09): each row file names the files it edits; rows that run at the same time have
+  disjoint file sets. Rows that share files go in waves (plan_hotcode.md schedule). Pick fewer rows rather than overlap.
 - An early handback with work left is resumed once with the same row.
 - Check each agent at 90 minutes; no passed gate: stop it, put its state in the row file, reframe (split, or NEEDS CONSOLE).
 - Handback triage before any relaunch: 1 environment fault (fix it, same row); 2 wrong premise (rewrite the row with the agent's

@@ -83,7 +83,15 @@ End target: code that runs in one mac_01 frame <= 16 KB, any one command class <
   stream_run; hash index for pm_tex_slot_find; mc_keyw/mc_tab probes in one line. Target: console D-miss on mac_01 down >= 30%.
 - HC10 CLOSE: regenerate hot_order.ld; delete the remaining word-path code (NDC_SPR/NDC_ENT fallback words, if DIRECT D11 (b) is
   done). Gate: M3 <= 16 KB on mac_01, class <= 8 KB, console I-miss per frame < 10k (stretch).
-- Order: HC0-HC3 are cheap and byte-equal; HC4-HC6 are the structural cut (they need typed ops); HC7-HC9 by class size.
+- Schedule (waves by file set, no two rows in one wave touch the same file; user 2026-11-09):
+  - Wave 1 (now): HC1 cold split (draw C files) | HC2 link order (3ds/ld, tools) | HC9A slot index (pm_tex.c lookup) | HC4 design
+    only (this plan file). INTERIOR (nd_tex.c) overlaps HC1 at nd_tex.c:114/133: the second to merge merges main first.
+  - Wave 2 (after HC1 and HC2 merge): HC4 code slices = DIRECT completion + HC4-HC6 (nd_walk.c, nd_recs.c, nd_rec*.c, pm_gpu.c,
+    nd_comb.c, nd_model.c): alone in the draw core. In parallel only: HC3 -Os experiment (CMake flags; no source edits).
+  - Wave 3 (after HC4 merges): HC7 rect path and HC8 sprite/entity (one at a time if both touch pm_gpu.c), HC9 rest (NdNatC head,
+    NdShadow ids, PLD in stream_run).
+  - Wave 4: DEADCODE (deletes across files: runs alone), then HC10 (link order regenerated, final sizes).
+  - Rows outside the draw core (audio, menus, tools, git audit) may run in any wave.
 - Optional after HC3 (user decision): PGO (-fprofile-generate in Azahar, -fprofile-use) for an automatic hot/cold block split.
 
 ## 3. Measurement
