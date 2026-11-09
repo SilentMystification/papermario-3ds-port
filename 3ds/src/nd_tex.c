@@ -146,3 +146,13 @@ int nd_tex_unit(int id, NdUnit* u) {
     int hs = -1; unsigned hg = 0;
     return nd_tex_unit_hint(id, &hs, &hg, u);
 }
+
+/* NEGPAN: a negative tile start (10.2 raw, flags as tile_wrap: bit 0 mirror, bit 1 clamp, mask log2 texels) mapped into the
+ * mask period. Clamp, no mask, or a period over 1024 texels: 0 (the old clamp). A mirror period is twice the mask. */
+int nd_tex_neg_start(int s, unsigned flags, unsigned mask) {
+    if (!mask || (flags & 2u) || mask > 10u) return 0;
+    int per = 4 << mask;
+    if (flags & 1u) per <<= 1;
+    if (per > 4096) return 0;
+    return s & (per - 1);
+}

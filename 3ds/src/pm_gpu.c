@@ -1,4 +1,5 @@
 #include <3ds.h>
+#include "pm_linear.h"
 void pm_gx_room(void); /* HANG1a */
 #include <3ds/gpu/gpu.h>
 #include <3ds/gpu/registers.h>
@@ -11,6 +12,7 @@ void pm_gx_room(void); /* HANG1a */
 #include <stdlib.h>
 #include "pm_shader5_shbin.h"
 #include "nd.h"
+#include "nd_op.h"
 #include "nd_sprite.h"
 #include "pm_shader4_shbin.h"
 #include "pm_gpu.h"
@@ -290,7 +292,7 @@ static void full_reserve(void) {
 /* A header whose data is set later. C3D_TexInit takes linear memory for its own data, which is freed at once. */
 static int tex_hdr(C3D_Tex* t, int w, int h, GPU_TEXCOLOR fmt) {
     if (!C3D_TexInit(t, w, h, fmt)) return 0;
-    linearFree(t->data);
+    pm_linear_free(t->data);
     t->data = NULL;
     return 1;
 }
@@ -318,7 +320,7 @@ static int full_tex_init(int i) {
 /* a 64 x 64 image takes an arena block (made at boot) */
 static int small_tex_init(C3D_Tex* t) {
     if (small_next >= small_n || !C3D_TexInit(t, 64, 64, GPU_RGBA8)) return 0;
-    linearFree(t->data);
+    pm_linear_free(t->data);
     t->data = small_blk[small_next++];
     return 1;
 }
@@ -1291,6 +1293,17 @@ static __attribute__((cold, noinline)) void raw_draw_rare(NdDraw* d, const NdUni
     if (tex1) { memcpy(d->uvx, t1_s, 16); d->loc_uvx = (uint16_t)(nb.g_use5 ? u5_uvx : u4_uvx); d->has_uvx = 1; }
     if (nb.g_use5) { pm5_upload(); d->use5 = 1; d->no_uni = 1; d->npal = 0; } /* PM5-2; FB-3: the uvx uniform of pm5 is d->loc_uvx (set above) */
 }
+/* I8AUX debug: unit 1 of a native draw, once per 60 frames: pm_tex_i8(1) (the i8_1 the TEV key gets) and the aux slot fmt, siz and GPU format */
+static __attribute__((cold, noinline)) void i8aux_log(int tex1, int i8_1) {
+    static unsigned last_f = ~0u;
+    const unsigned f = pm_frame_count();
+    if (f % 60u != 0u || f == last_f) return;
+    last_f = f;
+    extern int pm_tex_aux_info(int* fmt, int* siz, int* gpu);
+    int af, as, ag;
+    int k = pm_tex_aux_info(&af, &as, &ag);
+    pm_log("i8aux f%u t1 %d i8_1 %d aux %d fmt %d siz %d gpu %d", f, tex1, i8_1, k, af, as, ag);
+}
 static int nd_raw_native(void) {
     nd_tmpl_pin(); /* FB-2: the template ids of this batch stay valid until its submit */
     if (!(nb.gni > 0 && nb.g_pal && gs.gv4_on && (!nb.g_use5 || gv5_on))) { cen_why = nb.g_use5 ? CW_PM5 : CW_OTHER; return 0; } /* CEN-1a; PM5-2: program 5 batches go native too */
@@ -1310,6 +1323,7 @@ static int nd_raw_native(void) {
     int t1 = 0;
     if (gs.combine == 8 && gs.plan.uses_tex1) { t1 = raw_unit1(&u1); if (t1 < 0) { nd_native_refused++; nraw_why[6]++; cen_why = CW_NRK(6); return 0; } } /* SGEN-2: unit 1 words and the uv map uniform (PERF2: out of line) */
     const int tex = t > 0, i8_0 = tex && pm_tex_i8(0), tex1 = t1 > 0, i8_1 = tex1 && pm_tex_i8(1);
+    if (__builtin_expect(tex1 && pm_frame_count() % 60u == 0u, 0)) i8aux_log(tex1, i8_1); /* I8AUX debug: once per 60 frames */
     const int noise = gs.combine == 8 && gs.plan.uses_noise && noise_init(); /* FB-2: as flush_draw; noise_init 0 (no memory): the walker draws without it, so does the native draw */
     NdTmplKey nk;
     memset(&nk, 0, sizeof nk);
@@ -1432,7 +1446,7 @@ static unsigned jt_frame; /* frame of the last queued jump, for the result line 
 extern u64 pm_loop_tick;
 static void jt_queue(void) {
     u32* buf; u32 size, off, pad;
-    if (!jt_sub) jt_sub = (u32*)linearAlloc(16 * 2);
+    if (!jt_sub) jt_sub = (u32*)pm_linear_alloc(16 * 2);
     if (!jt_sub) { pm_log_e("jumptest: linearAlloc failed"); jt_state = 2; return; }
     jt_last = pm_loop_tick;
     jt_frame = pm_frame_count();
@@ -1529,8 +1543,8 @@ static void pm_gpu_init_w(void) {
     AttrInfo_AddLoader(ai, 1, GPU_FLOAT, 2);
     AttrInfo_AddLoader(ai, 2, GPU_FLOAT, 4);
     { /* GV1: the raw Vtx path: a ring of the Vtx records of the frame and a u16 index ring */
-        nb.gring = (unsigned char*)linearAlloc((GRING_VTX + GSTAT_VTX) * 16);
-        nb.gidx = (unsigned short*)linearAlloc(GRING_IDX * 2);
+        nb.gring = (unsigned char*)pm_linear_alloc((GRING_VTX + GSTAT_VTX) * 16);
+        nb.gidx = (unsigned short*)pm_linear_alloc(GRING_IDX * 2);
         nb.rchunk[0].vtx = nb.gring; nb.rchunk[0].idx = nb.gidx; nb.rchunk[0].used = 1;
         gs.gpu_vtx_on = nb.gring && nb.gidx;
         if (gs.gpu_vtx_on) { /* GV1c: the palette program */
@@ -2763,7 +2777,7 @@ enum { GSTAT_IDX = 131072 };
 static unsigned short* gidxs; static unsigned gidxs_n;
 unsigned short* pm_gpu_gidxs_alloc(unsigned n) {
     if (!gs.gpu_vtx_on || !gs.gpu_ok) return NULL;
-    if (!gidxs) gidxs = (unsigned short*)linearAlloc(GSTAT_IDX * 2);
+    if (!gidxs) gidxs = (unsigned short*)pm_linear_alloc(GSTAT_IDX * 2);
     if (!gidxs || gidxs_n + n > GSTAT_IDX) return NULL;
     unsigned short* p = gidxs + gidxs_n;
     gidxs_n += n;
@@ -2980,11 +2994,10 @@ static uint32_t aux_hash(const uint32_t* rec) {
  * their entry of the other room state (kmr_20: w32 first for 230 to 316 misses per door). */
 static uint32_t rm_wh[256], rm_wl[256], rm_ga[256]; static uint8_t rm_done[256];
 static __attribute__((cold, noinline)) void rm_masks(unsigned i) {
-    extern void* ModelRenderModes[]; /* src/model.c: Gfx* per render mode index */
     NdMode m;
     rm_done[i] = 1;
     rm_ga[i] = 0xFFFFFFFFu;
-    if (nd_mode_compile(&m, (const unsigned*)ModelRenderModes[i])) { rm_wh[i] = m.wh; rm_wl[i] = m.wl; rm_ga[i] = m.gand; }
+    if (i < ND_RM_N && nd_mode_compile(&m, (const unsigned*)nd_rm_tab[i])) { /* HC4b: the typed render mode table (nd_rec.c) */ rm_wh[i] = m.wh; rm_wl[i] = m.wl; rm_ga[i] = m.gand; }
 }
 void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) {
     memcpy(k->w, rec, NDMC_RW * sizeof(uint32_t));

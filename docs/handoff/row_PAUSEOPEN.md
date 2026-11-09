@@ -22,6 +22,15 @@ slot), not the CPU path. The ROLE_CPUFILL arm keeps writing 0x8421. FILTER_PAUSE
 draws the grabbed slot with the same fade (gPauseBackgroundFade) and keeps the wide-side strips. The CPU readback path for the pause
 is deleted (no toggle).
 
+## State (2026-11-09, branch PAUSEOPEN head 1dd377099)
+CPU readback removed (D03 12152 us -> no line), pause centre from the GPU copy; pm_wide_side_pause deleted. Open: the wide gutters.
+Cause (agent + oracle): the pause slot is registered pm_gpu_off_begin(cfb, 320, 2) (pm_gpu.c:1825), stride 320, so load_inner's flat
+address math (pm_tex.c ~1661-1685) maps cfb+640 to slot row y+1 columns 40-79 and cfb-80 outside the slot; the slot texture holds
+all 400 columns (grab_raw_quad). Decision (orchestrator): walker-side stride switch through a G_PM_ND bracket (the GRABHOLD pattern
+of SBLK2): background_gfx.c emits G_PM_ND_GUTTER begin/end around the two gutter loads; on the walker side the bracket sets the
+pause slot window to base cfb-80, stride 400 (pm_tex_set_offscreen) and restores 320 after. Gate: both gutters show the scene at
+the right columns (compare with the frame before the pause).
+
 ## Touch only
 3ds/src/nd_rect.c (CPUFILL arm), pm_main.c (cfb_capture_prev), pm_gpu.c (grab), src/background_gfx.c (FILTER/SHOW_PAUSED, TARGET_3DS).
 

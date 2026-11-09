@@ -1,4 +1,5 @@
 #include <3ds.h>
+#include "pm_linear.h"
 #include <citro3d.h>
 #include <string.h>
 #include <stdio.h>
@@ -139,8 +140,9 @@ void pm_tex_set_offscreen(int i, const void* base, unsigned stride, void* tex, i
     offt[i].tex = (C3D_Tex*)tex;
     if (i >= offt_n) offt_n = i + 1;
 }
-int pm_tex_i8(int aux) {
-    if (aux) return aux_off >= 0 && aux_off < offt_n && offt[aux_off].siz == 1;
+int pm_tex_i8(int unit1) {
+    /* I8AUX: a CPU I8 aux slot is GPU_L8 (intensity in R, no alpha), as unit 0 takes it (:145). Without this the TEV read TEXEL1 alpha = 1. */
+    if (unit1) return aux_off >= 0 ? (aux_off < offt_n && offt[aux_off].siz == 1) : (aux >= 0 && aux < slot_hi && slots[aux].live && slots[aux].fmt == FMT_I && slots[aux].siz == SIZ_8);
     if (have && off_cur >= 0 && off_cur < offt_n && offt[off_cur].siz == 1) return 1;
     return have && off_cur < 0 && cur >= 0 && cur < slot_hi && slots[cur].live && slots[cur].fmt == FMT_I && slots[cur].siz == SIZ_8;
 }
@@ -383,6 +385,14 @@ static GPU_TEXCOLOR gpu_fmt(unsigned fmt, unsigned siz) {
     /* I4 masks (shadows, message silhouettes): intensity is alpha on the RDP; LA4 carries it in the alpha nibble. */
     if (fmt == FMT_I && siz == SIZ_4) return GPU_LA4;
     return GPU_RGBA5551;
+}
+
+/* I8AUX debug: the unit 1 (aux) slot as the TEV sees it. Returns 0 no aux, 1 CPU slot (fmt, siz, gpu format), 2 off-screen image (siz code). */
+int pm_tex_aux_info(int* fmt, int* siz, int* gpu) {
+    if (aux_off >= 0 && aux_off < offt_n) { *fmt = -1; *siz = offt[aux_off].siz; *gpu = -1; return 2; }
+    if (aux < 0 || aux >= slot_hi || !slots[aux].live) { *fmt = -2; *siz = -2; *gpu = -2; return 0; }
+    *fmt = (int)slots[aux].fmt; *siz = (int)slots[aux].siz; *gpu = (int)gpu_fmt(slots[aux].fmt, slots[aux].siz);
+    return 1;
 }
 
 static unsigned tex_gpu_bytes(int pw, int ph, GPU_TEXCOLOR gf) {
@@ -732,7 +742,7 @@ static void pf_release_all(void) {
         unsigned age = tc_frame - pf_ent[k].frame;
         if (age > pf_max_age) pf_max_age = age;
         if (pf_ent[k].slab) slab_free(pf_ent[k].p, pf_ent[k].bytes);
-        else linearFree(pf_ent[k].p);
+        else pm_linear_free(pf_ent[k].p);
     }
     pf_rel += pf_n;
     pf_n = 0;
@@ -982,7 +992,7 @@ static void tb_dump_req(uint64_t key, const TbReq* q, const u8* tl, const u8* sr
 
 void pm_tex_init(void) {
     /* Linear image, then a second copy in PICA tile order. */
-    scratch = (u8*)linearAlloc(TEX_SCRATCH_PLANE * 2u);
+    scratch = (u8*)pm_linear_alloc(TEX_SCRATCH_PLANE * 2u);
     slab_init();
     { /* TEXL2 debug switch texcap=<KB> (test tool, may stay): cap the cache so one map evicts */
         char v[16];
@@ -1582,7 +1592,7 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
         staged = (const u8*)upload;
     }
     if (s->vram_stage) { stage_probe(s); pf_add(s->vram_stage, 0, 0); }
-    s->vram_stage = (u8*)linearAlloc(gpu_size);
+    s->vram_stage = (u8*)pm_linear_alloc(gpu_size);
     sbit_set(att_bits, (int)(s - slots));
     if (!s->vram_stage) {
         slab_free(sp_keep, reserve); /* row 1: the VRAM extent taken above goes back, or it is lost */

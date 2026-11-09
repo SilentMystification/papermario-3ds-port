@@ -164,6 +164,38 @@
       "gates": []
     },
     {
+      "name": "cheatsave_key_save",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CHEATSAVE2 save: Cheats tab, Key items folder, the first key item on, the footer shot, X writes its key line to cheats_slot0.ini.",
+      "scenario": "cheatsave_key_save",
+      "cap": 30,
+      "until": "cheats: keys .*key\\.\\d+=1",
+      "tags": [
+        "azahar",
+        "menu",
+        "cheatsave"
+      ],
+      "gates": []
+    },
+    {
+      "name": "cheatsave_key_load",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CHEATSAVE2 load after a reboot: the key item of the slot file is owned at the world entry (Key items row On).",
+      "scenario": "cheatsave_key_load",
+      "cap": 30,
+      "until": "menu: shot \\w+ tab 4 row 1",
+      "tags": [
+        "azahar",
+        "menu",
+        "cheatsave"
+      ],
+      "gates": []
+    },
+    {
       "name": "cheatsave_load_on",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -3281,6 +3313,21 @@
       "gates": []
     },
     {
+      "name": "hc4_t4chk_mac01",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "HC4b: t4chk drops and bad count on mac_01 (bad must be 0).",
+      "scenario": "hc4_t4chk_mac01",
+      "cap": 30,
+      "until": "t4chk f2\\d\\d drops \\d+ bad \\d+",
+      "tags": [
+        "azahar",
+        "det"
+      ],
+      "gates": []
+    },
+    {
       "name": "spot_mac01_det",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -3437,6 +3484,22 @@
         "azahar",
         "det",
         "ndref"
+      ],
+      "gates": []
+    },
+    {
+      "name": "i8aux_mac01",
+      "kind": "azahar_stream",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "I8AUX step 1: fxtest huff_puff_breath (103) on mac_01, cold. The i8aux line (pm_tex_i8(1) and the unit 1 slot fmt, siz, GPU format). Log only.",
+      "scenario": "i8aux_mac01",
+      "cap": 25,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "i8aux",
+        "fx"
       ],
       "gates": []
     },
@@ -7305,6 +7368,22 @@
           "azahar",
           "census",
           "water"
+        ],
+        "gates": []
+      },
+    {
+        "name": "negpan_mim05",
+        "kind": "azahar_pic",
+        "speed": "normal",
+        "default": false,
+        "purpose": "NEGPAN step 1: mim_05 warp, log of the first negative tile start clamped in tex_win_s25 (uls/ult raw and out).",
+        "scenario": "negpan_mim05",
+        "cap": 25,
+        "until": "negpan in uls ",
+        "tags": [
+          "azahar",
+          "negpan",
+          "mim_05"
         ],
         "gates": []
       }
