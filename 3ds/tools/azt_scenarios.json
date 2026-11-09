@@ -13219,6 +13219,60 @@
         }
       ],
       "reason": "WATERPAN step 1 census, one start. Cold boot is 12 to 16 s, the f300 line needs 300 frames after the warp: cap 30 s (the row said 15 s; a cold start does not fit). Log only: no shot."
+    },
+    {
+      "name": "tidal_census_base",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, phase mode, no effect. Log only (no shot).",
+      "proves": "TIDAL step 1 base: per-frame draw count (closes proxy) of window f410 without the underwater effect.",
+      "debug": "warp=mac_01:0 pos=0:0:200 phase loglevel=debug det fixedseed",
+      "extra": [],
+      "until": "phase W f4\\d\\d-",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "window f410",
+          "regex": "phase W f4\\d\\d-"
+        }
+      ],
+      "reason": "TIDAL step 1 census base. Log only: the per-frame draw count of window f410 (frames 408 to 465) is the gate quantity."
+    },
+    {
+      "name": "tidal_census",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, phase mode, fxtest=87 (fx_underwater) spawned at frame 402 and removed at frame 440. Log only (no shot).",
+      "proves": "TIDAL step 1: the underwater effect (the Tidal Wave draw, fx_underwater) raises the per-frame draw count of window f410 by about 200 closes.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=87 phase loglevel=debug det fixedseed",
+      "extra": [],
+      "until": "phase W f4\\d\\d-",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "spawn",
+          "regex": "fxtest: spawn 87 underwater"
+        },
+        {
+          "name": "window f410",
+          "regex": "phase W f4\\d\\d-"
+        }
+      ],
+      "reason": "TIDAL step 1 census: fxtest=87 is fx_underwater (pm_fxtest.c E(underwater) index 87). Log only."
     }
   ]
 }
