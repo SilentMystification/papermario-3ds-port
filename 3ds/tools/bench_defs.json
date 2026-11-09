@@ -2882,6 +2882,22 @@
       "gates": []
     },
     {
+      "name": "spot_mac01_eyecw",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "EYECW: mac_01 spot (pos 0 0 200) with forced stereo, det, log on: the eyecw lines (p23, cw, conv, nd_proj_wn, old conv x |p23|) every 10 frames; one shot at frame 200.",
+      "scenario": "spot_mac01_eyecw",
+      "cap": 30,
+      "until": "shot \\d+ frame 200\\b",
+      "tags": [
+        "azahar",
+        "stereo",
+        "det"
+      ],
+      "gates": []
+    },
+    {
       "name": "spot_mac01_stereo_det_l",
       "kind": "azahar_pic",
       "speed": "normal",

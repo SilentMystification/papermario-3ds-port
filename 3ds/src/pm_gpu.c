@@ -779,10 +779,10 @@ static void eye_vec(int id, float x, float y, float z, float w) {
 static void eye_set(float e) { eye_vec(u_eye, e, 0.f, 0.f, 0.f); }
 /* eyd of the next draw: column 0 of gv_post (the palette of the draw uses this post) and cw = conv x nd_proj_wn (EYECW: the w of the zero parallax
  * point at the convergence distance, for any camera yaw). The same for both eyes. */
-static float eyd_cw_dbg, eyd_p23_dbg; /* EYECW log: the last perspective cw of the frame and the p23 of that projection */
+static float eyd_cw_dbg, eyd_p23_dbg, eyd_wn_dbg; /* EYECW log: the last perspective cw of the frame and the p23 of that projection */
 static inline void eyd_sync(void) {
     const float cw = eye_conv * nd_proj_wn;
-    if (__builtin_expect(cw != 0.f, 0)) { eyd_cw_dbg = cw; eyd_p23_dbg = nd_proj[2][3]; }
+    if (__builtin_expect(cw != 0.f, 0)) { eyd_cw_dbg = cw; eyd_p23_dbg = nd_proj[2][3]; eyd_wn_dbg = nd_proj_wn; }
     eye_vec(u_eyd, gv_post.r[0].x, gv_post.r[1].x, gv_post.r[2].x, cw);
 }
 static void u5mtx(int id, const C3D_Mtx* m) {
@@ -2245,7 +2245,8 @@ typedef struct { int unused; } Wq_pm_gpu_end;
 static void wq_pm_gpu_end(void* a) { Wq_pm_gpu_end* q = (Wq_pm_gpu_end*)a; (void)q; pm_gpu_end_w(); }
 void pm_gpu_end(void) { Wq_pm_gpu_end q = { 0 }; pm_wq_post(wq_pm_gpu_end, &q, sizeof q); }
 static __attribute__((cold, noinline)) void eyecw_log(void) { /* EYECW (debug level): the convergence w of the last perspective draw, every 10 stereo frames */
-    pm_log_d("eyecw f%u p23 %.3f cw %.1f", pm_frame_count(), (double)eyd_p23_dbg, (double)eyd_cw_dbg);
+    pm_log_d("eyecw f%u p23 %.3f cw %.1f conv %.1f wn %.3f old %.1f", pm_frame_count(), (double)eyd_p23_dbg, (double)eyd_cw_dbg, (double)eye_conv, (double)eyd_wn_dbg,
+             (double)(eye_conv * (eyd_p23_dbg < 0.f ? -eyd_p23_dbg : eyd_p23_dbg))); /* old: the cw of conv x |p23| */
 }
 static void pm_gpu_end_w(void) {
     if (__builtin_expect(stereo_frame && pm_frame_count() % 10u == 0, 0)) eyecw_log();

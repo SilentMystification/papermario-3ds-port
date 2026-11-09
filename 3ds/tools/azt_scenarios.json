@@ -999,6 +999,30 @@
       "reason": "Row GAMEOVER (user: game over flickers and lags, 60 fps on). Shot window after the letters start to drop; cap 30 s (boot, warp, 90 frames). STEREO S2 gate (stereo variant of gameover_fps60)."
     },
     {
+      "name": "spot_mac01_eyecw",
+      "status": "unverified",
+      "subject": "mac_01 spot (pos 0 0 200) with forced stereo, det, log on: the eyecw lines (p23, cw, conv, nd_proj_wn, old conv x |p23|) every 10 frames; one shot at frame 200.",
+      "proves": "EYECW: the convergence w at the mac_01 spot, new (conv x nd_proj_wn) against old (conv x |p23|) on the same frames.",
+      "debug": "warp=mac_01:0 pos=0:0:200 stereo det shots shotwin=200:1 loglevel=debug",
+      "until": "shot \\d+ frame 200\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "eyecw",
+          "regex": "eyecw f\\d+ p23 -?[0-9.]+ cw [0-9.]+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 200\\b"
+        }
+      ],
+      "reason": "EYECW: the prof spot benches run with the log off (prof=4); this one keeps the debug log."
+    },
+    {
       "name": "spot_mac01_stereo_det_l",
       "status": "unverified",
       "subject": "Toad Town mac_01, Mario at pos 0 0 200 (warp entry 0), cold det start with forced stereo (3D slider 1): left eye shots at frames 200 to 205 and the prof scene line of the first 300-frame window.",
