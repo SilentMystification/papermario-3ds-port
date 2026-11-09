@@ -1063,6 +1063,36 @@ static void bypass_tick(void) {
         pm_menu_msg("The battle did not end, mode %d", (int)get_game_mode());
     }
 }
+/* WARPQ: a warp or a boss launch asked for during a map change (game mode 5), an entry (7), a battle end (9) or an unpause (11) is held in one
+ * slot. A newer request replaces it. wq_tick runs it in the world (game mode 4) with the function the menu calls. The start returns 1, so the
+ * Select menu closes at once (pm_optui_act result 5). Other modes keep the refusal. */
+enum { WQ_NONE, WQ_WARP, WQ_BOSS };
+static int wq_kind, wq_a, wq_b;
+static unsigned wq_n;
+static int wq_queueable(int mode) {
+    return mode == GAME_MODE_CHANGE_MAP || mode == GAME_MODE_ENTER_WORLD || mode == GAME_MODE_END_BATTLE || mode == GAME_MODE_UNPAUSE;
+}
+static int wq_begin(int kind, int a, int b, int mode) {
+    wq_kind = kind; wq_a = a; wq_b = b; wq_n = 0;
+    pm_log("warp: queued in game mode %d (kind %d, %d, %d)", mode, kind, a, b);
+    pm_menu_msg("Warp queued until the map change ends");
+    return 1;
+}
+static void wq_tick(void) {
+    int mode = get_game_mode();
+    if (!wq_kind) return;
+    if (mode == GAME_MODE_WORLD) {
+        int k = wq_kind, a = wq_a, b = wq_b;
+        wq_kind = WQ_NONE;
+        pm_log("warp: queued warp runs (kind %d, %d, %d)", k, a, b);
+        if (k == WQ_WARP) pm_warp_live_now(a, b);
+        else pm_boss_launch_now(a);
+    } else if (!wq_queueable(mode) || ++wq_n > 900) {
+        wq_kind = WQ_NONE;
+        pm_log_w("warp: queued warp dropped in game mode %d after %u frames", mode, wq_n);
+        pm_menu_msg("Queued warp dropped in game mode %d", mode);
+    }
+}
 /* WARPFIX: the map and entry of a choice (preset or map list) for a live warp. Sets gGameStatusPtr area, map and entry only. */
 static int warp_live_move(int c, int entry) {
     int P = (int)ARRAY_COUNT(presets);
@@ -1111,6 +1141,7 @@ int pm_warp_live(int c, int entry) {
 static int pm_warp_live_now(int c, int entry) {
     int mode = get_game_mode();
     int ok = mode == GAME_MODE_WORLD || mode == GAME_MODE_TITLE_SCREEN || mode == GAME_MODE_INTRO || mode == GAME_MODE_DEMO;
+    if (!ok && wq_queueable(mode)) return wq_begin(WQ_WARP, c, entry, mode);
     if (!ok) {
         pm_log_w("warp: not possible in game mode %d", mode);
         pm_menu_msg("Warp not possible in game mode %d", mode);
@@ -1166,6 +1197,7 @@ static int pm_boss_launch_now(int i) {
     s16 areaID, mapID;
     int mode = get_game_mode();
     if (i < 0 || i >= pm_boss_count()) return 0;
+    if (mode != GAME_MODE_WORLD && mode != GAME_MODE_TITLE_SCREEN && mode != GAME_MODE_INTRO && mode != GAME_MODE_DEMO && wq_queueable(mode)) return wq_begin(WQ_BOSS, i, 0, mode);
     if (mode != GAME_MODE_WORLD && mode != GAME_MODE_TITLE_SCREEN && mode != GAME_MODE_INTRO && mode != GAME_MODE_DEMO) {
         pm_menu_msg("Boss launch not possible in game mode %d", mode);
         return 0;
@@ -1834,6 +1866,32 @@ int pm_model_log_id(void) {
     return id;
 }
 
+/* WARPQ test switch modewarp=<game mode>:<map>:<entry>: in the first scene frame that the game is in that mode, the warp of the Select
+ * menu (pm_warp_live, the call of the Warp now row) goes to the map. Debug tool only, no game logic. */
+static void modewarp_hook(unsigned f) {
+    static int done;
+    char v[48], name[16];
+    char *c1, *c2;
+    int mode, idx, entry = 0;
+    if (done || !pm_debug_value("modewarp", v, sizeof v)) return;
+    mode = atoi(v);
+    if (get_game_mode() != mode) return;
+    done = 1;
+    c1 = strchr(v, ':');
+    if (!c1) return;
+    c2 = strchr(c1 + 1, ':');
+    if (c2) entry = atoi(c2 + 1);
+    {
+        size_t n = c2 ? (size_t)(c2 - (c1 + 1)) : strlen(c1 + 1);
+        if (n >= sizeof name) n = sizeof name - 1;
+        memcpy(name, c1 + 1, n);
+        name[n] = 0;
+    }
+    idx = pm_warp_map_index(name);
+    if (idx < 0) { pm_log_w("modewarp: map %s not found", name); return; }
+    pm_log("modewarp: game mode %d at scene frame %u, warp to %s entry %d", mode, f, name, entry);
+    pm_warp_live((int)ARRAY_COUNT(presets) + 1 + idx, entry);
+}
 /* WARPFIX test switch livewarp=<scene frame>:<map>:<entry>: at that frame of the scene, the warp of the Select menu (pm_warp_live, the call of
  * the Warp now row) goes to the map. Debug tool only, no game logic. */
 static void livewarp_hook(unsigned f) {
@@ -1923,6 +1981,7 @@ void pm_warp_tick(unsigned frame) {
     boss_tick();
     battle_tick(); /* BT2 */
     bypass_tick();
+    wq_tick(); /* WARPQ: a warp queued during a map change runs in the world */
     pos_tick(frame); /* POSWARP */
     pm_cheat_tick(); /* CH6: moon jump, after the game logic of this step */
     if (scene_f0 < 0) return;
@@ -1932,6 +1991,7 @@ void pm_warp_tick(unsigned frame) {
     pm_sweep_tick(f); /* SWEEP: markers and end of one item of the full sweep (pm_sweep.c, switch sweep=<name>) */
     battle_hooks(f);
     livewarp_hook(f); /* WARPFIX test switch */
+    modewarp_hook(f); /* WARPQ test switch */
     fswarp_hook(f); /* WARPFIX2 test switch */
     bosstest_hook(f); /* WARPFIX2 test switch */
     boss_restore_tick(); /* WARPFIX2 */

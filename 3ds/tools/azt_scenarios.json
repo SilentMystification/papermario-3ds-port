@@ -7306,6 +7306,26 @@
       "reason": "Log and file only. Stereo: both eyes of the frame are in one file, so the draw count is the sum of both eyes."
     },
     {
+      "name": "warpq_door",
+      "status": "unverified",
+      "subject": "WARPQ: Toad Town (mac_01) walks through a map change (padscript goto_kmr_02, game mode 5 CHANGE_MAP). In game mode 5 the warp of the Select menu is requested (modewarp=5:kmr_04:0). The base build refuses it (warp: not possible in game mode 5). The fixed build queues it and runs it in the world, so the shot shows kmr_04 with no menu.",
+      "proves": "pm_warp_live in game mode 5: refused on base, queued and run in the world (warp: queued in game mode 5, warp: queued warp runs, warp: live to choice) on the fixed build, plus the picture of the destination map.",
+      "debug": "warp=mac_01:0 pos=0:0:200 story=ch0_toad_town padscript=wait60,goto_kmr_02:0,wait150 modewarp=5:kmr_04:0 loglevel=debug shots shotwin=200:6",
+      "until": "shot \\d+ frame 205\\b",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "refused on base or queued",
+          "regex": "warp: (not possible in game mode 5|queued in game mode 5)"
+        }
+      ],
+      "reason": "WARPQ picture. Until is the shot line after the destination loads; the frame window is set from the first repro log (game mode 5 frames)."
+    },
+    {
       "name": "randwarp_seed",
       "status": "unverified",
       "subject": "RANDWARP: warp=random:7 boots to the spot the seed picks from pm_tour_spots (seed % count). Shots at frames 200 to 205 show Mario on that map; the seed line names it.",
