@@ -69,6 +69,8 @@ static void check_state(const DrawInfo* d, const unsigned char* s) {
     if (om_h | om_l | om_d) {
         NdRender rs;
         nd_render_state(om_h, om_l, (int)om_d, &rs);
+        /* KMR11W: the held oracle words predate the edge AA rule (blend 0, atest 0x30 for these draws): the rule's own result is checked in nd_model_test */
+        if (nd_edge_aa(om_l) && rs.blend == 1 && rs.atest == 0x1F && d->tk[14] == 0 && d->atest == 0x30) { rs.blend = 0; rs.atest = 0x30; }
         int same = rs.zcmp == (zcmp != 0) && rs.zupd == (zupd != 0) && rs.blend == (d->tk[14] != 0) && rs.decal == (d->decal != 0) && rs.nocol == (nocol != 0) &&
                    (int)rs.atest == (int)d->atest && (!rs.set_memb || rs.memb == (d->tk[12] != 0));
         if (same) n_rs_ok++;

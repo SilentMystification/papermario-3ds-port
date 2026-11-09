@@ -316,6 +316,7 @@ typedef struct NdMode { uint8_t ok; uint32_t om_h, om_l; uint32_t wh, wl; NdRend
 int nd_aux_state(const uint32_t* aw, unsigned n, NdMode* ax); /* S3L-3: the R13 words (n Gfx pairs after the record) as a pre-list NdMode: SETOTHERMODE, SETCOMBINE, TEXTURE only, no geometry. 0: another op (fallback) */
 int nd_mode_compile(NdMode* m, const unsigned* w);
 void nd_render_state(uint32_t omode_h, uint32_t omode_l, int depth_img, NdRender* o);
+int nd_edge_aa(uint32_t m); /* KMR11W: the N64 texture edge blender (AA_EN, IM_RD, CVG_X_ALPHA, ALPHA_CVG_SEL, not FORCE_BL, cycle 2 M=CLR_MEM B=A_MEM, not decal) */
 
 /* TEV stage builder, shared by the template and by pm_gpu.c flush_tev_rebuild. st[i] holds the 5 words of C3D_TexEnv stage i
  * (source, operand, combiner, colour, scale), all 6 stages (unused = C3D_TexEnvInit words). n = stages in use. */
@@ -388,10 +389,10 @@ const NdNat* nd_model_native(unsigned j);
 /* S3N-6: the native model cache. The key: the 14 record words (R0 to R13) and the walker state the draw reads before the record is applied (pm_gpu.c
  * pm_gpu_model_key). One entry per key: the combined matrix the ranges were cut with (the former pm_gbi.c combined), the unit 0 slot hint, and the draws (nd_mc_nat, n of them).
  * Open hash, 1024 entries, no division. Full table (3/4) or a full draw pool: clear all (counted by nd_mc_clears). */
-/* the bits nd_render_state reads: om_h cycle type (bits 20, 21); om_l bits 0, 1, 4, 5, 10, 11, 12, 16 to 23, 28 to 31. MAPX-2: cycle type is the only
+/* the bits nd_render_state reads: om_h cycle type (bits 20, 21); om_l bits 0, 1, 3, 4, 5, 6, 10 to 14, 16 to 23, 28 to 31 (KMR11W: 3, 6, 13, 14 for nd_edge_aa). MAPX-2: cycle type is the only
  * other mode H field a native model draw reads (nd_model_state, the combine decision); the texture filter and TLUT are in the texture entry (nd_tex_get). */
 #define ND_OMH_READ 0x00300000u
-#define ND_OML_READ 0xF0FF1C33u
+#define ND_OML_READ 0xF0FF7C7Bu
 #define NDMC_RW 28
 #define NDMC_SW 64
 typedef struct NdMKey { uint32_t w[NDMC_RW + NDMC_SW]; uint32_t h; uint32_t rp; } NdMKey; /* S3N-7: h = hash of w (nd_mc_hash), rp = the record address (not compared) */
