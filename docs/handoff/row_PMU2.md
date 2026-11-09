@@ -6,7 +6,7 @@ wall time only: lgms 25 ms on the O3DS XL in mac_00 for a step of about 3 ms (co
 Add the core 1 counters: I-cache misses, D-cache misses and cycles per logic step, so the console shows the real logic work on core 1.
 
 ## Start state
-Worktree build3ds/wt/PMU2, branch PMU2 from main 346c929d5. Copy assets/us and ver/us/build into it.
+Worktree build3ds/wt/PMU2, branch PMU2 from main cab4faacd. Copy assets/us and ver/us/build into it.
 
 ## Premise and its check
 Premise: svcControlPerformanceCounter(PERFCOUNTEROP_GET_VALUE, CORE_COUNT_REG_0/1, CORE_CYCLE_COUNTER) returns the counters of the core
@@ -19,6 +19,9 @@ Files: 3ds/src/pm_logic.c (logic thread loop, near line 61: `lg_pf_t += svcGetSy
 3ds/src/pm_phase.c (pf_report core2 line, lines 560-570; pf_start 647). No other files.
 
 ## Plan
+0. Core 1 setup (the CP15 PMU is banked per core; pf_start, pm_phase.c:647, configures core 0 only): on the logic thread itself, at
+   the first step with pm_pf_on set (and again when prof turns on), run ENABLE, SET_EVENT REG_0 INST_CACHE_MISS (or STALL_BY_LACK_OF_INST
+   when pf_set is 's'), SET_EVENT REG_1 DATA_CACHE_READ_MISS, SET_VALUE 0 on both and on the cycle counter. Same svc calls as pf_start.
 1. In the logic thread loop: read the 3 counters (one svc per register) before and after each non-idle command only when pm_pf_on
    is set (prof mode). Add the u32 deltas to 3 u64 sums next to lg_pf_t. No reads when prof is off (zero cost).
 2. Extend pm_lg_pf to return the 3 sums. In pf_report print per logic step: `core2 ... ic1 %u dc1 %u cyc1 %u` (append to the
