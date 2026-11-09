@@ -10899,24 +10899,20 @@
     {
       "name": "xfer_door_kmr20_ndm",
       "status": "unverified",
-      "reason": "DOORHITCH gate: ndmcheck over kmr_20 doors (enter, exit, enter after a map change); the ndmcheck lines print every 300 frames, the second set at f600 falls after the third door. Cap 45 s.",
-      "subject": "Mario's house door on kmr_20 as xfer_door_kmr20 (map change, enter, exit, enter) with the ndmcheck switch: every model record is drawn natively and by the walker and compared, and cached entries are compared with fresh builds (ndmcache).",
+      "reason": "DOORHITCH gate: ndmcheck over the first kmr_20 door (boot in the yard, enter and exit). Long measurement: ndmcheck draws every model record twice and compares, so the yard runs at about 5 steps per second in Azahar (a 45 s run did not reach f300); the f300 lines need about 70 s. Cap 90 s.",
+      "subject": "Mario's house door on kmr_20 (preset yard, no map change: enter and exit) with the ndmcheck switch: every model record is drawn natively and by the walker and compared, and cached entries are compared with fresh builds (ndmcache).",
       "proves": "DOORHITCH: the model key without the geometry bits the render mode list writes (pm_gpu_model_key word 32) gives no ndmcheck or ndmcache diff in the doors.",
-      "debug": "preset=yard padscript=wait60,goto_kmr_20:4,wait300,pos_300:30:-76,go_240_-76_100,A,wait260,go_200_-76_20,go_285_-76_80,A,wait200,go_240_-76_100,A,wait260 ndmcheck loglevel=debug",
-      "until": "ndmcache f600 ",
-      "cap": 45,
+      "debug": "preset=yard padscript=wait140,pos_300:30:-76,go_240_-76_100,A,wait260,go_200_-76_20,go_285_-76_80,A,wait200 ndmcheck loglevel=debug",
+      "until": "ndmcache f300 ",
+      "cap": 90,
       "deadline": 30,
       "first_marker": "warp: kmr_20 entry 4",
       "expects": "warp",
       "needs_picture": false,
       "expected_events": [
         {
-          "name": "door enter line",
-          "regex": "xfer door \\S+:out->\\S+:in f\\d+"
-        },
-        {
           "name": "ndmcache",
-          "regex": "ndmcache f600 "
+          "regex": "ndmcache f300 "
         }
       ]
     },

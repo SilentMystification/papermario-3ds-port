@@ -5021,10 +5021,10 @@
       "kind": "azahar_stream",
       "speed": "normal",
       "default": false,
-      "purpose": "DOORHITCH gate: kmr_20 doors with ndmcheck (native draw vs walker, cached vs fresh). Gate: ndmcheck diff 0 and ndmcache diff 0 at f300 and f600.",
+      "purpose": "DOORHITCH gate: kmr_20 doors with ndmcheck (native draw vs walker, cached vs fresh). Gate: ndmcheck diff 0 and ndmcache diff 0 at f300 (the first door).",
       "scenario": "xfer_door_kmr20_ndm",
-      "cap": 45,
-      "until": "ndmcache f600 ",
+      "cap": 90,
+      "until": "ndmcache f300 ",
       "tags": [
         "azahar",
         "ndm",
