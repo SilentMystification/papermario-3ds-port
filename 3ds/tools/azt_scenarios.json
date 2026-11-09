@@ -6013,6 +6013,103 @@
       ]
     },
     {
+      "name": "battle_wheel5_wide",
+      "status": "unverified",
+"reason": "broken: no until in 45 s (AZT11-5, 2026-11-09)",
+      "subject": "Battle with wide on (one Goomba, kmr_03), spmax=1 adds Star Power, hammer=0 the Hammer: 5 wheel options (Strategies, Items, Jump, Hammer, Star Power). The wheel opens on Jump; two steps right reach Star Power, the right end. The wheel stop line starts a 4 frame shot burst.",
+      "proves": "WIDE4: with the wheel at the right end every element is drawn in the left corner (spots, reel, beam not cut at the 4:3 field), the leftmost options in place.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town spmax=1 hammer=0 battle battlef=100 wide shots loglevel=debug uiburst padscript=wait362,right*4,wait30,right*4,wait60",
+      "until": "debug wheel stop: pos 4 of 5",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "battle formation",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "wheel open",
+          "regex": "debug wheel open: base"
+        },
+        {
+          "name": "wheel at right end",
+          "regex": "debug wheel stop: pos 4 of 5"
+        }
+      ],
+      "reason": "WIDE4 gate (user items 1, 3, 4): the wheel at the right end with 5 options, wide on."
+    },
+    {
+      "name": "battle_wheel5_nowide",
+      "status": "unverified",
+      "subject": "battle_wheel5_wide at 4:3 (nowide): 5 wheel options, two steps right to Star Power. The 4:3 reference picture of the same wheel state.",
+      "proves": "WIDE4: the 4:3 wheel at the right end, for comparison by eye with the wide picture.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town spmax=1 hammer=0 battle battlef=100 nowide shots loglevel=debug uiburst padscript=wait362,right*4,wait30,right*4,wait60",
+      "until": "debug wheel stop: pos 4 of 5",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "battle formation",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "wheel open",
+          "regex": "debug wheel open: base 54 173"
+        },
+        {
+          "name": "wheel at right end",
+          "regex": "debug wheel stop: pos 4 of 5"
+        }
+      ],
+      "reason": "WIDE4 4:3 reference for the right-end wheel."
+    },
+    {
+      "name": "battle_wheel_nowide_det",
+      "status": "unverified",
+      "subject": "Battle at 4:3 (nowide, det), one Goomba on kmr_03: the wheel opens (4 options) and its open line starts an 8 frame shot burst. Runs on builds before WIDE4 (only older switches).",
+      "proves": "WIDE4 byte gate: the 4:3 wheel picture is byte equal to the base build (every WIDE4 change is under pm_wide).",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 nowide shots loglevel=debug uiburst det",
+      "until": "shot \\d+ frame \\d+ map",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "battle formation",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "wheel open",
+          "regex": "debug wheel open: base 54 173"
+        },
+        {
+          "name": "shot at wheel",
+          "regex": "shot \\d+ frame \\d+ map"
+        }
+      ],
+      "reason": "WIDE4 4:3 byte gate for the wheel draw."
+    },
+    {
       "name": "chapter_native",
       "status": "unverified",
       "reason": "WIDE3 gate 3: one kmr_22 shot with wide on.",
@@ -11906,6 +12003,86 @@
         }
       ],
       "reason": "PAUSEDR counters: window line after the first pause opens on the logic thread."
+    },
+    {
+      "name": "menuwarp_btl",
+      "status": "unverified",
+      "reason": "MENUWARP step 1 gate: the menu close line and the bypass line come in the same A press (no further input), then the warp live line, then the last shot of the window (shot 15, the 16th shot, after the warp; no menu on it).",
+      "subject": "Battle (kmr_03, one Goomba, battle switch): the Select menu opens in the battle, Debug tab > Warp area (A opens the warning page, B = warp menu), Shooting Star Summit (ddown), A, then the first map of its page (A). The menu closes on that A with no other input, the battle ends and the warp runs. Shots 262 to 300: the destination map with no menu.",
+      "proves": "MENUWARP step 1: a warp from the Select menu in a battle closes the menu (pm_warp_live returns started: pm_optui_act result 5), then bypass_tick runs the warp in the world.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 padscript=@pad_menuwarp_btl.txt shots shotwin=262:40 loglevel=debug",
+      "until": "shot 15 frame \\d+\\b",
+      "cap": 45,
+      "deadline": 25,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "battle",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "menu open",
+          "regex": "menu: open"
+        },
+        {
+          "name": "menu close",
+          "regex": "menu: close"
+        },
+        {
+          "name": "bypass",
+          "regex": "bypass: battle end for kind 1"
+        },
+        {
+          "name": "warp live",
+          "regex": "warp: live to choice"
+        },
+        {
+          "name": "last shot (15)",
+          "regex": "shot 15 frame \\d+\\b"
+        }
+      ]
+    },
+    {
+      "name": "menuwarp_list",
+      "status": "unverified",
+      "reason": "MENUWARP steps 3 and 4 gate: menu shots (shotmenu, one bottom shot per menu draw; the game is paused while the menu is open, so the frame shots do not fire): the row 0 shot shows the level 1 list (Toad Town Tunnels after Toad Town), the row 6 shot after one right press.",
+      "subject": "Port menu Debug tab, row Warp area (row 0, A) opens the Warp area folder at level 1: the rows are the story areas (Goomba Village, Toad Town, Toad Town Tunnels, ...). One shot before and one after a right press: the cursor moves 6 rows.",
+      "proves": "MENUWARP steps 3 and 4: Toad Town Tunnels is the third row (after Toad Town), and left or right on a Warp area row with no value moves 6 rows (pm_optui_step returns 0, pm_menu_hold skips).",
+      "debug": "preset=toad padscript=@pad_menuwarp_list.txt shotmenu loglevel=debug",
+      "until": "menu: tab 4 row 6 ",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "menu open",
+          "regex": "menu: open"
+        },
+        {
+          "name": "level 1 list (row 0 shot)",
+          "regex": "menu: shot bot_m\\d+ tab 4 row 0\\b"
+        },
+        {
+          "name": "skip 6",
+          "regex": "menu: skip 6 row 0 -> 6"
+        },
+        {
+          "name": "row 6 shot",
+          "regex": "menu: shot bot_m\\d+ tab 4 row 6\\b"
+        }
+      ]
     }
   ]
 }

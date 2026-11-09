@@ -14,6 +14,7 @@
 #include "pm_port.h"
 #include "variables.h"
 #include "nd_ops.h"
+extern int pm_wide; /* WIDE4: set_scissor reads signed x edges with wide on */
 
 #define GP_SET(k, same) do { if (gp_on()) gp_note(k, (same)); } while (0)
 #define pm_gpu_flush() pm_gpu_flush_at(__LINE__) /* PG0: the flush counter by cause (prof mode) */
@@ -47,6 +48,12 @@ void set_scissor(u32 w0, u32 w1) {
     int uly = (int)(w0 & 0xfff);
     int lrx = (int)((w1 >> 12) & 0xfff);
     int lry = (int)(w1 & 0xfff);
+    /* WIDE4: with wide on a window in the left margin (battle Moves/Strats list at game x -20) sets a scissor with a negative left edge; gDPSetScissor
+     * packs it as an unsigned 12-bit field (-18 -> 1006 px), which swapped the edges and cut the list text. The x fields are signed 10.2 then. */
+    if (pm_wide) {
+        if (ulx & 0x800) ulx |= ~0xfff;
+        if (lrx & 0x800) lrx |= ~0xfff;
+    }
     sci_x0 = ulx >> 2;
     sci_y0 = uly >> 2;
     sci_x1 = lrx >> 2;

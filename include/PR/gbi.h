@@ -4502,9 +4502,11 @@ typedef union {
 #ifdef TARGET_3DS
 extern int pm_wide; /* WIDEHUD: with wide a rect left of x 0 is drawn in the gutter. Clipping it to 0 made the port extend the rect to the screen edge and repeat its texture. */
 #define PM_SCIS_XL(v) (pm_wide ? (s16)(v) : MAX((s16)(v), 0))
+#define PM_SCIS_XH(v) (pm_wide ? (s16)(v) : MAX((s16)(v), 0)) /* WIDE4: the right edge too: a rect wholly left of x 0 (battle wheel option at x -27) kept xl and clamped xh to 0, so it stretched to x 0 and repeated its texture (two flags) */
 #define PM_SCIS_CLIP(v) (!pm_wide && (s16)(v) < 0)
 #else
 #define PM_SCIS_XL(v) MAX((s16)(v), 0)
+#define PM_SCIS_XH(v) MAX((s16)(v), 0)
 #define PM_SCIS_CLIP(v) ((s16)(v) < 0)
 #endif
 /* like gSPTextureRectangle but accepts negative position arguments */
@@ -4513,7 +4515,7 @@ extern int pm_wide; /* WIDEHUD: with wide a rect left of x 0 is drawn in the gut
     Gfx *_g = (Gfx *)(pkt);                                                  \
                                                                              \
     _g->words.w0 = (_SHIFTL(G_TEXRECT, 24, 8) |                              \
-                    _SHIFTL(MAX((s16)(xh),0), 12, 12) |                      \
+                    _SHIFTL(PM_SCIS_XH(xh), 12, 12) |                        \
                     _SHIFTL(MAX((s16)(yh),0), 0, 12));                       \
     _g->words.w1 = (_SHIFTL((tile), 24, 3) |                                 \
                     _SHIFTL(PM_SCIS_XL(xl), 12, 12) |                      \
