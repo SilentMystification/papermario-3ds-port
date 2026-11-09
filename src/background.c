@@ -157,6 +157,9 @@ void appendGfx_background_texture(void) {
     u8 r2, g2, b2;
     u16 blendedR, blendedG, blendedB;
     s32 i;
+#ifdef TARGET_3DS
+    s32 bgMix = 0; /* BTLDIM: the shroud fade is mixed by the GPU (PM_RM_SHROUD) instead of a palette lerp */
+#endif
 
     f32 theta, sinTheta, cosTheta, scrollValue, f5, waveOffset;
 
@@ -234,6 +237,15 @@ void appendGfx_background_texture(void) {
         switch (*gBackgroundTintModePtr) {
             case ENV_TINT_NONE:
             case ENV_TINT_SHROUD:
+#ifdef TARGET_3DS
+                /* BTLDIM: a shroud fade (Shooting Star, Merlee) is mixed on the GPU over the source palette. The palette lerp
+                 * rewrote 256 entries and forced a new CI8 decode, VRAM slot and copy per fade step (pm_tex.c load_miss).
+                 * Here only the mix colour is set (4 GBI words below). The full black case (fogA 255) stays a palette fill. */
+                if (fogA != 255 && (flags & BG_BLEND_SHOULD_LERP)) {
+                    bgMix = 1;
+                    break;
+                }
+#endif
                 if (fogA == 255) {
                     for (i = 0; i < ARRAY_COUNT(gBackgroundPalette); i++) {
                         gBackgroundPalette[i] = BG_PAL(1);
@@ -306,10 +318,21 @@ void appendGfx_background_texture(void) {
     gDPSetTextureLUT(gMainGfxPos++, G_TT_RGBA16);
     gDPSetCombineMode(gMainGfxPos++, G_CC_DECALRGB, G_CC_DECALRGB);
     gDPSetRenderMode(gMainGfxPos++, G_RM_NOOP, G_RM_NOOP2);
+#ifdef TARGET_3DS
+    if (bgMix) { /* BTLDIM: the mix stage gets P = shroud colour, A = fogA: P * A + M * (1 - A) per sky texel */
+        gDPSetFogColor(gMainGfxPos++, fogR, fogG, fogB, fogA);
+        gDPSetBlendColor(gMainGfxPos++, fogR, fogG, fogB, 255);
+        gDPSetRenderMode(gMainGfxPos++, PM_RM_SHROUD, G_RM_NOOP2);
+    }
+#endif
     gDPSetTextureFilter(gMainGfxPos++, G_TF_POINT);
     gDPPipeSync(gMainGfxPos++);
 
+#ifdef TARGET_3DS
+    if (!(gGameStatusPtr->backgroundFlags & BACKGROUND_FLAG_FOG) || bgMix) {
+#else
     if (!(gGameStatusPtr->backgroundFlags & BACKGROUND_FLAG_FOG)) {
+#endif
         gDPLoadTLUT_pal256(gMainGfxPos++, gGameStatusPtr->backgroundPalette);
     } else {
         gDPLoadTLUT_pal256(gMainGfxPos++, gBackgroundPalette);
@@ -419,6 +442,9 @@ void appendGfx_background_texture(void) {
                                                  G_TX_RENDERTILE, 0, 0, 4096, 1024);
         }
     }
+#ifdef TARGET_3DS
+    if (bgMix) gDPSetRenderMode(gMainGfxPos++, G_RM_NOOP, G_RM_NOOP2); /* BTLDIM: back to the plain mode for the rest of the frame */
+#endif
 }
 
 void enable_background_wave(void) {

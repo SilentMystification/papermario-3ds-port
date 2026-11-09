@@ -2821,6 +2821,9 @@ void btl_state_update_player_menu(void) {
                 BattleMenu_ShowSwapIcons = false;
             }
             btl_main_menu_init();
+#ifdef TARGET_3DS
+            { extern void pm_log_evt(const char* fmt, ...); extern unsigned pm_frame_count(void); pm_log_evt("btlmenu: main open f%u", pm_frame_count()); }
+#endif
             BattleMenu_ChooseDelay = 8;
             BattleMenu_SwapDelay = 0;
             gBattleSubState = BTL_SUBSTATE_PLAYER_MENU_MAIN_CHOOSING;
