@@ -169,6 +169,42 @@ static __attribute__((cold, noinline)) void walk_dbg_rec(unsigned dbg, const Gfx
 }
 static __attribute__((cold, noinline)) void walk_dbg_nat(void) { pk_nat[pmx_cur]++; } /* WCEN2: a record drawn natively */
 static __attribute__((cold, noinline)) void walk_dbg_dlc(void) { os_dlc_hit(); mr0_dlc_hit = 1; }
+/* The model record arm (G_PM_REC in a list, NDC_MODEL in the frame stream): the record words past the header. */
+static unsigned rec_case(unsigned dbg, const Gfx* q) {
+    if (__builtin_expect(dbg, 0)) walk_dbg_rec(dbg, q, G_PM_REC_WORDS);
+    NDT_BD(tr, dbg);
+    unsigned n = rec_run(q);
+    NDT_E(tr, NDT_REC);
+    if (__builtin_expect(dbg & WD_CEN, 0) && rec_nat_last) walk_dbg_nat();
+    return n;
+}
+/* DIRECT D1: NDC_MODEL of the frame stream (nd_rec.c), with the walker's op prologue of G_PM_REC (gv_epoch, the census op hook). */
+void nd_walk_rec_model(const Gfx* q) {
+    const unsigned dbg = pm_walk_dbg;
+    dlc_on = 1;
+    pm_gbi_cur_op = G_PM_REC;
+    gv_epoch++; /* GV1b, as the walker's prologue of G_PM_REC */
+    int fp = 0;
+    if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, q, 0, G_PM_REC, q->words.w0, q->words.w1);
+    rec_case(dbg, q);
+    if (__builtin_expect(fp, 0)) pm_ph_pop();
+    if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1); /* the class span ends with the command */
+}
+/* DIRECT D2: NDC_SPR (nd_rec.c): the sprite record and its vertex and triangle words, at the point of its final draw (the walker state is the
+ * draw state). Native, or else the walker loads and draws the two words, as the G_VTX arm. */
+void nd_walk_spr(const Gfx* q) {
+    const unsigned dbg = pm_walk_dbg;
+    pm_gbi_cur_op = G_PM_SPR;
+    int fp = 0;
+    if (__builtin_expect(dbg, 0)) { fp = walk_dbg_op(dbg, q, 0, G_PM_SPR, q->words.w0, q->words.w1); walk_dbg_rec(dbg, q, G_PM_SPR_WORDS); }
+    NDT_BD(ts, dbg);
+    int sh = pm_gpu_spr_native((const uint32_t*)q);
+    NDT_E(ts, NDT_SPR);
+    if (__builtin_expect(fp, 0)) pm_ph_pop();
+    if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1);
+    if (sh) { if (__builtin_expect(dbg & WD_CEN, 0)) walk_dbg_nat(); return; }
+    nd_walk_ops((void*)(q + G_PM_SPR_WORDS), 16u);
+}
 static int walk_keep; /* PERF2: set by nd_walk_ops for the next nd_walk_run only */
 void nd_walk_run(void* list, unsigned nbytes) {
     const unsigned dbg = pm_walk_dbg; /* PROF2-5: once per list */
@@ -220,10 +256,8 @@ void nd_walk_run(void* list, unsigned nbytes) {
             if (__builtin_expect(dbg & WD_ORB, 0) && orb_tag != orb_tag_stk[sp]) pm_gpu_flush(); /* FX1-3 */
             orb_tag = orb_tag_stk[sp];
             break;
-        case G_PM_REC: /* M4-2, S3F-4: producer record of a model (model.c) */
-            if (__builtin_expect(dbg, 0)) walk_dbg_rec(dbg, pc - 1, G_PM_REC_WORDS);
-            { NDT_BD(tr, dbg); pc += rec_run(pc - 1); NDT_E(tr, NDT_REC); }
-            if (__builtin_expect(dbg & WD_CEN, 0) && rec_nat_last) walk_dbg_nat();
+        case G_PM_REC: /* M4-2, S3F-4: producer record of a model in a list for later (DIRECT D1: a custom gfx builder; the frame stream has the others) */
+            pc += rec_case(dbg, pc - 1);
             break;
         case G_PM_SPR: { /* S4-1, S4-3, SPR4: producer record of a sprite component (sprite.c). The record is not run here: the state words after it run on the walker, and the final draw is built at its vertex word (G_VTX arm below), where the live state is the draw state. */
             Gfx* srec = pc - 1;

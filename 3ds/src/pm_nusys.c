@@ -3,6 +3,7 @@
 #include "pm_port.h"
 #include "pm_gpu.h"
 #include "nd.h"
+#include "nd_cmd.h"
 
 static NUGfxFunc gfx_func;
 
@@ -88,36 +89,35 @@ void nuContDataGetExAll(NUContData* data) {
 }
 
 #define MAX_KEY 4
-static Gfx* key_list[MAX_KEY];
-static u32 key_size[MAX_KEY];
+static const uint32_t* key_list[MAX_KEY]; /* DIRECT: the task streams of the step */
 static int nkey;
 uint64_t svcGetSystemTick(void);
 void pm_pf_nd_add(unsigned long long ticks, unsigned legacy); /* pm_phase.c: S0-6 window sums (legacy 1 = one walk) */
 
-/* S10-2: one walk of the task's words (pm_gbi_run). The phase line keeps its format: the walk time goes to pm_pf_nd_add as one legacy span. */
-static void gbi_walk(Gfx* gfxList, u32 n) {
+/* S10-2, DIRECT D0: one replay of the task stream (nd_rec.c). The phase line keeps its format: the walk time goes to pm_pf_nd_add as one legacy span. */
+static void gbi_walk(const uint32_t* s) {
     uint64_t t0 = pm_ph_on ? svcGetSystemTick() : 0;
-    pm_gbi_run(gfxList, n);
+    nd_stream_run(s);
     if (pm_ph_on) pm_pf_nd_add(svcGetSystemTick() - t0, 1);
 }
 
 /* PI1: walk one task (walker side). */
-static void gbi_task_w(Gfx* gfxList, u32 n) {
+static void gbi_task_w(const uint32_t* s) {
     if (pm_fs_on) pm_fs_tasks++; /* WMODEL: render tasks per frame, fsplit only */
     pm_gpu_begin_wait(); /* LB1: every gbi task (also the key replay of pm_interp_key_draw) waits for the GPU tail of the last frame */
     FS_MARK(FS_GBI); /* LB1b: the walk after the wait is gbi work, not rest (fsplit label only) */
     nd_frame_begin();
-    gbi_walk(gfxList, n);
-    if (pm_gpu_stereo()) { pm_gpu_eye(1); gbi_walk(gfxList, n); pm_gpu_eye(0); } /* STEREO: the same task for the right eye */
+    gbi_walk(s);
+    if (pm_gpu_stereo()) { pm_gpu_eye(1); gbi_walk(s); pm_gpu_eye(0); } /* STEREO: the same task for the right eye */
 }
 
 /* CORE2C-2: the walker side of one queued frame (nd_wq.c): the background task, then the main task. */
 void pm_frame_walk(const PmFrame* f) {
     pm_walk_cfb = f->cfb;
-    if (f->bg.ptr) gbi_task_w((Gfx*)f->bg.ptr, f->bg.n);
+    if (f->bg.ptr) gbi_task_w((const uint32_t*)f->bg.ptr);
     if (f->main.ptr) {
         pm_interp_repl = (f->flags & PMF_REPL) != 0;
-        gbi_task_w((Gfx*)f->main.ptr, f->main.n);
+        gbi_task_w((const uint32_t*)f->main.ptr);
         pm_interp_repl = 0;
     }
 }
@@ -140,12 +140,13 @@ void nuGfxTaskStart(Gfx* gfxList, u32 gfxListSize, u32 ucode, u32 flag) {
     PH_PUSH(PH_GBI);
     /* F06-2: the draw iteration shows the t = 0.5 pass of the swap task. pm_interp_key_draw replays every task of the step without
      * replacements in the idle iteration. The background task of the step comes before the swap task. */
-    if (pm_interp_on > 0 && nkey < MAX_KEY) { key_list[nkey] = gfxList; key_size[nkey++] = gfxListSize; }
+    const uint32_t* st = nd_rec_close(gfxList, gfxListSize); /* DIRECT D0: the task is its stream */
+    if (pm_interp_on > 0 && nkey < MAX_KEY) key_list[nkey++] = st;
     if (!swap) {
         if (fr.bg.ptr) fr_push(); /* a second background task: the first goes alone */
-        fr.bg.ptr = gfxList; fr.bg.n = gfxListSize;
+        fr.bg.ptr = (void*)st; fr.bg.n = gfxListSize;
     } else {
-        fr.main.ptr = gfxList; fr.main.n = gfxListSize;
+        fr.main.ptr = (void*)st; fr.main.n = gfxListSize;
         if (pm_interp_on > 0) {
             if (pm_interp_skip) { pm_interp_skip_count(); nkey = 0; } /* F06-5: behind, draw the key frame now */
             else { pm_interp_lerp(0.5f); fr.flags |= PMF_REPL; }
@@ -167,7 +168,7 @@ static void wq_key_draw(void* a) { /* CORE2-3a: the key frame (begin, tasks, end
     pm_fs_q = 1; /* FS2: a key frame is not a drawn frame: no fsplit mark */
     pm_gpu_begin(1);
     PH_PUSH(PH_GBI);
-    for (int i = 0; i < nkey; i++) gbi_task_w(key_list[i], key_size[i]);
+    for (int i = 0; i < nkey; i++) gbi_task_w(key_list[i]);
     PH_POP();
     nkey = 0;
     pm_gpu_end();
