@@ -516,7 +516,8 @@ static __attribute__((cold, noinline)) void ndref_end(void) { /* end of frame: w
 }
 /* S0-6: prof counters. pfd_add runs at each frame end (cen_frame_end), before pm_dc_c is cleared: draws, TEV rebuilds, texture binds and
  * triangles of the frame. gb: GPU busy ticks of the sampled frames, from the submit (pm_gpu_end) to the sync (the frame begin after it). */
-static unsigned long long pfd_sum[4], gb_sum, gb_n, gb_sub;
+static unsigned long long pfd_sum[4], gb_sum, gb_n;
+static unsigned gb_sub; /* BENCHFIX: pm_ticks is the low 32 bits of the 268 MHz tick (wraps every ~16 s): kept unsigned, the interval is taken mod 2^32 */
 static int gb_on;
 unsigned pm_gpu_fr_last[4]; /* MAGI fspk: draws, TEV rebuilds, texture binds, triangles of the last finished frame */
 extern unsigned pm_pf_late; /* PROF2-1, pm_phase.c */
@@ -2323,7 +2324,7 @@ void pm_gpu_begin_wait(void) {
     if (pm_wd_wake_frames) pm_wd_wake_frames--;
     raw1_reset(); sh_clear(); C3D_FrameBegin(fb_flags);
     nb.ring_done = nb.ring_fr; /* FB-1: C3D_FrameBegin waits for the GX queue (C3Di_WaitAndClearQueue) with or without SYNCDRAW: every chunk used before this frame is finished */
-    if (gb_on) { gb_sum += pm_ticks() - gb_sub; gb_n++; gb_on = 0; pm_pf_late++; } /* S0-6: the sync of the previous frame returned. PROF2-1: this read belongs to the sample (ssvc), it lands in the next frame */ /* PT88: at 30 steps the loop paces itself by time and the frame begin waits only for the GPU (the previous frame, so the buffers are free); with fps60 the begin waits for the vblank as before: two draws a step, one per vblank */
+    if (gb_on) { gb_sum += (unsigned)(pm_ticks() - gb_sub); gb_n++; gb_on = 0; pm_pf_late++; } /* S0-6: the sync of the previous frame returned. PROF2-1: this read belongs to the sample (ssvc), it lands in the next frame */ /* PT88: at 30 steps the loop paces itself by time and the frame begin waits only for the GPU (the previous frame, so the buffers are free); with fps60 the begin waits for the vblank as before: two draws a step, one per vblank */
     FS_MARK(FS_REST);
     PH_POP();
     pm_ph_gpu_note();
