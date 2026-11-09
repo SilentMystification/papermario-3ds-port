@@ -4,6 +4,11 @@
 #include "pm_port.h"
 #include "pm_au2.h"
 #include "pm_dspaud.h"
+/* C1WAIT: modular 32 bit window counters. pm_au_pf_lgj: the join wait of a join run on the logic thread (its step time); pm_au_pf_job:
+ * the audio job ticks (kick to done, audio thread). Prof only; svcGetSystemTick, not pm_ticks (pm_svc_n is the phase counter). */
+unsigned pm_au_pf_lgj, pm_au_pf_job;
+extern int pm_pf_on; /* pm_phase.c */
+static inline unsigned au_pf_now(void) { return (unsigned)svcGetSystemTick(); }
 
 #define PM_AU_LEAD 1416u /* PT14: ndsp backlog (samples) where the game switches to short frames: about 1600 samples, 50 ms, before a burst */
 
@@ -139,6 +144,7 @@ int pm_au_thread_yield(void) {
             if (au_j_t0) { /* PROF2-1: the job was timed at its kick (a job kicked untimed is not timed at its end) */
                 unsigned dt = (unsigned)svcGetSystemTick() - au_j_t0; /* audio thread: not a game thread read (pm_svc_n) */
                 if ((int)dt < 0) dt = 0; /* the tick counters of two cores can differ by a few ticks */
+                if (pm_pf_on) pm_au_pf_job += dt; /* C1WAIT: job ticks in the prof window (audio core time per window) */
                 if (pm_ph_on) __atomic_fetch_add(&pm_ph_cnt[C_AJOB], dt / 268u, __ATOMIC_RELAXED); /* PG0: kick to done of the job in us, a pc field (core 1 wall time, an upper bound of its CPU time) */
                 au_j_sum += dt;
                 if (dt > au_j_max) au_j_max = dt;
@@ -192,7 +198,7 @@ void pm_audio_kick(unsigned n) {
     if (++au_k_n == (PMDL("audiostat") ? 300u : 600u)) au_stats_log();
     au_ticks_left = (int)n;
     au_busy = 1;
-    au_j_t0 = pm_au_tk() ? pm_ticks() : 0;
+    au_j_t0 = pm_au_tk() ? pm_ticks() : (pm_pf_on ? au_pf_now() : 0u); /* C1WAIT: prof window jobs timed too */
     LightEvent_Clear(&au_done);
     LightEvent_Signal(&au_start);
 }
@@ -213,7 +219,8 @@ void pm_audio_join_at(int site) {
     if (!au_busy) return;
     int tk = pm_au_tk(); /* the audio tick reads: audiostat or phase only */
     int pf = pm_pf_on & pm_ph_on;
-    unsigned t0 = (tk | pf) ? pm_ticks() : 0;
+    int lj = pm_pf_on && pm_wq_on_logic();
+    unsigned t0 = (tk | pf) ? pm_ticks() : (lj ? au_pf_now() : 0u);
     if (tk) au_g_sum += (int)(t0 - au_j_t0) > 0 ? t0 - au_j_t0 : 0; /* core 0 work between kick and join */
     PH_PUSH(PH_AUDIO);
     if (!pm_wd_slept) LightEvent_Wait(&au_done);
@@ -224,9 +231,10 @@ void pm_audio_join_at(int site) {
         return;
     }
     PH_POP();
-    if (!(tk | pf)) return;
-    unsigned dt = pm_ticks() - t0;
+    if (!(tk | pf | lj)) return;
+    unsigned dt = ((tk | pf) ? pm_ticks() : au_pf_now()) - t0;
     if ((int)dt < 0) dt = 0;
+    if (lj) pm_au_pf_lgj += dt;
     if (pf) au_pf_add(dt);
     if (!tk) return;
     au_site_n[site & 3]++; au_site_sum[site & 3] += dt;
