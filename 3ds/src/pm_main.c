@@ -636,6 +636,7 @@ void pm_frame_loop(void) {
         presents++;
         now = svcGetSystemTick();
         frame_ms = (float)(now - step_start) * 1000.f / (float)tick_hz;
+        pm_xf.step_smp = pm_ph_on; /* DOORHITCH: a prof sample step (pm_pf_frame turns the phase timers off) */
         if (pm_pf_on && !last_step_skipped) pm_pf_frame(step_start, now); /* PF1: switch prof */
         { extern void pm_fspk_frame(unsigned, float); pm_fspk_frame(frame, frame_ms); } /* MAGI: switch fspk */
         pm_xfer_step(step_start, now); /* MAPX-1: the xfer line of a door or map change */

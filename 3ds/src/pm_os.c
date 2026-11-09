@@ -430,7 +430,11 @@ const unsigned char* pm_rom_ptr(unsigned addr, unsigned len) {
 void pm_walk_drain(const char* why); /* nd_walk.c, CORE2-3b */
 void nuPiReadRom(u32 rom_addr, void* buf, u32 size) {
     static u32 table_bytes;
-    if (!pm_on_audio()) pm_walk_drain("rom"); /* CORE2-3b: a ROM read writes RAM that the last walk may have read */
+    if (!pm_on_audio()) { /* CORE2-3b: a ROM read writes RAM that the last walk may have read */
+        unsigned dt0 = pm_xf.on ? pm_ticks() : 0u;
+        pm_walk_drain("rom");
+        if (pm_xf.on) pm_xf.rdw_t += pm_ticks() - dt0; /* DOORHITCH */
+    }
     pi_read_raw(rom_addr, buf, size);
     if (pm_xf.on && !pm_on_audio()) { pm_xf.rom_n++; pm_xf.rom_b += size; } /* MAPX-1 */
     if (!buf || !size || (unsigned)buf < 0x00100000u) return;

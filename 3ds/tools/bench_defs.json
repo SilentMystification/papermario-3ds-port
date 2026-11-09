@@ -4717,6 +4717,165 @@
       "gates": []
     },
     {
+      "name": "xfer_door_kmr20",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "DOORHITCH: Mario's house door on kmr_20 (enter and exit, twice), det, xferdiag; xfer, xfer2, xfer3 and xferk lines of each door. last = the second exit, first = the first entry.",
+      "scenario": "xfer_door_kmr20",
+      "cap": 45,
+      "until": "xfer3 door n4\\b",
+      "tags": [
+        "azahar",
+        "xfer"
+      ],
+      "log_metrics": [
+        {
+          "name": "xfer_max_ms",
+          "regex": "xfer door \\S+ f\\d+ max ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_o34",
+          "regex": "xfer door \\S+ f\\d+ max [\\d.]+ o34 (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_mdl_miss",
+          "regex": "xfer2 door n\\d+ .* mdl (\\d+)/",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_tex_ms",
+          "regex": "xfer2 door n\\d+ .* tex \\d+/\\d+/([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_rng",
+          "regex": "xfer3 door n\\d+ .*\\| rng (\\d+) trim",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_trim",
+          "regex": "xfer3 door n\\d+ .* trim (\\d+) phi",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_max_mdl",
+          "regex": "xfer3 door n\\d+ \\| maxstep mdl (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_max_smp",
+          "regex": "xfer3 door n\\d+ .* smp (\\d)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_rdw_ms",
+          "regex": "xfer3 door n\\d+ .* rdw ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_max_first_ms",
+          "regex": "xfer door \\S+ f\\d+ max ([\\d.]+)",
+          "pick": "first"
+        },
+        {
+          "name": "xfer_mdl_first",
+          "regex": "xfer2 door n\\d+ .* mdl (\\d+)/",
+          "pick": "first"
+        }
+      ],
+      "gates": []
+    },
+    {
+      "name": "xfer_door_kmr20_prof",
+      "kind": "console_prof",
+      "speed": "normal",
+      "default": false,
+      "purpose": "DOORHITCH: Mario's house door on kmr_20 (enter and exit, twice) on the O3DS in prof mode. Pass: max under 50 ms, xfer3 smp 0 at the max step.",
+      "scene_match": null,
+      "recipe": "preset=yard padscript=wait140,pos_300:30:-76,go_240_-76_100,A,wait260,go_200_-76_20,go_285_-76_80,A,wait200,go_330_-76_60,go_240_-76_100,A,wait260,go_200_-76_20,go_285_-76_80,A,wait300 prof=30",
+      "scenario": null,
+      "host": "o3ds",
+      "cap": 60,
+      "until": "xfer3 door n4\\b",
+      "tags": [
+        "console",
+        "prof",
+        "xfer"
+      ],
+      "log_metrics": [
+        {
+          "name": "xfer_max_ms",
+          "regex": "xfer door \\S+ f\\d+ max ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_o34",
+          "regex": "xfer door \\S+ f\\d+ max [\\d.]+ o34 (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_mdl_miss",
+          "regex": "xfer2 door n\\d+ .* mdl (\\d+)/",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_tex_ms",
+          "regex": "xfer2 door n\\d+ .* tex \\d+/\\d+/([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_rng",
+          "regex": "xfer3 door n\\d+ .*\\| rng (\\d+) trim",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_trim",
+          "regex": "xfer3 door n\\d+ .* trim (\\d+) phi",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_max_mdl",
+          "regex": "xfer3 door n\\d+ \\| maxstep mdl (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_max_smp",
+          "regex": "xfer3 door n\\d+ .* smp (\\d)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_rdw_ms",
+          "regex": "xfer3 door n\\d+ .* rdw ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_max_first_ms",
+          "regex": "xfer door \\S+ f\\d+ max ([\\d.]+)",
+          "pick": "first"
+        },
+        {
+          "name": "xfer_mdl_first",
+          "regex": "xfer2 door n\\d+ .* mdl (\\d+)/",
+          "pick": "first"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "xfer_max_ms",
+          "op": "<",
+          "value": 50
+        },
+        {
+          "metric": "xfer_max_smp",
+          "op": "==",
+          "value": 0
+        }
+      ]
+    },
+    {
       "name": "xfer_door_mac01",
       "kind": "azahar_stream",
       "speed": "normal",

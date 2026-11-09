@@ -185,6 +185,9 @@ API_CALLABLE(CreateMapRoom) {
     room->posExitA.z = room->posEnterB.z;
     room->posExitB.x = room->posEnterA.x;
     room->posExitB.z = room->posEnterA.z;
+    { void pm_log_d(const char* fmt, ...); /* DOORHITCH: the door of a room (scenario walk points) */
+      pm_log_d("room: collider %d centre %d %d n %d %d enterA %d %d enterB %d %d", colliderID, (int)centerX, (int)centerZ, (int)(nX * 100.0f), (int)(nZ * 100.0f),
+               (int)room->posEnterA.x, (int)room->posEnterA.z, (int)room->posEnterB.x, (int)room->posEnterB.z); }
 
     room->bgColor[0] = gCameras[CAM_DEFAULT].bgColor[0];
     room->bgColor[1] = gCameras[CAM_DEFAULT].bgColor[1];

@@ -19,6 +19,7 @@ PmXf pm_xf;
 unsigned nd_mc_clears(void); /* nd_model.c */
 unsigned nd_mc_reps(void); /* nd_model.c, MAPX-2 */
 unsigned nd_mc_trims(void); /* nd_model.c, MAPX-2 */
+void nd_mc_fill(unsigned* ent, unsigned* pool); /* nd_model.c, DOORHITCH */
 void pm_log_prof_line(const char* fmt, ...); /* pm_log.c */
 
 enum { XF_NONE, XF_DOOR, XF_MAP };
@@ -29,6 +30,11 @@ static int xf_kind, xf_loaded, xf_drawn;
 static unsigned xf_seq; /* transitions printed since boot (the n field) */
 static unsigned xf_steps, xf_tail, xf_max, xf_fade, xf_o34, xf_init, xf_clr0, xf_rep0, xf_trim0;
 static char xf_from[24], xf_to[24];
+/* DOORHITCH: the stage counts of the longest step (xfer3 maxstep): model misses, refused hits, texture and dlc ticks, ROM reads, prof sample.
+ * xs_p: the counters at the end of the step before; xs_m: the deltas of the longest step. ehi, phi: the most live cache entries and pool draws at a step end. */
+typedef struct { unsigned mdl, rng, tex_t, dlc_t, rom, smp; } XfSnap;
+static XfSnap xs_p, xs_m;
+static unsigned xs_ehi, xs_phi;
 static int xf_last_area = -1, xf_last_map = -1; /* the map loaded last: the from of the next map change */
 
 static void map_name(char* o, unsigned n, int a, int m) {
@@ -65,6 +71,9 @@ __attribute__((cold, noinline)) static void xf_print(void) {
         b[n] = 0;
         pm_log_prof_line("xferk %s miss %u rep %u trim %u first%s", xf_kind == XF_MAP ? "map" : "door", pm_xf.mdl_miss, nd_mc_reps() - xf_rep0, nd_mc_trims() - xf_trim0, b);
     }
+    /* DOORHITCH: the longest step by stage, and the cache fill over the transition (after xferk: the test until-line) */
+    pm_log_prof_line(xf_kind == XF_MAP ? "xfer3 map n%u | maxstep mdl %u rng %u tex %s dlc %s rom %u smp %u | rng %u trim %u phi %u ehi %u rdw %s" : "xfer3 door n%u | maxstep mdl %u rng %u tex %s dlc %s rom %u smp %u | rng %u trim %u phi %u ehi %u rdw %s",
+                     xf_seq, xs_m.mdl, xs_m.rng, msf(m[6], xs_m.tex_t), msf(m[7], xs_m.dlc_t), xs_m.rom, xs_m.smp, pm_xf.mdl_rng, nd_mc_trims() - xf_trim0, xs_phi, xs_ehi, msf(m[8], pm_xf.rdw_t));
     xf_kind = XF_NONE;
     pm_xf.on = 0;
 }
@@ -77,6 +86,7 @@ __attribute__((cold, noinline)) static void xf_begin(int kind) {
     xf_loaded = xf_drawn = 0;
     xf_steps = xf_tail = xf_max = xf_fade = xf_o34 = xf_init = 0;
     xf_clr0 = nd_mc_clears(); xf_rep0 = nd_mc_reps(); xf_trim0 = nd_mc_trims();
+    memset(&xs_p, 0, sizeof xs_p); memset(&xs_m, 0, sizeof xs_m); xs_ehi = xs_phi = 0;
 }
 void pm_xfer_map_begin(void) {
     xf_begin(XF_MAP);
@@ -129,6 +139,14 @@ void pm_xfer_step(unsigned long long t0, unsigned long long t1) {
     int ld = pm_xf.load_step;
     pm_xf.load_step = 0;
     xf_steps++;
+    {   /* DOORHITCH: the deltas of this step; the longest step keeps its own */
+        XfSnap c = { pm_xf.mdl_miss, pm_xf.mdl_rng, pm_xf.tex_t, pm_xf.dlc_t, pm_xf.rom_n, 0 };
+        if (w > xf_max) { xs_m.mdl = c.mdl - xs_p.mdl; xs_m.rng = c.rng - xs_p.rng; xs_m.tex_t = c.tex_t - xs_p.tex_t; xs_m.dlc_t = c.dlc_t - xs_p.dlc_t; xs_m.rom = c.rom - xs_p.rom; xs_m.smp = pm_xf.step_smp != 0; }
+        xs_p = c;
+        unsigned en, pn; nd_mc_fill(&en, &pn);
+        if (en > xs_ehi) xs_ehi = en;
+        if (pn > xs_phi) xs_phi = pn;
+    }
     if (w > xf_max) xf_max = w;
     int init = 0;
     if (xf_kind == XF_MAP && xf_loaded && !xf_drawn && !ld && !(gOverrideFlags & GLOBAL_OVERRIDES_DISABLE_DRAW_FRAME)) {

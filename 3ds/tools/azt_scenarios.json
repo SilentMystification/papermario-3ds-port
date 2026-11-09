@@ -10785,6 +10785,30 @@
       "reason": "Row GAMEOVER (user: game over flickers and lags, 60 fps on). Shot window after the letters start to drop; cap 30 s (boot, warp, 90 frames)."
     },
     {
+      "name": "xfer_door_kmr20",
+      "status": "unverified",
+      "reason": "DOORHITCH step 1 measure and the before/after quantity. Pipe entry 70 frames, then two doors of about 130 and 100 frames each with their walks: about 30 s after the warp. Cap 45 s.",
+      "subject": "Mario's house door on kmr_20 (preset yard: entry 4, the pipe): after the pipe Mario is placed east of the door (300 30 -76; door collider o246 at x 261, z -99 to -54), walks west into the door and presses A (room enter: the house front opens), walks a step in, back to the door and presses A (room exit), then the same again. det. One xfer line per door.",
+      "proves": "DOORHITCH: xfer, xfer2, xfer3 (longest step by stage: model misses, refused hits, texture and dlc ms, ROM reads, prof sample; refused hits, trims, cache fill, walk drain ms) and xferk (first differing key words) of the enter and exit, first and second time.",
+      "debug": "preset=yard padscript=wait140,pos_300:30:-76,go_240_-76_100,A,wait260,go_200_-76_20,go_285_-76_80,A,wait200,go_330_-76_60,go_240_-76_100,A,wait260,go_200_-76_20,go_285_-76_80,A,wait300 profdisk=1 xferdiag census loglevel=debug det",
+      "until": "xfer3 door n4\\b",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "door enter line",
+          "regex": "xfer door \\S+:out->\\S+:in f\\d+"
+        },
+        {
+          "name": "door exit line",
+          "regex": "xfer door \\S+:in->\\S+:out f\\d+"
+        }
+      ]
+    },
+    {
       "name": "xfer_door_mac01",
       "status": "unverified",
       "reason": "MAPX-1 measure and the MAPX-2 gate (door key churn). Walk 60 to 120 frames, door 60, tail 30, twice: about 15 s after the warp. Cap 40 s.",
