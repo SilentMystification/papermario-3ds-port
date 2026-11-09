@@ -13195,6 +13195,30 @@
         }
       ],
       "reason": "MENUGEN part 3 gate, one run: the field shots before and after each flag toggle (30-frame periodic window) and the Fullscreen field shot. Cap 60 s: seven menu round trips with 90-scan field holds; the stop is the pad end."
+    },
+    {
+      "name": "mac05_water_census",
+      "status": "unverified",
+      "subject": "Toad Town mac_05 at pos -75 -10 500 (the user's lag spot): the water model (kaimen, panned every frame) on screen. The census window at frame 300 is the subject.",
+      "proves": "WATERPAN census: model cache misses of the panned water record by the first differing record word (ndmrw words 18 to 21, the panner tile ops). Expect misses on 18 to 21 every frame; clears of the window about 0 before the fix.",
+      "debug": "warp=mac_05:0 pos=-75:-10:500 census",
+      "until": "ndmrw f300 ",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: mac_05 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "ndm window",
+          "regex": "ndm f300 native"
+        },
+        {
+          "name": "ndmrw window",
+          "regex": "ndmrw f300 w"
+        }
+      ],
+      "reason": "WATERPAN step 1 census, one start. Cold boot is 12 to 16 s, the f300 line needs 300 frames after the warp: cap 30 s (the row said 15 s; a cold start does not fit). Log only: no shot."
     }
   ]
 }
