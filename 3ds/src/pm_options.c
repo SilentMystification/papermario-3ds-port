@@ -720,6 +720,7 @@ int pm_optui_step(int tab, int row, int dir, int mode) {
         return 0;
     }
     if (id == RW_STORYF) return 0;
+    if (id >= RW_SUB && id < RW_WMAP) return 0; /* MENUWARP: the Warp area rows (presets, areas) have no value: left or right is the parent skip of 6 rows (pm_menu_hold) */
     if (id >= RW_LOG && id < RW_LOG + 5) { /* LOG5: left or right flips Logging, or steps a level (Off, Error .. Debug, wrap) */
         if (id == RW_LOG + 4) { prof_disk_set(!pm_opt.prof_disk); return 1; }
         if (id == RW_LOG) { log_on_set(!pm_opt.log); return 1; }
