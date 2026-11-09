@@ -1178,7 +1178,8 @@ static int tex_native_words(NdUnit* u, const C3D_Tex* tp) {
     u->type = (uint32_t)tp->fmt;
     return 1;
 }
-static int grab_native_unit0(NdUnit* u) { return tex_native_words(u, &grab_tex); }
+static C3D_Tex* gut_tex; /* PAUSEOPEN: the pause slot that grab_bind 2 binds (pm_gpu_pause_gutters) */
+static int grab_native_unit0(NdUnit* u) { return tex_native_words(u, grab_bind == 2 ? gut_tex : &grab_tex); }
 /* PM5-2: the program 5 uniform block of the walker state (the same calls as flush_draw's pm5 block, no cache: the native batch writes them
  * in order before its draw). Palette entries: the pm5 register layout, 7 rows per entry (4 position, 3 normal). */
 static __attribute__((noinline)) void pm5_upload(void) {
@@ -2163,16 +2164,53 @@ int pm_gpu_grab(const void* cfb, int y0, int y1) { return grab_impl(cfb, y0, y1,
  * So a request sets prev_want, and the next frame queues the copy into grab_tex at pm_gpu_begin, before any other entry (prev_pre). The
  * first frame of a run of requests, or a frame with an earlier T2 grab (it overwrites grab_tex), returns 0: the caller reads with the CPU.
  * Returns 2 if the old frame is in the slot of prev_cfb. */
-/* PAUSEOPEN: the pause picture's slot (the last frame, a frame buffer that is not drawn now) is windowed 400 columns wide while on (the two wide
- * gutter loads: the window base cfb - 80 bytes is slot column 0, the stride 400 row is 800 bytes), and 320 wide again when off (the centre). */
+/* PAUSEOPEN: the wide gutters of the pause picture, drawn on the walker side (nd_target.c, G_PM_ND_GUTTER from SHOW_PAUSED). The pause slot
+ * is the last frame's GPU copy (pm_gpu_grab_prev fills it for pause_cfb_src). With wide, slot column c is screen column c and the centre reads game
+ * x at slot column x + 40. The gutters are game x -40..0 (slot columns 0..39) and 320..360 (slot columns 360..399), all 240 rows. The batch binds
+ * the slot itself (grab_bind 2, gut_tex, texel origin 0), so no load address is used. Combine, prim (the fade) and render state are the centre's:
+ * the walker still holds them. Positions as pm_gpu_fill_rect: screen x = 40 + game x, screen y = 240 - game y. */
 extern void* pm_walk_cfb;
-void pm_gpu_pause_win(int on) {
+static void gut_quad(int xa, int xb, float sa, float sb, unsigned c) {
+    const float ks = 4096.f / (float)gut_tex->width, kt = 4096.f / (float)gut_tex->height;
+    short v[32];
+    const int px_[4] = { xa, xb, xb, xa }, py_[4] = { 240, 240, 0, 0 };
+    const short s0 = (short)(sa * ks + 0.5f), s1 = (short)(sb * ks + 0.5f), t1 = (short)(240.f * kt + 0.5f);
+    const short ps[4] = { s0, s1, s1, s0 }, pt[4] = { 0, 0, t1, t1 };
+    for (int i = 0; i < 4; i++) {
+        short* q = v + 8 * i;
+        unsigned char* cb = (unsigned char*)q;
+        q[0] = (short)px_[i]; q[1] = (short)py_[i]; q[2] = 0; q[3] = 0; q[4] = ps[i]; q[5] = pt[i];
+        cb[12] = (unsigned char)(c >> 24); cb[13] = (unsigned char)(c >> 16); cb[14] = (unsigned char)(c >> 8); cb[15] = (unsigned char)c;
+    }
+    const int b = pm_gpu_gvtx_load(v, 4);
+    unsigned short* ix = nb.gidx + nb.gidx_n;
+    ix[0] = (unsigned short)b; ix[1] = (unsigned short)(b + 1); ix[2] = (unsigned short)(b + 2);
+    ix[3] = (unsigned short)b; ix[4] = (unsigned short)(b + 2); ix[5] = (unsigned short)(b + 3);
+    nb.gidx_n += 6; nb.gni += 6;
+}
+void pm_gpu_pause_gutters(void) {
+    C3D_Tex* t = NULL;
+    if (!target || !gs.gpu_ok || off_fail || !(gs.gpu_vtx_on && gs.gv4_on)) return;
     for (int i = 0; i < OFF_ALL; i++) {
         const void* b = gs.offs[i].base;
         if (!b || gs.offs[i].siz != 2 || b == pm_walk_cfb || !pm_is_cfb(b)) continue;
-        pm_tex_set_offscreen(i, (const u8*)b - 80, on ? 400u : 320u, &gs.offs[i].tex, 2, gs.offs[i].w, gs.offs[i].h);
-        return;
+        t = &gs.offs[i].tex;
+        break;
     }
+    if (!t || !t->data || !ring_need(8, 12)) return;
+    gut_tex = t;
+    const int ec = (gs.combine >= 4 && gs.combine <= 8) ? gs.combine : 2; /* as pm_gpu_rect.c tex_raw_piece: the class of the centre */
+    const unsigned c = (gs.combine == 5 || gs.combine == 7) ? gs.env_col : (gs.combine == 8 && gs.plan.vtxname != PM_NM_SHADE) ? gs.plan.vtx : 0xffffffffu;
+    static const float uvso_p[4] = { 1.f / 4096.f, 1.f / 4096.f, 0.f, 0.f };
+    const int s_2d = nb.rect_2d;
+    nb.rect_2d = 1;
+    grab_bind = 2;
+    rect_raw_open(ec, 0.5f, uvso_p);
+    gut_quad(0, 40, 0.f, 40.f, c);
+    gut_quad(360, 400, 360.f, 400.f, c);
+    flush();
+    grab_bind = 0;
+    nb.rect_2d = s_2d;
 }
 int pm_gpu_grab_prev(const void* prev_cfb) {
     PM_WALK_OWN(); /* CORE2-3a */

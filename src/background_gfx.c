@@ -438,22 +438,7 @@ void gfx_draw_background(void) {
             }
 #endif
 #ifdef TARGET_3DS
-            if (pm_wide) { /* PAUSEOPEN: the gutters are slot columns 0 to 39 (address cfb - 80 bytes) and 360 to 399 (cfb + 640 bytes), from the same copy */
-                static const s32 side_off[2] = { -80, 640 };
-                s32 side;
-                gPmNdGutter(gMainGfxPos++, 1);
-                for (side = 0; side < 2; side++) {
-                    gDPLoadTextureTile(gMainGfxPos++, (const u8*)pause_cfb_src() + side_off[side], G_IM_FMT_RGBA, G_IM_SIZ_16b, 40,
-                                       SCREEN_HEIGHT, 0, 0, 39, SCREEN_HEIGHT - 1, 0, G_TX_NOMIRROR | G_TX_WRAP,
-                                       G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
-                    gSPTextureRectangle(gMainGfxPos++,
-                                        (side == 0 ? -40 : SCREEN_WIDTH) << 2, 0, (side == 0 ? 0 : SCREEN_WIDTH + 40) << 2, SCREEN_HEIGHT << 2,
-                                        G_TX_RENDERTILE,
-                                        0 << 5, 0 << 5, 1 << 10, 1 << 10);
-                    gDPPipeSync(gMainGfxPos++);
-                }
-                gPmNdGutter(gMainGfxPos++, 0);
-            }
+            if (pm_wide) gPmNdGutter(gMainGfxPos++); /* PAUSEOPEN: the gutters from the pause slot, walker side (pm_gpu_pause_gutters) */
 #endif
             break;
         default:

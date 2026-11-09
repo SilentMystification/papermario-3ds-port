@@ -233,8 +233,7 @@
 /* SBLK2 B1: G_PM_ND_GRABHOLD (arg 1 opens, 0 closes) brackets one motion_blur_flame draw (motion_blur_flame.c). Inside the bracket the first
  * colour buffer grab of the frame copies the frame and the later grabs of the same frame reuse that copy (nd_target.c grab_cur). */
 #define G_PM_ND_GRABHOLD 2
-/* PAUSEOPEN: G_PM_ND_GUTTER (arg 1 opens, 0 closes) brackets the two wide gutter loads of the pause picture (background_gfx.c). Inside it the pause
- * slot (the last frame's grab) is windowed 400 columns wide (pm_gpu.c pm_gpu_pause_win), so the loads find columns 0-39 and 360-399. */
+/* PAUSEOPEN: G_PM_ND_GUTTER (no arg) draws the two wide gutters of the pause picture from the pause slot (pm_gpu.c pm_gpu_pause_gutters). */
 #define G_PM_ND_GUTTER 3
 
 /* DIRECT D11a: G_PM_LST, the start of a static state list recorded in line (nd_rec.c rec_inline). The replay runs it as the list start of the

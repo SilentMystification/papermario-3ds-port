@@ -61,7 +61,7 @@ void nd_native_rec(u32 w0) {
     unsigned kind = (w0 >> 16) & 0xffu;
     if (kind == G_PM_ND_SPLASH) splash_on = (int)(w0 & 1u);
     if (kind == G_PM_ND_GRABHOLD) grab_hold = (int)(w0 & 1u);
-    if (kind == G_PM_ND_GUTTER) { extern void pm_gpu_pause_win(int on); pm_gpu_pause_win((int)(w0 & 1u)); }
+    if (kind == G_PM_ND_GUTTER) { extern void pm_gpu_pause_gutters(void); pm_gpu_pause_gutters(); }
 }
 void grab_cur(const void* src, int w, int h) {
     int x, y, r;
