@@ -10902,7 +10902,7 @@
       "reason": "DOORHITCH gate: ndmcheck over the first kmr_20 door (boot in the yard, enter and exit). Long measurement: ndmcheck draws every model record twice and compares, so the yard runs at about 5 steps per second in Azahar (a 45 s run did not reach f300); the f300 lines need about 70 s. Cap 90 s.",
       "subject": "Mario's house door on kmr_20 (preset yard, no map change: enter and exit) with the ndmcheck switch: every model record is drawn natively and by the walker and compared, and cached entries are compared with fresh builds (ndmcache).",
       "proves": "DOORHITCH: the model key without the geometry bits the render mode list writes (pm_gpu_model_key word 32) gives no ndmcheck or ndmcache diff in the doors.",
-      "debug": "preset=yard padscript=wait140,pos_300:30:-76,go_240_-76_100,A,wait260,go_200_-76_20,go_285_-76_80,A,wait200 ndmcheck loglevel=debug",
+      "debug": "preset=yard padscript=wait140,pos_300:30:-76,go_240_-76_100,A,wait260,go_200_-76_20,go_285_-76_80,A,wait200 prof=4 ndmcheck loglevel=debug",
       "until": "ndmcache f300 ",
       "cap": 90,
       "deadline": 30,
@@ -10913,6 +10913,37 @@
         {
           "name": "ndmcache",
           "regex": "ndmcache f300 "
+        }
+      ]
+    },
+    {
+      "name": "nok11_det_ref",
+      "status": "unverified",
+      "reason": "DOORHITCH: the walker reference (nomodelnat) of nok11_det, to decide which build draws the nok_11 water as the walker does (model cache hits of unit 1 entries).",
+      "subject": "nok11_det with nomodelnat: every model record draws through the walker (no native model draw, no model cache). Shots as nok11_det.",
+      "proves": "The walker picture of nok11_det for a byte compare against nok11_det of a build.",
+      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 shots loglevel=debug grablog offdump=410 fixedseed fast fs1off det nomodelnat",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "shot 16 frame \\d+",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: nok_11 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: nok_11 entry 0"
+        },
+        {
+          "name": "spawn",
+          "regex": "fxtest: spawn 89 water_splash"
+        },
+        {
+          "name": "shot a",
+          "regex": "fxtest: shot 1 effect 89 water_splash"
         }
       ]
     },

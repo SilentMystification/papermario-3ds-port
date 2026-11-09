@@ -5056,6 +5056,22 @@
       ]
     },
     {
+      "name": "nok11_det_ref",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "Walker reference (nomodelnat) of nok11_det: the shots a model cache change must equal.",
+      "scenario": "nok11_det_ref",
+      "cap": 45,
+      "until": "fxtest: shot 1 effect 89 water_splash",
+      "tags": [
+        "azahar",
+        "det",
+        "ref"
+      ],
+      "gates": []
+    },
+    {
       "name": "xfer_door_mac01",
       "kind": "azahar_stream",
       "speed": "normal",
