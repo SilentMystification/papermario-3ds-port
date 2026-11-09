@@ -17,8 +17,55 @@ void nd_dlc_free(NdObj* o) {
     memset(o, 0, sizeof *o);
 }
 
+/* SEAMFIX: the T points of raw triangle rt (env tp sorted by tri): first entry at *c (the cursor moves past lower ordinals), count returned, edge mask in *em */
+static unsigned tp_at(const NdDlcEnv* env, unsigned* c, unsigned rt, unsigned* em) {
+    unsigned k = 0;
+    *em = 0;
+    while (*c < env->ntp && env->tp[*c].tri < rt) (*c)++;
+    while (*c + k < env->ntp && env->tp[*c + k].tri == rt) { *em |= 1u << (env->tp[*c + k].edge & 3u); k++; }
+    return k;
+}
+/* the extra triangles and vertices of a receiver with k points: one edge, a fan from the opposite corner (k, k); more edges, a fan from the centroid (k + 2, k + 1) */
+static unsigned tp_xtri(unsigned k, unsigned em) { return !k ? 0 : (em & (em - 1u)) ? k + 2u : k; }
+static unsigned tp_xvtx(unsigned k, unsigned em) { return !k ? 0 : (em & (em - 1u)) ? k + 1u : k; }
+static int16_t rnd16(float f) { return (int16_t)(f < 0 ? f - 0.5f : f + 0.5f); }
+/* a new Vtx at p on the edge a-b of the triangle a b c: tc and colour (or normal) bytes from the barycentric weights of p in the plane of the triangle, so the
+ * texture map of the split triangles is the affine map of the original one (a point up to eps off the edge moves the surface, not the texture); flag 0 */
+static void tp_vtx(uint8_t* d, const uint8_t* a, const uint8_t* b, const uint8_t* c, const int16_t p[3]) {
+    int16_t A[6], B[6], C[6], D[6];
+    float u[3], v[3], w[3], n[3], x[3], n2, wb = 0, wc = 0;
+    memcpy(A, a, 12); memcpy(B, b, 12); memcpy(C, c, 12);
+    for (int q = 0; q < 3; q++) { u[q] = (float)(B[q] - A[q]); v[q] = (float)(C[q] - A[q]); w[q] = (float)(p[q] - A[q]); }
+    n[0] = u[1] * v[2] - u[2] * v[1]; n[1] = u[2] * v[0] - u[0] * v[2]; n[2] = u[0] * v[1] - u[1] * v[0];
+    n2 = n[0] * n[0] + n[1] * n[1] + n[2] * n[2];
+    if (n2 > 0) {
+        float r = 1.0f / n2;
+        x[0] = w[1] * v[2] - w[2] * v[1]; x[1] = w[2] * v[0] - w[0] * v[2]; x[2] = w[0] * v[1] - w[1] * v[0]; /* (p - a) x (c - a) */
+        wb = (x[0] * n[0] + x[1] * n[1] + x[2] * n[2]) * r;
+        x[0] = u[1] * w[2] - u[2] * w[1]; x[1] = u[2] * w[0] - u[0] * w[2]; x[2] = u[0] * w[1] - u[1] * w[0]; /* (b - a) x (p - a) */
+        wc = (x[0] * n[0] + x[1] * n[1] + x[2] * n[2]) * r;
+    }
+    float wa = 1.0f - wb - wc;
+    D[0] = p[0]; D[1] = p[1]; D[2] = p[2]; D[3] = 0;
+    for (int q = 4; q < 6; q++) D[q] = rnd16(wa * (float)A[q] + wb * (float)B[q] + wc * (float)C[q]);
+    memcpy(d, D, 12);
+    for (int q = 12; q < 16; q++) {
+        float f = wa * (float)a[q] + wb * (float)b[q] + wc * (float)c[q] + 0.5f;
+        d[q] = (uint8_t)(f < 0 ? 0 : f > 255.f ? 255 : f);
+    }
+}
+static void tp_mid(uint8_t* d, const uint8_t* a, const uint8_t* b, const uint8_t* c) {
+    int16_t A[6], B[6], C[6], D[6];
+    memcpy(A, a, 12); memcpy(B, b, 12); memcpy(C, c, 12);
+    for (int q = 0; q < 6; q++) D[q] = rnd16(((float)A[q] + (float)B[q] + (float)C[q]) * (1.0f / 3.0f));
+    D[3] = 0;
+    memcpy(d, D, 12);
+    for (int q = 12; q < 16; q++) d[q] = (uint8_t)(((unsigned)a[q] + b[q] + c[q] + 1u) / 3u);
+}
+static void box_add(NdGrp* q, const uint8_t* v) { int16_t P[3]; memcpy(P, v, 6); for (int k = 0; k < 3; k++) { if (P[k] < q->lo[k]) q->lo[k] = P[k]; if (P[k] > q->hi[k]) q->hi[k] = P[k]; } }
+
 int nd_dlc_compile(NdObj* o, const uint32_t* l, const NdDlcEnv* env) {
-    unsigned ng = 0, ngop = 0, i, tri_total = 0, vtx_total = 0;
+    unsigned ng = 0, ngop = 0, i, tri_total = 0, vtx_total = 0, rt = 0, tc = 0;
     uint32_t cam = 0xFFFFFFFFu, com = 0;
     unsigned char live[64];
     int tsv = -1, in = 0;
@@ -61,6 +108,8 @@ int nd_dlc_compile(NdObj* o, const uint32_t* l, const NdDlcEnv* env) {
                 int ix[3] = { (int)((w >> 16) & 0xFF) / 2, (int)((w >> 8) & 0xFF) / 2, (int)(w & 0xFF) / 2 };
                 for (int k = 0; k < 3; k++) if (ix[k] <= 63 && live[ix[k]] == 2) return NDR_SLOT; /* a slot that the list did not load */
                 g->ntri++;
+                if (env->tp) { unsigned em, k = tp_at(env, &tc, rt, &em); g->ntri = (uint16_t)(g->ntri + tp_xtri(k, em)); g->nvtx = (uint16_t)(g->nvtx + tp_xvtx(k, em)); }
+                rt++;
             }
             tsv = 1;
             break;
@@ -104,6 +153,7 @@ int nd_dlc_compile(NdObj* o, const uint32_t* l, const NdDlcEnv* env) {
     if (ngop) memcpy(o->gop, tgop, ngop * 8);
     /* pass 2: the vertex copies and the triangle indices (dlc_static_build) */
     unsigned nv = 0, ni = 0, go = 0;
+    rt = 0; tc = 0;
     for (unsigned k = 0; k < ng; k++) {
         NdGrp* q = &o->grp[k];
         unsigned short smap[64];
@@ -130,9 +180,53 @@ int nd_dlc_compile(NdObj* o, const uint32_t* l, const NdDlcEnv* env) {
                 for (int t = 0; t < ((w0 >> 24) == OP_TRI2 ? 2 : 1); t++) {
                     uint32_t w = t ? w1 : w0;
                     int ix[3] = { (int)((w >> 16) & 0xFF) / 2, (int)((w >> 8) & 0xFF) / 2, (int)(w & 0xFF) / 2 };
+                    unsigned em = 0, kp = env->tp ? tp_at(env, &tc, rt, &em) : 0, c0 = tc;
+                    rt++;
                     if (ix[0] > 63 || ix[1] > 63 || ix[2] > 63 || !live[ix[0]] || !live[ix[1]] || !live[ix[2]]) continue;
-                    for (int c = 0; c < 3; c++) o->idx[ni + 3 * nt + c] = smap[ix[c]];
-                    nt++;
+                    if (!kp || kp > 60u) { /* no point (or more than the polygon holds: the triangle stays whole) */
+                        for (int c = 0; c < 3; c++) o->idx[ni + 3 * nt + c] = smap[ix[c]];
+                        nt++;
+                        continue;
+                    }
+                    /* SEAMFIX: the receiver split through its T points. poly: the corners and the points in edge order (the winding of the triangle) */
+                    unsigned short poly[3 + 64], np = 0;
+                    const uint8_t* cv[3];
+                    for (int c = 0; c < 3; c++) cv[c] = o->vtx + 16u * (smap[ix[c]] - o->vfirst);
+                    unsigned e1 = c0;
+                    for (unsigned c = 0; c < 3; c++) {
+                        poly[np++] = smap[ix[c]];
+                        for (; e1 < c0 + kp && env->tp[e1].edge == c; e1++) {
+                            uint8_t* d = o->vtx + 16u * (nv + gnv);
+                            tp_vtx(d, cv[c], cv[c == 2 ? 0 : c + 1], cv[c == 0 ? 2 : c - 1], env->tp[e1].p);
+                            box_add(q, d);
+                            poly[np++] = (unsigned short)(o->vfirst + nv + gnv);
+                            gnv++; o->nins++;
+                        }
+                    }
+                    if (!(em & (em - 1u))) { /* one edge e: a fan from the opposite corner, the corners and points from corner e to corner e + 1 */
+                        unsigned e = 0, s = 0;
+                        while (!(em & (1u << e))) e++;
+                        unsigned short apex = smap[ix[e == 0 ? 2 : e - 1]];
+                        while (poly[s] != smap[ix[e]]) s++;
+                        for (unsigned j = 0; j < kp + 1u; j++) {
+                            unsigned short* t3 = o->idx + ni + 3 * nt;
+                            unsigned j0 = s + j, j1 = j0 + 1u;
+                            if (j0 >= np) j0 -= np;
+                            if (j1 >= np) j1 -= np;
+                            t3[0] = poly[j0]; t3[1] = poly[j1]; t3[2] = apex;
+                            nt++;
+                        }
+                    } else { /* more edges: a fan from the centroid */
+                        uint8_t* d = o->vtx + 16u * (nv + gnv);
+                        tp_mid(d, cv[0], cv[1], cv[2]);
+                        unsigned short m = (unsigned short)(o->vfirst + nv + gnv);
+                        gnv++;
+                        for (unsigned j = 0; j < np; j++) {
+                            unsigned short* t3 = o->idx + ni + 3 * nt;
+                            t3[0] = poly[j]; t3[1] = poly[j + 1u == np ? 0 : j + 1u]; t3[2] = m;
+                            nt++;
+                        }
+                    }
                 }
                 break;
             case OP_GEOMETRYMODE:
@@ -142,7 +236,7 @@ int nd_dlc_compile(NdObj* o, const uint32_t* l, const NdDlcEnv* env) {
                 break;
             }
         }
-        q->ntri = (uint16_t)nt;
+        q->ntri = (uint16_t)nt; q->nvtx = (uint16_t)gnv;
         nv += gnv; ni += 3 * nt;
     }
     o->nvtx = nv; o->nidx = ni;

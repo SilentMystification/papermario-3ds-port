@@ -136,8 +136,8 @@ static void ent_seg_test(void) {
 
 int main(int argc, char** argv) {
     if (argc < 2) { fprintf(stderr, "usage: nd_dlc_test <shape.bin> ...\n"); return 2; }
-    NdDlcEnv env = { env_vtx, NULL, NULL };
-    NdDlcEnv envp = { env_vtx, pool_valloc, pool_ialloc };
+    NdDlcEnv env = { env_vtx, NULL, NULL, NULL, 0 };
+    NdDlcEnv envp = { env_vtx, pool_valloc, pool_ialloc, NULL, 0 };
     ent_seg_test();
     for (int a = 1; a < argc; a++) {
         FILE* f = fopen(argv[a], "rb");

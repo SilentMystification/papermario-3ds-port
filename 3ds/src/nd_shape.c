@@ -130,14 +130,35 @@ uint8_t* nd_env_valloc(unsigned n, unsigned* first) {
 }
 uint16_t* nd_env_ialloc(unsigned n) { return pm_gpu_gidxs_alloc(n); }
 u32 dlc_words[2 * (ND_DLC_MAXOPS + 1)];
+/* SEAMFIX: the T-point table of the shape file (nd_seam.c), built at the first list compile after pm_dlc_gen changed, freed in dlc_reset */
+static NdSeamTab seam_tab;
+static unsigned seam_gen;
+static int seam_ok;
+extern char pm_shape_name[24];
+__attribute__((cold, noinline)) static const NdSeamTab* seam_get(void) {
+    if (seam_gen == pm_dlc_gen) return seam_ok ? &seam_tab : NULL;
+    nd_seam_free(&seam_tab);
+    seam_gen = pm_dlc_gen;
+    unsigned t0 = pm_ticks();
+    seam_ok = nd_seam_build(&seam_tab, gMapShapeData, 0x40000u) == 0;
+    unsigned us = (pm_ticks() - t0) / 268u;
+    if (!seam_ok) { pm_log_evt("seamfix map %s nomem us %u", pm_shape_name, us); return NULL; }
+    pm_log_evt("seamfix map %s tp %u ins %u skip_mtx %u skip_ref %u lists %u tri %u bedge %u kb %u us %u", pm_shape_name, seam_tab.tp_all, seam_tab.ntp,
+        seam_tab.skip_mtx, seam_tab.skip_ref, seam_tab.nlist, seam_tab.ntri, seam_tab.nbedge, (seam_tab.ntp * (unsigned)sizeof(NdTp) + seam_tab.nlist * (unsigned)sizeof(NdSeamList) + 1023u) >> 10, us);
+    return &seam_tab;
+}
+__attribute__((cold, noinline)) static void seam_reset(void) { nd_seam_free(&seam_tab); seam_gen = 0; seam_ok = 0; }
 __attribute__((cold, noinline)) int dlc_build(DlcEnt* e, const Gfx* l) {
     unsigned i;
+    const NdSeamTab* st = seam_get();
+    const NdSeamList* sl = st ? nd_seam_find(st, (u32)(uintptr_t)l) : NULL;
     for (i = 0; i < ND_DLC_MAXOPS; i++) { dlc_words[2 * i] = l[i].words.w0; dlc_words[2 * i + 1] = l[i].words.w1; if ((l[i].words.w0 >> 24) == G_ENDDL) break; }
-    NdDlcEnv env = { nd_env_vtx, nd_env_valloc, nd_env_ialloc };
+    NdDlcEnv env = { nd_env_vtx, nd_env_valloc, nd_env_ialloc, sl && sl->cnt ? st->tp + sl->first : NULL, sl ? sl->cnt : 0u }; /* SEAMFIX: the T points of this list */
     int rc = nd_dlc_compile(&e->o, dlc_words, &env), pooled = 1;
-    if (rc == NDR_FULL) { /* no room in the static areas: compile without the copies, every group runs through the ring */
-        NdDlcEnv env2 = { nd_env_vtx, NULL, NULL };
+    if (rc == NDR_FULL) { /* no room in the static areas: compile without the copies, every group runs through the ring (the source words: no T points) */
+        NdDlcEnv env2 = { nd_env_vtx, NULL, NULL, NULL, 0 };
         dlc_c.sfull++;
+        if (sl && sl->cnt) pm_log_evt("seamfix pool map %s list %08x skip %u", pm_shape_name, (u32)(uintptr_t)l, (unsigned)sl->cnt);
         rc = nd_dlc_compile(&e->o, dlc_words, &env2);
         pooled = 0;
         if (rc == NDR_OK) { free(e->o.vtx); free(e->o.idx); e->o.vtx = NULL; e->o.idx = NULL; }
@@ -355,6 +376,7 @@ __attribute__((cold, noinline)) void dlc_reset(void) {
     for (unsigned k = 0; k < DLC_TAB; k++) if (dlc_tab[k]) { dlc_free(dlc_tab[k]); free(dlc_tab[k]); dlc_tab[k] = NULL; }
     dlc_nent = 0;
     pm_gpu_gstat_reset();
+    seam_reset();
 }
 unsigned dlc_seen_gen;
 /* A G_DL to l. Returns 1 when the list is done (replayed), 0 when the interpreter must run it. */
