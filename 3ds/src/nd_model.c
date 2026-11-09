@@ -70,24 +70,24 @@ void nd_gv_params(const NdGvIn* in, NdGvP* o) {
     }
 }
 
-/* MDL-1 (oracle decision): an R13 list is the record's texture block when every op is a texture, tile, load, sync, state or NOOP op. The walker
- * runs the list in place before the native draw (rec_aux), so its state is the bound tile state. cw: the combine words (G_SETCOMBINE, 0xFC) and
- * the texture scale (G_TEXTURE, 0xD7, cw[2] w1, cw[3] = 1) of the block. Returns 1 for a texture block, 0 for any other op (why 2, counted). */
+/* MDL-1 (oracle decision): an R13 list is the record's texture block when every op is a texture, tile, load, state or NOOP op. The walker
+ * runs the list in place before the native draw (rec_aux), so its state is the bound tile state. cw: the combine words (the full G_SETCOMBINE
+ * word) and the texture scale (cw[2] = the G_TEXTURE b, cw[3] = 1) of the block. Returns 1 for a texture block, 0 for any other op (why 2,
+ * counted). HC4c: the R13 ops are typed (nd_rec_model; the syncs are dropped there). */
 int nd_r13_texonly(const uint32_t* aw, unsigned n, uint32_t* cw, int* has_cb) {
     *has_cb = 0; cw[3] = 0;
     if (n == 0 || n > 32) return 0;
     for (unsigned i = 0; i < n; i++) {
         const uint32_t w0 = aw[2 * i], w1 = aw[2 * i + 1];
         switch (w0 >> 24) {
-        case 0xFD: case 0xF5: case 0xF2: case 0xF4: case 0xF3: case 0xF0: /* SETTIMG, SETTILE, SETTILESIZE, LOADTILE, LOADBLOCK, LOADTLUT */
-        case 0xE8: case 0xE7: case 0xE6: /* RDPTILESYNC, PIPESYNC, LOADSYNC */
-        case 0xE3: case 0xE2: /* G_SETOTHERMODE_L, _H: the texture block's render state (the block carries one) */
-        case 0x00: /* NOOP */
+        case NDO_TIMG: case NDO_TILE: case NDO_TILESIZE: case NDO_LOADTILE: case NDO_LOADBLOCK: case NDO_LOADTLUT:
+        case NDO_OML: case NDO_OMH: /* the texture block's render state (the block carries one) */
+        case 0x00u: /* G_NOOP */
             break;
-        case 0xFC: /* G_SETCOMBINE */
-            cw[0] = w0; cw[1] = w1; *has_cb = 1; /* the full word, as the walker key has it (the op byte included) */
+        case NDO_COMB:
+            cw[0] = NDO_COMB_W0(w0); cw[1] = w1; *has_cb = 1; /* the full word, as the walker key has it (the op byte included) */
             break;
-        case 0xD7: /* G_TEXTURE: the texture scale */
+        case NDO_TEXTURE: /* the texture scale */
             cw[2] = w1; cw[3] = 1;
             break;
         default:
@@ -168,12 +168,12 @@ int nd_mode_compile(NdMode* m, const unsigned* w) {
     return 1;
 }
 
-/* S3L-3: the R13 words (aux, the words the texture block wrote after the record; the walker runs them in place of the bind) as a pre-list mode:
- * the same ops as a render mode list, applied before it. The words are typed here (nd_op_xlate) until the R13 ops are typed at their producer (HC4c). */
+/* S3L-3: the R13 ops (aux, the typed ops the texture block wrote after the record, nd_rec_model; the walker runs them in place of the bind) as a
+ * pre-list mode: the same ops as a render mode list, applied before it. */
 int nd_aux_state(const uint32_t* aw, unsigned n, NdMode* ax) {
     uint32_t tmp[18];
     if (n == 0 || n > 8) return 0;
-    for (unsigned i = 0; i < n; i++) nd_op_xlate(aw[2 * i], aw[2 * i + 1], tmp + 2 * i);
+    memcpy(tmp, aw, n * 8u);
     if (n < 8) { tmp[2 * n] = NDO_W0(NDO_END, 0); tmp[2 * n + 1] = 0; }
     if (!nd_mode_compile(ax, (const unsigned*)tmp)) return 0;
     return !ax->has_g;

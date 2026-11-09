@@ -3052,7 +3052,7 @@ void pm_gpu_set_r13_t1(int bound) {
     /* FB-2: 2 (an off-screen aux image) stays a fallback here: the model path has no snapshot */
 }
 int nd_mix1(unsigned ol, unsigned* col); /* nd_set.c: the V06 colour mix rule of sync_render */
-extern unsigned fogc, blendc;
+extern unsigned fogc, blendc; extern int pm_nofog;
 static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, int emit, int* mode_ok, const NdMKey* mk) {
     *mode_ok = modew != NULL && nd_mode_compile(&mdl_mode, (const unsigned*)modew) != 0;
     if (!*mode_ok) { static unsigned mb_; if (mb_++ < 8u) { const uint32_t* mw_ = (const uint32_t*)modew; pm_log_prof_line("modebad modew %p bad %02x w0 %08x w1 %08x w2 %08x w3 %08x", modew, mdl_mode.bad, modew ? mw_[0] : 0u, modew ? mw_[1] : 0u, modew ? mw_[2] : 0u, modew ? mw_[3] : 0u); } }
@@ -3317,8 +3317,33 @@ int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32
 /* S3N-6: the hit. The cached draws of key k go out (after pm_gpu_flush) when the fresh ranges are the cached ones: each with the palette of the current view
  * and, for a textured record, the unit 0 words of the hinted slot (nd_tex_unit_hint). 1: drawn. 0: no entry, other ranges, or no texture: the caller
  * applies the record (its matrix ops are done). */
+/* FFOG (diagnostic, switch ffog; no effect on the draw): per 60 frames, over the native hits. hit: hits seen; empty: hits of an entry with no draw
+ * (the model is skipped); emptyig: the same for an IGNORE_MATRIX record (flag 256 of R3, the walker matrix is kept, no load); rng: the group mask
+ * now differs from the entry's (rebuilt, not a hit); rngig: the same for IGNORE records; cmis: hits whose `combined` is not the fresh MVP of the
+ * walker stack (nd_mtx_combine); vmz: hits with a zero group mask now. Premise of the suspect: combined is the walker MVP at every hit. */
+int pm_dlc_ons_note(const void* lv, unsigned* culled, unsigned* ons); /* nd_shape.c, FFOG */
+static __attribute__((cold, noinline)) void ffog_note(const NdMKey* k, const NdMEnt* e) {
+    static unsigned f_, hit_, emp_, empig_, rng_, rngig_, cmis_, vmz_, cul_, ons_, onsh_;
+    const unsigned f = pm_frame_count();
+    if (f != f_) {
+        if (f_ && f % 60u < 3u) { pm_log_w("ffog f%u hit %u empty %u emptyig %u rng %u rngig %u cmis %u vmz %u culg %u ons %u onsh %u", f, hit_, emp_, empig_, rng_, rngig_, cmis_, vmz_, cul_, ons_, onsh_); hit_ = emp_ = empig_ = rng_ = rngig_ = cmis_ = vmz_ = cul_ = ons_ = onsh_ = 0; }
+        f_ = f;
+    }
+    const int ig = (((const uint32_t*)(uintptr_t)k->rp)[6] & 256u) != 0;
+    uint64_t vm = 0;
+    const int same = pm_dlc_vis_mask((const void*)(uintptr_t)k->w[24], &vm) == 0 && vm == e->vmask;
+    float fresh[4][4];
+    nd_mtx_combine(fresh);
+    hit_++;
+    if (memcmp(fresh, pm_gbi_combined_ptr(), sizeof fresh) != 0) cmis_++;
+    { unsigned cu = 0, on = 0; if (pm_dlc_ons_note((const void*)(uintptr_t)k->w[24], &cu, &on) == 0) { cul_ += cu; ons_ += on; onsh_ += on != 0; } } /* the box test removed an on-screen group */
+    if (!same) { rng_++; rngig_ += (unsigned)ig; return; }
+    if (!vm) vmz_++;
+    if (!e->n) { emp_++; empig_ += (unsigned)ig; }
+}
 int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
     if (!e) { ndn_nokey++; return 0; }
+    if (PMDL("ffog")) ffog_note(k, e);
     if (!model_vis_same(k, e)) { ndn_rng++; pm_xf.mdl_rng++; return 0; }
     if (e->mver && e->mver != ((((const uint32_t*)(uintptr_t)k->rp)[3] >> 16) | 0x10000u)) { ndn_rng++; pm_xf.mdl_rng++; return 0; } /* MAPX-2: a lit entry whose matrix moved: the miss path stores it again in place */
     if (!e->n) { ndn_empty++; ndn_rec++; ndn_hit++; return 1; } /* PERF1-4c: no draw (no group in view, or all culled): no texture lookup, template build, matrix product or flush */
@@ -3734,8 +3759,18 @@ int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16
     c.env = nd_ws.envc; c.prim = nd_ws.prim; c.prim_lod = nd_ws.prim_lod; c.cconst = cconst; c.mixcol = r_mixcol;
     { float db = decal_bias(); memcpy(&c.dbias, &db, 4); }
     c.base_oh = nd_ws.omode_h; c.base_ol = nd_ws.omode_l; c.known_h = nd_ws.om_kh; c.known_l = nd_ws.om_kl;
+    { /* SHROUD: the mix is the sprite's own othermode (nd_mix1, the F08 fog-shade-alpha case as sync_render), not gs.r_mix of the last model's sync_render:
+       * a sprite drawn after a shrouded model took its shroud (star power). */
+        unsigned mixc; const unsigned ol_ = nd_ws.omode_l, p_ = (ol_ >> 30) & 3u, a_ = (ol_ >> 26) & 3u, mm_ = (ol_ >> 22) & 3u, b_ = (ol_ >> 18) & 3u;
+        if (nd_mix1(ol_, &mixc)) { c.r_mix = 1; c.mixcol = mixc; }
+        else if (!pm_nofog && p_ == 3u && a_ == 2u && mm_ == 0u && b_ == 0u) { c.r_mix = 2; c.mixcol = (fogc & 0xffffff00u) | 0xffu; }
+        else { c.r_mix = 0; c.mixcol = r_mixcol; }
+    }
     uint32_t zr[27];
     memset(zr, 0, sizeof zr); /* the record words the model state reads (R3 flags, R11, R13) are zero: a sprite has none */
+    if (__builtin_expect(PMDL("sprmix"), 0)) { /* SHROUD: gs_r_mix (the last sync_render) and own_r_mix (this sprite's othermode, c.r_mix above) */
+        static unsigned sprmix_n; unsigned f_ = pm_frame_count(); if (f_ >= 415u && f_ <= 565u && sprmix_n++ < 300u) pm_log("sprmix f%u gs_r_mix %d own_r_mix %d mixcol %08x om30 %u ol %08x", f_, gs.r_mix, c.r_mix, c.mixcol, nd_ws.omode_l >> 30, nd_ws.omode_l);
+    }
     if (nd_model_state_spr(zr, &c, n, st) != 1) { *why = 10 + st->why; return 0; } /* PERF1-5: through the sprite state memo */
     n->nidx = 6; /* pm_gpu_spr_submit: two triangles of the quad */
     pm_gpu_pcomp_native(pal0, pm_gbi_combined_ptr());

@@ -679,6 +679,30 @@
       "reason": "EYECW: padscript run around the ring. camlog was deleted (AUDIT C4); the eyecw line of the stereo variants carries p23 (near 0 at yaw 90)."
     },
     {
+      "name": "mim01_ring_wide_ffog",
+      "status": "unverified",
+      "subject": "Forever Forest mim_01 (entry 1, x -530) in Widescreen (the user's setting), det, mono: the ring run of mim01_ring_det. The ffog line every 60 frames: model hits, empty entries (no draw), IGNORE_MATRIX share, group-mask changes, combined vs fresh MVP.",
+      "proves": "FFOG premise: the native hit uses the walker MVP (combined == nd_mtx_combine) and no empty entry (a skipped model) comes from an IGNORE_MATRIX record in a turn.",
+      "debug": "warp=mim_01:1 det wide padscript=go_-375_-375_90,wait10,go_-375_375_150 shots shotwin=60:221:20 loglevel=debug ffog",
+      "until": "shot \\d+ frame 280\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: mim_01 entry 1",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mim_01 entry 1"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 280\\b"
+        }
+      ],
+      "reason": "FFOG: the user's Widescreen setting on the mim_01 ring turn (yaw passes 90). Copy of mim01_ring_det with wide and the ffog switch."
+    },
+    {
       "name": "mim01_ring_stereo_det_l",
       "status": "unverified",
       "subject": "mim_01 ring run as mim01_ring_det with forced stereo, left eye shots. The eyecw line every 10 frames: p23 (the old convergence factor, near 0 at yaw 90) and cw (conv x nd_proj_wn).",
@@ -1271,6 +1295,37 @@
         {
           "name": "last shot",
           "regex": "shot \\d+ frame 440\\b"
+        }
+      ]
+    },
+    {
+      "name": "effcen_mac01",
+      "status": "verified",
+      "reason": "EFFCEN: fxtest fx_underwater (index 87) on mac_01, effcen word on. The effcen line at frame 420 (inside the 120 frame underwater life from frame 402) ranks the tasks by us per window.",
+      "subject": "mac_01 (entry 0, pos 0 0 200), fxtest=87 spawns underwater at the player from frame 402 (slot 44 frames from 400).",
+      "proves": "EFFCEN census: the effcen line lists the underwater render task (its appendGfx fn) in the top 5, with ops near 2100 words per frame.",
+      "debug": "warp=mac_01:0 pos=0:0:200 story=ch0_toad_town fxtest=87 loglevel=debug fixedseed fast fs1off det effcen",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "fxtest: done",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "census",
+          "regex": "effcen f420 top: [0-9a-f]+ e"
+        },
+        {
+          "name": "done",
+          "regex": "fxtest: done"
         }
       ]
     },
@@ -9289,6 +9344,30 @@
         }
       ],
       "reason": "BTLDIM picture gate. shotwin start frame is set after the step 1 run (darken start frame)."
+    },
+    {
+      "name": "btldim_star_sprmix",
+      "status": "unverified",
+      "subject": "Battle kmr_03, Shooting Star: sprite builds log the mix they read (sprmix line), no shots.",
+      "proves": "SHROUD step 1: the mix state a sprite build reads during the star power (gs.r_mix of the last sync_render).",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 invitem=0x083 padscript=@pad_btl_star.txt sprmix loglevel=debug",
+      "until": "btldim: lighten done f\\d+",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "lighten done",
+          "regex": "btldim: lighten done f\\d+"
+        }
+      ],
+      "reason": "SHROUD step 1 log check (sprmix debug word). Not a picture gate."
     },
     {
       "name": "btldim_star_prof",

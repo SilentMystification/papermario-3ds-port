@@ -3076,6 +3076,21 @@
       "gates": []
     },
     {
+      "name": "mim01_ring_wide_ffog",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FFOG: Forever Forest mim_01 ring turn in Widescreen with the ffog diagnostic line (hit, empty, IGNORE share, combined vs fresh MVP). 12 shots, frames 60 to 280. A person reads the shot.",
+      "scenario": "mim01_ring_wide_ffog",
+      "cap": 30,
+      "until": "shot \\d+ frame 280\\b",
+      "tags": [
+        "azahar",
+        "det"
+      ],
+      "gates": []
+    },
+    {
       "name": "mim01_ring_stereo_det_l",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -3488,6 +3503,22 @@
       "gates": []
     },
     {
+      "name": "effcen_mac01",
+      "kind": "azahar_stream",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "EFFCEN: fxtest fx_underwater (87) on mac_01, effcen word. The effcen census line (top 5 render tasks by us, ops = gfx words per frame). Log only.",
+      "scenario": "effcen_mac01",
+      "cap": 25,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "effcen",
+        "fx"
+      ],
+      "gates": []
+    },
+    {
       "name": "i8aux_mac01",
       "kind": "azahar_stream",
       "speed": "turbo",
@@ -3564,6 +3595,22 @@
         "azahar",
         "battle",
         "btldim"
+      ],
+      "gates": []
+    },
+    {
+      "name": "btldim_star_sprmix",
+      "kind": "azahar",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SHROUD step 1: the sprite mix (sprmix line) during Shooting Star.",
+      "scenario": "btldim_star_sprmix",
+      "cap": 30,
+      "until": "btldim: lighten done f\\d+",
+      "tags": [
+        "azahar",
+        "battle",
+        "shroud"
       ],
       "gates": []
     },

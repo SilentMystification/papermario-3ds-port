@@ -31,6 +31,16 @@ of SBLK2): background_gfx.c emits G_PM_ND_GUTTER begin/end around the two gutter
 pause slot window to base cfb-80, stride 400 (pm_tex_set_offscreen) and restores 320 after. Gate: both gutters show the scene at
 the right columns (compare with the frame before the pause).
 
+## Left gutter cause and fix (oracle, 2026-11-09; replaces the bracket decision)
+gFrameBuf0/1 are back to back in .bss (src/heaps3.c:8-9). When the pause source is gFrameBuf1, the left load address gFrameBuf1-80
+lies inside gFrameBuf0 (the buffer being drawn): in_buf (pm_main.c:169-171) passes pm_is_cfb and pm_is_cur_cfb (:177, :182), so
+set_timg (nd_tex_set.c:44) skips the prev capture and grab_cur takes the CURRENT frame, matched at d ~153600: dark. With source
+gFrameBuf0, gFrameBuf0-80 is before both buffers: RAM read, dark. The address map cannot serve game x -40. Fix: delete the
+G_PM_ND_GUTTER bracket and pm_gpu_pause_win; add pm_gpu_pause_gutters(alpha) in pm_gpu.c, called from SHOW_PAUSED (TARGET_3DS)
+in place of the two gutter load/rect pairs: bind the slot pm_gpu_grab_prev filled for pause_cfb_src() (gs.offs[i].tex) and emit two
+rect_raw quads: screen x 0..39 from copy columns 0..39, x 360..399 from columns 360..399, all 240 rows, uv as grab_raw_quad
+(pm_gpu.c:2171, s along y, t along x, over 256); same combine and fade alpha (gPauseBackgroundFade) as the centre.
+
 ## Touch only
 3ds/src/nd_rect.c (CPUFILL arm), pm_main.c (cfb_capture_prev), pm_gpu.c (grab), src/background_gfx.c (FILTER/SHOW_PAUSED, TARGET_3DS).
 
