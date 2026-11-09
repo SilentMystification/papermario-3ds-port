@@ -361,6 +361,7 @@ set(PORT_SRC
     src/pm_route.c
     src/pm_sweep.c
     src/pm_fxtest.c
+    src/pm_effcen.c
     src/pm_gpu.c
     src/pm_gpu_ui.c
     src/pm_gpu_rect.c

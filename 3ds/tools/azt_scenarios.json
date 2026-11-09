@@ -1275,6 +1275,37 @@
       ]
     },
     {
+      "name": "effcen_mac01",
+      "status": "verified",
+      "reason": "EFFCEN: fxtest fx_underwater (index 87) on mac_01, effcen word on. The effcen line at frame 420 (inside the 120 frame underwater life from frame 402) ranks the tasks by us per window.",
+      "subject": "mac_01 (entry 0, pos 0 0 200), fxtest=87 spawns underwater at the player from frame 402 (slot 44 frames from 400).",
+      "proves": "EFFCEN census: the effcen line lists the underwater render task (its appendGfx fn) in the top 5, with ops near 2100 words per frame.",
+      "debug": "warp=mac_01:0 pos=0:0:200 story=ch0_toad_town fxtest=87 loglevel=debug fixedseed fast fs1off det effcen",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "fxtest: done",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "census",
+          "regex": "effcen f420 top: [0-9a-f]+ e"
+        },
+        {
+          "name": "done",
+          "regex": "fxtest: done"
+        }
+      ]
+    },
+    {
       "name": "i8aux_mac01",
       "status": "unverified",
       "reason": "I8AUX step 1 (log check): fxtest huff_puff_breath (index 103) on mac_01, cold. Prints the i8aux line: pm_tex_i8(1), the unit 1 slot fmt, siz and GPU format.",

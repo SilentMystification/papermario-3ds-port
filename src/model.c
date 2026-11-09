@@ -5052,6 +5052,11 @@ RenderTask* queue_render_task(RenderTask* task) {
 #ifdef TARGET_3DS
 extern int pm_ph_on;
 extern void pm_gbi_mdl_mark(unsigned id, int pan);
+/* EFFCEN: per-task cost census (pm_effcen.c), word effcen only */
+extern int pm_effcen_on(void);
+extern unsigned pm_effcen_t0(void);
+extern void pm_effcen_task(const void* fn, const void* arg, const Gfx* g0, unsigned t0);
+extern void pm_effcen_frame(void);
 /* MDL1 task census, phase on only: the ops of a task go to a pseudo model ID, not to the last model mark.
  * 0xF001 render_transform_group, 0xF002 appendGfx_model_group, 0xF0FF other task. 0xF0FE is the tail (pm_gbi.c mdc_*). */
 static __attribute__((cold, noinline)) void census_task_mark(void (*fn)(void*)) {
@@ -5144,6 +5149,11 @@ void execute_render_tasks(void) {
     RenderTask* task2;
     Matrix4f mtxFlipY;
     void (*appendGfx)(void*);
+#ifdef TARGET_3DS
+    int ec_on = pm_effcen_on(); /* EFFCEN: one word read per call */
+    Gfx* ec_g0 = nullptr;
+    unsigned ec_t0 = 0;
+#endif
 
     if (RenderTaskCount == 0) {
         return;
@@ -5230,9 +5240,15 @@ void execute_render_tasks(void) {
 
             /* the key is (draw function, argument): the argument alone is not always an object pointer (PaperBoat note) */
             CENSUS_TASK(appendGfx);
+#ifdef TARGET_3DS
+            if (ec_on) { ec_g0 = gMainGfxPos; ec_t0 = pm_effcen_t0(); }
+#endif
             FI_OPEN(task->appendGfx, task->appendGfxArg);
             appendGfx(task->appendGfxArg);
             FI_CLOSE();
+#ifdef TARGET_3DS
+            if (ec_on) pm_effcen_task(appendGfx, task->appendGfxArg, ec_g0, ec_t0);
+#endif
 
             if (task->renderMode & RENDER_TASK_FLAG_REFLECT_FLOOR) {
                 nd_range_repeat(savedRange, dispMtx, &gDisplayContext->camPerspMatrix[gCurrentCamID]);
@@ -5243,13 +5259,20 @@ void execute_render_tasks(void) {
             task = &taskList[sorted[i]];
             appendGfx = task->appendGfx;
             CENSUS_TASK(appendGfx);
+#ifdef TARGET_3DS
+            if (ec_on) { ec_g0 = gMainGfxPos; ec_t0 = pm_effcen_t0(); }
+#endif
             FI_OPEN(task->appendGfx, task->appendGfxArg);
             appendGfx(task->appendGfxArg);
             FI_CLOSE();
+#ifdef TARGET_3DS
+            if (ec_on) pm_effcen_task(appendGfx, task->appendGfxArg, ec_g0, ec_t0);
+#endif
         }
     }
 #ifdef TARGET_3DS
     if (pm_ph_on) pm_gbi_mdl_mark(0xF0FE, 0); /* tail: ops after the last task */
+    if (ec_on) pm_effcen_frame();
 #endif
 
     RenderTaskListIdx++;
