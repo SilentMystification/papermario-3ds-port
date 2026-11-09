@@ -52,6 +52,8 @@ param(
     [int]$Seconds = 60,
     [switch]$NoBuild,
     [switch]$Interactive,
+    # MEMGATE: push an O3DS-applet memory OVER build anyway (push_3ds.sh --mem-ok; the override is logged in pushed_builds.txt).
+    [switch]$MemOk,
     # Render/game debug switches (pm_main.c read_debug_switches: nofog nolight notex ... perfctr
     # calls), space-separated in one string. NOT named -Debug: PowerShell gives every script with a
     # [Parameter()] attribute an automatic common -Debug switch, and a script cannot redeclare a
@@ -139,6 +141,7 @@ function Push-One([string]$t) {
             $watchSecs = if ($Interactive) { 86400 } else { $Seconds }
             $extra = @($Rest); if ($GameDebug) { $extra += $GameDebug }
             $profArgs = @(); if ($Profile) { $profArgs = @('--profile', $Profile) }
+            if ($MemOk) { $profArgs += '--mem-ok' }
             & $gitBash 3ds/push_3ds.sh -t $watchSecs @profArgs @extra
             if ($LASTEXITCODE -ne 0) { throw "push_3ds.sh exited $LASTEXITCODE" }
         }

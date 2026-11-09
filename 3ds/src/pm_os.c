@@ -252,6 +252,7 @@ int pm_rom_init(void) {
     unsigned cap = heap > leave ? heap - leave : 0;
     int memforce = pm_debug_has("memforce"); /* SIZE-4 gate: the low memory path with the applet hint */
     if (memforce) cap = 0;
+    pm_mem_boot_line(need, leave, cap); /* MEMGATE: every mode, before the fit check */
     /* RR2: the ROM is always resident. No SD streaming: a ROM that does not fit stops the game here. */
     char nomem[320];
     snprintf(nomem, sizeof(nomem), "Not enough memory for the ROM: need %u MB, free %u MB", (need + 0xFFFFFu) >> 20, cap >> 20);

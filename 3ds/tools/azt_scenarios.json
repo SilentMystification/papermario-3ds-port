@@ -4778,6 +4778,26 @@
       "reason": "BOOT-1: a cold start takes 12 to 16 s on Azahar, then the logos and the title. Until is the boot ms line. Cap 45 s (upper limit), stated here for the cold start plus the logos."
     },
     {
+      "name": "boot_memline",
+      "status": "unverified",
+      "subject": "MEMGATE: the boot memory line 'mem boot:' (region, commit, image, static, linear, heap, rom_need, leave, cap, margin) printed by pm_rom_init before the ROM fit check.",
+      "proves": "The line prints in every mode through pm_log_evt and its sum holds: heap = commit - image - linear - soc, cap = heap - leave, margin = cap - rom_need. Azahar offers more commit than the O3DS, so its margin is not the console margin.",
+      "debug": "",
+      "until": "mem boot: region",
+      "cap": 20,
+      "deadline": 15,
+      "first_marker": "MODE = ",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "boot memory line",
+          "regex": "mem boot: region \\d+KB used \\d+KB free \\d+KB commit \\d+KB image \\d+KB static \\d+KB linear \\d+KB soc \\d+KB heap \\d+KB rom_need \\d+KB leave \\d+KB cap \\d+KB margin -?\\d+KB"
+        }
+      ],
+      "reason": "MEMGATE: the line prints right after the options, before the ROM read. Until is that line. Cap 20 s for the cold start (12 to 16 s on Azahar)."
+    },
+    {
       "name": "boot_opts",
       "status": "unverified",
       "subject": "Boot with no options.ini and no options.txt: the OPTFIX boot line prints the saved option values (dz_cs, rep_delay, rep_rate, hud_ms, conlevel, loglevel, log).",

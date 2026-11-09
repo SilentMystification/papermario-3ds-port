@@ -54,6 +54,12 @@ publish_3dsx() {
         cp -f build3ds/pm_3ds.3dsx "$dest/pm_3ds.3dsx"
     fi
 }
+# MEMGATE: the console memory check of this build's map (3ds/tools/memcheck.py, mem_budget.json). OVER is a warning here:
+# push_3ds.sh stops an OVER push unless --mem-ok.
+memcheck_line() {
+    if command -v py >/dev/null 2>&1; then py -3 3ds/tools/memcheck.py --map $OUT/pm_3ds.map || true
+    else python3 3ds/tools/memcheck.py --map $OUT/pm_3ds.map || true; fi
+}
 IMG=pm3ds-build:1
 docker build -q -t $IMG -f docker/Dockerfile.build docker >/dev/null
 # SRCID: the source volume keeps the id of its last sync in /src/.pm_manifest_id, and $VID holds the id the manifest was
@@ -69,6 +75,7 @@ if [ -z "$PM_BUILD_REV" ]; then
     if [ -f $OUT/pm_3ds.3dsx ] && [ "$(cat $KEY_FILE 2>/dev/null)" = "$KEY" ] && vol_match; then
         echo "--- build up to date (key $(echo "$KEY" | cut -c1-12)), skipping ---"
         publish_3dsx
+        memcheck_line
         exit 0
     fi
 fi
@@ -154,6 +161,7 @@ if [ -f $OUT/pm_3ds.elf ]; then
     done
 fi
 publish_3dsx
+memcheck_line
 # Cap the lane volume sets: keep the newest PM_LANE_KEEP lanes (default 5), by creation time.
 # A lane with a registered worktree (build3ds/wt/<name>, from git worktree list) is live: never removed, not counted.
 # The base volumes (pm3ds-build, pm3ds-src, pm3ds-work, pm3ds-ccache) and the current lane are never removed.

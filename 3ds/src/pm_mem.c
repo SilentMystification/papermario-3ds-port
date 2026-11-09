@@ -131,6 +131,22 @@ void* pm_soc_buffer(unsigned* size) {
 }
 
 unsigned pm_heap_bytes(void) { return __ctru_heap_size; }
+
+/* MEMGATE: the boot memory line, printed in every mode (pm_log_evt) before the ROM fit check, also when the ROM does not fit.
+ * region/used/free: osGetMemRegion* of the APPLICATION region (after __system_allocateHeaps took the whole commit, so free is small).
+ * commit: the process commit limit (svcGetResourceLimitLimitValues). image: commit used before the heap alloc (static image plus loader cost).
+ * static: __end__ - __start__ rounded up to a page (text, rodata, data, bss of the 3dsx). linear: the linearAlloc pool, soc: the socket block.
+ * heap = commit - image - linear - soc (the newlib heap). cap = heap - leave, margin = cap - rom_need. 3ds/tools/memcheck.py checks the
+ * same sum from the map before a push (3ds/tools/mem_budget.json). */
+extern char __start__[], __end__[];
+void pm_mem_boot_line(unsigned need, unsigned leave, unsigned cap) {
+    unsigned stat = (((u32)__end__ + 0xFFFu) & ~0xFFFu) - (u32)__start__;
+    int margin = ((int)cap - (int)need) >> 10;
+    pm_log_evt("mem boot: region %uKB used %uKB free %uKB commit %uKB image %uKB static %uKB linear %uKB soc %uKB heap %uKB rom_need %uKB leave %uKB cap %uKB margin %dKB",
+               (unsigned)(osGetMemRegionSize(MEMREGION_APPLICATION) >> 10), (unsigned)(osGetMemRegionUsed(MEMREGION_APPLICATION) >> 10),
+               (unsigned)(osGetMemRegionFree(MEMREGION_APPLICATION) >> 10), (unsigned)(commit_max >> 10), (unsigned)(commit_cur >> 10), stat >> 10,
+               pm_linear_bytes() >> 10, PM_SOC >> 10, pm_heap_bytes() >> 10, need >> 10, leave >> 10, cap >> 10, margin);
+}
 unsigned pm_linear_bytes(void) { return __ctru_linear_heap_size; }
 
 unsigned pm_tex_used(void);

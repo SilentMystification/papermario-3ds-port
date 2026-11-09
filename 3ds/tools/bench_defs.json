@@ -1096,6 +1096,59 @@
       ]
     },
     {
+      "name": "mem_boot",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "purpose": "MEMGATE: the boot memory line (commit, image, static, heap, cap, margin KB) before the ROM fit check. Azahar commit is larger than the O3DS one; the console margin comes from a console boot or from 3ds/tools/memcheck.py.",
+      "scenario": "boot_memline",
+      "cap": 20,
+      "until": "mem boot: region",
+      "tags": [
+        "azahar",
+        "boot",
+        "memory"
+      ],
+      "log_metrics": [
+        {
+          "name": "commit_kb",
+          "regex": "mem boot: .* commit (-?\\d+)KB",
+          "pick": "last"
+        },
+        {
+          "name": "image_kb",
+          "regex": "mem boot: .* image (-?\\d+)KB",
+          "pick": "last"
+        },
+        {
+          "name": "static_kb",
+          "regex": "mem boot: .* static (-?\\d+)KB",
+          "pick": "last"
+        },
+        {
+          "name": "heap_kb",
+          "regex": "mem boot: .* heap (-?\\d+)KB",
+          "pick": "last"
+        },
+        {
+          "name": "cap_kb",
+          "regex": "mem boot: .* cap (-?\\d+)KB",
+          "pick": "last"
+        },
+        {
+          "name": "margin_kb",
+          "regex": "mem boot: .* margin (-?\\d+)KB",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "static_kb",
+          "op": ">",
+          "value": 0
+        }
+      ]
+    },
+    {
       "name": "toad_standing",
       "kind": "console_prof",
       "speed": "normal",

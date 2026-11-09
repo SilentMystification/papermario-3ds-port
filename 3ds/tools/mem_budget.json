@@ -1,0 +1,22 @@
+{
+  "rule": "margin = commit - image - linear - soc - leave - rom_need, with image = static + loader. static = page_up(__end__) - __start__ from the map (text, rodata, data, bss). The game computes the same sum at boot: heap = commit - image - linear - soc (pm_mem.c __system_allocateHeaps), cap = heap - leave, the ROM fits when cap >= rom_need (pm_os.c pm_rom_init). memcheck prints OK when margin >= safety, else OVER. OVER is a warning: push_3ds.sh stops unless --mem-ok.",
+  "safety_kb": 256,
+  "safety_why": "The loader cost on the console is only bracketed (0 to 100 KB, see loader_kb), the commit limit is from one older boot line, and an HBL or system update can move both. 256 KB covers the 100 KB bracket plus 156 KB for that drift and is still small next to one static buffer of the size that broke build 3299 (413 KB).",
+  "code": {
+    "_note": "memcheck.py reads these from the source and warns when this copy is stale.",
+    "linear_kb": {"value": 14208, "src": "3ds/src/pm_mem.c PM_OURS 14 MB minus PM_SOC: the linearAlloc pool"},
+    "soc_kb": {"value": 128, "src": "3ds/src/pm_mem.c PM_SOC: socket block at 0x08000000, out of the same commit"},
+    "fcram_cap_kb": {"value": 65536, "src": "3ds/src/pm_mem.c PM_FCRAM: avail = commit - image is capped here"},
+    "leave_kb": {"value": 3458, "src": "3ds/src/pm_os.c pm_rom_init leave: heap kept for the game after the ROM block"},
+    "rom_need_b": {"value": 26365860, "src": "3ds/src/rom_remap.h PM_ROM_PACKED (25748 KB)"}
+  },
+  "devices": {
+    "o3ds_xl": {
+      "desc": "O3DS XL 192.168.1.131, Homebrew Launcher started through Download Play (applet mode, APPLICATION region 64 MB)",
+      "commit_kb": {"value": 65536, "kind": "measured", "src": "O3DS boot line of build 926: mem commit limit 65536KB used-by-image 19592KB (docs/plans/topology.md). Build 3299 agrees (below)."},
+      "loader_kb": {"value": 100, "kind": "derived", "src": "image = static + loader. Build 3299 (static 22040 KB) stopped with free 25 MB: cap in [25602, 25746] KB (cap >> 20 = 25 and cap < rom_need; heap is page aligned), so commit - image in [43396, 43540] KB and loader in [-44, 100] KB with commit 65536. Build 3212 (static 21616 KB) booted: loader <= 376 KB. The upper bound 100 KB is used. Azahar measures image - static = 20 KB (direct 3dsx load, no HBL)."},
+      "region_kb": {"value": 65536, "kind": "derived", "src": "O3DS APPLICATION region in the default memory mode; the boot line field region replaces it"},
+      "replace_with": "the next O3DS boot line 'mem boot:': commit -> commit_kb, image - static -> loader_kb, region -> region_kb; then mark them measured"
+    }
+  }
+}
