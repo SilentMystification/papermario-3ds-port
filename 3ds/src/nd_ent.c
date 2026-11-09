@@ -297,6 +297,7 @@ void ent_log(void) { /* PROF2-3: census lines, from pm_gpu.c cen_lines_frame (fr
     if (f < next) return;
     next = (f / 300u + 1u) * 300u;
     pm_log_w("entnat f%u draws %u native %u fb %u segs native %u interp %u keys %u comp %u dyn %u", f, ent_c.draws, ent_c.nat, ent_c.fb, ent_c.segn, ent_c.segi, ent_nent, ent_c.comp, ent_c.dyn);
+    { static unsigned l0, l1, l2; pm_log_w("entsync f%u walks %u csync %u rsync %u gdl %u (since the last line)", f, nd_ent_gbi - l0, nd_ent_cfull - l1, nd_ent_rfull - l2, gdl_c.lists); l0 = nd_ent_gbi; l1 = nd_ent_cfull; l2 = nd_ent_rfull; }
     pm_log_w("entnat why 1 table %u 2 op %u 3 slot %u 4 vtx %u 5 long %u 6 pool %u 7 count %u 8 none %u", ent_c.why[1], ent_c.why[2], ent_c.why[3], ent_c.why[4], ent_c.why[5], ent_c.why[6], ent_c.why[7], ent_c.why[8]);
     for (unsigned q = 0; q < 256u; q++) if (ent_opc[q]) pm_log_w("entnat refused op %02x keys %u", q, ent_opc[q]);
     for (unsigned q = 0, n = 0; q < ENT_TAB && n < 16u; q++) if (ent_tab[q] && (ent_tab[q]->nint || ent_tab[q]->st != ENT_OK)) { const EntKey* k = ent_tab[q]; n++; pm_log_w("entnat key list %08x vb %08x st %u why %u nseg %u nops %u draws %u seg %u int %u", k->list, k->vb, k->st, k->why, k->nseg, k->nops, k->ndraw, k->segid, k->nint); }
@@ -362,6 +363,10 @@ int ent_draw(const Gfx* rec) {
     return ent_run(l, k, rec[1].words.w0 | (rec[2].words.w0 << 8));
 }
 
+unsigned nd_ent_in, nd_ent_cfull, nd_ent_rfull, nd_ent_gbi;
+unsigned nd_ent_cfull_all(void) { return nd_ent_cfull; }
+unsigned nd_gdl_lists(void) { return gdl_c.lists; }
+#define ENT_GBI(l_, n_) (nd_ent_gbi++, nd_walk_ops((l_), (n_))) /* PERF2: the pieces of the flattened list keep the walker's sync state */
 int ent_run(const Gfx* l, EntKey* k, u32 segid) {
     const unsigned f = pm_frame_count();
     if (!k) { ent_c.why[1]++; ent_c.fb++; return 0; }
@@ -375,18 +380,20 @@ int ent_run(const Gfx* l, EntKey* k, u32 segid) {
     k->ndraw++; k->segid = segid;
     if (k->st != ENT_OK) { ent_c.fb++; if (k->st == ENT_REF) ent_c.why[k->why < 12 ? k->why : 0]++; return 0; }
     if (entchk_on()) { ent_c.nat++; return 0; }
+    nd_ent_in = 1;
     for (unsigned s = 0; s < k->nseg; s++) {
         const EntSeg* e = &k->seg[s];
         const Gfx* fw = k->fw;
-        if (e->op0 > e->a0) pm_gbi_run((void*)(fw + e->a0), (e->op0 - e->a0) * 8u);
+        if (e->op0 > e->a0) ENT_GBI((void*)(fw + e->a0), (e->op0 - e->a0) * 8u);
         if (!e->ntri) continue; /* a state-only or vertex-only segment: the loads replay when a later segment needs them */
         if (e->ntri && ent_seg_native(k, e)) { ent_c.segn++; continue; }
         ent_c.segi++; /* the old words: the vertex loads before the segment, then its own ops */
-        for (u32 i = 0; i < e->op0; i++) if ((fw[i].words.w0 >> 24) == G_VTX) pm_gbi_run((void*)(fw + i), 8u);
-        if (e->op1 > e->op0) pm_gbi_run((void*)(fw + e->op0), (e->op1 - e->op0) * 8u);
+        for (u32 i = 0; i < e->op0; i++) if ((fw[i].words.w0 >> 24) == G_VTX) ENT_GBI((void*)(fw + i), 8u);
+        if (e->op1 > e->op0) ENT_GBI((void*)(fw + e->op0), (e->op1 - e->op0) * 8u);
     }
-    { const EntSeg* e = &k->seg[k->nseg - 1]; if (k->nops > e->op1) pm_gbi_run((void*)(k->fw + e->op1), (k->nops - e->op1) * 8u); }
+    { const EntSeg* e = &k->seg[k->nseg - 1]; if (k->nops > e->op1) ENT_GBI((void*)(k->fw + e->op1), (k->nops - e->op1) * 8u); }
     tri_since_vtx = 1; memset(vert_live, 0, sizeof vert_live); dlc_dirty = 1; /* as the skipped groups of dlc_try */
+    nd_ent_in = 0;
     ent_c.nat++;
     return 1;
 }

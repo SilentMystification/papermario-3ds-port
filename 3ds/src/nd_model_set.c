@@ -52,11 +52,13 @@ int nd_model_draw(const uint32_t* rec, const NdMCtx* c0, const void* list, int e
             memcpy(a->pal, pal0, sizeof pal0);
             a->d = dd; a->d.tmpl = ida; a->d.pal = (const float(*)[16])a->pal; a->d.npal = 1;
             a->s = ss; a->sd = rng[r].sd; a->nidx = rng[r].nidx; a->tk = ka;
+            if (a->d.use5) a->d.p5 = &a->s.p5; /* PERF2: the pm5 block of this copy */
         }
         NdNat* n = &nat[nat_n++];
         memcpy(n->pal, pal0, sizeof pal0);
         dd.pal = (const float(*)[16])n->pal; dd.npal = 1;
         n->d = dd; n->s = ss; n->sd = rng[r].sd; n->nidx = rng[r].nidx; n->zp = 0; n->zn = 0.f; n->tk = ss.k;
+        if (n->d.use5) n->d.p5 = &n->s.p5; /* PERF2: the pm5 block of this copy */
         if (ss.k.zmark) { /* S5-2 (a): zmark pass 2 after the pass 1 draw: the same triangles, constant depth zn * w (pal row 2 := zn * row 3 = z clip of the walker's b2.z), stencil EQUAL cleared */
             if (nat_n >= ND_NAT_MAX) { nat_n = 0; return (nd_nat_why = 11, -1); }
             NdTmplKey kb = ss.k; kb.pass = 3; kb.zmark = 0;
@@ -67,6 +69,7 @@ int nd_model_draw(const uint32_t* rec, const NdMCtx* c0, const void* list, int e
             for (int i = 0; i < 4; i++) b->pal[8 + i] = c.zn * pal0[12 + i];
             b->d = dd; b->d.tmpl = idb; b->d.pal = (const float(*)[16])b->pal; b->d.npal = 1;
             b->s = ss; b->s.k = kb; b->sd = rng[r].sd; b->nidx = rng[r].nidx; b->zp = 1; b->zn = c.zn; b->tk = kb;
+            if (b->d.use5) b->d.p5 = &b->s.p5; /* PERF2: the pm5 block of this copy */
         }
     }
     if (emit) {

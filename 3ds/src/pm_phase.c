@@ -430,14 +430,29 @@ static void pf_report(void) {
         pm_step_calls - pf_st0, vb, pf_iv[0], pf_iv[1], pf_iv[2], pf_iv[3]);
     /* PERF1: the counters on their own line */
     pm_log_prof_line("prof f%u w%u pmu %c %u %u cyc %u pm %u %u", pf_total, pf_w, pf_set, e0, e1, cy, p0, p1);
-    { /* PERF1: ms per sampled frame of each producer class (exclusive, nd.h NDT_*); rest = gbi less the classes (the walker ops, state, other lists) */
+    { /* PERF1: ms per sampled frame of each producer class (exclusive, nd.h NDT_*); PERF2: the op classes split what was rest */
         uint64_t ct[NDT_N]; pm_gpu_ndt_take(ct);
         unsigned cm[NDT_N], csum = 0;
         for (int k = 0; k < NDT_N; k++) { cm[k] = pf_cs(ct[k], pf_s); csum += cm[k]; }
-        int rest = (int)gbi - (int)csum; unsigned ra = rest < 0 ? (unsigned)-rest : (unsigned)rest;
-        pm_log_prof_line("prof f%u w%u cls rec %u.%02u ent %u.%02u spr %u.%02u dlc %u.%02u sub %u.%02u rest %s%u.%02u", pf_total, pf_w,
-            cm[NDT_REC] / 100u, cm[NDT_REC] % 100u, cm[NDT_ENT] / 100u, cm[NDT_ENT] % 100u, cm[NDT_SPR] / 100u, cm[NDT_SPR] % 100u,
-            cm[NDT_DLC] / 100u, cm[NDT_DLC] % 100u, cm[NDT_SUB] / 100u, cm[NDT_SUB] % 100u, rest < 0 ? "-" : "", ra / 100u, ra % 100u);
+        /* PERF2 step 6: rest = the walk (nd: gbi_walk ticks) less the classes; task = gbi less the walk (the task start: the GPU tail wait outside its own phases, nd_frame_begin) */
+        const unsigned ndw = pf_cs(pf_nd_t, pf_s);
+        int rest = (int)ndw - (int)csum; unsigned ra = rest < 0 ? (unsigned)-rest : (unsigned)rest;
+        int task = (int)gbi - (int)ndw; unsigned ta = task < 0 ? (unsigned)-task : (unsigned)task;
+        /* PERF2 step 6: the op classes and kick and raw on the same line (ms x 100 per sampled frame, integer: cs() prints a.bc), then the counters per drawn
+         * frame x 10 (c10): program switches, shadow resets, UpdateContext calls, splits, sprite memo hits and misses, full combine syncs in ent, ent_gdl lists */
+        unsigned cn[8]; pm_gpu_cnt_take(cn);
+        unsigned c10[8], pw = pf_w ? pf_w : 1u;
+        for (int k = 0; k < 8; k++) c10[k] = (unsigned)((unsigned long long)cn[k] * 10u / pw);
+#define CS(v) (v) / 100u, (v) % 100u
+#define C1(v) (v) / 10u, (v) % 10u
+        pm_log_prof_line("prof f%u w%u cls rec %u.%02u ent %u.%02u spr %u.%02u dlc %u.%02u sub %u.%02u kick %u.%02u raw %u.%02u tex %u.%02u comb %u.%02u geo %u.%02u mtx %u.%02u rect %u.%02u list %u.%02u rest %s%u.%02u task %s%u.%02u", pf_total, pf_w,
+            CS(cm[NDT_REC]), CS(cm[NDT_ENT]), CS(cm[NDT_SPR]), CS(cm[NDT_DLC]), CS(cm[NDT_SUB]), CS(cm[NDT_KICK]), CS(cm[NDT_RAW]), CS(cm[NDT_TEX]), CS(cm[NDT_COMB]),
+            CS(cm[NDT_GEO]), CS(cm[NDT_MTX]), CS(cm[NDT_RECT]), CS(cm[NDT_LIST]), rest < 0 ? "-" : "", CS(ra), task < 0 ? "-" : "", CS(ta));
+        /* the counters on their own line: on the cls line they passed the 256-byte log slot */
+        pm_log_prof_line("prof f%u w%u cnt prg %u.%u shr %u.%u upd %u.%u spl %u.%u smh %u.%u smm %u.%u esync %u.%u gdl %u.%u", pf_total, pf_w,
+            C1(c10[0]), C1(c10[1]), C1(c10[2]), C1(c10[3]), C1(c10[4]), C1(c10[5]), C1(c10[6]), C1(c10[7]));
+#undef CS
+#undef C1
     }
     { /* S0-6: stage line. nd: native emit ms per sampled frame. lg: legacy walker (gbi) ms per sampled frame. dr, tc, tw, tri: per drawn frame. leg: LEGACY records per drawn frame. gb: GPU busy ms per sampled frame. */
         unsigned long long pv[6]; pm_gpu_pf_read(pv);
