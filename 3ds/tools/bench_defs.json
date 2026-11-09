@@ -3064,6 +3064,21 @@
       "gates": []
     },
     {
+      "name": "nok11_det_ref",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "WATER: nok11_det with nomodelnat (walker byte reference of the nok_11 water).",
+      "scenario": "nok11_det_ref",
+      "cap": 45,
+      "until": "fxtest: shot 1 effect 89 water_splash",
+      "tags": [
+        "azahar",
+        "water"
+      ],
+      "gates": []
+    },
+    {
       "name": "nok11_detlog",
       "kind": "azahar_pic",
       "speed": "turbo",

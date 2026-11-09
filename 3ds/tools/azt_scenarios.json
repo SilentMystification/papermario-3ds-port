@@ -1258,6 +1258,33 @@
       ]
     },
     {
+      "name": "nok11_det_ref",
+      "status": "unverified",
+      "reason": "WATER gate: the byte reference of nok11_det with the walker drawing every model (nomodelnat). The water under the bridge is the subject.",
+      "subject": "nok11_det with nomodelnat: Mario in nok_11 (entry 0), water splash at frame 400, shots to frame 432, cold det.",
+      "proves": "WATER B1: the native water (suimen) region of nok11_det equals the walker draw.",
+      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 shots loglevel=debug grablog offdump=410 fixedseed fast fs1off det nomodelnat",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "shot 16 frame \\d+",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: nok_11 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: nok_11 entry 0"
+        },
+        {
+          "name": "spawn",
+          "regex": "fxtest: spawn 89 water_splash"
+        }
+      ]
+    },
+    {
       "name": "nok11_detlog",
       "status": "unverified",
       "subject": "DET-1 cold run: Mario in nok_11 (entry 0), water splash spawned at frame 400 (fxtest 89), shot 1 at frame 412. One detlog line per game step (det step N ...).",
