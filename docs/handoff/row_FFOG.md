@@ -6,6 +6,13 @@ mim_01: "the culling of the background items is not right, things pop in and out
 the other way (the cull turns the wrong way relative to the camera; same report as before FFOREST). Investigate by code.
 The user reports are the faults; if Azahar does not show them, hand back with your exact setup so the orchestrator asks the user.
 
+## User facts 2 (2026-11-09)
+Floor: no pattern ("random"), any mim room. Cull: when the camera turns right, items on the LEFT side vanish (while still on screen).
+Azahar (agent, base f8a962bac): not shown; cull plane signs (nd_shape.c:277-292) and cull_cross (nd_geom.c:53-59) correct by code.
+Diagnostics merged 8bc6b761f (wzcull, dlcwz line); the dlcwz line never printed on mim_01, so the range cull may not be the path.
+Open idea (orchestrator): in widescreen the visible width is 1.25x the 4:3 frustum; a cull that uses 4:3 planes or the game's own
+4:3 visibility test drops items at the screen edges that only wide mode shows. Check whether the user plays in Widescreen.
+
 ## Floor (shared oracle, code read)
 mim_01 ground o401 (SURFACE_OPA, y 0, +-550, 44 triangles, edges up to 508 units). Forest fog 990..1000, colour (0,0,0), black
 background. Fogged map models draw through pm5. Cause 1: 3ds/shaders/pm5.v.pica:135-143 `alpha = clamp(fogu.x * z/w + fogu.y,
