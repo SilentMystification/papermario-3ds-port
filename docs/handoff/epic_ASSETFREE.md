@@ -1,7 +1,7 @@
-# Epic ASSETFREE (parked: NOT to be started; user, 2026-11-09)
+# Epic ASSETFREE (parked: NOT to be started; RELEASE BLOCKER; user, 2026-11-09)
 
 User: a future epic removes the game assets from the ELF. The console makes them on first boot from the user's own ROM.
-Do not start, plan or write rows for it until the user says so.
+Release blocker: no public release before this epic is done. The project is not near release yet. Do not start, plan or write rows for it until the user says so.
 
 Known facts for that time:
 - Today build.sh compiles ROM-derived data (assets/us, ver/us/build) into the binary, so every built 3dsx is a personal build.
