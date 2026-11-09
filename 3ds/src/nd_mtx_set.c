@@ -12,6 +12,7 @@
 #include "pm_port.h"
 #include "variables.h"
 #include "nd_int.h"
+#include "nd_op.h"
 
 /* GLOB: definitions moved here from the former pm_gbi.c (layout only). */
 NdLight lt[9];
@@ -165,9 +166,10 @@ void rec_lights(const Lightsn* L, unsigned k) {
     for (const Gfx* h = tg; h < p; h++) {
         u32 w0 = h->words.w0, w1 = h->words.w1;
         unsigned op = w0 >> 24;
-        if (g2_same(op, w0, w1)) { g2_note(op, w0); continue; }
-        if (op == G_MOVEWORD) gbi_moveword(w0, w1);
-        else if (op == G_MOVEMEM) gbi_movemem(w0, w1);
+        uint32_t t[2];
+        if (nd_op_xlate(w0, w1, t)) { if (!nd_op_same(t)) nd_op_apply(t); continue; } /* HC4a: G_MOVEWORD (light count) typed */
+        if (g2_same(op, w0, w1)) continue;
+        if (op == G_MOVEMEM) gbi_movemem(w0, w1);
     }
 }
 

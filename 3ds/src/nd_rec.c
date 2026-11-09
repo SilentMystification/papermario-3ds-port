@@ -11,6 +11,7 @@
 #include "pm_port.h"
 #include "nd.h"
 #include "nd_cmd.h"
+#include "nd_op.h"
 #include "gbi_custom.h"
 
 extern s32 gCurrentDisplayContextIndex;
@@ -150,9 +151,10 @@ void nd_rec_texrect(uint32_t w0, uint32_t w1, uint32_t hs, uint32_t hd) {
     p[4] = hs;
     p[5] = hd;
 }
-/* D4b-3: a state op extends the open NDC_STATE run when nothing was recorded after it (no span, no other command) and the chunk has room;
+/* D4b-3: a state op (HC4a: typed by nd_op_xlate) extends the open NDC_STATE run when nothing was recorded after it (no span, no other command) and the chunk has room;
  * else it opens a new run. */
 void nd_rec_state(uint32_t w0, uint32_t w1) {
+    { uint32_t t[2]; nd_op_xlate(w0, w1, t); w0 = t[0]; w1 = t[1]; } /* HC4a: the scalar state ops typed on the recorder (nd_op.h) */
     rec_open();
     ndc_sw++;
     uint32_t* h = st_hdr;

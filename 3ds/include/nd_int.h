@@ -73,7 +73,6 @@ unsigned sc_sig_now(void);
 void draw_tri(unsigned w);
 void gbi_cold_modifyvtx(u32 w0, u32 w1);
 void gbi_movemem(u32 w0, u32 w1);
-void gbi_moveword(u32 w0, u32 w1);
 void gbi_popmtx(u32 w1);
 void gbi_setcimg(u32 w0, u32 w1);
 void gbi_setenv(u32 w1);
@@ -160,7 +159,8 @@ extern unsigned vert_tss[64];
 /* DIRECT D10c: an RDP sync or G_SPNOOP (no work on the 3DS; the list executor and the record ops skip it). */
 static inline int nd_op_sync(unsigned op) { return (op >= G_RDPLOADSYNC && op <= G_RDPFULLSYNC) || op == G_SPNOOP; }
 int g2_same(unsigned op, u32 w0, u32 w1);
-void g2_note(unsigned op, u32 w0);
+int nd_op_same(const uint32_t* u);    /* HC4a: nd_set.c, the typed scalar ops (nd_op.h) */
+void nd_op_apply(const uint32_t* u);
 void gbi_cold_bad_next(u32 w1, u32 w0, u32 list);
 void gbi_cold_bad_vtx(u32 w1, u32 w0, u32 list);
 void gbi_cold_bad_mtx(u32 w0, u32 w1, Gfx* list, Gfx* pc);
