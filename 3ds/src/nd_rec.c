@@ -166,7 +166,7 @@ void nd_rec_tex4(const NdTex4* t) {
     p[4] = t->ul;
     p[5] = t->lr;
     p[6] = t->f;
-    p[7] = 0;
+    p[7] = t->siz;
 }
 void nd_rec_texrect(uint32_t w0, uint32_t w1, uint32_t hs, uint32_t hd) {
     nd_rec_cut();
@@ -216,6 +216,38 @@ void nd_gx_texrect(Gfx* g, int xl, int yl, int xh, int yh, unsigned tile, int s,
     if (nd_rec_sub) { memcpy(gMainGfxPos, r, sizeof r); gMainGfxPos += 3; return; }
     nd_rec_texrect(r[0].words.w0, r[0].words.w1, r[1].words.w1, r[2].words.w1);
 }
+void nd_gx_textile(Gfx* g, const void* timg, unsigned fmt, unsigned siz, unsigned w, unsigned h, int uls, int ult, int lrs, int lrt, unsigned pal,
+                   unsigned cms, unsigned cmt, unsigned masks, unsigned maskt, unsigned shifts, unsigned shiftt) {
+    if (g != gMainGfxPos - 1) gx_bad(g);
+    gMainGfxPos = g;
+    if (nd_rec_sub) { /* the words of gDPLoadTextureTile (its siz##_TILE_BYTES and _LINE_BYTES are 0, 1, 2, 2 for 4b, 8b, 16b, 32b) */
+        static const unsigned char tb[4] = { 0, 1, 2, 2 };
+        unsigned line = (((unsigned)(lrs - uls + 1) * tb[siz & 3u]) + 7u) >> 3;
+        gDPSetTextureImage(gMainGfxPos++, fmt, siz, w, timg);
+        gDPSetTile(gMainGfxPos++, fmt, siz, line, 0, G_TX_LOADTILE, 0, cmt, maskt, shiftt, cms, masks, shifts);
+        gDPLoadSync(gMainGfxPos++);
+        gDPLoadTile(gMainGfxPos++, G_TX_LOADTILE, uls << G_TEXTURE_IMAGE_FRAC, ult << G_TEXTURE_IMAGE_FRAC, lrs << G_TEXTURE_IMAGE_FRAC, lrt << G_TEXTURE_IMAGE_FRAC);
+        gDPPipeSync(gMainGfxPos++);
+        gDPSetTile(gMainGfxPos++, fmt, siz, line, 0, G_TX_RENDERTILE, pal, cmt, maskt, shiftt, cms, masks, shifts);
+        gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, uls << G_TEXTURE_IMAGE_FRAC, ult << G_TEXTURE_IMAGE_FRAC, lrs << G_TEXTURE_IMAGE_FRAC, lrt << G_TEXTURE_IMAGE_FRAC);
+        return;
+    }
+    NdTex4 t = { timg, NULL, 10u, (w & 0xffffu) | (h << 16), ((unsigned)uls & 0xffffu) | ((unsigned)ult << 16),
+                 ((unsigned)lrs & 0xffffu) | ((unsigned)lrt << 16),
+                 (fmt & 7u) | ((cms & 3u) << 4) | ((cmt & 3u) << 6) | ((masks & 15u) << 8) | ((maskt & 15u) << 12) | ((shifts & 15u) << 16) |
+                 ((shiftt & 15u) << 20) | ((pal & 15u) << 24), siz & 3u };
+    nd_rec_tex4(&t);
+}
+void nd_gx_scisrect(Gfx* g, int xl, int yl, int xh, int yh, unsigned tile, int s, int t, int dsdx, int dtdy) {
+    if (g != gMainGfxPos - 1) gx_bad(g);
+    gMainGfxPos = g;
+    Gfx r[3];
+    Gfx* rp = r;
+    gSPScisTextureRectangle(rp++, xl, yl, xh, yh, tile, s, t, dsdx, dtdy);
+    if (nd_rec_sub) { memcpy(gMainGfxPos, r, sizeof r); gMainGfxPos += 3; return; }
+    nd_rec_texrect(r[0].words.w0, r[0].words.w1, r[1].words.w1, r[2].words.w1);
+}
+const uint32_t* nd_rec_pos(void) { return wp; }
 const uint32_t* nd_rec_mark(void) {
     nd_rec_cut();
     return wp;
