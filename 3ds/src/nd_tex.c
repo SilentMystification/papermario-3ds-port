@@ -67,7 +67,9 @@ static unsigned desc_hash(const NdTexDesc* d) {
     return h;
 }
 
-void nd_tex_reset(void) { memset(tex_idx, 0, sizeof tex_idx); tex_n = 0; }
+static unsigned tex_gen = 1; /* PERF2: bumped at each reset: an id taken before it is void (the sprite texture memo) */
+unsigned nd_tex_gen(void) { return tex_gen; }
+void nd_tex_reset(void) { memset(tex_idx, 0, sizeof tex_idx); tex_n = 0; tex_gen++; }
 
 int nd_tex_get(const NdTexDesc* in) {
     NdTexDesc d = *in;

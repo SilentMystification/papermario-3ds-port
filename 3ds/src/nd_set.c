@@ -132,6 +132,7 @@ void sync_render(void) {
     }
     sr_sig = sg;
     sr_ok = 1;
+    nd_ent_rfull += nd_ent_in;
     GP_SET(6, 0);
     unsigned m = nd_ws.omode_l;
     /* V06: the first blender cycle mixes the colour with the blend colour (m1a 2) or the fog colour (m1a 3) by the fog

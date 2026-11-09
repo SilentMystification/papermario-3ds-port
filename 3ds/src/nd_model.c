@@ -364,7 +364,7 @@ static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, Nd
     if (c->gv) {
         memcpy(d->uvso, c->gv->uvso, 16); memcpy(d->cmul, c->gv->cm, 16); memcpy(d->cadd, c->gv->ca, 16);
         d->zmix[0] = c->gv->zm[0]; d->zmix[1] = c->gv->zm[1];
-        if (c->gv->fxon) { d->use5 = 1; d->fx5 = c->gv->fx; memcpy(d->nrm5, c->nrm5, sizeof d->nrm5); }
+        if (c->gv->fxon) { d->use5 = 1; st->p5.fx = c->gv->fx; memcpy(st->p5.nrm, c->nrm5, sizeof st->p5.nrm); d->p5 = &st->p5; } /* PERF2: the block lives in st (the caller repoints a copy) */
     }
     memcpy(&st->k, &k, sizeof k); st->to = to; st->tmpl = id;
     return 1;
@@ -418,7 +418,10 @@ int nat_nr; uint32_t nat_geom;
 #define NDMC_N 1024u
 #define NDMC_POOL 512u
 static NdMEnt mc_tab[NDMC_N];
-static NdNat mc_pool[NDMC_POOL];
+static uint32_t mc_keyw[NDMC_N][NDMC_RW + NDMC_SW]; /* PERF2: the key words of mc_tab[i] (compared only when the hash matched) */
+static NdNatC mc_pool[NDMC_POOL];
+static NdPm5 mc_p5[NDMC_POOL]; /* PERF2: the pm5 block of a pooled draw (use5) */
+const uint32_t* nd_mc_keyw(const NdMEnt* e) { return mc_keyw[e - mc_tab]; }
 static unsigned mc_n, mc_pool_n, mc_clears_n;
 unsigned nd_handle_gen(void) { return hd_gen; }
 unsigned nd_mc_clears(void) { return mc_clears_n; }
@@ -426,7 +429,7 @@ unsigned nd_mc_clears(void) { return mc_clears_n; }
  * for the ndmcache diagnostics (pm_gpu.c ndc_cmp): the words that a diff depends on are added here, with the reason in agent_s3n.md. */
 static const uint8_t ndmc_cmp[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 38, 53, 54 }; /* S3L-3: 38 = the R13 words (hash) */
 #define NDMC_NCMP ((unsigned)(sizeof ndmc_cmp / sizeof ndmc_cmp[0]))
-static int mc_eq(const NdMKey* a, const NdMKey* b) { for (unsigned i = 0; i < NDMC_NCMP; i++) if (a->w[ndmc_cmp[i]] != b->w[ndmc_cmp[i]]) return 0; return 1; }
+static int mc_eq(const uint32_t* a, const NdMKey* b) { for (unsigned i = 0; i < NDMC_NCMP; i++) if (a[ndmc_cmp[i]] != b->w[ndmc_cmp[i]]) return 0; return 1; }
 uint32_t nd_mc_hash(const NdMKey* k) {
     uint32_t h = 2166136261u;
     for (unsigned i = 0; i < NDMC_NCMP; i++) { h ^= k->w[ndmc_cmp[i]]; h *= 16777619u; }
@@ -442,9 +445,9 @@ void nd_mc_miss(const NdMKey* k) {
     unsigned s = (k->rp >> 2) & (NDMC_LAST - 1u);
     if (mc_lastp[s] != k->rp) { mg_cls[0]++; return; }
     if (mc_lastg[s] != mc_clears_n) { mg_cls[1]++; return; }
-    const NdMEnt* e = &mc_tab[mc_lasti[s]];
+    const uint32_t* ew = mc_keyw[mc_lasti[s]];
     for (unsigned j = 0; j < NDMC_RW + NDMC_SW; j++) {
-        if (e->k.w[j] == k->w[j]) continue;
+        if (ew[j] == k->w[j]) continue;
         if (j < NDMC_RW) mg_cls[2]++;
         else if (j == NDMC_RW + 25u || j == NDMC_RW + 26u) mg_cls[4]++;
         else if (j < NDMC_RW + 27u) mg_cls[3]++;
@@ -457,15 +460,15 @@ void nd_mc_miss(const NdMKey* k) {
  * agrees longest with k; returns the first word that differs (92: no entry of this model). A full table scan per miss: debug only. */
 uint32_t nd_mc_xbits[92]; /* MAPX-2: the bits that differed, per first differing word (or of the xors) */
 __attribute__((cold, noinline)) unsigned nd_mc_xdiag(const NdMKey* k) {
-    unsigned best = 92u; const NdMEnt* be = NULL;
+    unsigned best = 92u; const uint32_t* bw = NULL;
     for (unsigned i = 0; i < NDMC_N; i++) {
-        const NdMEnt* e = &mc_tab[i];
-        if (!e->used || e->k.w[0] != k->w[0] || e->k.w[5] != k->w[5] || e->k.w[24] != k->w[24]) continue;
+        const uint32_t* w = mc_keyw[i];
+        if (!mc_tab[i].used || w[0] != k->w[0] || w[5] != k->w[5] || w[24] != k->w[24]) continue;
         unsigned j = 0;
-        while (j < NDMC_RW + NDMC_SW && e->k.w[j] == k->w[j]) j++;
-        if (best == 92u || j > best) { best = j < 92u ? j : 91u; be = e; }
+        while (j < NDMC_RW + NDMC_SW && w[j] == k->w[j]) j++;
+        if (best == 92u || j > best) { best = j < 92u ? j : 91u; bw = w; }
     }
-    if (be && best < 92u) nd_mc_xbits[best] |= be->k.w[best] ^ k->w[best];
+    if (bw && best < 92u) nd_mc_xbits[best] |= bw[best] ^ k->w[best];
     return best;
 }
 unsigned nd_mc_size(void) { return NDMC_N; }
@@ -484,25 +487,24 @@ NdMEnt* nd_mc_find(const NdMKey* k) {
     for (unsigned p = 0; p < NDMC_N; p++, h = (h + 1u) & (NDMC_N - 1u)) {
         NdMEnt* e = &mc_tab[h];
         if (!e->used) return NULL;
-        if (e->k.h == k->h && mc_eq(&e->k, k)) return e;
+        if (e->h == k->h && mc_eq(mc_keyw[h], k)) return e;
     }
     return NULL;
 }
 static int mc_new; /* MAPX-2: mc_slot made a new entry (0: it found the entry of an equal key) */
 static unsigned mc_rep; /* MAPX-2: entries replaced by a new key of the same record and model (nd_mc_store) */
 unsigned nd_mc_reps(void) { return mc_rep; }
-/* MAPX-2: remove an entry from the open hash (linear probe): the entries after it in its probe run move back (backward shift, no tombstone). A moved
- * entry leaves the address memo stale; the memo compares the key before use (nd_mc_find_rec). */
+/* MAPX-2: remove an entry from the open hash (linear probe): the entries after it in its probe run move back with their key words (backward shift, no
+ * tombstone). A moved entry leaves the address memo stale; the memo compares the key before use (nd_mc_find_rec). */
 static void mc_remove(NdMEnt* e) {
     unsigned i = (unsigned)(e - mc_tab), j = i;
     mc_tab[i].used = 0; mc_n--;
     for (;;) {
         j = (j + 1u) & (NDMC_N - 1u);
         if (!mc_tab[j].used) return;
-        const unsigned h = mc_tab[j].k.h & (NDMC_N - 1u);
-        /* the entry at j stays when its home h lies cyclically in (i, j] */
-        if (i <= j ? (h > i && h <= j) : (h > i || h <= j)) continue;
-        mc_tab[i] = mc_tab[j]; mc_tab[j].used = 0;
+        const unsigned h = mc_tab[j].h & (NDMC_N - 1u);
+        if (i <= j ? (h > i && h <= j) : (h > i || h <= j)) continue; /* the entry at j stays when its home h lies cyclically in (i, j] */
+        mc_tab[i] = mc_tab[j]; memcpy(mc_keyw[i], mc_keyw[j], sizeof mc_keyw[i]); mc_tab[j].used = 0;
         i = j;
     }
 }
@@ -528,8 +530,9 @@ static __attribute__((cold, noinline)) void mc_trim(void) {
         if (mc_at[o] < 0) continue;
         NdMEnt* e = &mc_tab[mc_at[o]];
         if (e->off != w) {
-            memmove(&mc_pool[w], &mc_pool[e->off], e->n * sizeof(NdNat));
-            for (unsigned j = 0; j < e->n; j++) mc_pool[w + j].d.pal = (const float(*)[16])mc_pool[w + j].pal; /* the pointer of the moved copy */
+            memmove(&mc_pool[w], &mc_pool[e->off], e->n * sizeof(NdNatC));
+            memmove(&mc_p5[w], &mc_p5[e->off], e->n * sizeof(NdPm5));
+            for (unsigned j = 0; j < e->n; j++) if (mc_pool[w + j].d.use5) mc_pool[w + j].d.p5 = &mc_p5[w + j]; /* the pm5 block of the moved copy */
             e->off = (uint16_t)w;
         }
         w += e->n;
@@ -542,8 +545,8 @@ static NdMEnt* mc_slot(const NdMKey* k) {
     uint32_t h = k->h & (NDMC_N - 1u);
     for (;;) {
         NdMEnt* e = &mc_tab[h];
-        if (!e->used) { e->used = 1; e->k = *k; e->uf = mc_f; e->n = 0; mc_n++; mc_ins++; if (mc_n > mc_ent_hi) mc_ent_hi = mc_n; mc_new = 1; return e; }
-        if (e->k.h == k->h && mc_eq(&e->k, k)) { e->uf = mc_f; mc_new = 0; return e; }
+        if (!e->used) { e->used = 1; e->h = k->h; e->rp = k->rp; e->uf = mc_f; e->n = 0; memcpy(mc_keyw[h], k->w, sizeof k->w); mc_n++; mc_ins++; if (mc_n > mc_ent_hi) mc_ent_hi = mc_n; mc_new = 1; return e; }
+        if (e->h == k->h && mc_eq(mc_keyw[h], k)) { e->uf = mc_f; mc_new = 0; return e; }
         h = (h + 1u) & (NDMC_N - 1u);
     }
 }
@@ -558,7 +561,7 @@ NdMEnt* nd_mc_find_rec(NdMKey* k) {
     mc_f = pm_frame_count();
     if (mc_lastp[s] == k->rp && mc_lastg[s] == mc_clears_n) {
         NdMEnt* m = &mc_tab[mc_lasti[s]];
-        if (m->used && mc_eq(&m->k, k)) { k->h = m->k.h; m->uf = mc_f; return m; }
+        if (m->used && mc_eq(mc_keyw[mc_lasti[s]], k)) { k->h = m->h; m->uf = mc_f; return m; }
     }
     k->h = nd_mc_hash(k);
     NdMEnt* e = nd_mc_find(k);
@@ -575,7 +578,8 @@ NdMEnt* nd_mc_store(const NdMKey* k, int tex, int hs, unsigned hg) {
     {
         unsigned s = (k->rp >> 2) & (NDMC_LAST - 1u);
         NdMEnt* o = mc_lastp[s] == k->rp && mc_lastg[s] == mc_clears_n ? &mc_tab[mc_lasti[s]] : NULL;
-        if (o && o->used && o->k.w[0] == k->w[0] && o->k.w[5] == k->w[5] && o->k.w[24] == k->w[24] && !mc_eq(&o->k, k)) { roff = o->off; rn = o->n; reuse = 1; mc_remove(o); mc_rep++; }
+        const uint32_t* ow = o ? mc_keyw[mc_lasti[s]] : NULL;
+        if (o && o->used && ow[0] == k->w[0] && ow[5] == k->w[5] && ow[24] == k->w[24] && !mc_eq(ow, k)) { roff = o->off; rn = o->n; reuse = 1; mc_remove(o); mc_rep++; }
     }
     const unsigned clr0 = mc_clears_n, trm0 = mc_trims;
     NdMEnt* e = mc_slot(k);
@@ -592,16 +596,17 @@ NdMEnt* nd_mc_store(const NdMKey* k, int tex, int hs, unsigned hg) {
     }
     e->vmask = nat_vm; e->geom = nat_geom; e->tgen = ~0u; /* the first hit builds the template ids */
     e->tex = (uint8_t)(tex != 0); e->hs = hs; e->hg = hg;
-    e->off = off; e->n = (unsigned)nat_n;
+    e->off = (uint16_t)off; e->n = (unsigned)nat_n;
     e->mver = 0; e->uf = mc_f;
     for (int j = 0; j < nat_n; j++) {
-        NdNat* q = &mc_pool[off + (unsigned)j];
-        *q = nat[j];
-        q->d.pal = (const float(*)[16])q->pal; /* the pointer of the copy, not of nat[] */
-        if (q->d.use5) e->mver = (((const uint32_t*)(uintptr_t)k->rp)[3] >> 16) | 0x10000u; /* MAPX-2: normal rows and fx block from this matrix */
+        const unsigned pi = off + (unsigned)j;
+        NdNatC* q = &mc_pool[pi];
+        q->d = nat[j].d; q->sd = nat[j].sd; q->nidx = nat[j].nidx; q->zn = nat[j].zn; q->zp = nat[j].zp; q->mix_st = (int8_t)nat[j].s.to.mix_st; q->tk = nat[j].tk;
+        q->d.pal = NULL; /* the hit points it at the palette 0 of its view */
+        if (q->d.use5) { mc_p5[pi] = nat[j].s.p5; q->d.p5 = &mc_p5[pi]; e->mver = (((const uint32_t*)(uintptr_t)k->rp)[3] >> 16) | 0x10000u; } /* MAPX-2: the pm5 block comes from this matrix */
     }
     if (mc_pool_n > mc_pool_hi) mc_pool_hi = mc_pool_n;
     mc_note(k, e);
     return e;
 }
-NdNat* nd_mc_nat(NdMEnt* e, unsigned j) { return &mc_pool[e->off + j]; }
+NdNatC* nd_mc_nat(NdMEnt* e, unsigned j) { return &mc_pool[e->off + j]; }

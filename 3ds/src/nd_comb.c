@@ -570,6 +570,7 @@ void sync_combine(void) {
         if (sc_ok && sg == sc_sig) { GP_SET(5, 1); return; }
         sc_sig = sg;
         sc_ok = 0; sr_ok = 0; /* set again below when the work is done */
+        nd_ent_cfull += nd_ent_in;
     }
     int leg0 = leg_mode, pat0 = box_pat;
     NdCombIn cin; int chk = combchk_on() ? (comb_in_walker(&cin), 1) : 0; /* S3N-3d: inputs before the work */

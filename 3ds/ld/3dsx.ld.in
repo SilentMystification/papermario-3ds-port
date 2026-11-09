@@ -29,10 +29,12 @@ SECTIONS
 		. = ALIGN(4);
 
 		/* .text: hot walker span first (by function section name, -ffunction-sections), in call order of one draw; 16 KB or less (ARM11 L1I). Hot set: wcen_mac01 opsplit, S103. Then cold code (.text.unlikely.*), then the rest. */
-		*(.text.nd_walk_run .text.pm_gbi_run .text.nd_geom_vtx .text.gv_epoch_enter .text.gv_params_calc .text.gv_tri .text.draw_tri)
-		*(.text.tex_op .text.tex_op.* .text.ensure_tile .text.ensure_tile.* .text.load_mtx .text.sync_combine .text.sync_combine_work .text.g2_same .text.flush_draw)
-		*(.text.nd_raw_native .text.nd_native_submit .text.nd_tmpl_build .text.nd_emit_draw .text.ndunit_after) /* A5: the batch close in call order */
-		*libcitro3d.a:*(.text.C3Di_UpdateContext .text.C3D_TexBind .text.C3D_UpdateUniforms)
+		/* PERF2 step 4: by rate. Per op (the walk loop, its state ops and the triangle path), then per draw (the batch close in call order); C3Di_UpdateContext and
+		 * C3D_UpdateUniforms left the span (about 2 calls per frame after PERF2 step 1). Span bytes: python 3ds/tools/hotspan.py <map>. */
+		*(.text.nd_walk_run .text.g2_same .text.pm_gbi_run .text.gv_params_calc .text.gv_epoch_enter .text.gv_tri .text.draw_tri .text.nd_geom_vtx)
+		*(.text.tex_op .text.tex_op.* .text.ensure_tile .text.ensure_tile.* .text.load_mtx .text.sync_combine .text.pm_gpu_gappend .text.pm_gpu_gtrip)
+		*(.text.flush_impl .text.flush_impl_body .text.flush_draw .text.nd_raw_native .text.nd_native_submit .text.nd_tmpl_build .text.nd_emit_draw .text.ndunit_after .text.sync_combine_work) /* A5: the batch close in call order */
+		*libcitro3d.a:*(.text.C3D_TexBind)
 		*(.text.unlikely.*)
 		*(.text)
 		*(.text.*)

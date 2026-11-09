@@ -9,7 +9,7 @@ A5: the DSP path is the only audio path at every boot, there is no `dspaudio` sw
 2. The set of samples that a 10 s window plays is small: 9 to 16 unique samples, 71 to 178 KB of VADPCM (M). As PCM16 it is 253 to 633 KB.
 3. Recommended codec: decode the VADPCM on the CPU once, when a sample first plays, into a PCM16 cache in linear memory (budget 1.5 MB). No offline tool and no SD library are needed. The decode is the exact N64 decode. The ndsp channels play mono PCM16.
 4. ndsp does the resample (pitch), the pan and the mix. The N64 control side stays. The AU2 command queue becomes the bridge: a timeline thread on core 1 replays the commands in time order and writes the ndsp channel parameters once per DSP frame (4.9 ms).
-5. Effects: the two aux outputs of ndsp carry the wet sends. A small CPU reverb in the aux callback processes them. The result returns through one reserved stereo PCM16 channel (channel 23). The game then has 23 voices (it used 14 at most).
+5. Effects: the two aux outputs of ndsp carry the wet sends. A small CPU reverb in the aux callback processes them. The result returns through one reserved stereo PCM16 channel (channel 23). The 24 engine voices share the 23 other channels (the game used 14 at most).
 
 ## 2. What the N64 engine does per tick (C)
 
@@ -39,8 +39,7 @@ A5: the DSP path is the only audio path at every boot, there is no `dspaudio` sw
 
 | N64 | ndsp |
 |---|---|
-| voice i (0 to 22) | channel i |
-| voice 23 | not usable: reserved by the engine at init (priority never free). Channel 23 is the effect return. |
+| voice i (0 to 23) | the lowest free channel of 0 to 22, taken at the voice start, given back at its stop or end (dsp_voice.c). Voice 23 is sound effect player 7, the first player the free-player search takes. Channel 23 is the effect return. |
 | pitch ratio r | `ndspChnSetRate(i, r * 32000)` (sample rate in Hz is `sampleRate`, ratio is rate / 32000 already) |
 | volume, pan, fxMix | mix floats: dry L = volL * dry, dry R = volR * dry, aux0 L/R = volL/volR * wet (bus 0), aux1 L/R (bus 1) |
 | bus 0, bus 1 | aux 0, aux 1 |
@@ -52,7 +51,7 @@ A5: the DSP path is the only audio path at every boot, there is no `dspaudio` sw
 | stop voice | `ndspChnWaveBufClear` |
 | sample end | wave buffer status DONE or `ndspChnIsPlaying` false, then `au2_stop_record` with the block of the timeline |
 
-Voice limit and stealing: the engine already picks and steals inside its slots by priority, so the mapping keeps its rules. With 23 usable slots against a measured maximum of 14, no extra stealing code is needed. A log counter reports any tick with 23 voices.
+Voice limit and stealing: the engine already picks and steals inside its slots by priority, so the mapping keeps its rules. With 23 channels for 24 voices against a measured maximum of 14, no extra stealing code is needed: a start that finds all 23 channels playing waits for one. The audiostat line `audio voices w<n>` counts the starts, the starts with no channel and the cut voices (cache give-up, loop cap) per window.
 
 ## 5. Codec decision
 
@@ -171,4 +170,4 @@ Play the same scene twice, once without and once with `dspaudio`.
 - `dspaudio` and the old mixer output (ndsp channel 0 with posted PCM) are removed. `pm_audio_post` does nothing: the voices play on ndsp channels. `audiohash` and the posts counters no longer measure audio. `au2off` now means silent audio (DSP needs the queue).
 - The wet fold stays (the user hears it and it sounds right). One log line `dspaudio: the folded wet sends of a voice reach gain ...` the first time a voice sum is above 1.0.
 - The aux callback of ndsp still did not run on the O3DS (log of build 1036): cause not found, code reading only is open.
-- Boot check: the log shows `dspaudio: on, 23 voices on ndsp channels ...` with no switch.
+- Boot check: the log shows `dspaudio: on, 24 engine voices on 23 ndsp channels ...` with no switch.

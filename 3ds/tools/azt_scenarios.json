@@ -10147,6 +10147,81 @@
       "reason": "MSGBOX row. The debug hook uishow (pm_warp.c) opens the messages at scene frame 200 (global frame about 249) with no input; one shot after the text is printed. Cap 30 s: cold start 12 to 16 s plus about 9 s of game time."
     },
     {
+      "name": "aud_mac01",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 at pos 0 0 200 (music and sound effects), audiostat census, shot at frame 400.",
+      "proves": "AUDV census: the audio voices line counts the engine voice starts, the starts that get no ndsp channel and the voices cut before their end, per 300-step window (switch audiostat).",
+      "debug": "warp=mac_01:0 pos=0:0:200 audiostat loglevel=debug shots shotwin=400:1",
+      "extra": [],
+      "until": "audio voices w2: starts \\d+ no channel \\d+ cut \\d+",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "scene shot",
+          "regex": "shot \\d+ frame 400\\b"
+        },
+        {
+          "name": "census window 2",
+          "regex": "audio voices w2: starts \\d+ no channel \\d+ cut \\d+"
+        }
+      ],
+      "reason": "AUDV census: the second 300-step window (steps 300 to 600, about 22 s at normal speed after the boot) holds the scene audio. Cap 45 s for the boot plus 600 steps."
+    },
+    {
+      "name": "aud_battle",
+      "status": "unverified",
+      "subject": "Battle on kmr_03 (one Goomba, battle from scene frame 100, battle music and battle sounds), audiostat census, shot at frame 400.",
+      "proves": "AUDV census: the audio voices line counts the engine voice starts, the starts that get no ndsp channel and the voices cut before their end, per 300-step window (switch audiostat).",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 audiostat loglevel=debug shots shotwin=400:1",
+      "extra": [],
+      "until": "audio voices w2: starts \\d+ no channel \\d+ cut \\d+",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "scene shot",
+          "regex": "shot \\d+ frame 400\\b"
+        },
+        {
+          "name": "census window 2",
+          "regex": "audio voices w2: starts \\d+ no channel \\d+ cut \\d+"
+        }
+      ],
+      "reason": "AUDV census: the second 300-step window (steps 300 to 600, about 22 s at normal speed after the boot) holds the scene audio. Cap 45 s for the boot plus 600 steps."
+    },
+    {
+      "name": "aud_intro",
+      "status": "unverified",
+      "subject": "Boot with no warp: logos, then the intro story cutscene with its music (the busiest music window of the console census, 13 voices), audiostat census, shot at frame 450.",
+      "proves": "AUDV census: the audio voices line counts the engine voice starts, the starts that get no ndsp channel and the voices cut before their end, per 300-step window (switch audiostat).",
+      "debug": "audiostat loglevel=debug shots shotwin=450:1",
+      "extra": [],
+      "until": "audio voices w2: starts \\d+ no channel \\d+ cut \\d+",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "game mode 1 frame",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "scene shot",
+          "regex": "shot \\d+ frame 450\\b"
+        },
+        {
+          "name": "census window 2",
+          "regex": "audio voices w2: starts \\d+ no channel \\d+ cut \\d+"
+        }
+      ],
+      "reason": "AUDV census: the second 300-step window (steps 300 to 600, about 22 s at normal speed after the boot) holds the scene audio. Cap 45 s for the boot plus 600 steps."
+    },
+    {
       "name": "xfer_door_mac01",
       "status": "unverified",
       "reason": "MAPX-1 measure and the MAPX-2 gate (door key churn). Walk 60 to 120 frames, door 60, tail 30, twice: about 15 s after the warp. Cap 40 s.",
