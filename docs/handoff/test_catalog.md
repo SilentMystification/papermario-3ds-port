@@ -62,6 +62,7 @@ bench, host (azahar, o3ds, n3ds, host), device, build_no, commit, date, ts, row,
 - Turbo and normal rows are never averaged. Old runs have speed unknown.
 - Console recipes carry only the switches named in the bench recipe (prof=30 for spots). No stat switches by default: they change the frame time. Console comparisons: same route, prof mode; phase, pmu and sp0c only split a cost.
 - Scenes without a position tag record map "untagged".
+- No scene under test: warp=random (go.ps1 pushes add it when no spot is named). warp=random:<seed> boots to the spot the seed picks (pm_tour_spots); the log line `warp: random seed <n> -> map:entry@x:y:z` repeats the run. A scenario that tests a scene keeps its fixed spot.
 
 ## Files
 - 3ds/tools/bench.py, 3ds/tools/bench_defs.json (benches, tracked), 3ds/tools/azt_scenarios.json (scenarios), 3ds/tools/azt.ps1 (Azahar runner), 3ds/tools/azslot.ps1 (slot pool, warm restart), 3ds/tools/azreap.ps1 (closes an idle kept Azahar), 3ds/run_azahar.ps1 (one run; -Slot, -Keep, -NoWarm, -ResetBudget).
