@@ -25,7 +25,7 @@ Affected scenarios (no others): <list>
 CLAUDE.md rules 5, 7, 9, 11. PM_LANE=<id> on every build.sh and bench call. No git stash. Wait for background runs in the foreground. Commit after each passed step.
 
 ## Commands
-- Build: python 3ds/tools/gen_map_restore.py; PM_ROW=<id> PM_LANE=<id> sh 3ds/build.sh; restore 3ds/src/map_restore_table.c.
+- Build: PM_ROW=<id> PM_LANE=<id> sh 3ds/build.sh (it generates 3ds/src/map_restore_table.c).
 - Test: PM_ROW=<id> PM_LANE=<id> python 3ds/tools/bench.py run <bench> --row <id> --lane <id> --why "<text>"
 - Budget reset: powershell -NoProfile -File 3ds/run_azahar.ps1 -ResetBudget <id>
 

@@ -13,10 +13,7 @@ Contents (all committed on main):
 - TC1 texture cache statistics: lines `texstat` every 300 drawn frames (switch texstat or loglevel=debug).
 - UI-1 (lane-b commit 3aa8abf4f): Options tabs, D-pad modes, padscript tokens k_dup k_ddown k_dleft k_dright k_L k_R. Merged as 2773574de. The auto mode classifier denied the merge command in the HW-FIX session. The orchestrator or the user must run `git merge lane-b` on main (clean merge expected, lane-b does not touch map_restore_table.c). After the merge: build, run one full Azahar cycle without input, compare triout, vtxslot, draws, texmiss, texKB and statehash f1800 5a6bb12a, f4000 bcd4e3ea, f8000 1325de7e. Report the 3dsx size change.
 
-Build command (excludes the user's uncommitted map_restore_table.c):
-```
-git stash push 3ds/src/map_restore_table.c && sh 3ds/build.sh; git stash pop
-```
+Build command: `sh 3ds/build.sh` (it generates 3ds/src/map_restore_table.c).
 Use `--no-build` for every push. Note the build number from build3ds/pm_3ds.3dsx (the `build NNN` line) as B.
 
 User actions before EVERY push: open the Homebrew Launcher, press Y (netload), wait for the orchestrator. After the run press HOME, close the game.

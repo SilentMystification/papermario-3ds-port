@@ -151,7 +151,7 @@ def git_head():
 
 
 def git_dirty():
-    """True when a tracked file has changes, except 3ds/src/map_restore_table.c and 3ds/logs/. None when git fails."""
+    """True when a tracked file has changes, except 3ds/logs/. None when git fails."""
     try:
         out = subprocess.check_output(["git", "status", "--porcelain"], cwd=REPO, text=True)
     except Exception:
@@ -160,7 +160,7 @@ def git_dirty():
         if not ln.strip() or ln[:2] in ("??", "!!"):
             continue
         path = ln[3:].split(" -> ")[-1].strip().strip('"')
-        if path == "3ds/src/map_restore_table.c" or path.startswith("3ds/logs/"):
+        if path.startswith("3ds/logs/"):
             continue
         return True
     return False
@@ -1193,11 +1193,7 @@ def scratch_build(commit, gitdir, scratch, lane, row):
     (scratch / ".build_at_in_use").write_text(str(os.getpid()))
     arc = subprocess.run(["git", "archive", commit], cwd=REPO, capture_output=True, check=True).stdout
     tarfile.open(fileobj=io.BytesIO(arc)).extractall(scratch)
-    main = main_root()  # BASECACHE: a worktree has no user files (map_restore_table.c, ROM assets): they come from the main folder
-    gen = scratch / "3ds" / "src" / "map_restore_table.c"
-    shutil.copy2(main / "3ds" / "src" / "map_restore_table.c", gen)
-    subprocess.run([sys.executable, str(scratch / "3ds" / "tools" / "gen_map_restore.py")], cwd=scratch, check=True,
-                   stdout=subprocess.DEVNULL)
+    main = main_root()  # BASECACHE: a worktree has no ROM assets: they come from the main folder (map_restore_table.c: build.sh generates it)
     # The build inputs that git does not track (ROM-derived assets) come from the main folder. Read only.
     # Untracked inputs: git archive holds only some files of ver/us/build, so copy every file the main folder has and the archive lacks.
     for rel in BUILD_UNTRACKED:
@@ -1290,8 +1286,6 @@ def cmd_build_at(a):
         return build_at_dry(bd, a, commit, short, lane, gitdir, scratch, src3dsx)
     if console:
         return build_at_console(bd, a, commit, short, gitdir, scratch, src3dsx, lane)
-    main_map = REPO / "3ds" / "src" / "map_restore_table.c"
-    md5_before = md5_of(main_map)
     lane_dir = REPO / "build3ds" / ("lane-" + lane)
     rc = 0
     try:
@@ -1317,8 +1311,6 @@ def cmd_build_at(a):
     finally:
         shutil.rmtree(lane_dir, ignore_errors=True)
         shutil.rmtree(scratch, ignore_errors=True)
-    print("build-at %s: map_restore_table.c md5 before %s after %s (%s)" % (
-        short, md5_before, md5_of(main_map), "unchanged" if md5_of(main_map) == md5_before else "CHANGED"))
     return rc
 
 

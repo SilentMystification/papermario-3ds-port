@@ -24,6 +24,7 @@ build.ninja
 .ninja*
 *.ld
 !src/map_shape.ld
+/3ds/src/map_restore_table.c
 *.elf
 *.z64
 *.v64

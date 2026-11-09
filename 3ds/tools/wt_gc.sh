@@ -64,7 +64,7 @@ for w in build3ds/wt/*/; do
         */worktrees/*) ;;
         *) echo "remove stale folder $n (not a registered worktree)"; run rm -rf -- "build3ds/wt/$n"; continue ;;
     esac
-    if [ -n "$(git -C "$w" status --porcelain -uno -- . ':!3ds/src/map_restore_table.c' ':!3ds/logs/perf/runs.jsonl' 2>/dev/null)" ]; then
+    if [ -n "$(git -C "$w" status --porcelain -uno -- . ':!3ds/logs/perf/runs.jsonl' 2>/dev/null)" ]; then
         keep_wt="$keep_wt$n,"; echo "keep $n (uncommitted tracked changes)"; continue
     fi
     if [ -n "$ONLY" ]; then case "$ONLY" in *",$n,"*) ;; *) keep_wt="$keep_wt$n,"; continue ;; esac; fi
@@ -75,8 +75,8 @@ for w in build3ds/wt/*/; do
     if [ "$b" != DETACHED ] && ! git merge-base --is-ancestor "$b" main 2>/dev/null; then
         keep_wt="$keep_wt$n,"; echo "keep $n (branch $b has $(git rev-list --count main.."$b") commits not in main)"; continue
     fi
-    if [ -n "$(git -C "$w" status --porcelain -- . ':!3ds/src/map_restore_table.c' ':!3ds/logs/perf/runs.jsonl' 2>/dev/null | grep -v '^??')" ]; then
-        run sh -c "git -C '$w' diff -- . ':!3ds/src/map_restore_table.c' ':!3ds/logs/perf/runs.jsonl' > build3ds/archive/wt_${n}_dirty.patch"
+    if [ -n "$(git -C "$w" status --porcelain -- . ':!3ds/logs/perf/runs.jsonl' 2>/dev/null | grep -v '^??')" ]; then
+        run sh -c "git -C '$w' diff -- . ':!3ds/logs/perf/runs.jsonl' > build3ds/archive/wt_${n}_dirty.patch"
     fi
     (cd "$w" && git ls-files --others --exclude-standard | grep -E '\.(patch|diff)$') | while read -r f; do run cp "$w$f" build3ds/archive/; done
     echo "remove worktree $n ($b)"
