@@ -44,7 +44,7 @@ static void set_timg(u32 addr, unsigned fmt, unsigned siz, int stride) {
     nd_ws.timg = ptr_of(addr);
     if (!addr && zslot_on && siz == 2) nd_ws.timg = zb_fake; /* B5: the underwater mesh reads the z-buffer slot */
     /* D03: a texture read from a frame buffer is the last frame. Fetch it now. */
-    if (nd_ws.timg && pm_is_cfb(nd_ws.timg) && !pm_is_cur_cfb(nd_ws.timg) && !pm_interp_repl) pm_cfb_capture_prev(); /* F06-5: key pass only */ /* B2: the frame buffer being drawn is a grab (T2, grab_cur) */
+    if (nd_ws.timg && pm_is_cfb(nd_ws.timg) && !pm_is_cur_cfb(nd_ws.timg)) pm_cfb_capture_prev(); /* GAMEOVER: the t = 0.5 pass too (it is a drawn frame with its own old frame) */ /* B2: the frame buffer being drawn is a grab (T2, grab_cur) */
     nd_ws.tst1.timg_fmt = fmt;
     nd_ws.tst1.timg_siz = siz;
     nd_ws.tst1.timg_stride = stride;
@@ -355,6 +355,23 @@ void ensure_tile(int n) {
         return;
     }
     if (tile_bound(n)) {
+        nd_ws.cur_tile = n;
+        return;
+    }
+    /* GAMEOVER: a window of the off-screen image bound now (the 40 six-row strips of the previous-frame blur, one load each) samples the same
+     * texture: only the origin moves, so the queued rectangles stay in one batch (it was one flush and one draw per strip). Not the frame buffer
+     * being drawn: grab_cur decides a new copy for it. */
+    if (pm_tex_off_idx() >= 0 && ens_src && ens_pal == nd_ws.td[n].pal && ens_fmt == nd_ws.td[n].fmt && ens_siz == nd_ws.td[n].siz &&
+        !memcmp(nd_ws.tst1.tile_wrap[n], ens_wrap, sizeof ens_wrap) && !pm_is_cur_cfb(nd_ws.td[n].src) &&
+        pm_tex_off_rewin(nd_ws.td[n].src, nd_ws.td[n].fmt, nd_ws.td[n].siz)) {
+        int ox, oy, gox, goy;
+        pm_tex_origin(&ox, &oy);
+        pm_tex_glyph_ofs(&gox, &goy);
+        nd_ws.tile_x0 = nd_ws.td[n].x0 - ox - (n == 0 ? gox : 0);
+        nd_ws.tile_y0 = nd_ws.td[n].y0 - oy - (n == 0 ? goy : 0);
+        ens_src = nd_ws.td[n].src;
+        memcpy(ens_sz, nd_ws.tst1.tile_sz[n], sizeof ens_sz);
+        ens_img[n] = nd_ws.td[n].src;
         nd_ws.cur_tile = n;
         return;
     }

@@ -3802,6 +3802,38 @@
           "value": 0
         }
       ]
+    },
+    {
+      "name": "gameover_fps60",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "GAMEOVER: game over map gv_01 with 60 fps mode on, shots frames 70 to 89 (every drawn frame), draw census at frame 80. A person reads the shot: consecutive shots consistent (no alternating blur), GAME OVER letters.",
+      "scenario": "gameover_fps60",
+      "cap": 30,
+      "until": "shot \\d+ frame 89\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "gameover"
+      ],
+      "gates": []
+    },
+    {
+      "name": "gameover_30",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "GAMEOVER: game over map gv_01 with 60 fps mode off, shots frames 70 to 89 (every drawn frame), draw census at frame 80. A person reads the shot: consecutive shots consistent (no alternating blur), GAME OVER letters.",
+      "scenario": "gameover_30",
+      "cap": 30,
+      "until": "shot \\d+ frame 89\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "gameover"
+      ],
+      "gates": []
     }
   ],
   "legacy": {
