@@ -4,7 +4,7 @@ Epic DIRECT (row_DIRECT.md). One Opus agent, worktree build3ds/wt/DIRECT, base m
 Tags: [C file:line] read in source for this plan; [M source] measured; [U] not checked.
 
 ## 0. Where the frame time goes now
-- O3DS XL, mac_01 at 0 0 200, prof (hw_live_log_131.txt, f989): walk 20.57 ms per frame; split `cls`: rec 5.41 (model records), sub 3.14 (native submits), rect 2.29, comb 1.94, tex 1.80, ent 1.84, raw 1.53, list 1.04, mtx 0.68, spr 0.42, geo 0.25 [M]. Logic thread (core 1) lgms 17.91 ms per step [M same line].
+- O3DS XL, mac_01 at 0 0 200, prof (hw_live_log_131.txt, f989): walk 20.57 ms per frame; split `cls`: rec 5.41 (model records), sub 3.14 (native submits), rect 2.29, comb 1.94, tex 1.80, ent 1.84, raw 1.53, list 1.04, mtx 0.68, spr 0.42, geo 0.25 [M]. Logic thread (core 1, main 72c60c53c): lgms 18.3 ms per step, of which bw = fw 11.8 ms is the wait for the core 0 walk; logic work about 6.5 ms. Core 0 5.29M cycles (about 19.7 ms) per frame, 54.2k I-cache misses, 30.0 fps: core 0 is the limit [M orchestrator, console run of 72c60c53c].
 - The list decode and state part (tex + comb + geo + mtx + list) is about 5.7 ms of the 20.6 ms; the rest is the native draw work (records, entity lists, rects, submits) [M].
 - Core 0 hot code about 23 KB against the 16 KB L1I (agent_s10.md, hot span 23,268 B); most I-cache misses are the walk evicting itself (row_CORE2C.md) [M].
 - The seam (row_CORE2C.md): producers on one core, emit and submit on the other. Today core 1 builds N64 words and core 0 decodes them again and keeps the whole N64 state machine (nd_ws, td[], combine sync, g2_same, tex_op) in its hot set.
@@ -92,7 +92,7 @@ Gates per slice (row_DIRECT.md): nd_host PASS; byte-equal shots against build-at
 - The replay loop is one switch by op over a sequential stream: PLD ahead every 32 bytes (rule 3), no division (rule 4), table dispatch (rule 5). Cold paths (census, c2haz, overflow) are cold, noinline (rule 1).
 - Records are copied into the stream in order, whole words (rule 3); one cache line per header plus payload.
 - Phase B moves the decoders off core 0: the core 0 hot set loses nd_walk_run, g2_same, tex_op decode and the othermode decode (rule 1, 10). Each phase B slice reports the hot span size from the map.
-- Core 1 budget: lgms 17.9 ms at mac_01 (O3DS) leaves about 15 ms at 30 fps; each phase B slice reports lgms on the console list.
+- Core 1 budget: logic work about 6.5 ms per step at mac_01 (O3DS; the rest of lgms 18.3 is the wait for core 0), so about 26 ms of a 33.3 ms step is free for the recorder; each phase B slice reports lgms and the core2 wait line on the console list.
 
 ## 10. Risks
 - A cut inside a branched-over region walks data as words: the nd_rec_sub bracket and the section 5 audit prevent it; the close check logs a span outside the task list (cold, once).
