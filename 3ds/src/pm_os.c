@@ -459,6 +459,24 @@ const unsigned char* pm_rom_ptr(unsigned addr, unsigned len) {
 #define ASSET_TABLE_START 0x1E40020u
 #define ASSET_ENTRY_SIZE 0x1Cu
 void pm_walk_drain(const char* why); /* nd_walk.c, CORE2-3b */
+/* TEXKEY2: the build-time palette fix of the map texture archives (3ds/tools/texkey_bake.py -> texkey_patch.h, sorted by ROM address).
+ * Each record is 2 big endian bytes at addr. The bytes that fall in [rom_addr, rom_addr + size) are replaced. Binary search, no table walk. */
+#include "texkey_patch.h"
+static void tk_patch_apply(u32 rom_addr, u8* buf, u32 size) {
+    unsigned lo = 0, hi = TK_PATCH_N;
+    u32 end = rom_addr + size;
+    while (lo < hi) {
+        unsigned m = (lo + hi) >> 1;
+        if (tk_patch[m].addr + 2u <= rom_addr) lo = m + 1;
+        else hi = m;
+    }
+    for (unsigned i = lo; i < TK_PATCH_N && tk_patch[i].addr < end; i++) {
+        for (u32 k = 0; k < 2; k++) {
+            u32 a = tk_patch[i].addr + k;
+            if (a >= rom_addr && a < end) buf[a - rom_addr] = (u8)(k ? tk_patch[i].val & 255u : tk_patch[i].val >> 8);
+        }
+    }
+}
 void nuPiReadRom(u32 rom_addr, void* buf, u32 size) {
     static u32 table_bytes;
     if (!pm_on_audio()) { /* CORE2-3b: a ROM read writes RAM that the last walk may have read */
@@ -469,6 +487,7 @@ void nuPiReadRom(u32 rom_addr, void* buf, u32 size) {
     pi_read_raw(rom_addr, buf, size);
     if (pm_xf.on && !pm_on_audio()) { pm_xf.rom_n++; pm_xf.rom_b += size; } /* MAPX-1 */
     if (!buf || !size || (unsigned)buf < 0x00100000u) return;
+    tk_patch_apply(rom_addr, (u8*)buf, size); /* TEXKEY2 */
     /* S19b: s16 data (Lava Piranha animation scripts). The ROM is big-endian, the reader wants native s16.
      * A read starts and ends on an even offset (dma_copy chunks and the segment bounds are even). */
     for (unsigned i = 0; i < sizeof(pm_rom_swap16) / sizeof(pm_rom_swap16[0]); i++) {
