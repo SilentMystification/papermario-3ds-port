@@ -5,7 +5,8 @@
 #   pm3ds-src-<name> and pm3ds-build-<name>.
 #   its pm_3ds_<name>.3dsx copies (the Azahar sdmc folder and build3ds/azslots/slot*/user/sdmc/3ds/PaperMario)
 #   and its shot folders build3ds/azt/shots/*/<name>.
-# Also removes build-at folders build3ds/at_* and lanes build3ds/lane-* that have no worktree.
+# Also removes build-at folders build3ds/at_* and lanes build3ds/lane-* that have no worktree, except a build-at folder
+# whose .build_at_in_use marker is under 12 h old (a build-at is running on it).
 # Keeps: worktrees with a .wt_keep file (an agent works there; it deleted core20 mid-row on 2026-11-08) or uncommitted
 # tracked changes, worktrees whose branch has commits not in main (unmerged work), worktrees whose branch tip is on the
 # first-parent line of main (a fresh branch with no commit of its own yet: an agent may work in it; ls3 was
@@ -16,7 +17,8 @@
 # Usage: sh 3ds/tools/wt_gc.sh            (dry run: prints what it would remove)
 #        sh 3ds/tools/wt_gc.sh --apply    (removes)
 #        sh 3ds/tools/wt_gc.sh --apply --keep fb4,ub1
-#        sh 3ds/tools/wt_gc.sh --apply --only tdc   (only these names; skips the first-parent check)
+#        sh 3ds/tools/wt_gc.sh --apply --only tdc   (only these names: other worktrees, stale folders, lanes and
+#                                                    build-at folders are not touched; skips the first-parent check)
 set -u
 APPLY=0; KEEP=","; ONLY=""
 while [ $# -gt 0 ]; do
@@ -52,6 +54,8 @@ keep_wt=","
 for w in build3ds/wt/*/; do
     [ -d "$w" ] || continue
     n=$(basename "$w")
+    # --only: every other folder is out of scope (stale folders too), not kept.
+    if [ -n "$ONLY" ]; then case "$ONLY" in *",$n,"*) ;; *) continue ;; esac; fi
     case "$KEEP" in *",$n,"*) keep_wt="$keep_wt$n,"; echo "keep $n (--keep)"; continue ;; esac
     if [ -e "$w.wt_keep" ]; then keep_wt="$keep_wt$n,"; echo "keep $n (.wt_keep: an agent works here)"; continue; fi
     case "$(git -C "$w" rev-parse --absolute-git-dir 2>/dev/null)" in
@@ -79,11 +83,17 @@ for w in build3ds/wt/*/; do
     drop_lane_volumes "$n"
 done
 run git worktree prune
+# Lane loop: skipped with --only (it names worktrees only). A build-at folder (bench.py scratch_build writes
+# .build_at_in_use at its start, and removes the folder at its end) is kept while the marker is under 12 h old:
+# a build-at running now uses its folder and its volumes (wt_gc --apply removed one mid-run on 2026-11-08).
 for l in build3ds/lane-* build3ds/at_*; do
+    [ -n "$ONLY" ] && break
     [ -d "$l" ] || continue
     n=$(basename "$l"); n=${n#lane-}
     case "$keep_wt" in *",$n,"*) continue ;; esac
     [ -d "build3ds/wt/$n" ] && continue
+    # In use: the marker (new build-at runs) or a file written in the last 30 min (any build-at run, marker or not).
+    if [ -n "$(find "$l" -maxdepth 1 -name .build_at_in_use -mmin -720 -print -quit 2>/dev/null)" ] || [ -n "$(find "$l" -maxdepth 3 -type f -mmin -30 -print -quit 2>/dev/null)" ]; then echo "keep $l (build-at in use)"; continue; fi
     echo "remove lane $l"
     run rm -rf -- "$l"
     drop_lane_copies "$n"
