@@ -514,6 +514,12 @@ f32 pm_debug_draw_px(s32 camID, f32 x, f32 y, f32 z) {
     return 40.0f + (f32) camera->viewportStartX + (f32) camera->viewportW * 0.5f + (f32) camera->viewportW * 0.5f * (tX / tW);
 }
 
+/* WIDE3: the 2D x of a 3D screen x of a camera's full view (pm_wide_cam): the 3D draw scales x by 1.25 with wide and the 2D draw adds the
+ * 40 px gutter, so game x = 1.25 x - 40 (UA1). Shared by get_screen_coords and the shop prices (shops.c). 4:3 and other views: x unchanged. */
+s32 pm_wide_draw_x(Camera* camera, s32 x) {
+    return pm_wide_cam(camera) ? (s32) (x * 1.25f) - 40 : x;
+}
+
 void get_screen_coords(s32 camID, f32 x, f32 y, f32 z, s32* screenX, s32* screenY, s32* screenZ) {
     Camera* camera = &gCameras[camID];
     f32 tW;
@@ -537,9 +543,7 @@ void get_screen_coords(s32 camID, f32 x, f32 y, f32 z, s32* screenX, s32* screen
     } else {
         tW = 1.0f / tW;
         *screenX = (s32) ((camera->viewportW / 2) + (tX * tW * camera->viewportW * 0.5f)) + camera->viewportStartX;
-        if (pm_wide_cam(camera)) { /* UA1: the 3D draw scales x by 1.25, a 2D draw adds 40 px: game x = 1.25 x - 40 */
-            *screenX = (s32) (*screenX * 1.25f) - 40;
-        }
+        *screenX = pm_wide_draw_x(camera, *screenX);
         *screenY = (s32) ((camera->viewportH / 2) - (tY * tW * camera->viewportH * 0.5f)) + camera->viewportStartY;
     }
 }

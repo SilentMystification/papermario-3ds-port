@@ -3173,6 +3173,81 @@
       "gates": []
     },
     {
+      "name": "battle_wide_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WIDE3 gate 2: battle wheel with wide on, base (14, 183): the wheel in the bottom-left corner, the reel and swap icons with it. A person reads the shot.",
+      "scenario": "battle_wide",
+      "cap": 45,
+      "until": "shot \\d+ frame \\d+ map",
+      "tags": [
+        "azahar",
+        "pic",
+        "wide",
+        "battle"
+      ],
+      "gates": []
+    },
+    {
+      "name": "battle_strats_wide_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WIDE3 gate 2b: Strategies list opened from the corner wheel with wide on (StratsMenuPosX = pm_wide_left(20)). A person reads the shot.",
+      "scenario": "battle_strats_wide",
+      "cap": 45,
+      "until": "shot \\d+ frame 2[8-9]\\d\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "wide",
+        "battle"
+      ],
+      "gates": []
+    },
+    {
+      "name": "chapter_native_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WIDE3 gate 3: kmr_22 chapter screen with wide on, 4:3 letterboxed like the intro, log chapter: native aspect on. A person reads the shot.",
+      "scenario": "chapter_native",
+      "cap": 25,
+      "until": "shot \\d+ frame 5[0-9]\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "wide",
+        "chapter"
+      ],
+      "gates": []
+    },
+    {
+      "name": "shop_wide_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WIDE3 shop gate: Toad Town item shop with wide on, prices under the items. A person reads the shot.",
+      "scenario": "shop_wide",
+      "cap": 45,
+      "until": "shot \\d+ frame 26[2-9]\\b",
+      "tags": ["azahar", "pic", "shop"],
+      "gates": []
+    },
+    {
+      "name": "shop_nowide_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WIDE3 shop byte gate: the same shop 4:3 (wide off). Byte equal to the base build.",
+      "scenario": "shop_nowide",
+      "cap": 45,
+      "until": "shot \\d+ frame 26[2-9]\\b",
+      "tags": ["azahar", "pic", "shop"],
+      "gates": []
+    },
+    {
       "name": "intro_native_pic",
       "kind": "azahar_pic",
       "speed": "normal",

@@ -1,4 +1,5 @@
 #include "game_modes.h"
+#include <string.h>
 
 s32 D_80077420[] = {
     0x000000E4, 0x000000E1, 0x000000EB, 0x000000EF, 0x000000F6, 0x0000010A, 0x0000010C, 0x00000121, 0x00000122,
@@ -260,19 +261,33 @@ BSS s16 CurGameMode;
 
 extern int pm_wide, pm_wide_cfg;
 
+/* WIDE3: the chapter screen is map kmr_22 (fx_chapter_change). Its map is set (goto_map) before set_game_mode(GAME_MODE_CHANGE_MAP). */
+static s32 chapter_native_on;
+
+static s32 is_chapter_map(void) {
+    return strcmp(gAreas[gGameStatusPtr->areaID].maps[gGameStatusPtr->mapID].id, "kmr_22") == 0;
+}
+
 void set_game_mode(s16 mode) {
     /* UA10: the intro cutscene (state_intro.c) plays in the native 4:3 view with wide on, like logos and title */
     extern void pm_log_d(const char* fmt, ...);
     s16 prevMode = CurGameMode;
+    s32 chapter;
     CurGameMode = mode;
+    chapter = is_chapter_map();
     /* F07-5: logos, title and file select keep 4:3 */
+    /* WIDE3: the chapter screen keeps 4:3 like the intro */
     pm_wide = pm_wide_cfg && !(mode == GAME_MODE_LOGOS || mode == GAME_MODE_TITLE_SCREEN || mode == GAME_MODE_LANGUAGE_SELECT ||
         mode == GAME_MODE_END_LANGUAGE_SELECT || mode == GAME_MODE_FILE_SELECT || mode == GAME_MODE_END_FILE_SELECT ||
-        mode == GAME_MODE_INTRO);
+        mode == GAME_MODE_INTRO || chapter);
     if (mode == GAME_MODE_INTRO) {
         pm_log_d("intro: native aspect on");
     } else if (prevMode == GAME_MODE_INTRO) {
         pm_log_d("intro: native aspect off (wide %d)", pm_wide);
+    }
+    if (pm_wide_cfg && chapter != chapter_native_on) {
+        chapter_native_on = chapter;
+        pm_log_d(chapter ? "chapter: native aspect on" : "chapter: native aspect off (wide %d)", pm_wide);
     }
     set_game_mode_slot(0, gameModeMap[mode]);
 }
