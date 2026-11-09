@@ -12,6 +12,22 @@
   },
   "benches": [
     {
+      "name": "dmg_jump",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "BTLUI bug 2 step 1: action command prompt of the first jump (kmr_20 battle); shots 180 to 240 every 4 frames; the button icon.",
+      "scenario": "dmg_jump",
+      "cap": 45,
+      "until": "shot \\d+ frame 240\\b",
+      "tags": [
+        "azahar",
+        "battle",
+        "btlui"
+      ],
+      "gates": []
+    },
+    {
       "name": "dmg_star",
       "kind": "azahar_pic",
       "speed": "turbo",

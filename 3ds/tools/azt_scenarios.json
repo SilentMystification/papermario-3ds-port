@@ -24,6 +24,27 @@
     },
 
     {
+      "name": "dmg_jump",
+      "status": "unverified",
+      "subject": "BTLUI bug 2 step 1: the action command prompt of Mario's first jump (kmr_20 battle, autoa). Shots 180 to 240 every 4 frames; the prompt button icon is the subject.",
+      "proves": "BTLUI bug 2: the A button icon of the action command prompt on the port (compare with assets/us/ui/input/a_button_unpressed.png).",
+      "debug": "warp=kmr_20:0 battle=BTL_KMR_1_FORMATION_00:BTL_KMR_1_STAGE_01 battlef=30 autoa det fixedseed shots shotwin=180:61:4 loglevel=debug",
+      "until": "shot \\d+ frame 240\\b",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: kmr_20 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "shot 240",
+          "regex": "shot \\d+ frame 240\\b"
+        }
+      ],
+      "reason": "BTLUI bug 2 step 1: action command prompt shot. Until is the last shot of the window."
+    },
+
+    {
       "name": "logbench_boot",
       "status": "unverified",
       "subject": "Boot with the logbench switch: four timed loops of the log producer (plain line, four arguments, two %s, dropped line), cycles per line in the log.",
