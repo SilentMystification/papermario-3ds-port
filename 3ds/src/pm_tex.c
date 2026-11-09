@@ -1594,7 +1594,11 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
         static int tml = -1;
         if (tml < 0) tml = pm_debug_has("texmisslog");
         if (tml) { extern unsigned pm_frame_count(void); int same = 0; for (int q = 0; q < slot_hi; q++) if (slots[q].live && slots[q].img == img) same++; /* live slots of this source: >0 means its bytes changed */
-            pm_log_d("texmiss f%u img %p %dx%d fmt %u siz %u kb %u same %d ra %p", pm_frame_count(), img, width, height, fmt, siz, reserve >> 10, same, tm_caller); }
+            pm_log_d("texmiss f%u img %p %dx%d fmt %u siz %u kb %u same %d ra %p", pm_frame_count(), img, width, height, fmt, siz, reserve >> 10, same, tm_caller);
+            for (int q = 0; q < slot_hi; q++) if (slots[q].live && slots[q].img == img) { /* BTLDIM oracle: the key fields of this miss and of the first live slot of the source */
+                pm_log_d("texmissk f%u img %p tlut %p/%p st %d/%d dk %08x/%08x ph %08x/%08x fmt %u/%u", pm_frame_count(), img, tlut, slots[q].tlut, stride, slots[q].stride,
+                         dkey, slots[q].dkey, phash, slots[q].phash, fmt, slots[q].fmt);
+                break; } }
     }
     pm_xf.tex_b += reserve; /* MAPX-1 */
     tc_up_bytes += reserve;
@@ -1741,6 +1745,7 @@ int pm_tex_load(const void* img, unsigned fmt, unsigned siz, int width, int heig
                 const void* tlut, int tlut_n, int stride) {
     int r;
     tm_caller = __builtin_return_address(0);
+    if (fmt != FMT_CI) { tlut = NULL; tlut_n = 0; } /* BTLDIM: a non-CI tile has no palette; set_tilesize passes the last loaded one, and the key took it (radial shimmer I4 misses every frame) */
     mk_on = 1;
     r = load_impl(img, fmt, siz, width, height, tlut, tlut_n, stride, NULL, 0, 0, 0);
     mk_on = 0;
