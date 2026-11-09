@@ -10452,6 +10452,74 @@
         }
       ],
       "reason": "Cap 20: the hit comes about 9 s after the start (battle load at f100, Mario's jump turn, the cast); the until line ends the 48-frame window after the hit."
+    },
+    {
+      "name": "starfx_hos01",
+      "status": "verified",
+      "subject": "Shooting Star Summit (hos_01): Mario talks to Eldstar, the star spirits plea scene starts and the 6 other spirits pop in with their glowing star models (MODEL_1 to MODEL_7) and the appear sparkles.",
+      "proves": "STARFX lag: the starfx pre, popin start and popin steady lines carry frame, time (ms) and the native model cache misses and clears since boot. pre to start: 30 frames before the pop-in (Eldstar jump); start to steady: the 210 frames after it (the plea text MSG_HOS_0001 stays open, the scene stands). Misses and clears are counts (valid on Azahar); the time is direction only.",
+      "debug": "warp=hos_01:0 story=ch0_toad_town pos=-110:250:-170 padscript=wait60,go_-36_-170_60,wait10,A,wait40,A,wait40,A prof=30 census loglevel=debug",
+      "until": "starfx: popin steady",
+      "cap": 35,
+      "deadline": 20,
+      "first_marker": "prof cal every 30",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "prof",
+          "regex": "prof cal every 30"
+        },
+        {
+          "name": "pre",
+          "regex": "starfx: pre f\\d+"
+        },
+        {
+          "name": "popin start",
+          "regex": "starfx: popin start f\\d+"
+        },
+        {
+          "name": "popin steady",
+          "regex": "starfx: popin steady f\\d+"
+        }
+      ],
+      "reason": "STARFX row (user, console O3DS XL: the star spirit pop-in lags). Mario is placed 80 units left of Eldstar (-30 260 -170, npc.c); go_ stops 24 units before its target, so he walks about 50 units and ends about 30 units from Eldstar, facing him, then talks. prof mode logs no warp line, so the first marker is the prof calibration line; the A presses page through MSG_HOS_0000. The lines are printed by hos_01 npc.c (3DS only). Cap 35 s (cold start 12 to 16 s plus about 15 s of game time)."
+    },
+    {
+      "name": "starfx_hos01_pic",
+      "status": "verified",
+      "subject": "starfx_hos01 with shots from frame 200 to about 228 (every 4 frames, the shot cost; pop-in at frame 190): the 6 star spirits fading in over their glowing star models, the appear sparkles at the start.",
+      "proves": "STARFX picture gate: the spirits and the star effect are drawn (the model cache change keeps the picture). A person reads the shot.",
+      "debug": "warp=hos_01:0 story=ch0_toad_town pos=-110:250:-170 padscript=wait60,go_-36_-170_60,wait10,A,wait40,A,wait40,A shots shotwin=200:30 loglevel=debug",
+      "until": "starfx: popin steady",
+      "cap": 35,
+      "deadline": 20,
+      "first_marker": "warp: hos_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: hos_01 entry 0"
+        },
+        {
+          "name": "pre",
+          "regex": "starfx: pre f\\d+"
+        },
+        {
+          "name": "popin start",
+          "regex": "starfx: popin start f\\d+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot [0-9]+ frame 2[2-9][0-9]"
+        },
+        {
+          "name": "popin steady",
+          "regex": "starfx: popin steady f\\d+"
+        }
+      ],
+      "reason": "STARFX row picture gate. Same route as starfx_hos01, not in prof mode (the warp line is the first marker), shots 200 to 229. Cap 35 s."
     }
   ]
 }
