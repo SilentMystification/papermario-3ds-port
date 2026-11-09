@@ -289,11 +289,13 @@ static const char* res_name(void) { return pm_opt.wide == 2 ? "Fullscreen" : pm_
 void pm_options_flip(int row) {
     if (row == 8) { pm_opt.fixedseed = !pm_opt.fixedseed; changed = 1; return; } /* F11-7: takes effect at the next boot */
     if (row == 1) {
-        extern int pm_wide_cfg, pm_stretch;
+        extern int pm_wide, pm_wide_cfg, pm_stretch, pm_stretch_cfg;
         pm_opt.wide = pm_opt.wide == 0 ? 2 : pm_opt.wide == 2 ? 1 : 0;
         changed = 1;
-        pm_wide_cfg = pm_opt.wide == 1 || pm_debug_has("wide"); /* pm_wide follows at the next game mode change (the panel is a 4:3 mode) */
-        pm_stretch = pm_opt.wide == 2;
+        pm_wide_cfg = pm_opt.wide == 1 || pm_debug_has("wide");
+        pm_wide = pm_wide_cfg; /* MENUGEN part 3: live; game_modes.c keeps the 4:3 modes at the next mode change */
+        pm_stretch_cfg = pm_opt.wide == 2;
+        pm_stretch = pm_stretch_cfg && !pm_wide; /* Native 0/0, Fullscreen 0/1, Widescreen 1/0 */
         pm_log("options: live row 1 value %d (%s)", pm_opt.wide, res_name());
         return;
     }
