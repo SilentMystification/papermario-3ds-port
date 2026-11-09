@@ -3064,6 +3064,54 @@
       "gates": []
     },
     {
+      "name": "ndcspan_mac01",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "DIRECT: the LIST span census of mac_01 frame 200 (ndcspan lines: code that still writes list words).",
+      "scenario": "ndcspan_mac01",
+      "cap": 35,
+      "until": "shot \\d+ frame 201\\b",
+      "tags": [
+        "azahar",
+        "det",
+        "direct"
+      ],
+      "gates": []
+    },
+    {
+      "name": "ndref_mac00_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "DIRECT: mac_00 field frame 90 draw stream (ndref.bin) for a base and head compare.",
+      "scenario": "ndref_mac00_det",
+      "cap": 30,
+      "until": "ndref f90 done",
+      "tags": [
+        "azahar",
+        "det",
+        "ndref"
+      ],
+      "gates": []
+    },
+    {
+      "name": "ndref_fx65_det",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "DIRECT: nok_11 effect_65 (after 14 effects) frame 1048 draw stream (ndref.bin) for a base and head compare.",
+      "scenario": "ndref_fx65_det",
+      "cap": 40,
+      "until": "ndref f1048 done",
+      "tags": [
+        "azahar",
+        "det",
+        "ndref"
+      ],
+      "gates": []
+    },
+    {
       "name": "fx_direct_det",
       "kind": "azahar_pic",
       "speed": "turbo",

@@ -1098,6 +1098,27 @@
       "reason": "MOVE gate: DET cold start (-NoWarm, a cold start takes 12 to 16 s to the first marker, as nok11_det). Cap 35 s, deadline 30 s. Picture is the subject; the prof scene line is the until."
     },
     {
+      "name": "ndcspan_mac01",
+      "status": "unverified",
+      "subject": "DIRECT: mac_01 at pos 0 0 200, det, switch ndcspan=200: one line per LIST span (code that still writes list words) in frame 200, shot 200 and 201.",
+      "proves": "DIRECT D7/D8: names the producers left in the LIST spans (their first and last words).",
+      "debug": "warp=mac_01:0 pos=0:0:200 ndcspan=200 shots shotwin=200:2 loglevel=debug det",
+      "extra": [],
+      "until": "shot \\d+ frame 201\\b",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "last shot",
+          "regex": "shot \\d+ frame 201\\b"
+        }
+      ],
+      "reason": "DIRECT: the span census for the D7 and D8 slices (log)."
+    },
+    {
       "name": "spot_mac01_selfchk_prof",
       "status": "unverified",
       "subject": "Toad Town mac_01, Mario placed at pos 0 0 200, det, prof=30: the first 300-frame prof window (wk, fts, wks, oh, amort, csvc, ssvc). Log only.",
@@ -7018,6 +7039,53 @@
         }
       ],
       "reason": "Log and file only. Draw count equals the census batch count of the same run (cen f200 summary batches)."
+    },
+    {
+      "name": "ndref_mac00_det",
+      "status": "unverified",
+      "subject": "mac_00 (toad preset) field, det, frame 90 draw stream (ndref=90) and census; shot 90.",
+      "proves": "DIRECT: the draw stream of a mac_00 field frame for a base and head compare (nd_ref_dump.py), names the draw that differs.",
+      "debug": "preset=toad ndref=90 drawcensus=90 shots shotwin=90:1 loglevel=debug det",
+      "until": "ndref f90 done",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "ndref done",
+          "regex": "ndref f90 done"
+        }
+      ],
+      "reason": "DIRECT D9: the mac_00 row 19 mark (pause_spin_grab_det_w300) is in the live field frame; the draw stream names its draw."
+    },
+    {
+      "name": "ndref_fx65_det",
+      "status": "unverified",
+      "subject": "nok_11, det, fxtest of the first 15 effects of fx_direct_det (effect_65 last: its shot b at frame 1048), frame 1048 draw stream (ndref=1048) and census.",
+      "proves": "DIRECT: the effect_65 draw stream for a base and head compare (nd_ref_dump.py).",
+      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=13,32,44,50,52,61,62,71,82,83,84,85,88,92,95 ndref=1048 drawcensus=1048 shots loglevel=debug fixedseed fast fs1off det",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "ndref f1048 done",
+      "cap": 40,
+      "deadline": 30,
+      "first_marker": "warp: nok_11 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "ndref done",
+          "regex": "ndref f1048 done"
+        }
+      ],
+      "reason": "DIRECT D9: fx_direct_det shot 44 (effect_65 b) differs from the base."
     },
     {
       "name": "ndref_pause",

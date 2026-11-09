@@ -309,6 +309,7 @@ void nd_walk_state(const uint32_t* q, unsigned n) {
         case G_SETPRIMDEPTH: set_primdepth(w1); break;
         case G_SETFILLCOLOR: set_fillcolor(w1); break;
         case G_FILLRECT: nd_fillrect(w0, w1); break;
+        case G_PM_ND: nd_native_rec(w0); break; /* D9: the native-only payload (the water splash bracket) */
         case G_NOOP:
         case G_SETZIMG: break;
         default: note(op); break;
@@ -618,9 +619,8 @@ void pm_walk_drain(const char* why) {
 }
 static void gbi_run1(void* list, unsigned nbytes) {
     if (!pm_ph_cen) { nd_walk_run(list, nbytes); return; }
-    if (os_nest == 0) { pre_w0 = (const Gfx*)list; pmx_main = gDisplayContext && list == (void*)gDisplayContext->mainGfx;
+    if (os_nest == 0) { pre_w0 = (const Gfx*)list; pmx_main = 0; /* DIRECT D9: no main task list (the producer census by list position has no main list) */
         pmk_n = 0; /* WCEN3: the walk copy holds the marks of this list only */
-        if (pmx_main) for (int i = 0; i < pmk_all_n && pmk_n < PK_MARKS; i++) if (pmk_all[i].p >= (const Gfx*)list && pmk_all[i].p < (const Gfx*)list + MAIN_GFX_N) { pmk[pmk_n].p = pmk_all[i].p; pmk[pmk_n].s = pmk_all[i].s; pmk_n++; }
         pre_mkn = pmk_n; pre_mk0 = pmk_n ? pmk[0].p : NULL; pmx_cur = pmx_main ? PK_PRE : pk_slot((unsigned)(uintptr_t)list); /* WCEN2: a non-main list has its own key (its address) */ pmx_next = 0; mdcm_next = 0; mdcm_cur = -1; }
     os_nest++;
     nd_walk_run(list, nbytes);

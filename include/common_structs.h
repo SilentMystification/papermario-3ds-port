@@ -2256,12 +2256,7 @@ typedef struct {
 } Window; // size = 0x20
 
 #if defined(TARGET_3DS)
-/* Retail fits a map into 0x2080 commands. A full village or the house,
- * drawn twice per frame, walks off the end and the assert never returns. */
-#define DISPLAYCONTEXT_GFX_COUNT 0x10000
 #define DISPLAYCONTEXT_MTX_COUNT 0x800
-/* F06-6: with wide the sky draws 3 rects per line and the background list passes 0x200 commands (787 at mac_01). The overflow wrote into the matrix stack. */
-#define DISPLAYCONTEXT_BG_COUNT 0x800
 #elif VERSION_JP
 #define DISPLAYCONTEXT_GFX_COUNT 0x2000
 #define DISPLAYCONTEXT_MTX_COUNT 0x200
@@ -2281,8 +2276,10 @@ typedef struct {
     /* 0x00000 */ LookAt lookAt;
     /* 0x00020 */ Hilite hilite;
     /* 0x00030 */ Mtx camPerspMatrix[8]; // could only be length 4, unsure
+#ifndef TARGET_3DS /* DIRECT D9: the 3DS game records frame streams (3ds/src/nd_rec.c), no task lists */
     /* 0x00230 */ Gfx mainGfx[DISPLAYCONTEXT_GFX_COUNT];
     /* 0x10630 */ Gfx backgroundGfx[DISPLAYCONTEXT_BG_COUNT]; // used by gfx_task_background
+#endif
     /* 0x11630 */ Mtx matrixStack[DISPLAYCONTEXT_MTX_COUNT];
 } DisplayContext; // size = 0x19630
 

@@ -178,6 +178,14 @@ void step_game_loop(void) {
 
 void gfx_task_background(void) {
     gDisplayContext = &D_80164000[gCurrentDisplayContextIndex];
+#ifdef TARGET_3DS
+    gMainGfxPos = nd_rec_task(); /* DIRECT D9: the task is a frame stream (no list) */
+
+    gfx_init_state();
+    gfx_draw_background();
+
+    nuGfxTaskStart(nullptr, 0, NU_GFX_UCODE_F3DEX2, NU_SC_NOSWAPBUFFER);
+#else
     gMainGfxPos = &gDisplayContext->backgroundGfx[0];
 
     gfx_init_state();
@@ -192,6 +200,7 @@ void gfx_task_background(void) {
 
     nuGfxTaskStart(&gDisplayContext->backgroundGfx[0], (u32)(gMainGfxPos - gDisplayContext->backgroundGfx) * 8,
                    NU_GFX_UCODE_F3DEX2, NU_SC_NOSWAPBUFFER);
+#endif
 }
 
 extern void pm_interp_open(unsigned a, unsigned b); /* F06-2 */
@@ -207,7 +216,11 @@ extern void pm_gbi_mdl_mark(unsigned id, int pan); /* T1B: names the task tail r
 #endif
 void gfx_draw_frame(void) {
     gMatrixListPos = 0;
+#ifdef TARGET_3DS
+    gMainGfxPos = nd_rec_task(); /* DIRECT D9: the task is a frame stream (no list) */
+#else
     gMainGfxPos = &gDisplayContext->mainGfx[0];
+#endif
 
     if (gOverrideFlags & GLOBAL_OVERRIDES_DISABLE_DRAW_FRAME) {
         gCurrentDisplayContextIndex = gCurrentDisplayContextIndex ^ 1;
@@ -314,6 +327,9 @@ void gfx_draw_frame(void) {
         }
     }
 
+#ifdef TARGET_3DS
+    nuGfxTaskStart(nullptr, 0, NU_GFX_UCODE_F3DEX2, NU_SC_TASK_LODABLE | NU_SC_SWAPBUFFER); /* DIRECT D9: the task is a frame stream */
+#else
     ASSERT((s32)(((u32)(gMainGfxPos - gDisplayContext->mainGfx) << 3) >> 3) < ARRAY_COUNT(gDisplayContext->mainGfx));
 
     gDPFullSync(gMainGfxPos++);
@@ -321,6 +337,7 @@ void gfx_draw_frame(void) {
 
     nuGfxTaskStart(gDisplayContext->mainGfx, (u32)(gMainGfxPos - gDisplayContext->mainGfx) * 8, NU_GFX_UCODE_F3DEX2,
                    NU_SC_TASK_LODABLE | NU_SC_SWAPBUFFER);
+#endif
     gCurrentDisplayContextIndex = gCurrentDisplayContextIndex ^ 1;
     crash_screen_set_draw_info(nuGfxCfb_ptr, SCREEN_WIDTH, SCREEN_HEIGHT);
 }

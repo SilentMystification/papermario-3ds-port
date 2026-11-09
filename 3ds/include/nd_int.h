@@ -296,7 +296,6 @@ extern int pre_mkn;
 void os_close(void);
 unsigned pk_slot(unsigned a);
 
-#define MAIN_GFX_N ((int)(sizeof gDisplayContext->mainGfx / sizeof(Gfx)))
 /* K: census readers of the former pm_gbi.c globals (defined in the former pm_gbi.c, read by nd_cen.c). */
 extern unsigned op_cnt[256], n_splits, n_grabs, rec_n, sp0_grp, sp0_skip, gp_ntri, gp_frames, gp3_t0_pending, gp3_t0_dead;
 extern int ep_open;

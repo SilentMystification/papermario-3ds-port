@@ -8,6 +8,7 @@
 #include "ultra64.h"
 #include "gbi_custom.h"
 #include "nd_int.h"
+#include "nd_cmd.h"
 #include "pm_gpu.h"
 #include "nd.h"
 #include "pm_tex.h"
@@ -321,9 +322,10 @@ EntKey* ent_find(const Gfx* l, u32 vb) {
 
 u32 ent_segkey(void) { u32 h = 2166136261u; for (unsigned i = 1; i < 16; i++) h = (h ^ nd_ws.segbase[i]) * 16777619u; return h | 1u; }
 
-/* SGEN-1: every static list the walker meets (G_DL arm, no record). Lists in the display contexts (the frame heap) are dynamic by address: walker. 1: drawn. */
+/* SGEN-1: every static list the walker meets (G_DL arm, no record). Lists in the display contexts and in the frame stream memory (DIRECT D9: the
+ * custom gfx lists, nd_rec_dyn) are dynamic by address: walker. 1: drawn. */
 int ent_gdl(const Gfx* l) {
-    if (!dlc_on || ((u32)l & 7u) || (u32)l - (u32)D_80164000 < 2u * sizeof(DisplayContext)) { gdl_c.skip++; return 0; }
+    if (!dlc_on || ((u32)l & 7u) || (u32)l - (u32)D_80164000 < 2u * sizeof(DisplayContext) || nd_rec_dyn(l)) { gdl_c.skip++; return 0; }
     if (dlc_seen_gen != pm_dlc_gen) { dlc_reset(); dlc_seen_gen = pm_dlc_gen; }
     if (ent_gen_seen != pm_dlc_gen) ent_reset();
     gdl_c.lists++;

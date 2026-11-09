@@ -78,11 +78,7 @@ void pm_gbi_draw_note(int native) { /* WCEN3: one GPU draw of the walker (native
 void pm_gbi_prod_mark(unsigned a) { /* called by pm_interp_open under phase */
     const Gfx* p = gMainGfxPos;
     if (ndref_on) ndref_tag(2, a, 0); /* NDREF1: producer tag in the reference stream */
-    if (gDisplayContext && p == &gDisplayContext->mainGfx[0]) { /* WCEN3: a frame start: this context's older marks are done (walked two frames back) */
-        int k = 0;
-        for (int i = 0; i < pmk_all_n; i++) if (!(pmk_all[i].p >= p && pmk_all[i].p < p + MAIN_GFX_N)) pmk_all[k++] = pmk_all[i];
-        pmk_all_n = k;
-    }
+    if (pmk_all_n >= PK_MARKS) pmk_all_n = 0; /* DIRECT D9: no main list, the marks are not consumed by a main walk */
     if (pmk_all_n < PK_MARKS) { pmk_all[pmk_all_n].p = p; pmk_all[pmk_all_n].s = pk_slot(a); pmk_all_n++; }
 }
 
@@ -460,7 +456,7 @@ static void os_report(void) {
         pm_log_hw("prod f%d %s ops %u us %u rec %u nat %u wd %u nd %u", rm_frame, nm, (unsigned)(bv / 300), (unsigned)(pke[best] / 268 / 300), (unsigned)(pk_rec[best] / 300), (unsigned)(pk_nat[best] / 300), (unsigned)pk_wd[best], (unsigned)pk_nd[best]); /* wd, nd: window totals */
         pk_ops[best] = 0;
     }
-    { const Gfx* mb = gDisplayContext ? gDisplayContext->mainGfx : NULL; pm_log_hw("pre f%d walk0 %d mk0 %d marks %d", rm_frame, mb ? (int)(pre_w0 - mb) : -99999, mb && pre_mk0 ? (int)(pre_mk0 - mb) : -99999, pre_mkn); } /* WCEN2 diag */
+pm_log_hw("pre f%d marks %d", rm_frame, pre_mkn); /* WCEN2 diag */
     { /* CEN-1a: walker draws per producer by why code (window totals; the why counts of a line add up to its wd). The end line is the until line. */
       unsigned long long wt = 0, nt = 0;
       for (int s = 0; s < PK_SLOTS; s++) {

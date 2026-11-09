@@ -10,6 +10,8 @@
 #include "nd_cmd.h"
 
 void nd_gx_w(Gfx* g, uint32_t w0, uint32_t w1);
+/* D9: the top-level packet of the redirected macros: gMainGfxPos at the start of a task (nd_gx_w takes each packet back). */
+Gfx* nd_rec_task(void);
 
 #undef gSPSetOtherMode
 #define gSPSetOtherMode(pkt, cmd, sft, len, data) \
@@ -82,6 +84,20 @@ void nd_gx_w(Gfx* g, uint32_t w0, uint32_t w1);
 #undef gSP2Triangles
 #define gSP2Triangles(pkt, v00, v01, v02, flag0, v10, v11, v12, flag1) \
     { nd_gx_w((Gfx*)(pkt), _SHIFTL(G_TRI2, 24, 8) | __gsSP1Triangle_w1f(v00, v01, v02, flag0), __gsSP1Triangle_w1f(v10, v11, v12, flag1)); }
+/* D7: the ops that gbi.h writes through a local packet pointer: the list end, the vertex modify, the chroma key colours. */
+#undef gSPEndDisplayList
+#define gSPEndDisplayList(pkt) { nd_gx_w((Gfx*)(pkt), _SHIFTL(G_ENDDL, 24, 8), 0); }
+#undef gSPModifyVertex
+#define gSPModifyVertex(pkt, vtx, where, val) \
+    { nd_gx_w((Gfx*)(pkt), _SHIFTL(G_MODIFYVTX, 24, 8) | _SHIFTL((where), 16, 8) | _SHIFTL((vtx) * 2, 0, 16), (unsigned int)(val)); }
+#undef gDPSetKeyR
+#define gDPSetKeyR(pkt, cR, sR, wR) { nd_gx_w((Gfx*)(pkt), _SHIFTL(G_SETKEYR, 24, 8), _SHIFTL(wR, 16, 12) | _SHIFTL(cR, 8, 8) | _SHIFTL(sR, 0, 8)); }
+#undef gDPSetKeyGB
+#define gDPSetKeyGB(pkt, cG, sG, wG, cB, sB, wB) \
+    { nd_gx_w((Gfx*)(pkt), _SHIFTL(G_SETKEYGB, 24, 8) | _SHIFTL(wG, 12, 12) | _SHIFTL(wB, 0, 12), \
+              _SHIFTL(cG, 24, 8) | _SHIFTL(sG, 16, 8) | _SHIFTL(cB, 8, 8) | _SHIFTL(sB, 0, 8)); }
+#undef gPmNdSplash
+#define gPmNdSplash(pkt, on) { nd_gx_w((Gfx*)(pkt), ((u32)G_PM_ND << 24) | ((u32)G_PM_ND_SPLASH << 16) | ((on) ? 1u : 0u), 0); }
 /* The rectangle words: the first word through nd_gx_w, then the two RDPHALF words (gImmp1 above), as gbi.h writes them. */
 #undef gSPTextureRectangle
 #define gSPTextureRectangle(pkt, xl, yl, xh, yh, tile, s, t, dsdx, dtdy) \

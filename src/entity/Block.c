@@ -31,21 +31,19 @@ void entity_MulticoinBlock_update_timer(Entity* entity);
 #define MULTICOIN_BLOCK_MAX_COINS 10
 
 void entity_base_block_setupGfx(s32 entityIndex) {
-    Gfx* gfx = gMainGfxPos;
     Entity* entity = get_entity_by_index(entityIndex);
 
-    gDPSetTextureLUT(gfx++, G_TT_NONE);
-    gSPTexture(gfx++, -1, -1, 0, G_TX_RENDERTILE, G_ON);
+    gDPSetTextureLUT(gMainGfxPos++, G_TT_NONE);
+    gSPTexture(gMainGfxPos++, -1, -1, 0, G_TX_RENDERTILE, G_ON);
 
     if (entity->alpha >= 255) {
-        gDPSetRenderMode(gfx++, G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2);
-        gDPSetCombineMode(gfx++, G_CC_MODULATEIA, G_CC_MODULATEIA);
+        gDPSetRenderMode(gMainGfxPos++, G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2);
+        gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIA, G_CC_MODULATEIA);
     } else {
-        gDPSetCombineMode(gfx++, PM_CC_01, PM_CC_02);
-        gDPSetPrimColor(gfx++, 0, 0, 0, 0, 0, entity->alpha);
+        gDPSetCombineMode(gMainGfxPos++, PM_CC_01, PM_CC_02);
+        gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, entity->alpha);
     }
 
-    gMainGfxPos = gfx;
 }
 
 void entity_base_block_play_vanish_effect(Entity* entity) {
