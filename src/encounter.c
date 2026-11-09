@@ -1395,6 +1395,10 @@ void update_encounters_pre_battle(void) {
             if (currentEncounter->fadeOutAmount != 255) {
                 break;
             }
+            if (currentEncounter->battleStartCountdown == 10) { /* BTLWIPE F5: the wipe is closed: the stage shape and hit decode on core 1 (the ids below) */
+                extern void pm_btl_prefetch(s32 battleID, s32 stageID);
+                pm_btl_prefetch(currentEncounter->curEncounter->battle, currentEncounter->curEncounter->stage);
+            }
             // delay before loading the battle
             if (currentEncounter->battleStartCountdown != 0) {
                 currentEncounter->battleStartCountdown--;
