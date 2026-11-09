@@ -348,6 +348,8 @@ set(PORT_SRC
     src/pm_flash.c
     src/pm_wdog.c
     src/pm_phase.c
+    src/pm_xfer.c
+    src/pm_prefetch.c
     src/pm_input.c
     src/pm_warp.c
     src/pm_dbg_game.c

@@ -3,6 +3,46 @@
   "note": "Read by 3ds/tools/azt.ps1. debug = the -Debug switch string of run_azahar.ps1, until = its -Until regex, cap = -Timeout in s, extra = more run_azahar.ps1 switches. first_marker is a log regex that must appear within deadline s after the Azahar start. expects = warp | tour | none (warp and tour turn on the attract-loop check). expected_events are log regexes that must all appear. An expected_event with max is a numeric gate: capture group 1 of its regex must be at most max (pick last takes the last matching line, else the first). status = verified | unverified | completion_only | fail_demo | pending.",
   "scenarios": [
     {
+      "name": "dmg_star",
+      "status": "unverified",
+      "subject": "BTLUI bug 1: battle on kmr_20 (one Goomba formation), Mario's first jump with autoa hits; shots every 20 frames from frame 40 to 320. The picture is the subject: the coloured star burst behind the damage number must show in the shots after the hit.",
+      "proves": "BTLUI: the damage_indicator star corners (D_09002150..80 vertex loads, D_090021A8 and D_09002190 triangle lists) draw on the port: the star is in the shot.",
+      "debug": "warp=kmr_20:0 battle=BTL_KMR_1_FORMATION_00:BTL_KMR_1_STAGE_01 battlef=30 autoa det fixedseed shots shotwin=40:281:20 loglevel=debug",
+      "until": "shot \\d+ frame 320\\b",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: kmr_20 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "shot 320",
+          "regex": "shot \\d+ frame 320\\b"
+        }
+      ],
+      "reason": "BTLUI gate: battle damage star. Until is the last shot of the window (the battle: start line comes before the first jump)."
+    },
+    {
+      "name": "dmg_jump",
+      "status": "unverified",
+      "subject": "BTLUI bug 2 step 1: the action command prompt of Mario's first jump (kmr_20 battle, autoa). Shots 180 to 240 every 4 frames; the prompt button icon is the subject.",
+      "proves": "BTLUI bug 2: the A button icon of the action command prompt on the port (compare with assets/us/ui/input/a_button_unpressed.png).",
+      "debug": "warp=kmr_20:0 battle=BTL_KMR_1_FORMATION_00:BTL_KMR_1_STAGE_01 battlef=30 autoa det fixedseed shots shotwin=180:61:4 loglevel=debug",
+      "until": "shot \\d+ frame 240\\b",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: kmr_20 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "shot 240",
+          "regex": "shot \\d+ frame 240\\b"
+        }
+      ],
+      "reason": "BTLUI bug 2 step 1: action command prompt shot. Until is the last shot of the window."
+    },
+    {
       "name": "logbench_boot",
       "status": "unverified",
       "subject": "Boot with the logbench switch: four timed loops of the log producer (plain line, four arguments, two %s, dropped line), cycles per line in the log.",
@@ -10145,6 +10185,201 @@
         }
       ],
       "reason": "MSGBOX row. The debug hook uishow (pm_warp.c) opens the messages at scene frame 200 (global frame about 249) with no input; one shot after the text is printed. Cap 30 s: cold start 12 to 16 s plus about 9 s of game time."
+    },
+    {
+      "name": "aud_mac01",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 at pos 0 0 200 (music and sound effects), audiostat census, shot at frame 400.",
+      "proves": "AUDV census: the audio voices line counts the engine voice starts, the starts that get no ndsp channel and the voices cut before their end, per 300-step window (switch audiostat).",
+      "debug": "warp=mac_01:0 pos=0:0:200 audiostat loglevel=debug shots shotwin=400:1",
+      "extra": [],
+      "until": "audio voices w2: starts \\d+ no channel \\d+ cut \\d+",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "scene shot",
+          "regex": "shot \\d+ frame 400\\b"
+        },
+        {
+          "name": "census window 2",
+          "regex": "audio voices w2: starts \\d+ no channel \\d+ cut \\d+"
+        }
+      ],
+      "reason": "AUDV census: the second 300-step window (steps 300 to 600, about 22 s at normal speed after the boot) holds the scene audio. Cap 45 s for the boot plus 600 steps."
+    },
+    {
+      "name": "aud_battle",
+      "status": "unverified",
+      "subject": "Battle on kmr_03 (one Goomba, battle from scene frame 100, battle music and battle sounds), audiostat census, shot at frame 400.",
+      "proves": "AUDV census: the audio voices line counts the engine voice starts, the starts that get no ndsp channel and the voices cut before their end, per 300-step window (switch audiostat).",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 audiostat loglevel=debug shots shotwin=400:1",
+      "extra": [],
+      "until": "audio voices w2: starts \\d+ no channel \\d+ cut \\d+",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "scene shot",
+          "regex": "shot \\d+ frame 400\\b"
+        },
+        {
+          "name": "census window 2",
+          "regex": "audio voices w2: starts \\d+ no channel \\d+ cut \\d+"
+        }
+      ],
+      "reason": "AUDV census: the second 300-step window (steps 300 to 600, about 22 s at normal speed after the boot) holds the scene audio. Cap 45 s for the boot plus 600 steps."
+    },
+    {
+      "name": "aud_intro",
+      "status": "unverified",
+      "subject": "Boot with no warp: logos, then the intro story cutscene with its music (the busiest music window of the console census, 13 voices), audiostat census, shot at frame 450.",
+      "proves": "AUDV census: the audio voices line counts the engine voice starts, the starts that get no ndsp channel and the voices cut before their end, per 300-step window (switch audiostat).",
+      "debug": "audiostat loglevel=debug shots shotwin=450:1",
+      "extra": [],
+      "until": "audio voices w2: starts \\d+ no channel \\d+ cut \\d+",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "game mode 1 frame",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "scene shot",
+          "regex": "shot \\d+ frame 450\\b"
+        },
+        {
+          "name": "census window 2",
+          "regex": "audio voices w2: starts \\d+ no channel \\d+ cut \\d+"
+        }
+      ],
+      "reason": "AUDV census: the second 300-step window (steps 300 to 600, about 22 s at normal speed after the boot) holds the scene audio. Cap 45 s for the boot plus 600 steps."
+    },
+    {
+      "name": "gameover_fps60",
+      "status": "unverified",
+      "subject": "Game over map gv_01 (warp entry 0), 60 fps mode on (fps60; det: every game step draws the t=0.5 pass and the key frame, no skip). The map script turns on the motion blur (SetMotionBlurParams 128, OVERLAY_BLUR: 40 strips that read the previous frame buffer) and drops the GAME OVER letters. Shots every drawn frame of game frames 70 to 89 (two drawn frames per game frame with fps60: the t=0.5 pass and the key frame). Draw census at frame 80.",
+      "proves": "The game over picture per drawn frame (no alternating frames) and the draw batches per drawn frame (cen summary line).",
+      "debug": "warp=gv_01:0 fps60 det shots shotwin=70:20 drawcensus=80 caplog loglevel=debug",
+      "until": "shot \\d+ frame 89\\b",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: gv_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: gv_01 entry 0"
+        },
+        {
+          "name": "census",
+          "regex": "cen f80 summary batches \\d+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 89\\b"
+        }
+      ],
+      "reason": "Row GAMEOVER (user: game over flickers and lags, 60 fps on). Shot window after the letters start to drop; cap 30 s (boot, warp, 90 frames)."
+    },
+    {
+      "name": "gameover_30",
+      "status": "unverified",
+      "subject": "Game over map gv_01 (warp entry 0), 60 fps mode off (det: no FS1 draw skip, so frame 80 is drawn for the census). The map script turns on the motion blur (SetMotionBlurParams 128, OVERLAY_BLUR: 40 strips that read the previous frame buffer) and drops the GAME OVER letters. Shots every drawn frame of game frames 70 to 89 (two drawn frames per game frame with fps60: the t=0.5 pass and the key frame). Draw census at frame 80.",
+      "proves": "The game over picture per drawn frame (no alternating frames) and the draw batches per drawn frame (cen summary line).",
+      "debug": "warp=gv_01:0 det shots shotwin=70:20 drawcensus=80 caplog loglevel=debug",
+      "until": "shot \\d+ frame 89\\b",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: gv_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: gv_01 entry 0"
+        },
+        {
+          "name": "census",
+          "regex": "cen f80 summary batches \\d+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 89\\b"
+        }
+      ],
+      "reason": "Row GAMEOVER (user: game over flickers and lags, 60 fps on). Shot window after the letters start to drop; cap 30 s (boot, warp, 90 frames)."
+    },
+    {
+      "name": "xfer_door_mac01",
+      "status": "unverified",
+      "reason": "MAPX-1 measure and the MAPX-2 gate (door key churn). Walk 60 to 120 frames, door 60, tail 30, twice: about 15 s after the warp. Cap 40 s.",
+      "subject": "Merlon's house door on mac_01 (story ch1_start: the listener lets Mario in): Mario placed south of the door (-203 20 -206), walks to the door and presses A (room enter: the walls swing open), waits, then walks back to the door from inside and presses A (room exit). det. One xfer line per door.",
+      "proves": "MAPX-1: the xfer door lines of the enter and the exit (steps, longest step, o34, model cache misses and clears, dlc, entity and texture loads in the transition) and the ndm census lines of the room.",
+      "debug": "warp=mac_01:0 story=ch1_start pos=-203:20:-206 padscript=go_-203_-280_100,A,wait400,go_-190_-262_150,A,wait300,go_-235_-195_100,go_-205_-280_100,A,wait400,go_-190_-262_150,A,wait300 profdisk=1 xferdiag loglevel=debug det",
+      "until": "xfer2 door n4\\b",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "door enter line",
+          "regex": "xfer door \\S+:out->\\S+:in f\\d+"
+        },
+        {
+          "name": "door exit line",
+          "regex": "xfer door \\S+:in->\\S+:out f\\d+"
+        }
+      ]
+    },
+    {
+      "name": "xfer_map_mac01",
+      "status": "unverified",
+      "reason": "MAPX-1 measure and the MAPX-3/4/5 gate. Walk about 60 frames, fade 13, load 6, tail 30: about 5 s after the warp. Cap 35 s.",
+      "subject": "Toad Town mac_01 at pos 0 0 200, Mario walks south into the mac_02 loading zone (z 600, exit trigger deilis). det. The xfer map line of mac_01->mac_02 (fade out, load, first drawn frame, 30 steps).",
+      "proves": "MAPX-1: the xfer map line (steps, longest step, o34 outside the load, fade, load, rom, yay0, inv, au, init, dlc, mdl, ent, tex).",
+      "debug": "warp=mac_01:0 story=ch0_toad_town pos=0:0:200 padscript=go_0_700_300,wait150 profdisk=1 loglevel=debug det",
+      "until": "xfer map \\S+[>]mac_02",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "map line",
+          "regex": "xfer map mac_01->mac_02 f\\d+ max"
+        }
+      ]
+    },
+    {
+      "name": "xfer_map_shots",
+      "status": "unverified",
+      "subject": "mac_01 -> mac_02 loading zone walk (as xfer_map_mac01), det, one shot per frame from frame 196 to 211: the first drawn frames of mac_02 under the fade-in overlay (covered at progress 255, then fading).",
+      "proves": "MAPX-3 gate: the covered frames are black (the overlay hides the frames that build under a budget) and the first uncovered frame is byte-equal to the base build.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town pos=0:0:200 padscript=go_0_700_300,wait150 shots shotwin=196:16 profdisk=1 loglevel=debug det",
+      "until": "shot \\d+ frame 211\\b",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map line",
+          "regex": "xfer map mac_01->mac_02 f\\d+ max"
+        }
+      ],
+      "reason": "MAPX-3 gate. The map load is at about frame 190 (det): shots 196 to 211 hold the covered frames and the first fade-in frames. Cap 35 s."
     },
     {
       "name": "magi_hit",

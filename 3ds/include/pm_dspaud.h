@@ -18,6 +18,7 @@ typedef struct {
 
 int pm_dspa_init(void);                                           /* after ndspInit; 0 = failed */
 void pm_dspa_shutdown(void);
+extern volatile unsigned pm_dspa_epoch;                           /* pm_dspa_rearm count: the voice map drops its channels when it changes */
 void pm_dspa_rearm(void);                                         /* after sleep: game thread, audio and render idle. Clears and sets up the channels again. */
 void pm_dspa_pace(void);                                          /* render thread: wait until the next block is due */
 int pm_dspa_voice_start(int ch, const DspaSample* s, float rate, const float mix[12]);    /* 1 = started, 0 = no cache entry: ch stays silent, the caller retries */
@@ -32,6 +33,9 @@ void pm_dspa_delay_set(int bus, int side, int blocks);
 void pm_dspa_block_done(int voices, int starts, int stops, int ends, unsigned costTicks);
 unsigned pm_dspa_backlog_blocks(void);                            /* blocks emitted by control and not yet processed */
 void pm_dspa_stats_log(void);
+/* AUDV census (switch audiostat): engine voice events that leave a voice silent. One line per stats window. */
+enum { DSPA_VC_NOCHAN, DSPA_VC_GIVEUP, DSPA_VC_NONADPCM, DSPA_VC_N };
+void pm_dspa_vcount(int what);
 void pm_dspa_log_once(const char* fmt, ...);
 
 /* decomp side (src/audio/core/dsp_voice.c) */

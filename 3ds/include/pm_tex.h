@@ -16,6 +16,7 @@ int pm_tex_cur_idx(void);     /* C1: resident cache slot for tile 0, -1 if off-s
 int pm_tex_aux_off_idx(void); /* same for tile 1 */
 /* V05: texel offset of the last loaded image inside its off-screen texture (0, 0 for an ordinary texture) */
 void pm_tex_origin(int* x, int* y);
+int pm_tex_off_rewin(const void* img, unsigned fmt, unsigned siz); /* GAMEOVER: img is a window of the bound off-screen image: origin moved, bind kept (1) */
 /* Call after the previous frame's GPU work has finished. */
 void pm_tex_begin_frame(void);
 /* Drop cached copies of any image or palette inside this range. The game
