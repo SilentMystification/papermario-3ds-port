@@ -853,6 +853,7 @@ void draw_shop_items(void) {
 
             if (z > 0.0f && z < 1.0f) {
                 xTemp = (((x * camera->viewportW) + camera->viewportW) * 0.5) + camera->viewportStartX;
+                xTemp = pm_wide_draw_x(camera, xTemp); /* WIDE3: the price follows the 3D item in the wide view (the same rule as get_screen_coords) */
                 yTemp = (((y * camera->viewportH) + camera->viewportH) * 0.5) + camera->viewportStartY;
 
                 if (itemData->price < 100) {

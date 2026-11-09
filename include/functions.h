@@ -193,6 +193,7 @@ s32 msg_printer_load_msg(s32 msgID, MessagePrintState* printer);
 void msg_printer_set_origin_pos(MessagePrintState* msgPrintState, s32 x, s32 y);
 
 void get_screen_coords(s32 camID, f32 x, f32 y, f32 z, s32* screenX, s32* screenY, s32* screenZ);
+s32 pm_wide_draw_x(Camera* camera, s32 x);
 
 void parent_collider_to_model(s16 colliderID, s16 modelIndex);
 void clone_model(u16 srcModelID, u16 newModelID);
