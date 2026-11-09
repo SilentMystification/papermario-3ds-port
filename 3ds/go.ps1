@@ -126,12 +126,18 @@ function Invoke-Build {
 
 # Runs one target, never throws - failures are captured and reported, not fatal to the others.
 # Banners use Write-Host: the caller stores the return value of this function, so Write-Output lines would end up in it.
+# RANDWARP: a push that names no spot (no warp=, tour=, tourlist=, preset=, loadslot=, savefile=) boots to a random spot: warp=random.
+# The run log line `warp: random seed <n>` repeats it: give warp=random:<n> in the game args.
+$gameSwitches = (@($GameDebug) + @($Rest)) -join ' '
+$randWarp = @(); if ($gameSwitches -notmatch '(^|\s)(warp|tour|tourlist|preset|loadslot|savefile)=') { $randWarp = @('warp=random') }
+
 function Push-One([string]$t) {
     Write-Host "=== push $t ($($consoleName[$t])) ==="
     try {
         if ($t -eq 'a') {
             $azArgs = @($Rest)
-            if ($GameDebug) { $azArgs = @('-Debug', $GameDebug) + $azArgs }
+            $azDebug = (@($GameDebug) + $randWarp) -join ' '
+            if ($azDebug.Trim()) { $azArgs = @('-Debug', $azDebug.Trim()) + $azArgs }
             if ($Interactive) { $azArgs = @('-Interactive') + $azArgs }
             & powershell -NoProfile -File 3ds/run_azahar.ps1 @azArgs
             if ($LASTEXITCODE -ne 0) { throw "run_azahar.ps1 exited $LASTEXITCODE" }
@@ -140,6 +146,7 @@ function Push-One([string]$t) {
             $env:N3DS_IP = $ip
             $watchSecs = if ($Interactive) { 86400 } else { $Seconds }
             $extra = @($Rest); if ($GameDebug) { $extra += $GameDebug }
+            $extra += $randWarp
             $profArgs = @(); if ($Profile) { $profArgs = @('--profile', $Profile) }
             if ($MemOk) { $profArgs += '--mem-ok' }
             & $gitBash 3ds/push_3ds.sh -t $watchSecs @profArgs @extra

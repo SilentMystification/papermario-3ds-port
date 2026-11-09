@@ -1111,6 +1111,22 @@
       ]
     },
     {
+      "name": "randwarp_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "RANDWARP: warp=random:7, the spot the seed picks, Azahar shots 200 to 205. A person reads the shot: Mario on the map of the seed line.",
+      "scenario": "randwarp_seed",
+      "cap": 45,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "random"
+      ],
+      "gates": []
+    },
+    {
       "name": "boot_mem",
       "kind": "azahar_stream",
       "speed": "normal",
