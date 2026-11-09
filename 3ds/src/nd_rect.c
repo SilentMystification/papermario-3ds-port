@@ -38,6 +38,18 @@ int fold_axis(int plo, float width, float a0, float a1, float mw, int flip, int 
     return n;
 }
 
+/* MERLON: the texel shift that brings a WRAP tile coordinate (no mirror, no clamp, mask m) into the period that starts at the tile origin SL (10.2),
+ * as the RDP mask does: whole periods of 1 << m texels. 0 when the tile clamps, mirrors or has no mask, or when the span crosses a period edge. */
+static float wrap_period_shift(float st, unsigned sl, unsigned cm, unsigned mask, float span) {
+    if ((cm & 3u) || !mask || mask > 10u) return 0.f;
+    const float per = (float)(1 << mask), rel = st - (float)sl * 0.25f;
+    const float k = floorf(rel / per);
+    const float r0 = rel - k * per;
+    if (span < 0.f) span = -span;
+    if (r0 + span > per) return 0.f;
+    return k * per;
+}
+
 /* CORE-3 census: calls of each handler (the census counts ops by handler module: nd_rect here, the former pm_gbi.c for the rest) */
 /* nd_rect_tex_n, nd_rect_fill_n: defined in nd_core.c (host-linked census counters, ST host fix) */
 
@@ -221,8 +233,16 @@ __attribute__((noinline)) void nd_texrect(u32 w0, u32 w1, u32 hs, u32 hd) {
         if (ex >= rx0 && ey >= ry0) {
             /* B3: the decal after a case 6 model (mac_01 crystal ball) is a G_ZS_PRIM texrect: it tests the primitive depth like the X01 fill */
             if ((nd_ws.omode_l & (1u << G_MDSFT_ZSRCSEL)) && (nd_ws.omode_l & 0x10u) && (nd_ws.geom & G_ZBUFFER)) {
+                /* MERLON: the RDP reads texel (S - SL) through the tile mask. The ball rectangle starts at S = ulx & 31 on a 32 x 32 WRAP tile loaded at SL = ulx,
+                 * so it reads the window from its origin; unmasked, S - SL = -128 sampled 128 texels left of the window in the grab slot (the frame's top left, blue). */
+                if (pm_tex_off_idx() >= 0) {
+                    const float ps = wrap_period_shift((float)(s16)(hs >> 16) / 32.f * ms, nd_ws.tst1.tile_sz[rtile][0], nd_ws.tst1.tile_wrap[rtile][0], nd_ws.tst1.tile_wrap[rtile][2], (s1 - s0) * (float)tw);
+                    const float pt = wrap_period_shift((float)(s16)(hs & 0xffff) / 32.f * mt, nd_ws.tst1.tile_sz[rtile][1], nd_ws.tst1.tile_wrap[rtile][1], nd_ws.tst1.tile_wrap[rtile][3], (t1 - t0) * (float)th);
+                    s0 -= ps / (float)tw; s1 -= ps / (float)tw; t0 -= pt / (float)th; t1 -= pt / (float)th;
+                }
                 sync_render();
                 pm_gpu_tex_rect_z(rx0, ry0, ex, ey, s0, t0, s1, t1, (float)nd_ws.prim_z / 32767.f);
+                goto rect_done; /* MERLON: the rectangle is drawn once, with its depth test. The fall-through drew it again with no depth (the crystal ball square through the walls) */
             } else
             if (pm_tex_off_idx() >= 0 && (nd_ws.tst1.tile_wrap[rtile][0] & 3) == 3 && (nd_ws.tst1.tile_wrap[rtile][1] & 3) == 3 && nd_ws.tst1.tile_wrap[rtile][2] && nd_ws.tst1.tile_wrap[rtile][3] &&
                 (1 << nd_ws.tst1.tile_wrap[rtile][2]) == tw && (1 << nd_ws.tst1.tile_wrap[rtile][3]) == th) {

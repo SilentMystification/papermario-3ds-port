@@ -354,6 +354,7 @@ set(PORT_SRC
     src/pm_warp.c
     src/pm_dbg_game.c
     src/pm_options.c
+    src/pm_cheatsave.c
     src/pm_options_ui.c
     src/pm_dpad.c
     src/pm_route.c

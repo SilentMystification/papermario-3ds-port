@@ -650,8 +650,11 @@ void dual_bind(void) {
         pm_tex_aux_origin(&ox1, &oy1);
         t1_p[0] = (float)tw0 / (float)tw1 * rs;
         t1_p[1] = (float)th0 / (float)th1 * rt;
-        t1_p[2] = ((float)nd_ws.tile_x0 * rs - (float)(nd_ws.td[1].x0 - ox1)) / (float)tw1;
-        t1_p[3] = ((float)nd_ws.tile_y0 * rt - (float)(nd_ws.td[1].y0 - oy1)) / (float)th1;
+        /* WATER (F1): both tile origins with their quarter-texel fractions (tile 0: tile_fx, which unit 0's offset holds; tile 1: SetTileSize uls & 3,
+         * which td[1].x0 drops). Without them a panned overlay was off by up to 0.75 texel against tile 0, a different amount every 1 to 3 frames. */
+        const float fx1 = (float)(nd_ws.tst1.tile_sz[1][0] & 3) * 0.25f, fy1 = (float)(nd_ws.tst1.tile_sz[1][1] & 3) * 0.25f;
+        t1_p[2] = (((float)nd_ws.tile_x0 + nd_ws.tile_fx) * rs - ((float)(nd_ws.td[1].x0 - ox1) + fx1)) / (float)tw1;
+        t1_p[3] = (((float)nd_ws.tile_y0 + nd_ws.tile_fy) * rt - ((float)(nd_ws.td[1].y0 - oy1) + fy1)) / (float)th1;
         t1_ox = ox1; t1_oy = oy1; t1_w = tw1; t1_h = th1;
         pm_gpu_set_tex1(t1_p[0], t1_p[1], t1_p[2], t1_p[3]);
     }

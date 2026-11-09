@@ -640,9 +640,6 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
                             quads[7].v.tc[0] = width * 32;
                             quads[7].v.tc[1] = (height / 2) * 32;
 
-#ifndef SHIFT
-                            quads += 4;
-#endif
                             break;
                         case 2:
                             quads[8].v.ob[0] = -width / 2;
@@ -673,9 +670,6 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
                             quads[11].v.tc[0] = (width / 2) * 32;
                             quads[11].v.tc[1] = height * 32;
 
-#ifndef SHIFT
-                            quads += 8;
-#endif
                             break;
                         case 3:
                             quads[12].v.ob[0] = 0;
@@ -706,16 +700,11 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
                             quads[15].v.tc[0] = width * 32;
                             quads[15].v.tc[1] = height * 32;
 
-#ifndef SHIFT
-                            quads += 12;
-#endif
                             break;
                     }
-#ifdef SHIFT
-                    gSPVertex(gMainGfxPos++, &quads[idx*4], 4, 0);
-#else
-                    gSPVertex(gMainGfxPos++, quads, 4, 0);
-#endif
+                    /* PAUSEFLK: corner idx reads its own 4 vertices of the slot (the decomp SHIFT form). The US form moved quads by 4, 8 and 12 after
+                     * corners 1 to 3, so corner 3 wrote slot + 24..27: past the 16-vertex slot, and past the array for slot 20 (InspectIcon, ISpyData). */
+                    gSPVertex(gMainGfxPos++, &quads[idx * 4], 4, 0);
                     gSP2Triangles(gMainGfxPos++, 0, 3, 1, 0, 0, 2, 3, 0);
                 } else {
                     switch (idx) {

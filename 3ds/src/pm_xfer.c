@@ -15,6 +15,7 @@
 #include "common.h"
 #include "game_modes.h"
 #include "map.h"
+#include "model.h"
 #include "pm_port.h"
 #include <stdio.h>
 #include <string.h>
@@ -24,6 +25,7 @@ PmXf pm_xf;
 unsigned nd_mc_clears(void); /* nd_model.c */
 unsigned nd_mc_reps(void); /* nd_model.c, MAPX-2 */
 unsigned nd_mc_trims(void); /* nd_model.c, MAPX-2 */
+void nd_mc_fill(unsigned* ent, unsigned* pool); /* nd_model.c, DOORHITCH */
 void pm_log_prof_line(const char* fmt, ...); /* pm_log.c */
 
 enum { XF_NONE, XF_DOOR, XF_MAP, XF_BTL };
@@ -39,6 +41,11 @@ static unsigned xf_seq; /* transitions printed since boot (the n field) */
 static unsigned xf_steps, xf_tail, xf_max, xf_fade, xf_o34, xf_init, xf_clr0, xf_rep0, xf_trim0;
 static unsigned xf_wmax, xf_wo34, xf_dec_n0, xf_dec_us0, xf_pre0[3]; /* BTLWIPE: the steps before the load (the star wipe): longest, over 34 ms; decode counts at the start */
 static char xf_from[24], xf_to[24];
+/* DOORHITCH: the stage counts of the longest step (xfer3 maxstep): model misses, refused hits, texture and dlc ticks, ROM reads, prof sample.
+ * xs_p: the counters at the end of the step before; xs_m: the deltas of the longest step. ehi, phi: the most live cache entries and pool draws at a step end. */
+typedef struct { unsigned mdl, rng, tex_t, dlc_t, rom, smp; } XfSnap;
+static XfSnap xs_p, xs_m;
+static unsigned xs_ehi, xs_phi;
 static int xf_last_area = -1, xf_last_map = -1; /* the map loaded last: the from of the next map change */
 
 static void map_name(char* o, unsigned n, int a, int m) {
@@ -86,6 +93,10 @@ __attribute__((cold, noinline)) static void xf_print(void) {
         b[n] = 0;
         pm_log_prof_line("xferk %s miss %u rep %u trim %u first%s", kn, pm_xf.mdl_miss, nd_mc_reps() - xf_rep0, nd_mc_trims() - xf_trim0, b);
     }
+    /* DOORHITCH: the longest step by stage, and the cache fill over the transition (after xferk: the test until-line); a battle entry has its BTLWIPE xfer3 line */
+#define XF_L3 " n%u | maxstep mdl %u rng %u tex %s dlc %s rom %u smp %u | rng %u trim %u phi %u ehi %u rdw %s hid %u"
+    if (xf_kind != XF_BTL) pm_log_prof_line(xf_kind == XF_MAP ? "xfer3 map" XF_L3 : "xfer3 door n%u | maxstep mdl %u rng %u tex %s dlc %s rom %u smp %u | rng %u trim %u phi %u ehi %u rdw %s hid %u",
+                     xf_seq, xs_m.mdl, xs_m.rng, msf(m[6], xs_m.tex_t), msf(m[7], xs_m.dlc_t), xs_m.rom, xs_m.smp, pm_xf.mdl_rng, nd_mc_trims() - xf_trim0, xs_phi, xs_ehi, msf(m[8], pm_xf.rdw_t), pm_xf.hid_d);
     xf_kind = XF_NONE;
     pm_xf.on = 0;
 }
@@ -100,14 +111,17 @@ __attribute__((cold, noinline)) static void xf_begin(int kind) {
     pm_dspa_dec_mark(&xf_dec_n0, &xf_dec_us0);
     pm_dspa_pre_read(&xf_pre0[0], &xf_pre0[1], &xf_pre0[2]);
     xf_clr0 = nd_mc_clears(); xf_rep0 = nd_mc_reps(); xf_trim0 = nd_mc_trims();
+    memset(&xs_p, 0, sizeof xs_p); memset(&xs_m, 0, sizeof xs_m); xs_ehi = xs_phi = 0;
 }
 void pm_xfer_map_begin(void) {
     xf_begin(XF_MAP);
     map_name(xf_from, sizeof xf_from, xf_last_area, xf_last_map);
     snprintf(xf_to, sizeof xf_to, "?");
 }
+static int xh_on; /* DOORHITCH step 3: armed by a map load (2 in the load step, then 1 until a scan finds no new hidden model) */
 void pm_xfer_map_load(int area, int map) {
     xf_last_area = area; xf_last_map = map;
+    xh_on = 2; /* 2: the load step itself (the map scripts have not hidden the room models yet) */
     if (xf_kind != XF_MAP) return; /* a load outside a map change (enter world, a battle return): no line */
     map_name(xf_to, sizeof xf_to, area, map);
     pm_xf.load_step = 1;
@@ -166,6 +180,14 @@ void pm_xfer_step(unsigned long long t0, unsigned long long t1) {
     int ld = pm_xf.load_step;
     pm_xf.load_step = 0;
     xf_steps++;
+    {   /* DOORHITCH: the deltas of this step; the longest step keeps its own */
+        XfSnap c = { pm_xf.mdl_miss, pm_xf.mdl_rng, pm_xf.tex_t, pm_xf.dlc_t, pm_xf.rom_n, 0 };
+        if (w > xf_max) { xs_m.mdl = c.mdl - xs_p.mdl; xs_m.rng = c.rng - xs_p.rng; xs_m.tex_t = c.tex_t - xs_p.tex_t; xs_m.dlc_t = c.dlc_t - xs_p.dlc_t; xs_m.rom = c.rom - xs_p.rom; xs_m.smp = pm_xf.step_smp != 0; }
+        xs_p = c;
+        unsigned en, pn; nd_mc_fill(&en, &pn);
+        if (en > xs_ehi) xs_ehi = en;
+        if (pn > xs_phi) xs_phi = pn;
+    }
     if (w > xf_max) xf_max = w;
     int init = 0;
     if (xf_kind == XF_BTL && !xf_loaded && !ld) { /* the star wipe steps */
@@ -178,4 +200,36 @@ void pm_xfer_step(unsigned long long t0, unsigned long long t1) {
     if (!ld && w > T34) xf_o34++;
     if (!ld && !init && w > xf_fade) xf_fade = w;
     if ((xf_tail && --xf_tail == 0) || xf_steps >= XF_LIMIT) xf_print();
+}
+/* DOORHITCH step 3: the first entry of a room. Its models (the house interior on kmr_20) are hidden by the room scripts after the load and first
+ * drawn in the door, where their display lists were compiled inside the door steps (kmr_20: 39 lists). After a map load the logic thread posts the
+ * list of each hidden model to the walker, which compiles it after the frame's walk (nd_shape.c pm_dlc_prebuild, no walker state): XH_STEP per
+ * frame under the covered frames of the load (the overlay at 255, as pm_xfer_skip), then one per drawn frame once the map line has ended and no
+ * door is open, until a scan finds no new hidden model. The covered frames alone do not reach the room models: kmr_20 creates its room
+ * (CreateMapRoom) in the second covered frame and hides the interior after it. Textures are not loaded here: a load from outside a draw moves the
+ * texture unit state the walker draws with (iwa_10 det shots changed), and the kmr_20 interior textures were already cached. Deterministic: a
+ * count, no time. */
+#define XH_STEP 12u
+static uint32_t xh_done[MAX_MODELS / 32]; static unsigned xh_n; /* models posted since the load: by index, the count */
+static void wq_xh(void* a) { int pm_dlc_prebuild(const void* l); if (pm_dlc_prebuild(*(const void* const*)a)) pm_xf.hid_d++; } /* walker side */
+void pm_xfer_hidden(void) {
+    if (!xh_on) return;
+    if (xh_on == 2 || (gOverrideFlags & GLOBAL_OVERRIDES_DISABLE_DRAW_FRAME)) { xh_on = 1; memset(xh_done, 0, sizeof xh_done); xh_n = 0; return; }
+    u8 t; f32 z;
+    get_screen_overlay_params(SCREEN_LAYER_FRONT, &t, &z);
+    const int cov = (t == OVERLAY_SCREEN_COLOR || t == OVERLAY_VIEWPORT_COLOR) && z >= 255.0f;
+    if (!cov && xf_kind != XF_NONE) return; /* the fade-in of a map change or a door: those frames build their own models */
+    const unsigned lim = cov ? XH_STEP : 1u;
+    unsigned n = 0;
+    for (unsigned i = 0; i < MAX_MODELS && n < lim; i++) {
+        Model* m = (*gCurrentModels)[i];
+        if (!m || !(m->flags & MODEL_FLAG_HIDDEN) || (m->flags & (MODEL_FLAG_INACTIVE | MODEL_FLAG_HAS_LOCAL_VERTEX_COPY))) continue;
+        if (!m->modelNode || !m->modelNode->displayData || (xh_done[i >> 5] & (1u << (i & 31u)))) continue;
+        xh_done[i >> 5] |= 1u << (i & 31u);
+        const void* dl = m->modelNode->displayData->displayList;
+        pm_wq_post(wq_xh, &dl, sizeof dl);
+        n++;
+    }
+    xh_n += n;
+    if (!n && !cov) { xh_on = 0; pm_log_d("xfer hidden f%u posted %u", pm_frame_count(), xh_n); }
 }

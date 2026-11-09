@@ -525,6 +525,24 @@ int pm_dlc_native_ranges(const void* lv, uint32_t entry, NdRng* out, unsigned ma
     return (int)n;
 }
 
+/* DOORHITCH: build the compiled list of a model before its first draw (pm_xfer.c: the hidden models of a new map, under the covered frames of
+ * the load). The same build as dlc_try's; 1 when it built. Cold: once per list and map. */
+__attribute__((cold, noinline)) int pm_dlc_prebuild(const void* lv) {
+    const Gfx* l = (const Gfx*)lv;
+    if (!dlc_on || !is_host((u32)(uintptr_t)l) || (u32)l - (u32)gMapShapeData >= 0x40000u || ((u32)l & 7)) return 0;
+    if (dlc_seen_gen != pm_dlc_gen) { dlc_reset(); dlc_seen_gen = pm_dlc_gen; }
+    DlcEnt* e = dlc_find(l);
+    if (!e || e->gen == pm_dlc_gen) return 0;
+    dlc_free(e);
+    e->gen = pm_dlc_gen; e->refused = 0;
+    unsigned xt0 = pm_xf.on ? pm_ticks() : 0u;
+    int r = dlc_build(e, l);
+    if (pm_xf.on) { pm_xf.dlc_n++; pm_xf.dlc_t += pm_ticks() - xt0; } /* MAPX-1 */
+    e->hash = dlc_hash(l);
+    dlc_c.compile++;
+    if (r) { e->refused = (u8)r; dlc_c.refused[r < DLR_N ? r : DLR_LONG]++; }
+    return 1;
+}
 int dlc_try(const Gfx* l) {
     if ((u32)l - (u32)gMapShapeData >= 0x40000u || ((u32)l & 7)) return 0;
     if (dlc_seen_gen != pm_dlc_gen) { dlc_reset(); dlc_seen_gen = pm_dlc_gen; }

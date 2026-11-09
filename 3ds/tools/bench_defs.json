@@ -13,6 +13,70 @@
   },
   "benches": [
     {
+      "name": "cheatsave_save",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CHEATSAVE save: Cheats tab, Moon jump on, the cyan footer shot, X writes cheats_slot0.ini. A person reads the footer shot.",
+      "scenario": "cheatsave_save",
+      "cap": 30,
+      "until": "cheats: saved slot \\d+ \\(1 on\\)",
+      "tags": [
+        "azahar",
+        "menu",
+        "cheatsave"
+      ],
+      "gates": []
+    },
+    {
+      "name": "cheatsave_load_on",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CHEATSAVE load after a reboot: slot 0 file applied, Moon jump On in the Cheats tab.",
+      "scenario": "cheatsave_load_on",
+      "cap": 30,
+      "until": "menu: shot \\w+ tab 3 row 0",
+      "tags": [
+        "azahar",
+        "menu",
+        "cheatsave"
+      ],
+      "gates": []
+    },
+    {
+      "name": "cheatsave_load_off",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CHEATSAVE per slot: slot 1 has no cheats file, Moon jump Off in the Cheats tab.",
+      "scenario": "cheatsave_load_off",
+      "cap": 30,
+      "until": "menu: shot \\w+ tab 3 row 0",
+      "tags": [
+        "azahar",
+        "menu",
+        "cheatsave"
+      ],
+      "gates": []
+    },
+    {
+      "name": "cheatsave_copy",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CHEATSAVE2: file select Copy File slot 0 to slot 3 copies cheats_slot0.ini to cheats_slot3.ini.",
+      "scenario": "cheatsave_copy",
+      "cap": 25,
+      "until": "shot 0 frame \\d+",
+      "tags": [
+        "azahar",
+        "menu",
+        "cheatsave"
+      ],
+      "gates": []
+    },
+    {
       "name": "dmg_jump",
       "kind": "azahar_pic",
       "speed": "turbo",
@@ -497,6 +561,70 @@
         "azahar",
         "pic",
         "pause"
+      ],
+      "gates": []
+    },
+    {
+      "name": "pause_tab_thr_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "PAUSEFLK: threaded pause (logic thread on, wide), mac_01, Party then Star Spirits tab; shots every frame 140 to 249. Gate: no frame-to-frame flicker of sprites, portraits or windows. A person reads the shots.",
+      "scenario": "pause_tab_thr_pic",
+      "cap": 40,
+      "until": "shot \\d+ frame 24[01]\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "pause"
+      ],
+      "gates": []
+    },
+    {
+      "name": "pause_tab_det_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "PAUSEFLK: det twin of pause_tab_thr_pic (serial step). Same route and shots.",
+      "scenario": "pause_tab_det_pic",
+      "cap": 40,
+      "until": "shot \\d+ frame 24[01]\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "pause"
+      ],
+      "gates": []
+    },
+    {
+      "name": "pause_tab_c2haz",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "PAUSEFLK: c2haz census on the pause Party and Star Spirits panels (det). The c2haz new lines name the memory a threaded walk reads while the logic rewrites it.",
+      "scenario": "pause_tab_c2haz",
+      "cap": 30,
+      "until": "c2haz sum f(2[5-9]\\d|3\\d\\d) ",
+      "tags": [
+        "azahar",
+        "pause",
+        "c2haz"
+      ],
+      "gates": []
+    },
+    {
+      "name": "pause_tab_c2haz_thr",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "PAUSEFLK: c2haz census with the logic thread on (no det) on the pause Party and Star Spirits panels: writes of the logic of frame N+1 to memory the walk of frame N reads.",
+      "scenario": "pause_tab_c2haz_thr",
+      "cap": 30,
+      "until": "c2haz sum f(2[5-9]\\d|3\\d\\d) ",
+      "tags": [
+        "azahar",
+        "pause",
+        "c2haz"
       ],
       "gates": []
     },
@@ -3822,6 +3950,41 @@
       "gates": []
     },
     {
+      "name": "newgame_handover",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "INTROSNAP gate: new game with wide and fps60 (det), route through the title: the stage zoom, ENTER_WORLD and the first drawn frames after the kmr load. No frame wider than its neighbours. A person reads the shot.",
+      "scenario": "newgame_handover",
+      "cap": 25,
+      "until": "shot \\d+ frame 451\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "det",
+        "wide",
+        "fps60"
+      ],
+      "gates": []
+    },
+    {
+      "name": "newgame_handover_thr",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "INTROSNAP: new game with wide and fps60, no det (logic thread), route through the title: the stage zoom, ENTER_WORLD and the first drawn frames after the kmr load. No frame wider than its neighbours. A person reads the shot.",
+      "scenario": "newgame_handover_thr",
+      "cap": 25,
+      "until": "shot \\d+ frame 459\\b",
+      "tags": [
+        "azahar",
+        "pic",
+                "wide",
+        "fps60"
+      ],
+      "gates": []
+    },
+    {
       "name": "intro_native_pic",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -3995,6 +4158,36 @@
       "tags": [
         "azahar",
         "mdl5"
+      ],
+      "gates": []
+    },
+    {
+      "name": "water_sbk56_det12",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WATER: sbk_56 cold det native, shots 200 to 211. Gate: water box x120..153 y87..314 byte-equal to water_sbk56_ref12 in 12/12 shots.",
+      "scenario": "water_sbk56_det12",
+      "cap": 45,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "water"
+      ],
+      "gates": []
+    },
+    {
+      "name": "water_sbk56_ref12",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WATER: sbk_56 cold det with nomodelnat, shots 200 to 211 (byte reference of water_sbk56_det12).",
+      "scenario": "water_sbk56_ref12",
+      "cap": 45,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "water"
       ],
       "gates": []
     },
@@ -5207,6 +5400,237 @@
       "gates": []
     },
     {
+      "name": "xfer_door_kmr20",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "DOORHITCH: Mario's house door on kmr_20 (enter and exit, twice), det, xferdiag; xfer, xfer2, xfer3 and xferk lines of each door. last = the second exit, first = the first entry.",
+      "scenario": "xfer_door_kmr20",
+      "cap": 45,
+      "until": "xfer3 door n5\\b",
+      "tags": [
+        "azahar",
+        "xfer"
+      ],
+      "log_metrics": [
+        {
+          "name": "xfer_max_ms",
+          "regex": "xfer door \\S+ f\\d+ max ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_o34",
+          "regex": "xfer door \\S+ f\\d+ max [\\d.]+ o34 (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_mdl_miss",
+          "regex": "xfer2 door n\\d+ .* mdl (\\d+)/",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_tex_ms",
+          "regex": "xfer2 door n\\d+ .* tex \\d+/\\d+/([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_rng",
+          "regex": "xfer3 door n\\d+ .*\\| rng (\\d+) trim",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_trim",
+          "regex": "xfer3 door n\\d+ .* trim (\\d+) phi",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_max_mdl",
+          "regex": "xfer3 door n\\d+ \\| maxstep mdl (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_max_smp",
+          "regex": "xfer3 door n\\d+ .* smp (\\d)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_rdw_ms",
+          "regex": "xfer3 door n\\d+ .* rdw ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_max_first_ms",
+          "regex": "xfer door \\S+ f\\d+ max ([\\d.]+)",
+          "pick": "first"
+        },
+        {
+          "name": "xfer_mdl_first",
+          "regex": "xfer2 door n\\d+ .* mdl (\\d+)/",
+          "pick": "first"
+        }
+      ],
+      "gates": []
+    },
+    {
+      "name": "xfer_door_kmr20_prof",
+      "kind": "console_prof",
+      "speed": "normal",
+      "default": false,
+      "purpose": "DOORHITCH: Mario's house door on kmr_20 (enter and exit, twice) on the O3DS in prof mode. Pass: max under 50 ms, xfer3 smp 0 at the max step.",
+      "scene_match": null,
+      "recipe": "preset=yard padscript=wait60,goto_kmr_20:4,wait300,pos_300:30:-76,go_240_-76_100,A,wait260,go_200_-76_20,go_285_-76_80,A,wait200,go_240_-76_100,A,wait260,go_200_-76_20,go_285_-76_80,A,wait300 prof=30",
+      "scenario": null,
+      "host": "o3ds",
+      "cap": 60,
+      "until": "xfer3 door n5\\b",
+      "tags": [
+        "console",
+        "prof",
+        "xfer"
+      ],
+      "log_metrics": [
+        {
+          "name": "xfer_max_ms",
+          "regex": "xfer door \\S+ f\\d+ max ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_o34",
+          "regex": "xfer door \\S+ f\\d+ max [\\d.]+ o34 (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_mdl_miss",
+          "regex": "xfer2 door n\\d+ .* mdl (\\d+)/",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_tex_ms",
+          "regex": "xfer2 door n\\d+ .* tex \\d+/\\d+/([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_rng",
+          "regex": "xfer3 door n\\d+ .*\\| rng (\\d+) trim",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_trim",
+          "regex": "xfer3 door n\\d+ .* trim (\\d+) phi",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_max_mdl",
+          "regex": "xfer3 door n\\d+ \\| maxstep mdl (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_max_smp",
+          "regex": "xfer3 door n\\d+ .* smp (\\d)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_rdw_ms",
+          "regex": "xfer3 door n\\d+ .* rdw ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_max_first_ms",
+          "regex": "xfer door \\S+ f\\d+ max ([\\d.]+)",
+          "pick": "first"
+        },
+        {
+          "name": "xfer_mdl_first",
+          "regex": "xfer2 door n\\d+ .* mdl (\\d+)/",
+          "pick": "first"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "xfer_max_ms",
+          "op": "<",
+          "value": 50
+        },
+        {
+          "metric": "xfer_max_smp",
+          "op": "==",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "name": "xfer_door_kmr20_shots",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "DOORHITCH byte gate: kmr_20 first room entry after a map change, det, shots 290 to 305 over the shroud ramp (the sky black at full shroud). Byte-equal to the base build.",
+      "scenario": "xfer_door_kmr20_shots",
+      "cap": 40,
+      "until": "shot \\d+ frame 305\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "det",
+        "xfer"
+      ],
+      "gates": []
+    },
+    {
+      "name": "xfer_door_kmr20_ndm",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "DOORHITCH gate: kmr_20 doors with ndmcheck (native draw vs walker, cached vs fresh). Gate: ndmcheck diff 0 and ndmcache diff 0 at f300 (the first door).",
+      "scenario": "xfer_door_kmr20_ndm",
+      "cap": 90,
+      "until": "ndmcache f300 ",
+      "tags": [
+        "azahar",
+        "ndm",
+        "xfer"
+      ],
+      "log_metrics": [
+        {
+          "name": "ndm_diff",
+          "regex": "ndmcheck f\\d+ recs \\d+ eq \\d+ diff (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "ndmcache_diff",
+          "regex": "ndmcache f\\d+ hit \\d+ miss \\d+ diff (\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "ndm_diff",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "ndmcache_diff",
+          "op": "==",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "name": "nok11_det_ref",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "Walker reference (nomodelnat) of nok11_det: the shots a model cache change must equal.",
+      "scenario": "nok11_det_ref",
+      "cap": 45,
+      "until": "fxtest: shot 1 effect 89 water_splash",
+      "tags": [
+        "azahar",
+        "det",
+        "ref"
+      ],
+      "gates": []
+    },
+    {
       "name": "xfer_door_mac01",
       "kind": "azahar_stream",
       "speed": "normal",
@@ -5250,6 +5674,54 @@
           "regex": "xfer door \\S+ .* load ([\\d.]+)",
           "pick": "last"
         }
+      ],
+      "gates": []
+    },
+    {
+      "name": "merlon_in_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MERLON: Merlon's house enter and exit on mac_01 (ch1_start), det, shots every 25 frames 100 to 300: interior lit, crystal ball round, no square through the wall. A person reads the shot.",
+      "scenario": "merlon_in_pic",
+      "cap": 30,
+      "until": "xfer2 [a-z]+ n2\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "xfer"
+      ],
+      "gates": []
+    },
+    {
+      "name": "merlon_in_nowide_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MERLON: Merlon's house enter and exit on mac_01 (ch1_start), det, 4:3 (nowide), shots every 25 frames 100 to 300: interior lit, crystal ball round, no square through the wall. A person reads the shot.",
+      "scenario": "merlon_in_nowide_pic",
+      "cap": 30,
+      "until": "xfer2 [a-z]+ n2\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "xfer"
+      ],
+      "gates": []
+    },
+    {
+      "name": "merlon_in_live_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MERLON: Merlon's house enter and exit on mac_01 (ch1_start), no det (logic thread on), shots every 25 frames 100 to 300: interior lit, crystal ball round, no square through the wall. A person reads the shot.",
+      "scenario": "merlon_in_live_pic",
+      "cap": 30,
+      "until": "xfer2 [a-z]+ n2\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "xfer"
       ],
       "gates": []
     },

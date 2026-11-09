@@ -2674,7 +2674,7 @@ int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4
     if (use5 && !gv5_on) return 0;
     unsigned mvm = 0; /* TRI-2: bit i: ro[i] is a copy with x moved (the caller keeps vert_ring) */
     if (mv) *mv = 0;
-    if (gs.r_zmark) return 0; /* B3b depth pass: the second pass needs the CPU vertices */
+    if (gs.r_zmark && use5) return 0; /* B3b depth pass: pm4 batches draw it natively in two passes (nd_raw_native, raw_zmark_pass); pm5 has no zmark pass */
     if (gs.r_decal && gs.r_blend) return 0; /* V16b: a decal is drawn in two passes from the CPU vertices */
     if (pm_wide && !gs.off_active) { int w_ = gtrip_wide(tab, g, ri); if (w_ < 0) return 0; mvm = (unsigned)w_; } /* PERF2: the wide edge test out of line */
     if (nb.gidx_n + 3 > GRING_IDX) return 0;
@@ -2887,8 +2887,12 @@ void pm_gpu_set_nocolor(int on) {
     gs.r_nocol = on;
 }
 
-/* B3b: on = the next triangles are a case 6 model (a depth test against the world, a constant depth write). zn = clip z / w of the constant. */
+/* B3b: on = the next triangles are a case 6 model (a depth test against the world, a constant depth write). zn = N64 clip z / w of the constant.
+ * MERLON: the zmark pass 2 replaces palette row 2 (the PICA clip z, after gv_post) with zn * row 3, so the constant is stored as PICA z / w: gv_post maps
+ * N64 clip z to PICA z by its row 2 only (z and w terms; the tilt rotates x and y), PICA w = N64 w. zn 0.998 (the ball, PRIM word 0xFFBC) is PICA -0.001,
+ * the depth of the G_ZS_PRIM decal rectangle (pm_gpu_tex_rect_z); unmapped, +0.998 lay outside the PICA clip range [-w, 0] and pass 2 drew nothing. */
 void pm_gpu_set_zmark(int on, float zn) {
+    if (on) zn = gv_post.r[2].z * zn + gv_post.r[2].w;
     if (on == gs.r_zmark && (!on || zn == gs.r_zmark_zn)) return;
     flush();
     gs.r_zmark = on;
@@ -2898,7 +2902,7 @@ void pm_gpu_set_zmark(int on, float zn) {
 void pm_gpu_set_render(int zcmp, int zupd, int blend, int atest, int decal) {
     if (zcmp == gs.r_zcmp && zupd == gs.r_zupd && blend == gs.r_blend && atest == gs.r_atest && decal == gs.r_decal) return;
     flush();
-    gs.r_zmark = 0; /* B3b: draw_tri turns it on again for a case 6 model */
+    gs.r_zmark = 0; /* B3b: gv_epoch_enter (nd_geom.c) turns it on again for a case 6 model */
     gs.r_zcmp = zcmp;
     gs.r_zupd = zupd;
     gs.r_blend = blend;
@@ -2955,12 +2959,18 @@ static uint32_t aux_hash(const uint32_t* rec) {
  * walker's other mode as (walker & ~written) | list (nd_model_state, B8), so a written bit of the walker never reaches it: the key leaves those bits out.
  * Before, the walker other mode in the key depended on whether the record before was a cache hit (a hit skips rec_apply, so the walker keeps the older
  * mode): every new or changed record in a door or a room change missed again the records after it, and the misses filled the cache to a clear. */
-static uint32_t rm_wh[256], rm_wl[256]; static uint8_t rm_done[256];
+/* DOORHITCH: the same for the geometry mode. rec_apply runs the render mode list before the geometry list, and every list clears and sets the
+ * shade, cull, fog, lighting, texgen, lod and smooth bits (src/model.c Gfx_RM*): the walker geometry bits before the record reach the draw only
+ * through rm_ga (NdMode gand: the AND of the list's G_GEOMETRYMODE keep masks, set_geom). Before, key word 32 held the geometry mode the record before left
+ * (a hit skips rec_apply, a miss runs its list), so in a door the shroud switch of one model made the next models miss too and the store replaced
+ * their entry of the other room state (kmr_20: w32 first for 230 to 316 misses per door). */
+static uint32_t rm_wh[256], rm_wl[256], rm_ga[256]; static uint8_t rm_done[256];
 static __attribute__((cold, noinline)) void rm_masks(unsigned i) {
     extern void* ModelRenderModes[]; /* src/model.c: Gfx* per render mode index */
     NdMode m;
     rm_done[i] = 1;
-    if (nd_mode_compile(&m, (const unsigned*)ModelRenderModes[i])) { rm_wh[i] = m.wh; rm_wl[i] = m.wl; }
+    rm_ga[i] = 0xFFFFFFFFu;
+    if (nd_mode_compile(&m, (const unsigned*)ModelRenderModes[i])) { rm_wh[i] = m.wh; rm_wl[i] = m.wl; rm_ga[i] = m.gand; }
 }
 void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) {
     memcpy(k->w, rec, NDMC_RW * sizeof(uint32_t));
@@ -2977,7 +2987,7 @@ void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) {
     unsigned i = 0;
     uint32_t gk = 0xFFFFFFFFu; /* MAPX-2: the walker geometry reaches the draw only through the bits the list's groups keep (gg = (entry & am) | om) */
     if (rec[24] && pm_dlc_geom_keep((const void*)(uintptr_t)rec[24], &gk) != 0) gk = 0xFFFFFFFFu;
-    s[i++] = nd_ws.omode_h & kh; s[i++] = nd_ws.omode_l & kl; s[i++] = nd_ws.om_kh & kh; s[i++] = nd_ws.om_kl & kl; s[i++] = nd_ws.geom & gk;
+    s[i++] = nd_ws.omode_h & kh; s[i++] = nd_ws.omode_l & kl; s[i++] = nd_ws.om_kh & kh; s[i++] = nd_ws.om_kl & kl; s[i++] = nd_ws.geom & gk & rm_ga[rmi];
     s[i++] = sw_tss; s[i++] = sw_cw0; s[i++] = sw_cw1;
     s[i++] = nd_ws.prim; s[i++] = nd_ws.prim_lod; s[i++] = aux_hash(rec); /* S3N-7: env_col is not in the key (it changes per draw order; the cached draws do not read it: ndmcheck diff 0). S3L-3: slot 10 = hash of the R13 words (compared) */ s[i++] = cconst; s[i++] = gs.r_mix == 2 ? r_mixcol : 0u; s[i++] = dbits; /* MERLEE: the walker's mix reaches the native draw only as the F08 fog mix (model_draw) */
     s[i++] = (uint32_t)dview; s[i++] = gs.r_mix == 2 ? 2u : 0u; s[i++] = (uint32_t)r_memblend; s[i++] = (uint32_t)r_replace; s[i++] = (uint32_t)gv_wind;
@@ -3014,11 +3024,11 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
     /* SBKW-2: the walker binds the tile 0 window (LoadTile w x h from the handle raster, ensure_tile), not the whole handle. The handle desc is
      * the full texture (mainW x mainH, 32 x 64 on the sbk_56 water): the native draw sampled 64 rows and took uv scale 1/64 (uvso1 2x, u0.dim 0x40).
      * The desc takes the window size of the live tile 0 when that window starts at the handle raster with the same form and stride. */
-    NdTexDesc wdesc;
+    NdTexDesc wdesc; uint16_t ww_ = 0, wh_ = 0; /* WATER: the window size the cache entry keeps (0: the full desc) */
     if (ds && nd_ws.td[0].valid && nd_ws.td[0].src == ds->img && nd_ws.td[0].fmt == ds->fmt && nd_ws.td[0].siz == ds->siz && nd_ws.td[0].stride == ds->stride &&
         nd_ws.td[0].w > 0 && nd_ws.td[0].h > 0 && nd_ws.td[0].w <= ds->w && nd_ws.td[0].h <= ds->h && (nd_ws.td[0].w != ds->w || nd_ws.td[0].h != ds->h)) {
         wdesc = *ds; wdesc.w = nd_ws.td[0].w; wdesc.h = nd_ws.td[0].h;
-        ds = &wdesc;
+        ds = &wdesc; ww_ = (uint16_t)wdesc.w; wh_ = (uint16_t)wdesc.h;
     }
     NdMode ax; int ax_ok = 0; /* S3L-3: R13 words of an untextured record (no bind): decoded as the list ops that run before the render mode list */
     if (rec[26] != 0 && gfx == NULL) ax_ok = nd_aux_state(rec + NDMC_RW, rec[26], &ax);
@@ -3087,7 +3097,7 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
     if (n >= 0 && !emit) valid = ndc_compare(mk, ds, id, hs, hg); /* S3N-6 check: the cached draws of this key against these */
     /* MDL-1: a textured draw without a handle desc (the bound slot, R13 block) stores tex 1: its hit has no desc, so it falls back (ndn_texf) and never reuses the slot of another frame */
     if (n >= 0 && !valid && !mk->w[22]) { int r13nd_ = (r13_last && ds == NULL && gfx == NULL && tex); if (r13nd_) nd_r13_nohit++; NdMEnt* se_ = nd_mc_store(mk, ds != NULL || r13nd_, hs, hg);
-        if (se_) { se_->h1s = (int16_t)(r13u1_ok ? r13u1_slot : -1); se_->h1g = r13u1_ok ? pm_tex_slot_gen(r13u1_slot) : 0u; } } /* TIK19: the unit 1 slot and its generation, the hit reads its words again */ /* MDL-1 cache (oracle review): only R13 texture records without a desc store tex 1. STARFX: a record with a pre list (key w22, R11 w0) is never stored (rec_run) */ /* S3N-6: the draws and ranges of this key (a miss; a valid entry stays) */
+        if (se_) { se_->ww = ww_; se_->wh = wh_; se_->h1s = (int16_t)(r13u1_ok ? r13u1_slot : -1); se_->h1g = r13u1_ok ? pm_tex_slot_gen(r13u1_slot) : 0u; } } /* TIK19: the unit 1 slot and its generation, the hit reads its words again */ /* MDL-1 cache (oracle review): only R13 texture records without a desc store tex 1. STARFX: a record with a pre list (key w22, R11 w0) is never stored (rec_run) */ /* S3N-6: the draws and ranges of this key (a miss; a valid entry stays) */
     return n;
 }
 void pm_gpu_ndm_begin(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, const NdMKey* mk) {
@@ -3103,7 +3113,7 @@ void pm_gpu_ndm_begin(const uint32_t* rec, const uint32_t* modew, const uint32_t
 }
 /* S3N-4: the switch. One model record drawn natively (emit 1) after rec_apply; a fallback returns -1 and the record runs the walker geometry.
  * The counters print every 300 frames: native records, fallback records, native draws (the ranges; the wref class is not split in this mode). */
-static unsigned ndn_rec, ndn_fb, ndn_draws, ndn_hit, ndn_miss, ndn_nokey, ndn_rng, ndn_texf, ndn_empty; /* PERF1: empty = hits with no draw */
+static unsigned ndn_rec, ndn_fb, ndn_draws, ndn_hit, ndn_miss, ndn_nokey, ndn_rng, ndn_texf, ndn_empty; static unsigned ndn_win; /* WATER: hits that bound the stored tile 0 window (the ndm line, win) */ /* PERF1: empty = hits with no draw */
 void pm_gbi_dnr_take(unsigned* o, unsigned n);
 static unsigned ndn_miss_all; /* MERLEE: model cache misses since boot (pm_gpu_mdl_stat) */
 void pm_gpu_mdl_stat(unsigned* miss, unsigned* clears) { *miss = ndn_miss_all; *clears = nd_mc_clears(); } /* MERLEE: the fade lines of dro_02 npc_merlee.c */
@@ -3131,7 +3141,7 @@ static void ndn_log(unsigned f) { /* PROF2-3: census lines, from cen_lines_frame
         wide_log(f);
         char wb[160]; unsigned wn = 0; wb[0] = 0; /* S3L-1: the codes of the window, nonzero only */
         for (unsigned c = 0; c < 16u; c++) if (ndn_why[c]) { if (!wn) wn += (unsigned)snprintf(wb, sizeof wb, " why"); wn += (unsigned)snprintf(wb + wn, sizeof wb - wn, " %u:%u", c, ndn_why[c]); }
-        pm_log_w("ndm f%u native %u fb %u wref %u hit %u miss %u clears %u%s", f, ndn_rec, ndn_fb, ndn_draws, ndn_hit, ndn_miss, clr - ndn_clr0, wb);
+        pm_log_w("ndm f%u native %u fb %u wref %u hit %u miss %u clears %u win %u%s", f, ndn_rec, ndn_fb, ndn_draws, ndn_hit, ndn_miss, clr - ndn_clr0, ndn_win, wb); ndn_win = 0;
         pm_log_w("ndmhit f%u nokey %u rng %u tex %u empty %u", f, ndn_nokey, ndn_rng, ndn_texf, ndn_empty);
         { static int szd; if (!szd) { szd = 1; pm_log_w("ndmsz entry %u draw %u", (unsigned)sizeof(NdMEnt), (unsigned)sizeof(NdNat)); } }
         { unsigned dg[15]; nd_mc_diag_take(dg);
@@ -3271,22 +3281,26 @@ int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32
  * applies the record (its matrix ops are done). */
 int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
     if (!e) { ndn_nokey++; return 0; }
-    if (!model_vis_same(k, e)) { ndn_rng++; return 0; }
-    if (e->mver && e->mver != ((((const uint32_t*)(uintptr_t)k->rp)[3] >> 16) | 0x10000u)) { ndn_rng++; return 0; } /* MAPX-2: a lit entry whose matrix moved: the miss path stores it again in place */
+    if (!model_vis_same(k, e)) { ndn_rng++; pm_xf.mdl_rng++; return 0; }
+    if (e->mver && e->mver != ((((const uint32_t*)(uintptr_t)k->rp)[3] >> 16) | 0x10000u)) { ndn_rng++; pm_xf.mdl_rng++; return 0; } /* MAPX-2: a lit entry whose matrix moved: the miss path stores it again in place */
     if (!e->n) { ndn_empty++; ndn_rec++; ndn_hit++; return 1; } /* PERF1-4c: no draw (no group in view, or all culled): no texture lookup, template build, matrix product or flush */
     NdUnit u; memset(&u, 0, sizeof u);
     if (e->tex) {
         const NdTexDesc* ds = nd_tex_handle_desc((int)((k->w[0] >> 8) & 0x7fu), (const void*)(uintptr_t)k->w[1]);
+        /* WATER (B1): an entry built on the tile 0 window (SBKW-2, model_draw) binds that window, not the full handle desc: the full desc is another
+         * nd_tex entry (32 x 64 on a shared-aux water) and its slot was sampled under uv scales built for the window rows, so every hit drew wrong (flicker) */
+        NdTexDesc wd_;
+        if (ds && e->ww) { wd_ = *ds; wd_.w = e->ww; wd_.h = e->wh; ds = &wd_; ndn_win++; }
         int id = ds ? nd_tex_get(ds) : -1;
         { extern int pm_tex_tagi; pm_tex_tagi = 2; } /* STALE2 texsrc path tag: hit */
         if (id < 0 || !nd_tex_unit_hint(id, &e->hs, &e->hg, &u)) { ndn_texf++; return 0; }
     }
-    /* TIK19: the unit 1 words again from the slot the entry was built with, as unit 0 above: the stored address was that of the store frame. A slot drawn
-     * from its staging copy in its load frame moves to VRAM and the copy is freed two frames later; tik_19's wall aux texture (I4 at 0x102736c, one slot per
-     * stale palette pointer) then drew another texture's bytes as TEXEL1 from every entry stored in such a frame (dark walls, by key, so by draw order).
-     * A dropped or invalidated slot (generation) rebuilds. */
-    NdUnit u1; const int t1 = e->h1s >= 0;
-    if (t1 && !pm_tex_slot_unit1(e->h1s, e->h1g, &u1)) { ndn_texf++; return 0; }
+    /* DOORHITCH: an entry with a unit 1 slot does not hit. Its tile 1 came from the live walker tile state (pm_gbi_bind_tile1), which the key
+     * does not hold and a hit chain does not update (rec_apply is skipped). Before, such a record missed whenever the record before it changed
+     * hit or miss (key word 32), and that rebuild refreshed tile 1 by accident; with the render mode list mask it hit a stale unit 1 (iwa_10 rock
+     * wall, mdl5_iwa10_det 2139 px, equal to base and to nomodelnat once these entries rebuild). The miss stores its draws in place (no pool growth).
+     * The TIK19 unit 1 reload of the hit is gone with it. */
+    if (e->h1s >= 0) { ndn_rng++; pm_xf.mdl_rng++; return 0; }
     /* FB-2: the template ids of the cached draws are built again before any draw goes out (the LRU may have taken an id over since the store): a full table falls back */
     /* PERF1-4c: only when an eviction happened since the last build of these ids (nd_tmpl_gen); else the ids hold and only their LRU clock moves */
     if (e->tgen != nd_tmpl_gen()) {
@@ -3308,7 +3322,6 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
         if (q->zp) { memcpy(zpal, pal0, sizeof pal0); for (int i = 0; i < 4; i++) zpal[8 + i] = q->zn * pal0[12 + i]; q->d.pal = (const float(*)[16])zpal; } /* S5-2: zmark pass 2 */
         else q->d.pal = (const float(*)[16])pal0;
         if (e->tex) q->d.u[0] = u;
-        if (t1 && q->d.u[1].dim) { q->d.u[1].dim = u1.dim; q->d.u[1].lod = u1.lod; q->d.u[1].addr = u1.addr; q->d.u[1].type = u1.type; q->d.u[1].force = u1.force; } /* param: the stored wrap and filter */
         pm_gpu_native_submit_draw(&q->d, q->sd, q->nidx, q->d.u[0].dim != 0);
         mfr_idx += q->nidx;
     }
