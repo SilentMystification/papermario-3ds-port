@@ -1,13 +1,13 @@
 # Handoff S10 epic (orchestrator, 2026-11-07)
 
 STATE
-- nds1 head: see `git log -1 nds1`. main = nds1. Push target O3DS XL .131 (user, 2026-11-08); a push-ready main build is kept after each merge (orchestrator_rules step 6).
-- Done 2026-11-08 day: PERF1, TOUR1/2, POS1, CUR1, CHEATA, BT1, POND, HUD3, DARK, MERLEE, MOON3, SHOTLANE, BSTALE, CLEANB, AZT12 (all merged).
-- Running rows: PERF2, PROF2, MAPX, MSGBOX, CUR2 (row files in docs/handoff).
-- Console regression: closed by PERF1 (mac_01 spot gbi 21.9 ms, 30.1 fps, run of 2026-11-08 on .131).
-- Next epic DIRECT (user): the game code calls the native producers directly, no display lists; oracle (Opus) plans, ONE Opus agent implements, after PERF2 and its console push.
-- Open: refused-record host scan (user go), MOON2 release code question, core 1 walker oracle check, N3DS push, console pushes tour_battle_prof / merlee_spell_prof.
-- Parked bugs: row_UB1.md (layout pictures), row_SBKW.md, row_FX1.md, MENUB B2 (branch grey b0853165f, console).
+- main head: see `git log -1 main` (base branch; nds1 retired 2026-11-08). Push target O3DS XL .131. Push-ready build after each merge (orchestrator_rules step 6).
+- Merged 2026-11-08 evening: PROF2, PERF2, MAPX, STARFX, MAGI, GAMEOVER, MSGBOX, AUDV, BTLUI, RIGHTON, TIK19, CUR2, AZT13, VOLMAN, CORE2C row 2 (frame queue).
+- Running rows: none. CORE2C row 3 (logic thread on core 1) waits for the c1probe console run (worktree core2c kept).
+- Next: one console session on main (prof benches spot_mac01_prof, mac_05 spot, xfer_door_prof, xfer_map_prof, starfx_hos01_prof, magi_hit_prof, c1probe_o3ds; play checks: Goombario headbonk with the cheat, tik_19 water, audio SFX). Then DIRECT (Opus oracle + one Opus agent) and MAPX step 6 if tex > 5 ms.
+- Open tool row: tools from main for worktrees, bench build-at from a worktree, budget reset from main, build-at container name clash, stale folders audv/fb3/perf2/prof2.
+- Open game items: hos_01 star records need the colour patch; hos_01 panners miss 3/frame; hot span 23,268 B vs 16 KB.
+- Parked bugs: row_UB1.md, row_SBKW.md, row_FX1.md, MENUB B2 (branch grey).
 
 ## Questions for the user (collected overnight 2026-11-08)
 1. Push target: memory says O3DS .170 since 2026-11-05; this session pushed to O3DS XL .131. Which one from now on?
