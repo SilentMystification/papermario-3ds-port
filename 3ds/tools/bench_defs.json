@@ -1214,7 +1214,7 @@
       "name": "boot_ms",
       "kind": "azahar_stream",
       "speed": "normal",
-      "purpose": "BOOT-1: cold boot timing. The boot ms line (main, log, opt, rom read, gfx, audio, first drawn frame, title; ms after main) at the first title frame.",
+      "purpose": "BOOT: cold boot timing. The boot ms line (main, log, opt, rom open to stream start, stream MB/s, gfx, audio, first drawn frame, title, rdone = whole ROM in RAM; ms after main; waits and wms = reads that blocked on a missing chunk) at the first title frame. rdone > 0: the stream ended before the title, so no wait after it.",
       "scenario": "boot_ms",
       "cap": 45,
       "until": "boot ms main ",
@@ -1243,6 +1243,21 @@
           "name": "title_ms",
           "regex": "boot ms .* title (\\d+)",
           "pick": "last"
+        },
+        {
+          "name": "rom_done_ms",
+          "regex": "boot ms .* rdone (\\d+) waits",
+          "pick": "last"
+        },
+        {
+          "name": "rom_waits",
+          "regex": "boot ms .* rdone \\d+ waits (\\d+) wms",
+          "pick": "last"
+        },
+        {
+          "name": "rom_wait_ms",
+          "regex": "boot ms .* waits \\d+ wms (\\d+)",
+          "pick": "last"
         }
       ],
       "gates": [
@@ -1250,8 +1265,61 @@
           "metric": "title_ms",
           "op": ">",
           "value": 0
+        },
+        {
+          "metric": "rom_done_ms",
+          "op": ">",
+          "value": 0
         }
       ]
+    },
+    {
+      "name": "boot_romorder",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BOOT step 0: ROM chunks (128 KB) touched before the first drawn frame and before the title, with the touch order in the log (romorder lines).",
+      "scenario": "boot_romorder",
+      "cap": 45,
+      "until": "romorder chunks first ",
+      "tags": [
+        "azahar",
+        "boot"
+      ],
+      "log_metrics": [
+        {
+          "name": "chunks_first",
+          "regex": "romorder chunks first (\\d+) title",
+          "pick": "last"
+        },
+        {
+          "name": "chunks_title",
+          "regex": "romorder chunks first \\d+ title (\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "chunks_title",
+          "op": ">",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "name": "boot_logo_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BOOT: picture of the no-warp boot at logo frame 200 with the ROM streamed; the stream done line before it.",
+      "scenario": "boot_logo_pic",
+      "cap": 30,
+      "until": "shot \\d+ frame 200\\b",
+      "tags": [
+        "azahar",
+        "boot"
+      ],
+      "gates": []
     },
     {
       "name": "randwarp_pic",

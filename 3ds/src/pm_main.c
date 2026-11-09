@@ -15,6 +15,7 @@ unsigned pm_log_con_copies(void), pm_log_con_nomenu(void), pm_log_late_drop(void
 /* O6: a switch word read once. Not for the words the options panel changes at run time (nofog, nolight). */
 #include "pm_gpu.h"
 #include "pm_dspaud.h"
+#include "pm_romload.h"
 #include "nd.h"
 
 
@@ -466,6 +467,7 @@ void pm_frame_loop(void) {
         pm_wd_prog++;
         pm_wd_armed = 1;
         PM_WD_PHASE(1);
+        pm_rom_stream_poll(); /* BOOT: a failed ROM chunk read shows the fatal screen (one load once the stream is done) */
         u64 now = svcGetSystemTick();
         pm_loop_tick = now;
         /* The retrace builds a display list only every other call. Presenting
@@ -744,11 +746,12 @@ void pm_options_prof_boot(void); /* PROFROW, pm_options.c */
 /* BOOT-1: boot timing. pm_boot_mark is cold (no log call: the log is not running yet at the first marks). The line is printed
  * once, at the first title-screen frame, from the stored ticks. All values are ms after main() except the ROM read (ms, MB/s). */
 static u64 pmb_tick[PMB_N];
-static unsigned pmb_set, pmb_arg[PMB_N];
+static unsigned pmb_set, pmb_arg[PMB_N], pmb_rc[PMB_N];
 __attribute__((cold, noinline)) void pm_boot_mark(int id, unsigned arg) {
     if (id < 0 || id >= PMB_N || (pmb_set >> id & 1u)) return;
     pmb_tick[id] = svcGetSystemTick();
     pmb_arg[id] = arg;
+    pmb_rc[id] = pm_rom_order_n();
     pmb_set |= 1u << id;
 }
 static unsigned pmb_ms(int id) { return (unsigned)((pmb_tick[id] - pmb_tick[PMB_MAIN]) / (SYSCLOCK_ARM11 / 1000ull)); }
@@ -758,11 +761,19 @@ void pm_boot_title_check(void) {
     int m = pm_game_mode_now(); /* first step after the logos: GAME_MODE_TITLE_SCREEN (2, src/game_modes.h) or the intro (16); a no-warp boot skips the title */
     if (m == 2 || m == 16) { pm_boot_mark(PMB_TITLE, 0); pm_boot_report(); }
 }
+/* rom: ms from the ROM open to the stream start (header check, allocation). MB/s: the stream rate (0 while it runs). rdone: ms after
+ * main when the whole image was in RAM (0: not yet at the title). waits, wms: accesses that blocked on a missing chunk and their ms. */
 static void pm_boot_report(void) {
     unsigned rom_ms = (unsigned)((pmb_tick[PMB_ROM_READ] - pmb_tick[PMB_ROM_OPEN]) / (SYSCLOCK_ARM11 / 1000ull));
-    float mbs = rom_ms ? (float)pmb_arg[PMB_ROM_READ] / 1048576.f / ((float)rom_ms / 1000.f) : 0.f;
-    pm_log_w("boot ms main %u log %u opt %u rom %u (%.1f MB/s) gfx %u audio %u first %u title %u",
-             pmb_ms(PMB_THREAD), pmb_ms(PMB_LOG), pmb_ms(PMB_OPT), rom_ms, mbs, pmb_ms(PMB_GFX), pmb_ms(PMB_AUDIO), pmb_ms(PMB_DRAW), pmb_ms(PMB_TITLE));
+    unsigned waits, wms, demand;
+    u64 done = pm_rom_stream_info(&waits, &wms, &demand);
+    unsigned sms = done ? (unsigned)((done - pmb_tick[PMB_ROM_READ]) / (SYSCLOCK_ARM11 / 1000ull)) : 0u;
+    unsigned rdone = done ? (unsigned)((done - pmb_tick[PMB_MAIN]) / (SYSCLOCK_ARM11 / 1000ull)) : 0u;
+    float mbs = sms ? (float)pmb_arg[PMB_ROM_READ] / 1048576.f / ((float)sms / 1000.f) : 0.f;
+    pm_log_w("boot ms main %u log %u opt %u rom %u (%.1f MB/s) gfx %u audio %u first %u title %u rdone %u waits %u wms %u",
+             pmb_ms(PMB_THREAD), pmb_ms(PMB_LOG), pmb_ms(PMB_OPT), rom_ms, mbs, pmb_ms(PMB_GFX), pmb_ms(PMB_AUDIO), pmb_ms(PMB_DRAW), pmb_ms(PMB_TITLE),
+             rdone, waits, wms);
+    if (pmb_rc[PMB_TITLE]) pm_log_w("romorder chunks first %u title %u of %u", pmb_rc[PMB_DRAW], pmb_rc[PMB_TITLE], 320u); /* PM_ROM_FULL >> 17 */
 }
 
 static void game_thread(void* arg) {
@@ -837,6 +848,7 @@ static void pm_shutdown(void) {
     static int done;
     if (done) return;
     done = 1;
+    pm_rom_stream_stop(); /* BOOT: the loader ends before the services it reads through go away */
     pm_flash_flush("exit");
     pm_audio_join_at(0);
     pm_cpu_limit_exit(); /* CPULIM-UI: core 1 limit back to 30 */
