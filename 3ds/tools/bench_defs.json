@@ -76,6 +76,11 @@
           "pick": "first"
         },
         {
+          "name": "m1_hot",
+          "regex": "hotset M1 hot (\\d+) B",
+          "pick": "first"
+        },
+        {
           "name": "m2_linker",
           "regex": "hotset M2 linker (\\d+) B",
           "pick": "first"
