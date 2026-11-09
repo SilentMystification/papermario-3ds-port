@@ -1271,9 +1271,17 @@ s32 RenderTaskBasePriorities[] = {
     [RENDER_MODE_0A_UNUSED]                 = 1000000,
     [RENDER_MODE_0B_UNUSED]                 = 1000000,
     [RENDER_MODE_0C_UNUSED]                 =       0,
+#ifdef TARGET_3DS
+    /* EDGEORD: 3DS blends edge-AA rims at draw time (no VI filter, no coverage bits), so a cutout must draw after the opaque
+     * models it can overlap. 9M sorts it in the far-first 3M+ group, above the XLU bases (<= 8M) plus distance (|dist| < 10000). */
+    [RENDER_MODE_ALPHATEST]                 = 9000000,
+    [RENDER_MODE_0E_UNUSED]                 = 1000000,
+    [RENDER_MODE_ALPHATEST_ONESIDED]        = 9000000,
+#else
     [RENDER_MODE_ALPHATEST]                 = 1000000,
     [RENDER_MODE_0E_UNUSED]                 = 1000000,
     [RENDER_MODE_ALPHATEST_ONESIDED]        = 1000000,
+#endif
     [RENDER_MODE_ALPHATEST_NO_ZB]           =       0,
     [RENDER_MODE_SURFACE_XLU_LAYER1]        = 8000000,
     [RENDER_MODE_12_UNUSED]                 = 8000000,

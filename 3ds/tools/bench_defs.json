@@ -5079,6 +5079,140 @@
       ]
     },
     {
+      "name": "toad_nap_aud",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "AUDNAP repro: the Toad House nap in mac_01 (bed jingle SONG_TAKING_REST 136). Census windows: every port reason and catch-up blocks, last window line. Gate: port reasons 0 and catchup 0. Log only.",
+      "scenario": "toad_nap_aud",
+      "cap": 45,
+      "until": "audio drops w3: unheard \\d+",
+      "tags": [
+        "azahar",
+        "audio",
+        "census"
+      ],
+      "log_metrics": [
+        {
+          "name": "d_unheard",
+          "regex": "audio drops w\\d+: unheard (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_squeezed",
+          "regex": "audio drops w\\d+: .*squeezed (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_early",
+          "regex": "audio drops w\\d+: .*early (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_nochan",
+          "regex": "audio drops w\\d+: .*nochan (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_giveup",
+          "regex": "audio drops w\\d+: .*giveup (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_loopcap",
+          "regex": "audio drops w\\d+: .*loopcap (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_nonadpcm",
+          "regex": "audio drops w\\d+: .*nonadpcm (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_qovf",
+          "regex": "audio drops w\\d+: .*qovf (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_merged",
+          "regex": "audio drops w\\d+: .*merged (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_catchup",
+          "regex": "audio drops w\\d+: .*catchup blocks (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_maxrun",
+          "regex": "audio drops w\\d+: .*maxrun (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_late_us",
+          "regex": "audio drops w\\d+: .*late_us_max (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "jingle_song",
+          "regex": "bgm: SetMusic player 0 song (\\d+) ",
+          "pick": "first"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "d_unheard",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_squeezed",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_early",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_nochan",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_giveup",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_loopcap",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_nonadpcm",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_qovf",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_merged",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_catchup",
+          "op": "==",
+          "value": 0
+        }
+      ]
+    },
+    {
       "name": "aud_talk",
       "kind": "azahar_pic",
       "speed": "normal",

@@ -1,9 +1,20 @@
-# Row HC4: typed ops, combine off core 0, model hit fast path (plan_hotcode.md stages HC4, HC5, HC6) - one Opus agent
+# Row HC4: finish DIRECT (display lists fully removed) with typed ops, combine off core 0, model hit fast path - one Opus agent
 
 ## User facts
 User (2026-11-09): shrink the hot code by a very significant amount; HC4-HC6 need a more capable agent. Only the user starts this
 Opus agent. HC0: M3 code run per frame on mac_01 112.5 KB (class A op loop 17.3 KB, C model hit 9.1 KB, D emit 5.7 KB, B combine
 14.6 KB when it runs). Console XL de415917f mac_01: nd 14.4 ms, 37.4k I-miss, 20.2k D-miss per frame.
+
+## DIRECT remainder (this row completes the DIRECT epic; agent_direct.md STATE, row_DIRECT.md)
+- User (2026-11-09): DIRECT was to run to completion: display lists removed. Left after D11a: (a) the model record render mode list
+  read as N64 words (rec_dl, full sync); (b) fallback geometry words in NDC_SPR/NDC_ENT payloads (native sprite draw for the battle
+  context and imgfx; ent_draw for every list); (c) g2_same and the word-decoding op handlers in nd_walk.c (51 G_* cases).
+- User (2026-11-09): no N64 display list reader in the ELF at all, cold code included (ELF size, performance). Static lists (map
+  shapes, entity models) convert in build.sh (host C) to typed ops in romfs; no first-boot path. Lists the game code builds or changes
+  at run time: each producer calls the native draw path directly.
+- Done means: no N64 command word read anywhere in the ELF; nd_walk.c word cases, g2_same, g2_note, the ent/dlc list compilers
+  deleted; row_DIRECT.md deleted.
+- Code slices start after HC2 merges.
 
 ## Start state
 `sh 3ds/tools/wt_new.sh HC4`, branch HC4. PM_ROW=HC4, PM_LANE=HC4. Read plan_hotcode.md (all), plan_direct.md section 5,
