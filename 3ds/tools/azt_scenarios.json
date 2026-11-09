@@ -9243,6 +9243,30 @@
       "reason": "BTLDIM picture gate. shotwin start frame is set after the step 1 run (darken start frame)."
     },
     {
+      "name": "btldim_star_sprmix",
+      "status": "unverified",
+      "subject": "Battle kmr_03, Shooting Star: sprite builds log the mix they read (sprmix line), no shots.",
+      "proves": "SHROUD step 1: the mix state a sprite build reads during the star power (gs.r_mix of the last sync_render).",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 invitem=0x083 padscript=@pad_btl_star.txt sprmix loglevel=debug",
+      "until": "btldim: lighten done f\\d+",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "lighten done",
+          "regex": "btldim: lighten done f\\d+"
+        }
+      ],
+      "reason": "SHROUD step 1 log check (sprmix debug word). Not a picture gate."
+    },
+    {
       "name": "btldim_star_prof",
       "status": "unverified",
       "subject": "Console O3DS XL, battle kmr_03, Shooting Star with prof=30 (no shots): the frame time during the fades.",
