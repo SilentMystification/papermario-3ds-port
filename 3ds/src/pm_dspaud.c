@@ -210,6 +210,8 @@ static Ent* cache_get(const DspaSample* s) {
     if (cache_used > cache_peak) cache_peak = cache_used;
     unsigned us = tk_us(svcGetSystemTick() - t0);
     dec_n++; dec_us_sum += us; if (us > dec_us_max) dec_us_max = us;
+    if (us >= 2000u && pm_debug_has("audiostat")) /* AUDNAP: a sync decode in a voice start on the render thread (the stall suspect) */
+        pm_log_d("audio decode stall: key %08x bytes %u us %u cache used %u KB", (unsigned)s->key, (unsigned)s->bytes, us, cache_used / 1024);
     xd_n++; xd_us += us; if (us > xd_max) xd_max = us;
     return e;
 }
