@@ -10787,11 +10787,11 @@
     {
       "name": "xfer_door_kmr20",
       "status": "unverified",
-      "reason": "DOORHITCH step 1 measure and the before/after quantity. Pipe entry 70 frames, then two doors of about 130 and 100 frames each with their walks: about 30 s after the warp. Cap 45 s.",
-      "subject": "Mario's house door on kmr_20 (preset yard: entry 4, the pipe): after the pipe Mario is placed east of the door (300 30 -76; door collider o246 at x 261, z -99 to -54), walks west into the door and presses A (room enter: the house front opens), walks a step in, back to the door and presses A (room exit), then the same again. det. One xfer line per door.",
+      "reason": "DOORHITCH measure and the before/after quantity. A real map change kmr_20 -> kmr_20 (the door's first entry follows a map load, as in play), then two doors of about 130 and 100 frames each with their walks: about 30 s after the warp. Cap 45 s.",
+      "subject": "Mario's house door on kmr_20 (preset yard: entry 4, the pipe; padscript goto_kmr_20:4 loads the map again through a map change, the xfer map line n1): after the pipe Mario is placed east of the door (300 30 -76; door collider o246 at x 261, z -99 to -54), walks west into the door and presses A (room enter: the house front opens), walks a step in, back to the door and presses A (room exit), then the same again. det. One xfer line per door.",
       "proves": "DOORHITCH: xfer, xfer2, xfer3 (longest step by stage: model misses, refused hits, texture and dlc ms, ROM reads, prof sample; refused hits, trims, cache fill, walk drain ms) and xferk (first differing key words) of the enter and exit, first and second time.",
-      "debug": "preset=yard padscript=wait140,pos_300:30:-76,go_240_-76_100,A,wait260,go_200_-76_20,go_285_-76_80,A,wait200,go_330_-76_60,go_240_-76_100,A,wait260,go_200_-76_20,go_285_-76_80,A,wait300 profdisk=1 xferdiag census loglevel=debug det",
-      "until": "xfer3 door n4\\b",
+      "debug": "preset=yard padscript=wait60,goto_kmr_20:4,wait300,pos_300:30:-76,go_240_-76_100,A,wait260,go_200_-76_20,go_285_-76_80,A,wait200,go_240_-76_100,A,wait260,go_200_-76_20,go_285_-76_80,A,wait300 profdisk=1 xferdiag loglevel=debug det",
+      "until": "xfer3 door n5\\b",
       "cap": 45,
       "deadline": 30,
       "first_marker": "warp: kmr_20 entry 4",
@@ -10805,6 +10805,26 @@
         {
           "name": "door exit line",
           "regex": "xfer door \\S+:in->\\S+:out f\\d+"
+        }
+      ]
+    },
+    {
+      "name": "xfer_door_kmr20_shots",
+      "status": "unverified",
+      "reason": "DOORHITCH byte gate: the first room entry (map change, then the door) with a shot per frame over the shroud ramp and the first frames at full shroud (the sky goes black at f302 in the det run). Cap 40 s (until about 18 s after the start).",
+      "subject": "Mario's house door on kmr_20, first entry after a map change (as xfer_door_kmr20), det, shots of frames 290 to 305: the house front opens, the outside darkens step by step to black and the interior shows.",
+      "proves": "DOORHITCH: the black sky as a GPU mix (background.c bgMix 2) and the model key change draw the same bytes as the base build over the shroud ramp and the full shroud frames.",
+      "debug": "preset=yard padscript=wait60,goto_kmr_20:4,wait300,pos_300:30:-76,go_240_-76_100,A,wait260 shots shotwin=290:16 loglevel=debug det",
+      "until": "shot \\d+ frame 305\\b",
+      "cap": 40,
+      "deadline": 30,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 305\\b"
         }
       ]
     },

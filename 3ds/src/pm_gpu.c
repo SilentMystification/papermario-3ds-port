@@ -2802,7 +2802,7 @@ static uint32_t aux_hash(const uint32_t* rec) {
  * mode): every new or changed record in a door or a room change missed again the records after it, and the misses filled the cache to a clear. */
 /* DOORHITCH: the same for the geometry mode. rec_apply runs the render mode list before the geometry list, and every list clears and sets the
  * shade, cull, fog, lighting, texgen, lod and smooth bits (src/model.c Gfx_RM*): the walker geometry bits before the record reach the draw only
- * through rm_ga (the AND of the list's G_GEOMETRYMODE keep masks, set_geom). Before, key word 32 held the geometry mode the record before left
+ * through rm_ga (NdMode gand: the AND of the list's G_GEOMETRYMODE keep masks, set_geom). Before, key word 32 held the geometry mode the record before left
  * (a hit skips rec_apply, a miss runs its list), so in a door the shroud switch of one model made the next models miss too and the store replaced
  * their entry of the other room state (kmr_20: w32 first for 230 to 316 misses per door). */
 static uint32_t rm_wh[256], rm_wl[256], rm_ga[256]; static uint8_t rm_done[256];
@@ -2810,12 +2810,8 @@ static __attribute__((cold, noinline)) void rm_masks(unsigned i) {
     extern void* ModelRenderModes[]; /* src/model.c: Gfx* per render mode index */
     NdMode m;
     rm_done[i] = 1;
-    if (nd_mode_compile(&m, (const unsigned*)ModelRenderModes[i])) { rm_wh[i] = m.wh; rm_wl[i] = m.wl; }
-    uint32_t ga = 0xFFFFFFFFu;
-    const uint32_t* l = (const uint32_t*)ModelRenderModes[i];
-    for (unsigned j = 0; l && j < 32u && (l[2 * j] >> 24) != 0xdfu; j++)
-        if ((l[2 * j] >> 24) == 0xd9u) ga &= l[2 * j] & 0xffffffu;
-    rm_ga[i] = ga;
+    rm_ga[i] = 0xFFFFFFFFu;
+    if (nd_mode_compile(&m, (const unsigned*)ModelRenderModes[i])) { rm_wh[i] = m.wh; rm_wl[i] = m.wl; rm_ga[i] = m.gand; }
 }
 void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) {
     memcpy(k->w, rec, NDMC_RW * sizeof(uint32_t));
@@ -3124,6 +3120,21 @@ int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32
 /* S3N-6: the hit. The cached draws of key k go out (after pm_gpu_flush) when the fresh ranges are the cached ones: each with the palette of the current view
  * and, for a textured record, the unit 0 words of the hinted slot (nd_tex_unit_hint). 1: drawn. 0: no entry, other ranges, or no texture: the caller
  * applies the record (its matrix ops are done). */
+/* DOORHITCH step 3, walker side (pm_xfer.c posts it): a hidden model of a new map gets its compiled list and its texture before its first draw,
+ * the texture only while the cache keeps an eighth of its budget free (a model that may never show takes no slot a drawn texture needs; the
+ * eviction never takes a slot of this frame or the one before). */
+__attribute__((cold, noinline)) void pm_gpu_warm_model(const void* dl, int ti, const void* gfx) {
+    extern int pm_dlc_prebuild(const void* l); extern unsigned pm_tex_used(void), pm_tex_budget(void);
+    if (dl && pm_dlc_prebuild(dl)) pm_xf.hid_d++;
+    if (ti < 0 || !gfx) return;
+    const NdTexDesc* ds = nd_tex_handle_desc(ti, gfx);
+    if (!ds) return;
+    const unsigned need = (unsigned)ds->w * (unsigned)ds->h * 4u, cap = pm_tex_budget();
+    if (pm_tex_used() + need > cap - (cap >> 3)) return;
+    const int id = nd_tex_get(ds); /* the descriptor id; it may outlive its slot (a map change invalidates the cache) */
+    int hs = -1; unsigned hg = 0; NdUnit u;
+    if (id >= 0 && nd_tex_unit_hint(id, &hs, &hg, &u)) pm_xf.hid_t++; /* the slot is live, else loaded now */
+}
 int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
     if (!e) { ndn_nokey++; return 0; }
     if (!model_vis_same(k, e)) { ndn_rng++; pm_xf.mdl_rng++; return 0; }

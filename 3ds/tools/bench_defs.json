@@ -4724,7 +4724,7 @@
       "purpose": "DOORHITCH: Mario's house door on kmr_20 (enter and exit, twice), det, xferdiag; xfer, xfer2, xfer3 and xferk lines of each door. last = the second exit, first = the first entry.",
       "scenario": "xfer_door_kmr20",
       "cap": 45,
-      "until": "xfer3 door n4\\b",
+      "until": "xfer3 door n5\\b",
       "tags": [
         "azahar",
         "xfer"
@@ -4795,11 +4795,11 @@
       "default": false,
       "purpose": "DOORHITCH: Mario's house door on kmr_20 (enter and exit, twice) on the O3DS in prof mode. Pass: max under 50 ms, xfer3 smp 0 at the max step.",
       "scene_match": null,
-      "recipe": "preset=yard padscript=wait140,pos_300:30:-76,go_240_-76_100,A,wait260,go_200_-76_20,go_285_-76_80,A,wait200,go_330_-76_60,go_240_-76_100,A,wait260,go_200_-76_20,go_285_-76_80,A,wait300 prof=30",
+      "recipe": "preset=yard padscript=wait60,goto_kmr_20:4,wait300,pos_300:30:-76,go_240_-76_100,A,wait260,go_200_-76_20,go_285_-76_80,A,wait200,go_240_-76_100,A,wait260,go_200_-76_20,go_285_-76_80,A,wait300 prof=30",
       "scenario": null,
       "host": "o3ds",
       "cap": 60,
-      "until": "xfer3 door n4\\b",
+      "until": "xfer3 door n5\\b",
       "tags": [
         "console",
         "prof",
@@ -4874,6 +4874,23 @@
           "value": 0
         }
       ]
+    },
+    {
+      "name": "xfer_door_kmr20_shots",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "DOORHITCH byte gate: kmr_20 first room entry after a map change, det, shots 290 to 305 over the shroud ramp (the sky black at full shroud). Byte-equal to the base build.",
+      "scenario": "xfer_door_kmr20_shots",
+      "cap": 40,
+      "until": "shot \\d+ frame 305\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "det",
+        "xfer"
+      ],
+      "gates": []
     },
     {
       "name": "xfer_door_mac01",

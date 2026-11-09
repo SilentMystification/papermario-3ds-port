@@ -398,6 +398,7 @@ void pm_step_run(const LgCmd* c) {
     if (drew) {
         pm_gpu_begin(1);
         pm_gfx_retrace();
+        pm_xfer_hidden(); /* DOORHITCH: hidden models of a new map, after this frame's walk entries */
     } else {
         pm_gfx_retrace_skip();
         FS_MARK(FS_REST); /* FS2: the skipped step logic is not a drawn part of the next frame */

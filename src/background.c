@@ -240,9 +240,11 @@ void appendGfx_background_texture(void) {
 #ifdef TARGET_3DS
                 /* BTLDIM: a shroud fade (Shooting Star, Merlee) is mixed on the GPU over the source palette. The palette lerp
                  * rewrote 256 entries and forced a new CI8 decode, VRAM slot and copy per fade step (pm_tex.c load_miss).
-                 * Here only the mix colour is set (4 GBI words below). The full black case (fogA 255) stays a palette fill. */
-                if (fogA != 255 && (flags & BG_BLEND_SHOULD_LERP)) {
-                    bgMix = 1;
+                 * Here only the mix colour is set (4 GBI words below). DOORHITCH: the full black case (fogA 255) is the same mix with a
+                 * black mix colour (bgMix 2): its palette fill made a second CI8 sky texture (kmr_20 296 x 200, 47 ms on the O3DS)
+                 * in the first room entry of a map. */
+                if (fogA == 255 || (flags & BG_BLEND_SHOULD_LERP)) {
+                    bgMix = fogA == 255 ? 2 : 1;
                     break;
                 }
 #endif
@@ -320,6 +322,7 @@ void appendGfx_background_texture(void) {
     gDPSetRenderMode(gMainGfxPos++, G_RM_NOOP, G_RM_NOOP2);
 #ifdef TARGET_3DS
     if (bgMix) { /* BTLDIM: the mix stage gets P = shroud colour, A = fogA: P * A + M * (1 - A) per sky texel */
+        if (bgMix == 2) { fogR = fogG = fogB = 0; } /* DOORHITCH: the palette fill's colour, BG_PAL(1) */
         gDPSetFogColor(gMainGfxPos++, fogR, fogG, fogB, fogA);
         gDPSetBlendColor(gMainGfxPos++, fogR, fogG, fogB, 255);
         gDPSetRenderMode(gMainGfxPos++, PM_RM_SHROUD, G_RM_NOOP2);

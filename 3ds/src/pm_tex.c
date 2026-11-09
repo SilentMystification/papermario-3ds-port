@@ -1322,7 +1322,10 @@ static int load_impl(const void* img, unsigned fmt, unsigned siz, int width, int
         r = load_inner(img, fmt, siz, width, height, tlut, tlut_n, stride, lut, dx4, dy4, dkey);
     }
     if (ph_miss) PH_POP();
-    if (ph_miss && pm_xf.on) { pm_xf.tex_n++; pm_xf.tex_t += pm_ticks() - t0; } /* MAPX-1: a miss decodes and uploads */
+    if (ph_miss && pm_xf.on) { /* MAPX-1: a miss decodes and uploads */
+        pm_xf.tex_n++; pm_xf.tex_t += pm_ticks() - t0;
+        if (pm_xf.diag) pm_log_d("xfer texmiss f%u %dx%d fmt %u siz %u img %p tlut %p lut %d", pm_frame_count(), width, height, fmt, siz, img, tlut, lut != NULL); /* DOORHITCH: switch xferdiag */
+    }
     if (pm_ph_cen) { /* PG2 measure: ticks inside pm_tex_load, hit and miss, per 300 frames (reported by pm_tex_prof_report) */
         unsigned dt = pm_ticks() - t0;
         if (ph_miss) { tprof_miss_t += dt; tprof_miss_n++; } else { tprof_hit_t += dt; tprof_hit_n++; }

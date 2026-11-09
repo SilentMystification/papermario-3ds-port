@@ -10,6 +10,7 @@
 #include "common.h"
 #include "game_modes.h"
 #include "map.h"
+#include "model.h"
 #include "pm_port.h"
 #include <stdio.h>
 #include <string.h>
@@ -72,8 +73,8 @@ __attribute__((cold, noinline)) static void xf_print(void) {
         pm_log_prof_line("xferk %s miss %u rep %u trim %u first%s", xf_kind == XF_MAP ? "map" : "door", pm_xf.mdl_miss, nd_mc_reps() - xf_rep0, nd_mc_trims() - xf_trim0, b);
     }
     /* DOORHITCH: the longest step by stage, and the cache fill over the transition (after xferk: the test until-line) */
-    pm_log_prof_line(xf_kind == XF_MAP ? "xfer3 map n%u | maxstep mdl %u rng %u tex %s dlc %s rom %u smp %u | rng %u trim %u phi %u ehi %u rdw %s" : "xfer3 door n%u | maxstep mdl %u rng %u tex %s dlc %s rom %u smp %u | rng %u trim %u phi %u ehi %u rdw %s",
-                     xf_seq, xs_m.mdl, xs_m.rng, msf(m[6], xs_m.tex_t), msf(m[7], xs_m.dlc_t), xs_m.rom, xs_m.smp, pm_xf.mdl_rng, nd_mc_trims() - xf_trim0, xs_phi, xs_ehi, msf(m[8], pm_xf.rdw_t));
+    pm_log_prof_line(xf_kind == XF_MAP ? "xfer3 map n%u | maxstep mdl %u rng %u tex %s dlc %s rom %u smp %u | rng %u trim %u phi %u ehi %u rdw %s hid %u/%u" : "xfer3 door n%u | maxstep mdl %u rng %u tex %s dlc %s rom %u smp %u | rng %u trim %u phi %u ehi %u rdw %s hid %u/%u",
+                     xf_seq, xs_m.mdl, xs_m.rng, msf(m[6], xs_m.tex_t), msf(m[7], xs_m.dlc_t), xs_m.rom, xs_m.smp, pm_xf.mdl_rng, nd_mc_trims() - xf_trim0, xs_phi, xs_ehi, msf(m[8], pm_xf.rdw_t), pm_xf.hid_d, pm_xf.hid_t);
     xf_kind = XF_NONE;
     pm_xf.on = 0;
 }
@@ -93,8 +94,10 @@ void pm_xfer_map_begin(void) {
     map_name(xf_from, sizeof xf_from, xf_last_area, xf_last_map);
     snprintf(xf_to, sizeof xf_to, "?");
 }
+static int xh_on; /* DOORHITCH step 3: armed by a map load (2 in the load step, then 1 until the first frame not covered) */
 void pm_xfer_map_load(int area, int map) {
     xf_last_area = area; xf_last_map = map;
+    xh_on = 2; /* 2: the load step itself (the map scripts have not hidden the room models yet) */
     if (xf_kind != XF_MAP) return; /* a load outside a map change (enter world, a battle return): no line */
     map_name(xf_to, sizeof xf_to, area, map);
     pm_xf.load_step = 1;
@@ -155,4 +158,38 @@ void pm_xfer_step(unsigned long long t0, unsigned long long t1) {
     if (!ld && w > T34) xf_o34++;
     if (!ld && !init && w > xf_fade) xf_fade = w;
     if ((xf_tail && --xf_tail == 0) || xf_steps >= XF_LIMIT) xf_print();
+}
+/* DOORHITCH step 3: the first entry of a room. Its models (the house interior on kmr_20) are hidden by the room scripts after the load and first
+ * drawn in the door, where their compiled lists and textures were built inside the door steps (O3DS kmr_20: 17 textures, 326 KB, 51 ms). After a
+ * map load the logic thread posts each hidden model (list, texture handle) to the walker, which builds them after the frame's walk
+ * (pm_gpu_warm_model): XH_STEP per frame under the covered frames of the load (the overlay at 255, as pm_xfer_skip), then one per drawn frame once
+ * the map line has ended and no door is open, until a scan finds no new hidden model. The covered frames alone do not reach the room models:
+ * kmr_20 creates its room (CreateMapRoom) in the second covered frame and hides the interior after it. Deterministic: a count, no time. */
+#define XH_STEP 12u
+static uint32_t xh_done[MAX_MODELS / 32]; static unsigned xh_n; /* models posted since the load: by index, the count */
+static void wq_xh(void* a) { const uintptr_t* q = (const uintptr_t*)a; void pm_gpu_warm_model(const void* dl, int ti, const void* gfx); pm_gpu_warm_model((const void*)q[0], (int)q[1], (const void*)q[2]); }
+void pm_xfer_hidden(void) {
+    if (!xh_on) return;
+    if (xh_on == 2 || (gOverrideFlags & GLOBAL_OVERRIDES_DISABLE_DRAW_FRAME)) { xh_on = 1; memset(xh_done, 0, sizeof xh_done); xh_n = 0; return; }
+    u8 t; f32 z;
+    get_screen_overlay_params(SCREEN_LAYER_FRONT, &t, &z);
+    const int cov = (t == OVERLAY_SCREEN_COLOR || t == OVERLAY_VIEWPORT_COLOR) && z >= 255.0f;
+    if (!cov && xf_kind != XF_NONE) return; /* the fade-in of a map change or a door: those frames build their own models */
+    extern TextureHandle TextureHandles[];
+    const unsigned lim = cov ? XH_STEP : 1u;
+    unsigned n = 0;
+    for (unsigned i = 0; i < MAX_MODELS && n < lim; i++) {
+        Model* m = (*gCurrentModels)[i];
+        if (!m || !(m->flags & MODEL_FLAG_HIDDEN) || (m->flags & (MODEL_FLAG_INACTIVE | MODEL_FLAG_HAS_LOCAL_VERTEX_COPY))) continue;
+        if (!m->modelNode || !m->modelNode->displayData || (xh_done[i >> 5] & (1u << (i & 31u)))) continue;
+        xh_done[i >> 5] |= 1u << (i & 31u);
+        uintptr_t q[3];
+        q[0] = (uintptr_t)m->modelNode->displayData->displayList;
+        q[1] = m->textureID ? (uintptr_t)(m->textureID + m->textureVariation) : (uintptr_t)-1;
+        q[2] = m->textureID ? (uintptr_t)TextureHandles[m->textureID + m->textureVariation].gfx : 0u;
+        pm_wq_post(wq_xh, q, sizeof q);
+        n++;
+    }
+    xh_n += n;
+    if (!n && !cov) { xh_on = 0; pm_log_d("xfer hidden f%u posted %u", pm_frame_count(), xh_n); }
 }

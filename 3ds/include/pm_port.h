@@ -374,6 +374,7 @@ typedef struct {
     unsigned wh[93];              /* xferdiag: misses per first differing key word (92: no stored entry of the same model) */
     unsigned mdl_rng;             /* DOORHITCH: key hits refused by the group mask or the matrix version (pm_gpu_model_hit), rebuilt and not in mdl_miss */
     unsigned rdw_t;               /* DOORHITCH: ticks of the walk drain before a ROM read (nuPiReadRom) */
+    unsigned hid_d, hid_t;        /* DOORHITCH: hidden models of the new map given their compiled list, their texture, before a first draw */
     int step_smp;                 /* DOORHITCH: the step in progress is a prof sample (phase timers on); set by pm_main before pm_xfer_step */
 } PmXf;
 extern PmXf pm_xf;
@@ -381,6 +382,7 @@ void pm_xfer_map_begin(void);                     /* set_game_mode(GAME_MODE_CHA
 void pm_xfer_map_load(int area, int map);         /* __wrap_load_map_by_IDs: the target */
 void pm_xfer_door(int state);                     /* rooms.c SetDoorState: 1 entering, 2 exiting, 0 idle */
 void pm_xfer_step(unsigned long long t0, unsigned long long t1); /* pm_main.c: once per game step, its work ticks */
+void pm_xfer_hidden(void);                        /* DOORHITCH: logic thread, a drawn step after its list build (pm_step_run) */
 int pm_xfer_skip(int kind); /* MAPX-3: 1 when a cache build of this kind (0 model record miss) is over the budget of a covered frame (skip its draw) */
 
 #endif
