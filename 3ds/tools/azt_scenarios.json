@@ -11431,6 +11431,66 @@
       ]
     },
     {
+      "name": "merlon_in_pic",
+      "status": "unverified",
+      "reason": "Row MERLON (user: Merlon's house interior black, crystal ball a square). Walk about 80 frames, door 60, inside 200, walk to the door, exit 60: about 15 s after the warp. Cap 30 s.",
+      "subject": "Merlon's house on mac_01 (story ch1_start): Mario walks to the door and presses A (room enter), stays inside 200 frames, walks back to the door and presses A (room exit). Shots every 25 frames from 100 to 300: the door from outside, the interior with Merlon and the crystal ball, the exit.",
+      "proves": "MERLON: the interior is lit with Merlon visible, the crystal ball is round with the zoomed scene, and no square shows through the wall from outside.",
+      "debug": "warp=mac_01:0 story=ch1_start pos=-203:20:-206 padscript=go_-203_-280_100,A,wait200,go_-190_-262_150,A,wait150 shots shotwin=100:200:25 profdisk=1 loglevel=debug det",
+      "until": "xfer2 [a-z]+ n2\\b",
+      "cap": 30,
+      "deadline": 28,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "door enter line",
+          "regex": "xfer door \\S+:out->\\S+:in f\\d+"
+        }
+      ]
+    },
+    {
+      "name": "merlon_in_nowide_pic",
+      "status": "unverified",
+      "reason": "Row MERLON (user: Merlon's house interior black, crystal ball a square). Walk about 80 frames, door 60, inside 200, walk to the door, exit 60: about 15 s after the warp. Cap 30 s.",
+      "subject": "Merlon's house on mac_01 (story ch1_start): Mario walks to the door and presses A (room enter), stays inside 200 frames, walks back to the door and presses A (room exit). 4:3 (nowide). Shots every 25 frames from 100 to 300: the door from outside, the interior with Merlon and the crystal ball, the exit.",
+      "proves": "MERLON: the interior is lit with Merlon visible, the crystal ball is round with the zoomed scene, and no square shows through the wall from outside.",
+      "debug": "warp=mac_01:0 story=ch1_start pos=-203:20:-206 padscript=go_-203_-280_100,A,wait200,go_-190_-262_150,A,wait150 shots shotwin=100:200:25 profdisk=1 nowide loglevel=debug det",
+      "until": "xfer2 [a-z]+ n2\\b",
+      "cap": 30,
+      "deadline": 28,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "door enter line",
+          "regex": "xfer door \\S+:out->\\S+:in f\\d+"
+        }
+      ]
+    },
+    {
+      "name": "merlon_in_live_pic",
+      "status": "unverified",
+      "reason": "Row MERLON (user: Merlon's house interior black, crystal ball a square). Walk about 80 frames, door 60, inside 200, walk to the door, exit 60: about 15 s after the warp. Cap 30 s.",
+      "subject": "Merlon's house on mac_01 (story ch1_start): Mario walks to the door and presses A (room enter), stays inside 200 frames, walks back to the door and presses A (room exit). No det (the logic thread runs as on the console). Shots every 25 frames from 100 to 300: the door from outside, the interior with Merlon and the crystal ball, the exit.",
+      "proves": "MERLON: the interior is lit with Merlon visible, the crystal ball is round with the zoomed scene, and no square shows through the wall from outside.",
+      "debug": "warp=mac_01:0 story=ch1_start pos=-203:20:-206 padscript=go_-203_-280_100,A,wait200,go_-190_-262_150,A,wait150 shots shotwin=100:200:25 profdisk=1 loglevel=debug",
+      "until": "xfer2 [a-z]+ n2\\b",
+      "cap": 30,
+      "deadline": 28,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "door enter line",
+          "regex": "xfer door \\S+:out->\\S+:in f\\d+"
+        }
+      ]
+    },
+    {
       "name": "xfer_map_mac01",
       "status": "unverified",
       "reason": "MAPX-1 measure and the MAPX-3/4/5 gate. Walk about 60 frames, fade 13, load 6, tail 30: about 5 s after the warp. Cap 35 s.",

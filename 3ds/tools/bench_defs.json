@@ -5257,6 +5257,54 @@
       "gates": []
     },
     {
+      "name": "merlon_in_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MERLON: Merlon's house enter and exit on mac_01 (ch1_start), det, shots every 25 frames 100 to 300: interior lit, crystal ball round, no square through the wall. A person reads the shot.",
+      "scenario": "merlon_in_pic",
+      "cap": 30,
+      "until": "xfer2 [a-z]+ n2\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "xfer"
+      ],
+      "gates": []
+    },
+    {
+      "name": "merlon_in_nowide_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MERLON: Merlon's house enter and exit on mac_01 (ch1_start), det, 4:3 (nowide), shots every 25 frames 100 to 300: interior lit, crystal ball round, no square through the wall. A person reads the shot.",
+      "scenario": "merlon_in_nowide_pic",
+      "cap": 30,
+      "until": "xfer2 [a-z]+ n2\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "xfer"
+      ],
+      "gates": []
+    },
+    {
+      "name": "merlon_in_live_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MERLON: Merlon's house enter and exit on mac_01 (ch1_start), no det (logic thread on), shots every 25 frames 100 to 300: interior lit, crystal ball round, no square through the wall. A person reads the shot.",
+      "scenario": "merlon_in_live_pic",
+      "cap": 30,
+      "until": "xfer2 [a-z]+ n2\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "xfer"
+      ],
+      "gates": []
+    },
+    {
       "name": "xfer_map_mac01",
       "kind": "azahar_stream",
       "speed": "normal",
