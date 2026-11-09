@@ -3656,6 +3656,22 @@
         "magi"
       ],
       "gates": []
+    },
+    {
+      "name": "magi_hit_stream",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MAGI: Magikoopa Magic Blast hit (HOS formation 03), fspk per-frame lines with no shots. Azahar counts valid, ms direction only.",
+      "scenario": "magi_hit_noshot",
+      "cap": 20,
+      "until": "fspk: done hit f\\d+",
+      "tags": [
+        "azahar",
+        "magi",
+        "battle"
+      ],
+      "gates": []
     }
   ],
   "legacy": {

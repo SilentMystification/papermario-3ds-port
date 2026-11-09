@@ -10169,6 +10169,30 @@
         }
       ],
       "reason": "Cap 20: the hit comes about 9 s after the start (battle load at f100, Mario's jump turn, the cast); the until line ends the 48-frame window after the hit."
+    },
+    {
+      "name": "magi_hit_noshot",
+      "status": "unverified",
+      "subject": "As magi_hit without shots: the fspk lines of the 16 frames before and 48 after the Magikoopa spell hit, no shot frame in the window.",
+      "proves": "MAGI: per-frame step ms and draw counts at the hit with no shot write in the window (the shot frames of magi_hit stall the pacing).",
+      "debug": "warp=hos_00:0 story=ch0_toad_town battle=BTL_HOS_FORMATION_03:BTL_HOS_STAGE_02 battlef=100 cheats=hp autoa fspk loglevel=debug",
+      "until": "fspk: done hit f\\d+",
+      "cap": 20,
+      "deadline": 30,
+      "first_marker": "warp: hos_00 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "battle",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "hit",
+          "regex": "fspk: mark shape_spell hit"
+        }
+      ],
+      "reason": "Cap 20: the hit comes about 9 s after the start (battle load at f100, Mario's jump turn, the cast); the until line ends the 48-frame window after the hit."
     }
   ]
 }
