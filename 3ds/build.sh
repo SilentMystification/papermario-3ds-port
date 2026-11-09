@@ -46,6 +46,16 @@ gen_map_restore() {
 }
 gen_map_restore
 
+# TEXKEY2: 3ds/include/texkey_patch.h (git-ignored, generated) holds the palette fix of the map texture archives: the alpha-0
+# key colours of each CI texture, computed from the ROM and the texture sources of ASSET_BASE (3ds/tools/texkey_bake.py, read only).
+# nuPiReadRom (pm_os.c) applies it to the bytes the game reads. Rewritten each build; the key below covers its content.
+gen_texkey() {
+    tkb=$ASSET_BASE; command -v cygpath >/dev/null 2>&1 && tkb=$(cygpath -m "$ASSET_BASE")
+    if command -v py >/dev/null 2>&1; then py -3 3ds/tools/texkey_bake.py "$tkb" 3ds/include/texkey_patch.h
+    else python3 3ds/tools/texkey_bake.py "$tkb" 3ds/include/texkey_patch.h; fi || { echo "texkey_bake.py failed" >&2; exit 1; }
+}
+gen_texkey
+
 # The inputs CMake reads (3ds/CMakeLists.txt, DECOMP = repo root). Nothing else reaches the build.
 # CODE_DIRS are read from this worktree; ASSET_DIRS from ASSET_BASE (see above).
 CODE_DIRS="3ds/CMakeLists.txt 3ds/effects.cmake 3ds/battle.cmake 3ds/maps.cmake 3ds/map_syms.lds LaunchIcon.png 3ds/ld 3ds/shaders 3ds/stub_include 3ds/include 3ds/src src include"
@@ -69,7 +79,7 @@ key_now() {
         git ls-tree -r HEAD -- $KEY_IN
         git diff HEAD -- $KEY_IN
         git ls-files -o --exclude-standard -- $KEY_IN | while read -r f; do sha1sum "$f"; done
-        sha1sum 3ds/src/map_restore_table.c 3ds/ld/map_restore.ld 3ds/ld/map_restore_bss.ld
+        sha1sum 3ds/src/map_restore_table.c 3ds/ld/map_restore.ld 3ds/ld/map_restore_bss.ld 3ds/include/texkey_patch.h
         (cd "$ASSET_BASE" && find $ASSET_DIRS -type f -printf '%p %s %T@\n' | sort)
     } | sha1sum | cut -d' ' -f1
 }

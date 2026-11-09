@@ -3195,6 +3195,20 @@
       "gates": []
     },
     {
+      "name": "texkey_arn02",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "TEXKEY2: arn_02 at frame 120 (wall barrier rocks), build-time palette fix. A person reads the rock edges.",
+      "scenario": "texkey_arn02",
+      "cap": 30,
+      "until": "shot \\d+ frame 120\\b",
+      "tags": [
+        "azahar"
+      ],
+      "gates": []
+    },
+    {
       "name": "kmr11_cut",
       "kind": "azahar_pic",
       "speed": "normal",

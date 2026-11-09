@@ -783,6 +783,30 @@
       "reason": "EYECW gate e. Cap 30 s."
     },
     {
+      "name": "texkey_arn02",
+      "status": "unverified",
+      "subject": "TEXKEY2 (palette fix at build time, texkey_bake.py): arn_02 (warp entry 0, Toad Town) at frame 120. The shot shows the wall barrier rocks; the rock edges must show no light outline.",
+      "proves": "TEXKEY2: the alpha-0 key colour next to opaque texels of a CI4 cutout texture (arn_kabe10 wall barrier) is light, so bilinear mixes a light outline into the rock edges.",
+      "debug": "warp=arn_02:0 story=ch0_toad_town shots shotwin=120:120:1 loglevel=debug",
+      "until": "shot \\d+ frame 120\\b",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: arn_02 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: arn_02 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 120\\b"
+        }
+      ],
+      "reason": "TEXKEY2 gate shot. Cap 30 s."
+    },
+    {
       "name": "kmr11_cut_stereo_det_l",
       "status": "unverified",
       "subject": "kmr11_cut with forced stereo, left eye shots at frames 41 to 261 step 20; eyecw lines every 10 frames.",
