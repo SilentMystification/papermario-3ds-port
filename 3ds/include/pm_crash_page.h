@@ -8,7 +8,9 @@
 #define PM_CRASH_PAGE_H 240
 #define PM_CRASH_PAGE_LINES 16
 
-/* Draws the text lines (one per row, 13 px apart from y=12) into fb, a PM_CRASH_PAGE_W x PM_CRASH_PAGE_H RGBA16 buffer. */
-void pm_crash_page_render(uint16_t* fb, const char* const* lines, int n);
+/* Calls lit(ctx, x, y) for every lit pixel of the page (x < PM_CRASH_PAGE_W, y < PM_CRASH_PAGE_H). The caller clears the
+ * target first (the unlit pixels are not written). Lines are 13 px apart from y=12, glyph rows 7 px, no buffer is needed. */
+typedef void (*PmCrashPx)(void* ctx, int x, int y);
+void pm_crash_page_render(PmCrashPx lit, void* ctx, const char* const* lines, int n);
 
 #endif

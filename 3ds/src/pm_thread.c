@@ -4,7 +4,11 @@
 #include "pm_thread.h"
 #include <string.h>
 
-#define PM_TH_MAX 24
+/* 17 port threads that can live at once (game, main, logic, audio, au_render, prefetch, rs_loader, flash, savecrash,
+ * log_writer, log_step x2, log_sink, c2, c1, wdog) + 2 spare. The handler's deepest static chain is 3792 B
+ * (crash_handler -> pm_exit_process -> pm_flash_crash_flush -> pm_crash_line -> drain_locked -> out_batch -> pm_log_w ->
+ * vlog -> vsnprintf -> _svfprintf_r -> _dtoa_r), measured on the ELF: 4 KB keeps 300 B of margin. */
+#define PM_TH_MAX 19
 #define PM_TH_HSTACK 4096
 
 typedef struct {

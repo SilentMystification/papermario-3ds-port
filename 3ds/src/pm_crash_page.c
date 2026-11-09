@@ -30,42 +30,26 @@ static const uint32_t font[] = {
     0x00000000,
 };
 
-static void page_rect(uint16_t* fb, int x, int y, int w, int h) {
-    for (int i = 0; i < h; i++)
-        for (int j = 0; j < w; j++) {
-            uint16_t* p = &fb[(y + i) * PAGE_W + x + j];
-            *p = ((*p & 0xE738) >> 2) | 1;
-        }
+/* One page pixel is lit when a glyph of its line covers it. The glyph row and column are computed from the position:
+ * line i has its glyph rows at y = 12 + 13 i, 7 rows; character k sits at x = 8 + 6 k, 6 columns (the decomp's x += 6). */
+static int page_lit(const char* const* lines, int n, int x, int y) {
+    int t = y - 12;
+    if (t < 0 || x < 8) return 0;
+    int line = t / 13, row = t % 13;
+    if (row >= 7 || line >= n) return 0;
+    int cx = x - 8, ch = cx / 6, col = cx % 6;
+    const char* s = lines[line];
+    for (int k = 0; k < ch; k++)
+        if (!s[k]) return 0;
+    if (!s[ch]) return 0;
+    int g = charToGlyph[(uint8_t)s[ch] & 0x7F];
+    if (g == 0xFF) return 0; /* not in the font: skipped, like crash_screen_printf */
+    uint32_t bit = 0x80000000U >> ((g % 5) * 6 + col); /* crash_screen_draw_glyph: shift = (glyph % 5) * 6 */
+    return (font[g / 5 * 7 + row] & bit) != 0;
 }
 
-/* crash_screen_draw_glyph, width == SCREEN_WIDTH branch. Clipped: a glyph outside the page is not drawn. */
-static void page_glyph(uint16_t* fb, int x, int y, int glyph) {
-    int shift = (glyph % 5) * 6;
-    const uint32_t* data = &font[glyph / 5 * 7];
-    if (x < 0 || y < 0 || x + 6 > PAGE_W || y + 7 > PAGE_H) return;
-    uint16_t* ptr = fb + PAGE_W * y + x;
-    for (int i = 0; i < 7; i++) {
-        uint32_t bit = 0x80000000U >> shift;
-        uint32_t rowMask = *data++;
-        for (int j = 0; j < 6; j++) {
-            *ptr++ = (bit & rowMask) ? 0xFFFF : 1;
-            bit >>= 1;
-        }
-        ptr += PAGE_W - 6;
-    }
-}
-
-/* crash_screen_printf without the va_list: one string per line, x += 6 per character, glyph 0xFF is skipped. */
-static void page_text(uint16_t* fb, int x, int y, const char* s) {
-    for (; *s && x + 6 <= PAGE_W; s++) {
-        int glyph = charToGlyph[(uint8_t)*s & 0x7F];
-        if (glyph != 0xFF) page_glyph(fb, x, y, glyph);
-        x += 6;
-    }
-}
-
-void pm_crash_page_render(uint16_t* fb, const char* const* lines, int n) {
-    for (int i = 0; i < PAGE_W * PAGE_H; i++) fb[i] = 1; /* ground: dark, like the decomp's crash_screen_draw_rect */
-    page_rect(fb, 4, 6, PAGE_W - 8, 12);
-    for (int i = 0; i < n && i < PM_CRASH_PAGE_LINES; i++) page_text(fb, 8, 12 + i * 13, lines[i]);
+void pm_crash_page_render(PmCrashPx lit, void* ctx, const char* const* lines, int n) {
+    for (int y = 0; y < PAGE_H; y++)
+        for (int x = 0; x < PAGE_W; x++)
+            if (page_lit(lines, n, x, y)) lit(ctx, x, y);
 }

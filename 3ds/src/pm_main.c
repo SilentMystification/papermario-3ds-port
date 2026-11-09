@@ -25,7 +25,6 @@ extern void boot_main(void* data);
 const char* pm_wd_phase_name(unsigned p);
 
 static int crash_taken; /* CRASHALL: the first crash handler ends the process; another thread that faults waits here */
-static uint16_t crash_page_fb[PM_CRASH_PAGE_W * PM_CRASH_PAGE_H]; /* the ARM crash page, RGBA16 (crash_screen.c layout) */
 static char args[256];
 
 /* Stack records: bounds of the game and audio thread stacks, a fill pattern for the high-water mark.
@@ -69,20 +68,21 @@ void pm_fpscr_setup(const char* who) {
     pm_log_d("fpscr %s before %08x after %08x", who, before, fpscr_get());
 }
 
-static void crash_page_to_top(const uint16_t* pg) {
+struct CrashPx { u8* fb; u16 pw; int x0; };
+static void crash_px_set(void* c, int x, int y) {
+    const struct CrashPx* p = (const struct CrashPx*)c;
+    u8* d = p->fb + ((size_t)(x + p->x0) * p->pw + (p->pw - 1 - y)) * 3; /* BGR, column-major: the layout pm_gpu_shot_top_displayed_w reads */
+    d[0] = d[1] = d[2] = 0xFF;
+}
+
+/* The page is drawn into the top screen's back buffer (no page buffer): clear it, the lit pixels by the CPU, flush, swap. */
+static void crash_page_draw(const char* const* lines, int n) {
     u16 pw = 0, lw = 0; /* pw: physical width (one column of pixels), lw: the logical width of the top screen */
     u8* fb = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, &pw, &lw);
     if (!fb) return;
-    int x0 = ((int)lw - PM_CRASH_PAGE_W) / 2;
-    for (int x = 0; x < lw; x++)
-        for (int y = 0; y < pw; y++) {
-            u8* d = fb + ((size_t)x * pw + (pw - 1 - y)) * 3; /* BGR, column-major: the layout pm_gpu_shot_top_displayed_w reads */
-            int px = x - x0;
-            u16 p = (px >= 0 && px < PM_CRASH_PAGE_W && y < PM_CRASH_PAGE_H) ? pg[y * PM_CRASH_PAGE_W + px] : 0;
-            d[0] = (u8)(((p >> 1) & 31) << 3);
-            d[1] = (u8)(((p >> 6) & 31) << 3);
-            d[2] = (u8)(((p >> 11) & 31) << 3);
-        }
+    memset(fb, 0, (size_t)pw * lw * 3);
+    struct CrashPx c = { fb, pw, ((int)lw - PM_CRASH_PAGE_W) / 2 };
+    pm_crash_page_render(crash_px_set, &c, lines, n);
     GSPGPU_FlushDataCache(fb, (u32)pw * lw * 3);
     gfxScreenSwapBuffers(GFX_TOP, false);
 }
@@ -133,8 +133,7 @@ static void crash_page_show(const char* type, const char* tname, const ERRF_Exce
     snprintf(pg[n++], 56, "LOOP PHASE %u (%s) FRAME %u", pm_wd_phase, pm_wd_phase_name(pm_wd_phase), pm_frame_count());
     snprintf(pg[n++], 56, "A OR START: EXIT (60 S)");
     for (int i = 0; i < n; i++) lines[i] = pg[i];
-    pm_crash_page_render(crash_page_fb, lines, n);
-    crash_page_to_top(crash_page_fb);
+    crash_page_draw(lines, n);
     crash_page_wait();
 }
 
