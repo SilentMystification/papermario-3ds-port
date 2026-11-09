@@ -32,7 +32,9 @@ Read this file at the start and after every compaction; it overrides any summary
    orchestrator resolves doc and JSON conflicts (JSON by name, then a duplicate-name check).
 3. Put the branch's `memcheck:` line in the merge message; OVER does not block, the message says why it is taken.
 4. commit-tree + update-ref, sync the changed files, append the new runs.jsonl lines, reset the index for those paths.
-5. Tell running agents whose files changed to merge main. Delete `.wt_keep`, run `sh 3ds/tools/wt_gc.sh --apply --only <wt>`.
+5. Tell running agents whose files changed to merge main. Delete `.wt_keep`, run `sh 3ds/tools/wt_gc.sh --apply --only <wt>`,
+   then `git branch -d <branch>`. A row is not done while its worktree or branch exists. Scratch branches of a row
+   (try, old, fix variants) are deleted in the same step or listed in the row file for an audit.
 6. After a merge that changes a build input, build main in the background (no PM_LANE), so a push needs no build. Never build main
    while a push runs (both use the container pm3ds-build-main).
 
