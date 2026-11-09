@@ -94,7 +94,8 @@ __attribute__((cold, noinline)) static void xf_print(void) {
         pm_log_prof_line("xferk %s miss %u rep %u trim %u first%s", kn, pm_xf.mdl_miss, nd_mc_reps() - xf_rep0, nd_mc_trims() - xf_trim0, b);
     }
     /* DOORHITCH: the longest step by stage, and the cache fill over the transition (after xferk: the test until-line); a battle entry has its BTLWIPE xfer3 line */
-    if (xf_kind != XF_BTL) pm_log_prof_line("xfer3 %s n%u | maxstep mdl %u rng %u tex %s dlc %s rom %u smp %u | rng %u trim %u phi %u ehi %u rdw %s hid %u", kn,
+#define XF_L3 " n%u | maxstep mdl %u rng %u tex %s dlc %s rom %u smp %u | rng %u trim %u phi %u ehi %u rdw %s hid %u"
+    if (xf_kind != XF_BTL) pm_log_prof_line(xf_kind == XF_MAP ? "xfer3 map" XF_L3 : "xfer3 door n%u | maxstep mdl %u rng %u tex %s dlc %s rom %u smp %u | rng %u trim %u phi %u ehi %u rdw %s hid %u",
                      xf_seq, xs_m.mdl, xs_m.rng, msf(m[6], xs_m.tex_t), msf(m[7], xs_m.dlc_t), xs_m.rom, xs_m.smp, pm_xf.mdl_rng, nd_mc_trims() - xf_trim0, xs_phi, xs_ehi, msf(m[8], pm_xf.rdw_t), pm_xf.hid_d);
     xf_kind = XF_NONE;
     pm_xf.on = 0;
