@@ -404,6 +404,47 @@ static void tour_parse(void) {
     pm_log("tour: %d items, settle %d frames, window %u frames, seed %08x", tour_total, TOUR_SETTLE, tour_len, TOUR_SEED);
 }
 
+/* RANDWARP: the spot table line at l ends at its newline (or the string end). */
+static const char* rw_line_next(const char* l) {
+    const char* n = strchr(l, '\n');
+    return n ? n + 1 : l + strlen(l);
+}
+/* RANDWARP: 1 when the spot table line at l has a spot (map:entry@x:y:z), 0 for a map without one (tik_17:0). */
+static int rw_line_spot(const char* l) {
+    for (; *l && *l != '\n'; l++) if (*l == '@') return 1;
+    return 0;
+}
+/* RANDWARP: warp=random[:<seed>]. One spot of pm_tour_spots (the lines with a point) picked by seed % count. The seed is the given value,
+ * else the low 32 bits of the system tick. The log line names the seed and the spot, so the run repeats with warp=random:<seed>.
+ * Sets the boot warp's map, entry and position (pos_v) and the tour story. Returns 1 when a spot was picked. */
+static int rw_warp_random(const char* arg) {
+    unsigned seed, cnt = 0, pick = 0, k = 0;
+    const char *l, *hit = NULL, *at;
+    char pv[40];
+    unsigned j = 0;
+    seed = arg[0] == ':' ? (unsigned)strtoul(arg + 1, NULL, 0) : pm_ticks(); /* low 32 bits of the system tick */
+    for (l = pm_tour_spots; *l; l = rw_line_next(l)) cnt += (unsigned)rw_line_spot(l);
+    if (cnt == 0) { pm_log_w("warp: random, no spot in pm_tour_spots"); return 0; }
+    pick = seed % cnt;
+    for (l = pm_tour_spots; *l && !hit; l = rw_line_next(l)) {
+        if (!rw_line_spot(l)) continue;
+        if (k == pick) hit = l;
+        k++;
+    }
+    /* the line: map:entry@x:y:z */
+    w_map[0] = 0;
+    for (j = 0; hit[j] != ':' && j + 1 < sizeof w_map; j++) w_map[j] = hit[j];
+    w_map[j] = 0;
+    w_entry = atoi(hit + j + 1);
+    at = strchr(hit, '@');
+    for (j = 0; at[1 + j] && at[1 + j] != '\n' && at[1 + j] != '\r' && at[1 + j] != ' ' && j + 1 < sizeof pv; j++) pv[j] = at[1 + j];
+    pv[j] = 0;
+    pos_n = pm_pos_parse(pv, pos_v);
+    pos_on = pos_n != 0;
+    w_story = STORY_CH0_ARRIVED_AT_TOAD_TOWN; /* the tour's story value; story= after it wins */
+    pm_log("warp: random seed %u -> %s:%d@%s", seed, w_map, (int)w_entry, pv);
+    return 1;
+}
 static void bt_parse(void);
 int pm_warp_active(void) {
     char v[40];
@@ -424,7 +465,9 @@ int pm_warp_active(void) {
     }
     int opt_map = 0;
     int has_warp = pm_debug_value("warp", v, sizeof v);
-    if (has_warp) {
+    if (has_warp && strncmp(v, "random", 6) == 0 && (v[6] == 0 || v[6] == ':')) { /* RANDWARP */
+        has_warp = rw_warp_random(v + 6);
+    } else if (has_warp) {
         char* c = strchr(v, ':');
         w_entry = 0;
         if (c) {
