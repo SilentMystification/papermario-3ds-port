@@ -6,6 +6,7 @@
 #include <3ds/env.h>
 #include <3ds/services/apt.h>
 #include <3ds/svc.h>
+#include <3ds/os.h>
 #include "ultra64.h"
 #include "nu/nusys.h"
 #include "enums.h"
@@ -181,6 +182,28 @@ void pm_audio_tick_end(void) {
     }
 }
 
+/* BOOT step 0: the debug switch romorder logs the first touch of each 128 KB chunk of the original ROM address space
+ * (romorder c<idx> f<frame> t<ms since the ROM open>) from pi_read_raw and pm_rom_ptr. The boot line prints the chunk counts
+ * before the first drawn frame and before the title (pm_rom_order_n). Off: one load of ro_on per read. */
+#define RO_CHUNKS (PM_ROM_FULL >> 17)
+static u32 ro_seen[(RO_CHUNKS + 31) >> 5];
+static int ro_on;
+static unsigned ro_n;
+static u64 ro_t0;
+unsigned pm_rom_order_n(void) { return ro_n; }
+__attribute__((cold, noinline)) static void ro_touch(u32 addr, u32 len) {
+    extern unsigned pm_frame_count(void);
+    if (!len || addr >= PM_ROM_FULL) return;
+    u32 last = addr + len - 1u;
+    if (last >= PM_ROM_FULL) last = PM_ROM_FULL - 1u;
+    for (u32 c = addr >> 17; c <= last >> 17; c++) {
+        u32 bit = 1u << (c & 31u);
+        if (__atomic_fetch_or(&ro_seen[c >> 5], bit, __ATOMIC_RELAXED) & bit) continue;
+        __atomic_fetch_add(&ro_n, 1u, __ATOMIC_RELAXED);
+        pm_log_d("romorder c%u f%u t%u", (unsigned)c, pm_frame_count(), (unsigned)((svcGetSystemTick() - ro_t0) / (SYSCLOCK_ARM11 / 1000ull)));
+    }
+}
+
 /* Expected Paper Mario (US 1.0, NMQE) ROM: size, z64 magic, FNV-1a of the first 64 KB. A full SHA1 of 40 MB on the ARM11 would
  * take seconds, the first 64 KB covers the header and the boot code and costs one small read. Measured on the verified ROM
  * (SHA1 3837f44cda784b466c9a2d99df70d77c322b97a0 as in ver/us/checksum.sha1). */
@@ -208,6 +231,8 @@ int pm_rom_init(void) {
     if (rom_tried) return rom_bytes != NULL;
     rom_tried = 1;
     pm_boot_mark(PMB_ROM_OPEN, 0); /* BOOT-1 */
+    ro_on = pm_debug_has("romorder");
+    ro_t0 = svcGetSystemTick();
     FILE* f = fopen("papermario.z64", "rb");
     if (!f) f = fopen("baserom.us.z64", "rb");
     if (!f) return rom_fail(NULL, "ROM missing. Copy the US Paper Mario ROM to sdmc:/3ds/PaperMario/papermario.z64 (big-endian .z64).");
@@ -354,6 +379,7 @@ static void pi_read_raw(u32 rom_addr, void* buf, u32 size) {
     PH_PUSH(PH_ROM);
     if (!pm_on_audio()) { PH_ADD(C_ROMN, 1); PH_ADD(C_ROMB, size); } /* AU1c: the counters belong to the game thread */
     if (rom_addr < 0x1000u) rom_suspect("AT TINY OFFSET", rom_addr, size, rom_addr, size);
+    if (__builtin_expect(ro_on, 0)) ro_touch(rom_addr, size);
     /* Walk the request over the original offsets. A byte in a dropped range is a hard error. */
     u8* out = (u8*)buf;
     u32 left = size, addr = rom_addr;
@@ -413,6 +439,7 @@ static void pi_read_raw(u32 rom_addr, void* buf, u32 size) {
 const unsigned char* pm_rom_ptr(unsigned addr, unsigned len) {
     if (!rom_tried) pm_rom_init();
     if (!rom_bytes || !len || addr >= rom_size || len > rom_size - addr) return NULL;
+    if (__builtin_expect(ro_on, 0)) ro_touch(addr, len);
     for (unsigned i = 0; i < sizeof(pm_rom_drop) / sizeof(pm_rom_drop[0]); i++)
         if (addr < pm_rom_drop[i].end && addr + len > pm_rom_drop[i].start) return NULL;
     if (!rom_remap) return rom_bytes + addr;

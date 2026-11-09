@@ -1,12 +1,13 @@
 # Agent boot (row BOOT, epic BOOT)
 
-STATE (BOOT-1, branch boot)
-- Branch boot, row file docs/handoff/row_BOOT.md (not deleted: BOOT-1 gate open).
-- Done: pm_boot_mark marks (pm_main.c, pm_os.c, pm_nusys.c), `boot ms` line at first title or intro step, bench boot_ms.
-- Open: cold boot number. Runs 3627 (warm) and the first cold run (no line) are recorded.
-- Cold start blocked: both shared slots (build3ds/azslots/slot1, slot2) hold kept Azaharas; a cold run needs one closed.
-- Next: orchestrator closes one slot or waits for azreap (15 min idle), then run `bench.py run boot_ms --row BOOT --lane boot`.
-- Next (BOOT-2): O3DS push for the stopwatch and boot ms on hardware.
+STATE (row BOOT, branch BOOT)
+- Row file docs/handoff/row_BOOT.md: step 0 done, next is the stream (pm_romload.c, steps 1 to 5).
+- Step 0 (switch romorder, bench boot_romorder, run 81263; base boot_ms run 80966): 59 of 320 ROM chunks (128 KB) are touched
+  before the first drawn frame and the same 59 before the title. 57 are the audio bank (c120 to c207, SBN at 0xF00000) read by
+  the audio init, then c8, c15, c16 at logo frame 15. No ROM read during the logos (frame 15 to 328, about 11 s). After the title
+  the map reads start (mapfs c242 and up).
+- Base: the fread loop reads 25 MB in about 5 s before gfx init, the logos then wait 11 s with no ROM reads.
+- Open: BOOT-2 console boot ms (O3DS XL, N3DS).
 
 ## Boot line (BOOT-1)
 `boot ms main X log Y opt Z rom R (M MB/s) gfx G audio A first F title T`, printed once by pm_boot_title_check (pm_main.c) at the first step of game mode 2 (title) or 16 (intro). X, Y, Z, G, A, F, T are ms after main() (X = game thread entry). R is the ROM read in ms (pm_rom_init open to read done) with the rate.

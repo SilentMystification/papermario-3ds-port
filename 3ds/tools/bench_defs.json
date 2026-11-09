@@ -1127,6 +1127,39 @@
       ]
     },
     {
+      "name": "boot_romorder",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BOOT step 0: ROM chunks (128 KB) touched before the first drawn frame and before the title, with the touch order in the log (romorder lines).",
+      "scenario": "boot_romorder",
+      "cap": 45,
+      "until": "romorder chunks first ",
+      "tags": [
+        "azahar",
+        "boot"
+      ],
+      "log_metrics": [
+        {
+          "name": "chunks_first",
+          "regex": "romorder chunks first (\\d+) title",
+          "pick": "last"
+        },
+        {
+          "name": "chunks_title",
+          "regex": "romorder chunks first \\d+ title (\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "chunks_title",
+          "op": ">",
+          "value": 0
+        }
+      ]
+    },
+    {
       "name": "randwarp_pic",
       "kind": "azahar_pic",
       "speed": "normal",

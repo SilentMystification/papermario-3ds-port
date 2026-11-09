@@ -739,11 +739,12 @@ void pm_options_prof_boot(void); /* PROFROW, pm_options.c */
 /* BOOT-1: boot timing. pm_boot_mark is cold (no log call: the log is not running yet at the first marks). The line is printed
  * once, at the first title-screen frame, from the stored ticks. All values are ms after main() except the ROM read (ms, MB/s). */
 static u64 pmb_tick[PMB_N];
-static unsigned pmb_set, pmb_arg[PMB_N];
+static unsigned pmb_set, pmb_arg[PMB_N], pmb_rc[PMB_N];
 __attribute__((cold, noinline)) void pm_boot_mark(int id, unsigned arg) {
     if (id < 0 || id >= PMB_N || (pmb_set >> id & 1u)) return;
     pmb_tick[id] = svcGetSystemTick();
     pmb_arg[id] = arg;
+    pmb_rc[id] = pm_rom_order_n();
     pmb_set |= 1u << id;
 }
 static unsigned pmb_ms(int id) { return (unsigned)((pmb_tick[id] - pmb_tick[PMB_MAIN]) / (SYSCLOCK_ARM11 / 1000ull)); }
@@ -758,6 +759,7 @@ static void pm_boot_report(void) {
     float mbs = rom_ms ? (float)pmb_arg[PMB_ROM_READ] / 1048576.f / ((float)rom_ms / 1000.f) : 0.f;
     pm_log_w("boot ms main %u log %u opt %u rom %u (%.1f MB/s) gfx %u audio %u first %u title %u",
              pmb_ms(PMB_THREAD), pmb_ms(PMB_LOG), pmb_ms(PMB_OPT), rom_ms, mbs, pmb_ms(PMB_GFX), pmb_ms(PMB_AUDIO), pmb_ms(PMB_DRAW), pmb_ms(PMB_TITLE));
+    if (pmb_rc[PMB_TITLE]) pm_log_w("romorder chunks first %u title %u of %u", pmb_rc[PMB_DRAW], pmb_rc[PMB_TITLE], 320u); /* PM_ROM_FULL >> 17 */
 }
 
 static void game_thread(void* arg) {
