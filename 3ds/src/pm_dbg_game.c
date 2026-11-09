@@ -9,13 +9,16 @@
 #include <string.h>
 #include <stdio.h>
 
-enum { PM_DBG_MAXHP, PM_DBG_MAXFP, PM_DBG_BP, PM_DBG_LEVEL, PM_DBG_COINS, PM_DBG_SP, PM_DBG_NSTAT };
-static const struct { int lo, hi, st; } rg[PM_DBG_NSTAT] = { { 10, 75, 5 }, { 5, 75, 5 }, { 3, 30, 3 }, { 1, 27, 1 }, { 0, 999, 10 }, { 0, 99, 1 } }; /* Set Stats steps: HP 5, FP 5, BP 3 (level-up gains) */
+enum { PM_DBG_MAXHP, PM_DBG_MAXFP, PM_DBG_BP, PM_DBG_LEVEL, PM_DBG_COINS, PM_DBG_SP, PM_DBG_STARPC, PM_DBG_FORT, PM_DBG_NSTAT };
+static const struct { int lo, hi, st; } rg[PM_DBG_NSTAT] = { { 10, 75, 5 }, { 5, 75, 5 }, { 3, 30, 3 }, { 1, 27, 1 }, { 0, 999, 10 }, { 0, 99, 1 }, { 0, MAX_STAR_PIECES, 1 }, { 0, 99, 1 } }; /* Set Stats steps: HP 5, FP 5, BP 3 (level-up gains); star pieces 0 to the game maximum; fortress keys 0 to 99 */
+static const char* const pm_dbgg_stat_name[PM_DBG_NSTAT] = { "max HP", "max FP", "BP", "level", "coins", "star points", "star pieces", "fortress keys" };
 /* Level (read only) from the stats: each level-up gives +5 Max HP, +5 Max FP or +3 BP from the level 1 base 10, 5, 3. */
 int pm_dbgg_level_calc(void) {
     PlayerData* p = &gPlayerData;
     return 1 + (p->hardMaxHP - 10) / 5 + (p->hardMaxFP - 5) / 5 + (p->maxBP - 3) / 3;
 }
+/* PROFILE: every change of a field logs profile: <field> <old> -> <new>. RAM only: nothing is written to the save file until the player saves. */
+static void profile_log(const char* field, int from, int to) { pm_log("profile: %s %d -> %d", field, from, to); }
 /* the written game level is the computed one, capped at the game maximum 27 */
 static void level_sync(void) {
     int l = pm_dbgg_level_calc();
@@ -105,23 +108,26 @@ const char* pm_partner_value(int i) {
 int pm_dbgg_partner_on(int i) { return gPlayerData.partners[i].enabled != 0; }
 /* CH4: on or off. Off on the current partner moves curPartner to the next enabled partner, or PARTNER_NONE. The world partner entity is not switched
  * here: see pm_dbgg_partner_set. */
+/* CH4 gap: the world partner entity follows curPartner. switch_to_partner is the live path of the game (world menu, src/world/partners.c):
+ * it queues the switch (take out, switch or put away) for the next world step, so the frozen menu only queues it. Other modes: the entity
+ * is set at the next world entry. */
+static void partner_entity(void) {
+    if (get_game_mode() == GAME_MODE_WORLD) {
+        switch_to_partner(gPlayerData.curPartner);
+        pm_log("profile: partner entity queued %d", gPlayerData.curPartner);
+    } else pm_log("profile: partner entity at the next world entry (mode %d)", get_game_mode());
+}
 void pm_dbgg_partner_set(int i, int on) {
     PlayerData* p = &gPlayerData;
-    int j;
+    int j, was = p->partners[i].enabled != 0;
     p->partners[i].enabled = on ? 1 : 0;
     if (on && p->curPartner == 0) p->curPartner = (s8)i;
     if (!on && p->curPartner == i) {
         p->curPartner = PARTNER_NONE;
         for (j = 1; j < 12; j++) if (j != i && p->partners[j].enabled) { p->curPartner = (s8)j; break; }
     }
-    /* CH4 gap: the world partner entity follows curPartner. switch_to_partner is the live path of the game (world menu, src/world/partners.c):
-     * it queues the switch (take out, switch or put away) for the next world step, so the frozen menu only queues it. Other modes: the entity
-     * is set at the next world entry. */
-    if (get_game_mode() == GAME_MODE_WORLD) {
-        switch_to_partner(p->curPartner);
-        pm_log("dbggame: partner entity queued %d", p->curPartner);
-    } else pm_log("dbggame: partner entity at the next world entry (mode %d)", get_game_mode());
-    pm_log("dbggame: partner %d %s, current now %d", i, on ? "on" : "off", p->curPartner);
+    { char f[48]; snprintf(f, sizeof f, "%s enabled", pm_partner_name(i)); profile_log(f, was, on ? 1 : 0); }
+    partner_entity();
 }
 /* CH4: left or right steps the level of an enabled partner (wrap). Returns 1 when the row changed. */
 int pm_dbgg_partner_level(int i, int dir) {
@@ -129,8 +135,8 @@ int pm_dbgg_partner_level(int i, int dir) {
     int l;
     if (!p->partners[i].enabled) return 0;
     l = ((p->partners[i].level + dir) % 3 + 3) % 3;
+    { char f[48]; snprintf(f, sizeof f, "%s upgrade", pm_partner_name(i)); profile_log(f, p->partners[i].level, l); } /* 0 Normal, 1 Super, 2 Ultra */
     p->partners[i].level = (s8)l;
-    pm_log("dbggame: partner %d level %d", i, l);
     return 1;
 }
 
@@ -177,7 +183,7 @@ void pm_cheat_moon_set(int on) {
 /* CH7: batch 1 cheats (RAM only): bits in cheat_bits, set at boot by the launch value cheats=<list> (hp, fp, sp, nobattle, speed, comma separated).
  * The tick runs once per step (pm_warp_tick). Each cheat logs once when it first runs, and a refill logs its change. */
 enum { CHB_HP = 1, CHB_FP = 2, CHB_SP = 4, CHB_NOBATTLE = 8, CHB_SPEED = 16, CHB_ACTION = 32 };
-#define PM_CHEAT_ACTION 5 /* index of the Perfect action commands row (RW_CHEAT + 5) */
+#define PM_CHEAT_ACTION 5 /* index of the Perfect action commands row (pm_options.c btl_cheat) */
 static const char* const cheat_name[6] = { "infinite HP", "infinite FP", "infinite star power", "no battles", "speed x2", "perfect action commands" };
 static const int cheat_bit[6] = { CHB_HP, CHB_FP, CHB_SP, CHB_NOBATTLE, CHB_SPEED, CHB_ACTION };
 static int cheat_bits = -1, cheat_seen;
@@ -268,70 +274,119 @@ void pm_cheat_tick(void) {
     }
 }
 
-/* CH8: further cheat rows (RAM only, Cheats tab): 0 boots level, 1 hammer level, 2 max star spirits, 3 star pieces, 4 inventory item
- * (a row of the consumables), 5 fill the inventory with it, 6 save position, 7 load position (same map), 8 instant win (battle).
- * The story point is not a row here: the Debug tab folder Story progress (pm_sp_* in pm_warp.c, STORYMENU).
- * Frame advance is the FADV row above (pm_fa_get, pm_fa_set): the loop in pm_main.c steps the game with R while it is on. */
-static const char* const ch8_name[4] = { "boots level", "hammer level", "max star spirits", "star pieces" };
+/* PROFILE: the Cheats tab folders that edit Mario's profile (gPlayerData, RAM only). Labels and rows are in pm_options.c; these are the values,
+ * the steps and the actions. Values clamp to the range the game uses (the item pickup, battle and menu code). */
+static const char* const boots_names[4] = { "None", "Normal", "Super", "Ultra" }; /* bootsLevel -1 .. 2 */
+static const char* const mer_names[5] = { "None", "Attack boost", "Defense boost", "EXP boost", "Coin boost" }; /* MERLEE_SPELL_NONE .. COIN_BOOST */
+static const char* const beam_names[3] = { "None", "Star Beam", "Peach Beam" }; /* starBeamLevel 0 .. 2 */
 static int inv_row, pos_saved, save_area, save_map, save_entry;
 static float save_x, save_y, save_z;
-const char* pm_dbgg_ch8_text(int k) {
-    static char b[48];
+static int lvl_clamp(int v, int lo, int hi) { return v < lo ? lo : v > hi ? hi : v; }
+static int wrap_step(int v, int dir, int lo, int hi) { /* one step, wrap from hi to lo and lo to hi */
+    v += dir;
+    if (v < lo) v = hi;
+    if (v > hi) v = lo;
+    return v;
+}
+/* Equipment: 0 boots and 1 hammer (None, Normal, Super, Ultra = -1 .. 2, wrap), 2 action commands (hasActionCommands, On or Off). */
+const char* pm_dbgg_eq_value(int k) {
     PlayerData* p = &gPlayerData;
-    switch (k) {
-        case 0: snprintf(b, sizeof b, "%d", (int)p->bootsLevel); break;
-        case 1: snprintf(b, sizeof b, "%d", (int)p->hammerLevel); break;
-        case 2: snprintf(b, sizeof b, "%d", (int)p->maxStarPower); break;
-        case 3: snprintf(b, sizeof b, "%d", (int)p->starPieces); break;
-        case 4: snprintf(b, sizeof b, "%s", pm_item_name(pm_dbgg_spawn_id(inv_row))); break;
-        case 6: snprintf(b, sizeof b, pos_saved ? "saved" : "A: save"); break;
-        case 7: snprintf(b, sizeof b, pos_saved ? "A: load" : "none saved"); break;
-        default: snprintf(b, sizeof b, "A: do"); break;
-    }
+    if (k == 0) return boots_names[lvl_clamp(p->bootsLevel, -1, 2) + 1];
+    if (k == 1) return boots_names[lvl_clamp(p->hammerLevel, -1, 2) + 1];
+    return p->hasActionCommands ? "On" : "Off";
+}
+void pm_dbgg_eq_step(int k, int dir) {
+    PlayerData* p = &gPlayerData;
+    int old, v;
+    if (k == 0) { old = p->bootsLevel; v = wrap_step(old, dir, -1, 2); p->bootsLevel = (s8)v; profile_log("boots level", old, v); }
+    else if (k == 1) { old = p->hammerLevel; v = wrap_step(old, dir, -1, 2); p->hammerLevel = (s8)v; profile_log("hammer level", old, v); }
+    else { old = p->hasActionCommands; p->hasActionCommands = !old; profile_log("action commands", old, !old); }
+}
+/* Star power: 0 max star spirits (0 .. 7), 1 star power (0 .. spirits * 256, a step is one spirit), 2 star beam (None, Star Beam, Peach Beam). */
+const char* pm_dbgg_spw_value(int k) {
+    static char b[32];
+    PlayerData* p = &gPlayerData;
+    if (k == 0) snprintf(b, sizeof b, "%d", (int)p->maxStarPower);
+    else if (k == 1) snprintf(b, sizeof b, "%d / %d", (int)p->starPower / 256, (int)p->maxStarPower);
+    else return beam_names[lvl_clamp(p->starBeamLevel, 0, 2)];
     return b;
 }
-/* dir steps a value row (wrap at both ends), 4 steps the item list */
-void pm_dbgg_ch8_step(int k, int dir) {
+void pm_dbgg_spw_step(int k, int dir) {
     PlayerData* p = &gPlayerData;
-    int v, n;
-    switch (k) {
-        case 0: v = p->bootsLevel + dir; if (v < -1) v = 2; if (v > 2) v = -1; p->bootsLevel = (s8)v; break;
-        case 1: v = p->hammerLevel + dir; if (v < -1) v = 2; if (v > 2) v = -1; p->hammerLevel = (s8)v; break;
-        case 2: v = p->maxStarPower + dir; if (v < 0) v = 7; if (v > 7) v = 0; p->maxStarPower = (s8)v; break;
-        case 3: v = p->starPieces + dir; if (v < 0) v = 255; if (v > 255) v = 0; p->starPieces = (u8)v; break;
-        case 4: n = pm_dbgg_spawn_count(); inv_row = ((inv_row + dir) % n + n) % n; return;
-        default: return;
+    int old, v;
+    if (k == 0) {
+        old = p->maxStarPower; v = wrap_step(old, dir, 0, 7); p->maxStarPower = (s8)v;
+        if (p->starPower > v * 256) p->starPower = (s16)(v * 256); /* the power never exceeds the spirits */
+        profile_log("max star spirits", old, v);
+    } else if (k == 1) {
+        old = p->starPower; v = lvl_clamp(old + dir * 256, 0, p->maxStarPower * 256); p->starPower = (s16)v;
+        profile_log("star power", old, v);
+    } else {
+        old = p->starBeamLevel; v = wrap_step(old, dir, 0, 2); p->starBeamLevel = (s8)v;
+        profile_log("star beam", old, v);
     }
-    pm_log("cheat: %s %d", ch8_name[k], v);
 }
-void pm_dbgg_ch8_act(int k) {
+/* Inventory: 0 the item of the row (a consumable; the row steps the list), 1 fill all 10 slots with it. */
+const char* pm_dbgg_inv_value(int k) { return k == 0 ? pm_item_name(pm_dbgg_spawn_id(inv_row)) : "A: fill"; }
+void pm_dbgg_inv_step(int dir) { int n = pm_dbgg_spawn_count(); inv_row = ((inv_row + dir) % n + n) % n; }
+void pm_dbgg_inv_fill(void) {
     PlayerData* p = &gPlayerData;
+    int j, id = pm_dbgg_spawn_id(inv_row);
+    for (j = 0; j < 10; j++) p->invItems[j] = (s16)id;
+    pm_log("profile: inventory filled with 0x%03X %s", id, pm_item_name(id));
+}
+/* Merlee: 0 spell type (the five spells), 1 casts left (0 .. 9). */
+const char* pm_dbgg_mer_value(int k) {
+    static char b[16];
+    PlayerData* p = &gPlayerData;
+    if (k == 0) return mer_names[lvl_clamp(p->merleeSpellType, 0, 4)];
+    snprintf(b, sizeof b, "%d", (int)p->merleeCastsLeft);
+    return b;
+}
+void pm_dbgg_mer_step(int k, int dir) {
+    PlayerData* p = &gPlayerData;
+    int old, v;
+    if (k == 0) { old = p->merleeSpellType; v = wrap_step(old, dir, 0, 4); p->merleeSpellType = (s8)v; profile_log("merlee spell", old, v); }
+    else { old = p->merleeCastsLeft; v = wrap_step(old, dir, 0, 9); p->merleeCastsLeft = (s8)v; profile_log("merlee casts left", old, v); }
+}
+/* Battle: the instant win (battle victory state, in battle only). The infinite and perfect rows are the pm_cheat_* bits (pm_options.c). */
+void pm_dbgg_instant_win(void) {
+    if (get_game_mode() != GAME_MODE_BATTLE) { pm_menu_msg("Instant win needs a battle"); return; }
+    btl_set_state(BATTLE_STATE_VICTORY);
+    pm_log("profile: instant win");
+}
+/* Position: 0 Speed x2 (the cheat bit, pm_options.c), 1 save position, 2 load position (RAM only, same map). */
+const char* pm_dbgg_pos_value(int k) {
+    if (k == 1) return pos_saved ? "saved" : "A: save";
+    return pos_saved ? "A: load" : "none saved";
+}
+void pm_dbgg_pos_save(void) { /* area, map, entry and the position */
     PlayerStatus* ps = &gPlayerStatus;
-    int j, id;
-    switch (k) {
-        case 0: case 1: case 2: case 3: case 4: pm_dbgg_ch8_step(k, 1); return;
-        case 5: /* fill: all 10 slots get the item of the row */
-            id = pm_dbgg_spawn_id(inv_row);
-            for (j = 0; j < 10; j++) p->invItems[j] = (s16)id;
-            pm_log("cheat: inventory filled with 0x%03X %s", id, pm_item_name(id));
-            return;
-        case 6: /* save: area, map, entry and the position, RAM only */
-            save_area = gGameStatusPtr->areaID; save_map = gGameStatusPtr->mapID; save_entry = gGameStatusPtr->entryID;
-            save_x = ps->pos.x; save_y = ps->pos.y; save_z = ps->pos.z; pos_saved = 1;
-            pm_log("cheat: position saved, map %d:%d entry %d", save_area, save_map, save_entry);
-            return;
-        case 7: /* load: only on the saved map, else a message */
-            if (!pos_saved) { pm_menu_msg("No position saved"); return; }
-            if (gGameStatusPtr->areaID != save_area || gGameStatusPtr->mapID != save_map) { pm_log_w("cheat: position is for another map"); pm_menu_msg("Saved position is on another map"); return; }
-            ps->pos.x = save_x; ps->pos.y = save_y; ps->pos.z = save_z;
-            pm_log("cheat: position loaded x %.1f y %.1f z %.1f", save_x, save_y, save_z);
-            return;
-        default: /* instant win: the battle victory state, in battle only */
-            if (get_game_mode() != GAME_MODE_BATTLE) { pm_menu_msg("Instant win needs a battle"); return; }
-            btl_set_state(BATTLE_STATE_VICTORY);
-            pm_log("cheat: instant win");
-            return;
-    }
+    save_area = gGameStatusPtr->areaID; save_map = gGameStatusPtr->mapID; save_entry = gGameStatusPtr->entryID;
+    save_x = ps->pos.x; save_y = ps->pos.y; save_z = ps->pos.z; pos_saved = 1;
+    pm_log("profile: position saved, map %d:%d entry %d", save_area, save_map, save_entry);
+}
+void pm_dbgg_pos_load(void) { /* only on the saved map, else a message */
+    PlayerStatus* ps = &gPlayerStatus;
+    if (!pos_saved) { pm_menu_msg("No position saved"); return; }
+    if (gGameStatusPtr->areaID != save_area || gGameStatusPtr->mapID != save_map) { pm_log_w("profile: position is for another map"); pm_menu_msg("Saved position is on another map"); return; }
+    ps->pos.x = save_x; ps->pos.y = save_y; ps->pos.z = save_z;
+    pm_log("profile: position loaded x %.1f y %.1f z %.1f", save_x, save_y, save_z);
+}
+/* Partners: Current partner cycles None and the enabled partners (wrap). The world partner entity follows (see pm_dbgg_partner_set). */
+const char* pm_dbgg_curpartner_value(void) {
+    int c = gPlayerData.curPartner;
+    return c >= 1 && c <= 11 ? pm_partner_name(c) : "None";
+}
+void pm_dbgg_curpartner_step(int dir) {
+    PlayerData* p = &gPlayerData;
+    int list[12], n = 0, i, pos = 0, old = p->curPartner;
+    list[n++] = PARTNER_NONE;
+    for (i = 1; i < 12; i++) if (p->partners[i].enabled) list[n++] = i;
+    for (i = 0; i < n; i++) if (list[i] == old) pos = i;
+    p->curPartner = (s8)list[(pos + (dir > 0 ? 1 : n - 1)) % n];
+    profile_log("current partner", old, p->curPartner);
+    partner_entity();
 }
 
 /* owned and total of a group: 0 partners, 1 badges, 2 key items */
@@ -380,6 +435,8 @@ int pm_dbgg_stat_get(int k) {
         case PM_DBG_BP: return p->maxBP;
         case PM_DBG_LEVEL: return pm_dbgg_level_calc(); /* read only: computed from the stats */
         case PM_DBG_COINS: return p->coins;
+        case PM_DBG_STARPC: return p->starPieces;
+        case PM_DBG_FORT: return p->fortressKeyCount;
         default: return p->starPoints;
     }
 }
@@ -387,19 +444,22 @@ int pm_dbgg_stat_get(int k) {
 /* dir steps by the table step (wraps at both ends); HP and FP are refilled */
 void pm_dbgg_stat_step(int k, int dir) {
     PlayerData* p = &gPlayerData;
-    int v = pm_dbgg_stat_get(k) + dir * rg[k].st;
+    int old, v = pm_dbgg_stat_get(k) + dir * rg[k].st;
     if (dir > 0 && pm_dbgg_stat_get(k) >= rg[k].hi) v = rg[k].lo;
     if (dir < 0 && pm_dbgg_stat_get(k) <= rg[k].lo) v = rg[k].hi;
     if (v < rg[k].lo) v = rg[k].lo;
     if (v > rg[k].hi) v = rg[k].hi;
+    old = pm_dbgg_stat_get(k);
     switch (k) {
         case PM_DBG_MAXHP: p->hardMaxHP = v; enforce_hpfp_limits(); p->curHP = p->curMaxHP; break;
         case PM_DBG_MAXFP: p->hardMaxFP = v; enforce_hpfp_limits(); p->curFP = p->curMaxFP; break;
         case PM_DBG_BP: p->maxBP = v; break;
         case PM_DBG_LEVEL: p->level = v; break;
         case PM_DBG_COINS: p->coins = v; break;
+        case PM_DBG_STARPC: p->starPieces = (u8)v; break;
+        case PM_DBG_FORT: p->fortressKeyCount = (s8)v; break;
         default: p->starPoints = v; break;
     }
     if (k <= PM_DBG_BP) level_sync(); /* a stat row changed: the game level follows */
-    pm_log("dbggame: stat %d = %d", k, pm_dbgg_stat_get(k));
+    profile_log(pm_dbgg_stat_name[k], old, pm_dbgg_stat_get(k));
 }

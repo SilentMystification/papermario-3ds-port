@@ -3995,32 +3995,125 @@
       "scenario": "aud_talk",
       "cap": 45,
       "until": "audio drops w2: unheard \\d+",
-      "tags": ["azahar", "pic", "audio", "census"],
+      "tags": [
+        "azahar",
+        "pic",
+        "audio",
+        "census"
+      ],
       "log_metrics": [
-        {"name": "d_unheard", "regex": "audio drops w2: unheard (\\d+)", "pick": "last"},
-        {"name": "d_squeezed", "regex": "audio drops w2: .* squeezed (\\d+)", "pick": "last"},
-        {"name": "d_early", "regex": "audio drops w2: .* early (\\d+)", "pick": "last"},
-        {"name": "d_nochan", "regex": "audio drops w2: .* nochan (\\d+)", "pick": "last"},
-        {"name": "d_giveup", "regex": "audio drops w2: .* giveup (\\d+)", "pick": "last"},
-        {"name": "d_loopcap", "regex": "audio drops w2: .* loopcap (\\d+)", "pick": "last"},
-        {"name": "d_nonadpcm", "regex": "audio drops w2: .* nonadpcm (\\d+)", "pick": "last"},
-        {"name": "d_qovf", "regex": "audio drops w2: .* qovf (\\d+)", "pick": "last"},
-        {"name": "d_merged", "regex": "audio drops w2: .* merged (\\d+)", "pick": "last"},
-        {"name": "d_catchup", "regex": "audio drops w2: .* catchup blocks (\\d+)", "pick": "last"},
-        {"name": "d_maxrun", "regex": "audio drops w2: .* maxrun (\\d+)", "pick": "last"},
-        {"name": "d_late_us", "regex": "audio drops w2: .* late_us_max (\\d+)", "pick": "last"},
-        {"name": "d_zero_steps", "regex": "audio drops w2: .* zero_tick_steps (\\d+)", "pick": "last"}
+        {
+          "name": "d_unheard",
+          "regex": "audio drops w2: unheard (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_squeezed",
+          "regex": "audio drops w2: .* squeezed (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_early",
+          "regex": "audio drops w2: .* early (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_nochan",
+          "regex": "audio drops w2: .* nochan (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_giveup",
+          "regex": "audio drops w2: .* giveup (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_loopcap",
+          "regex": "audio drops w2: .* loopcap (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_nonadpcm",
+          "regex": "audio drops w2: .* nonadpcm (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_qovf",
+          "regex": "audio drops w2: .* qovf (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_merged",
+          "regex": "audio drops w2: .* merged (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_catchup",
+          "regex": "audio drops w2: .* catchup blocks (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_maxrun",
+          "regex": "audio drops w2: .* maxrun (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_late_us",
+          "regex": "audio drops w2: .* late_us_max (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_zero_steps",
+          "regex": "audio drops w2: .* zero_tick_steps (\\d+)",
+          "pick": "last"
+        }
       ],
       "gates": [
-        {"metric": "d_unheard", "op": "==", "value": 0},
-        {"metric": "d_squeezed", "op": "==", "value": 0},
-        {"metric": "d_early", "op": "==", "value": 0},
-        {"metric": "d_nochan", "op": "==", "value": 0},
-        {"metric": "d_giveup", "op": "==", "value": 0},
-        {"metric": "d_loopcap", "op": "==", "value": 0},
-        {"metric": "d_nonadpcm", "op": "==", "value": 0},
-        {"metric": "d_qovf", "op": "==", "value": 0},
-        {"metric": "d_merged", "op": "==", "value": 0}
+        {
+          "metric": "d_unheard",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_squeezed",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_early",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_nochan",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_giveup",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_loopcap",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_nonadpcm",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_qovf",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_merged",
+          "op": "==",
+          "value": 0
+        }
       ]
     },
     {
@@ -4032,32 +4125,125 @@
       "scenario": "aud_talk_lag",
       "cap": 45,
       "until": "audio drops w2: unheard \\d+",
-      "tags": ["azahar", "pic", "audio", "census"],
+      "tags": [
+        "azahar",
+        "pic",
+        "audio",
+        "census"
+      ],
       "log_metrics": [
-        {"name": "d_unheard", "regex": "audio drops w2: unheard (\\d+)", "pick": "last"},
-        {"name": "d_squeezed", "regex": "audio drops w2: .* squeezed (\\d+)", "pick": "last"},
-        {"name": "d_early", "regex": "audio drops w2: .* early (\\d+)", "pick": "last"},
-        {"name": "d_nochan", "regex": "audio drops w2: .* nochan (\\d+)", "pick": "last"},
-        {"name": "d_giveup", "regex": "audio drops w2: .* giveup (\\d+)", "pick": "last"},
-        {"name": "d_loopcap", "regex": "audio drops w2: .* loopcap (\\d+)", "pick": "last"},
-        {"name": "d_nonadpcm", "regex": "audio drops w2: .* nonadpcm (\\d+)", "pick": "last"},
-        {"name": "d_qovf", "regex": "audio drops w2: .* qovf (\\d+)", "pick": "last"},
-        {"name": "d_merged", "regex": "audio drops w2: .* merged (\\d+)", "pick": "last"},
-        {"name": "d_catchup", "regex": "audio drops w2: .* catchup blocks (\\d+)", "pick": "last"},
-        {"name": "d_maxrun", "regex": "audio drops w2: .* maxrun (\\d+)", "pick": "last"},
-        {"name": "d_late_us", "regex": "audio drops w2: .* late_us_max (\\d+)", "pick": "last"},
-        {"name": "d_zero_steps", "regex": "audio drops w2: .* zero_tick_steps (\\d+)", "pick": "last"}
+        {
+          "name": "d_unheard",
+          "regex": "audio drops w2: unheard (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_squeezed",
+          "regex": "audio drops w2: .* squeezed (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_early",
+          "regex": "audio drops w2: .* early (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_nochan",
+          "regex": "audio drops w2: .* nochan (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_giveup",
+          "regex": "audio drops w2: .* giveup (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_loopcap",
+          "regex": "audio drops w2: .* loopcap (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_nonadpcm",
+          "regex": "audio drops w2: .* nonadpcm (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_qovf",
+          "regex": "audio drops w2: .* qovf (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_merged",
+          "regex": "audio drops w2: .* merged (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_catchup",
+          "regex": "audio drops w2: .* catchup blocks (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_maxrun",
+          "regex": "audio drops w2: .* maxrun (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_late_us",
+          "regex": "audio drops w2: .* late_us_max (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_zero_steps",
+          "regex": "audio drops w2: .* zero_tick_steps (\\d+)",
+          "pick": "last"
+        }
       ],
       "gates": [
-        {"metric": "d_unheard", "op": "==", "value": 0},
-        {"metric": "d_squeezed", "op": "==", "value": 0},
-        {"metric": "d_early", "op": "==", "value": 0},
-        {"metric": "d_nochan", "op": "==", "value": 0},
-        {"metric": "d_giveup", "op": "==", "value": 0},
-        {"metric": "d_loopcap", "op": "==", "value": 0},
-        {"metric": "d_nonadpcm", "op": "==", "value": 0},
-        {"metric": "d_qovf", "op": "==", "value": 0},
-        {"metric": "d_merged", "op": "==", "value": 0}
+        {
+          "metric": "d_unheard",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_squeezed",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_early",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_nochan",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_giveup",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_loopcap",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_nonadpcm",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_qovf",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_merged",
+          "op": "==",
+          "value": 0
+        }
       ]
     },
     {
@@ -4069,32 +4255,125 @@
       "scenario": "aud_mac01_lag",
       "cap": 45,
       "until": "audio drops w2: unheard \\d+",
-      "tags": ["azahar", "pic", "audio", "census"],
+      "tags": [
+        "azahar",
+        "pic",
+        "audio",
+        "census"
+      ],
       "log_metrics": [
-        {"name": "d_unheard", "regex": "audio drops w2: unheard (\\d+)", "pick": "last"},
-        {"name": "d_squeezed", "regex": "audio drops w2: .* squeezed (\\d+)", "pick": "last"},
-        {"name": "d_early", "regex": "audio drops w2: .* early (\\d+)", "pick": "last"},
-        {"name": "d_nochan", "regex": "audio drops w2: .* nochan (\\d+)", "pick": "last"},
-        {"name": "d_giveup", "regex": "audio drops w2: .* giveup (\\d+)", "pick": "last"},
-        {"name": "d_loopcap", "regex": "audio drops w2: .* loopcap (\\d+)", "pick": "last"},
-        {"name": "d_nonadpcm", "regex": "audio drops w2: .* nonadpcm (\\d+)", "pick": "last"},
-        {"name": "d_qovf", "regex": "audio drops w2: .* qovf (\\d+)", "pick": "last"},
-        {"name": "d_merged", "regex": "audio drops w2: .* merged (\\d+)", "pick": "last"},
-        {"name": "d_catchup", "regex": "audio drops w2: .* catchup blocks (\\d+)", "pick": "last"},
-        {"name": "d_maxrun", "regex": "audio drops w2: .* maxrun (\\d+)", "pick": "last"},
-        {"name": "d_late_us", "regex": "audio drops w2: .* late_us_max (\\d+)", "pick": "last"},
-        {"name": "d_zero_steps", "regex": "audio drops w2: .* zero_tick_steps (\\d+)", "pick": "last"}
+        {
+          "name": "d_unheard",
+          "regex": "audio drops w2: unheard (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_squeezed",
+          "regex": "audio drops w2: .* squeezed (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_early",
+          "regex": "audio drops w2: .* early (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_nochan",
+          "regex": "audio drops w2: .* nochan (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_giveup",
+          "regex": "audio drops w2: .* giveup (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_loopcap",
+          "regex": "audio drops w2: .* loopcap (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_nonadpcm",
+          "regex": "audio drops w2: .* nonadpcm (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_qovf",
+          "regex": "audio drops w2: .* qovf (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_merged",
+          "regex": "audio drops w2: .* merged (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_catchup",
+          "regex": "audio drops w2: .* catchup blocks (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_maxrun",
+          "regex": "audio drops w2: .* maxrun (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_late_us",
+          "regex": "audio drops w2: .* late_us_max (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_zero_steps",
+          "regex": "audio drops w2: .* zero_tick_steps (\\d+)",
+          "pick": "last"
+        }
       ],
       "gates": [
-        {"metric": "d_unheard", "op": "==", "value": 0},
-        {"metric": "d_squeezed", "op": "==", "value": 0},
-        {"metric": "d_early", "op": "==", "value": 0},
-        {"metric": "d_nochan", "op": "==", "value": 0},
-        {"metric": "d_giveup", "op": "==", "value": 0},
-        {"metric": "d_loopcap", "op": "==", "value": 0},
-        {"metric": "d_nonadpcm", "op": "==", "value": 0},
-        {"metric": "d_qovf", "op": "==", "value": 0},
-        {"metric": "d_merged", "op": "==", "value": 0}
+        {
+          "metric": "d_unheard",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_squeezed",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_early",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_nochan",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_giveup",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_loopcap",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_nonadpcm",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_qovf",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_merged",
+          "op": "==",
+          "value": 0
+        }
       ]
     },
     {
@@ -4762,6 +5041,60 @@
         "det",
         "cold"
       ],
+      "gates": []
+    },
+    {
+      "name": "profile_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "PROFILE: Cheats tab folders. Top level order, Equipment (Boots Ultra, Action commands On) and the pause menu after. Log: profile lines. Pictures: the bottom shots.",
+      "scenario": "profile",
+      "cap": 45,
+      "until": "padscript: done",
+      "tags": [
+        "azahar",
+        "pic",
+        "menu",
+        "profile"
+      ],
+      "log_metrics": [],
+      "gates": []
+    },
+    {
+      "name": "profile_btl_on",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "PROFILE battle check, Action commands On: the first jump shows the action command prompt (shots 180 to 240). Pair: dmg_jump (Off, no prompt).",
+      "scenario": "profile_btl_on",
+      "cap": 45,
+      "until": "shot \\d+ frame 240\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "battle",
+        "profile"
+      ],
+      "log_metrics": [],
+      "gates": []
+    },
+    {
+      "name": "profile_pause_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "PROFILE: the pause Stats page after the Equipment edit (Ultra Boots, no hammer). Picture: the shot at frame 130.",
+      "scenario": "profile_pause",
+      "cap": 45,
+      "until": "shot \\d+ frame 130\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "pause",
+        "profile"
+      ],
+      "log_metrics": [],
       "gates": []
     }
   ],
