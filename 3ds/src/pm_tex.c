@@ -135,6 +135,18 @@ int pm_tex_off_idx(void) { return (have && off_cur >= 0) ? off_cur : -1; }
 int pm_tex_cur_idx(void) { return (have && off_cur < 0 && cur >= 0) ? cur : -1; }
 int pm_tex_aux_off_idx(void) { return (aux_off >= 0 && aux_off < offt_n) ? aux_off : -1; }
 void pm_tex_clear_offscreen(void) { for (int k = 0; k < 10; k++) offt[k].base = NULL; offt_n = 0; off_cur = -1; aux_off = -1; }
+/* GAMEOVER: img is a window of the off-screen image bound now, with its pixel size: the origin moves to img (as load_inner finds it) and the bind
+ * stays. Returns 0 (nothing changed) for any other image. The walker uses it to keep a batch open over loads of one slot. */
+int pm_tex_off_rewin(const void* img, unsigned fmt, unsigned siz) {
+    if (!have || off_cur < 0 || off_cur >= offt_n || !offt[off_cur].base || !img) return 0;
+    const unsigned gs = (fmt == FMT_RGBA && siz == SIZ_32) ? 3u : (fmt == FMT_RGBA && siz == SIZ_16) ? 2u : (fmt == FMT_I && siz == SIZ_8) ? 1u : 0u;
+    if (!gs || (unsigned)offt[off_cur].siz != gs || (const u8*)img < offt[off_cur].base) return 0;
+    const unsigned bpp = gs == 3 ? 4u : gs, d = (unsigned)((const u8*)img - offt[off_cur].base), row = offt[off_cur].stride * bpp;
+    if (d >= row * (unsigned)offt[off_cur].h) return 0;
+    if ((row & (row - 1)) == 0) { off_oy = (int)(d >> __builtin_ctz(row)); off_ox = (int)((d & (row - 1)) / bpp); }
+    else { off_oy = (int)(d / row); off_ox = (int)((d % row) / bpp); }
+    return 1;
+}
 void pm_tex_origin(int* x, int* y) {
     pm_tex_epoch_v++;
     *x = (have && off_cur >= 0) ? off_ox : 0;

@@ -34,6 +34,7 @@ done
 # The key covers the tracked inputs by git tree id and by their uncommitted diff, the untracked files by content, the
 # docker recipe, and the size and mtime of the ignored inputs (assets/us, ver/us/build: not in git). pm_build.h is not
 # in the key: a commit that only changes the build number does not rebuild. A PM_BUILD_REV build (bench build-at) always builds.
+# The skip also needs the source volume to carry the id of the last sync (SRCID, below): a recreated volume rebuilds.
 # build.sh is the only stale check: go.ps1 Invoke-Build and push_3ds.sh call it and never compare times themselves.
 KEY_IN="3ds/CMakeLists.txt 3ds/effects.cmake 3ds/battle.cmake 3ds/maps.cmake 3ds/map_syms.lds LaunchIcon.png 3ds/ld 3ds/shaders 3ds/stub_include 3ds/include 3ds/src src include docker/Dockerfile.build 3ds/build.sh"
 KEY_FILE=$OUT/build_key.txt
@@ -53,9 +54,19 @@ publish_3dsx() {
         cp -f build3ds/pm_3ds.3dsx "$dest/pm_3ds.3dsx"
     fi
 }
+IMG=pm3ds-build:1
+docker build -q -t $IMG -f docker/Dockerfile.build docker >/dev/null
+# SRCID: the source volume keeps the id of its last sync in /src/.pm_manifest_id, and $VID holds the id the manifest was
+# written with. The manifest is valid only while both match. A missing, recreated or foreign source volume has no id
+# (or another one): the manifest is dropped and every file is copied. Also the skip check needs the match (BSTALE).
+MAN=$OUT/src_manifest.txt
+VID=$OUT/src_volid.txt
+volid_now() { MSYS_NO_PATHCONV=1 docker run --rm -v $SRCVOL:/src $IMG sh -c 'cat /src/.pm_manifest_id 2>/dev/null; true'; }
+VOLID=$(volid_now)
+vol_match() { [ -n "$VOLID" ] && [ "$VOLID" = "$(cat $VID 2>/dev/null)" ]; }
 if [ -z "$PM_BUILD_REV" ]; then
     KEY=$(key_now)
-    if [ -f $OUT/pm_3ds.3dsx ] && [ "$(cat $KEY_FILE 2>/dev/null)" = "$KEY" ]; then
+    if [ -f $OUT/pm_3ds.3dsx ] && [ "$(cat $KEY_FILE 2>/dev/null)" = "$KEY" ] && vol_match; then
         echo "--- build up to date (key $(echo "$KEY" | cut -c1-12)), skipping ---"
         publish_3dsx
         exit 0
@@ -69,17 +80,13 @@ printf '#define PM_GIT_HASH "%s"\n' "$(git rev-parse --short "$REV")" >> 3ds/inc
 cmp -s 3ds/include/pm_build.h.tmp 3ds/include/pm_build.h && rm -f 3ds/include/pm_build.h.tmp || mv -f 3ds/include/pm_build.h.tmp 3ds/include/pm_build.h
 # A failed build must not leave the old key behind: the key file is written only after a successful build.
 rm -f $KEY_FILE
-IMG=pm3ds-build:1
-docker build -q -t $IMG -f docker/Dockerfile.build docker >/dev/null
 
 # BENCH4: a build of another commit drops the shared source volume first, so no file of the main folder stays in it. The
 # main sync compares against its own manifest, so the volume is dropped again after the build (the next main sync copies all).
-if [ -n "$PM_BUILD_REV" ]; then docker volume rm $SRCVOL >/dev/null 2>&1 || true; fi
-# Sync: copy only files whose size or mtime changed since the last sync.
+if [ -n "$PM_BUILD_REV" ]; then docker volume rm $SRCVOL >/dev/null 2>&1 || true; VOLID=""; fi
+# Sync: copy only files whose size or mtime changed since the last sync. No id match: copy everything (SRCID).
 t0=$(date +%s)
-MAN=$OUT/src_manifest.txt
-# A source volume that was removed makes the manifest wrong. Drop it, so the next sync copies everything.
-docker volume inspect $SRCVOL >/dev/null 2>&1 || rm -f $MAN
+if vol_match; then SYNCID=$VOLID; else rm -f $MAN; SYNCID="$(date +%s)_$$"; fi
 [ -f $MAN ] || : > $MAN
 find $SRC_DIRS -type f -printf '%p\t%s\t%T@\n' | sort > $OUT/src_now.txt
 # Changed or new: not equal to the manifest. Deleted: in the manifest, not in the current list.
@@ -87,12 +94,13 @@ awk -F'\t' 'FILENAME==ARGV[1]{old[$1]=$2 "\t" $3; next} (old[$1] != $2 "\t" $3){
 awk -F'\t' 'FILENAME==ARGV[1]{now[$1]=1; next} !($1 in now){print $1}' $OUT/src_now.txt $MAN > $OUT/src_deleted.txt
 nchg=$(wc -l < $OUT/src_changed.txt); ndel=$(wc -l < $OUT/src_deleted.txt)
 if [ -s $OUT/src_changed.txt ]; then
-    tar -cf - -T $OUT/src_changed.txt | MSYS_NO_PATHCONV=1 docker run --rm -i -v $SRCVOL:/src $IMG tar -xf - -C /src
+    tar -cf - -T $OUT/src_changed.txt | MSYS_NO_PATHCONV=1 docker run --rm -i -v $SRCVOL:/src $IMG sh -c "tar -xf - -C /src && printf %s '$SYNCID' > /src/.pm_manifest_id"
 fi
 if [ -s $OUT/src_deleted.txt ]; then
     MSYS_NO_PATHCONV=1 docker run --rm -i -v $SRCVOL:/src $IMG sh -c 'while read -r f; do rm -f "/src/$f"; done' < $OUT/src_deleted.txt
 fi
 cp -f $OUT/src_now.txt $MAN
+echo "$SYNCID" > $VID
 echo "STAGE sync-host $(( $(date +%s) - t0 )) s (changed $nchg, deleted $ndel)" >&2
 
 # Hang guard: after PM_BUILD_CAP seconds the watchdog kills only this run's container, by name.
@@ -147,9 +155,14 @@ if [ -f $OUT/pm_3ds.elf ]; then
 fi
 publish_3dsx
 # Cap the lane volume sets: keep the newest PM_LANE_KEEP lanes (default 5), by creation time.
+# A lane with a registered worktree (build3ds/wt/<name>, from git worktree list) is live: never removed, not counted.
 # The base volumes (pm3ds-build, pm3ds-src, pm3ds-work, pm3ds-ccache) and the current lane are never removed.
 KEEP=${PM_LANE_KEEP:-5}
+# A build-at folder (build3ds/at_<short> of the main folder, marker .build_at_in_use under 12 h old) is live too.
+MAIN=$(git worktree list --porcelain | sed -n '1s|^worktree ||p')
+LIVE=$( (git worktree list --porcelain | sed -n 's|^worktree .*/build3ds/wt/||p'; find "$MAIN/build3ds" -maxdepth 2 -name .build_at_in_use -mmin -720 2>/dev/null | sed -n 's|.*/build3ds/\(at_[^/]*\)/.build_at_in_use$|\1|p') )
 docker volume ls -q | sed -n -E 's/^pm3ds-build-(.+)$/\1/p' | while read -r l; do
+    printf '%s\n' "$LIVE" | grep -qx -- "$l" && continue
     echo "$(docker volume inspect --format '{{.CreatedAt}}' pm3ds-build-$l) $l"
 done | sort -r | awk '{print $2}' | {
     n=0

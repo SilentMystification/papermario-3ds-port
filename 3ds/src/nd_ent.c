@@ -209,6 +209,12 @@ void ent_compile(EntKey* k, const Gfx* l0) {
     if (ns == 0) { k->why = 8; return; }
     nd_ent_strip(w, dlc_words);
     for (unsigned s = 0; s < ns; s++) ntri += ent_sbuf[s].ntri;
+    /* BTLUI: a list whose vertex loads feed a later list (no triangle after its last G_VTX, e.g. the damage star corners of
+     * damage_indicator D_09002150..80) stays on the walker: ent_run skips loads without triangles and clears the walker slots. */
+    { unsigned lastv = 0, lastt = 0;
+      for (unsigned i = 0; i < nops; i++) { unsigned op = ent_flat_buf[i].words.w0 >> 24;
+          if (op == G_VTX) lastv = i + 1; else if (op == G_TRI1 || op == G_TRI2) lastt = i + 1; }
+      if (ntri == 0 || lastv > lastt) { k->why = 8; return; } }
     if (k->vb || ent_heap_list(l0)) for (unsigned i = 0; i < nops; i++) { /* the vertex span of the vertex array: hashed once per frame */
         if ((l[i].words.w0 >> 24) != G_VTX) continue;
         const u8* p = (const u8*)ptr_of(l[i].words.w1);

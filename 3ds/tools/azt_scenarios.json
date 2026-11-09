@@ -3,6 +3,46 @@
   "note": "Read by 3ds/tools/azt.ps1. debug = the -Debug switch string of run_azahar.ps1, until = its -Until regex, cap = -Timeout in s, extra = more run_azahar.ps1 switches. first_marker is a log regex that must appear within deadline s after the Azahar start. expects = warp | tour | none (warp and tour turn on the attract-loop check). expected_events are log regexes that must all appear. An expected_event with max is a numeric gate: capture group 1 of its regex must be at most max (pick last takes the last matching line, else the first). status = verified | unverified | completion_only | fail_demo | pending.",
   "scenarios": [
     {
+      "name": "dmg_star",
+      "status": "unverified",
+      "subject": "BTLUI bug 1: battle on kmr_20 (one Goomba formation), Mario's first jump with autoa hits; shots every 20 frames from frame 40 to 320. The picture is the subject: the coloured star burst behind the damage number must show in the shots after the hit.",
+      "proves": "BTLUI: the damage_indicator star corners (D_09002150..80 vertex loads, D_090021A8 and D_09002190 triangle lists) draw on the port: the star is in the shot.",
+      "debug": "warp=kmr_20:0 battle=BTL_KMR_1_FORMATION_00:BTL_KMR_1_STAGE_01 battlef=30 autoa det fixedseed shots shotwin=40:281:20 loglevel=debug",
+      "until": "shot \\d+ frame 320\\b",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: kmr_20 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "shot 320",
+          "regex": "shot \\d+ frame 320\\b"
+        }
+      ],
+      "reason": "BTLUI gate: battle damage star. Until is the last shot of the window (the battle: start line comes before the first jump)."
+    },
+    {
+      "name": "dmg_jump",
+      "status": "unverified",
+      "subject": "BTLUI bug 2 step 1: the action command prompt of Mario's first jump (kmr_20 battle, autoa). Shots 180 to 240 every 4 frames; the prompt button icon is the subject.",
+      "proves": "BTLUI bug 2: the A button icon of the action command prompt on the port (compare with assets/us/ui/input/a_button_unpressed.png).",
+      "debug": "warp=kmr_20:0 battle=BTL_KMR_1_FORMATION_00:BTL_KMR_1_STAGE_01 battlef=30 autoa det fixedseed shots shotwin=180:61:4 loglevel=debug",
+      "until": "shot \\d+ frame 240\\b",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: kmr_20 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "shot 240",
+          "regex": "shot \\d+ frame 240\\b"
+        }
+      ],
+      "reason": "BTLUI bug 2 step 1: action command prompt shot. Until is the last shot of the window."
+    },
+    {
       "name": "logbench_boot",
       "status": "unverified",
       "subject": "Boot with the logbench switch: four timed loops of the log producer (plain line, four arguments, two %s, dropped line), cycles per line in the log.",
@@ -10220,6 +10260,62 @@
         }
       ],
       "reason": "AUDV census: the second 300-step window (steps 300 to 600, about 22 s at normal speed after the boot) holds the scene audio. Cap 45 s for the boot plus 600 steps."
+    },
+    {
+      "name": "gameover_fps60",
+      "status": "unverified",
+      "subject": "Game over map gv_01 (warp entry 0), 60 fps mode on (fps60; det: every game step draws the t=0.5 pass and the key frame, no skip). The map script turns on the motion blur (SetMotionBlurParams 128, OVERLAY_BLUR: 40 strips that read the previous frame buffer) and drops the GAME OVER letters. Shots every drawn frame of game frames 70 to 89 (two drawn frames per game frame with fps60: the t=0.5 pass and the key frame). Draw census at frame 80.",
+      "proves": "The game over picture per drawn frame (no alternating frames) and the draw batches per drawn frame (cen summary line).",
+      "debug": "warp=gv_01:0 fps60 det shots shotwin=70:20 drawcensus=80 caplog loglevel=debug",
+      "until": "shot \\d+ frame 89\\b",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: gv_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: gv_01 entry 0"
+        },
+        {
+          "name": "census",
+          "regex": "cen f80 summary batches \\d+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 89\\b"
+        }
+      ],
+      "reason": "Row GAMEOVER (user: game over flickers and lags, 60 fps on). Shot window after the letters start to drop; cap 30 s (boot, warp, 90 frames)."
+    },
+    {
+      "name": "gameover_30",
+      "status": "unverified",
+      "subject": "Game over map gv_01 (warp entry 0), 60 fps mode off (det: no FS1 draw skip, so frame 80 is drawn for the census). The map script turns on the motion blur (SetMotionBlurParams 128, OVERLAY_BLUR: 40 strips that read the previous frame buffer) and drops the GAME OVER letters. Shots every drawn frame of game frames 70 to 89 (two drawn frames per game frame with fps60: the t=0.5 pass and the key frame). Draw census at frame 80.",
+      "proves": "The game over picture per drawn frame (no alternating frames) and the draw batches per drawn frame (cen summary line).",
+      "debug": "warp=gv_01:0 det shots shotwin=70:20 drawcensus=80 caplog loglevel=debug",
+      "until": "shot \\d+ frame 89\\b",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: gv_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: gv_01 entry 0"
+        },
+        {
+          "name": "census",
+          "regex": "cen f80 summary batches \\d+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 89\\b"
+        }
+      ],
+      "reason": "Row GAMEOVER (user: game over flickers and lags, 60 fps on). Shot window after the letters start to drop; cap 30 s (boot, warp, 90 frames)."
     },
     {
       "name": "xfer_door_mac01",

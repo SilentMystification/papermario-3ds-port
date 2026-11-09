@@ -12,6 +12,38 @@
   },
   "benches": [
     {
+      "name": "dmg_jump",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "BTLUI bug 2 step 1: action command prompt of the first jump (kmr_20 battle); shots 180 to 240 every 4 frames; the button icon.",
+      "scenario": "dmg_jump",
+      "cap": 45,
+      "until": "shot \\d+ frame 240\\b",
+      "tags": [
+        "azahar",
+        "battle",
+        "btlui"
+      ],
+      "gates": []
+    },
+    {
+      "name": "dmg_star",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "BTLUI bug 1: battle damage star behind the damage number. Shots 40 to 320 every 20 frames (kmr_20 battle, autoa); the star shows after the first jump hit.",
+      "scenario": "dmg_star",
+      "cap": 45,
+      "until": "shot \\d+ frame 320\\b",
+      "tags": [
+        "azahar",
+        "battle",
+        "btlui"
+      ],
+      "gates": []
+    },
+    {
       "name": "sprshade_hos01_pic",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -3770,6 +3802,38 @@
           "value": 0
         }
       ]
+    },
+    {
+      "name": "gameover_fps60",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "GAMEOVER: game over map gv_01 with 60 fps mode on, shots frames 70 to 89 (every drawn frame), draw census at frame 80. A person reads the shot: consecutive shots consistent (no alternating blur), GAME OVER letters.",
+      "scenario": "gameover_fps60",
+      "cap": 30,
+      "until": "shot \\d+ frame 89\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "gameover"
+      ],
+      "gates": []
+    },
+    {
+      "name": "gameover_30",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "GAMEOVER: game over map gv_01 with 60 fps mode off, shots frames 70 to 89 (every drawn frame), draw census at frame 80. A person reads the shot: consecutive shots consistent (no alternating blur), GAME OVER letters.",
+      "scenario": "gameover_30",
+      "cap": 30,
+      "until": "shot \\d+ frame 89\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "gameover"
+      ],
+      "gates": []
     },
     {
       "name": "xfer_door_mac01",
