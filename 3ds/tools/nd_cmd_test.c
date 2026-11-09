@@ -48,6 +48,13 @@ static void apply(const uint32_t* w, unsigned n) {
     }
 }
 
+/* The F3DEX2 othermode word of a typed othermode op (the inverse of nd_op_xlate). */
+static uint32_t nd_op_om_word(const uint32_t u[2]) {
+    const unsigned a = u[0] & 0xffffffu, sft = a & 0xffu, len = (a >> 8) & 0xffu;
+    const unsigned op = (u[0] >> 24) == NDO_OMH ? G_SETOTHERMODE_H : G_SETOTHERMODE_L;
+    return ((uint32_t)op << 24) | (((32u - sft - len) & 0xffu) << 8) | ((len - 1u) & 0xffu);
+}
+
 /* HC4a: the typed op format (nd_op.h): ids free of the F3DEX2 and G_PM_* ops, the translation of each scalar op, the othermode inverse. */
 static void op_test(void) {
     for (unsigned id = NDO_BASE; id < NDO_END_; id++) {
@@ -88,7 +95,13 @@ static void op_test(void) {
     gSPVertex(&g[12], (Vtx*)0x00200000, 4, 0);
     CHECK(!nd_op_xlate(g[12].words.w0, g[12].words.w1, t) && t[0] == g[12].words.w0 && t[1] == g[12].words.w1, "vertex word kept");
     gDPSetCombineMode(&g[13], G_CC_SHADE, G_CC_SHADE);
-    CHECK(!nd_op_xlate(g[13].words.w0, g[13].words.w1, t), "combine stays a word in HC4a");
+    CHECK(nd_op_xlate(g[13].words.w0, g[13].words.w1, t) && (t[0] >> 24) == NDO_COMB && NDO_COMB_W0(t[0]) == g[13].words.w0 &&
+          t[1] == g[13].words.w1, "combine (HC4b)");
+    gDPSetRenderMode(&g[14], G_RM_FOG_SHADE_A, G_RM_AA_ZB_OPA_SURF2);
+    CHECK(nd_op_xlate(g[14].words.w0, g[14].words.w1, t) && t[0] == NDO_W0(NDO_OML, NDO_A_RENDERMODE) && t[1] == g[14].words.w1,
+          "render mode a field %08x", t[0]);
+    gDPPipeSync(&g[15]);
+    CHECK(!nd_op_xlate(g[15].words.w0, g[15].words.w1, t), "sync stays a word");
 }
 
 int main(int argc, char** argv) {

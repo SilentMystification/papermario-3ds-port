@@ -5,7 +5,8 @@
 
 const uint8_t nd_op_n64[NDO_END_ - NDO_BASE] = {
     G_SETOTHERMODE_H, G_SETOTHERMODE_L, G_GEOMETRYMODE, G_SETPRIMCOLOR, G_SETENVCOLOR, G_SETFOGCOLOR, G_SETBLENDCOLOR,
-    G_SETFILLCOLOR, G_SETPRIMDEPTH, G_SETSCISSOR, G_TEXTURE, G_MOVEWORD, 0 /* NDO_RARE: the sub-op names it */
+    G_SETFILLCOLOR, G_SETPRIMDEPTH, G_SETSCISSOR, G_TEXTURE, G_MOVEWORD, 0 /* NDO_RARE: the sub-op names it */, G_SETCOMBINE,
+    G_ENDDL /* NDO_END */, G_SPNOOP /* NDO_DROP */
 };
 
 static int out2(uint32_t out[2], unsigned id, uint32_t a, uint32_t b) {
@@ -42,15 +43,10 @@ int nd_op_xlate(uint32_t w0, uint32_t w1, uint32_t out[2]) {
     case G_SETCONVERT: return out2(out, NDO_RARE, NDO_RARE_CONV, w1);
     case G_SETKEYR: return out2(out, NDO_RARE, NDO_RARE_KEYR, w1);
     case G_SETKEYGB: return out2(out, NDO_RARE, NDO_RARE_KEYGB, w1);
+    case G_SETCOMBINE: return out2(out, NDO_COMB, w0, w1);
     default:
         out[0] = w0;
         out[1] = w1;
         return 0;
     }
-}
-
-uint32_t nd_op_om_word(const uint32_t u[2]) {
-    const unsigned a = u[0] & 0xffffffu, sft = a & 0xffu, len = (a >> 8) & 0xffu;
-    const unsigned op = (u[0] >> 24) == NDO_OMH ? G_SETOTHERMODE_H : G_SETOTHERMODE_L;
-    return ((uint32_t)op << 24) | (((32u - sft - len) & 0xffu) << 8) | ((len - 1u) & 0xffu);
 }
