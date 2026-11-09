@@ -443,6 +443,14 @@ __attribute__((noinline)) void tex_tile1(unsigned tile, int uls, int ult, int lr
                 if (src && bpp && l1v) src += (size_t)(l1y * stride + l1x) * (size_t)bpp;
                 else if (src && bpp) src += (size_t)boff; /* V13: a block load puts the image at TMEM start, SetTileSize only moves the coordinates */
                 else if (src && nd_ws.tst1.tile_siz[1] == 0 && !l1v) src += (size_t)boff; /* PT82: the same for a 4 bit image (gDPScrollTextureBlockHalfHeight_4b: tile 1 is the lower half of one block load, mim_darkgreen2tif) */
+                else if (src && l1v && nd_ws.tst1.tile_wrap[1][2] && nd_ws.tst1.tile_wrap[1][3] &&
+                         w == (1 << nd_ws.tst1.tile_wrap[1][2]) && h == (1 << nd_ws.tst1.tile_wrap[1][3])) {
+                    /* WALLT1: the window is the whole mask period of the loaded image (aux pan: hos_01 walls; model aux offset: kmr_10 cliffs).
+                     * The RDP reads (s - sl) & mask from what LoadTile put in TMEM: the source is the LoadTile origin, and SetTileSize
+                     * only moves the coordinates (td[1].x0 and y0 below, as V13). Moving the source by the window origin read past the raster. */
+                    src += (size_t)(l1y * l1stride + l1x);
+                    stride = l1stride * 2;
+                }
                 else if (src && l1v) {
                     /* V21: SetTileSize uls and ult are the window origin in the image (fire_breath scrolls tile 1 by imgFrame*32+32).
                      * This branch is 4 bit only (bpp 0). uls >> 2 counts texels, two per byte, so the byte offset is half of it.

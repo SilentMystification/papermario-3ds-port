@@ -79,6 +79,38 @@
       "gates": []
     },
     {
+      "name": "wall_hos01_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WALLT1 gate: hos_01 walls o178/o179 at pos -110 250 -170, det, shots 200 to 236 every 4th frame. Byte-equal to base except the wall.",
+      "scenario": "wall_hos01_pic",
+      "cap": 40,
+      "until": "shot \\d+ frame 236\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "wall"
+      ],
+      "gates": []
+    },
+    {
+      "name": "kmr_10_band",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WALLT1 gate: kmr_10 wall band at -142 136 221, shots 200 to 205. A person reads the shot: the strata stripe on the low cliff next to the ? block is continuous, no garbage rows (compare with o1329).",
+      "scenario": "kmr_10_band",
+      "cap": 45,
+      "until": "shot 5 frame 205",
+      "tags": [
+        "azahar",
+        "pic",
+        "wall"
+      ],
+      "gates": []
+    },
+    {
       "name": "sprshade_hos01_log",
       "kind": "azahar_pic",
       "speed": "normal",
