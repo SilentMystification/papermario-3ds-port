@@ -8171,7 +8171,7 @@
       "status": "unverified",
       "subject": "Battle kmr_03, Shooting Star: the sky and the stage darken step by step; Mario and the Goomba stay bright, no seams or palette noise.",
       "proves": "BTLDIM picture gate: the GPU dim (mix stage) gives the same darkening steps as the palette lerp, with no seams.",
-      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 invitem=0x083 padscript=@pad_btl_star.txt shotwin=DARKEN:14:2 loglevel=debug",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 invitem=0x083 padscript=@pad_btl_star.txt shots shotwin=421:14:2 loglevel=debug",
       "until": "btldim: lighten done f\\d+",
       "cap": 30,
       "deadline": 25,
