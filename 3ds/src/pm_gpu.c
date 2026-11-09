@@ -1017,6 +1017,12 @@ static __attribute__((cold, noinline)) void orb_log(const char* path, int z, int
            path, pm_frame_count(), ot_, gs.combine, gs.combine == 8 ? gs.plan.n : -1, gs.plan.uses_tex, gs.plan.uses_tex1, gs.plan.uses_noise, i8_0, i8_1, gs.r_blend, memb, gs.r_atest, z, graw, tris, prim, cconst,
            la ? la->src[0] : 99u, la ? la->src[1] : 99u, la ? la->src[2] : 99u, la ? la->op[0] : 99u, la ? la->op[1] : 99u, la ? la->op[2] : 99u,
            la ? la->func : 99u, la ? la->scale : 99u);
+    { /* SBLK2 A1/A2/B1 debug: the segment 9 base, tile 0 format, combine words, unit 1 I8 alpha, splits and grabs of this frame */
+        extern unsigned n_splits;
+        pm_log("orbdbg2 f%u tag %u seg9 %08x cyc %u td0 v%d fmt %u siz %u w %d h %d comb %08x %08x i8_1 %d spl %u grab %d",
+               pm_frame_count(), ot_, nd_ws.segbase[9], (nd_ws.omode_h >> 20) & 3u, nd_ws.td[0].valid, nd_ws.td[0].fmt, nd_ws.td[0].siz,
+               nd_ws.td[0].w, nd_ws.td[0].h, nd_ws.comb_w0, nd_ws.comb_w1, i8_1, n_splits, grab_n);
+    }
 }
 /* PERF1-6: C3Di_UpdateContext writes nothing when (objdump of libcitro3d.a, this devkitPro): no flag it tests is set in the context word at +32 (frame buffer,
  * viewport, scissor, program, attribute and buffer info, effect, texture units, texture status, proc tex, texenv buffer, gas, texenvs, light env), no light
@@ -2199,6 +2205,7 @@ static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
     const int x0 = 0, x1 = pm_wide || pm_stretch ? 400 : 320, mo = pm_wide || pm_stretch ? 0 : 40; /* MENUGEN: Fullscreen as wide */
     if (!gs.gpu_ok || off_fail || y1 <= y0) return 0;
     if (!(gs.gpu_vtx_on && gs.gv4_on)) return 0;
+    if (PMDL("orbdbg")) pm_log("grabdbg f%u prev %d n %d y %d %d dirty %d spl %u", pm_frame_count(), prev_frame, grab_n, y0, y1, gs.grab_dirty, sc_spl); /* SBLK2 B1 debug: one line per copy */
     if (grab_n && !prev_frame) {
         /* no draw since the last grab, or only rectangles of other rows: same slot */
         if (!gs.grab_dirty && (grab_dy1 <= grab_dy0 || y1 <= grab_dy0 || y0 >= grab_dy1)) { grab_log(cfb, y0, y1, 1); return 1; }
