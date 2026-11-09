@@ -28,7 +28,7 @@ Ranked (file first, then runtime):
    - Fix: a high-water line per heap (general, sprite, collision, world entity, display list fill per context), run over the catalog. Size each to its high mark plus 25%. Likely 1.5-2.5 MB back.
 6. Unused N64 buffers:
    - pm_unused_shape_data (32 KB) and pm_unused_80200000 (D_80200000 renamed in heaps.c, about 224 KB): delete if the grep finds no reader.
-   - gFrameBuf2 (150 KB): nuGfxCfbNum is 2. Drop it if no reference uses the third buffer.
+   - gFrameBuf2 (150 KB): not a frame buffer on the port (nuGfxCfbNum 2), but it is the battle heap (heap_battleHead, BATTLE_HEAP_SIZE 0x25800): keep it.
 7. Port static tables in .bss (the deltas between symbols in the map):
    - the nd_* block after nd_st (about 0.94 MB: model cache, dlc and entity pools), pm_tex tables (0.45 MB), nd_mv (0.22 MB), log queue and buffers (about 0.45 MB), pm_au2 (0.15 MB), census and prof tables (pm_ph_*, os_*, mdc_*, nd_nat_why, about 0.1-0.2 MB).
    - Fix: size the pools from their logged high marks (ring, pool and cache hi lines). Census and prof tables move to one cold calloc made only when prof/census is switched on.
