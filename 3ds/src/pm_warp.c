@@ -1010,7 +1010,8 @@ void pm_warp_now(int c, int entry) {
 /* PT63: warp from the Select menu in any game mode that has a world to leave. A map change from the world, ENTER_WORLD from the title or the intro
  * (as pm_warp_hook does at boot). The state is set as a preset sets it (new player data at the story value). Nothing is written to disk. */
 /* PT74: a warp or a boss launch from the Select menu while a battle runs. The battle is ended through the real BATTLE_STATE_END_BATTLE (the way
- * battlelist ends one), the game returns to the world, then the action runs. The state does not need to be exact. 0 none, 1 warp, 2 boss. */
+ * battlelist ends one), the game returns to the world, then the action runs. The state does not need to be exact. 0 none, 1 warp, 2 boss.
+ * MENUWARP: the start returns 1 (started), so the caller closes the Select menu as a normal warp or launch does (pm_optui_act result 5). */
 static int bypass_kind, bypass_a, bypass_b;
 static unsigned bypass_n;
 static int bypass_begin(int kind, int a, int b) {
@@ -1020,7 +1021,7 @@ static int bypass_begin(int kind, int a, int b) {
     else btl_set_state(BATTLE_STATE_END_BATTLE);
     pm_menu_msg("Ending the battle, then %s", kind == 1 ? "warp" : "boss");
     pm_log("bypass: battle end for kind %d (%d, %d)", kind, a, b);
-    return 0;
+    return 1;
 }
 extern void pm_menu_set(int on);
 static int pm_boss_launch_now(int i);

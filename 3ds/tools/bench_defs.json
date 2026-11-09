@@ -61,6 +61,39 @@
       "gates": []
     },
     {
+      "name": "menuwarp_btl",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "MENUWARP step 1: a warp from the Select menu in a battle closes the menu. Shots 262 to 301, 16 shots (kmr_03 battle, battle switch); the log gives menu close before bypass before warp live. A person reads the destination shot.",
+      "scenario": "menuwarp_btl",
+      "cap": 45,
+      "until": "shot 15 frame \\d+\\b",
+      "tags": [
+        "azahar",
+        "battle",
+        "menu",
+        "menuwarp"
+      ],
+      "gates": []
+    },
+    {
+      "name": "menuwarp_list",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "MENUWARP steps 3 and 4: Warp area level 1 rows (Toad Town Tunnels after Toad Town) and the left or right skip of 6 rows on a row with no value (menu: skip 6 log line).",
+      "scenario": "menuwarp_list",
+      "cap": 25,
+      "until": "padscript: done",
+      "tags": [
+        "azahar",
+        "menu",
+        "menuwarp"
+      ],
+      "gates": []
+    },
+    {
       "name": "sprshade_hos01_pic",
       "kind": "azahar_pic",
       "speed": "normal",
