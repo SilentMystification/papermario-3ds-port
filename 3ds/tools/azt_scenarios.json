@@ -13309,6 +13309,31 @@
         }
       ],
       "reason": "WATERPAN step 1 census, one start. Cold boot is 12 to 16 s, the f300 line needs 300 frames after the warp: cap 30 s (the row said 15 s; a cold start does not fit). Log only: no shot."
+    },
+    {
+      "name": "negpan_mim05",
+      "status": "unverified",
+      "reason": "broken: no until in 25 s (AZT11-5, 2026-11-09)",
+      "subject": "Mario in mim_05 (Forever Forest), warp to mim_05 entry 0. Log only: the first texture tile whose start is negative (mushroom panner, water scroll) prints its raw and clamped window.",
+      "proves": "NEGPAN step 1: tex_win_s25 clamps a negative tile start to 0. Expect lines negpan in uls -32 ... out uls 0 when a panner with a negative offset runs. No line in 25 s = no negative start in this scene at warp.",
+      "debug": "warp=mim_05:0 loglevel=debug negpan negpanf",
+      "until": "negpan in uls ",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mim_05 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mim_05 entry 0"
+        },
+        {
+          "name": "negpan clamp",
+          "regex": "negpan in uls"
+        }
+      ],
+      "reason": "NEGPAN step 1 check, one start. Log only: no shot. The row names an inspect of a guide mushroom; the warp run first shows whether a negative start is reached at all."
     }
   ]
 }
