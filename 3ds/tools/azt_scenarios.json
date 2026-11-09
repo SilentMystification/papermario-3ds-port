@@ -655,6 +655,56 @@
       "reason": "MOVE4 gate: DET cold start of the sbk_56 sun scene (-NoWarm, as spot_mac01_det). Cap 35 s, deadline 30 s. Picture is the subject; the prof scene line is the until."
     },
     {
+      "name": "spot_mac01_stereo_det_l",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200 (warp entry 0), cold det start with forced stereo (3D slider 1): left eye shots at frames 200 to 205 and the prof scene line of the first 300-frame window.",
+      "proves": "STEREO gate: the left eye picture of a stereo frame is a function of the build (det), so two builds give byte-equal shots when the eye pass is unchanged.",
+      "debug": "warp=mac_01:0 pos=0:0:200 prof=4 shots shotwin=200:6 loglevel=debug det stereo",
+      "extra": [],
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at mac_01 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 0 0 200 pos -?\\d+ -?\\d+ -?\\d+ disp w[01] s1 f\\d+$"
+        }
+      ],
+      "reason": "STEREO gate: DET start as spot_mac01_det (cap 35 s, deadline 30 s). Picture is the subject; the prof scene line (disp s1) is the until."
+    },
+    {
+      "name": "spot_mac01_stereo_det_r",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200 (warp entry 0), cold det start with forced stereo (3D slider 1): right eye shots at frames 200 to 205 and the prof scene line of the first 300-frame window.",
+      "proves": "STEREO gate: the right eye picture of a stereo frame is a function of the build (det), so two builds give byte-equal shots when the eye pass is unchanged.",
+      "debug": "warp=mac_01:0 pos=0:0:200 prof=4 shots shotwin=200:6 loglevel=debug det stereo shoteye",
+      "extra": [],
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at mac_01 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 0 0 200 pos -?\\d+ -?\\d+ -?\\d+ disp w[01] s1 f\\d+$"
+        }
+      ],
+      "reason": "STEREO gate: DET start as spot_mac01_det (cap 35 s, deadline 30 s). Picture is the subject; the prof scene line (disp s1) is the until."
+    },
+    {
       "name": "spot_mac01_det",
       "status": "unverified",
       "subject": "Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0), cold start with the det switch. Shots at frames 200 to 205 and the prof scene line of the first 300-frame window.",
@@ -901,7 +951,7 @@
       "proves": "Stereo: both eyes draw, the right eye is shifted by depth.",
       "debug": "preset=yard wide stereo shots shotwin=200:6 shotbottom=200:60 loglevel=debug",
       "until": "shot \\d+ frame 20[0-5]\\b",
-      "cap": 90,
+      "cap": 40,
       "deadline": 20,
       "first_marker": "warp: kmr_20 entry 4",
       "expects": "warp",
@@ -925,7 +975,7 @@
       "proves": "Stereo: both eyes draw, the right eye is shifted by depth.",
       "debug": "preset=yard wide stereo shoteye shots shotwin=200:6 shotbottom=200:60 loglevel=debug",
       "until": "shot \\d+ frame 20[0-5]\\b",
-      "cap": 90,
+      "cap": 40,
       "deadline": 20,
       "first_marker": "warp: kmr_20 entry 4",
       "expects": "warp",
