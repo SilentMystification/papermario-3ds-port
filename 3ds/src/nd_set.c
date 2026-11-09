@@ -70,12 +70,12 @@ void set_fillcolor(u32 w1) { nd_ws.fill = w1; }
 
 void set_blendcolor(u32 w1) { blendc = w1; }
 
-/* CORE-2b: G_SETPRIMCOLOR, one owner (the walker switch and the record both run it). */
-void op_setprimcolor(u32 w0, u32 w1) {
-    GP_SET(1, nd_ws.prim == w1 && (u8)nd_ws.prim_lod == (u8)(w0 & 0xff));
-    pm_gpu_set_prim(w1, w0 & 0xffffu); /* closes the open batch before the change (SPR4-prim) */
-    nd_ws.prim = w1;
-    nd_ws.prim_lod = w0 & 0xffffu; /* S3N-3d: the prim LOD word (pm_gpu key) */
+/* CORE-2b: G_SETPRIMCOLOR, one owner (the walker and the record both run it). a = the LOD word, b = the colour. */
+void nd_set_prim(u32 a, u32 b) {
+    GP_SET(1, nd_ws.prim == b && (u8)nd_ws.prim_lod == (u8)(a & 0xff));
+    pm_gpu_set_prim(b, a & 0xffffu); /* closes the open batch before the change (SPR4-prim) */
+    nd_ws.prim = b;
+    nd_ws.prim_lod = a & 0xffffu; /* S3N-3d: the prim LOD word (pm_gpu key) */
     sync_combine();
 }
 
@@ -93,12 +93,6 @@ static void set_om(int h, unsigned sft, unsigned len, unsigned mask, u32 v) {
             else { nd_ws.omode_l = (nd_ws.omode_l & ~mask) | (v & mask); nd_ws.om_kl |= mask; }
             /* S25: the cycle type decides 1 or 2 cycles of the combiner. */
             if (h && sft <= G_MDSFT_CYCLETYPE && sft + len > G_MDSFT_CYCLETYPE) sync_combine();
-}
-/* The word form for the lists that still hold words (tb_ops, tex_op_impl). */
-void op_setothermode(unsigned op, u32 w0, u32 w1) {
-    uint32_t u[2];
-    nd_op_xlate(w0, w1, u);
-    set_om(op == G_SETOTHERMODE_H, u[0] & 0xffu, (u[0] >> 8) & 0xffu, nd_op_om_mask(u[0]), w1);
 }
 
 /* S3F-2b: G_SETENVCOLOR, one function for the walker and the record. */
@@ -168,17 +162,23 @@ void nd_op_apply(const uint32_t* u) {
     case NDO_OMH: set_om(1, a & 0xffu, (a >> 8) & 0xffu, nd_op_om_mask(a), b); break;
     case NDO_OML: set_om(0, a & 0xffu, (a >> 8) & 0xffu, nd_op_om_mask(a), b); break;
     case NDO_GEOM: set_geom(a, b); break;
-    case NDO_PRIM: op_setprimcolor(a, b); break;
+    case NDO_PRIM: nd_set_prim(a, b); break;
     case NDO_ENV: gbi_setenv(b); break;
     case NDO_FOG: set_fogcolor(b); break;
     case NDO_BLEND: set_blendcolor(b); break;
     case NDO_FILL: set_fillcolor(b); break;
     case NDO_PRIMZ: set_primdepth(b); break;
     case NDO_SCISSOR: set_scissor(a, b); break;
-    case NDO_TEXTURE: op_texture(a, b); sync_combine(); break;
+    case NDO_TEXTURE: nd_set_texture(a, b); sync_combine(); break;
     case NDO_MW: set_mw(a >> 16, a & 0xffffu, b); break;
     case NDO_RARE: set_rare(a, b); break;
     case NDO_COMB: op_setcombine(NDO_COMB_W0(a), b); sync_combine(); break;
+    case NDO_TIMG: nd_set_timg(a, b); break; /* HC4c: the texture image, tile and load ops (nd_tex_set.c) */
+    case NDO_TILE: nd_set_tile(a, b); break;
+    case NDO_TILESIZE: nd_set_tilesize(a, b); break;
+    case NDO_LOADBLOCK: nd_set_loadblock(b); break;
+    case NDO_LOADTILE: nd_set_loadtile(a, b); break;
+    case NDO_LOADTLUT: nd_set_loadtlut(b); break;
     default: break;
     }
 }

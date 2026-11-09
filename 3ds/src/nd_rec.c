@@ -112,15 +112,16 @@ static int sh_drop(const uint32_t* t) {
         }
         return 0;
     case NDO_RARE: sh.sc1 = 1; return 0;
+    case NDO_TIMG: case NDO_TILE: case NDO_TILESIZE: case NDO_LOADBLOCK: case NDO_LOADTILE: case NDO_LOADTLUT:
+        sh_sc(); return 0; /* HC4c: a tile, load or image op may change the combine inputs (td[1].valid, dual_on) */
     default: return 0;
     }
 }
-/* A word op of a state run: a draw, tile, load or matrix word leaves the walker fields of the shadow but may change the combine inputs;
- * any other word (a list call, a light, an image, a rectangle, a marker) resets it all. */
+/* A word op of a state run: a draw or matrix word leaves the walker fields of the shadow but may change the combine inputs; any other word
+ * (a list call, a light, an image, a rectangle, a marker) resets it all. */
 static void sh_word(unsigned op) {
     switch (op) {
-    case G_VTX: case G_TRI1: case G_TRI2: case G_MTX: case G_POPMTX: case G_SETTIMG: case G_SETTILE: case G_LOADBLOCK: case G_LOADTILE:
-    case G_LOADTLUT: case G_SETTILESIZE: sh_sc(); break;
+    case G_VTX: case G_TRI1: case G_TRI2: case G_MTX: case G_POPMTX: sh_sc(); break;
     default: sh_all(); break;
     }
 }
@@ -204,15 +205,22 @@ static __attribute__((cold, noinline)) void model_bad(unsigned words) {
     pm_log_e("ndc: model record of %u words (most %u)", words, G_PM_REC_WORDS + ND_REC_AUX_MAX);
     pm_fatal_stop("ndc: model record too long");
 }
+/* HC4c (W4): the payload holds typed ops: the panner tile sizes (R9, R10) and the R13 words, typed and without the syncs (nd_op_type_run);
+ * R13 w0 is the count of typed units. The unused room of the dropped syncs goes back to the stream. */
 void nd_rec_model(const void* rec, unsigned words) {
     if (words > G_PM_REC_WORDS + ND_REC_AUX_MAX) model_bad(words);
     { const unsigned rmi = (((const uint32_t*)rec)[0] >> 16) & 0xffu; if (rmi < ND_RM_N && !rm_built[rmi]) nd_rm_build(rmi); } /* HC4b: W3 */
     rec_open();
     uint32_t* p = rec_take(2u + 2u * words);
     ndc_n[NDC_MODEL]++;
-    p[0] = NDC_HDR(NDC_MODEL, words, 0);
-    p[1] = 0;
     memcpy(p + 2, rec, words * 8u);
+    uint32_t* q = p + 2;
+    for (unsigned r = 9; r <= 10u; r++) if (q[2u * r]) nd_op_xlate(q[2u * r], q[2u * r + 1u], q + 2u * r);
+    const unsigned n = nd_op_type_run(q + 2u * G_PM_REC_WORDS, words - G_PM_REC_WORDS);
+    q[26] = n;
+    wp -= 2u * (words - G_PM_REC_WORDS - n);
+    p[0] = NDC_HDR(NDC_MODEL, G_PM_REC_WORDS + n, 0);
+    p[1] = 0;
 }
 void nd_rec_spr(const void* rec, const void* geo) {
     rec_open();

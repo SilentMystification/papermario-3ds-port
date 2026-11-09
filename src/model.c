@@ -9,6 +9,7 @@
 #include "pm_interp_fi.h"
 #ifdef TARGET_3DS
 #include "nd_cmd.h"
+#include "nd_op.h"
 #endif
 
 // models are rendered in two stages by the RDP:
@@ -2307,7 +2308,11 @@ static void load_texture_header_at(u32 romOffset, TextureHeader* out) {
 }
 #endif
 
+#ifdef TARGET_3DS
+static Gfx pm_tex_unloaded[] = { { .words = { NDO_W0(NDO_END, 0), 0 } } }; /* HC4c: a typed bind list (nd_op.h) */
+#else
 static Gfx pm_tex_unloaded[] = { gsSPEndDisplayList() };
+#endif
 
 void load_texture_impl(u32 romOffset, TextureHandle* handle, TextureHeader* header, s32 mainSize, s32 mainPalSize, s32 auxSize, s32 auxPalSize) {
     Gfx** temp;
@@ -2360,6 +2365,7 @@ void load_texture_impl(u32 romOffset, TextureHandle* handle, TextureHeader* head
     temp = (Gfx**) &TextureHeapPos;
     gSPEndDisplayList((*temp)++);
 #ifdef TARGET_3DS
+    nd_op_type_run((uint32_t*)handle->gfx, (unsigned)((Gfx*)TextureHeapPos - handle->gfx)); /* HC4c (R1): the bind list typed at its producer (rec_apply runs it, nd_bind_run) */
     { /* S3N-1 (B4): the texture descriptor of this handle for the native model draw (3ds/src/nd_model.c) */
         extern void nd_tex_handle_set(int index, const void* gfx, const void* raster, const void* palette, unsigned w, unsigned h, unsigned fmt, unsigned siz,
                                       unsigned wrap_w, unsigned wrap_h, unsigned masks, unsigned maskt, unsigned extra, int has_aux);

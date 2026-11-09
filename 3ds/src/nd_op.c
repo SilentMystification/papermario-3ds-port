@@ -6,7 +6,7 @@
 const uint8_t nd_op_n64[NDO_END_ - NDO_BASE] = {
     G_SETOTHERMODE_H, G_SETOTHERMODE_L, G_GEOMETRYMODE, G_SETPRIMCOLOR, G_SETENVCOLOR, G_SETFOGCOLOR, G_SETBLENDCOLOR,
     G_SETFILLCOLOR, G_SETPRIMDEPTH, G_SETSCISSOR, G_TEXTURE, G_MOVEWORD, 0 /* NDO_RARE: the sub-op names it */, G_SETCOMBINE,
-    G_ENDDL /* NDO_END */, G_SPNOOP /* NDO_DROP */
+    G_ENDDL /* NDO_END */, G_SPNOOP /* NDO_DROP */, G_SETTIMG, G_SETTILE, G_SETTILESIZE, G_LOADBLOCK, G_LOADTILE, G_LOADTLUT
 };
 
 static int out2(uint32_t out[2], unsigned id, uint32_t a, uint32_t b) {
@@ -44,9 +44,27 @@ int nd_op_xlate(uint32_t w0, uint32_t w1, uint32_t out[2]) {
     case G_SETKEYR: return out2(out, NDO_RARE, NDO_RARE_KEYR, w1);
     case G_SETKEYGB: return out2(out, NDO_RARE, NDO_RARE_KEYGB, w1);
     case G_SETCOMBINE: return out2(out, NDO_COMB, w0, w1);
+    case G_SETTIMG: return out2(out, NDO_TIMG, w0, w1);
+    case G_SETTILE: return out2(out, NDO_TILE, w0, w1);
+    case G_SETTILESIZE: return out2(out, NDO_TILESIZE, w0, w1);
+    case G_LOADBLOCK: return out2(out, NDO_LOADBLOCK, w0, w1);
+    case G_LOADTILE: return out2(out, NDO_LOADTILE, w0, w1);
+    case G_LOADTLUT: return out2(out, NDO_LOADTLUT, w0, w1);
     default:
         out[0] = w0;
         out[1] = w1;
         return 0;
     }
+}
+
+unsigned nd_op_type_run(uint32_t* w, unsigned n) {
+    unsigned k = 0;
+    for (unsigned i = 0; i < n; i++) {
+        const uint32_t w0 = w[2u * i], w1 = w[2u * i + 1u], op = w0 >> 24;
+        if ((op >= G_RDPLOADSYNC && op <= G_RDPFULLSYNC) || op == G_SPNOOP) continue;
+        if (op == G_ENDDL) { w[2u * k] = NDO_W0(NDO_END, 0); w[2u * k + 1u] = 0; break; }
+        nd_op_xlate(w0, w1, w + 2u * k);
+        k++;
+    }
+    return k;
 }

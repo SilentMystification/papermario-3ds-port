@@ -102,6 +102,25 @@ static void op_test(void) {
           "render mode a field %08x", t[0]);
     gDPPipeSync(&g[15]);
     CHECK(!nd_op_xlate(g[15].words.w0, g[15].words.w1, t), "sync stays a word");
+    /* HC4c: the texture ops keep their F3DEX2 fields (a = w0 low 24 bits, b = w1); a bind list types in place without its syncs, to NDO_END. */
+    Gfx l[16];
+    Gfx* lp = l;
+    static const uint16_t pal[16];
+    gDPLoadTLUT_pal16(lp++, 0, pal);
+    gDPLoadTextureTile(lp++, (void*)0x00123000, G_IM_FMT_CI, G_IM_SIZ_8b, 32, 16, 0, 0, 31, 15, 0, G_TX_WRAP, G_TX_WRAP, 5, 4, G_TX_NOLOD, G_TX_NOLOD);
+    gSPEndDisplayList(lp++);
+    const unsigned nw = (unsigned)(lp - l);
+    Gfx c[16];
+    memcpy(c, l, sizeof l);
+    const unsigned nt = nd_op_type_run((uint32_t*)c, nw);
+    static const unsigned want[] = { NDO_TIMG, NDO_TILE, NDO_LOADTLUT, NDO_TIMG, NDO_TILE, NDO_LOADTILE, NDO_TILE, NDO_TILESIZE };
+    CHECK(nt == sizeof want / sizeof want[0] && (c[nt].words.w0 >> 24) == NDO_END, "bind list %u units", nt);
+    for (unsigned i = 0, j = 0; i < nt && j < nw; i++, j++) {
+        while (j < nw && ((l[j].words.w0 >> 24) == G_RDPLOADSYNC || (l[j].words.w0 >> 24) == G_RDPPIPESYNC || (l[j].words.w0 >> 24) == G_RDPTILESYNC)) j++;
+        CHECK((c[i].words.w0 >> 24) == want[i] && nd_op_n64[want[i] - NDO_BASE] == (l[j].words.w0 >> 24) && (c[i].words.w0 & 0xffffffu) == (l[j].words.w0 & 0xffffffu) &&
+              c[i].words.w1 == l[j].words.w1, "bind op %u", i);
+        CHECK(nd_op_tex(c[i].words.w0 >> 24), "bind op %u is a texture op", i);
+    }
 }
 
 int main(int argc, char** argv) {

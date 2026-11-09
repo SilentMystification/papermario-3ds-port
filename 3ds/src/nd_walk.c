@@ -260,7 +260,8 @@ static void op_typed(unsigned dbg, const uint32_t* u, const void* at) {
     gv_epoch++; /* GV1b */
     int fp = 0;
     if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const Gfx*)at, 0, op, u[0], u[1]);
-    nd_op_apply(u);
+    if (__builtin_expect(dbg & WD_CEN, 0) && nd_op_tex(id)) nd_tex_timed(u); /* sp0x census */
+    else nd_op_apply(u);
     if (__builtin_expect(fp, 0)) pm_ph_pop();
 }
 /* HC4b t4chk (debug switch, plan_hotcode 5.2): the recorder writes each op its shadow dropped after NDO_DROP. The walker runs the old skip
@@ -317,12 +318,6 @@ void nd_walk_state(const uint32_t* q, unsigned n) {
             walk_call(dbg, (const Gfx*)q, w0, w1);
             if (((w0 >> 16) & 0xffu) == G_DL_NOPUSH) q = e - 2; /* D10c: a branch ends the list that holds it */
             break;
-        case G_SETTIMG:
-        case G_SETTILE:
-        case G_LOADBLOCK:
-        case G_LOADTILE:
-        case G_LOADTLUT:
-        case G_SETTILESIZE: tex_op(w0, w1); break;
         case G_SETCIMG: gbi_setcimg(w0, w1); break;
         case G_FILLRECT: nd_fillrect(w0, w1); break;
         case G_PM_LST: ent_skipgen = 0; gp_prev_op = -1; break; /* D11a: an in-line static state list (nd_rec.c rec_inline): its list start as walk_call and nd_ops_run */
