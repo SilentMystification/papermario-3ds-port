@@ -508,6 +508,7 @@ static void mc_clear_all(void) {
     for (unsigned i = 0; i < NDMC_N; i++) mc_tab[i].used = 0;
     mc_n = 0; mc_pool_n = 0; mc_clears_n++;
 }
+void nd_mc_flush_all(void) { mc_clear_all(); } /* MENUGEN part 2: the options menu drops the cached native models (fog, light, texel centre) */
 /* the hash is set once per record (pm_gpu_model_key): the probe compares it before the key words */
 NdMEnt* nd_mc_find(const NdMKey* k) {
     uint32_t h = k->h & (NDMC_N - 1u);

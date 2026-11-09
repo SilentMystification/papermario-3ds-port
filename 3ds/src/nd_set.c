@@ -181,9 +181,13 @@ void nd_op_apply(const uint32_t* u) {
 
 /* V06 rule, one owner (sync_render and the native model state, pm_gpu.c model_draw): the first blender cycle P * A_FOG + IN * (1 - A_FOG), P = BL or FOG.
  * 1 with *col = the mix colour (RGB of P, alpha = the fog colour alpha), else 0. */
+extern int pm_nofog; /* MENUGEN part 3: Disable Fog (pm_options.c) */
+/* MENUGEN part 3: the room shroud is the blend colour mix (P = BL), so Disable Fog (the FOG mix) never turns it off (macros.h:319, nd_recs.c:95, :178) */
+_Static_assert((((PM_RM_SHROUD) >> 30) & 3u) == 2u, "PM_RM_SHROUD must not be the FOG mix");
 int nd_mix1(unsigned ol, unsigned* col) {
     unsigned p = (ol >> 30) & 3u;
     if ((p != 2u && p != 3u) || ((ol >> 26) & 3u) != 1u || ((ol >> 22) & 3u) != 0u || ((ol >> 18) & 3u) != 0u) return 0;
+    if (p == 3u && pm_nofog) return 0; /* FOG blend: no fog. Caveat: the room shroud (PM_RM_SHROUD, nd_recs.c:95, :178) uses this mix too */
     *col = ((p == 2u ? blendc : fogc) & 0xffffff00u) | (fogc & 0xffu);
     return 1;
 }
@@ -206,7 +210,7 @@ void sync_render(void) {
         unsigned p = (m >> 30) & 3u, a = (m >> 26) & 3u, mm = (m >> 22) & 3u, b = (m >> 18) & 3u, mixc;
         if (nd_mix1(m, &mixc))
             pm_gpu_set_mix(1, mixc);
-        else if (!PMDL("nofog") && p == 3u && a == 2u && mm == 0u && b == 0u) {
+        else if (!pm_nofog && p == 3u && a == 2u && mm == 0u && b == 0u) {
             /* F08: G_RM_FOG_SHADE_A, the weight is the shade alpha (the vertex fog factor, see draw_tri) */
             pm_gpu_set_mix(2, (fogc & 0xffffff00u) | 0xffu);
             fogmix_on = 1;

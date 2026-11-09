@@ -13096,6 +13096,105 @@
         }
       ],
       "reason": "HC0 census: cold det start, the draw functions that run in one walker frame and their call counts (census lane only). Cap 35 s: the first marker takes 12 to 16 s (as spot_mac01_det), then frame 200. Deadline 30 s. Log only; the until is the census done line."
+    },
+    {
+      "name": "menu_part2",
+      "status": "unverified",
+      "reason": "broken: no until in 45 s (AZT11-5, 2026-11-09)",
+      "subject": "Toad Town mac_01 at 0 0 200 (as spot_mac01_det): SELECT on the General tab, Resolution Mode A three times (Native, Fullscreen, Widescreen, Native), Debug tab (R R), Logging page (no Back row), B back, Disable Fog, Disable Light and Texture Filtering (Bilinear all) set by A, B, B (stays open), SELECT closes; field shots 200 to 205.",
+      "proves": "MENUGEN parts 1 and 2: General tab row order and Resolution Mode cycle (menu draw shots), Debug tab order, no Back row on a sub-page, B on a tab does not close (log), Select closes (log), the render flags take effect on the field shot in one run (fog, light, texture filter set in the menu).",
+      "debug": "warp=mac_01:0 pos=0:0:200 padscript=@pad_menu_part2.txt shotmenu shots shotwin=200:6 loglevel=debug det",
+      "extra": [],
+      "until": "shot \\d+ frame 205\\b",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "resolution",
+          "regex": "options: live row 1 value 2"
+        },
+        {
+          "name": "logging page",
+          "regex": "menu: page push"
+        },
+        {
+          "name": "fog on",
+          "regex": "options: live row 4 value 1"
+        },
+        {
+          "name": "light on",
+          "regex": "options: live row 5 value 1"
+        },
+        {
+          "name": "texf",
+          "regex": "texfilt: 0 Bilinear all"
+        },
+        {
+          "name": "B on a tab",
+          "regex": "menu: B on a tab, the menu stays open"
+        },
+        {
+          "name": "select close",
+          "regex": "menu: Select closes"
+        },
+        {
+          "name": "frame 200",
+          "regex": "shot \\d+ frame 200\\b"
+        }
+      ],
+      "reason": "MENUGEN part 2 gate: the field shot 200 shows the three render flags on (compare spot_mac01_det frame 200, same det config); the menu draw shots show the Debug tab order and the Logging page without Back."
+    },
+    {
+      "name": "menu_part3",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 at 0 0 200, Resolution Fullscreen: field shot; Debug tab with Fixed Seed and Start a Battle (menu shot); each render flag alone (Disable Fog, Disable Light, Texture Filtering Bilinear all) with the field shot before and after each toggle (periodic shots every 30 frames, window 40 on).",
+      "proves": "MENUGEN part 3: Fullscreen picture on the field, the Debug rows 8 and 9, and fog, light and texture filter each take effect on the field in one run (before and after), with the menu position kept across each close and reopen.",
+      "debug": "warp=mac_01:0 pos=0:0:200 padscript=@pad_menu_part3.txt shotmenu shots shotwin=40:1400:30 loglevel=debug det",
+      "extra": [],
+      "until": "padscript: done",
+      "cap": 60,
+      "deadline": 50,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "fullscreen",
+          "regex": "options: live row 1 value 2"
+        },
+        {
+          "name": "fog on",
+          "regex": "options: live row 4 value 1"
+        },
+        {
+          "name": "fog off",
+          "regex": "options: live row 4 value 0"
+        },
+        {
+          "name": "light on",
+          "regex": "options: live row 5 value 1"
+        },
+        {
+          "name": "light off",
+          "regex": "options: live row 5 value 0"
+        },
+        {
+          "name": "texf on",
+          "regex": "texfilt: 0 Bilinear all"
+        },
+        {
+          "name": "texf off",
+          "regex": "texfilt: 0 Game"
+        },
+        {
+          "name": "pad done",
+          "regex": "padscript: done"
+        }
+      ],
+      "reason": "MENUGEN part 3 gate, one run: the field shots before and after each flag toggle (30-frame periodic window) and the Fullscreen field shot. Cap 60 s: seven menu round trips with 90-scan field holds; the stop is the pad end."
     }
   ]
 }
