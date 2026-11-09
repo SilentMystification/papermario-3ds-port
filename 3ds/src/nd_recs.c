@@ -24,7 +24,7 @@ extern Gfx* ModelRenderModes[];
 /* S3F-2: one record op through the skip test and the handler of the walker (the ops the record writes). */
 static __attribute__((noinline)) void rec_op(u32 w0, u32 w1) {
     unsigned op = w0 >> 24;
-    if (g1_skip[op]) return;
+    if (nd_op_sync(op)) return;
     if (g2_same(op, w0, w1)) { g2_note(op, w0); return; }
     gv_epoch++; /* GV1b, as the walker */
     switch (op) {
@@ -46,8 +46,8 @@ static __attribute__((noinline)) void rec_fog(u32 col, u32 pos) {
     rec_op((u32)G_SETFOGCOLOR << 24, col);
     rec_fogpos(pos);
 }
-/* S3G-1: a model list of a record (custom gfx pre or post, geometry): run as G_DL does (dlc_try first). The list runs nested
- * (pm_gbi_run) and returns at its G_ENDDL, as the walker's G_DL push did. */
+/* S3G-1: a model list of a record (the render mode list, the geometry): run as G_DL does (dlc_try first), else on the list executor
+ * (nd_list_run, D10c) to its G_ENDDL. */
 static __attribute__((noinline)) void rec_dl(const Gfx* l) {
     if (!l) return;
     if (!is_host((u32)(uintptr_t)l)) { gbi_cold_bad_next((u32)(uintptr_t)l, (u32)G_DL << 24, 0); return; }
@@ -55,7 +55,7 @@ static __attribute__((noinline)) void rec_dl(const Gfx* l) {
         if (pm_ph_cen) { os_dlc_hit(); mr0_dlc_hit = 1; }
         return;
     }
-    pm_gbi_run((void*)l, 0);
+    nd_list_run(l);
 }
 /* S3G-2: the words after a record: n words run in place (D10b: a flat range on the op executor). */
 static __attribute__((noinline)) void rec_aux(const Gfx* l, unsigned n) {

@@ -590,7 +590,7 @@ __attribute__((noinline)) void tb_ops_generic(const Gfx* g) {
     for (const Gfx* h = g;; h++) {
         unsigned op = h->words.w0 >> 24;
         if (op == G_ENDDL) break;
-        if (g1_skip[op]) continue;
+        if (nd_op_sync(op)) continue;
         pm_gbi_cur_op = op;
         tex_op(h->words.w0, h->words.w1);
     }
@@ -601,7 +601,7 @@ __attribute__((noinline)) void tb_ops(const Gfx* g) {
         u32 w0 = h->words.w0, w1 = h->words.w1;
         unsigned op = w0 >> 24;
         if (op == G_ENDDL) break;
-        if (g1_skip[op]) continue;
+        if (nd_op_sync(op)) continue;
         pm_gbi_cur_op = op;
         unsigned pt0 = 0; unsigned long long pf0 = 0;
         if (pm_ph_cen) { pt0 = pm_ticks(); pf0 = pm_gpu_fl_acc(); } /* M4: sp0x own and close time of the fused ops */
@@ -615,7 +615,7 @@ __attribute__((noinline)) void tb_ops(const Gfx* g) {
         case G_SETCOMBINE: {
             const Gfx* n = h + 1;
             op_setcombine(w0, w1);
-            while (g1_skip[n->words.w0 >> 24]) n++;
+            while (nd_op_sync(n->words.w0 >> 24)) n++;
             if ((n->words.w0 >> 24) != G_TEXTURE) sync_combine();
             break;
         }

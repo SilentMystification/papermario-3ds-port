@@ -157,12 +157,10 @@ extern unsigned st_vx;
 extern unsigned vert_tss[64];
 
 /* ---- W: the walk group's own entry points and tables (defined in nd_walk.c), and the the former pm_gbi.c helpers it calls ---- */
-void nd_walk_run(void* list, unsigned nbytes);
-extern const u8 g1_skip[256];
-int host_range(u32 p, u32* lo, u32* hi);
+/* DIRECT D10c: an RDP sync or G_SPNOOP (no work on the 3DS; the list executor and the record ops skip it). */
+static inline int nd_op_sync(unsigned op) { return (op >= G_RDPLOADSYNC && op <= G_RDPFULLSYNC) || op == G_SPNOOP; }
 int g2_same(unsigned op, u32 w0, u32 w1);
 void g2_note(unsigned op, u32 w0);
-void gbi_cold_bad_dl(u32 pc, u32 list, unsigned nbytes, int sp);
 void gbi_cold_bad_next(u32 w1, u32 w0, u32 list);
 void gbi_cold_bad_vtx(u32 w1, u32 w0, u32 list);
 void gbi_cold_bad_mtx(u32 w0, u32 w1, Gfx* list, Gfx* pc);
