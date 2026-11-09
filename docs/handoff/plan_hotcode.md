@@ -201,8 +201,8 @@ performance effect). Static lists are typed before the game runs (5.7 S1, S2); r
 | HC4a | nd_op.c translator and ids, typed executor for the W1 scalar ops (OM, GEOM, PRIM, ENV, FOG, BLEND, FILL, PRIMZ, SCISSOR, TEXTURE, MW, RARE), typed rec_op/rec_fog/shroud, nd_cmd_test.c | nd_op.c (new), nd_cmd.h, nd_rec.c, nd_walk.c, nd_set.c, nd_recs.c, nd_int.h, 3ds/tools/nd_cmd_test.c, CMakeLists.txt | g2_same/g2_note cases of these ops |
 | HC4b | T_COMB, render mode table (W3), shadow dedupe and t4chk | nd_rec.c, nd_recs.c, nd_comb.c, nd_walk.c | rec_dl list path |
 | HC4c | texture ops typed, bind and R13 ops in the payload (W4), R1 and R2 typed at their producer | nd_tex_set.c, nd_recs.c, nd_rec.c, src/model.c | tex_op, tb_ops, op_* wrappers |
-| HC4d | T_MTX/POPMTX/LIGHT/VTX/TRI, sprite fallback (W5), T_CALL (W6), typed rec_lights, run-time producers R3-R10 (5.7) | nd_mtx_set.c, nd_geom.c, nd_walk.c, nd_rec.c, nd_ent.c, src/model.c, src/animator.c, src/imgfx.c, src/sprite.c, nugfxinit.c, effects | word cases, g2_same, g2_note, walk_call word path, row_DIRECT.md |
-| HC4e | S1: typed gs* macros (ELF static lists), consumers (ent, dlc, sprite rmList, entity displayList) read typed ops | nd_gbi.h, nd_op.h, nd_ent.c, nd_shape.c, pm_gpu.c (sprite) | the word readers of ent_compile and dlc |
+| HC4d | done: T_MTX/POPMTX/VTX/TRI/MOVEMEM (HC4d1); NDO_CALL/RECT/MISC control ops run by op_ctl, sprite fallback (W5), entity NDO_CALL (W6), R7 (HC4d2). nd_walk_state runs typed ops only; a static list word is typed by nd_op_xlate on core 0 until HC4e | nd_walk.c, nd_rec.c, nd_op.c, nd_ent.c, nd_model.c, src/sprite.c | word cases, g2_same, g2_note, row_DIRECT.md |
+| HC4e | S1: typed gs* and local g* macros (ELF static lists, local lists), consumers (ent, dlc, sprite rmList, entity displayList, R5, R6, R10, pm_gbi_fallback) read typed ops; the core 0 nd_op_xlate call in nd_walk_state goes | nd_gbi.h, nd_op.h, nd_ent.c, nd_shape.c, pm_gpu.c (sprite) | the word readers of ent_compile and dlc |
 | HC4f | S2: host shape converter, sidecar loader, node pointers to typed lists | 3ds/tools/nd_shape_conv.c (new, host), build.sh, pm_map.c | ShapeFix word walk (pm_map.c:63-190) |
 | HC5 | combine memo on core 1, T_PLAN/T_SYNC | nd_comb.c, pm_comb.c, nd_rec.c, pm_gpu.c (set_plan) | - |
 | HC6 | hit state, key A/B, fast path, command block | nd_recs.c, pm_gpu.c, nd_model.c, nd_emit.c | - |
@@ -240,13 +240,13 @@ performance effect). Static lists are typed before the game runs (5.7 S1, S2); r
 |---|---|---|---|---|
 | R1 | src/model.c:3486-3744 make_texture_gfx | texture bind list per handle, at texture load (W4) | medium | HC4c |
 | R2 | src/model.c:1390-2361 appendGfx_model | R13 aux words built with gDP macros (1569-1655, 1901-2195); record fields | medium | HC4c |
-| R3 | src/model.c:3418-3482 render_transform_group(_node) | gSPMatrix/gSPPopMatrix into the group list | small | HC4d |
-| R4 | src/model.c:4487 mdl_local_gfx_update_vtx_pointers | copies a node list, rewrites G_VTX pointers (reads words) | small | HC4d |
-| R5 | src/animator.c:854-973 appendGfx_animator_node | copied mesh list with new vertex buffers per frame (reads words) | medium | HC4d |
-| R6 | src/imgfx.c:1252-1320 imgfx_load_anim | patches vertex pointers in a copied list (reads words) | small | HC4d |
-| R7 | src/sprite.c:325 | spr_geo_out vertex and triangle words (W5) | small | HC4d |
-| R8 | src/os/nusys/nugfxinit.c:75 | boot list (G_DL rdpstateinit_dl, full sync) | small | HC4d |
-| R9 | 3ds/src/nd_mtx_set.c:150-170 rec_lights; nd_walk.c:500 pm_gbi_fallback; nd_rec.c:195/285 rec_inline, nd_list | port-side builders and readers | small | HC4d |
-| R10 | src/effects/hieroglyphs.c:151 (savedGfxPos), src/effects/underwater.c:172-256, src/world/dead/area_flo/flo_10/waterfx.c:308 | position patches and local lists (D5 audit); check each is typed or dead | small | HC4d |
+| R3 | src/model.c:3418-3482 render_transform_group(_node) | gSPMatrix/gSPPopMatrix into gMainGfxPos: typed by the recorder (nd_gx_w, nd_op_xlate on core 1) | small | done (HC4d1) |
+| R4 | src/model.c:4487 mdl_local_gfx_update_vtx_pointers | copies a map shape list, rewrites G_VTX pointers (reads words); changes with the typed shape lists | small | HC4f |
+| R5 | src/animator.c:854-973 appendGfx_animator_node | copied mesh list with new vertex buffers per frame (reads static list words); changes with S1 | medium | HC4e |
+| R6 | src/imgfx.c:1252-1320 imgfx_load_anim | patches vertex pointers in a copied list (reads static list words); changes with S1 | small | HC4e |
+| R7 | src/sprite.c:325 | spr_geo_out: typed NDO_VTX and NDO_TRI2 written by the producer (W5, ND_OP_VTX_W0, ND_OP_TRI_A) | small | done (HC4d2) |
+| R8 | src/os/nusys/nugfxinit.c:75 | boot list: not in the build (3ds/CMakeLists.txt; pm_nusys.c nuGfxInitEX2 replaces it) | - | dead |
+| R9 | 3ds/src/nd_mtx_set.c rec_lights (typed, HC4d1); nd_rec.c rec_inline (NDO_MISC_LST, HC4d2), nd_rec_list (core 1 reader of custom gfx lists); nd_walk.c pm_gbi_fallback (a local g* list) | port-side builders and readers | small | rest HC4e |
+| R10 | src/effects/hieroglyphs.c:151 (savedGfxPos), src/effects/underwater.c:172-256, src/world/dead/area_flo/flo_10/waterfx.c:308 | position patches and local lists (D5 audit): local g* lists keep words until the g* forms are typed with S1 | small | HC4e |
 - Typed static lists change the pointer-typed consumers: dlc compile (nd_shape.c), ent_compile (nd_ent.c), sprite rmList, the model
   record R12 geometry pointer and ModelRenderModes (W3: then a static typed table from S1, no recorder build).
