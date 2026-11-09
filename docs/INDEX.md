@@ -43,7 +43,7 @@ Paths are from the repo root. Port code is in `3ds/`. Class E = debug only.
 - `tools/route_report.py`: per-segment table of a `route=<name>` run, and the `--compare` determinism check. Route files: `3ds/routes/*.txt`. Notes: `docs/plans/route_notes.md`. Code: `3ds/src/pm_route.c` and the route tokens in `3ds/src/pm_input.c`. Console push: `docs/plans/hw_batch.md` section 8.
 - `tools/sweep.py`, `sweep_report.py`, `sweep_sheet.py`, `sweep_gen.py`: the full sweep (cutscenes, credits; Windows and Linux; `sweep_gen.py bosstable` writes `src/pm_boss_table.h` for the Select menu Boss tab), runs ONLY on a user request. Data `3ds/sweep/sweep.txt`, code `3ds/src/pm_sweep.c` (switches `sweep=`, `sweeplist=`), notes `docs/plans/sweep_notes.md`.
 - `tools/dedup_stubs.py`: drop stubs that a real file now defines (old). `tools/c01.sh`: C01 build helper (old).
-- `tools/livelog.py`: live log over the network (TCP 17492). `tools/ftppull.py`: pull log and crash dumps over FTP (skills `pull-o`, `pull-n`).
+- `tools/livelog.py`: live log over the network (TCP 17492; `--idle` and `--owner` end it, `--alive` checks pids). `tools/ftppull.py`: pull log and crash dumps over FTP (skills `pull-o`, `pull-n`).
 - `build3ds/sheet.py`: contact sheet from shots. Other `build3ds/*.py`: sprite and shape helpers.
 
 ## Debug switches (grep `pm_debug_has` in 3ds/src)
