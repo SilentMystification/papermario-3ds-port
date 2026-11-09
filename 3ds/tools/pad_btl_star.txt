@@ -1,0 +1,11 @@
+# BTLDIM: Shooting Star from the first battle menu (kmr_03, one Goomba). The wheel opens at Jump (player turn). The wheel reads the stick
+# (BUTTON_STICK_LEFT held, btl_states_menus.c CHOOSING): left*6 moves one step to Items (order Strategies, Items, Jump). A opens the list,
+# A uses slot 0 (invitem=0x083), A confirms. wait600 = 300 frames after the scene start (the menu is up by frame 206).
+wait600,
+left*6,
+wait20,
+A,
+wait20,
+A,
+wait20,
+A

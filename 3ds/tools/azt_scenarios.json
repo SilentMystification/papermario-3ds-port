@@ -8134,6 +8134,83 @@
       "reason": "LOG5 U1 check. Cap 45 s: boot, warp and two 300-frame windows."
     },
     {
+      "name": "btldim_star",
+      "status": "unverified",
+"reason": "broken: no until in 25 s (AZT11-5, 2026-11-09)",
+      "subject": "Battle kmr_03 (one Goomba), player turn: Shooting Star from slot 0 (invitem=0x083). The btldim lines of the darken and lighten fades (the sky tint steps 0..144 and 160..0).",
+      "proves": "BTLDIM premise: the shroud fade re-uploads the sky palette each step (texture misses per fade step). Before the fix about 19 texture misses over the fades; after the GPU dim about 0.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 invitem=0x083 padscript=@pad_btl_star.txt texmisslog loglevel=debug",
+      "until": "btldim: lighten done f\\d+",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "item in slot 0",
+          "regex": "invitem: slot 0 = 0x083"
+        },
+        {
+          "name": "darken start",
+          "regex": "btldim: darken start f\\d+"
+        },
+        {
+          "name": "lighten done",
+          "regex": "btldim: lighten done f\\d+"
+        }
+      ],
+      "reason": "BTLDIM step 1 premise check (test lines only). Stream, no shots: the btldim lines carry the texture miss and KB counters per fade."
+    },
+    {
+      "name": "btldim_star_pic",
+      "status": "unverified",
+      "subject": "Battle kmr_03, Shooting Star: the sky and the stage darken step by step; Mario and the Goomba stay bright, no seams or palette noise.",
+      "proves": "BTLDIM picture gate: the GPU dim (mix stage) gives the same darkening steps as the palette lerp, with no seams.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 invitem=0x083 padscript=@pad_btl_star.txt shots shotwin=421:14:2 loglevel=debug",
+      "until": "btldim: lighten done f\\d+",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "lighten done",
+          "regex": "btldim: lighten done f\\d+"
+        }
+      ],
+      "reason": "BTLDIM picture gate. shotwin start frame is set after the step 1 run (darken start frame)."
+    },
+    {
+      "name": "btldim_star_prof",
+      "status": "unverified",
+      "subject": "Console O3DS XL, battle kmr_03, Shooting Star with prof=30 (no shots): the frame time during the fades.",
+      "proves": "BTLDIM console: the frame cost of the shroud fades (prof lines) before and after the fix.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 invitem=0x083 padscript=@pad_btl_star.txt prof=30",
+      "until": "btldim: lighten done f\\d+",
+      "cap": 60,
+      "deadline": 50,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "lighten done",
+          "regex": "btldim: lighten done f\\d+"
+        }
+      ],
+      "reason": "BTLDIM console measurement (prof mode), run by the orchestrator."
+    },
+    {
       "name": "battle_start_f182_cold",
       "status": "unverified",
       "subject": "battle_start_f182 as a cold start (-NoWarm, a new Azahar process): Battle scene, one Goomba on kmr_03, shots with det. Two cold runs must give byte-equal shots.",

@@ -2591,6 +2591,57 @@
       "gates": []
     },
     {
+      "name": "btldim_star",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BTLDIM: Shooting Star in battle. Premise: texture misses per shroud fade step (btldim lines, before the fix about 19).",
+      "scenario": "btldim_star",
+      "cap": 25,
+      "until": "btldim: lighten done f\\d+",
+      "tags": [
+        "azahar",
+        "battle",
+        "btldim"
+      ],
+      "gates": []
+    },
+    {
+      "name": "btldim_star_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BTLDIM picture gate: the sky and stage darken step by step during Shooting Star, no seams.",
+      "scenario": "btldim_star_pic",
+      "cap": 30,
+      "until": "btldim: lighten done f\\d+",
+      "tags": [
+        "azahar",
+        "battle",
+        "btldim"
+      ],
+      "gates": []
+    },
+    {
+      "name": "btldim_star_prof",
+      "kind": "console_prof",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BTLDIM console: frame cost of the Shooting Star shroud fades (prof=30, O3DS XL).",
+      "scene_match": null,
+      "recipe": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 invitem=0x083 padscript=@pad_btl_star.txt prof=30",
+      "scenario": "btldim_star_prof",
+      "host": "o3ds",
+      "cap": 60,
+      "until": "btldim: lighten done f\\d+",
+      "tags": [
+        "console",
+        "prof",
+        "btldim"
+      ],
+      "gates": []
+    },
+    {
       "name": "battle_start_f182_cold",
       "kind": "azahar_pic",
       "speed": "normal",
