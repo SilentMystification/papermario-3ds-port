@@ -601,6 +601,7 @@ extern void __real_set_game_mode(s16 mode);
 
 s16 pm_warp_hook(s16 mode);
 void pm_walk_drain(const char* why); /* nd_walk.c, CORE2-3b */
+void pm_tex_scene_begin(const char* name); /* ROOMTEX: pm_tex.c */
 void __wrap_set_game_mode(s16 mode) {
     pm_walk_drain("mode"); /* a mode change loads and frees scene data */
     mode = pm_warp_hook(mode); /* slice W01 debug switches warp, story, preset */
@@ -616,6 +617,8 @@ void __wrap_set_game_mode(s16 mode) {
             pm_gpu_shot_burst(c ? atoi(c + 1) : 60);
         }
     }
+    if (mode == GAME_MODE_BATTLE) pm_tex_scene_begin("battle"); /* ROOMTEX: scene starts at a battle start (battle.c:149) and at END_BATTLE (btl_states_actions.c:2168, :4499) */
+    else if (mode == GAME_MODE_END_BATTLE) pm_tex_scene_begin("battle end");
     if (mode == GAME_MODE_CHANGE_MAP) { pm_xfer_map_begin(); map_prefetch(); } /* MAPX-1: the fade out starts the xfer line; MAPX-4: the target's shape and hit decode on core 1 */
     if (mode == GAME_MODE_WORLD) {
         extern void pm_warp_world_mode(unsigned frame);
@@ -640,6 +643,12 @@ void __wrap_load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
     {
         extern void pm_mapdata_probe(const char* id);
         s16 pa = loadType == LOAD_FROM_MAP ? areaID : gGameStatusPtr->areaID, pmap = loadType == LOAD_FROM_MAP ? mapID : gGameStatusPtr->mapID;
+        { /* ROOMTEX: a map load is a scene start, named by its area:map ids */
+            extern void pm_tex_scene_begin(const char* name);
+            char nm[24];
+            snprintf(nm, sizeof nm, "map %d:%d", (int)pa, (int)pmap);
+            pm_tex_scene_begin(nm);
+        }
         pm_mapdata_probe(gAreas[pa].maps[pmap].id); /* slice MS01 debug switch dataprobe */
     }
     __real_load_map_by_IDs(areaID, mapID, loadType);

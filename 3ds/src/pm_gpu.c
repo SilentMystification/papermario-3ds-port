@@ -1561,7 +1561,7 @@ static void pm_gpu_init_w(void) {
     pm_con_lock();
     consoleInit(GFX_BOTTOM, &bottom_con);
     setvbuf(stdout, NULL, _IONBF, 0);
-    consoleSetWindow(&bottom_con, 1, LOG_TOP, 40, LOG_ROWS); /* BOTLAYOUT: the log window, rows 9 to 26 */
+    consoleSetWindow(&bottom_con, 1, LOG_TOP, 40, LOG_ROWS); /* BOTLAYOUT: the log window, rows 10 to 26 */
     pm_con_unlock();
     gs.gpu_ok = gs.gpu_vtx_on;
     pm_log_d("gpu %s m %d %d", gs.gpu_ok ? "ok" : "no vertex buffer",

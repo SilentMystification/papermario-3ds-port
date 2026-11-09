@@ -108,8 +108,14 @@ unsigned pm_tex_evict_n(void) { return tc_evict; } /* DET: evictions since boot,
 static unsigned gh_up_n, gh_up_t; /* TEXL2 L2a: upload ops and their ticks, per texghost window */
 static unsigned tot_same, tot_diff; /* tex_inv1: at invalidation, the source bytes equal (same) or differ from (diff) the bytes at load */
 static int tc_on = -1;
+/* ROOMTEX: texture bytes of the scene that runs now. new = bytes uploaded on a miss. kept = bytes of a slot's first hit in the scene.
+ * A slot is stamped with scene_no when it is loaded or counted, so it adds to kept once per scene. Integer adds only. */
+static unsigned short scene_no = 1, slot_scene[SLOTS];
+static unsigned scene_new_b, scene_kept_b;
+static char scene_name[24] = "boot";
+static void scene_hit(Slot* s) { unsigned short* q = &slot_scene[s - slots]; if (*q != scene_no) { *q = scene_no; scene_kept_b += s->bytes; } }
 /* Every hit (load, bind, glyph, aux, bind_slot) stamps the slot with the use counter. Eviction takes the lowest stamp. */
-#define TC_HIT(s) do { (s)->stamp = ++stamp; (s)->uses++; (s)->last_frame = tc_frame; tc_hits++; tot_hit++; } while (0)
+#define TC_HIT(s) do { (s)->stamp = ++stamp; (s)->uses++; (s)->last_frame = tc_frame; tc_hits++; tot_hit++; scene_hit(s); } while (0)
 static u8* scratch;
 static int cur = -1;
 static int aux = -1; /* S25: the second texture (TEXEL1), bound at unit 1 */
@@ -1013,6 +1019,21 @@ unsigned pm_tex_map_peak_take(unsigned* wmax) { unsigned p = map_peak; *wmax = m
 /* texmap (debug): cache counts since the previous call, at each map load: hits, misses, uploaded KB, invalidated, evicted. */
 void pm_tex_tot(unsigned* miss, unsigned* up) { *miss = tot_miss; *up = tot_up; } /* MAGI fspk: lifetime misses and uploaded bytes */
 void pm_tex_rehash_counts(unsigned* same, unsigned* diff) { *same = tot_same; *diff = tot_diff; } /* PERF2: the dirty-slot rehash totals (sprcost line) */
+/* ROOMTEX: a scene starts (map load, battle start, battle end). Logs the scene that ends, then clears the counters. */
+void pm_tex_scene_begin(const char* name) {
+    unsigned n = scene_new_b >> 10, k = scene_kept_b >> 10;
+    unsigned pct = n + k ? 100u * n / (n + k) : 0u;
+    pm_log_w("roomtex %s new %uK kept %uK new %u%%", scene_name, n, k, pct);
+    scene_no++;
+    scene_new_b = scene_kept_b = 0;
+    strncpy(scene_name, name, sizeof scene_name - 1);
+    scene_name[sizeof scene_name - 1] = 0;
+}
+/* ROOMTEX: the running scene's counters, KB (for the HUD row). pct = new share by bytes. */
+void pm_tex_scene_now(unsigned* new_kb, unsigned* kept_kb, unsigned* pct) {
+    unsigned n = scene_new_b >> 10, k = scene_kept_b >> 10;
+    *new_kb = n; *kept_kb = k; *pct = n + k ? 100u * n / (n + k) : 0u;
+}
 void pm_tex_map_delta(unsigned* o) {
     static unsigned prev[9];
     unsigned now[9] = { tot_hit, tot_miss, tot_up >> 10, tot_inval, tot_evict, tot_same, tot_diff, tot_inv_t, tot_hash_t };
@@ -1601,6 +1622,7 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
     tc_miss++;
     tot_miss++;
     tot_up += reserve;
+    slot_scene[s - slots] = scene_no; scene_new_b += reserve; /* ROOMTEX */
     { /* BTLDIM debug switch texmisslog: one line per texture miss (frame, source address, size, format, KB uploaded) */
         static int tml = -1;
         if (tml < 0) tml = pm_debug_has("texmisslog");
