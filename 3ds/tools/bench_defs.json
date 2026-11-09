@@ -539,7 +539,23 @@
       "default": false,
       "purpose": "CORE-2c yard: yard with wide and forced stereo, left eye shots 200 to 205 (yard_stereo_l). A person reads the shot.",
       "scenario": "yard_stereo_l",
-      "cap": 90,
+      "cap": 40,
+      "until": "shot \\d+ frame 20[0-5]\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "spot"
+      ],
+      "gates": []
+    },
+    {
+      "name": "yard_stereo_r_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CORE-2c yard: yard with wide and forced stereo, right eye shots 200 to 205 (yard_stereo_r). A person reads the shot.",
+      "scenario": "yard_stereo_r",
+      "cap": 40,
       "until": "shot \\d+ frame 20[0-5]\\b",
       "tags": [
         "azahar",
@@ -672,6 +688,73 @@
         "console",
         "prof",
         "spot"
+      ],
+      "gates": [],
+      "log_metrics": [
+        {
+          "name": "lg_ms",
+          "regex": "prof f\\d+ w\\d+ core2 lgms ([0-9.]+)",
+          "pick": "first"
+        },
+        {
+          "name": "wwait_ms",
+          "regex": "prof f\\d+ w\\d+ core2 .*? wwait ([0-9.]+)",
+          "pick": "first"
+        },
+        {
+          "name": "ser_n",
+          "regex": "prof f\\d+ w\\d+ core2 .*? ser (\\d+)",
+          "pick": "first"
+        },
+        {
+          "name": "kf",
+          "regex": "prof f\\d+ w\\d+ core2 .*? kf (\\d+)",
+          "pick": "first"
+        },
+        {
+          "name": "bw_ms",
+          "regex": "prof f\\d+ w\\d+ core2 wait .*? bw ([0-9.]+)",
+          "pick": "first"
+        },
+        {
+          "name": "fw_ms",
+          "regex": "prof f\\d+ w\\d+ core2 wait .*? fw ([0-9.]+)",
+          "pick": "first"
+        },
+        {
+          "name": "aj_ms",
+          "regex": "prof f\\d+ w\\d+ core2 wait .*? aj ([0-9.]+)",
+          "pick": "first"
+        },
+        {
+          "name": "au_ms",
+          "regex": "prof f\\d+ w\\d+ core2 wait .*? au ([0-9.]+)",
+          "pick": "first"
+        },
+        {
+          "name": "mx_ms",
+          "regex": "prof f\\d+ w\\d+ core2 wait .*? mx ([0-9.]+)",
+          "pick": "first"
+        }
+      ]
+    },
+    {
+      "name": "spot_mac01_stereo_prof",
+      "kind": "console_prof",
+      "speed": "normal",
+      "default": false,
+      "purpose": "STEREO: spot_mac01_prof with forced stereo (3D slider 1). Console prof mode (O3DS 192.168.1.170): stereo frame cost at the spot; eye2 = ms of the right eye pass per sampled frame. Compare with spot_mac01_prof.",
+      "scene_match": null,
+      "recipe": "warp=mac_01:0 pos=0:0:200 prof=30 stereo",
+      "scenario": null,
+      "host": "o3ds",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ fps",
+      "tags": [
+        "console",
+        "prof",
+        "spot",
+        "stereo"
       ],
       "gates": [],
       "log_metrics": [
@@ -2481,6 +2564,40 @@
         "azahar",
         "det",
         "cold"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_mac01_stereo_det_l",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "STEREO gate: spot_mac01_det with forced stereo, left eye shots 200 to 205. Two runs of one build byte-equal; S2 byte-equal to the S1 build. A person reads the shot.",
+      "scenario": "spot_mac01_stereo_det_l",
+      "cap": 35,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "stereo"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_mac01_stereo_det_r",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "STEREO gate: spot_mac01_det with forced stereo, right eye shots 200 to 205. Two runs of one build byte-equal; S2 byte-equal to the S1 build. A person reads the shot.",
+      "scenario": "spot_mac01_stereo_det_r",
+      "cap": 35,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "stereo"
       ],
       "gates": []
     },
@@ -5136,8 +5253,6 @@
       "yard_shot_rp",
       "nok11_splash",
       "yard_wide",
-      "yard_stereo_l",
-      "yard_stereo_r",
       "mac01_sp0",
       "mac01_walk",
       "mac01_walkshots",
