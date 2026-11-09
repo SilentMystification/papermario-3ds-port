@@ -90,7 +90,7 @@ extern s32 pm_wide_cam(Camera* c);
 static s32 bg_zoom;
 #ifdef TARGET_3DS
 /* DOORSKY: set while a fully shrouded sky (fogA 255: every palette entry is black) is drawn. Each sky rectangle becomes a
- * fill of the same pixels: the 296 x 200 CI8 sky with an all-black palette was a new 313 KB texture on the first map entry. */
+ * fill of the same pixels: the 296 x 200 CI8 sky with an all-black palette was a new full-size sky texture on the first map entry (xfer2 tex 313 -> 57 KB). */
 static s32 bg_fill;
 /* BG1/BG2 oracle plan 2, fix 2: floor division by 5 (C division rounds toward zero, which moved the negative zoomed edges). */
 static s32 fdiv5(s32 v) { return v >= 0 ? v / 5 : -((-v + 4) / 5); }
