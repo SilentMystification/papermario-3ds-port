@@ -12704,6 +12704,54 @@
         }
       ],
       "reason": "CHEATSAVE2 Copy File gate: the destination slot gets the cheat file of the source slot. Needs slot 0 with save data in the azslot save.flash."
+    },
+    {
+      "name": "lstcen_mac00_det",
+      "status": "unverified",
+      "subject": "mac_00 (toad preset) field, det, frame 90: lstcen table.",
+      "proves": "DIRECT D11: the lists that still run on the op executor as N64 words (kind, runs, ops, ent key state) per list address in one frame.",
+      "debug": "preset=toad lstcen=90 loglevel=debug det",
+      "until": "lstcen f\\d+ done",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "lstcen done",
+          "regex": "lstcen f\\d+ done"
+        }
+      ],
+      "reason": "DIRECT D11: names the list producers left (render mode lists, refused G_DL targets, static custom lists, fallback words) before the compile slice."
+    },
+    {
+      "name": "lstcen_btl_det",
+      "status": "unverified",
+      "subject": "Battle on kmr_03 (one Goomba), det, frame 170: lstcen table.",
+      "proves": "DIRECT D11: the lists that still run on the op executor as N64 words (kind, runs, ops, ent key state) per list address in one frame.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 lstcen=170 loglevel=debug det",
+      "until": "lstcen f\\d+ done",
+      "cap": 40,
+      "deadline": 30,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "lstcen done",
+          "regex": "lstcen f\\d+ done"
+        }
+      ],
+      "reason": "DIRECT D11: names the list producers left (render mode lists, refused G_DL targets, static custom lists, fallback words) before the compile slice."
     }
   ]
 }

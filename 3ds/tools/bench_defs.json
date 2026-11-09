@@ -6742,6 +6742,38 @@
         "menuwarp"
       ],
       "gates": []
+    },
+    {
+      "name": "lstcen_mac00_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "DIRECT D11: lists still run as N64 words on the op executor, per address (lstcen table).",
+      "scenario": "lstcen_mac00_det",
+      "cap": 30,
+      "until": "lstcen f\\d+ done",
+      "tags": [
+        "azahar",
+        "det",
+        "lstcen"
+      ],
+      "gates": []
+    },
+    {
+      "name": "lstcen_btl_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "DIRECT D11: lists still run as N64 words on the op executor, per address (lstcen table).",
+      "scenario": "lstcen_btl_det",
+      "cap": 40,
+      "until": "lstcen f\\d+ done",
+      "tags": [
+        "azahar",
+        "det",
+        "lstcen"
+      ],
+      "gates": []
     }
   ],
   "legacy": {
