@@ -10,7 +10,10 @@ The user reports are the faults; if Azahar does not show them, hand back with yo
 Floor: no pattern ("random"), any mim room. Cull: when the camera turns right, items on the LEFT side vanish (while still on screen).
 Azahar (agent, base f8a962bac): not shown; cull plane signs (nd_shape.c:277-292) and cull_cross (nd_geom.c:53-59) correct by code.
 Diagnostics merged 8bc6b761f (wzcull, dlcwz line); the dlcwz line never printed on mim_01, so the range cull may not be the path.
-Open idea (orchestrator): in widescreen the visible width is 1.25x the 4:3 frustum; a cull that uses 4:3 planes or the game's own
+User (2026-11-09): plays in Widescreen, 60 FPS OFF. Oracle: the game bounds cull (model.c:3149-3290, wsCullX 1.25, wide aspect in
+mtxPerspective) and the port range culls are symmetric; the 60 FPS interpolation cause is ruled out at 30 FPS. Next suspect: a stale
+`combined` for IGNORE_MATRIX records at the native hit (pm_gpu.c:3160 model_vis_same, :3286 empty entry): the vis mask uses the
+walker matrix left by the previous task. Old idea (orchestrator): in widescreen the visible width is 1.25x the 4:3 frustum; a cull that uses 4:3 planes or the game's own
 4:3 visibility test drops items at the screen edges that only wide mode shows. Check whether the user plays in Widescreen.
 
 ## Floor (shared oracle, code read)
