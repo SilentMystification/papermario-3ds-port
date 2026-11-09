@@ -1,4 +1,3 @@
-#define ND_GBI_WORDS /* DIRECT D5: this file keeps list words (inline data, lists for later or list position tests) */
 #include "common.h"
 #include "entity.h"
 #ifdef TARGET_3DS
@@ -247,13 +246,12 @@ void make_entity_model_mtx_flipZ(Matrix4f mtx) {
 }
 
 #ifdef TARGET_3DS
-/* S6-1 entcheck (debug switch): the entity record (G_PM_ENT, written by appendGfx_entity_model) against the words the walker emitted for the same
- * draw. Fields: 1 matrix op (the matrixStack entry), 2 vertex segment (0 when the model has no vertex array), 3 model display list, 4 render mode list.
- * Counts are cumulative. One line per 300 frames: entcheck f<frame> recs <n> eq <n> diff <n> dfield <field of this draw, 0 equal>. */
+/* S6-1 entcheck (debug switch): a census of the entity draw records (DIRECT D6: the draw is stream commands, so the record is no longer compared
+ * with list words). One line per 300 frames: entcheck f<frame> recs <n>, then the entcls and ndobj lines. */
 extern int pm_debug_has(const char* key);
 extern unsigned pm_frame_count(void);
 extern void pm_log_prof_line(const char* fmt, ...);
-static unsigned ent_recs_n, ent_eq_n, ent_diff_n, ent_next = 300u, ent_dfc[5], ent_cls[8];
+static unsigned ent_recs_n, ent_next = 300u, ent_cls[8];
 static int entcheck_on(void) { static int on = -1; if (on < 0) on = pm_debug_has("entcheck"); return on; }
 /* S6-2b: vertex segment static check. A draw with a vertex array (B and D) is keyed by (list, array). The bytes the list reads through its vertex segment
  * (the G_VTX ranges, off + n * 16) are hashed once per frame. Equal on two frames: static. A change later makes the key dynamic (sticky). Table of 64 keys. */
@@ -293,23 +291,10 @@ static void entcheck_vtxseg(const EntityModel* model, unsigned f) {
     }
     ent_vs_draw[ent_vk[i].st]++;
 }
-static void entcheck_draw(const Gfx* rec, const Gfx* words, const EntityModel* model) { /* words: the first list word of the draw. DIRECT D3: the model list G_DL is in the frame stream */
-    Gfx e[2] = { { { 0, 0 } } }; /* e[1] stays zero when the model has no vertexArray */
-    const Gfx* p;
-    int mtxOk = 0, segOk = model->vertexArray == nullptr, dlOk = 1, rmOk = rec[3].words.w1 == 0;
-    unsigned df = 0, f;
+static void entcheck_draw(const Gfx* rec, const EntityModel* model) { /* DIRECT D6: the draw is stream commands (no list words to compare with the record) */
+    unsigned f;
     if (!entcheck_on()) return;
-    gSPMatrix(&e[0], (Mtx*)(uintptr_t)rec[2].words.w1, G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    if (model->vertexArray != nullptr) gSPSegment(&e[1], D_80154374, VIRTUAL_TO_PHYSICAL(model->vertexArray));
-    for (p = words; p < gMainGfxPos; p++) {
-        if (!mtxOk && p->words.w0 == e[0].words.w0 && p->words.w1 == e[0].words.w1) mtxOk = 1;
-        if (!segOk && p->words.w0 == e[1].words.w0 && p->words.w1 == e[1].words.w1) segOk = 1;
-        if (!dlOk && p->words.w1 == (u32)(uintptr_t)model->gfx.displayList && (p->words.w0 >> 24) == (u32)G_DL) dlOk = 1;
-        if (!rmOk && p->words.w1 == rec[3].words.w1 && (p->words.w0 >> 24) == (u32)G_DL) rmOk = 1;
-    }
-    if (!mtxOk) df = 1; else if (!segOk) df = 2; else if (!dlOk) df = 3; else if (!rmOk) df = 4;
     ent_recs_n++;
-    if (df) { ent_diff_n++; ent_dfc[df]++; } else ent_eq_n++;
     { /* S6-2 census (diagnostic): why the draw cannot be native yet. Priority: vertex segment, fog, reflect, texture op, nested list, other op, static. */
         const Gfx* q = model->gfx.displayList;
         unsigned dlm = 0, cls = 0;
@@ -338,8 +323,7 @@ static void entcheck_draw(const Gfx* rec, const Gfx* words, const EntityModel* m
         unsigned ks = 0, kd = 0;
         for (unsigned k = 0; k < ent_vk_n; k++) { if (ent_vk[k].st == 1) ks++; else if (ent_vk[k].st == 2) kd++; }
         ent_next = (f / 300u + 1u) * 300u;
-        pm_log_prof_line("entcheck f%u recs %u eq %u diff %u dfield %u", f, ent_recs_n, ent_eq_n, ent_diff_n, df);
-        pm_log_prof_line("entdf f%u by field: 1 %u 2 %u 3 %u 4 %u", f, ent_dfc[1], ent_dfc[2], ent_dfc[3], ent_dfc[4]);
+        pm_log_prof_line("entcheck f%u recs %u", f, ent_recs_n);
         pm_log_prof_line("entcls f%u static %u vtxseg %u fog %u reflect %u tex %u nested %u other %u texok %u", f, ent_cls[0], ent_cls[1], ent_cls[2], ent_cls[3], ent_cls[4], ent_cls[5], ent_cls[6], ent_cls[7]);
         pm_log_prof_line("ndobj f%u vtx draws static %u dyn %u new %u keys static %u dyn %u ovf %u", f, ent_vs_draw[1], ent_vs_draw[2], ent_vs_draw[0], ks, kd, ent_vs_ovf);
     }
@@ -354,7 +338,6 @@ void appendGfx_entity_model(EntityModel* model) {
 #ifdef TARGET_3DS
     Gfx* entRec = nullptr; /* S6-1: entity record (G_PM_ENT) of a model draw, 4 words, see gbi_custom.h. DIRECT D3: a local record (the walker reads only the draw record) */
     Gfx entBuf[G_PM_ENT_WORDS];
-    Gfx* entWords = gMainGfxPos; /* the first list word of this draw (entcheck) */
 #endif
 
 #ifdef TARGET_3DS
@@ -383,9 +366,6 @@ void appendGfx_entity_model(EntityModel* model) {
                 gSPSetOtherMode(gMainGfxPos++, G_SETOTHERMODE_H, G_MDSFT_ALPHADITHER, 18, G_AD_DISABLE | G_CD_DISABLE | G_CK_NONE | G_TC_FILT | G_TF_POINT | G_TT_NONE | G_TL_TILE | G_TD_CLAMP | G_TP_NONE | G_CYC_1CYCLE);
             }
 
-#ifdef TARGET_3DS
-            Gfx* rm_first = gMainGfxPos; /* DLF4: a render mode list of one G_DL word (ST-4: a G_DL op) */
-#endif
             switch (entity_fog_enabled && !(model->flags & ENTITY_MODEL_FLAG_FOG_DISABLED)) {
                 case false:
                     switch (model->renderMode) {
@@ -471,9 +451,6 @@ void appendGfx_entity_model(EntityModel* model) {
                     gSPFogPosition(gMainGfxPos++, entity_fog_dist_min, entity_fog_dist_max);
                     break;
             }
-#ifdef TARGET_3DS
-            if (entRec != nullptr && gMainGfxPos > rm_first && rm_first->words.w0 == (u32)G_DL << 24) entRec[3].words.w1 = rm_first->words.w1; /* S6-1 record: the render mode list */
-#endif
             gSPClearGeometryMode(gMainGfxPos++, G_LIGHTING);
             if (!entity_fog_enabled || (model->flags & ENTITY_MODEL_FLAG_FOG_DISABLED)) {
                 if (model->renderMode != RENDER_MODE_SHADOW) {
@@ -521,7 +498,7 @@ void appendGfx_entity_model(EntityModel* model) {
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         gDPPipeSync(gMainGfxPos++);
 #ifdef TARGET_3DS
-        if (entRec != nullptr) entcheck_draw(entRec, entWords, model);
+        if (entRec != nullptr) entcheck_draw(entRec, model);
 #endif
 
         if (!(model->flags & ENTITY_MODEL_FLAG_REFLECT)) {
