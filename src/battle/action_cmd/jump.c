@@ -1,10 +1,6 @@
 #include "common.h"
 #include "battle/action_cmd.h"
 
-#ifdef TARGET_3DS
-int pm_cheat_action_on(void); /* Perfect action commands cheat (3ds/src/pm_dbg_game.c) */
-#endif
-
 #define NAMESPACE action_command_jump
 
 extern s32 actionCmdTableJump[];
@@ -118,11 +114,7 @@ void N(update)(void) {
             if (acs->autoSucceed) {
                 hid = acs->hudElemIDs[HIDX_RIGHT_ON];
                 hud_element_set_render_pos(hid, acs->hudPosX + 50, acs->hudPosY);
-                if (acs->showHud
-#ifdef TARGET_3DS
-                    && !pm_cheat_action_on() /* the Right On! art is Japanese in every ROM (unused debug badge): the cheat keeps the A prompt only */
-#endif
-                ) {
+                if (acs->showHud) {
                     hud_element_clear_flags(hid, HUD_ELEMENT_FLAG_DISABLED);
                 }
             }
