@@ -1,4 +1,4 @@
-# Row MENUWARP: a warp or boss launch from the Select menu during a battle closes the menu itself
+# Row MENUWARP: battle warp closes the Select menu; Toad Town Tunnels after Toad Town in Warp area
 
 ## User facts
 User (2026-11-09): "when warping in a battle, it says ending the battle then warp. I need to close the menu for the warp to happen. the
@@ -18,6 +18,9 @@ close the menu).
    caller, or call pm_menu_set(0) at the point the normal warp path does; read which one the normal warp uses and use the same).
    The message stays visible as a footer/toast after the close if the existing message path supports it; else log only.
 2. Same for the boss launch (kind 2) and the pause-mode case (GAME_MODE_PAUSE -> UNPAUSE).
+
+3. (user, 2026-11-09) Warp area order: move "Toad Town Tunnels" directly after "Toad Town" in the story_area[] order table
+   (pm_warp.c, STORYMENU). Gate: one shot of the Warp area level 1 page with Toad Town Tunnels after Toad Town.
 
 ## Done criteria
 nd_host PASS; memcheck OK; Azahar: a battle (battle switch), open the Select menu, Warp area > a map, A: the menu closes, the log shows
