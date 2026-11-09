@@ -1023,6 +1023,20 @@ static __attribute__((cold, noinline)) void orb_log(const char* path, int z, int
                pm_frame_count(), ot_, nd_ws.segbase[9], (nd_ws.omode_h >> 20) & 3u, nd_ws.td[0].valid, nd_ws.td[0].fmt, nd_ws.td[0].siz,
                nd_ws.td[0].w, nd_ws.td[0].h, nd_ws.comb_w0, nd_ws.comb_w1, i8_1, n_splits, grab_n);
     }
+    if (ot_ == 6u && gs.combine == 8) { /* SBLK2 blend check (shimmer, tag 6): the TEV stages as sent, the blend the port sets, the N64 blender */
+        const unsigned m = nd_ws.omode_l;
+        pm_log("shimblend f%u r_blend %d off %d one_zero %d N64 cyc %u omode_l %08x c2 m1a %u m1b %u m2a %u m2b %u env %08x prim %08x",
+               pm_frame_count(), gs.r_blend, gs.off_active, !gs.r_blend, (nd_ws.omode_h >> 20) & 3u, m, (m >> 28) & 3u, (m >> 24) & 3u,
+               (m >> 20) & 3u, (m >> 16) & 3u, nd_ws.envc, nd_ws.prim);
+        for (int k = 0; k < gs.plan.n && k < 3; k++) {
+            const PmTevCh* c = &gs.plan.st[k].g[0];
+            const PmTevCh* a = &gs.plan.st[k].g[1];
+            pm_log("shimblend st%d rgb src %u %u %u op %u %u %u f%u sc%u | a src %u %u %u op %u %u %u f%u sc%u | cn %u k %08x",
+                   k, c->src[0], c->src[1], c->src[2], c->op[0], c->op[1], c->op[2], c->func, c->scale,
+                   a->src[0], a->src[1], a->src[2], a->op[0], a->op[1], a->op[2], a->func, a->scale,
+                   gs.plan.st[k].cname, gs.plan.st[k].constant);
+        }
+    }
 }
 /* PERF1-6: C3Di_UpdateContext writes nothing when (objdump of libcitro3d.a, this devkitPro): no flag it tests is set in the context word at +32 (frame buffer,
  * viewport, scissor, program, attribute and buffer info, effect, texture units, texture status, proc tex, texenv buffer, gas, texenvs, light env), no light
