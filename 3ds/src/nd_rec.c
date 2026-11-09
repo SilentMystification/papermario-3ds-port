@@ -20,6 +20,7 @@ void nd_walk_spr(const Gfx* q);                 /* nd_walk.c: a sprite record an
 void nd_walk_ent(const Gfx* q, unsigned words); /* nd_walk.c: an entity record (and its G_DL) */
 void nd_tex4_run(const uint32_t* p);            /* nd_tex_set.c: a compound texture load */
 void nd_texrect_run(const uint32_t* p);         /* nd_tex_set.c: a texture rectangle */
+void nd_walk_state(const uint32_t* q, unsigned n); /* nd_walk.c: a run of state ops */
 int nd_rec_sub;
 
 #define CH_WORDS (32768u / 4u)
@@ -34,6 +35,9 @@ static uint32_t* first_list; /* the first NDC_LIST of the open task (its start i
 static Gfx* cut;           /* the end of the last span (NULL: the task list base, not known before close) */
 static unsigned hw_units;  /* PROF: the most 4-byte words of one context stream (the high-water mark) */
 static unsigned ndc_n[NDC_N]; /* PROF: commands recorded per op (relaxed counters: the logic writes, the prof report reads) */
+static unsigned ndc_sw;      /* PROF: state ops recorded (NDC_STATE units) */
+static uint32_t* st_hdr;     /* D4b-3: the header of the open NDC_STATE run (rec_take clears it: any other record closes the run) */
+static uint32_t* st_end;
 
 static __attribute__((cold, noinline)) uint32_t* ch_get(NdChain* c, unsigned i) {
     if (i >= CH_MAX) { pm_log_e("ndc: stream over %u chunks", CH_MAX); pm_fatal_stop("ndc: frame stream full"); }
@@ -56,9 +60,11 @@ static void rec_ctx_check(void) {
     rec_ctx = x;
     ch_enter(&chain[x], 0);
     task_head = NULL;
+    st_hdr = NULL;
 }
 /* Room for n words (header and payload): else the chunk ends with NDC_JUMP to the next one. */
 static uint32_t* rec_take(unsigned n) {
+    st_hdr = NULL; /* any record closes the open state run (nd_rec_state reopens its own) */
     if (wp + n > wend) {
         NdChain* c = &chain[rec_ctx];
         uint32_t* j = wp;
@@ -247,6 +253,39 @@ void nd_gx_scisrect(Gfx* g, int xl, int yl, int xh, int yh, unsigned tile, int s
     if (nd_rec_sub) { memcpy(gMainGfxPos, r, sizeof r); gMainGfxPos += 3; return; }
     nd_rec_texrect(r[0].words.w0, r[0].words.w1, r[1].words.w1, r[2].words.w1);
 }
+/* D4b-3: a state op extends the open NDC_STATE run when nothing was recorded after it (no span, no other command) and the chunk has room;
+ * else it opens a new run. */
+void nd_rec_state(uint32_t w0, uint32_t w1) {
+    nd_rec_cut();
+    ndc_sw++;
+    uint32_t* h = st_hdr;
+    if (h && wp == st_end && ((h[0] >> 16) & 0xffu) < 255u && wp + 2u <= wend) {
+        h[0] += 1u << 16;
+        uint32_t* p = rec_take(2);
+        p[0] = w0;
+        p[1] = w1;
+        st_hdr = h;
+        st_end = wp;
+        return;
+    }
+    uint32_t* p = rec_take(4);
+    ndc_n[NDC_STATE]++;
+    p[0] = NDC_HDR(NDC_STATE, 1, 0);
+    p[1] = 0;
+    p[2] = w0;
+    p[3] = w1;
+    st_hdr = p;
+    st_end = wp;
+}
+/* D4b-3: the nd_gbi_tex.h redirect of the single-word state macros. The packet gMainGfxPos++ is taken back and the op recorded; the RDP syncs
+ * are dropped (the walker skips them: g1_skip). Any other packet (a local list) and a list for later (nd_rec_sub > 0) keep the word. */
+void nd_gx_w(Gfx* g, uint32_t w0, uint32_t w1) {
+    if (g != gMainGfxPos - 1 || nd_rec_sub) { g->words.w0 = w0; g->words.w1 = w1; return; }
+    gMainGfxPos = g;
+    unsigned op = w0 >> 24;
+    if (op == G_RDPPIPESYNC || op == G_RDPTILESYNC || op == G_RDPLOADSYNC || op == G_RDPFULLSYNC || op == G_SPNOOP) return;
+    nd_rec_state(w0, w1);
+}
 const uint32_t* nd_rec_pos(void) { return wp; }
 const uint32_t* nd_rec_mark(void) {
     nd_rec_cut();
@@ -286,9 +325,10 @@ const uint32_t* nd_rec_close(const void* list, unsigned nbytes) {
     return h;
 }
 /* PROF: the commands per op since the last take, and the stream high-water mark in KB (pm_phase.c ndc line). */
-void nd_rec_cnt_take(unsigned o[NDC_N], unsigned* kb) {
-    static unsigned last[NDC_N];
+void nd_rec_cnt_take(unsigned o[NDC_N], unsigned* sw, unsigned* kb) {
+    static unsigned last[NDC_N], last_sw;
     for (unsigned i = 0; i < NDC_N; i++) { unsigned v = ndc_n[i]; o[i] = v - last[i]; last[i] = v; }
+    { unsigned v = ndc_sw; *sw = v - last_sw; last_sw = v; }
     *kb = (hw_units * 4u + 1023u) >> 10;
 }
 
@@ -314,6 +354,7 @@ static void stream_run(const uint32_t* p, const uint32_t* stop) {
         case NDC_ENT: nd_walk_ent((const Gfx*)(p + 2), (h >> 16) & 0xffu); break;
         case NDC_TEX4: nd_tex4_run(p); break;
         case NDC_TEXRECT: nd_texrect_run(p); break;
+        case NDC_STATE: nd_walk_state(p + 2, (h >> 16) & 0xffu); break;
         case NDC_CALL: stream_run((const uint32_t*)(uintptr_t)p[1], (const uint32_t*)(uintptr_t)p[2]); break;
         default: run_bad(h, p); return;
         }

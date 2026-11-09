@@ -20,6 +20,8 @@ enum {
                     * bit 1: the 4 bit load, bit 2: its tile form (else block), bit 3: the load is gDPLoadTextureTile of size unit 2 word 1. arg2 = the raster; unit 0: palette, width | height << 16; unit 1: uls | ult << 16,
                     * lrs | lrt << 16 (texels); unit 2 word 0: fmt | cms << 4 | cmt << 6 | masks << 8 | maskt << 12 | shifts << 16 | shiftt << 20 | tile palette << 24 | palette slot << 28 */
     NDC_TEXRECT = 8, /* D4b-1: gSPTextureRectangle; payload unit 0: w0, w1; unit 1: the RDPHALF_1 and RDPHALF_2 words (s t, dsdx dtdy) */
+    NDC_STATE = 9,   /* D4b-3: a run of state ops (othermode, combine, colours, geometry mode, texture, scissor, fill rectangle, tile and image ops); payload: one unit
+                      * per op (its w0, w1). The replay runs each op with the walker's per-op rules (g2_same and g2_note, gv_epoch, the op handler). */
     NDC_N
 };
 #define NDC_HDR(op, units, arg) (((uint32_t)(op) << 24) | ((uint32_t)(units) << 16) | ((uint32_t)(arg) & 0xffffu))
@@ -36,6 +38,7 @@ void nd_rec_ent(const void* rec);                   /* D3: an entity record with
 typedef struct NdTex4 { const void* raster; const void* pal; uint32_t flags, wh, ul, lr, f, siz; } NdTex4; /* the NDC_TEX4 fields (arg, arg2, units) */
 void nd_rec_tex4(const NdTex4* t);
 void nd_rec_texrect(uint32_t w0, uint32_t w1, uint32_t hs, uint32_t hd);
+void nd_rec_state(uint32_t w0, uint32_t w1); /* D4b-3: one state op, appended to the open NDC_STATE run (a new run after any other command) */
 const uint32_t* nd_rec_pos(void);                   /* D4b-2: the stream write position (no cut): moves when any command is recorded */
 const uint32_t* nd_rec_mark(void);                  /* D1: cut, then the stream position (a range start or end) */
 void nd_rec_call(const uint32_t* a, const uint32_t* b); /* D1: replay the range [a, b) here */
@@ -43,7 +46,7 @@ void nd_rec_call(const uint32_t* a, const uint32_t* b); /* D1: replay the range 
 extern int nd_rec_sub;
 #define ND_REC_SUB(call) do { nd_rec_sub++; call; nd_rec_sub--; } while (0)
 #define ND_REC_AUX_MAX 96 /* the most R13 words of one model record (make_texture_gfx with mipmaps and two palettes) */
-void nd_rec_cnt_take(unsigned o[NDC_N], unsigned* kb); /* PROF: commands per op since the last take; the stream high-water mark (KB) */
+void nd_rec_cnt_take(unsigned o[NDC_N], unsigned* sw, unsigned* kb); /* PROF: commands per op and state ops (sw) since the last take; the stream high-water mark (KB) */
 /* Walker side (nd_rec.c). */
 void nd_stream_run(const uint32_t* head); /* replay one task stream */
 #endif
