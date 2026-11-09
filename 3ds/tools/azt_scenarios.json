@@ -9850,6 +9850,27 @@
       "reason": "CORE2-2 premise check of the walker thread (plan_core2.md). Log only: the c2haz lines are the subject; the picture is the det scene of the base scenario."
     },
     {
+      "name": "c2haz_mac01_thr",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at 0 0 200 walking right then left (padscript), no det (the logic thread runs, CORE2C-3), census switch c2haz. 240 checked frames.",
+      "proves": "CORE2C-3: with the logic thread, the census of walker-read game memory rewritten before the next walk (c2haz new lines at steady state), the c2own lines (an owned entry run on the logic thread), and the logic thread line (logic: thread on core).",
+      "debug": "warp=mac_01:0 pos=0:0:200 padscript=wait60,RIGHT*60,LEFT*60 loglevel=debug c2haz c2own shots shotwin=200:6",
+      "extra": [],
+      "until": "c2haz sum f\\d+ frames 240 ",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "census sum",
+          "regex": "c2haz sum f\\d+ frames"
+        }
+      ],
+      "reason": "CORE2C-3 gate: the threaded path (det runs serial). Log only for the census; the mac_01 variant also shoots frames 200 to 205."
+    },
+    {
       "name": "c2haz_battle",
       "status": "unverified",
       "subject": "Battle, one Goomba on kmr_03 (battle switch), det, census switch c2haz, to the first census sum after the battle start.",
@@ -9869,6 +9890,27 @@
         }
       ],
       "reason": "CORE2-2 premise check of the walker thread (plan_core2.md). Log only: the c2haz lines are the subject; the picture is the det scene of the base scenario."
+    },
+    {
+      "name": "c2haz_battle_thr",
+      "status": "unverified",
+      "subject": "Battle, one Goomba on kmr_03 (battle switch), no det (the logic thread runs, CORE2C-3), census switch c2haz, to the first census sum after the battle start.",
+      "proves": "CORE2C-3: with the logic thread, the census of walker-read game memory rewritten before the next walk (c2haz new lines at steady state), the c2own lines (an owned entry run on the logic thread), and the logic thread line (logic: thread on core).",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 loglevel=debug c2haz c2own",
+      "extra": [],
+      "until": "c2haz sum f\\d+ frames 240 ",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "census sum",
+          "regex": "c2haz sum f\\d+ frames"
+        }
+      ],
+      "reason": "CORE2C-3 gate: the threaded path (det runs serial). Log only for the census; the mac_01 variant also shoots frames 200 to 205."
     },
     {
       "name": "c2haz_nok11",

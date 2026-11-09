@@ -656,7 +656,24 @@
         "prof",
         "spot"
       ],
-      "gates": []
+      "gates": [],
+      "log_metrics": [
+        {
+          "name": "lg_ms",
+          "regex": "prof f\\d+ w\\d+ core2 lgms ([0-9.]+)",
+          "pick": "first"
+        },
+        {
+          "name": "wwait_ms",
+          "regex": "prof f\\d+ w\\d+ core2 .*? wwait ([0-9.]+)",
+          "pick": "first"
+        },
+        {
+          "name": "ser_n",
+          "regex": "prof f\\d+ w\\d+ core2 .*? ser (\\d+)",
+          "pick": "first"
+        }
+      ]
     },
     {
       "name": "c1probe_o3ds",
@@ -3520,6 +3537,22 @@
       "gates": []
     },
     {
+      "name": "c2haz_mac01_thr",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CORE2-2 census (switch c2haz): walker-read game memory the game rewrites before the next walk. Toad Town mac_01, Mario at 0 0 200 walking right then left (padscript), no det (logic thread, CORE2C-3), census switch c2haz. 240 checked frames.",
+      "scenario": "c2haz_mac01_thr",
+      "cap": 35,
+      "until": "c2haz sum f\\d+ frames 240 ",
+      "tags": [
+        "azahar",
+        "thread",
+        "core2"
+      ],
+      "gates": []
+    },
+    {
       "name": "c2haz_battle",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -3531,6 +3564,22 @@
       "tags": [
         "azahar",
         "det",
+        "core2"
+      ],
+      "gates": []
+    },
+    {
+      "name": "c2haz_battle_thr",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CORE2-2 census (switch c2haz): walker-read game memory the game rewrites before the next walk. Battle, one Goomba on kmr_03 (battle switch), no det (logic thread, CORE2C-3), census switch c2haz, to the first census sum after the battle start.",
+      "scenario": "c2haz_battle_thr",
+      "cap": 45,
+      "until": "c2haz sum f\\d+ frames 240 ",
+      "tags": [
+        "azahar",
+        "thread",
         "core2"
       ],
       "gates": []

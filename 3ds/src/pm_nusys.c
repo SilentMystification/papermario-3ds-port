@@ -181,12 +181,15 @@ int pm_interp_key_draw(void) {
 
 /* FS1: the same call with gfxTaskNum 3. gfxRetrace_Callback (src/main.c) then runs step_game_loop and skips gfx_task_background and gfx_draw_frame,
  * as it does on the N64 when 3 graphics tasks are pending. It sets D_80073E08 for the game. */
-void pm_gfx_retrace_skip(void) {
-    if (display_on && gfx_func) gfx_func(3);
+extern s16 D_80073E0A;
+/* CORE2C-3: the frame loop decides the next pass from the retrace flag. gfxRetrace_Callback flips it first (src/main.c; the reset branch
+ * never runs on the 3DS: nuGfxPreNMIFuncSet keeps no callback), so the value after this call is known before the step runs. */
+static void retrace_call(s32 n) {
+    int on = display_on && gfx_func;
+    pm_lg_publish_d(on ? !D_80073E0A : D_80073E0A != 0);
+    if (on) gfx_func(n);
     pm_gfx_bg_flush();
 }
+void pm_gfx_retrace_skip(void) { retrace_call(3); }
 
-void pm_gfx_retrace(void) {
-    if (display_on && gfx_func) gfx_func(0);
-    pm_gfx_bg_flush();
-}
+void pm_gfx_retrace(void) { retrace_call(0); }

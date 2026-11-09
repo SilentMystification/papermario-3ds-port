@@ -128,7 +128,25 @@ void pm_wq_frame(const PmFrame* f); /* the game side: queue one frame (waits whi
 void pm_frame_walk(const PmFrame* f); /* pm_nusys.c, walker side: walk the tasks of one frame */
 extern void* pm_walk_cfb; /* the colour buffer of the frame the walker draws (pm_main.c) */
 void pm_walk_own(const char* fn);
-#define PM_WALK_OWN() do { if (pm_c2own > 0 && !pm_walk_side) pm_walk_own(__func__); } while (0)
+int pm_wq_on_logic(void); /* nd_wq.c: the caller runs on the logic thread */
+#define PM_WALK_OWN() do { if (pm_c2own > 0 && (!pm_walk_side || pm_wq_on_logic())) pm_walk_own(__func__); } while (0)
+/* CORE2C-3: the logic thread (pm_logic.c). The frame loop hands one command per pass: LG_IDLE (the retrace call of an idle pass),
+ * LG_STEP (a drawn step: frame begin, step_game_loop and the list build, audio, frame end, the step tail), LG_SKIP (an FS1 skipped step).
+ * pad: the pad state of the pass (pm_input.c pm_pad_latch), read by the game once per step. frame: the frame number after the step. */
+typedef struct { unsigned short held, down, press; signed char x, y; } PmPad;
+enum { LG_IDLE, LG_STEP, LG_SKIP };
+typedef struct { unsigned kind, frame; void* cfb; PmPad pad; } LgCmd;
+void pm_lg_start(void); /* frame loop start: the logic thread (none: serial only) */
+void pm_lg_stop(void); /* frame loop end */
+void pm_lg_hand(const LgCmd* c, int serial); /* run the command: inline (serial) or on the logic thread */
+int pm_lg_draw_flag(void); /* the retrace flag (D_80073E0A) after the last handed command; waits for its retrace to start */
+void pm_lg_show(void); /* walk the queue through the end of every finished step */
+void pm_lg_quiesce(void); /* game thread: the logic thread is idle and the queue is empty */
+void pm_lg_sleep_ns(long long ns); /* game thread: sleep, running the queue for a blocked logic thread */
+void pm_lg_publish_d(int d); /* pm_nusys.c: the retrace flag after this retrace call */
+void pm_step_run(const LgCmd* c); /* pm_main.c: the body of a command */
+void pm_pad_latch(PmPad* p); /* pm_input.c, frame loop: the pad state since the last latch */
+void pm_pad_step(const PmPad* p); /* pm_input.c, logic: the pad state the game reads in this step */
 #define PH_PUSH(id) do { if (pm_ph_on) pm_ph_push(id); } while (0)
 #define PH_POP() do { if (pm_ph_on) pm_ph_pop(); } while (0)
 #define PH_ADD(c, n) do { if (pm_ph_on) pm_ph_cnt[c] += (unsigned)(n); } while (0)
