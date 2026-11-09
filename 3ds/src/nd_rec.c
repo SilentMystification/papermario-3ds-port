@@ -14,7 +14,6 @@
 #include "gbi_custom.h"
 
 extern s32 gCurrentDisplayContextIndex;
-void nd_walk_ops(void* list, unsigned nbytes); /* nd_walk.c: a span that keeps the walker's sync state */
 void nd_walk_rec_model(const Gfx* q);           /* nd_walk.c: a model record, as the walker's G_PM_REC arm */
 void nd_walk_spr(const Gfx* q);                 /* nd_walk.c: a sprite record and its geometry words */
 void nd_walk_ent(const Gfx* q, unsigned words); /* nd_walk.c: an entity record (and its G_DL) */
@@ -176,7 +175,7 @@ void nd_rec_state(uint32_t w0, uint32_t w1) {
     st_end = wp;
 }
 /* D4b-3, D5: the nd_gbi.h redirect. The packet gMainGfxPos++ is taken back and the op recorded; the RDP syncs are dropped (the walker skips
- * them: g1_skip). A texture rectangle (its op word and the two RDPHALF words, written by one macro) is held until its last word and recorded as
+ * them). A texture rectangle (its op word and the two RDPHALF words, written by one macro) is held until its last word and recorded as
  * NDC_TEXRECT. Any other packet (a local list) and the branch form of G_DL keep the word; G_ENDDL at the top level is dropped (NDC_END ends a
  * task and a custom gfx range). */
 static uint32_t tr_w[3];
