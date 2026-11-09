@@ -421,8 +421,12 @@ static void pi_read_raw(u32 rom_addr, void* buf, u32 size) {
                         if (n > pm_rom_keep[i].start + pm_rom_keep[i].len - addr) n = pm_rom_keep[i].start + pm_rom_keep[i].len - addr;
                     }
             }
-            pm_rs_need(addr, n); /* BOOT: the chunks of these bytes are in RAM */
-            memcpy(out, rom_bytes + off, n);
+            if (__builtin_expect(!__atomic_load_n(&pm_rs_all, __ATOMIC_ACQUIRE), 0) && pm_rs_read_direct(addr, out, n)) {
+                /* BOOT: the stream has not reached these bytes: read from the file, exact size */
+            } else {
+                pm_rs_need(addr, n); /* BOOT: the chunks of these bytes are in RAM */
+                memcpy(out, rom_bytes + off, n);
+            }
         } else {
             memset(out, 0, n); /* no resident ROM: pm_rom_init stopped the game */
         }

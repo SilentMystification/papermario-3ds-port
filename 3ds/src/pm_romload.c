@@ -19,6 +19,7 @@
 #define RS_SHIFT 17u
 #define RS_CHUNK (1u << RS_SHIFT)
 #define RS_N (0x02800000u >> RS_SHIFT) /* PM_ROM_FULL: 320 chunks */
+#define RS_PIECE 0x8000u /* 32 KB per loader read (about 6 ms at 5 MB/s) */
 #define RS_GUARD 256u /* bytes past each access that must be ready too (prefetch and look-ahead reads of the decoders) */
 
 volatile int pm_rs_all; /* 1: every chunk is ready (or the image was never streamed) */
@@ -33,7 +34,7 @@ static unsigned rs_nkeep;
 static u32 rs_size;
 static Thread rs_th;
 static u64 rs_t0, rs_tdone;
-static volatile u32 rs_demand, rs_waits;
+static volatile u32 rs_demand, rs_waits, rs_direct;
 static volatile u32 rs_wait_ms;
 static u32 rs_bytes;
 static Thread rs_game; /* the thread that started the stream: the game thread, which may show the fatal screen */
@@ -59,12 +60,16 @@ static int rs_read_chunk(unsigned c) {
         u32 s = rs_keep[i].start, e = s + rs_keep[i].len;
         if (e <= lo) continue;
         if (s >= hi) break; /* the table is sorted by start */
-        u32 a = s > lo ? s : lo, b = e < hi ? e : hi, n = 0;
-        if (!rs_io_enter()) return -2;
-        Result r = FSFILE_Read(rs_fh, &n, a, rs_block + rs_keep[i].packed_off + (a - s), b - a);
-        rs_io_leave();
-        if (R_FAILED(r) || n != b - a) return -1;
-        got += n;
+        u32 a = s > lo ? s : lo, b = e < hi ? e : hi;
+        while (a < b) { /* RS_PIECE reads: a direct read of the game waits behind one piece at most */
+            u32 len = b - a < RS_PIECE ? b - a : RS_PIECE, n = 0;
+            if (!rs_io_enter()) return -2;
+            Result r = FSFILE_Read(rs_fh, &n, a, rs_block + rs_keep[i].packed_off + (a - s), len);
+            rs_io_leave();
+            if (R_FAILED(r) || n != len) return -1;
+            got += n;
+            a += len;
+        }
     }
     return (int)got;
 }
@@ -95,8 +100,8 @@ static void rs_loader(void* arg) {
     if (!rs_err) __atomic_store_n(&pm_rs_all, 1, __ATOMIC_RELEASE);
     unsigned ms = (unsigned)((rs_tdone - rs_t0) / (SYSCLOCK_ARM11 / 1000ull));
     unsigned kbps = ms ? (unsigned)((u64)rs_bytes * 1000u / 1024u / ms) : 0u; /* once per boot */
-    pm_log_w("rom stream done ms %u MB/s %u.%u demand %u waits %u wait_ms %u%s", ms, kbps >> 10, ((kbps & 1023u) * 10u) >> 10,
-             rs_demand, rs_waits, rs_wait_ms, rs_err ? " FAILED" : "");
+    pm_log_w("rom stream done ms %u MB/s %u.%u demand %u waits %u wait_ms %u direct %u%s", ms, kbps >> 10, ((kbps & 1023u) * 10u) >> 10,
+             rs_demand, rs_waits, rs_wait_ms, rs_direct, rs_err ? " FAILED" : "");
 }
 
 static __attribute__((noinline)) void rs_fail_here(void) {
@@ -134,6 +139,27 @@ void pm_rs_need_slow(unsigned addr, unsigned len) {
         u32 dms = (u32)((svcGetSystemTick() - t0) / (SYSCLOCK_ARM11 / 1000ull)); /* cold: once per blocked access */
         __atomic_add_fetch(&rs_wait_ms, dms, __ATOMIC_RELAXED);
     }
+}
+
+/* A copy out of the image (pi_read_raw) whose chunks are not all ready: read the n bytes at ROM address addr straight from the
+ * file into out. The boot reads small parts (bank headers and tables) of many chunks: a whole-chunk read would cost 128 KB each.
+ * Returns 1 when out holds the bytes, 0 when the image has them (or the direct read failed: the chunk path reports it). */
+int pm_rs_read_direct(unsigned addr, void* out, unsigned n) {
+    unsigned c0 = addr >> RS_SHIFT, c1 = (addr + n - 1u) >> RS_SHIFT, c;
+    if (!n || addr + n > rs_size) return 0;
+    for (c = c0; c <= c1; c++)
+        if (__atomic_load_n(&rs_st[c], __ATOMIC_ACQUIRE) != 2) break;
+    if (c > c1) return 0;
+    u64 t0 = svcGetSystemTick();
+    u32 got = 0;
+    if (!rs_io_enter()) return 0;
+    Result r = FSFILE_Read(rs_fh, &got, addr, out, n);
+    rs_io_leave();
+    if (R_FAILED(r) || got != n) return 0;
+    __atomic_add_fetch(&rs_direct, 1, __ATOMIC_RELAXED);
+    __atomic_add_fetch(&rs_waits, 1, __ATOMIC_RELAXED);
+    __atomic_add_fetch(&rs_wait_ms, (u32)((svcGetSystemTick() - t0) / (SYSCLOCK_ARM11 / 1000ull)), __ATOMIC_RELAXED);
+    return 1;
 }
 
 int pm_rom_stream_start(const char* path, unsigned char* block, unsigned size, const PmRsSeg* keep, unsigned nkeep) {
