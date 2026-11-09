@@ -248,7 +248,7 @@ void pm_mem_hud(char out[2][40]) {
 }
 
 void pm_mem_log(const char* tag) {
-    if (!strcmp(tag, "map")) { pm_mem_scene_reset(); nd_tex_reset(); } /* HUDVRAM: the scene minimum and peak start at each map load. MDL-5e: the texture descriptor table (nd_tex.c, 128 entries) starts empty at each map, so a tour never fills it (why 13) */
+    if (!strcmp(tag, "map")) { pm_mem_scene_reset(); nd_tex_reset(); } /* HUDVRAM: the scene minimum and peak start at each map load. MDL-5e: the texture descriptor table (nd_tex.c, ND_TEX_N entries) starts empty at each map; a full table in the map is flushed (INTERIOR) */
     if (!pm_log_file()) return; /* logging off: no stack walk, no stats formatting */
     if (!strcmp(tag, "map") && pm_debug_has("texmax")) {
         unsigned wmax, pk = pm_tex_map_peak_take(&wmax);

@@ -11721,6 +11721,90 @@
       ]
     },
     {
+      "name": "merlon_in_late_pic",
+      "status": "unverified",
+      "reason": "INTERIOR (row INTERIOR): Merlon's house after the texture table fills. wait240 first: the sprite textures fill nd_tex (base: full at about f124 on mac_01) before the door. Walk, door, inside 200, exit as merlon_in_live_pic. Base route: room enter at about f310, exit at about f395; shots 310 to 350 are inside. Cap 25 s.",
+      "subject": "Merlon's house on mac_01 (story ch1_start), no det: Mario waits 240 frames, walks to the door and presses A (room enter), stays inside 200 frames. Shots every 10 frames 310 to 350: the interior is lit with Merlon and the crystal ball round.",
+      "proves": "INTERIOR: the interior models draw after the texture table is full (ndtex flush lines, no ndtex full line; the walk does not refuse the room models).",
+      "debug": "warp=mac_01:0 story=ch1_start pos=-203:20:-206 padscript=wait240,go_-203_-280_100,A,wait200,go_-190_-262_150,A,wait150 shots shotwin=310:41:10 profdisk=1 loglevel=debug",
+      "until": "shot \\d+ frame 350\\b",
+      "cap": 25,
+      "deadline": 28,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "door enter line",
+          "regex": "xfer door \\S+:out->\\S+:in f\\d+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 350\\b"
+        }
+      ]
+    },
+    {
+      "name": "merlon_in_late_census",
+      "status": "unverified",
+      "reason": "INTERIOR diagnostic: merlon_in_late_pic with census to frame 600. The ndm f300 and ndm f600 lines count the native model fallbacks by code (why 13 = nd_tex_get miss, the refused model) over the door window. Cap 25 s.",
+      "subject": "Merlon's house on mac_01 (story ch1_start), no det, census: the same route as merlon_in_late_pic, the census lines of the window 300 to 600 (fallbacks by code).",
+      "proves": "INTERIOR: the number of model draws the full texture table refuses (why 13) at the door and inside, on the base build and on the flush build.",
+      "debug": "warp=mac_01:0 story=ch1_start pos=-203:20:-206 padscript=wait240,go_-203_-280_100,A,wait200,go_-190_-262_150,A,wait150 shots shotwin=310:41:10 census profdisk=1 loglevel=debug",
+      "until": "ndm f600 ",
+      "cap": 25,
+      "deadline": 28,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "census",
+          "regex": "ndm f600 "
+        }
+      ]
+    },
+    {
+      "name": "toad_house_late_pic",
+      "status": "unverified",
+      "reason": "INTERIOR (row INTERIOR): Toad House bed after the texture table fills. Route NOT YET VERIFIED: wait240, then from entry 1 (600 0) to z -60 and the door at x 467 z -150 (plan_pt42 note), A, inside 200. Three Azahar base runs did not enter the house (shots 300 to 480 show the street). Cap 25 s.",
+      "subject": "Toad House on mac_01 (room collider 33, centre 442 -136), no det: Mario waits 240 frames, walks to the door and presses A, stays inside. Shots every 20 frames 300 to 480: the room and the bed are drawn (when the route enters).",
+      "proves": "INTERIOR: a room model (the Toad House bed) draws after the texture table is full, not only Merlon's house.",
+      "debug": "warp=mac_01:1 story=ch0_toad_town padscript=wait240,go_467_-60_100,go_467_-150_100,A,wait200 shots shotwin=300:181:20 profdisk=1 loglevel=debug",
+      "until": "shot \\d+ frame 480\\b",
+      "cap": 25,
+      "deadline": 28,
+      "first_marker": "warp: mac_01 entry 1",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 480\\b"
+        }
+      ]
+    },
+    {
+      "name": "kmr20_in_late_pic",
+      "status": "unverified",
+      "reason": "INTERIOR (row INTERIOR): Mario's house on kmr_20 after the texture table fills. xfer_door_kmr20_shots with wait600 before the door (the door at about f900 instead of f302). Cap 45 s (upper limit: the run reaches about frame 1040).",
+      "subject": "Mario's house door on kmr_20 (preset yard), first entry after a map change, det: Mario waits 600 frames, walks to the door and presses A, stays inside. Shots every 20 frames 980 to 1040: the interior and the beds are drawn.",
+      "proves": "INTERIOR: the house beds (models whose textures the yard already used late) draw after the texture table is full.",
+      "debug": "preset=yard padscript=wait60,goto_kmr_20:4,wait300,pos_300:30:-76,wait600,go_240_-76_100,A,wait260 shots shotwin=980:61:20 loglevel=debug det",
+      "until": "shot \\d+ frame 1040\\b",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 1040\\b"
+        }
+      ]
+    },
+    {
       "name": "xfer_map_mac01",
       "status": "unverified",
       "reason": "MAPX-1 measure and the MAPX-3/4/5 gate. Walk about 60 frames, fade 13, load 6, tail 30: about 5 s after the warp. Cap 35 s.",
