@@ -11,16 +11,18 @@ No Back row on the General tab (B still closes the menu). Resolution Mode cycles
 ## Start state
 `sh 3ds/tools/wt_new.sh MENUGEN`, branch MENUGEN. PM_ROW=MENUGEN, PM_LANE=MENUGEN. One Haiku agent.
 
-## Premise and its check (code read first)
-Today: pm_options.c:389-390 builds the General rows (RW_FPS, RW_WIDE, RW_DBG + 7 Frame skip; mode adds RW_TITLE, RW_CLOSE, RW_EXIT);
-:415 adds RW_BACK. RW_WIDE flips option 1 (pm_wide, nd_int.h:421) On/Off. Find by code read what "Native" and "Fullscreen" are:
-the port may already have a 4:3 path (pm_wide 0) and a stretch path. Name each mode's file:line. If the port has only two modes
-(4:3 and widescreen), hand back at once with the facts and ask what Native vs Fullscreen means. Do not invent a render mode.
-Return to Title / Close / Exit show only when `mode` is set today: keep that rule; ask in the handback if the user may want them always.
+## Mode definitions (user answers, 2026-11-09; premise check done by the first agent)
+- Native = today's 4:3 path (pm_wide 0: pm_gpu.c:172-173 else branch, :941, :2127; 40 px bars).
+- Widescreen = today's pm_wide 1 (wider 3D projection in cam_main.c:84, cam_math.c:398 and others; HUD stays 4:3).
+- Fullscreen = NEW: the Native picture (pm_wide 0, same projection, same 2D) stretched 1.25x in X over 400 px, HUD and menus
+  included, no bars. Do it only in the final viewport/scissor of pm_gpu.c (one new flag, e.g. pm_stretch, beside pm_wide at
+  :153; the x scale at :172-173 and the scissor at :941-950 and :2127 for every draw). Do not change pm_wide or any src/ file.
+- Return to Title / Exit / Close: keep the `mode` rule (only in the in-game Select menu).
+- Old saves: wide=0 -> Native, wide=1 -> Widescreen.
 
 ## Touch only
 3ds/src/pm_options.c, pm_options_ui.c, the options save (option 1 becomes a 3-value field; old saves map Off->Native or the 4:3
-mode found above, On->Widescreen). No render code unless a named mode already exists and only needs the option value.
+mode found above, On->Widescreen). pm_gpu.c only for the Fullscreen flag above.
 
 ## Done criteria
 1. nd_host PASS. Build OK. memcheck OK.
