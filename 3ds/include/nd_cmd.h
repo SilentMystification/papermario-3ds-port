@@ -15,6 +15,7 @@ enum {
     NDC_MODEL = 3, /* D1: payload = the model record (G_PM_REC layout, gbi_custom.h) and its R13 words; rec_run reads it */
     NDC_CALL = 4,  /* D1: replay the commands from arg2 up to payload unit 0 word 0 (the floor reflection range) */
     NDC_SPR = 5,   /* D2: payload = the sprite record (G_PM_SPR, 4 pairs), then its gSPVertex and gSP2Triangles words */
+    NDC_ENT = 6,   /* D3: payload = an entity record (G_PM_ENT, 4 pairs; DRAW or END form), then for a DRAW record its G_DL word (5 pairs) */
     NDC_N
 };
 #define NDC_HDR(op, units, arg) (((uint32_t)(op) << 24) | ((uint32_t)(units) << 16) | ((uint32_t)(arg) & 0xffffu))
@@ -24,12 +25,15 @@ void nd_rec_cut(void); /* close the span of words written since the last cut (ev
 const uint32_t* nd_rec_close(const void* list, unsigned nbytes); /* nuGfxTaskStart: the last span and NDC_END; returns the head of the task stream */
 void nd_rec_model(const void* rec, unsigned words); /* D1: a model record of `words` Gfx pairs (record and R13 words) */
 void nd_rec_spr(const void* rec, const void* geo); /* D2: a sprite record (4 pairs) and its 2 geometry words */
+void nd_rec_ent_draw(const void* list, unsigned segid, unsigned varray, unsigned form); /* D3: the entity draw of a static list (record and its G_DL) */
+void nd_rec_ent(const void* rec);                   /* D3: an entity record with no G_DL (the entcheck END record) */
 const uint32_t* nd_rec_mark(void);                  /* D1: cut, then the stream position (a range start or end) */
 void nd_rec_call(const uint32_t* a, const uint32_t* b); /* D1: replay the range [a, b) here */
 /* D1: a builder that writes a list for later (build_custom_gfx) runs with nd_rec_sub > 0: records go to that list, not to the stream. */
 extern int nd_rec_sub;
 #define ND_REC_SUB(call) do { nd_rec_sub++; call; nd_rec_sub--; } while (0)
 #define ND_REC_AUX_MAX 96 /* the most R13 words of one model record (make_texture_gfx with mipmaps and two palettes) */
+void nd_rec_cnt_take(unsigned o[NDC_N], unsigned* kb); /* PROF: commands per op since the last take; the stream high-water mark (KB) */
 /* Walker side (nd_rec.c). */
 void nd_stream_run(const uint32_t* head); /* replay one task stream */
 #endif

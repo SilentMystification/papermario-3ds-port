@@ -2,6 +2,9 @@
 #include "animation_script.h"
 #include "model.h"
 #include "pm_interp_fi.h"
+#ifdef TARGET_3DS
+#include "nd_cmd.h"
+#endif
 
 typedef struct DisplayListBufferHandle {
     /* 0x0 */ s32 ttl;
@@ -892,10 +895,10 @@ void appendGfx_animator_node(ModelAnimator* animator, AnimatorNode* node, Matrix
 #ifdef TARGET_3DS
             /* S6-4: a static node list (its vertices sit in the model data behind gAnimVtxSegment): the walker draws it from the static pools. The other form
              * (vertexStartOffset >= 0) is a fresh heap copy of the list with per frame vertices every frame: named fallback ent_dynvtx, the walker runs it. */
-            gPmEntDrawRecord(gMainGfxPos, node->displayList, gAnimVtxSegment, animator->baseAddr != nullptr ? VIRTUAL_TO_PHYSICAL(animator->baseAddr) : 0);
-            gMainGfxPos += G_PM_ENT_WORDS; gMainGfxPos[-2].words.w0 = 1; /* record word 2: the animator form (log) */
-#endif
+            nd_rec_ent_draw(node->displayList, gAnimVtxSegment, animator->baseAddr != nullptr ? VIRTUAL_TO_PHYSICAL(animator->baseAddr) : 0, 1); /* DIRECT D3: word 2 w0 1 = the animator form (log); the record and its G_DL go to the frame stream */
+#else
             gSPDisplayList(gMainGfxPos++, node->displayList);
+#endif
         } else {
             Gfx* gfxPos;
             s32 vtxIdx, dlIdx;

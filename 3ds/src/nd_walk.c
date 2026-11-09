@@ -205,6 +205,21 @@ void nd_walk_spr(const Gfx* q) {
     if (sh) { if (__builtin_expect(dbg & WD_CEN, 0)) walk_dbg_nat(); return; }
     nd_walk_ops((void*)(q + G_PM_SPR_WORDS), 16u);
 }
+/* DIRECT D3: NDC_ENT (nd_rec.c): an entity record. A DRAW record that the native path refuses leaves its G_DL to the walker (ent_skipgen,
+ * as the walker's G_PM_ENT arm and the G_DL after it). */
+void nd_walk_ent(const Gfx* q, unsigned words) {
+    const unsigned dbg = pm_walk_dbg;
+    pm_gbi_cur_op = G_PM_ENT;
+    gv_epoch++; /* GV1b, as the walker's prologue of G_PM_ENT */
+    int fp = 0;
+    if (__builtin_expect(dbg, 0)) { fp = walk_dbg_op(dbg, q, 0, G_PM_ENT, q->words.w0, q->words.w1); walk_dbg_rec(dbg, q, G_PM_ENT_WORDS); }
+    NDT_BD(te, dbg);
+    int drawn = nd_ent_case(q, q->words.w0, q->words.w1);
+    NDT_E(te, NDT_ENT);
+    if (__builtin_expect(fp, 0)) pm_ph_pop();
+    if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1);
+    if (!drawn && words > G_PM_ENT_WORDS) nd_walk_ops((void*)(q + G_PM_ENT_WORDS), 8u);
+}
 static int walk_keep; /* PERF2: set by nd_walk_ops for the next nd_walk_run only */
 void nd_walk_run(void* list, unsigned nbytes) {
     const unsigned dbg = pm_walk_dbg; /* PROF2-5: once per list */

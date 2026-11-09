@@ -17,6 +17,7 @@ extern s32 gCurrentDisplayContextIndex;
 void nd_walk_ops(void* list, unsigned nbytes); /* nd_walk.c: a span that keeps the walker's sync state */
 void nd_walk_rec_model(const Gfx* q);           /* nd_walk.c: a model record, as the walker's G_PM_REC arm */
 void nd_walk_spr(const Gfx* q);                 /* nd_walk.c: a sprite record and its geometry words */
+void nd_walk_ent(const Gfx* q, unsigned words); /* nd_walk.c: an entity record (and its G_DL) */
 int nd_rec_sub;
 
 #define CH_WORDS (32768u / 4u)
@@ -30,6 +31,7 @@ static uint32_t* task_head; /* first command of the open task (NULL: no task ope
 static uint32_t* first_list; /* the first NDC_LIST of the open task (its start is the list base, patched at close) */
 static Gfx* cut;           /* the end of the last span (NULL: the task list base, not known before close) */
 static unsigned hw_units;  /* PROF: the most 4-byte words of one context stream (the high-water mark) */
+static unsigned ndc_n[NDC_N]; /* PROF: commands recorded per op (relaxed counters: the logic writes, the prof report reads) */
 
 static __attribute__((cold, noinline)) uint32_t* ch_get(NdChain* c, unsigned i) {
     if (i >= CH_MAX) { pm_log_e("ndc: stream over %u chunks", CH_MAX); pm_fatal_stop("ndc: frame stream full"); }
@@ -79,6 +81,7 @@ static void task_open(void) {
 }
 static void span_put(const Gfx* a, unsigned bytes, unsigned first) {
     uint32_t* p = rec_take(4);
+    ndc_n[NDC_LIST]++;
     p[0] = NDC_HDR(NDC_LIST, 1, first);
     p[1] = (uint32_t)(uintptr_t)a;
     p[2] = bytes;
@@ -113,6 +116,7 @@ void nd_rec_model(const void* rec, unsigned words) {
     nd_rec_cut();
     if (gMainGfxPos < cut) model_behind(gMainGfxPos);
     uint32_t* p = rec_take(2u + 2u * words);
+    ndc_n[NDC_MODEL]++;
     p[0] = NDC_HDR(NDC_MODEL, words, 0);
     p[1] = 0;
     memcpy(p + 2, rec, words * 8u);
@@ -120,10 +124,34 @@ void nd_rec_model(const void* rec, unsigned words) {
 void nd_rec_spr(const void* rec, const void* geo) {
     nd_rec_cut();
     uint32_t* p = rec_take(2u + 2u * (G_PM_SPR_WORDS + 2u));
+    ndc_n[NDC_SPR]++;
     p[0] = NDC_HDR(NDC_SPR, G_PM_SPR_WORDS + 2u, 0);
     p[1] = 0;
     memcpy(p + 2, rec, G_PM_SPR_WORDS * 8u);
     memcpy(p + 2 + 2 * G_PM_SPR_WORDS, geo, 16u);
+}
+/* D3: the draw record of a static list (gbi_custom.h gPmEntDrawRecord) and the G_DL of that list. form: record word 2 w0 (1: the animator form, log). */
+void nd_rec_ent_draw(const void* list, unsigned segid, unsigned varray, unsigned form) {
+    Gfx r[G_PM_ENT_WORDS + 1];
+    gPmEntDrawRecord(r, list, segid, varray);
+    r[2].words.w0 = form;
+    gSPDisplayList(&r[G_PM_ENT_WORDS], list);
+    if (nd_rec_sub) { memcpy(gMainGfxPos, r, sizeof r); gMainGfxPos += G_PM_ENT_WORDS + 1; return; } /* a list for later: the walker G_PM_ENT arm */
+    nd_rec_cut();
+    uint32_t* p = rec_take(2u + 2u * (G_PM_ENT_WORDS + 1u));
+    ndc_n[NDC_ENT]++;
+    p[0] = NDC_HDR(NDC_ENT, G_PM_ENT_WORDS + 1u, 0);
+    p[1] = 0;
+    memcpy(p + 2, r, sizeof r);
+}
+void nd_rec_ent(const void* rec) {
+    if (nd_rec_sub) { memcpy(gMainGfxPos, rec, G_PM_ENT_WORDS * 8u); gMainGfxPos += G_PM_ENT_WORDS; return; }
+    nd_rec_cut();
+    uint32_t* p = rec_take(2u + 2u * G_PM_ENT_WORDS);
+    ndc_n[NDC_ENT]++;
+    p[0] = NDC_HDR(NDC_ENT, G_PM_ENT_WORDS, 0);
+    p[1] = 0;
+    memcpy(p + 2, rec, G_PM_ENT_WORDS * 8u);
 }
 const uint32_t* nd_rec_mark(void) {
     nd_rec_cut();
@@ -132,6 +160,7 @@ const uint32_t* nd_rec_mark(void) {
 void nd_rec_call(const uint32_t* a, const uint32_t* b) {
     nd_rec_cut();
     uint32_t* p = rec_take(4);
+    ndc_n[NDC_CALL]++;
     p[0] = NDC_HDR(NDC_CALL, 1, 0);
     p[1] = (uint32_t)(uintptr_t)a;
     p[2] = (uint32_t)(uintptr_t)b;
@@ -161,7 +190,12 @@ const uint32_t* nd_rec_close(const void* list, unsigned nbytes) {
     task_head = NULL;
     return h;
 }
-unsigned nd_rec_hw_kb(void) { return (hw_units * 4u + 1023u) >> 10; }
+/* PROF: the commands per op since the last take, and the stream high-water mark in KB (pm_phase.c ndc line). */
+void nd_rec_cnt_take(unsigned o[NDC_N], unsigned* kb) {
+    static unsigned last[NDC_N];
+    for (unsigned i = 0; i < NDC_N; i++) { unsigned v = ndc_n[i]; o[i] = v - last[i]; last[i] = v; }
+    *kb = (hw_units * 4u + 1023u) >> 10;
+}
 
 static __attribute__((cold, noinline)) void run_bad(uint32_t h, const uint32_t* p) {
     static int n;
@@ -182,6 +216,7 @@ static void stream_run(const uint32_t* p, const uint32_t* stop) {
             break;
         case NDC_MODEL: nd_walk_rec_model((const Gfx*)(p + 2)); break;
         case NDC_SPR: nd_walk_spr((const Gfx*)(p + 2)); break;
+        case NDC_ENT: nd_walk_ent((const Gfx*)(p + 2), (h >> 16) & 0xffu); break;
         case NDC_CALL: stream_run((const uint32_t*)(uintptr_t)p[1], (const uint32_t*)(uintptr_t)p[2]); break;
         default: run_bad(h, p); return;
         }
