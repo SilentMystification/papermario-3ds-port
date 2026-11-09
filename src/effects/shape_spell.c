@@ -1,4 +1,3 @@
-#define ND_GBI_WORDS /* DIRECT D5: this file keeps list words (inline data, lists for later or list position tests) */
 #include "common.h"
 #include "effects_internal.h"
 
@@ -177,7 +176,6 @@ void shape_spell_appendGfx(void* effect) {
     f32 angle, factor, yawIn, yawOut;
     Matrix4f mA, mT, mL, mR[12];
     f32 corner[3][3][4][3]; /* step i, colour j, corner: position after T_j and A_i */
-    Gfx* jump;
     Vtx* vbuf;
     s32 i, j, k, c;
     static const s16 cx[4] = { -1, 1, 1, -1 }, cy[4] = { -1, -1, 1, 1 };
@@ -227,10 +225,7 @@ void shape_spell_appendGfx(void* effect) {
         }
     }
 
-    jump = gMainGfxPos++;
-    vbuf = (Vtx*)gMainGfxPos;
-    gMainGfxPos += (9 * 4 * ncopy * sizeof(Vtx)) / sizeof(Gfx);
-    gSPBranchList(jump, gMainGfxPos);
+    vbuf = (Vtx*) nd_rec_data(9 * 4 * ncopy * sizeof(Vtx)); /* DIRECT D6c: the vertex buffer is stream data */
     for (i = 0; i < 3; i++) {
         for (j = 0; j < 3; j++) {
             Vtx* v = vbuf + (i * 3 + j) * 4 * ncopy;

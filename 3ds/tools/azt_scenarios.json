@@ -1227,6 +1227,64 @@
       "reason": "MOVE gate (d): one window of phase ms on iwa_10. opsplit is left out (see phase_mac01_det)."
     },
     {
+      "name": "lava_piranha_det",
+      "status": "unverified",
+      "reason": "DIRECT D6c gate: the lava piranha vines (battle kzn2 actor, kmr_22 and kzn_19 npc files) write their vertices as stream data.",
+      "subject": "DIRECT: debug battle Lava Piranha (BTL_KZN2_FORMATION_00, stage 06) started at frame 100 from kmr_03, det, shots at frames 400, 420, 440 (the boss with its vines).",
+      "proves": "DIRECT D6c: the vine pictures are byte-equal to the build where lava_piranha.c wrote its vertices into the list.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle=BTL_KZN2_FORMATION_00:BTL_KZN2_STAGE_06 battlef=100 shots shotwin=400:41:20 loglevel=debug fixedseed fs1off det",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "shot \\d+ frame 440\\b",
+      "cap": 30,
+      "deadline": 30,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "battle",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "last shot",
+          "regex": "shot \\d+ frame 440\\b"
+        }
+      ]
+    },
+    {
+      "name": "fx_direct_det",
+      "status": "unverified",
+      "reason": "DIRECT D6c gate: the 18 effects that kept list words (inline vertex data, lists for later) now write stream data and stream ranges.",
+      "subject": "DIRECT: nok_11 (entry 0), det, fxtest spawns shape_spell, shockwave, green_impact, shimmer_burst, shimmer_wave, firework, confetti, chomp_drop, thunderbolt_ring, squirt, water_block, waterfall, lightning_bolt, stop_watch, effect_65, whirlwind, red_impact, hieroglyphs one after the other (44 frame slots from frame 400, shots base, a, b per effect).",
+      "proves": "DIRECT D6c: the effect pictures are byte-equal to the build where these files wrote list words.",
+      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=13,32,44,50,52,61,62,71,82,83,84,85,88,92,95,97,98,106 shots loglevel=debug fixedseed fast fs1off det",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "fxtest: done",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: nok_11 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: nok_11 entry 0"
+        },
+        {
+          "name": "last effect shot",
+          "regex": "fxtest: shot 53 effect 106 hieroglyphs b"
+        },
+        {
+          "name": "done",
+          "regex": "fxtest: done"
+        }
+      ]
+    },
+    {
       "name": "nok11_det",
       "status": "unverified",
       "reason": "DET gate (cold, two runs, byte-equal shots). The splash picture is the subject.",

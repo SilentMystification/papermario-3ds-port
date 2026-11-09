@@ -1,4 +1,3 @@
-#define ND_GBI_WORDS /* DIRECT D5: this file keeps list words (inline data, lists for later or list position tests) */
 #include "common.h"
 #include "effects_internal.h"
 
@@ -207,6 +206,9 @@ void shimmer_burst_appendGfx(void* effect) {
     s32 unk_58 = part->unk_58;
     f32 temp_f20 = part->unk_4C / 255.0f;
     Gfx* savedGfxPos;
+#ifdef TARGET_3DS
+    NdSub sub;
+#endif
     Matrix4f sp20;
     Matrix4f sp60;
     s32 i;
@@ -223,8 +225,12 @@ void shimmer_burst_appendGfx(void* effect) {
     gDPSetEnvColor(gMainGfxPos++, part->unk_40, part->unk_44, part->unk_48, part->unk_5C);
     gSPDisplayList(gMainGfxPos++, D_09000F20_338EE0);
 
+#ifdef TARGET_3DS
+    nd_sub_open(&sub); /* DIRECT D6c: the list for later is a stream range */
+#else
     savedGfxPos = gMainGfxPos;
     gMainGfxPos++;
+#endif
 
     part++;
     for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, part++) {
@@ -239,22 +245,38 @@ void shimmer_burst_appendGfx(void* effect) {
         }
     }
 
+#ifdef TARGET_3DS
+    nd_sub_close(&sub);
+#else
     gSPEndDisplayList(gMainGfxPos++);
     gSPBranchList(savedGfxPos, gMainGfxPos);
+#endif
+#ifdef TARGET_3DS
+    nd_sub_call(&sub);
+#else
     gSPDisplayList(gMainGfxPos++, savedGfxPos + 1);
+#endif
 
     guRotateF(sp20, 120.0f, 0.4f, 0.0f, 0.8f);
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+    nd_sub_call(&sub);
+#else
     gSPDisplayList(gMainGfxPos++, savedGfxPos + 1);
+#endif
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 
     guRotateF(sp20, -120.0f, 0.4f, 0.0f, 0.8f);
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+    nd_sub_call(&sub);
+#else
     gSPDisplayList(gMainGfxPos++, savedGfxPos + 1);
+#endif
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 }
