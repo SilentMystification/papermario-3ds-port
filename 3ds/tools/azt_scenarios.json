@@ -12179,10 +12179,10 @@
     {
       "name": "pause_tab_thr_pic",
       "status": "unverified",
-      "subject": "PAUSEFLK: mac_01 pos 0 0 200, wide, START opens the pause (Stats tab), R three times to the Party tab (about frame 150, flip then steady), R once more to the Star Spirits tab (about frame 190, flip then steady). Shots every frame 140 to 249.",
+      "subject": "PAUSEFLK: mac_01 entry 0, wide, START opens the pause (Stats tab; no Badges tab), all 11 partners and 7 Star Spirits (allpartners spmax=7), R twice to the Party tab, A opens the Party panel (about frame 150), stick right twice turns the partner wheel, B back, R to the Star Spirits tab, A opens the Spirits panel (about frame 205). Shots 140 to 240 (every frame det; the threaded build takes what the shot writer keeps up with).",
       "proves": "PAUSEFLK: consecutive frames of the Party and Star Spirits tabs, steady and flip; the sprites, portraits and windows show no frame-to-frame flicker.",
-      "debug": "warp=mac_01:0 story=ch0_toad_town pos=0:0:200 wide padscript=wait80,START*3,wait60,R*2,wait20,R*2,wait20,R*2,wait80,R*2,wait160 shots shotwin=140:110 loglevel=debug",
-      "until": "shot \\d+ frame 249\\b",
+      "debug": "warp=mac_01:0 story=ch0_toad_town wide allpartners spmax=7 padscript=wait80,START*3,wait60,R*2,wait20,R*2,wait20,A*2,wait20,right*2,wait30,right*2,wait20,B*2,wait10,R*2,wait10,A*2 shots shotwin=140:101",
+      "until": "shot \\d+ frame 24[01]\\b",
       "cap": 40,
       "deadline": 20,
       "first_marker": "warp: mac_01 entry 0",
@@ -12198,8 +12198,8 @@
           "regex": "game mode 10 frame"
         },
         {
-          "name": "last shot (Spirits steady)",
-          "regex": "shot \\d+ frame 249\\b"
+          "name": "shot in the Spirits panel (240 or 241)",
+          "regex": "shot \\d+ frame 24[01]\\b"
         }
       ],
       "reason": "PAUSEFLK user report (O3DS XL, wide, logic thread on): flicker on the pause Party and Star Spirits tabs. No det or phase switch, so the logic thread builds frame N+1 while the walker draws N."
@@ -12207,10 +12207,10 @@
     {
       "name": "pause_tab_det_pic",
       "status": "unverified",
-      "subject": "PAUSEFLK: mac_01 pos 0 0 200, wide, START opens the pause (Stats tab), R three times to the Party tab (about frame 150, flip then steady), R once more to the Star Spirits tab (about frame 190, flip then steady). Shots every frame 140 to 249.",
+      "subject": "PAUSEFLK: mac_01 entry 0, wide, START opens the pause (Stats tab; no Badges tab), all 11 partners and 7 Star Spirits (allpartners spmax=7), R twice to the Party tab, A opens the Party panel (about frame 150), stick right twice turns the partner wheel, B back, R to the Star Spirits tab, A opens the Spirits panel (about frame 205). Shots 140 to 240 (every frame det; the threaded build takes what the shot writer keeps up with).",
       "proves": "PAUSEFLK: consecutive frames of the Party and Star Spirits tabs, steady and flip; the sprites, portraits and windows show no frame-to-frame flicker.",
-      "debug": "warp=mac_01:0 story=ch0_toad_town pos=0:0:200 wide padscript=wait80,START*3,wait60,R*2,wait20,R*2,wait20,R*2,wait80,R*2,wait160 shots shotwin=140:110 loglevel=debug det fixedseed",
-      "until": "shot \\d+ frame 249\\b",
+      "debug": "warp=mac_01:0 story=ch0_toad_town wide allpartners spmax=7 padscript=wait80,START*3,wait60,R*2,wait20,R*2,wait20,A*2,wait20,right*2,wait30,right*2,wait20,B*2,wait10,R*2,wait10,A*2 shots shotwin=140:101 det",
+      "until": "shot \\d+ frame 24[01]\\b",
       "cap": 40,
       "deadline": 20,
       "first_marker": "warp: mac_01 entry 0",
@@ -12226,11 +12226,61 @@
           "regex": "game mode 10 frame"
         },
         {
-          "name": "last shot (Spirits steady)",
-          "regex": "shot \\d+ frame 249\\b"
+          "name": "shot in the Spirits panel (240 or 241)",
+          "regex": "shot \\d+ frame 24[01]\\b"
         }
       ],
       "reason": "PAUSEFLK det twin of pause_tab_thr_pic (det runs the step serial): flicker in both means a state or cache cause, only threaded means an order cause."
+    },
+    {
+      "name": "pause_tab_c2haz",
+      "status": "unverified",
+      "subject": "PAUSEFLK: the pause_tab route (mac_01 entry 0, wide, all partners, 7 spirits, Party panel with two wheel turns about frames 150 to 190, Star Spirits panel from about frame 205), det, census switch c2haz.",
+      "proves": "PAUSEFLK: the game memory the walk of frame N reads in the Party and Spirits panels that the logic and list build of frame N+1 rewrite (c2haz new lines): the threaded hazards of these panels.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town wide allpartners spmax=7 padscript=wait80,START*3,wait60,R*2,wait20,R*2,wait20,A*2,wait20,right*2,wait30,right*2,wait20,B*2,wait10,R*2,wait10,A*2 loglevel=debug det c2haz",
+      "extra": [],
+      "until": "c2haz sum f(2[5-9]\\d|3\\d\\d) ",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "pause mode",
+          "regex": "game mode 10 frame"
+        },
+        {
+          "name": "census sum after the Spirits panel opened",
+          "regex": "c2haz sum f(2[5-9]\\d|3\\d\\d) "
+        }
+      ],
+      "reason": "PAUSEFLK: the user's flicker on the Party and Star Spirits panels is console-only (Azahar threaded shots show none); the census names the rewritten addresses by code, without a picture."
+    },
+    {
+      "name": "pause_tab_c2haz_thr",
+      "status": "unverified",
+      "subject": "PAUSEFLK: the pause_tab route (mac_01 entry 0, wide, all partners, 7 spirits, Party panel with two wheel turns about frames 150 to 190, Star Spirits panel from about frame 205), logic thread on (no det), census switch c2haz (check at the push of the next frame, nd_c2_push).",
+      "proves": "PAUSEFLK: the game memory the walk of frame N reads in the Party and Spirits panels that the logic and list build of frame N+1 rewrite (c2haz new lines): the threaded hazards of these panels.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town wide allpartners spmax=7 padscript=wait80,START*3,wait60,R*2,wait20,R*2,wait20,A*2,wait20,right*2,wait30,right*2,wait20,B*2,wait10,R*2,wait10,A*2 loglevel=debug c2haz",
+      "extra": [],
+      "until": "c2haz sum f(2[5-9]\\d|3\\d\\d) ",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "pause mode",
+          "regex": "game mode 10 frame"
+        },
+        {
+          "name": "census sum after the Spirits panel opened",
+          "regex": "c2haz sum f(2[5-9]\\d|3\\d\\d) "
+        }
+      ],
+      "reason": "PAUSEFLK: threaded twin of pause_tab_c2haz: the census records at walk time while the logic of the next frame runs, so it also sees writes the threaded order makes (the det census checks only after the whole step)."
     }
   ]
 }

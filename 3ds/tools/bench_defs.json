@@ -508,7 +508,7 @@
       "purpose": "PAUSEFLK: threaded pause (logic thread on, wide), mac_01, Party then Star Spirits tab; shots every frame 140 to 249. Gate: no frame-to-frame flicker of sprites, portraits or windows. A person reads the shots.",
       "scenario": "pause_tab_thr_pic",
       "cap": 40,
-      "until": "shot \\d+ frame 249\\b",
+      "until": "shot \\d+ frame 24[01]\\b",
       "tags": [
         "azahar",
         "pic",
@@ -524,11 +524,43 @@
       "purpose": "PAUSEFLK: det twin of pause_tab_thr_pic (serial step). Same route and shots.",
       "scenario": "pause_tab_det_pic",
       "cap": 40,
-      "until": "shot \\d+ frame 249\\b",
+      "until": "shot \\d+ frame 24[01]\\b",
       "tags": [
         "azahar",
         "pic",
         "pause"
+      ],
+      "gates": []
+    },
+    {
+      "name": "pause_tab_c2haz",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "PAUSEFLK: c2haz census on the pause Party and Star Spirits panels (det). The c2haz new lines name the memory a threaded walk reads while the logic rewrites it.",
+      "scenario": "pause_tab_c2haz",
+      "cap": 30,
+      "until": "c2haz sum f(2[5-9]\\d|3\\d\\d) ",
+      "tags": [
+        "azahar",
+        "pause",
+        "c2haz"
+      ],
+      "gates": []
+    },
+    {
+      "name": "pause_tab_c2haz_thr",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "PAUSEFLK: c2haz census with the logic thread on (no det) on the pause Party and Star Spirits panels: writes of the logic of frame N+1 to memory the walk of frame N reads.",
+      "scenario": "pause_tab_c2haz_thr",
+      "cap": 30,
+      "until": "c2haz sum f(2[5-9]\\d|3\\d\\d) ",
+      "tags": [
+        "azahar",
+        "pause",
+        "c2haz"
       ],
       "gates": []
     },
