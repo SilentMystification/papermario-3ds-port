@@ -30,6 +30,10 @@ file under 3ds/src, 3ds/include, 3ds/shaders, src/, and include/ (a real rebuild
 -Interactive: a person is playing, not watching for a scripted stop condition.
   push a: no timeout, no log-silence stop, settings windows allowed (forwarded to run_azahar.ps1).
   push o/n: keeps echoing the hardware log for a long time (24h) instead of stopping at -Seconds.
+-IdleSeconds <n> (push o/n, default 300): the log echo also ends when no complete line came for n seconds (a console
+  that is off or sits at the HOME menu). -Seconds / -Interactive stay the hard limit. push_3ds.sh --idle.
+Stop: the echo and the netload tail end with this script (push_3ds.sh watches its owner pids); a push that ends
+  or is stopped while push_3ds.sh runs has its bash processes stopped in a finally block. A send in progress is never killed.
   Either way, closing this script does not stop the game - run_azahar.ps1 kills only the Azahar
   process it started (other azahar.exe instances keep running), and real hardware keeps running
   regardless of whether this PC script is watching it.
@@ -50,6 +54,8 @@ param(
     [Parameter(Position = 1, Mandatory = $true)][ValidateSet('o', 'n', 'a', 'on', 'ona')] [string]$Target,
     [string]$ip = "",
     [int]$Seconds = 60,
+    # push o/n: the log echo ends after this many seconds with no complete line (push_3ds.sh --idle).
+    [int]$IdleSeconds = 300,
     [switch]$NoBuild,
     [switch]$Interactive,
     # MEMGATE: push an O3DS-applet memory OVER build anyway (push_3ds.sh --mem-ok; the override is logged in pushed_builds.txt).
@@ -131,6 +137,20 @@ function Invoke-Build {
 $gameSwitches = (@($GameDebug) + @($Rest)) -join ' '
 $randWarp = @(); if ($gameSwitches -notmatch '(^|\s)(warp|tour|tourlist|preset|loadslot|savefile)=') { $randWarp = @('warp=random') }
 
+# Stop-PushShell: stops the push_3ds.sh bash processes under this script (the Git Bash launcher and the bash it starts), used
+# when the push ends early. Their live log and netload tail end with them (they watch their owner pids). A 3dslink upload
+# already running is not killed here: it runs to its own end, the rule that a sent netload is never force-killed.
+function Stop-PushShell {
+    $pending = @($PID); $bashes = @()
+    while ($pending.Count -gt 0) {
+        $parent = $pending[0]; $pending = @($pending | Select-Object -Skip 1)
+        foreach ($c in @(Get-CimInstance Win32_Process -Filter "ParentProcessId=$parent" -ErrorAction SilentlyContinue)) {
+            if ($c.Name -eq 'bash.exe') { $bashes += $c.ProcessId; $pending += $c.ProcessId }
+        }
+    }
+    foreach ($b in $bashes) { Stop-Process -Id $b -Force -ErrorAction SilentlyContinue }
+}
+
 function Push-One([string]$t) {
     Write-Host "=== push $t ($($consoleName[$t])) ==="
     try {
@@ -147,9 +167,17 @@ function Push-One([string]$t) {
             $watchSecs = if ($Interactive) { 86400 } else { $Seconds }
             $extra = @($Rest); if ($GameDebug) { $extra += $GameDebug }
             $extra += $randWarp
-            $profArgs = @(); if ($Profile) { $profArgs = @('--profile', $Profile) }
+            $profArgs = @('--idle', "$IdleSeconds"); if ($Profile) { $profArgs += @('--profile', $Profile) }
             if ($MemOk) { $profArgs += '--mem-ok' }
-            & $gitBash 3ds/push_3ds.sh -t $watchSecs @profArgs @extra
+            # PM_OWNER_PID: push_3ds.sh ends its live log and netload when this script is gone.
+            $env:PM_OWNER_PID = "$PID"
+            $pushDone = $false
+            try {
+                & $gitBash 3ds/push_3ds.sh -t $watchSecs @profArgs @extra
+                $pushDone = $true
+            } finally {
+                if (-not $pushDone) { Stop-PushShell }
+            }
             if ($LASTEXITCODE -ne 0) { throw "push_3ds.sh exited $LASTEXITCODE" }
         }
         Write-Host "=== push ${t}: done ==="

@@ -28,9 +28,15 @@
 # to 17492 and prints its class (refused, timeout, unreachable, or connected).
 # Output: build3ds/hw_live_log_<last octet of the IP>.txt (also printed), one file per console, so two
 # consoles can be captured at the same time. Run it in the background for long runs.
+# "--idle <s>" (default 300): the live log ends when no complete line came for s seconds (no connection counts), with
+# the line "live log idle <s> s: stop". -t stays the hard limit. A line resets the timer.
+# Owners: this bash's Windows pid and its caller's (PM_OWNER_PID from go.ps1, else the parent bash's). The live log
+# (livelog.py --owner), the netload tail (tail --pid) and the netload wait end when an owner is gone. A send in progress
+# is never killed (the console answered): only a silent attempt is killed, as before.
 set -e
 cd "$(dirname "$0")/.."
 secs=0
+idle=300
 ipopt=""
 nobuild=0
 archonly=0
@@ -54,9 +60,16 @@ while :; do
         --profile) profname=$2; shift 2 ;;
         --dry) dry=1; shift ;;
         --mem-ok) memok=1; shift ;;
+        --idle) idle=$2; shift 2 ;;
         *) break ;;
     esac
 done
+
+# Owners (Windows pids, comma list): this bash and its caller. go.ps1 sets PM_OWNER_PID to its own pid; without it the
+# caller is the parent bash. /proc/<pid>/winpid is the Windows pid of a cygwin process (empty when there is none).
+own_win=$(cat /proc/$$/winpid 2>/dev/null || true)
+caller=${PM_OWNER_PID:-$(cat /proc/$PPID/winpid 2>/dev/null || true)}
+owners=$own_win${caller:+,$caller}
 
 # The 3dsx this push sends: build3ds/pm_3ds.3dsx, or PM_SRC3DSX (bench.py build-at sends a lane build from its scratch folder).
 SRC3DSX=${PM_SRC3DSX:-build3ds/pm_3ds.3dsx}
@@ -159,6 +172,8 @@ PY=${PYTHON_EXE:-py}
 if [ -z "$PYTHON_EXE" ] && ! command -v py >/dev/null 2>&1; then PY=python3; fi
 # "py -3" is the Windows launcher form. python3 takes no -3.
 py3() { if [ "$PY" = python3 ]; then python3 "$@"; else "$PY" -3 "$@"; fi; }
+# owner_gone: 0 when one of $owners is no longer running (livelog.py --alive). Only checked between the netload polls.
+owner_gone() { ! py3 -u 3ds/tools/livelog.py --alive "$owners" >/dev/null 2>&1; }
 
 # Read the live log of $ip for $secs (0: until the game closes, at most PM_LOG_MAX). A reconnect after an early end
 # (livelog.py exit 3) appends to the same file, one line each, 3 times at most. Sets $log.
@@ -167,7 +182,10 @@ read_live_log() {
     log="build3ds/hw_live_log_${ip##*.}.txt"
     t_end=$(( $(date +%s) + secs ))
     rc=0
-    py3 -u 3ds/tools/livelog.py "$ip" "$secs" "$log" || rc=$?
+    idle_stop=0
+    # --idle: no line for $idle s ends the read (livelog prints "live log idle <s> s: stop"); --owner: the read ends with its owners.
+    py3 -u 3ds/tools/livelog.py "$ip" "$secs" "$log" --idle "$idle" --owner "$owners" || rc=$?
+    [ "$rc" -eq 4 ] && idle_stop=1
     k=0
     while [ "$rc" -eq 3 ] && [ "$k" -lt 3 ]; do
         left=$(( t_end - $(date +%s) ))
@@ -175,7 +193,7 @@ read_live_log() {
         k=$((k + 1))
         echo "live log ended early (no data): reconnect $k/3 for $left s, appending to $log"
         rc=0
-        py3 -u 3ds/tools/livelog.py "$ip" "$left" "$log" --append || rc=$?
+        py3 -u 3ds/tools/livelog.py "$ip" "$left" "$log" --append --idle "$idle" --owner "$owners" || rc=$?
     done
     echo "--- log saved to $log"
 }
@@ -233,9 +251,11 @@ fi
 report_log() {
     nlines=$(wc -l <"$log" 2>/dev/null || echo 0)
     if [ "$nlines" -eq 0 ]; then
-        echo "NO LOG: no line from $ip:17492 in $secs s (game did not start or log server not reached)"
+        if [ "${idle_stop:-0}" -eq 1 ]; then echo "NO LOG: no line from $ip:17492 in $idle s (idle stop; game did not start or log server not reached)"
+        else echo "NO LOG: no line from $ip:17492 in $secs s (game did not start or log server not reached)"; fi
         # One TCP connect now: refused = the game's server is not up (game side), timeout/unreachable = network, connected = no line came.
-        py3 -u 3ds/tools/livelog.py --probe "$ip" || true
+        # After an idle stop the probe is skipped: the idle line already says the console sent nothing.
+        if [ "${idle_stop:-0}" -eq 0 ]; then py3 -u 3ds/tools/livelog.py --probe "$ip" || true; fi
         case "$1" in
             attach) echo "ATTACH FAILED: no live log from $ip" ;;
             send) echo "PUSH FAILED stage=send, and no live log" ;;
@@ -323,6 +343,20 @@ LINK=${PM_3DSLINK:-/opt/devkitpro/tools/bin/3dslink}
 ok=0
 stage=connect
 reason=""
+ownerdead=0
+dpid=""
+tpid=""
+# cleanup (EXIT, INT, TERM, HUP): the netload tail ends with this script. 3dslink (or its docker client) is killed here only
+# while the console has not answered (started 0), the one case this script ever kills.
+cleanup() {
+    [ -n "$tpid" ] && kill "$tpid" 2>/dev/null || true
+    if [ -n "$dpid" ] && [ "${started:-0}" -eq 0 ]; then
+        if [ "${usedocker:-0}" -eq 1 ]; then docker kill "$cname" >/dev/null 2>&1 || true; fi
+        kill "$dpid" 2>/dev/null || true
+    fi
+    if [ -n "${outfile:-}" ]; then rm -f "$outfile"; fi
+}
+trap cleanup EXIT INT TERM HUP
 i=1
 while [ "$i" -le "$attempts" ]; do
     echo "netload attempt $i/$attempts (connect timeout ${stall_secs}s, send timeout ${send_secs}s)..."
@@ -342,7 +376,8 @@ while [ "$i" -le "$attempts" ]; do
             stdbuf -oL /opt/devkitpro/tools/bin/3dslink -a "$ip" "/out/$src_name" -- --verbose livelog "$@" >"$outfile" 2>&1 &
     fi
     dpid=$!
-    tail -n +1 -f "$outfile" &
+    # --pid: the tail ends when this script's bash ends, even when it is killed without its trap.
+    tail --pid=$$ -n +1 -f "$outfile" &
     tpid=$!
     last_size=0
     stalled=0
@@ -360,6 +395,12 @@ while [ "$i" -le "$attempts" ]; do
             stalled=$((stalled + 1))
         fi
         [ "$started" -eq 1 ] && sent_for=$((sent_for + 1))
+        # An owner gone: no new attempt, and a silent attempt is killed (a sent one runs on to its own end or SEND_SECS).
+        if [ "$ownerdead" -eq 0 ] && owner_gone; then
+            ownerdead=1
+            echo "owner of this push is gone: stopping the netload"
+            if [ "$started" -eq 0 ]; then stage=connect; reason="owner gone"; killed=1; fi
+        fi
         if [ "$started" -eq 0 ] && [ "$stalled" -ge "$stall_secs" ]; then
             echo "attempt $i: no response for ${stall_secs}s - killing (console never answered)"
             stage=connect; reason="no answer from $ip in ${stall_secs}s"
@@ -393,10 +434,12 @@ while [ "$i" -le "$attempts" ]; do
         if [ "$started" -eq 1 ]; then stage=send; reason="3dslink exit $rc after the console answered"
         else stage=connect; reason="3dslink exit $rc, console did not answer"; fi
     fi
+    [ "$ownerdead" -eq 1 ] && break
     i=$((i + 1))
     [ "$i" -le "$attempts" ] && sleep 2
 done
 if [ "$ok" -ne 1 ]; then
+    if [ "$ownerdead" -eq 1 ]; then echo "PUSH STOPPED: the caller of this push is gone ($reason)"; exit 1; fi
     if [ "$stage" != send ]; then
         echo "PUSH FAILED stage=$stage: $reason (after $attempts attempts, $ip)"
         refusal_hint
