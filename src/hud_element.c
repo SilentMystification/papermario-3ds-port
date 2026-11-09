@@ -5,7 +5,6 @@
 #include "ld_addrs.h"
 #include "pm_interp_fi.h"
 #ifdef TARGET_3DS
-#include "nd_gbi_tex.h" /* DIRECT D4b-2: the texture loads and rectangles of this file are frame stream commands */
 #endif
 
 #define MAX_HUD_CACHE_ENTRIES 192

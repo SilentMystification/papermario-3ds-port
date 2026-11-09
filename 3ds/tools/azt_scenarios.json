@@ -11635,6 +11635,86 @@
         }
       ],
       "reason": "PAUSEDR counters: window line after the first pause opens on the logic thread."
+    },
+    {
+      "name": "menuwarp_btl",
+      "status": "unverified",
+      "reason": "MENUWARP step 1 gate: the menu close line and the bypass line come in the same A press (no further input), then the warp live line, then the last shot of the window (shot 15, the 16th shot, after the warp; no menu on it).",
+      "subject": "Battle (kmr_03, one Goomba, battle switch): the Select menu opens in the battle, Debug tab > Warp area (A opens the warning page, B = warp menu), Shooting Star Summit (ddown), A, then the first map of its page (A). The menu closes on that A with no other input, the battle ends and the warp runs. Shots 262 to 300: the destination map with no menu.",
+      "proves": "MENUWARP step 1: a warp from the Select menu in a battle closes the menu (pm_warp_live returns started: pm_optui_act result 5), then bypass_tick runs the warp in the world.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 padscript=@pad_menuwarp_btl.txt shots shotwin=262:40 loglevel=debug",
+      "until": "shot 15 frame \\d+\\b",
+      "cap": 45,
+      "deadline": 25,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "battle",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "menu open",
+          "regex": "menu: open"
+        },
+        {
+          "name": "menu close",
+          "regex": "menu: close"
+        },
+        {
+          "name": "bypass",
+          "regex": "bypass: battle end for kind 1"
+        },
+        {
+          "name": "warp live",
+          "regex": "warp: live to choice"
+        },
+        {
+          "name": "last shot (15)",
+          "regex": "shot 15 frame \\d+\\b"
+        }
+      ]
+    },
+    {
+      "name": "menuwarp_list",
+      "status": "unverified",
+      "reason": "MENUWARP steps 3 and 4 gate: menu shots (shotmenu, one bottom shot per menu draw; the game is paused while the menu is open, so the frame shots do not fire): the row 0 shot shows the level 1 list (Toad Town Tunnels after Toad Town), the row 6 shot after one right press.",
+      "subject": "Port menu Debug tab, row Warp area (row 0, A) opens the Warp area folder at level 1: the rows are the story areas (Goomba Village, Toad Town, Toad Town Tunnels, ...). One shot before and one after a right press: the cursor moves 6 rows.",
+      "proves": "MENUWARP steps 3 and 4: Toad Town Tunnels is the third row (after Toad Town), and left or right on a Warp area row with no value moves 6 rows (pm_optui_step returns 0, pm_menu_hold skips).",
+      "debug": "preset=toad padscript=@pad_menuwarp_list.txt shotmenu loglevel=debug",
+      "until": "menu: tab 4 row 6 ",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "menu open",
+          "regex": "menu: open"
+        },
+        {
+          "name": "level 1 list (row 0 shot)",
+          "regex": "menu: shot bot_m\\d+ tab 4 row 0\\b"
+        },
+        {
+          "name": "skip 6",
+          "regex": "menu: skip 6 row 0 -> 6"
+        },
+        {
+          "name": "row 6 shot",
+          "regex": "menu: shot bot_m\\d+ tab 4 row 6\\b"
+        }
+      ]
     }
   ]
 }

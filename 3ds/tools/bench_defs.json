@@ -509,7 +509,11 @@
       "scenario": "pause_thr_prof",
       "cap": 30,
       "until": "prof f\\d+ w\\d+ core2 drain",
-      "tags": ["azahar", "prof", "pause"],
+      "tags": [
+        "azahar",
+        "prof",
+        "pause"
+      ],
       "gates": []
     },
     {
@@ -3479,7 +3483,11 @@
       "scenario": "shop_wide",
       "cap": 45,
       "until": "shot \\d+ frame 26[2-9]\\b",
-      "tags": ["azahar", "pic", "shop"],
+      "tags": [
+        "azahar",
+        "pic",
+        "shop"
+      ],
       "gates": []
     },
     {
@@ -3491,7 +3499,11 @@
       "scenario": "shop_nowide",
       "cap": 45,
       "until": "shot \\d+ frame 26[2-9]\\b",
-      "tags": ["azahar", "pic", "shop"],
+      "tags": [
+        "azahar",
+        "pic",
+        "shop"
+      ],
       "gates": []
     },
     {
@@ -5502,10 +5514,75 @@
       "log_metrics": [],
       "gates": []
     },
-    {"name": "flash_selftest_save", "kind": "azahar_stream", "speed": "normal", "default": false, "purpose": "SAVESAFE: fresh save.flash with the flashselftest pattern and saveerr (two failed writes, retry). Gate: the RAM hash line and the atomic write line.", "scenario": "flash_selftest_save", "cap": 40, "until": "save.flash written \\(atomic\\) \\d+ ms", "tags": ["azahar", "save", "savesafe"], "log_metrics": [], "gates": []},
-    {"name": "savecrash_save", "kind": "azahar_stream", "speed": "normal", "default": false, "purpose": "SAVESAFE: a save, then the crash exit 10 ms after the last write. Gate: the exit flush line and the RAM hash; the file hash is checked after the run.", "scenario": "savecrash_save", "cap": 60, "until": "save\\.flash written at exit \\(atomic\\) \\d+ ms", "tags": ["azahar", "save", "savesafe", "crash"], "log_metrics": [], "gates": []},
-    {"name": "warpfix_boot_save", "kind": "azahar_stream", "speed": "normal", "default": false, "purpose": "SAVESAFE gate 4: boot warp, padscript save_0; the save is blocked and no flash write runs (the new write path is not reached). Save scenario of the row.", "scenario": "warpfix_boot_save", "cap": 45, "until": "warp: save blocked", "tags": ["azahar", "save", "savesafe"], "log_metrics": [], "gates": []},
-    {"name": "savefile_check", "kind": "azahar_stream", "speed": "normal", "default": false, "purpose": "SAVESAFE gate 4: a savetool file loaded by savefile= (checksum, RAM values, save block). Save scenario of the row.", "scenario": "savefile_check", "cap": 60, "until": "warp: \\S+ entry \\d+", "tags": ["azahar", "save", "savesafe"], "log_metrics": [], "gates": []},
+    {
+      "name": "flash_selftest_save",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SAVESAFE: fresh save.flash with the flashselftest pattern and saveerr (two failed writes, retry). Gate: the RAM hash line and the atomic write line.",
+      "scenario": "flash_selftest_save",
+      "cap": 40,
+      "until": "save.flash written \\(atomic\\) \\d+ ms",
+      "tags": [
+        "azahar",
+        "save",
+        "savesafe"
+      ],
+      "log_metrics": [],
+      "gates": []
+    },
+    {
+      "name": "savecrash_save",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SAVESAFE: a save, then the crash exit 10 ms after the last write. Gate: the exit flush line and the RAM hash; the file hash is checked after the run.",
+      "scenario": "savecrash_save",
+      "cap": 60,
+      "until": "save\\.flash written at exit \\(atomic\\) \\d+ ms",
+      "tags": [
+        "azahar",
+        "save",
+        "savesafe",
+        "crash"
+      ],
+      "log_metrics": [],
+      "gates": []
+    },
+    {
+      "name": "warpfix_boot_save",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SAVESAFE gate 4: boot warp, padscript save_0; the save is blocked and no flash write runs (the new write path is not reached). Save scenario of the row.",
+      "scenario": "warpfix_boot_save",
+      "cap": 45,
+      "until": "warp: save blocked",
+      "tags": [
+        "azahar",
+        "save",
+        "savesafe"
+      ],
+      "log_metrics": [],
+      "gates": []
+    },
+    {
+      "name": "savefile_check",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SAVESAFE gate 4: a savetool file loaded by savefile= (checksum, RAM values, save block). Save scenario of the row.",
+      "scenario": "savefile_check",
+      "cap": 60,
+      "until": "warp: \\S+ entry \\d+",
+      "tags": [
+        "azahar",
+        "save",
+        "savesafe"
+      ],
+      "log_metrics": [],
+      "gates": []
+    },
     {
       "name": "seam_mac01_east",
       "kind": "azahar_pic",
@@ -5535,6 +5612,39 @@
         "azahar",
         "det",
         "seam"
+      ],
+      "gates": []
+    },
+    {
+      "name": "menuwarp_btl",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "MENUWARP step 1: a warp from the Select menu in a battle closes the menu. Shots 262 to 301, 16 shots (kmr_03 battle, battle switch); the log gives menu close before bypass before warp live. A person reads the destination shot.",
+      "scenario": "menuwarp_btl",
+      "cap": 45,
+      "until": "shot 15 frame \\d+\\b",
+      "tags": [
+        "azahar",
+        "battle",
+        "menu",
+        "menuwarp"
+      ],
+      "gates": []
+    },
+    {
+      "name": "menuwarp_list",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "MENUWARP steps 3 and 4: Warp area level 1 rows (Toad Town Tunnels after Toad Town) and the left or right skip of 6 rows on a row with no value (menu: skip 6 log line).",
+      "scenario": "menuwarp_list",
+      "cap": 25,
+      "until": "menu: tab 4 row 6 ",
+      "tags": [
+        "azahar",
+        "menu",
+        "menuwarp"
       ],
       "gates": []
     }
