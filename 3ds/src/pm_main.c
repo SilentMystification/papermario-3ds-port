@@ -191,6 +191,11 @@ void pm_zbuf_reserve(void) {
     nuGfxZBuffer = (unsigned short*)malloc(CFB_PIXELS * 2);
     if (nuGfxZBuffer) pm_log("D03: z-buffer image reserved at boot, %d KB", CFB_PIXELS * 2 / 1024);
     else pm_log_e("D03: no memory for the %d KB z-buffer image at boot (the pause draws over the live frame)", CFB_PIXELS * 2 / 1024);
+    { /* PAUSEDR: the reserve result on the prof line, so a console prof run shows whether the grey pause picture can be saved */
+        extern unsigned pm_heap_free_kb(void);
+        extern void pm_log_prof_line(const char* fmt, ...);
+        pm_log_prof_line("prof zbuf reserved %d heap_free %u KB", nuGfxZBuffer ? 1 : 0, pm_heap_free_kb());
+    }
 }
 /* D03: the z-buffer memory the pause code saves the last frame into. Allocated at boot (pm_zbuf_reserve) or when first needed. */
 /* PAUSEC: the logic thread may need the image before the walk that would allocate it (the pause filter, the darkness overlay). It then
