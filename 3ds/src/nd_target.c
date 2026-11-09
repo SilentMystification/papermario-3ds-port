@@ -54,14 +54,24 @@ extern int pm_is_cur_cfb(const void* p);
  * buffer is T3: G_SETTIMG fetched it with pm_cfb_capture_prev. */
 int splash_on; /* HANG1a: set by the G_PM_ND_SPLASH record (water_splash.c, nd_native_rec) */
 unsigned splash_grab_f = ~0u;
+int grab_hold;                  /* SBLK2 B1: set by the G_PM_ND_GRABHOLD bracket (motion_blur_flame.c, nd_native_rec) */
+unsigned hold_grab_f = ~0u;     /* SBLK2 B1: the frame whose one copy the hold reuses */
 /* LS-4: the G_PM_ND payload kinds (gbi_custom.h), called by the walker (nd_walk.c). w0 = G_PM_ND << 24 | kind << 16 | arg. */
 void nd_native_rec(u32 w0) {
     unsigned kind = (w0 >> 16) & 0xffu;
     if (kind == G_PM_ND_SPLASH) splash_on = (int)(w0 & 1u);
+    if (kind == G_PM_ND_GRABHOLD) grab_hold = (int)(w0 & 1u);
 }
 void grab_cur(const void* src, int w, int h) {
     int x, y, r;
     if (!src || w < 1 || !pm_is_cur_cfb(src)) return;
+    if (grab_hold) { /* SBLK2 B1: one full-screen copy per frame for the whole flame draw; the strips read it (the splash rule) */
+        if (hold_grab_f == pm_frame_count()) return;
+        hold_grab_f = pm_frame_count();
+        r = pm_gpu_grab(nd_cfb, 0, 240);
+        if (r == 2) { n_grabs++; n_splits++; }
+        return;
+    }
     if (splash_on) { /* HANG1a: a water splash window: one full-height copy per frame, the other windows of the frame read it */
         if (splash_grab_f == pm_frame_count()) return;
         splash_grab_f = pm_frame_count();

@@ -309,6 +309,19 @@ void radial_shimmer_appendGfx(void* effect) {
     temp_s5 = data->unk_00;
     dlist1 = D_E0066C8C[temp_s5];
     dlist2 = D_E0066C50[temp_s5];
+#ifdef TARGET_3DS
+    /* SBLK2 A1 debug, switch orbdbg: tag the strip list (its draws log in pm_gpu.c orb_log) and print the segment 9 base this effect sends */
+    {
+        extern int pm_debug_has(const char* name);
+        extern void pm_log(const char* fmt, ...);
+        extern unsigned pm_frame_count(void);
+        extern void pm_gbi_dbg_reg(const void* l, unsigned tag);
+        if (pm_debug_has("orbdbg")) {
+            pm_gbi_dbg_reg(D_09003830_36A590, 6);
+            pm_log("shimdbg f%u k%d seg9 %08x", pm_frame_count(), temp_s5, (unsigned)VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+        }
+    }
+#endif
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));

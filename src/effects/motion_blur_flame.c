@@ -156,6 +156,7 @@ void motion_blur_flame_appendGfx(void* effect) {
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
     gSPDisplayList(gMainGfxPos++, D_E00A29D0[temp_a2]);
+    gPmNdGrabHold(gMainGfxPos++, 1); /* SBLK2 B1: the strips share one frame copy */
 
     for (i = 0; i < UNK_ARRAY_SIZE_1; i++) {
         f32 temp_f12 = data->unk_1C[i];
@@ -271,6 +272,8 @@ void motion_blur_flame_appendGfx(void* effect) {
             }
         }
     }
+
+    gPmNdGrabHold(gMainGfxPos++, 0);
 
     for (i = 0; i < ARRAY_COUNT(data->unk_3C) - 1; i++) {
         data->unk_3C[i + 1] = sp18[i];
