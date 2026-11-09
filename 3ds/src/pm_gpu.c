@@ -2890,11 +2890,11 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
     /* SBKW-2: the walker binds the tile 0 window (LoadTile w x h from the handle raster, ensure_tile), not the whole handle. The handle desc is
      * the full texture (mainW x mainH, 32 x 64 on the sbk_56 water): the native draw sampled 64 rows and took uv scale 1/64 (uvso1 2x, u0.dim 0x40).
      * The desc takes the window size of the live tile 0 when that window starts at the handle raster with the same form and stride. */
-    NdTexDesc wdesc;
+    NdTexDesc wdesc; uint16_t ww_ = 0, wh_ = 0; /* WATER: the window size the cache entry keeps (0: the full desc) */
     if (ds && nd_ws.td[0].valid && nd_ws.td[0].src == ds->img && nd_ws.td[0].fmt == ds->fmt && nd_ws.td[0].siz == ds->siz && nd_ws.td[0].stride == ds->stride &&
         nd_ws.td[0].w > 0 && nd_ws.td[0].h > 0 && nd_ws.td[0].w <= ds->w && nd_ws.td[0].h <= ds->h && (nd_ws.td[0].w != ds->w || nd_ws.td[0].h != ds->h)) {
         wdesc = *ds; wdesc.w = nd_ws.td[0].w; wdesc.h = nd_ws.td[0].h;
-        ds = &wdesc;
+        ds = &wdesc; ww_ = (uint16_t)wdesc.w; wh_ = (uint16_t)wdesc.h;
     }
     NdMode ax; int ax_ok = 0; /* S3L-3: R13 words of an untextured record (no bind): decoded as the list ops that run before the render mode list */
     if (rec[26] != 0 && gfx == NULL) ax_ok = nd_aux_state(rec + NDMC_RW, rec[26], &ax);
@@ -2963,7 +2963,7 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
     if (n >= 0 && !emit) valid = ndc_compare(mk, ds, id, hs, hg); /* S3N-6 check: the cached draws of this key against these */
     /* MDL-1: a textured draw without a handle desc (the bound slot, R13 block) stores tex 1: its hit has no desc, so it falls back (ndn_texf) and never reuses the slot of another frame */
     if (n >= 0 && !valid && !mk->w[22]) { int r13nd_ = (r13_last && ds == NULL && gfx == NULL && tex); if (r13nd_) nd_r13_nohit++; NdMEnt* se_ = nd_mc_store(mk, ds != NULL || r13nd_, hs, hg);
-        if (se_) { se_->h1s = (int16_t)(r13u1_ok ? r13u1_slot : -1); se_->h1g = r13u1_ok ? pm_tex_slot_gen(r13u1_slot) : 0u; } } /* TIK19: the unit 1 slot and its generation, the hit reads its words again */ /* MDL-1 cache (oracle review): only R13 texture records without a desc store tex 1. STARFX: a record with a pre list (key w22, R11 w0) is never stored (rec_run) */ /* S3N-6: the draws and ranges of this key (a miss; a valid entry stays) */
+        if (se_) { se_->ww = ww_; se_->wh = wh_; se_->h1s = (int16_t)(r13u1_ok ? r13u1_slot : -1); se_->h1g = r13u1_ok ? pm_tex_slot_gen(r13u1_slot) : 0u; } } /* TIK19: the unit 1 slot and its generation, the hit reads its words again */ /* MDL-1 cache (oracle review): only R13 texture records without a desc store tex 1. STARFX: a record with a pre list (key w22, R11 w0) is never stored (rec_run) */ /* S3N-6: the draws and ranges of this key (a miss; a valid entry stays) */
     return n;
 }
 void pm_gpu_ndm_begin(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, const NdMKey* mk) {
@@ -2979,7 +2979,7 @@ void pm_gpu_ndm_begin(const uint32_t* rec, const uint32_t* modew, const uint32_t
 }
 /* S3N-4: the switch. One model record drawn natively (emit 1) after rec_apply; a fallback returns -1 and the record runs the walker geometry.
  * The counters print every 300 frames: native records, fallback records, native draws (the ranges; the wref class is not split in this mode). */
-static unsigned ndn_rec, ndn_fb, ndn_draws, ndn_hit, ndn_miss, ndn_nokey, ndn_rng, ndn_texf, ndn_empty; /* PERF1: empty = hits with no draw */
+static unsigned ndn_rec, ndn_fb, ndn_draws, ndn_hit, ndn_miss, ndn_nokey, ndn_rng, ndn_texf, ndn_empty; static unsigned ndn_win; /* WATER: hits that bound the stored tile 0 window (the ndm line, win) */ /* PERF1: empty = hits with no draw */
 void pm_gbi_dnr_take(unsigned* o, unsigned n);
 static unsigned ndn_miss_all; /* MERLEE: model cache misses since boot (pm_gpu_mdl_stat) */
 void pm_gpu_mdl_stat(unsigned* miss, unsigned* clears) { *miss = ndn_miss_all; *clears = nd_mc_clears(); } /* MERLEE: the fade lines of dro_02 npc_merlee.c */
@@ -3007,7 +3007,7 @@ static void ndn_log(unsigned f) { /* PROF2-3: census lines, from cen_lines_frame
         wide_log(f);
         char wb[160]; unsigned wn = 0; wb[0] = 0; /* S3L-1: the codes of the window, nonzero only */
         for (unsigned c = 0; c < 16u; c++) if (ndn_why[c]) { if (!wn) wn += (unsigned)snprintf(wb, sizeof wb, " why"); wn += (unsigned)snprintf(wb + wn, sizeof wb - wn, " %u:%u", c, ndn_why[c]); }
-        pm_log_w("ndm f%u native %u fb %u wref %u hit %u miss %u clears %u%s", f, ndn_rec, ndn_fb, ndn_draws, ndn_hit, ndn_miss, clr - ndn_clr0, wb);
+        pm_log_w("ndm f%u native %u fb %u wref %u hit %u miss %u clears %u win %u%s", f, ndn_rec, ndn_fb, ndn_draws, ndn_hit, ndn_miss, clr - ndn_clr0, ndn_win, wb); ndn_win = 0;
         pm_log_w("ndmhit f%u nokey %u rng %u tex %u empty %u", f, ndn_nokey, ndn_rng, ndn_texf, ndn_empty);
         { static int szd; if (!szd) { szd = 1; pm_log_w("ndmsz entry %u draw %u", (unsigned)sizeof(NdMEnt), (unsigned)sizeof(NdNat)); } }
         { unsigned dg[15]; nd_mc_diag_take(dg);
@@ -3153,6 +3153,10 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
     NdUnit u; memset(&u, 0, sizeof u);
     if (e->tex) {
         const NdTexDesc* ds = nd_tex_handle_desc((int)((k->w[0] >> 8) & 0x7fu), (const void*)(uintptr_t)k->w[1]);
+        /* WATER (B1): an entry built on the tile 0 window (SBKW-2, model_draw) binds that window, not the full handle desc: the full desc is another
+         * nd_tex entry (32 x 64 on a shared-aux water) and its slot was sampled under uv scales built for the window rows, so every hit drew wrong (flicker) */
+        NdTexDesc wd_;
+        if (ds && e->ww) { wd_ = *ds; wd_.w = e->ww; wd_.h = e->wh; ds = &wd_; ndn_win++; }
         int id = ds ? nd_tex_get(ds) : -1;
         { extern int pm_tex_tagi; pm_tex_tagi = 2; } /* STALE2 texsrc path tag: hit */
         if (id < 0 || !nd_tex_unit_hint(id, &e->hs, &e->hg, &u)) { ndn_texf++; return 0; }
