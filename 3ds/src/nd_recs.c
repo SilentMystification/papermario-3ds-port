@@ -57,9 +57,9 @@ static __attribute__((noinline)) void rec_dl(const Gfx* l) {
     }
     pm_gbi_run((void*)l, 0);
 }
-/* S3G-2: the words after a record: n words run in place (no ENDDL needed, pm_gbi_run stops at its end pointer). */
+/* S3G-2: the words after a record: n words run in place (D10b: a flat range on the op executor). */
 static __attribute__((noinline)) void rec_aux(const Gfx* l, unsigned n) {
-    pm_gbi_run((void*)l, n * 8u);
+    nd_ops_run(l, n, 0);
 }
 /* S3N-6: the matrix ops of a record (R1, R2 load, R8 billboard), the first part of rec_apply. A cache hit runs them before it decides; a
  * miss after that skips them (mdone) and runs the rest of rec_apply in the old order. */

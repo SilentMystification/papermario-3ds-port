@@ -18,7 +18,7 @@
  * A shape list is cut into groups: a group starts at a G_VTX at slot 0 after triangles, so a group reads only the vertices that it loads itself. The compiler keeps the box of the
  * object coordinates of each group. At replay a group whose box lies outside one clip plane is skipped: the interpreter rejects every triangle of it as well. A group in view runs
  * the same code as the interpreter (G_VTX copy to the GV1 ring, draw_tri) without the CPU transform of the vertices. A group that is near the camera plane, lit, or does not
- * fit the ring runs through the interpreter itself (pm_gbi_run on the op range of the group). */
+ * fit the ring runs through the op executor (DIRECT D10b: nd_ops_run on the op range of the group). */
 unsigned pm_dlc_gen = 1; /* bumped when the shape buffer is written (pm_tex_invalidate, decode_yay0) */
 
 DlcEnt* dlc_tab[DLC_TAB];
@@ -605,7 +605,7 @@ int dlc_try(const Gfx* l) {
         if (why) {
             if (why == 2) dlc_c.i_lit++; else if (why == 3) dlc_c.i_ring++; else if (why == 4) dlc_c.i_mat++;
             dlc_depth++;
-            pm_gbi_run((void*)(l + g->op0), (g->op1 - g->op0) * 8u);
+            nd_ops_run(l + g->op0, g->op1 - g->op0, 0); /* D10b: a flat range on the op executor */
             dlc_depth--;
             continue;
         }
