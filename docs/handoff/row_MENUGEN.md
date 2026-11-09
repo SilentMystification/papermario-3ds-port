@@ -25,6 +25,8 @@ Menu behaviour:
 - B goes back one level but never closes the Select menu. Only Select closes it. The help text at the bottom says Select, not X.
 - The warp warning shows once per session (first menu open after boot), not at every menu open.
 - Remove the Back row from every menu and sub-page (B goes back).
+- Position is kept (user): when Select opens the menu again, it opens on the same tab, the same sub-page (warp area, battle list,
+  any folder) and the same row as at the last close, in this session. A warp that changes the map keeps it too.
 Debug tab, in this order:
 1. Warp Area
 2. Story Progress
