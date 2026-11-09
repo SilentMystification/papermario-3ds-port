@@ -431,6 +431,7 @@ void nuPiReadRom(u32 rom_addr, void* buf, u32 size) {
     static u32 table_bytes;
     if (!pm_on_audio()) pm_walk_drain("rom"); /* CORE2-3b: a ROM read writes RAM that the last walk may have read */
     pi_read_raw(rom_addr, buf, size);
+    if (pm_xf.on && !pm_on_audio()) { pm_xf.rom_n++; pm_xf.rom_b += size; } /* MAPX-1 */
     if (!buf || !size || (unsigned)buf < 0x00100000u) return;
     /* S19b: s16 data (Lava Piranha animation scripts). The ROM is big-endian, the reader wants native s16.
      * A read starts and ends on an even offset (dma_copy chunks and the segment bounds are even). */

@@ -187,6 +187,7 @@ static int ent_heap_list(const Gfx* l) {
     return (u32)l - (u32)heap_generalHead < (u32)GENERAL_HEAP_SIZE || (u32)l - (u32)gFrameBuf2 < (u32)BATTLE_HEAP_SIZE;
 }
 void ent_compile(EntKey* k, const Gfx* l0) {
+    pm_xf.ent_n++; /* MAPX-1 */
     unsigned ns = 0, nops = 0;
     u32 bad = 0, ntri = 0;
     const u8 *lo = NULL, *hi = NULL;

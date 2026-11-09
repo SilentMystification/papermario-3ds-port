@@ -139,9 +139,6 @@ int nd_tex_handle_miss(int index, const void* gfx) {
 }
 
 /* ---- S3N-1 (B5, B6): render mode lists ---- */
-/* the bits nd_render_state reads: om_h cycle type (bits 20, 21); om_l bits 0, 1, 4, 5, 10, 11, 12, 16 to 23, 28 to 31 */
-#define ND_OMH_READ 0x00300000u
-#define ND_OML_READ 0xF0FF1C33u
 
 int nd_mode_compile(NdMode* m, const unsigned* w) {
     uint32_t mh = 0, ml = 0, vh = 0, vl = 0;
@@ -459,6 +456,21 @@ void nd_mc_miss(const NdMKey* k) {
     }
     mg_cls[6]++;
 }
+/* MAPX-2 diagnostic (switch xferdiag, inside a transition): the stored entry of the same model (R0 w0, R2 w1 finalMtx, R12 w0 geometry equal) whose key
+ * agrees longest with k; returns the first word that differs (92: no entry of this model). A full table scan per miss: debug only. */
+uint32_t nd_mc_xbits[92]; /* MAPX-2: the bits that differed, per first differing word (or of the xors) */
+__attribute__((cold, noinline)) unsigned nd_mc_xdiag(const NdMKey* k) {
+    unsigned best = 92u; const uint32_t* bw = NULL;
+    for (unsigned i = 0; i < NDMC_N; i++) {
+        const uint32_t* w = mc_keyw[i];
+        if (!mc_tab[i].used || w[0] != k->w[0] || w[5] != k->w[5] || w[24] != k->w[24]) continue;
+        unsigned j = 0;
+        while (j < NDMC_RW + NDMC_SW && w[j] == k->w[j]) j++;
+        if (best == 92u || j > best) { best = j < 92u ? j : 91u; bw = w; }
+    }
+    if (bw && best < 92u) nd_mc_xbits[best] |= bw[best] ^ k->w[best];
+    return best;
+}
 unsigned nd_mc_size(void) { return NDMC_N; }
 const NdMEnt* nd_mc_ent(unsigned i) { return &mc_tab[i]; }
 void nd_mc_diag_take(unsigned o[15]) {
@@ -479,13 +491,62 @@ NdMEnt* nd_mc_find(const NdMKey* k) {
     }
     return NULL;
 }
+static int mc_new; /* MAPX-2: mc_slot made a new entry (0: it found the entry of an equal key) */
+static unsigned mc_rep; /* MAPX-2: entries replaced by a new key of the same record and model (nd_mc_store) */
+unsigned nd_mc_reps(void) { return mc_rep; }
+/* MAPX-2: remove an entry from the open hash (linear probe): the entries after it in its probe run move back with their key words (backward shift, no
+ * tombstone). A moved entry leaves the address memo stale; the memo compares the key before use (nd_mc_find_rec). */
+static void mc_remove(NdMEnt* e) {
+    unsigned i = (unsigned)(e - mc_tab), j = i;
+    mc_tab[i].used = 0; mc_n--;
+    for (;;) {
+        j = (j + 1u) & (NDMC_N - 1u);
+        if (!mc_tab[j].used) return;
+        const unsigned h = mc_tab[j].h & (NDMC_N - 1u);
+        if (i <= j ? (h > i && h <= j) : (h > i || h <= j)) continue; /* the entry at j stays when its home h lies cyclically in (i, j] */
+        mc_tab[i] = mc_tab[j]; memcpy(mc_keyw[i], mc_keyw[j], sizeof mc_keyw[i]); mc_tab[j].used = 0;
+        i = j;
+    }
+}
+/* MAPX-2: room for new entries without a full clear. A full table (3/4) or a full draw pool removes the entries not looked up in the last
+ * MC_STALE frames (the models of a room left behind, the keys a fade went through) and packs the pool; only when that frees too little does the
+ * whole cache clear. Before, a door or a room change filled the cache and the clear made every model of the next frame miss. Cold: once per fill. */
+#define MC_STALE 30u
+static unsigned mc_f; /* the frame of the current lookups (nd_mc_find_rec) */
+static unsigned mc_trims;
+unsigned nd_mc_trims(void) { return mc_trims; }
+static int16_t mc_at[NDMC_POOL];
+static __attribute__((cold, noinline)) void mc_trim(void) {
+    mc_trims++;
+    for (unsigned i = 0; i < NDMC_N;) {
+        NdMEnt* e = &mc_tab[i];
+        if (e->used && mc_f - e->uf > MC_STALE) { mc_remove(e); continue; } /* a shifted entry now at i is checked next */
+        i++;
+    }
+    for (unsigned o = 0; o < NDMC_POOL; o++) mc_at[o] = -1;
+    for (unsigned i = 0; i < NDMC_N; i++) { NdMEnt* e = &mc_tab[i]; if (e->used && e->n) mc_at[e->off] = (int16_t)i; else if (e->used) e->off = 0; }
+    unsigned w = 0;
+    for (unsigned o = 0; o < mc_pool_n; o++) {
+        if (mc_at[o] < 0) continue;
+        NdMEnt* e = &mc_tab[mc_at[o]];
+        if (e->off != w) {
+            memmove(&mc_pool[w], &mc_pool[e->off], e->n * sizeof(NdNatC));
+            memmove(&mc_p5[w], &mc_p5[e->off], e->n * sizeof(NdPm5));
+            for (unsigned j = 0; j < e->n; j++) if (mc_pool[w + j].d.use5) mc_pool[w + j].d.p5 = &mc_p5[w + j]; /* the pm5 block of the moved copy */
+            e->off = (uint16_t)w;
+        }
+        w += e->n;
+    }
+    mc_pool_n = w;
+    if (mc_n >= NDMC_N / 8u * 5u || mc_pool_n >= NDMC_POOL / 8u * 7u) mc_clear_all(); /* the live set itself is too big: clear */
+}
 static NdMEnt* mc_slot(const NdMKey* k) {
-    if (mc_n >= NDMC_N / 4u * 3u) mc_clear_all();
+    if (mc_n >= NDMC_N / 4u * 3u) mc_trim();
     uint32_t h = k->h & (NDMC_N - 1u);
     for (;;) {
         NdMEnt* e = &mc_tab[h];
-        if (!e->used) { e->used = 1; e->h = k->h; e->rp = k->rp; memcpy(mc_keyw[h], k->w, sizeof k->w); mc_n++; mc_ins++; if (mc_n > mc_ent_hi) mc_ent_hi = mc_n; return e; }
-        if (e->h == k->h && mc_eq(mc_keyw[h], k)) return e;
+        if (!e->used) { e->used = 1; e->h = k->h; e->rp = k->rp; e->uf = mc_f; e->n = 0; memcpy(mc_keyw[h], k->w, sizeof k->w); mc_n++; mc_ins++; if (mc_n > mc_ent_hi) mc_ent_hi = mc_n; mc_new = 1; return e; }
+        if (e->h == k->h && mc_eq(mc_keyw[h], k)) { e->uf = mc_f; mc_new = 0; return e; }
         h = (h + 1u) & (NDMC_N - 1u);
     }
 }
@@ -497,31 +558,53 @@ static void mc_note(const NdMKey* k, const NdMEnt* e) { /* S3N-7: the last entry
  * hash and no probe. Else the hash (k->h, read by the probe and the store) and the probe; a found entry becomes the record's memo. */
 NdMEnt* nd_mc_find_rec(NdMKey* k) {
     unsigned s = (k->rp >> 2) & (NDMC_LAST - 1u);
+    mc_f = pm_frame_count();
     if (mc_lastp[s] == k->rp && mc_lastg[s] == mc_clears_n) {
         NdMEnt* m = &mc_tab[mc_lasti[s]];
-        if (m->used && mc_eq(mc_keyw[mc_lasti[s]], k)) { k->h = m->h; return m; }
+        if (m->used && mc_eq(mc_keyw[mc_lasti[s]], k)) { k->h = m->h; m->uf = mc_f; return m; }
     }
     k->h = nd_mc_hash(k);
     NdMEnt* e = nd_mc_find(k);
-    if (e) mc_note(k, e);
+    if (e) { mc_note(k, e); e->uf = mc_f; }
     return e;
 }
 NdMEnt* nd_mc_store(const NdMKey* k, int tex, int hs, unsigned hg) {
     if (nat_nr > ND_RAW_MAX || nat_nr < 0 || !nat_vm_ok) { mg_cls[7]++; return NULL; }
     if (nat_n > (int)ND_NAT_MAX) { mg_cls[8]++; return NULL; }
+    /* MAPX-2: the entry this record stored last (memo of its address, this clear generation) of the same model (render mode and texture R0 w0, matrix
+     * R2 w1, geometry R12 w0) under another key (a colour, pan or walker word changed): that entry is replaced, its draws reuse its pool range. A render
+     * mode change is another model here, so both entries of a fading wall stay. */
+    unsigned roff = 0, rn = 0; int reuse = 0;
+    {
+        unsigned s = (k->rp >> 2) & (NDMC_LAST - 1u);
+        NdMEnt* o = mc_lastp[s] == k->rp && mc_lastg[s] == mc_clears_n ? &mc_tab[mc_lasti[s]] : NULL;
+        const uint32_t* ow = o ? mc_keyw[mc_lasti[s]] : NULL;
+        if (o && o->used && ow[0] == k->w[0] && ow[5] == k->w[5] && ow[24] == k->w[24] && !mc_eq(ow, k)) { roff = o->off; rn = o->n; reuse = 1; mc_remove(o); mc_rep++; }
+    }
+    const unsigned clr0 = mc_clears_n, trm0 = mc_trims;
     NdMEnt* e = mc_slot(k);
-    if (mc_pool_n + (unsigned)nat_n > NDMC_POOL) { mc_clear_all(); e = mc_slot(k); }
+    unsigned off;
+    if (!mc_new && (unsigned)nat_n <= e->n) off = e->off; /* MAPX-2: the entry of this key is stored again (a lit entry whose matrix moved, a changed group mask): its own draws are replaced, no pool growth */
+    else if (reuse && mc_clears_n == clr0 && mc_trims == trm0 && (unsigned)nat_n <= rn) off = roff;
+    else {
+        if (mc_pool_n + (unsigned)nat_n > NDMC_POOL) {
+            mc_trim(); /* may remove or move e: look it up again (a clear inside drops it) */
+            e = mc_slot(k);
+            if (mc_pool_n + (unsigned)nat_n > NDMC_POOL) { mc_clear_all(); e = mc_slot(k); }
+        }
+        off = mc_pool_n; mc_pool_n += (unsigned)nat_n;
+    }
     e->vmask = nat_vm; e->geom = nat_geom; e->tgen = ~0u; /* the first hit builds the template ids */
     e->tex = (uint8_t)(tex != 0); e->hs = hs; e->hg = hg;
-    e->off = mc_pool_n; e->n = (unsigned)nat_n;
+    e->off = (uint16_t)off; e->n = (unsigned)nat_n;
+    e->mver = 0; e->uf = mc_f;
     for (int j = 0; j < nat_n; j++) {
-        const unsigned pi = mc_pool_n + (unsigned)j;
+        const unsigned pi = off + (unsigned)j;
         NdNatC* q = &mc_pool[pi];
         q->d = nat[j].d; q->sd = nat[j].sd; q->nidx = nat[j].nidx; q->zn = nat[j].zn; q->zp = nat[j].zp; q->mix_st = (int8_t)nat[j].s.to.mix_st; q->tk = nat[j].tk;
         q->d.pal = NULL; /* the hit points it at the palette 0 of its view */
-        if (q->d.use5) { mc_p5[pi] = nat[j].s.p5; q->d.p5 = &mc_p5[pi]; }
+        if (q->d.use5) { mc_p5[pi] = nat[j].s.p5; q->d.p5 = &mc_p5[pi]; e->mver = (((const uint32_t*)(uintptr_t)k->rp)[3] >> 16) | 0x10000u; } /* MAPX-2: the pm5 block comes from this matrix */
     }
-    mc_pool_n += (unsigned)nat_n;
     if (mc_pool_n > mc_pool_hi) mc_pool_hi = mc_pool_n;
     mc_note(k, e);
     return e;

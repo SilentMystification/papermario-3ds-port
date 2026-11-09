@@ -3901,6 +3901,240 @@
         "gameover"
       ],
       "gates": []
+    },
+    {
+      "name": "xfer_door_mac01",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MAPX: Merlon's house door on mac_01 (enter and exit, twice), det; xfer door lines (steps, longest step, o34, model cache miss and clears).",
+      "scenario": "xfer_door_mac01",
+      "cap": 45,
+      "until": "xfer2 door n4\\b",
+      "tags": [
+        "azahar",
+        "xfer"
+      ],
+      "log_metrics": [
+        {
+          "name": "xfer_max_ms",
+          "regex": "xfer door \\S+ f\\d+ max ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_o34",
+          "regex": "xfer door \\S+ f\\d+ max [\\d.]+ o34 (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_mdl_miss",
+          "regex": "xfer2 door n\\d+ .* mdl (\\d+)/",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_mdl_clr",
+          "regex": "xfer2 door n\\d+ .* mdl \\d+/(\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_init_ms",
+          "regex": "xfer door \\S+ .* init ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_load_ms",
+          "regex": "xfer door \\S+ .* load ([\\d.]+)",
+          "pick": "last"
+        }
+      ],
+      "gates": []
+    },
+    {
+      "name": "xfer_map_mac01",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MAPX: mac_01 -> mac_02 loading zone walk, det; the xfer map line (load stages, first drawn frame).",
+      "scenario": "xfer_map_mac01",
+      "cap": 35,
+      "until": "xfer map \\S+[>]mac_02",
+      "tags": [
+        "azahar",
+        "xfer"
+      ],
+      "log_metrics": [
+        {
+          "name": "xfer_max_ms",
+          "regex": "xfer map \\S+ f\\d+ max ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_o34",
+          "regex": "xfer map \\S+ f\\d+ max [\\d.]+ o34 (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_mdl_miss",
+          "regex": "xfer2 map n\\d+ .* mdl (\\d+)/",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_mdl_clr",
+          "regex": "xfer2 map n\\d+ .* mdl \\d+/(\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_init_ms",
+          "regex": "xfer map \\S+ .* init ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_load_ms",
+          "regex": "xfer map \\S+ .* load ([\\d.]+)",
+          "pick": "last"
+        }
+      ],
+      "gates": []
+    },
+    {
+      "name": "xfer_door_prof",
+      "kind": "console_prof",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MAPX: Merlon's house door on mac_01 (enter and exit, twice) on the O3DS in prof mode. Pass: max under 50 ms, o34 0.",
+      "scene_match": null,
+      "recipe": "warp=mac_01:0 story=ch1_start pos=-203:20:-206 padscript=go_-203_-280_100,A,wait400,go_-190_-262_150,A,wait300,go_-235_-195_100,go_-205_-280_100,A,wait400,go_-190_-262_150,A,wait300 prof=30",
+      "scenario": null,
+      "host": "o3ds",
+      "cap": 60,
+      "until": "xfer door \\S+[:]in[-][>]\\S+[:]out",
+      "tags": [
+        "console",
+        "prof",
+        "xfer"
+      ],
+      "log_metrics": [
+        {
+          "name": "xfer_max_ms",
+          "regex": "xfer door \\S+ f\\d+ max ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_o34",
+          "regex": "xfer door \\S+ f\\d+ max [\\d.]+ o34 (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_mdl_miss",
+          "regex": "xfer2 door n\\d+ .* mdl (\\d+)/",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_mdl_clr",
+          "regex": "xfer2 door n\\d+ .* mdl \\d+/(\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_init_ms",
+          "regex": "xfer door \\S+ .* init ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_load_ms",
+          "regex": "xfer door \\S+ .* load ([\\d.]+)",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "xfer_max_ms",
+          "op": "<",
+          "value": 50
+        },
+        {
+          "metric": "xfer_o34",
+          "op": "==",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "name": "xfer_map_prof",
+      "kind": "console_prof",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MAPX: mac_01 -> mac_02 loading zone on the O3DS in prof mode. Pass: max under 50 ms, o34 0 outside the load step.",
+      "scene_match": null,
+      "recipe": "warp=mac_01:0 story=ch0_toad_town pos=0:0:200 padscript=go_0_700_300,wait150 prof=30",
+      "scenario": null,
+      "host": "o3ds",
+      "cap": 60,
+      "until": "xfer map \\S+[>]mac_02",
+      "tags": [
+        "console",
+        "prof",
+        "xfer"
+      ],
+      "log_metrics": [
+        {
+          "name": "xfer_max_ms",
+          "regex": "xfer map \\S+ f\\d+ max ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_o34",
+          "regex": "xfer map \\S+ f\\d+ max [\\d.]+ o34 (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_mdl_miss",
+          "regex": "xfer2 map n\\d+ .* mdl (\\d+)/",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_mdl_clr",
+          "regex": "xfer2 map n\\d+ .* mdl \\d+/(\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_init_ms",
+          "regex": "xfer map \\S+ .* init ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_load_ms",
+          "regex": "xfer map \\S+ .* load ([\\d.]+)",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "xfer_max_ms",
+          "op": "<",
+          "value": 50
+        },
+        {
+          "metric": "xfer_o34",
+          "op": "==",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "name": "xfer_map_shots",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MAPX-3: mac_01 -> mac_02, det, shots 196 to 211 (covered frames black, first uncovered frame equal to base). A person reads the shots.",
+      "scenario": "xfer_map_shots",
+      "cap": 35,
+      "until": "shot \\d+ frame 211\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "xfer"
+      ],
+      "gates": []
     }
   ],
   "legacy": {
