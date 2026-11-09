@@ -1,5 +1,27 @@
 #include "audio.h"
 #include "audio/core.h"
+#ifdef TARGET_3DS
+#include "pm_port.h"
+#include "pm_dspaud.h"
+#define AUD_EV(r, id) pm_aud_ev((r), (unsigned)(id))
+#else
+#define AUD_EV(r, id) ((void)0)
+#endif
+#ifdef TARGET_3DS
+/* AUDDROP census: a stop and an earlier start of one sound in the same batch of the queue (audiostat only). */
+static __attribute__((noinline)) void au_sfx_merge_census(SoundManager* manager, u32 first, s32 n) {
+    for (s32 k = 1; k < n; k++) {
+        u32 ki = first + k; if (ki >= SFX_QUEUE_SIZE) ki -= SFX_QUEUE_SIZE;
+        SoundRequest* st = &manager->soundQueue[ki];
+        if (!(st->soundID & SOUND_ID_STOP)) continue;
+        for (s32 m = 0; m < k; m++) {
+            u32 mi = first + m; if (mi >= SFX_QUEUE_SIZE) mi -= SFX_QUEUE_SIZE;
+            SoundRequest* r = &manager->soundQueue[mi];
+            if (!(r->soundID & SOUND_ID_STOP) && (r->soundID & SOUND_ID_LOWER) && (r->soundID & SOUND_ID_LOWER) == (st->soundID & SOUND_ID_LOWER)) { AUD_EV(AC_MERGED, st->soundID); break; }
+        }
+    }
+}
+#endif
 
 static void au_sfx_play_sound(SoundManager* manager, SoundPlayer* player, s8* readPos, SoundRequest* request, s32 priority, s32 exclusiveID);
 static void au_sfx_set_triggers(SoundManager* manager, u32 soundID);
@@ -594,6 +616,7 @@ void au_sfx_enqueue_event(SoundManager* manager, u32 soundID, s16 volume, s16 pi
         pending += SFX_QUEUE_SIZE;
     }
 
+    if (pending >= SFX_QUEUE_SIZE - 1) AUD_EV(AC_QOVF, soundID);
     // Only enqueue if there's room in the buffer
     if (pending < SFX_QUEUE_SIZE) {
         u32 nextPos = manager->sfxQueueWritePos;
@@ -685,6 +708,9 @@ void au_sfx_begin_video_frame(SoundManager* manager) {
         pending += SFX_QUEUE_SIZE;
     }
 
+#ifdef TARGET_3DS
+    if (pending > 1 && PMDL("audiostat")) au_sfx_merge_census(manager, manager->sfxQueueReadPos, pending);
+#endif
     // Process each pending sound effect in the queue
     j = manager->sfxQueueReadPos;
     if (pending > 0 && pending < SFX_QUEUE_SIZE) {
@@ -789,6 +815,8 @@ void au_sfx_try_sound(SoundManager* manager, SoundRequest* request, SoundManager
                     }
                 }
 
+                if (!foundPlayer) AUD_EV(AC_NOPLAYER, request->soundID);
+
                 if (foundPlayer) {
                     au_sfx_play_sound(manager, player, (s8*)cmdList, request, 0, 0);
                 }
@@ -825,6 +853,8 @@ void au_sfx_try_sound(SoundManager* manager, SoundRequest* request, SoundManager
                         }
                     }
                 }
+
+                if (!foundPlayer) AUD_EV(AC_NOPLAYER, request->soundID);
 
                 if (foundPlayer) {
                     au_sfx_play_sound(manager, player, (u8*)cmdList, request, 0, 0);
@@ -910,6 +940,8 @@ void au_sfx_try_sound(SoundManager* manager, SoundRequest* request, SoundManager
                             foundPlayer = true;
                         }
                     }
+
+                    if (!foundPlayer) AUD_EV(AC_NOPLAYER, request->soundID);
 
                     if (foundPlayer) {
                         au_sfx_play_sound(manager, player, AU_FILE_RELATIVE(manager->sefData, AU_BE16(*cmdList)), request, priority, 0);

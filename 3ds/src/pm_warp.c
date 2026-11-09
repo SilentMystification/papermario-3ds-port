@@ -1366,6 +1366,8 @@ static void boss_restore_tick(void) {
  * the engine setup again and the logos lead to the title. The flash is flushed and the audio drained first, as for the HOME menu. */
 extern s16 SoftResetOverlayAlpha, SoftResetState;
 void pm_title_return(void) {
+    void pm_lg_quiesce(void); /* pm_logic.c */
+    pm_lg_quiesce(); /* SAVESAFE: the logic writes the save pages, so the join runs after its step boundary */
     pm_flash_flush("return to title");
     pm_audio_drain(3);
     SoftResetOverlayAlpha = 0;
@@ -1954,6 +1956,31 @@ void pm_warp_tick(unsigned frame) {
             extern void open_status_bar_slowly(void);
             open_status_bar_slowly();
             pm_log_d("debug uishow: bar opened f%u", f);
+        }
+    }
+    {   /* WIDE3 debug: uishow=shop. From scene frame 200 the map's shop keeps its item info on (the shop clears it off its trigger). At 200 the item positions are logged and Mario is placed on item 2. */
+        static s32 uishowShop;
+        char uv[16];
+        if (f == 200) {
+            uishowShop = pm_debug_value("uishow", uv, sizeof uv) && uv[0] == 's' && uv[1] == 'h';
+            if (uishowShop && gGameStatusPtr->mapShop != NULL) {
+                extern void pm_pos_set(const float* v, int n);
+                s32 k;
+                float pv[3];
+                for (k = 0; k < gGameStatusPtr->mapShop->numItems && k < 6; k++) {
+                    ShopItemEntity* e = &gGameStatusPtr->shopItemEntities[k];
+                    pm_log_d("debug uishow: shop item %d at %d %d %d", k, (int) e->pos.x, (int) e->pos.y, (int) e->pos.z);
+                }
+                pv[0] = gGameStatusPtr->shopItemEntities[2].pos.x;
+                pv[1] = gGameStatusPtr->shopItemEntities[2].pos.y;
+                pv[2] = gGameStatusPtr->shopItemEntities[2].pos.z;
+                pm_pos_set(pv, 3);
+                pm_log_d("debug uishow: shop items f%u", f);
+            }
+        }
+        if (uishowShop && gGameStatusPtr->mapShop != NULL) {
+            gGameStatusPtr->mapShop->flags |= SHOP_FLAG_SHOWING_ITEM_INFO;
+            gGameStatusPtr->mapShop->curItemSlot = 2;
         }
     }
     {   /* UA3 debug: uishow=coins opens the coin counter window (show_coin_counter, the pickup's own call) at frame 120 */

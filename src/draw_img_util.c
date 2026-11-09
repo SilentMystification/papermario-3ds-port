@@ -1,4 +1,7 @@
 #include "common.h"
+#ifdef TARGET_3DS
+#include "nd_gbi_tex.h" /* DIRECT D4b-2: the texture loads and rectangles of this file are frame stream commands */
+#endif
 
 s32 draw_image_with_clipping(IMG_PTR raster, u32 width, u32 height, s32 fmt, s32 bitDepth, s16 posX, s16 posY,
                              u16 clipX, u16 clipY, u16 clipWidth, u16 clipHeight);

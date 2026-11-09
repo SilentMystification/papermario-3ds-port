@@ -14,6 +14,7 @@ unsigned pm_log_late_con(void); /* pm_log.c: B1 check */
 unsigned pm_log_con_copies(void), pm_log_con_nomenu(void), pm_log_late_drop(void);
 /* O6: a switch word read once. Not for the words the options panel changes at run time (nofog, nolight). */
 #include "pm_gpu.h"
+#include "pm_dspaud.h"
 #include "nd.h"
 
 
@@ -182,11 +183,25 @@ int pm_is_cur_cfb(const void* p) { const void* c = pm_walk_cfb; return c && (in_
  * from ROM data hold big-endian bytes. pm_tex reads these two kinds differently. */
 extern unsigned short pm_wide_side_pause[2][40 * 240]; /* PT56 */
 int pm_fb_native(const void* p) { return pm_is_cfb(p) || (nuGfxZBuffer && in_buf(p, nuGfxZBuffer)) || ((const unsigned short*)p >= &pm_wide_side_pause[0][0] && (const unsigned short*)p < &pm_wide_side_pause[0][0] + 2 * 40 * 240); }
-/* D03: the z-buffer memory the pause code saves the last frame into. Allocated when first needed. */
+/* PAUSEC: the saved picture (150 KB) is reserved once at boot, after the ROM is in, when the heap is whole. On the O3DS XL the commit is
+ * full after the map loads (crash log: mem heap sbrk-used 26868 of 29512 KB, commit 65536 of 65536), so a first allocation at the pause
+ * can fail there. A failed reservation logs an error; pm_zbuf_need retries at the pause, and the filter is skipped if it still fails. */
+void pm_zbuf_reserve(void) {
+    if (nuGfxZBuffer) return;
+    nuGfxZBuffer = (unsigned short*)malloc(CFB_PIXELS * 2);
+    if (nuGfxZBuffer) pm_log("D03: z-buffer image reserved at boot, %d KB", CFB_PIXELS * 2 / 1024);
+    else pm_log_e("D03: no memory for the %d KB z-buffer image at boot (the pause draws over the live frame)", CFB_PIXELS * 2 / 1024);
+}
+/* D03: the z-buffer memory the pause code saves the last frame into. Allocated at boot (pm_zbuf_reserve) or when first needed. */
+/* PAUSEC: the logic thread may need the image before the walk that would allocate it (the pause filter, the darkness overlay). It then
+ * waits for the walker to be idle, so the allocation and the walker's own call (img_role) never race. A failed allocation logs once; the
+ * caller sees nuGfxZBuffer NULL and skips the picture. */
 void pm_zbuf_need(void) {
     if (!nuGfxZBuffer) {
-        nuGfxZBuffer = (unsigned short*)malloc(CFB_PIXELS * 2);
-        if (!nuGfxZBuffer) pm_log_e("D03: no memory for the %d KB z-buffer image", CFB_PIXELS * 2 / 1024);
+        static int fail_logged;
+        if (pm_wq_on_logic()) pm_walk_drain("zbuf");
+        if (!nuGfxZBuffer) nuGfxZBuffer = (unsigned short*)malloc(CFB_PIXELS * 2);
+        if (!nuGfxZBuffer) { if (!fail_logged) { fail_logged = 1; pm_log_e("D03: no memory for the %d KB z-buffer image", CFB_PIXELS * 2 / 1024); } }
         else pm_log("D03: z-buffer image allocated, %d KB", CFB_PIXELS * 2 / 1024);
     }
     if (nuGfxZBuffer) pm_tex_invalidate(nuGfxZBuffer, CFB_PIXELS * 2);
@@ -295,7 +310,12 @@ static int pm_det_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("det
 void pm_audio_step(void) {
     if (au_kicked) return;
     au_kicked = 1;
+    /* AUDDROP: switch aulag=<ms> sleeps every game step (reproduces the O3DS step length on Azahar, not under det) */
+    static int aulag = -1;
+    if (aulag < 0) { char kv[16]; aulag = pm_debug_value("aulag", kv, sizeof kv) > 0 ? atoi(kv) : 0; }
+    if (aulag > 0 && !pm_det_on()) svcSleepThread((s64)aulag * 1000000LL);
     unsigned n = pm_det_on() ? 2u : pm_audio_retraces(); /* DET: 2 a step */
+    if (!n) pm_aud_zero_step(); /* AUDDROP census: a step with no audio tick */
     pm_audio_last_n = n;
     PH_ADD(C_ATICK, n);
     pace_ticks += n;
@@ -698,6 +718,7 @@ void pm_frame_loop(void) {
             { /* MAPHUD: 2 s of steps after a map change. The step runs with the HUD off too (the map info line and the footer map). */
                 char mapb[3][40]; /* MAPHUD: the map block, HUD rows 4 to 6: the change text for 2 s, else the current map */
                 pm_map_hud_step(frame, 2u * (pm_interp_on > 0 ? 60u : 30u), mapb);
+                if (pm_flash_warn) snprintf(sys, sizeof sys, "Save not written to SD (retrying)"); /* SAVESAFE: a failed save write shows here until the retry works */
                 pm_gpu_footer(pm_map_now(), sys);
                 if (pm_opt.dbg_hud) { /* PI5: the HUD update is timed as hud us */
                     unsigned h0 = pm_ph_on ? pm_ticks() : 0;
@@ -795,6 +816,7 @@ static void game_thread(void* arg) {
     pm_options_prof_boot(); /* PROFROW: the launch word or the saved Profiling row */
     if (!pm_rom_init()) return; /* the bottom screen showed the reason */
     pm_mem_log("boot");
+    pm_zbuf_reserve(); /* PAUSEC: the pause picture, while the heap is whole (after the ROM, so the ROM check is unchanged) */
     pm_game_bind();
     pm_log("boot_main");
     boot_main(NULL);

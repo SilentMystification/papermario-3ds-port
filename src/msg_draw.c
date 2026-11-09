@@ -3,6 +3,9 @@
 #include "ld_addrs.h"
 #include "message_ids.h"
 #include "sprite.h"
+#ifdef TARGET_3DS
+#include "nd_gbi_tex.h" /* DIRECT D4b-1: the texture loads and rectangles of this file are frame stream commands */
+#endif
 
 #include "charset/charset.h"
 #include "charset/postcard.png.h"
@@ -35,6 +38,9 @@ extern MessageImageDataList gMsgVarImages;
 extern s32 gMsgBGScrollAmtY;
 extern u8* D_8015131C;
 extern Gfx* D_80151338;
+#ifdef TARGET_3DS
+static const u32* msgStreamPos; /* DIRECT D4b-2: the frame stream position at the end of the last message (with D_80151338) */
+#endif
 extern IMG_BIN D_80159B50[0x200];
 extern PAL_BIN D_8015C7E0[0x10];
 
@@ -342,7 +348,13 @@ void appendGfx_message(MessagePrintState* printer, s16 posX, s16 posY, u16 addit
     msg_drawState = &D_80155D20;
     msg_drawState->printBuffer = printer->printBuffer;
     msg_drawState->printModeFlags = 0;
+#ifdef TARGET_3DS
+    /* DIRECT D4b-2: a producer that records only stream commands (models, sprites, entities, the redirected texture macros) changes the draw
+     * state without moving gMainGfxPos: the state is the message state only when neither moved since the last message */
+    if (gMainGfxPos != D_80151338 || nd_rec_pos() != msgStreamPos) {
+#else
     if (gMainGfxPos != D_80151338) {
+#endif
         msg_reset_gfx_state();
     }
     msg_drawState->printModeFlags |= (MSG_PRINT_FLAG_1 | MSG_PRINT_FLAG_100);
@@ -1747,6 +1759,9 @@ void appendGfx_message(MessagePrintState* printer, s16 posX, s16 posY, u16 addit
     }
     gDPPipeSync(gMainGfxPos++);
     D_80151338 = gMainGfxPos;
+#ifdef TARGET_3DS
+    msgStreamPos = nd_rec_pos();
+#endif
 }
 
 

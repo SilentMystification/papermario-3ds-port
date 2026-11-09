@@ -371,6 +371,17 @@ void gfx_draw_background(void) {
         case BACKGROUND_RENDER_STATE_FILTER_PAUSED:
             // Save the framebuffer into the depth buffer and run a filter on it based on the saved coverage values
 #ifdef TARGET_3DS
+            { /* PAUSEC: the z-buffer image is allocated here, not only by the walk of BEGIN_PAUSED (pm_zbuf_need waits for the walker
+               * first). No memory: no saved picture; the pause menu draws over the live frame (SHOW_PAUSED draws nothing). */
+                void pm_zbuf_need(void);
+                pm_zbuf_need();
+                if (!nuGfxZBuffer) {
+                    gPauseBackgroundFade = 0;
+                    gGameStatusPtr->backgroundFlags &= ~BACKGROUND_RENDER_STATE_MASK;
+                    gGameStatusPtr->backgroundFlags |= BACKGROUND_RENDER_STATE_SHOW_PAUSED;
+                    break;
+                }
+            }
             { /* PAUSE5B: filter timing (cold, fsplit only) */
                 extern unsigned pm_pc_t(void);
                 extern void pm_pc_add(int k, unsigned t0);
@@ -386,6 +397,9 @@ void gfx_draw_background(void) {
             gGameStatusPtr->backgroundFlags |= BACKGROUND_RENDER_STATE_SHOW_PAUSED;
             // fallthrough
         case BACKGROUND_RENDER_STATE_SHOW_PAUSED:
+#ifdef TARGET_3DS
+            if (!nuGfxZBuffer) break; /* PAUSEC: no saved picture (see FILTER_PAUSED) */
+#endif
             // Draw the saved framebuffer to the background, fading in at a rate of 16 opacity per frame until reaching 128 opacity
             gPauseBackgroundFade += 16;
             if (gPauseBackgroundFade > 128) {

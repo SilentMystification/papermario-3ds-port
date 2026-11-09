@@ -1,41 +1,46 @@
-# Row BOOT: faster boot (user, 2026-11-07)
+# Row BOOT: stream the ROM at boot; start the game after the header check
 
-## Oracle plan BOOT
-The log lines carry no tick stamps (build3ds/azt/logs/spot_mac01_pic.txt head: "#n" sequence numbers only), so the boot is not timed today. The AZT "first marker after 3.6 s" is a warm-restart number and skips the 3dsx load. The costs below are estimated from the code.
-Boot order: main (pm_main.c:744: mkdir, chdir, game thread) → game_thread (pm_main.c:653). The game thread does, in order:
-1. fopen debug3ds.txt, fopen options.ini;
-2. pm_log_init and pm_log_start (cpu_apply 80, writer thread with a 1 s start wait at pm_log.c:952, sink thread);
-3. pm_wd_start;
-4. pm_options_init;
-5. pm_rom_init (pm_os.c);
-6. pm_game_bind;
-7. boot_main (nuBoot: gfx/C3D init at pm_gpu.c:1687, shader parse at :1724, audio init at pm_audio.c:51 with ndspInit plus dspfirm.cdc, then logos and the title state).
-Costs, ranked:
-1. Resident ROM read, pm_os.c pm_rom_init: 26.3 MB (PM_ROM_PACKED 0x01924FA4) read by stdio fread in the pm_rom_keep ranges, synchronously on the game thread before boot_main. At an O3DS SD rate of about 4-8 MB/s through stdio this is 3-7 s, all of it before the first frame. By far the largest item.
-2. The 3dsx image: build3ds/pm_3ds.3dsx is 13.5 MB, and the homebrew loader reads it all before main: about 2-3 s on O3DS. Code alone is not that large; large .rodata or .data (generated tables, the map restore table, embedded shbin or assets) is likely. Not measured yet.
-3. Game-side logos: state_logos timing is game design (N64 logos, a few seconds); a skip option would be a user decision. Title assets are Yay0-decompressed and decoded and uploaded through pm_tex on the CPU (tens of ms).
-4. Audio: ndspInit loads dspfirm.cdc from SD and boots the DSP, about 100-300 ms, on the boot path.
-5. Small SD and thread steps, each about 10-50 ms on O3DS: debug3ds.txt, options.ini read twice (pm_main.c:659, :677, then pm_options_init), log file and crash.txt opens, mkdirs. The writer start (wait up to 1 s, normally 0 ms; the log shows "after 0 ms"). gfx/C3D init and DVLB parse: small.
-Measurement (one cold Azahar boot plus one O3DS push):
-- Add pm_boot_mark(name), a cold function storing svcGetSystemTick in a static table, at: main entry, game_thread entry, log started, options done, ROM open, ROM read done (with bytes and ms), gfx init done, audio init done, boot_main entry, first drawn frame, first title-state frame.
-- Print one line `boot ms main X log Y opt Z rom R (MB/s) gfx G audio A first F title T` at the title.
-- Loader time (launch to main) is not visible to the app: the user times the console launch to the first frame with a stopwatch once, and main→title comes from the line.
-- Also `arm-none-eabi-size -A` on the elf plus the map: the 10 largest .rodata/.data symbols.
-- Use a cold start in the AZT run (a warm restart hides the 3dsx load).
-Fix per item:
-1. ROM: stream it on core 1 in boot-use order. A loader thread (prio 0x30, core 1, after cpu_apply) reads pm_rom_keep in 1 MB chunks with FSUSER_OpenFileDirectly/FSFILE_Read (no stdio), and marks each chunk ready (a bit array plus a LightEvent). nuPiReadRom and osPiStartDma (pm_os.c:417, :463) wait on the chunk's event only when it is not ready yet, and count the waits. The header check stays synchronous (it is small). Order the chunks by first use: log the first-touch order of chunks once, with switch `romorder`, and generate the order table. RR2 still holds: the whole ROM ends resident, with no SD streaming during play.
-2. 3dsx: move the big .rodata/.data tables named by the map into a data file read lazily, or derive them from the resident ROM at boot. One row per table, gated by the 3dsx size.
-3. Audio: run pm_audio_init on the core 1 loader thread after the ROM chunks the logos need. The first sound waits on an event; game logic does not.
-4. Options and switches: read options.ini once (merge the prof=1 pre-read into pm_options_init).
-5. Logos: show the user the measured time and let them decide on a skip option; not done by default.
-Gate:
-- On O3DS, the `boot ms` line: title T, and first frame F, at least 3 s lower than before (expected: R leaves the critical path). The stopwatch from launch to title is better by the same amount.
-- ROM wait count during the boot logged, and 0 waits after the title (no stalls in play).
-- A full playthrough smoke (golden_multi) unchanged; mac_01 byte-equal.
+## User facts
+User (2026-11-09): "I want the game to load faster. ... load in whats needed to start the game first and start the game. Then continue
+to load the rest of the game as the splash screens play out."
 
-## Rows
-BOOT-1 MEASURE (start now): pm_boot_mark table and the `boot ms` line, the elf size listing (10 largest .rodata/.data/.bss symbols and their objects into docs/handoff/agent_boot.md, with the INDEX.md line), one cold Azahar boot. No behaviour change. The orchestrator pushes for the O3DS number.
-BOOT-2 and later: wait for the oracle plan MEM (memory use and duplicates), which may change how the ROM stays resident; the orchestrator adds them here.
+## Start state
+Worktree build3ds/wt/boot, branch BOOT from main (hash in the first commit). PM_ROW=BOOT, PM_LANE=boot. One Opus agent (concurrency work).
+
+## Facts (oracle trace, main 6333cec32)
+- pm_rom_init (pm_os.c:207-283) on the game thread: fopen papermario.z64 (sdmc:/3ds/PaperMario, baserom fallback), 64 KB header check,
+  cap check (:258-261), one memalign(16, PM_ROM_PACKED 25748 KB), then a synchronous fseek+fread per pm_rom_keep segment (69, rom_remap.h).
+  Big segments: SBN 0xF00000 10.3 MB, mapfs 0x1E40000 9.7 MB, sprites 2.3 MB, icons 1.3 MB, msg 1 MB.
+- Only two readers of the image: pi_read_raw (pm_os.c:343, memcpy :401; nuPiReadRom :433, osPiStartDma, au_read_rom) and pm_rom_ptr
+  (pm_os.c:413; find_asset pm_map.c:408/411, map_prefetch pm_map.c:566, load_texture_header_at model.c:2289, dsp_voice.c:210, nd_c2haz.c:152).
+- Azahar warm run 3627: rom 4985 ms of first 6259 ms; title 16681. No console boot ms line yet (BOOT-2 open, agent_boot.md).
+
+## Plan
+0. Measure: debug switch romorder logs the first touch of each 128 KB chunk (romorder c<idx> f<frame> t<ms>) in pi_read_raw and
+   pm_rom_ptr; one Azahar boot; chunk counts before first frame and before title into agent_boot.md STATE. Commit.
+1. New 3ds/src/pm_romload.c: rs_st[320] (0 absent, 1 loading, 2 ready, 3 failed), rs_all, rs_err, rs_inflight, counters;
+   rs_read_chunk (keep-segment walk, FSFILE_Read with explicit offset straight into the block; handle by FSUSER_OpenFileDirectly as
+   pm_mem.c:57); rs_claim (CAS 0->1, release store 2/3); loader thread core 0 prio 0x2F, 8 KB heap stack, sequential claims, rs_all=1 at the
+   end; rs_need inline (one acquire load when done) -> rs_need_slow (claim and read on the calling thread, or wait in 1 ms sleeps;
+   failed: fatal screen on the game thread); RS_GUARD 256 B past each access (prefetch/DMA coherence).
+2. pm_rom_init: keep the header and cap checks and the memalign; delete the fread loop (no toggle); start the stream; replace the RR2
+   comment. rs_need before the memcpy in pi_read_raw and before each return of pm_rom_ptr.
+3. Sleep/HOME: loader sets rs_inflight, fence, checks pm_io_quiet (sleep 50 ms loop as pm_flash.c:65); io_gate(1) (pm_log.c ~1027)
+   waits for rs_inflight == 0 within its deadline (Dekker). Exit: pm_shutdown calls pm_rom_stream_stop first. Frame-top poll shows
+   the fatal screen on rs_err until done.
+4. Boot line: keep the boot ms fields, add rdone/waits/wms; `rom stream done ms D MB/s X demand C waits W wait_ms M`; bench boot_ms
+   metrics rom_done_ms, rom_waits, waits after title (gate 0) in the same commit.
+5. Determinism: check from the link map that src/os osGetCount callers are not built; else call osGetCount once before main.c:100.
+6. Step B only if waits before the first frame cost > 200 ms: gen_rom_order.py -> pm_rom_boot_order[] (claimed first).
+hw_guidelines: shifts, no division, one-load fast path, no per-frame malloc, < 1 KB static.
+
+## Done criteria
+nd_host PASS; memcheck OK (margin about 305 KB); boot_ms on Azahar cold before/after: first_ms and title_ms down, rom_done before title,
+0 waits after title; spot_mac01_det and battle_start_f182_cold two cold runs each byte-equal to each other and main; a title/logo
+picture of the no-warp boot. Console (user): boot ms before/after on O3DS XL and N3DS, HOME and sleep during the logos.
 
 ## Rules
-Own worktree: git worktree add build3ds/wt/boot -b boot nds1; copy assets/us and ver/us/build; PM_LANE=boot. Code first (CLAUDE.md rule 5). Cold start for the boot run. No attribution lines, never commit 3ds/src/map_restore_table.c, keep Azahar open. Delete this file in the last BOOT commit.
+CLAUDE.md rules 5, 7, 8, 9, 11. No git stash, no push, no attribution, no toggles, no stubs. Never commit 3ds/src/map_restore_table.c.
+
+## At the end
+Delete this row file in the commit that completes the row; update agent_boot.md STATE. SendMessage main "BOOT ready <hash>".

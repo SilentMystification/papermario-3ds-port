@@ -18,6 +18,8 @@ void nd_walk_ops(void* list, unsigned nbytes); /* nd_walk.c: a span that keeps t
 void nd_walk_rec_model(const Gfx* q);           /* nd_walk.c: a model record, as the walker's G_PM_REC arm */
 void nd_walk_spr(const Gfx* q);                 /* nd_walk.c: a sprite record and its geometry words */
 void nd_walk_ent(const Gfx* q, unsigned words); /* nd_walk.c: an entity record (and its G_DL) */
+void nd_tex4_run(const uint32_t* p);            /* nd_tex_set.c: a compound texture load */
+void nd_texrect_run(const uint32_t* p);         /* nd_tex_set.c: a texture rectangle */
 int nd_rec_sub;
 
 #define CH_WORDS (32768u / 4u)
@@ -153,6 +155,99 @@ void nd_rec_ent(const void* rec) {
     p[1] = 0;
     memcpy(p + 2, rec, G_PM_ENT_WORDS * 8u);
 }
+void nd_rec_tex4(const NdTex4* t) {
+    nd_rec_cut();
+    uint32_t* p = rec_take(8);
+    ndc_n[NDC_TEX4]++;
+    p[0] = NDC_HDR(NDC_TEX4, 3, t->flags);
+    p[1] = (uint32_t)(uintptr_t)t->raster;
+    p[2] = (uint32_t)(uintptr_t)t->pal;
+    p[3] = t->wh;
+    p[4] = t->ul;
+    p[5] = t->lr;
+    p[6] = t->f;
+    p[7] = t->siz;
+}
+void nd_rec_texrect(uint32_t w0, uint32_t w1, uint32_t hs, uint32_t hd) {
+    nd_rec_cut();
+    uint32_t* p = rec_take(6);
+    ndc_n[NDC_TEXRECT]++;
+    p[0] = NDC_HDR(NDC_TEXRECT, 2, 0);
+    p[1] = 0;
+    p[2] = w0;
+    p[3] = w1;
+    p[4] = hs;
+    p[5] = hd;
+}
+/* D4b-1: the nd_gbi_tex.h redirect. g is the packet the macro evaluated (gMainGfxPos++); it is taken back, then recorded, or written as words
+ * inside a list for later (nd_rec_sub > 0). */
+static __attribute__((cold, noinline)) void gx_bad(const Gfx* g) {
+    pm_log_e("ndc: redirected texture macro with the packet %p, not gMainGfxPos - 1 (%p)", (const void*)g, (const void*)(gMainGfxPos - 1));
+    pm_fatal_stop("ndc: redirected macro on a local list");
+}
+void nd_gx_tlut16(Gfx* g, unsigned slot, const void* dram) {
+    if (g != gMainGfxPos - 1) gx_bad(g);
+    gMainGfxPos = g;
+    if (nd_rec_sub) { gDPLoadTLUT_pal16(gMainGfxPos++, slot, dram); return; }
+    NdTex4 t = { NULL, dram, 1u, 0, 0, 0, (slot & 15u) << 28 };
+    nd_rec_tex4(&t);
+}
+void nd_gx_tex4(Gfx* g, const void* timg, unsigned fmt, unsigned w, unsigned h, int uls, int ult, int lrs, int lrt, unsigned pal,
+                unsigned cms, unsigned cmt, unsigned masks, unsigned maskt, unsigned shifts, unsigned shiftt, unsigned tile_form) {
+    if (g != gMainGfxPos - 1) gx_bad(g);
+    gMainGfxPos = g;
+    if (nd_rec_sub) {
+        if (tile_form) { gDPLoadTextureTile_4b(gMainGfxPos++, timg, fmt, w, h, uls, ult, lrs, lrt, pal, cms, cmt, masks, maskt, shifts, shiftt); }
+        else { gDPLoadTextureBlock_4b(gMainGfxPos++, timg, fmt, w, h, pal, cms, cmt, masks, maskt, shifts, shiftt); }
+        return;
+    }
+    NdTex4 t = { timg, NULL, tile_form ? 6u : 2u, (w & 0xffffu) | (h << 16), ((unsigned)uls & 0xffffu) | ((unsigned)ult << 16),
+                 ((unsigned)lrs & 0xffffu) | ((unsigned)lrt << 16),
+                 (fmt & 7u) | ((cms & 3u) << 4) | ((cmt & 3u) << 6) | ((masks & 15u) << 8) | ((maskt & 15u) << 12) | ((shifts & 15u) << 16) |
+                 ((shiftt & 15u) << 20) | ((pal & 15u) << 24) };
+    nd_rec_tex4(&t);
+}
+void nd_gx_texrect(Gfx* g, int xl, int yl, int xh, int yh, unsigned tile, int s, int t, int dsdx, int dtdy) {
+    if (g != gMainGfxPos - 1) gx_bad(g);
+    gMainGfxPos = g;
+    Gfx r[3];
+    Gfx* rp = r;
+    gSPTextureRectangle(rp++, xl, yl, xh, yh, tile, s, t, dsdx, dtdy);
+    if (nd_rec_sub) { memcpy(gMainGfxPos, r, sizeof r); gMainGfxPos += 3; return; }
+    nd_rec_texrect(r[0].words.w0, r[0].words.w1, r[1].words.w1, r[2].words.w1);
+}
+void nd_gx_textile(Gfx* g, const void* timg, unsigned fmt, unsigned siz, unsigned w, unsigned h, int uls, int ult, int lrs, int lrt, unsigned pal,
+                   unsigned cms, unsigned cmt, unsigned masks, unsigned maskt, unsigned shifts, unsigned shiftt) {
+    if (g != gMainGfxPos - 1) gx_bad(g);
+    gMainGfxPos = g;
+    if (nd_rec_sub) { /* the words of gDPLoadTextureTile (its siz##_TILE_BYTES and _LINE_BYTES are 0, 1, 2, 2 for 4b, 8b, 16b, 32b) */
+        static const unsigned char tb[4] = { 0, 1, 2, 2 };
+        unsigned line = (((unsigned)(lrs - uls + 1) * tb[siz & 3u]) + 7u) >> 3;
+        gDPSetTextureImage(gMainGfxPos++, fmt, siz, w, timg);
+        gDPSetTile(gMainGfxPos++, fmt, siz, line, 0, G_TX_LOADTILE, 0, cmt, maskt, shiftt, cms, masks, shifts);
+        gDPLoadSync(gMainGfxPos++);
+        gDPLoadTile(gMainGfxPos++, G_TX_LOADTILE, uls << G_TEXTURE_IMAGE_FRAC, ult << G_TEXTURE_IMAGE_FRAC, lrs << G_TEXTURE_IMAGE_FRAC, lrt << G_TEXTURE_IMAGE_FRAC);
+        gDPPipeSync(gMainGfxPos++);
+        gDPSetTile(gMainGfxPos++, fmt, siz, line, 0, G_TX_RENDERTILE, pal, cmt, maskt, shiftt, cms, masks, shifts);
+        gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, uls << G_TEXTURE_IMAGE_FRAC, ult << G_TEXTURE_IMAGE_FRAC, lrs << G_TEXTURE_IMAGE_FRAC, lrt << G_TEXTURE_IMAGE_FRAC);
+        return;
+    }
+    NdTex4 t = { timg, NULL, 10u, (w & 0xffffu) | (h << 16), ((unsigned)uls & 0xffffu) | ((unsigned)ult << 16),
+                 ((unsigned)lrs & 0xffffu) | ((unsigned)lrt << 16),
+                 (fmt & 7u) | ((cms & 3u) << 4) | ((cmt & 3u) << 6) | ((masks & 15u) << 8) | ((maskt & 15u) << 12) | ((shifts & 15u) << 16) |
+                 ((shiftt & 15u) << 20) | ((pal & 15u) << 24), siz & 3u };
+    nd_rec_tex4(&t);
+}
+void nd_gx_scisrect(Gfx* g, int xl, int yl, int xh, int yh, unsigned tile, int s, int t, int dsdx, int dtdy) {
+    if (g != gMainGfxPos - 1) gx_bad(g);
+    gMainGfxPos = g;
+    Gfx r[3];
+    Gfx* rp = r;
+    gSPScisTextureRectangle(rp++, xl, yl, xh, yh, tile, s, t, dsdx, dtdy);
+    if (nd_rec_sub) { memcpy(gMainGfxPos, r, sizeof r); gMainGfxPos += 3; return; }
+    nd_rec_texrect(r[0].words.w0, r[0].words.w1, r[1].words.w1, r[2].words.w1);
+}
+const uint32_t* nd_rec_pos(void) { return wp; }
 const uint32_t* nd_rec_mark(void) {
     nd_rec_cut();
     return wp;
@@ -217,6 +312,8 @@ static void stream_run(const uint32_t* p, const uint32_t* stop) {
         case NDC_MODEL: nd_walk_rec_model((const Gfx*)(p + 2)); break;
         case NDC_SPR: nd_walk_spr((const Gfx*)(p + 2)); break;
         case NDC_ENT: nd_walk_ent((const Gfx*)(p + 2), (h >> 16) & 0xffu); break;
+        case NDC_TEX4: nd_tex4_run(p); break;
+        case NDC_TEXRECT: nd_texrect_run(p); break;
         case NDC_CALL: stream_run((const uint32_t*)(uintptr_t)p[1], (const uint32_t*)(uintptr_t)p[2]); break;
         default: run_bad(h, p); return;
         }

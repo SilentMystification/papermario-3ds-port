@@ -1,9 +1,10 @@
 # Handoff DIRECT (epic: the game calls the native producers directly)
 
 STATE
-- Branch DIRECT (worktree build3ds/wt/DIRECT), main acca74540 merged. Plan: plan_direct.md. Row file row_DIRECT.md stays (D4 to D9 open).
-- Done, byte-equal to build-at 151a86120 (spot_mac01_det, mdl5_iwa10_det, battle_start_f182_cold, nok11_det, direct_pra13_det): D0 frame stream, D1 model records and floor reflection ranges, D2 sprite records, D3 entity, item and animator records. nd_host PASS. Prof line `ndc`.
-- Expected console change of D0 to D3: none (structure only). Console list for the user: spot_mac01_prof, spot_mac00_prof, spot_sbk56_prof, starfx_hos01_prof.
-- Named fallbacks: records written inside build_custom_gfx (nd_rec_sub) stay in that list until D7; sprites the native draw refuses (battle context) walk their two payload words.
-- Next: D4a (plan_direct.md section 5 finding): the texture tile, TMEM and TLUT model of nd_tex_set.c has eager GPU calls (pm_gpu_flush 6, pm_tex_set_wrap, pm_tex_load, sync_combine 7, ensure_tile); it must become a pure model plus lazy apply at the draw before any redirect slice (D4b) can move cost to core 1. Shared draw code: byte gates on all four det scenes.
-- Tools: lane build with map_restore_table.c backup and restore (the row's b.sh pattern); base shots by bench.py build-at <base> <bench> (one build per bench).
+- Branch DIRECT (worktree build3ds/wt/DIRECT), main 6b5811401 merged. Plan: plan_direct.md. Row file row_DIRECT.md stays (D4b-3 to D9 open).
+- Done: D0-D3 (stream, model, sprite, entity records); D4a-1 NdTexM and pure SetTileSize windows (0d2816f5c); D4b-1 nd_gbi_tex.h redirect in msg_draw.c (dc4ef28b7, merged 6b5811401); D4b-2 redirect in hud_element.c, draw_box.c, draw_img_util.c plus gDPLoadTextureTile and gSPScisTextureRectangle, and the msg_draw.c:348 reset fix (08b8ac0d8).
+- Gates D4b-2: byte-equal to build-at 6b5811401 on spot_mac01_det, battle_start_f182_cold, msgbox_talk_nowide_pic, msgbox_choice_nowide_pic, pause_spin_grab_det_w300 (40/40); memcheck margin 306 KB. Earlier slices: see their commit messages.
+- Console: run spot_mac01_prof, spot_mac00_prof, spot_sbk56_prof, starfx_hos01_prof. Risk: LIST spans per frame rose (mac_01 det 27.1 to 55.6) because each command between list words cuts a span; if the console shows a loss, D4b-3 (state ops of these files as commands) or a cheaper span entry must come first.
+- Named fallbacks: records written inside build_custom_gfx (nd_rec_sub) stay in that list until D7; sprites the native draw refuses walk their payload words; redirected texture macros with nd_rec_sub > 0 write their words. Open finding: msg_draw.c:348 reset skip compares only gMainGfxPos (plan section 5).
+- Next: D4b-3: the state ops of the converted files (prim and env colour, combine, othermode, texture LUT and filter) as typed commands. The replay must keep the walker per-op semantics (g2_same, g2_note, gv_epoch, sync_combine) to stay byte-equal. Not started in code.
+- Tools: lane build with map_restore_table.c backup and restore (scratch b.sh pattern: gen_map_restore.py, PM_LANE=DIRECT build.sh, restore); base shots: run the gate benches on a clean lane build and rename the shots folder (base4a), or bench.py build-at <base> <bench>. nok11_det runs turbo, the others normal (a mixed list is refused).

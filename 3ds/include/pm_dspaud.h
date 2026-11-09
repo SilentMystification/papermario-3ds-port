@@ -35,7 +35,14 @@ unsigned pm_dspa_backlog_blocks(void);                            /* blocks emit
 void pm_dspa_stats_log(void);
 /* AUDV census (switch audiostat): engine voice events that leave a voice silent. One line per stats window. */
 enum { DSPA_VC_NOCHAN, DSPA_VC_GIVEUP, DSPA_VC_NONADPCM, DSPA_VC_N };
-void pm_dspa_vcount(int what);
+void pm_dspa_vcount(int what, unsigned id);                       /* also counts the event in the drop census */
+/* AUDDROP census (switch audiostat, line "audio drops wN:", pm_audcensus.c): every reason a sound is cut, dropped or late. */
+enum { AC_UNHEARD, AC_SQUEEZED, AC_EARLYEND, AC_NOCHAN, AC_GIVEUP, AC_LOOPCAP, AC_NONADPCM, AC_QOVF, AC_MERGED, AC_NOPLAYER, AC_STOLEN, AC_N };
+void pm_aud_ev(unsigned reason, unsigned id);                     /* id: sample key (render) or sound id (control) */
+void pm_aud_catchup(unsigned late_us);                            /* render: a block ran without a sleep, late by late_us */
+void pm_aud_run_end(void);                                        /* render: the pace slept (or resynced): the catch-up run ends */
+void pm_aud_zero_step(void);                                      /* game thread: a step with 0 audio ticks */
+void pm_aud_window_log(unsigned decode_max_us);                   /* one stats window: the line and the reset */
 void pm_dspa_log_once(const char* fmt, ...);
 
 /* decomp side (src/audio/core/dsp_voice.c) */
