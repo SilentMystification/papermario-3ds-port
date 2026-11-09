@@ -514,8 +514,10 @@ void pm_walk_drain(const char* why) {
     /* PAUSEC: pm_walk_side is the game thread's count of the walk it runs. A logic thread drain must wait for that walk too (the
      * queue entry is popped after it runs), so only the walker's own calls return here. */
     if (pm_walk_side && !pm_wq_on_logic()) return;
+    unsigned xt0 = pm_xf.on ? pm_ticks() : 0u; /* BTLWIPE: the dr stage of the xfer line */
     pm_wq_idle();
     if (nd_c2_on > 0) nd_c2_drain(why);
+    if (pm_xf.on) { pm_xf.dr_n++; pm_xf.dr_t += pm_ticks() - xt0; }
 }
 static void gbi_run1(void* list, unsigned nbytes) {
     if (!pm_ph_cen) { nd_walk_run(list, nbytes); return; }

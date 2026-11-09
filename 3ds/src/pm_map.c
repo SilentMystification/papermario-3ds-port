@@ -620,6 +620,14 @@ void __wrap_load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
     pm_xfer_map_load(loadType == LOAD_FROM_MAP ? areaID : gGameStatusPtr->areaID, loadType == LOAD_FROM_MAP ? mapID : gGameStatusPtr->mapID);
 }
 
+/* BTLWIPE: the load step of the xfer battle line */
+extern void __real_load_battle_section(void);
+void __wrap_load_battle_section(void) {
+    unsigned t0 = pm_ticks();
+    __real_load_battle_section();
+    pm_xfer_btl_load(pm_ticks() - t0);
+}
+
 /* MS01: a linked map has PM_MAP_DMA_TAG as dmaStart and dmaEnd (3ds/stub_include/map_rom_ranges.h), so load_map_by_IDs calls
  * dma_copy for it, at the place where the N64 copied the overlay. The overlay has no ROM data here. The call restores the static data of
  * the map instead (pm_mapdata.c), like the overlay copy did. gMapConfig is set by then. */

@@ -5075,6 +5075,315 @@
       "gates": []
     },
     {
+      "name": "xfer_battle_enc",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BTLWIPE: standing encounter on kmr_09 (encwarp 120), cold boot; the xfer battle lines (star wipe steps, song load, bank loads, decodes, walk drains, capture path).",
+      "scenario": "xfer_battle_enc",
+      "cap": 30,
+      "until": "xfer battle \\S+",
+      "tags": [
+        "azahar",
+        "xfer",
+        "battle"
+      ],
+      "log_metrics": [
+        {
+          "name": "xfer_wmax_ms",
+          "regex": "xfer3 battle wmax ([\\d.]+) wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_wo34",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 (\\d+) song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_song_ms",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song ([\\d.]+) bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_bks_n",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks (\\d+)/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_bks_ms",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/([\\d.]+) dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_dec_n",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec (\\d+)/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_dec_ms",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/([\\d.]+)/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_dec_max_ms",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/([\\d.]+) dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_dr_n",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr (\\d+)/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_dr_ms",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/([\\d.]+) capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_capcpu",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_max_ms",
+          "regex": "xfer battle \\S+ f\\d+ max ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_load_ms",
+          "regex": "xfer battle \\S+ .* load ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_init_ms",
+          "regex": "xfer battle \\S+ .* init ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_rom_n",
+          "regex": "xfer battle \\S+ .* rom (\\d+)/",
+          "pick": "last"
+        }
+      ],
+      "gates": []
+    },
+    {
+      "name": "xfer_battle_prof",
+      "kind": "console_prof",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BTLWIPE: standing encounter on kmr_09 (encwarp 120) on the O3DS in prof mode. Pass: wipe steps over 34 ms 0, longest wipe step under 34 ms.",
+      "scene_match": null,
+      "recipe": "warp=kmr_09:0 story=ch0_toad_town encwarp=120 prof=30",
+      "scenario": null,
+      "host": "o3ds",
+      "cap": 60,
+      "until": "xfer battle \\S+",
+      "tags": [
+        "console",
+        "prof",
+        "xfer",
+        "battle"
+      ],
+      "log_metrics": [
+        {
+          "name": "xfer_wmax_ms",
+          "regex": "xfer3 battle wmax ([\\d.]+) wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_wo34",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 (\\d+) song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_song_ms",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song ([\\d.]+) bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_bks_n",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks (\\d+)/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_bks_ms",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/([\\d.]+) dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_dec_n",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec (\\d+)/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_dec_ms",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/([\\d.]+)/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_dec_max_ms",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/([\\d.]+) dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_dr_n",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr (\\d+)/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_dr_ms",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/([\\d.]+) capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_capcpu",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_max_ms",
+          "regex": "xfer battle \\S+ f\\d+ max ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_load_ms",
+          "regex": "xfer battle \\S+ .* load ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_init_ms",
+          "regex": "xfer battle \\S+ .* init ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_rom_n",
+          "regex": "xfer battle \\S+ .* rom (\\d+)/",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "xfer_wo34",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "xfer_wmax_ms",
+          "op": "<",
+          "value": 34
+        }
+      ]
+    },
+    {
+      "name": "xfer_battle_walk_prof",
+      "kind": "console_prof",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BTLWIPE: walk-in encounter on kmr_09 (stick right into the Goomba) on the O3DS in prof mode. Pass: wipe steps over 34 ms 0, longest wipe step under 34 ms.",
+      "scene_match": null,
+      "recipe": "warp=kmr_09:0 story=ch0_toad_town padscript=right*200 prof=30",
+      "scenario": null,
+      "host": "o3ds",
+      "cap": 60,
+      "until": "xfer battle \\S+",
+      "tags": [
+        "console",
+        "prof",
+        "xfer",
+        "battle"
+      ],
+      "log_metrics": [
+        {
+          "name": "xfer_wmax_ms",
+          "regex": "xfer3 battle wmax ([\\d.]+) wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_wo34",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 (\\d+) song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_song_ms",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song ([\\d.]+) bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_bks_n",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks (\\d+)/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_bks_ms",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/([\\d.]+) dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_dec_n",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec (\\d+)/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_dec_ms",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/([\\d.]+)/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_dec_max_ms",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/([\\d.]+) dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_dr_n",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr (\\d+)/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_dr_ms",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/([\\d.]+) capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_capcpu",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_max_ms",
+          "regex": "xfer battle \\S+ f\\d+ max ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_load_ms",
+          "regex": "xfer battle \\S+ .* load ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_init_ms",
+          "regex": "xfer battle \\S+ .* init ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_rom_n",
+          "regex": "xfer battle \\S+ .* rom (\\d+)/",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "xfer_wo34",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "xfer_wmax_ms",
+          "op": "<",
+          "value": 34
+        }
+      ]
+    },
+    {
       "name": "magi_hit_pic",
       "kind": "azahar_pic",
       "speed": "normal",

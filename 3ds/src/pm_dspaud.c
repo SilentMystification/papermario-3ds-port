@@ -30,6 +30,10 @@ typedef struct {
 static Ent ents[MAXENT];
 static unsigned cache_budget = 1536u * 1024u, cache_used, cache_peak;
 static unsigned c_hit, c_miss, c_evict, c_fail, c_late, dec_us_sum, dec_us_max, dec_n;
+/* BTLWIPE: decodes since boot (count, us, never reset) and the longest one since pm_dspa_dec_mark, for the xfer3 line (pm_xfer.c). */
+static volatile unsigned xd_n, xd_us, xd_max;
+void pm_dspa_dec_mark(unsigned* n, unsigned* us) { *n = xd_n; *us = xd_us; xd_max = 0; }
+void pm_dspa_dec_read(unsigned* n, unsigned* us, unsigned* max) { *n = xd_n; *us = xd_us; *max = xd_max; }
 
 static volatile unsigned ax_total; /* aux callbacks since the start */
 static volatile int fx_flip;       /* the first aux callback ran: the render thread sets the mixes again */
@@ -138,6 +142,7 @@ static Ent* cache_get(const DspaSample* s) {
     if (cache_used > cache_peak) cache_peak = cache_used;
     unsigned us = tk_us(svcGetSystemTick() - t0);
     dec_n++; dec_us_sum += us; if (us > dec_us_max) dec_us_max = us;
+    xd_n++; xd_us += us; if (us > xd_max) xd_max = us;
     return e;
 }
 

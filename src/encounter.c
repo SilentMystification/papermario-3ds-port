@@ -1367,6 +1367,7 @@ void update_encounters_pre_battle(void) {
                 return;
             }
 
+            { extern void pm_xfer_btl_begin(void); pm_xfer_btl_begin(); } /* BTLWIPE: the xfer battle line starts with the star wipe */
             // start battle music
             if (currentEncounter->songID <= AU_SONG_NONE) {
                 switch (currentEncounter->firstStrikeType) {

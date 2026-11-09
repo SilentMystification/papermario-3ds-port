@@ -8,6 +8,7 @@
 #endif
 #ifdef TARGET_3DS
 #include "pm_au2.h"
+#include "pm_port.h"
 #endif
 #include "ld_addrs.h"
 
@@ -1131,6 +1132,7 @@ enum BKParseState {
 /// This is the standard loader for streamed instrument banks.
 BKFileBuffer* au_load_BK_to_bank(s32 bkFileOffset, BKFileBuffer* bkFile, s32 bankIndex, BankSet bankSet) {
 #ifdef TARGET_3DS
+    unsigned xt0 = pm_xf.on ? pm_ticks() : 0u; /* BTLWIPE: the bks stage of the xfer line */
     pm_au2_sync(AU2_SYNC_BANK); /* AU2: the mixer reads these instruments */
 #endif
     ALHeap* heap = gSynDriverPtr->heap;
@@ -1222,7 +1224,9 @@ BKFileBuffer* au_load_BK_to_bank(s32 bkFileOffset, BKFileBuffer* bkFile, s32 ban
                 break;
         }
     }
-
+#ifdef TARGET_3DS
+    if (pm_xf.on) { pm_xf.bk_n++; pm_xf.bk_t += pm_ticks() - xt0; }
+#endif
     return bkFile;
 }
 
