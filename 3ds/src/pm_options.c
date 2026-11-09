@@ -282,8 +282,19 @@ int pm_options_get(int row) {
     return f ? *f : 0;
 }
 
+/* MENUGEN: Resolution Mode, the value of option wide: 0 Native (4:3), 1 Widescreen (pm_wide), 2 Fullscreen (pm_stretch). Cycles Native, Fullscreen, Widescreen. */
+static const char* res_name(void) { return pm_opt.wide == 2 ? "Fullscreen" : pm_opt.wide == 1 ? "Widescreen" : "Native"; }
 void pm_options_flip(int row) {
     if (row == 8) { pm_opt.fixedseed = !pm_opt.fixedseed; changed = 1; return; } /* F11-7: takes effect at the next boot */
+    if (row == 1) {
+        extern int pm_wide_cfg, pm_stretch;
+        pm_opt.wide = pm_opt.wide == 0 ? 2 : pm_opt.wide == 2 ? 1 : 0;
+        changed = 1;
+        pm_wide_cfg = pm_opt.wide == 1 || pm_debug_has("wide"); /* pm_wide follows at the next game mode change (the panel is a 4:3 mode) */
+        pm_stretch = pm_opt.wide == 2;
+        pm_log("options: live row 1 value %d (%s)", pm_opt.wide, res_name());
+        return;
+    }
     if (row == 9) { pm_opt.fskip = !pm_opt.fskip; pm_fskip_set(pm_opt.fskip); changed = 1; return; }
     if (row == 10) { pm_opt.pos_hud = !pm_opt.pos_hud; changed = 1; return; } /* POSHUD: the Debug tab row 8 */
     if (row == 12) { pm_opt.poslog = !pm_opt.poslog; changed = 1; return; } /* MN7 rest: the combo logs a position line */
@@ -293,9 +304,8 @@ void pm_options_flip(int row) {
     *f = !*f;
     changed = 1;
     {   /* F11-10: apply now */
-        extern int pm_interp_want, pm_wide_cfg, pm_nolight;
+        extern int pm_interp_want, pm_nolight;
         if (row == 0) pm_interp_want = *f; /* next game step */
-        if (row == 1) pm_wide_cfg = *f || pm_debug_has("wide"); /* pm_wide follows at the next game mode change (the panel is a 4:3 mode) */
         if (row == 5) pm_nolight = *f || pm_debug_has("nolight");
         pm_log("options: live row %d value %d", row, *f);
     }
@@ -386,8 +396,8 @@ static void log_level_set(int id, int v) {
 static int tab_ids(int tab, int mode, int* ids) {
     int n = 0, i;
     if (tab == 0) {
-        ids[n++] = RW_FPS; ids[n++] = RW_WIDE; ids[n++] = RW_DBG + 7; /* Frame skip (option row 9) moved here from Render */
-        if (mode) { ids[n++] = RW_TITLE; ids[n++] = RW_CLOSE; ids[n++] = RW_EXIT; }
+        ids[n++] = RW_DBG + 7; ids[n++] = RW_WIDE; ids[n++] = RW_FPS; /* Frame skip (option row 9), Resolution Mode, 60 FPS (MENUGEN order) */
+        if (mode) { ids[n++] = RW_TITLE; ids[n++] = RW_EXIT; ids[n++] = RW_CLOSE; }
     } else if (tab == 1) {
         ids[n++] = RW_DPAD; ids[n++] = RW_DZPAD; ids[n++] = RW_DZCS; ids[n++] = RW_RDELAY; ids[n++] = RW_RRATE;
         for (i = 0; i < PM_NIN; i++) ids[n++] = RW_MAP + i;
@@ -412,7 +422,7 @@ static int tab_ids(int tab, int mode, int* ids) {
         ids[n++] = RW_POSF; /* Position: speed x2, save, load */
         ids[n++] = RW_FADV; /* Frame advance (On or Off, takes effect at the menu close) */
     }
-    ids[n++] = RW_BACK;
+    if (tab != 0) ids[n++] = RW_BACK; /* MENUGEN: the General tab has no Back row (B closes the menu) */
     return n;
 }
 /* MN4: the folder page (tab PM_OPT_SUB) shows the Warp area rows (0) or the Boss rows (1). CH1: the Set Stats folder (2), stat ids below. */
@@ -639,7 +649,7 @@ const char* pm_optui_label(int tab, int row, int mode) {
     if (id >= RW_MAP) return pm_in_name[id - RW_MAP];
     switch (id) {
         case RW_FPS: return "60 FPS";
-        case RW_WIDE: return "Widescreen";
+        case RW_WIDE: return "Resolution Mode";
         case RW_TITLE: return "Return to Title Screen";
         case RW_CLOSE: return "Close game";
         case RW_EXIT: return "Exit to Homebrew Menu";
@@ -698,7 +708,8 @@ const char* pm_optui_value(int tab, int row, int mode) {
     if (id >= RW_DBG) return pm_options_get(id - RW_DBG + 2) ? "On" : "Off"; /* debug rows are option rows 2 to 12 */
     if (id >= RW_MAP) return pm_n64_name(pm_map[id - RW_MAP]);
     switch (id) {
-        case RW_FPS: case RW_WIDE: return pm_options_get(id == RW_FPS ? 0 : 1) ? "On" : "Off";
+        case RW_WIDE: return res_name();
+        case RW_FPS: return pm_options_get(0) ? "On" : "Off";
         case RW_DPAD: return pm_dpad_mode_name();
         case RW_DZPAD: case RW_DZCS: case RW_RDELAY: case RW_RRATE: {
             static char nb[4][12];

@@ -151,6 +151,7 @@ static int gv_wind = 1;   /* GV1a: sign of the 3 x 3 determinant (x y w) of the 
 
 int pm_wide_cfg; /* F07-5: the user setting. pm_wide is 0 in 4:3 game modes (logos, title, file select). */
 int pm_wide; /* F07-1: 1 = the 320 px game picture is stretched over the 400 px screen (X scale 1.25). Read once in pm_gpu_init. */
+int pm_stretch; /* MENUGEN: 1 = Fullscreen: the Native picture (pm_wide 0) stretched 1.25x in X over 400 px, HUD included. Only the final viewport (rebuild_3d) and scissor (stage_scissor) and the grab columns read it. Set in pm_gpu_init and by the options flip. */
 static void mfr_init(void); extern int mfr_on; /* TIK19 debug (switch mfr) */
 static int wedge_x; /* WIDE1-2: 1 while pm_gpu_grange draws an edge-only orthographic range with x scale 1.25 in the post matrix */
 unsigned char pm_gv_rejm = 0x2f; /* WIDE4: the clip bits gv_tri rejects on (x planes off for a wide orthographic draw) */
@@ -169,8 +170,8 @@ static void rebuild_3d(void) {
     C3D_Mtx view;
     Mtx_Zeros(&view);
     /* V05: an off-screen pass is not rotated and has no 40 pixel margin: GPU y is the game y (y runs down) */
-    view.r[0].x = (pm_wide && !gs.off_active && (!ui_ortho || wedge_x)) ? gs.vp_sx * 1.25f : gs.vp_sx; /* WIDE1-2: wedge_x scales the x of an orthographic draw whose vertices all sit on the game edge */
-    view.r[0].w = gs.off_active ? gs.vp_tx : (pm_wide && !ui_ortho) ? gs.vp_tx * 1.25f : 40.f + gs.vp_tx;
+    view.r[0].x = (pm_stretch && !gs.off_active) ? gs.vp_sx * 1.25f : (pm_wide && !gs.off_active && (!ui_ortho || wedge_x)) ? gs.vp_sx * 1.25f : gs.vp_sx; /* WIDE1-2: wedge_x scales the x of an orthographic draw whose vertices all sit on the game edge. MENUGEN: Fullscreen scales every draw */
+    view.r[0].w = gs.off_active ? gs.vp_tx : pm_stretch ? gs.vp_tx * 1.25f : (pm_wide && !ui_ortho) ? gs.vp_tx * 1.25f : 40.f + gs.vp_tx;
     view.r[1].y = gs.off_active ? -gs.vp_sy : gs.vp_sy;
     view.r[1].w = gs.off_active ? gs.vp_ty : 240.f - gs.vp_ty;
     /* Clip z/w is -1 at the near plane and +1 at the far plane. Citro's
@@ -938,16 +939,18 @@ static void stage_scissor(void) {
         int right = 240 - sci_y0;
         /* F07-3: a 2D or orthographic batch is 1:1 and centered (40 + x). A scissor edge at 0 or 320 reaches the screen edge. A 3D batch scales by 1.25. */
         int ui = pm_wide && (!nb.draw_3d || ui_ortho);
-        int top = !pm_wide ? 40 + sci_x0 : ui ? (sci_x0 <= 0 ? 0 : 40 + sci_x0) : sci_x0 * 5 / 4;
-        int bottom = !pm_wide ? 40 + sci_x1 : ui ? (sci_x1 >= 320 ? 400 : 40 + sci_x1) : sci_x1 * 5 / 4;
+        /* MENUGEN: Fullscreen (pm_stretch) scales every batch by 1.25 over the full 400 px, like a 3D batch */
+        int top = pm_stretch ? sci_x0 * 5 / 4 : !pm_wide ? 40 + sci_x0 : ui ? (sci_x0 <= 0 ? 0 : 40 + sci_x0) : sci_x0 * 5 / 4;
+        int bottom = pm_stretch ? sci_x1 * 5 / 4 : !pm_wide ? 40 + sci_x1 : ui ? (sci_x1 >= 320 ? 400 : 40 + sci_x1) : sci_x1 * 5 / 4;
+        const int full = pm_wide || pm_stretch;
         if (left < 0) left = 0;
         if (right > 240) right = 240;
-        if (top < (pm_wide ? 0 : 40)) top = pm_wide ? 0 : 40;
-        if (bottom > (pm_wide ? 400 : 360)) bottom = pm_wide ? 400 : 360;
+        if (top < (full ? 0 : 40)) top = full ? 0 : 40;
+        if (bottom > (full ? 400 : 360)) bottom = full ? 400 : 360;
         if (right > left && bottom > top)
             sh_scissor(GPU_SCISSOR_NORMAL, (u32)left, (u32)(400 - bottom), (u32)right, (u32)(400 - top)); /* V23: the GPU counts the 400 axis from the other end */
         else
-            sh_scissor(GPU_SCISSOR_NORMAL, 0, pm_wide ? 0 : 40, 240, pm_wide ? 400 : 360);
+            sh_scissor(GPU_SCISSOR_NORMAL, 0, full ? 0 : 40, 240, full ? 400 : 360);
 }
 static inline int graw_is_pm4(void) { return nb.gni > 0 && nb.g_pal && !nb.g_use5 && gs.gv4_on; }
 /* S3 M3: the native raw close. A raw batch with the palette program (pm4, no lights) on the main target, one texture unit at most, no stencil pass: the effect, TEV, texture unit
@@ -1453,8 +1456,9 @@ static void pm_gpu_init_w(void) {
     if (gs.gpu_ok) return;
     jt_on = pm_debug_has("jumptest");
     mfr_init();
-    pm_wide = pm_wide_cfg = (pm_debug_has("wide") || pm_opt.wide) && !pm_debug_has("nowide"); /* nowide: 4:3 layout with wide set in options.ini */
-    pm_log("gpu: wide=%d", pm_wide);
+    pm_wide = pm_wide_cfg = (pm_debug_has("wide") || pm_opt.wide == 1) && !pm_debug_has("nowide"); /* nowide: 4:3 layout with wide set in options.ini */
+    pm_stretch = pm_opt.wide == 2 && !pm_wide; /* MENUGEN: Fullscreen (options wide=2) */
+    pm_log("gpu: wide=%d stretch=%d", pm_wide, pm_stretch);
     gfxInitDefault();
     if (!C3D_Init(0x180000)) { /* MEM1: 1.5 MB command buffer. The worst fill seen was 9 percent of 4 MB (369 KB), the new size keeps 4 times that. 2.5 MB of linear memory come back */
         pm_con_lock();
@@ -2124,7 +2128,7 @@ void pm_gx_drain(void) {
 }
 /* queue the copy of the colour buffer strips (all 400 screen columns with wide, else the 320 game columns) into grab_tex */
 static void grab_queue_copy(void) {
-    const int mo = pm_wide ? 0 : 40, x1 = pm_wide ? 400 : 320;
+    const int mo = pm_wide || pm_stretch ? 0 : 40, x1 = pm_wide || pm_stretch ? 400 : 320; /* MENUGEN: Fullscreen copies the 400 columns like wide */
     int s0 = mo >> 3, s1 = (mo + x1 - 1) >> 3;
     pm_gx_room();
     copy_guard(); /* TEXF1: grab_tex is copy_blk */
@@ -2191,7 +2195,7 @@ static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
     int was_off = gs.off_active, prev = gs.off_cur;
     static int once;
     /* F07-7: with wide the slot holds all 400 screen columns (slot x = screen x). The game reads game x at slot x + 40 (pm_gpu_off_begin shifts the base). */
-    const int x0 = 0, x1 = pm_wide ? 400 : 320, mo = pm_wide ? 0 : 40;
+    const int x0 = 0, x1 = pm_wide || pm_stretch ? 400 : 320, mo = pm_wide || pm_stretch ? 0 : 40; /* MENUGEN: Fullscreen as wide */
     if (!gs.gpu_ok || off_fail || y1 <= y0) return 0;
     if (!(gs.gpu_vtx_on && gs.gv4_on)) return 0;
     if (grab_n && !prev_frame) {
