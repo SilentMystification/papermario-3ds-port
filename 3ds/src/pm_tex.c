@@ -1335,6 +1335,7 @@ static int load_impl(const void* img, unsigned fmt, unsigned siz, int width, int
     return r;
 }
 
+static void* tm_caller; /* BTLDIM debug: the caller of pm_tex_load (texmiss line) */
 static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, unsigned siz, int width, int height,
                       const void* tlut, int tlut_n, int stride, const unsigned* lut, int dx4, int dy4,
                       unsigned dkey, unsigned phash, unsigned lk) {
@@ -1589,6 +1590,12 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
     tc_miss++;
     tot_miss++;
     tot_up += reserve;
+    { /* BTLDIM debug switch texmisslog: one line per texture miss (frame, source address, size, format, KB uploaded) */
+        static int tml = -1;
+        if (tml < 0) tml = pm_debug_has("texmisslog");
+        if (tml) { extern unsigned pm_frame_count(void); int same = 0; for (int q = 0; q < slot_hi; q++) if (slots[q].live && slots[q].img == img) same++; /* live slots of this source: >0 means its bytes changed */
+            pm_log_d("texmiss f%u img %p %dx%d fmt %u siz %u kb %u same %d ra %p", pm_frame_count(), img, width, height, fmt, siz, reserve >> 10, same, tm_caller); }
+    }
     pm_xf.tex_b += reserve; /* MAPX-1 */
     tc_up_bytes += reserve;
     frame_bytes += reserve;
@@ -1733,6 +1740,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
 int pm_tex_load(const void* img, unsigned fmt, unsigned siz, int width, int height,
                 const void* tlut, int tlut_n, int stride) {
     int r;
+    tm_caller = __builtin_return_address(0);
     mk_on = 1;
     r = load_impl(img, fmt, siz, width, height, tlut, tlut_n, stride, NULL, 0, 0, 0);
     mk_on = 0;

@@ -8139,7 +8139,7 @@
 "reason": "broken: no until in 25 s (AZT11-5, 2026-11-09)",
       "subject": "Battle kmr_03 (one Goomba), player turn: Shooting Star from slot 0 (invitem=0x083). The btldim lines of the darken and lighten fades (the sky tint steps 0..144 and 160..0).",
       "proves": "BTLDIM premise: the shroud fade re-uploads the sky palette each step (texture misses per fade step). Before the fix about 19 texture misses over the fades; after the GPU dim about 0.",
-      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 invitem=0x083 padscript=@pad_btl_star.txt loglevel=debug",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 invitem=0x083 padscript=@pad_btl_star.txt texmisslog loglevel=debug",
       "until": "btldim: lighten done f\\d+",
       "cap": 25,
       "deadline": 20,
