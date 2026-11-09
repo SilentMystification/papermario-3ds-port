@@ -18,8 +18,8 @@ void pm_gpu_set_r13_t1(int bound);
  * render mode index << 16 | (texture list index & 0x7f) << 8 (count byte 0); w1 = the bind list. R1: w0 G_MTX flags, w1 header w1. R2: w0 numLights,
  * w1 finalMtx. R3: w0 flags (bit 1 fog, 2 prim, 4 env, 8 blend, 16 shroud render mode, 32 shroud, 64 depth fog, 256 IGNORE_MATRIX), w1 lights group.
  * R4: w0 fog colour word, w1 combine entry (0 when none). R5: w1 fog position word. R6: w0 prim, w1 env. R7: w0 blend, w1 shroud c2.
- * R8: billboard matrix op (0 when none). R9, R10: panner tile size ops (0 when none).
- * rec_apply sets the walker state from them in the old word order: lights, bind list (tb_ops), combine (rec_op), render mode list
+ * R8: billboard matrix op (0 when none). R9, R10: panner tile size ops (0 when none; typed by nd_rec_model). R13: the typed ops after the record.
+ * rec_apply sets the walker state from them in the old word order: lights, bind list (nd_bind_run), combine (rec_op), render mode list
  * (the list runs as G_DL), fog (rec_fog), matrix (load_mtx), panner tiles, billboard. rec_op runs one op through the skip test and handler of the walker. */
 /* HC4b: one typed record op through the skip test and the handler of the walker (nd_set.c). */
 static __attribute__((noinline)) void rec_top(const uint32_t t[2]) {
@@ -31,17 +31,11 @@ static void rec_t(unsigned id, uint32_t a, uint32_t b) {
     const uint32_t t[2] = { NDO_W0(id, a), b };
     rec_top(t);
 }
-/* S3F-2: a record op that is still a word (the R4 combine entry, the R9/R10 panner tile sizes): typed on the way (nd_op_xlate) or the
- * texture op of the walker. */
+/* S3F-2: the R4 combine entry, a static word (SolidCombineModes, AlphaTestCombineModes): typed on the way (nd_op_xlate) until the static
+ * lists are typed (HC4e). */
 static __attribute__((noinline)) void rec_op(u32 w0, u32 w1) {
-    unsigned op = w0 >> 24;
-    if (nd_op_sync(op)) return;
     uint32_t t[2];
-    if (nd_op_xlate(w0, w1, t)) { rec_top(t); return; }
-    if (g2_same(op, w0, w1)) return;
-    gv_epoch++; /* GV1b, as the walker */
-    if (op == G_SETTILESIZE) tex_op(w0, w1);
-    else pm_log("rec: op %u is not a record op f%u", op, pm_frame_count());
+    if (nd_op_xlate(w0, w1, t)) rec_top(t);
 }
 /* S3F-2: the fog of a record: the colour word, then the position word (the MOVEWORD header is built with the gbi macro, no division here). */
 static void rec_fogpos(u32 pos) { rec_t(NDO_MW, NDO_MW_FOG << 16, pos); }
@@ -67,7 +61,7 @@ static __attribute__((noinline)) void rec_dl(const Gfx* l) {
     if (__builtin_expect(nd_lc_frame != -1, 0)) nd_lstcen(l, 0u);
     nd_list_run(l);
 }
-/* S3G-2: the words after a record: n words run in place (D10b: a flat range on the op executor). */
+/* S3G-2: the R13 ops after a record (HC4c: typed by nd_rec_model): n units run in place (D10b: a flat range on the op executor). */
 static __attribute__((noinline)) void rec_aux(const Gfx* l, unsigned n) {
     nd_ops_run(l, n, 0);
 }
@@ -88,8 +82,8 @@ static __attribute__((noinline)) void rec_apply(const Gfx* q, int mdone) {
     if (q[3].words.w1) rec_lights((const Lightsn*)(uintptr_t)q[3].words.w1, q[2].words.w0); /* S3F-1b: lights, as the old word order */
     u32 w0 = q->words.w0;
     const Gfx* tg = (const Gfx*)(uintptr_t)q->words.w1;
-    if (q[13].words.w0) rec_aux(q + G_PM_REC_WORDS, q[13].words.w0); /* S3G-2: the words after the record (special tile list, untextured ops) run in place of the bind */
-    else if (tg) tb_ops(tg);
+    if (q[13].words.w0) rec_aux(q + G_PM_REC_WORDS, q[13].words.w0); /* S3G-2: the typed R13 ops (special tile list, untextured ops) run in place of the bind */
+    else if (tg) nd_bind_run((const uint32_t*)tg); /* HC4c: the typed bind list */
     if (q[4].words.w1) { /* S3F-2: the combine word, after the bind as in the old order */
         const Gfx* e = (const Gfx*)(uintptr_t)q[4].words.w1;
         rec_op(e->words.w0, e->words.w1);
@@ -105,8 +99,8 @@ static __attribute__((noinline)) void rec_apply(const Gfx* q, int mdone) {
     }
     if (!(f & 256u) && !mdone) load_mtx(q[1].words.w0, q[2].words.w1, q[1].words.w1); /* S3F-1a: the matrix load of the model, the same function as G_MTX (256: IGNORE_MATRIX) */
     if (q[11].words.w0) nd_range_run((const uint32_t*)(uintptr_t)q[11].words.w0); /* S3G-1: custom gfx pre, after the matrix as the old order (D10a: a stream range) */
-    if (q[9].words.w0) rec_op(q[9].words.w0, q[9].words.w1); /* S3F-2c: panner tile size, main then aux, as the old order */
-    if (q[10].words.w0) rec_op(q[10].words.w0, q[10].words.w1);
+    if (q[9].words.w0) rec_top((const uint32_t*)&q[9]); /* S3F-2c: panner tile size, main then aux, as the old order (HC4c: typed by nd_rec_model) */
+    if (q[10].words.w0) rec_top((const uint32_t*)&q[10]);
     if (q[8].words.w0 && !mdone) load_mtx(q[8].words.w0, q[8].words.w1, q[1].words.w1); /* S3F-2c: billboard matrix op (MUL, no push) */
 }
 /* S3F-4: the record is the whole state of the model (the walker model path is gone, no old words follow it). */

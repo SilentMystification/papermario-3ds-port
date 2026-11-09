@@ -59,7 +59,8 @@ static uint32_t nd_op_om_word(const uint32_t u[2]) {
 static void op_test(void) {
     for (unsigned id = NDO_BASE; id < NDO_END_; id++) {
         CHECK(!(id >= 0x01 && id <= 0x07) && !(id >= 0x0d && id <= 0x13) && id < 0xd7, "typed id %02x collides", id);
-        if (id != NDO_RARE) CHECK(nd_op_n64[id - NDO_BASE] >= 0xd7, "typed id %02x has no F3DEX2 op", id);
+        if (id != NDO_RARE) CHECK(nd_op_n64[id - NDO_BASE] >= 0xd7 || (nd_op_geo(id) && nd_op_n64[id - NDO_BASE] >= 0x01 && nd_op_n64[id - NDO_BASE] <= 0x07),
+                                  "typed id %02x has no F3DEX2 op", id);
     }
     Gfx g[16]; uint32_t t[2];
     gDPSetCycleType(&g[0], G_CYC_2CYCLE);
@@ -92,8 +93,8 @@ static void op_test(void) {
           t[1] == (g[10].words.w1 & 0xffffffu), "scissor");
     gDPSetEnvColor(&g[11], 9, 8, 7, 6);
     CHECK(nd_op_xlate(g[11].words.w0, g[11].words.w1, t) && t[0] == NDO_W0(NDO_ENV, 0) && t[1] == 0x09080706u, "env colour");
-    gSPVertex(&g[12], (Vtx*)0x00200000, 4, 0);
-    CHECK(!nd_op_xlate(g[12].words.w0, g[12].words.w1, t) && t[0] == g[12].words.w0 && t[1] == g[12].words.w1, "vertex word kept");
+    gSPDisplayList(&g[12], (Gfx*)0x00200000);
+    CHECK(!nd_op_xlate(g[12].words.w0, g[12].words.w1, t) && t[0] == g[12].words.w0 && t[1] == g[12].words.w1, "list call word kept");
     gDPSetCombineMode(&g[13], G_CC_SHADE, G_CC_SHADE);
     CHECK(nd_op_xlate(g[13].words.w0, g[13].words.w1, t) && (t[0] >> 24) == NDO_COMB && NDO_COMB_W0(t[0]) == g[13].words.w0 &&
           t[1] == g[13].words.w1, "combine (HC4b)");
@@ -102,6 +103,41 @@ static void op_test(void) {
           "render mode a field %08x", t[0]);
     gDPPipeSync(&g[15]);
     CHECK(!nd_op_xlate(g[15].words.w0, g[15].words.w1, t), "sync stays a word");
+    /* HC4d: the geometry and matrix ops keep their F3DEX2 fields */
+    {
+        static Vtx vv[4]; static Mtx mm; static Lightsn ll;
+        Gfx h[6];
+        gSPVertex(&h[0], vv, 4, 0);
+        gSP1Triangle(&h[1], 0, 1, 2, 0);
+        gSP2Triangles(&h[2], 0, 1, 2, 0, 1, 2, 3, 0);
+        gSPMatrix(&h[3], &mm, G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
+        gSPPopMatrix(&h[4], G_MTX_MODELVIEW);
+        gSPLight(&h[5], &ll.l[0], 1);
+        static const unsigned gid[6] = { NDO_VTX, NDO_TRI1, NDO_TRI2, NDO_MTX, NDO_POPMTX, NDO_MOVEMEM };
+        for (unsigned i = 0; i < 6; i++)
+            CHECK(nd_op_xlate(h[i].words.w0, h[i].words.w1, t) && (t[0] >> 24) == gid[i] && nd_op_geo(gid[i]) && (t[0] & 0xffffffu) == (h[i].words.w0 & 0xffffffu) &&
+                  t[1] == h[i].words.w1 && nd_op_n64[gid[i] - NDO_BASE] == (h[i].words.w0 >> 24), "geometry op %u", i);
+        CHECK((((u32)sizeof(Light) - 1u) / 8u << 19 | ((1u * 24u + 24u) / 8u) << 8 | G_MV_LIGHT) == (h[5].words.w0 & 0xffffffu), "rec_lights light 1 field");
+    }
+    /* HC4c: the texture ops keep their F3DEX2 fields (a = w0 low 24 bits, b = w1); a bind list types in place without its syncs, to NDO_END. */
+    Gfx l[16];
+    Gfx* lp = l;
+    static const uint16_t pal[16];
+    gDPLoadTLUT_pal16(lp++, 0, pal);
+    gDPLoadTextureTile(lp++, (void*)0x00123000, G_IM_FMT_CI, G_IM_SIZ_8b, 32, 16, 0, 0, 31, 15, 0, G_TX_WRAP, G_TX_WRAP, 5, 4, G_TX_NOLOD, G_TX_NOLOD);
+    gSPEndDisplayList(lp++);
+    const unsigned nw = (unsigned)(lp - l);
+    Gfx c[16];
+    memcpy(c, l, sizeof l);
+    const unsigned nt = nd_op_type_run((uint32_t*)c, nw);
+    static const unsigned want[] = { NDO_TIMG, NDO_TILE, NDO_LOADTLUT, NDO_TIMG, NDO_TILE, NDO_LOADTILE, NDO_TILE, NDO_TILESIZE };
+    CHECK(nt == sizeof want / sizeof want[0] && (c[nt].words.w0 >> 24) == NDO_END, "bind list %u units", nt);
+    for (unsigned i = 0, j = 0; i < nt && j < nw; i++, j++) {
+        while (j < nw && ((l[j].words.w0 >> 24) == G_RDPLOADSYNC || (l[j].words.w0 >> 24) == G_RDPPIPESYNC || (l[j].words.w0 >> 24) == G_RDPTILESYNC)) j++;
+        CHECK((c[i].words.w0 >> 24) == want[i] && nd_op_n64[want[i] - NDO_BASE] == (l[j].words.w0 >> 24) && (c[i].words.w0 & 0xffffffu) == (l[j].words.w0 & 0xffffffu) &&
+              c[i].words.w1 == l[j].words.w1, "bind op %u", i);
+        CHECK(nd_op_tex(c[i].words.w0 >> 24), "bind op %u is a texture op", i);
+    }
 }
 
 int main(int argc, char** argv) {
