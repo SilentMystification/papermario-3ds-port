@@ -20,13 +20,22 @@ void au2_stop_record(int voiceIdx);
 
 typedef struct {
     u8 on;
+    u8 chp;                 /* ndsp channel + 1, 0 = no channel */
     u32 gen;
+    u32 ncgen;              /* census: generation already counted as no channel */
     float rate;
     float mix[12];
     float curL, curR;
     u8 retry;
 } DspV;
-static DspV dv[PM_DSPA_VOICES];
+/* AUDV: the engine has 24 voices (system.c num_pvoice) and ndsp has 23 voice channels (channel 23 returns the effects). A voice takes
+ * the lowest free channel when it starts and gives it back when it stops or ends, so the voice index does not decide the channel.
+ * Before, voice i played on channel i and voice 23 (sound effect player 7, the first one the free-player search takes) had none. */
+#define AU_DSP_NV 24
+#define CH_ALL ((1u << PM_DSPA_VOICES) - 1u)
+static DspV dv[AU_DSP_NV];
+static u32 ch_used;
+static unsigned dv_epoch;
 /* a start that gets no cache entry is retried on the next block; 16 blocks (about 90 ms) outlasts the 60 ms eviction guard */
 #define AU2_START_RETRY 16
 static int fx_type[2] = { -1, -1 };
@@ -60,14 +69,37 @@ static const s32* fx_params(u8 type) {
 
 unsigned au2_blk_backlog(void);
 
+static void v_release(DspV* v) {
+    if (v->chp) { ch_used &= ~(1u << (v->chp - 1)); v->chp = 0; }
+}
+
+/* the sample ran out (or cannot play): same state reset as the end of au_pull_voice, and the same stop record */
+static void v_end(AuPVoice* pv, Instrument* ins, int i) {
+    AuEnvMixer* em = &pv->envMixer;
+    AuLoadFilter* dec = &pv->decoder;
+    em->motion = AL_STOPPED;
+    em->dirty = true;
+    em->volume = 1;
+    pv->resampler.delta = 0.0f;
+    pv->resampler.first = true;
+    dec->lastsam = 0;
+    dec->first = 1;
+    dec->sample = 0;
+    dec->memin = (s32)ins->wavData;
+    dec->loop.count = ins->loopCount;
+    au2_stop_record(i);
+}
+
 void au_dsp_block(void) {
     AuSynDriver* drv = gSynDriverPtr;
     int nv = 0, starts = 0, stops = 0, ends = 0, i;
-    static u8 warned_pvoice;
+    int nvoice;
     if (drv == nullptr) return;
-    if (!warned_pvoice && drv->num_pvoice > PM_DSPA_VOICES) {
-        warned_pvoice = 1;
-        pm_dspa_log_once("num_pvoice %d: voices %d and up do not play, ndsp channel %d returns the effects", (int)drv->num_pvoice, PM_DSPA_VOICES, PM_DSPA_VOICES);
+    nvoice = drv->num_pvoice < AU_DSP_NV ? drv->num_pvoice : AU_DSP_NV;
+    if (dv_epoch != pm_dspa_epoch) { /* pm_dspa_rearm cleared every channel (sleep): the playing voices start again on new channels */
+        dv_epoch = pm_dspa_epoch;
+        memset(dv, 0, sizeof dv);
+        ch_used = 0;
     }
 
     /* effects and channel delay */
@@ -95,7 +127,7 @@ void au_dsp_block(void) {
         if (gv != gv_last) { gv_last = gv; pm_dspa_master((float)gv / 32767.0f); }
     }
 
-    for (i = 0; i < PM_DSPA_VOICES; i++) {
+    for (i = 0; i < nvoice; i++) {
         AuPVoice* pv = &drv->pvoices[i];
         AuEnvMixer* em = &pv->envMixer;
         AuLoadFilter* dec = &pv->decoder;
@@ -104,13 +136,14 @@ void au_dsp_block(void) {
         float rate, mix[12];
         s16 cL, cR;
         s32 dAfter;
-        int b = pv->busID;
+        int b = pv->busID, c;
 
         if (em->motion != AL_PLAYING || ins == nullptr) {
-            if (v->on) { pm_dspa_voice_stop(i); v->on = 0; stops++; }
+            if (v->on) { pm_dspa_voice_stop(v->chp - 1); v->on = 0; stops++; }
+            v_release(v);
             continue;
         }
-        if (ins->type != AL_ADPCM_WAVE) { if (v->on) { pm_dspa_voice_stop(i); v->on = 0; } continue; }
+        if (ins->type != AL_ADPCM_WAVE) { if (v->on) { pm_dspa_voice_stop(v->chp - 1); v->on = 0; } v_release(v); if (!v->on && v->gen != au2_vgen_get(i)) { v->gen = au2_vgen_get(i); pm_dspa_vcount(DSPA_VC_NONADPCM); } continue; }
         nv++;
 
         /* envelope: same ramp data as the RSP mixer (cvol, ltgt, rate, delta) */
@@ -157,6 +190,19 @@ void au_dsp_block(void) {
         rate = pv->resampler.ratio * 32000.0f;
         if (rate < 100.0f) rate = 100.0f;
 
+        if (!v->chp) {
+            u32 fr = ~ch_used & CH_ALL;
+            if (!fr) { /* all 23 channels play: this voice waits for one */
+                u32 g = au2_vgen_get(i);
+                if (v->ncgen != g) { v->ncgen = g; pm_dspa_vcount(DSPA_VC_NOCHAN); }
+                continue;
+            }
+            v->chp = (u8)(__builtin_ctz(fr) + 1);
+            ch_used |= 1u << (v->chp - 1);
+            v->on = 0;
+        }
+        c = v->chp - 1;
+
         if (!v->on || v->gen != au2_vgen_get(i)) {
             DspaSample s;
             s.key = (unsigned)(uintptr_t)ins->wavData;
@@ -169,37 +215,32 @@ void au_dsp_block(void) {
             {
                 u32 g = au2_vgen_get(i);
                 if (v->gen != g) v->retry = 0;
-                if (v->on) pm_dspa_voice_stop(i);
+                if (v->on) pm_dspa_voice_stop(c);
                 v->on = 0;
-                if (pm_dspa_voice_start(i, &s, rate, mix)) {
+                if (pm_dspa_voice_start(c, &s, rate, mix)) {
                     v->on = 1; v->gen = g; v->retry = 0; starts++;
                     memcpy(v->mix, mix, sizeof mix); v->rate = rate;
                 } else if (++v->retry > AU2_START_RETRY) {
-                    /* give up: silent until the sample generation changes */
-                    v->on = 1; v->gen = g; v->retry = 0;
+                    /* give up: the sample cannot be put in the cache. End the voice as if its sample ran out, so the engine frees it
+                     * (before, it stayed silent and held its voice until the next start) */
+                    v->retry = 0;
+                    v_end(pv, ins, i);
+                    v_release(v);
+                    pm_dspa_vcount(DSPA_VC_GIVEUP);
+                    continue;
                 }
             }
         } else {
             int changed = rate != v->rate, k;
             for (k = 0; k < 12 && !changed; k++) if (mix[k] != v->mix[k]) changed = 1;
-            if (changed) { pm_dspa_voice_update(i, rate, mix); memcpy(v->mix, mix, sizeof mix); v->rate = rate; }
+            if (changed) { pm_dspa_voice_update(c, rate, mix); memcpy(v->mix, mix, sizeof mix); v->rate = rate; }
         }
 
-        if (pm_dspa_voice_ended(i)) {
-            /* sample ran out: same state reset as the end of au_pull_voice, and the same stop record */
-            em->motion = AL_STOPPED;
-            em->dirty = true;
-            em->volume = 1;
-            pv->resampler.delta = 0.0f;
-            pv->resampler.first = true;
-            dec->lastsam = 0;
-            dec->first = 1;
-            dec->sample = 0;
-            dec->memin = (s32)ins->wavData;
-            dec->loop.count = ins->loopCount;
-            au2_stop_record(i);
-            pm_dspa_voice_stop(i);
+        if (pm_dspa_voice_ended(c)) {
+            v_end(pv, ins, i);
+            pm_dspa_voice_stop(c);
             v->on = 0;
+            v_release(v);
             ends++;
         }
     }
