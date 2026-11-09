@@ -15,6 +15,12 @@ Only the orchestrator reads this file. Shared rules are in CLAUDE.md. Style hook
 3. Code trace to a named file, line and value. Shots only confirm a named cause or serve as the final gate.
 4. Every oracle plan names its premise and one cheap check (a log line or a code read); the agent runs that check first and returns at once if it fails.
 
+## Abort and reframe (user, 2026-11-09)
+- After a context compaction, read this file again before the next action. The rules here override the summary.
+- Every row file names its repro scenario and the user's timing. A bug the scenario cannot show goes NEEDS CONSOLE after 2 starts (CLAUDE.md REPRO GATE): ask the user for a push with the diagnostic line; never relaunch it on Azahar.
+- Check each agent at 90 minutes: no passed gate means stop, collect state, reframe (split, or NEEDS CONSOLE).
+- Prompts include the WAITS rule (foreground builds and benches, no Monitor or tail loops).
+
 ## Handback triage (name the class before any relaunch)
 1 environment fault: fix the environment, same row and model. 2 wrong premise: rewrite the row with the agent's facts. 3 no reproduction: get user or console evidence first. 4 real stall: split the row; a second stall on the smaller row goes to Sonnet. Never relaunch an unchanged row.
 
