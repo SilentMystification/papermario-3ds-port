@@ -441,6 +441,15 @@ set_property(SOURCE ${PM_NO_SHORT_ENUM_SRC} APPEND PROPERTY COMPILE_OPTIONS -fno
 # S103, hw_guidelines rule 1: cold code outside the hot span (the census, warp and sweep test drivers, the debug game hooks, fxtest): size over speed.
 set_property(SOURCE src/nd_seam.c src/nd_cen.c src/nd_c2haz.c src/pm_warp.c src/pm_sweep.c src/pm_dbg_game.c src/pm_fxtest.c src/pm_romload.c APPEND PROPERTY COMPILE_OPTIONS -Os)
 
+# HC0 census lane (PM_FNCOV=ON, tools only; build.sh PM_FNCOV=1 PM_LANE=<L>): the draw TUs get -finstrument-functions, and
+# src/pm_fncov.c counts the calls per function (switch fncov=<frame>). Off in the normal build: no flag, no file.
+option(PM_FNCOV "HC0 census lane: call counts of the draw TUs" OFF)
+if(PM_FNCOV)
+    file(GLOB FNCOV_TUS ${CMAKE_CURRENT_SOURCE_DIR}/src/nd_*.c ${CMAKE_CURRENT_SOURCE_DIR}/src/pm_gpu*.c ${CMAKE_CURRENT_SOURCE_DIR}/src/pm_tex.c ${CMAKE_CURRENT_SOURCE_DIR}/src/pm_comb.c)
+    set_property(SOURCE ${FNCOV_TUS} APPEND PROPERTY COMPILE_OPTIONS -finstrument-functions)
+    list(APPEND PORT_SRC src/pm_fncov.c)
+    add_compile_definitions(PM_FNCOV=1)
+endif()
 add_executable(pm_3ds
     ${PORT_SRC}
     ${GAME_SRC}

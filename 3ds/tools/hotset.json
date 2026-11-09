@@ -1,0 +1,24 @@
+{
+  "_note": "hotset.py input (plan_hotcode.md section 0, HC0). roots: the named functions of each class in the plan table (sizes [M]); membership is the roots plus their callees to depth inside the draw objects (E). Edit the lists here, not in hotset.py.",
+  "depth": 1,
+  "draw_objs": ["/nd_[^/]*\\.o$", "/pm_gpu[^/]*\\.o$", "/pm_tex\\.o$", "/pm_comb\\.o$", "libcitro3d\\.a"],
+  "ext_allow": ["GPUCMD_Add", "BufInfo_Init", "BufInfo_Add", "osConvertVirtToPhys"],
+  "classes": {
+    "A": {"name": "stream and op loop", "roots": ["nd_walk_state", "set_tilesize", "op_setcombine", "tex_tile1", "op_settile", "g2_same"]},
+    "B": {"name": "combine sync", "roots": ["pm_comb_eval", "pm_gpu_set_plan", "decide", "const_rgb_tex_alpha", "name_colour"]},
+    "C": {"name": "model record hit", "roots": ["rec_run", "pm_gpu_model_hit", "pm_gpu_model_key", "texsrc_chk", "nd_tex_get"]},
+    "D": {"name": "native submit and emit", "roots": ["nd_native_submit", "nd_emit_draw", "C3Di_UpdateContext", "C3D_UpdateUniforms"]},
+    "E": {"name": "batch close", "roots": ["nd_raw_native", "nd_tev_build", "rect_sig_check", "nd_tmpl_build"]},
+    "F": {"name": "vertex and triangle", "roots": ["gv_tri", "pm_gpu_gtrip", "nd_geom_vtx", "nd_gv_params"]},
+    "G": {"name": "texrect and fillrect", "roots": ["nd_texrect", "ensure_tile", "pm_gpu_tex_rect", "box_pattern_rect"]},
+    "H": {"name": "sprite", "roots": ["nd_model_state_in", "pm_gpu_spr_build", "nd_comb_decide"]},
+    "I": {"name": "entity and dlc", "roots": ["dlc_try", "pm_gpu_grange", "dlc_box_out", "ent_run"]}
+  },
+  "calls": {
+    "log": ["^pm_log"],
+    "debug": ["^pm_debug", "^pm_dbg"],
+    "timer": ["^pm_ticks", "^pm_tick", "^pm_uptime", "^svcGetSystemTick", "^osGetTime"],
+    "div": ["^__aeabi_u?idiv", "^__u?divsi3$", "^__u?modsi3$"],
+    "dbl": ["^__aeabi_d", "df3$", "df2$", "^__aeabi_f2d", "^__aeabi_d2f", "^__truncdfsf2$"]
+  }
+}

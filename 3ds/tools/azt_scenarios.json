@@ -12752,6 +12752,81 @@
         }
       ],
       "reason": "DIRECT D11: names the list producers left (render mode lists, refused G_DL targets, static custom lists, fallback words) before the compile slice."
+    },
+    {
+      "name": "fncov_mac01_det",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, cold det start, census of walker frame 200.",
+      "proves": "HC0 M3 for mac_01: which draw functions run in one frame, and the calls of each (fncov lane, draw TUs instrumented).",
+      "debug": "warp=mac_01:0 pos=0:0:200 fncov=200 loglevel=debug det",
+      "extra": [],
+      "until": "fncov f\\d+ done",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "fncov done",
+          "regex": "fncov f\\d+ done"
+        }
+      ],
+      "reason": "HC0 census: cold det start, the draw functions that run in one walker frame and their call counts (census lane only). Cap 35 s: the first marker takes 12 to 16 s (as spot_mac01_det), then frame 200. Deadline 30 s. Log only; the until is the census done line."
+    },
+    {
+      "name": "fncov_kmr10_det",
+      "status": "unverified",
+      "subject": "kmr_10 band spot, Mario at pos -142 136 221, cold det start, census of walker frame 200.",
+      "proves": "HC0 M3 for kmr_10: which draw functions run in one frame, and the calls of each (fncov lane).",
+      "debug": "warp=kmr_10:0 pos=-142:136:221 story=ch0_toad_town fncov=200 loglevel=debug det",
+      "extra": [],
+      "until": "fncov f\\d+ done",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "warp: kmr_10 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_10 entry 0"
+        },
+        {
+          "name": "fncov done",
+          "regex": "fncov f\\d+ done"
+        }
+      ],
+      "reason": "HC0 census: cold det start, the draw functions that run in one walker frame and their call counts (census lane only). Cap 35 s: the first marker takes 12 to 16 s (as spot_mac01_det), then frame 200. Deadline 30 s. Log only; the until is the census done line."
+    },
+    {
+      "name": "fncov_mac00_det",
+      "status": "unverified",
+      "subject": "mac_00 (preset toad), Mario at pos -135 0 85, cold det start, census of walker frame 200.",
+      "proves": "HC0 M3 for mac_00: which draw functions run in one frame, and the calls of each (fncov lane).",
+      "debug": "warp=mac_00:0 pos=-135:0:85 fncov=200 loglevel=debug det",
+      "extra": [],
+      "until": "fncov f\\d+ done",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "warp: mac_00 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 0"
+        },
+        {
+          "name": "fncov done",
+          "regex": "fncov f\\d+ done"
+        }
+      ],
+      "reason": "HC0 census: cold det start, the draw functions that run in one walker frame and their call counts (census lane only). Cap 35 s: the first marker takes 12 to 16 s (as spot_mac01_det), then frame 200. Deadline 30 s. Log only; the until is the census done line."
     }
   ]
 }

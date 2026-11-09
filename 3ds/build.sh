@@ -11,6 +11,12 @@ set -e
 cd "$(dirname "$0")/.."
 OUT=build3ds; VOL=pm3ds-build; SRCVOL=pm3ds-src
 if [ -n "$PM_LANE" ]; then OUT=build3ds/lane-$PM_LANE; VOL=pm3ds-build-$PM_LANE; SRCVOL=pm3ds-src-$PM_LANE; fi
+# HC0: PM_FNCOV=1 is the census lane <L>_fncov (needs PM_LANE): its own output folder and build volume, the draw TUs instrumented.
+FNV=OFF
+if [ "${PM_FNCOV:-0}" = 1 ]; then
+    [ -n "$PM_LANE" ] || { echo "PM_FNCOV=1 needs PM_LANE" >&2; exit 1; }
+    FNV=ON; OUT=build3ds/lane-${PM_LANE}_fncov; VOL=pm3ds-build-${PM_LANE}_fncov
+fi
 mkdir -p $OUT
 NAME="pm3ds-build-${PM_LANE:-main}"
 # BN1: one build number = V0 + (commit count - C0), V0 and C0 in 3ds/build_base.txt. No -dirty suffix (user decision 2026-10-19). Suffix -<lane> (PM_LANE set) or -laneB (branch lane-b).
@@ -60,6 +66,12 @@ memcheck_line() {
     if command -v py >/dev/null 2>&1; then py -3 3ds/tools/memcheck.py --map $OUT/pm_3ds.map || true
     else python3 3ds/tools/memcheck.py --map $OUT/pm_3ds.map || true; fi
 }
+# HC0: one hot code line after the memcheck line (3ds/tools/hotset.py: M1 per class and union, M2 linker group). Normal lane only;
+# a failure prints a note and does not fail the build.
+hotset_line() {
+    if command -v py >/dev/null 2>&1; then py -3 3ds/tools/hotset.py --line || echo "hotset: failed (the build is not affected)"
+    else python3 3ds/tools/hotset.py --line || echo "hotset: failed (the build is not affected)"; fi
+}
 IMG=pm3ds-build:1
 docker build -q -t $IMG -f docker/Dockerfile.build docker >/dev/null
 # SRCID: the source volume keeps the id of its last sync in /src/.pm_manifest_id, and $VID holds the id the manifest was
@@ -76,6 +88,7 @@ if [ -z "$PM_BUILD_REV" ]; then
         echo "--- build up to date (key $(echo "$KEY" | cut -c1-12)), skipping ---"
         publish_3dsx
         memcheck_line
+        [ "$FNV" = OFF ] && hotset_line
         exit 0
     fi
 fi
@@ -120,7 +133,7 @@ WD=${PM_BUILD_CAP:-600}
 wdpid=$!
 rc=0
 MSYS_NO_PATHCONV=1 docker run --rm --name "$NAME" -v $SRCVOL:/src:ro \
-    -e CCACHE_DIR=/ccache -e CCACHE_MAXSIZE="${PM_CCACHE_MAX:-2G}" -e PM_BUILD_NUM="$BN" \
+    -e CCACHE_DIR=/ccache -e CCACHE_MAXSIZE="${PM_CCACHE_MAX:-2G}" -e PM_BUILD_NUM="$BN" -e PM_FNCOV_V="$FNV" \
     -v "$(pwd)/$OUT:/out" \
     -v $VOL:/work \
     -v pm3ds-ccache:/ccache \
@@ -130,9 +143,10 @@ MSYS_NO_PATHCONV=1 docker run --rm --name "$NAME" -v $SRCVOL:/src:ro \
     stage() { now=$(date +%s); echo "STAGE $1 $((now - t0)) s" >&2; t0=$now; }
     # Configure only when the build dir is missing, was made with ccache, points at another source root, or has another build number (the smdh description).
     if ! grep -q "^CMAKE_C_COMPILER_LAUNCHER:STRING=ccache$" /work/build/CMakeCache.txt 2>/dev/null \
+        || ! grep -q "^PM_FNCOV:BOOL=$PM_FNCOV_V\$" /work/build/CMakeCache.txt 2>/dev/null \
         || ! grep -q "^CMAKE_HOME_DIRECTORY:INTERNAL=/src/3ds$" /work/build/CMakeCache.txt 2>/dev/null \
         || ! grep -q "^PM_BUILD_NUM:STRING=$PM_BUILD_NUM\$" /work/build/CMakeCache.txt 2>/dev/null; then
-        cmake -G Ninja -S /src/3ds -B /work/build -DCMAKE_TOOLCHAIN_FILE=$DEVKITPRO/cmake/3DS.cmake -DCMAKE_C_COMPILER_LAUNCHER=ccache -DPM_BUILD_NUM=$PM_BUILD_NUM
+        cmake -G Ninja -S /src/3ds -B /work/build -DCMAKE_TOOLCHAIN_FILE=$DEVKITPRO/cmake/3DS.cmake -DCMAKE_C_COMPILER_LAUNCHER=ccache -DPM_BUILD_NUM=$PM_BUILD_NUM -DPM_FNCOV=$PM_FNCOV_V
     fi
     stage configure
     status=0
@@ -162,6 +176,7 @@ if [ -f $OUT/pm_3ds.elf ]; then
 fi
 publish_3dsx
 memcheck_line
+[ "$FNV" = OFF ] && hotset_line
 # Cap the lane volume sets: keep the newest PM_LANE_KEEP lanes (default 5), by creation time.
 # A lane with a registered worktree (build3ds/wt/<name>, from git worktree list) is live: never removed, not counted.
 # The base volumes (pm3ds-build, pm3ds-src, pm3ds-work, pm3ds-ccache) and the current lane are never removed.
