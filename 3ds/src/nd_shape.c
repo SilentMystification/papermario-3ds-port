@@ -143,8 +143,8 @@ __attribute__((cold, noinline)) static const NdSeamTab* seam_get(void) {
     seam_ok = nd_seam_build(&seam_tab, gMapShapeData, 0x40000u) == 0;
     unsigned us = (pm_ticks() - t0) / 268u;
     if (!seam_ok) { pm_log_evt("seamfix map %s nomem us %u", pm_shape_name, us); return NULL; }
-    pm_log_evt("seamfix map %s tp %u ins %u skip_mtx %u skip_ref %u lists %u tri %u bedge %u kb %u us %u", pm_shape_name, seam_tab.tp_all, seam_tab.ntp,
-        seam_tab.skip_mtx, seam_tab.skip_ref, seam_tab.nlist, seam_tab.ntri, seam_tab.nbedge, (seam_tab.ntp * (unsigned)sizeof(NdTp) + seam_tab.nlist * (unsigned)sizeof(NdSeamList) + 1023u) >> 10, us);
+    pm_log_evt("seamfix map %s tp %u ins %u mtx %u skip_ref %u lists %u tri %u bedge %u kb %u us %u", pm_shape_name, seam_tab.tp_all, seam_tab.ntp,
+        seam_tab.tp_mtx, seam_tab.skip_ref, seam_tab.nlist, seam_tab.ntri, seam_tab.nbedge, (seam_tab.ntp * (unsigned)sizeof(NdTp) + seam_tab.nlist * (unsigned)sizeof(NdSeamList) + 1023u) >> 10, us);
     return &seam_tab;
 }
 __attribute__((cold, noinline)) static void seam_reset(void) { nd_seam_free(&seam_tab); seam_gen = 0; seam_ok = 0; }

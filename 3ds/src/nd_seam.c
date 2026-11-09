@@ -18,8 +18,8 @@
 #define SEAM_FAR 8192
 #define SEAM_NB 4096u /* grid buckets, power of two */
 
-typedef struct { int16_t p[3]; uint8_t exact, bnd; } SVert;
-typedef struct { uint16_t v[3]; uint16_t list, ord; } STri;
+typedef struct { int16_t p[3]; uint8_t bnd; } SVert;
+typedef struct { uint16_t v[3]; uint16_t list, ord; int16_t lc[3][3]; } STri; /* lc: the corners in the list's object coordinates (receiver split in its own space) */
 typedef struct { uint32_t te; uint16_t v, list; uint16_t ord, edge; uint32_t dot; } SHit;
 
 struct NdSeamSoup {
@@ -57,32 +57,33 @@ int nd_seam_soup_list(NdSeamSoup* s, uint32_t addr, int cls, const int32_t t[3],
     return (int)s->nl++;
 }
 
-static int vert_id(NdSeamSoup* s, const int32_t w[3], int exact) {
+static int vert_id(NdSeamSoup* s, const int32_t w[3]) {
     uint32_t h = ((uint32_t)w[0] * 73856093u) ^ ((uint32_t)w[1] * 19349663u) ^ ((uint32_t)w[2] * 83492791u);
     for (unsigned i = h & s->vhmask;; i = (i + 1u) & s->vhmask) {
         unsigned k = s->vh[i];
         if (!k) {
             if (s->nv >= s->vmax) return -1;
             SVert* v = &s->v[s->nv];
-            v->p[0] = (int16_t)w[0]; v->p[1] = (int16_t)w[1]; v->p[2] = (int16_t)w[2]; v->exact = (uint8_t)exact; v->bnd = 0;
+            v->p[0] = (int16_t)w[0]; v->p[1] = (int16_t)w[1]; v->p[2] = (int16_t)w[2]; v->bnd = 0;
             s->vh[i] = (uint16_t)(++s->nv);
             return (int)s->nv - 1;
         }
         SVert* v = &s->v[k - 1u];
-        if (v->p[0] == w[0] && v->p[1] == w[1] && v->p[2] == w[2]) { v->exact |= (uint8_t)exact; return (int)k - 1; }
+        if (v->p[0] == w[0] && v->p[1] == w[1] && v->p[2] == w[2]) return (int)k - 1;
     }
 }
 
-void nd_seam_soup_tri(NdSeamSoup* s, int list, unsigned ord, const int32_t w[3][3], int exact) {
+void nd_seam_soup_tri(NdSeamSoup* s, int list, unsigned ord, const int32_t w[3][3], const int32_t lc[3][3]) {
     int id[3];
     if (list < 0 || s->ntri >= s->maxtri) return;
     for (int c = 0; c < 3; c++)
         for (int q = 0; q < 3; q++)
             if (w[c][q] > SEAM_FAR || w[c][q] < -SEAM_FAR) { s->far++; return; }
-    for (int c = 0; c < 3; c++) { id[c] = vert_id(s, w[c], exact); if (id[c] < 0) return; }
+    for (int c = 0; c < 3; c++) { id[c] = vert_id(s, w[c]); if (id[c] < 0) return; }
     if (id[0] == id[1] || id[1] == id[2] || id[2] == id[0]) return; /* degenerate: no edge, no receiver */
     STri* t = &s->tri[s->ntri++];
     t->v[0] = (uint16_t)id[0]; t->v[1] = (uint16_t)id[1]; t->v[2] = (uint16_t)id[2]; t->list = (uint16_t)list; t->ord = (uint16_t)ord;
+    for (int c = 0; c < 3; c++) for (int q = 0; q < 3; q++) t->lc[c][q] = (int16_t)lc[c][q];
 }
 
 static int cmp_u64(const void* a, const void* b) { uint64_t x, y; memcpy(&x, a, 8); memcpy(&y, b, 8); return x < y ? -1 : x > y; }
@@ -192,9 +193,8 @@ int nd_seam_soup_finish(NdSeamSoup* s, NdSeamTab* t) {
         unsigned nk = 0;
         for (i = 0; i < nh; i++) {
             const NdSeamList* l = &s->l[hit[i].list];
-            if (l->cls == 2 || !s->v[hit[i].v].exact) { t->skip_mtx++; continue; }
             if (!l->ok) { t->skip_ref++; continue; }
-            if (l->cls == 0) t->tp_id++; else t->tp_int++;
+            if (l->cls == 0) t->tp_id++; else if (l->cls == 1) t->tp_int++; else t->tp_mtx++;
             hit[nk++] = hit[i];
         }
         nh = nk;
@@ -209,7 +209,19 @@ int nd_seam_soup_finish(NdSeamSoup* s, NdSeamTab* t) {
         NdTp* p = &t->tp[i];
         if (!l->cnt) l->first = i;
         if (l->cnt < 0xFFFFu) l->cnt++;
-        for (int q = 0; q < 3; q++) p->p[q] = (int16_t)(s->v[hit[i].v].p[q] - l->t[q]);
+        if (l->cls < 2) for (int q = 0; q < 3; q++) p->p[q] = (int16_t)(s->v[hit[i].v].p[q] - l->t[q]);
+        else { /* receiver under its own matrix: the affine map keeps the edge parameter, so the point is the same fraction of the local edge */
+            const STri* tr = &s->tri[hit[i].te >> 2];
+            unsigned c = hit[i].te & 3u, cn = c == 2 ? 0u : c + 1u;
+            const int16_t* A = s->v[tr->v[c]].p; const int16_t* B = s->v[tr->v[cn]].p;
+            int64_t L2 = 0;
+            for (int q = 0; q < 3; q++) { int64_t d = B[q] - A[q]; L2 += d * d; }
+            float f = L2 ? (float)hit[i].dot / (float)L2 : 0.f;
+            for (int q = 0; q < 3; q++) {
+                float lp = (float)tr->lc[c][q] + f * ((float)tr->lc[cn][q] - (float)tr->lc[c][q]);
+                p->p[q] = (int16_t)(int32_t)(lp < 0 ? lp - 0.5f : lp + 0.5f);
+            }
+        }
         p->tri = hit[i].ord; p->edge = hit[i].edge;
     }
     t->ntp = nh;
@@ -306,6 +318,7 @@ static void list_add(SWalk* w, uint32_t addr, const SXf* x, int depth) {
 
 static void list_decode(SWalk* w, uint32_t addr, const SXf* x, int depth) {
     int32_t pos[64][3];
+    int16_t lraw[64][3]; /* the Vtx words: object coordinates of each slot */
     unsigned char live[64];
     unsigned ord = 0, i, me = w->nlist - 1u;
     int ok = 1, li = -1;
@@ -327,6 +340,7 @@ static void list_decode(SWalk* w, uint32_t addr, const SXf* x, int depth) {
             for (unsigned k = 0; k < n; k++) {
                 int16_t ob[3];
                 memcpy(ob, src + 16u * k, 6);
+                for (int q = 0; q < 3; q++) lraw[v0 + k][q] = ob[q];
                 if (x->cls < 2) for (int q = 0; q < 3; q++) pos[v0 + k][q] = ob[q] + x->t[q];
                 else
                     for (int q = 0; q < 3; q++) {
@@ -344,7 +358,11 @@ static void list_decode(SWalk* w, uint32_t addr, const SXf* x, int depth) {
                 unsigned o = ord++;
                 if (ix[0] > 63 || ix[1] > 63 || ix[2] > 63 || !live[ix[0]] || !live[ix[1]] || !live[ix[2]]) { ok = 0; continue; }
                 w->ntri++;
-                if (w->s) { int32_t tw[3][3]; for (int c = 0; c < 3; c++) memcpy(tw[c], pos[ix[c]], sizeof tw[c]); nd_seam_soup_tri(w->s, li, o, (const int32_t(*)[3])tw, x->cls < 2); }
+                if (w->s) {
+                    int32_t tw[3][3], tl[3][3];
+                    for (int c = 0; c < 3; c++) for (int q = 0; q < 3; q++) { tw[c][q] = pos[ix[c]][q]; tl[c][q] = lraw[ix[c]][q]; }
+                    nd_seam_soup_tri(w->s, li, o, (const int32_t(*)[3])tw, (const int32_t(*)[3])tl);
+                }
             }
             break;
         case OP_DL:

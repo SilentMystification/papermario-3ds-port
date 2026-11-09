@@ -199,7 +199,7 @@ static int compile_soup(const NdSeamTab* t, NdSeamTab* out, int use_tp) {
     nctri = 0; c_lists = 0; c_ref = 0; c_ins = 0;
     for (unsigned li = 0; li < t->nlist; li++) {
         const NdSeamList* L = &t->list[li];
-        if (L->cls == 2 || !L->ok) continue;
+        if (!L->ok) continue;
         const uint8_t* p = (const uint8_t*)(uintptr_t)L->addr;
         unsigned i;
         for (i = 0; i < ND_DLC_MAXOPS; i++) { memcpy(&lw[2 * i], p + 8 * i, 8); if ((lw[2 * i] >> 24) == 0xDF) break; }
@@ -209,11 +209,12 @@ static int compile_soup(const NdSeamTab* t, NdSeamTab* out, int use_tp) {
         int rc = nd_dlc_compile(&o, lw, &env);
         if (rc) { c_ref++; continue; }
         c_lists++; c_ins += o.nins;
+        if (L->cls == 2) { nd_dlc_free(&o); continue; } /* the soup holds world positions of the identity and translation lists only (no matrix here) */
         int sl = nd_seam_soup_list(s, L->addr, L->cls, L->t, 1);
         for (unsigned k = 0; k < o.nidx / 3u; k++) {
-            int32_t w[3][3];
-            for (int c = 0; c < 3; c++) { const int16_t* v = (const int16_t*)(o.vtx + 16u * (o.idx[3 * k + c] - o.vfirst)); for (int q = 0; q < 3; q++) w[c][q] = v[q] + L->t[q]; }
-            nd_seam_soup_tri(s, sl, k, (const int32_t(*)[3])w, 1);
+            int32_t w[3][3], lcn[3][3];
+            for (int c = 0; c < 3; c++) { const int16_t* v = (const int16_t*)(o.vtx + 16u * (o.idx[3 * k + c] - o.vfirst)); for (int q = 0; q < 3; q++) { lcn[c][q] = v[q]; w[c][q] = v[q] + L->t[q]; } }
+            nd_seam_soup_tri(s, sl, k, (const int32_t(*)[3])w, (const int32_t(*)[3])lcn);
             if (nctri >= cctri) { cctri = cctri ? 2 * cctri : 8192; ctri = realloc(ctri, cctri * sizeof *ctri); }
             memcpy(ctri[nctri++].w, w, sizeof w);
         }
@@ -376,8 +377,8 @@ static int seam_steps34(int nshape, char** shapes, const char* toad) {
         if (!buf) { printf("FAIL: cannot read %s\n", shapes[a]); fail = 1; continue; }
         NdSeamTab t, c0;
         if (nd_seam_build(&t, buf, size)) { printf("FAIL: %s: nd_seam_build no memory\n", nm); fail = 1; continue; }
-        printf("seam step 3: %.6s lists id %u int %u other %u, triangles %u, positions %u, boundary edges %u, far %u; T points %u: inserted id %u int %u, refused matrix %u list %u\n",
-            nm, t.nl_cls[0], t.nl_cls[1], t.nl_cls[2], t.ntri, t.nvert, t.nbedge, t.far, t.tp_all, t.tp_id, t.tp_int, t.skip_mtx, t.skip_ref);
+        printf("seam step 3: %.6s lists id %u int %u other %u, triangles %u, positions %u, boundary edges %u, far %u; T points %u: inserted id %u int %u matrix %u, refused list %u\n",
+            nm, t.nl_cls[0], t.nl_cls[1], t.nl_cls[2], t.ntri, t.nvert, t.nbedge, t.far, t.tp_all, t.tp_id, t.tp_int, t.tp_mtx, t.skip_ref);
         if (t.ntri < 100 || t.nlist < 5) { printf("FAIL: %s: too few triangles or lists\n", nm); fail = 1; }
         cbuf = buf; csize = size;
         if (compile_soup(&t, &c0, 0)) { printf("FAIL: %s: compile soup no memory\n", nm); fail = 1; nd_seam_free(&t); continue; }
@@ -405,8 +406,30 @@ static int seam_steps34(int nshape, char** shapes, const char* toad) {
     return fail;
 }
 
+/* SEAMFIX fixture (no shape file): a receiver under its own matrix (x2 scale, object edge (0,0,0)-(50,0,0), world edge (0,0,0)-(100,0,0)) and an identity
+ * list with one vertex at world (40,0,0) on that edge. Expect one T point in the receiver list at object (20,0,0) (fraction 40/100 of the object edge). */
+static int seam_fixture_matrix(void) {
+    NdSeamTab t; NdSeamSoup* s = nd_seam_soup_new(8); const int32_t z[3] = { 0, 0, 0 };
+    int lr, lp; const NdSeamList* L; int fail = 0;
+    if (!s) { puts("FAIL: fixture: no memory"); return 1; }
+    lr = nd_seam_soup_list(s, 0x1000u, 2, z, 1);
+    lp = nd_seam_soup_list(s, 0x2000u, 0, z, 1);
+    { const int32_t w[3][3] = { { 0, 0, 0 }, { 100, 0, 0 }, { 0, 50, 0 } }, lc[3][3] = { { 0, 0, 0 }, { 50, 0, 0 }, { 0, 50, 0 } };
+      nd_seam_soup_tri(s, lr, 0, w, lc); }
+    { const int32_t w[3][3] = { { 40, 0, 0 }, { 40, 30, 10 }, { 60, -20, 10 } }; nd_seam_soup_tri(s, lp, 0, w, w); }
+    if (nd_seam_soup_finish(s, &t)) { puts("FAIL: fixture: finish no memory"); return 1; }
+    L = nd_seam_find(&t, 0x1000u);
+    if (t.tp_all != 1 || t.ntp != 1 || t.tp_mtx != 1 || t.skip_ref != 0) { printf("FAIL: fixture: T points %u inserted %u matrix %u refused %u (want 1 1 1 0)\n", t.tp_all, t.ntp, t.tp_mtx, t.skip_ref); fail = 1; }
+    else if (!L || L->cnt != 1 || t.tp[L->first].p[0] != 20 || t.tp[L->first].p[1] != 0 || t.tp[L->first].p[2] != 0 || t.tp[L->first].tri != 0 || t.tp[L->first].edge != 0) {
+        printf("FAIL: fixture: receiver point not at object (20,0,0) tri 0 edge 0\n"); fail = 1;
+    } else printf("seam fixture: matrix receiver point at object (%d,%d,%d) PASS\n", t.tp[L->first].p[0], t.tp[L->first].p[1], t.tp[L->first].p[2]);
+    nd_seam_free(&t);
+    return fail;
+}
+
 int main(int argc, char** argv) {
     if (argc < 4) { fprintf(stderr, "usage: nd_seam_test <mac_01_shape.bin> <mac_02_shape.bin> <ndref.bin> ... [-- <shape.bin> ...]\n"); return 2; }
+    if (seam_fixture_matrix()) return 1;
     int nsh = 0; char** sh = NULL;
     for (int k = 3; k < argc; k++) if (!strcmp(argv[k], "--")) { nsh = argc - k - 1; sh = argv + k + 1; argc = k; break; }
     static Shape a, b;
