@@ -34,6 +34,7 @@ const void* ens_pal;
 unsigned ens_fmt, ens_siz;
 unsigned ens_wrap[4];
 int ens_sz[4];
+static int ens_slot = -1; static unsigned ens_gen; /* KMR10M: cache slot and generation the last walker bind of tile 0 left in pm_tex cur */
 
 /* M4: the bodies of the texture ops, one function each. tex_op_impl calls them in its switch, tb_plain (fused bind of a plain texture list) calls them in list order. The code is the code of the cases, moved. */
 /* CORE-2b batch D: texture image setter (decoded fields). */
@@ -299,12 +300,19 @@ const u8* fb_prev_base(int n) {
     return base;
 }
 
-void ens_clear(void) { ens_src = NULL; ens_pal = NULL; }
+void ens_clear(void) { ens_src = NULL; ens_pal = NULL; ens_slot = -1; }
 
 int tile_bound(int n) {
     if (!nd_ws.td[n].valid || pm_tex_cur_idx() < 0 || !ens_src) return 0;
     if (ens_src != nd_ws.td[n].src || ens_pal != nd_ws.td[n].pal || ens_fmt != nd_ws.td[n].fmt || ens_siz != nd_ws.td[n].siz) return 0;
     if (memcmp(nd_ws.tst1.tile_wrap[n], ens_wrap, sizeof ens_wrap) || memcmp(nd_ws.tst1.tile_sz[n], ens_sz, sizeof ens_sz)) return 0;
+    /* KMR10M: a native load since the bind (nd_tex_get, spr_tex_unit) moves cur; the bind holds only while its slot keeps its generation */
+    if (pm_tex_cur_idx() != ens_slot || pm_tex_slot_gen(ens_slot) != ens_gen) {
+        static unsigned stale_n; /* KMR10M debug: refusals of a matching bind; the first and every 8th is logged with its frame and tile */
+        stale_n++;
+        if (stale_n == 1 || !(stale_n & 7)) pm_log_d("ensstale f%u n %u tile %d ens_slot %d cur %d", pm_frame_count(), stale_n, n, ens_slot, pm_tex_cur_idx());
+        return 0;
+    }
     return 1;
 }
 
@@ -373,7 +381,7 @@ void ensure_tile(int n) {
                 if (fbon) { pm_tex_size(&tw1, &th1); pm_log_d("fbbind bind n%d fb %p fmt RGBA16 size %dx%d off %d cur %d", n, (const void*)fb, tw1, th1, pm_tex_off_idx(), pm_tex_cur_idx()); }
             }
             nd_ws.tile_x0 = nd_ws.tile_y0 = 0;
-            ens_src = fb; ens_pal = nd_ws.td[n].pal; ens_fmt = 0; ens_siz = 2;
+            ens_src = fb; ens_pal = nd_ws.td[n].pal; ens_fmt = 0; ens_siz = 2; ens_slot = -1;
             memcpy(ens_wrap, nd_ws.tst1.tile_wrap[n], sizeof ens_wrap);
             memcpy(ens_sz, fb_sz, sizeof ens_sz);
             ens_img[n] = fb;
@@ -400,7 +408,7 @@ void ensure_tile(int n) {
         pm_tex_glyph_ofs(&gox, &goy);
         nd_ws.tile_x0 = nd_ws.td[n].x0 - ox - (n == 0 ? gox : 0);
         nd_ws.tile_y0 = nd_ws.td[n].y0 - oy - (n == 0 ? goy : 0);
-        ens_src = nd_ws.td[n].src;
+        ens_src = nd_ws.td[n].src; ens_slot = -1;
         memcpy(ens_sz, nd_ws.tst1.tile_sz[n], sizeof ens_sz);
         ens_img[n] = nd_ws.td[n].src;
         nd_ws.cur_tile = n;
@@ -427,6 +435,7 @@ void ensure_tile(int n) {
     ens_pal = nd_ws.td[n].pal;
     ens_fmt = nd_ws.td[n].fmt;
     ens_siz = nd_ws.td[n].siz;
+    ens_slot = pm_tex_cur_idx(); ens_gen = pm_tex_slot_gen(ens_slot); /* KMR10M */
     memcpy(ens_wrap, nd_ws.tst1.tile_wrap[n], sizeof ens_wrap);
     memcpy(ens_sz, nd_ws.tst1.tile_sz[n], sizeof ens_sz);
     ens_img[n] = nd_ws.td[n].src;

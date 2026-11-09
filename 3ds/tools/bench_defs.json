@@ -305,6 +305,22 @@
       "gates": []
     },
     {
+      "name": "kmr10_walk_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "KMR10M gate: kmr_10 late walk (wait400 then padscript) at -142 136 221, shots 500 to 579 every 2nd frame. A person reads the shots: cliff strata continuous, no stretched vertical lines. Log: ensstale count.",
+      "scenario": "kmr10_walk",
+      "cap": 40,
+      "until": "warp: scene f600 ",
+      "tags": [
+        "azahar",
+        "pic",
+        "wall"
+      ],
+      "gates": []
+    },
+    {
       "name": "sprshade_hos01_log",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -4093,7 +4109,7 @@
       "tags": [
         "azahar",
         "pic",
-                "wide",
+        "wide",
         "fps60"
       ],
       "gates": []
