@@ -7005,6 +7005,40 @@
       "gates": []
     },
     {
+      "name": "menu_part2",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MENUGEN parts 1 and 2: General tab order and Resolution Mode, Debug tab order, Logging page without Back, B and Select log lines, Disable Fog, Disable Light, Texture Filtering set in the menu; field shots 200 to 205 (mac_01 0 0 200). Pair with spot_mac01_det (same det config, flags off).",
+      "scenario": "menu_part2",
+      "cap": 45,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "menu",
+        "menugen"
+      ],
+      "gates": []
+    },
+    {
+      "name": "menu_part3",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MENUGEN part 3: Fullscreen field, Debug rows Fixed Seed and Start a Battle, fog, light and texture filter each on and off on the field (mac_01 0 0 200), one run.",
+      "scenario": "menu_part3",
+      "cap": 60,
+      "until": "padscript: done",
+      "tags": [
+        "azahar",
+        "pic",
+        "menu",
+        "menugen"
+      ],
+      "gates": []
+    },
+    {
       "name": "menu_texf",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -7257,7 +7291,23 @@
         "lstcen"
       ],
       "gates": []
-    }
+    },
+    {
+        "name": "mac05_water_census",
+        "kind": "azahar_stream",
+        "speed": "normal",
+        "default": false,
+        "purpose": "WATERPAN census: mac_05 at -75 -10 500, ndm and ndmrw window at frame 300 (model cache misses by record word 18 to 21).",
+        "scenario": "mac05_water_census",
+        "cap": 30,
+        "until": "ndmrw f300 ",
+        "tags": [
+          "azahar",
+          "census",
+          "water"
+        ],
+        "gates": []
+      }
   ],
   "legacy": {
     "note": "Scenarios that no bench uses. Kept for the azt.ps1 route, not run by bench.py.",

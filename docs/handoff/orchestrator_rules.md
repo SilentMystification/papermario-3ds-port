@@ -6,7 +6,7 @@ Read this file at the start and after every compaction; it overrides any summary
 ## Roles
 - Orchestrator (Opus): plans, writes row files and prompts, merges, commits docs, runs console pushes on request, cleans up. It does
   not edit game source or debug; it reads code and logs only to plan.
-- Code agents: Haiku. Opus agents only when the user starts them; the orchestrator never launches one, it asks.
+- Code agents: subagent_type coder (.claude/agents/coder.md, Haiku). The shared oracle: subagent_type oracle (oracle.md, Opus). Opus agents only when the user starts or approves them; the orchestrator asks.
 - Oracle: ONE shared read-only Opus agent, reused by SendMessage for every design question and failed handback. Its answer goes into
   the row file and is committed before the code agent starts. Every oracle plan names its premise and one cheap check.
 - Manual mode: when the user says work runs elsewhere, launch nothing on those rows or files.
@@ -24,7 +24,8 @@ Read this file at the start and after every compaction; it overrides any summary
   the oracle to reframe the problem (a different cause, code point or metric) before any new try. A false premise closes the row.
 - Check each agent at 90 minutes; no passed gate: stop it, put its state in the row file, reframe (split, or NEEDS CONSOLE).
 - Handback triage before any relaunch: 1 environment fault (fix it, same row); 2 wrong premise (rewrite the row with the agent's
-  facts); 3 no reproduction (user or console evidence first); 4 real stall (split the row). Never relaunch an unchanged row.
+  facts); 3 no reproduction or a cause not found: ask the user at once (AskUserQuestion: their exact setup, steps, what they see, or a
+  console check they can do), before any rewrite or relaunch (user, 2026-11-09: the user is a debug source); 4 real stall (split the row). Never relaunch an unchanged row.
 
 ## Worktrees
 - `sh 3ds/tools/wt_new.sh <row>` (git worktree add build3ds/wt/<row> -b <row> main, plus `.wt_keep`; wt_gc keeps it until the row

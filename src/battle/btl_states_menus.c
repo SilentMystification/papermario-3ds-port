@@ -595,6 +595,8 @@ void btl_main_menu_destroy(void) {
 /* WIDE4: the wheel radius. With wide the wheel sits in the screen corner, so its options and the selected one (upper right) were close to Mario;
  * a radius of 101 (4:3: 87) moves the selected option 12 px right and 8 px up along its 56 degree ray (user item 2). */
 #define WHEEL_RADIUS (pm_wide ? 101.0f : 87.0f)
+extern void pm_log_d(const char* fmt, ...);
+static int wq_print; /* BATWIDE debug: set at a wheel stop when the log word wheelq is on; prints the option quads of that frame */
 
 s32 btl_main_menu_update(void) {
     BattleStatus* battleStatus = &gBattleStatus;
@@ -911,6 +913,7 @@ void btl_main_menu_draw(void) {
                     extern void pm_gpu_shot_burst(int n);
                     extern int pm_debug_has(const char* word);
                     pm_log_d("debug wheel stop: pos %d of %d base %d", BattleMenu_CurPos + BattleMenu_HomePos, WheelOptionCount, BattleMenu_BasePosX);
+                    wq_print = pm_debug_has("wheelq");
                     if (pm_debug_has("uiburst")) pm_gpu_shot_burst(4);
                 }
                 BattleMenu_WheelMoving = 0;
@@ -943,6 +946,7 @@ void btl_main_menu_draw(void) {
                     x = BattleMenu_BasePosX + x;
                     y = BattleMenu_BasePosY + y;
                     id = HID_HighlightSpot;
+                    if (wq_print) pm_log_d("debug wheelq light opt %d x %d y %d", i, (int)x, (int)y);
                     hud_element_set_transform_pos(id, x, -y, 0.0f);
                     hud_element_set_render_pos(id, 0, 0);
                     hud_element_set_alpha(id, (opacity * 180) / 255);
@@ -993,6 +997,7 @@ void btl_main_menu_draw(void) {
                 add_vec2D_polar(&x, &y, WHEEL_RADIUS, theta);
                 l = x = BattleMenu_BasePosX + x;
                 t = y = BattleMenu_BasePosY + y;
+                if (wq_print) pm_log_d("debug wheelq opt %d theta %d l %d t %d u16 %u", i, (int)theta, l - 12, t - 12, (unsigned short)(l - 12));
                 btl_draw_prim_quad(0, 0, 0, 0, l - 12, t - 12, 24, 24);
                 id = HID_OptionIcons[i];
                 hud_element_set_render_pos(id, l, t);
@@ -1002,6 +1007,7 @@ void btl_main_menu_draw(void) {
                 }
                 hud_element_draw_clipped(id);
             }
+            wq_print = 0;
 
             if (cond) {
                 l = BattleMenu_BasePosX + 20 + (pm_wide ? 12 : 0); /* WIDE4: the name follows the selected option (radius WHEEL_RADIUS) */
