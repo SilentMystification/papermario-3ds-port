@@ -194,9 +194,10 @@ typedef struct { int valid; const u8* src; int stride, w, h, x0, y0; } M1Rec;
 extern M1Rec m1;                 /* the former pm_gbi.c: the shaded sprite tile 1 raster */
 extern struct TszLast tsz_last;  /* nd_tex_set.c */
 extern unsigned st0_ep; extern int st0_ok; /* nd_tex_set.c */
-extern unsigned blk_n;           /* nd_tex_set.c */
-extern const void* tlut_pal[16]; /* nd_tex_set.c */
-extern int ld_valid, ld_x, ld_y, ld_h, ld_w; /* the former pm_gbi.c: last LoadTile window */
+/* D4a: the load side of the texture model (nd_tex_set.c): the last LoadTile window (8-bit texels of the source image), the LoadTile and
+ * LoadBlock slot rotations (V13) and the palette of each TMEM palette slot (G_LOADTLUT). The window functions read it by pointer. */
+typedef struct NdTexM { int ld_valid, ld_x, ld_y, ld_h, ld_w; unsigned ldrec_n, blk_n; const void* tlut_pal[16]; } NdTexM;
+extern NdTexM nd_tm;
 extern int dual_on;              /* the former pm_gbi.c */
 extern void* const zb_fake;      /* the former pm_gbi.c */
 extern unsigned sp0_cur;         /* the former pm_gbi.c: split timer kind */
@@ -243,8 +244,6 @@ int tile_bound(int n);
 const u8* fb_prev_base(int n);
 void ens_clear(void);
 extern unsigned short** nuGfxCfb; extern unsigned nuGfxCfbNum;
-/* owner: the former pm_gbi.c (LoadTile window; G_LOADTILE writes it in tex_op_impl (nd_tex.c) and the snapshot ts_load (the former pm_gbi.c) until TX-3 moves ts_*) */
-extern unsigned ldrec_n;
 void grab_cur(const void* src, int w, int h);       /* the former pm_gbi.c, target group */
 void nd_native_rec(u32 w0);                         /* nd_target.c, LS-4: G_PM_ND records */
 int load_shaded_sprite(int dx4, int dy4);           /* the former pm_gbi.c, TX-3 */

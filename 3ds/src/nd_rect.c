@@ -69,7 +69,7 @@ __attribute__((noinline)) int rect_to_image(int xl, int yl, int xh, int yh, unsi
             unsigned entry = word - 256u;
             if (entry > 255u) continue;
             float tx[4], none[4] = { 0, 0, 0, 0 }, o[4];
-            pal_rgba(tlut_pal[entry >> 4], entry & 15u, tx);
+            pal_rgba(nd_tm.tlut_pal[entry >> 4], entry & 15u, tx);
             cc_cycle1(tx, none, o);
             unsigned r = (unsigned)(o[0] * 31.f + .5f), g = (unsigned)(o[1] * 31.f + .5f),
                      b = (unsigned)(o[2] * 31.f + .5f), a = o[3] >= .5f;
