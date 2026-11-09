@@ -1632,6 +1632,22 @@
       "gates": []
     },
     {
+      "name": "warpq_door_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WARPQ: a Select menu warp while the game is in map change mode 5 (door or loading zone). Azahar shots 200 to 205 after the destination. A person reads the shot: kmr_04 on screen, no menu.",
+      "scenario": "warpq_door",
+      "cap": 25,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "warp"
+      ],
+      "gates": []
+    },
+    {
       "name": "randwarp_pic",
       "kind": "azahar_pic",
       "speed": "normal",
