@@ -1291,6 +1291,17 @@ static __attribute__((cold, noinline)) void raw_draw_rare(NdDraw* d, const NdUni
     if (tex1) { memcpy(d->uvx, t1_s, 16); d->loc_uvx = (uint16_t)(nb.g_use5 ? u5_uvx : u4_uvx); d->has_uvx = 1; }
     if (nb.g_use5) { pm5_upload(); d->use5 = 1; d->no_uni = 1; d->npal = 0; } /* PM5-2; FB-3: the uvx uniform of pm5 is d->loc_uvx (set above) */
 }
+/* I8AUX debug: unit 1 of a native draw, once per 60 frames: pm_tex_i8(1) (the i8_1 the TEV key gets) and the aux slot fmt, siz and GPU format */
+static __attribute__((cold, noinline)) void i8aux_log(int tex1, int i8_1) {
+    static unsigned last_f = ~0u;
+    const unsigned f = pm_frame_count();
+    if (f % 60u != 0u || f == last_f) return;
+    last_f = f;
+    extern int pm_tex_aux_info(int* fmt, int* siz, int* gpu);
+    int af, as, ag;
+    int k = pm_tex_aux_info(&af, &as, &ag);
+    pm_log("i8aux f%u t1 %d i8_1 %d aux %d fmt %d siz %d gpu %d", f, tex1, i8_1, k, af, as, ag);
+}
 static int nd_raw_native(void) {
     nd_tmpl_pin(); /* FB-2: the template ids of this batch stay valid until its submit */
     if (!(nb.gni > 0 && nb.g_pal && gs.gv4_on && (!nb.g_use5 || gv5_on))) { cen_why = nb.g_use5 ? CW_PM5 : CW_OTHER; return 0; } /* CEN-1a; PM5-2: program 5 batches go native too */
@@ -1310,6 +1321,7 @@ static int nd_raw_native(void) {
     int t1 = 0;
     if (gs.combine == 8 && gs.plan.uses_tex1) { t1 = raw_unit1(&u1); if (t1 < 0) { nd_native_refused++; nraw_why[6]++; cen_why = CW_NRK(6); return 0; } } /* SGEN-2: unit 1 words and the uv map uniform (PERF2: out of line) */
     const int tex = t > 0, i8_0 = tex && pm_tex_i8(0), tex1 = t1 > 0, i8_1 = tex1 && pm_tex_i8(1);
+    if (__builtin_expect(tex1 && pm_frame_count() % 60u == 0u, 0)) i8aux_log(tex1, i8_1); /* I8AUX debug: once per 60 frames */
     const int noise = gs.combine == 8 && gs.plan.uses_noise && noise_init(); /* FB-2: as flush_draw; noise_init 0 (no memory): the walker draws without it, so does the native draw */
     NdTmplKey nk;
     memset(&nk, 0, sizeof nk);

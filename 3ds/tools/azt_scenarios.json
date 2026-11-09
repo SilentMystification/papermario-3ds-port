@@ -1254,6 +1254,33 @@
       ]
     },
     {
+      "name": "i8aux_mac01",
+      "status": "unverified",
+      "reason": "I8AUX step 1 (log check): fxtest huff_puff_breath (index 103) on mac_01, cold. Prints the i8aux line: pm_tex_i8(1), the unit 1 slot fmt, siz and GPU format.",
+      "subject": "mac_01 (entry 0, pos 0 0 200), fxtest=103 spawns huff_puff_breath at the player, one 44 frame slot from frame 400.",
+      "proves": "I8AUX cause: the huff puff unit 1 I8 CPU slot gives i8_1 0 (expected fmt I, siz 8, gpu L8 in the i8aux line).",
+      "debug": "warp=mac_01:0 pos=0:0:200 story=ch0_toad_town fxtest=103 loglevel=debug fixedseed fast fs1off det",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "fxtest: done",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "done",
+          "regex": "fxtest: done"
+        }
+      ]
+    },
+    {
       "name": "fx_direct_det",
       "status": "unverified",
       "reason": "DIRECT D6c gate: the 18 effects that kept list words (inline vertex data, lists for later) now write stream data and stream ranges.",
