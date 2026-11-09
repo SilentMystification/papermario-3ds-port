@@ -375,7 +375,7 @@ typedef struct {
     unsigned wh[93];              /* xferdiag: misses per first differing key word (92: no stored entry of the same model) */
     unsigned mdl_rng;             /* DOORHITCH: key hits refused by the group mask or the matrix version (pm_gpu_model_hit), rebuilt and not in mdl_miss */
     unsigned rdw_t;               /* DOORHITCH: ticks of the walk drain before a ROM read (nuPiReadRom) */
-    unsigned hid_d, hid_t;        /* DOORHITCH: hidden models of the new map given their compiled list, their texture, before a first draw */
+    unsigned hid_d;               /* DOORHITCH: hidden models of the new map given their compiled list before a first draw (covered frames) */
     int step_smp;                 /* DOORHITCH: the step in progress is a prof sample (phase timers on); set by pm_main before pm_xfer_step */
 } PmXf;
 extern PmXf pm_xf;

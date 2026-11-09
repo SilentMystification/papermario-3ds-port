@@ -1892,21 +1892,6 @@ int pm_tex_native_unit1(NdUnit* u) {
     au_last = NULL;
     return 1;
 }
-/* TIK19: the unit 1 words of slot i for a model cache hit, with the residency step, touch and force rule of pm_tex_native_unit1. 1 when the slot is live with
- * generation gen (not dropped or invalidated since the entry was stored); 0: the hit rebuilds. param stays the caller's (the stored wrap and filter). */
-int pm_tex_slot_unit1(int i, unsigned gen, NdUnit* u) {
-    if (i < 0 || i >= SLOTS || !slots[i].live || slots[i].sgen != gen) return 0;
-    slots[i].stamp = ++stamp;
-    TOUCH(&slots[i]);
-    const C3D_Tex* tp = tex_for_draw(&slots[i]);
-    u->force = slot_draws_stage(&slots[i]) || tp != nd_lt1 || slots[i].sgen != nd_lsg1;
-    nd_lt1 = tp; nd_lsg1 = slots[i].sgen;
-    u->dim = tp->dim; u->lod = tp->lodParam;
-    u->addr = (uint32_t)osConvertVirtToPhys(tp->data) >> 3;
-    u->type = (uint32_t)tp->fmt;
-    au_last = NULL;
-    return 1;
-}
 /* S3N-3d: the content identity of a live slot (its source hash, the same one the census uses). 0: none. */
 unsigned pm_tex_slot_key(int i) { if (i < 0 || i >= SLOTS || !slots[i].live) return 0; return slots[i].shash; }
 /* S3N-3d: the unit 0 words of one live slot at draw time, the same residency step as the walker bind (tex_for_draw). param is left to the caller. 0: slot not live, -1: an off-screen image is bound. */

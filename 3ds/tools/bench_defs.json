@@ -5017,6 +5017,45 @@
       "gates": []
     },
     {
+      "name": "xfer_door_kmr20_ndm",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "DOORHITCH gate: kmr_20 doors with ndmcheck (native draw vs walker, cached vs fresh). Gate: ndmcheck diff 0 and ndmcache diff 0 at f300 and f600.",
+      "scenario": "xfer_door_kmr20_ndm",
+      "cap": 45,
+      "until": "ndmcache f600 ",
+      "tags": [
+        "azahar",
+        "ndm",
+        "xfer"
+      ],
+      "log_metrics": [
+        {
+          "name": "ndm_diff",
+          "regex": "ndmcheck f\\d+ recs \\d+ eq \\d+ diff (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "ndmcache_diff",
+          "regex": "ndmcache f\\d+ hit \\d+ miss \\d+ diff (\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "ndm_diff",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "ndmcache_diff",
+          "op": "==",
+          "value": 0
+        }
+      ]
+    },
+    {
       "name": "xfer_door_mac01",
       "kind": "azahar_stream",
       "speed": "normal",

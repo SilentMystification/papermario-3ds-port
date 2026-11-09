@@ -3120,21 +3120,6 @@ int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32
 /* S3N-6: the hit. The cached draws of key k go out (after pm_gpu_flush) when the fresh ranges are the cached ones: each with the palette of the current view
  * and, for a textured record, the unit 0 words of the hinted slot (nd_tex_unit_hint). 1: drawn. 0: no entry, other ranges, or no texture: the caller
  * applies the record (its matrix ops are done). */
-/* DOORHITCH step 3, walker side (pm_xfer.c posts it): a hidden model of a new map gets its compiled list and its texture before its first draw,
- * the texture only while the cache keeps an eighth of its budget free (a model that may never show takes no slot a drawn texture needs; the
- * eviction never takes a slot of this frame or the one before). */
-__attribute__((cold, noinline)) void pm_gpu_warm_model(const void* dl, int ti, const void* gfx) {
-    extern int pm_dlc_prebuild(const void* l); extern unsigned pm_tex_used(void), pm_tex_budget(void);
-    if (dl && pm_dlc_prebuild(dl)) pm_xf.hid_d++;
-    if (ti < 0 || !gfx) return;
-    const NdTexDesc* ds = nd_tex_handle_desc(ti, gfx);
-    if (!ds) return;
-    const unsigned need = (unsigned)ds->w * (unsigned)ds->h * 4u, cap = pm_tex_budget();
-    if (pm_tex_used() + need > cap - (cap >> 3)) return;
-    const int id = nd_tex_get(ds); /* the descriptor id; it may outlive its slot (a map change invalidates the cache) */
-    int hs = -1; unsigned hg = 0; NdUnit u;
-    if (id >= 0 && nd_tex_unit_hint(id, &hs, &hg, &u)) pm_xf.hid_t++; /* the slot is live, else loaded now */
-}
 int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
     if (!e) { ndn_nokey++; return 0; }
     if (!model_vis_same(k, e)) { ndn_rng++; pm_xf.mdl_rng++; return 0; }
@@ -3147,12 +3132,12 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
         { extern int pm_tex_tagi; pm_tex_tagi = 2; } /* STALE2 texsrc path tag: hit */
         if (id < 0 || !nd_tex_unit_hint(id, &e->hs, &e->hg, &u)) { ndn_texf++; return 0; }
     }
-    /* TIK19: the unit 1 words again from the slot the entry was built with, as unit 0 above: the stored address was that of the store frame. A slot drawn
-     * from its staging copy in its load frame moves to VRAM and the copy is freed two frames later; tik_19's wall aux texture (I4 at 0x102736c, one slot per
-     * stale palette pointer) then drew another texture's bytes as TEXEL1 from every entry stored in such a frame (dark walls, by key, so by draw order).
-     * A dropped or invalidated slot (generation) rebuilds. */
-    NdUnit u1; const int t1 = e->h1s >= 0;
-    if (t1 && !pm_tex_slot_unit1(e->h1s, e->h1g, &u1)) { ndn_texf++; return 0; }
+    /* DOORHITCH: an entry with a unit 1 slot does not hit. Its tile 1 came from the live walker tile state (pm_gbi_bind_tile1), which the key
+     * does not hold and a hit chain does not update (rec_apply is skipped). Before, such a record missed whenever the record before it changed
+     * hit or miss (key word 32), and that rebuild refreshed tile 1 by accident; with the render mode list mask it hit a stale unit 1 (iwa_10 rock
+     * wall, mdl5_iwa10_det 2139 px, equal to base and to nomodelnat once these entries rebuild). The miss stores its draws in place (no pool growth).
+     * The TIK19 unit 1 reload of the hit is gone with it. */
+    if (e->h1s >= 0) { ndn_rng++; pm_xf.mdl_rng++; return 0; }
     /* FB-2: the template ids of the cached draws are built again before any draw goes out (the LRU may have taken an id over since the store): a full table falls back */
     /* PERF1-4c: only when an eviction happened since the last build of these ids (nd_tmpl_gen); else the ids hold and only their LRU clock moves */
     if (e->tgen != nd_tmpl_gen()) {
@@ -3174,7 +3159,6 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
         if (q->zp) { memcpy(zpal, pal0, sizeof pal0); for (int i = 0; i < 4; i++) zpal[8 + i] = q->zn * pal0[12 + i]; q->d.pal = (const float(*)[16])zpal; } /* S5-2: zmark pass 2 */
         else q->d.pal = (const float(*)[16])pal0;
         if (e->tex) q->d.u[0] = u;
-        if (t1 && q->d.u[1].dim) { q->d.u[1].dim = u1.dim; q->d.u[1].lod = u1.lod; q->d.u[1].addr = u1.addr; q->d.u[1].type = u1.type; q->d.u[1].force = u1.force; } /* param: the stored wrap and filter */
         pm_gpu_native_submit_draw(&q->d, q->sd, q->nidx, q->d.u[0].dim != 0);
         mfr_idx += q->nidx;
     }
