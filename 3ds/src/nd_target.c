@@ -24,7 +24,7 @@ int pm_is_cur_cfb(const void* p);
 /* B1: the one decision for a colour image (docs/plans/buffer_bridge.md table 1.2). for_fill = 1 at G_FILLRECT.
  * ROLE_CPUPAL and ROLE_DEPTH are not returned yet (rect_to_image keeps its own test, B3 adds the depth role).
  * B3, R4: the z-buffer image at siz 2 with a FILL cycle or Z_CMP or Z_UPD is DEPTH (a depth write on the main target). */
-extern unsigned short* nuGfxCfb_ptr;
+#define nd_cfb ((const unsigned short*)pm_walk_cfb) /* CORE2C-2: the colour buffer of the walked frame */
 int zcol, zslot_on; /* B5: zcol = this texrect copies colour into the z-buffer image (underwater, case 7): a slot, not a depth write */
 void* const zb_fake = (void*)0x1000; /* the key of that slot when nuGfxZBuffer is NULL (address 0 cannot name a texture) */
 int cimg_zero; /* B3: the last G_SETCIMG named address 0. nuGfxZBuffer is NULL until the pause or the darkness overlay allocates it (D03), so the game's z-buffer image is address 0 */
@@ -65,13 +65,13 @@ void grab_cur(const void* src, int w, int h) {
     if (splash_on) { /* HANG1a: a water splash window: one full-height copy per frame, the other windows of the frame read it */
         if (splash_grab_f == pm_frame_count()) return;
         splash_grab_f = pm_frame_count();
-        r = pm_gpu_grab(nuGfxCfb_ptr, 0, 240);
+        r = pm_gpu_grab(nd_cfb, 0, 240);
         if (r == 2) { n_grabs++; n_splits++; }
         return;
     }
-    x = (int)(((const u8*)src - (const u8*)nuGfxCfb_ptr) >> 1) % 320;
-    y = (int)(((const u8*)src - (const u8*)nuGfxCfb_ptr) >> 1) / 320; /* rows of the window: a later load of other rows reuses the copy (R13c) */
-    r = pm_gpu_grab(nuGfxCfb_ptr, y, y + (h < 1 ? 1 : h));
+    x = (int)(((const u8*)src - (const u8*)nd_cfb) >> 1) % 320;
+    y = (int)(((const u8*)src - (const u8*)nd_cfb) >> 1) / 320; /* rows of the window: a later load of other rows reuses the copy (R13c) */
+    r = pm_gpu_grab(nd_cfb, y, y + (h < 1 ? 1 : h));
     if (r == 2) { n_grabs++; n_splits++; }
 }
 void off_screen_check(void) {
