@@ -14,6 +14,7 @@
 #include "pm_tex.h"
 #include "pm_au2.h"
 #include "rom_remap.h"
+#include "pm_romload.h"
 
 void osInvalICache(void* addr, s32 nbytes) {
     (void)addr;
@@ -233,8 +234,9 @@ int pm_rom_init(void) {
     pm_boot_mark(PMB_ROM_OPEN, 0); /* BOOT-1 */
     ro_on = pm_debug_has("romorder");
     ro_t0 = svcGetSystemTick();
-    FILE* f = fopen("papermario.z64", "rb");
-    if (!f) f = fopen("baserom.us.z64", "rb");
+    const char* path = "papermario.z64";
+    FILE* f = fopen(path, "rb");
+    if (!f) f = fopen(path = "baserom.us.z64", "rb");
     if (!f) return rom_fail(NULL, "ROM missing. Copy the US Paper Mario ROM to sdmc:/3ds/PaperMario/papermario.z64 (big-endian .z64).");
     if (fseek(f, 0, SEEK_END) != 0) return rom_fail(f, "Cannot read the ROM size. Check the SD card.");
     long sz = ftell(f);
@@ -278,30 +280,25 @@ int pm_rom_init(void) {
     int memforce = pm_debug_has("memforce"); /* SIZE-4 gate: the low memory path with the applet hint */
     if (memforce) cap = 0;
     pm_mem_boot_line(need, leave, cap); /* MEMGATE: every mode, before the fit check */
-    /* RR2: the ROM is always resident. No SD streaming: a ROM that does not fit stops the game here. */
+    /* BOOT: the whole image is allocated here (a ROM that does not fit stops the game here) and streamed from the SD card by
+     * pm_romload.c while the game starts. Every reader calls pm_rs_need first. */
     char nomem[320];
     snprintf(nomem, sizeof(nomem), "Not enough memory for the ROM: need %u MB, free %u MB", (need + 0xFFFFFu) >> 20, cap >> 20);
     if (need > cap) { low_mem_hint(nomem, sizeof(nomem), memforce); return rom_fail(f, nomem); }
     u8* block = (u8*)memalign(16, (size_t)need);
     if (!block) { low_mem_hint(nomem, sizeof(nomem), memforce); return rom_fail(f, nomem); }
-    int ok = 1;
-    if (can_pack) {
-        for (unsigned i = 0; ok && i < sizeof(pm_rom_keep) / sizeof(pm_rom_keep[0]); i++)
-            ok = fseek(f, (long)pm_rom_keep[i].start, SEEK_SET) == 0 &&
-                 fread(block + pm_rom_keep[i].packed_off, 1, pm_rom_keep[i].len, f) == pm_rom_keep[i].len;
-    } else {
-        ok = fread(block, 1, (size_t)sz, f) == (size_t)sz;
-    }
-    if (!ok) {
-        free(block);
-        return rom_fail(f, "Cannot read the ROM. Check the SD card.");
-    }
-    pm_boot_mark(PMB_ROM_READ, need); /* BOOT-1 */
-    rom_bytes = block;
+    fclose(f);
+    _Static_assert(sizeof(PmRsSeg) == sizeof(pm_rom_keep[0]), "PmRsSeg is PmRomSeg");
     rom_size = (u32)sz;
     rom_remap = can_pack;
-    fclose(f);
-    pm_log_w("rom resident %uKB of %uKB%s, cap %uKB, margin %uKB", need >> 10, rom_size >> 10, can_pack ? " (packed)" : "", cap >> 10, (cap - need) >> 10);
+    if (!pm_rom_stream_start(path, block, rom_size, can_pack ? (const PmRsSeg*)pm_rom_keep : NULL,
+                             can_pack ? (unsigned)(sizeof(pm_rom_keep) / sizeof(pm_rom_keep[0])) : 0u)) {
+        free(block);
+        return rom_fail(NULL, "Cannot read the ROM. Check the SD card.");
+    }
+    rom_bytes = block;
+    pm_boot_mark(PMB_ROM_READ, need); /* BOOT-1: the stream started */
+    pm_log_w("rom resident %uKB of %uKB%s, cap %uKB, margin %uKB, streamed", need >> 10, rom_size >> 10, can_pack ? " (packed)" : "", cap >> 10, (cap - need) >> 10);
     pm_log_w("rom mode: RAM resident %.2f MB", (float)need / 1048576.f);
     pm_log_d("ram n64 4MB, rom %uMB, port %uMB", (need + 0xFFFFF) >> 20, pm_linear_bytes() >> 20);
     return 1;
@@ -424,6 +421,7 @@ static void pi_read_raw(u32 rom_addr, void* buf, u32 size) {
                         if (n > pm_rom_keep[i].start + pm_rom_keep[i].len - addr) n = pm_rom_keep[i].start + pm_rom_keep[i].len - addr;
                     }
             }
+            pm_rs_need(addr, n); /* BOOT: the chunks of these bytes are in RAM */
             memcpy(out, rom_bytes + off, n);
         } else {
             memset(out, 0, n); /* no resident ROM: pm_rom_init stopped the game */
@@ -442,10 +440,12 @@ const unsigned char* pm_rom_ptr(unsigned addr, unsigned len) {
     if (__builtin_expect(ro_on, 0)) ro_touch(addr, len);
     for (unsigned i = 0; i < sizeof(pm_rom_drop) / sizeof(pm_rom_drop[0]); i++)
         if (addr < pm_rom_drop[i].end && addr + len > pm_rom_drop[i].start) return NULL;
-    if (!rom_remap) return rom_bytes + addr;
+    if (!rom_remap) { pm_rs_need(addr, len); return rom_bytes + addr; }
     for (unsigned i = 0; i < sizeof(pm_rom_keep) / sizeof(pm_rom_keep[0]); i++)
-        if (addr >= pm_rom_keep[i].start && addr + len <= pm_rom_keep[i].start + pm_rom_keep[i].len)
+        if (addr >= pm_rom_keep[i].start && addr + len <= pm_rom_keep[i].start + pm_rom_keep[i].len) {
+            pm_rs_need(addr, len); /* BOOT: the chunks of these bytes are in RAM */
             return rom_bytes + pm_rom_keep[i].packed_off + (addr - pm_rom_keep[i].start);
+        }
     return NULL;
 }
 

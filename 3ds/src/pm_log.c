@@ -12,6 +12,7 @@
 #include <sys/socket.h>
 
 #include "pm_port.h"
+#include "pm_romload.h"
 #include "pm_logfmt.h"
 
 #define RING 32768
@@ -1029,11 +1030,16 @@ static int io_gate(int on) {
             LightEvent_Clear(&ev_quiet);
             io_drain_req = 1;
             LightEvent_Signal(&ev_wake);
-            if (LightEvent_WaitTimeout(&ev_quiet, 500000000LL) == 0) return (int)((svcGetSystemTick() - t0) / CPU_TICKS_PER_MSEC);
+            if (LightEvent_WaitTimeout(&ev_quiet, 500000000LL) == 0) {
+                pm_rom_stream_quiet(300); /* BOOT: the ROM stream read in flight ends (the gate is set, no new read starts) */
+                return (int)((svcGetSystemTick() - t0) / CPU_TICKS_PER_MSEC);
+            }
             pm_io_quiet = 1;
+            pm_rom_stream_quiet(300);
             return -1;
         }
         pm_io_quiet = 1;
+        pm_rom_stream_quiet(300);
         return 0;
     }
     pm_io_quiet = 0;

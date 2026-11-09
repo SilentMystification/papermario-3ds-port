@@ -1087,7 +1087,7 @@
       "name": "boot_ms",
       "kind": "azahar_stream",
       "speed": "normal",
-      "purpose": "BOOT-1: cold boot timing. The boot ms line (main, log, opt, rom read, gfx, audio, first drawn frame, title; ms after main) at the first title frame.",
+      "purpose": "BOOT: cold boot timing. The boot ms line (main, log, opt, rom open to stream start, stream MB/s, gfx, audio, first drawn frame, title, rdone = whole ROM in RAM; ms after main; waits and wms = reads that blocked on a missing chunk) at the first title frame. rdone > 0: the stream ended before the title, so no wait after it.",
       "scenario": "boot_ms",
       "cap": 45,
       "until": "boot ms main ",
@@ -1116,11 +1116,31 @@
           "name": "title_ms",
           "regex": "boot ms .* title (\\d+)",
           "pick": "last"
+        },
+        {
+          "name": "rom_done_ms",
+          "regex": "boot ms .* rdone (\\d+) waits",
+          "pick": "last"
+        },
+        {
+          "name": "rom_waits",
+          "regex": "boot ms .* rdone \\d+ waits (\\d+) wms",
+          "pick": "last"
+        },
+        {
+          "name": "rom_wait_ms",
+          "regex": "boot ms .* waits \\d+ wms (\\d+)",
+          "pick": "last"
         }
       ],
       "gates": [
         {
           "metric": "title_ms",
+          "op": ">",
+          "value": 0
+        },
+        {
+          "metric": "rom_done_ms",
           "op": ">",
           "value": 0
         }
