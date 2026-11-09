@@ -4495,6 +4495,24 @@
         "tik19"
       ],
       "gates": []
+    },
+    {
+      "name": "storymenu_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "STORYMENU: Warp area list in story order (extras last) and the Story progress folder (chapter list, current point, A sets a point). Log: menu rows, story: set. Pictures: the bottom shots.",
+      "scenario": "storymenu",
+      "cap": 45,
+      "until": "padscript: done",
+      "tags": [
+        "azahar",
+        "pic",
+        "menu",
+        "story"
+      ],
+      "log_metrics": [],
+      "gates": []
     }
   ],
   "legacy": {

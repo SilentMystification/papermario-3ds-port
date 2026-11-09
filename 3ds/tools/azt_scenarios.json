@@ -10767,6 +10767,54 @@
         }
       ],
       "reason": "TIK19 hit-vs-miss check at the wall flicker spot, 300 frames; cap 30 s."
+    },
+    {
+      "name": "storymenu",
+      "status": "unverified",
+      "subject": "Select menu (SELECT), Debug tab (R R), row 0 Warp area: warning (B), the area list at the top (story order: Goomba Village first), 35 down to the last row (Test map, the extras last), B back. Then row 1 Story progress (A): the chapter list (row 0 Prologue, A), the Prologue page with the current point marked ('now' on CH0 Arrived at toad town), B, Chapter 1, A, two down, A sets the point CH1 Merlin revealed.",
+      "proves": "STORYMENU: Warp area level 1 in story order with the presets and the extras after the story areas; the Story progress folder (chapter list, chapter page with the current point marked, A sets the point through the story path, log story: set).",
+      "debug": "preset=toad padscript=@pad_menu_story.txt shotmenu loglevel=debug",
+      "until": "padscript: done",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "menu: open",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "menu open",
+          "regex": "menu: open"
+        },
+        {
+          "name": "warp area list first row",
+          "regex": "menu: tab 4 row 0 Goomba Village = A: open"
+        },
+        {
+          "name": "warp area list last row (extras)",
+          "regex": "menu: tab 4 row 35 Test map = A: open"
+        },
+        {
+          "name": "story folder row 0",
+          "regex": "menu: tab 4 row 0 Prologue = A: open"
+        },
+        {
+          "name": "chapter page",
+          "regex": "menu: story chapter 0"
+        },
+        {
+          "name": "current point marked",
+          "regex": "menu: tab 4 row \\d+ CH0 Arrived at toad town = now"
+        },
+        {
+          "name": "story set by A",
+          "regex": "story: set -100 CH1 Merlin revealed"
+        },
+        {
+          "name": "script done",
+          "regex": "padscript: done"
+        }
+      ],
+      "reason": "STORYMENU gate. The bottom shots (shotmenu, one per draw) show the Warp area list top and bottom, the chapter list, the Prologue page with now, and the Chapter 1 page after the set; read by eye. Log lines give the rows and values. The Story folder is Select menu only (tab 2 row 1)."
     }
   ]
 }
