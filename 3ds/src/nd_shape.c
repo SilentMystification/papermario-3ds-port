@@ -430,6 +430,31 @@ static void sbkw_dlchash(const Gfx* l, const DlcEnt* e) {
 unsigned dnr_c[16];
 int dnr(unsigned k) { dnr_c[k]++; return -1; }
 void pm_gbi_dnr_take(unsigned* o, unsigned n) { for (unsigned i = 0; i < n && i < 16u; i++) { o[i] = dnr_c[i]; dnr_c[i] = 0; } }
+/* FFOG (diagnostic, switch ffog, no effect on the draw): for the entry of list lv under combined, the groups the box test removes (culled) and those
+ * of them with a corner inside the five clip planes that dlc_box_out tests (x +- w, y +- w, z - w <= 0, w > 0). A box test that is exact removes none
+ * of those (box_plane_out removes a group only when every corner is outside one plane). ons > 0 is a wrong cull of an on-screen group. Mono only. */
+int pm_dlc_ons_note(const void* lv, unsigned* culled, unsigned* ons) {
+    const Gfx* l = (const Gfx*)lv;
+    *culled = 0; *ons = 0;
+    if (!dlc_on || !is_host((u32)(uintptr_t)l) || (u32)l - (u32)gMapShapeData >= 0x40000u || ((u32)l & 7) || dlc_seen_gen != pm_dlc_gen) return -1;
+    DlcEnt* e = dlc_find(l);
+    if (!e || e->gen != pm_dlc_gen || e->refused || e->ngrp > 64u) return -1;
+    const float(*m)[4] = combined;
+    for (unsigned k = 0; k < e->ngrp; k++) {
+        const DlcGrp* g = &e->grp[k];
+        if (!dlc_box_out(g, m)) continue;
+        (*culled)++;
+        for (int i = 0; i < 8; i++) {
+            float x = (i & 1) ? (float)g->hi[0] : (float)g->lo[0], y = (i & 2) ? (float)g->hi[1] : (float)g->lo[1], z = (i & 4) ? (float)g->hi[2] : (float)g->lo[2];
+            float cx = m[0][0] * x + m[1][0] * y + m[2][0] * z + m[3][0];
+            float cy = m[0][1] * x + m[1][1] * y + m[2][1] * z + m[3][1];
+            float cz = m[0][2] * x + m[1][2] * y + m[2][2] * z + m[3][2];
+            float cw = m[0][3] * x + m[1][3] * y + m[2][3] * z + m[3][3];
+            if (cw > 0.f && cx <= cw && cx >= -cw && cy <= cw && cy >= -cw && cz <= cw) { (*ons)++; break; }
+        }
+    }
+    return 0;
+}
 uint64_t pm_dlc_vm; int pm_dlc_vm_ok;
 int pm_dlc_vis_mask(const void* lv, uint64_t* out) {
     const Gfx* l = (const Gfx*)lv;
