@@ -17,8 +17,9 @@ Worktree build3ds/wt/PAUSEFLK, branch PAUSEFLK from main (hash in the first comm
   decodes drain the walker (drains 298 -> 330 during the wheel turns). So candidates 1 (gBoxQuadBuffer ring: at most 6 rotscale boxes
   per frame, 2K < 21) and 3 (portrait decode) do not hold on this route; 2, 4 and 5 are deterministic and would show in the det series.
 - Not covered by the census: writes past the first 64 bytes of a pointer, transient writes inside a step, native cache reads.
-- Side finding (not the flicker): draw_box non-SHIFT path (draw_box.c:700) writes corner 3 at slot + 24..27; for slot 20 that is
-  past gBoxQuadBuffer (bss InspectIcon and ISpyData) during window flips.
+- Fixed (8ad76ecff): draw_box rotscale corners read and write quads[idx*4] of their slot (decomp SHIFT form). The US form moved quads
+  by 4, 8 and 12, so corner 3 used slot + 24..27 of a 16-vertex slot; slot 20 overran gBoxQuadBuffer into InspectIcon and ISpyData.
+  Byte-equal to the base on pause_tab_det_pic 101/101 and pause_spin_grab_det_w300 40/40, so it is not the flicker in Azahar.
 
 ## Next
 Console run (the console decides): push the pause_tab_c2haz_thr switches to the O3DS XL with the logic thread and read the c2haz new
