@@ -20,7 +20,7 @@ Check first = step 1: the btldim lines must show about 9 texture misses (darken)
 ## Touch only
 src/battle/move/item/shooting_star.c (3DS test lines), 3ds/src/pm_warp.c (test_items near 1521: invitem=), src/battle/btl_states_menus.c
 (one btlmenu line after btl_main_menu_init, about 2823), src/background.c (the fix, #ifdef TARGET_3DS), 3ds/tools/pad_btl_star.txt,
-3ds/tools/azt_scenarios.json, 3ds/tools/bench_defs.json.
+3ds/tools/azt_scenarios.json, 3ds/tools/bench_defs.json, 3ds/src/pm_tex.c (step 4), 3ds/src/nd_tex_set.c (step 4 fallback only).
 
 ## Plan
 1. Test lines (commit 1): in shooting_star.c (#ifdef TARGET_3DS) copy the N(fade_line) helper of src/world/area_dro/dro_02/npc_merlee.c,
@@ -41,6 +41,14 @@ src/battle/move/item/shooting_star.c (3DS test lines), 3ds/src/pm_warp.c (test_i
    d) At the end of appendGfx_background_texture (both sky branches), when bgMix: gDPSetRenderMode(G_RM_NOOP, G_RM_NOOP2).
    e) A comment: no palette lerp, no decode/upload/VRAM slot per fade frame; 4 GBI words; no new .bss.
 3. Only if step 2 still shows misses: ndmrw word 8 counts during the fade mean a render mode without shroudRm in model.c:1904-1961.
+4. (oracle 2, after step 2 left 11 darken misses) Owner: EFFECT_RADIAL_SHIMMER type 1 (UseItem.inc.c:20/37), image D_09002E00 at
+   0x4d7420, 32x32 I4 drawn as a 64x512 window (radial_shimmer.c:363). Bytes and scroll are stable. Suspect key field: tlut. set_tilesize
+   (nd_tex_set.c) passes the last loaded palette even for non-CI tiles, and pm_tex keys on it. Check first: in the texmisslog block of
+   load_miss (pm_tex.c about 1593) print `texmissk f%u img %p tlut %p/%p st %d/%d dk %08x/%08x ph %08x/%08x` against the first live slot
+   with the same img. Expect only the tlut pair to differ. Fix: in pm_tex_load (about 1740) before load_impl:
+   `if (fmt != FMT_CI) { tlut = NULL; tlut_n = 0; }` plus a comment. Do not touch pm_tex_load_shaded or pm_tex_load_rgba8. Pass: the
+   shimmer misses once (about f405), darken texmiss about 1, lighten I-format misses fall, the byte gates stay equal. Fallback if the
+   stride pair differs: the V12c ldrec loop in set_tilesize (about 165-171) uses only ldrec entries written since the last set_timg.
 Out of scope (note in commit): FOG_SHROUD class (model.c:2052-2065) on fog stages.
 
 ## Done criteria
