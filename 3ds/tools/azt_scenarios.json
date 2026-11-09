@@ -679,6 +679,30 @@
       "reason": "EYECW: padscript run around the ring. camlog was deleted (AUDIT C4); the eyecw line of the stereo variants carries p23 (near 0 at yaw 90)."
     },
     {
+      "name": "mim01_ring_wide_ffog",
+      "status": "unverified",
+      "subject": "Forever Forest mim_01 (entry 1, x -530) in Widescreen (the user's setting), det, mono: the ring run of mim01_ring_det. The ffog line every 60 frames: model hits, empty entries (no draw), IGNORE_MATRIX share, group-mask changes, combined vs fresh MVP.",
+      "proves": "FFOG premise: the native hit uses the walker MVP (combined == nd_mtx_combine) and no empty entry (a skipped model) comes from an IGNORE_MATRIX record in a turn.",
+      "debug": "warp=mim_01:1 det wide padscript=go_-375_-375_90,wait10,go_-375_375_150 shots shotwin=60:221:20 loglevel=debug ffog",
+      "until": "shot \\d+ frame 280\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: mim_01 entry 1",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mim_01 entry 1"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 280\\b"
+        }
+      ],
+      "reason": "FFOG: the user's Widescreen setting on the mim_01 ring turn (yaw passes 90). Copy of mim01_ring_det with wide and the ffog switch."
+    },
+    {
       "name": "mim01_ring_stereo_det_l",
       "status": "unverified",
       "subject": "mim_01 ring run as mim01_ring_det with forced stereo, left eye shots. The eyecw line every 10 frames: p23 (the old convergence factor, near 0 at yaw 90) and cw (conv x nd_proj_wn).",
