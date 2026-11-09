@@ -33,7 +33,7 @@ Thread rule:
 - The first span of a task starts at the task's list base (patched at close; the recorder does not know the base before the task starts).
 - A span walk continues the walker's sync state (nd_walk_ops, walk_keep: no DIP2 full sync at a span start), so cutting a list into spans changes no draw and no GPU word.
 - Rule: a cut never falls inside a region that a branch skips (effects that reserve inline vertex data, build_custom_gfx). Producers that run inside such a region keep their in-list form until their builder is converted (nd_rec_sub > 0; section 7 D7).
-- Deleted in D9 (f05be775d): NDC_LIST, the span cutting and the task list (mainGfx, backgroundGfx). gMainGfxPos at the top level names nd_rec_top; a word that no redirect records is logged (`ndc: list words outside the stream`) and dropped. nd_walk_run stays for the lists for later of build_custom_gfx (stream memory), refused G_DL targets and the record fallback words (agent_direct.md STATE).
+- Deleted in D9 (f05be775d): NDC_LIST, the span cutting and the task list (mainGfx, backgroundGfx). gMainGfxPos at the top level names nd_rec_top; a word that no redirect records is logged (`ndc: list words outside the stream`) and dropped. D10a: the custom gfx lists are stream ranges (build_custom_gfx records them between nd_rec_mark and NDC_END; R11 names them; nd_range_run). D10c: nd_walk_run is deleted; the lists that remain (render mode lists, refused G_DL targets, the fallback words) run on the op executor nd_walk_state (agent_direct.md STATE).
 
 ## 4. Producer API per content class
 | Class | Producer today (file: function) | Native call (record side) | Replay (walker side) |
@@ -78,6 +78,7 @@ Thread rule:
 | D7 WORLD | src/world, src/battle; build_custom_gfx lists as stream ranges (R11 pre and post become range ids) | the D1 fallback, nd_r11_walk list parse | list the custom gfx builders (agent_S7.md, 57 sites) | tour10_det, battle_start_f182_cold |
 | D8 FRAME | main_loop.c, main.c, nugfxinit.c, screen overlays, curtains, pause, file menu, the colour and depth image roles (nd_target) | the last NDC_LIST producers | ndc list count 0 in the catalog scenes | menu_open_det, pause_spin_grab_det_w300, gameover_fps60 |
 | D9 DELETE | nd_walk_run, g1_skip, g2_same, the walker G_DL stack, NDC_LIST, mainGfx and backgroundGfx (static size drops) | the walker | the full catalog once, with the user's approval (rule 5) | full catalog, console prof list |
+| D10 WALKER | custom gfx ranges (D10a), flat op ranges on nd_ops_run (D10b), nd_walk_run deleted (D10c); open: load-time compile of static lists, the fallback words, g2_same | nd_rec_sub, nd_walk_run, g1_skip, the G_DL stack | the list kinds that reach the executor (agent_direct.md STATE) | the gate set of agent_direct.md |
 
 Order rationale: D0 to D3 move the classes that already have producer records (the largest core 0 class, rec 5.4 ms, and ent, spr); they change structure, not cost. D4 is the first slice that moves decode to core 1 (rect 2.3 ms plus the state ops of the HUD and text files). D5 to D8 widen the redirect to the rest. D9 removes the walker and its hot code.
 
