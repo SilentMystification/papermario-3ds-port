@@ -1,4 +1,5 @@
 #include <3ds.h>
+#include "pm_linear.h"
 #include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -65,7 +66,7 @@ void pm_dspa_log_once(const char* fmt, ...) {
 #include "pm_vadpcm.h"
 
 static void ent_free(Ent* e) {
-    if (e->mem) linearFree(e->mem);
+    if (e->mem) pm_linear_free(e->mem);
     cache_used -= e->bytes;
     memset(e, 0, sizeof *e);
 }
@@ -112,7 +113,7 @@ static const char* sample_build(const DspaSample* s, Ent* out, int owner, unsign
     unsigned need = (total + 127) & ~127u;
     if (need > cache_budget) { free(lin); return "larger than the cache"; }
     if (owner && !cache_room(need, 60, now)) { free(lin); return "no cache entry can be evicted: all pinned or used in the last 60 ms"; }
-    s16* mem = (s16*)linearMemAlign(need, 128);
+    s16* mem = (s16*)pm_linear_memalign(need, 128);
     if (!mem) { free(lin); return "no linear memory"; }
     Ent* e = out;
     memset(e, 0, sizeof *e);
@@ -164,7 +165,7 @@ static void pre_drain(unsigned now) {
             cache_used += e->bytes;
             if (cache_used > cache_peak) cache_peak = cache_used;
             pre_n_in++;
-        } else { linearFree(p->mem); pre_n_drop++; }
+        } else { pm_linear_free(p->mem); pre_n_drop++; }
         p->mem = NULL;
         t++;
     }
@@ -203,7 +204,7 @@ static Ent* cache_get(const DspaSample* s) {
     const char* why = sample_build(s, &d, 1, now);
     if (why) return sample_drop(why, s);
     Ent* e = cache_room(d.bytes, 60, now); /* the room made in sample_build: a free entry and the bytes */
-    if (!e) { linearFree(d.mem); return sample_drop("no cache entry after the room was made", s); }
+    if (!e) { pm_linear_free(d.mem); return sample_drop("no cache entry after the room was made", s); }
     *e = d;
     e->stamp_ms = now;
     cache_used += e->bytes;
@@ -504,7 +505,7 @@ int pm_dspa_init(void) {
     if (want < 256) want = 256;
     cache_budget = want * 1024u;
     LightLock_Init(&fx_lock);
-    fxmem = (s16*)linearMemAlign(FXR_BUFS * FXFRAME * 4, 128);
+    fxmem = (s16*)pm_linear_memalign(FXR_BUFS * FXFRAME * 4, 128);
     if (!fxmem) { pm_log_e("dspaudio: linearAlloc for the effect return failed"); return 0; }
     memset(fxmem, 0, FXR_BUFS * FXFRAME * 4);
     chan_setup();

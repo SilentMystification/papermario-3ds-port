@@ -1,4 +1,5 @@
 #include <3ds.h>
+#include "pm_linear.h"
 void pm_gx_room(void); /* HANG1a */
 #include <3ds/gpu/gpu.h>
 #include <3ds/gpu/registers.h>
@@ -291,7 +292,7 @@ static void full_reserve(void) {
 /* A header whose data is set later. C3D_TexInit takes linear memory for its own data, which is freed at once. */
 static int tex_hdr(C3D_Tex* t, int w, int h, GPU_TEXCOLOR fmt) {
     if (!C3D_TexInit(t, w, h, fmt)) return 0;
-    linearFree(t->data);
+    pm_linear_free(t->data);
     t->data = NULL;
     return 1;
 }
@@ -319,7 +320,7 @@ static int full_tex_init(int i) {
 /* a 64 x 64 image takes an arena block (made at boot) */
 static int small_tex_init(C3D_Tex* t) {
     if (small_next >= small_n || !C3D_TexInit(t, 64, 64, GPU_RGBA8)) return 0;
-    linearFree(t->data);
+    pm_linear_free(t->data);
     t->data = small_blk[small_next++];
     return 1;
 }
@@ -1433,7 +1434,7 @@ static unsigned jt_frame; /* frame of the last queued jump, for the result line 
 extern u64 pm_loop_tick;
 static void jt_queue(void) {
     u32* buf; u32 size, off, pad;
-    if (!jt_sub) jt_sub = (u32*)linearAlloc(16 * 2);
+    if (!jt_sub) jt_sub = (u32*)pm_linear_alloc(16 * 2);
     if (!jt_sub) { pm_log_e("jumptest: linearAlloc failed"); jt_state = 2; return; }
     jt_last = pm_loop_tick;
     jt_frame = pm_frame_count();
@@ -1530,8 +1531,8 @@ static void pm_gpu_init_w(void) {
     AttrInfo_AddLoader(ai, 1, GPU_FLOAT, 2);
     AttrInfo_AddLoader(ai, 2, GPU_FLOAT, 4);
     { /* GV1: the raw Vtx path: a ring of the Vtx records of the frame and a u16 index ring */
-        nb.gring = (unsigned char*)linearAlloc((GRING_VTX + GSTAT_VTX) * 16);
-        nb.gidx = (unsigned short*)linearAlloc(GRING_IDX * 2);
+        nb.gring = (unsigned char*)pm_linear_alloc((GRING_VTX + GSTAT_VTX) * 16);
+        nb.gidx = (unsigned short*)pm_linear_alloc(GRING_IDX * 2);
         nb.rchunk[0].vtx = nb.gring; nb.rchunk[0].idx = nb.gidx; nb.rchunk[0].used = 1;
         gs.gpu_vtx_on = nb.gring && nb.gidx;
         if (gs.gpu_vtx_on) { /* GV1c: the palette program */
@@ -2777,7 +2778,7 @@ enum { GSTAT_IDX = 131072 };
 static unsigned short* gidxs; static unsigned gidxs_n;
 unsigned short* pm_gpu_gidxs_alloc(unsigned n) {
     if (!gs.gpu_vtx_on || !gs.gpu_ok) return NULL;
-    if (!gidxs) gidxs = (unsigned short*)linearAlloc(GSTAT_IDX * 2);
+    if (!gidxs) gidxs = (unsigned short*)pm_linear_alloc(GSTAT_IDX * 2);
     if (!gidxs || gidxs_n + n > GSTAT_IDX) return NULL;
     unsigned short* p = gidxs + gidxs_n;
     gidxs_n += n;
