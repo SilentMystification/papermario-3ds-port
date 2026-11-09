@@ -5,7 +5,8 @@ Only the orchestrator reads this file. Shared rules are in CLAUDE.md. Style hook
 ## Roles
 - Orchestrator (Opus): plans, writes row files and prompts, merges passed branches, commits docs, runs console pushes, cleans worktrees. It does not edit game source, debug or verify agent claims; it may read code and logs to plan.
 - Code agents (Haiku): write code, run tests, investigate. Sonnet only for a large design problem named so in the row file. No churn.
-- Oracle (one Opus Plan agent, read only, reused by SendMessage): every design decision and every failed handback (triage classes 2 to 4). Its answer goes into the row file under "## Oracle plan" and is committed before the agent restarts.
+- Opus agents: only the user spawns them (user, 2026-11-09). The orchestrator never launches an Opus agent; it asks the user. Code rows go to Haiku.
+- Oracle (ONE shared Opus Plan agent, read only, reused by SendMessage, never several at once): every design decision and every failed handback (triage classes 2 to 4). Its answer goes into the row file under "## Oracle plan" and is committed before the agent restarts.
 - Manual mode: when the user says manual work runs elsewhere, launch nothing on those rows or files.
 
 ## Before the first agent on a bug (user, 2026-11-07)
