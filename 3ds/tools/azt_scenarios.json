@@ -8160,7 +8160,7 @@
     {
       "name": "btldim_star",
       "status": "unverified",
-"reason": "broken: no until in 25 s (AZT11-5, 2026-11-09)",
+      "reason": "BTLDIM step 1 premise check (test lines only). Stream, no shots: the btldim lines carry the texture miss and KB counters per fade.",
       "subject": "Battle kmr_03 (one Goomba), player turn: Shooting Star from slot 0 (invitem=0x083). The btldim lines of the darken and lighten fades (the sky tint steps 0..144 and 160..0).",
       "proves": "BTLDIM premise: the shroud fade re-uploads the sky palette each step (texture misses per fade step). Before the fix about 19 texture misses over the fades; after the GPU dim about 0.",
       "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 invitem=0x083 padscript=@pad_btl_star.txt texmisslog loglevel=debug",
@@ -8187,8 +8187,7 @@
           "name": "lighten done",
           "regex": "btldim: lighten done f\\d+"
         }
-      ],
-      "reason": "BTLDIM step 1 premise check (test lines only). Stream, no shots: the btldim lines carry the texture miss and KB counters per fade."
+      ]
     },
     {
       "name": "btldim_star_pic",
@@ -10833,6 +10832,54 @@
         }
       ],
       "reason": "CORE2I gate: the threaded 60 fps path (the key frame and the lerp table are written and read on two threads)."
+    },
+    {
+      "name": "storymenu",
+      "status": "unverified",
+      "subject": "Select menu (SELECT), Debug tab (R R), row 0 Warp area: warning (B), the area list at the top (story order: Goomba Village first), 35 down (the list wraps: 35 rows, the last one Game Over, the extras last; Test map has only test maps and no row), B back. Then row 1 Story progress (A): the chapter list (row 0 Prologue, A), the Prologue page with the current point marked ('now' on CH0 Arrived at toad town), B, Chapter 1, A, two down, A sets the point CH1 Merlin revealed.",
+      "proves": "STORYMENU: Warp area level 1 in story order with the presets and the extras after the story areas; the Story progress folder (chapter list, chapter page with the current point marked, A sets the point through the story path, log story: set).",
+      "debug": "preset=toad padscript=@pad_menu_story.txt shotmenu loglevel=debug",
+      "until": "padscript: done",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "menu: open",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "menu open",
+          "regex": "menu: open"
+        },
+        {
+          "name": "warp area list first row",
+          "regex": "menu: tab 4 row 0 Goomba Village = A: open"
+        },
+        {
+          "name": "warp area list last row (extras)",
+          "regex": "menu: tab 4 row 34 Game Over = A: open"
+        },
+        {
+          "name": "story folder row 0",
+          "regex": "menu: tab 4 row 0 Prologue = A: open"
+        },
+        {
+          "name": "chapter page",
+          "regex": "menu: story chapter 0"
+        },
+        {
+          "name": "current point marked",
+          "regex": "menu: tab 4 row \\d+ Arrived at toad town = now"
+        },
+        {
+          "name": "story set by A",
+          "regex": "story: set -100 CH1 Merlin revealed"
+        },
+        {
+          "name": "script done",
+          "regex": "padscript: done"
+        }
+      ],
+      "reason": "STORYMENU gate. The bottom shots (shotmenu, one per draw) show the Warp area list top and bottom, the chapter list, the Prologue page with now, and the Chapter 1 page after the set; read by eye. Log lines give the rows and values. The Story folder is Select menu only (tab 2 row 1)."
     }
   ]
 }

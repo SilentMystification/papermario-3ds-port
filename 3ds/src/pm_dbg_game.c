@@ -268,11 +268,12 @@ void pm_cheat_tick(void) {
     }
 }
 
-/* CH8: further cheat rows (RAM only, Cheats tab): 0 boots level, 1 hammer level, 2 max star spirits, 3 star pieces, 4 story, 5 inventory item
- * (a row of the consumables), 6 fill the inventory with it, 7 save position, 8 load position (same map), 9 instant win (battle).
+/* CH8: further cheat rows (RAM only, Cheats tab): 0 boots level, 1 hammer level, 2 max star spirits, 3 star pieces, 4 inventory item
+ * (a row of the consumables), 5 fill the inventory with it, 6 save position, 7 load position (same map), 8 instant win (battle).
+ * The story point is not a row here: the Debug tab folder Story progress (pm_sp_* in pm_warp.c, STORYMENU).
  * Frame advance is the FADV row above (pm_fa_get, pm_fa_set): the loop in pm_main.c steps the game with R while it is on. */
-static const char* const ch8_name[6] = { "boots level", "hammer level", "max star spirits", "star pieces", "story", "inventory item" };
-static int story_i, inv_row, pos_saved, save_area, save_map, save_entry;
+static const char* const ch8_name[4] = { "boots level", "hammer level", "max star spirits", "star pieces" };
+static int inv_row, pos_saved, save_area, save_map, save_entry;
 static float save_x, save_y, save_z;
 const char* pm_dbgg_ch8_text(int k) {
     static char b[48];
@@ -282,15 +283,14 @@ const char* pm_dbgg_ch8_text(int k) {
         case 1: snprintf(b, sizeof b, "%d", (int)p->hammerLevel); break;
         case 2: snprintf(b, sizeof b, "%d", (int)p->maxStarPower); break;
         case 3: snprintf(b, sizeof b, "%d", (int)p->starPieces); break;
-        case 4: snprintf(b, sizeof b, "%s", pm_warp_story_label(story_i)); break;
-        case 5: snprintf(b, sizeof b, "%s", pm_item_name(pm_dbgg_spawn_id(inv_row))); break;
-        case 7: snprintf(b, sizeof b, pos_saved ? "saved" : "A: save"); break;
-        case 8: snprintf(b, sizeof b, pos_saved ? "A: load" : "none saved"); break;
+        case 4: snprintf(b, sizeof b, "%s", pm_item_name(pm_dbgg_spawn_id(inv_row))); break;
+        case 6: snprintf(b, sizeof b, pos_saved ? "saved" : "A: save"); break;
+        case 7: snprintf(b, sizeof b, pos_saved ? "A: load" : "none saved"); break;
         default: snprintf(b, sizeof b, "A: do"); break;
     }
     return b;
 }
-/* dir steps a value row (wrap at both ends), 4 and 5 step the story and the item lists */
+/* dir steps a value row (wrap at both ends), 4 steps the item list */
 void pm_dbgg_ch8_step(int k, int dir) {
     PlayerData* p = &gPlayerData;
     int v, n;
@@ -299,8 +299,7 @@ void pm_dbgg_ch8_step(int k, int dir) {
         case 1: v = p->hammerLevel + dir; if (v < -1) v = 2; if (v > 2) v = -1; p->hammerLevel = (s8)v; break;
         case 2: v = p->maxStarPower + dir; if (v < 0) v = 7; if (v > 7) v = 0; p->maxStarPower = (s8)v; break;
         case 3: v = p->starPieces + dir; if (v < 0) v = 255; if (v > 255) v = 0; p->starPieces = (u8)v; break;
-        case 4: n = pm_warp_story_n(); story_i = ((story_i + dir) % n + n) % n; pm_warp_story_apply(story_i); return;
-        case 5: n = pm_dbgg_spawn_count(); inv_row = ((inv_row + dir) % n + n) % n; return;
+        case 4: n = pm_dbgg_spawn_count(); inv_row = ((inv_row + dir) % n + n) % n; return;
         default: return;
     }
     pm_log("cheat: %s %d", ch8_name[k], v);
@@ -310,18 +309,18 @@ void pm_dbgg_ch8_act(int k) {
     PlayerStatus* ps = &gPlayerStatus;
     int j, id;
     switch (k) {
-        case 0: case 1: case 2: case 3: case 4: case 5: pm_dbgg_ch8_step(k, 1); return;
-        case 6: /* fill: all 10 slots get the item of the row */
+        case 0: case 1: case 2: case 3: case 4: pm_dbgg_ch8_step(k, 1); return;
+        case 5: /* fill: all 10 slots get the item of the row */
             id = pm_dbgg_spawn_id(inv_row);
             for (j = 0; j < 10; j++) p->invItems[j] = (s16)id;
             pm_log("cheat: inventory filled with 0x%03X %s", id, pm_item_name(id));
             return;
-        case 7: /* save: area, map, entry and the position, RAM only */
+        case 6: /* save: area, map, entry and the position, RAM only */
             save_area = gGameStatusPtr->areaID; save_map = gGameStatusPtr->mapID; save_entry = gGameStatusPtr->entryID;
             save_x = ps->pos.x; save_y = ps->pos.y; save_z = ps->pos.z; pos_saved = 1;
             pm_log("cheat: position saved, map %d:%d entry %d", save_area, save_map, save_entry);
             return;
-        case 8: /* load: only on the saved map, else a message */
+        case 7: /* load: only on the saved map, else a message */
             if (!pos_saved) { pm_menu_msg("No position saved"); return; }
             if (gGameStatusPtr->areaID != save_area || gGameStatusPtr->mapID != save_map) { pm_log_w("cheat: position is for another map"); pm_menu_msg("Saved position is on another map"); return; }
             ps->pos.x = save_x; ps->pos.y = save_y; ps->pos.z = save_z;

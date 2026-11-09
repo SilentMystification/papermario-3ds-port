@@ -57,12 +57,288 @@ static const StoryName stories[] = {
     { "ch2_start", STORY_CH2_ARRIVED_AT_MT_RUGGED },
     { "epilogue", STORY_EPILOGUE },
 };
-/* CH8: the story list of the Cheats row (stories[] above): count, name and the apply (evt_set_variable GB_StoryProgress). */
-int pm_warp_story_n(void) { return (int)(sizeof stories / sizeof stories[0]); }
-const char* pm_warp_story_label(int i) { return stories[i].name; }
-void pm_warp_story_apply(int i) {
-    evt_set_variable(NULL, GB_StoryProgress, stories[i].value);
-    pm_log("cheat: story %s (%d)", stories[i].name, (int)stories[i].value);
+/* STORYMENU: the Story progress folder (Debug tab of the Select menu, pm_options.c). Every story point of include/enums.h except the UNUSED
+ * values and NEVER, in enum (story) order, with its chapter: 0 Prologue, 1 to 8 Chapter 1 to 8, 9 Epilogue. The labels are the enum names read
+ * as text. A point is set as the story= switch sets it (evt_set_variable GB_StoryProgress). Refused in the battle and pause modes. */
+typedef struct { int value, chapter; const char* label; } StoryPoint;
+static const StoryPoint sp_tab[] = {
+    { -128, 0, "CH0 Intro" }, /* STORY_INTRO */
+    { -127, 0, "CH0 Wake up" }, /* STORY_CH0_WAKE_UP */
+    { -126, 0, "CH0 Met innkeeper" }, /* STORY_CH0_MET_INNKEEPER */
+    { -124, 0, "CH0 Met goompa" }, /* STORY_CH0_MET_GOOMPA */
+    { -123, 0, "CH0 Gate crushed" }, /* STORY_CH0_GATE_CRUSHED */
+    { -122, 0, "CH0 Fell off cliff" }, /* STORY_CH0_FELL_OFF_CLIFF */
+    { -121, 0, "CH0 Goompa joined party" }, /* STORY_CH0_GOOMPA_JOINED_PARTY */
+    { -120, 0, "CH0 Looking for hammer" }, /* STORY_CH0_LOOKING_FOR_HAMMER */
+    { -119, 0, "CH0 Found hammer" }, /* STORY_CH0_FOUND_HAMMER */
+    { -118, 0, "CH0 Defeated jr troopa" }, /* STORY_CH0_DEFEATED_JR_TROOPA */
+    { -117, 0, "CH0 Left the playground" }, /* STORY_CH0_LEFT_THE_PLAYGROUND */
+    { -115, 0, "CH0 Goombario joined party" }, /* STORY_CH0_GOOMBARIO_JOINED_PARTY */
+    { -114, 0, "CH0 Smashed gate block" }, /* STORY_CH0_SMASHED_GATE_BLOCK */
+    { -113, 0, "CH0 Defeated goomba bros" }, /* STORY_CH0_DEFEATED_GOOMBA_BROS */
+    { -112, 0, "CH0 Defeated goomba king" }, /* STORY_CH0_DEFEATED_GOOMBA_KING */
+    { -111, 0, "CH0 Found gatehouse switch" }, /* STORY_CH0_FOUND_GATEHOUSE_SWITCH */
+    { -110, 0, "CH0 Hit gatehouse switch" }, /* STORY_CH0_HIT_GATEHOUSE_SWITCH */
+    { -109, 0, "CH0 Opened bridge to toad town" }, /* STORY_CH0_OPENED_BRIDGE_TO_TOAD_TOWN */
+    { -108, 0, "CH0 Kammy returned to bowser" }, /* STORY_CH0_KAMMY_RETURNED_TO_BOWSER */
+    { -107, 0, "CH0 Arrived at toad town" }, /* STORY_CH0_ARRIVED_AT_TOAD_TOWN */
+    { -106, 0, "CH0 Met star spirits" }, /* STORY_CH0_MET_STAR_SPIRITS */
+    { -105, 0, "CH0 Began peach mission" }, /* STORY_CH0_BEGAN_PEACH_MISSION */
+    { -104, 0, "CH0 Twink gave lucky star" }, /* STORY_CH0_TWINK_GAVE_LUCKY_STAR */
+    { -103, 0, "CH0 Returned to toad town" }, /* STORY_CH0_RETURNED_TO_TOAD_TOWN */
+    { -102, 1, "CH1 Spoke with merlin" }, /* STORY_CH1_SPOKE_WITH_MERLIN */
+    { -101, 1, "CH1 Told merlin about dark toads" }, /* STORY_CH1_TOLD_MERLIN_ABOUT_DARK_TOADS */
+    { -100, 1, "CH1 Merlin revealed koopa bros" }, /* STORY_CH1_MERLIN_REVEALED_KOOPA_BROS */
+    { -99, 1, "CH1 Knocked switch from tree" }, /* STORY_CH1_KNOCKED_SWITCH_FROM_TREE */
+    { -98, 1, "CH1 Made first bridge" }, /* STORY_CH1_MADE_FIRST_BRIDGE */
+    { -97, 1, "CH1 Arrived at koopa village" }, /* STORY_CH1_ARRIVED_AT_KOOPA_VILLAGE */
+    { -96, 1, "CH1 Promised to help kooper" }, /* STORY_CH1_PROMISED_TO_HELP_KOOPER */
+    { -95, 1, "CH1 Fuzzy thief left town" }, /* STORY_CH1_FUZZY_THIEF_LEFT_TOWN */
+    { -94, 1, "CH1 Fuzzy thief ran away" }, /* STORY_CH1_FUZZY_THIEF_RAN_AWAY */
+    { -93, 1, "CH1 Fuzzy thief hid in tree" }, /* STORY_CH1_FUZZY_THIEF_HID_IN_TREE */
+    { -92, 1, "CH1 Kooper joined party" }, /* STORY_CH1_KOOPER_JOINED_PARTY */
+    { -91, 1, "CH1 Made second bridge" }, /* STORY_CH1_MADE_SECOND_BRIDGE */
+    { -90, 1, "CH1 Arrived at koopa fortress" }, /* STORY_CH1_ARRIVED_AT_KOOPA_FORTRESS */
+    { -89, 1, "CH1 Spotted by koopa bros" }, /* STORY_CH1_SPOTTED_BY_KOOPA_BROS */
+    { -88, 1, "CH1 Koopa bros hid key" }, /* STORY_CH1_KOOPA_BROS_HID_KEY */
+    { -87, 1, "CH1 Defeated basement guard" }, /* STORY_CH1_DEFEATED_BASEMENT_GUARD */
+    { -86, 1, "CH1 Lowered first stairs" }, /* STORY_CH1_LOWERED_FIRST_STAIRS */
+    { -85, 1, "CH1 Koopa bros set trap" }, /* STORY_CH1_KOOPA_BROS_SET_TRAP */
+    { -84, 1, "CH1 Mario activated trap" }, /* STORY_CH1_MARIO_ACTIVATED_TRAP */
+    { -83, 1, "CH1 Bombette joined party" }, /* STORY_CH1_BOMBETTE_JOINED_PARTY */
+    { -82, 1, "CH1 Defeated dungeon guards" }, /* STORY_CH1_DEFEATED_DUNGEON_GUARDS */
+    { -81, 1, "CH1 Lowered second stairs" }, /* STORY_CH1_LOWERED_SECOND_STAIRS */
+    { -80, 1, "CH1 Raised submerged stairs" }, /* STORY_CH1_RAISED_SUBMERGED_STAIRS */
+    { -79, 1, "CH1 Koopa bros firing blasters" }, /* STORY_CH1_KOOPA_BROS_FIRING_BLASTERS */
+    { -78, 1, "CH1 Defeated koopa bros" }, /* STORY_CH1_DEFEATED_KOOPA_BROS */
+    { -77, 1, "CH1 Star spirit rescued" }, /* STORY_CH1_STAR_SPIRIT_RESCUED */
+    { -76, 1, "CH1 Began peach mission" }, /* STORY_CH1_BEGAN_PEACH_MISSION */
+    { -75, 1, "CH1 Star spirit departed" }, /* STORY_CH1_STAR_SPRIT_DEPARTED */
+    { -74, 1, "CH1 Defeated jr troopa" }, /* STORY_CH1_DEFEATED_JR_TROOPA */
+    { -73, 1, "CH1 Returned to toad town" }, /* STORY_CH1_RETURNED_TO_TOAD_TOWN */
+    { -72, 2, "CH2 Arrived at mt rugged" }, /* STORY_CH2_ARRIVED_AT_MT_RUGGED */
+    { -71, 2, "CH2 Spoke with parakarry" }, /* STORY_CH2_SPOKE_WITH_PARAKARRY */
+    { -70, 2, "CH2 Parakarry joined party" }, /* STORY_CH2_PARAKARRY_JOINED_PARTY */
+    { -69, 2, "CH2 Arrived at dry dry desert" }, /* STORY_CH2_ARRIVED_AT_DRY_DRY_DESERT */
+    { -68, 2, "CH2 Arrived at dry dry outpost" }, /* STORY_CH2_ARRIVED_AT_DRY_DRY_OUTPOST */
+    { -67, 2, "CH2 Shady mouse left shop" }, /* STORY_CH2_SHADY_MOUSE_LEFT_SHOP */
+    { -66, 2, "CH2 Spoke with sheek" }, /* STORY_CH2_SPOKE_WITH_SHEEK */
+    { -65, 2, "CH2 Shady mouse entered shop" }, /* STORY_CH2_SHADY_MOUSE_ENTERED_SHOP */
+    { -64, 2, "CH2 Bought secret items" }, /* STORY_CH2_BOUGHT_SECRET_ITEMS */
+    { -63, 2, "CH2 Got pulse stone" }, /* STORY_CH2_GOT_PULSE_STONE */
+    { -62, 2, "CH2 Uncovered dry dry ruins" }, /* STORY_CH2_UNCOVERED_DRY_DRY_RUINS */
+    { -61, 2, "CH2 Drained first sand room" }, /* STORY_CH2_DRAINED_FIRST_SAND_ROOM */
+    { -60, 2, "CH2 Drained second sand room" }, /* STORY_CH2_DRAINED_SECOND_SAND_ROOM */
+    { -59, 2, "CH2 Got super hammer" }, /* STORY_CH2_GOT_SUPER_HAMMER */
+    { -58, 2, "CH2 Drained third sand room" }, /* STORY_CH2_DRAINED_THIRD_SAND_ROOM */
+    { -57, 2, "CH2 Solved artifact puzzle" }, /* STORY_CH2_SOLVED_ARTIFACT_PUZZLE */
+    { -56, 2, "CH2 Defeated tutankoopa" }, /* STORY_CH2_DEFEATED_TUTANKOOPA */
+    { -55, 2, "CH2 Star spirit rescued" }, /* STORY_CH2_STAR_SPIRIT_RESCUED */
+    { -54, 2, "CH2 Began peach mission" }, /* STORY_CH2_BEGAN_PEACH_MISSION */
+    { -53, 2, "CH2 Star spirit departed" }, /* STORY_CH2_STAR_SPRIT_DEPARTED */
+    { -51, 3, "CH3 Saw boo enter forest" }, /* STORY_CH3_SAW_BOO_ENTER_FOREST */
+    { -50, 3, "CH3 Invited to Boo's mansion" }, /* STORY_CH3_INVITED_TO_BOOS_MANSION */
+    { -49, 3, "CH3 Allowed into forever forest" }, /* STORY_CH3_ALLOWED_INTO_FOREVER_FOREST */
+    { -48, 3, "CH3 Arrived at Boo's mansion" }, /* STORY_CH3_ARRIVED_AT_BOOS_MANSION */
+    { -47, 3, "CH3 Opened Boo's mansion gate" }, /* STORY_CH3_OPENED_BOOS_MANSION_GATE */
+    { -46, 3, "CH3 Entered Boo's mansion" }, /* STORY_CH3_ENTERED_BOOS_MANSION */
+    { -45, 3, "CH3 Triggered door jump scare" }, /* STORY_CH3_TRIGGERED_DOOR_JUMP_SCARE */
+    { -44, 3, "CH3 Got record" }, /* STORY_CH3_GOT_RECORD */
+    { -43, 3, "CH3 Played the record" }, /* STORY_CH3_PLAYED_THE_RECORD */
+    { -42, 3, "CH3 Got weight" }, /* STORY_CH3_GOT_WEIGHT */
+    { -41, 3, "CH3 Weighed down chandelier" }, /* STORY_CH3_WEIGHED_DOWN_CHANDELIER */
+    { -40, 3, "CH3 Got super boots" }, /* STORY_CH3_GOT_SUPER_BOOTS */
+    { -39, 3, "CH3 Hit huge blue switch" }, /* STORY_CH3_HIT_HUGE_BLUE_SWITCH */
+    { -38, 3, "CH3 Got boo portrait" }, /* STORY_CH3_GOT_BOO_PORTRAIT */
+    { -37, 3, "CH3 Restored boo portrait" }, /* STORY_CH3_RESTORED_BOO_PORTRAIT */
+    { -36, 3, "CH3 Bow joined party" }, /* STORY_CH3_BOW_JOINED_PARTY */
+    { -35, 3, "CH3 Unlocked gusty gulch" }, /* STORY_CH3_UNLOCKED_GUSTY_GULCH */
+    { -34, 3, "CH3 Arrived at ghost town" }, /* STORY_CH3_ARRIVED_AT_GHOST_TOWN */
+    { -33, 3, "CH3 Saw tubba eat boo" }, /* STORY_CH3_SAW_TUBBA_EAT_BOO */
+    { -32, 3, "CH3 Arrived at Tubba's manor" }, /* STORY_CH3_ARRIVED_AT_TUBBAS_MANOR */
+    { -30, 3, "CH3 Tubba began napping" }, /* STORY_CH3_TUBBA_BEGAN_NAPPING */
+    { -29, 3, "CH3 Tubba woke up" }, /* STORY_CH3_TUBBA_WOKE_UP */
+    { -28, 3, "CH3 Tubba smashed the bridges" }, /* STORY_CH3_TUBBA_SMASHED_THE_BRIDGES */
+    { -27, 3, "CH3 Tubba chased Mario in hall" }, /* STORY_CH3_TUBBA_CHASED_MARIO_IN_HALL */
+    { -26, 3, "CH3 Tubba chased Mario in foyer" }, /* STORY_CH3_TUBBA_CHASED_MARIO_IN_FOYER */
+    { -25, 3, "CH3 Escaped Tubba's manor" }, /* STORY_CH3_ESCAPED_TUBBAS_MANOR */
+    { -24, 3, "CH3 Unlocked windy mill" }, /* STORY_CH3_UNLOCKED_WINDY_MILL */
+    { -23, 3, "CH3 Went down the well" }, /* STORY_CH3_WENT_DOWN_THE_WELL */
+    { -22, 3, "CH3 Heart fled first tunnel" }, /* STORY_CH3_HEART_FLED_FIRST_TUNNEL */
+    { -19, 3, "CH3 Heart fled second tunnel" }, /* STORY_CH3_HEART_FLED_SECOND_TUNNEL */
+    { -18, 3, "CH3 Heart escaped well" }, /* STORY_CH3_HEART_ESCAPED_WELL */
+    { -17, 3, "CH3 Heart escaped windy mill" }, /* STORY_CH3_HEART_ESCAPED_WINDY_MILL */
+    { -16, 3, "CH3 Defeated tubba blubba" }, /* STORY_CH3_DEFEATED_TUBBA_BLUBBA */
+    { -15, 3, "CH3 Star spirit rescued" }, /* STORY_CH3_STAR_SPIRIT_RESCUED */
+    { -14, 3, "CH3 Began peach mission" }, /* STORY_CH3_BEGAN_PEACH_MISSION */
+    { -13, 3, "CH3 Star spirit departed" }, /* STORY_CH3_STAR_SPRIT_DEPARTED */
+    { -12, 4, "CH4 Frying pan stolen" }, /* STORY_CH4_FRYING_PAN_STOLEN */
+    { -11, 4, "CH4 Met with twink" }, /* STORY_CH4_MET_WITH_TWINK */
+    { -10, 4, "CH4 Found hidden door" }, /* STORY_CH4_FOUND_HIDDEN_DOOR */
+    { -9, 4, "CH4 Entered the toy box" }, /* STORY_CH4_ENTERED_THE_TOY_BOX */
+    { -8, 4, "CH4 Got storeroom key" }, /* STORY_CH4_GOT_STOREROOM_KEY */
+    { -7, 4, "CH4 Returned storeroom key" }, /* STORY_CH4_RETURNED_STOREROOM_KEY */
+    { -6, 4, "CH4 Got toy train" }, /* STORY_CH4_GOT_TOY_TRAIN */
+    { -5, 4, "CH4 Returned toy train" }, /* STORY_CH4_RETURNED_TOY_TRAIN */
+    { -4, 4, "CH4 Got frying pan" }, /* STORY_CH4_GOT_FRYING_PAN */
+    { -3, 4, "CH4 Got tayce ts cake" }, /* STORY_CH4_GOT_TAYCE_TS_CAKE */
+    { -2, 4, "CH4 Gave cake to gourmet guy" }, /* STORY_CH4_GAVE_CAKE_TO_GOURMET_GUY */
+    { -1, 4, "CH4 Pulled switch switch" }, /* STORY_CH4_PULLED_SWITCH_SWITCH */
+    { 0, 4, "CH4 Solved color puzzle" }, /* STORY_CH4_SOLVED_COLOR_PUZZLE */
+    { 1, 4, "CH4 Defeated lantern ghost" }, /* STORY_CH4_DEFEATED_LANTERN_GHOST */
+    { 2, 4, "CH4 Watt joined party" }, /* STORY_CH4_WATT_JOINED_PARTY */
+    { 3, 4, "CH4 Opened general guy room" }, /* STORY_CH4_OPENED_GENERAL_GUY_ROOM */
+    { 4, 4, "CH4 Defeated general guy" }, /* STORY_CH4_DEFEATED_GENERAL_GUY */
+    { 5, 4, "CH4 Star spirit rescued" }, /* STORY_CH4_STAR_SPIRIT_RESCUED */
+    { 6, 4, "CH4 Began peach mission" }, /* STORY_CH4_BEGAN_PEACH_MISSION */
+    { 7, 4, "CH4 Star spirit departed" }, /* STORY_CH4_STAR_SPRIT_DEPARTED */
+    { 8, 5, "CH5 Whale mouth open" }, /* STORY_CH5_WHALE_MOUTH_OPEN */
+    { 9, 5, "CH5 Entered whale" }, /* STORY_CH5_ENTERED_WHALE */
+    { 10, 5, "CH5 Defeated fuzzipede" }, /* STORY_CH5_DEFEATED_FUZZIPEDE */
+    { 11, 5, "CH5 Reached lava lava island" }, /* STORY_CH5_REACHED_LAVA_LAVA_ISLAND */
+    { 12, 5, "CH5 Kolorado escaped fuzzies" }, /* STORY_CH5_KOLORADO_ESCAPED_FUZZIES */
+    { 13, 5, "CH5 Kolorado escaped spear guys" }, /* STORY_CH5_KOLORADO_ESCAPED_SPEAR_GUYS */
+    { 14, 5, "CH5 Yoshi children are missing" }, /* STORY_CH5_YOSHI_CHILDREN_ARE_MISSING */
+    { 15, 5, "CH5 Sushie joined party" }, /* STORY_CH5_SUSHIE_JOINED_PARTY */
+    { 16, 5, "CH5 All yoshi children rescued" }, /* STORY_CH5_ALL_YOSHI_CHILDREN_RESCUED */
+    { 17, 5, "CH5 Got jade raven" }, /* STORY_CH5_GOT_JADE_RAVEN */
+    { 18, 5, "CH5 Moved raven statue" }, /* STORY_CH5_MOVED_RAVEN_STATUE */
+    { 19, 5, "CH5 Defeated piranhas miniboss" }, /* STORY_CH5_DEFEATED_PIRANHAS_MINIBOSS */
+    { 20, 5, "CH5 Reached raphaels tree" }, /* STORY_CH5_REACHED_RAPHAELS_TREE */
+    { 21, 5, "CH5 Raphael left nest" }, /* STORY_CH5_RAPHAEL_LEFT_NEST */
+    { 22, 5, "CH5 Raphael moved root" }, /* STORY_CH5_RAPHAEL_MOVED_ROOT */
+    { 23, 5, "CH5 Raphael waiting for Mario" }, /* STORY_CH5_RAPHAEL_WAITING_FOR_MARIO */
+    { 24, 5, "CH5 Zip line ready" }, /* STORY_CH5_ZIP_LINE_READY */
+    { 25, 5, "CH5 Entered mt lava lava" }, /* STORY_CH5_ENTERED_MT_LAVA_LAVA */
+    { 26, 5, "CH5 Kolorado fell in lava" }, /* STORY_CH5_KOLORADO_FELL_IN_LAVA */
+    { 27, 5, "CH5 Lava stream blocked" }, /* STORY_CH5_LAVA_STREAM_BLOCKED */
+    { 28, 5, "CH5 Got ultra hammer" }, /* STORY_CH5_GOT_ULTRA_HAMMER */
+    { 29, 5, "CH5 Smashed ultra block" }, /* STORY_CH5_SMASHED_ULTRA_BLOCK */
+    { 30, 5, "CH5 Kolorado fell in pit" }, /* STORY_CH5_KOLORADO_FELL_IN_PIT */
+    { 31, 5, "CH5 Kolorado at dead end" }, /* STORY_CH5_KOLORADO_AT_DEAD_END */
+    { 32, 5, "CH5 Hidden passage open" }, /* STORY_CH5_HIDDEN_PASSAGE_OPEN */
+    { 33, 5, "CH5 Kolorado ran ahead" }, /* STORY_CH5_KOLORADO_RAN_AHEAD */
+    { 34, 5, "CH5 Kolorado in treasure room" }, /* STORY_CH5_KOLORADO_IN_TREASURE_ROOM */
+    { 35, 5, "CH5 Defeated lava piranha" }, /* STORY_CH5_DEFEATED_LAVA_PIRANHA */
+    { 36, 5, "CH5 Mt lava lava erupting" }, /* STORY_CH5_MT_LAVA_LAVA_ERUPTING */
+    { 37, 5, "CH5 Opened escape route" }, /* STORY_CH5_OPENED_ESCAPE_ROUTE */
+    { 38, 5, "CH5 Began peach mission" }, /* STORY_CH5_BEGAN_PEACH_MISSION */
+    { 39, 5, "CH5 Star spirit departed" }, /* STORY_CH5_STAR_SPRIT_DEPARTED */
+    { 40, 5, "CH5 Traded vase for seed" }, /* STORY_CH5_TRADED_VASE_FOR_SEED */
+    { 41, 5, "CH5 Returned to toad town" }, /* STORY_CH5_RETURNED_TO_TOAD_TOWN */
+    { 42, 6, "CH6 Flower gate open" }, /* STORY_CH6_FLOWER_GATE_OPEN */
+    { 43, 6, "CH6 Arrived at flower fields" }, /* STORY_CH6_ARRIVED_AT_FLOWER_FIELDS */
+    { 44, 6, "CH6 Asked to defeat monty moles" }, /* STORY_CH6_ASKED_TO_DEFEAT_MONTY_MOLES */
+    { 45, 6, "CH6 Got magical bean" }, /* STORY_CH6_GOT_MAGICAL_BEAN */
+    { 46, 6, "CH6 Got fertile soil" }, /* STORY_CH6_GOT_FERTILE_SOIL */
+    { 47, 6, "CH6 Got crystal berry" }, /* STORY_CH6_GOT_CRYSTAL_BERRY */
+    { 48, 6, "CH6 Got water stone" }, /* STORY_CH6_GOT_WATER_STONE */
+    { 49, 6, "CH6 Filled spring with water" }, /* STORY_CH6_FILLED_SPRING_WITH_WATER */
+    { 50, 6, "CH6 Spoke with the sun" }, /* STORY_CH6_SPOKE_WITH_THE_SUN */
+    { 51, 6, "CH6 Lakilester joined party" }, /* STORY_CH6_LAKILESTER_JOINED_PARTY */
+    { 52, 6, "CH6 Defeated puff puff guards" }, /* STORY_CH6_DEFEATED_PUFF_PUFF_GUARDS */
+    { 53, 6, "CH6 Destroyed puff puff machine" }, /* STORY_CH6_DESTROYED_PUFF_PUFF_MACHINE */
+    { 54, 6, "CH6 Wisterwood gave hint" }, /* STORY_CH6_WISTERWOOD_GAVE_HINT */
+    { 55, 6, "CH6 Grew magic beanstalk" }, /* STORY_CH6_GREW_MAGIC_BEANSTALK */
+    { 56, 6, "CH6 Defeated huff n puff" }, /* STORY_CH6_DEFEATED_HUFF_N_PUFF */
+    { 57, 6, "CH6 Star spirit rescued" }, /* STORY_CH6_STAR_SPIRIT_RESCUED */
+    { 58, 6, "CH6 Began peach mission" }, /* STORY_CH6_BEGAN_PEACH_MISSION */
+    { 59, 6, "CH6 Star spirit departed" }, /* STORY_CH6_STAR_SPRIT_DEPARTED */
+    { 60, 6, "CH6 Returned to toad town" }, /* STORY_CH6_RETURNED_TO_TOAD_TOWN */
+    { 61, 7, "CH7 Invited to starborn valley" }, /* STORY_CH7_INVITED_TO_STARBORN_VALLEY */
+    { 62, 7, "CH7 Arrived at shiver city" }, /* STORY_CH7_ARRIVED_AT_SHIVER_CITY */
+    { 63, 7, "CH7 Mayor murder mystery" }, /* STORY_CH7_MAYOR_MURDER_MYSTERY */
+    { 64, 7, "CH7 Shattered frozen pond" }, /* STORY_CH7_SHATTERED_FROZEN_POND */
+    { 65, 7, "CH7 Spoke with herringway" }, /* STORY_CH7_SPOKE_WITH_HERRINGWAY */
+    { 66, 7, "CH7 Herringway at mayors house" }, /* STORY_CH7_HERRINGWAY_AT_MAYORS_HOUSE */
+    { 67, 7, "CH7 Mayor murder solved" }, /* STORY_CH7_MAYOR_MURDER_SOLVED */
+    { 68, 7, "CH7 Defeated jr troopa" }, /* STORY_CH7_DEFEATED_JR_TROOPA */
+    { 69, 7, "CH7 Defeated monstar" }, /* STORY_CH7_DEFEATED_MONSTAR */
+    { 70, 7, "CH7 Arrived at starborn valley" }, /* STORY_CH7_ARRIVED_AT_STARBORN_VALLEY */
+    { 71, 7, "CH7 Merle apologized" }, /* STORY_CH7_MERLE_APOLOGIZED */
+    { 72, 7, "CH7 Got snowman scarf" }, /* STORY_CH7_GOT_SNOWMAN_SCARF */
+    { 73, 7, "CH7 Got snowman bucket" }, /* STORY_CH7_GOT_SNOWMAN_BUCKET */
+    { 74, 7, "CH7 Unlocked shiver mountain" }, /* STORY_CH7_UNLOCKED_SHIVER_MOUNTAIN */
+    { 75, 7, "CH7 Defeated first duplighost" }, /* STORY_CH7_DEFEATED_FIRST_DUPLIGHOST */
+    { 76, 7, "CH7 Got star stone" }, /* STORY_CH7_GOT_STAR_STONE */
+    { 77, 7, "CH7 Raised frozen stairs" }, /* STORY_CH7_RAISED_FROZEN_STAIRS */
+    { 78, 7, "CH7 Arrived at crystal palace" }, /* STORY_CH7_ARRIVED_AT_CRYSTAL_PALACE */
+    { 79, 7, "CH7 Defeated mirror duplighosts" }, /* STORY_CH7_DEFEATED_MIRROR_DUPLIGHOSTS */
+    { 80, 7, "CH7 Defeated bombette duplighosts" }, /* STORY_CH7_DEFEATED_BOMBETTE_DUPLIGHOSTS */
+    { 81, 7, "CH7 Defeated clubbas" }, /* STORY_CH7_DEFEATED_CLUBBAS */
+    { 82, 7, "CH7 Defeated kooper duplighosts" }, /* STORY_CH7_DEFEATED_KOOPER_DUPLIGHOSTS */
+    { 83, 7, "CH7 Extended palace bridge" }, /* STORY_CH7_EXTENDED_PALACE_BRIDGE */
+    { 84, 7, "CH7 Found hidden room under statue" }, /* STORY_CH7_FOUND_HIDDEN_ROOM_UNDER_STATUE */
+    { 85, 7, "CH7 Solved albino dino puzzle" }, /* STORY_CH7_SOLVED_ALBINO_DINO_PUZZLE */
+    { 86, 7, "CH7 Defeated crystal king" }, /* STORY_CH7_DEFEATED_CRYSTAL_KING */
+    { 87, 7, "CH7 Star spirit rescued" }, /* STORY_CH7_STAR_SPIRIT_RESCUED */
+    { 88, 7, "CH7 Began peach mission" }, /* STORY_CH7_BEGAN_PEACH_MISSION */
+    { 89, 7, "CH7 Star spirit departed" }, /* STORY_CH7_STAR_SPRIT_DEPARTED */
+    { 90, 8, "CH8 Opened path to star way" }, /* STORY_CH8_OPENED_PATH_TO_STAR_WAY */
+    { 91, 8, "CH8 Reached star haven" }, /* STORY_CH8_REACHED_STAR_HAVEN */
+    { 92, 8, "CH8 Star ship activated" }, /* STORY_CH8_STAR_SHIP_ACTIVATED */
+    { 94, 8, "CH8 Reached Bowser's castle" }, /* STORY_CH8_REACHED_BOWSERS_CASTLE */
+    { 95, 8, "CH8 Reached Peach's castle" }, /* STORY_CH8_REACHED_PEACHS_CASTLE */
+    { 96, 9, "Epilogue" }, /* STORY_EPILOGUE */
+};
+#define SP_N ((int)(sizeof sp_tab / sizeof sp_tab[0]))
+static const char* const sp_chapter[10] = { "Prologue", "Chapter 1", "Chapter 2", "Chapter 3", "Chapter 4", "Chapter 5", "Chapter 6", "Chapter 7", "Chapter 8", "Epilogue" };
+void pm_menu_msg(const char* fmt, ...);
+const char* pm_sp_chapter_name(int c) { return sp_chapter[c]; }
+int pm_sp_count(int c) {
+    int k, n = 0;
+    for (k = 0; k < SP_N; k++) if (sp_tab[k].chapter == c) n++;
+    return n;
+}
+/* the index in sp_tab of point i of chapter c, -1 when there is none */
+static int sp_index(int c, int i) {
+    int k, n = 0;
+    for (k = 0; k < SP_N; k++) if (sp_tab[k].chapter == c && n++ == i) return k;
+    return -1;
+}
+const char* pm_sp_label(int c, int i) {
+    int k = sp_index(c, i);
+    return k >= 0 ? sp_tab[k].label : "";
+}
+static int sp_cur(void) { return (int)evt_get_variable(NULL, GB_StoryProgress); }
+int pm_sp_is_current(int c, int i) {
+    int k = sp_index(c, i);
+    return k >= 0 && sp_tab[k].value == sp_cur();
+}
+const char* pm_sp_current_label(void) {
+    int k, cur = sp_cur();
+    for (k = 0; k < SP_N; k++) if (sp_tab[k].value == cur) return sp_tab[k].label;
+    return "(not in the list)";
+}
+/* the chapter of the current story progress, -1 when it is not a listed point */
+int pm_sp_current_chapter(void) {
+    int k, cur = sp_cur();
+    for (k = 0; k < SP_N; k++) if (sp_tab[k].value == cur) return sp_tab[k].chapter;
+    return -1;
+}
+static int sp_set_index(int k) {
+    if (get_game_mode() == GAME_MODE_BATTLE || get_game_mode() == GAME_MODE_PAUSE) {
+        pm_menu_msg("Story progress is not set in battle");
+        return 0;
+    }
+    evt_set_variable(NULL, GB_StoryProgress, sp_tab[k].value);
+    pm_log("story: set %d %s", sp_tab[k].value, sp_tab[k].label);
+    return 1;
+}
+int pm_sp_set(int c, int i) {
+    int k = sp_index(c, i);
+    return k >= 0 && sp_set_index(k);
+}
+/* dir -1 or +1: the point before or after the current progress in story order, clamped at both ends. Returns 1 when it was set. */
+int pm_sp_step(int dir) {
+    int cur = sp_cur(), k = 0, j;
+    while (k < SP_N && sp_tab[k].value < cur) k++;
+    if (k < SP_N && sp_tab[k].value == cur) j = k + dir;
+    else j = dir > 0 ? k : k - 1;
+    if (j < 0) j = 0;
+    if (j >= SP_N) j = SP_N - 1;
+    if (k < SP_N && sp_tab[k].value == cur && j == k) return 0;
+    return sp_set_index(j);
 }
 
 /* value of "key=value" in the switch string, 0 when absent */
@@ -618,21 +894,36 @@ static const char* const area_name[] = {
 };
 #define WG_MAPS 512 /* ceiling of the flat map list (area folder, entry memory) */
 #define WA_MAX 32
-static int wa_n = -1, wa_area[WA_MAX], wa_off[WA_MAX], wa_size[WA_MAX], wa_k[WG_MAPS];
-static void wa_build(void) {
-    int i, j, flat = 0, n = 0, cnt = 0;
-    for (i = 0; gAreas[i].maps != NULL; i++) {
-        int c0 = cnt;
-        for (j = 0; j < gAreas[i].mapCount; j++) {
-            if (pm_warp_is_test_map(gAreas[i].maps[j].id)) continue;
-            if (cnt < WG_MAPS) wa_k[cnt++] = flat;
-            else pm_log_w("warp: map list full, %s has no row", gAreas[i].maps[j].id);
-            flat++;
-        }
-        if (cnt == c0) continue;
-        if (n == WA_MAX) { pm_log_w("warp: area list full, area %d has no row", i); break; }
-        wa_area[n] = i; wa_off[n] = c0; wa_size[n] = cnt - c0; n++;
+#define WA_GA 40 /* ceiling of gAreas entries */
+/* STORYMENU: the area rows in story order (gAreas indices, the same index as area_name). The areas not listed here follow in gAreas order
+ * (Ending, Minigames, Game Over, Test map). The presets sit between the story areas and the other areas (pm_warp_top_*). */
+static const int story_area[] = { 0, 5, 1, 23, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 3, 17, 18, 19, 20, 21, 22, 2 };
+static int wa_n = -1, wa_s, wa_area[WA_MAX], wa_off[WA_MAX], wa_size[WA_MAX], wa_k[WG_MAPS];
+/* adds gAreas entry i with flat map indices from base (test maps skipped) */
+static void wa_add(int i, int base, int* n, int* cnt) {
+    int j, c0 = *cnt, k = base;
+    for (j = 0; j < gAreas[i].mapCount; j++) {
+        if (pm_warp_is_test_map(gAreas[i].maps[j].id)) continue;
+        if (*cnt < WG_MAPS) wa_k[(*cnt)++] = k;
+        else pm_log_w("warp: map list full, %s has no row", gAreas[i].maps[j].id);
+        k++;
     }
+    if (*cnt == c0) return;
+    if (*n == WA_MAX) { pm_log_w("warp: area list full, area %d has no row", i); return; }
+    wa_area[*n] = i; wa_off[*n] = c0; wa_size[*n] = *cnt - c0; (*n)++;
+}
+static void wa_build(void) {
+    int ga_base[WA_GA], placed[WA_GA] = { 0 }, ng = 0, flat = 0, i, j, s, n = 0, cnt = 0;
+    for (ng = 0; gAreas[ng].maps != NULL && ng < WA_GA; ng++) {
+        ga_base[ng] = flat;
+        for (j = 0; j < gAreas[ng].mapCount; j++) if (!pm_warp_is_test_map(gAreas[ng].maps[j].id)) flat++;
+    }
+    for (s = 0; s < (int)ARRAY_COUNT(story_area); s++) {
+        i = story_area[s];
+        if (i < ng && !placed[i]) { placed[i] = 1; wa_add(i, ga_base[i], &n, &cnt); }
+    }
+    wa_s = n;
+    for (i = 0; i < ng; i++) if (!placed[i]) wa_add(i, ga_base[i], &n, &cnt);
     wa_n = n;
 }
 static void wa_ready(void) { if (wa_n < 0) wa_build(); }
@@ -641,6 +932,24 @@ const char* pm_warp_area_name(int a) { wa_ready(); return wa_area[a] < (int)ARRA
 int pm_warp_area_size(int a) { wa_ready(); return wa_size[a]; }
 /* the flat map index k of map j of area a (choice = preset count + 1 + k) */
 int pm_warp_area_map(int a, int j) { wa_ready(); return wa_k[wa_off[a] + j]; }
+/* STORYMENU: the top rows of the Warp area folder, in order: the story areas (rows 0 to wa_s - 1), the presets, then the other areas. */
+int pm_warp_top_count(void) { wa_ready(); return wa_n + (int)ARRAY_COUNT(presets); }
+/* the preset index of top row r, -1 when r is not a preset row */
+int pm_warp_top_preset(int r) {
+    int P = (int)ARRAY_COUNT(presets);
+    wa_ready();
+    return r >= wa_s && r < wa_s + P ? r - wa_s : -1;
+}
+/* the area index of top row r, -1 when r is a preset row or out of range */
+int pm_warp_top_area(int r) {
+    int P = (int)ARRAY_COUNT(presets);
+    if (r < 0 || r >= pm_warp_top_count()) return -1;
+    if (r < wa_s) return r;
+    if (r < wa_s + P) return -1;
+    return r - P;
+}
+/* the top row of area a */
+int pm_warp_top_row_area(int a) { wa_ready(); return a < wa_s ? a : a + (int)ARRAY_COUNT(presets); }
 
 /* the MapConfig of flat map index k (test maps skipped), NULL when k is out of range */
 static const MapConfig* wa_cfg(int k) {
