@@ -100,6 +100,78 @@
       ]
     },
     {
+      "name": "tidal_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "TIDAL step 2 picture: mac_01 cold det start, fxtest=87 (underwater mesh) at frame 402, shots 1 and 2 at frames 412 and 432 inside the wave. Run on the base build (before) and on the TIDAL build (after); cmp against the base store. A person reads the shots.",
+      "scenario": "tidal_pic",
+      "cap": 30,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "pic",
+        "tidal"
+      ],
+      "gates": []
+    },
+    {
+      "name": "tidal_census_base",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "TIDAL step 1 census base: mac_01 pos 0 0 200, no effect. Window f410 (frames 410 to 467) per-frame draw count avg and max (closes proxy: C_DRAW per batch submit, pm_gpu.c:1097), no Sushie wave. Compare with tidal_census (fxtest=87 underwater).",
+      "scenario": "tidal_census_base",
+      "cap": 45,
+      "until": "phase W f4\\d\\d-",
+      "tags": [
+        "azahar",
+        "census",
+        "tidal"
+      ],
+      "log_metrics": [
+        {
+          "name": "closes_avg",
+          "regex": "phase count avg/max per frame: tri .* draw (\\d+)/\\d+",
+          "pick": "last"
+        },
+        {
+          "name": "closes_max",
+          "regex": "phase count avg/max per frame: tri .* draw \\d+/(\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": []
+    },
+    {
+      "name": "tidal_census",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "TIDAL step 1 census: mac_01 pos 0 0 200, fxtest=87 (fx_underwater, the Tidal Wave draw) spawned at frame 402 and removed at frame 440. Window f410 (frames 410 to 467) per-frame draw count avg and max (closes proxy: C_DRAW per batch submit, pm_gpu.c:1097). Compare with tidal_census_base.",
+      "scenario": "tidal_census",
+      "cap": 45,
+      "until": "phase W f4\\d\\d-",
+      "tags": [
+        "azahar",
+        "census",
+        "tidal"
+      ],
+      "log_metrics": [
+        {
+          "name": "closes_avg",
+          "regex": "phase count avg/max per frame: tri .* draw (\\d+)/\\d+",
+          "pick": "last"
+        },
+        {
+          "name": "closes_max",
+          "regex": "phase count avg/max per frame: tri .* draw \\d+/(\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": []
+    },
+    {
       "name": "fncov_mac01_det",
       "kind": "azahar_stream",
       "speed": "normal",
