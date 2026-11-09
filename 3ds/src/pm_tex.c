@@ -135,6 +135,18 @@ int pm_tex_off_idx(void) { return (have && off_cur >= 0) ? off_cur : -1; }
 int pm_tex_cur_idx(void) { return (have && off_cur < 0 && cur >= 0) ? cur : -1; }
 int pm_tex_aux_off_idx(void) { return (aux_off >= 0 && aux_off < offt_n) ? aux_off : -1; }
 void pm_tex_clear_offscreen(void) { for (int k = 0; k < 10; k++) offt[k].base = NULL; offt_n = 0; off_cur = -1; aux_off = -1; }
+/* GAMEOVER: img is a window of the off-screen image bound now, with its pixel size: the origin moves to img (as load_inner finds it) and the bind
+ * stays. Returns 0 (nothing changed) for any other image. The walker uses it to keep a batch open over loads of one slot. */
+int pm_tex_off_rewin(const void* img, unsigned fmt, unsigned siz) {
+    if (!have || off_cur < 0 || off_cur >= offt_n || !offt[off_cur].base || !img) return 0;
+    const unsigned gs = (fmt == FMT_RGBA && siz == SIZ_32) ? 3u : (fmt == FMT_RGBA && siz == SIZ_16) ? 2u : (fmt == FMT_I && siz == SIZ_8) ? 1u : 0u;
+    if (!gs || (unsigned)offt[off_cur].siz != gs || (const u8*)img < offt[off_cur].base) return 0;
+    const unsigned bpp = gs == 3 ? 4u : gs, d = (unsigned)((const u8*)img - offt[off_cur].base), row = offt[off_cur].stride * bpp;
+    if (d >= row * (unsigned)offt[off_cur].h) return 0;
+    if ((row & (row - 1)) == 0) { off_oy = (int)(d >> __builtin_ctz(row)); off_ox = (int)((d & (row - 1)) / bpp); }
+    else { off_oy = (int)(d / row); off_ox = (int)((d % row) / bpp); }
+    return 1;
+}
 void pm_tex_origin(int* x, int* y) {
     pm_tex_epoch_v++;
     *x = (have && off_cur >= 0) ? off_ox : 0;
@@ -1164,7 +1176,9 @@ static unsigned src_hash(const void* p, unsigned n) {
     return h;
 }
 static void tex_invalidate_body(const void* ptr, unsigned size) {
-    pm_tex_epoch_v++;
+    pm_xf.inv_n++; /* MAPX-1 */
+    /* MAPX-5a: pm_tex_epoch_v moves only when a live slot overlaps the range (below): a ROM read or decode that holds no cached texture (a sprite
+     * raster, a map file) no longer resets the repeated-load skips (nd_tex_set.c tsz_last) of every texture. */
     if (ptr && size && (unsigned)ptr < (unsigned)gMapShapeData + 0x40000u && (unsigned)ptr + size > (unsigned)gMapShapeData) pm_dlc_gen++;
     unsigned start, end;
     int i;
@@ -1191,6 +1205,7 @@ static void tex_invalidate_body(const void* ptr, unsigned size) {
         img_hit = s->img && img < end && img + (s->slen ? s->slen : 1u) > start;
         pal_hit = s->tlut && pal < end && pal + (s->tlen ? s->tlen : 1u) > start;
         if (!img_hit && !pal_hit) continue;
+        pm_tex_epoch_v++; /* MAPX-5a: this slot's bind may change */
         if (img_hit && !s->native && s->slen) {
             /* tex_inv2: keep the slot. Its bytes are hashed at the next lookup, and only a changed hash drops it. */
             tc_inval++;
@@ -1295,7 +1310,7 @@ static int load_impl(const void* img, unsigned fmt, unsigned siz, int width, int
     pm_gpu_rect_sync(); /* DR1 */
     pm_tex_epoch_v++;
     int r;
-    unsigned t0 = pm_ph_cen ? pm_ticks() : 0; /* PI3: timed in phase mode (PROF2-2: not in a prof sample; the reader is the PERF-GBI report) */
+    unsigned t0 = pm_ph_cen || pm_xf.on ? pm_ticks() : 0; /* PI3: timed in phase mode (PROF2-2: not in a prof sample); MAPX-1: and in a transition */
     ph_miss = 0;
     PH_ADD(C_TEXCALL, 1);
     if (!lut && dkey == 0 && cell_load(img, fmt, siz, width, height, tlut, tlut_n)) { /* MSGBOX 3: a message glyph binds the cell texture */
@@ -1306,6 +1321,7 @@ static int load_impl(const void* img, unsigned fmt, unsigned siz, int width, int
         r = load_inner(img, fmt, siz, width, height, tlut, tlut_n, stride, lut, dx4, dy4, dkey);
     }
     if (ph_miss) PH_POP();
+    if (ph_miss && pm_xf.on) { pm_xf.tex_n++; pm_xf.tex_t += pm_ticks() - t0; } /* MAPX-1: a miss decodes and uploads */
     if (pm_ph_cen) { /* PG2 measure: ticks inside pm_tex_load, hit and miss, per 300 frames (reported by pm_tex_prof_report) */
         unsigned dt = pm_ticks() - t0;
         if (ph_miss) { tprof_miss_t += dt; tprof_miss_n++; } else { tprof_hit_t += dt; tprof_hit_n++; }
@@ -1572,6 +1588,7 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
     tc_miss++;
     tot_miss++;
     tot_up += reserve;
+    pm_xf.tex_b += reserve; /* MAPX-1 */
     tc_up_bytes += reserve;
     frame_bytes += reserve;
     if (frame_bytes > map_wmax) map_wmax = frame_bytes;

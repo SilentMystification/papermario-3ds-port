@@ -410,6 +410,18 @@ int pm_dlc_vis_mask(const void* lv, uint64_t* out) {
     *out = vm;
     return 0;
 }
+/* MAPX-2: the entry geometry bits the groups of a built static list keep (or of the group am masks: every other bit is set by the list before a
+ * triangle). -1 when the list has no current entry (the model key then keeps the whole geometry word). */
+int pm_dlc_geom_keep(const void* lv, uint32_t* keep) {
+    const Gfx* l = (const Gfx*)lv;
+    if (!dlc_on || !is_host((u32)(uintptr_t)l) || (u32)l - (u32)gMapShapeData >= 0x40000u || ((u32)l & 7) || dlc_seen_gen != pm_dlc_gen) return -1;
+    DlcEnt* e = dlc_find(l);
+    if (!e || e->gen != pm_dlc_gen || e->refused) return -1;
+    uint32_t k = 0;
+    for (unsigned g = 0; g < e->ngrp; g++) k |= e->grp[g].am;
+    *keep = k;
+    return 0;
+}
 int pm_dlc_native_ranges(const void* lv, uint32_t entry, NdRng* out, unsigned max) {
     const Gfx* l = (const Gfx*)lv;
     pm_dlc_vm_ok = 0;
@@ -431,7 +443,9 @@ int pm_dlc_native_ranges(const void* lv, uint32_t entry, NdRng* out, unsigned ma
     if (e->gen != pm_dlc_gen) {
         dlc_free(e);
         e->gen = pm_dlc_gen; e->refused = 0;
+        unsigned xt0 = pm_xf.on ? pm_ticks() : 0u;
         int r = dlc_build(e, l);
+        if (pm_xf.on) { pm_xf.dlc_n++; pm_xf.dlc_t += pm_ticks() - xt0; } /* MAPX-1 */
         e->hash = dlc_hash(l);
         if (r) e->refused = (u8)r;
     }
@@ -486,7 +500,9 @@ int dlc_try(const Gfx* l) {
     if (e->gen != pm_dlc_gen) {
         dlc_free(e);
         e->gen = pm_dlc_gen; e->refused = 0;
+        unsigned xt0 = pm_xf.on ? pm_ticks() : 0u;
         int r = dlc_build(e, l);
+        if (pm_xf.on) { pm_xf.dlc_n++; pm_xf.dlc_t += pm_ticks() - xt0; } /* MAPX-1 */
         e->hash = dlc_hash(l);
         dlc_c.compile++;
         if (r) { e->refused = (u8)r; dlc_c.refused[r < DLR_N ? r : DLR_LONG]++; }

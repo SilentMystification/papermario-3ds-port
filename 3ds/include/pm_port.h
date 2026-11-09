@@ -118,6 +118,15 @@ extern int pm_walk_side, pm_c2own;
 void pm_wq_post(void (*fn)(void*), void* arg, unsigned size);
 void pm_wq_call(void (*fn)(void*), void* arg, unsigned size);
 void pm_walk_drain(const char* why);
+/* CORE2C-2: one frame for the walker (nd_wq.c queue, depth 1). A task is a pointer and a byte count: a display list today, a record
+ * stream later. bg: the background task (none: ptr NULL); main: the swap task (none: ptr NULL). cfb: the colour buffer the game built
+ * the frame for (the walker reads pm_walk_cfb, not nuGfxCfb_ptr). */
+typedef struct { void* ptr; unsigned n; } PmTask;
+typedef struct { PmTask bg, main; void* cfb; unsigned flags; } PmFrame;
+#define PMF_REPL 1u /* F06-2: the main task walks with the t = 0.5 matrix replacements (pm_interp_repl) */
+void pm_wq_frame(const PmFrame* f); /* the game side: queue one frame (waits while one is queued) */
+void pm_frame_walk(const PmFrame* f); /* pm_nusys.c, walker side: walk the tasks of one frame */
+extern void* pm_walk_cfb; /* the colour buffer of the frame the walker draws (pm_main.c) */
 void pm_walk_own(const char* fn);
 #define PM_WALK_OWN() do { if (pm_c2own > 0 && !pm_walk_side) pm_walk_own(__func__); } while (0)
 #define PH_PUSH(id) do { if (pm_ph_on) pm_ph_push(id); } while (0)
@@ -314,5 +323,30 @@ void pm_gpu_menu_draw(const char* text);
 void pm_gpu_shot_bottom(const char* name); /* MN0: writes sdmc:/3ds/PaperMario/shots/<name>.ppm */
 void pm_gpu_menu_present(void); /* MN1: shows a menu change while the game is frozen */
 void pm_gpu_menu_grey(void); /* MN2: the top screen grey while the menu is open */
+
+/* MAPX-1: the xfer line (pm_xfer.c). One line per door or map transition: frames, step ms, and the cost of each load stage. The counters
+ * below are cumulative inside one transition (reset at its start); the tick sums run only while a transition is open (pm_xf.on). */
+typedef struct {
+    int on;                       /* a transition is open: the stage ticks run */
+    unsigned rom_n, rom_b;        /* nuPiReadRom on the game thread: calls, bytes */
+    unsigned yay_n, yay_b, yay_t; /* decode_yay0: calls, output bytes, ticks */
+    unsigned yay_pre;             /* MAPX-4: decode_yay0 calls served by the core-1 prefetch */
+    unsigned inv_n;               /* pm_tex_invalidate calls */
+    unsigned au_t, load_t;        /* map load: pm_audio_drain ticks, whole load_map_by_IDs ticks */
+    unsigned dlc_n, dlc_t;        /* dlc_build calls, ticks */
+    unsigned mdl_miss;            /* model cache misses (nd_recs.c rec_run) */
+    unsigned ent_n;               /* ent_compile calls */
+    unsigned tex_n, tex_b, tex_t; /* texture cache misses (decode and upload): count, bytes, ticks */
+    int load_step;                /* the step in progress ran load_map_by_IDs */
+    unsigned warm_f, warm_skip;   /* MAPX-3: covered frames that built under a budget, model record misses they skipped */
+    int diag;                     /* switch xferdiag: each model cache miss is classed by the first key word that differs (nd_mc_xdiag) */
+    unsigned wh[93];              /* xferdiag: misses per first differing key word (92: no stored entry of the same model) */
+} PmXf;
+extern PmXf pm_xf;
+void pm_xfer_map_begin(void);                     /* set_game_mode(GAME_MODE_CHANGE_MAP) */
+void pm_xfer_map_load(int area, int map);         /* __wrap_load_map_by_IDs: the target */
+void pm_xfer_door(int state);                     /* rooms.c SetDoorState: 1 entering, 2 exiting, 0 idle */
+void pm_xfer_step(unsigned long long t0, unsigned long long t1); /* pm_main.c: once per game step, its work ticks */
+int pm_xfer_skip(int kind); /* MAPX-3: 1 when a cache build of this kind (0 model record miss) is over the budget of a covered frame (skip its draw) */
 
 #endif

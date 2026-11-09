@@ -226,6 +226,9 @@ API_CALLABLE(SetDoorState) {
     MapRoom* door = script->functionTempPtr[1];
 
     door->state = evt_get_variable(script, *script->ptrReadPos);
+#ifdef TARGET_3DS
+    { void pm_xfer_door(int state); pm_xfer_door(door->state); } /* MAPX-1: the door xfer line */
+#endif
     return ApiStatus_DONE2;
 }
 

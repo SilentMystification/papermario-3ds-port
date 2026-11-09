@@ -40,6 +40,8 @@ This is the entry point for every test and profiling run (it replaces the text t
         gen_tour_lists.py compiles it (tourlist=curated).
         A tour log (TOUR1 `prof f<n> w<n> tour <i>/<n> <map>:<entry>` lines) ingests as one run record per map: tour_idx and kind
         (map) in the window's extra_json; the bench tags tour_full, tour_curated or tour_battle are copied to the records.
+        An `xfer <door|map> <from>-><to> ...` line (MAPX-1, pm_xfer.c) is stored in the run record's xfer list (kind xfer, xkind, from, to,
+        and its fields as metrics), on the record of its target map in a tour, else on the first record.
 
 Speed: every run record holds speed (turbo | normal | unknown) and frame_limit (percent, or null). azt.ps1 sets them for its start:
   -Speed, else -Turbo in the scenario's extra args (turbo), else normal. Old runs are "unknown" (not guessed). The bench default
@@ -704,6 +706,29 @@ def resolve_build(path, text, build, commit, host="host"):
     return b, c
 
 
+XFER = re.compile(r"xfer (door|map) (\S+)->(\S+) f(\d+) max ([\d.]+) o34 (\d+) \| fade ([\d.]+) load ([\d.]+) rom (\d+)/(\d+) "
+                  r"yay0 (\d+)/(\d+)/([\d.]+) inv (\d+) au ([\d.]+) init ([\d.]+)")
+XFER2 = re.compile(r"xfer2 (door|map) n(\d+) \| dlc (\d+)/([\d.]+) mdl (\d+)/(\d+) ent (\d+) tex (\d+)/(\d+)/([\d.]+)")
+XFER_KEYS = ("steps", "max_ms", "o34", "fade_ms", "load_ms", "rom_n", "rom_kb", "yay0_n", "yay0_kb", "yay0_ms", "inv_n", "au_ms", "init_ms")
+XFER2_KEYS = ("seq", "dlc_n", "dlc_ms", "mdl_miss", "mdl_clr", "ent_n", "tex_n", "tex_kb", "tex_ms")
+
+
+def parse_xfer(text):
+    """MAPX-1: the xfer lines of a log (pm_xfer.c), one record per transition: kind xfer, xkind door or map, from, to, and the fields of the
+    xfer line and of the xfer2 line after it as metrics."""
+    out = []
+    for line in text.splitlines():
+        m = XFER.search(line)
+        if m:
+            g = m.groups()
+            out.append({"kind": "xfer", "xkind": g[0], "from": g[1], "to": g[2], "m": {k: float(v) for k, v in zip(XFER_KEYS, g[3:])}})
+            continue
+        m = XFER2.search(line)
+        if m and out and out[-1]["xkind"] == m.group(1) and "seq" not in out[-1]["m"]:
+            out[-1]["m"].update({k: float(v) for k, v in zip(XFER2_KEYS, m.groups()[1:])})
+    return out
+
+
 def ingest_file(path, bench, host, build, commit, row, label, result="imported", note="", shot=None, tags=None, device="", kind=None,
                 speed="unknown", frame_limit=None, dirty=None, warm=None, timing=None):
     p = Path(path)
@@ -749,7 +774,13 @@ def ingest_file(path, bench, host, build, commit, row, label, result="imported",
             wide, stereo, fps = dl.most_common(1)[0][0]
             rec["disp"] = {"wide": wide, "stereo": stereo, "fps_target": fps}
         recs.append(rec)
+    xf = parse_xfer(text)
+    for x in xf:  # MAPX-1: an xfer line goes to the record of its target map (a tour), else to the first record
+        rec = next((r for r in recs if scene_fields(r.get("scene"))["map"] == x["to"].split(":")[0]), recs[0])
+        rec.setdefault("xfer", []).append(x)
     ids, _ = append_runs(recs)
+    if xf:
+        print("  xfer lines %d: %s" % (len(xf), "; ".join("%s %s->%s max %s o34 %s" % (x["xkind"], x["from"], x["to"], x["m"].get("max_ms"), x["m"].get("o34")) for x in xf)))
     print("ingested %s: %d scene run(s), scene-change windows dropped %d, run ids %s, build %s, commit %s" % (
         path, len(recs), dropped, ",".join(str(i) for i in ids), build if build is not None else "-", commit))
     for r in recs:
@@ -1146,6 +1177,8 @@ def scratch_build(commit, gitdir, scratch, lane, row):
     (scratch/build3ds/lane-<lane>/), never the shared build volumes. Returns (build.sh rc, build number or None)."""
     shutil.rmtree(scratch, ignore_errors=True)
     scratch.mkdir(parents=True)
+    # VOLMAN: wt_gc.sh and build.sh keep this folder and its lane volumes while the marker is young (12 h).
+    (scratch / ".build_at_in_use").write_text(str(os.getpid()))
     arc = subprocess.run(["git", "archive", commit], cwd=REPO, capture_output=True, check=True).stdout
     tarfile.open(fileobj=io.BytesIO(arc)).extractall(scratch)
     gen = scratch / "3ds" / "src" / "map_restore_table.c"
