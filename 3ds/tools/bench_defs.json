@@ -5163,6 +5163,11 @@
           "name": "xfer_rom_n",
           "regex": "xfer battle \\S+ .* rom (\\d+)/",
           "pick": "last"
+        },
+        {
+          "name": "xfer_pdec_in",
+          "regex": "xfer3 battle .* pdec \\d+/(\\d+)/",
+          "pick": "last"
         }
       ],
       "gates": []
@@ -5259,6 +5264,11 @@
         {
           "name": "xfer_rom_n",
           "regex": "xfer battle \\S+ .* rom (\\d+)/",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_pdec_in",
+          "regex": "xfer3 battle .* pdec \\d+/(\\d+)/",
           "pick": "last"
         }
       ],
@@ -5367,6 +5377,11 @@
         {
           "name": "xfer_rom_n",
           "regex": "xfer battle \\S+ .* rom (\\d+)/",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_pdec_in",
+          "regex": "xfer3 battle .* pdec \\d+/(\\d+)/",
           "pick": "last"
         }
       ],
