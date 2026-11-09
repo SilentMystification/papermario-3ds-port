@@ -34,7 +34,7 @@ Read this file at the start and after every compaction; it overrides any summary
 
 ## Merge
 1. Check the commits (markers, attribution, WIP commits).
-2. Merge the commit hash the agent reported ready, never the branch tip (user, 2026-11-09: a tip merge took HC4d1 to main
+2. Merge the commit hash the agent reported ready, never the branch tip (2026-11-09: a tip merge took HC4d1 to main
    before its gates). `git merge-tree --write-tree --name-only main <hash>`: exit 1 = conflicts. The branch owner resolves source conflicts; the
    orchestrator resolves doc and JSON conflicts (JSON by name, then a duplicate-name check).
 3. Put the branch's `memcheck:` line in the merge message; OVER does not block, the message says why it is taken.
