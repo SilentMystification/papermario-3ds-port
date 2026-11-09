@@ -1835,6 +1835,34 @@
       "reason": ""
     },
     {
+      "name": "kmr10_walk",
+      "status": "verified",
+      "reason": "KMR10M late-walk gate: the native texture table (ND_TEX_N 128) fills about f124 in mac_01; the walk starts after wait400 so every sprite frame takes the executor fallback. cap 40 s for the 600-frame run (about 28 frames/s after boot); until is the scene line at f600.",
+      "subject": "Map kmr_10 at -142 136 221, Mario stands 400 scans (native texture table full) then walks by padscript; shots at frames 500 to 579 (every 2nd) show the low cliff wall next to the ? block. KMR10M: stretched green vertical lines on the wall while Mario moves.",
+      "proves": "padscript walk in kmr_10 keeps the cliff in view; the shots show the wall strata in every frame, and the log counts the stale tile binds (ensstale).",
+      "debug": "warp=kmr_10:0 pos=-142:136:221 story=ch0_toad_town padscript=wait400,go_-300_136_221,wait20,go_-60_136_221,wait20,go_-142_136_221 shots shotwin=500:80:2 loglevel=debug",
+      "until": "warp: scene f600 ",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "warp: kmr_10 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_10 entry 0"
+        },
+        {
+          "name": "pos",
+          "regex": "poswarp: placed Mario at -142"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 5\\d\\d\\b"
+        }
+      ]
+    },
+    {
       "name": "wall_hos01_pic",
       "status": "unverified",
       "reason": "WALLT1 picture gate: the aux pan grows with the frame; frames 200 to 236 (step 4) show the band growth on the old path and its absence on the new path. One shot per frame was about 2.8 s each and hit the cap.",
@@ -6073,7 +6101,7 @@
     {
       "name": "battle_wheel5_wide",
       "status": "unverified",
-"reason": "broken: no until in 45 s (AZT11-5, 2026-11-09)",
+      "reason": "WIDE4 gate (user items 1, 3, 4): the wheel at the right end with 5 options, wide on.",
       "subject": "Battle with wide on (one Goomba, kmr_03), spmax=1 adds Star Power, hammer=0 the Hammer: 5 wheel options (Strategies, Items, Jump, Hammer, Star Power). The wheel opens on Jump; two steps right reach Star Power, the right end. The wheel stop line starts a 4 frame shot burst.",
       "proves": "WIDE4: with the wheel at the right end every element is drawn in the left corner (spots, reel, beam not cut at the 4:3 field), the leftmost options in place.",
       "debug": "warp=kmr_03:0 story=ch0_toad_town spmax=1 hammer=0 battle battlef=100 wide shots loglevel=debug uiburst padscript=wait362,right*4,wait30,right*4,wait60",
@@ -6100,8 +6128,7 @@
           "name": "wheel at right end",
           "regex": "debug wheel stop: pos 4 of 5"
         }
-      ],
-      "reason": "WIDE4 gate (user items 1, 3, 4): the wheel at the right end with 5 options, wide on."
+      ]
     },
     {
       "name": "battle_wheel5_nowide",
