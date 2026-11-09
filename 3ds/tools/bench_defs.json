@@ -3670,6 +3670,156 @@
         }
       ],
       "gates": []
+    },
+    {
+      "name": "aud_mac01",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "AUDV census: mac_01 music and sound effects, audio voices line window 2 (starts, no channel, cut). Gate: no channel 0, cut 0. A person reads the shot.",
+      "scenario": "aud_mac01",
+      "cap": 45,
+      "until": "audio voices w2: starts \\d+ no channel \\d+ cut \\d+",
+      "tags": [
+        "azahar",
+        "pic",
+        "audio",
+        "census"
+      ],
+      "log_metrics": [
+        {
+          "name": "v_starts",
+          "regex": "audio voices w2: starts (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "v_nochan",
+          "regex": "audio voices w2: starts \\d+ no channel (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "v_cut",
+          "regex": "audio voices w2: .* cut (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "v_max",
+          "regex": "audio voices w2: .* playing max (\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "v_nochan",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "v_cut",
+          "op": "==",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "name": "aud_battle",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "AUDV census: kmr_03 battle, audio voices line window 2 (starts, no channel, cut). Gate: no channel 0, cut 0. A person reads the shot.",
+      "scenario": "aud_battle",
+      "cap": 45,
+      "until": "audio voices w2: starts \\d+ no channel \\d+ cut \\d+",
+      "tags": [
+        "azahar",
+        "pic",
+        "audio",
+        "census"
+      ],
+      "log_metrics": [
+        {
+          "name": "v_starts",
+          "regex": "audio voices w2: starts (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "v_nochan",
+          "regex": "audio voices w2: starts \\d+ no channel (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "v_cut",
+          "regex": "audio voices w2: .* cut (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "v_max",
+          "regex": "audio voices w2: .* playing max (\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "v_nochan",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "v_cut",
+          "op": "==",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "name": "aud_intro",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "AUDV census: intro story music (busiest census scene), audio voices line window 2. Gate: no channel 0, cut 0. A person reads the shot.",
+      "scenario": "aud_intro",
+      "cap": 45,
+      "until": "audio voices w2: starts \\d+ no channel \\d+ cut \\d+",
+      "tags": [
+        "azahar",
+        "pic",
+        "audio",
+        "census"
+      ],
+      "log_metrics": [
+        {
+          "name": "v_starts",
+          "regex": "audio voices w2: starts (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "v_nochan",
+          "regex": "audio voices w2: starts \\d+ no channel (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "v_cut",
+          "regex": "audio voices w2: .* cut (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "v_max",
+          "regex": "audio voices w2: .* playing max (\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "v_nochan",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "v_cut",
+          "op": "==",
+          "value": 0
+        }
+      ]
     }
   ],
   "legacy": {

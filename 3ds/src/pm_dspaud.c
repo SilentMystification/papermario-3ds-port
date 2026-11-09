@@ -7,9 +7,10 @@
 #include "pm_port.h"
 #include "pm_dspaud.h"
 
-/* AUDDSP A3: the N64 voices play on ndsp channels 0 to 22 as mono PCM16. The CPU decodes the VADPCM once, when a sample first plays,
+/* AUDDSP A3: the 24 N64 voices play on ndsp channels 0 to 22 as mono PCM16 (dsp_voice.c gives a voice the lowest free channel at its start). The CPU decodes the VADPCM once, when a sample first plays,
  * into a cache in linear memory. Channel 23 plays the effect return. See docs/plans/AUD_DSP.md. */
 volatile int pm_dspa_enabled;
+volatile unsigned pm_dspa_epoch;
 
 #define BLK_TICKS 1541641ull          /* 184 samples at 32000 Hz in ARM11 ticks (268111856 Hz) */
 #define MAXBUF 8
@@ -39,6 +40,7 @@ typedef struct { Ent* e; ndspWaveBuf wb[MAXBUF]; int nb; int active; } Chan;
 static Chan chn[PM_DSPA_VOICES];
 
 static unsigned st_blocks, st_voice_sum, st_voice_max, st_starts, st_stops, st_ends, st_cost_sum, st_cost_max, st_late, st_bl_sum, st_bl_max, st_sets, st_set_us;
+static unsigned vc_n[DSPA_VC_N], vc_loopcap, vc_win;
 static unsigned long long next_due;
 static unsigned long long t_blk0;
 
@@ -188,7 +190,7 @@ int pm_dspa_voice_start(int ch, const DspaSample* s, float rate, const float mix
         if (e->loopCount == -1) chan_add(ch, e->body, e->nbody, 1);
         else {
             int reps = e->loopCount + 1;
-            if (reps > 4) reps = 4;
+            if (reps > 4) { reps = 4; vc_loopcap++; }
             for (int i = 0; i < reps; i++) chan_add(ch, e->body, e->nbody, 0);
             chan_add(ch, e->tail, e->ntail, 0);
         }
@@ -224,6 +226,8 @@ int pm_dspa_voice_ended(int ch) {
     }
     return 1;
 }
+
+void pm_dspa_vcount(int what) { if ((unsigned)what < DSPA_VC_N) vc_n[what]++; }
 
 void pm_dspa_master(float vol) { ndspSetMasterVol(vol); }
 
@@ -399,6 +403,7 @@ void pm_dspa_rearm(void) {
     }
     for (int i = 0; i < FXR_BUFS; i++) fxw[i].status = NDSP_WBUF_FREE; /* the effect return buffers are dropped with the channel */
     chan_setup();
+    pm_dspa_epoch++;
 }
 
 int pm_dspa_init(void) {
@@ -421,7 +426,7 @@ int pm_dspa_init(void) {
     pm_log("dspaudio: aux enabled %d %d volume %.2f %.2f", ndspAuxIsEnabled(0), ndspAuxIsEnabled(1), ndspAuxGetVolume(0), ndspAuxGetVolume(1));
     ndspSetMasterVol(1.0f);
     pm_dspa_enabled = 1;
-    pm_log("dspaudio: on, 23 voices on ndsp channels 0 to 22, effect return on channel 23, cache %u KB", cache_budget / 1024);
+    pm_log("dspaudio: on, 24 engine voices on 23 ndsp channels 0 to 22 (lowest free at start), effect return on channel 23, cache %u KB", cache_budget / 1024);
     return 1;
 }
 
@@ -475,6 +480,12 @@ void pm_dspa_stats_log(void) {
              ndspGetFrameCount(), ndspGetDroppedFrames());
     pm_log_d("audio dsp: aux callbacks bus0 %u bus1 %u core %u cost avg %u max %u us, effect frames queued %u dropped %u",
              ax_n[0], ax_n[1], ax_core, (ax_n[0] + ax_n[1]) ? ax_us_sum / (ax_n[0] + ax_n[1]) : 0, ax_us_max, fx_emitted, fx_dropped);
+    if (pm_debug_has("audiostat")) {
+        pm_log_d("audio voices w%u: starts %u no channel %u cut %u (cache give-up %u, loop cap %u), non-adpcm %u, playing max %u",
+                 ++vc_win, st_starts, vc_n[DSPA_VC_NOCHAN], vc_n[DSPA_VC_GIVEUP] + vc_loopcap, vc_n[DSPA_VC_GIVEUP], vc_loopcap, vc_n[DSPA_VC_NONADPCM], st_voice_max);
+        memset(vc_n, 0, sizeof vc_n);
+        vc_loopcap = 0;
+    }
     st_blocks = st_voice_sum = st_voice_max = st_starts = st_stops = st_ends = st_cost_sum = st_cost_max = st_late = st_bl_sum = st_bl_max = st_sets = st_set_us = 0;
     c_hit = c_miss = c_evict = c_fail = dec_n = dec_us_sum = dec_us_max = 0;
     ax_us_sum = ax_us_max = 0; ax_n[0] = ax_n[1] = 0;
