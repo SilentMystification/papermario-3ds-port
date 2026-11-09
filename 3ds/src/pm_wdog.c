@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "pm_port.h"
+#include "pm_thread.h"
 #include "pm_build.h"
 
 extern volatile int pm_io_quiet; /* pm_log.c: set while the app is suspended or asleep */
@@ -150,6 +151,6 @@ static void wd_main(void* arg) {
 void pm_wd_start(void) {
     if (wd_th) return;
     LightLock_Init(&wd_lock);
-    wd_th = threadCreate(wd_main, NULL, 8 * 1024, 0x3F, 1, false);
+    wd_th = pm_thread_create(wd_main, NULL, 8 * 1024, 0x3F, 1, "wdog");
     pm_log_w("watchdog: %s%u s, monitor thread %s", limit_s ? "" : "off, hang limit ", limit_s, wd_th ? "on core 1" : "NOT STARTED");
 }

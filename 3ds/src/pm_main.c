@@ -10,6 +10,8 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include "pm_port.h"
+#include "pm_thread.h"
+#include "pm_crash_page.h"
 unsigned pm_log_late_con(void); /* pm_log.c: B1 check */
 unsigned pm_log_con_copies(void), pm_log_con_nomenu(void), pm_log_late_drop(void);
 /* O6: a switch word read once. Not for the words the options panel changes at run time (nofog, nolight). */
@@ -22,7 +24,7 @@ unsigned pm_log_con_copies(void), pm_log_con_nomenu(void), pm_log_late_drop(void
 extern void boot_main(void* data);
 const char* pm_wd_phase_name(unsigned p);
 
-static u8 crash_stack[0x4000] __attribute__((aligned(8)));
+static int crash_taken; /* CRASHALL: the first crash handler ends the process; another thread that faults waits here */
 static char args[256];
 
 /* Stack records: bounds of the game and audio thread stacks, a fill pattern for the high-water mark.
@@ -66,17 +68,89 @@ void pm_fpscr_setup(const char* who) {
     pm_log_d("fpscr %s before %08x after %08x", who, before, fpscr_get());
 }
 
+struct CrashPx { u8* fb; u16 pw; int x0; };
+static void crash_px_set(void* c, int x, int y) {
+    const struct CrashPx* p = (const struct CrashPx*)c;
+    u8* d = p->fb + ((size_t)(x + p->x0) * p->pw + (p->pw - 1 - y)) * 3; /* BGR, column-major: the layout pm_gpu_shot_top_displayed_w reads */
+    d[0] = d[1] = d[2] = 0xFF;
+}
+
+/* The page is drawn into the top screen's back buffer (no page buffer): clear it, the lit pixels by the CPU, flush, swap. */
+static void crash_page_draw(const char* const* lines, int n) {
+    u16 pw = 0, lw = 0; /* pw: physical width (one column of pixels), lw: the logical width of the top screen */
+    u8* fb = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, &pw, &lw);
+    if (!fb) return;
+    memset(fb, 0, (size_t)pw * lw * 3);
+    struct CrashPx c = { fb, pw, ((int)lw - PM_CRASH_PAGE_W) / 2 };
+    pm_crash_page_render(crash_px_set, &c, lines, n);
+    GSPGPU_FlushDataCache(fb, (u32)pw * lw * 3);
+    gfxScreenSwapBuffers(GFX_TOP, false);
+}
+
+/* A or START ends the wait, or 60 s. The crash tick is refreshed here: the watchdog's 3 s limit is for a handler that hangs. */
+static void crash_page_wait(void) {
+    u64 t0 = svcGetSystemTick() / (SYSCLOCK_ARM11 / 1000ull);
+    for (;;) {
+        hidScanInput();
+        if (hidKeysDown() & (KEY_A | KEY_START)) return;
+        u64 now = svcGetSystemTick() / (SYSCLOCK_ARM11 / 1000ull);
+        if (now - t0 >= 60000ull) return;
+        pm_wd_crash_tick = (unsigned)now | 1u;
+        svcSleepThread(16000000LL);
+    }
+}
+
+/* CRASHALL part 2: the ARM crash page (pm_crash_page.c renders it). CPU writes only, no lock. */
+static void crash_page_show(const char* type, const char* tname, const ERRF_ExceptionInfo* excep, const CpuRegisters* regs, const StackRec* st) {
+    static char pg[PM_CRASH_PAGE_LINES][56];
+    const char* lines[PM_CRASH_PAGE_LINES];
+    int n = 0, nw = 0;
+    u32 words[10];
+    snprintf(pg[n++], 56, "ARM CRASH: %s", type);
+    snprintf(pg[n++], 56, "THREAD %s", tname);
+    snprintf(pg[n++], 56, "PC %08lX LR %08lX SP %08lX", (unsigned long)regs->pc, (unsigned long)regs->lr, (unsigned long)regs->sp);
+    snprintf(pg[n++], 56, "FAR %08lX FSR %08lX CPSR %08lX", (unsigned long)excep->far, (unsigned long)excep->fsr, (unsigned long)regs->cpsr);
+    for (int i = 0; i < 13; i += 4) {
+        char* b = pg[n++];
+        int k = 0;
+        for (int j = i; j < i + 4 && j < 13; j++) k += snprintf(b + k, 56 - (size_t)k, "R%d %08lX ", j, (unsigned long)regs->r[j]);
+    }
+    if (st && regs->sp >= st->lo && regs->sp < st->hi) {
+        const u32* sp = (const u32*)(regs->sp & ~3u);
+        const u32* end = (const u32*)st->hi;
+        for (int i = 0; sp + i < end && i < 2048 && nw < 10; i++) {
+            u32 v = sp[i];
+            if (v >= 0x00100000u && v < 0x01000000u) words[nw++] = v;
+        }
+    }
+    snprintf(pg[n++], 56, "%s", nw ? "CODE-LIKE STACK WORDS" : "NO CODE-LIKE STACK WORDS");
+    for (int i = 0; i < nw; i += 5) {
+        char* b = pg[n++];
+        int k = 0;
+        for (int j = i; j < nw && j < i + 5; j++) k += snprintf(b + k, 56 - (size_t)k, "%08lX ", (unsigned long)words[j]);
+    }
+    snprintf(pg[n++], 56, "BUILD #%s", PM_BUILD_STR);
+    snprintf(pg[n++], 56, "LOOP PHASE %u (%s) FRAME %u", pm_wd_phase, pm_wd_phase_name(pm_wd_phase), pm_frame_count());
+    snprintf(pg[n++], 56, "A OR START: EXIT (60 S)");
+    for (int i = 0; i < n; i++) lines[i] = pg[i];
+    crash_page_draw(lines, n);
+    crash_page_wait();
+}
+
 static void crash_handler(ERRF_ExceptionInfo* excep, CpuRegisters* regs) {
     static const char* names[] = { "prefetch abort", "data abort", "undefined instruction", "VFP" };
     char buf[200];
     int n;
+    if (__atomic_exchange_n(&crash_taken, 1, __ATOMIC_ACQ_REL)) for (;;) svcSleepThread(1000000000LL); /* CRASHALL: one dump; the first handler ends the process */
     pm_wd_crash_tick = (unsigned)(svcGetSystemTick() / (SYSCLOCK_ARM11 / 1000ull)) | 1u; /* LB4: the monitor thread ends the process if this handler does not finish in 3 s */
     const StackRec* st = NULL;
     for (int i = 0; i < 2; i++)
         if (recs[i].hi && regs->sp >= recs[i].lo && regs->sp <= recs[i].hi + 512) st = &recs[i];
+    const char* tname = pm_thread_name_current();
+    if (!tname) tname = st ? st->name : "other";
     n = snprintf(buf, sizeof(buf),
                  "\n[CRASH] %s thread=%s (%lx) pc=%08lx lr=%08lx sp=%08lx far=%08lx fsr=%08lx cpsr=%08lx build #%s\n",
-                 excep->type < 4 ? names[excep->type] : "?", st ? st->name : "other",
+                 excep->type < 4 ? names[excep->type] : "?", tname,
                  (unsigned long)threadGetCurrent(), (unsigned long)regs->pc, (unsigned long)regs->lr,
                  (unsigned long)regs->sp, (unsigned long)excep->far, (unsigned long)excep->fsr,
                  (unsigned long)regs->cpsr, PM_BUILD_STR);
@@ -117,6 +191,7 @@ static void crash_handler(ERRF_ExceptionInfo* excep, CpuRegisters* regs) {
     n = snprintf(buf, sizeof(buf), "[CRASH] last game loop phase %u (%s), steps %u\n[CRASH] exiting the process\n",
                  pm_wd_phase, pm_wd_phase_name(pm_wd_phase), pm_frame_count());
     pm_crash_line(buf, n);
+    crash_page_show(excep->type < 4 ? names[excep->type] : "?", tname, excep, regs, st);
     /* LB4: svcBreak(USERBREAK_PANIC) left the console frozen. End the process: the system returns to the menu. */
     pm_exit_process();
 }
@@ -136,7 +211,6 @@ void pm_fatal_stop(const char* msg) {
 void pm_crash_install(void* stack, unsigned size) {
     threadOnException(crash_handler, (u8*)stack + size, WRITE_DATA_TO_HANDLER_STACK);
 }
-void pm_crash_install_here(void) { pm_crash_install(crash_stack, sizeof(crash_stack)); } /* CORE2C-3: the logic thread (one crash at a time) */
 
 u64 pm_loop_tick; /* JT: the tick the main loop read in this pass (pm_gpu_end reads it, no svc call of its own) */
 unsigned pm_svc_n; /* EC2: svc tick reads, counted for the empty close count */
@@ -783,7 +857,6 @@ static void pm_boot_report(void) {
 static void game_thread(void* arg) {
     (void)arg;
     pm_boot_mark(PMB_THREAD, 0);
-    pm_crash_install(crash_stack, sizeof(crash_stack));
     pm_stack_register(0, "game", 256 * 1024);
     char sw[256]; /* H06d: a bigger array here stops the boot (FX3a, H06d: _svfprintf_r PC 0), so the limit stays and a cut is handled */
     memset(sw, 0, sizeof(sw));
@@ -866,6 +939,7 @@ static void pm_shutdown(void) {
 
 int main(int argc, char** argv) {
     pm_boot_mark(PMB_MAIN, 0); /* BOOT-1 */
+    pm_thread_adopt("main");
     args[0] = 0;
     for (int i = 1; i < argc; i++) {
         strncat(args, argv[i], sizeof(args) - strlen(args) - 2);
@@ -876,7 +950,7 @@ int main(int argc, char** argv) {
     chdir("sdmc:/3ds/PaperMario");
     s32 prio = 0x30;
     svcGetThreadPriority(&prio, CUR_THREAD_HANDLE);
-    Thread t = threadCreate(game_thread, NULL, 256 * 1024, prio, 0, false);
+    Thread t = pm_thread_create(game_thread, NULL, 256 * 1024, prio, 0, "game");
     if (!t) return 1;
     threadJoin(t, U64_MAX);
     threadFree(t);

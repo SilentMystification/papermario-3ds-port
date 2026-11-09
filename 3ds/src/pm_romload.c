@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "pm_port.h"
+#include "pm_thread.h"
 #include "pm_romload.h"
 
 /* BOOT: the ROM image is streamed from the SD card while the game starts. pm_rom_init checks the header, allocates the image and
@@ -180,7 +181,7 @@ int pm_rom_stream_start(const char* path, unsigned char* block, unsigned size, c
     rs_block = block; rs_size = size; rs_keep = keep; rs_nkeep = nkeep;
     rs_game = threadGetCurrent();
     rs_t0 = svcGetSystemTick();
-    rs_th = threadCreate(rs_loader, NULL, 8 * 1024, 0x2F, 0, false);
+    rs_th = pm_thread_create(rs_loader, NULL, 8 * 1024, 0x2F, 0, "rs_loader");
     if (!rs_th) { /* no thread: the game reads every chunk on demand; nothing else changes */
         pm_log_e("rom stream: no loader thread, demand reads only");
     }

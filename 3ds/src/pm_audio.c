@@ -2,6 +2,7 @@
 #include <string.h>
 #include <unistd.h>
 #include "pm_port.h"
+#include "pm_thread.h"
 #include "pm_au2.h"
 #include "pm_dspaud.h"
 /* C1WAIT: modular 32 bit window counters. pm_au_pf_lgj: the join wait of a join run on the logic thread (its step time); pm_au_pf_job:
@@ -84,7 +85,6 @@ static unsigned long long au_last;
 static unsigned au_pr_n, au_pr_sum, au_pr_min = 0xFFFFFFFFu, au_pr_max, au_pr_on = 2;
 static unsigned au_w_n, au_w_sum, au_w_max, au_j_sum, au_j_max, au_j_t0, au_g_sum;
 
-static u8 au_crash_stack[0x4000] __attribute__((aligned(8)));
 
 int pm_on_audio(void) { return (au_thread && threadGetCurrent() == au_thread) || pm_au2_on_render(); }
 
@@ -95,7 +95,6 @@ void pm_audio_gate(void) {
 
 static void au_main(void* unused) {
     (void)unused;
-    pm_crash_install(au_crash_stack, sizeof(au_crash_stack)); /* the engine runs here: a fault needs its own trace */
     pm_stack_register(1, "audio", 64 * 1024);
     pm_fpscr_setup("audio");
     au_core = (int)svcGetProcessorID();
@@ -113,10 +112,10 @@ void pm_au_thread_start(void (*entry)(void*), void* arg) {
     s32 prio = 0x30;
     svcGetThreadPriority(&prio, CUR_THREAD_HANDLE);
     /* core 1 (system core) works after APT_SetAppCpuTimeLimit in pm_log_start. If it fails, core 0 (same protocol, runs when the game thread waits). */
-    if (!pm_debug_has("audiocore0")) au_thread = threadCreate(au_main, NULL, 64 * 1024, prio, 1, false);
+    if (!pm_debug_has("audiocore0")) au_thread = pm_thread_create(au_main, NULL, 64 * 1024, prio, 1, "audio");
     if (!au_thread) {
         pm_log_w("audio thread on core 1 not created, using core 0");
-        au_thread = threadCreate(au_main, NULL, 64 * 1024, prio, -2, false);
+        au_thread = pm_thread_create(au_main, NULL, 64 * 1024, prio, -2, "audio");
     }
     if (!au_thread) {
         pm_log_e("audio thread failed\n");

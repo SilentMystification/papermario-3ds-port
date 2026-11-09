@@ -342,6 +342,8 @@ dkp_add_embedded_binary_library(pm_shader5_lib pm_shader5)
 
 set(PORT_SRC
     src/pm_main.c
+    src/pm_thread.c
+    src/pm_crash_page.c
     src/pm_heaphi.c
     src/pm_mem.c
     src/pm_linear.c
