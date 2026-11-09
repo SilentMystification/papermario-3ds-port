@@ -12290,7 +12290,7 @@
       "status": "verified",
       "subject": "File select (fileselect switch): Copy File, File 1 (slot 0) to File 4 (slot 3). The copy writes cheats_slot3.ini from cheats_slot0.ini (log 'cheats: saved slot 3'). Works with File 4 empty (copied message) or with data (Yes in the confirm). Shot: the file select at frame 300 (shotwin), after the copy (run 122287: the copy line between f120 and f180 on the empty path; run 122673: an up press 30 scans after the confirm opened was lost and A took No, so the up comes 60 scans after it, twice).",
       "proves": "CHEATSAVE2: pm_cheat_file_copy at both Copy File paths (filemenu_main.c empty destination, filemenu_yesno.c FM_CONFIRM_COPY).",
-      "debug": "fileselect fs1off shots shotwin=300:1 loglevel=debug padscript=wait90,down*4,wait15,down*4,wait15,right*4,wait15,A*4,wait30,up*4,wait15,up*4,wait15,A*4,wait30,down*4,wait15,right*4,wait15,A*4,wait60,up*4,wait15,up*4,wait15,A*4,wait60",
+      "debug": "fileselect fs1off shots shotwin=300:1 loglevel=debug padscript=@pad_cheatsave_copy.txt",
       "until": "shot 0 frame \\d+",
       "cap": 25,
       "deadline": 20,
