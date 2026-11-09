@@ -10,7 +10,10 @@ static inline void pm_rs_need(unsigned addr, unsigned len) {
     pm_rs_need_slow(addr, len);
 }
 int pm_rs_read_direct(unsigned addr, void* out, unsigned n);
-unsigned pm_rom_direct_n(void); /* BOOT2: direct reads so far */ /* 1: out was read from the file (chunks not ready yet) */
+unsigned pm_rom_direct_n(void);
+int pm_rom_read_exact(unsigned addr, void* out, unsigned n); /* BOOT2 fix a: exact bytes while the stream runs (pm_os.c), 1 = done */
+void pm_rs_auread(unsigned addr, unsigned n); /* BOOT2 auread: au_read_rom reads before the stream is done */
+void pm_rs_auread_get(unsigned* n, unsigned* bytes, unsigned* max, unsigned* chunks); /* BOOT2: direct reads so far */ /* 1: out was read from the file (chunks not ready yet) */
 /* Opens sdmc:/3ds/PaperMario/<path> and starts the loader thread. keep NULL: the full image at its own offsets. 0: open failed. */
 int pm_rom_stream_start(const char* path, unsigned char* block, unsigned size, const PmRsSeg* keep, unsigned nkeep);
 void pm_rom_stream_poll_slow(void);

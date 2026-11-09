@@ -750,12 +750,14 @@ void pm_options_prof_boot(void); /* PROFROW, pm_options.c */
  * once, at the first title-screen frame, from the stored ticks. All values are ms after main() except the ROM read (ms, MB/s). */
 static u64 pmb_tick[PMB_N];
 static unsigned pmb_set, pmb_arg[PMB_N], pmb_rc[PMB_N], pmb_dc[PMB_N];
+static unsigned pmb_au[4]; /* BOOT2 auread at the first draw: n bytes max chunks */
 __attribute__((cold, noinline)) void pm_boot_mark(int id, unsigned arg) {
     if (id < 0 || id >= PMB_N || (pmb_set >> id & 1u)) return;
     pmb_tick[id] = svcGetSystemTick();
     pmb_arg[id] = arg;
     pmb_rc[id] = pm_rom_order_n();
     pmb_dc[id] = pm_rom_direct_n();
+    if (id == PMB_DRAW) pm_rs_auread_get(&pmb_au[0], &pmb_au[1], &pmb_au[2], &pmb_au[3]);
     pmb_set |= 1u << id;
 }
 static unsigned pmb_ms(int id) { return (unsigned)((pmb_tick[id] - pmb_tick[PMB_MAIN]) / (SYSCLOCK_ARM11 / 1000ull)); }
@@ -777,6 +779,7 @@ static void pm_boot_report(void) {
     pm_log_w("boot ms main %u log %u opt %u rom %u (%.1f MB/s) gfx %u audio %u first %u title %u rdone %u waits %u wms %u",
              pmb_ms(PMB_THREAD), pmb_ms(PMB_LOG), pmb_ms(PMB_OPT), rom_ms, mbs, pmb_ms(PMB_GFX), pmb_ms(PMB_AUDIO), pmb_ms(PMB_DRAW), pmb_ms(PMB_TITLE),
              rdone, waits, wms);
+    if (pmb_set >> PMB_DRAW & 1u) pm_log_w("auread n %u bytes %u max %u chunks %u", pmb_au[0], pmb_au[1], pmb_au[2], pmb_au[3]); /* BOOT2: at the first draw */
     if (pmb_rc[PMB_TITLE]) pm_log_w("romorder chunks first %u title %u of %u direct first %u title %u", pmb_rc[PMB_DRAW], pmb_rc[PMB_TITLE], 320u, pmb_dc[PMB_DRAW], pmb_dc[PMB_TITLE]); /* PM_ROM_FULL >> 17 */
 }
 
