@@ -40,6 +40,7 @@ u8 pm_hud_aux_cache[0x38000] __asm__("D_80200000") __attribute__((aligned(0x1000
 
 static const void* last_asset_src;
 static char last_asset_name[24];
+char pm_shape_name[24] = "none"; /* SEAMFIX: the asset name of the shape file in pm_shape_buf */
 static void swap_hit_file(u8* hit, u32 size);
 static u32 rbe(const u8* p) {
     return ((u32)p[0] << 24) | ((u32)p[1] << 16) | ((u32)p[2] << 8) | p[3];
@@ -385,6 +386,7 @@ void decode_yay0(void* src, void* dst) {
     pm_tex_invalidate(dst, dec);
     /* ROM data is big-endian. The real loaders read these two kinds of file in place, so convert them here, once. */
     if (dst == (void*)pm_shape_buf) {
+        { extern char wMapShapeName[]; memcpy(pm_shape_name, src == last_asset_src ? last_asset_name : wMapShapeName, sizeof pm_shape_name); } /* SEAMFIX: the seamfix log line names the shape (world.c calls its own load_asset_by_name, not the wrap) */
         fix_shape(dst, dec);
         { extern unsigned pm_dlc_gen; pm_dlc_gen++; } /* DLC1: the shape file is final now */
     } else if (src == last_asset_src) {

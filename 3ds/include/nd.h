@@ -193,6 +193,29 @@ typedef struct NdDlcEnv {
 } NdDlcEnv;
 int nd_dlc_compile(NdObj* o, const uint32_t* list, const NdDlcEnv* env); /* list: word pairs in host order, up to G_ENDDL */
 void nd_dlc_free(NdObj* o);
+
+/* SEAMFIX: the map-wide T-point table (nd_seam.c, pure C, host safe). A T point is a vertex of the map mesh that lies inside a boundary edge of another triangle
+ * (within eps, int64 tests in world space): the PICA tests the pixel centre, so the gap or the T-junction shows as a line or pinholes where the N64 coverage healed it.
+ * The table covers the lists drawn under an identity or an integer translation matrix (shape tree, group transformMatrix); positions in the receiver list's object
+ * coordinates. Entries per list sorted by raw triangle ordinal (every triangle of a TRI1/TRI2 op in list order), edge (0 v0-v1, 1 v1-v2, 2 v2-v0), distance from the edge start. */
+typedef struct NdTp { int16_t p[3]; uint16_t tri; uint16_t edge; } NdTp;
+typedef struct NdSeamList { uint32_t addr; int32_t t[3]; uint32_t first; uint16_t cnt; uint8_t cls, ok; } NdSeamList; /* cls 0 identity, 1 integer translation t, 2 other; ok: compilable ops, one transform */
+typedef struct NdSeamTab {
+    unsigned nlist; NdSeamList* list;  /* every list of the shape tree, sorted by addr */
+    unsigned ntp; NdTp* tp;            /* the T points handed to the compiler */
+    unsigned tp_all, tp_id, tp_int, skip_mtx, skip_ref; /* found; inserted into identity lists, integer translation lists; refused: receiver or point under another matrix, receiver list not compilable */
+    unsigned ntri, nvert, nbedge, nl_cls[3], far; /* triangles, distinct positions, boundary edges, lists per class, triangles beyond 8192 units */
+} NdSeamTab;
+#define ND_SEAM_EPS2X 3   /* eps = 1.5 units, as 2 * eps */
+int nd_seam_build(NdSeamTab* t, const uint8_t* buf, unsigned size); /* buf: the fixed shape file (host pointers inside buf, host order Vtx and Mtx words). 0 ok, -1 no memory */
+void nd_seam_free(NdSeamTab* t);
+const NdSeamList* nd_seam_find(const NdSeamTab* t, uint32_t addr);
+/* the detection core on any triangle soup (the builder uses it; the host test runs it on compiled output) */
+typedef struct NdSeamSoup NdSeamSoup;
+NdSeamSoup* nd_seam_soup_new(unsigned maxtri);
+int nd_seam_soup_list(NdSeamSoup* s, uint32_t addr, int cls, const int32_t t[3], int ok); /* returns the list number, -1 when full */
+void nd_seam_soup_tri(NdSeamSoup* s, int list, unsigned ord, const int32_t w[3][3], int exact); /* w: world positions; exact 0: rounded from another matrix */
+int nd_seam_soup_finish(NdSeamSoup* s, NdSeamTab* t); /* detects, fills t (lists and T points), frees s. 0 ok, -1 no memory */
 /* S6-2a: the texture state of an entity model display list, decoded from its words (pure, host safe). The walker's tile 0 state at the end of the list
  * (SETTIMG, SETTILE tile 0, SETTILESIZE tile 0, LOADBLOCK tile 0, and for a CI format the LOADTLUT of the palette bank on tile 7). Returns a code:
  * NDTX_NONE no texture op; NDTX_OK one bind, native-ready; NDTX_MULTI more binds (the end state is decoded, not native-ready); the others are fallbacks
