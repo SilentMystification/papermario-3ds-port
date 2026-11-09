@@ -18,6 +18,7 @@ void nd_walk_ops(void* list, unsigned nbytes); /* nd_walk.c: a span that keeps t
 void nd_walk_rec_model(const Gfx* q);           /* nd_walk.c: a model record, as the walker's G_PM_REC arm */
 void nd_walk_spr(const Gfx* q);                 /* nd_walk.c: a sprite record and its geometry words */
 void nd_walk_ent(const Gfx* q, unsigned words); /* nd_walk.c: an entity record (and its G_DL) */
+void nd_glyph_run(const uint32_t* p);           /* nd_tex_set.c: a message glyph */
 int nd_rec_sub;
 
 #define CH_WORDS (32768u / 4u)
@@ -153,6 +154,20 @@ void nd_rec_ent(const void* rec) {
     p[1] = 0;
     memcpy(p + 2, rec, G_PM_ENT_WORDS * 8u);
 }
+void nd_rec_glyph(const void* raster, const void* pal, unsigned w, unsigned h, unsigned tile_form, const void* rect) {
+    const uint32_t* r = (const uint32_t*)rect;
+    nd_rec_cut();
+    uint32_t* p = rec_take(8);
+    ndc_n[NDC_GLYPH]++;
+    p[0] = NDC_HDR(NDC_GLYPH, 3, (pal ? 1u : 0u) | (tile_form ? 2u : 0u));
+    p[1] = (uint32_t)(uintptr_t)raster;
+    p[2] = (uint32_t)(uintptr_t)pal;
+    p[3] = (w & 0xffffu) | (h << 16);
+    p[4] = r[0];
+    p[5] = r[1];
+    p[6] = r[3];
+    p[7] = r[5];
+}
 const uint32_t* nd_rec_mark(void) {
     nd_rec_cut();
     return wp;
@@ -217,6 +232,7 @@ static void stream_run(const uint32_t* p, const uint32_t* stop) {
         case NDC_MODEL: nd_walk_rec_model((const Gfx*)(p + 2)); break;
         case NDC_SPR: nd_walk_spr((const Gfx*)(p + 2)); break;
         case NDC_ENT: nd_walk_ent((const Gfx*)(p + 2), (h >> 16) & 0xffu); break;
+        case NDC_GLYPH: nd_glyph_run(p); break;
         case NDC_CALL: stream_run((const uint32_t*)(uintptr_t)p[1], (const uint32_t*)(uintptr_t)p[2]); break;
         default: run_bad(h, p); return;
         }

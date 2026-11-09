@@ -16,6 +16,8 @@ enum {
     NDC_CALL = 4,  /* D1: replay the commands from arg2 up to payload unit 0 word 0 (the floor reflection range) */
     NDC_SPR = 5,   /* D2: payload = the sprite record (G_PM_SPR, 4 pairs), then its gSPVertex and gSP2Triangles words */
     NDC_ENT = 6,   /* D3: payload = an entity record (G_PM_ENT, 4 pairs; DRAW or END form), then for a DRAW record its G_DL word (5 pairs) */
+    NDC_GLYPH = 7, /* D4a-2: a message glyph (msg_draw.c). arg bit 0: a 16-entry palette load first, bit 1: the tile form of the 4 bit load (else block).
+                    * arg2 = the glyph raster; unit 0: palette, width | height << 16; units 1 and 2: the texture rectangle words w0, w1, s t, dsdx dtdy */
     NDC_N
 };
 #define NDC_HDR(op, units, arg) (((uint32_t)(op) << 24) | ((uint32_t)(units) << 16) | ((uint32_t)(arg) & 0xffffu))
@@ -27,6 +29,9 @@ void nd_rec_model(const void* rec, unsigned words); /* D1: a model record of `wo
 void nd_rec_spr(const void* rec, const void* geo); /* D2: a sprite record (4 pairs) and its 2 geometry words */
 void nd_rec_ent_draw(const void* list, unsigned segid, unsigned varray, unsigned form); /* D3: the entity draw of a static list (record and its G_DL) */
 void nd_rec_ent(const void* rec);                   /* D3: an entity record with no G_DL (the entcheck END record) */
+/* D4a-2: a message glyph: the palette load (pal NULL: none), the 4 bit CI load of a w x h raster (tile_form: gDPLoadTextureTile_4b, else
+ * gDPLoadTextureBlock_4b) and its texture rectangle (rect: the 3 words of gSPTextureRectangle). Only with nd_rec_sub == 0. */
+void nd_rec_glyph(const void* raster, const void* pal, unsigned w, unsigned h, unsigned tile_form, const void* rect);
 const uint32_t* nd_rec_mark(void);                  /* D1: cut, then the stream position (a range start or end) */
 void nd_rec_call(const uint32_t* a, const uint32_t* b); /* D1: replay the range [a, b) here */
 /* D1: a builder that writes a list for later (build_custom_gfx) runs with nd_rec_sub > 0: records go to that list, not to the stream. */
