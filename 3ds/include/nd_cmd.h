@@ -29,32 +29,28 @@ void nd_rec_model(const void* rec, unsigned words); /* D1: a model record of `wo
 void nd_rec_spr(const void* rec, const void* geo); /* D2: a sprite record (4 pairs) and its 2 geometry words */
 void nd_rec_ent_draw(const void* list, unsigned segid, unsigned varray, unsigned form); /* D3: the entity draw of a static list (record and its G_DL) */
 void nd_rec_ent(const void* rec);                   /* D3: an entity record with no G_DL (the entcheck END record) */
-/* D4b-1, D5: the texture rectangle (the nd_gbi.h redirect records it; only with nd_rec_sub == 0). */
+/* D4b-1, D5: the texture rectangle (the nd_gbi.h redirect records it). */
 void nd_rec_texrect(uint32_t w0, uint32_t w1, uint32_t hs, uint32_t hd);
 void nd_rec_state(uint32_t w0, uint32_t w1); /* D4b-3: one state op, appended to the open NDC_STATE run (a new run after any other command) */
 const uint32_t* nd_rec_pos(void);                   /* D4b-2: the stream write position (no cut): moves when any command is recorded */
 const uint32_t* nd_rec_mark(void);                  /* D1: cut, then the stream position (a range start or end) */
 void nd_rec_call(const uint32_t* a, const uint32_t* b); /* D1: replay the range [a, b) here */
 /* D6c: inline data (the vertex buffers that the list held behind a branch). Returns 8-byte aligned memory that lives as long as the stream of
- * the context (the replay skips it: an NDC_JUMP over the data). In a list for later (nd_rec_sub > 0) the data goes into that list behind a
- * branch word, as before. */
+ * the context (the replay skips it: an NDC_JUMP over the data). */
 void* nd_rec_data(unsigned bytes);
 /* D6c: a list for later of an effect (built once, drawn by one or more calls) as a stream range. nd_sub_open records an NDC_JUMP over the range
- * (patched by nd_sub_close), nd_sub_call replays it (NDC_CALL). In a list for later (nd_rec_sub > 0): the list form (a branch word over the
- * sublist, its G_ENDDL, a G_DL push call). */
-typedef struct { const uint32_t* a; const uint32_t* b; uint32_t* br; int list; } NdSub;
+ * (patched by nd_sub_close), nd_sub_call replays it (NDC_CALL). D10a: build_custom_gfx puts its ranges inside one such jump. */
+typedef struct { const uint32_t* a; const uint32_t* b; uint32_t* br; } NdSub;
 void nd_sub_open(NdSub* s);
 void nd_sub_close(NdSub* s);
 void nd_sub_call(const NdSub* s);
-/* D1: a builder that writes a list for later (build_custom_gfx) runs with nd_rec_sub > 0: records go to that list, not to the stream. */
-extern int nd_rec_sub;
-/* D7: build_custom_gfx writes its lists for later into stream memory (nd_rec.c): begin returns the room (16 KB), end keeps the used part. */
-void* nd_rec_list_begin(void);
-void nd_rec_list_end(void* end);
-int nd_rec_dyn(const void* p); /* D9: p is in frame stream memory (dynamic by address) */
+/* D10a: a custom gfx range (build_custom_gfx): nd_rec_mark at its start, the builder's commands, nd_rec_end. The model record names the range
+ * (R11) and the replay runs it to its NDC_END (nd_range_run). A static custom gfx list (SetCustomGfx) is recorded as commands (nd_rec_list). */
+void nd_rec_end(void);
+void nd_rec_list(const void* l);
 
 #define ND_REC_AUX_MAX 96 /* the most R13 words of one model record (make_texture_gfx with mipmaps and two palettes) */
 void nd_rec_cnt_take(unsigned o[NDC_N], unsigned* sw, unsigned* kb); /* PROF: commands per op and state ops (sw) since the last take; the stream high-water mark (KB) */
 /* Walker side (nd_rec.c). */
-void nd_stream_run(const uint32_t* head); /* replay one task stream */
+void nd_stream_run(const uint32_t* head); /* replay one task stream, or a range to its NDC_END */
 #endif
