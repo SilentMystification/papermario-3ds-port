@@ -9,6 +9,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include "nd.h"
+#include "ultra64.h"
+#include "nd_op.h"
 
 uint32_t f32tof24(float vf) {
     union { float f; uint32_t i; } v;
@@ -46,7 +48,51 @@ static void apply(const uint32_t* w, unsigned n) {
     }
 }
 
+/* HC4a: the typed op format (nd_op.h): ids free of the F3DEX2 and G_PM_* ops, the translation of each scalar op, the othermode inverse. */
+static void op_test(void) {
+    for (unsigned id = NDO_BASE; id < NDO_END_; id++) {
+        CHECK(!(id >= 0x01 && id <= 0x07) && !(id >= 0x0d && id <= 0x13) && id < 0xd7, "typed id %02x collides", id);
+        if (id != NDO_RARE) CHECK(nd_op_n64[id - NDO_BASE] >= 0xd7, "typed id %02x has no F3DEX2 op", id);
+    }
+    Gfx g[16]; uint32_t t[2];
+    gDPSetCycleType(&g[0], G_CYC_2CYCLE);
+    CHECK(nd_op_xlate(g[0].words.w0, g[0].words.w1, t) && (t[0] >> 24) == NDO_OMH && t[1] == g[0].words.w1, "cycle type");
+    CHECK(nd_op_om_mask(t[0] & 0xffffffu) == (3u << G_MDSFT_CYCLETYPE), "cycle type mask %08x", nd_op_om_mask(t[0] & 0xffffffu));
+    CHECK(nd_op_om_word(t) == g[0].words.w0, "othermode H inverse %08x %08x", nd_op_om_word(t), g[0].words.w0);
+    gDPSetRenderMode(&g[1], G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2);
+    CHECK(nd_op_xlate(g[1].words.w0, g[1].words.w1, t) && (t[0] >> 24) == NDO_OML && nd_op_om_word(t) == g[1].words.w0, "render mode");
+    CHECK(nd_op_om_mask(t[0] & 0xffffffu) == 0xfffffff8u, "render mode mask %08x", nd_op_om_mask(t[0] & 0xffffffu));
+    gSPSetOtherMode(&g[2], G_SETOTHERMODE_L, 0, 32, 0x12345678);
+    CHECK(nd_op_xlate(g[2].words.w0, g[2].words.w1, t) && nd_op_om_mask(t[0] & 0xffffffu) == 0xffffffffu, "othermode 32 bits");
+    gSPGeometryMode(&g[3], G_LIGHTING, G_ZBUFFER | G_SHADE);
+    CHECK(nd_op_xlate(g[3].words.w0, g[3].words.w1, t) && (t[0] >> 24) == NDO_GEOM && (t[0] & 0xffffffu) == (g[3].words.w0 & 0xffffffu) &&
+          t[1] == g[3].words.w1, "geometry mode");
+    gDPSetPrimColor(&g[4], 3, 200, 1, 2, 3, 4);
+    CHECK(nd_op_xlate(g[4].words.w0, g[4].words.w1, t) && (t[0] >> 24) == NDO_PRIM && (t[0] & 0xffffffu) == (g[4].words.w0 & 0xffffu) &&
+          t[1] == 0x01020304u, "prim colour");
+    gSPTexture(&g[5], 0x8000, 0x4000, 0, G_TX_RENDERTILE, G_ON);
+    CHECK(nd_op_xlate(g[5].words.w0, g[5].words.w1, t) && (t[0] >> 24) == NDO_TEXTURE && (t[0] & 0xffffffu) == 1u && t[1] == 0x80004000u, "texture");
+    gSPSegment(&g[6], 5, 0x00123450);
+    CHECK(nd_op_xlate(g[6].words.w0, g[6].words.w1, t) && t[0] == NDO_W0(NDO_MW, NDO_MW_SEG << 16 | 5u) && t[1] == 0x00123450u, "segment");
+    gSPFogPosition(&g[7], 900, 1000);
+    CHECK(nd_op_xlate(g[7].words.w0, g[7].words.w1, t) && t[0] == NDO_W0(NDO_MW, NDO_MW_FOG << 16), "fog position");
+    gSPNumLights(&g[8], NUMLIGHTS_2);
+    CHECK(nd_op_xlate(g[8].words.w0, g[8].words.w1, t) && t[0] == NDO_W0(NDO_MW, NDO_MW_NUMLIGHT << 16) && t[1] == g[8].words.w1, "light count");
+    gMoveWd(&g[9], G_MW_LIGHTCOL, G_MWO_aLIGHT_3, 0x11223300);
+    CHECK(nd_op_xlate(g[9].words.w0, g[9].words.w1, t) && t[0] == NDO_W0(NDO_MW, NDO_MW_LIGHTCOL << 16 | 2u), "light colour %08x", t[0]);
+    gDPSetScissor(&g[10], G_SC_NON_INTERLACE, 10, 20, 300, 220);
+    CHECK(nd_op_xlate(g[10].words.w0, g[10].words.w1, t) && (t[0] >> 24) == NDO_SCISSOR && (t[0] & 0xffffffu) == (g[10].words.w0 & 0xffffffu) &&
+          t[1] == (g[10].words.w1 & 0xffffffu), "scissor");
+    gDPSetEnvColor(&g[11], 9, 8, 7, 6);
+    CHECK(nd_op_xlate(g[11].words.w0, g[11].words.w1, t) && t[0] == NDO_W0(NDO_ENV, 0) && t[1] == 0x09080706u, "env colour");
+    gSPVertex(&g[12], (Vtx*)0x00200000, 4, 0);
+    CHECK(!nd_op_xlate(g[12].words.w0, g[12].words.w1, t) && t[0] == g[12].words.w0 && t[1] == g[12].words.w1, "vertex word kept");
+    gDPSetCombineMode(&g[13], G_CC_SHADE, G_CC_SHADE);
+    CHECK(!nd_op_xlate(g[13].words.w0, g[13].words.w1, t), "combine stays a word in HC4a");
+}
+
 int main(int argc, char** argv) {
+    op_test();
     if (argc < 2) { fprintf(stderr, "usage: nd_cmd_test <ndref.bin> ...\n"); return 2; }
     for (int a = 1; a < argc; a++) {
         FILE* f = fopen(argv[a], "rb");

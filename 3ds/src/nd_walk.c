@@ -14,6 +14,7 @@
 #include "nd_cmd.h"
 #include "variables.h"
 #include "nd_int.h"
+#include "nd_op.h"
 
 extern int nd_c2_on; /* CORE2-2 census (nd_c2haz.c, switch c2haz) */
 void nd_c2_rec(const Gfx* rec, unsigned words);
@@ -23,45 +24,15 @@ unsigned pm_gbi_cur_op; /* PI2: op of the display list step now running (one sto
 
 int pm_gpu_spr_native(const uint32_t* rec); /* SPR4 */
 
-void g2_note(unsigned op, u32 w0) {
-    if (op == G_SETPRIMCOLOR) { pm_gpu_set_prim(nd_ws.prim, w0 & 0xffffu); nd_ws.prim_lod = w0 & 0xffffu; return; } /* SPR4-prim: LOD change closes the open batch */
-    if (op != G_SETOTHERMODE_H && op != G_SETOTHERMODE_L) return;
-    unsigned len = (w0 & 0xff) + 1, field = (w0 >> 8) & 0xff, sft = 32 - field - len;
-    unsigned mask = (len >= 32) ? 0xffffffffu : (((1u << len) - 1u) << sft);
-    if (op == G_SETOTHERMODE_H) nd_ws.om_kh |= mask; else nd_ws.om_kl |= mask;
-}
-
+/* HC4a: the skip test of the ops that are still words (combine, light memory). The typed scalar ops carry their own test (nd_set.c nd_op_same). */
 int g2_same(unsigned op, u32 w0, u32 w1) {
     switch (op) {
     /* R2B: each case skips only when the handler's writes equal the current state and its calls do nothing (sync_combine: sc_ok and
-     * the same input hash; pm_gpu_set_mode: the mode already set). */
+     * the same input hash). */
     case G_SETCOMBINE:
         return comb_set && nd_ws.comb_w0 == w0 && nd_ws.comb_w1 == w1 && box_folded == 0 && cmb_gen_seen == comb_gen && sc_ok &&
                sc_sig_now() == sc_sig;
-    case G_TEXTURE:
-        return nd_ws.tex_on == ((w0 & 0xff) != 0) && nd_ws.tex_ss == (w1 >> 16) && nd_ws.tex_ts == (w1 & 0xffffu) && sc_ok && sc_sig_now() == sc_sig;
-    case G_GEOMETRYMODE: {
-        unsigned g = (nd_ws.geom & (w0 & 0xffffffu)) | w1;
-        return g == nd_ws.geom && pm_gpu_mode_is((nd_ws.geom & G_ZBUFFER) != 0, (nd_ws.geom & G_LIGHTING) != 0);
-    }
     case G_MOVEMEM: return (w0 & 0xff) == G_MV_LIGHT && lt_mem_same(w0, w1);
-    case G_MOVEWORD: { /* R5B: the handler of G_MW_LIGHTCOL writes lt[k].col only (no other effect) */
-        unsigned index = (w0 >> 16) & 0xff, offset = w0 & 0xffff, k = offset / 24;
-        return index == G_MW_LIGHTCOL && k < 9 && (offset % 24) == 0 && lt[k].col[0] == (u8)(w1 >> 24) && lt[k].col[1] == (u8)(w1 >> 16) &&
-               lt[k].col[2] == (u8)(w1 >> 8);
-    }
-    case G_SETPRIMCOLOR: return nd_ws.prim == w1 && (u8)nd_ws.prim_lod == (u8)(w0 & 0xff) && sc_ok;
-    case G_SETENVCOLOR: return nd_ws.envc == w1 && sc_ok;
-    case G_SETFOGCOLOR: return fogc == w1;
-    case G_SETBLENDCOLOR: return blendc == w1;
-    case G_SETOTHERMODE_L:
-    case G_SETOTHERMODE_H: {
-        unsigned len = (w0 & 0xff) + 1, field = (w0 >> 8) & 0xff;
-        unsigned sft = 32 - field - len;
-        unsigned mask = (len >= 32) ? 0xffffffffu : (((1u << len) - 1u) << sft);
-        unsigned old = op == G_SETOTHERMODE_H ? nd_ws.omode_h : nd_ws.omode_l;
-        return (w1 & mask) == (old & mask) && (op == G_SETOTHERMODE_L || sc_ok);
-    }
     default: return 0;
     }
 }
@@ -287,14 +258,28 @@ static void walk_call(unsigned dbg, const Gfx* at, u32 w0, u32 w1) {
  * same handler as the walker's arm. The recorder dropped the RDP syncs; the branch form of G_DL stays a list word.
  * D10b: also the op executor of a flat op range (nd_ops_run): an RDP sync or G_SPNOOP is skipped before the prologue, a texture rectangle
  * takes its two RDPHALF units, G_ENDDL ends the range (the flat ranges hold no branch). */
+/* HC4a: one typed scalar op (nd_op.h) with the walker's rules: the skip test, then the prologue (pm_gbi_cur_op, gv_epoch, the debug op hook)
+ * and the setter. */
+static void op_typed(unsigned dbg, const uint32_t* u, const void* at) {
+    if (nd_op_same(u)) return;
+    const unsigned id = u[0] >> 24, op = id == NDO_RARE ? 0u : nd_op_n64[id - NDO_BASE];
+    pm_gbi_cur_op = op;
+    gv_epoch++; /* GV1b */
+    int fp = 0;
+    if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const Gfx*)at, 0, op, u[0], u[1]);
+    nd_op_apply(u);
+    if (__builtin_expect(fp, 0)) pm_ph_pop();
+}
 void nd_walk_state(const uint32_t* q, unsigned n) {
     const unsigned dbg = pm_walk_dbg;
     for (const uint32_t* e = q + 2u * n; q < e; q += 2) {
-        const u32 w0 = q[0], w1 = q[1];
-        const unsigned op = w0 >> 24;
+        u32 w0 = q[0], w1 = q[1];
+        unsigned op = w0 >> 24;
+        if (nd_op_typed(op)) { op_typed(dbg, q, q); continue; } /* HC4a: a typed op of a state run */
         if (nd_op_sync(op)) continue; /* the RDP syncs: no work on the 3DS */
         if (op == G_ENDDL) break;
-        if (g2_same(op, w0, w1)) { g2_note(op, w0); continue; }
+        { uint32_t t[2]; if (nd_op_xlate(w0, w1, t)) { op_typed(dbg, t, q); continue; } } /* a list word of a typed op (static lists until HC4e) */
+        if (g2_same(op, w0, w1)) continue;
         pm_gbi_cur_op = op;
         if (op != G_VTX && op != G_TRI1 && op != G_TRI2 && op != G_MTX && op != G_POPMTX && op != G_DL && op != G_MODIFYVTX) gv_epoch++; /* GV1b */
         int fp = 0;
@@ -316,46 +301,19 @@ void nd_walk_state(const uint32_t* q, unsigned n) {
             break;
         case G_POPMTX: gbi_popmtx(w1); break;
         case G_MOVEMEM: gbi_movemem(w0, w1); break;
-        case G_MOVEWORD: gbi_moveword(w0, w1); break;
         case G_MODIFYVTX: gbi_cold_modifyvtx(w0, w1); break;
         case G_DL:
             walk_call(dbg, (const Gfx*)q, w0, w1);
             if (((w0 >> 16) & 0xffu) == G_DL_NOPUSH) q = e - 2; /* D10c: a branch ends the list that holds it */
             break;
-        case G_SETCONVERT:
-            conv_k4 = (w1 >> 9) & 0xffu;
-            pm_comb_set_k4(conv_k4);
-            sync_combine();
-            break;
-        case G_SETKEYR:
-            keyc = (keyc & 0x00ffffffu) | ((w1 >> 8 & 0xffu) << 24);
-            keys = (keys & 0x00ffffffu) | ((w1 & 0xffu) << 24);
-            sync_combine();
-            break;
-        case G_SETKEYGB:
-            keyc = (keyc & 0xff000000u) | ((w1 >> 24 & 0xffu) << 16) | ((w1 >> 8 & 0xffu) << 8);
-            keys = (keys & 0xff000000u) | ((w1 >> 16 & 0xffu) << 16) | ((w1 & 0xffu) << 8);
-            sync_combine();
-            break;
-        case G_GEOMETRYMODE: set_geom(w0, w1); break;
-        case G_TEXTURE:
-        case G_SETOTHERMODE_H:
-        case G_SETOTHERMODE_L:
         case G_SETCOMBINE:
-        case G_SETPRIMCOLOR:
         case G_SETTIMG:
         case G_SETTILE:
         case G_LOADBLOCK:
         case G_LOADTILE:
         case G_LOADTLUT:
         case G_SETTILESIZE: tex_op(w0, w1); break;
-        case G_SETSCISSOR: set_scissor(w0, w1); break;
-        case G_SETFOGCOLOR: set_fogcolor(w1); break;
-        case G_SETBLENDCOLOR: set_blendcolor(w1); break;
-        case G_SETENVCOLOR: gbi_setenv(w1); break;
         case G_SETCIMG: gbi_setcimg(w0, w1); break;
-        case G_SETPRIMDEPTH: set_primdepth(w1); break;
-        case G_SETFILLCOLOR: set_fillcolor(w1); break;
         case G_FILLRECT: nd_fillrect(w0, w1); break;
         case G_PM_LST: ent_skipgen = 0; gp_prev_op = -1; break; /* D11a: an in-line static state list (nd_rec.c rec_inline): its list start as walk_call and nd_ops_run */
         case G_PM_ND: nd_native_rec(w0); break; /* D9: the native-only payload (the water splash bracket) */

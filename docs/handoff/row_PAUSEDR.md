@@ -11,6 +11,11 @@ pm_walk_drain("rom")) now waits for the whole queue (pm_wq_idle -> wq_block(c_em
 tens of ROM reads per step. Each read also posts pm_tex_invalidate (pm_os.c:407 -> pm_tex.c:1252, pm_wq_post); > 64 per step blocks on
 c_space (ring 64, nd_wq.c:35). Player raster loads (101b90_len_8f0.c:352) drain too: mac_01 may pay it as well.
 
+## State (oracle, 2026-11-09)
+Step 2 fix merged (60813a112: msg_rom_copy in dma_load_msg, dr/drw/wqf counters). The drain mechanism is still valid after DIRECT
+(pm_walk_drain, now nd_walk.c:494). Open, console only: the grey picture check and the other drain sources (setup step
+state_pause.c:128-190 ROM reads, > 64 tex invalidates per step block on the nd_wq ring of 64). The pause-open readback is row PAUSEOPEN.
+
 ## Start state
 Worktree build3ds/wt/PAUSEDR, branch PAUSEDR from main (hash in the first commit). PM_ROW=PAUSEDR, PM_LANE=PAUSEDR.
 

@@ -6,6 +6,7 @@
 #include "nd.h"
 #include "nd_ops.h"
 #include "nd_cmd.h"
+#include "nd_op.h"
 #include "variables.h"
 extern int pm_texf_centre; int pm_tex_filt_linear(void); /* TEXF: pm_options.c, pm_tex.c */
 
@@ -260,6 +261,10 @@ void nd_model_log(unsigned f) {
  * NDC_MODEL (the nested record, its payload), NDC_JUMP (effect data or the next chunk) and NDC_END (the end of the list, as G_ENDDL). */
 static int nd_r11_op(uint32_t w0, uint32_t w1, int pre, int* pend, int* has_cb, uint32_t* cw, uint32_t* mo, unsigned* nmo) {
     switch (w0 >> 24) {
+    case NDO_OMH: case NDO_OML: /* HC4a: a typed othermode op; the native draw takes the render mode as words (nd_op_om_word) */
+        if (*nmo < 4u) { const uint32_t u[2] = { w0, w1 }; mo[2 * *nmo] = nd_op_om_word(u); mo[2 * *nmo + 1] = w1; (*nmo)++; } return 1;
+    case NDO_PRIM: case NDO_ENV: case NDO_BLEND: case NDO_FOG: return 1;
+    case NDO_PRIMZ: if (!pre) return 0; *pend = 1; return 1;
     case 0xfcu: cw[0] = w0; cw[1] = w1; *has_cb = 1; return 1; /* SETCOMBINE */
     case 0xe3u: case 0xe2u: if (*nmo < 4u) { mo[2 * *nmo] = w0; mo[2 * *nmo + 1] = w1; (*nmo)++; } return 1; /* G_SETOTHERMODE_H, _L */
     case 0xfau: case 0xfbu: case 0xf9u: case 0xf8u: return 1; /* SETPRIMCOLOR, SETENVCOLOR, SETBLENDCOLOR, SETFOGCOLOR */

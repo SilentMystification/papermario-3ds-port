@@ -4,6 +4,7 @@
 #include "ultra64.h"
 #include "gbi_custom.h"
 #include "nd_int.h"
+#include "nd_op.h"
 #include "pm_gpu.h"
 #include "nd.h"
 #include "pm_tex.h"
@@ -25,14 +26,17 @@ extern Gfx* ModelRenderModes[];
 static __attribute__((noinline)) void rec_op(u32 w0, u32 w1) {
     unsigned op = w0 >> 24;
     if (nd_op_sync(op)) return;
-    if (g2_same(op, w0, w1)) { g2_note(op, w0); return; }
+    uint32_t t[2];
+    if (nd_op_xlate(w0, w1, t)) { /* HC4a: a typed scalar op (its own skip test) */
+        if (nd_op_same(t)) return;
+        gv_epoch++; /* GV1b, as the walker */
+        nd_op_apply(t);
+        return;
+    }
+    if (g2_same(op, w0, w1)) return;
     gv_epoch++; /* GV1b, as the walker */
     switch (op) {
-    case G_MOVEWORD: gbi_moveword(w0, w1); break;
-    case G_SETFOGCOLOR: set_fogcolor(w1); break;
-    case G_SETBLENDCOLOR: set_blendcolor(w1); break;
-    case G_SETENVCOLOR: gbi_setenv(w1); break;
-    case G_SETPRIMCOLOR: case G_SETCOMBINE: case G_SETOTHERMODE_L: case G_SETOTHERMODE_H: case G_SETTILESIZE: tex_op(w0, w1); break;
+    case G_SETCOMBINE: case G_SETTILESIZE: tex_op(w0, w1); break;
     default: pm_log("rec: op %u is not a record op f%u", op, pm_frame_count()); break;
     }
 }
