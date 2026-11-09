@@ -1165,7 +1165,8 @@ static unsigned src_hash(const void* p, unsigned n) {
 }
 static void tex_invalidate_body(const void* ptr, unsigned size) {
     pm_xf.inv_n++; /* MAPX-1 */
-    pm_tex_epoch_v++;
+    /* MAPX-5a: pm_tex_epoch_v moves only when a live slot overlaps the range (below): a ROM read or decode that holds no cached texture (a sprite
+     * raster, a map file) no longer resets the repeated-load skips (nd_tex_set.c tsz_last) of every texture. */
     if (ptr && size && (unsigned)ptr < (unsigned)gMapShapeData + 0x40000u && (unsigned)ptr + size > (unsigned)gMapShapeData) pm_dlc_gen++;
     unsigned start, end;
     int i;
@@ -1192,6 +1193,7 @@ static void tex_invalidate_body(const void* ptr, unsigned size) {
         img_hit = s->img && img < end && img + (s->slen ? s->slen : 1u) > start;
         pal_hit = s->tlut && pal < end && pal + (s->tlen ? s->tlen : 1u) > start;
         if (!img_hit && !pal_hit) continue;
+        pm_tex_epoch_v++; /* MAPX-5a: this slot's bind may change */
         if (img_hit && !s->native && s->slen) {
             /* tex_inv2: keep the slot. Its bytes are hashed at the next lookup, and only a changed hash drops it. */
             tc_inval++;

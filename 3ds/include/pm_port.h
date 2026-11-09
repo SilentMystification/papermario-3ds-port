@@ -321,6 +321,7 @@ typedef struct {
     int on;                       /* a transition is open: the stage ticks run */
     unsigned rom_n, rom_b;        /* nuPiReadRom on the game thread: calls, bytes */
     unsigned yay_n, yay_b, yay_t; /* decode_yay0: calls, output bytes, ticks */
+    unsigned yay_pre;             /* MAPX-4: decode_yay0 calls served by the core-1 prefetch */
     unsigned inv_n;               /* pm_tex_invalidate calls */
     unsigned au_t, load_t;        /* map load: pm_audio_drain ticks, whole load_map_by_IDs ticks */
     unsigned dlc_n, dlc_t;        /* dlc_build calls, ticks */
