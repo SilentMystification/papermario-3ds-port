@@ -18,14 +18,23 @@ NUM = re.compile(r"-?\d+(\.\d+)?")
 
 
 def fields(rest):
-    """Every name followed by a number on a prof line. Names after `tgt` and `meas` (the budget line) get a tgt_ or meas_ prefix; `|` resets it."""
+    """Every name followed by a number on a prof line. Names after `tgt` and `meas` (the budget line) get a tgt_ or meas_ prefix; `|` resets it.
+    BENCHFIX: `pmu <m|s> <I> <D> cyc <C> pm ..` gives pmu_i, pmu_d, pmu_cyc and pmu_stall (1 for the stall event, 0 for the I miss event).
+    The core2 drain line (`core2 drain dr .. drw .. wqf ..`) gets a drain_ prefix: its dr is not the draw count (RENAME dr -> draws)."""
     out, pre, toks, i = {}, "", rest.split(), 0
+    if toks[:2] == ["core2", "drain"]:
+        pre = "drain_"
     while i < len(toks):
         t = toks[i]
         if t == "|":
             pre = ""
         elif t in ("tgt", "meas"):
             pre = t + "_"
+        elif t == "pmu" and i + 5 < len(toks) and toks[i + 1] in ("m", "s") and NUM.fullmatch(toks[i + 2]) and NUM.fullmatch(toks[i + 3]) \
+                and toks[i + 4] == "cyc" and NUM.fullmatch(toks[i + 5]):
+            out["pmu_stall"] = 1.0 if toks[i + 1] == "s" else 0.0
+            out["pmu_i"], out["pmu_d"], out["pmu_cyc"] = float(toks[i + 2]), float(toks[i + 3]), float(toks[i + 5])
+            i += 5
         elif re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*", t) and i + 1 < len(toks) and NUM.fullmatch(toks[i + 1]):
             out[pre + t] = float(toks[i + 1])
             i += 1

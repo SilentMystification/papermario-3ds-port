@@ -433,8 +433,16 @@ $marks = @()
     # S10C-1: the until line ends the game as well. Without a pause the emulator runs on after the until line (the shots debug dumps a shot every
     # 30 frames to 200) and the shot wait below waited for shots the run does not need: nok11_det ran 28 s past its until line. Pause at the
     # until line (the keep pause below then is not sent again): no frame and no shot after it. The shot wait only settles files already written.
+    # BENCHFIX: an until line that names its shot ("shot N frame F") is not paused at once. The game writes shot N through the emulated
+    # file system, so a pause in the middle of it stops the write: nok11_det kept shot 0017 at 236544 of 288015 B for 34 s after the until line
+    # (the pause came after shot 17 was logged). The pause comes after shot N is full (below); shots after N are not this run's and are dropped.
     $pausedAtUntil = $false
-    if ($reason -like "matched*" -and $p -and -not $p.HasExited -and -not $Interactive -and -not $Gdb) {
+    $untilN = $null
+    if ($reason -like "matched*") {
+        $um = [regex]::Match($text, $Until)
+        if ($um.Success -and $um.Value -match 'shot (\d+)') { $untilN = [int]$Matches[1] }
+    }
+    if ($null -eq $untilN -and $reason -like "matched*" -and $p -and -not $p.HasExited -and -not $Interactive -and -not $Gdb) {
         [void](Send-AzHotkey $p (Get-SlotHotkey $slotK "Continue\Pause Emulation")); $pausedAtUntil = $true
     }
     # SHOTCOPY1: the emulator closes a shot file after its shot line, but the host can see part of it for a while (DET saw 155648 of 288015 B).
@@ -451,11 +459,13 @@ $marks = @()
             if ($anch -ge 0) { $logTxt = $logTxt.Substring($anch) } # AZT13: no bootid line (a prof boot drops it): log.txt is this boot's file (pm_log_init rotates it at each boot)
             $logged = @([regex]::Matches($logTxt, '(?m)^#\d+ shot (\d+) frame \d+') | ForEach-Object { [int]$_.Groups[1].Value } | Sort-Object -Unique)
         } catch { Write-Output "SHOT COPY FAILED: the game log could not be read for its shot lines: $($_.Exception.Message)" }
+        if ($null -ne $untilN) { $logged = @($logged | Where-Object { $_ -le $untilN }) } # BENCHFIX: this run's shots end at shot N (the until line)
         # The burst writer (shotmode) gives every logged frame the same counter, so a logged number is checked against the files on disk, not one file per line.
         $prevLen = @{}; $okN = @{}; $nFiles = 0
-        $shotWaitN = if ($pausedAtUntil) { 20 } else { 120 } # 20 polls of 250 ms: 5 s after the pause at the until line, else 30 s
+        # BENCHFIX: 30 s after the pause too. The old 5 s wait after the until line cut the last shot: Azahar was killed 4 to 13 s after the until line while that shot was still written.
+        $shotWaitN = 120 # 120 polls of 250 ms: 30 s, the wait ends at once when every logged shot is full and stable
         for ($w = 0; $w -lt $shotWaitN; $w++) {
-            $files = @(Get-ChildItem "$sd\shots" -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^\d{4}_.*\.ppm$' })
+            $files = @(Get-ChildItem "$sd\shots" -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^\d{4}_.*\.ppm$' -and ($null -eq $untilN -or [int]$_.Name.Substring(0, 4) -le $untilN) })
             $have = @{}; foreach ($f1 in $files) { $have[[int]$f1.Name.Substring(0, 4)] = $true }
             $nFiles = $files.Count
             $allOk = $true
@@ -467,7 +477,12 @@ $marks = @()
             if ($allOk -and $missingNow.Count -eq 0 -and $files.Count -gt 0) { break }
             Start-Sleep -Milliseconds 250
         }
-        $files = @(Get-ChildItem "$sd\shots" -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^\d{4}_.*\.ppm$' })
+        if ($null -ne $untilN -and $reason -like "matched*" -and $p -and -not $p.HasExited -and -not $Interactive -and -not $Gdb) {
+            # BENCHFIX: shot N is full: pause now (no frame and no shot after it). The partial files after N are not this run's: removed.
+            [void](Send-AzHotkey $p (Get-SlotHotkey $slotK "Continue\Pause Emulation")); $pausedAtUntil = $true
+            Get-ChildItem "$sd\shots" -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^\d{4}_.*\.ppm$' -and [int]$_.Name.Substring(0, 4) -gt $untilN -and $_.Length -ne $shotFull } | Remove-Item -Force -ErrorAction SilentlyContinue
+        }
+        $files = @(Get-ChildItem "$sd\shots" -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^\d{4}_.*\.ppm$' -and ($null -eq $untilN -or [int]$_.Name.Substring(0, 4) -le $untilN) })
         $have = @{}; foreach ($f1 in $files) { $have[[int]$f1.Name.Substring(0, 4)] = $true }
         $missing = @($logged | Where-Object { -not $have.ContainsKey($_) })
         $short = @($files | Where-Object { -not $okN.ContainsKey($_.Name) } | ForEach-Object { "$($_.Name)=$($_.Length)" })
@@ -514,6 +529,8 @@ public class AzWin {
         Start-SlotReaper $slotK
     }
     elseif ($p) { Kill-Azahar $p.Id; Remove-Item $sl.keepFile -ErrorAction SilentlyContinue }
+    # BENCHFIX: a shot after shot N (the until line) that the stop left short is not this run's shot: removed once Azahar has let go of it (azt.ps1 checks the folder)
+    if ($null -ne $untilN) { Get-ChildItem "$sd\shots" -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^\d{4}_.*\.ppm$' -and [int]$_.Name.Substring(0, 4) -gt $untilN -and $_.Length -ne $shotFull } | Remove-Item -Force -ErrorAction SilentlyContinue }
     if ($gdbProc -and -not $gdbProc.HasExited) { Stop-Process -Id $gdbProc.Id -Force -ErrorAction SilentlyContinue }
     if ($gdbName) { docker kill $gdbName 2>$null | Out-Null }  # the docker client does not stop its container when stopped
     Restore-Cfg # byte for byte copy of the real config

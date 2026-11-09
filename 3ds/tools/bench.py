@@ -333,11 +333,17 @@ def run_disp_tuple(r):
     return (d.get("wide"), d.get("stereo"), d.get("fps_target"))
 
 
+CORE_KEYS = ("pmu_i", "pmu_d", "pmu_cyc", "pmu_stall", "lgms", "wwait", "ser", "stk", "ic1", "dc1", "cyc1", "kf",
+             "bw", "fw", "aj", "au", "mx", "drain_dr", "drain_drw", "drain_wqf")  # BENCHFIX: PMU and core2 values of a window (prof lines)
+
+
 def window_extra(w):
-    """extra_json of a window sample: wsize, and tour_idx and kind for a tour window."""
+    """extra_json of a window sample: wsize, tour_idx and kind for a tour window, and the PMU and core2 values (CORE_KEYS) of the window."""
     x = {"wsize": w.get("wsize")}
     if w.get("tour_idx") is not None:
         x["tour_idx"], x["kind"] = w["tour_idx"], w.get("kind", "map")
+    m = w.get("m") or {}
+    x.update({k: m[k] for k in CORE_KEYS if k in m})
     return x
 
 
@@ -896,6 +902,18 @@ def lane_problem(lane):
     return ""
 
 
+def default_lane(lane):
+    """BENCHFIX: the lane of an Azahar run that names none. In a worktree (build3ds/wt/<row>) that is PM_LANE, else the worktree's
+    branch (its lane build3ds/lane-<branch>/pm_3ds.3dsx); in the main folder PM_LANE, else "" (the main build). Set on a.lane before lane_problem."""
+    if lane:
+        return lane
+    if os.environ.get("PM_LANE"):
+        return os.environ["PM_LANE"]
+    if REPO.parent.name == "wt" and REPO.parent.parent.name == "build3ds":
+        return subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=REPO, capture_output=True, text=True).stdout.strip()
+    return ""
+
+
 def run_azahar_list(a):
     """AZT-4: "a,b,c" runs those Azahar benches as one azt.ps1 list: the scenarios go one after the other on one kept slot,
     with a warm restart between them. Every bench needs an Azahar kind and a scenario, and all share one speed. --label
@@ -922,6 +940,7 @@ def run_azahar_list(a):
         print("the benches of a list must share one speed (%s): split the list, or pass --speed. Nothing was run." % ", ".join(sorted(speeds)))
         return 5
     speed = speeds.pop()
+    a.lane = default_lane(a.lane)
     if lane_problem(a.lane):
         print("%s. Nothing was run." % lane_problem(a.lane))
         return 5
@@ -1117,6 +1136,7 @@ def cmd_run(a):
         if not s:
             print("scenario %s is not in azt_scenarios.json. Nothing was run." % bd["scenario"])
             return 5
+        a.lane = default_lane(a.lane)
         if lane_problem(a.lane):
             print("%s. Nothing was run." % lane_problem(a.lane))
             return 5
