@@ -11,6 +11,16 @@ window, SetTileSize, 4 x gSPModifyVertex (G_MWO_POINT_XYSCREEN), gSP2Triangles; 
 a new window (ensure_tile rewin nd_tex_set.c:398-416), so uvso differs and each quad closes its batch; ModifyVertex takes the CPU
 vertex path. About 216 closes + 2100 op decodes per frame, about 8-15 ms core 0, for 120 frames.
 
+## State and reframe (2026-11-09, branch TIDAL 8dc8d067e)
+Census (base): +2172 gbi ops and about +13 ms gbi per effect frame; closes only +42. Try 1 (patch scratchpad
+tidal_underwater_strip.patch: one tile of the z-buffer copy, quarter-pixel grid) gave a flat blue block: geometry right, texture
+not. Oracle: the z-buffer window resolves to the copy slot at any size (nd_target.c:91, nd_tex_set.c:41-44, :132-176, pm_tex.c
+~1663-1680); a flat colour means the texture coordinates are in the wrong unit (tc must be texel x 32, S10.5, relative to the tile,
+and gSPTexture 0xFFFF) - a factor 8 off with quarter pixels. New approach (try 2): skip the z-buffer copy pass; TARGET_3DS:
+SetTextureImage(nuGfxCfb_ptr), one SetTile/LoadTile 0..319 x 0..239 RGBA16 clamp (ensure_tile -> grab_cur makes one GPU copy),
+tc = (x*32, y*32) per grid vertex, gSPTexture(0xFFFF, 0xFFFF), the SBLK2 grab hold (G_PM_ND_GRABHOLD) around the mesh. First log
+once: tex_ss/ts, td[0] x0/y0/w/h, off_ox/oy, uvso, tc range of 2 vertices.
+
 ## Start state
 `sh 3ds/tools/wt_new.sh TIDAL`, branch TIDAL. PM_ROW=TIDAL, PM_LANE=TIDAL. One coder agent.
 
