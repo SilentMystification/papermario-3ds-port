@@ -289,28 +289,31 @@ static void cell_write(int c, const GlyphSheet* g, int idx, const u8* tlut, int 
     }
 }
 /* The cell of glyph idx of sheet g with this palette: found, or written into a free cell or the least recent cell not used in the last two frames. -1 when none is free. */
+/* HC7: the eviction scan for a full cell table (cold). The least recent cell not used in the last two frames, its table link removed; -1 when none is free. */
+__attribute__((noinline, cold)) static int cell_evict(void) {
+    unsigned best = 0;
+    int c = -1;
+    for (int k = 0; k < CELL_N; k++) {
+        if (cell_fr[k] + 2u > tc_frame) continue;
+        if (c < 0 || cell_fr[k] < best) { c = k; best = cell_fr[k]; }
+    }
+    if (c < 0) {
+        if (cell_full_n++ < 4) pm_log_w("glyph cells: all %d cells used in the last two frames, the glyph loads as its own texture", CELL_N);
+        return -1;
+    }
+    short* p = &cell_head[cell_hash(cell_key[c], cell_ph[c])];
+    while (*p && *p != c + 1) p = &cell_next[*p - 1];
+    if (*p) *p = cell_next[c];
+    cell_evict_n++;
+    return c;
+}
 static int cell_get(const GlyphSheet* g, int idx, const void* tlut, int tlut_n) {
     const unsigned key = g->id << 8 | (unsigned)idx, ph = glyph_phash(tlut, tlut_n), h = cell_hash(key, ph);
     int c;
     for (c = cell_head[h] - 1; c >= 0; c = cell_next[c] - 1)
         if (cell_key[c] == key && cell_ph[c] == ph) { cell_fr[c] = tc_frame; return c; }
     if (cell_used < CELL_N) c = (int)cell_used++;
-    else {
-        unsigned best = 0;
-        c = -1;
-        for (int k = 0; k < CELL_N; k++) {
-            if (cell_fr[k] + 2u > tc_frame) continue;
-            if (c < 0 || cell_fr[k] < best) { c = k; best = cell_fr[k]; }
-        }
-        if (c < 0) {
-            if (cell_full_n++ < 4) pm_log_w("glyph cells: all %d cells used in the last two frames, the glyph loads as its own texture", CELL_N);
-            return -1;
-        }
-        short* p = &cell_head[cell_hash(cell_key[c], cell_ph[c])];
-        while (*p && *p != c + 1) p = &cell_next[*p - 1];
-        if (*p) *p = cell_next[c];
-        cell_evict_n++;
-    }
+    else if ((c = cell_evict()) < 0) return -1;
     cell_key[c] = (unsigned short)key; cell_ph[c] = ph; cell_fr[c] = tc_frame;
     cell_next[c] = cell_head[h]; cell_head[h] = (short)(c + 1);
     cell_write(c, g, idx, (const u8*)tlut, tlut_n);
