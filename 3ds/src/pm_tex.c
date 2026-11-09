@@ -1322,7 +1322,10 @@ static int load_impl(const void* img, unsigned fmt, unsigned siz, int width, int
         r = load_inner(img, fmt, siz, width, height, tlut, tlut_n, stride, lut, dx4, dy4, dkey);
     }
     if (ph_miss) PH_POP();
-    if (ph_miss && pm_xf.on) { pm_xf.tex_n++; pm_xf.tex_t += pm_ticks() - t0; } /* MAPX-1: a miss decodes and uploads */
+    if (ph_miss && pm_xf.on) { /* MAPX-1: a miss decodes and uploads */
+        pm_xf.tex_n++; pm_xf.tex_t += pm_ticks() - t0;
+        if (pm_xf.diag) pm_log_d("xfer texmiss f%u %dx%d fmt %u siz %u img %p tlut %p lut %d", pm_frame_count(), width, height, fmt, siz, img, tlut, lut != NULL); /* DOORHITCH: switch xferdiag */
+    }
     if (pm_ph_cen) { /* PG2 measure: ticks inside pm_tex_load, hit and miss, per 300 frames (reported by pm_tex_prof_report) */
         unsigned dt = pm_ticks() - t0;
         if (ph_miss) { tprof_miss_t += dt; tprof_miss_n++; } else { tprof_hit_t += dt; tprof_hit_n++; }
@@ -1884,21 +1887,6 @@ int pm_tex_native_unit1(NdUnit* u) {
     u->dim = tp->dim;
     u->param = nd_tex_param(tp->param, (unsigned)filt_now(), ws, wt);
     u->lod = tp->lodParam;
-    u->addr = (uint32_t)osConvertVirtToPhys(tp->data) >> 3;
-    u->type = (uint32_t)tp->fmt;
-    au_last = NULL;
-    return 1;
-}
-/* TIK19: the unit 1 words of slot i for a model cache hit, with the residency step, touch and force rule of pm_tex_native_unit1. 1 when the slot is live with
- * generation gen (not dropped or invalidated since the entry was stored); 0: the hit rebuilds. param stays the caller's (the stored wrap and filter). */
-int pm_tex_slot_unit1(int i, unsigned gen, NdUnit* u) {
-    if (i < 0 || i >= SLOTS || !slots[i].live || slots[i].sgen != gen) return 0;
-    slots[i].stamp = ++stamp;
-    TOUCH(&slots[i]);
-    const C3D_Tex* tp = tex_for_draw(&slots[i]);
-    u->force = slot_draws_stage(&slots[i]) || tp != nd_lt1 || slots[i].sgen != nd_lsg1;
-    nd_lt1 = tp; nd_lsg1 = slots[i].sgen;
-    u->dim = tp->dim; u->lod = tp->lodParam;
     u->addr = (uint32_t)osConvertVirtToPhys(tp->data) >> 3;
     u->type = (uint32_t)tp->fmt;
     au_last = NULL;

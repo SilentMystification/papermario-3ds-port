@@ -1,0 +1,9 @@
+# CHEATSAVE2: file select (fileselect switch) Copy File, File 1 to File 4. Cursor starts on File 1 (save slot 0).
+# down, down: Delete File; right: Copy File; A. Copy from: the cursor is on Cancel, up, up: File 1; A.
+# Copy to: down: File 3, right: File 4; A. File 4 empty: the copy runs here (copied message). File 4 with data: the confirm
+# opens on No; up (60 scans after it opens: a press 30 scans after was lost in run 122673) moves to Yes, A copies.
+wait90,
+down*4, wait15, down*4, wait15, right*4, wait15, A*4, wait30,
+up*4, wait15, up*4, wait15, A*4, wait30,
+down*4, wait15, right*4, wait15, A*4, wait60,
+up*4, wait15, up*4, wait15, A*4, wait60

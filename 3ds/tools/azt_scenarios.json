@@ -11522,6 +11522,101 @@
       "reason": "Row GAMEOVER (user: game over flickers and lags, 60 fps on). Shot window after the letters start to drop; cap 30 s (boot, warp, 90 frames)."
     },
     {
+      "name": "xfer_door_kmr20",
+      "status": "unverified",
+      "reason": "DOORHITCH measure and the before/after quantity. A real map change kmr_20 -> kmr_20 (the door's first entry follows a map load, as in play), then two doors of about 130 and 100 frames each with their walks: about 30 s after the warp. Cap 45 s.",
+      "subject": "Mario's house door on kmr_20 (preset yard: entry 4, the pipe; padscript goto_kmr_20:4 loads the map again through a map change, the xfer map line n1): after the pipe Mario is placed east of the door (300 30 -76; door collider o246 at x 261, z -99 to -54), walks west into the door and presses A (room enter: the house front opens), walks a step in, back to the door and presses A (room exit), then the same again. det. One xfer line per door.",
+      "proves": "DOORHITCH: xfer, xfer2, xfer3 (longest step by stage: model misses, refused hits, texture and dlc ms, ROM reads, prof sample; refused hits, trims, cache fill, walk drain ms) and xferk (first differing key words) of the enter and exit, first and second time.",
+      "debug": "preset=yard padscript=wait60,goto_kmr_20:4,wait300,pos_300:30:-76,go_240_-76_100,A,wait260,go_200_-76_20,go_285_-76_80,A,wait200,go_240_-76_100,A,wait260,go_200_-76_20,go_285_-76_80,A,wait300 profdisk=1 xferdiag loglevel=debug det",
+      "until": "xfer3 door n5\\b",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "door enter line",
+          "regex": "xfer door \\S+:out->\\S+:in f\\d+"
+        },
+        {
+          "name": "door exit line",
+          "regex": "xfer door \\S+:in->\\S+:out f\\d+"
+        }
+      ]
+    },
+    {
+      "name": "xfer_door_kmr20_shots",
+      "status": "unverified",
+      "reason": "DOORHITCH byte gate: the first room entry (map change, then the door) with a shot per frame over the shroud ramp and the first frames at full shroud (the sky goes black at f302 in the det run). Cap 40 s (until about 18 s after the start).",
+      "subject": "Mario's house door on kmr_20, first entry after a map change (as xfer_door_kmr20), det, shots of frames 290 to 305: the house front opens, the outside darkens step by step to black and the interior shows.",
+      "proves": "DOORHITCH: the black sky as a GPU mix (background.c bgMix 2) and the model key change draw the same bytes as the base build over the shroud ramp and the full shroud frames.",
+      "debug": "preset=yard padscript=wait60,goto_kmr_20:4,wait300,pos_300:30:-76,go_240_-76_100,A,wait260 shots shotwin=290:16 loglevel=debug det",
+      "until": "shot \\d+ frame 305\\b",
+      "cap": 40,
+      "deadline": 30,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 305\\b"
+        }
+      ]
+    },
+    {
+      "name": "xfer_door_kmr20_ndm",
+      "status": "unverified",
+      "reason": "DOORHITCH gate: ndmcheck over the first kmr_20 door (boot in the yard, enter and exit). Long measurement: ndmcheck draws every model record twice and compares, so the yard runs at about 5 steps per second in Azahar (a 45 s run did not reach f300); the f300 lines need about 70 s. Cap 90 s.",
+      "subject": "Mario's house door on kmr_20 (preset yard, no map change: enter and exit) with the ndmcheck switch: every model record is drawn natively and by the walker and compared, and cached entries are compared with fresh builds (ndmcache).",
+      "proves": "DOORHITCH: the model key without the geometry bits the render mode list writes (pm_gpu_model_key word 32) gives no ndmcheck or ndmcache diff in the doors.",
+      "debug": "preset=yard padscript=wait140,pos_300:30:-76,go_240_-76_100,A,wait260,go_200_-76_20,go_285_-76_80,A,wait200 prof=4 ndmcheck loglevel=debug",
+      "until": "ndmcache f300 ",
+      "cap": 90,
+      "deadline": 30,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "ndmcache",
+          "regex": "ndmcache f300 "
+        }
+      ]
+    },
+    {
+      "name": "nok11_det_ref",
+      "status": "unverified",
+      "reason": "DOORHITCH: the walker reference (nomodelnat) of nok11_det, to decide which build draws the nok_11 water as the walker does (model cache hits of unit 1 entries).",
+      "subject": "nok11_det with nomodelnat: every model record draws through the walker (no native model draw, no model cache). Shots as nok11_det.",
+      "proves": "The walker picture of nok11_det for a byte compare against nok11_det of a build.",
+      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 shots loglevel=debug grablog offdump=410 fixedseed fast fs1off det nomodelnat",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "shot 16 frame \\d+",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: nok_11 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: nok_11 entry 0"
+        },
+        {
+          "name": "spawn",
+          "regex": "fxtest: spawn 89 water_splash"
+        },
+        {
+          "name": "shot a",
+          "regex": "fxtest: shot 1 effect 89 water_splash"
+        }
+      ]
+    },
+    {
       "name": "xfer_door_mac01",
       "status": "unverified",
       "reason": "MAPX-1 measure and the MAPX-2 gate (door key churn). Walk 60 to 120 frames, door 60, tail 30, twice: about 15 s after the warp. Cap 40 s.",
@@ -12377,12 +12472,118 @@
       ]
     },
     {
+      "name": "pause_tab_thr_pic",
+      "status": "unverified",
+      "subject": "PAUSEFLK: mac_01 entry 0, wide, START opens the pause (Stats tab; no Badges tab), all 11 partners and 7 Star Spirits (allpartners spmax=7), R twice to the Party tab, A opens the Party panel (about frame 150), stick right twice turns the partner wheel, B back, R to the Star Spirits tab, A opens the Spirits panel (about frame 205). Shots 140 to 240 (every frame det; the threaded build takes what the shot writer keeps up with).",
+      "proves": "PAUSEFLK: consecutive frames of the Party and Star Spirits tabs, steady and flip; the sprites, portraits and windows show no frame-to-frame flicker.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town wide allpartners spmax=7 padscript=wait80,START*3,wait60,R*2,wait20,R*2,wait20,A*2,wait20,right*2,wait30,right*2,wait20,B*2,wait10,R*2,wait10,A*2 shots shotwin=140:101",
+      "until": "shot \\d+ frame 24[01]\\b",
+      "cap": 40,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "pause mode",
+          "regex": "game mode 10 frame"
+        },
+        {
+          "name": "shot in the Spirits panel (240 or 241)",
+          "regex": "shot \\d+ frame 24[01]\\b"
+        }
+      ],
+      "reason": "PAUSEFLK user report (O3DS XL, wide, logic thread on): flicker on the pause Party and Star Spirits tabs. No det or phase switch, so the logic thread builds frame N+1 while the walker draws N."
+    },
+    {
+      "name": "pause_tab_det_pic",
+      "status": "unverified",
+      "subject": "PAUSEFLK: mac_01 entry 0, wide, START opens the pause (Stats tab; no Badges tab), all 11 partners and 7 Star Spirits (allpartners spmax=7), R twice to the Party tab, A opens the Party panel (about frame 150), stick right twice turns the partner wheel, B back, R to the Star Spirits tab, A opens the Spirits panel (about frame 205). Shots 140 to 240 (every frame det; the threaded build takes what the shot writer keeps up with).",
+      "proves": "PAUSEFLK: consecutive frames of the Party and Star Spirits tabs, steady and flip; the sprites, portraits and windows show no frame-to-frame flicker.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town wide allpartners spmax=7 padscript=wait80,START*3,wait60,R*2,wait20,R*2,wait20,A*2,wait20,right*2,wait30,right*2,wait20,B*2,wait10,R*2,wait10,A*2 shots shotwin=140:101 det",
+      "until": "shot \\d+ frame 24[01]\\b",
+      "cap": 40,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "pause mode",
+          "regex": "game mode 10 frame"
+        },
+        {
+          "name": "shot in the Spirits panel (240 or 241)",
+          "regex": "shot \\d+ frame 24[01]\\b"
+        }
+      ],
+      "reason": "PAUSEFLK det twin of pause_tab_thr_pic (det runs the step serial): flicker in both means a state or cache cause, only threaded means an order cause."
+    },
+    {
+      "name": "pause_tab_c2haz",
+      "status": "unverified",
+      "subject": "PAUSEFLK: the pause_tab route (mac_01 entry 0, wide, all partners, 7 spirits, Party panel with two wheel turns about frames 150 to 190, Star Spirits panel from about frame 205), det, census switch c2haz.",
+      "proves": "PAUSEFLK: the game memory the walk of frame N reads in the Party and Spirits panels that the logic and list build of frame N+1 rewrite (c2haz new lines): the threaded hazards of these panels.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town wide allpartners spmax=7 padscript=wait80,START*3,wait60,R*2,wait20,R*2,wait20,A*2,wait20,right*2,wait30,right*2,wait20,B*2,wait10,R*2,wait10,A*2 loglevel=debug det c2haz",
+      "extra": [],
+      "until": "c2haz sum f(2[5-9]\\d|3\\d\\d) ",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "pause mode",
+          "regex": "game mode 10 frame"
+        },
+        {
+          "name": "census sum after the Spirits panel opened",
+          "regex": "c2haz sum f(2[5-9]\\d|3\\d\\d) "
+        }
+      ],
+      "reason": "PAUSEFLK: the user's flicker on the Party and Star Spirits panels is console-only (Azahar threaded shots show none); the census names the rewritten addresses by code, without a picture."
+    },
+    {
+      "name": "pause_tab_c2haz_thr",
+      "status": "unverified",
+      "subject": "PAUSEFLK: the pause_tab route (mac_01 entry 0, wide, all partners, 7 spirits, Party panel with two wheel turns about frames 150 to 190, Star Spirits panel from about frame 205), logic thread on (no det), census switch c2haz (check at the push of the next frame, nd_c2_push).",
+      "proves": "PAUSEFLK: the game memory the walk of frame N reads in the Party and Spirits panels that the logic and list build of frame N+1 rewrite (c2haz new lines): the threaded hazards of these panels.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town wide allpartners spmax=7 padscript=wait80,START*3,wait60,R*2,wait20,R*2,wait20,A*2,wait20,right*2,wait30,right*2,wait20,B*2,wait10,R*2,wait10,A*2 loglevel=debug c2haz",
+      "extra": [],
+      "until": "c2haz sum f(2[5-9]\\d|3\\d\\d) ",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "pause mode",
+          "regex": "game mode 10 frame"
+        },
+        {
+          "name": "census sum after the Spirits panel opened",
+          "regex": "c2haz sum f(2[5-9]\\d|3\\d\\d) "
+        }
+      ],
+      "reason": "PAUSEFLK: threaded twin of pause_tab_c2haz: the census records at walk time while the logic of the next frame runs, so it also sees writes the threaded order makes (the det census checks only after the whole step)."
+    },
+    {
       "name": "cheatsave_save",
       "status": "verified",
-      "subject": "Slot 0 loaded (loadslot=0), Select menu, Cheats tab (L), Moon jump on (A): the bottom shot after the A draw shows the cyan 'Press X to save cheats' footer; X writes cheats_slot0.ini.",
-      "proves": "CHEATSAVE: foot1 shows the footer while pm_cheat_dirty; pm_menu_key KEY_X calls pm_cheat_save, which logs the saved line.",
-      "debug": "loadslot=0 warp=random padscript=wait150,SELECT,wait20,L,wait20,A,wait20,k_X,wait60 shotmenu loglevel=debug",
-      "until": "cheats: saved slot \\d+ \\(\\d+ on\\)",
+      "subject": "Slot 0 loaded (loadslot=0) with the moonjump boot switch (Moon jump On, not dirty), Select menu, Cheats tab (L): A turns Moon jump Off (cyan 'Press X to save cheats' footer, shot), X saves (0 on), A turns it On, X saves (1 on). The result does not depend on the cheats_slot0.ini an earlier run left in the azslot.",
+      "proves": "CHEATSAVE: foot1 shows the footer while pm_cheat_dirty; pm_menu_key KEY_X calls pm_cheat_save, which logs the saved line. The run ends with moonjump=1 in cheats_slot0.ini (the state cheatsave_load_on reads).",
+      "debug": "loadslot=0 warp=random moonjump padscript=wait150,SELECT,wait20,L,wait20,A,wait20,k_X,wait20,A,wait20,k_X,wait60 shotmenu loglevel=debug",
+      "until": "cheats: saved slot \\d+ \\(1 on\\)",
       "cap": 30,
       "deadline": 25,
       "first_marker": "MODE = ",
@@ -12394,7 +12595,7 @@
           "regex": "menu: open"
         },
         {
-          "name": "moon jump on",
+          "name": "moon jump off then on",
           "regex": "cheat: moon jump on"
         },
         {
@@ -12402,11 +12603,15 @@
           "regex": "menu: shot \\w+ tab 3 row 0"
         },
         {
+          "name": "saved slot 0 with 0 on",
+          "regex": "cheats: saved slot 0 \\(0 on\\)"
+        },
+        {
           "name": "saved slot 0 with 1 on",
           "regex": "cheats: saved slot 0 \\(1 on\\)"
         }
       ],
-      "reason": "CHEATSAVE save gate: the saved line (slot 0, 1 on) and the shot after the A draw with the footer (picture read by a person)."
+      "reason": "CHEATSAVE save gate: two saves (0 on, then 1 on) and the footer shot after the first A (picture read by a person). CHEATSAVE2: the old recipe (one A from the file state) saved 0 on when an earlier run had left moonjump=1 in the azslot, so its expected event failed (runs 104678 and 105394 fail:1)."
     },
     {
       "name": "cheatsave_load_on",
@@ -12455,6 +12660,30 @@
         }
       ],
       "reason": "CHEATSAVE per-slot gate: slot 1 starts with 0 on and Moon jump Off."
+    },
+    {
+      "name": "cheatsave_copy",
+      "status": "verified",
+      "subject": "File select (fileselect switch): Copy File, File 1 (slot 0) to File 4 (slot 3). The copy writes cheats_slot3.ini from cheats_slot0.ini (log 'cheats: saved slot 3'). Works with File 4 empty (copied message) or with data (Yes in the confirm). Shot: the file select at frame 300 (shotwin), after the copy (run 122287: the copy line between f120 and f180 on the empty path; run 122673: an up press 30 scans after the confirm opened was lost and A took No, so the up comes 60 scans after it, twice).",
+      "proves": "CHEATSAVE2: pm_cheat_file_copy at both Copy File paths (filemenu_main.c empty destination, filemenu_yesno.c FM_CONFIRM_COPY).",
+      "debug": "fileselect fs1off shots shotwin=300:1 loglevel=debug padscript=@pad_cheatsave_copy.txt",
+      "until": "shot 0 frame \\d+",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "fileselect: direct entry",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "cheat file copied to slot 3",
+          "regex": "cheats: saved slot 3 \\(\\d+ on\\)"
+        },
+        {
+          "name": "file select shot after the copy",
+          "regex": "shot 0 frame \\d+"
+        }
+      ],
+      "reason": "CHEATSAVE2 Copy File gate: the destination slot gets the cheat file of the source slot. Needs slot 0 with save data in the azslot save.flash."
     }
   ]
 }
