@@ -20,6 +20,8 @@ Read this file at the start and after every compaction; it overrides any summary
 - No merge conflicts by design (user, 2026-11-09): each row file names the files it edits; rows that run at the same time have
   disjoint file sets. Rows that share files go in waves (plan_hotcode.md schedule). Pick fewer rows rather than overlap.
 - An early handback with work left is resumed once with the same row.
+- No change, no repeat (user, 2026-11-09): a try that does not change the gate quantity ends work in that area. Send the facts to
+  the oracle to reframe the problem (a different cause, code point or metric) before any new try. A false premise closes the row.
 - Check each agent at 90 minutes; no passed gate: stop it, put its state in the row file, reframe (split, or NEEDS CONSOLE).
 - Handback triage before any relaunch: 1 environment fault (fix it, same row); 2 wrong premise (rewrite the row with the agent's
   facts); 3 no reproduction (user or console evidence first); 4 real stall (split the row). Never relaunch an unchanged row.
