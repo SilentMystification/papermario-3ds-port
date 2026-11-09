@@ -330,6 +330,8 @@ static void pf_pmu_read(u64 out[3]) {
 void pm_gpu_pf_read(unsigned long long out[6]); /* pm_gpu.c: per frame counters and GPU busy ticks, read and reset */
 static unsigned long long pf_nd_t; static unsigned pf_leg; /* S0-6: native emit ticks and LEGACY records of the window (pm_pf_nd_add, from S1) */
 void pm_pf_nd_add(unsigned long long ticks, unsigned legacy) { pf_nd_t += ticks; pf_leg += legacy; }
+static unsigned long long pf_eye2_t; /* STEREO: ticks of the right eye pass of the window (sampled frames) */
+void pm_pf_eye2_add(unsigned long long ticks) { pf_eye2_t += ticks; }
 /* PROF: the scene of the window. Every prof line of a window ends with it, so runs of one room or event compare by key (map, mode, story, battle).
  * A scene change inside a window drops the window and starts a new one, so chg stays 0 (kept in the line for older readers). */
 void pm_prof_where(const char** name, int* story, int* btl, int* entry, float pos[3]); /* pm_route.c */
@@ -453,7 +455,7 @@ static void pf_reset(void) {
     pf_lg_mark();
     pm_au_pf_sum = 0; pm_au_pf_max = 0;
     { uint64_t ct[NDT_N]; pm_gpu_ndt_take(ct); } /* PERF1: the class timers start with the window (a tour window, a scene change) */
-    pf_nd_t = 0; pf_leg = 0;
+    pf_nd_t = 0; pf_leg = 0; pf_eye2_t = 0;
     pf_sc[0] = pf_sc[1] = pf_sc[2] = -1; /* the next window starts in the scene now */
     pf_pe[0] = pf_pe[1] = pf_pe[2] = 0;
     pf_pfr = 0;
@@ -576,6 +578,10 @@ static void pf_report(void) {
         /* S0-8: frame budget targets (docs/handoff/frame_budget.md, phase off ms) next to the measured nd, lg and gb of this window. */
         pm_log_prof_line("prof f%u w%u budget tgt logic 3.3 dl 4.4 nd 2.0 fe 1.5 au 0.5 cpu 11.7 slack 5.0 gb 14.0 frame 16.7 | meas nd %u.%02u lg %u.%02u gb %u.%02u",
             pf_total, pf_w, nd / 100u, nd % 100u, gbi / 100u, gbi % 100u, gb / 100u, gb % 100u);
+        { /* STEREO: eye2 = ms per sampled frame of the right eye pass (0 in a mono frame) */
+            unsigned e2 = pf_cs(pf_eye2_t, pf_s);
+            pm_log_prof_line("prof f%u w%u stereo eye2 %u.%02u", pf_total, pf_w, e2 / 100u, e2 % 100u);
+        }
         pf_where_line(); /* the scene line */
         /* U1: the writer heartbeat count (grows only while the queue runs). CORE2-0: aujoin_us = game thread audio join wait per sampled frame
          * (PROF2-1: timed in sampled frames only), aujoin_max = longest single join (us). */

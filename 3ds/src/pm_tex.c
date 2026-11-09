@@ -1791,6 +1791,10 @@ int pm_tex_load_rgba8(const void* buf, unsigned key, int w, int h, const unsigne
 static GPU_TEXTURE_FILTER_PARAM tex_filt = GPU_NEAREST; /* V15: from omh G_TF bits, set sampler state at bind, not in the cache key */
 void pm_tex_set_filter(int linear) {
     pm_gpu_rect_sync(); /* DR1 */ tex_filt = linear ? GPU_LINEAR : GPU_NEAREST; }
+/* TEXF: the filter a bind uses. Debug > Render > Texture filtering: Filter 1 forces bilinear, 2 nearest, 0 keeps the G_TF value. */
+extern int pm_texf_filter;
+static inline GPU_TEXTURE_FILTER_PARAM filt_now(void) { return pm_texf_filter == 1 ? GPU_LINEAR : pm_texf_filter == 2 ? GPU_NEAREST : tex_filt; }
+int pm_tex_filt_linear(void) { return filt_now() == GPU_LINEAR; } /* nd_model.c: the texel centre offset applies to bilinear draws */
 
 /* DR1: citro3d sends the texture unit again at the next draw after every C3D_TexBind, C3D_TexSetFilter and C3D_TexSetWrap call. The shadow below
  * skips the three calls when the texture, filter and wrap are what the last bind set. Anything that can change the unit or the texture
@@ -1819,7 +1823,7 @@ static void td3_parse(void) {
 }
 /* S1-6: the wrap and filter pm_tex_bind programs for unit 0 (without the debug overrides): nd_tex_get patches them into the param word of the unit block */
 void pm_tex_unit0_param(uint32_t* ws, uint32_t* wt, unsigned* filter) {
-    *ws = nd_tex_wrap_final(shr_s, mk_ms, wrap_s); *wt = nd_tex_wrap_final(shr_t, mk_mt, wrap_t); *filter = (unsigned)tex_filt;
+    *ws = nd_tex_wrap_final(shr_s, mk_ms, wrap_s); *wt = nd_tex_wrap_final(shr_t, mk_mt, wrap_t); *filter = (unsigned)filt_now();
 }
 /* S3 M3: the unit 0 words of the texture pm_tex_bind would bind, for the native draw (nd_emit): dim, param with the filter and wrap pm_tex_bind programs, lod, data address >> 3,
  * format. The same residency work as the bind (stamp, staging copy), no citro3d call. Returns 1 with the words, 0 when no texture is bound, -1 when the native path cannot take it
@@ -1835,7 +1839,7 @@ static int nu0_impl(NdUnit* u, int touch) {
     u->force = slot_draws_stage(&slots[cur]) || tp != nd_lt || slots[cur].sgen != nd_lsg; /* a staged slot is bound again at every draw by pm_tex_bind */
     if (touch) { nd_lt = tp; nd_lsg = slots[cur].sgen; }
     u->dim = tp->dim;
-    u->param = nd_tex_param(tp->param, (unsigned)tex_filt, ws, wt);
+    u->param = nd_tex_param(tp->param, (unsigned)filt_now(), ws, wt);
     u->lod = tp->lodParam;
     u->addr = (uint32_t)osConvertVirtToPhys(tp->data) >> 3;
     u->type = (uint32_t)tp->fmt;
@@ -1878,7 +1882,7 @@ int pm_tex_native_unit1(NdUnit* u) {
     u->force = slot_draws_stage(&slots[aux]) || tp != nd_lt1 || slots[aux].sgen != nd_lsg1;
     nd_lt1 = tp; nd_lsg1 = slots[aux].sgen;
     u->dim = tp->dim;
-    u->param = nd_tex_param(tp->param, (unsigned)tex_filt, ws, wt);
+    u->param = nd_tex_param(tp->param, (unsigned)filt_now(), ws, wt);
     u->lod = tp->lodParam;
     u->addr = (uint32_t)osConvertVirtToPhys(tp->data) >> 3;
     u->type = (uint32_t)tp->fmt;
@@ -1948,7 +1952,7 @@ int pm_tex_bind(void) {
     GPU_TEXTURE_WRAP_PARAM ws = (GPU_TEXTURE_WRAP_PARAM)nd_tex_wrap_final(shr_s, mk_ms, wrap_s), wt = (GPU_TEXTURE_WRAP_PARAM)nd_tex_wrap_final(shr_t, mk_mt, wrap_t);
     td3_parse();
     if (td3_wrap >= 0) ws = wt = (GPU_TEXTURE_WRAP_PARAM)td3_wrap;
-    GPU_TEXTURE_FILTER_PARAM ff = tex_filt;
+    GPU_TEXTURE_FILTER_PARAM ff = filt_now();
     if (!slot_draws_stage(&slots[cur]) && tb_last == &slots[cur].tex && tb_f == (int)ff && tb_ws == (int)ws && tb_wt == (int)wt && tb_sg == slots[cur].sgen) return 1;
     texword_dump(&slots[cur]); /* TEXD1: pm_tex_bind is the path the draws use (pm_tex_bind_slot is not) */
     if (bind_probe < 0) bind_probe = pm_debug_has("texbind");
@@ -2037,17 +2041,17 @@ int pm_tex_bind_aux(void) {
     GPU_TEXTURE_WRAP_PARAM ws = (GPU_TEXTURE_WRAP_PARAM)nd_tex_wrap_final(aux_shr_s, mk_ms, aux_ws);
     GPU_TEXTURE_WRAP_PARAM wt = (GPU_TEXTURE_WRAP_PARAM)nd_tex_wrap_final(aux_shr_t, mk_mt, aux_wt);
     const int staged = slot_draws_stage(&slots[aux]);
-    if (!staged && au_last == &slots[aux].tex && au_f == (int)tex_filt && au_ws == (int)ws && au_wt == (int)wt) return 1;
+    if (!staged && au_last == &slots[aux].tex && au_f == (int)filt_now() && au_ws == (int)ws && au_wt == (int)wt) return 1;
     tb_last = NULL; /* DR1: this changes the filter and wrap of a texture that unit 0 may use */
     const C3D_Tex* tp = tex_for_draw(&slots[aux]);
     if (PMDL("texclamp") || PMDL("texclamp1")) ws = wt = GPU_CLAMP_TO_EDGE; /* TEXGARBLE test switches: texclamp1 = aux unit only */
     if (PMDL("texrep1")) wt = GPU_REPEAT; /* TEXGARBLE test switch: aux unit t repeats (the N64 clamp of t off) */
-    C3D_TexSetFilter(tp, PMDL("texnear") ? GPU_NEAREST : tex_filt, PMDL("texnear") ? GPU_NEAREST : tex_filt);
+    C3D_TexSetFilter(tp, PMDL("texnear") ? GPU_NEAREST : filt_now(), PMDL("texnear") ? GPU_NEAREST : filt_now());
     C3D_TexSetWrap(tp, ws, wt);
     pm_dc_c[DC_TB1]++;
     C3D_TexBind(1, tp);
     nd_lt1 = NULL; /* citro3d holds unit 1: the next native draw writes its block */
-    au_last = staged ? NULL : tp; au_f = (int)tex_filt; au_ws = (int)ws; au_wt = (int)wt;
+    au_last = staged ? NULL : tp; au_f = (int)filt_now(); au_ws = (int)ws; au_wt = (int)wt;
     return 1;
 }
 

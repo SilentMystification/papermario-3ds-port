@@ -655,6 +655,56 @@
       "reason": "MOVE4 gate: DET cold start of the sbk_56 sun scene (-NoWarm, as spot_mac01_det). Cap 35 s, deadline 30 s. Picture is the subject; the prof scene line is the until."
     },
     {
+      "name": "spot_mac01_stereo_det_l",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200 (warp entry 0), cold det start with forced stereo (3D slider 1): left eye shots at frames 200 to 205 and the prof scene line of the first 300-frame window.",
+      "proves": "STEREO gate: the left eye picture of a stereo frame is a function of the build (det), so two builds give byte-equal shots when the eye pass is unchanged.",
+      "debug": "warp=mac_01:0 pos=0:0:200 prof=4 shots shotwin=200:6 loglevel=debug det stereo",
+      "extra": [],
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at mac_01 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 0 0 200 pos -?\\d+ -?\\d+ -?\\d+ disp w[01] s1 f\\d+$"
+        }
+      ],
+      "reason": "STEREO gate: DET start as spot_mac01_det (cap 35 s, deadline 30 s). Picture is the subject; the prof scene line (disp s1) is the until."
+    },
+    {
+      "name": "spot_mac01_stereo_det_r",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200 (warp entry 0), cold det start with forced stereo (3D slider 1): right eye shots at frames 200 to 205 and the prof scene line of the first 300-frame window.",
+      "proves": "STEREO gate: the right eye picture of a stereo frame is a function of the build (det), so two builds give byte-equal shots when the eye pass is unchanged.",
+      "debug": "warp=mac_01:0 pos=0:0:200 prof=4 shots shotwin=200:6 loglevel=debug det stereo shoteye",
+      "extra": [],
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at mac_01 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 0 0 200 pos -?\\d+ -?\\d+ -?\\d+ disp w[01] s1 f\\d+$"
+        }
+      ],
+      "reason": "STEREO gate: DET start as spot_mac01_det (cap 35 s, deadline 30 s). Picture is the subject; the prof scene line (disp s1) is the until."
+    },
+    {
       "name": "spot_mac01_det",
       "status": "unverified",
       "subject": "Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0), cold start with the det switch. Shots at frames 200 to 205 and the prof scene line of the first 300-frame window.",
@@ -901,7 +951,7 @@
       "proves": "Stereo: both eyes draw, the right eye is shifted by depth.",
       "debug": "preset=yard wide stereo shots shotwin=200:6 shotbottom=200:60 loglevel=debug",
       "until": "shot \\d+ frame 20[0-5]\\b",
-      "cap": 90,
+      "cap": 40,
       "deadline": 20,
       "first_marker": "warp: kmr_20 entry 4",
       "expects": "warp",
@@ -925,7 +975,7 @@
       "proves": "Stereo: both eyes draw, the right eye is shifted by depth.",
       "debug": "preset=yard wide stereo shoteye shots shotwin=200:6 shotbottom=200:60 loglevel=debug",
       "until": "shot \\d+ frame 20[0-5]\\b",
-      "cap": 90,
+      "cap": 40,
       "deadline": 20,
       "first_marker": "warp: kmr_20 entry 4",
       "expects": "warp",
@@ -11158,6 +11208,56 @@
       "reason": "DIRECT D1 byte gate for the floor reflection range (no other det scene enables GLOBAL_OVERRIDES_ENABLE_FLOOR_REFLECTION). Cap as spot_mac01_det: cold det start, scene line at frame 300."
     },
     {
+      "name": "menu_texf",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 at 0 0 200 (as spot_mac01_det): SELECT opens the menu on the General tab (Frame skip row), then Debug > Render > Texture filtering: Filter Game to Bilinear all, close; field shots 200 to 205 with the bilinear filter.",
+      "proves": "TEXF: the General tab holds Frame skip, the Render folder holds Texture filtering, and Filter Bilinear all draws the field with bilinear sampling (the shot differs from the default shot, same frames). Log: texfilt: 0 Bilinear all.",
+      "debug": "warp=mac_01:0 pos=0:0:200 padscript=@pad_menu_texf.txt shotmenu shots shotwin=200:6 loglevel=debug det",
+      "extra": [],
+      "until": "shot \\d+ frame 205\\b",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "filter set",
+          "regex": "texfilt: 0 Bilinear all"
+        },
+        {
+          "name": "frame 200",
+          "regex": "shot \\d+ frame 200\\b"
+        }
+      ],
+      "reason": "TEXF gate: the menu walk sets the filter before the field shots (the menu pauses the game, so the shot window comes after the log line). Picture: field shot 200 against the default spot_mac01_det frame 200 (smoother textures)."
+    },
+    {
+      "name": "menu_texc",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 at 0 0 200 (as menu_texf): Filter Bilinear all, then Texel centre On (Debug > Render > Texture filtering), close; field shots 200 to 205.",
+      "proves": "TEXC: the Texel centre row sets the bilinear texel offset (nd_model.c uvso +0.5 texel). Log: texfilt: 1 On. The field shot 200 differs from menu_texf frame 200 by a sub-texel shift.",
+      "debug": "warp=mac_01:0 pos=0:0:200 padscript=@pad_menu_texc.txt shotmenu shots shotwin=200:6 loglevel=debug det",
+      "extra": [],
+      "until": "shot \\d+ frame 205\\b",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "centre set",
+          "regex": "texfilt: 1 On"
+        },
+        {
+          "name": "frame 200",
+          "regex": "shot \\d+ frame 200\\b"
+        }
+      ],
+      "reason": "TEXC gate: the centre row is set after the filter in the menu walk, so the shot window comes after the log line. Picture: compare with menu_texf frame 200."
+    },
+    {
       "name": "profile",
       "status": "unverified",
       "subject": "Select menu (SELECT), Cheats tab (L): top level order. Row 2 Equipment (A): Boots steps Normal to Super to Ultra (A twice), row 2 Action commands (A): On. B back, SELECT closes, START opens the pause menu (the gear is read by eye).",
@@ -11304,6 +11404,64 @@
         }
       ],
       "reason": "SAVESAFE step 4 gate. Until is the exit flush line, which follows the savecrash line."
+    },
+    {
+      "name": "seam_mac01_east",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 east floor (lists 115 and 180 of the oracle: floor gaps along the T-point edges), det, shots at frames 200 to 205.",
+      "proves": "SEAMFIX picture gate: the floor and wall seams of the T-point edges are closed (nd_dlc_compile inserts the T points); base and head shots compared by region_diff.",
+      "debug": "warp=mac_01:0 pos=360:20:-280 det shots shotwin=200:6 loglevel=debug",
+      "extra": [],
+      "until": "shot \\d+ frame 205\\b",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "seamfix",
+          "regex": "seamfix map mac_01_shape tp \\d+ ins \\d+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 205\\b"
+        }
+      ],
+      "reason": "SEAMFIX picture gate: shots 200 to 205 of one spot; the shot line of frame 205 is the until (cap 25 s: boot about 15 s plus the 6 shots)."
+    },
+    {
+      "name": "seam_mac01_merlon",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 outdoors in front of Merlon's house (PT43 seams), det, shots at frames 200 to 205.",
+      "proves": "SEAMFIX picture gate: the floor and wall seams of the T-point edges are closed (nd_dlc_compile inserts the T points); base and head shots compared by region_diff.",
+      "debug": "warp=mac_01:0 pos=-230:0:-250 det shots shotwin=200:6 loglevel=debug",
+      "extra": [],
+      "until": "shot \\d+ frame 205\\b",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "seamfix",
+          "regex": "seamfix map mac_01_shape tp \\d+ ins \\d+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 205\\b"
+        }
+      ],
+      "reason": "SEAMFIX picture gate: shots 200 to 205 of one spot; the shot line of frame 205 is the until (cap 25 s: boot about 15 s plus the 6 shots)."
     }
   ]
 }

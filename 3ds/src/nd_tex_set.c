@@ -274,7 +274,15 @@ void nd_tex4_run(const uint32_t* p) {
     if (!(arg & 2u)) return;
     const unsigned w = p[3] & 0xffffu, h = p[3] >> 16, fmt = f & 7u, rpal = (f >> 24) & 15u, sh0 = (f >> 16) & 15u, sh1 = (f >> 20) & 15u;
     const unsigned wr[4] = { (f >> 4) & 3u, (f >> 6) & 3u, (f >> 8) & 15u, (f >> 12) & 15u }; /* cms, cmt, masks, maskt (the op_settile order) */
-    if (arg & 4u) { /* gDPLoadTextureTile_4b(raster, fmt, w, h, uls, ult, lrs, lrt, ...) */
+    if (arg & 8u) { /* gDPLoadTextureTile(raster, fmt, siz, w, h, uls, ult, lrs, lrt, ...) */
+        const unsigned siz = p[7];
+        const int uls = (int)(p[4] & 0xffffu), ult = (int)(p[4] >> 16), lrs = (int)(p[5] & 0xffffu), lrt = (int)(p[5] >> 16);
+        TX_OP(G_SETTIMG); set_timg(p[1], fmt, siz, (int)((w - 1u) & 0xfffu) + 1);
+        TX_OP(G_SETTILE); set_tile(G_TX_LOADTILE, fmt, siz, 0, 0, wr, sh0, sh1);
+        TX_OP(G_LOADTILE); set_loadtile(G_TX_LOADTILE, (uls << 2) & 0xfff, (ult << 2) & 0xfff, (lrs << 2) & 0xfff, (lrt << 2) & 0xfff);
+        TX_OP(G_SETTILE); set_tile(G_TX_RENDERTILE, fmt, siz, 0, rpal, wr, sh0, sh1);
+        TX_OP(G_SETTILESIZE); set_tilesize(G_TX_RENDERTILE, (uls << 2) & 0xfff, (ult << 2) & 0xfff, (lrs << 2) & 0xfff, (lrt << 2) & 0xfff);
+    } else if (arg & 4u) { /* gDPLoadTextureTile_4b(raster, fmt, w, h, uls, ult, lrs, lrt, ...) */
         const int uls = (int)(p[4] & 0xffffu), ult = (int)(p[4] >> 16), lrs = (int)(p[5] & 0xffffu), lrt = (int)(p[5] >> 16);
         TX_OP(G_SETTIMG); set_timg(p[1], fmt, G_IM_SIZ_8b, (int)(((w >> 1) - 1u) & 0xfffu) + 1);
         TX_OP(G_SETTILE); set_tile(G_TX_LOADTILE, fmt, G_IM_SIZ_8b, 0, 0, wr, sh0, sh1);

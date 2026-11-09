@@ -17,7 +17,7 @@ enum {
     NDC_SPR = 5,   /* D2: payload = the sprite record (G_PM_SPR, 4 pairs), then its gSPVertex and gSP2Triangles words */
     NDC_ENT = 6,   /* D3: payload = an entity record (G_PM_ENT, 4 pairs; DRAW or END form), then for a DRAW record its G_DL word (5 pairs) */
     NDC_TEX4 = 7,  /* D4b-1: a compound texture load (gDPLoadTLUT_pal16, gDPLoadTextureBlock_4b, gDPLoadTextureTile_4b). arg bit 0: the palette load,
-                    * bit 1: the 4 bit load, bit 2: its tile form (else block). arg2 = the raster; unit 0: palette, width | height << 16; unit 1: uls | ult << 16,
+                    * bit 1: the 4 bit load, bit 2: its tile form (else block), bit 3: the load is gDPLoadTextureTile of size unit 2 word 1. arg2 = the raster; unit 0: palette, width | height << 16; unit 1: uls | ult << 16,
                     * lrs | lrt << 16 (texels); unit 2 word 0: fmt | cms << 4 | cmt << 6 | masks << 8 | maskt << 12 | shifts << 16 | shiftt << 20 | tile palette << 24 | palette slot << 28 */
     NDC_TEXRECT = 8, /* D4b-1: gSPTextureRectangle; payload unit 0: w0, w1; unit 1: the RDPHALF_1 and RDPHALF_2 words (s t, dsdx dtdy) */
     NDC_N
@@ -33,9 +33,10 @@ void nd_rec_ent_draw(const void* list, unsigned segid, unsigned varray, unsigned
 void nd_rec_ent(const void* rec);                   /* D3: an entity record with no G_DL (the entcheck END record) */
 /* D4b-1: the record forms of the compound texture loads and the texture rectangle (nd_gbi_tex.h redirects the macros of a file to them). Only with
  * nd_rec_sub == 0: the redirect writes the words into a list for later. */
-typedef struct NdTex4 { const void* raster; const void* pal; uint32_t flags, wh, ul, lr, f; } NdTex4; /* the NDC_TEX4 fields (arg, arg2, units) */
+typedef struct NdTex4 { const void* raster; const void* pal; uint32_t flags, wh, ul, lr, f, siz; } NdTex4; /* the NDC_TEX4 fields (arg, arg2, units) */
 void nd_rec_tex4(const NdTex4* t);
 void nd_rec_texrect(uint32_t w0, uint32_t w1, uint32_t hs, uint32_t hd);
+const uint32_t* nd_rec_pos(void);                   /* D4b-2: the stream write position (no cut): moves when any command is recorded */
 const uint32_t* nd_rec_mark(void);                  /* D1: cut, then the stream position (a range start or end) */
 void nd_rec_call(const uint32_t* a, const uint32_t* b); /* D1: replay the range [a, b) here */
 /* D1: a builder that writes a list for later (build_custom_gfx) runs with nd_rec_sub > 0: records go to that list, not to the stream. */

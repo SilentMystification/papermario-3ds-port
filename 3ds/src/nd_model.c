@@ -6,6 +6,7 @@
 #include "nd.h"
 #include "nd_ops.h"
 #include "variables.h"
+extern int pm_texf_centre; int pm_tex_filt_linear(void); /* TEXF: pm_options.c, pm_tex.c */
 
 float nd_shift_mul(unsigned n) {
     return n == 0 ? 1.f : n <= 10 ? 1.f / (float)(1 << n) : (float)(1 << (16 - n));
@@ -33,10 +34,12 @@ void nd_gv_params(const NdGvIn* in, NdGvP* o) {
     uint32_t tss = in->tss;
     if (in->tex_on) {
         float itw = 1.f / (float)tw, ith = 1.f / (float)th; /* H5: one divide per axis, not one per term */
+        int tc = pm_texf_centre && pm_tex_filt_linear(); /* TEXF: texel centre on: +0.5 texel for bilinear draws (Debug > Render > Texture filtering) */
         o->uvso[0] = (float)(tss >> 16) / 65536.f / 32.f * ms * itw;
         o->uvso[1] = (float)(tss & 0xffffu) / 65536.f / 32.f * mt * ith;
         o->uvso[2] = -((float)in->tile_x0 + in->tile_fx) * itw;
         o->uvso[3] = -((float)in->tile_y0 + in->tile_fy) * ith;
+        if (tc) { o->uvso[2] += 0.5f * itw; o->uvso[3] += 0.5f * ith; } /* the untouched value when off: no bit change */
     } else { /* H06b1: the vertex texcoords are 0, texel (0, 0) centre */
         o->uvso[0] = o->uvso[1] = 0.f;
         o->uvso[2] = -((float)in->tile_x0 + in->tile_fx) / (float)tw + 0.5f / (float)tw;
