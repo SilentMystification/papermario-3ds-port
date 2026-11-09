@@ -3503,6 +3503,22 @@
       "gates": []
     },
     {
+      "name": "effcen_mac01",
+      "kind": "azahar_stream",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "EFFCEN: fxtest fx_underwater (87) on mac_01, effcen word. The effcen census line (top 5 render tasks by us, ops = gfx words per frame). Log only.",
+      "scenario": "effcen_mac01",
+      "cap": 25,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "effcen",
+        "fx"
+      ],
+      "gates": []
+    },
+    {
       "name": "i8aux_mac01",
       "kind": "azahar_stream",
       "speed": "turbo",
