@@ -179,7 +179,11 @@ static void tex_win0(const NdTst* t, const NdTexM* m, const void* timg, int uls,
 }
 /* CORE-2b batch D: tile size setter (decoded fields). */
 static __attribute__((noinline)) void set_tilesize(unsigned tile, int uls, int ult, int lrs, int lrt) {
-            if (((lrs - uls) >> 2) + 1 <= 0 || ((lrt - ult) >> 2) + 1 <= 0) tex_win_s25(&uls, &ult, &lrs, &lrt);
+    if (tile == 0 && PMDL("negpanf") && pm_frame_count() >= 200u && (nd_ws.tst1.tile_wrap[0][2] || nd_ws.tst1.tile_wrap[0][3])) { /* NEGPAN step 1 debug: force the mushroom panner offset (-0x8000 = -128 in 10.2) on 8 tile-0 sizes */
+        static unsigned nf_;
+        if (nf_ < 8u) { nf_++; ult = (ult - 128) & 0xfff; lrt = (lrt - 128) & 0xfff; } /* raw 12 bit fields, as the record carries them */
+    }
+            if (((lrs - uls) >> 2) + 1 <= 0 || ((lrt - ult) >> 2) + 1 <= 0) tex_win_s25(&uls, &ult, &lrs, &lrt, nd_ws.tst1.tile_wrap[tile][0], nd_ws.tst1.tile_wrap[tile][2], nd_ws.tst1.tile_wrap[tile][1], nd_ws.tst1.tile_wrap[tile][3]);
             GP_SET(4, nd_ws.tst1.tile_sz[tile][0] == uls && nd_ws.tst1.tile_sz[tile][1] == ult && nd_ws.tst1.tile_sz[tile][2] == lrs && nd_ws.tst1.tile_sz[tile][3] == lrt);
             nd_ws.tst1.tile_sz[tile][0] = uls;
             nd_ws.tst1.tile_sz[tile][1] = ult;
@@ -556,18 +560,27 @@ __attribute__((cold, noinline)) int tex_shaded0(int uls, int ult) {
     return 0;
 }
 
-__attribute__((cold, noinline)) void tex_win_s25(int* p_uls, int* p_ult, int* p_lrs, int* p_lrt) {
+int nd_tex_neg_start(int s, unsigned flags, unsigned mask); /* nd_tex.c: the period mapping of a negative start (host tested) */
+__attribute__((cold, noinline)) void tex_win_s25(int* p_uls, int* p_ult, int* p_lrs, int* p_lrt, unsigned fs, unsigned ms, unsigned ft, unsigned mt) {
     int uls = *p_uls, ult = *p_ult, lrs = *p_lrs, lrt = *p_lrt;
-                /* S25: a window with a negative start (a scrolled texture) is 12 bit two's complement. Texel 0 is
-                 * still the first texel of the loaded image, so keep the size and start at 0. */
+                /* S25: a window with a negative start (a scrolled texture) is 12 bit two's complement. A clamp tile (or a tile
+                 * with no mask) starts at texel 0 as before. A wrap or mirror tile with a mask maps the start into its mask
+                 * period (NEGPAN: -32 texels, mask 64 -> 32 texels), so the RDP reads the same texels as the N64. The window
+                 * size is kept. Applied here only: set_tilesize stores these values as the tile size (tile_x0, tile_y0, uvso). */
                 int su = uls & 0x800 ? uls - 0x1000 : uls, st = ult & 0x800 ? ult - 0x1000 : ult;
                 int sr = lrs & 0x800 ? lrs - 0x1000 : lrs, sl = lrt & 0x800 ? lrt - 0x1000 : lrt;
                 if (sr >= su && sl >= st) {
-                    lrs = (su < 0 ? 0 : su) + (sr - su);
-                    lrt = (st < 0 ? 0 : st) + (sl - st);
-                    uls = su < 0 ? 0 : su;
-                    ult = st < 0 ? 0 : st;
+                    int ou = su < 0 ? nd_tex_neg_start(su, fs, ms) : su;
+                    int ot = st < 0 ? nd_tex_neg_start(st, ft, mt) : st;
+                    lrs = ou + (sr - su);
+                    lrt = ot + (sl - st);
+                    uls = ou;
+                    ult = ot;
                 }
+    if (PMDL("negpan") && (su < 0 || st < 0)) { /* NEGPAN step 1: a negative start is clamped to 0 (uls/ult out) */
+        static unsigned nneg_; /* first 8 hits */
+        if (nneg_++ < 8u) pm_log("negpan in uls %d ult %d lrs %d lrt %d out uls %d ult %d lrs %d lrt %d f%u wrap s %u/%u t %u/%u", su, st, sr, sl, uls, ult, lrs, lrt, pm_frame_count(), fs, ms, ft, mt);
+    }
     *p_uls = uls; *p_ult = ult; *p_lrs = lrs; *p_lrt = lrt;
 }
 

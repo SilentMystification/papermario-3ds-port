@@ -128,9 +128,20 @@ static void test_flush(void) {
     CHECK(again == 1 && loads == l0 + ND_TEX_N + 2, "an old descriptor after the flush loads again into the next id: %d", again);
 }
 
+int nd_tex_neg_start(int s, unsigned flags, unsigned mask);
+/* NEGPAN: -32 texels (raw -128) with mask 64 (log2 6) starts at 32 texels (raw 128). */
+static void test_negstart(void) {
+    CHECK(nd_tex_neg_start(-128, 0, 6) == 128, "wrap -32 texels mask 64 -> 32 texels: %d", nd_tex_neg_start(-128, 0, 6));
+    CHECK(nd_tex_neg_start(-4, 0, 6) == 252, "wrap -1 texel mask 64 -> 63 texels: %d", nd_tex_neg_start(-4, 0, 6));
+    CHECK(nd_tex_neg_start(-128, 1, 6) == 384, "mirror -32 texels mask 64 (period 128) -> 96 texels: %d", nd_tex_neg_start(-128, 1, 6));
+    CHECK(nd_tex_neg_start(-128, 2, 6) == 0, "clamp keeps texel 0: %d", nd_tex_neg_start(-128, 2, 6));
+    CHECK(nd_tex_neg_start(-128, 0, 0) == 0, "no mask keeps texel 0: %d", nd_tex_neg_start(-128, 0, 0));
+}
+
 int main(int argc, char** argv) {
     if (argc < 2) { fprintf(stderr, "usage: nd_tex_test <ndref.bin> ...\n"); return 2; }
     test_wrap();
+    test_negstart();
     test_ndref(argc, argv);
     test_table();
     test_flush();

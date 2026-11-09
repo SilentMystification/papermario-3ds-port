@@ -3488,6 +3488,22 @@
       "gates": []
     },
     {
+      "name": "i8aux_mac01",
+      "kind": "azahar_stream",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "I8AUX step 1: fxtest huff_puff_breath (103) on mac_01, cold. The i8aux line (pm_tex_i8(1) and the unit 1 slot fmt, siz, GPU format). Log only.",
+      "scenario": "i8aux_mac01",
+      "cap": 25,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "i8aux",
+        "fx"
+      ],
+      "gates": []
+    },
+    {
       "name": "fx_direct_det",
       "kind": "azahar_pic",
       "speed": "turbo",
@@ -3548,6 +3564,22 @@
         "azahar",
         "battle",
         "btldim"
+      ],
+      "gates": []
+    },
+    {
+      "name": "btldim_star_sprmix",
+      "kind": "azahar",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SHROUD step 1: the sprite mix (sprmix line) during Shooting Star.",
+      "scenario": "btldim_star_sprmix",
+      "cap": 30,
+      "until": "btldim: lighten done f\\d+",
+      "tags": [
+        "azahar",
+        "battle",
+        "shroud"
       ],
       "gates": []
     },
@@ -7352,6 +7384,22 @@
           "azahar",
           "census",
           "water"
+        ],
+        "gates": []
+      },
+    {
+        "name": "negpan_mim05",
+        "kind": "azahar_pic",
+        "speed": "normal",
+        "default": false,
+        "purpose": "NEGPAN step 1: mim_05 warp, log of the first negative tile start clamped in tex_win_s25 (uls/ult raw and out).",
+        "scenario": "negpan_mim05",
+        "cap": 25,
+        "until": "negpan in uls ",
+        "tags": [
+          "azahar",
+          "negpan",
+          "mim_05"
         ],
         "gates": []
       }

@@ -206,7 +206,7 @@ void gp3_t0_set(void);
 void tlut_v20(unsigned slot);
 void tex_tile1(unsigned tile, int uls, int ult, int lrs, int lrt);
 int tex_shaded0(int uls, int ult);
-void tex_win_s25(int* p_uls, int* p_ult, int* p_lrs, int* p_lrt);
+void tex_win_s25(int* p_uls, int* p_ult, int* p_lrs, int* p_lrt, unsigned fs, unsigned ms, unsigned ft, unsigned mt);
 /* HC4c: the typed texture setters (nd_op.h fields; nd_op_apply runs them by id) */
 void nd_set_timg(u32 a, u32 b);
 void nd_set_tile(u32 a, u32 b);
