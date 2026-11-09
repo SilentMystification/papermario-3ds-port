@@ -1,4 +1,3 @@
-#define ND_GBI_WORDS /* DIRECT D5: this file keeps list words (inline data, lists for later or list position tests) */
 #include "common.h"
 #include "effects_internal.h"
 
@@ -278,6 +277,9 @@ void shockwave_appendGfx(void* effect) {
     s32 envR2, envG2, envB2;
     Gfx* savedGfxPos;
     Gfx* savedGfxPos2;
+#ifdef TARGET_3DS
+    NdSub sub;
+#endif
     s32 temp_v0;
     s32 i;
 
@@ -318,9 +320,13 @@ void shockwave_appendGfx(void* effect) {
               G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     primA = data->alpha;
 
+#ifdef TARGET_3DS
+    nd_sub_open(&sub); /* DIRECT D6c: the list for later is a stream range */
+#else
     savedGfxPos = gMainGfxPos;
     gMainGfxPos++;
     savedGfxPos2 = gMainGfxPos;
+#endif
 
     data++;
     for (i = 1; i < ((EffectInstance*) effect)->numParts; i++, data++) {
@@ -343,18 +349,30 @@ void shockwave_appendGfx(void* effect) {
             gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         }
     }
+#ifdef TARGET_3DS
+    nd_sub_close(&sub);
+#else
     gSPEndDisplayList(gMainGfxPos++);
     gSPBranchList(savedGfxPos, gMainGfxPos);
+#endif
     gDPSetPrimColor(gMainGfxPos++, 0, 0, primR2, primG2, primB2, primA);
     gDPSetEnvColor(gMainGfxPos++, envR2, envG2, envB2, 0);
     gSPClearGeometryMode(gMainGfxPos++, G_CULL_BOTH);
     gSPSetGeometryMode(gMainGfxPos++, G_CULL_FRONT);
+#ifdef TARGET_3DS
+    nd_sub_call(&sub);
+#else
     gSPDisplayList(gMainGfxPos++, savedGfxPos2);
+#endif
     gDPSetPrimColor(gMainGfxPos++, 0, 0, primR, primG, primB, primA);
     gDPSetEnvColor(gMainGfxPos++, envR, envG, envB, 0);
     gSPClearGeometryMode(gMainGfxPos++, G_CULL_BOTH);
     gSPSetGeometryMode(gMainGfxPos++, G_CULL_BACK);
+#ifdef TARGET_3DS
+    nd_sub_call(&sub);
+#else
     gSPDisplayList(gMainGfxPos++, savedGfxPos2);
+#endif
     gDPSetColorDither(gMainGfxPos++, G_CD_DISABLE);
     gDPSetAlphaDither(gMainGfxPos++, G_AD_DISABLE);
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);

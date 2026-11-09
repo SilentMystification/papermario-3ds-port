@@ -1,4 +1,3 @@
-#define ND_GBI_WORDS /* DIRECT D5: this file keeps list words (inline data, lists for later or list position tests) */
 #include "common.h"
 #include "effects_internal.h"
 
@@ -263,12 +262,16 @@ void effect_65_appendGfx(void* effect) {
 
     gDPSetPrimColor(gMainGfxPos++, 0, 0, data->primR, data->primG, data->primB, primAlpha);
     gDPSetEnvColor(gMainGfxPos++, data->envR, data->envG, data->envB, 0);
+#ifdef TARGET_3DS
+    vtxBuffer = (Vtx_t*) nd_rec_data(VTX_BUF_SIZE * sizeof(Gfx)); /* DIRECT D6c: the vertex buffer is stream data */
+#else
     gSPBranchList(gMainGfxPos, gMainGfxPos + 1 + VTX_BUF_SIZE);
     gMainGfxPos++;
 
     // reserve space in the display list for the vertices
     vtxBuffer = (Vtx_t*)gMainGfxPos;
     gMainGfxPos += VTX_BUF_SIZE;
+#endif
 
     firstPointIdx = -1;
     baseTexOffset = (lifeTime & 0x3F) << 5;
