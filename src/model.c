@@ -7,6 +7,9 @@
 #include "model_clear_render_tasks.h"
 #include "nu/nusys.h"
 #include "pm_interp_fi.h"
+#ifdef TARGET_3DS
+#include "nd_cmd.h"
+#endif
 
 // models are rendered in two stages by the RDP:
 // (1) main and aux textures are combined in the color combiner
@@ -1408,6 +1411,9 @@ void appendGfx_model(void* data) {
     Gfx* recPre = nullptr, *recPost = nullptr, *recGeom = nullptr; /* S3G-1: R11 custom gfx pre and post lists, R12 geometry list (0 when none) */
     u32 recAuxN = 0;        /* S3G-2: words after the record that the texture block wrote (special tile list, untextured ops), R13 w0 */
     u32 recPop = 0;         /* S3G-1: R12 w1, 1 when the model pops the matrix after its geometry */
+    Gfx recBuf[G_PM_REC_WORDS + ND_REC_AUX_MAX]; /* DIRECT D1: the record and its R13 words are built here, then go to the frame stream (nd_rec_model) */
+    Gfx* recPos = recBuf;
+    gfxPos = &recPos;
 #endif
 
     mtxPushMode = G_MTX_PUSH;
@@ -2242,6 +2248,7 @@ void appendGfx_model(void* data) {
         recWord[12].words.w0 = (u32)(uintptr_t)recGeom;
         recWord[12].words.w1 = recPop;
     }
+    nd_rec_model(recBuf, (unsigned)(recPos - recBuf)); /* DIRECT D1: the record goes to the frame stream (inside a custom gfx builder: to the list) */
 #else
     if (mtxPushMode == G_MTX_NOPUSH) {
         gSPPopMatrix((*gfxPos)++, G_MTX_MODELVIEW);
@@ -4286,14 +4293,22 @@ void build_custom_gfx(void) {
 
         if (preFunc != nullptr) {
             (*gCurrentCustomModelGfxPtr)[i * 2] = gMainGfxPos;
+#ifdef TARGET_3DS
+            ND_REC_SUB(preFunc(i)); /* DIRECT D1: a builder writes a list for later: its records stay in the list */
+#else
             preFunc(i);
+#endif
             gSPEndDisplayList(gMainGfxPos++);
         }
 
         postFunc = (*gCurrentCustomModelGfxBuildersPtr)[i * 2 + 1];
         if (postFunc != nullptr) {
             (*gCurrentCustomModelGfxPtr)[i * 2 + 1] = gMainGfxPos;
+#ifdef TARGET_3DS
+            ND_REC_SUB(postFunc(i)); /* DIRECT D1: a builder writes a list for later: its records stay in the list */
+#else
             postFunc(i);
+#endif
             gSPEndDisplayList(gMainGfxPos++);
         }
     }
@@ -5074,20 +5089,16 @@ static void bat1_sort_runs(s32* sorted, s32 n, RenderTask* taskList) {
     }
 }
 
-/* S3G-3: a floor reflection range (plan_native_slices S3-5 item 1). The task draws once, then again flipped in Y. Slot: a branch over
- * the task words (G_DL_NOPUSH to the word after the range end). Built here, not in nd_core.c: that file is host-tested without gbi.h. */
-static Gfx* nd_range_begin(Gfx** pos) {
-    return (*pos)++;
+/* S3G-3, DIRECT D1: a floor reflection range (plan_direct.md section 4). The task draws once in place, then the frame stream replays its
+ * commands (NDC_CALL) between the flip and the projection matrix. The N64 order was: the range skipped in place, called twice by G_DL. */
+static const uint32_t* nd_range_begin(void) {
+    return nd_rec_mark();
 }
-static void nd_range_end(Gfx** pos, Gfx* slot) {
-    gSPEndDisplayList((*pos)++);
-    gSPBranchList(slot, *pos);
-}
-static void nd_range_repeat(Gfx** pos, Gfx* slot, Mtx* flipMtx, Mtx* projMtx) {
-    gSPDisplayList((*pos)++, slot + 1);
-    gSPMatrix((*pos)++, flipMtx, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_PROJECTION);
-    gSPDisplayList((*pos)++, slot + 1);
-    gSPMatrix((*pos)++, projMtx, G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
+static void nd_range_repeat(const uint32_t* start, Mtx* flipMtx, Mtx* projMtx) {
+    const uint32_t* end = nd_rec_mark();
+    gSPMatrix(gMainGfxPos++, flipMtx, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_PROJECTION);
+    nd_rec_call(start, end);
+    gSPMatrix(gMainGfxPos++, projMtx, G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
 }
 
 void execute_render_tasks(void) {
@@ -5167,7 +5178,7 @@ void execute_render_tasks(void) {
     taskList = RenderTaskLists[RenderTaskListIdx];
     if (gOverrideFlags & GLOBAL_OVERRIDES_ENABLE_FLOOR_REFLECTION) {
         Mtx* dispMtx;
-        Gfx* savedGfxPos = nullptr;
+        const uint32_t* savedRange = nullptr;
 
         FI_OPEN("floor_reflection_flipY", 0);
         guScaleF(mtxFlipY, 1.0f, -1.0f, 1.0f);
@@ -5179,7 +5190,7 @@ void execute_render_tasks(void) {
             appendGfx = task->appendGfx;
 
             if (task->renderMode & RENDER_TASK_FLAG_REFLECT_FLOOR) {
-                savedGfxPos = nd_range_begin(&gMainGfxPos);
+                savedRange = nd_range_begin();
             }
 
             /* the key is (draw function, argument): the argument alone is not always an object pointer (PaperBoat note) */
@@ -5189,8 +5200,7 @@ void execute_render_tasks(void) {
             FI_CLOSE();
 
             if (task->renderMode & RENDER_TASK_FLAG_REFLECT_FLOOR) {
-                nd_range_end(&gMainGfxPos, savedGfxPos);
-                nd_range_repeat(&gMainGfxPos, savedGfxPos, dispMtx, &gDisplayContext->camPerspMatrix[gCurrentCamID]);
+                nd_range_repeat(savedRange, dispMtx, &gDisplayContext->camPerspMatrix[gCurrentCamID]);
             }
         }
     } else {

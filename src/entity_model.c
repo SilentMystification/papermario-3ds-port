@@ -2,6 +2,7 @@
 #include "entity.h"
 #ifdef TARGET_3DS
 #include "nd.h" /* S6-2a: nd_dlc_tex_decode (entcheck census) */
+#include "nd_cmd.h" /* DIRECT D3 */
 #endif
 
 EntityModelScript D_8014C260 = {
@@ -291,15 +292,15 @@ static void entcheck_vtxseg(const EntityModel* model, unsigned f) {
     }
     ent_vs_draw[ent_vk[i].st]++;
 }
-static void entcheck_draw(const Gfx* rec, const EntityModel* model) {
+static void entcheck_draw(const Gfx* rec, const Gfx* words, const EntityModel* model) { /* words: the first list word of the draw. DIRECT D3: the model list G_DL is in the frame stream */
     Gfx e[2] = { { { 0, 0 } } }; /* e[1] stays zero when the model has no vertexArray */
     const Gfx* p;
-    int mtxOk = 0, segOk = model->vertexArray == nullptr, dlOk = 0, rmOk = rec[3].words.w1 == 0;
+    int mtxOk = 0, segOk = model->vertexArray == nullptr, dlOk = 1, rmOk = rec[3].words.w1 == 0;
     unsigned df = 0, f;
     if (!entcheck_on()) return;
     gSPMatrix(&e[0], (Mtx*)(uintptr_t)rec[2].words.w1, G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     if (model->vertexArray != nullptr) gSPSegment(&e[1], D_80154374, VIRTUAL_TO_PHYSICAL(model->vertexArray));
-    for (p = rec + G_PM_ENT_WORDS; p < gMainGfxPos; p++) {
+    for (p = words; p < gMainGfxPos; p++) {
         if (!mtxOk && p->words.w0 == e[0].words.w0 && p->words.w1 == e[0].words.w1) mtxOk = 1;
         if (!segOk && p->words.w0 == e[1].words.w0 && p->words.w1 == e[1].words.w1) segOk = 1;
         if (!dlOk && p->words.w1 == (u32)(uintptr_t)model->gfx.displayList && (p->words.w0 >> 24) == (u32)G_DL) dlOk = 1;
@@ -350,13 +351,14 @@ void appendGfx_entity_model(EntityModel* model) {
     ImgFXTexture ifxImg;
     Matrix4f imgfxMtx;
 #ifdef TARGET_3DS
-    Gfx* entRec = nullptr; /* S6-1: entity record (G_PM_ENT) of a model draw, 4 words, see gbi_custom.h */
+    Gfx* entRec = nullptr; /* S6-1: entity record (G_PM_ENT) of a model draw, 4 words, see gbi_custom.h. DIRECT D3: a local record (the walker reads only the draw record) */
+    Gfx entBuf[G_PM_ENT_WORDS];
+    Gfx* entWords = gMainGfxPos; /* the first list word of this draw (entcheck) */
 #endif
 
 #ifdef TARGET_3DS
     if (!(model->flags & ENTITY_MODEL_FLAG_USE_IMAGE)) { /* S6-1: the entity record. w3 (render mode list) is set after the render mode switch. */
-        entRec = gMainGfxPos;
-        gMainGfxPos += G_PM_ENT_WORDS;
+        entRec = entBuf;
         entRec[0].words.w0 = ((u32)G_PM_ENT << 24) | (((u32)model->renderMode & 0xffu) << 16) | ((entity_fog_enabled && !(model->flags & ENTITY_MODEL_FLAG_FOG_DISABLED)) ? 1u : 0u);
         entRec[0].words.w1 = (u32)(uintptr_t)model->gfx.displayList;
         entRec[1].words.w0 = (model->vertexArray != nullptr) ? (u32)D_80154374 : 0u;
@@ -498,30 +500,27 @@ void appendGfx_entity_model(EntityModel* model) {
         gDPPipeSync(gMainGfxPos++);
 
 #ifdef TARGET_3DS
-        if (entRec != nullptr) { /* S6-2c-3: draw record right before the model list: the walker draws the list from the static pools and skips the G_DL after the record */
-            Gfx* drawRec = gMainGfxPos;
-            gMainGfxPos += G_PM_ENT_WORDS;
-            drawRec[0].words.w0 = ((u32)G_PM_ENT << 24) | (u32)G_PM_ENT_DRAW;
-            drawRec[0].words.w1 = (u32)(uintptr_t)model->gfx.displayList;
-            drawRec[1].words.w0 = entRec[1].words.w0;
-            drawRec[1].words.w1 = entRec[1].words.w1;
-            drawRec[2].words.w0 = drawRec[2].words.w1 = drawRec[3].words.w0 = drawRec[3].words.w1 = 0;
+        if (entRec != nullptr) { /* S6-2c-3, DIRECT D3: the draw record and the model list G_DL go to the frame stream (the walker draws the list from the static pools, or runs the G_DL) */
+            nd_rec_ent_draw(model->gfx.displayList, entRec[1].words.w0, entRec[1].words.w1, 0);
+        } else {
+            gSPDisplayList(gMainGfxPos++, model->gfx.displayList);
         }
-#endif
+#else
         gSPDisplayList(gMainGfxPos++, model->gfx.displayList);
+#endif
 #ifdef TARGET_3DS
         if (entRec != nullptr && entcheck_on()) { /* S6-2a: end record, the walker checks its tile 0 state against the decode of the list (pm_gbi.c G_PM_ENT) */
-            Gfx* endRec = gMainGfxPos;
-            gMainGfxPos += G_PM_ENT_WORDS;
+            Gfx endRec[G_PM_ENT_WORDS];
             endRec[0].words.w0 = ((u32)G_PM_ENT << 24) | (u32)G_PM_ENT_END;
             endRec[0].words.w1 = (u32)(uintptr_t)model->gfx.displayList;
             endRec[1].words.w0 = endRec[1].words.w1 = endRec[2].words.w0 = endRec[2].words.w1 = endRec[3].words.w0 = endRec[3].words.w1 = 0;
+            nd_rec_ent(endRec);
         }
 #endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         gDPPipeSync(gMainGfxPos++);
 #ifdef TARGET_3DS
-        if (entRec != nullptr) entcheck_draw(entRec, model);
+        if (entRec != nullptr) entcheck_draw(entRec, entWords, model);
 #endif
 
         if (!(model->flags & ENTITY_MODEL_FLAG_REFLECT)) {

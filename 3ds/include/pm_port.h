@@ -118,8 +118,8 @@ extern int pm_walk_side, pm_c2own;
 void pm_wq_post(void (*fn)(void*), void* arg, unsigned size);
 void pm_wq_call(void (*fn)(void*), void* arg, unsigned size);
 void pm_walk_drain(const char* why);
-/* CORE2C-2: one frame for the walker (nd_wq.c queue, depth 1). A task is a pointer and a byte count: a display list today, a record
- * stream later. bg: the background task (none: ptr NULL); main: the swap task (none: ptr NULL). cfb: the colour buffer the game built
+/* CORE2C-2: one frame for the walker (nd_wq.c queue, depth 1). A task is the head of its frame stream (DIRECT, nd_cmd.h) and the byte
+ * count of its list (log only). bg: the background task (none: ptr NULL); main: the swap task (none: ptr NULL). cfb: the colour buffer the game built
  * the frame for (the walker reads pm_walk_cfb, not nuGfxCfb_ptr). */
 typedef struct { void* ptr; unsigned n; } PmTask;
 typedef struct { PmTask bg, main; void* cfb; unsigned flags; } PmFrame;

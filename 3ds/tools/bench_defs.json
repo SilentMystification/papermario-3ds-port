@@ -4636,6 +4636,22 @@
       ],
       "log_metrics": [],
       "gates": []
+    },
+    {
+      "name": "direct_pra13_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "DIRECT D1 gate: pra_13 floor reflection, cold det shots 200 to 205; base and head builds give byte-equal shots.",
+      "scenario": "direct_pra13_det",
+      "cap": 35,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "det",
+        "cold"
+      ],
+      "gates": []
     }
   ],
   "legacy": {

@@ -10880,6 +10880,31 @@
         }
       ],
       "reason": "STORYMENU gate. The bottom shots (shotmenu, one per draw) show the Warp area list top and bottom, the chapter list, the Prologue page with now, and the Chapter 1 page after the set; read by eye. Log lines give the rows and values. The Story folder is Select menu only (tab 2 row 1)."
+    },
+    {
+      "name": "direct_pra13_det",
+      "status": "unverified",
+      "subject": "Crystal Palace pra_13 (floor reflection on), Mario at entry 0, cold det, shots at frames 200 to 205 and the prof scene line of the first window. The reflected Mario and partner show in the floor.",
+      "proves": "DIRECT D1: the floor reflection range (model.c execute_render_tasks) drawn by the frame stream (NDC_CALL) gives the same shots as the list branch trick.",
+      "debug": "warp=pra_13:0 prof=4 shots shotwin=200:6 loglevel=debug det",
+      "extra": [],
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at pra_13 "
+        }
+      ],
+      "reason": "DIRECT D1 byte gate for the floor reflection range (no other det scene enables GLOBAL_OVERRIDES_ENABLE_FLOOR_REFLECTION). Cap as spot_mac01_det: cold det start, scene line at frame 300."
     }
   ]
 }

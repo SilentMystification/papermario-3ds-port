@@ -11,6 +11,9 @@
 #include "sprite.h"
 #include "sprite/player.h"
 #include "pm_interp_fi.h"
+#ifdef TARGET_3DS
+#include "nd_cmd.h"
+#endif
 
 #define MAX_ITEM_ENTITIES 256
 
@@ -1010,10 +1013,10 @@ void appendGfx_item_entity(void* data) {
             gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, 0x0400, 0x0400, 0x045C, 0x045C);
         }
         #ifdef TARGET_3DS
-        gPmEntDrawRecord(gMainGfxPos, D_8014C678, 0, 0); /* S6-3: the walker draws the list from the static pools */
-        gMainGfxPos += G_PM_ENT_WORDS;
-        #endif
+        nd_rec_ent_draw(D_8014C678, 0, 0, 0); /* S6-3, DIRECT D3: the draw record and its G_DL go to the frame stream */
+        #else
         gSPDisplayList(gMainGfxPos++, D_8014C678);
+        #endif
     } else {
         gDPLoadTLUT_pal16(gMainGfxPos++, 0, gHudElementCacheTablePalette[item->lookupPaletteIndex].data);
         if (gSpriteShadingProfile->flags != 0) {
@@ -1048,10 +1051,10 @@ void appendGfx_item_entity(void* data) {
             gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, 0x0400, 0x0400, 0x047C, 0x047C);
         }
         #ifdef TARGET_3DS
-        gPmEntDrawRecord(gMainGfxPos, D_8014C6A0, 0, 0); /* S6-3: the walker draws the list from the static pools */
-        gMainGfxPos += G_PM_ENT_WORDS;
-        #endif
+        nd_rec_ent_draw(D_8014C6A0, 0, 0, 0); /* S6-3, DIRECT D3: the draw record and its G_DL go to the frame stream */
+        #else
         gSPDisplayList(gMainGfxPos++, D_8014C6A0);
+        #endif
     }
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     gDPPipeSync(gMainGfxPos++);
@@ -1226,10 +1229,10 @@ void render_item_entities(void) {
                                 gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, 0x0400, 0x0400, 0x045C, 0x045C);
                             }
                             #ifdef TARGET_3DS
-                            gPmEntDrawRecord(gMainGfxPos, D_8014C678, 0, 0); /* S6-3: the walker draws the list from the static pools */
-                            gMainGfxPos += G_PM_ENT_WORDS;
-                            #endif
+                            nd_rec_ent_draw(D_8014C678, 0, 0, 0); /* S6-3, DIRECT D3: the draw record and its G_DL go to the frame stream */
+                            #else
                             gSPDisplayList(gMainGfxPos++, D_8014C678);
+                            #endif
                         } else {
                             gDPLoadTLUT_pal16(gMainGfxPos++, 0, gHudElementCacheTablePalette[item->lookupPaletteIndex].data);
                             if (gSpriteShadingProfile->flags != 0) {
@@ -1258,10 +1261,10 @@ void render_item_entities(void) {
                                 gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, 0x0400, 0x0400, 0x047C, 0x047C);
                             }
                             #ifdef TARGET_3DS
-                            gPmEntDrawRecord(gMainGfxPos, D_8014C6A0, 0, 0); /* S6-3: the walker draws the list from the static pools */
-                            gMainGfxPos += G_PM_ENT_WORDS;
-                            #endif
+                            nd_rec_ent_draw(D_8014C6A0, 0, 0, 0); /* S6-3, DIRECT D3: the draw record and its G_DL go to the frame stream */
+                            #else
                             gSPDisplayList(gMainGfxPos++, D_8014C6A0);
+                            #endif
                         }
                         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
                         gDPPipeSync(gMainGfxPos++);
