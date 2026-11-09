@@ -33,6 +33,11 @@ static Thread lg_th, lg_walker;
 static LightEvent lg_ev; /* a command handed, or the exit */
 static int lg_core = -1;
 static volatile unsigned long long lg_pf_t; static volatile unsigned lg_pf_n; /* logic thread: ticks and count of the steps it ran */
+/* PMU2: core 1 counter sums (ic, dc, cycles) over the logic steps of prof mode; lg_pmu_on = the core 1 PMU is set (logic thread only) */
+static volatile unsigned long long lg_pf_pe[3]; static int lg_pmu_on;
+extern int pm_pf_on; /* pm_phase.c */
+void pm_pf_core_setup(void); /* pm_phase.c: the counter setup of the calling core */
+void pm_pf_core_read(u64 out[3]);
 static unsigned long long lg_pf_wait; static unsigned lg_pf_ser; /* game thread: ticks waiting for the logic, steps run inline */
 #define LG_WAIT_NS 2000000ll
 
@@ -56,9 +61,19 @@ static void lg_main(void* arg) {
         LgCmd c = lg_ring[lg_qtaken & (LG_RING - 1u)];
         __sync_synchronize();
         lg_qtaken++;
+        /* PMU2: prof mode only. The core 1 PMU is set here, on this thread, at the first prof step (and again after prof was off). */
+        int pf = pm_pf_on && c.kind != LG_IDLE;
+        if (!pm_pf_on) lg_pmu_on = 0;
+        u64 p0[3], p1[3];
+        if (pf && !lg_pmu_on) { pm_pf_core_setup(); lg_pmu_on = 1; }
+        if (pf) pm_pf_core_read(p0);
         u64 t0 = svcGetSystemTick();
         lg_exec(&c);
         if (c.kind != LG_IDLE) { lg_pf_t += svcGetSystemTick() - t0; lg_pf_n++; }
+        if (pf) {
+            pm_pf_core_read(p1);
+            for (int k = 0; k < 3; k++) lg_pf_pe[k] += (unsigned)(p1[k] - p0[k]); /* u32 delta: one step is far below 2^32 events */
+        }
         pm_wq_kick_walker();
     }
 }
@@ -153,7 +168,8 @@ void pm_lg_stop(void) {
 }
 
 /* Prof (pm_phase.c): totals since boot; the window takes differences. */
-void pm_lg_pf(unsigned long long* lg_t, unsigned* lg_n, unsigned long long* wait_t, unsigned* ser_n, int* core, unsigned* stk_kb) {
+void pm_lg_pf(unsigned long long* lg_t, unsigned* lg_n, unsigned long long* wait_t, unsigned* ser_n, int* core, unsigned* stk_kb, unsigned long long* pe) {
     *lg_t = lg_pf_t; *lg_n = lg_pf_n; *wait_t = lg_pf_wait; *ser_n = lg_pf_ser; *core = lg_core;
+    for (int k = 0; k < 3; k++) pe[k] = lg_pf_pe[k];
     *stk_kb = pm_stack_used(3, NULL) >> 10;
 }
