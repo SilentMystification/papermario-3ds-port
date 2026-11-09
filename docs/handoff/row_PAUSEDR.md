@@ -20,7 +20,12 @@ Worktree build3ds/wt/PAUSEDR, branch PAUSEDR from main (hash in the first commit
    pause (pause_thr_pic variant) on Stats, Party, Spirits, and once in mac_01. Commit.
 2. Fix: TARGET_3DS dma_load_msg copies from pm_rom_ptr(addr, n) with memcpy (fallback dma_copy if NULL). Confirm: no msg buffer is a
    texture or list source (msg_draw.c), and the MSG_ROM range is outside pm_rom_swap16 and the asset table (pm_os.c:436-445).
-3. Report the other drw sources in the pause and in mac_01; fix only pause ones in this row, list the rest.
+3. Grey pause background missing on the console (user, 2026-11-09: "top screen doesn't go grey on console, does on Azahar", the pause
+   menu). Suspect: PAUSEC reserves the 150 KB z-buffer at boot (pm_zbuf_reserve, pm_main.c ~812); if it fails on the O3DS heap the
+   filter is skipped by design (no grey). Print the reserve result as a prof-mode line (pm_log_prof_line, once at boot:
+   `prof zbuf reserved <0/1> heap_free <KB>`) so a prof push shows it; if it fails, reserve it before the ROM block or take it from
+   the leave budget (memcheck mem_budget.json leave), and check the filter runs (log line per pause open). Gate: console pause grey (user).
+4. Report the other drw sources in the pause and in mac_01; fix only pause ones in this row, list the rest.
 
 ## Done criteria
 nd_host PASS; memcheck OK; pause_spin_grab_det_w300 40/40 byte-equal to build-at base; pause_thr_pic no CRASH, menu shown; Azahar drw per
