@@ -103,7 +103,7 @@ static void hud_put_line(PrintConsole* c, int row, const char* s) {
 
 /* PI6: the game thread only copies the three HUD rows (no printf, no console call). pm_gpu_hud_flush draws them on the
  * log sink thread, at most 10 times per second. A HUD row written during a draw may show one update late. */
-static char hud_rows[6][40]; /* [0] fps, [1] memory, [2] VRAM, [3] to [5] the map block (rows 4 to 6) */
+static char hud_rows[7][40]; /* [0] fps, [1] memory, [2] VRAM, [3] ROOM, [4] to [6] the map block (rows 5 to 7) */
 static char pos_row[40]; /* POSHUD: Mario's row, drawn after the map block when pos_on */
 static char stat_row[40]; /* stats: the stats row, drawn after the Mario row when stats_on */
 static void row_copy(char* d, const char* s) { strncpy(d, s ? s : "", 39); d[39] = 0; }
@@ -113,7 +113,8 @@ void pm_gpu_hud(const char* line0, const char* stats, char (*mem)[40], const cha
     row_copy(hud_rows[0], line0);
     row_copy(hud_rows[1], mem[0]);
     row_copy(hud_rows[2], mem[1]);
-    for (int r = 0; r < 3; r++) row_copy(hud_rows[3 + r], map[r]);
+    row_copy(hud_rows[3], mem[2]);
+    for (int r = 0; r < 3; r++) row_copy(hud_rows[4 + r], map[r]);
     pos_on = pos != NULL;
     if (pos) row_copy(pos_row, pos);
     stats_on = stats != NULL;
@@ -174,9 +175,9 @@ void pm_gpu_hud_flush(void) {
     wh = c->windowHeight;
     consoleSelect(c);
     if (hud) {
-        int r = 7;
-        consoleSetWindow(c, 1, 1, 40, 6 + HUD_X); /* cursor row 1 is the top row of the screen */
-        for (int i = 0; i < 6; i++) hud_put_line(c, i + 1, hud_rows[i]);
+        int r = 8;
+        consoleSetWindow(c, 1, 1, 40, 7 + HUD_X); /* cursor row 1 is the top row of the screen */
+        for (int i = 0; i < 7; i++) hud_put_line(c, i + 1, hud_rows[i]);
         if (pos_on) hud_put_line(c, r++, pos_row);
         if (stats_on) hud_put_line(c, r++, stat_row);
     }

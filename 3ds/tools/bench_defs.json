@@ -3574,6 +3574,21 @@
       "gates": []
     },
     {
+      "name": "roomtex_hud_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "ROOMTEX: bottom screen HUD rows (MEM, VRAM, ROOM) at frames 150 to 229, the map scene then the battle start at frame 154. A person reads the shots.",
+      "scenario": "roomtex_hud",
+      "cap": 30,
+      "until": "shotbottom bot_\\d+ frame 229\\b",
+      "tags": [
+        "azahar",
+        "pic"
+      ],
+      "gates": []
+    },
+    {
       "name": "battle_start_pic",
       "kind": "azahar_pic",
       "speed": "normal",

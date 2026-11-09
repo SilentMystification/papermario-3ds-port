@@ -445,8 +445,8 @@ void pm_frame_loop(void) {
     u64 fps_mark = 0;
     float fps = 0.f, fps_draw = 0.f; /* PT24: steps/s (internal) and drawn frames/s (external) */
     /* HUD2: bottom screen memory rows, refreshed at pm_opt.hud_ms (pm_mem_hud). */
-    extern void pm_mem_hud(char out[2][40]);
-    char mem[2][40] = {{0}};
+    extern void pm_mem_hud(char out[3][40]);
+    char mem[3][40] = {{0}};
     float frame_ms = 0.f;
     const u64 tick_hz = SYSCLOCK_ARM11;
     float stat_ms = 0.f;

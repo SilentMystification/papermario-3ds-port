@@ -155,6 +155,7 @@ unsigned pm_tex_used(void);
 unsigned pm_tex_peak(void);
 unsigned pm_tex_map_peak_take(unsigned* wmax);
 void pm_tex_map_delta(unsigned* o);
+void pm_tex_scene_now(unsigned* new_kb, unsigned* kept_kb, unsigned* pct); /* ROOMTEX */
 unsigned pm_tex_budget(void);
 unsigned pm_tex_fail_count(void);
 void pm_tex_map_state(unsigned* out_n, unsigned* out_ev);
@@ -224,8 +225,8 @@ unsigned pm_vram_bank_free_kb(int b) { return bank_free_kb(b); } /* VRAM2: the t
 void nd_tex_reset(void); /* MDL-5e: nd_tex.c, the descriptor table of the native textures */
 void pm_mem_scene_reset(void) { scene_min_kb = 2u * VRAM_BANK_KB - vram_used_kb(); scene_peak_kb = vram_used_kb(); }
 
-/* Row 0 is the pool, row 1 is VRAM. BOTLAYOUT: the VRAM bank row (bank used and free, evictions per second) is no longer drawn. */
-void pm_mem_hud(char out[2][40]) {
+/* Row 0 is the pool, row 1 is VRAM, row 2 the scene texture load (ROOMTEX). The first number of each row starts at column 10. */
+void pm_mem_hud(char out[3][40]) {
     u32 lin_total = pm_linear_bytes(), heap_total = pm_heap_bytes();
     unsigned spk0 = pm_fs_on ? pm_ticks() : 0u; /* SPK1: cost of the two calls, fsplit only */
     u32 lin_free = (u32)linearSpaceFree();
@@ -236,15 +237,20 @@ void pm_mem_hud(char out[2][40]) {
     u32 free_b = lin_free + (heap_total - heap_used); /* heap free: arena free plus sbrk-left */
     u32 used_b = total - free_b;
     pm_vram_note();
-    snprintf(out[0], 40, "MEM used %u.%u / %u.%u MB  free %u.%u MB",
+    snprintf(out[0], 40, "MEM  used %4u.%u/%4u.%u MB free %4u.%u",
              tenth_mb(used_b) / 10, tenth_mb(used_b) % 10, tenth_mb(total) / 10, tenth_mb(total) % 10,
              tenth_mb(free_b) / 10, tenth_mb(free_b) % 10);
     { /* VRAM row: all VRAM used (6144 KB total less vramSpaceFree) and the texture cache used / budget, KB. */
         unsigned vf = (unsigned)(vramSpaceFree() >> 10), vused = 6144u > vf ? 6144u - vf : 0u;
-        snprintf(out[1], 40, "VRAM %u/6144K tex %u/%uK", vused, pm_tex_used() >> 10, pm_tex_budget() >> 10);
+        snprintf(out[1], 40, "VRAM used %4u/6144K tex %4u/%4uK", vused, pm_tex_used() >> 10, pm_tex_budget() >> 10);
+    }
+    { /* ROOM row: the scene texture load since the scene start. new = KB uploaded on a miss, kept = KB of first hits in VRAM; shares by bytes. */
+        unsigned rn, rk, rp;
+        pm_tex_scene_now(&rn, &rk, &rp);
+        snprintf(out[2], 40, "ROOM new  %4uK %3u%% kept %4uK %3u%%", rn, rp, rk, rn + rk ? 100u - rp : 0u);
     }
     static int hud_logged; /* one line per run: proves the refresh ran */
-    if (!hud_logged++) pm_log_d("hud mem rows ready: %s | %s", out[0], out[1]);
+    if (!hud_logged++) pm_log_d("hud mem rows ready: %s | %s | %s", out[0], out[1], out[2]);
 }
 
 void pm_mem_log(const char* tag) {

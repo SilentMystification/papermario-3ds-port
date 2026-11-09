@@ -4349,6 +4349,30 @@
       "reason": "SIZE-4 gate (row SIZE): the fatal screen is printed before the game starts, so the until line is the low-memory log line; the bottom screen is read from the Azahar window capture."
     },
     {
+      "name": "roomtex_hud",
+      "status": "unverified",
+      "subject": "ROOMTEX: kmr_03 warp (map scene), battle start at frame 154. Bottom screen shots 150 to 229 (shotbottom): the MEM, VRAM and ROOM rows of the HUD.",
+      "proves": "ROOMTEX: the ROOM row after the map load and after the battle start, and the two roomtex lines.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotbottom=150:80 loglevel=debug",
+      "until": "shotbottom bot_\\d+ frame 229\\b",
+      "cap": 30,
+      "deadline": 30,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map scene end",
+          "regex": "roomtex map 0:2"
+        },
+        {
+          "name": "frame 229",
+          "regex": "shotbottom bot_\\d+ frame 229\\b"
+        }
+      ],
+      "reason": "ROOMTEX gate: bottom HUD rows after the map load and after the battle start."
+    },
+    {
       "name": "battle_start",
       "status": "verified",
       "subject": "Battle scene (default formation: one Goomba on kmr_03), shots at frames 153 to 182 after the battle mode starts.",

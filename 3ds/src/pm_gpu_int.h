@@ -2,13 +2,13 @@
 #pragma once
 #include <3ds.h>
 /* Bottom screen rows, 1-based as the cursor and ANSI count them (row 1 is the top). The HUD (pm_gpu_hud_flush) has fixed rows:
- * 1 fps, 2 memory, 3 VRAM, 4 to 6 the map block (the old and new map during the 2 s change, else the current map).
+ * 1 fps, 2 memory, 3 VRAM, 4 ROOM (the scene texture load), 5 to 7 the map block (the old and new map during the 2 s change, else the current map).
  * Then, when on: the Mario row (poshud), the stats row (stats). Then the separator, the log header (console and SD level),
  * the log window (LOG_TOP to 26, it scrolls only here), separator 27, footer 28 to 30 (map, system).
- * hud_x = the rows added by poshud and stats: the separator is row 7+hud_x, the header 8+hud_x, the log window 9+hud_x to 26. */
+ * hud_x = the rows added by poshud and stats: the separator is row 8+hud_x, the header 9+hud_x, the log window 10+hud_x to 26. */
 #define HUD_X (pos_on + stats_on)
-#define LOG_TOP (9 + HUD_X)
-#define LOG_ROWS (18 - HUD_X)
+#define LOG_TOP (10 + HUD_X)
+#define LOG_ROWS (17 - HUD_X)
 #define LAY_KEY (2 * pos_on + stats_on)
 extern const char* const pm_lvl_name[5]; /* pm_options.c: Error, Warn, Info, Debug, Off */
 extern volatile int pos_on, stats_on;
