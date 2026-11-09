@@ -3838,6 +3838,22 @@
           "value": 0
         }
       ]
+    },
+    {
+      "name": "xfer_map_shots",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MAPX-3: mac_01 -> mac_02, det, shots 196 to 211 (covered frames black, first uncovered frame equal to base). A person reads the shots.",
+      "scenario": "xfer_map_shots",
+      "cap": 35,
+      "until": "shot \\d+ frame 211\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "xfer"
+      ],
+      "gates": []
     }
   ],
   "legacy": {

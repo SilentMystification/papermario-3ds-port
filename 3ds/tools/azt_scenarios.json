@@ -10189,6 +10189,26 @@
           "regex": "xfer map mac_01->mac_02 f\\d+ max"
         }
       ]
+    },
+    {
+      "name": "xfer_map_shots",
+      "status": "unverified",
+      "subject": "mac_01 -> mac_02 loading zone walk (as xfer_map_mac01), det, one shot per frame from frame 196 to 211: the first drawn frames of mac_02 under the fade-in overlay (covered at progress 255, then fading).",
+      "proves": "MAPX-3 gate: the covered frames are black (the overlay hides the frames that build under a budget) and the first uncovered frame is byte-equal to the base build.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town pos=0:0:200 padscript=go_0_700_300,wait150 shots shotwin=196:16 profdisk=1 loglevel=debug det",
+      "until": "shot \\d+ frame 211\\b",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map line",
+          "regex": "xfer map mac_01->mac_02 f\\d+ max"
+        }
+      ],
+      "reason": "MAPX-3 gate. The map load is at about frame 190 (det): shots 196 to 211 hold the covered frames and the first fade-in frames. Cap 35 s."
     }
   ]
 }

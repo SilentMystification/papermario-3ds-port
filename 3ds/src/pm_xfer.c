@@ -3,7 +3,7 @@
  * first step that draws the new map (GLOBAL_OVERRIDES_DISABLE_DRAW_FRAME clear after the load). A door starts when its room state leaves
  * idle (rooms.c SetDoorState) and ends 30 steps after it is idle again.
  *   xfer <door|map> <from>-><to> f<steps> max <ms> o34 <n> | fade <ms> load <ms> rom <n>/<KB> yay0 <n>/<KB>/<ms> inv <n> au <ms> init <ms>
- *   xfer2 <door|map> n<seq> | dlc <n>/<ms> mdl <miss>/<clr> ent <n> tex <n>/<KB>/<ms>
+ *   xfer2 <door|map> n<seq> | dlc <n>/<ms> mdl <miss>/<clr> ent <n> tex <n>/<KB>/<ms> warm <covered frames>/<skipped misses>
  * max: the longest step (work ticks, all steps). o34: steps over 34 ms, the load step not counted. fade: the longest step that is neither
  * the load step nor the first drawn step. load: the load_map_by_IDs call. init: the first drawn step of the new map. The stage counters
  * are in pm_xf (pm_port.h); the stage sites read a tick only while a transition is open. Cold code: once per step one load and a branch. */
@@ -13,6 +13,7 @@
 #include "pm_port.h"
 #include <stdio.h>
 #include <string.h>
+unsigned pm_frame_count(void);
 
 PmXf pm_xf;
 unsigned nd_mc_clears(void); /* nd_model.c */
@@ -46,12 +47,12 @@ __attribute__((cold, noinline)) static void xf_print(void) {
     unsigned clr = nd_mc_clears() - xf_clr0;
     char m[9][12];
 #define XF_L1 "%s->%s f%u max %s o34 %u | fade %s load %s rom %u/%u yay0 %u/%u/%s inv %u au %s init %s"
-#define XF_L2 " | dlc %u/%s mdl %u/%u ent %u tex %u/%u/%s"
+#define XF_L2 " | dlc %u/%s mdl %u/%u ent %u tex %u/%u/%s warm %u/%u"
     pm_log_prof_line(xf_kind == XF_MAP ? "xfer map " XF_L1 : "xfer door " XF_L1, xf_from, xf_to, xf_steps, msf(m[0], xf_max), xf_o34, msf(m[1], xf_fade),
                      msf(m[2], pm_xf.load_t), pm_xf.rom_n, pm_xf.rom_b >> 10, pm_xf.yay_n, pm_xf.yay_b >> 10, msf(m[3], pm_xf.yay_t), pm_xf.inv_n,
                      msf(m[4], pm_xf.au_t), msf(m[5], xf_init));
     pm_log_prof_line(xf_kind == XF_MAP ? "xfer2 map n%u" XF_L2 : "xfer2 door n%u" XF_L2, ++xf_seq, pm_xf.dlc_n, msf(m[6], pm_xf.dlc_t), pm_xf.mdl_miss, clr,
-                     pm_xf.ent_n, pm_xf.tex_n, pm_xf.tex_b >> 10, msf(m[7], pm_xf.tex_t));
+                     pm_xf.ent_n, pm_xf.tex_n, pm_xf.tex_b >> 10, msf(m[7], pm_xf.tex_t), pm_xf.warm_f, pm_xf.warm_skip);
     if (pm_xf.diag) { /* MAPX-2 switch xferdiag: the 6 key words that most misses differ in first (92: no stored entry of the model) */
         char b[160]; unsigned n = 0, used[93] = { 0 };
         for (int r = 0; r < 6; r++) {
@@ -98,6 +99,29 @@ void pm_xfer_door(int state) {
         snprintf(xf_from, sizeof xf_from, "%s:%s", m, state == 1 ? "out" : "in");
         snprintf(xf_to, sizeof xf_to, "%s:%s", m, state == 1 ? "in" : "out");
     } else if (xf_kind == XF_DOOR && !xf_tail) xf_tail = XF_TAIL;
+}
+/* MAPX-3: warm frames. After the map load the first drawn frames lie under the opaque front overlay of the fade (the frame that ends AWAIT_MAIN
+ * and the first FADE_IN frame: type screen or viewport colour, progress 255). There the walk builds the model cache with a count budget per frame;
+ * a model record miss over the budget draws nothing (it is not seen) and builds in the next frame. The first frame with the overlay below 255 builds
+ * the rest. Before, the whole first frame of the new map built every list, model and texture (one long frame); now that work spreads over the
+ * covered frames. Deterministic: a count, no time. Called on a miss only. */
+#define XF_WARM_MDL 64u /* model record misses built per covered frame */
+static unsigned xw_f = ~0u, xw_n; static int xw_cov;
+int pm_xfer_skip(int kind) {
+    (void)kind;
+    if (xf_kind != XF_MAP || !xf_loaded) return 0;
+    unsigned f = pm_frame_count();
+    if (f != xw_f) {
+        u8 t; f32 z;
+        xw_f = f; xw_n = 0;
+        get_screen_overlay_params(SCREEN_LAYER_FRONT, &t, &z);
+        xw_cov = (t == OVERLAY_SCREEN_COLOR || t == OVERLAY_VIEWPORT_COLOR) && z >= 255.0f;
+        if (xw_cov) pm_xf.warm_f++;
+    }
+    if (!xw_cov) return 0;
+    if (++xw_n <= XF_WARM_MDL) return 0;
+    pm_xf.warm_skip++;
+    return 1;
 }
 void pm_xfer_step(unsigned long long t0, unsigned long long t1) {
     if (xf_kind == XF_NONE) return;

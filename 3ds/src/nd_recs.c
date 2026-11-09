@@ -118,14 +118,16 @@ unsigned rec_run(const Gfx* q) {
     if (!cached) { pm_xf.mdl_miss++; if (pm_xf.diag) pm_xf.wh[nd_mc_xdiag(&mk)]++; nd_mc_miss(&mk); extern void pm_gpu_model_miss_diag(const NdMKey* k); pm_gpu_model_miss_diag(&mk); } /* S3N-7: the miss class (diagnostic) */
     int ndm = pm_gpu_ndm_on();
     int nat = 0, mdone = 0, hit = 0;
-    if (cached) { rec_matrix(q); mdone = 1; } /* S3N-6: a cached key: its matrix first, the hit test reads the matrix */
+    /* MAPX-3: a miss over the warm budget of a covered frame (pm_xfer_skip) is run as an empty hit: its matrix ops, no state, no draw; it builds next frame */
+    const int wskip = !cached && !ndm && pm_xf.on && q[12].words.w0 && !q[11].words.w0 && pm_xfer_skip(0);
+    if (cached || wskip) { rec_matrix(q); mdone = 1; } /* S3N-6: a cached key: its matrix first, the hit test reads the matrix */
     /* MDL-5f: a record with a custom gfx pre list (state-only, drawn natively) never takes the hit path: rec_apply runs the pre list (its state op); the hit path skips rec_apply. The post list runs in both paths (rec_run). */
-    if (!ndm && mdone && q[12].words.w0 && !q[11].words.w0 && pm_gpu_model_hit(&mk, mce)) {
+    if (wskip || (!ndm && mdone && q[12].words.w0 && !q[11].words.w0 && pm_gpu_model_hit(&mk, mce))) {
         /* S3N-6 hit: the record state is the cached one (rec_apply is not run; its matrix ops ran above). The sticky shadows are cleared as after a native draw.
          * POND (A1): a record with no geometry (q[12] 0, the water copy of model.c mdl_draw_hidden_panel_surface) never takes the hit path: its state is its whole effect, so rec_apply must run. */
         rec_n++;
         gv_epoch++;
-        nat = 1; hit = 1;
+        nat = 1; hit = !wskip;
         sc_ok = 0; nd_sr_forget();
     } else {
     rec_apply(q, mdone);
