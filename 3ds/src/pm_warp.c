@@ -846,6 +846,7 @@ static void warp_setup(s16 areaID, s16 mapID) {
     if (pm_debug_value("spmax", vs, sizeof vs)) gPlayerData.maxStarPower = (s8)atoi(vs); /* PAUSEFLK: spmax=<n> also at the warp (rescued Star Spirits in the pause) */
     if (pm_debug_value("sp", vs, sizeof vs)) gPlayerData.starPoints = (s8)atoi(vs); /* slice S19d: sp=<n> star points, 99 + one win = level up */
     if (pm_debug_value("hp", vs, sizeof vs)) gPlayerData.curHP = (s8)atoi(vs); /* slice S19d: hp=<n> Mario HP, 1 = lose the battle fast */
+    if (pm_debug_value("coins", vs, sizeof vs)) gPlayerData.coins = (s16)atoi(vs); /* HUDTRAIL: coins=<n> coin count at the warp (999 = the 3-digit status bar number) */
     fio_serialize_state();
     warp_on = 1;
     pm_log("warp: %s entry %d (area %d map %d) story %d flag %x", w_map, w_entry, areaID, mapID, w_story, w_flag);

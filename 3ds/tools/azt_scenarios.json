@@ -9884,6 +9884,34 @@
       "reason": "HUD1 gate by eye: status bar layout in the world."
     },
     {
+      "name": "yard_wide_hud_max",
+      "status": "unverified",
+      "subject": "Mario in his yard, wide on, star power 7 (max), 999 coins, uishow=bar opens the status bar. Shots frames 272 to 301: 7 full star power bars, coins 999, no dots left of the bar.",
+      "proves": "HUD1: the wide status bar (1.25x) is on screen in the world. uishow=bar opens the bar at the pm_warp frame 200 (about pm_frame_count 249); the bar is at full height at 270 and shot from 272 on.",
+      "debug": "preset=yard wide uishow=bar shots shotwin=272:30 shotbottom=200:60 loglevel=debug spmax=7 cheats=sp coins=999",
+      "until": "shot \\d+ frame 28[0-9]\\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "bar opened",
+          "regex": "debug uishow: bar opened"
+        },
+        {
+          "name": "shot at 28x",
+          "regex": "shot \\d+ frame 28[0-9]\\b"
+        }
+      ],
+      "reason": "HUDTRAIL gate: wide status bar with max star power and 999 coins; the HUD pieces on game x 0 and 319 must not repeat across the gutter."
+    },
+    {
       "name": "yard_hud",
       "status": "unverified",
       "subject": "Mario in his yard, 4:3 (nowide), uishow=bar opens the status bar. Shots frames 272 to 300: the 4:3 bar at its old positions.",
@@ -9910,6 +9938,34 @@
         }
       ],
       "reason": "HUD1 gate by eye: status bar layout in the world."
+    },
+    {
+      "name": "yard_hud_max",
+      "status": "unverified",
+      "subject": "Mario in his yard, 4:3 (nowide), star power 7 (max), 999 coins, uishow=bar opens the status bar. Shots frames 272 to 300: the 4:3 bar with 7 star power and coins 999.",
+      "proves": "HUD1: the wide status bar (1.25x) is on screen in the world. uishow=bar opens the bar at the pm_warp frame 200 (about pm_frame_count 249); the bar is at full height at 270 and shot from 272 on.",
+      "debug": "preset=yard nowide uishow=bar shots shotwin=272:30 loglevel=debug spmax=7 cheats=sp coins=999",
+      "until": "shot \\d+ frame 28[0-9]\\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "bar opened",
+          "regex": "debug uishow: bar opened"
+        },
+        {
+          "name": "shot at 28x",
+          "regex": "shot \\d+ frame 28[0-9]\\b"
+        }
+      ],
+      "reason": "HUDTRAIL gate: 4:3 status bar with max star power and 999 coins (the 4:3 side of the wide gate)."
     },
     {
       "name": "fb_sky_mac00_zmf",
