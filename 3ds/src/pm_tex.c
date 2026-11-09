@@ -1,4 +1,5 @@
 #include <3ds.h>
+#include "pm_linear.h"
 #include <citro3d.h>
 #include <string.h>
 #include <stdio.h>
@@ -732,7 +733,7 @@ static void pf_release_all(void) {
         unsigned age = tc_frame - pf_ent[k].frame;
         if (age > pf_max_age) pf_max_age = age;
         if (pf_ent[k].slab) slab_free(pf_ent[k].p, pf_ent[k].bytes);
-        else linearFree(pf_ent[k].p);
+        else pm_linear_free(pf_ent[k].p);
     }
     pf_rel += pf_n;
     pf_n = 0;
@@ -982,7 +983,7 @@ static void tb_dump_req(uint64_t key, const TbReq* q, const u8* tl, const u8* sr
 
 void pm_tex_init(void) {
     /* Linear image, then a second copy in PICA tile order. */
-    scratch = (u8*)linearAlloc(TEX_SCRATCH_PLANE * 2u);
+    scratch = (u8*)pm_linear_alloc(TEX_SCRATCH_PLANE * 2u);
     slab_init();
     { /* TEXL2 debug switch texcap=<KB> (test tool, may stay): cap the cache so one map evicts */
         char v[16];
@@ -1582,7 +1583,7 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
         staged = (const u8*)upload;
     }
     if (s->vram_stage) { stage_probe(s); pf_add(s->vram_stage, 0, 0); }
-    s->vram_stage = (u8*)linearAlloc(gpu_size);
+    s->vram_stage = (u8*)pm_linear_alloc(gpu_size);
     sbit_set(att_bits, (int)(s - slots));
     if (!s->vram_stage) {
         slab_free(sp_keep, reserve); /* row 1: the VRAM extent taken above goes back, or it is lost */
