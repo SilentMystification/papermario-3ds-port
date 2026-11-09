@@ -1,21 +1,23 @@
 # Agent boot (row BOOT, epic BOOT)
 
-STATE (row BOOT, branch BOOT)
-- Row file docs/handoff/row_BOOT.md: step 0 done, next is the stream (pm_romload.c, steps 1 to 5).
-- Step 0 (switch romorder, bench boot_romorder, run 81263; base boot_ms run 80966): 59 of 320 ROM chunks (128 KB) are touched
-  before the first drawn frame and the same 59 before the title. 57 are the audio bank (c120 to c207, SBN at 0xF00000) read by
-  the audio init, then c8, c15, c16 at logo frame 15. No ROM read during the logos (frame 15 to 328, about 11 s). After the title
-  the map reads start (mapfs c242 and up).
-- Base: the fread loop reads 25 MB in about 5 s before gfx init, the logos then wait 11 s with no ROM reads.
-- Open: BOOT-2 console boot ms (O3DS XL, N3DS).
+STATE (row BOOT done, branch BOOT)
+- ROM streamed at boot (3ds/src/pm_romload.c): header check, image allocation, then a loader thread; the game starts at once.
+  Readers: pi_read_raw reads bytes the stream has not reached straight from the file (exact size); pm_rom_ptr waits for or reads
+  the 128 KB chunk. Bench boot_ms (gate rdone > 0: the stream ends before the title, so no wait after it), boot_logo_pic, boot_romorder.
+- Azahar (warm): base run 80966, stream run 81566 (whole chunks), step B run 81869 (boot order, not kept), final runs 82172 and 84827.
+- Open (user, console): boot ms before/after on O3DS XL and N3DS; HOME and sleep during the logos (io_gate waits for the stream read
+  in flight); the cost of the 205 small direct reads behind the 32 KB loader pieces on a real SD card.
 
-## Boot line (BOOT-1)
-`boot ms main X log Y opt Z rom R (M MB/s) gfx G audio A first F title T`, printed once by pm_boot_title_check (pm_main.c) at the first step of game mode 2 (title) or 16 (intro). X, Y, Z, G, A, F, T are ms after main() (X = game thread entry). R is the ROM read in ms (pm_rom_init open to read done) with the rate.
-Reason for mode 16: the no-warp boot skips the title (log: game mode 1 logos, then game mode 16 at frame 327, no mode 2).
+## Boot line
+`boot ms main X log Y opt Z rom R (M MB/s) gfx G audio A first F title T rdone D waits W wms V`, printed once by pm_boot_title_check
+(pm_main.c) at the first step of game mode 2 (title) or 16 (intro; the no-warp boot skips the title). Times are ms after main()
+(X = game thread entry). R: ROM open to stream start. M: stream rate. D: whole image in RAM (0 = not yet). W, V: reads that
+blocked (direct reads included) and their ms. The loader prints `rom stream done ms .. MB/s .. demand .. waits .. wait_ms .. direct ..`.
+Switch romorder (debug): first touch of each 128 KB chunk (`romorder c<idx> f<frame> t<ms>`), counts after the boot line.
 
-## Warm run results (build 2583, lane boot, commit d08155c4b plus BOOT-1; NOT cold)
-boot ms main 208 log 461 opt 770 rom 4985 (5.0 MB/s) gfx 5801 audio 5911 first 6259 title 16681
-Run 3627, warm (kept Azahar restarted, first marker 3.1 s). Warm does not show the 3dsx load (launch to main).
+## Boot ROM reads (romorder, run 81263)
+59 of 320 chunks before the first frame, the same 59 before the title: 57 audio-bank chunks (SBN, small header and table reads of
+au_load_BK_to_bank), then c8, c15, c16 at logo frame 15. No ROM read during the logos (frames 15 to 328). Map reads start after.
 
 ## Size of the elf (build3ds/lane-boot/pm_3ds.elf, arm-none-eabi-size -A)
 .text 3,326,908 B; .rodata 203,668 B; .data 9,060,724 B; .bss 9,816,280 B; .mapstat 226,868 B; debug sections not counted.
@@ -35,5 +37,4 @@ Largest bss: heap_generalHead 1,572,864 B; D_80164000 1,344,608 B; heap_spriteHe
 The rest of .data is 29,600 small symbols (D and r together 9.47 MB).
 
 ## Notes
-- Cold: the first run with a new lane shows "cold (restart failed)" in slot 2 (log line 1). It reached first marker at 17.7 s and the until line was not printed in 45 s (title never reached; trigger fixed, see above).
-- A boot that skips the title (no warp) is the default boot_ms path.
+- Warm and cold: a warm restart in a kept Azahar does not show the 3dsx load (launch to main).

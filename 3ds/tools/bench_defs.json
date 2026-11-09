@@ -1263,6 +1263,21 @@
       ]
     },
     {
+      "name": "boot_logo_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BOOT: picture of the no-warp boot at logo frame 200 with the ROM streamed; the stream done line before it.",
+      "scenario": "boot_logo_pic",
+      "cap": 30,
+      "until": "shot \\d+ frame 200\\b",
+      "tags": [
+        "azahar",
+        "boot"
+      ],
+      "gates": []
+    },
+    {
       "name": "randwarp_pic",
       "kind": "azahar_pic",
       "speed": "normal",
