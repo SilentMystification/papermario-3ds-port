@@ -5,6 +5,11 @@
 ; lk0, lk1 = the look-at vectors / 127 (texgen). fogu: alpha = clamp(fogu.x * z' / w' + fogu.y, 0, 255), z' and w' = the PICA clip z and w before zmix.
 ; Output colour = (vertex colour in 0 to 255) / 255 * cmul + cadd, as pm4. Texgen: s = (n . lk0 + 1) / 4 * 65536 in the units of the Vtx tc, so uv = tc * uvso.xy + uvso.zw as for a plain vertex.
 
+; STEREO: eye = (e, cw, 0, 0): e the signed NDC shift of this eye (0 in a mono frame), cw the eye distance with zero parallax (pm_eye_conv).
+; eyd = column 0 of the post matrix (gv_post: N64 clip x to PICA clip). A palette entry with a perspective w row (w row xyz not 0) moves by
+; e * (w - cw) along N64 clip x: pos += eyd * e * (w - cw). eye and eyd come first in both programs (the same registers in pm4 and pm5).
+.fvec eye
+.fvec eyd
 .fvec pal5[56]
 .fvec lamb
 .fvec lcol[7]
@@ -47,6 +52,14 @@
 	dp4 r5.y, pal5[a0.x+1], r1
 	dp4 r5.z, pal5[a0.x+2], r1
 	dp4 r5.w, pal5[a0.x+3], r1
+	; STEREO: the eye shift (0 in a mono frame: e = 0 adds nothing)
+	mov r9, pal5[a0.x+3]
+	dp3 r9.x, r9, r9
+	slt r9.x, myc1.xxxx, r9.x
+	add r10.x, -eye.yyyy, r5.wwww
+	mul r10.x, r9.xxxx, r10.xxxx
+	mul r10.x, eye.xxxx, r10.xxxx
+	mad r5, r10.xxxx, eyd, r5
 	mov outpos.x, r5.x
 	mov outpos.y, r5.y
 	mul r6.x, zmix.x, r5.z

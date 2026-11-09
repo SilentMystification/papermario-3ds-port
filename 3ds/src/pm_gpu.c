@@ -80,12 +80,15 @@ static int noise_init(void) {
 static float t1_s[4] = { 1.f, 1.f, 0.f, 0.f };
 static int aux_bound;
 static C3D_RenderTarget* target;
-/* STEREO: the right eye target. cur_target is the target of the pass in progress (the left one in a mono frame). pm_eye_e is the signed NDC shift of this eye
- * (0 in a mono frame: the original perspective, one pass). pm_eye_conv is the eye distance in world units that has zero parallax (set by the camera). */
+/* STEREO: the right eye target. cur_target is the target of the pass in progress (the left one in a mono frame). pm_eye_conv is the eye distance in world
+ * units that has zero parallax (set by the camera); eye_cw is its value for the frame (read at the frame begin). The eye shift is in the vertex shader
+ * (uniforms eye and eyd, eye_set and rebuild_3d): the matrices of both eyes are the same. */
 static C3D_RenderTarget *targetR, *cur_target;
 static int stereo_frame, r_wantclear, r_cleared;
-static float eye_slider;
-float pm_eye_e, pm_eye_conv = 300.f;
+static float eye_slider, eye_cw;
+float pm_eye_conv = 300.f;
+static int u_eye = -1, u_eyd = -1; /* the same registers in pm4 and pm5 (checked at init) */
+static void eye_vec(int id, float x, float y, float z, float w);
 #define PM_EYE_E 0.015f /* NDC shift per eye at slider 1 for a point at infinity (3 px of 400). The calibration knob. */
 /* H02 GPU limit stats, maxima since the last `mem` log line. Verts and command buffer overflow drop work without a message. */
 static unsigned draws_frame, draws_max, frames_seen;
@@ -185,6 +188,7 @@ static void rebuild_3d(void) {
         gv_wind = det < 0.f ? -1 : 1;
         post_gen++;
         nd_mtx_pcomp(shader_3d.m, post->m, game_mvp); /* S1-4: nd_mtx.c. SEAM: the same product, in the same order, as pcomp_calc: post x game. The CPU path and the raw path then give bit-identical positions. */
+        eye_vec(u_eyd, post->r[0].x, post->r[1].x, post->r[2].x, post->r[3].x); /* STEREO: column 0 of post, the direction of an N64 clip x shift */
     }
 }
 
@@ -766,6 +770,15 @@ static void u5vec(int id, float x, float y, float z, float w) {
     C3D_FVUnifSet(GPU_VERTEX_SHADER, id, x, y, z, w);
 }
 static void u5set(int id, const float v[4]) { u5vec(id, v[0], v[1], v[2], v[3]); }
+/* STEREO: a vector of the eye uniforms through citro3d (its copy is what the GPU holds: the native emit never writes these registers). A change is
+ * marked dirty and goes out with the next draw's context update. */
+static void eye_vec(int id, float x, float y, float z, float w) {
+    if (id < 0) return;
+    const C3D_FVec* c = &C3D_FVUnif[GPU_VERTEX_SHADER][id];
+    if (c->x == x && c->y == y && c->z == z && c->w == w) return;
+    C3D_FVUnifSet(GPU_VERTEX_SHADER, id, x, y, z, w);
+}
+static void eye_set(float e) { eye_vec(u_eye, e, eye_cw, 0.f, 0.f); }
 static void u5mtx(int id, const C3D_Mtx* m) {
     if (u5_valid && memcmp(&C3D_FVUnif[GPU_VERTEX_SHADER][id], m, sizeof *m) == 0) return;
     C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, id, m);
@@ -1497,13 +1510,15 @@ static void pm_gpu_init_w(void) {
             u4_cadd = shaderInstanceGetUniformLocation(prog4.vertexShader, "cadd");
             u4_zmix = shaderInstanceGetUniformLocation(prog4.vertexShader, "zmix");
             u4_nzo = shaderInstanceGetUniformLocation(prog4.vertexShader, "nzo");
+            u_eye = shaderInstanceGetUniformLocation(prog4.vertexShader, "eye");
+            u_eyd = shaderInstanceGetUniformLocation(prog4.vertexShader, "eyd");
             AttrInfo_Init(&attr4);
             AttrInfo_AddLoader(&attr4, 0, GPU_SHORT, 4);
             AttrInfo_AddLoader(&attr4, 1, GPU_SHORT, 2);
             AttrInfo_AddLoader(&attr4, 2, GPU_UNSIGNED_BYTE, 4);
             rgen = (unsigned*)calloc(GRING_VTX, sizeof(unsigned));
             rk = (unsigned char*)calloc(GRING_VTX, 1);
-            gs.gv4_on = rgen && rk && prog4.vertexShader && u4_pal >= 0 && u4_uvso >= 0 && u4_cmul == u4_uvso + 1 && u4_cadd == u4_uvso + 2 && u4_zmix == u4_uvso + 3; /* nd_emit_draw writes uvso, cmul, cadd, zmix as one block */
+            gs.gv4_on = rgen && rk && prog4.vertexShader && u4_pal >= 0 && u4_uvso >= 0 && u4_cmul == u4_uvso + 1 && u4_cadd == u4_uvso + 2 && u4_zmix == u4_uvso + 3 && u_eye >= 0 && u_eyd >= 0; /* nd_emit_draw writes uvso, cmul, cadd, zmix as one block */
             if (gs.gv4_on) { /* GV5 */
                 dvlb5 = DVLB_ParseFile((u32*)pm_shader5_shbin, pm_shader5_shbin_size);
                 shaderProgramInit(&prog5);
@@ -1522,10 +1537,11 @@ static void pm_gpu_init_w(void) {
                 u5_nzo = shaderInstanceGetUniformLocation(prog5.vertexShader, "nzo");
                 u5_zmix = shaderInstanceGetUniformLocation(prog5.vertexShader, "zmix");
                 u5_uvx = shaderInstanceGetUniformLocation(prog5.vertexShader, "uvx"); /* FB-3: the unit 1 uv map of a pm5 draw */
-                gv5_on = prog5.vertexShader && u5_pal >= 0 && u5_lamb >= 0 && u5_lcol >= 0 && u5_ldir >= 0 && u5_lk0 >= 0 && u5_lk1 >= 0 && u5_lflag >= 0 && u5_fogu >= 0 && u5_uvso >= 0 && u5_cmul >= 0 && u5_cadd >= 0 && u5_nzo >= 0 && u5_zmix >= 0 && u5_uvx >= 0;
+                gv5_on = prog5.vertexShader && u5_pal >= 0 && u5_lamb >= 0 && u5_lcol >= 0 && u5_ldir >= 0 && u5_lk0 >= 0 && u5_lk1 >= 0 && u5_lflag >= 0 && u5_fogu >= 0 && u5_uvso >= 0 && u5_cmul >= 0 && u5_cadd >= 0 && u5_nzo >= 0 && u5_zmix >= 0 && u5_uvx >= 0 &&
+                    shaderInstanceGetUniformLocation(prog5.vertexShader, "eye") == u_eye && shaderInstanceGetUniformLocation(prog5.vertexShader, "eyd") == u_eyd; /* STEREO: one register pair for both programs */
                 pm_log("gv5: lighting, texgen and fog program %s (pal %d lcol %d ldir %d)", gv5_on ? "on" : "FAILED", u5_pal, u5_lcol, u5_ldir);
             }
-            pm_log("gv1: palette path %s (pal %d uvso %d cmul %d cadd %d zmix %d nzo %d)", gs.gv4_on ? "on" : "FAILED", u4_pal, u4_uvso, u4_cmul, u4_cadd, u4_zmix, u4_nzo);
+            pm_log("gv1: palette path %s (pal %d uvso %d cmul %d cadd %d zmix %d nzo %d eye %d eyd %d)", gs.gv4_on ? "on" : "FAILED", u4_pal, u4_uvso, u4_cmul, u4_cadd, u4_zmix, u4_nzo, u_eye, u_eyd);
         }
         pm_log("gpuvtx: raw Vtx path %s (ring %u vtx, %u idx)", gs.gpu_vtx_on ? "on" : "FAILED", (unsigned)GRING_VTX, (unsigned)GRING_IDX);
     }
@@ -1910,7 +1926,7 @@ void pm_gpu_off_end(void) {
     sh_clear(); C3D_FrameDrawOn(cur_target);
 }
 
-/* STEREO: one task of the frame runs once per eye (pm_nusys.c gbi_task). A mono frame (3D slider at 0) has one pass with pm_eye_e = 0. */
+/* STEREO: one task of the frame runs once per eye (pm_nusys.c gbi_task). A mono frame (3D slider at 0) has one pass with the eye uniform at 0. */
 int pm_gpu_stereo(void) { pm_gpu_begin_wait(); return stereo_frame; }
 int pm_gpu_stereo_flag(void) { return stereo_frame; } /* read only (the prof line): pm_gpu_stereo waits and changes draw state */
 void pm_gpu_eye(int right) {
@@ -1921,9 +1937,8 @@ void pm_gpu_eye(int right) {
     if (right && !r_cleared) { r_cleared = 1; if (r_wantclear) C3D_RenderTargetClear(targetR, C3D_CLEAR_ALL, 0, 0); } /* queue order: the clear comes before every part of the frame */
     gs.grab_dirty = 1; grab_dy0 = grab_dy1 = 0; /* K2: the copy of the other eye is not this eye's frame, so the next grab copies again */
     cur_target = right ? targetR : target;
-    pm_eye_e = (right ? PM_EYE_E : -PM_EYE_E) * eye_slider;
+    eye_set((right ? PM_EYE_E : -PM_EYE_E) * eye_slider);
     sh_clear(); C3D_FrameDrawOn(cur_target);
-    pm_gbi_eye_changed();
 }
 
 void pm_gpu_set_replace(int on) { if (on != r_replace) flush(); r_replace = on; } /* DR1: a queued rectangle batch keeps the blender it was queued with */
@@ -2196,7 +2211,9 @@ void pm_gpu_begin_wait(void) {
     gfxSet3D(stereo_frame);
     r_wantclear = begin_clear; r_cleared = 0;
     cur_target = target;
-    pm_eye_e = stereo_frame ? -PM_EYE_E * eye_slider : 0.f;
+    eye_cw = stereo_frame ? pm_eye_conv : 0.f; /* the camera of the frame (the logic thread writes it): one value for both eyes; a mono frame keeps eye at 0 */
+    nd_eye_cull_e = stereo_frame ? PM_EYE_E * eye_slider : 0.f; nd_eye_cull_c = nd_eye_cull_e * eye_cw; /* culling: the x planes of both eyes */
+    eye_set(stereo_frame ? -PM_EYE_E * eye_slider : 0.f);
     sh_clear(); C3D_FrameDrawOn(target);
     PH_POP();
 }
@@ -3141,7 +3158,7 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
     } else for (unsigned j = 0; j < e->n; j++) nd_tmpl_touch(nd_mc_nat(e, j)->d.tmpl);
     static float pal0[16], zpal[16]; /* PERF2 step 3: palette 0 of this view and the zmark pass 2 row, shared by the draws (the cache entry keeps no palette) */
     float comb[4][4];
-    nd_mtx_combine(comb, pm_eye_e, pm_eye_conv);
+    nd_mtx_combine(comb);
     pm_gpu_pcomp_native(pal0, comb);
     pm_gpu_flush();
     const uint32_t* rw = (const uint32_t*)(uintptr_t)k->rp; /* MERLEE: the shroud mix colour of this frame (the key leaves it out): blend colour RGB, fog colour alpha, as rec_apply sets them */

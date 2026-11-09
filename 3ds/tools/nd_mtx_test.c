@@ -57,13 +57,13 @@ static void test_combine(void) {
     float c[4][4];
     nd_mtx_reset();
     nd_proj[0][0] = 2.f; nd_proj[2][3] = -1.f; nd_proj[3][3] = 0.f;
-    nd_mtx_combine(c, 0.f, 2.f);
-    CHECK(c[2][3] == -1.f && c[2][0] == 0.f && c[3][0] == 0.f, "no shift without an eye offset");
-    nd_mtx_combine(c, 0.5f, 2.f);
-    CHECK(c[2][0] == -0.5f && c[3][0] == -1.f && c[0][0] == 2.f, "perspective shift: c20 %f c30 %f", c[2][0], c[3][0]);
+    nd_mv[nd_mv_sp][3][0] = 5.f; /* a translation in the modelview */
+    nd_mtx_combine(c);
+    CHECK(c[2][3] == -1.f && c[2][0] == 0.f && c[3][0] == 10.f && c[0][0] == 2.f, "combine = modelview x projection: c23 %f c30 %f", c[2][3], c[3][0]);
+    CHECK(c[3][3] == 0.f, "STEREO: no eye shift in the matrix (the shader shifts): c33 %f", c[3][3]);
     nd_mtx_ident(nd_proj);
-    nd_mtx_combine(c, 0.5f, 2.f);
-    CHECK(c[3][0] == 0.f && c[0][0] == 1.f, "an orthographic matrix stays at the screen plane");
+    nd_mtx_combine(c);
+    CHECK(c[3][0] == 5.f && c[0][0] == 1.f, "an orthographic projection keeps the modelview");
 }
 
 static void test_cmul(void) {

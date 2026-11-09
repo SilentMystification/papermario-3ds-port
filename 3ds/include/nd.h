@@ -33,7 +33,8 @@ void nd_mtx_unpack(const uint32_t* n64, float d[4][4]);      /* 16 words of an N
 void nd_mtx_reset(void);                                     /* projection and stack bottom to identity, stack empty */
 void nd_mtx_load(const float in[4][4], unsigned flags);      /* push (when flagged), then load or premultiply into the top or the projection */
 void nd_mtx_pop(unsigned count);                             /* count 0 pops one */
-void nd_mtx_combine(float c[4][4], float e, float conv);     /* modelview x projection with the eye shift e (0 = no shift) */
+extern float nd_eye_cull_e, nd_eye_cull_c; /* STEREO: nd_geom.c, the x margin of the clip and box tests (0 in a mono frame) */
+void nd_mtx_combine(float c[4][4]);     /* modelview x projection (STEREO: the eye shift is added by the vertex shader) */
 void nd_mtx_cmul(float o[16], const float a[16], const float b[16]); /* citro3d Mtx_Multiply */
 void nd_mtx_pcomp(float o[16], const float post[16], const float game[4][4]); /* pcomp = post x game */
 
@@ -452,7 +453,6 @@ void nd_walk_ops(void* dl, unsigned nbytes); /* PERF2: a flattened list's ops (e
 void pm_gbi_fallback(void);
 /* Once a frame. The log gets one summed line per second, and only when it changes. */
 void pm_gbi_end_frame(void);
-void pm_gbi_eye_changed(void); /* STEREO: the eye shift changed, the combined matrix changes */
 const char* pm_gbi_stats(void);
 
 #endif

@@ -242,19 +242,30 @@ __attribute__((noinline)) void dlc_set_geom(u32 g) {
 __attribute__((noinline)) unsigned dlc_gmi(void) { return gv_matrix_id(0); }
 
 /* Box test against the clip planes of clip_bits4. Returns 1 when every vertex of the box is outside one plane (by a margin for the float error of the interpreter). */
+/* one plane: the box is outside a + bw * w + kc (a coordinate, bw the w factor, kc a constant; outside means < 0 when pos, else > 0), by the margin */
+static inline int box_plane_out(const float* lo, const float* hi, const float (*m)[4], int a, float bw, float kc, int pos) {
+    float k = m[3][a] + bw * m[3][3] + kc, mn = k, mx = k, mag = k < 0 ? -k : k;
+    for (int q = 0; q < 3; q++) {
+        float c = m[q][a] + bw * m[q][3], x = c * lo[q], y = c * hi[q];
+        if (x < y) { mn += x; mx += y; } else { mn += y; mx += x; }
+        mag += (x < 0 ? -x : x) > (y < 0 ? -y : y) ? (x < 0 ? -x : x) : (y < 0 ? -y : y);
+    }
+    float eps = mag * 1e-5f + 1e-3f;
+    return pos ? mx < -eps : mn > eps;
+}
 __attribute__((noinline)) int dlc_box_out(const DlcGrp* g, const float (*m)[4]) {
     static const struct { signed char a, b; } pl[5] = { { 0, 1 }, { 0, -1 }, { 1, 1 }, { 1, -1 }, { 2, -1 } }; /* coordinate, sign of w: x + w < 0, x - w > 0, y + w < 0, y - w > 0, z - w > 0 */
     float lo[3] = { g->lo[0], g->lo[1], g->lo[2] }, hi[3] = { g->hi[0], g->hi[1], g->hi[2] };
+    /* STEREO: one matrix for both eyes; the shader moves N64 clip x by e (w - cw), e = +-nd_eye_cull_e, for a perspective matrix. An x plane is out
+     * only when the box is out of it for both eyes (each eye is a w factor b + e and a constant -e cw). */
+    const float ce = nd_eye_cull_e, cc = nd_eye_cull_c;
+    const int sx = ce > 0.f && (m[0][3] != 0.f || m[1][3] != 0.f || m[2][3] != 0.f);
     int out = 0;
     for (int p = 0; p < 5; p++) {
-        float k = m[3][pl[p].a] + (float)pl[p].b * m[3][3], mn = k, mx = k, mag = k < 0 ? -k : k;
-        for (int q = 0; q < 3; q++) {
-            float c = m[q][pl[p].a] + (float)pl[p].b * m[q][3], x = c * lo[q], y = c * hi[q];
-            if (x < y) { mn += x; mx += y; } else { mn += y; mx += x; }
-            mag += (x < 0 ? -x : x) > (y < 0 ? -y : y) ? (x < 0 ? -x : x) : (y < 0 ? -y : y);
-        }
-        float eps = mag * 1e-5f + 1e-3f;
-        if (pl[p].b > 0 ? mx < -eps : mn > eps) out = 1;
+        const float b = (float)pl[p].b;
+        int o = sx && pl[p].a == 0 ? box_plane_out(lo, hi, m, 0, b + ce, -cc, pl[p].b > 0) && box_plane_out(lo, hi, m, 0, b - ce, cc, pl[p].b > 0)
+                                   : box_plane_out(lo, hi, m, pl[p].a, b, 0.f, pl[p].b > 0);
+        if (o) out = 1;
     }
     return out;
 }
