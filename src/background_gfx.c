@@ -438,7 +438,7 @@ void gfx_draw_background(void) {
             }
 #endif
 #ifdef TARGET_3DS
-            if (pm_wide) gPmNdGutter(gMainGfxPos++); /* PAUSEOPEN: the gutters from the pause slot, walker side (pm_gpu_pause_gutters) */
+            if (pm_wide) gPmNdGutter(gMainGfxPos++, gPauseBackgroundFade); /* PAUSEOPEN: the gutters from the pause slot, walker side (pm_gpu_pause_gutters) */
 #endif
             break;
         default:
