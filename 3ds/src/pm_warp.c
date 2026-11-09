@@ -1571,6 +1571,13 @@ void pm_warp_tick(unsigned frame) {
     fswarp_hook(f); /* WARPFIX2 test switch */
     bosstest_hook(f); /* WARPFIX2 test switch */
     boss_restore_tick(); /* WARPFIX2 */
+    {   /* BTLDIM test: invitem=<hex> puts that item in slot 0 at scene frame 30 (Shooting Star fade test) */
+        char iv[16];
+        if (f == 30 && pm_debug_value("invitem", iv, sizeof iv)) {
+            gPlayerData.invItems[0] = (s16)strtol(iv, NULL, 0);
+            pm_log("invitem: slot 0 = 0x%03X", (unsigned)gPlayerData.invItems[0]);
+        }
+    }
     char ti[8];
     if (f == 30 && pm_debug_value("testitem", ti, sizeof ti)) { /* V07 debug: a real item entity beside the player */
         make_item_entity_nodelay(ti[0] == 'c' ? ITEM_COIN : ti[0] == 's' ? ITEM_STAR_PIECE : ti[0] == 'k' ? ITEM_PULSE_STONE : ITEM_MUSHROOM, gPlayerStatus.pos.x + 60.0f, gPlayerStatus.pos.y, gPlayerStatus.pos.z, ITEM_SPAWN_MODE_FIXED_NEVER_VANISH, 0);

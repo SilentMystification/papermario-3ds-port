@@ -40,18 +40,37 @@ API_CALLABLE(N(SpawnDamageStarsFX)) {
     return ApiStatus_DONE2;
 }
 
+#ifdef TARGET_3DS
+/* 3DS test lines (BTLDIM): frame, time, native model misses and clears, texture misses and KB uploaded at the shroud fades. */
+static void N(fade_line)(const char* fmt) {
+    extern void pm_log_evt(const char* fmt, ...); extern unsigned pm_frame_count(void); extern unsigned pm_uptime_ms(void);
+    extern void pm_gpu_mdl_stat(unsigned* miss, unsigned* clears);
+    extern void pm_tex_tot(unsigned* miss, unsigned* up);
+    unsigned miss, clears, tmiss, tup;
+    pm_gpu_mdl_stat(&miss, &clears);
+    pm_tex_tot(&tmiss, &tup);
+    pm_log_evt(fmt, pm_frame_count(), pm_uptime_ms(), miss, clears, tmiss, tup >> 10);
+}
+#endif
+
 API_CALLABLE(N(CustomFadeBackgroundDarken)) {
     if (isInitialCall) {
         mdl_set_all_tint_type(ENV_TINT_SHROUD);
         *gBackgroundTintModePtr = ENV_TINT_SHROUD;
         mdl_set_shroud_tint_params(0, 0, 0, 0);
         script->functionTemp[0] = 10;
+#ifdef TARGET_3DS
+        N(fade_line)("btldim: darken start f%u t=%u ms mdlmiss %u clears %u texmiss %u texkb %u");
+#endif
     }
 
     mdl_set_shroud_tint_params(0, 0, 0, ((10 - script->functionTemp[0]) * 16) & 240);
     script->functionTemp[0]--;
 
     if (script->functionTemp[0] == 0) {
+#ifdef TARGET_3DS
+        N(fade_line)("btldim: darken done f%u t=%u ms mdlmiss %u clears %u texmiss %u texkb %u");
+#endif
         return ApiStatus_DONE2;
     } else {
         return ApiStatus_BLOCK;
@@ -61,12 +80,18 @@ API_CALLABLE(N(CustomFadeBackgroundDarken)) {
 API_CALLABLE(N(CustomFadeBackgroundLighten)) {
     if (isInitialCall) {
         script->functionTemp[0] = 10;
+#ifdef TARGET_3DS
+        N(fade_line)("btldim: lighten start f%u t=%u ms mdlmiss %u clears %u texmiss %u texkb %u");
+#endif
     }
     mdl_set_shroud_tint_params(0, 0, 0, (script->functionTemp[0] * 16) & 240);
 
     script->functionTemp[0]--;
     if (script->functionTemp[0] == 0) {
         mdl_set_shroud_tint_params(0, 0, 0, 0);
+#ifdef TARGET_3DS
+        N(fade_line)("btldim: lighten done f%u t=%u ms mdlmiss %u clears %u texmiss %u texkb %u");
+#endif
         return ApiStatus_DONE2;
     }
     return ApiStatus_BLOCK;
