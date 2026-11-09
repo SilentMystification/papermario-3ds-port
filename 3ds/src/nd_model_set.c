@@ -74,7 +74,8 @@ int nd_model_draw(const uint32_t* rec, const NdMCtx* c0, const void* list, int e
     }
     if (emit) {
         pm_gpu_flush(); /* the walker batch open before this record goes out first */
-        for (int j = 0; j < nat_n; j++) pm_gpu_native_submit_draw(&nat[j].d, nat[j].sd, nat[j].nidx, nat[j].d.u[0].dim != 0);
+        extern unsigned mfr_idx; /* TIK19 debug: the indices of the native model draws */
+        for (int j = 0; j < nat_n; j++) { pm_gpu_native_submit_draw(&nat[j].d, nat[j].sd, nat[j].nidx, nat[j].d.u[0].dim != 0); mfr_idx += nat[j].nidx; }
     }
     return nat_n;
 }

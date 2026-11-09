@@ -512,7 +512,7 @@ NdMEnt* nd_mc_store(const NdMKey* k, int tex, int hs, unsigned hg) {
     NdMEnt* e = mc_slot(k);
     if (mc_pool_n + (unsigned)nat_n > NDMC_POOL) { mc_clear_all(); e = mc_slot(k); }
     e->vmask = nat_vm; e->geom = nat_geom; e->tgen = ~0u; /* the first hit builds the template ids */
-    e->tex = (uint8_t)(tex != 0); e->hs = hs; e->hg = hg;
+    e->tex = (uint8_t)(tex != 0); e->hs = hs; e->hg = hg; e->h1s = -1; e->h1g = 0; /* TIK19: the caller sets the unit 1 slot */
     e->off = mc_pool_n; e->n = (unsigned)nat_n;
     for (int j = 0; j < nat_n; j++) {
         const unsigned pi = mc_pool_n + (unsigned)j;

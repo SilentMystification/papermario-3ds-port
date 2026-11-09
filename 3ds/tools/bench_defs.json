@@ -3770,6 +3770,70 @@
           "value": 0
         }
       ]
+    },
+    {
+      "name": "tik19_water_walk",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "TIK19: tik_19 water flicker walk (wide), mfr model census per frame and shots every 2 frames.",
+      "scenario": "tik19_water_walk",
+      "cap": 35,
+      "until": "mfr done f",
+      "tags": [
+        "azahar",
+        "bug",
+        "tik19"
+      ],
+      "gates": []
+    },
+    {
+      "name": "tik19_wall_walk",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "TIK19: tik_19 wall flicker walk near the super block (wide), mfr model census per frame and shots every 2 frames.",
+      "scenario": "tik19_wall_walk",
+      "cap": 35,
+      "until": "mfr done f",
+      "tags": [
+        "azahar",
+        "bug",
+        "tik19"
+      ],
+      "gates": []
+    },
+    {
+      "name": "tik19_water_ndmcheck",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "TIK19: tik_19 water walk with ndmcheck: cached model draws against fresh builds (ndmcache diff).",
+      "scenario": "tik19_water_ndmcheck",
+      "cap": 30,
+      "until": "ndmcache f300 ",
+      "tags": [
+        "azahar",
+        "bug",
+        "tik19"
+      ],
+      "gates": []
+    },
+    {
+      "name": "tik19_wall_ndmcheck",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "TIK19: tik_19 wall walk with ndmcheck: cached model draws against fresh builds (ndmcache diff lines name the field).",
+      "scenario": "tik19_wall_ndmcheck",
+      "cap": 30,
+      "until": "ndmcache f300 ",
+      "tags": [
+        "azahar",
+        "bug",
+        "tik19"
+      ],
+      "gates": []
     }
   ],
   "legacy": {
