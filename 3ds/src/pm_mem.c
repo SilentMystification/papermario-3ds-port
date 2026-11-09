@@ -131,6 +131,8 @@ void* pm_soc_buffer(unsigned* size) {
 }
 
 unsigned pm_heap_bytes(void) { return __ctru_heap_size; }
+/* PAUSEDR: free newlib heap in KB (heap size less the sbrk used), for the boot z-buffer line (pm_main.c). */
+unsigned pm_heap_free_kb(void) { return (unsigned)((__ctru_heap_size - ((char*)sbrk(0) - (char*)__ctru_heap)) >> 10); }
 
 /* MEMGATE: the boot memory line, printed in every mode (pm_log_evt) before the ROM fit check, also when the ROM does not fit.
  * region/used/free: osGetMemRegion* of the APPLICATION region (after __system_allocateHeaps took the whole commit, so free is small).

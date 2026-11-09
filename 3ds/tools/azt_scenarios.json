@@ -5040,6 +5040,50 @@
       "reason": "BOOT-1: a cold start takes 12 to 16 s on Azahar, then the logos and the title. Until is the boot ms line. Cap 45 s (upper limit), stated here for the cold start plus the logos."
     },
     {
+      "name": "boot_romorder",
+      "status": "unverified",
+      "subject": "BOOT step 0: boot_ms with the switch romorder. Each first touch of a 128 KB ROM chunk (original address >> 17) prints romorder c<idx> f<frame> t<ms>; the boot line is followed by the chunk counts before the first drawn frame and before the title.",
+      "proves": "Which ROM chunks the game reads before its first frame and before the title, in order (input of the stream order).",
+      "debug": "loglevel=debug romorder",
+      "until": "romorder chunks first ",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "boot_main",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "chunk counts at the title",
+          "regex": "romorder chunks first \\d+ title \\d+ of \\d+"
+        }
+      ],
+      "reason": "BOOT step 0: same boot as boot_ms (cold start plus the logos), cap 45 s (upper limit). Until is the count line printed right after the boot ms line."
+    },
+    {
+      "name": "boot_logo_pic",
+      "status": "unverified",
+      "subject": "BOOT: no-warp boot with the ROM streamed. Shot at frame 200 (the logos, about 7 s after main) after the 'rom stream done' line.",
+      "proves": "The streamed boot draws the logos (picture) and the stream ends during them.",
+      "debug": "loglevel=debug shots shotwin=200:1",
+      "until": "shot \\d+ frame 200\\b",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "game mode 1 frame",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "stream done",
+          "regex": "rom stream done ms \\d+"
+        },
+        {
+          "name": "logo shot",
+          "regex": "shot \\d+ frame 200\\b"
+        }
+      ],
+      "reason": "BOOT gate picture: frame 200 is in the logos (game mode 1, frames 15 to 328). Cap 30 s: Azahar start plus about 8 s of boot and logos."
+    },
+    {
       "name": "boot_memline",
       "status": "unverified",
       "subject": "MEMGATE: the boot memory line 'mem boot:' (region, commit, image, static, linear, heap, rom_need, leave, cap, margin) printed by pm_rom_init before the ROM fit check.",
@@ -11626,6 +11670,34 @@
         }
       ],
       "reason": "SEAMFIX picture gate: shots 200 to 205 of one spot; the shot line of frame 205 is the until (cap 25 s: boot about 15 s plus the 6 shots)."
+    },
+    {
+      "name": "pause_thr_prof",
+      "status": "unverified",
+      "subject": "PAUSEDR: threaded pause with prof=4 (prof lines only). Toad Town mac_01 at pos 0 0 200, START opens and closes the pause three times as pause_thr_pic. Log only: the core2 drain line of the first window (dr, drw, wqf per logic step).",
+      "proves": "PAUSEDR: drains per logic step in a threaded pause (pm_wq_idle counters, nd_wq.c) and the msg ROM copy (dma_load_msg, src/msg.c). Log only.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town pos=0:0:200 padscript=wait80,START*3,wait60,START*3,wait60,START*3,wait60,START*3,wait60,START*3,wait60 prof=4 loglevel=debug",
+      "until": "prof f\\d+ w\\d+ core2 drain",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "pause open",
+          "regex": "game mode 10 frame"
+        },
+        {
+          "name": "core2 drain line",
+          "regex": "prof f\\d+ w\\d+ core2 drain"
+        }
+      ],
+      "reason": "PAUSEDR counters: window line after the first pause opens on the logic thread."
     }
   ]
 }
