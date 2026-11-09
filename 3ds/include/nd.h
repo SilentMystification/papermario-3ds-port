@@ -3,6 +3,7 @@
 #define ND_H
 
 #include <stdint.h>
+#include <stddef.h>
 #include "pm_gpu.h"
 
 #ifdef __arm__
@@ -90,6 +91,7 @@ uint32_t nd_tex_wrap_final(int shr, unsigned mirror, uint32_t wrap);
 uint32_t nd_tex_param(uint32_t param, unsigned filter, uint32_t ws, uint32_t wt);
 uint32_t nd_tex_dim(unsigned w, unsigned h);
 void nd_tex_reset(void);
+unsigned nd_tex_gen(void);                   /* PERF2: the reset generation of the block ids */
 int nd_tex_get(const NdTexDesc* d);          /* block id, loading the image through pm_tex.c on a miss; -1 when it fails or the table is full */
 const uint32_t* nd_tex_block(int id);        /* dim, param, lodParam, data address >> 3 */
 /* S3N-1 (B4): the texture descriptor of a map model handle, set once when load_texture_impl builds the handle (model.c, TARGET_3DS). S3L-2: the desc is the tile 0 facts for every
@@ -204,35 +206,42 @@ int nd_dlc_tex_decode(const uint32_t* l, NdTexDec* o);
  * the shadow (what the GPU holds after the last emitted draw) are written; a shadow reset writes everything. The vertex shader program, the attribute and buffer
  * configuration and the frame state stay with citro3d (set up once before the first native draw). Verified against the real command stream (nd_emit_test). */
 typedef struct NdUnit { uint32_t dim, param, lod, addr, type, force; } NdUnit; /* dim 0: unit off. addr = physical address >> 3, type = the texture format word. force: write the block and clear the texture cache even when the words equal the shadow (another texture or new texels under the same address, as a citro3d rebind) */
+/* PERF2 step 3: the pm5 block of a model range (program 5: light, fog and texgen block, the normal rows of palette entry 0), out of NdDraw behind p5 */
+typedef struct NdPm5 { PmFx fx; float nrm[3][4]; } NdPm5;
 typedef struct NdDraw {
+    /* PERF2 step 3: the hot header first (the first 64 bytes: what nd_emit_draw and the submit read for every draw) */
     int tmpl;                 /* nd_tmpl id: effect, depth, blend and TEV words */
-    uint32_t tev_col[6];      /* the colour word of each TEV stage that a colour source sets (the template holds 0 there), ABGR */
-    uint32_t buf_col; uint8_t has_buf; /* texenv buffer colour (register 0xFD), written when has_buf */
-    NdUnit u[3];              /* texture units 0, 1 and 2 (unit 2: the noise texture, FB-2) */
-    const float (*pal)[16];   /* palette entries, pcomp each, C3D_Mtx memory order */
-    unsigned npal;
-    unsigned loc_pal, loc_var; /* vertex shader float uniform locations: palette entry 0 (entries 4 apart), then uvso, cmul, cadd, zmix (4 vec4 in a row) */
-    float uvso[4], cmul[4], cadd[4], zmix[2]; /* game order x y z w, the words go out in memory order w z y x */
     uint32_t idx_word;        /* index buffer address word (register 0x227) */
     uint32_t nidx;            /* index count */
-    float uvx[4];             /* SGEN-2: the unit 1 uv map (pm_gpu_set_tex1), game order; written at loc_uvx when has_uvx */
-    unsigned loc_uvx; uint8_t has_uvx;
+    uint16_t loc_pal, loc_var; /* vertex shader float uniform locations: palette entry 0 (entries 4 apart), then uvso, cmul, cadd, zmix (4 vec4 in a row) */
+    uint16_t loc_uvx, loc_nzo; /* SGEN-2: the unit 1 uv map (written when has_uvx); FB-2: the noise offset (written when has_nzo) */
+    uint16_t npal;            /* palette entries */
+    uint8_t has_buf, has_uvx, has_nzo; /* texenv buffer colour; unit 1 uv map; noise offset */
     uint8_t use5, no_uni;     /* PM5-2: program 5 batch (the caller wrote its pm5 uniforms); no_uni: nd_emit writes no palette or uvso block */
-    PmFx fx5;                 /* PM5-3: the pm5 light, fog and texgen block of a model range (use5) */
-    float nrm5[3][4];         /* PM5-3: the normal rows of palette entry 0 (the walker's gm_nrm: model view rows 0 to 2) */
+    const float (*pal)[16];   /* palette entries, pcomp each, C3D_Mtx memory order */
+    const NdPm5* p5;          /* PM5-3: the pm5 block of a model range (use5 from nd_model_state), else NULL */
+    NdUnit u[3];              /* texture units 0, 1 and 2 (unit 2: the noise texture, FB-2); unit 0 ends the 64-byte header */
+    uint32_t tev_col[6];      /* the colour word of each TEV stage that a colour source sets (the template holds 0 there), ABGR */
+    uint32_t buf_col;         /* texenv buffer colour (register 0xFD), written when has_buf */
+    float uvso[4], cmul[4], cadd[4], zmix[2]; /* game order x y z w, the words go out in memory order w z y x */
+    float uvx[4];             /* SGEN-2: the unit 1 uv map (pm_gpu_set_tex1), game order; written at loc_uvx when has_uvx */
     float nzo[4];             /* FB-2: the noise offset uniform (game order: 120/64, 200/64, offset x, offset y), written at loc_nzo when has_nzo */
-    unsigned loc_nzo; uint8_t has_nzo;
 } NdDraw;
+_Static_assert(offsetof(NdDraw, u) + sizeof(NdUnit) <= 64, "PERF2: the NdDraw hot header (to unit 0) fits 64 bytes");
 #define ND_NPAL 21
 typedef struct NdShadow {
+    /* PERF2 step 3: what every draw reads first (template id, valid bits, units, colours, the uniform block), the template words, then the palette copies */
     int tmpl;                 /* -1 = unknown */
-    NdUnit u[3]; uint8_t u_on[3], cfg_valid; uint32_t cfg;
-    float pal[ND_NPAL][16]; uint8_t pal_valid[ND_NPAL];
-    float uni[16]; uint8_t uni_valid;
-    float uvx[4]; uint8_t uvx_valid; /* SGEN-2 */
-    float nzo[4]; uint8_t nzo_valid; /* FB-2 */
-    uint32_t tmpl_val[64]; /* ND_TMPL_WORDS max, register values of the template last written (for word level deltas) */
-    uint32_t col[6], buf_col; uint8_t col_valid, has_buf;
+    uint32_t pal_valid;       /* bit k: palette entry k holds pal[k] */
+    uint8_t u_on[3], cfg_valid, uni_valid, uvx_valid, nzo_valid, col_valid, has_buf;
+    uint32_t cfg;
+    NdUnit u[3];
+    uint32_t col[6], buf_col;
+    float uni[16];
+    float uvx[4];             /* SGEN-2 */
+    float nzo[4];             /* FB-2 */
+    uint32_t tmpl_val[64];    /* ND_TMPL_WORDS max, register values of the template last written (for word level deltas) */
+    float pal[ND_NPAL][16];
 } NdShadow;
 void nd_shadow_reset(NdShadow* s);
 unsigned nd_emit_draw(uint32_t* out, NdShadow* sh, const NdDraw* d); /* returns the number of words written (even) */
@@ -327,7 +336,7 @@ typedef struct NdMCtx {
     NdUnit* u1; int i8_1; int t1_valid; int t1only; float uvx[4]; unsigned loc_uvx;
     int wind;                  /* walker: the sign of the matrix determinant (gv_wind, until the matrix is native in 3c): cull sense */
 } NdMCtx;
-typedef struct NdMState { NdTmplKey k; NdTevOut to; int tmpl; int why; } NdMState; /* why: fallback code 1 mode or combine entry, 2 aux words, 3 custom gfx, 4 lit or fog, 5 combiner refused, 6 tex1 or noise, 7 template full, 8 combine needs tile 1, the box product or a key value */
+typedef struct NdMState { NdTmplKey k; NdTevOut to; int tmpl; int why; NdPm5 p5; /* PERF2: the pm5 block d->p5 points at (use5) */ } NdMState; /* why: fallback code 1 mode or combine entry, 2 aux words, 3 custom gfx, 4 lit or fog, 5 combiner refused, 6 tex1 or noise, 7 template full, 8 combine needs tile 1, the box product or a key value */
 int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st); /* 1 native, 0 fallback, -1 nost (B8: a read other mode bit has no value) */
 int nd_model_state_spr(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st); /* PERF1-5: nd_model_state for the sprite context (pm_gpu_spr_build) through a 16-entry memo */
 /* S3N-3c: the static ranges of a shape list (the former pm_gbi.c pm_dlc_native_ranges): index pool pointer, index count, geometry mode of the batch. */
@@ -338,7 +347,10 @@ int pm_dlc_vis_mask(const void* list, uint64_t* out); /* PERF1-4b: the groups of
 /* S3N-3c: a model record as native draws. c: the record state (geom_at is set per range). list: the geometry list (R12). emit 0: build only (ndmcheck);
  * emit 1: flush, then submit each draw (S3N-4). Returns the draw count, -1 fallback (nd_nat_why), -2 nost. Draws are read with nd_model_native. */
 #define ND_NAT_MAX 64
-typedef struct NdNat { NdDraw d; NdMState s; float pal[16]; const uint16_t* sd; unsigned nidx; uint8_t zp; float zn; NdTmplKey tk; /* FB-2: the key of d.tmpl: a cache hit builds the id again (the LRU may have taken it over) */ } NdNat; /* S5-2: zp 1 = zmark pass 2, pal row 2 := zn * row 3 (rebuilt on a hit) */
+typedef struct NdNat { NdDraw d; NdMState s; float pal[16]; const uint16_t* sd; unsigned nidx; uint8_t zp; float zn; NdTmplKey tk; /* FB-2: the key of d.tmpl: a cache hit builds the id again (the LRU may have taken it over) */ } NdNat; /* S5-2: zp 1 = zmark pass 2, pal row 2 := zn * row 3. The draws of the record in progress (nd_model_draw); the cache keeps NdNatC */
+/* PERF2 step 3: a cached draw of the native model cache (the pool of an NdMEnt): the draw, its index range, the zmark pass 2 factor, the MERLEE mix stage and
+ * the template key. No palette (the hit points d.pal at its palette 0 of this view) and no NdMState (only the mix stage is read); the pm5 block is in a side pool. */
+typedef struct __attribute__((aligned(32))) NdNatC { NdDraw d; const uint16_t* sd; unsigned nidx; float zn; uint8_t zp; int8_t mix_st; NdTmplKey tk; } NdNatC;
 extern int nd_nat_why;
 extern unsigned nd_nat_sub; /* MDL-5 census: sub-case of why 6 (1 a noise, 2 b tex1 no unit 1, 3 c aux off-screen, 4 d pm5 tex1), 0 other whys */
 void nd_mdlfb_note(uint32_t prod, unsigned sub); /* MDL-5 census: one why 6 fallback of record prod (its address) */
@@ -351,12 +363,13 @@ const NdNat* nd_model_native(unsigned j);
 #define NDMC_SW 64
 typedef struct NdMKey { uint32_t w[NDMC_RW + NDMC_SW]; uint32_t h; uint32_t rp; } NdMKey; /* S3N-7: h = hash of w (nd_mc_hash), rp = the record address (not compared) */
 #define ND_RAW_MAX 16
-typedef struct __attribute__((aligned(32))) NdMEnt { NdMKey k; uint64_t vmask; uint32_t geom; int hs; unsigned hg; uint32_t tgen; uint16_t off, n; uint8_t used, tex, why; uint32_t ep; } NdMEnt; /* vmask: the groups in view the draws were cut from (PERF1-4b: the hit compares the groups in view now; the key holds the state the cut reads); tgen: nd_tmpl_gen at the last template build of the draws (PERF1-4c) */
+typedef struct __attribute__((aligned(32))) NdMEnt { uint32_t h, rp; uint64_t vmask; uint16_t off, n; uint8_t used, tex, why; uint32_t geom; int hs; unsigned hg; uint32_t tgen, ep; } NdMEnt; /* PERF2 step 3: 64 bytes, the probe reads h and used in the first line; the key words are in a side array (nd_mc_keyw) */ /* vmask: the groups in view the draws were cut from (PERF1-4b: the hit compares the groups in view now; the key holds the state the cut reads); tgen: nd_tmpl_gen at the last template build of the draws (PERF1-4c) */
 unsigned nd_handle_gen(void);                                   /* bumped by each texture handle write (nd_tex_handle_set) */
 NdMEnt* nd_mc_find(const NdMKey* k);                           /* the entry of key k (k->h set), NULL when none */
 NdMEnt* nd_mc_find_rec(NdMKey* k);                             /* PERF1-4a: rec_run's lookup: the record address memo first, else sets k->h and probes */
 NdMEnt* nd_mc_store(const NdMKey* k, int tex, int hs, unsigned hg); /* the draws and group mask of the last nd_model_draw (it returned >= 0); NULL when more than ND_RAW_MAX ranges or no mask */
-NdNat* nd_mc_nat(NdMEnt* e, unsigned j);                       /* draw j of an entry (j < e->n) */
+NdNatC* nd_mc_nat(NdMEnt* e, unsigned j);                      /* draw j of an entry (j < e->n) */
+const uint32_t* nd_mc_keyw(const NdMEnt* e);                   /* PERF2: the key words of an entry (NDMC_RW + NDMC_SW) */
 uint32_t nd_mc_hash(const NdMKey* k);                          /* S3N-7: the hash of the key words, set in pm_gpu_model_key */
 void nd_mc_miss(const NdMKey* k);                              /* S3N-7: the class of one miss (diagnostic counters) */
 unsigned nd_mc_size(void);                                     /* S3N-7 diagnostic: table size */
@@ -368,7 +381,13 @@ unsigned nd_mc_clears(void);
  * PROF2-5: pm_gpu.c keeps a 4-deep stack of u32 start ticks (pm_gpu_ndt_push) and the ticks of the inner regions, so a region's exclusive time is its
  * total less its children. NDT_B declares the flag v (a clean frame: one load of pm_ph_on, no call, no timer struct); NDT_E pops into class k.
  * NDT_BD is the walker form: the PH bit of the walker debug word (one register test). */
-enum { NDT_REC, NDT_ENT, NDT_SPR, NDT_DLC, NDT_SUB, NDT_N };
+/* PERF2 step 6: kick = kick_split and cmd_split_forced (out of sub); raw = nd_raw_native less its submit; the op classes (one tick per change of op class in
+ * the walk, outside the regions, nd_walk.c walk_cls): tex (texture image, tile and load ops), comb (combine, colours, other modes), geo (vertices, triangles,
+ * geometry mode), mtx (matrix ops, move word and memory), rect (rectangles, fill, scissor, colour and depth images), list (list ops, syncs, records, other). */
+enum { NDT_REC, NDT_ENT, NDT_SPR, NDT_DLC, NDT_SUB, NDT_KICK, NDT_RAW, NDT_TEX, NDT_COMB, NDT_GEO, NDT_MTX, NDT_RECT, NDT_LIST, NDT_N };
+void pm_gpu_ndt_cls(int k); /* PERF2: an op of class k (NDT_TEX..NDT_LIST) in a timed walk; -1 ends the class span (the end of an outer list) */
+unsigned nd_ent_cfull_all(void); unsigned nd_gdl_lists(void); /* PERF2: nd_ent.c totals */
+void pm_gpu_cnt_take(unsigned o[8]); /* PERF2: since the last take: program switches, shadow resets, UpdateContext calls, splits, sprite memo hits, misses, full combine syncs in ent, ent_gdl lists */
 void pm_gpu_ndt_push(void);
 void pm_gpu_ndt_pop(int k);
 #define NDT_B(v) const int v = pm_ph_on; if (__builtin_expect(v, 0)) pm_gpu_ndt_push()
@@ -421,6 +440,7 @@ unsigned nd_ent_strip(const uint32_t* l, uint32_t* out);
 /* The walker entry points (were pm_gbi.h, S10-1): nd_walk.c, nd_cen.c and nd_mtx_set.c define them. */
 void pm_gbi_init(void);
 void pm_gbi_run(void* dl, unsigned nbytes);
+void nd_walk_ops(void* dl, unsigned nbytes); /* PERF2: a flattened list's ops (ent_run) without the DIP2 full sync at the list start */
 void pm_gbi_fallback(void);
 /* Once a frame. The log gets one summed line per second, and only when it changes. */
 void pm_gbi_end_frame(void);
