@@ -30,6 +30,16 @@ dlc_planes; any port cull of background models). Name the plane build (file:line
 the camera (view vs view-projection, row vs column major, the wide 1.25 x scale). A wrong sign or a transposed matrix culls the side
 opposite the view. Fix it; gate: mim_01 turn in place (padscript) with no item vanishing on screen.
 
+## Checks (agent FFOG, base ba2baf164 + diag)
+Bench mim01_ring_wide_ffog (warp mim_01:1, det, wide, padscript ring turn, switch ffog). Counts per 60 frames, native hits:
+1. Stale combined (suspect of "User facts 2"): FALSE. cmis 0 in every window (combined == nd_mtx_combine of the walker stack at each hit; upload_mvp runs after every load, popmtx, viewport).
+   Empty hits (model skipped, ~4100 per window) all have group mask 0 now (vmz == empty). IGNORE_MATRIX share of empties ~50 percent (emptyig).
+2. Box cull removes an on-screen group (ons, pm_dlc_ons_note): 0 in every window, both turn directions. Planes and sign agree with clip space
+   under the widescreen viewport stretch (pm_gpu.c:176, no projection change). Mono only; stereo cull (nd_eye_cull_e) not checked.
+3. Not checked: game-side model cull (src/model.c:3157-3230, bounds of model centres, wsCullX 1.25, port records skipped before the hit);
+   pm5 fog at w <= 0 (row Cause 1). Both need a shown fault or a printed value first.
+Setup to reproduce: Widescreen on (options.ini wide=1), 3D off, 30 FPS, then the user's walk path. Diag line: `ffog f<N> hit ... ons ...`.
+
 ## Start state
 `sh 3ds/tools/wt_new.sh FFOG`, branch FFOG. PM_ROW=FFOG, PM_LANE=FFOG. One coder agent. Scenario mim01_ring_det (exists).
 

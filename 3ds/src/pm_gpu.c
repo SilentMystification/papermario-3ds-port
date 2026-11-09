@@ -3319,8 +3319,33 @@ int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32
 /* S3N-6: the hit. The cached draws of key k go out (after pm_gpu_flush) when the fresh ranges are the cached ones: each with the palette of the current view
  * and, for a textured record, the unit 0 words of the hinted slot (nd_tex_unit_hint). 1: drawn. 0: no entry, other ranges, or no texture: the caller
  * applies the record (its matrix ops are done). */
+/* FFOG (diagnostic, switch ffog; no effect on the draw): per 60 frames, over the native hits. hit: hits seen; empty: hits of an entry with no draw
+ * (the model is skipped); emptyig: the same for an IGNORE_MATRIX record (flag 256 of R3, the walker matrix is kept, no load); rng: the group mask
+ * now differs from the entry's (rebuilt, not a hit); rngig: the same for IGNORE records; cmis: hits whose `combined` is not the fresh MVP of the
+ * walker stack (nd_mtx_combine); vmz: hits with a zero group mask now. Premise of the suspect: combined is the walker MVP at every hit. */
+int pm_dlc_ons_note(const void* lv, unsigned* culled, unsigned* ons); /* nd_shape.c, FFOG */
+static __attribute__((cold, noinline)) void ffog_note(const NdMKey* k, const NdMEnt* e) {
+    static unsigned f_, hit_, emp_, empig_, rng_, rngig_, cmis_, vmz_, cul_, ons_, onsh_;
+    const unsigned f = pm_frame_count();
+    if (f != f_) {
+        if (f_ && f % 60u < 3u) { pm_log_w("ffog f%u hit %u empty %u emptyig %u rng %u rngig %u cmis %u vmz %u culg %u ons %u onsh %u", f, hit_, emp_, empig_, rng_, rngig_, cmis_, vmz_, cul_, ons_, onsh_); hit_ = emp_ = empig_ = rng_ = rngig_ = cmis_ = vmz_ = cul_ = ons_ = onsh_ = 0; }
+        f_ = f;
+    }
+    const int ig = (((const uint32_t*)(uintptr_t)k->rp)[6] & 256u) != 0;
+    uint64_t vm = 0;
+    const int same = pm_dlc_vis_mask((const void*)(uintptr_t)k->w[24], &vm) == 0 && vm == e->vmask;
+    float fresh[4][4];
+    nd_mtx_combine(fresh);
+    hit_++;
+    if (memcmp(fresh, pm_gbi_combined_ptr(), sizeof fresh) != 0) cmis_++;
+    { unsigned cu = 0, on = 0; if (pm_dlc_ons_note((const void*)(uintptr_t)k->w[24], &cu, &on) == 0) { cul_ += cu; ons_ += on; onsh_ += on != 0; } } /* the box test removed an on-screen group */
+    if (!same) { rng_++; rngig_ += (unsigned)ig; return; }
+    if (!vm) vmz_++;
+    if (!e->n) { emp_++; empig_ += (unsigned)ig; }
+}
 int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
     if (!e) { ndn_nokey++; return 0; }
+    if (PMDL("ffog")) ffog_note(k, e);
     if (!model_vis_same(k, e)) { ndn_rng++; pm_xf.mdl_rng++; return 0; }
     if (e->mver && e->mver != ((((const uint32_t*)(uintptr_t)k->rp)[3] >> 16) | 0x10000u)) { ndn_rng++; pm_xf.mdl_rng++; return 0; } /* MAPX-2: a lit entry whose matrix moved: the miss path stores it again in place */
     if (!e->n) { ndn_empty++; ndn_rec++; ndn_hit++; return 1; } /* PERF1-4c: no draw (no group in view, or all culled): no texture lookup, template build, matrix product or flush */
