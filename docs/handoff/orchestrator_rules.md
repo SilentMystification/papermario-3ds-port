@@ -26,7 +26,7 @@ Only the orchestrator reads this file. Shared rules are in CLAUDE.md. Style hook
 
 ## Agents and worktrees
 - At most 6 code agents (2 Azahar slots); read-only agents do not count. One agent per epic; reuse a live agent for its epic; a row of about 30 lines goes to a live agent.
-- One agent, one worktree: `git worktree add build3ds/wt/<row> -b <row> main`. Before a new agent uses an existing worktree, stop the old one (TaskStop). Every build.sh and bench call in a worktree sets PM_LANE=<row>; without it the shared main volume is used and the main build breaks.
+- One agent, one worktree: `sh 3ds/tools/wt_new.sh <row>` (`git worktree add build3ds/wt/<row> -b <row> main` plus `.wt_keep`; no asset copy). The worktree reads assets/us and ver/us/build from the main worktree (build.sh, nd_host_test.sh). Before a new agent uses an existing worktree, stop the old one (TaskStop). Every build.sh and bench call in a worktree sets PM_LANE=<row>; without it the shared main volume is used and the main build breaks.
 - No git stash anywhere (the stash list is shared by all worktrees).
 - Done means the whole row set passes. A handback with work left is not allowed; the prompt says to wait for background runs in the foreground. An early handback is resumed once with the same row.
 - An agent silent for over 2 hours: collect its state into the row file, stop it.
