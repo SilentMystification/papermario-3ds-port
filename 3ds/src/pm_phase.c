@@ -870,7 +870,8 @@ void __wrap_gfx_draw_frame(void) {
  * KB, entity key compiles, static G_DL lists, walker-drawn entity segments and model cache misses. Frames over 34 ms carry " o34". */
 #define FSPK_PRE 16
 #define FSPK_POST 48
-typedef struct { unsigned f, dr, tri, tevr, tb, txm, txkb, entc, gdl, segi, mdlm; float ms; } FspkRec;
+typedef struct { unsigned f, dr, tri, tevr, tb, txm, txkb, entc, gdl, segi, mdlm; float ms; float fs[FS_N]; } FspkRec;
+static unsigned long long fspk_fs0[FS_N]; /* fsplit sums at the last frame (switch fsplit): per-frame parts */
 static FspkRec fspk_ring[FSPK_PRE];
 static unsigned fspk_n, fspk_left, fspk_hit, fspk_o34, fspk_maxf;
 static float fspk_max;
@@ -883,6 +884,8 @@ void pm_gpu_mdl_stat(unsigned* miss, unsigned* clears);
 static void fspk_print(const FspkRec* r) {
     pm_log_evt("fspk f%u ms %.1f dr %u tri %u tevr %u tb %u txm %u txkb %u entc %u gdl %u segi %u mdlm %u%s", r->f, (double)r->ms, r->dr, r->tri, r->tevr, r->tb,
                r->txm, r->txkb, r->entc, r->gdl, r->segi, r->mdlm, r->ms > 34.f ? " o34" : "");
+    if (pm_fs_on) pm_log_evt("fspk f%u split logic %.1f dl %.1f gbi %.1f flush %.1f gwait %.1f swap %.1f audio %.1f rest %.1f", r->f, (double)r->fs[FS_LOGIC], (double)r->fs[FS_DL],
+                             (double)r->fs[FS_GBI], (double)r->fs[FS_FLUSH], (double)r->fs[FS_GWAIT], (double)r->fs[FS_SWAP], (double)r->fs[FS_AUDIO], (double)r->fs[FS_REST]);
 }
 void pm_fspk_mark(const char* what) {
     if (fspk_on <= 0 || fspk_left) return;
@@ -892,7 +895,7 @@ void pm_fspk_mark(const char* what) {
     for (unsigned k = k0; k < fspk_n; k++) fspk_print(&fspk_ring[k % FSPK_PRE]);
     fspk_o34 = 0; fspk_max = 0.f; fspk_maxf = 0;
     fspk_left = FSPK_POST;
-    if (pm_debug_has("shots")) { extern void pm_gpu_shot_window(unsigned from, unsigned n); pm_gpu_shot_window(fspk_hit + 1, 6); } /* the effect at the hit */
+    if (pm_debug_has("shots")) { extern void pm_gpu_shot_window(unsigned from, unsigned n); pm_gpu_shot_window(fspk_hit + 4, 6); } /* the effect at the hit, and the 16 bit battle-heap texture frames (hit + 4, hit + 8) */
 }
 void pm_fspk_frame(unsigned f, float ms) {
     if (fspk_on < 0) fspk_on = pm_debug_has("fspk");
@@ -903,9 +906,14 @@ void pm_fspk_frame(unsigned f, float ms) {
     FspkRec r = { f, pm_gpu_fr_last[0], pm_gpu_fr_last[3], pm_gpu_fr_last[1], pm_gpu_fr_last[2],
                   c[0] - fspk_prev[0], c[1] - fspk_prev[1], c[2] - fspk_prev[2], c[3] - fspk_prev[3], c[4] - fspk_prev[4], c[5] - fspk_prev[5], ms };
     memcpy(fspk_prev, c, sizeof c);
+    for (int k = 0; k < FS_N; k++) { /* the window reset clears fs_sum: then the sum itself is this frame's part */
+        unsigned long long d = fs_sum[k] >= fspk_fs0[k] ? fs_sum[k] - fspk_fs0[k] : fs_sum[k];
+        r.fs[k] = (float)((double)d / TICKS_MS); fspk_fs0[k] = fs_sum[k];
+    }
     if (!fspk_left) { fspk_ring[fspk_n++ % FSPK_PRE] = r; return; }
     fspk_print(&r);
     if (ms > 34.f) fspk_o34++;
     if (ms > fspk_max) { fspk_max = ms; fspk_maxf = f; }
     if (--fspk_left == 0) { pm_log_evt("fspk: done hit f%u frames %u o34 %u max %.1f ms f%u", fspk_hit, FSPK_POST, fspk_o34, (double)fspk_max, fspk_maxf); fspk_n = 0; }
 }
+int pm_fspk_active(void) { return fspk_left != 0; } /* MAGI: inside the window after the mark (producer debug lines) */

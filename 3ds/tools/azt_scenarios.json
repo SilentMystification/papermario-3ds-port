@@ -10173,9 +10173,9 @@
     {
       "name": "magi_hit_noshot",
       "status": "unverified",
-      "subject": "As magi_hit without shots: the fspk lines of the 16 frames before and 48 after the Magikoopa spell hit, no shot frame in the window.",
+      "subject": "As magi_hit without shots: the fspk lines of the 16 frames before and 48 after the Magikoopa spell hit, no shot frame in the window. fsplit adds the per-frame parts (logic, dl, gbi, flush, gwait, swap, audio, rest) to each fspk frame.",
       "proves": "MAGI: per-frame step ms and draw counts at the hit with no shot write in the window (the shot frames of magi_hit stall the pacing).",
-      "debug": "warp=hos_00:0 story=ch0_toad_town battle=BTL_HOS_FORMATION_03:BTL_HOS_STAGE_02 battlef=100 cheats=hp autoa fspk loglevel=debug",
+      "debug": "warp=hos_00:0 story=ch0_toad_town battle=BTL_HOS_FORMATION_03:BTL_HOS_STAGE_02 battlef=100 cheats=hp autoa fspk fsplit loglevel=debug",
       "until": "fspk: done hit f\\d+",
       "cap": 20,
       "deadline": 30,

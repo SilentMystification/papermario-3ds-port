@@ -166,8 +166,12 @@ unsigned nuGfxCfbNum = 2;
 static int in_buf(const void* p, const unsigned short* b) {
     return (const unsigned short*)p >= b && (const unsigned short*)p < b + CFB_PIXELS;
 }
-/* A color image that is the screen (a frame buffer). Any other color image is memory the game reads back. */
-int pm_is_cfb(const void* p) { return in_buf(p, gFrameBuf0) || in_buf(p, gFrameBuf1) || in_buf(p, gFrameBuf2); }
+/* A color image that is the screen (a frame buffer). Any other color image is memory the game reads back.
+ * MAGI: only gFrameBuf0 and gFrameBuf1. nuGfxCfbNum is 2 and nuGfxSetCfb is empty, so gFrameBuf2 is never drawn or shown on the port;
+ * it is the battle heap (heap_battleHead: actors, the battle HUD cache, run-time data). With gFrameBuf2 here, every 16 bit texture
+ * from the battle heap was taken for an older frame (nd_tex_set.c set_timg: pm_cfb_capture_prev, a full frame copy and a frame split
+ * per load) and read as native u16 pixels instead of its own bytes. */
+int pm_is_cfb(const void* p) { return in_buf(p, gFrameBuf0) || in_buf(p, gFrameBuf1); }
 /* B2: the frame buffer the game draws into now (the T2 grab source). Any other frame buffer holds an older frame (T3). */
 extern int pm_wide;
 /* F07-7: with wide a window may start up to 40 pixels before the buffer (game x -40 of row 0, effects in the gutters) */
