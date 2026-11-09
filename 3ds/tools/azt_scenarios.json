@@ -1227,6 +1227,64 @@
       "reason": "MOVE gate (d): one window of phase ms on iwa_10. opsplit is left out (see phase_mac01_det)."
     },
     {
+      "name": "lava_piranha_det",
+      "status": "unverified",
+      "reason": "DIRECT D6c gate: the lava piranha vines (battle kzn2 actor, kmr_22 and kzn_19 npc files) write their vertices as stream data.",
+      "subject": "DIRECT: debug battle Lava Piranha (BTL_KZN2_FORMATION_00, stage 06) started at frame 100 from kmr_03, det, shots at frames 400, 420, 440 (the boss with its vines).",
+      "proves": "DIRECT D6c: the vine pictures are byte-equal to the build where lava_piranha.c wrote its vertices into the list.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle=BTL_KZN2_FORMATION_00:BTL_KZN2_STAGE_06 battlef=100 shots shotwin=400:41:20 loglevel=debug fixedseed fs1off det",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "shot \\d+ frame 440\\b",
+      "cap": 30,
+      "deadline": 30,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "battle",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "last shot",
+          "regex": "shot \\d+ frame 440\\b"
+        }
+      ]
+    },
+    {
+      "name": "fx_direct_det",
+      "status": "unverified",
+      "reason": "DIRECT D6c gate: the 18 effects that kept list words (inline vertex data, lists for later) now write stream data and stream ranges.",
+      "subject": "DIRECT: nok_11 (entry 0), det, fxtest spawns shape_spell, shockwave, green_impact, shimmer_burst, shimmer_wave, firework, confetti, chomp_drop, thunderbolt_ring, squirt, water_block, waterfall, lightning_bolt, stop_watch, effect_65, whirlwind, red_impact, hieroglyphs one after the other (44 frame slots from frame 400, shots base, a, b per effect).",
+      "proves": "DIRECT D6c: the effect pictures are byte-equal to the build where these files wrote list words.",
+      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=13,32,44,50,52,61,62,71,82,83,84,85,88,92,95,97,98,106 shots loglevel=debug fixedseed fast fs1off det",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "fxtest: done",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: nok_11 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: nok_11 entry 0"
+        },
+        {
+          "name": "last effect shot",
+          "regex": "fxtest: shot 53 effect 106 hieroglyphs b"
+        },
+        {
+          "name": "done",
+          "regex": "fxtest: done"
+        }
+      ]
+    },
+    {
       "name": "nok11_det",
       "status": "unverified",
       "reason": "DET gate (cold, two runs, byte-equal shots). The splash picture is the subject.",
@@ -9888,6 +9946,31 @@
       "extra": []
     },
     {
+      "name": "pause_pre_det",
+      "status": "unverified",
+      "subject": "DIRECT: mac_00 (toad preset) det, the drawn frames just before and at the pause open (shots every second frame from 86, caplog) and the pause picture (shots to 140; texlog: one line per texture rectangle): the frame the pause picture is read from and the rectangles drawn over it.",
+      "proves": "The top rows of the frame the pause capture reads (pause_spin_grab_det_w300 shows marks there when model.c records stream commands).",
+      "debug": "preset=toad padscript=wait80,START*3,wait100 shots shotwin=86:56:2 loglevel=debug grablog caplog texlog det",
+      "until": "shot \\d+ frame 140\\b",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "last shot",
+          "regex": "shot \\d+ frame 140\\b"
+        }
+      ],
+      "reason": "DIRECT D6 open fault: names whether the marks are in the live frame before the pause or come from the capture.",
+      "extra": []
+    },
+    {
       "name": "spot_mac00_det",
       "status": "unverified",
       "subject": "mac_00 (preset toad), Mario at pos -135 0 85, cold det start: shots at frames 200 to 205 (the picture). VERIFY check 1: HEAD and the det base give byte-equal shots.",
@@ -11406,6 +11489,66 @@
       ]
     },
     {
+      "name": "merlon_in_pic",
+      "status": "unverified",
+      "reason": "Row MERLON (user: Merlon's house interior black, crystal ball a square). Walk about 80 frames, door 60, inside 200, walk to the door, exit 60: about 15 s after the warp. Cap 30 s.",
+      "subject": "Merlon's house on mac_01 (story ch1_start): Mario walks to the door and presses A (room enter), stays inside 200 frames, walks back to the door and presses A (room exit). Shots every 25 frames from 100 to 300: the door from outside, the interior with Merlon and the crystal ball, the exit.",
+      "proves": "MERLON: the interior is lit with Merlon visible, the crystal ball is round with the zoomed scene, and no square shows through the wall from outside.",
+      "debug": "warp=mac_01:0 story=ch1_start pos=-203:20:-206 padscript=go_-203_-280_100,A,wait200,go_-190_-262_150,A,wait150 shots shotwin=100:200:25 profdisk=1 loglevel=debug det",
+      "until": "xfer2 [a-z]+ n2\\b",
+      "cap": 30,
+      "deadline": 28,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "door enter line",
+          "regex": "xfer door \\S+:out->\\S+:in f\\d+"
+        }
+      ]
+    },
+    {
+      "name": "merlon_in_nowide_pic",
+      "status": "unverified",
+      "reason": "Row MERLON (user: Merlon's house interior black, crystal ball a square). Walk about 80 frames, door 60, inside 200, walk to the door, exit 60: about 15 s after the warp. Cap 30 s.",
+      "subject": "Merlon's house on mac_01 (story ch1_start): Mario walks to the door and presses A (room enter), stays inside 200 frames, walks back to the door and presses A (room exit). 4:3 (nowide). Shots every 25 frames from 100 to 300: the door from outside, the interior with Merlon and the crystal ball, the exit.",
+      "proves": "MERLON: the interior is lit with Merlon visible, the crystal ball is round with the zoomed scene, and no square shows through the wall from outside.",
+      "debug": "warp=mac_01:0 story=ch1_start pos=-203:20:-206 padscript=go_-203_-280_100,A,wait200,go_-190_-262_150,A,wait150 shots shotwin=100:200:25 profdisk=1 nowide loglevel=debug det",
+      "until": "xfer2 [a-z]+ n2\\b",
+      "cap": 30,
+      "deadline": 28,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "door enter line",
+          "regex": "xfer door \\S+:out->\\S+:in f\\d+"
+        }
+      ]
+    },
+    {
+      "name": "merlon_in_live_pic",
+      "status": "unverified",
+      "reason": "Row MERLON (user: Merlon's house interior black, crystal ball a square). Walk about 80 frames, door 60, inside 200, walk to the door, exit 60: about 15 s after the warp. Cap 30 s.",
+      "subject": "Merlon's house on mac_01 (story ch1_start): Mario walks to the door and presses A (room enter), stays inside 200 frames, walks back to the door and presses A (room exit). No det (the logic thread runs as on the console). Shots every 25 frames from 100 to 300: the door from outside, the interior with Merlon and the crystal ball, the exit.",
+      "proves": "MERLON: the interior is lit with Merlon visible, the crystal ball is round with the zoomed scene, and no square shows through the wall from outside.",
+      "debug": "warp=mac_01:0 story=ch1_start pos=-203:20:-206 padscript=go_-203_-280_100,A,wait200,go_-190_-262_150,A,wait150 shots shotwin=100:200:25 profdisk=1 loglevel=debug",
+      "until": "xfer2 [a-z]+ n2\\b",
+      "cap": 30,
+      "deadline": 28,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "door enter line",
+          "regex": "xfer door \\S+:out->\\S+:in f\\d+"
+        }
+      ]
+    },
+    {
       "name": "xfer_map_mac01",
       "status": "unverified",
       "reason": "MAPX-1 measure and the MAPX-3/4/5 gate. Walk about 60 frames, fade 13, load 6, tail 30: about 5 s after the warp. Cap 35 s.",
@@ -12281,6 +12424,86 @@
         }
       ],
       "reason": "PAUSEFLK: threaded twin of pause_tab_c2haz: the census records at walk time while the logic of the next frame runs, so it also sees writes the threaded order makes (the det census checks only after the whole step)."
+    },
+    {
+      "name": "cheatsave_save",
+      "status": "verified",
+      "subject": "Slot 0 loaded (loadslot=0), Select menu, Cheats tab (L), Moon jump on (A): the bottom shot after the A draw shows the cyan 'Press X to save cheats' footer; X writes cheats_slot0.ini.",
+      "proves": "CHEATSAVE: foot1 shows the footer while pm_cheat_dirty; pm_menu_key KEY_X calls pm_cheat_save, which logs the saved line.",
+      "debug": "loadslot=0 warp=random padscript=wait150,SELECT,wait20,L,wait20,A,wait20,k_X,wait60 shotmenu loglevel=debug",
+      "until": "cheats: saved slot \\d+ \\(\\d+ on\\)",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "MODE = ",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "menu open",
+          "regex": "menu: open"
+        },
+        {
+          "name": "moon jump on",
+          "regex": "cheat: moon jump on"
+        },
+        {
+          "name": "footer shot (tab 3 row 0)",
+          "regex": "menu: shot \\w+ tab 3 row 0"
+        },
+        {
+          "name": "saved slot 0 with 1 on",
+          "regex": "cheats: saved slot 0 \\(1 on\\)"
+        }
+      ],
+      "reason": "CHEATSAVE save gate: the saved line (slot 0, 1 on) and the shot after the A draw with the footer (picture read by a person)."
+    },
+    {
+      "name": "cheatsave_load_on",
+      "status": "verified",
+      "subject": "Slot 0 loaded (loadslot=0) after a reboot: cheats_slot0.ini is applied at the world entry, the Cheats tab shows Moon jump On and no footer.",
+      "proves": "CHEATSAVE load: pm_cheat_enter_world reads the slot file (pm_cheatsave.c read_file) at ENTER_WORLD (pm_map.c wrapper).",
+      "debug": "loadslot=0 warp=random padscript=wait150,SELECT,wait20,L,wait20 shotmenu loglevel=debug",
+      "until": "menu: shot \\w+ tab 3 row 0",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "MODE = ",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "loaded slot 0 with 1 on",
+          "regex": "cheats: loaded slot 0 \\(1 on\\)"
+        },
+        {
+          "name": "moon jump On",
+          "regex": "menu: tab 3 row 0 Moon jump = On"
+        }
+      ],
+      "reason": "CHEATSAVE load gate: loaded slot 0 (1 on) and the Moon jump row value On in the Cheats tab."
+    },
+    {
+      "name": "cheatsave_load_off",
+      "status": "verified",
+      "subject": "Slot 1 (no cheats file) loaded: all persistent cheats start off, the Cheats tab shows Moon jump Off.",
+      "proves": "CHEATSAVE per slot: a slot without a file starts with the set off (read_file found 0, pm_cheat_enter_world).",
+      "debug": "loadslot=1 warp=random padscript=wait150,SELECT,wait20,L,wait20 shotmenu loglevel=debug",
+      "until": "menu: shot \\w+ tab 3 row 0",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "MODE = ",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "loaded slot 1 with 0 on",
+          "regex": "cheats: loaded slot 1 \\(0 on"
+        },
+        {
+          "name": "moon jump Off",
+          "regex": "menu: tab 3 row 0 Moon jump = Off"
+        }
+      ],
+      "reason": "CHEATSAVE per-slot gate: slot 1 starts with 0 on and Moon jump Off."
     }
   ]
 }

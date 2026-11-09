@@ -1,4 +1,3 @@
-#define ND_GBI_WORDS /* DIRECT D5: this file keeps list words (inline data, lists for later or list position tests) */
 #include "common.h"
 #include "effects_internal.h"
 
@@ -185,10 +184,14 @@ void squirt_appendGfx(void* effect) {
     gDPSetPrimColor(gMainGfxPos++, 0, 0, data->unk_34, data->unk_38, data->unk_3C, data->unk_40);
     gDPSetEnvColor(gMainGfxPos++, data->unk_44, data->unk_48, data->unk_4C, 200);
 
+#ifdef TARGET_3DS
+    savedGfxPos = (Gfx*) nd_rec_data(48 * sizeof(Gfx)); /* DIRECT D6c: the vertex buffer is stream data */
+#else
     gSPBranchList(gMainGfxPos, &gMainGfxPos[49]);
     savedGfxPos = gMainGfxPos + 1;
 
     gMainGfxPos = &gMainGfxPos[49];
+#endif
 
     vtx = (Vtx_t*) savedGfxPos;
     for (i = 0; i < 12; i++) {

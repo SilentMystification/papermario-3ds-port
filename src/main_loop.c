@@ -1,4 +1,3 @@
-#define ND_GBI_WORDS /* DIRECT D6: keeps list words (open: with this file recording, pause_spin_grab_det_w300 on mac_00 shows 4 marks on the top rows; plan_direct.md section 5) */
 #include "common.h"
 #include "nu/nusys.h"
 #include "audio/public.h"

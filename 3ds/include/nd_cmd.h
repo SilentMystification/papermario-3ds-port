@@ -36,6 +36,17 @@ void nd_rec_state(uint32_t w0, uint32_t w1); /* D4b-3: one state op, appended to
 const uint32_t* nd_rec_pos(void);                   /* D4b-2: the stream write position (no cut): moves when any command is recorded */
 const uint32_t* nd_rec_mark(void);                  /* D1: cut, then the stream position (a range start or end) */
 void nd_rec_call(const uint32_t* a, const uint32_t* b); /* D1: replay the range [a, b) here */
+/* D6c: inline data (the vertex buffers that the list held behind a branch). Returns 8-byte aligned memory that lives as long as the stream of
+ * the context (the replay skips it: an NDC_JUMP over the data). In a list for later (nd_rec_sub > 0) the data goes into that list behind a
+ * branch word, as before. */
+void* nd_rec_data(unsigned bytes);
+/* D6c: a list for later of an effect (built once, drawn by one or more calls) as a stream range. nd_sub_open records an NDC_JUMP over the range
+ * (patched by nd_sub_close), nd_sub_call replays it (NDC_CALL). In a list for later (nd_rec_sub > 0): the list form (a branch word over the
+ * sublist, its G_ENDDL, a G_DL push call). */
+typedef struct { const uint32_t* a; const uint32_t* b; uint32_t* br; int list; } NdSub;
+void nd_sub_open(NdSub* s);
+void nd_sub_close(NdSub* s);
+void nd_sub_call(const NdSub* s);
 /* D1: a builder that writes a list for later (build_custom_gfx) runs with nd_rec_sub > 0: records go to that list, not to the stream. */
 extern int nd_rec_sub;
 #define ND_REC_SUB(call) do { nd_rec_sub++; call; nd_rec_sub--; } while (0)
