@@ -659,7 +659,7 @@
       "status": "unverified",
       "subject": "Forever Forest mim_01 (entry 1, x -530), det, mono: Mario runs to (-375, -375), then to (-375, 375) around the ring (radius 530, the four entries), so the camera yaw passes 90. 12 shots, frames 60 to 280.",
       "proves": "EYECW mono gate: the mim_01 ring run is a function of the build (det); mono pictures do not change with the convergence fix.",
-      "debug": "warp=mim_01:1 det padscript=go_-375_-375_90,wait10,go_-375_375_150 shots shotwin=60:221:20 loglevel=debug",
+      "debug": "warp=mim_01:1 det padscript=go_-375_-375_90,wait10,go_-375_375_150 shots shotwin=60:221:20 loglevel=debug wzcull",
       "until": "shot \\d+ frame 280\\b",
       "cap": 30,
       "deadline": 25,
