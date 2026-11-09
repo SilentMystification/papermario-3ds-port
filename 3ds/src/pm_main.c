@@ -27,7 +27,7 @@ static char args[256];
  * A thread registers itself with the address of a local at its entry. The fill stops below the live frames. */
 #define STACK_PAT 0xA5A5A5A5u
 typedef struct { u32 lo, hi; const char* name; } StackRec;
-static StackRec recs[3];
+static StackRec recs[4]; /* game, audio, render, logic */
 
 void pm_stack_register(int id, const char* name, unsigned size) {
     volatile u32 here;
@@ -134,6 +134,7 @@ void pm_fatal_stop(const char* msg) {
 void pm_crash_install(void* stack, unsigned size) {
     threadOnException(crash_handler, (u8*)stack + size, WRITE_DATA_TO_HANDLER_STACK);
 }
+void pm_crash_install_here(void) { pm_crash_install(crash_stack, sizeof(crash_stack)); } /* CORE2C-3: the logic thread (one crash at a time) */
 
 u64 pm_loop_tick; /* JT: the tick the main loop read in this pass (pm_gpu_end reads it, no svc call of its own) */
 unsigned pm_svc_n; /* EC2: svc tick reads, counted for the empty close count */
@@ -204,8 +205,10 @@ void __wrap_appendGfx_darkness_stencil(int isWorld, int posX, int posY, float al
 void pm_dump_scripts(void);
 void pm_warp_tick(unsigned frame);
 unsigned pm_uptime_ms(void);
-static unsigned pm_frame_n;
-unsigned pm_frame_count(void) { return pm_frame_n; }
+unsigned pm_frame_n; /* the logic step counter (set at the end of each step) */
+extern unsigned pm_walk_frame; /* nd_wq.c: the frame of the entry the walker runs */
+/* CORE2C-3: walker-side code sees the frame of the entry it runs (the frame the logic had when it posted it), other code the step counter. */
+unsigned pm_frame_count(void) { return pm_walk_side && !pm_wq_on_logic() ? pm_walk_frame : pm_frame_n; }
 /* D03: copy the last finished frame into the frame buffer that is not being drawn (the N64 "previous
  * color buffer"). The PICA color buffer holds that frame until C3D_FrameEnd of this frame runs the
  * command list, so any time during this frame's display list build or run is right. Once per frame. */
@@ -251,8 +254,8 @@ static void cfb_capture_prev(int cpu) {
             }
         }
     }
-    if (done == pm_frame_n) { cap_note(cpu, "done"); return; }
-    done = pm_frame_n;
+    if (done == pm_frame_count()) { cap_note(cpu, "done"); return; }
+    done = pm_frame_count();
     for (i = 0; i < nuGfxCfbNum; i++) {
         /* PT78: the pause reads the frame from the buffer that is not the fill target, whatever the parity of the drawn step (a step skipped by FS1 moves the
          * BEGIN_PAUSED draw to the other parity: the old rule, the previous buffer of the drawn one, wrote the fill target and the filter read a stale frame).
@@ -345,24 +348,54 @@ extern unsigned pm_ph_iv, pm_ph_hud_us; /* PI4, PI5 */
 extern int pm_ph_on;
 void pm_boot_title_check(void); /* BOOT-1: prints the boot ms line at the first title-screen step */
 /* CORE2-3a: the end of a drawn frame on the walker side: the boot fallback picture when the step drew nothing, the BOOT-1 mark, the
- * frame end and present. arg: the address of the frame loop's "ever" flag (the loop never returns; the game reads it at the next pass). */
-static void wq_frame_end(void* a) {
-    int* ever = *(int**)a;
+ * frame end and present. lp_ever: a frame drew (the frame loop draws every pass until then; with the logic thread it sees it one
+ * step late, boot only). */
+static int lp_ever;
+static void wq_frame_end(void) {
     if (!pm_gpu_drew()) {
-        if (!*ever) pm_gbi_fallback();
+        if (!lp_ever) pm_gbi_fallback();
     } else {
-        if (!*ever) pm_boot_mark(PMB_DRAW, 0); /* BOOT-1 */
-        *ever = 1;
+        if (!lp_ever) pm_boot_mark(PMB_DRAW, 0); /* BOOT-1 */
+        lp_ever = 1;
     }
     pm_gpu_end();
 }
+/* CORE2C-3: the end entry of a step (walker side): the frame end of a drawn step, then the count pm_lg_show waits for. */
+void pm_lg_end_walked(void);
+static void wq_step_end(void* a) { if (*(const int*)a) wq_frame_end(); pm_lg_end_walked(); }
+void pm_fxtest_tick(unsigned);
+/* CORE2C-3: the body of one frame loop command (pm_logic.c), on the logic thread or inline. LG_IDLE: the retrace call of an idle pass.
+ * LG_STEP: frame begin, the step (step_game_loop, list build, frame push), the audio ticks, the step end; LG_SKIP: the FS1 step with no
+ * draw. Then the step tail: the frame number, warp and tour, fxtest, the script dump. */
+void pm_step_run(const LgCmd* c) {
+    if (c->kind == LG_IDLE) { pm_gfx_retrace(); return; }
+    int drew = c->kind == LG_STEP;
+    nuGfxCfb_ptr = (unsigned short*)c->cfb;
+    pm_pad_step(&c->pad);
+    au_kicked = 0;
+    if (drew) {
+        pm_gpu_begin(1);
+        pm_gfx_retrace();
+    } else {
+        pm_gfx_retrace_skip();
+        FS_MARK(FS_REST); /* FS2: the skipped step logic is not a drawn part of the next frame */
+    }
+    pm_audio_step(); /* AU1b: no main task in this step (or a skipped step): the ticks run now */
+    pm_wq_post(wq_step_end, &drew, sizeof drew);
+    pm_frame_n = c->frame;
+    pm_warp_tick(c->frame);
+    pm_fxtest_tick(c->frame); /* FX1a, switch fxtest */
+    if (pm_debug_has("scripts") && c->frame % 120u == 0) pm_dump_scripts();
+}
+/* CORE2C-3: the serial mode: the timers and census that read one stack or table from both sides, det, and the 60 fps records. */
+static int lp_serial(void) { return pm_det_on() || pm_ph_on || pm_ph_cen || pm_fs_on || pm_dcs_on || pm_interp_on > 0; }
 void pm_frame_loop(void) {
     unsigned frame = 0;
     pm_uptime_ms(); /* start the clock */
     { extern unsigned gRandSeed; pm_log("rng start seed %08x%s", gRandSeed, pm_debug_has("fixedseed") ? " (fixedseed)" : ""); } /* R-SEED */
     nuGfxCfb = cfb_list;
+    pm_lg_start(); /* CORE2C-3: the logic thread (core 1 on the O3DS, core 2 on the N3DS) */
     unsigned presents = 0, drawn = 0; /* PT24: presents = logic steps, drawn = steps with a draw */
-    int ever = 0;
     int have_fps = 0;
     unsigned fps_vb0 = 0, late_n = 0; /* PT15 */
     unsigned sp_n = 0; /* WARPLOG2: steps over 50 ms in the 300-frame logstat line */
@@ -406,13 +439,15 @@ void pm_frame_loop(void) {
         pm_loop_tick = now;
         /* The retrace builds a display list only every other call. Presenting
          * the idle call shows the other framebuffer, which was never drawn. */
-        int draw = D_80073E0A != 0 || !ever;
+        int draw = pm_lg_draw_flag() != 0 || !lp_ever; /* CORE2C-3: the flag after the last command (it waits for the step before) */
         static int prev_draw; const int lastdraw = prev_draw; prev_draw = draw; /* GREY: draw flag of the previous pass */
         static int top_after_due; static unsigned top_after_k;
         PM_WD_PHASE(2);
         pm_log_poll();
+        if (pm_menu_open) pm_lg_quiesce(); /* CORE2C-3: the menu reads and writes game state in the pad scan: the logic is idle */
         pm_pad_scan();
         if (pm_menu_open) { /* MN1: the Select menu pauses the game: no step, no draw, no audio tick. The menu text is presented here. */
+            pm_lg_quiesce(); /* CORE2C-3: the open press came in this scan */
             if (!menu_frozen) { /* MN2, PAUSE AUDIO */
                 extern unsigned pm_gx_qpend(void); extern void pm_gpu_menu_dirty_set(void);
                 menu_frozen = 1; pm_log("menu: game paused at frame %u", frame);
@@ -455,6 +490,7 @@ void pm_frame_loop(void) {
             pm_log("menu: game resumed at frame %u", frame);
         }
         if (fa_state == 1) { /* FADV hold: no game step and no draw, the picture on the top screen stays */
+            pm_lg_quiesce(); /* CORE2C-3: the last step is shown */
             if (!pm_pad_take_step()) { gspWaitForVBlank(); continue; }
             fa_state = 2; /* R: one game step, with no catch-up and no wait (sched_next and step_vb_ok as at a resume) */
             sched_next = 0; step_vb_ok = 0;
@@ -462,7 +498,7 @@ void pm_frame_loop(void) {
         pace_on = PMDL("pacestat");
         if (pace_on) pace_stat(now, tick_hz, frame);
         if (!draw) {
-            pm_gfx_retrace();
+            { LgCmd ic = { LG_IDLE, frame, NULL, { 0, 0, 0, 0, 0 } }; pm_lg_hand(&ic, lp_serial()); }
             /* F06-2: key frame of the last step, drawn and presented here (FrameBegin waits for the vblank) */
             if (fa_state == 0 && pm_interp_on > 0 && !last_step_skipped && pm_interp_key_draw()) { /* FADV: a hold or step draws no key frame */ /* PT87: the key frame is a draw, not a game step (it was counted as a step: the HUD showed x/x) */
                 drawn++; pm_pace_drawn++; det_keys++;
@@ -479,8 +515,8 @@ void pm_frame_loop(void) {
                     u64 t = svcGetSystemTick();
                     if (t >= sched_next) break;
                     u64 rem = sched_next - t;
-                    if (rem > tick_hz / 500ull) svcSleepThread((s64)((rem - tick_hz / 1000ull) * 1000000000ull / tick_hz)); /* leave 1 ms */
-                    else if (rem > tick_hz / 5000ull) svcSleepThread(100000ll);
+                    if (rem > tick_hz / 500ull) pm_lg_sleep_ns((s64)((rem - tick_hz / 1000ull) * 1000000000ull / tick_hz)); /* leave 1 ms */
+                    else if (rem > tick_hz / 5000ull) pm_lg_sleep_ns(100000ll);
                     else break;
                 }
                 PH_POP();
@@ -500,12 +536,12 @@ void pm_frame_loop(void) {
         }
         step_start = now;
         if (pm_interp_on > 0) sched_next = 0; else if (!sched_next) sched_next = now;
-        nuGfxCfb_ptr = nuGfxCfb[frame % nuGfxCfbNum];
+        void* cfb = nuGfxCfb[frame % nuGfxCfbNum]; /* the logic step sets nuGfxCfb_ptr from the command */
         /* FS1: N64 frame skip as a safety net. Skip the draw of this step only when the machine is really late: the last drawn step took more than
          * PM_VBLANKS_PER_STEP vblanks and this step starts when that many vblanks have already passed since the last drawn one (on time it starts after 1). At most FS1_MAX_RUN skips in a row.
          * The game logic runs as always (gfxTaskNum 3 in gfxRetrace_Callback), FrameBegin and FrameEnd are not called, the picture on screen stays. */
         int fs_skip = 0, fs_force_skip = 0;
-        if (ever && step_vb_ok && !fs1_off && !PMDL("fast") && !pm_det_on()) { /* PT87: also with fps60: a late step skips its draws (the key frame too), the game logic keeps 30 steps a second. Not with fast (uncapped debug runs). */
+        if (lp_ever && step_vb_ok && !fs1_off && !PMDL("fast") && !pm_det_on()) { /* PT87: also with fps60: a late step skips its draws (the key frame too), the game logic keeps 30 steps a second. Not with fast (uncapped debug runs). */
             fs1_steps++;
             /* FS1b: skip the draw whenever a whole step of the schedule has passed since the last drawn or skipped step (the step is at least one vblank late).
              * A skip pays two vblanks (step_vb += 2), so the draws stay on the schedule and the game logic runs at the full rate. */
@@ -514,20 +550,20 @@ void pm_frame_loop(void) {
             if (fs_skip && fs1_run >= FS1_MAX_RUN) fs_skip = 0;
         }
         last_step_skipped = fs_skip;
+        LgCmd lc = { fs_skip ? LG_SKIP : LG_STEP, frame + 1u, cfb, { 0, 0, 0, 0, 0 } };
+        pm_pad_latch(&lc.pad); /* CORE2C-3: the pad of this pass, read by the game once in the step */
         if (fs_skip) {
             fs1_run++;
             fs1_skipped++;
             det_iv = step_vb_ok ? C3D_FrameCounter(0) - step_vb : 0u; /* DET: the vblanks of a skipped step */
             step_vb += PM_VBLANKS_PER_STEP; /* the skipped step used its share of the schedule */
-            au_kicked = 0;
-            pm_gfx_retrace_skip();
-            FS_MARK(FS_REST); /* FS2: the skipped step's logic is not a drawn part of the next frame */
-            pm_audio_step(); /* the audio ticks of the step still run */
+            PM_WD_PHASE(5);
+            pm_lg_hand(&lc, lp_serial());
+            pm_lg_show(); /* the step before, when it drew */
         } else {
         fs1_run = 0;
         drawn++; pm_pace_drawn++; det_draws++;
         PM_WD_PHASE(4);
-        pm_gpu_begin(1);
         {
             unsigned vb = C3D_FrameCounter(0);
             if (step_vb_ok) {
@@ -542,13 +578,10 @@ void pm_frame_loop(void) {
             step_vb = vb;
             step_vb_ok = 1;
         }
-        au_kicked = 0;
         PM_WD_PHASE(5);
-        pm_gfx_retrace();
-        PM_WD_PHASE(6);
-        pm_audio_step(); /* AU1b: no main task in this step: run the ticks now */
+        pm_lg_hand(&lc, lp_serial()); /* CORE2C-3: the step (logic thread, or inline in the serial mode) */
         PM_WD_PHASE(7);
-        { int* ev = &ever; pm_wq_post(wq_frame_end, &ev, sizeof ev); } /* CORE2-3a: the frame end (fallback picture, present) is walker-side work */
+        pm_lg_show(); /* walk and present every finished step: the one before (logic thread) or this one (serial) */
         pm_log_frame_tick();
         pm_boot_title_check(); /* BOOT-1 */
         pm_ph_frame_end();
@@ -564,7 +597,6 @@ void pm_frame_loop(void) {
             det_keys = det_draws = 0; pm_audio_last_n = 0;
         }
         frame++;
-        pm_frame_n = frame;
         if (fa_state == 2) { fa_state = 1; pm_log("fa: step frame %u", frame); } /* FADV: the step is done, hold again */
         if (pm_interp_on <= 0 && sched_next) { /* PT88: one step is used. After a long stall (a load) do not run to catch up: keep at most 3 steps owed. */
             u64 t = svcGetSystemTick();
@@ -574,8 +606,6 @@ void pm_frame_loop(void) {
         pm_wd_prog++;
         PM_WD_PHASE(8);
         PM_WD_PHASE(9);
-        pm_warp_tick(frame);
-        { extern void pm_fxtest_tick(unsigned); pm_fxtest_tick(frame); } /* FX1a, switch fxtest */
         presents++;
         now = svcGetSystemTick();
         frame_ms = (float)(now - step_start) * 1000.f / (float)tick_hz;
@@ -641,7 +671,6 @@ void pm_frame_loop(void) {
             }
         }
         PM_WD_PHASE(10);
-        if (pm_debug_has("scripts") && frame % 120 == 0) pm_dump_scripts();
         if (frame == 60 && pm_debug_has("c2ownprobe")) { /* CORE2-3a positive control of c2own: one owned entry called from the game side; the c2own line must print */
             int st[8];
             pm_gpu_cap_state(st);
@@ -673,6 +702,7 @@ void pm_frame_loop(void) {
             }
         }
     }
+    pm_lg_stop(); /* CORE2C-3: the logic thread ends at a step boundary, the queue is run */
 }
 
 void pm_log_prof_apply(int boot_line); /* PROF4, pm_log.c */

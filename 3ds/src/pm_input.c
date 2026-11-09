@@ -352,11 +352,25 @@ void pm_pad_scan(void) {
     if (pm_menu_open) stick_x = stick_y = 0;
 }
 
-void pm_pad_read(unsigned short* buttons, signed char* x, signed char* y, unsigned short* trigger) {
-    if (buttons) *buttons = held | press_seen;
-    if (x) *x = stick_x;
-    if (y) *y = stick_y;
-    if (trigger) *trigger = down;
+/* CORE2C-3: the pad buffer. The frame loop scans the pad every pass (pm_pad_scan) and latches it into the command of a step; the logic
+ * side adds it to the step pad (presses not yet read stay) and the game reads that (pm_pad_read, nuContDataGet). In the serial order
+ * the latch is right before the step, so the game reads the same values as a direct read. */
+void pm_pad_latch(PmPad* p) {
+    p->held = held; p->down = down; p->press = press_seen; p->x = stick_x; p->y = stick_y;
     down = 0;
     press_seen = 0;
+}
+static PmPad step_pad;
+void pm_pad_step(const PmPad* p) {
+    step_pad.held = p->held; step_pad.x = p->x; step_pad.y = p->y;
+    step_pad.down |= p->down;
+    step_pad.press |= p->press;
+}
+void pm_pad_read(unsigned short* buttons, signed char* x, signed char* y, unsigned short* trigger) {
+    if (buttons) *buttons = step_pad.held | step_pad.press;
+    if (x) *x = step_pad.x;
+    if (y) *y = step_pad.y;
+    if (trigger) *trigger = step_pad.down;
+    step_pad.down = 0;
+    step_pad.press = 0;
 }

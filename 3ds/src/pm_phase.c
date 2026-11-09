@@ -434,7 +434,12 @@ static void c1_frame(void) { /* game thread, once per drawn frame while the prob
 extern unsigned long long pm_au_pf_sum; /* CORE2-0, pm_audio.c: join wait ticks of the window, longest single wait */
 extern unsigned pm_au_pf_max;
 /* PROF: start a new window (after a report, or when the scene changes inside a window: a window holds one scene only, so chg is 0 on every printed line) */
+/* CORE2C-3: the logic thread totals at the window start (pm_logic.c pm_lg_pf) */
+void pm_lg_pf(unsigned long long* lg_t, unsigned* lg_n, unsigned long long* wait_t, unsigned* ser_n, int* core, unsigned* stk_kb);
+static unsigned long long lg0_t, lg0_w; static unsigned lg0_n, lg0_s;
+static void pf_lg_mark(void) { int c; unsigned k; pm_lg_pf(&lg0_t, &lg0_n, &lg0_w, &lg0_s, &c, &k); }
 static void pf_reset(void) {
+    pf_lg_mark();
     pm_au_pf_sum = 0; pm_au_pf_max = 0;
     { uint64_t ct[NDT_N]; pm_gpu_ndt_take(ct); } /* PERF1: the class timers start with the window (a tour window, a scene change) */
     pf_nd_t = 0; pf_leg = 0;
@@ -552,12 +557,25 @@ static void pf_report(void) {
          * (PROF2-1: timed in sampled frames only), aujoin_max = longest single join (us). */
         pm_log_prof_line("prof f%u w%u writer beats %u | aujoin_us %u aujoin_max %u", pf_total, pf_w, pm_log_writer_hb(),
             pf_s ? (unsigned)(pm_au_pf_sum * 1000ull / PF_TPM / pf_s) : 0u, (unsigned)((unsigned long long)pm_au_pf_max * 1000ull / PF_TPM));
+        { /* CORE2C-3: lgms = logic thread ms per step it ran (step_game_loop, list build, audio kick, tail), n = those steps; wwait = game
+           * thread ms per drawn frame waiting for the logic (the walk wait); ser = steps run inline (serial: prof sample, det, measurement
+           * modes); core and stk = the logic thread core and its stack high-water mark (KB). */
+            unsigned long long lt, wt; unsigned ln, sn, kb; int core;
+            pm_lg_pf(&lt, &ln, &wt, &sn, &core, &kb);
+            unsigned dn = ln - lg0_n;
+            unsigned lgc = dn ? (unsigned)((lt - lg0_t) * 100ull / PF_TPM / dn) : 0u;
+            unsigned wwc = pf_w ? (unsigned)((wt - lg0_w) * 100ull / PF_TPM / pf_w) : 0u;
+            pm_log_prof_line("prof f%u w%u core2 lgms %u.%02u n %u wwait %u.%02u ser %u core %d stk %u", pf_total, pf_w,
+                lgc / 100u, lgc % 100u, dn, wwc / 100u, wwc % 100u, sn - lg0_s, core, kb);
+        }
     }
     if (c1_st == 1) c1_begin(); /* CORE2C C1P */
     pf_reset();
 }
 /* PF2: the next drawn frame is a sample. The phase stack starts clean, so its first push adds no time from before the sample. */
+void pm_lg_quiesce(void); /* pm_logic.c */
 static void pf_arm(void) {
+    pm_lg_quiesce(); /* CORE2C-3: the logic thread is idle before pm_ph_on changes (the sample step runs inline) */
     u64 c[3];
     pf_pmu_read(c);
     for (int k = 0; k < 3; k++) pf_pe[k] += (unsigned)(c[k] - pf_base[k]); /* u32 delta: one interval is far below 2^32 cycles */

@@ -3,7 +3,7 @@
 Applies to every code row, in 3ds/src and in the guarded src/ edits. State in each commit message how the row follows these rules.
 
 ## The machine (O3DS first; the N3DS is faster, so a change that is good on the O3DS is good there)
-- ARM11 MPCore, ARMv6K, 268 MHz. App code runs on one core. The second core is the system core with a small time slice. Plan for one core.
+- ARM11 MPCore, ARMv6K, 268 MHz. The game thread (frame loop and walker) runs on core 0. The game logic runs on its own thread (pm_logic.c, CORE2C): core 1 on the O3DS (the system core, at most 80% for the app, shared with audio, GSP and DSP work), core 2 on the N3DS. Each core has its own L1. Data the walker reads and the logic writes goes through the walker queue (nd_wq.c) or the display context double buffer; never share a table between the two threads without the queue.
 - L1: 16 KB instruction + 16 KB data, 4-way, 32-byte lines. The O3DS has no L2. A miss goes to FCRAM: roughly 30 to 60+ cycles.
 - No hardware integer divide. No NEON. VFPv2 single precision is fine; double precision is slow. Unaligned access is slow or faulting.
 - GPU commands and vertex data live in linear FCRAM. The CPU writes them through the cache; flush the written span once per split, not per write. The CPU must not read VRAM.

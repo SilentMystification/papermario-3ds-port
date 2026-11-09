@@ -5,8 +5,8 @@
  * Record: every pointer the walker resolves (ptr_of, nd_walk.c: G_VTX, G_MTX, viewport, lights, G_SETTIMG, segments, G_DL and the
  * native readers) goes into a table with the FNV-1a of its first C2_LEN bytes and the op that resolved it.
  * After each walked task the entries are hashed again (nd_c2_walked), so a buffer the walk itself rewrites does not count.
- * Check: at the first walked task of the next drawn frame (pm_gbi_run, after the logic and the list build of that frame) every entry is
- * hashed again. A changed entry is a hazard: one "c2haz new" line per address (the first 256 addresses), with the op. A summary line every
+ * Check: at the first walked task of the next drawn frame (pm_gbi_run, after the logic and the list build of that frame), or with the
+ * logic thread at the push of the next frame (nd_c2_push), every entry is hashed again. A changed entry is a hazard: one "c2haz new" line per address (the first 256 addresses), with the op. A summary line every
  * 60 checked frames. A frame whose scene (area, map, mode) differs from the recorded one is not checked (a map load rewrites everything;
  * the threaded walker drains the queue there).
  * Producer records (G_PM_REC, G_PM_SPR, G_PM_ENT) are scanned for host addresses (nd_c2_rec).
@@ -111,6 +111,16 @@ __attribute__((cold, noinline)) void nd_c2_drain(const char* why) {
     memset(c2_tab, 0, sizeof c2_tab);
     c2_n = 0;
     c2_drains++;
+}
+
+/* CORE2C-3: with the logic thread, the check point is the push of the next frame (nd_wq.c, on the logic thread, after the walk of the
+ * frame before is done): the writes found are those the logic of frame N+1 made while the walk of frame N could still run. The check
+ * at the next walked task would also see the logic of N+2 rewrite the display context of N, which the walk of N no longer reads. */
+__attribute__((cold, noinline)) void nd_c2_push(void) {
+    if (!c2_n) return;
+    c2_changed += c2_check(pm_frame_count(), "push");
+    memset(c2_tab, 0, sizeof c2_tab);
+    c2_n = 0;
 }
 
 /* The first walked task of a drawn frame: check the entries of the last recorded frame, then record this one. */
