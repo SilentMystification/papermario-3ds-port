@@ -5146,6 +5146,35 @@
       "reason": "UI1 probe, not verified. Route and door position are from docs/plans/PT42_45_fix.md:29 and rooms.c and npc.c (keeper position). No run yet."
     },
     {
+      "name": "toad_nap_aud",
+      "status": "unverified",
+      "subject": "Toad House nap in mac_01 (keeper at 488 20 -174, bed in the room): walk in, A to talk, Yes at the glove menu, Mario gets into bed and the resting jingle (SONG_TAKING_REST 0x88, 11_134.bgm) plays. No picture: the audio census lines and the SetMusic line.",
+      "proves": "AUDNAP repro: the audio drop census (every cut, drop or late sound, catch-up blocks, pace) over the census windows that hold the nap jingle. The bgm SetMusic line gives the jingle frame; audio drop ev lines give the frames of the first 48 events.",
+      "debug": "warp=mac_01:1 story=ch0_toad_town coins=50 audiostat loglevel=debug padscript=wait60,go_460_-60_500,go_426_-104_500,wait20,A,wait200,go_480_-165_500,wait10,A,wait90,A,wait90,A,wait90,A,wait900",
+      "extra": [],
+      "until": "audio drops w3: unheard \\d+",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 1",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 1"
+        },
+        {
+          "name": "jingle start",
+          "regex": "bgm: SetMusic player 0 song 136 "
+        },
+        {
+          "name": "census window 3",
+          "regex": "audio drops w3: unheard \\d+"
+        }
+      ],
+      "reason": "AUDNAP repro: the Toad House nap route of toad_house_menu plus the Yes press. Until is window 3 (steps 600 to 900 after the boot) so the jingle, which starts about 350 steps after the warp, lies in the windows before it; the census metrics read the last window line. Cap 45 s for the boot plus 900 steps."
+    },
+    {
       "name": "toad_water",
       "status": "unverified",
       "subject": "Toad Town mac_01 at the fountain candidate (about x -304, z -329). Mario walks from entry 0 to x -300 z -150, then north to z -240, facing the candidate. Shots every 4 frames from frame 140 to 176.",
