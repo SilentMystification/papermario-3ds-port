@@ -121,15 +121,17 @@ are deleted; no per-frame word decode on core 0; row_DIRECT.md is deleted.
 | W5 sprite fallback (NDC_SPR vertex and triangle words, nd_walk.c:193) | nd_ops_run | battle, imgfx |
 | W6 entity G_DL fallback (nd_walk.c:209) and a push G_DL in a run (walk_call: ent_gdl, dlc_try, else the executor) | walk_call | entities |
 | W7 ENT_GBI pieces of a flattened entity list (nd_ent.c:372), dlc interpreted group ranges (nd_shape.c:608) | nd_ops_run | refused groups |
-| W8 compile readers on a cache miss (ent_compile, dlc compile), pm_gbi_fallback (boot only) | once per list | not in a steady frame |
+| W8 load-time translator: compile readers on a cache miss (ent_compile, dlc compile), pm_gbi_fallback (boot only) | once per list | not in a steady frame |
 
-W1 to W7 go. W8 reads a static list once per map (a compile, not a replay); it writes typed ops (5.1) into its cache entry, so the
-ranges of W7 replay typed ops. Premise check W8: fncov in a steady mac_01 frame shows no word reader.
+W1 to W7 go. W8 load-time translator (accepted 2026-11-09, user review): a cold compile on core 0 that reads a static list once per
+map and writes typed ops (5.1) into its cache entry, so the ranges of W7 replay typed ops. Conditions: (1) no per-frame path reads
+the list words after the compile; (2) the compiler is in .text.unlikely and out of the M1 hot union; (3) check: fncov in a steady
+mac_01 frame shows no word reader.
 
 ### 5.1 The typed op (NdOp)
 - One 8-byte unit, as the stream unit: w0 = T << 24 | a (24 bits), w1 = b. T = 0x20 + k (k < 32), free of the F3DEX2 and G_PM_* ids
   (nd_cmd_test.c checks it). The NDC_STATE payload holds NdOps only. One translator `nd_op_xlate(w0, w1, out)` (new nd_op.c, host-built;
-  core 1 and the W8 compilers) writes 0, 1 or 2 NdOps per word (syncs and G_SPNOOP 0; G_TEXRECT stays NDC_TEXRECT).
+  core 1 and the W8 load-time translator) writes 0, 1 or 2 NdOps per word (syncs and G_SPNOOP 0; G_TEXRECT stays NDC_TEXRECT).
 - Core 0: one table dispatch per op (`nd_op_tab[k]`). The typed same-test of the old g2_same case is the first line of its setter, its
   g2_note part is the skip branch, gv_epoch++ follows the test for the ops the old prologue counted. Ops: T_OM (a = H/L, shift,
   length; b = value), T_GEOM (a = clear mask, b = set bits), T_COMB (a = w0 low 24 bits, b = w1), T_PRIM (a = lod, b), T_ENV, T_FOG,
@@ -200,7 +202,7 @@ ranges of W7 replay typed ops. Premise check W8: fncov in a steady mac_01 frame 
 |---|---|---|---|
 | HC4a | nd_op.c translator and ids, typed executor for the W1 scalar ops (OM, GEOM, PRIM, ENV, FOG, BLEND, FILL, PRIMZ, SCISSOR, TEXTURE, MW, RARE), typed rec_op/rec_fog/shroud, nd_cmd_test.c | nd_op.c (new), nd_cmd.h, nd_rec.c, nd_walk.c, nd_set.c, nd_recs.c, nd_int.h, 3ds/tools/nd_cmd_test.c, CMakeLists.txt | g2_same/g2_note cases of these ops |
 | HC4b | T_COMB, render mode table (W3), shadow dedupe and t4chk | nd_rec.c, nd_recs.c, nd_comb.c, nd_walk.c | rec_dl list path |
-| HC4c | texture ops typed, bind and R13 ops in the payload (W4), W8 compilers write typed ops (W7) | nd_tex_set.c, nd_recs.c, nd_rec.c, nd_ent.c, nd_shape.c | tex_op, tb_ops, op_* wrappers |
+| HC4c | texture ops typed, bind and R13 ops in the payload (W4), W8 load-time translator writes typed ops (W7) | nd_tex_set.c, nd_recs.c, nd_rec.c, nd_ent.c, nd_shape.c | tex_op, tb_ops, op_* wrappers |
 | HC4d | T_MTX/POPMTX/LIGHT/VTX/TRI, sprite fallback (W5), T_CALL (W6), typed rec_lights | nd_mtx_set.c, nd_geom.c, nd_walk.c, nd_rec.c, nd_ent.c | word cases, g2_same, g2_note, walk_call word path, row_DIRECT.md |
 | HC5 | combine memo on core 1, T_PLAN/T_SYNC | nd_comb.c, pm_comb.c, nd_rec.c, pm_gpu.c (set_plan) | - |
 | HC6 | hit state, key A/B, fast path, command block | nd_recs.c, pm_gpu.c, nd_model.c, nd_emit.c | - |
