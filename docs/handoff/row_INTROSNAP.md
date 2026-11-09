@@ -7,28 +7,16 @@ starting".
 ## Start state
 Worktree build3ds/wt/INTROSNAP, branch INTROSNAP from main (hash in the first commit). PM_ROW=INTROSNAP, PM_LANE=INTROSNAP.
 
-## Causes (oracle)
-Path A (new game, most likely): state_file_select.c:530 set_curtain_scale_goal(2.0f) zooms the stage; :543 set_game_mode(ENTER_WORLD)
-sets pm_wide = 1 (game_modes.c:280) on the logic thread and DISABLE_DRAW_FRAME (state_map_transitions.c:40).
-1. Walker race: the walker reads the global pm_wide at walk time (pm_gpu.c:169-170 viewport x1.25, :919-929 scissor, :1887 offscreen
-   base -80, pm_gpu_rect.c:147-148, :218, nd_rect.c:103, nd_tex_set.c:321, pm_main.c:181), so frame Z+11 (built 4:3, frustum +-80) can be
-   walked with wide = 1: a 25% stretch that stays on screen during the kmr_20 load. Timing dependent: not in det/serial runs.
-2. Interpolation across the cut: at the first drawn step after the load, pm_interp_lerp(0.5) (pm_nusys.c:158) pairs new leaves with the
-   stale pleaves of the step before the load (gfx_curtains node): one 60 Hz frame 11% wide. No skip triggers (LGF_ISKIP not set;
-   pm_interp_dont_camera has no reader). Path B (boot intro parts, state_intro.c:148/232) has cause 2 at each part load.
-
-## Plan
-0. Debug tools (stay): in set_game_mode when pm_wide changes `aspect: wide %d -> %d mode %d`; in pm_frame_walk (pm_nusys.c:121) a cold
-   noinline log of the first 8 frames whose build-time wide differs from live: `wide: walk f%u built %d live %d`; `cut=%u` on the f06
-   line (pm_interp.c:183).
-1. Fix 1: pm_port.h:126 PMF_WIDE 2u; fr_push (pm_nusys.c:133) sets it when pm_wide (every push, also pm_gfx_bg_flush; the key frame
-   inherits through frame order, comment it; PmKey stays 32 B); pm_gpu.c `int pm_wide_w` (walker side, init :1434, extern in
-   pm_gpu_int.h); pm_frame_walk first line pm_wide_w = (f->flags & PMF_WIDE) != 0; replace walker reads of pm_wide with pm_wide_w in
-   pm_gpu.c (not 150/151/1434), pm_gpu_rect.c:147/148/218, nd_rect.c:103, nd_tex_set.c:321, pm_main.c:181; game side stays on pm_wide.
-   Confirm each changed function runs on the walker; report any that does not.
-2. Fix 2: pm_interp.c `void pm_interp_cut(void) { pnleaf = pnnode = 0; ncut++; }` (logic thread); call it in src/main_loop.c:212 (the
-   DISABLE_DRAW_FRAME branch: every map load, intro part, battle) and in set_game_mode when pm_wide changed.
-hw_guidelines: same loads on the walk path, one OR per push, O(1) cut, cold debug logs, static +8 B.
+## Findings (2026-11-09, code trace and Azahar)
+- Cause 1 (walker reads a changed pm_wide) cannot happen on a mode change: __wrap_set_game_mode (pm_map.c) calls pm_walk_drain("mode")
+  before set_game_mode writes pm_wide; on the logic thread pm_wq_idle waits until the queue (frames and key frames, pm_wq_key) is walked.
+  Debug tool in the build: PMF_WIDE (fr_push) and `wide: walk f<n> built <b> live <l>` (pm_frame_walk); the threaded Azahar run logged 0.
+- Cause 2 (fps60 blend across the load): no visible effect on this route. Base fc9897f11 and the fix (pm_interp_cut at DISABLE_DRAW_FRAME
+  and at an aspect change, plus pm_wide_w) gave byte-equal shots on newgame_handover (det, f400-451) and newgame_handover_thr (threaded,
+  f396-459). The handover on Azahar: 4:3 stage zoom with a fade to black (f402-f413), black during the kmr_11 load, wide fade-in from
+  about f434. No frame wider than its neighbours in the base. The fix was reverted (no picture change).
+- Not yet tested: the console timing with fskip on (LGF_ISKIP) and without fs1off; the boot intro (path B, state_intro.c). The user's
+  console run with `aspect:` and `wide: walk` lines decides the next code point.
 
 ## Done criteria
 nd_host PASS; byte-equal (det/serial) intro_native_pic and one wide det map scene vs build-at base; new scenario+bench newgame_handover
