@@ -9,6 +9,7 @@
 #include "gbi_custom.h"
 #include "nd_int.h"
 #include "nd_cmd.h"
+#include "nd_op.h"
 #include "pm_gpu.h"
 #include "nd.h"
 #include "pm_tex.h"
@@ -358,7 +359,7 @@ int ent_gdl(const Gfx* l) {
 int ent_draw(const Gfx* rec) {
     const Gfx* l = (const Gfx*)ptr_of(rec[0].words.w1);
     const Gfx* nx = rec + G_PM_ENT_WORDS;
-    if (!l || !dlc_on || !is_host((u32)l) || ((u32)l & 7u) || (nx->words.w0 >> 24) != G_DL || nx->words.w1 != rec[0].words.w1) return 0;
+    if (!l || !dlc_on || !is_host((u32)l) || ((u32)l & 7u) || nx->words.w0 != ND_OP_CALL_W0 || nx->words.w1 != rec[0].words.w1) return 0;
     if (dlc_seen_gen != pm_dlc_gen) { dlc_reset(); dlc_seen_gen = pm_dlc_gen; }
     if (ent_gen_seen != pm_dlc_gen) ent_reset();
     ent_c.draws++;

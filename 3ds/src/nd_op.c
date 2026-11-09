@@ -2,12 +2,13 @@
  * nd_cmd_test.c. Pure: no walker state. */
 #include "ultra64.h"
 #include "nd_op.h"
+#include "gbi_custom.h"
 
 const uint8_t nd_op_n64[NDO_END_ - NDO_BASE] = {
     G_SETOTHERMODE_H, G_SETOTHERMODE_L, G_GEOMETRYMODE, G_SETPRIMCOLOR, G_SETENVCOLOR, G_SETFOGCOLOR, G_SETBLENDCOLOR,
     G_SETFILLCOLOR, G_SETPRIMDEPTH, G_SETSCISSOR, G_TEXTURE, G_MOVEWORD, 0 /* NDO_RARE: the sub-op names it */, G_SETCOMBINE,
     G_ENDDL /* NDO_END */, G_SPNOOP /* NDO_DROP */, G_SETTIMG, G_SETTILE, G_SETTILESIZE, G_LOADBLOCK, G_LOADTILE, G_LOADTLUT,
-    G_VTX, G_TRI1, G_TRI2, G_MTX, G_POPMTX, G_MOVEMEM
+    G_VTX, G_TRI1, G_TRI2, G_MTX, G_POPMTX, G_MOVEMEM, G_DL, G_FILLRECT, 0 /* NDO_MISC: the sub-op names it */
 };
 
 static int out2(uint32_t out[2], unsigned id, uint32_t a, uint32_t b) {
@@ -57,6 +58,21 @@ int nd_op_xlate(uint32_t w0, uint32_t w1, uint32_t out[2]) {
     case G_MTX: return out2(out, NDO_MTX, w0, w1);
     case G_POPMTX: return out2(out, NDO_POPMTX, w0, w1);
     case G_MOVEMEM: return out2(out, NDO_MOVEMEM, w0, w1);
+    case G_DL: return out2(out, NDO_CALL, ((w0 >> 16) & 0xffu) == G_DL_NOPUSH, w1);
+    case G_FILLRECT: return out2(out, NDO_RECT, w0, w1 & 0x00ffffffu);
+    case G_TEXRECT:
+    case G_TEXRECTFLIP: return out2(out, NDO_RECT, w0, NDO_RECT_TEX | (w1 & 0x07ffffffu));
+    case G_PM_LST: return out2(out, NDO_MISC, NDO_MISC_LST << 16, 0);
+    case G_PM_ND: return out2(out, NDO_MISC, NDO_MISC_ND << 16 | ((w0 >> 8) & 0xff00u) | (w0 & 0xffu), 0);
+    case G_MODIFYVTX: {
+        const unsigned vi = (w0 & 0xffffu) / 2u;
+        return out2(out, NDO_MISC, NDO_MISC_MODVTX << 16 | ((w0 >> 8) & 0xff00u) | (vi < 255u ? vi : 255u), w1);
+    }
+    case G_SETCIMG: return out2(out, NDO_MISC, NDO_MISC_CIMG << 16 | ((w0 >> 7) & 0x3000u) | (w0 & 0xfffu), w1);
+    case G_NOOP:
+    case G_RDPHALF_1:
+    case G_RDPHALF_2:
+    case G_SETZIMG: return out2(out, NDO_MISC, NDO_MISC_NOP << 16, w1);
     default:
         out[0] = w0;
         out[1] = w1;

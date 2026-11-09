@@ -3,6 +3,7 @@
 #include "pm_interp_fi.h"
 #ifdef TARGET_3DS
 #include "nd_cmd.h"
+#include "nd_op.h"
 #endif
 
 #define MAX_SPRITE_ID 0xEA // todo generate this
@@ -321,9 +322,12 @@ void spr_appendGfx_component_flat(
     }
 
 #ifdef TARGET_3DS
-    if (spr_geo_out != nullptr) { /* DIRECT D6: the final vertex and triangle words go with the sprite record (nd_rec_spr), not to the stream */
-        gSPVertex(&spr_geo_out[0], vertices, 4, 0);
-        gSP2Triangles(&spr_geo_out[1], 0, 2, 1, 0, 0, 3, 2, 0);
+    if (spr_geo_out != nullptr) { /* DIRECT D6: the final vertex and triangle ops go with the sprite record (nd_rec_spr), not to the stream.
+                                    * HC4d2 (W5): written as typed ops (nd_op.h), no word */
+        spr_geo_out[0].words.w0 = ND_OP_VTX_W0(4, 0);
+        spr_geo_out[0].words.w1 = (u32)(uintptr_t)vertices;
+        spr_geo_out[1].words.w0 = NDO_W0(NDO_TRI2, ND_OP_TRI_A(0, 2, 1));
+        spr_geo_out[1].words.w1 = ND_OP_TRI_A(0, 3, 2);
         return;
     }
 #endif

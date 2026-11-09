@@ -117,6 +117,7 @@ static int sh_drop(const uint32_t* t) {
     case NDO_VTX: case NDO_TRI1: case NDO_TRI2: case NDO_MTX: case NDO_POPMTX:
         sh_sc(); return 0; /* HC4d: a draw or matrix op keeps the walker fields but may change the combine inputs (box_fold_sync, dual_bind) */
     case NDO_MOVEMEM: sh_all(); return 0; /* a light or viewport: the walker state after it is not followed */
+    case NDO_CALL: case NDO_RECT: case NDO_MISC: sh_all(); return 0; /* HC4d2: a list call, rectangle, image or marker (as the word ops before) */
     default: return 0;
     }
 }
@@ -233,7 +234,8 @@ void nd_rec_ent_draw(const void* list, unsigned segid, unsigned varray, unsigned
     Gfx r[G_PM_ENT_WORDS + 1];
     gPmEntDrawRecord(r, list, segid, varray);
     r[2].words.w0 = form;
-    gSPDisplayList(&r[G_PM_ENT_WORDS], list);
+    r[G_PM_ENT_WORDS].words.w0 = ND_OP_CALL_W0; /* HC4d2: the list call as a typed op (W6) */
+    r[G_PM_ENT_WORDS].words.w1 = (uint32_t)(uintptr_t)list;
     rec_open();
     uint32_t* p = rec_take(2u + 2u * (G_PM_ENT_WORDS + 1u));
     ndc_n[NDC_ENT]++;
@@ -285,17 +287,23 @@ static void st_put(uint32_t w0, uint32_t w1) {
     st_hdr = p;
     st_end = wp;
 }
-void nd_rec_state(uint32_t w0, uint32_t w1) {
-    uint32_t t[2];
-    const int typed = nd_op_xlate(w0, w1, t); /* HC4a: the scalar state ops typed on the recorder (nd_op.h) */
+/* HC4d2: a typed op into the open state run (the shadow decides a drop). */
+static void rec_op_t(const uint32_t t[2]) {
     rec_open();
     ndc_sw++;
-    if (!typed) sh_word();
-    else if (sh_drop(t)) {
+    if (sh_drop(t)) {
         if (t4_sw < 0) t4_sw = pm_debug_has("t4chk") ? 1 : 0;
         if (!t4_sw) return;
         st_put(NDO_W0(NDO_DROP, 0), 0);
     }
+    st_put(t[0], t[1]);
+}
+void nd_rec_state(uint32_t w0, uint32_t w1) {
+    uint32_t t[2];
+    if (nd_op_xlate(w0, w1, t)) { rec_op_t(t); return; } /* HC4a: typed on the recorder (nd_op.h) */
+    rec_open();
+    ndc_sw++;
+    sh_word();
     st_put(t[0], t[1]);
 }
 /* D4b-3, D5: the nd_gbi.h redirect. The packet gMainGfxPos++ is taken back and the op recorded; the RDP syncs are dropped (the walker skips
@@ -326,7 +334,7 @@ static int rec_inline(uint32_t a) {
         if (op == G_ENDDL) break;
         if (!st_ok[op]) return 0;
     }
-    nd_rec_state((uint32_t)G_PM_LST << 24, 0);
+    { static const uint32_t lst[2] = { NDO_W0(NDO_MISC, NDO_MISC_LST << 16), 0 }; rec_op_t(lst); }
     for (unsigned i = 0; i < n; i++) if (st_ok[l[i].words.w0 >> 24] == 1) nd_rec_state(l[i].words.w0, l[i].words.w1);
     return 1;
 }
