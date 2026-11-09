@@ -14,6 +14,7 @@
 #include "pm_port.h"
 #include "variables.h"
 #include "nd_ops.h"
+#include "nd_op.h"
 extern int pm_wide; /* WIDE4: set_scissor reads signed x edges with wide on */
 
 #define GP_SET(k, same) do { if (gp_on()) gp_note(k, (same)); } while (0)
@@ -25,7 +26,6 @@ int sci_x0, sci_y0, sci_x1 = 320, sci_y1 = 240;
 int fog_fm, fog_fo, fogmix_on; /* F08: G_MW_FOG factor and offset, blender FOG/SHADE/IN/1MA active */
 unsigned sr_sig;
 int sr_ok;
-unsigned mw_cnt[256];
 
 
 /* CORE-2b: the geometry mode setter. Every G_GEOMETRYMODE path writes through here (gv_epoch stays with the callers that bumped it). */
@@ -79,23 +79,26 @@ void op_setprimcolor(u32 w0, u32 w1) {
     sync_combine();
 }
 
-void op_setothermode(unsigned op, u32 w0, u32 w1) {
-            unsigned len = (w0 & 0xff) + 1;
-            unsigned field = (w0 >> 8) & 0xff;
-            unsigned sft = 32 - field - len;
-            unsigned mask = (len >= 32) ? 0xffffffffu : (((1u << len) - 1u) << sft);
-            if (op == G_SETOTHERMODE_H) {
+/* HC4a: the othermode setter on the typed fields (h: the H word; mask from shift and length, nd_op.h). */
+static void set_om(int h, unsigned sft, unsigned len, unsigned mask, u32 v) {
+            if (h) {
                 unsigned old_tf = nd_ws.omode_h & (3u << 12);
-                nd_ws.omode_h = (nd_ws.omode_h & ~mask) | (w1 & mask);
+                nd_ws.omode_h = (nd_ws.omode_h & ~mask) | (v & mask);
                 nd_ws.om_kh |= mask; /* B8 known bits */
                 if ((nd_ws.omode_h & (3u << 12)) != old_tf) { /* V15: G_MDSFT_TEXTFILT, POINT is 0, BILERP 2, AVERAGE 3 */
                     pm_gpu_flush();
                     pm_tex_set_filter((nd_ws.omode_h & (3u << 12)) != 0);
                 }
             }
-            else { nd_ws.omode_l = (nd_ws.omode_l & ~mask) | (w1 & mask); nd_ws.om_kl |= mask; }
+            else { nd_ws.omode_l = (nd_ws.omode_l & ~mask) | (v & mask); nd_ws.om_kl |= mask; }
             /* S25: the cycle type decides 1 or 2 cycles of the combiner. */
-            if (op == G_SETOTHERMODE_H && sft <= G_MDSFT_CYCLETYPE && sft + len > G_MDSFT_CYCLETYPE) sync_combine();
+            if (h && sft <= G_MDSFT_CYCLETYPE && sft + len > G_MDSFT_CYCLETYPE) sync_combine();
+}
+/* The word form for the lists that still hold words (tb_ops, tex_op_impl). */
+void op_setothermode(unsigned op, u32 w0, u32 w1) {
+    uint32_t u[2];
+    nd_op_xlate(w0, w1, u);
+    set_om(op == G_SETOTHERMODE_H, u[0] & 0xffu, (u[0] >> 8) & 0xffu, nd_op_om_mask(u[0]), w1);
 }
 
 /* S3F-2b: G_SETENVCOLOR, one function for the walker and the record. */
@@ -106,19 +109,73 @@ void gbi_setenv(u32 w1) {
     sync_combine();
 }
 
-void gbi_moveword(u32 w0, u32 w1) {
-    unsigned index = (w0 >> 16) & 0xff;
-    unsigned offset = w0 & 0xffff;
-    if (index == G_MW_NUMLIGHT) { nd_light_count(w1); return; } /* L01 */
-    if (index == G_MW_LIGHTCOL && offset / 24 < 9 && (offset % 24) == 0) { unsigned k = offset / 24; lt[k].col[0] = w1 >> 24; lt[k].col[1] = w1 >> 16; lt[k].col[2] = w1 >> 8; return; } /* L01 */
-    if (index == G_MW_FOG) { fog_fm = (s16)(w1 >> 16); fog_fo = (s16)w1; return; } /* F08 */
-    if (index != G_MW_SEGMENT) {
-        unsigned n = ++mw_cnt[index];
+/* HC4a: G_MOVEWORD by its typed kind (nd_op.c decodes the index and offset). */
+static void set_mw(unsigned kind, unsigned arg, u32 w1) {
+    switch (kind) {
+    case NDO_MW_NUMLIGHT: nd_light_count(w1); break; /* L01 */
+    case NDO_MW_LIGHTCOL: lt[arg].col[0] = w1 >> 24; lt[arg].col[1] = w1 >> 16; lt[arg].col[2] = w1 >> 8; break; /* L01 */
+    case NDO_MW_FOG: fog_fm = (s16)(w1 >> 16); fog_fo = (s16)w1; break; /* F08 */
+    case NDO_MW_SEG:
+        nd_ws.segbase[arg] = (u32)ptr_of(w1);
+        if (!nd_ws.segbase[arg]) nd_ws.segbase[arg] = w1;
+        break;
+    default: break;
     }
-    if (index == G_MW_SEGMENT && (offset / 4) < 16) {
-        unsigned seg = offset / 4;
-        nd_ws.segbase[seg] = (u32)ptr_of(w1);
-        if (!nd_ws.segbase[seg]) nd_ws.segbase[seg] = w1;
+}
+
+/* HC4a: the typed scalar ops (nd_op.h). nd_op_same: 1 when the walker skips the op (the old g2_same case; it runs the old g2_note part);
+ * nd_op_apply: the handler of the op (the walker's arm). */
+int nd_op_same(const uint32_t* u) {
+    const u32 a = u[0] & 0xffffffu, b = u[1];
+    switch (u[0] >> 24) {
+    case NDO_OMH: { const u32 m = nd_op_om_mask(a); if ((b & m) != (nd_ws.omode_h & m) || !sc_ok) return 0; nd_ws.om_kh |= m; return 1; }
+    case NDO_OML: { const u32 m = nd_op_om_mask(a); if ((b & m) != (nd_ws.omode_l & m)) return 0; nd_ws.om_kl |= m; return 1; }
+    case NDO_GEOM: {
+        unsigned g = (nd_ws.geom & a) | b;
+        return g == nd_ws.geom && pm_gpu_mode_is((nd_ws.geom & G_ZBUFFER) != 0, (nd_ws.geom & G_LIGHTING) != 0);
+    }
+    case NDO_PRIM:
+        if (nd_ws.prim != b || (u8)nd_ws.prim_lod != (u8)a || !sc_ok) return 0;
+        pm_gpu_set_prim(nd_ws.prim, a); nd_ws.prim_lod = a; /* SPR4-prim: LOD change closes the open batch */
+        return 1;
+    case NDO_ENV: return nd_ws.envc == b && sc_ok;
+    case NDO_FOG: return fogc == b;
+    case NDO_BLEND: return blendc == b;
+    case NDO_TEXTURE: return nd_ws.tex_on == (int)a && nd_ws.tex_ss == (b >> 16) && nd_ws.tex_ts == (b & 0xffffu) && sc_ok && sc_sig_now() == sc_sig;
+    case NDO_MW: /* R5B: the handler of G_MW_LIGHTCOL writes lt[k].col only (no other effect) */
+        return (a >> 16) == NDO_MW_LIGHTCOL && lt[a & 0xffffu].col[0] == (u8)(b >> 24) && lt[a & 0xffffu].col[1] == (u8)(b >> 16) &&
+               lt[a & 0xffffu].col[2] == (u8)(b >> 8);
+    default: return 0;
+    }
+}
+static __attribute__((cold, noinline)) void set_rare(unsigned k, u32 w1) {
+    if (k == NDO_RARE_CONV) { conv_k4 = (w1 >> 9) & 0xffu; pm_comb_set_k4(conv_k4); }
+    else if (k == NDO_RARE_KEYR) {
+        keyc = (keyc & 0x00ffffffu) | ((w1 >> 8 & 0xffu) << 24);
+        keys = (keys & 0x00ffffffu) | ((w1 & 0xffu) << 24);
+    } else {
+        keyc = (keyc & 0xff000000u) | ((w1 >> 24 & 0xffu) << 16) | ((w1 >> 8 & 0xffu) << 8);
+        keys = (keys & 0xff000000u) | ((w1 >> 16 & 0xffu) << 16) | ((w1 & 0xffu) << 8);
+    }
+    sync_combine();
+}
+void nd_op_apply(const uint32_t* u) {
+    const u32 a = u[0] & 0xffffffu, b = u[1];
+    switch (u[0] >> 24) {
+    case NDO_OMH: set_om(1, a & 0xffu, (a >> 8) & 0xffu, nd_op_om_mask(a), b); break;
+    case NDO_OML: set_om(0, a & 0xffu, (a >> 8) & 0xffu, nd_op_om_mask(a), b); break;
+    case NDO_GEOM: set_geom(a, b); break;
+    case NDO_PRIM: op_setprimcolor(a, b); break;
+    case NDO_ENV: gbi_setenv(b); break;
+    case NDO_FOG: set_fogcolor(b); break;
+    case NDO_BLEND: set_blendcolor(b); break;
+    case NDO_FILL: set_fillcolor(b); break;
+    case NDO_PRIMZ: set_primdepth(b); break;
+    case NDO_SCISSOR: set_scissor(a, b); break;
+    case NDO_TEXTURE: op_texture(a, b); sync_combine(); break;
+    case NDO_MW: set_mw(a >> 16, a & 0xffffu, b); break;
+    case NDO_RARE: set_rare(a, b); break;
+    default: break;
     }
 }
 

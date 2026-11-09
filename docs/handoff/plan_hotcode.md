@@ -65,16 +65,15 @@ End target: code that runs in one mac_01 frame <= 16 KB, any one command class <
   pattern); 3dsx.ld.in includes it; the hotset bench fails on a missing name. Optional -falign-functions=32 on hot TUs.
 - HC3 -Os PER FILE (experiment): each draw TU in turn, then all; record M1/M3; one console pmu run all -Os vs -O2; keep -Os where
   cycles do not grow.
-- HC4 TYPED STATE OPS (plan_direct section 5): the recorder (core 1) decodes each op into a typed NdOp and drops ops equal to its
-  shadow (the shadow is invalidated at every NDC_MODEL/NDC_SPR/NDC_ENT that can draw natively). Core 0: a table of about 12 typed
-  setters. 4a scalar state, 4b combine (words + input key, scm memo on core 0), 4c texture tile/load/TLUT (resolved tile
-  descriptors), 4d matrix (NDC_MTX). Deletes g2_same, g2_note, the word cases and the op_* decode. Target: class A <= 4 KB,
+- HC4 TYPED STATE OPS (design: section 5): the recorder (core 1) translates each op into a typed NdOp and drops ops the walker
+  would skip; core 0 runs typed setters by table. 4a scalar state, 4b combine and render mode table, 4c texture, 4d matrix and
+  geometry. Deletes g2_same, g2_note, the word cases, tex_op, tb_ops and the op_* word wrappers. Target: class A <= 4 KB,
   nd_walk_state <= 0.8 KB.
-- HC5 COMBINE OFF CORE 0: the recorder computes the plan key and plan with a memo on core 1; core 0 applies the plan id. Premise
-  check first: every walker-state read of sc_sig_now and decide. Target: class B <= 3 KB on core 0; report core 1 lgms.
-- HC6 MODEL HIT PATH: rec_run hit fast path <= 600 B plus a cold rec_miss; pm_gpu_model_key on the recorder; each cached draw keeps a
-  pre-built GPU command block, and the hit copies it and patches the per-frame words; inline hint check, cold stale check.
-  Target: classes C+D <= 8 KB. Gate: byte-equal spot_mac01_det, mdl5_iwa10_det, spot_mac00_det; console cycles.
+- HC5 COMBINE OFF CORE 0 (section 5.3): the combine memo runs on core 1 (T_PLAN); core 0 applies the plan id. Target: class B <= 3 KB
+  on core 0.
+- HC6 MODEL HIT PATH (section 5.4): hit state equal to the miss state, key A on core 1, rec_run hit <= 600 B plus a cold rec_miss,
+  a pre-built GPU command block per cached draw. Target: classes C+D <= 8 KB. Gate: byte-equal spot_mac01_det, mdl5_iwa10_det,
+  spot_mac00_det.
 - HC7 RECT PATH: NDC_TEXRECT/NDC_FILLRECT carry resolved fields; nd_texrect fast path <= 1 KB, rare paths cold. Target class G <= 5 KB.
   Gate: msgbox_talk_nowide, pause_spin_grab_det_w300, menu_open_det.
 - HC8 SPRITE AND ENTITY: a sprite state cache keyed like the model cache; ent_run/dlc_try fast paths. Targets H <= 3 KB, I <= 5 KB.
@@ -105,7 +104,149 @@ End target: code that runs in one mac_01 frame <= 16 KB, any one command class <
 1. M3 bytes per frame; capacity vs conflict misses (fncov, pmu window B).
 2. Does the pmu line count core 0 kernel, GSP and interrupt code?
 3. PMU reads from user mode (expected no).
-4. HC4 record-side dedupe must model the native-draw invalidations (sc_ok = 0, nd_sr_forget).
-5. Core 1 budget at 60 fps: the moved decode must fit about 8 ms; measure lgms per stage.
-6. User: accept PGO and -Os on the draw files?
-7. Answered (HC0): spot_mac01_prof prints the pmu counter line with the recipe as it is; no switch is needed.
+4. User: accept PGO and -Os on the draw files?
+5. Answered (HC0): spot_mac01_prof prints the pmu counter line with the recipe as it is; no switch is needed.
+
+## 5. HC4-HC6 design (completes DIRECT: no N64 command word decoded on core 0)
+Base: main 5529d8bcf, [C] read in source, line numbers of that base. Done means (row_HC4): the nd_walk.c word cases, g2_same and g2_note
+are deleted; no per-frame word decode on core 0; row_DIRECT.md is deleted.
+
+### 5.0 Where N64 words reach core 0 now [C]
+| Source | Reader on core 0 | When |
+|---|---|---|
+| W1 NDC_STATE runs (nd_rec.c:155 nd_rec_state: every nd_gbi.h macro, rec_inline, nd_rec_list) | nd_walk_state (nd_walk.c:290) | every frame, most words |
+| W2 record words built from fields (rec_op nd_recs.c:25, rec_fog, shroud word), rec_lights stack list (nd_mtx_set.c:165) | rec_op, g2_same | model miss |
+| W3 render mode list ModelRenderModes[i] (rec_dl nd_recs.c:51, 4 ops, static data) | nd_list_run | model miss |
+| W4 bind list R0 w1 (tb_ops nd_tex_set.c:608, make_texture_gfx output) and the R13 words (rec_aux nd_recs.c:62) | tb_ops, nd_ops_run | model miss |
+| W5 sprite fallback (NDC_SPR vertex and triangle words, nd_walk.c:193) | nd_ops_run | battle, imgfx |
+| W6 entity G_DL fallback (nd_walk.c:209) and a push G_DL in a run (walk_call: ent_gdl, dlc_try, else the executor) | walk_call | entities |
+| W7 ENT_GBI pieces of a flattened entity list (nd_ent.c:372), dlc interpreted group ranges (nd_shape.c:608) | nd_ops_run | refused groups |
+| W8 static list readers: ent_compile and dlc compile on a cache miss, the shape fixup at map load (pm_map.c:63-190 ShapeFix: relocation and byte order), pm_gbi_fallback | once per list or map | not in a steady frame |
+
+W1 to W8 go (user decision 2026-11-09: no N64 display list reader in the ELF, cold code included; reasons: ELF size and any
+performance effect). Static lists are typed before the game runs (5.7 S1, S2); run-time builders call the native path (5.7 R).
+
+### 5.1 The typed op (NdOp)
+- One 8-byte unit, as the stream unit: w0 = T << 24 | a (24 bits), w1 = b. T = 0x20 + k (k < 32), free of the F3DEX2 and G_PM_* ids
+  (nd_cmd_test.c checks it). The NDC_STATE payload holds NdOps only. One translator `nd_op_xlate(w0, w1, out)` (new nd_op.c, host-built;
+  core 1, the gs* macros of 5.7 S1 and the host converter of 5.7 S2) writes 0, 1 or 2 NdOps per word (syncs and G_SPNOOP 0; G_TEXRECT stays NDC_TEXRECT).
+- Core 0: one table dispatch per op (`nd_op_tab[k]`). The typed same-test of the old g2_same case is the first line of its setter, its
+  g2_note part is the skip branch, gv_epoch++ follows the test for the ops the old prologue counted. Ops: T_OM (a = H/L, shift,
+  length; b = value), T_GEOM (a = clear mask, b = set bits), T_COMB (a = w0 low 24 bits, b = w1), T_PRIM (a = lod, b), T_ENV, T_FOG,
+  T_BLEND, T_FILL, T_PRIMZ, T_SCISSOR (corner pairs; the wide sign rule on core 1), T_TEXTURE (a = on, b = ss << 16 | ts), T_MW (a = kind
+  and slot: segment, light colour, light count, fog factors), T_LIGHT (a = slot, b = pointer), T_MTX (a = flags, b = pointer), T_POPMTX,
+  T_VTX (a = n, v0; b = pointer), T_TRI (a = first, b = second or ~0), T_TIMG, T_TILE, T_TILESIZE, T_LOADBLOCK, T_LOADTILE, T_LOADTLUT
+  (decoded fields), T_CALL (b = list for ent_gdl and dlc_try), T_LST (G_PM_LST), T_ND (G_PM_ND), T_RARE (SETCONVERT, SETKEYR/GB,
+  MODIFYVTX, SETCIMG; pre-decoded values, one cold setter).
+- rec_op, rec_fog, the shroud word and rec_lights call the typed setters with fields: no word is built and decoded again (W2).
+- W3: the recorder writes the typed ops of render mode list i once into a static table (static data; built on first use on core 1,
+  immutable after, published by the frame push). W4: the recorder appends the typed bind ops and R13 ops to the NDC_MODEL payload.
+  Premise check: stream KB per frame (prof ndc line) before and after, at most 2 chunks more on mac_01; else a recorder-side typed
+  cache by list pointer, reset at map load. W5: two typed ops in the NDC_SPR payload. W6: the recorder resolves a push G_DL (host or
+  segment address from its segment shadow) to T_CALL; a list that ent_gdl and dlc_try refuse at replay runs the typed ops of its
+  typed static list (5.7), or for a dynamic list the typed range the recorder wrote after T_CALL (nd_rec_list rule).
+- Core 0 then holds no word decoder: nd_walk_state becomes the typed loop nd_ops_exec (<= 0.8 KB with the table); g2_same, g2_note,
+  tex_op, tb_ops, the op_* word wrappers and the 51 word cases go in the slice that types their last op.
+
+### 5.2 Recorder shadow and its invalidation (core 1)
+- The recorder drops an op only when the walker would skip it (old g2_same true). Per field it keeps a value and a valid bit, reset at
+  task open, at nd_rec_mark, nd_sub_open/close and nd_rec_end (a range replays elsewhere: NDC_CALL; nd_range_run sets sc_ok = 0), and at
+  every command other than NDC_STATE: NDC_MODEL (a hit keeps the old walker state, a miss leaves the record's: rec_run nd_recs.c:131 vs
+  rec_apply; both set sc_ok = 0 and nd_sr_forget), NDC_SPR and NDC_ENT (native draws: sc_ok = 0), NDC_TEXRECT (box_pattern_rect
+  clears sc_ok), NDC_CALL.
+- Ops whose skip reads sc_ok and sc_sig (combine, texture, prim, env, othermode H) drop only with no barrier between the emitted equal
+  op and this one. Barriers inside a run: a draw op (T_TRI, T_VTX: box_fold_sync and dual_bind run at a draw), a tile, load or image op
+  (td[1].valid and dual_on, nd_tex_set.c:189 and 548), T_CALL, T_LST, T_ND. Ops whose skip reads only nd_ws (othermode L, fog, blend,
+  geometry, light colour) drop while the field is valid.
+- The shadow is core 1 data only (nd_rec.c); core 0 reads none of it (hw rule: no shared table).
+- Premise check (debug switch t4chk, cold): the recorder writes each dropped op as T_DROP; core 0 runs the old same-test on it and
+  counts drops it would not skip ("t4chk f<n> drops <d> bad <b>"). Gate: bad 0 on the slice scenes. Typing without dedupe is
+  byte-equal by construction; the dedupe follows in the same stage.
+
+### 5.3 Combine off core 0 (HC5): the walker-state reads of decide and sc_sig_now [C]
+- Inputs (nd_comb.c:381, 435, 466): comb_w0/w1, omode_h cycle bits, prim, prim_lod low byte, env, keyc, keys, conv_k4 are op values.
+  tex_on, use_t1, comb_set, comb_alpha_shade, box_prod and the tst comb fields derive from the ops (op_setcombine decode). leg_mode and
+  box_pat are outputs of the last sync. td[1].valid and dual_on come from the texture model (core 1 after HC4c). box_folded comes from
+  tile0_white, a read of tile 0 texels at a draw (box_fold_sync): core 0 only. After NDC_MODEL all are unknown (hit vs miss, 5.2).
+- Design: the recorder runs the scm memo of sync_combine on its shadow and writes T_PLAN (b = plan id in a plan table written by core 1,
+  published with the frame; a = legacy mode) when every input is valid and box_prod is 0; else T_SYNC (core 0 runs the old sync, cold).
+  Premise check: census of T_PLAN vs T_SYNC per frame (switch c5cen); class B <= 3 KB on core 0 needs T_SYNC < 5% of syncs on mac_01.
+  Before HC6 the first sync after NDC_MODEL is T_SYNC.
+
+### 5.4 Model hit (HC6)
+- Premise 1 (hit state): a hit skips rec_apply, so the walker keeps the pre-record omode, combine, prim, fog and tile state; a miss
+  keeps the record's. HC6 sets the record's scalar state on a hit too (typed copy, no GPU call), so the state after NDC_MODEL is known
+  to the recorder. Check: census hitst of walker draws after a hit that read a field the hit left stale, by field (mac_01, mdl5_iwa10,
+  mac_00); the byte-equal gate decides; a pixel change keeps the old rule.
+- Premise 2 (key): pm_gpu_model_key (pm_gpu.c:2976) reads record words, nd_ws (omode, om_k, geom, tss, combine, prim) and core 0
+  state (gs.r_mix, r_mixcol, cconst, decal_bias, dview, r_memblend, r_replace, gv_wind, zmark, r_decal, r_blend, off_active, ui_ortho,
+  nd_handle_gen, pm_dlc_gen, pm_gbi_gvkey). Split: the record part and the op-known part hashed on core 1 into the payload (key A);
+  core 0 builds key B from its render shadow. Check: switch mkchk, key A + B against the old key on every record, 0 differences.
+- Fast path: rec_run hit <= 600 B (memo by record address, key B compare, vis test, matrix, submit loop); all else in a cold rec_miss
+  (rec_apply, ndm, waterlog, wskip, R11, POND, stale check).
+- Pre-built command block: the miss records for each cached draw the GPU command words of pm_gpu_native_submit_draw into a linear
+  block with the full state (no redundant-state filter) and the offsets of the per-frame words: matrix palette rows (pal0), the zmark
+  row, the shroud TEV colour (mix_st), unit 0 address and dim when e->tex, the template program when tgen moved. A hit copies the
+  block (aligned) into the command buffer and patches. Check: switch blkchk compares the hit's command span old vs block per draw (0
+  differences outside the filtered state words; picture byte-equal). More GPU words per hit: console cycles decide.
+
+### 5.5 Core 1 budget
+- Logic step at 30 fps: 33.3 ms on core 1 (O3DS, up to 20% system work). Measure "core2 lgms" of the prof line at each stage
+  (console push mac_01 0 0 200). Estimate [E]: translate and shadow about 60 cycles per op, about 4k ops per frame on mac_01 = 0.9 ms;
+  combine memo 0.3 ms; key A 0.2 ms. Limit per stage: lgms grows <= 2 ms and stays < 30 ms; over it, that work stays on core 0.
+
+### 5.6 Slices (wave 2, after HC2 merges; each a commit after its gates)
+| Slice | Content | Files | Deletes |
+|---|---|---|---|
+| HC4a | nd_op.c translator and ids, typed executor for the W1 scalar ops (OM, GEOM, PRIM, ENV, FOG, BLEND, FILL, PRIMZ, SCISSOR, TEXTURE, MW, RARE), typed rec_op/rec_fog/shroud, nd_cmd_test.c | nd_op.c (new), nd_cmd.h, nd_rec.c, nd_walk.c, nd_set.c, nd_recs.c, nd_int.h, 3ds/tools/nd_cmd_test.c, CMakeLists.txt | g2_same/g2_note cases of these ops |
+| HC4b | T_COMB, render mode table (W3), shadow dedupe and t4chk | nd_rec.c, nd_recs.c, nd_comb.c, nd_walk.c | rec_dl list path |
+| HC4c | texture ops typed, bind and R13 ops in the payload (W4), R1 and R2 typed at their producer | nd_tex_set.c, nd_recs.c, nd_rec.c, src/model.c | tex_op, tb_ops, op_* wrappers |
+| HC4d | T_MTX/POPMTX/LIGHT/VTX/TRI, sprite fallback (W5), T_CALL (W6), typed rec_lights, run-time producers R3-R10 (5.7) | nd_mtx_set.c, nd_geom.c, nd_walk.c, nd_rec.c, nd_ent.c, src/model.c, src/animator.c, src/imgfx.c, src/sprite.c, nugfxinit.c, effects | word cases, g2_same, g2_note, walk_call word path, row_DIRECT.md |
+| HC4e | S1: typed gs* macros (ELF static lists), consumers (ent, dlc, sprite rmList, entity displayList) read typed ops | nd_gbi.h, nd_op.h, nd_ent.c, nd_shape.c, pm_gpu.c (sprite) | the word readers of ent_compile and dlc |
+| HC4f | S2: host shape converter, sidecar loader, node pointers to typed lists | 3ds/tools/nd_shape_conv.c (new, host), build.sh, pm_map.c | ShapeFix word walk (pm_map.c:63-190) |
+| HC5 | combine memo on core 1, T_PLAN/T_SYNC | nd_comb.c, pm_comb.c, nd_rec.c, pm_gpu.c (set_plan) | - |
+| HC6 | hit state, key A/B, fast path, command block | nd_recs.c, pm_gpu.c, nd_model.c, nd_emit.c | - |
+- Gates per slice: nd_host PASS; byte-equal spot_mac01_det and battle_start_f182_cold against stored base shots (plus mdl5_iwa10_det
+  and spot_mac00_det for HC4b and HC6; the DIRECT set at the end of HC4d); hotset_size M1 and fncov M3 per class before and after.
+  Done check after HC4f: no function in the ELF compares a list word to a G_* op (a grep of the source for `>> 24` against
+  G_*/OP_* in 3ds/src and src, listed in the slice commit). Targets: class A <= 4 KB after HC4d, B <= 3 KB on core 0 after HC5, C+D <= 8 KB after HC6. Console per stage (user): prof push
+  mac_01 0 0 200 (pmu_i, pmu_d, cycles, lgms).
+- A try with no change in the gate quantity is not repeated in that area; the facts go to the orchestrator (user, 2026-11-09).
+
+### 5.7 No display list reader in the ELF (user decision 2026-11-09)
+- One encoding source: nd_op.h defines each typed op as integer constant expressions (`ND_OP_<T>_W0(...)`, `ND_OP_<T>_W1(...)`), used
+  by nd_op.c (host and core 1 translator), by the gs* macros (S1) and by the shape converter (S2). nd_cmd_test.c checks all three
+  give the same units for every F3DEX2 op the game uses.
+- S1, static lists compiled into the ELF [C]: assets/*.gfx.inc.c (856 files, 986 includes), src gs lists (121 files, about 8.7k gs
+  macros: entity 57 files, world 15, battle 11, effects 9, menus), sprite render mode lists (sprite.c rmList, spr_final_list), the entity
+  model lists (entity_model.c:347 model->gfx.displayList). nd_gbi.h redefines the static gs* forms as typed unit initializers (a
+  translation by the compiler: no reader, no host step). gsSPDisplayList becomes T_CALL, gsSPBranchList T_JMP, gsSPEndDisplayList
+  T_END, the syncs a T_NOP unit (a static array keeps its length; the dlc and ent compilers skip T_NOP). Segment addresses stay values:
+  their resolution through the segment table is a pointer step, not a list read. Premise check: the ELF .data size before and after
+  (memcheck line); equal size expected, since every gs macro stays one 8-byte unit.
+- S2, map shapes (ROM data loaded per map into gMapShapeData, pm_map.c:37; pm_map.c:63-190 walks the list words at load to relocate
+  and swap them): a host C converter `3ds/tools/nd_shape_conv.c` (built and run by build.sh; user decision 2026-11-09: build time only,
+  no first-boot path) reads the N64 shape file and writes a sidecar per map:
+  `NdShp { magic, version, n_lists, n_ops, n_reloc; u32 list_off[n_lists] (N64 list offset -> typed op index, sorted); NdOp ops[n_ops];
+  u32 reloc[n_reloc] (op indices whose b is a shape offset) }`, little-endian, 8-byte aligned, position-free (offsets, relocated by one
+  pass over reloc at load: no list read). The loader rewrites each ModelNode display list pointer to its typed list (a node walk, not a
+  word walk). build.sh writes one sidecar per map into romfs next to the shape file.
+  Size [E, measured by the converter's report line per map and in total for the 411 maps]: typed ops <= the N64 list bytes (one unit per
+  word, syncs dropped), plus 4 B per list and 4 B per relocated op; the vertex, matrix, light and texture data stay in the shape file.
+  The gMapShapeData buffer (256 KB) then holds the shape data without its lists plus the typed lists.
+- R, lists that game code builds or changes at run time [C]; each producer calls the native path or writes typed ops (as DIRECT did):
+
+| Id | File:line | What | Size class | Slice |
+|---|---|---|---|---|
+| R1 | src/model.c:3486-3744 make_texture_gfx | texture bind list per handle, at texture load (W4) | medium | HC4c |
+| R2 | src/model.c:1390-2361 appendGfx_model | R13 aux words built with gDP macros (1569-1655, 1901-2195); record fields | medium | HC4c |
+| R3 | src/model.c:3418-3482 render_transform_group(_node) | gSPMatrix/gSPPopMatrix into the group list | small | HC4d |
+| R4 | src/model.c:4487 mdl_local_gfx_update_vtx_pointers | copies a node list, rewrites G_VTX pointers (reads words) | small | HC4d |
+| R5 | src/animator.c:854-973 appendGfx_animator_node | copied mesh list with new vertex buffers per frame (reads words) | medium | HC4d |
+| R6 | src/imgfx.c:1252-1320 imgfx_load_anim | patches vertex pointers in a copied list (reads words) | small | HC4d |
+| R7 | src/sprite.c:325 | spr_geo_out vertex and triangle words (W5) | small | HC4d |
+| R8 | src/os/nusys/nugfxinit.c:75 | boot list (G_DL rdpstateinit_dl, full sync) | small | HC4d |
+| R9 | 3ds/src/nd_mtx_set.c:150-170 rec_lights; nd_walk.c:500 pm_gbi_fallback; nd_rec.c:195/285 rec_inline, nd_list | port-side builders and readers | small | HC4d |
+| R10 | src/effects/hieroglyphs.c:151 (savedGfxPos), src/effects/underwater.c:172-256, src/world/dead/area_flo/flo_10/waterfx.c:308 | position patches and local lists (D5 audit); check each is typed or dead | small | HC4d |
+- Typed static lists change the pointer-typed consumers: dlc compile (nd_shape.c), ent_compile (nd_ent.c), sprite rmList, the model
+  record R12 geometry pointer and ModelRenderModes (W3: then a static typed table from S1, no recorder build).
