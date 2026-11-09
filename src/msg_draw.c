@@ -4,7 +4,7 @@
 #include "message_ids.h"
 #include "sprite.h"
 #ifdef TARGET_3DS
-#include "nd_cmd.h"
+#include "nd_gbi_tex.h" /* DIRECT D4b-1: the texture loads and rectangles of this file are frame stream commands */
 #endif
 
 #include "charset/charset.h"
@@ -1841,22 +1841,6 @@ void msg_draw_char(MessagePrintState* printer, MessageDrawState* drawState, s32 
     dsdx = 1.0f / drawState->charScale.x * 1024.0f;
     dtdy = 1.0f / drawState->charScale.y * 1024.0f;
 
-#if defined(TARGET_3DS) && !VERSION_IQUE
-    if (nd_rec_sub == 0) { /* DIRECT D4a-2: the palette load, the glyph load and its rectangle are one frame stream command (NDC_GLYPH) */
-        Gfx rect[3];
-        Gfx* rp = rect;
-        const void* pal = nullptr;
-        if (drawState->printModeFlags & (MSG_PRINT_FLAG_10 | MSG_PRINT_FLAG_1)) {
-            drawState->printModeFlags &= ~(MSG_PRINT_FLAG_10 | MSG_PRINT_FLAG_1);
-            pal = D_802F4560[palette];
-        }
-        gSPTextureRectangle(rp++, ulx * 4, uly * 4, lrx * 4, lry * 4, G_TX_RENDERTILE, texOffsetX, texOffsetY, dsdx, dtdy);
-        nd_rec_glyph(messageCharset->rasters[fontVariant].raster + messageCharset->charRasterSize * charIndex, pal,
-                     messageCharset->texSize.x, messageCharset->texSize.y,
-                     !(messageCharset->texSize.x >= 16 && messageCharset->texSize.x % 16 == 0), rect);
-        return;
-    }
-#endif
     if (drawState->printModeFlags & (MSG_PRINT_FLAG_10 | MSG_PRINT_FLAG_1)) {
         drawState->printModeFlags &= ~(MSG_PRINT_FLAG_10 | MSG_PRINT_FLAG_1);
         gDPLoadTLUT_pal16(gMainGfxPos++, 0, D_802F4560[palette]);
