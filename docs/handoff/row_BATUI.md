@@ -9,6 +9,13 @@ bind can drop a draw), KMR11W 1378f6261 (edge-AA cutout blend, nd_edge_aa in nd_
 for rects >= 160 px, pm_gpu_rect.c:218), FFOREST 9d2f39292 (far-plane z clamp in pm4/pm5). Main since then adds EDGEORD (cutout sort
 base 9000000), INTERIOR (nd_tex flush), HC9A (pm_tex slot index), HC2 (link order).
 
+## User facts 2 (Azahar, 2026-11-09, same row, same battle menu shot)
+"The battle UI in Azahar isn't anchored all the way to the left side, there's still a gap. The light is also not properly aligned
+with the items." In widescreen the battle menu (action wheel and its boxes) must touch the left screen edge like the other
+left-anchored HUD (WIDE rows: pm_anchor_rect, wedge_x pm_gpu.c:172, cam_main.c:517-520 pm_wide_cam). The wheel highlight ("light")
+must sit on the selected item. Find by code the x offset each part gets in wide mode (file:line, value) and why the two differ.
+Both show on Azahar, so no console step for these two. Gate: one battle menu shot in wide mode with no gap and the light on the item.
+
 ## Start state
 `sh 3ds/tools/wt_new.sh BATUI`, branch BATUI. PM_ROW=BATUI, PM_LANE=BATUI. One Haiku agent.
 
