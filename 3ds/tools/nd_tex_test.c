@@ -12,6 +12,7 @@
 #include "nd.h"
 
 static int fails;
+unsigned pm_frame_count(void) { return 0; } /* INTERIOR: the flush log line's frame */
 #define CHECK(c, ...) do { if (!(c)) { fails++; if (fails < 30) { printf("FAIL: " __VA_ARGS__); printf("\n"); } } } while (0)
 
 /* pm_tex.c stubs: a load binds slot 7 whose words hold the size and an address, and the unit wrap and filter come from the test */
@@ -99,11 +100,40 @@ static void test_table(void) {
     CHECK(nd_tex_get(&d) == c && loads == 3, "the third descriptor loads once");
 }
 
+/* INTERIOR: a full table flushes and takes the next descriptor (no -1, no refusal). ND_TEX_N + 1 distinct descriptors by image address. */
+static unsigned char img_many[ND_TEX_N + 1u][16];
+static void test_flush(void) {
+    NdTexDesc d;
+    memset(&d, 0, sizeof d);
+    d.fmt = 0; d.siz = 2; d.w = 32; d.h = 16; d.masks = 5; d.maskt = 4; d.stride = 32;
+    nd_tex_reset();
+    unsigned g0 = nd_tex_gen();
+    unsigned l0 = loads;
+    for (unsigned i = 0; i < ND_TEX_N; i++) {
+        d.img = img_many[i];
+        int id = nd_tex_get(&d);
+        CHECK(id == (int)i, "descriptor %u gets id %d", i, id);
+    }
+    CHECK(nd_tex_gen() == g0 && loads == l0 + ND_TEX_N, "a full table of %u descriptors loads once each, no flush yet", ND_TEX_N);
+    d.img = img_many[ND_TEX_N];
+    int last = nd_tex_get(&d);
+    CHECK(last == 0, "the table flush restarts the ids: the new descriptor gets id 0, got %d", last);
+    CHECK(nd_tex_gen() == g0 + 1, "the flush bumps the generation by exactly 1: %u", nd_tex_gen() - g0);
+    CHECK(loads == l0 + ND_TEX_N + 1, "the new descriptor loaded once");
+    const uint32_t* w = nd_tex_block(last);
+    CHECK(w[0] == (32u << 16 | 16u) && w[3] == 0x20000000u + loads, "the new block holds its slot words: %08x %08x", w[0], w[3]);
+    CHECK(nd_tex_get(&d) == last && loads == l0 + ND_TEX_N + 1, "the new descriptor again: same id, no load");
+    d.img = img_many[0];
+    int again = nd_tex_get(&d);
+    CHECK(again == 1 && loads == l0 + ND_TEX_N + 2, "an old descriptor after the flush loads again into the next id: %d", again);
+}
+
 int main(int argc, char** argv) {
     if (argc < 2) { fprintf(stderr, "usage: nd_tex_test <ndref.bin> ...\n"); return 2; }
     test_wrap();
     test_ndref(argc, argv);
     test_table();
+    test_flush();
     printf("nd_tex units %u (param with other bits %u)\n", n_units, n_param_other);
     CHECK(n_units > 100, "too few texture units checked: %u", n_units);
     puts(fails ? "nd_tex: FAIL" : "nd_tex: PASS");

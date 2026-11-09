@@ -21,6 +21,9 @@ void nd_frame_begin(void); /* once per gbi task: the ndst debug line */
 /* NDMTX (S1-4). Walker matrix stack (the RSP depth is 10), projection, N64 unpack, per-eye matrix pool. */
 #define ND_MV_DEPTH 10
 #define ND_MTX_MAX 512
+/* INTERIOR: nd_tex.c descriptor table, blocks and hash slots (a power of two; a full table is flushed) */
+#define ND_TEX_N 1024u
+#define ND_TEX_IDX 2048u
 #define ND_MTX_PUSH 1u /* values of G_MTX_PUSH, G_MTX_LOAD, G_MTX_PROJECTION */
 #define ND_MTX_LOAD 2u
 #define ND_MTX_PROJ 4u

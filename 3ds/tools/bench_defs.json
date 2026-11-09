@@ -76,6 +76,11 @@
           "pick": "first"
         },
         {
+          "name": "m1_hot",
+          "regex": "hotset M1 hot (\\d+) B",
+          "pick": "first"
+        },
+        {
           "name": "m2_linker",
           "regex": "hotset M2 linker (\\d+) B",
           "pick": "first"
@@ -5074,6 +5079,140 @@
       ]
     },
     {
+      "name": "toad_nap_aud",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "AUDNAP repro: the Toad House nap in mac_01 (bed jingle SONG_TAKING_REST 136). Census windows: every port reason and catch-up blocks, last window line. Gate: port reasons 0 and catchup 0. Log only.",
+      "scenario": "toad_nap_aud",
+      "cap": 45,
+      "until": "audio drops w3: unheard \\d+",
+      "tags": [
+        "azahar",
+        "audio",
+        "census"
+      ],
+      "log_metrics": [
+        {
+          "name": "d_unheard",
+          "regex": "audio drops w\\d+: unheard (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_squeezed",
+          "regex": "audio drops w\\d+: .*squeezed (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_early",
+          "regex": "audio drops w\\d+: .*early (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_nochan",
+          "regex": "audio drops w\\d+: .*nochan (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_giveup",
+          "regex": "audio drops w\\d+: .*giveup (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_loopcap",
+          "regex": "audio drops w\\d+: .*loopcap (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_nonadpcm",
+          "regex": "audio drops w\\d+: .*nonadpcm (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_qovf",
+          "regex": "audio drops w\\d+: .*qovf (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_merged",
+          "regex": "audio drops w\\d+: .*merged (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_catchup",
+          "regex": "audio drops w\\d+: .*catchup blocks (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_maxrun",
+          "regex": "audio drops w\\d+: .*maxrun (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "d_late_us",
+          "regex": "audio drops w\\d+: .*late_us_max (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "jingle_song",
+          "regex": "bgm: SetMusic player 0 song (\\d+) ",
+          "pick": "first"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "d_unheard",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_squeezed",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_early",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_nochan",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_giveup",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_loopcap",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_nonadpcm",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_qovf",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_merged",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "d_catchup",
+          "op": "==",
+          "value": 0
+        }
+      ]
+    },
+    {
       "name": "aud_talk",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -5918,6 +6057,106 @@
         "azahar",
         "pic",
         "xfer"
+      ],
+      "gates": []
+    },
+    {
+      "name": "merlon_in_late_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "INTERIOR: Merlon's house enter after wait240 (nd_tex full before the door), no det, shots 310 to 350 inside the room. A person reads the shot: interior lit, Merlon visible. Log: ndtex flush, no ndtex full.",
+      "scenario": "merlon_in_late_pic",
+      "cap": 25,
+      "until": "shot \\d+ frame 350\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "xfer",
+        "interior"
+      ],
+      "gates": []
+    },
+    {
+      "name": "merlon_in_late_census",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "INTERIOR diagnostic: merlon_in_late_pic route with census to frame 600. Log only: ndm f300 and ndm f600 count the native model fallbacks by code (why 13 = nd_tex_get refused the model) over the door window.",
+      "scenario": "merlon_in_late_census",
+      "cap": 25,
+      "until": "ndm f600 ",
+      "tags": [
+        "azahar",
+        "stream",
+        "xfer",
+        "interior"
+      ],
+      "gates": []
+    },
+    {
+      "name": "toad_house_late_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "INTERIOR: Toad House (mac_01) enter after wait240, no det, shots 300 to 480 inside. A person reads the shot: the room and the bed drawn.",
+      "scenario": "toad_house_late_pic",
+      "cap": 25,
+      "until": "shot \\d+ frame 480\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "xfer",
+        "interior"
+      ],
+      "gates": []
+    },
+    {
+      "name": "kmr20_in_late_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "INTERIOR: kmr_20 Mario's house enter after wait600, det, shots 980 to 1040 inside. A person reads the shot: the house beds drawn.",
+      "scenario": "kmr20_in_late_pic",
+      "cap": 45,
+      "until": "shot \\d+ frame 1040\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "det",
+        "xfer",
+        "interior"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_mac00_det",
+      "kind": "azahar_pic",
+      "default": false,
+      "purpose": "INTERIOR byte gate: mac_00 (preset toad) at pos -135 0 85, det, shots 200 to 205. Byte-equal to the base build (the flush changes no draw while the table is not full).",
+      "scenario": "spot_mac00_det",
+      "speed": "turbo",
+      "cap": 25,
+      "until": "shot \\d+ frame 205",
+      "tags": [
+        "azahar",
+        "pic",
+        "det"
+      ],
+      "gates": []
+    },
+    {
+      "name": "msgbox_talk_nowide",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "INTERIOR byte gate: yard 4:3 (nowide) talk message box, shot 330 (no det in the scenario). Compared with the base shot.",
+      "scenario": "msgbox_talk_nowide",
+      "cap": 30,
+      "until": "shot \\d+ frame 330\\b",
+      "tags": [
+        "azahar",
+        "pic"
       ],
       "gates": []
     },

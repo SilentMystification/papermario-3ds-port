@@ -40,13 +40,13 @@ uint32_t nd_tex_param(uint32_t param, unsigned filter, uint32_t ws, uint32_t wt)
 /* C3D_TexInit: width in the high half, height in the low half */
 uint32_t nd_tex_dim(unsigned w, unsigned h) { return (uint32_t)w << 16 | h; }
 
-/* ---- descriptor table: 128 blocks, open hash with a 256 slot index ---- */
-#define ND_TEX_N 128u
-#define ND_TEX_IDX 256u
+/* ---- descriptor table: ND_TEX_N blocks, open hash with ND_TEX_IDX slots (nd.h) ---- */
 typedef struct { NdTexDesc d; uint32_t w[4]; int slot; unsigned key; } NdTexEnt; /* slot: the pm_tex.c slot the image was loaded to; key: its content identity */
 static NdTexEnt tex_ent[ND_TEX_N];
 static uint16_t tex_idx[ND_TEX_IDX]; /* entry id + 1, 0 = empty */
 static unsigned tex_n;
+static unsigned tex_flushes; /* INTERIOR: full-table flushes since boot */
+extern unsigned pm_frame_count(void);
 
 int pm_tex_load(const void* img, unsigned fmt, unsigned siz, int width, int height, const void* tlut, int tlut_n, int stride); /* pm_tex.h */
 void pm_tex_set_wrap(unsigned cms, unsigned cmt, unsigned masks, unsigned maskt);
@@ -71,6 +71,14 @@ static unsigned tex_gen = 1; /* PERF2: bumped at each reset: an id taken before 
 unsigned nd_tex_gen(void) { return tex_gen; }
 void nd_tex_reset(void) { memset(tex_idx, 0, sizeof tex_idx); tex_n = 0; tex_gen++; }
 
+/* INTERIOR: a full table is flushed (tex_gen bumps, ids start again), so a new texture is never refused. Since MDL-5e a refused model draws nothing,
+ * which hid the interiors (their textures came after 128 sprite textures in the map). Callers hold an id only inside one nd_tex_get call or
+ * behind nd_tex_gen (the sprite memo), so a flush voids no live id. */
+__attribute__((cold, noinline)) static void tex_flush(void) {
+    nd_tex_reset(); tex_flushes++;
+    if (tex_flushes <= 8u || (tex_flushes & 63u) == 0) pm_log_prof_line("ndtex flush f%u n %u flushes %u", pm_frame_count(), ND_TEX_N, tex_flushes);
+}
+
 int nd_tex_get(const NdTexDesc* in) {
     NdTexDesc d = *in;
     memset(d.pad, 0, sizeof d.pad);
@@ -81,8 +89,7 @@ int nd_tex_get(const NdTexDesc* in) {
         if (memcmp(&tex_ent[s - 1u].d, &d, sizeof d) == 0) return s - 1;
         h = (h + 1u) & (ND_TEX_IDX - 1u);
     }
-    /* ponytail: table full returns -1, the caller falls back to the walker. Add eviction when S3 loads more than 128 textures in a map. */
-    if (tex_n >= ND_TEX_N) { static unsigned tfl; if (tfl++ < 12u) pm_log_prof_line("ndtex full n %u fmt %u siz %u w %u h %u img %08x pal %08x", tex_n, d.fmt, d.siz, d.w, d.h, (unsigned)(uintptr_t)d.img, (unsigned)(uintptr_t)d.pal); return -1; } /* MDL-5e debug: the table-full miss (why 13) */
+    if (tex_n >= ND_TEX_N) { tex_flush(); h = desc_hash(&d) & (ND_TEX_IDX - 1u); }
     /* miss: load through the texture cache, then read the unit words of the slot it bound */
     pm_tex_set_wrap(d.cms, d.cmt, d.masks, d.maskt);
     if (!pm_tex_load(d.img, d.fmt, d.siz, d.w, d.h, d.pal, d.pal_n, d.stride)) { static unsigned tld; if (tld++ < 12u) pm_log_prof_line("ndtex load fail n %u fmt %u siz %u w %u h %u", tex_n, d.fmt, d.siz, d.w, d.h); return -1; } /* MDL-5e debug */
