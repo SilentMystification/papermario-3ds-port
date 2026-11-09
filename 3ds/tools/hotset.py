@@ -26,6 +26,7 @@ DRAW = [re.compile(p) for p in CFG["draw_objs"]]
 EXT = set(CFG["ext_allow"])
 CALLS = {k: [re.compile(p) for p in v] for k, v in CFG["calls"].items()}
 LD = REPO / "3ds" / "ld" / "3dsx.ld.in"
+HOT_LD = REPO / "3ds" / "ld" / "hot_order.ld"
 
 
 def lane_dir(lane, fncov=False):
@@ -42,7 +43,7 @@ def _add(out, a, sz, obj, sec):
     size = int(sz, 16)
     addr = int(a, 16)
     if size and addr not in out:
-        out[addr] = {"name": strip_sec(sec), "size": size, "obj": obj}
+        out[addr] = {"name": strip_sec(sec), "size": size, "obj": obj, "cold": sec.startswith(".text.unlikely.")}
 
 
 def parse_map(path):
@@ -175,11 +176,16 @@ def nbytes(fns, s):
 
 
 def linker_group():
-    """The names of the hot group in 3ds/ld/3dsx.ld.in: the '*(.text.' lines up to '*(.text.unlikely.*)'."""
+    """The names of the hot group in 3ds/ld/3dsx.ld.in: the lines of its INCLUDE of hot_order.ld (HC2, generated), else the
+    '*(.text.' lines up to '*(.text.unlikely.*)'."""
     toks, on = [], False
     for l in open(LD, encoding="utf-8", errors="replace"):
         s = l.strip()
         if s.startswith("*(.text.unlikely") and on:
+            break
+        if s.startswith("INCLUDE") and "hot_order.ld" in s:
+            for h in open(HOT_LD, encoding="utf-8", errors="replace"):
+                toks += re.findall(r"\.text\.([A-Za-z0-9_.*]+)", h.split("/*")[0])
             break
         if s.startswith("*(.text.") or s.startswith("*libcitro3d"):
             on = True
@@ -198,6 +204,7 @@ def m2(fns, names, toks):
             got = [a for a, e in fns.items() if fnmatch.fnmatchcase(e["name"], t)]
         else:
             got = names.get(t, [])
+        got = [a for a in got if not fns[a]["cold"]]  # a .text.unlikely section is not in the hot group
         if not got:
             stale.append(t)
         hit |= set(got)
@@ -222,19 +229,25 @@ def run_report(lane, line):
     hit, stale = m2(fns, names, linker_group())
     cb = {c: nbytes(fns, mem[c]) for c in CLASSES}
     ub = nbytes(fns, union)
+    hot = set(a for a in union if not fns[a]["cold"])  # M1 hot: the union without .text.unlikely (cold split, HC1)
+    hb = nbytes(fns, hot)
     if line:
-        print("hotset: M1 union %s (%s) | M2 linker %s, stale %d (%s)" % (
-            kb(ub), " ".join("%s %.1f" % (c, cb[c] / 1024.0) for c in CLASSES),
+        print("hotset: M1 union %s, M1 hot %s (%s) | M2 linker %s, stale %d (%s)" % (
+            kb(ub), kb(hb), " ".join("%s %.1f" % (c, cb[c] / 1024.0) for c in CLASSES),
             kb(nbytes(fns, hit)), len(stale), ", ".join(stale) or "none"))
         return 0
     print("hotset lane %s, map %s, %d functions in the map" % (lane or "main", lane_dir(lane) / "pm_3ds.map", len(fns)))
     for c in CLASSES:
         print("hotset M1 class %s %d B (%d fns) %s" % (c, cb[c], len(mem[c]), CFG["classes"][c]["name"]))
     print("hotset M1 union %d B (%d fns, depth %d)" % (ub, len(union), CFG["depth"]))
+    print("hotset M1 hot %d B (%d fns, union without .text.unlikely)" % (hb, len(hot)))
     print("hotset M2 linker %d B (%d fns)" % (nbytes(fns, hit), len(hit)))
     print("hotset M2 stale %d names: %s" % (len(stale), " ".join(stale)))
     if missing:
         print("hotset M1 roots missing from the map: %s" % " ".join(missing))
+    if stale:
+        print("hotset FAIL: %d hot group names are not in the map (regenerate ld/hot_order.ld or fix 3dsx.ld.in)" % len(stale))
+        return 1
     tot = Counter()
     for a in sorted(union, key=lambda x: -fns[x]["size"]):
         cnt = Counter()
