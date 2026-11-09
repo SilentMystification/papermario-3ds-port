@@ -6056,6 +6056,106 @@
       "gates": []
     },
     {
+      "name": "merlon_in_late_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "INTERIOR: Merlon's house enter after wait240 (nd_tex full before the door), no det, shots 310 to 350 inside the room. A person reads the shot: interior lit, Merlon visible. Log: ndtex flush, no ndtex full.",
+      "scenario": "merlon_in_late_pic",
+      "cap": 25,
+      "until": "shot \\d+ frame 350\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "xfer",
+        "interior"
+      ],
+      "gates": []
+    },
+    {
+      "name": "merlon_in_late_census",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "INTERIOR diagnostic: merlon_in_late_pic route with census to frame 600. Log only: ndm f300 and ndm f600 count the native model fallbacks by code (why 13 = nd_tex_get refused the model) over the door window.",
+      "scenario": "merlon_in_late_census",
+      "cap": 25,
+      "until": "ndm f600 ",
+      "tags": [
+        "azahar",
+        "stream",
+        "xfer",
+        "interior"
+      ],
+      "gates": []
+    },
+    {
+      "name": "toad_house_late_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "INTERIOR: Toad House (mac_01) enter after wait240, no det, shots 300 to 480 inside. A person reads the shot: the room and the bed drawn.",
+      "scenario": "toad_house_late_pic",
+      "cap": 25,
+      "until": "shot \\d+ frame 480\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "xfer",
+        "interior"
+      ],
+      "gates": []
+    },
+    {
+      "name": "kmr20_in_late_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "INTERIOR: kmr_20 Mario's house enter after wait600, det, shots 980 to 1040 inside. A person reads the shot: the house beds drawn.",
+      "scenario": "kmr20_in_late_pic",
+      "cap": 45,
+      "until": "shot \\d+ frame 1040\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "det",
+        "xfer",
+        "interior"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_mac00_det",
+      "kind": "azahar_pic",
+      "default": false,
+      "purpose": "INTERIOR byte gate: mac_00 (preset toad) at pos -135 0 85, det, shots 200 to 205. Byte-equal to the base build (the flush changes no draw while the table is not full).",
+      "scenario": "spot_mac00_det",
+      "speed": "turbo",
+      "cap": 25,
+      "until": "shot \\d+ frame 205",
+      "tags": [
+        "azahar",
+        "pic",
+        "det"
+      ],
+      "gates": []
+    },
+    {
+      "name": "msgbox_talk_nowide",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "INTERIOR byte gate: yard 4:3 (nowide) talk message box, shot 330 (no det in the scenario). Compared with the base shot.",
+      "scenario": "msgbox_talk_nowide",
+      "cap": 30,
+      "until": "shot \\d+ frame 330\\b",
+      "tags": [
+        "azahar",
+        "pic"
+      ],
+      "gates": []
+    },
+    {
       "name": "xfer_map_mac01",
       "kind": "azahar_stream",
       "speed": "normal",
