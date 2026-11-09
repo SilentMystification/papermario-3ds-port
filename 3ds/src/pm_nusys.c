@@ -94,6 +94,7 @@ static u32 key_size[MAX_KEY]; /* their list bytes (log only) */
 static int nkey;
 uint64_t svcGetSystemTick(void);
 void pm_pf_nd_add(unsigned long long ticks, unsigned legacy); /* pm_phase.c: S0-6 window sums (legacy 1 = one walk) */
+void pm_pf_eye2_add(unsigned long long ticks); /* pm_phase.c: STEREO right eye pass ticks */
 
 /* S10-2, DIRECT D0: one replay of the task stream (nd_rec.c). The phase line keeps its format: the walk time goes to pm_pf_nd_add as one legacy span. */
 static void gbi_walk(const uint32_t* s) {
@@ -109,7 +110,11 @@ static void gbi_task_w(const uint32_t* s) {
     FS_MARK(FS_GBI); /* LB1b: the walk after the wait is gbi work, not rest (fsplit label only) */
     nd_frame_begin();
     gbi_walk(s);
-    if (pm_gpu_stereo()) { pm_gpu_eye(1); gbi_walk(s); pm_gpu_eye(0); } /* STEREO: the same task for the right eye */
+    if (pm_gpu_stereo()) { /* STEREO: the same task for the right eye; eye2 of the prof line is its time */
+        uint64_t t0 = pm_ph_on ? svcGetSystemTick() : 0;
+        pm_gpu_eye(1); gbi_walk(s); pm_gpu_eye(0);
+        if (pm_ph_on) pm_pf_eye2_add(svcGetSystemTick() - t0);
+    }
 }
 
 /* CORE2C-2: the walker side of one queued frame (nd_wq.c): the background task, then the main task. */
