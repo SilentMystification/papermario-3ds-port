@@ -43,6 +43,30 @@
       "reason": "BTLUI bug 2 step 1: action command prompt shot. Until is the last shot of the window."
     },
     {
+      "name": "dmg_jump_ac",
+      "status": "unverified",
+      "subject": "RIGHTON: the jump action command prompt with the Perfect action commands cheat (kmr_20 battle, autoa). The A button must show alone; the Japanese Right On! art (katakana, right of the A button) must not show.",
+      "proves": "RIGHTON: jump.c and hammer.c hide HES_RightOn under the cheat (pm_cheat_action_on); the acmd switch gives the battle the action commands without the Lucky Star.",
+      "debug": "warp=kmr_20:0 battle=BTL_KMR_1_FORMATION_00:BTL_KMR_1_STAGE_01 battlef=30 acmd cheats=action autoa det fixedseed shots shotwin=180:61:6 loglevel=debug",
+      "until": "shot \\d+ frame 240\\b",
+      "cap": 25,
+      "deadline": 40,
+      "first_marker": "warp: kmr_20 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "cheat event",
+          "regex": "cheat: perfect action command, auto success"
+        },
+        {
+          "name": "shot 240",
+          "regex": "shot \\d+ frame 240\\b"
+        }
+      ],
+      "reason": "RIGHTON: discovery window 180 to 240 (6-frame step). The event frame is read from the log, then the shot window is set to 4 shots from that event."
+    },
+    {
       "name": "logbench_boot",
       "status": "unverified",
       "subject": "Boot with the logbench switch: four timed loops of the log producer (plain line, four arguments, two %s, dropped line), cycles per line in the log.",
