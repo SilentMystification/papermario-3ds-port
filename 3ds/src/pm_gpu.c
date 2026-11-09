@@ -3061,11 +3061,15 @@ void pm_gpu_model_miss_diag(const NdMKey* k) {
  * <geometry list low 20 bits>:<indices sent> with h (cache hit), m (miss drawn) or f<why> (refused, no draw), and the frame totals. A model that drops or
  * changes for one frame shows as a gap in its column. mfr_idx counts the indices of the native model draws (hit and miss). */
 int mfr_on; unsigned mfr_idx; static unsigned mfr_f0, mfr_f1, mfr_why, mfr_n[4]; static char mfr_b[160]; static unsigned mfr_bn;
+static struct { uint32_t geo; uint32_t w[NDMC_RW + NDMC_SW]; } *mfr_k; static unsigned mfr_kn; /* heap, allocated by mfr_init (32 entries) */
 static __attribute__((cold, noinline)) void mfr_init(void) {
     char v[32]; unsigned a = 0, n = 0;
-    if (pm_debug_value("mfr", v, sizeof v) && sscanf(v, "%u:%u", &a, &n) == 2 && n) { mfr_f0 = a; mfr_f1 = a + n; mfr_on = 1; }
+    if (pm_debug_value("mfr", v, sizeof v) && sscanf(v, "%u:%u", &a, &n) == 2 && n) {
+        mfr_k = calloc(32, sizeof *mfr_k); /* no static table: 11.9 KB of .bss was too much for the O3DS */
+        if (!mfr_k) { pm_log_w("mfr: no memory for the key table, the switch stays off"); return; }
+        mfr_f0 = a; mfr_f1 = a + n; mfr_on = 1;
+    }
 }
-static struct { uint32_t geo; uint32_t w[NDMC_RW + NDMC_SW]; } mfr_k[32]; static unsigned mfr_kn;
 __attribute__((cold, noinline)) void pm_gpu_mfr_rec(uint32_t geo, int hit, int nat, unsigned idx, const NdMKey* mk) {
     unsigned f = pm_frame_count();
     if (f < mfr_f0 || f >= mfr_f1) return;
