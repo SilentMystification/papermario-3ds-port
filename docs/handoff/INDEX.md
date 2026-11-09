@@ -19,6 +19,7 @@ Live files only. Older logs are in archive/ (agent_*, diag_*, inv_*, plan_*, tra
 - agent_nds_s0.md to agent_nds_s1e.md, agent_nds1_e6.md: logs of finished agents (state at their end).
 - agent_direct.md: DIRECT epic handoff (state after D9: no task list; next D10, the walker removal).
 - plan_direct.md: plan DIRECT (2026-11-09): the game records native commands into the frame stream (NdCmd) on the logic thread, core 0 replays them; LIST span bridge, producer API per class, slices D0 to D9, memory and thread rules.
+- plan_hotcode.md: plan HOTCODE (2026-11-09): shrink the core 0 draw code and data to fit the ARM11 L1 (hot set by class, stale link group, stages HC0 to HC10, size and pmu gates).
 - plan_s10_path.md: plan for S10 (oracle 2026-11-06): producers write NdRec records (streams CORE, UI, FXW, WBO), then pm_gbi.c is deleted; decisions D1 to D10.
 - agent_S7.md: WBO-1 site list (custom gfx builders in src/world and src/battle: 57 sites, kinds, scenario candidates) and the WBO-2a to WBO-3 row groups.
 - agent_s10.md: S10 epic handoff (orchestrator, 2026-11-07): merged rows, open rows, parked bugs, size and push state, next command.
