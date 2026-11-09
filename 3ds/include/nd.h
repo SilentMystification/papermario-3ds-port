@@ -475,7 +475,8 @@ unsigned nd_ent_strip(const uint32_t* l, uint32_t* out);
 /* The walker entry points (were pm_gbi.h, S10-1): nd_walk.c, nd_cen.c and nd_mtx_set.c define them. */
 void pm_gbi_init(void);
 void pm_gbi_run(void* dl, unsigned nbytes);
-void nd_walk_ops(void* dl, unsigned nbytes); /* PERF2: a flattened list's ops (ent_run) without the DIP2 full sync at the list start */
+void nd_walk_ops(void* dl, unsigned nbytes); /* PERF2: a list's ops without the DIP2 full sync at the list start */
+void nd_ops_run(const void* l, unsigned n, int keep); /* DIRECT D10b: n ops of a flat range on the op executor (keep: no full sync at its start) */
 void pm_gbi_fallback(void);
 /* Once a frame. The log gets one summed line per second, and only when it changes. */
 void pm_gbi_end_frame(void);

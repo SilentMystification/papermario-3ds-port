@@ -203,7 +203,7 @@ void nd_walk_spr(const Gfx* q) {
     if (__builtin_expect(fp, 0)) pm_ph_pop();
     if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1);
     if (sh) { if (__builtin_expect(dbg & WD_CEN, 0)) walk_dbg_nat(); return; }
-    nd_walk_ops((void*)(q + G_PM_SPR_WORDS), 16u);
+    nd_ops_run(q + G_PM_SPR_WORDS, 2u, 1);
 }
 /* DIRECT D3: NDC_ENT (nd_rec.c): an entity record. A DRAW record that the native path refuses leaves its G_DL to the walker (ent_skipgen,
  * as the walker's G_PM_ENT arm and the G_DL after it). */
@@ -243,12 +243,16 @@ static void walk_call(unsigned dbg, const Gfx* at, u32 w0, u32 w1) {
 }
 /* DIRECT D4b-3, D5: NDC_STATE (nd_rec.c): a run of ops recorded by the nd_gbi.h redirect. Each op runs as the walker runs it inside a
  * list: g2_same skips it (g2_note), else the op prologue (pm_gbi_cur_op, gv_epoch but not for vertex, triangle, matrix and list ops) and the
- * same handler as the walker's arm. The recorder dropped the RDP syncs (g1_skip); G_ENDDL and the branch form of G_DL stay list words. */
+ * same handler as the walker's arm. The recorder dropped the RDP syncs; the branch form of G_DL stays a list word.
+ * D10b: also the op executor of a flat op range (nd_ops_run): an RDP sync or G_SPNOOP is skipped before the prologue, a texture rectangle
+ * takes its two RDPHALF units, G_ENDDL ends the range (the flat ranges hold no branch). */
 void nd_walk_state(const uint32_t* q, unsigned n) {
     const unsigned dbg = pm_walk_dbg;
     for (const uint32_t* e = q + 2u * n; q < e; q += 2) {
         const u32 w0 = q[0], w1 = q[1];
         const unsigned op = w0 >> 24;
+        if ((op >= G_RDPLOADSYNC && op <= G_RDPFULLSYNC) || op == G_SPNOOP) continue; /* the walker's skip of the syncs (g1_skip) */
+        if (op == G_ENDDL) break;
         if (g2_same(op, w0, w1)) { g2_note(op, w0); continue; }
         pm_gbi_cur_op = op;
         if (op != G_VTX && op != G_TRI1 && op != G_TRI2 && op != G_MTX && op != G_POPMTX && op != G_DL && op != G_MODIFYVTX) gv_epoch++; /* GV1b */
@@ -310,7 +314,15 @@ void nd_walk_state(const uint32_t* q, unsigned n) {
         case G_SETFILLCOLOR: set_fillcolor(w1); break;
         case G_FILLRECT: nd_fillrect(w0, w1); break;
         case G_PM_ND: nd_native_rec(w0); break; /* D9: the native-only payload (the water splash bracket) */
+        case G_TEXRECT:
+        case G_TEXRECTFLIP: /* D10b: in a flat range, the op and its two RDPHALF units (the walker's arm) */
+            if (q + 4 >= e) break;
+            nd_texrect(w0, w1, q[3], q[5]);
+            q += 4;
+            break;
         case G_NOOP:
+        case G_RDPHALF_1:
+        case G_RDPHALF_2:
         case G_SETZIMG: break;
         default: note(op); break;
         }
@@ -319,6 +331,21 @@ void nd_walk_state(const uint32_t* q, unsigned n) {
     if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1); /* the class span ends with the command */
 }
 static int walk_keep; /* PERF2: set by nd_walk_ops for the next nd_walk_run only */
+/* DIRECT D10b: a flat op range (no branch, no nested list: the sprite fallback geometry, the pieces of a flattened entity list, the R13 words
+ * of a model record, an interpreted map shape group) on the op executor (nd_walk_state), with the list start and end rules of nd_walk_run:
+ * gv_epoch, dlc_on, a full combine and render sync unless keep (PERF2: a piece of one list), the vertex and texture streak flush. */
+void nd_ops_run(const void* l, unsigned n, int keep) {
+    PM_WALK_OWN();
+    gv_epoch++; /* GV1b */
+    dlc_on = 1;
+    gp_prev_op = -1;
+    if (!keep) { sc_ok = 0; sr_ok = 0; }
+    pm_walk_side++;
+    nd_walk_state((const uint32_t*)l, n);
+    pm_walk_side--;
+    gv_streak_flush();
+    tex_streak_flush();
+}
 /* DIRECT D10a: a custom gfx range of the frame stream (model record R11, build_custom_gfx), run to its NDC_END as the walker ran the list it
  * replaces: the list start (gv_epoch, dlc_on, a full combine and render sync: DIP2) and the list end (the vertex and texture streak flush). */
 void nd_range_run(const uint32_t* a) {

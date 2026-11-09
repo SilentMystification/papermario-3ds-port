@@ -369,7 +369,7 @@ int ent_draw(const Gfx* rec) {
 unsigned nd_ent_in, nd_ent_cfull, nd_ent_rfull, nd_ent_gbi;
 unsigned nd_ent_cfull_all(void) { return nd_ent_cfull; }
 unsigned nd_gdl_lists(void) { return gdl_c.lists; }
-#define ENT_GBI(l_, n_) (nd_ent_gbi++, nd_walk_ops((l_), (n_))) /* PERF2: the pieces of the flattened list keep the walker's sync state */
+#define ENT_GBI(l_, n_) (nd_ent_gbi++, nd_ops_run((l_), (n_) >> 3, 1)) /* PERF2: the pieces of the flattened list keep the walker's sync state (D10b: the op executor) */
 int ent_run(const Gfx* l, EntKey* k, u32 segid) {
     const unsigned f = pm_frame_count();
     if (!k) { ent_c.why[1]++; ent_c.fb++; return 0; }
