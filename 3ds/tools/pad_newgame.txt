@@ -1,0 +1,24 @@
+# INTROSNAP: new game the way a player starts it (title, file select with the curtain stage). With the switches fast and freshsave:
+# the intro starts at once (fast), START skips it to the title, START opens the file select. File 1 (empty) A, name "A" (A on the first
+# key), START (name done), A (Yes: create), A (close the created message), START on File 1 (start), START in the confirm (Yes).
+# Then the stage zoom (set_curtain_scale_goal 2.0), ENTER_WORLD and the kmr_11 load.
+wait60,
+START*4,
+ev_title,
+wait200,
+START*4,
+ev_file,
+wait60,
+A*4,
+wait40,
+A*4,
+wait20,
+START*4,
+wait40,
+A*4,
+wait60,
+A*4,
+wait60,
+START*4,
+wait40,
+START*4
