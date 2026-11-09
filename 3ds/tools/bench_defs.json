@@ -3169,7 +3169,7 @@
       "purpose": "Toad Town mac_01 sprcheck (S4-1): sprite record key vs walker key. Gate eq above 0, diff 0.",
       "scenario": "spot_mac01_sprcheck",
       "cap": 25,
-      "until": "ndmcheck f\\d+ recs",
+      "until": "sprcheck f\\d+ recs",
       "tags": [
         "azahar",
         "sprcheck",
