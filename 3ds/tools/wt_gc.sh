@@ -31,6 +31,11 @@ cd "$(git rev-parse --show-toplevel)" || exit 1
 mkdir -p build3ds/archive
 run() { if [ $APPLY = 1 ]; then "$@"; else echo "would: $*"; fi; }
 # CLEANB: a removed worktree or lane takes its Azahar copies and shot folders with it (one place for this).
+drop_lane_volumes() {
+    for v in "pm3ds-src-$1" "pm3ds-build-$1"; do
+        if docker volume inspect "$v" >/dev/null 2>&1; then echo "remove volume $v"; run docker volume rm "$v"; fi
+    done
+}
 drop_lane_copies() {
     n=$1
     az=""
@@ -48,11 +53,11 @@ for w in build3ds/wt/*/; do
     [ -d "$w" ] || continue
     n=$(basename "$w")
     case "$KEEP" in *",$n,"*) keep_wt="$keep_wt$n,"; echo "keep $n (--keep)"; continue ;; esac
+    if [ -e "$w.wt_keep" ]; then keep_wt="$keep_wt$n,"; echo "keep $n (.wt_keep: an agent works here)"; continue; fi
     case "$(git -C "$w" rev-parse --absolute-git-dir 2>/dev/null)" in
         */worktrees/*) ;;
         *) echo "remove stale folder $n (not a registered worktree)"; run rm -rf -- "build3ds/wt/$n"; continue ;;
     esac
-    if [ -e "$w.wt_keep" ]; then keep_wt="$keep_wt$n,"; echo "keep $n (.wt_keep: an agent works here)"; continue; fi
     if [ -n "$(git -C "$w" status --porcelain -uno -- . ':!3ds/src/map_restore_table.c' ':!3ds/logs/perf/runs.jsonl' 2>/dev/null)" ]; then
         keep_wt="$keep_wt$n,"; echo "keep $n (uncommitted tracked changes)"; continue
     fi
@@ -71,6 +76,7 @@ for w in build3ds/wt/*/; do
     echo "remove worktree $n ($b)"
     run git worktree remove --force --force "build3ds/wt/$n"
     drop_lane_copies "$n"
+    drop_lane_volumes "$n"
 done
 run git worktree prune
 for l in build3ds/lane-* build3ds/at_*; do
@@ -81,8 +87,6 @@ for l in build3ds/lane-* build3ds/at_*; do
     echo "remove lane $l"
     run rm -rf -- "$l"
     drop_lane_copies "$n"
-    for v in "pm3ds-src-$n" "pm3ds-build-$n"; do
-        if docker volume inspect "$v" >/dev/null 2>&1; then echo "remove volume $v"; run docker volume rm "$v"; fi
-    done
+    drop_lane_volumes "$n"
 done
 [ $APPLY = 1 ] || echo "dry run: add --apply to remove"

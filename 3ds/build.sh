@@ -147,9 +147,12 @@ if [ -f $OUT/pm_3ds.elf ]; then
 fi
 publish_3dsx
 # Cap the lane volume sets: keep the newest PM_LANE_KEEP lanes (default 5), by creation time.
+# A lane with a registered worktree (build3ds/wt/<name>, from git worktree list) is live: never removed, not counted.
 # The base volumes (pm3ds-build, pm3ds-src, pm3ds-work, pm3ds-ccache) and the current lane are never removed.
 KEEP=${PM_LANE_KEEP:-5}
+LIVE=$(git worktree list --porcelain | sed -n 's|^worktree .*/build3ds/wt/||p')
 docker volume ls -q | sed -n -E 's/^pm3ds-build-(.+)$/\1/p' | while read -r l; do
+    printf '%s\n' "$LIVE" | grep -qx -- "$l" && continue
     echo "$(docker volume inspect --format '{{.CreatedAt}}' pm3ds-build-$l) $l"
 done | sort -r | awk '{print $2}' | {
     n=0
