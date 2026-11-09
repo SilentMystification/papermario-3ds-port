@@ -95,6 +95,21 @@ static void set_loadblock(unsigned tile, unsigned texels) {
             }
 }
 void op_loadblock(u32 w0, u32 w1) { (void)w0; set_loadblock((w1 >> 24) & 7, (w1 >> 12) & 0xfff); }
+/* D4a-2: tile load setter (decoded fields: tile and the 12 bit window of G_LOADTILE): the LoadTile window and the load record of its TMEM address. */
+static void set_loadtile(unsigned tile, int uls, int ult, int lrs, int lrt) {
+    nd_tm.ld_valid = 1;
+    nd_tm.ld_x = uls >> 2;
+    {
+        unsigned tm = nd_ws.tst1.tile_tmem[tile], k;
+        for (k = 0; k < 4 && !(nd_ws.tst1.ldrec[k].img && nd_ws.tst1.ldrec[k].tmem == tm); k++) {}
+        if (k == 4) k = nd_tm.ldrec_n++ & 3;
+        nd_ws.tst1.ldrec[k].tmem = tm; nd_ws.tst1.ldrec[k].img = nd_ws.timg; nd_ws.tst1.ldrec[k].stride = nd_ws.tst1.timg_stride;
+        nd_ws.tst1.ldrec[k].x = uls >> 2; nd_ws.tst1.ldrec[k].y = ult >> 2;
+    }
+    nd_tm.ld_y = ult >> 2;
+    nd_tm.ld_h = ((lrt - ult) >> 2) + 1;
+    nd_tm.ld_w = ((lrs - uls) >> 2) + 1;
+}
 /* CORE-2b batch D2: palette load setter (decoded fields: tile and entry count). */
 static void set_loadtlut(unsigned tile, unsigned count) {
             nd_ws.tlut = nd_ws.timg;
@@ -243,6 +258,34 @@ static void set_texture(unsigned on, unsigned ss, unsigned ts) {
     nd_ws.tex_ts = ts;
 }
 void op_texture(u32 w0, u32 w1) { set_texture((w0 & 0xff) != 0, w1 >> 16, w1 & 0xffffu); }
+
+/* DIRECT D4a-2: NDC_GLYPH (nd_cmd.h), a message glyph recorded by msg_draw_char. The setters of the ops of gDPLoadTLUT_pal16, gDPLoadTextureBlock_4b
+ * (or gDPLoadTextureTile_4b) and gSPTextureRectangle run in their list order with their decoded fields, each after the walker's op prologue
+ * (gv_epoch, pm_gbi_cur_op); the sync ops are skipped as the walker skips them (g1_skip). The word decode ran on the record side. */
+#define GLY_OP(op) do { gv_epoch++; pm_gbi_cur_op = (op); } while (0)
+void nd_glyph_run(const uint32_t* p) {
+    static const unsigned wr0[4] = { 0, 0, 0, 0 }; /* G_TX_WRAP, G_TX_NOMASK on both axes */
+    const unsigned arg = p[0] & 0xffffu, w = p[3] & 0xffffu, h = p[3] >> 16;
+    if (arg & 1u) { /* gDPLoadTLUT_pal16(0, pal) */
+        GLY_OP(G_SETTIMG); set_timg(p[2], G_IM_FMT_RGBA, G_IM_SIZ_16b, 1);
+        GLY_OP(G_SETTILE); set_tile(G_TX_LOADTILE, 0, 0, 256, 0, wr0, 0, 0);
+        GLY_OP(G_LOADTLUT); set_loadtlut(G_TX_LOADTILE, 15);
+    }
+    if (arg & 2u) { /* gDPLoadTextureTile_4b(raster, CI, w, h, 0, 0, w - 1, h - 1, 0, wrap, wrap, nomask, nomask, nolod, nolod) */
+        GLY_OP(G_SETTIMG); set_timg(p[1], G_IM_FMT_CI, G_IM_SIZ_8b, (int)(((w >> 1) - 1u) & 0xfffu) + 1);
+        GLY_OP(G_SETTILE); set_tile(G_TX_LOADTILE, G_IM_FMT_CI, G_IM_SIZ_8b, 0, 0, wr0, 0, 0);
+        GLY_OP(G_LOADTILE); set_loadtile(G_TX_LOADTILE, 0, 0, (int)(((w - 1u) << 1) & 0xfffu), (int)(((h - 1u) << 2) & 0xfffu));
+    } else { /* gDPLoadTextureBlock_4b(raster, CI, w, h, 0, wrap, wrap, nomask, nomask, nolod, nolod) */
+        unsigned texels = ((w * h + 3u) >> 2) - 1u;
+        GLY_OP(G_SETTIMG); set_timg(p[1], G_IM_FMT_CI, G_IM_SIZ_16b, 1);
+        GLY_OP(G_SETTILE); set_tile(G_TX_LOADTILE, G_IM_FMT_CI, G_IM_SIZ_16b, 0, 0, wr0, 0, 0);
+        GLY_OP(G_LOADBLOCK); set_loadblock(G_TX_LOADTILE, (texels < G_TX_LDBLK_MAX_TXL ? texels : G_TX_LDBLK_MAX_TXL) & 0xfffu);
+    }
+    GLY_OP(G_SETTILE); set_tile(G_TX_RENDERTILE, G_IM_FMT_CI, G_IM_SIZ_4b, 0, 0, wr0, 0, 0);
+    GLY_OP(G_SETTILESIZE); set_tilesize(G_TX_RENDERTILE, 0, 0, (int)(((w - 1u) << 2) & 0xfffu), (int)(((h - 1u) << 2) & 0xfffu));
+    GLY_OP(G_TEXRECT); nd_texrect(p[4], p[5], p[6], p[7]);
+}
+#undef GLY_OP
 
 void unpack8(unsigned c, float o[4]) {
     o[0] = pm_f255[(c >> 24) & 255u];
@@ -533,20 +576,7 @@ __attribute__((noinline)) void tex_op_impl(u32 w0, u32 w1) {
         case G_SETTIMG: op_settimg(w0, w1); break;
         case G_SETTILE: op_settile(w0, w1); break;
         case G_LOADBLOCK: op_loadblock(w0, w1); break;
-        case G_LOADTILE:
-            nd_tm.ld_valid = 1;
-            nd_tm.ld_x = (int)((w0 >> 12) & 0xfff) >> 2;
-            {
-                unsigned tm = nd_ws.tst1.tile_tmem[(w1 >> 24) & 7], k;
-                for (k = 0; k < 4 && !(nd_ws.tst1.ldrec[k].img && nd_ws.tst1.ldrec[k].tmem == tm); k++) {}
-                if (k == 4) k = nd_tm.ldrec_n++ & 3;
-                nd_ws.tst1.ldrec[k].tmem = tm; nd_ws.tst1.ldrec[k].img = nd_ws.timg; nd_ws.tst1.ldrec[k].stride = nd_ws.tst1.timg_stride;
-                nd_ws.tst1.ldrec[k].x = (int)((w0 >> 12) & 0xfff) >> 2; nd_ws.tst1.ldrec[k].y = (int)(w0 & 0xfff) >> 2;
-            }
-            nd_tm.ld_y = (int)(w0 & 0xfff) >> 2;
-            nd_tm.ld_h = (((int)(w1 & 0xfff) - (int)(w0 & 0xfff)) >> 2) + 1;
-            nd_tm.ld_w = ((((int)(w1 >> 12) & 0xfff) - ((int)(w0 >> 12) & 0xfff)) >> 2) + 1;
-            break;
+        case G_LOADTILE: set_loadtile((w1 >> 24) & 7, (int)((w0 >> 12) & 0xfff), (int)(w0 & 0xfff), (int)((w1 >> 12) & 0xfff), (int)(w1 & 0xfff)); break;
         case G_LOADTLUT: op_loadtlut(w0, w1); break;
         case G_SETTILESIZE: op_settilesize(w0, w1); break;
         case G_TEXTURE: op_texture(w0, w1); sync_combine(); break;
