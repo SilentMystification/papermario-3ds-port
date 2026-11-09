@@ -9,6 +9,7 @@
  * its --wrap flag. */
 #include "common.h"
 #include "audio.h"
+#include "pm_port.h"
 
 void pm_audio_gate(void);
 
@@ -63,7 +64,13 @@ AuResult __wrap_snd_ambient_radio_stop(s32 time) { pm_audio_gate(); return __rea
 AuResult __real_snd_ambient_radio_select(s32 index);
 AuResult __wrap_snd_ambient_radio_select(s32 index) { pm_audio_gate(); return __real_snd_ambient_radio_select(index); }
 AuResult __real_snd_song_load(s32 songID, s32 playerIndex);
-AuResult __wrap_snd_song_load(s32 songID, s32 playerIndex) { pm_audio_gate(); return __real_snd_song_load(songID, playerIndex); }
+AuResult __wrap_snd_song_load(s32 songID, s32 playerIndex) { /* BTLWIPE: the song stage of the xfer line (gate wait and load) */
+    unsigned t0 = pm_xf.on ? pm_ticks() : 0u;
+    pm_audio_gate();
+    AuResult r = __real_snd_song_load(songID, playerIndex);
+    if (pm_xf.on) pm_xf.song_t += pm_ticks() - t0;
+    return r;
+}
 AuResult __real_snd_song_request_play_default(s32 songName);
 AuResult __wrap_snd_song_request_play_default(s32 songName) { pm_audio_gate(); return __real_snd_song_request_play_default(songName); }
 AuResult __real_snd_song_request_play(s32 songName, s32 variation);

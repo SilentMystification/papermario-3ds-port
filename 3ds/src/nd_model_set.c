@@ -1,5 +1,5 @@
 /* nd_model_set.c: the native draw of a model record (plan S3N-3c, MOVE-5 split from nd_model.c). Target only: it calls the
- * walker and the GPU (pm_gbi_gv_at, pm_gpu_*, pm_eye_e, pm_dlc_native_ranges). The state it fills (nat, nat_n, nat_rng, nat_nr, nat_geom)
+ * walker and the GPU (pm_gbi_gv_at, pm_gpu_*, pm_dlc_native_ranges). The state it fills (nat, nat_n, nat_rng, nat_nr, nat_geom)
  * stays in nd_model.c, the cache store reads it there. */
 #include <stdint.h>
 #include <string.h>
@@ -13,7 +13,6 @@
 
 extern NdNat nat[ND_NAT_MAX]; extern int nat_n; extern uint64_t nat_vm; extern int nat_vm_ok; extern int nat_nr; extern uint32_t nat_geom;
 
-extern float pm_eye_e, pm_eye_conv;
 void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, NdGvP* o);
 void pm_gpu_pcomp_native(float o[16], const float m[4][4]);
 void pm_gpu_native_submit_draw(NdDraw* d, const uint16_t* sd, unsigned nidx, int tex);
@@ -25,7 +24,7 @@ int nd_model_draw(const uint32_t* rec, const NdMCtx* c0, const void* list, int e
     nat_n = 0; nd_nat_why = 0;
     nd_tmpl_pin(); /* FB-2: the template ids of this record stay valid until its draws are submitted */
     if (!c0->mode || !c0->mode->ok) return (nd_nat_why = 1, -1);
-    nd_mtx_combine(comb, pm_eye_e, pm_eye_conv);
+    nd_mtx_combine(comb);
     pm_gpu_pcomp_native(pal0, comb);
     const uint32_t entry = (c0->geom_base & c0->mode->gand) | c0->mode->gor;
     int nr = pm_dlc_native_ranges(list, entry, rng, 512u);

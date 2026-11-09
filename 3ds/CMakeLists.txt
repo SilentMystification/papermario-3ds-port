@@ -396,6 +396,7 @@ set(PORT_SRC
     src/pm_interp.c
     src/pm_nusys.c
     src/pm_os.c
+    src/pm_romload.c
     src/pm_audio.c
     src/pm_audio_gate.c
     src/pm_au2.c
@@ -434,10 +435,10 @@ endforeach()
 # those libraries were built with it and their structures hold enums.
 set(PM_NO_SHORT_ENUM_SRC ${PORT_SRC} ${GAME_SRC})
 list(REMOVE_DUPLICATES PM_NO_SHORT_ENUM_SRC)
-list(REMOVE_ITEM PM_NO_SHORT_ENUM_SRC src/pm_main.c src/pm_mem.c src/pm_log.c src/pm_flash.c src/pm_wdog.c src/pm_input.c src/pm_gpu.c src/pm_gpu_ui.c src/pm_gpu_rect.c src/pm_tex.c src/pm_audio.c src/pm_au2.c src/pm_dspaud.c)
+list(REMOVE_ITEM PM_NO_SHORT_ENUM_SRC src/pm_main.c src/pm_mem.c src/pm_log.c src/pm_flash.c src/pm_wdog.c src/pm_input.c src/pm_gpu.c src/pm_gpu_ui.c src/pm_gpu_rect.c src/pm_tex.c src/pm_audio.c src/pm_au2.c src/pm_dspaud.c src/pm_romload.c)
 set_property(SOURCE ${PM_NO_SHORT_ENUM_SRC} APPEND PROPERTY COMPILE_OPTIONS -fno-short-enums)
 # S103, hw_guidelines rule 1: cold code outside the hot span (the census, warp and sweep test drivers, the debug game hooks, fxtest): size over speed.
-set_property(SOURCE src/nd_seam.c src/nd_cen.c src/nd_c2haz.c src/pm_warp.c src/pm_sweep.c src/pm_dbg_game.c src/pm_fxtest.c APPEND PROPERTY COMPILE_OPTIONS -Os)
+set_property(SOURCE src/nd_seam.c src/nd_cen.c src/nd_c2haz.c src/pm_warp.c src/pm_sweep.c src/pm_dbg_game.c src/pm_fxtest.c src/pm_romload.c APPEND PROPERTY COMPILE_OPTIONS -Os)
 
 add_executable(pm_3ds
     ${PORT_SRC}
@@ -449,7 +450,7 @@ target_include_directories(pm_3ds PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 set(MS_LD_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ld)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ld/3dsx.ld.in ${CMAKE_BINARY_DIR}/ldscripts/3dsx.ld @ONLY)
 target_link_options(pm_3ds PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/map_syms.lds -B${CMAKE_BINARY_DIR}/ldscripts/ -Wl,--gc-sections -Wl,-Map,${CMAKE_BINARY_DIR}/pm_3ds.map
-    -Wl,--wrap=set_game_mode -Wl,--wrap=load_map_by_IDs -Wl,--wrap=dma_copy -Wl,--wrap=load_asset_by_name
+    -Wl,--wrap=set_game_mode -Wl,--wrap=load_map_by_IDs -Wl,--wrap=load_battle_section -Wl,--wrap=dma_copy -Wl,--wrap=load_asset_by_name
     -Wl,--wrap=step_game_loop -Wl,--wrap=gfx_draw_frame -Wl,--wrap=gfx_task_background -Wl,--wrap=appendGfx_darkness_stencil
     -Wl,--wrap=_heap_create
     ${SND_GATE_WRAPS}

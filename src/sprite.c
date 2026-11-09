@@ -1,3 +1,4 @@
+#define ND_GBI_WORDS /* DIRECT D6: keeps list words (open: with this file recording, pause_spin_grab_det_w300 on mac_00 shows 4 marks on the top rows; plan_direct.md section 5) */
 #include "sprite.h"
 #include "sprite/player.h"
 #include "pm_interp_fi.h"
@@ -227,6 +228,9 @@ void spr_clear_quad_cache(void) {
     }
 }
 
+#ifdef TARGET_3DS
+static Gfx* spr_geo_out; /* DIRECT D6: set by spr_appendGfx_component around the flat path of a recorded sprite */
+#endif
 void spr_appendGfx_component_flat(
     Quad* vertices,
     IMG_PTR raster, PAL_PTR palette,
@@ -317,6 +321,13 @@ void spr_appendGfx_component_flat(
         }
     }
 
+#ifdef TARGET_3DS
+    if (spr_geo_out != nullptr) { /* DIRECT D6: the final vertex and triangle words go with the sprite record (nd_rec_spr), not to the stream */
+        gSPVertex(&spr_geo_out[0], vertices, 4, 0);
+        gSP2Triangles(&spr_geo_out[1], 0, 2, 1, 0, 0, 3, 2, 0);
+        return;
+    }
+#endif
     gSPVertex(gMainGfxPos++, vertices, 4, 0);
     gSP2Triangles(gMainGfxPos++, 0, 2, 1, 0, 0, 3, 2, 0);
     gDPPipeSync(gMainGfxPos++);
@@ -436,14 +447,17 @@ void spr_appendGfx_component(
     gSPDisplayList(gMainGfxPos++, rmList); /* DLF5: a render mode list is a G_DL (ST-4) */
 
     if (quad != nullptr) {
+#ifdef TARGET_3DS
+        Gfx sprGeo[2];
+        spr_geo_out = (sprRec != nullptr && !sprInList) ? sprGeo : nullptr;
+#endif
         spr_appendGfx_component_flat(quad, cache->image, palette, width, height, rotY, mtxTransform, (u8) opacity);
 #ifdef TARGET_3DS
+        spr_geo_out = nullptr;
         if (sprRec != nullptr && sprInList) { /* S4-3: the flat path ends with gSPVertex, gSP2Triangles, gDPPipeSync: the vertex word is 3 words before the end. Header bits 0 to 7 = its offset from the record (the alpha byte is bits 8 to 15) */
             sprRec[0].words.w0 |= (u32)(gMainGfxPos - 3 - sprRec) & 0xffu;
-        } else if (sprRec != nullptr) { /* DIRECT D2: the vertex and triangle words go with the record (the walker draws them when the native draw refuses) */
-            gMainGfxPos -= 3;
-            nd_rec_spr(sprBuf, gMainGfxPos);
-            gDPPipeSync(gMainGfxPos++);
+        } else if (sprRec != nullptr) { /* DIRECT D2, D6: the vertex and triangle words go with the record (the walker draws them when the native draw refuses) */
+            nd_rec_spr(sprBuf, sprGeo);
         }
 #endif
     } else {

@@ -374,7 +374,9 @@ void gfx_draw_background(void) {
             { /* PAUSEC: the z-buffer image is allocated here, not only by the walk of BEGIN_PAUSED (pm_zbuf_need waits for the walker
                * first). No memory: no saved picture; the pause menu draws over the live frame (SHOW_PAUSED draws nothing). */
                 void pm_zbuf_need(void);
+                void pm_log_prof_line(const char* fmt, ...);
                 pm_zbuf_need();
+                pm_log_prof_line("prof pause filter zbuf %d", nuGfxZBuffer ? 1 : 0); /* PAUSEDR: one line per pause open */
                 if (!nuGfxZBuffer) {
                     gPauseBackgroundFade = 0;
                     gGameStatusPtr->backgroundFlags &= ~BACKGROUND_RENDER_STATE_MASK;

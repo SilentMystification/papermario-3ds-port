@@ -5,11 +5,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include "nd.h"
 
 float nd_mv[ND_MV_DEPTH][4][4];
 ND_HOTD int nd_mv_sp;
 float nd_proj[4][4];
+float nd_proj_wn; /* EYECW: length of the xyz part of the w column of nd_proj (0: orthographic). nd_proj is view x perspective, so |p23| alone follows the camera yaw */
 
 void nd_mtx_ident(float m[4][4]) {
     memset(m, 0, sizeof(float) * 16);
@@ -59,6 +61,7 @@ void nd_lights(PmFx* fx, int texgen, const NdLight* lt, unsigned n, const int8_t
 void nd_mtx_reset(void) {
     for (int i = 0; i < 256; i++) f127[i] = (float)(int8_t)i / 127.f;
     nd_mtx_ident(nd_proj);
+    nd_proj_wn = 0.f;
     nd_mtx_ident(nd_mv[0]);
     nd_mv_sp = 0;
 }
@@ -78,6 +81,7 @@ void nd_mtx_load(const float in[4][4], unsigned flags) {
         memcpy(cur, dst, sizeof cur);
         nd_mtx_mul(dst, in, cur);
     }
+    if (is_proj) nd_proj_wn = sqrtf(nd_proj[0][3] * nd_proj[0][3] + nd_proj[1][3] * nd_proj[1][3] + nd_proj[2][3] * nd_proj[2][3]); /* EYECW: one sqrtf per projection load */
 }
 
 void nd_mtx_pop(unsigned count) {
@@ -85,18 +89,8 @@ void nd_mtx_pop(unsigned count) {
     while (count-- && nd_mv_sp > 0) nd_mv_sp--;
 }
 
-/* combined = modelview x projection. STEREO: a perspective projection gets the eye shift x' = x + e * (w - conv). Row 3 is the translation row, the vertex has 1 in that place.
- * An orthographic matrix (UI) stays at the screen plane. e is the signed eye offset, conv the convergence factor. */
-void nd_mtx_combine(float c[4][4], float e, float conv) {
-    const float (*p)[4] = nd_proj;
-    if (e != 0.f && (p[0][3] != 0.f || p[1][3] != 0.f || p[2][3] != 0.f)) {
-        float s[4][4], cw = conv * (p[2][3] < 0.f ? -p[2][3] : p[2][3]);
-        memcpy(s, p, sizeof s);
-        for (int r = 0; r < 4; r++) s[r][0] += e * s[r][3];
-        s[3][0] -= e * cw;
-        nd_mtx_mul(c, nd_mv[nd_mv_sp], s);
-    } else nd_mtx_mul(c, nd_mv[nd_mv_sp], p);
-}
+/* combined = modelview x projection. STEREO: the eye shift is not in this matrix: the vertex shader adds it (pm4/pm5 eye, eyd), so both eyes share one matrix. */
+void nd_mtx_combine(float c[4][4]) { nd_mtx_mul(c, nd_mv[nd_mv_sp], nd_proj); }
 
 /* citro3d Mtx_Multiply (libcitro3d.a, one vmul and three vmla per element): out = a x b on matrices in the C3D_Mtx memory order, accumulation from the last column to the first */
 void nd_mtx_cmul(float o[16], const float a[16], const float b[16]) {

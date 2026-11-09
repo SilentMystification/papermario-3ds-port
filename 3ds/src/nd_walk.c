@@ -220,6 +220,103 @@ void nd_walk_ent(const Gfx* q, unsigned words) {
     if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1);
     if (!drawn && words > G_PM_ENT_WORDS) nd_walk_ops((void*)(q + G_PM_ENT_WORDS), 8u);
 }
+void nd_walk_ops(void* list, unsigned nbytes);
+/* DIRECT D5: a recorded gSPDisplayList (push form). As the walker's G_DL arm: a static list goes to the entity path (ent_gdl) or a compiled map
+ * shape (dlc_try); else the walker runs the list to its G_ENDDL with the sync state kept (nd_walk_ops). */
+static void walk_call(unsigned dbg, const Gfx* at, u32 w0, u32 w1) {
+    (void)w0;
+    if (__builtin_expect(dbg & WD_C2, 0)) nd_c2_src(at);
+    Gfx* next = (Gfx*)ptr_of(w1);
+    if (!next) return;
+    if (!is_host((u32)next)) { gbi_cold_bad_next(w1, w0, (u32)(uintptr_t)at); return; }
+    __builtin_prefetch(next);
+    if (ent_skipgen) ent_skipgen = 0;
+    else if (dlc_on && !((u32)next - (u32)gMapShapeData < 0x40000u)) {
+        NDT_BD(te, dbg); pm_tex_tagi = 5; int eh = ent_gdl(next); NDT_E(te, NDT_ENT);
+        if (eh) return;
+    }
+    if (dlc_on) {
+        NDT_BD(td, dbg); int dh = dlc_try(next); NDT_E(td, NDT_DLC);
+        if (dh) { if (__builtin_expect(dbg & WD_CEN, 0)) walk_dbg_dlc(); return; }
+    }
+    nd_walk_ops(next, 0);
+}
+/* DIRECT D4b-3, D5: NDC_STATE (nd_rec.c): a run of ops recorded by the nd_gbi.h redirect. Each op runs as the walker runs it inside a
+ * list: g2_same skips it (g2_note), else the op prologue (pm_gbi_cur_op, gv_epoch but not for vertex, triangle, matrix and list ops) and the
+ * same handler as the walker's arm. The recorder dropped the RDP syncs (g1_skip); G_ENDDL and the branch form of G_DL stay list words. */
+void nd_walk_state(const uint32_t* q, unsigned n) {
+    const unsigned dbg = pm_walk_dbg;
+    for (const uint32_t* e = q + 2u * n; q < e; q += 2) {
+        const u32 w0 = q[0], w1 = q[1];
+        const unsigned op = w0 >> 24;
+        if (g2_same(op, w0, w1)) { g2_note(op, w0); continue; }
+        pm_gbi_cur_op = op;
+        if (op != G_VTX && op != G_TRI1 && op != G_TRI2 && op != G_MTX && op != G_POPMTX && op != G_DL && op != G_MODIFYVTX) gv_epoch++; /* GV1b */
+        int fp = 0;
+        if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const Gfx*)q, 0, op, w0, w1);
+        switch (op) {
+        case G_VTX: nd_geom_vtx(w0, w1, (const Gfx*)q); break;
+        case G_TRI1:
+            tri_prep_ok = 0;
+            draw_tri(w0);
+            break;
+        case G_TRI2:
+            tri_prep_ok = 0;
+            draw_tri(w0);
+            draw_tri(w1);
+            break;
+        case G_MTX:
+            if (!is_host((u32)(uintptr_t)ptr_of(w1))) gbi_cold_bad_mtx(w0, w1, (Gfx*)q, (Gfx*)q + 1);
+            load_mtx(w0, w1, 0);
+            break;
+        case G_POPMTX: gbi_popmtx(w1); break;
+        case G_MOVEMEM: gbi_movemem(w0, w1); break;
+        case G_MOVEWORD: gbi_moveword(w0, w1); break;
+        case G_MODIFYVTX: gbi_cold_modifyvtx(w0, w1); break;
+        case G_DL: walk_call(dbg, (const Gfx*)q, w0, w1); break;
+        case G_SETCONVERT:
+            conv_k4 = (w1 >> 9) & 0xffu;
+            pm_comb_set_k4(conv_k4);
+            sync_combine();
+            break;
+        case G_SETKEYR:
+            keyc = (keyc & 0x00ffffffu) | ((w1 >> 8 & 0xffu) << 24);
+            keys = (keys & 0x00ffffffu) | ((w1 & 0xffu) << 24);
+            sync_combine();
+            break;
+        case G_SETKEYGB:
+            keyc = (keyc & 0xff000000u) | ((w1 >> 24 & 0xffu) << 16) | ((w1 >> 8 & 0xffu) << 8);
+            keys = (keys & 0xff000000u) | ((w1 >> 16 & 0xffu) << 16) | ((w1 & 0xffu) << 8);
+            sync_combine();
+            break;
+        case G_GEOMETRYMODE: set_geom(w0, w1); break;
+        case G_TEXTURE:
+        case G_SETOTHERMODE_H:
+        case G_SETOTHERMODE_L:
+        case G_SETCOMBINE:
+        case G_SETPRIMCOLOR:
+        case G_SETTIMG:
+        case G_SETTILE:
+        case G_LOADBLOCK:
+        case G_LOADTILE:
+        case G_LOADTLUT:
+        case G_SETTILESIZE: tex_op(w0, w1); break;
+        case G_SETSCISSOR: set_scissor(w0, w1); break;
+        case G_SETFOGCOLOR: set_fogcolor(w1); break;
+        case G_SETBLENDCOLOR: set_blendcolor(w1); break;
+        case G_SETENVCOLOR: gbi_setenv(w1); break;
+        case G_SETCIMG: gbi_setcimg(w0, w1); break;
+        case G_SETPRIMDEPTH: set_primdepth(w1); break;
+        case G_SETFILLCOLOR: set_fillcolor(w1); break;
+        case G_FILLRECT: nd_fillrect(w0, w1); break;
+        case G_NOOP:
+        case G_SETZIMG: break;
+        default: note(op); break;
+        }
+        if (__builtin_expect(fp, 0)) pm_ph_pop();
+    }
+    if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1); /* the class span ends with the command */
+}
 static int walk_keep; /* PERF2: set by nd_walk_ops for the next nd_walk_run only */
 void nd_walk_run(void* list, unsigned nbytes) {
     const unsigned dbg = pm_walk_dbg; /* PROF2-5: once per list */
@@ -514,8 +611,10 @@ void pm_walk_drain(const char* why) {
     /* PAUSEC: pm_walk_side is the game thread's count of the walk it runs. A logic thread drain must wait for that walk too (the
      * queue entry is popped after it runs), so only the walker's own calls return here. */
     if (pm_walk_side && !pm_wq_on_logic()) return;
+    unsigned xt0 = pm_xf.on ? pm_ticks() : 0u; /* BTLWIPE: the dr stage of the xfer line */
     pm_wq_idle();
     if (nd_c2_on > 0) nd_c2_drain(why);
+    if (pm_xf.on) { pm_xf.dr_n++; pm_xf.dr_t += pm_ticks() - xt0; }
 }
 static void gbi_run1(void* list, unsigned nbytes) {
     if (!pm_ph_cen) { nd_walk_run(list, nbytes); return; }

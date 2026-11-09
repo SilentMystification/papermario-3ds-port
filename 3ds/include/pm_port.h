@@ -197,6 +197,7 @@ int pm_rom_init(void);
 /* BOOT-1: boot timing marks (pm_main.c). pm_boot_mark stores the svc tick of point id once; arg is the ROM byte count for PMB_ROM_READ. */
 enum { PMB_MAIN, PMB_THREAD, PMB_LOG, PMB_OPT, PMB_ROM_OPEN, PMB_ROM_READ, PMB_GFX, PMB_AUDIO, PMB_DRAW, PMB_TITLE, PMB_N };
 void pm_boot_mark(int id, unsigned arg);
+unsigned pm_rom_order_n(void); /* BOOT step 0: 128 KB ROM chunks touched so far (switch romorder, pm_os.c) */
 void pm_rom_drop_stat(void);
 void pm_heaphi_line(unsigned frame); /* MEM-B: pm_heaphi.c */
 void pm_fatal_screen(const char* msg);
@@ -372,12 +373,18 @@ typedef struct {
     unsigned warm_f, warm_skip;   /* MAPX-3: covered frames that built under a budget, model record misses they skipped */
     int diag;                     /* switch xferdiag: each model cache miss is classed by the first key word that differs (nd_mc_xdiag) */
     unsigned wh[93];              /* xferdiag: misses per first differing key word (92: no stored entry of the same model) */
+    unsigned song_t;              /* BTLWIPE: snd_song_load ticks (the audio gate wait and au_load_song_files) */
+    unsigned bk_n, bk_t;          /* BTLWIPE: au_load_BK_to_bank calls, ticks (its render sync and reads) */
+    unsigned dr_n, dr_t;          /* BTLWIPE: pm_walk_drain calls that waited for the walk, ticks */
+    unsigned cap_cpu;             /* BTLWIPE: CPU reads of the colour buffer (cfb_capture_prev path cpu) */
 } PmXf;
 extern PmXf pm_xf;
 void pm_xfer_map_begin(void);                     /* set_game_mode(GAME_MODE_CHANGE_MAP) */
 void pm_xfer_map_load(int area, int map);         /* __wrap_load_map_by_IDs: the target */
 void pm_xfer_door(int state);                     /* rooms.c SetDoorState: 1 entering, 2 exiting, 0 idle */
 void pm_xfer_step(unsigned long long t0, unsigned long long t1); /* pm_main.c: once per game step, its work ticks */
+void pm_xfer_btl_begin(void);                     /* BTLWIPE: encounter.c PRE_BATTLE_INIT, the battle song push (the star wipe starts) */
+void pm_xfer_btl_load(unsigned ticks);            /* BTLWIPE: __wrap_load_battle_section, its ticks */
 int pm_xfer_skip(int kind); /* MAPX-3: 1 when a cache build of this kind (0 model record miss) is over the budget of a covered frame (skip its draw) */
 
 #endif

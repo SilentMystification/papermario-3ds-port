@@ -35,11 +35,13 @@ int n_cmd, n_in, n_drop, n_out;
 typedef NdGvP GvP;
 
 
+float nd_eye_cull_e, nd_eye_cull_k; /* STEREO: the eye shift of the frame (pm_gpu.c begin): e and e * conv (cw = conv * nd_proj_wn); 0 in a mono frame */
 int clip_bits4(const float* p) { /* the same bits as clip_bits, from a clip position x y z w */
     int b = 0;
     float w = p[3];
-    if (p[0] < -w) b |= 1;
-    if (p[0] > w) b |= 2;
+    float wx = w + (w < 0.f ? -w : w) * nd_eye_cull_e + nd_eye_cull_k * nd_proj_wn; /* STEREO: out of an x plane for both eyes (x moves by at most e (|w| + cw)); w in a mono frame */
+    if (p[0] < -wx) b |= 1;
+    if (p[0] > wx) b |= 2;
     if (p[1] < -w) b |= 4;
     if (p[1] > w) b |= 8;
     if (p[2] > w) b |= 32;
@@ -195,15 +197,17 @@ void gv_epoch_enter(void) {
 }
 
 /* GV1: one triangle of ring vertices. Returns 1 when it is done (rejected or sent to the GPU). Returns 0 when the CPU path must take it (reason in gv_fb). */
+extern unsigned char pm_gv_rejm; /* pm_gpu.c */
 int gv_tri(const int* idx) {
     int a = idx[0], b = idx[1], c = idx[2];
     int why = -1;
-    if ((vert_cb[a] & vert_cb[b] & vert_cb[c]) & 0x2f) { n_out++; PH_ADD(C_GVREJ, 1); GP_LAP(GPL_EARLY); return 1; }
+    const unsigned rm = pm_gv_rejm; /* WIDE4: 0x2c with wide and an orthographic matrix (pm_gpu_set_mvp): the UI spans clip x -1.25..1.25, so the x planes reject nothing (the GPU clips at the screen edge) */
+    if ((vert_cb[a] & vert_cb[b] & vert_cb[c]) & rm) { n_out++; PH_ADD(C_GVREJ, 1); GP_LAP(GPL_EARLY); return 1; }
     if ((vert_cb[a] | vert_cb[b] | vert_cb[c]) & 0x2f) {
         if (!(vert_gvf[a] & 1) && vert_cb[a]) gv_xf(a);
         if (!(vert_gvf[b] & 1) && vert_cb[b]) gv_xf(b);
         if (!(vert_gvf[c] & 1) && vert_cb[c]) gv_xf(c);
-        if ((vert_cb[a] & vert_cb[b] & vert_cb[c]) & 0x2f) { n_out++; PH_ADD(C_GVREJ, 1); GP_LAP(GPL_EARLY); return 1; }
+        if ((vert_cb[a] & vert_cb[b] & vert_cb[c]) & rm) { n_out++; PH_ADD(C_GVREJ, 1); GP_LAP(GPL_EARLY); return 1; }
     }
     if (vert_scr[a] | vert_scr[b] | vert_scr[c]) why = GVR_SCR;
     else if (vert_tss[a] != vert_tss[b] || vert_tss[a] != vert_tss[c]) why = GVR_TSS;

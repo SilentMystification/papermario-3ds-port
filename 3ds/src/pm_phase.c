@@ -445,12 +445,14 @@ static unsigned long long lg0_t, lg0_w, lg0_pe[3]; static unsigned lg0_n, lg0_s,
 void pm_wq_pf(unsigned out[2]);
 extern unsigned pm_au_pf_lgj, pm_au_pf_job, pm_au2_pf_busy;
 static unsigned lg0_x[5];
+extern unsigned pm_wq_dr, pm_wq_drw, pm_wq_wqf; /* nd_wq.c, PAUSEDR */
+static unsigned lg0_q[3];
 static void pf_c1_now(unsigned* x) {
     unsigned w[2];
     pm_wq_pf(w);
     x[0] = w[0]; x[1] = w[1]; x[2] = pm_au_pf_lgj; x[3] = pm_au_pf_job; x[4] = pm_au2_pf_busy;
 }
-static void pf_lg_mark(void) { int c; unsigned k; pm_lg_pf(&lg0_t, &lg0_n, &lg0_w, &lg0_s, &c, &k, lg0_pe, &lg0_kf); pf_c1_now(lg0_x); }
+static void pf_lg_mark(void) { int c; unsigned k; pm_lg_pf(&lg0_t, &lg0_n, &lg0_w, &lg0_s, &c, &k, lg0_pe, &lg0_kf); pf_c1_now(lg0_x); lg0_q[0] = pm_wq_dr; lg0_q[1] = pm_wq_drw; lg0_q[2] = pm_wq_wqf; }
 static void pf_reset(void) {
     pf_lg_mark();
     pm_au_pf_sum = 0; pm_au_pf_max = 0;
@@ -493,6 +495,9 @@ static void pf_scene_note(void) {
 /* C1WAIT: ms x 100 per logic step of a window: the change of a 32 bit tick counter (mark to now) over n steps. Cold: once per window. */
 static unsigned pf_cms(unsigned now, unsigned mark, unsigned n) {
     return n ? (unsigned)((unsigned long long)(unsigned)(now - mark) * 100ull / ((unsigned long long)n * PF_TPM)) : 0u;
+}
+static unsigned pf_cnt100(unsigned count, unsigned n) { /* PAUSEDR: events per step x 100 of a window (a count, not ticks) */
+    return n ? (unsigned)((unsigned long long)count * 100ull / n) : 0u;
 }
 static unsigned pf_cs(unsigned long long ticks, unsigned n) { /* mean ms x 100 of n frames */
     return n ? (unsigned)(ticks * 100ull / ((unsigned long long)n * PF_TPM)) : 0u;
@@ -559,11 +564,13 @@ static void pf_report(void) {
         pm_log_prof_line("prof f%u w%u cnt prg %u.%u shr %u.%u upd %u.%u spl %u.%u smh %u.%u smm %u.%u esync %u.%u gdl %u.%u", pf_total, pf_w,
             C1(c10[0]), C1(c10[1]), C1(c10[2]), C1(c10[3]), C1(c10[4]), C1(c10[5]), C1(c10[6]), C1(c10[7]));
         { /* DIRECT: frame stream commands per drawn frame x 10 (nd_rec.c): list spans, model, sprite and entity records, ranges, compound texture loads, texture rectangles; kb = the stream high-water mark */
-            unsigned nc[NDC_N], kb, n10[NDC_N];
-            nd_rec_cnt_take(nc, &kb);
+            unsigned nc[NDC_N], kb, n10[NDC_N], sw;
+            nd_rec_cnt_take(nc, &sw, &kb);
             for (int k = 0; k < NDC_N; k++) n10[k] = (unsigned)((unsigned long long)nc[k] * 10u / pw);
-            pm_log_prof_line("prof f%u w%u ndc list %u.%u model %u.%u spr %u.%u ent %u.%u call %u.%u tex4 %u.%u trect %u.%u kb %u", pf_total, pf_w,
-                C1(n10[NDC_LIST]), C1(n10[NDC_MODEL]), C1(n10[NDC_SPR]), C1(n10[NDC_ENT]), C1(n10[NDC_CALL]), C1(n10[NDC_TEX4]), C1(n10[NDC_TEXRECT]), kb);
+            sw = (unsigned)((unsigned long long)sw * 10u / pw);
+            pm_log_prof_line("prof f%u w%u ndc list %u.%u model %u.%u spr %u.%u ent %u.%u call %u.%u trect %u.%u st %u.%u sw %u.%u kb %u", pf_total, pf_w,
+                C1(n10[NDC_LIST]), C1(n10[NDC_MODEL]), C1(n10[NDC_SPR]), C1(n10[NDC_ENT]), C1(n10[NDC_CALL]), C1(n10[NDC_TEXRECT]),
+                C1(n10[NDC_STATE]), C1(sw), kb);
         }
 #undef CS
 #undef C1
@@ -610,8 +617,13 @@ static void pf_report(void) {
             pf_c1_now(c1);
             bw = pf_cms(c1[0], lg0_x[0], dn); fw = pf_cms(c1[1], lg0_x[1], dn); aj = pf_cms(c1[2], lg0_x[2], dn);
             au = pf_cms(c1[3], lg0_x[3], dn); mx = pf_cms(c1[4], lg0_x[4], dn);
+            /* PAUSEDR: dr, drw, wqf = logic thread drains per step, drains that waited on a non-empty queue per step, waits for a full
+             * queue per step (x100). A pause step that drains tens of times is the ROM read cost (dma_load_msg). */
+            unsigned dr = pf_cnt100(pm_wq_dr - lg0_q[0], dn), drw = pf_cnt100(pm_wq_drw - lg0_q[1], dn), wqf = pf_cnt100(pm_wq_wqf - lg0_q[2], dn);
             pm_log_prof_line("prof f%u w%u core2 wait bw %u.%02u fw %u.%02u aj %u.%02u au %u.%02u mx %u.%02u", pf_total, pf_w,
                 bw / 100u, bw % 100u, fw / 100u, fw % 100u, aj / 100u, aj % 100u, au / 100u, au % 100u, mx / 100u, mx % 100u);
+            pm_log_prof_line("prof f%u w%u core2 drain dr %u.%02u drw %u.%02u wqf %u.%02u", pf_total, pf_w,
+                dr / 100u, dr % 100u, drw / 100u, drw % 100u, wqf / 100u, wqf % 100u);
         }
     }
     if (c1_st == 1) c1_begin(); /* CORE2C C1P */

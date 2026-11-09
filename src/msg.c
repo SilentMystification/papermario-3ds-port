@@ -1425,25 +1425,44 @@ void dma_load_msg(u32 msgID, void* dest) {
     dma_copy(&langPtr[(u32)offset[0]], &langPtr[(u32)offset[1]], dest);
 }
 #else
+#ifdef TARGET_3DS
+/* PAUSEDR: a message read copies the resident ROM image (pm_rom_ptr, raw big-endian bytes like nuPiReadRom without its swaps) instead of
+ * three nuPiReadRom calls. nuPiReadRom drains the walker queue on the logic thread (pm_walk_drain), so each read waited for the frame
+ * walk: a pause step did tens of them (dma_load_msg, get_msg_width). The message buffers are CPU-parsed text, never a walker source or a
+ * texture, so nothing the walker reads is written here. The message range (0x1B83000 to 0x1C84D30) is a kept segment (rom_remap.h).
+ * A range with no resident pointer (no image, dropped range) takes the dma_copy path as before. */
+const unsigned char* pm_rom_ptr(unsigned addr, unsigned len);
+static void msg_rom_copy(u32 romStart, u32 romEnd, void* dest) {
+    const unsigned char* p = pm_rom_ptr(romStart, romEnd - romStart);
+    if (p) memcpy(dest, p, romEnd - romStart);
+    else dma_copy((u8*)romStart, (u8*)romEnd, dest);
+}
+#endif
 void dma_load_msg(u32 msgID, void* dest) {
     u8* addr = (u8*) MSG_ROM_START + (msgID >> 14); // (msgID >> 16) * 4
     PTRCHECK("dma_load_msg(ptr)", msgID >= 0x2F0000u ? msgID : 0);
     u8* offset[2]; // start, end
 
-    dma_copy(addr, addr + 4, &offset[0]); // Load section offset
 #ifdef TARGET_3DS
+    msg_rom_copy((u32)addr, (u32)addr + 4, &offset[0]); // Load section offset
     offset[0] = (u8*)__builtin_bswap32((u32)offset[0]);
+#else
+    dma_copy(addr, addr + 4, &offset[0]); // Load section offset
 #endif
 
     addr = MSG_ROM_START + offset[0] + (msgID & 0xFFFF) * 4;
-    dma_copy(addr, addr + 8, &offset); // Load message start and end offsets
 #ifdef TARGET_3DS
+    msg_rom_copy((u32)addr, (u32)addr + 8, &offset); // Load message start and end offsets
     offset[0] = (u8*)__builtin_bswap32((u32)offset[0]);
     offset[1] = (u8*)__builtin_bswap32((u32)offset[1]);
-#endif
+    // Load the msg data
+    msg_rom_copy((u32)MSG_ROM_START + (u32)offset[0], (u32)MSG_ROM_START + (u32)offset[1], dest);
+#else
+    dma_copy(addr, addr + 8, &offset); // Load message start and end offsets
 
     // Load the msg data
     dma_copy(MSG_ROM_START + offset[0], MSG_ROM_START + offset[1], dest);
+#endif
 }
 #endif
 

@@ -5,7 +5,6 @@
 #include "ld_addrs.h"
 #include "pm_interp_fi.h"
 #ifdef TARGET_3DS
-#include "nd_gbi_tex.h" /* DIRECT D4b-2: the texture loads and rectangles of this file are frame stream commands */
 #endif
 
 #define MAX_HUD_CACHE_ENTRIES 192
@@ -1691,7 +1690,7 @@ void render_transformed_hud_elements(void) {
                         }
                     }
 
-                    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 12, 20, 308, 220);
+                    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, pm_wide ? 0 : 12, pm_wide ? 0 : 20, pm_wide ? SCREEN_WIDTH : 308, pm_wide ? SCREEN_HEIGHT : 220); /* WIDE4: a transformed HUD element (battle wheel spots, reel, beam) placed in the wide margin is drawn to the screen edge */
                     gDPPipeSync(gMainGfxPos++);
                     gSPClearGeometryMode(gMainGfxPos++, G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
                     gSPSetGeometryMode(gMainGfxPos++, G_ZBUFFER | G_SHADE | G_LIGHTING | G_SHADING_SMOOTH);
@@ -1756,7 +1755,7 @@ void render_transformed_hud_elements(void) {
                         }
                     }
 
-                    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 12, 20, 308, 220);
+                    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, pm_wide ? 0 : 12, pm_wide ? 0 : 20, pm_wide ? SCREEN_WIDTH : 308, pm_wide ? SCREEN_HEIGHT : 220); /* WIDE4: a transformed HUD element (battle wheel spots, reel, beam) placed in the wide margin is drawn to the screen edge */
                     gDPPipeSync(gMainGfxPos++);
                     gSPClearGeometryMode(gMainGfxPos++, G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
                     gSPSetGeometryMode(gMainGfxPos++, G_ZBUFFER | G_SHADE | G_LIGHTING | G_SHADING_SMOOTH);
@@ -1814,7 +1813,7 @@ void immediately_render_complex_hud_element(s32 elemID, s32 arg1, s32 camID) {
 
         gSPMatrix(gMainGfxPos++, &gDisplayContext->camPerspMatrix[gCurrentCamID], G_MTX_NOPUSH | G_MTX_LOAD |
                                                                                     G_MTX_PROJECTION);
-        gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 12, 20, 308, 220);
+        gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, pm_wide ? 0 : 12, pm_wide ? 0 : 20, pm_wide ? SCREEN_WIDTH : 308, pm_wide ? SCREEN_HEIGHT : 220); /* WIDE4: a transformed HUD element (battle wheel spots, reel, beam) placed in the wide margin is drawn to the screen edge */
         gDPPipeSync(gMainGfxPos++);
         gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
         gSPClearGeometryMode(gMainGfxPos++, G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING |

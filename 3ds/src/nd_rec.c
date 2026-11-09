@@ -18,8 +18,8 @@ void nd_walk_ops(void* list, unsigned nbytes); /* nd_walk.c: a span that keeps t
 void nd_walk_rec_model(const Gfx* q);           /* nd_walk.c: a model record, as the walker's G_PM_REC arm */
 void nd_walk_spr(const Gfx* q);                 /* nd_walk.c: a sprite record and its geometry words */
 void nd_walk_ent(const Gfx* q, unsigned words); /* nd_walk.c: an entity record (and its G_DL) */
-void nd_tex4_run(const uint32_t* p);            /* nd_tex_set.c: a compound texture load */
 void nd_texrect_run(const uint32_t* p);         /* nd_tex_set.c: a texture rectangle */
+void nd_walk_state(const uint32_t* q, unsigned n); /* nd_walk.c: a run of state ops */
 int nd_rec_sub;
 
 #define CH_WORDS (32768u / 4u)
@@ -34,6 +34,9 @@ static uint32_t* first_list; /* the first NDC_LIST of the open task (its start i
 static Gfx* cut;           /* the end of the last span (NULL: the task list base, not known before close) */
 static unsigned hw_units;  /* PROF: the most 4-byte words of one context stream (the high-water mark) */
 static unsigned ndc_n[NDC_N]; /* PROF: commands recorded per op (relaxed counters: the logic writes, the prof report reads) */
+static unsigned ndc_sw;      /* PROF: state ops recorded (NDC_STATE units) */
+static uint32_t* st_hdr;     /* D4b-3: the header of the open NDC_STATE run (rec_take clears it: any other record closes the run) */
+static uint32_t* st_end;
 
 static __attribute__((cold, noinline)) uint32_t* ch_get(NdChain* c, unsigned i) {
     if (i >= CH_MAX) { pm_log_e("ndc: stream over %u chunks", CH_MAX); pm_fatal_stop("ndc: frame stream full"); }
@@ -56,9 +59,11 @@ static void rec_ctx_check(void) {
     rec_ctx = x;
     ch_enter(&chain[x], 0);
     task_head = NULL;
+    st_hdr = NULL;
 }
 /* Room for n words (header and payload): else the chunk ends with NDC_JUMP to the next one. */
 static uint32_t* rec_take(unsigned n) {
+    st_hdr = NULL; /* any record closes the open state run (nd_rec_state reopens its own) */
     if (wp + n > wend) {
         NdChain* c = &chain[rec_ctx];
         uint32_t* j = wp;
@@ -155,19 +160,6 @@ void nd_rec_ent(const void* rec) {
     p[1] = 0;
     memcpy(p + 2, rec, G_PM_ENT_WORDS * 8u);
 }
-void nd_rec_tex4(const NdTex4* t) {
-    nd_rec_cut();
-    uint32_t* p = rec_take(8);
-    ndc_n[NDC_TEX4]++;
-    p[0] = NDC_HDR(NDC_TEX4, 3, t->flags);
-    p[1] = (uint32_t)(uintptr_t)t->raster;
-    p[2] = (uint32_t)(uintptr_t)t->pal;
-    p[3] = t->wh;
-    p[4] = t->ul;
-    p[5] = t->lr;
-    p[6] = t->f;
-    p[7] = t->siz;
-}
 void nd_rec_texrect(uint32_t w0, uint32_t w1, uint32_t hs, uint32_t hd) {
     nd_rec_cut();
     uint32_t* p = rec_take(6);
@@ -179,77 +171,57 @@ void nd_rec_texrect(uint32_t w0, uint32_t w1, uint32_t hs, uint32_t hd) {
     p[4] = hs;
     p[5] = hd;
 }
-/* D4b-1: the nd_gbi_tex.h redirect. g is the packet the macro evaluated (gMainGfxPos++); it is taken back, then recorded, or written as words
- * inside a list for later (nd_rec_sub > 0). */
-static __attribute__((cold, noinline)) void gx_bad(const Gfx* g) {
-    pm_log_e("ndc: redirected texture macro with the packet %p, not gMainGfxPos - 1 (%p)", (const void*)g, (const void*)(gMainGfxPos - 1));
-    pm_fatal_stop("ndc: redirected macro on a local list");
-}
-void nd_gx_tlut16(Gfx* g, unsigned slot, const void* dram) {
-    if (g != gMainGfxPos - 1) gx_bad(g);
-    gMainGfxPos = g;
-    if (nd_rec_sub) { gDPLoadTLUT_pal16(gMainGfxPos++, slot, dram); return; }
-    NdTex4 t = { NULL, dram, 1u, 0, 0, 0, (slot & 15u) << 28 };
-    nd_rec_tex4(&t);
-}
-void nd_gx_tex4(Gfx* g, const void* timg, unsigned fmt, unsigned w, unsigned h, int uls, int ult, int lrs, int lrt, unsigned pal,
-                unsigned cms, unsigned cmt, unsigned masks, unsigned maskt, unsigned shifts, unsigned shiftt, unsigned tile_form) {
-    if (g != gMainGfxPos - 1) gx_bad(g);
-    gMainGfxPos = g;
-    if (nd_rec_sub) {
-        if (tile_form) { gDPLoadTextureTile_4b(gMainGfxPos++, timg, fmt, w, h, uls, ult, lrs, lrt, pal, cms, cmt, masks, maskt, shifts, shiftt); }
-        else { gDPLoadTextureBlock_4b(gMainGfxPos++, timg, fmt, w, h, pal, cms, cmt, masks, maskt, shifts, shiftt); }
+/* D4b-3: a state op extends the open NDC_STATE run when nothing was recorded after it (no span, no other command) and the chunk has room;
+ * else it opens a new run. */
+void nd_rec_state(uint32_t w0, uint32_t w1) {
+    nd_rec_cut();
+    ndc_sw++;
+    uint32_t* h = st_hdr;
+    if (h && wp == st_end && ((h[0] >> 16) & 0xffu) < 255u && wp + 2u <= wend) {
+        h[0] += 1u << 16;
+        uint32_t* p = rec_take(2);
+        p[0] = w0;
+        p[1] = w1;
+        st_hdr = h;
+        st_end = wp;
         return;
     }
-    NdTex4 t = { timg, NULL, tile_form ? 6u : 2u, (w & 0xffffu) | (h << 16), ((unsigned)uls & 0xffffu) | ((unsigned)ult << 16),
-                 ((unsigned)lrs & 0xffffu) | ((unsigned)lrt << 16),
-                 (fmt & 7u) | ((cms & 3u) << 4) | ((cmt & 3u) << 6) | ((masks & 15u) << 8) | ((maskt & 15u) << 12) | ((shifts & 15u) << 16) |
-                 ((shiftt & 15u) << 20) | ((pal & 15u) << 24) };
-    nd_rec_tex4(&t);
+    uint32_t* p = rec_take(4);
+    ndc_n[NDC_STATE]++;
+    p[0] = NDC_HDR(NDC_STATE, 1, 0);
+    p[1] = 0;
+    p[2] = w0;
+    p[3] = w1;
+    st_hdr = p;
+    st_end = wp;
 }
-void nd_gx_texrect(Gfx* g, int xl, int yl, int xh, int yh, unsigned tile, int s, int t, int dsdx, int dtdy) {
-    if (g != gMainGfxPos - 1) gx_bad(g);
-    gMainGfxPos = g;
-    Gfx r[3];
-    Gfx* rp = r;
-    gSPTextureRectangle(rp++, xl, yl, xh, yh, tile, s, t, dsdx, dtdy);
-    if (nd_rec_sub) { memcpy(gMainGfxPos, r, sizeof r); gMainGfxPos += 3; return; }
-    nd_rec_texrect(r[0].words.w0, r[0].words.w1, r[1].words.w1, r[2].words.w1);
+/* D4b-3, D5: the nd_gbi.h redirect. The packet gMainGfxPos++ is taken back and the op recorded; the RDP syncs are dropped (the walker skips
+ * them: g1_skip). A texture rectangle (its op word and the two RDPHALF words, written by one macro) is held until its last word and recorded as
+ * NDC_TEXRECT. Any other packet (a local list), a list for later (nd_rec_sub > 0), G_ENDDL and the branch form of G_DL keep the word. */
+static uint32_t tr_w[3];
+static unsigned tr_n; /* the words of the texture rectangle being recorded */
+static __attribute__((cold, noinline)) void tr_bad(uint32_t w0) {
+    pm_log_e("ndc: texture rectangle word %u followed by %08x", tr_n, (unsigned)w0);
+    pm_fatal_stop("ndc: broken texture rectangle");
 }
-void nd_gx_textile(Gfx* g, const void* timg, unsigned fmt, unsigned siz, unsigned w, unsigned h, int uls, int ult, int lrs, int lrt, unsigned pal,
-                   unsigned cms, unsigned cmt, unsigned masks, unsigned maskt, unsigned shifts, unsigned shiftt) {
-    if (g != gMainGfxPos - 1) gx_bad(g);
+void nd_gx_w(Gfx* g, uint32_t w0, uint32_t w1) {
+    if (g != gMainGfxPos - 1 || nd_rec_sub) { g->words.w0 = w0; g->words.w1 = w1; return; }
+    const unsigned op = w0 >> 24;
+    if (op == G_ENDDL || (op == G_DL && ((w0 >> 16) & 0xffu) == G_DL_NOPUSH)) { g->words.w0 = w0; g->words.w1 = w1; return; }
     gMainGfxPos = g;
-    if (nd_rec_sub) { /* the words of gDPLoadTextureTile (its siz##_TILE_BYTES and _LINE_BYTES are 0, 1, 2, 2 for 4b, 8b, 16b, 32b) */
-        static const unsigned char tb[4] = { 0, 1, 2, 2 };
-        unsigned line = (((unsigned)(lrs - uls + 1) * tb[siz & 3u]) + 7u) >> 3;
-        gDPSetTextureImage(gMainGfxPos++, fmt, siz, w, timg);
-        gDPSetTile(gMainGfxPos++, fmt, siz, line, 0, G_TX_LOADTILE, 0, cmt, maskt, shiftt, cms, masks, shifts);
-        gDPLoadSync(gMainGfxPos++);
-        gDPLoadTile(gMainGfxPos++, G_TX_LOADTILE, uls << G_TEXTURE_IMAGE_FRAC, ult << G_TEXTURE_IMAGE_FRAC, lrs << G_TEXTURE_IMAGE_FRAC, lrt << G_TEXTURE_IMAGE_FRAC);
-        gDPPipeSync(gMainGfxPos++);
-        gDPSetTile(gMainGfxPos++, fmt, siz, line, 0, G_TX_RENDERTILE, pal, cmt, maskt, shiftt, cms, masks, shifts);
-        gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, uls << G_TEXTURE_IMAGE_FRAC, ult << G_TEXTURE_IMAGE_FRAC, lrs << G_TEXTURE_IMAGE_FRAC, lrt << G_TEXTURE_IMAGE_FRAC);
-        return;
+    if (__builtin_expect(tr_n != 0, 0)) {
+        if (tr_n == 1 && op == G_RDPHALF_1) { tr_w[2] = w1; tr_n = 2; return; }
+        if (tr_n == 2 && op == G_RDPHALF_2) { tr_n = 0; nd_rec_texrect(tr_w[0], tr_w[1], tr_w[2], w1); return; }
+        tr_bad(w0);
     }
-    NdTex4 t = { timg, NULL, 10u, (w & 0xffffu) | (h << 16), ((unsigned)uls & 0xffffu) | ((unsigned)ult << 16),
-                 ((unsigned)lrs & 0xffffu) | ((unsigned)lrt << 16),
-                 (fmt & 7u) | ((cms & 3u) << 4) | ((cmt & 3u) << 6) | ((masks & 15u) << 8) | ((maskt & 15u) << 12) | ((shifts & 15u) << 16) |
-                 ((shiftt & 15u) << 20) | ((pal & 15u) << 24), siz & 3u };
-    nd_rec_tex4(&t);
-}
-void nd_gx_scisrect(Gfx* g, int xl, int yl, int xh, int yh, unsigned tile, int s, int t, int dsdx, int dtdy) {
-    if (g != gMainGfxPos - 1) gx_bad(g);
-    gMainGfxPos = g;
-    Gfx r[3];
-    Gfx* rp = r;
-    gSPScisTextureRectangle(rp++, xl, yl, xh, yh, tile, s, t, dsdx, dtdy);
-    if (nd_rec_sub) { memcpy(gMainGfxPos, r, sizeof r); gMainGfxPos += 3; return; }
-    nd_rec_texrect(r[0].words.w0, r[0].words.w1, r[1].words.w1, r[2].words.w1);
+    if (op == G_TEXRECT || op == G_TEXRECTFLIP) { tr_w[0] = w0; tr_w[1] = w1; tr_n = 1; return; }
+    if (op == G_RDPPIPESYNC || op == G_RDPTILESYNC || op == G_RDPLOADSYNC || op == G_RDPFULLSYNC || op == G_SPNOOP) return;
+    nd_rec_state(w0, w1);
 }
 const uint32_t* nd_rec_pos(void) { return wp; }
 const uint32_t* nd_rec_mark(void) {
     nd_rec_cut();
+    st_hdr = NULL; /* a range bound closes the state run: the range starts or ends at a command header */
     return wp;
 }
 void nd_rec_call(const uint32_t* a, const uint32_t* b) {
@@ -286,9 +258,10 @@ const uint32_t* nd_rec_close(const void* list, unsigned nbytes) {
     return h;
 }
 /* PROF: the commands per op since the last take, and the stream high-water mark in KB (pm_phase.c ndc line). */
-void nd_rec_cnt_take(unsigned o[NDC_N], unsigned* kb) {
-    static unsigned last[NDC_N];
+void nd_rec_cnt_take(unsigned o[NDC_N], unsigned* sw, unsigned* kb) {
+    static unsigned last[NDC_N], last_sw;
     for (unsigned i = 0; i < NDC_N; i++) { unsigned v = ndc_n[i]; o[i] = v - last[i]; last[i] = v; }
+    { unsigned v = ndc_sw; *sw = v - last_sw; last_sw = v; }
     *kb = (hw_units * 4u + 1023u) >> 10;
 }
 
@@ -312,8 +285,8 @@ static void stream_run(const uint32_t* p, const uint32_t* stop) {
         case NDC_MODEL: nd_walk_rec_model((const Gfx*)(p + 2)); break;
         case NDC_SPR: nd_walk_spr((const Gfx*)(p + 2)); break;
         case NDC_ENT: nd_walk_ent((const Gfx*)(p + 2), (h >> 16) & 0xffu); break;
-        case NDC_TEX4: nd_tex4_run(p); break;
         case NDC_TEXRECT: nd_texrect_run(p); break;
+        case NDC_STATE: nd_walk_state(p + 2, (h >> 16) & 0xffu); break;
         case NDC_CALL: stream_run((const uint32_t*)(uintptr_t)p[1], (const uint32_t*)(uintptr_t)p[2]); break;
         default: run_bad(h, p); return;
         }

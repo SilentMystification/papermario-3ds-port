@@ -6,6 +6,7 @@
 #include "camera.h"
 #include "game_modes.h"
 #include "pm_port.h"
+#include "battle/battle.h"
 
 void partner_enable_input(void);
 int strcmp(const char* a, const char* b);
@@ -570,6 +571,31 @@ static void map_prefetch(void) {
     }
     pm_prefetch_post(sn, src[0], clen[0], dec[0], hn, src[1], clen[1], dec[1]);
 }
+/* BTLWIPE F5: post the Yay0 decode of the battle stage's shape and hit when the star wipe has closed (PRE_BATTLE_LOAD, encounter.c, the
+ * first step with the screen black), about 16 steps before BTL_SUBSTATE_NORMAL_START_INIT decodes them (btl_states_actions.c). Not at the
+ * start of the wipe: the decode is one long call without a system call, and Azahar did not switch core 1 back to the logic thread inside
+ * it (the longest wipe step went 4.0 -> 28.3 ms). battleID and stageID are the ones PRE_BATTLE_LOAD gives
+ * load_battle and set_battle_stage (no formation override there); the stage is the one load_battle_section and that state pick. The
+ * battle area tables are linked (static). */
+void pm_btl_prefetch(s32 battleID, s32 stageID) {
+    extern void pm_prefetch_post(const char* shape, const unsigned char* ssrc, unsigned scl, unsigned sdec, const char* hit, const unsigned char* hsrc, unsigned hcl, unsigned hdec);
+    u32 area = UNPACK_BTL_AREA(battleID), idx = UNPACK_BTL_INDEX(battleID);
+    if (area >= (u32)ARRAY_COUNT(gBattleAreas)) return;
+    BattleArea* ba = &gBattleAreas[area];
+    Battle* battle = ba->battles ? &(*ba->battles)[idx] : NULL;
+    Stage* stage = stageID >= 0 && ba->stages ? (*ba->stages)[stageID].stage : battle ? battle->stage : NULL;
+    if (!stage || !stage->shape) return;
+    const char* nm[2] = { stage->shape, stage->hit };
+    const unsigned char* src[2] = { NULL, NULL };
+    u32 dec[2] = { 0, 0 }, clen[2] = { 0, 0 };
+    for (int i = 0; i < 2; i++) {
+        u32 off, cl, dl;
+        if (!nm[i] || !find_asset(nm[i], &off, &cl, &dl)) continue;
+        src[i] = pm_rom_ptr(off, cl);
+        dec[i] = dl; clen[i] = cl;
+    }
+    pm_prefetch_post(nm[0], src[0], clen[0], dec[0], nm[1] ? nm[1] : "", src[1], clen[1], dec[1]);
+}
 extern void __real_load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType);
 extern void __real_set_game_mode(s16 mode);
 
@@ -618,6 +644,14 @@ void __wrap_load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
     __real_load_map_by_IDs(areaID, mapID, loadType);
     if (pm_xf.on) pm_xf.load_t += pm_ticks() - xt0;
     pm_xfer_map_load(loadType == LOAD_FROM_MAP ? areaID : gGameStatusPtr->areaID, loadType == LOAD_FROM_MAP ? mapID : gGameStatusPtr->mapID);
+}
+
+/* BTLWIPE: the load step of the xfer battle line */
+extern void __real_load_battle_section(void);
+void __wrap_load_battle_section(void) {
+    unsigned t0 = pm_ticks();
+    __real_load_battle_section();
+    pm_xfer_btl_load(pm_ticks() - t0);
 }
 
 /* MS01: a linked map has PM_MAP_DMA_TAG as dmaStart and dmaEnd (3ds/stub_include/map_rom_ranges.h), so load_map_by_IDs calls

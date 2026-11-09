@@ -211,10 +211,6 @@ Each step names its affected scenarios before it starts (test scope rule). Scena
 **P4. Texture resolve at emit and sort by template then texture.** Files: `3ds/src/pm_native.c` (bucket pass), `3ds/src/pm_gbi.c` (E3 `tb_run` call).
 - Test: census equal. Log count of texture changes per frame (target: one per texture, not per draw). Region diff against P3 build, 0 px.
 
-**P5. Eye 1 in the same walk (stereo).** Files: `3ds/src/pm_native.c` (E4 and E5 for eye 1), `3ds/src/pm_nusys.c` (gbi_task: skip the second walk for `ok` groups, pm_nusys.c:81).
-- Test: stereo shot in 3D slider 1 at Toad Town, left and right eye, region diff against HEAD. Seam test (design_native_draw.md section 5): count background pixels inside the union of model silhouettes, must not rise.
-- Gate: picture shows both eyes. Test scope: scene with stereo only.
-
 **P6. v2 draw: template words and patch words, no `flush_draw` per segment.** Files: `3ds/src/pm_native.c`, `3ds/src/pm_gpu.c` (one call to write the template block into the command span, no change to flush_draw otherwise).
 - Test: census equal, region diff 0 px, byte-equal check on the scenes that use the changed draw path only (shared draw code rule: pm_gpu.c is shared, so compare census_toad and census_yard).
 
