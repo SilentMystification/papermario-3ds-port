@@ -5543,7 +5543,7 @@
       ]
     },
     {
-      "status": "unverified",
+      "status": "verified",
       "cap": 45,
       "deadline": 35,
       "expects": "warp",
@@ -6180,7 +6180,7 @@
     },
     {
       "name": "savefile_check",
-      "status": "unverified",
+      "status": "verified",
       "subject": "A savetool file (sdmc:/3ds/PaperMario/savetool.sav: HP 7/13, level 4, 777 coins, story 3) loaded by savefile= with warp=random (the start map is not the subject). The log shows the load, the values in RAM, and the save block.",
       "proves": "savefile= reads a SaveData file, the checksum passes, fio_deserialize_state fills the player data and the story, and the warp keeps the loaded values and blocks saves.",
       "debug": "savefile=sdmc:/3ds/PaperMario/savetool.sav warp=random loglevel=debug",
@@ -11112,6 +11112,58 @@
           "regex": "shot \\d+ frame 130\\b"
         }
       ]
+    },
+    {
+      "name": "flash_selftest_save",
+      "status": "verified",
+      "subject": "Fresh save.flash (freshsave) with the flashselftest save pattern (sector 3 erase, 39 pages, sector 0 erase, one page) and the saveerr switch: the first two image writes fail.",
+      "proves": "SAVESAFE steps 1, 3 and 6: pm_flash_put and pm_flash_fill change the RAM chip under flash_lock; the image is written to save.flash.tmp and renamed over save.flash (log 'save.flash written (atomic)'); a failed write is logged, stays dirty and is written again by the flush thread after 2 s. The RAM hash is the hash of the pattern (3ds/tools/flash_selftest.py, 077e4000); the file equals the RAM image (flash_selftest.py on save.flash).",
+      "debug": "freshsave flashselftest saveerr",
+      "until": "save.flash written \\(atomic\\) \\d+ ms",
+      "cap": 40,
+      "deadline": 30,
+      "first_marker": "MODE = ",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "ram hash of the pattern",
+          "regex": "flash selftest: ram hash 077e4000$"
+        },
+        {
+          "name": "first write failed",
+          "regex": "save\\.flash write FAILED"
+        },
+        {
+          "name": "atomic write after the retry",
+          "regex": "save\\.flash written \\(atomic\\) \\d+ ms \\(core 1 idle\\)$"
+        }
+      ],
+      "reason": "SAVESAFE: the until is the first image write that succeeds (after two failed writes, 2 s apart). Cap 40 s: boot 15 s plus the retries."
+    },
+    {
+      "name": "savecrash_save",
+      "status": "verified",
+      "subject": "A save (loadslot=0, padscript save_0) followed by the savecrash switch: the process ends through pm_exit_process 10 ms after the last save write, while the save is still dirty.",
+      "proves": "SAVESAFE step 4: the crash and watchdog exit writes the dirty RAM image to save.flash.tmp and renames it, with no malloc and under trylock (pm_flash_crash_flush). The RAM hash logged before the exit is checked against the save.flash file on the slot sdmc after the run.",
+      "debug": "loadslot=0 warp=random padscript=wait150,save_0 savecrash loglevel=debug",
+      "until": "save\\.flash written at exit \\(atomic\\) \\d+ ms",
+      "cap": 60,
+      "deadline": 45,
+      "first_marker": "MODE = ",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "savecrash exit with the RAM hash",
+          "regex": "savecrash: exit 10 ms after the save, ram hash [0-9a-f]{8}$"
+        },
+        {
+          "name": "exit flush wrote the image",
+          "regex": "save\\.flash written at exit \\(atomic\\) \\d+ ms$"
+        }
+      ],
+      "reason": "SAVESAFE step 4 gate. Until is the exit flush line, which follows the savecrash line."
     }
   ]
 }
