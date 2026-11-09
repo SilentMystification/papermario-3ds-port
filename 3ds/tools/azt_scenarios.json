@@ -4237,6 +4237,34 @@
       "reason": "PSHIFT-1 measure (and the PSHIFT-2 gate). Same START command as pause_spin on mac_01 pos 0 0 200. Offsets from the shot files: normalized cross-correlation of the bottom band (rows 4 to 45 and 352 to 395 of the PPM) at offsets -3..3, live shot 95 against pause shots. Before the fix dy +1 from frame 105; after the fix dx 0 dy 0."
     },
     {
+      "name": "pause_thr_pic",
+      "status": "unverified",
+      "subject": "PAUSEC: threaded pause (logic thread on: no det, phase or fsplit switch). Toad Town mac_01 at pos 0 0 200, START opens and closes the pause menu three times (opens at about frames 96, 206 and 332 from the scene start; closes at 143 and 269). The shot window 360 to 375 is the third open menu.",
+      "proves": "PAUSEC: the pause filter on the logic thread has a z-buffer image (pm_zbuf_need waits for the walker) and no data abort (no CRASH line). The shot shows the pause menu over the filtered field.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town pos=0:0:200 padscript=wait80,START*3,wait60,START*3,wait60,START*3,wait60,START*3,wait60,START*3,wait60 shots shotwin=360:16 loglevel=debug",
+      "until": "shot \\d+ frame 36[0-9]\\b",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "pause open",
+          "regex": "game mode 10 frame"
+        },
+        {
+          "name": "shot in the third open menu window",
+          "regex": "shot \\d+ frame 36[0-9]\\b"
+        }
+      ],
+      "reason": "PAUSEC gate: the pause on the logic thread, three opens. The first open is the user's crash (first pause after the z-buffer image is first needed). Frame numbers are from pause_shift timing; read the menu lines of the log for the real opens."
+    },
+    {
       "name": "pause_spin",
       "status": "unverified",
       "subject": "Pause menu open with the spin animation running. One shot window of 40 frames, frames 140 to 179, all inside the open pause (opened at frame 96).",
