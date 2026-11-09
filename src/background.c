@@ -89,6 +89,9 @@ extern s32 pm_wide_cam(Camera* c);
  * The rectangles are made in the unzoomed frame and mapped when they are emitted. An edge maps as an exclusive edge (+4 quarter pixels), so neighbouring rectangles stay seamless. */
 static s32 bg_zoom;
 #ifdef TARGET_3DS
+/* DOORSKY: set while a fully shrouded sky (fogA 255: every palette entry is black) is drawn. Each sky rectangle becomes a
+ * fill of the same pixels: the 296 x 200 CI8 sky with an all-black palette was a new 313 KB texture on the first map entry. */
+static s32 bg_fill;
 /* BG1/BG2 oracle plan 2, fix 2: floor division by 5 (C division rounds toward zero, which moved the negative zoomed edges). */
 static s32 fdiv5(s32 v) { return v >= 0 ? v / 5 : -((-v + 4) / 5); }
 #endif
@@ -110,6 +113,13 @@ static void bg_emit(s32 xl, s32 yl, s32 xh, s32 yh, s32 tile, s32 s, s32 t, s32 
         dtdy = dtdy * 5 / 6;
     }
 #ifdef TARGET_3DS
+    if (bg_fill) { /* DOORSKY: the pixels of a COPY texrect, first pixel at or after xl, last at or before xh (nd_rect.c COPY rule) */
+        s32 fx0 = (xl + 3) >> 2, fy0 = (yl + 3) >> 2, fx1 = xh >> 2, fy1 = yh >> 2;
+        if (fx1 >= fx0 && fy1 >= fy0) {
+            gDPFillRectangle(gMainGfxPos++, fx0, fy0, fx1, fy1);
+        }
+        return;
+    }
     { /* BG1 debug switch bgrect: one line per sky texrect as the game emits it (raw 10.2 and 10.5 values) */
         extern void pm_log_d(const char* fmt, ...);
         extern int pm_debug_has(const char* word);
@@ -245,6 +255,11 @@ void appendGfx_background_texture(void) {
                     bgMix = 1;
                     break;
                 }
+                /* DOORSKY: the full black case is drawn as fills (bg_fill), not as a palette fill of a new sky texture */
+                if (fogA == 255 && !gBackroundWaveEnabled) {
+                    bg_fill = 1;
+                    break;
+                }
 #endif
                 if (fogA == 255) {
                     for (i = 0; i < ARRAY_COUNT(gBackgroundPalette); i++) {
@@ -329,7 +344,10 @@ void appendGfx_background_texture(void) {
     gDPPipeSync(gMainGfxPos++);
 
 #ifdef TARGET_3DS
-    if (!(gGameStatusPtr->backgroundFlags & BACKGROUND_FLAG_FOG) || bgMix) {
+    if (bg_fill) {
+        gDPSetCycleType(gMainGfxPos++, G_CYC_FILL);
+        gDPSetFillColor(gMainGfxPos++, PACK_FILL_COLOR(0, 0, 0, 1)); /* BG_PAL(1): the colour of every entry of the full black palette */
+    } else if (!(gGameStatusPtr->backgroundFlags & BACKGROUND_FLAG_FOG) || bgMix) {
 #else
     if (!(gGameStatusPtr->backgroundFlags & BACKGROUND_FLAG_FOG)) {
 #endif
@@ -355,11 +373,18 @@ void appendGfx_background_texture(void) {
                 if (bgl < 0) bgl = pm_debug_has("bgrect");
                 if (bgl) pm_log_d("bgsky f%u w %d h %d y0 %d xoff %d minx %d miny %d", pm_frame_count(), bgMaxX, h, y0, bgXOffset, bgMinX, bgMinY);
             }
-            gDPLoadTextureTile(gMainGfxPos++, gGameStatusPtr->backgroundRaster, G_IM_FMT_CI, G_IM_SIZ_8b, bgMaxX, h,
-                               0, 0, 295, h - 1, 0,
-                               G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+            if (!bg_fill) {
+                gDPLoadTextureTile(gMainGfxPos++, gGameStatusPtr->backgroundRaster, G_IM_FMT_CI, G_IM_SIZ_8b, bgMaxX, h,
+                                   0, 0, 295, h - 1, 0,
+                                   G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+            }
             bg_sky_rows(bgMinX, bgMinY, bgXOffset, bgMaxX, 0, h - y0, y0 * 32);
             bg_sky_rows(bgMinX, bgMinY, bgXOffset, bgMaxX, h - y0, y0, 0);
+            if (bg_fill) { /* DOORSKY: back to the COPY cycle the texture path leaves for the rest of the frame */
+                bg_fill = 0;
+                gDPPipeSync(gMainGfxPos++);
+                gDPSetCycleType(gMainGfxPos++, G_CYC_COPY);
+            }
         }
 #else
         lineHeight = 2048 / gGameStatusPtr->backgroundMaxX;
