@@ -435,8 +435,8 @@ extern unsigned long long pm_au_pf_sum; /* CORE2-0, pm_audio.c: join wait ticks 
 extern unsigned pm_au_pf_max;
 /* PROF: start a new window (after a report, or when the scene changes inside a window: a window holds one scene only, so chg is 0 on every printed line) */
 /* CORE2C-3: the logic thread totals at the window start (pm_logic.c pm_lg_pf) */
-void pm_lg_pf(unsigned long long* lg_t, unsigned* lg_n, unsigned long long* wait_t, unsigned* ser_n, int* core, unsigned* stk_kb, unsigned long long* pe);
-static unsigned long long lg0_t, lg0_w, lg0_pe[3]; static unsigned lg0_n, lg0_s;
+void pm_lg_pf(unsigned long long* lg_t, unsigned* lg_n, unsigned long long* wait_t, unsigned* ser_n, int* core, unsigned* stk_kb, unsigned long long* pe, unsigned* kf);
+static unsigned long long lg0_t, lg0_w, lg0_pe[3]; static unsigned lg0_n, lg0_s, lg0_kf;
 /* C1WAIT: window marks of the logic step's waits: the walker wait of the logic thread (nd_wq.c: bw, fw), the audio join on the logic
  * thread (aj), the audio job (au), the mixer on the render thread (mx). Modular 32 bit, so a window reads differences. */
 void pm_wq_pf(unsigned out[2]);
@@ -447,7 +447,7 @@ static void pf_c1_now(unsigned* x) {
     pm_wq_pf(w);
     x[0] = w[0]; x[1] = w[1]; x[2] = pm_au_pf_lgj; x[3] = pm_au_pf_job; x[4] = pm_au2_pf_busy;
 }
-static void pf_lg_mark(void) { int c; unsigned k; pm_lg_pf(&lg0_t, &lg0_n, &lg0_w, &lg0_s, &c, &k, lg0_pe); pf_c1_now(lg0_x); }
+static void pf_lg_mark(void) { int c; unsigned k; pm_lg_pf(&lg0_t, &lg0_n, &lg0_w, &lg0_s, &c, &k, lg0_pe, &lg0_kf); pf_c1_now(lg0_x); }
 static void pf_reset(void) {
     pf_lg_mark();
     pm_au_pf_sum = 0; pm_au_pf_max = 0;
@@ -509,7 +509,9 @@ static void pf_where_line(void) {
 }
 static void pf_report(void) {
     unsigned vb = (unsigned)(C3D_FrameCounter(0) - pf_vb0);
-    unsigned fps10 = vb ? pf_w * 600u / vb : 0u; /* fps x 10 */
+    /* fps counts presents: the steps of the window plus the key frames walked (fps60 shows two pictures a step). ft and wk stay per step. */
+    unsigned kfw; { unsigned long long t_, w_, pe_[3]; unsigned n_, s_, k_; int c_; pm_lg_pf(&t_, &n_, &w_, &s_, &c_, &k_, pe_, &kfw); kfw -= lg0_kf; }
+    unsigned fps10 = vb ? (pf_w + kfw) * 600u / vb : 0u; /* presents x 10 per second */
     unsigned ft = pf_cs(pf_wsum, pf_wn), wk = pf_cs(pf_wksum, pf_wkn), fts = pf_cs(pf_sw_fts, pf_sw_n), wks = pf_cs(pf_sw_wks, pf_s);
     unsigned mx10 = (unsigned)(pf_wmax * 10ull / PF_TPM); /* max ms x 10 */
     int oh = (int)wks - (int)wk; /* ms x 100 that the sampled timers add to one sampled frame */
@@ -575,8 +577,8 @@ static void pf_report(void) {
            * bw of the wait line below is part of it), n = those steps; wwait = game thread ms per drawn frame waiting for the logic (the
            * walk wait); ser = steps run inline (serial: prof sample, det, measurement modes); core and stk = the logic thread core and its
            * stack high-water mark (KB). */
-            unsigned long long lt, wt, pe[3]; unsigned ln, sn, kb; int core;
-            pm_lg_pf(&lt, &ln, &wt, &sn, &core, &kb, pe);
+            unsigned long long lt, wt, pe[3]; unsigned ln, sn, kb, kf; int core;
+            pm_lg_pf(&lt, &ln, &wt, &sn, &core, &kb, pe, &kf);
             unsigned dn = ln - lg0_n;
             unsigned lgc = dn ? (unsigned)((lt - lg0_t) * 100ull / PF_TPM / dn) : 0u;
             unsigned wwc = pf_w ? (unsigned)((wt - lg0_w) * 100ull / PF_TPM / pf_w) : 0u;
@@ -585,8 +587,8 @@ static void pf_report(void) {
             unsigned ic1 = dn ? (unsigned)((pe[0] - lg0_pe[0]) / dn) : 0u;
             unsigned dc1 = dn ? (unsigned)((pe[1] - lg0_pe[1]) / dn) : 0u;
             unsigned cy1 = dn ? (unsigned)((pe[2] - lg0_pe[2]) / dn) : 0u;
-            pm_log_prof_line("prof f%u w%u core2 lgms %u.%02u n %u wwait %u.%02u ser %u core %d stk %u ic1 %u dc1 %u cyc1 %u", pf_total, pf_w,
-                lgc / 100u, lgc % 100u, dn, wwc / 100u, wwc % 100u, sn - lg0_s, core, kb, ic1, dc1, cy1);
+            pm_log_prof_line("prof f%u w%u core2 lgms %u.%02u n %u wwait %u.%02u ser %u core %d stk %u ic1 %u dc1 %u cyc1 %u kf %u", pf_total, pf_w,
+                lgc / 100u, lgc % 100u, dn, wwc / 100u, wwc % 100u, sn - lg0_s, core, kb, ic1, dc1, cy1, kf - lg0_kf);
             /* C1WAIT: ms per logic step of the waits inside lgms (LF_MAX_ARGS is 16 words: a second line). bw = the logic thread's wait for
              * the walker (every wq_block), fw = its depth 1 frame wait (the part of bw that waits for the walked frame), aj = audio join
              * waits run on the logic thread, au = audio job ticks (audio thread), mx = mixer ticks (render thread). */
