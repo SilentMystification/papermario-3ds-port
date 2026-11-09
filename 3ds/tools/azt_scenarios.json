@@ -8570,7 +8570,7 @@
       "status": "unverified",
       "subject": "BTRANS standing encounter (encwarp 120, kmr_09), interp on. Star wipe shots from the pre-battle start.",
       "proves": "Capture path per SETTIMG call (gpu2, cpu, skip) with split state and the star wipe state (wipe = state*1000 + fade). cpu-after-split must be 0.",
-      "debug": "warp=kmr_09:0 story=ch0_toad_town encwarp=120 shots caplog loglevel=debug",
+      "debug": "warp=kmr_09:0 story=ch0_toad_town encwarp=120 shots caplog fps60 loglevel=debug",
       "until": "encwarp: window end",
       "cap": 45,
       "deadline": 45,
