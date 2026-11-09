@@ -8,7 +8,7 @@ c_walked at nd_wq.c:124 (fr_push, pm_nusys.c:131, depth 1: step N+1 waits until 
 The PMU counts the whole core (no virtual counters), so cyc1 includes audio and system threads. Add counters that prove the split.
 
 ## Start state
-Worktree build3ds/wt/C1WAIT, branch C1WAIT from main 267593b64. Copy assets/us and ver/us/build into it.
+Worktree build3ds/wt/C1WAIT, branch C1WAIT from main 98c707022. Copy assets/us and ver/us/build into it.
 
 ## Touch only
 3ds/src/nd_wq.c, 3ds/src/pm_audio.c, 3ds/src/pm_au2.c, 3ds/src/pm_phase.c. Read only: pm_logic.c 64-76.
