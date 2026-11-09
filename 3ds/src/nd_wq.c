@@ -62,6 +62,9 @@ int pm_wq_pump_one(void) {
     __sync_synchronize(); /* the entry bytes were written before the tail */
     WqEnt* e = &wq_ring[h & (WQ_N - 1u)];
     pm_walk_frame = e->frame;
+#ifdef PM_FNCOV
+    { extern void pm_fncov_walk(unsigned f); pm_fncov_walk(e->frame); } /* HC0 census lane only */
+#endif
     pm_walk_side++;
     e->fn(e->arg);
     pm_walk_side--;
@@ -129,6 +132,9 @@ static void wq_main_direct(void (*fn)(void*), void* arg) {
     pm_lg_quiesce();
     wq_pump();
     pm_walk_frame = pm_frame_n;
+#ifdef PM_FNCOV
+    { extern void pm_fncov_walk(unsigned f); pm_fncov_walk(pm_frame_n); } /* HC0 census lane only */
+#endif
     pm_walk_side++;
     fn(arg);
     pm_walk_side--;

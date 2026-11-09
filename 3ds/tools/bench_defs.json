@@ -13,6 +13,136 @@
   },
   "benches": [
     {
+      "name": "hotset_size",
+      "kind": "host_test",
+      "speed": "normal",
+      "default": false,
+      "purpose": "HC0 hot code size (tool, no Azahar): M1 bytes per class and union, M2 linker hot group bytes and stale names, from the lane map and ELF (plan_hotcode section 3). Run after the lane build: PM_LANE=<L>.",
+      "command": "py -3 3ds/tools/hotset.py",
+      "cap": 120,
+      "tags": [
+        "tool",
+        "hotcode"
+      ],
+      "log_metrics": [
+        {
+          "name": "m1_A",
+          "regex": "hotset M1 class A (\\d+) B",
+          "pick": "first"
+        },
+        {
+          "name": "m1_B",
+          "regex": "hotset M1 class B (\\d+) B",
+          "pick": "first"
+        },
+        {
+          "name": "m1_C",
+          "regex": "hotset M1 class C (\\d+) B",
+          "pick": "first"
+        },
+        {
+          "name": "m1_D",
+          "regex": "hotset M1 class D (\\d+) B",
+          "pick": "first"
+        },
+        {
+          "name": "m1_E",
+          "regex": "hotset M1 class E (\\d+) B",
+          "pick": "first"
+        },
+        {
+          "name": "m1_F",
+          "regex": "hotset M1 class F (\\d+) B",
+          "pick": "first"
+        },
+        {
+          "name": "m1_G",
+          "regex": "hotset M1 class G (\\d+) B",
+          "pick": "first"
+        },
+        {
+          "name": "m1_H",
+          "regex": "hotset M1 class H (\\d+) B",
+          "pick": "first"
+        },
+        {
+          "name": "m1_I",
+          "regex": "hotset M1 class I (\\d+) B",
+          "pick": "first"
+        },
+        {
+          "name": "m1_union",
+          "regex": "hotset M1 union (\\d+) B",
+          "pick": "first"
+        },
+        {
+          "name": "m2_linker",
+          "regex": "hotset M2 linker (\\d+) B",
+          "pick": "first"
+        },
+        {
+          "name": "m2_stale",
+          "regex": "hotset M2 stale (\\d+) names",
+          "pick": "first"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "rc",
+          "op": "==",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "name": "fncov_mac01_det",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "HC0 census, mac_01 spot: the draw functions run in walker frame 200 and their call counts (census lane <L>_fncov, build.sh PM_FNCOV=1). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.",
+      "scenario": "fncov_mac01_det",
+      "cap": 35,
+      "until": "fncov f\\d+ done",
+      "tags": [
+        "azahar",
+        "hotcode",
+        "fncov"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fncov_kmr10_det",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "HC0 census, kmr_10 spot: the draw functions run in walker frame 200 and their call counts (census lane <L>_fncov, build.sh PM_FNCOV=1). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.",
+      "scenario": "fncov_kmr10_det",
+      "cap": 35,
+      "until": "fncov f\\d+ done",
+      "tags": [
+        "azahar",
+        "hotcode",
+        "fncov"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fncov_mac00_det",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "HC0 census, mac_00 spot: the draw functions run in walker frame 200 and their call counts (census lane <L>_fncov, build.sh PM_FNCOV=1). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.",
+      "scenario": "fncov_mac00_det",
+      "cap": 35,
+      "until": "fncov f\\d+ done",
+      "tags": [
+        "azahar",
+        "hotcode",
+        "fncov"
+      ],
+      "gates": []
+    },
+    {
       "name": "cheatsave_save",
       "kind": "azahar_pic",
       "speed": "normal",

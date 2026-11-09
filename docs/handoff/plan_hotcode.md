@@ -29,8 +29,9 @@ Tags: [M] measured from the map or ELF; [C] read in source; [E] estimate; [U] no
 - The linker hot group (3ds/ld/3dsx.ld.in:34-37) is stale [M]: it names the deleted nd_walk_run and pm_gbi_run, holds 21,036 B of the
   legacy triangle path and batch close, and only 20 functions of the 124 KB set. plan_direct section 0 "core 0 hot code about 23 KB"
   measures this group, not the code that runs.
-- Broken tools [M]: 3ds/tools/nd_size_test.sh calls the missing nd_size_check.py (gate G5 does not run); hotspan.py sums the linker
-  group only; check that spot_mac01_prof (prof=30) enables the pmu line [U].
+- Tools [M, HC0]: nd_size_test.sh (missing nd_size_check.py) and hotspan.py (linker group only) are deleted. 3ds/tools/hotset.py
+  replaces them: M1 per class from the call graph, M2 the linker group with its stale names. prof=30 prints the pmu counters
+  ("prof f<n> w<n> pmu m <ic> <dc> cyc <c>", pm_phase.c) with no pmu switch; the pmu switch is off in prof mode by design.
 
 ## 1. Big contributors
 1. Word decode and dedupe on core 0: nd_walk_state (51 cases, inlined handlers), g2_same/g2_note, op_* handlers, sc_sig_now/scm_sig.
@@ -54,7 +55,7 @@ End target: code that runs in one mac_01 frame <= 16 KB, any one command class <
   stale-name warning; per hot function its log/debug/timer/division/double calls). Bench hotset_size (tool kind); build.sh prints the
   hotset line after memcheck. fncov debug tool: a census lane build with -finstrument-functions on the draw TUs, call counts per
   function, switch fncov=<frame> prints what ran; hotset.py joins it into M3. Scenarios fncov_mac01_det, fncov_kmr10_det,
-  fncov_mac00_det (cap about 15 s, until "fncov f<n> done"). Fix or delete nd_size_test.sh. Console baseline (user): spot_mac01_prof
+  fncov_mac00_det (cap about 15 s, until "fncov f<n> done"). nd_size_test.sh is deleted (HC0). Console baseline (user): spot_mac01_prof
   with pmu, plus kmr_10 and mac_00.
 - HC1 COLD SPLIT (byte-equal): debug, census, log and rare branches into `cold, noinline` helpers, the switch tested at the call site
   through one global debug word (as pm_walk_dbg). pm_gpu.c debug groups (ndm_*, sbkw, rect_sig_*, flushlog, ndref, orb, cen) move to a
@@ -97,4 +98,4 @@ End target: code that runs in one mac_01 frame <= 16 KB, any one command class <
 4. HC4 record-side dedupe must model the native-draw invalidations (sc_ok = 0, nd_sr_forget).
 5. Core 1 budget at 60 fps: the moved decode must fit about 8 ms; measure lgms per stage.
 6. User: accept PGO and -Os on the draw files?
-7. Does spot_mac01_prof turn on pmu, or does the recipe need the pmu switch?
+7. Answered (HC0): spot_mac01_prof prints the pmu counter line with the recipe as it is; no switch is needed.
