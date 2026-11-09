@@ -176,6 +176,10 @@ static void tex_win0(const NdTst* t, const NdTexM* m, const void* timg, int uls,
 }
 /* CORE-2b batch D: tile size setter (decoded fields). */
 static __attribute__((noinline)) void set_tilesize(unsigned tile, int uls, int ult, int lrs, int lrt) {
+    if (tile == 0 && PMDL("negpanf") && pm_frame_count() >= 200u) { /* NEGPAN step 1 debug: force the mushroom panner offset (-0x8000 = -128 in 10.2) on 8 tile-0 sizes */
+        static unsigned nf_;
+        if (nf_ < 8u) { nf_++; ult = (ult - 128) & 0xfff; lrt = (lrt - 128) & 0xfff; } /* raw 12 bit fields, as the record carries them */
+    }
             if (((lrs - uls) >> 2) + 1 <= 0 || ((lrt - ult) >> 2) + 1 <= 0) tex_win_s25(&uls, &ult, &lrs, &lrt);
             GP_SET(4, nd_ws.tst1.tile_sz[tile][0] == uls && nd_ws.tst1.tile_sz[tile][1] == ult && nd_ws.tst1.tile_sz[tile][2] == lrs && nd_ws.tst1.tile_sz[tile][3] == lrt);
             nd_ws.tst1.tile_sz[tile][0] = uls;
@@ -565,6 +569,10 @@ __attribute__((cold, noinline)) void tex_win_s25(int* p_uls, int* p_ult, int* p_
                     uls = su < 0 ? 0 : su;
                     ult = st < 0 ? 0 : st;
                 }
+    if (PMDL("negpan") && (su < 0 || st < 0)) { /* NEGPAN step 1: a negative start is clamped to 0 (uls/ult out) */
+        static unsigned nneg_; /* first 8 hits */
+        if (nneg_++ < 8u) pm_log("negpan in uls %d ult %d lrs %d lrt %d out uls %d ult %d lrs %d lrt %d f%u", su, st, sr, sl, uls, ult, lrs, lrt, pm_frame_count());
+    }
     *p_uls = uls; *p_ult = ult; *p_lrs = lrs; *p_lrt = lrt;
 }
 

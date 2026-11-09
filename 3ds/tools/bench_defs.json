@@ -7307,6 +7307,22 @@
           "water"
         ],
         "gates": []
+      },
+    {
+        "name": "negpan_mim05",
+        "kind": "azahar_pic",
+        "speed": "normal",
+        "default": false,
+        "purpose": "NEGPAN step 1: mim_05 warp, log of the first negative tile start clamped in tex_win_s25 (uls/ult raw and out).",
+        "scenario": "negpan_mim05",
+        "cap": 25,
+        "until": "negpan in uls ",
+        "tags": [
+          "azahar",
+          "negpan",
+          "mim_05"
+        ],
+        "gates": []
       }
   ],
   "legacy": {
