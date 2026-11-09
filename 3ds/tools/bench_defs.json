@@ -3568,6 +3568,22 @@
       "gates": []
     },
     {
+      "name": "btldim_star_sprmix",
+      "kind": "azahar",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SHROUD step 1: the sprite mix (sprmix line) during Shooting Star.",
+      "scenario": "btldim_star_sprmix",
+      "cap": 30,
+      "until": "btldim: lighten done f\\d+",
+      "tags": [
+        "azahar",
+        "battle",
+        "shroud"
+      ],
+      "gates": []
+    },
+    {
       "name": "btldim_star_pic",
       "kind": "azahar_pic",
       "speed": "normal",
