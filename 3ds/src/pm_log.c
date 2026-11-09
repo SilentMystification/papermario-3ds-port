@@ -395,7 +395,13 @@ typedef struct {
 } Slot;
 _Static_assert(sizeof(Slot) == SLOT_BYTES, "Slot is 256 bytes");
 static Slot slots[SLOTS] __attribute__((aligned(32)));
-static LfDesc ldesc[512]; /* LOG2: descriptor cache, direct-mapped on (fmt >> 2) & 511 */
+/* LOG2: descriptor cache, direct-mapped on (fmt >> 2) & 511. CHEATSAVE2: one 64-bit word per entry, read and written as one atomic access
+ * (LDREXD/STREXD), because every thread logs: the old 12-byte LfDesc entry was rescanned in place by lf_scan while another thread with a
+ * colliding format read its kinds, and a torn entry made lf_copy read a word argument as a string pointer (an unmapped read in strlen).
+ * Low word: bit 0 present, bit 1 ok, bits 2-6 nargs, bits 7-11 nw, bits 12-29 tag (fmt bits 0-1 and 11-26; a cached fmt is below
+ * 0x08000000, LF_FMT_OK). High word: kinds. */
+static u64 ldesc[512];
+static inline u32 ld_tag(const char* fmt) { return ((u32)(uintptr_t)fmt & 3u) | (((u32)(uintptr_t)fmt >> 11) << 2); }
 static int writer_stop;
 static int crashed;
 static int active_id;
@@ -438,8 +444,18 @@ static void vlog(int lv, const char* fmt, va_list ap) {
         if (__atomic_compare_exchange_n(&q_head, &h, h + 1, 0, __ATOMIC_RELAXED, __ATOMIC_RELAXED)) break;
     }
     /* The position h is ours. Its slot must be free for this lap (state (lap << 2) | 0). */
-    LfDesc* d = &ldesc[((uintptr_t)fmt >> 2) & 511u];
-    if (d->fmt != fmt) lf_scan(fmt, d);
+    LfDesc dl, *d = &dl;
+    {
+        u64* ce = &ldesc[((uintptr_t)fmt >> 2) & 511u];
+        u64 cv = __atomic_load_n(ce, __ATOMIC_RELAXED);
+        u32 lo = (u32)cv;
+        if ((lo & 1u) && (lo >> 12) == ld_tag(fmt)) {
+            dl.ok = (u8)((lo >> 1) & 1u); dl.nargs = (u8)((lo >> 2) & 31u); dl.nw = (u8)((lo >> 7) & 31u); dl.kinds = (u32)(cv >> 32);
+        } else {
+            lf_scan(fmt, &dl); /* LF_FMT_OK false: ok 0, not cached (its tag would not fit) */
+            if (LF_FMT_OK(fmt)) __atomic_store_n(ce, ((u64)dl.kinds << 32) | 1u | ((u32)dl.ok << 1) | ((u32)dl.nargs << 2) | ((u32)dl.nw << 7) | (ld_tag(fmt) << 12), __ATOMIC_RELAXED);
+        }
+    }
     u32 free_st = (h >> 10) << 2;
     Slot* sl = &slots[h & (SLOTS - 1)];
     u32 exp = free_st;
