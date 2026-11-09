@@ -10,13 +10,20 @@ A. Check a change (a row)
 3. `bench.py check <run_id>`: the gates. PASS or FAIL per gate.
 4. kind azahar_pic: also open the shot in build3ds/azt/shots/<scenario>/<build>/ (build = the -Build lane name, or main) and confirm the subject. A log pass is not a pass.
 5. Budget: 8 Azahar starts per row. At the cap with gates unrun: reset (powershell -NoProfile -File 3ds/run_azahar.ps1 -ResetBudget <row>) and go on.
+6. Byte gates against main (the det shots): no build of main per row. The base is stored (BASECACHE):
+   `PM_ROW=<row> PM_LANE=<row> python 3ds/tools/bench.py base <bench>` returns the stored shots of the merge-base of HEAD with main at once.
+   Missing: it builds that commit ONCE (lane base_<short>, the committed tree only), runs the bench, stores its shots and log in
+   <main folder>/build3ds/basecache/<commit>/<bench>/ and deletes the lane. Then run the row's own bench (step 2), then
+   `python 3ds/tools/bench.py cmp <bench> --row <row>`: byte-equal count, per shot diff pixels and bounding box, one diff PNG per
+   differing shot in build3ds/basecmp/<row>/<bench>/. Exit 0 when every shot is byte-equal. The orchestrator fills the store after a
+   merge with `python 3ds/tools/bench.py base --fill` (main folder, its build, no build).
 
 B. Before and after a change
 1. Run the bench on the base build (record it), change the code, rebuild, run the bench again with the same speed (`--speed`).
 2. `bench.py compare <bench> <buildA> <buildB>`, or `--last 2`. The tool prints the delta of each metric and flags failed gates. It prints WARNING and no delta when the speeds differ.
 3. Console speed claims use console_prof benches (prof mode) only. Azahar numbers show direction.
 3a. Display mode: the prof scene line may end with " disp w<0|1> s<0|1> f<fps target>". where, spots, compare and trend show it as disp (w1s0f30; - for old logs). A query uses one mode: the newest row's by default, `--disp w1s0f30|-|any` to pick. A line tells how many rows of other modes it dropped.
-4. An older commit: `bench.py build-at <commit> <bench> --row R` builds it in build3ds/at_<short>/ and runs an Azahar bench on it. The main folder is not changed. The run records dirty false.
+4. An older commit: `bench.py build-at <commit> <bench> --row R` builds it in build3ds/at_<short>/ and runs an Azahar bench on it. The main folder is not changed. The run records dirty false. A byte reference of main is not a build-at: use `base` (A6).
    Console: `bench.py build-at <commit> <console bench> --row R [--dry-run]` builds it as lane at_<short>, pushes that 3dsx to the O3DS 192.168.1.170 and ingests the live log (dirty false). --dry-run prints the 3 commands only.
 
 C. Console run (the orchestrator pushes, the user opens netloader first)
@@ -53,6 +60,7 @@ F. Database lost or stale: `bench.py rebuild` makes bench.db from runs.jsonl and
 - `ingest <log> --bench B --host azahar|o3ds|n3ds [--build N] [--commit H] [--row R] [--label L] [--speed S]`, `ingest-last` (called by azt.ps1), `import-csv`
 - `where`, `spots`, `compare <bench> [A B | --last 2]`, `trend <bench> [metric]`: area filters `--map --mode --story --battle --entry --x --y --z --host`, plus `--speed turbo|normal|unknown|any`, `--chg` (include scene-change windows)
 - `check <run_id>`, `rebuild`
+- `base <bench> [--commit C] [--row R]`, `base --fill` (main folder), `cmp <bench> --row R [--commit C]` (A6: stored base shots, byte compare)
 - `azstat [--since <ISO date or time>] [--row R]` (default today, all rows; --row: that row's runs and the pool.log lines of build3ds/wt/<row>): Azahar throughput of every tree's runs.jsonl (starts, warm and cold, wait_s, boot_s, until_s, wall_s: median, p90, max) and the slot pool events of build3ds/azslots/pool.log (cold starts by reason, kills by reason, warm restarts, stale boots).
 
 ## Fields of a run
@@ -67,4 +75,5 @@ bench, host (azahar, o3ds, n3ds, host), device, build_no, commit, date, ts, row,
 ## Files
 - 3ds/tools/bench.py, 3ds/tools/bench_defs.json (benches, tracked), 3ds/tools/azt_scenarios.json (scenarios), 3ds/tools/azt.ps1 (Azahar runner), 3ds/tools/azslot.ps1 (slot pool, warm restart), 3ds/tools/azreap.ps1 (closes an idle kept Azahar), 3ds/run_azahar.ps1 (one run; -Slot, -Keep, -NoWarm, -ResetBudget).
 - 3ds/logs/perf/runs.jsonl (source of truth, tracked, append only), 3ds/logs/perf/bench.db (index, untracked).
+- Base store: <main folder>/build3ds/basecache/ (index.json, <commit>/<bench>/ shots, run.log, meta.json; last 5 commits). Compare output: build3ds/basecmp/<row>/.
 - Old text catalog: docs/handoff/archive/test_catalog.md and archive/test_catalog/. Read only when a row file names them.

@@ -24,7 +24,19 @@ This is the entry point for every test and profiling run (it replaces the text t
         console_prof: pushes that 3dsx to the O3DS (PM_SRC3DSX) and ingests the live log (dirty false). --dry-run prints the commands only.
         runs the bench on that build, records the run with that commit and dirty false, then deletes the folder.
         The Azahar build copy is put back after the run. --why is optional: a line is written from the bench purpose.
-  python 3ds/tools/bench.py import-csv                      (docs/handoff/perf_history.csv rows as runs, tag legacy_import; rows already imported are skipped)
+  python 3ds/tools/bench.py base <bench> [--commit C] [--row R]
+        Stored base shots (BASECACHE): the shots and log of an Azahar bench on the merge-base of HEAD with main (or C), in the
+        shared store <main folder>/build3ds/basecache/<commit>/<bench>/. Stored: returns at once, no build, no run. Missing: builds
+        that commit ONCE (lane base_<short>, the committed tree only), runs the bench, stores the shots, deletes the lane. The store
+        keeps the last 5 commits (index.json).
+  python 3ds/tools/bench.py base --fill [--row R]
+        Stores the standard byte scenes (spot_mac01_det, battle_start_f182_cold, mdl5_iwa10_det) of the main folder's build
+        (build3ds/pm_3ds.3dsx, its header commit must be main HEAD). Run in the main folder after a merge. No build.
+  python 3ds/tools/bench.py cmp <bench> --row R [--commit C]
+        Compares the row's last shots of the bench with the stored base: byte-equal count, per shot diff pixel count and bounding
+        box, one diff PNG per differing shot (build3ds/basecmp/<row>/<bench>/). Exit 0 when all shots are byte-equal, else 1.
+        Reads only: no base store is missing -> run base first.
+  python 3ds/tools/bench.py import-csv                     (docs/handoff/perf_history.csv rows as runs, tag legacy_import; rows already imported are skipped)
   python 3ds/tools/bench.py where --map <name> [area filters] [--chg]
         Per build (build, commit, date, host): windows, mean fps, ft_ms, nd_ms, lg_ms, gb_ms, delta against the first row.
   python 3ds/tools/bench.py spots [--map <name>] [area filters] [--top N]
@@ -65,7 +77,7 @@ sample has one row per window (win "f<frame> w<size>"; ts is the run wall time; 
 a window count and no window records (imported history) gets one row with win "agg" and extra_json agg_windows = count.
 Gate: {metric, op, value} or {metric, op, ref: baseline}. The baseline is the earliest run of the bench with that metric.
 """
-import argparse, collections, csv, datetime, io, json, os, re, shutil, sqlite3, subprocess, sys, tarfile, time
+import argparse, collections, csv, datetime, io, json, os, re, shutil, sqlite3, struct, subprocess, sys, tarfile, time, zlib
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -1181,17 +1193,18 @@ def scratch_build(commit, gitdir, scratch, lane, row):
     (scratch / ".build_at_in_use").write_text(str(os.getpid()))
     arc = subprocess.run(["git", "archive", commit], cwd=REPO, capture_output=True, check=True).stdout
     tarfile.open(fileobj=io.BytesIO(arc)).extractall(scratch)
+    main = main_root()  # BASECACHE: a worktree has no user files (map_restore_table.c, ROM assets): they come from the main folder
     gen = scratch / "3ds" / "src" / "map_restore_table.c"
-    shutil.copy2(REPO / "3ds" / "src" / "map_restore_table.c", gen)
+    shutil.copy2(main / "3ds" / "src" / "map_restore_table.c", gen)
     subprocess.run([sys.executable, str(scratch / "3ds" / "tools" / "gen_map_restore.py")], cwd=scratch, check=True,
                    stdout=subprocess.DEVNULL)
     # The build inputs that git does not track (ROM-derived assets) come from the main folder. Read only.
     # Untracked inputs: git archive holds only some files of ver/us/build, so copy every file the main folder has and the archive lacks.
     for rel in BUILD_UNTRACKED:
-        for root, _dirs, files in os.walk(REPO / rel):
+        for root, _dirs, files in os.walk(main / rel):
             for fn in files:
                 src = Path(root) / fn
-                dst = scratch / src.relative_to(REPO)
+                dst = scratch / src.relative_to(main)
                 if not dst.exists():
                     dst.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy2(src, dst)
@@ -1307,6 +1320,308 @@ def cmd_build_at(a):
     print("build-at %s: map_restore_table.c md5 before %s after %s (%s)" % (
         short, md5_before, md5_of(main_map), "unchanged" if md5_of(main_map) == md5_before else "CHANGED"))
     return rc
+
+
+BASE_KEEP = 5  # the base store keeps this many commits (the oldest is removed first)
+BASE_FILL = ("spot_mac01_det", "battle_start_f182_cold", "mdl5_iwa10_det")  # the standard byte scenes (CLAUDE.md GATES)
+BASE_ROW = "BASECACHE"
+
+
+def main_root():
+    """The main folder of this repo. A worktree's git common dir is the main .git folder."""
+    common = subprocess.check_output(["git", "rev-parse", "--git-common-dir"], cwd=REPO, text=True).strip()
+    return (REPO / common).resolve().parent
+
+
+def store_root():
+    """The shared base store: one folder for every worktree, in the main folder."""
+    return main_root() / "build3ds" / "basecache"
+
+
+def base_commit(commit=None):
+    """Full id of commit, else the merge-base of HEAD with main. None when git does not know it."""
+    args = ["git", "rev-parse", "--verify", "--quiet", commit + "^{commit}"] if commit else ["git", "merge-base", "HEAD", "main"]
+    r = subprocess.run(args, cwd=REPO, capture_output=True, text=True)
+    return r.stdout.strip() if r.returncode == 0 and r.stdout.strip() else None
+
+
+def load_index():
+    try:
+        return json.loads((store_root() / "index.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {"commits": {}}
+
+
+def save_index(idx):
+    store_root().mkdir(parents=True, exist_ok=True)
+    (store_root() / "index.json").write_text(json.dumps(idx, indent=1) + "\n", encoding="utf-8")
+
+
+def stored(commit, bench):
+    """True when the store holds the shots of bench at commit. meta.json is written last, after the shots."""
+    d = store_root() / commit / bench
+    return (d / "meta.json").exists() and any(d.glob("*.ppm"))
+
+
+def store_base(commit, bench, scenario_name, shots, log, info):
+    """Copies the shots and the log of one run into the store, records it in index.json and drops the oldest commits beyond BASE_KEEP."""
+    dst = store_root() / commit / bench
+    shutil.rmtree(dst, ignore_errors=True)
+    dst.mkdir(parents=True)
+    names = sorted(p.name for p in shots.iterdir() if p.is_file())
+    for n in names:
+        shutil.copy2(shots / n, dst / n)
+    if log.exists():
+        shutil.copy2(log, dst / "run.log")
+    meta = dict(info, commit=commit, bench=bench, scenario=scenario_name, shots=names, stored=now_iso())
+    (dst / "meta.json").write_text(json.dumps(meta, indent=1) + "\n", encoding="utf-8")
+    idx = load_index()
+    ent = idx["commits"].pop(commit, {"short": commit[:9], "benches": []})
+    if bench not in ent["benches"]:
+        ent["benches"].append(bench)
+    idx["commits"][commit] = ent
+    for old in list(idx["commits"])[:-BASE_KEEP]:
+        shutil.rmtree(store_root() / old, ignore_errors=True)
+        del idx["commits"][old]
+    save_index(idx)
+    return names
+
+
+def base_record(bench, row, label, commit):
+    """The newest run record of bench under row with this label at commit (the run that filled the store), else None."""
+    best = None
+    for r in read_runs():
+        if r.get("bench") == bench and r.get("row") == row and r.get("label") == label and same_commit(r.get("commit") or "", commit):
+            best = r
+    return best
+
+
+def base_run(bds, commit, build_no, row, lane, label, why):
+    """Runs the benches bds on one build (one azt list: one kept slot), then stores each bench whose run record is log_pass.
+    lane "" is the main folder build. Returns the rc of the run."""
+    name = ",".join(b["name"] for b in bds)
+    rc = cmd_run(argparse.Namespace(bench=name, row=row, why=why, label=label, build=build_no, commit=commit, speed=None, lane=lane))
+    for bd in bds:
+        s = scenario(bd["scenario"])
+        rec = base_record(bd["name"], row, label, commit)
+        if not rec or rec.get("result") != "log_pass":
+            print("base %s: not stored (run result %s)." % (bd["name"], rec.get("result") if rec else "none"))
+            continue
+        shots = SHOTS / s["name"] / (lane or "main")
+        names = store_base(commit, bd["name"], s["name"], shots, REPO / "build3ds" / "azt" / "logs" / (s["name"] + ".txt"),
+                           {"row": row, "label": label, "build_no": build_no, "run_log_path": rec.get("log_path")})
+        print("base %s at %s: stored %d shots at %s" % (bd["name"], commit[:9], len(names), store_root() / commit / bd["name"]))
+    return rc
+
+
+def drop_base_lane(lane, bds):
+    """A base lane is spent once its shots are stored: its shot folders, Azahar copies and docker volumes go (as wt_gc does for a worktree)."""
+    for bd in bds:
+        s = scenario(bd["scenario"])
+        if s:
+            shutil.rmtree(SHOTS / s["name"] / lane, ignore_errors=True)
+    homes = list((REPO / "build3ds" / "azslots").glob("slot*/user/sdmc/3ds/PaperMario"))
+    if os.environ.get("APPDATA"):
+        homes.append(Path(os.environ["APPDATA"]) / "Azahar" / "sdmc" / "3ds" / "PaperMario")
+    for h in homes:
+        f = h / ("pm_3ds_%s.3dsx" % lane)
+        if f.exists():
+            f.unlink()
+    for v in ("pm3ds-src-", "pm3ds-build-", "pm3ds-work-"):
+        try:
+            subprocess.run(["docker", "volume", "rm", v + lane], capture_output=True, timeout=120)
+        except (OSError, subprocess.SubprocessError):
+            pass
+
+
+def base_build_run(bds, commit, row):
+    """Builds commit once as lane base_<short> (scratch_build: the committed tree, the main folder's user files), runs the benches
+    on it and stores their shots. The scratch folder, the lane and its copies are removed at the end."""
+    short = commit[:9]
+    lane = "base_" + short  # lane names are letters, digits and _ (lane_problem)
+    scratch = REPO / "build3ds" / lane
+    lane_dir = REPO / "build3ds" / ("lane-" + lane)
+    gitdir = subprocess.check_output(["git", "rev-parse", "--absolute-git-dir"], cwd=REPO, text=True).strip()
+    src3dsx = scratch / "build3ds" / ("lane-" + lane) / "pm_3ds.3dsx"
+    try:
+        rc, build_no = scratch_build(commit, gitdir, scratch, lane, row)
+        if rc != 0:
+            print("base %s: build.sh exit %d. Nothing stored." % (short, rc))
+            return rc
+        if not src3dsx.exists():
+            print("base %s: no %s after the build. Nothing stored." % (short, posix(src3dsx)))
+            return 5
+        lane_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src3dsx, lane_dir / "pm_3ds.3dsx")
+        why = "base store at %s: the bench shots of the merge-base, the byte reference for cmp; no other run gives them" % short
+        os.environ["PM_BENCH_DIRTY"] = "0"  # a commit archive: dirty false
+        try:
+            return base_run(bds, commit, build_no, row, lane, "base " + short, why)
+        finally:
+            os.environ.pop("PM_BENCH_DIRTY", None)
+    finally:
+        shutil.rmtree(lane_dir, ignore_errors=True)
+        shutil.rmtree(scratch, ignore_errors=True)
+        drop_base_lane(lane, bds)
+
+
+def cmd_base(a):
+    if a.fill:
+        return base_fill(a)
+    bd = bench_def(a.bench) if a.bench else None
+    if not bd or not bd["kind"].startswith("azahar") or not bd.get("scenario"):
+        print("base needs an Azahar bench (azahar_pic, azahar_stream) with a scenario, or --fill. Nothing was built.")
+        return 5
+    commit = base_commit(a.commit)
+    if not commit:
+        print("no base commit (the merge-base of HEAD with main, or --commit %s is unknown). Nothing was built." % a.commit)
+        return 5
+    if stored(commit, bd["name"]):
+        n = len(list((store_root() / commit / bd["name"]).glob("*.ppm")))
+        print("base %s at %s: stored, %d shots at %s. No build, no run." % (bd["name"], commit[:9], n, store_root() / commit / bd["name"]))
+        return 0
+    print("base %s at %s: not stored. Building that commit once (lane base_%s), then one run." % (bd["name"], commit[:9], commit[:9]))
+    return base_build_run([bd], commit, a.row)
+
+
+def base_fill(a):
+    """Stores the standard byte scenes of the main folder's build (build3ds/pm_3ds.3dsx). Runs in the main folder only, no build."""
+    main = main_root()
+    if REPO != main:
+        print("base --fill stores the main folder's build: run it in %s. Nothing was run." % posix(main))
+        return 5
+    if git_dirty():
+        print("base --fill: the main folder has tracked changes, so its build is not a commit. Nothing was run.")
+        return 5
+    bld, hcommit = header_build()
+    if bld is None:
+        print("base --fill: no build header for build3ds/pm_3ds.3dsx. Nothing was run.")
+        return 5
+    head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=REPO, text=True).strip()
+    if not same_commit(hcommit, head):
+        print("base --fill: build3ds/pm_3ds.3dsx is build %d git %s, main HEAD is %s: build main first. Nothing was run." % (bld, hcommit, head[:9]))
+        return 5
+    todo = [n for n in BASE_FILL if not stored(head, n)]
+    if not todo:
+        print("base --fill: the %d standard stores are at %s already. No run." % (len(BASE_FILL), head[:9]))
+        return 0
+    bds = [bench_def(n) for n in todo]
+    why = "base --fill: standard byte scenes of main build %d at %s, the stored reference for cmp" % (bld, head[:9])
+    return base_run(bds, head, bld, a.row, "", "base fill " + head[:9], why)
+
+
+def ppm_read(path):
+    """(width, height, RGB bytes) of a binary P6 PPM file."""
+    data = Path(path).read_bytes()
+    if data[:2] != b"P6":
+        raise ValueError("%s is not a binary PPM (P6)" % path)
+    vals, i = [], 2
+    while len(vals) < 3:
+        c = data[i:i + 1]
+        if c == b"#":
+            i = data.index(b"\n", i) + 1
+        elif c and c in b" \t\r\n":
+            i += 1
+        else:
+            j = i
+            while data[j:j + 1] and data[j:j + 1] not in b" \t\r\n":
+                j += 1
+            vals.append(int(data[i:j]))
+            i = j
+    w, h, _maxv = vals
+    i += 1  # one whitespace byte after maxval
+    return w, h, data[i:i + w * h * 3]
+
+
+def write_png(path, w, h, rgb):
+    raw = b"".join(b"\x00" + rgb[y * w * 3:(y + 1) * w * 3] for y in range(h))
+
+    def chunk(tag, body):
+        return struct.pack(">I", len(body)) + tag + body + struct.pack(">I", zlib.crc32(tag + body) & 0xFFFFFFFF)
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    Path(path).write_bytes(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0))
+                           + chunk(b"IDAT", zlib.compress(raw, 6)) + chunk(b"IEND", b""))
+
+
+def compare_ppm(base_path, row_path, png_path):
+    """None when the two PPM files are byte-equal. Else {"px": differing pixels, "bbox": (x0, y0, x1, y1)} and png_path is
+    written (the base shot dimmed, the differing pixels red). {"size": text} when the sizes differ (no PNG)."""
+    bw, bh, bp = ppm_read(base_path)
+    rw, rh, rp = ppm_read(row_path)
+    if (bw, bh) != (rw, rh):
+        return {"size": "%dx%d, base %dx%d" % (rw, rh, bw, bh)}
+    if bp == rp:
+        return None
+    out = bytearray(len(bp))
+    n, x0, y0, x1, y1 = 0, bw, bh, -1, -1
+    for p in range(bw * bh):
+        o = p * 3
+        if bp[o:o + 3] != rp[o:o + 3]:
+            n += 1
+            x, y = p % bw, p // bw
+            x0, x1, y0, y1 = min(x0, x), max(x1, x), min(y0, y), max(y1, y)
+            out[o:o + 3] = b"\xff\x00\x00"
+        else:
+            out[o:o + 3] = bytes(v // 3 for v in bp[o:o + 3])
+    write_png(png_path, bw, bh, bytes(out))
+    return {"px": n, "bbox": (x0, y0, x1, y1)}
+
+
+def row_shots_run(bench, row):
+    """The newest run record of bench under row whose shot folder holds shots (the row's last shots), else None."""
+    best = None
+    for r in read_runs():
+        sp = r.get("shot_path")
+        if r.get("bench") == bench and r.get("row") == row and sp and Path(sp).is_dir() and any(Path(sp).glob("*.ppm")):
+            best = r
+    return best
+
+
+def cmd_cmp(a):
+    bd = bench_def(a.bench)
+    if not bd or not bd["kind"].startswith("azahar"):
+        print("cmp needs an Azahar bench. Nothing was compared.")
+        return 5
+    commit = base_commit(a.commit)
+    if not commit:
+        print("no base commit (the merge-base of HEAD with main, or --commit %s is unknown). Nothing was compared." % a.commit)
+        return 5
+    if not stored(commit, a.bench):
+        print("no stored base of %s at %s. Run: bench.py base %s" % (a.bench, commit[:9], a.bench))
+        return 5
+    rr = row_shots_run(a.bench, a.row)
+    if rr is None:
+        print("no run of %s under row %s with shots. Run the bench first." % (a.bench, a.row))
+        return 5
+    base_dir, row_dir = store_root() / commit / a.bench, Path(rr["shot_path"])
+    base_names = sorted(p.name for p in base_dir.glob("*.ppm"))
+    row_names = sorted(p.name for p in row_dir.glob("*.ppm"))
+    out = REPO / "build3ds" / "basecmp" / a.row / a.bench
+    print("cmp %s: row %s run at commit %s build %s, base %s (%d shots)" % (
+        a.bench, a.row, (rr.get("commit") or "?")[:9], rr.get("build_no"), commit[:9], len(base_names)))
+    equal, bad = 0, 0
+    for n in base_names:
+        if n not in row_names:
+            print("  %s missing in the row run" % n)
+            bad += 1
+            continue
+        res = compare_ppm(base_dir / n, row_dir / n, out / ("diff_" + n[:-4] + ".png"))
+        if res is None:
+            equal += 1
+            print("  %s equal" % n)
+        elif "size" in res:
+            print("  %s SIZE %s" % (n, res["size"]))
+            bad += 1
+        else:
+            x0, y0, x1, y1 = res["bbox"]
+            print("  %s DIFF %d px bbox x %d..%d y %d..%d, diff %s" % (n, res["px"], x0, x1, y0, y1, posix(out / ("diff_" + n[:-4] + ".png"))))
+            bad += 1
+    for n in row_names:
+        if n not in base_names:
+            print("  %s extra (not in base)" % n)
+            bad += 1
+    print("%d/%d byte-equal" % (equal, len(base_names)))
+    return 0 if bad == 0 and equal == len(base_names) and base_names else 1
 
 
 def same_commit(a, b):
@@ -1851,6 +2166,10 @@ def main(argv):
     x = sub.add_parser("build-at"); x.add_argument("commit"); x.add_argument("bench"); x.add_argument("--row", required=True)
     x.add_argument("--why", default=""); x.add_argument("--label", default=""); x.add_argument("--dry-run", action="store_true")
     x.set_defaults(f=cmd_build_at)
+    x = sub.add_parser("base"); x.add_argument("bench", nargs="?"); x.add_argument("--fill", action="store_true")
+    x.add_argument("--commit"); x.add_argument("--row", default=BASE_ROW); x.set_defaults(f=cmd_base)
+    x = sub.add_parser("cmp"); x.add_argument("bench"); x.add_argument("--row", required=True); x.add_argument("--commit")
+    x.set_defaults(f=cmd_cmp)
     x = sub.add_parser("import-csv"); x.set_defaults(f=cmd_import_csv)
     x = sub.add_parser("where"); add_area(x); x.set_defaults(f=cmd_where)
     x = sub.add_parser("spots"); add_area(x); x.add_argument("--top", type=int, default=20); x.set_defaults(f=cmd_spots)
