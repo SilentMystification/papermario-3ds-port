@@ -1,3 +1,4 @@
+#define ND_GBI_WORDS /* DIRECT D5: this file keeps list words (inline data, lists for later or list position tests) */
 #include "sprite.h"
 #include "sprite/player.h"
 #include "pm_interp_fi.h"
