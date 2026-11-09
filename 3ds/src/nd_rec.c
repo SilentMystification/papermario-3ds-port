@@ -114,17 +114,14 @@ static int sh_drop(const uint32_t* t) {
     case NDO_RARE: sh.sc1 = 1; return 0;
     case NDO_TIMG: case NDO_TILE: case NDO_TILESIZE: case NDO_LOADBLOCK: case NDO_LOADTILE: case NDO_LOADTLUT:
         sh_sc(); return 0; /* HC4c: a tile, load or image op may change the combine inputs (td[1].valid, dual_on) */
+    case NDO_VTX: case NDO_TRI1: case NDO_TRI2: case NDO_MTX: case NDO_POPMTX:
+        sh_sc(); return 0; /* HC4d: a draw or matrix op keeps the walker fields but may change the combine inputs (box_fold_sync, dual_bind) */
+    case NDO_MOVEMEM: sh_all(); return 0; /* a light or viewport: the walker state after it is not followed */
     default: return 0;
     }
 }
-/* A word op of a state run: a draw or matrix word leaves the walker fields of the shadow but may change the combine inputs; any other word
- * (a list call, a light, an image, a rectangle, a marker) resets it all. */
-static void sh_word(unsigned op) {
-    switch (op) {
-    case G_VTX: case G_TRI1: case G_TRI2: case G_MTX: case G_POPMTX: sh_sc(); break;
-    default: sh_all(); break;
-    }
-}
+/* A word op of a state run (a list call, an image, a rectangle, a marker) resets the shadow. */
+static void sh_word(void) { sh_all(); }
 static int t4_sw = -1; /* debug switch t4chk: a dropped op is written after NDO_DROP (nd_walk.c t4_check) */
 
 /* HC4b (W3): the render mode table. Entry i holds the typed ops of ModelRenderModes[i] (src/model.c, 61 static lists) without the syncs,
@@ -293,7 +290,7 @@ void nd_rec_state(uint32_t w0, uint32_t w1) {
     const int typed = nd_op_xlate(w0, w1, t); /* HC4a: the scalar state ops typed on the recorder (nd_op.h) */
     rec_open();
     ndc_sw++;
-    if (!typed) sh_word(t[0] >> 24);
+    if (!typed) sh_word();
     else if (sh_drop(t)) {
         if (t4_sw < 0) t4_sw = pm_debug_has("t4chk") ? 1 : 0;
         if (!t4_sw) return;

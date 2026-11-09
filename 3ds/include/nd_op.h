@@ -31,6 +31,12 @@ enum {
     NDO_LOADBLOCK,    /* G_LOADBLOCK: a = uls << 12 | ult, b = tile << 24 | texels - 1 << 12 | dxt */
     NDO_LOADTILE,     /* G_LOADTILE: as NDO_TILESIZE */
     NDO_LOADTLUT,     /* G_LOADTLUT: a = 0, b = tile << 24 | (count - 1) << 14 */
+    NDO_VTX,          /* HC4d, from here the geometry and matrix ops (nd_op_geo): G_VTX: a = n << 12 | (v0 + n) << 1, b = vertex address */
+    NDO_TRI1,         /* G_TRI1: a = v0 * 2 << 16 | v1 * 2 << 8 | v2 * 2 */
+    NDO_TRI2,         /* G_TRI2: a = the first triangle, b = the second (as NDO_TRI1 a) */
+    NDO_MTX,          /* G_MTX: a = the w0 low 24 bits (flags in the low byte), b = matrix address */
+    NDO_POPMTX,       /* G_POPMTX: b = bytes (64 per matrix) */
+    NDO_MOVEMEM,      /* G_MOVEMEM: a = the w0 low 24 bits (offset << 8 | index), b = address */
     NDO_END_
 };
 enum { NDO_MW_NONE, NDO_MW_NUMLIGHT, NDO_MW_LIGHTCOL /* arg = light k */, NDO_MW_FOG, NDO_MW_SEG /* arg = segment */ };
@@ -40,6 +46,7 @@ enum { NDO_RARE_CONV, NDO_RARE_KEYR, NDO_RARE_KEYGB };
 #define NDO_COMB_W0(a) ((uint32_t)0xfcu << 24 | ((uint32_t)(a) & 0xffffffu)) /* the G_SETCOMBINE word of a typed combine (nd_ws.comb_w0, model keys) */
 #define NDO_A_RENDERMODE (3u | 29u << 8) /* the a field of gDPSetRenderMode (G_MDSFT_RENDERMODE 3, 29 bits) */
 static inline int nd_op_typed(unsigned id) { return id - (unsigned)NDO_BASE < 32u; }
+static inline int nd_op_geo(unsigned id) { return id - (unsigned)NDO_VTX <= (unsigned)(NDO_MOVEMEM - NDO_VTX); } /* HC4d: no skip test, no op switch of nd_set.c */
 static inline int nd_op_tex(unsigned id) { return id - (unsigned)NDO_TIMG <= (unsigned)(NDO_LOADTLUT - NDO_TIMG); } /* HC4c: an image, tile or load op */
 /* The mask of an othermode op from its a field (shift, length), as the walker computed it from the word. */
 static inline uint32_t nd_op_om_mask(uint32_t a) {

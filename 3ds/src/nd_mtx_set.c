@@ -149,27 +149,17 @@ void gbi_popmtx(u32 w1) {
     upload_mvp();
 }
 
+/* HC4d: the lights of a model record (gSPSetLights0 to 7, F3DEX2) by their typed fields: the light count (G_MW_NUMLIGHT, NUML(n), n at
+ * least 1), then G_MOVEMEM light k (k = 1 to n: l[k - 1], n + 1: the ambient) at offset k * 24 + 24, each with the walker's skip test. */
 void rec_lights(const Lightsn* L, unsigned k) {
-    Gfx tg[12];
-    Gfx* p = tg;
-    switch (k) {
-    case 0: gSPSetLights0(p++, L[0]); break;
-    case 1: gSPSetLights1(p++, L[0]); break;
-    case 2: gSPSetLights2(p++, L[0]); break;
-    case 3: gSPSetLights3(p++, L[0]); break;
-    case 4: gSPSetLights4(p++, L[0]); break;
-    case 5: gSPSetLights5(p++, L[0]); break;
-    case 6: gSPSetLights6(p++, L[0]); break;
-    case 7: gSPSetLights7(p++, L[0]); break;
-    default: return;
-    }
-    for (const Gfx* h = tg; h < p; h++) {
-        u32 w0 = h->words.w0, w1 = h->words.w1;
-        unsigned op = w0 >> 24;
-        uint32_t t[2];
-        if (nd_op_xlate(w0, w1, t)) { if (!nd_op_same(t)) nd_op_apply(t); continue; } /* HC4a: G_MOVEWORD (light count) typed */
-        if (g2_same(op, w0, w1)) continue;
-        if (op == G_MOVEMEM) gbi_movemem(w0, w1);
+    if (k > 7u) return;
+    const unsigned n = k ? k : 1u; /* NUMLIGHTS_0 is 1 */
+    const uint32_t t[2] = { NDO_W0(NDO_MW, NDO_MW_NUMLIGHT << 16), NUML(n) };
+    if (!nd_op_same(t)) nd_op_apply(t);
+    for (unsigned i = 1; i <= n + 1u; i++) {
+        const u32 a = (((u32)sizeof(Light) - 1u) / 8u) << 19 | ((i * 24u + 24u) / 8u) << 8 | G_MV_LIGHT;
+        const u32 b = (u32)(uintptr_t)(i <= n ? (const void*)&L->l[i - 1u] : (const void*)&L->a);
+        if (!lt_mem_same(a, b)) gbi_movemem(a, b);
     }
 }
 

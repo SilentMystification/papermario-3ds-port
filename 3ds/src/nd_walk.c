@@ -24,11 +24,6 @@ unsigned pm_gbi_cur_op; /* PI2: op of the display list step now running (one sto
 
 int pm_gpu_spr_native(const uint32_t* rec); /* SPR4 */
 
-/* HC4a, HC4b: the skip test of the op that is still a word (light memory). The typed ops carry their own test (nd_set.c nd_op_same). */
-int g2_same(unsigned op, u32 w0, u32 w1) {
-    (void)w1;
-    return op == G_MOVEMEM && (w0 & 0xff) == G_MV_LIGHT && lt_mem_same(w0, w1);
-}
 
 void gbi_cold_bad_next(u32 w1, u32 w0, u32 list) {
     static int bad; if (bad++ < 8) pm_log_e("bad dl target %08x w0 %08x list %08x", w1, w0, list);
@@ -247,7 +242,7 @@ static void walk_call(unsigned dbg, const Gfx* at, u32 w0, u32 w1) {
     if (__builtin_expect(dbg & WD_ORB, 0) && orb_tag != ot) { pm_gpu_flush(); orb_tag = ot; } /* FX1-3 */
 }
 /* DIRECT D4b-3, D5: NDC_STATE (nd_rec.c): a run of ops recorded by the nd_gbi.h redirect. Each op runs as the walker runs it inside a
- * list: g2_same skips it (g2_note), else the op prologue (pm_gbi_cur_op, gv_epoch but not for vertex, triangle, matrix and list ops) and the
+ * list: its skip test (typed ops: nd_op_same, the light memory test of op_geo), else the op prologue (pm_gbi_cur_op, gv_epoch but not for vertex, triangle, matrix and list ops) and the
  * same handler as the walker's arm. The recorder dropped the RDP syncs; the branch form of G_DL stays a list word.
  * D10b: also the op executor of a flat op range (nd_ops_run): an RDP sync or G_SPNOOP is skipped before the prologue, a texture rectangle
  * takes its two RDPHALF units, G_ENDDL ends the range (the flat ranges hold no branch). */
@@ -262,6 +257,38 @@ static void op_typed(unsigned dbg, const uint32_t* u, const void* at) {
     if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const Gfx*)at, 0, op, u[0], u[1]);
     if (__builtin_expect(dbg & WD_CEN, 0) && nd_op_tex(id)) nd_tex_timed(u); /* sp0x census */
     else nd_op_apply(u);
+    if (__builtin_expect(fp, 0)) pm_ph_pop();
+}
+/* HC4d: one typed geometry or matrix op (nd_op_geo) with the walker's rules: no skip test but the light memory one (R5B), the prologue
+ * (pm_gbi_cur_op; gv_epoch only for G_MOVEMEM, as the old prologue), the handler. at: the op's place in its list (logs). */
+static void op_geo(unsigned dbg, const uint32_t* u, const void* at) {
+    const unsigned id = u[0] >> 24, op = nd_op_n64[id - NDO_BASE];
+    const u32 a = u[0] & 0xffffffu, b = u[1];
+    if (id == NDO_MOVEMEM) {
+        if ((a & 0xffu) == G_MV_LIGHT && lt_mem_same(a, b)) return;
+        gv_epoch++; /* GV1b */
+    }
+    pm_gbi_cur_op = op;
+    int fp = 0;
+    if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const Gfx*)at, 0, op, u[0], u[1]);
+    switch (id) {
+    case NDO_VTX: nd_geom_vtx(a, b, (const Gfx*)at); break;
+    case NDO_TRI1:
+        tri_prep_ok = 0;
+        draw_tri(a);
+        break;
+    case NDO_TRI2:
+        tri_prep_ok = 0;
+        draw_tri(a);
+        draw_tri(b);
+        break;
+    case NDO_MTX:
+        if (!is_host((u32)(uintptr_t)ptr_of(b))) gbi_cold_bad_mtx(a, b, (Gfx*)at, (Gfx*)at + 1);
+        load_mtx(a, b, 0);
+        break;
+    case NDO_POPMTX: gbi_popmtx(b); break;
+    default: gbi_movemem(a, b); break;
+    }
     if (__builtin_expect(fp, 0)) pm_ph_pop();
 }
 /* HC4b t4chk (debug switch, plan_hotcode 5.2): the recorder writes each op its shadow dropped after NDO_DROP. The walker runs the old skip
@@ -284,35 +311,26 @@ void nd_walk_state(const uint32_t* q, unsigned n) {
         u32 w0 = q[0], w1 = q[1];
         unsigned op = w0 >> 24;
         if (nd_op_typed(op)) { /* HC4a: a typed op of a state run */
-            if (__builtin_expect(op == NDO_DROP, 0)) { q += 2; if (q < e) t4_check(dbg, q); continue; } /* HC4b t4chk: an op the recorder dropped */
-            op_typed(dbg, q, q);
+            if (nd_op_geo(op)) op_geo(dbg, q, q);
+            else if (__builtin_expect(op == NDO_DROP, 0)) { q += 2; if (q < e) t4_check(dbg, q); } /* HC4b t4chk: an op the recorder dropped */
+            else op_typed(dbg, q, q);
             continue;
         }
         if (nd_op_sync(op)) continue; /* the RDP syncs: no work on the 3DS */
         if (op == G_ENDDL) break;
-        { uint32_t t[2]; if (nd_op_xlate(w0, w1, t)) { op_typed(dbg, t, q); continue; } } /* a list word of a typed op (static lists until HC4e) */
-        if (g2_same(op, w0, w1)) continue;
+        { /* a list word of a typed op (static lists until HC4e) */
+            uint32_t t[2];
+            if (nd_op_xlate(w0, w1, t)) {
+                if (nd_op_geo(t[0] >> 24)) op_geo(dbg, t, q);
+                else op_typed(dbg, t, q);
+                continue;
+            }
+        }
         pm_gbi_cur_op = op;
-        if (op != G_VTX && op != G_TRI1 && op != G_TRI2 && op != G_MTX && op != G_POPMTX && op != G_DL && op != G_MODIFYVTX) gv_epoch++; /* GV1b */
+        if (op != G_DL && op != G_MODIFYVTX) gv_epoch++; /* GV1b */
         int fp = 0;
         if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const Gfx*)q, 0, op, w0, w1);
         switch (op) {
-        case G_VTX: nd_geom_vtx(w0, w1, (const Gfx*)q); break;
-        case G_TRI1:
-            tri_prep_ok = 0;
-            draw_tri(w0);
-            break;
-        case G_TRI2:
-            tri_prep_ok = 0;
-            draw_tri(w0);
-            draw_tri(w1);
-            break;
-        case G_MTX:
-            if (!is_host((u32)(uintptr_t)ptr_of(w1))) gbi_cold_bad_mtx(w0, w1, (Gfx*)q, (Gfx*)q + 1);
-            load_mtx(w0, w1, 0);
-            break;
-        case G_POPMTX: gbi_popmtx(w1); break;
-        case G_MOVEMEM: gbi_movemem(w0, w1); break;
         case G_MODIFYVTX: gbi_cold_modifyvtx(w0, w1); break;
         case G_DL:
             walk_call(dbg, (const Gfx*)q, w0, w1);

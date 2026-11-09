@@ -6,7 +6,8 @@
 const uint8_t nd_op_n64[NDO_END_ - NDO_BASE] = {
     G_SETOTHERMODE_H, G_SETOTHERMODE_L, G_GEOMETRYMODE, G_SETPRIMCOLOR, G_SETENVCOLOR, G_SETFOGCOLOR, G_SETBLENDCOLOR,
     G_SETFILLCOLOR, G_SETPRIMDEPTH, G_SETSCISSOR, G_TEXTURE, G_MOVEWORD, 0 /* NDO_RARE: the sub-op names it */, G_SETCOMBINE,
-    G_ENDDL /* NDO_END */, G_SPNOOP /* NDO_DROP */, G_SETTIMG, G_SETTILE, G_SETTILESIZE, G_LOADBLOCK, G_LOADTILE, G_LOADTLUT
+    G_ENDDL /* NDO_END */, G_SPNOOP /* NDO_DROP */, G_SETTIMG, G_SETTILE, G_SETTILESIZE, G_LOADBLOCK, G_LOADTILE, G_LOADTLUT,
+    G_VTX, G_TRI1, G_TRI2, G_MTX, G_POPMTX, G_MOVEMEM
 };
 
 static int out2(uint32_t out[2], unsigned id, uint32_t a, uint32_t b) {
@@ -50,6 +51,12 @@ int nd_op_xlate(uint32_t w0, uint32_t w1, uint32_t out[2]) {
     case G_LOADBLOCK: return out2(out, NDO_LOADBLOCK, w0, w1);
     case G_LOADTILE: return out2(out, NDO_LOADTILE, w0, w1);
     case G_LOADTLUT: return out2(out, NDO_LOADTLUT, w0, w1);
+    case G_VTX: return out2(out, NDO_VTX, w0, w1);
+    case G_TRI1: return out2(out, NDO_TRI1, w0, w1);
+    case G_TRI2: return out2(out, NDO_TRI2, w0, w1);
+    case G_MTX: return out2(out, NDO_MTX, w0, w1);
+    case G_POPMTX: return out2(out, NDO_POPMTX, w0, w1);
+    case G_MOVEMEM: return out2(out, NDO_MOVEMEM, w0, w1);
     default:
         out[0] = w0;
         out[1] = w1;
