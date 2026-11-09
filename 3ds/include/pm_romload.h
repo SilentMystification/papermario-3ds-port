@@ -9,7 +9,8 @@ static inline void pm_rs_need(unsigned addr, unsigned len) {
     if (__builtin_expect(__atomic_load_n(&pm_rs_all, __ATOMIC_ACQUIRE), 1)) return;
     pm_rs_need_slow(addr, len);
 }
-int pm_rs_read_direct(unsigned addr, void* out, unsigned n); /* 1: out was read from the file (chunks not ready yet) */
+int pm_rs_read_direct(unsigned addr, void* out, unsigned n);
+unsigned pm_rom_direct_n(void); /* BOOT2: direct reads so far */ /* 1: out was read from the file (chunks not ready yet) */
 /* Opens sdmc:/3ds/PaperMario/<path> and starts the loader thread. keep NULL: the full image at its own offsets. 0: open failed. */
 int pm_rom_stream_start(const char* path, unsigned char* block, unsigned size, const PmRsSeg* keep, unsigned nkeep);
 void pm_rom_stream_poll_slow(void);

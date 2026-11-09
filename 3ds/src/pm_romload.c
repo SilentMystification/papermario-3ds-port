@@ -144,6 +144,8 @@ void pm_rs_need_slow(unsigned addr, unsigned len) {
 /* A copy out of the image (pi_read_raw) whose chunks are not all ready: read the n bytes at ROM address addr straight from the
  * file into out. The boot reads small parts (bank headers and tables) of many chunks: a whole-chunk read would cost 128 KB each.
  * Returns 1 when out holds the bytes, 0 when the image has them (or the direct read failed: the chunk path reports it). */
+unsigned pm_rom_direct_n(void) { return rs_direct; } /* BOOT2: direct reads so far (boot line, romorder) */
+
 int pm_rs_read_direct(unsigned addr, void* out, unsigned n) {
     unsigned c0 = addr >> RS_SHIFT, c1 = (addr + n - 1u) >> RS_SHIFT, c;
     if (!n || addr + n > rs_size) return 0;
