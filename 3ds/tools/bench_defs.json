@@ -839,12 +839,44 @@
       "gates": []
     },
     {
+      "name": "yard_hud_max_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "HUDTRAIL: yard at 4:3 (nowide), star power 7 and 999 coins, uishow=bar opens the status bar (scenario yard_hud_max). A person reads the shot: the 4:3 bar with 7 star power and coins 999.",
+      "scenario": "yard_hud_max",
+      "cap": 45,
+      "until": "shot \\d+ frame 28[0-9]\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "hud"
+      ],
+      "gates": []
+    },
+    {
       "name": "yard_wide_hud_pic",
       "kind": "azahar_pic",
       "speed": "normal",
       "default": false,
       "purpose": "HUD1: yard with wide on, uishow=bar opens the status bar at the warp frame; shots 272 to 301 (scenario yard_wide_hud). A person reads the shot: the wide status bar (1.25x) on screen.",
       "scenario": "yard_wide_hud",
+      "cap": 45,
+      "until": "shot \\d+ frame 28[0-9]\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "hud"
+      ],
+      "gates": []
+    },
+    {
+      "name": "yard_wide_hud_max_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "HUDTRAIL: yard with wide on, star power 7 and 999 coins, uishow=bar opens the status bar (scenario yard_wide_hud_max). A person reads the shot: 7 full star power bars, no dots left of the bar, coins exactly 999.",
+      "scenario": "yard_wide_hud_max",
       "cap": 45,
       "until": "shot \\d+ frame 28[0-9]\\b",
       "tags": [

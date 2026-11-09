@@ -215,7 +215,7 @@ static int tex_raw_piece(int xa, int ya, int xb, int yb, float s0, float t0, flo
 static int tex_raw_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s1, float t1) {
     if (!rect_raw_ok()) return 0;
     float xa = px(x0), xb = px(x1 + 1);
-    if (pm_wide && !gs.off_active && xb > xa && !pm_tex_cell_bound()) { /* F07-7: a rectangle on the game edge reaches the screen edge. MSGBOX 4: not a glyph: a glyph at game x 0 (wide bubble text) drew 40 px of the cells left of it */
+    if (pm_wide && !gs.off_active && xb > xa && x1 - x0 + 1 >= 160 && !pm_tex_cell_bound()) { /* F07-7: a rectangle on the game edge reaches the screen edge. HUDTRAIL: only a screen-covering rectangle (>= 160 game px) does; a HUD piece on game x 0 or 319 repeated its texture across the gutter. MSGBOX 4: not a glyph: a glyph at game x 0 (wide bubble text) drew 40 px of the cells left of it */
         float ds = (s1 - s0) / (xb - xa);
         if (x0 == 0) { s0 -= ds * xa; xa = 0.f; }
         if (x1 == 319) { s1 += ds * (400.f - xb); xb = 400.f; }
