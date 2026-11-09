@@ -4135,6 +4135,58 @@
         "xfer"
       ],
       "gates": []
+    },
+    {
+      "name": "magi_hit_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MAGI: Magikoopa Magic Blast hit on Mario (HOS formation 03). fspk lines: per-frame draws, binds, misses around the hit; 6 shots after the hit. Azahar counts valid, ms direction only.",
+      "scenario": "magi_hit",
+      "cap": 20,
+      "until": "fspk: done hit f\\d+",
+      "tags": [
+        "azahar",
+        "pic",
+        "magi",
+        "battle"
+      ],
+      "gates": []
+    },
+    {
+      "name": "magi_hit_prof",
+      "kind": "console_prof",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MAGI: Magikoopa Flying battle (HOS formation 03) on the O3DS console, prof mode, autoa; the fspk lines give the step ms of each frame around the Magic Blast hit. Ingest the live log after the push.",
+      "scene_match": null,
+      "recipe": "warp=hos_00:0 story=ch0_toad_town battle=BTL_HOS_FORMATION_03:BTL_HOS_STAGE_02 battlef=100 cheats=hp autoa fspk prof=30",
+      "scenario": null,
+      "host": "o3ds",
+      "cap": 45,
+      "until": "fspk: done hit f\\d+",
+      "tags": [
+        "console",
+        "prof",
+        "magi"
+      ],
+      "gates": []
+    },
+    {
+      "name": "magi_hit_stream",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MAGI: Magikoopa Magic Blast hit (HOS formation 03), fspk per-frame lines with no shots. Azahar counts valid, ms direction only.",
+      "scenario": "magi_hit_noshot",
+      "cap": 20,
+      "until": "fspk: done hit f\\d+",
+      "tags": [
+        "azahar",
+        "magi",
+        "battle"
+      ],
+      "gates": []
     }
   ],
   "legacy": {

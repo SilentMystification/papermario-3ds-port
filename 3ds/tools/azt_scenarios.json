@@ -10380,6 +10380,54 @@
         }
       ],
       "reason": "MAPX-3 gate. The map load is at about frame 190 (det): shots 196 to 211 hold the covered frames and the first fade-in frames. Cap 35 s."
+    },
+    {
+      "name": "magi_hit",
+      "status": "unverified",
+      "subject": "Magikoopa Flying battle (BTL_HOS_FORMATION_03, stage hos_02) from hos_00 with autoa: Mario jumps, the Magikoopa casts Magic Blast; the shape_spell reaching Mario marks the hit (fspk mark). Per-frame fspk lines for 16 frames before and 48 after the hit; shots of the 6 frames after the hit.",
+      "proves": "MAGI: draws, triangles, TEV rebuilds, texture binds and misses, entity key compiles and model misses per frame at the spell hit (Azahar counts valid, ms direction only); the shots show the spell burst and the hit on Mario.",
+      "debug": "warp=hos_00:0 story=ch0_toad_town battle=BTL_HOS_FORMATION_03:BTL_HOS_STAGE_02 battlef=100 cheats=hp autoa fspk shots loglevel=debug",
+      "until": "fspk: done hit f\\d+",
+      "cap": 20,
+      "deadline": 30,
+      "first_marker": "warp: hos_00 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "battle",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "hit",
+          "regex": "fspk: mark shape_spell hit"
+        }
+      ],
+      "reason": "Cap 20: the hit comes about 9 s after the start (battle load at f100, Mario's jump turn, the cast); the until line ends the 48-frame window after the hit."
+    },
+    {
+      "name": "magi_hit_noshot",
+      "status": "unverified",
+      "subject": "As magi_hit without shots: the fspk lines of the 16 frames before and 48 after the Magikoopa spell hit, no shot frame in the window. fsplit adds the per-frame parts (logic, dl, gbi, flush, gwait, swap, audio, rest) to each fspk frame.",
+      "proves": "MAGI: per-frame step ms and draw counts at the hit with no shot write in the window (the shot frames of magi_hit stall the pacing).",
+      "debug": "warp=hos_00:0 story=ch0_toad_town battle=BTL_HOS_FORMATION_03:BTL_HOS_STAGE_02 battlef=100 cheats=hp autoa fspk fsplit loglevel=debug",
+      "until": "fspk: done hit f\\d+",
+      "cap": 20,
+      "deadline": 30,
+      "first_marker": "warp: hos_00 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "battle",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "hit",
+          "regex": "fspk: mark shape_spell hit"
+        }
+      ],
+      "reason": "Cap 20: the hit comes about 9 s after the start (battle load at f100, Mario's jump turn, the cast); the until line ends the 48-frame window after the hit."
     }
   ]
 }

@@ -1003,6 +1003,7 @@ unsigned pm_tex_peak(void) { return used_peak; }
 /* V13c: highest cache use since the last call, then restart from the current use. */
 unsigned pm_tex_map_peak_take(unsigned* wmax) { unsigned p = map_peak; *wmax = map_wmax; map_peak = used; map_wmax = 0; return p; }
 /* texmap (debug): cache counts since the previous call, at each map load: hits, misses, uploaded KB, invalidated, evicted. */
+void pm_tex_tot(unsigned* miss, unsigned* up) { *miss = tot_miss; *up = tot_up; } /* MAGI fspk: lifetime misses and uploaded bytes */
 void pm_tex_rehash_counts(unsigned* same, unsigned* diff) { *same = tot_same; *diff = tot_diff; } /* PERF2: the dirty-slot rehash totals (sprcost line) */
 void pm_tex_map_delta(unsigned* o) {
     static unsigned prev[9];
