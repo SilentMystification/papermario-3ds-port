@@ -842,6 +842,8 @@ static void warp_setup(s16 areaID, s16 mapID) {
         gPlayerData.curPartner = w_partner;
     }
     char vs[16];
+    if (pm_debug_has("allpartners")) { void pm_dbgg_give(int g); pm_dbgg_give(0); } /* PAUSEFLK: all 11 partners (the pause Party wheel with the user's partner count) */
+    if (pm_debug_value("spmax", vs, sizeof vs)) gPlayerData.maxStarPower = (s8)atoi(vs); /* PAUSEFLK: spmax=<n> also at the warp (rescued Star Spirits in the pause) */
     if (pm_debug_value("sp", vs, sizeof vs)) gPlayerData.starPoints = (s8)atoi(vs); /* slice S19d: sp=<n> star points, 99 + one win = level up */
     if (pm_debug_value("hp", vs, sizeof vs)) gPlayerData.curHP = (s8)atoi(vs); /* slice S19d: hp=<n> Mario HP, 1 = lose the battle fast */
     fio_serialize_state();
