@@ -1,9 +1,10 @@
 /* nd_mtx_test.c: host test of nd_mtx.c (plan_native_slices S1-4). Known answers for the N64 unpack, the 10 deep stack (push, load, premultiply, pop, depth cap),
- * the eye shift of a perspective matrix, and the C3D_Mtx order product. The bit equal check of the palette product against the old path
+ * the combine product, the stereo convergence w (EYECW, nd_proj_wn), and the C3D_Mtx order product. The bit equal check of the palette product against the old path
  * (libcitro3d Mtx_Multiply) runs in nd_seam_test on the ndref kind 5 records. Build with -msse2 -mfpmath=sse so the host rounds each operation to 32 bits. */
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 #include "nd.h"
 
 static int fails;
@@ -64,6 +65,45 @@ static void test_combine(void) {
     nd_mtx_ident(nd_proj);
     nd_mtx_combine(c);
     CHECK(c[3][0] == 5.f && c[0][0] == 1.f, "an orthographic projection keeps the modelview");
+}
+
+/* EYECW: nd_proj is view x perspective. The shader shifts N64 clip x by e (w - cw), cw = conv x nd_proj_wn (pm4/pm5, pm_gpu.c eyd_sync). A point at
+ * depth conv in front of the camera has no shift at any camera yaw; a far point moves with e, a near point against it. The old cw = conv x |p23|
+ * was 0 at yaw 90. */
+static float eye_dx(const float v[3], float e, float conv) {
+    float c[4][4], p[4];
+    nd_mtx_combine(c);
+    for (int j = 0; j < 4; j++) p[j] = v[0] * c[0][j] + v[1] * c[1][j] + v[2] * c[2][j] + c[3][j];
+    return nd_proj_wn != 0.f ? e * (p[3] - conv * nd_proj_wn) : 0.f; /* the shader: a perspective entry only */
+}
+static void test_combine_view(void) {
+    static const float yaws[4] = { 0.f, 45.f, 90.f, 180.f };
+    const float conv = 300.f, e = 0.015f, pitch = -20.f * 3.14159265f / 180.f, n = 16.f, f = 4096.f, fy = 1.5f;
+    for (int i = 0; i < 4; i++) {
+        const float yaw = yaws[i] * 3.14159265f / 180.f;
+        const float d[3] = { sinf(yaw) * cosf(pitch), sinf(pitch), -cosf(yaw) * cosf(pitch) }; /* the view direction */
+        float r[3] = { -d[2], 0.f, d[0] }; /* right = d x up (up = y) */
+        const float rl = sqrtf(r[0] * r[0] + r[2] * r[2]); r[0] /= rl; r[2] /= rl;
+        const float u[3] = { r[1] * d[2] - r[2] * d[1], r[2] * d[0] - r[0] * d[2], r[0] * d[1] - r[1] * d[0] };
+        float vw[4][4], pr[4][4], vp[4][4];
+        nd_mtx_ident(vw);
+        for (int k = 0; k < 3; k++) { vw[k][0] = r[k]; vw[k][1] = u[k]; vw[k][2] = -d[k]; } /* row vector: camera = world x vw, camera z = -depth */
+        memset(pr, 0, sizeof pr);
+        pr[0][0] = fy; pr[1][1] = fy; pr[2][2] = (n + f) / (n - f); pr[2][3] = -1.f; pr[3][2] = 2.f * n * f / (n - f); /* guPerspectiveF layout, scale 1 */
+        nd_mtx_mul(vp, vw, pr);
+        nd_mtx_reset();
+        nd_mtx_load((const float(*)[4])vp, ND_MTX_PROJ | ND_MTX_LOAD);
+        CHECK(fabsf(nd_proj_wn - 1.f) < 1e-5f, "yaw %g: nd_proj_wn %f (the w column length of view x perspective)", yaws[i], nd_proj_wn);
+        const float at[3] = { conv * d[0], conv * d[1], conv * d[2] }, far_[3] = { 3.f * at[0], 3.f * at[1], 3.f * at[2] }, near_[3] = { 0.3f * at[0], 0.3f * at[1], 0.3f * at[2] };
+        const float d0 = eye_dx(at, e, conv), d1 = eye_dx(far_, e, conv), d2 = eye_dx(near_, e, conv);
+        CHECK(fabsf(d0) < 1e-4f * conv * e + 1e-4f, "yaw %g: the point at depth conv moves %g", yaws[i], d0);
+        CHECK(d1 > 0.f && fabsf(d1 - e * 2.f * conv) < 1e-3f, "yaw %g: a far point moves with e (%g)", yaws[i], d1);
+        CHECK(d2 < 0.f, "yaw %g: a near point moves against e (%g)", yaws[i], d2);
+    }
+    nd_mtx_reset();
+    CHECK(nd_proj_wn == 0.f, "reset: nd_proj_wn 0");
+    nd_mtx_load((const float(*)[4])nd_mv[0], ND_MTX_PROJ | ND_MTX_LOAD); /* an identity (orthographic) projection */
+    CHECK(nd_proj_wn == 0.f && eye_dx((const float[3]){ 1.f, 2.f, 3.f }, 0.5f, 300.f) == 0.f, "an orthographic projection does not move");
 }
 
 static void test_cmul(void) {
@@ -135,6 +175,7 @@ int main(void) {
     test_unpack();
     test_stack();
     test_combine();
+    test_combine_view();
     test_cmul();
     test_replace();
     test_lights();

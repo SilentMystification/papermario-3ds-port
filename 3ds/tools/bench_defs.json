@@ -2600,6 +2600,100 @@
       "gates": []
     },
     {
+      "name": "mim01_ring_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "EYECW: Forever Forest mim_01 (entry 1, x -530), det, mono: Mario runs from (-265, -265) to (-265, 265) on the inner ring, so the camera yaw passes 90. 12 shots, frames 60 to 280. A person reads the shot.",
+      "scenario": "mim01_ring_det",
+      "cap": 30,
+      "until": "shot \\d+ frame 280\\b",
+      "tags": [
+        "azahar",
+        "det"
+      ],
+      "gates": []
+    },
+    {
+      "name": "mim01_ring_stereo_det_l",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "EYECW: mim_01 ring run as mim01_ring_det with forced stereo, left eye shots. The eyecw line every 10 frames: p23 (the old convergence factor, near 0 at yaw 90) and cw (conv x nd_proj_wn). A person reads the shot.",
+      "scenario": "mim01_ring_stereo_det_l",
+      "cap": 30,
+      "until": "shot \\d+ frame 280\\b",
+      "tags": [
+        "azahar",
+        "det",
+        "stereo"
+      ],
+      "gates": []
+    },
+    {
+      "name": "mim01_ring_stereo_det_r",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "EYECW: mim_01 ring run as mim01_ring_det with forced stereo, right eye shots. The eyecw line every 10 frames: p23 (the old convergence factor, near 0 at yaw 90) and cw (conv x nd_proj_wn). A person reads the shot.",
+      "scenario": "mim01_ring_stereo_det_r",
+      "cap": 30,
+      "until": "shot \\d+ frame 280\\b",
+      "tags": [
+        "azahar",
+        "det",
+        "stereo"
+      ],
+      "gates": []
+    },
+    {
+      "name": "kmr11_cut",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "EYECW: Goomba's fortress exterior (kmr_11, entry 0) at story -120: the cutscene EVS_Scene_MeetGoombaKing rotates the camera. Mono, det, shots every 20 frames 41 to 261 (from the GKCAM scenario of 61d04a541, fewer shots). A person reads the shot.",
+      "scenario": "kmr11_cut",
+      "cap": 30,
+      "until": "shot \\d+ frame 261\\b",
+      "tags": [
+        "azahar",
+        "det"
+      ],
+      "gates": []
+    },
+    {
+      "name": "kmr11_cut_stereo_det_l",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "EYECW: kmr11_cut with forced stereo, left eye shots at frames 41 to 261 step 20; eyecw lines every 10 frames. A person reads the shot.",
+      "scenario": "kmr11_cut_stereo_det_l",
+      "cap": 30,
+      "until": "shot \\d+ frame 261\\b",
+      "tags": [
+        "azahar",
+        "det",
+        "stereo"
+      ],
+      "gates": []
+    },
+    {
+      "name": "kmr11_cut_stereo_det_r",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "EYECW: kmr11_cut with forced stereo, right eye shots at frames 41 to 261 step 20; eyecw lines every 10 frames. A person reads the shot.",
+      "scenario": "kmr11_cut_stereo_det_r",
+      "cap": 30,
+      "until": "shot \\d+ frame 261\\b",
+      "tags": [
+        "azahar",
+        "det",
+        "stereo"
+      ],
+      "gates": []
+    },
+    {
       "name": "spot_mac01_stereo_det_l",
       "kind": "azahar_pic",
       "speed": "normal",

@@ -5,11 +5,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include "nd.h"
 
 float nd_mv[ND_MV_DEPTH][4][4];
 ND_HOTD int nd_mv_sp;
 float nd_proj[4][4];
+float nd_proj_wn; /* EYECW: length of the xyz part of the w column of nd_proj (0: orthographic). nd_proj is view x perspective, so |p23| alone follows the camera yaw */
 
 void nd_mtx_ident(float m[4][4]) {
     memset(m, 0, sizeof(float) * 16);
@@ -59,6 +61,7 @@ void nd_lights(PmFx* fx, int texgen, const NdLight* lt, unsigned n, const int8_t
 void nd_mtx_reset(void) {
     for (int i = 0; i < 256; i++) f127[i] = (float)(int8_t)i / 127.f;
     nd_mtx_ident(nd_proj);
+    nd_proj_wn = 0.f;
     nd_mtx_ident(nd_mv[0]);
     nd_mv_sp = 0;
 }
@@ -78,6 +81,7 @@ void nd_mtx_load(const float in[4][4], unsigned flags) {
         memcpy(cur, dst, sizeof cur);
         nd_mtx_mul(dst, in, cur);
     }
+    if (is_proj) nd_proj_wn = sqrtf(nd_proj[0][3] * nd_proj[0][3] + nd_proj[1][3] * nd_proj[1][3] + nd_proj[2][3] * nd_proj[2][3]); /* EYECW: one sqrtf per projection load */
 }
 
 void nd_mtx_pop(unsigned count) {

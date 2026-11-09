@@ -27,13 +27,14 @@ void nd_frame_begin(void); /* once per gbi task: the ndst debug line */
 extern float nd_mv[ND_MV_DEPTH][4][4];
 extern int nd_mv_sp;
 extern float nd_proj[4][4];
+extern float nd_proj_wn; /* EYECW: |xyz of the w column of nd_proj|, 0 for an orthographic projection; the stereo convergence is conv * nd_proj_wn */
 void nd_mtx_ident(float m[4][4]);
 void nd_mtx_mul(float c[4][4], const float a[4][4], const float b[4][4]);
 void nd_mtx_unpack(const uint32_t* n64, float d[4][4]);      /* 16 words of an N64 Mtx */
 void nd_mtx_reset(void);                                     /* projection and stack bottom to identity, stack empty */
 void nd_mtx_load(const float in[4][4], unsigned flags);      /* push (when flagged), then load or premultiply into the top or the projection */
 void nd_mtx_pop(unsigned count);                             /* count 0 pops one */
-extern float nd_eye_cull_e, nd_eye_cull_c; /* STEREO: nd_geom.c, the x margin of the clip and box tests (0 in a mono frame) */
+extern float nd_eye_cull_e, nd_eye_cull_k; /* STEREO: nd_geom.c, the x margin of the clip and box tests (0 in a mono frame) */
 void nd_mtx_combine(float c[4][4]);     /* modelview x projection (STEREO: the eye shift is added by the vertex shader) */
 void nd_mtx_cmul(float o[16], const float a[16], const float b[16]); /* citro3d Mtx_Multiply */
 void nd_mtx_pcomp(float o[16], const float post[16], const float game[4][4]); /* pcomp = post x game */

@@ -279,7 +279,7 @@ __attribute__((noinline)) int dlc_box_out(const DlcGrp* g, const float (*m)[4]) 
     float lo[3] = { g->lo[0], g->lo[1], g->lo[2] }, hi[3] = { g->hi[0], g->hi[1], g->hi[2] };
     /* STEREO: one matrix for both eyes; the shader moves N64 clip x by e (w - cw), e = +-nd_eye_cull_e, for a perspective matrix. An x plane is out
      * only when the box is out of it for both eyes (each eye is a w factor b + e and a constant -e cw). */
-    const float ce = nd_eye_cull_e, cc = nd_eye_cull_c;
+    const float ce = nd_eye_cull_e, cc = nd_eye_cull_k * nd_proj_wn; /* e and e * cw (EYECW: cw = conv * nd_proj_wn) */
     const int sx = ce > 0.f && (m[0][3] != 0.f || m[1][3] != 0.f || m[2][3] != 0.f);
     int out = 0;
     for (int p = 0; p < 5; p++) {

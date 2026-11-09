@@ -81,14 +81,13 @@ static float t1_s[4] = { 1.f, 1.f, 0.f, 0.f };
 static int aux_bound;
 static C3D_RenderTarget* target;
 /* STEREO: the right eye target. cur_target is the target of the pass in progress (the left one in a mono frame). pm_eye_conv is the eye distance in world
- * units that has zero parallax (set by the camera); eye_cw is its value for the frame (read at the frame begin). The eye shift is in the vertex shader
- * (uniforms eye and eyd, eye_set and rebuild_3d): the matrices of both eyes are the same. */
+ * units that has zero parallax (set by the camera); eye_conv is its value for the frame (read at the frame begin, 0 in a mono frame). The eye shift is
+ * in the vertex shader (uniforms eye and eyd: eye_set, eyd_sync): the matrices of both eyes are the same. */
 static C3D_RenderTarget *targetR, *cur_target;
 static int stereo_frame, r_wantclear, r_cleared;
-static float eye_slider, eye_cw;
+static float eye_slider, eye_conv;
 float pm_eye_conv = 300.f;
 static int u_eye = -1, u_eyd = -1; /* the same registers in pm4 and pm5 (checked at init) */
-static void eye_vec(int id, float x, float y, float z, float w);
 #define PM_EYE_E 0.015f /* NDC shift per eye at slider 1 for a point at infinity (3 px of 400). The calibration knob. */
 /* H02 GPU limit stats, maxima since the last `mem` log line. Verts and command buffer overflow drop work without a message. */
 static unsigned draws_frame, draws_max, frames_seen;
@@ -188,7 +187,6 @@ static void rebuild_3d(void) {
         gv_wind = det < 0.f ? -1 : 1;
         post_gen++;
         nd_mtx_pcomp(shader_3d.m, post->m, game_mvp); /* S1-4: nd_mtx.c. SEAM: the same product, in the same order, as pcomp_calc: post x game. The CPU path and the raw path then give bit-identical positions. */
-        eye_vec(u_eyd, post->r[0].x, post->r[1].x, post->r[2].x, post->r[3].x); /* STEREO: column 0 of post, the direction of an N64 clip x shift */
     }
 }
 
@@ -778,7 +776,15 @@ static void eye_vec(int id, float x, float y, float z, float w) {
     if (c->x == x && c->y == y && c->z == z && c->w == w) return;
     C3D_FVUnifSet(GPU_VERTEX_SHADER, id, x, y, z, w);
 }
-static void eye_set(float e) { eye_vec(u_eye, e, eye_cw, 0.f, 0.f); }
+static void eye_set(float e) { eye_vec(u_eye, e, 0.f, 0.f, 0.f); }
+/* eyd of the next draw: column 0 of gv_post (the palette of the draw uses this post) and cw = conv x nd_proj_wn (EYECW: the w of the zero parallax
+ * point at the convergence distance, for any camera yaw). The same for both eyes. */
+static float eyd_cw_dbg, eyd_p23_dbg; /* EYECW log: the last perspective cw of the frame and the p23 of that projection */
+static inline void eyd_sync(void) {
+    const float cw = eye_conv * nd_proj_wn;
+    if (__builtin_expect(cw != 0.f, 0)) { eyd_cw_dbg = cw; eyd_p23_dbg = nd_proj[2][3]; }
+    eye_vec(u_eyd, gv_post.r[0].x, gv_post.r[1].x, gv_post.r[2].x, cw);
+}
 static void u5mtx(int id, const C3D_Mtx* m) {
     if (u5_valid && memcmp(&C3D_FVUnif[GPU_VERTEX_SHADER][id], m, sizeof *m) == 0) return;
     C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, id, m);
@@ -1053,6 +1059,7 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
     if (stencil_on) { stc_set(6, false, GPU_ALWAYS, 0, 0xff, 0); stencil_on = 0; } /* the citro3d effect copy says off too, as flush_draw does: nd_leave_native sends that copy again */
     if (!ndn_mode) { nd_shadow_reset(&ndn_sh); ndn_mode = 1; sc_shr++; }
     if (*(volatile unsigned*)(__C3D_Context + 32) & 0x3800000u) { ndn_sh.cfg_valid = 0; ndn_sh.u_on[0] = ndn_sh.u_on[1] = 0; } /* a dirty texture bind: C3Di_UpdateContext rebuilds the unit enable word from the units citro3d holds (a null unit 0 after a slot drop writes it off) and sends their blocks: the native shadow of both is stale, the native words write them again */
+    eyd_sync(); /* STEREO: before the update test (a change marks the uniform dirty) */
     if (c3d_upd_needed()) { C3Di_UpdateContext(); sc_upd++; } /* what citro3d staged (program, buffers, scissor, an older TEV) goes out first, the native words then overwrite it */
     { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); GPUCMD_SetBufferOffset(coff + nd_emit_draw(cb + coff, &ndn_sh, d)); } /* PERF1-6: emitted in place (no copy) */
     if (tex) ndunit_after();
@@ -2211,8 +2218,8 @@ void pm_gpu_begin_wait(void) {
     gfxSet3D(stereo_frame);
     r_wantclear = begin_clear; r_cleared = 0;
     cur_target = target;
-    eye_cw = stereo_frame ? pm_eye_conv : 0.f; /* the camera of the frame (the logic thread writes it): one value for both eyes; a mono frame keeps eye at 0 */
-    nd_eye_cull_e = stereo_frame ? PM_EYE_E * eye_slider : 0.f; nd_eye_cull_c = nd_eye_cull_e * eye_cw; /* culling: the x planes of both eyes */
+    eye_conv = stereo_frame ? pm_eye_conv : 0.f; /* the camera of the frame (the logic thread writes it): one value for both eyes; a mono frame keeps eyd.w at 0 */
+    nd_eye_cull_e = stereo_frame ? PM_EYE_E * eye_slider : 0.f; nd_eye_cull_k = nd_eye_cull_e * eye_conv; /* culling: the x planes of both eyes */
     eye_set(stereo_frame ? -PM_EYE_E * eye_slider : 0.f);
     sh_clear(); C3D_FrameDrawOn(target);
     PH_POP();
@@ -2237,7 +2244,11 @@ static void mfr_frame(void);
 typedef struct { int unused; } Wq_pm_gpu_end;
 static void wq_pm_gpu_end(void* a) { Wq_pm_gpu_end* q = (Wq_pm_gpu_end*)a; (void)q; pm_gpu_end_w(); }
 void pm_gpu_end(void) { Wq_pm_gpu_end q = { 0 }; pm_wq_post(wq_pm_gpu_end, &q, sizeof q); }
+static __attribute__((cold, noinline)) void eyecw_log(void) { /* EYECW (debug level): the convergence w of the last perspective draw, every 10 stereo frames */
+    pm_log_d("eyecw f%u p23 %.3f cw %.1f", pm_frame_count(), (double)eyd_p23_dbg, (double)eyd_cw_dbg);
+}
 static void pm_gpu_end_w(void) {
+    if (__builtin_expect(stereo_frame && pm_frame_count() % 10u == 0, 0)) eyecw_log();
     if (__builtin_expect(mfr_on, 0)) mfr_frame(); /* TIK19 debug: the mfr line of the frame */
     if (__builtin_expect(pm_cen_lines, 0)) cen_lines_frame(); /* PROF2-3: the census lines, once per frame at the frame end (rect_log every 100 frames there) */
     if (pm_frame_count() % 100u == 0) pm_tex_cell_log(pm_frame_count()); /* MSGBOX 3: glyph cells every 100 frames (debug level) */

@@ -655,6 +655,166 @@
       "reason": "MOVE4 gate: DET cold start of the sbk_56 sun scene (-NoWarm, as spot_mac01_det). Cap 35 s, deadline 30 s. Picture is the subject; the prof scene line is the until."
     },
     {
+      "name": "mim01_ring_det",
+      "status": "unverified",
+      "subject": "Forever Forest mim_01 (entry 1, x -530), det, mono: Mario runs from (-265, -265) to (-265, 265) on the inner ring, so the camera yaw passes 90. 12 shots, frames 60 to 280.",
+      "proves": "EYECW mono gate: the mim_01 ring run is a function of the build (det); mono pictures do not change with the convergence fix.",
+      "debug": "warp=mim_01:1 det padscript=go_-265_-265_60,wait10,go_-265_265_120 shots shotwin=60:221:20 loglevel=debug",
+      "until": "shot \\d+ frame 280\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: mim_01 entry 1",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mim_01 entry 1"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 280\\b"
+        }
+      ],
+      "reason": "EYECW: padscript run around the ring. camlog was deleted (AUDIT C4); the eyecw line of the stereo variants carries p23 (near 0 at yaw 90)."
+    },
+    {
+      "name": "mim01_ring_stereo_det_l",
+      "status": "unverified",
+      "subject": "mim_01 ring run as mim01_ring_det with forced stereo, left eye shots. The eyecw line every 10 frames: p23 (the old convergence factor, near 0 at yaw 90) and cw (conv x nd_proj_wn).",
+      "proves": "EYECW: the zero-parallax distance does not follow the camera yaw: cw stays about 300 while p23 passes 0; trees and Mario in both eyes.",
+      "debug": "warp=mim_01:1 det stereo padscript=go_-265_-265_60,wait10,go_-265_265_120 shots shotwin=60:221:20 loglevel=debug",
+      "until": "shot \\d+ frame 280\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: mim_01 entry 1",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mim_01 entry 1"
+        },
+        {
+          "name": "eyecw (stereo convergence w, every 10 frames)",
+          "regex": "eyecw f\\d+ p23 -?[0-9.]+ cw [0-9.]+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 280\\b"
+        }
+      ],
+      "reason": "EYECW gate d. Cap 30 s (det start to frame 280)."
+    },
+    {
+      "name": "mim01_ring_stereo_det_r",
+      "status": "unverified",
+      "subject": "mim_01 ring run as mim01_ring_det with forced stereo, right eye shots. The eyecw line every 10 frames: p23 (the old convergence factor, near 0 at yaw 90) and cw (conv x nd_proj_wn).",
+      "proves": "EYECW: the zero-parallax distance does not follow the camera yaw: cw stays about 300 while p23 passes 0; trees and Mario in both eyes.",
+      "debug": "warp=mim_01:1 det stereo shoteye padscript=go_-265_-265_60,wait10,go_-265_265_120 shots shotwin=60:221:20 loglevel=debug",
+      "until": "shot \\d+ frame 280\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: mim_01 entry 1",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mim_01 entry 1"
+        },
+        {
+          "name": "eyecw (stereo convergence w, every 10 frames)",
+          "regex": "eyecw f\\d+ p23 -?[0-9.]+ cw [0-9.]+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 280\\b"
+        }
+      ],
+      "reason": "EYECW gate d. Cap 30 s (det start to frame 280)."
+    },
+    {
+      "name": "kmr11_cut",
+      "status": "unverified",
+      "subject": "Goomba's fortress exterior (kmr_11, entry 0) at story -120: the cutscene EVS_Scene_MeetGoombaKing rotates the camera. Mono, det, shots every 20 frames 41 to 261 (from the GKCAM scenario of 61d04a541, fewer shots).",
+      "proves": "EYECW mono gate: the kmr_11 cutscene pictures (camera rotation) in mono.",
+      "debug": "warp=kmr_11:0 story=-120 det shots shotwin=41:221:20 loglevel=debug",
+      "until": "shot \\d+ frame 261\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: kmr_11 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_11 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 261\\b"
+        }
+      ],
+      "reason": "EYECW gate e. Cap 30 s."
+    },
+    {
+      "name": "kmr11_cut_stereo_det_l",
+      "status": "unverified",
+      "subject": "kmr11_cut with forced stereo, left eye shots at frames 41 to 261 step 20; eyecw lines every 10 frames.",
+      "proves": "EYECW: cw stays about 300 while the cutscene camera turns (f41-61 and f241-261).",
+      "debug": "warp=kmr_11:0 story=-120 det stereo shots shotwin=41:221:20 loglevel=debug",
+      "until": "shot \\d+ frame 261\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: kmr_11 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_11 entry 0"
+        },
+        {
+          "name": "eyecw (stereo convergence w, every 10 frames)",
+          "regex": "eyecw f\\d+ p23 -?[0-9.]+ cw [0-9.]+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 261\\b"
+        }
+      ],
+      "reason": "EYECW gate e. Cap 30 s."
+    },
+    {
+      "name": "kmr11_cut_stereo_det_r",
+      "status": "unverified",
+      "subject": "kmr11_cut with forced stereo, right eye shots at frames 41 to 261 step 20; eyecw lines every 10 frames.",
+      "proves": "EYECW: cw stays about 300 while the cutscene camera turns (f41-61 and f241-261).",
+      "debug": "warp=kmr_11:0 story=-120 det stereo shoteye shots shotwin=41:221:20 loglevel=debug",
+      "until": "shot \\d+ frame 261\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: kmr_11 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_11 entry 0"
+        },
+        {
+          "name": "eyecw (stereo convergence w, every 10 frames)",
+          "regex": "eyecw f\\d+ p23 -?[0-9.]+ cw [0-9.]+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 261\\b"
+        }
+      ],
+      "reason": "EYECW gate e. Cap 30 s."
+    },
+    {
       "name": "spot_mac01_stereo_det_l",
       "status": "unverified",
       "subject": "Toad Town mac_01, Mario at pos 0 0 200 (warp entry 0), cold det start with forced stereo (3D slider 1): left eye shots at frames 200 to 205 and the prof scene line of the first 300-frame window.",
