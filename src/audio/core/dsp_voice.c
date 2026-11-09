@@ -143,7 +143,7 @@ void au_dsp_block(void) {
             v_release(v);
             continue;
         }
-        if (ins->type != AL_ADPCM_WAVE) { if (v->on) { pm_dspa_voice_stop(v->chp - 1); v->on = 0; } v_release(v); if (!v->on && v->gen != au2_vgen_get(i)) { v->gen = au2_vgen_get(i); pm_dspa_vcount(DSPA_VC_NONADPCM); } continue; }
+        if (ins->type != AL_ADPCM_WAVE) { if (v->on) { pm_dspa_voice_stop(v->chp - 1); v->on = 0; } v_release(v); if (!v->on && v->gen != au2_vgen_get(i)) { v->gen = au2_vgen_get(i); pm_dspa_vcount(DSPA_VC_NONADPCM, (unsigned)(uintptr_t)ins->wavData); } continue; }
         nv++;
 
         /* envelope: same ramp data as the RSP mixer (cvol, ltgt, rate, delta) */
@@ -194,7 +194,7 @@ void au_dsp_block(void) {
             u32 fr = ~ch_used & CH_ALL;
             if (!fr) { /* all 23 channels play: this voice waits for one */
                 u32 g = au2_vgen_get(i);
-                if (v->ncgen != g) { v->ncgen = g; pm_dspa_vcount(DSPA_VC_NOCHAN); }
+                if (v->ncgen != g) { v->ncgen = g; pm_dspa_vcount(DSPA_VC_NOCHAN, (unsigned)(uintptr_t)ins->wavData); }
                 continue;
             }
             v->chp = (u8)(__builtin_ctz(fr) + 1);
@@ -226,7 +226,7 @@ void au_dsp_block(void) {
                     v->retry = 0;
                     v_end(pv, ins, i);
                     v_release(v);
-                    pm_dspa_vcount(DSPA_VC_GIVEUP);
+                    pm_dspa_vcount(DSPA_VC_GIVEUP, (unsigned)(uintptr_t)ins->wavData);
                     continue;
                 }
             }

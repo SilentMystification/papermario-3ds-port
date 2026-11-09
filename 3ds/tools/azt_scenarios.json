@@ -10398,6 +10398,89 @@
       "reason": "AUDV census: the second 300-step window (steps 300 to 600, about 22 s at normal speed after the boot) holds the scene audio. Cap 45 s for the boot plus 600 steps."
     },
     {
+      "name": "aud_talk",
+      "status": "unverified",
+      "subject": "Toad Town, Mario speech box (preset toad, pos -66:20:-518:0, A at frames 300 and 450): message text blips and the speech sounds. Shot at frame 400.",
+      "proves": "AUDDROP census: the drop line counts, per 300-step window, every sound cut, dropped or late (unheard, squeezed, early, nochan, giveup, loopcap, nonadpcm, qovf, merged, noplayer, stolen), with the catch-up blocks and the step pace.",
+      "debug": "preset=toad pos=-66:20:-518:0 padscript=wait300,A,wait150,A,wait150 audiostat loglevel=debug shots shotwin=400:1",
+      "extra": [],
+      "until": "audio drops w2: unheard \\d+",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "scene shot",
+          "regex": "shot \\d+ frame 400\\b"
+        },
+        {
+          "name": "census window 2",
+          "regex": "audio drops w2: unheard \\d+"
+        }
+      ],
+      "reason": "AUDDROP census on the speech scene. Window 2 (steps 300 to 600) holds the speech sounds after the A press. Cap 45 s for the boot plus 600 steps."
+    },
+    {
+      "name": "aud_talk_lag",
+      "status": "unverified",
+      "subject": "As aud_talk with aulag=30: every game step sleeps 30 ms first (an O3DS-like step length). Speech box, shot at frame 400.",
+      "proves": "AUDDROP pace: with long steps the render catch-up burst (catchup blocks, maxrun, late_us_max) and the cut reasons show on Azahar.",
+      "debug": "preset=toad pos=-66:20:-518:0 padscript=wait300,A,wait150,A,wait150 audiostat aulag=30 loglevel=debug shots shotwin=400:1",
+      "extra": [],
+      "until": "audio drops w2: unheard \\d+",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "scene shot",
+          "regex": "shot \\d+ frame 400\\b"
+        },
+        {
+          "name": "census window 2",
+          "regex": "audio drops w2: unheard \\d+"
+        }
+      ],
+      "reason": "AUDDROP lag variant of aud_talk: the step sleep makes the O3DS step length (30 ms on top of the frame). Cap 45 s; the sleep adds about 18 s to the 600 steps, so the cap is for the boot plus 600 steps at the O3DS-like length."
+    },
+    {
+      "name": "aud_mac01_lag",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 at pos 0 0 200 (music and sound effects) with aulag=30: every game step sleeps 30 ms first. Shot at frame 400.",
+      "proves": "AUDDROP pace: as aud_talk_lag on the music and sound effect scene.",
+      "debug": "warp=mac_01:0 pos=0:0:200 audiostat aulag=30 loglevel=debug shots shotwin=400:1",
+      "extra": [],
+      "until": "audio drops w2: unheard \\d+",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "scene shot",
+          "regex": "shot \\d+ frame 400\\b"
+        },
+        {
+          "name": "census window 2",
+          "regex": "audio drops w2: unheard \\d+"
+        }
+      ],
+      "reason": "AUDDROP lag variant of aud_mac01. Cap 45 s: 600 steps of 30 ms sleep plus the boot."
+    },
+    {
       "name": "aud_battle",
       "status": "unverified",
       "subject": "Battle on kmr_03 (one Goomba, battle from scene frame 100, battle music and battle sounds), audiostat census, shot at frame 400.",
