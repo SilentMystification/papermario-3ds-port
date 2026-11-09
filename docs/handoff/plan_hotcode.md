@@ -200,8 +200,8 @@ performance effect). Static lists are typed before the game runs (5.7 S1, S2); r
 |---|---|---|---|
 | HC4a | nd_op.c translator and ids, typed executor for the W1 scalar ops (OM, GEOM, PRIM, ENV, FOG, BLEND, FILL, PRIMZ, SCISSOR, TEXTURE, MW, RARE), typed rec_op/rec_fog/shroud, nd_cmd_test.c | nd_op.c (new), nd_cmd.h, nd_rec.c, nd_walk.c, nd_set.c, nd_recs.c, nd_int.h, 3ds/tools/nd_cmd_test.c, CMakeLists.txt | g2_same/g2_note cases of these ops |
 | HC4b | T_COMB, render mode table (W3), shadow dedupe and t4chk | nd_rec.c, nd_recs.c, nd_comb.c, nd_walk.c | rec_dl list path |
-| HC4c | texture ops typed, bind and R13 ops in the payload (W4), R1 and R2 typed at their producer | nd_tex_set.c, nd_recs.c, nd_rec.c, nd_ent.c, nd_shape.c | tex_op, tb_ops, op_* wrappers |
-| HC4d | T_MTX/POPMTX/LIGHT/VTX/TRI, sprite fallback (W5), T_CALL (W6), typed rec_lights, run-time producers R1-R9 (5.7) | nd_mtx_set.c, nd_geom.c, nd_walk.c, nd_rec.c, nd_ent.c | word cases, g2_same, g2_note, walk_call word path, row_DIRECT.md |
+| HC4c | texture ops typed, bind and R13 ops in the payload (W4), R1 and R2 typed at their producer | nd_tex_set.c, nd_recs.c, nd_rec.c, src/model.c | tex_op, tb_ops, op_* wrappers |
+| HC4d | T_MTX/POPMTX/LIGHT/VTX/TRI, sprite fallback (W5), T_CALL (W6), typed rec_lights, run-time producers R3-R10 (5.7) | nd_mtx_set.c, nd_geom.c, nd_walk.c, nd_rec.c, nd_ent.c, src/model.c, src/animator.c, src/imgfx.c, src/sprite.c, nugfxinit.c, effects | word cases, g2_same, g2_note, walk_call word path, row_DIRECT.md |
 | HC4e | S1: typed gs* macros (ELF static lists), consumers (ent, dlc, sprite rmList, entity displayList) read typed ops | nd_gbi.h, nd_op.h, nd_ent.c, nd_shape.c, pm_gpu.c (sprite) | the word readers of ent_compile and dlc |
 | HC4f | S2: host shape converter, sidecar loader, node pointers to typed lists | 3ds/tools/nd_shape_conv.c (new, host), build.sh, pm_map.c | ShapeFix word walk (pm_map.c:63-190) |
 | HC5 | combine memo on core 1, T_PLAN/T_SYNC | nd_comb.c, pm_comb.c, nd_rec.c, pm_gpu.c (set_plan) | - |
