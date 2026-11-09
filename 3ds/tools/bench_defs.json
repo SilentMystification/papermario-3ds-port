@@ -3527,6 +3527,23 @@
       "gates": []
     },
     {
+      "name": "pause_pre_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "DIRECT: mac_00 det, shots of every second frame 86 to 140 (the frame the pause picture is read from, then the pause picture), caplog, grablog and texlog lines.",
+      "scenario": "pause_pre_det",
+      "cap": 25,
+      "until": "shot \\d+ frame 140\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "det",
+        "pause"
+      ],
+      "gates": []
+    },
+    {
       "name": "fb_nok11_nat_pic",
       "kind": "azahar_pic",
       "speed": "normal",

@@ -9888,6 +9888,31 @@
       "extra": []
     },
     {
+      "name": "pause_pre_det",
+      "status": "unverified",
+      "subject": "DIRECT: mac_00 (toad preset) det, the drawn frames just before and at the pause open (shots every second frame from 86, caplog) and the pause picture (shots to 140; texlog: one line per texture rectangle): the frame the pause picture is read from and the rectangles drawn over it.",
+      "proves": "The top rows of the frame the pause capture reads (pause_spin_grab_det_w300 shows marks there when model.c records stream commands).",
+      "debug": "preset=toad padscript=wait80,START*3,wait100 shots shotwin=86:56:2 loglevel=debug grablog caplog texlog det",
+      "until": "shot \\d+ frame 140\\b",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "last shot",
+          "regex": "shot \\d+ frame 140\\b"
+        }
+      ],
+      "reason": "DIRECT D6 open fault: names whether the marks are in the live frame before the pause or come from the capture.",
+      "extra": []
+    },
+    {
       "name": "spot_mac00_det",
       "status": "unverified",
       "subject": "mac_00 (preset toad), Mario at pos -135 0 85, cold det start: shots at frames 200 to 205 (the picture). VERIFY check 1: HEAD and the det base give byte-equal shots.",
