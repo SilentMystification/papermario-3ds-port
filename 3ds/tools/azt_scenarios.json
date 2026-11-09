@@ -13273,6 +13273,35 @@
         }
       ],
       "reason": "TIDAL step 1 census: fxtest=87 is fx_underwater (pm_fxtest.c E(underwater) index 87). Log only."
+    },
+    {
+      "name": "tidal_pic",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, cold det start, fxtest=87 (fx_underwater, the Tidal Wave mesh) spawned at frame 402. Shot 1 at frame 412 and shot 2 at frame 432 (inside the effect's life, to 440): the screen under the water distortion. The subject: the copied frame bent in the wave, no seams between grid cells, no black cells.",
+      "proves": "TIDAL step 2: the underwater mesh draws its distortion from one tile and one grid (ortho, quarter pixel) with the same look as the ModifyVertex path.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=87 shots loglevel=debug det fixedseed",
+      "extra": [],
+      "until": "fxtest: done",
+      "cap": 30,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "spawn",
+          "regex": "fxtest: spawn 87 underwater"
+        },
+        {
+          "name": "shot 2",
+          "regex": "fxtest: shot 2 effect 87 underwater b"
+        }
+      ],
+      "reason": "TIDAL step 2 picture gate: shots 1 and 2 of the fxtest slot (frames 412 and 432) show the wave. Until is shot b."
     }
   ]
 }

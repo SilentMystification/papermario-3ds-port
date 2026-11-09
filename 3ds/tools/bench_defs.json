@@ -100,6 +100,22 @@
       ]
     },
     {
+      "name": "tidal_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "TIDAL step 2 picture: mac_01 cold det start, fxtest=87 (underwater mesh) at frame 402, shots 1 and 2 at frames 412 and 432 inside the wave. Run on the base build (before) and on the TIDAL build (after); cmp against the base store. A person reads the shots.",
+      "scenario": "tidal_pic",
+      "cap": 30,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "pic",
+        "tidal"
+      ],
+      "gates": []
+    },
+    {
       "name": "tidal_census_base",
       "kind": "azahar_stream",
       "speed": "normal",
