@@ -432,12 +432,13 @@ void pm_gbi_run(void* list, unsigned nbytes) {
     pm_walk_side--;
 }
 /* CORE2-3b: the game thread is about to write memory that the walk of the last frame may have read: a ROM read into RAM, a decode, a map
- * load, a game mode change (load writes, the CORE2-2 census hazard 4). The walker must be idle from here on. With the serial walker every
- * task is walked inside nuGfxTaskStart, so it is idle at every call outside a walk; the census (switch c2haz) checks the writes made
- * before this point and starts the frame clean. The threaded walker (CORE2-3c) waits for its queue here. Calls made on the walker side
- * (the walker's own reads) do nothing. */
+ * load, a game mode change (load writes, the CORE2-2 census hazard 4). The walker must be idle from here on: wait until the walker queue
+ * (nd_wq.c) is empty. The census (switch c2haz) checks the writes made before this point and starts the frame clean. Calls made on the
+ * walker side (the walker's own reads) do nothing. */
+void pm_wq_idle(void); /* nd_wq.c: CORE2C-2, return when the walker queue is empty */
 void pm_walk_drain(const char* why) {
     if (pm_walk_side) return;
+    pm_wq_idle();
     if (nd_c2_on > 0) nd_c2_drain(why);
 }
 static void gbi_run1(void* list, unsigned nbytes) {

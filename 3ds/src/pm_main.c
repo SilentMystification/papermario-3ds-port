@@ -171,7 +171,8 @@ int pm_is_cfb(const void* p) { return in_buf(p, gFrameBuf0) || in_buf(p, gFrameB
 /* B2: the frame buffer the game draws into now (the T2 grab source). Any other frame buffer holds an older frame (T3). */
 extern int pm_wide;
 /* F07-7: with wide a window may start up to 40 pixels before the buffer (game x -40 of row 0, effects in the gutters) */
-int pm_is_cur_cfb(const void* p) { return nuGfxCfb_ptr && (in_buf(p, nuGfxCfb_ptr) || (pm_wide && in_buf((const u8*)p + 80, nuGfxCfb_ptr))); }
+void* pm_walk_cfb; /* CORE2C-2: set by pm_frame_walk from the frame (the walker reads this, the game side nuGfxCfb_ptr) */
+int pm_is_cur_cfb(const void* p) { const void* c = pm_walk_cfb; return c && (in_buf(p, c) || (pm_wide && in_buf((const u8*)p + 80, c))); }
 /* Frame buffer and saved-frame memory hold native u16 pixels (the game code reads them as u16). Textures
  * from ROM data hold big-endian bytes. pm_tex reads these two kinds differently. */
 extern unsigned short pm_wide_side_pause[2][40 * 240]; /* PT56 */
@@ -233,7 +234,7 @@ static void cfb_capture_prev(int cpu) {
     if (!cpu) {
         if (done_gpu == pm_frame_n || done == pm_frame_n) { cap_note(cpu, "done"); return; }
         for (i = 0; i < nuGfxCfbNum; i++) {
-            if (nuGfxCfb[i] == nuGfxCfb_ptr) {
+            if (nuGfxCfb[i] == pm_walk_cfb) {
                 unsigned t0 = pm_ph_on ? pm_ticks() : 0;
                 if (pm_gpu_grab_prev(nuGfxCfb[(i + nuGfxCfbNum - 1) % nuGfxCfbNum]) == 2) {
                     done_gpu = pm_frame_n;
@@ -251,7 +252,7 @@ static void cfb_capture_prev(int cpu) {
         /* PT78: the pause reads the frame from the buffer that is not the fill target, whatever the parity of the drawn step (a step skipped by FS1 moves the
          * BEGIN_PAUSED draw to the other parity: the old rule, the previous buffer of the drawn one, wrote the fill target and the filter read a stale frame).
          */
-        const void* ref = nuGfxCfb_ptr;
+        const void* ref = pm_walk_cfb;
         if (cpu && cap_fill) ref = cap_fill;
         if (nuGfxCfb[i] == ref) {
             unsigned short* prev = cpu && cap_fill ? nuGfxCfb[(i + 1) % nuGfxCfbNum] : nuGfxCfb[(i + nuGfxCfbNum - 1) % nuGfxCfbNum];

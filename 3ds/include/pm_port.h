@@ -118,6 +118,15 @@ extern int pm_walk_side, pm_c2own;
 void pm_wq_post(void (*fn)(void*), void* arg, unsigned size);
 void pm_wq_call(void (*fn)(void*), void* arg, unsigned size);
 void pm_walk_drain(const char* why);
+/* CORE2C-2: one frame for the walker (nd_wq.c queue, depth 1). A task is a pointer and a byte count: a display list today, a record
+ * stream later. bg: the background task (none: ptr NULL); main: the swap task (none: ptr NULL). cfb: the colour buffer the game built
+ * the frame for (the walker reads pm_walk_cfb, not nuGfxCfb_ptr). */
+typedef struct { void* ptr; unsigned n; } PmTask;
+typedef struct { PmTask bg, main; void* cfb; unsigned flags; } PmFrame;
+#define PMF_REPL 1u /* F06-2: the main task walks with the t = 0.5 matrix replacements (pm_interp_repl) */
+void pm_wq_frame(const PmFrame* f); /* the game side: queue one frame (waits while one is queued) */
+void pm_frame_walk(const PmFrame* f); /* pm_nusys.c, walker side: walk the tasks of one frame */
+extern void* pm_walk_cfb; /* the colour buffer of the frame the walker draws (pm_main.c) */
 void pm_walk_own(const char* fn);
 #define PM_WALK_OWN() do { if (pm_c2own > 0 && !pm_walk_side) pm_walk_own(__func__); } while (0)
 #define PH_PUSH(id) do { if (pm_ph_on) pm_ph_push(id); } while (0)
