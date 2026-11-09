@@ -53,7 +53,13 @@
 	mov outpos.y, r5.y
 	mul r6.x, zmix.x, r5.z
 	mul r7.x, zmix.y, r5.w
-	add outpos.z, r6.x, r7.x
+	add r6.x, r6.x, r7.x
+	; FFOREST: z = min(z, -w / 65025) (eps = 1/255 squared, about 2^-16). N64 rejects only a whole triangle past far and clamps the vertex
+	; z; the PICA would cut the triangle at the far plane. A vertex past far lands on the far plane (depth eps, passes GREATER over the cleared 0).
+	mul r7.x, myconst.zzzz, r5.w
+	mul r7.x, -myconst.zzzz, r7.x
+	min r6.x, r6.x, r7.x
+	mov outpos.z, r6.x
 	mov outpos.w, r5.w
 	rcp r4, r5.w
 	mul r4.xy, r5.xy, r4.xy
