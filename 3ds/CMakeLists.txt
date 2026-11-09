@@ -397,6 +397,7 @@ set(PORT_SRC
     src/pm_audio.c
     src/pm_audio_gate.c
     src/pm_au2.c
+    src/pm_audcensus.c
     src/pm_dspaud.c
     src/pm_rsp_audio.c
     src/pm_later.c

@@ -36,8 +36,10 @@ static volatile int fx_flip;       /* the first aux callback ran: the render thr
 static unsigned ax_core;
 static void aux0_cb(void* d, int n, void* smp[4]);
 static void aux1_cb(void* d, int n, void* smp[4]);
-typedef struct { Ent* e; ndspWaveBuf wb[MAXBUF]; int nb; int active; } Chan;
+/* census (pm_audcensus.c): t0 = tick at the start, blk = blocks since the start, exp = samples queued (endless: no expected length) */
+typedef struct { Ent* e; ndspWaveBuf wb[MAXBUF]; int nb; int active; unsigned long long t0; float rate; unsigned blk, exp, id; int endless, ended; } Chan;
 static Chan chn[PM_DSPA_VOICES];
+static const unsigned char vc_ac[DSPA_VC_N] = { AC_NOCHAN, AC_GIVEUP, AC_NONADPCM };
 
 static unsigned st_blocks, st_voice_sum, st_voice_max, st_starts, st_stops, st_ends, st_cost_sum, st_cost_max, st_late, st_bl_sum, st_bl_max, st_sets, st_set_us;
 static unsigned vc_n[DSPA_VC_N], vc_loopcap, vc_win;
@@ -167,6 +169,14 @@ static void chan_add(int ch, s16* data, unsigned n, int loop) {
     w->looping = loop;
     w->status = NDSP_WBUF_FREE;
     ndspChnWaveBufAdd(ch, w);
+    if (loop) c->endless = 1;
+    c->exp += n;
+}
+
+/* census: a voice cut before its end. UNHEARD: the DSP has not started its first buffer. SQUEEZED: cut within blk blocks of its start. */
+static void cut_census(const Chan* c) {
+    if (c->nb && c->wb[0].status == NDSP_WBUF_QUEUED) pm_aud_ev(AC_UNHEARD, c->id);
+    else if (tk_us(svcGetSystemTick() - c->t0) < c->blk * 5750u / 2u) pm_aud_ev(AC_SQUEEZED, c->id);
 }
 
 int pm_dspa_voice_start(int ch, const DspaSample* s, float rate, const float mix[12]) {
@@ -179,6 +189,7 @@ int pm_dspa_voice_start(int ch, const DspaSample* s, float rate, const float mix
     if (!e) return 0;
     e->pins++;
     c->e = e;
+    c->t0 = svcGetSystemTick(); c->rate = rate; c->blk = 0; c->exp = 0; c->id = s->key; c->endless = 0; c->ended = 0;
     ndspChnSetFormat(ch, NDSP_FORMAT_MONO_PCM16);
     ndspChnSetInterp(ch, NDSP_INTERP_POLYPHASE);
     ndspChnSetRate(ch, rate);
@@ -190,7 +201,7 @@ int pm_dspa_voice_start(int ch, const DspaSample* s, float rate, const float mix
         if (e->loopCount == -1) chan_add(ch, e->body, e->nbody, 1);
         else {
             int reps = e->loopCount + 1;
-            if (reps > 4) { reps = 4; vc_loopcap++; }
+            if (reps > 4) { reps = 4; vc_loopcap++; pm_aud_ev(AC_LOOPCAP, s->key); }
             for (int i = 0; i < reps; i++) chan_add(ch, e->body, e->nbody, 0);
             chan_add(ch, e->tail, e->ntail, 0);
         }
@@ -211,6 +222,7 @@ void pm_dspa_voice_update(int ch, float rate, const float mix[12]) {
 
 void pm_dspa_voice_stop(int ch) {
     Chan* c = &chn[ch];
+    if (c->active && !c->ended) cut_census(c);
     ndspChnWaveBufClear(ch);
     if (c->e) { c->e->pins--; c->e->stamp_ms = now_ms(); c->e = NULL; }
     c->nb = 0;
@@ -224,10 +236,13 @@ int pm_dspa_voice_ended(int ch) {
         if (c->wb[i].looping) return 0;
         if (c->wb[i].status != NDSP_WBUF_DONE) return 0;
     }
+    c->ended = 1;
+    /* census: the sample ran out in under half its length (rate in samples a second, exp in samples) */
+    if (!c->endless && c->exp && (float)tk_us(svcGetSystemTick() - c->t0) * 2.0f < (float)c->exp * 1000000.0f / c->rate) pm_aud_ev(AC_EARLYEND, c->id);
     return 1;
 }
 
-void pm_dspa_vcount(int what) { if ((unsigned)what < DSPA_VC_N) vc_n[what]++; }
+void pm_dspa_vcount(int what, unsigned id) { if ((unsigned)what < DSPA_VC_N) { vc_n[what]++; pm_aud_ev(vc_ac[what], id); } }
 
 void pm_dspa_master(float vol) { ndspSetMasterVol(vol); }
 
@@ -442,11 +457,12 @@ void pm_dspa_shutdown(void) {
 void pm_dspa_pace(void) {
     unsigned long long now = svcGetSystemTick();
     t_blk0 = now;
-    if (!next_due || now > next_due + 6 * BLK_TICKS) { if (next_due) st_late++; next_due = now; }
+    if (!next_due || now > next_due + 6 * BLK_TICKS) { if (next_due) st_late++; next_due = now; pm_aud_run_end(); }
     else if (now < next_due) {
         unsigned long long dt = next_due - now;
         svcSleepThread((s64)(dt * 1000ull / 268ull));
-    }
+        pm_aud_run_end();
+    } else pm_aud_catchup(tk_us(now - next_due)); /* census: late, no sleep: the block runs now (catch-up) */
     next_due += BLK_TICKS;
     t_blk0 = svcGetSystemTick();
 }
@@ -460,6 +476,7 @@ void pm_dspa_block_done(int voices, int starts, int stops, int ends, unsigned co
     }
     unsigned us = tk_us(svcGetSystemTick() - t_blk0);
     unsigned bl = au2_blk_backlog();
+    for (int c = 0; c < PM_DSPA_VOICES; c++) if (chn[c].active) chn[c].blk++; /* census: blocks since each start */
     st_blocks++;
     st_voice_sum += voices; if ((unsigned)voices > st_voice_max) st_voice_max = voices;
     st_starts += starts; st_stops += stops; st_ends += ends;
@@ -481,6 +498,7 @@ void pm_dspa_stats_log(void) {
     pm_log_d("audio dsp: aux callbacks bus0 %u bus1 %u core %u cost avg %u max %u us, effect frames queued %u dropped %u",
              ax_n[0], ax_n[1], ax_core, (ax_n[0] + ax_n[1]) ? ax_us_sum / (ax_n[0] + ax_n[1]) : 0, ax_us_max, fx_emitted, fx_dropped);
     if (pm_debug_has("audiostat")) {
+        pm_aud_window_log(dec_us_max);
         pm_log_d("audio voices w%u: starts %u no channel %u cut %u (cache give-up %u, loop cap %u), non-adpcm %u, playing max %u",
                  ++vc_win, st_starts, vc_n[DSPA_VC_NOCHAN], vc_n[DSPA_VC_GIVEUP] + vc_loopcap, vc_n[DSPA_VC_GIVEUP], vc_loopcap, vc_n[DSPA_VC_NONADPCM], st_voice_max);
         memset(vc_n, 0, sizeof vc_n);

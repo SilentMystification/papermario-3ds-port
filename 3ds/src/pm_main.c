@@ -14,6 +14,7 @@ unsigned pm_log_late_con(void); /* pm_log.c: B1 check */
 unsigned pm_log_con_copies(void), pm_log_con_nomenu(void), pm_log_late_drop(void);
 /* O6: a switch word read once. Not for the words the options panel changes at run time (nofog, nolight). */
 #include "pm_gpu.h"
+#include "pm_dspaud.h"
 #include "nd.h"
 
 
@@ -295,7 +296,12 @@ static int pm_det_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("det
 void pm_audio_step(void) {
     if (au_kicked) return;
     au_kicked = 1;
+    /* AUDDROP: switch aulag=<ms> sleeps every game step (reproduces the O3DS step length on Azahar, not under det) */
+    static int aulag = -1;
+    if (aulag < 0) { char kv[16]; aulag = pm_debug_value("aulag", kv, sizeof kv) > 0 ? atoi(kv) : 0; }
+    if (aulag > 0 && !pm_det_on()) svcSleepThread((s64)aulag * 1000000LL);
     unsigned n = pm_det_on() ? 2u : pm_audio_retraces(); /* DET: 2 a step */
+    if (!n) pm_aud_zero_step(); /* AUDDROP census: a step with no audio tick */
     pm_audio_last_n = n;
     PH_ADD(C_ATICK, n);
     pace_ticks += n;

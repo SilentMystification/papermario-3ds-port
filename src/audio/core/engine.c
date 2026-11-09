@@ -1,6 +1,12 @@
 #include "audio.h"
 #include "audio/core.h"
 #ifdef TARGET_3DS
+#include "pm_dspaud.h"
+#define AUD_EV(r, id) pm_aud_ev((r), (unsigned)(id))
+#else
+#define AUD_EV(r, id) ((void)0)
+#endif
+#ifdef TARGET_3DS
 #include "pm_au2.h"
 #endif
 #include "ld_addrs.h"
@@ -528,6 +534,7 @@ void au_syn_begin_audio_frame(AuGlobals* globals) {
 
 void au_reset_nonfree_voice(AuVoice* voice, u8 index) {
     if (voice->priority != AU_PRIORITY_FREE) {
+        AUD_EV(AC_STOLEN, index);
         voice->cmdPtr = nullptr;
         voice->donePending = true;
         voice->syncFlags = 0;
