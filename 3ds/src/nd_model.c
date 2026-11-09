@@ -251,7 +251,7 @@ void nd_model_log(unsigned f) {
  * the native draw; rec_run runs the post after it), so the native draw reads the state it sets. Ops: G_SETOTHERMODE_H/L, SETPRIMCOLOR, SETENVCOLOR,
  * SETCOMBINE, SETBLENDCOLOR, SETFOGCOLOR, the syncs, G_ENDDL (0xdf); at most 16 ops. The state it gives the draw: the last SETCOMBINE words (cw, has_cb 1)
  * and the SETOTHERMODE ops (mo, 2 words each, nmo <= 4). Returns 1 when the draw can follow the list (no list: 1), 0 for any other op (why 3).
- * POND: a pre list may also hold a pushed G_DL (0xde, push) and SETPRIMDEPTH (0xee) when a nested model record (G_PM_REC 0x0d) follows them: the
+ * POND: a pre list may also hold a pushed G_DL (NDO_CALL, push) and SETPRIMDEPTH (NDO_PRIMZ) when a nested model record (G_PM_REC 0x0d) follows them: the
  * mac_00 water list (gfx_build_water) draws the prim depth blocker, then mdl_draw_hidden_panel_surface appends the record of a copy of the model
  * with no geometry. That record sets the whole draw state again (bind, combine, render mode list), so the draw takes it as its record (nr) and only
  * the state ops after it (cw, mo). The record words are skipped (14 words, then its R13 count of words). */
@@ -264,7 +264,7 @@ static int nd_r11_op(uint32_t w0, uint32_t w1, int pre, int* pend, int* has_cb, 
     case NDO_PRIM: case NDO_ENV: case NDO_BLEND: case NDO_FOG: return 1;
     case NDO_PRIMZ: if (!pre) return 0; *pend = 1; return 1;
     case NDO_COMB: cw[0] = NDO_COMB_W0(w0); cw[1] = w1; *has_cb = 1; return 1;
-    case 0xdeu: if (!pre || ((w0 >> 16) & 0xffu) != 0u) return 0; *pend = 1; return 1; /* G_DL push (a branch ends the list: not followed) */
+    case NDO_CALL: if (!pre || (w0 & 1u)) return 0; *pend = 1; return 1; /* HC4d2: a list call, push form (a branch ends the list: not followed) */
     default: return 0;
     }
 }

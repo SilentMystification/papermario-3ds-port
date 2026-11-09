@@ -56,11 +56,10 @@ int splash_on; /* HANG1a: set by the G_PM_ND_SPLASH record (water_splash.c, nd_n
 unsigned splash_grab_f = ~0u;
 int grab_hold;                  /* SBLK2 B1: set by the G_PM_ND_GRABHOLD bracket (motion_blur_flame.c, nd_native_rec) */
 unsigned hold_grab_f = ~0u;     /* SBLK2 B1: the frame whose one copy the hold reuses */
-/* LS-4: the G_PM_ND payload kinds (gbi_custom.h), called by the walker (nd_walk.c). w0 = G_PM_ND << 24 | kind << 16 | arg. */
-void nd_native_rec(u32 w0) {
-    unsigned kind = (w0 >> 16) & 0xffu;
-    if (kind == G_PM_ND_SPLASH) splash_on = (int)(w0 & 1u);
-    if (kind == G_PM_ND_GRABHOLD) grab_hold = (int)(w0 & 1u);
+/* LS-4: the G_PM_ND payload kinds (gbi_custom.h), called by the walker (nd_walk.c, HC4d2: the NDO_MISC_ND fields). */
+void nd_native_rec(unsigned kind, unsigned on) {
+    if (kind == G_PM_ND_SPLASH) splash_on = (int)on;
+    if (kind == G_PM_ND_GRABHOLD) grab_hold = (int)on;
 }
 void grab_cur(const void* src, int w, int h) {
     int x, y, r;
@@ -99,7 +98,7 @@ static __attribute__((noinline)) void set_cimg(u32 addr, int ns, int stride) {
     nd_ws.cimg_siz = ns;
     cimg_stride = stride;
 }
-void gbi_setcimg(u32 w0, u32 w1) { set_cimg(w1, (int)((w0 >> 19) & 3), (int)(w0 & 0xfff) + 1); }
+void gbi_setcimg(u32 a, u32 b) { set_cimg(b, (int)((a >> 12) & 3), (int)(a & 0xfff) + 1); }
 
 /* ---- MV-8: target helper, cut from the former pm_gbi.c (no change) ---- */
 unsigned rgba_from_5551(unsigned c) {
