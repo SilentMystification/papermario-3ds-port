@@ -9,6 +9,7 @@
 #ifdef TARGET_3DS
 #include "pm_au2.h"
 #include "pm_port.h"
+#include "pm_romload.h"
 #include <string.h>
 #endif
 #include "ld_addrs.h"
@@ -1427,9 +1428,11 @@ void au_sync_channel_delay_enabled(u32 bMonoSound) {
 
 void au_read_rom(s32 romAddr, void* buffer, u32 size) {
 #ifdef TARGET_3DS
+    pm_rs_auread((unsigned)romAddr, size); /* BOOT2 auread: count before the stream is done */
     /* BTLWIPE F2: the sound data (SBN 0xF00000 to 0x1942C40) is in the resident ROM image: one copy. nuPiReadRom per 8 KB drained the walk
      * and invalidated the texture cache on each piece (the song and bank loads run on the logic thread). Its byte swaps do not apply here:
      * the swap16 range (0x7B5960 to 0x7E0E80) and the asset table (0x1E40020) lie outside the SBN. No resident range: the read below. */
+    if (pm_rom_read_exact((unsigned)romAddr, buffer, size)) return; /* BOOT2 fix a: the stream has not reached these bytes: exact read */
     {
         const unsigned char* src = pm_rom_ptr((unsigned)romAddr, size);
         if (src) { memcpy(buffer, src, size); return; }

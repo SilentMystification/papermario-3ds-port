@@ -436,6 +436,16 @@ static void pi_read_raw(u32 rom_addr, void* buf, u32 size) {
     PH_POP();
 }
 
+/* BOOT2 (fix a): au_read_rom while the stream runs: the exact n bytes from the file (pm_rs_read_direct), not the 128 KB chunks that
+ * pm_rom_ptr would make ready. 1: out holds the bytes. 0: the caller uses pm_rom_ptr (stream done, no resident image, a dropped range,
+ * or the chunks are ready: pm_rs_read_direct returns 0 then). Same bytes as pi_read_raw's direct path. */
+int pm_rom_read_exact(unsigned addr, void* out, unsigned n) {
+    if (__builtin_expect(__atomic_load_n(&pm_rs_all, __ATOMIC_ACQUIRE), 1) || !rom_bytes || !n) return 0;
+    for (unsigned i = 0; i < sizeof(pm_rom_drop) / sizeof(pm_rom_drop[0]); i++)
+        if (addr < pm_rom_drop[i].end && addr + n > pm_rom_drop[i].start) return 0;
+    return pm_rs_read_direct(addr, out, n);
+}
+
 /* HW3: pointer to len bytes of the resident ROM image at ROM address addr, or NULL (no resident image, dropped range, range not in one
  * kept block). The bytes are raw big-endian ROM bytes, without the swaps nuPiReadRom does. Read only. */
 const unsigned char* pm_rom_ptr(unsigned addr, unsigned len) {
