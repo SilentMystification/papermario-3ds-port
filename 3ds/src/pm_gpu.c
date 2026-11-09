@@ -223,8 +223,8 @@ static int want_clear; /* see below */
 static int dc_on;
 /* DS0: cold counters for pm_gpu_dcsum_frame. Ticks and counts in this file's flushes, sampled closes and cmd words; sums over 300 drawn frames. */
 static unsigned dcs_gt, dcs_fl, dcs_cmd, dcs_smp, dcs_cl, dcs_us[DCU_N], dcs_n, dcs_c[DC_N];
-/* PERF2: submit counters over 300 drawn frames (subcnt line): program switches, native shadow resets, C3Di_UpdateContext calls, command list splits, program 5 draws, native draws */
-static unsigned sc_prg, sc_shr, sc_upd, sc_spl, sc_d5, sc_nat;
+/* PERF2: submit counters (totals, the prof cls line takes them per window): program switches, native shadow resets, C3Di_UpdateContext calls, command list splits */
+static unsigned sc_prg, sc_shr, sc_upd, sc_spl;
 static void gpu_flush_written(void) {
     unsigned g0 = dc_on ? pm_ticks() : 0;
     pm_tex_flush_pend_only();
@@ -606,6 +606,7 @@ static inline void kick_check(void) { /* PERF2 step 4: the test per draw inline,
     kick_split();
 }
 static __attribute__((noinline)) void kick_split(void) {
+    NDT_B(tk); /* PERF2: the kick class (out of sub) */
     kick_done = 1;
     gpu_flush_written();
     if (want_clear) { C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0); want_clear = 0; } /* queue order: the clear comes before the first part */
@@ -617,6 +618,7 @@ static __attribute__((noinline)) void kick_split(void) {
     PH_POP();
     kick_n++;
     pm_ph_kick_n++;
+    NDT_E(tk, NDT_KICK);
 }
 static void flush_draw(void);
 /* S3-2 measurement: ticks spent in flush_impl (phase on), read by the tex_op timer of the former pm_gbi.c to split the close from the op */
@@ -944,6 +946,8 @@ static void ndunit_after(void);
 static uint64_t ndt_sum[NDT_N];
 static uint32_t ndt_t0[4], ndt_in[4];
 static unsigned ndt_sp;
+static uint32_t ndt_top; /* PERF2: the ticks of the outer regions so far (the op class spans subtract them) */
+static int cls_cur = -1; static uint32_t cls_t, cls_top0; /* PERF2: the open op class span: its class, start tick, ndt_top at its start */
 static int ndt_mdl;
 __attribute__((cold, noinline)) void pm_gpu_ndt_push(void) { /* sampled frames only: out of the hot callers */
     if (ndt_sp < 4u) { ndt_t0[ndt_sp] = (uint32_t)svcGetSystemTick(); ndt_in[ndt_sp] = 0; }
@@ -955,7 +959,15 @@ __attribute__((cold, noinline)) void pm_gpu_ndt_pop(int k) {
     if (i >= 4u) return;
     uint32_t tot = (uint32_t)svcGetSystemTick() - ndt_t0[i], in = ndt_in[i];
     ndt_sum[k] += tot > in ? tot - in : 0u;
-    if (i) ndt_in[i - 1] += tot;
+    if (i) ndt_in[i - 1] += tot; else ndt_top += tot;
+}
+/* PERF2 step 6: the op class timer of the walk (sampled frames, walk_dbg_op with WD_PH). Outside the regions only (a region times its own ops); a span ends at
+ * the next class change, its ticks less the outer regions inside it go to its class. One tick read per change of class. */
+__attribute__((cold, noinline)) void pm_gpu_ndt_cls(int k) {
+    if (ndt_sp || k == cls_cur) return;
+    const uint32_t now = (uint32_t)svcGetSystemTick();
+    if (cls_cur >= 0) { const uint32_t tot = now - cls_t, in = ndt_top - cls_top0; ndt_sum[cls_cur] += tot > in ? tot - in : 0u; }
+    cls_cur = k; cls_t = now; cls_top0 = ndt_top;
 }
 void pm_gpu_ndt_take(uint64_t o[NDT_N]) { for (int k = 0; k < NDT_N; k++) { o[k] = ndt_sum[k]; ndt_sum[k] = 0; } }
 /* S3N-2: the submit of one native draw, moved from nd_raw_native as it was (the state staging, the shadow, citro3d's context update, the emit and the
@@ -1029,7 +1041,7 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
     if (tex) ndunit_after();
     *(volatile unsigned*)(__C3D_Context + 32) |= 2u; /* C3DiF_DrawUsed, as the citro3d draw sets it: citro3d then sends the framebuffer flush at a target change, a split and the frame end */
     if (ndref_on) ndref_cmd();
-    nd_native_draws++; sc_nat++; sc_d5 += d->use5;
+    nd_native_draws++;
     dv_draw++;
     draws_frame++;
     PH_ADD(C_DRAW, 1);
@@ -1139,9 +1151,11 @@ void pm_gpu_fb2_stat(unsigned* o) { o[0] = nd_tmpl_hi(); o[1] = nd_tmpl_gen(); o
  * The split adds a GX entry, so the queue room comes first (HANG1a: the GX queue of 32 entries overflowed at 30k forced splits, svcBreak in gxCmdQueueAdd). */
 void pm_gx_room(void);
 static __attribute__((cold, noinline)) void cmd_split_forced(void) {
+    NDT_B(tk); /* PERF2: the kick class */
     pm_gx_room();
     split_frame(); /* the same split as the grab and the frame split (grab_split counts it: the first split of a frame queues the clear) */
     kick_n++; pm_ph_kick_n++; cmd_split_n++;
+    NDT_E(tk, NDT_KICK);
 }
 /* FB-2: the unit 2 words of the noise texture (fixed for the run: force 0, the shadow decides when they go out) */
 static void noise_native_words(NdUnit* u) {
@@ -1339,7 +1353,7 @@ static void flush_draw(void) {
     }
     if (gs.off_active) flush_off_snap(); /* FX2a: this batch reads the slot it writes (PERF2: out of line) */
     cen_why = CW_OTHER; /* the batch is raw here (the !graw case returned above) */
-    if (nd_raw_native()) return;
+    { NDT_B(tr); const int nr = nd_raw_native(); NDT_E(tr, NDT_RAW); if (nr) return; } /* PERF2: the raw class (its submit is sub) */
     if (ndm_live) ndm_old++, ndm_refused_total++; /* S3N-3c: a raw batch the native path refused is dropped (nd_raw_native counted the reason, census 0 at the DEL row) */
     nb.gni = 0; nb.gi_start = nb.gidx_n; batch_identity = 0;
     return;
@@ -2227,10 +2241,6 @@ static void pm_gpu_end_w(void) {
         }
     }
     pm_gbi_end_frame();
-    if (frames_seen % 300u == 0) { /* PERF2: the subcnt line (per drawn frame, 300 frames) */
-        if (pm_cen_lines) pm_log_w("subcnt f%u prg %u shr %u upd %u spl %u d5 %u nat %u (x100 per frame)", pm_frame_count(), sc_prg / 3u, sc_shr / 3u, sc_upd / 3u, sc_spl / 3u, sc_d5 / 3u, sc_nat / 3u);
-        sc_prg = sc_shr = sc_upd = sc_spl = sc_d5 = sc_nat = 0;
-    }
     /* Without this flag citro3d flushes the entire linear heap. That heap is
      * the 20MB port pool, so every frame was writing it back through the cache. */
     if (jt_on) { /* JT1: debug tool, see jt_queue. One action per frame: read the last jump, or queue the next one once a second has passed */
@@ -3309,7 +3319,7 @@ void pm_gpu_flush(void) { flush(); }
 extern int dual_on; void ensure_tile(int n); void dual_bind(void); int dual_boost_on(void);
 static unsigned spr_nat_n, spr_nat_fb[16];
 static unsigned spr5_sub[8]; /* MDL-3a: class 5 refusals per flag: 1 no pm4 palette path (g_pal, g_use5, gv4_on), 2 off-screen target, 3 grab, 4 zmark, 5 nozt */
-static unsigned spc_texget, spc_rh0[2]; /* PERF2: full texture lookups of sprites and the dirty-slot rehash totals at the last sprcost line */
+static unsigned spc_texget, spc_miss, spc_rh0[2]; /* PERF2: full texture lookups of sprites and the dirty-slot rehash totals at the last sprcost line */
 /* PERF2 step 5: the sprite texture memo. Key: raster, palette, width and height of the record; value: the block id (valid in its nd_tex_gen) and the slot hint
  * (hs, hg) of nd_tex_unit_hint, which checks the slot (clean, key, generation) at each draw. 32 entries, direct mapped. A miss is the old lookup (nd_tex_get). */
 typedef struct { uint32_t raster, pal, wh; unsigned gen; int id, hs; unsigned hg; } SprTexMemo;
@@ -3331,7 +3341,7 @@ static int spr_tex_unit(const NdTexDesc* ds, uint32_t raster, uint32_t pal, uint
     SprTexMemo* m = &sptm[(h ^ (h >> 16)) & 31u];
     const unsigned g = nd_tex_gen();
     if (m->raster != raster || m->pal != pal || m->wh != wh || m->gen != g || m->id < 0) {
-        m->id = nd_tex_get(ds); spc_texget++;
+        m->id = nd_tex_get(ds); spc_texget++; spc_miss++;
         m->raster = raster; m->pal = pal; m->wh = wh; m->gen = nd_tex_gen(); m->hs = -1; m->hg = 0;
         if (m->id < 0) return -1;
     }
@@ -3369,6 +3379,11 @@ static __attribute__((cold, noinline)) void cen_lines_frame(void) {
     spr_nat_log(f);
     ent_log();
     nd_model_log(f);
+}
+void pm_gpu_cnt_take(unsigned o[8]) { /* PERF2 step 6: the counters of the prof cls line, since the last take */
+    static unsigned last[8];
+    const unsigned now[8] = { sc_prg, sc_shr, sc_upd, sc_spl, spr_nat_n - spc_miss, spc_miss, nd_ent_cfull_all(), nd_gdl_lists() };
+    for (int i = 0; i < 8; i++) { o[i] = now[i] - last[i]; last[i] = now[i]; }
 }
 void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, NdGvP* o);
 /* S4-2: the sprite record as a native draw (nd_sprite_draw, nd_sprite.c). The walker inputs of the draw (sticky state, gv, env and prim of the record),

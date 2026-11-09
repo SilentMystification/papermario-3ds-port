@@ -381,7 +381,13 @@ unsigned nd_mc_clears(void);
  * PROF2-5: pm_gpu.c keeps a 4-deep stack of u32 start ticks (pm_gpu_ndt_push) and the ticks of the inner regions, so a region's exclusive time is its
  * total less its children. NDT_B declares the flag v (a clean frame: one load of pm_ph_on, no call, no timer struct); NDT_E pops into class k.
  * NDT_BD is the walker form: the PH bit of the walker debug word (one register test). */
-enum { NDT_REC, NDT_ENT, NDT_SPR, NDT_DLC, NDT_SUB, NDT_N };
+/* PERF2 step 6: kick = kick_split and cmd_split_forced (out of sub); raw = nd_raw_native less its submit; the op classes (one tick per change of op class in
+ * the walk, outside the regions, nd_walk.c walk_cls): tex (texture image, tile and load ops), comb (combine, colours, other modes), geo (vertices, triangles,
+ * geometry mode), mtx (matrix ops, move word and memory), rect (rectangles, fill, scissor, colour and depth images), list (list ops, syncs, records, other). */
+enum { NDT_REC, NDT_ENT, NDT_SPR, NDT_DLC, NDT_SUB, NDT_KICK, NDT_RAW, NDT_TEX, NDT_COMB, NDT_GEO, NDT_MTX, NDT_RECT, NDT_LIST, NDT_N };
+void pm_gpu_ndt_cls(int k); /* PERF2: an op of class k (NDT_TEX..NDT_LIST) in a timed walk; -1 ends the class span (the end of an outer list) */
+unsigned nd_ent_cfull_all(void); unsigned nd_gdl_lists(void); /* PERF2: nd_ent.c totals */
+void pm_gpu_cnt_take(unsigned o[8]); /* PERF2: since the last take: program switches, shadow resets, UpdateContext calls, splits, sprite memo hits, misses, full combine syncs in ent, ent_gdl lists */
 void pm_gpu_ndt_push(void);
 void pm_gpu_ndt_pop(int k);
 #define NDT_B(v) const int v = pm_ph_on; if (__builtin_expect(v, 0)) pm_gpu_ndt_push()

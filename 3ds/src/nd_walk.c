@@ -122,8 +122,25 @@ void pm_walk_dbg_set(void) {
 }
 /* The op prologue of a debug walk: the op count (PH_ADD C_CMD, opsplit sample), the streak and per-op timers of the phase census, the phasegbi timer
  * (returns its phase id, popped after the handler), the opsplit sample and the model census. */
+/* PERF2 step 6: the op class of each op for the class timers (nd.h NDT_TEX..NDT_LIST); unlisted ops are list class */
+static uint8_t walk_cls_tab[256];
+static void walk_cls_init(void) {
+    static const uint8_t tex[] = { G_SETTIMG, G_SETTILE, G_LOADTILE, G_LOADBLOCK, G_SETTILESIZE, G_LOADTLUT, G_TEXTURE };
+    static const uint8_t comb[] = { G_SETCOMBINE, G_SETENVCOLOR, G_SETPRIMCOLOR, G_SETBLENDCOLOR, G_SETFOGCOLOR, G_SETOTHERMODE_H, G_SETOTHERMODE_L, G_RDPSETOTHERMODE, G_SETPRIMDEPTH };
+    static const uint8_t geo[] = { G_VTX, G_MODIFYVTX, G_TRI1, G_TRI2, G_QUAD, G_GEOMETRYMODE, G_CULLDL };
+    static const uint8_t mtx[] = { G_MTX, G_POPMTX, G_MOVEWORD, G_MOVEMEM };
+    static const uint8_t rect[] = { G_TEXRECT, G_TEXRECTFLIP, G_FILLRECT, G_SETFILLCOLOR, G_SETSCISSOR, G_SETCIMG, G_SETZIMG };
+    for (unsigned i = 0; i < 256u; i++) walk_cls_tab[i] = NDT_LIST;
+    for (unsigned i = 0; i < sizeof tex; i++) walk_cls_tab[tex[i]] = NDT_TEX;
+    for (unsigned i = 0; i < sizeof comb; i++) walk_cls_tab[comb[i]] = NDT_COMB;
+    for (unsigned i = 0; i < sizeof geo; i++) walk_cls_tab[geo[i]] = NDT_GEO;
+    for (unsigned i = 0; i < sizeof mtx; i++) walk_cls_tab[mtx[i]] = NDT_MTX;
+    for (unsigned i = 0; i < sizeof rect; i++) walk_cls_tab[rect[i]] = NDT_RECT;
+    walk_cls_tab[0] = NDT_TEX; /* the table is built: entry 0 (G_NOOP) holds a non-list class only as the init mark */
+}
 static __attribute__((cold, noinline)) int walk_dbg_op(unsigned dbg, const Gfx* at, int sp, unsigned op, u32 w0, u32 w1) {
     int fp = 0;
+    if (dbg & WD_PH) { if (walk_cls_tab[0] != NDT_TEX) walk_cls_init(); pm_gpu_ndt_cls(op ? walk_cls_tab[op] : NDT_LIST); }
     n_ops++;
     if (dbg & WD_CEN) {
         gv_streak_op(op); tex_streak_op(op);
@@ -141,6 +158,7 @@ static __attribute__((cold, noinline)) int walk_dbg_op(unsigned dbg, const Gfx* 
     return fp;
 }
 static __attribute__((cold, noinline)) void walk_dbg_end(unsigned dbg) { /* the end of the outer list */
+    if (dbg & WD_PH) pm_gpu_ndt_cls(-1); /* PERF2: the class span ends with the outer list */
     if (!(dbg & WD_CEN)) return;
     if (gp_prev_op >= 0) { gp_opt[gp_prev_op] += pm_ticks() - gp_opt_last; gp_opn[gp_prev_op]++; gp_prev_op = -1; }
     mr0_walk_end(); /* MR0 */
@@ -363,6 +381,7 @@ void nd_walk_run(void* list, unsigned nbytes) {
         }
         if (__builtin_expect(fp, 0)) pm_ph_pop();
     }
+    if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1); /* PERF2: a list that ends at its byte count (no G_ENDDL) closes its class span too */
     gv_streak_flush();
     tex_streak_flush();
 }

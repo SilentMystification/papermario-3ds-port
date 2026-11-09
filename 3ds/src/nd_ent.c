@@ -291,7 +291,7 @@ void ent_log(void) { /* PROF2-3: census lines, from pm_gpu.c cen_lines_frame (fr
     if (f < next) return;
     next = (f / 300u + 1u) * 300u;
     pm_log_w("entnat f%u draws %u native %u fb %u segs native %u interp %u keys %u comp %u dyn %u", f, ent_c.draws, ent_c.nat, ent_c.fb, ent_c.segn, ent_c.segi, ent_nent, ent_c.comp, ent_c.dyn);
-    pm_log_w("entsync f%u walks %u csync %u rsync %u gdl %u (300 frames)", f, nd_ent_gbi, nd_ent_cfull, nd_ent_rfull, gdl_c.lists); nd_ent_gbi = nd_ent_cfull = nd_ent_rfull = 0;
+    { static unsigned l0, l1, l2; pm_log_w("entsync f%u walks %u csync %u rsync %u gdl %u (since the last line)", f, nd_ent_gbi - l0, nd_ent_cfull - l1, nd_ent_rfull - l2, gdl_c.lists); l0 = nd_ent_gbi; l1 = nd_ent_cfull; l2 = nd_ent_rfull; }
     pm_log_w("entnat why 1 table %u 2 op %u 3 slot %u 4 vtx %u 5 long %u 6 pool %u 7 count %u 8 none %u", ent_c.why[1], ent_c.why[2], ent_c.why[3], ent_c.why[4], ent_c.why[5], ent_c.why[6], ent_c.why[7], ent_c.why[8]);
     for (unsigned q = 0; q < 256u; q++) if (ent_opc[q]) pm_log_w("entnat refused op %02x keys %u", q, ent_opc[q]);
     for (unsigned q = 0, n = 0; q < ENT_TAB && n < 16u; q++) if (ent_tab[q] && (ent_tab[q]->nint || ent_tab[q]->st != ENT_OK)) { const EntKey* k = ent_tab[q]; n++; pm_log_w("entnat key list %08x vb %08x st %u why %u nseg %u nops %u draws %u seg %u int %u", k->list, k->vb, k->st, k->why, k->nseg, k->nops, k->ndraw, k->segid, k->nint); }
@@ -358,6 +358,8 @@ int ent_draw(const Gfx* rec) {
 }
 
 unsigned nd_ent_in, nd_ent_cfull, nd_ent_rfull, nd_ent_gbi;
+unsigned nd_ent_cfull_all(void) { return nd_ent_cfull; }
+unsigned nd_gdl_lists(void) { return gdl_c.lists; }
 #define ENT_GBI(l_, n_) (nd_ent_gbi++, nd_walk_ops((l_), (n_))) /* PERF2: the pieces of the flattened list keep the walker's sync state */
 int ent_run(const Gfx* l, EntKey* k, u32 segid) {
     const unsigned f = pm_frame_count();
