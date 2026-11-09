@@ -2163,6 +2163,17 @@ int pm_gpu_grab(const void* cfb, int y0, int y1) { return grab_impl(cfb, y0, y1,
  * So a request sets prev_want, and the next frame queues the copy into grab_tex at pm_gpu_begin, before any other entry (prev_pre). The
  * first frame of a run of requests, or a frame with an earlier T2 grab (it overwrites grab_tex), returns 0: the caller reads with the CPU.
  * Returns 2 if the old frame is in the slot of prev_cfb. */
+/* PAUSEOPEN: the pause picture's slot (the last frame, a frame buffer that is not drawn now) is windowed 400 columns wide while on (the two wide
+ * gutter loads: the window base cfb - 80 bytes is slot column 0, the stride 400 row is 800 bytes), and 320 wide again when off (the centre). */
+extern void* pm_walk_cfb;
+void pm_gpu_pause_win(int on) {
+    for (int i = 0; i < OFF_ALL; i++) {
+        const void* b = gs.offs[i].base;
+        if (!b || gs.offs[i].siz != 2 || b == pm_walk_cfb || !pm_is_cfb(b)) continue;
+        pm_tex_set_offscreen(i, (const u8*)b - 80, on ? 400u : 320u, &gs.offs[i].tex, 2, gs.offs[i].w, gs.offs[i].h);
+        return;
+    }
+}
 int pm_gpu_grab_prev(const void* prev_cfb) {
     PM_WALK_OWN(); /* CORE2-3a */
     prev_want = 2; /* BTRANS: the request holds for 2 drawn frames */
