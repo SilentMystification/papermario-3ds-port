@@ -12204,10 +12204,10 @@
     {
       "name": "cheatsave_save",
       "status": "verified",
-      "subject": "Slot 0 loaded (loadslot=0), Select menu, Cheats tab (L), Moon jump on (A): the bottom shot after the A draw shows the cyan 'Press X to save cheats' footer; X writes cheats_slot0.ini.",
-      "proves": "CHEATSAVE: foot1 shows the footer while pm_cheat_dirty; pm_menu_key KEY_X calls pm_cheat_save, which logs the saved line.",
-      "debug": "loadslot=0 warp=random padscript=wait150,SELECT,wait20,L,wait20,A,wait20,k_X,wait60 shotmenu loglevel=debug",
-      "until": "cheats: saved slot \\d+ \\(\\d+ on\\)",
+      "subject": "Slot 0 loaded (loadslot=0) with the moonjump boot switch (Moon jump On, not dirty), Select menu, Cheats tab (L): A turns Moon jump Off (cyan 'Press X to save cheats' footer, shot), X saves (0 on), A turns it On, X saves (1 on). The result does not depend on the cheats_slot0.ini an earlier run left in the azslot.",
+      "proves": "CHEATSAVE: foot1 shows the footer while pm_cheat_dirty; pm_menu_key KEY_X calls pm_cheat_save, which logs the saved line. The run ends with moonjump=1 in cheats_slot0.ini (the state cheatsave_load_on reads).",
+      "debug": "loadslot=0 warp=random moonjump padscript=wait150,SELECT,wait20,L,wait20,A,wait20,k_X,wait20,A,wait20,k_X,wait60 shotmenu loglevel=debug",
+      "until": "cheats: saved slot \\d+ \\(1 on\\)",
       "cap": 30,
       "deadline": 25,
       "first_marker": "MODE = ",
@@ -12219,7 +12219,7 @@
           "regex": "menu: open"
         },
         {
-          "name": "moon jump on",
+          "name": "moon jump off then on",
           "regex": "cheat: moon jump on"
         },
         {
@@ -12227,11 +12227,15 @@
           "regex": "menu: shot \\w+ tab 3 row 0"
         },
         {
+          "name": "saved slot 0 with 0 on",
+          "regex": "cheats: saved slot 0 \\(0 on\\)"
+        },
+        {
           "name": "saved slot 0 with 1 on",
           "regex": "cheats: saved slot 0 \\(1 on\\)"
         }
       ],
-      "reason": "CHEATSAVE save gate: the saved line (slot 0, 1 on) and the shot after the A draw with the footer (picture read by a person)."
+      "reason": "CHEATSAVE save gate: two saves (0 on, then 1 on) and the footer shot after the first A (picture read by a person). CHEATSAVE2: the old recipe (one A from the file state) saved 0 on when an earlier run had left moonjump=1 in the azslot, so its expected event failed (runs 104678 and 105394 fail:1)."
     },
     {
       "name": "cheatsave_load_on",
@@ -12280,6 +12284,30 @@
         }
       ],
       "reason": "CHEATSAVE per-slot gate: slot 1 starts with 0 on and Moon jump Off."
+    },
+    {
+      "name": "cheatsave_copy",
+      "status": "verified",
+      "subject": "File select (fileselect switch): Copy File, File 1 (slot 0) to File 4 (slot 3). The copy writes cheats_slot3.ini from cheats_slot0.ini (log 'cheats: saved slot 3'). Works with File 4 empty (copied message) or with data (Yes in the confirm). Shot: the file select at frame 300 (shotwin), after the copy (run 122287: the copy line between f120 and f180 on the empty path; run 122673: an up press 30 scans after the confirm opened was lost and A took No, so the up comes 60 scans after it, twice).",
+      "proves": "CHEATSAVE2: pm_cheat_file_copy at both Copy File paths (filemenu_main.c empty destination, filemenu_yesno.c FM_CONFIRM_COPY).",
+      "debug": "fileselect fs1off shots shotwin=300:1 loglevel=debug padscript=wait90,down*4,wait15,down*4,wait15,right*4,wait15,A*4,wait30,up*4,wait15,up*4,wait15,A*4,wait30,down*4,wait15,right*4,wait15,A*4,wait60,up*4,wait15,up*4,wait15,A*4,wait60",
+      "until": "shot 0 frame \\d+",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "fileselect: direct entry",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "cheat file copied to slot 3",
+          "regex": "cheats: saved slot 3 \\(\\d+ on\\)"
+        },
+        {
+          "name": "file select shot after the copy",
+          "regex": "shot 0 frame \\d+"
+        }
+      ],
+      "reason": "CHEATSAVE2 Copy File gate: the destination slot gets the cheat file of the source slot. Needs slot 0 with save data in the azslot save.flash."
     }
   ]
 }

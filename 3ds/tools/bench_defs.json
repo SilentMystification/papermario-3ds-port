@@ -20,7 +20,7 @@
       "purpose": "CHEATSAVE save: Cheats tab, Moon jump on, the cyan footer shot, X writes cheats_slot0.ini. A person reads the footer shot.",
       "scenario": "cheatsave_save",
       "cap": 30,
-      "until": "cheats: saved slot \\d+ \\(\\d+ on\\)",
+      "until": "cheats: saved slot \\d+ \\(1 on\\)",
       "tags": [
         "azahar",
         "menu",
@@ -53,6 +53,22 @@
       "scenario": "cheatsave_load_off",
       "cap": 30,
       "until": "menu: shot \\w+ tab 3 row 0",
+      "tags": [
+        "azahar",
+        "menu",
+        "cheatsave"
+      ],
+      "gates": []
+    },
+    {
+      "name": "cheatsave_copy",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CHEATSAVE2: file select Copy File slot 0 to slot 3 copies cheats_slot0.ini to cheats_slot3.ini.",
+      "scenario": "cheatsave_copy",
+      "cap": 25,
+      "until": "shot 0 frame \\d+",
       "tags": [
         "azahar",
         "menu",

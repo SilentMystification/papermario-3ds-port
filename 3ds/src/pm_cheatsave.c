@@ -46,7 +46,8 @@ static unsigned read_file(int slot, int* found) {
     return bits;
 }
 
-/* Called at each entry into the world (pm_map.c, GAME_MODE_ENTER_WORLD). The save slot is the one the file select or the warp loaded. */
+/* Called at each entry into the world (pm_map.c, GAME_MODE_ENTER_WORLD). The save slot is the one the file select or the warp loaded.
+ * Slot -1 in the log line: no save file (a new file, a warp without a file). */
 void pm_cheat_enter_world(void) {
     int nofile = pm_warp_take_nofile(), found = 0, slot = nofile ? -1 : (int)gGameStatusPtr->saveSlot;
     unsigned bits = slot >= 0 ? read_file(slot, &found) : 0;
@@ -54,36 +55,38 @@ void pm_cheat_enter_world(void) {
     slot_now = slot;
     saved_bits = bits;
     pm_cheat_persist_set(bits);
-    if (slot >= 0) pm_log("cheats: loaded slot %d (%d on%s)", slot, count_on(bits), found ? "" : ", no file");
-    else pm_log("cheats: no save file, %d on", count_on(bits));
+    pm_log("cheats: loaded slot %d (%d on%s)", slot, count_on(bits), found ? "" : ", no file");
 }
 
 /* The footer of the Cheats tab shows while the set differs and a save slot is in use. */
 int pm_cheat_dirty(void) { return slot_now >= 0 && pm_cheat_persist_get() != saved_bits; }
 int pm_cheat_slot(void) { return slot_now; }
 
-/* X on the Cheats tab: write the set to the slot file (temp, then rename, as options.ini). 1 when written. */
-int pm_cheat_save(void) {
+/* Write bits to the file of slot (temp, then rename, as options.ini). 1 when written. */
+static int write_file(int slot, unsigned bits) {
     char tmp[24], fin[24];
-    unsigned bits = pm_cheat_persist_get();
     FILE* f;
     int k;
-    if (slot_now < 0) return 0;
-    file_name(tmp, slot_now, "tmp");
-    file_name(fin, slot_now, "ini");
+    file_name(tmp, slot, "tmp");
+    file_name(fin, slot, "ini");
     f = fopen(tmp, "w");
     for (k = 0; f && k < CK_N; k++) fprintf(f, "%s=%d\n", ck_name[k], (int)((bits >> k) & 1u));
-    if (!f || fclose(f) != 0) {
-        pm_log_e("cheats: write of %s failed", tmp);
-        return 0;
+    if (f && fclose(f) == 0) {
+        unlink(fin); /* FAT rename does not replace an existing file (options.ini does the same) */
+        if (rename(tmp, fin) == 0) {
+            pm_log("cheats: saved slot %d (%d on)", slot, count_on(bits));
+            return 1;
+        }
     }
-    unlink(fin); /* FAT rename does not replace an existing file (options.ini does the same) */
-    if (rename(tmp, fin) != 0) {
-        pm_log_e("cheats: rename to %s failed", fin);
-        return 0;
-    }
+    pm_log_e("cheats: write of %s failed", fin);
+    return 0;
+}
+
+/* X on the Cheats tab: write the set to the slot file. 1 when written. */
+int pm_cheat_save(void) {
+    unsigned bits = pm_cheat_persist_get();
+    if (slot_now < 0 || !write_file(slot_now, bits)) return 0;
     saved_bits = bits;
-    pm_log("cheats: saved slot %d (%d on)", slot_now, count_on(bits));
     return 1;
 }
 
@@ -92,4 +95,12 @@ void pm_cheat_file_erase(int slot) {
     char nm[24];
     file_name(nm, slot, "ini");
     unlink(nm);
+}
+
+/* File select Copy File (filemenu_yesno.c): the destination slot gets the cheat file of the source slot, or none when the source has none. */
+void pm_cheat_file_copy(s32 from, s32 to) {
+    int found;
+    unsigned bits = read_file(from, &found);
+    if (found) write_file(to, bits);
+    else pm_cheat_file_erase(to);
 }
