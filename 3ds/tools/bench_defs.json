@@ -672,6 +672,31 @@
           "name": "ser_n",
           "regex": "prof f\\d+ w\\d+ core2 .*? ser (\\d+)",
           "pick": "first"
+        },
+        {
+          "name": "bw_ms",
+          "regex": "prof f\\d+ w\\d+ core2 wait .*? bw ([0-9.]+)",
+          "pick": "first"
+        },
+        {
+          "name": "fw_ms",
+          "regex": "prof f\\d+ w\\d+ core2 wait .*? fw ([0-9.]+)",
+          "pick": "first"
+        },
+        {
+          "name": "aj_ms",
+          "regex": "prof f\\d+ w\\d+ core2 wait .*? aj ([0-9.]+)",
+          "pick": "first"
+        },
+        {
+          "name": "au_ms",
+          "regex": "prof f\\d+ w\\d+ core2 wait .*? au ([0-9.]+)",
+          "pick": "first"
+        },
+        {
+          "name": "mx_ms",
+          "regex": "prof f\\d+ w\\d+ core2 wait .*? mx ([0-9.]+)",
+          "pick": "first"
         }
       ]
     },

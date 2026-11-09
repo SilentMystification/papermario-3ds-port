@@ -14,6 +14,8 @@ static int open_;
 static LightSemaphore sem_free, sem_full;
 static LightEvent ev_idle;
 static uint32_t committed, executed;
+extern int pm_pf_on; /* pm_phase.c */
+unsigned pm_au2_pf_busy; /* C1WAIT: mixer ticks on the render thread in the prof window (modular 32 bit, svcGetSystemTick) */
 static int quit;
 static Thread rthread;
 static u8 r_crash_stack[0x4000] __attribute__((aligned(8)));
@@ -163,7 +165,8 @@ static void render_main(void* unused) {
         }
         Slot* s = &slots[cons];
         int st = stats();
-        unsigned t0 = st ? pm_ticks() : 0;
+        int pf = pm_pf_on;
+        unsigned t0 = st ? pm_ticks() : (pf ? (unsigned)svcGetSystemTick() : 0u);
         for (uint32_t i = 0; i < s->n; i++) au2_exec(&s->c[i]);
         if (st) {
             unsigned dt = pm_ticks() - t0;
@@ -171,6 +174,7 @@ static void render_main(void* unused) {
             r_busy_sum += dt;
             if (dt > r_busy_max) r_busy_max = dt;
         }
+        if (pf) pm_au2_pf_busy += (unsigned)svcGetSystemTick() - t0;
         cons = (cons + 1) % AU2_SLOTS;
         LightSemaphore_Release(&sem_free, 1);
         __atomic_add_fetch(&executed, 1, __ATOMIC_RELEASE);
