@@ -5,7 +5,7 @@
  * Overlap: the frame loop hands step N+1 and then walks frame N, so the logic of N+1 runs while the walker draws N. The logic of N+2
  * starts only after the push of N+1, which waits until frame N is walked (nd_wq.c depth 1).
  * Serial (pm_lg_hand serial = 1): the command runs inline on the game thread after the logic thread is idle (det, phase and census
- * timers, fsplit, 60 fps interpolation, the prof sample frame): the serial order, byte-equal to the single-thread build.
+ * timers, fsplit, the prof sample frame): the serial order, byte-equal to the single-thread build.
  * The game thread never waits for the logic thread without running the queue for it (pm_wq_pump_blocked), so a drain or a frame push
  * inside a step always finishes. */
 #include <3ds.h>
@@ -38,6 +38,8 @@ static volatile unsigned long long lg_pf_pe[3]; static int lg_pmu_on;
 extern int pm_pf_on; /* pm_phase.c */
 void pm_pf_core_setup(void); /* pm_phase.c: the counter setup of the calling core */
 void pm_pf_core_read(u64 out[3]);
+static volatile unsigned lg_kwalk, lg_kdue; /* key frames walked, and due (the end entry of a step with a key frame ran): both on the walker */
+static unsigned lg_kseen; /* game thread: key frames counted as drawn */
 static unsigned long long lg_pf_wait; static unsigned lg_pf_ser; /* game thread: ticks waiting for the logic, steps run inline */
 #define LG_WAIT_NS 2000000ll
 
@@ -136,12 +138,23 @@ int pm_lg_draw_flag(void) {
     return lg_d;
 }
 
+void pm_lg_key_walked(void) { lg_kwalk++; } /* a key frame is walked (pm_nusys.c), on the walker */
+void pm_lg_key_due(void) { lg_kdue++; } /* the end entry of a step that posts a key frame (pm_main.c), on the walker */
 void pm_lg_end_walked(void) { lg_ends++; } /* the step end entry (pm_main.c), on the walker */
 void pm_lg_show(void) {
     unsigned target = lg_steps;
     __sync_synchronize();
     while ((int)(lg_ends - target) < 0) { if (!pm_wq_pump_one()) pm_wq_wait_walker(LG_WAIT_NS); }
     pm_wq_pump_blocked();
+}
+
+/* Game thread, idle pass: walk the key frames of the steps whose end is walked (the logic posts the key frame after the step tail,
+ * so the wait runs the queue until it is walked). Returns the key frames walked since the last call. */
+unsigned pm_lg_show_keys(void) {
+    while ((int)(lg_kwalk - lg_kdue) < 0) { if (!pm_wq_pump_one()) pm_wq_wait_walker(LG_WAIT_NS); }
+    unsigned n = lg_kwalk - lg_kseen;
+    lg_kseen = lg_kwalk;
+    return n;
 }
 
 void pm_lg_sleep_ns(long long ns) {
@@ -168,7 +181,8 @@ void pm_lg_stop(void) {
 }
 
 /* Prof (pm_phase.c): totals since boot; the window takes differences. */
-void pm_lg_pf(unsigned long long* lg_t, unsigned* lg_n, unsigned long long* wait_t, unsigned* ser_n, int* core, unsigned* stk_kb, unsigned long long* pe) {
+void pm_lg_pf(unsigned long long* lg_t, unsigned* lg_n, unsigned long long* wait_t, unsigned* ser_n, int* core, unsigned* stk_kb, unsigned long long* pe, unsigned* kf) {
+    *kf = lg_kwalk;
     *lg_t = lg_pf_t; *lg_n = lg_pf_n; *wait_t = lg_pf_wait; *ser_n = lg_pf_ser; *core = lg_core;
     for (int k = 0; k < 3; k++) pe[k] = lg_pf_pe[k];
     *stk_kb = pm_stack_used(3, NULL) >> 10;

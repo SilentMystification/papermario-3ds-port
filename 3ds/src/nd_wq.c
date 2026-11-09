@@ -1,7 +1,7 @@
 /* CORE2-3a: the walker side. The walker owns nd_ws, pm_gpu (C3D context, command buffers, GX queue, frame begin and end, present,
  * shots, grabs, captures, depth reads) and pm_tex (texture cache). It runs on the game thread (core 0, the frame loop). The game logic
  * (pm_logic.c: step_game_loop, the list build, the step tail) runs on the logic thread (core 1 on the O3DS, core 2 on the N3DS) or, in
- * the serial mode (det, phase or census timers, fsplit, 60 fps interpolation), inline on the game thread. The logic side reaches the
+ * the serial mode (det, phase or census timers, fsplit), inline on the game thread. The logic side reaches the
  * walker only through the calls below (plan_core2.md; row_CORE2C.md):
  *   pm_wq_post(fn, arg, size): a message. The arg bytes are copied into the queue; the walker runs fn in queue order.
  *   pm_wq_frame(frame): one frame (pm_port.h PmFrame). Depth 1: the push waits until the frame before is walked, so a display context
@@ -36,11 +36,13 @@ typedef struct { void (*fn)(void*); unsigned frame; unsigned long long arg[WQ_AR
 static WqEnt wq_ring[WQ_N];
 static volatile unsigned wq_head, wq_tail;
 static volatile unsigned wq_fr_push, wq_fr_walked; /* frames pushed and walked */
-static volatile int wq_blocked; /* the logic thread waits for the walker */
+static volatile int wq_blocked; /* the logic thread waits for the walker: 0 no, WQB_ALL the queue is run whole, WQB_WALKED it is run up to the last frame */
+enum { WQB_ALL = 1, WQB_WALKED = 2 };
 static Thread wq_lg; /* the logic thread (NULL: serial only) */
 static LightEvent wq_ev_walker; /* logic to walker: blocked, a command done, a retrace started */
 static LightEvent wq_ev_logic; /* walker to logic: an entry ran */
 _Static_assert(sizeof(PmFrame) <= WQ_ARG, "a frame fits one queue entry");
+_Static_assert(sizeof(PmKey) <= WQ_ARG, "a key frame fits one queue entry");
 
 void pm_wq_set_logic(Thread t) {
     LightEvent_Init(&wq_ev_walker, RESET_ONESHOT);
@@ -71,7 +73,11 @@ int pm_wq_pump_one(void) {
 }
 static void wq_pump(void) { while (pm_wq_pump_one()) {} }
 /* Game thread, at every wait: a logic thread that waits for the walker gets the whole queue run. */
-void pm_wq_pump_blocked(void) { if (wq_blocked) wq_pump(); }
+void pm_wq_pump_blocked(void) {
+    int b = wq_blocked;
+    if (b == WQB_ALL) wq_pump();
+    else if (b == WQB_WALKED) { while (wq_fr_walked != wq_fr_push && pm_wq_pump_one()) {} } /* a whole pump would run the begin entry of the next step: one more vblank */
+}
 
 /* C1WAIT: the logic thread's wait for the walker, in ticks of the prof window (pm_phase.c reads it per logic step). [0] every
  * wq_block wait, [1] the depth 1 frame wait (c_walked). Modular 32 bit: the window reads take differences. Prof only (pm_pf_on). */
@@ -79,10 +85,10 @@ extern int pm_pf_on; /* pm_phase.c */
 static unsigned wq_bw[2];
 static int c_walked(void* c);
 /* Logic thread: wait until cond(). The walker runs the queue when it sees wq_blocked (flag, barrier, test on both sides). */
-static void wq_block(int (*cond)(void*), void* c) {
+static void wq_block(int (*cond)(void*), void* c, int kind) {
     int pf = pm_pf_on;
     unsigned t0 = pf ? (unsigned)svcGetSystemTick() : 0u;
-    wq_blocked = 1;
+    wq_blocked = kind;
     __sync_synchronize();
     LightEvent_Signal(&wq_ev_walker);
     while (!cond(c)) LightEvent_Wait(&wq_ev_logic);
@@ -105,7 +111,7 @@ static __attribute__((cold, noinline)) void wq_too_big(unsigned size) {
 }
 static void wq_put(void (*fn)(void*), const void* arg, unsigned size) {
     if (size > WQ_ARG) wq_too_big(size);
-    if (wq_tail - wq_head == WQ_N) wq_block(c_space, NULL);
+    if (wq_tail - wq_head == WQ_N) wq_block(c_space, NULL, WQB_ALL);
     unsigned t = wq_tail;
     WqEnt* e = &wq_ring[t & (WQ_N - 1u)];
     e->fn = fn;
@@ -134,7 +140,7 @@ void pm_wq_post(void (*fn)(void*), void* arg, unsigned size) {
 static void wq_frame_run(void* a) { pm_frame_walk((const PmFrame*)a); __sync_synchronize(); wq_fr_walked++; }
 void pm_wq_frame(const PmFrame* f) {
     if (pm_wq_on_logic()) {
-        if (wq_fr_walked != wq_fr_push) wq_block(c_walked, NULL); /* depth 1: the frame before is walked first */
+        if (wq_fr_walked != wq_fr_push) wq_block(c_walked, NULL, WQB_ALL); /* depth 1: the frame before is walked first */
         if (nd_c2_on > 0) nd_c2_push(); /* CORE2C-3: the census check point of the threaded walk */
         wq_fr_push++;
         wq_put(wq_frame_run, f, sizeof *f);
@@ -144,9 +150,22 @@ void pm_wq_frame(const PmFrame* f) {
     wq_main_direct(wq_frame_run, (void*)f);
 }
 
+/* 60 fps: the logic of step N+1 runs while the walker draws frame N and key frame N. Before it writes the replacement table
+ * (pm_interp_lerp: rtab and repl, read by the walker through pm_interp_find) it waits until both are walked; the wait runs the queue
+ * up to them only (WQB_WALKED), not the begin entry of step N+1 behind them. A key frame is a frame in the count (wq_fr_push). */
+void pm_wq_frame_slot(void) {
+    if (pm_wq_on_logic() && wq_fr_walked != wq_fr_push) wq_block(c_walked, NULL, WQB_WALKED);
+}
+static void wq_key_run(void* a) { pm_key_walk((const PmKey*)a); __sync_synchronize(); wq_fr_walked++; }
+void pm_wq_key(const PmKey* k) {
+    wq_fr_push++;
+    if (pm_wq_on_logic()) { wq_put(wq_key_run, k, sizeof *k); pm_wq_kick_walker(); return; }
+    wq_main_direct(wq_key_run, (void*)k);
+}
+
 /* pm_walk_drain (nd_walk.c) calls this first: return when the queue is empty and no walk runs. */
 void pm_wq_idle(void) {
-    if (pm_wq_on_logic()) { if (wq_head != wq_tail) wq_block(c_empty, NULL); return; }
+    if (pm_wq_on_logic()) { if (wq_head != wq_tail) wq_block(c_empty, NULL, WQB_ALL); return; }
     if (!pm_walk_side) { pm_lg_quiesce(); wq_pump(); }
 }
 
@@ -158,7 +177,7 @@ void pm_wq_call(void (*fn)(void*), void* arg, unsigned size) {
         volatile int done = 0;
         WqCall c = { fn, arg, &done };
         wq_put(wq_call_run, &c, sizeof c);
-        wq_block(c_done, (void*)&done);
+        wq_block(c_done, (void*)&done, WQB_ALL);
         return;
     }
     if (pm_walk_side) { pm_walk_side++; fn(arg); pm_walk_side--; return; }

@@ -327,7 +327,6 @@ static void pace_stat(u64 now, u64 hz, unsigned frame) {
     for (int i = 0; i < 4; i++) i0[i] = pace_iv[i];
     t0 = now; s0 = pm_step_calls; f0 = frame; v0 = v; a0 = pace_ticks; d0 = pm_pace_drawn;
 }
-int pm_interp_key_draw(void);
 unsigned pm_tex_evict_n(void);
 unsigned pm_gpu_noise_state(void);
 extern unsigned gRandSeed;
@@ -362,7 +361,9 @@ static void wq_frame_end(void) {
 }
 /* CORE2C-3: the end entry of a step (walker side): the frame end of a drawn step, then the count pm_lg_show waits for. */
 void pm_lg_end_walked(void);
-static void wq_step_end(void* a) { if (*(const int*)a) wq_frame_end(); pm_lg_end_walked(); }
+void pm_lg_key_due(void);
+typedef struct { int drew, key; } StepEnd;
+static void wq_step_end(void* a) { const StepEnd* e = (const StepEnd*)a; if (e->drew) wq_frame_end(); if (e->key) pm_lg_key_due(); pm_lg_end_walked(); }
 void pm_fxtest_tick(unsigned);
 /* CORE2C-3: the body of one frame loop command (pm_logic.c), on the logic thread or inline. LG_IDLE: the retrace call of an idle pass.
  * LG_STEP: frame begin, the step (step_game_loop, list build, frame push), the audio ticks, the step end; LG_SKIP: the FS1 step with no
@@ -370,6 +371,7 @@ void pm_fxtest_tick(unsigned);
 void pm_step_run(const LgCmd* c) {
     if (c->kind == LG_IDLE) { pm_gfx_retrace(); return; }
     int drew = c->kind == LG_STEP;
+    pm_interp_skip = (c->flags & LGF_ISKIP) != 0;
     nuGfxCfb_ptr = (unsigned short*)c->cfb;
     pm_pad_step(&c->pad);
     au_kicked = 0;
@@ -381,14 +383,18 @@ void pm_step_run(const LgCmd* c) {
         FS_MARK(FS_REST); /* FS2: the skipped step logic is not a drawn part of the next frame */
     }
     pm_audio_step(); /* AU1b: no main task in this step (or a skipped step): the ticks run now */
-    pm_wq_post(wq_step_end, &drew, sizeof drew);
+    PmKey k;
+    StepEnd se = { drew, 0 };
+    if (drew && pm_interp_on > 0) se.key = pm_interp_key_take(&k) && !(c->flags & LGF_NOKEY); /* the take always clears the list */
+    pm_wq_post(wq_step_end, &se, sizeof se);
     pm_frame_n = c->frame;
     pm_warp_tick(c->frame);
     pm_fxtest_tick(c->frame); /* FX1a, switch fxtest */
     if (pm_debug_has("scripts") && c->frame % 120u == 0) pm_dump_scripts();
+    if (se.key) pm_wq_key(&k); /* the key frame goes after the step tail: the logic of the next step runs while it walks */
 }
-/* CORE2C-3: the serial mode: the timers and census that read one stack or table from both sides, det, and the 60 fps records. */
-static int lp_serial(void) { return pm_det_on() || pm_ph_on || pm_ph_cen || pm_fs_on || pm_dcs_on || pm_interp_on > 0; }
+/* CORE2C-3: the serial mode: the timers and census that read one stack or table from both sides, and det. */
+static int lp_serial(void) { return pm_det_on() || pm_ph_on || pm_ph_cen || pm_fs_on || pm_dcs_on; }
 void pm_frame_loop(void) {
     unsigned frame = 0;
     pm_uptime_ms(); /* start the clock */
@@ -500,9 +506,9 @@ void pm_frame_loop(void) {
         if (!draw) {
             { LgCmd ic = { LG_IDLE, frame, NULL, { 0, 0, 0, 0, 0 } }; pm_lg_hand(&ic, lp_serial()); }
             /* F06-2: key frame of the last step, drawn and presented here (FrameBegin waits for the vblank) */
-            if (fa_state == 0 && pm_interp_on > 0 && !last_step_skipped && pm_interp_key_draw()) { /* FADV: a hold or step draws no key frame */ /* PT87: the key frame is a draw, not a game step (it was counted as a step: the HUD showed x/x) */
-                drawn++; pm_pace_drawn++; det_keys++;
-                continue;
+            if (pm_interp_on > 0) { /* PT87: the key frame is a draw, not a game step (it was counted as a step: the HUD showed x/x) */
+                unsigned kn = pm_lg_show_keys();
+                if (kn) { drawn += kn; pm_pace_drawn += kn; det_keys += kn; continue; }
             }
             /* PC01: keep PM_VBLANKS_PER_STEP vblanks between game steps. The counter is citro3d's own vblank
              * counter. The next drawn iteration waits for one more vblank in C3D_FrameBegin(SYNCDRAW), so this
@@ -552,6 +558,7 @@ void pm_frame_loop(void) {
         last_step_skipped = fs_skip;
         LgCmd lc = { fs_skip ? LG_SKIP : LG_STEP, frame + 1u, cfb, { 0, 0, 0, 0, 0 } };
         pm_pad_latch(&lc.pad); /* CORE2C-3: the pad of this pass, read by the game once in the step */
+        if (fa_state != 0) lc.flags |= LGF_NOKEY; /* FADV: a hold or step draws no key frame */
         if (fs_skip) {
             fs1_run++;
             fs1_skipped++;
@@ -570,7 +577,7 @@ void pm_frame_loop(void) {
                 unsigned iv = vb - step_vb;
                 pm_ph_iv = iv; /* PI4 */
                 pace_iv[iv < 1 ? 0 : iv > 4 ? 3 : iv - 1]++;
-                pm_interp_skip = !pm_det_on() && iv > PM_VBLANKS_PER_STEP; /* F06-5; DET: the key path is never taken on the vblank count */
+                if (!pm_det_on() && iv > PM_VBLANKS_PER_STEP) lc.flags |= LGF_ISKIP; /* F06-5; DET: the key path is never taken on the vblank count */
                 fs1_last_iv = iv;
                 if (iv >= 3) late_n++; /* PT15 */
             }
