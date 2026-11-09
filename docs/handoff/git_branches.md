@@ -27,3 +27,29 @@ Tip hashes of every local branch before cleanup. Recover a deleted branch with `
 | main | 40408f05f3882ad1f23d582c2791f99e80d4bd02 | ancestor of nds1 | moved to nds1 |
 
 No NEAR branch: no merge was needed. The OPEN branches hold only azt scenarios and docs; they conflict with nds1 in azt_scenarios.json and test_catalog.md (append conflicts).
+
+## Audit 2026-11-09 (oracle verdicts, user approved)
+- deleted fb1 a81888474
+- deleted fb1w a71b78531
+- deleted fb2 f939c30a9
+- deleted fb2fix d4077662d
+- deleted fbsnap 639b14c2d
+- deleted fx3 1d9d121ba
+- deleted log5-untested 7cb67ef29
+- deleted mdl 039b79576
+- deleted mdl5-5a-try 9b5cea70c
+- deleted pm5 6f46dff75
+- deleted pm5_old 3981133d2
+- deleted sbkw 0f1452195
+- deleted st-old-312 312b9a703
+- deleted stale2-cause4 53bb89608
+- deleted archive/stash-0 22838a324
+- deleted archive/stash-1 5e9196548
+- deleted archive/stash-2 96e8d0c14
+- deleted archive/stash-3 ba9842fbe
+- deleted logfix 18c994a67
+- deleted mac00b f9be28a79
+- deleted mema-old-79 c84b2ce8a
+- deleted size3 6108f2a49
+- parked size1 6ddf80a94 (effect-gfx table generator, not on main; user: park)
+- kept grey (MENUB open), ub1 (UB1 open)
