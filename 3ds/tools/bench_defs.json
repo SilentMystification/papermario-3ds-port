@@ -501,6 +501,38 @@
       "gates": []
     },
     {
+      "name": "pause_tab_thr_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "PAUSEFLK: threaded pause (logic thread on, wide), mac_01, Party then Star Spirits tab; shots every frame 140 to 249. Gate: no frame-to-frame flicker of sprites, portraits or windows. A person reads the shots.",
+      "scenario": "pause_tab_thr_pic",
+      "cap": 40,
+      "until": "shot \\d+ frame 249\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "pause"
+      ],
+      "gates": []
+    },
+    {
+      "name": "pause_tab_det_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "PAUSEFLK: det twin of pause_tab_thr_pic (serial step). Same route and shots.",
+      "scenario": "pause_tab_det_pic",
+      "cap": 40,
+      "until": "shot \\d+ frame 249\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "pause"
+      ],
+      "gates": []
+    },
+    {
       "name": "pause_thr_prof",
       "kind": "azahar_stream",
       "speed": "normal",

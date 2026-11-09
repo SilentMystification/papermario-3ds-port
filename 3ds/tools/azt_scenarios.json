@@ -12175,6 +12175,62 @@
           "regex": "menu: shot bot_m\\d+ tab 4 row 6\\b"
         }
       ]
+    },
+    {
+      "name": "pause_tab_thr_pic",
+      "status": "unverified",
+      "subject": "PAUSEFLK: mac_01 pos 0 0 200, wide, START opens the pause (Stats tab), R three times to the Party tab (about frame 150, flip then steady), R once more to the Star Spirits tab (about frame 190, flip then steady). Shots every frame 140 to 249.",
+      "proves": "PAUSEFLK: consecutive frames of the Party and Star Spirits tabs, steady and flip; the sprites, portraits and windows show no frame-to-frame flicker.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town pos=0:0:200 wide padscript=wait80,START*3,wait60,R*2,wait20,R*2,wait20,R*2,wait80,R*2,wait160 shots shotwin=140:110 loglevel=debug",
+      "until": "shot \\d+ frame 249\\b",
+      "cap": 40,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "pause mode",
+          "regex": "game mode 10 frame"
+        },
+        {
+          "name": "last shot (Spirits steady)",
+          "regex": "shot \\d+ frame 249\\b"
+        }
+      ],
+      "reason": "PAUSEFLK user report (O3DS XL, wide, logic thread on): flicker on the pause Party and Star Spirits tabs. No det or phase switch, so the logic thread builds frame N+1 while the walker draws N."
+    },
+    {
+      "name": "pause_tab_det_pic",
+      "status": "unverified",
+      "subject": "PAUSEFLK: mac_01 pos 0 0 200, wide, START opens the pause (Stats tab), R three times to the Party tab (about frame 150, flip then steady), R once more to the Star Spirits tab (about frame 190, flip then steady). Shots every frame 140 to 249.",
+      "proves": "PAUSEFLK: consecutive frames of the Party and Star Spirits tabs, steady and flip; the sprites, portraits and windows show no frame-to-frame flicker.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town pos=0:0:200 wide padscript=wait80,START*3,wait60,R*2,wait20,R*2,wait20,R*2,wait80,R*2,wait160 shots shotwin=140:110 loglevel=debug det fixedseed",
+      "until": "shot \\d+ frame 249\\b",
+      "cap": 40,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "pause mode",
+          "regex": "game mode 10 frame"
+        },
+        {
+          "name": "last shot (Spirits steady)",
+          "regex": "shot \\d+ frame 249\\b"
+        }
+      ],
+      "reason": "PAUSEFLK det twin of pause_tab_thr_pic (det runs the step serial): flicker in both means a state or cache cause, only threaded means an order cause."
     }
   ]
 }
