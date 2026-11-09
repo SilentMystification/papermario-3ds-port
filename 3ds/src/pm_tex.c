@@ -140,8 +140,9 @@ void pm_tex_set_offscreen(int i, const void* base, unsigned stride, void* tex, i
     offt[i].tex = (C3D_Tex*)tex;
     if (i >= offt_n) offt_n = i + 1;
 }
-int pm_tex_i8(int aux) {
-    if (aux) return aux_off >= 0 && aux_off < offt_n && offt[aux_off].siz == 1;
+int pm_tex_i8(int unit1) {
+    /* I8AUX: a CPU I8 aux slot is GPU_L8 (intensity in R, no alpha), as unit 0 takes it (:145). Without this the TEV read TEXEL1 alpha = 1. */
+    if (unit1) return aux_off >= 0 ? (aux_off < offt_n && offt[aux_off].siz == 1) : (aux >= 0 && aux < slot_hi && slots[aux].live && slots[aux].fmt == FMT_I && slots[aux].siz == SIZ_8);
     if (have && off_cur >= 0 && off_cur < offt_n && offt[off_cur].siz == 1) return 1;
     return have && off_cur < 0 && cur >= 0 && cur < slot_hi && slots[cur].live && slots[cur].fmt == FMT_I && slots[cur].siz == SIZ_8;
 }
@@ -384,6 +385,14 @@ static GPU_TEXCOLOR gpu_fmt(unsigned fmt, unsigned siz) {
     /* I4 masks (shadows, message silhouettes): intensity is alpha on the RDP; LA4 carries it in the alpha nibble. */
     if (fmt == FMT_I && siz == SIZ_4) return GPU_LA4;
     return GPU_RGBA5551;
+}
+
+/* I8AUX debug: the unit 1 (aux) slot as the TEV sees it. Returns 0 no aux, 1 CPU slot (fmt, siz, gpu format), 2 off-screen image (siz code). */
+int pm_tex_aux_info(int* fmt, int* siz, int* gpu) {
+    if (aux_off >= 0 && aux_off < offt_n) { *fmt = -1; *siz = offt[aux_off].siz; *gpu = -1; return 2; }
+    if (aux < 0 || aux >= slot_hi || !slots[aux].live) { *fmt = -2; *siz = -2; *gpu = -2; return 0; }
+    *fmt = (int)slots[aux].fmt; *siz = (int)slots[aux].siz; *gpu = (int)gpu_fmt(slots[aux].fmt, slots[aux].siz);
+    return 1;
 }
 
 static unsigned tex_gpu_bytes(int pw, int ph, GPU_TEXCOLOR gf) {
