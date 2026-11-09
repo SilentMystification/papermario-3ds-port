@@ -112,7 +112,17 @@ static void gbi_task_w(const uint32_t* s) {
 }
 
 /* CORE2C-2: the walker side of one queued frame (nd_wq.c): the background task, then the main task. */
+extern int pm_wide; /* pm_gpu.c, game side */
+/* INTROSNAP debug: the first 8 walked frames whose build-time wide (PMF_WIDE) differs from the live game value. The walker reads the
+ * live pm_wide; __wrap_set_game_mode drains the walk queue before pm_wide changes, so the count should stay 0. Cold: runs only on a mismatch. */
+static __attribute__((cold, noinline)) void wide_walk_note(int built) {
+    static unsigned n;
+    if (n >= 8) return;
+    n++;
+    pm_log("wide: walk f%u built %d live %d", pm_frame_count(), built, pm_wide);
+}
 void pm_frame_walk(const PmFrame* f) {
+    if (__builtin_expect(((f->flags & PMF_WIDE) != 0) != (pm_wide != 0), 0)) wide_walk_note((f->flags & PMF_WIDE) != 0);
     pm_walk_cfb = f->cfb;
     if (f->bg.ptr) gbi_task_w((const uint32_t*)f->bg.ptr);
     if (f->main.ptr) {
@@ -128,6 +138,7 @@ void pm_frame_walk(const PmFrame* f) {
 static PmFrame fr;
 static void fr_push(void) {
     fr.cfb = nuGfxCfb_ptr;
+    if (pm_wide) fr.flags |= PMF_WIDE; /* INTROSNAP debug: the wide state the tasks were built with (wide_walk_note) */
     pm_wq_frame(&fr);
     memset(&fr, 0, sizeof fr);
 }

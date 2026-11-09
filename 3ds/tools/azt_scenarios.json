@@ -6222,6 +6222,70 @@
       "reason": "UA8 gate by eye, wide on."
     },
     {
+      "name": "newgame_handover",
+      "status": "unverified",
+      "reason": "INTROSNAP: det frames from the discovery run (fc9897f11 + fix): title f84, file select f201, END_FILE_SELECT f374, stage zoom to f412, ENTER_WORLD f413, black during the kmr_11 load, fade-in from about f444, WORLD f466. Window 400 to 451 every frame (two shots per frame with fps60: blend frame, key frame).",
+      "subject": "New game with wide and fps60: fast intro, START to the title, START to the file select (freshsave), File 1, name A, Yes, START, START; the stage zoom, ENTER_WORLD (mode 7), the kmr load, the first drawn frames after it.",
+      "proves": "INTROSNAP: no frame of the handover is wider than its neighbours (no fps60 blend across the load or the aspect change).",
+      "debug": "fast freshsave padscript=@pad_newgame.txt wide fps60 det fixedseed fs1off loglevel=debug shots shotwin=400:52",
+      "until": "shot \\d+ frame 451\\b",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "game mode 1 frame",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "file select",
+          "regex": "game mode 14 frame"
+        },
+        {
+          "name": "enter world",
+          "regex": "game mode 7 frame"
+        },
+        {
+          "name": "aspect change",
+          "regex": "aspect: wide 0 -> 1 mode 7"
+        },
+        {
+          "name": "last shot",
+          "regex": "shot \\d+ frame 451\\b"
+        }
+      ]
+    },
+    {
+      "name": "newgame_handover_thr",
+      "status": "unverified",
+      "reason": "INTROSNAP: newgame_handover without det: the logic thread and the walker run in parallel (the console timing), so a frame built in one aspect can be walked after the logic changed pm_wide. Frames are near the det ones (zoom to about f412, mode 7 about f413); the window 396 to 459 covers them.",
+      "subject": "New game with wide and fps60: fast intro, START to the title, START to the file select (freshsave), File 1, name A, Yes, START, START; the stage zoom, ENTER_WORLD (mode 7), the kmr load, the first drawn frames after it.",
+      "proves": "INTROSNAP: no frame of the handover is wider than its neighbours (no fps60 blend across the load or the aspect change).",
+      "debug": "fast freshsave padscript=@pad_newgame.txt wide fps60 fixedseed fs1off loglevel=debug shots shotwin=396:64",
+      "until": "shot \\d+ frame 459\\b",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "game mode 1 frame",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "file select",
+          "regex": "game mode 14 frame"
+        },
+        {
+          "name": "enter world",
+          "regex": "game mode 7 frame"
+        },
+        {
+          "name": "aspect change",
+          "regex": "aspect: wide 0 -> 1 mode 7"
+        },
+        {
+          "name": "last shot",
+          "regex": "shot \\d+ frame 459\\b"
+        }
+      ]
+    },
+    {
       "name": "intro_native",
       "status": "unverified",
       "reason": "UA10 gate by eye and the log line.",
@@ -9821,6 +9885,31 @@
         }
       ],
       "reason": "SPR4 det gate (pause, cold start, det switch): same as pause_spin_grab_w300.",
+      "extra": []
+    },
+    {
+      "name": "pause_pre_det",
+      "status": "unverified",
+      "subject": "DIRECT: mac_00 (toad preset) det, the drawn frames just before and at the pause open (shots every second frame from 86, caplog) and the pause picture (shots to 140; texlog: one line per texture rectangle): the frame the pause picture is read from and the rectangles drawn over it.",
+      "proves": "The top rows of the frame the pause capture reads (pause_spin_grab_det_w300 shows marks there when model.c records stream commands).",
+      "debug": "preset=toad padscript=wait80,START*3,wait100 shots shotwin=86:56:2 loglevel=debug grablog caplog texlog det",
+      "until": "shot \\d+ frame 140\\b",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "last shot",
+          "regex": "shot \\d+ frame 140\\b"
+        }
+      ],
+      "reason": "DIRECT D6 open fault: names whether the marks are in the live frame before the pause or come from the capture.",
       "extra": []
     },
     {
