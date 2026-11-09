@@ -30,7 +30,6 @@ u8 D_802BCAA0_E313F0[] = {
 };
 
 void entity_StarBoxLauncher_setupGfx(s32 entityIndex) {
-    Gfx* gfxPos = gMainGfxPos;
     Entity* entity = get_entity_by_index(entityIndex);
     StarBoxLauncherData* data = entity->dataBuf.starBoxLauncher;
     Matrix4f sp10;
@@ -40,23 +39,22 @@ void entity_StarBoxLauncher_setupGfx(s32 entityIndex) {
     guTranslateF(sp50, entity->pos.x, data->basePosY, entity->pos.z);
     guMtxCatF(sp50, sp10, sp50);
     guMtxF2L(sp50, &gDisplayContext->matrixStack[gMatrixListPos]);
-    gSPMatrix(gfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gSPDisplayList(gfxPos++, ENTITY_ADDR(entity, Gfx*, Entity_StarBoxLauncher_RenderBottom));
-    gSPPopMatrix(gfxPos++, G_MTX_MODELVIEW);
+    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    gSPDisplayList(gMainGfxPos++, ENTITY_ADDR(entity, Gfx*, Entity_StarBoxLauncher_RenderBottom));
+    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 
-    gDPPipeSync(gfxPos++);
-    gDPSetTextureLUT(gfxPos++, G_TT_RGBA16);
-    gDPLoadTLUT_pal16(gfxPos++, 0, D_0A000D08_E56748);
-    gSPTexture(gfxPos++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
-    gDPSetCombineMode(gfxPos++, G_CC_MODULATEIA, G_CC_MODULATEIA);
-    gDPSetTextureDetail(gfxPos++, G_TD_CLAMP);
-    gDPSetTextureLOD(gfxPos++, G_TL_TILE);
-    gDPLoadTextureBlock_4b(gfxPos++, D_0A000508_E55F48, G_IM_FMT_CI, 128, 32, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 7, 5, G_TX_NOLOD, G_TX_NOLOD);
-    gDPSetTexturePersp(gfxPos++, G_TP_PERSP);
-    gDPSetTextureFilter(gfxPos++, G_TF_BILERP);
-    gDPSetTileSize(gfxPos++, G_TX_RENDERTILE, data->faceTexOffset * 4, 0, (data->faceTexOffset + 124) * 4, 31 * 4);
+    gDPPipeSync(gMainGfxPos++);
+    gDPSetTextureLUT(gMainGfxPos++, G_TT_RGBA16);
+    gDPLoadTLUT_pal16(gMainGfxPos++, 0, D_0A000D08_E56748);
+    gSPTexture(gMainGfxPos++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
+    gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIA, G_CC_MODULATEIA);
+    gDPSetTextureDetail(gMainGfxPos++, G_TD_CLAMP);
+    gDPSetTextureLOD(gMainGfxPos++, G_TL_TILE);
+    gDPLoadTextureBlock_4b(gMainGfxPos++, D_0A000508_E55F48, G_IM_FMT_CI, 128, 32, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 7, 5, G_TX_NOLOD, G_TX_NOLOD);
+    gDPSetTexturePersp(gMainGfxPos++, G_TP_PERSP);
+    gDPSetTextureFilter(gMainGfxPos++, G_TF_BILERP);
+    gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, data->faceTexOffset * 4, 0, (data->faceTexOffset + 124) * 4, 31 * 4);
 
-    gMainGfxPos = gfxPos;
 }
 
 void entity_StarBoxLauncher_check_launch(Entity* entity) {

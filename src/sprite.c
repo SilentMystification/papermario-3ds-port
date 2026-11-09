@@ -415,8 +415,7 @@ void spr_appendGfx_component(
     Gfx* rmList;
     Gfx* sprRec = nullptr; /* S4-3: the record of this component (TARGET_3DS), its header gets the geometry offset below */
 #ifdef TARGET_3DS
-    Gfx sprBuf[G_PM_SPR_WORDS]; /* DIRECT D2: the record goes to the frame stream at the final vertex word (a builder's list for later: in the list, as before) */
-    const int sprInList = nd_rec_sub > 0;
+    Gfx sprBuf[G_PM_SPR_WORDS]; /* DIRECT D2: the record goes to the frame stream at the final vertex word */
 #endif
     if (gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED) {
         rmList = ((u8) opacity == 255) ? OpaqueShadedSpriteGfx : TranslucentShadedSpriteGfx;
@@ -425,9 +424,8 @@ void spr_appendGfx_component(
     }
 #ifdef TARGET_3DS
     if (quad != nullptr) { /* S4-1: the sprite record (G_PM_SPR). pm_gbi.c reads it; the old words below still draw. */
-        Gfx* rec = sprInList ? gMainGfxPos : sprBuf;
+        Gfx* rec = sprBuf;
         sprRec = rec;
-        if (sprInList) gMainGfxPos += G_PM_SPR_WORDS;
         rec[0].words.w0 = ((u32)G_PM_SPR << 24) | ((((gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED) ? 1u : 0u) |
                           ((gSpriteShadingProfile->flags & SPR_SHADING_FLAG_SET_VIEWPORT) ? 2u : 0u) |
                           ((gGameStatusPtr->context == CONTEXT_BATTLE) ? 4u : 0u)) << 16) | ((u32)(u8) opacity << 8); /* bit 2: battle context, the native build refuses it (spr_battle) */
@@ -448,14 +446,12 @@ void spr_appendGfx_component(
     if (quad != nullptr) {
 #ifdef TARGET_3DS
         Gfx sprGeo[2];
-        spr_geo_out = (sprRec != nullptr && !sprInList) ? sprGeo : nullptr;
+        spr_geo_out = sprRec != nullptr ? sprGeo : nullptr;
 #endif
         spr_appendGfx_component_flat(quad, cache->image, palette, width, height, rotY, mtxTransform, (u8) opacity);
 #ifdef TARGET_3DS
         spr_geo_out = nullptr;
-        if (sprRec != nullptr && sprInList) { /* S4-3: the flat path ends with gSPVertex, gSP2Triangles, gDPPipeSync: the vertex word is 3 words before the end. Header bits 0 to 7 = its offset from the record (the alpha byte is bits 8 to 15) */
-            sprRec[0].words.w0 |= (u32)(gMainGfxPos - 3 - sprRec) & 0xffu;
-        } else if (sprRec != nullptr) { /* DIRECT D2, D6: the vertex and triangle words go with the record (the walker draws them when the native draw refuses) */
+        if (sprRec != nullptr) { /* DIRECT D2, D6: the vertex and triangle words go with the record (the walker draws them when the native draw refuses) */
             nd_rec_spr(sprBuf, sprGeo);
         }
 #endif

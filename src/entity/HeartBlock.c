@@ -28,15 +28,14 @@ f32 entity_HeartBlockContent_get_previous_yaw(HeartBlockContentData* data, s32 l
 void entity_HeartBlockContent__setupGfx(s32 entityIndex, Gfx* arg1) {
     Entity* entity = get_entity_by_index(entityIndex);
     HeartBlockContentData* data = entity->dataBuf.heartBlockContent;
-    Gfx* gfxPos = gMainGfxPos;
     s32 alpha;
     Matrix4f sp18;
     Gfx* dlist;
 
     dlist = ENTITY_ADDR(entity, Gfx*, arg1);
 
-    gDPSetCombineMode(gfxPos++, PM_CC_01, PM_CC_02);
-    gDPSetPrimColor(gfxPos++, 0, 0, 0, 0, 0, entity->alpha);
+    gDPSetCombineMode(gMainGfxPos++, PM_CC_01, PM_CC_02);
+    gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, entity->alpha);
 
     alpha = 92;
     if (entity->alpha < alpha) {
@@ -46,13 +45,13 @@ void entity_HeartBlockContent__setupGfx(s32 entityIndex, Gfx* arg1) {
     guRotateF(sp18, entity_HeartBlockContent_get_previous_yaw(data, 2), 0.0f, 1.0f, 0.0f);
     guMtxF2L(sp18, &data->unk_58);
     gDisplayContext->matrixStack[gMatrixListPos] = data->unk_58;
-    gSPMatrix(gfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gDPSetRenderMode(gfxPos++, AA_EN | Z_CMP | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA), AA_EN | Z_CMP | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA));
-    gSPDisplayList(gfxPos++, dlist);
-    gDPPipeSync(gfxPos++);
-    gDPSetCombineMode(gfxPos++, PM_CC_01, PM_CC_02);
-    gDPSetPrimColor(gfxPos++, 0, 0, 0, 0, 0, alpha);
-    gSPPopMatrix(gfxPos++, G_MTX_MODELVIEW);
+    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    gDPSetRenderMode(gMainGfxPos++, AA_EN | Z_CMP | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA), AA_EN | Z_CMP | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA));
+    gSPDisplayList(gMainGfxPos++, dlist);
+    gDPPipeSync(gMainGfxPos++);
+    gDPSetCombineMode(gMainGfxPos++, PM_CC_01, PM_CC_02);
+    gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, alpha);
+    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 
     alpha = 72;
     if (entity->alpha < alpha) {
@@ -62,15 +61,14 @@ void entity_HeartBlockContent__setupGfx(s32 entityIndex, Gfx* arg1) {
     guRotateF(sp18, entity_HeartBlockContent_get_previous_yaw(data, 3), 0.0f, 1.0f, 0.0f);
     guMtxF2L(sp18, &data->unk_98);
     gDisplayContext->matrixStack[gMatrixListPos] = data->unk_98;
-    gSPMatrix(gfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gDPSetRenderMode(gfxPos++, AA_EN | Z_CMP | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA), AA_EN | Z_CMP | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA));
-    gSPDisplayList(gfxPos++, dlist);
-    gDPPipeSync(gfxPos++);
-    gDPSetCombineMode(gfxPos++, PM_CC_01, PM_CC_02);
-    gDPSetPrimColor(gfxPos++, 0, 0, 0, 0, 0, alpha);
-    gSPPopMatrix(gfxPos++, G_MTX_MODELVIEW);
+    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    gDPSetRenderMode(gMainGfxPos++, AA_EN | Z_CMP | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA), AA_EN | Z_CMP | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA));
+    gSPDisplayList(gMainGfxPos++, dlist);
+    gDPPipeSync(gMainGfxPos++);
+    gDPSetCombineMode(gMainGfxPos++, PM_CC_01, PM_CC_02);
+    gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, alpha);
+    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 
-    gMainGfxPos = gfxPos;
 }
 
 void entity_HeartBlockContent_setupGfx(s32 entityIndex) {

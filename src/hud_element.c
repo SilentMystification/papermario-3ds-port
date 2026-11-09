@@ -2350,9 +2350,7 @@ int pm_anchor_rect(int ulx, int uly, int lrx, int lry, int tile, int s, int t, i
     if (!sAnchorOpen) {
         return false;
     }
-    vtx = (Vtx_t*)(gMainGfxPos + 1);
-    gSPBranchList(gMainGfxPos, gMainGfxPos + 1 + slots);
-    gMainGfxPos += 1 + slots;
+    vtx = (Vtx_t*) nd_rec_data(slots * sizeof(Gfx)); /* DIRECT D9: the corner vertices are stream data */
 
     corners[0][0] = corners[3][0] = (ulx >> 2) - sAnchorX;
     corners[0][1] = corners[1][1] = (uly >> 2) - sAnchorY;

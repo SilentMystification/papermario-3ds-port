@@ -191,7 +191,6 @@ void entity_BombableRock_setupGfx(s32 entityIndex) {
     f32 x_inv;
     f32 y_inv;
     f32 z_inv;
-    Gfx* gfxPos = gMainGfxPos;
     Entity* entity = get_entity_by_index(entityIndex);
     BombableRockData* data = entity->dataBuf.bombableRock;
     Gfx* fragmentDlist;
@@ -203,11 +202,11 @@ void entity_BombableRock_setupGfx(s32 entityIndex) {
 
     for (i = 0; i < 5; i++) {
         if (data->fragmentRebounds[i] < 2) {
-            gDPSetRenderMode(gfxPos++, G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2);
-            gDPSetCombineMode(gfxPos++, G_CC_MODULATEIA, G_CC_MODULATEIA);
+            gDPSetRenderMode(gMainGfxPos++, G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2);
+            gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIA, G_CC_MODULATEIA);
         } else {
-            gDPSetCombineMode(gfxPos++, PM_CC_11, PM_CC_12);
-            gDPSetPrimColor(gfxPos++, 0, 0, 0, 0, 0, data->fragmentMoveAngle[i]);
+            gDPSetCombineMode(gMainGfxPos++, PM_CC_11, PM_CC_12);
+            gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, data->fragmentMoveAngle[i]);
         }
 
         guTranslateF(mtxTransInv, x_inv, y_inv, z_inv);
@@ -219,13 +218,12 @@ void entity_BombableRock_setupGfx(s32 entityIndex) {
         guMtxCatF(mtxTransInv, mtx, mtx);
         guMtxF2L(mtx, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-        gSPMatrix(gfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         fragmentDlist = ENTITY_ADDR(entity, Gfx*, *gfx++);
-        gSPDisplayList(gfxPos++, fragmentDlist);
-        gSPPopMatrix(gfxPos++, G_MTX_MODELVIEW);
+        gSPDisplayList(gMainGfxPos++, fragmentDlist);
+        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     }
 
-    gMainGfxPos = gfxPos;
 }
 
 void entity_BombableRock_idle(Entity* entity) {

@@ -151,7 +151,8 @@ void nuGfxTaskStart(Gfx* gfxList, u32 gfxListSize, u32 ucode, u32 flag) {
     PH_PUSH(PH_GBI);
     /* F06-2: the draw iteration shows the t = 0.5 pass of the swap task. the key frame replays every task of the step without
      * replacements in the idle iteration. The background task of the step comes before the swap task. */
-    const uint32_t* st = nd_rec_close(gfxList, gfxListSize); /* DIRECT D0: the task is its stream */
+    (void)gfxList; /* DIRECT D9: the task is its stream (the game writes no task list) */
+    const uint32_t* st = nd_rec_close();
     if (pm_interp_on > 0 && nkey < MAX_KEY) { key_list[nkey] = st; key_size[nkey++] = gfxListSize; }
     if (!swap) {
         if (fr.bg.ptr) fr_push(); /* a second background task: the first goes alone */

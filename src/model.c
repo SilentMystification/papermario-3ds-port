@@ -1324,6 +1324,9 @@ BSS ModelTransformGroupList wTransformGroups;
 BSS ModelTransformGroupList bTransformGroups;
 
 BSS ModelCustomGfxList wCustomModelGfx;
+#ifdef TARGET_3DS
+static const void* nd_cgfx_rng[ARRAY_COUNT(wCustomModelGfx)]; /* DIRECT D10a: the stream range of each custom gfx list (build_custom_gfx) */
+#endif
 BSS ModelCustomGfxList bCustomModelGfx;
 
 BSS ModelCustomGfxBuilderList wCustomModelGfxBuilders;
@@ -2134,7 +2137,7 @@ void appendGfx_model(void* data) {
     if (flags & MODEL_FLAG_USES_CUSTOM_GFX) {
         customGfxIndex = (model->customGfxIndex & 0xF) * 2;
 #ifdef TARGET_3DS
-        recPre = (*gCurrentCustomModelGfxPtr)[customGfxIndex]; /* S3G-1: the record runs it after the matrix */
+        recPre = (Gfx*)nd_cgfx_rng[customGfxIndex]; /* S3G-1: the record runs it after the matrix; D10a: a stream range */
 #else
         if ((*gCurrentCustomModelGfxPtr)[customGfxIndex] != nullptr) {
             gSPDisplayList((*gfxPos)++, (*gCurrentCustomModelGfxPtr)[customGfxIndex]);
@@ -2232,7 +2235,7 @@ void appendGfx_model(void* data) {
     if (flags & MODEL_FLAG_USES_CUSTOM_GFX) {
         customGfxIndex++;
 #ifdef TARGET_3DS
-        recPost = (*gCurrentCustomModelGfxPtr)[customGfxIndex];
+        recPost = (Gfx*)nd_cgfx_rng[customGfxIndex];
 #else
         if ((*gCurrentCustomModelGfxPtr)[customGfxIndex] != nullptr) {
             gSPDisplayList((*gfxPos)++, (*gCurrentCustomModelGfxPtr)[customGfxIndex]);
@@ -4279,6 +4282,32 @@ void set_custom_gfx_builders(s32 customGfxIndex, ModelCustomGfxBuilderFunc pre, 
     (*gCurrentCustomModelGfxBuildersPtr)[customGfxIndex * 2 + 1] = post;
 }
 
+#ifdef TARGET_3DS
+/* DIRECT D10a: each custom gfx list is a range of the frame stream: the builder records its commands at the top level (the nd_gbi.h redirect,
+ * model and sprite records, effect data) between nd_rec_mark and an NDC_END; a static list that a map script set (SetCustomGfx) is recorded
+ * as commands (nd_rec_list). The ranges sit inside one NDC_JUMP (the task replay skips them); the model record names its pre and post range
+ * (R11, from nd_cgfx_rng) and the replay runs it (nd_range_run). */
+static void nd_cgfx_one(s32 k, ModelCustomGfxBuilderFunc fn, s32 i) {
+    const Gfx* l = (*gCurrentCustomModelGfxPtr)[k];
+    nd_cgfx_rng[k] = nullptr;
+    if (fn == nullptr && l == nullptr) return;
+    nd_cgfx_rng[k] = nd_rec_mark();
+    if (fn != nullptr) fn(i);
+    else nd_rec_list(l);
+    nd_rec_end();
+}
+void build_custom_gfx(void) {
+    NdSub sk;
+    s32 i;
+
+    nd_sub_open(&sk);
+    for (i = 0; i < ARRAY_COUNT(*gCurrentCustomModelGfxPtr) / 2; i++) {
+        nd_cgfx_one(i * 2, (*gCurrentCustomModelGfxBuildersPtr)[i * 2], i);
+        nd_cgfx_one(i * 2 + 1, (*gCurrentCustomModelGfxBuildersPtr)[i * 2 + 1], i);
+    }
+    nd_sub_close(&sk);
+}
+#else
 void build_custom_gfx(void) {
     Gfx* gfx = gMainGfxPos;
     ModelCustomGfxBuilderFunc preFunc;
@@ -4293,22 +4322,14 @@ void build_custom_gfx(void) {
 
         if (preFunc != nullptr) {
             (*gCurrentCustomModelGfxPtr)[i * 2] = gMainGfxPos;
-#ifdef TARGET_3DS
-            ND_REC_SUB(preFunc(i)); /* DIRECT D1: a builder writes a list for later: its records stay in the list */
-#else
             preFunc(i);
-#endif
             gSPEndDisplayList(gMainGfxPos++);
         }
 
         postFunc = (*gCurrentCustomModelGfxBuildersPtr)[i * 2 + 1];
         if (postFunc != nullptr) {
             (*gCurrentCustomModelGfxPtr)[i * 2 + 1] = gMainGfxPos;
-#ifdef TARGET_3DS
-            ND_REC_SUB(postFunc(i)); /* DIRECT D1: a builder writes a list for later: its records stay in the list */
-#else
             postFunc(i);
-#endif
             gSPEndDisplayList(gMainGfxPos++);
         }
     }
@@ -4316,6 +4337,7 @@ void build_custom_gfx(void) {
     // overwrite placeholder with final branch address
     gSPBranchList(gfx, gMainGfxPos);
 }
+#endif
 
 // weird temps necessary to match
 /// @returns true if mtx is nullptr or identity.
@@ -4423,9 +4445,14 @@ void mdl_get_vertex_count(Gfx* gfx, s32* numVertices, Vtx** baseVtx, s32* gfxCou
 
             if (cmd == G_VTX) {
                 vtxStartAddr = w1;
+#ifndef TARGET_3DS
+                /* TARGET_3DS: the entity model is linked in place (include/entity.h ENTITY_ADDR), so w1 is the host address of the vertices.
+                 * The N64 offset form (low 16 bits plus the DMA base) named a layout dependent address: the hidden panel (mdl_project_tex_coords)
+                 * wrote its 4 vertices past the entity heap, into the sky image (the mac_00 marks of DIRECT D6 and D9). */
                 if (baseAddr != nullptr) {
                     vtxStartAddr = (vtxStartAddr & 0xFFFF) + (s32)baseAddr;
                 }
+#endif
                 vtxCount = _SHIFTR(w0,12,8);
                 if (minVtx == 0) {
                     minVtx = vtxStartAddr;

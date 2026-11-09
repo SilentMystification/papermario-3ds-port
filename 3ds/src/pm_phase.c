@@ -563,13 +563,13 @@ static void pf_report(void) {
         /* the counters on their own line: on the cls line they passed the 256-byte log slot */
         pm_log_prof_line("prof f%u w%u cnt prg %u.%u shr %u.%u upd %u.%u spl %u.%u smh %u.%u smm %u.%u esync %u.%u gdl %u.%u", pf_total, pf_w,
             C1(c10[0]), C1(c10[1]), C1(c10[2]), C1(c10[3]), C1(c10[4]), C1(c10[5]), C1(c10[6]), C1(c10[7]));
-        { /* DIRECT: frame stream commands per drawn frame x 10 (nd_rec.c): list spans, model, sprite and entity records, ranges, compound texture loads, texture rectangles; kb = the stream high-water mark */
+        { /* DIRECT: frame stream commands per drawn frame x 10 (nd_rec.c): model, sprite and entity records, ranges, compound texture loads, texture rectangles; kb = the stream high-water mark */
             unsigned nc[NDC_N], kb, n10[NDC_N], sw;
             nd_rec_cnt_take(nc, &sw, &kb);
             for (int k = 0; k < NDC_N; k++) n10[k] = (unsigned)((unsigned long long)nc[k] * 10u / pw);
             sw = (unsigned)((unsigned long long)sw * 10u / pw);
-            pm_log_prof_line("prof f%u w%u ndc list %u.%u model %u.%u spr %u.%u ent %u.%u call %u.%u trect %u.%u st %u.%u sw %u.%u kb %u", pf_total, pf_w,
-                C1(n10[NDC_LIST]), C1(n10[NDC_MODEL]), C1(n10[NDC_SPR]), C1(n10[NDC_ENT]), C1(n10[NDC_CALL]), C1(n10[NDC_TEXRECT]),
+            pm_log_prof_line("prof f%u w%u ndc model %u.%u spr %u.%u ent %u.%u call %u.%u trect %u.%u st %u.%u sw %u.%u kb %u", pf_total, pf_w,
+                C1(n10[NDC_MODEL]), C1(n10[NDC_SPR]), C1(n10[NDC_ENT]), C1(n10[NDC_CALL]), C1(n10[NDC_TEXRECT]),
                 C1(n10[NDC_STATE]), C1(sw), kb);
         }
 #undef CS

@@ -22,7 +22,6 @@ extern s32 gCurrentLanguage;
 #endif
 
 void entity_SaveBlock_setupGfx(s32 index) {
-    Gfx* gfxPos = gMainGfxPos;
     Gfx* dlist = Entity_SaveBlock_RenderContent;
     Entity* entity = get_entity_by_index(index);
     SaveBlockData* blockData = entity->dataBuf.saveBlock;
@@ -36,12 +35,12 @@ void entity_SaveBlock_setupGfx(s32 index) {
     guMtxCatF(sp58, sp18, sp58);
     guMtxF2L(sp58, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gDPSetRenderMode(gfxPos++, G_RM_ZB_CLD_SURF, G_RM_ZB_CLD_SURF2);
-    gDPSetCombineMode(gfxPos++, PM_CC_01, PM_CC_02);
-    gDPSetPrimColor(gfxPos++, 0, 0, 0, 0, 0, alpha);
-    gSPDisplayList(gfxPos++, dlist);
-    gSPPopMatrix(gfxPos++, G_MTX_MODELVIEW);
+    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    gDPSetRenderMode(gMainGfxPos++, G_RM_ZB_CLD_SURF, G_RM_ZB_CLD_SURF2);
+    gDPSetCombineMode(gMainGfxPos++, PM_CC_01, PM_CC_02);
+    gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, alpha);
+    gSPDisplayList(gMainGfxPos++, dlist);
+    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 
 #if VERSION_PAL
     switch (gCurrentLanguage) {
@@ -58,17 +57,16 @@ void entity_SaveBlock_setupGfx(s32 index) {
 #endif
     guMtxL2F(sp58, ENTITY_ADDR(entity, Mtx*, &Entity_SaveBlock_Mtx));
     sp58[3][1] += 12.5f;
-    gDPPipeSync(gfxPos++);
+    gDPPipeSync(gMainGfxPos++);
     guMtxF2L(sp58, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gDPSetRenderMode(gfxPos++, G_RM_AA_XLU_SURF | Z_CMP, G_RM_AA_XLU_SURF2 | Z_CMP);
-    gDPSetCombineMode(gfxPos++, PM_CC_01, PM_CC_02);
-    gDPSetPrimColor(gfxPos++, 0, 0, 0, 0, 0, alpha);
-    gSPDisplayList(gfxPos++, dlist);
-    gSPPopMatrix(gfxPos++, G_MTX_MODELVIEW);
+    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    gDPSetRenderMode(gMainGfxPos++, G_RM_AA_XLU_SURF | Z_CMP, G_RM_AA_XLU_SURF2 | Z_CMP);
+    gDPSetCombineMode(gMainGfxPos++, PM_CC_01, PM_CC_02);
+    gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, alpha);
+    gSPDisplayList(gMainGfxPos++, dlist);
+    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 
-    gMainGfxPos = gfxPos;
 }
 
 void entity_SaveBlock_idle(Entity* entity) {

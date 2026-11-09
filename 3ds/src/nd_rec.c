@@ -1,9 +1,9 @@
 /* nd_rec.c: the frame stream (DIRECT, plan_direct.md sections 2 and 3). Record side: the game's producers append native commands to the
- * stream of the display context being built; the words that code not yet converted writes to the task list are cut into NDC_LIST spans.
+ * stream of the display context being built (D9: no task list; the game writes no list word outside a list for later).
  * Walker side: nd_stream_run replays one task stream (core 0, pm_frame_walk).
  * Storage: per display context a chain of 32 KB heap chunks, allocated at first use and kept (no per-frame malloc, hw rule 7). The chain of
  * a context is reset when the game starts building that context again (gCurrentDisplayContextIndex changed since the last record), so a
- * stream lives exactly as long as the list memory of its context (the depth-1 frame push of nd_wq.c keeps both safe). */
+ * stream lives exactly as long as its context (the depth-1 frame push of nd_wq.c keeps it safe). */
 #include <stdlib.h>
 #include <string.h>
 #include "ultra64.h"
@@ -18,9 +18,9 @@ void nd_walk_ops(void* list, unsigned nbytes); /* nd_walk.c: a span that keeps t
 void nd_walk_rec_model(const Gfx* q);           /* nd_walk.c: a model record, as the walker's G_PM_REC arm */
 void nd_walk_spr(const Gfx* q);                 /* nd_walk.c: a sprite record and its geometry words */
 void nd_walk_ent(const Gfx* q, unsigned words); /* nd_walk.c: an entity record (and its G_DL) */
-void nd_texrect_run(const uint32_t* p);         /* nd_tex_set.c: a texture rectangle */
+void nd_texrect_run(const uint32_t* p);
+int is_host(u32 p);                             /* nd_walk.c: p is in host memory */         /* nd_tex_set.c: a texture rectangle */
 void nd_walk_state(const uint32_t* q, unsigned n); /* nd_walk.c: a run of state ops */
-int nd_rec_sub;
 
 #define CH_WORDS (32768u / 4u)
 #define CH_MAX 16u
@@ -30,8 +30,6 @@ static int rec_ctx = -1;   /* the context of the last record (-1: none yet) */
 static uint32_t* wp;       /* write position */
 static uint32_t* wend;     /* end of the current chunk, less room for one NDC_JUMP */
 static uint32_t* task_head; /* first command of the open task (NULL: no task open) */
-static uint32_t* first_list; /* the first NDC_LIST of the open task (its start is the list base, patched at close) */
-static Gfx* cut;           /* the end of the last span (NULL: the task list base, not known before close) */
 static unsigned hw_units;  /* PROF: the most 4-byte words of one context stream (the high-water mark) */
 static unsigned ndc_n[NDC_N]; /* PROF: commands recorded per op (relaxed counters: the logic writes, the prof report reads) */
 static unsigned ndc_sw;      /* PROF: state ops recorded (NDC_STATE units) */
@@ -81,47 +79,31 @@ static uint32_t* rec_take(unsigned n) {
 }
 static void task_open(void) {
     rec_ctx_check();
-    if (task_head) return;
-    task_head = wp;
-    first_list = NULL;
-    cut = NULL;
+    if (!task_head) task_head = wp;
 }
-static void span_put(const Gfx* a, unsigned bytes, unsigned first) {
-    uint32_t* p = rec_take(4);
-    ndc_n[NDC_LIST]++;
-    p[0] = NDC_HDR(NDC_LIST, 1, first);
-    p[1] = (uint32_t)(uintptr_t)a;
-    p[2] = bytes;
-    p[3] = 0;
-    if (first) first_list = p;
+/* D9: the game writes no task list. At the top level gMainGfxPos names nd_rec_top: each redirected gbi macro takes its packet back
+ * (nd_gx_w), so the pointer is back at nd_rec_top before every record. A pointer past it is a word that no redirect recorded: it is
+ * logged (cold, 4 lines) and dropped. */
+Gfx nd_rec_top[8];
+static __attribute__((cold, noinline)) void stray_word(void) {
+    static int n;
+    const Gfx* g = nd_rec_top;
+    if (n++ < 4) pm_log_e("ndc: %d list words outside the stream f%u: %08x %08x", (int)(gMainGfxPos - nd_rec_top), pm_frame_count(),
+                          (unsigned)g->words.w0, (unsigned)g->words.w1);
+    gMainGfxPos = nd_rec_top;
 }
-void nd_rec_cut(void) {
+static void rec_open(void) {
     task_open();
-    Gfx* g = gMainGfxPos;
-    if (!cut) { /* the first span: its start (the list base) is set at close */
-        span_put(NULL, (unsigned)(uintptr_t)g, 1u); /* the end pointer until close */
-        cut = g;
-        return;
-    }
-    if (g != cut) { span_put(cut, (unsigned)((uintptr_t)g - (uintptr_t)cut), 0u); cut = g; }
+    if (__builtin_expect(gMainGfxPos != nd_rec_top, 0)) stray_word();
 }
+Gfx* nd_rec_task(void) { return nd_rec_top; }
 static __attribute__((cold, noinline)) void model_bad(unsigned words) {
     pm_log_e("ndc: model record of %u words (most %u)", words, G_PM_REC_WORDS + ND_REC_AUX_MAX);
     pm_fatal_stop("ndc: model record too long");
 }
-static __attribute__((cold, noinline)) void model_behind(const void* g) {
-    static int n;
-    if (n++ < 4) pm_log_e("ndc: model record with the list at %p behind the last cut %p", g, (const void*)cut);
-}
 void nd_rec_model(const void* rec, unsigned words) {
     if (words > G_PM_REC_WORDS + ND_REC_AUX_MAX) model_bad(words);
-    if (nd_rec_sub) { /* a list for later (a custom gfx builder): the record stays in that list (walker G_PM_REC arm) */
-        memcpy(gMainGfxPos, rec, words * 8u);
-        gMainGfxPos += words;
-        return;
-    }
-    nd_rec_cut();
-    if (gMainGfxPos < cut) model_behind(gMainGfxPos);
+    rec_open();
     uint32_t* p = rec_take(2u + 2u * words);
     ndc_n[NDC_MODEL]++;
     p[0] = NDC_HDR(NDC_MODEL, words, 0);
@@ -129,7 +111,7 @@ void nd_rec_model(const void* rec, unsigned words) {
     memcpy(p + 2, rec, words * 8u);
 }
 void nd_rec_spr(const void* rec, const void* geo) {
-    nd_rec_cut();
+    rec_open();
     uint32_t* p = rec_take(2u + 2u * (G_PM_SPR_WORDS + 2u));
     ndc_n[NDC_SPR]++;
     p[0] = NDC_HDR(NDC_SPR, G_PM_SPR_WORDS + 2u, 0);
@@ -143,8 +125,7 @@ void nd_rec_ent_draw(const void* list, unsigned segid, unsigned varray, unsigned
     gPmEntDrawRecord(r, list, segid, varray);
     r[2].words.w0 = form;
     gSPDisplayList(&r[G_PM_ENT_WORDS], list);
-    if (nd_rec_sub) { memcpy(gMainGfxPos, r, sizeof r); gMainGfxPos += G_PM_ENT_WORDS + 1; return; } /* a list for later: the walker G_PM_ENT arm */
-    nd_rec_cut();
+    rec_open();
     uint32_t* p = rec_take(2u + 2u * (G_PM_ENT_WORDS + 1u));
     ndc_n[NDC_ENT]++;
     p[0] = NDC_HDR(NDC_ENT, G_PM_ENT_WORDS + 1u, 0);
@@ -152,8 +133,7 @@ void nd_rec_ent_draw(const void* list, unsigned segid, unsigned varray, unsigned
     memcpy(p + 2, r, sizeof r);
 }
 void nd_rec_ent(const void* rec) {
-    if (nd_rec_sub) { memcpy(gMainGfxPos, rec, G_PM_ENT_WORDS * 8u); gMainGfxPos += G_PM_ENT_WORDS; return; }
-    nd_rec_cut();
+    rec_open();
     uint32_t* p = rec_take(2u + 2u * G_PM_ENT_WORDS);
     ndc_n[NDC_ENT]++;
     p[0] = NDC_HDR(NDC_ENT, G_PM_ENT_WORDS, 0);
@@ -161,7 +141,7 @@ void nd_rec_ent(const void* rec) {
     memcpy(p + 2, rec, G_PM_ENT_WORDS * 8u);
 }
 void nd_rec_texrect(uint32_t w0, uint32_t w1, uint32_t hs, uint32_t hd) {
-    nd_rec_cut();
+    rec_open();
     uint32_t* p = rec_take(6);
     ndc_n[NDC_TEXRECT]++;
     p[0] = NDC_HDR(NDC_TEXRECT, 2, 0);
@@ -174,7 +154,7 @@ void nd_rec_texrect(uint32_t w0, uint32_t w1, uint32_t hs, uint32_t hd) {
 /* D4b-3: a state op extends the open NDC_STATE run when nothing was recorded after it (no span, no other command) and the chunk has room;
  * else it opens a new run. */
 void nd_rec_state(uint32_t w0, uint32_t w1) {
-    nd_rec_cut();
+    rec_open();
     ndc_sw++;
     uint32_t* h = st_hdr;
     if (h && wp == st_end && ((h[0] >> 16) & 0xffu) < 255u && wp + 2u <= wend) {
@@ -197,7 +177,8 @@ void nd_rec_state(uint32_t w0, uint32_t w1) {
 }
 /* D4b-3, D5: the nd_gbi.h redirect. The packet gMainGfxPos++ is taken back and the op recorded; the RDP syncs are dropped (the walker skips
  * them: g1_skip). A texture rectangle (its op word and the two RDPHALF words, written by one macro) is held until its last word and recorded as
- * NDC_TEXRECT. Any other packet (a local list), a list for later (nd_rec_sub > 0), G_ENDDL and the branch form of G_DL keep the word. */
+ * NDC_TEXRECT. Any other packet (a local list) and the branch form of G_DL keep the word; G_ENDDL at the top level is dropped (NDC_END ends a
+ * task and a custom gfx range). */
 static uint32_t tr_w[3];
 static unsigned tr_n; /* the words of the texture rectangle being recorded */
 static __attribute__((cold, noinline)) void tr_bad(uint32_t w0) {
@@ -205,10 +186,11 @@ static __attribute__((cold, noinline)) void tr_bad(uint32_t w0) {
     pm_fatal_stop("ndc: broken texture rectangle");
 }
 void nd_gx_w(Gfx* g, uint32_t w0, uint32_t w1) {
-    if (g != gMainGfxPos - 1 || nd_rec_sub) { g->words.w0 = w0; g->words.w1 = w1; return; }
+    if (g != gMainGfxPos - 1) { g->words.w0 = w0; g->words.w1 = w1; return; }
     const unsigned op = w0 >> 24;
-    if (op == G_ENDDL || (op == G_DL && ((w0 >> 16) & 0xffu) == G_DL_NOPUSH)) { g->words.w0 = w0; g->words.w1 = w1; return; }
+    if (op == G_DL && ((w0 >> 16) & 0xffu) == G_DL_NOPUSH) { g->words.w0 = w0; g->words.w1 = w1; return; }
     gMainGfxPos = g;
+    if (op == G_ENDDL) return; /* D7: the end of a task list or of a custom gfx builder (NDC_END closes both) */
     if (__builtin_expect(tr_n != 0, 0)) {
         if (tr_n == 1 && op == G_RDPHALF_1) { tr_w[2] = w1; tr_n = 2; return; }
         if (tr_n == 2 && op == G_RDPHALF_2) { tr_n = 0; nd_rec_texrect(tr_w[0], tr_w[1], tr_w[2], w1); return; }
@@ -220,12 +202,12 @@ void nd_gx_w(Gfx* g, uint32_t w0, uint32_t w1) {
 }
 const uint32_t* nd_rec_pos(void) { return wp; }
 const uint32_t* nd_rec_mark(void) {
-    nd_rec_cut();
+    rec_open();
     st_hdr = NULL; /* a range bound closes the state run: the range starts or ends at a command header */
     return wp;
 }
 void nd_rec_call(const uint32_t* a, const uint32_t* b) {
-    nd_rec_cut();
+    rec_open();
     uint32_t* p = rec_take(4);
     ndc_n[NDC_CALL]++;
     p[0] = NDC_HDR(NDC_CALL, 1, 0);
@@ -239,74 +221,64 @@ static __attribute__((cold, noinline)) void data_bad(unsigned bytes) {
 }
 void* nd_rec_data(unsigned bytes) {
     const unsigned units = (bytes + 7u) >> 3;
-    if (nd_rec_sub) { /* a list for later: the data behind a branch word in that list */
-        Gfx* g = gMainGfxPos;
-        g->words.w0 = ((u32)G_DL << 24) | ((u32)G_DL_NOPUSH << 16);
-        g->words.w1 = (u32)(uintptr_t)(g + 1 + units);
-        gMainGfxPos = g + 1 + units;
-        return g + 1;
-    }
     if (2u + 2u * units > CH_WORDS - 4u) data_bad(bytes);
-    nd_rec_cut();
+    rec_open();
     uint32_t* p = rec_take(2u + 2u * units);
     p[0] = NDC_HDR(NDC_JUMP, 0, 0);
     p[1] = (uint32_t)(uintptr_t)(p + 2u + 2u * units);
     return p + 2;
 }
 void nd_sub_open(NdSub* s) {
-    s->list = nd_rec_sub != 0;
-    if (s->list) { /* the branch word over the sublist, patched at close */
-        s->br = (uint32_t*)gMainGfxPos;
-        s->br[0] = ((u32)G_DL << 24) | ((u32)G_DL_NOPUSH << 16);
-        s->br[1] = 0;
-        gMainGfxPos++;
-        s->a = (const uint32_t*)gMainGfxPos;
-        return;
-    }
-    nd_rec_cut();
+    rec_open();
     s->br = rec_take(2);
     s->br[0] = NDC_HDR(NDC_JUMP, 0, 0);
     s->br[1] = 0;
     s->a = nd_rec_mark();
 }
 void nd_sub_close(NdSub* s) {
-    if (s->list) {
-        gMainGfxPos->words.w0 = (u32)G_ENDDL << 24;
-        gMainGfxPos->words.w1 = 0;
-        gMainGfxPos++;
-        s->b = (const uint32_t*)gMainGfxPos;
-        s->br[1] = (uint32_t)(uintptr_t)gMainGfxPos;
-        return;
-    }
     s->b = nd_rec_mark();
     s->br[1] = (uint32_t)(uintptr_t)s->b;
 }
-void nd_sub_call(const NdSub* s) {
-    if (s->list) {
-        gMainGfxPos->words.w0 = ((u32)G_DL << 24) | ((u32)G_DL_PUSH << 16);
-        gMainGfxPos->words.w1 = (u32)(uintptr_t)s->a;
-        gMainGfxPos++;
-        return;
-    }
-    nd_rec_call(s->a, s->b);
+void nd_sub_call(const NdSub* s) { nd_rec_call(s->a, s->b); }
+/* D10a: the end of a custom gfx range (build_custom_gfx): the replay of a range (nd_range_run) stops at its NDC_END. */
+void nd_rec_end(void) {
+    rec_open();
+    uint32_t* e = rec_take(2);
+    e[0] = NDC_HDR(NDC_END, 0, 0);
+    e[1] = 0;
 }
-static __attribute__((cold, noinline)) void close_bad(const void* list, unsigned nbytes, const void* a) {
-    static int n;
-    if (n++ < 4) pm_log_e("ndc: span %p outside the task list %p + %u", a, list, nbytes);
+/* D10a: the ops of a static list (a custom gfx list that a map script set, SetCustomGfx) recorded as commands, as the walker would run the
+ * list: the syncs dropped, a texture rectangle as NDC_TEXRECT, a branch followed, a push G_DL kept as a state op (walk_call at replay), the
+ * list ends at its G_ENDDL. A producer record in a static list is an error (logged, the list ends). */
+static __attribute__((cold, noinline)) void list_bad(const Gfx* g, unsigned n) {
+    static int k;
+    if (k++ < 4) pm_log_e("ndc: static list op %08x at %p after %u words not recorded", (unsigned)g->words.w0, (const void*)g, n);
 }
-const uint32_t* nd_rec_close(const void* list, unsigned nbytes) {
-    task_open();
-    const Gfx* base = (const Gfx*)list;
-    const Gfx* end = (const Gfx*)((const char*)list + nbytes);
-    if (!cut) span_put(base, nbytes, 1u);
-    else {
-        const Gfx* fe = (const Gfx*)(uintptr_t)first_list[2]; /* the first span: base to the first cut */
-        if (fe < base || fe > end) close_bad(list, nbytes, fe);
-        first_list[1] = (uint32_t)(uintptr_t)base;
-        first_list[2] = (unsigned)((uintptr_t)fe - (uintptr_t)base);
-        if (cut < base || cut > end) close_bad(list, nbytes, cut);
-        else if (cut != end) span_put(cut, (unsigned)((uintptr_t)end - (uintptr_t)cut), 0u);
+void nd_rec_list(const void* l) {
+    const Gfx* g = (const Gfx*)l;
+    for (unsigned n = 0; n < 1024u; n++, g++) {
+        const u32 w0 = g->words.w0, w1 = g->words.w1;
+        const unsigned op = w0 >> 24;
+        switch (op) {
+        case G_ENDDL: return;
+        case G_RDPPIPESYNC: case G_RDPTILESYNC: case G_RDPLOADSYNC: case G_RDPFULLSYNC: case G_SPNOOP: break;
+        case G_TEXRECT: case G_TEXRECTFLIP: nd_rec_texrect(w0, w1, g[1].words.w1, g[2].words.w1); g += 2; n += 2; break;
+        case G_DL:
+            if (((w0 >> 16) & 0xffu) == G_DL_NOPUSH) { /* a branch: host addresses only (a segment base is walker state) */
+                if (!is_host(w1)) { list_bad(g, n); return; }
+                g = (const Gfx*)(uintptr_t)w1 - 1;
+                break;
+            }
+            nd_rec_state(w0, w1);
+            break;
+        case G_PM_REC: case G_PM_SPR: case G_PM_ENT: list_bad(g, n); return;
+        default: nd_rec_state(w0, w1); break;
+        }
     }
+    list_bad(g, 1024u);
+}
+const uint32_t* nd_rec_close(void) {
+    rec_open();
     uint32_t* e = rec_take(2);
     e[0] = NDC_HDR(NDC_END, 0, 0);
     e[1] = 0;
@@ -333,12 +305,6 @@ static void stream_run(const uint32_t* p, const uint32_t* stop) {
         switch (h >> 24) {
         case NDC_END: return;
         case NDC_JUMP: p = (const uint32_t*)(uintptr_t)p[1]; continue;
-        case NDC_LIST:
-            if (p[2]) {
-                if (h & 1u) pm_gbi_run((void*)(uintptr_t)p[1], p[2]); /* the first span: a new list (full sync) */
-                else nd_walk_ops((void*)(uintptr_t)p[1], p[2]);
-            }
-            break;
         case NDC_MODEL: nd_walk_rec_model((const Gfx*)(p + 2)); break;
         case NDC_SPR: nd_walk_spr((const Gfx*)(p + 2)); break;
         case NDC_ENT: nd_walk_ent((const Gfx*)(p + 2), (h >> 16) & 0xffu); break;

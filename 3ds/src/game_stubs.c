@@ -9,7 +9,7 @@ extern PlayerStatus gPlayerStatus;
 void pm_game_bind(void) {
     gGameStatusPtr = &gGameStatus;
     gDisplayContext = &D_80164000[0];
-    gMainGfxPos = gDisplayContext->mainGfx;
+    gMainGfxPos = nd_rec_task(); /* DIRECT D9: no task list */
     init_worker_list();
     init_script_list();
 }
