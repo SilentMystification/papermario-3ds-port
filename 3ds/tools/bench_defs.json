@@ -164,6 +164,38 @@
       "gates": []
     },
     {
+      "name": "cheatsave_key_save",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CHEATSAVE2 save: Cheats tab, Key items folder, the first key item on, the footer shot, X writes its key line to cheats_slot0.ini.",
+      "scenario": "cheatsave_key_save",
+      "cap": 30,
+      "until": "cheats: keys .*key\\.\\d+=1",
+      "tags": [
+        "azahar",
+        "menu",
+        "cheatsave"
+      ],
+      "gates": []
+    },
+    {
+      "name": "cheatsave_key_load",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CHEATSAVE2 load after a reboot: the key item of the slot file is owned at the world entry (Key items row On).",
+      "scenario": "cheatsave_key_load",
+      "cap": 30,
+      "until": "menu: shot \\w+ tab 4 row 1",
+      "tags": [
+        "azahar",
+        "menu",
+        "cheatsave"
+      ],
+      "gates": []
+    },
+    {
       "name": "cheatsave_load_on",
       "kind": "azahar_pic",
       "speed": "normal",
