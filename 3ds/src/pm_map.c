@@ -604,6 +604,7 @@ void pm_walk_drain(const char* why); /* nd_walk.c, CORE2-3b */
 void __wrap_set_game_mode(s16 mode) {
     pm_walk_drain("mode"); /* a mode change loads and frees scene data */
     mode = pm_warp_hook(mode); /* slice W01 debug switches warp, story, preset */
+    if (mode == GAME_MODE_ENTER_WORLD) pm_cheat_enter_world(); /* CHEATSAVE: the slot's cheat file (pm_cheatsave.c) */
     {
         extern unsigned pm_frame_count(void);
         char sm[16];

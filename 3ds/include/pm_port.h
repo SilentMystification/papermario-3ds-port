@@ -230,6 +230,8 @@ void pm_gfx_retrace(void);
 void pm_gfx_retrace_skip(void); /* FS1 */
 void pm_audio_init(void);
 int pm_cheat_moon_get(void); void pm_cheat_moon_set(int on); void pm_cheat_tick(void); int pm_cheat_get(int k); void pm_cheat_set(int k, int on); /* CH6, CH7 */
+void pm_cheat_enter_world(void); int pm_cheat_dirty(void); int pm_cheat_slot(void); int pm_cheat_save(void); void pm_cheat_file_erase(int slot); /* CHEATSAVE: pm_cheatsave.c */
+int pm_warp_take_nofile(void); /* CHEATSAVE: pm_warp.c, 1 once for a warp without a save file */
 int pm_warp_story_n(void); const char* pm_warp_story_label(int i); void pm_warp_story_apply(int i); /* CH8 */
 const char* pm_dbgg_ch8_text(int k); void pm_dbgg_ch8_step(int k, int dir); void pm_dbgg_ch8_act(int k); /* CH8 */ /* CH6 Moon Jump, pm_dbg_game.c */
 void pm_audio_mute(int on); /* PAUSE AUDIO: the Select menu mutes the output */

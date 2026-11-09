@@ -187,6 +187,7 @@ enum { CHB_HP = 1, CHB_FP = 2, CHB_SP = 4, CHB_NOBATTLE = 8, CHB_SPEED = 16, CHB
 static const char* const cheat_name[6] = { "infinite HP", "infinite FP", "infinite star power", "no battles", "speed x2", "perfect action commands" };
 static const int cheat_bit[6] = { CHB_HP, CHB_FP, CHB_SP, CHB_NOBATTLE, CHB_SPEED, CHB_ACTION };
 static int cheat_bits = -1, cheat_seen;
+static unsigned boot_bits; /* CHEATSAVE: the bits the boot switch cheats= set (cheat_init) */
 /* a whole token of the comma list (sp is not speed) */
 static int has_token(const char* list, const char* tok) {
     size_t n = strlen(tok);
@@ -206,7 +207,17 @@ static void cheat_init(void) {
         if (has_token(v, "speed")) cheat_bits |= CHB_SPEED;
         if (has_token(v, "action")) cheat_bits |= CHB_ACTION;
     }
+    boot_bits = (unsigned)cheat_bits;
 }
+/* CHEATSAVE: the persistent set (pm_cheatsave.c). Bit k is the pm_cheat_get index k (cheat_bit[k] = 1 << k), bit 6 is moon jump. */
+unsigned pm_cheat_persist_get(void) { cheat_init(); return ((unsigned)cheat_bits & 0x3Fu) | ((unsigned)pm_cheat_moon_get() << 6); }
+void pm_cheat_persist_set(unsigned bits) { /* no log: the load line of pm_cheatsave.c says what changed */
+    cheat_init();
+    cheat_bits = (cheat_bits & ~0x3F) | (int)(bits & 0x3Fu);
+    moon_on = (int)((bits >> 6) & 1u);
+}
+/* CHEATSAVE: the bits the boot switches set for this run (cheats=<list>, moonjump). A load ORs them in: a boot switch wins over the file. */
+unsigned pm_cheat_boot_bits(void) { cheat_init(); return boot_bits | (pm_debug_has("moonjump") ? 1u << 6 : 0u); }
 int pm_cheat_get(int k) { cheat_init(); return (cheat_bits & cheat_bit[k]) != 0; }
 /* Perfect action commands (CH9): read by action_command_init_status and check_block_input (src/battle/action_cmd.c) under TARGET_3DS */
 int pm_cheat_action_on(void) { return pm_cheat_get(PM_CHEAT_ACTION); }

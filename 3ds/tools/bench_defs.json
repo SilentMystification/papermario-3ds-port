@@ -13,6 +13,54 @@
   },
   "benches": [
     {
+      "name": "cheatsave_save",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CHEATSAVE save: Cheats tab, Moon jump on, the cyan footer shot, X writes cheats_slot0.ini. A person reads the footer shot.",
+      "scenario": "cheatsave_save",
+      "cap": 30,
+      "until": "cheats: saved slot \\d+ \\(\\d+ on\\)",
+      "tags": [
+        "azahar",
+        "menu",
+        "cheatsave"
+      ],
+      "gates": []
+    },
+    {
+      "name": "cheatsave_load_on",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CHEATSAVE load after a reboot: slot 0 file applied, Moon jump On in the Cheats tab.",
+      "scenario": "cheatsave_load_on",
+      "cap": 30,
+      "until": "menu: shot \\w+ tab 3 row 0",
+      "tags": [
+        "azahar",
+        "menu",
+        "cheatsave"
+      ],
+      "gates": []
+    },
+    {
+      "name": "cheatsave_load_off",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CHEATSAVE per slot: slot 1 has no cheats file, Moon jump Off in the Cheats tab.",
+      "scenario": "cheatsave_load_off",
+      "cap": 30,
+      "until": "menu: shot \\w+ tab 3 row 0",
+      "tags": [
+        "azahar",
+        "menu",
+        "cheatsave"
+      ],
+      "gates": []
+    },
+    {
       "name": "dmg_jump",
       "kind": "azahar_pic",
       "speed": "turbo",
@@ -3048,6 +3096,38 @@
       "gates": []
     },
     {
+      "name": "lava_piranha_det",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "DIRECT D6c gate: Lava Piranha battle (vines as stream vertex data), det, shots 400, 420, 440.",
+      "scenario": "lava_piranha_det",
+      "cap": 30,
+      "until": "shot \\d+ frame 440\\b",
+      "tags": [
+        "azahar",
+        "det",
+        "battle"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fx_direct_det",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "DIRECT D6c gate: 18 effects (inline vertex data and lists for later) spawned by fxtest in nok_11, det. Shots byte-equal to the list-word build.",
+      "scenario": "fx_direct_det",
+      "cap": 45,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "det",
+        "fx"
+      ],
+      "gates": []
+    },
+    {
       "name": "nok11_det",
       "kind": "azahar_pic",
       "speed": "turbo",
@@ -5250,6 +5330,54 @@
           "regex": "xfer door \\S+ .* load ([\\d.]+)",
           "pick": "last"
         }
+      ],
+      "gates": []
+    },
+    {
+      "name": "merlon_in_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MERLON: Merlon's house enter and exit on mac_01 (ch1_start), det, shots every 25 frames 100 to 300: interior lit, crystal ball round, no square through the wall. A person reads the shot.",
+      "scenario": "merlon_in_pic",
+      "cap": 30,
+      "until": "xfer2 [a-z]+ n2\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "xfer"
+      ],
+      "gates": []
+    },
+    {
+      "name": "merlon_in_nowide_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MERLON: Merlon's house enter and exit on mac_01 (ch1_start), det, 4:3 (nowide), shots every 25 frames 100 to 300: interior lit, crystal ball round, no square through the wall. A person reads the shot.",
+      "scenario": "merlon_in_nowide_pic",
+      "cap": 30,
+      "until": "xfer2 [a-z]+ n2\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "xfer"
+      ],
+      "gates": []
+    },
+    {
+      "name": "merlon_in_live_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MERLON: Merlon's house enter and exit on mac_01 (ch1_start), no det (logic thread on), shots every 25 frames 100 to 300: interior lit, crystal ball round, no square through the wall. A person reads the shot.",
+      "scenario": "merlon_in_live_pic",
+      "cap": 30,
+      "until": "xfer2 [a-z]+ n2\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "xfer"
       ],
       "gates": []
     },

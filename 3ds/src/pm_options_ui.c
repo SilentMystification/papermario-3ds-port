@@ -40,6 +40,9 @@ int pm_optui_red(int tab, int row);
  * 3 empty rows, then the 2 row feedback area (rows 28 and 29). Every error of the menu goes through pm_menu_msg. */
 static char fb[2][40];
 void pm_menu_msg(const char* fmt, ...);
+/* CHEATSAVE: the Cheats tab, or a folder opened from it. The bottom row shows "Press X to save cheats" (cyan) while its set is dirty. */
+static int cheat_tab(void) { return tab == 3 || (tab == PM_OPT_SUB && home_tab == 3); }
+static const char* foot1(void) { return !fb[1][0] && cheat_tab() && pm_cheat_dirty() ? "\x1b[1;36mPress X to save cheats\x1b[0m" : fb[1]; }
 static void draw(void) {
     char out[2400];
     int n = 0, rows = pm_optui_rows(tab, MODE);
@@ -57,7 +60,7 @@ static void draw(void) {
         else n += snprintf(out + n, sizeof out - (size_t)n, "%c %-22s %s" "\n", r == sel[tab] ? '>' : ' ', pm_optui_label(tab, r, MODE), v ? v : "");
     }
     for (int r = (rows < VIS ? rows : VIS); r < VIS; r++) n += snprintf(out + n, sizeof out - (size_t)n, "\n");
-    n += snprintf(out + n, sizeof out - (size_t)n, "\n\n%s\n\n\n\n%s\n%s", tab == PM_OPT_SUB ? (pm_optui_warn() ? "B: warp menu  A: back" : pm_optui_sub_kind() == 2 ? "< > change  A: +1  B: back" : pm_optui_sub_kind() == 3 || pm_optui_sub_kind() == 4 ? "A: on or off  B: back" : pm_optui_sub_kind() == 12 ? "A: open  B: back" : pm_optui_sub_kind() == 13 ? "A: fight  B: back" : pm_optui_sub_kind() == 5 ? "A: open  B: back" : pm_optui_sub_kind() == 11 ? "A: spawn one  B: back" : pm_optui_sub_kind() == 15 ? (pm_optui_sub_level() == 2 ? "A: set  B: back" : "A: open  B: back") : pm_optui_sub_kind() >= 6 ? "< > A: change  B: back" : pm_optui_sub_kind() == 1 ? "A: fight  B: back" : pm_optui_sub_level() == 2 ? "< > entry  A: warp  B: back" : "A: open or warp  B: back") : "L R: tab  < > A: change  B: close", fb[0], fb[1]);
+    n += snprintf(out + n, sizeof out - (size_t)n, "\n\n%s\n\n\n\n%s\n%s", tab == PM_OPT_SUB ? (pm_optui_warn() ? "B: warp menu  A: back" : pm_optui_sub_kind() == 2 ? "< > change  A: +1  B: back" : pm_optui_sub_kind() == 3 || pm_optui_sub_kind() == 4 ? "A: on or off  B: back" : pm_optui_sub_kind() == 12 ? "A: open  B: back" : pm_optui_sub_kind() == 13 ? "A: fight  B: back" : pm_optui_sub_kind() == 5 ? "A: open  B: back" : pm_optui_sub_kind() == 11 ? "A: spawn one  B: back" : pm_optui_sub_kind() == 15 ? (pm_optui_sub_level() == 2 ? "A: set  B: back" : "A: open  B: back") : pm_optui_sub_kind() >= 6 ? "< > A: change  B: back" : pm_optui_sub_kind() == 1 ? "A: fight  B: back" : pm_optui_sub_level() == 2 ? "< > entry  A: warp  B: back" : "A: open or warp  B: back") : "L R: tab  < > A: change  B: close", fb[0], foot1());
     pm_log_d("menu: tab %d row %d %s = %s", tab, sel[tab], pm_optui_label(tab, sel[tab], MODE), pm_optui_value(tab, sel[tab], MODE) ? pm_optui_value(tab, sel[tab], MODE) : "-");
     pm_gpu_menu_draw(out);
     if (pm_debug_has("shotmenu")) { /* MN0: test aid, one bottom shot per menu draw as shots/bot_m<seq>.ppm */
@@ -186,6 +189,9 @@ void pm_menu_key(unsigned k) {
             pm_title_return();
             return;
         }
+    } else if ((k & KEY_X) && cheat_tab() && pm_cheat_dirty()) { /* CHEATSAVE: X writes the cheat set of the save slot in use */
+        if (pm_cheat_save()) pm_menu_msg("Cheats saved to slot %d", pm_cheat_slot());
+        else pm_menu_msg("Cheats not saved (slot %d)", pm_cheat_slot());
     } else return;
     draw();
 }

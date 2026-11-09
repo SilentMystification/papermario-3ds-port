@@ -1,4 +1,3 @@
-#define ND_GBI_WORDS /* DIRECT D5: this file keeps list words (inline data, lists for later or list position tests) */
 #include "common.h"
 #include "effects_internal.h"
 
@@ -277,7 +276,12 @@ void confetti_appendGfx(void* effect) {
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+    NdSub sub;
+    nd_sub_open(&sub); /* DIRECT D6c: the part list is a stream range */
+#else
     savedGfxPos = gMainGfxPos++;
+#endif
 
     part++;
     for (i = 0; i < unk_2C; i++, part++) {
@@ -310,10 +314,15 @@ void confetti_appendGfx(void* effect) {
         }
     }
 
+#ifdef TARGET_3DS
+    nd_sub_close(&sub);
+    nd_sub_call(&sub);
+#else
     gSPEndDisplayList(gMainGfxPos++);
     gSPBranchList(savedGfxPos, gMainGfxPos);
     savedGfxPos++;
     gSPDisplayList(gMainGfxPos++, savedGfxPos);
+#endif
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     gDPPipeSync(gMainGfxPos++);
 }

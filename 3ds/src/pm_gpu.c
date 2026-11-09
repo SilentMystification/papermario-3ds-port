@@ -2674,7 +2674,7 @@ int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4
     if (use5 && !gv5_on) return 0;
     unsigned mvm = 0; /* TRI-2: bit i: ro[i] is a copy with x moved (the caller keeps vert_ring) */
     if (mv) *mv = 0;
-    if (gs.r_zmark) return 0; /* B3b depth pass: the second pass needs the CPU vertices */
+    if (gs.r_zmark && use5) return 0; /* B3b depth pass: pm4 batches draw it natively in two passes (nd_raw_native, raw_zmark_pass); pm5 has no zmark pass */
     if (gs.r_decal && gs.r_blend) return 0; /* V16b: a decal is drawn in two passes from the CPU vertices */
     if (pm_wide && !gs.off_active) { int w_ = gtrip_wide(tab, g, ri); if (w_ < 0) return 0; mvm = (unsigned)w_; } /* PERF2: the wide edge test out of line */
     if (nb.gidx_n + 3 > GRING_IDX) return 0;
@@ -2887,8 +2887,12 @@ void pm_gpu_set_nocolor(int on) {
     gs.r_nocol = on;
 }
 
-/* B3b: on = the next triangles are a case 6 model (a depth test against the world, a constant depth write). zn = clip z / w of the constant. */
+/* B3b: on = the next triangles are a case 6 model (a depth test against the world, a constant depth write). zn = N64 clip z / w of the constant.
+ * MERLON: the zmark pass 2 replaces palette row 2 (the PICA clip z, after gv_post) with zn * row 3, so the constant is stored as PICA z / w: gv_post maps
+ * N64 clip z to PICA z by its row 2 only (z and w terms; the tilt rotates x and y), PICA w = N64 w. zn 0.998 (the ball, PRIM word 0xFFBC) is PICA -0.001,
+ * the depth of the G_ZS_PRIM decal rectangle (pm_gpu_tex_rect_z); unmapped, +0.998 lay outside the PICA clip range [-w, 0] and pass 2 drew nothing. */
 void pm_gpu_set_zmark(int on, float zn) {
+    if (on) zn = gv_post.r[2].z * zn + gv_post.r[2].w;
     if (on == gs.r_zmark && (!on || zn == gs.r_zmark_zn)) return;
     flush();
     gs.r_zmark = on;
@@ -2898,7 +2902,7 @@ void pm_gpu_set_zmark(int on, float zn) {
 void pm_gpu_set_render(int zcmp, int zupd, int blend, int atest, int decal) {
     if (zcmp == gs.r_zcmp && zupd == gs.r_zupd && blend == gs.r_blend && atest == gs.r_atest && decal == gs.r_decal) return;
     flush();
-    gs.r_zmark = 0; /* B3b: draw_tri turns it on again for a case 6 model */
+    gs.r_zmark = 0; /* B3b: gv_epoch_enter (nd_geom.c) turns it on again for a case 6 model */
     gs.r_zcmp = zcmp;
     gs.r_zupd = zupd;
     gs.r_blend = blend;

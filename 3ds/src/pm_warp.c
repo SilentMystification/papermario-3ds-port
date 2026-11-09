@@ -363,6 +363,7 @@ int pm_debug_value(const char* key, char* out, unsigned n) {
 
 static int smoke_frames = 300, w_loadslot = -1;
 static int warp_on, warp_done, scene_f0 = -1, smoke_on;
+static int warp_nofile; /* CHEATSAVE: the warp being set up has no save file (a new-file warp); taken by the next entry into the world */
 /* S30, TOUR1: map tour. tour=<map>:<entry>[@x:y:z],... or tour=@file (map:entry list in the SD app folder), or tourlist=all (every map of gAreas
  * without tst_, the spot of the map in pm_tour_spots (compiled from 3ds/tours/spots.txt) when it has the map, else entry 0; tourlist=curated
  * is the compiled curated list). After warp= (or preset=) has loaded its first map,
@@ -395,6 +396,8 @@ void pm_save_block(const char* why) {
 }
 int pm_save_blocked(void) { return save_block; }
 void pm_save_note(s32 slot) { pm_log_w("warp: save blocked, slot %d not written (%s)", (int)slot, save_why); }
+/* CHEATSAVE: 1 once after a warp setup with no save file (pm_cheat_enter_world, pm_map.c): that entry gets no cheat file */
+int pm_warp_take_nofile(void) { int v = warp_nofile; warp_nofile = 0; return v; }
 /* savefile=<path>: a SaveData file as fio_save_game writes it (sdmc:/3ds/PaperMario/). Loaded like loadslot, then the warp overrides map and position. */
 static char w_savefile[128];
 static int sf_ok;
@@ -825,6 +828,7 @@ static void warp_setup(s16 areaID, s16 mapID) {
     gGameStatusPtr->areaID = areaID;
     gGameStatusPtr->mapID = mapID;
     gGameStatusPtr->entryID = (s16)w_entry;
+    warp_nofile = w_loadslot < 0; /* CHEATSAVE: a new-file state has no save slot file */
     if (w_loadslot < 0) pm_save_block(w_why); /* WARPFIX2: a new-file state writes no save. A savefile warp blocks too. */
     if (w_loadslot < 0 && !sf_ok) clear_player_data();
     if (w_loadslot < 0 && !sf_ok) clear_saved_variables();
