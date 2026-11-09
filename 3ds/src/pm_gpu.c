@@ -2199,6 +2199,21 @@ void pm_gpu_pause_gutters(void) {
     }
     if (!t || !t->data || !ring_need(8, 12)) return;
     gut_tex = t;
+    { /* PAUSEOPEN debug, once per run: the slot texture, its native words, the uv of the quads and the centre's bound slot */
+        static int gut_once;
+        if (!gut_once++) {
+            NdUnit gu; memset(&gu, 0, sizeof gu);
+            grab_bind = 2;
+            const int gt = grab_native_unit0(&gu);
+            grab_bind = 0;
+            const int ci = pm_tex_off_idx();
+            const C3D_Tex* ct = (ci >= 0 && ci < OFF_ALL) ? &gs.offs[ci].tex : NULL;
+            pm_log("GUT t %p data %p w %u h %u fmt %u | native ret %d dim %08x addr %08x | ks %.4f kt %.4f uv_right_t1 %d | centre slot %d off_cur %d tex %p w %u h %u fmt %u | combine %d",
+                   (void*)t, t->data, (unsigned)t->width, (unsigned)t->height, (unsigned)t->fmt, gt, gu.dim, gu.addr,
+                   4096.f / (float)t->width, 4096.f / (float)t->height, (int)(240.f * 4096.f / (float)t->height + 0.5f),
+                   ci, (int)gs.off_cur, (void*)ct, ct ? (unsigned)ct->width : 0u, ct ? (unsigned)ct->height : 0u, ct ? (unsigned)ct->fmt : 0u, gs.combine);
+        }
+    }
     const int ec = (gs.combine >= 4 && gs.combine <= 8) ? gs.combine : 2; /* as pm_gpu_rect.c tex_raw_piece: the class of the centre */
     const unsigned c = (gs.combine == 5 || gs.combine == 7) ? gs.env_col : (gs.combine == 8 && gs.plan.vtxname != PM_NM_SHADE) ? gs.plan.vtx : 0xffffffffu;
     static const float uvso_p[4] = { 1.f / 4096.f, 1.f / 4096.f, 0.f, 0.f };
