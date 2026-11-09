@@ -37,6 +37,15 @@ if [ -n "$PM_LANE" ]; then BN="$BN-$PM_LANE"; elif [ -z "$PM_BUILD_REV" ] && [ "
 # AZT9c-1: a lane build carries a unique tag (time and pid): a dirty build with the same number has its own build id, so a warm restart proves the new ROM by the boot line
 if [ -n "$PM_LANE" ]; then BN="${BN}_$(date +%H%M%S)$$"; fi
 
+# MRTGEN: 3ds/src/map_restore_table.c and 3ds/ld/map_restore*.ld are generated from 3ds/map_restore.txt (git-ignored, never
+# committed, never restored by hand). This runs before the key and the sync, so both see the new content. gen_map_restore.py
+# writes a file only when its content changes.
+gen_map_restore() {
+    if command -v py >/dev/null 2>&1; then py -3 3ds/tools/gen_map_restore.py >/dev/null
+    else python3 3ds/tools/gen_map_restore.py >/dev/null; fi || { echo "gen_map_restore.py failed" >&2; exit 1; }
+}
+gen_map_restore
+
 # The inputs CMake reads (3ds/CMakeLists.txt, DECOMP = repo root). Nothing else reaches the build.
 # CODE_DIRS are read from this worktree; ASSET_DIRS from ASSET_BASE (see above).
 CODE_DIRS="3ds/CMakeLists.txt 3ds/effects.cmake 3ds/battle.cmake 3ds/maps.cmake 3ds/map_syms.lds LaunchIcon.png 3ds/ld 3ds/shaders 3ds/stub_include 3ds/include 3ds/src src include"
@@ -60,6 +69,7 @@ key_now() {
         git ls-tree -r HEAD -- $KEY_IN
         git diff HEAD -- $KEY_IN
         git ls-files -o --exclude-standard -- $KEY_IN | while read -r f; do sha1sum "$f"; done
+        sha1sum 3ds/src/map_restore_table.c 3ds/ld/map_restore.ld 3ds/ld/map_restore_bss.ld
         (cd "$ASSET_BASE" && find $ASSET_DIRS -type f -printf '%p %s %T@\n' | sort)
     } | sha1sum | cut -d' ' -f1
 }
