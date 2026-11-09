@@ -2188,16 +2188,30 @@ static void gut_quad(int xa, int xb, float sa, float sb, unsigned c) {
     ix[3] = (unsigned short)b; ix[4] = (unsigned short)(b + 2); ix[5] = (unsigned short)(b + 3);
     nb.gidx_n += 6; nb.gni += 6;
 }
+int pm_gut_seen; /* PAUSEOPEN debug: set by the first gutter call; rect_raw_quad (pm_gpu_rect.c) watches the rectangles after it */
 void pm_gpu_pause_gutters(int alpha) {
     C3D_Tex* t = NULL;
-    if (!target || !gs.gpu_ok || off_fail || !(gs.gpu_vtx_on && gs.gv4_on)) return;
-    for (int i = 0; i < OFF_ALL; i++) {
-        const void* b = gs.offs[i].base;
-        if (!b || gs.offs[i].siz != 2 || b == pm_walk_cfb || !pm_is_cfb(b)) continue;
-        t = &gs.offs[i].tex;
-        break;
+    static int dbg_n;
+    const int dbg = dbg_n++ < 6; /* PAUSEOPEN debug: the first 6 calls (no switch: the PMDL cache read 0 for this word) */
+    const char* why = NULL;
+    pm_gut_seen = 1;
+    if (!target) why = "no target";
+    else if (!gs.gpu_ok) why = "gpu not ok";
+    else if (off_fail) why = "off_fail";
+    else if (!(gs.gpu_vtx_on && gs.gv4_on)) why = "vtx or gv4 off";
+    else {
+        for (int i = 0; i < OFF_ALL; i++) {
+            const void* b = gs.offs[i].base;
+            if (!b || gs.offs[i].siz != 2 || b == pm_walk_cfb || !pm_is_cfb(b)) continue;
+            t = &gs.offs[i].tex;
+            break;
+        }
+        if (!t || !t->data) why = "no slot";
+        else if (!ring_need(8, 12)) why = "ring full";
     }
-    if (!t || !t->data || !ring_need(8, 12)) return;
+    if (dbg) pm_log("GUTDBG call off_active %d off_cur %d off_fail %d gpu_ok %d vtx %d gv4 %d slot %p why %s scissor %d %d %d %d",
+                    gs.off_active, gs.off_cur, off_fail, gs.gpu_ok, gs.gpu_vtx_on, gs.gv4_on, (void*)t, why ? why : "drawn", sci_x0, sci_y0, sci_x1, sci_y1);
+    if (why) return;
     gut_tex = t;
     /* PAUSEOPEN: class 2 (TEXEL0 x SHADE, the tex_raw_piece default) with the vertex colour (255, 255, 255, fade). The walker's class and colour
      * of the centre (env or plan colour) gave the constant prim colour in the gutters. */
@@ -2209,9 +2223,11 @@ void pm_gpu_pause_gutters(int alpha) {
     rect_raw_open(2, 0.5f, uvso_p);
     gut_quad(0, 40, 0.f, 40.f, c);
     gut_quad(360, 400, 360.f, 400.f, c);
+    if (dbg) pm_log("GUTDBG queued: gni %u gidx_n %u rect_open %d", nb.gni, nb.gidx_n, nb.rect_open);
     flush();
     grab_bind = 0;
     nb.rect_2d = s_2d;
+    if (dbg) pm_log("GUTDBG flushed: off_active %d scissor %d %d %d %d gni %u", gs.off_active, sci_x0, sci_y0, sci_x1, sci_y1, nb.gni);
 }
 int pm_gpu_grab_prev(const void* prev_cfb) {
     PM_WALK_OWN(); /* CORE2-3a */
