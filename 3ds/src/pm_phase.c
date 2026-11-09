@@ -435,8 +435,8 @@ extern unsigned long long pm_au_pf_sum; /* CORE2-0, pm_audio.c: join wait ticks 
 extern unsigned pm_au_pf_max;
 /* PROF: start a new window (after a report, or when the scene changes inside a window: a window holds one scene only, so chg is 0 on every printed line) */
 /* CORE2C-3: the logic thread totals at the window start (pm_logic.c pm_lg_pf) */
-void pm_lg_pf(unsigned long long* lg_t, unsigned* lg_n, unsigned long long* wait_t, unsigned* ser_n, int* core, unsigned* stk_kb, unsigned long long* pe);
-static unsigned long long lg0_t, lg0_w, lg0_pe[3]; static unsigned lg0_n, lg0_s;
+void pm_lg_pf(unsigned long long* lg_t, unsigned* lg_n, unsigned long long* wait_t, unsigned* ser_n, int* core, unsigned* stk_kb, unsigned long long* pe, unsigned* kf);
+static unsigned long long lg0_t, lg0_w, lg0_pe[3]; static unsigned lg0_n, lg0_s, lg0_kf;
 /* C1WAIT: window marks of the logic step's waits: the walker wait of the logic thread (nd_wq.c: bw, fw), the audio join on the logic
  * thread (aj), the audio job (au), the mixer on the render thread (mx). Modular 32 bit, so a window reads differences. */
 void pm_wq_pf(unsigned out[2]);
@@ -577,8 +577,8 @@ static void pf_report(void) {
            * bw of the wait line below is part of it), n = those steps; wwait = game thread ms per drawn frame waiting for the logic (the
            * walk wait); ser = steps run inline (serial: prof sample, det, measurement modes); core and stk = the logic thread core and its
            * stack high-water mark (KB). */
-            unsigned long long lt, wt, pe[3]; unsigned ln, sn, kb; int core;
-            pm_lg_pf(&lt, &ln, &wt, &sn, &core, &kb, pe);
+            unsigned long long lt, wt, pe[3]; unsigned ln, sn, kb, kf; int core;
+            pm_lg_pf(&lt, &ln, &wt, &sn, &core, &kb, pe, &kf);
             unsigned dn = ln - lg0_n;
             unsigned lgc = dn ? (unsigned)((lt - lg0_t) * 100ull / PF_TPM / dn) : 0u;
             unsigned wwc = pf_w ? (unsigned)((wt - lg0_w) * 100ull / PF_TPM / pf_w) : 0u;

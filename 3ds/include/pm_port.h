@@ -78,11 +78,6 @@ extern int pm_interp_skip;
 extern void pm_interp_skip_count(void);
 extern int pm_interp_repl; /* 1 during the t = 0.5 pass */
 void pm_interp_record(float mf[4][4], void* m);
-typedef struct { PmTask t[4]; } PmKey; /* the tasks of the key frame of one step (MAX_KEY 4 in pm_nusys.c) */
-int pm_interp_key_take(PmKey* k); /* the key frame tasks the last step recorded (clears the list); 0 when none */
-void pm_key_walk(const PmKey* k); /* pm_nusys.c, walker side */
-void pm_wq_key(const PmKey* k); /* queue the key frame (nd_wq.c) */
-void pm_wq_frame_slot(void); /* logic: wait until the frame and key frame before are walked (the rtab and display context rule) */
 const char* pm_debug_text(void);
 int pm_debug_value(const char* key, char* out, unsigned n);
 unsigned pm_ticks(void);
@@ -131,6 +126,11 @@ typedef struct { PmTask bg, main; void* cfb; unsigned flags; } PmFrame;
 #define PMF_REPL 1u /* F06-2: the main task walks with the t = 0.5 matrix replacements (pm_interp_repl) */
 void pm_wq_frame(const PmFrame* f); /* the game side: queue one frame (waits while one is queued) */
 void pm_frame_walk(const PmFrame* f); /* pm_nusys.c, walker side: walk the tasks of one frame */
+typedef struct { PmTask t[4]; } PmKey; /* the tasks of the key frame of one step (MAX_KEY 4 in pm_nusys.c) */
+int pm_interp_key_take(PmKey* k); /* the key frame tasks the last step recorded (clears the list); 0 when none */
+void pm_key_walk(const PmKey* k); /* pm_nusys.c, walker side */
+void pm_wq_key(const PmKey* k); /* queue the key frame (nd_wq.c) */
+void pm_wq_frame_slot(void); /* logic: wait until the frame and key frame before are walked (the rtab and display context rule) */
 extern void* pm_walk_cfb; /* the colour buffer of the frame the walker draws (pm_main.c) */
 void pm_walk_own(const char* fn);
 int pm_wq_on_logic(void); /* nd_wq.c: the caller runs on the logic thread */

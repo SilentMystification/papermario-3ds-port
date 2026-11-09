@@ -8,7 +8,8 @@
     "none": ""
   },
   "consoles": {
-    "o3ds": "192.168.1.170"
+    "o3ds": "192.168.1.170",
+    "n3ds": "192.168.1.224"
   },
   "benches": [
     {
@@ -4449,6 +4450,107 @@
         "tik19"
       ],
       "gates": []
+    },
+    {
+      "name": "c2haz_mac01_thr60",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CORE2-2 census (switch c2haz): walker-read game memory the game rewrites before the next walk. Toad Town mac_01, Mario at 0 0 200 walking right then left (padscript), fps60, no det (logic thread, CORE2I), census switch c2haz. 240 checked frames.",
+      "scenario": "c2haz_mac01_thr60",
+      "cap": 35,
+      "until": "c2haz sum f\\d+ frames 240 ",
+      "tags": [
+        "azahar",
+        "thread",
+        "core2",
+        "fps60"
+      ],
+      "gates": []
+    },
+    {
+      "name": "c2haz_battle_thr60",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CORE2-2 census (switch c2haz): walker-read game memory the game rewrites before the next walk. Battle, one Goomba on kmr_03 (battle switch), fps60, no det (logic thread, CORE2I), census switch c2haz, to the first census sum after the battle start.",
+      "scenario": "c2haz_battle_thr60",
+      "cap": 45,
+      "until": "c2haz sum f\\d+ frames 240 ",
+      "tags": [
+        "azahar",
+        "thread",
+        "core2",
+        "fps60"
+      ],
+      "gates": []
+    },
+    {
+      "name": "dro01_fps60_prof_n3ds",
+      "kind": "console_prof",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CORE2I: dro_01 on the N3DS, fps60, console prof mode. The logic thread builds step N+1 while the walker draws the lerp and key frame of N. Pass: ser about 10 (the sample frames), n about 290, kf about 300, fps 60.0 (presents), iv mostly 2, o34 below about 80.",
+      "scene_match": null,
+      "recipe": "warp=dro_01:0 pos=-256:0:9 prof=30 fps60",
+      "scenario": null,
+      "host": "n3ds",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ core2 lgms",
+      "tags": [
+        "console",
+        "prof",
+        "fps60",
+        "n3ds"
+      ],
+      "gates": [],
+      "log_metrics": [
+        {
+          "name": "lg_ms",
+          "regex": "prof f\\d+ w\\d+ core2 lgms ([0-9.]+)",
+          "pick": "first"
+        },
+        {
+          "name": "wwait_ms",
+          "regex": "prof f\\d+ w\\d+ core2 .*? wwait ([0-9.]+)",
+          "pick": "first"
+        },
+        {
+          "name": "ser_n",
+          "regex": "prof f\\d+ w\\d+ core2 .*? ser (\\d+)",
+          "pick": "first"
+        },
+        {
+          "name": "kf",
+          "regex": "prof f\\d+ w\\d+ core2 .*? kf (\\d+)",
+          "pick": "first"
+        },
+        {
+          "name": "bw_ms",
+          "regex": "prof f\\d+ w\\d+ core2 wait .*? bw ([0-9.]+)",
+          "pick": "first"
+        },
+        {
+          "name": "fw_ms",
+          "regex": "prof f\\d+ w\\d+ core2 wait .*? fw ([0-9.]+)",
+          "pick": "first"
+        },
+        {
+          "name": "aj_ms",
+          "regex": "prof f\\d+ w\\d+ core2 wait .*? aj ([0-9.]+)",
+          "pick": "first"
+        },
+        {
+          "name": "au_ms",
+          "regex": "prof f\\d+ w\\d+ core2 wait .*? au ([0-9.]+)",
+          "pick": "first"
+        },
+        {
+          "name": "mx_ms",
+          "regex": "prof f\\d+ w\\d+ core2 wait .*? mx ([0-9.]+)",
+          "pick": "first"
+        }
+      ]
     }
   ],
   "legacy": {

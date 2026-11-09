@@ -10690,6 +10690,48 @@
         }
       ],
       "reason": "TIK19 hit-vs-miss check at the wall flicker spot, 300 frames; cap 30 s."
+    },
+    {
+      "name": "c2haz_mac01_thr60",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at 0 0 200 walking right then left (padscript), fps60, no det (the logic thread builds step N+1 while the walker draws the lerp and key frame of N, CORE2I), census switch c2haz. 240 checked frames.",
+      "proves": "CORE2I: with fps60 on the logic thread, the census shows no new walker-read game memory rewritten before the next walk at steady state (beyond the 2 known port-heap addresses), and the logic thread line is present.",
+      "debug": "warp=mac_01:0 pos=0:0:200 padscript=wait60,RIGHT*60,LEFT*60 fps60 loglevel=debug c2haz c2own shots shotwin=200:6",
+      "extra": [],
+      "until": "c2haz sum f\\d+ frames 240 ",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "census sum",
+          "regex": "c2haz sum f\\d+ frames"
+        }
+      ],
+      "reason": "CORE2I gate: the threaded 60 fps path (the key frame and the lerp table are written and read on two threads)."
+    },
+    {
+      "name": "c2haz_battle_thr60",
+      "status": "unverified",
+      "subject": "Battle, one Goomba on kmr_03 (battle switch), fps60, no det (the logic thread builds step N+1 while the walker draws the lerp and key frame of N, CORE2I), census switch c2haz, to the first census sum after the battle start.",
+      "proves": "CORE2I: with fps60 on the logic thread, the census shows no new walker-read game memory rewritten before the next walk at steady state (beyond the 2 known port-heap addresses), and the logic thread line is present.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 fps60 loglevel=debug c2haz c2own",
+      "extra": [],
+      "until": "c2haz sum f\\d+ frames 240 ",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "census sum",
+          "regex": "c2haz sum f\\d+ frames"
+        }
+      ],
+      "reason": "CORE2I gate: the threaded 60 fps path (the key frame and the lerp table are written and read on two threads)."
     }
   ]
 }
