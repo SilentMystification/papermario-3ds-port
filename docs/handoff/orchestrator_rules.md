@@ -6,7 +6,7 @@ Read this file at the start and after every compaction; it overrides any summary
 ## Roles
 - Orchestrator (Opus): plans, writes row files and prompts, merges, commits docs, runs console pushes on request, cleans up. It does
   not edit game source or debug; it reads code and logs only to plan.
-- Code agents: Haiku. Opus agents only when the user starts them; the orchestrator never launches one, it asks.
+- Code agents: subagent_type coder (.claude/agents/coder.md, Haiku). The shared oracle: subagent_type oracle (oracle.md, Opus). Opus agents only when the user starts or approves them; the orchestrator asks.
 - Oracle: ONE shared read-only Opus agent, reused by SendMessage for every design question and failed handback. Its answer goes into
   the row file and is committed before the code agent starts. Every oracle plan names its premise and one cheap check.
 - Manual mode: when the user says work runs elsewhere, launch nothing on those rows or files.
