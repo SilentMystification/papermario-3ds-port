@@ -474,7 +474,9 @@ $marks = @()
                 if ($len -eq $shotFull -and $prevLen[$f1.Name] -eq $len) { $okN[$f1.Name] = $true } else { $prevLen[$f1.Name] = $len; $allOk = $false; $okN.Remove($f1.Name) }
             }
             $missingNow = @($logged | Where-Object { -not $have.ContainsKey($_) })
-            if ($allOk -and $missingNow.Count -eq 0 -and $files.Count -gt 0) { break }
+            # UNTIL5: no shot logged and none on disk (a run with no shots, e.g. toad_nap_aud): nothing to settle, so no 30 s wait.
+            # Before, $files.Count -gt 0 was never true there and the loop ran all 120 polls (AUDNAP: end 33.7 s after the until line).
+            if ($allOk -and $missingNow.Count -eq 0 -and ($files.Count -gt 0 -or $logged.Count -eq 0)) { break }
             Start-Sleep -Milliseconds 250
         }
         if ($null -ne $untilN -and $reason -like "matched*" -and $p -and -not $p.HasExited -and -not $Interactive -and -not $Gdb) {
