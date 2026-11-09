@@ -1,4 +1,3 @@
-#define ND_GBI_WORDS /* DIRECT D5: this file keeps list words (inline data, lists for later or list position tests) */
 #include "common.h"
 #include "effects_internal.h"
 
@@ -233,9 +232,13 @@ void water_block_appendGfx(void* effect) {
 
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
+#ifdef TARGET_3DS
+    vtxBase = (Vtx*) nd_rec_data(80 * sizeof(Gfx)); /* DIRECT D6c: the vertex buffer is stream data */
+#else
     gSPBranchList(gMainGfxPos, &gMainGfxPos[81]);
     vtxBase = (Vtx*)++gMainGfxPos;
     gMainGfxPos = &gMainGfxPos[80];
+#endif
 
     timePhase = gGameStatusPtr->frameCounter * 4;
 

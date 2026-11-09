@@ -1,4 +1,3 @@
-#define ND_GBI_WORDS /* DIRECT D5: this file keeps list words (inline data, lists for later or list position tests) */
 #include "common.h"
 #include "effects_internal.h"
 
@@ -142,10 +141,14 @@ void waterfall_appendGfx(void* effect) {
     gSPMatrix(gMainGfxPos++, camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     gDPSetPrimColor(gMainGfxPos++, 0, 0, data->unk_18, data->unk_1C, data->unk_20, unk_24);
     gSPDisplayList(gMainGfxPos++, D_09000200_3B7AD0);
+#ifdef TARGET_3DS
+    savedGfxPos = (Gfx*) nd_rec_data(48 * sizeof(Gfx)); /* DIRECT D6c: the vertex buffer is stream data */
+#else
     gSPBranchList(gMainGfxPos, &gMainGfxPos[49]);
 
     savedGfxPos = gMainGfxPos + 1;
     gMainGfxPos = &gMainGfxPos[49];
+#endif
 
     vtx = (Vtx_t*) savedGfxPos;
 

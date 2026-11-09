@@ -293,6 +293,7 @@ static void cfb_capture_prev(int cpu) {
                 if (st[2] || st[3]) { cap_note(cpu, "skip"); return; }
             }
             cap_note(cpu, "cpu");
+            if (pm_xf.on) pm_xf.cap_cpu++; /* BTLWIPE: the capcpu field of the xfer line */
             pm_gpu_read_frame(prev);
             if (pm_ph_on) { unsigned dt = pm_ticks() - t0; pm_b7.cap_n++; pm_b7.cap_ticks += dt; if (dt > pm_b7.cap_max) pm_b7.cap_max = dt; }
             if (pm_ph_on && nlog++ < 6) pm_log("D03: last frame copied to a frame buffer in %u us (ARM11 tick, Azahar timing)", (unsigned)((pm_ticks() - t0) / 268u));

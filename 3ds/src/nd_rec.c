@@ -221,6 +221,7 @@ void nd_gx_w(Gfx* g, uint32_t w0, uint32_t w1) {
 const uint32_t* nd_rec_pos(void) { return wp; }
 const uint32_t* nd_rec_mark(void) {
     nd_rec_cut();
+    st_hdr = NULL; /* a range bound closes the state run: the range starts or ends at a command header */
     return wp;
 }
 void nd_rec_call(const uint32_t* a, const uint32_t* b) {
@@ -231,6 +232,63 @@ void nd_rec_call(const uint32_t* a, const uint32_t* b) {
     p[1] = (uint32_t)(uintptr_t)a;
     p[2] = (uint32_t)(uintptr_t)b;
     p[3] = 0;
+}
+static __attribute__((cold, noinline)) void data_bad(unsigned bytes) {
+    pm_log_e("ndc: inline data of %u bytes (most %u)", bytes, (CH_WORDS - 4u) * 4u);
+    pm_fatal_stop("ndc: inline data too long");
+}
+void* nd_rec_data(unsigned bytes) {
+    const unsigned units = (bytes + 7u) >> 3;
+    if (nd_rec_sub) { /* a list for later: the data behind a branch word in that list */
+        Gfx* g = gMainGfxPos;
+        g->words.w0 = ((u32)G_DL << 24) | ((u32)G_DL_NOPUSH << 16);
+        g->words.w1 = (u32)(uintptr_t)(g + 1 + units);
+        gMainGfxPos = g + 1 + units;
+        return g + 1;
+    }
+    if (2u + 2u * units > CH_WORDS - 4u) data_bad(bytes);
+    nd_rec_cut();
+    uint32_t* p = rec_take(2u + 2u * units);
+    p[0] = NDC_HDR(NDC_JUMP, 0, 0);
+    p[1] = (uint32_t)(uintptr_t)(p + 2u + 2u * units);
+    return p + 2;
+}
+void nd_sub_open(NdSub* s) {
+    s->list = nd_rec_sub != 0;
+    if (s->list) { /* the branch word over the sublist, patched at close */
+        s->br = (uint32_t*)gMainGfxPos;
+        s->br[0] = ((u32)G_DL << 24) | ((u32)G_DL_NOPUSH << 16);
+        s->br[1] = 0;
+        gMainGfxPos++;
+        s->a = (const uint32_t*)gMainGfxPos;
+        return;
+    }
+    nd_rec_cut();
+    s->br = rec_take(2);
+    s->br[0] = NDC_HDR(NDC_JUMP, 0, 0);
+    s->br[1] = 0;
+    s->a = nd_rec_mark();
+}
+void nd_sub_close(NdSub* s) {
+    if (s->list) {
+        gMainGfxPos->words.w0 = (u32)G_ENDDL << 24;
+        gMainGfxPos->words.w1 = 0;
+        gMainGfxPos++;
+        s->b = (const uint32_t*)gMainGfxPos;
+        s->br[1] = (uint32_t)(uintptr_t)gMainGfxPos;
+        return;
+    }
+    s->b = nd_rec_mark();
+    s->br[1] = (uint32_t)(uintptr_t)s->b;
+}
+void nd_sub_call(const NdSub* s) {
+    if (s->list) {
+        gMainGfxPos->words.w0 = ((u32)G_DL << 24) | ((u32)G_DL_PUSH << 16);
+        gMainGfxPos->words.w1 = (u32)(uintptr_t)s->a;
+        gMainGfxPos++;
+        return;
+    }
+    nd_rec_call(s->a, s->b);
 }
 static __attribute__((cold, noinline)) void close_bad(const void* list, unsigned nbytes, const void* a) {
     static int n;

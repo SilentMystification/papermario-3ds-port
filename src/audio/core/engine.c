@@ -8,6 +8,8 @@
 #endif
 #ifdef TARGET_3DS
 #include "pm_au2.h"
+#include "pm_port.h"
+#include <string.h>
 #endif
 #include "ld_addrs.h"
 
@@ -1131,6 +1133,7 @@ enum BKParseState {
 /// This is the standard loader for streamed instrument banks.
 BKFileBuffer* au_load_BK_to_bank(s32 bkFileOffset, BKFileBuffer* bkFile, s32 bankIndex, BankSet bankSet) {
 #ifdef TARGET_3DS
+    unsigned xt0 = pm_xf.on ? pm_ticks() : 0u; /* BTLWIPE: the bks stage of the xfer line */
     pm_au2_sync(AU2_SYNC_BANK); /* AU2: the mixer reads these instruments */
 #endif
     ALHeap* heap = gSynDriverPtr->heap;
@@ -1222,7 +1225,9 @@ BKFileBuffer* au_load_BK_to_bank(s32 bkFileOffset, BKFileBuffer* bkFile, s32 ban
                 break;
         }
     }
-
+#ifdef TARGET_3DS
+    if (pm_xf.on) { pm_xf.bk_n++; pm_xf.bk_t += pm_ticks() - xt0; }
+#endif
     return bkFile;
 }
 
@@ -1421,6 +1426,15 @@ void au_sync_channel_delay_enabled(u32 bMonoSound) {
 // probable split
 
 void au_read_rom(s32 romAddr, void* buffer, u32 size) {
+#ifdef TARGET_3DS
+    /* BTLWIPE F2: the sound data (SBN 0xF00000 to 0x1942C40) is in the resident ROM image: one copy. nuPiReadRom per 8 KB drained the walk
+     * and invalidated the texture cache on each piece (the song and bank loads run on the logic thread). Its byte swaps do not apply here:
+     * the swap16 range (0x7B5960 to 0x7E0E80) and the asset table (0x1E40020) lie outside the SBN. No resident range: the read below. */
+    {
+        const unsigned char* src = pm_rom_ptr((unsigned)romAddr, size);
+        if (src) { memcpy(buffer, src, size); return; }
+    }
+#endif
     s32 nchunks = size / 0x2000;
     s32 offset = 0;
 

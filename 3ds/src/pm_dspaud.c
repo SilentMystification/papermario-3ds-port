@@ -30,6 +30,10 @@ typedef struct {
 static Ent ents[MAXENT];
 static unsigned cache_budget = 1536u * 1024u, cache_used, cache_peak;
 static unsigned c_hit, c_miss, c_evict, c_fail, c_late, dec_us_sum, dec_us_max, dec_n;
+/* BTLWIPE: decodes since boot (count, us, never reset) and the longest one since pm_dspa_dec_mark, for the xfer3 line (pm_xfer.c). */
+static volatile unsigned xd_n, xd_us, xd_max;
+void pm_dspa_dec_mark(unsigned* n, unsigned* us) { *n = xd_n; *us = xd_us; xd_max = 0; }
+void pm_dspa_dec_read(unsigned* n, unsigned* us, unsigned* max) { *n = xd_n; *us = xd_us; *max = xd_max; }
 
 static volatile unsigned ax_total; /* aux callbacks since the start */
 static volatile int fx_flip;       /* the first aux callback ran: the render thread sets the mixes again */
@@ -73,43 +77,46 @@ static Ent* sample_drop(const char* why, const DspaSample* s) {
     if (n++ < 40) pm_log_w("dspaudio: sound start dropped (%s): key %08x bytes %d cache %u of %u KB", why, (unsigned)s->key, (int)s->bytes, cache_used / 1024, cache_budget / 1024);
     return NULL;
 }
-static Ent* cache_get(const DspaSample* s) {
+/* A free table entry after evicting the oldest unpinned entries not used in the last keep_ms until need more bytes fit, or NULL. Render
+ * thread only (the owner of ents). keep_ms 60 for a sound start (the DSP may still read an entry used in the last 60 ms), 2000 for a
+ * pre-decoded entry (BTLWIPE F4: it must not push out what plays now). */
+static Ent* cache_room(unsigned need, unsigned keep_ms, unsigned now) {
     Ent* free_e = NULL;
-    unsigned now = now_ms();
-    for (int i = 0; i < MAXENT; i++) {
-        if (ents[i].mem && ents[i].key == s->key) { ents[i].stamp_ms = now; c_hit++; return &ents[i]; }
-        if (!ents[i].mem && !free_e) free_e = &ents[i];
+    for (int i = 0; i < MAXENT && !free_e; i++) if (!ents[i].mem) free_e = &ents[i];
+    while (cache_used + need > cache_budget || !free_e) {
+        Ent* old = NULL;
+        for (int i = 0; i < MAXENT; i++)
+            if (ents[i].mem && ents[i].pins == 0 && now - ents[i].stamp_ms > keep_ms && (!old || ents[i].stamp_ms < old->stamp_ms)) old = &ents[i];
+        if (!old) return NULL;
+        ent_free(old);
+        c_evict++;
+        free_e = old;
     }
-    if (!s->rom || !s->book || s->bytes < 9) return sample_drop("no rom data, book or size", s);
-    c_miss++;
-    unsigned long long t0 = svcGetSystemTick();
+    return free_e;
+}
+/* The decode of one sample into a linear block laid out pre | body | tail (shared by the sound start and the pre-decode). out gets the block
+ * and the layout (key, pins 0, stamp 0); the table and cache_used are not touched. owner = the render thread (the table owner): it makes room
+ * (cache_room, 60 ms) between the decode and the linear allocation, as the sound start always did; the pre-decode thread allocates only.
+ * Returns NULL or the reason of a failure. */
+static const char* sample_build(const DspaSample* s, Ent* out, int owner, unsigned now) {
     int nframes = s->bytes / 9, N = nframes * 16;
     int ls = s->loopStart, le = s->loopEnd, endless = s->loopCount == -1;
     int looped = le != 0 && s->lstate != NULL && le > ls && le <= N && ls >= 0;
     unsigned npre, nbody = 0, ntail = 0;
     s16* lin = (s16*)malloc((size_t)N * 2);
-    if (!lin) return sample_drop("no heap for the decode", s);
+    if (!lin) return "no heap for the decode";
     vadpcm(s->rom, nframes, s->book, 0, 0, lin);
     if (looped) { npre = ls; nbody = le - ls; ntail = endless ? 0 : N - le; }
     else npre = N;
     unsigned total = (npre + nbody + ntail) * 2;
     unsigned need = (total + 127) & ~127u;
-    if (need > cache_budget) { free(lin); return sample_drop("larger than the cache", s); }
-    /* evict the oldest unpinned entries until the sample fits (entries used in the last 60 ms stay: the DSP may still read them) */
-    while (cache_used + need > cache_budget || !free_e) {
-        Ent* old = NULL;
-        for (int i = 0; i < MAXENT; i++)
-            if (ents[i].mem && ents[i].pins == 0 && now - ents[i].stamp_ms > 60 && (!old || ents[i].stamp_ms < old->stamp_ms)) old = &ents[i];
-        if (!old) { free(lin); return sample_drop("no cache entry can be evicted: all pinned or used in the last 60 ms", s); }
-        ent_free(old);
-        c_evict++;
-        free_e = old;
-    }
+    if (need > cache_budget) { free(lin); return "larger than the cache"; }
+    if (owner && !cache_room(need, 60, now)) { free(lin); return "no cache entry can be evicted: all pinned or used in the last 60 ms"; }
     s16* mem = (s16*)linearMemAlign(need, 128);
-    if (!mem) { free(lin); return sample_drop("no linear memory", s); }
-    Ent* e = free_e;
+    if (!mem) { free(lin); return "no linear memory"; }
+    Ent* e = out;
     memset(e, 0, sizeof *e);
-    e->mem = mem; e->key = s->key; e->bytes = need; e->stamp_ms = now;
+    e->mem = mem; e->key = s->key; e->bytes = need;
     e->loopCount = s->loopCount; e->looped = looped;
     e->pre = mem; e->npre = npre;
     memcpy(e->pre, lin, (size_t)npre * 2);
@@ -134,10 +141,76 @@ static Ent* cache_get(const DspaSample* s) {
     }
     free(lin);
     DSP_FlushDataCache(mem, total);
-    cache_used += need;
+    return NULL;
+}
+
+/* BTLWIPE F4: pre-decoded samples. The pre-decode thread (pm_prefetch.c, core 1, lowest priority) builds entries and puts them in this ring;
+ * the render thread moves them into the table at its next cache lookup. One producer, one consumer, no lock: the render thread never waits
+ * for the low priority thread. */
+#define PRE_N 32u
+static Ent pre_ring[PRE_N];
+static volatile unsigned pre_head, pre_tail; /* head: producer, tail: consumer */
+static volatile unsigned pre_n_dec, pre_n_in, pre_n_drop; /* built, put in the table, dropped (already cached, or no room) */
+static void pre_drain(unsigned now) {
+    unsigned t = pre_tail, h = __atomic_load_n(&pre_head, __ATOMIC_ACQUIRE);
+    while (t != h) {
+        Ent* p = &pre_ring[t & (PRE_N - 1)];
+        int dup = 0;
+        for (int i = 0; i < MAXENT; i++) if (ents[i].mem && ents[i].key == p->key) { dup = 1; break; }
+        Ent* e = dup ? NULL : cache_room(p->bytes, 2000, now);
+        if (e) {
+            *e = *p;
+            e->stamp_ms = now;
+            cache_used += e->bytes;
+            if (cache_used > cache_peak) cache_peak = cache_used;
+            pre_n_in++;
+        } else { linearFree(p->mem); pre_n_drop++; }
+        p->mem = NULL;
+        t++;
+    }
+    __atomic_store_n(&pre_tail, t, __ATOMIC_RELEASE);
+}
+/* Pre-decode thread: build the samples of list that are not in the cache. Stops when the ring is full. The table read is unlocked: a stale
+ * answer costs one decode (the render thread drops a duplicate). */
+void pm_dspa_predecode(const DspaSample* list, int n) {
+    if (!pm_dspa_enabled) return;
+    for (int k = 0; k < n; k++) {
+        const DspaSample* s = &list[k];
+        if (!s->rom || !s->book || s->bytes < 9) continue;
+        int have = 0;
+        for (int i = 0; i < MAXENT && !have; i++) if (ents[i].mem && ents[i].key == s->key) have = 1;
+        for (unsigned t = pre_tail; t != pre_head && !have; t++) if (pre_ring[t & (PRE_N - 1)].key == s->key) have = 1;
+        for (int j = 0; j < k && !have; j++) if (list[j].key == s->key) have = 1;
+        if (have) continue;
+        if (pre_head - __atomic_load_n(&pre_tail, __ATOMIC_ACQUIRE) >= PRE_N) return;
+        Ent* p = &pre_ring[pre_head & (PRE_N - 1)];
+        if (sample_build(s, p, 0, 0)) continue;
+        pre_n_dec++;
+        __atomic_store_n(&pre_head, pre_head + 1, __ATOMIC_RELEASE);
+    }
+}
+void pm_dspa_pre_read(unsigned* built, unsigned* in, unsigned* drop) { *built = pre_n_dec; *in = pre_n_in; *drop = pre_n_drop; }
+
+static Ent* cache_get(const DspaSample* s) {
+    unsigned now = now_ms();
+    if (pre_head != pre_tail) pre_drain(now);
+    for (int i = 0; i < MAXENT; i++)
+        if (ents[i].mem && ents[i].key == s->key) { ents[i].stamp_ms = now; c_hit++; return &ents[i]; }
+    if (!s->rom || !s->book || s->bytes < 9) return sample_drop("no rom data, book or size", s);
+    c_miss++;
+    unsigned long long t0 = svcGetSystemTick();
+    Ent d;
+    const char* why = sample_build(s, &d, 1, now);
+    if (why) return sample_drop(why, s);
+    Ent* e = cache_room(d.bytes, 60, now); /* the room made in sample_build: a free entry and the bytes */
+    if (!e) { linearFree(d.mem); return sample_drop("no cache entry after the room was made", s); }
+    *e = d;
+    e->stamp_ms = now;
+    cache_used += e->bytes;
     if (cache_used > cache_peak) cache_peak = cache_used;
     unsigned us = tk_us(svcGetSystemTick() - t0);
     dec_n++; dec_us_sum += us; if (us > dec_us_max) dec_us_max = us;
+    xd_n++; xd_us += us; if (us > xd_max) xd_max = us;
     return e;
 }
 

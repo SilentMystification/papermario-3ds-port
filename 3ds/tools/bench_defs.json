@@ -13,6 +13,54 @@
   },
   "benches": [
     {
+      "name": "cheatsave_save",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CHEATSAVE save: Cheats tab, Moon jump on, the cyan footer shot, X writes cheats_slot0.ini. A person reads the footer shot.",
+      "scenario": "cheatsave_save",
+      "cap": 30,
+      "until": "cheats: saved slot \\d+ \\(\\d+ on\\)",
+      "tags": [
+        "azahar",
+        "menu",
+        "cheatsave"
+      ],
+      "gates": []
+    },
+    {
+      "name": "cheatsave_load_on",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CHEATSAVE load after a reboot: slot 0 file applied, Moon jump On in the Cheats tab.",
+      "scenario": "cheatsave_load_on",
+      "cap": 30,
+      "until": "menu: shot \\w+ tab 3 row 0",
+      "tags": [
+        "azahar",
+        "menu",
+        "cheatsave"
+      ],
+      "gates": []
+    },
+    {
+      "name": "cheatsave_load_off",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CHEATSAVE per slot: slot 1 has no cheats file, Moon jump Off in the Cheats tab.",
+      "scenario": "cheatsave_load_off",
+      "cap": 30,
+      "until": "menu: shot \\w+ tab 3 row 0",
+      "tags": [
+        "azahar",
+        "menu",
+        "cheatsave"
+      ],
+      "gates": []
+    },
+    {
       "name": "dmg_jump",
       "kind": "azahar_pic",
       "speed": "turbo",
@@ -2684,6 +2732,224 @@
       "gates": []
     },
     {
+      "name": "mim01_ring_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "EYECW: Forever Forest mim_01 (entry 1, x -530), det, mono: Mario runs to (-375, -375), then to (-375, 375) around the ring (radius 530, the four entries), so the camera yaw passes 90. 12 shots, frames 60 to 280. A person reads the shot.",
+      "scenario": "mim01_ring_det",
+      "cap": 30,
+      "until": "shot \\d+ frame 280\\b",
+      "tags": [
+        "azahar",
+        "det"
+      ],
+      "gates": []
+    },
+    {
+      "name": "mim01_ring_stereo_det_l",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "EYECW: mim_01 ring run as mim01_ring_det with forced stereo, left eye shots. The eyecw line every 10 frames: p23 (the old convergence factor, near 0 at yaw 90) and cw (conv x nd_proj_wn). A person reads the shot.",
+      "scenario": "mim01_ring_stereo_det_l",
+      "cap": 30,
+      "until": "shot \\d+ frame 280\\b",
+      "tags": [
+        "azahar",
+        "det",
+        "stereo"
+      ],
+      "gates": []
+    },
+    {
+      "name": "mim01_ring_stereo_det_r",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "EYECW: mim_01 ring run as mim01_ring_det with forced stereo, right eye shots. The eyecw line every 10 frames: p23 (the old convergence factor, near 0 at yaw 90) and cw (conv x nd_proj_wn). A person reads the shot.",
+      "scenario": "mim01_ring_stereo_det_r",
+      "cap": 30,
+      "until": "shot \\d+ frame 280\\b",
+      "tags": [
+        "azahar",
+        "det",
+        "stereo"
+      ],
+      "gates": []
+    },
+    {
+      "name": "kmr11_cut",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "EYECW: Goomba's fortress exterior (kmr_11, entry 0) at story -120: the cutscene EVS_Scene_MeetGoombaKing rotates the camera. Mono, det, shots every 20 frames 41 to 261 (from the GKCAM scenario of 61d04a541, fewer shots). A person reads the shot.",
+      "scenario": "kmr11_cut",
+      "cap": 30,
+      "until": "shot \\d+ frame 261\\b",
+      "tags": [
+        "azahar",
+        "det"
+      ],
+      "gates": []
+    },
+    {
+      "name": "kmr11_cut_stereo_det_l",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "EYECW: kmr11_cut with forced stereo, left eye shots at frames 41 to 261 step 20; eyecw lines every 10 frames. A person reads the shot.",
+      "scenario": "kmr11_cut_stereo_det_l",
+      "cap": 30,
+      "until": "shot \\d+ frame 261\\b",
+      "tags": [
+        "azahar",
+        "det",
+        "stereo"
+      ],
+      "gates": []
+    },
+    {
+      "name": "kmr11_cut_stereo_det_r",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "EYECW: kmr11_cut with forced stereo, right eye shots at frames 41 to 261 step 20; eyecw lines every 10 frames. A person reads the shot.",
+      "scenario": "kmr11_cut_stereo_det_r",
+      "cap": 30,
+      "until": "shot \\d+ frame 261\\b",
+      "tags": [
+        "azahar",
+        "det",
+        "stereo"
+      ],
+      "gates": []
+    },
+    {
+      "name": "pause_spin_grab_det_w300_stereo_l",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "STEREO S2 gate: pause_spin_grab_det_w300 with forced stereo, left eye. Byte-equal to the S1/EYECW build. A person reads the shot.",
+      "scenario": "pause_spin_grab_det_w300_stereo_l",
+      "cap": 45,
+      "until": "nrawwhy f300 ",
+      "tags": [
+        "azahar",
+        "pic",
+        "off",
+        "grab",
+        "det",
+        "cold",
+        "stereo"
+      ],
+      "gates": []
+    },
+    {
+      "name": "pause_spin_grab_det_w300_stereo_r",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "STEREO S2 gate: pause_spin_grab_det_w300 with forced stereo, right eye. Byte-equal to the S1/EYECW build. A person reads the shot.",
+      "scenario": "pause_spin_grab_det_w300_stereo_r",
+      "cap": 45,
+      "until": "nrawwhy f300 ",
+      "tags": [
+        "azahar",
+        "pic",
+        "off",
+        "grab",
+        "det",
+        "cold",
+        "stereo"
+      ],
+      "gates": []
+    },
+    {
+      "name": "nok11_det_stereo_l",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "STEREO S2 gate: nok11_det with forced stereo, left eye. Byte-equal to the S1/EYECW build. A person reads the shot.",
+      "scenario": "nok11_det_stereo_l",
+      "cap": 45,
+      "until": "fxtest: shot 1 effect 89 water_splash",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "stereo"
+      ],
+      "gates": []
+    },
+    {
+      "name": "nok11_det_stereo_r",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "STEREO S2 gate: nok11_det with forced stereo, right eye. Byte-equal to the S1/EYECW build. A person reads the shot.",
+      "scenario": "nok11_det_stereo_r",
+      "cap": 45,
+      "until": "fxtest: shot 1 effect 89 water_splash",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "stereo"
+      ],
+      "gates": []
+    },
+    {
+      "name": "gameover_fps60_stereo_l",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "STEREO S2 gate: gameover_fps60 with forced stereo, left eye. Byte-equal to the S1/EYECW build. A person reads the shot.",
+      "scenario": "gameover_fps60_stereo_l",
+      "cap": 30,
+      "until": "shot \\d+ frame 89\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "gameover",
+        "stereo"
+      ],
+      "gates": []
+    },
+    {
+      "name": "gameover_fps60_stereo_r",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "STEREO S2 gate: gameover_fps60 with forced stereo, right eye. Byte-equal to the S1/EYECW build. A person reads the shot.",
+      "scenario": "gameover_fps60_stereo_r",
+      "cap": 30,
+      "until": "shot \\d+ frame 89\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "gameover",
+        "stereo"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_mac01_eyecw",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "EYECW: mac_01 spot (pos 0 0 200) with forced stereo, det, log on: the eyecw lines (p23, cw, conv, nd_proj_wn, old conv x |p23|) every 10 frames; one shot at frame 200.",
+      "scenario": "spot_mac01_eyecw",
+      "cap": 30,
+      "until": "shot \\d+ frame 200\\b",
+      "tags": [
+        "azahar",
+        "stereo",
+        "det"
+      ],
+      "gates": []
+    },
+    {
       "name": "spot_mac01_stereo_det_l",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -2826,6 +3092,38 @@
         "azahar",
         "det",
         "cold"
+      ],
+      "gates": []
+    },
+    {
+      "name": "lava_piranha_det",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "DIRECT D6c gate: Lava Piranha battle (vines as stream vertex data), det, shots 400, 420, 440.",
+      "scenario": "lava_piranha_det",
+      "cap": 30,
+      "until": "shot \\d+ frame 440\\b",
+      "tags": [
+        "azahar",
+        "det",
+        "battle"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fx_direct_det",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "DIRECT D6c gate: 18 effects (inline vertex data and lists for later) spawned by fxtest in nok_11, det. Shots byte-equal to the list-word build.",
+      "scenario": "fx_direct_det",
+      "cap": 45,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "det",
+        "fx"
       ],
       "gates": []
     },
@@ -3309,6 +3607,23 @@
       "gates": []
     },
     {
+      "name": "pause_pre_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "DIRECT: mac_00 det, shots of every second frame 86 to 140 (the frame the pause picture is read from, then the pause picture), caplog, grablog and texlog lines.",
+      "scenario": "pause_pre_det",
+      "cap": 25,
+      "until": "shot \\d+ frame 140\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "det",
+        "pause"
+      ],
+      "gates": []
+    },
+    {
       "name": "fb_nok11_nat_pic",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -3407,6 +3722,57 @@
       "gates": []
     },
     {
+      "name": "battle_wheel5_wide_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WIDE4 gate: 5-option wheel (spmax=1) at the right end with wide on: spots, reel and beam drawn in the left corner past the 4:3 field, the leftmost options in place. A person reads the shot.",
+      "scenario": "battle_wheel5_wide",
+      "cap": 45,
+      "until": "debug wheel stop: pos 4 of 5",
+      "tags": [
+        "azahar",
+        "pic",
+        "wide",
+        "battle"
+      ],
+      "gates": []
+    },
+    {
+      "name": "battle_wheel5_nowide_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WIDE4 reference: the same 5-option wheel at the right end at 4:3 (nowide). A person reads the shot.",
+      "scenario": "battle_wheel5_nowide",
+      "cap": 45,
+      "until": "debug wheel stop: pos 4 of 5",
+      "tags": [
+        "azahar",
+        "pic",
+        "wide",
+        "battle"
+      ],
+      "gates": []
+    },
+    {
+      "name": "battle_wheel_nowide_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WIDE4 byte gate: 4:3 (nowide, det) wheel open burst on kmr_03; shots byte equal to the base build (bench.py build-at).",
+      "scenario": "battle_wheel_nowide_det",
+      "cap": 45,
+      "until": "shot \\d+ frame \\d+ map",
+      "tags": [
+        "azahar",
+        "pic",
+        "wide",
+        "battle"
+      ],
+      "gates": []
+    },
+    {
       "name": "chapter_native_pic",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -3452,6 +3818,41 @@
         "azahar",
         "pic",
         "shop"
+      ],
+      "gates": []
+    },
+    {
+      "name": "newgame_handover",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "INTROSNAP gate: new game with wide and fps60 (det), route through the title: the stage zoom, ENTER_WORLD and the first drawn frames after the kmr load. No frame wider than its neighbours. A person reads the shot.",
+      "scenario": "newgame_handover",
+      "cap": 25,
+      "until": "shot \\d+ frame 451\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "det",
+        "wide",
+        "fps60"
+      ],
+      "gates": []
+    },
+    {
+      "name": "newgame_handover_thr",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "INTROSNAP: new game with wide and fps60, no det (logic thread), route through the title: the stage zoom, ENTER_WORLD and the first drawn frames after the kmr load. No frame wider than its neighbours. A person reads the shot.",
+      "scenario": "newgame_handover_thr",
+      "cap": 25,
+      "until": "shot \\d+ frame 459\\b",
+      "tags": [
+        "azahar",
+        "pic",
+                "wide",
+        "fps60"
       ],
       "gates": []
     },
@@ -5119,6 +5520,54 @@
       "gates": []
     },
     {
+      "name": "merlon_in_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MERLON: Merlon's house enter and exit on mac_01 (ch1_start), det, shots every 25 frames 100 to 300: interior lit, crystal ball round, no square through the wall. A person reads the shot.",
+      "scenario": "merlon_in_pic",
+      "cap": 30,
+      "until": "xfer2 [a-z]+ n2\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "xfer"
+      ],
+      "gates": []
+    },
+    {
+      "name": "merlon_in_nowide_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MERLON: Merlon's house enter and exit on mac_01 (ch1_start), det, 4:3 (nowide), shots every 25 frames 100 to 300: interior lit, crystal ball round, no square through the wall. A person reads the shot.",
+      "scenario": "merlon_in_nowide_pic",
+      "cap": 30,
+      "until": "xfer2 [a-z]+ n2\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "xfer"
+      ],
+      "gates": []
+    },
+    {
+      "name": "merlon_in_live_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MERLON: Merlon's house enter and exit on mac_01 (ch1_start), no det (logic thread on), shots every 25 frames 100 to 300: interior lit, crystal ball round, no square through the wall. A person reads the shot.",
+      "scenario": "merlon_in_live_pic",
+      "cap": 30,
+      "until": "xfer2 [a-z]+ n2\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "xfer"
+      ],
+      "gates": []
+    },
+    {
       "name": "xfer_map_mac01",
       "kind": "azahar_stream",
       "speed": "normal",
@@ -5304,6 +5753,330 @@
         "xfer"
       ],
       "gates": []
+    },
+    {
+      "name": "xfer_battle_enc",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BTLWIPE: standing encounter on kmr_09 (encwarp 120), cold boot; the xfer battle lines (star wipe steps, song load, bank loads, decodes, walk drains, capture path).",
+      "scenario": "xfer_battle_enc",
+      "cap": 30,
+      "until": "xfer battle \\S+",
+      "tags": [
+        "azahar",
+        "xfer",
+        "battle"
+      ],
+      "log_metrics": [
+        {
+          "name": "xfer_wmax_ms",
+          "regex": "xfer3 battle wmax ([\\d.]+) wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_wo34",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 (\\d+) song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_song_ms",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song ([\\d.]+) bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_bks_n",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks (\\d+)/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_bks_ms",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/([\\d.]+) dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_dec_n",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec (\\d+)/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_dec_ms",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/([\\d.]+)/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_dec_max_ms",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/([\\d.]+) dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_dr_n",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr (\\d+)/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_dr_ms",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/([\\d.]+) capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_capcpu",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_max_ms",
+          "regex": "xfer battle \\S+ f\\d+ max ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_load_ms",
+          "regex": "xfer battle \\S+ .* load ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_init_ms",
+          "regex": "xfer battle \\S+ .* init ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_rom_n",
+          "regex": "xfer battle \\S+ .* rom (\\d+)/",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_pdec_in",
+          "regex": "xfer3 battle .* pdec \\d+/(\\d+)/",
+          "pick": "last"
+        }
+      ],
+      "gates": []
+    },
+    {
+      "name": "xfer_battle_prof",
+      "kind": "console_prof",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BTLWIPE: standing encounter on kmr_09 (encwarp 120) on the O3DS in prof mode. Pass: wipe steps over 34 ms 0, longest wipe step under 34 ms.",
+      "scene_match": null,
+      "recipe": "warp=kmr_09:0 story=ch0_toad_town encwarp=120 prof=30",
+      "scenario": null,
+      "host": "o3ds",
+      "cap": 60,
+      "until": "xfer battle \\S+",
+      "tags": [
+        "console",
+        "prof",
+        "xfer",
+        "battle"
+      ],
+      "log_metrics": [
+        {
+          "name": "xfer_wmax_ms",
+          "regex": "xfer3 battle wmax ([\\d.]+) wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_wo34",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 (\\d+) song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_song_ms",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song ([\\d.]+) bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_bks_n",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks (\\d+)/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_bks_ms",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/([\\d.]+) dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_dec_n",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec (\\d+)/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_dec_ms",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/([\\d.]+)/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_dec_max_ms",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/([\\d.]+) dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_dr_n",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr (\\d+)/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_dr_ms",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/([\\d.]+) capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_capcpu",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_max_ms",
+          "regex": "xfer battle \\S+ f\\d+ max ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_load_ms",
+          "regex": "xfer battle \\S+ .* load ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_init_ms",
+          "regex": "xfer battle \\S+ .* init ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_rom_n",
+          "regex": "xfer battle \\S+ .* rom (\\d+)/",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_pdec_in",
+          "regex": "xfer3 battle .* pdec \\d+/(\\d+)/",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "xfer_wo34",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "xfer_wmax_ms",
+          "op": "<",
+          "value": 34
+        }
+      ]
+    },
+    {
+      "name": "xfer_battle_walk_prof",
+      "kind": "console_prof",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BTLWIPE: walk-in encounter on kmr_09 (stick right into the Goomba) on the O3DS in prof mode. Pass: wipe steps over 34 ms 0, longest wipe step under 34 ms.",
+      "scene_match": null,
+      "recipe": "warp=kmr_09:0 story=ch0_toad_town padscript=right*200 prof=30",
+      "scenario": null,
+      "host": "o3ds",
+      "cap": 60,
+      "until": "xfer battle \\S+",
+      "tags": [
+        "console",
+        "prof",
+        "xfer",
+        "battle"
+      ],
+      "log_metrics": [
+        {
+          "name": "xfer_wmax_ms",
+          "regex": "xfer3 battle wmax ([\\d.]+) wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_wo34",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 (\\d+) song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_song_ms",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song ([\\d.]+) bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_bks_n",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks (\\d+)/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_bks_ms",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/([\\d.]+) dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_dec_n",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec (\\d+)/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_dec_ms",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/([\\d.]+)/[\\d.]+ dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_dec_max_ms",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/([\\d.]+) dr \\d+/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_dr_n",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr (\\d+)/[\\d.]+ capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_dr_ms",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/([\\d.]+) capcpu \\d+",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_capcpu",
+          "regex": "xfer3 battle wmax [\\d.]+ wo34 \\d+ song [\\d.]+ bks \\d+/[\\d.]+ dec \\d+/[\\d.]+/[\\d.]+ dr \\d+/[\\d.]+ capcpu (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_max_ms",
+          "regex": "xfer battle \\S+ f\\d+ max ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_load_ms",
+          "regex": "xfer battle \\S+ .* load ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_init_ms",
+          "regex": "xfer battle \\S+ .* init ([\\d.]+)",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_rom_n",
+          "regex": "xfer battle \\S+ .* rom (\\d+)/",
+          "pick": "last"
+        },
+        {
+          "name": "xfer_pdec_in",
+          "regex": "xfer3 battle .* pdec \\d+/(\\d+)/",
+          "pick": "last"
+        }
+      ],
+      "gates": [
+        {
+          "metric": "xfer_wo34",
+          "op": "==",
+          "value": 0
+        },
+        {
+          "metric": "xfer_wmax_ms",
+          "op": "<",
+          "value": 34
+        }
+      ]
     },
     {
       "name": "magi_hit_pic",

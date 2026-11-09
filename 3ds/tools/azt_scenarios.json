@@ -655,6 +655,374 @@
       "reason": "MOVE4 gate: DET cold start of the sbk_56 sun scene (-NoWarm, as spot_mac01_det). Cap 35 s, deadline 30 s. Picture is the subject; the prof scene line is the until."
     },
     {
+      "name": "mim01_ring_det",
+      "status": "unverified",
+      "subject": "Forever Forest mim_01 (entry 1, x -530), det, mono: Mario runs to (-375, -375), then to (-375, 375) around the ring (radius 530, the four entries), so the camera yaw passes 90. 12 shots, frames 60 to 280.",
+      "proves": "EYECW mono gate: the mim_01 ring run is a function of the build (det); mono pictures do not change with the convergence fix.",
+      "debug": "warp=mim_01:1 det padscript=go_-375_-375_90,wait10,go_-375_375_150 shots shotwin=60:221:20 loglevel=debug",
+      "until": "shot \\d+ frame 280\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: mim_01 entry 1",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mim_01 entry 1"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 280\\b"
+        }
+      ],
+      "reason": "EYECW: padscript run around the ring. camlog was deleted (AUDIT C4); the eyecw line of the stereo variants carries p23 (near 0 at yaw 90)."
+    },
+    {
+      "name": "mim01_ring_stereo_det_l",
+      "status": "unverified",
+      "subject": "mim_01 ring run as mim01_ring_det with forced stereo, left eye shots. The eyecw line every 10 frames: p23 (the old convergence factor, near 0 at yaw 90) and cw (conv x nd_proj_wn).",
+      "proves": "EYECW: the zero-parallax distance does not follow the camera yaw: cw stays about 300 while p23 passes 0; trees and Mario in both eyes.",
+      "debug": "warp=mim_01:1 det stereo padscript=go_-375_-375_90,wait10,go_-375_375_150 shots shotwin=60:221:20 loglevel=debug",
+      "until": "shot \\d+ frame 280\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: mim_01 entry 1",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mim_01 entry 1"
+        },
+        {
+          "name": "eyecw (stereo convergence w, every 10 frames)",
+          "regex": "eyecw f\\d+ p23 -?[0-9.]+ cw [0-9.]+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 280\\b"
+        }
+      ],
+      "reason": "EYECW gate d. Cap 30 s (det start to frame 280)."
+    },
+    {
+      "name": "mim01_ring_stereo_det_r",
+      "status": "unverified",
+      "subject": "mim_01 ring run as mim01_ring_det with forced stereo, right eye shots. The eyecw line every 10 frames: p23 (the old convergence factor, near 0 at yaw 90) and cw (conv x nd_proj_wn).",
+      "proves": "EYECW: the zero-parallax distance does not follow the camera yaw: cw stays about 300 while p23 passes 0; trees and Mario in both eyes.",
+      "debug": "warp=mim_01:1 det stereo shoteye padscript=go_-375_-375_90,wait10,go_-375_375_150 shots shotwin=60:221:20 loglevel=debug",
+      "until": "shot \\d+ frame 280\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: mim_01 entry 1",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mim_01 entry 1"
+        },
+        {
+          "name": "eyecw (stereo convergence w, every 10 frames)",
+          "regex": "eyecw f\\d+ p23 -?[0-9.]+ cw [0-9.]+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 280\\b"
+        }
+      ],
+      "reason": "EYECW gate d. Cap 30 s (det start to frame 280)."
+    },
+    {
+      "name": "kmr11_cut",
+      "status": "unverified",
+      "subject": "Goomba's fortress exterior (kmr_11, entry 0) at story -120: the cutscene EVS_Scene_MeetGoombaKing rotates the camera. Mono, det, shots every 20 frames 41 to 261 (from the GKCAM scenario of 61d04a541, fewer shots).",
+      "proves": "EYECW mono gate: the kmr_11 cutscene pictures (camera rotation) in mono.",
+      "debug": "warp=kmr_11:0 story=-120 det shots shotwin=41:221:20 loglevel=debug",
+      "until": "shot \\d+ frame 261\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: kmr_11 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_11 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 261\\b"
+        }
+      ],
+      "reason": "EYECW gate e. Cap 30 s."
+    },
+    {
+      "name": "kmr11_cut_stereo_det_l",
+      "status": "unverified",
+      "subject": "kmr11_cut with forced stereo, left eye shots at frames 41 to 261 step 20; eyecw lines every 10 frames.",
+      "proves": "EYECW: cw stays about 300 while the cutscene camera turns (f41-61 and f241-261).",
+      "debug": "warp=kmr_11:0 story=-120 det stereo shots shotwin=41:221:20 loglevel=debug",
+      "until": "shot \\d+ frame 261\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: kmr_11 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_11 entry 0"
+        },
+        {
+          "name": "eyecw (stereo convergence w, every 10 frames)",
+          "regex": "eyecw f\\d+ p23 -?[0-9.]+ cw [0-9.]+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 261\\b"
+        }
+      ],
+      "reason": "EYECW gate e. Cap 30 s."
+    },
+    {
+      "name": "kmr11_cut_stereo_det_r",
+      "status": "unverified",
+      "subject": "kmr11_cut with forced stereo, right eye shots at frames 41 to 261 step 20; eyecw lines every 10 frames.",
+      "proves": "EYECW: cw stays about 300 while the cutscene camera turns (f41-61 and f241-261).",
+      "debug": "warp=kmr_11:0 story=-120 det stereo shoteye shots shotwin=41:221:20 loglevel=debug",
+      "until": "shot \\d+ frame 261\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: kmr_11 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: kmr_11 entry 0"
+        },
+        {
+          "name": "eyecw (stereo convergence w, every 10 frames)",
+          "regex": "eyecw f\\d+ p23 -?[0-9.]+ cw [0-9.]+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 261\\b"
+        }
+      ],
+      "reason": "EYECW gate e. Cap 30 s."
+    },
+    {
+      "name": "pause_spin_grab_det_w300_stereo_l",
+      "status": "unverified",
+      "subject": "STEREO S2: pause_spin_grab_det_w300 with forced stereo, left eye shots. SPR4 det gate, cold: OFF-2 census: the pause_spin_grab spin (frames 140 to 179, grablog, shots as pause_spin_grab), run on to frame 300 so the nrawwhy line (cumulative raw refusal counts) prints.",
+      "proves": "STEREO S2: the right eye replay (GX entries of the left pass: lists, grabs, off-screen passes, fills) gives the same left eye picture as the two-walk build.",
+      "debug": "preset=toad padscript=wait80,START*3,wait100 phase phsum shots shotwin=140:40 loglevel=debug grablog texstat det stereo",
+      "until": "nrawwhy f300 ",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "pause mode",
+          "regex": "game mode 10 frame"
+        },
+        {
+          "name": "shot in spin window",
+          "regex": "shot \\d+ frame (17[6-9]|18[01])\\b"
+        },
+        {
+          "name": "nrawwhy at 300",
+          "regex": "nrawwhy f300 zmark"
+        }
+      ],
+      "reason": "SPR4 det gate (pause, cold start, det switch): same as pause_spin_grab_w300. STEREO S2 gate (stereo variant of pause_spin_grab_det_w300).",
+      "extra": []
+    },
+    {
+      "name": "pause_spin_grab_det_w300_stereo_r",
+      "status": "unverified",
+      "subject": "STEREO S2: pause_spin_grab_det_w300 with forced stereo, right eye shots. SPR4 det gate, cold: OFF-2 census: the pause_spin_grab spin (frames 140 to 179, grablog, shots as pause_spin_grab), run on to frame 300 so the nrawwhy line (cumulative raw refusal counts) prints.",
+      "proves": "STEREO S2: the right eye replay (GX entries of the left pass: lists, grabs, off-screen passes, fills) gives the same right eye picture as the two-walk build.",
+      "debug": "preset=toad padscript=wait80,START*3,wait100 phase phsum shots shotwin=140:40 loglevel=debug grablog texstat det stereo shoteye",
+      "until": "nrawwhy f300 ",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "pause mode",
+          "regex": "game mode 10 frame"
+        },
+        {
+          "name": "shot in spin window",
+          "regex": "shot \\d+ frame (17[6-9]|18[01])\\b"
+        },
+        {
+          "name": "nrawwhy at 300",
+          "regex": "nrawwhy f300 zmark"
+        }
+      ],
+      "reason": "SPR4 det gate (pause, cold start, det switch): same as pause_spin_grab_w300. STEREO S2 gate (stereo variant of pause_spin_grab_det_w300).",
+      "extra": []
+    },
+    {
+      "name": "nok11_det_stereo_l",
+      "status": "unverified",
+      "reason": "DET gate (cold, two runs, byte-equal shots). The splash picture is the subject. STEREO S2 gate (stereo variant of nok11_det).",
+      "subject": "STEREO S2: nok11_det with forced stereo, left eye shots. DET gate cold run: Mario in nok_11 (entry 0), water splash spawned at frame 400, shot 1 at frame 412, with the det switch. Two cold runs must give byte-equal shots.",
+      "proves": "STEREO S2: the right eye replay (GX entries of the left pass: lists, grabs, off-screen passes, fills) gives the same left eye picture as the two-walk build.",
+      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 shots loglevel=debug grablog offdump=410 fixedseed fast fs1off det stereo",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "shot 16 frame \\d+",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: nok_11 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: nok_11 entry 0"
+        },
+        {
+          "name": "spawn",
+          "regex": "fxtest: spawn 89 water_splash"
+        },
+        {
+          "name": "shot a",
+          "regex": "fxtest: shot 1 effect 89 water_splash"
+        }
+      ]
+    },
+    {
+      "name": "nok11_det_stereo_r",
+      "status": "unverified",
+      "reason": "DET gate (cold, two runs, byte-equal shots). The splash picture is the subject. STEREO S2 gate (stereo variant of nok11_det).",
+      "subject": "STEREO S2: nok11_det with forced stereo, right eye shots. DET gate cold run: Mario in nok_11 (entry 0), water splash spawned at frame 400, shot 1 at frame 412, with the det switch. Two cold runs must give byte-equal shots.",
+      "proves": "STEREO S2: the right eye replay (GX entries of the left pass: lists, grabs, off-screen passes, fills) gives the same right eye picture as the two-walk build.",
+      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 shots loglevel=debug grablog offdump=410 fixedseed fast fs1off det stereo shoteye",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "shot 16 frame \\d+",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: nok_11 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: nok_11 entry 0"
+        },
+        {
+          "name": "spawn",
+          "regex": "fxtest: spawn 89 water_splash"
+        },
+        {
+          "name": "shot a",
+          "regex": "fxtest: shot 1 effect 89 water_splash"
+        }
+      ]
+    },
+    {
+      "name": "gameover_fps60_stereo_l",
+      "status": "unverified",
+      "subject": "STEREO S2: gameover_fps60 with forced stereo, left eye shots. Game over map gv_01 (warp entry 0), 60 fps mode on (fps60; det: every game step draws the t=0.5 pass and the key frame, no skip). The map script turns on the motion blur (SetMotionBlurParams 128, OVERLAY_BLUR: 40 strips that read the previous frame buffer) and drops the GAME OVER letters. Shots every drawn frame of game frames 70 to 89 (two drawn frames per game frame with fps60: the t=0.5 pass and the key frame). Draw census at frame 80.",
+      "proves": "STEREO S2: the right eye replay (GX entries of the left pass: lists, grabs, off-screen passes, fills) gives the same left eye picture as the two-walk build.",
+      "debug": "warp=gv_01:0 fps60 det shots shotwin=70:20 drawcensus=80 caplog loglevel=debug stereo",
+      "until": "shot \\d+ frame 89\\b",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: gv_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: gv_01 entry 0"
+        },
+        {
+          "name": "census",
+          "regex": "cen f80 summary batches \\d+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 89\\b"
+        }
+      ],
+      "reason": "Row GAMEOVER (user: game over flickers and lags, 60 fps on). Shot window after the letters start to drop; cap 30 s (boot, warp, 90 frames). STEREO S2 gate (stereo variant of gameover_fps60)."
+    },
+    {
+      "name": "gameover_fps60_stereo_r",
+      "status": "unverified",
+      "subject": "STEREO S2: gameover_fps60 with forced stereo, right eye shots. Game over map gv_01 (warp entry 0), 60 fps mode on (fps60; det: every game step draws the t=0.5 pass and the key frame, no skip). The map script turns on the motion blur (SetMotionBlurParams 128, OVERLAY_BLUR: 40 strips that read the previous frame buffer) and drops the GAME OVER letters. Shots every drawn frame of game frames 70 to 89 (two drawn frames per game frame with fps60: the t=0.5 pass and the key frame). Draw census at frame 80.",
+      "proves": "STEREO S2: the right eye replay (GX entries of the left pass: lists, grabs, off-screen passes, fills) gives the same right eye picture as the two-walk build.",
+      "debug": "warp=gv_01:0 fps60 det shots shotwin=70:20 drawcensus=80 caplog loglevel=debug stereo shoteye",
+      "until": "shot \\d+ frame 89\\b",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: gv_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: gv_01 entry 0"
+        },
+        {
+          "name": "census",
+          "regex": "cen f80 summary batches \\d+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 89\\b"
+        }
+      ],
+      "reason": "Row GAMEOVER (user: game over flickers and lags, 60 fps on). Shot window after the letters start to drop; cap 30 s (boot, warp, 90 frames). STEREO S2 gate (stereo variant of gameover_fps60)."
+    },
+    {
+      "name": "spot_mac01_eyecw",
+      "status": "unverified",
+      "subject": "mac_01 spot (pos 0 0 200) with forced stereo, det, log on: the eyecw lines (p23, cw, conv, nd_proj_wn, old conv x |p23|) every 10 frames; one shot at frame 200.",
+      "proves": "EYECW: the convergence w at the mac_01 spot, new (conv x nd_proj_wn) against old (conv x |p23|) on the same frames.",
+      "debug": "warp=mac_01:0 pos=0:0:200 stereo det shots shotwin=200:1 loglevel=debug",
+      "until": "shot \\d+ frame 200\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "eyecw",
+          "regex": "eyecw f\\d+ p23 -?[0-9.]+ cw [0-9.]+"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 200\\b"
+        }
+      ],
+      "reason": "EYECW: the prof spot benches run with the log off (prof=4); this one keeps the debug log."
+    },
+    {
       "name": "spot_mac01_stereo_det_l",
       "status": "unverified",
       "subject": "Toad Town mac_01, Mario at pos 0 0 200 (warp entry 0), cold det start with forced stereo (3D slider 1): left eye shots at frames 200 to 205 and the prof scene line of the first 300-frame window.",
@@ -857,6 +1225,64 @@
         }
       ],
       "reason": "MOVE gate (d): one window of phase ms on iwa_10. opsplit is left out (see phase_mac01_det)."
+    },
+    {
+      "name": "lava_piranha_det",
+      "status": "unverified",
+      "reason": "DIRECT D6c gate: the lava piranha vines (battle kzn2 actor, kmr_22 and kzn_19 npc files) write their vertices as stream data.",
+      "subject": "DIRECT: debug battle Lava Piranha (BTL_KZN2_FORMATION_00, stage 06) started at frame 100 from kmr_03, det, shots at frames 400, 420, 440 (the boss with its vines).",
+      "proves": "DIRECT D6c: the vine pictures are byte-equal to the build where lava_piranha.c wrote its vertices into the list.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle=BTL_KZN2_FORMATION_00:BTL_KZN2_STAGE_06 battlef=100 shots shotwin=400:41:20 loglevel=debug fixedseed fs1off det",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "shot \\d+ frame 440\\b",
+      "cap": 30,
+      "deadline": 30,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "battle",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "last shot",
+          "regex": "shot \\d+ frame 440\\b"
+        }
+      ]
+    },
+    {
+      "name": "fx_direct_det",
+      "status": "unverified",
+      "reason": "DIRECT D6c gate: the 18 effects that kept list words (inline vertex data, lists for later) now write stream data and stream ranges.",
+      "subject": "DIRECT: nok_11 (entry 0), det, fxtest spawns shape_spell, shockwave, green_impact, shimmer_burst, shimmer_wave, firework, confetti, chomp_drop, thunderbolt_ring, squirt, water_block, waterfall, lightning_bolt, stop_watch, effect_65, whirlwind, red_impact, hieroglyphs one after the other (44 frame slots from frame 400, shots base, a, b per effect).",
+      "proves": "DIRECT D6c: the effect pictures are byte-equal to the build where these files wrote list words.",
+      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=13,32,44,50,52,61,62,71,82,83,84,85,88,92,95,97,98,106 shots loglevel=debug fixedseed fast fs1off det",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "fxtest: done",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: nok_11 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: nok_11 entry 0"
+        },
+        {
+          "name": "last effect shot",
+          "regex": "fxtest: shot 53 effect 106 hieroglyphs b"
+        },
+        {
+          "name": "done",
+          "regex": "fxtest: done"
+        }
+      ]
     },
     {
       "name": "nok11_det",
@@ -5645,6 +6071,103 @@
       ]
     },
     {
+      "name": "battle_wheel5_wide",
+      "status": "unverified",
+"reason": "broken: no until in 45 s (AZT11-5, 2026-11-09)",
+      "subject": "Battle with wide on (one Goomba, kmr_03), spmax=1 adds Star Power, hammer=0 the Hammer: 5 wheel options (Strategies, Items, Jump, Hammer, Star Power). The wheel opens on Jump; two steps right reach Star Power, the right end. The wheel stop line starts a 4 frame shot burst.",
+      "proves": "WIDE4: with the wheel at the right end every element is drawn in the left corner (spots, reel, beam not cut at the 4:3 field), the leftmost options in place.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town spmax=1 hammer=0 battle battlef=100 wide shots loglevel=debug uiburst padscript=wait362,right*4,wait30,right*4,wait60",
+      "until": "debug wheel stop: pos 4 of 5",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "battle formation",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "wheel open",
+          "regex": "debug wheel open: base"
+        },
+        {
+          "name": "wheel at right end",
+          "regex": "debug wheel stop: pos 4 of 5"
+        }
+      ],
+      "reason": "WIDE4 gate (user items 1, 3, 4): the wheel at the right end with 5 options, wide on."
+    },
+    {
+      "name": "battle_wheel5_nowide",
+      "status": "unverified",
+      "subject": "battle_wheel5_wide at 4:3 (nowide): 5 wheel options, two steps right to Star Power. The 4:3 reference picture of the same wheel state.",
+      "proves": "WIDE4: the 4:3 wheel at the right end, for comparison by eye with the wide picture.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town spmax=1 hammer=0 battle battlef=100 nowide shots loglevel=debug uiburst padscript=wait362,right*4,wait30,right*4,wait60",
+      "until": "debug wheel stop: pos 4 of 5",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "battle formation",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "wheel open",
+          "regex": "debug wheel open: base 54 173"
+        },
+        {
+          "name": "wheel at right end",
+          "regex": "debug wheel stop: pos 4 of 5"
+        }
+      ],
+      "reason": "WIDE4 4:3 reference for the right-end wheel."
+    },
+    {
+      "name": "battle_wheel_nowide_det",
+      "status": "unverified",
+      "subject": "Battle at 4:3 (nowide, det), one Goomba on kmr_03: the wheel opens (4 options) and its open line starts an 8 frame shot burst. Runs on builds before WIDE4 (only older switches).",
+      "proves": "WIDE4 byte gate: the 4:3 wheel picture is byte equal to the base build (every WIDE4 change is under pm_wide).",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 nowide shots loglevel=debug uiburst det",
+      "until": "shot \\d+ frame \\d+ map",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "battle formation",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "wheel open",
+          "regex": "debug wheel open: base 54 173"
+        },
+        {
+          "name": "shot at wheel",
+          "regex": "shot \\d+ frame \\d+ map"
+        }
+      ],
+      "reason": "WIDE4 4:3 byte gate for the wheel draw."
+    },
+    {
       "name": "chapter_native",
       "status": "unverified",
       "reason": "WIDE3 gate 3: one kmr_22 shot with wide on.",
@@ -5755,6 +6278,70 @@
         }
       ],
       "reason": "UA8 gate by eye, wide on."
+    },
+    {
+      "name": "newgame_handover",
+      "status": "unverified",
+      "reason": "INTROSNAP: det frames from the discovery run (fc9897f11 + fix): title f84, file select f201, END_FILE_SELECT f374, stage zoom to f412, ENTER_WORLD f413, black during the kmr_11 load, fade-in from about f444, WORLD f466. Window 400 to 451 every frame (two shots per frame with fps60: blend frame, key frame).",
+      "subject": "New game with wide and fps60: fast intro, START to the title, START to the file select (freshsave), File 1, name A, Yes, START, START; the stage zoom, ENTER_WORLD (mode 7), the kmr load, the first drawn frames after it.",
+      "proves": "INTROSNAP: no frame of the handover is wider than its neighbours (no fps60 blend across the load or the aspect change).",
+      "debug": "fast freshsave padscript=@pad_newgame.txt wide fps60 det fixedseed fs1off loglevel=debug shots shotwin=400:52",
+      "until": "shot \\d+ frame 451\\b",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "game mode 1 frame",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "file select",
+          "regex": "game mode 14 frame"
+        },
+        {
+          "name": "enter world",
+          "regex": "game mode 7 frame"
+        },
+        {
+          "name": "aspect change",
+          "regex": "aspect: wide 0 -> 1 mode 7"
+        },
+        {
+          "name": "last shot",
+          "regex": "shot \\d+ frame 451\\b"
+        }
+      ]
+    },
+    {
+      "name": "newgame_handover_thr",
+      "status": "unverified",
+      "reason": "INTROSNAP: newgame_handover without det: the logic thread and the walker run in parallel (the console timing), so a frame built in one aspect can be walked after the logic changed pm_wide. Frames are near the det ones (zoom to about f412, mode 7 about f413); the window 396 to 459 covers them.",
+      "subject": "New game with wide and fps60: fast intro, START to the title, START to the file select (freshsave), File 1, name A, Yes, START, START; the stage zoom, ENTER_WORLD (mode 7), the kmr load, the first drawn frames after it.",
+      "proves": "INTROSNAP: no frame of the handover is wider than its neighbours (no fps60 blend across the load or the aspect change).",
+      "debug": "fast freshsave padscript=@pad_newgame.txt wide fps60 fixedseed fs1off loglevel=debug shots shotwin=396:64",
+      "until": "shot \\d+ frame 459\\b",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "game mode 1 frame",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "file select",
+          "regex": "game mode 14 frame"
+        },
+        {
+          "name": "enter world",
+          "regex": "game mode 7 frame"
+        },
+        {
+          "name": "aspect change",
+          "regex": "aspect: wide 0 -> 1 mode 7"
+        },
+        {
+          "name": "last shot",
+          "regex": "shot \\d+ frame 459\\b"
+        }
+      ]
     },
     {
       "name": "intro_native",
@@ -8872,7 +9459,7 @@
       "status": "verified",
       "subject": "BTRANS walk-in (Goomba, kmr_09, stick right). Shots every 4 frames from 116 to 272: the star wipe starts at frame 116 (caplog wipe state) and the battle starts at frame 156 (run 8081) or 235 (run 7990); the battle frame varies by run.",
       "proves": "Capture path per SETTIMG call (gpu2, cpu, skip) with split state and the star wipe state (wipe = state*1000 + fade). cpu-after-split must be 0.",
-      "debug": "warp=kmr_09:0 story=ch0_toad_town padscript=right*200 shots shotwin=116:160 caplog loglevel=debug",
+      "debug": "warp=kmr_09:0 story=ch0_toad_town padscript=right*200 shots shotwin=116:160 caplog profdisk=1 loglevel=debug",
       "until": "shot \\d+ frame 27\\d\\b",
       "cap": 45,
       "deadline": 45,
@@ -8936,7 +9523,7 @@
       "status": "unverified",
       "subject": "BTRANS standing encounter (encwarp 120, kmr_09), interp on. Star wipe shots from the pre-battle start.",
       "proves": "Capture path per SETTIMG call (gpu2, cpu, skip) with split state and the star wipe state (wipe = state*1000 + fade). cpu-after-split must be 0.",
-      "debug": "warp=kmr_09:0 story=ch0_toad_town encwarp=120 shots caplog fps60 loglevel=debug",
+      "debug": "warp=kmr_09:0 story=ch0_toad_town encwarp=120 shots caplog fps60 profdisk=1 loglevel=debug",
       "until": "encwarp: window end",
       "cap": 45,
       "deadline": 45,
@@ -9356,6 +9943,31 @@
         }
       ],
       "reason": "SPR4 det gate (pause, cold start, det switch): same as pause_spin_grab_w300.",
+      "extra": []
+    },
+    {
+      "name": "pause_pre_det",
+      "status": "unverified",
+      "subject": "DIRECT: mac_00 (toad preset) det, the drawn frames just before and at the pause open (shots every second frame from 86, caplog) and the pause picture (shots to 140; texlog: one line per texture rectangle): the frame the pause picture is read from and the rectangles drawn over it.",
+      "proves": "The top rows of the frame the pause capture reads (pause_spin_grab_det_w300 shows marks there when model.c records stream commands).",
+      "debug": "preset=toad padscript=wait80,START*3,wait100 shots shotwin=86:56:2 loglevel=debug grablog caplog texlog det",
+      "until": "shot \\d+ frame 140\\b",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "last shot",
+          "regex": "shot \\d+ frame 140\\b"
+        }
+      ],
+      "reason": "DIRECT D6 open fault: names whether the marks are in the live frame before the pause or come from the capture.",
       "extra": []
     },
     {
@@ -10972,6 +11584,66 @@
       ]
     },
     {
+      "name": "merlon_in_pic",
+      "status": "unverified",
+      "reason": "Row MERLON (user: Merlon's house interior black, crystal ball a square). Walk about 80 frames, door 60, inside 200, walk to the door, exit 60: about 15 s after the warp. Cap 30 s.",
+      "subject": "Merlon's house on mac_01 (story ch1_start): Mario walks to the door and presses A (room enter), stays inside 200 frames, walks back to the door and presses A (room exit). Shots every 25 frames from 100 to 300: the door from outside, the interior with Merlon and the crystal ball, the exit.",
+      "proves": "MERLON: the interior is lit with Merlon visible, the crystal ball is round with the zoomed scene, and no square shows through the wall from outside.",
+      "debug": "warp=mac_01:0 story=ch1_start pos=-203:20:-206 padscript=go_-203_-280_100,A,wait200,go_-190_-262_150,A,wait150 shots shotwin=100:200:25 profdisk=1 loglevel=debug det",
+      "until": "xfer2 [a-z]+ n2\\b",
+      "cap": 30,
+      "deadline": 28,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "door enter line",
+          "regex": "xfer door \\S+:out->\\S+:in f\\d+"
+        }
+      ]
+    },
+    {
+      "name": "merlon_in_nowide_pic",
+      "status": "unverified",
+      "reason": "Row MERLON (user: Merlon's house interior black, crystal ball a square). Walk about 80 frames, door 60, inside 200, walk to the door, exit 60: about 15 s after the warp. Cap 30 s.",
+      "subject": "Merlon's house on mac_01 (story ch1_start): Mario walks to the door and presses A (room enter), stays inside 200 frames, walks back to the door and presses A (room exit). 4:3 (nowide). Shots every 25 frames from 100 to 300: the door from outside, the interior with Merlon and the crystal ball, the exit.",
+      "proves": "MERLON: the interior is lit with Merlon visible, the crystal ball is round with the zoomed scene, and no square shows through the wall from outside.",
+      "debug": "warp=mac_01:0 story=ch1_start pos=-203:20:-206 padscript=go_-203_-280_100,A,wait200,go_-190_-262_150,A,wait150 shots shotwin=100:200:25 profdisk=1 nowide loglevel=debug det",
+      "until": "xfer2 [a-z]+ n2\\b",
+      "cap": 30,
+      "deadline": 28,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "door enter line",
+          "regex": "xfer door \\S+:out->\\S+:in f\\d+"
+        }
+      ]
+    },
+    {
+      "name": "merlon_in_live_pic",
+      "status": "unverified",
+      "reason": "Row MERLON (user: Merlon's house interior black, crystal ball a square). Walk about 80 frames, door 60, inside 200, walk to the door, exit 60: about 15 s after the warp. Cap 30 s.",
+      "subject": "Merlon's house on mac_01 (story ch1_start): Mario walks to the door and presses A (room enter), stays inside 200 frames, walks back to the door and presses A (room exit). No det (the logic thread runs as on the console). Shots every 25 frames from 100 to 300: the door from outside, the interior with Merlon and the crystal ball, the exit.",
+      "proves": "MERLON: the interior is lit with Merlon visible, the crystal ball is round with the zoomed scene, and no square shows through the wall from outside.",
+      "debug": "warp=mac_01:0 story=ch1_start pos=-203:20:-206 padscript=go_-203_-280_100,A,wait200,go_-190_-262_150,A,wait150 shots shotwin=100:200:25 profdisk=1 loglevel=debug",
+      "until": "xfer2 [a-z]+ n2\\b",
+      "cap": 30,
+      "deadline": 28,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "door enter line",
+          "regex": "xfer door \\S+:out->\\S+:in f\\d+"
+        }
+      ]
+    },
+    {
       "name": "xfer_map_mac01",
       "status": "unverified",
       "reason": "MAPX-1 measure and the MAPX-3/4/5 gate. Walk about 60 frames, fade 13, load 6, tail 30: about 5 s after the warp. Cap 35 s.",
@@ -11010,6 +11682,34 @@
         }
       ],
       "reason": "MAPX-3 gate. The map load is at about frame 190 (det): shots 196 to 211 hold the covered frames and the first fade-in frames. Cap 35 s."
+    },
+    {
+      "name": "xfer_battle_enc",
+      "status": "unverified",
+      "reason": "BTLWIPE F1 measure and the gate of each step. Boot about 8 s, encwarp at frame 120, wipe about 40 steps, load, tail 30 steps. Cap 30 s.",
+      "subject": "kmr_09 entry 0, ch0_toad_town; encwarp=120 starts the pre-battle state (star wipe) for the world enemy; cold boot (empty sample decode cache). The xfer battle lines of kmr_09->btl:<id>.",
+      "proves": "BTLWIPE F1: xfer, xfer2 and xfer3 battle lines (wipe steps, song load, bank loads, decodes, walk drains, capture path cpu count).",
+      "debug": "warp=kmr_09:0 story=ch0_toad_town encwarp=120 profdisk=1 loglevel=debug",
+      "until": "xfer battle \\S+",
+      "cap": 30,
+      "deadline": 30,
+      "first_marker": "warp: kmr_09 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "pre-battle entered",
+          "regex": "encwarp: pre-battle entered"
+        },
+        {
+          "name": "battle line",
+          "regex": "xfer battle kmr_09->btl:\\w+ f\\d+ max"
+        },
+        {
+          "name": "xfer3 line",
+          "regex": "xfer3 battle wmax"
+        }
+      ]
     },
     {
       "name": "magi_hit",
@@ -11713,6 +12413,86 @@
           "regex": "menu: shot bot_m\\d+ tab 4 row 6\\b"
         }
       ]
+    },
+    {
+      "name": "cheatsave_save",
+      "status": "verified",
+      "subject": "Slot 0 loaded (loadslot=0), Select menu, Cheats tab (L), Moon jump on (A): the bottom shot after the A draw shows the cyan 'Press X to save cheats' footer; X writes cheats_slot0.ini.",
+      "proves": "CHEATSAVE: foot1 shows the footer while pm_cheat_dirty; pm_menu_key KEY_X calls pm_cheat_save, which logs the saved line.",
+      "debug": "loadslot=0 warp=random padscript=wait150,SELECT,wait20,L,wait20,A,wait20,k_X,wait60 shotmenu loglevel=debug",
+      "until": "cheats: saved slot \\d+ \\(\\d+ on\\)",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "MODE = ",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "menu open",
+          "regex": "menu: open"
+        },
+        {
+          "name": "moon jump on",
+          "regex": "cheat: moon jump on"
+        },
+        {
+          "name": "footer shot (tab 3 row 0)",
+          "regex": "menu: shot \\w+ tab 3 row 0"
+        },
+        {
+          "name": "saved slot 0 with 1 on",
+          "regex": "cheats: saved slot 0 \\(1 on\\)"
+        }
+      ],
+      "reason": "CHEATSAVE save gate: the saved line (slot 0, 1 on) and the shot after the A draw with the footer (picture read by a person)."
+    },
+    {
+      "name": "cheatsave_load_on",
+      "status": "verified",
+      "subject": "Slot 0 loaded (loadslot=0) after a reboot: cheats_slot0.ini is applied at the world entry, the Cheats tab shows Moon jump On and no footer.",
+      "proves": "CHEATSAVE load: pm_cheat_enter_world reads the slot file (pm_cheatsave.c read_file) at ENTER_WORLD (pm_map.c wrapper).",
+      "debug": "loadslot=0 warp=random padscript=wait150,SELECT,wait20,L,wait20 shotmenu loglevel=debug",
+      "until": "menu: shot \\w+ tab 3 row 0",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "MODE = ",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "loaded slot 0 with 1 on",
+          "regex": "cheats: loaded slot 0 \\(1 on\\)"
+        },
+        {
+          "name": "moon jump On",
+          "regex": "menu: tab 3 row 0 Moon jump = On"
+        }
+      ],
+      "reason": "CHEATSAVE load gate: loaded slot 0 (1 on) and the Moon jump row value On in the Cheats tab."
+    },
+    {
+      "name": "cheatsave_load_off",
+      "status": "verified",
+      "subject": "Slot 1 (no cheats file) loaded: all persistent cheats start off, the Cheats tab shows Moon jump Off.",
+      "proves": "CHEATSAVE per slot: a slot without a file starts with the set off (read_file found 0, pm_cheat_enter_world).",
+      "debug": "loadslot=1 warp=random padscript=wait150,SELECT,wait20,L,wait20 shotmenu loglevel=debug",
+      "until": "menu: shot \\w+ tab 3 row 0",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "MODE = ",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "loaded slot 1 with 0 on",
+          "regex": "cheats: loaded slot 1 \\(0 on"
+        },
+        {
+          "name": "moon jump Off",
+          "regex": "menu: tab 3 row 0 Moon jump = Off"
+        }
+      ],
+      "reason": "CHEATSAVE per-slot gate: slot 1 starts with 0 on and Moon jump Off."
     }
   ]
 }

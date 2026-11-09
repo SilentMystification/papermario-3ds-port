@@ -1,4 +1,3 @@
-#define ND_GBI_WORDS /* DIRECT D5: this file keeps list words (inline data, lists for later or list position tests) */
 #include "common.h"
 #include "effects_internal.h"
 
@@ -149,6 +148,9 @@ void green_impact_appendGfx(void* effect) {
     s32 envB2;
     Gfx* savedGfxPos;
     Gfx* savedGfxPos2;
+#ifdef TARGET_3DS
+    NdSub sub;
+#endif
     Matrix4f sp20;
     Matrix4f sp60;
     s32 i;
@@ -177,9 +179,13 @@ void green_impact_appendGfx(void* effect) {
     envG2 = envG;
     envB2 = envB;
 
+#ifdef TARGET_3DS
+    nd_sub_open(&sub); /* DIRECT D6c: the list for later is a stream range */
+#else
     savedGfxPos = gMainGfxPos;
     gMainGfxPos++;
     savedGfxPos2 = gMainGfxPos;
+#endif
 
     part++;
     for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, part++) {
@@ -203,20 +209,32 @@ void green_impact_appendGfx(void* effect) {
         }
     }
 
+#ifdef TARGET_3DS
+    nd_sub_close(&sub);
+#else
     gSPEndDisplayList(gMainGfxPos++);
     gSPBranchList(savedGfxPos, gMainGfxPos);
+#endif
 
     gDPSetPrimColor(gMainGfxPos++, 0, 0, primR2, primG2, primB2, alpha);
     gDPSetEnvColor(gMainGfxPos++, envR2, envG2, envB2, 0);
     gSPClearGeometryMode(gMainGfxPos++, G_CULL_BOTH);
     gSPSetGeometryMode(gMainGfxPos++, G_CULL_FRONT);
+#ifdef TARGET_3DS
+    nd_sub_call(&sub);
+#else
     gSPDisplayList(gMainGfxPos++, savedGfxPos2);
+#endif
 
     gDPSetPrimColor(gMainGfxPos++, 0, 0, primR, primG, primB, alpha);
     gDPSetEnvColor(gMainGfxPos++, envR, envG, envB, 0);
     gSPClearGeometryMode(gMainGfxPos++, G_CULL_BOTH);
     gSPSetGeometryMode(gMainGfxPos++, G_CULL_BACK);
+#ifdef TARGET_3DS
+    nd_sub_call(&sub);
+#else
     gSPDisplayList(gMainGfxPos++, savedGfxPos2);
+#endif
 
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 }

@@ -1,4 +1,3 @@
-#define ND_GBI_WORDS /* DIRECT D5: this file keeps list words (inline data, lists for later or list position tests) */
 #include "common.h"
 #include "effects_internal.h"
 
@@ -251,10 +250,15 @@ void lightning_bolt_appendGfx(void* effect) {
         data->edgeLength[i] = (f32) preset->width[i] * 0.1;
     }
 
+#ifdef TARGET_3DS
+    vtxBuffer = (Vtx_t*) nd_rec_data(0x30 * sizeof(Gfx)); /* DIRECT D6c: the vertex buffer is stream data */
+    vtx = vtxBuffer;
+#else
     vtxBuffer = (Vtx_t*) (gMainGfxPos + 1);
     vtx = (Vtx_t*) (gMainGfxPos + 1);
     gSPBranchList(gMainGfxPos, gMainGfxPos + 0x31);
     gMainGfxPos += 0x31;
+#endif
 
     for (i = 0; i < ARRAY_COUNT(data->boltVertexPosX); i++) {
         if (i == 0) {

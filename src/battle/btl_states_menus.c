@@ -592,6 +592,10 @@ void btl_main_menu_destroy(void) {
     hud_element_free(HID_SwapArrowRight);
 }
 
+/* WIDE4: the wheel radius. With wide the wheel sits in the screen corner, so its options and the selected one (upper right) were close to Mario;
+ * a radius of 101 (4:3: 87) moves the selected option 12 px right and 8 px up along its 56 degree ray (user item 2). */
+#define WHEEL_RADIUS (pm_wide ? 101.0f : 87.0f)
+
 s32 btl_main_menu_update(void) {
     BattleStatus* battleStatus = &gBattleStatus;
     f32 theta;
@@ -733,7 +737,7 @@ s32 btl_main_menu_update(void) {
                     for (i = 0; i < WheelOptionCount; i++, theta += 28.0f) {
                         x = 0.0f;
                         y = 0.0f;
-                        add_vec2D_polar(&x, &y, 87.0f, theta);
+                        add_vec2D_polar(&x, &y, WHEEL_RADIUS, theta);
 
                         l = BattleMenu_BasePosX + x;
                         t = BattleMenu_BasePosY + y;
@@ -750,7 +754,7 @@ s32 btl_main_menu_update(void) {
                     x = 0.0f;
                     y = 0.0f;
                     theta = BattleMenu_WheelBase * 28;
-                    add_vec2D_polar(&x, &y, 87.0f, theta);
+                    add_vec2D_polar(&x, &y, WHEEL_RADIUS, theta);
 
                     l = BattleMenu_BasePosX + x;
                     t = BattleMenu_BasePosY + y;
@@ -895,6 +899,13 @@ void btl_main_menu_draw(void) {
             if (!cond) {
                 BattleMenu_WheelSpeed = (BattleMenu_WheelSpeed * (BattleMenu_WheelSpeed + 1.0) * (BattleMenu_WheelSpeed + 1.0));
             } else {
+                if (BattleMenu_WheelMoving) { /* WIDE4 debug: the wheel stops at a new option. One log line; a shot burst with uiburst. */
+                    extern void pm_log_d(const char* fmt, ...);
+                    extern void pm_gpu_shot_burst(int n);
+                    extern int pm_debug_has(const char* word);
+                    pm_log_d("debug wheel stop: pos %d of %d base %d", BattleMenu_CurPos + BattleMenu_HomePos, WheelOptionCount, BattleMenu_BasePosX);
+                    if (pm_debug_has("uiburst")) pm_gpu_shot_burst(4);
+                }
                 BattleMenu_WheelMoving = 0;
                 BattleMenu_WheelSpeed = 0.3f;
             }
@@ -903,7 +914,7 @@ void btl_main_menu_draw(void) {
             for (i = 0; i < WheelOptionCount; i++, theta += 28.0f) {
                 x = 0.0f;
                 y = 0.0f;
-                add_vec2D_polar(&x, &y, 87.0f, theta);
+                add_vec2D_polar(&x, &y, WHEEL_RADIUS, theta);
                 id = HID_Spotlights[i];
                 x = BattleMenu_BasePosX + x;
                 y = BattleMenu_BasePosY + y;
@@ -921,7 +932,7 @@ void btl_main_menu_draw(void) {
                 if (i == BattleMenu_HomePos + BattleMenu_CurPos) {
                     x = 0.0f;
                     y = 0.0f;
-                    add_vec2D_polar(&x, &y, 87.0f, 56.0f);
+                    add_vec2D_polar(&x, &y, WHEEL_RADIUS, 56.0f);
                     x = BattleMenu_BasePosX + x;
                     y = BattleMenu_BasePosY + y;
                     id = HID_HighlightSpot;
@@ -947,9 +958,9 @@ void btl_main_menu_draw(void) {
             hud_element_set_transform_rotation_pivot(id, 0, 0);
             hud_element_set_transform_rotation(id, 0.0f, 0.0f, -43.0f);
             hud_element_set_scale(id, scale);
-            hud_element_set_transform_scale(id, 1.0f, 1.8f, 1.0f);
+            hud_element_set_transform_scale(id, 1.0f, pm_wide ? 2.1f : 1.8f, 1.0f); /* WIDE4: the longer beam reaches the selected option on the wider wheel */
             hud_element_set_alpha(id, (opacity * 200) / 255);
-            hud_element_set_render_pos(id, pm_wide_left(79), 176);
+            hud_element_set_render_pos(id, pm_wide ? pm_wide_left(79) + 5 : 79, pm_wide ? 173 : 176);
             hud_element_draw_complex_hud_next(id);
 
             id = HID_ProjectorReelB;
@@ -972,7 +983,7 @@ void btl_main_menu_draw(void) {
             for (i = 0; i < WheelOptionCount; i++, theta += 28.0f) {
                 x = 0.0f;
                 y = 0.0f;
-                add_vec2D_polar(&x, &y, 87.0f, theta);
+                add_vec2D_polar(&x, &y, WHEEL_RADIUS, theta);
                 l = x = BattleMenu_BasePosX + x;
                 t = y = BattleMenu_BasePosY + y;
                 btl_draw_prim_quad(0, 0, 0, 0, l - 12, t - 12, 24, 24);
@@ -986,8 +997,8 @@ void btl_main_menu_draw(void) {
             }
 
             if (cond) {
-                l = BattleMenu_BasePosX + 20;
-                t = BattleMenu_BasePosY - 34;
+                l = BattleMenu_BasePosX + 20 + (pm_wide ? 12 : 0); /* WIDE4: the name follows the selected option (radius WHEEL_RADIUS) */
+                t = BattleMenu_BasePosY - 34 - (pm_wide ? 8 : 0);
                 btl_draw_prim_quad(0, 0, 0, 0, l + 26, t, 48, 16);
                 draw_msg(WheelOptionName[BattleMenu_CurPos + BattleMenu_HomePos], l, t, opacity, MSG_PAL_35, 0);
             }

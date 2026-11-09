@@ -31,6 +31,7 @@ bool fio_write_flash(s32 pageNum, s8* readBuffer, u32 numBytes);
 /* WARPFIX2 (pm_warp.c): a new-file warp or boss launch blocks every save write */
 int pm_save_blocked(void);
 void pm_save_note(s32 slot);
+void pm_cheat_file_erase(s32 slot); /* CHEATSAVE (pm_cheatsave.c): the cheat file goes with the save */
 #endif
 void fio_erase_flash(s32 pageNum);
 
@@ -318,6 +319,9 @@ void fio_save_game(s32 saveSlot) {
 void fio_erase_game(s32 saveSlot) {
     s32 i;
 
+#ifdef TARGET_3DS
+    pm_cheat_file_erase(saveSlot);
+#endif
     fio_fetch_saved_file_info();
 
     for (i = 0; i < ARRAY_COUNT(PhysicalSaveInfo); i++) {

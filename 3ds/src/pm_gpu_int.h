@@ -55,7 +55,7 @@ typedef struct __attribute__((aligned(32))) PmGpuSt { /* PERF2 step 3: 32-aligne
     int gpu_ok, gpu_vtx_on, gv4_on; /* citro3d is up; the raw Vtx ring exists; the pm4 palette program is usable */
     int combine;               /* the combine mode of the open batch (8: the plan) */
     int z_on, r_zcmp, r_zupd, r_blend, r_atest, r_decal, r_nocol, r_mix, r_zmark; /* RDP render mode: depth on, compare, update, blend, alpha cut (-1 none), decal, depth only, mix, zmark (B3b) */
-    float r_zmark_zn;          /* B3b: the constant clip depth (z / w) the zmark pass writes */
+    float r_zmark_zn;          /* B3b: the constant depth the zmark pass writes, PICA clip z / w (pm_gpu_set_zmark maps it through gv_post) */
     unsigned env_col;          /* combine mode 5: the ENV colour */
     int off_active, off_cur;   /* V05: drawing goes to an off-screen image; its slot */
     int grab_dirty;            /* B2: the main target changed since the last grab */

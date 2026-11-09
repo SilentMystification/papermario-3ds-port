@@ -354,6 +354,7 @@ set(PORT_SRC
     src/pm_warp.c
     src/pm_dbg_game.c
     src/pm_options.c
+    src/pm_cheatsave.c
     src/pm_options_ui.c
     src/pm_dpad.c
     src/pm_route.c
@@ -450,7 +451,7 @@ target_include_directories(pm_3ds PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 set(MS_LD_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ld)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ld/3dsx.ld.in ${CMAKE_BINARY_DIR}/ldscripts/3dsx.ld @ONLY)
 target_link_options(pm_3ds PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/map_syms.lds -B${CMAKE_BINARY_DIR}/ldscripts/ -Wl,--gc-sections -Wl,-Map,${CMAKE_BINARY_DIR}/pm_3ds.map
-    -Wl,--wrap=set_game_mode -Wl,--wrap=load_map_by_IDs -Wl,--wrap=dma_copy -Wl,--wrap=load_asset_by_name
+    -Wl,--wrap=set_game_mode -Wl,--wrap=load_map_by_IDs -Wl,--wrap=load_battle_section -Wl,--wrap=dma_copy -Wl,--wrap=load_asset_by_name
     -Wl,--wrap=step_game_loop -Wl,--wrap=gfx_draw_frame -Wl,--wrap=gfx_task_background -Wl,--wrap=appendGfx_darkness_stencil
     -Wl,--wrap=_heap_create
     ${SND_GATE_WRAPS}

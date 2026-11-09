@@ -35,11 +35,13 @@ int n_cmd, n_in, n_drop, n_out;
 typedef NdGvP GvP;
 
 
+float nd_eye_cull_e, nd_eye_cull_k; /* STEREO: the eye shift of the frame (pm_gpu.c begin): e and e * conv (cw = conv * nd_proj_wn); 0 in a mono frame */
 int clip_bits4(const float* p) { /* the same bits as clip_bits, from a clip position x y z w */
     int b = 0;
     float w = p[3];
-    if (p[0] < -w) b |= 1;
-    if (p[0] > w) b |= 2;
+    float wx = w + (w < 0.f ? -w : w) * nd_eye_cull_e + nd_eye_cull_k * nd_proj_wn; /* STEREO: out of an x plane for both eyes (x moves by at most e (|w| + cw)); w in a mono frame */
+    if (p[0] < -wx) b |= 1;
+    if (p[0] > wx) b |= 2;
     if (p[1] < -w) b |= 4;
     if (p[1] > w) b |= 8;
     if (p[2] > w) b |= 32;
@@ -160,7 +162,7 @@ int gv_state_why(int* ct, int* both) {
     *both = cg == G_CULL_BOTH;
     if ((nd_ws.geom & G_LIGHTING) && !gv_lit_ok()) return GVR_LIT;
     if (fogmix_on && (nd_ws.geom & G_FOG) && !gv_fog_gpu_ok()) return GVR_FOG;
-    if (img_role(0) == ROLE_DEPTH) return GVR_ZMARK;
+    if (img_role(0) == ROLE_DEPTH && (nd_ws.omode_l & (1u << G_MDSFT_ZSRCSEL))) return GVR_ZMARK; /* MERLON: a depth-image draw with the primitive depth source stays refused; the pixel depth source is the zmark draw of gv_epoch_enter */
     return -1;
 }
 
@@ -174,6 +176,12 @@ void gv_epoch_enter(void) {
         ensure_tile(nd_ws.use_t1 ? 1 : 0);
         dual_bind();
         sync_render();
+        /* MERLON (B3b case 6 on the ring path): a model drawn into the z-buffer image (crystal ball depth mask, mac_01) tests its own depth against the world
+         * and writes the constant depth of the PRIM word where it is nearer (pm_gpu zmark, two native passes). sync_render turned it off.
+         * The mask is the model's silhouette, drawn with no face culling: the ball disc (tama list word D9FFFFFF 00200400, G_CULL_BACK) runs in the
+         * custom pre list under the model matrix without the billboard turn (nd_recs.c rec_apply order) and reaches the GPU back-facing (cull 2), so
+         * all 10 triangles were culled and no pixel was marked. */
+        if (img_role(0) == ROLE_DEPTH) { ep_ct = 0; pm_gpu_set_zmark(1, 2.f * depth_of_word(word_5551(nd_ws.prim)) - 1.f); }
         /* TEXEL1: the GPU reads tile 1 through the second texture unit and the uv map of dual_bind (uvx). An off-screen TEXEL1 needs the window fold of t1_fold per draw: gv_tri does it per triangle (t1_fold_tri, ep_t1f). */
         if (plan_active && cur_plan.uses_tex1) {
             if (!nd_ws.td[0].valid || !nd_ws.td[1].valid) ep_why = GVR_TEX1;
@@ -185,15 +193,17 @@ void gv_epoch_enter(void) {
 }
 
 /* GV1: one triangle of ring vertices. Returns 1 when it is done (rejected or sent to the GPU). Returns 0 when the CPU path must take it (reason in gv_fb). */
+extern unsigned char pm_gv_rejm; /* pm_gpu.c */
 int gv_tri(const int* idx) {
     int a = idx[0], b = idx[1], c = idx[2];
     int why = -1;
-    if ((vert_cb[a] & vert_cb[b] & vert_cb[c]) & 0x2f) { n_out++; PH_ADD(C_GVREJ, 1); GP_LAP(GPL_EARLY); return 1; }
+    const unsigned rm = pm_gv_rejm; /* WIDE4: 0x2c with wide and an orthographic matrix (pm_gpu_set_mvp): the UI spans clip x -1.25..1.25, so the x planes reject nothing (the GPU clips at the screen edge) */
+    if ((vert_cb[a] & vert_cb[b] & vert_cb[c]) & rm) { n_out++; PH_ADD(C_GVREJ, 1); GP_LAP(GPL_EARLY); return 1; }
     if ((vert_cb[a] | vert_cb[b] | vert_cb[c]) & 0x2f) {
         if (!(vert_gvf[a] & 1) && vert_cb[a]) gv_xf(a);
         if (!(vert_gvf[b] & 1) && vert_cb[b]) gv_xf(b);
         if (!(vert_gvf[c] & 1) && vert_cb[c]) gv_xf(c);
-        if ((vert_cb[a] & vert_cb[b] & vert_cb[c]) & 0x2f) { n_out++; PH_ADD(C_GVREJ, 1); GP_LAP(GPL_EARLY); return 1; }
+        if ((vert_cb[a] & vert_cb[b] & vert_cb[c]) & rm) { n_out++; PH_ADD(C_GVREJ, 1); GP_LAP(GPL_EARLY); return 1; }
     }
     if (vert_scr[a] | vert_scr[b] | vert_scr[c]) why = GVR_SCR;
     else if (vert_tss[a] != vert_tss[b] || vert_tss[a] != vert_tss[c]) why = GVR_TSS;

@@ -35,14 +35,10 @@ float (*gm_nrm)[3][4]; /* GV5: the rows 0 to 2 of the model view matrix of each 
 
 unsigned gm_n;
 
-extern float pm_eye_e, pm_eye_conv;
-
 void upload_mvp(void) {
-    nd_mtx_combine(combined, pm_eye_e, pm_eye_conv); /* S1-4: modelview x projection, STEREO eye shift on a perspective matrix */
+    nd_mtx_combine(combined); /* S1-4: modelview x projection (STEREO: one matrix for both eyes, the shader shifts) */
     pm_gpu_note_mvp(combined, vp_sx, vp_sy, vp_tx, vp_ty); /* GV1c: the matrix is in the palette of the triangles */
 }
-
-void pm_gbi_eye_changed(void) { upload_mvp(); }
 
 /* H3: open-addressing index of gm_tab by a hash of the combined matrix. Slot holds entry + 1, 0 is empty. 512 slots for at most 256 entries. */
 unsigned short gm_idx[512];
