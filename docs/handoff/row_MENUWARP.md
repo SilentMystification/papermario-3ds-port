@@ -22,6 +22,12 @@ close the menu).
 3. (user, 2026-11-09) Warp area order: move "Toad Town Tunnels" directly after "Toad Town" in the story_area[] order table
    (pm_warp.c, STORYMENU). Gate: one shot of the Warp area level 1 page with Toad Town Tunnels after Toad Town.
 
+4. (user, 2026-11-09) "hitting right or left in the warp menu should skip the same amount as in the parent menu": the Warp area
+   pages (level 1 area list with presets/extras, and the Story progress pages) use the same left/right skip as the parent Debug list
+   (6 rows on rows without a value, layout rule of 2026-11-06). Map rows on a level 2 page keep < > for the entry value only if the
+   parent rule gives value rows < > (it does); otherwise skip. Find the parent skip code in pm_options.c/pm_options_ui.c and reuse it
+   (one rule, no copy). Gate: log or shot of the row index after one right press on level 1 (moves 6).
+
 ## Done criteria
 nd_host PASS; memcheck OK; Azahar: a battle (battle switch), open the Select menu, Warp area > a map, A: the menu closes, the log shows
 `bypass: battle end` then the warp line and the new map, without a menu close input (padscript has no B/Select after the A). One shot of
