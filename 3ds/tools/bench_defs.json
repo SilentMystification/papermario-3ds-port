@@ -5044,6 +5044,40 @@
       "gates": []
     },
     {
+      "name": "menu_texf",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "TEXF: Debug > Render > Texture filtering, Filter Bilinear all set by the menu, field shots 200 to 205 (mac_01 0 0 200). Pair with spot_mac01_det (Game filter, same frames). The General tab Frame skip row is in the shots.",
+      "scenario": "menu_texf",
+      "cap": 45,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "menu",
+        "texf"
+      ],
+      "gates": []
+    },
+    {
+      "name": "menu_texc",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "TEXC: Debug > Render > Texture filtering, Filter Bilinear all and Texel centre On set by the menu, field shots 200 to 205 (mac_01 0 0 200). Compare with menu_texf.",
+      "scenario": "menu_texc",
+      "cap": 45,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "menu",
+        "texf"
+      ],
+      "gates": []
+    },
+    {
       "name": "profile_pic",
       "kind": "azahar_pic",
       "speed": "normal",
