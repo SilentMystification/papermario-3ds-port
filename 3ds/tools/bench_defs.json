@@ -300,6 +300,40 @@
       "gates": []
     },
     {
+      "name": "starfx_hos01_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "STARFX picture: hos_01 star spirit pop-in, shots from frame 200 to about 228 (every 4 frames, the shot cost; pop-in at frame 190). A person reads the shot: the spirits and their glowing stars.",
+      "scenario": "starfx_hos01_pic",
+      "cap": 35,
+      "until": "starfx: popin steady",
+      "tags": [
+        "azahar",
+        "starfx"
+      ],
+      "gates": []
+    },
+    {
+      "name": "starfx_hos01_prof",
+      "kind": "console_prof",
+      "speed": "normal",
+      "default": false,
+      "purpose": "STARFX console: hos_01 star spirit pop-in on the O3DS (prof=30), the same route as starfx_hos01. The starfx pre, popin start and popin steady lines give frames, ms and model cache misses and clears; the prof windows give the frame time. Ingest the live log after the push.",
+      "scene_match": null,
+      "recipe": "warp=hos_01:0 story=ch0_toad_town pos=-110:250:-170 padscript=wait60,go_-36_-170_60,wait10,A,wait40,A,wait40,A",
+      "scenario": null,
+      "host": "o3ds",
+      "cap": 45,
+      "until": "starfx: popin steady",
+      "tags": [
+        "console",
+        "prof",
+        "starfx"
+      ],
+      "gates": []
+    },
+    {
       "name": "merlee_spell_prof",
       "kind": "azahar_stream",
       "speed": "normal",
