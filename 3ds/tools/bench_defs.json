@@ -4114,6 +4114,36 @@
       "gates": []
     },
     {
+      "name": "water_sbk56_det12",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WATER: sbk_56 cold det native, shots 200 to 211. Gate: water box x120..153 y87..314 byte-equal to water_sbk56_ref12 in 12/12 shots.",
+      "scenario": "water_sbk56_det12",
+      "cap": 45,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "water"
+      ],
+      "gates": []
+    },
+    {
+      "name": "water_sbk56_ref12",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WATER: sbk_56 cold det with nomodelnat, shots 200 to 211 (byte reference of water_sbk56_det12).",
+      "scenario": "water_sbk56_ref12",
+      "cap": 45,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "water"
+      ],
+      "gates": []
+    },
+    {
       "name": "mdl5_mac01_ref",
       "kind": "azahar_pic",
       "speed": "normal",

@@ -10179,6 +10179,36 @@
       "reason": "MDL-5 gate: MDL-5 byte reference sbk_56 (nomodelnat). Cold start (-NoWarm) so det shots are a function of the build."
     },
     {
+      "name": "water_sbk56_det12",
+      "status": "unverified",
+      "subject": "sbk_56, Mario at 20 0 440, cold det, native model path, shots 200 to 211 (12 consecutive frames of the panned water).",
+      "proves": "WATER B1: the native water box x120..153 y87..314 is byte-equal to water_sbk56_ref12 in all 12 shots (model cache hits bind the stored tile 0 window).",
+      "debug": "warp=sbk_56:0 pos=20:0:440 prof=4 shots shotwin=200:12 loglevel=debug det",
+      "extra": [],
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "reason": "WATER gate: the sbk_56 water box (mizu1, shared aux texture) in 12 consecutive det shots; the cap covers the cold boot to the frame 300 prof line."
+    },
+    {
+      "name": "water_sbk56_ref12",
+      "status": "unverified",
+      "subject": "sbk_56, Mario at 20 0 440, cold det with nomodelnat (walker draws), shots 200 to 211: the byte reference of water_sbk56_det12.",
+      "proves": "WATER B1 byte reference (nomodelnat).",
+      "debug": "warp=sbk_56:0 pos=20:0:440 prof=4 shots shotwin=200:12 loglevel=debug det nomodelnat",
+      "extra": [],
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": true,
+      "reason": "WATER gate: the sbk_56 water box (mizu1, shared aux texture) in 12 consecutive det shots; the cap covers the cold boot to the frame 300 prof line."
+    },
+    {
       "name": "mdl5_mac01_det_ref",
       "status": "unverified",
       "subject": "Toad Town mac_01 at 0 0 200, cold det with nomodelnat: the byte reference of spot_mac01_det.",
