@@ -872,6 +872,13 @@ void btl_main_menu_draw(void) {
             break;
         case BTL_MENU_STATE_SUBMENU_OPEN:
         case BTL_MENU_STATE_CHOOSING:
+            { /* BATUI: refused rectangles in the battle menu, one line per 30 frames (debug switch btlui) */
+                static int btlui_n;
+                extern unsigned pm_rect_drop_total(void);
+                extern void pm_log_d(const char* fmt, ...);
+                extern int pm_debug_has(const char* word);
+                if (pm_debug_has("btlui") && (++btlui_n % 30) == 0) pm_log_d("btlui n%d drop %u", btlui_n, pm_rect_drop_total());
+            }
         case BTL_MENU_STATE_HIDE_INIT:
         case BTL_MENU_STATE_RESTORE:
         case BTL_MENU_STATE_RESUME_SUBMENU:

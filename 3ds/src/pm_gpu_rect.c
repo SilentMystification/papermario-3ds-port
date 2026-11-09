@@ -86,6 +86,8 @@ static float fill_z = 0.5f;
  * Palette entry RECT_GM (pcomp_calc) is the projection with the depth folded in. The batch closes through nd_raw_native with
  * rect_2d set (flush_impl_body rect branch). Merge key as rect_raw_open, plus the depth. rect_c: fill, tex, native, merged, cpu, ring high mark. */
 static unsigned rect_c[6];
+static unsigned rect_drop_total; /* BATUI: monotonic count of refused (dropped) rectangles, read by the battle menu log (pm_rect_drop_total) */
+unsigned pm_rect_drop_total(void) { return rect_drop_total; }
 static unsigned rr_why[8]; /* RECT-2b diag: why a textured or fill rectangle is refused (dropped, rect_c[4]): 1 gpu, 2 off, 3 grab, 4 zmark, 5 ring full, 6 norectraw, 7 texcoord range */
 static int rect_raw_ok(void) {
     if (!(gs.gpu_vtx_on && gs.gpu_ok && gs.gv4_on)) { rr_why[1]++; return 0; }
@@ -152,7 +154,7 @@ void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba) {
         if (!gs.off_active) gs.grab_dirty = 1; /* a fill draws rows the grab does not track (rect_y0 and rect_y1 are for texture rectangles): the next grab copies */
         return;
     }
-    rect_c[4]++; /* no CPU rectangle path: a refused rectangle is dropped and counted (rect log: drop) */
+    rect_c[4]++; rect_drop_total++; /* no CPU rectangle path: a refused rectangle is dropped and counted (rect log: drop) */
     return;
 }
 
@@ -254,7 +256,7 @@ void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s
     rect_c[1]++;
     rd_tex = 1;
     if (tex_raw_rect(x0, y0, x1, y1, s0, t0, s1, t1)) { fl_rect_done(); return; }
-    rect_c[4]++; /* no CPU rectangle path: a refused rectangle is dropped and counted (rect log: drop) */
+    rect_c[4]++; rect_drop_total++; /* no CPU rectangle path: a refused rectangle is dropped and counted (rect log: drop) */
     fl_rect_done();
 }
 
