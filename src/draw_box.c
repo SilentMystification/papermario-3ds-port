@@ -445,6 +445,13 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
             gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
         }
 
+#ifdef TARGET_3DS
+        { /* DIRECT D7: the preset combine word is recorded as a stream state op */
+            const Gfx* cw = defaultStyle != nullptr ? &gBoxCombineModes[defaultStyle->combineModeIndex + (primA != 255 ? 2 : 0)]
+                          : primA != 255 ? &customStyle->transparentCombineMode : &customStyle->opaqueCombineMode;
+            nd_gx_w(gMainGfxPos++, cw->words.w0, cw->words.w1);
+        }
+#else
         if (defaultStyle != nullptr) {
             Gfx* gfxPos = gMainGfxPos;
             *gfxPos = gBoxCombineModes[defaultStyle->combineModeIndex + (primA != 255 ? 2 : 0)];
@@ -458,6 +465,7 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
         }
 
         gMainGfxPos++;
+#endif
         gDPSetTextureFilter(gMainGfxPos++, G_TF_POINT);
 
         if (quads != nullptr) {

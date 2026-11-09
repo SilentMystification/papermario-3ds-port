@@ -7084,6 +7084,53 @@
       "reason": "Log and file only. Draw count equals the census batch count of the same run (cen f200 summary batches)."
     },
     {
+      "name": "ndref_mac00_det",
+      "status": "unverified",
+      "subject": "mac_00 (toad preset) field, det, frame 90 draw stream (ndref=90) and census; shot 90.",
+      "proves": "DIRECT: the draw stream of a mac_00 field frame for a base and head compare (nd_ref_dump.py), names the draw that differs.",
+      "debug": "preset=toad ndref=90 drawcensus=90 shots shotwin=90:1 loglevel=debug det",
+      "until": "ndref f90 done",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "ndref done",
+          "regex": "ndref f90 done"
+        }
+      ],
+      "reason": "DIRECT D9: the mac_00 row 19 mark (pause_spin_grab_det_w300) is in the live field frame; the draw stream names its draw."
+    },
+    {
+      "name": "ndref_fx65_det",
+      "status": "unverified",
+      "subject": "nok_11, det, fxtest of the first 15 effects of fx_direct_det (effect_65 last: its shot b at frame 1048), frame 1048 draw stream (ndref=1048) and census.",
+      "proves": "DIRECT: the effect_65 draw stream for a base and head compare (nd_ref_dump.py).",
+      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=13,32,44,50,52,61,62,71,82,83,84,85,88,92,95 ndref=1048 drawcensus=1048 shots loglevel=debug fixedseed fast fs1off det",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "ndref f1048 done",
+      "cap": 40,
+      "deadline": 30,
+      "first_marker": "warp: nok_11 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "ndref done",
+          "regex": "ndref f1048 done"
+        }
+      ],
+      "reason": "DIRECT D9: fx_direct_det shot 44 (effect_65 b) differs from the base."
+    },
+    {
       "name": "ndref_pause",
       "status": "unverified",
       "subject": "Pause status menu open, frame 250 draw stream and census.",

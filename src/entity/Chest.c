@@ -90,7 +90,6 @@ void entity_Chest_reset_camera(Entity* entity) {
 }
 
 void entity_Chest_setupGfx(s32 entityIndex) {
-    Gfx* gfxPos = gMainGfxPos;
     Entity* entity = get_entity_by_index(entityIndex);
     ChestData* data = entity->dataBuf.chest;
     Matrix4f sp18;
@@ -101,11 +100,10 @@ void entity_Chest_setupGfx(s32 entityIndex) {
     guMtxL2F(sp18, ENTITY_ADDR(entity, Mtx*, &Entity_Chest_LidMtx));
     guMtxCatF(sp58, sp18, sp18);
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
-    gSPMatrix(gfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     gfx = ENTITY_ADDR(entity, Gfx*, Entity_Chest_RenderLid);
-    gSPDisplayList(gfxPos++, gfx);
-    gSPPopMatrix(gfxPos++, G_MTX_MODELVIEW);
-    gMainGfxPos = gfxPos;
+    gSPDisplayList(gMainGfxPos++, gfx);
+    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 }
 
 void entity_Chest_check_opened(Entity* entity) {

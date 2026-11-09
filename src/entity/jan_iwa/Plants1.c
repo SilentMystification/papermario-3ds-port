@@ -29,7 +29,6 @@ BSS u16 FlowerGoalPositionX;
 void entity_SpinningFlower_setupGfx(s32 entityIndex) {
     Entity* entity = get_entity_by_index(entityIndex);
     SpinningFlowerData* data = entity->dataBuf.spinningFlower;
-    Gfx* gfxPos = gMainGfxPos;
     Matrix4f sp18;
     Matrix4f sp58;
     Matrix4f sp98;
@@ -44,11 +43,10 @@ void entity_SpinningFlower_setupGfx(s32 entityIndex) {
     guMtxCatF(sp58, sp18, sp18);
     guMtxF2L(sp18, &data->unk_30);
     gDisplayContext->matrixStack[gMatrixListPos] = data->unk_30;
-    gSPMatrix(gfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     gfx = ENTITY_ADDR(entity, Gfx*, D_0A000D18_E9D618);
-    gSPDisplayList(gfxPos++, gfx);
-    gSPPopMatrix(gfxPos++, G_MTX_MODELVIEW);
-    gMainGfxPos = gfxPos;
+    gSPDisplayList(gMainGfxPos++, gfx);
+    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 }
 
 void func_802BB000_E2D930(Entity* entity) {
@@ -150,7 +148,6 @@ void func_802BB34C_E2DC7C(void) {
 void entity_PinkFlowerLight_setupGfx(s32 entityIndex) {
     Entity* entity = get_entity_by_index(entityIndex);
     PinkFlowerData* data = entity->dataBuf.pinkFlower;
-    Gfx* gfxPos = gMainGfxPos;
     Matrix4f sp18;
     Matrix4f sp58;
     f32 sinAngle, cosAngle;
@@ -169,13 +166,12 @@ void entity_PinkFlowerLight_setupGfx(s32 entityIndex) {
     guMtxCatF(sp18, sp58, sp18);
     guTranslateF(sp58, entity->pos.x + 16.0f * sinAngle, entity->pos.y , entity->pos.z - 16.0f * cosAngle);
     guMtxCatF(sp18, sp58, sp18);
-    gDPSetCombineMode(gfxPos++, PM_CC_01, PM_CC_02);
-    gDPSetPrimColor(gfxPos++, 0, 0, 0, 0, 0, entity->alpha);
+    gDPSetCombineMode(gMainGfxPos++, PM_CC_01, PM_CC_02);
+    gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, entity->alpha);
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
-    gSPMatrix(gfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gSPDisplayList(gfxPos++, D_0A0013B8_E9C8B8);
-    gSPPopMatrix(gfxPos++, G_MTX_MODELVIEW);
-    gMainGfxPos = gfxPos;
+    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    gSPDisplayList(gMainGfxPos++, D_0A0013B8_E9C8B8);
+    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 }
 
 void entity_PinkFlower_idle(Entity* entity) {

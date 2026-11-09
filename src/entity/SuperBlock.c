@@ -111,7 +111,6 @@ s8 Entity_SuperBlock_PalData[] = {
 };
 
 void entity_SuperBlockContent_setupGfx(s32 entityIndex) {
-    Gfx* gfxPos = gMainGfxPos;
     Gfx* dlist;
     u8* palette;
     Entity* entity = get_entity_by_index(entityIndex);
@@ -136,50 +135,49 @@ void entity_SuperBlockContent_setupGfx(s32 entityIndex) {
     palette = ENTITY_ADDR(entity, u8*, Entity_SuperBlock_Palettes[Entity_SuperBlock_PalData[data->paletteArrOffset + 1]]);
     dlist = data->gfx2;
 
-    gDPPipeSync(gfxPos++);
+    gDPPipeSync(gMainGfxPos++);
     guRotateF(sp18, entity_SuperBlockContent_get_previous_yaw(data, 1), 0.0f, 1.0f, 0.0f);
     guMtxF2L(sp18, &data->unk_10);
     gDisplayContext->matrixStack[gMatrixListPos] = data->unk_10;
-    gSPMatrix(gfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gDPSetRenderMode(gfxPos++, G_RM_AA_ZB_TEX_EDGE, G_RM_AA_ZB_TEX_EDGE2);
-    gDPSetCombineMode(gfxPos++, G_CC_MODULATEIA, G_CC_MODULATEIA);
-    gDPLoadTLUT_pal16(gfxPos++, 0, palette);
-    gSPDisplayList(gfxPos++, dlist);
-    gSPPopMatrix(gfxPos++, G_MTX_MODELVIEW);
+    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    gDPSetRenderMode(gMainGfxPos++, G_RM_AA_ZB_TEX_EDGE, G_RM_AA_ZB_TEX_EDGE2);
+    gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIA, G_CC_MODULATEIA);
+    gDPLoadTLUT_pal16(gMainGfxPos++, 0, palette);
+    gSPDisplayList(gMainGfxPos++, dlist);
+    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 
     alpha = 120;
     if (entity->alpha < alpha) {
         alpha = entity->alpha;
     }
 
-    gDPPipeSync(gfxPos++);
+    gDPPipeSync(gMainGfxPos++);
     guRotateF(sp18, entity_SuperBlockContent_get_previous_yaw(data, 6), 0.0f, 1.0f, 0.0f);
     guMtxF2L(sp18, &data->unk_50);
     gDisplayContext->matrixStack[gMatrixListPos] = data->unk_50;
-    gSPMatrix(gfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gDPSetRenderMode(gfxPos++, AA_EN | Z_CMP | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA), AA_EN | Z_CMP | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA));
-    gDPSetCombineMode(gfxPos++, PM_CC_01, PM_CC_02);
-    gDPSetPrimColor(gfxPos++, 0, 0, 0, 0, 0, alpha);
-    gSPDisplayList(gfxPos++, dlist);
-    gSPPopMatrix(gfxPos++, G_MTX_MODELVIEW);
+    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    gDPSetRenderMode(gMainGfxPos++, AA_EN | Z_CMP | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA), AA_EN | Z_CMP | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA));
+    gDPSetCombineMode(gMainGfxPos++, PM_CC_01, PM_CC_02);
+    gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, alpha);
+    gSPDisplayList(gMainGfxPos++, dlist);
+    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 
     alpha = 80;
     if (entity->alpha < alpha) {
         alpha = entity->alpha;
     }
 
-    gDPPipeSync(gfxPos++);
+    gDPPipeSync(gMainGfxPos++);
     guRotateF(sp18, entity_SuperBlockContent_get_previous_yaw(data, 10), 0.0f, 1.0f, 0.0f);
     guMtxF2L(sp18, &data->unk_90);
     gDisplayContext->matrixStack[gMatrixListPos] = data->unk_90;
-    gSPMatrix(gfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gDPSetRenderMode(gfxPos++, AA_EN | Z_CMP | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA), AA_EN | Z_CMP | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA));
-    gDPSetCombineMode(gfxPos++, PM_CC_01, PM_CC_02);
-    gDPSetPrimColor(gfxPos++, 0, 0, 0, 0, 0, alpha);
-    gSPDisplayList(gfxPos++, dlist);
-    gSPPopMatrix(gfxPos++, G_MTX_MODELVIEW);
+    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    gDPSetRenderMode(gMainGfxPos++, AA_EN | Z_CMP | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA), AA_EN | Z_CMP | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA));
+    gDPSetCombineMode(gMainGfxPos++, PM_CC_01, PM_CC_02);
+    gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, alpha);
+    gSPDisplayList(gMainGfxPos++, dlist);
+    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 
-    gMainGfxPos = gfxPos;
 }
 
 void entity_SuperBlockContent_idle(Entity* entity) {
