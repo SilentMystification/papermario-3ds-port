@@ -12,6 +12,7 @@
 #include <sys/socket.h>
 
 #include "pm_port.h"
+#include "pm_thread.h"
 #include "pm_romload.h"
 #include "pm_logfmt.h"
 
@@ -1007,7 +1008,7 @@ unsigned pm_log_dropped(void) { return q_drop_total + q_dropped; }
 static int start_writer(int id, int core) {
     LightEvent_Clear(&ev_started);
     __atomic_store_n(&active_id, id, __ATOMIC_RELEASE);
-    writer_th = threadCreate(writer_main, (void*)(intptr_t)id, 32 * 1024, 0x3F, core, false);
+    writer_th = pm_thread_create(writer_main, (void*)(intptr_t)id, 32 * 1024, 0x3F, core, "log_writer");
     if (!writer_th) return 0;
     u64 t0 = svcGetSystemTick();
     int to = LightEvent_WaitTimeout(&ev_started, 1000000000LL);
@@ -1087,7 +1088,7 @@ int pm_step_timed(int slot, void (*fn)(void*), void* arg, unsigned ms) {
         s->made = 1;
         LightEvent_Init(&s->go, RESET_ONESHOT);
         LightEvent_Init(&s->done, RESET_ONESHOT);
-        s->th = threadCreate(step_main, s, 16 * 1024, 0x30, -2, false);
+        s->th = pm_thread_create(step_main, s, 16 * 1024, 0x30, -2, "log_step");
     }
     if (!s->th) return -1;
     s->fn = fn;
@@ -1252,7 +1253,7 @@ void pm_log_start(void) {
         return;
     }
     pm_log_d("log: writer thread on core %d, game thread on core %d", writer_core, (int)svcGetProcessorID());
-    sink_th = threadCreate(sink_main, NULL, 32 * 1024, 0x3F, writer_core, false);
+    sink_th = pm_thread_create(sink_main, NULL, 32 * 1024, 0x3F, writer_core, "log_sink");
     pm_log_d("log: sink thread %s on core %d", sink_th ? "created" : "NOT created", writer_core);
     __atomic_store_n(&writer_on, 1, __ATOMIC_RELEASE);
 }

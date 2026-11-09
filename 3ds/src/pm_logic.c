@@ -10,13 +10,13 @@
  * inside a step always finishes. */
 #include <3ds.h>
 #include "pm_port.h"
+#include "pm_thread.h"
 
 void pm_wq_set_logic(Thread t); /* nd_wq.c */
 int pm_wq_pump_one(void);
 void pm_wq_pump_blocked(void);
 void pm_wq_wait_walker(long long ns);
 void pm_wq_kick_walker(void);
-void pm_crash_install_here(void); /* pm_main.c */
 void pm_fpscr_setup(const char* who);
 void pm_stack_register(int id, const char* name, unsigned size);
 unsigned pm_stack_used(int id, unsigned* size);
@@ -52,7 +52,6 @@ static void lg_exec(const LgCmd* c) {
 
 static void lg_main(void* arg) {
     (void)arg;
-    pm_crash_install_here();
     pm_fpscr_setup("logic"); /* the N64 FPU mode (flush to zero, nearest) is per thread */
     pm_stack_register(3, "logic", LG_STACK);
     lg_core = (int)svcGetProcessorID();
@@ -90,7 +89,7 @@ void pm_lg_start(void) {
     s32 prio = 0x30;
     svcGetThreadPriority(&prio, CUR_THREAD_HANDLE);
     prio += 2; /* audio control = game priority, mixer + 1 */
-    Thread t = threadCreate(lg_main, NULL, LG_STACK, prio, core, false);
+    Thread t = pm_thread_create(lg_main, NULL, LG_STACK, prio, core, "logic");
     if (!t) { pm_log_w("logic: thread on core %d not created, the steps run on the game thread", core); return; }
     pm_wq_set_logic(t);
     lg_th = t;
