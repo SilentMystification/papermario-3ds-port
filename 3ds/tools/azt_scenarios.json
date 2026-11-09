@@ -5345,17 +5345,17 @@
       "status": "unverified",
       "subject": "Save slot 0 loaded (loadslot=0), then the Select menu warp (pm_warp_live) to kmr_02 entry 0 at scene frame 180. Log only: the warpstat lines show items, badges, coins and story before and after the live warp.",
       "proves": "A live warp changes only the map and entry. Items, badges, coins and story progress before and after the live warp are equal (WARPFIX).",
-      "debug": "warp=kmr_20:4 loadslot=0 livewarp=180:kmr_02:0 warpitems loglevel=debug",
+      "debug": "warp=random loadslot=0 livewarp=180:kmr_02:0 warpitems loglevel=debug",
       "until": "warpstat after live",
       "cap": 45,
       "deadline": 35,
-      "first_marker": "warp: kmr_20 entry 4",
+      "first_marker": "warp: random seed",
       "expects": "warp",
       "needs_picture": false,
       "expected_events": [
         {
           "name": "map",
-          "regex": "warp: kmr_20 entry 4"
+          "regex": "warp: \\S+ entry \\d+ \\(area"
         },
         {
           "name": "before live",
@@ -5523,9 +5523,9 @@
       "name": "warpfix_boot_save",
       "subject": "Boot warp without loadslot, then padscript save_0. The save write is blocked and the flash hash is unchanged.",
       "proves": "A boot warp (new-file state) writes no save: saving disabled by boot warp (WARPFIX2 path 3).",
-      "debug": "warp=kmr_20:4 padscript=wait150,save_0 loglevel=debug",
+      "debug": "warp=random padscript=wait150,save_0 loglevel=debug",
       "until": "warp: save blocked",
-      "first_marker": "warp: kmr_20 entry 4",
+      "first_marker": "warp: random seed",
       "expected_events": [
         {
           "name": "block line",
@@ -5547,9 +5547,9 @@
       "name": "warpfix_fswarp_save",
       "subject": "Loaded save 0, then the file select warp (fswarp, pm_warp_now) at frame 120, then padscript save_0. The save write is blocked.",
       "proves": "The file select warp writes no slot: saving disabled by file select or title warp. before and after counts logged.",
-      "debug": "warp=kmr_20:4 loadslot=0 warpitems fswarp=120:kmr_02:0 padscript=wait300,save_0 loglevel=debug",
+      "debug": "warp=random loadslot=0 warpitems fswarp=120:kmr_02:0 padscript=wait300,save_0 loglevel=debug",
       "until": "warp: save blocked",
-      "first_marker": "warp: kmr_20 entry 4",
+      "first_marker": "warp: random seed",
       "expected_events": [
         {
           "name": "fs warp after",
@@ -6153,9 +6153,9 @@
     {
       "name": "savefile_check",
       "status": "unverified",
-      "subject": "A savetool file (sdmc:/3ds/PaperMario/savetool.sav: HP 7/13, level 4, 777 coins, story 3) loaded by savefile= with warp=mac_01:0. The log shows the load, the values in RAM, and the save block.",
+      "subject": "A savetool file (sdmc:/3ds/PaperMario/savetool.sav: HP 7/13, level 4, 777 coins, story 3) loaded by savefile= with warp=random (the start map is not the subject). The log shows the load, the values in RAM, and the save block.",
       "proves": "savefile= reads a SaveData file, the checksum passes, fio_deserialize_state fills the player data and the story, and the warp keeps the loaded values and blocks saves.",
-      "debug": "savefile=sdmc:/3ds/PaperMario/savetool.sav warp=mac_01:0 loglevel=debug",
+      "debug": "savefile=sdmc:/3ds/PaperMario/savetool.sav warp=random loglevel=debug",
       "until": "warp: \\S+ entry \\d+",
       "cap": 60,
       "deadline": 40,
@@ -6377,6 +6377,30 @@
         }
       ],
       "reason": "Log and file only. Stereo: both eyes of the frame are in one file, so the draw count is the sum of both eyes."
+    },
+    {
+      "name": "randwarp_seed",
+      "status": "unverified",
+      "subject": "RANDWARP: warp=random:7 boots to the spot the seed picks from pm_tour_spots (seed % count). Shots at frames 200 to 205 show Mario on that map; the seed line names it.",
+      "proves": "warp=random:<seed> picks one spot, logs the seed line (repeatable with the same seed) and warps there with the placed position.",
+      "debug": "warp=random:7 shots shotwin=200:6 loglevel=debug",
+      "until": "shot \\d+ frame 205\\b",
+      "cap": 45,
+      "deadline": 35,
+      "first_marker": "warp: random seed 7 ->",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "seed line",
+          "regex": "warp: random seed 7 -> \\S+:\\d+@-?[0-9.]+:-?[0-9.]+:-?[0-9.]+$"
+        },
+        {
+          "name": "warp line",
+          "regex": "warp: \\S+ entry \\d+ \\(area \\d+ map \\d+\\)"
+        }
+      ],
+      "reason": "RANDWARP picture. Until is the shot line at frame 205; the seed line is the map record. Run twice with the same seed for the repeat check."
     },
     {
       "name": "spot_mac01_pic",
