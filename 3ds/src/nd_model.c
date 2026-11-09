@@ -428,6 +428,7 @@ const uint32_t* nd_mc_keyw(const NdMEnt* e) { return mc_keyw[e - mc_tab]; }
 static unsigned mc_n, mc_pool_n, mc_clears_n;
 unsigned nd_handle_gen(void) { return hd_gen; }
 unsigned nd_mc_clears(void) { return mc_clears_n; }
+void nd_mc_fill(unsigned* ent, unsigned* pool) { *ent = mc_n; *pool = mc_pool_n; } /* DOORHITCH: the live entries and pool draws (xfer3) */
 /* S3N-7: the key words the cache compares: the record words (0 to 27), the nd_st base bits (28 to 32), and the handle and dlc generations (53, 54: a map load reuses the geometry addresses). The walker words (33 to 91) stay in the entry
  * for the ndmcache diagnostics (pm_gpu.c ndc_cmp): the words that a diff depends on are added here, with the reason in agent_s3n.md. */
 static const uint8_t ndmc_cmp[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 38, 53, 54 }; /* S3L-3: 38 = the R13 words (hash) */

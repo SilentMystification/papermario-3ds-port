@@ -11465,6 +11465,101 @@
       "reason": "Row GAMEOVER (user: game over flickers and lags, 60 fps on). Shot window after the letters start to drop; cap 30 s (boot, warp, 90 frames)."
     },
     {
+      "name": "xfer_door_kmr20",
+      "status": "unverified",
+      "reason": "DOORHITCH measure and the before/after quantity. A real map change kmr_20 -> kmr_20 (the door's first entry follows a map load, as in play), then two doors of about 130 and 100 frames each with their walks: about 30 s after the warp. Cap 45 s.",
+      "subject": "Mario's house door on kmr_20 (preset yard: entry 4, the pipe; padscript goto_kmr_20:4 loads the map again through a map change, the xfer map line n1): after the pipe Mario is placed east of the door (300 30 -76; door collider o246 at x 261, z -99 to -54), walks west into the door and presses A (room enter: the house front opens), walks a step in, back to the door and presses A (room exit), then the same again. det. One xfer line per door.",
+      "proves": "DOORHITCH: xfer, xfer2, xfer3 (longest step by stage: model misses, refused hits, texture and dlc ms, ROM reads, prof sample; refused hits, trims, cache fill, walk drain ms) and xferk (first differing key words) of the enter and exit, first and second time.",
+      "debug": "preset=yard padscript=wait60,goto_kmr_20:4,wait300,pos_300:30:-76,go_240_-76_100,A,wait260,go_200_-76_20,go_285_-76_80,A,wait200,go_240_-76_100,A,wait260,go_200_-76_20,go_285_-76_80,A,wait300 profdisk=1 xferdiag loglevel=debug det",
+      "until": "xfer3 door n5\\b",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "door enter line",
+          "regex": "xfer door \\S+:out->\\S+:in f\\d+"
+        },
+        {
+          "name": "door exit line",
+          "regex": "xfer door \\S+:in->\\S+:out f\\d+"
+        }
+      ]
+    },
+    {
+      "name": "xfer_door_kmr20_shots",
+      "status": "unverified",
+      "reason": "DOORHITCH byte gate: the first room entry (map change, then the door) with a shot per frame over the shroud ramp and the first frames at full shroud (the sky goes black at f302 in the det run). Cap 40 s (until about 18 s after the start).",
+      "subject": "Mario's house door on kmr_20, first entry after a map change (as xfer_door_kmr20), det, shots of frames 290 to 305: the house front opens, the outside darkens step by step to black and the interior shows.",
+      "proves": "DOORHITCH: the black sky as a GPU mix (background.c bgMix 2) and the model key change draw the same bytes as the base build over the shroud ramp and the full shroud frames.",
+      "debug": "preset=yard padscript=wait60,goto_kmr_20:4,wait300,pos_300:30:-76,go_240_-76_100,A,wait260 shots shotwin=290:16 loglevel=debug det",
+      "until": "shot \\d+ frame 305\\b",
+      "cap": 40,
+      "deadline": 30,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 305\\b"
+        }
+      ]
+    },
+    {
+      "name": "xfer_door_kmr20_ndm",
+      "status": "unverified",
+      "reason": "DOORHITCH gate: ndmcheck over the first kmr_20 door (boot in the yard, enter and exit). Long measurement: ndmcheck draws every model record twice and compares, so the yard runs at about 5 steps per second in Azahar (a 45 s run did not reach f300); the f300 lines need about 70 s. Cap 90 s.",
+      "subject": "Mario's house door on kmr_20 (preset yard, no map change: enter and exit) with the ndmcheck switch: every model record is drawn natively and by the walker and compared, and cached entries are compared with fresh builds (ndmcache).",
+      "proves": "DOORHITCH: the model key without the geometry bits the render mode list writes (pm_gpu_model_key word 32) gives no ndmcheck or ndmcache diff in the doors.",
+      "debug": "preset=yard padscript=wait140,pos_300:30:-76,go_240_-76_100,A,wait260,go_200_-76_20,go_285_-76_80,A,wait200 prof=4 ndmcheck loglevel=debug",
+      "until": "ndmcache f300 ",
+      "cap": 90,
+      "deadline": 30,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "ndmcache",
+          "regex": "ndmcache f300 "
+        }
+      ]
+    },
+    {
+      "name": "nok11_det_ref",
+      "status": "unverified",
+      "reason": "DOORHITCH: the walker reference (nomodelnat) of nok11_det, to decide which build draws the nok_11 water as the walker does (model cache hits of unit 1 entries).",
+      "subject": "nok11_det with nomodelnat: every model record draws through the walker (no native model draw, no model cache). Shots as nok11_det.",
+      "proves": "The walker picture of nok11_det for a byte compare against nok11_det of a build.",
+      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 shots loglevel=debug grablog offdump=410 fixedseed fast fs1off det nomodelnat",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "shot 16 frame \\d+",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: nok_11 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: nok_11 entry 0"
+        },
+        {
+          "name": "spawn",
+          "regex": "fxtest: spawn 89 water_splash"
+        },
+        {
+          "name": "shot a",
+          "regex": "fxtest: shot 1 effect 89 water_splash"
+        }
+      ]
+    },
+    {
       "name": "xfer_door_mac01",
       "status": "unverified",
       "reason": "MAPX-1 measure and the MAPX-2 gate (door key churn). Walk 60 to 120 frames, door 60, tail 30, twice: about 15 s after the warp. Cap 40 s.",

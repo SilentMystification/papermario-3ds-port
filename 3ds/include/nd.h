@@ -341,7 +341,6 @@ int nd_tex_unit(int id, NdUnit* u);
 /* S3N-6: nd_tex_unit with a slot hint (the slot and its generation, pm_tex.c pm_tex_slot_gen): a valid hint gives the words without the content search. hs < 0: none. */
 int nd_tex_unit_hint(int id, int* hs, unsigned* hg, NdUnit* u);
 unsigned pm_tex_slot_gen(int i); /* S3N-6 (pm_tex.c): the generation of a slot */
-int pm_tex_slot_unit1(int i, unsigned gen, NdUnit* u); /* TIK19 (pm_tex.c): the unit 1 words of a live slot of that generation for a model cache hit (0: rebuild) */
 typedef struct NdMCtx {
     int zmark; float zn;       /* S5-2 (a): walker r_zmark (the zmark pass: pass 1 model depth and stencil mark, pass 2 constant depth zn * w) and its depth zn */
     int aux_ok;                /* S3L-3: the R13 words are decoded into this context (nd_aux_state, base_oh, comb, tss); 0 with R13 words: fallback */
