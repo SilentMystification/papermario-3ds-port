@@ -55,6 +55,7 @@ static __attribute__((noinline)) void rec_dl(const Gfx* l) {
         if (pm_ph_cen) { os_dlc_hit(); mr0_dlc_hit = 1; }
         return;
     }
+    if (__builtin_expect(nd_lc_frame != -1, 0)) nd_lstcen(l, 0u);
     nd_list_run(l);
 }
 /* S3G-2: the words after a record: n words run in place (D10b: a flat range on the op executor). */

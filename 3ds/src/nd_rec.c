@@ -178,6 +178,34 @@ void nd_rec_state(uint32_t w0, uint32_t w1) {
  * them). A texture rectangle (its op word and the two RDPHALF words, written by one macro) is held until its last word and recorded as
  * NDC_TEXRECT. Any other packet (a local list) and the branch form of G_DL keep the word; G_ENDDL at the top level is dropped (NDC_END ends a
  * task and a custom gfx range). */
+/* DIRECT D11a: a push G_DL whose target is a static state list (in the program image, not a map shape list; to its G_ENDDL at most 64 ops,
+ * each a state op of the executor: no list, vertex, triangle, rectangle, image or record op) is recorded in line: G_PM_LST and the list's
+ * ops without the RDP syncs. The replay ran such a list on the op executor (walk_call: ent_gdl refuses a list without triangles, dlc_try a
+ * list outside the map shapes; nd_ops_run with the sync state kept); G_PM_LST carries its list start (gv_epoch, ent_skipgen). The list is
+ * read here on the recorder side, the replay reads no list. Any other target keeps its G_DL. */
+extern char __end__[];
+extern u8 gMapShapeData[];
+static const uint8_t st_ok[256] = {
+    [G_NOOP] = 1, [G_SETOTHERMODE_H] = 1, [G_SETOTHERMODE_L] = 1, [G_GEOMETRYMODE] = 1, [G_TEXTURE] = 1, [G_SETCOMBINE] = 1,
+    [G_SETPRIMCOLOR] = 1, [G_SETENVCOLOR] = 1, [G_SETFOGCOLOR] = 1, [G_SETBLENDCOLOR] = 1, [G_SETFILLCOLOR] = 1, [G_SETTIMG] = 1,
+    [G_SETTILE] = 1, [G_LOADBLOCK] = 1, [G_LOADTILE] = 1, [G_LOADTLUT] = 1, [G_SETTILESIZE] = 1, [G_SETSCISSOR] = 1, [G_SETPRIMDEPTH] = 1,
+    [G_SETCONVERT] = 1, [G_SETKEYR] = 1, [G_SETKEYGB] = 1, [G_MOVEWORD] = 1, [G_MOVEMEM] = 1, [G_MTX] = 1, [G_POPMTX] = 1,
+    [G_RDPLOADSYNC] = 2, [G_RDPPIPESYNC] = 2, [G_RDPTILESYNC] = 2, [G_RDPFULLSYNC] = 2, [G_SPNOOP] = 2,
+};
+static int rec_inline(uint32_t a) {
+    if (a < 0x00100000u || a >= (uint32_t)(uintptr_t)__end__ || (a & 7u) || a - (uint32_t)(uintptr_t)gMapShapeData < 0x40000u) return 0;
+    const Gfx* l = (const Gfx*)(uintptr_t)a;
+    unsigned n = 0;
+    for (;; n++) {
+        if (n == 64u) return 0;
+        const unsigned op = l[n].words.w0 >> 24;
+        if (op == G_ENDDL) break;
+        if (!st_ok[op]) return 0;
+    }
+    nd_rec_state((uint32_t)G_PM_LST << 24, 0);
+    for (unsigned i = 0; i < n; i++) if (st_ok[l[i].words.w0 >> 24] == 1) nd_rec_state(l[i].words.w0, l[i].words.w1);
+    return 1;
+}
 static uint32_t tr_w[3];
 static unsigned tr_n; /* the words of the texture rectangle being recorded */
 static __attribute__((cold, noinline)) void tr_bad(uint32_t w0) {
@@ -197,6 +225,7 @@ void nd_gx_w(Gfx* g, uint32_t w0, uint32_t w1) {
     }
     if (op == G_TEXRECT || op == G_TEXRECTFLIP) { tr_w[0] = w0; tr_w[1] = w1; tr_n = 1; return; }
     if (op == G_RDPPIPESYNC || op == G_RDPTILESYNC || op == G_RDPLOADSYNC || op == G_RDPFULLSYNC || op == G_SPNOOP) return;
+    if (op == G_DL && rec_inline(w1)) return;
     nd_rec_state(w0, w1);
 }
 const uint32_t* nd_rec_pos(void) { return wp; }
@@ -255,6 +284,7 @@ static __attribute__((cold, noinline)) void list_bad(const Gfx* g, unsigned n) {
 }
 void nd_rec_list(const void* l) {
     const Gfx* g = (const Gfx*)l;
+    if (__builtin_expect(nd_lc_frame != -1, 0)) nd_lstcen(l, 5u);
     for (unsigned n = 0; n < 1024u; n++, g++) {
         const u32 w0 = g->words.w0, w1 = g->words.w1;
         const unsigned op = w0 >> 24;
@@ -268,7 +298,7 @@ void nd_rec_list(const void* l) {
                 g = (const Gfx*)(uintptr_t)w1 - 1;
                 break;
             }
-            nd_rec_state(w0, w1);
+            if (!rec_inline(w1)) nd_rec_state(w0, w1);
             break;
         case G_PM_REC: case G_PM_SPR: case G_PM_ENT: list_bad(g, n); return;
         default: nd_rec_state(w0, w1); break;

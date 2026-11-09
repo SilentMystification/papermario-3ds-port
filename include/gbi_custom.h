@@ -230,6 +230,10 @@
  * full-height copy per frame (nd_target.c grab_cur). The walker reads it in nd_walk.c and calls nd_native_rec (nd_target.c). */
 #define G_PM_ND 0x12
 #define G_PM_ND_SPLASH 1
+
+/* DIRECT D11a: G_PM_LST, the start of a static state list recorded in line (nd_rec.c rec_inline). The replay runs it as the list start of the
+ * G_DL it replaces (nd_walk.c: the state epoch, the entity skip mark consumed). w1 unused. */
+#define G_PM_LST 0x13
 #define gPmNdSplash(pkt, on) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = ((u32)G_PM_ND << 24) | ((u32)G_PM_ND_SPLASH << 16) | ((on) ? 1u : 0u); _g->words.w1 = 0; }
 
 /* CORE2-3: a camera viewport (Camera.vp, Camera.vpAlt) is rewritten in place by the game. A list takes a copy made at list build

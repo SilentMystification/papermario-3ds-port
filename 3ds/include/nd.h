@@ -474,6 +474,7 @@ unsigned nd_ent_strip(const uint32_t* l, uint32_t* out);
 
 /* The walker entry points (were pm_gbi.h, S10-1): nd_walk.c, nd_cen.c and nd_mtx_set.c define them. */
 void pm_gbi_init(void);
+extern int nd_lc_frame; void nd_lstcen(const void* l, unsigned kind); /* DIRECT D11 lstcen debug tool (nd_walk.c) */
 void nd_list_run(const void* l); /* DIRECT D10c: a list to its G_ENDDL on the op executor (a list start: full sync) */
 void nd_ops_run(const void* l, unsigned n, int keep); /* DIRECT D10b: n ops of a flat range on the op executor (keep: no full sync at its start) */
 void pm_gbi_fallback(void);
