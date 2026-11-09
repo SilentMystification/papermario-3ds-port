@@ -453,6 +453,22 @@
       "gates": []
     },
     {
+      "name": "pause_thr_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "PAUSEC: threaded pause (logic thread on). mac_01 pos 0 0 200, START opens and closes the pause three times; shots at frames 360 to 375 (third open). Gate: no CRASH line, the shot shows the pause menu over the filtered field. A person reads the shot.",
+      "scenario": "pause_thr_pic",
+      "cap": 45,
+      "until": "shot \\d+ frame 36[0-9]\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "pause"
+      ],
+      "gates": []
+    },
+    {
       "name": "spot_mac01_pic",
       "kind": "azahar_pic",
       "speed": "normal",

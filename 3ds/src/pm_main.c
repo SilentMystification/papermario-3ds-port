@@ -183,11 +183,25 @@ int pm_is_cur_cfb(const void* p) { const void* c = pm_walk_cfb; return c && (in_
  * from ROM data hold big-endian bytes. pm_tex reads these two kinds differently. */
 extern unsigned short pm_wide_side_pause[2][40 * 240]; /* PT56 */
 int pm_fb_native(const void* p) { return pm_is_cfb(p) || (nuGfxZBuffer && in_buf(p, nuGfxZBuffer)) || ((const unsigned short*)p >= &pm_wide_side_pause[0][0] && (const unsigned short*)p < &pm_wide_side_pause[0][0] + 2 * 40 * 240); }
-/* D03: the z-buffer memory the pause code saves the last frame into. Allocated when first needed. */
+/* PAUSEC: the saved picture (150 KB) is reserved once at boot, after the ROM is in, when the heap is whole. On the O3DS XL the commit is
+ * full after the map loads (crash log: mem heap sbrk-used 26868 of 29512 KB, commit 65536 of 65536), so a first allocation at the pause
+ * can fail there. A failed reservation logs an error; pm_zbuf_need retries at the pause, and the filter is skipped if it still fails. */
+void pm_zbuf_reserve(void) {
+    if (nuGfxZBuffer) return;
+    nuGfxZBuffer = (unsigned short*)malloc(CFB_PIXELS * 2);
+    if (nuGfxZBuffer) pm_log("D03: z-buffer image reserved at boot, %d KB", CFB_PIXELS * 2 / 1024);
+    else pm_log_e("D03: no memory for the %d KB z-buffer image at boot (the pause draws over the live frame)", CFB_PIXELS * 2 / 1024);
+}
+/* D03: the z-buffer memory the pause code saves the last frame into. Allocated at boot (pm_zbuf_reserve) or when first needed. */
+/* PAUSEC: the logic thread may need the image before the walk that would allocate it (the pause filter, the darkness overlay). It then
+ * waits for the walker to be idle, so the allocation and the walker's own call (img_role) never race. A failed allocation logs once; the
+ * caller sees nuGfxZBuffer NULL and skips the picture. */
 void pm_zbuf_need(void) {
     if (!nuGfxZBuffer) {
-        nuGfxZBuffer = (unsigned short*)malloc(CFB_PIXELS * 2);
-        if (!nuGfxZBuffer) pm_log_e("D03: no memory for the %d KB z-buffer image", CFB_PIXELS * 2 / 1024);
+        static int fail_logged;
+        if (pm_wq_on_logic()) pm_walk_drain("zbuf");
+        if (!nuGfxZBuffer) nuGfxZBuffer = (unsigned short*)malloc(CFB_PIXELS * 2);
+        if (!nuGfxZBuffer) { if (!fail_logged) { fail_logged = 1; pm_log_e("D03: no memory for the %d KB z-buffer image", CFB_PIXELS * 2 / 1024); } }
         else pm_log("D03: z-buffer image allocated, %d KB", CFB_PIXELS * 2 / 1024);
     }
     if (nuGfxZBuffer) pm_tex_invalidate(nuGfxZBuffer, CFB_PIXELS * 2);
@@ -801,6 +815,7 @@ static void game_thread(void* arg) {
     pm_options_prof_boot(); /* PROFROW: the launch word or the saved Profiling row */
     if (!pm_rom_init()) return; /* the bottom screen showed the reason */
     pm_mem_log("boot");
+    pm_zbuf_reserve(); /* PAUSEC: the pause picture, while the heap is whole (after the ROM, so the ROM check is unchanged) */
     pm_game_bind();
     pm_log("boot_main");
     boot_main(NULL);
