@@ -9337,7 +9337,7 @@
       "status": "verified",
       "subject": "BTRANS walk-in (Goomba, kmr_09, stick right). Shots every 4 frames from 116 to 272: the star wipe starts at frame 116 (caplog wipe state) and the battle starts at frame 156 (run 8081) or 235 (run 7990); the battle frame varies by run.",
       "proves": "Capture path per SETTIMG call (gpu2, cpu, skip) with split state and the star wipe state (wipe = state*1000 + fade). cpu-after-split must be 0.",
-      "debug": "warp=kmr_09:0 story=ch0_toad_town padscript=right*200 shots shotwin=116:160 caplog loglevel=debug",
+      "debug": "warp=kmr_09:0 story=ch0_toad_town padscript=right*200 shots shotwin=116:160 caplog profdisk=1 loglevel=debug",
       "until": "shot \\d+ frame 27\\d\\b",
       "cap": 45,
       "deadline": 45,
@@ -9401,7 +9401,7 @@
       "status": "unverified",
       "subject": "BTRANS standing encounter (encwarp 120, kmr_09), interp on. Star wipe shots from the pre-battle start.",
       "proves": "Capture path per SETTIMG call (gpu2, cpu, skip) with split state and the star wipe state (wipe = state*1000 + fade). cpu-after-split must be 0.",
-      "debug": "warp=kmr_09:0 story=ch0_toad_town encwarp=120 shots caplog fps60 loglevel=debug",
+      "debug": "warp=kmr_09:0 story=ch0_toad_town encwarp=120 shots caplog fps60 profdisk=1 loglevel=debug",
       "until": "encwarp: window end",
       "cap": 45,
       "deadline": 45,
@@ -11380,6 +11380,34 @@
         }
       ],
       "reason": "MAPX-3 gate. The map load is at about frame 190 (det): shots 196 to 211 hold the covered frames and the first fade-in frames. Cap 35 s."
+    },
+    {
+      "name": "xfer_battle_enc",
+      "status": "unverified",
+      "reason": "BTLWIPE F1 measure and the gate of each step. Boot about 8 s, encwarp at frame 120, wipe about 40 steps, load, tail 30 steps. Cap 30 s.",
+      "subject": "kmr_09 entry 0, ch0_toad_town; encwarp=120 starts the pre-battle state (star wipe) for the world enemy; cold boot (empty sample decode cache). The xfer battle lines of kmr_09->btl:<id>.",
+      "proves": "BTLWIPE F1: xfer, xfer2 and xfer3 battle lines (wipe steps, song load, bank loads, decodes, walk drains, capture path cpu count).",
+      "debug": "warp=kmr_09:0 story=ch0_toad_town encwarp=120 profdisk=1 loglevel=debug",
+      "until": "xfer battle \\S+",
+      "cap": 30,
+      "deadline": 30,
+      "first_marker": "warp: kmr_09 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "pre-battle entered",
+          "regex": "encwarp: pre-battle entered"
+        },
+        {
+          "name": "battle line",
+          "regex": "xfer battle kmr_09->btl:\\w+ f\\d+ max"
+        },
+        {
+          "name": "xfer3 line",
+          "regex": "xfer3 battle wmax"
+        }
+      ]
     },
     {
       "name": "magi_hit",

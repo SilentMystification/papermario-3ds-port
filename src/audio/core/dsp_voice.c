@@ -246,3 +246,107 @@ void au_dsp_block(void) {
     }
     pm_dspa_block_done(nv, starts, stops, ends, 0);
 }
+
+/* BTLWIPE F4: the samples a song can start, for the pre-decode (pm_prefetch.c thread, read only). A static scan of the BGM file (raw big-endian
+ * bytes in the resident ROM image): every phrase of its compositions, every track of a phrase, each track stream read like
+ * au_bgm_player_update_playing reads it (delays, notes, commands with SeqCmdArgCounts arguments), the Detour and Branch targets too. The
+ * instruments it can select: UseInstrument (F5: the BGM instrument table below 0x80, the global PRG table above), OverridePatch (E8), and the
+ * drums its drum track notes name (PER below pitch 72, the BGM drum table above). Each resolves through bankSets like au_get_instrument; the
+ * aux bank sets (0 and 7) are skipped (the song load replaces them). A sample is built as the voice start builds it (au_dsp_block), so the
+ * cache key and layout are the same. A misread byte costs one extra decode at most: every offset and index is bounded. Returns the count. */
+extern s8 SeqCmdArgCounts[];
+static unsigned be16(const u8* p) { return ((unsigned)p[0] << 8) | p[1]; }
+typedef struct { AuGlobals* g; const u8* b; unsigned len; DspaSample* out; int n, max; } SongScan;
+static void song_add(SongScan* sc, unsigned bankPatch) {
+    AuGlobals* g = sc->g;
+    unsigned bank = bankPatch >> 8, set = (bank & 0x70) >> 4;
+    if (sc->n >= sc->max || set == BANK_SET_IDX_0 || set == BANK_SET_IDX_7 || !g->bankSets[set]) return;
+    Instrument* ins = (*g->bankSets[set])[bankPatch & 0xFF];
+    if (!ins || ins->type != AL_ADPCM_WAVE) return;
+    unsigned key = (unsigned)(uintptr_t)ins->wavData;
+    for (int k = 0; k < sc->n; k++) if (sc->out[k].key == key) return;
+    DspaSample* s = &sc->out[sc->n];
+    s->key = key;
+    s->bytes = ins->wavDataLength;
+    s->rom = pm_rom_ptr(s->key, s->bytes);
+    s->book = ins->predictor;
+    s->bookBytes = ins->codebookSize;
+    s->lstate = (const short*)ins->loopState;
+    s->loopStart = ins->loopStart; s->loopEnd = ins->loopEnd; s->loopCount = ins->loopCount;
+    if (s->rom) sc->n++;
+}
+static void song_use(SongScan* sc, unsigned idx) { /* F5 UseInstrument */
+    const u8* b = sc->b;
+    unsigned iOff = be16(b + 0x20) << 2, iCnt = be16(b + 0x22);
+    if (idx < BGM_MAX_INSTRUMNETS) {
+        if (iOff && idx < iCnt && iOff + 8 * idx + 2 <= sc->len) song_add(sc, be16(b + iOff + 8 * idx));
+        else song_add(sc, sc->g->defaultPRGEntry.bankPatch);
+    } else if (idx - BGM_MAX_INSTRUMNETS < PRG_MAX_COUNT && sc->g->dataPRG) song_add(sc, sc->g->dataPRG[idx - BGM_MAX_INSTRUMNETS].bankPatch);
+}
+static void song_drum(SongScan* sc, unsigned pitch) {
+    const u8* b = sc->b;
+    unsigned dOff = be16(b + 0x1C) << 2, dCnt = be16(b + 0x1E);
+    if (pitch < 72) { if (sc->g->dataPER) song_add(sc, sc->g->dataPER->drums[pitch].bankPatch); }
+    else if (dOff && pitch - 72 < dCnt && dOff + 12 * (pitch - 72) + 2 <= sc->len) song_add(sc, be16(b + dOff + 12 * (pitch - 72)));
+}
+#define SS_Q 48
+int au_song_samples(s32 songID, DspaSample* out, int max) {
+    AuGlobals* g = gSoundGlobals;
+    SBNFileEntry fe;
+    if (!g || songID < 0 || songID >= g->songListLength) return 0;
+    if (au_fetch_SBN_file(g->songList[songID].bgmFileIndex, AU_FMT_BGM, &fe) != AU_RESULT_OK) return 0;
+    SongScan sc = { g, NULL, fe.data & 0xFFFFFF, out, 0, max };
+    const u8* b = sc.b = pm_rom_ptr((unsigned)fe.offset, sc.len);
+    if (!b || sc.len < 0x24) return 0;
+    unsigned qo[SS_Q], ql[SS_Q], qd[SS_Q], nq = 0; /* streams to read: offset in the file, byte limit (0 none), drum track */
+    for (unsigned c = 0; c < 4; c++) { /* compositions: PLAY_PHRASE commands (top nibble 1) until COMP_END */
+        unsigned co = be16(b + 0x14 + 2 * c) << 2;
+        if (!co) continue;
+        for (unsigned p = co; p + 4 <= sc.len && p < co + 4096u; p += 4) {
+            unsigned cmd = (unsigned)be16(b + p) << 16 | be16(b + p + 2);
+            if (cmd == BGM_COMP_END) break;
+            if ((cmd >> 12) != (BGM_COMP_PLAY_PHRASE << 16)) continue;
+            unsigned ph = co + ((cmd & 0xFFFF) << 2);
+            for (unsigned t = 0; t < 16 && ph + 4 * t + 4 <= sc.len; t++) {
+                unsigned ti = (unsigned)be16(b + ph + 4 * t) << 16 | be16(b + ph + 4 * t + 2), to = ti >> 16;
+                if (!to || (ti & 0x100)) continue;
+                unsigned so = ph + to, k;
+                for (k = 0; k < nq && qo[k] != so; k++) {}
+                if (k == nq && nq < SS_Q) { qo[nq] = so; ql[nq] = 0; qd[nq] = (ti >> 7) & 1; nq++; }
+            }
+        }
+    }
+    for (unsigned q = 0; q < nq; q++) {
+        unsigned p = qo[q], end = ql[q] ? qo[q] + ql[q] : sc.len, drum = qd[q];
+        if (end > sc.len) end = sc.len;
+        for (unsigned steps = 0; p < end && steps < 8192u; steps++) {
+            unsigned op = b[p++];
+            if (op < 0x80) {
+                if (op == 0) break;
+                if (op >= 0x78) p++;
+                continue;
+            }
+            if (op < 0xD4) { /* note: velocity, length (two bytes from 0xC0) */
+                if (drum) song_drum(&sc, op & 0x7F);
+                p++;
+                if (p < end && b[p] >= 0xC0) p++;
+                p++;
+                continue;
+            }
+            if (op < 0xE0) break; /* not an opcode the player reads */
+            unsigned na = (unsigned)SeqCmdArgCounts[op - 0xE0];
+            if (p + na > end) break;
+            if (op == 0xF5) song_use(&sc, b[p]);
+            else if (op == 0xE8) song_add(&sc, (unsigned)b[p] << 8 | b[p + 1]);
+            else if ((op == 0xFE || op == 0xFC) && nq < SS_Q) {
+                unsigned to = be16(b + p);
+                if (op == 0xFE) { qo[nq] = to; ql[nq] = b[p + 2]; qd[nq] = drum; nq++; } /* Detour: length bytes at offset */
+                else for (unsigned e = 0; e < b[p + 2] && to + 3 * e + 3 <= sc.len && nq < SS_Q; e++) { /* Branch: table of offset and drum flag */
+                    qo[nq] = be16(b + to + 3 * e); ql[nq] = 0; qd[nq] = b[to + 3 * e + 2] != 0; nq++;
+                }
+            }
+            p += na;
+        }
+    }
+    return sc.n;
+}
