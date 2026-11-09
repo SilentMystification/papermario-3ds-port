@@ -505,7 +505,10 @@ static int wmap_entry(int k) {
  * point (display), rows 11 and 12 one point back and forward. Level 2 (sub_area = chapter): one row per point; A sets it (pm_sp_set). */
 static char sp_now[48];
 static const char* story_label(int row) {
-    if (sub_area >= 0) return pm_sp_label(sub_area, row);
+    if (sub_area >= 0) { /* the page is the chapter: the "CHn " prefix goes, so the value column stays on the screen */
+        const char* s = pm_sp_label(sub_area, row);
+        return strncmp(s, "CH", 2) == 0 ? s + 4 : s;
+    }
     if (row < 10) return pm_sp_chapter_name(row);
     if (row == 10) { snprintf(sp_now, sizeof sp_now, "Now: %s", pm_sp_current_label()); return sp_now; }
     return row == 11 ? "One point back" : "One point forward";
