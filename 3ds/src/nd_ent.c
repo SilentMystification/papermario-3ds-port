@@ -106,7 +106,9 @@ const void* ent_env_vtx(uint32_t w1, unsigned n) {
 
 /* HC4e2a: the typed unit of a list word (nd_op_xlate; a typed word is its own unit). t[0] >> 24 is the id, t[0] & 1 the branch flag of NDO_CALL. */
 static inline void ent_unit(u32 w0, u32 w1, uint32_t t[2]) {
-    if (nd_op_typed(w0 >> 24)) { t[0] = w0; t[1] = w1; } else nd_op_xlate(w0, w1, t);
+    if (nd_op_typed(w0 >> 24)) { t[0] = w0; t[1] = w1; }
+    else if ((w0 >> 24) == G_ENDDL) { t[0] = NDO_W0(NDO_END, 0); t[1] = 0; } /* nd_op_xlate has no G_ENDDL arm (nd_op_type_run, ND_X0 write it) */
+    else nd_op_xlate(w0, w1, t);
 }
 static inline unsigned ent_uid(u32 w0, u32 w1) { uint32_t t[2]; ent_unit(w0, w1, t); return t[0] >> 24; }
 
