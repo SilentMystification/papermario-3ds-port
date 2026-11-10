@@ -4453,11 +4453,19 @@ void mdl_get_vertex_count(Gfx* gfx, s32* numVertices, Vtx** baseVtx, s32* gfxCou
         Gfx* baseGfx = gfx;
 
         do {
+#ifdef TARGET_3DS
+            { uint32_t t[2]; nd_op_unit(gfx->words.w0, gfx->words.w1, t); w0 = t[0]; w1 = t[1]; } /* HC4e3: a typed list (gs macros) or a raw one */
+#else
             w0 = gfx->words.w0;
             w1 = gfx->words.w1;
+#endif
             cmd = _SHIFTR(w0,24,8);
 
+#ifdef TARGET_3DS
+            if (cmd == NDO_VTX) {
+#else
             if (cmd == G_VTX) {
+#endif
                 vtxStartAddr = w1;
 #ifndef TARGET_3DS
                 /* TARGET_3DS: the entity model is linked in place (include/entity.h ENTITY_ADDR), so w1 is the host address of the vertices.
@@ -4481,7 +4489,11 @@ void mdl_get_vertex_count(Gfx* gfx, s32* numVertices, Vtx** baseVtx, s32* gfxCou
                 }
             }
             gfx++;
+#ifdef TARGET_3DS
+        } while (cmd != NDO_END);
+#else
         } while (cmd != G_ENDDL);
+#endif
 
         *numVertices = (maxVtx - minVtx) >> 4;
         *baseVtx = (Vtx*)minVtx;
@@ -4636,12 +4648,20 @@ void mdl_project_tex_coords(s32 modelID, Gfx* outGfx, Matrix4f arg2, Vtx* arg3) 
     dlist = model->modelNode->displayData->displayList;
 
     while (true) {
+#ifdef TARGET_3DS
+        { uint32_t t[2]; nd_op_unit(dlist->words.w0, dlist->words.w1, t); cmd = t[0] >> 0x18; tempVert = (Vtx*)t[1]; } /* HC4e3 */
+        if (cmd == NDO_END) {
+            break;
+        }
+        if (cmd == NDO_VTX) {
+#else
         cmd = dlist->words.w0 >> 0x18;
         tempVert = (Vtx*)dlist->words.w1;
         if (cmd == G_ENDDL) {
             break;
         }
         if (cmd == G_VTX) {
+#endif
             baseVtx = tempVert;
             break;
         }

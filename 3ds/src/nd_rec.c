@@ -123,6 +123,8 @@ static int sh_drop(const uint32_t* t) {
 }
 /* A word op of a state run (a list call, an image, a rectangle, a marker) resets the shadow. */
 static void sh_word(void) { sh_all(); }
+/* A typed no-op unit (nd_op.h): a sync, G_SPNOOP, G_NOOP or a RDPHALF word. */
+#define IS_NOP(w0) ((w0) == NDO_W0(NDO_MISC, NDO_MISC_NOP << 16))
 static int t4_sw = -1; /* debug switch t4chk: a dropped op is written after NDO_DROP (nd_walk.c t4_check) */
 
 /* HC4b (W3): the render mode table. Entry i holds the typed ops of ModelRenderModes[i] (src/model.c, 61 static lists) without the syncs,
@@ -138,7 +140,8 @@ __attribute__((cold, noinline)) void nd_rm_build(unsigned i) {
     const Gfx* l = i < ND_RM_LISTS ? ModelRenderModes[i] : NULL;
     for (unsigned k = 0; l && n + 1u < ND_RM_OPS; k++) {
         const uint32_t w0 = l[k].words.w0, w1 = l[k].words.w1;
-        if ((w0 >> 24) == G_ENDDL) break;
+        if ((w0 >> 24) == G_ENDDL || (w0 >> 24) == NDO_END) break;
+        if (IS_NOP(w0)) continue;
         if (((w0 >> 24) >= G_RDPLOADSYNC && (w0 >> 24) <= G_RDPFULLSYNC) || (w0 >> 24) == G_SPNOOP) continue; /* the syncs */
         nd_op_xlate(w0, w1, &nd_rm_tab[i][2u * n]);
         n++;
@@ -356,17 +359,19 @@ static __attribute__((cold, noinline)) void tr_bad(uint32_t w0) {
 void nd_gx_w(Gfx* g, uint32_t w0, uint32_t w1) {
     if (g != gMainGfxPos - 1) { g->words.w0 = w0; g->words.w1 = w1; return; }
     const unsigned op = w0 >> 24;
-    if (op == G_DL && ((w0 >> 16) & 0xffu) == G_DL_NOPUSH) { g->words.w0 = w0; g->words.w1 = w1; return; }
+    if (op == NDO_CALL && (w0 & 1u)) { g->words.w0 = w0; g->words.w1 = w1; return; } /* a branch: a unit of the list */
     gMainGfxPos = g;
-    if (op == G_ENDDL) return; /* D7: the end of a task list or of a custom gfx builder (NDC_END closes both) */
+    if (op == NDO_END) return; /* D7: the end of a task list or of a custom gfx builder (NDC_END closes both) */
     if (__builtin_expect(tr_n != 0, 0)) {
-        if (tr_n == 1 && op == G_RDPHALF_1) { tr_w[2] = w1; tr_n = 2; return; }
-        if (tr_n == 2 && op == G_RDPHALF_2) { tr_n = 0; nd_rec_texrect(tr_w[0], tr_w[1], tr_w[2], w1); return; }
+        if (tr_n == 1 && IS_NOP(w0)) { tr_w[2] = w1; tr_n = 2; return; } /* RDPHALF_1: s, t */
+        if (tr_n == 2 && IS_NOP(w0)) { tr_n = 0; nd_rec_texrect(tr_w[0], tr_w[1], tr_w[2], w1); return; } /* RDPHALF_2: dsdx, dtdy */
         tr_bad(w0);
     }
-    if (op == G_TEXRECT || op == G_TEXRECTFLIP) { tr_w[0] = w0; tr_w[1] = w1; tr_n = 1; return; }
-    if (op == G_RDPPIPESYNC || op == G_RDPTILESYNC || op == G_RDPLOADSYNC || op == G_RDPFULLSYNC || op == G_SPNOOP) return;
-    if (op == G_DL && rec_inline(w1)) return;
+    if (op == NDO_RECT && (w1 & NDO_RECT_TEX)) { /* the words nd_texrect_run reads: G_TEXRECT with the a field, w1 without the flag */
+        tr_w[0] = ((uint32_t)G_TEXRECT << 24) | (w0 & 0xffffffu); tr_w[1] = w1 & ~NDO_RECT_TEX; tr_n = 1; return;
+    }
+    if (IS_NOP(w0)) return; /* the syncs are dropped (the walker skips them) */
+    if (op == NDO_CALL && rec_inline(w1)) return;
     nd_rec_state(w0, w1);
 }
 const uint32_t* nd_rec_pos(void) { return wp; }
@@ -428,8 +433,14 @@ void nd_rec_list(const void* l) {
     const Gfx* g = (const Gfx*)l;
     if (__builtin_expect(nd_lc_frame != -1, 0)) nd_lstcen(l, 5u);
     for (unsigned n = 0; n < 1024u; n++, g++) {
-        const u32 w0 = g->words.w0, w1 = g->words.w1;
-        const unsigned op = w0 >> 24;
+        u32 w0 = g->words.w0, w1 = g->words.w1;
+        unsigned op = w0 >> 24;
+        if (nd_op_typed(op)) { /* a typed list (the gs macros): the raw op the cases below know; any other unit is recorded as it is */
+            if (op == NDO_END) op = G_ENDDL;
+            else if (IS_NOP(w0)) op = G_SPNOOP;
+            else if (op == NDO_RECT && (w1 & NDO_RECT_TEX)) { w0 = ((u32)G_TEXRECT << 24) | (w0 & 0xffffffu); w1 &= ~NDO_RECT_TEX; op = G_TEXRECT; }
+            else if (op == NDO_CALL) { w0 = ((u32)G_DL << 24) | ((w0 & 1u) ? (u32)G_DL_NOPUSH << 16 : 0u); op = G_DL; }
+        }
         switch (op) {
         case G_ENDDL: return;
         case G_RDPPIPESYNC: case G_RDPTILESYNC: case G_RDPLOADSYNC: case G_RDPFULLSYNC: case G_SPNOOP: break;
