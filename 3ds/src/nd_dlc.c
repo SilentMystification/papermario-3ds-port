@@ -6,6 +6,7 @@
 #include <string.h>
 #include "nd.h"
 #include "nd_ops.h"
+#include "nd_op.h"
 
 typedef struct { NdGrp g; } Tmp;
 static NdGrp tg[ND_DLC_MAXGRP];
@@ -337,6 +338,8 @@ int nd_dlc_tex_decode(const uint32_t* l, NdTexDec* o) { return tex_decode_n(l, N
 /* S6-2c-2: the entity lists carry their texture loads as plain words (the header is gone, TX-4). Neutral: the linear scan sees the words after it. */
 #define OP_PM_TEXI 0x0B
 static int ent_known(unsigned op) {
+    /* HC4e3: a typed unit (the gs macros type a static list at compile time), the class rule of nd_rec.c st_kind */
+    if (nd_op_typed(op)) return op <= NDO_COMB || nd_op_tex(op) || (op >= NDO_MTX && op <= NDO_MOVEMEM);
     switch (op) {
     case OP_VTX: case OP_TRI1: case OP_TRI2: case OP_PM_TEXI:
     case OP_NOOP: case OP_PIPESYNC: case OP_LOADSYNC: case OP_TILESYNC: case OP_FULLSYNC:
@@ -356,6 +359,24 @@ static void delta_clear(NdEntDelta* d) { memset(d, 0, sizeof *d); d->gand = 0xFF
 
 static void delta_apply(NdEntDelta* d, uint32_t w0, uint32_t w1) {
     unsigned op = w0 >> 24;
+    if (nd_op_typed(op)) { /* HC4e3: the typed units of nd_op.h, a = the w0 low 24 bits where the raw word kept them */
+        switch (op) {
+        case NDO_GEOM: { uint32_t a = w0 & 0xFFFFFFu; d->gor = (d->gor & a) | w1; d->gand &= a; d->has_geom = 1; break; }
+        case NDO_OMH: case NDO_OML: {
+            uint32_t mask = nd_op_om_mask(w0 & 0xFFFFFFu);
+            if (op == NDO_OMH) { d->wh |= mask; d->vh = (d->vh & ~mask) | (w1 & mask); }
+            else { d->wl |= mask; d->vl = (d->vl & ~mask) | (w1 & mask); }
+            d->has_mode = 1;
+            break;
+        }
+        case NDO_COMB: d->has_comb = 1; d->cw0 = NDO_COMB_W0(w0); d->cw1 = w1; break;
+        case NDO_TEXTURE: d->has_tex = 1; d->tw0 = w0; d->tw1 = w1; break;
+        case NDO_PRIM: d->has_prim = 1; d->prim_lod = w0 & 0xFFFFu; d->prim = w1; break;
+        case NDO_ENV: d->has_env = 1; d->env = w1; break;
+        default: d->n_tex++; break;
+        }
+        return;
+    }
     switch (op) {
     case OP_GEOMETRYMODE: {
         uint32_t a = w0 & 0xFFFFFFu;
@@ -390,7 +411,7 @@ int nd_ent_segments(const uint32_t* l, NdEntSeg* seg, unsigned maxseg, unsigned*
         uint32_t w0 = l[2 * i], w1 = l[2 * i + 1];
         unsigned op = w0 >> 24;
         if (op == OP_ENDDL) break;
-        if (!ent_known(op)) { if (bad) *bad = op; return NDR_OP; }
+        if (!ent_known(op) && !(op == NDO_MISC && (w0 & 0xFFFFFFu) == (NDO_MISC_NOP << 16))) { if (bad) *bad = op; return NDR_OP; }
         if (op == OP_VTX || op == OP_TRI1 || op == OP_TRI2) {
             NdEntSeg* s;
             if (ns == 0 || pend_n > 0) { /* a geometry op after state ops starts a segment */
@@ -416,7 +437,8 @@ int nd_ent_segments(const uint32_t* l, NdEntSeg* seg, unsigned maxseg, unsigned*
                     s->ntri++; tri++;
                 }
             }
-        } else if (op == OP_NOOP || op == OP_PIPESYNC || op == OP_LOADSYNC || op == OP_TILESYNC || op == OP_FULLSYNC || op == OP_PM_TEXI) {
+        } else if (op == OP_NOOP || op == OP_PIPESYNC || op == OP_LOADSYNC || op == OP_TILESYNC || op == OP_FULLSYNC || op == OP_PM_TEXI ||
+                   (op == NDO_MISC && (w0 & 0xFFFFFFu) == (NDO_MISC_NOP << 16))) {
             /* neutral: no segment, no delta */
         } else {
             if (pend_n == 0) pend0 = i;
