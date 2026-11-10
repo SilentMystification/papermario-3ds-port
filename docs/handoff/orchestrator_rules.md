@@ -7,7 +7,9 @@ Read this file at the start and after every compaction; it overrides any summary
 - Orchestrator (Opus): plans, writes row files and prompts, merges, commits docs, runs console pushes on request, cleans up. It does
   not edit game source or debug; it reads code and logs only to plan.
 - Code agents: subagent_type coder (.claude/agents/coder.md, Haiku). The shared oracle: subagent_type oracle (oracle.md, Opus). Opus agents only when the user starts or approves them; the orchestrator asks.
-- Oracle: ONE shared read-only Opus agent, reused by SendMessage. It designs and plans every system and bug, and splits the work
+- Oracle: ONE read-only Opus agent at a time, started fresh for each batch of questions (user, 2026-11-10: the long-lived oracle
+  reached 880K context, about $0.44 per call). Its knowledge lives in row and plan files, not in its chat. SendMessage follow-ups
+  only inside the batch; replace it when its context passes about 300K. It designs and plans every system and bug, and splits the work
   into Haiku-size row files (oracle.md). The orchestrator commits its text before the code agent starts. Every plan names its
   premise and one cheap check. Model per chunk: Haiku by default. A Sonnet or Opus chunk needs the oracle's justification (why
   not Haiku, why not smaller); the orchestrator puts it in an AskUserQuestion. No user yes: the oracle splits the chunk.
