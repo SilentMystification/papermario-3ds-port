@@ -70,5 +70,21 @@ Paths that can crash or corrupt in a stereo frame (3ds/src/pm_gpu.c):
 - Remaining risk for crash (b): CRASHALL logs PC/LR on the next console crash. That log goes to the oracle with the build hash.
 Fix row: row_STEREOFX1.md.
 
+## Crash on Azahar (AZTSTEREO run, oracle batch 4)
+What the crash files show (lane-AZTSTEREO/slot1, pm_3ds.map, and objdump of pm_3ds.elf):
+- At the crash, R4 = taskList = 0 and R5 = RenderTaskCount = 93. LR 0x1977b4 is the `blx r7` that calls appendGfx, and R7 = 0.
+- Azahar logged `unmapped Read32 @ 0x0855CD70` twice: once in queue_render_task (inlined in the block at 0x1E0A18, radiating_energy_orb_render) and once in execute_render_tasks (0x197370). This is the read of `RenderTaskLists[RenderTaskListIdx]`.
+- RenderTaskLists is at 0x01041960. So `RenderTaskListIdx` (0x0104196C) = (0x0855CD70 - 0x01041960) / 4 = 0x01D46D04. That value is a newlib heap pointer: `__end__` is 0x0153E548.
+- The unmapped read returns 0, so taskList = NULL. The unmapped writes are only task 92 (0x5C0..0x5CC, appendGfx = 0x1E0A60 radiating_energy_orb_appendGfx, arg 0x00D6BC00). Tasks 0..91 of the same frame were queued into a valid list.
+- So a stray CPU store of a heap pointer hit RenderTaskListIdx in this frame (f650 or later, after "merlee: darken done" f633), between the 92nd and the 93rd queue_render_task, during render_effects_scene. RenderTaskCount (next word) is intact, so it is a single 32-bit store, not a GPU block copy.
+
+What I ruled out by code read:
+- The stereo replay: it skips DMA and display transfers and replays only fills and copies into VRAM (pm_gpu.c:2060-2083). The GPU cannot write one word into .bss.
+- pm_depth_query: it checks id 0..15.
+- The texture panner setters, nd_ent and imgfx: none fits.
+- The code that writes the value is not named, so I give no code fix (repro gate: wrong value printed, writer unknown). The cheapest exact next step is a gdb write watchpoint.
+
+Next (needs the user's yes, rule 1 exception): (Diagnostic, 1 Azahar start. `sh 3ds/tools/wt_new.sh STEREOCRASH` on branch AZTSTEREO 2c29fb04a; it has the merlee_stereoat scenario. PM_ROW=PM_LANE=STEREOCRASH. CLAUDE.md rules 1-7. No git stash. Foreground waits.) One gdb write watchpoint run on RenderTaskListIdx (text in the oracle report, scratchpad oracle_b4.txt).
+
 ## At the end
 Keep this file (the fix row follows). Hand back "STEREOFX <FAULT SHOWN|NOT REPRODUCED> <hash>".
