@@ -206,6 +206,13 @@ static const GlyphSheet glyph_sheets[] = {
     { MsgCharImgSubtitle, 0xB88u, 12, 12, 72, 3u },
 };
 
+/* HEARTBLK: the status bar digits (16x16 CI4 rasters, HES_StatusDigit0-9) bind a glyph cell, so the digits of a number are one rect batch. */
+extern unsigned char ui_status_text_0_png[], ui_status_text_1_png[], ui_status_text_2_png[], ui_status_text_3_png[], ui_status_text_4_png[],
+    ui_status_text_5_png[], ui_status_text_6_png[], ui_status_text_7_png[], ui_status_text_8_png[], ui_status_text_9_png[];
+static const u8* const hud_digit_img[10] = { ui_status_text_0_png, ui_status_text_1_png, ui_status_text_2_png, ui_status_text_3_png, ui_status_text_4_png,
+    ui_status_text_5_png, ui_status_text_6_png, ui_status_text_7_png, ui_status_text_8_png, ui_status_text_9_png };
+static const GlyphSheet hud_digit_sheet = { NULL, 0u, 16, 16, 128, 4u };
+
 static unsigned rd16(const u8* p);
 static void write5551(u8* dst, unsigned c);
 static unsigned tiled16(int x, int y, int pw);
@@ -225,6 +232,9 @@ static int glyph_resolve(const u8* img, int w, int h, unsigned fmt, unsigned siz
         *idx = (int)((p - g->base) / (unsigned)g->raster);
         return 1;
     }
+    if (w == 16 && h == 16)
+        for (i = 0; i < 10u; i++)
+            if (img == hud_digit_img[i]) { *sh = &hud_digit_sheet; *idx = (int)i; return 1; }
     return 0;
 }
 
@@ -273,7 +283,7 @@ static int cell_slot_init(void) {
  * of the two tile rows the cell covers (256 bytes each) for the next command list submit. */
 static void cell_write(int c, const GlyphSheet* g, int idx, const u8* tlut, int tlut_n) {
     u8* d = (u8*)slots[cell_si].tex.data;
-    const u8* src = g->base + (size_t)idx * (size_t)g->raster;
+    const u8* src = g->base ? g->base + (size_t)idx * (size_t)g->raster : hud_digit_img[idx];
     const int X0 = (c & (CELL_COLS - 1)) * 16, Y0 = (c / CELL_COLS) * 16;
     for (int y = 0; y < 16; y++) {
         const int sy = y < g->gh ? y : g->gh - 1;
