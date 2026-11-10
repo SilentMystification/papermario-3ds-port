@@ -18,7 +18,7 @@ Read this file at the start and after every compaction; it overrides any summary
 - Manual mode: when the user says work runs elsewhere, launch nothing on those rows or files.
 
 ## Rows
-- Bug rows start with the user facts (trigger sequence, timing, first wrong frame). The fault is fact (CLAUDE.md 2): the row fixes the
+- Bug rows start with the user facts (trigger sequence, timing, first wrong frame). The fault is fact (CLAUDE.md 1): the row fixes the
   code paths the oracle names. No repro rows, no NOT REPRODUCED handbacks, no push only to prove a fault.
 - One row file per agent (row_TEMPLATE.md, 60 lines or fewer), a prompt of 10 lines or fewer pointing to it, with the WAITS rule.
   Name commands, expected results and files literally.
