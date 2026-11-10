@@ -69,7 +69,7 @@ $vol = "pm3ds-work"
 $x3dsx = "pm_3ds.3dsx"
 if ($env:PM_LANE) { $out = "$repo\build3ds\lane-$env:PM_LANE"; $vol = "pm3ds-work-$env:PM_LANE"; $x3dsx = "pm_3ds_$($env:PM_LANE).3dsx" }
 
-# Test budget (3ds/logs/test_budget.csv): columns time,row,sha256,args,kind,rc,result. kind = start or end.
+# Test budget (3ds/logs/test_budget.csv): columns time,row,sha256,args,kind,rc,result. kind = start (counted), base-start (base run, never counted) or end.
 $budgetFile = "$repo\3ds\logs\test_budget.csv"
 if ($ResetBudget) {
     if (Test-Path $budgetFile) { $rowsLeft = @(Get-Content $budgetFile | Where-Object { $_.Split(",")[1] -ne $ResetBudget }); Set-Content $budgetFile $rowsLeft }
@@ -77,6 +77,8 @@ if ($ResetBudget) {
 }
 $row = if ($env:PM_ROW) { $env:PM_ROW } else { "adhoc" }
 $max = if ($env:PM_BUDGET) { [int]$env:PM_BUDGET } elseif ($row -eq "adhoc") { 12 } else { 8 }
+# BASEFIX: a base run (bench.py base_run sets PM_BASE_SNAP) is a tool cost, not a row cost: no budget check, its start line is kind base-start
+$baseRun = [bool]$env:PM_BASE_SNAP
 if ($row -eq "adhoc") { Write-Output "WARNING: PM_ROW is not set. Set PM_ROW to your row id. Runs count under row adhoc (12 per 3 hours)." }
 $in3dsx = "$out\pm_3ds.3dsx"
 $sha = (Get-FileHash "$out\pm_3ds.3dsx" -Algorithm SHA256).Hash.ToLower()
@@ -84,7 +86,7 @@ $argStr = (($PSBoundParameters.GetEnumerator() | Where-Object { $_.Key -notin "F
     ForEach-Object { "$($_.Key)=$($_.Value)" }) -join " ").Replace(",", ";")
 $budgetRows = @(if (Test-Path $budgetFile) { Get-Content $budgetFile | Where-Object { $_ } | ForEach-Object { $f = $_.Split(","); [pscustomobject]@{ t = [datetime]$f[0]; row = $f[1]; sha = $f[2]; args = $f[3]; kind = $f[4]; rc = $f[5]; res = ($f[6..($f.Count - 1)] -join ",") } } })
 $used = @($budgetRows | Where-Object { $_.row -eq $row -and $_.kind -eq "start" -and ($row -ne "adhoc" -or $_.t -gt (Get-Date).AddHours(-3)) }).Count
-if ($used -ge $max -and $env:PM_AZT_ATTEMPT -ne "2") { Write-Output "BUDGET: row $row used $used runs. Stop and report what blocks you."; exit 9 }
+if ($used -ge $max -and $env:PM_AZT_ATTEMPT -ne "2" -and -not $baseRun) { Write-Output "BUDGET: row $row used $used runs. Stop and report what blocks you."; exit 9 }
 if ($Debug -and $Debug.Length -gt 255) { Write-Output "SWITCHES: -Debug is $($Debug.Length) characters. The game reads 255 and cuts the rest, so a map name of a tour list is cut (H06d). Use tour=@file for a long list."; exit 8 }
 if ($Debug -match "tour=(\S+)") {
     $tv = $Matches[1]
@@ -105,7 +107,7 @@ function Add-BudgetLine([string]$line) {
 }
 New-Item -ItemType Directory -Force -Path (Split-Path $budgetFile) | Out-Null
 $stamp = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss")
-$startKind = if ($env:PM_AZT_ATTEMPT -eq "2") { "retry-start" } else { "start" } # azt retry (AZFIX): not counted in the budget
+$startKind = if ($baseRun) { "base-start" } elseif ($env:PM_AZT_ATTEMPT -eq "2") { "retry-start" } else { "start" } # azt retry (AZFIX): not counted in the budget
 Add-BudgetLine "$stamp,$row,$sha,$argStr,$startKind,," # one real Azahar start, one line (-Force too)
 if ($startKind -eq "start") { $used += 1 }
 function End-Run([int]$rc, [string]$res, [string]$kind = "end") {
