@@ -46,23 +46,31 @@
 - That it runs with no controller bound.
 - The rust-toolchain.toml version, and whether SDL3 builds from source (CMake plus MSVC).
 
-### Rows, cut to the minimum (user, 2026-11-10: "I dont want to invest a huge amount of time and resources into the n64 hook.
-We need something that is repeatable and quick and easy for the agent to use.")
-One command for the agent: `python 3ds/tools/n64ref.py <map>[:<entry>] <frames> [--from <sym|addr>]` -> prints the decoded display list
-of that frame (or of one object) and the RDP state per draw. Nothing else: no padscript, no until, no pos, no scenario file, no bench.
-- **N64REF-1 (running).** Toolchain, clone, build, facts.
-- **N64REF-2 (probe, at most about 80 lines of Rust).** `--probe <file>`: lines `w <addr> <u8|u16|u32> <val> @<frame>` (RAM write at a frame,
-  frame counted at the gfx_draw_frame PC) and `dump <frame>` (RDRAM to a file, big-endian, plus the nuGfxTaskStart a0), then exit.
-  Warp is only RAM writes from n64ref.py (the simplest gGameStatus fields that start a map change; the agent confirms them from the decomp).
-  If warp needs a call queue or more than about 20 lines, drop warp: the user makes gopher64 save states and n64ref.py uses --load-state.
-  Gate: one command prints a kmr map's frame list.
-- **N64REF-3 (n64dl, host C).** Decode a dump from an address: commands with addresses, RDP state on each tri, texrect and fill.
-  Gate: 0 unknown opcodes on that frame, G_ENDDL reached.
+### Decision (2026-11-10): no fork
+The fork build failed on its compiler setup (the cc crate passes gcc flags to cl.exe; the upstream Windows build needs clang-cl inside
+vcvars64), and a fork needs patch upkeep. The stock gopher64 exe plus outside memory access is smaller. The clone in
+C:/Users/Andrew/Documents/GitHub/gopher64-probe and the installed rustup 1.29.3 / Rust 1.99.0 / LLVM 23.1.5 stay unused.
+
+### Rows
+- **N64PEEK (Haiku).** 3ds/tools/n64ref.py, Python 3 with ctypes only (kernel32 OpenProcess, VirtualQueryEx, ReadProcessMemory,
+  WriteProcessMemory, NtSuspendProcess/NtResumeProcess from ntdll). One command:
+  `python 3ds/tools/n64ref.py <map>[:<entry>] [--frames N] [--state SLOT] [--out DIR]`.
+  1. Start the stock exe with ver/us/baserom.z64 (and `--load-state SLOT` when given).
+  2. Find RDRAM: scan committed private regions of 8 MB or more for the 64 bytes at ROM offset 0xE8F0 (set_game_mode code), each u32
+     word stored native-endian (the byte order is a fact the row confirms). RDRAM base = match - (0x800334F0 & 0x7FFFFF).
+  3. Warp: wait for the title (a RAM value from the decomp), then write the simplest gGameStatus fields that start a map change
+     (areaID +0x086, mapID +0x08C, entryID +0x08E, plus the trigger the decomp uses). Map names to ids from the decomp area tables.
+     If warp needs more than about 20 lines, drop it and use --state only.
+  4. Wait N frames by polling a frame counter in RAM, suspend, copy the 8 MB as big-endian to DIR/rdram.bin plus a small json (frame,
+     the display list start of the last finished frame from the display contexts), resume, kill the exe.
+  Gate: one command on kmr_20 writes rdram.bin whose areaID/mapID equal kmr_20, and the 64 bytes at 0x800334F0 equal ROM 0xE8F0.
+- **N64DL (Haiku).** 3ds/tools/n64dl.c, host C built in the pm3ds-host:1 image like nd_host_test.sh: decode rdram.bin from a start
+  address, follow G_DL and the segment table, print each command with its address and the RDP state on each tri, texrect and fill.
+  n64ref.py calls it after the dump. Gate: the kmr_20 frame reaches G_ENDDL with 0 unknown opcodes and at least 1 G_TEXRECT.
 
 ### User answers (2026-11-10)
 - Install: yes. The N64REF-1 agent installs rustup (version from rust-toolchain.toml) and, if SDL3 builds from source, CMake and the MSVC Build Tools.
-- Fork: a separate repo, C:/Users/Andrew/Documents/GitHub/gopher64-probe (a local git clone of upstream tag v1.1.42 on branch probe).
-  The fork changes live there, not in this repo; this repo keeps only 3ds/tools/n64ref.py, n64_scenarios.json and n64dl.c.
+- Fork: superseded by the no-fork decision above.
 - Scope (user): "We're using this to test functionality, so ensure we're not overengineering a testing harness just to verify things."
   So: a standalone oracle tool (n64ref.py), no bench kind, no runs.jsonl rows. Keep only what a draw question needs: warp, pos, a short
   pad table, a frame dump and n64dl. until= only as a frame number. No timing statistics, no scenario catalog beyond what a row needs.
