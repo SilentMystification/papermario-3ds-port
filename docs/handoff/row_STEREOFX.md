@@ -54,5 +54,11 @@ CLAUDE.md rules 1-7. PM_LANE=STEREOFX. No git stash. Foreground waits.
 - Build: PM_ROW=STEREOFX PM_LANE=STEREOFX sh 3ds/build.sh
 - Budget reset: powershell -NoProfile -File 3ds/run_azahar.ps1 -ResetBudget STEREOFX
 
+## State (2026-11-10)
+Diagnostics merged (8f4e2997a, branch 81b14fa59). Azahar: NOT REPRODUCED. merlee_stereoat (slider 0 to 1 at f500, Merlee spell to undarken f992):
+`stereo: replay f500..f503 n 5 fbn 1 over 0`, ent and fb not null. Fault path 1 not hit. Case 2 (3D already on) not reached. NEEDS CONSOLE:
+XL push of main, the user moves the real slider in the omo dark room and talks to Merlee with 3D on; the crash page (CRASHALL) and the
+`stereo: replay` lines are the evidence. Next: the oracle reads the console log.
+
 ## At the end
 Keep this file (the fix row follows). Hand back "STEREOFX <FAULT SHOWN|NOT REPRODUCED> <hash>".
