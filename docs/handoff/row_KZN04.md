@@ -56,5 +56,18 @@ CLAUDE.md rules 1-7. PM_LANE=KZN04 on every build.sh and bench call. No git stas
 - Build: PM_ROW=KZN04 PM_LANE=KZN04 sh 3ds/build.sh
 - Budget reset: powershell -NoProfile -File 3ds/run_azahar.ps1 -ResetBudget KZN04
 
+## Fix design (oracle batch 2)
+Cause chain (nd_tex_set.c:542-660, pm_tex.c:1809):
+- Each shaded sprite builds a 256-entry lut on the CPU: cc_cycle1 of 16 sprite-palette colours x 16 shading-palette colours.
+- The shading palette is the 16x1 rect of PM_CC_55, lerp(ENV highlight, PRIM shadow, tile 2 texel alpha) (sprite_shading.c:385-396). It moves with the fire-bar lights every frame.
+- The key = FNV(lut, dx4, dy4), so a moving light is a miss.
+- A miss: expand_dual of the whole w x h (pm_tex.c:496), plus a memset of the scratch, plus a new slot and an upload.
+The true fix is GPU-side, with no misses. Cycle 1 is PM_CC_50 = TEXEL0 x TEXEL1 with alpha TEXEL1, and TEXEL0 = lerp(env, prim, a_j). So: unit 1 = the sprite with its palette (static); unit 0 = an L8 map of a_j for the sprite's indices (static), sampled at the offset; TEV = lerp of 2 constants by tex0, then x tex1. That is a design row (new TEV class, 2 units, nd_tex_set.c, so after HC7 and COINSTAR). Recommend Sonnet: a new class and template, not mechanical. Its picture is not byte-equal (the N64 palette is 5-bit), so it needs a user OK.
+What 14 calls per frame do not explain (console tex 23.5 ms vs 3.6 ms on Azahar):
+- 14 CPU texrects per frame write SpriteShadingPalette; each write can run pm_tex_invalidate over the slots.
+- 14 pm_gpu_flush batch closes (tex_shaded0).
+- Slot churn from 9 new slots per frame (evict_oldest_done).
+CPU fix row: row_KZN04F.md. GPU design row: Sonnet recommended, needs a user OK (picture not byte-equal), after HC7 and COINSTAR.
+
 ## At the end
 The debug line stays. Keep this file (the fix row follows). Hand back "KZN04 ready <hash> calls N miss M us U".

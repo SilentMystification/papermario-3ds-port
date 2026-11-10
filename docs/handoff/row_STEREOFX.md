@@ -60,5 +60,15 @@ Diagnostics merged (8f4e2997a, branch 81b14fa59). Azahar: NOT REPRODUCED. merlee
 XL push of main, the user moves the real slider in the omo dark room and talks to Merlee with 3D on; the crash page (CRASHALL) and the
 `stereo: replay` lines are the evidence. Next: the oracle reads the console log.
 
+## Code paths (oracle batch 2, main cfb138b8e)
+Paths that can crash or corrupt in a stereo frame (3ds/src/pm_gpu.c):
+- P1, real defect. sr_frame_begin (:2001-2003) mallocs sr_ent (8 KB) and sr_fb on the first stereo frame. If sr_ent is NULL, then sr_on = 1 and sr_over = 1, and sr_take (:1983) and pm_gx_drain (:2145) write through NULL. That is a crash at the first stereo frame, which matches crash (a).
+- P1b. If only sr_fb fails, the `if (!sr_ent)` retry never comes back. Each frame is then a fallback copy, so the 3D is flat.
+- P2. pm_gpu_menu_present_w (:1622-1628) sets stereo_frame and gfxSet3D without the u_eye test and without sr_frame_begin. It runs in the frozen menu pass, so a slider change there leaves sr state and eye_e out of step for that present.
+- P3. A replayed GX copy (sr_replay :2077-2079) maps only its source. If a copy's destination is the left target, the replay writes right-eye pixels into the left eye after its pass. That is a wrong picture, not a crash.
+- No crash path found in: the fill mapping (data[1,3,4,6] is the correct MemoryFill layout); the vertex ring (ring_pick never reuses a chunk of the current frame, pm_gpu_rect.c:38-58); the command buffer (1.5 MB, no wrap within a frame); targetR (its own 240x400 colour and depth); gfxSet3D (called only at a frame begin). The dark room (appendGfx_darkness_stencil, screen_render_util.c:130: a 64x64 off-screen pass in nuGfxZBuffer) and the Merlee darken (shroud tint, npc_merlee.c:126-150) reach the off-screen bind (bind_main) and the copy replay, both covered above.
+- Remaining risk for crash (b): CRASHALL logs PC/LR on the next console crash. That log goes to the oracle with the build hash.
+Fix row: row_STEREOFX1.md.
+
 ## At the end
 Keep this file (the fix row follows). Hand back "STEREOFX <FAULT SHOWN|NOT REPRODUCED> <hash>".
