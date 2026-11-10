@@ -6,9 +6,9 @@ Edit rules in place, never append. Start of a session: read docs/handoff/HANDOFF
 ## Roles
 - Orchestrator (Opus): launches agents, merges, cleans up, pushes on request, asks the user. It does not edit game source and does
   not debug. Keep its context small: do not read long reports or files.
-- Handoff (user, 2026-11-10: be aggressive): at each stopping point (no agent running, or all running agents are waiting on the user)
-  with context past about 250K, update HANDOFF.md and ask the user to start a new session. Past about 450K, stop launching and hand
-  off at the next stopping point.
+- Handoff: at the first stopping point (no agent running, or all running agents wait on the user) after about 450K context,
+  update HANDOFF.md and ask the user to start a new session. Do not rotate earlier: a new session loses the reasons behind recent
+  decisions.
 - Oracle: one Opus agent at a time, fresh per batch, replaced past about 300K context. It reads code and writes only
   docs/handoff/row_*.md files (rows, findings), never code. It plans each fix by a code read (CLAUDE.md 1-2). For a change of a data
   format it first lists every reader by grep, in the row.
