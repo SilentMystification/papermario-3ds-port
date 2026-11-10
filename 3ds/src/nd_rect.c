@@ -290,7 +290,7 @@ __attribute__((noinline, cold)) static void nd_fillrect_cpu(int ulx, int uly, in
      * coverage, so every pixel is a full pixel: write the full-coverage value (gray, alpha 1) to
      * that memory and draw nothing on the screen. The game filter then leaves each pixel as is. */
     unsigned short* d = (unsigned short*)nd_ws.cimg;
-    if (!pm_interp_repl) pm_cfb_capture_prev_cpu_for(nd_ws.cimg); /* PT78: the fill target decides the buffer. F06-5: key pass only. the filter reads the last frame from the other frame buffer */
+    /* PAUSEOPEN: no CPU readback here. The picture is the GPU copy (background_gfx.c SHOW_PAUSED, pm_gpu_want_prev) */
     for (int y = uly < 0 ? 0 : uly; y <= lry && y < 240; y++)
         for (int x = ulx < 0 ? 0 : ulx; x <= lrx && x < cimg_stride; x++) d[y * cimg_stride + x] = 0x8421;
 }

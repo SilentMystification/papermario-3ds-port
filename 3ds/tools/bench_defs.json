@@ -4146,6 +4146,25 @@
       ],
       "gates": []
     },
+      {
+      "name": "pause_gut_dbg_w300",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SPR4 det gate, cold start (-NoWarm), det switch: OFF-2 census: pause spin with grab (pause_spin_grab) run to frame 300. The nrawwhy line gives the cumulative raw refusals (grab, off, unit 0). A person reads the spin shots.",
+      "scenario": "pause_gut_dbg_w300",
+      "cap": 45,
+      "until": "nrawwhy f300 ",
+      "tags": [
+        "azahar",
+        "pic",
+        "off",
+        "grab",
+        "det",
+        "cold"
+      ],
+      "gates": []
+    },
     {
       "name": "pause_pre_det",
       "kind": "azahar_pic",

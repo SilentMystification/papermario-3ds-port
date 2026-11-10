@@ -133,6 +133,17 @@ static void rect_raw_quad(int xa, int ya, int xb, int yb, short s0, short t0, sh
     if (rq_n < RQ_MAX) { rq_slot[rq_n] = rq_cur; rq_b[rq_n] = b; rq_st[rq_n][0] = s0; rq_st[rq_n][1] = t0; rq_st[rq_n][2] = s1; rq_st[rq_n][3] = t1; }
     rq_n++;
     rect_c[2]++;
+    { /* PAUSEOPEN debug: a rectangle after the gutter call that overlaps a gutter strip (screen x 0..40 or 360..400) */
+        extern int pm_gut_seen;
+        static int gut_watch_n;
+        const int lo = xa < xb ? xa : xb, hi = xa < xb ? xb : xa, ylo = ya < yb ? ya : yb, yhi = ya < yb ? yb : ya;
+        static int gut_dbg = -1;
+        if (gut_dbg < 0) gut_dbg = pm_debug_has("gutdbg");
+        if (gut_dbg && pm_gut_seen && gut_watch_n < 40 && ((lo < 40 && hi > 0) || (hi > 360 && lo < 400))) {
+            gut_watch_n++;
+            pm_log("GUTW ret %p x %d..%d y %d..%d c %08x combine %d off %d", __builtin_return_address(0), lo, hi, ylo, yhi, c, gs.combine, gs.off_active);
+        }
+    }
     if ((unsigned)nb.gring_n > rect_c[5]) rect_c[5] = (unsigned)nb.gring_n;
 }
 void rect_log(unsigned f) { if (PMDL("rectsig")) pm_log_d("rsig sum f%u chk %u diff %u", f, rsig_chk, rsig_diff); pm_log_d("rect f%u fill %u tex %u native %u merged %u drop %u ring %u", f, rect_c[0], rect_c[1], rect_c[2], rect_c[3], rect_c[4], rect_c[5]); pm_log_d("rectwhy f%u gpu %u off %u grab %u zmark %u ring %u norect %u range %u", f, rr_why[1], rr_why[2], rr_why[3], rr_why[4], rr_why[5], rr_why[6], rr_why[7]); memset(rr_why, 0, sizeof rr_why); memset(rect_c, 0, sizeof rect_c);

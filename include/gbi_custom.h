@@ -233,11 +233,14 @@
 /* SBLK2 B1: G_PM_ND_GRABHOLD (arg 1 opens, 0 closes) brackets one motion_blur_flame draw (motion_blur_flame.c). Inside the bracket the first
  * colour buffer grab of the frame copies the frame and the later grabs of the same frame reuse that copy (nd_target.c grab_cur). */
 #define G_PM_ND_GRABHOLD 2
+/* PAUSEOPEN: G_PM_ND_GUTTER (arg = the pause fade, 0 to 128) draws the two wide gutters of the pause picture from the pause slot (pm_gpu.c pm_gpu_pause_gutters). */
+#define G_PM_ND_GUTTER 3
 
 /* DIRECT D11a: G_PM_LST, the start of a static state list recorded in line (nd_rec.c rec_inline). The replay runs it as the list start of the
  * G_DL it replaces (nd_walk.c: the state epoch, the entity skip mark consumed). w1 unused. */
 #define G_PM_LST 0x13
 #define gPmNdSplash(pkt, on) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = ((u32)G_PM_ND << 24) | ((u32)G_PM_ND_SPLASH << 16) | ((on) ? 1u : 0u); _g->words.w1 = 0; }
+#define gPmNdGutter(pkt, a) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = ((u32)G_PM_ND << 24) | ((u32)G_PM_ND_GUTTER << 16) | ((u32)(a) & 0xffu); _g->words.w1 = 0; }
 #define gPmNdGrabHold(pkt, on) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = ((u32)G_PM_ND << 24) | ((u32)G_PM_ND_GRABHOLD << 16) | ((on) ? 1u : 0u); _g->words.w1 = 0; }
 
 /* CORE2-3: a camera viewport (Camera.vp, Camera.vpAlt) is rewritten in place by the game. A list takes a copy made at list build

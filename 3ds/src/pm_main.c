@@ -256,8 +256,7 @@ void* pm_walk_cfb; /* CORE2C-2: set by pm_frame_walk from the frame (the walker 
 int pm_is_cur_cfb(const void* p) { const void* c = pm_walk_cfb; return c && (in_buf(p, c) || (pm_wide && in_buf((const u8*)p + 80, c))); }
 /* Frame buffer and saved-frame memory hold native u16 pixels (the game code reads them as u16). Textures
  * from ROM data hold big-endian bytes. pm_tex reads these two kinds differently. */
-extern unsigned short pm_wide_side_pause[2][40 * 240]; /* PT56 */
-int pm_fb_native(const void* p) { return pm_is_cfb(p) || (nuGfxZBuffer && in_buf(p, nuGfxZBuffer)) || ((const unsigned short*)p >= &pm_wide_side_pause[0][0] && (const unsigned short*)p < &pm_wide_side_pause[0][0] + 2 * 40 * 240); }
+int pm_fb_native(const void* p) { return pm_is_cfb(p) || (nuGfxZBuffer && in_buf(p, nuGfxZBuffer)); }
 /* PAUSEC: the saved picture (150 KB) is reserved once at boot, after the ROM is in, when the heap is whole. On the O3DS XL the commit is
  * full after the map loads (crash log: mem heap sbrk-used 26868 of 29512 KB, commit 65536 of 65536), so a first allocation at the pause
  * can fail there. A failed reservation logs an error; pm_zbuf_need retries at the pause, and the filter is skipped if it still fails. */
@@ -308,65 +307,61 @@ unsigned pm_frame_count(void) { return pm_walk_side && !pm_wq_on_logic() ? pm_wa
  * color buffer"). The PICA color buffer holds that frame until C3D_FrameEnd of this frame runs the
  * command list, so any time during this frame's display list build or run is right. Once per frame. */
 PmB7 pm_b7;
-/* PT12: cpu = 0 is a texture read of the old frame (G_SETTIMG): a GPU copy into the slot of the old frame buffer, no CPU pixels. cpu = 1 is game
- * code that reads the pixels (the pause filter): the CPU readback. Switch prevcpu forces the readback for the texture read too. */
+/* PT12: a texture read of the old frame (G_SETTIMG): a GPU copy into the slot of the old frame buffer, no CPU pixels. The CPU readback is the
+ * fallback when the GPU copy is not possible this frame. The pause picture is a texture read too (PAUSEOPEN, background_gfx.c). */
 int pm_gpu_grab_prev(const void* prev_cfb);
 extern short get_game_mode(void);
 static int pm_game_mode_now(void) { return (int)get_game_mode(); }
-static const void* cap_fill; /* PT78: the frame buffer the pause coverage fill writes (the game fixes it to nuGfxCfb[1]) */
 /* BTRANS caplog (switch caplog): one line per capture call. path gpu2 = copy made at pm_gpu_begin, cpu = CPU read of the live colour buffer
  * (the swirl fallback, the case the row names), done = already taken this frame. split, kick and clear show whether this frame already
  * queued its KICK1 split or clear before the read. */
 void pm_gpu_cap_state(int* o);
 int pm_tex_failed(void);
 int pm_enc_wipe(void);
-static void cap_note(int cpu, const char* path) {
+static void cap_note(const char* path) {
     static int on = -1;
     int st[8];
     if (on < 0) on = pm_debug_has("caplog");
     if (!on) return;
     pm_gpu_cap_state(st);
-    pm_log_d("caplog f%u cpu %d repl %d interp %d path %s prev_pre %d grab_n %d split %d kick %d clear %d draws %d off_fail %d tex_fail %d tgt %d wipe %d why %s",
-             pm_frame_count(), cpu, pm_interp_repl, pm_interp_on, path, st[0], st[1], st[2], st[3], st[4], st[5], st[6], pm_tex_failed(), st[7], pm_enc_wipe(),
+    pm_log_d("caplog f%u cpu 0 repl %d interp %d path %s prev_pre %d grab_n %d split %d kick %d clear %d draws %d off_fail %d tex_fail %d tgt %d wipe %d why %s",
+             pm_frame_count(), pm_interp_repl, pm_interp_on, path, st[0], st[1], st[2], st[3], st[4], st[5], st[6], pm_tex_failed(), st[7], pm_enc_wipe(),
              !st[0] ? "prev0" : st[1] ? "grabn" : "setup");
 }
-static void cfb_capture_prev(int cpu) {
+/* PAUSEOPEN: the last frame for a texture read (set_timg). The GPU copy when this drawn frame has it, else the CPU readback of the frame buffer
+ * that is not drawn now. The pause no longer reads the pixels on the CPU (ROLE_CPUFILL only writes the coverage). */
+void pm_cfb_capture_prev(void) {
     static unsigned done = ~0u;
     unsigned i;
-    if (!cpu) {
-        /* GAMEOVER: the GPU copy is asked in every drawn frame, the t = 0.5 pass (pm_interp_repl) too: pm_gpu_grab_prev knows whether this drawn
-         * frame has its slot. A guard on pm_frame_n (one game step, two drawn frames with fps60) left the t = 0.5 pass without the slot: its blur
-         * strips read the stale frame buffer memory, every second picture differed (the game over flicker). */
-        for (i = 0; i < nuGfxCfbNum; i++) {
-            if (nuGfxCfb[i] == pm_walk_cfb) {
-                unsigned t0 = pm_ph_on ? pm_ticks() : 0;
-                if (pm_gpu_grab_prev(nuGfxCfb[(i + nuGfxCfbNum - 1) % nuGfxCfbNum]) == 2) {
-                    if (pm_ph_on) { unsigned dt = pm_ticks() - t0; pm_b7.cap_n++; pm_b7.cap_ticks += dt; if (dt > pm_b7.cap_max) pm_b7.cap_max = dt; }
-                    cap_note(cpu, "gpu2");
-                    return;
-                }
-                break;
+    /* GAMEOVER: the GPU copy is asked in every drawn frame, the t = 0.5 pass (pm_interp_repl) too: pm_gpu_grab_prev knows whether this drawn
+     * frame has its slot. A guard on pm_frame_n (one game step, two drawn frames with fps60) left the t = 0.5 pass without the slot: its blur
+     * strips read the stale frame buffer memory, every second picture differed (the game over flicker). */
+    for (i = 0; i < nuGfxCfbNum; i++) {
+        if (nuGfxCfb[i] == pm_walk_cfb) {
+            unsigned t0 = pm_ph_on ? pm_ticks() : 0;
+            if (pm_gpu_grab_prev(nuGfxCfb[(i + nuGfxCfbNum - 1) % nuGfxCfbNum]) == 2) {
+                if (pm_ph_on) { unsigned dt = pm_ticks() - t0; pm_b7.cap_n++; pm_b7.cap_ticks += dt; if (dt > pm_b7.cap_max) pm_b7.cap_max = dt; }
+                cap_note("gpu2");
+                return;
             }
+            break;
         }
     }
-    if (done == pm_frame_count()) { cap_note(cpu, "done"); return; }
+    if (done == pm_frame_count()) { cap_note("done"); return; }
     done = pm_frame_count();
     for (i = 0; i < nuGfxCfbNum; i++) {
-        /* PT78: the pause reads the frame from the buffer that is not the fill target, whatever the parity of the drawn step (a step skipped by FS1 moves the
-         * BEGIN_PAUSED draw to the other parity: the old rule, the previous buffer of the drawn one, wrote the fill target and the filter read a stale frame).
-         */
-        const void* ref = pm_walk_cfb;
-        if (cpu && cap_fill) ref = cap_fill;
-        if (nuGfxCfb[i] == ref) {
-            unsigned short* prev = cpu && cap_fill ? nuGfxCfb[(i + 1) % nuGfxCfbNum] : nuGfxCfb[(i + nuGfxCfbNum - 1) % nuGfxCfbNum];
+        /* PT78: the read takes the frame from the buffer that is not the drawn one, whatever the parity of the drawn step (a step skipped by FS1 moves the
+         * draw to the other parity: the old rule, the previous buffer of the drawn one, wrote the draw target and the read got a stale frame). */
+        if (nuGfxCfb[i] == pm_walk_cfb) {
+            unsigned short* prev = nuGfxCfb[(i + nuGfxCfbNum - 1) % nuGfxCfbNum];
             unsigned t0 = pm_ph_on ? pm_ticks() : 0;
             static unsigned nlog;
-            if (!cpu) { /* BTRANS: a split this frame (KICK1 or a grab split) put part of this frame in the colour buffer: no CPU read, the slot keeps its last frame */
+            { /* BTRANS: a split this frame (KICK1 or a grab split) put part of this frame in the colour buffer: no CPU read, the slot keeps its last frame */
                 int st[8];
                 pm_gpu_cap_state(st);
-                if (st[2] || st[3]) { cap_note(cpu, "skip"); return; }
+                if (st[2] || st[3]) { cap_note("skip"); return; }
             }
-            cap_note(cpu, "cpu");
+            cap_note("cpu");
             if (pm_xf.on) pm_xf.cap_cpu++; /* BTLWIPE: the capcpu field of the xfer line */
             pm_gpu_read_frame(prev);
             if (pm_ph_on) { unsigned dt = pm_ticks() - t0; pm_b7.cap_n++; pm_b7.cap_ticks += dt; if (dt > pm_b7.cap_max) pm_b7.cap_max = dt; }
@@ -376,9 +371,6 @@ static void cfb_capture_prev(int cpu) {
         }
     }
 }
-void pm_cfb_capture_prev(void) { cfb_capture_prev(0); }
-void pm_cfb_capture_prev_cpu(void) { cap_fill = NULL; cfb_capture_prev(1); }
-void pm_cfb_capture_prev_cpu_for(const void* fill) { cap_fill = fill; cfb_capture_prev(1); cap_fill = NULL; }
 /* PC01: once per second (switch `pacestat`): game steps, drawn frames, vblanks and audio ticks since the last line. */
 extern unsigned pm_step_calls;
 static unsigned pace_ticks;

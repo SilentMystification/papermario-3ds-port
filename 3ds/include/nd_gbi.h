@@ -100,6 +100,8 @@ Gfx* nd_rec_task(void);
 #define gPmNdSplash(pkt, on) { nd_gx_w((Gfx*)(pkt), ((u32)G_PM_ND << 24) | ((u32)G_PM_ND_SPLASH << 16) | ((on) ? 1u : 0u), 0); }
 #undef gPmNdGrabHold
 #define gPmNdGrabHold(pkt, on) { nd_gx_w((Gfx*)(pkt), ((u32)G_PM_ND << 24) | ((u32)G_PM_ND_GRABHOLD << 16) | ((on) ? 1u : 0u), 0); }
+#undef gPmNdGutter
+#define gPmNdGutter(pkt, a) { nd_gx_w((Gfx*)(pkt), ((u32)G_PM_ND << 24) | ((u32)G_PM_ND_GUTTER << 16) | ((u32)(a) & 0xffu), 0); } /* PAUSEOPEN: through nd_gx_w (the ND recorder); the gbi_custom.h form writes the word raw and the walker never sees it */
 /* The rectangle words: the first word through nd_gx_w, then the two RDPHALF words (gImmp1 above), as gbi.h writes them. */
 #undef gSPTextureRectangle
 #define gSPTextureRectangle(pkt, xl, yl, xh, yh, tile, s, t, dsdx, dtdy) \
