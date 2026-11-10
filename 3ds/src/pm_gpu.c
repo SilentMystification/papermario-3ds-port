@@ -2189,8 +2189,7 @@ static void gut_quad(int xa, int xb, float sa, float sb, unsigned c) {
     nb.gidx_n += 6; nb.gni += 6;
 }
 int pm_gut_seen; /* PAUSEOPEN debug: set by the first gutter call; rect_raw_quad (pm_gpu_rect.c) watches the rectangles after it (debug word gutdbg) */
-/* PAUSEOPEN: the gutter batch takes the walker's combine and prim as they are at the payload (the centre's draw comes before it: PM_CC_43/44
- * with the prim (40, 40, 40, fade)), so the strips get the centre's fade. The class and vertex colour are those of tex_raw_piece. */
+/* PAUSEOPEN: the gutter batch is class 2 with a white vertex colour, as in run 185371 (the strips show the scene, not darkened: open, row PAUSEFADE). */
 void pm_gpu_pause_gutters(void) {
     C3D_Tex* t = NULL;
     static int dbg_n;
@@ -2215,8 +2214,8 @@ void pm_gpu_pause_gutters(void) {
                     gs.off_active, gs.off_cur, gs.combine, (void*)t, why ? why : "drawn", sci_x0, sci_y0, sci_x1, sci_y1);
     if (why) return;
     gut_tex = t;
-    const int ec = (gs.combine >= 4 && gs.combine <= 8) ? gs.combine : 2;
-    const unsigned c = (gs.combine == 5 || gs.combine == 7) ? gs.env_col : (gs.combine == 8 && gs.plan.vtxname != PM_NM_SHADE) ? gs.plan.vtx : 0xffffffffu;
+    const int ec = 2; /* class 2 (TEXEL0 x SHADE): the plan path (combine 8) drops the texel in the strips */
+    const unsigned c = 0xffffffffu;
     static const float uvso_p[4] = { 1.f / 4096.f, 1.f / 4096.f, 0.f, 0.f };
     const int s_2d = nb.rect_2d;
     nb.rect_2d = 1;
