@@ -1316,7 +1316,7 @@ ImgFXAnimHeader* imgfx_load_anim(ImgFXState* state) {
 #ifdef TARGET_3DS
                 { /* HC4e2b: the typed unit (a typed word stays) */
                     uint32_t t[2];
-                    nd_op_xlate(w0, gfxBuffer[j-1].words.w1, t);
+                    nd_op_unit(w0, gfxBuffer[j-1].words.w1, t);
                     w0 = t[0];
                 }
                 cmd = w0 >> 0x18;
