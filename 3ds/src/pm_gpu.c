@@ -1617,13 +1617,14 @@ static void pm_gpu_menu_present_w(void);
 typedef struct { int unused; } Wq_pm_gpu_menu_present;
 static void wq_pm_gpu_menu_present(void* a) { Wq_pm_gpu_menu_present* q = (Wq_pm_gpu_menu_present*)a; (void)q; pm_gpu_menu_present_w(); }
 void pm_gpu_menu_present(void) { Wq_pm_gpu_menu_present q = { 0 }; pm_wq_post(wq_pm_gpu_menu_present, &q, sizeof q); }
+static int sr_on; /* the stereo record state, defined with the record below (the present path clears it) */
 static void pm_gpu_menu_present_w(void) {
     if (!menu_dirty || !gs.gpu_ok || !target) return;
     menu_dirty = 0;
     eye_slider = osGet3DSliderState();
-    stereo_frame = targetR && eye_slider > 0.02f;
+    stereo_frame = targetR && u_eye >= 0 && eye_slider > 0.02f;
     gfxSet3D(stereo_frame);
-    raw1_reset(); sh_clear(); C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+    raw1_reset(); sh_clear(); sr_on = 0; C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
     sh_clear(); C3D_FrameDrawOn(target);
     if (stereo_frame) C3D_FrameDrawOn(targetR);
     rd_sync(); C3D_FrameEnd(GX_CMDLIST_FLUSH);
@@ -1958,8 +1959,8 @@ int pm_gpu_off_begin(const void* base, int stride, int siz) {
 #define SR_FB_MAX 32   /* main target binds of one left pass (the frame begin and each off-screen pass end) */
 #define SR_DRAIN 0xFFu /* a recorded pm_gx_drain (TEXF1: the replay waits at the same point) */
 typedef struct { u32 l, ra, rn; } SrFb; /* left bind list address, the right list address and size (words) */
-static gxCmdEntry_s* sr_ent;
-static SrFb* sr_fb;
+static gxCmdEntry_s sr_ent[SR_MAX]; /* static, not heap: 8.6 KB, under the tens-of-KB heap line of hw rule 7 */
+static SrFb sr_fb[SR_FB_MAX];
 static unsigned sr_n, sr_from, sr_fbn;
 static unsigned sr_logn = 4u; /* STEREOFX debug: replay log lines of the current stereo run */
 static int sr_on, sr_over;
@@ -1998,9 +1999,7 @@ static void sr_frame_begin(void) {
     static int sr_prev; if (stereo_frame && !sr_prev) sr_logn = 0; sr_prev = stereo_frame; /* STEREOFX debug */
     sr_on = 0; sr_n = 0; sr_fbn = 0; sr_over = 0; sr_from = 0;
     if (!stereo_frame) return;
-    if (!sr_ent) { sr_ent = (gxCmdEntry_s*)malloc(SR_MAX * sizeof *sr_ent); sr_fb = (SrFb*)malloc(SR_FB_MAX * sizeof *sr_fb); } /* hw rule 7: heap, at the first stereo frame */
     sr_on = 1;
-    if (!sr_ent || !sr_fb) { sr_over = 1; return; }
     sr_force_all();
 }
 /* split_frame without its sh_clear (those dirty marks would go out in the bind lists, not in a recorded list). The clear of the main target goes
@@ -2075,8 +2074,9 @@ static void sr_replay(void) {
         } else if (id == 0x02u) { /* a fill: the target buffers become the targetR buffers (start and end of both) */
             e.data[1] = sr_map(e.data[1]); e.data[3] = sr_map(e.data[3]); e.data[4] = sr_map(e.data[4]); e.data[6] = sr_map(e.data[6]);
         } else if (id == 0x04u) { /* a copy: a texture upload (source in FCRAM) is done already; a copy of rendered pixels reads targetR */
-            if (!sr_vram(e.data[1])) continue;
+            if (!sr_vram(e.data[1]) && !sr_vram(e.data[2])) continue;
             e.data[1] = sr_map(e.data[1]);
+            e.data[2] = sr_map(e.data[2]); /* STEREOFX: a copy into the left target goes to targetR */
         } else continue; /* no display transfer or DMA in a recorded pass */
         pm_gx_room();
         gxCmdQueueAdd(q, &e);
