@@ -10,3 +10,4 @@ Gate:
 (a) In a worktree, `python 3ds/tools/bench.py run nd_host --row TOOLB2 --why "run id check"` (host test, 0 Azahar starts). The printed run id is greater than the max run_id of the main folder's runs.jsonl and of every worktree runs.jsonl (a python one-liner over all_tree_runs_files()).
 (b) The one Azahar start of this row is the next battle_start_f182_cold run of HC4e3 itself (no extra start): its record has warm 0 and run_azahar prints "Cold start (option)".
 Stop: any gate fails, then hand back.
+- Also (FFOG1 run, 2026-11-10): a run that reaches its cap with periodic shots still ends in SHOT COPY FAILED (76 of 77 full, 0076 short after 30 s) after AZTSTEREO. Close it in run_azahar.ps1 (after TOOLB1 merges, same file): at a timeout stop, a short unlogged last file is a write cut by the stop; drop it, and report only logged shots.
