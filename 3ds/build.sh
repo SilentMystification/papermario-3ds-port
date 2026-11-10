@@ -63,9 +63,17 @@ gen_shapes() {
     rom=$ASSET_BASE/ver/us/baserom.z64; [ -f "$rom" ] || { echo "gen_shapes: missing $rom" >&2; exit 1; }
     w=$(pwd -W 2>/dev/null || pwd); od=$(cd "$OUT" && pwd -W 2>/dev/null || pwd)/romfs/shape
     rd=$(cd "$ASSET_BASE/ver/us" && pwd -W 2>/dev/null || pwd)
+    # Skip: the stamp holds the hash of the converter source, the ROM size and the file count of the last run.
+    stamp=$OUT/romfs/shape/.stamp
+    want="$(git hash-object 3ds/tools/nd_shape_conv.c) $(wc -c < "$rom" | tr -d ' ')"
+    if [ -f "$stamp" ] && [ "$(cat "$stamp")" = "$want $(ls "$OUT/romfs/shape"/*.nds 2>/dev/null | wc -l | tr -d ' ')" ]; then
+        echo "gen_shapes: up to date"; return 0
+    fi
     mkdir -p "$OUT/romfs/shape"
+    rm -f "$stamp"
     MSYS_NO_PATHCONV=1 docker run --rm -v "$w:/w:ro" -v "$od:/out" -v "$rd/baserom.z64:/ar/ver/us/baserom.z64:ro" -w /tmp pm3ds-host:1 sh -c \
         'gcc -O2 -Wall -o /tmp/nd_shape_conv /w/3ds/tools/nd_shape_conv.c && /tmp/nd_shape_conv /ar /out' || { echo "gen_shapes failed" >&2; exit 1; }
+    echo "$want $(ls "$OUT/romfs/shape"/*.nds 2>/dev/null | wc -l | tr -d ' ')" > "$stamp"
 }
 gen_shapes
 
