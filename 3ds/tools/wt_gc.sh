@@ -115,6 +115,7 @@ run git worktree prune
 for l in build3ds/lane-* build3ds/at_*; do
     [ -n "$ONLY" ] && break
     [ -d "$l" ] || continue
+    case "$l" in build3ds/lane-main) continue ;; esac  # main's push-ready build: never removed
     n=$(basename "$l"); n=${n#lane-}
     case "$keep_wt" in *",$n,"*) continue ;; esac
     [ -d "build3ds/wt/$n" ] && continue
@@ -127,11 +128,13 @@ for l in build3ds/lane-* build3ds/at_*; do
 done
 # SWEEP: leftovers of finished scratch work in build3ds (skipped with --only). A folder goes when no file in it is newer than 12 h.
 # A loose *.txt *.log *.py *.png goes when its name starts with <NAME>_ (the part before the first _) and no worktree folder NAME exists.
-# Never removed: build_key.txt, hw_live_log_*.txt, crash_stack_addrs.txt, pm_3ds.*.
+# Never removed (sweep and lane loop): build3ds/hw_* (console logs and dumps), build3ds/lane-main, build3ds/azslots,
+# build3ds/basecache, build3ds/main_build.log, build_key.txt, hw_live_log_*.txt, crash_stack_addrs.txt, pm_3ds.*.
 if [ -z "$ONLY" ]; then
     sweep_before=$(du -sm build3ds 2>/dev/null | cut -f1)
     for d in build3ds/clean* build3ds/wt_commit* build3ds/wt_base* build3ds/cen_src* build3ds/wt_ui* build3ds/ftp_* build3ds/rvtmp build3ds/final*_png build3ds/jfix build3ds/review build3ds/nat; do
         [ -d "$d" ] || continue
+        case "$d" in build3ds/hw_*|build3ds/lane-main|build3ds/azslots|build3ds/basecache) continue ;; esac
         if [ -n "$(find "$d" -mmin -720 -print -quit 2>/dev/null)" ]; then echo "keep $d (a file newer than 12 h)"; continue; fi
         echo "remove stale folder $d"
         run rm -rf -- "$d"
@@ -139,7 +142,7 @@ if [ -z "$ONLY" ]; then
     for dir in build3ds build3ds/wt; do
         find "$dir" -maxdepth 1 -type f \( -name '*.txt' -o -name '*.log' -o -name '*.py' -o -name '*.png' \) -mmin +720 2>/dev/null | while IFS= read -r f; do
             base=$(basename "$f")
-            case "$base" in build_key.txt|hw_live_log_*|crash_stack_addrs.txt|pm_3ds.*) continue ;; esac
+            case "$base" in build_key.txt|hw_*|main_build.log|crash_stack_addrs.txt|pm_3ds.*) continue ;; esac
             case "$base" in *_*) ;; *) continue ;; esac
             name=${base%%_*}
             [ -n "$name" ] || continue
