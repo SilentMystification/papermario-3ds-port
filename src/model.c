@@ -4496,7 +4496,7 @@ void mdl_local_gfx_update_vtx_pointers(Gfx *nodeDlist, Vtx *baseVtx, Gfx *arg2, 
 #ifdef TARGET_3DS
     do { /* HC4e2b: the copy takes the typed unit (nd_op_xlate: ND_X0/ND_X1 of the word; a typed word stays) */
         uint32_t t[2];
-        nd_op_xlate(nodeDlist->words.w0, nodeDlist->words.w1, t);
+        nd_op_unit(nodeDlist->words.w0, nodeDlist->words.w1, t);
         w0 = t[0];
         w1 = (Vtx*)(uintptr_t)t[1];
         if (w0 >> 0x18 == NDO_VTX) {

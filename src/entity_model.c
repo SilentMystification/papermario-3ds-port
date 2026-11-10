@@ -263,7 +263,7 @@ static u32 ent_vtx_range(const Gfx* dl, s32 seg) {
     u32 range = 0;
     for (int k = 0; k < 2048; k++) {
         uint32_t t[2];
-        nd_op_xlate(dl[k].words.w0, dl[k].words.w1, t);
+        nd_op_unit(dl[k].words.w0, dl[k].words.w1, t);
         const u32 op = t[0] >> 24;
         if (op == (u32)NDO_END) break;
         if (op == (u32)NDO_VTX && (dl[k].words.w1 >> 24) == ((u32)seg & 0xffu)) {
@@ -304,7 +304,7 @@ static void entcheck_draw(const Gfx* rec, const EntityModel* model) { /* DIRECT 
         NdTexDec tdec;
         for (int k = 0; q != nullptr && k < 2048; k++) {
             uint32_t t[2];
-            nd_op_xlate(q[k].words.w0, q[k].words.w1, t);
+            nd_op_unit(q[k].words.w0, q[k].words.w1, t);
             const u32 op = t[0] >> 24;
             if (op == (u32)NDO_END) break;
             if (op == (u32)NDO_CALL) dlm |= 2u;
