@@ -74,3 +74,6 @@ C:/Users/Andrew/Documents/GitHub/gopher64-probe and the installed rustup 1.29.3 
 - Scope (user): "We're using this to test functionality, so ensure we're not overengineering a testing harness just to verify things."
   So: a standalone oracle tool (n64ref.py), no bench kind, no runs.jsonl rows. Keep only what a draw question needs: warp, pos, a short
   pad table, a frame dump and n64dl. until= only as a frame number. No timing statistics, no scenario catalog beyond what a row needs.
+
+## Parked (user, 2026-11-10: "lets not pursue this path for now")
+n64ref.py (N64PEEK) is merged: it dumps RDRAM of the stock gopher64 (title or a save state). No save states made; N64DL stopped before a commit. Resume only when the user asks.
