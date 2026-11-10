@@ -1,15 +1,60 @@
 # Row KZN04: kzn_04 runs at 15-16 fps on the O3DS XL (user, 2026-11-09)
 
+(Model: Haiku. A diagnostic row: 3 Azahar starts.)
+
 ## User facts
-"The room kzn_04 is very laggy." "Perhaps it's because of the fireballs." "Fire sticks." (the rotating fire bar
-  hazards, Firebar / fire stick enemies or entities in kzn_04).
+"The room kzn_04 is very laggy." "Perhaps it's because of the fireballs." "Fire sticks."
+XL log (main de4f4b8c8, build3ds/hw_live_log_131.txt 2975-3006): fps 15.7/16.6, cls tex 23.4/23.7 ms (mac_01 under 2), ph tex 6.8, ndc trect 5.4 per frame.
 
-## Console facts (XL live log, main de4f4b8c8, build3ds/hw_live_log_131.txt lines 2975-3006)
-Two windows: fps 15.7 / 16.6, ft 63.4 / 59.9 ms, nd 43.9 / 45.1 ms, lg 49.8 / 48.9 ms, I-miss 69k / 66k, D-miss 40k / 36k.
-Class tex 23.4 / 23.7 ms (mac_01: under 2 ms); ph tex 6.8 ms; esync 54.7 / 13.8; ndc spr 19 / 24, ent 61.5 / 34.7, trect 53.5 / 56.3.
-kzn_04 shape: 20 lists, 194 triangles (geometry is small).
+## Cause (oracle, code read, main fe241dc42)
+kzn_04 calls SetSpriteShading(SHADING_KZN_04) (src/world/area_kzn/kzn_04/main.c:15). Every NPC sprite (12 fire bar NPCs, ANIM_Fire_Brighest_Burn,
+npc.c:115-263), Mario and the partner draw shaded. Per shaded sprite per frame: create_shading_palette (src/sprite_shading.c:66) draws the 16x1
+palette rect (the trect count), then set_tilesize tile 0 -> tex_shaded0 (3ds/src/nd_tex_set.c:542) -> pm_gpu_flush + load_shaded_sprite
+(nd_tex_set.c:620: 256 float cc_cycle1) -> pm_tex_load_shaded (3ds/src/pm_tex.c:1802). That function keys the texture by a hash of the 256-entry
+lut, and the lut changes when a sprite moves through the lights (the fire bars rotate every frame): a miss, decode and upload per sprite per frame.
+Premise: most pm_tex_load_shaded calls in kzn_04 are misses, about 3 or more per frame.
 
-## Step 1 (oracle, code read; the queue runs one agent at a time)
-Find the kzn_04 fire sticks (rotating fire bars) and fireballs (script, effect or entity, count, texture: animated frames, palette cycling, scrolling, per-frame upload)
-and every other per-frame texture user in the room (lava, lava fall). Name what costs 23 ms in the tex class, with file:line, and
-the fix. Then one coder row.
+## Goal
+Print the shaded-load count, miss count and time per 300 frames. The oracle designs the fix from these numbers. No fix in this row.
+
+## Start state
+`sh 3ds/tools/wt_new.sh KZN04` (build3ds/wt/KZN04, branch KZN04 from main). PM_ROW=KZN04, PM_LANE=KZN04.
+
+## Touch only
+3ds/src/pm_tex.c (pm_tex_load_shaded only), 3ds/tools/azt_scenarios.json, 3ds/tools/bench_defs.json. NOT nd_tex_set.c (row HC7).
+
+## Exact edit (pm_tex.c, at pm_tex_load_shaded, line 1802)
+Above the function add:
+  static unsigned shs_calls, shs_miss, shs_t, shs_f; /* KZN04 diag (switch shadestat): shaded sprite loads since the last line */
+  static __attribute__((cold, noinline)) void shs_note(unsigned t0, int miss) {
+      shs_calls++; shs_miss += miss != 0; shs_t += pm_ticks() - t0;
+      const unsigned f = pm_frame_count();
+      if (f >= shs_f + 300u) { pm_log("shadestat f%u frames %u calls %u miss %u us %u", f, f - shs_f, shs_calls, shs_miss, shs_t / 268u); shs_f = f; shs_calls = shs_miss = shs_t = 0; }
+  }
+In the function: first line `const int shs_on = PMDL("shadestat"); const unsigned t0 = shs_on ? pm_ticks() : 0u;`.
+Replace `return load_impl(...);` with `int r = load_impl(...); if (__builtin_expect(shs_on, 0)) shs_note(t0, ph_miss); return r;` (same arguments).
+
+## Scenario and bench (same commit)
+Scenario kzn04_shadestat: debug "warp=kzn_04:0 shadestat loglevel=debug", until "shadestat f(6|7)\\d\\d ", cap 30, deadline 20,
+first_marker "warp: kzn_04 entry 0", needs_picture false, expected_events warp + until. Bench kzn04_shadestat (azahar_stream, same scenario, cap 30).
+
+## Done criteria
+1. Build OK, memcheck line OK.
+2. `python 3ds/tools/bench.py run kzn04_shadestat --row KZN04 --lane KZN04 --why "KZN04 shaded load counts"`: the line
+   `shadestat f6xx frames 3xx calls N miss M us U` prints. Report N, M, U, and N/300 calls per frame.
+   Premise true: M/N >= 0.9 and N/300 >= 3. Premise false: report the values (the cost is elsewhere).
+3. Commit. Give the push recipe for the XL: same debug word plus prof, scene kzn_04. Azahar gives only the counts.
+Affected scenarios: kzn04_shadestat only.
+
+## Stop
+3 Azahar starts. 2 tries for a missing line, then hand back with the log tail. STOP RULE: 90 min or 150 tool calls.
+
+## Rules
+CLAUDE.md rules 1-7. PM_LANE=KZN04 on every build.sh and bench call. No git stash. Foreground waits.
+
+## Commands
+- Build: PM_ROW=KZN04 PM_LANE=KZN04 sh 3ds/build.sh
+- Budget reset: powershell -NoProfile -File 3ds/run_azahar.ps1 -ResetBudget KZN04
+
+## At the end
+The debug line stays. Keep this file (the fix row follows). Hand back "KZN04 ready <hash> calls N miss M us U".
