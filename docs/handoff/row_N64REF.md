@@ -53,7 +53,10 @@
 - **N64REF-4 (padscript and until).** Pad table in controller.rs, padscript expander and until in n64ref.py. Gate: `padscript=right*60`, then gPlayerStatus.pos.x changed by more than 20 at the dump, and `until` prints a frame below the cap.
 - **N64REF-5 (n64dl).** 3ds/tools/n64dl.c and the build line in n64ref.py. Gate: decode the kmr_20 dump from its task a0: it reaches G_ENDDL with 0 unknown opcodes and at least 1 G_TEXRECT (HUD).
 
-### Steps that need the user (questions)
-- Q1: May the agent install rustup with the version from gopher64's rust-toolchain.toml, plus, if SDL3 builds from source, CMake and the Visual Studio C++ Build Tools? Without a yes, N64REF-1 cannot start.
-- Q2: Is the fork in build3ds/n64ref (git-ignored), with only the patch in the repo, OK?
-- Q3: Must n64ref runs go through bench.py, which means a new bench kind "n64ref" and a runs.jsonl row, or is it a standalone oracle tool (n64ref.py only)? Rule 1 says every test runs through bench.py, and this tool tests the N64, not the port.
+### User answers (2026-11-10)
+- Install: yes. The N64REF-1 agent installs rustup (version from rust-toolchain.toml) and, if SDL3 builds from source, CMake and the MSVC Build Tools.
+- Fork: a separate repo, C:/Users/Andrew/Documents/GitHub/gopher64-probe (a local git clone of upstream tag v1.1.42 on branch probe).
+  The fork changes live there, not in this repo; this repo keeps only 3ds/tools/n64ref.py, n64_scenarios.json and n64dl.c.
+- Scope (user): "We're using this to test functionality, so ensure we're not overengineering a testing harness just to verify things."
+  So: a standalone oracle tool (n64ref.py), no bench kind, no runs.jsonl rows. Keep only what a draw question needs: warp, pos, a short
+  pad table, a frame dump and n64dl. until= only as a frame number. No timing statistics, no scenario catalog beyond what a row needs.
