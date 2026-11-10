@@ -506,6 +506,12 @@ static void tex_win1(const NdTst* t, const NdTexM* m, const void* timg, int uls,
         src += (size_t)(l1y * l1stride + l1x);
         stride = l1stride * 2;
     }
+    else if (src && l1v && ((uls >> 2) >= m->ld_w * 2 || (ult >> 2) >= m->ld_h)) {
+        /* COINSTAR: a window origin outside the loaded 4-bit image is a coordinate offset only (item icons in a shaded map: tile 1 at 256,256
+         * over a 24 x 24 load, item_entity.c:990). The source is the LoadTile origin, as tile 0 (V13); x0 keeps uls >> 2. */
+        src += (size_t)(l1y * l1stride + l1x);
+        stride = l1stride * 2;
+    }
     else if (src && l1v) {
         /* V21: SetTileSize uls and ult are the window origin in the image (fire_breath scrolls tile 1 by imgFrame*32+32).
          * This branch is 4 bit only (bpp 0). uls >> 2 counts texels, two per byte, so the byte offset is half of it.
