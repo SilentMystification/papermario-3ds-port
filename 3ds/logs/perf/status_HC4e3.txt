@@ -1,2 +1,2 @@
-HC4e3 group3 gate battle_start_f182_cold retry with nd_dlc segment ops
-2026-11-10T16:51:28 battle_start_f182_cold scenario battle_start_f182_cold: measures picture; path azt.ps1 -> run_azahar.ps1; speed normal; lane HC4e3; why HC4e3 group 3 gate try 2
+HC4e3 group3 gate battle_start_f182_cold rerun
+2026-11-10T16:53:36 battle_start_f182_cold scenario battle_start_f182_cold: measures picture; path azt.ps1 -> run_azahar.ps1; speed normal; lane HC4e3; why HC4e3 group 3 gate battle
