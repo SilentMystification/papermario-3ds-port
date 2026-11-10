@@ -1407,31 +1407,78 @@ def store_base(commit, bench, scenario_name, shots, log, info):
     return names
 
 
-def base_record(bench, row, label, commit):
-    """The newest run record of bench under row with this label at commit (the run that filled the store), else None."""
-    best = None
-    for r in read_runs():
-        if r.get("bench") == bench and r.get("row") == row and r.get("label") == label and same_commit(r.get("commit") or "", commit):
-            best = r
-    return best
+def base_records(bench, row, label, commit, since):
+    """The run records of bench under row with this label at commit, written at or after since (an ISO time), in file order."""
+    return [r for r in read_runs() if r.get("bench") == bench and r.get("row") == row and r.get("label") == label
+            and same_commit(r.get("commit") or "", commit) and (r.get("ts") or "") >= since]
+
+
+def snap_shots(shots, scenario_name):
+    """Copies the shot folder of one run into PM_BASE_SNAP (set by base_run) as <snap>/<NN>_<scenario>. Returns the copy's path,
+    None when PM_BASE_SNAP is not set or the folder holds no shot. Each start empties the shared shot archive, so the second
+    run of a list would otherwise hide the shots of the first."""
+    snap = os.environ.get("PM_BASE_SNAP")
+    shots = Path(shots)
+    if not snap or not shots.is_dir() or not any(shots.glob("*.ppm")):
+        return None
+    root = Path(snap)
+    root.mkdir(parents=True, exist_ok=True)
+    dst = root / ("%02d_%s" % (len(list(root.iterdir())) + 1, scenario_name))
+    shutil.copytree(shots, dst)
+    return str(dst)
+
+
+def shots_diff(a, b):
+    """"" when the two shot folders hold the same shot names with the same bytes, else a text for the first difference."""
+    an = sorted(p.name for p in Path(a).glob("*.ppm"))
+    bn = sorted(p.name for p in Path(b).glob("*.ppm"))
+    if not an:
+        return "no shots in %s" % posix(a)
+    if an != bn:
+        return "shot names differ: %d and %d shots" % (len(an), len(bn))
+    for n in an:
+        if md5_of(Path(a) / n) != md5_of(Path(b) / n):
+            return "%s differs" % n
+    return ""
+
+
+BASE_TWICE = 2  # a base is stored only when this many runs of its scenario in one list are byte-equal on every shot
 
 
 def base_run(bds, commit, build_no, row, lane, label, why):
-    """Runs the benches bds on one build (one azt list: one kept slot), then stores each bench whose run record is log_pass.
-    lane "" is the main folder build. Returns the rc of the run."""
+    """Runs the benches bds twice in one azt list (one kept slot: bds, then bds again), copies each run's shots (snap_shots),
+    and stores a bench only when its two runs are byte-equal on every shot. A bench whose runs differ is not stored and
+    the rc is 1. lane "" is the main folder build. Returns the rc of the run."""
     name = ",".join(b["name"] for b in bds)
-    rc = cmd_run(argparse.Namespace(bench=name, row=row, why=why, label=label, build=build_no, commit=commit, speed=None, lane=lane))
+    snap = REPO / "build3ds" / "basesnap" / (lane or "main")
+    shutil.rmtree(snap, ignore_errors=True)
+    since = now_iso()
+    os.environ["PM_BASE_SNAP"] = str(snap)
+    try:
+        rc = cmd_run(argparse.Namespace(bench=",".join([name] * BASE_TWICE), row=row, why=why, label=label, build=build_no, commit=commit,
+                                        speed=None, lane=lane))
+    finally:
+        os.environ.pop("PM_BASE_SNAP", None)
+    bad = 0
     for bd in bds:
         s = scenario(bd["scenario"])
-        rec = base_record(bd["name"], row, label, commit)
-        if not rec or rec.get("result") != "log_pass":
-            print("base %s: not stored (run result %s)." % (bd["name"], rec.get("result") if rec else "none"))
+        recs = base_records(bd["name"], row, label, commit, since)
+        if len(recs) < BASE_TWICE or any(r.get("result") != "log_pass" for r in recs[-BASE_TWICE:]):
+            print("base %s: not stored (run results %s)." % (bd["name"], ", ".join(str(r.get("result")) for r in recs) or "none"))
+            bad += 1
             continue
-        shots = SHOTS / s["name"] / (lane or "main")
-        names = store_base(commit, bd["name"], s["name"], shots, REPO / "build3ds" / "azt" / "logs" / (s["name"] + ".txt"),
-                           {"row": row, "label": label, "build_no": build_no, "run_log_path": rec.get("log_path")})
-        print("base %s at %s: stored %d shots at %s" % (bd["name"], commit[:9], len(names), store_root() / commit / bd["name"]))
-    return rc
+        first, last = recs[-2], recs[-1]
+        diff = shots_diff(first.get("shot_path") or "", last.get("shot_path") or "")
+        if diff:
+            print("base %s: two runs differ, not stored (%s)." % (bd["name"], diff))
+            bad += 1
+            continue
+        names = store_base(commit, bd["name"], s["name"], Path(last["shot_path"]), REPO / "build3ds" / "azt" / "logs" / (s["name"] + ".txt"),
+                           {"row": row, "label": label, "build_no": build_no, "run_log_path": last.get("log_path"),
+                            "two_runs_log_paths": [first.get("log_path"), last.get("log_path")]})
+        print("base %s at %s: two runs equal, stored %d shots at %s" % (bd["name"], commit[:9], len(names), store_root() / commit / bd["name"]))
+    shutil.rmtree(snap, ignore_errors=True)
+    return rc if rc else (1 if bad else 0)
 
 
 def drop_base_lane(lane, bds):
@@ -1454,40 +1501,121 @@ def drop_base_lane(lane, bds):
             pass
 
 
+BASE_LOCK_STALE_S = 2 * 3600  # a base lock this old is left by a dead run: removed once
+BASE_LOCK_WAIT_S = 40 * 60  # a waiting run gives up after this
+
+
+def base_lock_take(commit):
+    """Takes the build lock <store>/<commit>.lock (O_EXCL, holder pid and time inside). Two runs on one commit share the
+    lane base_<short> and its docker volumes (tar "Cannot open", "File exists"), so the second waits. Returns the lock
+    path, or None after BASE_LOCK_WAIT_S."""
+    lk = store_root() / (commit + ".lock")
+    lk.parent.mkdir(parents=True, exist_ok=True)
+    waited, stale_done = 0, False
+    while True:
+        try:
+            fd = os.open(str(lk), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            try:
+                age = time.time() - lk.stat().st_mtime
+            except OSError:
+                continue  # released between the two calls
+            if age > BASE_LOCK_STALE_S and not stale_done:
+                stale_done = True
+                print("base %s: lock older than 2 h, removed; retry" % commit[:9])
+                try:
+                    lk.unlink()
+                except OSError:
+                    pass
+                continue
+            if waited >= BASE_LOCK_WAIT_S:
+                return None
+            if waited == 0:
+                print("base %s: another run holds %s; waiting" % (commit[:9], posix(lk)))
+            time.sleep(10)
+            waited += 10
+            continue
+        with os.fdopen(fd, "w") as f:
+            f.write("pid %d since %s\n" % (os.getpid(), now_iso()))
+        return lk
+
+
 def base_build_run(bds, commit, row):
     """Builds commit once as lane base_<short> (scratch_build: the committed tree, the main folder's user files), runs the benches
-    on it and stores their shots. The scratch folder, the lane and its copies are removed at the end."""
+    on it and stores their shots. The scratch folder, the lane and its copies are removed at the end. Under the per-commit lock:
+    when another run has stored the shots meanwhile, nothing is built."""
     short = commit[:9]
     lane = "base_" + short  # lane names are letters, digits and _ (lane_problem)
     scratch = REPO / "build3ds" / lane
     lane_dir = REPO / "build3ds" / ("lane-" + lane)
     gitdir = subprocess.check_output(["git", "rev-parse", "--absolute-git-dir"], cwd=REPO, text=True).strip()
     src3dsx = scratch / "build3ds" / ("lane-" + lane) / "pm_3ds.3dsx"
+    lk = base_lock_take(commit)
+    if lk is None:
+        print("base %s: lock still held after 40 min. Nothing stored." % short)
+        return 6
     try:
-        rc, build_no = scratch_build(commit, gitdir, scratch, lane, row)
-        if rc != 0:
-            print("base %s: build.sh exit %d. Nothing stored." % (short, rc))
-            return rc
-        if not src3dsx.exists():
-            print("base %s: no %s after the build. Nothing stored." % (short, posix(src3dsx)))
-            return 5
-        lane_dir.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src3dsx, lane_dir / "pm_3ds.3dsx")
-        why = "base store at %s: the bench shots of the merge-base, the byte reference for cmp; no other run gives them" % short
-        os.environ["PM_BENCH_DIRTY"] = "0"  # a commit archive: dirty false
+        if all(stored(commit, bd["name"]) for bd in bds):
+            print("base stored by another run: %s" % short)
+            return 0
         try:
-            return base_run(bds, commit, build_no, row, lane, "base " + short, why)
+            rc, build_no = scratch_build(commit, gitdir, scratch, lane, row)
+            if rc != 0:
+                print("base %s: build.sh exit %d. Nothing stored." % (short, rc))
+                return rc
+            if not src3dsx.exists():
+                print("base %s: no %s after the build. Nothing stored." % (short, posix(src3dsx)))
+                return 5
+            lane_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src3dsx, lane_dir / "pm_3ds.3dsx")
+            why = "base store at %s: the bench shots of the merge-base, the byte reference for cmp; no other run gives them" % short
+            os.environ["PM_BENCH_DIRTY"] = "0"  # a commit archive: dirty false
+            try:
+                return base_run(bds, commit, build_no, row, lane, "base " + short, why)
+            finally:
+                os.environ.pop("PM_BENCH_DIRTY", None)
         finally:
-            os.environ.pop("PM_BENCH_DIRTY", None)
+            shutil.rmtree(lane_dir, ignore_errors=True)
+            shutil.rmtree(scratch, ignore_errors=True)
+            drop_base_lane(lane, bds)
     finally:
-        shutil.rmtree(lane_dir, ignore_errors=True)
-        shutil.rmtree(scratch, ignore_errors=True)
-        drop_base_lane(lane, bds)
+        try:
+            lk.unlink()
+        except OSError:
+            pass
+
+
+def base_drop(a):
+    """Removes the stored shots of bench at commit (store folder and its index.json entry). Nothing else is touched."""
+    commit = base_commit(a.commit)
+    if not commit:
+        print("no base commit (the merge-base of HEAD with main, or --commit %s is unknown). Nothing was dropped." % a.commit)
+        return 5
+    d = store_root() / commit / a.bench
+    idx = load_index()
+    ent = idx["commits"].get(commit)
+    listed = bool(ent and a.bench in ent["benches"])
+    if not d.exists() and not listed:
+        print("base %s at %s: not stored. Nothing dropped." % (a.bench, commit[:9]))
+        return 0
+    shutil.rmtree(d, ignore_errors=True)
+    if ent:
+        ent["benches"] = [b for b in ent["benches"] if b != a.bench]
+        if not ent["benches"]:
+            del idx["commits"][commit]
+        save_index(idx)
+    print("base %s at %s: dropped. Store folder %s removed." % (a.bench, commit[:9], posix(d)))
+    return 0
 
 
 def cmd_base(a):
     if a.fill:
         return base_fill(a)
+    if a.drop:
+        if not a.bench:
+            print("base --drop needs a bench name. Nothing was dropped.")
+            return 5
+        return base_drop(a)
     bd = bench_def(a.bench) if a.bench else None
     if not bd or not bd["kind"].startswith("azahar") or not bd.get("scenario"):
         print("base needs an Azahar bench (azahar_pic, azahar_stream) with a scenario, or --fill. Nothing was built.")
@@ -1641,7 +1769,23 @@ def cmd_cmp(a):
             print("  %s extra (not in base)" % n)
             bad += 1
     print("%d/%d byte-equal" % (equal, len(base_names)))
+    if bad:
+        for c in stored_matches(a.bench, row_dir):
+            print("row shots equal stored base %s" % c[:9])
     return 0 if bad == 0 and equal == len(base_names) and base_names else 1
+
+
+def stored_matches(bench, row_dir):
+    """The commits whose stored base of bench holds shots byte-equal to the shots of row_dir (every shot, same names)."""
+    rn = sorted(p.name for p in Path(row_dir).glob("*.ppm"))
+    out = []
+    if not rn:
+        return out
+    for meta in sorted(store_root().glob("*/%s/meta.json" % bench)):
+        d = meta.parent
+        if sorted(p.name for p in d.glob("*.ppm")) == rn and all(md5_of(d / n) == md5_of(Path(row_dir) / n) for n in rn):
+            out.append(d.parent.name)
+    return out
 
 
 def same_commit(a, b):
@@ -1691,6 +1835,7 @@ def cmd_ingest_last(a):
     result = "log_pass" if a.rc == 0 else ("broken" if a.rc == 10 else "fail:%d" % a.rc) # AZT11-5: rc 10 = no until line in the cap (broken, not a code fail)
     note = "picture: a person reads the shot" if bd and bd["kind"] == "azahar_pic" else ""
     shot = a.shots or str(SHOTS / s / (os.environ.get("PM_LANE") or "main"))  # SHOTLANE: per scenario and build
+    shot = snap_shots(shot, s) or shot  # BASEVERIFY: a base list's run keeps its own shot copy (PM_BASE_SNAP)
     dv = os.environ.get("PM_BENCH_DIRTY")
     lb, _ = log_build(text)
     if a.build is not None and lb is not None and lb != a.build:  # BF-4: the boot line is not the build that was run
@@ -2187,6 +2332,7 @@ def main(argv):
     x.add_argument("--why", default=""); x.add_argument("--label", default=""); x.add_argument("--dry-run", action="store_true")
     x.set_defaults(f=cmd_build_at)
     x = sub.add_parser("base"); x.add_argument("bench", nargs="?"); x.add_argument("--fill", action="store_true")
+    x.add_argument("--drop", action="store_true", help="remove the stored shots of bench at --commit (or the merge-base)")
     x.add_argument("--commit"); x.add_argument("--row", default=BASE_ROW); x.set_defaults(f=cmd_base)
     x = sub.add_parser("cmp"); x.add_argument("bench"); x.add_argument("--row", required=True); x.add_argument("--commit")
     x.set_defaults(f=cmd_cmp)

@@ -6,6 +6,7 @@
 #ifndef ND_OP_H
 #define ND_OP_H
 #include <stdint.h>
+#include "ultra64.h" /* G_ENDDL (nd_op_unit); nd_op.c includes it the same way */
 
 enum {
     NDO_BASE = 0x20,
@@ -135,6 +136,12 @@ static inline uint32_t nd_op_om_mask(uint32_t a) {
 extern const uint8_t nd_op_n64[NDO_END_ - NDO_BASE]; /* the F3DEX2 op of each id (pm_gbi_cur_op, census) */
 /* Translate one F3DEX2 word into out[0], out[1]: the typed op (returns 1) or the word unchanged (returns 0). */
 int nd_op_xlate(uint32_t w0, uint32_t w1, uint32_t out[2]);
+/* The typed unit of a list word: a typed word is its own unit, G_ENDDL is NDO_END (nd_op_xlate keeps it raw), every other word translated. */
+static inline void nd_op_unit(uint32_t w0, uint32_t w1, uint32_t t[2]) {
+    if (nd_op_typed(w0 >> 24)) { t[0] = w0; t[1] = w1; }
+    else if ((w0 >> 24) == G_ENDDL) { t[0] = NDO_W0(NDO_END, 0); t[1] = 0; }
+    else nd_op_xlate(w0, w1, t);
+}
 /* HC4c: the ops of a list the producer just wrote (a texture bind list, the R13 words of a model record), typed in place to n units: the
  * RDP syncs and G_SPNOOP dropped, G_ENDDL written as NDO_END (it ends the pass), every other word translated (a word with no typed op
  * stays). Returns the units before the end. The typed gDP
