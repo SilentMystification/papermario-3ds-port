@@ -7570,7 +7570,23 @@
           "mim_05"
         ],
         "gates": []
-      }
+      },
+    {
+          "name": "kzn04_shadestat",
+          "kind": "azahar_stream",
+          "speed": "normal",
+          "default": false,
+          "purpose": "KZN04 diag: shaded sprite load count, miss count and time per 300 frames in kzn_04 (pm_tex_load_shaded, shadestat switch). Azahar counts only.",
+          "scenario": "kzn04_shadestat",
+          "cap": 30,
+          "until": "shadestat f(6|7)\\d\\d ",
+          "tags": [
+                "azahar",
+                "kzn04",
+                "shading"
+          ],
+          "gates": []
+    }
   ],
   "legacy": {
     "note": "Scenarios that no bench uses. Kept for the azt.ps1 route, not run by bench.py.",

@@ -13644,6 +13644,30 @@
         }
       ],
       "reason": "TIDAL step 2 picture gate: shots 1 and 2 of the fxtest slot (frames 412 and 432) show the wave. Until is shot b."
+    },
+    {
+          "name": "kzn04_shadestat",
+          "status": "unverified",
+          "subject": "KZN04: kzn_04 (fire bar room, Mario and the partner and 12 fire bar NPCs drawn shaded via SetSpriteShading(SHADING_KZN_04)). Warp to kzn_04 entry 0, no input; the room runs for the window.",
+          "proves": "KZN04 premise: shaded sprite loads per frame (N/300) and the miss share (M/N) of pm_tex_load_shaded. The shadestat line prints calls, misses and time (us) per 300 frames.",
+          "debug": "warp=kzn_04:0 shadestat loglevel=debug",
+          "until": "shadestat f(6|7)\\d\\d ",
+          "cap": 30,
+          "deadline": 20,
+          "first_marker": "warp: kzn_04 entry 0",
+          "expects": "warp",
+          "needs_picture": false,
+          "expected_events": [
+                {
+                      "name": "warp",
+                      "regex": "warp: kzn_04 entry 0"
+                },
+                {
+                      "name": "shadestat",
+                      "regex": "shadestat f[0-9]+ frames [0-9]+ calls [0-9]+ miss [0-9]+ us [0-9]+"
+                }
+          ],
+          "reason": "KZN04 diagnostic: count shaded texture loads per frame and misses in kzn_04. Premise: N/300 >= 3 and M/N >= 0.9. Azahar gives counts only; the console decides the cost."
     }
   ]
 }

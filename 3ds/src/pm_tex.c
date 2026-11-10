@@ -1799,13 +1799,23 @@ int pm_tex_load(const void* img, unsigned fmt, unsigned siz, int width, int heig
     return r;
 }
 
+static unsigned shs_calls, shs_miss, shs_t, shs_f; /* KZN04 diag (switch shadestat): shaded sprite loads since the last line */
+static __attribute__((cold, noinline)) void shs_note(unsigned t0, int miss) {
+    shs_calls++; shs_miss += miss != 0; shs_t += pm_ticks() - t0;
+    const unsigned f = pm_frame_count();
+    if (f >= shs_f + 300u) { pm_log("shadestat f%u frames %u calls %u miss %u us %u", f, f - shs_f, shs_calls, shs_miss, shs_t / 268u); shs_f = f; shs_calls = shs_miss = shs_t = 0; }
+}
+
 int pm_tex_load_shaded(const void* img, int width, int height, int stride, const void* spal,
                        const unsigned* lut, int dx4, int dy4) {
+    const int shs_on = PMDL("shadestat"); const unsigned t0 = shs_on ? pm_ticks() : 0u;
     unsigned h = 2166136261u;
     for (int i = 0; i < 256; i++) h = (h ^ lut[i]) * 16777619u;
     h = (h ^ (unsigned)dx4) * 16777619u;
     h = (h ^ (unsigned)dy4) * 16777619u;
-    return load_impl(img, FMT_CI, SIZ_4, width, height, spal, 16, stride, lut, dx4, dy4, h | 1u);
+    int r = load_impl(img, FMT_CI, SIZ_4, width, height, spal, 16, stride, lut, dx4, dy4, h | 1u);
+    if (__builtin_expect(shs_on, 0)) shs_note(t0, ph_miss);
+    return r;
 }
 
 /* D03: a texture the port composed on the CPU (RGBA8, w x h, tightly packed in rgba). key names the content.
