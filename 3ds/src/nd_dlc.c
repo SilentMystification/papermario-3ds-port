@@ -430,9 +430,9 @@ int nd_ent_segments(const uint32_t* l, NdEntSeg* seg, unsigned maxseg, unsigned*
     delta_clear(&pend);
     for (i = 0; i < ND_DLC_MAXOPS; i++) {
         uint32_t w0 = l[2 * i], w1 = l[2 * i + 1];
-        unsigned op = w0 >> 24;
-        if (op == OP_ENDDL || op == NDO_END) break;
-        if (!ent_known(op) && !(op == NDO_MISC && (w0 & 0xFFFFFFu) == (NDO_MISC_NOP << 16))) { if (bad) *bad = op; return NDR_OP; }
+        unsigned op = dlc_op(w0); /* HC4e3: a typed unit with a raw op (geometry, texture, no-op, end) is that op */
+        if (op == OP_ENDDL) break;
+        if (!ent_known(op)) { if (bad) *bad = op; return NDR_OP; }
         if (op == OP_VTX || op == OP_TRI1 || op == OP_TRI2) {
             NdEntSeg* s;
             if (ns == 0 || pend_n > 0) { /* a geometry op after state ops starts a segment */
@@ -458,8 +458,7 @@ int nd_ent_segments(const uint32_t* l, NdEntSeg* seg, unsigned maxseg, unsigned*
                     s->ntri++; tri++;
                 }
             }
-        } else if (op == OP_NOOP || op == OP_PIPESYNC || op == OP_LOADSYNC || op == OP_TILESYNC || op == OP_FULLSYNC || op == OP_PM_TEXI ||
-                   (op == NDO_MISC && (w0 & 0xFFFFFFu) == (NDO_MISC_NOP << 16))) {
+        } else if (op == OP_NOOP || op == OP_PIPESYNC || op == OP_LOADSYNC || op == OP_TILESYNC || op == OP_FULLSYNC || op == OP_PM_TEXI) {
             /* neutral: no segment, no delta */
         } else {
             if (pend_n == 0) pend0 = i;

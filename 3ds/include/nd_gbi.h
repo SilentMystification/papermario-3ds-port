@@ -1,10 +1,11 @@
 /* nd_gbi.h: DIRECT record-side redirect of the dynamic gbi macros (plan_direct.md section 5). include/common.h includes it after gbi.h for
  * every game file (a file that defines ND_GBI_WORDS before its includes keeps list words: the named fallbacks of plan section 5).
  * The base macros are redefined, so every derived and compound macro follows (gDPSetRenderMode, gDPLoadTextureBlock, gSPDisplayList, ...).
- * Each base macro evaluates its packet as gbi.h does (once per word) and calls nd_gx_w (nd_rec.c): a packet that is gMainGfxPos++ is taken
- * back and the op recorded into the open NDC_STATE run of the frame stream; any other packet (a local list) gets the word. The branch form
- * of G_DL stays a word (a branch skips data in the list); a top-level G_ENDDL is dropped (NDC_END ends the task or range). The texture rectangle
- * (G_TEXRECT or G_TEXRECTFLIP and its two RDPHALF words) is recorded as one NDC_TEXRECT. */
+ * Each base macro (g form, gs form) builds the typed unit of nd_op.h (ND_X0, ND_X1: the id and fields of the op, no N64 word) and the g form calls
+ * nd_gx_w (nd_rec.c) with it: a packet that is gMainGfxPos++ is taken back and the unit recorded into the open NDC_STATE run of the frame stream;
+ * any other packet (a local list) gets the unit. The branch form of G_DL (NDO_CALL, a = 1) stays a unit of the list (a branch skips data in the
+ * list); a top-level NDO_END is dropped (NDC_END ends the task or range). The texture rectangle (NDO_RECT with NDO_RECT_TEX and its two
+ * no-op units of the RDPHALF words) is recorded as one NDC_TEXRECT. The gs form is the same unit in a static initializer. */
 #ifndef ND_GBI_H
 #define ND_GBI_H
 #include "nd_cmd.h"
@@ -90,17 +91,6 @@ Gfx* nd_rec_task(void);
 #define gDPSetKeyGB(pkt, cG, sG, wG, cB, sB, wB) ND_GX(pkt, ND_W0_KEYGB(wG, wB), ND_W1_KEYGB(cG, sG, cB, sB))
 #undef gsDPSetKeyGB
 #define gsDPSetKeyGB(cG, sG, wG, cB, sB, wB) ND_GS(ND_W0_KEYGB(wG, wB), ND_W1_KEYGB(cG, sG, cB, sB))
-#undef gDPNoParam
-#define gDPNoParam(pkt, cmd) { nd_gx_w((Gfx*)(pkt), _SHIFTL(cmd, 24, 8), 0); }
-#undef gImmp1
-#define gImmp1(pkt, c, p0) { nd_gx_w((Gfx*)(pkt), _SHIFTL((c), 24, 8), (unsigned int)(p0)); }
-#undef gDPFillRectangle
-#define gDPFillRectangle(pkt, ulx, uly, lrx, lry) \
-    { nd_gx_w((Gfx*)(pkt), _SHIFTL(G_FILLRECT, 24, 8) | _SHIFTL((lrx), 14, 10) | _SHIFTL((lry), 2, 10), _SHIFTL((ulx), 14, 10) | _SHIFTL((uly), 2, 10)); }
-#undef gDPScisFillRectangle
-#define gDPScisFillRectangle(pkt, ulx, uly, lrx, lry) \
-    { nd_gx_w((Gfx*)(pkt), _SHIFTL(G_FILLRECT, 24, 8) | _SHIFTL(MAX((lrx), 0), 14, 10) | _SHIFTL(MAX((lry), 0), 2, 10), \
-              _SHIFTL(MAX((ulx), 0), 14, 10) | _SHIFTL(MAX((uly), 0), 2, 10)); }
 /* HC4e3 group 2 (texture ops). */
 #define ND_W0_IMG(cmd, fmt, siz, width) (_SHIFTL(cmd, 24, 8) | _SHIFTL(fmt, 21, 3) | _SHIFTL(siz, 19, 2) | _SHIFTL((width) - 1, 0, 12))
 #undef gSetImage
@@ -133,47 +123,102 @@ Gfx* nd_rec_task(void);
 #define gDPLoadTLUTCmd(pkt, tile, count) ND_GX(pkt, _SHIFTL(G_LOADTLUT, 24, 8), _SHIFTL((tile), 24, 3) | _SHIFTL((count), 14, 10))
 #undef gsDPLoadTLUTCmd
 #define gsDPLoadTLUTCmd(tile, count) ND_GS(_SHIFTL(G_LOADTLUT, 24, 8), _SHIFTL((tile), 24, 3) | _SHIFTL((count), 14, 10))
+/* HC4e3 group 3 (geometry, control, sync, rectangle and G_PM ops). A sync, G_SPNOOP, G_NOOP and a RDPHALF word are the typed no-op unit (NDO_MISC). */
+#define ND_W0_NP(cmd) _SHIFTL(cmd, 24, 8)
+#undef gDPNoParam
+#define gDPNoParam(pkt, cmd) ND_GX(pkt, ND_W0_NP(cmd), 0)
+#undef gsDPNoParam
+#define gsDPNoParam(cmd) ND_GS(ND_W0_NP(cmd), 0)
+#undef gDPParam
+#define gDPParam(pkt, cmd, param) ND_GX(pkt, ND_W0_NP(cmd), (param))
+#undef gsDPParam
+#define gsDPParam(cmd, param) ND_GS(ND_W0_NP(cmd), (param))
+#undef gImmp1
+#define gImmp1(pkt, c, p0) ND_GX(pkt, _SHIFTL((c), 24, 8), (unsigned int)(p0))
+#undef gsImmp1
+#define gsImmp1(c, p0) ND_GS(_SHIFTL((c), 24, 8), (unsigned int)(p0))
+#define ND_W0_FILL(lrx, lry) (_SHIFTL(G_FILLRECT, 24, 8) | _SHIFTL((lrx), 14, 10) | _SHIFTL((lry), 2, 10))
+#define ND_W1_FILL(ulx, uly) (_SHIFTL((ulx), 14, 10) | _SHIFTL((uly), 2, 10))
+#undef gDPFillRectangle
+#define gDPFillRectangle(pkt, ulx, uly, lrx, lry) ND_GX(pkt, ND_W0_FILL(lrx, lry), ND_W1_FILL(ulx, uly))
+#undef gsDPFillRectangle
+#define gsDPFillRectangle(ulx, uly, lrx, lry) ND_GS(ND_W0_FILL(lrx, lry), ND_W1_FILL(ulx, uly))
+#undef gDPScisFillRectangle
+#define gDPScisFillRectangle(pkt, ulx, uly, lrx, lry) \
+    ND_GX(pkt, _SHIFTL(G_FILLRECT, 24, 8) | _SHIFTL(MAX((lrx), 0), 14, 10) | _SHIFTL(MAX((lry), 0), 2, 10), \
+          _SHIFTL(MAX((ulx), 0), 14, 10) | _SHIFTL(MAX((uly), 0), 2, 10))
+#define ND_W0_D0(c, l) (_SHIFTL((c), 24, 8) | _SHIFTL((l), 0, 24))
 #undef gDma0p
-#define gDma0p(pkt, c, s, l) { nd_gx_w((Gfx*)(pkt), _SHIFTL((c), 24, 8) | _SHIFTL((l), 0, 24), (unsigned int)(s)); }
+#define gDma0p(pkt, c, s, l) ND_GX(pkt, ND_W0_D0(c, l), (unsigned int)(s))
+#undef gsDma0p
+#define gsDma0p(c, s, l) ND_GS(ND_W0_D0(c, l), (unsigned int)(s))
+#define ND_W0_D1(c, l, p) (_SHIFTL((c), 24, 8) | _SHIFTL((p), 16, 8) | _SHIFTL((l), 0, 16))
 #undef gDma1p
-#define gDma1p(pkt, c, s, l, p) { nd_gx_w((Gfx*)(pkt), _SHIFTL((c), 24, 8) | _SHIFTL((p), 16, 8) | _SHIFTL((l), 0, 16), (unsigned int)(s)); }
+#define gDma1p(pkt, c, s, l, p) ND_GX(pkt, ND_W0_D1(c, l, p), (unsigned int)(s))
+#undef gsDma1p
+#define gsDma1p(c, s, l, p) ND_GS(ND_W0_D1(c, l, p), (unsigned int)(s))
+#define ND_W0_D2(c, len, idx, ofs) (_SHIFTL((c), 24, 8) | _SHIFTL(((len) - 1) / 8, 19, 5) | _SHIFTL((ofs) / 8, 8, 8) | _SHIFTL((idx), 0, 8))
 #undef gDma2p
-#define gDma2p(pkt, c, adrs, len, idx, ofs) \
-    { nd_gx_w((Gfx*)(pkt), _SHIFTL((c), 24, 8) | _SHIFTL(((len) - 1) / 8, 19, 5) | _SHIFTL((ofs) / 8, 8, 8) | _SHIFTL((idx), 0, 8), (unsigned int)(adrs)); }
+#define gDma2p(pkt, c, adrs, len, idx, ofs) ND_GX(pkt, ND_W0_D2(c, len, idx, ofs), (unsigned int)(adrs))
+#undef gsDma2p
+#define gsDma2p(c, adrs, len, idx, ofs) ND_GS(ND_W0_D2(c, len, idx, ofs), (unsigned int)(adrs))
+#define ND_W0_VTX(n, v0) (_SHIFTL(G_VTX, 24, 8) | _SHIFTL((n), 12, 8) | _SHIFTL((v0) + (n), 1, 7))
 #undef gSPVertex
-#define gSPVertex(pkt, v, n, v0) { nd_gx_w((Gfx*)(pkt), _SHIFTL(G_VTX, 24, 8) | _SHIFTL((n), 12, 8) | _SHIFTL((v0) + (n), 1, 7), (unsigned int)(v)); }
+#define gSPVertex(pkt, v, n, v0) ND_GX(pkt, ND_W0_VTX(n, v0), (unsigned int)(v))
+#undef gsSPVertex
+#define gsSPVertex(v, n, v0) ND_GS(ND_W0_VTX(n, v0), (unsigned int)(v))
 #undef gSP1Triangle
-#define gSP1Triangle(pkt, v0, v1, v2, flag) { nd_gx_w((Gfx*)(pkt), _SHIFTL(G_TRI1, 24, 8) | __gsSP1Triangle_w1f(v0, v1, v2, flag), 0); }
+#define gSP1Triangle(pkt, v0, v1, v2, flag) ND_GX(pkt, _SHIFTL(G_TRI1, 24, 8) | __gsSP1Triangle_w1f(v0, v1, v2, flag), 0)
+#undef gsSP1Triangle
+#define gsSP1Triangle(v0, v1, v2, flag) ND_GS(_SHIFTL(G_TRI1, 24, 8) | __gsSP1Triangle_w1f(v0, v1, v2, flag), 0)
 #undef gSP2Triangles
 #define gSP2Triangles(pkt, v00, v01, v02, flag0, v10, v11, v12, flag1) \
-    { nd_gx_w((Gfx*)(pkt), _SHIFTL(G_TRI2, 24, 8) | __gsSP1Triangle_w1f(v00, v01, v02, flag0), __gsSP1Triangle_w1f(v10, v11, v12, flag1)); }
-/* D7: the ops that gbi.h writes through a local packet pointer: the list end, the vertex modify, the chroma key colours. */
+    ND_GX(pkt, _SHIFTL(G_TRI2, 24, 8) | __gsSP1Triangle_w1f(v00, v01, v02, flag0), __gsSP1Triangle_w1f(v10, v11, v12, flag1))
+#undef gsSP2Triangles
+#define gsSP2Triangles(v00, v01, v02, flag0, v10, v11, v12, flag1) \
+    ND_GS(_SHIFTL(G_TRI2, 24, 8) | __gsSP1Triangle_w1f(v00, v01, v02, flag0), __gsSP1Triangle_w1f(v10, v11, v12, flag1))
+/* The list end: NDO_END (a top-level one is dropped by nd_gx_w: NDC_END ends the task or range). */
 #undef gSPEndDisplayList
-#define gSPEndDisplayList(pkt) { nd_gx_w((Gfx*)(pkt), _SHIFTL(G_ENDDL, 24, 8), 0); }
+#define gSPEndDisplayList(pkt) ND_GX(pkt, _SHIFTL(G_ENDDL, 24, 8), 0)
+#undef gsSPEndDisplayList
+#define gsSPEndDisplayList() ND_GS(_SHIFTL(G_ENDDL, 24, 8), 0)
+#define ND_W0_MODV(vtx, where) (_SHIFTL(G_MODIFYVTX, 24, 8) | _SHIFTL((where), 16, 8) | _SHIFTL((vtx) * 2, 0, 16))
 #undef gSPModifyVertex
-#define gSPModifyVertex(pkt, vtx, where, val) \
-    { nd_gx_w((Gfx*)(pkt), _SHIFTL(G_MODIFYVTX, 24, 8) | _SHIFTL((where), 16, 8) | _SHIFTL((vtx) * 2, 0, 16), (unsigned int)(val)); }
+#define gSPModifyVertex(pkt, vtx, where, val) ND_GX(pkt, ND_W0_MODV(vtx, where), (unsigned int)(val))
+#undef gsSPModifyVertex
+#define gsSPModifyVertex(vtx, where, val) ND_GS(ND_W0_MODV(vtx, where), (unsigned int)(val))
+#define ND_W0_PMND(kind, arg) (((u32)G_PM_ND << 24) | ((u32)(kind) << 16) | (arg))
 #undef gPmNdSplash
-#define gPmNdSplash(pkt, on) { nd_gx_w((Gfx*)(pkt), ((u32)G_PM_ND << 24) | ((u32)G_PM_ND_SPLASH << 16) | ((on) ? 1u : 0u), 0); }
+#define gPmNdSplash(pkt, on) ND_GX(pkt, ND_W0_PMND(G_PM_ND_SPLASH, (on) ? 1u : 0u), 0)
 #undef gPmNdGrabHold
-#define gPmNdGrabHold(pkt, on) { nd_gx_w((Gfx*)(pkt), ((u32)G_PM_ND << 24) | ((u32)G_PM_ND_GRABHOLD << 16) | ((on) ? 1u : 0u), 0); }
+#define gPmNdGrabHold(pkt, on) ND_GX(pkt, ND_W0_PMND(G_PM_ND_GRABHOLD, (on) ? 1u : 0u), 0)
 #undef gPmNdGutter
-#define gPmNdGutter(pkt, a) { nd_gx_w((Gfx*)(pkt), ((u32)G_PM_ND << 24) | ((u32)G_PM_ND_GUTTER << 16) | ((u32)(a) & 0xffu), 0); } /* PAUSEOPEN: through nd_gx_w (the ND recorder); the gbi_custom.h form writes the word raw and the walker never sees it */
-/* The rectangle words: the first word through nd_gx_w, then the two RDPHALF words (gImmp1 above), as gbi.h writes them. */
+#define gPmNdGutter(pkt, a) ND_GX(pkt, ND_W0_PMND(G_PM_ND_GUTTER, (u32)(a) & 0xffu), 0) /* PAUSEOPEN: through nd_gx_w (the ND recorder); the gbi_custom.h form writes the word raw and the walker never sees it */
+/* The texture rectangle: the rectangle unit (NDO_RECT with NDO_RECT_TEX), then the two RDPHALF no-op units (their b: s, t and dsdx, dtdy), as gbi.h writes the words. */
+#define ND_W0_TR(op, xh, yh) (_SHIFTL(op, 24, 8) | _SHIFTL(xh, 12, 12) | _SHIFTL(yh, 0, 12))
+#define ND_W1_TR(tile, xl, yl) (_SHIFTL(tile, 24, 3) | _SHIFTL(xl, 12, 12) | _SHIFTL(yl, 0, 12))
+#define ND_TR_H1(s, t) (_SHIFTL(s, 16, 16) | _SHIFTL(t, 0, 16))
+#define ND_TR_H2(dsdx, dtdy) (_SHIFTL(dsdx, 16, 16) | _SHIFTL(dtdy, 0, 16))
 #undef gSPTextureRectangle
 #define gSPTextureRectangle(pkt, xl, yl, xh, yh, tile, s, t, dsdx, dtdy) \
-    { nd_gx_w((Gfx*)(pkt), _SHIFTL(G_TEXRECT, 24, 8) | _SHIFTL(xh, 12, 12) | _SHIFTL(yh, 0, 12), _SHIFTL(tile, 24, 3) | _SHIFTL(xl, 12, 12) | _SHIFTL(yl, 0, 12)); \
-      gImmp1(pkt, G_RDPHALF_1, (_SHIFTL(s, 16, 16) | _SHIFTL(t, 0, 16))); \
-      gImmp1(pkt, G_RDPHALF_2, (_SHIFTL(dsdx, 16, 16) | _SHIFTL(dtdy, 0, 16))); }
+    { ND_GX(pkt, ND_W0_TR(G_TEXRECT, xh, yh), ND_W1_TR(tile, xl, yl)); \
+      gImmp1(pkt, G_RDPHALF_1, ND_TR_H1(s, t)); \
+      gImmp1(pkt, G_RDPHALF_2, ND_TR_H2(dsdx, dtdy)); }
+#undef gsSPTextureRectangle
+#define gsSPTextureRectangle(xl, yl, xh, yh, tile, s, t, dsdx, dtdy) \
+    ND_GS(ND_W0_TR(G_TEXRECT, xh, yh), ND_W1_TR(tile, xl, yl)), gsImmp1(G_RDPHALF_1, ND_TR_H1(s, t)), gsImmp1(G_RDPHALF_2, ND_TR_H2(dsdx, dtdy))
 #undef gSPTextureRectangleFlip
 #define gSPTextureRectangleFlip(pkt, xl, yl, xh, yh, tile, s, t, dsdx, dtdy) \
-    { nd_gx_w((Gfx*)(pkt), _SHIFTL(G_TEXRECTFLIP, 24, 8) | _SHIFTL(xh, 12, 12) | _SHIFTL(yh, 0, 12), _SHIFTL(tile, 24, 3) | _SHIFTL(xl, 12, 12) | _SHIFTL(yl, 0, 12)); \
-      gImmp1(pkt, G_RDPHALF_1, (_SHIFTL(s, 16, 16) | _SHIFTL(t, 0, 16))); \
-      gImmp1(pkt, G_RDPHALF_2, (_SHIFTL(dsdx, 16, 16) | _SHIFTL(dtdy, 0, 16))); }
+    { ND_GX(pkt, ND_W0_TR(G_TEXRECTFLIP, xh, yh), ND_W1_TR(tile, xl, yl)); \
+      gImmp1(pkt, G_RDPHALF_1, ND_TR_H1(s, t)); \
+      gImmp1(pkt, G_RDPHALF_2, ND_TR_H2(dsdx, dtdy)); }
+#undef gsSPTextureRectangleFlip
+#define gsSPTextureRectangleFlip(xl, yl, xh, yh, tile, s, t, dsdx, dtdy) \
+    ND_GS(ND_W0_TR(G_TEXRECTFLIP, xh, yh), ND_W1_TR(tile, xl, yl)), gsImmp1(G_RDPHALF_1, ND_TR_H1(s, t)), gsImmp1(G_RDPHALF_2, ND_TR_H2(dsdx, dtdy))
 #undef gSPScisTextureRectangle
 #define gSPScisTextureRectangle(pkt, xl, yl, xh, yh, tile, s, t, dsdx, dtdy) \
-    { nd_gx_w((Gfx*)(pkt), _SHIFTL(G_TEXRECT, 24, 8) | _SHIFTL(PM_SCIS_XH(xh), 12, 12) | _SHIFTL(MAX((s16)(yh), 0), 0, 12), \
-              _SHIFTL((tile), 24, 3) | _SHIFTL(PM_SCIS_XL(xl), 12, 12) | _SHIFTL(MAX((s16)(yl), 0), 0, 12)); \
+    { ND_GX(pkt, _SHIFTL(G_TEXRECT, 24, 8) | _SHIFTL(PM_SCIS_XH(xh), 12, 12) | _SHIFTL(MAX((s16)(yh), 0), 0, 12), \
+            _SHIFTL((tile), 24, 3) | _SHIFTL(PM_SCIS_XL(xl), 12, 12) | _SHIFTL(MAX((s16)(yl), 0), 0, 12)); \
       gImmp1(pkt, G_RDPHALF_1, \
              (_SHIFTL(((s) - (PM_SCIS_CLIP(xl) ? (((s16)(dsdx) < 0) ? (MAX((((s16)(xl) * (s16)(dsdx)) >> 7), 0)) \
                                                                     : (MIN((((s16)(xl) * (s16)(dsdx)) >> 7), 0))) : 0)), 16, 16) | \
