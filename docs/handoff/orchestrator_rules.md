@@ -35,8 +35,8 @@ Read this file at the start and after every compaction; it overrides any summary
   source, 2026-11-09). Never relaunch an unchanged row.
 
 ## Worktrees
-- `sh 3ds/tools/wt_new.sh <row>` (git worktree add build3ds/wt/<row> -b <row> main, plus `.wt_keep`; wt_gc keeps it until the row
-  is complete). No asset copy: build.sh and nd_host_test.sh read assets/us and ver/us/build from the main worktree. Stop an old
+- `sh 3ds/tools/wt_new.sh <row>` (git worktree add build3ds/wt/<row> -b <row> main, plus `.wt_keep`; wt_gc keeps it until its branch is
+  merged and its row file is deleted, user 2026-11-10). No asset copy: build.sh and nd_host_test.sh read assets/us and ver/us/build from the main worktree. Stop an old
   agent before another uses its worktree. No git stash anywhere.
 
 ## Merge
