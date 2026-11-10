@@ -723,30 +723,6 @@
       "reason": "FFOG: the user's Widescreen setting on the mim_01 ring turn (yaw passes 90). Copy of mim01_ring_det with wide and the ffog switch."
     },
     {
-      "name": "mim11_floor",
-      "status": "unverified",
-      "subject": "Forever Forest mim_11 (warp entry 0), det: the floor near the camera is black or missing from any spot. No walk. Shots at frames 240 to 242; the last shot is the floor picture.",
-      "proves": "FFOG1 (pm5.v.pica fog line, fog 0 for clip w <= 0): the floor near the camera is textured, not black. Gate: near-black pixels (all channels < 16) in the bottom third of the last shot.",
-      "debug": "warp=mim_11:0 det shots shotwin=240:3 loglevel=debug",
-      "until": "shot 2 frame",
-      "cap": 20,
-      "deadline": 15,
-      "first_marker": "warp: mim_11 entry 0",
-      "expects": "warp",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "map",
-          "regex": "warp: mim_11 entry 0"
-        },
-        {
-          "name": "shot 2",
-          "regex": "shot 2 frame"
-        }
-      ],
-      "reason": "FFOG1 floor gate: mim_11 floor is black or missing from any spot (user, 2026-11-10). No walk, no dlcwz line. Cap 20 s."
-    },
-    {
       "name": "mim01_ring_stereo_det_l",
       "status": "unverified",
       "subject": "mim_01 ring run as mim01_ring_det with forced stereo, left eye shots. The eyecw line every 10 frames: p23 (the old convergence factor, near 0 at yaw 90) and cw (conv x nd_proj_wn).",

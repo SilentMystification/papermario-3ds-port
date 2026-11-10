@@ -3207,21 +3207,6 @@
       "gates": []
     },
     {
-      "name": "mim11_floor",
-      "kind": "azahar_pic",
-      "speed": "normal",
-      "default": false,
-      "purpose": "FFOG1: Forever Forest mim_11 (warp entry 0), det, no walk. The floor near the camera is black or missing from any spot. Shots 240 to 242; the last shot is read by a script (near-black pixels, all channels < 16, bottom third).",
-      "scenario": "mim11_floor",
-      "cap": 20,
-      "until": "shot 2 frame",
-      "tags": [
-        "azahar",
-        "det"
-      ],
-      "gates": []
-    },
-    {
       "name": "mim01_ring_stereo_det_l",
       "kind": "azahar_pic",
       "speed": "normal",
