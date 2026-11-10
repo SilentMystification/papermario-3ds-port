@@ -3,10 +3,11 @@
 (Queue: oracle first, then Haiku rows. One agent at a time.)
 
 ## User facts (2026-11-10, O3DS XL .131)
-1. Watt is the partner in a dark room. The user moves the 3D slider up. The game crashes.
-2. The user talks to Merlee. The game crashes. 3D was on. The user does not know if 3D is part of the cause.
+1. Shy Guy's Toy Box (omo), a dark room, Watt is the partner. The user moves the 3D slider up from 0. The game crashes at the
+   slider move (user answer).
+2. The user talks to Merlee. The game crashes right before the price screen shows (user answer). 3D was on. The user does not know if 3D is part of the cause.
 XL build: the last push to .131 is 8085ef1d0 (build 3700, 2026-11-09 17:23). It has LINRACE. It does not have CRASHALL (crash page),
-PAUSEOPEN or later merges. XL FTP pull at 2026-11-10: no connection (no new dump or log).
+PAUSEOPEN or later merges. XL FTP pull at 2026-11-10: no connection (no new dump or log). Push of main for the crash page: user said not now.
 
 ## Common factor (orchestrator, to check)
 Both scenes draw a full-screen darken or light effect: the Watt light in a dark room, the Merlee spell darken
