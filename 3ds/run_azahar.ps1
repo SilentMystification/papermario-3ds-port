@@ -9,7 +9,7 @@ no game log output for -Stall seconds, or -Timeout seconds. This script's own Az
 force-killed at the end (by PID, never other azahar.exe processes - safe to run alongside another
 concurrent instance), so this script cannot hang.
 Output: build3ds/last_log.txt (game log), build3ds/last_shot.png (-Capture), and
-[CRASH] addresses resolved to source lines (needs Docker and the pm3ds-work volume).
+[CRASH] addresses resolved to source lines (needs Docker and the lane ELF build3ds/lane-<x>/pm_3ds.elf).
 -Gdb: start Azahar with its GDB stub (port 24689) and attach arm-none-eabi-gdb (Docker) in
 batch mode. gdb runs -GdbScript (gdb commands, e.g. "break boot_main"), then "continue".
 When the game stops (breakpoint or fault), gdb prints a backtrace, the registers and the stack.
@@ -65,9 +65,8 @@ $sdMaster = "$env:APPDATA\Azahar\sdmc\3ds\PaperMario" # the user's game folder: 
 # AZT-1: the paths below are set from the slot once it is taken (build3ds\azslots\slot<k>, portable Azahar)
 $sd = $sdMaster; $cfg = ""; $exe = ""; $log = ""; $emuLog = ""
 $out = "$repo\build3ds"
-$vol = "pm3ds-work"
 $x3dsx = "pm_3ds.3dsx"
-if ($env:PM_LANE) { $out = "$repo\build3ds\lane-$env:PM_LANE"; $vol = "pm3ds-work-$env:PM_LANE"; $x3dsx = "pm_3ds_$($env:PM_LANE).3dsx" }
+if ($env:PM_LANE) { $out = "$repo\build3ds\lane-$env:PM_LANE"; $x3dsx = "pm_3ds_$($env:PM_LANE).3dsx" }
 
 # Test budget (3ds/logs/test_budget.csv): columns time,row,sha256,args,kind,rc,result. kind = start (counted), base-start (base run, never counted) or end.
 $budgetFile = "$repo\3ds\logs\test_budget.csv"
@@ -392,9 +391,9 @@ if ($Gdb) {
     Set-Content "$out\gdb_cmds.txt" $cmds
     Start-Sleep -Seconds 2
     $gdbName = "pm3ds-gdb-$PID"  # named, so the cleanup below can kill this container and no other
-    $gdbArgs = "run --rm --name $gdbName --add-host=winhost:host-gateway -v ${vol}:/work -v `"${out}:/out`" " +
+    $gdbArgs = "run --rm --name $gdbName --add-host=winhost:host-gateway -v `"${out}:/out`" " +
                "devkitpro/devkitarm:latest /opt/devkitpro/devkitARM/bin/arm-none-eabi-gdb -q -batch " +
-               "-x /out/gdb_cmds.txt /work/build/pm_3ds.elf"
+               "-x /out/gdb_cmds.txt /out/pm_3ds.elf"
     $gdbProc = Start-Process docker -ArgumentList $gdbArgs -NoNewWindow -PassThru `
         -RedirectStandardOutput "$out\last_gdb.txt" -RedirectStandardError "$out\last_gdb_err.txt"
 }
@@ -627,8 +626,7 @@ $addrs = $addrs | ForEach-Object { [Convert]::ToUInt32($_, 16) } |
 if ($addrs) {
     Write-Output "--- crash symbols (pc, lr, then stack words that are code) ---"
     $env:MSYS_NO_PATHCONV = "1"
-    & docker run --rm -v ${vol}:/work devkitpro/devkitarm:latest sh -c "$DEVKITARM/bin/arm-none-eabi-addr2line -f -C -p -e /work/build/pm_3ds.elf $($addrs -join ' ')" |
-        Where-Object { $_ -notmatch "^\?\?" }
+    & docker run --rm -v "${out}:/elf" devkitpro/devkitarm:latest /opt/devkitpro/devkitARM/bin/arm-none-eabi-addr2line -f -C -p -e /elf/pm_3ds.elf $addrs | Where-Object { $_ -notmatch "^\?\?" } | Tee-Object -FilePath "$out\last_crash.txt"
     End-Run 2 "crash symbols; stopped: $reason"
 }
 if ($Smoke -and $reason -notmatch "^matched") { Write-Output "SMOKE FAILED: $reason"; End-Run 1 "smoke failed: $reason" }

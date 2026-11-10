@@ -104,6 +104,8 @@ key_now() {
         (cd "$ASSET_BASE" && find $ASSET_DIRS -type f -printf '%p %s %T@\n' | sort)
     } | sha1sum | cut -d' ' -f1
 }
+# TOOLB1: PM_KEY_ONLY=1 prints the key of the tree (bench.py build_stale compares it with build_key.txt) and stops.
+if [ -n "$PM_KEY_ONLY" ]; then key_now; exit 0; fi
 # Azahar loads from its own SD card, not from build3ds/.
 publish_3dsx() {
     if [ -z "$PM_LANE" ] && [ -n "$APPDATA" ] && [ -f build3ds/pm_3ds.3dsx ]; then

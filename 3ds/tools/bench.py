@@ -902,6 +902,26 @@ def lane_problem(lane):
     return ""
 
 
+def build_stale(lane):
+    """TOOLB1: "" when the lane's build_key.txt (written by build.sh) holds the key of the current tree, else the reason.
+    The key comes from build.sh itself (PM_KEY_ONLY=1, the same key_now the build uses), so a run cannot be bound to an old build."""
+    out = REPO / "build3ds" / ("lane-" + lane if lane else "")
+    kf = out / "build_key.txt"
+    want = kf.read_text(encoding="utf-8").strip() if kf.exists() else ""
+    env = dict(os.environ, PM_KEY_ONLY="1", PM_LANE=lane or "")
+    r = subprocess.run([shutil.which("sh") or "sh", "3ds/build.sh"], cwd=REPO, env=env, capture_output=True, text=True)
+    lines = r.stdout.strip().splitlines()
+    now = lines[-1].strip() if lines else ""
+    rebuild = ("PM_LANE=%s sh 3ds/build.sh" % lane) if lane else "sh 3ds/build.sh"
+    if not now:
+        return "could not compute the tree key (build.sh exit %d). Run %s, then rerun" % (r.returncode, rebuild)
+    if want == now:
+        return ""
+    return "STALE BUILD: %s was built from other sources (key %s, tree %s). Run %s, then rerun" % (
+        kf.relative_to(REPO).as_posix() if kf.exists() else out.relative_to(REPO).as_posix() + "/build_key.txt missing",
+        want[:12] or "none", now[:12], rebuild)
+
+
 def default_lane(lane):
     """BENCHFIX: the lane of an Azahar run that names none. In a worktree (build3ds/wt/<row>) that is PM_LANE, else the worktree's
     branch (its lane build3ds/lane-<branch>/pm_3ds.3dsx); in the main folder PM_LANE, else "" (the main build). Set on a.lane before lane_problem."""
@@ -943,6 +963,10 @@ def run_azahar_list(a):
     a.lane = default_lane(a.lane)
     if lane_problem(a.lane):
         print("%s. Nothing was run." % lane_problem(a.lane))
+        return 5
+    stale = "" if os.environ.get("PM_BASE_SNAP") or a.build is not None else build_stale(a.lane)
+    if stale:
+        print("%s. Nothing was run." % stale)
         return 5
     scs = [scenario(bd["scenario"]) for bd in bds]
     PERF.mkdir(parents=True, exist_ok=True)
@@ -1139,6 +1163,10 @@ def cmd_run(a):
         a.lane = default_lane(a.lane)
         if lane_problem(a.lane):
             print("%s. Nothing was run." % lane_problem(a.lane))
+            return 5
+        stale = "" if os.environ.get("PM_BASE_SNAP") or a.build is not None else build_stale(a.lane)
+        if stale:
+            print("%s. Nothing was run." % stale)
             return 5
         speed = a.speed or bd.get("speed", "normal")
         queue_line()

@@ -578,6 +578,7 @@ $env:PM_AZT_ATTEMPT = if ($env:PM_AZT_RETRY_RUN) { "2" } else { "1" } # AZFIX: r
 if ($lane) { $env:PM_LANE = $lane } else { Remove-Item Env:PM_LANE -ErrorAction SilentlyContinue }
 if (Test-Path $lastLog) { Remove-Item $lastLog -Force -ErrorAction SilentlyContinue } # AZFIX: two azt runs may race here
 $t0 = Get-Date
+$runOut = Join-Path $outDir "last_crash.txt"; Remove-Item $runOut -ErrorAction SilentlyContinue # TOOLB1: run_azahar writes the crash symbols here
 # No output redirect: with a redirect the child exit code is lost in this shell. The result is read from the budget file.
 $child = Start-Process -FilePath (Get-Process -Id $PID).Path -ArgumentList $cmd -PassThru -WindowStyle Hidden
 $script:childPid = $child.Id
@@ -761,7 +762,7 @@ if ($stop -eq "attract") {
 }
 if ($stop -eq "stall") { Write-Output "SCENARIO FAILED: no new log line for $stallSec s. The run was stalled and Azahar was stopped."; Exit-Run 6 }
 if ($stop -eq "guard") { Write-Output "SCENARIO FAILED: the run did not end within $capGuard s."; Exit-Run 1 }
-if ($rc -eq 2) { Write-Output "SCENARIO FAILED: run_azahar reported crash symbols (rc 2). See $runOut"; Exit-Run 1 }
+if ($rc -eq 2) { Get-Content $runOut -ErrorAction SilentlyContinue; Write-Output "SCENARIO FAILED: run_azahar reported crash symbols (rc 2). See $runOut"; Exit-Run 1 }
 if ($rc -ne 0) { Write-Output "SCENARIO FAILED: run_azahar rc $rc. See $runOut"; Exit-Run 1 }
 
 Show-Checks $lastLog $shotDir $t0
