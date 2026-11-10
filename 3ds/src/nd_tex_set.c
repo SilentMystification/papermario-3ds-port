@@ -506,6 +506,12 @@ static void tex_win1(const NdTst* t, const NdTexM* m, const void* timg, int uls,
         src += (size_t)(l1y * l1stride + l1x);
         stride = l1stride * 2;
     }
+    else if (src && l1v && ((uls >> 2) >= m->ld_w * 2 || (ult >> 2) >= m->ld_h)) {
+        /* COINSTAR: a window origin outside the loaded 4-bit image is a coordinate offset only (item icons in a shaded map: tile 1 at 256,256
+         * over a 24 x 24 load, item_entity.c:990). The source is the LoadTile origin, as tile 0 (V13); x0 keeps uls >> 2. */
+        src += (size_t)(l1y * l1stride + l1x);
+        stride = l1stride * 2;
+    }
     else if (src && l1v) {
         /* V21: SetTileSize uls and ult are the window origin in the image (fire_breath scrolls tile 1 by imgFrame*32+32).
          * This branch is 4 bit only (bpp 0). uls >> 2 counts texels, two per byte, so the byte offset is half of it.
@@ -531,6 +537,7 @@ __attribute__((noinline)) void tex_tile1(unsigned tile, int uls, int ult, int lr
             if (tile == 1) {
                 NdWin wn;
                 tex_win1(&nd_ws.tst1, &nd_tm, nd_ws.timg, uls, ult, lrs, lrt, &wn);
+                if (__builtin_expect(PMDL("t1win") && (uls >= 1024 || ult >= 1024), 0)) { static unsigned n_; if (n_ < 8u) { n_++; pm_log("t1win f%u uls %d ult %d w %d h %d ldw %d ldh %d off %d", pm_frame_count(), uls, ult, wn.w, wn.h, nd_tm.ld_w, nd_tm.ld_h, wn.src && nd_ws.timg ? (int)(wn.src - (const u8*)nd_ws.timg) : -1); } }
                 nd_ws.td[1].valid = 0;
                 if (nd_ws.cur_tile == 1) nd_ws.cur_tile = -1; /* a new tile 1 image: bind it again */
                 if (wn.src && wn.w > 0 && wn.h > 0) {
