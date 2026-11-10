@@ -11,8 +11,8 @@ Trigger sequence: <inputs, menus, choices>. First wrong frame: <event or frame>.
 ## Start state
 Worktree build3ds/wt/<id>, branch <id> from main <hash>. Copy assets/us and ver/us/build into it. STATE from the previous agent (10 lines or fewer):
 
-## Premise and its check (oracle plans)
-Premise: <the claim the plan rests on>. Check first: <log line or code read>; if it fails, hand back at once.
+## Cause (oracle code read of how it draws)
+<file:line and value of each path; the fix below changes each one. No debug-log or test step to confirm it.>
 
 ## Touch only
 Files: <paths>. Symbols: <symbol> in <file>.

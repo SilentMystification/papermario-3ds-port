@@ -7,7 +7,9 @@ tools: Read, Grep, Glob, Bash
 ---
 You write nothing into the repo. The orchestrator writes and commits your text.
 For each task:
-1. Name the design or the cause with file:line, the premise, and one cheap check that the agent runs first.
+1. Name the design or the cause with file:line. For a bug, read how the thing draws (producer, state, draw call, texture and
+   combine setup, pixel) and name every path that can cause it. The fix rows fix them. No debug-log or test rows to check a premise
+   or find a cause: your code read is the evidence. A premise check, where needed, is a code read the agent does, not a run.
 2. Split the work into chunks that a Haiku agent can do without design choices. Each chunk is a row file of 60 lines or fewer
    (docs/handoff/row_TEMPLATE.md): files and symbols it touches, the exact edit, commands, one gate with its expected result,
    and the stop condition. Never give a chunk an open task such as "investigate" or "find the cause".

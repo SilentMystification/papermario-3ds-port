@@ -10,8 +10,8 @@ Read this file at the start and after every compaction; it overrides any summary
 - Oracle: ONE read-only Opus agent at a time, started fresh for each batch of questions (user, 2026-11-10: the long-lived oracle
   reached 880K context, about $0.44 per call). Its knowledge lives in row and plan files, not in its chat. SendMessage follow-ups
   only inside the batch; replace it when its context passes about 300K. It designs and plans every system and bug, and splits the work
-  into Haiku-size row files (oracle.md). The orchestrator commits its text before the code agent starts. Every plan names its
-  premise and one cheap check. Model per chunk: Haiku by default. A Sonnet or Opus chunk needs the oracle's justification (why
+  into Haiku-size row files (oracle.md). The orchestrator commits its text before the code agent starts. Every bug plan is a code
+  read of how the thing draws, with no debug-log or test step to confirm a cause (user, 2026-11-10: no guess and check). Model per chunk: Haiku by default. A Sonnet or Opus chunk needs the oracle's justification (why
   not Haiku, why not smaller); the orchestrator puts it in an AskUserQuestion. No user yes: the oracle splits the chunk.
 - Haiku failure goes to the oracle (user, 2026-11-10): a failed gate, a failed premise or an unexpected fact ends the try. The
   agent hands back its facts and does not choose a new approach; the orchestrator sends the facts to the oracle at once.
