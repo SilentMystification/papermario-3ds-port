@@ -3,6 +3,9 @@
 #include "sprite.h"
 #include "imgfx.h"
 #include "pm_interp_fi.h"
+#ifdef TARGET_3DS
+#include "nd_op.h" /* HC4e2b: the typed unit of a list word (nd_op_xlate) */
+#endif
 
 typedef union ImgFXIntVars {
     s32 raw[2][4];
@@ -1310,17 +1313,33 @@ ImgFXAnimHeader* imgfx_load_anim(ImgFXState* state) {
             // Loop over the displaylist commands until we hit an ENDDL
             do {
                 u32 w0 = gfxBuffer[j++].words.w0;
+#ifdef TARGET_3DS
+                { /* HC4e2b: the typed unit (a typed word stays) */
+                    uint32_t t[2];
+                    nd_op_xlate(w0, gfxBuffer[j-1].words.w1, t);
+                    w0 = t[0];
+                }
+                cmd = w0 >> 0x18;
+
+                // If this command is a vertex command, adjust the vertex buffer address
+                if (cmd == NDO_VTX) {
+#else
                 cmd = w0 >> 0x18;
 
                 // If this command is a vertex command, adjust the vertex buffer address
                 if (cmd == G_VTX) {
+#endif
                     // ImgFXVtx structs are 0xC bytes while Vtx are 0x10, so we need a (4/3) scaling factor
                     // to compute a new, equivalent Vtx[i] address for an existing ImgFXVtx[i] address.
                     // Unfortunately, using sizeof here does not match.
                     gfxBuffer[j-1].words.w1 = ((((s32) gfxBuffer[j-1].words.w1 - (s32) anim->keyframesOffset) / 3) * 4) +
                                               (s32) state->vtxBufs[i];
                 }
+#ifdef TARGET_3DS
+            } while (cmd != NDO_END);
+#else
             } while (cmd != G_ENDDL);
+#endif
         }
     }
 

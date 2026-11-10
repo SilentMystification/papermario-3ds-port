@@ -1,5 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
+#ifdef TARGET_3DS
+#include "nd_op.h" /* HC4e2b: the typed unit of a list word (nd_op_xlate) */
+#endif
 
 extern Gfx D_09001000_3A5320[];
 extern Gfx D_090010A8_3A53C8[];
@@ -251,7 +254,10 @@ void energy_orb_wave_appendGfx(void* effect) {
             const Gfx* g = D_09001000_3A5320;
             n += snprintf(orbBuf + n, sizeof orbBuf - n, "orbdbg f%u prim %d %d %d a %d dl", (unsigned)pm_frame_count(),
                           (int)data->unk_20, (int)data->unk_24, (int)data->unk_28, (int)unk_2C);
-            for (; g->words.w0 >> 24 != G_ENDDL && n < 560; g++) {
+            for (; n < 560; g++) {
+                uint32_t t[2]; /* HC4e2b: stop at the typed end (NDO_END) of the unit */
+                nd_op_xlate(g->words.w0, g->words.w1, t);
+                if ((t[0] >> 24) == NDO_END) break;
                 n += snprintf(orbBuf + n, sizeof orbBuf - n, " %02x:%06x:%08x", (unsigned)(g->words.w0 >> 24),
                               (unsigned)(g->words.w0 & 0xFFFFFF), (unsigned)g->words.w1);
             }

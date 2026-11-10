@@ -3,6 +3,7 @@
 #ifdef TARGET_3DS
 #include "nd.h" /* S6-2a: nd_dlc_tex_decode (entcheck census) */
 #include "nd_cmd.h" /* DIRECT D3 */
+#include "nd_op.h" /* HC4e2b: the typed unit of a list word (nd_op_xlate) */
 #endif
 
 EntityModelScript D_8014C260 = {
@@ -261,9 +262,11 @@ static unsigned ent_vk_n, ent_vs_draw[3], ent_vs_ovf;
 static u32 ent_vtx_range(const Gfx* dl, s32 seg) {
     u32 range = 0;
     for (int k = 0; k < 2048; k++) {
-        const u32 op = dl[k].words.w0 >> 24;
-        if (op == (u32)G_ENDDL) break;
-        if (op == (u32)G_VTX && (dl[k].words.w1 >> 24) == ((u32)seg & 0xffu)) {
+        uint32_t t[2];
+        nd_op_xlate(dl[k].words.w0, dl[k].words.w1, t);
+        const u32 op = t[0] >> 24;
+        if (op == (u32)NDO_END) break;
+        if (op == (u32)NDO_VTX && (dl[k].words.w1 >> 24) == ((u32)seg & 0xffu)) {
             const u32 end = (dl[k].words.w1 & 0xffffffu) + (((dl[k].words.w0 >> 12) & 0xffu) * 16u);
             if (end > range) range = end;
         }
@@ -300,13 +303,15 @@ static void entcheck_draw(const Gfx* rec, const EntityModel* model) { /* DIRECT 
         unsigned dlm = 0, cls = 0;
         NdTexDec tdec;
         for (int k = 0; q != nullptr && k < 2048; k++) {
-            const u32 op = q[k].words.w0 >> 24;
-            if (op == (u32)G_ENDDL) break;
-            if (op == (u32)G_DL) dlm |= 2u;
-            else if (op == (u32)G_SETTIMG || op == (u32)G_LOADBLOCK || op == (u32)G_LOADTLUT || op == (u32)G_SETTILE || op == (u32)G_SETTILESIZE ||
-                     op == (u32)G_LOADTILE || op == (u32)G_TEXTURE) dlm |= 1u;
-            else if (!(op == (u32)G_VTX || op == (u32)G_TRI1 || op == (u32)G_TRI2 || op == (u32)G_GEOMETRYMODE || op == (u32)G_NOOP || op == (u32)G_SETCOMBINE ||
-                       op == (u32)G_SETOTHERMODE_H || op == (u32)G_RDPPIPESYNC || op == (u32)G_RDPTILESYNC || op == (u32)G_RDPLOADSYNC || op == (u32)G_RDPFULLSYNC || op == (u32)G_MOVEWORD))
+            uint32_t t[2];
+            nd_op_xlate(q[k].words.w0, q[k].words.w1, t);
+            const u32 op = t[0] >> 24;
+            if (op == (u32)NDO_END) break;
+            if (op == (u32)NDO_CALL) dlm |= 2u;
+            else if (op == (u32)NDO_TIMG || op == (u32)NDO_LOADBLOCK || op == (u32)NDO_LOADTLUT || op == (u32)NDO_TILE || op == (u32)NDO_TILESIZE ||
+                     op == (u32)NDO_LOADTILE || op == (u32)NDO_TEXTURE) dlm |= 1u;
+            else if (!(op == (u32)NDO_VTX || op == (u32)NDO_TRI1 || op == (u32)NDO_TRI2 || op == (u32)NDO_GEOM || (op == (u32)NDO_MISC && t[0] == ND_NOP_A) ||
+                       op == (u32)NDO_COMB || op == (u32)NDO_OMH || op == (u32)NDO_MW))
                 dlm |= 4u;
         }
         if (model->vertexArray != nullptr) cls = 1;
