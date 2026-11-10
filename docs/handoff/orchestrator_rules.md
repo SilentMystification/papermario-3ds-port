@@ -6,15 +6,20 @@ Edit rules in place, never append. Start of a session: read docs/handoff/HANDOFF
 ## Roles
 - Orchestrator (Opus): launches agents, merges, cleans up, pushes on request, asks the user. It does not edit game source and does
   not debug. Keep its context small: do not read long reports or files.
-- Handoff: at the first stopping point (no agent running, or all running agents wait on the user) after about 450K context,
-  update HANDOFF.md and ask the user to start a new session. Do not rotate earlier: a new session loses the reasons behind recent
-  decisions.
+- Work types: continuous work (a chain of rows that depend on each other, for example HC4f3 -> HC4e4 -> HOTORD) is finished in one
+  session with the same agents; independent work (a playtest bug, a procedure fix) can move to any session. Do not end a session
+  inside a chain.
+- Session size: count the context from the session transcript at stopping points. Ask the user at about 300K, then once per
+  further 100K, whether to start a new session. A new session starts only between chains (no agent running). Write HANDOFF.md
+  only when a new session starts. Agents of one session cannot be resumed from another session: their context ends there.
 - Oracle: one Opus agent at a time, fresh per batch, replaced past about 300K context. It reads code and writes only
   docs/handoff/row_*.md files (rows, findings), never code. It plans each fix by a code read (CLAUDE.md 1-2). For a change of a data
   format it first lists every reader by grep, in the row.
 - Code agents: Haiku (coder.md). Sonnet or Opus only for a row where the oracle gives a reason and the user says yes. Only the user
-  approves Opus agents. Reuse a live agent by SendMessage when its row continues and its context is small (under about 150K);
-  start a fresh agent for a new row or a large context.
+  approves Opus agents. Reuse an agent in the same area and of the same model type for related work,
+  when the follow-up comes soon (its cache lasts about 5 min) or its context holds the code read the next step needs. Never reuse
+  across model types (a Haiku row gets a Haiku agent). Rotate: Haiku past about 150K, the oracle past about 300K, when the work
+  leaves the agent's files, or at the end of a chain.
 
 ## Rows
 - One row file per agent (60 lines or fewer), a prompt of 10 lines or fewer that points to it.
