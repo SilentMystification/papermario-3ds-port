@@ -4,12 +4,11 @@ State at 2026-11-10 night, main de7b9e635 or later. Read orchestrator_rules.md a
 
 ## Still running at handoff (check with ListAgents; merge by the reported hash)
 - [Oracle Opus] batch 10: full rows for HC4f3 and HC4e4 (rows docs/handoff/row_HC4f3.md, row_HC4e4.md). Worktree build3ds/wt/HC4f3 exists.
-- [Haiku] FFOG1 (build3ds/wt/FFOG1): pm5.v.pica fog 0 for a vertex behind the eye (mim_11 / Forever Forest floor black). Gate: nd_host
-  plus byte checks spot_mac01_det and battle_start_f182_cold. No floor shot (user). The user checks mim_11 on the XL after a push.
+- FFOG1 merged (pm5 fog fix). The user checks mim_11 on the XL after a push.
 - build3ds/wt/TOOLB1: merged; its folder may be locked; the next wt_gc sweep removes it.
 
 ## Queue, in order
-1. TOOLB2 (row_TOOLB2.md): shared run ids, battle gate -NoWarm, shot copy at timeout. After FFOG1 (both edit azt_scenarios.json).
+1. TOOLB2 (row_TOOLB2.md): shared run ids, battle gate -NoWarm, shot copy at timeout.
 2. ESCAPE2 (row_ESCAPE2.md, oracle first): START+SELECT exit faults the system; debug menu choice hbmenu / quit / HOME Menu.
 3. HC4f3, then HC4e4 (rows from oracle batch 10). Then the hot_order.ld census (15 stale names).
 4. STEREOFX (row_STEREOFX.md): the 3D slider hang on the XL. Evidence: a log-on push, slider on, wait 12 s, START+SELECT, pull
