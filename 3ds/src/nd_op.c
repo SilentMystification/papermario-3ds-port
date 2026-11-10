@@ -18,6 +18,7 @@ static int out2(uint32_t out[2], unsigned id, uint32_t a, uint32_t b) {
 }
 
 int nd_op_xlate(uint32_t w0, uint32_t w1, uint32_t out[2]) {
+    if (nd_op_typed(w0 >> 24)) { out[0] = w0; out[1] = w1; return 1; } /* HC4e1: a typed unit passes */
     switch (w0 >> 24) {
     case G_SETOTHERMODE_H:
     case G_SETOTHERMODE_L: {
