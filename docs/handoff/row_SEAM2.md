@@ -18,6 +18,11 @@ User: "I also still see seams on building geometry sometimes. Fix those." (towns
 3. (c3) coplanar decal depth fight (DECAL_EPS 0.003, pm_gpu.c:385-388): only if the seam model is DECAL_*; offline check.
 4. (c1) edges not bit-identical between paths: lowest; nd_mtx host test only if 1-3 are false.
 
+## State (2026-11-09; agent stalled and stopped)
+Branch SEAM2 05792cdd7: T points of lists under their own matrix split in object space; seamfix mac_01 ins 264 -> 365, mac_00
+488 -> 666; spot_mac01_det 953 px differ on building edges; nd_host PASS. Not merged: the run-time static-matrix check (R1 bit 8,
+finalMtx == savedMtx) is not written, so a list whose matrix moves per frame could get wrong points. Next: that check, then merge.
+
 ## Start state
 `sh 3ds/tools/wt_new.sh SEAM2`, branch SEAM2. PM_ROW=SEAM2, PM_LANE=SEAM2. One Haiku agent.
 

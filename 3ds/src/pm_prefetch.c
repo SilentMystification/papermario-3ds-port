@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <malloc.h>
 #include "pm_port.h"
+#include "pm_thread.h"
 #include "pm_dspaud.h"
 
 int pm_yay0_raw(const unsigned char* src, unsigned src_len, unsigned char* dst, unsigned dst_len); /* pm_map.c */
@@ -61,7 +62,7 @@ static int pf_start(void) { /* 0 when the thread cannot run (the caller does the
     if (!pf_th) {
         LightEvent_Init(&pf_go, RESET_ONESHOT);
         LightEvent_Init(&pf_done, RESET_STICKY);
-        pf_th = threadCreate(pf_main, NULL, 8 * 1024, 0x3F, 1, false);
+        pf_th = pm_thread_create(pf_main, NULL, 8 * 1024, 0x3F, 1, "prefetch");
         if (!pf_th) { pf_th = (Thread)1; pm_log_w("prefetch: no core-1 thread, the game thread decodes"); }
     }
     return pf_th != (Thread)1;

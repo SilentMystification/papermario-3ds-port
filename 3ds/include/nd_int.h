@@ -71,10 +71,10 @@ unsigned rec_run(const Gfx* q);
 int pm_gbi_bind_tile1(void); /* MDL-1b: the walker's tile 1 step, the former pm_gbi.c */
 unsigned sc_sig_now(void);
 void draw_tri(unsigned w);
-void gbi_cold_modifyvtx(u32 w0, u32 w1);
+void gbi_cold_modifyvtx(unsigned where, unsigned vi); /* HC4d2: NDO_MISC_MODVTX fields */
 void gbi_movemem(u32 w0, u32 w1);
 void gbi_popmtx(u32 w1);
-void gbi_setcimg(u32 w0, u32 w1);
+void gbi_setcimg(u32 a, u32 b); /* HC4d2: NDO_MISC_CIMG (a = sub << 16 | siz << 12 | width - 1, b = address) */
 void gbi_setenv(u32 w1);
 void gv_streak_flush(void);
 void gv_streak_op(unsigned op);
@@ -244,7 +244,7 @@ const u8* fb_prev_base(int n);
 void ens_clear(void);
 extern unsigned short** nuGfxCfb; extern unsigned nuGfxCfbNum;
 void grab_cur(const void* src, int w, int h);       /* the former pm_gbi.c, target group */
-void nd_native_rec(u32 w0);                         /* nd_target.c, LS-4: G_PM_ND records */
+void nd_native_rec(unsigned kind, unsigned on);      /* nd_target.c, LS-4: G_PM_ND records (HC4d2: NDO_MISC_ND fields) */
 int load_shaded_sprite(int dx4, int dy4);           /* the former pm_gbi.c, TX-3 */
 int glyph_atlas_bound(void);                        /* the former pm_gbi.c, TX-3 */
 void op_setcombine(u32 w0, u32 w1);                 /* the former pm_gbi.c, combine group */

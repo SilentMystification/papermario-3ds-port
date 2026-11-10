@@ -2188,11 +2188,13 @@ static void gut_quad(int xa, int xb, float sa, float sb, unsigned c) {
     ix[3] = (unsigned short)b; ix[4] = (unsigned short)(b + 2); ix[5] = (unsigned short)(b + 3);
     nb.gidx_n += 6; nb.gni += 6;
 }
-int pm_gut_seen; /* PAUSEOPEN debug: set by the first gutter call; rect_raw_quad (pm_gpu_rect.c) watches the rectangles after it */
-void pm_gpu_pause_gutters(int alpha) {
+int pm_gut_seen; /* PAUSEOPEN debug: set by the first gutter call; rect_raw_quad (pm_gpu_rect.c) watches the rectangles after it (debug word gutdbg) */
+/* PAUSEOPEN: the gutter batch takes the walker's combine and prim as they are at the payload (the centre's draw comes before it: PM_CC_43/44
+ * with the prim (40, 40, 40, fade)), so the strips get the centre's fade. The class and vertex colour are those of tex_raw_piece. */
+void pm_gpu_pause_gutters(void) {
     C3D_Tex* t = NULL;
     static int dbg_n;
-    const int dbg = dbg_n++ < 6; /* PAUSEOPEN debug: the first 6 calls (no switch: the PMDL cache read 0 for this word) */
+    const int dbg = dbg_n < 6 && pm_debug_has("gutdbg") && dbg_n++ >= 0;
     const char* why = NULL;
     pm_gut_seen = 1;
     if (!target) why = "no target";
@@ -2209,25 +2211,24 @@ void pm_gpu_pause_gutters(int alpha) {
         if (!t || !t->data) why = "no slot";
         else if (!ring_need(8, 12)) why = "ring full";
     }
-    if (dbg) pm_log("GUTDBG call off_active %d off_cur %d off_fail %d gpu_ok %d vtx %d gv4 %d slot %p why %s scissor %d %d %d %d",
-                    gs.off_active, gs.off_cur, off_fail, gs.gpu_ok, gs.gpu_vtx_on, gs.gv4_on, (void*)t, why ? why : "drawn", sci_x0, sci_y0, sci_x1, sci_y1);
+    if (dbg) pm_log("GUTDBG call off_active %d off_cur %d combine %d slot %p why %s scissor %d %d %d %d",
+                    gs.off_active, gs.off_cur, gs.combine, (void*)t, why ? why : "drawn", sci_x0, sci_y0, sci_x1, sci_y1);
     if (why) return;
     gut_tex = t;
-    /* PAUSEOPEN: class 2 (TEXEL0 x SHADE, the tex_raw_piece default) with the vertex colour (255, 255, 255, fade). The walker's class and colour
-     * of the centre (env or plan colour) gave the constant prim colour in the gutters. */
-    const unsigned c = 0xffffff00u | (unsigned)(alpha & 0xff);
+    const int ec = (gs.combine >= 4 && gs.combine <= 8) ? gs.combine : 2;
+    const unsigned c = (gs.combine == 5 || gs.combine == 7) ? gs.env_col : (gs.combine == 8 && gs.plan.vtxname != PM_NM_SHADE) ? gs.plan.vtx : 0xffffffffu;
     static const float uvso_p[4] = { 1.f / 4096.f, 1.f / 4096.f, 0.f, 0.f };
     const int s_2d = nb.rect_2d;
     nb.rect_2d = 1;
     grab_bind = 2;
-    rect_raw_open(2, 0.5f, uvso_p);
+    rect_raw_open(ec, 0.5f, uvso_p);
     gut_quad(0, 40, 0.f, 40.f, c);
     gut_quad(360, 400, 360.f, 400.f, c);
-    if (dbg) pm_log("GUTDBG queued: gni %u gidx_n %u rect_open %d", nb.gni, nb.gidx_n, nb.rect_open);
+    if (dbg) pm_log("GUTDBG queued: ec %d gni %u gidx_n %u rect_open %d", ec, nb.gni, nb.gidx_n, nb.rect_open);
     flush();
     grab_bind = 0;
     nb.rect_2d = s_2d;
-    if (dbg) pm_log("GUTDBG flushed: off_active %d scissor %d %d %d %d gni %u", gs.off_active, sci_x0, sci_y0, sci_x1, sci_y1, nb.gni);
+    if (dbg) pm_log("GUTDBG flushed: gni %u", nb.gni);
 }
 int pm_gpu_grab_prev(const void* prev_cfb) {
     PM_WALK_OWN(); /* CORE2-3a */

@@ -1,6 +1,7 @@
 #include <3ds.h>
 #include <string.h>
 #include "pm_port.h"
+#include "pm_thread.h"
 #include "pm_au2.h"
 
 /* AU2: SPSC ring of command jobs. Producer = the audio control thread (or the game thread while that thread is joined: never both).
@@ -18,7 +19,6 @@ extern int pm_pf_on; /* pm_phase.c */
 unsigned pm_au2_pf_busy; /* C1WAIT: mixer ticks on the render thread in the prof window (modular 32 bit, svcGetSystemTick) */
 static int quit;
 static Thread rthread;
-static u8 r_crash_stack[0x4000] __attribute__((aligned(8)));
 volatile int pm_au2_active;
 
 /* Statistics (switch audiostat). The control side writes the first group, the render thread the second. */
@@ -153,7 +153,6 @@ void pm_au2_sync(int reason) {
 
 static void render_main(void* unused) {
     (void)unused;
-    pm_crash_install(r_crash_stack, sizeof(r_crash_stack));
     pm_stack_register(2, "render", 64 * 1024);
     pm_fpscr_setup("audio");
     pm_log_d("threads: audio render on core %d (svcGetProcessorID)", (int)svcGetProcessorID());
@@ -193,7 +192,7 @@ int pm_au2_start(void) {
     svcGetThreadPriority(&prio, CUR_THREAD_HANDLE);
     /* Lower priority than the control thread: a kicked control job preempts the mixer on the same core. */
     int core = pm_debug_has("audiocore0") ? -2 : 1;
-    rthread = threadCreate(render_main, NULL, 64 * 1024, prio + 1, core, false);
+    rthread = pm_thread_create(render_main, NULL, 64 * 1024, prio + 1, core, "au_render");
     if (!rthread) {
         pm_log_w("audio2: render thread not created, mixer runs inside the audio job");
         return 0;

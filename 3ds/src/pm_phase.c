@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <citro3d.h>
 #include "pm_port.h"
+#include "pm_thread.h"
 #include "nd.h"
 #include "nd_cmd.h"
 
@@ -345,7 +346,7 @@ static void c2_probe(void) {
     bool n3 = false;
     APT_CheckNew3DS(&n3);
     if (!n3) { pm_log_prof_line("prof core2 probe: O3DS, no core 2"); return; }
-    Thread t = threadCreate(c2_main, NULL, 4 * 1024, 0x30, 2, false);
+    Thread t = pm_thread_create(c2_main, NULL, 4 * 1024, 0x30, 2, "c2");
     if (!t) { pm_log_prof_line("prof core2 probe: N3DS, thread on core 2 REFUSED"); return; }
     threadJoin(t, 1000000000LL);
     threadFree(t);
@@ -412,7 +413,7 @@ static void c1_begin(void) { /* the first prof window is printed: the scene is s
     c1_prio += 2;
     LightEvent_Init(&c1_ev, RESET_ONESHOT);
     c1_st = 2;
-    c1_th = threadCreate(c1_main, NULL, 8 * 1024, c1_prio, 1, false);
+    c1_th = pm_thread_create(c1_main, NULL, 8 * 1024, c1_prio, 1, "c1");
     if (!c1_th) { c1_st = 5; pm_log_prof_line("prof c1probe: thread on core 1 at prio %02x REFUSED | FAIL", (unsigned)c1_prio); }
 }
 static int c1_cmp(const void* a, const void* b) { unsigned x = *(const unsigned*)a, y = *(const unsigned*)b; return x < y ? -1 : x > y; }

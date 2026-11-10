@@ -37,22 +37,35 @@ enum {
     NDO_MTX,          /* G_MTX: a = the w0 low 24 bits (flags in the low byte), b = matrix address */
     NDO_POPMTX,       /* G_POPMTX: b = bytes (64 per matrix) */
     NDO_MOVEMEM,      /* G_MOVEMEM: a = the w0 low 24 bits (offset << 8 | index), b = address */
+    NDO_CALL,         /* HC4d2, from here the control ops (nd_op_ctl): G_DL: a = 1 for the branch form (G_DL_NOPUSH), b = list address */
+    NDO_RECT,         /* G_FILLRECT, G_TEXRECT(FLIP): a = lrx << 12 | lry, b = NDO_RECT_TEX | tile << 24 | ulx << 12 | uly (10.2 fields).
+                       * A texture rectangle keeps its two RDPHALF units after it (their b: s, t and dsdx, dtdy) */
+    NDO_MISC,         /* a = NDO_MISC_* << 16 | arg: the list start of an in-line state list (G_PM_LST), the native-only payload (G_PM_ND,
+                       * arg = kind << 8 | on), G_MODIFYVTX (arg = where << 8 | vertex, vertex 255 when above), G_SETCIMG (arg = siz << 12 |
+                       * width - 1, b = image address), no work (G_NOOP, G_RDPHALF_*, G_SETZIMG) */
     NDO_END_
 };
 enum { NDO_MW_NONE, NDO_MW_NUMLIGHT, NDO_MW_LIGHTCOL /* arg = light k */, NDO_MW_FOG, NDO_MW_SEG /* arg = segment */ };
 enum { NDO_RARE_CONV, NDO_RARE_KEYR, NDO_RARE_KEYGB };
+enum { NDO_MISC_NOP, NDO_MISC_LST, NDO_MISC_ND, NDO_MISC_MODVTX, NDO_MISC_CIMG };
+#define NDO_RECT_TEX 0x80000000u /* NDO_RECT b: a texture rectangle (else a fill) */
 
 #define NDO_W0(id, a) (((uint32_t)(id) << 24) | ((uint32_t)(a) & 0xffffffu))
 #define NDO_COMB_W0(a) ((uint32_t)0xfcu << 24 | ((uint32_t)(a) & 0xffffffu)) /* the G_SETCOMBINE word of a typed combine (nd_ws.comb_w0, model keys) */
 #define NDO_A_RENDERMODE (3u | 29u << 8) /* the a field of gDPSetRenderMode (G_MDSFT_RENDERMODE 3, 29 bits) */
 static inline int nd_op_typed(unsigned id) { return id - (unsigned)NDO_BASE < 32u; }
 static inline int nd_op_geo(unsigned id) { return id - (unsigned)NDO_VTX <= (unsigned)(NDO_MOVEMEM - NDO_VTX); } /* HC4d: no skip test, no op switch of nd_set.c */
+static inline int nd_op_ctl(unsigned id) { return id >= (unsigned)NDO_CALL && id < (unsigned)NDO_END_; } /* HC4d2: a list call, rectangle or misc op */
 static inline int nd_op_tex(unsigned id) { return id - (unsigned)NDO_TIMG <= (unsigned)(NDO_LOADTLUT - NDO_TIMG); } /* HC4c: an image, tile or load op */
 /* The mask of an othermode op from its a field (shift, length), as the walker computed it from the word. */
 static inline uint32_t nd_op_om_mask(uint32_t a) {
     const unsigned sft = a & 0xffu, len = (a >> 8) & 0xffu;
     return len >= 32u ? 0xffffffffu : (((1u << len) - 1u) << sft);
 }
+/* HC4d2: typed units written by a producer (no word built). */
+#define ND_OP_VTX_W0(n, v0) NDO_W0(NDO_VTX, (uint32_t)(n) << 12 | ((uint32_t)(v0) + (uint32_t)(n)) << 1)
+#define ND_OP_TRI_A(v0, v1, v2) ((uint32_t)(v0) * 2u << 16 | (uint32_t)(v1) * 2u << 8 | (uint32_t)(v2) * 2u)
+#define ND_OP_CALL_W0 NDO_W0(NDO_CALL, 0)
 extern const uint8_t nd_op_n64[NDO_END_ - NDO_BASE]; /* the F3DEX2 op of each id (pm_gbi_cur_op, census) */
 /* Translate one F3DEX2 word into out[0], out[1]: the typed op (returns 1) or the word unchanged (returns 0). */
 int nd_op_xlate(uint32_t w0, uint32_t w1, uint32_t out[2]);

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "pm_port.h"
+#include "pm_thread.h"
 
 /* HW2: the game thread never touches the SD card for a save. pm_flash_put and pm_flash_fill change flash_mem under flash_lock and
  * mark it dirty. A thread on core 1 waits until no call came for 70 ms (the game writes all pages of a save in one burst), then
@@ -156,8 +157,8 @@ void pm_flash_crash_flush(void) {
 static void flash_kick(void) {
     if (flash_th_state == 0) {
         LightEvent_Init(&flash_ev, RESET_ONESHOT);
-        flash_th = threadCreate(flash_thread, NULL, 32 * 1024, 0x3F, 1, false);
-        if (!flash_th) flash_th = threadCreate(flash_thread, NULL, 32 * 1024, 0x3F, -2, false);
+        flash_th = pm_thread_create(flash_thread, NULL, 32 * 1024, 0x3F, 1, "flash");
+        if (!flash_th) flash_th = pm_thread_create(flash_thread, NULL, 32 * 1024, 0x3F, -2, "flash");
         flash_th_state = flash_th ? 1 : -1;
         if (!flash_th) pm_log_w("save.flash: no flush thread, the save is written at the next join (HOME, sleep, exit)");
     }
@@ -203,7 +204,7 @@ void pm_flash_put(unsigned off, const void* src, unsigned len) {
     LightLock_Unlock(&flash_lock);
     if (!savecrash_armed && pm_debug_has("savecrash")) {
         savecrash_armed = 1;
-        threadCreate(savecrash_thread, NULL, 16 * 1024, 0x3F, 1, false);
+        pm_thread_create(savecrash_thread, NULL, 16 * 1024, 0x3F, 1, "savecrash");
     }
     flash_kick();
 }

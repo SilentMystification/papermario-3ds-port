@@ -137,7 +137,9 @@ static void rect_raw_quad(int xa, int ya, int xb, int yb, short s0, short t0, sh
         extern int pm_gut_seen;
         static int gut_watch_n;
         const int lo = xa < xb ? xa : xb, hi = xa < xb ? xb : xa, ylo = ya < yb ? ya : yb, yhi = ya < yb ? yb : ya;
-        if (pm_gut_seen && gut_watch_n < 40 && ((lo < 40 && hi > 0) || (hi > 360 && lo < 400))) {
+        static int gut_dbg = -1;
+        if (gut_dbg < 0) gut_dbg = pm_debug_has("gutdbg");
+        if (gut_dbg && pm_gut_seen && gut_watch_n < 40 && ((lo < 40 && hi > 0) || (hi > 360 && lo < 400))) {
             gut_watch_n++;
             pm_log("GUTW ret %p x %d..%d y %d..%d c %08x combine %d off %d", __builtin_return_address(0), lo, hi, ylo, yhi, c, gs.combine, gs.off_active);
         }
@@ -188,6 +190,27 @@ void pm_gpu_fill_depth(int x0, int y0, int x1, int y1, float d) {
     gs.r_nocol = s_nc; gs.r_zcmp = s_zc; gs.r_zupd = s_zu; gs.r_blend = s_bl; gs.r_atest = s_at; gs.r_decal = s_de; gs.z_on = s_z; gs.r_mix = s_mix;
 }
 
+static int tex_raw_piece(int xa, int ya, int xb, int yb, float s0, float t0, float s1, float t1, int y0, int y1);
+/* HC7: a rectangle over 127 texels in s or t: equal pieces along the axes that span about 120 texels (the one-piece case returns tex_raw_piece). */
+__attribute__((noinline, cold)) static int tex_raw_split(int ixa, int iya, int ixb, int iyb, float s0, float t0, float s1, float t1, int y0, int y1) {
+    int nx = 1, ny = 1;
+    const float spanS = s0 < s1 ? s1 - s0 : s0 - s1, spanT = t0 < t1 ? t1 - t0 : t0 - t1;
+    if (spanS >= 120.f || spanT >= 120.f) { nx = 1 + (int)(spanS / 120.f); ny = 1 + (int)(spanT / 120.f); }
+    if (nx == 1 && ny == 1) return tex_raw_piece(ixa, iya, ixb, iyb, s0, t0, s1, t1, y0, y1);
+    const int W = ixb - ixa, H = iyb - iya;
+    if (W == 0 || H == 0 || (W < 0 ? -W : W) < nx || (H < 0 ? -H : H) < ny) { rr_why[7]++; return 0; }
+    if (!ring_need(4u * (unsigned)nx * (unsigned)ny, 6u * (unsigned)nx * (unsigned)ny)) { rr_why[5]++; return 0; } /* the pieces must fit the ring together */
+    for (int j = 0; j < ny; j++) {
+        const int ja = iya + H * j / ny, jb = iya + H * (j + 1) / ny;
+        const float ta = t0 + (t1 - t0) * (float)(ja - iya) / (float)H, tb = t0 + (t1 - t0) * (float)(jb - iya) / (float)H;
+        for (int i = 0; i < nx; i++) {
+            const int ia = ixa + W * i / nx, ib = ixa + W * (i + 1) / nx;
+            const float sa = s0 + (s1 - s0) * (float)(ia - ixa) / (float)W, sb = s0 + (s1 - s0) * (float)(ib - ixa) / (float)W;
+            tex_raw_piece(ia, ja, ib, jb, sa, ta, sb, tb, y0, y1);
+        }
+    }
+    return 1;
+}
 /* RECT-1b: a texture rectangle as a raw batch (agent_s6.md RECT-1b). s and t are normalized: the ring gets shorts s * sc, the batch uvso is {1 / sc, 1 / sc, 0, 0} (pica uv = tc * uvso.xy + uvso.zw).
  * sc is 4096, 1024 or 256 by the largest |s| or |t| (the short range): above 127 the piece is refused (returns 0, rr_why 7). */
 static short tex_st(float v, float sc) { float f = v * sc; return (short)(f >= 0.f ? f + 0.5f : f - 0.5f); }
@@ -234,29 +257,12 @@ static int tex_raw_rect(int x0, int y0, int x1, int y1, float s0, float t0, floa
     }
     const float ya = py(y0), yb = py(y1 + 1);
     const int ixa = (int)xa, ixb = (int)xb, iya = (int)ya, iyb = (int)yb;
-    /* split count: the base form is needed when the magnitude is at or above 127; a piece holds a span of about 120 texels */
+    /* split count: the base form is needed when the magnitude is at or above 127; a piece holds a span of about 120 texels. The split is cold (HC7). */
     float mx = 0.f;
     const float av[4] = { s0 < 0.f ? -s0 : s0, s1 < 0.f ? -s1 : s1, t0 < 0.f ? -t0 : t0, t1 < 0.f ? -t1 : t1 };
     for (int i = 0; i < 4; i++) if (av[i] > mx) mx = av[i];
-    int nx = 1, ny = 1;
-    if (mx >= 127.f) {
-        const float spanS = s0 < s1 ? s1 - s0 : s0 - s1, spanT = t0 < t1 ? t1 - t0 : t0 - t1;
-        if (spanS >= 120.f || spanT >= 120.f) { nx = 1 + (int)(spanS / 120.f); ny = 1 + (int)(spanT / 120.f); }
-    }
-    if (nx == 1 && ny == 1) return tex_raw_piece(ixa, iya, ixb, iyb, s0, t0, s1, t1, y0, y1);
-    const int W = ixb - ixa, H = iyb - iya;
-    if (W == 0 || H == 0 || (W < 0 ? -W : W) < nx || (H < 0 ? -H : H) < ny) { rr_why[7]++; return 0; }
-    if (!ring_need(4u * (unsigned)nx * (unsigned)ny, 6u * (unsigned)nx * (unsigned)ny)) { rr_why[5]++; return 0; } /* the pieces must fit the ring together */
-    for (int j = 0; j < ny; j++) {
-        const int ja = iya + H * j / ny, jb = iya + H * (j + 1) / ny;
-        const float ta = t0 + (t1 - t0) * (float)(ja - iya) / (float)H, tb = t0 + (t1 - t0) * (float)(jb - iya) / (float)H;
-        for (int i = 0; i < nx; i++) {
-            const int ia = ixa + W * i / nx, ib = ixa + W * (i + 1) / nx;
-            const float sa = s0 + (s1 - s0) * (float)(ia - ixa) / (float)W, sb = s0 + (s1 - s0) * (float)(ib - ixa) / (float)W;
-            tex_raw_piece(ia, ja, ib, jb, sa, ta, sb, tb, y0, y1);
-        }
-    }
-    return 1;
+    if (mx < 127.f) return tex_raw_piece(ixa, iya, ixb, iyb, s0, t0, s1, t1, y0, y1);
+    return tex_raw_split(ixa, iya, ixb, iyb, s0, t0, s1, t1, y0, y1);
 }
 void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s1, float t1) {
     if (PMDL("zmforce")) { gs.z_on = 1; nb.rect_z = 1; gs.r_zmark = 1; gs.r_zmark_zn = 0.5f; } /* FB-1 ZM forcing (as pm_gpu_fill_rect) */

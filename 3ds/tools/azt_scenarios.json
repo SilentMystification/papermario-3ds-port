@@ -783,6 +783,30 @@
       "reason": "EYECW gate e. Cap 30 s."
     },
     {
+      "name": "texkey_arn02",
+      "status": "unverified",
+      "subject": "TEXKEY2 (palette fix at build time, texkey_bake.py): arn_02 (warp entry 0, Toad Town) at frame 120. The shot shows the wall barrier rocks; the rock edges must show no light outline.",
+      "proves": "TEXKEY2: the alpha-0 key colour next to opaque texels of a CI4 cutout texture (arn_kabe10 wall barrier) is light, so bilinear mixes a light outline into the rock edges.",
+      "debug": "warp=arn_02:0 story=ch0_toad_town shots shotwin=120:120:1 loglevel=debug",
+      "until": "shot \\d+ frame 120\\b",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: arn_02 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: arn_02 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 120\\b"
+        }
+      ],
+      "reason": "TEXKEY2 gate shot. Cap 30 s."
+    },
+    {
       "name": "kmr11_cut_stereo_det_l",
       "status": "unverified",
       "subject": "kmr11_cut with forced stereo, left eye shots at frames 41 to 261 step 20; eyecw lines every 10 frames.",
@@ -13473,6 +13497,89 @@
         }
       ],
       "reason": "NEGPAN step 1 check, one start. Log only: no shot. The row names an inspect of a guide mushroom; the warp run first shows whether a negative start is reached at all."
+    },
+    {
+      "name": "tidal_census_base",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, phase mode, no effect. Log only (no shot).",
+      "proves": "TIDAL step 1 base: per-frame draw count (closes proxy) of window f410 without the underwater effect.",
+      "debug": "warp=mac_01:0 pos=0:0:200 phase loglevel=debug det fixedseed",
+      "extra": [],
+      "until": "phase W f4\\d\\d-",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "window f410",
+          "regex": "phase W f4\\d\\d-"
+        }
+      ],
+      "reason": "TIDAL step 1 census base. Log only: the per-frame draw count of window f410 (frames 408 to 465) is the gate quantity."
+    },
+    {
+      "name": "tidal_census",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, phase mode, fxtest=87 (fx_underwater) spawned at frame 402 and removed at frame 440. Log only (no shot).",
+      "proves": "TIDAL step 1: the underwater effect (the Tidal Wave draw, fx_underwater) raises the per-frame draw count of window f410 by about 200 closes.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=87 phase loglevel=debug det fixedseed",
+      "extra": [],
+      "until": "phase W f4\\d\\d-",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "spawn",
+          "regex": "fxtest: spawn 87 underwater"
+        },
+        {
+          "name": "window f410",
+          "regex": "phase W f4\\d\\d-"
+        }
+      ],
+      "reason": "TIDAL step 1 census: fxtest=87 is fx_underwater (pm_fxtest.c E(underwater) index 87). Log only."
+    },
+    {
+      "name": "tidal_pic",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, cold det start, fxtest=87 (fx_underwater, the Tidal Wave mesh) spawned at frame 402. Shot 1 at frame 412 and shot 2 at frame 432 (inside the effect's life, to 440): the screen under the water distortion. The subject: the copied frame bent in the wave, no seams between grid cells, no black cells.",
+      "proves": "TIDAL step 2: the underwater mesh draws its distortion from one tile and one grid (ortho, quarter pixel) with the same look as the ModifyVertex path.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=87 shots loglevel=debug det fixedseed",
+      "extra": [],
+      "until": "fxtest: done",
+      "cap": 30,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "spawn",
+          "regex": "fxtest: spawn 87 underwater"
+        },
+        {
+          "name": "shot 2",
+          "regex": "fxtest: shot 2 effect 87 underwater b"
+        }
+      ],
+      "reason": "TIDAL step 2 picture gate: shots 1 and 2 of the fxtest slot (frames 412 and 432) show the wave. Until is shot b."
     }
   ]
 }

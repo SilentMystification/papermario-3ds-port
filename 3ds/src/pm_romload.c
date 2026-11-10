@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "pm_port.h"
+#include "pm_thread.h"
 #include "pm_romload.h"
 
 /* BOOT: the ROM image is streamed from the SD card while the game starts. pm_rom_init checks the header, allocates the image and
@@ -144,6 +145,28 @@ void pm_rs_need_slow(unsigned addr, unsigned len) {
 /* A copy out of the image (pi_read_raw) whose chunks are not all ready: read the n bytes at ROM address addr straight from the
  * file into out. The boot reads small parts (bank headers and tables) of many chunks: a whole-chunk read would cost 128 KB each.
  * Returns 1 when out holds the bytes, 0 when the image has them (or the direct read failed: the chunk path reports it). */
+unsigned pm_rom_direct_n(void) { return rs_direct; }
+
+/* BOOT2 auread: au_read_rom calls before the stream is done (calls, bytes, largest read, distinct 128 KB chunks). Read by the first-draw
+ * boot line (pm_main.c). Relaxed adds: a count, not a sync point. */
+static volatile u32 ar_n, ar_bytes, ar_max;
+static volatile u8 ar_seen[RS_N / 8u + 1u];
+void pm_rs_auread(unsigned addr, unsigned n) {
+    unsigned c;
+    if (__atomic_load_n(&pm_rs_all, __ATOMIC_ACQUIRE) || !n) return;
+    __atomic_add_fetch(&ar_n, 1u, __ATOMIC_RELAXED);
+    __atomic_add_fetch(&ar_bytes, n, __ATOMIC_RELAXED);
+    if (n > ar_max) ar_max = n;
+    c = addr >> RS_SHIFT;
+    if (c < RS_N) __atomic_fetch_or(&ar_seen[c >> 3], (u8)(1u << (c & 7u)), __ATOMIC_RELAXED);
+}
+void pm_rs_auread_get(unsigned* n, unsigned* bytes, unsigned* max, unsigned* chunks) {
+    unsigned k = 0;
+    for (unsigned c = 0; c < RS_N; c++) k += ar_seen[c >> 3] >> (c & 7u) & 1u;
+    *n = ar_n; *bytes = ar_bytes; *max = ar_max; *chunks = k;
+}
+ /* BOOT2: direct reads so far (boot line, romorder) */
+
 int pm_rs_read_direct(unsigned addr, void* out, unsigned n) {
     unsigned c0 = addr >> RS_SHIFT, c1 = (addr + n - 1u) >> RS_SHIFT, c;
     if (!n || addr + n > rs_size) return 0;
@@ -178,7 +201,7 @@ int pm_rom_stream_start(const char* path, unsigned char* block, unsigned size, c
     rs_block = block; rs_size = size; rs_keep = keep; rs_nkeep = nkeep;
     rs_game = threadGetCurrent();
     rs_t0 = svcGetSystemTick();
-    rs_th = threadCreate(rs_loader, NULL, 8 * 1024, 0x2F, 0, false);
+    rs_th = pm_thread_create(rs_loader, NULL, 8 * 1024, 0x2F, 0, "rs_loader");
     if (!rs_th) { /* no thread: the game reads every chunk on demand; nothing else changes */
         pm_log_e("rom stream: no loader thread, demand reads only");
     }
