@@ -9,6 +9,7 @@
 #include "nd_int.h"
 #include "pm_gpu.h"
 #include "nd.h"
+#include "nd_op.h"
 #include "pm_tex.h"
 static __attribute__((cold, noinline)) void dlc_wz_note(const DlcGrp* g, const float (*m)[4], int culled);
 #include "pm_port.h"
@@ -28,7 +29,7 @@ int dlc_on; int dlc_depth;
 DlcCnt dlc_c;
 unsigned sp0_grp, sp0_skip; /* SPLIT0C: groups and skips per phase window (sp0c line), counted under phase only */
 unsigned dlc_dirty; /* the last replay left vert_live cleared although the interpreter would have left slots live */
-const Gfx dlc_end[1] = { { { (u32)G_ENDDL << 24, 0 } } };
+const Gfx dlc_end[1] = { { { NDO_W0(NDO_END, 0), 0 } } };
 
 /* hash of a list (words up to G_ENDDL) and of the Vtx bytes of its G_VTX ops */
 u32 dlc_hash(const Gfx* l) {
@@ -36,8 +37,9 @@ u32 dlc_hash(const Gfx* l) {
     for (unsigned i = 0; i < 4096; i++) {
         u32 w0 = l[i].words.w0, w1 = l[i].words.w1;
         h = (h ^ w0) * 16777619u; h = (h ^ w1) * 16777619u;
-        unsigned op = w0 >> 24;
-        if (op == G_VTX) {
+        uint32_t t[2]; /* HC4e2c: the typed unit of the word (G_ENDDL stays raw in nd_op_xlate) */
+        const unsigned op = nd_op_typed(w0 >> 24) ? w0 >> 24 : (nd_op_xlate(w0, w1, t), t[0] >> 24);
+        if (op == NDO_VTX) {
             unsigned n = (w0 >> 12) & 0xff;
             const unsigned char* v = (const unsigned char*)ptr_of(w1);
             if (v && is_host((u32)v) && n <= 64) for (unsigned k = 0; k < n * 16; k++) h = (h ^ v[k]) * 16777619u;
