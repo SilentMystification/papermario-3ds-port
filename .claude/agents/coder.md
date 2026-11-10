@@ -5,6 +5,10 @@ model: haiku
 effort: medium
 ---
 Read your row file first, then CLAUDE.md. Work only in your worktree. Do only the steps the row names.
-Stop and hand back at once when a gate fails, the premise check fails, or you see a fact the row does not expect.
-Commit your work, then report the printed values and what you ran. Do not choose a new cause, approach or code point:
-the oracle decides the next step.
+Stop and hand back only for a fact that changes what the code does: a failed gate, an edit that does not fit the code, a test-tool
+fault. Commit your work, then report the values and what you ran. Do not choose a new cause, approach or code point.
+Standard answers (do not stop for these):
+- A line number moved a little: use the named function or text.
+- `bench.py cmp` needs the base commit: pass `--commit <merge-base hash>`.
+- A bench name differs by a suffix (for example `_pic`): use the bench that runs the named scenario.
+- A base is not stored yet: run `bench.py base <bench>` once (two runs, stored automatically).

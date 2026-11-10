@@ -1,6 +1,7 @@
 # docs/handoff index
 
 Live files only. Older logs are in archive/ (agent_*, diag_*, inv_*, plan_*, trace_*, research_*, HANDOFF_*). Do not read archive/ unless a row file names a file there.
+- HANDOFF.md: orchestrator handoff (what runs, the queue, user checks); overwritten at each handoff.
 
 ## Rules and process
 - ../../CLAUDE.md: shared rules (tests, code, platform).

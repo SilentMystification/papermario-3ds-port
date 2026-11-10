@@ -1,0 +1,29 @@
+# HANDOFF (orchestrator, overwritten at each handoff)
+
+State at 2026-11-10 night, main de7b9e635 or later. Read orchestrator_rules.md and CLAUDE.md first.
+
+## Still running at handoff (check with ListAgents; merge by the reported hash)
+- [Oracle Opus] batch 10: full rows for HC4f3 and HC4e4 (rows docs/handoff/row_HC4f3.md, row_HC4e4.md). Worktree build3ds/wt/HC4f3 exists.
+- [Haiku] FFOG1 (build3ds/wt/FFOG1): pm5.v.pica fog 0 for a vertex behind the eye (mim_11 / Forever Forest floor black). Gate: nd_host
+  plus byte checks spot_mac01_det and battle_start_f182_cold. No floor shot (user). The user checks mim_11 on the XL after a push.
+- build3ds/wt/TOOLB1: merged; its folder may be locked; the next wt_gc sweep removes it.
+
+## Queue, in order
+1. TOOLB2 (row_TOOLB2.md): shared run ids, battle gate -NoWarm, shot copy at timeout. After FFOG1 (both edit azt_scenarios.json).
+2. ESCAPE2 (row_ESCAPE2.md, oracle first): START+SELECT exit faults the system; debug menu choice hbmenu / quit / HOME Menu.
+3. HC4f3, then HC4e4 (rows from oracle batch 10). Then the hot_order.ld census (15 stale names).
+4. STEREOFX (row_STEREOFX.md): the 3D slider hang on the XL. Evidence: a log-on push, slider on, wait 12 s, START+SELECT, pull
+   crash.txt (GX queue dump). The kgr_01 hang did not return on 86004672a (cause not proven).
+5. KZN04 GPU shading row (Sonnet, user OK; non-byte-equal shading accepted). HC7 step 7, HC8, SHEEP, DEADCODE.
+
+## Waiting on the user (console, O3DS XL .131)
+- 3D on or switched: omo dark room (Watt), Merlee, pause menu, a battle, a door. Coins and Star Piece. Heart Block HP count-up.
+- mim_11 / Forever Forest floor after FFOG1 merges.
+
+## Merged on 2026-11-10 (details in git log)
+STEREOFX1, STEREOCRASH2, SEAM2, COINSTAR, PAUSEFADE, HEARTBLK, HC3 (-Os, console prof not worse), HC7 step 2, HC4e1, HC4e2a/b/c,
+HC4e3 (all 3 groups), HC4f1, HC4f2, ESCAPE, N64PEEK (tool, parked), AZTSTEREO, BUILDCLEAN, BASEVERIFY, BASEFIX, TOOLB1.
+
+## Rules changed on 2026-11-10 (now in CLAUDE.md and orchestrator_rules.md)
+Fault is fact; code read only (no repro, no debug-log, no visual checks); tool faults stop the gate; the oracle writes row files;
+fresh oracle per batch; /compact at about 450K; base --fill after each merge.
