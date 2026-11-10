@@ -9639,6 +9639,31 @@
       "reason": "MDL-0b count at battle start (mdlw and mdl2 lines)."
     },
     {
+      "name": "coinstar_hos01",
+      "status": "unverified",
+      "subject": "Map hos_01 at pos -300 0 -220 (Star Piece at -350 0 -275, item_entity.c:7; item icons in a shading-profile map), the tile 1 window of the CI4 item icon (tex_tile1 / tex_win1).",
+      "proves": "COINSTAR premise: the t1win line for the item icon: uls 1024 ult 1024, off 3200 (24x24) or 4224 (32x32). Picture: the Star Piece shot shows whether the icon is garbled.",
+      "debug": "warp=hos_01:0 pos=-300:0:-220 t1win shots shotwin=200:2 loglevel=debug",
+      "extra": [],
+      "until": "shot \\d+ frame 201\\b",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: hos_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: hos_01 entry 0"
+        },
+        {
+          "name": "shot 201",
+          "regex": "shot \\d+ frame 201\\b"
+        }
+      ],
+      "reason": "COINSTAR step 1 and gate: the tile 1 window of the item icon in a shaded map (fault after enemy death, user 2026-11-10)."
+    },
+    {
       "name": "sprshade_hos01_pic",
       "status": "unverified",
       "subject": "Map hos_01 at pos -400 0 410 (SHADING_HOS_01 profile), cold det start: shots at frames 200 to 205 (the picture). Shaded sprite records (why 3 before SPR4-3).",

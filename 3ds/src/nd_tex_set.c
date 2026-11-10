@@ -531,6 +531,7 @@ __attribute__((noinline)) void tex_tile1(unsigned tile, int uls, int ult, int lr
             if (tile == 1) {
                 NdWin wn;
                 tex_win1(&nd_ws.tst1, &nd_tm, nd_ws.timg, uls, ult, lrs, lrt, &wn);
+                if (__builtin_expect(PMDL("t1win"), 0)) { static unsigned n_; if (n_ < 8u) { n_++; pm_log("t1win f%u uls %d ult %d w %d h %d ldw %d ldh %d off %d", pm_frame_count(), uls, ult, wn.w, wn.h, nd_tm.ld_w, nd_tm.ld_h, wn.src && nd_ws.timg ? (int)(wn.src - (const u8*)nd_ws.timg) : -1); } }
                 nd_ws.td[1].valid = 0;
                 if (nd_ws.cur_tile == 1) nd_ws.cur_tile = -1; /* a new tile 1 image: bind it again */
                 if (wn.src && wn.w > 0 && wn.h > 0) {
