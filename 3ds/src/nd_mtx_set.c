@@ -93,7 +93,9 @@ static __attribute__((cold, noinline)) void mtx_dbg(const Mtx* src, u32 hdr) {
     pm_log("gmtx f%u n %u src %p w %08x %08x %08x %08x slot %u tag %u repl %d lm %d", pm_frame_count(), n++, (const void*)src,
            s[0], s[1], s[2], s[3], hdr & 0xffu, (unsigned)(hdr >> 16), pm_interp_repl, lm != 0);
 }
+int nd_mtx_static; /* SEAM2: the last model matrix load was a static matrix (R1 bit 8) */
 void load_mtx(u32 w0, u32 w1, u32 hdr) {
+    nd_mtx_static = (hdr & 0x100u) != 0;
     unsigned flags = (w0 & 0xff) ^ G_MTX_PUSH;
     Mtx* src = (Mtx*)ptr_of(w1);
     if (!src) return;
