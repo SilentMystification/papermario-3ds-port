@@ -10,6 +10,8 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include "pm_port.h"
+#include "pm_thread.h"
+#include "pm_crash_page.h"
 unsigned pm_log_late_con(void); /* pm_log.c: B1 check */
 unsigned pm_log_con_copies(void), pm_log_con_nomenu(void), pm_log_late_drop(void);
 /* O6: a switch word read once. Not for the words the options panel changes at run time (nofog, nolight). */
@@ -22,7 +24,7 @@ unsigned pm_log_con_copies(void), pm_log_con_nomenu(void), pm_log_late_drop(void
 extern void boot_main(void* data);
 const char* pm_wd_phase_name(unsigned p);
 
-static u8 crash_stack[0x4000] __attribute__((aligned(8)));
+static int crash_taken; /* CRASHALL: the first crash handler ends the process; another thread that faults waits here */
 static char args[256];
 
 /* Stack records: bounds of the game and audio thread stacks, a fill pattern for the high-water mark.
@@ -66,17 +68,89 @@ void pm_fpscr_setup(const char* who) {
     pm_log_d("fpscr %s before %08x after %08x", who, before, fpscr_get());
 }
 
+struct CrashPx { u8* fb; u16 pw; int x0; };
+static void crash_px_set(void* c, int x, int y) {
+    const struct CrashPx* p = (const struct CrashPx*)c;
+    u8* d = p->fb + ((size_t)(x + p->x0) * p->pw + (p->pw - 1 - y)) * 3; /* BGR, column-major: the layout pm_gpu_shot_top_displayed_w reads */
+    d[0] = d[1] = d[2] = 0xFF;
+}
+
+/* The page is drawn into the top screen's back buffer (no page buffer): clear it, the lit pixels by the CPU, flush, swap. */
+static void crash_page_draw(const char* const* lines, int n) {
+    u16 pw = 0, lw = 0; /* pw: physical width (one column of pixels), lw: the logical width of the top screen */
+    u8* fb = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, &pw, &lw);
+    if (!fb) return;
+    memset(fb, 0, (size_t)pw * lw * 3);
+    struct CrashPx c = { fb, pw, ((int)lw - PM_CRASH_PAGE_W) / 2 };
+    pm_crash_page_render(crash_px_set, &c, lines, n);
+    GSPGPU_FlushDataCache(fb, (u32)pw * lw * 3);
+    gfxScreenSwapBuffers(GFX_TOP, false);
+}
+
+/* A or START ends the wait, or 60 s. The crash tick is refreshed here: the watchdog's 3 s limit is for a handler that hangs. */
+static void crash_page_wait(void) {
+    u64 t0 = svcGetSystemTick() / (SYSCLOCK_ARM11 / 1000ull);
+    for (;;) {
+        hidScanInput();
+        if (hidKeysDown() & (KEY_A | KEY_START)) return;
+        u64 now = svcGetSystemTick() / (SYSCLOCK_ARM11 / 1000ull);
+        if (now - t0 >= 60000ull) return;
+        pm_wd_crash_tick = (unsigned)now | 1u;
+        svcSleepThread(16000000LL);
+    }
+}
+
+/* CRASHALL part 2: the ARM crash page (pm_crash_page.c renders it). CPU writes only, no lock. */
+static void crash_page_show(const char* type, const char* tname, const ERRF_ExceptionInfo* excep, const CpuRegisters* regs, const StackRec* st) {
+    static char pg[PM_CRASH_PAGE_LINES][56];
+    const char* lines[PM_CRASH_PAGE_LINES];
+    int n = 0, nw = 0;
+    u32 words[10];
+    snprintf(pg[n++], 56, "ARM CRASH: %s", type);
+    snprintf(pg[n++], 56, "THREAD %s", tname);
+    snprintf(pg[n++], 56, "PC %08lX LR %08lX SP %08lX", (unsigned long)regs->pc, (unsigned long)regs->lr, (unsigned long)regs->sp);
+    snprintf(pg[n++], 56, "FAR %08lX FSR %08lX CPSR %08lX", (unsigned long)excep->far, (unsigned long)excep->fsr, (unsigned long)regs->cpsr);
+    for (int i = 0; i < 13; i += 4) {
+        char* b = pg[n++];
+        int k = 0;
+        for (int j = i; j < i + 4 && j < 13; j++) k += snprintf(b + k, 56 - (size_t)k, "R%d %08lX ", j, (unsigned long)regs->r[j]);
+    }
+    if (st && regs->sp >= st->lo && regs->sp < st->hi) {
+        const u32* sp = (const u32*)(regs->sp & ~3u);
+        const u32* end = (const u32*)st->hi;
+        for (int i = 0; sp + i < end && i < 2048 && nw < 10; i++) {
+            u32 v = sp[i];
+            if (v >= 0x00100000u && v < 0x01000000u) words[nw++] = v;
+        }
+    }
+    snprintf(pg[n++], 56, "%s", nw ? "CODE-LIKE STACK WORDS" : "NO CODE-LIKE STACK WORDS");
+    for (int i = 0; i < nw; i += 5) {
+        char* b = pg[n++];
+        int k = 0;
+        for (int j = i; j < nw && j < i + 5; j++) k += snprintf(b + k, 56 - (size_t)k, "%08lX ", (unsigned long)words[j]);
+    }
+    snprintf(pg[n++], 56, "BUILD #%s", PM_BUILD_STR);
+    snprintf(pg[n++], 56, "LOOP PHASE %u (%s) FRAME %u", pm_wd_phase, pm_wd_phase_name(pm_wd_phase), pm_frame_count());
+    snprintf(pg[n++], 56, "A OR START: EXIT (60 S)");
+    for (int i = 0; i < n; i++) lines[i] = pg[i];
+    crash_page_draw(lines, n);
+    crash_page_wait();
+}
+
 static void crash_handler(ERRF_ExceptionInfo* excep, CpuRegisters* regs) {
     static const char* names[] = { "prefetch abort", "data abort", "undefined instruction", "VFP" };
     char buf[200];
     int n;
+    if (__atomic_exchange_n(&crash_taken, 1, __ATOMIC_ACQ_REL)) for (;;) svcSleepThread(1000000000LL); /* CRASHALL: one dump; the first handler ends the process */
     pm_wd_crash_tick = (unsigned)(svcGetSystemTick() / (SYSCLOCK_ARM11 / 1000ull)) | 1u; /* LB4: the monitor thread ends the process if this handler does not finish in 3 s */
     const StackRec* st = NULL;
     for (int i = 0; i < 2; i++)
         if (recs[i].hi && regs->sp >= recs[i].lo && regs->sp <= recs[i].hi + 512) st = &recs[i];
+    const char* tname = pm_thread_name_current();
+    if (!tname) tname = st ? st->name : "other";
     n = snprintf(buf, sizeof(buf),
                  "\n[CRASH] %s thread=%s (%lx) pc=%08lx lr=%08lx sp=%08lx far=%08lx fsr=%08lx cpsr=%08lx build #%s\n",
-                 excep->type < 4 ? names[excep->type] : "?", st ? st->name : "other",
+                 excep->type < 4 ? names[excep->type] : "?", tname,
                  (unsigned long)threadGetCurrent(), (unsigned long)regs->pc, (unsigned long)regs->lr,
                  (unsigned long)regs->sp, (unsigned long)excep->far, (unsigned long)excep->fsr,
                  (unsigned long)regs->cpsr, PM_BUILD_STR);
@@ -117,6 +191,7 @@ static void crash_handler(ERRF_ExceptionInfo* excep, CpuRegisters* regs) {
     n = snprintf(buf, sizeof(buf), "[CRASH] last game loop phase %u (%s), steps %u\n[CRASH] exiting the process\n",
                  pm_wd_phase, pm_wd_phase_name(pm_wd_phase), pm_frame_count());
     pm_crash_line(buf, n);
+    crash_page_show(excep->type < 4 ? names[excep->type] : "?", tname, excep, regs, st);
     /* LB4: svcBreak(USERBREAK_PANIC) left the console frozen. End the process: the system returns to the menu. */
     pm_exit_process();
 }
@@ -136,7 +211,6 @@ void pm_fatal_stop(const char* msg) {
 void pm_crash_install(void* stack, unsigned size) {
     threadOnException(crash_handler, (u8*)stack + size, WRITE_DATA_TO_HANDLER_STACK);
 }
-void pm_crash_install_here(void) { pm_crash_install(crash_stack, sizeof(crash_stack)); } /* CORE2C-3: the logic thread (one crash at a time) */
 
 u64 pm_loop_tick; /* JT: the tick the main loop read in this pass (pm_gpu_end reads it, no svc call of its own) */
 unsigned pm_svc_n; /* EC2: svc tick reads, counted for the empty close count */
@@ -182,8 +256,7 @@ void* pm_walk_cfb; /* CORE2C-2: set by pm_frame_walk from the frame (the walker 
 int pm_is_cur_cfb(const void* p) { const void* c = pm_walk_cfb; return c && (in_buf(p, c) || (pm_wide && in_buf((const u8*)p + 80, c))); }
 /* Frame buffer and saved-frame memory hold native u16 pixels (the game code reads them as u16). Textures
  * from ROM data hold big-endian bytes. pm_tex reads these two kinds differently. */
-extern unsigned short pm_wide_side_pause[2][40 * 240]; /* PT56 */
-int pm_fb_native(const void* p) { return pm_is_cfb(p) || (nuGfxZBuffer && in_buf(p, nuGfxZBuffer)) || ((const unsigned short*)p >= &pm_wide_side_pause[0][0] && (const unsigned short*)p < &pm_wide_side_pause[0][0] + 2 * 40 * 240); }
+int pm_fb_native(const void* p) { return pm_is_cfb(p) || (nuGfxZBuffer && in_buf(p, nuGfxZBuffer)); }
 /* PAUSEC: the saved picture (150 KB) is reserved once at boot, after the ROM is in, when the heap is whole. On the O3DS XL the commit is
  * full after the map loads (crash log: mem heap sbrk-used 26868 of 29512 KB, commit 65536 of 65536), so a first allocation at the pause
  * can fail there. A failed reservation logs an error; pm_zbuf_need retries at the pause, and the filter is skipped if it still fails. */
@@ -234,65 +307,61 @@ unsigned pm_frame_count(void) { return pm_walk_side && !pm_wq_on_logic() ? pm_wa
  * color buffer"). The PICA color buffer holds that frame until C3D_FrameEnd of this frame runs the
  * command list, so any time during this frame's display list build or run is right. Once per frame. */
 PmB7 pm_b7;
-/* PT12: cpu = 0 is a texture read of the old frame (G_SETTIMG): a GPU copy into the slot of the old frame buffer, no CPU pixels. cpu = 1 is game
- * code that reads the pixels (the pause filter): the CPU readback. Switch prevcpu forces the readback for the texture read too. */
+/* PT12: a texture read of the old frame (G_SETTIMG): a GPU copy into the slot of the old frame buffer, no CPU pixels. The CPU readback is the
+ * fallback when the GPU copy is not possible this frame. The pause picture is a texture read too (PAUSEOPEN, background_gfx.c). */
 int pm_gpu_grab_prev(const void* prev_cfb);
 extern short get_game_mode(void);
 static int pm_game_mode_now(void) { return (int)get_game_mode(); }
-static const void* cap_fill; /* PT78: the frame buffer the pause coverage fill writes (the game fixes it to nuGfxCfb[1]) */
 /* BTRANS caplog (switch caplog): one line per capture call. path gpu2 = copy made at pm_gpu_begin, cpu = CPU read of the live colour buffer
  * (the swirl fallback, the case the row names), done = already taken this frame. split, kick and clear show whether this frame already
  * queued its KICK1 split or clear before the read. */
 void pm_gpu_cap_state(int* o);
 int pm_tex_failed(void);
 int pm_enc_wipe(void);
-static void cap_note(int cpu, const char* path) {
+static void cap_note(const char* path) {
     static int on = -1;
     int st[8];
     if (on < 0) on = pm_debug_has("caplog");
     if (!on) return;
     pm_gpu_cap_state(st);
-    pm_log_d("caplog f%u cpu %d repl %d interp %d path %s prev_pre %d grab_n %d split %d kick %d clear %d draws %d off_fail %d tex_fail %d tgt %d wipe %d why %s",
-             pm_frame_count(), cpu, pm_interp_repl, pm_interp_on, path, st[0], st[1], st[2], st[3], st[4], st[5], st[6], pm_tex_failed(), st[7], pm_enc_wipe(),
+    pm_log_d("caplog f%u cpu 0 repl %d interp %d path %s prev_pre %d grab_n %d split %d kick %d clear %d draws %d off_fail %d tex_fail %d tgt %d wipe %d why %s",
+             pm_frame_count(), pm_interp_repl, pm_interp_on, path, st[0], st[1], st[2], st[3], st[4], st[5], st[6], pm_tex_failed(), st[7], pm_enc_wipe(),
              !st[0] ? "prev0" : st[1] ? "grabn" : "setup");
 }
-static void cfb_capture_prev(int cpu) {
+/* PAUSEOPEN: the last frame for a texture read (set_timg). The GPU copy when this drawn frame has it, else the CPU readback of the frame buffer
+ * that is not drawn now. The pause no longer reads the pixels on the CPU (ROLE_CPUFILL only writes the coverage). */
+void pm_cfb_capture_prev(void) {
     static unsigned done = ~0u;
     unsigned i;
-    if (!cpu) {
-        /* GAMEOVER: the GPU copy is asked in every drawn frame, the t = 0.5 pass (pm_interp_repl) too: pm_gpu_grab_prev knows whether this drawn
-         * frame has its slot. A guard on pm_frame_n (one game step, two drawn frames with fps60) left the t = 0.5 pass without the slot: its blur
-         * strips read the stale frame buffer memory, every second picture differed (the game over flicker). */
-        for (i = 0; i < nuGfxCfbNum; i++) {
-            if (nuGfxCfb[i] == pm_walk_cfb) {
-                unsigned t0 = pm_ph_on ? pm_ticks() : 0;
-                if (pm_gpu_grab_prev(nuGfxCfb[(i + nuGfxCfbNum - 1) % nuGfxCfbNum]) == 2) {
-                    if (pm_ph_on) { unsigned dt = pm_ticks() - t0; pm_b7.cap_n++; pm_b7.cap_ticks += dt; if (dt > pm_b7.cap_max) pm_b7.cap_max = dt; }
-                    cap_note(cpu, "gpu2");
-                    return;
-                }
-                break;
+    /* GAMEOVER: the GPU copy is asked in every drawn frame, the t = 0.5 pass (pm_interp_repl) too: pm_gpu_grab_prev knows whether this drawn
+     * frame has its slot. A guard on pm_frame_n (one game step, two drawn frames with fps60) left the t = 0.5 pass without the slot: its blur
+     * strips read the stale frame buffer memory, every second picture differed (the game over flicker). */
+    for (i = 0; i < nuGfxCfbNum; i++) {
+        if (nuGfxCfb[i] == pm_walk_cfb) {
+            unsigned t0 = pm_ph_on ? pm_ticks() : 0;
+            if (pm_gpu_grab_prev(nuGfxCfb[(i + nuGfxCfbNum - 1) % nuGfxCfbNum]) == 2) {
+                if (pm_ph_on) { unsigned dt = pm_ticks() - t0; pm_b7.cap_n++; pm_b7.cap_ticks += dt; if (dt > pm_b7.cap_max) pm_b7.cap_max = dt; }
+                cap_note("gpu2");
+                return;
             }
+            break;
         }
     }
-    if (done == pm_frame_count()) { cap_note(cpu, "done"); return; }
+    if (done == pm_frame_count()) { cap_note("done"); return; }
     done = pm_frame_count();
     for (i = 0; i < nuGfxCfbNum; i++) {
-        /* PT78: the pause reads the frame from the buffer that is not the fill target, whatever the parity of the drawn step (a step skipped by FS1 moves the
-         * BEGIN_PAUSED draw to the other parity: the old rule, the previous buffer of the drawn one, wrote the fill target and the filter read a stale frame).
-         */
-        const void* ref = pm_walk_cfb;
-        if (cpu && cap_fill) ref = cap_fill;
-        if (nuGfxCfb[i] == ref) {
-            unsigned short* prev = cpu && cap_fill ? nuGfxCfb[(i + 1) % nuGfxCfbNum] : nuGfxCfb[(i + nuGfxCfbNum - 1) % nuGfxCfbNum];
+        /* PT78: the read takes the frame from the buffer that is not the drawn one, whatever the parity of the drawn step (a step skipped by FS1 moves the
+         * draw to the other parity: the old rule, the previous buffer of the drawn one, wrote the draw target and the read got a stale frame). */
+        if (nuGfxCfb[i] == pm_walk_cfb) {
+            unsigned short* prev = nuGfxCfb[(i + nuGfxCfbNum - 1) % nuGfxCfbNum];
             unsigned t0 = pm_ph_on ? pm_ticks() : 0;
             static unsigned nlog;
-            if (!cpu) { /* BTRANS: a split this frame (KICK1 or a grab split) put part of this frame in the colour buffer: no CPU read, the slot keeps its last frame */
+            { /* BTRANS: a split this frame (KICK1 or a grab split) put part of this frame in the colour buffer: no CPU read, the slot keeps its last frame */
                 int st[8];
                 pm_gpu_cap_state(st);
-                if (st[2] || st[3]) { cap_note(cpu, "skip"); return; }
+                if (st[2] || st[3]) { cap_note("skip"); return; }
             }
-            cap_note(cpu, "cpu");
+            cap_note("cpu");
             if (pm_xf.on) pm_xf.cap_cpu++; /* BTLWIPE: the capcpu field of the xfer line */
             pm_gpu_read_frame(prev);
             if (pm_ph_on) { unsigned dt = pm_ticks() - t0; pm_b7.cap_n++; pm_b7.cap_ticks += dt; if (dt > pm_b7.cap_max) pm_b7.cap_max = dt; }
@@ -302,9 +371,6 @@ static void cfb_capture_prev(int cpu) {
         }
     }
 }
-void pm_cfb_capture_prev(void) { cfb_capture_prev(0); }
-void pm_cfb_capture_prev_cpu(void) { cap_fill = NULL; cfb_capture_prev(1); }
-void pm_cfb_capture_prev_cpu_for(const void* fill) { cap_fill = fill; cfb_capture_prev(1); cap_fill = NULL; }
 /* PC01: once per second (switch `pacestat`): game steps, drawn frames, vblanks and audio ticks since the last line. */
 extern unsigned pm_step_calls;
 static unsigned pace_ticks;
@@ -749,12 +815,15 @@ void pm_options_prof_boot(void); /* PROFROW, pm_options.c */
 /* BOOT-1: boot timing. pm_boot_mark is cold (no log call: the log is not running yet at the first marks). The line is printed
  * once, at the first title-screen frame, from the stored ticks. All values are ms after main() except the ROM read (ms, MB/s). */
 static u64 pmb_tick[PMB_N];
-static unsigned pmb_set, pmb_arg[PMB_N], pmb_rc[PMB_N];
+static unsigned pmb_set, pmb_arg[PMB_N], pmb_rc[PMB_N], pmb_dc[PMB_N];
+static unsigned pmb_au[4]; /* BOOT2 auread at the first draw: n bytes max chunks */
 __attribute__((cold, noinline)) void pm_boot_mark(int id, unsigned arg) {
     if (id < 0 || id >= PMB_N || (pmb_set >> id & 1u)) return;
     pmb_tick[id] = svcGetSystemTick();
     pmb_arg[id] = arg;
     pmb_rc[id] = pm_rom_order_n();
+    pmb_dc[id] = pm_rom_direct_n();
+    if (id == PMB_DRAW) pm_rs_auread_get(&pmb_au[0], &pmb_au[1], &pmb_au[2], &pmb_au[3]);
     pmb_set |= 1u << id;
 }
 static unsigned pmb_ms(int id) { return (unsigned)((pmb_tick[id] - pmb_tick[PMB_MAIN]) / (SYSCLOCK_ARM11 / 1000ull)); }
@@ -776,13 +845,13 @@ static void pm_boot_report(void) {
     pm_log_w("boot ms main %u log %u opt %u rom %u (%.1f MB/s) gfx %u audio %u first %u title %u rdone %u waits %u wms %u",
              pmb_ms(PMB_THREAD), pmb_ms(PMB_LOG), pmb_ms(PMB_OPT), rom_ms, mbs, pmb_ms(PMB_GFX), pmb_ms(PMB_AUDIO), pmb_ms(PMB_DRAW), pmb_ms(PMB_TITLE),
              rdone, waits, wms);
-    if (pmb_rc[PMB_TITLE]) pm_log_w("romorder chunks first %u title %u of %u", pmb_rc[PMB_DRAW], pmb_rc[PMB_TITLE], 320u); /* PM_ROM_FULL >> 17 */
+    if (pmb_set >> PMB_DRAW & 1u) pm_log_w("auread n %u bytes %u max %u chunks %u", pmb_au[0], pmb_au[1], pmb_au[2], pmb_au[3]); /* BOOT2: at the first draw */
+    if (pmb_rc[PMB_TITLE]) pm_log_w("romorder chunks first %u title %u of %u direct first %u title %u", pmb_rc[PMB_DRAW], pmb_rc[PMB_TITLE], 320u, pmb_dc[PMB_DRAW], pmb_dc[PMB_TITLE]); /* PM_ROM_FULL >> 17 */
 }
 
 static void game_thread(void* arg) {
     (void)arg;
     pm_boot_mark(PMB_THREAD, 0);
-    pm_crash_install(crash_stack, sizeof(crash_stack));
     pm_stack_register(0, "game", 256 * 1024);
     char sw[256]; /* H06d: a bigger array here stops the boot (FX3a, H06d: _svfprintf_r PC 0), so the limit stays and a cut is handled */
     memset(sw, 0, sizeof(sw));
@@ -865,6 +934,7 @@ static void pm_shutdown(void) {
 
 int main(int argc, char** argv) {
     pm_boot_mark(PMB_MAIN, 0); /* BOOT-1 */
+    pm_thread_adopt("main");
     args[0] = 0;
     for (int i = 1; i < argc; i++) {
         strncat(args, argv[i], sizeof(args) - strlen(args) - 2);
@@ -875,7 +945,7 @@ int main(int argc, char** argv) {
     chdir("sdmc:/3ds/PaperMario");
     s32 prio = 0x30;
     svcGetThreadPriority(&prio, CUR_THREAD_HANDLE);
-    Thread t = threadCreate(game_thread, NULL, 256 * 1024, prio, 0, false);
+    Thread t = pm_thread_create(game_thread, NULL, 256 * 1024, prio, 0, "game");
     if (!t) return 1;
     threadJoin(t, U64_MAX);
     threadFree(t);

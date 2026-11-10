@@ -659,7 +659,7 @@
       "status": "unverified",
       "subject": "Forever Forest mim_01 (entry 1, x -530), det, mono: Mario runs to (-375, -375), then to (-375, 375) around the ring (radius 530, the four entries), so the camera yaw passes 90. 12 shots, frames 60 to 280.",
       "proves": "EYECW mono gate: the mim_01 ring run is a function of the build (det); mono pictures do not change with the convergence fix.",
-      "debug": "warp=mim_01:1 det padscript=go_-375_-375_90,wait10,go_-375_375_150 shots shotwin=60:221:20 loglevel=debug",
+      "debug": "warp=mim_01:1 det padscript=go_-375_-375_90,wait10,go_-375_375_150 shots shotwin=60:221:20 loglevel=debug wzcull",
       "until": "shot \\d+ frame 280\\b",
       "cap": 30,
       "deadline": 25,
@@ -677,6 +677,30 @@
         }
       ],
       "reason": "EYECW: padscript run around the ring. camlog was deleted (AUDIT C4); the eyecw line of the stereo variants carries p23 (near 0 at yaw 90)."
+    },
+    {
+      "name": "mim01_ring_wide_ffog",
+      "status": "unverified",
+      "subject": "Forever Forest mim_01 (entry 1, x -530) in Widescreen (the user's setting), det, mono: the ring run of mim01_ring_det. The ffog line every 60 frames: model hits, empty entries (no draw), IGNORE_MATRIX share, group-mask changes, combined vs fresh MVP.",
+      "proves": "FFOG premise: the native hit uses the walker MVP (combined == nd_mtx_combine) and no empty entry (a skipped model) comes from an IGNORE_MATRIX record in a turn.",
+      "debug": "warp=mim_01:1 det wide padscript=go_-375_-375_90,wait10,go_-375_375_150 shots shotwin=60:221:20 loglevel=debug ffog",
+      "until": "shot \\d+ frame 280\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: mim_01 entry 1",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mim_01 entry 1"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 280\\b"
+        }
+      ],
+      "reason": "FFOG: the user's Widescreen setting on the mim_01 ring turn (yaw passes 90). Copy of mim01_ring_det with wide and the ffog switch."
     },
     {
       "name": "mim01_ring_stereo_det_l",
@@ -757,6 +781,30 @@
         }
       ],
       "reason": "EYECW gate e. Cap 30 s."
+    },
+    {
+      "name": "texkey_arn02",
+      "status": "unverified",
+      "subject": "TEXKEY2 (palette fix at build time, texkey_bake.py): arn_02 (warp entry 0, Toad Town) at frame 120. The shot shows the wall barrier rocks; the rock edges must show no light outline.",
+      "proves": "TEXKEY2: the alpha-0 key colour next to opaque texels of a CI4 cutout texture (arn_kabe10 wall barrier) is light, so bilinear mixes a light outline into the rock edges.",
+      "debug": "warp=arn_02:0 story=ch0_toad_town shots shotwin=120:120:1 loglevel=debug",
+      "until": "shot \\d+ frame 120\\b",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: arn_02 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: arn_02 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 120\\b"
+        }
+      ],
+      "reason": "TEXKEY2 gate shot. Cap 30 s."
     },
     {
       "name": "kmr11_cut_stereo_det_l",
@@ -1073,6 +1121,27 @@
       "reason": "STEREO gate: DET start as spot_mac01_det (cap 35 s, deadline 30 s). Picture is the subject; the prof scene line (disp s1) is the until."
     },
     {
+      "name": "hc4_t4chk_mac01",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, det, debug switch t4chk: the recorder writes each op its shadow dropped after NDO_DROP; the walker runs the old skip test on it. One shot at frame 200 and the t4chk line of frame 200.",
+      "proves": "HC4b premise (plan_hotcode 5.2): every op the recorder shadow drops is one the walker skips (t4chk bad 0).",
+      "debug": "warp=mac_01:0 pos=0:0:200 shots shotwin=200:1 loglevel=debug det t4chk",
+      "extra": [],
+      "until": "t4chk f2\\d\\d drops \\d+ bad \\d+",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "t4chk line",
+          "regex": "t4chk f2\\d\\d drops \\d+ bad \\d+"
+        }
+      ],
+      "reason": "HC4b dedupe check on the main byte scene (mac_01); the t4chk line at frame 200 is the until (about 12 s cold to the warp). Cap 30 s."
+    },
+    {
       "name": "spot_mac01_det",
       "status": "unverified",
       "subject": "Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0), cold start with the det switch. Shots at frames 200 to 205 and the prof scene line of the first 300-frame window.",
@@ -1250,6 +1319,64 @@
         {
           "name": "last shot",
           "regex": "shot \\d+ frame 440\\b"
+        }
+      ]
+    },
+    {
+      "name": "effcen_mac01",
+      "status": "verified",
+      "reason": "EFFCEN: fxtest fx_underwater (index 87) on mac_01, effcen word on. The effcen line at frame 420 (inside the 120 frame underwater life from frame 402) ranks the tasks by us per window.",
+      "subject": "mac_01 (entry 0, pos 0 0 200), fxtest=87 spawns underwater at the player from frame 402 (slot 44 frames from 400).",
+      "proves": "EFFCEN census: the effcen line lists the underwater render task (its appendGfx fn) in the top 5, with ops near 2100 words per frame.",
+      "debug": "warp=mac_01:0 pos=0:0:200 story=ch0_toad_town fxtest=87 loglevel=debug fixedseed fast fs1off det effcen",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "fxtest: done",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "census",
+          "regex": "effcen f420 top: [0-9a-f]+ e"
+        },
+        {
+          "name": "done",
+          "regex": "fxtest: done"
+        }
+      ]
+    },
+    {
+      "name": "i8aux_mac01",
+      "status": "unverified",
+      "reason": "I8AUX step 1 (log check): fxtest huff_puff_breath (index 103) on mac_01, cold. Prints the i8aux line: pm_tex_i8(1), the unit 1 slot fmt, siz and GPU format.",
+      "subject": "mac_01 (entry 0, pos 0 0 200), fxtest=103 spawns huff_puff_breath at the player, one 44 frame slot from frame 400.",
+      "proves": "I8AUX cause: the huff puff unit 1 I8 CPU slot gives i8_1 0 (expected fmt I, siz 8, gpu L8 in the i8aux line).",
+      "debug": "warp=mac_01:0 pos=0:0:200 story=ch0_toad_town fxtest=103 loglevel=debug fixedseed fast fs1off det",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "fxtest: done",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "done",
+          "regex": "fxtest: done"
         }
       ]
     },
@@ -6152,6 +6279,34 @@
       ]
     },
     {
+      "name": "battle_wheel_wide_left",
+      "status": "unverified",
+      "reason": "BATUI user facts 2 (Azahar, wide): the battle wheel at its left end (Strategies selected) shows the gap at the left edge and the light position.",
+      "subject": "Battle with wide on (one Goomba, kmr_03), spmax=1 hammer=0: 5 wheel options. The wheel opens on Jump; four left presses reach Strategies, the left end (pos 0 of 5). The wheel stop line starts a 4 frame shot burst.",
+      "proves": "BATUI facts 2: the left-end wheel option, its light and the battle menu parts at the left edge are drawn at the same x in wide (no gap, light on the item).",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town spmax=1 hammer=0 battle battlef=100 wide shots loglevel=debug uiburst wheelq padscript=wait362,left*4,wait30,left*4,wait60",
+      "until": "debug wheel stop: pos 0 of 5",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "wheel open",
+          "regex": "debug wheel open: base"
+        },
+        {
+          "name": "wheel at left end",
+          "regex": "debug wheel stop: pos 0 of 5"
+        }
+      ]
+    },
+    {
       "name": "battle_wheel5_wide",
       "status": "unverified",
       "reason": "WIDE4 gate (user items 1, 3, 4): the wheel at the right end with 5 options, wide on.",
@@ -6446,6 +6601,34 @@
           "regex": "shot \\d+ frame 334\\b"
         }
       ]
+    },
+    {
+      "status": "unverified",
+      "cap": 45,
+      "deadline": 40,
+      "expects": "none",
+      "needs_picture": false,
+      "name": "savetitle_ret",
+      "subject": "New file (freshsave), world, one save (save_0, the save block write), Select menu, Return to Title Screen within about 2 s, title, file select. The save sector hashes are logged at each point.",
+      "proves": "SAVETITLE: a save made just before Return to Title is in the RAM image and in save.flash after the title (slot hashes of the save write, the flush join, the title and the file select).",
+      "debug": "fast freshsave padscript=@pad_savetitle.txt loglevel=debug",
+      "until": "padscript: done at scan",
+      "first_marker": "game mode 1 frame",
+      "expected_events": [
+        {
+          "name": "save line",
+          "regex": "save: slot 0 phys \\d+ count \\d+ crc [0-9a-f]+"
+        },
+        {
+          "name": "title return",
+          "regex": "title: soft reset requested"
+        },
+        {
+          "name": "file select fetch",
+          "regex": "flash ram \\(fetch\\)"
+        }
+      ],
+      "reason": "SAVETITLE log scenario. Until is the padscript end after the file select; the cap covers the new-file intro, the world and the logo sequence of the reset."
     },
     {
       "status": "verified",
@@ -9215,6 +9398,30 @@
       "reason": "BTLDIM picture gate. shotwin start frame is set after the step 1 run (darken start frame)."
     },
     {
+      "name": "btldim_star_sprmix",
+      "status": "unverified",
+      "subject": "Battle kmr_03, Shooting Star: sprite builds log the mix they read (sprmix line), no shots.",
+      "proves": "SHROUD step 1: the mix state a sprite build reads during the star power (gs.r_mix of the last sync_render).",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 invitem=0x083 padscript=@pad_btl_star.txt sprmix loglevel=debug",
+      "until": "btldim: lighten done f\\d+",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "lighten done",
+          "regex": "btldim: lighten done f\\d+"
+        }
+      ],
+      "reason": "SHROUD step 1 log check (sprmix debug word). Not a picture gate."
+    },
+    {
       "name": "btldim_star_prof",
       "status": "unverified",
       "subject": "Console O3DS XL, battle kmr_03, Shooting Star with prof=30 (no shots): the frame time during the fades.",
@@ -10122,6 +10329,39 @@
       "subject": "SPR4 det gate, cold: OFF-2 census: the pause_spin_grab spin (frames 140 to 179, grablog, shots as pause_spin_grab), run on to frame 300 so the nrawwhy line (cumulative raw refusal counts) prints.",
       "proves": "OFF-2 gate: nrawwhy grab 0 at f300 after the spin with the grab draws on the native path.",
       "debug": "preset=toad padscript=wait80,START*3,wait100 phase phsum shots shotwin=140:40 loglevel=debug grablog texstat det",
+      "until": "nrawwhy f300 ",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "pause mode",
+          "regex": "game mode 10 frame"
+        },
+        {
+          "name": "shot in spin window",
+          "regex": "shot \\d+ frame (17[6-9]|18[01])\\b"
+        },
+        {
+          "name": "nrawwhy at 300",
+          "regex": "nrawwhy f300 zmark"
+        }
+      ],
+      "reason": "SPR4 det gate (pause, cold start, det switch): same as pause_spin_grab_w300.",
+      "extra": []
+    },
+      {
+      "name": "pause_gut_dbg_w300",
+      "status": "unverified",
+      "subject": "SPR4 det gate, cold: OFF-2 census: the pause_spin_grab spin (frames 140 to 179, grablog, shots as pause_spin_grab), run on to frame 300 so the nrawwhy line (cumulative raw refusal counts) prints.",
+      "proves": "OFF-2 gate: nrawwhy grab 0 at f300 after the spin with the grab draws on the native path.",
+      "debug": "preset=toad padscript=wait80,START*3,wait100 phase phsum shots shotwin=140:40 loglevel=debug grablog texstat det gutdbg",
       "until": "nrawwhy f300 ",
       "cap": 45,
       "deadline": 20,
@@ -12875,6 +13115,75 @@
       "reason": "CHEATSAVE save gate: two saves (0 on, then 1 on) and the footer shot after the first A (picture read by a person). CHEATSAVE2: the old recipe (one A from the file state) saved 0 on when an earlier run had left moonjump=1 in the azslot, so its expected event failed (runs 104678 and 105394 fail:1)."
     },
     {
+      "name": "cheatsave_key_save",
+      "status": "unverified",
+      "reason": "broken: no until in 30 s (AZT11-5, 2026-11-09)",
+      "subject": "Slot 0 loaded (loadslot=0, warp=random), Select menu, Cheats tab (L), Key items > (7 down, A), the first key item row (down, A): it turns on. The bottom row shows the cyan 'Press X to save cheats' footer (shot on tab 4 row 1). X writes cheats_slot0.ini with the key line.",
+      "proves": "CHEATSAVE2: pm_dbgg_item_set marks the record (rec_item), pm_cheat_dirty reads it (footer, log menu: cheats dirty), pm_cheat_save writes key.<id>=1 (write_file, log cheats: keys).",
+      "debug": "loadslot=0 warp=random padscript=wait150,SELECT,wait20,L,wait20,ddown,wait10,dright,wait10,wait15,A,wait30,ddown,wait10,wait15,A,wait20,k_X,wait40 shotmenu loglevel=debug",
+      "until": "cheats: keys .*key\\.\\d+=1",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "MODE = ",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "menu open",
+          "regex": "menu: open"
+        },
+        {
+          "name": "key item on",
+          "regex": "dbggame: key \\d+ on"
+        },
+        {
+          "name": "footer dirty (log)",
+          "regex": "menu: cheats dirty, footer shown"
+        },
+        {
+          "name": "footer shot (key folder row 1)",
+          "regex": "menu: shot \\w+ tab 4 row 1"
+        },
+        {
+          "name": "saved slot 0",
+          "regex": "cheats: saved slot 0 \\(\\d+ on\\)"
+        },
+        {
+          "name": "keys line with the key item",
+          "regex": "cheats: keys .*key\\.\\d+=1"
+        }
+      ],
+      "reason": "CHEATSAVE2 save gate: the key item toggle makes the set dirty (footer log and shot), X writes the key line to the slot file. The picture of the footer is read by a person."
+    },
+    {
+      "name": "cheatsave_key_load",
+      "status": "unverified",
+      "subject": "Slot 0 loaded (loadslot=0, warp=random) after a reboot with the game save untouched: the record of cheats_slot0.ini is applied at the world entry, so the first key item is owned. Select menu, Cheats tab (L), Key items > (7 down, A), the first key item row shows On.",
+      "proves": "CHEATSAVE2 load: pm_cheat_enter_world reads key lines (pm_cheatrec_load_key), pm_cheatrec_apply sets the item (log cheats: key N was 0 now 1).",
+      "debug": "loadslot=0 warp=random padscript=wait150,SELECT,wait20,L,wait20,ddown,wait10,dright,wait10,wait15,A,wait30,ddown,wait10,wait15 shotmenu loglevel=debug",
+      "until": "menu: shot \\w+ tab 4 row 1",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "MODE = ",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "record applied",
+          "regex": "cheats: applied [1-9]\\d* record fields"
+        },
+        {
+          "name": "key item owned after the load",
+          "regex": "cheats: key \\d+ was 0 now 1"
+        },
+        {
+          "name": "key row reads On",
+          "regex": "menu: tab 4 row 1 .* = On"
+        }
+      ],
+      "reason": "CHEATSAVE2 load gate: the key item from the slot file is owned in the new run (was 0 now 1 in the apply line), and the folder row shows On."
+    },
+    {
       "name": "cheatsave_load_on",
       "status": "verified",
       "subject": "Slot 0 loaded (loadslot=0) after a reboot: cheats_slot0.ini is applied at the world entry, the Cheats tab shows Moon jump On and no footer.",
@@ -13068,6 +13377,237 @@
         }
       ],
       "reason": "HC0 census: cold det start, the draw functions that run in one walker frame and their call counts (census lane only). Cap 35 s: the first marker takes 12 to 16 s (as spot_mac01_det), then frame 200. Deadline 30 s. Log only; the until is the census done line."
+    },
+    {
+      "name": "menu_part2",
+      "status": "unverified",
+      "reason": "broken: no until in 45 s (AZT11-5, 2026-11-09)",
+      "subject": "Toad Town mac_01 at 0 0 200 (as spot_mac01_det): SELECT on the General tab, Resolution Mode A three times (Native, Fullscreen, Widescreen, Native), Debug tab (R R), Logging page (no Back row), B back, Disable Fog, Disable Light and Texture Filtering (Bilinear all) set by A, B, B (stays open), SELECT closes; field shots 200 to 205.",
+      "proves": "MENUGEN parts 1 and 2: General tab row order and Resolution Mode cycle (menu draw shots), Debug tab order, no Back row on a sub-page, B on a tab does not close (log), Select closes (log), the render flags take effect on the field shot in one run (fog, light, texture filter set in the menu).",
+      "debug": "warp=mac_01:0 pos=0:0:200 padscript=@pad_menu_part2.txt shotmenu shots shotwin=200:6 loglevel=debug det",
+      "extra": [],
+      "until": "shot \\d+ frame 205\\b",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "resolution",
+          "regex": "options: live row 1 value 2"
+        },
+        {
+          "name": "logging page",
+          "regex": "menu: page push"
+        },
+        {
+          "name": "fog on",
+          "regex": "options: live row 4 value 1"
+        },
+        {
+          "name": "light on",
+          "regex": "options: live row 5 value 1"
+        },
+        {
+          "name": "texf",
+          "regex": "texfilt: 0 Bilinear all"
+        },
+        {
+          "name": "B on a tab",
+          "regex": "menu: B on a tab, the menu stays open"
+        },
+        {
+          "name": "select close",
+          "regex": "menu: Select closes"
+        },
+        {
+          "name": "frame 200",
+          "regex": "shot \\d+ frame 200\\b"
+        }
+      ],
+      "reason": "MENUGEN part 2 gate: the field shot 200 shows the three render flags on (compare spot_mac01_det frame 200, same det config); the menu draw shots show the Debug tab order and the Logging page without Back."
+    },
+    {
+      "name": "menu_part3",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 at 0 0 200, Resolution Fullscreen: field shot; Debug tab with Fixed Seed and Start a Battle (menu shot); each render flag alone (Disable Fog, Disable Light, Texture Filtering Bilinear all) with the field shot before and after each toggle (periodic shots every 30 frames, window 40 on).",
+      "proves": "MENUGEN part 3: Fullscreen picture on the field, the Debug rows 8 and 9, and fog, light and texture filter each take effect on the field in one run (before and after), with the menu position kept across each close and reopen.",
+      "debug": "warp=mac_01:0 pos=0:0:200 padscript=@pad_menu_part3.txt shotmenu shots shotwin=40:1400:30 loglevel=debug det",
+      "extra": [],
+      "until": "padscript: done",
+      "cap": 60,
+      "deadline": 50,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "fullscreen",
+          "regex": "options: live row 1 value 2"
+        },
+        {
+          "name": "fog on",
+          "regex": "options: live row 4 value 1"
+        },
+        {
+          "name": "fog off",
+          "regex": "options: live row 4 value 0"
+        },
+        {
+          "name": "light on",
+          "regex": "options: live row 5 value 1"
+        },
+        {
+          "name": "light off",
+          "regex": "options: live row 5 value 0"
+        },
+        {
+          "name": "texf on",
+          "regex": "texfilt: 0 Bilinear all"
+        },
+        {
+          "name": "texf off",
+          "regex": "texfilt: 0 Game"
+        },
+        {
+          "name": "pad done",
+          "regex": "padscript: done"
+        }
+      ],
+      "reason": "MENUGEN part 3 gate, one run: the field shots before and after each flag toggle (30-frame periodic window) and the Fullscreen field shot. Cap 60 s: seven menu round trips with 90-scan field holds; the stop is the pad end."
+    },
+    {
+      "name": "mac05_water_census",
+      "status": "unverified",
+      "subject": "Toad Town mac_05 at pos -75 -10 500 (the user's lag spot): the water model (kaimen, panned every frame) on screen. The census window at frame 300 is the subject.",
+      "proves": "WATERPAN census: model cache misses of the panned water record by the first differing record word (ndmrw words 18 to 21, the panner tile ops). Expect misses on 18 to 21 every frame; clears of the window about 0 before the fix.",
+      "debug": "warp=mac_05:0 pos=-75:-10:500 census",
+      "until": "ndmrw f300 ",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: mac_05 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "ndm window",
+          "regex": "ndm f300 native"
+        },
+        {
+          "name": "ndmrw window",
+          "regex": "ndmrw f300 w"
+        }
+      ],
+      "reason": "WATERPAN step 1 census, one start. Cold boot is 12 to 16 s, the f300 line needs 300 frames after the warp: cap 30 s (the row said 15 s; a cold start does not fit). Log only: no shot."
+    },
+    {
+      "name": "negpan_mim05",
+      "status": "unverified",
+      "reason": "broken: no until in 25 s (AZT11-5, 2026-11-09)",
+      "subject": "Mario in mim_05 (Forever Forest), warp to mim_05 entry 0. Log only: the first texture tile whose start is negative (mushroom panner, water scroll) prints its raw and clamped window.",
+      "proves": "NEGPAN step 1: tex_win_s25 clamps a negative tile start to 0. Expect lines negpan in uls -32 ... out uls 0 when a panner with a negative offset runs. No line in 25 s = no negative start in this scene at warp.",
+      "debug": "warp=mim_05:0 loglevel=debug negpan negpanf",
+      "until": "negpan in uls ",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mim_05 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mim_05 entry 0"
+        },
+        {
+          "name": "negpan clamp",
+          "regex": "negpan in uls"
+        }
+      ],
+      "reason": "NEGPAN step 1 check, one start. Log only: no shot. The row names an inspect of a guide mushroom; the warp run first shows whether a negative start is reached at all."
+    },
+    {
+      "name": "tidal_census_base",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, phase mode, no effect. Log only (no shot).",
+      "proves": "TIDAL step 1 base: per-frame draw count (closes proxy) of window f410 without the underwater effect.",
+      "debug": "warp=mac_01:0 pos=0:0:200 phase loglevel=debug det fixedseed",
+      "extra": [],
+      "until": "phase W f4\\d\\d-",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "window f410",
+          "regex": "phase W f4\\d\\d-"
+        }
+      ],
+      "reason": "TIDAL step 1 census base. Log only: the per-frame draw count of window f410 (frames 408 to 465) is the gate quantity."
+    },
+    {
+      "name": "tidal_census",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, phase mode, fxtest=87 (fx_underwater) spawned at frame 402 and removed at frame 440. Log only (no shot).",
+      "proves": "TIDAL step 1: the underwater effect (the Tidal Wave draw, fx_underwater) raises the per-frame draw count of window f410 by about 200 closes.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=87 phase loglevel=debug det fixedseed",
+      "extra": [],
+      "until": "phase W f4\\d\\d-",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "spawn",
+          "regex": "fxtest: spawn 87 underwater"
+        },
+        {
+          "name": "window f410",
+          "regex": "phase W f4\\d\\d-"
+        }
+      ],
+      "reason": "TIDAL step 1 census: fxtest=87 is fx_underwater (pm_fxtest.c E(underwater) index 87). Log only."
+    },
+    {
+      "name": "tidal_pic",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, cold det start, fxtest=87 (fx_underwater, the Tidal Wave mesh) spawned at frame 402. Shot 1 at frame 412 and shot 2 at frame 432 (inside the effect's life, to 440): the screen under the water distortion. The subject: the copied frame bent in the wave, no seams between grid cells, no black cells.",
+      "proves": "TIDAL step 2: the underwater mesh draws its distortion from one tile and one grid (ortho, quarter pixel) with the same look as the ModifyVertex path.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=87 shots loglevel=debug det fixedseed",
+      "extra": [],
+      "until": "fxtest: done",
+      "cap": 30,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "spawn",
+          "regex": "fxtest: spawn 87 underwater"
+        },
+        {
+          "name": "shot 2",
+          "regex": "fxtest: shot 2 effect 87 underwater b"
+        }
+      ],
+      "reason": "TIDAL step 2 picture gate: shots 1 and 2 of the fxtest slot (frames 412 and 432) show the wave. Until is shot b."
     }
   ]
 }

@@ -1,6 +1,7 @@
 /* pm_gpu_rect.c: the vertex ring (chunks, wrap) and the rectangle queue (fill and texture rectangles as raw batches), moved from pm_gpu.c without change (C8).
  * The batch state is NdBatch nb and the render state PmGpuSt gs (pm_gpu_int.h). */
 #include <3ds.h>
+#include "pm_linear.h"
 #include <citro3d.h>
 #include <math.h>
 #include <string.h>
@@ -42,11 +43,11 @@ static __attribute__((cold, noinline)) int ring_pick(void) {
         return c;
     }
     if (nb.rchunk_n >= RING_CHUNK_MAX) return -1;
-    unsigned char* v = (unsigned char*)linearAlloc(GRING_VTX * 16u);
-    unsigned short* x = (unsigned short*)linearAlloc(GRING_IDX * 2u);
+    unsigned char* v = (unsigned char*)pm_linear_alloc(GRING_VTX * 16u);
+    unsigned short* x = (unsigned short*)pm_linear_alloc(GRING_IDX * 2u);
     if (!v || !x) {
-        if (v) linearFree(v);
-        if (x) linearFree(x);
+        if (v) pm_linear_free(v);
+        if (x) pm_linear_free(x);
         pm_log_e("ring: chunk %d failed (linear)", nb.rchunk_n);
         return -1;
     }
@@ -86,6 +87,8 @@ static float fill_z = 0.5f;
  * Palette entry RECT_GM (pcomp_calc) is the projection with the depth folded in. The batch closes through nd_raw_native with
  * rect_2d set (flush_impl_body rect branch). Merge key as rect_raw_open, plus the depth. rect_c: fill, tex, native, merged, cpu, ring high mark. */
 static unsigned rect_c[6];
+static unsigned rect_drop_total; /* BATUI: monotonic count of refused (dropped) rectangles, read by the battle menu log (pm_rect_drop_total) */
+unsigned pm_rect_drop_total(void) { return rect_drop_total; }
 static unsigned rr_why[8]; /* RECT-2b diag: why a textured or fill rectangle is refused (dropped, rect_c[4]): 1 gpu, 2 off, 3 grab, 4 zmark, 5 ring full, 6 norectraw, 7 texcoord range */
 static int rect_raw_ok(void) {
     if (!(gs.gpu_vtx_on && gs.gpu_ok && gs.gv4_on)) { rr_why[1]++; return 0; }
@@ -130,6 +133,17 @@ static void rect_raw_quad(int xa, int ya, int xb, int yb, short s0, short t0, sh
     if (rq_n < RQ_MAX) { rq_slot[rq_n] = rq_cur; rq_b[rq_n] = b; rq_st[rq_n][0] = s0; rq_st[rq_n][1] = t0; rq_st[rq_n][2] = s1; rq_st[rq_n][3] = t1; }
     rq_n++;
     rect_c[2]++;
+    { /* PAUSEOPEN debug: a rectangle after the gutter call that overlaps a gutter strip (screen x 0..40 or 360..400) */
+        extern int pm_gut_seen;
+        static int gut_watch_n;
+        const int lo = xa < xb ? xa : xb, hi = xa < xb ? xb : xa, ylo = ya < yb ? ya : yb, yhi = ya < yb ? yb : ya;
+        static int gut_dbg = -1;
+        if (gut_dbg < 0) gut_dbg = pm_debug_has("gutdbg");
+        if (gut_dbg && pm_gut_seen && gut_watch_n < 40 && ((lo < 40 && hi > 0) || (hi > 360 && lo < 400))) {
+            gut_watch_n++;
+            pm_log("GUTW ret %p x %d..%d y %d..%d c %08x combine %d off %d", __builtin_return_address(0), lo, hi, ylo, yhi, c, gs.combine, gs.off_active);
+        }
+    }
     if ((unsigned)nb.gring_n > rect_c[5]) rect_c[5] = (unsigned)nb.gring_n;
 }
 void rect_log(unsigned f) { if (PMDL("rectsig")) pm_log_d("rsig sum f%u chk %u diff %u", f, rsig_chk, rsig_diff); pm_log_d("rect f%u fill %u tex %u native %u merged %u drop %u ring %u", f, rect_c[0], rect_c[1], rect_c[2], rect_c[3], rect_c[4], rect_c[5]); pm_log_d("rectwhy f%u gpu %u off %u grab %u zmark %u ring %u norect %u range %u", f, rr_why[1], rr_why[2], rr_why[3], rr_why[4], rr_why[5], rr_why[6], rr_why[7]); memset(rr_why, 0, sizeof rr_why); memset(rect_c, 0, sizeof rect_c);
@@ -152,7 +166,7 @@ void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba) {
         if (!gs.off_active) gs.grab_dirty = 1; /* a fill draws rows the grab does not track (rect_y0 and rect_y1 are for texture rectangles): the next grab copies */
         return;
     }
-    rect_c[4]++; /* no CPU rectangle path: a refused rectangle is dropped and counted (rect log: drop) */
+    rect_c[4]++; rect_drop_total++; /* no CPU rectangle path: a refused rectangle is dropped and counted (rect log: drop) */
     return;
 }
 
@@ -176,6 +190,27 @@ void pm_gpu_fill_depth(int x0, int y0, int x1, int y1, float d) {
     gs.r_nocol = s_nc; gs.r_zcmp = s_zc; gs.r_zupd = s_zu; gs.r_blend = s_bl; gs.r_atest = s_at; gs.r_decal = s_de; gs.z_on = s_z; gs.r_mix = s_mix;
 }
 
+static int tex_raw_piece(int xa, int ya, int xb, int yb, float s0, float t0, float s1, float t1, int y0, int y1);
+/* HC7: a rectangle over 127 texels in s or t: equal pieces along the axes that span about 120 texels (the one-piece case returns tex_raw_piece). */
+__attribute__((noinline, cold)) static int tex_raw_split(int ixa, int iya, int ixb, int iyb, float s0, float t0, float s1, float t1, int y0, int y1) {
+    int nx = 1, ny = 1;
+    const float spanS = s0 < s1 ? s1 - s0 : s0 - s1, spanT = t0 < t1 ? t1 - t0 : t0 - t1;
+    if (spanS >= 120.f || spanT >= 120.f) { nx = 1 + (int)(spanS / 120.f); ny = 1 + (int)(spanT / 120.f); }
+    if (nx == 1 && ny == 1) return tex_raw_piece(ixa, iya, ixb, iyb, s0, t0, s1, t1, y0, y1);
+    const int W = ixb - ixa, H = iyb - iya;
+    if (W == 0 || H == 0 || (W < 0 ? -W : W) < nx || (H < 0 ? -H : H) < ny) { rr_why[7]++; return 0; }
+    if (!ring_need(4u * (unsigned)nx * (unsigned)ny, 6u * (unsigned)nx * (unsigned)ny)) { rr_why[5]++; return 0; } /* the pieces must fit the ring together */
+    for (int j = 0; j < ny; j++) {
+        const int ja = iya + H * j / ny, jb = iya + H * (j + 1) / ny;
+        const float ta = t0 + (t1 - t0) * (float)(ja - iya) / (float)H, tb = t0 + (t1 - t0) * (float)(jb - iya) / (float)H;
+        for (int i = 0; i < nx; i++) {
+            const int ia = ixa + W * i / nx, ib = ixa + W * (i + 1) / nx;
+            const float sa = s0 + (s1 - s0) * (float)(ia - ixa) / (float)W, sb = s0 + (s1 - s0) * (float)(ib - ixa) / (float)W;
+            tex_raw_piece(ia, ja, ib, jb, sa, ta, sb, tb, y0, y1);
+        }
+    }
+    return 1;
+}
 /* RECT-1b: a texture rectangle as a raw batch (agent_s6.md RECT-1b). s and t are normalized: the ring gets shorts s * sc, the batch uvso is {1 / sc, 1 / sc, 0, 0} (pica uv = tc * uvso.xy + uvso.zw).
  * sc is 4096, 1024 or 256 by the largest |s| or |t| (the short range): above 127 the piece is refused (returns 0, rr_why 7). */
 static short tex_st(float v, float sc) { float f = v * sc; return (short)(f >= 0.f ? f + 0.5f : f - 0.5f); }
@@ -222,29 +257,12 @@ static int tex_raw_rect(int x0, int y0, int x1, int y1, float s0, float t0, floa
     }
     const float ya = py(y0), yb = py(y1 + 1);
     const int ixa = (int)xa, ixb = (int)xb, iya = (int)ya, iyb = (int)yb;
-    /* split count: the base form is needed when the magnitude is at or above 127; a piece holds a span of about 120 texels */
+    /* split count: the base form is needed when the magnitude is at or above 127; a piece holds a span of about 120 texels. The split is cold (HC7). */
     float mx = 0.f;
     const float av[4] = { s0 < 0.f ? -s0 : s0, s1 < 0.f ? -s1 : s1, t0 < 0.f ? -t0 : t0, t1 < 0.f ? -t1 : t1 };
     for (int i = 0; i < 4; i++) if (av[i] > mx) mx = av[i];
-    int nx = 1, ny = 1;
-    if (mx >= 127.f) {
-        const float spanS = s0 < s1 ? s1 - s0 : s0 - s1, spanT = t0 < t1 ? t1 - t0 : t0 - t1;
-        if (spanS >= 120.f || spanT >= 120.f) { nx = 1 + (int)(spanS / 120.f); ny = 1 + (int)(spanT / 120.f); }
-    }
-    if (nx == 1 && ny == 1) return tex_raw_piece(ixa, iya, ixb, iyb, s0, t0, s1, t1, y0, y1);
-    const int W = ixb - ixa, H = iyb - iya;
-    if (W == 0 || H == 0 || (W < 0 ? -W : W) < nx || (H < 0 ? -H : H) < ny) { rr_why[7]++; return 0; }
-    if (!ring_need(4u * (unsigned)nx * (unsigned)ny, 6u * (unsigned)nx * (unsigned)ny)) { rr_why[5]++; return 0; } /* the pieces must fit the ring together */
-    for (int j = 0; j < ny; j++) {
-        const int ja = iya + H * j / ny, jb = iya + H * (j + 1) / ny;
-        const float ta = t0 + (t1 - t0) * (float)(ja - iya) / (float)H, tb = t0 + (t1 - t0) * (float)(jb - iya) / (float)H;
-        for (int i = 0; i < nx; i++) {
-            const int ia = ixa + W * i / nx, ib = ixa + W * (i + 1) / nx;
-            const float sa = s0 + (s1 - s0) * (float)(ia - ixa) / (float)W, sb = s0 + (s1 - s0) * (float)(ib - ixa) / (float)W;
-            tex_raw_piece(ia, ja, ib, jb, sa, ta, sb, tb, y0, y1);
-        }
-    }
-    return 1;
+    if (mx < 127.f) return tex_raw_piece(ixa, iya, ixb, iyb, s0, t0, s1, t1, y0, y1);
+    return tex_raw_split(ixa, iya, ixb, iyb, s0, t0, s1, t1, y0, y1);
 }
 void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s1, float t1) {
     if (PMDL("zmforce")) { gs.z_on = 1; nb.rect_z = 1; gs.r_zmark = 1; gs.r_zmark_zn = 0.5f; } /* FB-1 ZM forcing (as pm_gpu_fill_rect) */
@@ -254,7 +272,7 @@ void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s
     rect_c[1]++;
     rd_tex = 1;
     if (tex_raw_rect(x0, y0, x1, y1, s0, t0, s1, t1)) { fl_rect_done(); return; }
-    rect_c[4]++; /* no CPU rectangle path: a refused rectangle is dropped and counted (rect log: drop) */
+    rect_c[4]++; rect_drop_total++; /* no CPU rectangle path: a refused rectangle is dropped and counted (rect log: drop) */
     fl_rect_done();
 }
 

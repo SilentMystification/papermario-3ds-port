@@ -342,8 +342,11 @@ dkp_add_embedded_binary_library(pm_shader5_lib pm_shader5)
 
 set(PORT_SRC
     src/pm_main.c
+    src/pm_thread.c
+    src/pm_crash_page.c
     src/pm_heaphi.c
     src/pm_mem.c
+    src/pm_linear.c
     src/pm_log.c
     src/pm_flash.c
     src/pm_wdog.c
@@ -360,6 +363,7 @@ set(PORT_SRC
     src/pm_route.c
     src/pm_sweep.c
     src/pm_fxtest.c
+    src/pm_effcen.c
     src/pm_gpu.c
     src/pm_gpu_ui.c
     src/pm_gpu_rect.c
@@ -463,7 +467,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ld/3dsx.ld.in ${CMAKE_BINARY_DIR}/lds
 target_link_options(pm_3ds PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/map_syms.lds -B${CMAKE_BINARY_DIR}/ldscripts/ -Wl,--gc-sections -Wl,-Map,${CMAKE_BINARY_DIR}/pm_3ds.map
     -Wl,--wrap=set_game_mode -Wl,--wrap=load_map_by_IDs -Wl,--wrap=load_battle_section -Wl,--wrap=dma_copy -Wl,--wrap=load_asset_by_name
     -Wl,--wrap=step_game_loop -Wl,--wrap=gfx_draw_frame -Wl,--wrap=gfx_task_background -Wl,--wrap=appendGfx_darkness_stencil
-    -Wl,--wrap=_heap_create
+    -Wl,--wrap=_heap_create -Wl,--wrap=linearAlloc -Wl,--wrap=linearMemAlign -Wl,--wrap=linearFree -Wl,--wrap=linearRealloc
     ${SND_GATE_WRAPS}
     -Wl,--defsym,heap_battleHead=gFrameBuf2
     -Wl,--defsym,sprite_shading_profiles_ROM_START=0x315B80

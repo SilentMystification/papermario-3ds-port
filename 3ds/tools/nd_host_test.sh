@@ -9,6 +9,9 @@ AR=$ROOT
 if [ ! -d assets/us ] || [ ! -d ver/us/build ]; then AR=$(cd "$(git rev-parse --git-common-dir)/.." && pwd -W 2>/dev/null || pwd); fi
 fail=0
 if [ ! -f 3ds/src/nd_core.c ]; then echo "FAIL nd_core missing (3ds/src/nd_core.c, row S1-2)"; fail=1; fi
+# LINRACE: every linear heap call goes through pm_linear_* (3ds/include/pm_linear.h, one lock). A direct call fails the test.
+direct=$(grep -nE '(^|[^_A-Za-z0-9])linear(Alloc|MemAlign|Free|Realloc)[[:space:]]*\(' 3ds/src/*.c 3ds/src/*.h 3ds/include/*.h 2>/dev/null)
+if [ -n "$direct" ]; then echo "FAIL direct linear call (use pm_linear_*):"; echo "$direct"; fail=1; fi
 MSYS_NO_PATHCONV=1 docker run --rm -v "$ROOT:/w" -v "$AR/assets:/ar/assets:ro" -v "$AR/ver/us/build:/ar/ver/us/build:ro" -w /work pm3ds-host:1 sh -c '
   set -e
   mkdir -p /work/ver/us
@@ -56,5 +59,11 @@ void pm_gpu_noise_draw(NdUnit* u, float* nzo) { (void)u; (void)nzo; }
   /tmp/ndmd
   /tmp/ndseam assets/us/mapfs/geom/mac_01_shape.bin assets/us/mapfs/geom/mac_02_shape.bin 3ds/tests/ndref/ndref_*.bin -- assets/us/mapfs/geom/mac_01_shape.bin assets/us/mapfs/geom/mac_00_shape.bin assets/us/mapfs/geom/kkj_14_shape.bin assets/us/mapfs/geom/iwa_10_shape.bin assets/us/mapfs/geom/kmr_20_shape.bin assets/us/mapfs/geom/nok_11_shape.bin
 ' || fail=1
+# CRASHALL: every port thread is created by pm_thread_create (3ds/src/pm_thread.c), so each one has the crash handler. A direct
+# threadCreate outside that helper fails the test.
+rawth=$(grep -nE '(^|[^_A-Za-z0-9])threadCreate[[:space:]]*\(' 3ds/src/*.c 2>/dev/null | grep -v '^3ds/src/pm_thread.c:')
+if [ -n "$rawth" ]; then echo "FAIL direct threadCreate (use pm_thread_create):"; echo "$rawth"; fail=1; fi
+# CRASHALL part 2: the crash page renders its lines into the RGBA16 buffer (3ds/tools/crash_page_test.c).
+MSYS_NO_PATHCONV=1 docker run --rm -v "$ROOT:/w" -w /w pm3ds-host:1 sh -c 'gcc -m32 -Wall -Wextra -Werror -I 3ds/include -o /tmp/cp 3ds/tools/crash_page_test.c 3ds/src/pm_crash_page.c && /tmp/cp' || fail=1
 [ "$fail" = 0 ] && echo "ND HOST TESTS PASS" || echo "ND HOST TESTS FAIL"
 exit $fail

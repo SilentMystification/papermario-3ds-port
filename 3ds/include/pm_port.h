@@ -220,6 +220,8 @@ void pm_flash_fill(unsigned off, unsigned len);
 void pm_flash_attach(unsigned char* mem, unsigned size);
 void pm_flash_flush(const char* why);
 void pm_flash_crash_flush(void);
+void pm_flash_slots_line(const char* why); /* SAVETITLE log: hashes of the RAM save sectors */
+void pm_flash_save_line(int slot, int phys, unsigned count, unsigned crc); /* SAVETITLE log: one save write */
 extern volatile int pm_flash_warn; /* SAVESAFE: the last save write failed */
 unsigned pm_soc_alloc_rc(void);
 unsigned pm_heap_bytes(void);

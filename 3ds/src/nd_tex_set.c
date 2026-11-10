@@ -9,6 +9,7 @@
 #include "pm_tex.h"
 #include "pm_port.h"
 #include "variables.h"
+#include "nd_op.h"
 
 /* GLOB: definitions moved here from the former pm_gbi.c (layout only). */
 NdTexM nd_tm; /* D4a: the load side of the texture model (nd_int.h) */
@@ -36,7 +37,8 @@ unsigned ens_wrap[4];
 int ens_sz[4];
 static int ens_slot = -1; static unsigned ens_gen; /* KMR10M: cache slot and generation the last walker bind of tile 0 left in pm_tex cur */
 
-/* M4: the bodies of the texture ops, one function each. tex_op_impl calls them in its switch, tb_plain (fused bind of a plain texture list) calls them in list order. The code is the code of the cases, moved. */
+/* The bodies of the texture ops, one function each (decoded fields). HC4c: the typed setters nd_set_* (nd_op.h fields) call them; nd_op_apply
+ * (nd_set.c) runs the typed ops by id. */
 /* CORE-2b batch D: texture image setter (decoded fields). */
 static void set_timg(u32 addr, unsigned fmt, unsigned siz, int stride) {
     nd_ws.timg = ptr_of(addr);
@@ -48,7 +50,7 @@ static void set_timg(u32 addr, unsigned fmt, unsigned siz, int stride) {
     nd_ws.tst1.timg_stride = stride;
     nd_tm.ld_valid = 0;
 }
-void op_settimg(u32 w0, u32 w1) { set_timg(w1, (w0 >> 21) & 7, (w0 >> 19) & 3, (int)(w0 & 0xfff) + 1); }
+void nd_set_timg(u32 a, u32 b) { set_timg(b, (a >> 21) & 7, (a >> 19) & 3, (int)(a & 0xfff) + 1); }
 /* CORE-2b batch D: tile setter (decoded fields; wr = the four wrap words, sh0 and sh1 the shifts). */
 static void set_tile(unsigned tile, unsigned fmt, unsigned siz, unsigned tmem, unsigned pal, const unsigned* wr, unsigned sh0, unsigned sh1) {
     int same_tile = tile == 0 && st0_ok && pm_tex_wrap_gen() == st0_ep && nd_ws.tst1.tile_fmt[0] == fmt && nd_ws.tst1.tile_siz[0] == siz && nd_ws.tst1.tile_tmem[0] == tmem && nd_ws.tst1.tile_pal[0] == pal
@@ -75,9 +77,9 @@ static void set_tile(unsigned tile, unsigned fmt, unsigned siz, unsigned tmem, u
         st0_ep = pm_tex_wrap_gen(); st0_ok = 1; /* the wrap state pm_tex has now is the one of tile 0: an identical G_SETTILE may skip while nothing else touched pm_tex */
     }
 }
-void op_settile(u32 w0, u32 w1) {
-    unsigned wr[4] = { (w1 >> 8) & 3, (w1 >> 18) & 3, (w1 >> 4) & 15, (w1 >> 14) & 15 };
-    set_tile((w1 >> 24) & 7, (w0 >> 21) & 7, (w0 >> 19) & 3, w0 & 0x1ff, (w1 >> 20) & 15, wr, w1 & 15, (w1 >> 10) & 15);
+void nd_set_tile(u32 a, u32 b) {
+    unsigned wr[4] = { (b >> 8) & 3, (b >> 18) & 3, (b >> 4) & 15, (b >> 14) & 15 };
+    set_tile((b >> 24) & 7, (a >> 21) & 7, (a >> 19) & 3, a & 0x1ff, (b >> 20) & 15, wr, b & 15, (b >> 10) & 15);
 }
 /* CORE-2b batch D2: block load setter (decoded fields: tile and texel count). */
 static void set_loadblock(unsigned tile, unsigned texels) {
@@ -95,7 +97,7 @@ static void set_loadblock(unsigned tile, unsigned texels) {
                 nd_ws.tst1.blk[k].bytes = ((texels + 1u) << nd_ws.tst1.tile_siz[tile]) >> 1;
             }
 }
-void op_loadblock(u32 w0, u32 w1) { (void)w0; set_loadblock((w1 >> 24) & 7, (w1 >> 12) & 0xfff); }
+void nd_set_loadblock(u32 b) { set_loadblock((b >> 24) & 7, (b >> 12) & 0xfff); }
 /* D4a-2: tile load setter (decoded fields: tile and the 12 bit window of G_LOADTILE): the LoadTile window and the load record of its TMEM address. */
 static void set_loadtile(unsigned tile, int uls, int ult, int lrs, int lrt) {
     nd_tm.ld_valid = 1;
@@ -127,7 +129,8 @@ static void set_loadtlut(unsigned tile, unsigned count) {
                 }
             }
 }
-void op_loadtlut(u32 w0, u32 w1) { (void)w0; set_loadtlut((w1 >> 24) & 7, (w1 >> 14) & 0x3ff); }
+void nd_set_loadtlut(u32 b) { set_loadtlut((b >> 24) & 7, (b >> 14) & 0x3ff); }
+void nd_set_loadtile(u32 a, u32 b) { set_loadtile((b >> 24) & 7, (int)((a >> 12) & 0xfff), (int)(a & 0xfff), (int)((b >> 12) & 0xfff), (int)(b & 0xfff)); }
 /* D4a-1: the tile 0 window of a SetTileSize (source, size, stride): a pure function of the tile state t, the texture image timg and the
  * load model m (no global writes). set_tilesize applies it (td[0], the origin, the repeated-load skips). */
 typedef struct NdWin { const u8* src; int w, h, stride, x0; } NdWin;
@@ -176,7 +179,11 @@ static void tex_win0(const NdTst* t, const NdTexM* m, const void* timg, int uls,
 }
 /* CORE-2b batch D: tile size setter (decoded fields). */
 static __attribute__((noinline)) void set_tilesize(unsigned tile, int uls, int ult, int lrs, int lrt) {
-            if (((lrs - uls) >> 2) + 1 <= 0 || ((lrt - ult) >> 2) + 1 <= 0) tex_win_s25(&uls, &ult, &lrs, &lrt);
+    if (tile == 0 && PMDL("negpanf") && pm_frame_count() >= 200u && (nd_ws.tst1.tile_wrap[0][2] || nd_ws.tst1.tile_wrap[0][3])) { /* NEGPAN step 1 debug: force the mushroom panner offset (-0x8000 = -128 in 10.2) on 8 tile-0 sizes */
+        static unsigned nf_;
+        if (nf_ < 8u) { nf_++; ult = (ult - 128) & 0xfff; lrt = (lrt - 128) & 0xfff; } /* raw 12 bit fields, as the record carries them */
+    }
+            if (((lrs - uls) >> 2) + 1 <= 0 || ((lrt - ult) >> 2) + 1 <= 0) tex_win_s25(&uls, &ult, &lrs, &lrt, nd_ws.tst1.tile_wrap[tile][0], nd_ws.tst1.tile_wrap[tile][2], nd_ws.tst1.tile_wrap[tile][1], nd_ws.tst1.tile_wrap[tile][3]);
             GP_SET(4, nd_ws.tst1.tile_sz[tile][0] == uls && nd_ws.tst1.tile_sz[tile][1] == ult && nd_ws.tst1.tile_sz[tile][2] == lrs && nd_ws.tst1.tile_sz[tile][3] == lrt);
             nd_ws.tst1.tile_sz[tile][0] = uls;
             nd_ws.tst1.tile_sz[tile][1] = ult;
@@ -249,8 +256,8 @@ static __attribute__((noinline)) void set_tilesize(unsigned tile, int uls, int u
             }
             return;
 }
-__attribute__((noinline)) void op_settilesize(u32 w0, u32 w1) {
-    set_tilesize((w1 >> 24) & 7, (int)((w0 >> 12) & 0xfff), (int)(w0 & 0xfff), (int)((w1 >> 12) & 0xfff), (int)(w1 & 0xfff));
+__attribute__((noinline)) void nd_set_tilesize(u32 a, u32 b) {
+    set_tilesize((b >> 24) & 7, (int)((a >> 12) & 0xfff), (int)(a & 0xfff), (int)((b >> 12) & 0xfff), (int)(b & 0xfff));
 }
 /* CORE-2b batch D2: texture enable and scale setter (decoded fields). */
 static void set_texture(unsigned on, unsigned ss, unsigned ts) {
@@ -258,7 +265,7 @@ static void set_texture(unsigned on, unsigned ss, unsigned ts) {
     nd_ws.tex_ss = ss;
     nd_ws.tex_ts = ts;
 }
-void op_texture(u32 w0, u32 w1) { set_texture((w0 & 0xff) != 0, w1 >> 16, w1 & 0xffffu); }
+void nd_set_texture(u32 a, u32 b) { set_texture(a, b >> 16, b & 0xffffu); }
 
 /* DIRECT D4b-1, D5: NDC_TEXRECT (nd_cmd.h), recorded by the nd_gbi.h redirect: the walker's op prologue of G_TEXRECT (gv_epoch,
  * pm_gbi_cur_op), then the rectangle. */
@@ -553,131 +560,52 @@ __attribute__((cold, noinline)) int tex_shaded0(int uls, int ult) {
     return 0;
 }
 
-__attribute__((cold, noinline)) void tex_win_s25(int* p_uls, int* p_ult, int* p_lrs, int* p_lrt) {
+int nd_tex_neg_start(int s, unsigned flags, unsigned mask); /* nd_tex.c: the period mapping of a negative start (host tested) */
+__attribute__((cold, noinline)) void tex_win_s25(int* p_uls, int* p_ult, int* p_lrs, int* p_lrt, unsigned fs, unsigned ms, unsigned ft, unsigned mt) {
     int uls = *p_uls, ult = *p_ult, lrs = *p_lrs, lrt = *p_lrt;
-                /* S25: a window with a negative start (a scrolled texture) is 12 bit two's complement. Texel 0 is
-                 * still the first texel of the loaded image, so keep the size and start at 0. */
+                /* S25: a window with a negative start (a scrolled texture) is 12 bit two's complement. A clamp tile (or a tile
+                 * with no mask) starts at texel 0 as before. A wrap or mirror tile with a mask maps the start into its mask
+                 * period (NEGPAN: -32 texels, mask 64 -> 32 texels), so the RDP reads the same texels as the N64. The window
+                 * size is kept. Applied here only: set_tilesize stores these values as the tile size (tile_x0, tile_y0, uvso). */
                 int su = uls & 0x800 ? uls - 0x1000 : uls, st = ult & 0x800 ? ult - 0x1000 : ult;
                 int sr = lrs & 0x800 ? lrs - 0x1000 : lrs, sl = lrt & 0x800 ? lrt - 0x1000 : lrt;
                 if (sr >= su && sl >= st) {
-                    lrs = (su < 0 ? 0 : su) + (sr - su);
-                    lrt = (st < 0 ? 0 : st) + (sl - st);
-                    uls = su < 0 ? 0 : su;
-                    ult = st < 0 ? 0 : st;
+                    int ou = su < 0 ? nd_tex_neg_start(su, fs, ms) : su;
+                    int ot = st < 0 ? nd_tex_neg_start(st, ft, mt) : st;
+                    lrs = ou + (sr - su);
+                    lrt = ot + (sl - st);
+                    uls = ou;
+                    ult = ot;
                 }
+    if (PMDL("negpan") && (su < 0 || st < 0)) { /* NEGPAN step 1: a negative start is clamped to 0 (uls/ult out) */
+        static unsigned nneg_; /* first 8 hits */
+        if (nneg_++ < 8u) pm_log("negpan in uls %d ult %d lrs %d lrt %d out uls %d ult %d lrs %d lrt %d f%u wrap s %u/%u t %u/%u", su, st, sr, sl, uls, ult, lrs, lrt, pm_frame_count(), fs, ms, ft, mt);
+    }
     *p_uls = uls; *p_ult = ult; *p_lrs = lrs; *p_lrt = lrt;
 }
 
-__attribute__((noinline)) void tex_op_impl(u32 w0, u32 w1) {
-    unsigned op = w0 >> 24;
-    switch (op) {
-        case G_SETTIMG: op_settimg(w0, w1); break;
-        case G_SETTILE: op_settile(w0, w1); break;
-        case G_LOADBLOCK: op_loadblock(w0, w1); break;
-        case G_LOADTILE: set_loadtile((w1 >> 24) & 7, (int)((w0 >> 12) & 0xfff), (int)(w0 & 0xfff), (int)((w1 >> 12) & 0xfff), (int)(w1 & 0xfff)); break;
-        case G_LOADTLUT: op_loadtlut(w0, w1); break;
-        case G_SETTILESIZE: op_settilesize(w0, w1); break;
-        case G_TEXTURE: op_texture(w0, w1); sync_combine(); break;
-        case G_SETOTHERMODE_H:
-        case G_SETOTHERMODE_L: op_setothermode(op, w0, w1); break;
-        case G_SETPRIMCOLOR: op_setprimcolor(w0, w1); break;
-        case G_SETCOMBINE: op_setcombine(w0, w1); sync_combine(); break;
-    }
-}
-
-void tex_op(u32 w0, u32 w1) {
-    if (!pm_ph_cen) { tex_op_impl(w0, w1); return; } /* PROF2-2: the op timers feed the sp0 report (phase mode only), not a prof sample */
-    unsigned op = w0 >> 24, t0 = pm_ticks();
+/* S3-2 measurement (phase census only, line sp0x): the own time and the draw close time of one typed op by its F3DEX2 code. */
+__attribute__((cold, noinline)) void nd_tex_timed(const uint32_t* u) {
+    const unsigned op = nd_op_n64[(u[0] >> 24) - NDO_BASE], t0 = pm_ticks();
     unsigned long long f0 = pm_gpu_fl_acc();
-    tex_op_impl(w0, w1);
+    nd_op_apply(u);
     unsigned dt = (unsigned)(pm_ticks() - t0), df = (unsigned)(pm_gpu_fl_acc() - f0);
-    tx_t[op] += dt - (df < dt ? df : dt); tx_f[op] += df; tx_n[op]++; /* own time without the draw closes inside the op, and the close time */
+    tx_t[op] += dt - (df < dt ? df : dt); tx_f[op] += df; tx_n[op]++;
 }
 
-
-__attribute__((noinline)) void tb_ops_generic(const Gfx* g) {
-    for (const Gfx* h = g;; h++) {
-        unsigned op = h->words.w0 >> 24;
-        if (op == G_ENDDL) break;
-        if (nd_op_sync(op)) continue;
-        pm_gbi_cur_op = op;
-        tex_op(h->words.w0, h->words.w1);
+/* HC4c (W4): the typed bind list of a texture handle (model.c make_texture_gfx, typed at the texture load) to its NDO_END, as the walker ran
+ * the word list: every op runs (no skip test), a combine directly before a G_TEXTURE leaves the combine sync to the G_TEXTURE. */
+__attribute__((noinline)) void nd_bind_run(const uint32_t* u) {
+    for (;; u += 2) {
+        const unsigned id = u[0] >> 24;
+        if (id == NDO_END) break;
+        pm_gbi_cur_op = nd_op_n64[id - NDO_BASE];
+        if (id == NDO_COMB) {
+            op_setcombine(NDO_COMB_W0(u[0]), u[1]);
+            if ((u[2] >> 24) != NDO_TEXTURE) sync_combine();
+        } else if (__builtin_expect(pm_ph_cen, 0)) nd_tex_timed(u);
+        else nd_op_apply(u);
     }
-}
-
-__attribute__((noinline)) void tb_ops(const Gfx* g) {
-    for (const Gfx* h = g;; h++) {
-        u32 w0 = h->words.w0, w1 = h->words.w1;
-        unsigned op = w0 >> 24;
-        if (op == G_ENDDL) break;
-        if (nd_op_sync(op)) continue;
-        pm_gbi_cur_op = op;
-        unsigned pt0 = 0; unsigned long long pf0 = 0;
-        if (pm_ph_cen) { pt0 = pm_ticks(); pf0 = pm_gpu_fl_acc(); } /* M4: sp0x own and close time of the fused ops */
-        switch (op) {
-        case G_SETTIMG: op_settimg(w0, w1); break;
-        case G_SETTILE: op_settile(w0, w1); break;
-        case G_LOADBLOCK: op_loadblock(w0, w1); break;
-        case G_LOADTLUT: op_loadtlut(w0, w1); break;
-        case G_SETTILESIZE: op_settilesize(w0, w1); break;
-        case G_TEXTURE: op_texture(w0, w1); sync_combine(); break;
-        case G_SETCOMBINE: {
-            const Gfx* n = h + 1;
-            op_setcombine(w0, w1);
-            while (nd_op_sync(n->words.w0 >> 24)) n++;
-            if ((n->words.w0 >> 24) != G_TEXTURE) sync_combine();
-            break;
-        }
-        case G_SETOTHERMODE_H:
-        case G_SETOTHERMODE_L: op_setothermode(op, w0, w1); break;
-        default: tex_op(w0, w1); break;
-        }
-        if (pm_ph_cen) { unsigned dt = (unsigned)(pm_ticks() - pt0), df = (unsigned)(pm_gpu_fl_acc() - pf0); tx_t[op] += dt - (df < dt ? df : dt); tx_f[op] += df; tx_n[op]++; }
-    }
-}
-
-__attribute__((cold, noinline)) void ts_save(TexSnap* o) {
-    memset(o, 0, sizeof *o);
-    o->tst = nd_ws.tst1; o->timg = nd_ws.timg; o->tlut = nd_ws.tlut; o->tlut_n = nd_ws.tlut_n; memcpy(o->tlut_pal, nd_tm.tlut_pal, sizeof nd_tm.tlut_pal); memcpy(o->td, nd_ws.td, sizeof nd_ws.td);
-    o->tile_x0 = nd_ws.tile_x0; o->tile_y0 = nd_ws.tile_y0; o->tile_fx = nd_ws.tile_fx; o->tile_fy = nd_ws.tile_fy;
-    o->ld_valid = nd_tm.ld_valid; o->ld_x = nd_tm.ld_x; o->ld_y = nd_tm.ld_y; o->ld_h = nd_tm.ld_h; o->ld_w = nd_tm.ld_w; o->ldrec_n = nd_tm.ldrec_n; o->blk_n = nd_tm.blk_n; o->m1 = m1;
-    o->dual_on = dual_on; o->cur_tile = nd_ws.cur_tile; o->use_t1 = nd_ws.use_t1; o->tex_on = nd_ws.tex_on; o->tex_ss = nd_ws.tex_ss; o->tex_ts = nd_ws.tex_ts; o->comb_set = comb_set;
-    o->comb_w0 = nd_ws.comb_w0; o->comb_w1 = nd_ws.comb_w1; o->box_folded = box_folded; o->box_prod = box_prod; o->box_pat = box_pat; o->comb_alpha_shade = comb_alpha_shade;
-    o->cmb_gen_seen = cmb_gen_seen; o->tsz = tsz_last; o->st0_ep = st0_ep == pm_tex_wrap_gen(); o->st0_ok = st0_ok; /* the wrap generation counts calls, the second run advances it: compare whether st0_ep is current */ o->omode_h = nd_ws.omode_h; o->omode_l = nd_ws.omode_l;
-    o->leg_mode = leg_mode; o->plan_active = plan_active; o->comb_mode5 = comb_mode5; o->plan = cur_plan; o->sc_ok = sc_ok; o->sc_sig = sc_sig;
-    o->fogc = fogc; o->blendc = blendc; o->fog_fm = fog_fm; o->fog_fo = fog_fo;
-    o->prim = nd_ws.prim; o->envc = nd_ws.envc;
-}
-
-__attribute__((cold, noinline)) void ts_load(const TexSnap* o) {
-    nd_ws.tst1 = o->tst; nd_ws.timg = o->timg; nd_ws.tlut = o->tlut; nd_ws.tlut_n = o->tlut_n; memcpy(nd_tm.tlut_pal, o->tlut_pal, sizeof nd_tm.tlut_pal); memcpy(nd_ws.td, o->td, sizeof nd_ws.td);
-    nd_ws.tile_x0 = o->tile_x0; nd_ws.tile_y0 = o->tile_y0; nd_ws.tile_fx = o->tile_fx; nd_ws.tile_fy = o->tile_fy;
-    nd_tm.ld_valid = o->ld_valid; nd_tm.ld_x = o->ld_x; nd_tm.ld_y = o->ld_y; nd_tm.ld_h = o->ld_h; nd_tm.ld_w = o->ld_w; nd_tm.ldrec_n = o->ldrec_n; nd_tm.blk_n = o->blk_n; m1 = o->m1;
-    dual_on = o->dual_on; nd_ws.cur_tile = o->cur_tile; nd_ws.use_t1 = o->use_t1; nd_ws.tex_on = o->tex_on; nd_ws.tex_ss = o->tex_ss; nd_ws.tex_ts = o->tex_ts; comb_set = o->comb_set;
-    nd_ws.comb_w0 = o->comb_w0; nd_ws.comb_w1 = o->comb_w1; box_folded = o->box_folded; box_prod = o->box_prod; box_pat = o->box_pat; comb_alpha_shade = o->comb_alpha_shade;
-    cmb_gen_seen = o->cmb_gen_seen; tsz_last = o->tsz; st0_ep = o->st0_ep ? pm_tex_wrap_gen() : ~pm_tex_wrap_gen(); st0_ok = o->st0_ok; nd_ws.omode_h = o->omode_h; nd_ws.omode_l = o->omode_l;
-    leg_mode = o->leg_mode; plan_active = o->plan_active; comb_mode5 = o->comb_mode5; cur_plan = o->plan; sc_ok = o->sc_ok; sc_sig = o->sc_sig;
-    fogc = o->fogc; blendc = o->blendc; fog_fm = o->fog_fm; fog_fo = o->fog_fo;
-    nd_ws.prim = o->prim; nd_ws.envc = o->envc;
-}
-
-__attribute__((cold, noinline)) void tb_diff(const Gfx* g) {
-    static TexSnap s0, eg, ef;
-    static unsigned runs, bad;
-    char names[256]; int n = 0;
-    ts_save(&s0);
-    tb_ops_generic(g);
-    ts_save(&eg);
-    ts_load(&s0);
-    tb_ops(g);
-    ts_save(&ef);
-#define TS_CMP(f) if (memcmp(&eg.f, &ef.f, sizeof eg.f) != 0 && n < (int)sizeof names - 16) n += snprintf(names + n, sizeof names - (unsigned)n, #f " ");
-    TS_FIELDS(TS_CMP)
-#undef TS_CMP
-    runs++;
-    if (n) { bad++; if (bad <= 40) pm_log("texdiff f%u list %p DIFF: %s", pm_frame_count(), (const void*)g, names); }
-    if (!(runs % 500)) pm_log("texdiff f%u runs %u diffs %u", pm_frame_count(), runs, bad);
-    ts_load(&eg);
 }
 
 int glyph_atlas_bound(void) {

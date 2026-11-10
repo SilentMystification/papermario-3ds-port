@@ -1224,6 +1224,14 @@ def scratch_build(commit, gitdir, scratch, lane, row):
                 if not dst.exists():
                     dst.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy2(src, dst)
+    # TEXKEY2: texkey_bake.py reads ver/us/baserom.z64 of the asset base (git-ignored). Hard link, else copy.
+    rom, rom_dst = main / "ver" / "us" / "baserom.z64", scratch / "ver" / "us" / "baserom.z64"
+    if rom.exists() and not rom_dst.exists():
+        rom_dst.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            os.link(rom, rom_dst)
+        except OSError:
+            shutil.copy2(rom, rom_dst)
     # build.sh writes its sync lists under build3ds/lane-<lane> of the scratch folder; create it first.
     (scratch / "build3ds" / ("lane-" + lane)).mkdir(parents=True, exist_ok=True)
     env = dict(os.environ, GIT_DIR=gitdir, PM_BUILD_REV=commit, PM_ROW=row, PM_LANE=lane)

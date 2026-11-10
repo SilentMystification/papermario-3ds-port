@@ -212,7 +212,7 @@ void pm_gbi_mdl_mark(unsigned id, int pan) { /* called by appendGfx_model under 
     else mdcm_over++;
 }
 
-/* SPLIT0C: split of the walk by kind, phase only. A period has a kind: 0 rest, 1 texture op (tex_op, tb_ops), 2 replayed
+/* SPLIT0C: split of the walk by kind, phase only. A period has a kind: 0 rest, 1 texture op (nd_tex_timed), 2 replayed
  * list (dlc_try). A tick is read at the group begin and end and at each kind change, never per op (a tick read costs 1.3 us in
  * Azahar). sp0_T is in system ticks (268 per us). The sp0c line prints us per frame over the phase window (300 frames). */
 unsigned sp0_t, sp0_cur;
@@ -233,8 +233,8 @@ static inline int sp0_tex(unsigned op) {
 }
 unsigned long long pm_gbi_sp0_dlc(void) { return sp0_T[2]; } /* PF2: read by pm_phase.c pf_take, dlc group ticks */
 void pm_pmu_sp0(unsigned out[3]); /* pm_phase.c, CAP2 */
-/* S3-2 measurement: ticks and calls of tex_op per op code, phase on only (line sp0x of sp0_report) */
-unsigned long long tx_t[256], tx_f[256]; unsigned tx_n[256]; /* owner: the former pm_gbi.c (sp0 report); tex_op in nd_tex.c adds to them */
+/* S3-2 measurement: ticks and calls of the typed texture ops per F3DEX2 op code (nd_tex_timed), phase on only (line sp0x of sp0_report) */
+unsigned long long tx_t[256], tx_f[256]; unsigned tx_n[256]; /* owner: the former pm_gbi.c (sp0 report); nd_tex_timed in nd_tex_set.c adds to them */
 unsigned long long pm_gpu_fl_acc(void); /* pm_gpu.c */
 static __attribute__((cold, noinline)) void sp0_report(void) {
     unsigned pmv[3];

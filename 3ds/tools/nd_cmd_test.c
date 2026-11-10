@@ -11,6 +11,7 @@
 #include "nd.h"
 #include "ultra64.h"
 #include "nd_op.h"
+#include "gbi_custom.h"
 
 uint32_t f32tof24(float vf) {
     union { float f; uint32_t i; } v;
@@ -48,11 +49,19 @@ static void apply(const uint32_t* w, unsigned n) {
     }
 }
 
+/* The F3DEX2 othermode word of a typed othermode op (the inverse of nd_op_xlate). */
+static uint32_t nd_op_om_word(const uint32_t u[2]) {
+    const unsigned a = u[0] & 0xffffffu, sft = a & 0xffu, len = (a >> 8) & 0xffu;
+    const unsigned op = (u[0] >> 24) == NDO_OMH ? G_SETOTHERMODE_H : G_SETOTHERMODE_L;
+    return ((uint32_t)op << 24) | (((32u - sft - len) & 0xffu) << 8) | ((len - 1u) & 0xffu);
+}
+
 /* HC4a: the typed op format (nd_op.h): ids free of the F3DEX2 and G_PM_* ops, the translation of each scalar op, the othermode inverse. */
 static void op_test(void) {
     for (unsigned id = NDO_BASE; id < NDO_END_; id++) {
         CHECK(!(id >= 0x01 && id <= 0x07) && !(id >= 0x0d && id <= 0x13) && id < 0xd7, "typed id %02x collides", id);
-        if (id != NDO_RARE) CHECK(nd_op_n64[id - NDO_BASE] >= 0xd7, "typed id %02x has no F3DEX2 op", id);
+        if (id != NDO_RARE && id != NDO_MISC) CHECK(nd_op_n64[id - NDO_BASE] >= 0xd7 || (nd_op_geo(id) && nd_op_n64[id - NDO_BASE] >= 0x01 && nd_op_n64[id - NDO_BASE] <= 0x07),
+                                  "typed id %02x has no F3DEX2 op", id);
     }
     Gfx g[16]; uint32_t t[2];
     gDPSetCycleType(&g[0], G_CYC_2CYCLE);
@@ -85,10 +94,78 @@ static void op_test(void) {
           t[1] == (g[10].words.w1 & 0xffffffu), "scissor");
     gDPSetEnvColor(&g[11], 9, 8, 7, 6);
     CHECK(nd_op_xlate(g[11].words.w0, g[11].words.w1, t) && t[0] == NDO_W0(NDO_ENV, 0) && t[1] == 0x09080706u, "env colour");
-    gSPVertex(&g[12], (Vtx*)0x00200000, 4, 0);
-    CHECK(!nd_op_xlate(g[12].words.w0, g[12].words.w1, t) && t[0] == g[12].words.w0 && t[1] == g[12].words.w1, "vertex word kept");
+    gSPDisplayList(&g[12], (Gfx*)0x00200000);
+    CHECK(nd_op_xlate(g[12].words.w0, g[12].words.w1, t) && t[0] == ND_OP_CALL_W0 && t[1] == g[12].words.w1 && nd_op_ctl(NDO_CALL), "list call (HC4d2)");
+    {   /* HC4d2: the control ops: branch, rectangles, the misc sub-ops; the producer encoders give the units of the words */
+        Gfx c[9]; static Vtx cv[4];
+        gSPBranchList(&c[0], (Gfx*)0x00200000);
+        CHECK(nd_op_xlate(c[0].words.w0, c[0].words.w1, t) && t[0] == NDO_W0(NDO_CALL, 1) && t[1] == 0x00200000u, "branch");
+        gDPFillRectangle(&c[1], 10, 20, 300, 220);
+        CHECK(nd_op_xlate(c[1].words.w0, c[1].words.w1, t) && (t[0] >> 24) == NDO_RECT && (t[0] & 0xffffffu) == (c[1].words.w0 & 0xffffffu) &&
+              t[1] == c[1].words.w1 && !(t[1] & NDO_RECT_TEX), "fill rectangle");
+        { Gfx* cp = &c[2]; gSPTextureRectangle(cp++, 40, 80, 400, 600, 3, 0, 0, 1024, 1024); }
+        CHECK(nd_op_xlate(c[2].words.w0, c[2].words.w1, t) && (t[0] & 0xffffffu) == (c[2].words.w0 & 0xffffffu) &&
+              t[1] == (NDO_RECT_TEX | c[2].words.w1), "texture rectangle");
+        CHECK(nd_op_xlate(c[3].words.w0, c[3].words.w1, t) && t[0] == NDO_W0(NDO_MISC, NDO_MISC_NOP << 16) && t[1] == c[3].words.w1, "rdphalf 1");
+        gPmNdSplash(&c[5], 1);
+        CHECK(nd_op_xlate(c[5].words.w0, c[5].words.w1, t) && t[0] == NDO_W0(NDO_MISC, NDO_MISC_ND << 16 | G_PM_ND_SPLASH << 8 | 1u), "splash");
+        gDPSetColorImage(&c[6], G_IM_FMT_RGBA, G_IM_SIZ_16b, 320, 0x00300000);
+        CHECK(nd_op_xlate(c[6].words.w0, c[6].words.w1, t) && t[0] == NDO_W0(NDO_MISC, NDO_MISC_CIMG << 16 | G_IM_SIZ_16b << 12 | 319u) &&
+              t[1] == 0x00300000u, "colour image");
+        gSPModifyVertex(&c[7], 5, G_MWO_POINT_XYSCREEN, 0x12345678);
+        CHECK(nd_op_xlate(c[7].words.w0, c[7].words.w1, t) && t[0] == NDO_W0(NDO_MISC, NDO_MISC_MODVTX << 16 | G_MWO_POINT_XYSCREEN << 8 | 5u),
+              "modify vertex %08x", t[0]);
+        gSPVertex(&c[8], cv, 4, 0);
+        CHECK(nd_op_xlate(c[8].words.w0, c[8].words.w1, t) && t[0] == ND_OP_VTX_W0(4, 0), "sprite vertex encoder");
+        gSP2Triangles(&c[8], 0, 2, 1, 0, 0, 3, 2, 0);
+        CHECK(nd_op_xlate(c[8].words.w0, c[8].words.w1, t) && t[0] == NDO_W0(NDO_TRI2, ND_OP_TRI_A(0, 2, 1)) && t[1] == ND_OP_TRI_A(0, 3, 2),
+              "sprite triangle encoder");
+        c[0].words.w0 = (uint32_t)G_PM_LST << 24;
+        CHECK(nd_op_xlate(c[0].words.w0, 0, t) && t[0] == NDO_W0(NDO_MISC, NDO_MISC_LST << 16), "in-line list start");
+    }
     gDPSetCombineMode(&g[13], G_CC_SHADE, G_CC_SHADE);
-    CHECK(!nd_op_xlate(g[13].words.w0, g[13].words.w1, t), "combine stays a word in HC4a");
+    CHECK(nd_op_xlate(g[13].words.w0, g[13].words.w1, t) && (t[0] >> 24) == NDO_COMB && NDO_COMB_W0(t[0]) == g[13].words.w0 &&
+          t[1] == g[13].words.w1, "combine (HC4b)");
+    gDPSetRenderMode(&g[14], G_RM_FOG_SHADE_A, G_RM_AA_ZB_OPA_SURF2);
+    CHECK(nd_op_xlate(g[14].words.w0, g[14].words.w1, t) && t[0] == NDO_W0(NDO_OML, NDO_A_RENDERMODE) && t[1] == g[14].words.w1,
+          "render mode a field %08x", t[0]);
+    gDPPipeSync(&g[15]);
+    CHECK(!nd_op_xlate(g[15].words.w0, g[15].words.w1, t), "sync stays a word");
+    /* HC4d: the geometry and matrix ops keep their F3DEX2 fields */
+    {
+        static Vtx vv[4]; static Mtx mm; static Lightsn ll;
+        Gfx h[6];
+        gSPVertex(&h[0], vv, 4, 0);
+        gSP1Triangle(&h[1], 0, 1, 2, 0);
+        gSP2Triangles(&h[2], 0, 1, 2, 0, 1, 2, 3, 0);
+        gSPMatrix(&h[3], &mm, G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
+        gSPPopMatrix(&h[4], G_MTX_MODELVIEW);
+        gSPLight(&h[5], &ll.l[0], 1);
+        static const unsigned gid[6] = { NDO_VTX, NDO_TRI1, NDO_TRI2, NDO_MTX, NDO_POPMTX, NDO_MOVEMEM };
+        for (unsigned i = 0; i < 6; i++)
+            CHECK(nd_op_xlate(h[i].words.w0, h[i].words.w1, t) && (t[0] >> 24) == gid[i] && nd_op_geo(gid[i]) && (t[0] & 0xffffffu) == (h[i].words.w0 & 0xffffffu) &&
+                  t[1] == h[i].words.w1 && nd_op_n64[gid[i] - NDO_BASE] == (h[i].words.w0 >> 24), "geometry op %u", i);
+        CHECK((((u32)sizeof(Light) - 1u) / 8u << 19 | ((1u * 24u + 24u) / 8u) << 8 | G_MV_LIGHT) == (h[5].words.w0 & 0xffffffu), "rec_lights light 1 field");
+    }
+    /* HC4c: the texture ops keep their F3DEX2 fields (a = w0 low 24 bits, b = w1); a bind list types in place without its syncs, to NDO_END. */
+    Gfx l[16];
+    Gfx* lp = l;
+    static const uint16_t pal[16];
+    gDPLoadTLUT_pal16(lp++, 0, pal);
+    gDPLoadTextureTile(lp++, (void*)0x00123000, G_IM_FMT_CI, G_IM_SIZ_8b, 32, 16, 0, 0, 31, 15, 0, G_TX_WRAP, G_TX_WRAP, 5, 4, G_TX_NOLOD, G_TX_NOLOD);
+    gSPEndDisplayList(lp++);
+    const unsigned nw = (unsigned)(lp - l);
+    Gfx c[16];
+    memcpy(c, l, sizeof l);
+    const unsigned nt = nd_op_type_run((uint32_t*)c, nw);
+    static const unsigned want[] = { NDO_TIMG, NDO_TILE, NDO_LOADTLUT, NDO_TIMG, NDO_TILE, NDO_LOADTILE, NDO_TILE, NDO_TILESIZE };
+    CHECK(nt == sizeof want / sizeof want[0] && (c[nt].words.w0 >> 24) == NDO_END, "bind list %u units", nt);
+    for (unsigned i = 0, j = 0; i < nt && j < nw; i++, j++) {
+        while (j < nw && ((l[j].words.w0 >> 24) == G_RDPLOADSYNC || (l[j].words.w0 >> 24) == G_RDPPIPESYNC || (l[j].words.w0 >> 24) == G_RDPTILESYNC)) j++;
+        CHECK((c[i].words.w0 >> 24) == want[i] && nd_op_n64[want[i] - NDO_BASE] == (l[j].words.w0 >> 24) && (c[i].words.w0 & 0xffffffu) == (l[j].words.w0 & 0xffffffu) &&
+              c[i].words.w1 == l[j].words.w1, "bind op %u", i);
+        CHECK(nd_op_tex(c[i].words.w0 >> 24), "bind op %u is a texture op", i);
+    }
 }
 
 int main(int argc, char** argv) {

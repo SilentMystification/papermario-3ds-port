@@ -1408,7 +1408,9 @@ extern s16 SoftResetOverlayAlpha, SoftResetState;
 void pm_title_return(void) {
     void pm_lg_quiesce(void); /* pm_logic.c */
     pm_lg_quiesce(); /* SAVESAFE: the logic writes the save pages, so the join runs after its step boundary */
+    pm_flash_slots_line("title return before flush"); /* SAVETITLE log */
     pm_flash_flush("return to title");
+    pm_flash_slots_line("title return after flush"); /* SAVETITLE log */
     pm_audio_drain(3);
     SoftResetOverlayAlpha = 0;
     SoftResetState = 0;

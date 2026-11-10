@@ -1,4 +1,5 @@
 # Row HC4: finish DIRECT (display lists fully removed) with typed ops, combine off core 0, model hit fast path - one Opus agent
+Model (user, 2026-11-10): the oracle reads HC4e/HC4f first and recommends a model per row with its reason; the user chooses. Not decided: one Opus agent.
 
 ## User facts
 User (2026-11-09): shrink the hot code by a very significant amount; HC4-HC6 need a more capable agent. Only the user starts this

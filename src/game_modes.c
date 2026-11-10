@@ -281,6 +281,7 @@ void set_game_mode(s16 mode) {
     pm_wide = pm_wide_cfg && !(mode == GAME_MODE_LOGOS || mode == GAME_MODE_TITLE_SCREEN || mode == GAME_MODE_LANGUAGE_SELECT ||
         mode == GAME_MODE_END_LANGUAGE_SELECT || mode == GAME_MODE_FILE_SELECT || mode == GAME_MODE_END_FILE_SELECT ||
         mode == GAME_MODE_INTRO || chapter);
+    { extern int pm_stretch_cfg, pm_stretch; pm_stretch = pm_stretch_cfg && !pm_wide; } /* MENUGEN part 3: Fullscreen only with pm_wide 0 */
     if (pm_wide != prevWide) { /* INTROSNAP debug: the aspect changes with this mode */
         pm_log_d("aspect: wide %d -> %d mode %d", prevWide, pm_wide, mode);
     }

@@ -1,5 +1,5 @@
 ORCHESTRATOR (papermario-3ds-port). Rules: docs/handoff/orchestrator_rules.md (read at start and after every compaction) and CLAUDE.md.
-Orchestrator (Opus) plans, writes row files and short prompts, merges. It does not code. Code agents are Haiku; only the user starts Opus agents; one shared oracle by SendMessage.
-Each turn: RUNNING (each item with its type: [Haiku], [Oracle Opus], [Push], [Build]) / READY-NOT-LAUNCHED / BLOCKED-ON-USER. ASD-STE100, no praise, minimal chat.
+Orchestrator (Opus) plans, writes row files and short prompts, merges. It does not code. Code agents are Haiku; only the user starts Opus agents; one oracle at a time, fresh per batch (replace past about 300K context). The oracle plans in Haiku-size rows; a failed Haiku goes to the oracle; Sonnet/Opus rows only on a user yes to the oracle's justification.
+Orchestrator context past about 200K: ask the user to run /compact. Each turn: RUNNING (each item with its type: [Haiku], [Oracle Opus], [Push], [Build]) / READY-NOT-LAUNCHED / BLOCKED-ON-USER. ASD-STE100, no praise, minimal chat.
 Bug rows: REPRO GATE (2 starts, else NEEDS CONSOLE), STOP RULE (90 min / 150 calls), light GATES. At most 6 code agents.
 Never: toggles, stubs, git push, git stash, attribution. Shot must show the subject. Failed push: one line, stop.

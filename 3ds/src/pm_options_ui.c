@@ -42,7 +42,10 @@ static char fb[2][40];
 void pm_menu_msg(const char* fmt, ...);
 /* CHEATSAVE: the Cheats tab, or a folder opened from it. The bottom row shows "Press X to save cheats" (cyan) while its set is dirty. */
 static int cheat_tab(void) { return tab == 3 || (tab == PM_OPT_SUB && home_tab == 3); }
-static const char* foot1(void) { return !fb[1][0] && cheat_tab() && pm_cheat_dirty() ? "\x1b[1;36mPress X to save cheats\x1b[0m" : fb[1]; }
+static const char* foot1(void) {
+    if (!fb[1][0] && cheat_tab() && pm_cheat_dirty()) { pm_log_d("menu: cheats dirty, footer shown"); return "\x1b[1;36mPress X to save cheats\x1b[0m"; }
+    return fb[1];
+}
 static void draw(void) {
     char out[2400];
     int n = 0, rows = pm_optui_rows(tab, MODE);
@@ -60,7 +63,7 @@ static void draw(void) {
         else n += snprintf(out + n, sizeof out - (size_t)n, "%c %-22s %s" "\n", r == sel[tab] ? '>' : ' ', pm_optui_label(tab, r, MODE), v ? v : "");
     }
     for (int r = (rows < VIS ? rows : VIS); r < VIS; r++) n += snprintf(out + n, sizeof out - (size_t)n, "\n");
-    n += snprintf(out + n, sizeof out - (size_t)n, "\n\n%s\n\n\n\n%s\n%s", tab == PM_OPT_SUB ? (pm_optui_warn() ? "B: warp menu  A: back" : pm_optui_sub_kind() == 2 ? "< > change  A: +1  B: back" : pm_optui_sub_kind() == 3 || pm_optui_sub_kind() == 4 ? "A: on or off  B: back" : pm_optui_sub_kind() == 12 ? "A: open  B: back" : pm_optui_sub_kind() == 13 ? "A: fight  B: back" : pm_optui_sub_kind() == 5 ? "A: open  B: back" : pm_optui_sub_kind() == 11 ? "A: spawn one  B: back" : pm_optui_sub_kind() == 15 ? (pm_optui_sub_level() == 2 ? "A: set  B: back" : "A: open  B: back") : pm_optui_sub_kind() >= 6 ? "< > A: change  B: back" : pm_optui_sub_kind() == 1 ? "A: fight  B: back" : pm_optui_sub_level() == 2 ? "< > entry  A: warp  B: back" : "A: open or warp  B: back") : "L R: tab  < > A: change  B: close", fb[0], foot1());
+    n += snprintf(out + n, sizeof out - (size_t)n, "\n\n%s\n\n\n\n%s\n%s", tab == PM_OPT_SUB ? (pm_optui_warn() ? "B: warp menu  A: back" : pm_optui_sub_kind() == 2 ? "< > change  A: +1  B: back" : pm_optui_sub_kind() == 3 || pm_optui_sub_kind() == 4 ? "A: on or off  B: back" : pm_optui_sub_kind() == 12 ? "A: open  B: back" : pm_optui_sub_kind() == 13 ? "A: fight  B: back" : pm_optui_sub_kind() == 5 ? "A: open  B: back" : pm_optui_sub_kind() == 11 ? "A: spawn one  B: back" : pm_optui_sub_kind() == 15 ? (pm_optui_sub_level() == 2 ? "A: set  B: back" : "A: open  B: back") : pm_optui_sub_kind() >= 6 ? "< > A: change  B: back" : pm_optui_sub_kind() == 1 ? "A: fight  B: back" : pm_optui_sub_level() == 2 ? "< > entry  A: warp  B: back" : "A: open or warp  B: back") : "L R: tab  < > A: change  Select: close", fb[0], foot1());
     pm_log_d("menu: tab %d row %d %s = %s", tab, sel[tab], pm_optui_label(tab, sel[tab], MODE), pm_optui_value(tab, sel[tab], MODE) ? pm_optui_value(tab, sel[tab], MODE) : "-");
     pm_gpu_menu_draw(out);
     if (pm_debug_has("shotmenu")) { /* MN0: test aid, one bottom shot per menu draw as shots/bot_m<seq>.ppm */
@@ -105,7 +108,7 @@ void pm_menu_set(int on) {
         draw();
     } else {
         pm_log("menu: late console writes %u", pm_log_late_con()); /* B1 check */
-        if (tab == PM_OPT_SUB) tab = home_tab; /* the menu opens on the tab it was in */
+        /* MENUGEN part 2: the menu keeps its tab, sub-page and row (tab, sel, top, sub_kind of pm_options.c) for the next open */
         pm_options_close(); /* saves options.ini when something changed */
         pm_gpu_menu_draw("");
         pm_log("menu: close");
@@ -137,7 +140,7 @@ void pm_menu_hold(int dx, int dy) {
 
 void pm_menu_key(unsigned k) {
     if (k & (KEY_A | KEY_B | KEY_L | KEY_R | KEY_SELECT)) memset(fb, 0, sizeof fb); /* a key clears the last message */
-    if (k & KEY_SELECT) { pm_menu_set(0); return; }
+    if (k & KEY_SELECT) { pm_log("menu: Select closes"); pm_menu_set(0); return; } /* MENUGEN part 2: only Select closes */
     if ((k & (KEY_L | KEY_R)) && tab != PM_OPT_SUB) { /* the submenu has no tab change */
         tab = (tab + ((k & KEY_L) ? OPT_TABS - 1 : 1)) % OPT_TABS;
         pm_optui_disarm();
@@ -146,7 +149,7 @@ void pm_menu_key(unsigned k) {
         sel[tab] = pm_optui_sub_restore(); top[tab] = 0;
     } else if (k & KEY_B) {
         int back;
-        if (tab != PM_OPT_SUB) { pm_menu_set(0); return; }
+        if (tab != PM_OPT_SUB) { pm_log("menu: B on a tab, the menu stays open"); return; } /* B closes nothing: Select closes */
         back = pm_optui_sub_pop(sel[tab]);
         if (back >= 0) { /* MN6 rest: an area page goes back to the area list, the menu stays in the folder */
             sel[tab] = back; top[tab] = 0;

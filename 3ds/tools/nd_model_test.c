@@ -2,6 +2,7 @@
  * descriptor (nd_tex_handle_set, B4). Synthetic lists. Exit 1 on a failure. */
 #include <stdio.h>
 #include <string.h>
+#include "nd_op.h"
 #include "nd.h"
 #include "nd_ops.h"
 #include "PR/mbi.h"
@@ -22,6 +23,16 @@ static void oth(unsigned* p, unsigned op, unsigned sft, unsigned len, unsigned v
     p[1] = v;
 }
 
+/* HC4b: nd_mode_compile reads typed ops (nd_op.h): the word lists of the tests typed as the recorder types a render mode list. */
+static void typ(unsigned* L, unsigned n) {
+    for (unsigned i = 0; i < n; i++) {
+        uint32_t t[2];
+        if ((L[2 * i] >> 24) == OP_ENDDL) { L[2 * i] = NDO_W0(NDO_END, 0); L[2 * i + 1] = 0; continue; }
+        nd_op_xlate(L[2 * i], L[2 * i + 1], t);
+        L[2 * i] = t[0]; L[2 * i + 1] = t[1];
+    }
+}
+
 int main(void) {
     unsigned L[3][2];
     NdMode m;
@@ -31,6 +42,7 @@ int main(void) {
     oth(L[0], OP_SETOTHERMODE_H, 20, 2, 1u << 20);
     oth(L[1], OP_SETOTHERMODE_L, 0, 32, 0x00FF1C33u | 0x10000000u);
     oth(L[2], OP_ENDDL, 0, 1, 0); L[2][0] = OP_ENDDL << 24; L[2][1] = 0;
+    typ(&L[0][0], 3);
     CHECK(nd_mode_compile(&m, &L[0][0]) == 1 && m.ok == 1, "mode 1 ok");
     nd_render_state(1u << 20, 0x00FF1C33u | 0x10000000u, 0, &want);
     CHECK(memcmp(&m.r, &want, sizeof want) == 0, "mode 1 render state equal");
@@ -39,6 +51,7 @@ int main(void) {
     unsigned L2[2][2];
     oth(L2[0], OP_SETOTHERMODE_L, 0, 32, 0x33u); /* om_l only, om_h never written */
     L2[1][0] = OP_ENDDL << 24; L2[1][1] = 0;
+    typ(&L2[0][0], 2);
     CHECK(nd_mode_compile(&m, &L2[0][0]) == 1 && m.ok == 1 && m.wh == 0 && m.wl == 0xFFFFFFFFu, "B8: partial list compiles, written masks kept");
 
     /* 3: a geometry mode op in the list (B6): fallback */
@@ -46,8 +59,10 @@ int main(void) {
     L3[0][0] = OP_GEOMETRYMODE << 24; L3[0][1] = 0;
     oth(L3[1], OP_SETOTHERMODE_H, 20, 2, 0); /* not reached: the list stops at the geometry op */
     L3[2][0] = OP_ENDDL << 24; L3[2][1] = 0;
+    typ(&L3[0][0], 3);
     CHECK(nd_mode_compile(&m, &L3[0][0]) == 1 && m.ok == 1 && m.gand == 0u && m.gor == 0u, "B9: geometry op (and 0) composes");
     { unsigned bad[2][2] = { { (unsigned)OP_PIPESYNC << 24, 0 }, { (unsigned)OP_ENDDL << 24, 0 } };
+      typ(&bad[0][0], 2);
       CHECK(nd_mode_compile(&m, &bad[0][0]) == 0 && m.ok == 0 && m.bad == OP_PIPESYNC, "B9: another op is fallback with its code"); }
 
     /* 4: texture handle descriptor: common case set, found by index and list pointer */
@@ -82,6 +97,7 @@ int main(void) {
         oth(L4[0], OP_SETOTHERMODE_H, 20, 2, 0u);
         oth(L4[1], OP_SETOTHERMODE_L, 0, 32, 0x00FF1C33u | 0x10000000u);
         L4[2][0] = OP_ENDDL << 24; L4[2][1] = 0;
+        typ(&L4[0][0], 3);
         CHECK(nd_mode_compile(&mode, &L4[0][0]) == 1, "3a: 1CYC mode compiles");
         gDPSetCombineMode(&cg, G_CC_MODULATERGBA, G_CC_MODULATERGBA);
         memset(rec, 0, sizeof rec); /* R3 flags 0: no fog, no prim, no env */
@@ -121,6 +137,7 @@ int main(void) {
             NdMode pm;
             oth(L5[0], OP_SETOTHERMODE_L, 16, 8, 0x40u << 16);
             L5[1][0] = OP_ENDDL << 24; L5[1][1] = 0;
+            typ(&L5[0][0], 2);
             CHECK(nd_mode_compile(&pm, &L5[0][0]) == 1, "B8: partial list compiles");
             c2 = c; c2.mode = &pm; c2.known_l = 0x00FFFFFFu;
             CHECK(nd_model_state(rec, &c2, &dr, &st) == -1, "B8: read other mode bit with no value is nost");

@@ -151,142 +151,115 @@ void underwater_render(EffectInstance* effect) {
 void func_E00BA618(void) {
 }
 
+/* TIDAL try 2: the mesh grid. 19 x 13 vertices, row-major (b * 19 + a), in quarter pixels (the ModifyVertex unit, x and y
+ * shifted by unk_23[a][b] on y only). Texture coordinates are the undisplaced screen position: s = x * 32, t = y * 32
+ * (S10.5, texel = pixel). The mesh draws into the frame buffer and samples it: the grab hold (SBLK2 B1) gives one copy.
+ * z is 1/3 for eye z -320 (every vertex slot of the mesh data is -320): under the ortho near -16384, far 16384 that is -5461. */
+#define TIDAL_COLS 19
+#define TIDAL_ROWS 13
+#define TIDAL_Z (-5461)
+static Vtx sTidalGrid[TIDAL_COLS * TIDAL_ROWS] __attribute__((aligned(16)));
+static int tidal_logged;
+
+void pm_log(const char* fmt, ...);
+
+static void tidal_grid_fill(UnderwaterFXData* data) {
+    s32 a, b, xs, ys;
+    Vtx* v = sTidalGrid;
+
+    for (b = 0; b < TIDAL_ROWS; b++) {
+        ys = b * 16 + 24;
+        if (b == 0) {
+            ys -= 4;
+        } else if (b == TIDAL_ROWS - 1) {
+            ys += 4;
+        }
+        for (a = 0; a < TIDAL_COLS; a++, v++) {
+            xs = a * 16 + 16;
+            if (a == 0) {
+                xs -= 4;
+            } else if (a == TIDAL_COLS - 1) {
+                xs += 4;
+            }
+            v->v.ob[0] = (s16) (xs * 4);
+            v->v.ob[1] = (s16) (ys * 4 + data->unk_23[a][b]);
+            v->v.ob[2] = TIDAL_Z;
+            v->v.flag = 0;
+            v->v.tc[0] = (s16) (xs * 32);
+            v->v.tc[1] = (s16) (ys * 32);
+            v->v.cn[0] = 0;
+            v->v.cn[1] = 0;
+            v->v.cn[2] = 0;
+            v->v.cn[3] = 255;
+        }
+    }
+}
+
 void underwater_appendGfx(void* effect) {
     UnderwaterFXData* data = ((EffectInstance*)effect)->data.underwater;
     s32 alpha = data->waterColor.a;
-    s32 x, y;
-    s32 dxRight, dxLeft, dyTop, dyBottom;
-    s32 edgeX, edgeY;
-    s32 vtxIdx;
     Matrix4f mtx;
-    Matrix4f unused_matrix;
-    s32 i, j;
+    s32 b, c, k, i;
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, nuGfxZBuffer);
     gSPDisplayList(gMainGfxPos++, D_09000528_3B9F98);
 
-    // copy image from framebuffer to zbuffer
-    for (i = 0; i < 40; i++) {
-        gDPLoadTextureTile(
-            gMainGfxPos++, nuGfxCfb_ptr + SCREEN_WIDTH * i * 6,
-            G_IM_FMT_RGBA, G_IM_SIZ_16b,
-            SCREEN_WIDTH, 6,
-            0, 0, SCREEN_WIDTH - 1, 5, 0,
-            G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP,
-            G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
-        gSPTextureRectangle(
-            gMainGfxPos++,
-            0 * 4, (i * 6) * 4,
-            (SCREEN_WIDTH - 1) * 4, (i * 6 + 5) * 4,
-            G_TX_RENDERTILE, 0, 0, 0x1000, 0x0400);
-        gDPPipeSync(gMainGfxPos++);
+    tidal_grid_fill(data);
+    if (!tidal_logged) {
+        tidal_logged = 1;
+        pm_log("tidal: mesh tile 0..319 x 0..239 RGBA16 line 80, grab hold 1, tc unit x32 (S10.5); v0 ob %d %d %d tc %d %d; v18 ob %d %d tc %d %d; v234 tc %d %d alpha %d",
+            sTidalGrid[0].v.ob[0], sTidalGrid[0].v.ob[1], sTidalGrid[0].v.ob[2], sTidalGrid[0].v.tc[0], sTidalGrid[0].v.tc[1],
+            sTidalGrid[18].v.ob[0], sTidalGrid[18].v.ob[1], sTidalGrid[18].v.tc[0], sTidalGrid[18].v.tc[1],
+            sTidalGrid[234].v.tc[0], sTidalGrid[234].v.tc[1], alpha);
     }
 
     gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, nuGfxCfb_ptr);
     gDPSetPrimColor(gMainGfxPos++, 0, 0, data->waterColor.r, data->waterColor.g, data->waterColor.b, alpha >> 1);
     gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
     gDPSetCombineMode(gMainGfxPos++, PM_CC_48, PM_CC_48);
-    gDPSetTextureImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, OS_K0_TO_PHYSICAL(nuGfxZBuffer));
+    gDPSetTextureImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, OS_K0_TO_PHYSICAL(nuGfxCfb_ptr));
     gDPSetRenderMode(gMainGfxPos++, CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | G_RM_PASS, CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_0, G_BL_CLR_IN, G_BL_1));
     gDPSetTexturePersp(gMainGfxPos++, G_TP_PERSP);
     gDPSetTextureFilter(gMainGfxPos++, G_TF_BILERP);
+    gPmNdGrabHold(gMainGfxPos++, 1); /* SBLK2 B1: one frame copy for the mesh */
 
-    {   /* F07-6: with wide the 3D batch is stretched 1.25. The frame copy is the center 320 columns, so widen the frustum to draw the mesh 1:1 centered. */
-        extern int pm_wide;
-        f32 k = pm_wide ? 1.25f : 1.0f;
-        guFrustumF(mtx, -80.0f * k, 80.0f * k, 60.0f, -60.0f, 160.0f, 640.0f, 1.0f);
-    }
+    guOrthoF(mtx, 0.0f, 1280.0f, 960.0f, 0.0f, -16384.0f, 16384.0f, 1.0f);
     guMtxF2L(mtx, &gDisplayContext->matrixStack[gMatrixListPos]);
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
     gSPClearGeometryMode(gMainGfxPos++, G_CULL_BOTH | G_LIGHTING);
     gSPSetGeometryMode(gMainGfxPos++, G_SHADE | G_SHADING_SMOOTH);
-    gSPVertex(gMainGfxPos++, D_09000428_3B9E98, 16, 0);
+    gSPTexture(gMainGfxPos++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
 
-    for (j = 0; j < 12; j++) {
-        y = j * 16 + 24;
-        edgeY = false;
+    // one tile: the whole frame (320 x 240, RGBA16, line 80 words), clamp
+    gDPSetTile(
+        gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b,
+        80, 0x0000, G_TX_LOADTILE, 0,
+        G_TX_NOMIRROR | G_TX_CLAMP, 0, G_TX_NOLOD,
+        G_TX_NOMIRROR | G_TX_CLAMP, 0, G_TX_NOLOD);
+    gDPLoadSync(gMainGfxPos++);
+    gDPLoadTile(gMainGfxPos++, G_TX_LOADTILE, 0, 0, (SCREEN_WIDTH - 1) * 4, (240 - 1) * 4);
+    gDPPipeSync(gMainGfxPos++);
+    gDPSetTile(
+        gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b,
+        80, 0x0000, G_TX_RENDERTILE, 0,
+        G_TX_NOMIRROR | G_TX_CLAMP, 0, G_TX_NOLOD,
+        G_TX_NOMIRROR | G_TX_CLAMP, 0, G_TX_NOLOD);
+    gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, 0, 0, (SCREEN_WIDTH - 1) * 4, (240 - 1) * 4);
 
-        if (j == 0) {
-            dyTop = -4;
-            edgeY = true;
-        } else {
-            dyTop = 0;
-        }
-
-        if (j == 11) {
-            dyBottom = 4;
-            edgeY = true;
-        } else {
-            dyBottom = 0;
-        }
-
-        for (i = 0; i < 18; i++) {
-            x = i * 16 + 16;
-            edgeX = false;
-
-            if (i == 0) {
-                dxLeft = -4;
-                edgeX = true;
-            } else {
-                dxLeft = 0;
+    // cells: a load holds the 20 + k contiguous grid vertices of a row pair (k cells, k <= 12); one triangle op per cell
+    for (b = 0; b < TIDAL_ROWS - 1; b++) {
+        for (c = 0; c < TIDAL_COLS - 1; c += 12) {
+            k = (TIDAL_COLS - 1 - c) < 12 ? (TIDAL_COLS - 1 - c) : 12;
+            gSPVertex(gMainGfxPos++, &sTidalGrid[b * TIDAL_COLS + c], k + 20, 0);
+            for (i = 0; i < k; i++) {
+                gSP2Triangles(gMainGfxPos++, i, 20 + i, i + 1, 0, i, 19 + i, 20 + i, 0);
             }
-
-            if (i == 17) {
-                dxRight = 4;
-                edgeX = true;
-            } else {
-                dxRight = 0;
-            }
-
-            gDPSetTile(
-                gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b,
-                (((((x + dxRight + 16) - (x + dxLeft)) + 1) * 2) + 7) >> 3, 0x0000,
-                G_TX_LOADTILE, 0,
-                G_TX_NOMIRROR | G_TX_CLAMP, 6, G_TX_NOLOD,
-                G_TX_NOMIRROR | G_TX_CLAMP, 6, G_TX_NOLOD);
-            gDPLoadSync(gMainGfxPos++);
-            gDPLoadTile(gMainGfxPos++, G_TX_LOADTILE,
-                (x + dxLeft) * 4,
-                (y + dyTop) * 4,
-                (x + dxRight + 16) * 4,
-                (y + dyBottom + 16) * 4);
-            gDPPipeSync(gMainGfxPos++);
-            gDPSetTile(
-                gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b,
-                (((((x + dxRight + 16) - (x + dxLeft)) + 1) * 2) + 7) >> 3, 0x0000,
-                G_TX_RENDERTILE, 0,
-                G_TX_NOMIRROR | G_TX_CLAMP, 6, G_TX_NOLOD,
-                G_TX_NOMIRROR | G_TX_CLAMP, 6, G_TX_NOLOD);
-            gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE,
-                0, 0, (x + dxRight + 31) * 4, (y + dyBottom + 31) * 4);
-
-            if (edgeX && edgeY) {
-                vtxIdx = 12;
-            } else {
-                vtxIdx = 4;
-                if (!edgeX) {
-                    if (!edgeY) {
-                        vtxIdx = 0;
-                    } else {
-                        vtxIdx = 8;
-                    }
-                }
-            }
-
-            gSPModifyVertex(gMainGfxPos++, vtxIdx    , G_MWO_POINT_XYSCREEN, ((x + dxLeft        ) << 0x12) | ((y + dyTop          ) * 4 + data->unk_23[i    ][j    ]));
-            gSPModifyVertex(gMainGfxPos++, vtxIdx + 1, G_MWO_POINT_XYSCREEN, ((x + dxRight + 0x10) << 0x12) | ((y + dyTop          ) * 4 + data->unk_23[i + 1][j    ]));
-            gSPModifyVertex(gMainGfxPos++, vtxIdx + 2, G_MWO_POINT_XYSCREEN, ((x + dxLeft        ) << 0x12) | ((y + dyBottom + 0x10) * 4 + data->unk_23[i    ][j + 1]));
-            gSPModifyVertex(gMainGfxPos++, vtxIdx + 3, G_MWO_POINT_XYSCREEN, ((x + dxRight + 0x10) << 0x12) | ((y + dyBottom + 0x10) * 4 + data->unk_23[i + 1][j + 1]));
-            gSP2Triangles(gMainGfxPos++, vtxIdx, vtxIdx + 3, vtxIdx + 1, 0, vtxIdx, vtxIdx + 2, vtxIdx + 3, 0);
-            gDPPipeSync(gMainGfxPos++);
         }
     }
 
-    gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, nuGfxZBuffer);
-    gSPDisplayList(gMainGfxPos++, D_09000570_3B9FE0);
-    gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, nuGfxCfb_ptr);
+    gPmNdGrabHold(gMainGfxPos++, 0);
+    gSPTexture(gMainGfxPos++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF);
     gDPPipeSync(gMainGfxPos++);
     gSPMatrix(gMainGfxPos++, &gDisplayContext->camPerspMatrix[gCurrentCameraID], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
     gDPPipeSync(gMainGfxPos++);

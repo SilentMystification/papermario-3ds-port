@@ -46,6 +46,16 @@ gen_map_restore() {
 }
 gen_map_restore
 
+# TEXKEY2: 3ds/include/texkey_patch.h (git-ignored, generated) holds the palette fix of the map texture archives: the alpha-0
+# key colours of each CI texture, computed from the ROM and the texture sources of ASSET_BASE (3ds/tools/texkey_bake.py, read only).
+# nuPiReadRom (pm_os.c) applies it to the bytes the game reads. Rewritten each build; the key below covers its content.
+gen_texkey() {
+    tkb=$ASSET_BASE; command -v cygpath >/dev/null 2>&1 && tkb=$(cygpath -m "$ASSET_BASE")
+    if command -v py >/dev/null 2>&1; then py -3 3ds/tools/texkey_bake.py "$tkb" 3ds/include/texkey_patch.h
+    else python3 3ds/tools/texkey_bake.py "$tkb" 3ds/include/texkey_patch.h; fi || { echo "texkey_bake.py failed" >&2; exit 1; }
+}
+gen_texkey
+
 # The inputs CMake reads (3ds/CMakeLists.txt, DECOMP = repo root). Nothing else reaches the build.
 # CODE_DIRS are read from this worktree; ASSET_DIRS from ASSET_BASE (see above).
 CODE_DIRS="3ds/CMakeLists.txt 3ds/effects.cmake 3ds/battle.cmake 3ds/maps.cmake 3ds/map_syms.lds LaunchIcon.png 3ds/ld 3ds/shaders 3ds/stub_include 3ds/include 3ds/src src include"
@@ -69,7 +79,7 @@ key_now() {
         git ls-tree -r HEAD -- $KEY_IN
         git diff HEAD -- $KEY_IN
         git ls-files -o --exclude-standard -- $KEY_IN | while read -r f; do sha1sum "$f"; done
-        sha1sum 3ds/src/map_restore_table.c 3ds/ld/map_restore.ld 3ds/ld/map_restore_bss.ld
+        sha1sum 3ds/src/map_restore_table.c 3ds/ld/map_restore.ld 3ds/ld/map_restore_bss.ld 3ds/include/texkey_patch.h
         (cd "$ASSET_BASE" && find $ASSET_DIRS -type f -printf '%p %s %T@\n' | sort)
     } | sha1sum | cut -d' ' -f1
 }
@@ -115,10 +125,11 @@ if [ -z "$PM_BUILD_REV" ]; then
 fi
 # pm_build.h describes the 3dsx that is built (push_3ds.sh archives from it, bench.py checks its mtime), so it is written
 # here, after the skip check: a skipped build keeps the header of the 3dsx it kept. Rewritten only when the number changed,
-# since a new mtime would rebuild every file that includes it.
-printf '#define PM_BUILD_STR "%s"\n' "$BN" > 3ds/include/pm_build.h.tmp
-printf '#define PM_GIT_HASH "%s"\n' "$(git rev-parse --short "$REV")" >> 3ds/include/pm_build.h.tmp
-cmp -s 3ds/include/pm_build.h.tmp 3ds/include/pm_build.h && rm -f 3ds/include/pm_build.h.tmp || mv -f 3ds/include/pm_build.h.tmp 3ds/include/pm_build.h
+# since a new mtime would rebuild every file that includes it. The tmp name is per process: two pushes at once shared one name.
+PMB_TMP=3ds/include/pm_build.h.tmp.$$
+printf '#define PM_BUILD_STR "%s"\n' "$BN" > "$PMB_TMP"
+printf '#define PM_GIT_HASH "%s"\n' "$(git rev-parse --short "$REV")" >> "$PMB_TMP"
+cmp -s "$PMB_TMP" 3ds/include/pm_build.h && rm -f "$PMB_TMP" || mv -f "$PMB_TMP" 3ds/include/pm_build.h
 # A failed build must not leave the old key behind: the key file is written only after a successful build.
 rm -f $KEY_FILE
 

@@ -12,6 +12,7 @@
 #include <sys/socket.h>
 
 #include "pm_port.h"
+#include "pm_thread.h"
 #include "pm_romload.h"
 #include "pm_logfmt.h"
 
@@ -1007,7 +1008,7 @@ unsigned pm_log_dropped(void) { return q_drop_total + q_dropped; }
 static int start_writer(int id, int core) {
     LightEvent_Clear(&ev_started);
     __atomic_store_n(&active_id, id, __ATOMIC_RELEASE);
-    writer_th = threadCreate(writer_main, (void*)(intptr_t)id, 32 * 1024, 0x3F, core, false);
+    writer_th = pm_thread_create(writer_main, (void*)(intptr_t)id, 32 * 1024, 0x3F, core, "log_writer");
     if (!writer_th) return 0;
     u64 t0 = svcGetSystemTick();
     int to = LightEvent_WaitTimeout(&ev_started, 1000000000LL);
@@ -1032,7 +1033,15 @@ static Result cpu_apply(int v, const char* why) {
     return r;
 }
 
-/* Hook runs in the thread that calls aptMainLoop (the game thread). Suspend and sleep: 30, so the HOME menu stays responsive. Restore and wake: the game value. */
+/* N3DSCPU: on the N3DS the limit stays at the start value through HOME, sleep, exit. Lowering it at HOME froze core 1 (the log writer,
+ * audio, prefetch, flash) and the watchdog ended the game. Set in pm_log_start. The O3DS keeps the limit switch below. */
+static int cpu_keep_n3ds;
+static void cpu_hold(const char* tag, int v, const char* why) {
+    if (cpu_keep_n3ds) { pm_log("%s: cpu limit kept (N3DS)", tag); return; }
+    cpu_apply(v, why);
+}
+
+/* Hook runs in the thread that calls aptMainLoop (the game thread). Suspend and sleep: 30, so the HOME menu stays responsive. Restore and wake: the game value. O3DS only: the N3DS keeps the start value (N3DSCPU). */
 /* PT68: while the app is suspended or asleep no thread of ours may touch the SD card, the network or the console. The console freezes when the
  * log writer (fsync, soc) or the flash thread runs into a sleeping system module. The hook drains the queue and syncs the file first, then sets
  * the gate. The writer and the flash thread idle while it is set. Lines logged after the gate stay in the queue until the gate opens. */
@@ -1087,7 +1096,7 @@ int pm_step_timed(int slot, void (*fn)(void*), void* arg, unsigned ms) {
         s->made = 1;
         LightEvent_Init(&s->go, RESET_ONESHOT);
         LightEvent_Init(&s->done, RESET_ONESHOT);
-        s->th = threadCreate(step_main, s, 16 * 1024, 0x30, -2, false);
+        s->th = pm_thread_create(step_main, s, 16 * 1024, 0x30, -2, "log_step");
     }
     if (!s->th) return -1;
     s->fn = fn;
@@ -1110,7 +1119,7 @@ static unsigned ms_since(unsigned long long t0) { return (unsigned)((svcGetSyste
 static void flush_step(void* why) { pm_flash_flush((const char*)why); }
 
 /* SLEEP3: one bounded enter sequence for HOME (suspend) and sleep. Every wait has a deadline. Order: audio join, render sync, flash step,
- * step slot and save idle, io gate (synchronous, drain and fsync done), then the 30 % core 1 limit. No core 1 I/O may run after the limit drops. */
+ * step slot and save idle, io gate (synchronous, drain and fsync done), then the core 1 limit (30 % on the O3DS, kept on the N3DS: N3DSCPU). No core 1 I/O may run after the limit drops. */
 static int step_slot_idle(int slot, unsigned ms) {
     unsigned long long t0 = svcGetSystemTick();
     for (;;) {
@@ -1136,7 +1145,7 @@ static void quiet_enter(const char* tag, const char* why) {
     int dr = io_gate(1);
     if (dr >= 0) pm_log("%s: io drain done, %d ms", tag, dr);
     else pm_log("%s: io drain timeout, gate closed anyway, %u ms", tag, ms_since(t0));
-    cpu_apply(30, why);
+    cpu_hold(tag, 30, why);
     pm_log("%s: gate closed, %u ms", tag, ms_since(t0));
 }
 
@@ -1183,15 +1192,24 @@ static void wake_hook(void) {
         pm_dspa_rearm();
         pm_log("sleep: audio resumed, %u ms", ms_since(t0));
     } else pm_log("sleep: audio not resumed, %s timeout, %u ms", a ? "audio join" : "render sync", ms_since(t0));
-    cpu_apply(cpu_game, "wake");
+    cpu_hold("wake", cpu_game, "wake");
 }
 
-void pm_lg_quiesce(void); /* pm_logic.c */
+int pm_lg_quiesce_ms(unsigned ms); /* pm_logic.c */
+/* HOMEHANG: the hook's wait for the logic step boundary is bounded. The N3DS logic thread (core 2) did not finish during HOME and the
+ * unbounded wait ended the game (watchdog). On a timeout the suspend goes on; the exit flush is skipped (its save could be half written). */
+#define HOOK_QUIESCE_MS 200u
+static int hook_idle = 1; /* the last suspend, sleep or exit hook found the logic idle */
 static void cpu_hook(APT_HookType h, void* param) {
     (void)param;
     if (h == APTHOOK_ONSUSPEND || h == APTHOOK_ONSLEEP || h == APTHOOK_ONEXIT) { /* CORE2C-3: the logic thread stops at a step boundary first (game thread only) */
-        pm_lg_quiesce();
-        pm_log("save: hook flush after quiesce"); /* SAVESAFE: the flush step below runs after the logic stopped */
+        const char* hk = h == APTHOOK_ONSUSPEND ? "home" : h == APTHOOK_ONSLEEP ? "sleep" : "exit";
+        if (h == APTHOOK_ONSUSPEND) pm_wd_quiet = 1; /* the watchdog stays quiet while the hook waits */
+        unsigned long long tq = svcGetSystemTick();
+        pm_log("%s: quiesce start", hk);
+        hook_idle = pm_lg_quiesce_ms(HOOK_QUIESCE_MS) == 0;
+        pm_log("%s: quiesce %s, %u ms", hk, hook_idle ? "end" : "timeout", ms_since(tq));
+        if (hook_idle) pm_log("save: hook flush after quiesce"); /* SAVESAFE: the flush step below runs after the logic stopped */
     }
     switch (h) {
     case APTHOOK_ONSUSPEND: pm_wd_quiet = 1; pm_log("home: suspend"); quiet_enter("home", "HOME menu opens"); break;
@@ -1200,17 +1218,17 @@ static void cpu_hook(APT_HookType h, void* param) {
         io_gate(0);
         pm_wd_quiet = 0;
         pm_step_timed(PM_STEP_FLASH, notes_step, NULL, 400); /* SLEEP1: the HOME notes go to crash.txt now, bounded */
-        cpu_apply(cpu_game, "HOME menu closed");
+        cpu_hold("home close", cpu_game, "HOME menu closed");
         break;
     case APTHOOK_ONWAKEUP: wake_hook(); break;
-    case APTHOOK_ONEXIT: pm_audio_drain(3); pm_flash_flush("exit hook"); if (cpu_now != 30) cpu_apply(30, "exit"); break;
+    case APTHOOK_ONEXIT: pm_audio_drain(3); if (hook_idle) pm_flash_flush("exit hook"); else pm_log("exit: flush skipped, logic not idle"); if (cpu_now != 30) cpu_hold("exit", 30, "exit"); break;
     default: break;
     }
 }
 
 /* Called once at normal exit (main), after the game thread ended. */
 void pm_cpu_limit_exit(void) {
-    if (cpu_now != 30 && cpu_now != -1) cpu_apply(30, "exit (main)");
+    if (cpu_now != 30 && cpu_now != -1) cpu_hold("exit", 30, "exit (main)");
 }
 
 /* Start the writer thread. Call once, after pm_log_init. */
@@ -1225,8 +1243,12 @@ void pm_log_start(void) {
     LightEvent_Init(&ev_sink, RESET_ONESHOT);
     LightLock_Init(&drain_lock);
     /* Core 1 (system core): a thread there is allowed only after APT_SetAppCpuTimeLimit (libctru thread.h). */
-    /* CPULIM-UI: the game value is 80 (try 79 when 80 fails). Switch cpulimit=<5..80> overrides. HOME menu and sleep set 30, resume sets the game value. */
+    /* CPULIM-UI: the game value is 80 (try 79 when 80 fails). Switch cpulimit=<5..80> overrides. HOME menu and sleep set 30, resume sets the game value (O3DS; the N3DS keeps the start value, N3DSCPU). */
     {
+        bool n3 = false;
+        APT_CheckNew3DS(&n3);
+        cpu_keep_n3ds = n3;
+        pm_log("cpu limit: N3DS %d (start value kept at HOME, sleep and exit)", n3);
         int lim = 80;
         char v[16];
         if (pm_debug_value("cpulimit", v, sizeof v)) { lim = atoi(v); if (lim < 5 || lim > 80) lim = 30; }
@@ -1252,7 +1274,7 @@ void pm_log_start(void) {
         return;
     }
     pm_log_d("log: writer thread on core %d, game thread on core %d", writer_core, (int)svcGetProcessorID());
-    sink_th = threadCreate(sink_main, NULL, 32 * 1024, 0x3F, writer_core, false);
+    sink_th = pm_thread_create(sink_main, NULL, 32 * 1024, 0x3F, writer_core, "log_sink");
     pm_log_d("log: sink thread %s on core %d", sink_th ? "created" : "NOT created", writer_core);
     __atomic_store_n(&writer_on, 1, __ATOMIC_RELEASE);
 }

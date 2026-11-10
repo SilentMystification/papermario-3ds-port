@@ -100,6 +100,78 @@
       ]
     },
     {
+      "name": "tidal_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "TIDAL step 2 picture: mac_01 cold det start, fxtest=87 (underwater mesh) at frame 402, shots 1 and 2 at frames 412 and 432 inside the wave. Run on the base build (before) and on the TIDAL build (after); cmp against the base store. A person reads the shots.",
+      "scenario": "tidal_pic",
+      "cap": 30,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "pic",
+        "tidal"
+      ],
+      "gates": []
+    },
+    {
+      "name": "tidal_census_base",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "TIDAL step 1 census base: mac_01 pos 0 0 200, no effect. Window f410 (frames 410 to 467) per-frame draw count avg and max (closes proxy: C_DRAW per batch submit, pm_gpu.c:1097), no Sushie wave. Compare with tidal_census (fxtest=87 underwater).",
+      "scenario": "tidal_census_base",
+      "cap": 45,
+      "until": "phase W f4\\d\\d-",
+      "tags": [
+        "azahar",
+        "census",
+        "tidal"
+      ],
+      "log_metrics": [
+        {
+          "name": "closes_avg",
+          "regex": "phase count avg/max per frame: tri .* draw (\\d+)/\\d+",
+          "pick": "last"
+        },
+        {
+          "name": "closes_max",
+          "regex": "phase count avg/max per frame: tri .* draw \\d+/(\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": []
+    },
+    {
+      "name": "tidal_census",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "TIDAL step 1 census: mac_01 pos 0 0 200, fxtest=87 (fx_underwater, the Tidal Wave draw) spawned at frame 402 and removed at frame 440. Window f410 (frames 410 to 467) per-frame draw count avg and max (closes proxy: C_DRAW per batch submit, pm_gpu.c:1097). Compare with tidal_census_base.",
+      "scenario": "tidal_census",
+      "cap": 45,
+      "until": "phase W f4\\d\\d-",
+      "tags": [
+        "azahar",
+        "census",
+        "tidal"
+      ],
+      "log_metrics": [
+        {
+          "name": "closes_avg",
+          "regex": "phase count avg/max per frame: tri .* draw (\\d+)/\\d+",
+          "pick": "last"
+        },
+        {
+          "name": "closes_max",
+          "regex": "phase count avg/max per frame: tri .* draw \\d+/(\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": []
+    },
+    {
       "name": "fncov_mac01_det",
       "kind": "azahar_stream",
       "speed": "normal",
@@ -156,6 +228,38 @@
       "scenario": "cheatsave_save",
       "cap": 30,
       "until": "cheats: saved slot \\d+ \\(1 on\\)",
+      "tags": [
+        "azahar",
+        "menu",
+        "cheatsave"
+      ],
+      "gates": []
+    },
+    {
+      "name": "cheatsave_key_save",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CHEATSAVE2 save: Cheats tab, Key items folder, the first key item on, the footer shot, X writes its key line to cheats_slot0.ini.",
+      "scenario": "cheatsave_key_save",
+      "cap": 30,
+      "until": "cheats: keys .*key\\.\\d+=1",
+      "tags": [
+        "azahar",
+        "menu",
+        "cheatsave"
+      ],
+      "gates": []
+    },
+    {
+      "name": "cheatsave_key_load",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CHEATSAVE2 load after a reboot: the key item of the slot file is owned at the world entry (Key items row On).",
+      "scenario": "cheatsave_key_load",
+      "cap": 30,
+      "until": "menu: shot \\w+ tab 4 row 1",
       "tags": [
         "azahar",
         "menu",
@@ -3044,6 +3148,21 @@
       "gates": []
     },
     {
+      "name": "mim01_ring_wide_ffog",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FFOG: Forever Forest mim_01 ring turn in Widescreen with the ffog diagnostic line (hit, empty, IGNORE share, combined vs fresh MVP). 12 shots, frames 60 to 280. A person reads the shot.",
+      "scenario": "mim01_ring_wide_ffog",
+      "cap": 30,
+      "until": "shot \\d+ frame 280\\b",
+      "tags": [
+        "azahar",
+        "det"
+      ],
+      "gates": []
+    },
+    {
       "name": "mim01_ring_stereo_det_l",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -3072,6 +3191,20 @@
         "azahar",
         "det",
         "stereo"
+      ],
+      "gates": []
+    },
+    {
+      "name": "texkey_arn02",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "TEXKEY2: arn_02 at frame 120 (wall barrier rocks), build-time palette fix. A person reads the rock edges.",
+      "scenario": "texkey_arn02",
+      "cap": 30,
+      "until": "shot \\d+ frame 120\\b",
+      "tags": [
+        "azahar"
       ],
       "gates": []
     },
@@ -3281,6 +3414,21 @@
       "gates": []
     },
     {
+      "name": "hc4_t4chk_mac01",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "HC4b: t4chk drops and bad count on mac_01 (bad must be 0).",
+      "scenario": "hc4_t4chk_mac01",
+      "cap": 30,
+      "until": "t4chk f2\\d\\d drops \\d+ bad \\d+",
+      "tags": [
+        "azahar",
+        "det"
+      ],
+      "gates": []
+    },
+    {
       "name": "spot_mac01_det",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -3441,6 +3589,38 @@
       "gates": []
     },
     {
+      "name": "effcen_mac01",
+      "kind": "azahar_stream",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "EFFCEN: fxtest fx_underwater (87) on mac_01, effcen word. The effcen census line (top 5 render tasks by us, ops = gfx words per frame). Log only.",
+      "scenario": "effcen_mac01",
+      "cap": 25,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "effcen",
+        "fx"
+      ],
+      "gates": []
+    },
+    {
+      "name": "i8aux_mac01",
+      "kind": "azahar_stream",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "I8AUX step 1: fxtest huff_puff_breath (103) on mac_01, cold. The i8aux line (pm_tex_i8(1) and the unit 1 slot fmt, siz, GPU format). Log only.",
+      "scenario": "i8aux_mac01",
+      "cap": 25,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "i8aux",
+        "fx"
+      ],
+      "gates": []
+    },
+    {
       "name": "fx_direct_det",
       "kind": "azahar_pic",
       "speed": "turbo",
@@ -3501,6 +3681,22 @@
         "azahar",
         "battle",
         "btldim"
+      ],
+      "gates": []
+    },
+    {
+      "name": "btldim_star_sprmix",
+      "kind": "azahar",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SHROUD step 1: the sprite mix (sprmix line) during Shooting Star.",
+      "scenario": "btldim_star_sprmix",
+      "cap": 30,
+      "until": "btldim: lighten done f\\d+",
+      "tags": [
+        "azahar",
+        "battle",
+        "shroud"
       ],
       "gates": []
     },
@@ -3950,6 +4146,25 @@
       ],
       "gates": []
     },
+      {
+      "name": "pause_gut_dbg_w300",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SPR4 det gate, cold start (-NoWarm), det switch: OFF-2 census: pause spin with grab (pause_spin_grab) run to frame 300. The nrawwhy line gives the cumulative raw refusals (grab, off, unit 0). A person reads the spin shots.",
+      "scenario": "pause_gut_dbg_w300",
+      "cap": 45,
+      "until": "nrawwhy f300 ",
+      "tags": [
+        "azahar",
+        "pic",
+        "off",
+        "grab",
+        "det",
+        "cold"
+      ],
+      "gates": []
+    },
     {
       "name": "pause_pre_det",
       "kind": "azahar_pic",
@@ -4057,6 +4272,23 @@
       "scenario": "battle_strats_wide",
       "cap": 45,
       "until": "shot \\d+ frame 2[8-9]\\d\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "wide",
+        "battle"
+      ],
+      "gates": []
+    },
+    {
+      "name": "battle_wheel_wide_left_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BATUI facts 2: wide battle wheel at the left end (Strategies), no gap at the left edge, the light on the selected option. A person reads the shot.",
+      "scenario": "battle_wheel_wide_left",
+      "cap": 45,
+      "until": "debug wheel stop: pos 0 of 5",
       "tags": [
         "azahar",
         "pic",
@@ -6988,6 +7220,40 @@
       "gates": []
     },
     {
+      "name": "menu_part2",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MENUGEN parts 1 and 2: General tab order and Resolution Mode, Debug tab order, Logging page without Back, B and Select log lines, Disable Fog, Disable Light, Texture Filtering set in the menu; field shots 200 to 205 (mac_01 0 0 200). Pair with spot_mac01_det (same det config, flags off).",
+      "scenario": "menu_part2",
+      "cap": 45,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "menu",
+        "menugen"
+      ],
+      "gates": []
+    },
+    {
+      "name": "menu_part3",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MENUGEN part 3: Fullscreen field, Debug rows Fixed Seed and Start a Battle, fog, light and texture filter each on and off on the field (mac_01 0 0 200), one run.",
+      "scenario": "menu_part3",
+      "cap": 60,
+      "until": "padscript: done",
+      "tags": [
+        "azahar",
+        "pic",
+        "menu",
+        "menugen"
+      ],
+      "gates": []
+    },
+    {
       "name": "menu_texf",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -7108,6 +7374,22 @@
         "crash"
       ],
       "log_metrics": [],
+      "gates": []
+    },
+    {
+      "name": "savetitle_ret",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SAVETITLE: one save at the world (save_0), Return to Title within about 2 s, title, file select. Log only: slot hashes of the RAM image and of the file at save, flush, title and fetch.",
+      "scenario": "savetitle_ret",
+      "cap": 45,
+      "until": "padscript: done at scan",
+      "tags": [
+        "azahar",
+        "save",
+        "title"
+      ],
       "gates": []
     },
     {
@@ -7240,7 +7522,39 @@
         "lstcen"
       ],
       "gates": []
-    }
+    },
+    {
+        "name": "mac05_water_census",
+        "kind": "azahar_stream",
+        "speed": "normal",
+        "default": false,
+        "purpose": "WATERPAN census: mac_05 at -75 -10 500, ndm and ndmrw window at frame 300 (model cache misses by record word 18 to 21).",
+        "scenario": "mac05_water_census",
+        "cap": 30,
+        "until": "ndmrw f300 ",
+        "tags": [
+          "azahar",
+          "census",
+          "water"
+        ],
+        "gates": []
+      },
+    {
+        "name": "negpan_mim05",
+        "kind": "azahar_pic",
+        "speed": "normal",
+        "default": false,
+        "purpose": "NEGPAN step 1: mim_05 warp, log of the first negative tile start clamped in tex_win_s25 (uls/ult raw and out).",
+        "scenario": "negpan_mim05",
+        "cap": 25,
+        "until": "negpan in uls ",
+        "tags": [
+          "azahar",
+          "negpan",
+          "mim_05"
+        ],
+        "gates": []
+      }
   ],
   "legacy": {
     "note": "Scenarios that no bench uses. Kept for the azt.ps1 route, not run by bench.py.",

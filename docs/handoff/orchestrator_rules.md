@@ -6,9 +6,15 @@ Read this file at the start and after every compaction; it overrides any summary
 ## Roles
 - Orchestrator (Opus): plans, writes row files and prompts, merges, commits docs, runs console pushes on request, cleans up. It does
   not edit game source or debug; it reads code and logs only to plan.
-- Code agents: Haiku. Opus agents only when the user starts them; the orchestrator never launches one, it asks.
-- Oracle: ONE shared read-only Opus agent, reused by SendMessage for every design question and failed handback. Its answer goes into
-  the row file and is committed before the code agent starts. Every oracle plan names its premise and one cheap check.
+- Code agents: subagent_type coder (.claude/agents/coder.md, Haiku). The shared oracle: subagent_type oracle (oracle.md, Opus). Opus agents only when the user starts or approves them; the orchestrator asks.
+- Oracle: ONE read-only Opus agent at a time, started fresh for each batch of questions (user, 2026-11-10: the long-lived oracle
+  reached 880K context, about $0.44 per call). Its knowledge lives in row and plan files, not in its chat. SendMessage follow-ups
+  only inside the batch; replace it when its context passes about 300K. It designs and plans every system and bug, and splits the work
+  into Haiku-size row files (oracle.md). The orchestrator commits its text before the code agent starts. Every plan names its
+  premise and one cheap check. Model per chunk: Haiku by default. A Sonnet or Opus chunk needs the oracle's justification (why
+  not Haiku, why not smaller); the orchestrator puts it in an AskUserQuestion. No user yes: the oracle splits the chunk.
+- Haiku failure goes to the oracle (user, 2026-11-10): a failed gate, a failed premise or an unexpected fact ends the try. The
+  agent hands back its facts and does not choose a new approach; the orchestrator sends the facts to the oracle at once.
 - Manual mode: when the user says work runs elsewhere, launch nothing on those rows or files.
 
 ## Rows
@@ -23,8 +29,10 @@ Read this file at the start and after every compaction; it overrides any summary
 - No change, no repeat (user, 2026-11-09): a try that does not change the gate quantity ends work in that area. Send the facts to
   the oracle to reframe the problem (a different cause, code point or metric) before any new try. A false premise closes the row.
 - Check each agent at 90 minutes; no passed gate: stop it, put its state in the row file, reframe (split, or NEEDS CONSOLE).
-- Handback triage before any relaunch: 1 environment fault (fix it, same row); 2 wrong premise (rewrite the row with the agent's
-  facts); 3 no reproduction (user or console evidence first); 4 real stall (split the row). Never relaunch an unchanged row.
+- Handback triage before any relaunch: 1 environment fault (build, container, Azahar): the orchestrator fixes it, same row.
+  2 every other failure (wrong premise, gate fail, no reproduction, cause not found, stall): the oracle gets the facts and
+  returns the next chunk or a question for the user; the orchestrator asks it with AskUserQuestion (the user is a debug
+  source, 2026-11-09). Never relaunch an unchanged row.
 
 ## Worktrees
 - `sh 3ds/tools/wt_new.sh <row>` (git worktree add build3ds/wt/<row> -b <row> main, plus `.wt_keep`; wt_gc keeps it until the row
@@ -33,7 +41,8 @@ Read this file at the start and after every compaction; it overrides any summary
 
 ## Merge
 1. Check the commits (markers, attribution, WIP commits).
-2. `git merge-tree --write-tree --name-only main <branch>`: exit 1 = conflicts. The branch owner resolves source conflicts; the
+2. Merge the commit hash the agent reported ready, never the branch tip (2026-11-09: a tip merge took HC4d1 to main
+   before its gates). `git merge-tree --write-tree --name-only main <hash>`: exit 1 = conflicts. The branch owner resolves source conflicts; the
    orchestrator resolves doc and JSON conflicts (JSON by name, then a duplicate-name check).
 3. Put the branch's `memcheck:` line in the merge message; OVER does not block, the message says why it is taken.
 4. commit-tree + update-ref, sync the changed files, append the new runs.jsonl lines, reset the index for those paths.

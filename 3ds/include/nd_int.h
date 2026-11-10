@@ -71,10 +71,10 @@ unsigned rec_run(const Gfx* q);
 int pm_gbi_bind_tile1(void); /* MDL-1b: the walker's tile 1 step, the former pm_gbi.c */
 unsigned sc_sig_now(void);
 void draw_tri(unsigned w);
-void gbi_cold_modifyvtx(u32 w0, u32 w1);
+void gbi_cold_modifyvtx(unsigned where, unsigned vi); /* HC4d2: NDO_MISC_MODVTX fields */
 void gbi_movemem(u32 w0, u32 w1);
 void gbi_popmtx(u32 w1);
-void gbi_setcimg(u32 w0, u32 w1);
+void gbi_setcimg(u32 a, u32 b); /* HC4d2: NDO_MISC_CIMG (a = sub << 16 | siz << 12 | width - 1, b = address) */
 void gbi_setenv(u32 w1);
 void gv_streak_flush(void);
 void gv_streak_op(unsigned op);
@@ -91,7 +91,6 @@ void set_fogcolor(u32 w1);
 void set_geom(u32 w0, u32 w1);
 void set_primdepth(u32 w1);
 void sync_combine(void);
-void tex_op(u32 w0, u32 w1);
 void tex_streak_flush(void);
 void tex_streak_op(unsigned op);
 void* ptr_of(u32 w);
@@ -158,7 +157,6 @@ extern unsigned vert_tss[64];
 /* ---- W: the walk group's own entry points and tables (defined in nd_walk.c), and the the former pm_gbi.c helpers it calls ---- */
 /* DIRECT D10c: an RDP sync or G_SPNOOP (no work on the 3DS; the list executor and the record ops skip it). */
 static inline int nd_op_sync(unsigned op) { return (op >= G_RDPLOADSYNC && op <= G_RDPFULLSYNC) || op == G_SPNOOP; }
-int g2_same(unsigned op, u32 w0, u32 w1);
 int nd_op_same(const uint32_t* u);    /* HC4a: nd_set.c, the typed scalar ops (nd_op.h) */
 void nd_op_apply(const uint32_t* u);
 void gbi_cold_bad_next(u32 w1, u32 w0, u32 list);
@@ -169,8 +167,7 @@ void set_blendcolor(u32 w1);
 void set_fogcolor(u32 w1);
 void set_primdepth(u32 w1);
 void set_fillcolor(u32 w1);
-void op_setprimcolor(u32 w0, u32 w1);        /* ST-1: nd_state.c */
-void op_setothermode(unsigned op, u32 w0, u32 w1); /* ST-1: nd_state.c */
+void nd_set_prim(u32 a, u32 b);              /* nd_set.c: G_SETPRIMCOLOR (a = LOD word, b = colour) */
 void nd_sr_forget(void);                     /* ST-1: nd_state.c, sync_render state forgotten */
 int nd_mix1(unsigned ol, unsigned* col);   /* nd_set.c: the V06 blend colour mix of other mode L (1 and the colour, else 0) */
 void gp_note(int k, int same);               /* PG0 counter, the former pm_gbi.c */
@@ -208,13 +205,17 @@ void gp3_t0_set(void);
 void tlut_v20(unsigned slot);
 void tex_tile1(unsigned tile, int uls, int ult, int lrs, int lrt);
 int tex_shaded0(int uls, int ult);
-void tex_win_s25(int* p_uls, int* p_ult, int* p_lrs, int* p_lrt);
-void op_settimg(u32 w0, u32 w1);
-void op_settile(u32 w0, u32 w1);
-void op_loadblock(u32 w0, u32 w1);
-void op_loadtlut(u32 w0, u32 w1);
-void op_settilesize(u32 w0, u32 w1);
-void op_texture(u32 w0, u32 w1);
+void tex_win_s25(int* p_uls, int* p_ult, int* p_lrs, int* p_lrt, unsigned fs, unsigned ms, unsigned ft, unsigned mt);
+/* HC4c: the typed texture setters (nd_op.h fields; nd_op_apply runs them by id) */
+void nd_set_timg(u32 a, u32 b);
+void nd_set_tile(u32 a, u32 b);
+void nd_set_loadblock(u32 b);
+void nd_set_loadtile(u32 a, u32 b);
+void nd_set_loadtlut(u32 b);
+void nd_set_tilesize(u32 a, u32 b);
+void nd_set_texture(u32 a, u32 b);
+void nd_bind_run(const uint32_t* u);   /* the typed bind list of a texture handle (rec_apply) */
+void nd_tex_timed(const uint32_t* u);  /* sp0x census: one typed op, timed (phase census only) */
 
 /* ---- M: the matrix group (nd_mtx.c, GM-1). Globals defined in nd_mtx.c; the former pm_gbi.c and the walker read them. ---- */
 extern float vp_sx, vp_sy, vp_sz, vp_tx, vp_ty, vp_tz;
@@ -243,33 +244,15 @@ const u8* fb_prev_base(int n);
 void ens_clear(void);
 extern unsigned short** nuGfxCfb; extern unsigned nuGfxCfbNum;
 void grab_cur(const void* src, int w, int h);       /* the former pm_gbi.c, target group */
-void nd_native_rec(u32 w0);                         /* nd_target.c, LS-4: G_PM_ND records */
+void nd_native_rec(unsigned kind, unsigned on);      /* nd_target.c, LS-4: G_PM_ND records (HC4d2: NDO_MISC_ND fields) */
 int load_shaded_sprite(int dx4, int dy4);           /* the former pm_gbi.c, TX-3 */
 int glyph_atlas_bound(void);                        /* the former pm_gbi.c, TX-3 */
 void op_setcombine(u32 w0, u32 w1);                 /* the former pm_gbi.c, combine group */
-void op_setothermode(unsigned op, u32 w0, u32 w1);  /* the former pm_gbi.c, state group */
-void op_setprimcolor(u32 w0, u32 w1);               /* the former pm_gbi.c, state group */
 unsigned long long pm_gpu_fl_acc(void);             /* pm_gpu.c */
-/* TX-3: the texture state snapshot (texdiff check, the former pm_gbi.c and nd_tex.c). Fields of the other groups as they are. */
-typedef struct {
-    __typeof__(nd_ws.tst1) tst; const void *timg, *tlut; int tlut_n; const void* tlut_pal[16]; __typeof__(nd_ws.td) td; int tile_x0, tile_y0; float tile_fx, tile_fy;
-    int ld_valid, ld_x, ld_y, ld_h, ld_w; unsigned ldrec_n, blk_n; __typeof__(m1) m1; int dual_on, cur_tile, use_t1, tex_on; unsigned tex_ss, tex_ts; int comb_set;
-    unsigned comb_w0, comb_w1; int box_folded, box_prod, box_pat, comb_alpha_shade; unsigned cmb_gen_seen; struct TszLast tsz; unsigned st0_ep; int st0_ok;
-    unsigned omode_h, omode_l; int leg_mode, plan_active, comb_mode5; PmPlan plan; int sc_ok; unsigned sc_sig;
-    unsigned fogc, blendc; int fog_fm, fog_fo; /* S3F-2: the colour and fog state the record writes */
-    unsigned prim, envc;       /* S3F-2b: prim and env colour, the record writes both */
-} TexSnap;
-#define TS_FIELDS(X) X(tst) X(timg) X(tlut) X(tlut_n) X(tlut_pal) X(td) X(tile_x0) X(tile_y0) X(tile_fx) X(tile_fy) X(ld_valid) X(ld_x) X(ld_y) X(ld_h) X(ld_w) X(ldrec_n) X(blk_n) X(m1) \
-    X(dual_on) X(cur_tile) X(use_t1) X(tex_on) X(tex_ss) X(tex_ts) X(comb_set) X(comb_w0) X(comb_w1) X(box_folded) X(box_prod) X(box_pat) X(comb_alpha_shade) X(cmb_gen_seen) X(tsz) \
-    X(st0_ep) X(st0_ok) X(omode_h) X(omode_l) X(leg_mode) X(plan_active) X(comb_mode5) X(plan) X(sc_ok) X(sc_sig)     X(fogc) X(blendc) X(fog_fm) X(fog_fo) X(prim) X(envc)
-
 /* TX-3 externs. owner: the former pm_gbi.c (combine and state groups, read by the snapshot in nd_tex.c until those groups move) */
 extern int comb_mode5, plan_active, fog_fm, fog_fo, box_prod, box_pat, comb_alpha_shade, leg_mode;
 extern PmPlan cur_plan; extern float dual_gain[3];
 void cc_cycle1(const float* t0, const float* t1, float out[4]);
-void ts_save(TexSnap* o);
-void ts_load(const TexSnap* o);
-void tb_ops(const Gfx* g);
 /* ---- C (ST-2): the combine group in nd_comb.c ---- */
 int const_rgb_tex_alpha(unsigned* out);
 float cc_clamp(float v);

@@ -1,4 +1,5 @@
 #include <3ds.h>
+#include "pm_linear.h"
 void pm_gx_room(void); /* HANG1a */
 #include <3ds/gpu/gpu.h>
 #include <3ds/gpu/registers.h>
@@ -11,6 +12,7 @@ void pm_gx_room(void); /* HANG1a */
 #include <stdlib.h>
 #include "pm_shader5_shbin.h"
 #include "nd.h"
+#include "nd_op.h"
 #include "nd_sprite.h"
 #include "pm_shader4_shbin.h"
 #include "pm_gpu.h"
@@ -151,6 +153,8 @@ static int gv_wind = 1;   /* GV1a: sign of the 3 x 3 determinant (x y w) of the 
 
 int pm_wide_cfg; /* F07-5: the user setting. pm_wide is 0 in 4:3 game modes (logos, title, file select). */
 int pm_wide; /* F07-1: 1 = the 320 px game picture is stretched over the 400 px screen (X scale 1.25). Read once in pm_gpu_init. */
+int pm_stretch_cfg; /* MENUGEN part 3: the Fullscreen option (options wide=2); pm_stretch = pm_stretch_cfg && !pm_wide, set here, in game_modes.c and in pm_options.c flip */
+int pm_stretch; /* MENUGEN: 1 = Fullscreen: the Native picture (pm_wide 0) stretched 1.25x in X over 400 px, HUD included. Only the final viewport (rebuild_3d) and scissor (stage_scissor) and the grab columns read it. Set in pm_gpu_init and by the options flip. */
 static void mfr_init(void); extern int mfr_on; /* TIK19 debug (switch mfr) */
 static int wedge_x; /* WIDE1-2: 1 while pm_gpu_grange draws an edge-only orthographic range with x scale 1.25 in the post matrix */
 unsigned char pm_gv_rejm = 0x2f; /* WIDE4: the clip bits gv_tri rejects on (x planes off for a wide orthographic draw) */
@@ -169,8 +173,8 @@ static void rebuild_3d(void) {
     C3D_Mtx view;
     Mtx_Zeros(&view);
     /* V05: an off-screen pass is not rotated and has no 40 pixel margin: GPU y is the game y (y runs down) */
-    view.r[0].x = (pm_wide && !gs.off_active && (!ui_ortho || wedge_x)) ? gs.vp_sx * 1.25f : gs.vp_sx; /* WIDE1-2: wedge_x scales the x of an orthographic draw whose vertices all sit on the game edge */
-    view.r[0].w = gs.off_active ? gs.vp_tx : (pm_wide && !ui_ortho) ? gs.vp_tx * 1.25f : 40.f + gs.vp_tx;
+    view.r[0].x = (pm_stretch && !gs.off_active) ? gs.vp_sx * 1.25f : (pm_wide && !gs.off_active && (!ui_ortho || wedge_x)) ? gs.vp_sx * 1.25f : gs.vp_sx; /* WIDE1-2: wedge_x scales the x of an orthographic draw whose vertices all sit on the game edge. MENUGEN: Fullscreen scales every draw */
+    view.r[0].w = gs.off_active ? gs.vp_tx : pm_stretch ? gs.vp_tx * 1.25f : (pm_wide && !ui_ortho) ? gs.vp_tx * 1.25f : 40.f + gs.vp_tx;
     view.r[1].y = gs.off_active ? -gs.vp_sy : gs.vp_sy;
     view.r[1].w = gs.off_active ? gs.vp_ty : 240.f - gs.vp_ty;
     /* Clip z/w is -1 at the near plane and +1 at the far plane. Citro's
@@ -288,7 +292,7 @@ static void full_reserve(void) {
 /* A header whose data is set later. C3D_TexInit takes linear memory for its own data, which is freed at once. */
 static int tex_hdr(C3D_Tex* t, int w, int h, GPU_TEXCOLOR fmt) {
     if (!C3D_TexInit(t, w, h, fmt)) return 0;
-    linearFree(t->data);
+    pm_linear_free(t->data);
     t->data = NULL;
     return 1;
 }
@@ -316,7 +320,7 @@ static int full_tex_init(int i) {
 /* a 64 x 64 image takes an arena block (made at boot) */
 static int small_tex_init(C3D_Tex* t) {
     if (small_next >= small_n || !C3D_TexInit(t, 64, 64, GPU_RGBA8)) return 0;
-    linearFree(t->data);
+    pm_linear_free(t->data);
     t->data = small_blk[small_next++];
     return 1;
 }
@@ -938,16 +942,18 @@ static void stage_scissor(void) {
         int right = 240 - sci_y0;
         /* F07-3: a 2D or orthographic batch is 1:1 and centered (40 + x). A scissor edge at 0 or 320 reaches the screen edge. A 3D batch scales by 1.25. */
         int ui = pm_wide && (!nb.draw_3d || ui_ortho);
-        int top = !pm_wide ? 40 + sci_x0 : ui ? (sci_x0 <= 0 ? 0 : 40 + sci_x0) : sci_x0 * 5 / 4;
-        int bottom = !pm_wide ? 40 + sci_x1 : ui ? (sci_x1 >= 320 ? 400 : 40 + sci_x1) : sci_x1 * 5 / 4;
+        /* MENUGEN: Fullscreen (pm_stretch) scales every batch by 1.25 over the full 400 px, like a 3D batch */
+        int top = pm_stretch ? sci_x0 * 5 / 4 : !pm_wide ? 40 + sci_x0 : ui ? (sci_x0 <= 0 ? 0 : 40 + sci_x0) : sci_x0 * 5 / 4;
+        int bottom = pm_stretch ? sci_x1 * 5 / 4 : !pm_wide ? 40 + sci_x1 : ui ? (sci_x1 >= 320 ? 400 : 40 + sci_x1) : sci_x1 * 5 / 4;
+        const int full = pm_wide || pm_stretch;
         if (left < 0) left = 0;
         if (right > 240) right = 240;
-        if (top < (pm_wide ? 0 : 40)) top = pm_wide ? 0 : 40;
-        if (bottom > (pm_wide ? 400 : 360)) bottom = pm_wide ? 400 : 360;
+        if (top < (full ? 0 : 40)) top = full ? 0 : 40;
+        if (bottom > (full ? 400 : 360)) bottom = full ? 400 : 360;
         if (right > left && bottom > top)
             sh_scissor(GPU_SCISSOR_NORMAL, (u32)left, (u32)(400 - bottom), (u32)right, (u32)(400 - top)); /* V23: the GPU counts the 400 axis from the other end */
         else
-            sh_scissor(GPU_SCISSOR_NORMAL, 0, pm_wide ? 0 : 40, 240, pm_wide ? 400 : 360);
+            sh_scissor(GPU_SCISSOR_NORMAL, 0, full ? 0 : 40, 240, full ? 400 : 360);
 }
 static inline int graw_is_pm4(void) { return nb.gni > 0 && nb.g_pal && !nb.g_use5 && gs.gv4_on; }
 /* S3 M3: the native raw close. A raw batch with the palette program (pm4, no lights) on the main target, one texture unit at most, no stencil pass: the effect, TEV, texture unit
@@ -1013,6 +1019,26 @@ static __attribute__((cold, noinline)) void orb_log(const char* path, int z, int
            path, pm_frame_count(), ot_, gs.combine, gs.combine == 8 ? gs.plan.n : -1, gs.plan.uses_tex, gs.plan.uses_tex1, gs.plan.uses_noise, i8_0, i8_1, gs.r_blend, memb, gs.r_atest, z, graw, tris, prim, cconst,
            la ? la->src[0] : 99u, la ? la->src[1] : 99u, la ? la->src[2] : 99u, la ? la->op[0] : 99u, la ? la->op[1] : 99u, la ? la->op[2] : 99u,
            la ? la->func : 99u, la ? la->scale : 99u);
+    { /* SBLK2 A1/A2/B1 debug: the segment 9 base, tile 0 format, combine words, unit 1 I8 alpha, splits and grabs of this frame */
+        extern unsigned n_splits;
+        pm_log("orbdbg2 f%u tag %u seg9 %08x cyc %u td0 v%d fmt %u siz %u w %d h %d comb %08x %08x i8_1 %d spl %u grab %d",
+               pm_frame_count(), ot_, nd_ws.segbase[9], (nd_ws.omode_h >> 20) & 3u, nd_ws.td[0].valid, nd_ws.td[0].fmt, nd_ws.td[0].siz,
+               nd_ws.td[0].w, nd_ws.td[0].h, nd_ws.comb_w0, nd_ws.comb_w1, i8_1, n_splits, grab_n);
+    }
+    if (ot_ == 6u && gs.combine == 8) { /* SBLK2 blend check (shimmer, tag 6): the TEV stages as sent, the blend the port sets, the N64 blender */
+        const unsigned m = nd_ws.omode_l;
+        pm_log("shimblend f%u r_blend %d off %d one_zero %d N64 cyc %u omode_l %08x c2 m1a %u m1b %u m2a %u m2b %u env %08x prim %08x",
+               pm_frame_count(), gs.r_blend, gs.off_active, !gs.r_blend, (nd_ws.omode_h >> 20) & 3u, m, (m >> 28) & 3u, (m >> 24) & 3u,
+               (m >> 20) & 3u, (m >> 16) & 3u, nd_ws.envc, nd_ws.prim);
+        for (int k = 0; k < gs.plan.n && k < 3; k++) {
+            const PmTevCh* c = &gs.plan.st[k].g[0];
+            const PmTevCh* a = &gs.plan.st[k].g[1];
+            pm_log("shimblend st%d rgb src %u %u %u op %u %u %u f%u sc%u | a src %u %u %u op %u %u %u f%u sc%u | cn %u k %08x",
+                   k, c->src[0], c->src[1], c->src[2], c->op[0], c->op[1], c->op[2], c->func, c->scale,
+                   a->src[0], a->src[1], a->src[2], a->op[0], a->op[1], a->op[2], a->func, a->scale,
+                   gs.plan.st[k].cname, gs.plan.st[k].constant);
+        }
+    }
 }
 /* PERF1-6: C3Di_UpdateContext writes nothing when (objdump of libcitro3d.a, this devkitPro): no flag it tests is set in the context word at +32 (frame buffer,
  * viewport, scissor, program, attribute and buffer info, effect, texture units, texture status, proc tex, texenv buffer, gas, texenvs, light env), no light
@@ -1152,7 +1178,8 @@ static int tex_native_words(NdUnit* u, const C3D_Tex* tp) {
     u->type = (uint32_t)tp->fmt;
     return 1;
 }
-static int grab_native_unit0(NdUnit* u) { return tex_native_words(u, &grab_tex); }
+static C3D_Tex* gut_tex; /* PAUSEOPEN: the pause slot that grab_bind 2 binds (pm_gpu_pause_gutters) */
+static int grab_native_unit0(NdUnit* u) { return tex_native_words(u, grab_bind == 2 ? gut_tex : &grab_tex); }
 /* PM5-2: the program 5 uniform block of the walker state (the same calls as flush_draw's pm5 block, no cache: the native batch writes them
  * in order before its draw). Palette entries: the pm5 register layout, 7 rows per entry (4 position, 3 normal). */
 static __attribute__((noinline)) void pm5_upload(void) {
@@ -1267,6 +1294,17 @@ static __attribute__((cold, noinline)) void raw_draw_rare(NdDraw* d, const NdUni
     if (tex1) { memcpy(d->uvx, t1_s, 16); d->loc_uvx = (uint16_t)(nb.g_use5 ? u5_uvx : u4_uvx); d->has_uvx = 1; }
     if (nb.g_use5) { pm5_upload(); d->use5 = 1; d->no_uni = 1; d->npal = 0; } /* PM5-2; FB-3: the uvx uniform of pm5 is d->loc_uvx (set above) */
 }
+/* I8AUX debug: unit 1 of a native draw, once per 60 frames: pm_tex_i8(1) (the i8_1 the TEV key gets) and the aux slot fmt, siz and GPU format */
+static __attribute__((cold, noinline)) void i8aux_log(int tex1, int i8_1) {
+    static unsigned last_f = ~0u;
+    const unsigned f = pm_frame_count();
+    if (f % 60u != 0u || f == last_f) return;
+    last_f = f;
+    extern int pm_tex_aux_info(int* fmt, int* siz, int* gpu);
+    int af, as, ag;
+    int k = pm_tex_aux_info(&af, &as, &ag);
+    pm_log("i8aux f%u t1 %d i8_1 %d aux %d fmt %d siz %d gpu %d", f, tex1, i8_1, k, af, as, ag);
+}
 static int nd_raw_native(void) {
     nd_tmpl_pin(); /* FB-2: the template ids of this batch stay valid until its submit */
     if (!(nb.gni > 0 && nb.g_pal && gs.gv4_on && (!nb.g_use5 || gv5_on))) { cen_why = nb.g_use5 ? CW_PM5 : CW_OTHER; return 0; } /* CEN-1a; PM5-2: program 5 batches go native too */
@@ -1286,6 +1324,7 @@ static int nd_raw_native(void) {
     int t1 = 0;
     if (gs.combine == 8 && gs.plan.uses_tex1) { t1 = raw_unit1(&u1); if (t1 < 0) { nd_native_refused++; nraw_why[6]++; cen_why = CW_NRK(6); return 0; } } /* SGEN-2: unit 1 words and the uv map uniform (PERF2: out of line) */
     const int tex = t > 0, i8_0 = tex && pm_tex_i8(0), tex1 = t1 > 0, i8_1 = tex1 && pm_tex_i8(1);
+    if (__builtin_expect(tex1 && pm_frame_count() % 60u == 0u, 0)) i8aux_log(tex1, i8_1); /* I8AUX debug: once per 60 frames */
     const int noise = gs.combine == 8 && gs.plan.uses_noise && noise_init(); /* FB-2: as flush_draw; noise_init 0 (no memory): the walker draws without it, so does the native draw */
     NdTmplKey nk;
     memset(&nk, 0, sizeof nk);
@@ -1408,7 +1447,7 @@ static unsigned jt_frame; /* frame of the last queued jump, for the result line 
 extern u64 pm_loop_tick;
 static void jt_queue(void) {
     u32* buf; u32 size, off, pad;
-    if (!jt_sub) jt_sub = (u32*)linearAlloc(16 * 2);
+    if (!jt_sub) jt_sub = (u32*)pm_linear_alloc(16 * 2);
     if (!jt_sub) { pm_log_e("jumptest: linearAlloc failed"); jt_state = 2; return; }
     jt_last = pm_loop_tick;
     jt_frame = pm_frame_count();
@@ -1453,8 +1492,9 @@ static void pm_gpu_init_w(void) {
     if (gs.gpu_ok) return;
     jt_on = pm_debug_has("jumptest");
     mfr_init();
-    pm_wide = pm_wide_cfg = (pm_debug_has("wide") || pm_opt.wide) && !pm_debug_has("nowide"); /* nowide: 4:3 layout with wide set in options.ini */
-    pm_log("gpu: wide=%d", pm_wide);
+    pm_wide = pm_wide_cfg = (pm_debug_has("wide") || pm_opt.wide == 1) && !pm_debug_has("nowide"); /* nowide: 4:3 layout with wide set in options.ini */
+    pm_stretch_cfg = pm_opt.wide == 2; pm_stretch = pm_stretch_cfg && !pm_wide; /* MENUGEN: Fullscreen = pm_wide 0 and stretch 1 */
+    pm_log("gpu: wide=%d stretch=%d", pm_wide, pm_stretch);
     gfxInitDefault();
     if (!C3D_Init(0x180000)) { /* MEM1: 1.5 MB command buffer. The worst fill seen was 9 percent of 4 MB (369 KB), the new size keeps 4 times that. 2.5 MB of linear memory come back */
         pm_con_lock();
@@ -1504,8 +1544,8 @@ static void pm_gpu_init_w(void) {
     AttrInfo_AddLoader(ai, 1, GPU_FLOAT, 2);
     AttrInfo_AddLoader(ai, 2, GPU_FLOAT, 4);
     { /* GV1: the raw Vtx path: a ring of the Vtx records of the frame and a u16 index ring */
-        nb.gring = (unsigned char*)linearAlloc((GRING_VTX + GSTAT_VTX) * 16);
-        nb.gidx = (unsigned short*)linearAlloc(GRING_IDX * 2);
+        nb.gring = (unsigned char*)pm_linear_alloc((GRING_VTX + GSTAT_VTX) * 16);
+        nb.gidx = (unsigned short*)pm_linear_alloc(GRING_IDX * 2);
         nb.rchunk[0].vtx = nb.gring; nb.rchunk[0].idx = nb.gidx; nb.rchunk[0].used = 1;
         gs.gpu_vtx_on = nb.gring && nb.gidx;
         if (gs.gpu_vtx_on) { /* GV1c: the palette program */
@@ -1795,9 +1835,6 @@ static void dump_shot(void) {
  * reads the frame buffer. Reads the PICA color buffer (tiled RGBA8, 240 wide x 400 tall, the screen rotated;
  * game x is the long axis shifted by 40, game y runs backwards on the short axis). Costs one pass over 76800
  * pixels of VRAM, so it runs only when the game asks (pause screen, previous-frame draws). */
-/* PT56: with wide the 40 screen columns on each side of the game picture (game x -40 to -1 and 320 to 359), saved with every frame read. The pause screen draws them beside the saved frame. Layout: [side][row * 40 + column], row 0 is the top. */
-unsigned short pm_wide_side[2][40 * 240];
-unsigned short pm_wide_side_pause[2][40 * 240]; /* the copy the pause screen draws (src/background_gfx.c) */
 void pm_gpu_read_frame(unsigned short* dst) {
     PM_WALK_OWN(); /* CORE2-3a */
     pm_gpu_begin_wait();
@@ -1817,16 +1854,6 @@ void pm_gpu_read_frame(unsigned short* dst) {
                          ((mx & 4u) << 2) | ((my & 4u) << 3);
             const unsigned char* p = src + ((((fy >> 3) * 30u + (fx >> 3)) * 64u + m) * 4u);
             dst[y * 320 + x] = (unsigned short)(((p[3] >> 3) << 11) | ((p[2] >> 3) << 6) | ((p[1] >> 3) << 1) | 1u);
-        }
-        if (pm_wide) {
-            for (x = 0; x < 80; x++) {
-                unsigned fy = (unsigned)(x < 40 ? x : 360 + (x - 40));
-                unsigned mx = fx & 7u, my = fy & 7u;
-                unsigned m = (mx & 1u) | ((my & 1u) << 1) | ((mx & 2u) << 1) | ((my & 2u) << 2) |
-                             ((mx & 4u) << 2) | ((my & 4u) << 3);
-                const unsigned char* p = src + ((((fy >> 3) * 30u + (fx >> 3)) * 64u + m) * 4u);
-                pm_wide_side[x >= 40][y * 40 + (x % 40)] = (unsigned short)(((p[3] >> 3) << 11) | ((p[2] >> 3) << 6) | ((p[1] >> 3) << 1) | 1u);
-            }
         }
     }
     PH_POP();
@@ -2124,7 +2151,7 @@ void pm_gx_drain(void) {
 }
 /* queue the copy of the colour buffer strips (all 400 screen columns with wide, else the 320 game columns) into grab_tex */
 static void grab_queue_copy(void) {
-    const int mo = pm_wide ? 0 : 40, x1 = pm_wide ? 400 : 320;
+    const int mo = pm_wide || pm_stretch ? 0 : 40, x1 = pm_wide || pm_stretch ? 400 : 320; /* MENUGEN: Fullscreen copies the 400 columns like wide */
     int s0 = mo >> 3, s1 = (mo + x1 - 1) >> 3;
     pm_gx_room();
     copy_guard(); /* TEXF1: grab_tex is copy_blk */
@@ -2137,6 +2164,71 @@ int pm_gpu_grab(const void* cfb, int y0, int y1) { return grab_impl(cfb, y0, y1,
  * So a request sets prev_want, and the next frame queues the copy into grab_tex at pm_gpu_begin, before any other entry (prev_pre). The
  * first frame of a run of requests, or a frame with an earlier T2 grab (it overwrites grab_tex), returns 0: the caller reads with the CPU.
  * Returns 2 if the old frame is in the slot of prev_cfb. */
+/* PAUSEOPEN: the wide gutters of the pause picture, drawn on the walker side (nd_target.c, G_PM_ND_GUTTER from SHOW_PAUSED). The pause slot
+ * is the last frame's GPU copy (pm_gpu_grab_prev fills it for pause_cfb_src). With wide, slot column c is screen column c and the centre reads game
+ * x at slot column x + 40. The gutters are game x -40..0 (slot columns 0..39) and 320..360 (slot columns 360..399), all 240 rows. The batch binds
+ * the slot itself (grab_bind 2, gut_tex, texel origin 0), so no load address is used. Combine, prim (the fade) and render state are the centre's:
+ * the walker still holds them. Positions as pm_gpu_fill_rect: screen x = 40 + game x, screen y = 240 - game y. */
+extern void* pm_walk_cfb;
+static void gut_quad(int xa, int xb, float sa, float sb, unsigned c) {
+    const float ks = 4096.f / (float)gut_tex->width, kt = 4096.f / (float)gut_tex->height;
+    short v[32];
+    const int px_[4] = { xa, xb, xb, xa }, py_[4] = { 240, 240, 0, 0 };
+    const short s0 = (short)(sa * ks + 0.5f), s1 = (short)(sb * ks + 0.5f), t1 = (short)(240.f * kt + 0.5f);
+    const short ps[4] = { s0, s1, s1, s0 }, pt[4] = { 0, 0, t1, t1 };
+    for (int i = 0; i < 4; i++) {
+        short* q = v + 8 * i;
+        unsigned char* cb = (unsigned char*)q;
+        q[0] = (short)px_[i]; q[1] = (short)py_[i]; q[2] = 0; q[3] = 0; q[4] = ps[i]; q[5] = pt[i];
+        cb[12] = (unsigned char)(c >> 24); cb[13] = (unsigned char)(c >> 16); cb[14] = (unsigned char)(c >> 8); cb[15] = (unsigned char)c;
+    }
+    const int b = pm_gpu_gvtx_load(v, 4);
+    unsigned short* ix = nb.gidx + nb.gidx_n;
+    ix[0] = (unsigned short)b; ix[1] = (unsigned short)(b + 1); ix[2] = (unsigned short)(b + 2);
+    ix[3] = (unsigned short)b; ix[4] = (unsigned short)(b + 2); ix[5] = (unsigned short)(b + 3);
+    nb.gidx_n += 6; nb.gni += 6;
+}
+int pm_gut_seen; /* PAUSEOPEN debug: set by the first gutter call; rect_raw_quad (pm_gpu_rect.c) watches the rectangles after it (debug word gutdbg) */
+/* PAUSEOPEN: the gutter batch is class 2 with a white vertex colour, as in run 185371 (the strips show the scene, not darkened: open, row PAUSEFADE). */
+void pm_gpu_pause_gutters(void) {
+    C3D_Tex* t = NULL;
+    static int dbg_n;
+    const int dbg = dbg_n < 6 && pm_debug_has("gutdbg") && dbg_n++ >= 0;
+    const char* why = NULL;
+    pm_gut_seen = 1;
+    if (!target) why = "no target";
+    else if (!gs.gpu_ok) why = "gpu not ok";
+    else if (off_fail) why = "off_fail";
+    else if (!(gs.gpu_vtx_on && gs.gv4_on)) why = "vtx or gv4 off";
+    else {
+        for (int i = 0; i < OFF_ALL; i++) {
+            const void* b = gs.offs[i].base;
+            if (!b || gs.offs[i].siz != 2 || b == pm_walk_cfb || !pm_is_cfb(b)) continue;
+            t = &gs.offs[i].tex;
+            break;
+        }
+        if (!t || !t->data) why = "no slot";
+        else if (!ring_need(8, 12)) why = "ring full";
+    }
+    if (dbg) pm_log("GUTDBG call off_active %d off_cur %d combine %d slot %p why %s scissor %d %d %d %d",
+                    gs.off_active, gs.off_cur, gs.combine, (void*)t, why ? why : "drawn", sci_x0, sci_y0, sci_x1, sci_y1);
+    if (why) return;
+    gut_tex = t;
+    const int ec = 2; /* class 2 (TEXEL0 x SHADE): the plan path (combine 8) drops the texel in the strips */
+    const unsigned c = 0xffffffffu;
+    static const float uvso_p[4] = { 1.f / 4096.f, 1.f / 4096.f, 0.f, 0.f };
+    const int s_2d = nb.rect_2d;
+    nb.rect_2d = 1;
+    grab_bind = 2;
+    rect_raw_open(ec, 0.5f, uvso_p);
+    gut_quad(0, 40, 0.f, 40.f, c);
+    gut_quad(360, 400, 360.f, 400.f, c);
+    if (dbg) pm_log("GUTDBG queued: ec %d gni %u gidx_n %u rect_open %d", ec, nb.gni, nb.gidx_n, nb.rect_open);
+    flush();
+    grab_bind = 0;
+    nb.rect_2d = s_2d;
+    if (dbg) pm_log("GUTDBG flushed: gni %u", nb.gni);
+}
 int pm_gpu_grab_prev(const void* prev_cfb) {
     PM_WALK_OWN(); /* CORE2-3a */
     prev_want = 2; /* BTRANS: the request holds for 2 drawn frames */
@@ -2191,9 +2283,10 @@ static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
     int was_off = gs.off_active, prev = gs.off_cur;
     static int once;
     /* F07-7: with wide the slot holds all 400 screen columns (slot x = screen x). The game reads game x at slot x + 40 (pm_gpu_off_begin shifts the base). */
-    const int x0 = 0, x1 = pm_wide ? 400 : 320, mo = pm_wide ? 0 : 40;
+    const int x0 = 0, x1 = pm_wide || pm_stretch ? 400 : 320, mo = pm_wide || pm_stretch ? 0 : 40; /* MENUGEN: Fullscreen as wide */
     if (!gs.gpu_ok || off_fail || y1 <= y0) return 0;
     if (!(gs.gpu_vtx_on && gs.gv4_on)) return 0;
+    if (PMDL("orbdbg")) pm_log("grabdbg f%u prev %d n %d y %d %d dirty %d spl %u", pm_frame_count(), prev_frame, grab_n, y0, y1, gs.grab_dirty, sc_spl); /* SBLK2 B1 debug: one line per copy */
     if (grab_n && !prev_frame) {
         /* no draw since the last grab, or only rectangles of other rows: same slot */
         if (!gs.grab_dirty && (grab_dy1 <= grab_dy0 || y1 <= grab_dy0 || y0 >= grab_dy1)) { grab_log(cfb, y0, y1, 1); return 1; }
@@ -2750,7 +2843,7 @@ enum { GSTAT_IDX = 131072 };
 static unsigned short* gidxs; static unsigned gidxs_n;
 unsigned short* pm_gpu_gidxs_alloc(unsigned n) {
     if (!gs.gpu_vtx_on || !gs.gpu_ok) return NULL;
-    if (!gidxs) gidxs = (unsigned short*)linearAlloc(GSTAT_IDX * 2);
+    if (!gidxs) gidxs = (unsigned short*)pm_linear_alloc(GSTAT_IDX * 2);
     if (!gidxs || gidxs_n + n > GSTAT_IDX) return NULL;
     unsigned short* p = gidxs + gidxs_n;
     gidxs_n += n;
@@ -2967,11 +3060,10 @@ static uint32_t aux_hash(const uint32_t* rec) {
  * their entry of the other room state (kmr_20: w32 first for 230 to 316 misses per door). */
 static uint32_t rm_wh[256], rm_wl[256], rm_ga[256]; static uint8_t rm_done[256];
 static __attribute__((cold, noinline)) void rm_masks(unsigned i) {
-    extern void* ModelRenderModes[]; /* src/model.c: Gfx* per render mode index */
     NdMode m;
     rm_done[i] = 1;
     rm_ga[i] = 0xFFFFFFFFu;
-    if (nd_mode_compile(&m, (const unsigned*)ModelRenderModes[i])) { rm_wh[i] = m.wh; rm_wl[i] = m.wl; rm_ga[i] = m.gand; }
+    if (i < ND_RM_N && nd_mode_compile(&m, (const unsigned*)nd_rm_tab[i])) { /* HC4b: the typed render mode table (nd_rec.c) */ rm_wh[i] = m.wh; rm_wl[i] = m.wl; rm_ga[i] = m.gand; }
 }
 void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) {
     memcpy(k->w, rec, NDMC_RW * sizeof(uint32_t));
@@ -3015,7 +3107,7 @@ void pm_gpu_set_r13_t1(int bound) {
     /* FB-2: 2 (an off-screen aux image) stays a fallback here: the model path has no snapshot */
 }
 int nd_mix1(unsigned ol, unsigned* col); /* nd_set.c: the V06 colour mix rule of sync_render */
-extern unsigned fogc, blendc;
+extern unsigned fogc, blendc; extern int pm_nofog;
 static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, int emit, int* mode_ok, const NdMKey* mk) {
     *mode_ok = modew != NULL && nd_mode_compile(&mdl_mode, (const unsigned*)modew) != 0;
     if (!*mode_ok) { static unsigned mb_; if (mb_++ < 8u) { const uint32_t* mw_ = (const uint32_t*)modew; pm_log_prof_line("modebad modew %p bad %02x w0 %08x w1 %08x w2 %08x w3 %08x", modew, mdl_mode.bad, modew ? mw_[0] : 0u, modew ? mw_[1] : 0u, modew ? mw_[2] : 0u, modew ? mw_[3] : 0u); } }
@@ -3280,8 +3372,33 @@ int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32
 /* S3N-6: the hit. The cached draws of key k go out (after pm_gpu_flush) when the fresh ranges are the cached ones: each with the palette of the current view
  * and, for a textured record, the unit 0 words of the hinted slot (nd_tex_unit_hint). 1: drawn. 0: no entry, other ranges, or no texture: the caller
  * applies the record (its matrix ops are done). */
+/* FFOG (diagnostic, switch ffog; no effect on the draw): per 60 frames, over the native hits. hit: hits seen; empty: hits of an entry with no draw
+ * (the model is skipped); emptyig: the same for an IGNORE_MATRIX record (flag 256 of R3, the walker matrix is kept, no load); rng: the group mask
+ * now differs from the entry's (rebuilt, not a hit); rngig: the same for IGNORE records; cmis: hits whose `combined` is not the fresh MVP of the
+ * walker stack (nd_mtx_combine); vmz: hits with a zero group mask now. Premise of the suspect: combined is the walker MVP at every hit. */
+int pm_dlc_ons_note(const void* lv, unsigned* culled, unsigned* ons); /* nd_shape.c, FFOG */
+static __attribute__((cold, noinline)) void ffog_note(const NdMKey* k, const NdMEnt* e) {
+    static unsigned f_, hit_, emp_, empig_, rng_, rngig_, cmis_, vmz_, cul_, ons_, onsh_;
+    const unsigned f = pm_frame_count();
+    if (f != f_) {
+        if (f_ && f % 60u < 3u) { pm_log_w("ffog f%u hit %u empty %u emptyig %u rng %u rngig %u cmis %u vmz %u culg %u ons %u onsh %u", f, hit_, emp_, empig_, rng_, rngig_, cmis_, vmz_, cul_, ons_, onsh_); hit_ = emp_ = empig_ = rng_ = rngig_ = cmis_ = vmz_ = cul_ = ons_ = onsh_ = 0; }
+        f_ = f;
+    }
+    const int ig = (((const uint32_t*)(uintptr_t)k->rp)[6] & 256u) != 0;
+    uint64_t vm = 0;
+    const int same = pm_dlc_vis_mask((const void*)(uintptr_t)k->w[24], &vm) == 0 && vm == e->vmask;
+    float fresh[4][4];
+    nd_mtx_combine(fresh);
+    hit_++;
+    if (memcmp(fresh, pm_gbi_combined_ptr(), sizeof fresh) != 0) cmis_++;
+    { unsigned cu = 0, on = 0; if (pm_dlc_ons_note((const void*)(uintptr_t)k->w[24], &cu, &on) == 0) { cul_ += cu; ons_ += on; onsh_ += on != 0; } } /* the box test removed an on-screen group */
+    if (!same) { rng_++; rngig_ += (unsigned)ig; return; }
+    if (!vm) vmz_++;
+    if (!e->n) { emp_++; empig_ += (unsigned)ig; }
+}
 int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
     if (!e) { ndn_nokey++; return 0; }
+    if (PMDL("ffog")) ffog_note(k, e);
     if (!model_vis_same(k, e)) { ndn_rng++; pm_xf.mdl_rng++; return 0; }
     if (e->mver && e->mver != ((((const uint32_t*)(uintptr_t)k->rp)[3] >> 16) | 0x10000u)) { ndn_rng++; pm_xf.mdl_rng++; return 0; } /* MAPX-2: a lit entry whose matrix moved: the miss path stores it again in place */
     if (!e->n) { ndn_empty++; ndn_rec++; ndn_hit++; return 1; } /* PERF1-4c: no draw (no group in view, or all culled): no texture lookup, template build, matrix product or flush */
@@ -3697,8 +3814,18 @@ int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16
     c.env = nd_ws.envc; c.prim = nd_ws.prim; c.prim_lod = nd_ws.prim_lod; c.cconst = cconst; c.mixcol = r_mixcol;
     { float db = decal_bias(); memcpy(&c.dbias, &db, 4); }
     c.base_oh = nd_ws.omode_h; c.base_ol = nd_ws.omode_l; c.known_h = nd_ws.om_kh; c.known_l = nd_ws.om_kl;
+    { /* SHROUD: the mix is the sprite's own othermode (nd_mix1, the F08 fog-shade-alpha case as sync_render), not gs.r_mix of the last model's sync_render:
+       * a sprite drawn after a shrouded model took its shroud (star power). */
+        unsigned mixc; const unsigned ol_ = nd_ws.omode_l, p_ = (ol_ >> 30) & 3u, a_ = (ol_ >> 26) & 3u, mm_ = (ol_ >> 22) & 3u, b_ = (ol_ >> 18) & 3u;
+        if (nd_mix1(ol_, &mixc)) { c.r_mix = 1; c.mixcol = mixc; }
+        else if (!pm_nofog && p_ == 3u && a_ == 2u && mm_ == 0u && b_ == 0u) { c.r_mix = 2; c.mixcol = (fogc & 0xffffff00u) | 0xffu; }
+        else { c.r_mix = 0; c.mixcol = r_mixcol; }
+    }
     uint32_t zr[27];
     memset(zr, 0, sizeof zr); /* the record words the model state reads (R3 flags, R11, R13) are zero: a sprite has none */
+    if (__builtin_expect(PMDL("sprmix"), 0)) { /* SHROUD: gs_r_mix (the last sync_render) and own_r_mix (this sprite's othermode, c.r_mix above) */
+        static unsigned sprmix_n; unsigned f_ = pm_frame_count(); if (f_ >= 415u && f_ <= 565u && sprmix_n++ < 300u) pm_log("sprmix f%u gs_r_mix %d own_r_mix %d mixcol %08x om30 %u ol %08x", f_, gs.r_mix, c.r_mix, c.mixcol, nd_ws.omode_l >> 30, nd_ws.omode_l);
+    }
     if (nd_model_state_spr(zr, &c, n, st) != 1) { *why = 10 + st->why; return 0; } /* PERF1-5: through the sprite state memo */
     n->nidx = 6; /* pm_gpu_spr_submit: two triangles of the quad */
     pm_gpu_pcomp_native(pal0, pm_gbi_combined_ptr());

@@ -4,8 +4,13 @@
 User (2026-11-09): shrink the hot code a lot; queue the stages in waves with no merge conflicts. HC0: class G M1 21.7 KB, M3 on mac_01
 12.1 KB. Shared oracle plan (code read; the HC0 fncov counts were lost with the HC0 lane, so step 1 measures again).
 
+## Console fact (2026-11-09, XL main 8085ef1d0, mac_01 standing still)
+Windows with 33 text rects per frame: nd 23.1 ms, I-miss 55k; with 5-15 rects: nd 17.9-20.2 ms, I-miss 40-44k. About 20 extra text
+rects cost about 5 ms and about 15k I-misses per frame (about 250 us per rect). 136 rects: nd 32.7 ms, 91k I-miss. User: start now
+(before HC4 ends). Gate add: a rect census (rects per frame and us per rect) before/after on a menu or HUD scene.
+
 ## Start state
-`sh 3ds/tools/wt_new.sh HC7` after HC4 merges (wave 3). PM_ROW=HC7, PM_LANE=HC7. One Haiku agent.
+`sh 3ds/tools/wt_new.sh HC7` now (user, 2026-11-09), while HC4 runs: skip step 2 (ensure_tile, nd_tex_set.c is HC4's file) and step 7 (HC7b) for now. PM_ROW=HC7, PM_LANE=HC7. One Haiku agent.
 Files: 3ds/src/nd_rect.c, pm_gpu_rect.c, nd_tex_set.c (ensure_tile, tile_bound), pm_tex.c (cell_get only); HC7b adds nd_cmd.h,
 nd_rec.c, 3ds/tools/nd_cmd_test.c. Not with HC8 at the same time if both edit pm_gpu.c.
 
