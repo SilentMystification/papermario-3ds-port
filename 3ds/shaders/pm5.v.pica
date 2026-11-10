@@ -138,6 +138,9 @@
 	add r12.x, fogu.y, r12.x
 	max r12.x, zeros, r12.x
 	min r12.x, myc3.xxxx, r12.x
+	; FFOG1: a vertex at or behind the eye (clip w <= 0) has fog 0, as the N64 near-clip vertex. r13 is free after the light loop.
+	slt r13.x, myc3.yyyy, r5.wwww
+	mul r12.x, r12.x, r13.x
 	add r9.x, r12.x, -r3.w
 	mul r9.x, lflag.z, r9.x
 	add r3.w, r3.w, r9.x
