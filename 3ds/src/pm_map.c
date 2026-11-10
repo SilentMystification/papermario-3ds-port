@@ -294,6 +294,69 @@ static ModelNode* fix_shape(u8* buf, u32 size) {
     return (ModelNode*)(unsigned long)root;
 }
 
+/* HC4f2: the shape loader. romfs:/shape/<name>.nds is written by nd_shape_conv.c (HC4f1): "NDSH", version u32 = 1,
+ * size u32, n_reloc u32, reloc[n_reloc] u32 (offsets into data), data[size]. Pointer fields hold shape offsets, so the
+ * loader copies data into buf and adds buf to every reloc field. Returns 0 when the file is missing or does not fit buf. */
+static int shape_load_romfs(u8* buf, u32 size, const char* name) {
+    char path[64];
+    u8 hdr[16];
+    u32 dsize, n_reloc, k;
+    FILE* f;
+    snprintf(path, sizeof path, "romfs:/shape/%s.nds", name);
+    f = fopen(path, "rb");
+    if (!f) return 0;
+    if (fread(hdr, 1, 16, f) != 16 || memcmp(hdr, "NDSH", 4) != 0) goto bad;
+    dsize = (u32)hdr[8] | ((u32)hdr[9] << 8) | ((u32)hdr[10] << 16) | ((u32)hdr[11] << 24);
+    n_reloc = (u32)hdr[12] | ((u32)hdr[13] << 8) | ((u32)hdr[14] << 16) | ((u32)hdr[15] << 24);
+    if (dsize != size) goto bad;
+    if (fseek(f, (long)(16 + n_reloc * 4), SEEK_SET) != 0) goto bad;
+    if (fread(buf, 1, size, f) != size) goto bad;
+    if (fseek(f, 16, SEEK_SET) != 0) goto bad;
+    for (k = 0; k < n_reloc; ) { /* the reloc list in chunks of 64 words: no heap, no full copy */
+        u32 rb[64];
+        u32 c = n_reloc - k < 64 ? n_reloc - k : 64;
+        u32 j;
+        if (fread(rb, 4, c, f) != c) goto bad;
+        for (j = 0; j < c; j++) {
+            u32 r = rb[j];
+            u32 v;
+            if (r > size - 4) goto bad;
+            memcpy(&v, buf + r, 4);
+            v += (u32)(unsigned long)buf;
+            memcpy(buf + r, &v, 4);
+        }
+        k += c;
+    }
+    fclose(f);
+    return 1;
+bad:
+    fclose(f);
+    return 0;
+}
+
+/* HC4f2: shpchk. The old path (fix_shape) runs into buf first; its copy goes to the heap; the loader then runs into buf and
+ * the two are compared. Logs "shpchk <map> diff <n>" (n = differing bytes). A missing or bad file restores the old bytes. */
+static void shape_check(u8* buf, u32 size) {
+    u8* old;
+    u32 i, diff = 0;
+    fix_shape(buf, size);
+    old = general_heap_malloc(size);
+    if (!old) {
+        pm_log_evt("shpchk %s nomem", pm_shape_name);
+        return;
+    }
+    memcpy(old, buf, size);
+    if (!shape_load_romfs(buf, size, pm_shape_name)) {
+        pm_log_evt("shpchk %s load fail", pm_shape_name);
+        memcpy(buf, old, size);
+        general_heap_free(old);
+        return;
+    }
+    for (i = 0; i < size; i++) diff += buf[i] != old[i];
+    pm_log_evt("shpchk %s diff %u", pm_shape_name, (unsigned)diff);
+    general_heap_free(old);
+}
+
 static int yay0_decode_raw(const u8* src, u32 src_len, u8* dst, u32 dst_len) {
     u32 dec_size, link, count, src_pos, dst_pos, bits, mask;
     if (src_len < 16 || src[0] != 'Y' || src[1] != 'a' || src[2] != 'y' || src[3] != '0') return 0;
@@ -388,7 +451,7 @@ void decode_yay0(void* src, void* dst) {
     /* ROM data is big-endian. The real loaders read these two kinds of file in place, so convert them here, once. */
     if (dst == (void*)pm_shape_buf) {
         { extern char wMapShapeName[]; memcpy(pm_shape_name, src == last_asset_src ? last_asset_name : wMapShapeName, sizeof pm_shape_name); } /* SEAMFIX: the seamfix log line names the shape (world.c calls its own load_asset_by_name, not the wrap) */
-        fix_shape(dst, dec);
+        shape_check(dst, dec);
         { extern unsigned pm_dlc_gen; pm_dlc_gen++; } /* DLC1: the shape file is final now */
     } else if (src == last_asset_src) {
         u32 n = strlen(last_asset_name);

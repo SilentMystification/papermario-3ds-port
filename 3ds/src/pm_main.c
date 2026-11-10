@@ -943,6 +943,8 @@ int main(int argc, char** argv) {
     mkdir("sdmc:/3ds", 0777);
     mkdir("sdmc:/3ds/PaperMario", 0777);
     chdir("sdmc:/3ds/PaperMario");
+    /* HC4f2: romfs:/shape/<name>.nds (build.sh gen_shapes, the image of $OUT/romfs) is read by the shape loader in pm_map.c. */
+    { Result rfs = romfsInit(); if (rfs) pm_log_evt("romfs init fail %08lx", (unsigned long)rfs); }
     s32 prio = 0x30;
     svcGetThreadPriority(&prio, CUR_THREAD_HANDLE);
     Thread t = pm_thread_create(game_thread, NULL, 256 * 1024, prio, 0, "game");

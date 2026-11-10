@@ -541,7 +541,8 @@ target_link_options(pm_3ds PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/map_syms.lds -B${
 set_target_properties(pm_3ds PROPERTIES LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/map_syms.lds;${CMAKE_CURRENT_SOURCE_DIR}/ld/3dsx.ld.in;${CMAKE_CURRENT_SOURCE_DIR}/ld/hot_order.ld;${CMAKE_CURRENT_SOURCE_DIR}/ld/map_restore.ld;${CMAKE_CURRENT_SOURCE_DIR}/ld/map_restore_bss.ld")
 target_link_libraries(pm_3ds pm_shader4_lib pm_shader5_lib citro3d ctru m)
 
-ctr_create_3dsx(pm_3ds SMDH "${CMAKE_CURRENT_BINARY_DIR}/pm_3ds.smdh")
+# HC4f2: the romfs image is the build output folder (docker mounts it at /out). build.sh gen_shapes fills /out/romfs/shape.
+ctr_create_3dsx(pm_3ds SMDH "${CMAKE_CURRENT_BINARY_DIR}/pm_3ds.smdh" ROMFS /out/romfs)
 # CONCOL: the build number comes from build.sh (-DPM_BUILD_NUM). It sets the smdh description at configure time.
 if(NOT PM_BUILD_NUM)
     set(PM_BUILD_NUM "dev")
