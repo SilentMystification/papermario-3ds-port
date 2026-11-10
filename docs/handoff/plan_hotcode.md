@@ -202,8 +202,13 @@ performance effect). Static lists are typed before the game runs (5.7 S1, S2); r
 | HC4b | T_COMB, render mode table (W3), shadow dedupe and t4chk | nd_rec.c, nd_recs.c, nd_comb.c, nd_walk.c | rec_dl list path |
 | HC4c | texture ops typed, bind and R13 ops in the payload (W4), R1 and R2 typed at their producer | nd_tex_set.c, nd_recs.c, nd_rec.c, src/model.c | tex_op, tb_ops, op_* wrappers |
 | HC4d | done: T_MTX/POPMTX/VTX/TRI/MOVEMEM (HC4d1); NDO_CALL/RECT/MISC control ops run by op_ctl, sprite fallback (W5), entity NDO_CALL (W6), R7 (HC4d2). nd_walk_state runs typed ops only; a static list word is typed by nd_op_xlate on core 0 until HC4e | nd_walk.c, nd_rec.c, nd_op.c, nd_ent.c, nd_model.c, src/sprite.c | word cases, g2_same, g2_note, row_DIRECT.md |
-| HC4e | S1: typed gs* and local g* macros (ELF static lists, local lists), consumers (ent, dlc, sprite rmList, entity displayList, R5, R6, R10, pm_gbi_fallback) read typed ops; the core 0 nd_op_xlate call in nd_walk_state goes | nd_gbi.h, nd_op.h, nd_ent.c, nd_shape.c, pm_gpu.c (sprite) | the word readers of ent_compile and dlc |
-| HC4f | S2: host shape converter, sidecar loader, node pointers to typed lists | 3ds/tools/nd_shape_conv.c (new, host), build.sh, pm_map.c | ShapeFix word walk (pm_map.c:63-190) |
+| HC4e1 | nd_op.h ND_X0/ND_X1 constant-expression translator (mirror of nd_op_xlate; MOVEWORD offsets by a constant chain, no division); nd_op_xlate passes a typed unit through (returns 1); nd_cmd_test.c equality | nd_op.h, nd_op.c, 3ds/tools/nd_cmd_test.c | - |
+| HC4e2a/b/c | readers of static/local lists accept typed units (u = typed ? q : xlate(q)) and compare NDO_* ids; G_ENDDL writers write NDO_END | a: nd_ent.c; b: src/entity_model.c, animator.c, imgfx.c, model.c (R4), effects/hieroglyphs.c, underwater.c, energy_orb_wave.c, flo_10/waterfx.c; c: nd_shape.c | - |
+| HC4e3 | gs* and g* base macros emit ND_X units at compile time, by group (scalar, texture, geometry and control); nd_gx_w reads NDO_RECT/NDO_END/NDO_CALL | nd_gbi.h, include/gbi_custom.h, nd_rec.c | - |
+| HC4f1 | host converter 3ds/tools/nd_shape_conv.c: ROM asset table, Yay0, fix_shape mirror -> native LE shape file + reloc table, lists still words; build.sh runs it into build3ds/<lane>/romfs/shape/ | nd_shape_conv.c (new), build.sh | - |
+| HC4f2 | romfs in the 3dsx (ctr_create_3dsx ROMFS, romfsInit), loader: read, relocate (one pass over reloc), shpchk equality with fix_shape, then fix_shape deleted | 3ds/CMakeLists.txt, pm_main.c, pm_map.c | ShapeFix word walk (pm_map.c:46-296) |
+| HC4f3 | converter types the lists in place (one unit per word: same offsets) | nd_shape_conv.c | - |
+| HC4e4 | delete the xlate fallbacks: nd_walk_state branch, reader branches, nd_op_xlate/nd_op_type_run/nd_rm_build out of the ELF (nd_op.c host-only), rec_op word path; done-check grep | nd_walk.c, nd_op.c, nd_rec.c, nd_recs.c, nd_ent.c, nd_shape.c, CMakeLists.txt, the 2b files | word readers, row_HC4.md |
 | HC5 | combine memo on core 1, T_PLAN/T_SYNC | nd_comb.c, pm_comb.c, nd_rec.c, pm_gpu.c (set_plan) | - |
 | HC6 | hit state, key A/B, fast path, command block | nd_recs.c, pm_gpu.c, nd_model.c, nd_emit.c | - |
 - Gates per slice: nd_host PASS; byte-equal spot_mac01_det and battle_start_f182_cold against stored base shots (plus mdl5_iwa10_det
@@ -226,11 +231,7 @@ performance effect). Static lists are typed before the game runs (5.7 S1, S2); r
   (memcheck line); equal size expected, since every gs macro stays one 8-byte unit.
 - S2, map shapes (ROM data loaded per map into gMapShapeData, pm_map.c:37; pm_map.c:63-190 walks the list words at load to relocate
   and swap them): a host C converter `3ds/tools/nd_shape_conv.c` (built and run by build.sh; user decision 2026-11-09: build time only,
-  no first-boot path) reads the N64 shape file and writes a sidecar per map:
-  `NdShp { magic, version, n_lists, n_ops, n_reloc; u32 list_off[n_lists] (N64 list offset -> typed op index, sorted); NdOp ops[n_ops];
-  u32 reloc[n_reloc] (op indices whose b is a shape offset) }`, little-endian, 8-byte aligned, position-free (offsets, relocated by one
-  pass over reloc at load: no list read). The loader rewrites each ModelNode display list pointer to its typed list (a node walk, not a
-  word walk). build.sh writes one sidecar per map into romfs next to the shape file.
+  no first-boot path) reads the N64 shape file and writes the whole decoded shape file, byte-swapped to native, with its lists typed in place (one 8-byte unit per word, so all offsets hold), plus a table of the offsets of every pointer field; the loader adds the buffer base to those fields (no list read, no node walk).
   Size [E, measured by the converter's report line per map and in total for the 411 maps]: typed ops <= the N64 list bytes (one unit per
   word, syncs dropped), plus 4 B per list and 4 B per relocated op; the vertex, matrix, light and texture data stay in the shape file.
   The gMapShapeData buffer (256 KB) then holds the shape data without its lists plus the typed lists.

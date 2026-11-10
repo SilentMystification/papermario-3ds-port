@@ -168,8 +168,71 @@ static void op_test(void) {
     }
 }
 
+/* HC4e1: ND_X0/ND_X1 (nd_op.h) equal nd_op_xlate for every op of its switch (8 fixed-seed words each), the spec units of the syncs,
+ * G_SPNOOP and G_ENDDL, pass-through of a typed and an unknown word, every MOVEWORD index and offset 0..255, and a static initializer. */
+#define HC4E1_C0 ((uint32_t)G_MOVEWORD << 24 | (uint32_t)G_MW_LIGHTCOL << 16 | 48u)
+static void nd_x_test(void) {
+    static const unsigned xl[] = { G_SETOTHERMODE_H, G_SETOTHERMODE_L, G_GEOMETRYMODE, G_SETPRIMCOLOR, G_SETENVCOLOR, G_SETFOGCOLOR,
+        G_SETBLENDCOLOR, G_SETFILLCOLOR, G_SETPRIMDEPTH, G_SETSCISSOR, G_TEXTURE, G_MOVEWORD, G_SETCONVERT, G_SETKEYR, G_SETKEYGB,
+        G_SETCOMBINE, G_SETTIMG, G_SETTILE, G_SETTILESIZE, G_LOADBLOCK, G_LOADTILE, G_LOADTLUT, G_VTX, G_TRI1, G_TRI2, G_MTX, G_POPMTX,
+        G_MOVEMEM, G_DL, G_FILLRECT, G_TEXRECT, G_TEXRECTFLIP, G_PM_LST, G_PM_ND, G_MODIFYVTX, G_SETCIMG, G_NOOP, G_RDPHALF_1,
+        G_RDPHALF_2, G_SETZIMG };
+    static const unsigned spec[] = { G_RDPLOADSYNC, G_RDPPIPESYNC, G_RDPTILESYNC, G_RDPFULLSYNC, G_SPNOOP };
+    static const uint32_t kx[2] = { ND_X0(HC4E1_C0, 0x5566u), ND_X1(HC4E1_C0, 0x5566u) };
+    unsigned f0 = fails, n_x = 0;
+    uint32_t s = 0x9E3779B9u;
+#define HC4E1_RND() (s = s * 1664525u + 1013904223u)
+    CHECK(kx[0] == NDO_W0(NDO_MW, NDO_MW_LIGHTCOL << 16 | 2u) && kx[1] == 0x5566u, "static ND_X units %08x %08x", kx[0], kx[1]);
+    for (unsigned k = 0; k < sizeof xl / sizeof xl[0]; k++) {
+        for (unsigned i = 0; i < 8; i++) {
+            const uint32_t w0 = (uint32_t)xl[k] << 24 | (HC4E1_RND() & 0xffffffu), w1 = HC4E1_RND();
+            uint32_t t[2] = { 0, 0 };
+            CHECK(nd_op_xlate(w0, w1, t) == 1, "xlate op %02x returns 0", xl[k]);
+            CHECK(ND_X0(w0, w1) == t[0] && ND_X1(w0, w1) == t[1], "ND_X op %02x w0 %08x w1 %08x: %08x %08x vs %08x %08x", xl[k], w0, w1,
+                  ND_X0(w0, w1), ND_X1(w0, w1), t[0], t[1]);
+            n_x++;
+        }
+    }
+    for (unsigned k = 0; k < sizeof spec / sizeof spec[0]; k++) {
+        for (unsigned i = 0; i < 8; i++) {
+            const uint32_t w0 = (uint32_t)spec[k] << 24 | (HC4E1_RND() & 0xffffffu), w1 = HC4E1_RND();
+            CHECK(ND_X0(w0, w1) == NDO_W0(NDO_MISC, NDO_MISC_NOP << 16) && ND_X1(w0, w1) == w1, "ND_X sync %02x", spec[k]);
+            n_x++;
+        }
+    }
+    for (unsigned i = 0; i < 8; i++) {
+        const uint32_t w0 = (uint32_t)G_ENDDL << 24 | (HC4E1_RND() & 0xffffffu), w1 = HC4E1_RND();
+        CHECK(ND_X0(w0, w1) == NDO_W0(NDO_END, 0) && ND_X1(w0, w1) == 0u, "ND_X ENDDL");
+        n_x++;
+    }
+    for (unsigned i = 0; i < 8; i++) {  /* a typed unit (NDO_TILE) and an unknown op (0x08): both stay */
+        const uint32_t ids[2] = { NDO_TILE, 0x08u };
+        for (unsigned j = 0; j < 2; j++) {
+            const uint32_t w0 = ids[j] << 24 | (HC4E1_RND() & 0xffffffu), w1 = HC4E1_RND();
+            uint32_t t[2] = { 0, 0 };
+            CHECK(nd_op_xlate(w0, w1, t) == (j == 0) && t[0] == w0 && t[1] == w1, "pass-through %02x", ids[j]);
+            CHECK(ND_X0(w0, w1) == w0 && ND_X1(w0, w1) == w1, "ND_X pass-through %02x", ids[j]);
+            n_x++;
+        }
+    }
+    /* MOVEWORD: every index the translator names, offsets 0..255 (the LIGHTCOL and SEGMENT valid sets) */
+    static const unsigned mwi[] = { G_MW_NUMLIGHT, G_MW_LIGHTCOL, G_MW_FOG, G_MW_SEGMENT, 0x05u };
+    for (unsigned q = 0; q < sizeof mwi / sizeof mwi[0]; q++) {
+        for (unsigned off = 0; off < 256; off++) {
+            const uint32_t w0 = (uint32_t)G_MOVEWORD << 24 | (uint32_t)mwi[q] << 16 | off, w1 = HC4E1_RND();
+            uint32_t t[2] = { 0, 0 };
+            nd_op_xlate(w0, w1, t);
+            CHECK(ND_X0(w0, w1) == t[0] && ND_X1(w0, w1) == t[1], "ND_X movew idx %02x off %u", mwi[q], off);
+            n_x++;
+        }
+    }
+    printf("nd_op: %u unit cases %s\n", n_x, fails == f0 ? "PASS" : "FAIL");
+#undef HC4E1_RND
+}
+
 int main(int argc, char** argv) {
     op_test();
+    nd_x_test();
     if (argc < 2) { fprintf(stderr, "usage: nd_cmd_test <ndref.bin> ...\n"); return 2; }
     for (int a = 1; a < argc; a++) {
         FILE* f = fopen(argv[a], "rb");

@@ -53,6 +53,72 @@ enum { NDO_MISC_NOP, NDO_MISC_LST, NDO_MISC_ND, NDO_MISC_MODVTX, NDO_MISC_CIMG }
 #define NDO_W0(id, a) (((uint32_t)(id) << 24) | ((uint32_t)(a) & 0xffffffu))
 #define NDO_COMB_W0(a) ((uint32_t)0xfcu << 24 | ((uint32_t)(a) & 0xffffffu)) /* the G_SETCOMBINE word of a typed combine (nd_ws.comb_w0, model keys) */
 #define NDO_A_RENDERMODE (3u | 29u << 8) /* the a field of gDPSetRenderMode (G_MDSFT_RENDERMODE 3, 29 bits) */
+/* HC4e1: the typed unit of an F3DEX2 word as an integer constant expression (static initializers, the gs* macros). ND_X0 is the a and id
+ * word (w0), ND_X1 the b word (w1); both mirror nd_op_xlate (nd_op.c) arm for arm in the same order. A typed or unknown word stays as it is.
+ * ND_X1 lists only the arms whose b is not w1. No division: MOVEWORD offsets by a constant chain or a shift, MODIFYVTX by a shift. */
+#define ND_OPB(w0) (((uint32_t)(w0) >> 24) & 0xffu)
+#define ND_OTH_LEN(w0) (((uint32_t)(w0) & 0xffu) + 1u)
+#define ND_OTH_FLD(w0) (((uint32_t)(w0) >> 8) & 0xffu)
+#define ND_OTH_A(w0) ((((32u - ND_OTH_FLD(w0) - ND_OTH_LEN(w0)) & 0xffu)) | (ND_OTH_LEN(w0) << 8))
+#define ND_MW_IDX(w0) (((uint32_t)(w0) >> 16) & 0xffu)
+#define ND_MW_OFF(w0) ((uint32_t)(w0) & 0xffffu)
+#define ND_MW_LCOK(o) ((o) == 0u || (o) == 24u || (o) == 48u || (o) == 72u || (o) == 96u || (o) == 120u || (o) == 144u || (o) == 168u || (o) == 192u)
+#define ND_MW_LCA(o) ((o) == 0u ? 0u : (o) == 24u ? 1u : (o) == 48u ? 2u : (o) == 72u ? 3u : (o) == 96u ? 4u : (o) == 120u ? 5u : \
+    (o) == 144u ? 6u : (o) == 168u ? 7u : 8u)
+#define ND_MW_IS_LC(w0) (ND_MW_IDX(w0) == G_MW_LIGHTCOL && ND_MW_LCOK(ND_MW_OFF(w0)))
+#define ND_MW_IS_SEG(w0) (ND_MW_IDX(w0) == G_MW_SEGMENT && (ND_MW_OFF(w0) >> 2) < 16u)
+#define ND_MW_KIND(w0) (ND_MW_IDX(w0) == G_MW_NUMLIGHT ? (unsigned)NDO_MW_NUMLIGHT : ND_MW_IS_LC(w0) ? (unsigned)NDO_MW_LIGHTCOL : \
+    ND_MW_IDX(w0) == G_MW_FOG ? (unsigned)NDO_MW_FOG : ND_MW_IS_SEG(w0) ? (unsigned)NDO_MW_SEG : (unsigned)NDO_MW_NONE)
+#define ND_MW_ARG(w0) (ND_MW_IS_LC(w0) ? ND_MW_LCA(ND_MW_OFF(w0)) : ND_MW_IS_SEG(w0) ? (ND_MW_OFF(w0) >> 2) : 0u)
+#define ND_MW_A(w0) NDO_W0(NDO_MW, ((ND_MW_KIND(w0) << 16) | ND_MW_ARG(w0)))
+#define ND_MV_VI(w0) (ND_MW_OFF(w0) >> 1)
+#define ND_MV_A(w0) NDO_W0(NDO_MISC, (NDO_MISC_MODVTX << 16) | (((uint32_t)(w0) >> 8) & 0xff00u) | (ND_MV_VI(w0) < 255u ? ND_MV_VI(w0) : 255u))
+#define ND_NOP_A NDO_W0(NDO_MISC, NDO_MISC_NOP << 16)
+#define ND_IS_SYNC(w0) ((ND_OPB(w0) >= G_RDPLOADSYNC && ND_OPB(w0) <= G_RDPFULLSYNC) || ND_OPB(w0) == G_SPNOOP)
+#define ND_X0(w0, w1) (ND_OPB(w0) == G_SETOTHERMODE_H ? NDO_W0(NDO_OMH, ND_OTH_A(w0)) : \
+    ND_OPB(w0) == G_SETOTHERMODE_L ? NDO_W0(NDO_OML, ND_OTH_A(w0)) : \
+    ND_OPB(w0) == G_GEOMETRYMODE ? NDO_W0(NDO_GEOM, w0) : \
+    ND_OPB(w0) == G_SETPRIMCOLOR ? NDO_W0(NDO_PRIM, (uint32_t)(w0) & 0xffffu) : \
+    ND_OPB(w0) == G_SETENVCOLOR ? NDO_W0(NDO_ENV, 0u) : \
+    ND_OPB(w0) == G_SETFOGCOLOR ? NDO_W0(NDO_FOG, 0u) : \
+    ND_OPB(w0) == G_SETBLENDCOLOR ? NDO_W0(NDO_BLEND, 0u) : \
+    ND_OPB(w0) == G_SETFILLCOLOR ? NDO_W0(NDO_FILL, 0u) : \
+    ND_OPB(w0) == G_SETPRIMDEPTH ? NDO_W0(NDO_PRIMZ, 0u) : \
+    ND_OPB(w0) == G_SETSCISSOR ? NDO_W0(NDO_SCISSOR, w0) : \
+    ND_OPB(w0) == G_TEXTURE ? NDO_W0(NDO_TEXTURE, ((uint32_t)(w0) & 0xffu) != 0u) : \
+    ND_OPB(w0) == G_MOVEWORD ? ND_MW_A(w0) : \
+    ND_OPB(w0) == G_SETCONVERT ? NDO_W0(NDO_RARE, NDO_RARE_CONV) : \
+    ND_OPB(w0) == G_SETKEYR ? NDO_W0(NDO_RARE, NDO_RARE_KEYR) : \
+    ND_OPB(w0) == G_SETKEYGB ? NDO_W0(NDO_RARE, NDO_RARE_KEYGB) : \
+    ND_OPB(w0) == G_SETCOMBINE ? NDO_W0(NDO_COMB, w0) : \
+    ND_OPB(w0) == G_SETTIMG ? NDO_W0(NDO_TIMG, w0) : \
+    ND_OPB(w0) == G_SETTILE ? NDO_W0(NDO_TILE, w0) : \
+    ND_OPB(w0) == G_SETTILESIZE ? NDO_W0(NDO_TILESIZE, w0) : \
+    ND_OPB(w0) == G_LOADBLOCK ? NDO_W0(NDO_LOADBLOCK, w0) : \
+    ND_OPB(w0) == G_LOADTILE ? NDO_W0(NDO_LOADTILE, w0) : \
+    ND_OPB(w0) == G_LOADTLUT ? NDO_W0(NDO_LOADTLUT, w0) : \
+    ND_OPB(w0) == G_VTX ? NDO_W0(NDO_VTX, w0) : \
+    ND_OPB(w0) == G_TRI1 ? NDO_W0(NDO_TRI1, w0) : \
+    ND_OPB(w0) == G_TRI2 ? NDO_W0(NDO_TRI2, w0) : \
+    ND_OPB(w0) == G_MTX ? NDO_W0(NDO_MTX, w0) : \
+    ND_OPB(w0) == G_POPMTX ? NDO_W0(NDO_POPMTX, w0) : \
+    ND_OPB(w0) == G_MOVEMEM ? NDO_W0(NDO_MOVEMEM, w0) : \
+    ND_OPB(w0) == G_DL ? NDO_W0(NDO_CALL, ((((uint32_t)(w0) >> 16) & 0xffu) == G_DL_NOPUSH)) : \
+    ND_OPB(w0) == G_FILLRECT ? NDO_W0(NDO_RECT, w0) : \
+    (ND_OPB(w0) == G_TEXRECT || ND_OPB(w0) == G_TEXRECTFLIP) ? NDO_W0(NDO_RECT, w0) : \
+    ND_OPB(w0) == G_PM_LST ? NDO_W0(NDO_MISC, NDO_MISC_LST << 16) : \
+    ND_OPB(w0) == G_PM_ND ? NDO_W0(NDO_MISC, NDO_MISC_ND << 16 | (((uint32_t)(w0) >> 8) & 0xff00u) | ((uint32_t)(w0) & 0xffu)) : \
+    ND_OPB(w0) == G_MODIFYVTX ? ND_MV_A(w0) : \
+    ND_OPB(w0) == G_SETCIMG ? NDO_W0(NDO_MISC, NDO_MISC_CIMG << 16 | (((uint32_t)(w0) >> 7) & 0x3000u) | ((uint32_t)(w0) & 0xfffu)) : \
+    (ND_OPB(w0) == G_NOOP || ND_OPB(w0) == G_RDPHALF_1 || ND_OPB(w0) == G_RDPHALF_2 || ND_OPB(w0) == G_SETZIMG) ? ND_NOP_A : \
+    ND_IS_SYNC(w0) ? ND_NOP_A : \
+    ND_OPB(w0) == G_ENDDL ? NDO_W0(NDO_END, 0u) : \
+    (uint32_t)(w0))
+#define ND_X1(w0, w1) (ND_OPB(w0) == G_SETSCISSOR ? ((uint32_t)(w1) & 0xffffffu) : \
+    ND_OPB(w0) == G_FILLRECT ? ((uint32_t)(w1) & 0x00ffffffu) : \
+    (ND_OPB(w0) == G_TEXRECT || ND_OPB(w0) == G_TEXRECTFLIP) ? (NDO_RECT_TEX | ((uint32_t)(w1) & 0x07ffffffu)) : \
+    (ND_OPB(w0) == G_PM_LST || ND_OPB(w0) == G_PM_ND || ND_OPB(w0) == G_ENDDL) ? 0u : \
+    (uint32_t)(w1))
 static inline int nd_op_typed(unsigned id) { return id - (unsigned)NDO_BASE < 32u; }
 static inline int nd_op_geo(unsigned id) { return id - (unsigned)NDO_VTX <= (unsigned)(NDO_MOVEMEM - NDO_VTX); } /* HC4d: no skip test, no op switch of nd_set.c */
 static inline int nd_op_ctl(unsigned id) { return id >= (unsigned)NDO_CALL && id < (unsigned)NDO_END_; } /* HC4d2: a list call, rectangle or misc op */
