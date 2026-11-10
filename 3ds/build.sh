@@ -59,11 +59,13 @@ gen_texkey
 # HC4f1: host shape converter (3ds/tools/nd_shape_conv.c, host C, read only on ASSET_BASE). Writes $OUT/romfs/shape/<asset>.nds
 # for every *_shape table entry: the Yay0 decode with pointer fields as shape offsets and their reloc list.
 gen_shapes() {
-    command -v gcc >/dev/null 2>&1 || { echo "gen_shapes: gcc not found on the host" >&2; exit 1; }
-    sb=$ASSET_BASE; command -v cygpath >/dev/null 2>&1 && sb=$(cygpath -m "$ASSET_BASE")
-    mkdir -p $OUT/romfs/shape
-    gcc -O2 -Wall -o $OUT/nd_shape_conv.exe 3ds/tools/nd_shape_conv.c || { echo "nd_shape_conv.c failed to build" >&2; exit 1; }
-    $OUT/nd_shape_conv.exe "$sb" $OUT/romfs/shape || { echo "nd_shape_conv failed" >&2; exit 1; }
+    # Compiled and run in the host image pm3ds-host:1 (docker/Dockerfile.host), as nd_host_test.sh does. The ROM is a read only mount.
+    rom=$ASSET_BASE/ver/us/baserom.z64; [ -f "$rom" ] || { echo "gen_shapes: missing $rom" >&2; exit 1; }
+    w=$(pwd -W 2>/dev/null || pwd); od=$(cd "$OUT" && pwd -W 2>/dev/null || pwd)/romfs/shape
+    rd=$(cd "$ASSET_BASE/ver/us" && pwd -W 2>/dev/null || pwd)
+    mkdir -p "$OUT/romfs/shape"
+    MSYS_NO_PATHCONV=1 docker run --rm -v "$w:/w:ro" -v "$od:/out" -v "$rd/baserom.z64:/ar/ver/us/baserom.z64:ro" -w /tmp pm3ds-host:1 sh -c \
+        'gcc -O2 -Wall -o /tmp/nd_shape_conv /w/3ds/tools/nd_shape_conv.c && /tmp/nd_shape_conv /ar /out' || { echo "gen_shapes failed" >&2; exit 1; }
 }
 gen_shapes
 
