@@ -1961,6 +1961,7 @@ typedef struct { u32 l, ra, rn; } SrFb; /* left bind list address, the right lis
 static gxCmdEntry_s* sr_ent;
 static SrFb* sr_fb;
 static unsigned sr_n, sr_from, sr_fbn;
+static unsigned sr_logn = 4u; /* STEREOFX debug: replay log lines of the current stereo run */
 static int sr_on, sr_over;
 static float eye_e;   /* the eye shift of the left pass of this frame (0 in a mono frame); the right pass uses -eye_e */
 static float eye_gpu; /* the eye value the GPU holds */
@@ -1994,6 +1995,7 @@ static void sr_force_all(void) {
 }
 /* the record starts with the entries queued since C3D_FrameBegin (the old frame copy, PT12) */
 static void sr_frame_begin(void) {
+    static int sr_prev; if (stereo_frame && !sr_prev) sr_logn = 0; sr_prev = stereo_frame; /* STEREOFX debug */
     sr_on = 0; sr_n = 0; sr_fbn = 0; sr_over = 0; sr_from = 0;
     if (!stereo_frame) return;
     if (!sr_ent) { sr_ent = (gxCmdEntry_s*)malloc(SR_MAX * sizeof *sr_ent); sr_fb = (SrFb*)malloc(SR_FB_MAX * sizeof *sr_fb); } /* hw rule 7: heap, at the first stereo frame */
@@ -2079,6 +2081,7 @@ static void sr_replay(void) {
         pm_gx_room();
         gxCmdQueueAdd(q, &e);
     }
+    if (sr_logn < 4u) { sr_logn++; pm_log("stereo: replay f%u n %u fbn %u over %d ent %p fb %p", pm_frame_count(), sr_n, sr_fbn, sr_over, (void*)sr_ent, (void*)sr_fb); } /* STEREOFX debug */
     if (pm_ph_on) pm_pf_eye2_add(svcGetSystemTick() - t0);
 }
 
@@ -2433,6 +2436,8 @@ void pm_gpu_begin_wait(void) {
     if (prev_want) prev_want--;
     eye_slider = osGet3DSliderState(); /* STEREO: the slider decides per frame. At 0 the frame is mono: one pass, the original perspective, no shift. */
     if (PMDL("stereo")) eye_slider = 1.f;
+    { static int st_at = -2; if (st_at == -2) { char v[12]; st_at = pm_debug_value("stereoat", v, sizeof v) ? atoi(v) : -1; }
+      if (st_at >= 0) eye_slider = pm_frame_count() >= (unsigned)st_at ? 1.f : 0.f; } /* STEREOFX debug: slider 0 -> 1 at frame st_at */
     stereo_frame = targetR && u_eye >= 0 && eye_slider > 0.02f;
     gfxSet3D(stereo_frame);
     eye_conv = stereo_frame ? pm_eye_conv : 0.f; /* the camera of the frame (the logic thread writes it): one value for both eyes; a mono frame keeps eyd.w at 0 */
