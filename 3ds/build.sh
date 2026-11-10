@@ -56,6 +56,27 @@ gen_texkey() {
 }
 gen_texkey
 
+# HC4f1: host shape converter (3ds/tools/nd_shape_conv.c, host C, read only on ASSET_BASE). Writes $OUT/romfs/shape/<asset>.nds
+# for every *_shape table entry: the Yay0 decode with pointer fields as shape offsets and their reloc list.
+gen_shapes() {
+    # Compiled and run in the host image pm3ds-host:1 (docker/Dockerfile.host), as nd_host_test.sh does. The ROM is a read only mount.
+    rom=$ASSET_BASE/ver/us/baserom.z64; [ -f "$rom" ] || { echo "gen_shapes: missing $rom" >&2; exit 1; }
+    w=$(pwd -W 2>/dev/null || pwd); od=$(cd "$OUT" && pwd -W 2>/dev/null || pwd)/romfs/shape
+    rd=$(cd "$ASSET_BASE/ver/us" && pwd -W 2>/dev/null || pwd)
+    # Skip: the stamp holds the hash of the converter source, the ROM size and the file count of the last run.
+    stamp=$OUT/romfs/shape/.stamp
+    want="$(git hash-object 3ds/tools/nd_shape_conv.c) $(wc -c < "$rom" | tr -d ' ')"
+    if [ -f "$stamp" ] && [ "$(cat "$stamp")" = "$want $(ls "$OUT/romfs/shape"/*.nds 2>/dev/null | wc -l | tr -d ' ')" ]; then
+        echo "gen_shapes: up to date"; return 0
+    fi
+    mkdir -p "$OUT/romfs/shape"
+    rm -f "$stamp"
+    MSYS_NO_PATHCONV=1 docker run --rm -v "$w:/w:ro" -v "$od:/out" -v "$rd/baserom.z64:/ar/ver/us/baserom.z64:ro" -w /tmp pm3ds-host:1 sh -c \
+        'gcc -O2 -Wall -o /tmp/nd_shape_conv /w/3ds/tools/nd_shape_conv.c && /tmp/nd_shape_conv /ar /out' || { echo "gen_shapes failed" >&2; exit 1; }
+    echo "$want $(ls "$OUT/romfs/shape"/*.nds 2>/dev/null | wc -l | tr -d ' ')" > "$stamp"
+}
+gen_shapes
+
 # The inputs CMake reads (3ds/CMakeLists.txt, DECOMP = repo root). Nothing else reaches the build.
 # CODE_DIRS are read from this worktree; ASSET_DIRS from ASSET_BASE (see above).
 CODE_DIRS="3ds/CMakeLists.txt 3ds/effects.cmake 3ds/battle.cmake 3ds/maps.cmake 3ds/map_syms.lds LaunchIcon.png 3ds/ld 3ds/shaders 3ds/stub_include 3ds/include 3ds/src src include"
