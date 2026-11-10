@@ -334,7 +334,7 @@ static __attribute__((noinline)) unsigned op_ctl(unsigned dbg, const uint32_t* u
     default:
         switch (sub) {
         case NDO_MISC_LST: ent_skipgen = 0; gp_prev_op = -1; break; /* D11a: an in-line static state list (nd_rec.c rec_inline): its list start as walk_call and nd_ops_run */
-        case NDO_MISC_ND: nd_native_rec((a >> 8) & 0xffu, a & 1u); break; /* D9: the native-only payload (the water splash bracket) */
+        case NDO_MISC_ND: nd_native_rec((a >> 8) & 0xffu, a & 0xffu); break; /* D9: the native-only payload (the water splash bracket; PAUSEFADE: the low byte, the gutter fade 0..128, splash and grab hold pass 0 or 1) */
         case NDO_MISC_MODVTX: gbi_cold_modifyvtx((a >> 8) & 0xffu, a & 0xffu); break;
         case NDO_MISC_CIMG: gbi_setcimg(a, b); break;
         default: break;
