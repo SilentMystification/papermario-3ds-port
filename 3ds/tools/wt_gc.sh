@@ -52,6 +52,13 @@ drop_lane_copies() {
         if [ -d "$s" ]; then echo "remove shots $s"; run rm -rf -- "$s"; fi
     done
 }
+# A row is done when its branch is merged into main and docs/handoff/row_<name>.md is not on main (the row file is deleted by the completing commit).
+row_done() {
+    b=$(git -C "$2" symbolic-ref --short -q HEAD || echo DETACHED)
+    [ "$b" != DETACHED ] || return 1
+    git merge-base --is-ancestor "$b" main 2>/dev/null || return 1
+    ! git cat-file -e "main:docs/handoff/row_$1.md" 2>/dev/null
+}
 keep_wt=","
 for w in build3ds/wt/*/; do
     [ -d "$w" ] || continue
@@ -59,7 +66,7 @@ for w in build3ds/wt/*/; do
     # --only: every other folder is out of scope (stale folders too), not kept.
     if [ -n "$ONLY" ]; then case "$ONLY" in *",$n,"*) ;; *) continue ;; esac; fi
     case "$KEEP" in *",$n,"*) keep_wt="$keep_wt$n,"; echo "keep $n (--keep)"; continue ;; esac
-    if [ -e "$w.wt_keep" ]; then keep_wt="$keep_wt$n,"; echo "keep $n (.wt_keep: an agent works here)"; continue; fi
+    if [ -e "$w.wt_keep" ] && ! row_done "$n" "$w"; then keep_wt="$keep_wt$n,"; echo "keep $n (.wt_keep: an agent works here, $(du -sm "$w" 2>/dev/null | cut -f1) MB)"; continue; fi
     case "$(git -C "$w" rev-parse --absolute-git-dir 2>/dev/null)" in
         */worktrees/*) ;;
         *) echo "remove stale folder $n (not a registered worktree)"; run rm -rf -- "build3ds/wt/$n"; continue ;;
@@ -73,7 +80,7 @@ for w in build3ds/wt/*/; do
         keep_wt="$keep_wt$n,"; echo "keep $n (branch $b has no commit of its own: fresh worktree, use --only to remove)"; continue
     fi
     if [ "$b" != DETACHED ] && ! git merge-base --is-ancestor "$b" main 2>/dev/null; then
-        keep_wt="$keep_wt$n,"; echo "keep $n (branch $b has $(git rev-list --count main.."$b") commits not in main)"; continue
+        keep_wt="$keep_wt$n,"; echo "keep $n (branch $b has $(git rev-list --count main.."$b") commits not in main, $(du -sm "$w" 2>/dev/null | cut -f1) MB)"; continue
     fi
     if [ -n "$(git -C "$w" status --porcelain -- . ':!3ds/logs/perf/runs.jsonl' 2>/dev/null | grep -v '^??')" ]; then
         run sh -c "git -C '$w' diff -- . ':!3ds/logs/perf/runs.jsonl' > build3ds/archive/wt_${n}_dirty.patch"
@@ -118,4 +125,30 @@ for l in build3ds/lane-* build3ds/at_*; do
     drop_lane_copies "$n"
     drop_lane_volumes "$n"
 done
+# SWEEP: leftovers of finished scratch work in build3ds (skipped with --only). A folder goes when no file in it is newer than 12 h.
+# A loose *.txt *.log *.py *.png goes when its name starts with <NAME>_ (the part before the first _) and no worktree folder NAME exists.
+# Never removed: build_key.txt, hw_live_log_*.txt, crash_stack_addrs.txt, pm_3ds.*.
+if [ -z "$ONLY" ]; then
+    sweep_before=$(du -sm build3ds 2>/dev/null | cut -f1)
+    for d in build3ds/clean* build3ds/wt_commit* build3ds/wt_base* build3ds/cen_src* build3ds/wt_ui* build3ds/ftp_* build3ds/rvtmp build3ds/final*_png build3ds/jfix build3ds/review build3ds/nat; do
+        [ -d "$d" ] || continue
+        if [ -n "$(find "$d" -mmin -720 -print -quit 2>/dev/null)" ]; then echo "keep $d (a file newer than 12 h)"; continue; fi
+        echo "remove stale folder $d"
+        run rm -rf -- "$d"
+    done
+    for dir in build3ds build3ds/wt; do
+        find "$dir" -maxdepth 1 -type f \( -name '*.txt' -o -name '*.log' -o -name '*.py' -o -name '*.png' \) -mmin +720 2>/dev/null | while IFS= read -r f; do
+            base=$(basename "$f")
+            case "$base" in build_key.txt|hw_live_log_*|crash_stack_addrs.txt|pm_3ds.*) continue ;; esac
+            case "$base" in *_*) ;; *) continue ;; esac
+            name=${base%%_*}
+            [ -n "$name" ] || continue
+            [ -d "build3ds/wt/$name" ] && continue
+            echo "remove loose file $f (no worktree $name)"
+            run rm -f -- "$f"
+        done
+    done
+    sweep_after=$(du -sm build3ds 2>/dev/null | cut -f1)
+    if [ $APPLY = 1 ]; then echo "sweep freed $((sweep_before - sweep_after)) MB (build3ds $sweep_before -> $sweep_after MB)"; else echo "sweep: build3ds $sweep_before MB; dry run frees nothing"; fi
+fi
 [ $APPLY = 1 ] || echo "dry run: add --apply to remove"
