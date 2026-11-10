@@ -33,3 +33,24 @@ nd_rec.c, 3ds/tools/nd_cmd_test.c. Not with HC8 at the same time if both edit pm
 ## Gates (light)
 - nd_host PASS. Byte-equal against stored base shots: msgbox_talk_nowide, pause_spin_grab_det_w300.
 - Size: M1 class G <= 5 KB; M3 class G on mac_01 <= 5 KB; nd_texrect fast path <= 1 KB. memcheck OK.
+
+## Step 2 state and next (oracle batch 2)
+Branch HC7 ready 318215869 (ensure_tile split). # HC7 step 2: the msgbox_talk_nowide_pic DIFF does not come from 318215869
+## Facts (oracle pixel check of the stored shots)
+- Base fe241dc42 against base 0a477da45: diff 24758 px, bbox x 20..219 y 52..347. That is the same count and box the agent saw.
+- HC7 318215869 against base 0a477da45: diff 473 px.
+- In that region, the mean colour is (55,128,18) in 0a477da45 and in HC7, and (55,125,101) in fe241dc42.
+- The odd one is the fe241dc42 base store. The scratch build of a85989d4c made it. The code of HC7 and fe241dc42 differs only by this commit.
+## Code read of the commit
+It is equal to the old order:
+- fb_cand covers every precondition of fb_prev_base.
+- The glyph test runs only when tile_bound(0) is 0.
+- The fast path sets tile_fx, tile_fy and cur_tile as before.
+The agent's two notes: (1) the double tile_bound on a refusal only counts the debug log twice; it changes no state. (2) The fast path skips the fbbind debug log.
+## Exact edit
+fb_cand becomes `return nd_ws.td[n].fmt == 0 && nd_ws.td[n].siz == 2; /* HC7: every 16 bit RGBA bind takes the slow path (frame buffer candidate, fbbind log) */`. This keeps the fbbind log as before and keeps the result the same by construction.
+## Gate
+1. `bench.py base msgbox_talk_nowide_pic --commit bc3b5c600` (the true merge-base), then `bench.py cmp msgbox_talk_nowide_pic --row HC7`. Expected: 0 px. pause_spin_grab_det_w300 stays 40/40.
+2. If the new base again has the teal region mean (55,125,101): the base tool is wrong. Hand back. The orchestrator then compares texkey_patch.h and the asset source of the scratch tree with the worktree's, in a tool row. Do not change nd_tex_set.c for it.
+3. If the diff is 473 px against a good base: hand back with the diff picture.
+1 Azahar start for the base, 1 for cmp.

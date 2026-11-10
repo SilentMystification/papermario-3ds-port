@@ -67,9 +67,11 @@ static __attribute__((noinline)) void rec_aux(const Gfx* l, unsigned n) {
 }
 /* S3N-6: the matrix ops of a record (R1, R2 load, R8 billboard), the first part of rec_apply. A cache hit runs them before it decides; a
  * miss after that skips them (mdone) and runs the rest of rec_apply in the old order. */
+extern int nd_mtx_static; /* SEAM2 */
 static __attribute__((noinline)) void rec_matrix(const Gfx* q) {
     u32 f = q[3].words.w0;
     if (!(f & 256u)) load_mtx(q[1].words.w0, q[2].words.w1, q[1].words.w1);
+    else nd_mtx_static = 1;
     if (q[8].words.w0) load_mtx(q[8].words.w0, q[8].words.w1, q[1].words.w1);
 }
 static __attribute__((noinline)) void rec_apply(const Gfx* q, int mdone) {
@@ -98,6 +100,7 @@ static __attribute__((noinline)) void rec_apply(const Gfx* q, int mdone) {
         rec_fog(q[4].words.w0, q[5].words.w1); /* S3F-2: fog after the render mode, as the old word order */
     }
     if (!(f & 256u) && !mdone) load_mtx(q[1].words.w0, q[2].words.w1, q[1].words.w1); /* S3F-1a: the matrix load of the model, the same function as G_MTX (256: IGNORE_MATRIX) */
+    else if (f & 256u) nd_mtx_static = 1; /* SEAM2: IGNORE_MATRIX, no model matrix */
     if (q[11].words.w0) nd_range_run((const uint32_t*)(uintptr_t)q[11].words.w0); /* S3G-1: custom gfx pre, after the matrix as the old order (D10a: a stream range) */
     if (q[9].words.w0) rec_top((const uint32_t*)&q[9]); /* S3F-2c: panner tile size, main then aux, as the old order (HC4c: typed by nd_rec_model) */
     if (q[10].words.w0) rec_top((const uint32_t*)&q[10]);

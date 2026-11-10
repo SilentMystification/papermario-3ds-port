@@ -211,7 +211,8 @@ void pm_xfer_step(unsigned long long t0, unsigned long long t1) {
  * count, no time. */
 #define XH_STEP 12u
 static uint32_t xh_done[MAX_MODELS / 32]; static unsigned xh_n; /* models posted since the load: by index, the count */
-static void wq_xh(void* a) { int pm_dlc_prebuild(const void* l); if (pm_dlc_prebuild(*(const void* const*)a)) pm_xf.hid_d++; } /* walker side */
+typedef struct { const void* dl; int stat; } XhQ; /* SEAM2: the list and whether its model matrix is static */
+static void wq_xh(void* a) { int pm_dlc_prebuild(const void* l, int stat); const XhQ* q = (const XhQ*)a; if (pm_dlc_prebuild(q->dl, q->stat)) pm_xf.hid_d++; } /* walker side */
 void pm_xfer_hidden(void) {
     if (!xh_on) return;
     if (xh_on == 2 || (gOverrideFlags & GLOBAL_OVERRIDES_DISABLE_DRAW_FRAME)) { xh_on = 1; memset(xh_done, 0, sizeof xh_done); xh_n = 0; return; }
@@ -226,8 +227,8 @@ void pm_xfer_hidden(void) {
         if (!m || !(m->flags & MODEL_FLAG_HIDDEN) || (m->flags & (MODEL_FLAG_INACTIVE | MODEL_FLAG_HAS_LOCAL_VERTEX_COPY))) continue;
         if (!m->modelNode || !m->modelNode->displayData || (xh_done[i >> 5] & (1u << (i & 31u)))) continue;
         xh_done[i >> 5] |= 1u << (i & 31u);
-        const void* dl = m->modelNode->displayData->displayList;
-        pm_wq_post(wq_xh, &dl, sizeof dl);
+        XhQ q = { m->modelNode->displayData->displayList, m->finalMtx == &m->savedMtx && !(m->flags & MODEL_FLAG_BILLBOARD) }; /* SEAM2 */
+        pm_wq_post(wq_xh, &q, sizeof q);
         n++;
     }
     xh_n += n;

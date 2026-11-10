@@ -684,6 +684,22 @@
       "gates": []
     },
     {
+      "name": "merlee_stereoat_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "STEREOFX repro: Merlee talk with the 3D slider moved 0 to 1 at frame 500; replay log lines. FX1 row 1: Merlee upgrade spell in dro_02 (live warp, 50 coins, pad file pad_merlee.txt). Shows the card shuffle and reaches the ritual end (state D). Picture check by eye.",
+      "scenario": "merlee_stereoat",
+      "cap": 45,
+      "until": "merlee: undarken done",
+      "tags": [
+        "azahar",
+        "pic",
+        "merlee"
+      ],
+      "gates": []
+    },
+    {
       "name": "merlee_spell_prof",
       "kind": "azahar_stream",
       "speed": "normal",
@@ -7554,7 +7570,23 @@
           "mim_05"
         ],
         "gates": []
-      }
+      },
+    {
+          "name": "kzn04_shadestat",
+          "kind": "azahar_stream",
+          "speed": "normal",
+          "default": false,
+          "purpose": "KZN04 diag: shaded sprite load count, miss count and time per 300 frames in kzn_04 (pm_tex_load_shaded, shadestat switch). Azahar counts only.",
+          "scenario": "kzn04_shadestat",
+          "cap": 30,
+          "until": "shadestat f(6|7)\\d\\d ",
+          "tags": [
+                "azahar",
+                "kzn04",
+                "shading"
+          ],
+          "gates": []
+    }
   ],
   "legacy": {
     "note": "Scenarios that no bench uses. Kept for the azt.ps1 route, not run by bench.py.",

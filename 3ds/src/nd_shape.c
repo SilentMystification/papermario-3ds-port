@@ -144,22 +144,25 @@ __attribute__((cold, noinline)) static const NdSeamTab* seam_get(void) {
     seam_ok = nd_seam_build(&seam_tab, gMapShapeData, 0x40000u) == 0;
     unsigned us = (pm_ticks() - t0) / 268u;
     if (!seam_ok) { pm_log_evt("seamfix map %s nomem us %u", pm_shape_name, us); return NULL; }
-    pm_log_evt("seamfix map %s tp %u ins %u skip_mtx %u skip_ref %u lists %u tri %u bedge %u kb %u us %u", pm_shape_name, seam_tab.tp_all, seam_tab.ntp,
-        seam_tab.skip_mtx, seam_tab.skip_ref, seam_tab.nlist, seam_tab.ntri, seam_tab.nbedge, (seam_tab.ntp * (unsigned)sizeof(NdTp) + seam_tab.nlist * (unsigned)sizeof(NdSeamList) + 1023u) >> 10, us);
+    pm_log_evt("seamfix map %s tp %u ins %u mtx %u skip_ref %u lists %u tri %u bedge %u kb %u us %u", pm_shape_name, seam_tab.tp_all, seam_tab.ntp,
+        seam_tab.tp_mtx, seam_tab.skip_ref, seam_tab.nlist, seam_tab.ntri, seam_tab.nbedge, (seam_tab.ntp * (unsigned)sizeof(NdTp) + seam_tab.nlist * (unsigned)sizeof(NdSeamList) + 1023u) >> 10, us);
     return &seam_tab;
 }
 __attribute__((cold, noinline)) static void seam_reset(void) { nd_seam_free(&seam_tab); seam_gen = 0; seam_ok = 0; }
-__attribute__((cold, noinline)) int dlc_build(DlcEnt* e, const Gfx* l) {
+extern int nd_mtx_static; /* SEAM2: the last model matrix load was a static matrix (nd_mtx_set.c) */
+__attribute__((cold, noinline)) int dlc_build(DlcEnt* e, const Gfx* l, int stat) {
     unsigned i;
     const NdSeamTab* st = seam_get();
     const NdSeamList* sl = st ? nd_seam_find(st, (u32)(uintptr_t)l) : NULL;
+    const int use_tp = sl && sl->cnt && (sl->cls < 2 || stat); /* SEAM2: a T point list under a moving matrix is split in object space: not used */
+    if (sl && sl->cnt && !use_tp) pm_log_evt("seamfix dyn map %s list %08x skip %u", pm_shape_name, (u32)(uintptr_t)l, (unsigned)sl->cnt);
     for (i = 0; i < ND_DLC_MAXOPS; i++) { dlc_words[2 * i] = l[i].words.w0; dlc_words[2 * i + 1] = l[i].words.w1; if ((l[i].words.w0 >> 24) == G_ENDDL) break; }
-    NdDlcEnv env = { nd_env_vtx, nd_env_valloc, nd_env_ialloc, sl && sl->cnt ? st->tp + sl->first : NULL, sl ? sl->cnt : 0u }; /* SEAMFIX: the T points of this list */
+    NdDlcEnv env = { nd_env_vtx, nd_env_valloc, nd_env_ialloc, use_tp ? st->tp + sl->first : NULL, use_tp ? sl->cnt : 0u }; /* SEAMFIX: the T points of this list */
     int rc = nd_dlc_compile(&e->o, dlc_words, &env), pooled = 1;
     if (rc == NDR_FULL) { /* no room in the static areas: compile without the copies, every group runs through the ring (the source words: no T points) */
         NdDlcEnv env2 = { nd_env_vtx, NULL, NULL, NULL, 0 };
         dlc_c.sfull++;
-        if (sl && sl->cnt) pm_log_evt("seamfix pool map %s list %08x skip %u", pm_shape_name, (u32)(uintptr_t)l, (unsigned)sl->cnt);
+        if (use_tp) pm_log_evt("seamfix pool map %s list %08x skip %u", pm_shape_name, (u32)(uintptr_t)l, (unsigned)sl->cnt);
         rc = nd_dlc_compile(&e->o, dlc_words, &env2);
         pooled = 0;
         if (rc == NDR_OK) { free(e->o.vtx); free(e->o.idx); e->o.vtx = NULL; e->o.idx = NULL; }
@@ -508,7 +511,7 @@ int pm_dlc_native_ranges(const void* lv, uint32_t entry, NdRng* out, unsigned ma
         dlc_free(e);
         e->gen = pm_dlc_gen; e->refused = 0;
         unsigned xt0 = pm_xf.on ? pm_ticks() : 0u;
-        int r = dlc_build(e, l);
+        int r = dlc_build(e, l, nd_mtx_static);
         if (pm_xf.on) { pm_xf.dlc_n++; pm_xf.dlc_t += pm_ticks() - xt0; } /* MAPX-1 */
         e->hash = dlc_hash(l);
         if (r) e->refused = (u8)r;
@@ -561,7 +564,7 @@ int pm_dlc_native_ranges(const void* lv, uint32_t entry, NdRng* out, unsigned ma
 
 /* DOORHITCH: build the compiled list of a model before its first draw (pm_xfer.c: the hidden models of a new map, under the covered frames of
  * the load). The same build as dlc_try's; 1 when it built. Cold: once per list and map. */
-__attribute__((cold, noinline)) int pm_dlc_prebuild(const void* lv) {
+__attribute__((cold, noinline)) int pm_dlc_prebuild(const void* lv, int stat) {
     const Gfx* l = (const Gfx*)lv;
     if (!dlc_on || !is_host((u32)(uintptr_t)l) || (u32)l - (u32)gMapShapeData >= 0x40000u || ((u32)l & 7)) return 0;
     if (dlc_seen_gen != pm_dlc_gen) { dlc_reset(); dlc_seen_gen = pm_dlc_gen; }
@@ -570,7 +573,7 @@ __attribute__((cold, noinline)) int pm_dlc_prebuild(const void* lv) {
     dlc_free(e);
     e->gen = pm_dlc_gen; e->refused = 0;
     unsigned xt0 = pm_xf.on ? pm_ticks() : 0u;
-    int r = dlc_build(e, l);
+    int r = dlc_build(e, l, stat);
     if (pm_xf.on) { pm_xf.dlc_n++; pm_xf.dlc_t += pm_ticks() - xt0; } /* MAPX-1 */
     e->hash = dlc_hash(l);
     dlc_c.compile++;
@@ -608,7 +611,7 @@ int dlc_try(const Gfx* l) {
         dlc_free(e);
         e->gen = pm_dlc_gen; e->refused = 0;
         unsigned xt0 = pm_xf.on ? pm_ticks() : 0u;
-        int r = dlc_build(e, l);
+        int r = dlc_build(e, l, nd_mtx_static);
         if (pm_xf.on) { pm_xf.dlc_n++; pm_xf.dlc_t += pm_ticks() - xt0; } /* MAPX-1 */
         e->hash = dlc_hash(l);
         dlc_c.compile++;

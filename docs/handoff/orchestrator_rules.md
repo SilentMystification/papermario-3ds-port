@@ -18,8 +18,8 @@ Read this file at the start and after every compaction; it overrides any summary
 - Manual mode: when the user says work runs elsewhere, launch nothing on those rows or files.
 
 ## Rows
-- Bug rows start with the user facts (trigger sequence, timing, first wrong frame) and a scenario that matches them (CLAUDE.md 2).
-  A fault Azahar cannot show goes NEEDS CONSOLE after 2 starts: ask the user for a push with the diagnostic line.
+- Bug rows start with the user facts (trigger sequence, timing, first wrong frame). The fault is fact (CLAUDE.md 2): the row fixes the
+  code paths the oracle names. No repro rows, no NOT REPRODUCED handbacks, no push only to prove a fault.
 - One row file per agent (row_TEMPLATE.md, 60 lines or fewer), a prompt of 10 lines or fewer pointing to it, with the WAITS rule.
   Name commands, expected results and files literally.
 - At most 6 code agents (2 Azahar slots); read-only agents do not count. One agent per epic; reuse a live agent for its epic.
