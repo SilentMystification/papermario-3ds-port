@@ -56,6 +56,17 @@ gen_texkey() {
 }
 gen_texkey
 
+# HC4f1: host shape converter (3ds/tools/nd_shape_conv.c, host C, read only on ASSET_BASE). Writes $OUT/romfs/shape/<asset>.nds
+# for every *_shape table entry: the Yay0 decode with pointer fields as shape offsets and their reloc list.
+gen_shapes() {
+    command -v gcc >/dev/null 2>&1 || { echo "gen_shapes: gcc not found on the host" >&2; exit 1; }
+    sb=$ASSET_BASE; command -v cygpath >/dev/null 2>&1 && sb=$(cygpath -m "$ASSET_BASE")
+    mkdir -p $OUT/romfs/shape
+    gcc -O2 -Wall -o $OUT/nd_shape_conv.exe 3ds/tools/nd_shape_conv.c || { echo "nd_shape_conv.c failed to build" >&2; exit 1; }
+    $OUT/nd_shape_conv.exe "$sb" $OUT/romfs/shape || { echo "nd_shape_conv failed" >&2; exit 1; }
+}
+gen_shapes
+
 # The inputs CMake reads (3ds/CMakeLists.txt, DECOMP = repo root). Nothing else reaches the build.
 # CODE_DIRS are read from this worktree; ASSET_DIRS from ASSET_BASE (see above).
 CODE_DIRS="3ds/CMakeLists.txt 3ds/effects.cmake 3ds/battle.cmake 3ds/maps.cmake 3ds/map_syms.lds LaunchIcon.png 3ds/ld 3ds/shaders 3ds/stub_include 3ds/include 3ds/src src include"
