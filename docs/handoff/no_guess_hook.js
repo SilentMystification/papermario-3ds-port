@@ -15,7 +15,11 @@ process.stdin.on('end', () => {
   else process.exit(0);
   const bad = ['log line', 'debug line', 'check first', 'print the value', 'prints the suspect', 'reproduce', 'repro run',
                'premise check', 'not reproduced'];
-  const low = text.toLowerCase(), hit = bad.filter(p => low.includes(p));
+  // User OK 2026-11-10: a sentence that forbids the step ("no", "not", "never", "do not" before the phrase) is not a request for it.
+  const neg = /\b(no|not|never|without|don't|do not)\b/;
+  const low = text.toLowerCase();
+  const sentences = low.split(/(?<=[.!?\n])/);
+  const hit = bad.filter(p => sentences.some(s => s.includes(p) && !neg.test(s.slice(0, s.indexOf(p)))));
   if (!hit.length) process.exit(0);
   process.stderr.write('Blocked (user rule 2026-11-10): no guess and check. Fix from the oracle\'s code read of how the thing draws; ' +
     'a run is only the gate of a finished fix. Phrases found: ' + hit.join(', ') + '\n');
