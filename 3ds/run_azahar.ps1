@@ -442,7 +442,8 @@ $marks = @()
         $um = [regex]::Match($text, $Until)
         if ($um.Success -and $um.Value -match 'shot (\d+)') { $untilN = [int]$Matches[1] }
     }
-    if ($null -eq $untilN -and $reason -like "matched*" -and $p -and -not $p.HasExited -and -not $Interactive -and -not $Gdb) {
+    # AZTSTEREO: a timeout or a stop by azt also pauses, so no new shot is written in the shot wait below (a run that times out kept writing shots).
+    if ($null -eq $untilN -and ($reason -like "matched*" -or $reason -like "timeout*" -or $reason -like "stopped by azt*") -and $p -and -not $p.HasExited -and -not $Interactive -and -not $Gdb) {
         [void](Send-AzHotkey $p (Get-SlotHotkey $slotK "Continue\Pause Emulation")); $pausedAtUntil = $true
     }
     # SHOTCOPY1: the emulator closes a shot file after its shot line, but the host can see part of it for a while (DET saw 155648 of 288015 B).
@@ -465,7 +466,8 @@ $marks = @()
         # BENCHFIX: 30 s after the pause too. The old 5 s wait after the until line cut the last shot: Azahar was killed 4 to 13 s after the until line while that shot was still written.
         $shotWaitN = 120 # 120 polls of 250 ms: 30 s, the wait ends at once when every logged shot is full and stable
         for ($w = 0; $w -lt $shotWaitN; $w++) {
-            $files = @(Get-ChildItem "$sd\shots" -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^\d{4}_.*\.ppm$' -and ($null -eq $untilN -or [int]$_.Name.Substring(0, 4) -le $untilN) })
+            # AZTSTEREO: with logged shots, only logged files are checked: an unlogged file is a write cut by the stop, not a shot of this run.
+            $files = @(Get-ChildItem "$sd\shots" -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^\d{4}_.*\.ppm$' -and ($null -eq $untilN -or [int]$_.Name.Substring(0, 4) -le $untilN) -and ($logged.Count -eq 0 -or $logged -contains [int]$_.Name.Substring(0, 4)) })
             $have = @{}; foreach ($f1 in $files) { $have[[int]$f1.Name.Substring(0, 4)] = $true }
             $nFiles = $files.Count
             $allOk = $true
@@ -484,7 +486,11 @@ $marks = @()
             [void](Send-AzHotkey $p (Get-SlotHotkey $slotK "Continue\Pause Emulation")); $pausedAtUntil = $true
             Get-ChildItem "$sd\shots" -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^\d{4}_.*\.ppm$' -and [int]$_.Name.Substring(0, 4) -gt $untilN -and $_.Length -ne $shotFull } | Remove-Item -Force -ErrorAction SilentlyContinue
         }
-        $files = @(Get-ChildItem "$sd\shots" -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^\d{4}_.*\.ppm$' -and ($null -eq $untilN -or [int]$_.Name.Substring(0, 4) -le $untilN) })
+        # AZTSTEREO: the game logs a shot only after fclose (pm_gpu.c dump_shot), so an unlogged short file cut by the pause is removed, not a lost shot.
+        if ($pausedAtUntil -and $logged.Count -gt 0) {
+            Get-ChildItem "$sd\shots" -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^\d{4}_.*\.ppm$' -and -not ($logged -contains [int]$_.Name.Substring(0, 4)) -and $_.Length -ne $shotFull } | Remove-Item -Force -ErrorAction SilentlyContinue
+        }
+        $files = @(Get-ChildItem "$sd\shots" -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^\d{4}_.*\.ppm$' -and ($null -eq $untilN -or [int]$_.Name.Substring(0, 4) -le $untilN) -and ($logged.Count -eq 0 -or $logged -contains [int]$_.Name.Substring(0, 4)) })
         $have = @{}; foreach ($f1 in $files) { $have[[int]$f1.Name.Substring(0, 4)] = $true }
         $missing = @($logged | Where-Object { -not $have.ContainsKey($_) })
         $short = @($files | Where-Object { -not $okN.ContainsKey($_.Name) } | ForEach-Object { "$($_.Name)=$($_.Length)" })
