@@ -104,16 +104,25 @@ const void* ent_env_vtx(uint32_t w1, unsigned n) {
     return src;
 }
 
+/* HC4e2a: the typed unit of a list word (nd_op_xlate; a typed word is its own unit). t[0] >> 24 is the id, t[0] & 1 the branch flag of NDO_CALL. */
+static inline void ent_unit(u32 w0, u32 w1, uint32_t t[2]) {
+    if (nd_op_typed(w0 >> 24)) { t[0] = w0; t[1] = w1; }
+    else if ((w0 >> 24) == G_ENDDL) { t[0] = NDO_W0(NDO_END, 0); t[1] = 0; } /* nd_op_xlate has no G_ENDDL arm (nd_op_type_run, ND_X0 write it) */
+    else nd_op_xlate(w0, w1, t);
+}
+static inline unsigned ent_uid(u32 w0, u32 w1) { uint32_t t[2]; ent_unit(w0, w1, t); return t[0] >> 24; }
+
 /* S6-5: the words of the list and of every nested list (G_DL), then the vertex span */
 u32 ent_hash_walk(const Gfx* l, u32 h, int depth) {
     for (unsigned i = 0; i < ND_DLC_MAXOPS; i++) {
         u32 w0 = l[i].words.w0, w1 = l[i].words.w1;
         h = (h ^ w0) * 16777619u; h = (h ^ w1) * 16777619u;
-        if ((w0 >> 24) == G_ENDDL) return h;
-        if ((w0 >> 24) == G_DL) {
+        uint32_t ut[2]; ent_unit(w0, w1, ut);
+        if ((ut[0] >> 24) == NDO_END) return h;
+        if ((ut[0] >> 24) == NDO_CALL) {
             const Gfx* t = (const Gfx*)ptr_of(w1);
             if (t && is_host((u32)t) && depth < 5) h = ent_hash_walk(t, h, depth + 1);
-            if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) return h;
+            if (ut[0] & 1) return h;
         }
     }
     return h;
@@ -128,12 +137,13 @@ u32 ent_hash(const Gfx* l, const u8* vp, u32 vlen) {
 int ent_flat(const Gfx* l, unsigned* n, int depth) {
     for (unsigned i = 0; i < ND_DLC_MAXOPS; i++) {
         u32 w0 = l[i].words.w0, w1 = l[i].words.w1;
-        unsigned op = w0 >> 24;
-        if (op == G_ENDDL) return 1;
-        if (op == G_DL) {
+        uint32_t ut[2]; ent_unit(w0, w1, ut);
+        unsigned op = ut[0] >> 24;
+        if (op == NDO_END) return 1;
+        if (op == NDO_CALL) {
             const Gfx* t = (const Gfx*)ptr_of(w1);
             if (!t || !is_host((u32)t) || depth >= 5 || !ent_flat(t, n, depth + 1)) return 0;
-            if (((w0 >> 16) & 0xff) == G_DL_NOPUSH) return 1;
+            if (ut[0] & 1) return 1;
             continue;
         }
         if (*n >= ND_DLC_MAXOPS) return 0;
@@ -151,14 +161,14 @@ void ent_refcheck(const EntKey* k, const Gfx* l) {
     memset(bad, 0, sizeof bad);
     for (u32 i = 0; i < k->nops; i++) {
         u32 w0 = l[i].words.w0, w1 = l[i].words.w1;
-        unsigned op = w0 >> 24;
-        if (op == G_VTX) {
+        unsigned op = ent_uid(w0, w1);
+        if (op == NDO_VTX) {
             unsigned n = (w0 >> 12) & 0xff, e = (w0 >> 1) & 0x7f, v0 = e >= n ? e - n : 0;
             const u8* src = (const u8*)ent_env_vtx(w1, n);
             if (v0 + n > 64) n = 64 - v0;
             for (unsigned t = 0; t < n; t++) slot[v0 + t] = src ? src + 16u * t : NULL;
-        } else if (op == G_TRI1 || op == G_TRI2) {
-            for (int t = 0; t < (op == G_TRI2 ? 2 : 1); t++, gt++) {
+        } else if (op == NDO_TRI1 || op == NDO_TRI2) {
+            for (int t = 0; t < (op == NDO_TRI2 ? 2 : 1); t++, gt++) {
                 u32 w = t ? w1 : w0;
                 int ix[3] = { (int)((w >> 16) & 0xff) / 2, (int)((w >> 8) & 0xff) / 2, (int)(w & 0xff) / 2 };
                 while (s + 1 < k->nseg && gt >= k->seg[s].tri0 + k->seg[s].ntri) s++;
@@ -200,7 +210,7 @@ void ent_compile(EntKey* k, const Gfx* l0) {
     ent_c.comp++;
     if (!ent_flat(l0, &nops, 0)) { k->why = 5; return; }
     ent_flat_buf[nops].words.w0 = (u32)G_ENDDL << 24; ent_flat_buf[nops].words.w1 = 0;
-    if (!k->vb) { for (unsigned i = 0; i < nops; i++) if ((ent_flat_buf[i].words.w0 >> 24) == G_VTX) { u32 a = ent_flat_buf[i].words.w1; if (!is_host(a) && (a >> 24) > 0 && (a >> 24) < 16u) { k->useseg = 1; break; } } if (k->useseg) { k->why = 9; return; } }
+    if (!k->vb) { for (unsigned i = 0; i < nops; i++) if (ent_uid(ent_flat_buf[i].words.w0, ent_flat_buf[i].words.w1) == NDO_VTX) { u32 a = ent_flat_buf[i].words.w1; if (!is_host(a) && (a >> 24) > 0 && (a >> 24) < 16u) { k->useseg = 1; break; } } if (k->useseg) { k->why = 9; return; } }
     k->fw = (Gfx*)malloc((nops + 1u) * sizeof(Gfx));
     if (!k->fw) { k->why = 5; return; }
     memcpy(k->fw, ent_flat_buf, (nops + 1u) * sizeof(Gfx));
@@ -214,11 +224,11 @@ void ent_compile(EntKey* k, const Gfx* l0) {
     /* BTLUI: a list whose vertex loads feed a later list (no triangle after its last G_VTX, e.g. the damage star corners of
      * damage_indicator D_09002150..80) stays on the walker: ent_run skips loads without triangles and clears the walker slots. */
     { unsigned lastv = 0, lastt = 0;
-      for (unsigned i = 0; i < nops; i++) { unsigned op = ent_flat_buf[i].words.w0 >> 24;
-          if (op == G_VTX) lastv = i + 1; else if (op == G_TRI1 || op == G_TRI2) lastt = i + 1; }
+      for (unsigned i = 0; i < nops; i++) { unsigned op = ent_uid(ent_flat_buf[i].words.w0, ent_flat_buf[i].words.w1);
+          if (op == NDO_VTX) lastv = i + 1; else if (op == NDO_TRI1 || op == NDO_TRI2) lastt = i + 1; }
       if (ntri == 0 || lastv > lastt) { k->why = 8; return; } }
     if (k->vb || ent_heap_list(l0)) for (unsigned i = 0; i < nops; i++) { /* the vertex span of the vertex array: hashed once per frame */
-        if ((l[i].words.w0 >> 24) != G_VTX) continue;
+        if (ent_uid(l[i].words.w0, l[i].words.w1) != NDO_VTX) continue;
         const u8* p = (const u8*)ptr_of(l[i].words.w1);
         unsigned n = (l[i].words.w0 >> 12) & 0xff;
         if (!p || !is_host((u32)p)) continue;
@@ -392,7 +402,7 @@ int ent_run(const Gfx* l, EntKey* k, u32 segid) {
         if (!e->ntri) continue; /* a state-only or vertex-only segment: the loads replay when a later segment needs them */
         if (e->ntri && ent_seg_native(k, e)) { ent_c.segn++; continue; }
         ent_c.segi++; /* the old words: the vertex loads before the segment, then its own ops */
-        for (u32 i = 0; i < e->op0; i++) if ((fw[i].words.w0 >> 24) == G_VTX) ENT_GBI((void*)(fw + i), 8u);
+        for (u32 i = 0; i < e->op0; i++) if (ent_uid(fw[i].words.w0, fw[i].words.w1) == NDO_VTX) ENT_GBI((void*)(fw + i), 8u);
         if (e->op1 > e->op0) ENT_GBI((void*)(fw + e->op0), (e->op1 - e->op0) * 8u);
     }
     { const EntSeg* e = &k->seg[k->nseg - 1]; if (k->nops > e->op1) ENT_GBI((void*)(k->fw + e->op1), (k->nops - e->op1) * 8u); }
