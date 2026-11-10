@@ -309,15 +309,20 @@ const u8* fb_prev_base(int n) {
 
 void ens_clear(void) { ens_src = NULL; ens_pal = NULL; ens_slot = -1; }
 
+/* KMR10M debug: refusals of a matching bind; the first and every 8th is logged with its frame and tile (cold: off the bind path) */
+static __attribute__((cold, noinline)) void tile_stale_log(int n) {
+    static unsigned stale_n;
+    stale_n++;
+    if (stale_n == 1 || !(stale_n & 7)) pm_log_d("ensstale f%u n %u tile %d ens_slot %d cur %d", pm_frame_count(), stale_n, n, ens_slot, pm_tex_cur_idx());
+}
+
 int tile_bound(int n) {
     if (!nd_ws.td[n].valid || pm_tex_cur_idx() < 0 || !ens_src) return 0;
     if (ens_src != nd_ws.td[n].src || ens_pal != nd_ws.td[n].pal || ens_fmt != nd_ws.td[n].fmt || ens_siz != nd_ws.td[n].siz) return 0;
     if (memcmp(nd_ws.tst1.tile_wrap[n], ens_wrap, sizeof ens_wrap) || memcmp(nd_ws.tst1.tile_sz[n], ens_sz, sizeof ens_sz)) return 0;
     /* KMR10M: a native load since the bind (nd_tex_get, spr_tex_unit) moves cur; the bind holds only while its slot keeps its generation */
     if (pm_tex_cur_idx() != ens_slot || pm_tex_slot_gen(ens_slot) != ens_gen) {
-        static unsigned stale_n; /* KMR10M debug: refusals of a matching bind; the first and every 8th is logged with its frame and tile */
-        stale_n++;
-        if (stale_n == 1 || !(stale_n & 7)) pm_log_d("ensstale f%u n %u tile %d ens_slot %d cur %d", pm_frame_count(), stale_n, n, ens_slot, pm_tex_cur_idx());
+        tile_stale_log(n);
         return 0;
     }
     return 1;
@@ -358,7 +363,12 @@ int tile_texel(int n, int s, int t, unsigned char o[4]) {
     return 1;
 }
 
-void ensure_tile(int n) {
+/* HC7: the frame buffer candidate of fb_prev_base (a 16 bit RGBA 320 wide window): it takes the cold path, the bind is decided there */
+static inline int fb_cand(int n) {
+    return !pm_wide && nd_ws.td[n].fmt == 0 && nd_ws.td[n].siz == 2 && nd_ws.td[n].stride == 320;
+}
+
+static __attribute__((cold, noinline)) void ensure_tile_slow(int n) {
     if (!nd_ws.td[n].valid) return;
     nd_ws.tile_fx = (float)(nd_ws.tst1.tile_sz[n][0] & 3) * 0.25f; /* PT38 */
     nd_ws.tile_fy = (float)(nd_ws.tst1.tile_sz[n][1] & 3) * 0.25f;
@@ -447,6 +457,16 @@ void ensure_tile(int n) {
     memcpy(ens_sz, nd_ws.tst1.tile_sz[n], sizeof ens_sz);
     ens_img[n] = nd_ws.td[n].src;
     nd_ws.cur_tile = n;
+}
+
+void ensure_tile(int n) {
+    if (nd_ws.td[n].valid && tile_bound(n) && !fb_cand(n)) {
+        nd_ws.tile_fx = (float)(nd_ws.tst1.tile_sz[n][0] & 3) * 0.25f; /* PT38 */
+        nd_ws.tile_fy = (float)(nd_ws.tst1.tile_sz[n][1] & 3) * 0.25f;
+        nd_ws.cur_tile = n;
+        return;
+    }
+    ensure_tile_slow(n);
 }
 
 /* D4a-1: the tile 1 window of a SetTileSize (source, size, stride, origin column): pure, as tex_win0. */
