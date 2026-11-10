@@ -51,7 +51,9 @@ Read this file at the start and after every compaction; it overrides any summary
 5. Tell running agents whose files changed to merge main. Delete `.wt_keep`, run `sh 3ds/tools/wt_gc.sh --apply --only <wt>`,
    then `git branch -d <branch>`. A row is not done while its worktree or branch exists. Scratch branches of a row
    (try, old, fix variants) are deleted in the same step or listed in the row file for an audit.
-6. After a merge that changes a build input, build main in the background (no PM_LANE), so a push needs no build. Never build main
+6. After a merge that changes a build input, build main in the background (no PM_LANE), so a push needs no build. Then run
+   `python 3ds/tools/bench.py base --fill` in the main folder, so rows find the merge-base shots stored (oracle batch 9: lazy parallel
+   base builds made rows wait 40 min). Never build main
    while a push runs (both use the container pm3ds-build-main).
 
 ## Gates
