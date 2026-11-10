@@ -2152,6 +2152,25 @@ void pm_gx_drain(void) {
     gxCmdQueueStop(q);
     gxCmdQueueClear(q);
 }
+/* ESCAPE: read only, any thread (the watchdog). Stuck = submitted entries not yet completed. */
+int pm_gx_stuck(void) {
+    gxCmdQueue_s* q = (gxCmdQueue_s*)&__C3D_Context;
+    return q->curEntry > q->lastEntry;
+}
+/* ESCAPE: the queue state and the entries in flight, for the watchdog dump. Writes at most n-1 bytes and returns the length. */
+#define DUMP_ADD(...) do { if (k < n) k += snprintf(b + k, (size_t)(n - k), __VA_ARGS__); } while (0)
+int pm_gpu_hang_dump(char* b, int n) {
+    gxCmdQueue_s* q = (gxCmdQueue_s*)&__C3D_Context;
+    int k = 0;
+    DUMP_ADD("gx n %u cur %u last %u", (unsigned)q->numEntries, (unsigned)q->curEntry, (unsigned)q->lastEntry);
+    for (unsigned i = q->lastEntry; i < q->curEntry && k < n; i++)
+        DUMP_ADD(" e%u id %02x %08x %08x %08x", i, (unsigned)(q->entries[i].data[0] & 0xFFu), (unsigned)q->entries[i].data[1],
+                 (unsigned)q->entries[i].data[2], (unsigned)q->entries[i].data[3]);
+    DUMP_ADD(" stereo %d sr_on %d sr_n %u sr_fbn %u f%u", stereo_frame, sr_on, sr_n, sr_fbn, pm_frame_count());
+    if (k >= n) k = n - 1;
+    return k;
+}
+#undef DUMP_ADD
 /* queue the copy of the colour buffer strips (all 400 screen columns with wide, else the 320 game columns) into grab_tex */
 static void grab_queue_copy(void) {
     const int mo = pm_wide || pm_stretch ? 0 : 40, x1 = pm_wide || pm_stretch ? 400 : 320; /* MENUGEN: Fullscreen copies the 400 columns like wide */
@@ -2481,6 +2500,11 @@ static void pm_gpu_end_w(void) {
     if (pm_frame_count() % 100u == 0) pm_tex_cell_log(pm_frame_count()); /* MSGBOX 3: glyph cells every 100 frames (debug level) */
     pm_gpu_begin_wait();
     if (!gs.gpu_ok) return;
+    { /* ESCAPE test seam: switch wdhang=<frame> parks the walker here, the game thread waits; read after the boot frames (as rectpost) */
+      static long wdh = -2;
+      if (__builtin_expect(wdh == -2 && pm_frame_count() > 0, 0)) { char wv[16]; wdh = pm_debug_value("wdhang", wv, sizeof wv) ? atol(wv) : -1; }
+      if (__builtin_expect(wdh >= 0 && pm_frame_count() == (unsigned)wdh, 0)) for (;;) svcSleepThread(1000000LL);
+    }
     FS_MARK(FS_FLUSH);
     flush();
     cen_frame_end();

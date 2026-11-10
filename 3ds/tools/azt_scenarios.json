@@ -67,6 +67,26 @@
       "reason": "RIGHTON short gate: cheat event line (action_cmd.c:294) and the Press right before landing popup (Mario jump) in shots 180 to 198. Code trace: Mario basic jump hides the hud (attack.c:106 ShowActionHud false), so the A prompt and the Right On art do not show here; the art path is partner headbonk (goombario.c:928), console check. The guard is jump.c:121-124 and hammer.c:187-190."
     },
     {
+      "name": "wd_escape",
+      "status": "unverified",
+      "subject": "Random boot warp, game thread parked at frame 300 (wdhang=300: the walker waits before flush, the GPU is not stuck). Watchdog stall lasts 3 s (wdesc counts the stall as the START+SELECT combo).",
+      "proves": "ESCAPE: the watchdog thread runs the escape while the game thread hangs: the escape line prints with stuck 0 and the process ends (clean exit, HOME Menu). Azahar cannot show a stuck GPU.",
+      "debug": "warp=random wdhang=300 wdesc loglevel=debug",
+      "until": "escape: START\\+SELECT",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: random seed",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "escape stuck 0",
+          "regex": "escape: START\\+SELECT 1 s, phase \\d+ steps \\d+ stuck 0"
+        }
+      ],
+      "reason": "ESCAPE: the escape poll is on the watchdog thread (100 ms poll, 10 polls = 1 s hold). Cap 25 s."
+    },
+    {
       "name": "logbench_boot",
       "status": "unverified",
       "subject": "Boot with the logbench switch: four timed loops of the log producer (plain line, four arguments, two %s, dropped line), cycles per line in the log.",

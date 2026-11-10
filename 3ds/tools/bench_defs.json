@@ -572,6 +572,22 @@
       "gates": []
     },
     {
+      "name": "wd_escape",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "purpose": "ESCAPE: START+SELECT escape on the watchdog thread while the game thread hangs (wdhang=300 wdesc). Gate: the escape line with stuck 0.",
+      "scenario": "wd_escape",
+      "cap": 25,
+      "until": "escape: START\\+SELECT",
+      "tags": [
+        "azahar",
+        "escape",
+        "bench"
+      ],
+      "log_metrics": [],
+      "gates": []
+    },
+    {
       "name": "logbench",
       "kind": "azahar_stream",
       "speed": "normal",
