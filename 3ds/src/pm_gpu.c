@@ -2192,7 +2192,7 @@ static void gut_quad(int xa, int xb, float sa, float sb, unsigned c) {
     nb.gidx_n += 6; nb.gni += 6;
 }
 int pm_gut_seen; /* PAUSEOPEN debug: set by the first gutter call; rect_raw_quad (pm_gpu_rect.c) watches the rectangles after it (debug word gutdbg) */
-/* PAUSEOPEN: the gutter batch is class 2 with a white vertex colour, as in run 185371 (the strips show the scene, not darkened: open, row PAUSEFADE). */
+/* PAUSEFADE: the gutter batch is rect class 6 with prim (40,40,40,fade): the strips fade as the centre (PM_CC_43). */
 void pm_gpu_pause_gutters(unsigned fade) {
     C3D_Tex* t = NULL;
     static int dbg_n;
@@ -2218,8 +2218,8 @@ void pm_gpu_pause_gutters(unsigned fade) {
     if (why) return;
     gut_tex = t;
     flush(); /* PAUSEFADE: as pm_gpu_set_mix, the open batch keeps its mix */
-    const int s_mix = gs.r_mix; const unsigned s_mixc = r_mixcol; gs.r_mix = 1; r_mixcol = 0x28282800u | (fade & 0xffu); /* PAUSEFADE: lerp to (40,40,40) by the fade, as PM_CC_43 */
-    const int ec = 2; /* class 2 (TEXEL0 x SHADE): the plan path (combine 8) drops the texel in the strips */
+    const unsigned s_prim = prim; prim = 0x28282800u | (fade & 0xffu); /* PAUSEFADE: rect class 6 = prim * prim_a + texel * (1 - prim_a) (nd_tmpl.c:166), prim (40,40,40,fade): PM_CC_43 as the centre */
+    const int ec = 6; /* PAUSEFADE: class 6, the texel faded to prim by prim alpha */
     const unsigned c = 0xffffffffu;
     static const float uvso_p[4] = { 1.f / 4096.f, 1.f / 4096.f, 0.f, 0.f };
     const int s_2d = nb.rect_2d;
@@ -2230,7 +2230,7 @@ void pm_gpu_pause_gutters(unsigned fade) {
     gut_quad(360, 400, 360.f, 400.f, c);
     if (dbg) pm_log("GUTDBG queued: ec %d gni %u gidx_n %u rect_open %d", ec, nb.gni, nb.gidx_n, nb.rect_open);
     flush();
-    gs.r_mix = s_mix; r_mixcol = s_mixc;
+    prim = s_prim;
     grab_bind = 0;
     nb.rect_2d = s_2d;
     if (dbg) pm_log("GUTDBG flushed: gni %u", nb.gni);
