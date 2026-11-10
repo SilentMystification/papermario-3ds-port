@@ -69,5 +69,9 @@ What 14 calls per frame do not explain (console tex 23.5 ms vs 3.6 ms on Azahar)
 - Slot churn from 9 new slots per frame (evict_oldest_done).
 CPU fix row: row_KZN04F.md. GPU design row: user OK 2026-11-10 (Sonnet; picture not byte-equal is accepted), after HC7 and COINSTAR; the oracle writes it then.
 
+KZN04F result (2026-11-10, not merged, branch deleted): pad-only memset and unrolled lut hash gave 259.7 us per call vs 257 before (no change);
+calls 12.2 per frame, 66% miss, 3.18 ms per frame on Azahar, pm_tex_invalidate 12.7 per frame. The CPU path is not the lever: the cost is the miss
+path itself. Next: the GPU design row (Sonnet, user OK) after HC7 and COINSTAR.
+
 ## At the end
 The debug line stays. Keep this file (the fix row follows). Hand back "KZN04 ready <hash> calls N miss M us U".
