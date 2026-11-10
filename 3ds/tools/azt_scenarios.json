@@ -723,6 +723,30 @@
       "reason": "FFOG: the user's Widescreen setting on the mim_01 ring turn (yaw passes 90). Copy of mim01_ring_det with wide and the ffog switch."
     },
     {
+      "name": "mim11_floor",
+      "status": "unverified",
+      "subject": "Forever Forest mim_11 (warp entry 0), det, wzcull: Mario walks toward the camera for 3 s (padscript up*180). Shots every 30 frames; the shot at the dlcwz frame (str > 0: a box straddles w=0) is the floor picture.",
+      "proves": "FFOG1 (pm5.v.pica, after the fog clamp): a floor vertex with clip w <= 0 gets fog 0, as the N64 near-clip vertex. The floor at the straddle frame is textured to the bottom of the screen, with no black or fog-colour wedge.",
+      "debug": "warp=mim_11:0 det wzcull shots padscript=up*180",
+      "until": "dlcwz f\\d+ grp \\d+ str [1-9]",
+      "cap": 20,
+      "deadline": 15,
+      "first_marker": "warp: mim_11 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "warp: mim_11 entry 0"
+        },
+        {
+          "name": "dlcwz straddle",
+          "regex": "dlcwz f\\d+ grp \\d+ str [1-9]"
+        }
+      ],
+      "reason": "FFOG1 floor gate: the walk brings a 508-unit ground box behind the eye, so the dlcwz line prints str > 0. Cap 20 s; 3 s of walk after the warp."
+    },
+    {
       "name": "mim01_ring_stereo_det_l",
       "status": "unverified",
       "subject": "mim_01 ring run as mim01_ring_det with forced stereo, left eye shots. The eyecw line every 10 frames: p23 (the old convergence factor, near 0 at yaw 90) and cw (conv x nd_proj_wn).",
