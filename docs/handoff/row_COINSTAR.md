@@ -2,7 +2,7 @@
 
 ## User facts
 "Coins are not rendering correctly after an enemy dies. The Star Piece that is in hos_01 has the same problem."
-Look not described yet: ask the user (garbled, missing, wrong colour, flat) before a run.
+User answer: GARBLED (wrong texture pieces, noise or stripes), seen on the O3DS XL (build de4f4b8c8 or later).
 
 ## Leads (orchestrator)
 Both are item entities (item_entity.c, ITEM_COIN / ITEM_STAR_PIECE) drawn as sprites with animated frames (coin spin, star piece
