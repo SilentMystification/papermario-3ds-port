@@ -15,8 +15,6 @@ char* strncpy(char* d, const char* s, unsigned int n);
 void bcopy(const void* src, void* dst, unsigned int n);
 void bzero(void* p, unsigned int n);
 
-/* Shape files are built for gMapShapeData at this N64 address. */
-#define SHAPE_BASE 0x80210000u
 #define ASSET_TABLE 0x1E40020u
 
 typedef struct AssetEntry {
@@ -25,12 +23,6 @@ typedef struct AssetEntry {
     u32 compressedLength;
     u32 decompressedLength;
 } AssetEntry;
-
-typedef struct ShapeFix {
-    u8* buf;
-    u32 size;
-    u8* seen;
-} ShapeFix;
 
 void* pm_decode_asset(const char* name, unsigned* out_size);
 /* Real map shapes are up to 157 KB. heaps.c only has 32 KB, so this is the buffer that the real code uses as gMapShapeData. */
@@ -58,240 +50,6 @@ static void swap_u32s(void* p, int n) {
         u32 v = rbe(b + i * 4);
         w32(b + i * 4, v);
     }
-}
-
-static u8* in_shape(ShapeFix* s, u32 addr) {
-    if (addr < SHAPE_BASE || addr >= SHAPE_BASE + s->size) return NULL;
-    return s->buf + (addr - SHAPE_BASE);
-}
-
-static int claim(ShapeFix* s, u8* p) {
-    u32 i;
-    if (!p) return 0;
-    i = (u32)(p - s->buf);
-    if (i >= s->size || s->seen[i]) return 0;
-    s->seen[i] = 1;
-    return 1;
-}
-
-static void swap_verts(u8* p, int n) {
-    int i, s;
-    for (i = 0; i < n; i++) {
-        for (s = 0; s < 6; s++) {
-            u8* h = p + i * 16 + s * 2;
-            u8 t = h[0];
-            h[0] = h[1];
-            h[1] = t;
-        }
-    }
-}
-
-static void swap_mtx(u8* p) {
-    int i;
-    for (i = 0; i < 16; i++) {
-        u32 v = rbe(p + i * 4);
-        w32(p + i * 4, v);
-    }
-}
-
-static void fix_gfx(ShapeFix* s, u8* dl);
-static void fix_node(ShapeFix* s, u8* node);
-
-static void fix_gfx(ShapeFix* s, u8* dl) {
-    int n;
-    if (!claim(s, dl)) return;
-    for (n = 0; n < 100000; n++) {
-        u32 off = (u32)(dl - s->buf);
-        u32 w0, w1, op;
-        if (off + 8 > s->size) return;
-        w0 = rbe(dl);
-        w1 = rbe(dl + 4);
-        op = w0 >> 24;
-        if (op == 0x01 || op == 0xDA || op == 0xDE || op == 0xDC) {
-            u8* target = in_shape(s, w1);
-            if (target) {
-                if (op == 0x01) {
-                    /* A later G_VTX often starts inside an earlier load. claim()
-                     * only marks the first byte, so that overlap was swapped
-                     * twice and those corners landed tens of thousands of units away. */
-                    int count = (w0 >> 12) & 0xff;
-                    int i;
-                    if (count > 64) count = 0;
-                    for (i = 0; i < count; i++) {
-                        u8* vtx = target + (u32)i * 16u;
-                        u32 vi;
-                        if ((u32)(vtx - s->buf) + 16u > s->size) break;
-                        vi = (u32)(vtx - s->buf);
-                        if (s->seen[vi]) continue;
-                        s->seen[vi] = 1;
-                        swap_verts(vtx, 1);
-                    }
-                } else if (op == 0xDA) {
-                    if (claim(s, target)) swap_mtx(target);
-                }
-                w1 = (u32)(unsigned long)target;
-            }
-        }
-        w32(dl, w0);
-        w32(dl + 4, w1);
-        dl += 8;
-        if (op == 0xDF) return;
-        if (op == 0xDE) {
-            u8* next = (u8*)(unsigned long)w1;
-            if (next >= s->buf && next < s->buf + s->size) fix_gfx(s, next);
-        }
-    }
-}
-
-static void fix_props(ShapeFix* s, u8* props, u32 count) {
-    u32 i;
-    if (!props || count == 0 || count > 256) return;
-    if (!claim(s, props)) return;
-    for (i = 0; i < count; i++) {
-        u8* e = props + i * 12;
-        u32 key, fmt, val;
-        if ((u32)(e - s->buf) + 12 > s->size) return;
-        key = rbe(e);
-        fmt = rbe(e + 4);
-        val = rbe(e + 8);
-        if (key == 0x5E || fmt == 2) {
-            u8* p = in_shape(s, val);
-            if (p) val = (u32)(unsigned long)p;
-        }
-        w32(e, key);
-        w32(e + 4, fmt);
-        w32(e + 8, val);
-    }
-}
-
-static void fix_group(ShapeFix* s, u8* group) {
-    u32 mtx, lights, nlights, nchildren, children, i;
-    u8* list;
-    if (!claim(s, group)) return;
-    if ((u32)(group - s->buf) + 20 > s->size) return;
-    mtx = rbe(group);
-    lights = rbe(group + 4);
-    nlights = rbe(group + 8);
-    nchildren = rbe(group + 12);
-    children = rbe(group + 16);
-    {
-        u8* p = in_shape(s, mtx);
-        if (p && claim(s, p)) swap_mtx(p);
-        mtx = p ? (u32)(unsigned long)p : 0;
-    }
-    {
-        u8* p = in_shape(s, lights);
-        lights = p ? (u32)(unsigned long)p : 0;
-    }
-    list = in_shape(s, children);
-    children = list ? (u32)(unsigned long)list : 0;
-    w32(group, mtx);
-    w32(group + 4, lights);
-    w32(group + 8, nlights);
-    w32(group + 12, nchildren);
-    w32(group + 16, children);
-    if (!list || nchildren > 256) return;
-    if (!claim(s, list)) return;
-    for (i = 0; i < nchildren; i++) {
-        u8* slot = list + i * 4;
-        u32 child;
-        u8* node;
-        if ((u32)(slot - s->buf) + 4 > s->size) return;
-        child = rbe(slot);
-        node = in_shape(s, child);
-        w32(slot, node ? (u32)(unsigned long)node : 0);
-        if (node) fix_node(s, node);
-    }
-}
-
-static void fix_node(ShapeFix* s, u8* node) {
-    u32 type, disp, nprop, props, group;
-    u8* display;
-    u8* dl;
-    if (!claim(s, node)) return;
-    if ((u32)(node - s->buf) + 20 > s->size) return;
-    type = rbe(node);
-    disp = rbe(node + 4);
-    nprop = rbe(node + 8);
-    props = rbe(node + 12);
-    group = rbe(node + 16);
-    display = in_shape(s, disp);
-    if (display && claim(s, display)) {
-        u32 dlp = rbe(display);
-        dl = in_shape(s, dlp);
-        w32(display, dl ? (u32)(unsigned long)dl : 0);
-        if (dl) fix_gfx(s, dl);
-        disp = (u32)(unsigned long)display;
-    } else {
-        disp = 0;
-    }
-    {
-        u8* p = in_shape(s, props);
-        props = p ? (u32)(unsigned long)p : 0;
-        fix_props(s, p, nprop);
-    }
-    {
-        u8* p = in_shape(s, group);
-        group = p ? (u32)(unsigned long)p : 0;
-        if (p) fix_group(s, p);
-    }
-    w32(node, type);
-    w32(node + 4, disp);
-    w32(node + 8, nprop);
-    w32(node + 12, props);
-    w32(node + 16, group);
-}
-
-static void fix_strlist(ShapeFix* s, u8* list) {
-    int n;
-    if (!list) return;
-    for (n = 0; n < 4096; n++) {
-        u32 raw, host;
-        u8* str;
-        if ((u32)(list - s->buf) + 4 > s->size) return;
-        raw = rbe(list);
-        str = in_shape(s, raw);
-        host = str ? (u32)(unsigned long)str : 0;
-        w32(list, host);
-        list += 4;
-        if (str && strcmp((char*)str, "db") == 0) return;
-        if (!str) return;
-    }
-}
-
-static ModelNode* fix_shape(u8* buf, u32 size) {
-    ShapeFix s;
-    u32 root, vtx, models, cols, zones;
-    u8* seen = general_heap_malloc(size);
-    u32 zi;
-    if (!seen) return NULL;
-    for (zi = 0; zi < size; zi++) seen[zi] = 0;
-    s.buf = buf;
-    s.size = size;
-    s.seen = seen;
-    root = rbe(buf);
-    vtx = rbe(buf + 4);
-    models = rbe(buf + 8);
-    cols = rbe(buf + 12);
-    zones = rbe(buf + 16);
-    (void)vtx;
-    w32(buf, in_shape(&s, root) ? (u32)(unsigned long)in_shape(&s, root) : 0);
-    w32(buf + 4, in_shape(&s, vtx) ? (u32)(unsigned long)in_shape(&s, vtx) : 0);
-    w32(buf + 8, in_shape(&s, models) ? (u32)(unsigned long)in_shape(&s, models) : 0);
-    w32(buf + 12, in_shape(&s, cols) ? (u32)(unsigned long)in_shape(&s, cols) : 0);
-    w32(buf + 16, in_shape(&s, zones) ? (u32)(unsigned long)in_shape(&s, zones) : 0);
-    fix_strlist(&s, in_shape(&s, models));
-    fix_strlist(&s, in_shape(&s, cols));
-    fix_strlist(&s, in_shape(&s, zones));
-    if (in_shape(&s, root)) fix_node(&s, in_shape(&s, root));
-    root = rbe(buf); /* already native */
-    {
-        u32 native;
-        bcopy(buf, &native, 4);
-        root = native;
-    }
-    general_heap_free(seen);
-    return (ModelNode*)(unsigned long)root;
 }
 
 /* HC4f2: the shape loader. romfs:/shape/<name>.nds is written by nd_shape_conv.c (HC4f1): "NDSH", version u32 = 1,
@@ -332,29 +90,6 @@ static int shape_load_romfs(u8* buf, u32 size, const char* name) {
 bad:
     fclose(f);
     return 0;
-}
-
-/* HC4f2: shpchk. The old path (fix_shape) runs into buf first; its copy goes to the heap; the loader then runs into buf and
- * the two are compared. Logs "shpchk <map> diff <n>" (n = differing bytes). A missing or bad file restores the old bytes. */
-static void shape_check(u8* buf, u32 size) {
-    u8* old;
-    u32 i, diff = 0;
-    fix_shape(buf, size);
-    old = general_heap_malloc(size);
-    if (!old) {
-        pm_log_evt("shpchk %s nomem", pm_shape_name);
-        return;
-    }
-    memcpy(old, buf, size);
-    if (!shape_load_romfs(buf, size, pm_shape_name)) {
-        pm_log_evt("shpchk %s load fail", pm_shape_name);
-        memcpy(buf, old, size);
-        general_heap_free(old);
-        return;
-    }
-    for (i = 0; i < size; i++) diff += buf[i] != old[i];
-    pm_log_evt("shpchk %s diff %u", pm_shape_name, (unsigned)diff);
-    general_heap_free(old);
 }
 
 static int yay0_decode_raw(const u8* src, u32 src_len, u8* dst, u32 dst_len) {
@@ -451,7 +186,7 @@ void decode_yay0(void* src, void* dst) {
     /* ROM data is big-endian. The real loaders read these two kinds of file in place, so convert them here, once. */
     if (dst == (void*)pm_shape_buf) {
         { extern char wMapShapeName[]; memcpy(pm_shape_name, src == last_asset_src ? last_asset_name : wMapShapeName, sizeof pm_shape_name); } /* SEAMFIX: the seamfix log line names the shape (world.c calls its own load_asset_by_name, not the wrap) */
-        shape_check(dst, dec);
+        if (!shape_load_romfs(dst, dec, pm_shape_name)) pm_log_evt("shape load fail %s", pm_shape_name);
         { extern unsigned pm_dlc_gen; pm_dlc_gen++; } /* DLC1: the shape file is final now */
     } else if (src == last_asset_src) {
         u32 n = strlen(last_asset_name);
