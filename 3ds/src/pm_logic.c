@@ -111,6 +111,22 @@ void pm_lg_quiesce(void) {
     while (pm_wq_pump_one()) {}
 }
 
+/* HOMEHANG: the APT hook's bounded quiesce. Waits at most ms for the logic to finish its handed commands; 0 = idle (queue run),
+ * -1 = still running at the deadline (the queue is left alone: the logic is mid step). Game thread only, else 0 at once. */
+int pm_lg_quiesce_ms(unsigned ms) {
+    if (!lg_th || threadGetCurrent() != lg_walker) return 0;
+    u64 end = svcGetSystemTick() + (u64)ms * CPU_TICKS_PER_MSEC;
+    while ((int)(lg_done - lg_handed) < 0) {
+        pm_wq_pump_blocked();
+        u64 now = svcGetSystemTick();
+        if (now >= end) return -1;
+        long long left = (long long)((end - now) * 1000000ull / CPU_TICKS_PER_MSEC);
+        pm_wq_wait_walker(left < LG_WAIT_NS ? left : LG_WAIT_NS);
+    }
+    while (pm_wq_pump_one()) {}
+    return 0;
+}
+
 void pm_lg_hand(const LgCmd* c, int serial) {
     if (serial || !lg_th) { /* inline: lg_done passes lg_handed during the run, so a post inside it does not wait for itself */
         pm_lg_quiesce();

@@ -1187,12 +1187,21 @@ static void wake_hook(void) {
     cpu_apply(cpu_game, "wake");
 }
 
-void pm_lg_quiesce(void); /* pm_logic.c */
+int pm_lg_quiesce_ms(unsigned ms); /* pm_logic.c */
+/* HOMEHANG: the hook's wait for the logic step boundary is bounded. The N3DS logic thread (core 2) did not finish during HOME and the
+ * unbounded wait ended the game (watchdog). On a timeout the suspend goes on; the exit flush is skipped (its save could be half written). */
+#define HOOK_QUIESCE_MS 200u
+static int hook_idle = 1; /* the last suspend, sleep or exit hook found the logic idle */
 static void cpu_hook(APT_HookType h, void* param) {
     (void)param;
     if (h == APTHOOK_ONSUSPEND || h == APTHOOK_ONSLEEP || h == APTHOOK_ONEXIT) { /* CORE2C-3: the logic thread stops at a step boundary first (game thread only) */
-        pm_lg_quiesce();
-        pm_log("save: hook flush after quiesce"); /* SAVESAFE: the flush step below runs after the logic stopped */
+        const char* hk = h == APTHOOK_ONSUSPEND ? "home" : h == APTHOOK_ONSLEEP ? "sleep" : "exit";
+        if (h == APTHOOK_ONSUSPEND) pm_wd_quiet = 1; /* the watchdog stays quiet while the hook waits */
+        unsigned long long tq = svcGetSystemTick();
+        pm_log("%s: quiesce start", hk);
+        hook_idle = pm_lg_quiesce_ms(HOOK_QUIESCE_MS) == 0;
+        pm_log("%s: quiesce %s, %u ms", hk, hook_idle ? "end" : "timeout", ms_since(tq));
+        if (hook_idle) pm_log("save: hook flush after quiesce"); /* SAVESAFE: the flush step below runs after the logic stopped */
     }
     switch (h) {
     case APTHOOK_ONSUSPEND: pm_wd_quiet = 1; pm_log("home: suspend"); quiet_enter("home", "HOME menu opens"); break;
@@ -1204,7 +1213,7 @@ static void cpu_hook(APT_HookType h, void* param) {
         cpu_apply(cpu_game, "HOME menu closed");
         break;
     case APTHOOK_ONWAKEUP: wake_hook(); break;
-    case APTHOOK_ONEXIT: pm_audio_drain(3); pm_flash_flush("exit hook"); if (cpu_now != 30) cpu_apply(30, "exit"); break;
+    case APTHOOK_ONEXIT: pm_audio_drain(3); if (hook_idle) pm_flash_flush("exit hook"); else pm_log("exit: flush skipped, logic not idle"); if (cpu_now != 30) cpu_apply(30, "exit"); break;
     default: break;
     }
 }
