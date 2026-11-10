@@ -4,6 +4,7 @@
 User (2026-11-09, O3DS XL, build 92e013100): "Forever Forest has rendering issues... elements in the center of the field, like
 trees, bushes and rocks, seem to clip out of visibility weirdly. Additionally the ground flickers here." "The culling seems to be
 rotating the wrong way relative to the camera." The user has seen this elsewhere too.
+User (2026-11-10, O3DS XL, main 6d6cfb9ea): "floor still does not properly render in mim_11 or forever forest in general." Fault is fact.
 
 ## Start state
 Worktree build3ds/wt/FFOREST, branch FFOREST from main. PM_ROW=FFOREST, PM_LANE=FFOREST. One Haiku agent.
