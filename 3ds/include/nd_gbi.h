@@ -8,47 +8,95 @@
 #ifndef ND_GBI_H
 #define ND_GBI_H
 #include "nd_cmd.h"
-
+#include "nd_op.h"
 void nd_gx_w(Gfx* g, uint32_t w0, uint32_t w1);
 /* D9: the top-level packet of the redirected macros: gMainGfxPos at the start of a task (nd_gx_w takes each packet back). */
 Gfx* nd_rec_task(void);
-
+/* HC4e3 group 1 (scalar ops). ND_GX: the g form, one evaluation of each word, the typed unit of nd_op.h to nd_gx_w. ND_GS: the gs form (a static
+ * initializer): the typed unit at compile time. The w0 and w1 expressions are those of include/PR/gbi.h (F3DEX_GBI_2). */
+#define ND_GX(pkt, w0, w1) { const u32 _nd0 = (w0), _nd1 = (w1); nd_gx_w((Gfx*)(pkt), ND_X0(_nd0, _nd1), ND_X1(_nd0, _nd1)); }
+#define ND_GS(w0, w1) {{ ND_X0(w0, w1), ND_X1(w0, w1) }}
+#define ND_W0_SOM(cmd, sft, len) (_SHIFTL(cmd, 24, 8) | _SHIFTL(32 - (sft) - (len), 8, 8) | _SHIFTL((len) - 1, 0, 8))
 #undef gSPSetOtherMode
-#define gSPSetOtherMode(pkt, cmd, sft, len, data) \
-    { nd_gx_w((Gfx*)(pkt), _SHIFTL(cmd, 24, 8) | _SHIFTL(32 - (sft) - (len), 8, 8) | _SHIFTL((len) - 1, 0, 8), (unsigned int)(data)); }
+#define gSPSetOtherMode(pkt, cmd, sft, len, data) ND_GX(pkt, ND_W0_SOM(cmd, sft, len), (unsigned int)(data))
+#undef gsSPSetOtherMode
+#define gsSPSetOtherMode(cmd, sft, len, data) ND_GS(ND_W0_SOM(cmd, sft, len), (unsigned int)(data))
+#define ND_W0_GEOM(c) (_SHIFTL(G_GEOMETRYMODE, 24, 8) | _SHIFTL(~(u32)(c), 0, 24))
 #undef gSPGeometryMode
-#define gSPGeometryMode(pkt, c, s) { nd_gx_w((Gfx*)(pkt), _SHIFTL(G_GEOMETRYMODE, 24, 8) | _SHIFTL(~(u32)(c), 0, 24), (u32)(s)); }
+#define gSPGeometryMode(pkt, c, s) ND_GX(pkt, ND_W0_GEOM(c), (u32)(s))
+#undef gsSPGeometryMode
+#define gsSPGeometryMode(c, s) ND_GS(ND_W0_GEOM(c), (u32)(s))
+#define ND_W0_TEX(level, tile, on) (_SHIFTL(G_TEXTURE, 24, 8) | _SHIFTL(BOWTIE_VAL, 16, 8) | _SHIFTL((level), 11, 3) | _SHIFTL((tile), 8, 3) | _SHIFTL((on), 1, 7))
+#define ND_W1_TEX(s, t) (_SHIFTL((s), 16, 16) | _SHIFTL((t), 0, 16))
 #undef gSPTexture
-#define gSPTexture(pkt, s, t, level, tile, on) \
-    { nd_gx_w((Gfx*)(pkt), _SHIFTL(G_TEXTURE, 24, 8) | _SHIFTL(BOWTIE_VAL, 16, 8) | _SHIFTL((level), 11, 3) | _SHIFTL((tile), 8, 3) | \
-              _SHIFTL((on), 1, 7), _SHIFTL((s), 16, 16) | _SHIFTL((t), 0, 16)); }
+#define gSPTexture(pkt, s, t, level, tile, on) ND_GX(pkt, ND_W0_TEX(level, tile, on), ND_W1_TEX(s, t))
+#undef gsSPTexture
+#define gsSPTexture(s, t, level, tile, on) ND_GS(ND_W0_TEX(level, tile, on), ND_W1_TEX(s, t))
+#define ND_W0_CMB(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1) \
+    (_SHIFTL(G_SETCOMBINE, 24, 8) | _SHIFTL(GCCc0w0(G_CCMUX_##a0, G_CCMUX_##c0, G_ACMUX_##Aa0, G_ACMUX_##Ac0) | GCCc1w0(G_CCMUX_##a1, G_CCMUX_##c1), 0, 24))
+#define ND_W1_CMB(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1) \
+    ((unsigned int)(GCCc0w1(G_CCMUX_##b0, G_CCMUX_##d0, G_ACMUX_##Ab0, G_ACMUX_##Ad0) | \
+                    GCCc1w1(G_CCMUX_##b1, G_ACMUX_##Aa1, G_ACMUX_##Ac1, G_CCMUX_##d1, G_ACMUX_##Ab1, G_ACMUX_##Ad1)))
+#undef gDPSetCombineLERP
+#define gDPSetCombineLERP(pkt, a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1) \
+    ND_GX(pkt, ND_W0_CMB(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1), \
+          ND_W1_CMB(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1))
+#undef gsDPSetCombineLERP
+#define gsDPSetCombineLERP(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1) \
+    ND_GS(ND_W0_CMB(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1), \
+          ND_W1_CMB(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1))
+#undef gDPSetColor
+#define gDPSetColor(pkt, c, d) ND_GX(pkt, _SHIFTL(c, 24, 8), (unsigned int)(d))
+#undef gsDPSetColor
+#define gsDPSetColor(c, d) ND_GS(_SHIFTL(c, 24, 8), (unsigned int)(d))
+#define ND_W0_PRIMC(m, l) (_SHIFTL(G_SETPRIMCOLOR, 24, 8) | _SHIFTL(m, 8, 8) | _SHIFTL(l, 0, 8))
+#define ND_W1_PRIMC(r, g, b, a) (_SHIFTL(r, 24, 8) | _SHIFTL(g, 16, 8) | _SHIFTL(b, 8, 8) | _SHIFTL(a, 0, 8))
+#undef gDPSetPrimColor
+#define gDPSetPrimColor(pkt, m, l, r, g, b, a) ND_GX(pkt, ND_W0_PRIMC(m, l), ND_W1_PRIMC(r, g, b, a))
+#undef gsDPSetPrimColor
+#define gsDPSetPrimColor(m, l, r, g, b, a) ND_GS(ND_W0_PRIMC(m, l), ND_W1_PRIMC(r, g, b, a))
+#define ND_W0_SCIS(ulx, uly) (_SHIFTL(G_SETSCISSOR, 24, 8) | _SHIFTL((int)((float)(ulx) * 4.0F), 12, 12) | _SHIFTL((int)((float)(uly) * 4.0F), 0, 12))
+#define ND_W1_SCIS(mode, lrx, lry) (_SHIFTL(mode, 24, 2) | _SHIFTL((int)((float)(lrx) * 4.0F), 12, 12) | _SHIFTL((int)((float)(lry) * 4.0F), 0, 12))
+#undef gDPSetScissor
+#define gDPSetScissor(pkt, mode, ulx, uly, lrx, lry) ND_GX(pkt, ND_W0_SCIS(ulx, uly), ND_W1_SCIS(mode, lrx, lry))
+#undef gsDPSetScissor
+#define gsDPSetScissor(mode, ulx, uly, lrx, lry) ND_GS(ND_W0_SCIS(ulx, uly), ND_W1_SCIS(mode, lrx, lry))
+#define ND_W0_SCISF(ulx, uly) (_SHIFTL(G_SETSCISSOR, 24, 8) | _SHIFTL((int)((ulx)), 12, 12) | _SHIFTL((int)((uly)), 0, 12))
+#define ND_W1_SCISF(mode, lrx, lry) (_SHIFTL(mode, 24, 2) | _SHIFTL((int)((lrx)), 12, 12) | _SHIFTL((int)((lry)), 0, 12))
+#undef gDPSetScissorFrac
+#define gDPSetScissorFrac(pkt, mode, ulx, uly, lrx, lry) ND_GX(pkt, ND_W0_SCISF(ulx, uly), ND_W1_SCISF(mode, lrx, lry))
+#undef gsDPSetScissorFrac
+#define gsDPSetScissorFrac(mode, ulx, uly, lrx, lry) ND_GS(ND_W0_SCISF(ulx, uly), ND_W1_SCISF(mode, lrx, lry))
+/* G_MOVEWORD: gbi.h builds it with gDma1p (data = w1, offset = low 16 bits, index = bits 16 to 23); gDma1p itself stays a word until group 3. */
+#define ND_W0_MW(index, offset) (_SHIFTL(G_MOVEWORD, 24, 8) | _SHIFTL((index), 16, 8) | _SHIFTL((offset), 0, 16))
+#undef gMoveWd
+#define gMoveWd(pkt, index, offset, data) ND_GX(pkt, ND_W0_MW(index, offset), (unsigned int)(data))
+#undef gsMoveWd
+#define gsMoveWd(index, offset, data) ND_GS(ND_W0_MW(index, offset), (unsigned int)(data))
+#define ND_W0_CONV(k0, k1, k2) (_SHIFTL(G_SETCONVERT, 24, 8) | _SHIFTL(k0, 13, 9) | _SHIFTL(k1, 4, 9) | _SHIFTR(k2, 5, 4))
+#define ND_W1_CONV(k2, k3, k4, k5) (_SHIFTL(k2, 27, 5) | _SHIFTL(k3, 18, 9) | _SHIFTL(k4, 9, 9) | _SHIFTL(k5, 0, 9))
+#undef gDPSetConvert
+#define gDPSetConvert(pkt, k0, k1, k2, k3, k4, k5) ND_GX(pkt, ND_W0_CONV(k0, k1, k2), ND_W1_CONV(k2, k3, k4, k5))
+#undef gsDPSetConvert
+#define gsDPSetConvert(k0, k1, k2, k3, k4, k5) ND_GS(ND_W0_CONV(k0, k1, k2), ND_W1_CONV(k2, k3, k4, k5))
+#define ND_W1_KEYR(cR, sR, wR) (_SHIFTL(wR, 16, 12) | _SHIFTL(cR, 8, 8) | _SHIFTL(sR, 0, 8))
+#undef gDPSetKeyR
+#define gDPSetKeyR(pkt, cR, sR, wR) ND_GX(pkt, _SHIFTL(G_SETKEYR, 24, 8), ND_W1_KEYR(cR, sR, wR))
+#undef gsDPSetKeyR
+#define gsDPSetKeyR(cR, sR, wR) ND_GS(_SHIFTL(G_SETKEYR, 24, 8), ND_W1_KEYR(cR, sR, wR))
+#define ND_W0_KEYGB(wG, wB) (_SHIFTL(G_SETKEYGB, 24, 8) | _SHIFTL(wG, 12, 12) | _SHIFTL(wB, 0, 12))
+#define ND_W1_KEYGB(cG, sG, cB, sB) (_SHIFTL(cG, 24, 8) | _SHIFTL(sG, 16, 8) | _SHIFTL(cB, 8, 8) | _SHIFTL(sB, 0, 8))
+#undef gDPSetKeyGB
+#define gDPSetKeyGB(pkt, cG, sG, wG, cB, sB, wB) ND_GX(pkt, ND_W0_KEYGB(wG, wB), ND_W1_KEYGB(cG, sG, cB, sB))
+#undef gsDPSetKeyGB
+#define gsDPSetKeyGB(cG, sG, wG, cB, sB, wB) ND_GS(ND_W0_KEYGB(wG, wB), ND_W1_KEYGB(cG, sG, cB, sB))
 #undef gSetImage
 #define gSetImage(pkt, cmd, fmt, siz, width, i) \
     { nd_gx_w((Gfx*)(pkt), _SHIFTL(cmd, 24, 8) | _SHIFTL(fmt, 21, 3) | _SHIFTL(siz, 19, 2) | _SHIFTL((width) - 1, 0, 12), (unsigned int)(i)); }
-#undef gDPSetCombineLERP
-#define gDPSetCombineLERP(pkt, a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1) \
-    { nd_gx_w((Gfx*)(pkt), _SHIFTL(G_SETCOMBINE, 24, 8) | _SHIFTL(GCCc0w0(G_CCMUX_##a0, G_CCMUX_##c0, G_ACMUX_##Aa0, G_ACMUX_##Ac0) | \
-                                                                GCCc1w0(G_CCMUX_##a1, G_CCMUX_##c1), 0, 24), \
-              (unsigned int)(GCCc0w1(G_CCMUX_##b0, G_CCMUX_##d0, G_ACMUX_##Ab0, G_ACMUX_##Ad0) | \
-                             GCCc1w1(G_CCMUX_##b1, G_ACMUX_##Aa1, G_ACMUX_##Ac1, G_CCMUX_##d1, G_ACMUX_##Ab1, G_ACMUX_##Ad1))); }
-#undef gDPSetColor
-#define gDPSetColor(pkt, c, d) { nd_gx_w((Gfx*)(pkt), _SHIFTL(c, 24, 8), (unsigned int)(d)); }
-#undef gDPSetPrimColor
-#define gDPSetPrimColor(pkt, m, l, r, g, b, a) \
-    { nd_gx_w((Gfx*)(pkt), _SHIFTL(G_SETPRIMCOLOR, 24, 8) | _SHIFTL(m, 8, 8) | _SHIFTL(l, 0, 8), \
-              _SHIFTL(r, 24, 8) | _SHIFTL(g, 16, 8) | _SHIFTL(b, 8, 8) | _SHIFTL(a, 0, 8)); }
 #undef gDPNoParam
 #define gDPNoParam(pkt, cmd) { nd_gx_w((Gfx*)(pkt), _SHIFTL(cmd, 24, 8), 0); }
 #undef gImmp1
 #define gImmp1(pkt, c, p0) { nd_gx_w((Gfx*)(pkt), _SHIFTL((c), 24, 8), (unsigned int)(p0)); }
-#undef gDPSetScissor
-#define gDPSetScissor(pkt, mode, ulx, uly, lrx, lry) \
-    { nd_gx_w((Gfx*)(pkt), _SHIFTL(G_SETSCISSOR, 24, 8) | _SHIFTL((int)((float)(ulx) * 4.0F), 12, 12) | _SHIFTL((int)((float)(uly) * 4.0F), 0, 12), \
-              _SHIFTL(mode, 24, 2) | _SHIFTL((int)((float)(lrx) * 4.0F), 12, 12) | _SHIFTL((int)((float)(lry) * 4.0F), 0, 12)); }
-#undef gDPSetScissorFrac
-#define gDPSetScissorFrac(pkt, mode, ulx, uly, lrx, lry) \
-    { nd_gx_w((Gfx*)(pkt), _SHIFTL(G_SETSCISSOR, 24, 8) | _SHIFTL((int)((ulx)), 12, 12) | _SHIFTL((int)((uly)), 0, 12), \
-              _SHIFTL(mode, 24, 2) | _SHIFTL((int)((lrx)), 12, 12) | _SHIFTL((int)((lry)), 0, 12)); }
 #undef gDPFillRectangle
 #define gDPFillRectangle(pkt, ulx, uly, lrx, lry) \
     { nd_gx_w((Gfx*)(pkt), _SHIFTL(G_FILLRECT, 24, 8) | _SHIFTL((lrx), 14, 10) | _SHIFTL((lry), 2, 10), _SHIFTL((ulx), 14, 10) | _SHIFTL((uly), 2, 10)); }
@@ -90,12 +138,6 @@ Gfx* nd_rec_task(void);
 #undef gSPModifyVertex
 #define gSPModifyVertex(pkt, vtx, where, val) \
     { nd_gx_w((Gfx*)(pkt), _SHIFTL(G_MODIFYVTX, 24, 8) | _SHIFTL((where), 16, 8) | _SHIFTL((vtx) * 2, 0, 16), (unsigned int)(val)); }
-#undef gDPSetKeyR
-#define gDPSetKeyR(pkt, cR, sR, wR) { nd_gx_w((Gfx*)(pkt), _SHIFTL(G_SETKEYR, 24, 8), _SHIFTL(wR, 16, 12) | _SHIFTL(cR, 8, 8) | _SHIFTL(sR, 0, 8)); }
-#undef gDPSetKeyGB
-#define gDPSetKeyGB(pkt, cG, sG, wG, cB, sB, wB) \
-    { nd_gx_w((Gfx*)(pkt), _SHIFTL(G_SETKEYGB, 24, 8) | _SHIFTL(wG, 12, 12) | _SHIFTL(wB, 0, 12), \
-              _SHIFTL(cG, 24, 8) | _SHIFTL(sG, 16, 8) | _SHIFTL(cB, 8, 8) | _SHIFTL(sB, 0, 8)); }
 #undef gPmNdSplash
 #define gPmNdSplash(pkt, on) { nd_gx_w((Gfx*)(pkt), ((u32)G_PM_ND << 24) | ((u32)G_PM_ND_SPLASH << 16) | ((on) ? 1u : 0u), 0); }
 #undef gPmNdGrabHold
