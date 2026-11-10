@@ -46,12 +46,18 @@
 - That it runs with no controller bound.
 - The rust-toolchain.toml version, and whether SDL3 builds from source (CMake plus MSVC).
 
-### Haiku rows (all Haiku)
-- **N64REF-1 (build and facts).** Clone the v1.1.42 tag plus submodules into build3ds/n64ref/gopher64 and run `cargo build --release`. Record the facts above as file:line in the row handback. Gate: the built exe boots ver/us/baserom.z64 and its process is alive at 10 s.
-- **N64REF-2 (probe core).** src/probe.rs (parse probe.txt, frame counter, RAM write, dump, until, exit) and the gfx_draw_frame/nuGfxTaskStart hooks in cpu.rs; export the patch. Gate: dump at f300. The bytes at 0x800334F0 equal ROM offset 0xE8F0 (the set_game_mode code, symbol_addrs rom: field) for 64 bytes, which proves the address mapping and byte order.
-- **N64REF-3 (warp and pos).** Call queue and pos write in probe.rs. n64ref.py with symbol and map-name lookup, plus n64_scenarios.json scenario `n64_kmr20`: warp=kmr_20:0, pos, dump at warp+60. Gate: the dump has areaID/mapID equal to the ids resolved for kmr_20, and gPlayerStatus.pos within 1.0 of the pos= values.
-- **N64REF-4 (padscript and until).** Pad table in controller.rs, padscript expander and until in n64ref.py. Gate: `padscript=right*60`, then gPlayerStatus.pos.x changed by more than 20 at the dump, and `until` prints a frame below the cap.
-- **N64REF-5 (n64dl).** 3ds/tools/n64dl.c and the build line in n64ref.py. Gate: decode the kmr_20 dump from its task a0: it reaches G_ENDDL with 0 unknown opcodes and at least 1 G_TEXRECT (HUD).
+### Rows, cut to the minimum (user, 2026-11-10: "I dont want to invest a huge amount of time and resources into the n64 hook.
+We need something that is repeatable and quick and easy for the agent to use.")
+One command for the agent: `python 3ds/tools/n64ref.py <map>[:<entry>] <frames> [--from <sym|addr>]` -> prints the decoded display list
+of that frame (or of one object) and the RDP state per draw. Nothing else: no padscript, no until, no pos, no scenario file, no bench.
+- **N64REF-1 (running).** Toolchain, clone, build, facts.
+- **N64REF-2 (probe, at most about 80 lines of Rust).** `--probe <file>`: lines `w <addr> <u8|u16|u32> <val> @<frame>` (RAM write at a frame,
+  frame counted at the gfx_draw_frame PC) and `dump <frame>` (RDRAM to a file, big-endian, plus the nuGfxTaskStart a0), then exit.
+  Warp is only RAM writes from n64ref.py (the simplest gGameStatus fields that start a map change; the agent confirms them from the decomp).
+  If warp needs a call queue or more than about 20 lines, drop warp: the user makes gopher64 save states and n64ref.py uses --load-state.
+  Gate: one command prints a kmr map's frame list.
+- **N64REF-3 (n64dl, host C).** Decode a dump from an address: commands with addresses, RDP state on each tri, texrect and fill.
+  Gate: 0 unknown opcodes on that frame, G_ENDDL reached.
 
 ### User answers (2026-11-10)
 - Install: yes. The N64REF-1 agent installs rustup (version from rust-toolchain.toml) and, if SDL3 builds from source, CMake and the MSVC Build Tools.
