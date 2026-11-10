@@ -1,6 +1,6 @@
 # Row HC4e3: static and local lists typed at compile time
 
-(Model: Sonnet recommended by the oracle, user to choose. Oracle batch 2, 2026-11-10. Start: `sh 3ds/tools/wt_new.sh HC4e3`; PM_ROW=PM_LANE=HC4e3 on every build.sh and bench call. CLAUDE.md rules 1-7. No git stash. Foreground waits. Long output to a file, then grep or tail it. Commit after each passed step. Delete this row file in the completing commit. A failed gate or an unexpected fact: stop, commit, hand back the printed values.)
+(Model: Sonnet (user, 2026-11-10). Oracle batch 2, 2026-11-10. Start: `sh 3ds/tools/wt_new.sh HC4e3`; PM_ROW=PM_LANE=HC4e3 on every build.sh and bench call. CLAUDE.md rules 1-7. No git stash. Foreground waits. Long output to a file, then grep or tail it. Commit after each passed step. Delete this row file in the completing commit. A failed gate or an unexpected fact: stop, commit, hand back the printed values.)
 
 ## Touch only
 3ds/include/nd_gbi.h, include/gbi_custom.h, 3ds/src/nd_rec.c (nd_gx_w).

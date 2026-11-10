@@ -67,7 +67,7 @@ What 14 calls per frame do not explain (console tex 23.5 ms vs 3.6 ms on Azahar)
 - 14 CPU texrects per frame write SpriteShadingPalette; each write can run pm_tex_invalidate over the slots.
 - 14 pm_gpu_flush batch closes (tex_shaded0).
 - Slot churn from 9 new slots per frame (evict_oldest_done).
-CPU fix row: row_KZN04F.md. GPU design row: Sonnet recommended, needs a user OK (picture not byte-equal), after HC7 and COINSTAR.
+CPU fix row: row_KZN04F.md. GPU design row: user OK 2026-11-10 (Sonnet; picture not byte-equal is accepted), after HC7 and COINSTAR; the oracle writes it then.
 
 ## At the end
 The debug line stays. Keep this file (the fix row follows). Hand back "KZN04 ready <hash> calls N miss M us U".
