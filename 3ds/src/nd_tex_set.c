@@ -365,7 +365,7 @@ int tile_texel(int n, int s, int t, unsigned char o[4]) {
 
 /* HC7: the frame buffer candidate of fb_prev_base (a 16 bit RGBA 320 wide window): it takes the cold path, the bind is decided there */
 static inline int fb_cand(int n) {
-    return !pm_wide && nd_ws.td[n].fmt == 0 && nd_ws.td[n].siz == 2 && nd_ws.td[n].stride == 320;
+    return nd_ws.td[n].fmt == 0 && nd_ws.td[n].siz == 2; /* HC7: every 16 bit RGBA bind takes the slow path (frame buffer candidate, fbbind log) */
 }
 
 static __attribute__((cold, noinline)) void ensure_tile_slow(int n) {
