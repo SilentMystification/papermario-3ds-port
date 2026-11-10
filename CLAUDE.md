@@ -26,3 +26,4 @@ Orchestrator: read docs/handoff/orchestrator_rules.md at the start and after eve
 9. DOCS. State lives in a few files edited in place; git history is the log. A row file is deleted by the commit that completes the
    row. Numbers go into the bench database (runs.jsonl is append-only), not into prose. A new docs/handoff file only for a new
    subject, with its INDEX.md line.
+10. CLEAN MAIN. The main folder has no uncommitted or untracked files: every file is committed, or listed in .gitignore.

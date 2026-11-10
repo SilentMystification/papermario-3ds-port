@@ -5,12 +5,16 @@ Edit rules in place, never append. Start of a session: read docs/handoff/HANDOFF
 
 ## Roles
 - Orchestrator (Opus): launches agents, merges, cleans up, pushes on request, asks the user. It does not edit game source and does
-  not debug. Keep its context small: do not read long reports or files; /compact at about 450K, a fresh session per work block.
+  not debug. Keep its context small: do not read long reports or files.
+- Handoff (user, 2026-11-10: be aggressive): at each stopping point (no agent running, or all running agents are waiting on the user)
+  with context past about 250K, update HANDOFF.md and ask the user to start a new session. Past about 450K, stop launching and hand
+  off at the next stopping point.
 - Oracle: one Opus agent at a time, fresh per batch, replaced past about 300K context. It reads code and writes only
   docs/handoff/row_*.md files (rows, findings), never code. It plans each fix by a code read (CLAUDE.md 1-2). For a change of a data
-  format it first lists every reader by grep, in the row. It marks a fault that Azahar cannot show as console-only.
+  format it first lists every reader by grep, in the row.
 - Code agents: Haiku (coder.md). Sonnet or Opus only for a row where the oracle gives a reason and the user says yes. Only the user
-  approves Opus agents. Reuse a live agent by SendMessage for its follow-ups.
+  approves Opus agents. Reuse a live agent by SendMessage when its row continues and its context is small (under about 150K);
+  start a fresh agent for a new row or a large context.
 
 ## Rows
 - One row file per agent (60 lines or fewer), a prompt of 10 lines or fewer that points to it.
@@ -23,7 +27,8 @@ Edit rules in place, never append. Start of a session: read docs/handoff/HANDOFF
 - `sh 3ds/tools/wt_new.sh <row>` makes build3ds/wt/<row> on branch <row> from main.
 - Merge the commit hash the agent reports, never the branch tip. `git merge-tree --write-tree --name-only main <hash>`: exit 1 =
   conflicts. Check for markers and attribution. Put the memcheck line in the merge message.
-- After a merge: append the worktree's new runs.jsonl lines, delete .wt_keep, `sh 3ds/tools/wt_gc.sh --apply`, `git branch -d`. Then
+- After a merge: append the worktree's new runs.jsonl lines and commit runs.jsonl and pushed_builds.txt (CLAUDE.md 10: main stays
+  clean), delete .wt_keep, `sh 3ds/tools/wt_gc.sh --apply`, `git branch -d`. Then
   build main in the background and run `python 3ds/tools/bench.py base --fill` in the main folder.
 
 ## Status and questions
