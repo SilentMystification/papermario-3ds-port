@@ -86,5 +86,36 @@ What I ruled out by code read:
 
 Next (needs the user's yes, rule 1 exception): (Diagnostic, 1 Azahar start. `sh 3ds/tools/wt_new.sh STEREOCRASH` on branch AZTSTEREO 2c29fb04a; it has the merlee_stereoat scenario. PM_ROW=PM_LANE=STEREOCRASH. CLAUDE.md rules 1-7. No git stash. Foreground waits.) One gdb write watchpoint run on RenderTaskListIdx (text in the oracle report, scratchpad oracle_b4.txt).
 
+## Slider hang on the XL (oracle batch 8)
+How the hang looks in the evidence (build3ds/hw_live_log_131.txt, build #3869):
+- The push was a prof push with log=off, so no `stereo: replay` lines were logged.
+- The last lines show a map load mac_05 -> kgr_01 (xfer lines #847-849). Then `watchdog ... phase 7`, `walker op ed, last flush pm_gpu_end_w:2485`.
+- The HOME hang log (row_HOMEHANG.md) had the same `op ed, last flush pm_gpu_end_w` signature while the game sat idle in phase 10. So this signature is the normal state after any frame end. It only says the walk of frame N finished and pm_gpu_end_w entered flush.
+- The game thread is the walker (pm_logic.c:159 pm_lg_show pumps the work queue). The stall is either inside a pumped GPU wait or in pm_lg_show waiting on lg_ends.
+
+What libctru actually does (gxqueue.o disassembly):
+- An entry counts as done only on a PSC0, PPF, P3D or DMA interrupt. PSC1 and VBlank are ignored.
+- At most 3 entries are in flight (DoCommands: lastEntry + 3 - curEntry). The return code of gspSubmitGxCommand is ignored.
+- gxCmdQueueWait(-1) loops on gspWaitForAnyEvent while isRunning. So a hang means exactly one thing: an entry was submitted (curEntry > lastEntry) and its counted interrupt never arrived.
+- Why Azahar completes it: its GSP runs each GX command synchronously at submit and raises the interrupt at once. It has no PICA lockup and no rejected command, so the counted interrupt always comes.
+
+Candidates I excluded, with reasons:
+- gfxSet3D mid-session is safe. gfx.c:27-28 only sets gfxTopMode. The next swap (citro3d onQueueFinish) presents with 3D.
+- The right framebuffer exists from gfxInit. The top size is 400*240*2*bpp (gfxSetScreenFormat). In 3D mode gfxGetFramebuffer(TOP, RIGHT) returns fb + MaxSize/2, which is inside the allocation.
+- Fills on targetR are mapped correctly by sr_map (the end address uses `<=`). targetR is plain VRAM. Fills always have buf0 set, so PSC0 fires.
+- Queue size is bounded: pm_gx_room keeps it under 24, and FrameEnd adds at most 3 (32 maximum).
+- Command-list alignment: GPUCMD_Split pads every list (the twin too) to 16 bytes with FINALIZE.
+- Entries queued between C3D_FrameBegin and sr_frame_begin (the PT12 copy) are recorded and mapped. The queue is empty after FrameBegin.
+- C3D_SyncTextureCopy / gspWaitForPPF (upload before frame) always has a pending sticky PPF, so it cannot block.
+- The vertex and index ring is never reused inside a frame (pm_gpu_rect.c:38-45).
+
+What is left: a replayed entry whose interrupt never comes on hardware. Most likely a PICA lockup inside a replayed command list (no P3D), from GPU state at the start of the right pass that sr_force_all does not rewrite. I could not tie it to a register by code read.
+
+Next step: rule 2 says no fix without a printed wrong value, so I give no fix row. Row ESCAPE (section 2) dumps the stuck queue to crash.txt at the stall: n/cur/last, the id and addresses of each in-flight entry, and the sr state. It also keeps the process alive so the user can escape.
+
+User action for the next XL push:
+- Use log on, not prof log=off, so the `stereo: replay` lines show. With 1 or more lines, the first replay was queued and the hang is in the GPU run or the next begin. With 0 lines, the hang is before the replay.
+- Move the slider (kgr_01 is the last known spot), wait about 12 s, hold START+SELECT, then pull crash.txt. The dumped entry names the fix.
+
 ## At the end
 Keep this file (the fix row follows). Hand back "STEREOFX <FAULT SHOWN|NOT REPRODUCED> <hash>".
