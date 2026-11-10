@@ -1,16 +1,16 @@
 # HANDOFF (orchestrator, overwritten at each handoff)
 
-State at 2026-11-10 night, main de7b9e635 or later. Read orchestrator_rules.md and CLAUDE.md first.
+State at 2026-11-10 night, main 86c3de04c or later. No agent runs. Read orchestrator_rules.md and CLAUDE.md first.
 
-## Still running at handoff (check with ListAgents; merge by the reported hash)
-- [Oracle Opus] batch 10: full rows for HC4f3 and HC4e4 (rows docs/handoff/row_HC4f3.md, row_HC4e4.md). Worktree build3ds/wt/HC4f3 exists.
+## At handoff
+- Oracle batch 10 done: row_HC4f3.md (52 lines) and row_HC4e4.md (50 lines) are full Haiku rows. Worktree build3ds/wt/HC4f3 exists (from 384c404c2: merge main first).
 - FFOG1 merged (pm5 fog fix). The user checks mim_11 on the XL after a push.
 - build3ds/wt/TOOLB1: merged; its folder may be locked; the next wt_gc sweep removes it.
 
 ## Queue, in order
 1. TOOLB2 (row_TOOLB2.md): shared run ids, battle gate -NoWarm, shot copy at timeout.
 2. ESCAPE2 (row_ESCAPE2.md, oracle first): START+SELECT exit faults the system; debug menu choice hbmenu / quit / HOME Menu.
-3. HC4f3, then HC4e4 (rows from oracle batch 10). Then the hot_order.ld census (15 stale names).
+3. HC4f3, then HC4e4. Then HOTORD (no row yet): PM_FNCOV=1 lane build, fncov_mac01_det/kmr10_det/mac00_det, hot_order.py.
 4. STEREOFX (row_STEREOFX.md): the 3D slider hang on the XL. Evidence: a log-on push, slider on, wait 12 s, START+SELECT, pull
    crash.txt (GX queue dump). The kgr_01 hang did not return on 86004672a (cause not proven).
 5. KZN04 GPU shading row (Sonnet, user OK; non-byte-equal shading accepted). HC7 step 7, HC8, SHEEP, DEADCODE.
@@ -26,3 +26,7 @@ HC4e3 (all 3 groups), HC4f1, HC4f2, ESCAPE, N64PEEK (tool, parked), AZTSTEREO, B
 ## Rules changed on 2026-11-10 (now in CLAUDE.md and orchestrator_rules.md)
 Fault is fact; code read only (no repro, no debug-log, no visual checks); tool faults stop the gate; the oracle writes row files;
 fresh oracle per batch; /compact at about 450K; base --fill after each merge.
+
+## Tooling note
+The scratchpad merge helper of the last session appended runs.jsonl lines but did not commit them. Commit runs.jsonl and
+pushed_builds.txt with `git add -f` (3ds/logs is git-ignored, these two are tracked) so main stays clean (CLAUDE.md 10).
