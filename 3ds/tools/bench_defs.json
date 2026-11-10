@@ -3211,14 +3211,13 @@
       "kind": "azahar_pic",
       "speed": "normal",
       "default": false,
-      "purpose": "FFOG1: Forever Forest mim_11 (warp entry 0), det, wzcull, Mario walks toward the camera for 3 s. The shot at the dlcwz frame with str > 0 (a box straddles w=0) shows the floor: textured to the bottom, no black or fog-colour wedge. A person reads the shot.",
+      "purpose": "FFOG1: Forever Forest mim_11 (warp entry 0), det, no walk. The floor near the camera is black or missing from any spot. Shots 240 to 242; the last shot is read by a script (near-black pixels, all channels < 16, bottom third).",
       "scenario": "mim11_floor",
       "cap": 20,
-      "until": "dlcwz f\\d+ grp \\d+ str [1-9]",
+      "until": "shot 2 frame",
       "tags": [
         "azahar",
-        "det",
-        "wzcull"
+        "det"
       ],
       "gates": []
     },
