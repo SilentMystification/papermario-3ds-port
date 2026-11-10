@@ -1454,35 +1454,88 @@ def drop_base_lane(lane, bds):
             pass
 
 
+BASE_LOCK_STALE_S = 2 * 3600  # a base lock this old is left by a dead run: removed once
+BASE_LOCK_WAIT_S = 40 * 60  # a waiting run gives up after this
+
+
+def base_lock_take(commit):
+    """Takes the build lock <store>/<commit>.lock (O_EXCL, holder pid and time inside). Two runs on one commit share the
+    lane base_<short> and its docker volumes (tar "Cannot open", "File exists"), so the second waits. Returns the lock
+    path, or None after BASE_LOCK_WAIT_S."""
+    lk = store_root() / (commit + ".lock")
+    lk.parent.mkdir(parents=True, exist_ok=True)
+    waited, stale_done = 0, False
+    while True:
+        try:
+            fd = os.open(str(lk), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            try:
+                age = time.time() - lk.stat().st_mtime
+            except OSError:
+                continue  # released between the two calls
+            if age > BASE_LOCK_STALE_S and not stale_done:
+                stale_done = True
+                print("base %s: lock older than 2 h, removed; retry" % commit[:9])
+                try:
+                    lk.unlink()
+                except OSError:
+                    pass
+                continue
+            if waited >= BASE_LOCK_WAIT_S:
+                return None
+            if waited == 0:
+                print("base %s: another run holds %s; waiting" % (commit[:9], posix(lk)))
+            time.sleep(10)
+            waited += 10
+            continue
+        with os.fdopen(fd, "w") as f:
+            f.write("pid %d since %s\n" % (os.getpid(), now_iso()))
+        return lk
+
+
 def base_build_run(bds, commit, row):
     """Builds commit once as lane base_<short> (scratch_build: the committed tree, the main folder's user files), runs the benches
-    on it and stores their shots. The scratch folder, the lane and its copies are removed at the end."""
+    on it and stores their shots. The scratch folder, the lane and its copies are removed at the end. Under the per-commit lock:
+    when another run has stored the shots meanwhile, nothing is built."""
     short = commit[:9]
     lane = "base_" + short  # lane names are letters, digits and _ (lane_problem)
     scratch = REPO / "build3ds" / lane
     lane_dir = REPO / "build3ds" / ("lane-" + lane)
     gitdir = subprocess.check_output(["git", "rev-parse", "--absolute-git-dir"], cwd=REPO, text=True).strip()
     src3dsx = scratch / "build3ds" / ("lane-" + lane) / "pm_3ds.3dsx"
+    lk = base_lock_take(commit)
+    if lk is None:
+        print("base %s: lock still held after 40 min. Nothing stored." % short)
+        return 6
     try:
-        rc, build_no = scratch_build(commit, gitdir, scratch, lane, row)
-        if rc != 0:
-            print("base %s: build.sh exit %d. Nothing stored." % (short, rc))
-            return rc
-        if not src3dsx.exists():
-            print("base %s: no %s after the build. Nothing stored." % (short, posix(src3dsx)))
-            return 5
-        lane_dir.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src3dsx, lane_dir / "pm_3ds.3dsx")
-        why = "base store at %s: the bench shots of the merge-base, the byte reference for cmp; no other run gives them" % short
-        os.environ["PM_BENCH_DIRTY"] = "0"  # a commit archive: dirty false
+        if all(stored(commit, bd["name"]) for bd in bds):
+            print("base stored by another run: %s" % short)
+            return 0
         try:
-            return base_run(bds, commit, build_no, row, lane, "base " + short, why)
+            rc, build_no = scratch_build(commit, gitdir, scratch, lane, row)
+            if rc != 0:
+                print("base %s: build.sh exit %d. Nothing stored." % (short, rc))
+                return rc
+            if not src3dsx.exists():
+                print("base %s: no %s after the build. Nothing stored." % (short, posix(src3dsx)))
+                return 5
+            lane_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src3dsx, lane_dir / "pm_3ds.3dsx")
+            why = "base store at %s: the bench shots of the merge-base, the byte reference for cmp; no other run gives them" % short
+            os.environ["PM_BENCH_DIRTY"] = "0"  # a commit archive: dirty false
+            try:
+                return base_run(bds, commit, build_no, row, lane, "base " + short, why)
+            finally:
+                os.environ.pop("PM_BENCH_DIRTY", None)
         finally:
-            os.environ.pop("PM_BENCH_DIRTY", None)
+            shutil.rmtree(lane_dir, ignore_errors=True)
+            shutil.rmtree(scratch, ignore_errors=True)
+            drop_base_lane(lane, bds)
     finally:
-        shutil.rmtree(lane_dir, ignore_errors=True)
-        shutil.rmtree(scratch, ignore_errors=True)
-        drop_base_lane(lane, bds)
+        try:
+            lk.unlink()
+        except OSError:
+            pass
 
 
 def cmd_base(a):

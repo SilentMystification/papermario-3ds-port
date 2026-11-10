@@ -10,5 +10,7 @@ cd "$MAIN"
 mkdir -p build3ds/wt
 git worktree add "build3ds/wt/$row" -b "$row" main
 touch "build3ds/wt/$row/.wt_keep"
+# Agents write their tool output here (build3ds/out): it goes away with the worktree.
+mkdir -p "build3ds/wt/$row/build3ds/out"
 echo "worktree build3ds/wt/$row on branch $row (from main)"
 echo "build: PM_ROW=$row PM_LANE=$row sh 3ds/build.sh"
