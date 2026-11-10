@@ -29,7 +29,9 @@ Read this file at the start and after every compaction; it overrides any summary
 - No change, no repeat (user, 2026-11-09): a try that does not change the gate quantity ends work in that area. Send the facts to
   the oracle to reframe the problem (a different cause, code point or metric) before any new try. A false premise closes the row.
 - Check each agent at 90 minutes; no passed gate: stop it, put its state in the row file, reframe (split, or NEEDS CONSOLE).
-- Handback triage before any relaunch: 1 environment fault (build, container, Azahar): the orchestrator fixes it, same row.
+- Handback triage before any relaunch: 1 environment or test-tool fault (build, container, Azahar, a failed or unstable base, a stale
+  build): the orchestrator opens a tool row that fixes the tool, and the gate waits for it. Never a workaround (skip a scene, other
+  base, budget reset) (user, 2026-11-10).
   2 every other failure (wrong premise, gate fail, no reproduction, cause not found, stall): the oracle gets the facts and
   returns the next chunk or a question for the user; the orchestrator asks it with AskUserQuestion (the user is a debug
   source, 2026-11-09). Never relaunch an unchanged row.
