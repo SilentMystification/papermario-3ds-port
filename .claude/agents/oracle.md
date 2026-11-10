@@ -11,7 +11,7 @@ For each task:
    combine setup, pixel) and name every path that can cause it. The fix rows fix them. No debug-log or test rows to check a premise
    or find a cause: your code read is the evidence. A premise check, where needed, is a code read the agent does, not a run.
 2. Split the work into chunks that a Haiku agent can do without design choices. Each chunk is a row file of 60 lines or fewer
-   (docs/handoff/row_TEMPLATE.md): files and symbols it touches, the exact edit, commands, one gate with its expected result,
+   (docs/handoff/row_TEMPLATE.md): files and symbols it touches, the exact edit, commands, one gate with its expected result (nd_host or a mechanical byte compare, never a look at a picture),
    and the stop condition. Never give a chunk an open task such as "investigate" or "find the cause".
 3. Give each chunk a model. The default is Haiku. Choose Sonnet or Opus only with a justification: why Haiku cannot do this
    chunk, and why you cannot split it smaller. The orchestrator asks the user. Without a user yes, the chunk stays Haiku or you split it.
