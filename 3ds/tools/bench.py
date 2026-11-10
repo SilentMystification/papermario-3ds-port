@@ -1501,13 +1501,57 @@ def drop_base_lane(lane, bds):
             pass
 
 
-BASE_LOCK_STALE_S = 2 * 3600  # a base lock this old is left by a dead run: removed once
+BASE_LOCK_STALE_S = 2 * 3600  # last guard: a base lock this old is removed once, even with a pid that still runs
 BASE_LOCK_WAIT_S = 40 * 60  # a waiting run gives up after this
+BASE_LOCK_NOTE_S = 60  # a waiting run prints the holder once, then again every this many s
+
+
+def pid_alive(pid):
+    """True when process pid runs. Windows: OpenProcess, then GetExitCodeProcess = STILL_ACTIVE (259); access denied means it
+    exists. A dead pid or pid <= 0 gives False."""
+    if pid <= 0:
+        return False
+    if os.name == "nt":
+        import ctypes
+        from ctypes import wintypes
+        k = ctypes.WinDLL("kernel32", use_last_error=True)
+        k.OpenProcess.restype = wintypes.HANDLE
+        h = k.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+        if not h:
+            return ctypes.get_last_error() == 5  # ERROR_ACCESS_DENIED
+        try:
+            code = wintypes.DWORD()
+            if not k.GetExitCodeProcess(h, ctypes.byref(code)):
+                return True
+            return code.value == 259  # STILL_ACTIVE
+        finally:
+            k.CloseHandle(h)
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def base_lock_holder(lk):
+    """(pid, since) read from a lock file "pid <p> since <t>". pid is None when the text does not parse (the file is
+    empty while its writer is still writing it)."""
+    try:
+        txt = lk.read_text().strip()
+    except OSError:
+        return None, ""
+    m = re.match(r"pid (\d+) since (\S+)", txt)
+    if not m:
+        return None, txt
+    return int(m.group(1)), m.group(2)
 
 
 def base_lock_take(commit):
     """Takes the build lock <store>/<commit>.lock (O_EXCL, holder pid and time inside). Two runs on one commit share the
-    lane base_<short> and its docker volumes (tar "Cannot open", "File exists"), so the second waits. Returns the lock
+    lane base_<short> and its docker volumes (tar "Cannot open", "File exists"), so the second waits. A lock whose holder
+    pid is dead is removed at once. A live holder: the wait is printed once, then every BASE_LOCK_NOTE_S s. Returns the lock
     path, or None after BASE_LOCK_WAIT_S."""
     lk = store_root() / (commit + ".lock")
     lk.parent.mkdir(parents=True, exist_ok=True)
@@ -1520,6 +1564,14 @@ def base_lock_take(commit):
                 age = time.time() - lk.stat().st_mtime
             except OSError:
                 continue  # released between the two calls
+            pid, since = base_lock_holder(lk)
+            if pid is not None and not pid_alive(pid):
+                try:
+                    lk.unlink()
+                    print("base %s: lock of dead pid %d (since %s) removed" % (commit[:9], pid, since))
+                    continue
+                except OSError:
+                    pass  # not removable now: the wait below goes on
             if age > BASE_LOCK_STALE_S and not stale_done:
                 stale_done = True
                 print("base %s: lock older than 2 h, removed; retry" % commit[:9])
@@ -1530,8 +1582,8 @@ def base_lock_take(commit):
                 continue
             if waited >= BASE_LOCK_WAIT_S:
                 return None
-            if waited == 0:
-                print("base %s: another run holds %s; waiting" % (commit[:9], posix(lk)))
+            if waited % BASE_LOCK_NOTE_S == 0:
+                print("base lock %s held by pid %s since %s, waiting" % (commit[:9], pid, since))
             time.sleep(10)
             waited += 10
             continue
