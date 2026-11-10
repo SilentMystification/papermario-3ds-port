@@ -14,7 +14,10 @@ process.stdin.on('end', () => {
   else if (t === 'Agent') text = String(i.prompt || '');
   else process.exit(0);
   const bad = ['log line', 'debug line', 'check first', 'print the value', 'prints the suspect', 'reproduce', 'repro run',
-               'premise check', 'not reproduced'];
+               'premise check', 'not reproduced',
+               // User 2026-11-10: "STOP CHECKING FOR THINGS VISUALLY": no agent looks at or judges a picture.
+               'shot shows', 'look at the shot', 'look at both shots', 'what the shot shows', 'what each shows', 'picture shows',
+               'subject picture', 'human look', 'black pixel', 'near-black', 'mean rgb', 'strip means', 'shows the subject'];
   // User OK 2026-11-10: a sentence that forbids the step ("no", "not", "never", "do not" before the phrase) is not a request for it.
   const neg = /\b(no|not|never|without|don't|do not)\b/;
   const low = text.toLowerCase();

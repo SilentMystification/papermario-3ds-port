@@ -1,5 +1,8 @@
 # Row <id>: <full name>
 
+> NO VISUAL CHECKS (user, 2026-11-10, CLAUDE.md rule 1): no agent looks at or judges a picture. Picture gates in older rows are void; gates are nd_host and the mechanical byte compare. The look is the user's console check.
+
+
 (60 lines or fewer. The agent reads only this file and what it names.)
 
 ## User facts (bugs only, required)
