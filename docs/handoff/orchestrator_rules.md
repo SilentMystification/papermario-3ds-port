@@ -7,8 +7,12 @@ Read this file at the start and after every compaction; it overrides any summary
 - Orchestrator (Opus): plans, writes row files and prompts, merges, commits docs, runs console pushes on request, cleans up. It does
   not edit game source or debug; it reads code and logs only to plan.
 - Code agents: subagent_type coder (.claude/agents/coder.md, Haiku). The shared oracle: subagent_type oracle (oracle.md, Opus). Opus agents only when the user starts or approves them; the orchestrator asks.
-- Oracle: ONE shared read-only Opus agent, reused by SendMessage for every design question and failed handback. Its answer goes into
-  the row file and is committed before the code agent starts. Every oracle plan names its premise and one cheap check.
+- Oracle: ONE shared read-only Opus agent, reused by SendMessage. It designs and plans every system and bug, and splits the work
+  into Haiku-size row files (oracle.md). The orchestrator commits its text before the code agent starts. Every plan names its
+  premise and one cheap check. Model per chunk: Haiku by default. A Sonnet or Opus chunk needs the oracle's justification (why
+  not Haiku, why not smaller); the orchestrator puts it in an AskUserQuestion. No user yes: the oracle splits the chunk.
+- Haiku failure goes to the oracle (user, 2026-11-10): a failed gate, a failed premise or an unexpected fact ends the try. The
+  agent hands back its facts and does not choose a new approach; the orchestrator sends the facts to the oracle at once.
 - Manual mode: when the user says work runs elsewhere, launch nothing on those rows or files.
 
 ## Rows
@@ -23,9 +27,10 @@ Read this file at the start and after every compaction; it overrides any summary
 - No change, no repeat (user, 2026-11-09): a try that does not change the gate quantity ends work in that area. Send the facts to
   the oracle to reframe the problem (a different cause, code point or metric) before any new try. A false premise closes the row.
 - Check each agent at 90 minutes; no passed gate: stop it, put its state in the row file, reframe (split, or NEEDS CONSOLE).
-- Handback triage before any relaunch: 1 environment fault (fix it, same row); 2 wrong premise (rewrite the row with the agent's
-  facts); 3 no reproduction or a cause not found: ask the user at once (AskUserQuestion: their exact setup, steps, what they see, or a
-  console check they can do), before any rewrite or relaunch (user, 2026-11-09: the user is a debug source); 4 real stall (split the row). Never relaunch an unchanged row.
+- Handback triage before any relaunch: 1 environment fault (build, container, Azahar): the orchestrator fixes it, same row.
+  2 every other failure (wrong premise, gate fail, no reproduction, cause not found, stall): the oracle gets the facts and
+  returns the next chunk or a question for the user; the orchestrator asks it with AskUserQuestion (the user is a debug
+  source, 2026-11-09). Never relaunch an unchanged row.
 
 ## Worktrees
 - `sh 3ds/tools/wt_new.sh <row>` (git worktree add build3ds/wt/<row> -b <row> main, plus `.wt_keep`; wt_gc keeps it until the row
