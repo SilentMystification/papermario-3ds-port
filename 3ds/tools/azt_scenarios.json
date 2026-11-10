@@ -6603,6 +6603,34 @@
       ]
     },
     {
+      "status": "unverified",
+      "cap": 45,
+      "deadline": 40,
+      "expects": "none",
+      "needs_picture": false,
+      "name": "savetitle_ret",
+      "subject": "New file (freshsave), world, one save (save_0, the save block write), Select menu, Return to Title Screen within about 2 s, title, file select. The save sector hashes are logged at each point.",
+      "proves": "SAVETITLE: a save made just before Return to Title is in the RAM image and in save.flash after the title (slot hashes of the save write, the flush join, the title and the file select).",
+      "debug": "fast freshsave padscript=@pad_savetitle.txt loglevel=debug",
+      "until": "padscript: done at scan",
+      "first_marker": "game mode 1 frame",
+      "expected_events": [
+        {
+          "name": "save line",
+          "regex": "save: slot 0 phys \\d+ count \\d+ crc [0-9a-f]+"
+        },
+        {
+          "name": "title return",
+          "regex": "title: soft reset requested"
+        },
+        {
+          "name": "file select fetch",
+          "regex": "flash ram \\(fetch\\)"
+        }
+      ],
+      "reason": "SAVETITLE log scenario. Until is the padscript end after the file select; the cap covers the new-file intro, the world and the logo sequence of the reset."
+    },
+    {
       "status": "verified",
       "cap": 45,
       "deadline": 35,

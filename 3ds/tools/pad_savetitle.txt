@@ -1,0 +1,28 @@
+# INTROSNAP: new game the way a player starts it (title, file select with the curtain stage). With the switches fast and freshsave:
+# the intro starts at once (fast), START skips it to the title, START opens the file select. File 1 (empty) A, name "A" (A on the first
+# key), START (name done), A (Yes: create), A (close the created message), START on File 1 (start), START in the confirm (Yes).
+# Then the stage zoom (set_curtain_scale_goal 2.0), ENTER_WORLD and the kmr_11 load.
+wait60,
+START*4,
+ev_title,
+wait200,
+START*4,
+ev_file,
+wait60,
+A*4,
+wait40,
+A*4,
+wait20,
+START*4,
+wait40,
+A*4,
+wait60,
+A*4,
+wait60,
+START*4,
+wait40,
+START*4
+
+# SAVETITLE: after the new file is in the world, one save (save_0 = fio_save_game, as the save block), then Select, Return to Title
+# Screen (tab 0 row 3: Down x3, A arms, A runs), the title, START to the file select. The last line is the file select state.
+ev_world, wait200, save_0, wait30, SELECT, wait12, ddown, wait8, ddown, wait8, ddown, wait8, A, wait8, A, wait20, ev_title, wait60, START*4, wait40, START*4, ev_file, wait60

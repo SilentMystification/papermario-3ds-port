@@ -7377,6 +7377,22 @@
       "gates": []
     },
     {
+      "name": "savetitle_ret",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SAVETITLE: one save at the world (save_0), Return to Title within about 2 s, title, file select. Log only: slot hashes of the RAM image and of the file at save, flush, title and fetch.",
+      "scenario": "savetitle_ret",
+      "cap": 45,
+      "until": "padscript: done at scan",
+      "tags": [
+        "azahar",
+        "save",
+        "title"
+      ],
+      "gates": []
+    },
+    {
       "name": "warpfix_boot_save",
       "kind": "azahar_stream",
       "speed": "normal",

@@ -22,6 +22,7 @@ static volatile u32 flash_stamp;
 static Thread flash_th;
 static LightEvent flash_ev;
 static int flash_lock_ready, flash_th_state; /* 0 none, 1 running, -1 failed */
+static unsigned flash_puts; /* SAVETITLE log: page writes (put and fill) since the last image write */
 volatile int pm_flash_warn; /* SAVESAFE: 1 while the last image write failed (footer message, pm_gpu_footer) */
 
 /* Write the whole image: save.flash.tmp first, then the rename. A rename over an old file that the SD refuses is done as remove
@@ -62,6 +63,34 @@ static void flash_fail(void) {
     if (flash_th_state == 1) LightEvent_Signal(&flash_ev); /* the flush thread retries after 2 s */
 }
 
+/* SAVETITLE log: a hash of the first 0x1380 bytes (SaveData) of each of the 6 physical save sectors (16 KB each). */
+#define SAVE_SECT_B 16384u
+#define SAVE_DATA_B 0x1380u
+static void slot_hash(const u8* img, u32* hv) {
+    u32 s, k, h;
+    for (s = 0; s < 6; s++) {
+        h = 0;
+        for (k = 0; k < SAVE_DATA_B; k++) h = h * 31u + img[s * SAVE_SECT_B + k];
+        hv[s] = h;
+    }
+}
+static void slot_log(const char* tag, const u32* hv, const char* why) {
+    pm_log("%s (%s): slot hashes %08x %08x %08x %08x %08x %08x", tag, why, hv[0], hv[1], hv[2], hv[3], hv[4], hv[5]);
+}
+/* SAVETITLE log: the RAM image (what the game reads) at a named point. */
+void pm_flash_slots_line(const char* why) {
+    u32 hv[6];
+    if (!flash_lock_ready) return;
+    LightLock_Lock(&flash_lock);
+    slot_hash(flash_mem, hv);
+    LightLock_Unlock(&flash_lock);
+    slot_log("flash ram", hv, why);
+}
+/* SAVETITLE log: one save write (fio_save_game): the logical slot, the physical sector, the save count and crc, the page writes so far. */
+void pm_flash_save_line(int slot, int phys, unsigned count, unsigned crc) {
+    pm_log("save: slot %d phys %d count %u crc %08x page writes %u dirty %d", slot, phys, count, crc, flash_puts, flash_dirty);
+}
+
 /* Returns -1 when nothing was dirty, 1 when the image is on the SD card, 0 on a failed write (the image stays dirty). */
 static int flash_write_dirty(const char* why) {
     if (!flash_dirty) return -1;
@@ -75,6 +104,8 @@ static int flash_write_dirty(const char* why) {
         return -1;
     }
     flash_dirty = 0;
+    unsigned dputs = flash_puts; /* SAVETITLE log */
+    flash_puts = 0;
     if (copy) {
         memcpy(copy, flash_mem, flash_size);
         LightLock_Unlock(&flash_lock);
@@ -86,6 +117,12 @@ static int flash_write_dirty(const char* why) {
     if (ok) {
         pm_flash_warn = 0;
         pm_log("save.flash written (atomic) %u ms (%s)", (unsigned)((svcGetSystemTick() - t0) / CPU_TICKS_PER_MSEC), why);
+        if (copy) { /* SAVETITLE log: the image that reached the SD card */
+            u32 hv[6];
+            slot_hash(copy, hv);
+            pm_log("flush (%s): %u page writes in this image", why, dputs);
+            slot_log("flush file", hv, why);
+        }
     } else {
         pm_log_e("save.flash write FAILED (SD full, missing or read-only?), save kept in RAM, retry in 2 s (%s)", why);
         flash_fail();
@@ -201,6 +238,7 @@ void pm_flash_put(unsigned off, const void* src, unsigned len) {
     memcpy(flash_mem + off, src, len);
     flash_dirty = 1;
     flash_stamp++;
+    flash_puts++;
     LightLock_Unlock(&flash_lock);
     if (!savecrash_armed && pm_debug_has("savecrash")) {
         savecrash_armed = 1;
@@ -217,6 +255,7 @@ void pm_flash_fill(unsigned off, unsigned len) {
     memset(flash_mem + off, 0xFF, len);
     flash_dirty = 1;
     flash_stamp++;
+    flash_puts++;
     LightLock_Unlock(&flash_lock);
     flash_kick();
 }
