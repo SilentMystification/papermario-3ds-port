@@ -364,6 +364,18 @@
       "gates": []
     },
     {
+      "name": "coinstar_hos01_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "COINSTAR: hos_01 item icon (Star Piece) tile 1 window in a shaded map, shots 200 and 201. The t1win line gives the window origin and source offset; the Star Piece shot must be clean.",
+      "scenario": "coinstar_hos01",
+      "cap": 30,
+      "until": "shot \\d+ frame 201\\b",
+      "tags": ["azahar", "pic", "coinstar"],
+      "gates": []
+    },
+    {
       "name": "sprshade_hos01_pic",
       "kind": "azahar_pic",
       "speed": "normal",

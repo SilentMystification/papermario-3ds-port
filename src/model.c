@@ -4493,12 +4493,23 @@ void mdl_get_vertex_count(Gfx* gfx, s32* numVertices, Vtx** baseVtx, s32* gfxCou
 void mdl_local_gfx_update_vtx_pointers(Gfx *nodeDlist, Vtx *baseVtx, Gfx *arg2, Vtx *arg3) {
     u32 w0;
     Vtx* w1;
-    do {
 #ifdef TARGET_3DS
-        w0 = nodeDlist->words.w0; // the u64 read below is big-endian only (ARM: it gave w1, the loop never saw G_ENDDL)
+    do { /* HC4e2b: the copy takes the typed unit (nd_op_xlate: ND_X0/ND_X1 of the word; a typed word stays) */
+        uint32_t t[2];
+        nd_op_xlate(nodeDlist->words.w0, nodeDlist->words.w1, t);
+        w0 = t[0];
+        w1 = (Vtx*)(uintptr_t)t[1];
+        if (w0 >> 0x18 == NDO_VTX) {
+            w1 = arg3 + (w1 - baseVtx);
+        }
+        arg2->words.w0 = w0;
+        arg2->words.w1 = (u32)w1;
+        nodeDlist++;
+        arg2++;
+    } while (w0 >> 0x18 != NDO_END);
 #else
+    do {
         w0 = (*((unsigned long long*)nodeDlist)) >> 0x20; // TODO required to match
-#endif
         w1 = (Vtx*)nodeDlist->words.w1;
         if (w0 >> 0x18 == G_VTX) {
             w1 = arg3 + (w1 - baseVtx);
@@ -4508,6 +4519,7 @@ void mdl_local_gfx_update_vtx_pointers(Gfx *nodeDlist, Vtx *baseVtx, Gfx *arg2, 
         nodeDlist++;
         arg2++;
     } while (w0 >> 0x18 != G_ENDDL);
+#endif
 }
 
 void mdl_local_gfx_copy_vertices(Vtx* src, s32 num, Vtx* dest) {

@@ -10,3 +10,7 @@
 - Delete row_HC4.md.
 ## Gate
 nd_host. Byte-equal of the DIRECT set. hotset_size.
+
+## Added by HC4e2a (2026-11-10)
+- nd_ent.c:202 still writes the G_ENDDL sentinel: nd_dlc.c nd_ent_segments (:339, :381-393) breaks only on OP_ENDDL and rejects ops outside ent_known. In this row: write NDO_W0(NDO_END, 0) at nd_ent.c:202 and make nd_ent_segments end on NDO_END (and accept it in ent_known) in the same commit.
+- From HC4e2c: nd_shape.c dlc_build compile copy (:156) and the dlc hash G_ENDDL break stay raw until nd_dlc.c nd_dlc_compile reads typed ids; change them together in this row.

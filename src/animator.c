@@ -4,6 +4,7 @@
 #include "pm_interp_fi.h"
 #ifdef TARGET_3DS
 #include "nd_cmd.h"
+#include "nd_op.h" /* HC4e2b: the typed unit of a list word (nd_op_xlate) */
 #endif
 
 typedef struct DisplayListBufferHandle {
@@ -905,6 +906,27 @@ void appendGfx_animator_node(ModelAnimator* animator, AnimatorNode* node, Matrix
             s32 j = 0;
             s32 k;
 
+#ifdef TARGET_3DS
+            {
+                uint32_t t0[2];
+                nd_op_xlate(node->displayList[0].words.w0, node->displayList[0].words.w1, t0);
+                if ((t0[0] >> 0x18) != NDO_END) {
+                    Gfx* gfxPtr = node->displayList;
+                    s32 endDL = NDO_END;
+
+                    for(;; j++) {
+                        uint32_t t[2];
+                        nd_op_xlate(gfxPtr->words.w0, gfxPtr->words.w1, t);
+                        w0 = t[0];
+                        gfxPtr++;
+                        cmd = w0 >> 0x18;
+                        if (cmd == endDL) {
+                            break;
+                        }
+                    }
+                }
+            }
+#else
             if ((node->displayList[0].words.w0 >> 0x18) != G_ENDDL) {
                 Gfx* gfxPtr = node->displayList;
                 s32 endDL = G_ENDDL;
@@ -918,6 +940,7 @@ void appendGfx_animator_node(ModelAnimator* animator, AnimatorNode* node, Matrix
                     }
                 }
             }
+#endif
             j++;
             for (k = 0; k < ARRAY_COUNT(D_801536C0); k++) {
                 bufferHandle = &D_801536C0[k];
@@ -937,11 +960,25 @@ void appendGfx_animator_node(ModelAnimator* animator, AnimatorNode* node, Matrix
             do {
                 w0 = ((s32*)node->displayList)[dlIdx++];
                 w1 = ((s32*)node->displayList)[dlIdx++];
+#ifdef TARGET_3DS
+                { /* HC4e2b: the copy takes the typed unit (ND_X0/ND_X1 of the word; a typed word stays) */
+                    uint32_t t[2];
+                    nd_op_xlate((uint32_t)w0, (uint32_t)w1, t);
+                    w0 = (s32)t[0];
+                    w1 = (s32)t[1];
+                }
+                cmd = w0 >> 0x18;
+                if (cmd == NDO_END) {
+                    break;
+                }
+                if (cmd == NDO_VTX) {
+#else
                 cmd = w0 >> 0x18;
                 if (cmd == G_ENDDL) {
                     break;
                 }
                 if (cmd == G_VTX) {
+#endif
                     s32 startIdx = _SHIFTR(w0,1,7);
                     s32 vtxCount = _SHIFTR(w0,12,8);
                     Vtx* newBuffer;
