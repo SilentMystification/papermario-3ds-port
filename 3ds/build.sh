@@ -125,10 +125,11 @@ if [ -z "$PM_BUILD_REV" ]; then
 fi
 # pm_build.h describes the 3dsx that is built (push_3ds.sh archives from it, bench.py checks its mtime), so it is written
 # here, after the skip check: a skipped build keeps the header of the 3dsx it kept. Rewritten only when the number changed,
-# since a new mtime would rebuild every file that includes it.
-printf '#define PM_BUILD_STR "%s"\n' "$BN" > 3ds/include/pm_build.h.tmp
-printf '#define PM_GIT_HASH "%s"\n' "$(git rev-parse --short "$REV")" >> 3ds/include/pm_build.h.tmp
-cmp -s 3ds/include/pm_build.h.tmp 3ds/include/pm_build.h && rm -f 3ds/include/pm_build.h.tmp || mv -f 3ds/include/pm_build.h.tmp 3ds/include/pm_build.h
+# since a new mtime would rebuild every file that includes it. The tmp name is per process: two pushes at once shared one name.
+PMB_TMP=3ds/include/pm_build.h.tmp.$$
+printf '#define PM_BUILD_STR "%s"\n' "$BN" > "$PMB_TMP"
+printf '#define PM_GIT_HASH "%s"\n' "$(git rev-parse --short "$REV")" >> "$PMB_TMP"
+cmp -s "$PMB_TMP" 3ds/include/pm_build.h && rm -f "$PMB_TMP" || mv -f "$PMB_TMP" 3ds/include/pm_build.h
 # A failed build must not leave the old key behind: the key file is written only after a successful build.
 rm -f $KEY_FILE
 
