@@ -90,9 +90,6 @@ Gfx* nd_rec_task(void);
 #define gDPSetKeyGB(pkt, cG, sG, wG, cB, sB, wB) ND_GX(pkt, ND_W0_KEYGB(wG, wB), ND_W1_KEYGB(cG, sG, cB, sB))
 #undef gsDPSetKeyGB
 #define gsDPSetKeyGB(cG, sG, wG, cB, sB, wB) ND_GS(ND_W0_KEYGB(wG, wB), ND_W1_KEYGB(cG, sG, cB, sB))
-#undef gSetImage
-#define gSetImage(pkt, cmd, fmt, siz, width, i) \
-    { nd_gx_w((Gfx*)(pkt), _SHIFTL(cmd, 24, 8) | _SHIFTL(fmt, 21, 3) | _SHIFTL(siz, 19, 2) | _SHIFTL((width) - 1, 0, 12), (unsigned int)(i)); }
 #undef gDPNoParam
 #define gDPNoParam(pkt, cmd) { nd_gx_w((Gfx*)(pkt), _SHIFTL(cmd, 24, 8), 0); }
 #undef gImmp1
@@ -104,20 +101,38 @@ Gfx* nd_rec_task(void);
 #define gDPScisFillRectangle(pkt, ulx, uly, lrx, lry) \
     { nd_gx_w((Gfx*)(pkt), _SHIFTL(G_FILLRECT, 24, 8) | _SHIFTL(MAX((lrx), 0), 14, 10) | _SHIFTL(MAX((lry), 0), 2, 10), \
               _SHIFTL(MAX((ulx), 0), 14, 10) | _SHIFTL(MAX((uly), 0), 2, 10)); }
+/* HC4e3 group 2 (texture ops). */
+#define ND_W0_IMG(cmd, fmt, siz, width) (_SHIFTL(cmd, 24, 8) | _SHIFTL(fmt, 21, 3) | _SHIFTL(siz, 19, 2) | _SHIFTL((width) - 1, 0, 12))
+#undef gSetImage
+#define gSetImage(pkt, cmd, fmt, siz, width, i) ND_GX(pkt, ND_W0_IMG(cmd, fmt, siz, width), (unsigned int)(i))
+#undef gsSetImage
+#define gsSetImage(cmd, fmt, siz, width, i) ND_GS(ND_W0_IMG(cmd, fmt, siz, width), (unsigned int)(i))
+#define ND_W0_LDT(c, uls, ult) (_SHIFTL(c, 24, 8) | _SHIFTL(uls, 12, 12) | _SHIFTL(ult, 0, 12))
+#define ND_W1_LDT(tile, lrs, lrt) (_SHIFTL(tile, 24, 3) | _SHIFTL(lrs, 12, 12) | _SHIFTL(lrt, 0, 12))
 #undef gDPLoadTileGeneric
-#define gDPLoadTileGeneric(pkt, c, tile, uls, ult, lrs, lrt) \
-    { nd_gx_w((Gfx*)(pkt), _SHIFTL(c, 24, 8) | _SHIFTL(uls, 12, 12) | _SHIFTL(ult, 0, 12), _SHIFTL(tile, 24, 3) | _SHIFTL(lrs, 12, 12) | _SHIFTL(lrt, 0, 12)); }
+#define gDPLoadTileGeneric(pkt, c, tile, uls, ult, lrs, lrt) ND_GX(pkt, ND_W0_LDT(c, uls, ult), ND_W1_LDT(tile, lrs, lrt))
+#undef gsDPLoadTileGeneric
+#define gsDPLoadTileGeneric(c, tile, uls, ult, lrs, lrt) ND_GS(ND_W0_LDT(c, uls, ult), ND_W1_LDT(tile, lrs, lrt))
+#define ND_W0_TILE(fmt, siz, line, tmem) (_SHIFTL(G_SETTILE, 24, 8) | _SHIFTL(fmt, 21, 3) | _SHIFTL(siz, 19, 2) | _SHIFTL(line, 9, 9) | _SHIFTL(tmem, 0, 9))
+#define ND_W1_TILE(tile, palette, cmt, maskt, shiftt, cms, masks, shifts) \
+    (_SHIFTL(tile, 24, 3) | _SHIFTL(palette, 20, 4) | _SHIFTL(cmt, 18, 2) | _SHIFTL(maskt, 14, 4) | _SHIFTL(shiftt, 10, 4) | \
+     _SHIFTL(cms, 8, 2) | _SHIFTL(masks, 4, 4) | _SHIFTL(shifts, 0, 4))
 #undef gDPSetTile
 #define gDPSetTile(pkt, fmt, siz, line, tmem, tile, palette, cmt, maskt, shiftt, cms, masks, shifts) \
-    { nd_gx_w((Gfx*)(pkt), _SHIFTL(G_SETTILE, 24, 8) | _SHIFTL(fmt, 21, 3) | _SHIFTL(siz, 19, 2) | _SHIFTL(line, 9, 9) | _SHIFTL(tmem, 0, 9), \
-              _SHIFTL(tile, 24, 3) | _SHIFTL(palette, 20, 4) | _SHIFTL(cmt, 18, 2) | _SHIFTL(maskt, 14, 4) | _SHIFTL(shiftt, 10, 4) | \
-              _SHIFTL(cms, 8, 2) | _SHIFTL(masks, 4, 4) | _SHIFTL(shifts, 0, 4)); }
+    ND_GX(pkt, ND_W0_TILE(fmt, siz, line, tmem), ND_W1_TILE(tile, palette, cmt, maskt, shiftt, cms, masks, shifts))
+#undef gsDPSetTile
+#define gsDPSetTile(fmt, siz, line, tmem, tile, palette, cmt, maskt, shiftt, cms, masks, shifts) \
+    ND_GS(ND_W0_TILE(fmt, siz, line, tmem), ND_W1_TILE(tile, palette, cmt, maskt, shiftt, cms, masks, shifts))
+#define ND_W0_LDB(uls, ult) (_SHIFTL(G_LOADBLOCK, 24, 8) | _SHIFTL(uls, 12, 12) | _SHIFTL(ult, 0, 12))
+#define ND_W1_LDB(tile, lrs, dxt) (_SHIFTL(tile, 24, 3) | _SHIFTL((MIN(lrs, G_TX_LDBLK_MAX_TXL)), 12, 12) | _SHIFTL(dxt, 0, 12))
 #undef gDPLoadBlock
-#define gDPLoadBlock(pkt, tile, uls, ult, lrs, dxt) \
-    { nd_gx_w((Gfx*)(pkt), _SHIFTL(G_LOADBLOCK, 24, 8) | _SHIFTL(uls, 12, 12) | _SHIFTL(ult, 0, 12), \
-              _SHIFTL(tile, 24, 3) | _SHIFTL((MIN(lrs, G_TX_LDBLK_MAX_TXL)), 12, 12) | _SHIFTL(dxt, 0, 12)); }
+#define gDPLoadBlock(pkt, tile, uls, ult, lrs, dxt) ND_GX(pkt, ND_W0_LDB(uls, ult), ND_W1_LDB(tile, lrs, dxt))
+#undef gsDPLoadBlock
+#define gsDPLoadBlock(tile, uls, ult, lrs, dxt) ND_GS(ND_W0_LDB(uls, ult), ND_W1_LDB(tile, lrs, dxt))
 #undef gDPLoadTLUTCmd
-#define gDPLoadTLUTCmd(pkt, tile, count) { nd_gx_w((Gfx*)(pkt), _SHIFTL(G_LOADTLUT, 24, 8), _SHIFTL((tile), 24, 3) | _SHIFTL((count), 14, 10)); }
+#define gDPLoadTLUTCmd(pkt, tile, count) ND_GX(pkt, _SHIFTL(G_LOADTLUT, 24, 8), _SHIFTL((tile), 24, 3) | _SHIFTL((count), 14, 10))
+#undef gsDPLoadTLUTCmd
+#define gsDPLoadTLUTCmd(tile, count) ND_GS(_SHIFTL(G_LOADTLUT, 24, 8), _SHIFTL((tile), 24, 3) | _SHIFTL((count), 14, 10))
 #undef gDma0p
 #define gDma0p(pkt, c, s, l) { nd_gx_w((Gfx*)(pkt), _SHIFTL((c), 24, 8) | _SHIFTL((l), 0, 24), (unsigned int)(s)); }
 #undef gDma1p

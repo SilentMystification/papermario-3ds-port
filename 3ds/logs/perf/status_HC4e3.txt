@@ -1,2 +1,2 @@
-HC4e3 group1 gate battle_start_f182_cold with nd_dlc typed arms
-2026-11-10T16:23:11 battle_start_f182_cold scenario battle_start_f182_cold: measures picture; path azt.ps1 -> run_azahar.ps1; speed normal; lane HC4e3; why HC4e3 group 1 nd_dlc typed
+HC4e3 group2 gate battle_start_f182_cold typed texture ops
+2026-11-10T16:39:13 battle_start_f182_cold scenario battle_start_f182_cold: measures picture; path azt.ps1 -> run_azahar.ps1; speed normal; lane HC4e3; why HC4e3 group 2 gate
