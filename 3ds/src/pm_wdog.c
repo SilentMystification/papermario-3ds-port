@@ -1,5 +1,6 @@
 /* LB4: hang watchdog and clean process exit after a crash. See docs/plans/crash_exit.md.
- * The monitor thread runs on core 1 at the lowest priority and sleeps 1 s. It uses no lock of the game threads. */
+ * The monitor thread runs on core 1 at the lowest priority. It polls every 100 ms (the START+SELECT escape) and runs the stall logic every
+ * 10th poll (1 s). It uses no lock of the game threads. */
 #include <3ds.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -91,11 +92,47 @@ void pm_wd_flush_notes(void) {
     fclose(f);
 }
 
+/* ESCAPE: START+SELECT held 1 s (10 polls) returns to the HOME Menu, also while the game thread hangs. The poll reads the HID shared memory
+ * (the words hidScanInput reads), not hidScanInput, which would write the game thread's key state. Switch noescape turns it off. */
+extern int pm_gx_stuck(void);
+extern int pm_gpu_hang_dump(char* b, int n);
+static unsigned esc_n;
+static unsigned wd_gpu_noted; /* the stall limit passed with the GPU stuck: noted once, the process stays */
+
+static void wd_escape(void) {
+    int stuck = pm_gx_stuck();
+    char buf[400];
+    int n = snprintf(buf, sizeof buf, "escape: START+SELECT 1 s, phase %u steps %u stuck %d ", pm_wd_phase, pm_wd_prog, stuck);
+    n += pm_gpu_hang_dump(buf + n, (int)sizeof buf - n - 2);
+    buf[n++] = '\n';
+    buf[n] = 0;
+    pm_crash_line(buf, n);
+    if (!stuck) pm_exit_process(); /* the clean exit: back to the HOME Menu */
+    APT_HardwareResetAsync(); /* GPU stuck: the console reboots to the HOME Menu, no power button (GSPGPU_ResetGpuCore may block here) */
+    svcSleepThread(5000000000LL);
+    svcExitProcess(); /* last resort */
+    for (;;) {}
+}
+
+static void escape_poll(unsigned stalled) {
+    if (PMDL("noescape") || !hidSharedMem) { esc_n = 0; return; }
+    u32 id = hidSharedMem[4] & 7u;
+    u32 k = hidSharedMem[10 + id * 4];
+    int held = (k & (KEY_START | KEY_SELECT)) == (KEY_START | KEY_SELECT);
+    if (!held && stalled >= 3 && PMDL("wdesc")) held = 1; /* test seam: the stall alone counts as the combo after 3 s */
+    if (!held) { esc_n = 0; return; }
+    if (++esc_n < 10u) return;
+    esc_n = 0;
+    wd_escape();
+}
+
 static void wd_main(void* arg) {
     (void)arg;
-    unsigned last = pm_wd_prog, stalled = 0, asleep_s = 0, inact_s = 0;
+    unsigned last = pm_wd_prog, stalled = 0, asleep_s = 0, inact_s = 0, tk = 0;
     for (;;) {
-        svcSleepThread(1000000000LL);
+        svcSleepThread(100000000LL);
+        escape_poll(stalled);
+        if (++tk % 10u) continue; /* the stall logic below runs once per second */
         unsigned ct = pm_wd_crash_tick;
         if (ct) { /* a crash handler runs. If it does not end the process in 3 s, it hung or faulted again: end it here. */
             if ((unsigned)(now_ms() - ct) >= 3000u) {
@@ -128,13 +165,14 @@ static void wd_main(void* arg) {
             }
         } else inact_s = 0;
         if (stalled >= 2 && p != last) { char sb[80]; int sn = snprintf(sb, sizeof sb, "watchdog: the game thread moved again after %us\n", stalled + 1); wd_note(sb, sn); }
-        if (!limit_s || !pm_wd_armed || p != last || pm_wd_hold || !aptIsActive()) { last = p; stalled = 0; continue; }
-        if (stalled >= 2) { /* a stall note every second from the third: crash.txt shows whether the game thread comes back before the limit */
+        if (!limit_s || !pm_wd_armed || p != last || pm_wd_hold || !aptIsActive()) { last = p; stalled = 0; wd_gpu_noted = 0; continue; }
+        if (stalled >= 2 && !wd_gpu_noted) { /* a stall note every second from the third: crash.txt shows whether the game thread comes back before the limit */
             char sb[200];
             int sn = snprintf(sb, sizeof sb, "watchdog: stall %us phase %u call %u evt %08x op %08x\n", stalled + 1, pm_wd_phase, pm_wd_sub, pm_wd_evt[0], pm_wd_evt[3]);
             wd_note(sb, sn);
         }
         if (++stalled < limit_s) continue;
+        if (wd_gpu_noted) continue; /* a stuck GPU: the process stays, only the START+SELECT escape ends it */
         char buf[200];
         int n = snprintf(buf, sizeof(buf), "\nwatchdog: no progress for %u s, game thread last phase %u (%s), steps %u, build #%s\n",
                          stalled, pm_wd_phase, pm_wd_phase_name(pm_wd_phase), pm_frame_count(), PM_BUILD_STR);
@@ -142,6 +180,14 @@ static void wd_main(void* arg) {
         { extern unsigned pm_gbi_cur_op; extern unsigned nd_native_draws, nd_native_refused; extern const char* pm_gpu_last_flush(int*); int fl = 0; const char* ff = pm_gpu_last_flush(&fl);
           n = snprintf(buf, sizeof(buf), "watchdog: step_game_loop call %u, walker op %02x, last flush %s:%d, native draws %u refused %u\n", pm_wd_sub, pm_gbi_cur_op, ff ? ff : "?", fl, nd_native_draws, nd_native_refused); pm_crash_line(buf, n); }
         n = snprintf(buf, sizeof(buf), "watchdog: last script step evt %08x first %08x next %08x op %08x\n", pm_wd_evt[0], pm_wd_evt[1], pm_wd_evt[2], pm_wd_evt[3]); pm_crash_line(buf, n);
+        { char hb[320]; int hn = snprintf(hb, sizeof hb, "watchdog: "); /* ESCAPE: the GX queue in flight */
+          hn += pm_gpu_hang_dump(hb + hn, (int)sizeof hb - hn - 2); hb[hn++] = '\n'; hb[hn] = 0; pm_crash_line(hb, hn); }
+        if (pm_gx_stuck()) {
+            wd_gpu_noted = 1;
+            n = snprintf(buf, sizeof(buf), "watchdog: GPU stuck, the process stays; hold START+SELECT 1 s to reboot\n");
+            pm_crash_line(buf, n);
+            continue;
+        }
         n = snprintf(buf, sizeof(buf), "watchdog: exiting the process\n");
         pm_crash_line(buf, n);
         pm_exit_process();
