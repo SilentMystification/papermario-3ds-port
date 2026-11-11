@@ -50,6 +50,14 @@ CRASHEXIT2 wait loops), 3ds/tools/bench.py CORE_KEYS, azt_scenarios.json and ben
   `bench.py cmp spot_mac01_det --row PMUROT`: 6/6 byte-equal. The pmu_rot_az LOG: copy has two pmx lines with different set letters and
   two pmx1 lines. Values may be 0 on Azahar (it is not the console): only the lines are the gate.
 
+## Step 2 (after the first try, commits 537a957aa, bd2b7a493, d42255b72; 5 of 8 starts used)
+Fact: pmu_rot_az rc 1 only because its "warp" event never prints: prof mode turns the log off (log line `prof=1 log=off`), so
+`warp: mac_01 entry 0` is not written; spot_mac01_det uses first_marker `prof=1 log=off` and expects none for this reason.
+1. azt_scenarios.json pmu_rot_az: first_marker `prof=1 log=off`, expects `none`, delete the "warp" entry of expected_events (keep pmx
+   and pmx1). `python 3ds/tools/bench.py rebuild`. Commit the JSON (no source change, no rebuild of the game).
+2. `bench.py run pmu_rot_az --row PMUROT --why "rotation lines; warp event removed (log off in prof mode)"`: rc 0 (start 6 of 8).
+3. Delete this row file in the completing commit; hand back.
+
 ## Stop and end
 A failed gate, a name not in the list above, or a tool fault: commit, hand back the exact output (CLAUDE.md 4-5). Delete this row file in
 the completing commit. Hand back the hash, gates, memcheck line.
