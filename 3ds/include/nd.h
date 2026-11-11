@@ -276,6 +276,11 @@ typedef struct NdShadow {
 } NdShadow;
 void nd_shadow_reset(NdShadow* s);
 unsigned nd_emit_draw(uint32_t* out, NdShadow* sh, const NdDraw* d); /* returns the number of words written (even) */
+/* HC6 step 4: the word offsets of the per-frame values in a full-state block (0xFFFF: not written): palette 0 data word 0 (then +2..+16), unit 0 block
+ * (border word; dim +2, param +3, lod +4, addr +5), unit 0 type, index address, stage colours. */
+typedef struct NdBlkOff { uint16_t pal, u0, ty, idx, col[6]; } NdBlkOff;
+unsigned nd_emit_full(uint32_t* out, const NdDraw* d, NdBlkOff* off);
+unsigned nd_emit_cmp(const uint32_t* a, unsigned na, const uint32_t* b, unsigned nb); /* blkchk: old writes whose last value the block does not end with */
 
 
 /* NDTMPL (S1-3): render state and TEV template per key. The key holds the inputs of flush_draw's state setters and of the TEV builder.
@@ -383,7 +388,8 @@ int pm_dlc_geom_keep(const void* list, uint32_t* keep); /* MAPX-2: the entry geo
 typedef struct NdNat { NdDraw d; NdMState s; float pal[16]; const uint16_t* sd; unsigned nidx; uint8_t zp; float zn; NdTmplKey tk; /* FB-2: the key of d.tmpl: a cache hit builds the id again (the LRU may have taken it over) */ } NdNat; /* S5-2: zp 1 = zmark pass 2, pal row 2 := zn * row 3. The draws of the record in progress (nd_model_draw); the cache keeps NdNatC */
 /* PERF2 step 3: a cached draw of the native model cache (the pool of an NdMEnt): the draw, its index range, the zmark pass 2 factor, the MERLEE mix stage and
  * the template key. No palette (the hit points d.pal at its palette 0 of this view) and no NdMState (only the mix stage is read); the pm5 block is in a side pool. */
-typedef struct __attribute__((aligned(32))) NdNatC { NdDraw d; const uint16_t* sd; unsigned nidx; float zn; uint8_t zp; int8_t mix_st; NdTmplKey tk; } NdNatC;
+typedef struct __attribute__((aligned(32))) NdNatC { NdDraw d; const uint16_t* sd; unsigned nidx; float zn; uint8_t zp; int8_t mix_st; NdTmplKey tk;
+    uint32_t boff; int bt; uint16_t blen, bgen; NdBlkOff bo; } NdNatC; /* HC6 step 4: the full-state command block of the draw in the block arena (pm_gpu.c blk_*): offset, template id, words, arena generation (0: none), patch offsets */
 extern int nd_nat_why;
 extern unsigned nd_nat_sub; /* MDL-5 census: sub-case of why 6 (1 a noise, 2 b tex1 no unit 1, 3 c aux off-screen, 4 d pm5 tex1), 0 other whys */
 void nd_mdlfb_note(uint32_t prod, unsigned sub); /* MDL-5 census: one why 6 fallback of record prod (its address) */
