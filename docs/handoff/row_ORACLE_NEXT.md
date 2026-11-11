@@ -166,6 +166,17 @@ pm_gpu.c dp_frame+sprite.c+nd_shape.c+nd_ent.c: disjoint). HC cut rows after HCM
   Blocks: the size and the gates; models (records), sprites (NDC_SPR) and entities (NDC_ENT) already take native paths, so the gain is in
   effects, HUD and text. A staged path: one native API per high-traffic producer (HUD elements, message text, the top effects).
 
+## Open items decision (old oracle, 2026-11-11)
+| item | decision |
+| PBATCH2 | step 2 written: pm_gpu_set_prim flushes on a prim change in combine 8 (pm_gpu.c:3820-3825); vertex reuse guard |
+| PBATCH3 embers (SetTileSize per particle) | NO now: 1.2 ms in one effect after PBATCH1; the tile origin goes to uvso per particle (a gv param change), folding it into vertex st needs the bound texture to cover every cell (tex_win0 binds the window for clamp tiles): a tile-model change for under 1.2 ms |
+| build-time texture pre-conversion | NO now: about 20 ms of decode per map load by estimate (mac_01 634 KB uploaded, 109 misses; tx1_build about 15 cycles per texel), under the map fade; needs a host port of tx1_build, a romfs key scheme and the CI-palette exceptions: with ASSETFREE |
+| static list compile per map load | DO AFTER DPCEN2: its `compus` per map load decides (row if above 10 ms) |
+| sprite raster decode per load | DO AFTER DPCEN2: `sprus` per map or battle load decides |
+| audio predecode | NO now: no lag reported at voice starts; battle songs are predecoded on core 1 (BTLWIPE F4); AUDDROP (missing sounds) is the open audio fault |
+| HC rows for gbi | DO AFTER HCM3 (M3 per class and calls) |
+| effects above 1 ms (spiky_white_aura, water_block, energy_shockwave) | DO AFTER the fxtest re-run with FILLA0 and PBATCH2 merged |
+
 ## Morning list (rows to write next, by the oracle)
 1. Class cuts after HC6B: read M1-hot per class (bench hotset_size on main after the HC6B merge) and the M3 census (hotset.py --fncov on
    fncov_mac01_det/kmr10_det logs of the HC6B lane); cut rare arms of the top functions per class as HCCUT2 did (byte-equal, cold
