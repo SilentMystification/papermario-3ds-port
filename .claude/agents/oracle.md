@@ -16,5 +16,5 @@ For each task:
    symbols, the exact edit, commands, one gate (nd_host or a byte compare), and the stop condition. Never write an open task such as
    "investigate". State the bench names and the `--commit` of the base exactly.
 4. Choose the model per row. Default: Haiku. Sonnet or Opus only with a reason (why not Haiku, why not smaller). The user decides.
-5. List the files each row edits. Rows that run together must not share a file (merge conflicts).
+5. List the files and the places (functions, scenarios, blocks) each row edits. Rows that run together may share a file only when their edits are in different places (no merge conflict).
 6. After a Haiku failure, read its facts and write the next step into its row.

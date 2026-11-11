@@ -22,10 +22,13 @@ Edit rules in place, never append. At the start of a session, read docs/handoff/
 
 ## Rows
 - One row file per agent (60 lines or fewer). The prompt is 10 lines or fewer and points to the row.
-- Avoid merge conflicts. Rows may run in parallel only when no conflict can result: they edit disjoint files, and no row depends
-  on the unmerged output of another. Shared tool files count (azt_scenarios.json, bench_defs.json, run_azahar.ps1).
-- Before a launch, compare the file lists of the running rows and the new row. On overlap, the later row waits until the earlier
-  row is merged, then branches from the new main.
+- Avoid merge conflicts. Rows may run in parallel only when no merge conflict can result, and no row depends on the unmerged
+  output of another. Rows may share a file when their edits are in different places (different functions, scenarios or blocks)
+  and no edit moves or reformats the other's lines.
+- Before a launch, compare the files and places that the running rows and the new row edit. A possible overlap of the same lines
+  (or a rename, move or reformat of a shared file) makes the later row wait until the earlier row is merged. It then branches from
+  the new main.
+- Azahar runs are a separate limit: a `bench.py base` runs alone, with no other Azahar run on the machine.
 - A conflict at merge is a planning fault. Stop and ask the oracle. Do not resolve it by guessing.
 - At most 6 code agents.
 - Handback triage: a test-tool fault opens a tool row, and the gate waits (CLAUDE.md 4). Send any other failure to the oracle at

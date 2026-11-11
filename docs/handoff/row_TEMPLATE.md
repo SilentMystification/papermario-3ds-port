@@ -12,7 +12,7 @@ What the user did and saw, in the user's words. The fault is fact (CLAUDE.md 1).
 `sh 3ds/tools/wt_new.sh <id>` (build3ds/wt/<id>, branch <id> from main). PM_ROW=<id> PM_LANE=<id> on every build and bench call.
 
 ## Touch only
-Files: <paths>. Symbols: <symbol> in <file>. The oracle checks that no other running row edits these files (merge conflicts).
+Files: <paths>. Symbols: <symbol> in <file>. The oracle checks that no other running row edits the same places (merge conflicts).
 
 ## Exact edits
 1. <file, function, the edit>
