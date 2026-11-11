@@ -1390,10 +1390,14 @@ static int load_impl(const void* img, unsigned fmt, unsigned siz, int width, int
     return r;
 }
 
+static unsigned shs_lut[256]; /* KZN04: the lut buffer of pm_tex_load_shaded, filled by shs_fill (the caller's builder) when the load misses */
+static void (*shs_fill)(const void*, unsigned*); static const void* shs_ctx;
+
 static void* tm_caller; /* BTLDIM debug: the caller of pm_tex_load (texmiss line) */
 static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, unsigned siz, int width, int height,
                       const void* tlut, int tlut_n, int stride, const unsigned* lut, int dx4, int dy4,
                       unsigned dkey, unsigned phash, unsigned lk) {
+    if (lut && lut == shs_lut && shs_fill) { shs_fill(shs_ctx, shs_lut); shs_fill = NULL; } /* KZN04: the shaded lut is built on a miss only */
     src_native = pm_fb_native(img);
     PH_PUSH(PH_TEX);
     PH_ADD(C_TEXMISS, 1);
@@ -1817,13 +1821,14 @@ static __attribute__((cold, noinline)) void shs_note(unsigned t0, int miss) {
 }
 
 int pm_tex_load_shaded(const void* img, int width, int height, int stride, const void* spal,
-                       const unsigned* lut, int dx4, int dy4) {
+                       unsigned key, int dx4, int dy4, void (*fill)(const void*, unsigned*), const void* ctx) {
     const int shs_on = PMDL("shadestat"); const unsigned t0 = shs_on ? pm_ticks() : 0u;
-    unsigned h = 2166136261u;
-    for (int i = 0; i < 256; i++) h = (h ^ lut[i]) * 16777619u;
+    unsigned h = key;
     h = (h ^ (unsigned)dx4) * 16777619u;
     h = (h ^ (unsigned)dy4) * 16777619u;
-    int r = load_impl(img, FMT_CI, SIZ_4, width, height, spal, 16, stride, lut, dx4, dy4, h | 1u);
+    shs_fill = fill; shs_ctx = ctx;
+    int r = load_impl(img, FMT_CI, SIZ_4, width, height, spal, 16, stride, shs_lut, dx4, dy4, h | 1u);
+    shs_fill = NULL;
     if (__builtin_expect(shs_on, 0)) shs_note(t0, ph_miss);
     return r;
 }
