@@ -215,6 +215,15 @@ else {
 $sl = Ensure-Slot $slotK
 Sync-Slot $slotK
 $sd = $sl.sd; $cfg = $sl.cfg; $exe = $sl.exe; $emuLog = $sl.emuLog; $log = "$sd\log.txt"; $pidFile = $sl.pidFile
+# TOOLB4: an azahar.exe that is not a slot copy (the user's own Azahar, or a copy from another folder) shares the host CPU and GPU.
+# The game then runs slowly, and the stall rule below (no new game log line for $Stall s) stops a run with few log lines (prof mode,
+# det audiohash every 120 frames) as silent. Refuse the run: the user closes that Azahar. Slot Azahars of other runs are allowed.
+$slotExeRx = '^' + [regex]::Escape((Join-Path $script:AzRepo "build3ds\azslots\slot")) + '\d+\\azahar\.exe$'
+$foreign = @(Get-CimInstance Win32_Process -Filter "Name='azahar.exe'" -ErrorAction SilentlyContinue | Where-Object { -not $_.ExecutablePath -or $_.ExecutablePath -notmatch $slotExeRx })
+if ($foreign.Count -and -not $Interactive) {
+    Release-Lock
+    End-Run 3 ("HOST BUSY: azahar.exe not of a slot: {0}. Close it, then run again. Nothing was run." -f (($foreign | ForEach-Object { "pid $($_.ProcessId) $($_.ExecutablePath)" }) -join "; "))
+}
 # AZT3-1: the 3dsx of every lane is copied to the slot rom path, and Azahar boots that path (cold) or restarts it (warm)
 $romFile = $sl.rom; $stopReq = "$($sl.dir)\stop.request" # stopReq: azt.ps1 ends this run early (marker, stall, attract, guard); the Azahar is kept (AZT3-2)
 $cfgBak = "$($sl.dir)\qt-config.orig"; $optFile = "$sd\options.ini"; $optBak = "$($sl.dir)\options.orig"
