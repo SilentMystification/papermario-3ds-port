@@ -119,10 +119,12 @@ static void wd_escape(void) {
     char buf[400];
     int n = snprintf(buf, sizeof buf, "escape: START+SELECT 1 s, phase %u steps %u stuck %d ", pm_wd_phase, pm_wd_prog, stuck);
     n += pm_gpu_hang_dump(buf + n, (int)sizeof buf - n - 2);
-    buf[n++] = '\n';
     buf[n] = 0;
-    pm_crash_line(buf, n);
-    if (!stuck) { /* ESCAPE2: the game loop takes the request (pm_esc_take) and does the exit. The clean path: pm_shutdown, libctru exit. */
+    if (stuck) { buf[n++] = '\n'; buf[n] = 0; pm_crash_line(buf, n); } /* GPU stuck: the crash path, then the reset below */
+    else { /* ESCAPE2: no pm_crash_line before the clean exit: its crash_flush (pm_log.c:1303) stops the log writer and keeps drain_lock,
+            * so pm_log_stop in pm_shutdown would block for ever. The line goes to the log queue and to crash.txt (wd_note: no crash state). */
+        pm_log_evt("%s", buf);
+        buf[n++] = '\n'; buf[n] = 0; wd_note(buf, n);
         pm_esc_req = 1 + pm_opt.esc_mode;
         for (int i = 0; i < 30 && pm_esc_req; i++) svcSleepThread(100000000LL);
         if (!pm_esc_req) return;
