@@ -120,4 +120,6 @@ extern float pm_f255[256], pm_f127[256]; /* PG3 O11: i / 255.f and (signed char)
 /* GV1g: the defaults of the full GPU path. 1 = on unless the switch nogv1 / noraw1 is set. 0 = off unless the switch gv1 / raw1 is set. */
 #define PM_GV1_DEFAULT 1
 #define PM_RAW1_DEFAULT 1
+/* HUDGM: game matrices per task (nd_mtx_set.c gm_tab); the rectangle palette slot is PM_GM_N */
+#define PM_GM_N 1024u
 /* DLC: compiled replay of the map shape display lists. 1 = on unless the switch nodlc is set. 0 = off unless the switch dlc is set. */

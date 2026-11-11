@@ -243,7 +243,7 @@
 		*(.text.nd_edge_aa)  /* 14.0 calls/frame, 52 B */
 		*(.text.pm_tex_failed)  /* 14.0 calls/frame, 16 B */
 		*(.text.ent_hash_walk)  /* 13.7 calls/frame, 160 B */
-		*(.text.load_impl)  /* 11.3 calls/frame, 4384 B */
+		*(.text.load_impl.constprop.0)  /* 11.3 calls/frame, 4384 B */
 		*(.text.scene_hit)  /* 11.3 calls/frame, 100 B */
 		*(.text.slot_valid)  /* 11.3 calls/frame, 404 B */
 		*(.text.fb_prev_base)  /* 11.0 calls/frame, 268 B */
