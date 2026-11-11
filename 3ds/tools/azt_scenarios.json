@@ -13839,6 +13839,7 @@
     {
       "name": "keymiss_mac01",
       "status": "unverified",
+"reason": "broken: no until in 30 s (AZT11-5, 2026-11-11)",
       "subject": "Toad Town mac_01, Mario at pos 0 0 200 (warp entry 0), no input.",
       "proves": "KEYMISS census: per key word, the model cache misses of the frames 600-799 (keymiss switch). Counts only; the console and the cmp decide.",
       "debug": "warp=mac_01:0 pos=0:0:200 keymiss loglevel=debug",
