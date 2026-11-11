@@ -12,6 +12,22 @@
     "n3ds": "192.168.1.224"
   },
   "benches": [
+{
+      "name": "bombette_mim11",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BOMBLIT census: the shade path counters per frame from the C-down press on, scenario bombette_mim11 (lane BOMBLIT). Log only.",
+      "scenario": "bombette_mim11",
+      "cap": 30,
+      "until": "padscript: done at scan",
+      "tags": [
+        "azahar",
+        "hotcode",
+        "bomblit"
+      ],
+      "gates": []
+    },
     {
       "name": "hotset_size",
       "kind": "host_test",
