@@ -28,6 +28,15 @@
 ## User facts 3 (2026-11-11, through the orchestrator)
 Widescreen ON, O3DS XL.
 
+## User facts 4 (2026-11-11): "it's the background circles in the HUD that don't render" (wide on, XL; icons and text draw)
+The circles are HID_Spotlights[i] and HID_HighlightSpot (btl_states_menus.c:633, :646): HES_ProjectorSpot, IA8 32x32
+(battle_ui_gfx.c:531), alpha 150 and 180 (TRANSPARENT: G_RM_CLD_SURF, hud_element.c:1613), combine PM_CC_47, lit quad (G_LIGHTING at
+hud_element.c:1821: pm5 program, palette GPAL5 8 per batch, pm_gpu.c:132). Same path as the beam and reels (IA8 64x64), which differ
+only in size and alpha. Checked and not the cause: the cell atlas (pm_tex.c:337/359 needs a TLUT: IA8 has none), the scissor
+(pm_gpu.c:944-947 gives a ui batch the full 400 px), the KZN04/WALLSHADE leak (the IA8 load clears dual_on), the wide edge copy (the
+spot vertices sit at game x >= 18, not on the game edge). Open fact (one question): with Widescreen OFF, do the circles show? Yes: the
+cause is in the wide arms (rebuild_3d pm_gpu.c:176-177, gtrip_wide :2776-2786). No: the common lit IA8 quad path (pm5, nd_geom.c).
+
 ## Widescreen path of the triangle HUD elements (oracle code read; no arm found that drops all of them)
 - Mapping: pm_gpu_set_mvp (pm_gpu.c:2604-2619) marks the CAM_HUD ortho as ui_ortho; rebuild_3d (pm_gpu.c:176-177) draws it 1:1 at
   screen x = 40 + game x (no 1.25 stretch), the same mapping as the texture rectangles (px, pm_gpu_rect.c:252): spots and icons share
