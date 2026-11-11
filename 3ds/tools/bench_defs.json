@@ -232,6 +232,135 @@
       ],
       "gates": []
     },
+
+    {
+      "name": "fxfncov_base",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FXFNCOV census: draw functions run in walker frame of scenario fxfncov_base and their call counts (census lane <L>_fncov). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.",
+      "scenario": "fxfncov_base",
+      "cap": 45,
+      "until": "fncov f\\d+ done",
+      "tags": [
+        "azahar",
+        "hotcode",
+        "fncov"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fxfncov_63",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FXFNCOV census: draw functions run in walker frame of scenario fxfncov_63 and their call counts (census lane <L>_fncov). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.",
+      "scenario": "fxfncov_63",
+      "cap": 45,
+      "until": "fncov f\\d+ done",
+      "tags": [
+        "azahar",
+        "hotcode",
+        "fncov"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fxfncov_89",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FXFNCOV census: draw functions run in walker frame of scenario fxfncov_89 and their call counts (census lane <L>_fncov). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.",
+      "scenario": "fxfncov_89",
+      "cap": 45,
+      "until": "fncov f\\d+ done",
+      "tags": [
+        "azahar",
+        "hotcode",
+        "fncov"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fxfncov_51",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FXFNCOV census: draw functions run in walker frame of scenario fxfncov_51 and their call counts (census lane <L>_fncov). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.",
+      "scenario": "fxfncov_51",
+      "cap": 45,
+      "until": "fncov f\\d+ done",
+      "tags": [
+        "azahar",
+        "hotcode",
+        "fncov"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fxfncov_124",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FXFNCOV census: draw functions run in walker frame of scenario fxfncov_124 and their call counts (census lane <L>_fncov). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.",
+      "scenario": "fxfncov_124",
+      "cap": 45,
+      "until": "fncov f\\d+ done",
+      "tags": [
+        "azahar",
+        "hotcode",
+        "fncov"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fxfncov_105",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FXFNCOV census: draw functions run in walker frame of scenario fxfncov_105 and their call counts (census lane <L>_fncov). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.",
+      "scenario": "fxfncov_105",
+      "cap": 45,
+      "until": "fncov f\\d+ done",
+      "tags": [
+        "azahar",
+        "hotcode",
+        "fncov"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fxfncov_50",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FXFNCOV census: draw functions run in walker frame of scenario fxfncov_50 and their call counts (census lane <L>_fncov). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.",
+      "scenario": "fxfncov_50",
+      "cap": 45,
+      "until": "fncov f\\d+ done",
+      "tags": [
+        "azahar",
+        "hotcode",
+        "fncov"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fxfncov_55",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FXFNCOV census: draw functions run in walker frame of scenario fxfncov_55 and their call counts (census lane <L>_fncov). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.",
+      "scenario": "fxfncov_55",
+      "cap": 45,
+      "until": "fncov f\\d+ done",
+      "tags": [
+        "azahar",
+        "hotcode",
+        "fncov"
+      ],
+      "gates": []
+    },
     {
       "name": "fncov_kmr10_det",
       "kind": "azahar_stream",
