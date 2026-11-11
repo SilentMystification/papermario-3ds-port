@@ -7709,6 +7709,21 @@
           "gates": []
     },
     {
+      "name": "mdl5_iwa10_cen",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "R13NOP step 2: iwa_10 cold det, the ndm f300 window line with the why list (census switch), base against head.",
+      "scenario": "mdl5_iwa10_cen",
+      "cap": 45,
+      "until": "ndm f300 native",
+      "tags": [
+        "azahar",
+        "mdl5"
+      ],
+      "gates": []
+    },
+    {
       "name": "hitst_mac01",
       "kind": "azahar_stream",
       "speed": "normal",

@@ -204,18 +204,17 @@ static __attribute__((cold, noinline)) void model_bad(unsigned words) {
     pm_fatal_stop("ndc: model record too long");
 }
 /* HC4c (W4): the payload holds typed ops: the panner tile sizes (R9, R10) and the R13 words. R13 w0 is the count of typed units.
- * HC4e4: the producer macros (nd_gbi.h) type every unit, so the payload is copied as it is. */
+ * HC4e4: the producer macros (nd_gbi.h) type every unit, so the payload is copied as it is.
+ * R13NOP: the R13 syncs (typed NDO_MISC_NOP units) are dropped here; the count q[26] is the kept units. */
 void nd_rec_model(const void* rec, unsigned words) {
     if (words > G_PM_REC_WORDS + ND_REC_AUX_MAX) model_bad(words);
     { const unsigned rmi = (((const uint32_t*)rec)[0] >> 16) & 0xffu; if (rmi < ND_RM_N && !rm_built[rmi]) nd_rm_build(rmi); } /* HC4b: W3 */
-    rec_open();
-    uint32_t* p = rec_take(2u + 2u * words);
-    ndc_n[NDC_MODEL]++;
-    memcpy(p + 2, rec, words * 8u);
-    uint32_t* q = p + 2;
-    const unsigned n = words - G_PM_REC_WORDS; /* HC4e4: the R13 units are typed by the producer macros (nd_gbi.h) */
-    q[26] = n;
-    p[0] = NDC_HDR(NDC_MODEL, G_PM_REC_WORDS + n, 0);
+    const uint32_t* r = (const uint32_t*)rec; unsigned keep = 0;
+    for (unsigned k = G_PM_REC_WORDS; k < words; k++) if (!IS_NOP(r[2 * k])) keep++; /* R13NOP: a typed sync is not an R13 op */
+    rec_open(); uint32_t* p = rec_take(2u + 2u * (G_PM_REC_WORDS + keep)); ndc_n[NDC_MODEL]++;
+    memcpy(p + 2, rec, G_PM_REC_WORDS * 8u); uint32_t* q = p + 2; uint32_t* o = q + 2 * G_PM_REC_WORDS;
+    for (unsigned k = G_PM_REC_WORDS; k < words; k++) if (!IS_NOP(r[2 * k])) { o[0] = r[2 * k]; o[1] = r[2 * k + 1]; o += 2; }
+    q[26] = keep; p[0] = NDC_HDR(NDC_MODEL, G_PM_REC_WORDS + keep, 0);
     p[1] = nd_mkey_a(q); /* HC6 step 2: key A of the model cache (the record part), hashed here on core 1 */
 }
 void nd_rec_spr(const void* rec, const void* geo) {
