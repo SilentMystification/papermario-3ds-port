@@ -458,7 +458,10 @@ int nat_nr; uint32_t nat_geom;
 #define NDMC_N 1024u
 #define NDMC_POOL 512u
 static NdMEnt mc_tab[NDMC_N];
-static uint32_t mc_keyw[NDMC_N][NDMC_RW + NDMC_SW]; /* PERF2: the key words of mc_tab[i] (compared only when the hash matched) */
+static uint32_t mc_keyw[NDMC_N][NDMC_RW + NDMC_SW]; /* PERF2: the key words of mc_tab[i] (HC6 step 2: the diagnostics and the store's model test) */
+static uint32_t mc_kc[NDMC_N][NDMC_KC]; /* HC6 step 2: the compared words of mc_tab[i] (key A and key B, NdMKey kc) */
+static NdHitD mc_hd[NDMC_N]; /* HC6 step 3: the walker state change of a hit of mc_tab[i] (fl 0: made at the next hit) */
+NdHitD* nd_mc_hd(const NdMEnt* e) { return &mc_hd[e - mc_tab]; }
 static NdNatC mc_pool[NDMC_POOL];
 static NdPm5 mc_p5[NDMC_POOL]; /* PERF2: the pm5 block of a pooled draw (use5) */
 const uint32_t* nd_mc_keyw(const NdMEnt* e) { return mc_keyw[e - mc_tab]; }
@@ -470,10 +473,11 @@ void nd_mc_fill(unsigned* ent, unsigned* pool) { *ent = mc_n; *pool = mc_pool_n;
  * for the ndmcache diagnostics (pm_gpu.c ndc_cmp): the words that a diff depends on are added here, with the reason in agent_s3n.md. */
 static const uint8_t ndmc_cmp[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 38, 53, 54 }; /* S3L-3: 38 = the R13 words (hash) */
 #define NDMC_NCMP ((unsigned)(sizeof ndmc_cmp / sizeof ndmc_cmp[0]))
-static int mc_eq(const uint32_t* a, const NdMKey* b) { for (unsigned i = 0; i < NDMC_NCMP; i++) if (a[ndmc_cmp[i]] != b->w[ndmc_cmp[i]]) return 0; return 1; }
+static int mc_eq_old(const uint32_t* a, const NdMKey* b) { for (unsigned i = 0; i < NDMC_NCMP; i++) if (a[ndmc_cmp[i]] != b->w[ndmc_cmp[i]]) return 0; return 1; } /* HC6 mkchk */
+static int mc_eq(const uint32_t* a, const NdMKey* b) { for (unsigned i = 0; i < NDMC_KC; i++) if (a[i] != b->kc[i]) return 0; return 1; } /* HC6 step 2: key A and key B */
 uint32_t nd_mc_hash(const NdMKey* k) {
     uint32_t h = 2166136261u;
-    for (unsigned i = 0; i < NDMC_NCMP; i++) { h ^= k->w[ndmc_cmp[i]]; h *= 16777619u; }
+    for (unsigned i = 0; i < NDMC_KC; i++) { h ^= k->kc[i]; h *= 16777619u; }
     return h ^ (h >> 15);
 }
 /* S3N-7 diagnostics: the entry last stored per record address (slot = rp >> 2 and 1023), with the clear generation it was stored in. A miss is classed
@@ -535,7 +539,7 @@ NdMEnt* nd_mc_find(const NdMKey* k) {
     for (unsigned p = 0; p < NDMC_N; p++, h = (h + 1u) & (NDMC_N - 1u)) {
         NdMEnt* e = &mc_tab[h];
         if (!e->used) return NULL;
-        if (e->h == k->h && mc_eq(mc_keyw[h], k)) return e;
+        if (e->h == k->h && mc_eq(mc_kc[h], k)) return e;
     }
     return NULL;
 }
@@ -552,7 +556,7 @@ static void mc_remove(NdMEnt* e) {
         if (!mc_tab[j].used) return;
         const unsigned h = mc_tab[j].h & (NDMC_N - 1u);
         if (i <= j ? (h > i && h <= j) : (h > i || h <= j)) continue; /* the entry at j stays when its home h lies cyclically in (i, j] */
-        mc_tab[i] = mc_tab[j]; memcpy(mc_keyw[i], mc_keyw[j], sizeof mc_keyw[i]); mc_tab[j].used = 0;
+        mc_tab[i] = mc_tab[j]; memcpy(mc_keyw[i], mc_keyw[j], sizeof mc_keyw[i]); memcpy(mc_kc[i], mc_kc[j], sizeof mc_kc[i]); mc_hd[i] = mc_hd[j]; mc_tab[j].used = 0;
         i = j;
     }
 }
@@ -593,8 +597,8 @@ static NdMEnt* mc_slot(const NdMKey* k) {
     uint32_t h = k->h & (NDMC_N - 1u);
     for (;;) {
         NdMEnt* e = &mc_tab[h];
-        if (!e->used) { e->used = 1; e->h = k->h; e->rp = k->rp; e->uf = mc_f; e->n = 0; memcpy(mc_keyw[h], k->w, sizeof k->w); mc_n++; mc_ins++; if (mc_n > mc_ent_hi) mc_ent_hi = mc_n; mc_new = 1; return e; }
-        if (e->h == k->h && mc_eq(mc_keyw[h], k)) { e->uf = mc_f; mc_new = 0; return e; }
+        if (!e->used) { e->used = 1; e->h = k->h; e->rp = k->rp; e->uf = mc_f; e->n = 0; memcpy(mc_keyw[h], k->w, sizeof k->w); memcpy(mc_kc[h], k->kc, sizeof k->kc); mc_hd[h].fl = 0; mc_n++; mc_ins++; if (mc_n > mc_ent_hi) mc_ent_hi = mc_n; mc_new = 1; return e; }
+        if (e->h == k->h && mc_eq(mc_kc[h], k)) { e->uf = mc_f; mc_new = 0; return e; }
         h = (h + 1u) & (NDMC_N - 1u);
     }
 }
@@ -609,12 +613,17 @@ NdMEnt* nd_mc_find_rec(NdMKey* k) {
     mc_f = pm_frame_count();
     if (mc_lastp[s] == k->rp && mc_lastg[s] == mc_clears_n) {
         NdMEnt* m = &mc_tab[mc_lasti[s]];
-        if (m->used && mc_eq(mc_keyw[mc_lasti[s]], k)) { k->h = m->h; m->uf = mc_f; return m; }
+        if (m->used && mc_eq(mc_kc[mc_lasti[s]], k)) { k->h = m->h; m->uf = mc_f; return m; }
     }
     k->h = nd_mc_hash(k);
     NdMEnt* e = nd_mc_find(k);
     if (e) { mc_note(k, e); e->uf = mc_f; }
     return e;
+}
+/* HC6 step 2 debug switch mkchk: the entry the old compare (the full key words of ndmc_cmp) finds, by a scan of the table (cold). */
+__attribute__((cold, noinline)) NdMEnt* nd_mc_find_old(const NdMKey* k) {
+    for (unsigned i = 0; i < NDMC_N; i++) if (mc_tab[i].used && mc_eq_old(mc_keyw[i], k)) return &mc_tab[i];
+    return NULL;
 }
 NdMEnt* nd_mc_store(const NdMKey* k, int tex, int hs, unsigned hg) {
     if (nat_nr > ND_RAW_MAX || nat_nr < 0 || !nat_vm_ok) { mg_cls[7]++; return NULL; }
@@ -627,7 +636,7 @@ NdMEnt* nd_mc_store(const NdMKey* k, int tex, int hs, unsigned hg) {
         unsigned s = (k->rp >> 2) & (NDMC_LAST - 1u);
         NdMEnt* o = mc_lastp[s] == k->rp && mc_lastg[s] == mc_clears_n ? &mc_tab[mc_lasti[s]] : NULL;
         const uint32_t* ow = o ? mc_keyw[mc_lasti[s]] : NULL;
-        if (o && o->used && ow[0] == k->w[0] && ow[5] == k->w[5] && ow[24] == k->w[24] && !mc_eq(ow, k)) { roff = o->off; rn = o->n; reuse = 1; mc_remove(o); mc_rep++; }
+        if (o && o->used && ow[0] == k->w[0] && ow[5] == k->w[5] && ow[24] == k->w[24] && !mc_eq(mc_kc[mc_lasti[s]], k)) { roff = o->off; rn = o->n; reuse = 1; mc_remove(o); mc_rep++; }
     }
     const unsigned clr0 = mc_clears_n, trm0 = mc_trims;
     NdMEnt* e = mc_slot(k);

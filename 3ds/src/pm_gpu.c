@@ -3147,6 +3147,34 @@ void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) {
     s[i++] = nd_handle_gen(); s[i++] = pm_dlc_gen;
     i += pm_gbi_gvkey(s + i, NDMC_SW - i);
     while (i < NDMC_SW) s[i++] = 0;
+    pm_gpu_model_keyb(rec, k); /* HC6 step 2: the compared words, rp and h */
+}
+/* HC6 step 2 (plan_hotcode 5.4 premise 2): key A, the record part of the key (key words 0 to 27 with the masks of pm_gpu_model_key, and the R13 word
+ * hash), hashed by the recorder on core 1 into the NDC_MODEL header word 1. The cache compared only these and key B (nd_model.c ndmc_cmp before). */
+uint32_t nd_mkey_a(const uint32_t* rec) {
+    uint32_t h = 2166136261u;
+    const int shr = (rec[6] & 32u) != 0;
+    for (unsigned j = 0; j < NDMC_RW; j++) {
+        uint32_t v = rec[j];
+        if (j == 3u || (shr && j == 14u)) v = 0;
+        else if (shr && j == 8u) v &= 0xffffff00u;
+        h = (h ^ v) * 16777619u;
+    }
+    h = (h ^ aux_hash(rec)) * 16777619u;
+    return h ^ (h >> 15);
+}
+/* HC6 step 2: key B, the walker part (core 0): the other mode and geometry bits the draw reads, the handle and dlc generations. kc[0] is key A. */
+void pm_gpu_model_keyb(const uint32_t* rec, NdMKey* k) {
+    const unsigned rmi = (rec[0] >> 16) & 0xffu;
+    if (!rm_done[rmi]) rm_masks(rmi);
+    const uint32_t kh = ND_OMH_READ & ~rm_wh[rmi], kl = ~rm_wl[rmi];
+    uint32_t gk = 0xFFFFFFFFu;
+    if (rec[24] && pm_dlc_geom_keep((const void*)(uintptr_t)rec[24], &gk) != 0) gk = 0xFFFFFFFFu;
+    uint32_t* c = k->kc;
+    c[0] = rec[-1];
+    c[1] = nd_ws.omode_h & kh; c[2] = nd_ws.omode_l & kl; c[3] = nd_ws.om_kh & kh; c[4] = nd_ws.om_kl & kl; c[5] = nd_ws.geom & gk & rm_ga[rmi];
+    c[6] = nd_handle_gen(); c[7] = pm_dlc_gen;
+    k->w[0] = rec[0]; k->w[1] = rec[1]; k->w[24] = rec[24]; /* the record words the hit reads (pm_gpu_model_hit, model_vis_same) */
     k->rp = (uint32_t)(uintptr_t)rec; /* S3N-7: the record address (PERF1-4a: the lookup memo, nd_mc_find_rec) */
     k->h = 0; /* set by nd_mc_find_rec */
 }

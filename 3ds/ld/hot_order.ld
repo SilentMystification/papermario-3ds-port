@@ -56,10 +56,8 @@
 		*(.text.nd_tmpl_pin)  /* 19.3 calls/frame, 28 B */
 		*(.text.pm_tex_load)  /* 11.3 calls/frame, 116 B */
 		*(.text.nd_r13_texonly)  /* 6.0 calls/frame, 160 B */
-		*(.text.nmn_sw)  /* 5.7 calls/frame, 52 B */
 		*(.text.pm_gpu_model_native)  /* 3.0 calls/frame, 268 B */
 		*(.text.pm_gpu_set_r13_t1)  /* 3.0 calls/frame, 132 B */
-		*(.text.rec_apply)  /* 3.0 calls/frame, 516 B */
 		*(.text.nd_r11_state)  /* 0.3 calls/frame, 80 B */
 		*(.text.nd_range_run)  /* 0.3 calls/frame, 240 B */
 		/* class D: native submit and emit */
@@ -302,9 +300,7 @@
 		*(.text.nd_tex_handle_extra)  /* 3.0 calls/frame, 56 B */
 		*(.text.pm_dlc_native_ranges)  /* 3.0 calls/frame, 2072 B */
 		*(.text.pm_wq_post)  /* 3.0 calls/frame, 184 B */
-		*(.text.rec_aux)  /* 3.0 calls/frame, 8 B */
 		*(.text.rec_lights)  /* 3.0 calls/frame, 192 B */
-		*(.text.rec_rm)  /* 3.0 calls/frame, 80 B */
 		*(.text.nd_model_state)  /* 2.7 calls/frame, 76 B */
 		*(.text.sh_clear)  /* 2.7 calls/frame, 100 B */
 		*(.text.nd_stream_run)  /* 2.3 calls/frame, 8 B */
@@ -362,7 +358,6 @@
 		*(.text.kick_split)  /* 0.7 calls/frame, 324 B */
 		*(.text.pm_gpu_gv5_ok)  /* 0.7 calls/frame, 16 B */
 		*(.text.pm_gpu_set_env)  /* 0.7 calls/frame, 104 B */
-		*(.text.rec_top)  /* 0.7 calls/frame, 52 B */
 		*(.text.mc_slot)  /* 0.3 calls/frame, 296 B */
 		*(.text.nd_mc_store)  /* 0.3 calls/frame, 972 B */
 		*(.text.pm_gpu_dbg_primz)  /* 0.3 calls/frame, 16 B */
