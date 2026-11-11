@@ -3936,6 +3936,7 @@ int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16
     const uint32_t geo = (sw_geo & mode.gand) | mode.gor;
     NdGvP gv;
     pm_gbi_gv_at(mode.has_tx ? mode.tw1 : sw_tss, geo, tw, th, &gv);
+    if (shaded) { extern float dual_f[4]; for (int q = 0; q < 4; q++) { gv.cm[q] *= dual_f[q]; gv.ca[q] *= dual_f[q]; } } /* WALLSHADE: the KZN04 shade colour, the shaded sprite only */
     NdMCtx c;
     memset(&c, 0, sizeof c);
     c.mode = &mode; c.u0 = (tex || shaded) ? &un : NULL; c.i8_0 = 0; c.gv = &gv;
