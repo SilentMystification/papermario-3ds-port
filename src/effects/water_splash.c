@@ -206,7 +206,12 @@ void water_splash_appendGfx(void* effect) {
             temp_t3 = temp_t3 & 0x3F;
         }
 
-        gDPLoadMultiTile(gMainGfxPos++, OS_K0_TO_PHYSICAL(nuGfxCfb_ptr), 0x100, 1, G_IM_FMT_RGBA, G_IM_SIZ_16b, 320, 0,
+#ifdef TARGET_3DS
+        u16* refrBuf = nuGfxCfb[0] == nuGfxCfb_ptr ? nuGfxCfb[1] : nuGfxCfb[0]; /* SPLASHPREV: the previous frame (nuGfxCfbNum 2): no mid-frame grab */
+#else
+        u16* refrBuf = nuGfxCfb_ptr;
+#endif
+        gDPLoadMultiTile(gMainGfxPos++, OS_K0_TO_PHYSICAL(refrBuf), 0x100, 1, G_IM_FMT_RGBA, G_IM_SIZ_16b, 320, 0,
                          temp_t2 + 0xA0, temp_t3 + 0x78, temp_t2 + 0xBF, temp_t3 + 0x97, 0,
                          G_TX_WRAP, G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD);
 
