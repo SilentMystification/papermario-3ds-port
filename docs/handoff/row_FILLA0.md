@@ -33,6 +33,13 @@ fire_breath +17.4 ms per frame on the O3DS with 7 draws, 204 triangles, texture 
   --why "same picture, alpha-0 fragments dropped"`; `bench.py cmp` of both maps: 6/6 byte-equal each (the pass gate).
 - The console ms of fire_breath (fxcen chunk 3) is the user's check.
 
+## Step 2 (after 0be852ce9: nd_host FAIL in nd_tmpl_test, 118 render-rule checks: rules atest 0, held atest -1)
+The held words are the reference walker's states (atest -1 for these blends); the new rule is a native-only refinement with the same
+picture. 3ds/tools/nd_tmpl_test.c, in the render-rules block (where the KMR11W exception was, after `nd_render_state(om_h, om_l, (int)om_d, &rs);`):
+`/* FILLA0: an alpha blend without depth write gets alpha test GREATER 0 (no pixel changes); the held words predate the rule */`
+`if (rs.blend && !rs.zupd && !rs.nocol && !rs.memb && rs.atest == 0 && d->atest == -1) rs.atest = -1;`
+Then rerun nd_host (PASS), then the row's byte gate (spot_mac01_det, mdl5_iwa10_det 6/6 byte-equal) as written.
+
 ## Stop and end
 A failed gate, an edit that does not fit, or a tool fault: commit, hand back the exact output (CLAUDE.md 4-5). Delete this row file in
 the completing commit. Hand back the hash, gates, memcheck line.
