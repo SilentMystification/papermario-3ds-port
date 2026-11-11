@@ -975,8 +975,9 @@ def run_azahar_list(a):
             f.write("%s %s scenario %s: measures %s; path azt.ps1 list -> run_azahar.ps1 (kept slot, warm restart); speed %s; lane %s; why %s\n"
                     % (now_iso(), bd["name"], s["name"], ", ".join(measures(bd)), speed, a.lane or "main", a.why))
     env = dict(os.environ, PM_ROW=a.row)
-    for k in ("PM_BENCH_LABEL", "PM_BENCH_BUILD", "PM_BENCH_COMMIT"):
+    for k in ("PM_BENCH_LABEL", "PM_BENCH_BUILD", "PM_BENCH_COMMIT", "PM_BENCH_NAMES"):
         env.pop(k, None)
+    env["PM_BENCH_NAMES"] = ",".join(names)  # TOOLB5: ingest-last records each run under the bench of this list
     if a.label:
         env["PM_BENCH_LABEL"] = a.label
     if a.build is not None:
@@ -1173,8 +1174,9 @@ def cmd_run(a):
         PERF.mkdir(parents=True, exist_ok=True)
         with (PERF / ("status_%s.txt" % a.row)).open("a", encoding="utf-8", newline="\n") as f:
             f.write("%s %s scenario %s: measures %s; path azt.ps1 -> run_azahar.ps1; speed %s; lane %s; why %s\n" % (now_iso(), bd["name"], s["name"], ", ".join(measures(bd)), speed, a.lane or "main", a.why))
-        for k in ("PM_BENCH_LABEL", "PM_BENCH_BUILD", "PM_BENCH_COMMIT"):
+        for k in ("PM_BENCH_LABEL", "PM_BENCH_BUILD", "PM_BENCH_COMMIT", "PM_BENCH_NAMES"):
             env.pop(k, None)
+        env["PM_BENCH_NAMES"] = bd["name"]  # TOOLB5
         env["PM_BENCH_LABEL"] = a.label or bd["name"]
         if a.build is not None:
             env["PM_BENCH_BUILD"] = str(a.build)
@@ -1920,7 +1922,9 @@ def cmd_ingest_last(a):
         print("no log at %s. Nothing ingested." % a.log)
         return 0
     s = a.scenario
-    bd = next((b for b in load_defs()["benches"] if b.get("scenario") == s and b["kind"].startswith("azahar")), None)
+    want = [n.strip() for n in os.environ.get("PM_BENCH_NAMES", "").split(",") if n.strip()]  # TOOLB5: the bench that started the run
+    cands = [b for b in load_defs()["benches"] if b.get("scenario") == s and b["kind"].startswith("azahar")]
+    bd = next((b for b in cands if b["name"] in want), None) or (cands[0] if cands else None)
     bench = bd["name"] if bd else "adhoc:" + s
     text = p.read_text(encoding="utf-8", errors="replace")
     b, c = resolve_build(p, text, a.build, a.commit, "azahar")
