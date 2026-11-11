@@ -145,7 +145,7 @@ static void rd_sync(void); /* RECT-1b diag: parse the GPUCMD words since the las
 static unsigned post_gen = 1;
 static unsigned* rgen;          /* per ring vertex: the palette generation in which its flag was set (0 = never) */
 static unsigned char* rk;       /* per ring vertex: the flag value */
-static C3D_Mtx pcomp[257];      /* palette entry per game matrix index: post x game */
+static C3D_Mtx pcomp[PM_GM_N + 1u];      /* palette entry per game matrix index: post x game */
 static const float (*pal_tab)[4][4];
 static unsigned gv_recopy_n, gv_palup_n, gv_palmax, gv_palflush;
 static C3D_Mtx gv_post;
@@ -1068,6 +1068,50 @@ static __attribute__((cold, noinline)) const NdDraw* sub_pm5(const NdDraw* dp, N
     *d5 = *dp; pm5_upload_draw(d5); d5->no_uni = 1; d5->npal = 0; if (d5->has_uvx) d5->loc_uvx = (uint16_t)u5_uvx;
     return d5;
 }
+/* HC6 step 4 (plan_hotcode 5.4): the pre-built command block of a cached model draw. The first hit of a draw (or after an arena wrap or a new template
+ * id) emits its words with the full state (nd_emit_full: no redundant-state filter) into the block arena and keeps the offsets of the per-frame values;
+ * every hit copies the block and patches palette 0 (or the zmark row), the stage colours (the shroud mix_st), unit 0 and the index address. The native
+ * shadow is reset after a block (the next draw writes its full state). Arena: one heap block at first use; full: a new generation (every block is made
+ * again at its next hit). Switch blkchk (cold): the words the old path writes for the draw against the block, per register; blkchk line per 300 frames. */
+#define BLK_WORDS 65536u
+static uint32_t* blk_ar; static unsigned blk_n; static uint16_t blk_gen = 1;
+static NdNatC* ndn_bq; /* the cached draw being submitted by pm_gpu_model_hit (NULL: any other draw) */
+static unsigned bc_draws, bc_bad, bc_f0, bc_fl; static int bc_sw = -1;
+static __attribute__((cold, noinline)) void blk_build(NdNatC* q, const NdDraw* d) {
+    if (!blk_ar) { blk_ar = (uint32_t*)malloc(BLK_WORDS * 4u); if (!blk_ar) pm_fatal_stop("blk: no memory for the command block arena"); }
+    if (blk_n + ND_EMIT_MAX > BLK_WORDS) { blk_n = 0; if (++blk_gen == 0) blk_gen = 1; }
+    const unsigned n = nd_emit_full(blk_ar + blk_n, d, &q->bo);
+    q->boff = blk_n; q->blen = (uint16_t)n; q->bgen = blk_gen; q->bt = d->tmpl;
+    blk_n += n;
+}
+extern uint32_t nd_emit_dk, nd_emit_da, nd_emit_db;
+static __attribute__((cold, noinline)) void blk_check(const uint32_t* blk, unsigned n, const NdDraw* d, const NdNatC* q) {
+    static uint32_t old[ND_EMIT_MAX];
+    NdShadow s = ndn_sh;
+    const unsigned no = nd_emit_draw(old, &s, d);
+    bc_draws++;
+    if (nd_emit_cmp(old, no, blk, n)) {
+        static unsigned nl_;
+        bc_bad++;
+        if (nl_ < 8u) { nl_++; pm_log("blkchk diff f%u tmpl %d key %x old %x blk %x u0 %d npal %u zp %d mix %d boff %u bgen %u/%u", pm_frame_count(), d->tmpl, (unsigned)nd_emit_dk,
+                                    (unsigned)nd_emit_da, (unsigned)nd_emit_db, d->u[0].dim != 0, (unsigned)d->npal, q->zp, q->mix_st, (unsigned)q->boff, (unsigned)q->bgen, (unsigned)blk_gen); }
+    }
+    const unsigned fr = pm_frame_count();
+    if (fr != bc_fl) { bc_fl = fr; if (fr >= bc_f0 + 300u) { pm_log("blkchk f%u frames %u draws %u diff %u", fr, fr - bc_f0, bc_draws, bc_bad); bc_f0 = fr; bc_draws = bc_bad = 0; } }
+}
+static unsigned blk_put(uint32_t* o, NdNatC* q, const NdDraw* d) {
+    if (q->bgen != blk_gen || q->bt != d->tmpl || (q->bo.u0 != 0xFFFFu) != (d->u[0].dim != 0)) blk_build(q, d);
+    const unsigned n = q->blen;
+    memcpy(o, blk_ar + q->boff, n * 4u);
+    const NdBlkOff* b = &q->bo;
+    { const uint32_t* p = (const uint32_t*)(const void*)d->pal[0]; uint32_t* w = o + b->pal; w[0] = p[0]; for (unsigned i = 1; i < 16u; i++) w[1 + i] = p[i]; }
+    if (b->u0 != 0xFFFFu) { uint32_t* w = o + b->u0; w[2] = d->u[0].dim; w[3] = d->u[0].param; w[4] = d->u[0].lod; w[5] = d->u[0].addr; o[b->ty] = d->u[0].type; }
+    for (unsigned i = 0; i < 6u; i++) if (b->col[i] != 0xFFFFu) o[b->col[i]] = d->tev_col[i];
+    o[b->idx] = d->idx_word;
+    if (__builtin_expect(bc_sw, 0)) { if (bc_sw < 0) bc_sw = pm_debug_has("blkchk"); if (bc_sw) blk_check(o, n, d, q); }
+    nd_shadow_reset(&ndn_sh);
+    return n;
+}
 static void nd_native_submit(const NdDraw* dp, int tex) {
     NDT_B(tsub); /* PERF1: the native submit class */
     { u32 *cb_, csz_, coff_; GPUCMD_GetBuffer(&cb_, &csz_, &coff_); if (coff_ + ND_EMIT_MAX + 1024u >= csz_) cmd_split_forced(); } /* PERF1-6: the draw words go straight into the command buffer: near its end the frame is split first (as nd_raw_native) */
@@ -1089,7 +1133,8 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
     if (*(volatile unsigned*)(__C3D_Context + 32) & 0x3800000u) { ndn_sh.cfg_valid = 0; ndn_sh.u_on[0] = ndn_sh.u_on[1] = 0; } /* a dirty texture bind: C3Di_UpdateContext rebuilds the unit enable word from the units citro3d holds (a null unit 0 after a slot drop writes it off) and sends their blocks: the native shadow of both is stale, the native words write them again */
     eyd_sync(); /* STEREO: before the update test (a change marks the uniform dirty) */
     if (c3d_upd_needed()) { if (u_eye >= 0) C3D_FVUnifDirty[GPU_VERTEX_SHADER][u_eye] = false; C3Di_UpdateContext(); sc_upd++; } /* what citro3d staged (program, buffers, scissor, an older TEV) goes out first, the native words then overwrite it */
-    { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); GPUCMD_SetBufferOffset(coff + nd_emit_draw(cb + coff, &ndn_sh, d)); } /* PERF1-6: emitted in place (no copy) */
+    { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); /* PERF1-6: emitted in place (no copy) */
+      GPUCMD_SetBufferOffset(coff + (ndn_bq && !d->use5 && !d->no_uni && d->npal == 1u ? blk_put(cb + coff, ndn_bq, d) : nd_emit_draw(cb + coff, &ndn_sh, d))); } /* HC6 step 4: a cache hit copies its block */
     if (tex) ndunit_after();
     *(volatile unsigned*)(__C3D_Context + 32) |= 2u; /* C3DiF_DrawUsed, as the citro3d draw sets it: citro3d then sends the framebuffer flush at a target change, a split and the frame end */
     if (ndref_on) ndref_cmd();
@@ -3526,7 +3571,9 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
         if (q->zp) { memcpy(zpal, pal0, sizeof pal0); for (int i = 0; i < 4; i++) zpal[8 + i] = q->zn * pal0[12 + i]; q->d.pal = (const float(*)[16])zpal; } /* S5-2: zmark pass 2 */
         else q->d.pal = (const float(*)[16])pal0;
         if (e->tex) q->d.u[0] = u;
+        ndn_bq = q; /* HC6 step 4: the submit copies the draw's command block */
         pm_gpu_native_submit_draw(&q->d, q->sd, q->nidx, q->d.u[0].dim != 0);
+        ndn_bq = NULL;
         mfr_idx += q->nidx;
     }
     ndn_rec++; ndn_draws += e->n; ndn_hit++;
@@ -3775,7 +3822,7 @@ void pm_gpu_flush(void) { flush(); }
 
 /* SPR4-3: shaded sprites (nd_int.h is not included here; the former pm_gbi.c, nd_tex.c and nd_geom.c own these) */
 extern int dual_on; void ensure_tile(int n); void dual_bind(void); int dual_boost_on(void);
-static unsigned spr_nat_n, spr_nat_fb[16];
+static unsigned spr_nat_n, spr_nat_fb[32];
 static unsigned spr5_sub[8]; /* MDL-3a: class 5 refusals per flag: 1 no pm4 palette path (g_pal, g_use5, gv4_on), 2 off-screen target, 3 grab, 4 zmark, 5 nozt */
 static unsigned spc_texget, spc_miss, spc_rh0[2]; /* PERF2: full texture lookups of sprites and the dirty-slot rehash totals at the last sprcost line */
 /* PERF2 step 5: the sprite texture memo. Key: raster, palette, width and height of the record; value: the block id (valid in its nd_tex_gen) and the slot hint
@@ -3821,7 +3868,7 @@ int pm_gpu_spr_native(const uint32_t* rec) {
     NdMState st;
     float pal0[16];
     int why = 0;
-    if (!nd_sprite_draw(rec, 1, &n, &st, pal0, &why)) { spr_nat_fb[why & 15]++; return 0; }
+    if (!nd_sprite_draw(rec, 1, &n, &st, pal0, &why)) { spr_nat_fb[why & 31]++; return 0; }
     spr_nat_n++;
     return 1;
 }

@@ -224,7 +224,7 @@ static unsigned sprm_hit, sprm_miss; /* HC8 census: memo hits and misses of nd_m
 unsigned nd_nat_sub;
 unsigned nd_mdl_cur_x; /* MDL-5a census: extraTiles of the handle of the draw in model_draw */
 static unsigned mf_bx[4]; /* sub b by extraTiles (cumulative) */
-static struct { uint32_t p; unsigned s, n; } mf_e[32]; static unsigned mf_k, mf_tot[5]; /* mf_tot: cumulative per sub-case (a 1, b 2, c 3, d 4) */
+static struct { uint32_t p; unsigned s, n; } mf_e[32]; static unsigned mf_k, mf_tot[8]; /* mf_tot: cumulative per sub-case (a 1, b 2, c 3, d 4) */
 void nd_mdlfb_note(uint32_t prod, unsigned sub) {
     mf_tot[sub & 7u]++;
     for (unsigned i = 0; i < mf_k; i++) if (mf_e[i].p == prod && mf_e[i].s == sub) { mf_e[i].n++; return; }
@@ -658,7 +658,7 @@ NdMEnt* nd_mc_store(const NdMKey* k, int tex, int hs, unsigned hg) {
     for (int j = 0; j < nat_n; j++) {
         const unsigned pi = off + (unsigned)j;
         NdNatC* q = &mc_pool[pi];
-        q->d = nat[j].d; q->sd = nat[j].sd; q->nidx = nat[j].nidx; q->zn = nat[j].zn; q->zp = nat[j].zp; q->mix_st = (int8_t)nat[j].s.to.mix_st; q->tk = nat[j].tk;
+        q->d = nat[j].d; q->sd = nat[j].sd; q->nidx = nat[j].nidx; q->zn = nat[j].zn; q->zp = nat[j].zp; q->mix_st = (int8_t)nat[j].s.to.mix_st; q->tk = nat[j].tk; q->bgen = 0; /* HC6 step 4: no command block yet */
         q->d.pal = NULL; /* the hit points it at the palette 0 of its view */
         if (q->d.use5) { mc_p5[pi] = nat[j].s.p5; q->d.p5 = &mc_p5[pi]; e->mver = (((const uint32_t*)(uintptr_t)k->rp)[3] >> 16) | 0x10000u; } /* MAPX-2: the pm5 block comes from this matrix */
     }

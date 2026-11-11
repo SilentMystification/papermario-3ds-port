@@ -30,7 +30,7 @@ unsigned gm_last = 0xffffu; /* GV1: the gm_tab entry of the last G_VTX */
 
 unsigned gm_steps; /* W1: entries compared by gv_matrix_id, summed over the report window */
 
-float (*gm_tab)[4][4]; /* matrices of the frame, 256 */
+float (*gm_tab)[4][4]; /* matrices of the frame, PM_GM_N */
 
 float (*gm_nrm)[3][4]; /* GV5: the rows 0 to 2 of the model view matrix of each gm_tab entry (the normal matrix), made when the entry is made */
 
@@ -41,20 +41,20 @@ void upload_mvp(void) {
     pm_gpu_note_mvp(combined, vp_sx, vp_sy, vp_tx, vp_ty); /* GV1c: the matrix is in the palette of the triangles */
 }
 
-/* H3: open-addressing index of gm_tab by a hash of the combined matrix. Slot holds entry + 1, 0 is empty. 512 slots for at most 256 entries. */
-unsigned short gm_idx[512];
+/* H3: open-addressing index of gm_tab by a hash of the combined matrix. Slot holds entry + 1, 0 is empty. 2 * PM_GM_N slots for at most PM_GM_N entries. */
+unsigned short gm_idx[2u * PM_GM_N];
 
 static unsigned gm_hash(const float (*m)[4]) {
     const unsigned* w = (const unsigned*)m;
     unsigned h = 2166136261u;
     for (int i = 0; i < 16; i++) h = (h ^ w[i]) * 16777619u;
-    return (h ^ (h >> 16)) & 511u;
+    return (h ^ (h >> 16)) & (2u * PM_GM_N - 1u);
 }
 
 unsigned gv_matrix_id(int need_nm) {
     if (!gm_tab) {
-        gm_tab = (float(*)[4][4])malloc(256 * sizeof(float[4][4]));
-        gm_nrm = (float(*)[3][4])malloc(256 * sizeof(float[3][4]));
+        gm_tab = (float(*)[4][4])malloc(PM_GM_N * sizeof(float[4][4]));
+        gm_nrm = (float(*)[3][4])malloc(PM_GM_N * sizeof(float[3][4]));
         if (!gm_tab || !gm_nrm) { free(gm_tab); free(gm_nrm); gm_tab = NULL; gm_nrm = NULL; return GV_NONE; }
         pm_gpu_set_ntab((const float(*)[3][4])gm_nrm);
     }
@@ -64,13 +64,13 @@ unsigned gv_matrix_id(int need_nm) {
     if (gm_last != GV_NONE && gm_last < gm_n && memcmp(gm_tab[gm_last], combined, sizeof(float[4][4])) == 0 && memcmp(gm_nrm[gm_last], nm, sizeof nm) == 0) return gm_last;
     unsigned p, best = GV_NONE, gmi;
     /* H3: the newest entry with the same combined matrix (and normal when needed), found by probing its hash chain */
-    for (p = gm_hash(combined); gm_idx[p]; p = (p + 1) & 511u) {
+    for (p = gm_hash(combined); gm_idx[p]; p = (p + 1) & (2u * PM_GM_N - 1u)) {
         unsigned e = gm_idx[p] - 1u;
         gm_steps++;
         if ((best == GV_NONE || e > best) && memcmp(gm_tab[e], combined, sizeof(float[4][4])) == 0 && (!need_nm || memcmp(gm_nrm[e], nm, sizeof nm) == 0)) best = e;
     }
     if (best != GV_NONE) gmi = best;
-    else if (gm_n < 256) { memcpy(gm_tab[gm_n], combined, sizeof(float[4][4])); memcpy(gm_nrm[gm_n], nm, sizeof nm); gm_idx[p] = (unsigned short)(gm_n + 1); gmi = gm_n++; }
+    else if (gm_n < PM_GM_N) { memcpy(gm_tab[gm_n], combined, sizeof(float[4][4])); memcpy(gm_nrm[gm_n], nm, sizeof nm); gm_idx[p] = (unsigned short)(gm_n + 1); gmi = gm_n++; }
     else gmi = GV_NONE;
     gm_last = gmi;
     return gmi;
