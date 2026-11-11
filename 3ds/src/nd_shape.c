@@ -138,16 +138,59 @@ static NdSeamTab seam_tab;
 static unsigned seam_gen;
 static int seam_ok;
 extern char pm_shape_name[24];
+/* SEAMHOST: the T-point table of the shape, built on the host by nd_shape_conv.c: romfs:/shape/<name>.seam (format there). The shape
+ * size of the .seam must equal the NDSH size of its .nds. Returns 0 with the table loaded (list addr + the shape base), else -1 with nothing kept. */
+static u32 seam_le32(const u8* p) { return (u32)p[0] | ((u32)p[1] << 8) | ((u32)p[2] << 16) | ((u32)p[3] << 24); }
+__attribute__((cold, noinline)) static int seam_load(NdSeamTab* t) {
+    char path[64];
+    u8 hdr[4 + 5 * 4 + 12 * 4];
+    u32 nds_size, k;
+    unsigned* st[12] = { &t->tp_all, &t->tp_id, &t->tp_int, &t->tp_mtx, &t->skip_ref, &t->ntri, &t->nvert, &t->nbedge, &t->nl_cls[0], &t->nl_cls[1], &t->nl_cls[2], &t->far };
+    FILE* f;
+    memset(t, 0, sizeof *t);
+    snprintf(path, sizeof path, "romfs:/shape/%s.nds", pm_shape_name);
+    f = fopen(path, "rb");
+    if (!f) return -1;
+    if (fread(hdr, 1, 16, f) != 16 || memcmp(hdr, "NDSH", 4) != 0) { fclose(f); return -1; }
+    nds_size = seam_le32(hdr + 8);
+    fclose(f);
+    snprintf(path, sizeof path, "romfs:/shape/%s.seam", pm_shape_name);
+    f = fopen(path, "rb");
+    if (!f) return -1;
+    if (fread(hdr, 1, sizeof hdr, f) != sizeof hdr || memcmp(hdr, "NDSM", 4) != 0) goto bad;
+    if (seam_le32(hdr + 4) != 1 || seam_le32(hdr + 8) != nds_size || seam_le32(hdr + 12) != 0) goto bad;
+    t->nlist = seam_le32(hdr + 16);
+    t->ntp = seam_le32(hdr + 20);
+    if (t->nlist > 0x10000u || t->ntp > 0x100000u) goto bad;
+    for (k = 0; k < 12; k++) *st[k] = seam_le32(hdr + 24 + k * 4);
+    if (t->nlist) {
+        t->list = (NdSeamList*)malloc(t->nlist * sizeof(NdSeamList));
+        if (!t->list || fread(t->list, sizeof(NdSeamList), t->nlist, f) != t->nlist) goto bad;
+        for (k = 0; k < t->nlist; k++) t->list[k].addr += (u32)(uintptr_t)gMapShapeData;
+    }
+    if (t->ntp) {
+        t->tp = (NdTp*)malloc(t->ntp * sizeof(NdTp));
+        if (!t->tp || fread(t->tp, sizeof(NdTp), t->ntp, f) != t->ntp) goto bad;
+    }
+    fclose(f);
+    return 0;
+bad:
+    fclose(f);
+    nd_seam_free(t);
+    return -1;
+}
 __attribute__((cold, noinline)) static const NdSeamTab* seam_get(void) {
     if (seam_gen == pm_dlc_gen) return seam_ok ? &seam_tab : NULL;
     nd_seam_free(&seam_tab);
     seam_gen = pm_dlc_gen;
     unsigned t0 = pm_ticks();
-    seam_ok = nd_seam_build(&seam_tab, gMapShapeData, 0x40000u) == 0;
+    const int from_file = seam_load(&seam_tab) == 0;
+    seam_ok = from_file || nd_seam_build(&seam_tab, gMapShapeData, 0x40000u) == 0;
     unsigned us = (pm_ticks() - t0) / 268u;
     if (!seam_ok) { pm_log_evt("seamfix map %s nomem us %u", pm_shape_name, us); return NULL; }
-    pm_log_evt("seamfix map %s tp %u ins %u mtx %u skip_ref %u lists %u tri %u bedge %u kb %u us %u", pm_shape_name, seam_tab.tp_all, seam_tab.ntp,
-        seam_tab.tp_mtx, seam_tab.skip_ref, seam_tab.nlist, seam_tab.ntri, seam_tab.nbedge, (seam_tab.ntp * (unsigned)sizeof(NdTp) + seam_tab.nlist * (unsigned)sizeof(NdSeamList) + 1023u) >> 10, us);
+    pm_log_evt("seamfix map %s tp %u ins %u mtx %u skip_ref %u lists %u tri %u bedge %u kb %u us %u src %s", pm_shape_name, seam_tab.tp_all, seam_tab.ntp,
+        seam_tab.tp_mtx, seam_tab.skip_ref, seam_tab.nlist, seam_tab.ntri, seam_tab.nbedge, (seam_tab.ntp * (unsigned)sizeof(NdTp) + seam_tab.nlist * (unsigned)sizeof(NdSeamList) + 1023u) >> 10, us,
+        from_file ? "file" : "build");
     return &seam_tab;
 }
 __attribute__((cold, noinline)) static void seam_reset(void) { nd_seam_free(&seam_tab); seam_gen = 0; seam_ok = 0; }

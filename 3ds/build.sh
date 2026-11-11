@@ -65,14 +65,14 @@ gen_shapes() {
     rd=$(cd "$ASSET_BASE/ver/us" && pwd -W 2>/dev/null || pwd)
     # Skip: the stamp holds the hash of the converter source, the ROM size and the file count of the last run.
     stamp=$OUT/romfs/shape/.stamp
-    want="$(git hash-object 3ds/tools/nd_shape_conv.c) $(git hash-object 3ds/include/nd_op.h) $(wc -c < "$rom" | tr -d ' ')"
+    want="$(git hash-object 3ds/tools/nd_shape_conv.c) $(git hash-object 3ds/include/nd_op.h) $(git hash-object 3ds/src/nd_seam.c) $(git hash-object 3ds/include/nd.h) $(wc -c < "$rom" | tr -d ' ')"
     if [ -f "$stamp" ] && [ "$(cat "$stamp")" = "$want $(ls "$OUT/romfs/shape"/*.nds 2>/dev/null | wc -l | tr -d ' ')" ]; then
         echo "gen_shapes: up to date"; return 0
     fi
     mkdir -p "$OUT/romfs/shape"
     rm -f "$stamp"
     MSYS_NO_PATHCONV=1 docker run --rm -v "$w:/w:ro" -v "$od:/out" -v "$rd/baserom.z64:/ar/ver/us/baserom.z64:ro" -w /tmp pm3ds-host:1 sh -c \
-        'gcc -m32 -O2 -Wall -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I /w/include -I /w/3ds/include -I /w/3ds/stub_include -o /tmp/nd_shape_conv /w/3ds/tools/nd_shape_conv.c && /tmp/nd_shape_conv /ar /out' || { echo "gen_shapes failed" >&2; exit 1; }
+        'gcc -m32 -O2 -Wall -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I /w/include -I /w/3ds/include -I /w/3ds/stub_include -o /tmp/nd_shape_conv /w/3ds/tools/nd_shape_conv.c /w/3ds/src/nd_seam.c && /tmp/nd_shape_conv /ar /out' || { echo "gen_shapes failed" >&2; exit 1; }
     echo "$want $(ls "$OUT/romfs/shape"/*.nds 2>/dev/null | wc -l | tr -d ' ')" > "$stamp"
 }
 gen_shapes

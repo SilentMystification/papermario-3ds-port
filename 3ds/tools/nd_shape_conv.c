@@ -19,6 +19,7 @@
 #include "ultra64.h"
 #include "gbi_custom.h"
 #include "nd_op.h"
+#include "nd.h"
 
 #define SHAPE_BASE 0x80210000u
 #define ASSET_TABLE 0x1E40020u
@@ -50,6 +51,11 @@ static void w32(u8* p, u32 v) {
     p[1] = (u8)((v >> 8) & 0xff);
     p[2] = (u8)((v >> 16) & 0xff);
     p[3] = (u8)((v >> 24) & 0xff);
+}
+
+/* Native (little endian) word read: the pointer fields of s->buf hold shape offsets (w32). */
+static u32 le32(const u8* p) {
+    return (u32)p[0] | ((u32)p[1] << 8) | ((u32)p[2] << 16) | ((u32)p[3] << 24);
 }
 
 static void add_reloc(ShapeFix* s, u32 field_off) {
@@ -402,6 +408,54 @@ static u8* read_file(const char* path, u32* len) {
     return b;
 }
 
+/* SEAMHOST: the T-point table of this shape, built here on the host by nd_seam_build (the same code the console ran at each
+ * map load). Written as <dir>/<name>.seam: "NDSM", version u32 = 1, shape size u32 (the key against its .nds), r u32 (the
+ * nd_seam_build result, 0 ok), nlist u32, ntp u32, the 12 NdSeamTab stats in struct order, list[nlist] (NdSeamList, addr as the
+ * offset in the shape file), tp[ntp] (NdTp). Little endian: the struct records are copied as the device lays them out. */
+_Static_assert(sizeof(NdSeamList) == 24 && sizeof(NdTp) == 10, "NdSeamList or NdTp layout changed");
+static void write_seam(const ShapeFix* s, const char* dir, const char* name) {
+    u8* tmp;
+    NdSeamTab t;
+    u32 base, k, stat[12];
+    u8 hdr[4 + 5 * 4 + 12 * 4];
+    int r;
+    FILE* f;
+    char out[4096];
+    tmp = malloc(s->size);
+    if (!tmp) die("out of memory (seam copy)", NULL);
+    memcpy(tmp, s->buf, s->size);
+    base = (u32)(uintptr_t)tmp;
+    for (k = 0; k < s->n_reloc; k++) { /* the device loader adds its shape base to every reloc field */
+        u8* field = tmp + s->reloc[k];
+        w32(field, le32(field) + base);
+    }
+    memset(&t, 0, sizeof t);
+    r = nd_seam_build(&t, tmp, s->size);
+    stat[0] = t.tp_all; stat[1] = t.tp_id; stat[2] = t.tp_int; stat[3] = t.tp_mtx; stat[4] = t.skip_ref;
+    stat[5] = t.ntri; stat[6] = t.nvert; stat[7] = t.nbedge; stat[8] = t.nl_cls[0]; stat[9] = t.nl_cls[1];
+    stat[10] = t.nl_cls[2]; stat[11] = t.far;
+    memcpy(hdr, "NDSM", 4);
+    w32(hdr + 4, 1);
+    w32(hdr + 8, s->size);
+    w32(hdr + 12, (u32)r);
+    w32(hdr + 16, t.nlist);
+    w32(hdr + 20, t.ntp);
+    for (k = 0; k < 12; k++) w32(hdr + 24 + k * 4, stat[k]);
+    snprintf(out, sizeof out, "%s/%s.seam", dir, name);
+    f = fopen(out, "wb");
+    if (!f) die("cannot write ", out);
+    fwrite(hdr, 1, sizeof hdr, f);
+    for (k = 0; k < t.nlist; k++) {
+        NdSeamList e = t.list[k];
+        e.addr -= base;
+        fwrite(&e, sizeof e, 1, f);
+    }
+    if (t.ntp) fwrite(t.tp, sizeof(NdTp), t.ntp, f);
+    fclose(f);
+    nd_seam_free(&t);
+    free(tmp);
+}
+
 static int ends_with_shape(const char* name) {
     size_t n = 0;
     while (n < 16 && name[n]) n++;
@@ -452,6 +506,7 @@ int main(int argc, char** argv) {
             free(rb);
         }
         fclose(f);
+        write_seam(&s, argv[2], name);
         maps++;
         total_bytes += s.size;
         total_reloc += s.n_reloc;
