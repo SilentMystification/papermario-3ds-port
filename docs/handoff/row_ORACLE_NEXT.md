@@ -177,6 +177,9 @@ pm_gpu.c dp_frame+sprite.c+nd_shape.c+nd_ent.c: disjoint). HC cut rows after HCM
 | HC rows for gbi | DO AFTER HCM3 (M3 per class and calls) |
 | effects above 1 ms (spiky_white_aura, water_block, energy_shockwave) | DO AFTER the fxtest re-run with FILLA0 and PBATCH2 merged |
 
+- Lesson (for plan_hotcode.md notes): a GPU fill or pipeline-state change needs a console measure before it merges; the Azahar byte
+  compare proves the picture only (FILLA0: byte-equal on Azahar, +3 to +17 ms per effect on the XL; reverted by FILLA0R).
+
 ## Morning list (rows to write next, by the oracle)
 1. Class cuts after HC6B: read M1-hot per class (bench hotset_size on main after the HC6B merge) and the M3 census (hotset.py --fncov on
    fncov_mac01_det/kmr10_det logs of the HC6B lane); cut rare arms of the top functions per class as HCCUT2 did (byte-equal, cold
