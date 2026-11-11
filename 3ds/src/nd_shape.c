@@ -615,21 +615,30 @@ static __attribute__((cold, noinline)) void dlc_wz_note(const DlcGrp* g, const f
     if (culled) c_++;
     if (wmin < wmin_) wmin_ = wmin;
 }
+/* HC8 step 5: the build of a list entry (first use of the list in this map generation) and the fallback arm of a group are cold. */
+static void __attribute__((noinline, cold)) dlc_try_slow(DlcEnt* e, const Gfx* l) {
+    dlc_free(e);
+    e->gen = pm_dlc_gen; e->refused = 0;
+    unsigned xt0 = pm_xf.on ? pm_ticks() : 0u;
+    int r = dlc_build(e, l, nd_mtx_static);
+    if (pm_xf.on) { pm_xf.dlc_n++; pm_xf.dlc_t += pm_ticks() - xt0; } /* MAPX-1 */
+    e->hash = dlc_hash(l);
+    dlc_c.compile++;
+    if (r) { e->refused = (u8)r; dlc_c.refused[r < DLR_N ? r : DLR_LONG]++; }
+}
+static void __attribute__((noinline, cold)) dlc_group_slow(const Gfx* l, const DlcGrp* g, int why) {
+    if (why == 2) dlc_c.i_lit++; else if (why == 3) dlc_c.i_ring++; else if (why == 4) dlc_c.i_mat++;
+    dlc_depth++;
+    nd_ops_run(l + g->op0, g->op1 - g->op0, 0); /* D10b: a flat range on the op executor */
+    dlc_depth--;
+}
 int dlc_try(const Gfx* l) {
     if ((u32)l - (u32)gMapShapeData >= 0x40000u || ((u32)l & 7)) return 0;
     if (dlc_seen_gen != pm_dlc_gen) { dlc_reset(); dlc_seen_gen = pm_dlc_gen; }
     DlcEnt* e = dlc_find(l);
     if (!e) return 0;
-    if (e->gen != pm_dlc_gen) {
-        dlc_free(e);
-        e->gen = pm_dlc_gen; e->refused = 0;
-        unsigned xt0 = pm_xf.on ? pm_ticks() : 0u;
-        int r = dlc_build(e, l, nd_mtx_static);
-        if (pm_xf.on) { pm_xf.dlc_n++; pm_xf.dlc_t += pm_ticks() - xt0; } /* MAPX-1 */
-        e->hash = dlc_hash(l);
-        dlc_c.compile++;
-        if (r) { e->refused = (u8)r; dlc_c.refused[r < DLR_N ? r : DLR_LONG]++; }
-    } else { dlc_c.hit++; }
+    if (e->gen != pm_dlc_gen) dlc_try_slow(e, l);
+    else dlc_c.hit++;
     if (e->refused) return 0;
     const float(*m)[4] = combined;
     u32 entry = nd_ws.geom;
@@ -677,13 +686,7 @@ int dlc_try(const Gfx* l) {
             continue;
         }
         if (!why && lit) why = 2; /* the static group was not taken */
-        if (why) {
-            if (why == 2) dlc_c.i_lit++; else if (why == 3) dlc_c.i_ring++; else if (why == 4) dlc_c.i_mat++;
-            dlc_depth++;
-            nd_ops_run(l + g->op0, g->op1 - g->op0, 0); /* D10b: a flat range on the op executor */
-            dlc_depth--;
-            continue;
-        }
+        if (why) { dlc_group_slow(l, g, why); continue; }
         dlc_c.replay++; dlc_c.tri += g->ntri;
         dlc_run_group(l, g, gmi);
     }
