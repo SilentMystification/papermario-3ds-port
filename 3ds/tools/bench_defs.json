@@ -7725,6 +7725,54 @@
           "gates": []
     },
     {
+      "name": "napicen_mac01",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "NAPI0 census: typed ops per recording caller (switch napicen), frames 600 to 799. Read with napicen.py.",
+      "scenario": "napicen_mac01",
+      "cap": 45,
+      "until": "napicen f(6|7)\\d\\d done",
+      "tags": [
+        "azahar",
+        "napi",
+        "census"
+      ],
+      "gates": []
+    },
+    {
+      "name": "napicen_talk",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "NAPI0 census: typed ops per recording caller (switch napicen), frames 600 to 799. Read with napicen.py.",
+      "scenario": "napicen_talk",
+      "cap": 45,
+      "until": "napicen f(6|7)\\d\\d done",
+      "tags": [
+        "azahar",
+        "napi",
+        "census"
+      ],
+      "gates": []
+    },
+    {
+      "name": "napicen_btl",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "NAPI0 census: typed ops per recording caller (switch napicen), frames 600 to 799. Read with napicen.py.",
+      "scenario": "napicen_btl",
+      "cap": 45,
+      "until": "napicen f(6|7)\\d\\d done",
+      "tags": [
+        "azahar",
+        "napi",
+        "census"
+      ],
+      "gates": []
+    },
+    {
           "name": "dpcen_mac01",
           "kind": "azahar_stream",
           "speed": "normal",

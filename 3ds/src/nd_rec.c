@@ -344,8 +344,38 @@ static __attribute__((cold, noinline)) void tr_bad(uint32_t w0) {
     pm_log_e("ndc: texture rectangle word %u followed by %08x", tr_n, (unsigned)w0);
     pm_fatal_stop("ndc: broken texture rectangle");
 }
+/* NAPI0 census (switch napicen): recorded typed ops per caller (ra) since the last 300 frame line */
+typedef struct { uint32_t ra, n; } napi_e_t;
+static napi_e_t* napi_tab;
+static unsigned napi_next = 300u;
+static __attribute__((cold, noinline)) void napi_dump(unsigned f) {
+    unsigned total = 0;
+    for (unsigned i = 0; i < 512u; i++) total += napi_tab[i].n;
+    for (unsigned r = 0; r < 40u; r++) {
+        unsigned b = 512u, bn = 0;
+        for (unsigned i = 0; i < 512u; i++) if (napi_tab[i].n > bn) { bn = napi_tab[i].n; b = i; }
+        if (b == 512u) break;
+        pm_log("napicen f%u ra %08x n %u", f, (unsigned)napi_tab[b].ra, bn / 300u);
+        napi_tab[b].n = 0;
+    }
+    pm_log_evt("napicen f%u done total %u", f, total / 300u);
+    memset(napi_tab, 0, 512u * sizeof(napi_e_t));
+}
+static __attribute__((cold, noinline)) void napi_note(uintptr_t ra) {
+    if (!napi_tab) napi_tab = (napi_e_t*)calloc(512u, sizeof(napi_e_t));
+    if (!napi_tab) return;
+    const unsigned f = pm_frame_count();
+    if (f >= napi_next) { napi_next += 300u; napi_dump(f); }
+    const uint32_t k = (uint32_t)ra;
+    unsigned i = (k >> 2) & 511u;
+    for (unsigned p = 0; p < 512u; p++, i = (i + 1u) & 511u) {
+        if (napi_tab[i].ra == k) { napi_tab[i].n++; return; }
+        if (napi_tab[i].ra == 0u) { napi_tab[i].ra = k; napi_tab[i].n = 1u; return; }
+    }
+}
 void nd_gx_w(Gfx* g, uint32_t w0, uint32_t w1) {
     if (g != gMainGfxPos - 1) { g->words.w0 = w0; g->words.w1 = w1; return; }
+    if (__builtin_expect(PMDL("napicen"), 0)) napi_note((uintptr_t)__builtin_return_address(0));
     const unsigned op = w0 >> 24;
     if (op == NDO_CALL && (w0 & 1u)) { g->words.w0 = w0; g->words.w1 = w1; return; } /* a branch: a unit of the list */
     gMainGfxPos = g;

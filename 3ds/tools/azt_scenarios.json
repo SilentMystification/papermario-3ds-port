@@ -13785,6 +13785,78 @@
           "reason": "KZN04 diagnostic: count shaded texture loads per frame and misses in kzn_04. Premise: N/300 >= 3 and M/N >= 0.9. Azahar gives counts only; the console decides the cost."
     },
     {
+      "name": "napicen_mac01",
+      "status": "unverified",
+      "subject": "NAPI0 census on mac_01: typed ops per producer, 300-frame windows (napicen switch). Mario at pos 0 0 200, no input.",
+      "proves": "NAPI0 census: the napicen lines (ops per frame per recording caller, top 40, and the done total) of frames 600 to 799 of the run. Counts only; no picture gate.",
+      "debug": "warp=mac_01:0 pos=0:0:200 napicen loglevel=debug",
+      "until": "napicen f(6|7)\\d\\d done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "napicen",
+          "regex": "napicen f[0-9]+ done total [0-9]+"
+        }
+      ],
+      "reason": "NAPI0 census (row NAPI0): counts of typed ops per recording caller for the native draw API order. Azahar counts only; napicen.py maps the callers to the object files."
+    },
+    {
+      "name": "napicen_talk",
+      "status": "unverified",
+      "subject": "NAPI0 census in the Yard talk route (msgbox_talk_nowide route): typed ops per producer with the messages open.",
+      "proves": "NAPI0 census: the napicen lines (ops per frame per recording caller, top 40, and the done total) of frames 600 to 799 of the run. Counts only; no picture gate.",
+      "debug": "preset=yard nowide uishow=talk napicen loglevel=debug",
+      "until": "napicen f(6|7)\\d\\d done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "napicen",
+          "regex": "napicen f[0-9]+ done total [0-9]+"
+        }
+      ],
+      "reason": "NAPI0 census (row NAPI0): counts of typed ops per recording caller for the native draw API order. Azahar counts only; napicen.py maps the callers to the object files."
+    },
+    {
+      "name": "napicen_btl",
+      "status": "unverified",
+      "subject": "NAPI0 census in the battle route (battle_start route): typed ops per producer in battle.",
+      "proves": "NAPI0 census: the napicen lines (ops per frame per recording caller, top 40, and the done total) of frames 600 to 799 of the run. Counts only; no picture gate.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 napicen loglevel=debug",
+      "until": "napicen f(6|7)\\d\\d done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "napicen",
+          "regex": "napicen f[0-9]+ done total [0-9]+"
+        }
+      ],
+      "reason": "NAPI0 census (row NAPI0): counts of typed ops per recording caller for the native draw API order. Azahar counts only; napicen.py maps the callers to the object files."
+    },
+    {
           "name": "dpcen_mac01",
           "status": "unverified",
           "subject": "DPCEN1: Toad Town mac_01, Mario at pos 0 0 200 (warp entry 0), no input. The dpcen census line of frames 600 to 799.",
