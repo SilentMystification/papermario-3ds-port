@@ -1037,6 +1037,22 @@
       "gates": []
     },
     {
+      "name": "spot_mac01_fps60_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "SYNC60 byte gate: Toad Town mac_01 with fps60 (pm_interp_on) and det, shots 200 to 205, byte-equal to the base build of the same bench.",
+      "scenario": "spot_mac01_fps60_det",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "pic",
+        "spot"
+      ],
+      "gates": []
+    },
+    {
       "name": "yard_hud_pic",
       "kind": "azahar_pic",
       "speed": "normal",
