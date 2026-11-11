@@ -26,9 +26,10 @@ A replacement oracle starts here: read CLAUDE.md, orchestrator_rules.md, plan_ho
    sync_render orbdbg block (nd_set.c:233-243), gv_matrix_id first-use malloc (nd_mtx_set.c:55-60).
 2. HC9 rest: NdNatC 64 B hot head, NdShadow compares by generation ids, mc_keyw/mc_tab probes in one line: all in HC6B files
    (nd_model.c, nd_emit.c): write after HC6B merges. NdWs tile tables native: needs a design read of nd_ws.tst1 users.
-3. KEYMISS (user yes, 2026-11-11): rows KEYMISS (census, pm_keymiss.c), KEYFIX1 (w5 finalMtx class, w17 billboard presence, use5
-   hit only on a saved matrix), KEYFIX2 (w23 post list; waits on KEYFIX1 and a census count of word 23). Members left for rows after
-   the census numbers (each needs an oracle design read first): w8/w11 fog colour and position (shroud lerp model.c:2071-2083, depth
+3. KEYMISS (user yes, 2026-11-11): KEYMISS and KEYFIX1 merged; KEYFIX2 deleted (no word 23 count). Census f600: mac_01 and sbk_56
+   miss 0; kzn_08 6246 misses / 300 frames carried by w12 (prim) and w18-21 (main panner); hos_01 1439 by w20/21 (aux panner). The
+   census counts every full-key word: words 33-91 except 53/54 (36 prim, 37, 49, 57+ gvkey, 68-75) are not compared by the cache
+   (key B = 28-32, 53, 54) and do not cause misses. Next: design reads for w12 and w18-21 (not Haiku-ready yet). Members: w8/w11 fog colour and position (shroud lerp model.c:2071-2083, depth
    tint :1577: zmix and the F08 mix in the var uniform, not patched by blk_put pm_gpu.c:1102), w12/w13 prim/env (TEV stage constants
    and plan constants, nd_tmpl.c:184-276; blk_put patches col[] only from the stored draw), w18-w21 panner tile sizes (uvso in the var
    uniform, nd_model.c:42-44; the tile 0 window and WATER B1 invariant: tex_win0 nd_tex_set.c:202 reads uls/ult), w22 pre list (never
