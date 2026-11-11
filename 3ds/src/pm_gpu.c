@@ -145,7 +145,7 @@ static void rd_sync(void); /* RECT-1b diag: parse the GPUCMD words since the las
 static unsigned post_gen = 1;
 static unsigned* rgen;          /* per ring vertex: the palette generation in which its flag was set (0 = never) */
 static unsigned char* rk;       /* per ring vertex: the flag value */
-static C3D_Mtx pcomp[257];      /* palette entry per game matrix index: post x game */
+static C3D_Mtx pcomp[PM_GM_N + 1u];      /* palette entry per game matrix index: post x game */
 static const float (*pal_tab)[4][4];
 static unsigned gv_recopy_n, gv_palup_n, gv_palmax, gv_palflush;
 static C3D_Mtx gv_post;
@@ -3775,7 +3775,7 @@ void pm_gpu_flush(void) { flush(); }
 
 /* SPR4-3: shaded sprites (nd_int.h is not included here; the former pm_gbi.c, nd_tex.c and nd_geom.c own these) */
 extern int dual_on; void ensure_tile(int n); void dual_bind(void); int dual_boost_on(void);
-static unsigned spr_nat_n, spr_nat_fb[16];
+static unsigned spr_nat_n, spr_nat_fb[32];
 static unsigned spr5_sub[8]; /* MDL-3a: class 5 refusals per flag: 1 no pm4 palette path (g_pal, g_use5, gv4_on), 2 off-screen target, 3 grab, 4 zmark, 5 nozt */
 static unsigned spc_texget, spc_miss, spc_rh0[2]; /* PERF2: full texture lookups of sprites and the dirty-slot rehash totals at the last sprcost line */
 /* PERF2 step 5: the sprite texture memo. Key: raster, palette, width and height of the record; value: the block id (valid in its nd_tex_gen) and the slot hint
@@ -3821,7 +3821,7 @@ int pm_gpu_spr_native(const uint32_t* rec) {
     NdMState st;
     float pal0[16];
     int why = 0;
-    if (!nd_sprite_draw(rec, 1, &n, &st, pal0, &why)) { spr_nat_fb[why & 15]++; return 0; }
+    if (!nd_sprite_draw(rec, 1, &n, &st, pal0, &why)) { spr_nat_fb[why & 31]++; return 0; }
     spr_nat_n++;
     return 1;
 }

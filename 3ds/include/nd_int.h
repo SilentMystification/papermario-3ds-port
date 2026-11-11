@@ -220,7 +220,7 @@ extern float vp_sx, vp_sy, vp_sz, vp_tx, vp_ty, vp_tz;
 extern unsigned gm_last, gm_steps, gm_n;
 extern float (*gm_tab)[4][4];
 extern float (*gm_nrm)[3][4];
-extern unsigned short gm_idx[512];
+extern unsigned short gm_idx[]; /* HUDGM: 2 * PM_GM_N entries (pm_gpu.h, nd_mtx_set.c:45) */
 extern float mtx_cache[256][16];
 extern u32 mtx_tag[256];
 void upload_mvp(void);

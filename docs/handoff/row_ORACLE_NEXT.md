@@ -4,7 +4,8 @@ A replacement oracle starts here: read CLAUDE.md, orchestrator_rules.md, plan_ho
 
 ## Rows (state at writing)
 - Running (6 coders): HC6B (Opus), WALLSHADE, UB1, HCCUT2 (step after the first try written in its row), HC9B, CRASHEXIT.
-- Ready, in order when a slot frees: HUDGM, HUDRING (battle wheel circles; disjoint files), SPARKLE (Sonnet, user approved).
+- Ready (refill 2026-11-11 night): M3CEN (census, no source edit), HCCUT3 (pm_gpu_gtrip edge copy, nd_set.c sync_render orbdbg).
+- Merged tonight: WALLSHADE, CRASHEXIT, HC9B, SPARKLE, UB1. Running: HC6B, HUDGM, HUDRING, HCCUT2.
 - Waiting: KEYMISS (after HC6B), BATUI (deleted when HUDGM and HUDRING merge and the user's wheel check passes), PAUSEDR and AUDDROP
   (3-line notes: console data), STEREOFX (crash.txt), COLDBOOT (the XL cold-boot log).
 
@@ -15,6 +16,7 @@ A replacement oracle starts here: read CLAUDE.md, orchestrator_rules.md, plan_ho
 2. PAUSEDR: is the pause menu still laggy, and does the top screen still not go grey? (a prof push in the pause gives the values).
 3. AUDDROP: are sounds still missing? (a push with audiostat in normal play gives the counts).
 4. BATUI wide layout: should the battle wheel touch the left screen edge in Wide mode (now 54 px from it, the 4:3 distance)? A look change.
+6. KEYMISS: start the Opus audit (census of per-frame key values, then fixes M1/M2/M4) after HC6B merges? (Opus needs a user yes.)
 5. STEREOFX: the ESCAPE crash.txt from the XL (3D slider hang). COLDBOOT: the XL cold-boot log.
 
 ## Morning list (rows to write next, by the oracle)
