@@ -13,6 +13,7 @@
 #include <string.h>
 #include "nd.h"
 #include "nd_ops.h"
+#include "nd_op.h"
 
 #define SEAM_MAXL 1024u
 #define SEAM_FAR 8192
@@ -329,10 +330,11 @@ static void list_decode(SWalk* w, uint32_t addr, const SXf* x, int depth) {
         const uint8_t* p = at(w, addr + 8u * i, 8);
         if (!p) { ok = 0; break; }
         uint32_t w0 = rd32(p), w1 = rd32(p + 4);
+        { uint32_t t[2]; nd_op_unit(w0, w1, t); w0 = t[0]; w1 = t[1]; } /* HC4f3: a typed shape list or a raw one */
         unsigned op = w0 >> 24;
-        if (op == OP_ENDDL) break;
+        if (op == NDO_END) break;
         switch (op) {
-        case OP_VTX: {
+        case NDO_VTX: {
             unsigned n = (w0 >> 12) & 0xFF, v0n = (w0 >> 1) & 0x7F, v0 = v0n >= n ? v0n - n : 0;
             const uint8_t* src = n ? at(w, w1, 16u * n) : NULL;
             if (!src || n > 64 || v0 >= 64) { ok = 0; goto done; }
@@ -351,8 +353,8 @@ static void list_decode(SWalk* w, uint32_t addr, const SXf* x, int depth) {
             }
             break;
         }
-        case OP_TRI1: case OP_TRI2:
-            for (int t = 0; t < (op == OP_TRI2 ? 2 : 1); t++) {
+        case NDO_TRI1: case NDO_TRI2:
+            for (int t = 0; t < (op == NDO_TRI2 ? 2 : 1); t++) {
                 uint32_t ww = t ? w1 : w0;
                 unsigned ix[3] = { ((ww >> 16) & 0xFF) / 2, ((ww >> 8) & 0xFF) / 2, (ww & 0xFF) / 2 };
                 unsigned o = ord++;
@@ -365,12 +367,15 @@ static void list_decode(SWalk* w, uint32_t addr, const SXf* x, int depth) {
                 }
             }
             break;
-        case OP_DL:
+        case NDO_CALL:
             ok = 0; /* nd_dlc_compile refuses OP_DL: the list runs on the interpreter, its sub list compiles on its own */
             list_add(w, w1, x, depth + 1);
-            if ((w0 >> 16) & 1u) goto done; /* branch: no return */
+            if (w0 & 1u) goto done; /* branch: no return (HC4f3: NDO_CALL a = 1 for the branch form) */
             break;
-        case OP_GEOMETRYMODE: case OP_NOOP: case OP_FULLSYNC: case OP_TILESYNC: case OP_PIPESYNC: case OP_LOADSYNC:
+        case NDO_GEOM: case OP_NOOP: case OP_FULLSYNC: case OP_TILESYNC: case OP_PIPESYNC: case OP_LOADSYNC:
+            break;
+        case NDO_MISC: /* HC4f3: the typed no-op (ND_NOP_A) and the typed syncs are no-ops; the other misc ops refuse */
+            if ((w0 & 0xFFFFFFu) != (NDO_MISC_NOP << 16)) ok = 0;
             break;
         default:
             ok = 0;

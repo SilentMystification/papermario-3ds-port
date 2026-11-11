@@ -361,6 +361,7 @@ void nd_walk_state(const uint32_t* q, unsigned n) {
     for (const uint32_t* e = q + 2u * n; q < e; q += 2) {
         const uint32_t* u = q;
         unsigned id = q[0] >> 24;
+        if (q[0] == ND_NOP_A) continue; /* HC4f3: a typed sync or no-op, skipped as a raw sync: no op_ctl, no gv_epoch */
         uint32_t t[2];
         if (!nd_op_typed(id)) {
             if (nd_op_sync(id)) continue;

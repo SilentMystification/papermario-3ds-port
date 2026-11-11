@@ -52,7 +52,7 @@ static void swap_u32s(void* p, int n) {
     }
 }
 
-/* HC4f2: the shape loader. romfs:/shape/<name>.nds is written by nd_shape_conv.c (HC4f1): "NDSH", version u32 = 1,
+/* HC4f2: the shape loader. romfs:/shape/<name>.nds is written by nd_shape_conv.c (HC4f1): "NDSH", version u32 = 2,
  * size u32, n_reloc u32, reloc[n_reloc] u32 (offsets into data), data[size]. Pointer fields hold shape offsets, so the
  * loader copies data into buf and adds buf to every reloc field. Returns 0 when the file is missing or does not fit buf. */
 static int shape_load_romfs(u8* buf, u32 size, const char* name) {
@@ -64,6 +64,7 @@ static int shape_load_romfs(u8* buf, u32 size, const char* name) {
     f = fopen(path, "rb");
     if (!f) return 0;
     if (fread(hdr, 1, 16, f) != 16 || memcmp(hdr, "NDSH", 4) != 0) goto bad;
+    if (hdr[4] != 2 || hdr[5] || hdr[6] || hdr[7]) goto bad; /* HC4f3: version 2, typed list words */
     dsize = (u32)hdr[8] | ((u32)hdr[9] << 8) | ((u32)hdr[10] << 16) | ((u32)hdr[11] << 24);
     n_reloc = (u32)hdr[12] | ((u32)hdr[13] << 8) | ((u32)hdr[14] << 16) | ((u32)hdr[15] << 24);
     if (dsize != size) goto bad;

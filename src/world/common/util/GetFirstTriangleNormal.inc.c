@@ -1,5 +1,19 @@
 #include "common.h"
 
+#ifdef TARGET_3DS /* HC4f3: the map list words are typed (nd_op.h); the names are the typed ids */
+#define GFTN_END NDO_END
+#define GFTN_DL NDO_CALL
+#define GFTN_VTX NDO_VTX
+#define GFTN_TRI1 NDO_TRI1
+#define GFTN_TRI2 NDO_TRI2
+#else
+#define GFTN_END G_ENDDL
+#define GFTN_DL G_DL
+#define GFTN_VTX G_VTX
+#define GFTN_TRI1 G_TRI1
+#define GFTN_TRI2 G_TRI2
+#endif
+
 static Vtx_t* N(TriNormVertexBuffer)[32]; // unk length
 
 enum {
@@ -30,18 +44,23 @@ void N(GetFirstTriangleNormal)(Gfx* inGfx, f32* outNx, f32* outNy, f32* outNz) {
     v3x = v3y = v3z = 0.0f;
 
     while (true) {
+#ifdef TARGET_3DS
+        uint32_t t[2]; nd_op_unit(gfx->words.w0, gfx->words.w1, t); /* HC4f3: the typed unit */
+        u32 w0 = t[0]; u32 w1 = t[1];
+#else
         u32 w0 = gfx->words.w0;
         u32 w1 = gfx->words.w1;
+#endif
         s32 op = w0 >> 24;
         readState = READ_STATE_CONTINUE;
         switch (op) {
-            case G_ENDDL:
+            case GFTN_END:
                 readState = READ_STATE_DONE;
                 break;
-            case G_DL:
+            case GFTN_DL:
                 N(GetFirstTriangleNormal)((Gfx* ) w1, outNx, outNy, outNz);
                 break;
-            case G_VTX:
+            case GFTN_VTX:
                 vtxCount = (w0 >> 0xC) & 0xFF;
                 vtxArray = (Vtx_t*) w1;
                 for (i = 0; i < vtxCount; i++) {
@@ -49,7 +68,7 @@ void N(GetFirstTriangleNormal)(Gfx* inGfx, f32* outNx, f32* outNy, f32* outNz) {
                     N(TriNormVertexBuffer)[(vtxEnd - vtxCount) + i] = &(vtxArray)[i];
                 }
                 break;
-            case G_TRI1:
+            case GFTN_TRI1:
                 v1x = N(TriNormVertexBuffer)[((w1 >> 16) & 0xFF) / 2]->ob[0];
                 v1y = N(TriNormVertexBuffer)[((w1 >> 16) & 0xFF) / 2]->ob[1];
                 v1z = N(TriNormVertexBuffer)[((w1 >> 16) & 0xFF) / 2]->ob[2];
@@ -61,7 +80,7 @@ void N(GetFirstTriangleNormal)(Gfx* inGfx, f32* outNx, f32* outNy, f32* outNz) {
                 v3z = N(TriNormVertexBuffer)[(w1 & 0xFF) / 2]->ob[2];
                 readState = READ_STATE_TRIANGLE;
                 break;
-            case G_TRI2:
+            case GFTN_TRI2:
                 v1x = N(TriNormVertexBuffer)[((w0 >> 16) & 0xFF) / 2]->ob[0];
                 v1y = N(TriNormVertexBuffer)[((w0 >> 16) & 0xFF) / 2]->ob[1];
                 v1z = N(TriNormVertexBuffer)[((w0 >> 16) & 0xFF) / 2]->ob[2];

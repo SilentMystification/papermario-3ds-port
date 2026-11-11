@@ -14,13 +14,15 @@
 #include <stdint.h>
 #include <string.h>
 #include "nd.h"
+#include "ultra64.h"
+#include "gbi_custom.h"
+#include "nd_op.h"
 
 /* pm_interp.c stubs (nd_mtx.c links them): no replacement table */
 int pm_interp_repl;
 const float (*pm_interp_find(const void* m))[4] { (void)m; return 0; }
 
 #define SHAPE_BASE 0x80210000u
-#define G_VTX 0x01u
 #define POS_MAX 65536u
 
 typedef struct { int16_t x, y, z; } Pos;
@@ -123,7 +125,7 @@ static void fx_gfx(Fix* s, uint8_t* dl) {
                 w1 = (uint32_t)(uintptr_t)tg;
             }
         }
-        fx_w32(dl, w0); fx_w32(dl + 4, w1);
+        fx_w32(dl, ND_X0(w0, w1)); fx_w32(dl + 4, ND_X1(w0, w1)); /* HC4f3: typed as nd_shape_conv writes it */
         dl += 8;
         if (op == 0xDF) return;
         if (op == 0xDE) { uint8_t* nx = (uint8_t*)(uintptr_t)w1; if (nx >= s->buf && nx < s->buf + s->size) fx_gfx(s, nx); }
@@ -202,7 +204,7 @@ static int compile_soup(const NdSeamTab* t, NdSeamTab* out, int use_tp) {
         if (!L->ok) continue;
         const uint8_t* p = (const uint8_t*)(uintptr_t)L->addr;
         unsigned i;
-        for (i = 0; i < ND_DLC_MAXOPS; i++) { memcpy(&lw[2 * i], p + 8 * i, 8); if ((lw[2 * i] >> 24) == 0xDF) break; }
+        for (i = 0; i < ND_DLC_MAXOPS; i++) { memcpy(&lw[2 * i], p + 8 * i, 8); if ((lw[2 * i] >> 24) == 0xDF || (lw[2 * i] >> 24) == NDO_END) break; }
         NdDlcEnv env; memset(&env, 0, sizeof env); env.vtx = c_vtx;
         if (use_tp && L->cnt) { env.tp = t->tp + L->first; env.ntp = L->cnt; }
         NdObj o;
@@ -259,13 +261,14 @@ static void tedges(const NdSeamTab* t, const float o[16]) {
         const uint8_t* p = (const uint8_t*)(uintptr_t)L->addr;
         for (unsigned i = 0; i < ND_DLC_MAXOPS && e < end; i++) {
             uint32_t w0, w1; memcpy(&w0, p + 8 * i, 4); memcpy(&w1, p + 8 * i + 4, 4);
+            { uint32_t t[2]; nd_op_unit(w0, w1, t); w0 = t[0]; w1 = t[1]; } /* HC4f3: the typed unit */
             unsigned op = w0 >> 24;
-            if (op == 0xDF) break;
-            if (op == 0x01) {
+            if (op == NDO_END) break;
+            if (op == NDO_VTX) {
                 unsigned n = (w0 >> 12) & 0xFF, v0n = (w0 >> 1) & 0x7F, v0 = v0n >= n ? v0n - n : 0;
                 for (unsigned k = 0; k < n && v0 + k < 64; k++) { const int16_t* s = (const int16_t*)(uintptr_t)(w1 + 16u * k); for (int q = 0; q < 3; q++) pos[v0 + k][q] = s[q] + L->t[q]; }
-            } else if (op == 0x05 || op == 0x06) {
-                for (int tt = 0; tt < (op == 0x06 ? 2 : 1); tt++) {
+            } else if (op == NDO_TRI1 || op == NDO_TRI2) {
+                for (int tt = 0; tt < (op == NDO_TRI2 ? 2 : 1); tt++) {
                     uint32_t ww = tt ? w1 : w0;
                     unsigned ix[3] = { ((ww >> 16) & 0xFF) / 2, ((ww >> 8) & 0xFF) / 2, (ww & 0xFF) / 2 };
                     while (e < end && t->tp[e].tri == ord) {
