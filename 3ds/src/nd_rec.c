@@ -13,6 +13,7 @@
 #include "nd_cmd.h"
 #include "nd_op.h"
 #include "gbi_custom.h"
+#include "nd_api.h"
 
 extern s32 gCurrentDisplayContextIndex;
 void nd_walk_rec_model(const Gfx* q);           /* nd_walk.c: a model record, as the walker's G_PM_REC arm */
@@ -258,6 +259,20 @@ void nd_rec_texrect(uint32_t w0, uint32_t w1, uint32_t hs, uint32_t hd) {
     p[3] = w1;
     p[4] = hs;
     p[5] = hd;
+}
+/* NATIVEAPI: a native draw record (nd_api.h). units 1 to 255. */
+static __attribute__((cold, noinline)) void napi_bad(unsigned units) {
+    pm_log_e("ndc: native draw record of %u units (1 to 255)", units);
+    pm_fatal_stop("ndc: bad native draw record");
+}
+void nd_rec_napi(NdNapiRun run, const void* rec, unsigned units) {
+    if (units == 0u || units > 255u) napi_bad(units);
+    rec_open();
+    uint32_t* p = rec_take(2u + 2u * units);
+    ndc_n[NDC_NAPI]++;
+    p[0] = NDC_HDR(NDC_NAPI, units, 0);
+    p[1] = (uint32_t)(uintptr_t)run;
+    memcpy(p + 2, rec, units * 8u);
 }
 /* D4b-3: a state op (HC4a: typed by the recorder) extends the open NDC_STATE run when nothing was recorded after it (no span, no other command) and the chunk has room;
  * else it opens a new run. HC4b: a typed op the shadow drops is not written (t4chk: written after NDO_DROP). */
@@ -510,6 +525,7 @@ static void stream_run(const uint32_t* p, const uint32_t* stop) {
         case NDC_ENT: nd_walk_ent((const Gfx*)(p + 2), (h >> 16) & 0xffu); break;
         case NDC_TEXRECT: nd_texrect_run(p); break;
         case NDC_STATE: nd_walk_state(p + 2, (h >> 16) & 0xffu); break;
+        case NDC_NAPI: ((NdNapiRun)(uintptr_t)p[1])(p + 2); break;
         case NDC_CALL: stream_run((const uint32_t*)(uintptr_t)p[1], (const uint32_t*)(uintptr_t)p[2]); break;
         default: run_bad(h, p); return;
         }
