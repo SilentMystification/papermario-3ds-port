@@ -6,13 +6,13 @@
 What the user did and saw, in the user's words. The fault is fact (CLAUDE.md 1).
 
 ## Cause (oracle code read)
-<file:line and value of each path that causes it; for a format change, every reader and writer of the format.>
+<file:line and value of each path that causes it. For a format change: every reader and writer of the format.>
 
 ## Start
 `sh 3ds/tools/wt_new.sh <id>` (build3ds/wt/<id>, branch <id> from main). PM_ROW=<id> PM_LANE=<id> on every build and bench call.
 
 ## Touch only
-Files: <paths>. Symbols: <symbol> in <file>.
+Files: <paths>. Symbols: <symbol> in <file>. The oracle checks that no other running row edits these files (merge conflicts).
 
 ## Exact edits
 1. <file, function, the edit>
@@ -23,7 +23,7 @@ Files: <paths>. Symbols: <symbol> in <file>.
 - `python 3ds/tools/bench.py cmp <bench> --row <id> --commit <merge-base>` after a run of <bench>: byte-equal (at most 2 scenes).
 
 ## Stop
-A failed gate, an edit that does not fit the code, or a test-tool fault: commit and hand back the exact output (CLAUDE.md 4-5).
+A failed gate, an edit that does not fit the code, or a test-tool fault: commit, then hand back the exact output (CLAUDE.md 4-5).
 
 ## At the end
 Delete this row file in the commit that completes the row. Hand back: the ready hash, the gate results, the memcheck line.

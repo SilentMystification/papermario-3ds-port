@@ -8,7 +8,7 @@ State at 2026-11-10 night, main 86c3de04c or later. No agent runs. Read orchestr
 - build3ds/wt/TOOLB1: merged; its folder may be locked; the next wt_gc sweep removes it.
 
 ## Queue, in order
-1. TOOLB2 (row_TOOLB2.md): shared run ids, battle gate -NoWarm, shot copy at timeout.
+1. TOOLB2 (row_TOOLB2.md): items 1-3 merged (cb5659dad). Open: item 4 (shot copy at timeout) and gate (b), with the oracle.
 2. ESCAPE2 (row_ESCAPE2.md, oracle first): START+SELECT exit faults the system; debug menu choice hbmenu / quit / HOME Menu.
 3. HC4f3, then HC4e4. Then HOTORD (no row yet): PM_FNCOV=1 lane build, fncov_mac01_det/kmr10_det/mac00_det, hot_order.py.
 4. STEREOFX (row_STEREOFX.md): the 3D slider hang on the XL. Evidence: a log-on push, slider on, wait 12 s, START+SELECT, pull
@@ -25,7 +25,7 @@ HC4e3 (all 3 groups), HC4f1, HC4f2, ESCAPE, N64PEEK (tool, parked), AZTSTEREO, B
 
 ## Rules changed on 2026-11-10 (now in CLAUDE.md and orchestrator_rules.md)
 Fault is fact; code read only (no repro, no debug-log, no visual checks); tool faults stop the gate; the oracle writes row files;
-one oracle per session start (others only on a user yes); session prompts at 300K then each 100K; base --fill after each merge; main stays clean.
+one oracle per session start (others only on a user yes); session prompts at 300K then each 100K; base --fill after each merge; main stays clean; rows run in parallel only without merge conflicts; instruction files rewritten in STE (1da69d775).
 
 ## Tooling note
 The scratchpad merge helper of the last session appended runs.jsonl lines but did not commit them. Commit runs.jsonl and

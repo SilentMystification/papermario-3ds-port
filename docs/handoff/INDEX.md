@@ -5,7 +5,8 @@ Live files only. Older logs are in archive/ (agent_*, diag_*, inv_*, plan_*, tra
 
 ## Rules and process
 - ../../CLAUDE.md: shared rules (tests, code, platform).
-- orchestrator_rules.md: orchestrator only. ORCH_RULES.txt, subagent_style.txt, subagent_hook.js: style hooks.
+- orchestrator_rules.md: orchestrator only (roles, rows without merge conflicts, merge steps, console). ORCH_RULES.txt, subagent_style.txt, subagent_hook.js: style hooks.
+- ../../.claude/agents/coder.md, oracle.md: agent definitions.
 - row_TEMPLATE.md: template for the row file each new agent reads first.
 - hw_guidelines.md: 3DS cache and ARM11 rules for all code (3 KB).
 - git_branches.md: tip hash of every branch deleted or kept in the row GIT cleanup (recovery record).
