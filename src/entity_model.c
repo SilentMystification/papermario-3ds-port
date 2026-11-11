@@ -3,7 +3,7 @@
 #ifdef TARGET_3DS
 #include "nd.h" /* S6-2a: nd_dlc_tex_decode (entcheck census) */
 #include "nd_cmd.h" /* DIRECT D3 */
-#include "nd_op.h" /* HC4e2b: the typed unit of a list word (nd_op_xlate) */
+#include "nd_op.h" /* HC4e2b: the typed unit of a list word */
 #endif
 
 EntityModelScript D_8014C260 = {
@@ -263,7 +263,7 @@ static u32 ent_vtx_range(const Gfx* dl, s32 seg) {
     u32 range = 0;
     for (int k = 0; k < 2048; k++) {
         uint32_t t[2];
-        nd_op_unit(dl[k].words.w0, dl[k].words.w1, t);
+        t[0] = dl[k].words.w0; t[1] = dl[k].words.w1;
         const u32 op = t[0] >> 24;
         if (op == (u32)NDO_END) break;
         if (op == (u32)NDO_VTX && (dl[k].words.w1 >> 24) == ((u32)seg & 0xffu)) {
@@ -304,7 +304,7 @@ static void entcheck_draw(const Gfx* rec, const EntityModel* model) { /* DIRECT 
         NdTexDec tdec;
         for (int k = 0; q != nullptr && k < 2048; k++) {
             uint32_t t[2];
-            nd_op_unit(q[k].words.w0, q[k].words.w1, t);
+            t[0] = q[k].words.w0; t[1] = q[k].words.w1;
             const u32 op = t[0] >> 24;
             if (op == (u32)NDO_END) break;
             if (op == (u32)NDO_CALL) dlm |= 2u;

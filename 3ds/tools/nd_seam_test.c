@@ -261,7 +261,7 @@ static void tedges(const NdSeamTab* t, const float o[16]) {
         const uint8_t* p = (const uint8_t*)(uintptr_t)L->addr;
         for (unsigned i = 0; i < ND_DLC_MAXOPS && e < end; i++) {
             uint32_t w0, w1; memcpy(&w0, p + 8 * i, 4); memcpy(&w1, p + 8 * i + 4, 4);
-            { uint32_t t[2]; nd_op_unit(w0, w1, t); w0 = t[0]; w1 = t[1]; } /* HC4f3: the typed unit */
+            { uint32_t t[2]; t[0] = w0; t[1] = w1; w0 = t[0]; w1 = t[1]; } /* HC4f3: the typed unit */
             unsigned op = w0 >> 24;
             if (op == NDO_END) break;
             if (op == NDO_VTX) {

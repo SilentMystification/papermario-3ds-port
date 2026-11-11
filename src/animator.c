@@ -4,7 +4,7 @@
 #include "pm_interp_fi.h"
 #ifdef TARGET_3DS
 #include "nd_cmd.h"
-#include "nd_op.h" /* HC4e2b: the typed unit of a list word (nd_op_xlate) */
+#include "nd_op.h" /* HC4e2b: the typed unit of a list word */
 #endif
 
 typedef struct DisplayListBufferHandle {
@@ -909,14 +909,14 @@ void appendGfx_animator_node(ModelAnimator* animator, AnimatorNode* node, Matrix
 #ifdef TARGET_3DS
             {
                 uint32_t t0[2];
-                nd_op_unit(node->displayList[0].words.w0, node->displayList[0].words.w1, t0);
+                t0[0] = node->displayList[0].words.w0; t0[1] = node->displayList[0].words.w1;
                 if ((t0[0] >> 0x18) != NDO_END) {
                     Gfx* gfxPtr = node->displayList;
                     s32 endDL = NDO_END;
 
                     for(;; j++) {
                         uint32_t t[2];
-                        nd_op_unit(gfxPtr->words.w0, gfxPtr->words.w1, t);
+                        t[0] = gfxPtr->words.w0; t[1] = gfxPtr->words.w1;
                         w0 = t[0];
                         gfxPtr++;
                         cmd = w0 >> 0x18;
@@ -963,7 +963,7 @@ void appendGfx_animator_node(ModelAnimator* animator, AnimatorNode* node, Matrix
 #ifdef TARGET_3DS
                 { /* HC4e2b: the copy takes the typed unit (ND_X0/ND_X1 of the word; a typed word stays) */
                     uint32_t t[2];
-                    nd_op_unit((uint32_t)w0, (uint32_t)w1, t);
+                    t[0] = (uint32_t)w0; t[1] = (uint32_t)w1;
                     w0 = (s32)t[0];
                     w1 = (s32)t[1];
                 }

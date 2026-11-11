@@ -45,7 +45,7 @@ void N(GetFirstTriangleNormal)(Gfx* inGfx, f32* outNx, f32* outNy, f32* outNz) {
 
     while (true) {
 #ifdef TARGET_3DS
-        uint32_t t[2]; nd_op_unit(gfx->words.w0, gfx->words.w1, t); /* HC4f3: the typed unit */
+        uint32_t t[2]; t[0] = gfx->words.w0; t[1] = gfx->words.w1; /* HC4f3: the typed unit */
         u32 w0 = t[0]; u32 w1 = t[1];
 #else
         u32 w0 = gfx->words.w0;

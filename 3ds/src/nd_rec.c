@@ -260,7 +260,7 @@ void nd_rec_texrect(uint32_t w0, uint32_t w1, uint32_t hs, uint32_t hd) {
     p[4] = hs;
     p[5] = hd;
 }
-/* D4b-3: a state op (HC4a: typed by nd_op_xlate) extends the open NDC_STATE run when nothing was recorded after it (no span, no other command) and the chunk has room;
+/* D4b-3: a state op (HC4a: typed by the recorder) extends the open NDC_STATE run when nothing was recorded after it (no span, no other command) and the chunk has room;
  * else it opens a new run. HC4b: a typed op the shadow drops is not written (t4chk: written after NDO_DROP). */
 static void st_put(uint32_t w0, uint32_t w1) {
     uint32_t* h = st_hdr;

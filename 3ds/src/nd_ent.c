@@ -104,14 +104,14 @@ const void* ent_env_vtx(uint32_t w1, unsigned n) {
     return src;
 }
 
-static inline unsigned ent_uid(u32 w0, u32 w1) { uint32_t t[2]; nd_op_unit(w0, w1, t); return t[0] >> 24; }
+static inline unsigned ent_uid(u32 w0, u32 w1) { (void)w1; return w0 >> 24; }
 
 /* S6-5: the words of the list and of every nested list (G_DL), then the vertex span */
 u32 ent_hash_walk(const Gfx* l, u32 h, int depth) {
     for (unsigned i = 0; i < ND_DLC_MAXOPS; i++) {
         u32 w0 = l[i].words.w0, w1 = l[i].words.w1;
         h = (h ^ w0) * 16777619u; h = (h ^ w1) * 16777619u;
-        uint32_t ut[2]; nd_op_unit(w0, w1, ut);
+        uint32_t ut[2]; ut[0] = w0; ut[1] = w1;
         if ((ut[0] >> 24) == NDO_END) return h;
         if ((ut[0] >> 24) == NDO_CALL) {
             const Gfx* t = (const Gfx*)ptr_of(w1);
@@ -131,7 +131,7 @@ u32 ent_hash(const Gfx* l, const u8* vp, u32 vlen) {
 int ent_flat(const Gfx* l, unsigned* n, int depth) {
     for (unsigned i = 0; i < ND_DLC_MAXOPS; i++) {
         u32 w0 = l[i].words.w0, w1 = l[i].words.w1;
-        uint32_t ut[2]; nd_op_unit(w0, w1, ut);
+        uint32_t ut[2]; ut[0] = w0; ut[1] = w1;
         unsigned op = ut[0] >> 24;
         if (op == NDO_END) return 1;
         if (op == NDO_CALL) {

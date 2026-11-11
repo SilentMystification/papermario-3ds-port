@@ -37,7 +37,7 @@ u32 dlc_hash(const Gfx* l) {
     for (unsigned i = 0; i < 4096; i++) {
         u32 w0 = l[i].words.w0, w1 = l[i].words.w1;
         h = (h ^ w0) * 16777619u; h = (h ^ w1) * 16777619u;
-        uint32_t t[2]; nd_op_unit(w0, w1, t); /* HC4f3: the typed unit (G_ENDDL is NDO_END); a typed word is its own unit */
+        uint32_t t[2]; t[0] = w0; t[1] = w1; /* HC4f3: the typed unit (G_ENDDL is NDO_END); a typed word is its own unit */
         const unsigned op = t[0] >> 24;
         if (op == NDO_VTX) {
             unsigned n = (w0 >> 12) & 0xff;
@@ -158,7 +158,7 @@ __attribute__((cold, noinline)) int dlc_build(DlcEnt* e, const Gfx* l, int stat)
     const NdSeamList* sl = st ? nd_seam_find(st, (u32)(uintptr_t)l) : NULL;
     const int use_tp = sl && sl->cnt && (sl->cls < 2 || stat); /* SEAM2: a T point list under a moving matrix is split in object space: not used */
     if (sl && sl->cnt && !use_tp) pm_log_evt("seamfix dyn map %s list %08x skip %u", pm_shape_name, (u32)(uintptr_t)l, (unsigned)sl->cnt);
-    for (i = 0; i < ND_DLC_MAXOPS; i++) { dlc_words[2 * i] = l[i].words.w0; dlc_words[2 * i + 1] = l[i].words.w1; { uint32_t t[2]; nd_op_unit(l[i].words.w0, l[i].words.w1, t); if ((t[0] >> 24) == NDO_END) break; } }
+    for (i = 0; i < ND_DLC_MAXOPS; i++) { dlc_words[2 * i] = l[i].words.w0; dlc_words[2 * i + 1] = l[i].words.w1; { uint32_t t[2]; t[0] = l[i].words.w0; t[1] = l[i].words.w1; if ((t[0] >> 24) == NDO_END) break; } }
     NdDlcEnv env = { nd_env_vtx, nd_env_valloc, nd_env_ialloc, use_tp ? st->tp + sl->first : NULL, use_tp ? sl->cnt : 0u }; /* SEAMFIX: the T points of this list */
     int rc = nd_dlc_compile(&e->o, dlc_words, &env), pooled = 1;
     if (rc == NDR_FULL) { /* no room in the static areas: compile without the copies, every group runs through the ring (the source words: no T points) */
@@ -345,7 +345,7 @@ int gp1_box_class(const s16 lo[3], const s16 hi[3], const float (*m)[4], unsigne
 __attribute__((noinline)) void dlc_run_group(const Gfx* l, const DlcGrp* g, unsigned gmi) {
     unsigned tss = ((unsigned)nd_ws.tex_ss << 16) | ((unsigned)nd_ws.tex_ts & 0xffffu);
     for (u32 j = g->op0; j < g->op1; j++) {
-        uint32_t t[2]; nd_op_unit(l[j].words.w0, l[j].words.w1, t); /* HC4f3: the typed unit of the list word */
+        uint32_t t[2]; t[0] = l[j].words.w0; t[1] = l[j].words.w1; /* HC4f3: the typed unit of the list word */
         u32 w0 = t[0], w1 = t[1];
         switch (w0 >> 24) {
         case NDO_VTX: {
@@ -425,7 +425,7 @@ static void sbkw_dlchash(const Gfx* l, const DlcEnt* e) {
     if (ns_ > 2) return;
     u32 src = 0; u32 nv = 0;
     for (unsigned i = 0; i < 4096; i++) {
-        uint32_t t[2]; nd_op_unit(l[i].words.w0, l[i].words.w1, t); /* HC4f3: the typed unit */
+        uint32_t t[2]; t[0] = l[i].words.w0; t[1] = l[i].words.w1; /* HC4f3: the typed unit */
         if ((t[0] >> 24) == NDO_VTX) { if (!src) src = l[i].words.w1; nv++; }
         if ((t[0] >> 24) == NDO_END) break;
     }
