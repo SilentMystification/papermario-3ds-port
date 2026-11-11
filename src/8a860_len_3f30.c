@@ -1,6 +1,7 @@
 #include "common.h"
 #include "hud_element.h"
 #include "message_ids.h"
+#include "pm_wide.h"
 
 #define LINE_HEIGHT 13
 
@@ -483,7 +484,7 @@ s32 popup_menu_update(void) {
             }
             D_8010D690 = MSG_PAL_STANDARD;
 
-            posX = PopupWinX;
+            posX = pm_wide_left(PopupWinX); /* BATUI2: wide layout, the list at the left screen edge */
             posY = PopupWinY;
 
 #if VERSION_PAL
@@ -793,7 +794,7 @@ s32 popup_menu_update(void) {
             {
                 posX = PopupDescX;
                 posY = PopupDescY;
-                set_window_properties(WIN_POPUP_DESC, posX, posY, WINDOW_KEY_WIDTH, 32, WINDOW_PRIORITY_20, popup_draw_desc_content, nullptr, -1);
+                set_window_properties(WIN_POPUP_DESC, pm_wide_left(posX), posY, WINDOW_KEY_WIDTH + (pm_wide ? 80 : 0), 32, WINDOW_PRIORITY_20, popup_draw_desc_content, nullptr, -1); /* BATUI2: the box spans the wide screen */
             }
 
             posX = PopupPromptX;
