@@ -133,6 +133,54 @@ static unsigned tev_func(int f) {
     }
 }
 
+/* HCCUT5: the off-screen 8 bit image arms of nd_tev_build, cold: they run only for an off-screen pass into an 8 bit image. */
+/* FX2a: an 8 bit image has memory alpha 0xE0 (7/8). The RDP blender then gives (P*a + M*0.88) / (a + 0.88): the weight of P is
+ * a / (a + 0.88). The PICA blends by src alpha, so the fragment alpha becomes 0.532 * (1 - (1 - a)^2), a fit of that weight. */
+static __attribute__((cold, noinline)) int tev_off_i8(NdTevOut* o, const NdTmplKey* k, int* env_hi) {
+    int off_active = k->off_active, off_i8 = k->off_i8, r_blend = k->r_blend, r_replace = k->r_replace;
+    int memb = off_active && off_i8 && k->r_memblend && !r_replace;
+    if (memb && *env_hi <= 4) {
+        uint32_t* e = o->st[(*env_hi)++];
+        ev_src(e, M_RGB, TS_PREV, TS_PREV, TS_PREV);
+        ev_func(e, M_RGB, F_REPLACE);
+        ev_src(e, M_A, TS_PREV, TS_PREV, TS_PREV);
+        ev_op_a(e, OA_1MA, OA_1MA, OA_1MA);
+        ev_func(e, M_A, F_MODULATE);
+        e = o->st[(*env_hi)++];
+        ev_src(e, M_RGB, TS_PREV, TS_PREV, TS_PREV);
+        ev_func(e, M_RGB, F_REPLACE);
+        ev_src(e, M_A, TS_PREV, TS_CONST, TS_CONST);
+        ev_op_a(e, OA_1MA, OA_ALPHA, OA_ALPHA);
+        ev_func(e, M_A, F_MODULATE);
+        e[3] = 0x88000000u;
+    } else memb = 0;
+    if (off_active && off_i8 && !(r_blend && !r_replace) && !memb && *env_hi < 6) { /* FX2a: a blended 8 bit write keeps the blend weight in A */
+        /* X02: an 8 bit intensity image reads as I in all four channels. The pixel written is (R, R, R, R). */
+        uint32_t* e = o->st[*env_hi];
+        ev_src(e, M_BOTH, TS_PREV, TS_PREV, TS_PREV);
+        ev_op_a(e, OA_R, OA_R, OA_R);
+        ev_func(e, M_BOTH, F_REPLACE);
+        (*env_hi)++;
+    }
+    return memb;
+}
+
+/* HCCUT5: the depth view (V02), cold: a debug view. */
+/* V02 depth view: vertex colour only, alpha from the texture */
+static __attribute__((cold, noinline)) void tev_dview(NdTevOut* o, uint32_t* env, int tex, int* env_hi) {
+    for (int i = 0; i < 6; i++) ev_init(o->st[i]);
+    *env_hi = 6;
+    ev_src(env, M_RGB, TS_PRIMARY, TS_PRIMARY, TS_PRIMARY);
+    ev_func(env, M_RGB, F_REPLACE);
+    if (tex) {
+        ev_src(env, M_A, TS_TEX0, TS_PRIMARY, TS_PRIMARY);
+        ev_func(env, M_A, F_MODULATE);
+    } else {
+        ev_src(env, M_A, TS_PRIMARY, TS_PRIMARY, TS_PRIMARY);
+        ev_func(env, M_A, F_REPLACE);
+    }
+}
+
 void nd_tev_build(const NdTevIn* in, NdTevOut* o) {
     const NdTmplKey* k = in->k;
     const PmPlan* plan = in->plan;
@@ -226,46 +274,9 @@ void nd_tev_build(const NdTevIn* in, NdTevOut* o) {
         o->mix_st = env_hi;
         env_hi++;
     }
-    /* FX2a: an 8 bit image has memory alpha 0xE0 (7/8). The RDP blender then gives (P*a + M*0.88) / (a + 0.88): the weight of P is
-     * a / (a + 0.88). The PICA blends by src alpha, so the fragment alpha becomes 0.532 * (1 - (1 - a)^2), a fit of that weight. */
-    int memb = off_active && off_i8 && k->r_memblend && !r_replace;
-    if (memb && env_hi <= 4) {
-        uint32_t* e = o->st[env_hi++];
-        ev_src(e, M_RGB, TS_PREV, TS_PREV, TS_PREV);
-        ev_func(e, M_RGB, F_REPLACE);
-        ev_src(e, M_A, TS_PREV, TS_PREV, TS_PREV);
-        ev_op_a(e, OA_1MA, OA_1MA, OA_1MA);
-        ev_func(e, M_A, F_MODULATE);
-        e = o->st[env_hi++];
-        ev_src(e, M_RGB, TS_PREV, TS_PREV, TS_PREV);
-        ev_func(e, M_RGB, F_REPLACE);
-        ev_src(e, M_A, TS_PREV, TS_CONST, TS_CONST);
-        ev_op_a(e, OA_1MA, OA_ALPHA, OA_ALPHA);
-        ev_func(e, M_A, F_MODULATE);
-        e[3] = 0x88000000u;
-    } else memb = 0;
-    if (off_active && off_i8 && !(r_blend && !r_replace) && !memb && env_hi < 6) { /* FX2a: a blended 8 bit write keeps the blend weight in A */
-        /* X02: an 8 bit intensity image reads as I in all four channels. The pixel written is (R, R, R, R). */
-        uint32_t* e = o->st[env_hi];
-        ev_src(e, M_BOTH, TS_PREV, TS_PREV, TS_PREV);
-        ev_op_a(e, OA_R, OA_R, OA_R);
-        ev_func(e, M_BOTH, F_REPLACE);
-        env_hi++;
-    }
+    int memb = 0; if (off_active && off_i8) memb = tev_off_i8(o, k, &env_hi); /* HCCUT5: off-screen 8-bit pass */
     /* V02 depth view: vertex colour only, alpha from the texture */
-    if (k->dview && k->draw_3d && !k->rect_2d) {
-        for (int i = 0; i < 6; i++) ev_init(o->st[i]);
-        env_hi = 6;
-        ev_src(env, M_RGB, TS_PRIMARY, TS_PRIMARY, TS_PRIMARY);
-        ev_func(env, M_RGB, F_REPLACE);
-        if (tex) {
-            ev_src(env, M_A, TS_TEX0, TS_PRIMARY, TS_PRIMARY);
-            ev_func(env, M_A, F_MODULATE);
-        } else {
-            ev_src(env, M_A, TS_PRIMARY, TS_PRIMARY, TS_PRIMARY);
-            ev_func(env, M_A, F_REPLACE);
-        }
-    }
+    if (k->dview && k->draw_3d && !k->rect_2d) tev_dview(o, env, tex, &env_hi);
     o->n = env_hi;
     o->memb = memb;
 }
