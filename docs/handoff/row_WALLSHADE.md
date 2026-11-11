@@ -14,6 +14,10 @@ missing." Shooting Star Summit is area_hos (hos_00 Shooting Star Path, hos_01 Sh
 - Untextured model records and records whose R13 ops hold no tile 0 SETTILESIZE (nd_recs.c:81 rec_aux) do not clear dual_on, and the
   model cache stores the scaled cm/ca (nd_model.c:382) under a key with no dual_on or dual_f field, so a hit replays the wrong colour.
 - hos_01 sets SetSpriteShading(SHADING_HOS_01) (src/world/area_hos/hos_01/main.c:117): Mario, the spirits and the NPCs are shaded sprites.
+- User facts 2: hos_01, all walls. The hos_01 shape (romfs/shape/hos_01_shape.nds) names 11 textures (ground, grass, flowers, star
+  gate, frame, door side) and no wall texture: the walls are untextured records, so no bind clears dual_on before them, and dual_on is
+  never reset between frames (a shaded sprite of frame N reaches the first models of frame N+1). The why-6 drops (nd_model.c:350-351)
+  need a TEXEL1 plan: an untextured wall cannot reach them. This row alone is the fix by code read.
 - The shade colour is meant for the shaded sprite only (nd_tex_set.c:646-649 comment): pm_gpu_spr_build (pm_gpu.c:3869) and the walker
   fallback of a sprite (nd_walk.c:152 nd_ops_run of the NDC_SPR words).
 
