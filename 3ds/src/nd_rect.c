@@ -57,8 +57,7 @@ static float wrap_period_shift(float st, unsigned sl, unsigned cm, unsigned mask
 
 /* A texture rectangle into an off-screen color image, sampled from a TLUT held in TMEM. The
  * shaded-sprite code draws its 16-entry shadow/highlight palette this way. Returns 1 if done. */
-__attribute__((noinline)) int rect_to_image(int xl, int yl, int xh, int yh, unsigned tile, u32 hs, u32 hd) {
-    if (!nd_ws.cimg || pm_is_cfb(nd_ws.cimg) || tile >= 8 || nd_ws.tst1.tile_tmem[tile] < 256) return 0;
+static __attribute__((cold, noinline)) int rect_to_image_draw(int xl, int yl, int xh, int yh, unsigned tile, u32 hs, u32 hd) {
     int x0 = xl >> 2, y0 = yl >> 2, x1 = xh >> 2, y1 = yh >> 2;
     if (x0 < sci_x0) x0 = sci_x0;
     if (y0 < sci_y0) y0 = sci_y0;
@@ -95,6 +94,10 @@ __attribute__((noinline)) int rect_to_image(int xl, int yl, int xh, int yh, unsi
     return 1;
 }
 
+__attribute__((noinline)) int rect_to_image(int xl, int yl, int xh, int yh, unsigned tile, u32 hs, u32 hd) {
+    if (!nd_ws.cimg || pm_is_cfb(nd_ws.cimg) || tile >= 8 || nd_ws.tst1.tile_tmem[tile] < 256) return 0;
+    return rect_to_image_draw(xl, yl, xh, yh, tile, hs, hd); /* HCCUT2: the drawing body is cold */ }
+
 /* D03: a draw_box window with the bg_tile pattern. The combiner is (PRIM - ENV) * (TEXEL0 * TEXEL1) + ENV, alpha
  * TEXEL1: tile 0 is the wrapped pattern, tile 1 the corner image, clamped, so its edge texels make the border.
  * The PICA path binds one texture, so the product TEXEL0 * TEXEL1 (colour) and TEXEL1 alpha are composed on the
@@ -102,7 +105,7 @@ __attribute__((noinline)) int rect_to_image(int xl, int yl, int xh, int yh, unsi
  * Returns 1 if drawn. */
 static unsigned char box_buf[128 * 128 * 4];
 extern int box_pat; /* the former pm_gbi.c: the 2-cycle window with a pattern in tile 0 */
-__attribute__((noinline)) int box_pattern_rect(int xl, int yl, int xh, int yh, u32 hs, u32 hd) {
+__attribute__((cold, noinline)) int box_pattern_rect(int xl, int yl, int xh, int yh, u32 hs, u32 hd) {
     int X0 = xl >> 2, Y0 = yl >> 2, X1 = xh >> 2, Y1 = yh >> 2; /* exclusive lower right, 1-cycle mode */
     float s0 = (float)(s16)(hs >> 16) / 32.f, t0 = (float)(s16)(hs & 0xffff) / 32.f;
     float dsdx = (float)(s16)(hd >> 16) / 1024.f, dtdy = (float)(s16)(hd & 0xffff) / 1024.f;

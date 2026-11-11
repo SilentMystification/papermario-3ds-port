@@ -327,7 +327,7 @@ static unsigned key_hash(const NdTmplKey* k) { /* FNV-1a over the 11 words of th
 
 static void put(NdTmplEnt* e, unsigned reg, uint32_t val) { e->w[e->n].reg = (uint16_t)reg; e->w[e->n].val = val; e->n++; }
 
-static void build_words(NdTmplEnt* e, const NdTevOut* tev) {
+static __attribute__((cold)) void build_words(NdTmplEnt* e, const NdTevOut* tev) {
     const NdTmplKey* k = &e->key;
     unsigned dfunc, dmask, den = 1, sten = 0, sfn = G_ALWAYS, sop = 0, sref = 0, swm = 0;
     float bias = 0.0f;
@@ -391,7 +391,7 @@ static void build_words(NdTmplEnt* e, const NdTevOut* tev) {
 /* RECT-1b diag: the key fields of a template id (rpK line) */
 int nd_tmpl_dbg_key(int id, int* tex, int* comb, int* d3, int* r2) { if (id < 0 || (unsigned)id >= tmpl_n) return 0; const NdTmplKey* k = &tmpl_ent[id].key; *tex = k->tex; *comb = k->combine; *d3 = k->draw_3d; *r2 = k->rect_2d; return 1; }
 /* rebuilds the hash index from the entries (after an eviction: the victim's slot is taken over, so the open addressing chains are rebuilt) */
-static void tmpl_index(void) {
+static __attribute__((cold)) void tmpl_index(void) {
     memset(tmpl_idx, 0, sizeof tmpl_idx);
     for (unsigned i = 0; i < tmpl_n; i++) {
         unsigned h = key_hash(&tmpl_ent[i].key) & (ND_TMPL_IDX - 1u);
@@ -400,7 +400,7 @@ static void tmpl_index(void) {
     }
 }
 /* the entry to take over when the table is full: the least recently used one not used since the pin. -1: every entry is pinned */
-static int tmpl_victim(void) {
+static __attribute__((cold)) int tmpl_victim(void) {
     int v = -1; unsigned best = 0;
     for (unsigned i = 0; i < tmpl_n; i++) {
         if (tmpl_use[i] >= tmpl_pin) continue;
@@ -408,20 +408,9 @@ static int tmpl_victim(void) {
     }
     return v;
 }
-int nd_tmpl_build(const NdTmplKey* in) {
-    NdTmplKey kk = *in;
-    memset(kk.pad, 0, sizeof kk.pad);
-    if (!kk.decal) kk.dbias = 0; /* the bias is not used without decal: one key for both */
-    if (kk.combine != 8) { kk.w0 = kk.w1 = 0; kk.two = kk.t1only = 0; }
-    /* most batches repeat the key of the call before: no hash and no probe (an eviction since then changes tmpl_gen) */
-    if (memo_id >= 0 && memo_gen == tmpl_gen && memcmp(&memo_k, &kk, sizeof kk) == 0) { tmpl_use[memo_id] = ++tmpl_clock; return memo_id; }
-    unsigned h = key_hash(&kk) & (ND_TMPL_IDX - 1u);
-    for (;;) {
-        uint16_t s = tmpl_idx[h];
-        if (s == 0) break;
-        if (memcmp(&tmpl_ent[s - 1u].key, &kk, sizeof kk) == 0) { tmpl_use[s - 1u] = ++tmpl_clock; memo_k = kk; memo_id = s - 1; memo_gen = tmpl_gen; return s - 1; }
-        h = (h + 1u) & (ND_TMPL_IDX - 1u);
-    }
+/* HCCUT2: the miss part of nd_tmpl_build (a new key), kept out of the hot code */
+static __attribute__((cold, noinline)) int tmpl_miss(const NdTmplKey* kkp, unsigned h) {
+    NdTmplKey kk = *kkp;
     /* FB-2: a full table evicts its least recently used entry (rebuilt from the key). -1 only when every entry was used in the current batch. */
     int victim = -1;
     if (tmpl_n >= ND_TMPL_N) { victim = tmpl_victim(); if (victim < 0) return -1; }
@@ -454,6 +443,23 @@ int nd_tmpl_build(const NdTmplKey* in) {
     if (tmpl_n + 1u > tmpl_hi) tmpl_hi = tmpl_n + 1u;
     memo_k = kk; memo_id = (int)tmpl_n; memo_gen = tmpl_gen;
     return (int)tmpl_n++;
+}
+
+int nd_tmpl_build(const NdTmplKey* in) {
+    NdTmplKey kk = *in;
+    memset(kk.pad, 0, sizeof kk.pad);
+    if (!kk.decal) kk.dbias = 0; /* the bias is not used without decal: one key for both */
+    if (kk.combine != 8) { kk.w0 = kk.w1 = 0; kk.two = kk.t1only = 0; }
+    /* most batches repeat the key of the call before: no hash and no probe (an eviction since then changes tmpl_gen) */
+    if (memo_id >= 0 && memo_gen == tmpl_gen && memcmp(&memo_k, &kk, sizeof kk) == 0) { tmpl_use[memo_id] = ++tmpl_clock; return memo_id; }
+    unsigned h = key_hash(&kk) & (ND_TMPL_IDX - 1u);
+    for (;;) {
+        uint16_t s = tmpl_idx[h];
+        if (s == 0) break;
+        if (memcmp(&tmpl_ent[s - 1u].key, &kk, sizeof kk) == 0) { tmpl_use[s - 1u] = ++tmpl_clock; memo_k = kk; memo_id = s - 1; memo_gen = tmpl_gen; return s - 1; }
+        h = (h + 1u) & (ND_TMPL_IDX - 1u);
+    }
+    return tmpl_miss(&kk, h); /* HCCUT2: the miss part is cold */
 }
 
 unsigned nd_tmpl_words(int id, const NdTmplWord** out) {
