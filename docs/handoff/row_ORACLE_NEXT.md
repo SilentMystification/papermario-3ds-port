@@ -123,6 +123,19 @@ ms floor). Counts per frame from fxcenb. Bound = oracle code read only; FXSPLIT 
 | spiky_white_aura | 3.6 | 4 draw, 15 tri | large translucent quads scaled per part | GPU fill | none (inherent) |
 | underwater | 3.2 | 423 tri, 678 vtx, 2 draw | full-screen distortion mesh rebuilt each frame (core 1) | mixed | after FXSPLIT |
 | shimmer_burst | 2.9 | 16 draw, 154 tri | per part matrix + prim + list D_E0070CD0[i & 7] | core 0 per part | instanced path with per-instance colour |
+- XL run xl4a with FXSPLIT (fxcen_xl4a.txt; run 2 pending): only fire_breath is GPU-bound (gpu 17.9 ms, walk 4.6). Core 0 walk above
+  base: snowfall 18.1, water_splash 12.9, energy_shockwave 11.2, pink_sparkles 11.1, water_block 10.8, embers 9.2, shimmer_burst 8.7,
+  effect_3D 8.4, explosion 6.8, snowman_doll 6.5, radiating_energy_orb 6.0, snaking_static 5.6. That is 150-700 us per part or
+  draw, and about 2 ms for a 4-triangle effect (ring_blast): far above the per-op code estimate, so the per-part path is dominated by
+  code fetched per op (I-miss 46 / 1000 inst, CPI 4.7), not by its arithmetic. PBFLUSH (run 504363): pink_sparkles flushes from
+  pm_gpu_set_plan 53.8 per frame (base 11.4): a new plan per part (prim baked into the plan colours, pm_comb_colours).
+- S4 order (native particle path: one pso and one tex per effect, static list vertices once, per-instance float matrix, colour and uv
+  offset): 1 snowfall (117 parts: matrix load + mul, 24 vtx, 8 tri each), 2 pink_sparkles and 3 shimmer_burst (prim per part: plan per
+  part), 4 embers (tile size per particle: uv offset per instance), 5 energy_shockwave (11 live instances, each its own setup list),
+  6 effect_3D, 7 water_splash and water_block (one previous-frame bind with the window as a uv offset instead of a bind per drop; a
+  nd_quad case, not particles), then explosion, snowman_doll, radiating_energy_orb, snaking_static. fire_breath is not S4 (GPU fill).
+- No cut row yet: FXFNCOV (calls per draw function in one frame per effect, Azahar counts) names the per-part class, and XL run 2
+  must agree (lesson 2). Then S4 rows in this order, each gated by fxtest of that effect twice on the console.
 - Culling of off-screen particles is not a cut: user code rule "no culling the game does not do" (feedback_code-rules.md).
 - Cut rows are written only after FXSPLIT and its two XL runs agree (lesson 2 below); then one row per cut with the console gate
   (fxtest of that effect, its ms before and after, two runs each).
