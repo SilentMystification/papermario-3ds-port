@@ -4,7 +4,7 @@ A replacement oracle starts here: read CLAUDE.md, orchestrator_rules.md, plan_ho
 
 ## Rows (state at writing)
 - Running (6 coders): HC6B (Opus), WALLSHADE, UB1, HCCUT2 (step after the first try written in its row), HC9B, CRASHEXIT.
-- Ready (refill 2026-11-11 night): M3CEN (census, no source edit), HCCUT3 (pm_gpu_gtrip edge copy, nd_set.c sync_render orbdbg).
+- Ready (refill 2): HCCUT4 (nd_comb.c decide/dual_bind/sync_combine_work, pm_comb.c, nd_model.c mdl0 notes). Waits: HCCUT5 (nd_tev_build; after HCCUT2), HC10 (hot order regenerate; after HCCUT2-5).
 - Merged tonight: WALLSHADE, CRASHEXIT, HC9B, SPARKLE, UB1. Running: HC6B, HUDGM, HUDRING, HCCUT2.
 - Waiting: KEYMISS (after HC6B), BATUI (deleted when HUDGM and HUDRING merge and the user's wheel check passes), PAUSEDR and AUDDROP
   (3-line notes: console data), STEREOFX (crash.txt), COLDBOOT (the XL cold-boot log).
@@ -27,9 +27,10 @@ A replacement oracle starts here: read CLAUDE.md, orchestrator_rules.md, plan_ho
 2. HC9 rest: NdNatC 64 B hot head, NdShadow compares by generation ids, mc_keyw/mc_tab probes in one line: all in HC6B files
    (nd_model.c, nd_emit.c): write after HC6B merges. NdWs tile tables native: needs a design read of nd_ws.tst1 users.
 3. KEYMISS rewrite on the HC6 key code (key A on core 1, key B on core 0).
-4. HC7b (NDC_TEXRECT resolved fields): after HC6B step 5 shows whether box_pat is known on core 1.
+4. HC7b: closed (row_HC7.md deleted): box_pat, td[] and the tile state exist only on core 0 (nd_comb.c:175-187, the walker texture model); HC5's census (T_SYNC 99.3 %) shows core 1 cannot know them.
 5. Rows from new console evidence (COLDBOOT, STEREOFX) when the user sends it.
-6. UB1 leftovers (suspect 1 unit 1 refresh on a hit: pm_gpu_model_hit, HC6B's place; suspects 2, 3, 5, 6) after HC6B.
+6. UB1 leftovers: suspect 1 is void (DOORHITCH: an entry with a unit 1 slot never hits, pm_gpu_model_hit e->h1s); suspects 2, 3, 5, 6 need an oracle read.
+7. HC9 rest (NdNatC 64 B hot head, NdShadow generation ids, mc_keyw/mc_tab one-line probes): files free since HC6B merged; needs an oracle design read of nd_model.c (cache layout) and nd_emit.c (shadow) before rows.
 
 ## Facts learned this session
 - Shooting Star Summit is area_hos (hos_00 Path, hos_01 Summit); area_sam is Shiver Mountain.
