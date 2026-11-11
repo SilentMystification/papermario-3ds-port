@@ -25,6 +25,8 @@ extern void boot_main(void* data);
 const char* pm_wd_phase_name(unsigned p);
 
 static int crash_taken; /* CRASHALL: the first crash handler ends the process; another thread that faults waits here */
+volatile int pm_crash_exit; /* CRASHEXIT: a crash ended its thread; main exits clean */
+extern volatile int pm_exit_request;
 static char args[256];
 
 /* Stack records: bounds of the game and audio thread stacks, a fill pattern for the high-water mark.
@@ -193,7 +195,11 @@ static void crash_handler(ERRF_ExceptionInfo* excep, CpuRegisters* regs) {
     pm_crash_line(buf, n);
     crash_page_show(excep->type < 4 ? names[excep->type] : "?", tname, excep, regs, st);
     /* LB4: svcBreak(USERBREAK_PANIC) left the console frozen. End the process: the system returns to the menu. */
-    pm_exit_process();
+    if (threadGetCurrent() == NULL) pm_exit_process(); /* the main thread: no thread to end */
+    pm_crash_exit = 1; pm_exit_request = 1; /* CRASHEXIT: the game loop ends, main runs pm_shutdown and returns */
+    if (pm_opt.esc_mode != 0) aptClearChainloader(); /* esc mode quit or home: the close goes to the HOME Menu */
+    pm_wd_crash_tick = (unsigned)(svcGetSystemTick() / (SYSCLOCK_ARM11 / 1000ull)) | 1u; /* 3 s for the clean exit, then the watchdog */
+    threadExit(1);
 }
 
 /* R01: stop the program on purpose from a debug check (switch romstrict). Azahar never calls the guest handler on a real
@@ -204,7 +210,7 @@ void pm_fatal_stop(const char* msg) {
     pm_log_e("FATAL: %s", msg);
     int n = snprintf(buf, sizeof(buf), "\n[CRASH] debug check: %s build #%s\n", msg, PM_BUILD_STR);
     pm_crash_line(buf, n);
-    svcBreak(USERBREAK_PANIC);
+    pm_crash_exit = 1; pm_exit_request = 1; if (threadGetCurrent()) threadExit(1); pm_exit_process();
     for (;;) {}
 }
 
@@ -922,12 +928,12 @@ static void pm_shutdown(void) {
     if (done) return;
     done = 1;
     pm_rom_stream_stop(); /* BOOT: the loader ends before the services it reads through go away */
-    pm_flash_flush("exit");
+    if (pm_crash_exit) pm_flash_crash_flush(); else pm_flash_flush("exit");
     pm_audio_join_at(0);
     pm_cpu_limit_exit(); /* CPULIM-UI: core 1 limit back to 30 */
     pm_log("exit: audio job done, saving flushed, shutting down ndsp, citro3d, gfx, soc");
     pm_audio_shutdown();
-    pm_log_stop(); /* write what is left, then stop the writer thread. The last log line. */
+    if (pm_crash_exit) pm_log_crash_close(); else pm_log_stop(); /* CRASHEXIT: the crash flush holds the drain lock */ /* write what is left, then stop the writer thread. The last log line. */
     pm_wq_call(wq_fini, NULL, 0); /* CORE2-3a: the walker owns citro3d */
     gfxExit();
     pm_log_soc_exit();
