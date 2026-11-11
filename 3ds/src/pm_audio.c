@@ -46,6 +46,9 @@ void pm_audio_mute(int on) {
     pm_log("audio: %s", au_muted ? "muted" : "unmuted");
 }
 
+/* LIBTHR: the ndsp thread adopts itself at its first frame */
+static void ndsp_adopt(void* d) { static int done; (void)d; if (done) return; done = 1; if (!pm_thread_name_current()) pm_thread_adopt("ndsp"); }
+
 void pm_audio_init(void) {
     static int tried;
     if (ready || tried) return; /* fail once, log once, run silent: no ndspInit retry on every audio tick */
@@ -58,6 +61,7 @@ void pm_audio_init(void) {
         return;
     }
     ndspSetOutputMode(NDSP_OUTPUT_STEREO);
+    ndspSetCallback(ndsp_adopt, NULL); /* LIBTHR: the ndsp thread adopts itself at its first frame */
     /* A5: the 3DS DSP is the only audio path (docs/plans/AUD_DSP.md). It needs the AU2 queue. A failure is logged once and the game runs without sound. */
     if (pm_dspa_init()) { ready = 1; return; }
     else pm_log_e("dspaudio: init failed, audio is silent");

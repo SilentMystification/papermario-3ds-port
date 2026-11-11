@@ -61,7 +61,10 @@ Thread pm_thread_create(ThreadFunc fn, void* arg, size_t stack, int prio, int co
 
 void pm_thread_adopt(const char* name) {
     PmTh* s = slot_take();
-    if (!s) return;
+    if (!s) {
+        pm_log_w("thread %s: no crash slot (%d), not adopted", name, PM_TH_MAX);
+        return;
+    }
     s->name = name;
     s->th = threadGetCurrent();
     pm_crash_install(s->hstack, sizeof s->hstack);
