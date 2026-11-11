@@ -65,6 +65,10 @@ Edit rules in place, never append. At the start of a session, read docs/handoff/
   A design the user gave to the oracle is the oracle's job: it is not a blocker.
 
 ## Console
+- Console runs are scarce (the user must open the netloader for each push). No row gate asks for more than one console run. Rows that
+  need a console check share one run per batch, and the result is compared with a stored console run (never rerun the base, never repeat a
+  run). Function call counts per class from the fncov census (FXFNCOV benches) are deterministic: they are the Azahar gate of a speed row.
+  Azahar run time is never a speed gate.
 - The user judges speed and look on the console. Push only when the user asks, with the multi-select (O3DS XL 192.168.1.131,
   N3DS 192.168.1.224, O3DS 192.168.1.170).
 - After a push of a timed run (fxtest, prof): check the result yourself when the run time has passed (about 5 minutes for fxtest all):
