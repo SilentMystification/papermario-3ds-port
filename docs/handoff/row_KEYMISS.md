@@ -20,9 +20,11 @@ in 3ds/tools/azt_scenarios.json (list `scenarios`) and 3ds/tools/bench_defs.json
 1. 3ds/src/pm_keymiss.c (includes stdio.h, stdlib.h, string.h, nd.h, pm_port.h). `#define KM_N 32u`, `KM_W (NDMC_RW + NDMC_SW)`.
    Owner struct: `uint32_t geo, r0, f; uint32_t w[KM_W]; uint16_t c[KM_W]; unsigned miss, fr, pre, ref; uint8_t used, hk;`.
    Statics: `KmOwn* km; unsigned km_g[KM_W], km_miss, km_new, km_pre, km_ref, km_f0, km_next = 300u;`.
-   `__attribute__((cold, noinline)) void pm_km_note(const NdMKey* k, int cls)` (cls 0 key miss, 1 pre-list record, 2 refused hit):
+   `__attribute__((cold, noinline)) void pm_km_note(const uint32_t* rec, const NdMKey* k, int cls)` (cls 0 key miss, 1 pre-list
+   record, 2 refused hit; rec = the record words; k->w is read only for cls 0 and 1, where rec_miss built the full key at :224 or
+   rec_run at :310; for cls 2 k->w is not complete and is never read):
    f = pm_frame_count(). First call: km = calloc(KM_N, sizeof *km) (NULL: return), km_f0 = f. If f >= km_next: km_print(f), then
-   `while (km_next <= f) km_next += 300u;` (no division). Owner: geo = k->w[24], r0 = k->w[0]; h = ((geo >> 2) ^ (geo >> 11) ^ r0) &
+   `while (km_next <= f) km_next += 300u;` (no division). Owner: geo = rec[24], r0 = rec[0] (not k->w); h = ((geo >> 2) ^ (geo >> 11) ^ r0) &
    (KM_N - 1u); linear probe to an entry with used == 0 or equal geo and r0; none free: return. Unused: used = 1, geo, r0, km_new++.
    If o->f != f: o->fr++, o->f = f. cls 2: o->ref++, km_ref++, return. Else km_miss++, o->miss++, cls 1 also o->pre++, km_pre++.
    If o->hk: for each j < KM_W with o->w[j] != k->w[j]: o->c[j]++, km_g[j]++. Then memcpy(o->w, k->w, sizeof o->w), o->hk = 1.
@@ -33,9 +35,10 @@ in 3ds/tools/azt_scenarios.json (list `scenarios`) and 3ds/tools/bench_defs.json
    km_f0 = f. Owners keep geo, r0, w, hk. Comment at the top: words 0-27 are record words (R0 w0 to R13 w1), 28-91 walker words.
 2. 3ds/CMakeLists.txt: a line `    src/pm_keymiss.c` after `    src/nd_recs.c` (:393); add `src/pm_keymiss.c` to the -Os list at :446.
 3. nd_recs.c: above the comment line `/* HC6 step 3: everything of a record but the hit` (:219) add
-   `void pm_km_note(const NdMKey* k, int cls); /* KEYMISS census (pm_keymiss.c, switch keymiss) */`. In rec_miss, after the line
-   `if (!cached) { pm_xf.mdl_miss++; ...` (:225) add:
-   `if (__builtin_expect(PMDL("keymiss"), 0) && q[12].words.w0 && (!cached || tried)) pm_km_note(mkp, cached ? 2 : q[11].words.w0 ? 1 : 0);`
+   `void pm_km_note(const uint32_t* rec, const NdMKey* k, int cls); /* KEYMISS census (pm_keymiss.c, switch keymiss) */`. In
+   rec_miss, after the line `if (!cached) { pm_xf.mdl_miss++; ...` (:225) add:
+   `if (__builtin_expect(PMDL("keymiss"), 0) && q[12].words.w0 && (!cached || tried)) pm_km_note((const uint32_t*)q, mkp, cached ? 2 : q[11].words.w0 ? 1 : 0);`
+   (This is the only hook. At it: !cached means the full key is built (:224, or :310 when full0); cached && tried is cls 2.)
 4. Scenarios (copy the form of kzn04_shadestat; status unverified, needs_picture false, cap 30, deadline 20, until
    `keymiss f(6|7)\\d\\d `, expects warp, first_marker `warp: <map> entry 0`, events warp and `keymiss f[0-9]+ frames [0-9]+ miss`):
    keymiss_mac01 `warp=mac_01:0 pos=0:0:200 keymiss loglevel=debug`; keymiss_sbk56 `warp=sbk_56:0 pos=20:0:440 keymiss loglevel=debug`;
@@ -43,7 +46,6 @@ in 3ds/tools/azt_scenarios.json (list `scenarios`) and 3ds/tools/bench_defs.json
    padscript=wait60,go_-36_-170_60,wait10,A,wait40,A,wait40,A keymiss loglevel=debug` (cap 35, deadline 25). Benches of the same
    names: kind azahar_stream, speed normal, default false, the scenario name, cap and until as the scenario, tags azahar keymiss, gates [].
    Then `python 3ds/tools/bench.py rebuild` and `bench.py show keymiss_mac01`. Scenarios and benches in one commit.
-
 ## Gate (CLAUDE.md 2; Azahar budget 6 of 8: base 1, spot 1, list 4)
 - `PM_ROW=KEYMISS PM_LANE=KEYMISS sh 3ds/build.sh > build3ds/out/build.txt 2>&1`: memcheck OK.
 - `bench.py run nd_host --row KEYMISS --why "pm_keymiss.c build, nd_recs.c hook"`: PASS.
