@@ -89,6 +89,51 @@
           "name": "m2_stale",
           "regex": "hotset M2 stale (\\d+) names",
           "pick": "first"
+        },
+        {
+          "name": "m1hot_A",
+          "regex": "hotset M1hot class A (\\d+) B",
+          "pick": "first"
+        },
+        {
+          "name": "m1hot_B",
+          "regex": "hotset M1hot class B (\\d+) B",
+          "pick": "first"
+        },
+        {
+          "name": "m1hot_C",
+          "regex": "hotset M1hot class C (\\d+) B",
+          "pick": "first"
+        },
+        {
+          "name": "m1hot_D",
+          "regex": "hotset M1hot class D (\\d+) B",
+          "pick": "first"
+        },
+        {
+          "name": "m1hot_E",
+          "regex": "hotset M1hot class E (\\d+) B",
+          "pick": "first"
+        },
+        {
+          "name": "m1hot_F",
+          "regex": "hotset M1hot class F (\\d+) B",
+          "pick": "first"
+        },
+        {
+          "name": "m1hot_G",
+          "regex": "hotset M1hot class G (\\d+) B",
+          "pick": "first"
+        },
+        {
+          "name": "m1hot_H",
+          "regex": "hotset M1hot class H (\\d+) B",
+          "pick": "first"
+        },
+        {
+          "name": "m1hot_I",
+          "regex": "hotset M1hot class I (\\d+) B",
+          "pick": "first"
         }
       ],
       "gates": [

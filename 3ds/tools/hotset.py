@@ -228,6 +228,7 @@ def run_report(lane, line):
     union = set().union(*mem.values())
     hit, stale = m2(fns, names, linker_group())
     cb = {c: nbytes(fns, mem[c]) for c in CLASSES}
+    ch = {c: nbytes(fns, set(a for a in mem[c] if not fns[a]["cold"])) for c in CLASSES}  # TOOLHOT: per class without .text.unlikely
     ub = nbytes(fns, union)
     hot = set(a for a in union if not fns[a]["cold"])  # M1 hot: the union without .text.unlikely (cold split, HC1)
     hb = nbytes(fns, hot)
@@ -239,6 +240,8 @@ def run_report(lane, line):
     print("hotset lane %s, map %s, %d functions in the map" % (lane or "main", lane_dir(lane) / "pm_3ds.map", len(fns)))
     for c in CLASSES:
         print("hotset M1 class %s %d B (%d fns) %s" % (c, cb[c], len(mem[c]), CFG["classes"][c]["name"]))
+    for c in CLASSES:
+        print("hotset M1hot class %s %d B %s" % (c, ch[c], CFG["classes"][c]["name"]))
     print("hotset M1 union %d B (%d fns, depth %d)" % (ub, len(union), CFG["depth"]))
     print("hotset M1 hot %d B (%d fns, union without .text.unlikely)" % (hb, len(hot)))
     print("hotset M2 linker %d B (%d fns)" % (nbytes(fns, hit), len(hit)))
