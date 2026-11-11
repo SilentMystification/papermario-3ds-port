@@ -1,6 +1,6 @@
 # Row S4EMB: embers on the native particle path (NATIVEAPI S4)
 
-(Model: Haiku. Starts after the S4P branch (rows S4P + S4SNOW) is merged; runs in parallel with S4PINK and S4SHIM: different files.)
+(Model: Haiku. Starts after the S4P branch (rows S4P, S4SNOW, S4SNOWG) is merged; runs in parallel with S4PINK and S4SHIM: different files.)
 
 ## Design
 embers_appendGfx (src/effects/embers.c): per part i >= 1 `gSPMatrix(&stack[pos++], PUSH|MUL|MODELVIEW)`, `gDPSetTileSize(RENDERTILE,
@@ -25,9 +25,14 @@ src/effects/embers.c (embers_appendGfx, the include list).
 ## Gate (CLAUDE.md 2-3)
 - Build, memcheck OK; nd_host PASS.
 - `bench.py base fxpic_105`; `bench.py run fxpic_105 --row S4EMB --why "S4: embers parts as one NDC_NAPI record"`;
-  `bench.py cmp fxpic_105 --row S4EMB --commit $(git merge-base HEAD main)`: every shot byte-equal. Budget: 3 Azahar starts.
-- Console gate (orchestrator, before the merge): `warp=mac_01:0 pos=0:0:200 fxtest=105,105,105,105` on the merge-base build and on
-  lane S4EMB, two runs each; fxcen_report.py. Pass: embers walk lower on S4EMB in both runs, runs of one build within 15 %.
+  `bench.py cmp fxpic_105 --row S4EMB --commit $(git merge-base HEAD main)`: every shot byte-equal. Budget: 5 Azahar starts (1 base + 1 byte run + 2 census + 1 spare).
+- Speed gate (census, Azahar counts; needs the hotset `calls` line of S4SNOWG): `PM_FNCOV=1 PM_ROW=S4EMB PM_LANE=S4EMB sh 3ds/build.sh`;
+  `bench.py run fxfncov_base,fxfncov_105 --row S4EMB --lane S4EMB_fncov --why "S4 speed gate: class calls"`; `hotset.py --fncov <log> --lane S4EMB`
+  for each; delta per class = effect calls minus base calls; base within 5 % of the stored base (fxfncov_classes.txt) else tool
+  fault. Pass: stored deltas F +2594, I +808, A +1166: F < 1945 (75 %), I < 202 (25 %), A < 1049 (90 %: three pre ops per part);
+  D report only. Fail: stop, commit, hand back both files.
+- The pass numbers above wait for S4SNOWG step B (per-function census of snowfall); the oracle restates them before this row starts.
+- Console: none in this row. One XL run `fxtest=all` after the batch merge (orchestrator), compared with xl4a walk per effect.
 
 ## Stop / At the end
 A failed gate or an edit that does not fit: commit, hand back the output (CLAUDE.md 4-5). Delete this row file in the completing commit.
