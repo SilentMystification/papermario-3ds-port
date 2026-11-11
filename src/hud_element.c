@@ -4,6 +4,7 @@
 #include "nu/nusys.h"
 #include "ld_addrs.h"
 #include "pm_interp_fi.h"
+#include "nd_api.h"
 #ifdef TARGET_3DS
 #endif
 
@@ -264,107 +265,51 @@ void hud_element_load_script(HudElement* hudElement, HudScript* anim) {
     }
 }
 
-void hud_element_draw_rect(HudElement* hudElement, s16 texSizeX, s16 texSizeY, s16 drawSizeX, s16 drawSizeY,
-                           s16 offsetX, s16 offsetY, s32 clamp, s32 dropShadow) {
-    u32 isFmtCI4;
-    u32 isFmtIA8;
-    s32 flipX, flipY;
-    s32 fmt;
-    s32 widthScale, heightScale;
-    s32 texStartX, texStartY;
-    u32 isLastTileX, isLastTileY;
-    s32 uls, ult, lrs, lrt;
-    s32 uly, lry, ulx, lrx;
-    s32 masks, maskt;
-    s32 screenPosOffsetScaledX, screenPosOffsetScaledY;
+/* NAPI2A: the HUD rectangle record (plan_nativeapi S2a). hud_element_draw_rect (core 1) keeps its arithmetic and records one
+ * NdHudPiece per texture tile. hud_rect_emit writes the gDP and gSP words of a record: core 1 runs it on gMainGfxPos (fps60 anchors
+ * stay here); core 0 (hud_rect_run) runs it into a local list and walks that list with nd_walk_state. */
+#define ND_HUD_PC 32 /* texture sizes are at most 255 x 255: 4 x 8 pieces of 64 x 32 texels */
+void pm_fatal_stop(const char* msg);
+int pm_anchor_is_open(void);
+typedef struct NdHudPiece {
+    s32 uls, ult, lrs, lrt, ulx, uly, lrx, lry, texStartX, texStartY, tileMode, pad;
+} NdHudPiece;
+typedef struct NdHudRec {
+    u32 flags;
     IMG_PTR imageAddr;
     PAL_PTR paletteAddr;
-    s16 baseX, baseY;
-    s32 tileMode;
-    u32 flags1, flags2;
-    u16 renderPosX, renderPosY;
-    s16 tempX, tempY;
+    s32 widthScale, heightScale, fmt, masks, maskt, flipX, flipY, clamp, dropShadow, npc;
+    s16 texSizeX, texSizeY;
+    u8 opacity;
+    Color_RGB8 tint;
+    s32 pad;
+    NdHudPiece pc[ND_HUD_PC];
+} NdHudRec;
+_Static_assert(sizeof(NdHudPiece) == 48 && __builtin_offsetof(NdHudRec, pc) == 64, "NdHudRec: whole 8-byte units");
 
-    imageAddr = hudElement->imageAddr;
-    paletteAddr = (u16*) hudElement->paletteAddr;
+#define gMainGfxPos (*gp)
+static void hud_rect_emit(const NdHudRec* hudElement, Gfx** gp, s32 anchor) {
+    s32 fmt, masks, maskt, flipX, flipY, clamp, dropShadow, widthScale, heightScale;
+    s16 texSizeX, texSizeY;
+    IMG_PTR imageAddr;
+    PAL_PTR paletteAddr;
+    s32 k;
 
-    screenPosOffsetScaledX = hudElement->screenPosOffset.x * 1024;
-    screenPosOffsetScaledY = hudElement->screenPosOffset.y * 1024;
+    fmt = hudElement->fmt;
+    masks = hudElement->masks;
+    maskt = hudElement->maskt;
+    flipX = hudElement->flipX;
+    flipY = hudElement->flipY;
+    clamp = hudElement->clamp;
+    dropShadow = hudElement->dropShadow;
     widthScale = hudElement->widthScale;
-    screenPosOffsetScaledX /= widthScale;
     heightScale = hudElement->heightScale;
-    screenPosOffsetScaledY /= heightScale;
+    texSizeX = hudElement->texSizeX;
+    texSizeY = hudElement->texSizeY;
+    imageAddr = hudElement->imageAddr;
+    paletteAddr = hudElement->paletteAddr;
 
-    renderPosX = hudElement->worldPosOffset.x;
-    renderPosY = hudElement->worldPosOffset.y;
-    renderPosX += hudElement->renderPosX + screenPosOffsetScaledX;
-    renderPosY += hudElement->renderPosY + screenPosOffsetScaledY;
-    tempX = offsetX;
-    tempY = offsetY;
-    tempX += renderPosX;
-    tempY += renderPosY;
 
-    baseX = tempX;
-    baseY = tempY;
-
-    if (dropShadow) {
-        baseX = tempX + 2;
-        baseY = tempY + 2;
-    }
-
-    flags1 = (hudElement->flags & HUD_ELEMENT_FLAG_FMT_CI4);
-    isFmtCI4 = flags1 != 0;
-    flags1 = (hudElement->flags & HUD_ELEMENT_FLAG_FMT_IA8);
-    isFmtIA8 = flags1 != 0;
-    flags1 = (hudElement->flags & HUD_ELEMENT_FLAG_FLIPX);
-    flipX = flags1 != 0;
-    flags2 = (hudElement->flags & HUD_ELEMENT_FLAG_FLIPY);
-    flipY = flags2 != 0;
-
-    fmt = 0;
-    if (isFmtCI4 == false && isFmtIA8 == false) {
-        fmt = 0; // RGBA
-    }
-    if (isFmtCI4 == true && isFmtIA8 == false) {
-        fmt = 1; // CI
-    }
-    if (isFmtCI4 == false && isFmtIA8 == true) {
-        fmt = 2; // IA
-    }
-    if (isFmtCI4 == true && isFmtIA8 == true) {
-        fmt = 2; // IA
-    }
-
-    masks = 6;
-    maskt = 5;
-    if (!(hudElement->flags & HUD_ELEMENT_FLAG_SCALED)) {
-        switch (drawSizeX) {
-            case 8:
-                masks = 3;
-                break;
-            case 16:
-                masks = 4;
-                break;
-            case 32:
-                masks = 5;
-                break;
-        }
-
-        switch (drawSizeY) {
-            case 8:
-                maskt = 3;
-                break;
-            case 16:
-                maskt = 4;
-                break;
-            case 32:
-                maskt = 5;
-                break;
-        }
-    }
-
-#ifdef TARGET_3DS
-#endif
     switch (fmt) {
         case 0:
             gDPSetRenderMode(gMainGfxPos++, G_RM_XLU_SURF, G_RM_XLU_SURF2);
@@ -398,95 +343,14 @@ void hud_element_draw_rect(HudElement* hudElement, s16 texSizeX, s16 texSizeY, s
     } else {
         gDPSetTextureFilter(gMainGfxPos++, G_TF_POINT);
     }
-#ifdef TARGET_3DS
-#endif
 
-    ult = 0;
-    isLastTileY = false;
-    uly = baseY;
-    while (true) {
-        lry = uly + 1024.0 / heightScale * 32.0;
-        lrt = ult + 31;
-        if (flipY) {
-            texStartY = texSizeY;
-        } else {
-            texStartY = 0;
-        }
+    for (k = 0; k < hudElement->npc; k++) {
+        const NdHudPiece* pc = &hudElement->pc[k];
+        s32 uls = pc->uls, ult = pc->ult, lrs = pc->lrs, lrt = pc->lrt;
+        s32 ulx = pc->ulx, uly = pc->uly, lrx = pc->lrx, lry = pc->lry;
+        s32 texStartX = pc->texStartX, texStartY = pc->texStartY, tileMode = pc->tileMode;
 
-        if (lry < 0 || uly > SCREEN_HEIGHT) {
-            break;
-        }
-
-        if (lry >= SCREEN_HEIGHT) {
-            s32 temp = ult + SCREEN_HEIGHT + 31;
-            temp -= baseY + lrt;
-            lrt = temp - 1;
-
-            lry = SCREEN_HEIGHT;
-            isLastTileY = true;
-        }
-
-        if (lrt + 1 >= texSizeY) {
-            lrt = texSizeY - 1;
-            if (texSizeY >= 16) { /* UI2: a 16 row image draws 16 rows (was 17) */
-                lry = baseY + drawSizeY - 1;
-            } else {
-                lry = baseY + drawSizeY;
-            }
-            isLastTileY = true;
-        }
-
-        isLastTileX = false;
-        uls = 0;
-        ulx = baseX;
-        while (true) {
-            lrx = ulx + 1024.0 / widthScale * 64.0;
-            lrs = uls + 63;
-            if (flipX) {
-                texStartX = texSizeX;
-            } else {
-                texStartX = 0;
-            }
-
-            if (lrx < pm_wide_left(0)  || ulx > pm_wide_right(SCREEN_WIDTH)) {
-                break;
-            }
-
-            if (lrx >= pm_wide_right(SCREEN_WIDTH)) {
-                s32 temp = uls + pm_wide_right(SCREEN_WIDTH) + 63;
-                temp -= baseX + lrs;
-                lrs = temp - 1;
-
-                lrx = pm_wide_right(SCREEN_WIDTH);
-                isLastTileX = true;
-            }
-
-            if (lrs + 1 >= texSizeX) {
-                lrs = texSizeX - 1;
-                if (texSizeX > 16) {
-                    lrx = baseX + drawSizeX - 1;
-                } else {
-                    lrx = baseX + drawSizeX;
-                }
-                isLastTileX = true;
-            }
-
-#ifdef TARGET_3DS
-#endif
-            gDPPipeSync(gMainGfxPos++);
-
-            if (isLastTileX ) {
-                tileMode = !isLastTileY;
-            }
-            if (!isLastTileX && !isLastTileY) {
-                tileMode = 0;
-            }
-            if (!isLastTileX && isLastTileY) {
-                tileMode = 2;
-            }
-            if (isLastTileX && isLastTileY) {
-                tileMode = 3;
-            }
+        gDPPipeSync(gMainGfxPos++);
 
             switch (fmt) {
                 case 0:
@@ -595,14 +459,249 @@ void hud_element_draw_rect(HudElement* hudElement, s16 texSizeX, s16 texSizeY, s
 #ifdef TARGET_3DS
 #endif
             if (hudElement->flags & HUD_ELEMENT_FLAG_FILTER_TEX) {
-                if (!pm_anchor_rect(ulx * 4, uly * 4, lrx * 4, lry * 4, 0, texStartX * 32 + 16, texStartY * 32 + 16, widthScale, heightScale)) {
+                if (!(anchor && pm_anchor_rect(ulx * 4, uly * 4, lrx * 4, lry * 4, 0, texStartX * 32 + 16, texStartY * 32 + 16, widthScale, heightScale))) {
                     gSPScisTextureRectangle(gMainGfxPos++, ulx * 4, uly * 4, lrx * 4, lry * 4, 0, texStartX * 32 + 16, texStartY * 32 + 16, widthScale, heightScale);
                 }
             } else {
-                if (!pm_anchor_rect(ulx * 4, uly * 4, lrx * 4, lry * 4, 0, texStartX * 32, texStartY * 32, widthScale, heightScale)) {
+                if (!(anchor && pm_anchor_rect(ulx * 4, uly * 4, lrx * 4, lry * 4, 0, texStartX * 32, texStartY * 32, widthScale, heightScale))) {
                     gSPScisTextureRectangle(gMainGfxPos++, ulx * 4, uly * 4, lrx * 4, lry * 4, 0, texStartX * 32, texStartY * 32, widthScale, heightScale);
                 }
             }
+    }
+    gDPPipeSync(gMainGfxPos++);
+}
+#undef gMainGfxPos
+
+/* core 0: one HUD element record, emitted into a local list and walked as state ops (at most 9 prologue units + 32 pieces of 14
+ * + 1 = 458 units). */
+static void hud_rect_run(const uint32_t* u) {
+    static Gfx buf[512];
+    Gfx* p = buf;
+    hud_rect_emit((const NdHudRec*)u, &p, 0);
+    nd_walk_state((const uint32_t*)buf, (unsigned)(p - buf));
+}
+
+void hud_element_draw_rect(HudElement* hudElement, s16 texSizeX, s16 texSizeY, s16 drawSizeX, s16 drawSizeY,
+                           s16 offsetX, s16 offsetY, s32 clamp, s32 dropShadow) {
+    u32 isFmtCI4;
+    u32 isFmtIA8;
+    s32 flipX, flipY;
+    s32 fmt;
+    s32 widthScale, heightScale;
+    s32 texStartX, texStartY;
+    u32 isLastTileX, isLastTileY;
+    s32 uls, ult, lrs, lrt;
+    s32 uly, lry, ulx, lrx;
+    s32 masks, maskt;
+    s32 screenPosOffsetScaledX, screenPosOffsetScaledY;
+    IMG_PTR imageAddr;
+    PAL_PTR paletteAddr;
+    s16 baseX, baseY;
+    s32 tileMode;
+    u32 flags1, flags2;
+    u16 renderPosX, renderPosY;
+    s16 tempX, tempY;
+    NdHudRec rec;
+
+    imageAddr = hudElement->imageAddr;
+    paletteAddr = (u16*) hudElement->paletteAddr;
+
+    screenPosOffsetScaledX = hudElement->screenPosOffset.x * 1024;
+    screenPosOffsetScaledY = hudElement->screenPosOffset.y * 1024;
+    widthScale = hudElement->widthScale;
+    screenPosOffsetScaledX /= widthScale;
+    heightScale = hudElement->heightScale;
+    screenPosOffsetScaledY /= heightScale;
+
+    renderPosX = hudElement->worldPosOffset.x;
+    renderPosY = hudElement->worldPosOffset.y;
+    renderPosX += hudElement->renderPosX + screenPosOffsetScaledX;
+    renderPosY += hudElement->renderPosY + screenPosOffsetScaledY;
+    tempX = offsetX;
+    tempY = offsetY;
+    tempX += renderPosX;
+    tempY += renderPosY;
+
+    baseX = tempX;
+    baseY = tempY;
+
+    if (dropShadow) {
+        baseX = tempX + 2;
+        baseY = tempY + 2;
+    }
+
+    flags1 = (hudElement->flags & HUD_ELEMENT_FLAG_FMT_CI4);
+    isFmtCI4 = flags1 != 0;
+    flags1 = (hudElement->flags & HUD_ELEMENT_FLAG_FMT_IA8);
+    isFmtIA8 = flags1 != 0;
+    flags1 = (hudElement->flags & HUD_ELEMENT_FLAG_FLIPX);
+    flipX = flags1 != 0;
+    flags2 = (hudElement->flags & HUD_ELEMENT_FLAG_FLIPY);
+    flipY = flags2 != 0;
+
+    fmt = 0;
+    if (isFmtCI4 == false && isFmtIA8 == false) {
+        fmt = 0; // RGBA
+    }
+    if (isFmtCI4 == true && isFmtIA8 == false) {
+        fmt = 1; // CI
+    }
+    if (isFmtCI4 == false && isFmtIA8 == true) {
+        fmt = 2; // IA
+    }
+    if (isFmtCI4 == true && isFmtIA8 == true) {
+        fmt = 2; // IA
+    }
+
+    masks = 6;
+    maskt = 5;
+    if (!(hudElement->flags & HUD_ELEMENT_FLAG_SCALED)) {
+        switch (drawSizeX) {
+            case 8:
+                masks = 3;
+                break;
+            case 16:
+                masks = 4;
+                break;
+            case 32:
+                masks = 5;
+                break;
+        }
+
+        switch (drawSizeY) {
+            case 8:
+                maskt = 3;
+                break;
+            case 16:
+                maskt = 4;
+                break;
+            case 32:
+                maskt = 5;
+                break;
+        }
+    }
+    rec.flags = hudElement->flags;
+    rec.imageAddr = imageAddr;
+    rec.paletteAddr = paletteAddr;
+    rec.widthScale = widthScale;
+    rec.heightScale = heightScale;
+    rec.fmt = fmt;
+    rec.masks = masks;
+    rec.maskt = maskt;
+    rec.flipX = flipX;
+    rec.flipY = flipY;
+    rec.clamp = clamp;
+    rec.dropShadow = dropShadow;
+    rec.npc = 0;
+    rec.texSizeX = texSizeX;
+    rec.texSizeY = texSizeY;
+    rec.opacity = hudElement->opacity;
+    rec.tint = hudElement->tint;
+    rec.pad = 0;
+
+
+
+    ult = 0;
+    isLastTileY = false;
+    uly = baseY;
+    while (true) {
+        lry = uly + 1024.0 / heightScale * 32.0;
+        lrt = ult + 31;
+        if (flipY) {
+            texStartY = texSizeY;
+        } else {
+            texStartY = 0;
+        }
+
+        if (lry < 0 || uly > SCREEN_HEIGHT) {
+            break;
+        }
+
+        if (lry >= SCREEN_HEIGHT) {
+            s32 temp = ult + SCREEN_HEIGHT + 31;
+            temp -= baseY + lrt;
+            lrt = temp - 1;
+
+            lry = SCREEN_HEIGHT;
+            isLastTileY = true;
+        }
+
+        if (lrt + 1 >= texSizeY) {
+            lrt = texSizeY - 1;
+            if (texSizeY >= 16) { /* UI2: a 16 row image draws 16 rows (was 17) */
+                lry = baseY + drawSizeY - 1;
+            } else {
+                lry = baseY + drawSizeY;
+            }
+            isLastTileY = true;
+        }
+
+        isLastTileX = false;
+        uls = 0;
+        ulx = baseX;
+        while (true) {
+            lrx = ulx + 1024.0 / widthScale * 64.0;
+            lrs = uls + 63;
+            if (flipX) {
+                texStartX = texSizeX;
+            } else {
+                texStartX = 0;
+            }
+
+            if (lrx < pm_wide_left(0)  || ulx > pm_wide_right(SCREEN_WIDTH)) {
+                break;
+            }
+
+            if (lrx >= pm_wide_right(SCREEN_WIDTH)) {
+                s32 temp = uls + pm_wide_right(SCREEN_WIDTH) + 63;
+                temp -= baseX + lrs;
+                lrs = temp - 1;
+
+                lrx = pm_wide_right(SCREEN_WIDTH);
+                isLastTileX = true;
+            }
+
+            if (lrs + 1 >= texSizeX) {
+                lrs = texSizeX - 1;
+                if (texSizeX > 16) {
+                    lrx = baseX + drawSizeX - 1;
+                } else {
+                    lrx = baseX + drawSizeX;
+                }
+                isLastTileX = true;
+            }
+
+
+            if (isLastTileX ) {
+                tileMode = !isLastTileY;
+            }
+            if (!isLastTileX && !isLastTileY) {
+                tileMode = 0;
+            }
+            if (!isLastTileX && isLastTileY) {
+                tileMode = 2;
+            }
+            if (isLastTileX && isLastTileY) {
+                tileMode = 3;
+            }
+
+            if (rec.npc >= ND_HUD_PC) {
+                pm_fatal_stop("hud: element over 32 pieces");
+            }
+            rec.pc[rec.npc].uls = uls;
+            rec.pc[rec.npc].ult = ult;
+            rec.pc[rec.npc].lrs = lrs;
+            rec.pc[rec.npc].lrt = lrt;
+            rec.pc[rec.npc].ulx = ulx;
+            rec.pc[rec.npc].uly = uly;
+            rec.pc[rec.npc].lrx = lrx;
+            rec.pc[rec.npc].lry = lry;
+            rec.pc[rec.npc].texStartX = texStartX;
+            rec.pc[rec.npc].texStartY = texStartY;
+            rec.pc[rec.npc].tileMode = tileMode;
+            rec.pc[rec.npc].pad = 0;
+            rec.npc++;
+
             if (isLastTileX) {
                 break;
             }
@@ -618,7 +717,12 @@ void hud_element_draw_rect(HudElement* hudElement, s16 texSizeX, s16 texSizeY, s
         uly += 1024.0 / heightScale * 32.0;
     }
 
-    gDPPipeSync(gMainGfxPos++);
+    if (pm_anchor_is_open()) {
+        hud_rect_emit(&rec, &gMainGfxPos, 1);
+    } else {
+        nd_rec_napi(hud_rect_run, &rec, 8u + 6u * (unsigned)rec.npc);
+    }
+
 }
 
 void hud_element_clear_cache(void) {
@@ -2373,3 +2477,5 @@ int pm_anchor_rect(int ulx, int uly, int lrx, int lry, int tile, int s, int t, i
     gSP2Triangles(gMainGfxPos++, 0, 3, 1, 0, 3, 2, 1, 0);
     return true;
 }
+
+int pm_anchor_is_open(void) { return sAnchorOpen; }
