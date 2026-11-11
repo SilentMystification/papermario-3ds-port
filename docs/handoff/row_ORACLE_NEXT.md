@@ -145,6 +145,22 @@ ms floor). Counts per frame from fxcenb. Bound = oracle code read only; FXSPLIT 
 - Cut rows are written only after FXSPLIT and its two XL runs agree (lesson 2 below); then one row per cut with the console gate
   (fxtest of that effect, its ms before and after, two runs each).
 
+## N3DS QTM RAM (oracle 2, feasibility only, unverified; for plan_datapath.md CIA memory; do not start)
+- libctru os.h: OS_QTMRAM_VADDR 0x1E800000, OS_QTMRAM_PADDR 0x1F000000, OS_QTMRAM_SIZE 4 MiB, the last 128 KiB kernel-reserved:
+  about 3.9 MiB, New 3DS only. Claim (user's source, not checked: 3dbrew refused our fetch): a CIA maps it through a static memory
+  mapping descriptor in its ExHeader ARM11 kernel capabilities; a .3dsx runs under the launcher's ExHeader and cannot get it.
+- Could hold: data the GPU or CPU reads every frame with no allocator churn: hot native textures (a fixed-slot pool: map textures
+  of the current area are 220-340 KB native each, so all of one area fits), the command and vertex rings (pm_gpu ring chunks), the
+  frame matrices (gm_tab, PM_GM_N x 64 B). Whether the GPU can read QTM RAM (it is FCRAM-like memory outside the linear heap: the
+  GPU reads by physical address, so likely yes; must be probed) decides textures and rings versus CPU-only data.
+- Conflicts: the QTM module (3D camera head tracking) owns the region while it runs: the slider 3D with head tracking (super-stable
+  3D) needs QTM stopped or not started (a probe must check the service state first); no libctru allocator (a fixed carve-up of our
+  own); the ExHeader descriptor needs our own RSF/makerom CIA build, which the repo does not have yet (no RSF, no makerom step); the
+  applet .3dsx (the user's current push path) cannot use it; O3DS has no such region, so every use needs an O3DS path anyway.
+- Worth: low next to ASSETFREE (the 25.7 MB resident ROM image leaves the heap) and the N3DS CIA SystemModeExt 124 MB (about +60 MB
+  on N3DS with no new code path). 3.9 MiB is one extra pool on one model behind a new build type. Do after a CIA build exists and
+  only if a measured N3DS memory limit remains. Probe row: row_QTMPROBE.md (blocked on a CIA build row).
+
 ## Texture pre-conversion study, CIA memory (old oracle, for plan_datapath.md section 2 and 5)
 - Memory today (pm_mem.c:72-110 __system_allocateHeaps): the budget is already read at run time: commit = svcGetResourceLimit
   (RESLIMIT_COMMIT) of the process, capped by PM_FCRAM (64 MB); the whole commit is one MEMOP_ALLOC_LINEAR block split into the 14 MB
