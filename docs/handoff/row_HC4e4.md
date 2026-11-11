@@ -40,19 +40,17 @@ Gate B: nd_host PASS; lane build OK (a link error names a missed user: fix it th
 1. nd_host PASS.
 2. For the benches spot_mac01_det, mdl5_iwa10_det, spot_mac00_det_pic (not spot_mac00_det: its runs record under spot_mac00_det_pic,
    bench.py:1916, so its base finds no record; row TOOLB5): `bench.py base <bench>`, `bench.py run <bench> --row HC4e4 --lane HC4e4 --why "..."`, `bench.py cmp <bench> --row HC4e4`: exit 0, 6/6 byte-equal. Run `bench.py base` only while no other Azahar run is on the machine until row TOOLB3 is merged. No `ndc: untyped word` line in the logs.
-3. `PM_LANE=HC4e4 python 3ds/tools/bench.py run hotset_size --row HC4e4 --lane HC4e4 --why "..."`: rc 1 with m2_stale 16 = the 15 stale names of main plus rec_op (hot_order.ld :340, deleted in A6). Any other new stale name: hand back. Write m1_union in the commit. Row HOTORD regenerates hot_order.ld after this row.
+3. `PM_LANE=HC4e4 python 3ds/tools/bench.py run hotset_size --row HC4e4 --lane HC4e4 --why "..."`: PASSED as expected (run_hotset.txt at e69d0c8a7):
+   rc 1, exactly these 15 stale names: g2_same tex_op g2_note op_settile gbi_moveword set_fillcolor nd_rec_state tex_op_impl op_setothermode
+   op_settimg op_loadtlut op_settilesize op_loadblock op_setprimcolor rec_op. nd_rec_state: A3 made it a test and a tail call; its only
+   callers are in nd_rec.c (:339 :364 :443 :445, -O2), so it is inlined and --gc-sections drops the copy (map: Discarded, line 874).
+   rec_op: deleted in A6. gbi_setenv, set_primdepth are linked again (only caller nd_op_apply, nd_set.c :166 :170): not stale. The old
+   reference list came from build3ds/lane-main/pm_3ds.map of 2026-11-09 (before HC4e3), so it is no reference. No ld edit here: row
+   HOTORD regenerates hot_order.ld. Write m1_union 107516 in the commit.
 Affected scenarios (no others): spot_mac01_det, mdl5_iwa10_det, spot_mac00_det.
 
-## Gate 2 tool fault (2026-11-10) and how to go on
-Steps A, B are committed (51587f9ed, 6213e3cad); spot_mac01_det and spot_mac00_det_pic cmp 6/6. mdl5_iwa10_det run 238358 ended rc 2
-"crash symbols" after its until match, with no last_crash.txt: a tool fault (row TOOLB6, wrong ELF and output folder), so gate 2
-stops (CLAUDE.md 4). Oracle read of the changed format: the B2 readers (animator.c, entity_model.c, imgfx.c, energy_orb_wave.c,
-model.c :4453 :4508 :4651, nd_ent.c, nd_shape.c, nd_seam.c, barricade.c, GFTN) end only on NDO_END; A3/A4 drop untyped words.
-Typed writers: gs/g macros (HC4e1-e3), nd_shape_conv v2 (HC4f3), nd_ent.c :206 and nd_dlc.c :491 (A8). No raw writer of a list
-that reaches iwa_10 is known; the oracle names the site from the crash symbols.
-Next (after TOOLB6 is merged): merge main into HC4e4, run gate 2 for mdl5_iwa10_det again (the same command, output to
-build3ds/out/run_iwa10_2.txt). rc 2 again: copy build3ds/lane-HC4e4/last_crash.txt to build3ds/out/, commit, hand back that file.
-Pass: go on with gate 3 (hotset_size) and the memcheck line.
+## Status
+Steps A, B committed (51587f9ed, 6213e3cad); gates 1-3 passed at e69d0c8a7. Left: the memcheck line, then the end.
 ## Commands
 - Build: PM_ROW=HC4e4 PM_LANE=HC4e4 sh 3ds/build.sh > build.log 2>&1; then grep -n "error\|warning: unused" build.log.
 
