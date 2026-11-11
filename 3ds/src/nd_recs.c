@@ -182,15 +182,34 @@ static void hit_apply(const Gfx* q) {
     nd_ws.omode_h = s.omh; nd_ws.omode_l = s.oml; nd_ws.om_kh = s.kh; nd_ws.om_kl = s.kl; nd_ws.geom = s.geom; nd_ws.prim = s.prim; nd_ws.prim_lod = s.plod;
     nd_ws.envc = s.env; fogc = s.fog; blendc = s.blend; nd_ws.tex_on = s.tex; nd_ws.tex_ss = s.tss >> 16; nd_ws.tex_ts = s.tss & 0xffffu; fog_fm = s.fm; fog_fo = s.fo;
 }
+/* HC6 step 2 debug switch mkchk: per record, the entry key A + key B found against the entry the old compare (full key words) finds. */
+NdMEnt* nd_mc_find_old(const NdMKey* k);
+static unsigned mk_recs, mk_diff, mk_f0, mk_fl;
+static __attribute__((cold, noinline)) void mkchk_note(const NdMKey* k, const NdMEnt* e) {
+    mk_recs++;
+    if (nd_mc_find_old(k) != e) mk_diff++;
+    const unsigned fr = pm_frame_count();
+    if (fr != mk_fl) {
+        mk_fl = fr;
+        if (fr >= mk_f0 + 300u) { pm_log("mkchk f%u frames %u recs %u diff %u", fr, fr - mk_f0, mk_recs, mk_diff); mk_f0 = fr; mk_recs = mk_diff = 0; }
+    }
+}
 unsigned rec_run(const Gfx* q) {
     const unsigned mi0 = mfr_idx;
     NdMKey mk;
-    pm_gpu_model_key((const uint32_t*)q, &mk); /* S3N-6: the cache key, from the walker state before the record is applied */
+    /* HC6 step 2: the lookup takes key A (the payload, core 1) and key B (pm_gpu_model_keyb); the full key (the store, the miss diagnostics, ndm, mfr)
+     * is built before rec_apply only when the hit is not taken (from the walker state before the record is applied, as before). */
+    const int mkc = PMDL("mkchk"), full0 = mkc || mfr_on || pm_gpu_ndm_on();
+    if (full0) pm_gpu_model_key((const uint32_t*)q, &mk); /* S3N-6: the cache key, from the walker state before the record is applied */
+    else pm_gpu_model_keyb((const uint32_t*)q, &mk);
     /* STARFX: a record with a custom gfx pre list never takes the hit path (MDL-5f, below), so it is not looked up and not stored (model_draw):
      * its list pointer is a key word that moves with the frame's display list, and every rebuild stored its draws again into the pool (the hos_01
      * glowing stars filled the 512-draw pool and cleared the whole cache about every 50 frames). */
     NdMEnt* mce = q[11].words.w0 ? NULL : nd_mc_find_rec(&mk); /* PERF1-4a: the record address memo, else hash and probe */
     int cached = mce != NULL;
+    if (__builtin_expect(mkc, 0) && !q[11].words.w0) mkchk_note(&mk, mce);
+    int full = full0;
+    if (!cached && !full) { const uint32_t h_ = mk.h; pm_gpu_model_key((const uint32_t*)q, &mk); mk.h = h_; full = 1; } /* HC6 step 2: the miss path reads the full key */
     if (!cached) { pm_xf.mdl_miss++; if (!q[11].words.w0) { if (pm_xf.diag) pm_xf.wh[nd_mc_xdiag(&mk)]++; nd_mc_miss(&mk); extern void pm_gpu_model_miss_diag(const NdMKey* k); pm_gpu_model_miss_diag(&mk); } } /* S3N-7: the miss class (diagnostic); STARFX: a pre-list record is rebuilt (counted) but has no key to class */
     int ndm = pm_gpu_ndm_on();
     int nat = 0, mdone = 0, hit = 0;
@@ -207,6 +226,7 @@ unsigned rec_run(const Gfx* q) {
         hit_apply(q); /* HC6 step 1: the walker state a miss leaves */
         sc_ok = 0; nd_sr_forget();
     } else {
+    if (!full) { const uint32_t h_ = mk.h; pm_gpu_model_key((const uint32_t*)q, &mk); mk.h = h_; } /* HC6 step 2: a cached key whose hit failed: the store reads the full key */
     rec_apply(q, mdone);
     { /* MDL-1b v2: once per record after rec_aux, before the ndm and model branches. SBKW: every record, not only R13 texture-only ones: the walker's
        * tile 1 step (ensure_tile(1) of a plan that reads TEXEL1) runs for all records, so the native combine decision sees td[1].valid (sbk_56 water) */

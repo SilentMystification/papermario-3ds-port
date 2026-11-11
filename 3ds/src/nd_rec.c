@@ -216,7 +216,7 @@ void nd_rec_model(const void* rec, unsigned words) {
     const unsigned n = words - G_PM_REC_WORDS; /* HC4e4: the R13 units are typed by the producer macros (nd_gbi.h) */
     q[26] = n;
     p[0] = NDC_HDR(NDC_MODEL, G_PM_REC_WORDS + n, 0);
-    p[1] = 0;
+    p[1] = nd_mkey_a(q); /* HC6 step 2: key A of the model cache (the record part), hashed here on core 1 */
 }
 void nd_rec_spr(const void* rec, const void* geo) {
     rec_open();

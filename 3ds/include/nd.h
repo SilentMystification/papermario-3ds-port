@@ -398,7 +398,8 @@ const NdNat* nd_model_native(unsigned j);
 #define ND_OML_READ 0xF0FF7C7Bu
 #define NDMC_RW 28
 #define NDMC_SW 64
-typedef struct NdMKey { uint32_t w[NDMC_RW + NDMC_SW]; uint32_t h; uint32_t rp; } NdMKey; /* S3N-7: h = hash of w (nd_mc_hash), rp = the record address (not compared) */
+#define NDMC_KC 8
+typedef struct NdMKey { uint32_t w[NDMC_RW + NDMC_SW]; uint32_t kc[NDMC_KC]; uint32_t h; uint32_t rp; } NdMKey; /* HC6 step 2: kc = key A (the record words, hashed on core 1: nd_mkey_a) and key B (walker other mode, geometry, handle and dlc generations): the compared words; w = the full key (a miss, the diagnostics) */ /* S3N-7: h = hash of w (nd_mc_hash), rp = the record address (not compared) */
 #define ND_RAW_MAX 16
 typedef struct __attribute__((aligned(32))) NdMEnt { uint32_t h, rp; uint64_t vmask; uint16_t off, n; uint8_t used, tex, why; uint32_t geom; int hs; unsigned hg; uint32_t tgen, ep, mver, uf; unsigned h1g; int16_t h1s; uint16_t ww, wh; } NdMEnt; /* WATER: ww, wh the tile 0 window the draws were built with (0: the full handle desc), the hit takes the same desc. MAPX-2: mver 0, or for an entry with a lit or fogged draw (use5: the pm5 block comes from the matrix) the matrix version of the record | 0x10000, which a hit needs again; uf the frame of the last lookup or store (mc_trim). TIK19: h1s, h1g the unit 1 slot of the draws and its generation (-1: no unit 1; the hit reads the unit 1 words again). PERF2 step 3: 64 bytes, the probe reads h and used in the first line; the key words are in a side array (nd_mc_keyw) */ /* vmask: the groups in view the draws were cut from (PERF1-4b: the hit compares the groups in view now; the key holds the state the cut reads); tgen: nd_tmpl_gen at the last template build of the draws (PERF1-4c) */
 _Static_assert(sizeof(NdMEnt) == 64, "PERF2: NdMEnt is one 64 byte record (TIK19 h1s and h1g in its tail)");
@@ -438,6 +439,8 @@ enum { WD_CEN = 1u, WD_FINE = 2u, WD_C2 = 4u, WD_PH = 8u, WD_ORB = 16u };
 void pm_gpu_ndt_take(uint64_t o[NDT_N]); /* the ticks of the window, then reset (pm_phase.c prof report) */
 unsigned pm_gbi_gvkey(uint32_t* o, unsigned max); /* S3N-6 (the former pm_gbi.c): the walker gv, tile, vp and plan state (pre-apply) */
 void pm_gpu_model_key(const uint32_t* rec, NdMKey* k); /* S3N-6 (pm_gpu.c) */
+void pm_gpu_model_keyb(const uint32_t* rec, NdMKey* k); /* HC6 step 2: kc only (key A from the payload, key B from the walker) */
+uint32_t nd_mkey_a(const uint32_t* rec); /* HC6 step 2: key A of a record (core 1, nd_rec_model) */
 /* S3N-3d: the combine choice of one draw (the former pm_gbi.c nd_comb_decide). In: the combine words, the walker flags and the 16 combiner fields of tst1 (comb_a..d, comb_aa..ad,
  * comb2_a..d, comb2_aa..ad). Out: leg (legacy mode, or 8 with plan), use and plan (general plan), cc (constant colour of mode 4), and the walker state (mode5, pat, why, cyc, dual). */
 typedef struct NdCombIn {

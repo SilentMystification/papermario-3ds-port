@@ -13787,6 +13787,30 @@
         }
       ],
       "reason": "HC6 step 1 census, in the step's Azahar list. Log only."
+    },
+    {
+      "name": "mkchk_mac01",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200 (warp entry 0), no input, det. Log only: the mkchk line of the first 300-frame window.",
+      "proves": "HC6 step 2 (plan_hotcode 5.4 premise 2): the model cache entry key A (record part, core 1) plus key B (walker part) finds is the entry the old full-key compare finds, on every record: diff 0.",
+      "debug": "warp=mac_01:0 pos=0:0:200 mkchk loglevel=debug det",
+      "until": "mkchk f[0-9]+ frames ",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "mkchk",
+          "regex": "mkchk f[0-9]+ frames [0-9]+ recs [0-9]+ diff 0"
+        }
+      ],
+      "reason": "HC6 step 2 check, in the step's Azahar list. Log only."
     }
   ]
 }

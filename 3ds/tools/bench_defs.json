@@ -7723,6 +7723,22 @@
         "census"
       ],
       "gates": []
+    },
+    {
+      "name": "mkchk_mac01",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "HC6 step 2 check: model cache key A + key B against the old full key on every record, per 300 frames on mac_01 (switch mkchk). Gate: diff 0.",
+      "scenario": "mkchk_mac01",
+      "cap": 25,
+      "until": "mkchk f[0-9]+ frames ",
+      "tags": [
+        "azahar",
+        "hc6",
+        "check"
+      ],
+      "gates": []
     }
   ],
   "legacy": {
