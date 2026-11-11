@@ -23,7 +23,6 @@ int box_prod; PM_HOTD int box_folded;
 unsigned comb_gen, cmb_gen_seen;
 int box_pat; /* D03: (PRIM - ENV) * TEXEL0 + ENV with alpha from TEXEL1 only: window with a tile 0 pattern */
 unsigned box_save[4];
-float dual_gain[3];
 int comb_set;
 int comb_alpha_shade = 1;
 int plan_active; /* S25: the general combiner (mode 8) draws, not the legacy mode */
