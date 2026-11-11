@@ -216,6 +216,7 @@ static __attribute__((cold, noinline)) void mkchk_note(const NdMKey* k, const Nd
         if (fr >= mk_f0 + 300u) { pm_log("mkchk f%u frames %u recs %u diff %u", fr, fr - mk_f0, mk_recs, mk_diff); mk_f0 = fr; mk_recs = mk_diff = 0; }
     }
 }
+void pm_km_note(const uint32_t* rec, const NdMKey* k, int cls); /* KEYMISS census (pm_keymiss.c, switch keymiss) */
 /* HC6 step 3: everything of a record but the hit: the miss (the full key, the diagnostics, rec_apply, the native draw or the walker geometry), the
  * warm budget skip, a failed hit (tried: the matrix ran and pm_gpu_model_hit said no) and the debug switches that need the full key (full0). */
 static __attribute__((cold, noinline)) unsigned rec_miss(const Gfx* q, NdMKey* mkp, NdMEnt* mce, int full0, int tried, unsigned mi0) {
@@ -223,6 +224,7 @@ static __attribute__((cold, noinline)) unsigned rec_miss(const Gfx* q, NdMKey* m
     int full = full0;
     if (!cached && !full) { const uint32_t h_ = mkp->h; pm_gpu_model_key((const uint32_t*)q, mkp); mkp->h = h_; full = 1; } /* HC6 step 2: the miss path reads the full key */
     if (!cached) { pm_xf.mdl_miss++; if (!q[11].words.w0) { if (pm_xf.diag) pm_xf.wh[nd_mc_xdiag(mkp)]++; nd_mc_miss(mkp); extern void pm_gpu_model_miss_diag(const NdMKey* k); pm_gpu_model_miss_diag(mkp); } } /* S3N-7: the miss class (diagnostic); STARFX: a pre-list record is rebuilt (counted) but has no key to class */
+    if (__builtin_expect(PMDL("keymiss"), 0) && q[12].words.w0 && (!cached || tried)) pm_km_note((const uint32_t*)q, mkp, cached ? 2 : q[11].words.w0 ? 1 : 0);
     int ndm = pm_gpu_ndm_on();
     int nat = 0, mdone = 0, hit = 0;
     /* MAPX-3: a miss over the warm budget of a covered frame (pm_xfer_skip) is run as an empty hit: its matrix ops, no state, no draw; it builds next frame */
