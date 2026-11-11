@@ -3,6 +3,7 @@
 #include "ld_addrs.h"
 #include "message_ids.h"
 #include "sprite.h"
+#include "nd_api.h"
 #ifdef TARGET_3DS
 #endif
 
@@ -1769,6 +1770,39 @@ void msg_reset_gfx_state(void) {
     gSPDisplayList(gMainGfxPos++, D_8014C500);
 }
 
+#ifdef TARGET_3DS
+/* NATIVEAPI S3a: one glyph is one NDC_NAPI record. msg_draw_char (core 1) keeps the arithmetic and the printModeFlags update and records
+ * NdGlyphRec; msg_glyph_run (core 0) runs the same three N64 macros into a local list and walks it (nd_walk_state), the same units in the same order. */
+typedef struct NdGlyphRec {
+    u32 raster, pal;
+    s32 ulx, uly, lrx, lry, texOffsetX, texOffsetY, dsdx, dtdy;
+    s16 texW, texH;
+    s32 tlut;
+} NdGlyphRec;
+_Static_assert(sizeof(NdGlyphRec) == 48, "NdGlyphRec: 6 stream units");
+
+static void msg_glyph_run(const uint32_t* u) {
+    const NdGlyphRec* r = (const NdGlyphRec*)u;
+    Gfx buf[24];
+    Gfx* p = buf;
+
+    if (r->tlut) {
+        gDPLoadTLUT_pal16(p++, 0, r->pal);
+    }
+    if (r->texW >= 16 && r->texW % 16 == 0) {
+        gDPLoadTextureBlock_4b(p++, r->raster, G_IM_FMT_CI, r->texW, r->texH, 0,
+                               G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+    } else {
+        gDPLoadTextureTile_4b(p++, r->raster, G_IM_FMT_CI, r->texW, r->texH,
+                              0, 0, r->texW - 1, r->texH - 1, 0,
+                              G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+    }
+    gSPTextureRectangle(p++, r->ulx * 4, r->uly * 4, r->lrx * 4, r->lry * 4, G_TX_RENDERTILE, r->texOffsetX, r->texOffsetY,
+                        r->dsdx, r->dtdy);
+    nd_walk_state((const uint32_t*)buf, (unsigned)(p - buf));
+}
+#endif
+
 void msg_draw_char(MessagePrintState* printer, MessageDrawState* drawState, s32 charIndex, s32 palette, s32 posX, s32 posY) {
     MessageCharset* messageCharset;
     s32 fontVariant;
@@ -1852,6 +1886,30 @@ void msg_draw_char(MessagePrintState* printer, MessageDrawState* drawState, s32 
     dsdx = 1.0f / drawState->charScale.x * 1024.0f;
     dtdy = 1.0f / drawState->charScale.y * 1024.0f;
 
+#ifdef TARGET_3DS
+    {
+        NdGlyphRec rec;
+        rec.tlut = 0;
+        rec.pal = 0;
+        if (drawState->printModeFlags & (MSG_PRINT_FLAG_10 | MSG_PRINT_FLAG_1)) {
+            drawState->printModeFlags &= ~(MSG_PRINT_FLAG_10 | MSG_PRINT_FLAG_1);
+            rec.tlut = 1;
+            rec.pal = (u32)(uintptr_t)D_802F4560[palette];
+        }
+        rec.raster = (u32)(uintptr_t)(messageCharset->rasters[fontVariant].raster + messageCharset->charRasterSize * charIndex);
+        rec.texW = messageCharset->texSize.x;
+        rec.texH = messageCharset->texSize.y;
+        rec.ulx = ulx;
+        rec.uly = uly;
+        rec.lrx = lrx;
+        rec.lry = lry;
+        rec.texOffsetX = texOffsetX;
+        rec.texOffsetY = texOffsetY;
+        rec.dsdx = dsdx;
+        rec.dtdy = dtdy;
+        nd_rec_napi(msg_glyph_run, &rec, sizeof rec / 8u);
+    }
+#else
     if (drawState->printModeFlags & (MSG_PRINT_FLAG_10 | MSG_PRINT_FLAG_1)) {
         drawState->printModeFlags &= ~(MSG_PRINT_FLAG_10 | MSG_PRINT_FLAG_1);
         gDPLoadTLUT_pal16(gMainGfxPos++, 0, D_802F4560[palette]);
@@ -1899,6 +1957,7 @@ void msg_draw_char(MessagePrintState* printer, MessageDrawState* drawState, s32 
     }
     gSPTextureRectangle(gMainGfxPos++, ulx * 4, uly * 4, lrx * 4, lry * 4, G_TX_RENDERTILE, texOffsetX, texOffsetY,
                         dsdx, dtdy);
+#endif
 
 #if VERSION_IQUE
     if (charIndex >= MSG_CHAR_ZH_START) {
