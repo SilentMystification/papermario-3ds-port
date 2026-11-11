@@ -13835,6 +13835,102 @@
         }
       ],
       "reason": "HC6 step 4 check, in the step's Azahar list. Log only."
+    },
+    {
+      "name": "keymiss_mac01",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200 (warp entry 0), no input.",
+      "proves": "KEYMISS census: per key word, the model cache misses of the frames 600-799 (keymiss switch). Counts only; the console and the cmp decide.",
+      "debug": "warp=mac_01:0 pos=0:0:200 keymiss loglevel=debug",
+      "until": "keymiss f(6|7)\\d\\d ",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "keymiss",
+          "regex": "keymiss f[0-9]+ frames [0-9]+ miss"
+        }
+      ],
+      "reason": "KEYMISS census (CLAUDE.md 3): which record and walker key words change between frames in the native model cache. Log only."
+    },
+    {
+      "name": "keymiss_sbk56",
+      "status": "unverified",
+      "subject": "Shy Guy Beach sbk_56 (water), Mario at pos 20 0 440 (warp entry 0), no input.",
+      "proves": "KEYMISS census: per key word, the model cache misses of the frames 600-799 (keymiss switch). Counts only; the console and the cmp decide.",
+      "debug": "warp=sbk_56:0 pos=20:0:440 keymiss loglevel=debug",
+      "until": "keymiss f(6|7)\\d\\d ",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: sbk_56 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: sbk_56 entry 0"
+        },
+        {
+          "name": "keymiss",
+          "regex": "keymiss f[0-9]+ frames [0-9]+ miss"
+        }
+      ],
+      "reason": "KEYMISS census (CLAUDE.md 3): which record and walker key words change between frames in the native model cache. Log only."
+    },
+    {
+      "name": "keymiss_kzn08",
+      "status": "unverified",
+      "subject": "Kzn city kzn_08 (warp entry 0), no input.",
+      "proves": "KEYMISS census: per key word, the model cache misses of the frames 600-799 (keymiss switch). Counts only; the console and the cmp decide.",
+      "debug": "warp=kzn_08:0 keymiss loglevel=debug",
+      "until": "keymiss f(6|7)\\d\\d ",
+      "cap": 30,
+      "deadline": 20,
+      "first_marker": "warp: kzn_08 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kzn_08 entry 0"
+        },
+        {
+          "name": "keymiss",
+          "regex": "keymiss f[0-9]+ frames [0-9]+ miss"
+        }
+      ],
+      "reason": "KEYMISS census (CLAUDE.md 3): which record and walker key words change between frames in the native model cache. Log only."
+    },
+    {
+      "name": "keymiss_hos01",
+      "status": "unverified",
+      "subject": "Hos01 story ch0_toad_town at pos -110 250 -170, scripted walk and A presses.",
+      "proves": "KEYMISS census: per key word, the model cache misses of the frames 600-799 (keymiss switch). Counts only; the console and the cmp decide.",
+      "debug": "warp=hos_01:0 story=ch0_toad_town pos=-110:250:-170 padscript=wait60,go_-36_-170_60,wait10,A,wait40,A,wait40,A keymiss loglevel=debug",
+      "until": "keymiss f(6|7)\\d\\d ",
+      "cap": 35,
+      "deadline": 25,
+      "first_marker": "warp: hos_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: hos_01 entry 0"
+        },
+        {
+          "name": "keymiss",
+          "regex": "keymiss f[0-9]+ frames [0-9]+ miss"
+        }
+      ],
+      "reason": "KEYMISS census (CLAUDE.md 3): which record and walker key words change between frames in the native model cache. Log only."
     }
   ]
 }

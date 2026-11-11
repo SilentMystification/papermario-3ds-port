@@ -7755,6 +7755,66 @@
         "check"
       ],
       "gates": []
+    },
+    {
+      "name": "keymiss_mac01",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "KEYMISS census: per key word model cache misses, frames 600-799 (keymiss switch). Azahar counts only.",
+      "scenario": "keymiss_mac01",
+      "cap": 30,
+      "until": "keymiss f(6|7)\\d\\d ",
+      "tags": [
+        "azahar",
+        "keymiss"
+      ],
+      "gates": []
+    },
+    {
+      "name": "keymiss_sbk56",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "KEYMISS census: per key word model cache misses, frames 600-799 (keymiss switch). Azahar counts only.",
+      "scenario": "keymiss_sbk56",
+      "cap": 30,
+      "until": "keymiss f(6|7)\\d\\d ",
+      "tags": [
+        "azahar",
+        "keymiss"
+      ],
+      "gates": []
+    },
+    {
+      "name": "keymiss_kzn08",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "KEYMISS census: per key word model cache misses, frames 600-799 (keymiss switch). Azahar counts only.",
+      "scenario": "keymiss_kzn08",
+      "cap": 30,
+      "until": "keymiss f(6|7)\\d\\d ",
+      "tags": [
+        "azahar",
+        "keymiss"
+      ],
+      "gates": []
+    },
+    {
+      "name": "keymiss_hos01",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "KEYMISS census: per key word model cache misses, frames 600-799 (keymiss switch). Azahar counts only.",
+      "scenario": "keymiss_hos01",
+      "cap": 35,
+      "until": "keymiss f(6|7)\\d\\d ",
+      "tags": [
+        "azahar",
+        "keymiss"
+      ],
+      "gates": []
     }
   ],
   "legacy": {
