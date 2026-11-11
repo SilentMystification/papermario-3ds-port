@@ -34,5 +34,13 @@ nd_rec.c, 3ds/tools/nd_cmd_test.c. Not with HC8 at the same time if both edit pm
 - nd_host PASS. Byte-equal against stored base shots: msgbox_talk_nowide, pause_spin_grab_det_w300.
 - Size: M1 class G <= 5 KB; M3 class G on mac_01 <= 5 KB; nd_texrect fast path <= 1 KB. memcheck OK.
 
-## State (2026-11-10)
-Steps 1-6 merged (de4f4b8c8, step 2 in the merge of e9b0f3d62). Left: step 7 (HC7b), after HC4e3.
+## State (2026-11-11): closed after steps 1-6
+Steps 1-6 merged (de4f4b8c8, step 2 in e9b0f3d62). Step 7 (HC7b) is not done and moves after HC5 (oracle code read):
+- NDC_TEXRECT resolved fields need box_pat, which only core 0 knows: it is an output of the combine sync (nd_comb.c:176, :187, set
+  from the memo at :458). HC5 (combine memo on core 1) makes it a core 1 value; before that a record-time box_pat is impossible.
+- img_role reads nd_ws.cimg (G_SETCIMG at replay); the tile fields and td[] valid/src come from the texture model of the walker.
+  The recorder shadow (nd_rec.c:53-66) has none of them: a mirror slice of about 14 fields with a writer on every tile, image and
+  othermode op on core 1.
+- Class G M1 15.2 KB counts the cold helpers that steps 1-6 split off (M1 includes .text.unlikely callees, plan_hotcode.md 2): it
+  cannot show the fast-path gain. The next class G cut is chosen from M3 class G (hotset.py --fncov on the HC8 census logs).
+Delete this row file with the next HC commit that touches class G, or keep it as the HC7b note until HC5 is merged.
