@@ -12,13 +12,14 @@ Edit rules in place, never append. Start of a session: read docs/handoff/HANDOFF
 - Session size: count the context from the session transcript at stopping points. Ask the user at about 300K, then once per
   further 100K, whether to start a new session. A new session starts only between chains (no agent running). Write HANDOFF.md
   only when a new session starts. Agents of one session cannot be resumed from another session: their context ends there.
-- Oracle: one Opus agent at a time, fresh per batch, replaced past about 300K context. It reads code and writes only
+- Oracle: one Opus oracle per orchestrator session, reused by SendMessage for every question (send questions in groups).
+  Replace it only when its context passes about 300K. Never start a second oracle for a new question or area. It reads code and writes only
   docs/handoff/row_*.md files (rows, findings), never code. It plans each fix by a code read (CLAUDE.md 1-2). For a change of a data
   format it first lists every reader by grep, in the row.
 - Code agents: Haiku (coder.md). Sonnet or Opus only for a row where the oracle gives a reason and the user says yes. Only the user
   approves Opus agents. Reuse an agent in the same area and of the same model type for related work,
   when the follow-up comes soon (its cache lasts about 5 min) or its context holds the code read the next step needs. Never reuse
-  across model types (a Haiku row gets a Haiku agent). Rotate: Haiku past about 150K, the oracle past about 300K, when the work
+  across model types (a Haiku row gets a Haiku agent). Rotate: Haiku past about 150K, when the work
   leaves the agent's files, or at the end of a chain.
 
 ## Rows

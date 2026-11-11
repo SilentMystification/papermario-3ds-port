@@ -1,6 +1,6 @@
 ---
 name: oracle
-description: Oracle (one at a time, fresh per batch). Designs and plans by code read; writes only docs/handoff/row_*.md files.
+description: Oracle (one per orchestrator session, reused for every question). Designs and plans by code read; writes only docs/handoff/row_*.md files.
 model: opus
 effort: high
 tools: Read, Grep, Glob, Bash, Write, Edit
