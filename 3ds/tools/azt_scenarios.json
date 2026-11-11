@@ -12353,6 +12353,26 @@
       ]
     },
     {
+      "name": "dpcen_xfer",
+      "status": "unverified",
+      "reason": "DPCEN2 census on the loading zone walk: resident bytes per pool (heap, linear, VRAM, model cache) and the sprite and static list load counts of the dpres window.",
+      "subject": "Toad Town mac_01 at pos 0 0 200, Mario walks south into the mac_02 loading zone (as xfer_map_mac01), det. The dpres line of the window (dpcen switch): heap, linear and VRAM free, model cache entries and pool draws, sprite loads and static list compiles.",
+      "proves": "DPCEN2 census: resident bytes per pool and the load-time transform counts (spr_load_sprite, nd_dlc_compile) with their microseconds.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town pos=0:0:200 padscript=go_0_700_300,wait150 profdisk=1 loglevel=debug det dpcen",
+      "until": "dpcen f(6|9)\\d\\d ",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "dpres",
+          "regex": "dpres f[0-9]+ heapkb [0-9]+ linfreekb [0-9]+ vramfreekb [0-9]+ mcent [0-9]+ mcpool [0-9]+ sprload [0-9]+ sprus [0-9]+ compiles [0-9]+ compus [0-9]+"
+        }
+      ]
+    },
+    {
       "name": "xfer_map_shots",
       "status": "unverified",
       "subject": "mac_01 -> mac_02 loading zone walk (as xfer_map_mac01), det, one shot per frame from frame 196 to 211: the first drawn frames of mac_02 under the fade-in overlay (covered at progress 255, then fading).",

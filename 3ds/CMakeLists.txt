@@ -392,6 +392,7 @@ set(PORT_SRC
     src/nd_ent.c
     src/nd_recs.c
     src/pm_keymiss.c
+    src/pm_dpcen.c
     src/nd_dlc.c
     src/nd_seam.c
     src/nd_emit.c
@@ -445,7 +446,7 @@ list(REMOVE_ITEM PM_NO_SHORT_ENUM_SRC src/pm_main.c src/pm_mem.c src/pm_log.c sr
 set_property(SOURCE ${PM_NO_SHORT_ENUM_SRC} APPEND PROPERTY COMPILE_OPTIONS -fno-short-enums)
 # S103, hw_guidelines rule 1: cold code outside the hot span (the census, warp and sweep test drivers, the debug game hooks, fxtest): size over speed.
 set_property(SOURCE src/nd_seam.c src/nd_cen.c src/nd_c2haz.c src/pm_warp.c src/pm_sweep.c src/pm_dbg_game.c src/pm_fxtest.c src/pm_romload.c APPEND PROPERTY COMPILE_OPTIONS -Os)
-set_property(SOURCE src/pm_gpu.c src/pm_tex.c src/nd_comb.c src/nd_model.c src/pm_comb.c src/nd_shape.c src/nd_ent.c src/nd_walk.c src/nd_geom.c src/nd_rect.c src/pm_gpu_rect.c src/nd_tmpl.c src/nd_set.c src/nd_recs.c src/nd_emit.c src/pm_keymiss.c APPEND PROPERTY COMPILE_OPTIONS -Os)
+set_property(SOURCE src/pm_gpu.c src/pm_tex.c src/nd_comb.c src/nd_model.c src/pm_comb.c src/nd_shape.c src/nd_ent.c src/nd_walk.c src/nd_geom.c src/nd_rect.c src/pm_gpu_rect.c src/nd_tmpl.c src/nd_set.c src/nd_recs.c src/nd_emit.c src/pm_keymiss.c src/pm_dpcen.c APPEND PROPERTY COMPILE_OPTIONS -Os)
 
 # HC0 census lane (PM_FNCOV=ON, tools only; build.sh PM_FNCOV=1 PM_LANE=<L>): the draw TUs get -finstrument-functions, and
 # src/pm_fncov.c counts the calls per function (switch fncov=<frame>). Off in the normal build: no flag, no file.

@@ -203,12 +203,16 @@ __attribute__((cold, noinline)) int dlc_build(DlcEnt* e, const Gfx* l, int stat)
     if (sl && sl->cnt && !use_tp) pm_log_evt("seamfix dyn map %s list %08x skip %u", pm_shape_name, (u32)(uintptr_t)l, (unsigned)sl->cnt);
     for (i = 0; i < ND_DLC_MAXOPS; i++) { dlc_words[2 * i] = l[i].words.w0; dlc_words[2 * i + 1] = l[i].words.w1; { uint32_t t[2]; t[0] = l[i].words.w0; t[1] = l[i].words.w1; if ((t[0] >> 24) == NDO_END) break; } }
     NdDlcEnv env = { nd_env_vtx, nd_env_valloc, nd_env_ialloc, use_tp ? st->tp + sl->first : NULL, use_tp ? sl->cnt : 0u }; /* SEAMFIX: the T points of this list */
+    unsigned dp_t0 = pm_ticks(); /* DPCEN2: compile time of the static list */
     int rc = nd_dlc_compile(&e->o, dlc_words, &env), pooled = 1;
+    { extern unsigned pm_dp_cmp_n, pm_dp_cmp_us; pm_dp_cmp_n++; pm_dp_cmp_us += (pm_ticks() - dp_t0) / 268u; }
     if (rc == NDR_FULL) { /* no room in the static areas: compile without the copies, every group runs through the ring (the source words: no T points) */
         NdDlcEnv env2 = { nd_env_vtx, NULL, NULL, NULL, 0 };
         dlc_c.sfull++;
         if (use_tp) pm_log_evt("seamfix pool map %s list %08x skip %u", pm_shape_name, (u32)(uintptr_t)l, (unsigned)sl->cnt);
+        dp_t0 = pm_ticks();
         rc = nd_dlc_compile(&e->o, dlc_words, &env2);
+        { extern unsigned pm_dp_cmp_n, pm_dp_cmp_us; pm_dp_cmp_n++; pm_dp_cmp_us += (pm_ticks() - dp_t0) / 268u; }
         pooled = 0;
         if (rc == NDR_OK) { free(e->o.vtx); free(e->o.idx); e->o.vtx = NULL; e->o.idx = NULL; }
     }
