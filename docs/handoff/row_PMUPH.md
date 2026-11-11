@@ -22,19 +22,21 @@ the delta to the phase being left, as acc[] does for ticks. Window sums per phas
    pm_debug_has("profph"). A helper `static void pph_add(int ph)`: two GET_VALUE svc (REG_0, REG_1) into v[2]; pph[k][ph] += (u32)(v[k] -
    pph_last[k]); pph_last = v. pm_ph_push and pm_ph_pop: after `acc[cur] += now - last;` add `if (pf_ph_pmu && pf_samp) pph_add(cur);`.
    pf_arm: after `pm_ph_on = 1;` read pph_last (the same two svc). pf_reset: clear pph.
-2. pf_report after the pmx line: `prof f%u w%u pmxph set %c` followed by up to 6 ` <phase name> <e0> <e1>` pairs (pname[], the phases with
-   the largest e0 sum, values per sampled frame: sum / pf_s), one line (keep it under 160 characters: names are short).
+2. pf_report after the pmx line: the 6 phases with the largest e0 sum (pname[], values per sampled frame: sum / pf_s; a phase with
+   e0 0 prints as `- 0 0`), as two lines of 3 phases each, 13 arguments per line (LF_MAX_ARGS is 16, pm_logfmt.h:16; no vsnprintf on
+   the game thread): `prof f%u w%u pmxph %c set %c %s %u %u %s %u %u %s %u %u` with part letter 'a' (phases 1-3) and 'b' (phases 4-6).
 3. New 3ds/tools/pmu_report.py <log> [--label L]: reads the prof lines (reuse prof_by_scene.parse_windows), groups windows by pmx set,
    averages per set: core 0 and core 1 e0, e1, cyc; derived: CPI = cyc / inst (set b), I-miss and D-read-miss per 1000 instructions
    (needs a set-b window of the same scene: use the run average), istall and dstall share of cyc (set s), bmiss per 1000 inst; and from
-   pmxph the per-phase share of e0 and e1. Writes build3ds/out/pmu_<label>.txt: one table per core, then phases ranked by each event.
+   the pmxph lines (its own regex: `prof f(\d+) w\d+ pmxph ([ab]) set (\w) (.*)`, then name e0 e1 triples; join parts a and b of one
+   frame; skip `-`) the per-phase share of e0 and e1. No bench key change: phase values live in the report only. Writes build3ds/out/pmu_<label>.txt: one table per core, then phases ranked by each event.
    First line: `console values only; Azahar does not count`.
 
 ## Gate (CLAUDE.md 2; Azahar budget 3 of 8)
 - Build, memcheck OK; `bench.py run nd_host --row PMUPH --why "pm_phase.c"`: PASS.
 - `bench.py base spot_mac01_det`; one list `bench.py run spot_mac01_det,pmu_rot_az --row PMUPH --why "byte-equal; pmxph lines"`
   (pmu_rot_az from PMUROT; add `profph` to its debug string in this row); `bench.py cmp spot_mac01_det --row PMUPH`: 6/6 byte-equal;
-  the pmu_rot_az LOG: copy has pmxph lines; `python 3ds/tools/pmu_report.py <that log>` writes the table without an error.
+  the pmu_rot_az LOG: copy has pmxph a and pmxph b lines of one frame; `python 3ds/tools/pmu_report.py <that log>` writes the table without an error.
 
 ## Stop and end
 A failed gate, an edit that does not fit, or a tool fault: commit, hand back the exact output (CLAUDE.md 4-5). Delete this row file in
