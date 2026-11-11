@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "pm_interp_fi.h"
+#include "nd_api.h"
 
 void snowfall_init(EffectInstance* effect);
 void snowfall_update(EffectInstance* effect);
@@ -204,21 +205,40 @@ void snowfall_appendGfx(void* effect) {
             mtx = &gDisplayContext->matrixStack[gMatrixListPos++];
 
             data++;
+#ifdef TARGET_3DS
+            NdParts pb;
+            nd_parts_begin(&pb, 2, 1);
+#endif
             for (i = 0; i < unk_2C; i++, data++) {
                 FI_OPEN(data, (uintptr_t) data->wrapEpoch);
                 if (data->unk_30 <= 0 && data->unk_28 != 0) {
                     guTranslateF(sp18, data->unk_08, data->unk_0C, data->unk_10);
                     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
+#ifdef TARGET_3DS
+                    {
+                        Gfx g[4];
+                        gSPMatrix(&g[0], &gDisplayContext->matrixStack[gMatrixListPos++],
+                                  G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+                        gSPMatrix(&g[1], mtx, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+                        gSPDisplayList(&g[2], dlist);
+                        gSPPopMatrix(&g[3], G_MTX_MODELVIEW);
+                        nd_parts_add(&pb, (const uint32_t*)g);
+                    }
+#else
                     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
                               G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
                     gSPMatrix(gMainGfxPos++, mtx,
                               G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
                     gSPDisplayList(gMainGfxPos++, dlist);
                     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+#endif
                 }
                 FI_CLOSE();
             }
+#ifdef TARGET_3DS
+            nd_parts_end(&pb);
+#endif
             gDPPipeSync(gMainGfxPos++);
         }
     }

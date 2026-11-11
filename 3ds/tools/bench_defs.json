@@ -3566,6 +3566,66 @@
       "gates": []
     },
     {
+      "name": "fxpic_63",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "S4 byte gate: snowfall (effect 63) on the particle run, cold det start. Two runs of one build give byte-equal shots 412 to 415; base against head for the S4 gate.",
+      "scenario": "fxpic_63",
+      "cap": 40,
+      "until": "shot \\d+ frame 415\\b",
+      "tags": [
+        "azahar",
+        "fxcen"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fxpic_124",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "S4 byte gate: pink_sparkles (effect 124) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.",
+      "scenario": "fxpic_124",
+      "cap": 40,
+      "until": "shot \\d+ frame 415\\b",
+      "tags": [
+        "azahar",
+        "fxcen"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fxpic_50",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "S4 byte gate: shimmer_burst (effect 50) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.",
+      "scenario": "fxpic_50",
+      "cap": 40,
+      "until": "shot \\d+ frame 415\\b",
+      "tags": [
+        "azahar",
+        "fxcen"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fxpic_105",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "S4 byte gate: embers (effect 105) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.",
+      "scenario": "fxpic_105",
+      "cap": 40,
+      "until": "shot \\d+ frame 415\\b",
+      "tags": [
+        "azahar",
+        "fxcen"
+      ],
+      "gates": []
+    },
+    {
       "name": "spot_mac01_selfchk_prof",
       "kind": "azahar_stream",
       "speed": "normal",
