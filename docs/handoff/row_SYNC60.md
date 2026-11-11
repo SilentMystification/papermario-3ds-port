@@ -49,6 +49,16 @@ static void sync60_pace(void) {
   "SYNC60 byte gate"`, `python 3ds/tools/bench.py cmp <bench> --row SYNC60`: 6/6 byte-equal each. If spot_mac01_fps60_pic's base
   prints "two runs differ", stop and hand back (its picture is then not deterministic, and the gate needs the orchestrator).
 - Console (user): 60 FPS on, mac_01 and a battle: no tearing, no stutter, game speed unchanged. Azahar cannot show the LCD timing.
+## Status and next step (2026-11-11)
+Ready candidate 7ee736aba: nd_host PASS, memcheck OK, spot_mac01_det 6/6. spot_mac01_fps60_pic cmp failed (0 of 2, a third shot):
+that gate is wrong for this row. The scenario has no `det` switch (debug "warp=mac_01:0 pos=0:0:200 prof=4 fps60 shots shotwin=200:6"),
+so with 60 FPS the frame skip and the key path follow the vblank count (pm_main.c:651, :676): which frames are drawn and shot depends
+on timing (its base at db88d93f8 holds 2 of the 6 window shots). Any pacing change changes it.
+Next (same coder): add scenario `spot_mac01_fps60_det` in 3ds/tools/azt_scenarios.json (a copy of spot_mac01_fps60_pic with ` det`
+appended to "debug", "needs_picture": false) and bench `spot_mac01_fps60_det` in 3ds/tools/bench_defs.json (a copy of the
+spot_mac01_fps60_pic bench, scenario spot_mac01_fps60_det), one commit. Under det the skip and the key path are off (pm_main.c:646,
+:676), so the shots are frame-driven. Then `bench.py base spot_mac01_fps60_det --row SYNC60` (main build), run, `bench.py cmp
+spot_mac01_fps60_det --row SYNC60`: 6/6 byte-equal. Do not use spot_mac01_fps60_pic as a byte gate.
 ## Stop and end
 A failed gate, an edit that does not fit the code, or a test-tool fault: commit and hand back the exact output (CLAUDE.md 4-5).
 At the end delete this row file in the completing commit. Hand back: the ready hash, the gate results, the memcheck line.

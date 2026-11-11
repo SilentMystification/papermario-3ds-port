@@ -30,6 +30,20 @@ not edit those until HC8 is merged; `git merge main` before the completing commi
   near 0 (it was about 3 or more per frame). Write calls, miss and us in the commit. Azahar list: kzn04_shadestat, spot_mac01_det,
   mdl5_iwa10_det on one slot (3 starts, plus the bases if not stored).
 - The look of the shading in kzn_04 and the fps: the user's console check.
+## Status and next step (2026-11-11)
+Step 1 (219c5ee03, branch KZN04): the lut is keyed by a hash of the 16 shade colours plus prim, env and the cycle-1 combine, and built
+only on a texture miss (shade_fill); lut bytes are the same; byte-equal; merge it (it saves the 256-entry build on each hit, 1212 of
+3669 calls at f300; the per-frame misses stay: the fire bars change the light every frame).
+Next (same Sonnet coder, user approval stands): the unit-1 TEV form so a light change is no texture miss.
+- Sprite texture on unit 0 from the sprite palette (cached by raster and palette as any sprite), the 16 shading colours as a 16x1
+  texture on unit 1 (re-uploaded only when they change: 64 B), and the cycle-1 combine (cc_cycle1 of load_shaded_sprite,
+  nd_tex_set.c:647-676) as TEV stages. If the per-texel pairing (sprite index i, shade index j) cannot be read on the PICA (no dependent
+  read), use the per-sprite colour form of the goal and say so.
+- Places: pm_gpu.c pm_gpu_spr_build (:3828; the refusal `if (!dual_on || nd_ws.use_t1) { *why = 3; return 0; }` at :3808 is the
+  entry); nd_comb.c sync_combine_work (:541-564; the plan is cyc <= 1 only at :552: a cycle-2 plan for this combine); the unit-1 bind
+  in the sprite state (nd_model.c nd_model_state_spr, not the memo table). HC6 edits other pm_gpu.c and nd_model.c functions
+  (model key/hit/submit, the model cache): `git merge main` before the completing commit.
+- Gate: shadestat miss per 300 frames near 0 in kzn04_shadestat; byte-equal spot_mac01_det and mdl5_iwa10_det; nd_host; memcheck.
 ## Stop and end
 A failed gate or a tool fault: commit and hand back the exact output (CLAUDE.md 4-5). At the end delete this row file in the
 completing commit. Hand back: the ready hash, the gate results, the memcheck line, and which form (two units or per-sprite colour).

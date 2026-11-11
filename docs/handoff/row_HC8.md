@@ -29,6 +29,12 @@ nd_cmd.h, nd_rec.c, nd_cmd_test.c.
 8. HC8b only after HC4c merged: typed ops in EntKey segments (ent_compile), NDC_SPR typed fields (sprite decode on core 1).
    ent_hash stays on core 0.
 
+## Status (2026-11-11)
+Ready candidate 7992565a8 (steps 2-7). fncov_kmr10_det run 267964 rc 2: Read32 at 0x01..0x3D at PC 0x00164CAC (elem, nd_mtx.c:30) in
+the census lane: the read pattern of src = (Mtx*)1 in load_mtx (main fault, test_catalog.md 6a). Branch HC8 does not contain the
+LOADMTX merge (c3ab9a9d2), so the guard is missing; no HC8 edit touches a matrix source (diff: nd_model.c, nd_shape.c, pm_gpu.c, nd_ent.c
+fast paths). Budget: 8 of 8 starts used: the row hands back now (no reset). Left for the orchestrator: merge main into HC8, then the
+kmr_10 census after (fncov_kmr10_det on lane HC8_fncov) and step 8 in a follow-up the user approves.
 ## Gates (light)
 - Bases: LOADMTX is merged: `bench.py base` stores fresh bases again (test_catalog.md 6a).
 - nd_host PASS. Byte-equal (`bench.py base`, run, `cmp`): spot_mac01_det and mdl5_iwa10_det (bases stored at b8bc06613; both scenes
