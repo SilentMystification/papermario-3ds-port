@@ -16,7 +16,7 @@
 #include "pm_romload.h"
 #include "pm_logfmt.h"
 
-#define RING 32768
+#define RING 262144u /* LOGX1: 256 KB, a power of two (index = count % RING) */
 /* PI6: bytes waiting for log.txt (fb) and for the bottom console (cb). The writer copies into them, the sink thread writes them out.
  * fb_head and fb_tail count bytes (never wrap): index = count & (FB_SIZE - 1). Both are written under fb_lock. */
 #define FB_SIZE (128u * 1024u)
@@ -41,6 +41,7 @@ static unsigned seq;
 static char ring[RING];
 static unsigned ring_pos;
 static unsigned ring_len;
+static unsigned live_sent; /* LOGX1: ring bytes sent to the live client (counts since boot, index = % RING) */
 static char switches[256];
 
 /* L01 measurement: lines and bytes logged. */
@@ -84,16 +85,49 @@ static void ring_add(const char* s, int n) {
     else ring_len = RING;
 }
 
-static void ring_replay(int fd) {
-    unsigned n = ring_len;
-    unsigned start = ring_len < RING ? 0 : (ring_pos % RING);
-    unsigned off = 0;
-    while (off < n) {
-        unsigned idx = (start + off) % RING;
+/* LOGX1: the live socket is fed from live_sent in the ring. It moves only when bytes are sent: EAGAIN keeps it and the next writer
+ * pass sends on, so no line is lost to a full socket (log.txt and the ring have every line). A ring overrun (the client is more than
+ * RING behind) sends one marker line and skips to the oldest byte still in the ring. */
+/* HW8: a client that only returns EAGAIN (stalled Wi-Fi, a reader that stopped) is closed after 3 s without one successful send.
+ * Counters go to the logstat line. */
+#define LIVE_STALL_TICKS (3ull * 268111856ull)
+static void live_pump(void) {
+    if (client < 0) return;
+    if (ring_pos - live_sent > RING) {
+        char m[64];
+        int n = snprintf(m, sizeof m, "\n#live gap %u bytes\n", ring_pos - live_sent - RING);
+        send(client, m, n, 0);
+        live_sent = ring_pos - RING;
+    }
+    while (live_sent != ring_pos) {
+        static int stall_test = -1; /* test switch livestall: every send fails with EAGAIN (a reader that stopped) */
+        if (stall_test < 0) stall_test = strstr(switches, "livestall") != NULL;
+        unsigned idx = live_sent % RING;
         unsigned chunk = RING - idx;
-        if (chunk > n - off) chunk = n - off;
-        if (send(fd, ring + idx, chunk, 0) < 0) return;
-        off += chunk;
+        if (chunk > ring_pos - live_sent) chunk = ring_pos - live_sent;
+        int r = stall_test ? (errno = EAGAIN, -1) : send(client, ring + idx, chunk, 0);
+        if (r > 0) {
+            live_sent += (unsigned)r;
+            live_ok_tick = 0;
+            continue;
+        }
+        if (r < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
+            close(client);
+            client = -1;
+            return;
+        }
+        /* HW8 stall rule: 3 s of only EAGAIN closes the client. The PC script reconnects and the ring replay fills the gap. */
+        u64 now = svcGetSystemTick();
+        live_eagain++;
+        if (!live_ok_tick) live_ok_tick = now;
+        else if (now - live_ok_tick > LIVE_STALL_TICKS) {
+            close(client);
+            client = -1;
+            live_ok_tick = 0;
+            live_stall_close++;
+            pm_log_w("live log: client closed, 3 s of only EAGAIN (%u EAGAIN, %u closes)", live_eagain, live_stall_close);
+        }
+        return;
     }
 }
 
@@ -129,7 +163,7 @@ static void accept_client(void) {
     cmd_n = 0;
     cmd_done = 0;
     live_ok_tick = 0;
-    ring_replay(fd);
+    live_sent = ring_pos - ring_len; /* LOGX1: the pump sends the ring from its oldest byte */
 }
 
 extern volatile int pm_exit_request; /* PT28: the main loop ends, pm_shutdown runs, main returns */
@@ -634,10 +668,6 @@ void pm_log_bench(void) {
     pm_log_w("logbench: done");
 }
 
-/* HW8: a client that only returns EAGAIN (stalled Wi-Fi, a reader that stopped) is closed after 3 s without one successful send.
- * The PC script reconnects and the ring replay fills the gap. Counters go to the logstat line. */
-#define LIVE_STALL_TICKS (3ull * 268111856ull)
-
 /* PI6: the file and the console are written by the sink thread (sink_main). The writer only copies bytes into fb and cb,
  * so an SD write or a console draw that takes 1 to 2 s holds up the sink, not the queue. */
 static u32 us_since(u64 t0) { return (u32)((svcGetSystemTick() - t0) / (SYSCLOCK_ARM11 / 1000000ull)); }
@@ -728,35 +758,7 @@ static void out_batch(const char* dk, int dn, const char* lv, int ln, const char
     if (ln > 0) {
         u64 t0 = svcGetSystemTick();
         ring_add(lv, ln);
-        if (client >= 0) {
-            int off = 0;
-            while (off < ln) {
-                static int stall_test = -1; /* test switch livestall: every send fails with EAGAIN (a reader that stopped) */
-                if (stall_test < 0) stall_test = strstr(switches, "livestall") != NULL;
-                int r = stall_test ? (errno = EAGAIN, -1) : send(client, lv + off, (size_t)(ln - off), 0);
-                if (r > 0) {
-                    off += r;
-                    live_ok_tick = 0;
-                    continue;
-                }
-                if (r < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
-                    close(client);
-                    client = -1;
-                } else {
-                    u64 now = svcGetSystemTick();
-                    live_eagain++;
-                    if (!live_ok_tick) live_ok_tick = now;
-                    else if (now - live_ok_tick > LIVE_STALL_TICKS) {
-                        close(client);
-                        client = -1;
-                        live_ok_tick = 0;
-                        live_stall_close++;
-                        pm_log_w("live log: client closed, 3 s of only EAGAIN (%u EAGAIN, %u closes)", live_eagain, live_stall_close);
-                    }
-                }
-                break; /* a full socket drops the rest for the live view only, log.txt has it */
-            }
-        }
+        live_pump(); /* LOGX1: the socket sends from the ring; EAGAIN keeps the position */
         u32 d = us_since(t0);
         if (d > wr_sock_max) wr_sock_max = d;
     }
@@ -980,6 +982,7 @@ static void writer_main(void* arg) {
             read_cmd(); /* QUIT1 */
             if (!__atomic_load_n(&crashed, __ATOMIC_ACQUIRE)) {
                 drain_locked();
+                live_pump(); /* LOGX1: pending live bytes */
             }
             fb_sync_all();
             io_drain_req = 0;
@@ -994,6 +997,7 @@ static void writer_main(void* arg) {
         LightLock_Lock(&drain_lock);
         if (!__atomic_load_n(&crashed, __ATOMIC_ACQUIRE)) {
             drain_locked();
+            live_pump(); /* LOGX1: pending live bytes */
         }
         LightLock_Unlock(&drain_lock);
         if (__atomic_load_n(&crashed, __ATOMIC_ACQUIRE)) LightEvent_Signal(&ev_flushed);
