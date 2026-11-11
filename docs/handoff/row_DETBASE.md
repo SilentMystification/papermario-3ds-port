@@ -14,7 +14,12 @@
   So the merge is found by runs, then the oracle reads that merge.
 ## Start
 The main folder, after TOOLB3 is merged (its slot pin is needed). No worktree, no build by hand: `bench.py base` builds each commit in its lane.
-Run alone: no other Azahar run on the machine during this row.
+Run alone: no other Azahar run on the machine during this row, and no azahar.exe open outside build3ds/azslots (check with
+`powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='azahar.exe'\" | Select ProcessId,ExecutablePath"`;
+any path not under build3ds\azslots\slot<k>: stop and hand back, the user closes it). Row TOOLB4 makes this check part of the tool.
+Restart (2026-11-10): the first try of step 1 (runs 217012 and 217833, commit f748db329) does not count: a stray Azahar was open
+(row TOOLB4), and the base was not stored. Begin again at step 1. Those 2 starts stay in the budget (CLAUDE.md 4: no reset):
+6 starts are left, exactly steps 1-3. A step that needs more: stop and hand back.
 ## Steps (stop at the first "two runs differ"; each step is 2 Azahar starts)
 1. `python 3ds/tools/bench.py base spot_mac01_det --row DETBASE --commit 6dc89f149 > build3ds/out/detbase_1.txt 2>&1`
    "two runs equal, stored": the tools and the host are not the cause, go to 2. "two runs differ": stop (tools or host).
