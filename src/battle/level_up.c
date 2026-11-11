@@ -18,6 +18,7 @@
 #include "sprite/npc/BattleLakilester.h"
 #include "sprite/npc/BattleBow.h"
 #include "sprite/player.h"
+#include "pm_wide.h"
 
 extern HudScript HES_ProjectorBeam;
 extern IconHudScriptPair gItemHudScripts[];
@@ -1160,11 +1161,11 @@ void btl_state_update_celebration(void) {
 #if VERSION_JP
                 x = 32;
                 y = 186;
-                set_window_properties(WIN_BTL_DESC_BOX, 32, 186, 242, 32, WINDOW_PRIORITY_20, draw_content_level_up_textbox, nullptr, -1);
+                set_window_properties(WIN_BTL_DESC_BOX, pm_wide_left(32), 186, 242 + (pm_wide ? 80 : 0), 32, WINDOW_PRIORITY_20, draw_content_level_up_textbox, nullptr, -1); /* BATUI2: wide layout */
 #else
                 x = 20;
                 y = 186;
-                set_window_properties(WIN_BTL_DESC_BOX, 20, 186, 280, 32, WINDOW_PRIORITY_20, draw_content_level_up_textbox, nullptr, -1);
+                set_window_properties(WIN_BTL_DESC_BOX, pm_wide_left(20), 186, 280 + (pm_wide ? 80 : 0), 32, WINDOW_PRIORITY_20, draw_content_level_up_textbox, nullptr, -1); /* BATUI2: wide layout */
 #endif
                 set_window_update(WIN_BTL_DESC_BOX, WINDOW_UPDATE_SHOW);
                 gBattleSubState = BTL_SUBSTATE_CELEBRATE_LEVEL_UP_CHOOSE;
