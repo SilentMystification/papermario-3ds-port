@@ -1,6 +1,6 @@
 # Row S4SHIM: shimmer_burst on the native particle path (NATIVEAPI S4)
 
-(Model: Haiku. Starts after the S4P branch (rows S4P, S4SNOW, S4SNOWG) is merged; runs in parallel with S4PINK and S4EMB: different files.)
+(Model: Haiku. Starts after the S4P branch (rows S4P, S4SNOW, S4SNOWG, with hotset --fncovfn) is merged; runs in parallel with S4PINK and S4EMB: different files.)
 
 ## Design
 shimmer_burst_appendGfx (src/effects/shimmer_burst.c): inside the nd_sub range (replayed 3 times by nd_sub_call; an NDC_NAPI record in a
@@ -26,11 +26,11 @@ src/effects/shimmer_burst.c (shimmer_burst_appendGfx, the include list).
 - Build, memcheck OK; nd_host PASS.
 - `bench.py base fxpic_50`; `bench.py run fxpic_50 --row S4SHIM --why "S4: shimmer_burst parts as one NDC_NAPI record"`;
   `bench.py cmp fxpic_50 --row S4SHIM --commit $(git merge-base HEAD main)`: every shot byte-equal. Budget: 5 Azahar starts (1 base + 1 byte run + 2 census + 1 spare).
-- Speed gate (census, Azahar counts; needs the hotset `calls` line of S4SNOWG): `PM_FNCOV=1 PM_ROW=S4SHIM PM_LANE=S4SHIM sh 3ds/build.sh`;
-  `bench.py run fxfncov_base,fxfncov_50 --row S4SHIM --lane S4SHIM_fncov --why "S4 speed gate: class calls"`; `hotset.py --fncov <log> --lane S4SHIM`
-  for each; delta per class = effect calls minus base calls; base within 5 % of the stored base (fxfncov_classes.txt) else tool
-  fault. Pass: stored deltas F +3596, I +1084, A +819: F < 2697 (75 %), I < 271 (25 %), A < 655 (80 %); D report only. Fail: stop, commit, hand back both files.
-- The pass numbers above wait for S4SNOWG step B (per-function census of snowfall); the oracle restates them before this row starts.
+- Speed gate (census, Azahar counts): `PM_FNCOV=1 PM_ROW=S4SHIM PM_LANE=S4SHIM sh 3ds/build.sh`; `bench.py run fxfncov_base,fxfncov_50 --row S4SHIM
+  --lane S4SHIM_fncov --why "S4 speed gate: per-function calls"`; `hotset.py --fncov <log> --fncovfn --lane S4SHIM` on both logs. Pass
+  (per function, effect minus base): nd_part_draw > 0; gv_tri, draw_tri, nd_geom_vtx, nd_ops_run and ent_gdl each < 20 (the old
+  per-part path is gone). Class sums are not a gate: call counts include tiny helpers that the normal build inlines (elem,
+  ptr_res). Hand back the 15 largest deltas. Fail: stop, commit, hand back both files.
 - Console: none in this row. One XL run `fxtest=all` after the batch merge (orchestrator), compared with xl4a walk per effect.
 
 ## Stop / At the end

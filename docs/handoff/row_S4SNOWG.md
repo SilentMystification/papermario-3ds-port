@@ -9,6 +9,14 @@ scene, calls per frame: A +1257, C +495, D +648, F +7015, G +1208, I +1158. Expe
 nd_geom_vtx, 8 gv_tri, 7 gappend, 1 gtrip, a gv_epoch_enter (ensure_tile, nd_tex_get) and nd_gv_params, and ent_gdl (ent_find); the
 new path runs 1 gtrip and 7 gappend per part, one epoch enter per record and no ent_gdl.
 
+## Decision (oracle, after step B: s4g_fn_base.txt and s4g_fn_63.txt, head a6dd719fe)
+The particle path runs: nd_part_draw +120 (one per part), pm_gpu_gtrip +120, pm_gpu_gappend +958; gv_tri, draw_tri, gv_epoch_enter,
+nd_ops_run and nd_geom_vtx below 20 (the old per-triangle path is gone), nd_gv_params +21. The class rule of try 1 was wrong: the
+census lane counts calls of tiny helpers that the normal build inlines (elem: 16 per matrix unpack, ptr_res, is_host), so a class
+sum is not the cost. Gate rule now (met by step B): nd_part_draw > 0; gv_tri, draw_tri, nd_geom_vtx, nd_ops_run, ent_gdl each < 20
+(minus base). S4SNOWG passes: commit the decision, delete this row file; branch S4P is ready to merge (byte gates held). The speed
+is the batch console run against xl4a. Per-triangle helpers left (pm_gpu_flush_gen and gp3_t0_surv once per triangle): a later cut.
+
 ## Next step (after try 1: F +5923, G +992, C +501, I +376, A +656, D +948; code e7b898e7b, tool f8d23b538)
 Code read of e7b898e7b: snowfall records one particle run (nd_parts_add takes the units: the I and A drops show walk_call and
 ent_gdl are gone). nd_part_draw (nd_geom.c:302-360) can still fall back per part (nd_walk.c:427, nd_ops_run: gv_epoch++ per part,

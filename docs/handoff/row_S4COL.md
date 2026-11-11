@@ -38,8 +38,9 @@ nd_part_draw).
   --why "S4COL: prim as the vertex colour"`; `bench.py cmp` of both against `$(git merge-base HEAD main)`. Byte-equal: pass. Not
   byte-equal: stop, commit, hand back the cmp lines (diff pixels, boxes): the user decides on a non-byte-equal colour (as SPARKLE).
 - Speed gate (census): `PM_FNCOV=1 PM_ROW=S4COL PM_LANE=S4COL sh 3ds/build.sh`; `bench.py run fxfncov_base,fxfncov_124,fxfncov_50
-  --row S4COL --lane S4COL_fncov --why "S4COL: class calls"`; hotset.py --fncov per log (calls line); base within 5 % of the stored
-  base. Pass: pink_sparkles D delta < 2122 (40 % of 5306) and E delta < 687 (50 % of 1373); shimmer D: report. Budget: 6 Azahar starts.
+  --row S4COL --lane S4COL_fncov --why "S4COL: per-function calls"`; `hotset.py --fncov <log> --fncovfn --lane S4COL` per log. Pass
+  (pink_sparkles minus base): pm_gpu_set_plan < 20 and flush_impl_body < 20 (one plan and one flush per part before: 47 parts);
+  shimmer_burst: report the same two. Budget: 6 Azahar starts.
 - Console: none in this row; one XL run `fxtest=all` after the batch merge (orchestrator), compared with xl4a.
 
 ## Stop / At the end
