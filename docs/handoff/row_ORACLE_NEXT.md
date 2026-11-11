@@ -89,6 +89,24 @@ yet: a memcheck-like class split of heap use would give it).
   the largest steady byte count (about 3.5 KB per frame). cmd is 0: C_CMD is counted only by the nd_cen census (nd_cen.c:491), not a fault
   of DPCEN1; a GPUCMD words counter (the command buffer offset at the frame end) is a small follow-up row if wanted.
 
+## fxtest findings: status (old oracle; data fxcen_pmu_o3ds.txt = build with TILEWIN and LOGX1 only, before TILEWIN2, PBATCH1, SPLASHPREV2, FILLA0)
+| finding (ms above base, O3DS) | row | status |
+| effect_63 30.5 -> 9.5, whirlwind 15.7 -> 9.6 (scroll window texture reloads) | TILEWIN, TILEWIN2 | merged |
+| snowfall 13.7, embers 9.9, energy_shockwave 6.8, effect_3D 4.8, shimmer_burst 3.6 (one draw per particle) | PBATCH1 | merged, console re-run needed |
+| water_block 10.2 (33 draws, 59 tex, per component list + matrix, water_block.c:280-285: the PBATCH1 pattern) | PBATCH1 | merged, re-run decides |
+| spiky_white_aura 3.8 (8 draws, per part list + matrix, spiky_white_aura.c:188-200), gather_magic 1.3, stat_change 1.2, cloud_puff 1.2, sweat 1.3 | PBATCH1 pattern | re-run decides |
+| water_splash 12.0 (refraction source buffer) | SPLASHPREV2 | merged, re-run |
+| fire_breath 17.4 (fill of large translucent puffs) | FILLA0 | in progress |
+| pink_sparkles 4.7 (prim per part: combine (1-PRIM)*TEXEL0+PRIM, alpha PRIM*TEXEL0, SHADE unused, sparkles gfx D_09000F20) | PBATCH2 | design: fold PRIM into the ring vertex colour (combine PRIM -> SHADE) when the combine reads no SHADE; needs a read of nd_comb.c plan_vtx_ok / vc before a row |
+| bulb_glow 2.6 (45 tex: strips of the current frame, bulb_glow.c:244-258, a T2 grab per dirty strip) | - | inherent (GPU grab path), re-run |
+| flame 1.7 (off-screen colour image pass, flame.c:187: prg 4.9) | - | inherent (off-screen pass) |
+| firework_rocket 2.6 (texmiss 1.0, flkb 10.8, firework_rocket.c:291 sparks) | - | read open after the re-run (TILEWIN2 may cover) |
+| underwater 2.5 (409 tri, 678 vtx: a mesh rebuilt each frame by the effect) | - | needed by the effect |
+| snowman_doll 2.0 (660 tri of static lists) | - | needed geometry |
+| explosion 1.6 (21 draws, 15 tex), effect_75 1.4 | PBATCH1 pattern / re-run | re-run decides |
+| core 0 stall 66 % (istall 41.8 %, dstall 24.7 %, I-miss 46 / 1000) | HC rows | need the per-phase split: one console run with profrot profph on the new main |
+Next console run (user, O3DS XL, prof profile): `warp=mac_01:0 pos=0:0:200 fxtest=all profrot profph profdisk=1` on main after FILLA0.
+
 ## Morning list (rows to write next, by the oracle)
 1. Class cuts after HC6B: read M1-hot per class (bench hotset_size on main after the HC6B merge) and the M3 census (hotset.py --fncov on
    fncov_mac01_det/kmr10_det logs of the HC6B lane); cut rare arms of the top functions per class as HCCUT2 did (byte-equal, cold
