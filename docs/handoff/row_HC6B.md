@@ -17,19 +17,19 @@ picture risk.)
    old vs block per draw, 0 differences outside the filtered state words. Memory: the block pool on the heap at first use; memcheck margin.
 5. HC5 on top of steps 1-2: merge or cherry-pick the c5cen census of branch HC5 (ba484c66e), rerun it on mac_01 f600-f900; add T_PLAN
    and T_SYNC (plan 5.3) only if T_SYNC < 5 % of syncs; else hand back the census line and stop step 5.
-## Continuation (oracle 2026-11-11 night): step 4 stopped at 0507d5df1, `blkchk f300 frames 300 draws 14682 diff 5`; budget 8 new starts
-Code read of 6e5c8d518 (no cause named): emit_core with a reset shadow writes every register; blk_put patches palette 0 (16 words at
-off, header skipped: right), unit 0 (dim/param/lod/addr at u0+2..+5, type at ty: right), the 6 stage colours, the index address.
-Unpatched values of the draw: template words (rebuilt when q->bt != d->tmpl), the uniform block uvso/cmul/cadd/zmix, uvx, nzo,
-units 1 and 2, buf_col (0xFD), nidx. No writer changes those fields of a cached NdNatC between hits (only d.tmpl :3551, d.pal, d.u[0],
-d.tev_col[mix_st] in pm_gpu_model_hit; nd_mc_store resets bgen). So the 5 differences are not named by the code read.
-4b. Extend blkchk (debug check, stays, rule 7): in nd_emit.c nd_emit_cmp keep the first differing key and both values; in pm_gpu.c
-   blk_check print, for the first 8 differing draws of the run, one line `blkchk diff f<frame> tmpl <id> key <hex> old <hex> blk <hex>
-   u0 <0/1> npal <n> zp <0/1> mix <st> boff <n> bgen <g>/<blk_gen>` (key: register | mask << 16, or 0x100000 | loc << 8 | index for
-   a uniform word). Commit, then one blkchk_mac01 run. The key names the field: fix exactly that one (a patch offset in NdBlkOff and in
-   blk_put, or a rebuild condition in blk_put's first line), rerun blkchk_mac01: diff 0. A key outside the list above: hand back.
-4c. Gates of step 4 as below. Order the Azahar list so the byte scenes are not the first cold start (cmp refuses a cold row run,
-   TOOLB9): `run mdl5_iwa10_det,spot_mac01_det,spot_mac00_det,blkchk_mac01`.
+## Continuation (oracle 2026-11-11 night). Row id for budget and runs: HC6B (PM_ROW=HC6B, `--lane HC6`, branch HC6); 8 starts.
+- Step 4 (6e5c8d518) and 4b (blkchk prints the first differing key) are done; branch HC6 at a94aa180d (main merged).
+- 4b result: all 5 differences are key 0x2C0 mask 0xF (`old 80000002 blk 80000056`, templates 2 and 15). Oracle code read: 0x2C0 only
+  selects the float uniform index for the 0x2C1 data words that follow it; every writer sets 0x2C0 before its data (nd_emit.c:21-23
+  uni(), pm_gpu.c:1974-1975 eye uniform, citro3d C3D_UpdateUniforms), and the stereo replay repeats whole command lists. No draw reads
+  a leftover 0x2C0, and the data words (keyed by location) match. Not a state difference.
+- 4b-fix (approved): nd_emit.c nd_emit_cmp skips key 0x2C0 (register 0x2C0, any mask) when it compares last values; the 0x2C1 keys
+  stay. Commit, then 4c.
+4c. Gates of step 4 (below), one Azahar list so the byte scenes are not a cold start (cmp refuses a cold row run, TOOLB9):
+   `PM_ROW=HC6B python 3ds/tools/bench.py run mdl5_iwa10_det,spot_mac01_det,spot_mac00_det,blkchk_mac01 --row HC6B --lane HC6 --why "..."`:
+   blkchk diff 0, three cmp 6/6, hotset M1-hot C+D written.
+5. HC5 census: cherry-pick ba484c66e (branch HC5, the c5cen census) onto HC6, rerun c5cen on mac_01 f600-f900 (scenario of that
+   commit); add T_PLAN/T_SYNC (plan_hotcode 5.3) only if T_SYNC < 5 % of syncs; else commit the census line and hand back.
 - hotset stale name load_impl (from main, KZN04 TEV: GCC emits load_impl.constprop.0): row HCCUT2 changes hot_order.ld:246 and the
   hotset.json roots and merges first. If HC6B needs hotset_size rc 0 before that merge, make the identical one-line hot_order.ld edit
   (an identical change merges clean) and nothing else in those files.
