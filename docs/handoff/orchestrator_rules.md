@@ -1,7 +1,7 @@
 # Orchestrator rules (papermario-3ds-port)
 
 Read at the start and after every compaction. This file overrides any summary. Shared rules: CLAUDE.md. Hook: ORCH_RULES.txt.
-Edit rules in place, never append. At the start of a session, read docs/handoff/HANDOFF.md.
+Edit rules in place, never append. At the start of a session, read docs/handoff/HANDOFF.md and docs/handoff/test_catalog.md (the test harness).
 
 ## Roles
 - Orchestrator: launches agents, merges, cleans up, pushes on request, asks the user. It does not edit game source and does not
@@ -29,7 +29,10 @@ Edit rules in place, never append. At the start of a session, read docs/handoff/
 - Before a launch, compare the files and places that the running rows and the new row edit. A possible overlap of the same lines
   (or a rename, move or reformat of a shared file) makes the later row wait until the earlier row is merged. It then branches from
   the new main.
-- Azahar runs are a separate limit: a `bench.py base` runs alone, with no other Azahar run on the machine.
+- Azahar scales by slots (test_catalog.md): PM_AZ_SLOTS private Azahar copies (default 3), one mutex each, so runs on different
+  slots go in parallel. A warm restart takes about 1 s. A list (`bench.py run a,b,c`) runs scenarios one after the other on one
+  kept slot. Rows with Azahar gates run in parallel, each on its own slot. Plan each row's scenarios as one list. A row waits for
+  Azahar only when 3 slots are in use. Only a fault of the tool (two runs of one build differ, a silent start) stops a gate.
 - A conflict at merge is a planning fault. Stop and ask the oracle. Do not resolve it by guessing.
 - At most 6 code agents.
 - Handback triage: a test-tool fault opens a tool row, and the gate waits (CLAUDE.md 4). Send any other failure to the oracle at
