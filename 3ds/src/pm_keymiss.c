@@ -51,10 +51,15 @@ static void km_print(unsigned f) {
     km_f0 = f;
 }
 
+/* KEYMISS window: called at the frame end (pm_gpu_end_w) with the switch on. The first call sets the window start; a window line every 300 frames. */
+__attribute__((cold, noinline)) void pm_km_frame(unsigned f) {
+    if (!km) { km = calloc(KM_N, sizeof *km); if (!km) return; km_f0 = f; while (km_next <= f) km_next += 300u; return; }
+    if (f >= km_next) { km_print(f); while (km_next <= f) km_next += 300u; }
+}
+
 __attribute__((cold, noinline)) void pm_km_note(const uint32_t* rec, const NdMKey* k, int cls) {
     const unsigned f = pm_frame_count();
-    if (!km) { km = calloc(KM_N, sizeof *km); if (!km) return; km_f0 = f; }
-    if (f >= km_next) { km_print(f); while (km_next <= f) km_next += 300u; }
+    if (!km) return;
     const uint32_t geo = rec[24], r0 = rec[0];
     const unsigned h = ((geo >> 2) ^ (geo >> 11) ^ r0) & (KM_N - 1u);
     KmOwn* o = NULL;

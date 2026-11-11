@@ -2547,6 +2547,7 @@ static void pm_gpu_begin_w(int clear) {
 
 /* CORE2-3a: walker side entry (nd_wq.c): the game thread posts it, the body runs on the walker side. */
 static void pm_gpu_end_w(void);
+void pm_km_frame(unsigned f); /* KEYMISS census window (pm_keymiss.c) */
 static void cen_lines_frame(void);
 static void mfr_frame(void);
 typedef struct { int unused; } Wq_pm_gpu_end;
@@ -2559,6 +2560,7 @@ static __attribute__((cold, noinline)) void eyecw_log(void) { /* EYECW (debug le
 static void pm_gpu_end_w(void) {
     if (__builtin_expect(stereo_frame && pm_frame_count() % 10u == 0, 0)) eyecw_log();
     if (__builtin_expect(mfr_on, 0)) mfr_frame(); /* TIK19 debug: the mfr line of the frame */
+    if (__builtin_expect(PMDL("keymiss"), 0)) pm_km_frame(pm_frame_count()); /* KEYMISS: the census window line every 300 frames */
     if (__builtin_expect(pm_cen_lines, 0)) cen_lines_frame(); /* PROF2-3: the census lines, once per frame at the frame end (rect_log every 100 frames there) */
     if (pm_frame_count() % 100u == 0) pm_tex_cell_log(pm_frame_count()); /* MSGBOX 3: glyph cells every 100 frames (debug level) */
     pm_gpu_begin_wait();
