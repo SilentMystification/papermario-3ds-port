@@ -280,19 +280,29 @@ static inline int box_plane_out(const float* lo, const float* hi, const float (*
     float eps = mag * 1e-5f + 1e-3f;
     return pos ? mx < -eps : mn > eps;
 }
+static const struct { signed char a, b; } dlc_pl[5] = { { 0, 1 }, { 0, -1 }, { 1, 1 }, { 1, -1 }, { 2, -1 } }; /* coordinate, sign of w: x + w < 0, x - w > 0, y + w < 0, y - w > 0, z - w > 0 */
+/* HC8 step 4: the stereo two-eye test (sx set) is cold: its own function, the same planes and eps rule as the mono loop below. */
+static int __attribute__((noinline, cold)) dlc_box_out_stereo(const float lo[3], const float hi[3], const float (*m)[4], float ce, float cc) {
+    int out = 0;
+    for (int p = 0; p < 5; p++) {
+        const float b = (float)dlc_pl[p].b;
+        int o = dlc_pl[p].a == 0 ? box_plane_out(lo, hi, m, 0, b + ce, -cc, dlc_pl[p].b > 0) && box_plane_out(lo, hi, m, 0, b - ce, cc, dlc_pl[p].b > 0)
+                                 : box_plane_out(lo, hi, m, dlc_pl[p].a, b, 0.f, dlc_pl[p].b > 0);
+        if (o) out = 1;
+    }
+    return out;
+}
 __attribute__((noinline)) int dlc_box_out(const DlcGrp* g, const float (*m)[4]) {
-    static const struct { signed char a, b; } pl[5] = { { 0, 1 }, { 0, -1 }, { 1, 1 }, { 1, -1 }, { 2, -1 } }; /* coordinate, sign of w: x + w < 0, x - w > 0, y + w < 0, y - w > 0, z - w > 0 */
     float lo[3] = { g->lo[0], g->lo[1], g->lo[2] }, hi[3] = { g->hi[0], g->hi[1], g->hi[2] };
     /* STEREO: one matrix for both eyes; the shader moves N64 clip x by e (w - cw), e = +-nd_eye_cull_e, for a perspective matrix. An x plane is out
      * only when the box is out of it for both eyes (each eye is a w factor b + e and a constant -e cw). */
     const float ce = nd_eye_cull_e, cc = nd_eye_cull_k * nd_proj_wn; /* e and e * cw (EYECW: cw = conv * nd_proj_wn) */
     const int sx = ce > 0.f && (m[0][3] != 0.f || m[1][3] != 0.f || m[2][3] != 0.f);
+    if (sx) return dlc_box_out_stereo(lo, hi, m, ce, cc);
     int out = 0;
     for (int p = 0; p < 5; p++) {
-        const float b = (float)pl[p].b;
-        int o = sx && pl[p].a == 0 ? box_plane_out(lo, hi, m, 0, b + ce, -cc, pl[p].b > 0) && box_plane_out(lo, hi, m, 0, b - ce, cc, pl[p].b > 0)
-                                   : box_plane_out(lo, hi, m, pl[p].a, b, 0.f, pl[p].b > 0);
-        if (o) out = 1;
+        const float b = (float)dlc_pl[p].b;
+        if (box_plane_out(lo, hi, m, dlc_pl[p].a, b, 0.f, dlc_pl[p].b > 0)) out = 1;
     }
     return out;
 }
