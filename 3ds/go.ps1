@@ -38,8 +38,8 @@ Stop: the echo and the netload tail end with this script (push_3ds.sh watches it
   process it started (other azahar.exe instances keep running), and real hardware keeps running
   regardless of whether this PC script is watching it.
 
-pull o: FTP (port 5000) into O3DS's SD card. Downloads the game log and any Luma crash dumps to
-  build3ds/hw_o3ds_log.txt and build3ds/hw_o3ds_dumps/.
+pull o: FTP (port 5000) into O3DS's SD card. Downloads the game log, crash.txt and any Luma crash dumps to
+  build3ds/hw_o3ds_log.txt, build3ds/hw_o3ds_crash.txt and build3ds/hw_o3ds_dumps/.
 pull n: same, N3DS.
 
 No default IP. push o/n without -ip takes the console address from the netloader broadcast (push_3ds.sh).
