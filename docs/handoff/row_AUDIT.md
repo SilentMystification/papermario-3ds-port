@@ -1,5 +1,7 @@
 # Row AUDIT: read-only sanity check of the whole 3DS runtime (one Opus agent)
 
+> STALE (oracle 2026-11-11): 3ds/src/pm_gbi.c no longer exists (its code moved to nd_*.c and pm_gpu*.c in DIRECT and MOVE); names and line numbers from it are void. The oracle re-reads this row before launch.
+
 ## User goal (2026-11-08)
 "The big goal is that all the game systems communicate and collaborate effectively and efficiently." Also: well designed, no duplicate or convoluted work; areas to optimize for 3DS hardware; no code that looks like low-quality AI-generated code; professional and sensible design; audit the fp24/fp32 math so that no seams come from it.
 

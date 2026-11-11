@@ -1,5 +1,7 @@
 # Row STALE2: signposts show Mario's walk frame (stale texture)
 
+> STALE (oracle 2026-11-11): 3ds/src/pm_gbi.c no longer exists (its code moved to nd_*.c and pm_gpu*.c in DIRECT and MOVE); names and line numbers from it are void. The oracle re-reads this row before launch.
+
 ## State (2026-11-06)
 - Azahar: texsrc 0 on six paths at mac_01 and mac_02 (walk, model, hit, spr, ent_draw, ent_gdl). The sign is unchanged in the shots. No Azahar repro of the sign report.
 - Cause 4 fix (walker bind skip after a slot reuse, tb_sg == slot sgen): commit 300fd4cf1 on nds1. spot_mac01_pic shots 200 to 202 at standstill byte-equal to the nds1 build 1f5e0db04 (cold, both lanes).

@@ -1,5 +1,9 @@
 # Row FX1: Merlee spell hang, super block upgrade visuals, texstale on the console
 
+> STALE (oracle 2026-11-11): picture steps in this row are void (CLAUDE.md 2: no visual checks; gates are nd_host and the byte compare). The oracle rewrites the gates before launch.
+
+> STALE (oracle 2026-11-11): 3ds/src/pm_gbi.c no longer exists (its code moved to nd_*.c and pm_gpu*.c in DIRECT and MOVE); names and line numbers from it are void. The oracle re-reads this row before launch.
+
 ## Start state
 Branch nds1, main folder. Read docs/handoff/diag_fx.md (commit 067652960) in full and docs/handoff/diag_stale_tex.md section 4.
 

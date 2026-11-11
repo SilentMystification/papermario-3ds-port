@@ -1,5 +1,7 @@
 # Row PAUSEDR: pause frames serialize on message ROM reads (drain since PAUSEC)
 
+> STALE (oracle 2026-11-11): picture steps in this row are void (CLAUDE.md 2: no visual checks; gates are nd_host and the byte compare). The oracle rewrites the gates before launch.
+
 ## User facts
 User (2026-11-09): "start menu rotate effect is still a little laggy." Console pause window (O3DS XL, main 6333cec32): ft 37.5 ms,
 wk 35.8, core2 wait bw 33.53 fw 0.00 (the logic waits 33 ms per step outside the frame wait).
