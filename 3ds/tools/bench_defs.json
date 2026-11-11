@@ -588,6 +588,22 @@
       "gates": []
     },
     {
+      "name": "wd_escape_run",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "purpose": "ESCAPE2: START+SELECT exit through the clean path (escat=300, esc_mode 0 Homebrew Menu). Gate: the escape line with stuck 0, escape taken, exit audio job done.",
+      "scenario": "wd_escape_run",
+      "cap": 25,
+      "until": "exit: audio job done",
+      "tags": [
+        "azahar",
+        "escape",
+        "bench"
+      ],
+      "log_metrics": [],
+      "gates": []
+    },
+    {
       "name": "logbench",
       "kind": "azahar_stream",
       "speed": "normal",

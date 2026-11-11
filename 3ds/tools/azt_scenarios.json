@@ -87,6 +87,34 @@
       "reason": "ESCAPE: the escape poll is on the watchdog thread (100 ms poll, 10 polls = 1 s hold). Cap 25 s."
     },
     {
+      "name": "wd_escape_run",
+      "status": "unverified",
+      "subject": "Random boot warp, START+SELECT held from frame 300 (escat=300: the test seam holds the combo). The watchdog posts the request with esc_mode 0 (Homebrew Menu).",
+      "proves": "ESCAPE2: the watchdog posts the request, the game loop takes it (escape: taken, mode hbmenu), pm_shutdown runs (exit: audio job done) and main returns. No hardware reset.",
+      "debug": "warp=random escat=300 loglevel=debug",
+      "until": "exit: audio job done",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: random seed",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "escape stuck 0",
+          "regex": "escape: START\\+SELECT 1 s, phase \\d+ steps \\d+ stuck 0"
+        },
+        {
+          "name": "escape taken",
+          "regex": "escape: taken, mode hbmenu"
+        },
+        {
+          "name": "exit audio job",
+          "regex": "exit: audio job done"
+        }
+      ],
+      "reason": "ESCAPE2: the exit path of START+SELECT is the clean one (pm_exit_request, pm_shutdown), not svcExitProcess. Cap 25 s."
+    },
+    {
       "name": "logbench_boot",
       "status": "unverified",
       "subject": "Boot with the logbench switch: four timed loops of the log producer (plain line, four arguments, two %s, dropped line), cycles per line in the log.",
