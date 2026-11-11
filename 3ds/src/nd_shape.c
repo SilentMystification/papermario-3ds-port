@@ -280,19 +280,29 @@ static inline int box_plane_out(const float* lo, const float* hi, const float (*
     float eps = mag * 1e-5f + 1e-3f;
     return pos ? mx < -eps : mn > eps;
 }
+static const struct { signed char a, b; } dlc_pl[5] = { { 0, 1 }, { 0, -1 }, { 1, 1 }, { 1, -1 }, { 2, -1 } }; /* coordinate, sign of w: x + w < 0, x - w > 0, y + w < 0, y - w > 0, z - w > 0 */
+/* HC8 step 4: the stereo two-eye test (sx set) is cold: its own function, the same planes and eps rule as the mono loop below. */
+static int __attribute__((noinline, cold)) dlc_box_out_stereo(const float lo[3], const float hi[3], const float (*m)[4], float ce, float cc) {
+    int out = 0;
+    for (int p = 0; p < 5; p++) {
+        const float b = (float)dlc_pl[p].b;
+        int o = dlc_pl[p].a == 0 ? box_plane_out(lo, hi, m, 0, b + ce, -cc, dlc_pl[p].b > 0) && box_plane_out(lo, hi, m, 0, b - ce, cc, dlc_pl[p].b > 0)
+                                 : box_plane_out(lo, hi, m, dlc_pl[p].a, b, 0.f, dlc_pl[p].b > 0);
+        if (o) out = 1;
+    }
+    return out;
+}
 __attribute__((noinline)) int dlc_box_out(const DlcGrp* g, const float (*m)[4]) {
-    static const struct { signed char a, b; } pl[5] = { { 0, 1 }, { 0, -1 }, { 1, 1 }, { 1, -1 }, { 2, -1 } }; /* coordinate, sign of w: x + w < 0, x - w > 0, y + w < 0, y - w > 0, z - w > 0 */
     float lo[3] = { g->lo[0], g->lo[1], g->lo[2] }, hi[3] = { g->hi[0], g->hi[1], g->hi[2] };
     /* STEREO: one matrix for both eyes; the shader moves N64 clip x by e (w - cw), e = +-nd_eye_cull_e, for a perspective matrix. An x plane is out
      * only when the box is out of it for both eyes (each eye is a w factor b + e and a constant -e cw). */
     const float ce = nd_eye_cull_e, cc = nd_eye_cull_k * nd_proj_wn; /* e and e * cw (EYECW: cw = conv * nd_proj_wn) */
     const int sx = ce > 0.f && (m[0][3] != 0.f || m[1][3] != 0.f || m[2][3] != 0.f);
+    if (sx) return dlc_box_out_stereo(lo, hi, m, ce, cc);
     int out = 0;
     for (int p = 0; p < 5; p++) {
-        const float b = (float)pl[p].b;
-        int o = sx && pl[p].a == 0 ? box_plane_out(lo, hi, m, 0, b + ce, -cc, pl[p].b > 0) && box_plane_out(lo, hi, m, 0, b - ce, cc, pl[p].b > 0)
-                                   : box_plane_out(lo, hi, m, pl[p].a, b, 0.f, pl[p].b > 0);
-        if (o) out = 1;
+        const float b = (float)dlc_pl[p].b;
+        if (box_plane_out(lo, hi, m, dlc_pl[p].a, b, 0.f, dlc_pl[p].b > 0)) out = 1;
     }
     return out;
 }
@@ -605,21 +615,30 @@ static __attribute__((cold, noinline)) void dlc_wz_note(const DlcGrp* g, const f
     if (culled) c_++;
     if (wmin < wmin_) wmin_ = wmin;
 }
+/* HC8 step 5: the build of a list entry (first use of the list in this map generation) and the fallback arm of a group are cold. */
+static void __attribute__((noinline, cold)) dlc_try_slow(DlcEnt* e, const Gfx* l) {
+    dlc_free(e);
+    e->gen = pm_dlc_gen; e->refused = 0;
+    unsigned xt0 = pm_xf.on ? pm_ticks() : 0u;
+    int r = dlc_build(e, l, nd_mtx_static);
+    if (pm_xf.on) { pm_xf.dlc_n++; pm_xf.dlc_t += pm_ticks() - xt0; } /* MAPX-1 */
+    e->hash = dlc_hash(l);
+    dlc_c.compile++;
+    if (r) { e->refused = (u8)r; dlc_c.refused[r < DLR_N ? r : DLR_LONG]++; }
+}
+static void __attribute__((noinline, cold)) dlc_group_slow(const Gfx* l, const DlcGrp* g, int why) {
+    if (why == 2) dlc_c.i_lit++; else if (why == 3) dlc_c.i_ring++; else if (why == 4) dlc_c.i_mat++;
+    dlc_depth++;
+    nd_ops_run(l + g->op0, g->op1 - g->op0, 0); /* D10b: a flat range on the op executor */
+    dlc_depth--;
+}
 int dlc_try(const Gfx* l) {
     if ((u32)l - (u32)gMapShapeData >= 0x40000u || ((u32)l & 7)) return 0;
     if (dlc_seen_gen != pm_dlc_gen) { dlc_reset(); dlc_seen_gen = pm_dlc_gen; }
     DlcEnt* e = dlc_find(l);
     if (!e) return 0;
-    if (e->gen != pm_dlc_gen) {
-        dlc_free(e);
-        e->gen = pm_dlc_gen; e->refused = 0;
-        unsigned xt0 = pm_xf.on ? pm_ticks() : 0u;
-        int r = dlc_build(e, l, nd_mtx_static);
-        if (pm_xf.on) { pm_xf.dlc_n++; pm_xf.dlc_t += pm_ticks() - xt0; } /* MAPX-1 */
-        e->hash = dlc_hash(l);
-        dlc_c.compile++;
-        if (r) { e->refused = (u8)r; dlc_c.refused[r < DLR_N ? r : DLR_LONG]++; }
-    } else { dlc_c.hit++; }
+    if (e->gen != pm_dlc_gen) dlc_try_slow(e, l);
+    else dlc_c.hit++;
     if (e->refused) return 0;
     const float(*m)[4] = combined;
     u32 entry = nd_ws.geom;
@@ -667,13 +686,7 @@ int dlc_try(const Gfx* l) {
             continue;
         }
         if (!why && lit) why = 2; /* the static group was not taken */
-        if (why) {
-            if (why == 2) dlc_c.i_lit++; else if (why == 3) dlc_c.i_ring++; else if (why == 4) dlc_c.i_mat++;
-            dlc_depth++;
-            nd_ops_run(l + g->op0, g->op1 - g->op0, 0); /* D10b: a flat range on the op executor */
-            dlc_depth--;
-            continue;
-        }
+        if (why) { dlc_group_slow(l, g, why); continue; }
         dlc_c.replay++; dlc_c.tri += g->ntri;
         dlc_run_group(l, g, gmi);
     }
