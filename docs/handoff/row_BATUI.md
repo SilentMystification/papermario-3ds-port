@@ -25,14 +25,36 @@
 - Status bar and sub-menu windows (draw_box): texrects (box_pattern_rect, nd_rect.c:105) and, for rotated windows, triangles (same
   drop arms as above).
 
-## Questions for the user (the orchestrator asks)
-1. Widescreen option: Native, Wide or Fullscreen? 3D slider up or down? 30 or 60 fps?
-2. Which parts are missing: the circles and light behind the wheel icons, the film reel, the HP/FP bar, the sub-menu windows (Jump,
-   Items lists), the target names, the action command meter? Do the icons and their names still show?
-3. Which console (XL .131, N3DS .224, O3DS .170), and every battle or a named one (map, enemy)?
-4. Should the wheel touch the left screen edge in Wide mode (now 54 px from it, the 4:3 distance)?
-5. Is there a log.txt from that session (a debug push writes `tridrop` and `rect` counts every 300 frames)? It names the drop arm.
+## User facts 3 (2026-11-11, through the orchestrator)
+Widescreen ON, O3DS XL.
+
+## User facts 4 (2026-11-11): "it's the background circles in the HUD that don't render" (wide on, XL; icons and text draw)
+The circles are HID_Spotlights[i] and HID_HighlightSpot (btl_states_menus.c:633, :646): HES_ProjectorSpot, IA8 32x32
+(battle_ui_gfx.c:531), alpha 150 and 180 (TRANSPARENT: G_RM_CLD_SURF, hud_element.c:1613), combine PM_CC_47, lit quad (G_LIGHTING at
+hud_element.c:1821: pm5 program, palette GPAL5 8 per batch, pm_gpu.c:132). Same path as the beam and reels (IA8 64x64), which differ
+only in size and alpha. Checked and not the cause: the cell atlas (pm_tex.c:337/359 needs a TLUT: IA8 has none), the scissor
+(pm_gpu.c:944-947 gives a ui batch the full 400 px), the KZN04/WALLSHADE leak (the IA8 load clears dual_on), the wide edge copy (the
+spot vertices sit at game x >= 18, not on the game edge). Fix rows (user 2026-11-11: fix every path, wide or not): row_HUDGM.md (the 256-matrix table per task, nd_mtx_set.c:73) and row_HUDRING.md (the walker load without a ring wrap, nd_geom.c:314-325). The wide arms (pm_gpu.c:176-177, :2776-2786), the lit IA8 path (IA8 -> GPU_LA4 pm_tex.c:396, PM_CC_47, CLD_SURF with no Z_CMP and no alpha compare) and LOADMTX (gDisplayContext is host memory) cannot drop them by code read.
+cause is in the wide arms (rebuild_3d pm_gpu.c:176-177, gtrip_wide :2776-2786). No: the common lit IA8 quad path (pm5, nd_geom.c).
+
+## Widescreen path of the triangle HUD elements (oracle code read; no arm found that drops all of them)
+- Mapping: pm_gpu_set_mvp (pm_gpu.c:2604-2619) marks the CAM_HUD ortho as ui_ortho; rebuild_3d (pm_gpu.c:176-177) draws it 1:1 at
+  screen x = 40 + game x (no 1.25 stretch), the same mapping as the texture rectangles (px, pm_gpu_rect.c:252): spots and icons share
+  one x (BATWIDE run 0650a26c7: light x 97 = icon x 97). pm_gv_rejm 0x2c (pm_gpu.c:2612) keeps margin triangles (game x -40..0).
+- Scissor: hud_element.c:1816 sets 0,0,320,240 in wide; the wide sign rule maps game x 0 to screen 0 (T_SCISSOR), so the margin is drawn.
+- Wide refusal arms and their values for these quads: gtrip_wide (pm_gpu.c:2776-2786) refuses when wide_edge_k returns 1 or 2:
+  r = 1 for a non-ortho matrix (the HUD modelview is a rotate/scale/translate: w column 0,0,0,1, wz true) or m[0][0] == 0 (the beam
+  turns -43 degrees, the reel at most 45: m00 != 0) or no ring room (pm_gpu.c:2761); r = 2 for more than 192 indices (a quad has 6).
+  A vertex past the game edge keeps its place (wide_on_edge :2715-2721, MSGBOX 4). None of these fires for every spot, beam and reel.
+- Not wide-only and able to drop all late HUD triangles of a battle frame: (b) the 256-entry matrix table per task (nd_mtx_set.c:73-74:
+  every part of every effect takes one entry; the HUD draws last) and (c) the ring (pm_gpu.c:3019). Their counts print as `tridrop`
+  (nd_geom.c:256-261, gv_fb ring and refuse) every 300 frames in a debug push.
+- The 2026-11-09 report predates KZN04; the WALLSHADE leak (g) cannot reach these quads (their IA8 load runs a tile 0 SETTILESIZE,
+  nd_tex_set.c:196, which clears dual_on before the draw).
+- No exact fix without the arm: CLAUDE.md 1 (no cause found: the trace goes back, the orchestrator asks the user).
+
+## Questions for the user
+Withdrawn (user, 2026-11-11: widescreen does not matter; fix every path).
 
 ## Next step
-After the answers the oracle names the arm and writes the exact-edit Haiku row (bench battle_wheel_nowide_det, or the wide wheel
-scenarios battle_wheel_wide_left and battle_wheel5_wide, as the byte gate of the changed path).
+After HUDGM and HUDRING merge: the user checks the wheel on the XL. This row file is deleted by the orchestrator then.

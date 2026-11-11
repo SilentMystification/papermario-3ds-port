@@ -149,7 +149,7 @@ void nd_walk_spr(const Gfx* q) {
     if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1);
     if (sh) { if (__builtin_expect(dbg & WD_CEN, 0)) walk_dbg_nat(); return; }
     if (__builtin_expect(nd_lc_frame != -1, 0)) nd_lstcen(q, 3u);
-    nd_ops_run(q + G_PM_SPR_WORDS, 2u, 1);
+    { extern int nd_spr_walk; nd_spr_walk = 1; nd_ops_run(q + G_PM_SPR_WORDS, 2u, 1); nd_spr_walk = 0; } /* WALLSHADE */
 }
 /* DIRECT D3: NDC_ENT (nd_rec.c): an entity record. A DRAW record that the native path refuses leaves its G_DL to the walker (ent_skipgen,
  * as the walker's G_PM_ENT arm and the G_DL after it). */
