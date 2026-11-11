@@ -243,13 +243,13 @@ void ens_clear(void);
 extern unsigned short** nuGfxCfb; extern unsigned nuGfxCfbNum;
 void grab_cur(const void* src, int w, int h);       /* the former pm_gbi.c, target group */
 void nd_native_rec(unsigned kind, unsigned on);      /* nd_target.c, LS-4: G_PM_ND records (HC4d2: NDO_MISC_ND fields) */
-int load_shaded_sprite(int dx4, int dy4);           /* the former pm_gbi.c, TX-3 */
+int load_shaded_sprite(void);           /* the former pm_gbi.c, TX-3 */
 int glyph_atlas_bound(void);                        /* the former pm_gbi.c, TX-3 */
 void op_setcombine(u32 w0, u32 w1);                 /* the former pm_gbi.c, combine group */
 unsigned long long pm_gpu_fl_acc(void);             /* pm_gpu.c */
 /* TX-3 externs. owner: the former pm_gbi.c (combine and state groups, read by the snapshot in nd_tex.c until those groups move) */
 extern int comb_mode5, plan_active, fog_fm, fog_fo, box_prod, box_pat, comb_alpha_shade, leg_mode;
-extern PmPlan cur_plan; extern float dual_gain[3];
+extern PmPlan cur_plan; extern float dual_f[4];
 void cc_cycle1(const float* t0, const float* t1, float out[4]);
 /* ---- C (ST-2): the combine group in nd_comb.c ---- */
 int const_rgb_tex_alpha(unsigned* out);
