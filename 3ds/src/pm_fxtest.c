@@ -184,14 +184,16 @@ static int nsel = -1, shotn;
 /* FXCEN1: per-effect census. pm_cnt_all (PH_ADD while pm_cnt_on) and the pm_gpu totals are read at a snapshot; the fxcena and
  * fxcenb lines carry the deltas to the print. Counts only; the picture stays out (CLAUDE.md 2). */
 int pm_cnt_on; unsigned pm_cnt_all[C_N];
+unsigned pm_fx_gpu_us, pm_fx_walk_us;
 void pm_gpu_cnt_now(unsigned o[8]);
 void pm_gpu_mdl_stat(unsigned* miss, unsigned* clears);
-typedef struct { unsigned cnt[C_N], g[8], mmiss, mclr, tk, f; } FxCen;
+typedef struct { unsigned cnt[C_N], g[8], mmiss, mclr, gpu, walk, tk, f; } FxCen;
 static FxCen fxc_base, fxc_eff;
 static void fxc_take(FxCen* s, unsigned f) {
     memcpy(s->cnt, pm_cnt_all, sizeof s->cnt);
     pm_gpu_cnt_now(s->g);
     pm_gpu_mdl_stat(&s->mmiss, &s->mclr);
+    s->gpu = pm_fx_gpu_us; s->walk = pm_fx_walk_us; /* FXSPLIT */
     s->tk = pm_ticks();
     s->f = f;
 }
@@ -200,14 +202,14 @@ static void fxc_print(int idx, const char* name, const FxCen* s, unsigned f) {
     for (k = 0; k < 96; k++) if (gEffectInstances[k]) live++;
     fxc_take(&c, f);
     pm_log_evt("fxcena %d %s frames %u us %u live %d", idx, name, f - s->f, (c.tk - s->tk) / 268u, live);
-    pm_log_evt("fxcenb %d tri %u vtx %u draw %u tex %u texmiss %u texkb %u cmd %u gvtri %u gvrej %u gvfb %u flkb %u ndraw %u nidx %u prg %u shr %u upd %u spl %u sprmiss %u cfull %u mmiss %u mclr %u",
+    pm_log_evt("fxcenb %d tri %u vtx %u draw %u tex %u texmiss %u texkb %u cmd %u gvtri %u gvrej %u gvfb %u flkb %u ndraw %u nidx %u prg %u shr %u upd %u spl %u sprmiss %u cfull %u mmiss %u mclr %u gpu %u walk %u",
         idx,
         c.cnt[C_TRI] - s->cnt[C_TRI], c.cnt[C_VTXLOAD] - s->cnt[C_VTXLOAD], c.cnt[C_DRAW] - s->cnt[C_DRAW],
         c.cnt[C_TEXCALL] - s->cnt[C_TEXCALL], c.cnt[C_TEXMISS] - s->cnt[C_TEXMISS], (c.cnt[C_TEXBYTE] - s->cnt[C_TEXBYTE]) >> 10,
         c.cnt[C_CMD] - s->cnt[C_CMD], c.cnt[C_GVTRI] - s->cnt[C_GVTRI], c.cnt[C_GVREJ] - s->cnt[C_GVREJ], c.cnt[C_GVFB] - s->cnt[C_GVFB],
         c.cnt[C_FLKB] - s->cnt[C_FLKB], c.cnt[C_NDRAW] - s->cnt[C_NDRAW], c.cnt[C_NIDX] - s->cnt[C_NIDX],
         c.g[0] - s->g[0], c.g[1] - s->g[1], c.g[2] - s->g[2], c.g[3] - s->g[3], c.g[5] - s->g[5], c.g[6] - s->g[6],
-        c.mmiss - s->mmiss, c.mclr - s->mclr);
+        c.mmiss - s->mmiss, c.mclr - s->mclr, c.gpu - s->gpu, c.walk - s->walk);
 }
 
 static void shot(const char* what, int i) {

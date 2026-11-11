@@ -2515,6 +2515,7 @@ void pm_gpu_begin_wait(void) {
     FS_MARK(FS_REST);
     PH_POP();
     pm_ph_gpu_note();
+    if (__builtin_expect(pm_cnt_on, 0)) pm_fx_gpu_us += (unsigned)(C3D_GetDrawingTime() * 1000.f); /* FXSPLIT */
     dump_shot();
     PH_PUSH(PH_TEX);
     pm_tex_begin_frame();

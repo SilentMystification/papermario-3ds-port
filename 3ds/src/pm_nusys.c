@@ -98,8 +98,10 @@ void pm_pf_nd_add(unsigned long long ticks, unsigned legacy); /* pm_phase.c: S0-
 /* S10-2, DIRECT D0: one replay of the task stream (nd_rec.c). The phase line keeps its format: the walk time goes to pm_pf_nd_add as one legacy span. */
 static void gbi_walk(const uint32_t* s) {
     uint64_t t0 = pm_ph_on ? svcGetSystemTick() : 0;
+    const uint64_t f0 = pm_cnt_on ? svcGetSystemTick() : 0; /* FXSPLIT */
     nd_stream_run(s);
     if (pm_ph_on) pm_pf_nd_add(svcGetSystemTick() - t0, 1);
+    if (pm_cnt_on) pm_fx_walk_us += (unsigned)((svcGetSystemTick() - f0) / 268u); /* FXSPLIT */
 }
 
 /* PI1: walk one task (walker side). */

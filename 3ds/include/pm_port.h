@@ -160,6 +160,7 @@ void pm_pad_step(const PmPad* p); /* pm_input.c, logic: the pad state the game r
 #define PH_PUSH(id) do { if (pm_ph_on) pm_ph_push(id); } while (0)
 #define PH_POP() do { if (pm_ph_on) pm_ph_pop(); } while (0)
 extern int pm_cnt_on; extern unsigned pm_cnt_all[C_N]; /* FXCEN1: fxtest census, on with fxtest */
+extern unsigned pm_fx_gpu_us, pm_fx_walk_us; /* FXSPLIT: GPU drawing and core 0 walk us, summed while pm_cnt_on */
 #define PH_ADD(c, n) do { if (__builtin_expect(pm_ph_on | pm_cnt_on, 0)) { if (pm_ph_on) pm_ph_cnt[c] += (unsigned)(n); pm_cnt_all[c] += (unsigned)(n); } } while (0) /* FXCEN1: pm_cnt_all never resets (fxtest census) */
 /* FS2: switch fsplit. Coarse split of a drawn frame, one tick read per mark (12 per drawn frame). Each mark closes the open part and opens the next. */
 enum { FS_REST, FS_LOGIC, FS_DL, FS_GBI, FS_FLUSH, FS_GWAIT, FS_SWAP, FS_AUDIO, FS_N };
