@@ -16,6 +16,7 @@ typedef struct {
     void* arg;
     const char* name;
     Thread th; /* set by the thread itself (threadGetCurrent) before its handler is installed */
+    u32 ssz, slo, shi; /* STACKANY: stack size and bounds (0: unknown) */
     int used;
     u8 hstack[PM_TH_HSTACK] __attribute__((aligned(8)));
 } PmTh;
@@ -30,11 +31,15 @@ static PmTh* slot_take(void) {
 
 static void slot_free(PmTh* s) {
     s->th = NULL;
+    s->ssz = s->slo = s->shi = 0;
     __atomic_store_n(&s->used, 0, __ATOMIC_RELEASE);
 }
 
 static void th_entry(void* p) {
     PmTh* s = (PmTh*)p;
+    volatile u32 here;
+    s->shi = (u32)&here + 512u;
+    s->slo = ((u32)&here - s->ssz + 512u) & ~3u;
     s->th = threadGetCurrent();
     pm_crash_install(s->hstack, sizeof s->hstack);
     /* crashtest=<thread name>: this thread does one null write, to check the crash path of that thread (CRASHALL test). */
@@ -54,6 +59,7 @@ Thread pm_thread_create(ThreadFunc fn, void* arg, size_t stack, int prio, int co
     s->arg = arg;
     s->name = name;
     s->th = NULL;
+    s->ssz = (u32)stack;
     Thread t = threadCreate(th_entry, s, stack, prio, core, false);
     if (!t) slot_free(s);
     return t;
@@ -67,7 +73,20 @@ void pm_thread_adopt(const char* name) {
     }
     s->name = name;
     s->th = threadGetCurrent();
+    s->ssz = s->slo = s->shi = 0;
     pm_crash_install(s->hstack, sizeof s->hstack);
+}
+
+/* STACKANY: bounds of the calling port thread's stack, 1 when known (a created thread), 0 otherwise (adopted, or not a port thread). */
+int pm_thread_stack_current(u32* lo, u32* hi) {
+    Thread me = threadGetCurrent();
+    for (int i = 0; i < PM_TH_MAX; i++)
+        if (__atomic_load_n(&pool[i].used, __ATOMIC_ACQUIRE) && pool[i].th == me && pool[i].shi != 0) {
+            *lo = pool[i].slo;
+            *hi = pool[i].shi;
+            return 1;
+        }
+    return 0;
 }
 
 const char* pm_thread_name_current(void) {

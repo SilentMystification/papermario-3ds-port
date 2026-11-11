@@ -14,4 +14,7 @@ void pm_thread_adopt(const char* name);
 /* Name of the calling port thread for the [CRASH] line, NULL when the thread is not a port thread. */
 const char* pm_thread_name_current(void);
 
+/* STACKANY: bounds of the calling port thread's stack (lo, hi). Returns 1 when known, 0 when not (adopted thread). */
+int pm_thread_stack_current(u32* lo, u32* hi);
+
 #endif
