@@ -28,7 +28,12 @@ Worktree build3ds/wt/HC4f3, branch HC4f3 from main 384c404c2. Copy assets/us and
 - GetFirstTriangleNormal.inc.c: the same at :33-34, with GFTN_END, GFTN_DL, GFTN_VTX, GFTN_TRI1, GFTN_TRI2 (NDO_END, NDO_CALL, NDO_VTX, NDO_TRI1, NDO_TRI2; `#else` the G_ names) for the five case labels.
 - nd_walk.c nd_walk_state: after `unsigned id = q[0] >> 24;` add `if (q[0] == ND_NOP_A) continue; /* HC4f3: a typed sync or no-op, skipped as a raw sync: no op_ctl, no gv_epoch */`.
 - nd_seam_test.c: `#include "ultra64.h"`, `#include "gbi_custom.h"`, `#include "nd_op.h"` after nd.h. fx_gfx :127 becomes `fx_w32(dl, ND_X0(w0, w1)); fx_w32(dl + 4, ND_X1(w0, w1)); /* HC4f3: typed as nd_shape_conv writes it */`. compile_soup :205: the end test adds `|| (lw[2 * i] >> 24) == NDO_END`. tedges: after the two memcpy at :261 add `{ uint32_t t[2]; nd_op_unit(w0, w1, t); w0 = t[0]; w1 = t[1]; }`; 0xDF -> NDO_END, 0x01 -> NDO_VTX, 0x05, 0x06 -> NDO_TRI1, NDO_TRI2.
+- nd_seam_test.c (fix after nd_host run 211261 FAIL): delete line 26 `#define G_VTX 0x01u`. ultra64.h (also included by nd_op.h:9) defines
+  G_VTX 0x01 at include/PR/gbi.h:114 under -DF3DEX_GBI_2 (nd_host_test.sh line 27 passes it): same value, so the raw walk at line 68 is unchanged.
+  The other local names (SHAPE_BASE, POS_MAX, RW, RH, the typedefs) have no prior define in include/, 3ds/include, 3ds/stub_include.
 Gate 1: nd_host PASS (`bench.py run nd_host --row HC4f3 --why "..."`); the lane build succeeds.
+Status: step 1 is committed in build3ds/wt/HC4f3 (c59b6b712, f5ca72f23), and sbkw_dlchash (nd_shape.c :425-429) already reads the typed
+unit there: no other edit. Next: the line 26 delete only, commit "HC4f3 readers: nd_seam_test uses the gbi.h G_VTX", run gate 1, then step 2.
 
 ## Step 2: converter (commit "HC4f3 converter v2")
 - nd_shape_conv.c: after `#include <stdint.h>` add `#include "ultra64.h"`, `#include "gbi_custom.h"`, `#include "nd_op.h"`; delete `typedef uint8_t u8;` and `typedef uint32_t u32;` (ultra64.h has both; -m32 keeps u32 at 32 bits). After the ShapeFix typedef: `static u32 n_nop; /* list words G_NOOP, RDPHALF_1/2, SETZIMG: typed as ND_NOP_A */`.
