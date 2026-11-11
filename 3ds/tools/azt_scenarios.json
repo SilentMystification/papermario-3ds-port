@@ -14553,6 +14553,31 @@
         }
       ],
       "reason": "PMUROT gate: the rotation lines print on Azahar. Values are counts from Azahar and are not the console; the console decides."
+    },
+{
+      "name": "bombette_mim11",
+      "status": "unverified",
+      "subject": "mim_11 (Bombette blow-up), partner 3 (Bombette), scripted C-down press, then 150 scans. Measurement: which shade path runs on each frame of the blow-up.",
+      "proves": "BOMBLIT census: per frame counts of the shaded sprite paths (m1 set and skipped, tex_shaded0 ok or conditions false, palette NULL, load fail, native why 3) from the press on.",
+      "debug": "warp=mim_11:0 partner=3 padscript=wait90,cdown,wait150 shadecen loglevel=debug det",
+      "extra": [],
+      "until": "padscript: done at scan",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: mim_11 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mim_11 entry 0"
+        },
+        {
+          "name": "padscript done",
+          "regex": "padscript: done at scan \\d+ f\\d+"
+        }
+      ],
+      "reason": "BOMBLIT census (measurement, no picture): the shade path counters of the shadecen switch, one line per frame with a count. Cap 30 s: the first marker takes 12 to 16 s, then the script runs 240 scans."
     }
   ]
 }

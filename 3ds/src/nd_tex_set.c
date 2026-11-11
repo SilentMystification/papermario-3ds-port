@@ -14,6 +14,7 @@
 /* GLOB: definitions moved here from the former pm_gbi.c (layout only). */
 NdTexM nd_tm; /* D4a: the load side of the texture model (nd_int.h) */
 M1Rec m1;
+unsigned shc[8]; /* BOMBLIT: shade path counters of the shadecen switch (0 m1 set, 1 m1 skipped, 2 shaded0 ok, 3 shaded0 cond false, 4 palette NULL, 5 load fail, 6 native why 3) */
 int pm_gbi_bind_tile1(void) { /* MDL-1b v2: the walker's pre-draw tile step (gv_epoch_enter); rec_aux already ran the record's combine and tile words */
     if (!plan_active || !cur_plan.uses_tex1) return 0;
     ensure_tile(nd_ws.use_t1 ? 1 : 0);
@@ -537,9 +538,11 @@ static void tex_win1(const NdTst* t, const NdTexM* m, const void* timg, int uls,
     o->src = src; o->w = w; o->h = h; o->stride = stride; o->x0 = t1x;
 }
 __attribute__((noinline)) void tex_tile1(unsigned tile, int uls, int ult, int lrs, int lrt) {
+            if (__builtin_expect(PMDL("shadecen") && tile == 1 && nd_ws.tst1.tile_fmt[1] == 2 && nd_ws.tst1.tile_siz[1] == 0 && !nd_tm.ld_valid, 0)) shc[1]++;
             if (tile == 1 && nd_ws.tst1.tile_fmt[1] == 2 && nd_ws.tst1.tile_siz[1] == 0 && nd_tm.ld_valid && nd_ws.timg) {
                 /* Second tile on the same 4-bit image: remember the raster for the shaded sprite. */
                 m1.valid = 1;
+                if (PMDL("shadecen")) shc[0]++;
                 m1.src = (const u8*)nd_ws.timg + (size_t)nd_tm.ld_y * (size_t)nd_ws.tst1.timg_stride + (size_t)nd_tm.ld_x;
                 m1.stride = nd_ws.tst1.timg_stride * 2;
                 m1.w = ((lrs - uls) >> 2) + 1;
@@ -593,9 +596,10 @@ __attribute__((cold, noinline)) int tex_shaded0(int uls, int ult) {
                 if (load_shaded_sprite()) {
                     dual_on = 1;
                     sync_combine();
+                    if (PMDL("shadecen")) shc[2]++;
                     return 1;
                 }
-            }
+            } else if (PMDL("shadecen")) shc[3]++;
     return 0;
 }
 
@@ -691,9 +695,19 @@ static void shade_mean(const void* sp, const void* sh) {
 int load_shaded_sprite(void) {
     const void* sp = nd_tm.tlut_pal[nd_ws.tst1.tile_pal[1] & 15];
     const void* sh = nd_tm.tlut_pal[nd_ws.tst1.tile_pal[0] & 15];
-    if (!sp || !sh) return 0;
+    if (!sp || !sh) { if (PMDL("shadecen")) shc[4]++; return 0; }
     shade_mean(sp, sh);
-    return pm_tex_load_shaded(m1.src, m1.w, m1.h, m1.stride, sp);
+    { const int ok = pm_tex_load_shaded(m1.src, m1.w, m1.h, m1.stride, sp); if (!ok && PMDL("shadecen")) shc[5]++; return ok; }
+}
+
+/* BOMBLIT: the shade path census of the shadecen switch (measurement only, no draw change). Prints one line for a frame with a count and
+ * zeroes the counters. Called from pm_gpu.c pm_gpu_end_w. */
+__attribute__((cold, noinline)) void shc_frame(unsigned f) {
+    int any = 0;
+    for (unsigned k = 0; k < 8; k++) any |= shc[k] != 0;
+    if (!any) return;
+    pm_log_hw("shadecen f%u m1 %u m1skip %u ok %u cond %u nopal %u loadfail %u why3 %u", f, shc[0], shc[1], shc[2], shc[3], shc[4], shc[5], shc[6]);
+    memset(shc, 0, sizeof shc);
 }
 
 /* ---- MV-10: RDP shift helper, cut from the former pm_gbi.c (no change) ---- */

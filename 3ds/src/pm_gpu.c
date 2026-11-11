@@ -2579,12 +2579,14 @@ static __attribute__((cold, noinline)) void dp_frame(unsigned f) {
     f0 = f;
     while (next <= f) next += 300u;
 }
+void shc_frame(unsigned f); /* BOMBLIT: nd_tex_set.c */
 static void pm_gpu_end_w(void) {
     if (__builtin_expect(stereo_frame && pm_frame_count() % 10u == 0, 0)) eyecw_log();
     if (__builtin_expect(mfr_on, 0)) mfr_frame(); /* TIK19 debug: the mfr line of the frame */
     if (__builtin_expect(PMDL("keymiss"), 0)) pm_km_frame(pm_frame_count()); /* KEYMISS: the census window line every 300 frames */
     if (__builtin_expect(pm_cnt_on, 0) && PMDL("dpcen")) dp_frame(pm_frame_count()); /* DPCEN1: byte census line */
     if (__builtin_expect(pm_cen_lines, 0)) cen_lines_frame(); /* PROF2-3: the census lines, once per frame at the frame end (rect_log every 100 frames there) */
+    if (__builtin_expect(PMDL("shadecen"), 0)) shc_frame(pm_frame_count()); /* BOMBLIT: the shade path census line */
     if (pm_frame_count() % 100u == 0) pm_tex_cell_log(pm_frame_count()); /* MSGBOX 3: glyph cells every 100 frames (debug level) */
     pm_gpu_begin_wait();
     if (!gs.gpu_ok) return;
@@ -3928,9 +3930,10 @@ void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, NdGvP* o);
  * (1 mode, 2 unit 0, 10 + nd_model_state code). */
 /* HC8 step 3: the shaded bake and the CI4 texture of a sprite (cold: the spr5 census and the sprtex refusal log are here). Returns 1 with tw, th and un
  * set, or 0 with *why. */
+extern unsigned shc[8]; /* BOMBLIT: nd_tex_set.c shade path counters */
 static int __attribute__((noinline, cold)) spr_build_rare(const NdSprRec* r, int shaded, int tex, NdTexDesc* ds, NdUnit* un, int* tw, int* th, int* why) {
     if (shaded) {
-        if (!dual_on || nd_ws.use_t1) { *why = 3; return 0; } /* no bake live, or the plan reads TEXEL1 (no unit 1 form yet) */
+        if (!dual_on || nd_ws.use_t1) { if (PMDL("shadecen")) shc[6]++; *why = 3; return 0; } /* no bake live, or the plan reads TEXEL1 (no unit 1 form yet) */
         ensure_tile(0);
         dual_bind();
         if (pm_tex_native_unit0(un) != 1) { *why = 2; return 0; }
