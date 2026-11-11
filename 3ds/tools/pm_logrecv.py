@@ -5,7 +5,7 @@ Usage: python 3ds/tools/pm_logrecv.py --ip <3ds-ip> [--label o3ds] [--timeout 60
 Use this when FTP is not available (see pull text in 3ds/go.ps1). The game must be running with the live
 log on. The tool sends "sendlog\\n". The game answers with live text lines and then frames:
 
-  #PMFILE <name> <size>\\n     (size raw bytes follow)     #PMEND <name>\\n
+  \\n#PMFILE <name> <size>\\n <size> raw bytes \\n#PMEND <name>\\n   (LOGX4: the game writes a newline before the header and before #PMEND)
 
 Names: crash.txt and log.txt. A crash.txt frame may come before any live text at the first client of a boot.
 
@@ -66,33 +66,50 @@ def receive(sock, label, out_dir, timeout, got):
             fill(len(buf) + 1)
 
     with open(live_path, "wb") as live:
-        while True:
-            line = next_line()
-            if not line.startswith(FRAME_PREFIX):
-                live.write(line + b"\n")
-                live.flush()
-                continue
-            parts = line[len(FRAME_PREFIX):].split(b" ")
-            if len(parts) < 2:
-                raise ValueError("bad frame header: %r" % line[:80])
-            name = parts[0]
-            size = int(parts[1])
-            fill(size)
-            data = bytes(buf[:size])
-            del buf[:size]
-            end = next_line()
-            if end != END_PREFIX + name:
-                raise ValueError("bad frame end for %s: %r" % (name.decode("ascii", "replace"), end[:80]))
-            if name not in KIND:
-                raise ValueError("unknown frame name: %s" % name.decode("ascii", "replace"))
-            path = os.path.join(out_dir, "hw_%s_%s.txt" % (label, KIND[name]))
-            with open(path, "wb") as f:
-                f.write(data)
-            text = name.decode("ascii")
-            print("[logrecv] %s -> %s (%d bytes)" % (text, path, size), flush=True)
-            got.append(text)
-            if name == b"log.txt":
-                return
+        # LOGX4: an empty live line is held. The game writes "\n#PMFILE" before each frame, so a held empty line
+        # followed by a #PMFILE header is that newline and is dropped; any other line makes the held line real.
+        held = False
+        try:
+            while True:
+                line = next_line()
+                if held:
+                    held = False
+                    if not line.startswith(FRAME_PREFIX):
+                        live.write(b"\n")
+                        live.flush()
+                if not line.startswith(FRAME_PREFIX):
+                    if line == b"":
+                        held = True
+                        continue
+                    live.write(line + b"\n")
+                    live.flush()
+                    continue
+                parts = line[len(FRAME_PREFIX):].split(b" ")
+                if len(parts) < 2:
+                    raise ValueError("bad frame header: %r" % line[:80])
+                name = parts[0]
+                size = int(parts[1])
+                fill(size)
+                data = bytes(buf[:size])
+                del buf[:size]
+                end = next_line()
+                if end == b"":
+                    end = next_line()  # LOGX4: the game's trailer starts with a newline (pm_log.c send_file)
+                if end != END_PREFIX + name:
+                    raise ValueError("bad frame end for %s: %r" % (name.decode("ascii", "replace"), end[:80]))
+                if name not in KIND:
+                    raise ValueError("unknown frame name: %s" % name.decode("ascii", "replace"))
+                path = os.path.join(out_dir, "hw_%s_%s.txt" % (label, KIND[name]))
+                with open(path, "wb") as f:
+                    f.write(data)
+                text = name.decode("ascii")
+                print("[logrecv] %s -> %s (%d bytes)" % (text, path, size), flush=True)
+                got.append(text)
+                if name == b"log.txt":
+                    return
+        finally:
+            if held:
+                live.write(b"\n")  # LOGX4: a held empty line at the end (closed or timeout) is real text
 
 
 def _names(got):
