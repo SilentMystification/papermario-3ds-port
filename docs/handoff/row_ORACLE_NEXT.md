@@ -29,6 +29,16 @@ A replacement oracle starts here: read CLAUDE.md, orchestrator_rules.md, plan_ho
   non-current frame buffer calls pm_cfb_capture_prev (nd_tex_set.c:47, pm_main.c:347): a CPU copy of the PICA colour buffer to RGBA5551,
   then one LoadMultiTile window per drop. Design a GPU-side copy (render-to-texture of the last frame) and bind it as unit 0.
 - Not read: fire_breath beyond TILEWIN, spiky_white_aura (+3.9 ms, 8 draws), bulb_glow (45 tex calls), firework_rocket (2 texmiss).
+- Reading notes (old oracle, stopped near 600K): ent_run (nd_ent.c:389-412) per call: ENT_GBI of the list's leading state words (:403),
+  then per segment ent_seg_native (one native draw) or ent_run_seg_interp; then the trailing state words; dlc_dirty = 1. The static
+  vertex buffer of a compiled list has no per-instance matrix index, so N calls cannot merge into one native draw without a vertex copy;
+  the ring path (gv) can (matrix id per vertex, up to 8 per batch). Which part of the ~115 us per call costs (state replay, texture
+  bind, palette product, submit, flush) is not known by code read. The prof line splits it per class (pf_report cls line: ent, sub,
+  kick, tex, comb, geo, mtx, ms per sampled frame): one console push per effect gives it; fxtest takes a repeated index, so 8 slots
+  of one effect fill one 300-frame window. Pushes (O3DS XL, prof profile): `warp=mac_01:0 pos=0:0:200 profdisk=1 fxtest=63,63,63,63,63,63,63,63`
+  (snowfall), the same with 105 (embers), 89 (water_splash), 84 (water_block). Design the batching and the refraction rows from those
+  class splits: ent/sub/kick large -> route small effect lists to the ring path (walk_call :231 condition); tex/fbread large for
+  water -> GPU copy of the previous frame instead of pm_cfb_capture_prev.
 
 ## Morning list (rows to write next, by the oracle)
 1. Class cuts after HC6B: read M1-hot per class (bench hotset_size on main after the HC6B merge) and the M3 census (hotset.py --fncov on
