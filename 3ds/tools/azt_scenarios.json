@@ -9499,7 +9499,9 @@
       "subject": "battle_start_f182 as a cold start (-NoWarm, a new Azahar process): Battle scene, one Goomba on kmr_03, shots with det. Two cold runs must give byte-equal shots.",
       "proves": "DET gate: the battle picture per shot is a function of the build with the det switch, cold start to cold start.",
       "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 det",
-      "extra": [],
+      "extra": [
+        "-NoWarm"
+      ],
       "until": "shot \\d+ frame 182\\b",
       "cap": 60,
       "deadline": 45,
