@@ -14,8 +14,9 @@ Edit rules in place, never append. At the start of a session, read docs/handoff/
 - Oracle (Opus): reads code and writes only docs/handoff/row_*.md files (rows, findings). It never writes code (oracle.md).
   It plans every fix by code read (CLAUDE.md 1-2). For a data-format change it first lists every reader. The orchestrator starts
   the first oracle of a session and reuses it for related questions, sent in groups. Any other Opus agent (a second or replacement
-  oracle, an Opus code agent) needs a user yes: ask with AskUserQuestion and give the reason (the oracle passed about 300K, or a
-  new area where its context does not help). Never two oracles at once unless the user says so.
+  oracle, an Opus code agent) needs a user yes: ask with AskUserQuestion and give the reason (the oracle context passed about 600K, or a
+  new area where its context does not help). Ask the oracle for its own context count; the subagent usage line adds up every turn
+  and is not the context. Never two oracles at once unless the user says so.
 - Code agents: Haiku (coder.md). Sonnet or Opus only when the oracle gives a reason and the user says yes. Reuse an agent of the
   same model type for related work in its area when the follow-up comes soon (its cache lasts about 5 min) or its context holds the
   code read the next step needs. Rotate the agent past about 150K, when the work leaves its files, or at the end of a chain.
