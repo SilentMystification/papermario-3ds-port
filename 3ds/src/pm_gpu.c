@@ -2921,6 +2921,30 @@ static __attribute__((cold, noinline)) int grange_wide(const float (*tab)[4][4],
     }
     return 2;
 }
+/* HC8 step 6: a new static batch of pm_gpu_grange (cold): the palette 0 and the frame state of the batch */
+static void __attribute__((noinline)) grange_open_new(unsigned gm, const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct, int use5, const PmFx* fx) {
+    {
+        memcpy(nb.g_uvso, uvso, sizeof(nb.g_uvso));
+        memcpy(nb.g_vp, vp, sizeof(nb.g_vp));
+        memcpy(nb.g_cmul, cmul, sizeof(nb.g_cmul));
+        memcpy(nb.g_cadd, cadd, sizeof(nb.g_cadd));
+        memcpy(nb.g_zmix, zmix, sizeof(nb.g_zmix));
+        nb.g_ct = ct; nb.g_pal = 1; nb.pal_n = 1; nb.pal_g[0] = gm; nb.pal_gen++;
+        nb.g_use5 = use5; if (use5) nb.g_fx = *fx;
+        if (gv_palmax < 1) gv_palmax = 1;
+        if (vp[0] != gs.vp_sx || vp[1] != gs.vp_sy || vp[2] != gs.vp_tx || vp[3] != gs.vp_ty) { gs.vp_sx = vp[0]; gs.vp_sy = vp[1]; gs.vp_tx = vp[2]; gs.vp_ty = vp[3]; rebuild_3d(); }
+        if (ct) {
+            int ccw = gv_wind <= 0;
+            if (ct == 2) ccw = !ccw;
+            nb.g_cullm = ccw ? GPU_CULL_BACK_CCW : GPU_CULL_FRONT_CCW;
+        } else nb.g_cullm = GPU_CULL_NONE;
+    }
+}
+/* HC8 step 6: flush the open static batch when a parameter of the new range differs (out of line) */
+static __attribute__((noinline)) void grange_flush_if_new(unsigned gm, const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct, int use5, const PmFx* fx) {
+    if (nb.gni > 0 && (!nb.g_pal || nb.pal_n == 0 || nb.pal_g[0] != gm || use5 != nb.g_use5 || (use5 && memcmp(&nb.g_fx, fx, sizeof nb.g_fx)) || memcmp(nb.g_uvso, uvso, sizeof(nb.g_uvso)) || memcmp(nb.g_vp, vp, sizeof(nb.g_vp)) || memcmp(nb.g_cmul, cmul, sizeof(nb.g_cmul)) ||
+                    memcmp(nb.g_cadd, cadd, sizeof(nb.g_cadd)) || memcmp(nb.g_zmix, zmix, sizeof(nb.g_zmix)) || nb.g_ct != ct)) flush();
+}
 int pm_gpu_grange(const float (*tab)[4][4], unsigned gm, const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct,
                   const PmFx* fx, const unsigned short* idx, unsigned nidx) {
     if (!gs.gv4_on || !gs.gpu_ok) return 0;
@@ -2940,24 +2964,8 @@ int pm_gpu_grange(const float (*tab)[4][4], unsigned gm, const float vp[4], cons
         nb.gni += nidx;
         return 2; /* extended an open static batch (C3 cross-list merge) */
     }
-    if (nb.gni > 0 && (!nb.g_pal || nb.pal_n == 0 || nb.pal_g[0] != gm || use5 != nb.g_use5 || (use5 && memcmp(&nb.g_fx, fx, sizeof nb.g_fx)) || memcmp(nb.g_uvso, uvso, sizeof(nb.g_uvso)) || memcmp(nb.g_vp, vp, sizeof(nb.g_vp)) || memcmp(nb.g_cmul, cmul, sizeof(nb.g_cmul)) ||
-                    memcmp(nb.g_cadd, cadd, sizeof(nb.g_cadd)) || memcmp(nb.g_zmix, zmix, sizeof(nb.g_zmix)) || nb.g_ct != ct)) flush();
-    if (nb.gni == 0) {
-        memcpy(nb.g_uvso, uvso, sizeof(nb.g_uvso));
-        memcpy(nb.g_vp, vp, sizeof(nb.g_vp));
-        memcpy(nb.g_cmul, cmul, sizeof(nb.g_cmul));
-        memcpy(nb.g_cadd, cadd, sizeof(nb.g_cadd));
-        memcpy(nb.g_zmix, zmix, sizeof(nb.g_zmix));
-        nb.g_ct = ct; nb.g_pal = 1; nb.pal_n = 1; nb.pal_g[0] = gm; nb.pal_gen++;
-        nb.g_use5 = use5; if (use5) nb.g_fx = *fx;
-        if (gv_palmax < 1) gv_palmax = 1;
-        if (vp[0] != gs.vp_sx || vp[1] != gs.vp_sy || vp[2] != gs.vp_tx || vp[3] != gs.vp_ty) { gs.vp_sx = vp[0]; gs.vp_sy = vp[1]; gs.vp_tx = vp[2]; gs.vp_ty = vp[3]; rebuild_3d(); }
-        if (ct) {
-            int ccw = gv_wind <= 0;
-            if (ct == 2) ccw = !ccw;
-            nb.g_cullm = ccw ? GPU_CULL_BACK_CCW : GPU_CULL_FRONT_CCW;
-        } else nb.g_cullm = GPU_CULL_NONE;
-    }
+    grange_flush_if_new(gm, vp, uvso, cmul, cadd, zmix, ct, use5, fx); /* HC8 step 6: out of line */
+    if (nb.gni == 0) grange_open_new(gm, vp, uvso, cmul, cadd, zmix, ct, use5, fx); /* HC8 step 6: cold */
     pal_tab = tab;
     memcpy(nb.gidx + nb.gidx_n, idx, nidx * 2u);
     nb.gidx_n += nidx;
