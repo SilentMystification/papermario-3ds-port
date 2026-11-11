@@ -1,5 +1,7 @@
 # Row BTRANS: battle entry swirl intermittently black or missing
 
+> STALE (oracle 2026-11-11): 3ds/src/pm_gbi.c no longer exists (its code moved to nd_*.c and pm_gpu*.c in DIRECT and MOVE); names and line numbers from it are void. The oracle re-reads this row before launch.
+
 ## User report (2026-11-06)
 The star/swirl transition when entering a battle is sometimes corrupted: parts go black or the effect is missing for some frames. Definitely on O3DS hardware, maybe in Azahar. Seems to happen when Mario is moving while entering the battle. Investigate the CODE of the whole sequence (CLAUDE.md rule 5, INVESTIGATE BY CODE): snapshots are the last resort.
 

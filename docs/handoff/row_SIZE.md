@@ -1,5 +1,7 @@
 # Row SIZE: 3dsx under the O3DS XL netloader limit
 
+> STALE (oracle 2026-11-11): 3ds/src/pm_gbi.c no longer exists (its code moved to nd_*.c and pm_gpu*.c in DIRECT and MOVE); names and line numbers from it are void. The oracle re-reads this row before launch.
+
 Console facts (2026-11-07): the netloader received 13,167,980 B and refused 13,363,940 B ("not enough free ram" at 24 percent). nds1 builds about 13.37 MB. Target 12.8 MB or less.
 
 ## Oracle plan SIZE

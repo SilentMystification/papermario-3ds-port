@@ -1,76 +1,34 @@
-# Row KZN04: kzn_04 runs at 15-16 fps on the O3DS XL (user, 2026-11-09)
+# Row KZN04: shaded sprites drawn on the GPU (kzn_04 15-16 fps on the O3DS XL)
 
-(Model: Haiku. A diagnostic row: 3 Azahar starts.)
-
+(Model: Sonnet, user approved 2026-11-11. Reason: the change of the shaded sprite path is a design (two texture units and a TEV
+combine in place of a CPU decode per sprite per frame) with choices Haiku cannot make. Non-byte-equal shading is accepted by the user.)
 ## User facts
-"The room kzn_04 is very laggy." "Perhaps it's because of the fireballs." "Fire sticks."
-XL log (main de4f4b8c8, build3ds/hw_live_log_131.txt 2975-3006): fps 15.7/16.6, cls tex 23.4/23.7 ms (mac_01 under 2), ph tex 6.8, ndc trect 5.4 per frame.
-
-## Cause (oracle, code read, main fe241dc42)
-kzn_04 calls SetSpriteShading(SHADING_KZN_04) (src/world/area_kzn/kzn_04/main.c:15). Every NPC sprite (12 fire bar NPCs, ANIM_Fire_Brighest_Burn,
-npc.c:115-263), Mario and the partner draw shaded. Per shaded sprite per frame: create_shading_palette (src/sprite_shading.c:66) draws the 16x1
-palette rect (the trect count), then set_tilesize tile 0 -> tex_shaded0 (3ds/src/nd_tex_set.c:542) -> pm_gpu_flush + load_shaded_sprite
-(nd_tex_set.c:620: 256 float cc_cycle1) -> pm_tex_load_shaded (3ds/src/pm_tex.c:1802). That function keys the texture by a hash of the 256-entry
-lut, and the lut changes when a sprite moves through the lights (the fire bars rotate every frame): a miss, decode and upload per sprite per frame.
-Premise: most pm_tex_load_shaded calls in kzn_04 are misses, about 3 or more per frame.
-
+"The room kzn_04 is very laggy." XL (main de4f4b8c8): fps 15.7/16.6, cls tex 23.4 ms (mac_01 under 2), ndc trect 5.4 per frame.
+## Cause (oracle code read, 141c5e371; diagnostic bench kzn04_shadestat merged)
+kzn_04 sets SetSpriteShading (src/world/area_kzn/kzn_04/main.c:15): every NPC (12 fire bars), Mario and the partner draw shaded. Per
+shaded sprite per frame: create_shading_palette (src/sprite_shading.c:66) draws the 16x1 shading palette rect, then tex_shaded0
+(3ds/src/nd_tex_set.c:569) -> load_shaded_sprite (:647-676) builds a 256-entry lut on the CPU: for each sprite palette colour i (tile 1
+palette sp) and shading colour j (tile 0 palette sh) the second-cycle combine cc_cycle1(t0, t1), and pm_tex_load_shaded (3ds/src/pm_tex.c
+:1819) keys a decoded texture by the hash of that lut. The fire bars move the light every frame, so sh changes, the lut changes, and the
+load is a miss: a full decode and upload per sprite per frame.
 ## Goal
-Print the shaded-load count, miss count and time per 300 frames. The oracle designs the fix from these numbers. No fix in this row.
-
-## Start state
-`sh 3ds/tools/wt_new.sh KZN04` (build3ds/wt/KZN04, branch KZN04 from main). PM_ROW=KZN04, PM_LANE=KZN04.
-
-## Touch only
-3ds/src/pm_tex.c (pm_tex_load_shaded only), 3ds/tools/azt_scenarios.json, 3ds/tools/bench_defs.json. NOT nd_tex_set.c (row HC7).
-
-## Exact edit (pm_tex.c, at pm_tex_load_shaded, line 1802)
-Above the function add:
-  static unsigned shs_calls, shs_miss, shs_t, shs_f; /* KZN04 diag (switch shadestat): shaded sprite loads since the last line */
-  static __attribute__((cold, noinline)) void shs_note(unsigned t0, int miss) {
-      shs_calls++; shs_miss += miss != 0; shs_t += pm_ticks() - t0;
-      const unsigned f = pm_frame_count();
-      if (f >= shs_f + 300u) { pm_log("shadestat f%u frames %u calls %u miss %u us %u", f, f - shs_f, shs_calls, shs_miss, shs_t / 268u); shs_f = f; shs_calls = shs_miss = shs_t = 0; }
-  }
-In the function: first line `const int shs_on = PMDL("shadestat"); const unsigned t0 = shs_on ? pm_ticks() : 0u;`.
-Replace `return load_impl(...);` with `int r = load_impl(...); if (__builtin_expect(shs_on, 0)) shs_note(t0, ph_miss); return r;` (same arguments).
-
-## Scenario and bench (same commit)
-Scenario kzn04_shadestat: debug "warp=kzn_04:0 shadestat loglevel=debug", until "shadestat f(6|7)\\d\\d ", cap 30, deadline 20,
-first_marker "warp: kzn_04 entry 0", needs_picture false, expected_events warp + until. Bench kzn04_shadestat (azahar_stream, same scenario, cap 30).
-
-## Done criteria
-1. Build OK, memcheck line OK.
-2. `python 3ds/tools/bench.py run kzn04_shadestat --row KZN04 --lane KZN04 --why "KZN04 shaded load counts"`: the line
-   `shadestat f6xx frames 3xx calls N miss M us U` prints. Report N, M, U, and N/300 calls per frame.
-   Premise true: M/N >= 0.9 and N/300 >= 3. Premise false: report the values (the cost is elsewhere).
-3. Commit. Give the push recipe for the XL: same debug word plus prof, scene kzn_04. Azahar gives only the counts.
-Affected scenarios: kzn04_shadestat only.
-
-## Stop
-3 Azahar starts. 2 tries for a missing line, then hand back with the log tail. STOP RULE: 90 min or 150 tool calls.
-
-## Rules
-CLAUDE.md rules 1-7. PM_LANE=KZN04 on every build.sh and bench call. No git stash. Foreground waits.
-
-## Commands
-- Build: PM_ROW=KZN04 PM_LANE=KZN04 sh 3ds/build.sh
-
-## Fix design (oracle batch 2)
-Cause chain (nd_tex_set.c:542-660, pm_tex.c:1809):
-- Each shaded sprite builds a 256-entry lut on the CPU: cc_cycle1 of 16 sprite-palette colours x 16 shading-palette colours.
-- The shading palette is the 16x1 rect of PM_CC_55, lerp(ENV highlight, PRIM shadow, tile 2 texel alpha) (sprite_shading.c:385-396). It moves with the fire-bar lights every frame.
-- The key = FNV(lut, dx4, dy4), so a moving light is a miss.
-- A miss: expand_dual of the whole w x h (pm_tex.c:496), plus a memset of the scratch, plus a new slot and an upload.
-The true fix is GPU-side, with no misses. Cycle 1 is PM_CC_50 = TEXEL0 x TEXEL1 with alpha TEXEL1, and TEXEL0 = lerp(env, prim, a_j). So: unit 1 = the sprite with its palette (static); unit 0 = an L8 map of a_j for the sprite's indices (static), sampled at the offset; TEV = lerp of 2 constants by tex0, then x tex1. That is a design row (new TEV class, 2 units, nd_tex_set.c, so after HC7 and COINSTAR). Recommend Sonnet: a new class and template, not mechanical. Its picture is not byte-equal (the N64 palette is 5-bit), so it needs a user OK.
-What 14 calls per frame do not explain (console tex 23.5 ms vs 3.6 ms on Azahar):
-- 14 CPU texrects per frame write SpriteShadingPalette; each write can run pm_tex_invalidate over the slots.
-- 14 pm_gpu_flush batch closes (tex_shaded0).
-- Slot churn from 9 new slots per frame (evict_oldest_done).
-CPU fix row: row_KZN04F.md. GPU design row: user OK 2026-11-10 (Sonnet; picture not byte-equal is accepted), after HC7 and COINSTAR; the oracle writes it then.
-
-KZN04F result (2026-11-10, not merged, branch deleted): pad-only memset and unrolled lut hash gave 259.7 us per call vs 257 before (no change);
-calls 12.2 per frame, 66% miss, 3.18 ms per frame on Azahar, pm_tex_invalidate 12.7 per frame. The CPU path is not the lever: the cost is the miss
-path itself. Next: the GPU design row (Sonnet, user OK) after HC7 and COINSTAR.
-
-## At the end
-The debug line stays. Keep this file (the fix row follows). Hand back "KZN04 ready <hash> calls N miss M us U".
+No per-frame CPU decode for a shaded sprite: the sprite texels (sprite palette, stable: cached as today by raster and palette) and the
+16 shading colours (tile 0, per frame: 16 entries) go to the GPU as two inputs, and the TEV computes the cc_cycle1 combine. If the
+index pairing (i, j) per texel cannot be expressed with two units on the PICA (no dependent texture read), use the nearest form the
+user accepts: the shading as a per-sprite colour (the mean of the 16 shading colours weighted by the sprite's palette use), and say so.
+## Start
+`sh 3ds/tools/wt_new.sh KZN04` (build3ds/wt/KZN04, branch KZN04 from main). PM_ROW=KZN04 PM_LANE=KZN04 on every call.
+## Places
+Edits: 3ds/src/nd_tex_set.c tex_shaded0 (:569) and load_shaded_sprite (:647); 3ds/src/pm_tex.c pm_tex_load_shaded (:1819) and new
+helpers next to it; the sprite TEV setup only after HC8 merges (HC8 edits pm_gpu.c pm_gpu_spr_build :3796 and nd_model.c :389-410: do
+not edit those until HC8 is merged; `git merge main` before the completing commit). Not nd_tex_set.c ensure_tile (HC7 merged code).
+## Gates
+- memcheck OK; `python 3ds/tools/bench.py run nd_host --row KZN04 --why "..."`: PASS.
+- Byte-equal (base, run, cmp) on scenes without shading: spot_mac01_det and mdl5_iwa10_det (bases stored at b8bc06613).
+- `python 3ds/tools/bench.py run kzn04_shadestat --row KZN04 --why "..."`: the shadestat line shows the miss count per 300 frames
+  near 0 (it was about 3 or more per frame). Write calls, miss and us in the commit. Azahar list: kzn04_shadestat, spot_mac01_det,
+  mdl5_iwa10_det on one slot (3 starts, plus the bases if not stored).
+- The look of the shading in kzn_04 and the fps: the user's console check.
+## Stop and end
+A failed gate or a tool fault: commit and hand back the exact output (CLAUDE.md 4-5). At the end delete this row file in the
+completing commit. Hand back: the ready hash, the gate results, the memcheck line, and which form (two units or per-sprite colour).

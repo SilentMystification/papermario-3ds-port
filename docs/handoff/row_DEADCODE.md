@@ -1,5 +1,7 @@
 # Row DEADCODE: remove dead and redundant code from the 3dsx (and the future cia)
 
+> STALE (oracle 2026-11-11): 3ds/src/pm_gbi.c no longer exists (its code moved to nd_*.c and pm_gpu*.c in DIRECT and MOVE); names and line numbers from it are void. The oracle re-reads this row before launch.
+
 ## User facts
 User (2026-11-09): "use this as a chance to just clean up the 3dsx file and future cia file. We can remove dead or redundant code."
 Also queued earlier: stale references after DIRECT (3ds/ld/3dsx.ld.in:34 names deleted .text.nd_walk_run/.text.pm_gbi_run;
