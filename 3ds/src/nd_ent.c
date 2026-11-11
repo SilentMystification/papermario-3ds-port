@@ -375,15 +375,23 @@ unsigned nd_ent_in, nd_ent_cfull, nd_ent_rfull, nd_ent_gbi;
 unsigned nd_ent_cfull_all(void) { return nd_ent_cfull; }
 unsigned nd_gdl_lists(void) { return gdl_c.lists; }
 #define ENT_GBI(l_, n_) (nd_ent_gbi++, nd_ops_run((l_), (n_) >> 3, 1)) /* PERF2: the pieces of the flattened list keep the walker's sync state (D10b: the op executor) */
+/* HC8 step 7: the recompile of a changed entity (content hash), the interpreter run of one segment (the fallback loop) are cold: out of line. */
+static void __attribute__((noinline, cold)) ent_run_recompile(EntKey* k, const Gfx* l) {
+    if (++k->nrec > 3) { k->st = ENT_DYN; ent_c.dyn++; }
+    else { u8 nr = k->nrec; ent_compile(k, l); k->nrec = nr; }
+}
+static void __attribute__((noinline, cold)) ent_run_seg_interp(const EntKey* k, const EntSeg* e) {
+    const Gfx* fw = k->fw;
+    ent_c.segi++; /* the old words: the vertex loads before the segment, then its own ops */
+    for (u32 i = 0; i < e->op0; i++) if (ent_uid(fw[i].words.w0, fw[i].words.w1) == NDO_VTX) ENT_GBI((void*)(fw + i), 8u);
+    if (e->op1 > e->op0) ENT_GBI((void*)(fw + e->op0), (e->op1 - e->op0) * 8u);
+}
 int ent_run(const Gfx* l, EntKey* k, u32 segid) {
     const unsigned f = pm_frame_count();
     if (!k) { ent_c.why[1]++; ent_c.fb++; return 0; }
     if (k->st == ENT_OK && k->fr != f) { /* content, once per frame */
         k->fr = f;
-        if (ent_hash(l, k->vp, k->vlen) != k->hash) {
-            if (++k->nrec > 3) { k->st = ENT_DYN; ent_c.dyn++; }
-            else { u8 nr = k->nrec; ent_compile(k, l); k->nrec = nr; }
-        }
+        if (ent_hash(l, k->vp, k->vlen) != k->hash) ent_run_recompile(k, l);
     } else if (k->st == ENT_REF && k->why == 6 && f >= k->retry) { ent_compile(k, l); }
     k->ndraw++; k->segid = segid;
     if (k->st != ENT_OK) { ent_c.fb++; if (k->st == ENT_REF) ent_c.why[k->why < 12 ? k->why : 0]++; return 0; }
@@ -395,9 +403,7 @@ int ent_run(const Gfx* l, EntKey* k, u32 segid) {
         if (e->op0 > e->a0) ENT_GBI((void*)(fw + e->a0), (e->op0 - e->a0) * 8u);
         if (!e->ntri) continue; /* a state-only or vertex-only segment: the loads replay when a later segment needs them */
         if (e->ntri && ent_seg_native(k, e)) { ent_c.segn++; continue; }
-        ent_c.segi++; /* the old words: the vertex loads before the segment, then its own ops */
-        for (u32 i = 0; i < e->op0; i++) if (ent_uid(fw[i].words.w0, fw[i].words.w1) == NDO_VTX) ENT_GBI((void*)(fw + i), 8u);
-        if (e->op1 > e->op0) ENT_GBI((void*)(fw + e->op0), (e->op1 - e->op0) * 8u);
+        ent_run_seg_interp(k, e);
     }
     { const EntSeg* e = &k->seg[k->nseg - 1]; if (k->nops > e->op1) ENT_GBI((void*)(k->fw + e->op1), (k->nops - e->op1) * 8u); }
     tri_since_vtx = 1; memset(vert_live, 0, sizeof vert_live); dlc_dirty = 1; /* as the skipped groups of dlc_try */
