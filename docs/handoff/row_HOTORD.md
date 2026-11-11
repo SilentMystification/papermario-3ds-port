@@ -33,6 +33,12 @@ No azahar.exe open outside build3ds\azslots during the Azahar steps (TOOLB4 runs
   `python 3ds/tools/bench.py cmp <bench> --row HOTORD`: exit 0, 6/6 byte-equal.
 ## Azahar starts
 3 census + 2 gate runs = 5 counted (budget 8). The 2 bases are 4 more starts, not counted (base runs), 0 when already stored.
+## Status (2026-11-10)
+Steps 1-5, memcheck, hotset_size (stale 0) and nd_host passed: 094ce15dc, ba075a3b1. The spot_mac01_det base at d44903735 was not
+stored: its cold run 245748 ended rc 2 "crash symbols" (unmapped reads at boot, row TOOLB7 facts); a tool fault, the gate stops.
+Next, after TOOLB7 is merged: merge main into HOTORD, run the same base command again (base runs are not counted). "two runs equal,
+stored": go on with the run and cmp of spot_mac01_det, then spot_mac00_det_pic. rc 2 again: commit, hand back
+build3ds/out/base_<short>_last_crash.txt (TOOLB7 keeps it with the base ELF).
 ## Stop and end
 hot_order.py names a missing function, a STALE BUILD refusal, a failed gate, or a tool fault: commit and hand back the exact output
 (CLAUDE.md 4-5). At the end delete this row file in the completing commit. Hand back: the ready hash, the gate results, the memcheck line.
