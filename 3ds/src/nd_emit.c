@@ -34,8 +34,12 @@ static int col_stage(unsigned r) {
     return -1;
 }
 
-unsigned nd_emit_draw(uint32_t* out, NdShadow* sh, const NdDraw* d) {
+/* HC6 step 4: emit_core with off != NULL also records the word offsets of the per-frame values (nd_emit_full); nd_emit_draw passes NULL (the
+ * compiler drops the recording). */
+#define OFF(f, v) do { if (off) off->f = (uint16_t)(v); } while (0)
+static inline __attribute__((always_inline)) unsigned emit_core(uint32_t* out, NdShadow* sh, const NdDraw* d, NdBlkOff* off) {
     uint32_t* o = out;
+    if (off) { memset(off, 0xff, sizeof *off); }
     /* template words: a register is written again only when its value changed. A stage colour comes from the draw. */
     if (d->tmpl >= 0) {
         const NdTmplWord* w;
@@ -45,7 +49,7 @@ unsigned nd_emit_draw(uint32_t* out, NdShadow* sh, const NdDraw* d) {
             for (unsigned i = 0; i < nw; i++) {
                 uint32_t val = w[i].val;
                 int cs = col_stage(w[i].reg);
-                if (cs >= 0 && val != 0xFFFFFFFFu) val = d->tev_col[cs]; /* a colour source sets this stage colour */
+                if (cs >= 0 && val != 0xFFFFFFFFu) { val = d->tev_col[cs]; OFF(col[cs], o - out); } /* a colour source sets this stage colour */
                 else if (w[i].reg == 0xFD) { if (!d->has_buf) continue; val = d->buf_col; }
                 if (sh->tmpl >= 0 && sh->tmpl_val[i] == val) continue;
                 o = one(o, w[i].reg, 0xF, val);
@@ -74,7 +78,9 @@ unsigned nd_emit_draw(uint32_t* out, NdShadow* sh, const NdDraw* d) {
         if (!t->dim) continue;
         if (!sh->u_on[u] || t->force || memcmp(&sh->u[u], t, sizeof *t) != 0) {
             uint32_t b[5] = { 0, t->dim, t->param, t->lod, t->addr };
+            if (u == 0) OFF(u0, o - out);
             o = cmd(o, blk_reg[u], 0xF, b, 5, 1);
+            if (u == 0) OFF(ty, o - out);
             o = one(o, fmt_reg[u], 0xF, t->type);
             sh->u[u] = *t; sh->u_on[u] = 1; unit_chg = 1;
         }
@@ -83,6 +89,7 @@ unsigned nd_emit_draw(uint32_t* out, NdShadow* sh, const NdDraw* d) {
     /* palette entries and the per draw uniforms */
     for (unsigned k = 0; k < d->npal && k < ND_NPAL && !d->no_uni; k++) {
         if (!(sh->pal_valid >> k & 1u) || memcmp(sh->pal[k], d->pal[k], sizeof sh->pal[k]) != 0) {
+            if (k == 0) OFF(pal, o - out + 2);
             o = uni(o, d->loc_pal + 4u * k, d->pal[k], 4);
             memcpy(sh->pal[k], d->pal[k], sizeof sh->pal[k]); sh->pal_valid |= 1u << k;
         }
@@ -108,6 +115,7 @@ unsigned nd_emit_draw(uint32_t* out, NdShadow* sh, const NdDraw* d) {
     /* the draw: vertex attribute buffer setup stays with citro3d; the index address, count and the trigger */
     o = one(o, 0x25E, 0x2, 0x300);
     o = one(o, 0x25F, 0xF, 1);
+    OFF(idx, o - out);
     o = one(o, 0x227, 0xF, d->idx_word);
     o = one(o, 0x228, 0xF, d->nidx);
     o = one(o, 0x22A, 0xF, 0);
@@ -122,4 +130,46 @@ unsigned nd_emit_draw(uint32_t* out, NdShadow* sh, const NdDraw* d) {
     o = one(o, 0x25E, 0x8, 0);
     o = one(o, 0x25E, 0x8, 0);
     return (unsigned)(o - out);
+}
+#undef OFF
+unsigned nd_emit_draw(uint32_t* out, NdShadow* sh, const NdDraw* d) { return emit_core(out, sh, d, NULL); }
+/* HC6 step 4: the words of draw d with the full state (a reset shadow: no redundant-state filter) and the offsets of its per-frame values. */
+unsigned nd_emit_full(uint32_t* out, const NdDraw* d, NdBlkOff* off) {
+    NdShadow s;
+    nd_shadow_reset(&s);
+    return emit_core(out, &s, d, off);
+}
+/* HC6 step 4 (switch blkchk): the register writes of span a (old path) whose last value is not the last value of the same register in span b (the block).
+ * A uniform data word (0x2C1) is keyed by the location of its 0x2C0 write and its index; a masked write by register and mask. */
+static unsigned dec(const uint32_t* w, unsigned n, uint32_t* key, uint32_t* val, unsigned max) {
+    unsigned i = 0, m = 0, loc = 0, idx = 0;
+    while (i + 1u < n && m < max) {
+        const uint32_t h = w[i + 1];
+        const unsigned reg = h & 0xFFFFu, mask = (h >> 16) & 0xFu, cnt = ((h >> 20) & 0xFFu) + 1u, consec = h >> 31;
+        for (unsigned j = 0; j < cnt && m < max; j++) {
+            const uint32_t v = j ? w[i + 1 + j] : w[i];
+            const unsigned r = consec ? reg + j : reg;
+            if (r == 0x2C0u) { loc = v & 0xFFu; idx = 0; }
+            key[m] = r == 0x2C1u ? 0x100000u | loc << 8 | (idx++ & 0xFFu) : r | (uint32_t)mask << 16;
+            val[m++] = v;
+        }
+        i += 2u + (cnt - 1u) + ((cnt & 1u) ? 0u : 1u);
+    }
+    return m;
+}
+uint32_t nd_emit_dk, nd_emit_da, nd_emit_db; /* blkchk: the first differing key of the last nd_emit_cmp, its old value and its block value (0xDEADBEEF: absent) */
+unsigned nd_emit_cmp(const uint32_t* a, unsigned na, const uint32_t* b, unsigned nb) {
+    static uint32_t ka[1024], va[1024], kb[1024], vb[1024];
+    const unsigned ma = dec(a, na, ka, va, 1024u), mb = dec(b, nb, kb, vb, 1024u);
+    unsigned bad = 0;
+    for (unsigned i = 0; i < ma; i++) {
+        if ((ka[i] & 0xFFFFu) == 0x2C0u && ka[i] < 0x100000u) continue; /* the uniform location word only picks the index of the 0x2C1 words after it (keyed by location) */
+        int later = 0;
+        for (unsigned j = i + 1u; j < ma; j++) if (ka[j] == ka[i]) { later = 1; break; }
+        if (later) continue;
+        unsigned j = mb;
+        while (j > 0u && kb[j - 1u] != ka[i]) j--;
+        if (!j || vb[j - 1u] != va[i]) { if (!bad) { nd_emit_dk = ka[i]; nd_emit_da = va[i]; nd_emit_db = j ? vb[j - 1u] : 0xDEADBEEFu; } bad++; }
+    }
+    return bad;
 }

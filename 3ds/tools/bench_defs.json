@@ -7739,6 +7739,22 @@
         "check"
       ],
       "gates": []
+    },
+    {
+      "name": "blkchk_mac01",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "HC6 step 4 check: model hit command block against the old emit per draw, per 300 frames on mac_01 (switch blkchk). Gate: diff 0.",
+      "scenario": "blkchk_mac01",
+      "cap": 25,
+      "until": "blkchk f[0-9]+ frames ",
+      "tags": [
+        "azahar",
+        "hc6",
+        "check"
+      ],
+      "gates": []
     }
   ],
   "legacy": {
