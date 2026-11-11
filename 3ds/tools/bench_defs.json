@@ -7954,6 +7954,41 @@
         "fxcen"
       ],
       "gates": []
+    },
+    {
+      "name": "pmu_rot_az",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "PMUROT: the rotating prof counter sets (profrot) on mac_01 spot, Azahar lines only.",
+      "scenario": "pmu_rot_az",
+      "cap": 45,
+      "until": "prof f(6|7)\\d\\d w\\d+ pmx set",
+      "tags": [
+        "azahar",
+        "prof",
+        "pmu_rot"
+      ],
+      "gates": []
+    },
+    {
+      "name": "pmu_rot_prof",
+      "kind": "console_prof",
+      "speed": "normal",
+      "default": false,
+      "purpose": "PMUROT: counter sets rotate per 300-frame window on the O3DS console (profrot), both cores. Read the pmx and pmx1 lines per set.",
+      "scene_match": null,
+      "recipe": "warp=mac_01:0 pos=0:0:200 profrot",
+      "scenario": null,
+      "host": "o3ds",
+      "cap": 240,
+      "until": "prof f3[0-9]{3} w300",
+      "tags": [
+        "console",
+        "prof",
+        "pmu_rot"
+      ],
+      "gates": []
     }
   ],
   "legacy": {

@@ -334,7 +334,9 @@ def run_disp_tuple(r):
 
 
 CORE_KEYS = ("pmu_i", "pmu_d", "pmu_cyc", "pmu_stall", "lgms", "wwait", "ser", "stk", "ic1", "dc1", "cyc1", "kf",
-             "bw", "fw", "aj", "au", "mx", "drain_dr", "drain_drw", "drain_wqf")  # BENCHFIX: PMU and core2 values of a window (prof lines)
+             "bw", "fw", "aj", "au", "mx", "drain_dr", "drain_drw", "drain_wqf",
+             "imiss", "drmiss", "istall", "dstall", "inst", "bmiss", "dwmiss", "devict", "lsufull", "sbdrain", "tlb", "extreq", "cyc",
+             "c1_imiss", "c1_drmiss", "c1_istall", "c1_dstall", "c1_inst", "c1_bmiss", "c1_dwmiss", "c1_devict", "c1_lsufull", "c1_sbdrain", "c1_tlb", "c1_extreq", "c1_cyc")  # BENCHFIX: PMU and core2 values of a window (prof lines)
 
 
 def window_extra(w):

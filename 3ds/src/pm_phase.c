@@ -307,6 +307,19 @@ static unsigned pf_cd; /* clean drawn frames left before the next sample */
 static int pf_samp; /* the drawn frame in progress is a sample */
 static int pf_prev_s; /* the previous drawn frame was a sample: its wall belongs to the sample sums */
 static char pf_set = 'm';
+/* PMUROT: the prof counter sets of profrot. A window ends on the next set (pf_report). e0, e1 = event enums; n0, n1 = names of the pmx lines. */
+typedef struct { char c; u32 e0, e1; const char* n0; const char* n1; } PfSet;
+static const PfSet pf_sets[6] = {
+    { 'm', PERFCOUNTEREVT_CORE_INST_CACHE_MISS, PERFCOUNTEREVT_CORE_DATA_CACHE_READ_MISS, "imiss", "drmiss" },
+    { 's', PERFCOUNTEREVT_CORE_STALL_BY_LACK_OF_INST, PERFCOUNTEREVT_CORE_STALL_BY_DATA_HAZARD, "istall", "dstall" },
+    { 'b', PERFCOUNTEREVT_CORE_INST_EXECUTED, PERFCOUNTEREVT_CORE_BRANCH_MISS_PREDICTED, "inst", "bmiss" },
+    { 'w', PERFCOUNTEREVT_CORE_DATA_CACHE_WRITE_MISS, PERFCOUNTEREVT_CORE_DATA_CACHE_LINE_EVICTION, "dwmiss", "devict" },
+    { 'q', PERFCOUNTEREVT_CORE_STALL_BY_LSU_FULL, PERFCOUNTEREVT_CORE_STORE_BUFFER_DRAIN, "lsufull", "sbdrain" },
+    { 't', PERFCOUNTEREVT_CORE_MAIN_TLB_MISS, PERFCOUNTEREVT_CORE_EXTERNAL_REQUEST, "tlb", "extreq" },
+};
+static int pf_si, pf_rot; /* pf_si: index into pf_sets of the current window; pf_rot: profrot is on */
+volatile unsigned pm_pf_set_gen; /* PMUROT: bumped at each set change; pm_logic.c lg_main re-sets core 1 on a change */
+void pm_pf_core_setup(void); /* PMUROT: defined below; pf_report calls it at a window end */
 static unsigned long long pf_last, pf_wsum, pf_wmax, pf_wksum;
 static unsigned long long pf_vb0;
 static unsigned pf_st0, pf_total, pf_w, pf_wn, pf_wkn, pf_o34;
@@ -326,6 +339,20 @@ static void pf_pmu_read(u64 out[3]) {
     pf_rc = svcControlPerformanceCounter(&out[0], PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_0, 0);
     pf_rc = svcControlPerformanceCounter(&out[1], PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_1, 0);
     pf_rc = svcControlPerformanceCounter(&out[2], PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_CYCLE_COUNTER, 0);
+}
+/* PMUPH: counter events per phase in sampled frames (switch profph). At each push and pop of a sampled frame PMN0 and PMN1 are read and
+ * their delta goes to the phase being left (as acc[] takes the ticks). pph[k][ph] = window sums per phase; pf_pmxph_line ranks them. */
+static int pf_ph_pmu;
+static u64 pph_last[2];
+static unsigned long long pph[2][PH_N];
+static void pph_read(u64 v[2]) {
+    pf_rc = svcControlPerformanceCounter(&v[0], PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_0, 0);
+    pf_rc = svcControlPerformanceCounter(&v[1], PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_1, 0);
+}
+static void pph_add(int ph) {
+    u64 v[2];
+    pph_read(v);
+    for (int k = 0; k < 2; k++) { pph[k][ph] += (u32)(v[k] - pph_last[k]); pph_last[k] = v[k]; }
 }
 #define PF_OVER_T 9115808ull /* 34 ms in ticks: 34 x TICKS_MS */
 void pm_gpu_pf_read(unsigned long long out[6]); /* pm_gpu.c: per frame counters and GPU busy ticks, read and reset */
@@ -470,6 +497,7 @@ static void pf_reset(void) {
     pf_sw_fts = pf_sw_wks = 0;
     pf_sms[0] = pf_sms[1] = pf_sms[2] = 0.f;
     pf_dlc_t = 0;
+    memset(pph, 0, sizeof pph); /* PMUPH */
     pf_vb0 = C3D_FrameCounter(0);
     pf_st0 = pm_step_calls;
     pf_scene_seen = 0; /* PROF2-6: the next drawn frame notes the scene and the start position */
@@ -516,8 +544,33 @@ static void pf_where_line(void) {
     pm_log_prof_line("prof f%u w%u at %s %d:%d m%d sp%d b%d e%d chg0 pos0 %d %d %d pos %d %d %d disp %s", pf_total, pf_w, nm, cur_area, cur_map, cur_mode,
         story, btl, en, pf_ri(pf_pos0[0]), pf_ri(pf_pos0[1]), pf_ri(pf_pos0[2]), pf_ri(pos[0]), pf_ri(pos[1]), pf_ri(pos[2]), pf_disp[dm]);
 }
+/* PMUPH: the 6 phases with the largest e0 sum of the window, values per sampled frame. Two lines of 3 phases (13 words each, LF_MAX_ARGS 16).
+ * A missing phase prints "-" with 0 0. Cold: once per window. */
+static void pf_pmxph_line(void) {
+    int top[6];
+    for (int k = 0; k < 6; k++) {
+        int best = -1; unsigned long long bv = 0;
+        for (int ph = 0; ph < PH_N; ph++) {
+            int dup = 0;
+            for (int j = 0; j < k; j++) if (top[j] == ph) dup = 1;
+            if (!dup && pph[0][ph] > bv) { bv = pph[0][ph]; best = ph; }
+        }
+        top[k] = best;
+    }
+    unsigned s = pf_s ? pf_s : 1u;
+    for (int part = 0; part < 2; part++) {
+        const char* nm[3]; unsigned e0[3], e1[3];
+        for (int j = 0; j < 3; j++) {
+            int ph = top[part * 3 + j];
+            if (ph < 0) { nm[j] = "-"; e0[j] = e1[j] = 0; }
+            else { nm[j] = pname[ph]; e0[j] = (unsigned)(pph[0][ph] / s); e1[j] = (unsigned)(pph[1][ph] / s); }
+        }
+        pm_log_prof_line("prof f%u w%u pmxph %c set %c %s %u %u %s %u %u %s %u %u", pf_total, pf_w, part ? 'b' : 'a', pf_sets[pf_si].c,
+            nm[0], e0[0], e1[0], nm[1], e0[1], e1[1], nm[2], e0[2], e1[2]);
+    }
+}
 static void pf_report(void) {
-    unsigned vb = (unsigned)(C3D_FrameCounter(0) - pf_vb0);
+    unsigned vb =(unsigned)(C3D_FrameCounter(0) - pf_vb0);
     /* fps counts presents: the steps of the window plus the key frames walked (fps60 shows two pictures a step). ft and wk stay per step. */
     unsigned kfw; { unsigned long long t_, w_, pe_[3]; unsigned n_, s_, k_; int c_; pm_lg_pf(&t_, &n_, &w_, &s_, &c_, &k_, pe_, &kfw); kfw -= lg0_kf; }
     unsigned fps10 = vb ? (pf_w + kfw) * 600u / vb : 0u; /* presents x 10 per second */
@@ -542,7 +595,10 @@ static void pf_report(void) {
         gbi / 100u, gbi % 100u, dlc / 100u, dlc % 100u, tex / 100u, tex % 100u, gpu / 100u, gpu % 100u,
         pm_step_calls - pf_st0, vb, pf_iv[0], pf_iv[1], pf_iv[2], pf_iv[3]);
     /* PERF1: the counters on their own line */
-    pm_log_prof_line("prof f%u w%u pmu %c %u %u cyc %u pm %u %u", pf_total, pf_w, pf_set, e0, e1, cy, p0, p1);
+    if (pf_rot) pm_log_prof_line("prof f%u w%u pmx set %c %s %u %s %u cyc %u", pf_total, pf_w, pf_sets[pf_si].c, pf_sets[pf_si].n0, e0,
+        pf_sets[pf_si].n1, e1, cy); /* PMUROT */
+    else pm_log_prof_line("prof f%u w%u pmu %c %u %u cyc %u pm %u %u", pf_total, pf_w, pf_set, e0, e1, cy, p0, p1);
+    if (pf_ph_pmu) pf_pmxph_line(); /* PMUPH */
     { /* PERF1: ms per sampled frame of each producer class (exclusive, nd.h NDT_*); PERF2: the op classes split what was rest */
         uint64_t ct[NDT_N]; pm_gpu_ndt_take(ct);
         unsigned cm[NDT_N], csum = 0;
@@ -611,6 +667,8 @@ static void pf_report(void) {
             unsigned cy1 = dn ? (unsigned)((pe[2] - lg0_pe[2]) / dn) : 0u;
             pm_log_prof_line("prof f%u w%u core2 lgms %u.%02u n %u wwait %u.%02u ser %u core %d stk %u ic1 %u dc1 %u cyc1 %u kf %u", pf_total, pf_w,
                 lgc / 100u, lgc % 100u, dn, wwc / 100u, wwc % 100u, sn - lg0_s, core, kb, ic1, dc1, cy1, kf - lg0_kf);
+            if (pf_rot) pm_log_prof_line("prof f%u w%u pmx1 set %c c1_%s %u c1_%s %u c1_cyc %u", pf_total, pf_w, pf_sets[pf_si].c,
+                pf_sets[pf_si].n0, ic1, pf_sets[pf_si].n1, dc1, cy1); /* PMUROT */
             /* C1WAIT: ms per logic step of the waits inside lgms (LF_MAX_ARGS is 16 words: a second line). bw = the logic thread's wait for
              * the walker (every wq_block), fw = its depth 1 frame wait (the part of bw that waits for the walked frame), aj = audio join
              * waits run on the logic thread, au = audio job ticks (audio thread), mx = mixer ticks (render thread). */
@@ -628,6 +686,9 @@ static void pf_report(void) {
         }
     }
     if (c1_st == 1) c1_begin(); /* CORE2C C1P */
+    if (pf_rot) { /* PMUROT: the next window counts the next set; core 1 follows at its next logic step */
+        pf_si = (pf_si + 1) % 6; pm_pf_core_setup(); pf_pmu_read(pf_base); pm_pf_set_gen++;
+    }
     pf_reset();
 }
 /* PF2: the next drawn frame is a sample. The phase stack starts clean, so its first push adds no time from before the sample. */
@@ -646,6 +707,7 @@ static void pf_arm(void) {
     pf_samp = 1;
     cold_need(); /* SPRFIX: pm_ph_frame_end reads cold->win for a sampled frame; prof mode 1 never allocates cold otherwise (NULL read at pf_take) */
     pm_ph_on = 1;
+    if (pf_ph_pmu) pph_read(pph_last); /* PMUPH: the counts of this sample start here */
     pm_walk_dbg_set();
 }
 /* PF2: one sampled frame, at its end. r is the frame record: it is not stored in the phase window. */
@@ -706,9 +768,11 @@ void pm_ph_window_close(void) {
 void pm_pf_core_setup(void) {
     u64 out;
     u32 ev0 = pf_set == 's' ? PERFCOUNTEREVT_CORE_STALL_BY_LACK_OF_INST : PERFCOUNTEREVT_CORE_INST_CACHE_MISS;
+    u32 ev1 = PERFCOUNTEREVT_CORE_DATA_CACHE_READ_MISS;
+    if (pf_rot) { ev0 = pf_sets[pf_si].e0; ev1 = pf_sets[pf_si].e1; } /* PMUROT */
     pf_rc = svcControlPerformanceCounter(&out, PERFCOUNTEROP_ENABLE, 0, 0);
     pf_rc = svcControlPerformanceCounter(&out, PERFCOUNTEROP_SET_EVENT, PERFCOUNTERREG_CORE_COUNT_REG_0, ev0);
-    pf_rc = svcControlPerformanceCounter(&out, PERFCOUNTEROP_SET_EVENT, PERFCOUNTERREG_CORE_COUNT_REG_1, PERFCOUNTEREVT_CORE_DATA_CACHE_READ_MISS);
+    pf_rc = svcControlPerformanceCounter(&out, PERFCOUNTEROP_SET_EVENT, PERFCOUNTERREG_CORE_COUNT_REG_1, ev1);
     pf_rc = svcControlPerformanceCounter(&out, PERFCOUNTEROP_SET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_0, 0);
     pf_rc = svcControlPerformanceCounter(&out, PERFCOUNTEROP_SET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_1, 0);
     pf_rc = svcControlPerformanceCounter(&out, PERFCOUNTEROP_SET_VALUE, PERFCOUNTERREG_CORE_CYCLE_COUNTER, 0);
@@ -742,6 +806,9 @@ static void pf_init(void) {
     pf_want = pm_debug_mode("prof") == 1; /* CFG-1: prof=off or prof=0 samples nothing */
     if (pm_debug_value("prof", v, sizeof v)) { unsigned n = (unsigned)atoi(v); if (n >= 4 && n <= 255) pf_every = n; }
     pf_set = pm_debug_has("profstall") ? 's' : 'm';
+    pf_rot = pm_debug_has("profrot"); /* PMUROT: rotate the sets per window */
+    pf_ph_pmu = pm_debug_has("profph"); /* PMUPH: counts per phase in sampled frames */
+    pf_si = pf_set == 's' ? 1 : 0; /* the start set: s with profstall, else m */
     pm_pf_on = pf_want && pm_log_file();
     pf_cd = pf_every - 1;
     if (pm_pf_on) pf_start();
@@ -814,6 +881,7 @@ void pm_ph_push(int id) {
     if (pm_on_audio()) return; /* AU1c: one phase stack, owned by the game thread */
     unsigned now = pm_ticks();
     acc[cur] += now - last;
+    if (pf_ph_pmu && pf_samp) pph_add(cur); /* PMUPH */
     last = now;
     if (depth < 16) stk[depth++] = cur;
     cur = id;
@@ -823,6 +891,7 @@ void pm_ph_pop(void) {
     if (pm_on_audio()) return;
     unsigned now = pm_ticks();
     acc[cur] += now - last;
+    if (pf_ph_pmu && pf_samp) pph_add(cur); /* PMUPH */
     last = now;
     cur = depth ? stk[--depth] : PH_OTHER;
 }

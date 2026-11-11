@@ -14156,6 +14156,38 @@
         }
       ],
       "reason": "FXCEN1 census: counts per effect slot (Azahar counts valid; the us column is a proxy, the console decides). Log only, no picture (CLAUDE.md 2)."
+    },
+    {
+      "name": "pmu_rot_az",
+      "status": "unverified",
+      "subject": "mac_01 spot (pos 0 0 200), prof=30 with the counter sets rotating per 300-frame window (profrot): the pmx lines (set letter, two event names, per clean frame) and the pmx1 lines (core 1).",
+      "proves": "PMUROT: the window line names a new set each window, both cores print their pmx line; Azahar values may be 0 (not the console), only the lines are the gate.",
+      "debug": "warp=mac_01:0 pos=0:0:200 prof=30 profrot profph loglevel=debug",
+      "until": "prof f(6|7)\\d\\d w\\d+ pmx set",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "pmx",
+          "regex": "prof f\\d+ w\\d+ pmx set [a-z] [a-z]+ \\d+ [a-z]+ \\d+ cyc \\d+"
+        },
+        {
+          "name": "pmx1",
+          "regex": "prof f\\d+ w\\d+ pmx1 set [a-z] c1_[a-z]+ \\d+ c1_[a-z]+ \\d+ c1_cyc \\d+"
+        },
+        {
+          "name": "pmxph a",
+          "regex": "prof f\\d+ w\\d+ pmxph a set [a-z] "
+        },
+        {
+          "name": "pmxph b",
+          "regex": "prof f\\d+ w\\d+ pmxph b set [a-z] "
+        }
+      ],
+      "reason": "PMUROT gate: the rotation lines print on Azahar. Values are counts from Azahar and are not the console; the console decides."
     }
   ]
 }

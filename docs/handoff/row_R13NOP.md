@@ -45,6 +45,18 @@ IS_NOP is defined at nd_rec.c:125, above this function. Edit the comment above t
 - Mechanical gate: the `ndm f300 ... why ...` line of the mdl5_iwa10_det LOG: copy has no `2:` entry, or a smaller one than the base
   log (build3ds/basecache/<commit>/mdl5_iwa10_det/run.log in the main folder). Write both lines in the commit.
 
+## Step 2 (after commits a8f06f60d, bb74cda67: byte compares done, the ndm line is absent)
+Fact: the ndm window line prints only with the census switch (pm_cen_lines, pm_phase.c:780, :808); mdl5_iwa10_det has none, and its
+prof=4 turns the log off. One new scenario and bench in one commit:
+1. Scenario mdl5_iwa10_cen (form of kzn04_shadestat, status unverified, needs_picture false): debug
+   `warp=iwa_10:1 pos=-586:1:530 census loglevel=debug det`, until `ndm f300 native`, cap 45, deadline 40, first_marker
+   `warp: iwa_10 entry 1`, expects warp, expected_events warp and `ndm f300 native \d+ fb \d+`. Bench mdl5_iwa10_cen (azahar_stream, normal,
+   default false, tags azahar mdl5). `bench.py rebuild`, commit.
+2. `bench.py base mdl5_iwa10_cen` (builds and runs the merge-base once), then `bench.py run mdl5_iwa10_cen --row R13NOP --why "why 2
+   refusals after the R13 sync drop"` (starts 7 and 8 of 8).
+3. Gate: the head log's `ndm f300` line has no `2:` in its why list, or a smaller one than the base log's line
+   (build3ds/basecache/<commit>/mdl5_iwa10_cen/run.log, main folder), and its fb is not larger. Write both lines in the commit.
+
 ## Stop and end
 A failed gate, an edit that does not fit, or a tool fault: commit, hand back the exact output (CLAUDE.md 4-5). Delete this row file
 in the completing commit. Hand back the hash, gates, memcheck line, both ndm lines. The look is the user's console check.

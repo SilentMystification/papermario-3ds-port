@@ -36,8 +36,10 @@ static int lg_core = -1;
 static volatile unsigned long long lg_pf_t; static volatile unsigned lg_pf_n; /* logic thread: ticks and count of the steps it ran */
 /* PMU2: core 1 counter sums (ic, dc, cycles) over the logic steps of prof mode; lg_pmu_on = the core 1 PMU is set (logic thread only) */
 static volatile unsigned long long lg_pf_pe[3]; static int lg_pmu_on;
+static unsigned lg_pmu_gen; /* PMUROT: the pm_pf_set_gen that core 1 was set for */
 extern int pm_pf_on; /* pm_phase.c */
 void pm_pf_core_setup(void); /* pm_phase.c: the counter setup of the calling core */
+extern volatile unsigned pm_pf_set_gen; /* PMUROT, pm_phase.c: bumped at each counter set change */
 void pm_pf_core_read(u64 out[3]);
 static volatile unsigned lg_kwalk, lg_kdue; /* key frames walked, and due (the end entry of a step with a key frame ran): both on the walker */
 static unsigned lg_kseen; /* game thread: key frames counted as drawn */
@@ -67,7 +69,7 @@ static void lg_main(void* arg) {
         int pf = pm_pf_on && c.kind != LG_IDLE;
         if (!pm_pf_on) lg_pmu_on = 0;
         u64 p0[3], p1[3];
-        if (pf && !lg_pmu_on) { pm_pf_core_setup(); lg_pmu_on = 1; }
+        if (pf && (!lg_pmu_on || lg_pmu_gen != pm_pf_set_gen)) { pm_pf_core_setup(); lg_pmu_on = 1; lg_pmu_gen = pm_pf_set_gen; } /* PMUROT */
         if (pf) pm_pf_core_read(p0);
         u64 t0 = svcGetSystemTick();
         lg_exec(&c);
