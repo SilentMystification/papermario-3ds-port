@@ -23,7 +23,11 @@ Edit rules in place, never append. Start of a session: read docs/handoff/HANDOFF
 
 ## Rows
 - One row file per agent (60 lines or fewer), a prompt of 10 lines or fewer that points to it.
-- Rows that run at the same time edit disjoint files (azt_scenarios.json and bench_defs.json count). At most 6 code agents.
+- Work so that merges never conflict. Rows may run in parallel only when no merge conflict can result: they edit disjoint files
+  (azt_scenarios.json, bench_defs.json, run_azahar.ps1 and other shared tool files count) and no row depends on the unmerged output
+  of another. Before a launch, compare the file lists of the rows that run and of the row to start. Any overlap: the later row
+  waits until the earlier row is merged, then branches from the new main. A conflict found at merge is a planning fault: stop,
+  do not resolve it by guessing, and ask the oracle. At most 6 code agents.
 - Handback triage: a test-tool fault opens a tool row and the gate waits (CLAUDE.md 4). Any other failure goes to the oracle at once.
   Decide yourself only what changes no behaviour (a name, a flag, a scope). Never relaunch an unchanged row.
 - A bug row starts from the user facts. When the code read finds no cause, ask the user (AskUserQuestion).
