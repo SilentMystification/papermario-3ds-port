@@ -1201,6 +1201,7 @@ int pm_lg_quiesce_ms(unsigned ms); /* pm_logic.c */
 #define HOOK_QUIESCE_MS 200u
 static int hook_idle = 1; /* the last suspend, sleep or exit hook found the logic idle */
 static void cpu_hook(APT_HookType h, void* param) {
+    if (!pm_thread_name_current()) pm_thread_adopt("apt"); /* LIBTHR: a hook on the APT thread gets a crash handler */
     (void)param;
     if (h == APTHOOK_ONSUSPEND || h == APTHOOK_ONSLEEP || h == APTHOOK_ONEXIT) { /* CORE2C-3: the logic thread stops at a step boundary first (game thread only) */
         const char* hk = h == APTHOOK_ONSUSPEND ? "home" : h == APTHOOK_ONSLEEP ? "sleep" : "exit";

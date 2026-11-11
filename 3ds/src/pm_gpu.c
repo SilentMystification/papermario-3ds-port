@@ -18,6 +18,7 @@ void pm_gx_room(void); /* HANG1a */
 #include "pm_gpu.h"
 #include "pm_tex.h"
 #include "pm_port.h"
+#include "pm_thread.h"
 #include "pm_gpu_int.h"
 
 static int drew;
@@ -1526,6 +1527,9 @@ static void jt_result(void) {
     jt_state = 0;
 }
 
+/* LIBTHR: the GSP event thread adopts itself once, at its first VBlank callback */
+static void gsp_adopt(void* d) { (void)d; if (!pm_thread_name_current()) pm_thread_adopt("gsp"); }
+
 /* CORE2-3a: walker side entry (nd_wq.c): the game thread calls it, the body runs on the walker side. */
 static void pm_gpu_init_w(void);
 typedef struct { int unused; } Wq_pm_gpu_init;
@@ -1541,6 +1545,7 @@ static void pm_gpu_init_w(void) {
     pm_stretch_cfg = pm_opt.wide == 2; pm_stretch = pm_stretch_cfg && !pm_wide; /* MENUGEN: Fullscreen = pm_wide 0 and stretch 1 */
     pm_log("gpu: wide=%d stretch=%d", pm_wide, pm_stretch);
     gfxInitDefault();
+    gspSetEventCallback(GSPGPU_EVENT_VBlank0, gsp_adopt, NULL, true); /* LIBTHR: one shot, on the GSP event thread */
     if (!C3D_Init(0x180000)) { /* MEM1: 1.5 MB command buffer. The worst fill seen was 9 percent of 4 MB (369 KB), the new size keeps 4 times that. 2.5 MB of linear memory come back */
         pm_con_lock();
         consoleInit(GFX_BOTTOM, &bottom_con);
