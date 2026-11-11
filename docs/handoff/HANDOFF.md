@@ -25,7 +25,7 @@ HC4e3 (all 3 groups), HC4f1, HC4f2, ESCAPE, N64PEEK (tool, parked), AZTSTEREO, B
 
 ## Rules changed on 2026-11-10 (now in CLAUDE.md and orchestrator_rules.md)
 Fault is fact; code read only (no repro, no debug-log, no visual checks); tool faults stop the gate; the oracle writes row files;
-fresh oracle per batch; /compact at about 450K; base --fill after each merge.
+one oracle per session start (others only on a user yes); session prompts at 300K then each 100K; base --fill after each merge; main stays clean.
 
 ## Tooling note
 The scratchpad merge helper of the last session appended runs.jsonl lines but did not commit them. Commit runs.jsonl and
