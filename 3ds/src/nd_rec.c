@@ -470,6 +470,7 @@ static __attribute__((cold, noinline)) void run_bad(uint32_t h, const uint32_t* 
 }
 static void stream_run(const uint32_t* p, const uint32_t* stop) {
     for (;;) {
+        __builtin_prefetch(p + 16); /* HC9B: the stream 64 B ahead (no hardware prefetcher on the ARM11) */
         if (p == stop) return;
         const uint32_t h = p[0];
         switch (h >> 24) {
