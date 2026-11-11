@@ -33,8 +33,10 @@ Row ESCAPE2 ran an Azahar start (slot 1) at the same time.
    `    continue`
 ## Gate (no game code changes: no byte compare of a picture change)
 - `powershell -NoProfile -File 3ds/tools/azt.ps1 -SelfTest`: the same PASS lines as on main (run it on main first, 0 Azahar starts).
-- `python 3ds/tools/bench.py base spot_mac01_det --row TOOLB3`: prints "two runs equal, stored", and the two new runs.jsonl records
-  of spot_mac01_det have the same slotN in log_path. Two Azahar starts.
+- Slot pin: PASSED at 9f223e5ac. `bench.py base spot_mac01_det --row TOOLB3` (base e18160cad, output build3ds/out/toolb3_base.txt):
+  "want slot 1" on the second child, runs 215370 and 216191 both on slot 1. Both were cold starts ("warm restart failed").
+  The shots still differ (0000_1_2.ppm). Same slot, both cold, same build, so this is not a slot or tool fault of this row: row DETBASE.
+- Next: no more runs. Commit the runs.jsonl lines, delete this row file, hand back the ready hash (9f223e5ac + that commit).
 ## Stop and end
 A failed gate, an edit that does not fit the code, or a test-tool fault: commit and hand back the exact output (CLAUDE.md 4-5).
 At the end delete this row file in the completing commit. Hand back: the ready hash and the gate results.
