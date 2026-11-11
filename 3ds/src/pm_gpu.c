@@ -671,8 +671,7 @@ void rect_sig_fill(RectSig* s) {
     s->zon = gs.z_on; s->mem = r_memblend; s->mix = gs.r_mix; s->comb = gs.combine; s->rgbs = rgb_scale; s->pgen = plan_gen;
     s->mixc = (int)r_mixcol; s->prim = (int)prim; s->cc = (int)cconst; s->env = (int)gs.env_col;
 }
-void rect_sig_check(const char* where) {
-    if (!PMDL("rectsig")) return;
+static __attribute__((cold, noinline)) void rect_sig_check_on(const char* where) {
     RectSig n;
     rect_sig_fill(&n);
     rsig_chk++;
@@ -682,6 +681,7 @@ void rect_sig_check(const char* where) {
     RSIG_CMP(comb) RSIG_CMP(rgbs) RSIG_CMP(pgen) RSIG_CMP(mixc) RSIG_CMP(prim) RSIG_CMP(cc) RSIG_CMP(env)
 #undef RSIG_CMP
 }
+void rect_sig_check(const char* where) { if (__builtin_expect(PMDL("rectsig"), 0)) rect_sig_check_on(where); } /* HCCUT1: the check body is cold */
 static void flush_impl_body(void) {
     if (nb.rect_open) { /* DR1: the batch is rectangles: draw it with the state they were queued in */
         rect_sig_check("close");
@@ -966,7 +966,7 @@ static NdTevOut ndn_to; static int ndn_to_ok;
 unsigned nd_native_draws, nd_native_refused;
 static void ndplan_check(unsigned w0, unsigned w1, int two, int t1only); /* switch ndplan */
 static int ndplan_on = -1; /* PERF2: -1 unread; the close calls the cold check only while it is not 0 */
-static void ndm_cmp(const NdTmplKey* wk, const NdDraw* wd); /* S3N-3b: switch ndmcheck */
+static __attribute__((cold, noinline)) void ndm_cmp(const NdTmplKey* wk, const NdDraw* wd); /* S3N-3b: switch ndmcheck */
 static int ndm_live; /* S3N-3b: a model record is open (set by pm_gpu_ndm_begin) */
 static unsigned ndm_old, ndm_refused_total, ndm_nraw_log, ndm_w_n; static unsigned ndm_geo, ndm_dlc0[10]; void pm_gbi_dlcc(unsigned* o); /* S3N-3c: batches of open records that the native raw path refused; walker batches of the record; its geometry */
 void pm_log_prof_line(const char* fmt, ...); /* the one line that prints in prof=4 mode (pm_log.c) */
@@ -3521,7 +3521,7 @@ static __attribute__((cold, noinline)) void ndm_end_log(void) {
     { char wb[240]; unsigned p = 0; for (unsigned j = NDMC_RW; j < NDMC_RW + NDMC_SW && p < 200; j++) if (ndc_wc[j]) p += (unsigned)snprintf(wb + p, sizeof wb - p, "%u:%u ", j, ndc_wc[j]); pm_log_prof_line("ndmcw f%u %s", f, wb); }
     { char b[200]; unsigned p = 0; for (unsigned i = 0; i < ndm_fn_used && p < 150; i++) p += (unsigned)snprintf(b + p, sizeof b - p, "%s %u ", ndm_fn[i], ndm_fn_n[i]); pm_log_prof_line("ndmcheck fields %s", b); }
 }
-void pm_gpu_ndm_end(void) {
+__attribute__((cold, noinline)) void pm_gpu_ndm_end(void) {
     flush(); /* the last batch of the record is drawn before its record is classified */
     if (ndm_rec_ok && ndm_j < ndm_nat_n) {
         unsigned dw[10]; pm_gbi_dlcc(dw);
@@ -3543,7 +3543,7 @@ void pm_gpu_ndm_end(void) {
 static unsigned ndm_bits(float f) { unsigned u; memcpy(&u, &f, 4); return u; }
 #define NDM_CMPF(name, a, b) NDM_CMP(name, ndm_bits(a), ndm_bits(b))
 #define NDM_CMP(name, a, b) do { if ((unsigned)(a) != (unsigned)(b)) { ndm_rec_diff = 1; ndm_fn_count(name); if (ndm_lines++ < 20) pm_log_prof_line("ndmcheck diff %s rec %08x nat %x walk %x", name, (unsigned)(uintptr_t)ndm_rec, (unsigned)(a), (unsigned)(b)); } } while (0)
-static __attribute__((noinline)) void ndm_cmp(const NdTmplKey* wk, const NdDraw* wd) {
+static __attribute__((cold, noinline)) void ndm_cmp(const NdTmplKey* wk, const NdDraw* wd) {
     if (!ndm_rec_ok) return;
     if (sbkw_lines < 12 && ndm_j < ndm_nat_n && nd_model_native((unsigned)ndm_j)->d.u[0].dim != wd->u[0].dim) { /* SBKW-2: the walker side at this draw: bound slot size and tile 0 window */
         const NdDraw* nd_ = &nd_model_native((unsigned)ndm_j)->d;
