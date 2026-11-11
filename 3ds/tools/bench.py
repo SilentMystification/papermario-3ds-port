@@ -262,15 +262,13 @@ def read_runs():
     return out
 
 
-RUNS_LOCK = PERF / "runs.lock"
-
-
 class runs_lock:
-    """An OS file lock on runs.lock: held while the next run ids are read and the records appended, and while the DB is rebuilt,
-    so two processes never get the same id. Waits up to 120 s, then raises (nothing appended)."""
+    """An OS file lock on build3ds/runs.lock of the main folder (shared by every worktree): held while the next run ids are read and
+    the records appended, and while the DB is rebuilt, so two processes never get the same id. Waits up to 120 s, then raises (nothing appended)."""
     def __enter__(self):
-        PERF.mkdir(parents=True, exist_ok=True)
-        self.f = RUNS_LOCK.open("a+b")
+        lock = main_folder() / "build3ds" / "runs.lock"
+        lock.parent.mkdir(parents=True, exist_ok=True)
+        self.f = lock.open("a+b")
         t_end = time.time() + 120
         while True:
             try:
@@ -307,6 +305,8 @@ def append_runs(recs):
     PERF.mkdir(parents=True, exist_ok=True)
     with runs_lock():
         n = max((r["run_id"] for r in read_runs()), default=0)
+        for f in all_tree_runs_files():
+            n = max([n] + [json.loads(x).get("run_id", 0) for x in f.read_text(encoding="utf-8").splitlines() if x.strip()])
         ids = []
         with RUNS.open("a", encoding="utf-8", newline="\n") as f:
             for r in recs:
