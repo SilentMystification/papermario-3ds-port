@@ -2855,6 +2855,14 @@ static __attribute__((cold, noinline)) int gtrip_copy(unsigned r, unsigned k, un
     gv_recopy_n++;
     return 1;
 }
+static __attribute__((cold, noinline)) int gtrip_edge_copy(const float (*tab)[4][4], unsigned gi, unsigned r, unsigned k, unsigned* ro) {
+    const int n = wide_copy_vtx(tab[gi], r);
+    if (n < 0) return 0;
+    *(unsigned short*)(nb.gring + 16u * (unsigned)n + 6) = (unsigned short)k;
+    rgen[n] = nb.pal_gen; rk[n] = (unsigned char)k;
+    *ro = (unsigned)n;
+    return 1;
+} /* HCCUT3: the TRI-2 wide edge copy of pm_gpu_gtrip, out of the per-triangle loop */
 int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4], const float uvso[4], const float cmul[4], const float cadd[4], const float zmix[2], int ct,
                  const PmFx* fx, const unsigned ri[3], unsigned ro[3], unsigned* mv) {
     if (!gs.gv4_on || !gs.gpu_ok) return 0;
@@ -2893,14 +2901,7 @@ int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4
     for (int i = 0; i < 3; i++) {
         unsigned r = ri[i];
         ro[i] = r;
-        if (mvm & (1u << i)) { /* TRI-2: an edge vertex: a copy with x moved (the CPU rule), with this palette index */
-            const int n = wide_copy_vtx(tab[g[i]], r);
-            if (n < 0) return 0;
-            *(unsigned short*)(nb.gring + 16u * (unsigned)n + 6) = (unsigned short)k3[i];
-            rgen[n] = nb.pal_gen; rk[n] = (unsigned char)k3[i];
-            ro[i] = (unsigned)n;
-            continue;
-        }
+        if (mvm & (1u << i)) { if (!gtrip_edge_copy(tab, g[i], r, k3[i], &ro[i])) return 0; continue; } /* TRI-2 (HCCUT3: cold) */
         if (rgen[r] == nb.pal_gen) continue; /* in this palette already, with the right index */
         if (rgen[r] != 0 && rk[r] == k3[i]) { rgen[r] = nb.pal_gen; continue; } /* an older palette gave it the same index */
         if (rgen[r] == 0 && r >= nb.gring_fl) { /* first use, and the GPU has not seen the ring slot */
