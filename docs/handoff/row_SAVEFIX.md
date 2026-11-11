@@ -2,7 +2,14 @@
 
 (Model: Haiku. The agent reads only this file, CLAUDE.md and what this file names.)
 ## User fact (2026-11-11)
-"saving is not working consistently." (No more detail yet: see the questions at the end.)
+"saving is not working consistently." Flow: "game -> save -> select -> return to title -> load save file we just saved -> that save
+doesn't load." Code read of that flow: the save block calls fio_save_game (src/fio.c:279-324) synchronously in the logic step: it writes
+the slot into the RAM image at once (fio_write_flash -> pm_flash_put, pm_flash.c:234); the SD write follows 70 ms later on core 1 and
+pm_title_return flushes it (pm_warp.c:1412). The title file select reads the RAM image (fio_fetch_saved_file_info :165, the copy with the
+highest saveCount per slot); the soft reset does not reload or clear it (fio_init_flash -> flash_init runs once, pm_os.c:597-598). So
+the only code path that makes "the save we just made" not load is P1: fio_save_game returned without writing because save_block was
+set earlier in the session. Related, same edit: after a warp that skipped the file select, gGameStatusPtr->saveCount (reset to 0 at
+main_loop.c:368) is raised only for the warped file (pm_warp.c:411).
 ## Causes (oracle code read, 141c5e371)
 - P1 (proven path): pm_warp.c:392-397 `pm_save_block` sets `save_block = 1`; nothing sets it back to 0. It is set at :832 by any warp
   with no save slot (w_loadslot < 0): a boot warp (:811), a Select-menu warp from the file select or title (:1011), a boss launch
