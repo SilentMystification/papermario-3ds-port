@@ -491,6 +491,13 @@ $marks = @()
         if ($pausedAtUntil -and $logged.Count -gt 0) {
             Get-ChildItem "$sd\shots" -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^\d{4}_.*\.ppm$' -and -not ($logged -contains [int]$_.Name.Substring(0, 4)) -and $_.Length -ne $shotFull } | Remove-Item -Force -ErrorAction SilentlyContinue
         }
+        # TOOLB2: a periodic dump (switch shots, no shotwin or shotmode) logs no shot line (pm_gpu.c dump_shot), so $logged is empty and the
+        # cleanup above does not run. The dump writes one file at a time in number order (the folder is cleared at the start, line 281), so
+        # only the highest number can be cut by the pause: a short highest file is that cut, removed before the recount below.
+        if ($pausedAtUntil -and $logged.Count -eq 0) {
+            $topF = Get-ChildItem "$sd\shots" -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^\d{4}_.*\.ppm$' } | Sort-Object Name | Select-Object -Last 1
+            if ($topF -and $topF.Length -ne $shotFull) { Write-Output "SHOT FILES: $($topF.Name) ($($topF.Length) B) cut by the pause, removed"; Remove-Item $topF.FullName -Force -ErrorAction SilentlyContinue }
+        }
         $files = @(Get-ChildItem "$sd\shots" -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^\d{4}_.*\.ppm$' -and ($null -eq $untilN -or [int]$_.Name.Substring(0, 4) -le $untilN) -and ($logged.Count -eq 0 -or $logged -contains [int]$_.Name.Substring(0, 4)) })
         $have = @{}; foreach ($f1 in $files) { $have[[int]$f1.Name.Substring(0, 4)] = $true }
         $missing = @($logged | Where-Object { -not $have.ContainsKey($_) })

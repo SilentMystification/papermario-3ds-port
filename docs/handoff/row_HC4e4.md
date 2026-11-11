@@ -38,7 +38,7 @@ Gate B: nd_host PASS; lane build OK (a link error names a missed user: fix it th
 
 ## Done criteria (all must pass; handback only then)
 1. nd_host PASS.
-2. For spot_mac01_det, mdl5_iwa10_det, spot_mac00_det: `bench.py base <bench>`, `bench.py run <bench> --row HC4e4 --lane HC4e4 --why "..."`, `bench.py cmp <bench> --row HC4e4`: exit 0, 6/6 byte-equal; one shot per scene shows the map. No `ndc: untyped word` line in the logs.
+2. For spot_mac01_det, mdl5_iwa10_det, spot_mac00_det: `bench.py base <bench>`, `bench.py run <bench> --row HC4e4 --lane HC4e4 --why "..."`, `bench.py cmp <bench> --row HC4e4`: exit 0, 6/6 byte-equal. Run `bench.py base` only while no other Azahar run is on the machine until row TOOLB3 is merged. No `ndc: untyped word` line in the logs.
 3. `PM_LANE=HC4e4 python 3ds/tools/bench.py run hotset_size --row HC4e4 --lane HC4e4 --why "..."`: rc 1 with m2_stale 16 = the 15 stale names of main plus rec_op (hot_order.ld :340, deleted in A6). Any other new stale name: hand back. Write m1_union in the commit. Row HOTORD regenerates hot_order.ld after this row.
 Affected scenarios (no others): spot_mac01_det, mdl5_iwa10_det, spot_mac00_det.
 
