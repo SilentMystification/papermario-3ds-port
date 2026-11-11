@@ -219,6 +219,7 @@ void pm_log_w(const char* fmt, ...);
 static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st);
 /* MDL-0b: every why code of nd_model_state, uncapped, one line per 300 frames (mdlw) */
 static unsigned mw_cnt[32], mw_ok, mw_f = 100u; /* mw_f: the frame of the last line + 300 */
+static unsigned sprm_hit, sprm_miss; /* HC8 census: memo hits and misses of nd_model_state_spr (mdlw line, reset per line) */
 /* MDL-5 census: why 6 fallbacks of the window by producer (the record address) and sub-case; top 8 per mdlw line, then reset */
 unsigned nd_nat_sub;
 unsigned nd_mdl_cur_x; /* MDL-5a census: extraTiles of the handle of the draw in model_draw */
@@ -241,7 +242,7 @@ void nd_model_log(unsigned f) {
     if (f < mw_f) return;
     mw_f = f - f % 100u + 100u;
     char b[200]; unsigned n = 0; for (unsigned i = 0; i < 32; i++) if (mw_cnt[i]) n += (unsigned)snprintf(b + n, sizeof b - n, " %u:%u", i, mw_cnt[i]);
-    extern unsigned nd_r13_nohit; pm_log_w("mdlw f%u ok %u why%s r13nohit %u", f, mw_ok, n ? b : " none", nd_r13_nohit); nd_r13_nohit = 0; memset(mw_cnt, 0, sizeof mw_cnt); mw_ok = 0;
+    extern unsigned nd_r13_nohit; pm_log_w("mdlw f%u ok %u why%s r13nohit %u sprm h %u m %u", f, mw_ok, n ? b : " none", nd_r13_nohit, sprm_hit, sprm_miss); nd_r13_nohit = 0; memset(mw_cnt, 0, sizeof mw_cnt); mw_ok = 0; sprm_hit = 0; sprm_miss = 0;
     for (int t = 0; t < 8; t++) { unsigned bi = 32; for (unsigned i = 0; i < mf_k; i++) if (mf_e[i].n && (bi == 32 || mf_e[i].n > mf_e[bi].n)) bi = i; if (bi == 32) break;
         pm_log_w("mdlfb f%u %08x sub %c %u", f, (unsigned)mf_e[bi].p, "-abcd"[mf_e[bi].s & 3], mf_e[bi].n); mf_e[bi].n = 0; }
     pm_log_w("mdlsub f%u a %u b %u c %u d %u bx0 %u bx1 %u bx2 %u bx3 %u", f, mf_tot[1], mf_tot[2], mf_tot[3], mf_tot[4], mf_bx[0], mf_bx[1], mf_bx[2], mf_bx[3]);
@@ -404,7 +405,7 @@ int nd_model_state_spr(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState
     SprMemo* m = &sprm[(h ^ (h >> 16)) & (SPRM_N - 1u)];
     if (m->used && m->tgen == nd_tmpl_gen() && memcmp(m->kw, w, sizeof w) == 0 && (!m->k.noise || pm_gpu_noise_ok())) {
         /* the tail of nd_model_state_in for these values (no tile 1, no pm5: fxon is 0 in a stored key) */
-        st->why = 0; nd_nat_sub = 0; mw_ok++;
+        st->why = 0; nd_nat_sub = 0; mw_ok++; sprm_hit++;
         nd_tmpl_touch(m->id);
         memset(d, 0, sizeof *d);
         d->tmpl = m->id;
@@ -417,6 +418,7 @@ int nd_model_state_spr(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState
         memcpy(&st->k, &m->k, sizeof m->k); st->to = m->to; st->tmpl = m->id;
         return 1;
     }
+    sprm_miss++;
     int r = nd_model_state(rec, c, d, st);
     if (r == 1) { memcpy(m->kw, w, sizeof w); memcpy(&m->k, &st->k, sizeof st->k); m->to = st->to; m->id = st->tmpl; m->tgen = nd_tmpl_gen(); m->used = 1; }
     return r;
