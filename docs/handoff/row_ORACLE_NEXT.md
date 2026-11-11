@@ -134,8 +134,9 @@ ms floor). Counts per frame from fxcenb. Bound = oracle code read only; FXSPLIT 
   part), 4 embers (tile size per particle: uv offset per instance), 5 energy_shockwave (11 live instances, each its own setup list),
   6 effect_3D, 7 water_splash and water_block (one previous-frame bind with the window as a uv offset instead of a bind per drop; a
   nd_quad case, not particles), then explosion, snowman_doll, radiating_energy_orb, snaking_static. fire_breath is not S4 (GPU fill).
-- No cut row yet: FXFNCOV (calls per draw function in one frame per effect, Azahar counts) names the per-part class, and XL run 2
-  must agree (lesson 2). Then S4 rows in this order, each gated by fxtest of that effect twice on the console.
+- S4 rows (user: run 1 is enough): S4P (nd_parts builder, nd_parts_run, nd_part_draw) + S4SNOW (caller, fxpic scenes) in one
+  worktree; then S4PINK, S4SHIM, S4EMB in parallel. Byte gate fxpic_<idx>; console gate fxtest of the effect, base and row, two runs
+  each. Next S4 steps after their numbers: prim as per-instance vertex colour (pink, shimmer), cell offset as uv offset (embers).
 - Culling of off-screen particles is not a cut: user code rule "no culling the game does not do" (feedback_code-rules.md).
 - Cut rows are written only after FXSPLIT and its two XL runs agree (lesson 2 below); then one row per cut with the console gate
   (fxtest of that effect, its ms before and after, two runs each).
