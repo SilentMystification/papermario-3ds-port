@@ -67,5 +67,7 @@ Edit rules in place, never append. At the start of a session, read docs/handoff/
 ## Console
 - The user judges speed and look on the console. Push only when the user asks, with the multi-select (O3DS XL 192.168.1.131,
   N3DS 192.168.1.224, O3DS 192.168.1.170).
+- After a push of a timed run (fxtest, prof): check the result yourself when the run time has passed (about 5 minutes for fxtest all):
+  pull the log with `python 3ds/tools/pm_logrecv.py --ip <addr> --label <name>` (FTP as the fallback) and report. Do not wait for the user's signal.
 - Default: `powershell -NoProfile -File 3ds/go.ps1 push o -NoBuild -ip <ip> -Interactive -Profile prof warp=mac_01:0 pos=0:0:200`.
   Use `-Profile log` when the user tests a fault. A failed push gets one line, then stop.
