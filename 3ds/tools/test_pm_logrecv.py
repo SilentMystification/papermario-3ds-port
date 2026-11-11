@@ -23,12 +23,14 @@ CRASH_PAYLOAD = b"0123456789"
 ODD_CHUNKS = [1, 3, 7, 13, 101, 997, 4099]
 
 
-def build_stream():
+def build_stream(lead, first):
+    # lead: the game form (a newline before each #PMFILE header and before each #PMEND); first: live text before the frames.
+    nl = b"\n" if lead else b""
     parts = [
-        b"live one\n",
-        b"\n#PMFILE crash.txt 10\n" + CRASH_PAYLOAD + b"\n#PMEND crash.txt\n",
+        first,
+        nl + b"#PMFILE crash.txt 10\n" + CRASH_PAYLOAD + nl + b"#PMEND crash.txt\n",
         b"more text\n",
-        b"\n#PMFILE log.txt %d\n" % len(LOG_PAYLOAD) + LOG_PAYLOAD + b"\n#PMEND log.txt\n",
+        nl + b"#PMFILE log.txt %d\n" % len(LOG_PAYLOAD) + LOG_PAYLOAD + nl + b"#PMEND log.txt\n",
     ]
     return b"".join(parts)
 
@@ -62,29 +64,29 @@ def read_file(path):
         return f.read()
 
 
-def check_stream(out_dir):
+def check_stream(out_dir, label, lead, first, live_want):
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     listener.bind(("127.0.0.1", 0))
     listener.listen(1)
     port = listener.getsockname()[1]
-    t = threading.Thread(target=serve, args=(listener, build_stream()), daemon=True)
+    t = threading.Thread(target=serve, args=(listener, build_stream(lead, first)), daemon=True)
     t.start()
     client = socket.create_connection(("127.0.0.1", port), timeout=8)
     try:
         client.sendall(b"sendlog\n")
         got = []
-        pm_logrecv.receive(client, "test", out_dir, 20.0, got)
+        pm_logrecv.receive(client, label, out_dir, 20.0, got)
     finally:
         client.close()
         listener.close()
         t.join(timeout=10)
     assert got == ["crash.txt", "log.txt"], got
 
-    live = read_file(os.path.join(out_dir, "hw_test_live.txt"))
-    assert live == b"live one\nmore text\n", live
-    crash = read_file(os.path.join(out_dir, "hw_test_crash.txt"))
+    live = read_file(os.path.join(out_dir, "hw_%s_live.txt" % label))
+    assert live == live_want, (label, live)
+    crash = read_file(os.path.join(out_dir, "hw_%s_crash.txt" % label))
     assert len(crash) == 10 and crash == CRASH_PAYLOAD, (len(crash), crash)
-    log = read_file(os.path.join(out_dir, "hw_test_log.txt"))
+    log = read_file(os.path.join(out_dir, "hw_%s_log.txt" % label))
     assert len(log) == 100000 and log == LOG_PAYLOAD, (len(log), log[:16])
 
 
@@ -153,7 +155,10 @@ def check_closed(out_dir):
 def main():
     base = tempfile.mkdtemp(prefix="logrecv_test_")
     try:
-        check_stream(base)
+        # A: game form. B: older form without the leading newlines. C: a partial live line before the game-form frames.
+        check_stream(base, "A", True, b"live one\n", b"live one\nmore text\n")
+        check_stream(base, "B", False, b"live one\n", b"live one\nmore text\n")
+        check_stream(base, "C", True, b"partial", b"partial\nmore text\n")
         check_timeout(base)
         check_closed(base)
     finally:
