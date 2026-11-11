@@ -7,7 +7,8 @@ Input: the log copies of fxtest runs with the census (fxtest on: pm_cnt_on). Lin
   fxcena <idx> <name> frames <n> us <us> live <k>
   fxcenb <idx> tri <n> vtx <n> ... mclr <n>     (deltas over the window of fxcena)
 idx -1 is the base window (frames 360 to 400, no effect). Every value is divided by the frames of its window; the
-base per-frame value is subtracted from each effect's per-frame value.
+base per-frame value is subtracted from each effect's per-frame value. Each log file has its own base line (one boot
+per chunk), so each file's effects are measured against that file's own base.
 
 Output: build3ds/out/fxcen_<label>.txt. One table sorted by us per frame, then the top 15 by draw, ndraw, tri+gvtri,
 texmiss, cmd, upd, cfull and mmiss.
@@ -30,24 +31,23 @@ TOP = [("draw", ["draw"]), ("ndraw", ["ndraw"]), ("tri+gvtri", ["tri", "gvtri"])
        ("cmd", ["cmd"]), ("upd", ["upd"]), ("cfull", ["cfull"]), ("mmiss", ["mmiss"])]
 
 
-def parse(paths):
-    """Return {idx: {"name", "frames", "us", "live", "c": {field: value}}}; a repeated index keeps the last line."""
+def parse(path):
+    """Return {idx: {"name", "frames", "us", "live", "c": {field: value}}} for one log file; a repeated index keeps the last line."""
     rec = {}
-    for p in paths:
-        with open(p, "r", encoding="utf-8", errors="replace") as f:
-            for line in f:
-                m = RE_A.search(line)
-                if m:
-                    idx = int(m.group(1))
-                    r = rec.setdefault(idx, {"c": {}})
-                    r.update(name=m.group(2), frames=int(m.group(3)), us=int(m.group(4)), live=int(m.group(5)))
-                    continue
-                m = RE_B.search(line)
-                if m:
-                    idx = int(m.group(1))
-                    r = rec.setdefault(idx, {"c": {}})
-                    toks = m.group(2).split()
-                    r["c"] = {toks[i]: int(toks[i + 1]) for i in range(0, len(toks) - 1, 2)}
+    with open(path, "r", encoding="utf-8", errors="replace") as f:
+        for line in f:
+            m = RE_A.search(line)
+            if m:
+                idx = int(m.group(1))
+                r = rec.setdefault(idx, {"c": {}})
+                r.update(name=m.group(2), frames=int(m.group(3)), us=int(m.group(4)), live=int(m.group(5)))
+                continue
+            m = RE_B.search(line)
+            if m:
+                idx = int(m.group(1))
+                r = rec.setdefault(idx, {"c": {}})
+                toks = m.group(2).split()
+                r["c"] = {toks[i]: int(toks[i + 1]) for i in range(0, len(toks) - 1, 2)}
     return rec
 
 
@@ -66,20 +66,24 @@ def main():
     ap.add_argument("logs", nargs="+")
     ap.add_argument("--label", default="azahar")
     a = ap.parse_args()
-    rec = parse(a.logs)
-    if -1 not in rec or "frames" not in rec[-1]:
-        sys.exit("fxcen_report: no base line (fxcena -1) in the logs")
-    base = rec[-1]
     rows = []
-    for idx in sorted(k for k in rec if k >= 0 and "frames" in rec[k] and rec[k]["c"]):
-        r = rec[idx]
-        pf = per_frame(r, base)
-        rows.append((idx, r["name"], r["live"], r["frames"], pf))
+    base_lines = []
+    for path in a.logs:
+        rec = parse(path)
+        if -1 not in rec or "frames" not in rec[-1]:
+            sys.exit("fxcen_report: no base line (fxcena -1) in %s" % path)
+        base = rec[-1]
+        base_lines.append("base %s: frames %d us per frame %.1f draw per frame %.2f" % (
+            os.path.basename(path), base["frames"], base["us"] / base["frames"],
+            base["c"].get("draw", 0) / base["frames"]))
+        for idx in sorted(k for k in rec if k >= 0 and "frames" in rec[k] and rec[k]["c"]):
+            r = rec[idx]
+            pf = per_frame(r, base)
+            rows.append((idx, r["name"], r["live"], r["frames"], pf))
     lines = []
     lines.append("Azahar us is a proxy; the console decides")
-    lines.append("base: frames %d us %d per frame %.1f (window without an effect)" % (
-        base["frames"], base["us"], base["us"] / base["frames"]))
-    lines.append("values: per frame, base per-frame value subtracted; us in us per frame (logic step)")
+    lines.extend(base_lines)
+    lines.append("values: per frame, base per-frame value of each effect's own log subtracted; us in us per frame (logic step)")
     lines.append("")
     hdr = "%4s %-24s %4s %4s %9s " % ("idx", "name", "frm", "live", "us") + " ".join("%8s" % k for k in COUNTS)
     lines.append("table sorted by us")
