@@ -11,6 +11,16 @@ pm_fxtest.c:200, tick delta of the logic step). It cannot tell GPU-bound from co
 - Both sums are u32 us totals written on core 0; fxc_take (pm_fxtest.c, core 1) snapshots them (a u32 load is atomic) and fxc_print
   appends their window deltas to the fxcenb line, so fxcen_report.py gives gpu and walk us per frame above the base window.
 
+## Next step (after try 1, code e3e7ea2b5; continue in build3ds/wt/FXSPLIT)
+Fact: pm_log_evt formats into LF_STR_SIZE 160 (pm_logfmt.h:17, pm_log.c:583-585); fxcenb with gpu and walk is 164 characters and is
+cut, so gpu and walk never reach the log (run 527442). Fix: (a) pm_fxtest.c fxc_print: put the fxcenb format and arguments back to
+the main form (ends `mmiss %u mclr %u"` and `c.mclr - s->mclr);`); after that call add
+`pm_log_evt("fxcenc %d gpu %u walk %u", idx, c.gpu - s->gpu, c.walk - s->walk);` (6 words, under 40 characters). (b) fxcen_report.py:
+add `RE_C = re.compile(r"fxcenc (-?\d+) gpu (\d+) walk (\d+)")`; in parse, an RE_C match does
+`rec.setdefault(idx, {"c": {}})["c"].update(gpu=int(m.group(2)), walk=int(m.group(3)))` then `continue`; the RE_B branch changes
+`r["c"] = {...}` to `r["c"].update({...})` (so line order does not matter). Keep "gpu", "walk" in COUNTS. Then rerun the Gate with
+the same commands (1 Azahar start; the gate now checks `fxcenc 87 gpu <n> walk <n>` and `fxcenc -1 ...` in the LOG).
+
 ## Start
 `sh 3ds/tools/wt_new.sh FXSPLIT`. PM_ROW=FXSPLIT PM_LANE=FXSPLIT on every build and bench call.
 
@@ -32,7 +42,7 @@ after `pm_ph_gpu_note();` in the frame begin, :2517), 3ds/src/pm_nusys.c (gbi_wa
 ## Gate (CLAUDE.md 2-3)
 - `PM_ROW=FXSPLIT PM_LANE=FXSPLIT sh 3ds/build.sh > build3ds/out/build.txt 2>&1`: memcheck OK.
 - `python 3ds/tools/bench.py run tidal_census --row FXSPLIT --why "FXSPLIT: the fxcenb line carries gpu and walk us"` (1 Azahar
-  start): its LOG has `fxcenb 87 ... gpu <n> walk <n>` and `fxcenb -1 ... gpu <n> walk <n>`; then
+  start): its LOG has `fxcenc 87 gpu <n> walk <n>` and `fxcenc -1 gpu <n> walk <n>`; then
   `python 3ds/tools/fxcen_report.py build3ds/azt/logs/tidal_census.txt --label fxsplit`: build3ds/out/fxcen_fxsplit.txt has the gpu
   and walk columns. Hand back the underwater row of that table.
 - After the merge (orchestrator, user push, O3DS XL, prof profile): `warp=mac_01:0 pos=0:0:200 fxtest=all` twice; fxcen_report.py on
