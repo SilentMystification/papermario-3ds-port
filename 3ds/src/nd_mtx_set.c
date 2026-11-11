@@ -30,7 +30,7 @@ unsigned gm_last = 0xffffu; /* GV1: the gm_tab entry of the last G_VTX */
 
 unsigned gm_steps; /* W1: entries compared by gv_matrix_id, summed over the report window */
 
-float (*gm_tab)[4][4]; /* matrices of the frame, 256 */
+float (*gm_tab)[4][4]; /* matrices of the frame, PM_GM_N */
 
 float (*gm_nrm)[3][4]; /* GV5: the rows 0 to 2 of the model view matrix of each gm_tab entry (the normal matrix), made when the entry is made */
 
