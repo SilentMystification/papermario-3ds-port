@@ -13765,6 +13765,30 @@
           "reason": "KZN04 diagnostic: count shaded texture loads per frame and misses in kzn_04. Premise: N/300 >= 3 and M/N >= 0.9. Azahar gives counts only; the console decides the cost."
     },
     {
+      "name": "mdl5_iwa10_cen",
+      "status": "unverified",
+      "subject": "iwa_10, Mario at -586 1 530 (warp entry 1), cold det, no shots. The census switch: the ndm window line of frame 300 (native records, fb, why codes).",
+      "proves": "R13NOP step 2: the why 2 refusals (NOP units in the R13 copy) of the first 300-frame window on iwa_10, base against head.",
+      "debug": "warp=iwa_10:1 pos=-586:1:530 census loglevel=debug det",
+      "until": "ndm f300 native",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: iwa_10 entry 1",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: iwa_10 entry 1"
+        },
+        {
+          "name": "ndm300",
+          "regex": "ndm f300 native \\d+ fb \\d+"
+        }
+      ],
+      "reason": "R13NOP step 2 census: the ndm f300 window line with the why list, base and head. Log only."
+    },
+    {
       "name": "hitst_mac01",
       "status": "unverified",
       "subject": "Toad Town mac_01, Mario at pos 0 0 200 (warp entry 0), no input. Log only: the hitst census line of the first 300-frame window.",
