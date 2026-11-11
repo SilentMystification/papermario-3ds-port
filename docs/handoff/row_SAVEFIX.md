@@ -1,53 +1,47 @@
-# Row SAVEFIX: a save is not written after a debug warp for the rest of the session; options.ini can be lost on a cut write
+# Row SAVEFIX: remove the warp save block (every save is written); options.ini survives a cut write
 
 (Model: Haiku. The agent reads only this file, CLAUDE.md and what this file names.)
-## User fact (2026-11-11)
+## User facts (2026-11-11)
 "saving is not working consistently." Flow: "game -> save -> select -> return to title -> load save file we just saved -> that save
-doesn't load." Code read of that flow: the save block calls fio_save_game (src/fio.c:279-324) synchronously in the logic step: it writes
-the slot into the RAM image at once (fio_write_flash -> pm_flash_put, pm_flash.c:234); the SD write follows 70 ms later on core 1 and
-pm_title_return flushes it (pm_warp.c:1412). The title file select reads the RAM image (fio_fetch_saved_file_info :165, the copy with the
-highest saveCount per slot); the soft reset does not reload or clear it (fio_init_flash -> flash_init runs once, pm_os.c:597-598). So
-the only code path that makes "the save we just made" not load is P1: fio_save_game returned without writing because save_block was
-set earlier in the session. Related, same edit: after a warp that skipped the file select, gGameStatusPtr->saveCount (reset to 0 at
-main_loop.c:368) is raised only for the warped file (pm_warp.c:411).
-## Causes (oracle code read, 141c5e371)
-- P1 (proven path): pm_warp.c:392-397 `pm_save_block` sets `save_block = 1`; nothing sets it back to 0. It is set at :832 by any warp
-  with no save slot (w_loadslot < 0): a boot warp (:811), a Select-menu warp from the file select or title (:1011), a boss launch
-  outside the world (:1238). src/fio.c:282-285 fio_save_game then returns at once (only a log warning, pm_warp.c:398). So after one
-  such warp, every later save of the session is dropped, even after Return to Title and loading a real file (pm_title_return
-  :1408-1418 does not clear it).
-- P2: options.ini (pm_options.c pm_options_write :112-113) unlinks options.ini, then renames options.tmp. A cut between the two (power,
-  a crash) leaves no options.ini; pm_options_init (:119-121) reads options.ini or options.txt, not options.tmp: defaults next boot.
-- P3 (by design, kept): the START+SELECT escape of a hung game calls APT_HardwareResetAsync (pm_wdog.c wd_escape) with no
-  pm_flash_crash_flush: a save made within 70 ms before the hang is lost. The normal exits flush (pm_main.c:925, pm_log.c:1224,
-  pm_title_return :1412). Noted, not changed here.
-- Checked, no fault: save.flash write (pm_flash.c:41-56 tmp, fclose check, rename, retry every 2 s, footer warning), load
-  (pm_os.c:594-631, a complete tmp is newer), the flash thread waits while asleep (pm_flash.c:146), the path is the working folder
-  sdmc:/3ds/PaperMario for both hbmenu and HOME launches (pm_main.c:945-946).
+doesn't load." Decision: "I don't want to gate saving on whether we've warped; remove that."
+## Cause (oracle code read, main 141c5e371)
+- The save block writes the slot into the RAM image synchronously (src/fio.c fio_save_game :279-324 -> fio_write_flash ->
+  pm_flash_put, pm_flash.c:234); pm_title_return flushes it (pm_warp.c:1412); the file select reads the RAM image
+  (fio_fetch_saved_file_info :165); the soft reset does not reload or clear it (flash_init runs once, pm_os.c:597-598).
+- The only path that drops the save: src/fio.c:282-285 returns when pm_save_blocked(); pm_warp.c:832 sets the block for any warp with
+  no save slot (boot warp :811, file select or title warp :1011, boss launch outside the world :1238); nothing clears it.
+- options.ini: pm_options.c:112-113 unlinks options.ini before the rename, and pm_options_init (:119-121) never reads options.tmp.
+## Every reader and writer of the save block (all removed)
+pm_warp.c:384-386 comment and `static const char* w_why`; :387-388 `save_block`, `save_why`; :392-396 pm_save_block; :397
+pm_save_blocked; :398 pm_save_note; :811, :1011, :1238 `w_why = ...`; :832 the pm_save_block call; :1130-1134 pm_save_prompt reads
+save_block (keep the function, change its body; its caller src/entity/SaveBlock.c:86 stays).
+src/fio.c:31-33 the two declarations; :281-286 the early return.
 ## Start
 `sh 3ds/tools/wt_new.sh SAVEFIX` (build3ds/wt/SAVEFIX, branch SAVEFIX from main). PM_ROW=SAVEFIX PM_LANE=SAVEFIX on every call.
-No running row edits pm_warp.c, src/fio.c or pm_options.c (ESCAPE2 is merged).
-## Touch only
-3ds/src/pm_warp.c (after pm_save_note :398, one new function), src/fio.c (fio_load_game, the non-PAL success branch), 3ds/src/pm_options.c
-(pm_options_write :112-113 and pm_options_init :119-121).
+No running row edits pm_warp.c, src/fio.c or pm_options.c.
 ## Exact edits
-1. pm_warp.c after pm_save_note: `void pm_save_unblock(void) { if (save_block) pm_log("save: block cleared (a save file was loaded)"); save_block = 0; } /* SAVEFIX */`
-2. src/fio.c: next to the existing `int pm_save_blocked(void);` declaration (:32) add `void pm_save_unblock(void);` (same #ifdef as :32).
-   In fio_load_game, non-PAL branch, before `return true;` after `fio_deserialize_state();` add
-   `#ifdef TARGET_3DS` / `    pm_save_unblock(); /* SAVEFIX: a real save file is loaded: its saves are written */` / `#endif`.
-   Do the same in the PAL branch before its `return true;`.
+1. pm_warp.c: delete the two comment lines above `static const char* w_why` (:384-385), the line :386, :387 `static int save_block;`,
+   :388 `static const char* save_why = "";`, the functions pm_save_block, pm_save_blocked, pm_save_note (:392-398), the three
+   `w_why = "...";` lines (:811, :1011, :1238) and the line :832 (`if (w_loadslot < 0) pm_save_block(w_why); ...`). Line :833 and
+   below stay. pm_save_prompt body becomes `pm_log("save prompt: saving enabled");` (comment: "SAVEFIX: saving is never blocked").
+2. src/fio.c: delete `/* WARPFIX2 ... */`, `int pm_save_blocked(void);` and `void pm_save_note(s32 slot);` (:31-33; keep the
+   `#ifdef TARGET_3DS` and pm_cheat_file_erase). In fio_save_game delete the block `#ifdef TARGET_3DS` / `if (pm_save_blocked()) {` /
+   `pm_save_note(saveSlot);` / `return;` / `}` / `#endif` (:281-286).
 3. pm_options.c pm_options_write: replace `unlink("options.ini");` and the rename line with
    `if (rename("options.tmp", "options.ini") != 0) { unlink("options.ini"); if (rename("options.tmp", "options.ini") != 0) pm_log_e("options: rename to options.ini failed"); } /* SAVEFIX: the old file stays until the new one is complete */`
 4. pm_options_init: `FILE* f = fopen("options.ini", "r");` becomes
    `FILE* f = fopen("options.ini", "r"); if (!f && (f = fopen("options.tmp", "r")) != NULL) pm_log_w("options: options.ini missing, read options.tmp (a cut write)"); /* SAVEFIX */`
+5. `git grep -n "pm_save_block\|pm_save_blocked\|pm_save_note\|save_block\|w_why"`: no hit in 3ds/src, src, include. Paste it in the commit.
+## Debug switches (no new guard added; the user decides)
+- freshsave (pm_os.c:601): a boot with it starts erased and the first save overwrites save.flash. Only from debug3ds.txt or a launch
+  word; a debug3ds.txt left on the SD card with it erases the real saves.
+- warp= with no loadslot, and the Select-menu warp from the title: a new-file game state can now be saved into a slot and replace a
+  real file there (the block prevented that).
 ## Gate
 - memcheck OK; `python 3ds/tools/bench.py run nd_host --row SAVEFIX --why "SAVEFIX"`: PASS.
-- Byte compare: spot_mac01_det (base stored at b8bc06613): base, run, cmp 6/6.
-- Log gate: a scenario with a boot warp (warp=random) then title return and loadslot is not in the catalog: the console check (user)
-  decides: Select-menu warp, Return to Title, load the file, save at a save block, reboot, load: the save is there.
-## Questions for the user (the orchestrator asks)
-Which console and launch (hbmenu or HOME Menu)? Was a Select-menu warp, a boss launch or a debug3ds.txt switch (warp=, freshsave)
-used in that session? Which save was lost (a save block, or the options)? Is sdmc:/3ds/PaperMario/debug3ds.txt on the SD card?
+- Byte compare: spot_mac01_det against the stored base b8bc06613: run, then `python 3ds/tools/bench.py cmp spot_mac01_det --row SAVEFIX
+  --commit b8bc06613`: 6/6 (one Azahar start).
+- Console (user): save at a save block, Select menu Return to Title, load the file: the new save; reboot: still there.
 ## Stop and end
 A failed gate, an edit that does not fit the code, or a test-tool fault: commit and hand back the exact output (CLAUDE.md 4-5).
 At the end delete this row file in the completing commit. Hand back: the ready hash, the gate results, the memcheck line.

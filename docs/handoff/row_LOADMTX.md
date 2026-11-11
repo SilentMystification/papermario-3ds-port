@@ -40,12 +40,19 @@ static __attribute__((cold, noinline)) void mtx_bad(u32 w0, u32 w1, u32 hdr, con
    `if (__builtin_expect(!is_host((u32)(uintptr_t)src), 0)) { mtx_bad(w0, w1, hdr, src, __builtin_return_address(0)); return; } /* LOADMTX */`
    is_host (nd_walk.c:430) is declared in nd_int.h:66; pm_log_evt and pm_frame_count in pm_port.h (both included at :7-12 via nd.h and
    pm_port.h). If the build reports an undeclared name, add only that declaration at the top of the file.
-## Gate (CLAUDE.md 2: nd_host and byte compare)
-- `PM_ROW=LOADMTX PM_LANE=LOADMTX sh 3ds/build.sh > build3ds/out/build.txt 2>&1`: memcheck OK.
-- `python 3ds/tools/bench.py run nd_host --row LOADMTX --why "LOADMTX guard"`: PASS.
-- For spot_mac01_det and mdl5_iwa10_det (bases stored at b8bc06613): `python 3ds/tools/bench.py base <bench> --row LOADMTX`,
-  `python 3ds/tools/bench.py run <bench> --row LOADMTX --lane LOADMTX --why "LOADMTX byte gate"`, `python 3ds/tools/bench.py cmp <bench>
-  --row LOADMTX`: 6/6 byte-equal each. One Azahar list, 2 starts. A "crash symbols" rc 2 with a load_mtx PC: hand back last_crash.txt.
+## Status and gate (2026-11-11)
+Guard committed (0b5e3648a): build and memcheck OK, nd_host PASS (run 258903). `bench.py base spot_mac01_det` at the merge-base
+db88d93f8 could not store: run 2 of the base build itself (no LOADMTX change) ended rc 2 with Read32 @ 0x01..0x39 at PC 0x00111BC4 =
+load_mtx (nd_mtx_set.c:106) -> elem (nd_mtx.c:29-30): src = (Mtx*)1 (ptr_of(w1) of w1 = 1 returns 1: not host, no segment base,
+nd_walk.c:452-459). The fault is on main, at random. The producer of w1 = 1 is not named yet (the record callers nd_recs.c:67/:69
+pass R2 w1 = model finalMtx and R8 w1 = the billboard matrix; neither is 1 by code read). The guard's event line names it.
+Gate now (no base store at db88d93f8; b8bc06613 has the same 3ds/src, src, include and 3ds/ld as db88d93f8):
+- For spot_mac01_det and mdl5_iwa10_det: `python 3ds/tools/bench.py run <bench> --row LOADMTX --lane LOADMTX --why "LOADMTX byte gate"`,
+  then `python 3ds/tools/bench.py cmp <bench> --row LOADMTX --commit b8bc06613`: 6/6 byte-equal each. One Azahar list, 2 starts.
+- Copy build3ds/azt/logs/<scenario>.txt to build3ds/out/ after each run. If a log has `load_mtx: source ... caller ...`, paste that
+  line in the commit and the hand-back: it names the producer (the oracle then writes its fix row).
+- A pixel difference in a run that printed the load_mtx line is the skipped bad load (the old run read zeros from unmapped memory):
+  hand back the cmp output with the line; do not retry.
 ## Stop and end
 A failed gate, an edit that does not fit the code, or a test-tool fault: commit and hand back the exact output (CLAUDE.md 4-5).
 At the end delete this row file in the completing commit. Hand back: the ready hash, the gate results, the memcheck line.
