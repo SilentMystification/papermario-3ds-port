@@ -388,8 +388,11 @@ int pm_dlc_geom_keep(const void* list, uint32_t* keep); /* MAPX-2: the entry geo
 typedef struct NdNat { NdDraw d; NdMState s; float pal[16]; const uint16_t* sd; unsigned nidx; uint8_t zp; float zn; NdTmplKey tk; /* FB-2: the key of d.tmpl: a cache hit builds the id again (the LRU may have taken it over) */ } NdNat; /* S5-2: zp 1 = zmark pass 2, pal row 2 := zn * row 3. The draws of the record in progress (nd_model_draw); the cache keeps NdNatC */
 /* PERF2 step 3: a cached draw of the native model cache (the pool of an NdMEnt): the draw, its index range, the zmark pass 2 factor, the MERLEE mix stage and
  * the template key. No palette (the hit points d.pal at its palette 0 of this view) and no NdMState (only the mix stage is read); the pm5 block is in a side pool. */
-typedef struct __attribute__((aligned(32))) NdNatC { NdDraw d; const uint16_t* sd; unsigned nidx; float zn; uint8_t zp; int8_t mix_st; NdTmplKey tk;
-    uint32_t boff; int bt; uint16_t blen, bgen; NdBlkOff bo; } NdNatC; /* HC6 step 4: the full-state command block of the draw in the block arena (pm_gpu.c blk_*): offset, template id, words, arena generation (0: none), patch offsets */
+typedef struct __attribute__((aligned(64))) NdNatC {
+    uint32_t boff; int bt; uint16_t blen, bgen; NdBlkOff bo; const uint16_t* sd; unsigned nidx; float zn; uint8_t zp; int8_t mix_st; /* HC9C: the hit head (first 64 bytes) */
+    NdDraw __attribute__((aligned(64))) d; /* its own 64-byte hot header (PERF2 step 3) on the next line */
+    NdTmplKey tk; } NdNatC; /* HC6 step 4: the full-state command block of the draw in the block arena (pm_gpu.c blk_*): offset, template id, words, arena generation (0: none), patch offsets. HC9C: the block and hit fields first, tk only for a template rebuild */
+_Static_assert(offsetof(NdNatC, d) == 64, "HC9C: the hit head is one 64-byte line");
 extern int nd_nat_why;
 extern unsigned nd_nat_sub; /* MDL-5 census: sub-case of why 6 (1 a noise, 2 b tex1 no unit 1, 3 c aux off-screen, 4 d pm5 tex1), 0 other whys */
 void nd_mdlfb_note(uint32_t prod, unsigned sub); /* MDL-5 census: one why 6 fallback of record prod (its address) */
