@@ -8,8 +8,9 @@ Edit rules in place, never append. At the start of a session, read docs/handoff/
   debug. Keep its context small: do not read long reports or long files.
 - Continuous work (a chain of rows that depend on each other, for example HC4f3 -> HC4e4 -> HOTORD): finish it in one session with
   the same agents. Independent work (a playtest bug, a procedure fix) can move to any session. Never end a session inside a chain.
-- Session size: count the context from the session transcript at stopping points. Ask the user at about 300K, then once per
-  further 100K, whether to start a new session. A new session starts only between chains (no agent running). Write HANDOFF.md
+- Session size: count the context from the session transcript at stopping points. From about 300K, ask the user (once per
+  further 100K) only at a stopping point where a new session would be right: between chains, no agent running. Never ask when the
+  answer would be "not yet". Write HANDOFF.md
   only when a new session starts. Agents cannot resume in another session.
 - Oracle (Opus): reads code and writes only docs/handoff/row_*.md files (rows, findings). It never writes code (oracle.md).
   It plans every fix by code read (CLAUDE.md 1-2). For a data-format change it first lists every reader. The orchestrator starts
