@@ -1473,6 +1473,7 @@ def shots_diff(a, b):
 
 
 BASE_TWICE = 2  # a base is stored only when this many runs of its scenario in one list are byte-equal on every shot
+BASE_RUNS = 3  # TOOLB9: a warm-up run, then two warm runs are compared
 
 
 def base_run(bds, commit, build_no, row, lane, label, why):
@@ -1485,7 +1486,7 @@ def base_run(bds, commit, build_no, row, lane, label, why):
     since = now_iso()
     os.environ["PM_BASE_SNAP"] = str(snap)
     try:
-        rc = cmd_run(argparse.Namespace(bench=",".join([name] * BASE_TWICE), row=row, why=why, label=label, build=build_no, commit=commit,
+        rc = cmd_run(argparse.Namespace(bench=",".join([name] * BASE_RUNS), row=row, why=why, label=label, build=build_no, commit=commit,
                                         speed=None, lane=lane))
     finally:
         os.environ.pop("PM_BASE_SNAP", None)
@@ -1498,6 +1499,10 @@ def base_run(bds, commit, build_no, row, lane, label, why):
             bad += 1
             continue
         first, last = recs[-2], recs[-1]
+        if first.get("warm") != 1 or last.get("warm") != 1:
+            print("base %s: the compared runs are not both warm (warm %s, %s), not stored." % (bd["name"], first.get("warm"), last.get("warm")))
+            bad += 1
+            continue
         sa, sb = re.search(r"slot(\d+)", first.get("log_path") or ""), re.search(r"slot(\d+)", last.get("log_path") or "")
         if not sa or not sb or sa.group(1) != sb.group(1):
             print("base %s: TOOL FAULT: the two runs ran on slots %s and %s, not stored." % (bd["name"], sa.group(1) if sa else "?", sb.group(1) if sb else "?"))
@@ -1844,6 +1849,7 @@ def cmd_cmp(a):
     out = REPO / "build3ds" / "basecmp" / a.row / a.bench
     print("cmp %s: row %s run at commit %s build %s, base %s (%d shots)" % (
         a.bench, a.row, (rr.get("commit") or "?")[:9], rr.get("build_no"), commit[:9], len(base_names)))
+    if rr.get("warm") == 0: print("cmp %s: the row run was a cold start (warm 0); the base is two warm runs. Run the bench once more (the slot keeps its Azahar: warm), then cmp." % a.bench); return 1  # TOOLB9
     equal, bad = 0, 0
     for n in base_names:
         if n not in row_names:

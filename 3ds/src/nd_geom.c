@@ -85,6 +85,7 @@ void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, GvP* o) {
     in.fog_fm = fog_fm; in.fog_fo = fog_fo;
     in.lt = lt; in.lt_n = lt_n; in.lk = (const int8_t (*)[3])lk;
     nd_gv_params(&in, o);
+    if (dual_on) for (int q = 0; q < 4; q++) { o->cm[q] *= dual_f[q]; o->ca[q] *= dual_f[q]; } /* KZN04: the shaded sprite's shade colour (nd_tex_set.c shade_mean) */
 }
 
 unsigned tri_flags(void) {

@@ -570,15 +570,14 @@ __attribute__((cold, noinline)) int tex_shaded0(int uls, int ult) {
             if (m1.valid && nd_ws.tst1.tile_fmt[0] == 2 && nd_ws.tst1.tile_siz[0] == 0 && nd_ws.tst1.tile_pal[0] != nd_ws.tst1.tile_pal[1] &&
                 nd_ws.tst1.comb_a == G_CCMUX_TEXEL0 && nd_ws.tst1.comb_c == G_CCMUX_TEXEL1 &&
                 m1.w > 0 && m1.h > 0) {
-                /* Tile 0 starts 256 texels in (the vertices carry that) plus the light offset. */
-                int dx4 = uls - (m1.x0 << 2);
-                int dy4 = ult - (m1.y0 << 2);
+                /* Tile 0 starts 256 texels in (the vertices carry that); the light offset moves only the shade index, which is one colour now (KZN04). */
+                (void)uls; (void)ult;
                 m1.valid = 0;
                 pm_gpu_flush();
                 nd_ws.tile_x0 = m1.x0;
                 nd_ws.tile_y0 = m1.y0;
                 nd_ws.tile_fx = nd_ws.tile_fy = 0.f;
-                if (load_shaded_sprite(dx4, dy4)) {
+                if (load_shaded_sprite()) {
                     dual_on = 1;
                     sync_combine();
                     return 1;
@@ -644,44 +643,44 @@ int glyph_atlas_bound(void) {
     return 1;
 }
 
-typedef struct { const void* sp; const void* sh; } ShadeFill;
-
-/* KZN04: the 256 entry lut, built on a texture miss only. t0 (shade palette) and t1 (sprite palette) are read once per entry of
- * their 16, not once per pair. */
-static void shade_fill(const void* ctx, unsigned* lut) {
-    const ShadeFill* f = (const ShadeFill*)ctx;
-    float t0[16][4], t1[16][4];
-    for (unsigned k = 0; k < 16; k++) { pal_rgba(f->sh, k, t0[k]); pal_rgba(f->sp, k, t1[k]); }
-    for (unsigned i = 0; i < 16; i++) {
-        for (unsigned j = 0; j < 16; j++) {
-            float o[4];
-            unsigned c[4];
-            cc_cycle1(t0[j], t1[i], o);
-            for (int k = 0; k < 4; k++) c[k] = (unsigned)(o[k] * 255.f + .5f); /* cc_cycle1 clamps to 0..1 */
-            lut[i * 16 + j] = (c[0] << 24) | (c[1] << 16) | (c[2] << 8) | c[3];
-        }
+/* KZN04: the shading of a sprite as one colour. The N64 reads the 16 shade colours per texel through a second tile (the shade index is the
+ * sprite's own index at the light offset), which needs a palette lookup after a texture read: the PICA has no dependent read. The sprite is drawn
+ * with its own palette (cached as any sprite) and the shade is the mean of the 16 shade colours weighted by the sprite's use of each palette index
+ * (opaque entries only), put through the first cycle with TEXEL1 = 1. pm_gbi_gv_at multiplies the vertex colour by it. */
+float dual_f[4];
+static void shade_mean(const void* sp, const void* sh) {
+    unsigned cnt[256], cn16[16];
+    memset(cnt, 0, sizeof cnt);
+    const u8* src = (const u8*)m1.src;
+    const int bw = m1.w >> 1; /* whole bytes of a row; the row starts on a byte (the stride is even) */
+    for (int y = 0; y < m1.h; y++) {
+        const u8* row = src + (size_t)y * (size_t)m1.stride / 2u;
+        for (int x = 0; x < bw; x++) cnt[row[x]]++;
+        if (m1.w & 1) cnt[row[bw] & 0xf0u]++; /* the odd texel: high nibble, low nibble 0 (counted as index 0 of the pair, removed below) */
     }
+    for (unsigned k = 0; k < 16; k++) cn16[k] = 0;
+    for (unsigned b = 0; b < 256; b++) { cn16[b >> 4] += cnt[b]; cn16[b & 15u] += cnt[b]; }
+    if (m1.w & 1) cn16[0] -= (unsigned)m1.h; /* the padding low nibble of the odd texel byte */
+    float s[3] = { 0.f, 0.f, 0.f }, wsum = 0.f, s_all[3] = { 0.f, 0.f, 0.f };
+    for (unsigned k = 0; k < 16; k++) {
+        float t0[4], t1[4];
+        pal_rgba(sh, k, t0); pal_rgba(sp, k, t1);
+        const float wt = t1[3] > 0.f ? (float)cn16[k] : 0.f;
+        for (int q = 0; q < 3; q++) { s[q] += wt * t0[q]; s_all[q] += t0[q] * (1.f / 16.f); }
+        wsum += wt;
+    }
+    float t0[4] = { s_all[0], s_all[1], s_all[2], 1.f }, t1[4] = { 1.f, 1.f, 1.f, 1.f }, o[4];
+    if (wsum > 0.f) { const float iw = 1.f / wsum; for (int q = 0; q < 3; q++) t0[q] = s[q] * iw; }
+    cc_cycle1(t0, t1, o);
+    for (int q = 0; q < 4; q++) dual_f[q] = o[q];
 }
 
-int load_shaded_sprite(int dx4, int dy4) {
+int load_shaded_sprite(void) {
     const void* sp = nd_tm.tlut_pal[nd_ws.tst1.tile_pal[1] & 15];
     const void* sh = nd_tm.tlut_pal[nd_ws.tst1.tile_pal[0] & 15];
-    ShadeFill f;
     if (!sp || !sh) return 0;
-    /* Second cycle (SHADE - ENV) * COMBINED + COMBINED is linear in the vertex shade. It
-     * can brighten past 1, so fold the largest factor into the texture and the rest into the
-     * vertex color (see draw_tri). */
-    dual_gain[0] = dual_gain[1] = dual_gain[2] = 1.f;
-    /* The lut is a function of the 16 shade colours, the sprite palette (the slot key holds it), prim, env and the first cycle: hash
-     * those, not the 256 entries, so a hit builds nothing. */
-    unsigned key = 2166136261u;
-    const u8* shp = (const u8*)sh;
-    for (unsigned k = 0; k < 32; k++) key = (key ^ shp[k]) * 16777619u;
-    const unsigned parts[] = { nd_ws.prim, nd_ws.envc, nd_ws.tst1.comb_a, nd_ws.tst1.comb_b, nd_ws.tst1.comb_c, nd_ws.tst1.comb_d,
-                               nd_ws.tst1.comb_aa, nd_ws.tst1.comb_ab, nd_ws.tst1.comb_ac, nd_ws.tst1.comb_ad };
-    for (unsigned k = 0; k < sizeof parts / sizeof parts[0]; k++) key = (key ^ parts[k]) * 16777619u;
-    f.sp = sp; f.sh = sh;
-    return pm_tex_load_shaded(m1.src, m1.w, m1.h, m1.stride, sp, key, dx4, dy4, shade_fill, &f);
+    shade_mean(sp, sh);
+    return pm_tex_load_shaded(m1.src, m1.w, m1.h, m1.stride, sp);
 }
 
 /* ---- MV-10: RDP shift helper, cut from the former pm_gbi.c (no change) ---- */
