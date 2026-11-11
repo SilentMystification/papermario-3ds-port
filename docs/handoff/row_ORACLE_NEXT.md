@@ -47,6 +47,25 @@ A replacement oracle starts here: read CLAUDE.md, orchestrator_rules.md, plan_ho
   pause picture pause_cfb_src background_gfx.c:263, game over blur, screen_render_util.c:44, state_pause.c:110, file select :189).
   water_block reads no frame buffer: its +11.3 ms (39 draws, 59 texture calls) needs the console class split.
 
+## Data path audit SD -> RAM -> CPU/GPU (old oracle, code read; ASSETFREE stays parked: it moves assets out of the ELF, not these hops)
+| hop | where | per frame? | status |
+| shape .nds read on the game thread + wasted Yay0 decode of the shape | pm_map.c:58-94, :177-190; pm_prefetch.c:38-47 | map change | row MAPROMFS |
+| hit file Yay0 + byte swap | pm_map.c:194 swap_hit_file | map change, once | host pre-convert possible (like shapes): later, low gain |
+| R13 sync units in the record payload | nd_rec.c:214 | every record | row R13NOP (also a correctness fault) |
+| texture window reload on a scroll (tile origin or width moves the key) | nd_tex_set.c tex_win0/1 | every frame | rows TILEWIN (merge), TILEWIN2 |
+| per-particle static list = one native draw + state resync | nd_ent.c:389-412, pm_gpu.c:3033 | every frame | row PBATCH1 |
+| refraction source buffer without a GPU copy (CPU-side texture from RAM) | water_splash.c:210 | every frame | row SPLASHPREV2 |
+| model cache key misses: prim colour w12 (kzn_08), panner tile sizes w18-21 (kzn_08, hos_01) | pm_gpu.c nd_mkey_a; nd_model.c:42-44 uvso | every frame on those maps | design read open (patch uvso and TEV colours on hit) |
+| static model matrices fixed -> float | nd_mtx_set.c:106-125 | cached by slot and version (mtx_cache) | fine |
+| moving model matrices fixed -> float | load_mtx | every frame, needed (16 conversions per matrix) | fine |
+| static vertices | dlc/ent compile at first use into chunk 0 (linear) | once | fine (16-byte N64 Vtx layout read by the GPU as is) |
+| dynamic vertices (effects, sprites, HUD) copied to the ring | nd_geom_vtx -> gv_tri | every frame, needed | fine |
+| cached model draws: command block copy | pm_gpu.c:1102 blk_put | every hit | fine (memcpy of the block, patches) |
+| previous-frame copy | pm_gpu_grab_prev (GPU, PT12) | when asked | CPU fallback pm_main.c:380 only on the first frame or after a T2 grab: separate texture open |
+Open reads for this audit: sprite raster decode per animation frame (spr_load_sprite Yay0 path, pm_tex sprite memo spc_miss), the
+data-cache flush ranges (pm_gpu.c:2943 svcFlushProcessDataCache per range, pm_tex.c:554 per span), resident bytes per class (no census
+yet: a memcheck-like class split of heap use would give it).
+
 ## Morning list (rows to write next, by the oracle)
 1. Class cuts after HC6B: read M1-hot per class (bench hotset_size on main after the HC6B merge) and the M3 census (hotset.py --fncov on
    fncov_mac01_det/kmr10_det logs of the HC6B lane); cut rare arms of the top functions per class as HCCUT2 did (byte-equal, cold
