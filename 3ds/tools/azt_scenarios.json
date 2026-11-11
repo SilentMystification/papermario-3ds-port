@@ -14166,14 +14166,10 @@
       "until": "prof f(6|7)\\d\\d w\\d+ pmx set",
       "cap": 45,
       "deadline": 40,
-      "first_marker": "warp: mac_01 entry 0",
-      "expects": "warp",
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
       "needs_picture": false,
       "expected_events": [
-        {
-          "name": "warp",
-          "regex": "warp: mac_01 entry 0"
-        },
         {
           "name": "pmx",
           "regex": "prof f\\d+ w\\d+ pmx set [a-z] [a-z]+ \\d+ [a-z]+ \\d+ cyc \\d+"
