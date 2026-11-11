@@ -10,7 +10,11 @@ Files: 3ds/src/pm_gpu.c (pm_gpu_spr_build, pm_gpu_grange), nd_model.c (nd_model_
 nd_cmd.h, nd_rec.c, nd_cmd_test.c.
 
 ## Steps (each a commit, byte-equal)
-1. fncov_mac01_det and fncov_kmr10_det on the base; add a sprite memo miss counter next to mw_ok; `bench.py base` for both gates.
+1. Done (f9980895e): sprite memo counter; census fncov_mac01_det run 253145 and fncov_kmr10_det run 253967 on lane HC8_fncov. A census
+   bench has no base: its counts are the first measurement (a normal build prints no fncov line, so `bench.py base fncov_*` is always
+   broken; never run it). `git checkout 3ds/tools/azt_scenarios.json` (drop the "unverified" mark the broken base run wrote). Then
+   `PM_LANE=HC8 python 3ds/tools/hotset.py --fncov build3ds/azt/logs/fncov_mac01_det.txt > build3ds/out/m3_mac01_before.txt` and the
+   same for kmr10 (copy the two census logs to build3ds/out/ first): the M3 per class before steps 2-7; write class H and I in the commit.
 2. Sprite memo (nd_model.c:389-410, SprMemo sprm[SPRM_N] at :396): 16 sets x 4 ways with LRU in the set (64 entries), key unchanged; compare the most-varying
    words first (prim, env, mixcol, comb_w0, comb_w1, then the rest); build the key from the walker globals and fill NdMCtx only on a
    miss (pm_gbi_gv_at stays). About 21 KB: heap at the first sprite if the memcheck margin is tight.
@@ -26,6 +30,8 @@ nd_cmd.h, nd_rec.c, nd_cmd_test.c.
    ent_hash stays on core 0.
 
 ## Gates (light)
-- nd_host PASS. Byte-equal against stored base shots: battle_start_f182_cold, nok11_det.
+- nd_host PASS. Byte-equal (`bench.py base`, run, `cmp`): spot_mac01_det and mdl5_iwa10_det (bases stored at b8bc06613; both scenes
+  have sprites and entities). Not battle_start_f182_cold: its two cold runs of one build differ (base --fill at b8bc06613), so it
+  cannot be a byte gate (row LOADMTX note). nok11_det only if its base prints "two runs equal, stored"; else drop it and say so.
 - Size: M1 class H <= 3 KB, class I <= 5 KB; M3 mac_01 class H <= 4 KB, kmr_10 class H <= 6 KB with sprite memo hit rate > 95%.
 - memcheck OK. Console (user): prof push mac_01 0 0 200, pmu I/D per frame.
