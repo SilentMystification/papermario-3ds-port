@@ -1417,7 +1417,7 @@ s32 btl_submenu_moves_update(void) {
 
             moveX = pm_wide_left(POS_X);
             moveY = MovesMenuPosY;
-            set_window_properties(WIN_BTL_DESC_BOX, moveX, 186, WIDTH_3, 32, WINDOW_PRIORITY_20, btl_menu_moves_show_desc, nullptr, -1);
+            set_window_properties(WIN_BTL_DESC_BOX, moveX, 186, WIDTH_3 + (pm_wide ? 80 : 0), 32, WINDOW_PRIORITY_20, btl_menu_moves_show_desc, nullptr, -1); /* BATUI: wide layout, the box spans pm_wide_left(POS_X) to pm_wide_right(POS_X + WIDTH_3) */
             set_window_update(WIN_BTL_MOVES_MENU, WINDOW_UPDATE_SHOW);
             if (!UsingSpiritsSubmenu) {
                 set_window_update(WIN_BTL_MOVES_TITLE, WINDOW_UPDATE_SHOW);
@@ -2192,9 +2192,9 @@ s32 btl_submenu_strats_update(void) {
             set_window_properties(WIN_BTL_STRATS_MENU, x, y, W_VAR1, (StratsMenuLines * 13) + 26, 0, btl_menu_strats_draw_content, nullptr, -1);
             set_window_properties(WIN_BTL_STRATS_TITLE, x + X_VAR6, y - 6, W_VAR2, 16, 1, btl_menu_strats_show_title, nullptr, -1);
 #endif
-            x = X_VAR7;
+            x = pm_wide_left(X_VAR7); /* BATUI: wide layout, as the moves box */
             y = 186;
-            set_window_properties(WIN_BTL_DESC_BOX, x, y, W_VAR3, 32, WINDOW_PRIORITY_20, btl_menu_strats_show_desc, nullptr, -1);
+            set_window_properties(WIN_BTL_DESC_BOX, x, y, W_VAR3 + (pm_wide ? 80 : 0), 32, WINDOW_PRIORITY_20, btl_menu_strats_show_desc, nullptr, -1);
             set_window_update(WIN_BTL_STRATS_MENU, WINDOW_UPDATE_SHOW);
             set_window_update(WIN_BTL_STRATS_TITLE, WINDOW_UPDATE_SHOW);
             set_window_update(WIN_BTL_DESC_BOX, WINDOW_UPDATE_SHOW);
