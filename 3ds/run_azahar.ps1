@@ -633,7 +633,10 @@ $addrs = $addrs | ForEach-Object { [Convert]::ToUInt32($_, 16) } |
 if ($addrs) {
     Write-Output "--- crash symbols (pc, lr, then stack words that are code) ---"
     $env:MSYS_NO_PATHCONV = "1"
-    & docker run --rm -v "${out}:/elf" devkitpro/devkitarm:latest /opt/devkitpro/devkitARM/bin/arm-none-eabi-addr2line -f -C -p -e /elf/pm_3ds.elf $addrs | Where-Object { $_ -notmatch "^\?\?" } | Tee-Object -FilePath "$out\last_crash.txt"
+    $sym = @(& docker run --rm -v "${outLane}:/elf" devkitpro/devkitarm:latest /opt/devkitpro/devkitARM/bin/arm-none-eabi-addr2line -f -C -p -e /elf/pm_3ds.elf $addrs)
+    # TOOLB6: the ELF is in the lane folder; the file always gets the addresses and the unmapped sites, also when addr2line prints nothing
+    $crashTxt = @("run end: $reason", ("addresses: " + ($addrs -join " "))) + @(Get-Content "$out\last_unmapped.txt" -ErrorAction SilentlyContinue | Select-Object -First 10) + $sym
+    $crashTxt | Set-Content "$outLane\last_crash.txt"; $crashTxt | Set-Content "$out\last_crash.txt"; $crashTxt | Write-Output
     End-Run 2 "crash symbols; stopped: $reason"
 }
 if ($Smoke -and $reason -notmatch "^matched") { Write-Output "SMOKE FAILED: $reason"; End-Run 1 "smoke failed: $reason" }
