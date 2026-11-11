@@ -330,7 +330,7 @@ static void list_decode(SWalk* w, uint32_t addr, const SXf* x, int depth) {
         const uint8_t* p = at(w, addr + 8u * i, 8);
         if (!p) { ok = 0; break; }
         uint32_t w0 = rd32(p), w1 = rd32(p + 4);
-        { uint32_t t[2]; nd_op_unit(w0, w1, t); w0 = t[0]; w1 = t[1]; } /* HC4f3: a typed shape list or a raw one */
+        { uint32_t t[2]; t[0] = w0; t[1] = w1; w0 = t[0]; w1 = t[1]; } /* HC4f3: a typed shape list or a raw one */
         unsigned op = w0 >> 24;
         if (op == NDO_END) break;
         switch (op) {
@@ -372,7 +372,7 @@ static void list_decode(SWalk* w, uint32_t addr, const SXf* x, int depth) {
             list_add(w, w1, x, depth + 1);
             if (w0 & 1u) goto done; /* branch: no return (HC4f3: NDO_CALL a = 1 for the branch form) */
             break;
-        case NDO_GEOM: case OP_NOOP: case OP_FULLSYNC: case OP_TILESYNC: case OP_PIPESYNC: case OP_LOADSYNC:
+        case NDO_GEOM:
             break;
         case NDO_MISC: /* HC4f3: the typed no-op (ND_NOP_A) and the typed syncs are no-ops; the other misc ops refuse */
             if ((w0 & 0xFFFFFFu) != (NDO_MISC_NOP << 16)) ok = 0;

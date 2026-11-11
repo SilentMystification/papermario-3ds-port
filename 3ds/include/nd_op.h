@@ -6,7 +6,7 @@
 #ifndef ND_OP_H
 #define ND_OP_H
 #include <stdint.h>
-#include "ultra64.h" /* G_ENDDL (nd_op_unit); nd_op.c includes it the same way */
+#include "ultra64.h" /* the F3DEX2 ids of the nd_op_n64 table */
 
 enum {
     NDO_BASE = 0x20,
@@ -133,20 +133,16 @@ static inline uint32_t nd_op_om_mask(uint32_t a) {
 #define ND_OP_VTX_W0(n, v0) NDO_W0(NDO_VTX, (uint32_t)(n) << 12 | ((uint32_t)(v0) + (uint32_t)(n)) << 1)
 #define ND_OP_TRI_A(v0, v1, v2) ((uint32_t)(v0) * 2u << 16 | (uint32_t)(v1) * 2u << 8 | (uint32_t)(v2) * 2u)
 #define ND_OP_CALL_W0 NDO_W0(NDO_CALL, 0)
-extern const uint8_t nd_op_n64[NDO_END_ - NDO_BASE]; /* the F3DEX2 op of each id (pm_gbi_cur_op, census) */
-/* Translate one F3DEX2 word into out[0], out[1]: the typed op (returns 1) or the word unchanged (returns 0). */
+/* The F3DEX2 op of each typed id (pm_gbi_cur_op, census). */
+static const uint8_t nd_op_n64[NDO_END_ - NDO_BASE] = {
+    G_SETOTHERMODE_H, G_SETOTHERMODE_L, G_GEOMETRYMODE, G_SETPRIMCOLOR, G_SETENVCOLOR, G_SETFOGCOLOR, G_SETBLENDCOLOR,
+    G_SETFILLCOLOR, G_SETPRIMDEPTH, G_SETSCISSOR, G_TEXTURE, G_MOVEWORD, 0 /* NDO_RARE: the sub-op names it */, G_SETCOMBINE,
+    G_ENDDL /* NDO_END */, G_SPNOOP /* NDO_DROP */, G_SETTIMG, G_SETTILE, G_SETTILESIZE, G_LOADBLOCK, G_LOADTILE, G_LOADTLUT,
+    G_VTX, G_TRI1, G_TRI2, G_MTX, G_POPMTX, G_MOVEMEM, G_DL, G_FILLRECT, 0 /* NDO_MISC: the sub-op names it */
+};
+/* Translate one F3DEX2 word into out[0], out[1]: the typed op (returns 1) or the word unchanged (returns 0). HC4e4: host only (nd_op.c:
+ * nd_cmd_test, nd_model_test, nd_gv_test). */
 int nd_op_xlate(uint32_t w0, uint32_t w1, uint32_t out[2]);
-/* The typed unit of a list word: a typed word is its own unit, G_ENDDL is NDO_END (nd_op_xlate keeps it raw), every other word translated. */
-static inline void nd_op_unit(uint32_t w0, uint32_t w1, uint32_t t[2]) {
-    if (nd_op_typed(w0 >> 24)) { t[0] = w0; t[1] = w1; }
-    else if ((w0 >> 24) == G_ENDDL) { t[0] = NDO_W0(NDO_END, 0); t[1] = 0; }
-    else nd_op_xlate(w0, w1, t);
-}
-/* HC4c: the ops of a list the producer just wrote (a texture bind list, the R13 words of a model record), typed in place to n units: the
- * RDP syncs and G_SPNOOP dropped, G_ENDDL written as NDO_END (it ends the pass), every other word translated (a word with no typed op
- * stays). Returns the units before the end. The typed gDP
- * forms of HC4e replace this pass. */
-unsigned nd_op_type_run(uint32_t* w, unsigned n);
 /* HC4b: the render mode table (W3): the typed ops of ModelRenderModes[i] and NDO_END. The recorder builds an entry at its first record
  * (nd_rec_model, core 1); the frame push publishes it; immutable after. ND_RM_N entries of ND_RM_OPS units. */
 #define ND_RM_N 64u

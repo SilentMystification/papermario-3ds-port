@@ -2365,7 +2365,6 @@ void load_texture_impl(u32 romOffset, TextureHandle* handle, TextureHeader* head
     temp = (Gfx**) &TextureHeapPos;
     gSPEndDisplayList((*temp)++);
 #ifdef TARGET_3DS
-    nd_op_type_run((uint32_t*)handle->gfx, (unsigned)((Gfx*)TextureHeapPos - handle->gfx)); /* HC4c (R1): the bind list typed at its producer (rec_apply runs it, nd_bind_run) */
     { /* S3N-1 (B4): the texture descriptor of this handle for the native model draw (3ds/src/nd_model.c) */
         extern void nd_tex_handle_set(int index, const void* gfx, const void* raster, const void* palette, unsigned w, unsigned h, unsigned fmt, unsigned siz,
                                       unsigned wrap_w, unsigned wrap_h, unsigned masks, unsigned maskt, unsigned extra, int has_aux);
@@ -4454,7 +4453,7 @@ void mdl_get_vertex_count(Gfx* gfx, s32* numVertices, Vtx** baseVtx, s32* gfxCou
 
         do {
 #ifdef TARGET_3DS
-            { uint32_t t[2]; nd_op_unit(gfx->words.w0, gfx->words.w1, t); w0 = t[0]; w1 = t[1]; } /* HC4e3: a typed list (gs macros) or a raw one */
+            { uint32_t t[2]; t[0] = gfx->words.w0; t[1] = gfx->words.w1; w0 = t[0]; w1 = t[1]; } /* HC4e3: a typed list (gs macros) or a raw one */
 #else
             w0 = gfx->words.w0;
             w1 = gfx->words.w1;
@@ -4506,9 +4505,9 @@ void mdl_local_gfx_update_vtx_pointers(Gfx *nodeDlist, Vtx *baseVtx, Gfx *arg2, 
     u32 w0;
     Vtx* w1;
 #ifdef TARGET_3DS
-    do { /* HC4e2b: the copy takes the typed unit (nd_op_xlate: ND_X0/ND_X1 of the word; a typed word stays) */
+    do { /* HC4e2b: the copy takes the typed unit (ND_X0/ND_X1 of the word; a typed word stays) */
         uint32_t t[2];
-        nd_op_unit(nodeDlist->words.w0, nodeDlist->words.w1, t);
+        t[0] = nodeDlist->words.w0; t[1] = nodeDlist->words.w1;
         w0 = t[0];
         w1 = (Vtx*)(uintptr_t)t[1];
         if (w0 >> 0x18 == NDO_VTX) {
@@ -4649,7 +4648,7 @@ void mdl_project_tex_coords(s32 modelID, Gfx* outGfx, Matrix4f arg2, Vtx* arg3) 
 
     while (true) {
 #ifdef TARGET_3DS
-        { uint32_t t[2]; nd_op_unit(dlist->words.w0, dlist->words.w1, t); cmd = t[0] >> 0x18; tempVert = (Vtx*)t[1]; } /* HC4e3 */
+        { uint32_t t[2]; t[0] = dlist->words.w0; t[1] = dlist->words.w1; cmd = t[0] >> 0x18; tempVert = (Vtx*)t[1]; } /* HC4e3 */
         if (cmd == NDO_END) {
             break;
         }

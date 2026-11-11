@@ -4,7 +4,7 @@
 #include "imgfx.h"
 #include "pm_interp_fi.h"
 #ifdef TARGET_3DS
-#include "nd_op.h" /* HC4e2b: the typed unit of a list word (nd_op_xlate) */
+#include "nd_op.h" /* HC4e2b: the typed unit of a list word */
 #endif
 
 typedef union ImgFXIntVars {
@@ -1316,7 +1316,7 @@ ImgFXAnimHeader* imgfx_load_anim(ImgFXState* state) {
 #ifdef TARGET_3DS
                 { /* HC4e2b: the typed unit (a typed word stays) */
                     uint32_t t[2];
-                    nd_op_unit(w0, gfxBuffer[j-1].words.w1, t);
+                    t[0] = w0; t[1] = gfxBuffer[j-1].words.w1;
                     w0 = t[0];
                 }
                 cmd = w0 >> 0x18;

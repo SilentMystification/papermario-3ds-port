@@ -211,7 +211,7 @@ __attribute__((cold, noinline)) void nd_lstcen(const void* l, unsigned kind) {
         if (lc_n >= 256u) return;
         lc_n++; lc_tab[i].l = l; lc_tab[i].kind = kind; lc_tab[i].runs = 0;
         const Gfx* g = (const Gfx*)l; unsigned n = 0;
-        while (kind < 3u && n < 4096u && (g[n].words.w0 >> 24) != G_ENDDL && (g[n].words.w0 >> 24) != NDO_END) n++; /* HC4b: a typed table ends at NDO_END */
+        while (kind < 3u && n < 4096u && (g[n].words.w0 >> 24) != NDO_END) n++; /* HC4b: a typed table ends at NDO_END */
         lc_tab[i].ops = n;
         EntKey* k = ent_find((const Gfx*)l, 0);
         lc_tab[i].st = k ? k->st + 1u : 0u; lc_tab[i].why = k ? k->why : 0u;
@@ -354,22 +354,15 @@ static __attribute__((cold, noinline)) void op_unknown(unsigned dbg, const uint3
     note(op);
     if (__builtin_expect(fp, 0)) pm_ph_pop();
 }
-/* HC4d2: the op executor runs typed ops only. A list word (static lists until HC4e) is typed here first (nd_op_xlate); the RDP syncs and
- * G_SPNOOP do nothing; G_ENDDL and NDO_END end the run. */
+/* HC4d2: the op executor runs typed ops only. HC4e4: every list is typed; the RDP syncs and G_SPNOOP are the typed no-op (ND_NOP_A);
+ * NDO_END ends the run. */
 void nd_walk_state(const uint32_t* q, unsigned n) {
     const unsigned dbg = pm_walk_dbg;
     for (const uint32_t* e = q + 2u * n; q < e; q += 2) {
         const uint32_t* u = q;
         unsigned id = q[0] >> 24;
         if (q[0] == ND_NOP_A) continue; /* HC4f3: a typed sync or no-op, skipped as a raw sync: no op_ctl, no gv_epoch */
-        uint32_t t[2];
-        if (!nd_op_typed(id)) {
-            if (nd_op_sync(id)) continue;
-            if (id == G_ENDDL) break;
-            if (!nd_op_xlate(q[0], q[1], t)) { op_unknown(dbg, q); continue; }
-            u = t;
-            id = t[0] >> 24;
-        }
+        if (__builtin_expect(!nd_op_typed(id), 0)) { op_unknown(dbg, q); continue; } /* HC4e4: every list is typed */
         if (nd_op_geo(id)) op_geo(dbg, u, q);
         else if (nd_op_ctl(id)) {
             const unsigned r = op_ctl(dbg, u, q, e);

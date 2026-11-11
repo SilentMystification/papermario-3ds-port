@@ -155,8 +155,6 @@ extern unsigned st_vx;
 extern unsigned vert_tss[64];
 
 /* ---- W: the walk group's own entry points and tables (defined in nd_walk.c), and the the former pm_gbi.c helpers it calls ---- */
-/* DIRECT D10c: an RDP sync or G_SPNOOP (no work on the 3DS; the list executor and the record ops skip it). */
-static inline int nd_op_sync(unsigned op) { return (op >= G_RDPLOADSYNC && op <= G_RDPFULLSYNC) || op == G_SPNOOP; }
 int nd_op_same(const uint32_t* u);    /* HC4a: nd_set.c, the typed scalar ops (nd_op.h) */
 void nd_op_apply(const uint32_t* u);
 void gbi_cold_bad_next(u32 w1, u32 w0, u32 list);

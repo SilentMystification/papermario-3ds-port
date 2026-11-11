@@ -31,12 +31,6 @@ static void rec_t(unsigned id, uint32_t a, uint32_t b) {
     const uint32_t t[2] = { NDO_W0(id, a), b };
     rec_top(t);
 }
-/* S3F-2: the R4 combine entry, a static word (SolidCombineModes, AlphaTestCombineModes): typed on the way (nd_op_xlate) until the static
- * lists are typed (HC4e). */
-static __attribute__((noinline)) void rec_op(u32 w0, u32 w1) {
-    uint32_t t[2];
-    if (nd_op_xlate(w0, w1, t)) rec_top(t);
-}
 /* S3F-2: the fog of a record: the colour word, then the position word (the MOVEWORD header is built with the gbi macro, no division here). */
 static void rec_fogpos(u32 pos) { rec_t(NDO_MW, NDO_MW_FOG << 16, pos); }
 static __attribute__((noinline)) void rec_fog(u32 col, u32 pos) {
@@ -88,7 +82,7 @@ static __attribute__((noinline)) void rec_apply(const Gfx* q, int mdone) {
     else if (tg) nd_bind_run((const uint32_t*)tg); /* HC4c: the typed bind list */
     if (q[4].words.w1) { /* S3F-2: the combine word, after the bind as in the old order */
         const Gfx* e = (const Gfx*)(uintptr_t)q[4].words.w1;
-        rec_op(e->words.w0, e->words.w1);
+        rec_top((const uint32_t*)e); /* HC4e4: SolidCombineModes, AlphaTestCombineModes are typed (gs forms) */
     }
     rec_rm((w0 >> 16) & 0xffu); /* ST-4, HC4b: the render mode list (typed table) */
     if (f & 32u) { /* S3F-2b: shroud: render mode, fog colour, blend colour, fog position (the old order) */
