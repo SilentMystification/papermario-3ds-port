@@ -21,13 +21,15 @@ design choices with picture risk that Haiku cannot make. The Opus agent writes H
    on mac_01 f600-f900; else hand back the census line. Use the Opus coder a2112b69ed01fcddd (HC5 context) for this row.
 ## Places (other rows)
 nd_recs.c (rec_apply, rec_matrix, the hit path), pm_gpu.c (pm_gpu_model_key, pm_gpu_model_hit, rec_run, pm_gpu_native_submit_draw),
-nd_model.c (the native model cache, not :389-410), nd_emit.c, nd_rec.c nd_rec_model (:208-219) only. WAITING for HC8 to merge
-(pm_gpu.c and nd_model.c). HC5 edits nd_rec.c's shadow and rec_op_t, nd_comb.c, pm_comb.c, pm_gpu_set_plan; SYNC60 edits
+nd_model.c (the native model cache, not the sprite memo), nd_emit.c, nd_rec.c nd_rec_model (:208-219) only. HC8 is merged (4bbd73043):
+at that commit pm_gpu_model_key is pm_gpu.c:3108, pm_gpu_model_hit :3439, pm_gpu_native_submit_draw :1154, rec_run nd_recs.c:114.
+HC8 changed pm_gpu_spr_build (:3828), pm_gpu_grange, the nd_model.c sprite memo, nd_ent.c ent_run, nd_shape.c dlc_try/dlc_box_out:
+HC6 does not edit them. KZN04-TEV (row_KZN04.md next step) edits pm_gpu_spr_build and nd_comb.c sync_combine_work :552. HC5 edits nd_rec.c's shadow and rec_op_t, nd_comb.c, pm_comb.c, pm_gpu_set_plan; SYNC60 edits
 pm_gpu_begin_wait; LOADMTX edits nd_mtx_set.c: do not edit those places. `git merge main` before the completing commit.
 ## Gates
 nd_host PASS; memcheck OK; byte-equal spot_mac01_det, mdl5_iwa10_det, spot_mac00_det (bases at b8bc06613 or stored at the
 merge-base); hotset_size M1-hot C+D <= 8 KB. One Azahar list per step (the three scenes, plus the census scene of the step).
 Console prof push mac_01 0 0 200 (pmu I-miss, cycles, lgms): the user's check.
 ## Start, stop, end
-After HC8 merges: `sh 3ds/tools/wt_new.sh HC6`; PM_ROW=PM_LANE=HC6. CLAUDE.md 1-10. A try with no change in C+D is not repeated;
+Now (HC8 merged): `sh 3ds/tools/wt_new.sh HC6`; PM_ROW=PM_LANE=HC6. CLAUDE.md 1-10. A try with no change in C+D is not repeated;
 hand back the facts. Delete this row file in the completing commit.
