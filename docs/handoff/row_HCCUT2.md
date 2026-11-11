@@ -37,6 +37,19 @@ box_pattern_rect (definition line), rect_to_image (:60-96). No other line. The f
 - `python 3ds/tools/bench.py run nd_host --row HCCUT2 --why "HCCUT2"`: PASS.
 - Byte compare (one list): spot_mac01_det and msgbox_talk_nowide (a draw_box window): `bench.py base` each, one `run a,b`, `cmp` each:
   all shots byte-equal.
+## Step after the first try (oracle, 2026-11-11: the hotset gate stopped at 60877f78a, rc 1, E 9208 G 10132)
+- Cause of the stale name, not this row: KZN04 TEV (16a4fdd4f) made every pm_tex.c caller of the static load_impl pass NULL, 0, 0, 0
+  except one (pm_tex.c:1807, :1821, :1850), so GCC emits `.text.load_impl.constprop.0`; main's own map (build3ds/pm_3ds.map:37190)
+  has no `.text.load_impl` either. hot_order.ld:246 still names `.text.load_impl`: stale on main since 16a4fdd4f.
+- Roots missing (a print, not the rc): 3ds/tools/hotset.json:7 names op_settile and g2_same (deleted by HC4e4) and :9 texsrc_chk
+  (not a .text section in the map after HC6).
+- Edits (this row, in one commit with the hotset rerun):
+  1. 3ds/ld/hot_order.ld:246: `*(.text.load_impl)` -> `*(.text.load_impl.constprop.0)` (keep the comment).
+  2. 3ds/tools/hotset.json: delete "op_settile" and "g2_same" from the class A roots (:7) and "texsrc_chk" from the class C roots (:9).
+- Then rerun the gates of this row from hotset_size (rc 0, stale 0; E and G as before or lower), then nd_host, then the byte list.
+- Order with other rows: HCCUT2 merges first. HC6B (row_HC6B.md) may edit hot_order.ld when it drops functions that became cold: it
+  runs `git merge main` before its completing commit. HC9B, HUDGM, HUDRING, UB1, WALLSHADE, CRASHEXIT do not edit either file.
+
 ## Stop and end
 A failed gate, an edit that does not fit the code, or a test-tool fault: commit and hand back the exact output (CLAUDE.md 4-5).
 At the end delete this row file in the completing commit. Hand back: the ready hash, the gate results, the memcheck line.
