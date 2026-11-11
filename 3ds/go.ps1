@@ -41,6 +41,7 @@ Stop: the echo and the netload tail end with this script (push_3ds.sh watches it
 pull o: FTP (port 5000) into O3DS's SD card. Downloads the game log, crash.txt and any Luma crash dumps to
   build3ds/hw_o3ds_log.txt, build3ds/hw_o3ds_crash.txt and build3ds/hw_o3ds_dumps/.
 pull n: same, N3DS.
+Without FTP: python 3ds/tools/pm_logrecv.py --ip <addr> --label o3ds (game running, live log on).
 
 No default IP. push o/n without -ip takes the console address from the netloader broadcast (push_3ds.sh).
 pull o/n needs -ip. push on/ona is refused: two consoles give one broadcast answer, so push o and push n one
