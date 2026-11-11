@@ -344,12 +344,14 @@ static void pf_pmu_read(u64 out[3]) {
  * their delta goes to the phase being left (as acc[] takes the ticks). pph[k][ph] = window sums per phase; pf_pmxph_line ranks them. */
 static int pf_ph_pmu;
 static u64 pph_last[2];
+static Thread pph_th; /* PMUPHFIX: the thread that armed the sample (game thread, core 0) */
 static unsigned long long pph[2][PH_N];
 static void pph_read(u64 v[2]) {
     pf_rc = svcControlPerformanceCounter(&v[0], PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_0, 0);
     pf_rc = svcControlPerformanceCounter(&v[1], PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_1, 0);
 }
 static void pph_add(int ph) {
+    if (threadGetCurrent() != pph_th) return; /* PMUPHFIX: another core's PMU is another counter set */
     u64 v[2];
     pph_read(v);
     for (int k = 0; k < 2; k++) { pph[k][ph] += (u32)(v[k] - pph_last[k]); pph_last[k] = v[k]; }
@@ -707,7 +709,7 @@ static void pf_arm(void) {
     pf_samp = 1;
     cold_need(); /* SPRFIX: pm_ph_frame_end reads cold->win for a sampled frame; prof mode 1 never allocates cold otherwise (NULL read at pf_take) */
     pm_ph_on = 1;
-    if (pf_ph_pmu) pph_read(pph_last); /* PMUPH: the counts of this sample start here */
+    if (pf_ph_pmu) { pph_th = threadGetCurrent(); pph_read(pph_last); } /* PMUPH: the counts of this sample start here; PMUPHFIX: on this thread */
     pm_walk_dbg_set();
 }
 /* PF2: one sampled frame, at its end. r is the frame record: it is not stored in the phase window. */
@@ -736,6 +738,7 @@ void pm_pf_frame(unsigned long long t0, unsigned long long t1) {
     unsigned long long wk = t1 - t0;
     if (cur_s) { /* sample end: its work, then the phase timers off again */
         pf_s++; pf_sw_wks += wk;
+        if (pf_ph_pmu) pph_add(cur); /* PMUPHFIX: the last phase of the sample */
         pf_samp = 0; pm_ph_on = 0; pf_cd = pf_every - 1;
         pm_walk_dbg_set();
         pf_pmu_read(pf_base); pf_run = 0;
