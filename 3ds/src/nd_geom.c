@@ -58,7 +58,8 @@ float cull_cross(const float* p1, const float* p2, const float* p3) {
     return cross;
 }
 
-void gv_params_calc(unsigned tss, GvP* o) { int tw = 1, th = 1; pm_tex_size(&tw, &th); pm_gbi_gv_at(tss, nd_ws.geom, tw, th, o); } /* S3N-3b: not static, the ndmcheck compare calls it */
+int nd_spr_walk; /* WALLSHADE: 1 while nd_walk_spr runs the walker words of a sprite (the shaded sprite fallback) */
+void gv_params_calc(unsigned tss, GvP* o) { int tw = 1, th = 1; pm_tex_size(&tw, &th); pm_gbi_gv_at(tss, nd_ws.geom, tw, th, o); if (dual_on && nd_spr_walk) for (int q = 0; q < 4; q++) { o->cm[q] *= dual_f[q]; o->ca[q] *= dual_f[q]; } } /* S3N-3b: not static, the ndmcheck compare calls it. KZN04: the shade colour of a shaded sprite, only for the sprite (WALLSHADE) */
 
 /* S3N-3c: the draw parameters at geometry geo (the lighting, texgen and fog bits of the batch), the rest as the walker state */
 void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, GvP* o) {
@@ -85,7 +86,6 @@ void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, GvP* o) {
     in.fog_fm = fog_fm; in.fog_fo = fog_fo;
     in.lt = lt; in.lt_n = lt_n; in.lk = (const int8_t (*)[3])lk;
     nd_gv_params(&in, o);
-    if (dual_on) for (int q = 0; q < 4; q++) { o->cm[q] *= dual_f[q]; o->ca[q] *= dual_f[q]; } /* KZN04: the shaded sprite's shade colour (nd_tex_set.c shade_mean) */
 }
 
 unsigned tri_flags(void) {
