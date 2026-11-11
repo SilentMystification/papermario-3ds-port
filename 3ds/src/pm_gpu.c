@@ -3172,6 +3172,7 @@ static __attribute__((cold, noinline)) void rm_masks(unsigned i) {
 void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) {
     memcpy(k->w, rec, NDMC_RW * sizeof(uint32_t));
     k->w[3] = 0; /* MAPX-2: R1 w1 (pmSlot, static matrix flag, pmMtxVer) is matrix bookkeeping: a hit runs the matrix of this frame (rec_matrix, the palette); a lit entry keeps its version (NdMEnt mver) */
+    if (!(rec[3] & 0x100u)) k->w[5] = 0; k->w[17] = rec[17] != 0u; /* KEYFIX1: as nd_mkey_a */
     const unsigned rmi = (rec[0] >> 16) & 0xffu;
     if (!rm_done[rmi]) rm_masks(rmi);
     const uint32_t kh = ND_OMH_READ & ~rm_wh[rmi], kl = ~rm_wl[rmi]; /* H: only the cycle type is read (nd.h); L: nd_mix1 reads bits 18 to 31 too */
@@ -3204,6 +3205,8 @@ uint32_t nd_mkey_a(const uint32_t* rec) {
         uint32_t v = rec[j];
         if (j == 3u || (shr && j == 14u)) v = 0;
         else if (shr && j == 8u) v &= 0xffffff00u;
+        else if (j == 5u && !(rec[3] & 0x100u)) v = 0; /* KEYFIX1: a moving model's finalMtx is a matrix stack slot of this frame */
+        else if (j == 17u) v = v != 0u; /* KEYFIX1: the billboard matrix is a stack slot of this frame: only its presence */
         h = (h ^ v) * 16777619u;
     }
     h = (h ^ aux_hash(rec)) * 16777619u;
@@ -3533,6 +3536,7 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
     if (PMDL("ffog")) ffog_note(k, e);
     if (!model_vis_same(k, e)) { ndn_rng++; pm_xf.mdl_rng++; return 0; }
     if (e->mver && e->mver != ((((const uint32_t*)(uintptr_t)k->rp)[3] >> 16) | 0x10000u)) { ndn_rng++; pm_xf.mdl_rng++; return 0; } /* MAPX-2: a lit entry whose matrix moved: the miss path stores it again in place */
+    if (e->mver && !(((const uint32_t*)(uintptr_t)k->rp)[3] & 0x100u) && !(((const uint32_t*)(uintptr_t)k->rp)[6] & 256u)) { ndn_rng++; pm_xf.mdl_rng++; return 0; } /* KEYFIX1: a lit or fogged entry (pm5 rows of its matrix) hits only on the saved matrix; IGNORE_MATRIX records load none */
     if (!e->n) { ndn_empty++; ndn_rec++; ndn_hit++; return 1; } /* PERF1-4c: no draw (no group in view, or all culled): no texture lookup, template build, matrix product or flush */
     NdUnit u; memset(&u, 0, sizeof u);
     if (e->tex) {
