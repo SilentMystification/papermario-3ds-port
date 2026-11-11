@@ -1,0 +1,44 @@
+# Row S4COL: the prim colour rides in the vertices (NATIVEAPI S4 colour step: pink_sparkles, shimmer_burst)
+
+(Model: Haiku. Starts after S4PINK and S4SHIM are merged. A new named cause after PBATCH2's two tries (CLAUDE.md 5).)
+
+## Cause (oracle code read, main 6e171b39a; data FXFNCOV and PBFLUSH)
+pink_sparkles per part: D (submit) +5306 calls, E (batch close) +1373 per frame (FXFNCOV), pm_gpu_set_plan flushes 53.8 per frame
+(PBFLUSH 504363): every prim change makes a new plan. PBATCH2 (branch PBATCH2, f514533db) routes only the plan's vertex slot colour
+(cur_plan.vtxname) into the ring vertices, but pm_comb.c build() never gives PRIM that slot: src_of (pm_comb.c:287-295) takes the
+stage constant first (:289, :292), then the buffer, and the vertex slot only when both are taken (:294). So for (1 - PRIM) * TEXEL0 +
+PRIM (pink_sparkles list D_09000F20) PRIM is a stage constant, vtxname is NONE, gv_vc_vtx stays 0 and every part flushes.
+
+## Fix
+In build() (pm_comb.c:365) when the combine reads no SHADE and reads PRIM (any term TN_PR in R or A), preset `al.vtx = PM_NM_PRIM`:
+src_of then maps every PRIM term to PM_S_VTX (:291 comes before :292). With PBATCH2's pieces the prim then rides in the vertex colour
+and a part's prim change changes only plan.vtx (no flush). This changes the plan of every draw whose combine reads PRIM and no SHADE
+(HUD PM_CC_2F, text): the rect path already takes plan.vtx as the vertex colour (pm_gpu_rect.c:237). A vertex colour equal at all
+corners interpolates to itself, so the picture is expected byte-equal; the byte gate decides.
+
+## Start
+`sh 3ds/tools/wt_new.sh S4COL`. PM_ROW=S4COL PM_LANE=S4COL on every build and bench call.
+
+## Touch only
+3ds/src/pm_comb.c (build), 3ds/src/pm_gpu.c (pm_gpu_gvtx_colour new, pm_gpu_set_plan, pm_gpu_set_prim), 3ds/src/nd_geom.c (gv_tri,
+nd_part_draw).
+
+## Exact edits
+1. Apply the PBATCH2 source diff: `git diff $(git merge-base main PBATCH2) PBATCH2 -- 3ds/src/nd_geom.c 3ds/src/pm_gpu.c | git apply -3`.
+   A conflict: stop and hand back (do not resolve by guessing).
+2. pm_comb.c build(): a static helper `reads_prim(const Seq* r, const Seq* a)` like uses_shade (:302) for TN_PR; replace line 365 by
+   `if (uses_shade(&R, &A)) al.vtx = PM_NM_SHADE; else if (reads_prim(&R, &A)) al.vtx = PM_NM_PRIM;`
+3. nd_geom.c nd_part_draw: in the per-triangle block, after its params (gv_params_calc) lines, add the PBATCH2 lines of gv_tri: the
+   gv_vc_vtx computation with its cm/ca set, and `if (gv_vc_vtx)` the three pm_gpu_gvtx_colour calls with rs[i0], rs[i1], rs[i2] and
+   cur_plan.vtx (the vertices of an instance are loaded after its prim op, so no vbase check is needed there).
+
+## Gate (CLAUDE.md 2-3)
+- Build, memcheck OK; nd_host PASS.
+- `bench.py base fxpic_124` and `bench.py base msgbox_talk_nowide`; one list `bench.py run fxpic_124,msgbox_talk_nowide --row S4COL
+  --why "S4COL: prim as the vertex colour"`; `bench.py cmp` of both against `$(git merge-base HEAD main)`. Byte-equal: pass. Not
+  byte-equal: stop, commit, hand back the cmp lines (diff pixels, boxes): the user decides on a non-byte-equal colour (as SPARKLE).
+- Console gate (orchestrator, before the merge): `fxtest=124,124,124,124` and `fxtest=50,50,50,50` on base and on S4COL, two runs
+  each; pass: walk lower in both runs, runs of one build within 15 %. Budget: 4 Azahar starts.
+
+## Stop / At the end
+A failed gate or an edit that does not fit: commit, hand back the output (CLAUDE.md 4-5). Delete this row file in the completing commit.

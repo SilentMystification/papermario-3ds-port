@@ -136,7 +136,11 @@ ms floor). Counts per frame from fxcenb. Bound = oracle code read only; FXSPLIT 
   nd_quad case, not particles), then explosion, snowman_doll, radiating_energy_orb, snaking_static. fire_breath is not S4 (GPU fill).
 - S4 rows (user: run 1 is enough): S4P (nd_parts builder, nd_parts_run, nd_part_draw) + S4SNOW (caller, fxpic scenes) in one
   worktree; then S4PINK, S4SHIM, S4EMB in parallel. Byte gate fxpic_<idx>; console gate fxtest of the effect, base and row, two runs
-  each. Next S4 steps after their numbers: prim as per-instance vertex colour (pink, shimmer), cell offset as uv offset (embers).
+  each. FXFNCOV (build3ds/out/fxfncov_classes.txt, calls per frame minus base): the per-part growth is class F (snowfall +7015,
+  energy_shockwave +4617, shimmer +3596), with A, C, G, I growing with the part count: what S4P removes. pink_sparkles and water_splash
+  grow class D (+5306, +3644) and E: a flush per part (pink: new plan per prim; splash: a bind per drop). Colour step: row S4COL (PRIM
+  gets the plan's vertex slot when no SHADE: pm_comb.c src_of gave it a stage constant, so PBATCH2's routing never ran). Next: the
+  water uv-offset bind (nd_quad), energy_shockwave (list with two vertex loads: nd_part_draw for multi-load lists), embers uv step.
 - Culling of off-screen particles is not a cut: user code rule "no culling the game does not do" (feedback_code-rules.md).
 - Cut rows are written only after FXSPLIT and its two XL runs agree (lesson 2 below); then one row per cut with the console gate
   (fxtest of that effect, its ms before and after, two runs each).
