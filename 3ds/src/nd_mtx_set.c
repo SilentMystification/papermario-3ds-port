@@ -94,11 +94,21 @@ static __attribute__((cold, noinline)) void mtx_dbg(const Mtx* src, u32 hdr) {
            s[0], s[1], s[2], s[3], hdr & 0xffu, (unsigned)(hdr >> 16), pm_interp_repl, lm != 0);
 }
 int nd_mtx_static; /* SEAM2: the last model matrix load was a static matrix (R1 bit 8) */
+/* LOADMTX: a matrix source outside host memory (a stale or wrong record word). The load is skipped: the old matrix stays. One warning per run,
+ * as the walker's G_MTX check (nd_walk.c gbi_cold_bad_mtx). pm_log_evt passes the logging gate in every mode (console log, prof mode). */
+static __attribute__((cold, noinline)) void mtx_bad(u32 w0, u32 w1, u32 hdr, const void* src, const void* caller) {
+    static int once;
+    if (once) return;
+    once = 1;
+    pm_log_evt("load_mtx: source %08x outside host memory, w0 %08x w1 %08x hdr %08x, caller %p, frame %u, skipped",
+               (unsigned)(uintptr_t)src, (unsigned)w0, (unsigned)w1, (unsigned)hdr, caller, pm_frame_count());
+}
 void load_mtx(u32 w0, u32 w1, u32 hdr) {
     nd_mtx_static = (hdr & 0x100u) != 0;
     unsigned flags = (w0 & 0xff) ^ G_MTX_PUSH;
     Mtx* src = (Mtx*)ptr_of(w1);
     if (!src) return;
+    if (__builtin_expect(!is_host((u32)(uintptr_t)src), 0)) { mtx_bad(w0, w1, hdr, src, __builtin_return_address(0)); return; } /* LOADMTX */
     float in[4][4];
     if (pm_frame_count() == 200 && pm_gbi_ndref_frame() == 200) mtx_dbg(src, hdr); /* M4-2 diag */
     int lm = nd_mtx_replace(src, in); /* F06-2, S1-5: the interpolated matrix of the t = 0.5 pass */
