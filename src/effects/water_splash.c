@@ -207,7 +207,8 @@ void water_splash_appendGfx(void* effect) {
         }
 
 #ifdef TARGET_3DS
-        u16* refrBuf = nuGfxCfb[0] == nuGfxCfb_ptr ? nuGfxCfb[1] : nuGfxCfb[0]; /* SPLASHPREV: the previous frame (nuGfxCfbNum 2): no mid-frame grab */
+        u16* refrBuf = nuGfxCfb[0]; { u32 k_; for (k_ = 0; k_ < nuGfxCfbNum; k_++) if (nuGfxCfb[k_] == nuGfxCfb_ptr) { refrBuf = nuGfxCfb[(k_ + nuGfxCfbNum - 1) % nuGfxCfbNum]; break; } }
+        /* SPLASHPREV2: the buffer before the current one (2 or 3 buffers), the one pm_cfb_capture_prev copies on the GPU */
 #else
         u16* refrBuf = nuGfxCfb_ptr;
 #endif
