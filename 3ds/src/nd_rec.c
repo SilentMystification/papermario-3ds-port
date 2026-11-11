@@ -274,6 +274,54 @@ void nd_rec_napi(NdNapiRun run, const void* rec, unsigned units) {
     p[1] = (uint32_t)(uintptr_t)run;
     memcpy(p + 2, rec, units * 8u);
 }
+/* NATIVEAPI S4: a run of particle draws (nd_api.h NdParts). A list is a flat particle list when parts_ok holds: a vertex load at slot 0 of
+ * 1 to 64 vertices, then triangles (NDO_TRI1, NDO_TRI2, a sync) to NDO_END, every index inside the load. Memo: the last 8 lists that passed. */
+void nd_rec_state(uint32_t w0, uint32_t w1); /* the stream form of one typed unit (below) */
+static int tri_ok(uint32_t t, unsigned n) {
+    return ((t >> 16) & 0xffu) >> 1 < n && ((t >> 8) & 0xffu) >> 1 < n && (t & 0xffu) >> 1 < n;
+}
+static int parts_ok(const uint32_t* l) {
+    static const uint32_t* memo[8];
+    static unsigned mi;
+    for (unsigned k = 0; k < 8u; k++) if (memo[k] == l) return 1;
+    if ((l[0] >> 24) != NDO_VTX) return 0;
+    const unsigned n = (l[0] >> 12) & 0xffu;
+    if (n < 1u || n > 64u || ((l[0] >> 1) & 0x7fu) != n) return 0; /* v0 0: the load starts at slot 0 */
+    for (unsigned k = 1u; k <= 40u; k++) {
+        const uint32_t w0 = l[2u * k], w1 = l[2u * k + 1u];
+        if ((w0 >> 24) == NDO_END) { memo[mi] = l; mi = (mi + 1u) & 7u; return 1; }
+        if (w0 == ND_NOP_A) continue;
+        if ((w0 >> 24) == NDO_TRI1) { if (!tri_ok(w0 & 0xffffffu, n)) return 0; continue; }
+        if ((w0 >> 24) == NDO_TRI2) { if (!tri_ok(w0 & 0xffffffu, n) || !tri_ok(w1, n)) return 0; continue; }
+        return 0;
+    }
+    return 0;
+}
+void nd_parts_begin(NdParts* b, unsigned pre, unsigned post) {
+    b->n = 0; b->pre = pre; b->m = pre + 1u + post; b->ok = 0; b->list = NULL;
+}
+/* units: m units (8 bytes each) of one instance; the NDO_CALL unit of its list at index pre (the push form). A list that is not a particle list
+ * (or a call that is not the push form) takes the stream form of its units: the open run is recorded first, so the order is kept. */
+void nd_parts_add(NdParts* b, const uint32_t* units) {
+    const unsigned m = b->m, pre = b->pre;
+    const uint32_t a = units[2u * pre + 1u];
+    if (units[2u * pre] != ND_OP_CALL_W0 || !is_host(a) || !parts_ok((const uint32_t*)(uintptr_t)a)) {
+        nd_parts_end(b);
+        for (unsigned k = 0; k < m; k++) nd_rec_state(units[2u * k], units[2u * k + 1u]);
+        return;
+    }
+    memcpy(b->u + 2u + 2u * m * b->n, units, 2u * m * 4u);
+    b->n++;
+    /* the record: 1 + n * m units (at most 255); the instances sit in u (252 units) */
+    if (1u + (b->n + 1u) * m > 255u || (b->n + 1u) * m > 252u) nd_parts_end(b);
+}
+void nd_parts_end(NdParts* b) {
+    if (!b->n) return;
+    b->u[0] = b->n | b->pre << 8 | b->m << 16;
+    b->u[1] = 0;
+    nd_rec_napi(nd_parts_run, b->u, 1u + b->n * b->m);
+    b->n = 0;
+}
 /* D4b-3: a state op (HC4a: typed by the recorder) extends the open NDC_STATE run when nothing was recorded after it (no span, no other command) and the chunk has room;
  * else it opens a new run. HC4b: a typed op the shadow drops is not written (t4chk: written after NDO_DROP). */
 static void st_put(uint32_t w0, uint32_t w1) {
