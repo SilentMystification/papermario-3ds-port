@@ -157,6 +157,7 @@ static unsigned dec(const uint32_t* w, unsigned n, uint32_t* key, uint32_t* val,
     }
     return m;
 }
+uint32_t nd_emit_dk, nd_emit_da, nd_emit_db; /* blkchk: the first differing key of the last nd_emit_cmp, its old value and its block value (0xDEADBEEF: absent) */
 unsigned nd_emit_cmp(const uint32_t* a, unsigned na, const uint32_t* b, unsigned nb) {
     static uint32_t ka[1024], va[1024], kb[1024], vb[1024];
     const unsigned ma = dec(a, na, ka, va, 1024u), mb = dec(b, nb, kb, vb, 1024u);
@@ -167,7 +168,7 @@ unsigned nd_emit_cmp(const uint32_t* a, unsigned na, const uint32_t* b, unsigned
         if (later) continue;
         unsigned j = mb;
         while (j > 0u && kb[j - 1u] != ka[i]) j--;
-        if (!j || vb[j - 1u] != va[i]) bad++;
+        if (!j || vb[j - 1u] != va[i]) { if (!bad) { nd_emit_dk = ka[i]; nd_emit_da = va[i]; nd_emit_db = j ? vb[j - 1u] : 0xDEADBEEFu; } bad++; }
     }
     return bad;
 }

@@ -1084,12 +1084,18 @@ static __attribute__((cold, noinline)) void blk_build(NdNatC* q, const NdDraw* d
     q->boff = blk_n; q->blen = (uint16_t)n; q->bgen = blk_gen; q->bt = d->tmpl;
     blk_n += n;
 }
-static __attribute__((cold, noinline)) void blk_check(const uint32_t* blk, unsigned n, const NdDraw* d) {
+extern uint32_t nd_emit_dk, nd_emit_da, nd_emit_db;
+static __attribute__((cold, noinline)) void blk_check(const uint32_t* blk, unsigned n, const NdDraw* d, const NdNatC* q) {
     static uint32_t old[ND_EMIT_MAX];
     NdShadow s = ndn_sh;
     const unsigned no = nd_emit_draw(old, &s, d);
     bc_draws++;
-    if (nd_emit_cmp(old, no, blk, n)) bc_bad++;
+    if (nd_emit_cmp(old, no, blk, n)) {
+        static unsigned nl_;
+        bc_bad++;
+        if (nl_ < 8u) { nl_++; pm_log("blkchk diff f%u tmpl %d key %x old %x blk %x u0 %d npal %u zp %d mix %d boff %u bgen %u/%u", pm_frame_count(), d->tmpl, (unsigned)nd_emit_dk,
+                                    (unsigned)nd_emit_da, (unsigned)nd_emit_db, d->u[0].dim != 0, (unsigned)d->npal, q->zp, q->mix_st, (unsigned)q->boff, (unsigned)q->bgen, (unsigned)blk_gen); }
+    }
     const unsigned fr = pm_frame_count();
     if (fr != bc_fl) { bc_fl = fr; if (fr >= bc_f0 + 300u) { pm_log("blkchk f%u frames %u draws %u diff %u", fr, fr - bc_f0, bc_draws, bc_bad); bc_f0 = fr; bc_draws = bc_bad = 0; } }
 }
@@ -1102,7 +1108,7 @@ static unsigned blk_put(uint32_t* o, NdNatC* q, const NdDraw* d) {
     if (b->u0 != 0xFFFFu) { uint32_t* w = o + b->u0; w[2] = d->u[0].dim; w[3] = d->u[0].param; w[4] = d->u[0].lod; w[5] = d->u[0].addr; o[b->ty] = d->u[0].type; }
     for (unsigned i = 0; i < 6u; i++) if (b->col[i] != 0xFFFFu) o[b->col[i]] = d->tev_col[i];
     o[b->idx] = d->idx_word;
-    if (__builtin_expect(bc_sw, 0)) { if (bc_sw < 0) bc_sw = pm_debug_has("blkchk"); if (bc_sw) blk_check(o, n, d); }
+    if (__builtin_expect(bc_sw, 0)) { if (bc_sw < 0) bc_sw = pm_debug_has("blkchk"); if (bc_sw) blk_check(o, n, d, q); }
     nd_shadow_reset(&ndn_sh);
     return n;
 }
