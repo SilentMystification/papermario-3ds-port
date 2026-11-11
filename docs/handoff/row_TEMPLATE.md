@@ -1,36 +1,29 @@
 # Row <id>: <full name>
 
-> NO VISUAL CHECKS (user, 2026-11-10, CLAUDE.md rule 1): no agent looks at or judges a picture. Picture gates in older rows are void; gates are nd_host and the mechanical byte compare. The look is the user's console check.
+(Model: <Haiku>. 60 lines or fewer. The agent reads only this file, CLAUDE.md and what this file names.)
 
+## User facts (bugs only)
+What the user did and saw, in the user's words. The fault is fact (CLAUDE.md 1).
 
-(60 lines or fewer. The agent reads only this file and what it names.)
+## Cause (oracle code read)
+<file:line and value of each path that causes it; for a format change, every reader and writer of the format.>
 
-## User facts (bugs only, required)
-Trigger sequence: <inputs, menus, choices>. First wrong frame: <event or frame>. Expected look: <user words>. Reproducing scenario: <name, or "add one first">.
-
-## Goal
-<2 to 3 lines.>
-
-## Start state
-Worktree build3ds/wt/<id>, branch <id> from main <hash>. Copy assets/us and ver/us/build into it. STATE from the previous agent (10 lines or fewer):
-
-## Cause (oracle code read of how it draws)
-<file:line and value of each path; the fix below changes each one. No debug-log or test step to confirm it.>
+## Start
+`sh 3ds/tools/wt_new.sh <id>` (build3ds/wt/<id>, branch <id> from main). PM_ROW=<id> PM_LANE=<id> on every build and bench call.
 
 ## Touch only
 Files: <paths>. Symbols: <symbol> in <file>.
 
-## Done criteria (all must pass; handback only then)
-1. <gate: command, expected result>
-Affected scenarios (no others): <list>
+## Exact edits
+1. <file, function, the edit>
 
-## Rules
-CLAUDE.md rules 5, 7, 9, 11. PM_LANE=<id> on every build.sh and bench call. No git stash. Wait for background runs in the foreground. Commit after each passed step.
+## Gate (CLAUDE.md 2: nd_host and byte compare only, no picture)
+- `PM_ROW=<id> PM_LANE=<id> sh 3ds/build.sh > build3ds/out/build.txt 2>&1`, memcheck OK.
+- `python 3ds/tools/bench.py run nd_host --row <id> --why "<text>"`: PASS.
+- `python 3ds/tools/bench.py cmp <bench> --row <id> --commit <merge-base>` after a run of <bench>: byte-equal (at most 2 scenes).
 
-## Commands
-- Build: PM_ROW=<id> PM_LANE=<id> sh 3ds/build.sh (it generates 3ds/src/map_restore_table.c).
-- Test: PM_ROW=<id> PM_LANE=<id> python 3ds/tools/bench.py run <bench> --row <id> --lane <id> --why "<text>"
-- Budget reset: powershell -NoProfile -File 3ds/run_azahar.ps1 -ResetBudget <id>
+## Stop
+A failed gate, an edit that does not fit the code, or a test-tool fault: commit and hand back the exact output (CLAUDE.md 4-5).
 
 ## At the end
-Delete this row file in the commit that completes the row. SendMessage main "<id> ready <hash>". The orchestrator merges and removes the worktree.
+Delete this row file in the commit that completes the row. Hand back: the ready hash, the gate results, the memcheck line.

@@ -12,17 +12,14 @@ Edit rules in place, never append. Start of a session: read docs/handoff/HANDOFF
 - Session size: count the context from the session transcript at stopping points. Ask the user at about 300K, then once per
   further 100K, whether to start a new session. A new session starts only between chains (no agent running). Write HANDOFF.md
   only when a new session starts. Agents of one session cannot be resumed from another session: their context ends there.
-- Oracle (Opus): the orchestrator starts the first oracle of a session. Every other Opus agent (a second or a replacement oracle,
-  an Opus code agent) is started only by the user: ask with AskUserQuestion and give the reason (the oracle passed about 300K, or a
-  new area where its context does not help). Reuse the current oracle for related questions, sent in groups. Never two oracles
-  running at once unless the user says so. It reads code and writes only
-  docs/handoff/row_*.md files (rows, findings), never code. It plans each fix by a code read (CLAUDE.md 1-2). For a change of a data
-  format it first lists every reader by grep, in the row.
-- Code agents: Haiku (coder.md). Sonnet or Opus only for a row where the oracle gives a reason and the user says yes. Only the user
-  approves Opus agents. Reuse an agent in the same area and of the same model type for related work,
-  when the follow-up comes soon (its cache lasts about 5 min) or its context holds the code read the next step needs. Never reuse
-  across model types (a Haiku row gets a Haiku agent). Rotate: Haiku past about 150K, when the work
-  leaves the agent's files, or at the end of a chain.
+- Oracle (Opus): reads code and writes only docs/handoff/row_*.md files (rows, findings), never code (oracle.md). Every fix is
+  planned by a code read (CLAUDE.md 1-2); for a change of a data format it first lists every reader. The orchestrator starts the
+  first oracle of a session and reuses it for related questions, sent in groups. Any other Opus agent (a second or replacement
+  oracle, an Opus code agent) is started only by the user: ask with AskUserQuestion and give the reason (the oracle passed about
+  300K, or a new area where its context does not help). Never two oracles at once unless the user says so.
+- Code agents: Haiku (coder.md). Sonnet or Opus only for a row where the oracle gives a reason and the user says yes. Reuse an agent
+  of the same model type for related work in its area when the follow-up comes soon (its cache lasts about 5 min) or its context
+  holds the code read the next step needs. Rotate: past about 150K, when the work leaves its files, or at the end of a chain.
 
 ## Rows
 - One row file per agent (60 lines or fewer), a prompt of 10 lines or fewer that points to it.
