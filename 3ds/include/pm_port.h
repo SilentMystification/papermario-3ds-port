@@ -286,7 +286,10 @@ typedef struct PmOpt {
     int hud_ms; /* HUDINT: refresh interval of the bottom screen memory rows in ms: 250, 500, 1000 (default), 2000, 5000. options.ini hudint=<ms> */
     int pos_hud; /* POSHUD: 1 = the bottom screen HUD has a Mario position row, drawn every frame. options.ini poshud=0|1, Debug tab row 8 */
     int poslog; /* MN7 rest: 1 = the L+R+Y+B combo logs a position line (pm_input.c). options.ini poslog=0|1, Debug row Position log combo (option row 12) */
+    int esc_mode; /* ESCAPE2: START+SELECT: 0 Homebrew Menu, 1 Quit (close to the HOME Menu), 2 HOME Menu (suspend). options.ini escmode=hbmenu|quit|home */
 } PmOpt;
+const char* pm_esc_name(int m); /* ESCAPE2: name of the START+SELECT mode (options.ini escmode) */
+void pm_esc_take(void); /* ESCAPE2: the game loop takes the START+SELECT request of the watchdog (pm_wdog.c) */
 void pm_fskip_set(int on); /* pm_main.c: applies fskip at once */
 extern int pm_new3ds; /* 1 on a New 3DS, set in pm_main.c */
 extern PmOpt pm_opt;

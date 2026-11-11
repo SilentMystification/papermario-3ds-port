@@ -96,6 +96,21 @@ void pm_wd_flush_notes(void) {
  * (the words hidScanInput reads), not hidScanInput, which would write the game thread's key state. Switch noescape turns it off. */
 extern int pm_gx_stuck(void);
 extern int pm_gpu_hang_dump(char* b, int n);
+extern volatile int pm_exit_request; /* PT28: the main loop ends (pm_main.c) */
+volatile int pm_esc_req; /* ESCAPE2: 0 none, 1 + esc_mode: the watchdog asks the game loop for the START+SELECT action */
+int pm_debug_value(const char* key, char* out, unsigned n);
+unsigned pm_frame_count(void); /* pm_main.c */
+/* ESCAPE2: game thread, once per loop pass. Runs the START+SELECT action the watchdog asked for: 1 Homebrew Menu (the loop ends, main returns
+ * through pm_shutdown), 2 Quit (aptClearChainloader first: the close goes to the HOME Menu), 3 HOME Menu (aptJumpToHomeMenu, the game goes on). */
+void pm_esc_take(void) {
+    int r = pm_esc_req;
+    if (!r) return;
+    pm_esc_req = 0;
+    pm_log_evt("escape: taken, mode %s", pm_esc_name(r - 1));
+    if (r == 3) { aptJumpToHomeMenu(); return; }
+    if (r == 2) aptClearChainloader();
+    pm_exit_request = 1;
+}
 static unsigned esc_n;
 static unsigned wd_gpu_noted; /* the stall limit passed with the GPU stuck: noted once, the process stays */
 
@@ -104,10 +119,18 @@ static void wd_escape(void) {
     char buf[400];
     int n = snprintf(buf, sizeof buf, "escape: START+SELECT 1 s, phase %u steps %u stuck %d ", pm_wd_phase, pm_wd_prog, stuck);
     n += pm_gpu_hang_dump(buf + n, (int)sizeof buf - n - 2);
-    buf[n++] = '\n';
     buf[n] = 0;
-    pm_crash_line(buf, n);
-    if (!stuck) pm_exit_process(); /* the clean exit: back to the HOME Menu */
+    if (stuck) { buf[n++] = '\n'; buf[n] = 0; pm_crash_line(buf, n); } /* GPU stuck: the crash path, then the reset below */
+    else { /* ESCAPE2: no pm_crash_line before the clean exit: its crash_flush (pm_log.c:1303) stops the log writer and keeps drain_lock,
+            * so pm_log_stop in pm_shutdown would block for ever. The line goes to the log queue and to crash.txt (wd_note: no crash state). */
+        pm_log_evt("%s", buf);
+        buf[n++] = '\n'; buf[n] = 0; wd_note(buf, n);
+        pm_esc_req = 1 + pm_opt.esc_mode;
+        for (int i = 0; i < 30 && pm_esc_req; i++) svcSleepThread(100000000LL);
+        if (!pm_esc_req) return;
+        static const char m[] = "escape: the game loop did not take the request in 3 s, hardware reset\n";
+        pm_crash_line(m, (int)sizeof m - 1);
+    }
     APT_HardwareResetAsync(); /* GPU stuck: the console reboots to the HOME Menu, no power button (GSPGPU_ResetGpuCore may block here) */
     svcSleepThread(5000000000LL);
     svcExitProcess(); /* last resort */
@@ -115,11 +138,14 @@ static void wd_escape(void) {
 }
 
 static void escape_poll(unsigned stalled) {
+    if (pm_exit_request || !aptIsActive() || pm_wd_asleep) { esc_n = 0; return; } /* ESCAPE2: the exit is under way, or the app is not running */
     if (PMDL("noescape") || !hidSharedMem) { esc_n = 0; return; }
     u32 id = hidSharedMem[4] & 7u;
     u32 k = hidSharedMem[10 + id * 4];
     int held = (k & (KEY_START | KEY_SELECT)) == (KEY_START | KEY_SELECT);
     if (!held && stalled >= 3 && PMDL("wdesc")) held = 1; /* test seam: the stall alone counts as the combo after 3 s */
+    static int esc_at = -2; if (esc_at == -2 && pm_frame_count() > 0) { char v[16]; esc_at = pm_debug_value("escat", v, sizeof v) ? atoi(v) : -1; }
+    if (!held && esc_at > 0 && pm_frame_count() >= (unsigned)esc_at) held = 1; /* ESCAPE2 test seam: the combo held from frame escat */
     if (!held) { esc_n = 0; return; }
     if (++esc_n < 10u) return;
     esc_n = 0;
