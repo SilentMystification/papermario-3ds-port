@@ -13,4 +13,5 @@ Standard answers (do not stop for these):
 - A bench name has a suffix (for example `_pic`): use the bench that runs the named scenario.
 - A base is not stored: run `bench.py base <bench>` once (two runs, stored automatically).
 - `hotset_size` reports a stale name (M2 stale) that your own cold or inline change caused: delete that one `*(.text.<name>)` line from 3ds/ld/hot_order.ld and rerun. Do not stop for this. Any other stale name: hand back.
+- Base runs (`bench.py base`) are not charged to the row budget (BASEFIX): count only the starts of `bench.py run`. Do not stop for base starts.
 - STALE BUILD after your own commit or a merge: commit first, rebuild with the row command (`PM_ROW=<row> PM_LANE=<row> sh 3ds/build.sh`), then rerun. Do not stop for this.
