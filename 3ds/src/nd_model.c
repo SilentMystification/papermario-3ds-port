@@ -307,19 +307,26 @@ static int nd_r11_ok(uint32_t addr, int pre) {
 }
 int pm_gpu_noise_ok(void);
 void pm_gpu_noise_draw(NdUnit* u, float* nzo);
+static __attribute__((cold, noinline)) void mdl0_note2(const uint32_t* rec, const NdMCtx* c) { /* MDL-0 count, the first 12 why 2 records (switch mdl0) */
+    static unsigned m2_ = 0; if (m2_ < 12u && mdl0_sw()) { const uint32_t* aw = rec + NDMC_RW; m2_++; pm_log_d("mdl2 n %u w0 %08x %08x w1 %08x %08x gfx %d", (unsigned)rec[26], aw[0], aw[1], aw[2], aw[3], c->aux_ok); }
+}
+static __attribute__((cold, noinline)) void mdl0_note3(const uint32_t* rec) { /* MDL-0 count, the first 12 why 3 records (switch mdl0) */
+    static unsigned m3_ = 0; if (m3_ < 12u && mdl0_sw()) { m3_++; const uint32_t* a = rec[22] ? (const uint32_t*)(uintptr_t)rec[22] : NULL; const uint32_t* b = rec[23] ? (const uint32_t*)(uintptr_t)rec[23] : NULL;
+        /* MDL-5e: the map, and the first 6 words (3 ops) of each custom list: the ops that run on the state side */
+        pm_log_d("mdl3 f%u map %d:%d pre %08x post %08x pre w %08x %08x %08x %08x %08x %08x post w %08x %08x %08x %08x", pm_frame_count(), (int)gGameStatusPtr->areaID, (int)gGameStatusPtr->mapID, (unsigned)rec[22], (unsigned)rec[23],
+            a ? a[0] : 0u, a ? a[1] : 0u, a ? a[2] : 0u, a ? a[3] : 0u, a ? a[4] : 0u, a ? a[5] : 0u, b ? b[0] : 0u, b ? b[1] : 0u, b ? b[2] : 0u, b ? b[3] : 0u); }
+}
+
 static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st) {
     st->why = 0; nd_nat_sub = 0;
     const uint32_t f = rec[6]; /* R3 w0 flags */
     if (!c->mode || !c->mode->ok || (!c->has_comb && !c->mode->has_cb)) return (st->why = 1, 0);
     if (c->gv && c->gv->fxon && !c->nrm_ok) return (st->why = 4, 0); /* lit or fog without the walker normal rows (PM5-3: with them the range is a pm5 draw) */
     if (rec[26] != 0 && !c->aux_ok) { /* MDL-0 count (switch mdl0): the first 12 why 2 records, their R13 words */
-        static unsigned m2_ = 0; if (m2_ < 12u && mdl0_sw()) { const uint32_t* aw = rec + NDMC_RW; m2_++; pm_log_d("mdl2 n %u w0 %08x %08x w1 %08x %08x gfx %d", (unsigned)rec[26], aw[0], aw[1], aw[2], aw[3], c->aux_ok); }
+        mdl0_note2(rec, c);
         return (st->why = 2, 0); } /* R13: words after the record (special tile list, untextured ops); S3L-3: the untextured form is decoded by the caller (aux_ok) */
     if (!nd_r11_ok(rec[22], 1) || !nd_r11_ok(rec[23], 0)) { /* MDL-0 count (switch mdl0): the first 12 why 3 records: list addresses and the first two words of each list */
-        static unsigned m3_ = 0; if (m3_ < 12u && mdl0_sw()) { m3_++; const uint32_t* a = rec[22] ? (const uint32_t*)(uintptr_t)rec[22] : NULL; const uint32_t* b = rec[23] ? (const uint32_t*)(uintptr_t)rec[23] : NULL;
-            /* MDL-5e: the map, and the first 6 words (3 ops) of each custom list: the ops that run on the state side */
-            pm_log_d("mdl3 f%u map %d:%d pre %08x post %08x pre w %08x %08x %08x %08x %08x %08x post w %08x %08x %08x %08x", pm_frame_count(), (int)gGameStatusPtr->areaID, (int)gGameStatusPtr->mapID, (unsigned)rec[22], (unsigned)rec[23],
-                a ? a[0] : 0u, a ? a[1] : 0u, a ? a[2] : 0u, a ? a[3] : 0u, a ? a[4] : 0u, a ? a[5] : 0u, b ? b[0] : 0u, b ? b[1] : 0u, b ? b[2] : 0u, b ? b[3] : 0u); }
+        mdl0_note3(rec);
         return (st->why = 3, 0); } /* R11: custom gfx pre and post */
     const int tex_u = c->u0 != NULL && c->u0->dim != 0; /* the unit exists: tex_on of the combine decision */
     const uint32_t w0 = c->mode->has_cb ? c->mode->cw0 : c->comb_w0, w1 = c->mode->has_cb ? c->mode->cw1 : c->comb_w1; /* B9: the list combine wins (the render mode list runs after the entry) */

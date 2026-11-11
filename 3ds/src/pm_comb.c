@@ -390,7 +390,7 @@ static int build_lead(unsigned w0, unsigned w1, int two, int t1only, PmPlan* out
     int rc = build(w0, w1, two, t1only, 0, out);
     return rc == 4 ? build(w0, w1, two, t1only, 1, out) : rc;
 }
-int pm_comb_build(unsigned w0, unsigned w1, int two, int t1only, PmPlan* out) {
+__attribute__((cold)) int pm_comb_build(unsigned w0, unsigned w1, int two, int t1only, PmPlan* out) {
     int rc;
     fold_off = 0;
     short_step = 0;
@@ -494,7 +494,7 @@ static void unp(unsigned c, float o[4]) {
 
 static float cl(float v) { return v < 0.f ? 0.f : v > 1.f ? 1.f : v; }
 
-void pm_comb_eval(const PmPlan* p, const float t0[4], const float t1[4], const float shade[4], float out[4]) {
+__attribute__((cold)) void pm_comb_eval(const PmPlan* p, const float t0[4], const float t1[4], const float shade[4], float out[4]) {
     float prev[4], vtx[4], buf[4], noise[4] = { .5f, .5f, .5f, 1.f }; /* PT07: the audit gives NOISE its mean */
     memcpy(vtx, shade, sizeof vtx);
     if (p->vtxname != PM_NM_SHADE) unp(p->vtx, vtx);
