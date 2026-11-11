@@ -310,9 +310,6 @@ void nd_render_state(uint32_t omode_h, uint32_t m, int depth_img, NdRender* o) {
     o->memb = two && ((m >> 20) & 3u) == 1u && ((m >> 16) & 3u) == 1u;
     o->set_memb = 1;
     o->zcmp = (m & 0x10u) != 0; o->zupd = (m & 0x20u) != 0; o->decal = (m & 0xc00u) == 0xc00u;
-    /* FILLA0: an alpha-0 fragment of an alpha blend without depth write changes no pixel: the alpha test (GREATER 0) drops it before
-     * the frame-buffer read and write (fire_breath puffs). */
-    if (o->blend && o->atest < 0 && !o->zupd && !o->nocol && !o->memb) o->atest = 0;
 }
 
 /* ---- render state words ---- */
