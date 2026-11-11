@@ -19,6 +19,17 @@ A replacement oracle starts here: read CLAUDE.md, orchestrator_rules.md, plan_ho
 6. KEYMISS: decided 2026-11-11 (yes): rows KEYMISS, KEYFIX1, KEYFIX2 written.
 5. STEREOFX: the ESCAPE crash.txt from the XL (3D slider hang). COLDBOOT: the XL cold-boot log.
 
+## Open designs for the next oracle (user decision: Haiku rows with exact edits; console fxtest costs in build3ds/wt/FXCEN3/build3ds/out/fxcen_o3ds.txt)
+- Per-particle draws (snowfall +14.1 ms for 120 draws, embers +10.5, energy_shockwave +7.2, effect_3D, pink_sparkles, shimmer_burst):
+  each particle is gSPMatrix + gSPDisplayList of a static effect list (snowfall.c:207-218). walk_call (nd_walk.c:221-243) sends a
+  non-map list to ent_gdl (nd_ent.c:332) -> ent_run (:389): per call ENT_GBI replays the list's state words and ent_seg_native makes one
+  native draw per segment (about 115 us per draw on the O3DS by the table). The ring path (nd_ops_run -> nd_geom_vtx -> gv_tri) keeps
+  a matrix id per vertex and batches up to 8 matrices per draw. Read ent_run's per-call cost first (state replay, flush, palette).
+- Water refraction (water_splash +12.3 ms, water_block +11.3): SPLASHPREV reads the previous frame (water_splash.c:210); a SETTIMG of a
+  non-current frame buffer calls pm_cfb_capture_prev (nd_tex_set.c:47, pm_main.c:347): a CPU copy of the PICA colour buffer to RGBA5551,
+  then one LoadMultiTile window per drop. Design a GPU-side copy (render-to-texture of the last frame) and bind it as unit 0.
+- Not read: fire_breath beyond TILEWIN, spiky_white_aura (+3.9 ms, 8 draws), bulb_glow (45 tex calls), firework_rocket (2 texmiss).
+
 ## Morning list (rows to write next, by the oracle)
 1. Class cuts after HC6B: read M1-hot per class (bench hotset_size on main after the HC6B merge) and the M3 census (hotset.py --fncov on
    fncov_mac01_det/kmr10_det logs of the HC6B lane); cut rare arms of the top functions per class as HCCUT2 did (byte-equal, cold

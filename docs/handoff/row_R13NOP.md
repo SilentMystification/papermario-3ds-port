@@ -57,6 +57,14 @@ prof=4 turns the log off. One new scenario and bench in one commit:
 3. Gate: the head log's `ndm f300` line has no `2:` in its why list, or a smaller one than the base log's line
    (build3ds/basecache/<commit>/mdl5_iwa10_cen/run.log, main folder), and its fb is not larger. Write both lines in the commit.
 
+## Step 3 (after 33ac82a9f: `bench.py base` stores shots only; mdl5_iwa10_cen makes none, so it ends rc 1 although 3 runs agree)
+The base value is known: three runs of base f62a7efb3 agree: `ndm f300 native 16814 fb 1815 wref 16149 hit 16351 miss 2278 clears 0
+win 0 why 2:1815` (their run ids are in runs.jsonl). No new base run and no bench.py change in this row.
+1. `bench.py run mdl5_iwa10_cen --row R13NOP --why "head: why 2 after the R13 sync drop"`: one start. If the budget of 8 is used up,
+   stop and hand back (no reset).
+2. Gate: the head `ndm f300` line has no `2:` entry, or one below 1815, and its fb is at most 1815. Write the base line, the base run
+   ids and the head line in the commit message.
+
 ## Stop and end
 A failed gate, an edit that does not fit, or a tool fault: commit, hand back the exact output (CLAUDE.md 4-5). Delete this row file
 in the completing commit. Hand back the hash, gates, memcheck line, both ndm lines. The look is the user's console check.
