@@ -39,6 +39,13 @@ A replacement oracle starts here: read CLAUDE.md, orchestrator_rules.md, plan_ho
   (snowfall), the same with 105 (embers), 89 (water_splash), 84 (water_block). Design the batching and the refraction rows from those
   class splits: ent/sub/kick large -> route small effect lists to the ring path (walk_call :231 condition); tex/fbread large for
   water -> GPU copy of the previous frame instead of pm_cfb_capture_prev.
+- Group 2/3 result (old oracle): rows PBATCH1 (particle lists 4+ calls per frame -> ring path) and SPLASHPREV2 (water_splash reads
+  the buffer the GPU copy is made for). The GPU previous-frame copy already exists (PT12 pm_gpu_grab_prev, grab_impl prev_frame,
+  queued at pm_gpu_begin pm_gpu.c:2526); the CPU read (pm_gpu_read_frame pm_main.c:380) is only its fallback: first frame of a request
+  run, a T2 grab earlier in the frame (grab_n > 0 overwrites grab_tex), no VRAM slot (off_fail), BTRANS skip. Open: a separate texture
+  for the previous-frame copy so a T2 grab in the same frame does not force the CPU read (callers: every set_timg of a non-current cfb:
+  pause picture pause_cfb_src background_gfx.c:263, game over blur, screen_render_util.c:44, state_pause.c:110, file select :189).
+  water_block reads no frame buffer: its +11.3 ms (39 draws, 59 texture calls) needs the console class split.
 
 ## Morning list (rows to write next, by the oracle)
 1. Class cuts after HC6B: read M1-hot per class (bench hotset_size on main after the HC6B merge) and the M3 census (hotset.py --fncov on
