@@ -311,7 +311,10 @@ void nd_geom_vtx(u32 w0, u32 w1, const Gfx* list) { /* G_VTX: the vertex load (c
         PH_ADD(C_VTXLOAD, n);
         /* A load at slot 0 starts a new mesh. Later loads in the same
          * list append above it and keep the earlier slots. */
-        if (v0 == 0 && tri_since_vtx) memset(vert_live, 0, sizeof vert_live);
+        if (v0 == 0 && tri_since_vtx) {
+            memset(vert_live, 0, sizeof vert_live);
+            if (!pm_gpu_gv_room(n + 64u)) { extern int ring_need(unsigned nv, unsigned ni); if (ring_need(n + 64u, 384u)) memset(vert_ring, 0xff, sizeof vert_ring); } /* HUDRING: a new mesh wraps the ring chunk (as rectangles do); the slots of the old chunk are void */
+        }
         tri_since_vtx = 0;
         int gring0 = -1;
         unsigned gmi = GV_NONE;
