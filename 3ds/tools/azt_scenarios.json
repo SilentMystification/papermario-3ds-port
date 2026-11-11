@@ -14130,6 +14130,30 @@
       "reason": "R13NOP step 2 census: the ndm f300 window line with the why list, base and head. Log only."
     },
     {
+      "name": "mim11_cen",
+      "status": "unverified",
+      "subject": "mim_11 (Forever Forest, outside Boo's Mansion), warp entry 0, cold det, no shots. The census switch: the ndm window line of frame 300 (native records, fb, why codes) for the floor that does not render.",
+      "proves": "MIM11CEN: which census path drops the mim_11 floor (model, raw batch, ring triangle, texture cache or range skip), compared with the iwa_10 census.",
+      "debug": "warp=mim_11:0 census loglevel=debug det",
+      "until": "ndm f300 native",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: mim_11 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mim_11 entry 0"
+        },
+        {
+          "name": "ndm300",
+          "regex": "ndm f300 native \\d+ fb \\d+"
+        }
+      ],
+      "reason": "MIM11CEN census: the ndm f300 window line with the why list on mim_11. Log only."
+    },
+    {
       "name": "hitst_mac01",
       "status": "unverified",
       "subject": "Toad Town mac_01, Mario at pos 0 0 200 (warp entry 0), no input. Log only: the hitst census line of the first 300-frame window.",

@@ -7949,6 +7949,21 @@
       "gates": []
     },
     {
+      "name": "mim11_cen",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MIM11CEN census: mim_11 cold det, the ndm f300 window line with the why list (census switch). Which path drops the floor.",
+      "scenario": "mim11_cen",
+      "cap": 30,
+      "until": "ndm f300 native",
+      "tags": [
+        "azahar",
+        "census"
+      ],
+      "gates": []
+    },
+    {
       "name": "hitst_mac01",
       "kind": "azahar_stream",
       "speed": "normal",
