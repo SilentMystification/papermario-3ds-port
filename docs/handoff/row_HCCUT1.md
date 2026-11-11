@@ -23,6 +23,9 @@ line (:3498). No other line.
    (:3520) `static __attribute__((noinline)) void ndm_cmp(` -> `static __attribute__((cold, noinline)) void ndm_cmp(`.
 3. pm_gpu_ndm_end (:3498): `void pm_gpu_ndm_end(void) {` -> `__attribute__((cold, noinline)) void pm_gpu_ndm_end(void) {`.
 ## Gate (CLAUDE.md 2)
+- Base rule until LOADMTX is merged (test_catalog.md 6a): no `bench.py base`. Run the row's bench, then `python 3ds/tools/bench.py cmp
+  <bench> --row HCCUT1 --commit b8bc06613` (stored: spot_mac01_det, mdl5_iwa10_det). A run of the row that ends rc 2 with
+  `load_mtx at nd_mtx_set.c:106` is the known main fault: run it once more and report both runs.
 - `PM_ROW=HCCUT1 PM_LANE=HCCUT1 sh 3ds/build.sh > build3ds/out/build.txt 2>&1`: memcheck OK.
 - `PM_LANE=HCCUT1 python 3ds/tools/bench.py run hotset_size --row HCCUT1 --lane HCCUT1 --why "HCCUT1 sizes"`: rc 0 (0 stale; if
   hot_order.ld names a function the map lost, hand back), M1hot E about 11.3 KB (20.1 minus 8.8), C about 10.6 KB. Write both.
