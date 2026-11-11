@@ -391,6 +391,7 @@ set(PORT_SRC
     src/nd_shape.c
     src/nd_ent.c
     src/nd_recs.c
+    src/nd_yay0.c
     src/pm_keymiss.c
     src/pm_dpcen.c
     src/nd_dlc.c
