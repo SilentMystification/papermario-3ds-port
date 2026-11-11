@@ -54,7 +54,6 @@ CLAUDE.md rules 1-7. PM_LANE=KZN04 on every build.sh and bench call. No git stas
 
 ## Commands
 - Build: PM_ROW=KZN04 PM_LANE=KZN04 sh 3ds/build.sh
-- Budget reset: powershell -NoProfile -File 3ds/run_azahar.ps1 -ResetBudget KZN04
 
 ## Fix design (oracle batch 2)
 Cause chain (nd_tex_set.c:542-660, pm_tex.c:1809):

@@ -52,7 +52,6 @@ CLAUDE.md rules 1-7. PM_LANE=STEREOFX. No git stash. Foreground waits.
 
 ## Commands
 - Build: PM_ROW=STEREOFX PM_LANE=STEREOFX sh 3ds/build.sh
-- Budget reset: powershell -NoProfile -File 3ds/run_azahar.ps1 -ResetBudget STEREOFX
 
 ## State (2026-11-10)
 Diagnostics merged (8f4e2997a, branch 81b14fa59). Azahar: NOT REPRODUCED. merlee_stereoat (slider 0 to 1 at f500, Merlee spell to undarken f992):
