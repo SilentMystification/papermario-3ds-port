@@ -2401,6 +2401,23 @@ static void off_dump(void) {
   }
 }
 
+/* SYNC60: with 60 FPS (interpolation) one frame begin per LCD period (1/59.83 s), paced by the tick: a sleep to 0.5 ms before the time,
+ * then a short spin. Replaces C3D_FRAME_SYNCDRAW, which blocked the walker until the vblank. No division: 15/4 ns per tick (0.6 % long,
+ * covered by the 0.5 ms margin and the spin). */
+static u64 s60_next;
+static void sync60_pace(void) {
+    const u64 period = 4481228ull; /* SYSCLOCK_ARM11 (268111856) / 59.83 */
+    const u64 margin = 134056ull;  /* 0.5 ms of ticks */
+    u64 t = svcGetSystemTick();
+    if (s60_next && t < s60_next) {
+        u64 rem = s60_next - t;
+        if (rem > 2u * margin) svcSleepThread((s64)(((rem - margin) * 15u) >> 2));
+        while (svcGetSystemTick() < s60_next) {}
+        t = s60_next;
+    }
+    s60_next = (s60_next && t < s60_next + period) ? s60_next + period : t + period; /* a late frame starts a new schedule: no catch-up */
+}
+
 /* LB1: pm_gpu_begin records the frame start. With fps60 the GPU part runs at once, as before. Otherwise the GPU part runs in
  * pm_gpu_begin_wait: at the first gbi task, at the first CPU read of GPU memory, at pm_gpu_drew and at pm_gpu_end. So the game
  * logic and the display list build run before the wait for the GPU tail of the last frame. */
@@ -2438,11 +2455,12 @@ void pm_gpu_begin_wait(void) {
     PH_PUSH(PH_FBEGIN); /* C3D_FRAME_SYNCDRAW: waits for the previous frame on the GPU */
     /* SLP2: for pm_wd_wake_frames frames after a wake, the frame begin does not wait for the GPU. A long sleep may leave the GSP event
      * unsignalled (not verified); the wait then may never return, and the game thread would not reach aptMainLoop. The flag is set in wake_hook (pm_log.c). */
-    unsigned fb_flags = (pm_interp_on > 0 && !pm_wd_wake_frames) ? C3D_FRAME_SYNCDRAW : 0;
+    unsigned fb_flags = 0; /* SYNC60: the begin waits only for the GX queue; 60 FPS is paced by time */
+    if (pm_interp_on > 0 && !pm_wd_wake_frames) sync60_pace();
     if (pm_wd_wake_frames) pm_wd_wake_frames--;
     raw1_reset(); sh_clear(); C3D_FrameBegin(fb_flags);
     nb.ring_done = nb.ring_fr; /* FB-1: C3D_FrameBegin waits for the GX queue (C3Di_WaitAndClearQueue) with or without SYNCDRAW: every chunk used before this frame is finished */
-    if (gb_on) { gb_sum += (unsigned)(pm_ticks() - gb_sub); gb_n++; gb_on = 0; pm_pf_late++; } /* S0-6: the sync of the previous frame returned. PROF2-1: this read belongs to the sample (ssvc), it lands in the next frame */ /* PT88: at 30 steps the loop paces itself by time and the frame begin waits only for the GPU (the previous frame, so the buffers are free); with fps60 the begin waits for the vblank as before: two draws a step, one per vblank */
+    if (gb_on) { gb_sum += (unsigned)(pm_ticks() - gb_sub); gb_n++; gb_on = 0; pm_pf_late++; } /* S0-6: the sync of the previous frame returned. PROF2-1: this read belongs to the sample (ssvc), it lands in the next frame */ /* PT88: at 30 steps the loop paces itself by time and the frame begin waits only for the GPU (the previous frame, so the buffers are free); with fps60 the begin is paced by time (SYNC60): two draws a step, one per LCD period */
     FS_MARK(FS_REST);
     PH_POP();
     pm_ph_gpu_note();
