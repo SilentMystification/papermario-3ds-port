@@ -74,6 +74,14 @@ yet: a memcheck-like class split of heap use would give it).
   (every writer of a palette in RAM: tattle lerp, set_palette, sprite palettes, imgfx), reloc pre-apply (waits on MAPROMFS: pm_map.c),
   DPCEN2 (resident bytes per pool), texture pre-conversion study (sizes per area texture archive: assets/us/mapfs/tex/*.json).
 
+- Console PMU (fxcen_pmu_o3ds.txt, 2026-11-11, before PMUPHFIX): core 0 CPI 4.70, I-miss 46 / 1000 inst, D-read-miss 19, bmiss 9.6,
+  istall 41.8 % and dstall 24.7 % of about 5.3M cycles per clean frame (20 ms at 268 MHz); core 1 similar (3.1M per step). For
+  plan_hotcode: instruction fetch is the largest single stall (M1-hot 70.1 KB against a 16 KB I-cache); the next HC cuts need the
+  per-phase split (PMUPHFIX, then the same console push) to pick the class with the most I-miss; until then no new HC row by code read.
+- fire_breath (+17.4 ms, 7 draws, 204 tris, texmiss 0.05 after TILEWIN): fire_breath.c:191-223 draws a few large scaled puffs, each a
+  2-cycle 2-texture translucent mesh (tile 0 and 1 scroll by imgFrame, :210-211): the cost is GPU fill of big alpha quads, not CPU. The
+  ph line's gpu phase on the console confirms it; a fix changes the look (smaller puffs or one texture): a user decision, no row.
+
 ## Morning list (rows to write next, by the oracle)
 1. Class cuts after HC6B: read M1-hot per class (bench hotset_size on main after the HC6B merge) and the M3 census (hotset.py --fncov on
    fncov_mac01_det/kmr10_det logs of the HC6B lane); cut rare arms of the top functions per class as HCCUT2 did (byte-equal, cold
