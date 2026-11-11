@@ -1741,8 +1741,11 @@ def base_fill(a):
         return 5
     head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=REPO, text=True).strip()
     if not same_commit(hcommit, head):
-        print("base --fill: build3ds/pm_3ds.3dsx is build %d git %s, main HEAD is %s: build main first. Nothing was run." % (bld, hcommit, head[:9]))
-        return 5
+        stale = build_stale("")  # TOOLB8: a docs-only commit keeps the build key; build.sh skips and keeps the old header (build.sh:141-150)
+        if stale:
+            print("base --fill: build3ds/pm_3ds.3dsx is build %d git %s, main HEAD is %s, and %s. Nothing was run." % (bld, hcommit, head[:9], stale))
+            return 5
+        print("base --fill: build %d git %s has the build inputs of HEAD %s (same build key): stored under HEAD." % (bld, hcommit, head[:9]))
     todo = [n for n in BASE_FILL if not stored(head, n)]
     if not todo:
         print("base --fill: the %d standard stores are at %s already. No run." % (len(BASE_FILL), head[:9]))
