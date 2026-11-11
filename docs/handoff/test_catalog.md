@@ -11,8 +11,8 @@ A. Check a change (a row)
 1. `bench.py list`, then `bench.py show <bench>` for the benches the row file names (recipe, gates, last runs).
 2. For each bench: `PM_ROW=<row> python 3ds/tools/bench.py run <bench> --row <row> --why "<quantity, code path, why no other run answers it>"`. The tool writes the why line, starts the test and records the run. Add `--lane <lane>` to test a lane build (build3ds/lane-<lane>/pm_3ds.3dsx). Several Azahar benches go in one call, `run a,b,c` (see Slots and lists below).
 3. `bench.py check <run_id>`: the gates. PASS or FAIL per gate.
-4. kind azahar_pic: also open the shot in build3ds/azt/shots/<scenario>/<build>/ (build = the -Build lane name, or main) and confirm the subject. A log pass is not a pass.
-5. Budget: 8 Azahar starts per row. At the cap with gates unrun: reset (powershell -NoProfile -File 3ds/run_azahar.ps1 -ResetBudget <row>) and go on.
+4. No agent opens a shot (CLAUDE.md 2). A log pass plus the byte compare (step 6) is the gate.
+5. Budget: 8 Azahar starts per row. At the cap with gates unrun: stop and hand back (CLAUDE.md 4). No budget reset.
 6. Byte gates against main (the det shots): no build of main per row. The base is stored (BASECACHE):
    `PM_ROW=<row> PM_LANE=<row> python 3ds/tools/bench.py base <bench>` returns the stored shots of the merge-base of HEAD with main at once.
    Missing: it builds that commit ONCE (lane base_<short>, the committed tree only), runs the bench, stores its shots and log in
