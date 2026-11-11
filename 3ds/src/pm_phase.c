@@ -690,7 +690,7 @@ static void pf_report(void) {
     }
     if (c1_st == 1) c1_begin(); /* CORE2C C1P */
     if (pf_rot) { /* PMUROT: the next window counts the next set; core 1 follows at its next logic step */
-        pf_si = (pf_si + 1) % 6; pm_pf_core_setup(); pf_pmu_read(pf_base); pm_pf_set_gen++;
+        pf_si = (pf_si + 1) % 6; pm_pf_core_setup(); pf_pmu_read(pf_base); if (pf_ph_pmu && pf_samp) pph_read(pph_last); pm_pf_set_gen++; /* PMUPHFIX2: a sample armed in this call counts from the reset */
     }
     pf_reset();
 }
