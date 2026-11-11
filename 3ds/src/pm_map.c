@@ -7,6 +7,7 @@
 #include "game_modes.h"
 #include "pm_port.h"
 #include "battle/battle.h"
+#include "nd_yay0.h"
 
 void partner_enable_input(void);
 int strcmp(const char* a, const char* b);
@@ -96,51 +97,7 @@ bad:
 int pm_shape_load_nds(unsigned char* buf, unsigned size, const char* name) { return shape_load_romfs(buf, size, name, (u32)(unsigned long)pm_shape_buf); } /* MAPROMFS: the prefetch thread loads into a side buffer, relocated for pm_shape_buf */
 
 static int yay0_decode_raw(const u8* src, u32 src_len, u8* dst, u32 dst_len) {
-    u32 dec_size, link, count, src_pos, dst_pos, bits, mask;
-    if (src_len < 16 || src[0] != 'Y' || src[1] != 'a' || src[2] != 'y' || src[3] != '0') return 0;
-    dec_size = rbe(src + 4);
-    link = rbe(src + 8);
-    count = rbe(src + 12);
-    if (dec_size != dst_len || link >= src_len || count >= src_len) return 0;
-    src_pos = 16;
-    dst_pos = 0;
-    bits = 0;
-    mask = 0;
-    while (dst_pos < dec_size) {
-        u32 dist, n, from;
-        if (mask == 0) {
-            if (src_pos + 4 > src_len) return 0;
-            bits = rbe(src + src_pos);
-            src_pos += 4;
-            mask = 0x80000000u;
-        }
-        if (bits & mask) {
-            if (count >= src_len) return 0;
-            dst[dst_pos++] = src[count++];
-        } else {
-            u32 pair;
-            if (link + 2 > src_len) return 0;
-            pair = ((u32)src[link] << 8) | src[link + 1];
-            link += 2;
-            dist = pair & 0xFFFu;
-            n = pair >> 12;
-            if (n == 0) {
-                if (count >= src_len) return 0;
-                n = src[count++] + 0x12;
-            } else {
-                n += 2;
-            }
-            if (dist > dst_pos) return 0;
-            from = dst_pos - dist;
-            while (n--) {
-                if (dst_pos >= dec_size || from == 0) return 0;
-                dst[dst_pos++] = dst[from - 1];
-                from++;
-            }
-        }
-        mask >>= 1;
-    }
-    return 1;
+    return nd_yay0_raw(src, src_len, dst, dst_len); /* YAY0FAST: nd_yay0.c */
 }
 
 int pm_yay0_raw(const unsigned char* src, unsigned src_len, unsigned char* dst, unsigned dst_len) { return yay0_decode_raw(src, src_len, dst, dst_len); } /* MAPX-4: the core-1 prefetch */
