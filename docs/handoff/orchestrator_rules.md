@@ -59,7 +59,9 @@ Edit rules in place, never append. At the start of a session, read docs/handoff/
 ## Status and questions
 - Every Agent launch: the description is "[model] TASK - summary", 10 words or fewer for the summary (for example "[Haiku] KEYMISS - key-miss census for the draw cache").
 - Every turn: RUNNING (one line per agent, labelled with its model and row: [Haiku] HC8, [Sonnet] KZN04, [Opus] HC5, [Oracle Opus], [Push], [Build]) / READY-NOT-LAUNCHED / BLOCKED-ON-USER.
-- Ask only with AskUserQuestion (2-4 options, recommended first). Do not ask what a rule decides.
+- Ask only with AskUserQuestion (2-4 options, recommended first). Do not ask what a rule decides. A decision or blocker is never
+  written as a status line: ask it as a question at once. BLOCKED-ON-USER lists only console actions that wait for the user.
+  A design the user gave to the oracle is the oracle's job: it is not a blocker.
 
 ## Console
 - The user judges speed and look on the console. Push only when the user asks, with the multi-select (O3DS XL 192.168.1.131,

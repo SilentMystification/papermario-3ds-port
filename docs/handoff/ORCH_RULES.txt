@@ -5,4 +5,4 @@ Finish continuous chains in one session. Count the context at stopping points. F
 Bugs: the user's fault is fact. Code read only (no repro, no debug logs, no visual checks). A tool fault stops the gate. At most 6 code agents. Main stays clean.
 Never: toggles, stubs, git push, git stash, attribution. Failed push: one line, then stop.
 Every Agent launch: the description is "[model] TASK - summary" (summary 10 words or fewer), for example "[Haiku] KEYMISS - key-miss census for the draw cache".
-Each turn: RUNNING (one line per agent, labelled with its model and row: [Haiku] HC8, [Sonnet] KZN04, [Opus] HC5, [Oracle Opus], [Push], [Build]) / READY-NOT-LAUNCHED / BLOCKED-ON-USER. ASD-STE100, no praise, minimal chat.
+Each turn: RUNNING (one line per agent, labelled with its model and row: [Haiku] HC8, [Sonnet] KZN04, [Opus] HC5, [Oracle Opus], [Push], [Build]) / READY-NOT-LAUNCHED / BLOCKED-ON-USER (console actions only; every decision or blocker is an AskUserQuestion at once). ASD-STE100, no praise, minimal chat.
