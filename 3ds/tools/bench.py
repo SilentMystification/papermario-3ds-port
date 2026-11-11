@@ -1496,6 +1496,11 @@ def base_run(bds, commit, build_no, row, lane, label, why):
             bad += 1
             continue
         first, last = recs[-2], recs[-1]
+        sa, sb = re.search(r"slot(\d+)", first.get("log_path") or ""), re.search(r"slot(\d+)", last.get("log_path") or "")
+        if not sa or not sb or sa.group(1) != sb.group(1):
+            print("base %s: TOOL FAULT: the two runs ran on slots %s and %s, not stored." % (bd["name"], sa.group(1) if sa else "?", sb.group(1) if sb else "?"))
+            bad += 1
+            continue
         diff = shots_diff(first.get("shot_path") or "", last.get("shot_path") or "")
         if diff:
             print("base %s: two runs differ, not stored (%s)." % (bd["name"], diff))

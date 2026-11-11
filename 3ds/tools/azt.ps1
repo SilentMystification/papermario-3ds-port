@@ -287,6 +287,8 @@ if ($Scenario -match ",") {
     $summary = @()
     $worst = 0
     Write-Output ("LIST: {0} scenarios, one kept slot, warm restart between them: {1}" -f $names.Count, ($names -join ", "))
+    $listSlotFile = Join-Path $env:TEMP ("azt_list_slot_{0}.txt" -f $PID); Remove-Item $listSlotFile -ErrorAction SilentlyContinue
+    $env:PM_AZT_LIST_SLOTFILE = $listSlotFile; $env:PM_AZT_LIST_SLOT = "" # TOOLB3: the first child writes its slot, the next children ask for it
     foreach ($n in $names) {
         $ca = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $PSCommandPath, $n, "-Row", $Row)
         if ($Build) { $ca += @("-Build", $Build) }
@@ -296,12 +298,14 @@ if ($Scenario -match ",") {
         Write-Output ("LIST: start {0} at {1}" -f $n, $t1.ToString("HH:mm:ss"))
         & $childExe @ca
         $rc = $LASTEXITCODE
+        if (-not $env:PM_AZT_LIST_SLOT -and (Test-Path $listSlotFile)) { $env:PM_AZT_LIST_SLOT = (Get-Content $listSlotFile -First 1).Trim() } # TOOLB3
         $sec = ((Get-Date) - $t1).TotalSeconds
         Write-Output ("LIST: {0} rc {1}, wall {2:N1} s" -f $n, $rc, $sec)
         $summary += ("{0} rc {1} {2:N1} s" -f $n, $rc, $sec)
         if ($rc -gt $worst) { $worst = $rc }
         if ($rc -eq 9) { Write-Output "LIST: row $Row has no starts left. The rest of the list did not run."; break }
     }
+    Remove-Item $listSlotFile -ErrorAction SilentlyContinue; $env:PM_AZT_LIST_SLOTFILE = ""; $env:PM_AZT_LIST_SLOT = "" # TOOLB3
     Write-Output ("LIST DONE: wall {0:N1} s. {1}" -f ((Get-Date) - $listT0).TotalSeconds, ($summary -join "; "))
     exit $worst
 }
@@ -517,7 +521,7 @@ $azTurbo = ($speed -eq "turbo")
 $azTL = if ($azTurbo) { [int]$frameLimit } else { 0 }
 # AZT11-1: the run waits in the machine-wide queue (azslot.ps1 Invoke-QGrant grants a slot). The GPU retry asks for its slot (want).
 # The entry is the run's own file: it is removed at every exit (Leave-Queue), and a dead owner's entry is swept by any queue user (AZT11-2).
-$wantSlot = if ($env:PM_AZT_RETRY_RUN -and $env:PM_AZT_RETRY_SLOT) { [int]$env:PM_AZT_RETRY_SLOT } else { 0 }
+$wantSlot = if ($env:PM_AZT_RETRY_RUN -and $env:PM_AZT_RETRY_SLOT) { [int]$env:PM_AZT_RETRY_SLOT } elseif ($env:PM_AZT_LIST_SLOT) { [int]$env:PM_AZT_LIST_SLOT } else { 0 } # TOOLB3: a list child asks for the slot of the first child
 $qTree = Split-Path -Leaf $script:AzTree
 $qE = New-QEntry $sc.name $Row $lane $speed $qTree $wantSlot (Get-NowMs)
 $qPath = Join-Path (Get-QueueDir) ("{0:D15}-{1}-{2}.json" -f [long]$qE.t, $PID, (Get-Random))
@@ -551,6 +555,7 @@ $qWaitS = [math]::Round(((Get-Date) - $qT0).TotalSeconds, 1)
 $slotOk = Get-Slot $slotK 900 $azTurbo $azTL
 if (-not $slotOk) { Leave-Queue; Write-Output "LOCK TIMEOUT: granted slot $slotK is not free after 900 s. Nothing was run."; exit 3 }
 Write-Output ("queue: granted slot {0} after {1} s (position {2} at enqueue)" -f $slotK, $qWaitS, $qPosAtStart)
+if ($env:PM_AZT_LIST_SLOTFILE -and -not $env:PM_AZT_LIST_SLOT) { Set-Content $env:PM_AZT_LIST_SLOTFILE ([string]$slotK) } # TOOLB3
 $queueInfo = "queue: position $qPosAtStart at enqueue; waited $qWaitS s; slot $slotK"
 $env:PM_QUEUE_INFO = $queueInfo
 $slotInfo = Ensure-Slot $slotK
