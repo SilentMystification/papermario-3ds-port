@@ -143,6 +143,29 @@ Next console run (user, O3DS XL, prof profile): `warp=mac_01:0 pos=0:0:200 fxtes
 - HC next: row HCM3 (census only) gives M1-hot and M3 per class with call counts on main; the oracle then writes the cuts for the gbi
   phase (classes A, D, E, F, G first by size: plan_hotcode.md section 0 table) from those numbers.
 
+## Data-path rows status (non-ASSETFREE queue, old oracle)
+| item | row | status / reason |
+| palette hash per CI bind | PALGEN | ready (memo per walked frame, byte-equal) |
+| resident bytes per pool, sprite decode and list compile per load | DPCEN2 | ready (after DPCEN1 merge) |
+| hit file swap | - | no row: a few KB swapped once per map load (pm_map.c:261-300, under 0.2 ms), its Yay0 decode is already on core 1 (prefetch slot 1); a second file format does not pay |
+| pre-applied shape relocs | - | no row: the reloc pass runs on the prefetch thread (core 1) since MAPROMFS, a few thousand adds; pre-applying needs the link address in gen_shapes (it runs before the link) |
+| build-time texture pre-conversion | design step | needs DPCEN2's map-load numbers and a host port of tx1_build (pm_tex.c :1540-1600) keyed by the source hash shash0 and phash; then rows |
+| static list compile per map load | after DPCEN2 | DPCEN2 times it (compiles, compus); a row only if it is large |
+| sprite archive decode per load, audio predecode | after DPCEN2 | DPCEN2 times sprite loads; audio needs its own census (pm_dspaud.c predecode) |
+| phase names | PHNAME | ready (identifiers and texts only, log keys kept) |
+Start order: PALGEN, PHNAME and DPCEN2 (after the DPCEN1 merge) start together (pm_tex.c / pm_port.h+pm_phase.c+pm_nusys.c+pm_wdog.c /
+pm_gpu.c dp_frame+sprite.c+nd_shape.c+nd_ent.c: disjoint). HC cut rows after HCM3.
+- Native draw API note (for the user, from plan_hotcode 5.7): no N64 display list word is decoded at run time (HC4e4); static lists are
+  typed at build time (nd_shape_conv, gs macros). What remains is the RDP/RSP state model on core 0: other-mode bits, N64 combine words
+  and the combine decision (nd_comb, pm_comb), tile descriptors and the TMEM load model (nd_tex_set set_tilesize, tex_win0/1), the
+  vertex slots and matrix stack, the render mode table: about classes A, B, E, F, G of plan_hotcode (70 KB hot). A native API (the game's
+  draw code calls nd_draw_mesh / nd_draw_sprite / nd_draw_quad with a resolved texture, PICA template, float matrix and colours, no
+  recorded stream) would remove that model from core 0 (the largest I-cache cut) and the stream walk. Cost: every draw call site changes
+  (128 effects' appendGfx, hud_element, msg_draw, draw_box, sprite, model, entity, imgfx, background, battle UI: about 15-30k lines),
+  each needs its state resolved (a build-time table per static list, run-time for dynamic lists), and each needs its own byte gate.
+  Blocks: the size and the gates; models (records), sprites (NDC_SPR) and entities (NDC_ENT) already take native paths, so the gain is in
+  effects, HUD and text. A staged path: one native API per high-traffic producer (HUD elements, message text, the top effects).
+
 ## Morning list (rows to write next, by the oracle)
 1. Class cuts after HC6B: read M1-hot per class (bench hotset_size on main after the HC6B merge) and the M3 census (hotset.py --fncov on
    fncov_mac01_det/kmr10_det logs of the HC6B lane); cut rare arms of the top functions per class as HCCUT2 did (byte-equal, cold
