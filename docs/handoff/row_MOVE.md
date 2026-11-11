@@ -1,5 +1,9 @@
 # Row MOVE: the move train (all remaining pm_gbi.c moves, one owner)
 
+> STALE (oracle 2026-11-11): picture steps in this row are void (CLAUDE.md 2: no visual checks; gates are nd_host and the byte compare). The oracle rewrites the gates before launch.
+
+> STALE (oracle 2026-11-11): 3ds/src/pm_gbi.c no longer exists (its code moved to nd_*.c and pm_gpu*.c in DIRECT and MOVE); names and line numbers from it are void. The oracle re-reads this row before launch.
+
 User decision (2026-11-07): one agent does every remaining pm_gbi.c move in sequence, so no other branch cuts pm_gbi.c at the same time. Plan: docs/handoff/plan_s10_path.md (What is left, Design, Rows WK-2, WK-3, GM-2, GM-4, LS-1, LS-2; Decisions D1 to D13). D12: pure cut and paste plus prototypes, no logic change.
 
 ## Order (one commit per move)

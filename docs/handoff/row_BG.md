@@ -1,5 +1,7 @@
 # Rows BG1 and BG2: background image faults
 
+> STALE (oracle 2026-11-11): 3ds/src/pm_gbi.c no longer exists (its code moved to nd_*.c and pm_gpu*.c in DIRECT and MOVE); names and line numbers from it are void. The oracle re-reads this row before launch.
+
 Two agents, one per row. Both read how the background is drawn first, because the two faults can share one cause. Shared notes file: docs/handoff/agent_bg.md (each agent edits only its own section; findings that touch the other row go there AND go to the other agent by SendMessage).
 
 ## How the background is drawn (read first, both rows)

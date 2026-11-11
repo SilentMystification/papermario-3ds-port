@@ -20,6 +20,12 @@ A. Check a change (a row)
    `python 3ds/tools/bench.py cmp <bench> --row <row>`: byte-equal count, per shot diff pixels and bounding box, one diff PNG per
    differing shot in build3ds/basecmp/<row>/<bench>/. Exit 0 when every shot is byte-equal. The orchestrator fills the store after a
    merge with `python 3ds/tools/bench.py base --fill` (main folder, its build, no build).
+6a. Known main fault (2026-11-11, until row LOADMTX is merged): a run of main or of any row can end rc 2 "crash symbols" with
+   `load_mtx at nd_mtx_set.c:106` (Read32 at 0x01..0x39: a Mtx source of 1). It breaks `bench.py base` at random (one run of two), so
+   no new base is stored: compare against the stored main base with `python 3ds/tools/bench.py cmp <bench> --row <row> --commit
+   b8bc06613` (spot_mac01_det, mdl5_iwa10_det; b8bc06613 has the source of main up to 141c5e371). A row run that ends with that
+   signature: run it once more, report both. BASE_KEEP is 5: each new stored commit removes the oldest; b8bc06613 is the newest now.
+   Order: LOADMTX merges first (its guard skips the bad load); then `base --fill` on main and fresh bases per row.
 
 B. Before and after a change
 1. Run the bench on the base build (record it), change the code, rebuild, run the bench again with the same speed (`--speed`).

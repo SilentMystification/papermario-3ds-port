@@ -1,5 +1,7 @@
 # Row BATWIDE: battle menu boxes missing and the wheel light off the item in widescreen (user, 2026-11-09)
 
+> STALE (oracle 2026-11-11): picture steps in this row are void (CLAUDE.md 2: no visual checks; gates are nd_host and the byte compare). The oracle rewrites the gates before launch.
+
 ## User facts
 User: in every battle with Widescreen on, in every build, on Azahar and the console: the menu boxes (the boxes and backgrounds behind
 the wheel and sub-menus) are missing, only the jump/item/strategies icons and labels draw; the menu does not reach the left screen

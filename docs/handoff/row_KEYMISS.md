@@ -59,7 +59,6 @@ keymiss_kzn08_prof, keymiss_tattle_prof. hw_guidelines: no division on hit, no d
 
 ## Rules
 CLAUDE.md rules 5, 7, 9, 11. PM_ROW=KEYMISS PM_LANE=KEYMISS on every build.sh and bench call. No git stash. Commit after each passed stage;
-revert a stage whose picture does not change. At the start cap: INCOMPLETE, -ResetBudget KEYMISS, continue.
 
 ## At the end
 Findings into the subject docs. Delete this row file in the final commit. SendMessage main "KEYMISS ready <hash>".

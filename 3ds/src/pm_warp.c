@@ -381,21 +381,9 @@ static int tour_n, tour_total, tour_st, tour_entry, tour_wa, tour_wm;
 static char tour_name[16];
 static s32 w_story = STORY_INTRO;
 static int w_story_set; /* WARPFIX: story= or preset= given. Without it a loaded save keeps its story progress. */
-/* WARPFIX2: a new-file state (boot warp without loadslot, file select or title warp, boss launch outside the world) writes no save.
- * The block lasts for the run. fio_save_game returns at once (pm_save_blocked). */
-static const char* w_why = "saving disabled by new file warp";
-static int save_block;
-static const char* save_why = "";
 /* WARPFIX2 Boss tab in the world: the values of the loaded save that the fight changes, restored after it */
 static int boss_keep_on, boss_fight, boss_seen_battle, boss_wf, boss_bf;
 static s32 bk_story, bk_hmhp, bk_cmhp, bk_chp, bk_hmfp, bk_cmfp, bk_cfp, bk_pen, bk_cur, bk_ac;
-void pm_save_block(const char* why) {
-    save_block = 1;
-    save_why = why;
-    pm_log("%s", why);
-}
-int pm_save_blocked(void) { return save_block; }
-void pm_save_note(s32 slot) { pm_log_w("warp: save blocked, slot %d not written (%s)", (int)slot, save_why); }
 /* CHEATSAVE: 1 once after a warp setup with no save file (pm_cheat_enter_world, pm_map.c): that entry gets no cheat file */
 int pm_warp_take_nofile(void) { int v = warp_nofile; warp_nofile = 0; return v; }
 /* savefile=<path>: a SaveData file as fio_save_game writes it (sdmc:/3ds/PaperMario/). Loaded like loadslot, then the warp overrides map and position. */
@@ -808,7 +796,6 @@ s16 pm_warp_hook(s16 mode) {
         pm_log_w("warp: map %s not found, normal start", w_map);
         return mode;
     }
-    w_why = "saving disabled by boot warp";
     warp_setup(areaID, mapID);
     if (pos_on) pend_arm(areaID, mapID, pos_v, pos_n); /* POSWARP: pos= is the boot warp's position */
     return GAME_MODE_ENTER_WORLD;
@@ -829,7 +816,6 @@ static void warp_setup(s16 areaID, s16 mapID) {
     gGameStatusPtr->mapID = mapID;
     gGameStatusPtr->entryID = (s16)w_entry;
     warp_nofile = w_loadslot < 0; /* CHEATSAVE: a new-file state has no save slot file */
-    if (w_loadslot < 0) pm_save_block(w_why); /* WARPFIX2: a new-file state writes no save. A savefile warp blocks too. */
     if (w_loadslot < 0 && !sf_ok) clear_player_data();
     if (w_loadslot < 0 && !sf_ok) clear_saved_variables();
     gGameStatusPtr->areaID = areaID;
@@ -1008,7 +994,6 @@ void pm_warp_now(int c, int entry) {
         return;
     }
     pm_warp_stat("warpstat before fs warp");
-    w_why = "saving disabled by file select or title warp";
     warp_setup(areaID, mapID);
     pm_warp_stat("warpstat after fs warp");
     pm_warp_pending = 1;
@@ -1128,10 +1113,8 @@ static void pm_warp_stat(const char* tag) {
            (int)pd->maxBP, (int)pd->level);
 }
 
-/* WARPFIX2: the save prompt of the save block opens. Logs whether a save write would be blocked, and by which new-file state. */
 void pm_save_prompt(void) {
-    if (save_block) pm_log_w("save prompt: save blocked (%s), the save will not be written", save_why);
-    else pm_log("save prompt: saving enabled");
+    pm_log("save prompt: saving enabled"); /* SAVEFIX: saving is never blocked */
 }
 
 int pm_warp_live(int c, int entry) {
@@ -1235,7 +1218,6 @@ static int pm_boss_launch_now(int i) {
     w_loadslot = -1;
     if (w_partner == 0) w_partner = 1;
     if (!get_map_IDs_by_name(w_map, &areaID, &mapID)) { pm_menu_msg("Boss launch failed: map mac_00 not found"); return 0; }
-    w_why = "saving disabled by boss launch outside the world";
     warp_setup(areaID, mapID);
     gPlayerData.hardMaxHP = gPlayerData.curMaxHP = gPlayerData.curHP = 75;
     gPlayerData.hardMaxFP = gPlayerData.curMaxFP = gPlayerData.curFP = 30;
