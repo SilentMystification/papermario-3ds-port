@@ -2,7 +2,9 @@
 
 (Model: Sonnet. Reason: the per-frame vertex copies need the port's rule for vertex data that a recorded list reads later (the stream
 replays after the producer returns): a choice between the display context and a frame pool, which Haiku cannot make. Why not Haiku: that
-choice. Why not Opus: one file, no cross-thread design. The user decides.)
+choice. Why not Opus: one file, no cross-thread design.)
+User decision (2026-11-11): Sonnet coder approved; a sparkle picture that is not byte-equal is accepted (the look is the user's console
+check). Starts when a coder slot frees (after one of HC6B, WALLSHADE, UB1, HCCUT2, HC9B, CRASHEXIT).
 
 ## User facts (bugs only)
 User (2026-11-11, console): "When all the star spirits poof in the game, it lags. It's all the sparkle effects; something is
@@ -43,8 +45,8 @@ src/effects/sparkles.c: sparkles_appendGfx (:245-288), a TARGET_3DS block; a tab
 ## Gate (CLAUDE.md 2)
 - build: memcheck OK (static growth written); `bench.py run nd_host --row SPARKLE --why "sparkles"`: PASS.
 - Byte compare: `bench.py base starfx_hos01_pic`, then run it with the row lane, then `bench.py cmp starfx_hos01_pic --row SPARKLE`.
-  Expected equal or a difference only in sparkle pixels: write the diff counts (the vertex colour may round differently from the
-  TEV constant; the user accepts or rejects that on the console). spot_mac01_det byte-equal (no sparkles: unchanged).
+  A difference in sparkle pixels is accepted (user decision): write the diff counts and bounding boxes, no pass/fail on this scene.
+  spot_mac01_det byte-equal (no sparkles: unchanged) is the pass gate.
 - Draw count: the starfx_hos01 prof line before and after (the bench records it): write draws per frame.
 
 ## Stop

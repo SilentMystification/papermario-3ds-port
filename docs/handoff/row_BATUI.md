@@ -25,8 +25,27 @@
 - Status bar and sub-menu windows (draw_box): texrects (box_pattern_rect, nd_rect.c:105) and, for rotated windows, triangles (same
   drop arms as above).
 
+## User facts 3 (2026-11-11, through the orchestrator)
+Widescreen ON, O3DS XL.
+
+## Widescreen path of the triangle HUD elements (oracle code read; no arm found that drops all of them)
+- Mapping: pm_gpu_set_mvp (pm_gpu.c:2604-2619) marks the CAM_HUD ortho as ui_ortho; rebuild_3d (pm_gpu.c:176-177) draws it 1:1 at
+  screen x = 40 + game x (no 1.25 stretch), the same mapping as the texture rectangles (px, pm_gpu_rect.c:252): spots and icons share
+  one x (BATWIDE run 0650a26c7: light x 97 = icon x 97). pm_gv_rejm 0x2c (pm_gpu.c:2612) keeps margin triangles (game x -40..0).
+- Scissor: hud_element.c:1816 sets 0,0,320,240 in wide; the wide sign rule maps game x 0 to screen 0 (T_SCISSOR), so the margin is drawn.
+- Wide refusal arms and their values for these quads: gtrip_wide (pm_gpu.c:2776-2786) refuses when wide_edge_k returns 1 or 2:
+  r = 1 for a non-ortho matrix (the HUD modelview is a rotate/scale/translate: w column 0,0,0,1, wz true) or m[0][0] == 0 (the beam
+  turns -43 degrees, the reel at most 45: m00 != 0) or no ring room (pm_gpu.c:2761); r = 2 for more than 192 indices (a quad has 6).
+  A vertex past the game edge keeps its place (wide_on_edge :2715-2721, MSGBOX 4). None of these fires for every spot, beam and reel.
+- Not wide-only and able to drop all late HUD triangles of a battle frame: (b) the 256-entry matrix table per task (nd_mtx_set.c:73-74:
+  every part of every effect takes one entry; the HUD draws last) and (c) the ring (pm_gpu.c:3019). Their counts print as `tridrop`
+  (nd_geom.c:256-261, gv_fb ring and refuse) every 300 frames in a debug push.
+- The 2026-11-09 report predates KZN04; the WALLSHADE leak (g) cannot reach these quads (their IA8 load runs a tile 0 SETTILESIZE,
+  nd_tex_set.c:196, which clears dual_on before the draw).
+- No exact fix without the arm: CLAUDE.md 1 (no cause found: the trace goes back, the orchestrator asks the user).
+
 ## Questions for the user (the orchestrator asks)
-1. Widescreen option: Native, Wide or Fullscreen? 3D slider up or down? 30 or 60 fps?
+1. 3D slider up or down? 30 or 60 fps? (Widescreen ON, XL: answered.)
 2. Which parts are missing: the circles and light behind the wheel icons, the film reel, the HP/FP bar, the sub-menu windows (Jump,
    Items lists), the target names, the action command meter? Do the icons and their names still show?
 3. Which console (XL .131, N3DS .224, O3DS .170), and every battle or a named one (map, enemy)?

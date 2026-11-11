@@ -8,7 +8,7 @@ picture risk.)
 - HC6 steps 1-3 are on branch HC6 (ready 45066aa71): hit state copy (hitst), key A on core 1 in the NDC_MODEL header plus key B on core 0
   (mkchk diff 0), rec_run hit fast path 464 B with a cold rec_miss. hotset at 0865df7c0: M1-hot C 7752 B, D 8792 B (C+D 16.5 KB; target
   C+D <= 8 KB). Gates of steps 1-3: spot_mac01_det and mdl5_iwa10_det 6/6 byte-equal vs 6c18e508b, nd_host PASS.
-- Start only after the orchestrator merges HC6 steps 1-3 into main (row_HC6.md is deleted by that merge).
+- HC6 steps 1-3 are merged on main (6ac1091fd): start from main at or after that commit.
 ## Design to deliver (then code it), in order
 4. Pre-built GPU command block per cached draw (plan 5.4 last item): the miss records the command words of pm_gpu_native_submit_draw
    for each NdNatC into a linear block with the full state (no redundant-state filter) and the offsets of the per-frame words: palette
