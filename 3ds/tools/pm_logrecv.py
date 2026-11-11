@@ -5,7 +5,7 @@ Usage: python 3ds/tools/pm_logrecv.py --ip <3ds-ip> [--label o3ds] [--timeout 60
 Use this when FTP is not available (see pull text in 3ds/go.ps1). The game must be running with the live
 log on. The tool sends "sendlog\\n". The game answers with live text lines and then frames:
 
-  #PMFILE <name> <size>\\n     (size raw bytes follow)     #PMEND <name>\\n
+  \\n#PMFILE <name> <size>\\n <size> raw bytes \\n#PMEND <name>\\n   (LOGX4: the game writes a newline before the header and before #PMEND)
 
 Names: crash.txt and log.txt. A crash.txt frame may come before any live text at the first client of a boot.
 
@@ -81,6 +81,8 @@ def receive(sock, label, out_dir, timeout, got):
             data = bytes(buf[:size])
             del buf[:size]
             end = next_line()
+            if end == b"":
+                end = next_line()  # LOGX4: the game's trailer starts with a newline (pm_log.c send_file)
             if end != END_PREFIX + name:
                 raise ValueError("bad frame end for %s: %r" % (name.decode("ascii", "replace"), end[:80]))
             if name not in KIND:

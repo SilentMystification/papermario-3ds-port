@@ -26,9 +26,9 @@ ODD_CHUNKS = [1, 3, 7, 13, 101, 997, 4099]
 def build_stream():
     parts = [
         b"live one\n",
-        b"#PMFILE crash.txt 10\n" + CRASH_PAYLOAD + b"#PMEND crash.txt\n",
+        b"\n#PMFILE crash.txt 10\n" + CRASH_PAYLOAD + b"\n#PMEND crash.txt\n",
         b"more text\n",
-        b"#PMFILE log.txt %d\n" % len(LOG_PAYLOAD) + LOG_PAYLOAD + b"#PMEND log.txt\n",
+        b"\n#PMFILE log.txt %d\n" % len(LOG_PAYLOAD) + LOG_PAYLOAD + b"\n#PMEND log.txt\n",
     ]
     return b"".join(parts)
 
