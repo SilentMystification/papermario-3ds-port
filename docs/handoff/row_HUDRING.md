@@ -19,6 +19,10 @@ the icons and text draw. O3DS XL.
 ## Start
 `sh 3ds/tools/wt_new.sh HUDRING`; PM_ROW=HUDRING PM_LANE=HUDRING on every call.
 
+## Audit (oracle): names used and their declarations
+ring_need: pm_gpu_rect.c:75 (prototype pm_gpu_int.h:74, not included by nd_geom.c: the block-scope extern of edit 1 is the only one
+there); pm_gpu_gv_room: pm_gpu.h:22 (included, nd_geom.c:11); vert_ring, vert_live: defined in nd_geom.c (:27; sizeof is the array).
+
 ## Touch only
 3ds/src/nd_geom.c: nd_geom_vtx only, the block at :314 (`if (v0 == 0 && tri_since_vtx) memset(vert_live, ...)`). WALLSHADE edits
 nd_geom.c gv_params_calc and pm_gbi_gv_at (:61-88): not those lines. `git merge main` before the completing commit.
@@ -36,7 +40,7 @@ nd_geom.c gv_params_calc and pm_gbi_gv_at (:61-88): not those lines. `git merge 
 - `PM_ROW=HUDRING PM_LANE=HUDRING sh 3ds/build.sh > build3ds/out/build.txt 2>&1`: memcheck OK.
 - `python 3ds/tools/bench.py run nd_host --row HUDRING --why "walker ring wrap"`: PASS.
 - Byte compare on two scenes that do not draw the wheel: `bench.py base spot_mac01_det`, `bench.py base mdl5_iwa10_det`, one
-  `bench.py run spot_mac01_det,mdl5_iwa10_det --row HUDRING --why "no wrap in a light frame: unchanged"`, `cmp` each: 6/6.
+  `bench.py run mdl5_iwa10_det,spot_mac01_det --row HUDRING --why "no wrap in a light frame: unchanged"`, `cmp` each: 6/6.
 
 ## Stop
 A failed gate, an edit that does not fit the code, or a test-tool fault: commit, then hand back the exact output (CLAUDE.md 4-5).
