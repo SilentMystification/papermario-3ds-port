@@ -13932,6 +13932,230 @@
         }
       ],
       "reason": "KEYMISS census (CLAUDE.md 3): which record and walker key words change between frames in the native model cache. Log only."
+    },
+    {
+      "name": "fxcen_c0",
+      "status": "unverified",
+      "subject": "FXCEN1 census chunk 0: fxtest effects 0 to 15 on mac_01 (pos 0 0 200), one per 44-frame slot from frame 400, no shots.",
+      "proves": "Per-effect census lines: fxcena (frames, us, live effects) and fxcenb (per-slot deltas of the phase counters, the native draw and index counts, the pm_gpu totals and the model cache misses and clears). One fxcena and one fxcenb per effect, plus the base window (index -1, frames 360 to 400).",
+      "debug": "warp=mac_01:0 pos=0:0:200 fixedseed fxtest=0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15 loglevel=debug",
+      "until": "fxtest: done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "census",
+          "regex": "fxcenb [0-9-]+ tri [0-9]+"
+        },
+        {
+          "name": "done",
+          "regex": "fxtest: done"
+        }
+      ],
+      "reason": "FXCEN1 census: counts per effect slot (Azahar counts valid; the us column is a proxy, the console decides). Log only, no picture (CLAUDE.md 2)."
+    },
+    {
+      "name": "fxcen_c1",
+      "status": "unverified",
+      "subject": "FXCEN1 census chunk 1: fxtest effects 16 to 31 on mac_01 (pos 0 0 200), one per 44-frame slot from frame 400, no shots.",
+      "proves": "Per-effect census lines: fxcena (frames, us, live effects) and fxcenb (per-slot deltas of the phase counters, the native draw and index counts, the pm_gpu totals and the model cache misses and clears). One fxcena and one fxcenb per effect, plus the base window (index -1, frames 360 to 400).",
+      "debug": "warp=mac_01:0 pos=0:0:200 fixedseed fxtest=16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31 loglevel=debug",
+      "until": "fxtest: done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "census",
+          "regex": "fxcenb [0-9-]+ tri [0-9]+"
+        },
+        {
+          "name": "done",
+          "regex": "fxtest: done"
+        }
+      ],
+      "reason": "FXCEN1 census: counts per effect slot (Azahar counts valid; the us column is a proxy, the console decides). Log only, no picture (CLAUDE.md 2)."
+    },
+    {
+      "name": "fxcen_c2",
+      "status": "unverified",
+      "subject": "FXCEN1 census chunk 2: fxtest effects 32 to 47 on mac_01 (pos 0 0 200), one per 44-frame slot from frame 400, no shots.",
+      "proves": "Per-effect census lines: fxcena (frames, us, live effects) and fxcenb (per-slot deltas of the phase counters, the native draw and index counts, the pm_gpu totals and the model cache misses and clears). One fxcena and one fxcenb per effect, plus the base window (index -1, frames 360 to 400).",
+      "debug": "warp=mac_01:0 pos=0:0:200 fixedseed fxtest=32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47 loglevel=debug",
+      "until": "fxtest: done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "census",
+          "regex": "fxcenb [0-9-]+ tri [0-9]+"
+        },
+        {
+          "name": "done",
+          "regex": "fxtest: done"
+        }
+      ],
+      "reason": "FXCEN1 census: counts per effect slot (Azahar counts valid; the us column is a proxy, the console decides). Log only, no picture (CLAUDE.md 2)."
+    },
+    {
+      "name": "fxcen_c3",
+      "status": "unverified",
+      "subject": "FXCEN1 census chunk 3: fxtest effects 48 to 63 on mac_01 (pos 0 0 200), one per 44-frame slot from frame 400, no shots.",
+      "proves": "Per-effect census lines: fxcena (frames, us, live effects) and fxcenb (per-slot deltas of the phase counters, the native draw and index counts, the pm_gpu totals and the model cache misses and clears). One fxcena and one fxcenb per effect, plus the base window (index -1, frames 360 to 400).",
+      "debug": "warp=mac_01:0 pos=0:0:200 fixedseed fxtest=48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63 loglevel=debug",
+      "until": "fxtest: done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "census",
+          "regex": "fxcenb [0-9-]+ tri [0-9]+"
+        },
+        {
+          "name": "done",
+          "regex": "fxtest: done"
+        }
+      ],
+      "reason": "FXCEN1 census: counts per effect slot (Azahar counts valid; the us column is a proxy, the console decides). Log only, no picture (CLAUDE.md 2)."
+    },
+    {
+      "name": "fxcen_c4",
+      "status": "unverified",
+      "subject": "FXCEN1 census chunk 4: fxtest effects 64 to 79 on mac_01 (pos 0 0 200), one per 44-frame slot from frame 400, no shots.",
+      "proves": "Per-effect census lines: fxcena (frames, us, live effects) and fxcenb (per-slot deltas of the phase counters, the native draw and index counts, the pm_gpu totals and the model cache misses and clears). One fxcena and one fxcenb per effect, plus the base window (index -1, frames 360 to 400).",
+      "debug": "warp=mac_01:0 pos=0:0:200 fixedseed fxtest=64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79 loglevel=debug",
+      "until": "fxtest: done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "census",
+          "regex": "fxcenb [0-9-]+ tri [0-9]+"
+        },
+        {
+          "name": "done",
+          "regex": "fxtest: done"
+        }
+      ],
+      "reason": "FXCEN1 census: counts per effect slot (Azahar counts valid; the us column is a proxy, the console decides). Log only, no picture (CLAUDE.md 2)."
+    },
+    {
+      "name": "fxcen_c5",
+      "status": "unverified",
+      "subject": "FXCEN1 census chunk 5: fxtest effects 80 to 95 on mac_01 (pos 0 0 200), one per 44-frame slot from frame 400, no shots.",
+      "proves": "Per-effect census lines: fxcena (frames, us, live effects) and fxcenb (per-slot deltas of the phase counters, the native draw and index counts, the pm_gpu totals and the model cache misses and clears). One fxcena and one fxcenb per effect, plus the base window (index -1, frames 360 to 400).",
+      "debug": "warp=mac_01:0 pos=0:0:200 fixedseed fxtest=80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95 loglevel=debug",
+      "until": "fxtest: done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "census",
+          "regex": "fxcenb [0-9-]+ tri [0-9]+"
+        },
+        {
+          "name": "done",
+          "regex": "fxtest: done"
+        }
+      ],
+      "reason": "FXCEN1 census: counts per effect slot (Azahar counts valid; the us column is a proxy, the console decides). Log only, no picture (CLAUDE.md 2)."
+    },
+    {
+      "name": "fxcen_c6",
+      "status": "unverified",
+      "subject": "FXCEN1 census chunk 6: fxtest effects 96 to 111 on mac_01 (pos 0 0 200), one per 44-frame slot from frame 400, no shots.",
+      "proves": "Per-effect census lines: fxcena (frames, us, live effects) and fxcenb (per-slot deltas of the phase counters, the native draw and index counts, the pm_gpu totals and the model cache misses and clears). One fxcena and one fxcenb per effect, plus the base window (index -1, frames 360 to 400).",
+      "debug": "warp=mac_01:0 pos=0:0:200 fixedseed fxtest=96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111 loglevel=debug",
+      "until": "fxtest: done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "census",
+          "regex": "fxcenb [0-9-]+ tri [0-9]+"
+        },
+        {
+          "name": "done",
+          "regex": "fxtest: done"
+        }
+      ],
+      "reason": "FXCEN1 census: counts per effect slot (Azahar counts valid; the us column is a proxy, the console decides). Log only, no picture (CLAUDE.md 2)."
+    },
+    {
+      "name": "fxcen_c7",
+      "status": "unverified",
+      "subject": "FXCEN1 census chunk 7: fxtest effects 112 to 127 on mac_01 (pos 0 0 200), one per 44-frame slot from frame 400, no shots.",
+      "proves": "Per-effect census lines: fxcena (frames, us, live effects) and fxcenb (per-slot deltas of the phase counters, the native draw and index counts, the pm_gpu totals and the model cache misses and clears). One fxcena and one fxcenb per effect, plus the base window (index -1, frames 360 to 400).",
+      "debug": "warp=mac_01:0 pos=0:0:200 fixedseed fxtest=112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127 loglevel=debug",
+      "until": "fxtest: done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "census",
+          "regex": "fxcenb [0-9-]+ tri [0-9]+"
+        },
+        {
+          "name": "done",
+          "regex": "fxtest: done"
+        }
+      ],
+      "reason": "FXCEN1 census: counts per effect slot (Azahar counts valid; the us column is a proxy, the console decides). Log only, no picture (CLAUDE.md 2)."
     }
   ]
 }

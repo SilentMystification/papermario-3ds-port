@@ -1114,6 +1114,7 @@ static unsigned blk_put(uint32_t* o, NdNatC* q, const NdDraw* d) {
 }
 static void nd_native_submit(const NdDraw* dp, int tex) {
     NDT_B(tsub); /* PERF1: the native submit class */
+    PH_ADD(C_NDRAW, 1); PH_ADD(C_NIDX, dp->nidx); /* FXCEN1 */
     { u32 *cb_, csz_, coff_; GPUCMD_GetBuffer(&cb_, &csz_, &coff_); if (coff_ + ND_EMIT_MAX + 1024u >= csz_) cmd_split_forced(); } /* PERF1-6: the draw words go straight into the command buffer: near its end the frame is split first (as nd_raw_native) */
     pm_gbi_draw_note(1); /* WCEN3: a native draw (per producer, the former pm_gbi.c) */
     /* FB-3: every program 5 draw (model, sprite, raw) writes its pm5 block here, once. The copy keeps the caller's NdDraw; uvx goes to the pm5 uniform. */
@@ -3897,6 +3898,7 @@ void pm_gpu_cnt_take(unsigned o[8]) { /* PERF2 step 6: the counters of the prof 
     const unsigned now[8] = { sc_prg, sc_shr, sc_upd, sc_spl, spr_nat_n - spc_miss, spc_miss, nd_ent_cfull_all(), nd_gdl_lists() };
     for (int i = 0; i < 8; i++) { o[i] = now[i] - last[i]; last[i] = now[i]; }
 }
+void pm_gpu_cnt_now(unsigned o[8]) { const unsigned now[8] = { sc_prg, sc_shr, sc_upd, sc_spl, spr_nat_n - spc_miss, spc_miss, nd_ent_cfull_all(), nd_gdl_lists() }; memcpy(o, now, sizeof now); } /* FXCEN1: totals, no reset */
 void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, NdGvP* o);
 /* S4-2: the sprite record as a native draw (nd_sprite_draw, nd_sprite.c). The walker inputs of the draw (sticky state, gv, env and prim of the record),
  * the NdDraw without palette and index (set by pm_gpu_spr_submit), the key st and palette 0 (the walker combined matrix, post x combined). 1 native, 0 with why
