@@ -11,6 +11,7 @@
 
 extern volatile int pm_io_quiet; /* pm_log.c: set while the app is suspended or asleep */
 extern volatile unsigned pm_wd_quiet;
+extern volatile int pm_crash_exit; /* pm_main.c CRASHEXIT */
 
 volatile unsigned pm_wd_prog;  /* the game loop adds 1 per iteration and per drawn step */
 volatile unsigned pm_wd_evt[4]; /* the last script step: Evt, first line, next line, opcode */
@@ -162,8 +163,14 @@ static void wd_main(void* arg) {
         unsigned ct = pm_wd_crash_tick;
         if (ct) { /* a crash handler runs. If it does not end the process in 3 s, it hung or faulted again: end it here. */
             if ((unsigned)(now_ms() - ct) >= 3000u) {
-                static const char m[] = "watchdog: the crash handler did not finish in 3 s, ending the process\n";
-                pm_crash_line(m, (int)sizeof(m) - 1);
+                if (pm_crash_exit) { /* CRASHEXIT2: the clean exit did not finish: name the game thread phase */
+                    char cm[160];
+                    int cn = snprintf(cm, sizeof cm, "watchdog: the exit after a crash did not finish in 3 s (game thread phase %u %s), ending the process\n", pm_wd_phase, pm_wd_phase_name(pm_wd_phase));
+                    pm_crash_line(cm, cn);
+                } else {
+                    static const char m[] = "watchdog: the crash handler did not finish in 3 s, ending the process\n";
+                    pm_crash_line(m, (int)sizeof(m) - 1);
+                }
                 pm_exit_process();
             }
             continue;
