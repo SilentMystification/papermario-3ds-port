@@ -37,16 +37,19 @@ unit there: no other edit. Next: the line 26 delete only, commit "HC4f3 readers:
 
 ## Step 2: converter (commit "HC4f3 converter v2")
 - nd_shape_conv.c: after `#include <stdint.h>` add `#include "ultra64.h"`, `#include "gbi_custom.h"`, `#include "nd_op.h"`; delete `typedef uint8_t u8;` and `typedef uint32_t u32;` (ultra64.h has both; -m32 keeps u32 at 32 bits). After the ShapeFix typedef: `static u32 n_nop; /* list words G_NOOP, RDPHALF_1/2, SETZIMG: typed as ND_NOP_A */`.
-- fix_gfx :143-145 become four lines: `if (op == 0xC0 || op == 0xE1 || op == 0xF1 || op == 0xFE) n_nop++;` / `w32(dl, ND_X0(w0, w1)); /* HC4f3: the typed unit (nd_op.h); op stays the raw op for the walk below */` / `if (target) wptr(s, dl + 4, target);` / `else w32(dl + 4, ND_X1(w0, w1));`.
+- fix_gfx :143-145 become four lines: `if (op == G_NOOP || op == G_RDPHALF_1 || op == G_RDPHALF_2 || op == G_SETZIMG) n_nop++;` (F3DEX2: 0x00, 0xE1, 0xF1, 0xFE; 0xC0 was the F3DEX value) / `w32(dl, ND_X0(w0, w1)); /* HC4f3: the typed unit (nd_op.h); op stays the raw op for the walk below */` / `if (target) wptr(s, dl + 4, target);` / `else w32(dl + 4, ND_X1(w0, w1));`.
 - main: `w32(hdr + 4, 1);` -> `2`; the header comment :11 says version 2 (list words typed). The last printf: `printf("shapeconv maps %u bytes %u reloc %u nop %u\n", (unsigned)maps, (unsigned)total_bytes, (unsigned)total_reloc, (unsigned)n_nop);`.
 - build.sh gen_shapes :68: `want=` adds ` $(git hash-object 3ds/include/nd_op.h)` after the converter hash. :75 the gcc call: `gcc -m32 -O2 -Wall -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I /w/include -I /w/3ds/include -I /w/3ds/stub_include -o /tmp/nd_shape_conv /w/3ds/tools/nd_shape_conv.c` (the oracle compiled nd_op.h with these flags in pm3ds-host:1: no warning).
 - pm_map.c shape_load_romfs :66: after the "NDSH" test add `if (hdr[4] != 2 || hdr[5] || hdr[6] || hdr[7]) goto bad; /* HC4f3: version 2, typed list words */`; the comment :55 says version 2.
 Gate 2: the build output has `shapeconv maps N bytes B reloc R nop K`. Write K in the commit message.
+Done: 23b6e4b90 (nd_seam_test fix, gate 1 PASS run 212082), 38e5f09f9 (converter v2): `shapeconv maps 489 bytes 18042720 reloc 341966 nop 0`, K = 0.
 
 ## Done criteria (all must pass; handback only then)
 1. nd_host PASS.
-2. For spot_mac01_det, mdl5_iwa10_det, spot_mac00_det: `bench.py base <bench>`, `bench.py run <bench> --row HC4f3 --lane HC4f3 --why "..."`, `bench.py cmp <bench> --row HC4f3`: exit 0, 6/6 byte-equal. Open one shot per scene: the map is drawn. No `shape load fail` line in the logs.
-Fail: hand back K and the cmp diff (pixels, box). With K > 0 a typed G_NOOP compiles where the raw one refused the list (nd_dlc.c dlc_op): name that in the handback. No second try on one cause.
+2. For spot_mac01_det, mdl5_iwa10_det, spot_mac00_det: `bench.py base <bench>`, `bench.py run <bench> --row HC4f3 --lane HC4f3 --why "..."`, `bench.py cmp <bench> --row HC4f3`: exit 0, 6/6 byte-equal. No `shape load fail` line in the logs.
+   Base runs: until row TOOLB3 is merged, `bench.py base` runs only while no other Azahar run is on the machine (the two base runs of a
+   list can get two slots: azt.ps1:290-297 re-queues each child, azt.ps1:520 asks for any slot). The base of 5d61fda6a was not stored: run it again so.
+Fail: hand back the cmp diff (pixels, box). K = 0, so no typed G_NOOP reaches nd_dlc.c dlc_op. No second try on one cause.
 Affected scenarios (no others): spot_mac01_det, mdl5_iwa10_det, spot_mac00_det.
 
 ## Commands
