@@ -52,7 +52,9 @@ Edit rules in place, never append. At the start of a session, read docs/handoff/
   4. Append the new runs.jsonl lines of the worktree to main's runs.jsonl. Commit runs.jsonl and pushed_builds.txt with
      `git add -f` (CLAUDE.md 10: main stays clean).
   5. Delete .wt_keep, run `sh 3ds/tools/wt_gc.sh --apply`, run `git branch -d <row>`.
-  6. Build main in the background. Run `python 3ds/tools/bench.py base --fill` in the main folder.
+  6. Build main at once (foreground, then `python 3ds/tools/bench.py base --fill` in the main folder), so a current build is always ready.
+     A push then starts at the user's answer with `-NoBuild` (the build is never started after the question). Before the question,
+     check that the build matches HEAD (code); rebuild first if a merge came after it.
 
 ## Status and questions
 - Every Agent launch: the description is "[model] TASK - summary", 10 words or fewer for the summary (for example "[Haiku] KEYMISS - key-miss census for the draw cache").
