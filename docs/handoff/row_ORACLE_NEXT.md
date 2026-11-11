@@ -180,6 +180,13 @@ pm_gpu.c dp_frame+sprite.c+nd_shape.c+nd_ent.c: disjoint). HC cut rows after HCM
 - Lesson (for plan_hotcode.md notes): a GPU fill or pipeline-state change needs a console measure before it merges; the Azahar byte
   compare proves the picture only (FILLA0: byte-equal on Azahar, +3 to +17 ms per effect on the XL; reverted by FILLA0R).
 
+- DPCEN2 decisions (Azahar per map load: sprite loads 74-138 ms, list compiles 4.6-8.4 ms, texture upload 634 KB / hash 147 KB):
+  sprite load -> YAY0FAST (faster Yay0 run copies, same output; host equality test over the ROM asset table); a decoded-sprite cache
+  across map loads is the next step if YAY0FAST is not enough (heap free is about 3 MB: sizing needed); host pre-decode to romfs is
+  worse (an SD read of the decoded size is slower than decoding from the resident ROM). List compile: NO (under 10 ms). Texture first
+  bind: the source hash (pm_tex.c:1225 src_hash, bytewise FNV, 147 KB per load: about 3 ms) is a small word-wise step; the decode and
+  tiling stay for ASSETFREE (user deferral).
+
 ## Morning list (rows to write next, by the oracle)
 1. Class cuts after HC6B: read M1-hot per class (bench hotset_size on main after the HC6B merge) and the M3 census (hotset.py --fncov on
    fncov_mac01_det/kmr10_det logs of the HC6B lane); cut rare arms of the top functions per class as HCCUT2 did (byte-equal, cold

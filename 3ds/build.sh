@@ -127,6 +127,12 @@ hotset_line() {
     else python3 3ds/tools/hotset.py --line || echo "hotset: failed (the build is not affected)"; fi
 }
 IMG=pm3ds-build:1
+# BUILDLOCK: the engine must answer (a dead engine stops here, not in a docker call), then at most 3 builds run at once.
+timeout 20 docker info >/dev/null 2>&1 || { echo "BUILD FAULT: docker engine not answering in 20 s (docker info). Restart Docker Desktop / WSL, then build again." >&2; exit 3; }
+. 3ds/tools/build_slot.sh
+build_slot_take
+trap 'build_slot_release' EXIT
+trap 'build_slot_release; exit 130' INT TERM
 docker build -q -t $IMG -f docker/Dockerfile.build docker >/dev/null
 # SRCID: the source volume keeps the id of its last sync in /src/.pm_manifest_id, and $VID holds the id the manifest was
 # written with. The manifest is valid only while both match. A missing, recreated or foreign source volume has no id

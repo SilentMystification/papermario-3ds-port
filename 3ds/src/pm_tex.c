@@ -1731,9 +1731,11 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         if (mw && stride < mw) stride = mw; /* the source row is the mask width, not the tile width */
         else if (!mw && stride < width) stride = width;
     } else if (stride < width) stride = width;
+    static struct { const void* p; int n; unsigned f, h; } ph_memo[64]; /* PALGEN: palette hash per walked frame */
     unsigned phash = 0;
-    if (fmt == FMT_CI && tlut) {
-        phash = 2166136261u;
+    if (fmt == FMT_CI && tlut) { const unsigned pf_ = pm_frame_count(); const unsigned ps_ = ((unsigned)(uintptr_t)tlut >> 4) & 63u;
+        if (ph_memo[ps_].p == tlut && ph_memo[ps_].n == tlut_n && ph_memo[ps_].f == pf_) phash = ph_memo[ps_].h;
+        else { phash = 2166136261u;
         { /* PG2: two palette entries per step (the key is internal, only its stability matters). Any in-place edit still changes it. */
             const u16* pl = (const u16*)tlut;
             int i = 0;
@@ -1752,6 +1754,7 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
             for (; i + 1 < tlut_n; i += 2) phash = (phash ^ ((unsigned)pl[i] | ((unsigned)pl[i + 1] << 16))) * 16777619u;
             if (i < tlut_n) phash = (phash ^ pl[i]) * 16777619u;
         }
+        ph_memo[ps_].p = tlut; ph_memo[ps_].n = tlut_n; ph_memo[ps_].f = pf_; ph_memo[ps_].h = phash; }
     }
     /* OPT-LK: one probe of a direct mapped index from the key to the slot, before the recent list and the scan. The slot is compared in full, so a stale entry only misses. */
     const unsigned lk = (((unsigned)(uintptr_t)img >> 2) ^ ((unsigned)(uintptr_t)tlut >> 3) ^ (unsigned)(width * 31 + height * 131 + (int)fmt * 7 + (int)siz * 3 + stride * 17) ^ dkey) & (LIDX_N - 1);

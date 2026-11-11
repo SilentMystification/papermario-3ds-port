@@ -2563,6 +2563,7 @@ static __attribute__((cold, noinline)) void eyecw_log(void) { /* EYECW (debug le
     pm_log_d("eyecw f%u p23 %.3f cw %.1f conv %.1f wn %.3f old %.1f", pm_frame_count(), (double)eyd_p23_dbg, (double)eyd_cw_dbg, (double)eye_conv, (double)eyd_wn_dbg,
              (double)(eye_conv * (eyd_p23_dbg < 0.f ? -eyd_p23_dbg : eyd_p23_dbg))); /* old: the cw of conv x |p23| */
 }
+void pm_dp_res_line(unsigned f); /* DPCEN2: resident bytes and load transform counts (pm_dpcen.c) */
 /* DPCEN1: byte census line every 300 frames (switch dpcen). Deltas of pm_cnt_all since the last line; bytes >> 10. */
 static __attribute__((cold, noinline)) void dp_frame(unsigned f) {
     static unsigned next, f0;
@@ -2573,6 +2574,7 @@ static __attribute__((cold, noinline)) void dp_frame(unsigned f) {
     for (i = 0; i < 8; i++) { unsigned c = pm_cnt_all[idx[i]]; d[i] = c - last[i]; last[i] = c; }
     pm_log_evt("dpcen f%u frames %u upkb %u hashkb %u flkb %u texmiss %u cmd %u ndraw %u nidx %u gvtri %u",
                f, f - f0, d[0] >> 10, d[1] >> 10, d[2] >> 10, d[3], d[4], d[5], d[6], d[7]);
+    pm_dp_res_line(f); /* DPCEN2: the dpres line of the same window */
     f0 = f;
     while (next <= f) next += 300u;
 }
