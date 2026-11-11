@@ -298,7 +298,7 @@ def fncov_report(log, lane):
     for f in sorted(done):
         cnt = frames.get(f, Counter())
         run_b, unm, calls_n, outside = 0, 0, 0, 0
-        cb = Counter()
+        cb, cc = Counter(), Counter()
         for a, n in cnt.items():
             calls_n += n
             e = fmap.get(a)
@@ -309,11 +309,12 @@ def fncov_report(log, lane):
             run_b += b
             if e["name"] in cls:
                 for c in cls[e["name"]]:
-                    cb[c] += b
+                    cb[c] += b; cc[c] += n
             else:
                 outside += b
         print("hotset M3 f%d run %d B (%d fns, %d calls, unmatched %d)" % (f, run_b, len(cnt), calls_n, unm))
         print("hotset M3 f%d class %s" % (f, " ".join("%s %d" % (c, cb[c]) for c in CLASSES)))
+        print("hotset M3 f%d calls %s" % (f, " ".join("%s %d" % (c, cc[c]) for c in CLASSES)))
         print("hotset M3 f%d outside classes %d B" % (f, outside))
     return 0
 
