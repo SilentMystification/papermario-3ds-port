@@ -107,6 +107,30 @@ yet: a memcheck-like class split of heap use would give it).
 | core 0 stall 66 % (istall 41.8 %, dstall 24.7 %, I-miss 46 / 1000) | HC rows | need the per-phase split: one console run with profrot profph on the new main |
 Next console run (user, O3DS XL, prof profile): `warp=mac_01:0 pos=0:0:200 fxtest=all profrot profph profdisk=1` on main after FILLA0.
 
+## Texture pre-conversion study, CIA memory (old oracle, for plan_datapath.md section 2 and 5)
+- Memory today (pm_mem.c:72-110 __system_allocateHeaps): the budget is already read at run time: commit = svcGetResourceLimit
+  (RESLIMIT_COMMIT) of the process, capped by PM_FCRAM (64 MB); the whole commit is one MEMOP_ALLOC_LINEAR block split into the 14 MB
+  linear pool (PM_OURS) and the heap (the rest); the ROM image (25.7 MB, rom_remap.h PM_ROM_PACKED) must fit the heap (pm_os.c
+  pm_rom_init). O3DS XL boot line: region 65536 KB commit 65536 KB (Homebrew Launcher in applet or title mode: the APPLICATION region of
+  the host title). VRAM is 6 MB on every model (texture slab, pm_tex.c :578 vramAlloc).
+- A CIA title gets the APPLICATION region of its system mode (exheader ARM11 system capabilities; makerom RSF AccessControlInfo
+  `SystemMode` and `SystemModeExt`): O3DS 64 MB (Prod, the retail default; 72/80/96 MB dev modes exist, the system reboots into the mode
+  the title asks for: not a retail-safe choice), N3DS `SystemModeExt: 124MB` (Prod extended) or 178 MB (Dev1), plus N3DS `CpuSpeed: 804MHz`
+  and `EnableL2Cache: true`. So on an O3DS a CIA gains no memory over HBL title mode; on an N3DS a CIA with 124 MB about doubles the commit.
+- Run-time choice, no build flag: keep pm_mem.c reading the commit; replace the fixed PM_FCRAM cap by the commit itself and size the
+  linear pool and the ROM keep-set from it (a larger commit keeps more ROM ranges resident or caches more native assets); memcheck.py
+  keeps one device entry per target (o3ds_xl applet, n3ds_cia) with its measured commit, as today.
+- Map texture sizes (assets/us/mapfs/tex/*_tex.json, main images only): source 1.7 MB for all areas, native (palette applied, 16-bit or
+  8-bit PICA forms) 4.5 MB, plus power-of-two padding (about +30 %): about 6 MB for every area; per area 220-340 KB (kmr 340, flo 278,
+  kpa 275, jan 243, kkj 231, mac 221). The census map load uploads 634 KB (mac_01, map textures and sprites in view). So native map
+  textures are cheap to keep resident even in the applet budget: RGBA5551 with the palette applied for CI with 1-bit alpha cutouts,
+  RGBA4 for CI with graded alpha, L8/LA4/LA8 for I and IA (native today), ETC1 only for opaque textures without edges (not needed for
+  size). Blocker: palettes the game edits at run time (tattle lerp, actor palette swaps): those textures stay CI and convert at bind.
+  Sprites (player, NPC, battle) are the larger texture set: their size is not counted yet (DPCEN2 or a sprite archive scan).
+- ASSETFREE effect: with native files on SD (generated once from the user's ROM), the ROM image need not stay resident: the generator
+  reads it once; the runtime reads native files. That frees most of the 25.7 MB on every model, more than a CIA on an O3DS gives. The
+  pre-converted textures are loaded by one read and one upload (no decode, no Morton pass, no palette hash at bind).
+
 ## Morning list (rows to write next, by the oracle)
 1. Class cuts after HC6B: read M1-hot per class (bench hotset_size on main after the HC6B merge) and the M3 census (hotset.py --fncov on
    fncov_mac01_det/kmr10_det logs of the HC6B lane); cut rare arms of the top functions per class as HCCUT2 did (byte-equal, cold
