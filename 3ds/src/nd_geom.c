@@ -13,6 +13,8 @@
 #include "pm_tex.h"
 #include "pm_port.h"
 #include "variables.h"
+#include "nd_op.h"
+#include "nd_api.h"
 
 /* GLOB: definitions moved here from the former pm_gbi.c (layout only). */
 u8 vert_live[64];
@@ -291,6 +293,70 @@ void draw_tri(unsigned w) {
     /* TRI-4: no CPU triangle path. A triangle the ring did not take is dropped and counted (DEL): tri_drop[0] a vertex not on the ring, tri_drop[1] all on the ring and gv_tri refused (gv_fb names why) */
     tri_drop[(vert_ring[i0] == GV_NONE || vert_ring[i1] == GV_NONE || vert_ring[i2] == GV_NONE) ? 0 : 1]++;
     n_drop++;
+}
+
+/* NATIVEAPI S4 (nd_parts_run): one flat particle list drawn from the ring with the state of now. The triangle path of draw_tri and gv_tri
+ * (the epoch and the state checks, the GPU append and the GPU triangle, the refusal count), with the vertex state of the ring copy in
+ * rs[] (no CPU vertex state is kept). No CPU clip test: gv_tri only skipped triangles wholly outside one view plane, which draw no pixel on
+ * the GPU either. Lit and refused loads return 0 before any triangle: the caller runs the list. u: the list (its VTX unit, then triangles). */
+int nd_part_draw(const uint32_t* u) {
+    const unsigned n = (u[0] >> 12) & 0xffu;
+    const Vtx* src = (const Vtx*)ptr_of(u[1]);
+    if (!src || !is_host((u32)(uintptr_t)src) || n < 1u || n > 64u) return 0;
+    memset(vert_live, 0, sizeof vert_live);
+    if (!pm_gpu_gv_room(n + 64u)) { extern int ring_need(unsigned nv, unsigned ni); if (ring_need(n + 64u, 384u)) memset(vert_ring, 0xff, sizeof vert_ring); } /* HUDRING, as nd_geom_vtx */
+    if (nd_ws.geom & G_LIGHTING) return 0;
+    const unsigned gmi = gv_matrix_id(0);
+    if (gmi == GV_NONE) return 0;
+    const int r0 = pm_gpu_gvtx_load(src, n);
+    if (r0 < 0) return 0;
+    PH_ADD(C_VTXLOAD, n); PH_ADD(C_GVLOAD, n); gv_load_n += n;
+    unsigned short rs[64];
+    for (unsigned i = 0; i < n; i++) rs[i] = (unsigned short)(r0 + (int)i);
+    const unsigned tss = ((unsigned)nd_ws.tex_ss << 16) | ((unsigned)nd_ws.tex_ts & 0xffffu);
+    for (const uint32_t* q = u + 2; (q[0] >> 24) != NDO_END; q += 2) {
+        if (q[0] == ND_NOP_A) continue;
+        const int two = (q[0] >> 24) == NDO_TRI2;
+        for (int t = 0; t <= two; t++) {
+            const uint32_t w = t ? q[1] : (q[0] & 0xffffffu);
+            const unsigned i0 = ((w >> 16) & 0xffu) >> 1, i1 = ((w >> 8) & 0xffu) >> 1, i2 = (w & 0xffu) >> 1; /* parts_ok: < n */
+            GP_START();
+            gp_ntri++;
+            n_cmd++;
+            tri_since_vtx = 1;
+            if (ep_osc != gv_epoch) { off_screen_check(); box_fold_sync(); ep_osc = gv_epoch; }
+            if (ep_epoch != gv_epoch) gv_epoch_enter(); /* the first triangle after a state change */
+            if (ep_why >= 0) { gv_fb[ep_why]++; tri_drop[1]++; n_drop++; continue; }
+            if (ep_cullboth) { n_out++; GP_LAP(GPL_EARLY); continue; }
+            if (ep_pepoch != gv_epoch || ep_ptss != tss) {
+                gv_params_calc(tss, &ep_p);
+                pm_gpu_set_rgb_scale(ep_p.boost ? 2 : 1);
+                ep_pepoch = gv_epoch; ep_ptss = tss;
+            }
+            if (ep_t1f) {
+                unsigned rt[3] = { rs[i0], rs[i1], rs[i2] };
+                t1_fold_tri(rt, tss); /* a changed window map flushes the open batch (flush_gen), a new batch opens below */
+            }
+            ep_n++;
+            if (ep_open && ep_open_gen == pm_gpu_flush_gen() && ep_open_epoch == gv_epoch && ep_open_tss == tss && pm_gpu_gappend((unsigned)rs[i0], (unsigned)rs[i1], (unsigned)rs[i2], gmi, gmi, gmi)) {
+                gp3_t0_surv(); n_in++; st_gpu_tri++; gv_tri_n++; PH_ADD(C_GVTRI, 1); GP_LAP(GPL_EMIT); continue;
+            }
+            const unsigned gg[3] = { gmi, gmi, gmi }, ri[3] = { rs[i0], rs[i1], rs[i2] };
+            unsigned ro[3], mvm = 0; /* TRI-2: a moved copy (edge vertex) is not the ring slot of the CPU path */
+            if (pm_gpu_gtrip((const float(*)[4][4])gm_tab, gg, ep_p.vp, ep_p.uvso, ep_p.cm, ep_p.ca, ep_p.zm, ep_ct, ep_p.fxon ? &ep_p.fx : NULL, ri, ro, &mvm)) {
+                if (!(mvm & 1u)) rs[i0] = (unsigned short)ro[0];
+                if (!(mvm & 2u)) rs[i1] = (unsigned short)ro[1];
+                if (!(mvm & 4u)) rs[i2] = (unsigned short)ro[2];
+                ep_open = 1; ep_open_gen = pm_gpu_flush_gen(); ep_open_epoch = gv_epoch; ep_open_tss = tss;
+                gp3_t0_surv(); n_in++; st_gpu_tri++; gv_tri_n++; PH_ADD(C_GVTRI, 1); GP_LAP(GPL_EMIT); continue;
+            }
+            ep_n--; ep_open = 0;
+            gv_fb[GVR_REFUSE]++; PH_ADD(C_GVFB, 1);
+            tri_drop[1]++; n_drop++;
+        }
+    }
+    tri_since_vtx = 1;
+    return 1;
 }
 
 void nd_geom_vtx(u32 w0, u32 w1, const Gfx* list) { /* G_VTX: the vertex load (cut from nd_walk.c, GM-2) */

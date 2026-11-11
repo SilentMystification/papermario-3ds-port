@@ -1215,6 +1215,106 @@
       "reason": "MOVE gate: DET cold start (-NoWarm, a cold start takes 12 to 16 s to the first marker, as nok11_det). Cap 35 s, deadline 30 s. Picture is the subject; the prof scene line is the until."
     },
     {
+      "name": "fxpic_63",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 at 0 0 200, fxtest=63 (snowfall), cold det start. Shots at frames 412 to 415.",
+      "proves": "S4 particle run (snowfall, effect 63): shots 412 to 415 byte-equal between the base build and the head build.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=63 shots shotwin=412:4 loglevel=debug det",
+      "extra": [],
+      "until": "shot \\d+ frame 415\\b",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "shot 415",
+          "regex": "shot \\d+ frame 415\\b"
+        }
+      ],
+      "reason": "S4 byte gate for the snowfall particle run (row S4SNOW): cold det start as spot_mac01_det, shots 412 to 415 compared with the base. Cap 40 s, deadline 35 s. The shot line at frame 415 is the until."
+    },
+    {
+      "name": "fxpic_124",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 at 0 0 200, fxtest=124 (pink_sparkles), cold det start. Shots at frames 412 to 415.",
+      "proves": "S4 particle run (pink_sparkles, effect 124): shots 412 to 415 byte-equal between the base build and the head build.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=124 shots shotwin=412:4 loglevel=debug det",
+      "extra": [],
+      "until": "shot \\d+ frame 415\\b",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "shot 415",
+          "regex": "shot \\d+ frame 415\\b"
+        }
+      ],
+      "reason": "S4 byte gate for the pink_sparkles particle run (row S4PINK): cold det start as spot_mac01_det, shots 412 to 415. Cap 40 s, deadline 35 s. The shot line at frame 415 is the until."
+    },
+    {
+      "name": "fxpic_50",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 at 0 0 200, fxtest=50 (shimmer_burst), cold det start. Shots at frames 412 to 415.",
+      "proves": "S4 particle run (shimmer_burst, effect 50): shots 412 to 415 byte-equal between the base build and the head build.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=50 shots shotwin=412:4 loglevel=debug det",
+      "extra": [],
+      "until": "shot \\d+ frame 415\\b",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "shot 415",
+          "regex": "shot \\d+ frame 415\\b"
+        }
+      ],
+      "reason": "S4 byte gate for the shimmer_burst particle run (row S4SHIM): cold det start as spot_mac01_det, shots 412 to 415. Cap 40 s, deadline 35 s. The shot line at frame 415 is the until."
+    },
+    {
+      "name": "fxpic_105",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 at 0 0 200, fxtest=105 (embers), cold det start. Shots at frames 412 to 415.",
+      "proves": "S4 particle run (embers, effect 105): shots 412 to 415 byte-equal between the base build and the head build.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=105 shots shotwin=412:4 loglevel=debug det",
+      "extra": [],
+      "until": "shot \\d+ frame 415\\b",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "shot 415",
+          "regex": "shot \\d+ frame 415\\b"
+        }
+      ],
+      "reason": "S4 byte gate for the embers particle run (row S4EMB): cold det start as spot_mac01_det, shots 412 to 415. Cap 40 s, deadline 35 s. The shot line at frame 415 is the until."
+    },
+    {
       "name": "spot_mac01_selfchk_prof",
       "status": "unverified",
       "subject": "Toad Town mac_01, Mario placed at pos 0 0 200, det, prof=30: the first 300-frame prof window (wk, fts, wks, oh, amort, csvc, ssvc). Log only.",

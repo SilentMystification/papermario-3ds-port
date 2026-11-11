@@ -15,6 +15,7 @@
 #include "variables.h"
 #include "nd_int.h"
 #include "nd_op.h"
+#include "nd_api.h"
 
 extern int nd_c2_on; /* CORE2-2 census (nd_c2haz.c, switch c2haz) */
 void nd_c2_rec(const Gfx* rec, unsigned words);
@@ -408,6 +409,27 @@ void nd_ops_run(const void* l, unsigned n, int keep) {
     gv_streak_flush();
     tex_streak_flush();
     if (cen) ops_cen_end();
+}
+/* NATIVEAPI S4 (nd_api.h NdParts): the core 0 runner of a particle run. Per instance: the pre units on the walker, the list drawn natively
+ * (nd_part_draw) or run as a list (nd_ops_run, keep), the post units on the walker. One list start for the run (gv_epoch once: the state
+ * ops of the units bump it themselves). */
+void nd_parts_run(const uint32_t* u) {
+    PM_WALK_OWN();
+    const unsigned n = u[0] & 0xffu, pre = (u[0] >> 8) & 0xffu, m = (u[0] >> 16) & 0xffu;
+    pm_walk_side++;
+    gv_epoch++; /* GV1b */
+    dlc_on = 1;
+    gp_prev_op = -1;
+    const uint32_t* p = u + 2;
+    for (unsigned k = 0; k < n; k++, p += 2u * m) {
+        nd_walk_state(p, pre);
+        const uint32_t* l = (const uint32_t*)ptr_of(p[2u * pre + 1u]);
+        if (!nd_part_draw(l)) nd_ops_run(l, ND_LIST_MAX, 1);
+        nd_walk_state(p + 2u * (pre + 1u), m - pre - 1u);
+    }
+    pm_walk_side--;
+    gv_streak_flush();
+    tex_streak_flush();
 }
 /* DIRECT D10a: a custom gfx range of the frame stream (model record R11, build_custom_gfx), run to its NDC_END as the walker ran the list it
  * replaces: the list start (gv_epoch, dlc_on, a full combine and render sync: DIP2) and the list end (the vertex and texture streak flush). */
