@@ -33,6 +33,11 @@ Replace `u16* refrBuf = nuGfxCfb[0] == nuGfxCfb_ptr ? nuGfxCfb[1] : nuGfxCfb[0];
   (base first: `bench.py base ndref_splash_pic`): write the per-shot diff counts (a change is expected in 2 of 3 frames).
 - `fxcen_report.py` on the fxcen_c5 LOG: copy: write the water_splash row (tex, texmiss) in the commit. The console ms is the user's check.
 
+## Step 2 (after bfe0ac756: spot_mac01_det 6/6 byte-equal, fxcen_c5 ran; ndref_splash_pic has no shots and varying counts: dropped)
+No more Azahar starts (budget used). 1. `python 3ds/tools/fxcen_report.py <the fxcen_c5 LOG: copy> --label splashprev2` (no start).
+2. Gate: the water_splash row (index 89) has texmiss per frame not above the FXCEN2 Azahar table (build3ds/out/fxcen_azahar.txt) and
+tex not above it; write both rows in the commit. 3. Commit, delete this row file; the console ms is the user's check.
+
 ## Stop and end
 A failed gate, an edit that does not fit, or a tool fault: commit, hand back the exact output (CLAUDE.md 4-5). Delete this row file in
 the completing commit. Hand back the hash, gates, memcheck line, the water_splash row.

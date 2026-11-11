@@ -66,6 +66,14 @@ Open reads for this audit: sprite raster decode per animation frame (spr_load_sp
 data-cache flush ranges (pm_gpu.c:2943 svcFlushProcessDataCache per range, pm_tex.c:554 per span), resident bytes per class (no census
 yet: a memcheck-like class split of heap use would give it).
 
+- PBATCH2 (design step, old oracle): pink_sparkles calls 8 lists (D_E01248A0[unk_28 & 7], pink_sparkles.c:283-286) with a
+  gDPSetPrimColor per part: on the ring path a prim change is a state change, so every part still flushes a batch (44 draws). A batch
+  needs the prim colour per vertex (the shade x prim product folded into the copied vertex colour when the combine reads PRIMITIVE only
+  as a multiplier); needs a read of sync_combine's plan for this effect's combine before a row.
+- Still to read for the data-path rows: HITHOST (hit file format and its readers: swap_hit_file pm_map.c, collision code), PALGEN
+  (every writer of a palette in RAM: tattle lerp, set_palette, sprite palettes, imgfx), reloc pre-apply (waits on MAPROMFS: pm_map.c),
+  DPCEN2 (resident bytes per pool), texture pre-conversion study (sizes per area texture archive: assets/us/mapfs/tex/*.json).
+
 ## Morning list (rows to write next, by the oracle)
 1. Class cuts after HC6B: read M1-hot per class (bench hotset_size on main after the HC6B merge) and the M3 census (hotset.py --fncov on
    fncov_mac01_det/kmr10_det logs of the HC6B lane); cut rare arms of the top functions per class as HCCUT2 did (byte-equal, cold
