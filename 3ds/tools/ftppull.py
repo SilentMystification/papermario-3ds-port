@@ -45,6 +45,18 @@ def main():
         except OSError:
             pass
 
+    crash_path = os.path.join(out_dir, f"hw_{label}_crash.txt")
+    try:
+        with open(crash_path, "wb") as f:
+            ftp.retrbinary("RETR /3ds/PaperMario/crash.txt", f.write)
+        print(f"[ftppull] crash.txt -> {crash_path} ({os.path.getsize(crash_path)} bytes)")
+    except Exception as e:
+        print(f"[ftppull] no crash.txt ({e})")
+        try:
+            os.remove(crash_path)
+        except OSError:
+            pass
+
     try:
         names = ftp.nlst("/luma/dumps/arm11")
     except Exception as e:
