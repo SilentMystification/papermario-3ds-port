@@ -29,9 +29,8 @@ src/effects/snowfall.c (snowfall_appendGfx), 3ds/tools/azt_scenarios.json and 3d
   `python 3ds/tools/bench.py run fxpic_63,spot_mac01_det --row S4SNOW --lane S4P --why "S4: snowfall parts as one
   NDC_NAPI record"`; `bench.py cmp fxpic_63 --row S4SNOW --commit $(git merge-base HEAD
   main)` and the same for spot_mac01_det: every shot byte-equal. Budget: at most 4 Azahar starts.
-- Console gate (orchestrator, before the merge; user push, O3DS XL, prof profile): `warp=mac_01:0 pos=0:0:200 fxtest=63,63,63,63`
-  on the merge-base build and on lane S4P, two runs each; `fxcen_report.py` per log. Pass: snowfall walk (us per frame above base)
-  lower on S4P than on the base in both runs, and the two runs of each build within 15 % of each other. Hand the four numbers back.
+- Speed gate: row S4SNOWG (fncov class calls of fxfncov_63 on the census lane against FXFNCOV). Console: none in this row; one XL
+  run `fxtest=all` after the batch merge (orchestrator), compared with xl4a (snowfall walk 18099 us above base).
 
 ## Stop
 A failed gate, an edit that does not fit the code, or a test-tool fault: commit, then hand back the exact output (CLAUDE.md 4-5).

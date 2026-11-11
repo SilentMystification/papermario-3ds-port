@@ -37,8 +37,10 @@ nd_part_draw).
 - `bench.py base fxpic_124` and `bench.py base msgbox_talk_nowide`; one list `bench.py run fxpic_124,msgbox_talk_nowide --row S4COL
   --why "S4COL: prim as the vertex colour"`; `bench.py cmp` of both against `$(git merge-base HEAD main)`. Byte-equal: pass. Not
   byte-equal: stop, commit, hand back the cmp lines (diff pixels, boxes): the user decides on a non-byte-equal colour (as SPARKLE).
-- Console gate (orchestrator, before the merge): `fxtest=124,124,124,124` and `fxtest=50,50,50,50` on base and on S4COL, two runs
-  each; pass: walk lower in both runs, runs of one build within 15 %. Budget: 4 Azahar starts.
+- Speed gate (census): `PM_FNCOV=1 PM_ROW=S4COL PM_LANE=S4COL sh 3ds/build.sh`; `bench.py run fxfncov_base,fxfncov_124,fxfncov_50
+  --row S4COL --lane S4COL_fncov --why "S4COL: class calls"`; hotset.py --fncov per log (calls line); base within 5 % of the stored
+  base. Pass: pink_sparkles D delta < 2122 (40 % of 5306) and E delta < 687 (50 % of 1373); shimmer D: report. Budget: 6 Azahar starts.
+- Console: none in this row; one XL run `fxtest=all` after the batch merge (orchestrator), compared with xl4a.
 
 ## Stop / At the end
 A failed gate or an edit that does not fit: commit, hand back the output (CLAUDE.md 4-5). Delete this row file in the completing commit.
