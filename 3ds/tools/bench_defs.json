@@ -7331,6 +7331,18 @@
       "gates": []
     },
     {
+      "name": "menu_close",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "ESCAPE3: Select menu Close game, two A presses: the close path line, the chainload clear (aptClearChainloader), then the process end line. Log only.",
+      "scenario": "menu_close",
+      "cap": 45,
+      "until": "exit: audio job done",
+      "tags": ["azahar", "menu", "exit"],
+      "gates": []
+    },
+    {
       "name": "menu_texc",
       "kind": "azahar_pic",
       "speed": "normal",
