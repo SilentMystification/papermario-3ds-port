@@ -266,7 +266,7 @@ def run_report(lane, line):
     return 0
 
 
-def fncov_report(log, lane):
+def fncov_report(log, lane, fn=False):
     fmap = parse_map(lane_dir(lane, True) / "pm_3ds.map")  # census lane: addr -> name (its sizes include the hooks)
     fns, names, calls, cg = model(lane)                       # normal lane: sizes and class membership by name
     mem, _ = classes(fns, names, cg)
@@ -316,6 +316,14 @@ def fncov_report(log, lane):
         print("hotset M3 f%d class %s" % (f, " ".join("%s %d" % (c, cb[c]) for c in CLASSES)))
         print("hotset M3 f%d calls %s" % (f, " ".join("%s %d" % (c, cc[c]) for c in CLASSES)))
         print("hotset M3 f%d outside classes %d B" % (f, outside))
+        if fn:  # --fncovfn: calls per function of the frame (census addresses summed by name), calls >= 20, largest first
+            fc = Counter()
+            for a, n in cnt.items():
+                e = fmap.get(a)
+                fc[e["name"] if e else "0x%08x" % a] += n
+            for name, n in sorted(fc.items(), key=lambda t: -t[1]):
+                if n >= 20:
+                    print("hotset fn %s %d" % (name, n))
     return 0
 
 
@@ -323,10 +331,11 @@ def main():
     ap = argparse.ArgumentParser(description="hot code bytes of the core 0 draw path (plan_hotcode HC0)")
     ap.add_argument("--line", action="store_true", help="one line for build.sh")
     ap.add_argument("--fncov", metavar="LOG", help="M3 from a census log")
+    ap.add_argument("--fncovfn", action="store_true", help="with --fncov: calls per function of each census frame")
     ap.add_argument("--lane", default=os.environ.get("PM_LANE", ""), help="lane name (default PM_LANE)")
     a = ap.parse_args()
     if a.fncov:
-        return fncov_report(a.fncov, a.lane)
+        return fncov_report(a.fncov, a.lane, a.fncovfn)
     return run_report(a.lane, a.line)
 
 
