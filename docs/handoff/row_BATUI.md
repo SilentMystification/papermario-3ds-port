@@ -1,42 +1,38 @@
-# Row BATUI: battle UI mostly missing (user, 2026-11-09)
+# Row BATUI (waits on user facts): battle UI missing on the console
 
 ## User facts
-User (O3DS, build de415917f pushed 2026-11-09): "The battle UI is mostly missing right now. I see the icons for jump, item and
-strategies along with their text but the rest of the UI is not visible." So the action wheel icons and labels draw; the other battle UI
-(likely the menu boxes/backgrounds, the HP/FP status bar, target arrows, the action command UI) does not.
-Draw-code merges in de415917f since the earlier push 92e013100: KMR10M a0022da02 (tile_bound refuses a stale walker bind: a refused
-bind can drop a draw), KMR11W 1378f6261 (edge-AA cutout blend, nd_edge_aa in nd_tmpl.c), HUDTRAIL ef146e73d (F07-7 edge stretch only
-for rects >= 160 px, pm_gpu_rect.c:218), FFOREST 9d2f39292 (far-plane z clamp in pm4/pm5). Main since then adds EDGEORD (cutout sort
-base 9000000), INTERIOR (nd_tex flush), HC9A (pm_tex slot index), HC2 (link order).
+- 2026-11-09 (O3DS, de415917f): "The battle UI is mostly missing right now. I see the icons for jump, item and strategies along with
+  their text but the rest of the UI is not visible."
+- 2026-11-09 (BATWIDE, now merged here): with Widescreen on, on Azahar and the console, the menu boxes are missing, the menu does not
+  reach the left screen edge, the wheel light is not on the selected item.
+- 2026-11-11: the battle UI is missing on a current console build (widescreen setting, menu and console not given).
 
-## User facts 2 (Azahar, 2026-11-09, same row, same battle menu shot)
-"The battle UI in Azahar isn't anchored all the way to the left side, there's still a gap. The light is also not properly aligned
-with the items." In widescreen the battle menu (action wheel and its boxes) must touch the left screen edge like the other
-left-anchored HUD (WIDE rows: pm_anchor_rect, wedge_x pm_gpu.c:172, cam_main.c:517-520 pm_wide_cam). The wheel highlight ("light")
-must sit on the selected item. Find by code the x offset each part gets in wide mode (file:line, value) and why the two differ.
-Both show on Azahar, so no console step for these two. Gate: one battle menu shot in wide mode with no gap and the light on the item.
+## Trace (oracle code read, main 798ee92d9): how each part of the battle menu draws
+- Text rectangles: option icons (btl_states_menus.c:1008 hud_element_draw_clipped) and the option name (:1016 draw_msg) -> nd_texrect
+  (nd_rect.c:216) -> pm_gpu_tex_rect (pm_gpu_rect.c:267). Drop site: pm_gpu_rect.c:275 when tex_raw_rect refuses. These parts DO show.
+- Triangles of transformed HUD elements (the parts that do NOT show): spotlights HID_Spotlights (:931-941), highlight (:950-959), beam
+  (:968-975), reels A/B (:977-991): HES_ProjectorSpot/Beam/Reel are IA8 (battle_ui_gfx.c:522-545) -> render_complex_hud_element mode 2
+  (hud_element.c:1569-1627): CAM_HUD ortho (hud_element.c:1811-1816), G_ZBUFFER|G_SHADE|G_LIGHTING (:1821), gSPVertex of
+  transform->quadBuffers, 2 triangles. Port path: nd_geom_vtx -> gv_tri -> pm_gpu_gtrip. Since TRI-4 (c3e7afb19) there is no CPU
+  triangle path: every refusal drops the triangle (nd_geom.c:291-293, counted in tri_drop and gv_fb). Drop arms that can hit these quads:
+  (a) lit load without gv5 (nd_geom.c:321), (b) matrix table full: gv_matrix_id returns GV_NONE past 256 matrices per task
+  (nd_mtx_set.c:73-74; a battle with many effects reaches the HUD last), (c) ring full (pm_gpu.c:3019 GRING_VTX), (d) gv_state_why LIT
+  (nd_geom.c:164), (e) wide only: gtrip_wide refuses when wide_edge_k returns 1 or 2 (pm_gpu.c:2776-2786, :2752, :2761), (f) decal with
+  blend (pm_gpu.c:2822), (g) a stale KZN04 dual_on scaling the quads' colour by a sprite shade (nd_geom.c:88, row WALLSHADE fixes it).
+- Prim quads btl_draw_prim_quad(0,0,0,0, ...) (:1001, :1015) have alpha 0 (invisible on the N64 too): not a missing part.
+- Wide only: BattleMenu_BasePosX = pm_wide_left(54) (:611) keeps the wheel 54 px from the screen edge, as 4:3 keeps it 54 px from the
+  game edge: by design, not a fault; a wheel at the screen edge is a user decision (a smaller value).
+- Status bar and sub-menu windows (draw_box): texrects (box_pattern_rect, nd_rect.c:105) and, for rotated windows, triangles (same
+  drop arms as above).
 
-## Start state
-`sh 3ds/tools/wt_new.sh BATUI`, branch BATUI. PM_ROW=BATUI, PM_LANE=BATUI. One Haiku agent.
+## Questions for the user (the orchestrator asks)
+1. Widescreen option: Native, Wide or Fullscreen? 3D slider up or down? 30 or 60 fps?
+2. Which parts are missing: the circles and light behind the wheel icons, the film reel, the HP/FP bar, the sub-menu windows (Jump,
+   Items lists), the target names, the action command meter? Do the icons and their names still show?
+3. Which console (XL .131, N3DS .224, O3DS .170), and every battle or a named one (map, enemy)?
+4. Should the wheel touch the left screen edge in Wide mode (now 54 px from it, the 4:3 distance)?
+5. Is there a log.txt from that session (a debug push writes `tridrop` and `rect` counts every 300 frames)? It names the drop arm.
 
-## Steps
-1. REPRO (at most 2 Azahar starts, main build): a battle scenario that reaches Mario's first turn with the action wheel up (reuse a
-   scenario whose until is "battle: start formation", add wait to the menu; new scenario + bench in the same commit). Shot of the
-   whole battle screen at the menu. Fault = boxes/status bar missing where the wheel icons show.
-2. If shown: find the cause by code, not by more runs. For each suspect merge above, read its diff and name whether battle UI draws
-   (hud_element, draw_box, the status bar rects: nd_rect.c, pm_gpu_rect.c, nd_tex_set.c tile_bound) take the changed path. Add one
-   log line counting refused or dropped draws per frame in the battle menu (e.g. tile_bound refusals with fmt/siz/w/h). One run with it.
-   Fix the named cause; one run shows the full UI. Byte gate: battle_start_f182_cold and msgbox_talk_nowide vs stored base.
-3. If not shown in 2 starts: finish the code trace of the 4 suspects, commit the log line, hand back NEEDS CONSOLE with the push
-   recipe (prof push, start a battle from the Debug menu, pull the log).
-No-repeat: a try that does not change the picture ends that cause; hand back for the oracle.
-
-## Touch only
-3ds/src/nd_rect.c, pm_gpu_rect.c, nd_tex_set.c, nd_tmpl.c, pm_gpu.c (only the named cause), azt_scenarios.json, bench_defs.json.
-
-## Done criteria
-nd_host PASS, memcheck OK, the battle menu shot with the full UI, byte gates equal except the fixed UI. Delete this row file in the
-completing commit. Budget: 6 Azahar starts.
-
-## Rules
-CLAUDE.md. STOP RULE: 90 minutes or 150 tool calls. No Monitor or tail loops.
+## Next step
+After the answers the oracle names the arm and writes the exact-edit Haiku row (bench battle_wheel_nowide_det, or the wide wheel
+scenarios battle_wheel_wide_left and battle_wheel5_wide, as the byte gate of the changed path).
