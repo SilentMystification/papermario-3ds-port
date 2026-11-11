@@ -184,14 +184,16 @@ static int nsel = -1, shotn;
 /* FXCEN1: per-effect census. pm_cnt_all (PH_ADD while pm_cnt_on) and the pm_gpu totals are read at a snapshot; the fxcena and
  * fxcenb lines carry the deltas to the print. Counts only; the picture stays out (CLAUDE.md 2). */
 int pm_cnt_on; unsigned pm_cnt_all[C_N];
+unsigned pm_fx_gpu_us, pm_fx_walk_us;
 void pm_gpu_cnt_now(unsigned o[8]);
 void pm_gpu_mdl_stat(unsigned* miss, unsigned* clears);
-typedef struct { unsigned cnt[C_N], g[8], mmiss, mclr, tk, f; } FxCen;
+typedef struct { unsigned cnt[C_N], g[8], mmiss, mclr, gpu, walk, tk, f; } FxCen;
 static FxCen fxc_base, fxc_eff;
 static void fxc_take(FxCen* s, unsigned f) {
     memcpy(s->cnt, pm_cnt_all, sizeof s->cnt);
     pm_gpu_cnt_now(s->g);
     pm_gpu_mdl_stat(&s->mmiss, &s->mclr);
+    s->gpu = pm_fx_gpu_us; s->walk = pm_fx_walk_us; /* FXSPLIT */
     s->tk = pm_ticks();
     s->f = f;
 }
@@ -208,6 +210,7 @@ static void fxc_print(int idx, const char* name, const FxCen* s, unsigned f) {
         c.cnt[C_FLKB] - s->cnt[C_FLKB], c.cnt[C_NDRAW] - s->cnt[C_NDRAW], c.cnt[C_NIDX] - s->cnt[C_NIDX],
         c.g[0] - s->g[0], c.g[1] - s->g[1], c.g[2] - s->g[2], c.g[3] - s->g[3], c.g[5] - s->g[5], c.g[6] - s->g[6],
         c.mmiss - s->mmiss, c.mclr - s->mclr);
+    pm_log_evt("fxcenc %d gpu %u walk %u", idx, c.gpu - s->gpu, c.walk - s->walk); /* FXSPLIT */
 }
 
 static void shot(const char* what, int i) {

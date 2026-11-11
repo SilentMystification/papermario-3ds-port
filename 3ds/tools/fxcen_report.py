@@ -6,9 +6,12 @@
 Input: the log copies of fxtest runs with the census (fxtest on: pm_cnt_on). Lines:
   fxcena <idx> <name> frames <n> us <us> live <k>
   fxcenb <idx> tri <n> vtx <n> ... mclr <n>     (deltas over the window of fxcena)
+  fxcenc <idx> gpu <n> walk <n>                 (deltas over the window of fxcena)
 idx -1 is the base window (frames 360 to 400, no effect). Every value is divided by the frames of its window; the
 base per-frame value is subtracted from each effect's per-frame value. Each log file has its own base line (one boot
 per chunk), so each file's effects are measured against that file's own base.
+gpu = GPU drawing us per frame (C3D_GetDrawingTime), walk = core 0 stream walk us per frame; both above the base window.
+Azahar values are not the console.
 
 Output: build3ds/out/fxcen_<label>.txt. One table sorted by us per frame, then the top 15 by draw, ndraw, tri+gvtri,
 texmiss, cmd, upd, cfull and mmiss.
@@ -24,9 +27,10 @@ OUT_DIR = os.path.join(ROOT, "build3ds", "out")
 
 RE_A = re.compile(r"fxcena (-?\d+) (\S+) frames (\d+) us (\d+) live (\d+)")
 RE_B = re.compile(r"fxcenb (-?\d+) ((?:[a-z]+ -?\d+ ?)+)")
+RE_C = re.compile(r"fxcenc (-?\d+) gpu (\d+) walk (\d+)")
 
 COUNTS = ["tri", "vtx", "draw", "tex", "texmiss", "texkb", "cmd", "gvtri", "gvrej", "gvfb",
-          "flkb", "ndraw", "nidx", "prg", "shr", "upd", "spl", "sprmiss", "cfull", "mmiss", "mclr"]
+          "flkb", "ndraw", "nidx", "prg", "shr", "upd", "spl", "sprmiss", "cfull", "mmiss", "mclr", "gpu", "walk"]
 TOP = [("draw", ["draw"]), ("ndraw", ["ndraw"]), ("tri+gvtri", ["tri", "gvtri"]), ("texmiss", ["texmiss"]),
        ("cmd", ["cmd"]), ("upd", ["upd"]), ("cfull", ["cfull"]), ("mmiss", ["mmiss"])]
 
@@ -47,7 +51,12 @@ def parse(path):
                 idx = int(m.group(1))
                 r = rec.setdefault(idx, {"c": {}})
                 toks = m.group(2).split()
-                r["c"] = {toks[i]: int(toks[i + 1]) for i in range(0, len(toks) - 1, 2)}
+                r["c"].update({toks[i]: int(toks[i + 1]) for i in range(0, len(toks) - 1, 2)})
+                continue
+            m = RE_C.search(line)
+            if m:
+                idx = int(m.group(1))
+                rec.setdefault(idx, {"c": {}})["c"].update(gpu=int(m.group(2)), walk=int(m.group(3)))
     return rec
 
 
