@@ -227,12 +227,14 @@ static void walk_call(unsigned dbg, const Gfx* at, u32 w0, u32 w1) {
     const unsigned ot = orb_tag;
     int ow = 0; /* FX1-3: a tagged list under orbdbg runs on the executor (no ent or DLC path) */
     if (__builtin_expect(dbg & WD_ORB, 0) && PMDL("orbdbg")) { unsigned t = orb_tag_of(next); if (t) { orb_enter(t); ow = 1; } }
+    int ring = 0; /* PBATCH1: a particle list (ent_gdl -1) runs on the op executor, not dlc_try */
     if (ent_skipgen) ent_skipgen = 0;
     else if (!ow && dlc_on && !((u32)next - (u32)gMapShapeData < 0x40000u)) {
         NDT_BD(te, dbg); pm_tex_tagi = 5; int eh = ent_gdl(next); NDT_E(te, NDT_ENT);
-        if (eh) return;
+        if (eh > 0) return;
+        if (eh < 0) ring = 1;
     }
-    if (!ow && dlc_on) {
+    if (!ow && dlc_on && !ring) {
         NDT_BD(td, dbg); int dh = dlc_try(next); NDT_E(td, NDT_DLC);
         if (dh) { if (__builtin_expect(dbg & WD_CEN, 0)) walk_dbg_dlc(); return; }
     }

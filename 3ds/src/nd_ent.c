@@ -328,7 +328,7 @@ EntKey* ent_find(const Gfx* l, u32 vb) {
 u32 ent_segkey(void) { u32 h = 2166136261u; for (unsigned i = 1; i < 16; i++) h = (h ^ nd_ws.segbase[i]) * 16777619u; return h | 1u; }
 
 /* SGEN-1: every static list the walker meets (G_DL arm, no record). Lists in the display contexts are dynamic by address: walker (DIRECT D10a:
- * the frame stream holds no list). 1: drawn. */
+ * the frame stream holds no list). 1: drawn, 0 not drawn, -1 ring path wanted (the caller skips dlc_try). */
 int ent_gdl(const Gfx* l) {
     if (!dlc_on || ((u32)l & 7u) || (u32)l - (u32)D_80164000 < 2u * sizeof(DisplayContext)) { gdl_c.skip++; return 0; }
     if (dlc_seen_gen != pm_dlc_gen) { dlc_reset(); dlc_seen_gen = pm_dlc_gen; }
@@ -353,6 +353,8 @@ int ent_gdl(const Gfx* l) {
             if (!k) { gdl_c.ref++; return 0; }
         }
     }
+    { const u32 f = pm_frame_count(); if (k->cf != f) { k->pcalls = k->cf + 1u == f ? k->calls : 0; k->calls = 0; k->cf = f; } if (k->calls < 0xffffu) k->calls++;
+      if (k->pcalls >= 4u) return -1; } /* PBATCH1: a particle list (4+ calls last frame): the ring path batches 8 matrices per draw */
     if (k->st == ENT_DYN) { gdl_c.dyn++; return 0; }
     if (k->st == ENT_REF && k->why != 6) { gdl_c.ref++; return 0; }
     int r = ent_run(l, k, 0);

@@ -343,6 +343,7 @@ typedef struct {
     u32 ndraw, id, segid;
     u32 nint;
     u8 useseg; /* S SGEN-1: the list reads vertices through a segment address: its entries are keyed by the segment bases (ent_segkey) */
+    u16 calls, pcalls; u32 cf; /* PBATCH1: calls in frame cf, calls in the frame before */
     Gfx* fw; /* the list with its nested G_DL lists inlined (S6-5), G_ENDDL last: the segment ops index it */
 } EntKey;
 enum { ENT_NEW, ENT_OK, ENT_REF, ENT_DYN };
