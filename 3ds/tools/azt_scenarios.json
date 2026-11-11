@@ -13479,6 +13479,207 @@
       ],
       "reason": "HC0 census: cold det start, the draw functions that run in one walker frame and their call counts (census lane only). Cap 35 s: the first marker takes 12 to 16 s (as spot_mac01_det), then frame 200. Deadline 30 s. Log only; the until is the census done line."
     },
+
+    {
+      "name": "fxfncov_base",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, fxtest slot 63 not yet spawned, census of walker frame 396 (before the spawn at 402).",
+      "proves": "HC0 M3 for mac_01 with fxtest slot live: which draw functions run in one frame and the calls of each (fncov lane, draw TUs instrumented).",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=63 fncov=396 loglevel=debug det",
+      "extra": [],
+      "until": "fncov f\\d+ done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "fncov done",
+          "regex": "fncov f\\d+ done"
+        }
+      ],
+      "reason": "Baseline census: draw functions run in walker frame 396 with no effect live, to subtract from the per-effect censuses. Cap 45 s, deadline 40 s. Log only; the until is the census done line."
+    },
+    {
+      "name": "fxfncov_63",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, fxtest=63 (snowfall) live in slot 400-443, census of walker frame 420.",
+      "proves": "HC0 M3 for mac_01 with fxtest slot live: which draw functions run in one frame and the calls of each (fncov lane, draw TUs instrumented).",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=63 fncov=420 loglevel=debug det",
+      "extra": [],
+      "until": "fncov f\\d+ done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "fncov done",
+          "regex": "fncov f\\d+ done"
+        }
+      ],
+      "reason": "Per-effect census: which draw functions snowfall runs per frame and their call counts (fncov lane, census only). Cap 45 s, deadline 40 s. Log only; the until is the census done line."
+    },
+    {
+      "name": "fxfncov_89",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, fxtest=89 (water_splash) live in slot 400-443, census of walker frame 420.",
+      "proves": "HC0 M3 for mac_01 with fxtest slot live: which draw functions run in one frame and the calls of each (fncov lane, draw TUs instrumented).",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=89 fncov=420 loglevel=debug det",
+      "extra": [],
+      "until": "fncov f\\d+ done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "fncov done",
+          "regex": "fncov f\\d+ done"
+        }
+      ],
+      "reason": "Per-effect census: which draw functions water_splash runs per frame and their call counts (fncov lane, census only). Cap 45 s, deadline 40 s. Log only; the until is the census done line."
+    },
+    {
+      "name": "fxfncov_51",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, fxtest=51 (energy_shockwave) live in slot 400-443, census of walker frame 420.",
+      "proves": "HC0 M3 for mac_01 with fxtest slot live: which draw functions run in one frame and the calls of each (fncov lane, draw TUs instrumented).",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=51 fncov=420 loglevel=debug det",
+      "extra": [],
+      "until": "fncov f\\d+ done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "fncov done",
+          "regex": "fncov f\\d+ done"
+        }
+      ],
+      "reason": "Per-effect census: which draw functions energy_shockwave runs per frame and their call counts (fncov lane, census only). Cap 45 s, deadline 40 s. Log only; the until is the census done line."
+    },
+    {
+      "name": "fxfncov_124",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, fxtest=124 (pink_sparkles) live in slot 400-443, census of walker frame 420.",
+      "proves": "HC0 M3 for mac_01 with fxtest slot live: which draw functions run in one frame and the calls of each (fncov lane, draw TUs instrumented).",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=124 fncov=420 loglevel=debug det",
+      "extra": [],
+      "until": "fncov f\\d+ done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "fncov done",
+          "regex": "fncov f\\d+ done"
+        }
+      ],
+      "reason": "Per-effect census: which draw functions pink_sparkles runs per frame and their call counts (fncov lane, census only). Cap 45 s, deadline 40 s. Log only; the until is the census done line."
+    },
+    {
+      "name": "fxfncov_105",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, fxtest=105 (embers) live in slot 400-443, census of walker frame 420.",
+      "proves": "HC0 M3 for mac_01 with fxtest slot live: which draw functions run in one frame and the calls of each (fncov lane, draw TUs instrumented).",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=105 fncov=420 loglevel=debug det",
+      "extra": [],
+      "until": "fncov f\\d+ done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "fncov done",
+          "regex": "fncov f\\d+ done"
+        }
+      ],
+      "reason": "Per-effect census: which draw functions embers runs per frame and their call counts (fncov lane, census only). Cap 45 s, deadline 40 s. Log only; the until is the census done line."
+    },
+    {
+      "name": "fxfncov_50",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, fxtest=50 (shimmer_burst) live in slot 400-443, census of walker frame 420.",
+      "proves": "HC0 M3 for mac_01 with fxtest slot live: which draw functions run in one frame and the calls of each (fncov lane, draw TUs instrumented).",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=50 fncov=420 loglevel=debug det",
+      "extra": [],
+      "until": "fncov f\\d+ done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "fncov done",
+          "regex": "fncov f\\d+ done"
+        }
+      ],
+      "reason": "Per-effect census: which draw functions shimmer_burst runs per frame and their call counts (fncov lane, census only). Cap 45 s, deadline 40 s. Log only; the until is the census done line."
+    },
+    {
+      "name": "fxfncov_55",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, fxtest=55 (effect_3D) live in slot 400-443, census of walker frame 420.",
+      "proves": "HC0 M3 for mac_01 with fxtest slot live: which draw functions run in one frame and the calls of each (fncov lane, draw TUs instrumented).",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=55 fncov=420 loglevel=debug det",
+      "extra": [],
+      "until": "fncov f\\d+ done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "fncov done",
+          "regex": "fncov f\\d+ done"
+        }
+      ],
+      "reason": "Per-effect census: which draw functions effect_3D runs per frame and their call counts (fncov lane, census only). Cap 45 s, deadline 40 s. Log only; the until is the census done line."
+    },
     {
       "name": "fncov_kmr10_det",
       "status": "unverified",
