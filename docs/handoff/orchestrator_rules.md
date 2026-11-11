@@ -12,8 +12,10 @@ Edit rules in place, never append. Start of a session: read docs/handoff/HANDOFF
 - Session size: count the context from the session transcript at stopping points. Ask the user at about 300K, then once per
   further 100K, whether to start a new session. A new session starts only between chains (no agent running). Write HANDOFF.md
   only when a new session starts. Agents of one session cannot be resumed from another session: their context ends there.
-- Oracle: one Opus oracle per orchestrator session, reused by SendMessage for every question (send questions in groups).
-  Replace it only when its context passes about 300K. Never start a second oracle for a new question or area. It reads code and writes only
+- Oracle (Opus): the orchestrator starts the first oracle of a session. Every other Opus agent (a second or a replacement oracle,
+  an Opus code agent) is started only by the user: ask with AskUserQuestion and give the reason (the oracle passed about 300K, or a
+  new area where its context does not help). Reuse the current oracle for related questions, sent in groups. Never two oracles
+  running at once unless the user says so. It reads code and writes only
   docs/handoff/row_*.md files (rows, findings), never code. It plans each fix by a code read (CLAUDE.md 1-2). For a change of a data
   format it first lists every reader by grep, in the row.
 - Code agents: Haiku (coder.md). Sonnet or Opus only for a row where the oracle gives a reason and the user says yes. Only the user
