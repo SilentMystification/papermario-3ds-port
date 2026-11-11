@@ -545,6 +545,7 @@ void pm_frame_loop(void) {
         static int top_after_due; static unsigned top_after_k;
         PM_WD_PHASE(2);
         pm_log_poll();
+        pm_esc_take(); /* ESCAPE2: the START+SELECT request of the watchdog */
         if (pm_menu_open) pm_lg_quiesce(); /* CORE2C-3: the menu reads and writes game state in the pad scan: the logic is idle */
         pm_pad_scan();
         if (pm_menu_open) { /* MN1: the Select menu pauses the game: no step, no draw, no audio tick. The menu text is presented here. */

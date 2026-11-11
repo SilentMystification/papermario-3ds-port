@@ -10,14 +10,14 @@
 int pm_debug_value(const char* key, char* out, unsigned n);
 int pm_debug_mode(const char* key); /* CFG-1, pm_log.c: -1 absent, 0 off, 1 on */
 
-/* Designated initializers: a value cannot move to the next field when a field is added. Defaults: fps60 off, wide off, dbg_hud on, dbg_stats, dbg_nofog, dbg_nolight, o3ds_z off, log on, live, disk and con levels warn, fixedseed off, dpad_mode multi, dz_pad 15, dz_cs 0, rep_delay 500, rep_rate 200, fskip on, hud_ms 1000, pos_hud off, poslog off. */
+/* Designated initializers: a value cannot move to the next field when a field is added. Defaults: fps60 off, wide off, dbg_hud on, dbg_stats, dbg_nofog, dbg_nolight, o3ds_z off, log on, live, disk and con levels warn, fixedseed off, dpad_mode multi, dz_pad 15, dz_cs 0, rep_delay 500, rep_rate 200, fskip on, hud_ms 1000, pos_hud off, poslog off, esc_mode hbmenu. */
 PmOpt pm_opt = {
     .fps60 = 0, .wide = 0, .dbg_hud = 1, .dbg_stats = 0, .dbg_nofog = 0, .dbg_nolight = 0, .o3ds_z = 0,
     .log = 1, .livelevel = 1, .disklevel = 1, .conlevel = 1, .prof_disk = 0, .fixedseed = 0, .dpad_mode = 0,
-    .dz_pad = 15, .dz_cs = 0, .rep_delay = 500, .rep_rate = 200, .fskip = 1, .hud_ms = 1000, .pos_hud = 0, .poslog = 0,
+    .dz_pad = 15, .dz_cs = 0, .rep_delay = 500, .rep_rate = 200, .fskip = 1, .hud_ms = 1000, .pos_hud = 0, .poslog = 0, .esc_mode = 0,
 };
 /* Fails the build when PmOpt gains or loses a field without this initializer being updated. */
-_Static_assert(sizeof(PmOpt) == 22 * sizeof(int), "PmOpt field count changed: update pm_opt above");
+_Static_assert(sizeof(PmOpt) == 23 * sizeof(int), "PmOpt field count changed: update pm_opt above");
 /* ARG1, LOG5: the saved logging values (options.ini, or the defaults). pm_opt holds the values of this run (a launch argument may differ). */
 static int sv_log = 1, sv_live = 1, sv_disk = 1, sv_con = 1, sv_prof_disk = 0;
 /* PROFROW: the Profiling row. Modes 0 off, 1 prof, 2 phase (the index of prof_name). prof_row is this run, sv_prof the saved value (options.ini profmode=). */
@@ -73,6 +73,10 @@ static const char* const dpad_name[3] = { "multi", "cstick", "analog" };
 static const char* const dpad_label[3] = { "Multifunction", "To C-Stick", "To Analog" };
 static int dpad_eff(void) { return pm_opt.dpad_mode == 2 && !pm_new3ds ? 0 : pm_opt.dpad_mode; }
 const char* pm_dpad_mode_name(void) { return dpad_label[dpad_eff()]; }
+/* ESCAPE2: START+SELECT mode. 0 Homebrew Menu (the default), 1 Quit (close the game to the HOME Menu), 2 HOME Menu (suspend). */
+static const char* const esc_name[3] = { "hbmenu", "quit", "home" };
+static const char* const esc_label[3] = { "Homebrew Menu", "Quit", "HOME Menu" };
+const char* pm_esc_name(int m) { return esc_name[m < 0 || m > 2 ? 0 : m]; }
 void pm_dpad_mode_next(void) {
     pm_opt.dpad_mode = (dpad_eff() + 1) % (pm_new3ds ? 3 : 2);
     pm_options_touch();
@@ -102,8 +106,8 @@ void pm_options_write(void) {
         pm_log_e("options: cannot write options.tmp");
         return;
     }
-    fprintf(f, "; Paper Mario 3DS port settings (key=value)\nversion=2\nfps60=%d\nwide=%d\nhud=%d\nstats=%d\nnofog=%d\nnolight=%d\no3dsz=%d\nlog_on=%d\nlive_level=%d\ndisk_level=%d\ncon_level=%d\nprof_disk=%d\nfixedseed=%d\ndpad_mode=%s\ndz_pad=%d\ndz_cs=%d\nrep_delay=%d\nrep_rate=%d\nfskip=%d\nhudint=%d\nposhud=%d\nposlog=%d\nprofmode=%s\n",pm_opt.fps60, pm_opt.wide, pm_opt.dbg_hud,
-            pm_opt.dbg_stats, pm_opt.dbg_nofog, pm_opt.dbg_nolight, pm_opt.o3ds_z, sv_log, sv_live, sv_disk, sv_con, sv_prof_disk, pm_opt.fixedseed, dpad_name[pm_opt.dpad_mode], pm_opt.dz_pad, pm_opt.dz_cs, pm_opt.rep_delay, pm_opt.rep_rate, pm_opt.fskip, pm_opt.hud_ms, pm_opt.pos_hud, pm_opt.poslog, prof_name[sv_prof]);
+    fprintf(f, "; Paper Mario 3DS port settings (key=value)\nversion=2\nfps60=%d\nwide=%d\nhud=%d\nstats=%d\nnofog=%d\nnolight=%d\no3dsz=%d\nlog_on=%d\nlive_level=%d\ndisk_level=%d\ncon_level=%d\nprof_disk=%d\nfixedseed=%d\ndpad_mode=%s\ndz_pad=%d\ndz_cs=%d\nrep_delay=%d\nrep_rate=%d\nfskip=%d\nhudint=%d\nposhud=%d\nposlog=%d\nescmode=%s\nprofmode=%s\n",pm_opt.fps60, pm_opt.wide, pm_opt.dbg_hud,
+            pm_opt.dbg_stats, pm_opt.dbg_nofog, pm_opt.dbg_nolight, pm_opt.o3ds_z, sv_log, sv_live, sv_disk, sv_con, sv_prof_disk, pm_opt.fixedseed, dpad_name[pm_opt.dpad_mode], pm_opt.dz_pad, pm_opt.dz_cs, pm_opt.rep_delay, pm_opt.rep_rate, pm_opt.fskip, pm_opt.hud_ms, pm_opt.pos_hud, pm_opt.poslog, esc_name[pm_opt.esc_mode], prof_name[sv_prof]);
     for (int i = 0; i < PM_NIN; i++) if (pm_map[i] != map_def[i]) fprintf(f, "map.%s=%s\n", pm_in_name[i], pm_n64_name(pm_map[i]));
     if (fclose(f) != 0) {
         pm_log_e("options: write of options.tmp failed");
@@ -168,6 +172,12 @@ void pm_options_init(void) {
                 int m;
                 for (m = 0; m < 3 && strcmp(eq + 1, dpad_name[m]); m++) {}
                 if (m == 3) pm_log_w("options: skip key '%s' value '%s'", line, eq + 1); else pm_opt.dpad_mode = m;
+                continue;
+            }
+            if (!strcmp(line, "escmode")) { /* ESCAPE2 */
+                int m;
+                for (m = 0; m < 3 && strcmp(eq + 1, esc_name[m]); m++) {}
+                if (m == 3) pm_log_w("options: skip key '%s' value '%s'", line, eq + 1); else pm_opt.esc_mode = m;
                 continue;
             }
             if (!strcmp(line, "dz_pad") || !strcmp(line, "dz_cs") || !strcmp(line, "rep_delay") || !strcmp(line, "rep_rate")) { /* PT61, PT60 */
@@ -346,7 +356,7 @@ const unsigned char* pm_options_build_msg(void) { return pm_options_msg("Build "
 /* UI1a, PT59: the rows of the Options panel in tabs. The file select panel (mode 0) and the Select menu (mode 1) use the same table, the same value code and
  * the same action code. Tab 0 General, tab 1 Controls, tab 2 Debug. The last row of each tab is Back. Mode 1 adds the rows that only make sense in the
  * port menu (Return to Title Screen, Exit to Homebrew) and its Warp now changes the map at once. */
-enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPAREA, RW_DZPAD, RW_DZCS, RW_RDELAY, RW_RRATE, RW_CLOSE, RW_BOSSFOLDER, RW_MAP = 100, RW_DBG = 200, RW_GIVE = 300, RW_STAT = 310, RW_BOSS = 400, RW_PROF = 220, RW_CSTATS = 320, RW_CBADGES = 331, RW_CKEYS = 332, RW_HUDF = 340, RW_LOGF = 341, RW_RENDERF = 342, RW_GAMEF = 343, RW_BOSSBAT = 344, RW_PARTF = 345, RW_PART = 350, RW_SPAWNF = 346, RW_MOON = 370, RW_FADV = 390, RW_EQF = 362, RW_SPWF = 363, RW_INVF = 364, RW_BTLF = 365, RW_MERF = 366, RW_POSF = 367, RW_EQ = 3500, RW_SPW = 3510, RW_INV = 3520, RW_BTL = 3530, RW_MER = 3540, RW_POS = 3550, RW_CURP = 3560, RW_BATTLESF = 347, RW_LOGSUB = 348, RW_LOG = 3200, RW_BTLAREA = 2000, RW_BTLROW = 2100, RW_SPAWN = 1300, RW_BADGE = 900, RW_KEY = 1100, RW_SUB = 700, RW_WMAP = 800, RW_STORYF = 3400, RW_STORY = 3410, RW_TEXFF = 3570, RW_TEXF = 3580 }; /* STORYMENU: RW_STORYF the Story progress folder row (Debug tab), RW_STORY + row its page rows */ /* RW_BADGE + row: the Badges folder, RW_KEY + row: Key items (row 0 Toggle all, row k item k-1) */
+enum { RW_FPS, RW_WIDE, RW_TITLE, RW_EXIT, RW_BACK, RW_DPAD, RW_RESET, RW_WARPAREA, RW_DZPAD, RW_DZCS, RW_RDELAY, RW_RRATE, RW_CLOSE, RW_BOSSFOLDER, RW_ESC, RW_MAP = 100, RW_DBG = 200, RW_GIVE = 300, RW_STAT = 310, RW_BOSS = 400, RW_PROF = 220, RW_CSTATS = 320, RW_CBADGES = 331, RW_CKEYS = 332, RW_HUDF = 340, RW_LOGF = 341, RW_RENDERF = 342, RW_GAMEF = 343, RW_BOSSBAT = 344, RW_PARTF = 345, RW_PART = 350, RW_SPAWNF = 346, RW_MOON = 370, RW_FADV = 390, RW_EQF = 362, RW_SPWF = 363, RW_INVF = 364, RW_BTLF = 365, RW_MERF = 366, RW_POSF = 367, RW_EQ = 3500, RW_SPW = 3510, RW_INV = 3520, RW_BTL = 3530, RW_MER = 3540, RW_POS = 3550, RW_CURP = 3560, RW_BATTLESF = 347, RW_LOGSUB = 348, RW_LOG = 3200, RW_BTLAREA = 2000, RW_BTLROW = 2100, RW_SPAWN = 1300, RW_BADGE = 900, RW_KEY = 1100, RW_SUB = 700, RW_WMAP = 800, RW_STORYF = 3400, RW_STORY = 3410, RW_TEXFF = 3570, RW_TEXF = 3580 }; /* STORYMENU: RW_STORYF the Story progress folder row (Debug tab), RW_STORY + row its page rows */ /* RW_BADGE + row: the Badges folder, RW_KEY + row: Key items (row 0 Toggle all, row k item k-1) */
 /* PT01c, MN6 rest: the Warp area folder rows (tab PM_OPT_SUB): RW_SUB + row, the presets first, then one row per area. RW_WMAP + row is a map row of an area page. */
 int pm_dbgg_spawn_count(void); int pm_dbgg_spawn_id(int row); void pm_dbgg_spawn(int id);
 const char* pm_partner_name(int i); const char* pm_partner_value(int i); int pm_dbgg_partner_on(int i); void pm_dbgg_partner_set(int i, int on); int pm_dbgg_partner_level(int i, int dir);
@@ -414,7 +424,7 @@ static int tab_ids(int tab, int mode, int* ids) {
         ids[n++] = RW_HUDF; /* Debug HUD folder */
         ids[n++] = RW_LOGSUB; ids[n++] = RW_PROF; /* MENUGEN part 2: Logging page and Profiling, top rows */
         ids[n++] = RW_DBG + 2; ids[n++] = RW_DBG + 3; ids[n++] = RW_TEXFF; /* Disable Fog, Disable Light, Texture Filtering folder */
-        ids[n++] = RW_DBG + 6; /* Fixed Seed */
+        ids[n++] = RW_DBG + 6; ids[n++] = RW_ESC; /* Fixed Seed, START+SELECT (ESCAPE2) */
         if (mode) ids[n++] = RW_BOSSBAT; /* Start a Battle folder (Select menu only) */
     } else if (tab == 3) { /* PROFILE: Cheats tab (Select menu only), the top level folders in this order (folders end with " >") */
         ids[n++] = RW_MOON; /* Moon jump (On or Off) */
@@ -662,6 +672,7 @@ const char* pm_optui_label(int tab, int row, int mode) {
         case RW_CLOSE: return "Close game";
         case RW_EXIT: return "Exit to Homebrew Menu";
         case RW_DPAD: return "D-PAD";
+        case RW_ESC: return "START+SELECT";
         case RW_DZPAD: return "Circle pad dead zone";
         case RW_DZCS: return "C-Stick dead zone";
         case RW_RDELAY: return "Repeat delay";
@@ -719,6 +730,7 @@ const char* pm_optui_value(int tab, int row, int mode) {
         case RW_WIDE: return res_name();
         case RW_FPS: return pm_options_get(0) ? "On" : "Off";
         case RW_DPAD: return pm_dpad_mode_name();
+        case RW_ESC: return esc_label[pm_opt.esc_mode];
         case RW_DZPAD: case RW_DZCS: case RW_RDELAY: case RW_RRATE: {
             static char nb[4][12];
             char* b = nb[id - RW_DZPAD];
@@ -762,6 +774,7 @@ int pm_optui_step(int tab, int row, int dir, int mode) {
     if (id == RW_INV + 1 || id == RW_BTL + 5 || id == RW_POS + 1 || id == RW_POS + 2) return 0; /* act only */
     if (id > RW_PART && id <= RW_PART + 11) return pm_dbgg_partner_level(id - RW_PART, dir); /* CH4: left and right change the level of an enabled partner */
     if (id == RW_CSTATS || id == RW_CBADGES || id == RW_CKEYS || fold_index(id) >= 0 || folder_row(id, &g) >= 0) return 0;
+    if (id == RW_ESC) { pm_opt.esc_mode = (pm_opt.esc_mode + (dir > 0 ? 1 : 2)) % 3; pm_options_touch(); pm_log("options: escmode %s", esc_name[pm_opt.esc_mode]); return 1; } /* ESCAPE2 */
     if (id == RW_FPS || id == RW_WIDE || id == RW_DPAD || (id >= RW_MAP && id < RW_MAP + PM_NIN) || (id >= RW_DBG && id < RW_DBG + 11)) { /* LAYOUT: left or right flips or cycles a value row like A */
         pm_optui_act(tab, row, mode);
         return 1;
@@ -867,6 +880,7 @@ int pm_optui_act(int tab, int row, int mode) {
         case RW_FPS: pm_options_flip(0); return 0;
         case RW_WIDE: pm_options_flip(1); return 0;
         case RW_DPAD: pm_dpad_mode_next(); return 0;
+        case RW_ESC: pm_optui_step(tab, row, 1, mode); return 0; /* ESCAPE2 */
         case RW_RESET: pm_map_reset(); pm_options_touch(); pm_log("options: controls reset"); return 0;
         case RW_TITLE:
             if (armed_id != RW_TITLE) { armed_id = RW_TITLE; return 0; }
