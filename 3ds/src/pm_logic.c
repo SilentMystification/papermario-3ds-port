@@ -11,6 +11,7 @@
 #include <3ds.h>
 #include "pm_port.h"
 #include "pm_thread.h"
+extern volatile int pm_crash_exit; /* pm_main.c CRASHEXIT */
 
 void pm_wq_set_logic(Thread t); /* nd_wq.c */
 int pm_wq_pump_one(void);
@@ -107,7 +108,8 @@ void pm_lg_publish_d(int d) {
  * threads (an APT hook on the APT thread) return at once: only the walker may run the queue. */
 void pm_lg_quiesce(void) {
     if (!lg_th || threadGetCurrent() != lg_walker) return;
-    while ((int)(lg_done - lg_handed) < 0) { pm_wq_pump_blocked(); pm_wq_wait_walker(LG_WAIT_NS); }
+    /* CRASHEXIT2: a crashed logic thread never ends its step: the exit goes on */
+    while ((int)(lg_done - lg_handed) < 0 && !pm_crash_exit) { pm_wq_pump_blocked(); pm_wq_wait_walker(LG_WAIT_NS); }
     while (pm_wq_pump_one()) {}
 }
 
@@ -116,7 +118,7 @@ void pm_lg_quiesce(void) {
 int pm_lg_quiesce_ms(unsigned ms) {
     if (!lg_th || threadGetCurrent() != lg_walker) return 0;
     u64 end = svcGetSystemTick() + (u64)ms * CPU_TICKS_PER_MSEC;
-    while ((int)(lg_done - lg_handed) < 0) {
+    while ((int)(lg_done - lg_handed) < 0 && !pm_crash_exit) {
         pm_wq_pump_blocked();
         u64 now = svcGetSystemTick();
         if (now >= end) return -1;
@@ -135,7 +137,7 @@ void pm_lg_hand(const LgCmd* c, int serial) {
         if (c->kind != LG_IDLE) lg_pf_ser++;
         return;
     }
-    while (lg_qn - lg_qtaken >= LG_RING) { pm_wq_pump_blocked(); pm_wq_wait_walker(LG_WAIT_NS); }
+    while (lg_qn - lg_qtaken >= LG_RING && !pm_crash_exit) { pm_wq_pump_blocked(); pm_wq_wait_walker(LG_WAIT_NS); }
     lg_ring[lg_qn & (LG_RING - 1u)] = *c;
     __sync_synchronize();
     lg_handed++;
@@ -146,7 +148,7 @@ void pm_lg_hand(const LgCmd* c, int serial) {
 int pm_lg_draw_flag(void) {
     if (lg_dpub != lg_handed) { /* the walk wait: the retrace of the last command starts when the step before it is done */
         u64 t0 = svcGetSystemTick();
-        while (lg_dpub != lg_handed) { pm_wq_pump_blocked(); pm_wq_wait_walker(LG_WAIT_NS); }
+        while (lg_dpub != lg_handed && !pm_crash_exit) { pm_wq_pump_blocked(); pm_wq_wait_walker(LG_WAIT_NS); }
         lg_pf_wait += svcGetSystemTick() - t0;
     }
     __sync_synchronize();
