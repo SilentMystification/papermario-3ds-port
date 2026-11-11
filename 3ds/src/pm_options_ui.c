@@ -11,17 +11,12 @@
 
 volatile int pm_menu_open;
 
-/* MN3b: the HOME Menu title of this region (0004001000021000 + 0x100 per region: JPN 0, USA 1, EUR 2; other regions use USA). */
+/* ESCAPE3: Close game. Under the Homebrew Launcher aptInit set the chainload to self (RUNFLAG_APTCHAINLOAD). Clearing it makes aptExit
+ * close the application (APT PrepareToCloseApplication, CloseApplication), so the HOME Menu runs. The old title id 0004001000021000 +
+ * region was System Settings, not the HOME Menu (an applet). */
 static void pm_home_chainload(void) {
-    u8 region = 1;
-    u64 tid;
-    cfguInit();
-    CFGU_SecureInfoGetRegion(&region);
-    cfguExit();
-    if (region > 2) region = 1;
-    tid = 0x0004001000021000ULL + ((u64)region << 8);
-    aptSetChainloader(tid, MEDIATYPE_NAND); /* void in this libctru */
-    pm_log("menu: HOME Menu chainload %016llx region %u", (unsigned long long)tid, (unsigned)region);
+    aptClearChainloader();
+    pm_log("menu: chainload cleared, the app closes to the HOME Menu");
 }
 volatile int pm_exit_request; /* PT28: set by the menu row Exit to Homebrew, read by the main loop (pm_main.c) */
 
