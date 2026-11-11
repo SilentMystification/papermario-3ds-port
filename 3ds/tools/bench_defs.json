@@ -7709,6 +7709,38 @@
           "gates": []
     },
     {
+          "name": "dpcen_mac01",
+          "kind": "azahar_stream",
+          "speed": "normal",
+          "default": false,
+          "purpose": "DPCEN1 census: bytes per frame (upload, hash, flush) with the call counts, mac_01 spot, frames 600 to 799. Azahar counts only.",
+          "scenario": "dpcen_mac01",
+          "cap": 45,
+          "until": "dpcen f(6|7)\\d\\d ",
+          "tags": [
+                "azahar",
+                "dpcen",
+                "mac_01"
+          ],
+          "gates": []
+    },
+    {
+          "name": "dpcen_kzn08",
+          "kind": "azahar_stream",
+          "speed": "normal",
+          "default": false,
+          "purpose": "DPCEN1 census: bytes per frame (upload, hash, flush) with the call counts, kzn_08, frames 600 to 799. Azahar counts only.",
+          "scenario": "dpcen_kzn08",
+          "cap": 45,
+          "until": "dpcen f(6|7)\\d\\d ",
+          "tags": [
+                "azahar",
+                "dpcen",
+                "kzn08"
+          ],
+          "gates": []
+    },
+    {
       "name": "mdl5_iwa10_cen",
       "kind": "azahar_stream",
       "speed": "normal",

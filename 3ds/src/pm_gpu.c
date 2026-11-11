@@ -2563,10 +2563,24 @@ static __attribute__((cold, noinline)) void eyecw_log(void) { /* EYECW (debug le
     pm_log_d("eyecw f%u p23 %.3f cw %.1f conv %.1f wn %.3f old %.1f", pm_frame_count(), (double)eyd_p23_dbg, (double)eyd_cw_dbg, (double)eye_conv, (double)eyd_wn_dbg,
              (double)(eye_conv * (eyd_p23_dbg < 0.f ? -eyd_p23_dbg : eyd_p23_dbg))); /* old: the cw of conv x |p23| */
 }
+/* DPCEN1: byte census line every 300 frames (switch dpcen). Deltas of pm_cnt_all since the last line; bytes >> 10. */
+static __attribute__((cold, noinline)) void dp_frame(unsigned f) {
+    static unsigned next, f0;
+    static unsigned last[8];
+    static const unsigned idx[8] = { C_UPB, C_HASHB, C_FLB, C_TEXMISS, C_CMD, C_NDRAW, C_NIDX, C_GVTRI };
+    unsigned d[8], i;
+    if (f < next) return;
+    for (i = 0; i < 8; i++) { unsigned c = pm_cnt_all[idx[i]]; d[i] = c - last[i]; last[i] = c; }
+    pm_log_evt("dpcen f%u frames %u upkb %u hashkb %u flkb %u texmiss %u cmd %u ndraw %u nidx %u gvtri %u",
+               f, f - f0, d[0] >> 10, d[1] >> 10, d[2] >> 10, d[3], d[4], d[5], d[6], d[7]);
+    f0 = f;
+    while (next <= f) next += 300u;
+}
 static void pm_gpu_end_w(void) {
     if (__builtin_expect(stereo_frame && pm_frame_count() % 10u == 0, 0)) eyecw_log();
     if (__builtin_expect(mfr_on, 0)) mfr_frame(); /* TIK19 debug: the mfr line of the frame */
     if (__builtin_expect(PMDL("keymiss"), 0)) pm_km_frame(pm_frame_count()); /* KEYMISS: the census window line every 300 frames */
+    if (__builtin_expect(pm_cnt_on, 0) && PMDL("dpcen")) dp_frame(pm_frame_count()); /* DPCEN1: byte census line */
     if (__builtin_expect(pm_cen_lines, 0)) cen_lines_frame(); /* PROF2-3: the census lines, once per frame at the frame end (rect_log every 100 frames there) */
     if (pm_frame_count() % 100u == 0) pm_tex_cell_log(pm_frame_count()); /* MSGBOX 3: glyph cells every 100 frames (debug level) */
     pm_gpu_begin_wait();
@@ -2940,6 +2954,7 @@ void pm_gpu_gstat_commit(unsigned first, unsigned n) { pm_fl_dc(nb.rchunk[0].vtx
 /* DS1: svc flush first; the GSP call only when the svc fails. */
 unsigned pm_fl_gsp_n;
 void pm_fl_dc(const void* p, unsigned n) {
+    PH_ADD(C_FLB, n); /* DPCEN1: data-cache flush bytes */
     if (R_FAILED(svcFlushProcessDataCache(CUR_PROCESS_HANDLE, (Handle)(uintptr_t)p, n))) { pm_fl_gsp_n++; GSPGPU_FlushDataCache(p, n); }
 }
 /* S3-1: the static index area. A compiled object (nd_dlc) keeps its triangle indices here for the whole map: the native draws read them in place. Reset with the vertex area. */
