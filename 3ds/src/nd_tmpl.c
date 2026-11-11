@@ -185,7 +185,7 @@ void nd_tev_build(const NdTevIn* in, NdTevOut* o) {
     const NdTmplKey* k = in->k;
     const PmPlan* plan = in->plan;
     int combine = k->combine, tex = k->tex, tex1 = k->tex1, i8_0 = k->i8_0, i8_1 = k->i8_1, rgb_scale = k->rgb_scale;
-    int off_active = k->off_active, off_i8 = k->off_i8, r_blend = k->r_blend, r_replace = k->r_replace, env_hi = 1;
+    int off_active = k->off_active, off_i8 = k->off_i8, env_hi = 1;
     uint32_t* env = o->st[0];
     for (int i = 0; i < 6; i++) ev_init(o->st[i]);
     o->memb = 0; o->buf_set = 0; o->buf_color = 0; o->mix_st = -1;
