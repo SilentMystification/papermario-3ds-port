@@ -24,6 +24,9 @@ Edit rules in place, never append. At the start of a session, read docs/handoff/
 
 ## Rows
 - One row file per agent (60 lines or fewer). The prompt is 10 lines or fewer and points to the row.
+- Keep the coders fed. The oracle writes rows in batches ahead of the coders (oracle.md 7). Each turn the orchestrator checks the
+  number of running coders: below 6 with open work, it sends the oracle one "refill" request (a batch for all open work) and starts
+  every ready row at once. It does not hand the oracle one job at a time.
 - Avoid merge conflicts. Rows may run in parallel only when no merge conflict can result, and no row depends on the unmerged
   output of another. Rows may share a file when their edits are in different places (different functions, scenarios or blocks)
   and no edit moves or reformats the other's lines.
@@ -52,7 +55,7 @@ Edit rules in place, never append. At the start of a session, read docs/handoff/
   6. Build main in the background. Run `python 3ds/tools/bench.py base --fill` in the main folder.
 
 ## Status and questions
-- Every turn: RUNNING (with type: [Haiku], [Oracle Opus], [Push], [Build]) / READY-NOT-LAUNCHED / BLOCKED-ON-USER.
+- Every turn: RUNNING (one line per agent, labelled with its model and row: [Haiku] HC8, [Sonnet] KZN04, [Opus] HC5, [Oracle Opus], [Push], [Build]) / READY-NOT-LAUNCHED / BLOCKED-ON-USER.
 - Ask only with AskUserQuestion (2-4 options, recommended first). Do not ask what a rule decides.
 
 ## Console

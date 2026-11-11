@@ -19,3 +19,4 @@ For each task:
 4. Choose the model per row. Default: Haiku. Sonnet or Opus only with a reason (why not Haiku, why not smaller). The user decides.
 5. List the files and the places (functions, scenarios, blocks) each row edits. Rows that run together may share a file only when their edits are in different places (no merge conflict).
 6. After a Haiku failure, read its facts and write the next step into its row.
+7. Feed the coders. Work in batches, ahead of the coders: write all the rows you can for the open work (docs/handoff/HANDOFF.md, plan_*.md, row_*.md, the user facts), not one row per request. Keep at least 6 ready rows (the number of coder slots) whenever the open work allows it. Each batch hand-back lists the rows that start now together (disjoint places), the rows that wait and for which merge, and the next batch you will write. If the open work is out of ready rows, say so and name what blocks each item (a user decision, console data, an unmerged row).

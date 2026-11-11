@@ -1,5 +1,7 @@
 # Row MEM: smaller 3dsx, smart memory use, no duplicates (user, 2026-11-07)
 
+> STALE (oracle 2026-11-11): picture steps in this row are void (CLAUDE.md 2: no visual checks; gates are nd_host and the byte compare). The oracle rewrites the gates before launch.
+
 User: "make sure our memory utilization is smart and we dont have duplicates of unneeded things." The O3DS XL netloader refused the 13.585 MB 3dsx ("not enough free ram"); no launcher workaround.
 
 ## Oracle plan MEM
