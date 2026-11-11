@@ -488,6 +488,6 @@ unsigned nd_ent_strip(const uint32_t* l, uint32_t* out) {
         if (op == OP_ENDDL) break;
         if (op == OP_VTX || op == OP_TRI1 || op == OP_TRI2) { out[2 * n] = w0; out[2 * n + 1] = w1; n++; }
     }
-    out[2 * n] = (uint32_t)OP_ENDDL << 24; out[2 * n + 1] = 0;
+    out[2 * n] = NDO_W0(NDO_END, 0); out[2 * n + 1] = 0;
     return i;
 }

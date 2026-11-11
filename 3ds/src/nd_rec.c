@@ -121,8 +121,6 @@ static int sh_drop(const uint32_t* t) {
     default: return 0;
     }
 }
-/* A word op of a state run (a list call, an image, a rectangle, a marker) resets the shadow. */
-static void sh_word(void) { sh_all(); }
 /* A typed no-op unit (nd_op.h): a sync, G_SPNOOP, G_NOOP or a RDPHALF word. */
 #define IS_NOP(w0) ((w0) == NDO_W0(NDO_MISC, NDO_MISC_NOP << 16))
 static int t4_sw = -1; /* debug switch t4chk: a dropped op is written after NDO_DROP (nd_walk.c t4_check) */
@@ -140,10 +138,9 @@ __attribute__((cold, noinline)) void nd_rm_build(unsigned i) {
     const Gfx* l = i < ND_RM_LISTS ? ModelRenderModes[i] : NULL;
     for (unsigned k = 0; l && n + 1u < ND_RM_OPS; k++) {
         const uint32_t w0 = l[k].words.w0, w1 = l[k].words.w1;
-        if ((w0 >> 24) == G_ENDDL || (w0 >> 24) == NDO_END) break;
-        if (IS_NOP(w0)) continue;
-        if (((w0 >> 24) >= G_RDPLOADSYNC && (w0 >> 24) <= G_RDPFULLSYNC) || (w0 >> 24) == G_SPNOOP) continue; /* the syncs */
-        nd_op_xlate(w0, w1, &nd_rm_tab[i][2u * n]);
+        if ((w0 >> 24) == NDO_END) break;
+        if (IS_NOP(w0)) continue; /* a typed sync or no-op */
+        nd_rm_tab[i][2u * n] = w0; nd_rm_tab[i][2u * n + 1u] = w1; /* HC4e4: ModelRenderModes is typed (gs forms) */
         n++;
     }
     nd_rm_tab[i][2u * n] = NDO_W0(NDO_END, 0);
@@ -206,8 +203,8 @@ static __attribute__((cold, noinline)) void model_bad(unsigned words) {
     pm_log_e("ndc: model record of %u words (most %u)", words, G_PM_REC_WORDS + ND_REC_AUX_MAX);
     pm_fatal_stop("ndc: model record too long");
 }
-/* HC4c (W4): the payload holds typed ops: the panner tile sizes (R9, R10) and the R13 words, typed and without the syncs (nd_op_type_run);
- * R13 w0 is the count of typed units. The unused room of the dropped syncs goes back to the stream. */
+/* HC4c (W4): the payload holds typed ops: the panner tile sizes (R9, R10) and the R13 words. R13 w0 is the count of typed units.
+ * HC4e4: the producer macros (nd_gbi.h) type every unit, so the payload is copied as it is. */
 void nd_rec_model(const void* rec, unsigned words) {
     if (words > G_PM_REC_WORDS + ND_REC_AUX_MAX) model_bad(words);
     { const unsigned rmi = (((const uint32_t*)rec)[0] >> 16) & 0xffu; if (rmi < ND_RM_N && !rm_built[rmi]) nd_rm_build(rmi); } /* HC4b: W3 */
@@ -216,10 +213,8 @@ void nd_rec_model(const void* rec, unsigned words) {
     ndc_n[NDC_MODEL]++;
     memcpy(p + 2, rec, words * 8u);
     uint32_t* q = p + 2;
-    for (unsigned r = 9; r <= 10u; r++) if (q[2u * r]) nd_op_xlate(q[2u * r], q[2u * r + 1u], q + 2u * r);
-    const unsigned n = nd_op_type_run(q + 2u * G_PM_REC_WORDS, words - G_PM_REC_WORDS);
+    const unsigned n = words - G_PM_REC_WORDS; /* HC4e4: the R13 units are typed by the producer macros (nd_gbi.h) */
     q[26] = n;
-    wp -= 2u * (words - G_PM_REC_WORDS - n);
     p[0] = NDC_HDR(NDC_MODEL, G_PM_REC_WORDS + n, 0);
     p[1] = 0;
 }
@@ -301,13 +296,15 @@ static void rec_op_t(const uint32_t t[2]) {
     }
     st_put(t[0], t[1]);
 }
+static __attribute__((cold, noinline)) void word_bad(uint32_t w0) {
+    static int k;
+    if (k++ < 4) pm_log_e("ndc: untyped word %08x not recorded", (unsigned)w0);
+}
+/* HC4a: typed on the recorder (nd_op.h). HC4e4: an untyped word is not recorded. */
 void nd_rec_state(uint32_t w0, uint32_t w1) {
-    uint32_t t[2];
-    if (nd_op_xlate(w0, w1, t)) { rec_op_t(t); return; } /* HC4a: typed on the recorder (nd_op.h) */
-    rec_open();
-    ndc_sw++;
-    sh_word();
-    st_put(t[0], t[1]);
+    const uint32_t t[2] = { w0, w1 };
+    if (__builtin_expect(!nd_op_typed(w0 >> 24), 0)) { word_bad(w0); return; }
+    rec_op_t(t);
 }
 /* D4b-3, D5: the nd_gbi.h redirect. The packet gMainGfxPos++ is taken back and the op recorded; the RDP syncs are dropped (the walker skips
  * them). A texture rectangle (its op word and the two RDPHALF words, written by one macro) is held until its last word and recorded as
@@ -320,18 +317,10 @@ void nd_rec_state(uint32_t w0, uint32_t w1) {
  * read here on the recorder side, the replay reads no list. Any other target keeps its G_DL. */
 extern char __end__[];
 extern u8 gMapShapeData[];
-static const uint8_t st_ok[256] = {
-    [G_NOOP] = 1, [G_SETOTHERMODE_H] = 1, [G_SETOTHERMODE_L] = 1, [G_GEOMETRYMODE] = 1, [G_TEXTURE] = 1, [G_SETCOMBINE] = 1,
-    [G_SETPRIMCOLOR] = 1, [G_SETENVCOLOR] = 1, [G_SETFOGCOLOR] = 1, [G_SETBLENDCOLOR] = 1, [G_SETFILLCOLOR] = 1, [G_SETTIMG] = 1,
-    [G_SETTILE] = 1, [G_LOADBLOCK] = 1, [G_LOADTILE] = 1, [G_LOADTLUT] = 1, [G_SETTILESIZE] = 1, [G_SETSCISSOR] = 1, [G_SETPRIMDEPTH] = 1,
-    [G_SETCONVERT] = 1, [G_SETKEYR] = 1, [G_SETKEYGB] = 1, [G_MOVEWORD] = 1, [G_MOVEMEM] = 1, [G_MTX] = 1, [G_POPMTX] = 1,
-    [G_RDPLOADSYNC] = 2, [G_RDPPIPESYNC] = 2, [G_RDPTILESYNC] = 2, [G_RDPFULLSYNC] = 2, [G_SPNOOP] = 2,
-};
-/* The class of a list word for rec_inline: 0 not a state op, 1 a state op, 2 a sync (dropped), 3 the list end. A typed unit (nd_gbi.h: the gs macros
- * type a static list at compile time) is classed by its id as the raw op by st_ok. */
+/* The class of a typed list word for rec_inline: 0 not a state op, 1 a state op, 2 a sync (dropped), 3 the list end. */
 static unsigned st_kind(uint32_t w0) {
     const unsigned op = w0 >> 24;
-    if (!nd_op_typed(op)) return op == G_ENDDL ? 3u : st_ok[op];
+    if (!nd_op_typed(op)) return 0u; /* HC4e4: no raw word in a typed list */
     if (op == NDO_END) return 3u;
     if (op == NDO_MISC) return (w0 & 0xffffffu) == (NDO_MISC_NOP << 16) ? 2u : 0u;
     return (op <= NDO_COMB || nd_op_tex(op) || (op >= NDO_MTX && op <= NDO_MOVEMEM)) ? 1u : 0u;
@@ -433,14 +422,14 @@ void nd_rec_list(const void* l) {
     const Gfx* g = (const Gfx*)l;
     if (__builtin_expect(nd_lc_frame != -1, 0)) nd_lstcen(l, 5u);
     for (unsigned n = 0; n < 1024u; n++, g++) {
-        u32 w0 = g->words.w0, w1 = g->words.w1;
+        const u32 u0 = g->words.w0, u1 = g->words.w1;
+        u32 w0 = u0, w1 = u1;
         unsigned op = w0 >> 24;
-        if (nd_op_typed(op)) { /* a typed list (the gs macros): the raw op the cases below know; any other unit is recorded as it is */
-            if (op == NDO_END) op = G_ENDDL;
-            else if (IS_NOP(w0)) op = G_SPNOOP;
-            else if (op == NDO_RECT && (w1 & NDO_RECT_TEX)) { w0 = ((u32)G_TEXRECT << 24) | (w0 & 0xffffffu); w1 &= ~NDO_RECT_TEX; op = G_TEXRECT; }
-            else if (op == NDO_CALL) { w0 = ((u32)G_DL << 24) | ((w0 & 1u) ? (u32)G_DL_NOPUSH << 16 : 0u); op = G_DL; }
-        }
+        if (!nd_op_typed(op)) { list_bad(g, n); return; } /* HC4e4: a static list is typed at compile time */
+        if (op == NDO_END) op = G_ENDDL; /* the raw op the cases below know */
+        else if (IS_NOP(w0)) op = G_SPNOOP;
+        else if (op == NDO_RECT && (w1 & NDO_RECT_TEX)) { w0 = ((u32)G_TEXRECT << 24) | (w0 & 0xffffffu); w1 &= ~NDO_RECT_TEX; op = G_TEXRECT; }
+        else if (op == NDO_CALL) { w0 = ((u32)G_DL << 24) | ((w0 & 1u) ? (u32)G_DL_NOPUSH << 16 : 0u); op = G_DL; }
         switch (op) {
         case G_ENDDL: return;
         case G_RDPPIPESYNC: case G_RDPTILESYNC: case G_RDPLOADSYNC: case G_RDPFULLSYNC: case G_SPNOOP: break;
@@ -451,10 +440,9 @@ void nd_rec_list(const void* l) {
                 g = (const Gfx*)(uintptr_t)w1 - 1;
                 break;
             }
-            if (!rec_inline(w1)) nd_rec_state(w0, w1);
+            if (!rec_inline(w1)) nd_rec_state(u0, u1);
             break;
-        case G_PM_REC: case G_PM_SPR: case G_PM_ENT: list_bad(g, n); return;
-        default: nd_rec_state(w0, w1); break;
+        default: nd_rec_state(u0, u1); break;
         }
     }
     list_bad(g, 1024u);

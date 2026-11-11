@@ -203,7 +203,7 @@ void ent_compile(EntKey* k, const Gfx* l0) {
     k->st = ENT_REF; k->why = 0; k->fr = pm_frame_count(); k->retry = k->fr + 300u;
     ent_c.comp++;
     if (!ent_flat(l0, &nops, 0)) { k->why = 5; return; }
-    ent_flat_buf[nops].words.w0 = (u32)G_ENDDL << 24; ent_flat_buf[nops].words.w1 = 0;
+    ent_flat_buf[nops].words.w0 = NDO_W0(NDO_END, 0); ent_flat_buf[nops].words.w1 = 0;
     if (!k->vb) { for (unsigned i = 0; i < nops; i++) if (ent_uid(ent_flat_buf[i].words.w0, ent_flat_buf[i].words.w1) == NDO_VTX) { u32 a = ent_flat_buf[i].words.w1; if (!is_host(a) && (a >> 24) > 0 && (a >> 24) < 16u) { k->useseg = 1; break; } } if (k->useseg) { k->why = 9; return; } }
     k->fw = (Gfx*)malloc((nops + 1u) * sizeof(Gfx));
     if (!k->fw) { k->why = 5; return; }

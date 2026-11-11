@@ -2365,7 +2365,6 @@ void load_texture_impl(u32 romOffset, TextureHandle* handle, TextureHeader* head
     temp = (Gfx**) &TextureHeapPos;
     gSPEndDisplayList((*temp)++);
 #ifdef TARGET_3DS
-    nd_op_type_run((uint32_t*)handle->gfx, (unsigned)((Gfx*)TextureHeapPos - handle->gfx)); /* HC4c (R1): the bind list typed at its producer (rec_apply runs it, nd_bind_run) */
     { /* S3N-1 (B4): the texture descriptor of this handle for the native model draw (3ds/src/nd_model.c) */
         extern void nd_tex_handle_set(int index, const void* gfx, const void* raster, const void* palette, unsigned w, unsigned h, unsigned fmt, unsigned siz,
                                       unsigned wrap_w, unsigned wrap_h, unsigned masks, unsigned maskt, unsigned extra, int has_aux);
