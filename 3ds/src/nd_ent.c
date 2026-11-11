@@ -231,7 +231,9 @@ void ent_compile(EntKey* k, const Gfx* l0) {
     }
     if (lo && (u32)(hi - lo) > 0x20000u) { k->why = 5; return; }
     NdDlcEnv env = { ent_env_vtx, nd_env_valloc, nd_env_ialloc, NULL, 0 };
+    unsigned dp_t0 = pm_ticks(); /* DPCEN2: compile time of the entity list */
     rc = nd_dlc_compile(&o, dlc_words, &env);
+    { extern unsigned pm_dp_cmp_n, pm_dp_cmp_us; pm_dp_cmp_n++; pm_dp_cmp_us += (pm_ticks() - dp_t0) / 268u; }
     if (rc != NDR_OK) { k->why = (u8)(rc + 1); return; }
     if (o.nidx != 3u * ntri) { nd_dlc_free(&o); k->why = 7; return; }
     k->seg = (EntSeg*)malloc(ns * sizeof(EntSeg));

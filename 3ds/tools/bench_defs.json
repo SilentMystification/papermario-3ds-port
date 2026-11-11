@@ -6529,6 +6529,22 @@
       "gates": []
     },
     {
+      "name": "dpcen_xfer",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "DPCEN2 census: the dpres line (resident bytes per pool, sprite and static list load counts) on the mac_01 -> mac_02 loading zone walk, det. Azahar counts only.",
+      "scenario": "dpcen_xfer",
+      "cap": 45,
+      "until": "dpcen f(6|9)\\d\\d ",
+      "tags": [
+        "azahar",
+        "dpcen",
+        "xfer"
+      ],
+      "gates": []
+    },
+    {
       "name": "xfer_map_mac01",
       "kind": "azahar_stream",
       "speed": "normal",
