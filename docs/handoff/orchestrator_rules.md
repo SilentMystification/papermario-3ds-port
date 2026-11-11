@@ -18,6 +18,7 @@ Edit rules in place, never append. At the start of a session, read docs/handoff/
   oracle, an Opus code agent) needs a user yes: ask with AskUserQuestion and give the reason (the oracle context passed about 600K, or a
   new area where its context does not help). Ask the oracle for its own context count; the subagent usage line adds up every turn
   and is not the context. Never two oracles at once unless the user says so.
+  Never stop or pause the oracle (user 2026-11-11): its context size is no reason to stop its work. Do not tell it to stop at a token count.
 - Code agents: Haiku (coder.md). Sonnet or Opus only when the oracle gives a reason and the user says yes. Reuse an agent of the
   same model type for related work in its area when the follow-up comes soon (its cache lasts about 5 min) or its context holds the
   code read the next step needs. Rotate the agent past about 150K, when the work leaves its files, or at the end of a chain.
