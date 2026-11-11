@@ -131,6 +131,7 @@ def main(argv):
             tot[s][0] += e0
             tot[s][1] += e1
     nwin_s = collections.Counter(s for (s, _f) in ph.keys())
+    phase_show = {"gbi": "draw (gbi)", "dl": "gamedraw (dl)"}  # display only: log keys stay gbi and dl
     for s in SETS:
         if s not in acc:
             continue
@@ -138,11 +139,11 @@ def main(argv):
         lines.append("phases, set %s (%d windows, per sampled frame, mean over windows)" % (s, n))
         for idx, ev in ((0, "e0"), (1, "e1")):
             lines.append("ranked by %s:" % ev)
-            lines.append("  phase        %s/frame   share" % ev)
+            lines.append("  phase           %s/frame   share" % ev)
             order = sorted(acc[s].items(), key=lambda kv: -kv[1][idx])
             for name, v in order:
                 share = 100.0 * v[idx] / tot[s][idx] if tot[s][idx] else 0.0
-                lines.append("  %-12s %12s %7s%%" % (name, fmt(v[idx] / n, 1), fmt(share, 1)))
+                lines.append("  %-15s %12s %7s%%" % (phase_show.get(name, name), fmt(v[idx] / n, 1), fmt(share, 1)))
         lines.append("")
     text = "\n".join(lines) + "\n"
     root = os.path.abspath(os.path.join(HERE, "..", ".."))
