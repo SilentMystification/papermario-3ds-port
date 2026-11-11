@@ -8,7 +8,7 @@
  *
  * Usage: nd_shape_conv <asset_base> <out_dir>
  * Output: <out_dir>/<asset>.nds =
- *   "NDSH" (4 bytes), version u32 = 1, size u32, n_reloc u32, reloc[n_reloc] u32 (offsets into data),
+ *   "NDSH" (4 bytes), version u32 = 2 (HC4f3: each list word is its typed unit, ND_X0/ND_X1 of nd_op.h), size u32, n_reloc u32, reloc[n_reloc] u32 (offsets into data),
  *   data[size] (native little endian; pointer fields hold shape offsets).
  * All header words are little endian. Prints "shapeconv maps N bytes B reloc R" on success.
  */
@@ -16,13 +16,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include "ultra64.h"
+#include "gbi_custom.h"
+#include "nd_op.h"
 
 #define SHAPE_BASE 0x80210000u
 #define ASSET_TABLE 0x1E40020u
 #define ENTRY_SIZE 28u /* name[16], offset, compressedLength, decompressedLength */
-
-typedef uint8_t u8;
-typedef uint32_t u32;
 
 typedef struct ShapeFix {
     u8* buf;
@@ -32,6 +32,8 @@ typedef struct ShapeFix {
     u32 n_reloc;
     u32 cap_reloc;
 } ShapeFix;
+
+static u32 n_nop; /* list words G_NOOP, RDPHALF_1/2, SETZIMG: typed as ND_NOP_A */
 
 static void die(const char* msg, const char* what) {
     fprintf(stderr, "nd_shape_conv: %s%s\n", msg, what ? what : "");
@@ -139,9 +141,10 @@ static void fix_gfx(ShapeFix* s, u8* dl) {
                 }
             }
         }
-        w32(dl, w0);
+        if (ND_OPB(w0) == G_NOOP || ND_OPB(w0) == G_RDPHALF_1 || ND_OPB(w0) == G_RDPHALF_2 || ND_OPB(w0) == G_SETZIMG) n_nop++;
+        w32(dl, ND_X0(w0, w1)); /* HC4f3: the typed unit (nd_op.h); op stays the raw op for the walk below */
         if (target) wptr(s, dl + 4, target);
-        else w32(dl + 4, w1);
+        else w32(dl + 4, ND_X1(w0, w1));
         dl += 8;
         if (op == 0xDF) return;
         if (op == 0xDE && target) fix_gfx(s, target);
@@ -439,7 +442,7 @@ int main(int argc, char** argv) {
             u8 hdr[16];
             u8* rb = malloc(s.n_reloc * 4 + 1);
             memcpy(hdr, "NDSH", 4);
-            w32(hdr + 4, 1);
+            w32(hdr + 4, 2);
             w32(hdr + 8, s.size);
             w32(hdr + 12, s.n_reloc);
             fwrite(hdr, 1, 16, f);
@@ -456,7 +459,7 @@ int main(int argc, char** argv) {
         free(s.seen);
         free(s.buf);
     }
-    printf("shapeconv maps %u bytes %u reloc %u\n", maps, total_bytes, total_reloc);
+    printf("shapeconv maps %u bytes %u reloc %u nop %u\n", (unsigned)maps, (unsigned)total_bytes, (unsigned)total_reloc, (unsigned)n_nop);
     free(rom);
     return 0;
 }
