@@ -30,6 +30,9 @@ nd_cmd.h, nd_rec.c, nd_cmd_test.c.
    ent_hash stays on core 0.
 
 ## Gates (light)
+- Base rule until LOADMTX is merged (test_catalog.md 6a): no `bench.py base`. Run the row's bench, then `python 3ds/tools/bench.py cmp
+  <bench> --row HC8 --commit b8bc06613` (stored: spot_mac01_det, mdl5_iwa10_det). A run of the row that ends rc 2 with
+  `load_mtx at nd_mtx_set.c:106` is the known main fault: run it once more and report both runs.
 - nd_host PASS. Byte-equal (`bench.py base`, run, `cmp`): spot_mac01_det and mdl5_iwa10_det (bases stored at b8bc06613; both scenes
   have sprites and entities). Not battle_start_f182_cold: its two cold runs of one build differ (base --fill at b8bc06613), so it
   cannot be a byte gate (row LOADMTX note). nok11_det only if its base prints "two runs equal, stored"; else drop it and say so.

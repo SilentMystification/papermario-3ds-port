@@ -22,6 +22,9 @@ pm_gpu.c pm_gpu_set_plan (:3653) and pm_gpu_plan_key only. HC8 edits pm_gpu.c pm
 nd_model.c :389-410, nd_ent.c :378, nd_shape.c :283/:608; SYNC60 edits pm_gpu.c pm_gpu_begin_wait: do not edit those. HC6 also edits
 nd_rec.c (the record path nd_rec_model): coordinate by place; `git merge main` before the completing commit.
 ## Gates
+- Base rule until LOADMTX is merged (test_catalog.md 6a): no `bench.py base`. Run the row's bench, then `python 3ds/tools/bench.py cmp
+  <bench> --row HC5 --commit b8bc06613` (stored: spot_mac01_det, mdl5_iwa10_det). A run of the row that ends rc 2 with
+  `load_mtx at nd_mtx_set.c:106` is the known main fault: run it once more and report both runs.
 nd_host PASS; memcheck OK; byte-equal spot_mac01_det and mdl5_iwa10_det (bases at b8bc06613; battle_start_f182_cold is not a gate: its
 cold runs differ, row LOADMTX); hotset_size M1-hot class B <= 3 KB; the c5cen line on mac_01 (one Azahar list: spot_mac01_det,
 mdl5_iwa10_det, and the c5cen scenario on one slot). Console prof push mac_01 0 0 200 (lgms grows <= 2 ms): the user's check.
