@@ -8169,9 +8169,9 @@
     {
       "name": "menu_close",
       "status": "unverified",
-      "subject": "Select menu, General tab, row 4 Close game after one A (armed, value Press A again) and a second A. Menu shot after the arm.",
+      "subject": "Select menu, General tab, row 5 Close game after one A (armed, value Press A again) and a second A. Menu shot after the arm.",
       "proves": "the second A on Close game logs the close path and the chainload clear (aptClearChainloader), then the process end line.",
-      "debug": "preset=toad padscript=wait80,SELECT,wait20,ddown,wait20,ddown,wait20,ddown,wait20,A,wait20,A,wait60 shotmenu loglevel=debug",
+      "debug": "preset=toad padscript=wait80,SELECT,wait20,ddown,wait20,ddown,wait20,ddown,wait20,ddown,wait20,ddown,wait20,A,wait20,A,wait60 shotmenu loglevel=debug",
       "until": "exit: audio job done",
       "cap": 45,
       "deadline": 20,
@@ -8185,7 +8185,7 @@
         },
         {
           "name": "close armed",
-          "regex": "menu: shot bot_m\\d+ tab 0 row 3"
+          "regex": "menu: shot bot_m\\d+ tab 0 row 5"
         },
         {
           "name": "close path",

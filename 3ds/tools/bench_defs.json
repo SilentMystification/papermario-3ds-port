@@ -7340,7 +7340,11 @@
       "cap": 45,
       "until": "exit: audio job done",
       "tags": ["azahar", "menu", "exit"],
-      "gates": []
+      "log_metrics": [
+        {"name": "chainload_line", "regex": "#(\\d+) menu: chainload cleared", "pick": "last"},
+        {"name": "exit_line", "regex": "#(\\d+) exit: audio job done", "pick": "last"}
+      ],
+      "gates": [{"metric": "chainload_line", "op": ">", "value": 0}, {"metric": "exit_line", "op": ">", "value": 0}]
     },
     {
       "name": "menu_texc",
