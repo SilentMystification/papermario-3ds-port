@@ -69,6 +69,8 @@ static void check_state(const DrawInfo* d, const unsigned char* s) {
     if (om_h | om_l | om_d) {
         NdRender rs;
         nd_render_state(om_h, om_l, (int)om_d, &rs);
+        /* FILLA0: an alpha blend without depth write gets alpha test GREATER 0 (no pixel changes); the held words predate the rule */
+        if (rs.blend && !rs.zupd && !rs.nocol && !rs.memb && rs.atest == 0 && (int)d->atest == -1) rs.atest = -1;
         int same = rs.zcmp == (zcmp != 0) && rs.zupd == (zupd != 0) && rs.blend == (d->tk[14] != 0) && rs.decal == (d->decal != 0) && rs.nocol == (nocol != 0) &&
                    (int)rs.atest == (int)d->atest && (!rs.set_memb || rs.memb == (d->tk[12] != 0));
         if (same) n_rs_ok++;
