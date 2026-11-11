@@ -27,6 +27,17 @@ Add to the per-frame shadecen print: `nat <ok> fb <n> why5 <n> sprmh <hit> sprmm
 dmax <r,g,b> smean <shade_mean calls>`: nat and fb at pm_gpu_spr_native (:3902-3904), sprmh and sprmm at nd_model_state_spr (:437,
 :450), shnat and the dual_f min and max (dual_f[0..2] * 255, ints) at pm_gpu.c:3980 when shaded, smean at shade_mean.
 
+## Next step (after try 1: build stop at c5d6b53d0; resume on branch BOMBLIT2 in build3ds/wt/BOMBLIT2)
+nd_model.c is host-tested (nd_host_test.sh builds it with 3ds/tools/nd_model_test.c and nd_gv_test.c): it has no PMDL and must not
+reference shc (nd_tex_set.c is target only). Replace the two PMDL counter lines in nd_model_state_spr (:439, :453) by plain counters:
+1. nd_model.c next to `static unsigned sprm_hit, sprm_miss;` (:222): `static unsigned sprm_fh, sprm_fm; /* BOMBLIT2: hits and misses
+   since the last take (per frame) */` and `void nd_sprm_take(unsigned* h, unsigned* m) { *h = sprm_fh; *m = sprm_fm; sprm_fh = sprm_fm
+   = 0; }`. At the hit (`mw_ok++; sprm_hit++;`) add `sprm_fh++;`; at `sprm_miss++;` add `sprm_fm++;`. Delete the PMDL lines.
+2. The shadecen frame print (target side): `extern void nd_sprm_take(unsigned* h, unsigned* m); unsigned sh_, sm_; nd_sprm_take(&sh_,
+   &sm_);` and print sh_ and sm_ in place of shc[10] and shc[11] (drop those two slots). Call nd_sprm_take every frame (not only when a
+   counter is nonzero) so a frame's values do not carry into the next.
+3. Build, nd_host PASS (it builds nd_model.c), then the Gate below unchanged (1 Azahar start).
+
 ## Gate (measurement)
 Build, memcheck OK. One Azahar start: `bench.py run bombette_mim11 --row BOMBLIT2 --why "colour inputs of the native shaded sprite
 on the first blow-up frame"`. Hand back the shadecen lines f90 to f100 as printed. Stop after the hand-back.
