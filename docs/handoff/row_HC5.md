@@ -1,4 +1,10 @@
-# Row HC5: combine decision off core 0 (plan_hotcode.md 5.3, class B)
+# Row HC5: combine decision off core 0 (plan_hotcode.md 5.3, class B) - PARKED: it becomes HC6 step 5
+
+> Status 2026-11-11: census c5cen (branch HC5, ba484c66e, run 263022): T_SYNC 98.9 % of 22939 syncs in f0-300; even with every op-set
+> input known only 14.6 % could be T_PLAN, because every NDC_MODEL, sprite, entity, texrect and call resets the recorder's inputs to
+> unknown (plan 5.2/5.3). No HC5 cut works alone. The census code updates the cs shadow on every typed op on core 1 (not only under the
+> switch): it stays on branch HC5 and is not merged. HC5 resumes as HC6 step 5, after HC6 makes the record state known (and HC8b
+> types the sprite and entity state). Do not launch this row.
 
 (Model: Opus, user approved 2026-11-11. Reason: the work is a protocol design across two threads (which combine inputs the recorder
 knows, the T_PLAN / T_SYNC units, the plan table publish) with choices Haiku cannot make. The Opus agent writes Haiku rows for the

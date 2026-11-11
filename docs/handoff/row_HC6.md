@@ -16,6 +16,9 @@ design choices with picture risk that Haiku cannot make. The Opus agent writes H
    rec_miss (rec_apply, ndm, waterlog, wskip, R11, POND, stale check).
 4. Pre-built GPU command block per cached draw with patch offsets (pal0 rows, zmark row, mix_st, unit 0 address and dim, template
    program); switch blkchk compares the hit's command span old vs block: 0 differences outside the filtered state words.
+5. HC5 (combine plan on core 1, plan_hotcode 5.3) on top of steps 1-2: with the record's state known after NDC_MODEL, rerun the
+   census c5cen of branch HC5 (ba484c66e: merge or cherry-pick it into HC6 first) and add T_PLAN/T_SYNC only if T_SYNC < 5 % of syncs
+   on mac_01 f600-f900; else hand back the census line. Use the Opus coder a2112b69ed01fcddd (HC5 context) for this row.
 ## Places (other rows)
 nd_recs.c (rec_apply, rec_matrix, the hit path), pm_gpu.c (pm_gpu_model_key, pm_gpu_model_hit, rec_run, pm_gpu_native_submit_draw),
 nd_model.c (the native model cache, not :389-410), nd_emit.c, nd_rec.c nd_rec_model (:208-219) only. WAITING for HC8 to merge
