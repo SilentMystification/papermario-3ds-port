@@ -24,7 +24,7 @@ volatile unsigned pm_wd_crash_tick; /* system tick (low word, ms) when a crash h
 
 static const char* const phase_names[] = {
     "none", "loop top", "log poll and pad scan", "idle wait for vblank", "gpu begin (frame begin)",
-    "game step and display list build (gfx retrace)", "audio step", "gpu end (gbi run, submit, frame end)",
+    "game step and its draw recording (gfx retrace)", "audio step", "gpu end (stream walk, submit, frame end)",
     "audio join", "warp and fxtest tick", "hud and test switches",
 };
 const char* pm_wd_phase_name(unsigned p) { return p < sizeof(phase_names) / sizeof(phase_names[0]) ? phase_names[p] : "?"; }

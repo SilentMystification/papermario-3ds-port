@@ -148,7 +148,7 @@ void nuGfxTaskStart(Gfx* gfxList, u32 gfxListSize, u32 ucode, u32 flag) {
     int swap = (flag & NU_SC_SWAPBUFFER) != 0;
     if (swap) { FS_MARK(FS_AUDIO); pm_audio_step(); } /* AU1b: the game logic and the display list of this step are done: audio ticks here */
     FS_MARK(FS_GBI);
-    PH_PUSH(PH_GBI);
+    PH_PUSH(PH_DRAW);
     /* F06-2: the draw iteration shows the t = 0.5 pass of the swap task. the key frame replays every task of the step without
      * replacements in the idle iteration. The background task of the step comes before the swap task. */
     (void)gfxList; /* DIRECT D9: the task is its stream (the game writes no task list) */
@@ -189,7 +189,7 @@ int pm_interp_key_take(PmKey* k) {
 void pm_key_walk(const PmKey* k) { /* walker side */
     pm_fs_q = 1; /* FS2: a key frame is not a drawn frame: no fsplit mark */
     pm_gpu_begin(1);
-    PH_PUSH(PH_GBI);
+    PH_PUSH(PH_DRAW);
     for (int i = 0; i < MAX_KEY && k->t[i].ptr; i++) gbi_task_w((const uint32_t*)k->t[i].ptr);
     PH_POP();
     pm_gpu_end();

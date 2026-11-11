@@ -319,7 +319,7 @@ extern unsigned pm_walk_frame; /* nd_wq.c: the frame of the entry the walker run
 unsigned pm_frame_count(void) { return pm_walk_side && !pm_wq_on_logic() ? pm_walk_frame : pm_frame_n; }
 /* D03: copy the last finished frame into the frame buffer that is not being drawn (the N64 "previous
  * color buffer"). The PICA color buffer holds that frame until C3D_FrameEnd of this frame runs the
- * command list, so any time during this frame's display list build or run is right. Once per frame. */
+ * command list, so any time during this frame's draw recording or run is right. Once per frame. */
 PmB7 pm_b7;
 /* PT12: a texture read of the old frame (G_SETTIMG): a GPU copy into the slot of the old frame buffer, no CPU pixels. The CPU readback is the
  * fallback when the GPU copy is not possible this frame. The pause picture is a texture read too (PAUSEOPEN, background_gfx.c). */

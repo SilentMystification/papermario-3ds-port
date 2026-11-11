@@ -25,6 +25,7 @@ static unsigned prev_cnt[C_N]; /* counters of the last finished frame: pm_ph_cnt
 unsigned pm_ph_prev(int k) { return prev_cnt[k]; }
 unsigned pm_cs_cnt[CS_N];
 
+/* log keys, unchanged (bench.py, runs.jsonl): gbi = PH_DRAW, dl = PH_GAMEDRAW */
 static const char* const pname[PH_N] = { "other", "logic", "dl", "gbi", "gpu", "tex", "audio", "rom", "yay0", "fbegin", "fend", "idle", "gcache", "gdraw", "g_vtx", "g_tri", "g_mtx", "g_op", "fbread", "g_tev", "g_bind", "g_state" };
 static const char* const cname[C_N] = { "tri", "triout", "vtxload", "vtxslot", "draw", "flush", "texcall", "texmiss", "texKB", "romn", "romKB", "yayn", "yayKB", "dbgcall", "atick", "gbiops", "ajob", "gvload", "gvtri", "gvrej", "gvfb", "gvxf", "flcall", "flkb", "rawd", "rawcall" };
 
@@ -113,7 +114,7 @@ static void bk_flush(int i) {
     unsigned id = b->f0; /* the first frame number joins the three lines */
     qsort(b->cpu, b->n, sizeof(float), fcmp);
     float p50 = b->cpu[(b->n * 50 + 99) / 100 - 1], p95 = b->cpu[(b->n * 95 + 99) / 100 - 1];
-    static const int ord[] = { PH_LOGIC, PH_DL, PH_GBI, PH_GPU, PH_GCACHE, PH_GDRAW, PH_TEX, PH_AUDIO, PH_ROM, PH_YAY0, PH_FBEGIN, PH_FEND, PH_OTHER, PH_GVTX, PH_GTRI, PH_GMTX, PH_GOP, PH_FBREAD, PH_GTEV, PH_GBIND, PH_GST };
+    static const int ord[] = { PH_LOGIC, PH_GAMEDRAW, PH_DRAW, PH_GPU, PH_GCACHE, PH_GDRAW, PH_TEX, PH_AUDIO, PH_ROM, PH_YAY0, PH_FBEGIN, PH_FEND, PH_OTHER, PH_GVTX, PH_GTRI, PH_GMTX, PH_GOP, PH_FBREAD, PH_GTEV, PH_GBIND, PH_GST };
     char line[256];
     int len = snprintf(line, sizeof line, "phs %d %d:%d %s n %u f%u-%u |", sc_mode, sc_area, sc_map, nm, b->n, b->f0, b->f1);
     for (unsigned k = 0; k < sizeof ord / sizeof *ord; k++) len += snprintf(line + len, sizeof line - (size_t)len, " %d", (int)(b->ph[ord[k]] * 10.f + 0.5f));
@@ -717,7 +718,7 @@ static void pf_take(const Rec* r) {
     unsigned long long d = pm_gbi_sp0_dlc();
     pf_dlc_t += d >= pf_dlc_prev ? d - pf_dlc_prev : d; /* a map load resets the counter: then d is the new value */
     pf_dlc_prev = d;
-    pf_sms[0] += r->ms[PH_GBI]; pf_sms[1] += r->ms[PH_TEX]; pf_sms[2] += r->ms[PH_GPU];
+    pf_sms[0] += r->ms[PH_DRAW]; pf_sms[1] += r->ms[PH_TEX]; pf_sms[2] += r->ms[PH_GPU];
 }
 void pm_pf_frame(unsigned long long t0, unsigned long long t1) {
     int cur_s = pf_samp; /* this drawn frame is a sample */
@@ -1021,8 +1022,8 @@ static __attribute__((cold, noinline)) void pc_end(void) {
               (float)pc_s[PCS_INIT] / TICKS_MS, (float)(pc_s[PCS_SETUP] - pc_s[PCS_ROM] - pc_s[PCS_INIT]) / TICKS_MS);
     pm_log_hw("pcphase: worst f%u %.1f ms, tex loads %u (%u KB) | tex %.1f fbread %.1f gpu %.1f gbi %.1f dl %.1f other %.1f idle %.1f | sums ms: tex %.1f fbread %.1f gpu %.1f gbi %.1f dl %.1f other %.1f",
               pc_max_f, (float)pc_max_t / TICKS_MS, pc_max_tex, pc_max_kb,
-              pc_maxph[PH_TEX], pc_maxph[PH_FBREAD], pc_maxph[PH_GPU], pc_maxph[PH_GBI], pc_maxph[PH_DL], pc_maxph[PH_OTHER], pc_maxph[PH_IDLE],
-              pc_ph[PH_TEX], pc_ph[PH_FBREAD], pc_ph[PH_GPU], pc_ph[PH_GBI], pc_ph[PH_DL], pc_ph[PH_OTHER]);
+              pc_maxph[PH_TEX], pc_maxph[PH_FBREAD], pc_maxph[PH_GPU], pc_maxph[PH_DRAW], pc_maxph[PH_GAMEDRAW], pc_maxph[PH_OTHER], pc_maxph[PH_IDLE],
+              pc_ph[PH_TEX], pc_ph[PH_FBREAD], pc_ph[PH_GPU], pc_ph[PH_DRAW], pc_ph[PH_GAMEDRAW], pc_ph[PH_OTHER]);
     pm_log_hw("pcgbi: worst frame gbi parts ms: gvtx %.1f gtri %.1f gmtx %.1f gop %.1f gtev %.1f gbind %.1f gst %.1f (phasegbi only)",
               pc_maxph[PH_GVTX], pc_maxph[PH_GTRI], pc_maxph[PH_GMTX], pc_maxph[PH_GOP], pc_maxph[PH_GTEV], pc_maxph[PH_GBIND], pc_maxph[PH_GST]);
 }
@@ -1110,13 +1111,13 @@ void __wrap_step_game_loop(void) {
 }
 
 void __wrap_gfx_task_background(void) {
-    PH_PUSH(PH_DL);
+    PH_PUSH(PH_GAMEDRAW);
     __real_gfx_task_background();
     PH_POP();
 }
 
 void __wrap_gfx_draw_frame(void) {
-    PH_PUSH(PH_DL);
+    PH_PUSH(PH_GAMEDRAW);
     __real_gfx_draw_frame();
     PH_POP();
 }

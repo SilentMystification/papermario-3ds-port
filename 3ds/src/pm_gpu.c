@@ -2471,7 +2471,7 @@ static void sync60_pace(void) {
 
 /* LB1: pm_gpu_begin records the frame start. With fps60 the GPU part runs at once, as before. Otherwise the GPU part runs in
  * pm_gpu_begin_wait: at the first gbi task, at the first CPU read of GPU memory, at pm_gpu_drew and at pm_gpu_end. So the game
- * logic and the display list build run before the wait for the GPU tail of the last frame. */
+ * logic and the draw recording run before the wait for the GPU tail of the last frame. */
 static int begin_pend, begin_clear;
 void pm_gpu_begin_wait(void) {
     PM_WALK_OWN(); /* CORE2-3a */
