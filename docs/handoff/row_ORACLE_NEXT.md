@@ -2,6 +2,26 @@
 
 A replacement oracle starts here: read CLAUDE.md, orchestrator_rules.md, plan_hotcode.md (sections 2 and 5), then this file.
 
+## NATIVEAPI (oracle 2, 2026-11-11; plan_nativeapi.md has no section 6: the S2 executor design is here)
+- Rows: NAPI1 (skeleton: NDC_NAPI with the core 0 runner as word 1, nd_rec_napi, pso table + host test), then NAPI2A (HUD rects) and
+  NAPI3A (glyphs) in parallel. Form "replay record": core 1 keeps the game arithmetic and records the emit inputs; core 0 runs the same
+  gbi macros into a local list (nd_gx_w writes the typed unit for a packet that is not gMainGfxPos) and runs nd_walk_state. Byte-equal
+  by construction, no GPU state change; the walker state model still runs on core 0 (adds the emit code to core 0: NAPI2A reports sizes).
+- S2 read (main 6e171b39a), for the direct executor (S2b/S3b): nd_texrect (nd_rect.c:219) for a HUD rect: rect_to_image returns 0
+  (tile tmem 0), off_screen_check, box_fold_sync no-op (box_prod 0), sync_render, rtile 0 (no TEXEL1, w1 tile 0), gp3_t0_surv,
+  ensure_tile(0), dual_bind no-op (plan has no tex1), s/t from tile_x0/tile_fx/tile_shift[0] (HUD: shift 0, fx 0), copy span only in
+  COPY cycle, t1_fold returns when the aux unit is not off-screen, zprim and fold arms not taken. The window comes from tex_win0
+  (nd_tex_set.c:137, pure on NdTst/NdTexM: the HUD masks 3/4 can cut h or w to the mask period), the bind from set_tilesize
+  (:184: glyph cell path for CI4, tsz_last skip) and ensure_tile_slow (:374: tile_bound, glyph_atlas_bound, flush + pm_tex_set_wrap +
+  pm_tex_load, tile_x0 = x0 - ox - gox). pm_gpu_tex_rect (pm_gpu_rect.c:267) reads gs.combine (class 4-8 kept, else 2), gs.env_col
+  (class 5, 7), gs.plan.vtx (class 8), pm_tex_cur_idx, pm_tex_cell_bound, nb.rect_z/fill_z, gs.vp_*, gs.off_active, pm_wide.
+- Direct executor rule: a direct draw does not update the walker tile and combine fields; it must call ens_clear(), set cur_tile -1,
+  sc_ok 0 and nd_sr_forget() so the next walker draw rebinds and resyncs. Byte-equal then holds only if no walker producer reads state a
+  direct producer left (verified by the byte gate per stage, not by construction). Its pso part: nd_comb_decide (nd_comb.c:507, dry, on
+  an NdCombIn) and nd_render_state (nd_tmpl.c:292, pure) give the decision without the walker. A direct executor changes flushes and
+  binds: console prof gate (lesson 1). Written after NAPI2A and NAPI3A merge and one console prof push (mac_01 0 0 200 and a talk spot).
+- I-cache note: until S6 deletes the walker model, each direct executor adds code to core 0; the gain arrives at S6.
+
 ## Rows (state at writing)
 - Running (6 coders): HC6B (Opus), WALLSHADE, UB1, HCCUT2 (step after the first try written in its row), HC9B, CRASHEXIT.
 - Ready (refill 2): HCCUT4 (nd_comb.c decide/dual_bind/sync_combine_work, pm_comb.c, nd_model.c mdl0 notes). Waits: HCCUT5 (nd_tev_build; after HCCUT2), HC10 (hot order regenerate; after HCCUT2-5).
@@ -89,23 +109,23 @@ yet: a memcheck-like class split of heap use would give it).
   the largest steady byte count (about 3.5 KB per frame). cmd is 0: C_CMD is counted only by the nd_cen census (nd_cen.c:491), not a fault
   of DPCEN1; a GPUCMD words counter (the command buffer offset at the frame end) is a small follow-up row if wanted.
 
-## fxtest findings: status (old oracle; data fxcen_pmu_o3ds.txt = build with TILEWIN and LOGX1 only, before TILEWIN2, PBATCH1, SPLASHPREV2, FILLA0)
-| finding (ms above base, O3DS) | row | status |
-| effect_63 30.5 -> 9.5, whirlwind 15.7 -> 9.6 (scroll window texture reloads) | TILEWIN, TILEWIN2 | merged |
-| snowfall 13.7, embers 9.9, energy_shockwave 6.8, effect_3D 4.8, shimmer_burst 3.6 (one draw per particle) | PBATCH1 | merged, console re-run needed |
-| water_block 10.2 (33 draws, 59 tex, per component list + matrix, water_block.c:280-285: the PBATCH1 pattern) | PBATCH1 | merged, re-run decides |
-| spiky_white_aura 3.8 (8 draws, per part list + matrix, spiky_white_aura.c:188-200), gather_magic 1.3, stat_change 1.2, cloud_puff 1.2, sweat 1.3 | PBATCH1 pattern | re-run decides |
-| water_splash 12.0 (refraction source buffer) | SPLASHPREV2 | merged, re-run |
-| fire_breath 17.4 (fill of large translucent puffs) | FILLA0 | in progress |
-| pink_sparkles 4.7 (prim per part: combine (1-PRIM)*TEXEL0+PRIM, alpha PRIM*TEXEL0, SHADE unused, sparkles gfx D_09000F20) | PBATCH2 | design: fold PRIM into the ring vertex colour (combine PRIM -> SHADE) when the combine reads no SHADE; needs a read of nd_comb.c plan_vtx_ok / vc before a row |
-| bulb_glow 2.6 (45 tex: strips of the current frame, bulb_glow.c:244-258, a T2 grab per dirty strip) | - | inherent (GPU grab path), re-run |
-| flame 1.7 (off-screen colour image pass, flame.c:187: prg 4.9) | - | inherent (off-screen pass) |
-| firework_rocket 2.6 (texmiss 1.0, flkb 10.8, firework_rocket.c:291 sparks) | - | read open after the re-run (TILEWIN2 may cover) |
-| underwater 2.5 (409 tri, 678 vtx: a mesh rebuilt each frame by the effect) | - | needed by the effect |
-| snowman_doll 2.0 (660 tri of static lists) | - | needed geometry |
-| explosion 1.6 (21 draws, 15 tex), effect_75 1.4 | PBATCH1 pattern / re-run | re-run decides |
-| core 0 stall 66 % (istall 41.8 %, dstall 24.7 %, I-miss 46 / 1000) | HC rows | need the per-phase split: one console run with profrot profph on the new main |
-Next console run (user, O3DS XL, prof profile): `warp=mac_01:0 pos=0:0:200 fxtest=all profrot profph profdisk=1` on main after FILLA0.
+## Effects cost model (oracle 2, 2026-11-11; XL run xl3 = main 6e171b39a with FILLA0R: build3ds/out/fxcen_xl3.txt; xl2 agrees)
+Values: ms per frame above base (the "us" column: frame period of the logic step, pm_fxtest.c:200; every spawned effect shows a 0.55-0.6
+ms floor). Counts per frame from fxcenb. Bound = oracle code read only; FXSPLIT (gpu, walk us per effect, two console runs) decides it.
+| effect | ms | per-frame work (fxcenb) | structure (code read) | bound by read | cut without a look change |
+| fire_breath | 17.1 | 204 tri, 7 draw | ~51 puffs: a 200x200-unit 4-triangle fan scaled by data->scale (fire_breath.c:214-223), 2-cycle TEXEL1/TEXEL0 lerp (I4 128x32, tiles 0 and 1 scroll), ZB_CLD_SURF2 blend | GPU fill | none: the N64 draws the same quads (inherent) |
+| snowfall | 12.8 | 940 tri, 2728 vtx, 9.7 draw, gvrej 536 | 117 parts x (gSPMatrix load, gSPMatrix mul, list D_09000D50: 24 vtx, 8 tiny tris) (snowfall.c:207-218); 57 % of tris trivially rejected after the per-vertex clip work | core 0 per part (2 matrix conversions, 24-vertex load with clip bits, 8 gv_tri); GPU work is small by read (8 tiny tris per part, about 0.2 ms of vertex work for 2728 vertices) | instanced particle path (plan S4 nd_particles: list vertices once, per-instance float matrix) |
+| water_splash | 11.3 | 50 draw, 50 tex, 66 tri | one previous-frame window bind per drop (LoadMultiTile) | core 0 bind per drop + GPU | one bind of the previous-frame texture, window as a uv offset (TILEWIN2 rule) |
+| water_block | 9.4 | 38 draw, 36 tex, 66 tri | per component list + matrix + texture (water_block.c:280-285) | core 0 per draw | as water_splash |
+| energy_shockwave | 6.0 | 200 tri, 336 vtx, 16 draw | one scaled ring mesh, 2 scrolling tiles (SetTileSize per frame), translucent | mixed | after FXSPLIT |
+| pink_sparkles | 6.0 | 47 draw, 100 tri | prim colour per part breaks the ring batch | core 0 per part (draw count alone is cheap: PBATCH1 cut snowfall draws 117 -> 9.7 for 14.1 -> 12.8 ms) | after FXSPLIT; PBATCH2 branch kept, not merged |
+| embers | 4.5 | 21 draw, 16 tex, 127 tri | SetTileSize per particle (atlas cell, embers.c:217-218) | core 0 per particle | PBATCH3 (cell offset in the copied vertex st) |
+| spiky_white_aura | 3.6 | 4 draw, 15 tri | large translucent quads scaled per part | GPU fill | none (inherent) |
+| underwater | 3.2 | 423 tri, 678 vtx, 2 draw | full-screen distortion mesh rebuilt each frame (core 1) | mixed | after FXSPLIT |
+| shimmer_burst | 2.9 | 16 draw, 154 tri | per part matrix + prim + list D_E0070CD0[i & 7] | core 0 per part | instanced path with per-instance colour |
+- Culling of off-screen particles is not a cut: user code rule "no culling the game does not do" (feedback_code-rules.md).
+- Cut rows are written only after FXSPLIT and its two XL runs agree (lesson 2 below); then one row per cut with the console gate
+  (fxtest of that effect, its ms before and after, two runs each).
 
 ## Texture pre-conversion study, CIA memory (old oracle, for plan_datapath.md section 2 and 5)
 - Memory today (pm_mem.c:72-110 __system_allocateHeaps): the budget is already read at run time: commit = svcGetResourceLimit
@@ -131,12 +151,7 @@ Next console run (user, O3DS XL, prof profile): `warp=mac_01:0 pos=0:0:200 fxtes
   reads it once; the runtime reads native files. That frees most of the 25.7 MB on every model, more than a CIA on an O3DS gives. The
   pre-converted textures are loaded by one read and one upload (no decode, no Morton pass, no palette hash at bind).
 
-- XL run after TILEWIN2/PBATCH1/SPLASHPREV2/EDGEAA/SEAMHOST (fxcen_xl.txt, pmu_xl.txt): effects worst case 17 ms -> 2 ms. Above 1.0 ms:
-  spiky_white_aura 2.0 (8 draws, one prim for all parts, spiky_white_aura.c:186-202: fill of large translucent quads: FILLA0),
-  water_block 1.4 (fill + its 30-vertex mesh per frame), embers 1.2 (a SetTileSize per particle, embers.c:217-218, breaks the ring batch:
-  PBATCH3 design = the atlas cell offset in the copied vertex st, like PBATCH2's colour), energy_shockwave 1.1 (tile scroll + fill:
-  FILLA0), flame 1.0 (off-screen pass, inherent). Re-run after FILLA0 and PBATCH2 decides spiky_white_aura, water_block, energy_shockwave.
-  Negative tri or draw values are noise of the single base window per log (scene activity varies by slot), not a tool fault.
+- The first XL run (fxcen_xl.txt, build 4324, "worst case 2 ms") was an outlier: effects did not draw (negative draw counts). Void.
 - Phase sum of I-misses (68.6K) above the clean-frame mean (47.3K): not a fault. pmxph counts sampled frames only (1 in 30), which run
   the phase timers and two PMU svc reads per push and pop: their own code adds I-misses (the prof line's oh field shows the sampled
   frame cost). The shares hold; the absolute numbers are of a sampled frame.
@@ -175,10 +190,12 @@ pm_gpu.c dp_frame+sprite.c+nd_shape.c+nd_ent.c: disjoint). HC cut rows after HCM
 | sprite raster decode per load | DO AFTER DPCEN2: `sprus` per map or battle load decides |
 | audio predecode | NO now: no lag reported at voice starts; battle songs are predecoded on core 1 (BTLWIPE F4); AUDDROP (missing sounds) is the open audio fault |
 | HC rows for gbi | DO AFTER HCM3 (M3 per class and calls) |
-| effects above 1 ms (spiky_white_aura, water_block, energy_shockwave) | DO AFTER the fxtest re-run with FILLA0 and PBATCH2 merged |
+| effects above 1 ms | DO AFTER FXSPLIT and its two XL runs (Effects cost model section) |
 
-- Lesson (for plan_hotcode.md notes): a GPU fill or pipeline-state change needs a console measure before it merges; the Azahar byte
-  compare proves the picture only (FILLA0: byte-equal on Azahar, +3 to +17 ms per effect on the XL; reverted by FILLA0R).
+- Lessons (corrected 2026-11-11, oracle 2): (1) an Azahar byte compare proves the picture only; a row that changes GPU state needs a
+  console measure. (2) No GPU-cost claim from a single console run: confirm with a second run before acting. The FILLA0 claim (+3 to
+  +17 ms per translucent effect) was wrong: it came from one outlier XL run (fxcen_xl.txt, build 4324: effects did not draw, negative
+  draw counts); xl2 (with FILLA0) and xl3 (FILLA0R) give the same costs. (3) After two failed tries on one cause, a measurement row.
 
 - DPCEN2 decisions (Azahar per map load: sprite loads 74-138 ms, list compiles 4.6-8.4 ms, texture upload 634 KB / hash 147 KB):
   sprite load -> YAY0FAST (faster Yay0 run copies, same output; host equality test over the ROM asset table); a decoded-sprite cache

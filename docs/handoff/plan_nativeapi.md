@@ -74,5 +74,6 @@ which is today's closest native quad: pm_gpu.c:3950, nd_rec.c:220 nd_rec_spr), t
 - Draw order and frame pipelining: the stream stays, so order and core 1 / core 0 overlap stay.
 - Obsolete HC work: further cuts in classes A, B, E, G for the typed-op path (they leave core 0 at S6); HC7 rect path (replaced by S2-S3);
   HC8 sprite/entity steps 2-4 stay (H and I remain). Keep HCM3 as the per-stage measure; keep PMU runs per stage.
-- PBATCH2: not needed: pink_sparkles costs 0.08 ms on the XL without FILLA0 (build 4324), so its 44 draws are cheap; do not merge
-  4ab13ab4e (the fill cost came from FILLA0). fxflush_pink: no lasting bench (phase=1 gives PG0 ad hoc).
+- PBATCH2: closed, not merged (two failed tries; branch PBATCH2 kept). The earlier claim that its 44 draws are cheap came from an outlier XL run
+  (build 4324, effects probably not drawn). XL runs xl2 and xl3 give pink_sparkles 6.0 ms. The effect cost is GPU and per-part work, not
+  draw count: see the effect cost model in row_ORACLE_NEXT.md. fxflush_pink: no lasting bench (phase=1 gives PG0 ad hoc).
