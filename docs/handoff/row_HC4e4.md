@@ -43,6 +43,16 @@ Gate B: nd_host PASS; lane build OK (a link error names a missed user: fix it th
 3. `PM_LANE=HC4e4 python 3ds/tools/bench.py run hotset_size --row HC4e4 --lane HC4e4 --why "..."`: rc 1 with m2_stale 16 = the 15 stale names of main plus rec_op (hot_order.ld :340, deleted in A6). Any other new stale name: hand back. Write m1_union in the commit. Row HOTORD regenerates hot_order.ld after this row.
 Affected scenarios (no others): spot_mac01_det, mdl5_iwa10_det, spot_mac00_det.
 
+## Gate 2 tool fault (2026-11-10) and how to go on
+Steps A, B are committed (51587f9ed, 6213e3cad); spot_mac01_det and spot_mac00_det_pic cmp 6/6. mdl5_iwa10_det run 238358 ended rc 2
+"crash symbols" after its until match, with no last_crash.txt: a tool fault (row TOOLB6, wrong ELF and output folder), so gate 2
+stops (CLAUDE.md 4). Oracle read of the changed format: the B2 readers (animator.c, entity_model.c, imgfx.c, energy_orb_wave.c,
+model.c :4453 :4508 :4651, nd_ent.c, nd_shape.c, nd_seam.c, barricade.c, GFTN) end only on NDO_END; A3/A4 drop untyped words.
+Typed writers: gs/g macros (HC4e1-e3), nd_shape_conv v2 (HC4f3), nd_ent.c :206 and nd_dlc.c :491 (A8). No raw writer of a list
+that reaches iwa_10 is known; the oracle names the site from the crash symbols.
+Next (after TOOLB6 is merged): merge main into HC4e4, run gate 2 for mdl5_iwa10_det again (the same command, output to
+build3ds/out/run_iwa10_2.txt). rc 2 again: copy build3ds/lane-HC4e4/last_crash.txt to build3ds/out/, commit, hand back that file.
+Pass: go on with gate 3 (hotset_size) and the memcheck line.
 ## Commands
 - Build: PM_ROW=HC4e4 PM_LANE=HC4e4 sh 3ds/build.sh > build.log 2>&1; then grep -n "error\|warning: unused" build.log.
 
