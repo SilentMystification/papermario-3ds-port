@@ -55,7 +55,7 @@ Edit rules in place, never append. At the start of a session, read docs/handoff/
   6. Build main in the background. Run `python 3ds/tools/bench.py base --fill` in the main folder.
 
 ## Status and questions
-- Every turn: RUNNING (with type: [Haiku], [Oracle Opus], [Push], [Build]) / READY-NOT-LAUNCHED / BLOCKED-ON-USER.
+- Every turn: RUNNING (one line per agent, labelled with its model and row: [Haiku] HC8, [Sonnet] KZN04, [Opus] HC5, [Oracle Opus], [Push], [Build]) / READY-NOT-LAUNCHED / BLOCKED-ON-USER.
 - Ask only with AskUserQuestion (2-4 options, recommended first). Do not ask what a rule decides.
 
 ## Console

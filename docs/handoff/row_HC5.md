@@ -1,4 +1,10 @@
-# Row HC5: combine decision off core 0 (plan_hotcode.md 5.3, class B)
+# Row HC5: combine decision off core 0 (plan_hotcode.md 5.3, class B) - PARKED: it becomes HC6 step 5
+
+> Status 2026-11-11: census c5cen (branch HC5, ba484c66e, run 263022): T_SYNC 98.9 % of 22939 syncs in f0-300; even with every op-set
+> input known only 14.6 % could be T_PLAN, because every NDC_MODEL, sprite, entity, texrect and call resets the recorder's inputs to
+> unknown (plan 5.2/5.3). No HC5 cut works alone. The census code updates the cs shadow on every typed op on core 1 (not only under the
+> switch): it stays on branch HC5 and is not merged. HC5 resumes as HC6 step 5, after HC6 makes the record state known (and HC8b
+> types the sprite and entity state). Do not launch this row.
 
 (Model: Opus, user approved 2026-11-11. Reason: the work is a protocol design across two threads (which combine inputs the recorder
 knows, the T_PLAN / T_SYNC units, the plan table publish) with choices Haiku cannot make. The Opus agent writes Haiku rows for the
@@ -22,6 +28,9 @@ pm_gpu.c pm_gpu_set_plan (:3653) and pm_gpu_plan_key only. HC8 edits pm_gpu.c pm
 nd_model.c :389-410, nd_ent.c :378, nd_shape.c :283/:608; SYNC60 edits pm_gpu.c pm_gpu_begin_wait: do not edit those. HC6 also edits
 nd_rec.c (the record path nd_rec_model): coordinate by place; `git merge main` before the completing commit.
 ## Gates
+- Base rule until LOADMTX is merged (test_catalog.md 6a): no `bench.py base`. Run the row's bench, then `python 3ds/tools/bench.py cmp
+  <bench> --row HC5 --commit b8bc06613` (stored: spot_mac01_det, mdl5_iwa10_det). A run of the row that ends rc 2 with
+  `load_mtx at nd_mtx_set.c:106` is the known main fault: run it once more and report both runs.
 nd_host PASS; memcheck OK; byte-equal spot_mac01_det and mdl5_iwa10_det (bases at b8bc06613; battle_start_f182_cold is not a gate: its
 cold runs differ, row LOADMTX); hotset_size M1-hot class B <= 3 KB; the c5cen line on mac_01 (one Azahar list: spot_mac01_det,
 mdl5_iwa10_det, and the c5cen scenario on one slot). Console prof push mac_01 0 0 200 (lgms grows <= 2 ms): the user's check.

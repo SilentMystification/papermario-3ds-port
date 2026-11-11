@@ -4,4 +4,4 @@ Keep the coders fed: the oracle writes rows in batches ahead of the coders (6 re
 Finish continuous chains in one session. Count the context at stopping points. From about 300K, ask the user (each further 100K) only when a new session would be right (between chains, no agent running); never ask when the answer is "not yet". A new session starts only between chains. Write HANDOFF.md only then.
 Bugs: the user's fault is fact. Code read only (no repro, no debug logs, no visual checks). A tool fault stops the gate. At most 6 code agents. Main stays clean.
 Never: toggles, stubs, git push, git stash, attribution. Failed push: one line, then stop.
-Each turn: RUNNING (type: [Haiku], [Oracle Opus], [Push], [Build]) / READY-NOT-LAUNCHED / BLOCKED-ON-USER. ASD-STE100, no praise, minimal chat.
+Each turn: RUNNING (one line per agent, labelled with its model and row: [Haiku] HC8, [Sonnet] KZN04, [Opus] HC5, [Oracle Opus], [Push], [Build]) / READY-NOT-LAUNCHED / BLOCKED-ON-USER. ASD-STE100, no praise, minimal chat.

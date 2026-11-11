@@ -41,6 +41,11 @@ static void sync60_pace(void) {
    Lines :2442 (`if (pm_wd_wake_frames) pm_wd_wake_frames--;`) and :2443 stay. Update the PT88 comment at :2445 only if it names
    SYNCDRAW for fps60 ("with fps60 the begin waits for the vblank as before" -> "with fps60 the begin is paced by time (SYNC60)").
 ## Gate (CLAUDE.md 2: nd_host and byte compare)
+- Base rule until LOADMTX is merged (test_catalog.md 6a): no `bench.py base`. Run the row's bench, then `python 3ds/tools/bench.py cmp
+  <bench> --row SYNC60 --commit b8bc06613` (stored: spot_mac01_det, mdl5_iwa10_det). A run of the row that ends rc 2 with
+  `load_mtx at nd_mtx_set.c:106` is the known main fault: run it once more and report both runs.
+  SYNC60: spot_mac01_fps60_pic has no stored base: its byte gate waits for LOADMTX; until then spot_mac01_det and
+  mdl5_iwa10_det only.
 - `PM_ROW=SYNC60 PM_LANE=SYNC60 sh 3ds/build.sh > build3ds/out/build.txt 2>&1`: memcheck OK.
 - `python 3ds/tools/bench.py run nd_host --row SYNC60 --why "SYNC60 build"`: PASS.
 - Byte compare (one Azahar list): spot_mac01_fps60_pic (interpolation on) and spot_mac01_det (off, unchanged path):
