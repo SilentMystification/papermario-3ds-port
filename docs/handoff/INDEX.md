@@ -22,6 +22,7 @@ Live files only. Older logs are in archive/ (agent_*, diag_*, inv_*, plan_*, tra
 - agent_direct.md: DIRECT epic handoff (state after D9: no task list; next D10, the walker removal).
 - plan_direct.md: plan DIRECT (2026-11-09): the game records native commands into the frame stream (NdCmd) on the logic thread, core 0 replays them; LIST span bridge, producer API per class, slices D0 to D9, memory and thread rules.
 - epic_ASSETFREE.md: PARKED, RELEASE BLOCKER, do not start (user): future epic that removes the game assets from the ELF; the console makes them on first boot.
+- plan_nativeapi.md: native draw API plan (2026-11-11, user decision): the game's draw code records native commands (pipeline-state id, texture handle, rect/quad/glyph/mesh/particle calls) instead of N64 state ops; stages S0-S6, each merged before the next; the old path stays until the last call site moves. First row NAPI0.
 - plan_datapath.md: data-path design study (2026-11-11): SD to RAM to CPU/GPU hops per asset class, transform-once principle, native-asset generation pass (links to epic_ASSETFREE.md), censuses DPCEN1 and DPCEN2.
 - plan_hotcode.md: plan HOTCODE (2026-11-09): shrink the core 0 draw code and data to fit the ARM11 L1 (hot set by class, stale link group, stages HC0 to HC10, size and pmu gates).
 - plan_s10_path.md: plan for S10 (oracle 2026-11-06): producers write NdRec records (streams CORE, UI, FXW, WBO), then pm_gbi.c is deleted; decisions D1 to D10.
