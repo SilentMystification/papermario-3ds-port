@@ -13765,6 +13765,54 @@
           "reason": "KZN04 diagnostic: count shaded texture loads per frame and misses in kzn_04. Premise: N/300 >= 3 and M/N >= 0.9. Azahar gives counts only; the console decides the cost."
     },
     {
+          "name": "dpcen_mac01",
+          "status": "unverified",
+          "subject": "DPCEN1: Toad Town mac_01, Mario at pos 0 0 200 (warp entry 0), no input. The dpcen census line of frames 600 to 799.",
+          "proves": "DPCEN1 census: bytes uploaded to VRAM per frame (upkb), source bytes hashed on a miss (hashkb), data-cache flush bytes (flkb), with texture misses, commands, draws, indices and triangles of the window.",
+          "debug": "warp=mac_01:0 pos=0:0:200 dpcen loglevel=debug",
+          "until": "dpcen f(6|7)\\d\\d ",
+          "cap": 45,
+          "deadline": 40,
+          "first_marker": "warp: mac_01 entry 0",
+          "expects": "warp",
+          "needs_picture": false,
+          "expected_events": [
+                {
+                      "name": "warp",
+                      "regex": "warp: mac_01 entry 0"
+                },
+                {
+                      "name": "dpcen",
+                      "regex": "dpcen f[0-9]+ frames [0-9]+ upkb [0-9]+ hashkb [0-9]+ flkb [0-9]+ texmiss [0-9]+ cmd [0-9]+ ndraw [0-9]+ nidx [0-9]+ gvtri [0-9]+"
+                }
+          ],
+          "reason": "DPCEN1 diagnostic: bytes per frame census on mac_01 (texture upload, hash, cache flush, ring and command bytes). Counts only; no picture gate."
+    },
+    {
+          "name": "dpcen_kzn08",
+          "status": "unverified",
+          "subject": "DPCEN1: kzn_08 (warp entry 0), no input. The dpcen census line of frames 600 to 799.",
+          "proves": "DPCEN1 census on a second map: bytes uploaded, hashed and flushed per frame, with texture misses, commands, draws, indices and triangles of the window.",
+          "debug": "warp=kzn_08:0 dpcen loglevel=debug",
+          "until": "dpcen f(6|7)\\d\\d ",
+          "cap": 45,
+          "deadline": 40,
+          "first_marker": "warp: kzn_08 entry 0",
+          "expects": "warp",
+          "needs_picture": false,
+          "expected_events": [
+                {
+                      "name": "warp",
+                      "regex": "warp: kzn_08 entry 0"
+                },
+                {
+                      "name": "dpcen",
+                      "regex": "dpcen f[0-9]+ frames [0-9]+ upkb [0-9]+ hashkb [0-9]+ flkb [0-9]+ texmiss [0-9]+ cmd [0-9]+ ndraw [0-9]+ nidx [0-9]+ gvtri [0-9]+"
+                }
+          ],
+          "reason": "DPCEN1 diagnostic: bytes per frame census on kzn_08. Counts only; no picture gate."
+    },
+    {
       "name": "mdl5_iwa10_cen",
       "status": "unverified",
       "subject": "iwa_10, Mario at -586 1 530 (warp entry 1), cold det, no shots. The census switch: the ndm window line of frame 300 (native records, fb, why codes).",

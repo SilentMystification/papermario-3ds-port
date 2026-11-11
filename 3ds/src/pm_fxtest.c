@@ -228,6 +228,7 @@ extern EffectInstance* gEffectInstances[96];
 void pm_fxtest_tick(unsigned f) {
     static char sw[300];
     int slot, k, i, n;
+    if (!pm_cnt_on && pm_debug_has("dpcen")) pm_cnt_on = 1; /* DPCEN1: the census also runs with dpcen */
     if (nsel < 0) {
         char* p;
         nsel = 0;

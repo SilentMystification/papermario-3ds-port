@@ -1399,6 +1399,7 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
     PH_ADD(C_TEXMISS, 1);
     const unsigned slen0 = src_len(width, height, stride, siz); /* TEXL2: the source hash is computed once here (also the slot hash) */
     const unsigned shash0 = src_hash(img, slen0);
+    PH_ADD(C_HASHB, slen0); /* DPCEN1: source bytes hashed on a miss */
     int pw = pot_at_least_8(width);
     int ph = pot_at_least_8(height);
     GPU_TEXCOLOR gf = gpu_fmt(fmt, siz);
@@ -1426,6 +1427,7 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
         else
             return 0;
     }
+    PH_ADD(C_UPB, gpu_size); /* DPCEN1: VRAM bytes of the new texture */
     gh_check(gh_key(img, tlut, phash, fmt, siz, width, height, stride, dkey, shash0), gpu_size);
     if (tb_mode && !lut && !src_native) {
         TbReq q;
