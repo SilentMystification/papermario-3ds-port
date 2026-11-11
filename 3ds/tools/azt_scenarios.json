@@ -7682,6 +7682,30 @@
       "reason": "BENCH4 spot picture. prof=4 prints only prof lines (no warp or shot lines in the log), so the until and the events are prof lines. The shot files are the picture. Cap 60 s: boot, warp, placement and the first 300-frame window."
     },
     {
+      "name": "spot_mac01_fps60_det",
+      "status": "unverified",
+      "subject": "SYNC60 byte gate: Toad Town mac_01 at pos 0 0 200 with fps60 on (pm_interp_on) and the det switch. Shots at frames 200 to 205, byte-equal to the same scenario on the base build.",
+      "proves": "SYNC60 frame pacing: with det the frame skip and the key path are off, so the shots are frame-driven and a base and a head build give byte-equal shots at 60 FPS.",
+      "debug": "warp=mac_01:0 pos=0:0:200 prof=4 fps60 shots shotwin=200:6 loglevel=debug det",
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at mac_01 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 0 0 200 pos -?\\d+ -?\\d+ -?\\d+( disp w[01] s[01] f\\d+)?$"
+        }
+      ],
+      "reason": "SYNC60 byte gate. Copy of spot_mac01_fps60_pic with det (no skip, no key path under det). Cap 60 s: boot, warp, placement and the first 300-frame window."
+    },
+    {
       "name": "spot_mac01_ndmcheck",
       "status": "pending",
       "subject": "Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0). Shots at frames 200 to 205 (the picture) and the prof scene line at the first 300-frame window.",
