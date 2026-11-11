@@ -163,6 +163,7 @@ unsigned nd_emit_cmp(const uint32_t* a, unsigned na, const uint32_t* b, unsigned
     const unsigned ma = dec(a, na, ka, va, 1024u), mb = dec(b, nb, kb, vb, 1024u);
     unsigned bad = 0;
     for (unsigned i = 0; i < ma; i++) {
+        if ((ka[i] & 0xFFFFu) == 0x2C0u && ka[i] < 0x100000u) continue; /* the uniform location word only picks the index of the 0x2C1 words after it (keyed by location) */
         int later = 0;
         for (unsigned j = i + 1u; j < ma; j++) if (ka[j] == ka[i]) { later = 1; break; }
         if (later) continue;
