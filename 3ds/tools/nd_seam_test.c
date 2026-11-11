@@ -23,7 +23,6 @@ int pm_interp_repl;
 const float (*pm_interp_find(const void* m))[4] { (void)m; return 0; }
 
 #define SHAPE_BASE 0x80210000u
-#define G_VTX 0x01u
 #define POS_MAX 65536u
 
 typedef struct { int16_t x, y, z; } Pos;
