@@ -67,7 +67,7 @@ void set_leg(int m);
 void sync_legacy(void);
 int combchk_on(void);
 void combchk_run(const NdCombIn* in, int worked);
-void cc_legacy(int mode, const CcIn* in, int t1src, float out[4]);
+__attribute__((cold)) void cc_legacy(int mode, const CcIn* in, int t1src, float out[4]);
 Dec dec[128];
 int dec_n, dec_next; /* a full table replaces the oldest entry (a decision is recomputed in microseconds) */
 ScMemo scm[16];
@@ -202,7 +202,7 @@ void sync_legacy(void) {
 }
 
 /* What the legacy combine mode draws. */
-void cc_legacy(int mode, const CcIn* in, int t1src, float out[4]) {
+__attribute__((cold)) void cc_legacy(int mode, const CcIn* in, int t1src, float out[4]) {
     const float* t = t1src ? in->t1 : in->t0;
     float sa = comb_alpha_shade ? in->sh[3] : 1.f;
     unsigned cc = 0;
@@ -284,7 +284,7 @@ float cc_rdp(float a, float b, float c, float d) {
 }
 
 /* The RDP result, one or two cycles. */
-void cc_eval(const unsigned s[2][8], int two, const CcIn* in, float prlod, float out[4]) {
+__attribute__((cold)) void cc_eval(const unsigned s[2][8], int two, const CcIn* in, float prlod, float out[4]) {
     float cb[4] = { 0, 0, 0, 0 };
     for (int cyc = 0; cyc < (two ? 2 : 1); cyc++) {
         float r[4];
@@ -377,6 +377,48 @@ void cc_cycle1(const float* t0, const float* t1, float out[4]) {
     }
 }
 
+static __attribute__((cold, noinline)) Dec* decide_miss(int two, unsigned key) {
+    Dec* d;
+    if (dec_n < 128) d = &dec[dec_n++];
+    else { d = &dec[dec_next]; dec_next = (dec_next + 1) & 127; }
+    unsigned s[2][8];
+    float plod_f = (float)(u8)nd_ws.prim_lod / 255.f;
+    memset(d, 0, sizeof *d);
+    d->key = key;
+    cc_decode(nd_ws.comb_w0, nd_ws.comb_w1, s);
+    if (leg_mode == 4) { d->why = -2; return d; } /* mode 4 is exact by construction (const_rgb_tex_alpha) */
+    d->why = pm_comb_build(nd_ws.comb_w0, nd_ws.comb_w1, two, nd_ws.use_t1, &d->plan);
+    if (!d->why && d->plan.uses_tex1 && !nd_ws.td[1].valid) d->why = 6; /* TEXEL1 read, tile 1 not loaded */
+    {
+        float el = 0.f, ep = 0.f;
+        lcg_s = 777u;
+        for (int k = 0; k < 24; k++) {
+            CcIn in;
+            float f[4], g[4], h[4];
+            unsigned pc = 0, ec = 0, pcs[2];
+            for (int c = 0; c < 4; c++) {
+                in.t0[c] = lcg_f(); in.t1[c] = lcg_f(); in.sh[c] = lcg_f();
+                pcs[0] = (unsigned)(lcg_f() * 255.f + .5f); pcs[1] = (unsigned)(lcg_f() * 255.f + .5f);
+                pc = pc << 8 | pcs[0]; ec = ec << 8 | pcs[1];
+            }
+            unpack8(pc, in.pr); unpack8(ec, in.en); unpack8(keyc, in.ke); unpack8(keys, in.ks); in.k4 = (float)conv_k4 / 255.f;
+            cc_eval(s, two, &in, plod_f, f);
+            cc_legacy(leg_mode, &in, nd_ws.use_t1, g);
+            for (int c = 0; c < 4; c++) { float e = f[c] > g[c] ? f[c] - g[c] : g[c] - f[c]; if (e > el) el = e; }
+            if (!d->why) {
+                PmPlan t = d->plan;
+                pm_comb_colours(&t, pc, ec, (u8)nd_ws.prim_lod, keyc, keys);
+                pm_comb_eval(&t, nd_ws.use_t1 ? in.t1 : in.t0, in.t1, in.sh, h);
+                for (int c = 0; c < 4; c++) { float e = f[c] > h[c] ? f[c] - h[c] : h[c] - f[c]; if (e > ep) ep = e; }
+            }
+        }
+        d->el = el;
+        d->ep = d->why ? 9.f : ep;
+        d->use = !d->why && el > 0.012f && ep < el;
+    }
+    return d;
+}
+
 Dec* decide(int two) {
     unsigned key = 2166136261u, i;
     unsigned parts[] = { nd_ws.comb_w0, nd_ws.comb_w1, (unsigned)two, (unsigned)leg_mode, (unsigned)(nd_ws.tex_on | nd_ws.use_t1 << 1 | nd_ws.td[1].valid << 2), (unsigned)comb_alpha_shade,
@@ -388,47 +430,7 @@ Dec* decide(int two) {
         for (i = 0; i < (unsigned)dec_n; i++)
             if (dec[i].key == key) { last_i = i; return &dec[i]; }
     }
-    {
-        Dec* d;
-        if (dec_n < 128) d = &dec[dec_n++];
-        else { d = &dec[dec_next]; dec_next = (dec_next + 1) & 127; }
-        unsigned s[2][8];
-        float plod_f = (float)(u8)nd_ws.prim_lod / 255.f;
-        memset(d, 0, sizeof *d);
-        d->key = key;
-        cc_decode(nd_ws.comb_w0, nd_ws.comb_w1, s);
-        if (leg_mode == 4) { d->why = -2; return d; } /* mode 4 is exact by construction (const_rgb_tex_alpha) */
-        d->why = pm_comb_build(nd_ws.comb_w0, nd_ws.comb_w1, two, nd_ws.use_t1, &d->plan);
-        if (!d->why && d->plan.uses_tex1 && !nd_ws.td[1].valid) d->why = 6; /* TEXEL1 read, tile 1 not loaded */
-        {
-            float el = 0.f, ep = 0.f;
-            lcg_s = 777u;
-            for (int k = 0; k < 24; k++) {
-                CcIn in;
-                float f[4], g[4], h[4];
-                unsigned pc = 0, ec = 0, pcs[2];
-                for (int c = 0; c < 4; c++) {
-                    in.t0[c] = lcg_f(); in.t1[c] = lcg_f(); in.sh[c] = lcg_f();
-                    pcs[0] = (unsigned)(lcg_f() * 255.f + .5f); pcs[1] = (unsigned)(lcg_f() * 255.f + .5f);
-                    pc = pc << 8 | pcs[0]; ec = ec << 8 | pcs[1];
-                }
-                unpack8(pc, in.pr); unpack8(ec, in.en); unpack8(keyc, in.ke); unpack8(keys, in.ks); in.k4 = (float)conv_k4 / 255.f;
-                cc_eval(s, two, &in, plod_f, f);
-                cc_legacy(leg_mode, &in, nd_ws.use_t1, g);
-                for (int c = 0; c < 4; c++) { float e = f[c] > g[c] ? f[c] - g[c] : g[c] - f[c]; if (e > el) el = e; }
-                if (!d->why) {
-                    PmPlan t = d->plan;
-                    pm_comb_colours(&t, pc, ec, (u8)nd_ws.prim_lod, keyc, keys);
-                    pm_comb_eval(&t, nd_ws.use_t1 ? in.t1 : in.t0, in.t1, in.sh, h);
-                    for (int c = 0; c < 4; c++) { float e = f[c] > h[c] ? f[c] - h[c] : h[c] - f[c]; if (e > ep) ep = e; }
-                }
-            }
-            d->el = el;
-            d->ep = d->why ? 9.f : ep;
-            d->use = !d->why && el > 0.012f && ep < el;
-        }
-        return d;
-    }
+    return decide_miss(two, key); /* HCCUT4: the miss part (a new combine key) is cold */
 }
 
 unsigned scm_sig(void) {
@@ -537,13 +539,15 @@ void sync_combine_work_timed(void) {
     pm_gbi_sync_ticks += (pm_ticks() - t0) * 8u; /* W2: one call in 8 timed */
 }
 
+static __attribute__((cold, noinline)) void scw_census(void) { /* PG0 census, prof mode only */
+    static unsigned last_sig;
+    unsigned sg = scm_sig();
+    GP_SET(5, sg == last_sig);
+    last_sig = sg;
+}
+
 void sync_combine_work(void) {
-    if (gp_on() && !comb_dry) { /* PG0: an estimate of how many calls repeat the inputs of the call before (hash of the combiner, render and tile state the function reads) */
-        static unsigned last_sig;
-        unsigned sg = scm_sig();
-        GP_SET(5, sg == last_sig);
-        last_sig = sg;
-    }
+    if (gp_on() && !comb_dry) scw_census(); /* PG0: an estimate of how many calls repeat the inputs of the call before (hash of the combiner, render and tile state the function reads) */
     unsigned cyc = (nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3;
     sync_legacy();
     plan_active = 0;
@@ -621,6 +625,17 @@ void box_fold_sync(void) {
 
 float t1_p[4]; /* the unit 1 uv map set by dual_bind: scale s t, offset s t */
 int t1_ox, t1_oy, t1_w, t1_h; /* window origin in the slot, texture size of unit 1 */
+static __attribute__((cold, noinline)) void dual_bind_load(unsigned key) { /* HCCUT4: a new tile 1 texture */
+    pm_gpu_flush();
+    pm_tex_set_wrap(nd_ws.tst1.tile_wrap[1][0], nd_ws.tst1.tile_wrap[1][1], nd_ws.tst1.tile_wrap[1][2], nd_ws.tst1.tile_wrap[1][3]);
+    if (nd_ws.td[1].fmt == 0 && nd_ws.td[1].siz == 2) grab_cur(nd_ws.td[1].src, nd_ws.td[1].w, nd_ws.td[1].h);
+    pm_tex_load(nd_ws.td[1].src, nd_ws.td[1].fmt, nd_ws.td[1].siz, nd_ws.td[1].w, nd_ws.td[1].h, nd_ws.td[1].pal, nd_ws.td[1].pal_n, nd_ws.td[1].stride);
+    pm_tex_set_aux(nd_ws.tst1.tile_wrap[1][0], nd_ws.tst1.tile_wrap[1][1], nd_ws.tst1.tile_wrap[1][2], nd_ws.tst1.tile_wrap[1][3]);
+    aux_key = key;
+    nd_ws.cur_tile = -1;
+    ens_clear();
+}
+
 void dual_bind(void) {
     unsigned key = 2166136261u, i;
     int tw0, th0, tw1, th1;
@@ -630,16 +645,7 @@ void dual_bind(void) {
                              (unsigned)nd_ws.td[1].pal, nd_ws.tst1.tile_wrap[1][0], nd_ws.tst1.tile_wrap[1][1], nd_ws.tst1.tile_wrap[1][2], nd_ws.tst1.tile_wrap[1][3] };
         for (i = 0; i < sizeof parts / sizeof parts[0]; i++) key = (key ^ parts[i]) * 16777619u;
     }
-    if (key != aux_key || !pm_tex_aux_valid()) {
-        pm_gpu_flush();
-        pm_tex_set_wrap(nd_ws.tst1.tile_wrap[1][0], nd_ws.tst1.tile_wrap[1][1], nd_ws.tst1.tile_wrap[1][2], nd_ws.tst1.tile_wrap[1][3]);
-        if (nd_ws.td[1].fmt == 0 && nd_ws.td[1].siz == 2) grab_cur(nd_ws.td[1].src, nd_ws.td[1].w, nd_ws.td[1].h);
-        pm_tex_load(nd_ws.td[1].src, nd_ws.td[1].fmt, nd_ws.td[1].siz, nd_ws.td[1].w, nd_ws.td[1].h, nd_ws.td[1].pal, nd_ws.td[1].pal_n, nd_ws.td[1].stride);
-        pm_tex_set_aux(nd_ws.tst1.tile_wrap[1][0], nd_ws.tst1.tile_wrap[1][1], nd_ws.tst1.tile_wrap[1][2], nd_ws.tst1.tile_wrap[1][3]);
-        aux_key = key;
-        nd_ws.cur_tile = -1;
-        ens_clear();
-    }
+    if (key != aux_key || !pm_tex_aux_valid()) dual_bind_load(key); /* HCCUT4 */
     ensure_tile(0);
     pm_tex_size(&tw0, &th0);
     pm_tex_aux_size(&tw1, &th1);
