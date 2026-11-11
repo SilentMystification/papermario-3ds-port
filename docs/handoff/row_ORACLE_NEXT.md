@@ -15,8 +15,8 @@ A replacement oracle starts here: read CLAUDE.md, orchestrator_rules.md, plan_ho
    and HC6B (pmu_i, cycles, lgms).
 2. PAUSEDR: is the pause menu still laggy, and does the top screen still not go grey? (a prof push in the pause gives the values).
 3. AUDDROP: are sounds still missing? (a push with audiostat in normal play gives the counts).
-4. BATUI wide layout: should the battle wheel touch the left screen edge in Wide mode (now 54 px from it, the 4:3 distance)? A look change.
-6. KEYMISS: start the Opus audit (census of per-frame key values, then fixes M1/M2/M4) after HC6B merges? (Opus needs a user yes.)
+4. BATUI: decided 2026-11-11 (wide layout): row BATUI widens the two battle description boxes; the wheel keeps WIDE3/WIDE4.
+6. KEYMISS: decided 2026-11-11 (yes): rows KEYMISS, KEYFIX1, KEYFIX2 written.
 5. STEREOFX: the ESCAPE crash.txt from the XL (3D slider hang). COLDBOOT: the XL cold-boot log.
 
 ## Morning list (rows to write next, by the oracle)
@@ -26,7 +26,14 @@ A replacement oracle starts here: read CLAUDE.md, orchestrator_rules.md, plan_ho
    sync_render orbdbg block (nd_set.c:233-243), gv_matrix_id first-use malloc (nd_mtx_set.c:55-60).
 2. HC9 rest: NdNatC 64 B hot head, NdShadow compares by generation ids, mc_keyw/mc_tab probes in one line: all in HC6B files
    (nd_model.c, nd_emit.c): write after HC6B merges. NdWs tile tables native: needs a design read of nd_ws.tst1 users.
-3. KEYMISS rewrite on the HC6 key code (key A on core 1, key B on core 0).
+3. KEYMISS (user yes, 2026-11-11): rows KEYMISS (census, pm_keymiss.c), KEYFIX1 (w5 finalMtx class, w17 billboard presence, use5
+   hit only on a saved matrix), KEYFIX2 (w23 post list; waits on KEYFIX1 and a census count of word 23). Members left for rows after
+   the census numbers (each needs an oracle design read first): w8/w11 fog colour and position (shroud lerp model.c:2071-2083, depth
+   tint :1577: zmix and the F08 mix in the var uniform, not patched by blk_put pm_gpu.c:1102), w12/w13 prim/env (TEV stage constants
+   and plan constants, nd_tmpl.c:184-276; blk_put patches col[] only from the stored draw), w18-w21 panner tile sizes (uvso in the var
+   uniform, nd_model.c:42-44; the tile 0 window and WATER B1 invariant: tex_win0 nd_tex_set.c:202 reads uls/ult), w22 pre list (never
+   looked up, nd_recs.c:315; M3 content key), key B words 28-32 (walker order). Census word index: 0-27 record (R0 w0 .. R13 w1),
+   28+ pm_gpu_model_key s[] (pm_gpu.c:3187-3194).
 4. HC7b: closed (row_HC7.md deleted): box_pat, td[] and the tile state exist only on core 0 (nd_comb.c:175-187, the walker texture model); HC5's census (T_SYNC 99.3 %) shows core 1 cannot know them.
 5. Rows from new console evidence (COLDBOOT, STEREOFX) when the user sends it.
 6. UB1 leftovers: suspect 1 is void (DOORHITCH: an entry with a unit 1 slot never hits, pm_gpu_model_hit e->h1s); suspects 2, 3, 5, 6 need an oracle read.

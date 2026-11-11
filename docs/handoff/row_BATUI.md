@@ -1,60 +1,42 @@
-# Row BATUI (waits on user facts): battle UI missing on the console
+# Row BATUI: battle menu wide layout (the description boxes use the full widescreen width)
+
+(Model: Haiku. Base: main 436abd053. Runs together with KEYMISS and KEYFIX1: no shared file. The agent reads only this file and CLAUDE.md.)
 
 ## User facts
-- 2026-11-09 (O3DS, de415917f): "The battle UI is mostly missing right now. I see the icons for jump, item and strategies along with
-  their text but the rest of the UI is not visible."
-- 2026-11-09 (BATWIDE, now merged here): with Widescreen on, on Azahar and the console, the menu boxes are missing, the menu does not
-  reach the left screen edge, the wheel light is not on the selected item.
-- 2026-11-11: the battle UI is missing on a current console build (widescreen setting, menu and console not given).
+- 2026-11-09 (BATWIDE): with Widescreen on, the menu boxes are missing and the menu does not reach the left screen edge.
+- 2026-11-11 (decision): BATUI uses the wide layout: the battle UI uses the full widescreen width.
 
-## Trace (oracle code read, main 798ee92d9): how each part of the battle menu draws
-- Text rectangles: option icons (btl_states_menus.c:1008 hud_element_draw_clipped) and the option name (:1016 draw_msg) -> nd_texrect
-  (nd_rect.c:216) -> pm_gpu_tex_rect (pm_gpu_rect.c:267). Drop site: pm_gpu_rect.c:275 when tex_raw_rect refuses. These parts DO show.
-- Triangles of transformed HUD elements (the parts that do NOT show): spotlights HID_Spotlights (:931-941), highlight (:950-959), beam
-  (:968-975), reels A/B (:977-991): HES_ProjectorSpot/Beam/Reel are IA8 (battle_ui_gfx.c:522-545) -> render_complex_hud_element mode 2
-  (hud_element.c:1569-1627): CAM_HUD ortho (hud_element.c:1811-1816), G_ZBUFFER|G_SHADE|G_LIGHTING (:1821), gSPVertex of
-  transform->quadBuffers, 2 triangles. Port path: nd_geom_vtx -> gv_tri -> pm_gpu_gtrip. Since TRI-4 (c3e7afb19) there is no CPU
-  triangle path: every refusal drops the triangle (nd_geom.c:291-293, counted in tri_drop and gv_fb). Drop arms that can hit these quads:
-  (a) lit load without gv5 (nd_geom.c:321), (b) matrix table full: gv_matrix_id returns GV_NONE past 256 matrices per task
-  (nd_mtx_set.c:73-74; a battle with many effects reaches the HUD last), (c) ring full (pm_gpu.c:3019 GRING_VTX), (d) gv_state_why LIT
-  (nd_geom.c:164), (e) wide only: gtrip_wide refuses when wide_edge_k returns 1 or 2 (pm_gpu.c:2776-2786, :2752, :2761), (f) decal with
-  blend (pm_gpu.c:2822), (g) a stale KZN04 dual_on scaling the quads' colour by a sprite shade (nd_geom.c:88, row WALLSHADE fixes it).
-- Prim quads btl_draw_prim_quad(0,0,0,0, ...) (:1001, :1015) have alpha 0 (invisible on the N64 too): not a missing part.
-- Wide only: BattleMenu_BasePosX = pm_wide_left(54) (:611) keeps the wheel 54 px from the screen edge, as 4:3 keeps it 54 px from the
-  game edge: by design, not a fault; a wheel at the screen edge is a user decision (a smaller value).
-- Status bar and sub-menu windows (draw_box): texrects (box_pattern_rect, nd_rect.c:105) and, for rotated windows, triangles (same
-  drop arms as above).
+## Design (oracle code read, main 436abd053; include/pm_wide.h:5-6: pm_wide_left(x) = x - 40, pm_wide_right(x) = x + 40 in wide)
+- The wheel is already in the wide layout (WIDE3/WIDE4): base pm_wide_left(54) (btl_states_menus.c:611), radius 101 (:597), the reels
+  at pm_wide_left(40) (:660, :670, a 64 px quad centred on its position: 8 px from the screen edge, as 4:3 is from the picture edge),
+  the moves and strategies lists at pm_wide_left(POS_X) (:1258, :1418) and pm_wide_left(20 or 32) (:2154-2156). No change there.
+- The two description boxes are the battle UI parts that span the 4:3 picture (x 20 to 300, POS_X/WIDTH_3 :1215-1238, X_VAR7/W_VAR3
+  :2131-2140). In wide the moves box is only moved left (:1420: x pm_wide_left(POS_X), width WIDTH_3: screen 20 to 300) and the
+  strategies box is not moved at all (:2195-2197: x X_VAR7: screen 60 to 340). Wide layout: both span pm_wide_left(x) to
+  pm_wide_right(x + w), screen 20 to 380. Their text starts at the box x + 8 (:1974-1975, :2473): it follows the box.
+- The 4:3 path (pm_wide 0) is unchanged by construction (the added width is 0, pm_wide_left(x) is x).
 
-## User facts 3 (2026-11-11, through the orchestrator)
-Widescreen ON, O3DS XL.
+## Start
+`sh 3ds/tools/wt_new.sh BATUI`. PM_ROW=BATUI PM_LANE=BATUI on every build call.
 
-## User facts 4 (2026-11-11): "it's the background circles in the HUD that don't render" (wide on, XL; icons and text draw)
-The circles are HID_Spotlights[i] and HID_HighlightSpot (btl_states_menus.c:633, :646): HES_ProjectorSpot, IA8 32x32
-(battle_ui_gfx.c:531), alpha 150 and 180 (TRANSPARENT: G_RM_CLD_SURF, hud_element.c:1613), combine PM_CC_47, lit quad (G_LIGHTING at
-hud_element.c:1821: pm5 program, palette GPAL5 8 per batch, pm_gpu.c:132). Same path as the beam and reels (IA8 64x64), which differ
-only in size and alpha. Checked and not the cause: the cell atlas (pm_tex.c:337/359 needs a TLUT: IA8 has none), the scissor
-(pm_gpu.c:944-947 gives a ui batch the full 400 px), the KZN04/WALLSHADE leak (the IA8 load clears dual_on), the wide edge copy (the
-spot vertices sit at game x >= 18, not on the game edge). Fix rows (user 2026-11-11: fix every path, wide or not): row_HUDGM.md (the 256-matrix table per task, nd_mtx_set.c:73) and row_HUDRING.md (the walker load without a ring wrap, nd_geom.c:314-325). The wide arms (pm_gpu.c:176-177, :2776-2786), the lit IA8 path (IA8 -> GPU_LA4 pm_tex.c:396, PM_CC_47, CLD_SURF with no Z_CMP and no alpha compare) and LOADMTX (gDisplayContext is host memory) cannot drop them by code read.
-cause is in the wide arms (rebuild_3d pm_gpu.c:176-177, gtrip_wide :2776-2786). No: the common lit IA8 quad path (pm5, nd_geom.c).
+## Touch only
+src/battle/btl_states_menus.c: the WIN_BTL_DESC_BOX lines in the moves menu init (:1420) and the strategies menu init (:2195-2197).
 
-## Widescreen path of the triangle HUD elements (oracle code read; no arm found that drops all of them)
-- Mapping: pm_gpu_set_mvp (pm_gpu.c:2604-2619) marks the CAM_HUD ortho as ui_ortho; rebuild_3d (pm_gpu.c:176-177) draws it 1:1 at
-  screen x = 40 + game x (no 1.25 stretch), the same mapping as the texture rectangles (px, pm_gpu_rect.c:252): spots and icons share
-  one x (BATWIDE run 0650a26c7: light x 97 = icon x 97). pm_gv_rejm 0x2c (pm_gpu.c:2612) keeps margin triangles (game x -40..0).
-- Scissor: hud_element.c:1816 sets 0,0,320,240 in wide; the wide sign rule maps game x 0 to screen 0 (T_SCISSOR), so the margin is drawn.
-- Wide refusal arms and their values for these quads: gtrip_wide (pm_gpu.c:2776-2786) refuses when wide_edge_k returns 1 or 2:
-  r = 1 for a non-ortho matrix (the HUD modelview is a rotate/scale/translate: w column 0,0,0,1, wz true) or m[0][0] == 0 (the beam
-  turns -43 degrees, the reel at most 45: m00 != 0) or no ring room (pm_gpu.c:2761); r = 2 for more than 192 indices (a quad has 6).
-  A vertex past the game edge keeps its place (wide_on_edge :2715-2721, MSGBOX 4). None of these fires for every spot, beam and reel.
-- Not wide-only and able to drop all late HUD triangles of a battle frame: (b) the 256-entry matrix table per task (nd_mtx_set.c:73-74:
-  every part of every effect takes one entry; the HUD draws last) and (c) the ring (pm_gpu.c:3019). Their counts print as `tridrop`
-  (nd_geom.c:256-261, gv_fb ring and refuse) every 300 frames in a debug push.
-- The 2026-11-09 report predates KZN04; the WALLSHADE leak (g) cannot reach these quads (their IA8 load runs a tile 0 SETTILESIZE,
-  nd_tex_set.c:196, which clears dual_on before the draw).
-- No exact fix without the arm: CLAUDE.md 1 (no cause found: the trace goes back, the orchestrator asks the user).
+## Exact edits (src/battle/btl_states_menus.c; pm_wide.h is included at :3)
+1. :1420 `set_window_properties(WIN_BTL_DESC_BOX, moveX, 186, WIDTH_3, 32, ...` -> width `WIDTH_3 + (pm_wide ? 80 : 0)`. Comment:
+   `/* BATUI: wide layout, the box spans pm_wide_left(POS_X) to pm_wide_right(POS_X + WIDTH_3) */`.
+2. :2195 `x = X_VAR7;` -> `x = pm_wide_left(X_VAR7); /* BATUI: wide layout, as the moves box */`.
+3. :2197 `set_window_properties(WIN_BTL_DESC_BOX, x, y, W_VAR3, 32, ...` -> width `W_VAR3 + (pm_wide ? 80 : 0)`.
+No other line. No new variable.
 
-## Questions for the user
-Withdrawn (user, 2026-11-11: widescreen does not matter; fix every path).
+## Gate (CLAUDE.md 2)
+- `PM_ROW=BATUI PM_LANE=BATUI sh 3ds/build.sh > build3ds/out/build.txt 2>&1`: build OK, memcheck OK.
+- `git diff main --stat`: only src/battle/btl_states_menus.c, 3 lines changed.
+- No Azahar run (budget 0): the change is game layout code, not shared draw code; no det scene opens these menus. The look is the
+  user's console check (Wide on: battle, Mario's Jump list and the Strategies list: the description box from 20 px to 380 px).
 
-## Next step
-After HUDGM and HUDRING merge: the user checks the wheel on the XL. This row file is deleted by the orchestrator then.
+## Stop
+A failed gate or an edit that does not fit the code: commit, hand back the exact output (CLAUDE.md 4-5).
+
+## At the end
+Delete this row file in the completing commit. Hand back: the hash, the memcheck line, and the console check text above for the user.
