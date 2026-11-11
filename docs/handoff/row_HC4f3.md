@@ -46,7 +46,8 @@ Done: 23b6e4b90 (nd_seam_test fix, gate 1 PASS run 212082), 38e5f09f9 (converter
 
 ## Done criteria (all must pass; handback only then)
 1. nd_host PASS.
-2. For spot_mac01_det, mdl5_iwa10_det, spot_mac00_det: `bench.py base <bench>`, `bench.py run <bench> --row HC4f3 --lane HC4f3 --why "..."`, `bench.py cmp <bench> --row HC4f3`: exit 0, 6/6 byte-equal. No `shape load fail` line in the logs.
+2. For the benches spot_mac01_det, mdl5_iwa10_det, spot_mac00_det_pic (not spot_mac00_det: its runs record under spot_mac00_det_pic,
+   bench.py:1916, so its base finds no record; row TOOLB5): `bench.py base <bench>`, `bench.py run <bench> --row HC4f3 --lane HC4f3 --why "..."`, `bench.py cmp <bench> --row HC4f3`: exit 0, 6/6 byte-equal. No `shape load fail` line in the logs.
    Base runs: until row TOOLB3 is merged, `bench.py base` runs only while no other Azahar run is on the machine (the two base runs of a
    list can get two slots: azt.ps1:290-297 re-queues each child, azt.ps1:520 asks for any slot). The base of 5d61fda6a was not stored: run it again so.
 Fail: hand back the cmp diff (pixels, box). K = 0, so no typed G_NOOP reaches nd_dlc.c dlc_op. No second try on one cause.
@@ -54,7 +55,6 @@ Affected scenarios (no others): spot_mac01_det, mdl5_iwa10_det, spot_mac00_det.
 
 ## Commands
 - Build: PM_ROW=HC4f3 PM_LANE=HC4f3 sh 3ds/build.sh > build.log 2>&1; then grep -n "shapeconv\|error" build.log.
-- Budget reset: powershell -NoProfile -File 3ds/run_azahar.ps1 -ResetBudget HC4f3 (in the worktree).
 
 ## At the end
 Delete this row file in the completing commit. SendMessage main "HC4f3 ready <hash>".
