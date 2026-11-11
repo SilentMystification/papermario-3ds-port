@@ -196,6 +196,17 @@ int nd_mix1(unsigned ol, unsigned* col) {
     return 1;
 }
 void nd_sr_forget(void) { sr_ok = 0; }
+static __attribute__((cold, noinline)) void sr_orb_log(unsigned m, const NdRender* rs) {
+    static unsigned orb_sf = ~0u;
+    extern unsigned pm_frame_count(void);
+    extern void pm_log(const char* fmt, ...);
+    (void)m;
+    if (orb_sf != pm_frame_count()) {
+        orb_sf = pm_frame_count();
+        pm_log("orbdbg state f%u blend %d atest %d zcmp %d zupd %d decal %d memb %d nocol %d mix %d fogmix %d", orb_sf, rs->blend, rs->atest,
+               rs->zcmp, rs->zupd, rs->decal, rs->memb, rs->nocol, (int)0, (int)fogmix_on);
+    }
+}
 void sync_render(void) {
     unsigned sg = nd_ws.omode_l ^ (nd_ws.omode_h * 2654435761u) ^ nd_ws.geom ^ (unsigned)img_role(0);
     if (sr_ok && sg == sr_sig) {
@@ -231,15 +242,6 @@ mixed:
     pm_gpu_set_render(rs.zcmp, rs.zupd, rs.blend, rs.atest, rs.decal);
     pm_gpu_set_zmark(0, 0.f); /* MERLON: zmark lives one render sync; gv_epoch_enter turns it on after this for a depth-image model */
     pm_gpu_dbg_mode(m); /* FX1-2b: orbdbg log of the glow blend, set after the flush of the old state */
-    if (m == 0x00504B50u && PMDL("orbdbg")) { /* FX1-2b: the render state the glow's draws get, once per frame */
-        static unsigned orb_sf = ~0u;
-        extern unsigned pm_frame_count(void);
-        extern void pm_log(const char* fmt, ...);
-        if (orb_sf != pm_frame_count()) {
-            orb_sf = pm_frame_count();
-            pm_log("orbdbg state f%u blend %d atest %d zcmp %d zupd %d decal %d memb %d nocol %d mix %d fogmix %d", orb_sf, rs.blend, rs.atest,
-                   rs.zcmp, rs.zupd, rs.decal, rs.memb, rs.nocol, (int)0, (int)fogmix_on);
-        }
-    }
+    if (m == 0x00504B50u && PMDL("orbdbg")) sr_orb_log(m, &rs); /* FX1-2b: the render state the glow's draws get, once per frame. HCCUT3: cold */
     pm_gpu_render_src(nd_ws.omode_h, m, rs.depth);
 }
