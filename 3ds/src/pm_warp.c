@@ -1242,6 +1242,7 @@ static void boss_tick(void) {
     s16 areaID, mapID;
     if (boss_pending < 0) return;
     if (get_game_mode() != GAME_MODE_WORLD || !get_map_IDs_by_name("mac_00", &areaID, &mapID) || gGameStatusPtr->mapID != mapID || gGameStatusPtr->areaID != areaID) { boss_frames = 0; return; }
+    if (gEncounterState != ENCOUNTER_STATE_NEUTRAL || (gPlayerStatus.flags & PS_FLAG_INPUT_DISABLED)) { boss_frames = 0; return; } /* BTLDBG: wait while a talk, an encounter or a script holds the world */
     if (++boss_frames < 30) return;
     v[0] = 0;
     strncat(v, boss_tab[boss_pending].battle, sizeof v - 1);
@@ -1334,6 +1335,7 @@ static void battle_tick(void) {
     char v[64], *c;
     if (bt_pending < 0) return;
     if (get_game_mode() != GAME_MODE_WORLD) { bt_pending = -1; return; }
+    if (gEncounterState != ENCOUNTER_STATE_NEUTRAL || (gPlayerStatus.flags & PS_FLAG_INPUT_DISABLED)) { bt_frames = 0; return; } /* BTLDBG: wait while a talk, an encounter or a script holds the world */
     if (++bt_frames < 30) return;
     v[0] = 0;
     strncat(v, battle_tab[bt_pending].battle, sizeof v - 1);

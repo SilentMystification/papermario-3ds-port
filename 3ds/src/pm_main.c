@@ -146,7 +146,7 @@ static void crash_handler(ERRF_ExceptionInfo* excep, CpuRegisters* regs) {
     if (__atomic_exchange_n(&crash_taken, 1, __ATOMIC_ACQ_REL)) for (;;) svcSleepThread(1000000000LL); /* CRASHALL: one dump; the first handler ends the process */
     pm_wd_crash_tick = (unsigned)(svcGetSystemTick() / (SYSCLOCK_ARM11 / 1000ull)) | 1u; /* LB4: the monitor thread ends the process if this handler does not finish in 3 s */
     const StackRec* st = NULL;
-    for (int i = 0; i < 2; i++)
+    for (int i = 0; i < (int)(sizeof recs / sizeof recs[0]); i++) /* BTLDBG: every registered stack (game, audio, render, logic) */
         if (recs[i].hi && regs->sp >= recs[i].lo && regs->sp <= recs[i].hi + 512) st = &recs[i];
     const char* tname = pm_thread_name_current();
     if (!tname) tname = st ? st->name : "other";
