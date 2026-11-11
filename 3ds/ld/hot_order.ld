@@ -154,8 +154,7 @@
 		*(.text.nd_model_state_spr)  /* 5.0 calls/frame, 996 B */
 		*(.text.pm_gbi_combined_ptr)  /* 5.0 calls/frame, 12 B */
 		*(.text.pm_gpu_spr_build)  /* 5.0 calls/frame, 1800 B */
-		*(.text.mdl0_sw)  /* 2.7 calls/frame, 52 B */
-		*(.text.nd_model_state_in)  /* 2.7 calls/frame, 3260 B */
+			*(.text.nd_model_state_in)  /* 2.7 calls/frame, 3260 B */
 		/* class I: entity and dlc */
 		*(.text.box_plane_out)  /* 606.7 calls/frame, 264 B */
 		*(.text.dlc_find)  /* 177.3 calls/frame, 180 B */
