@@ -10,6 +10,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 
 #include "pm_port.h"
 #include "pm_thread.h"
@@ -137,6 +138,9 @@ static char cmd_buf[16];
 static unsigned cmd_n;
 static int cmd_done;
 static volatile int quit_req;
+/* LOGX2: "sendlog" asks for crash.txt and log.txt, framed (see send_file). The writer sends them. crash_offered: crash.txt is offered once per boot. */
+static volatile int dump_req;
+static int crash_offered;
 
 static void read_cmd(void) {
     if (client < 0 || cmd_done) return;
@@ -149,6 +153,7 @@ static void read_cmd(void) {
     cmd_done = 1;
     if (nl) *nl = 0;
     if (!strncmp(cmd_buf, "quit", 4) && (cmd_buf[4] == 0 || cmd_buf[4] == '\r')) quit_req = 1;
+    if (!strncmp(cmd_buf, "sendlog", 7) && (cmd_buf[7] == 0 || cmd_buf[7] == '\r')) dump_req = 1;
 }
 
 static void accept_client(void) {
@@ -164,6 +169,70 @@ static void accept_client(void) {
     cmd_done = 0;
     live_ok_tick = 0;
     live_sent = ring_pos - ring_len; /* LOGX1: the pump sends the ring from its oldest byte */
+}
+
+/* LOGX2: file transfer on the live socket. Frame: "\n#PMFILE <name> <size>\n", exactly <size> raw bytes, "\n#PMEND <name>\n".
+ * A missing file has size 0. Writer thread only. send_all retries EAGAIN for up to 5 s without progress, then closes the client. */
+static char file_buf[4096];
+
+static int send_all(const char* p, int n) {
+    if (client < 0) return -1;
+    u64 last = svcGetSystemTick();
+    while (n > 0) {
+        int r = send(client, p, (size_t)n, 0);
+        if (r > 0) {
+            p += r;
+            n -= r;
+            last = svcGetSystemTick();
+            continue;
+        }
+        if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+            if (svcGetSystemTick() - last > 5ull * SYSCLOCK_ARM11) {
+                close(client);
+                client = -1;
+                return -1;
+            }
+            svcSleepThread(2000000);
+            continue;
+        }
+        close(client);
+        client = -1;
+        return -1;
+    }
+    return 0;
+}
+
+static void send_file(const char* name) {
+    int fd = open(name, O_RDONLY);
+    long size = 0;
+    if (fd >= 0) {
+        size = (long)lseek(fd, 0, SEEK_END);
+        if (size < 0) size = 0;
+        lseek(fd, 0, SEEK_SET);
+    }
+    char h[96];
+    int n = snprintf(h, sizeof h, "\n#PMFILE %s %ld\n", name, size);
+    if (send_all(h, n) < 0) {
+        if (fd >= 0) close(fd);
+        return;
+    }
+    long left = size;
+    while (left > 0) {
+        unsigned want = left > (long)sizeof file_buf ? (unsigned)sizeof file_buf : (unsigned)left;
+        int r = fd >= 0 ? (int)read(fd, file_buf, want) : 0;
+        if (r <= 0) { /* the file got shorter than its size: pad with zeros so the frame keeps its size */
+            memset(file_buf, 0, want);
+            r = (int)want;
+        }
+        if (send_all(file_buf, r) < 0) {
+            if (fd >= 0) close(fd);
+            return;
+        }
+        left -= r;
+    }
+    if (fd >= 0) close(fd);
+    n = snprintf(h, sizeof h, "\n#PMEND %s\n", name);
+    send_all(h, n);
 }
 
 extern volatile int pm_exit_request; /* PT28: the main loop ends, pm_shutdown runs, main returns */
@@ -983,6 +1052,8 @@ static void writer_main(void* arg) {
             if (!__atomic_load_n(&crashed, __ATOMIC_ACQUIRE)) {
                 drain_locked();
                 live_pump(); /* LOGX1: pending live bytes */
+                if (client >= 0 && !crash_offered) { crash_offered = 1; struct stat st; if (stat("crash.txt", &st) == 0 && st.st_size > 0) send_file("crash.txt"); } /* LOGX2 */
+                if (dump_req && client >= 0) { dump_req = 0; if (log_fd >= 0) fsync(log_fd); send_file("crash.txt"); send_file("log.txt"); } /* LOGX2 */
             }
             fb_sync_all();
             io_drain_req = 0;
@@ -998,6 +1069,8 @@ static void writer_main(void* arg) {
         if (!__atomic_load_n(&crashed, __ATOMIC_ACQUIRE)) {
             drain_locked();
             live_pump(); /* LOGX1: pending live bytes */
+            if (client >= 0 && !crash_offered) { crash_offered = 1; struct stat st; if (stat("crash.txt", &st) == 0 && st.st_size > 0) send_file("crash.txt"); } /* LOGX2 */
+            if (dump_req && client >= 0) { dump_req = 0; if (log_fd >= 0) fsync(log_fd); send_file("crash.txt"); send_file("log.txt"); } /* LOGX2 */
         }
         LightLock_Unlock(&drain_lock);
         if (__atomic_load_n(&crashed, __ATOMIC_ACQUIRE)) LightEvent_Signal(&ev_flushed);
