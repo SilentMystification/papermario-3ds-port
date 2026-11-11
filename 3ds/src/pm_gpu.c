@@ -3793,6 +3793,30 @@ void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, NdGvP* o);
 /* S4-2: the sprite record as a native draw (nd_sprite_draw, nd_sprite.c). The walker inputs of the draw (sticky state, gv, env and prim of the record),
  * the NdDraw without palette and index (set by pm_gpu_spr_submit), the key st and palette 0 (the walker combined matrix, post x combined). 1 native, 0 with why
  * (1 mode, 2 unit 0, 10 + nd_model_state code). */
+/* HC8 step 3: the shaded bake and the CI4 texture of a sprite (cold: the spr5 census and the sprtex refusal log are here). Returns 1 with tw, th and un
+ * set, or 0 with *why. */
+static int __attribute__((noinline, cold)) spr_build_rare(const NdSprRec* r, int shaded, int tex, NdTexDesc* ds, NdUnit* un, int* tw, int* th, int* why) {
+    if (shaded) {
+        if (!dual_on || nd_ws.use_t1) { *why = 3; return 0; } /* no bake live, or the plan reads TEXEL1 (no unit 1 form yet) */
+        ensure_tile(0);
+        dual_bind();
+        if (pm_tex_native_unit0(un) != 1) { *why = 2; return 0; }
+        while (*tw < (int)r->w) *tw <<= 1;
+        while (*th < (int)r->h) *th <<= 1;
+    } else if (tex) { /* the unit 0 words of the record's raster (CI4, clamp), as the walker binds it */
+        ds->img = (const void*)(uintptr_t)r->raster; ds->pal = (const void*)(uintptr_t)r->palette;
+        ds->fmt = 2; ds->siz = 0; ds->cms = 2; ds->cmt = 2; ds->masks = 8; ds->maskt = 8; /* G_IM_FMT_CI, G_IM_SIZ_4b, G_TX_CLAMP (gbi.h values; nd_model.c uses the numbers too) */
+        ds->w = (uint16_t)r->w; ds->h = (uint16_t)r->h; ds->stride = (uint16_t)r->w; ds->pal_n = 16;
+        const int ur = spr_tex_unit(ds, r->raster, r->palette, r->w << 16 | r->h, un); /* PERF2: through the sprite texture memo */
+        { extern int pm_tex_tagi; pm_tex_tagi = 3; } /* STALE2 texsrc path tag: spr */
+        if (ur != 1) { /* S4-2 diagnosis: the first 3 texture refusals (record size, result) */
+            static unsigned tn; if (tn++ < 3u) pm_log_prof_line("sprtex %u w %u h %u raster %08x pal %08x unit %d", tn, r->w, r->h, (unsigned)r->raster, (unsigned)r->palette, ur);
+            *why = 2; return 0; }
+        while (*tw < (int)r->w) *tw <<= 1;
+        while (*th < (int)r->h) *th <<= 1;
+    }
+    return 1;
+}
 int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16], int* why) {
     NdSprRec r;
     nd_sprite_decode(rec, &r);
@@ -3811,25 +3835,7 @@ int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16
     const int shaded = (r.flags & 1u) != 0; /* SPR4-3: SPR_SHADING_FLAG_ENABLED. The walker bakes the shaded image at SetTileSize 0 (tex_shaded0, dual_on), before the vertex word: the live tile 0 is that texture */
     const int tex = r.raster != 0;
     int tw = 8, th = 8;
-    if (shaded) {
-        if (!dual_on || nd_ws.use_t1) { *why = 3; return 0; } /* no bake live, or the plan reads TEXEL1 (no unit 1 form yet) */
-        ensure_tile(0);
-        dual_bind();
-        if (pm_tex_native_unit0(&un) != 1) { *why = 2; return 0; }
-        while (tw < (int)r.w) tw <<= 1;
-        while (th < (int)r.h) th <<= 1;
-    } else if (tex) { /* the unit 0 words of the record's raster (CI4, clamp), as the walker binds it */
-        ds.img = (const void*)(uintptr_t)r.raster; ds.pal = (const void*)(uintptr_t)r.palette;
-        ds.fmt = 2; ds.siz = 0; ds.cms = 2; ds.cmt = 2; ds.masks = 8; ds.maskt = 8; /* G_IM_FMT_CI, G_IM_SIZ_4b, G_TX_CLAMP (gbi.h values; nd_model.c uses the numbers too) */
-        ds.w = (uint16_t)r.w; ds.h = (uint16_t)r.h; ds.stride = (uint16_t)r.w; ds.pal_n = 16;
-        const int ur = spr_tex_unit(&ds, r.raster, r.palette, r.w << 16 | r.h, &un); /* PERF2: through the sprite texture memo */
-        { extern int pm_tex_tagi; pm_tex_tagi = 3; } /* STALE2 texsrc path tag: spr */
-        if (ur != 1) { /* S4-2 diagnosis: the first 3 texture refusals (record size, result) */
-            static unsigned tn; if (tn++ < 3u) pm_log_prof_line("sprtex %u w %u h %u raster %08x pal %08x unit %d", tn, r.w, r.h, (unsigned)r.raster, (unsigned)r.palette, ur);
-            *why = 2; return 0; }
-        while (tw < (int)r.w) tw <<= 1;
-        while (th < (int)r.h) th <<= 1;
-    }
+    if (shaded || tex) { if (!spr_build_rare(&r, shaded, tex, &ds, &un, &tw, &th, why)) return 0; }
     unsigned sw_tss, sw_geo, sw_cw0, sw_cw1;
     pm_gbi_sticky(&sw_tss, &sw_geo, &sw_cw0, &sw_cw1);
     const uint32_t geo = (sw_geo & mode.gand) | mode.gor;
