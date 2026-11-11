@@ -219,6 +219,7 @@ void pm_log_w(const char* fmt, ...);
 static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st);
 /* MDL-0b: every why code of nd_model_state, uncapped, one line per 300 frames (mdlw) */
 static unsigned mw_cnt[32], mw_ok, mw_f = 100u; /* mw_f: the frame of the last line + 300 */
+static unsigned sprm_hit, sprm_miss; /* HC8 census: memo hits and misses of nd_model_state_spr (mdlw line, reset per line) */
 /* MDL-5 census: why 6 fallbacks of the window by producer (the record address) and sub-case; top 8 per mdlw line, then reset */
 unsigned nd_nat_sub;
 unsigned nd_mdl_cur_x; /* MDL-5a census: extraTiles of the handle of the draw in model_draw */
@@ -241,7 +242,7 @@ void nd_model_log(unsigned f) {
     if (f < mw_f) return;
     mw_f = f - f % 100u + 100u;
     char b[200]; unsigned n = 0; for (unsigned i = 0; i < 32; i++) if (mw_cnt[i]) n += (unsigned)snprintf(b + n, sizeof b - n, " %u:%u", i, mw_cnt[i]);
-    extern unsigned nd_r13_nohit; pm_log_w("mdlw f%u ok %u why%s r13nohit %u", f, mw_ok, n ? b : " none", nd_r13_nohit); nd_r13_nohit = 0; memset(mw_cnt, 0, sizeof mw_cnt); mw_ok = 0;
+    extern unsigned nd_r13_nohit; pm_log_w("mdlw f%u ok %u why%s r13nohit %u sprm h %u m %u", f, mw_ok, n ? b : " none", nd_r13_nohit, sprm_hit, sprm_miss); nd_r13_nohit = 0; memset(mw_cnt, 0, sizeof mw_cnt); mw_ok = 0; sprm_hit = 0; sprm_miss = 0;
     for (int t = 0; t < 8; t++) { unsigned bi = 32; for (unsigned i = 0; i < mf_k; i++) if (mf_e[i].n && (bi == 32 || mf_e[i].n > mf_e[bi].n)) bi = i; if (bi == 32) break;
         pm_log_w("mdlfb f%u %08x sub %c %u", f, (unsigned)mf_e[bi].p, "-abcd"[mf_e[bi].s & 3], mf_e[bi].n); mf_e[bi].n = 0; }
     pm_log_w("mdlsub f%u a %u b %u c %u d %u bx0 %u bx1 %u bx2 %u bx3 %u", f, mf_tot[1], mf_tot[2], mf_tot[3], mf_tot[4], mf_bx[0], mf_bx[1], mf_bx[2], mf_bx[3]);
@@ -390,10 +391,29 @@ static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, Nd
  * ops; has_comb 1, draw_3d 1, nrm_ok 0, zmark 0, i8_0 0, no tile 1), so the state is a function of the walker values below; the combine decision, render
  * state, template key and TEV words of an equal key are the stored ones. 16 entries, direct mapped by a hash of the key. A hit needs the template id
  * still valid (nd_tmpl_gen unchanged since the store) and, for a noise plan, the noise texture. Only native results (1) are stored. */
-#define SPRM_N 16u
+#define SPRM_N 16u /* sets */
+#define SPRM_WAYS 4u /* HC8 step 2: 4 ways per set, LRU by stamp */
 #define SPRM_W 21u
-typedef struct { uint32_t kw[SPRM_W]; NdTmplKey k; NdTevOut to; int id; unsigned tgen; uint8_t used; } SprMemo;
-static SprMemo sprm[SPRM_N];
+typedef struct { uint32_t kw[SPRM_W]; NdTmplKey k; NdTevOut to; int id; unsigned tgen; unsigned stamp; uint8_t used; } SprMemo;
+static SprMemo sprm[SPRM_N * SPRM_WAYS];
+static unsigned sprm_clk;
+/* the key words in the order of the most varying first (prim, env, mixcol, comb_w0, comb_w1), then the rest: a mismatch ends the compare early */
+static const uint8_t sprm_ord[SPRM_W] = { 8, 9, 20, 0, 1, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 };
+static int sprm_eq(const uint32_t* a, const uint32_t* b) {
+    for (unsigned i = 0; i < SPRM_W; i++) if (a[sprm_ord[i]] != b[sprm_ord[i]]) return 0;
+    return 1;
+}
+/* the way to store in: the way of the same key, else an unused or stale way, else the least recently used */
+static SprMemo* sprm_victim(SprMemo* set, const uint32_t* w) {
+    SprMemo* v = &set[0];
+    for (unsigned k = 0; k < SPRM_WAYS; k++) {
+        SprMemo* m = &set[k];
+        if (m->used && m->tgen == nd_tmpl_gen() && sprm_eq(m->kw, w)) return m;
+        if (!m->used || m->tgen != nd_tmpl_gen()) { if (v->used && v->tgen == nd_tmpl_gen()) v = m; }
+        else if (v->used && v->tgen == nd_tmpl_gen() && m->stamp < v->stamp) v = m;
+    }
+    return v;
+}
 int nd_model_state_spr(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st) {
     uint32_t w[SPRM_W];
     w[0] = c->comb_w0; w[1] = c->comb_w1; w[2] = c->geom_base; w[3] = (uint32_t)c->wind; w[4] = c->base_oh; w[5] = c->base_ol; w[6] = c->known_h; w[7] = c->known_l;
@@ -401,10 +421,13 @@ int nd_model_state_spr(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState
     w[14] = (uint32_t)c->rgb_scale; w[15] = (uint32_t)c->r_mix; w[16] = (uint32_t)c->dview; w[17] = (uint32_t)c->r_memblend; w[18] = (uint32_t)c->r_replace; w[19] = c->cconst; w[20] = c->mixcol;
     uint32_t h = 2166136261u;
     for (unsigned i = 0; i < SPRM_W; i++) h = (h ^ w[i]) * 16777619u;
-    SprMemo* m = &sprm[(h ^ (h >> 16)) & (SPRM_N - 1u)];
-    if (m->used && m->tgen == nd_tmpl_gen() && memcmp(m->kw, w, sizeof w) == 0 && (!m->k.noise || pm_gpu_noise_ok())) {
+    SprMemo* set = &sprm[((h ^ (h >> 16)) & (SPRM_N - 1u)) * SPRM_WAYS];
+    SprMemo* m = NULL;
+    for (unsigned k = 0; k < SPRM_WAYS; k++) if (set[k].used && set[k].tgen == nd_tmpl_gen() && sprm_eq(set[k].kw, w) && (!set[k].k.noise || pm_gpu_noise_ok())) { m = &set[k]; break; }
+    if (m) {
+        m->stamp = ++sprm_clk;
         /* the tail of nd_model_state_in for these values (no tile 1, no pm5: fxon is 0 in a stored key) */
-        st->why = 0; nd_nat_sub = 0; mw_ok++;
+        st->why = 0; nd_nat_sub = 0; mw_ok++; sprm_hit++;
         nd_tmpl_touch(m->id);
         memset(d, 0, sizeof *d);
         d->tmpl = m->id;
@@ -417,8 +440,9 @@ int nd_model_state_spr(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState
         memcpy(&st->k, &m->k, sizeof m->k); st->to = m->to; st->tmpl = m->id;
         return 1;
     }
+    sprm_miss++;
     int r = nd_model_state(rec, c, d, st);
-    if (r == 1) { memcpy(m->kw, w, sizeof w); memcpy(&m->k, &st->k, sizeof st->k); m->to = st->to; m->id = st->tmpl; m->tgen = nd_tmpl_gen(); m->used = 1; }
+    if (r == 1) { m = sprm_victim(set, w); memcpy(m->kw, w, sizeof w); memcpy(&m->k, &st->k, sizeof st->k); m->to = st->to; m->id = st->tmpl; m->tgen = nd_tmpl_gen(); m->stamp = ++sprm_clk; m->used = 1; }
     return r;
 }
 /* ---- S3N-3c: a model record as native draws. The palette 0 is post x the combined matrix of the walker's stack; the ranges are the static groups of the

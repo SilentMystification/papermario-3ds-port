@@ -23,9 +23,7 @@ Edits: 3ds/src/nd_tex_set.c tex_shaded0 (:569) and load_shaded_sprite (:647); 3d
 helpers next to it; the sprite TEV setup only after HC8 merges (HC8 edits pm_gpu.c pm_gpu_spr_build :3796 and nd_model.c :389-410: do
 not edit those until HC8 is merged; `git merge main` before the completing commit). Not nd_tex_set.c ensure_tile (HC7 merged code).
 ## Gates
-- Base rule until LOADMTX is merged (test_catalog.md 6a): no `bench.py base`. Run the row's bench, then `python 3ds/tools/bench.py cmp
-  <bench> --row KZN04 --commit b8bc06613` (stored: spot_mac01_det, mdl5_iwa10_det). A run of the row that ends rc 2 with
-  `load_mtx at nd_mtx_set.c:106` is the known main fault: run it once more and report both runs.
+- Bases: LOADMTX is merged: `bench.py base` stores fresh bases again (test_catalog.md 6a).
 - memcheck OK; `python 3ds/tools/bench.py run nd_host --row KZN04 --why "..."`: PASS.
 - Byte-equal (base, run, cmp) on scenes without shading: spot_mac01_det and mdl5_iwa10_det (bases stored at b8bc06613).
 - `python 3ds/tools/bench.py run kzn04_shadestat --row KZN04 --why "..."`: the shadestat line shows the miss count per 300 frames
