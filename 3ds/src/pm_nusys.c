@@ -95,11 +95,17 @@ static int nkey;
 uint64_t svcGetSystemTick(void);
 void pm_pf_nd_add(unsigned long long ticks, unsigned legacy); /* pm_phase.c: S0-6 window sums (legacy 1 = one walk) */
 
+/* INTERP1: walk us of the last t = 0.5 pass [0], key frame [1], plain frame [2] */
+unsigned pm_iw_us[3];
+static unsigned long long iw_tk; /* INTERP1: ticks inside nd_stream_run of the pass being timed */
+
 /* S10-2, DIRECT D0: one replay of the task stream (nd_rec.c). The phase line keeps its format: the walk time goes to pm_pf_nd_add as one legacy span. */
 static void gbi_walk(const uint32_t* s) {
     uint64_t t0 = pm_ph_on ? svcGetSystemTick() : 0;
     const uint64_t f0 = pm_cnt_on ? svcGetSystemTick() : 0; /* FXSPLIT */
+    const uint64_t w0 = svcGetSystemTick(); /* INTERP1 */
     nd_stream_run(s);
+    iw_tk += svcGetSystemTick() - w0; /* INTERP1 */
     if (pm_ph_on) pm_pf_nd_add(svcGetSystemTick() - t0, 1);
     if (pm_cnt_on) pm_fx_walk_us += (unsigned)((svcGetSystemTick() - f0) / 268u); /* FXSPLIT */
 }
@@ -124,6 +130,7 @@ static __attribute__((cold, noinline)) void wide_walk_note(int built) {
     pm_log("wide: walk f%u built %d live %d", pm_frame_count(), built, pm_wide);
 }
 void pm_frame_walk(const PmFrame* f) {
+    iw_tk = 0; /* INTERP1 */
     if (__builtin_expect(((f->flags & PMF_WIDE) != 0) != (pm_wide != 0), 0)) wide_walk_note((f->flags & PMF_WIDE) != 0);
     pm_walk_cfb = f->cfb;
     if (f->bg.ptr) gbi_task_w((const uint32_t*)f->bg.ptr);
@@ -132,6 +139,7 @@ void pm_frame_walk(const PmFrame* f) {
         gbi_task_w((const uint32_t*)f->main.ptr);
         pm_interp_repl = 0;
     }
+    pm_iw_us[(f->flags & PMF_REPL) ? 0 : 2] = (unsigned)(iw_tk / 268u); /* INTERP1 */
 }
 
 /* The frame the game builds. LB1b: the background task (no swap flag) is recorded and goes with the swap task, after the main list is
@@ -192,7 +200,9 @@ void pm_key_walk(const PmKey* k) { /* walker side */
     pm_fs_q = 1; /* FS2: a key frame is not a drawn frame: no fsplit mark */
     pm_gpu_begin(1);
     PH_PUSH(PH_DRAW);
+    iw_tk = 0; /* INTERP1 */
     for (int i = 0; i < MAX_KEY && k->t[i].ptr; i++) gbi_task_w((const uint32_t*)k->t[i].ptr);
+    pm_iw_us[1] = (unsigned)(iw_tk / 268u); /* INTERP1 */
     PH_POP();
     pm_gpu_end();
     pm_fs_q = 0;

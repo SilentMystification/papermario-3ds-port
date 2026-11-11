@@ -501,6 +501,24 @@ void pm_step_run(const LgCmd* c) {
     if (pm_debug_has("scripts") && c->frame % 120u == 0) pm_dump_scripts();
     if (se.key) pm_wq_key(&k); /* the key frame goes after the step tail: the logic of the next step runs while it walks */
 }
+/* INTERP1: interpolation stays on only while the walks of a step fit (core 0 walks twice a step with fps60). Heavy: the last walk or the
+ * GPU drawing time of the last frame is over 13 ms; calm again after 30 steps in a row under 10 ms. Heavy: one walk a step (ISKIP). */
+extern unsigned pm_iw_us[3]; /* pm_nusys.c */
+static int interp_heavy(void) {
+    static int heavy, calm;
+    static unsigned n, nh, sl, sk, sp, sg;
+    unsigned w = heavy ? pm_iw_us[2] : (pm_iw_us[0] > pm_iw_us[1] ? pm_iw_us[0] : pm_iw_us[1]);
+    unsigned g = (unsigned)(C3D_GetDrawingTime() * 1000.f);
+    if (w > 13000u || g > 13000u) { heavy = 1; calm = 0; }
+    else if (heavy && w < 10000u && g < 10000u) { if (++calm >= 30) heavy = 0; }
+    else calm = 0;
+    n++; nh += heavy; sl += pm_iw_us[0]; sk += pm_iw_us[1]; sp += pm_iw_us[2]; sg += g;
+    if (n == 300) {
+        pm_log_hw("interp f%u steps %u heavy %u lerp_us %u key_us %u plain_us %u gpu_us %u", pm_frame_count(), n, nh, sl / n, sk / n, sp / n, sg / n);
+        n = nh = sl = sk = sp = sg = 0;
+    }
+    return heavy;
+}
 /* CORE2C-3: the serial mode: the timers and census that read one stack or table from both sides, and det. */
 static int lp_serial(void) { return pm_det_on() || pm_ph_on || pm_ph_cen || pm_fs_on || pm_dcs_on; }
 void pm_frame_loop(void) {
@@ -687,7 +705,7 @@ void pm_frame_loop(void) {
                 unsigned iv = vb - step_vb;
                 pm_ph_iv = iv; /* PI4 */
                 pace_iv[iv < 1 ? 0 : iv > 4 ? 3 : iv - 1]++;
-                if (!pm_det_on() && iv > PM_VBLANKS_PER_STEP) lc.flags |= LGF_ISKIP; /* F06-5; DET: the key path is never taken on the vblank count */
+                if (!pm_det_on() && (iv > PM_VBLANKS_PER_STEP || (pm_interp_on > 0 && interp_heavy()))) lc.flags |= LGF_ISKIP; /* F06-5; DET: the key path is never taken on the vblank count. INTERP1: heavy walks skip the key frame */
                 fs1_last_iv = iv;
                 if (iv >= 3) late_n++; /* PT15 */
             }
