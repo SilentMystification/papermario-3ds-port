@@ -29,5 +29,33 @@ crash.txt: b''`; live text 8193 bytes, then the crash.txt frame header.
 - The user's console check: `python 3ds/tools/pm_logrecv.py --ip 192.168.1.131 --label xl` writes hw_xl_crash.txt and hw_xl_log.txt with
   the sizes of their #PMFILE lines.
 
+## Step 2 (after 6b4e9a8b0: the end fix works; the live assertion fails on the frames' leading newline)
+Rule (pm_log.c send_file): the game writes `
+#PMFILE` and `
+#PMEND` always, whether the live text before ended with a newline or not.
+Game log lines end with a newline, except a line cut by EAGAIN in the ring replay; then the frame's newline ends that partial line.
+So the tool drops an empty line only when the next line is a #PMFILE line: 1. pm_logrecv.py, in the live-text branch: an empty line is
+held (not written); when the next line is a #PMFILE header the held line is dropped, else it is written before that next line (and at
+EOF). A partial line ("abc" then `
+#PMFILE`) reads as the line "abc", written as "abc
+": correct, no rule needed.
+2. test_pm_logrecv.py: case A (game form): b"live one
+" + b"
+#PMFILE crash.txt 10
+" + CRASH_PAYLOAD + b"
+#PMEND crash.txt
+" +
+b"more text
+" + b"
+#PMFILE log.txt %d
+" % n + LOG_PAYLOAD + b"
+#PMEND log.txt
+": live file b"live one
+more text
+". Case B (old form,
+no leading newlines): the same live expectation. Case C (partial line): b"partial" + case A's frames: live file starts with b"partial
+".
+Both frames' sizes as now. Then the gate as written; the coder can finish in build3ds/wt/LOGX4.
+
 ## End
 Delete this row file in the completing commit. Hand back the hash and the test output.
