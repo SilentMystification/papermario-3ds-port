@@ -61,12 +61,12 @@ typedef struct __attribute__((aligned(32))) PmGpuSt { /* PERF2 step 3: 32-aligne
     int grab_dirty;            /* B2: the main target changed since the last grab */
     float vp_sx, vp_sy, vp_tx, vp_ty; /* the N64 viewport scale and translation */
     PmPlan plan;               /* S25: combine mode 8 */
-    unsigned pcomp_gen[257];   /* post_gen of each palette product pcomp[gm] */
+    unsigned pcomp_gen[PM_GM_N + 1u];   /* post_gen of each palette product pcomp[gm] */
     PmOffImg offs[OFF_ALL];    /* the off-screen images */
 } PmGpuSt;
 extern PmGpuSt gs;
 enum { GRING_VTX = 16384, GRING_IDX = 65536, GSTAT_VTX = 16384 }; /* DLC2: the static vertex area follows the ring in the same buffer (indices GRING_VTX and up) */
-enum { RECT_GM = 256 }; /* RECT-1a: palette slot of a fill rectangle batch (screen pixels): pcomp[RECT_GM] = projection with the depth folded in, see pcomp_calc */
+enum { RECT_GM = PM_GM_N }; /* RECT-1a: palette slot of a fill rectangle batch (screen pixels): pcomp[RECT_GM] = projection with the depth folded in, see pcomp_calc */
 /* C8: the functions and the rectangle diagnostics that pm_gpu.c and pm_gpu_rect.c (ring, rectangle queue) share */
 void pm_gpu_flush_from(const char* fn, int line); /* flush of the open batch, with the caller for the flush tracer */
 void fl_rect_note(void); void fl_rect_done(void); /* PG0 tracer counts of texture rectangles */

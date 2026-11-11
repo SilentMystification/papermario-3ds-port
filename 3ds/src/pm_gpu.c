@@ -145,7 +145,7 @@ static void rd_sync(void); /* RECT-1b diag: parse the GPUCMD words since the las
 static unsigned post_gen = 1;
 static unsigned* rgen;          /* per ring vertex: the palette generation in which its flag was set (0 = never) */
 static unsigned char* rk;       /* per ring vertex: the flag value */
-static C3D_Mtx pcomp[257];      /* palette entry per game matrix index: post x game */
+static C3D_Mtx pcomp[PM_GM_N + 1u];      /* palette entry per game matrix index: post x game */
 static const float (*pal_tab)[4][4];
 static unsigned gv_recopy_n, gv_palup_n, gv_palmax, gv_palflush;
 static C3D_Mtx gv_post;
