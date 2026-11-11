@@ -1653,6 +1653,7 @@ def base_build_run(bds, commit, row):
                 return 5
             lane_dir.mkdir(parents=True, exist_ok=True)
             shutil.copy2(src3dsx, lane_dir / "pm_3ds.3dsx")
+            if src3dsx.with_name("pm_3ds.elf").exists(): shutil.copy2(src3dsx.with_name("pm_3ds.elf"), lane_dir / "pm_3ds.elf")  # TOOLB7: crash symbols of a base run
             why = "base store at %s: the bench shots of the merge-base, the byte reference for cmp; no other run gives them" % short
             os.environ["PM_BENCH_DIRTY"] = "0"  # a commit archive: dirty false
             try:
@@ -1660,6 +1661,12 @@ def base_build_run(bds, commit, row):
             finally:
                 os.environ.pop("PM_BENCH_DIRTY", None)
         finally:
+            keep = REPO / "build3ds" / "out"  # TOOLB7: a base run's crash evidence outlives the lane folder
+            if (lane_dir / "last_crash.txt").exists():
+                keep.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(lane_dir / "last_crash.txt", keep / ("base_%s_last_crash.txt" % short))
+                if (lane_dir / "pm_3ds.elf").exists(): shutil.copy2(lane_dir / "pm_3ds.elf", keep / ("base_%s_pm_3ds.elf" % short))
+                print("base %s: crash evidence kept in %s" % (short, posix(keep)))
             shutil.rmtree(lane_dir, ignore_errors=True)
             shutil.rmtree(scratch, ignore_errors=True)
             drop_base_lane(lane, bds)
