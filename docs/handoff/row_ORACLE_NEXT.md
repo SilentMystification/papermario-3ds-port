@@ -82,6 +82,13 @@ yet: a memcheck-like class split of heap use would give it).
   2-cycle 2-texture translucent mesh (tile 0 and 1 scroll by imgFrame, :210-211): the cost is GPU fill of big alpha quads, not CPU. The
   ph line's gpu phase on the console confirms it; a fix changes the look (smaller puffs or one texture): a user decision, no row.
 
+- DPCEN1 numbers (for plan_datapath.md section 1/3, per 300 frames): steady mac_01 upkb 6 hashkb 1 flkb 1069 texmiss 13 ndraw 33300
+  nidx 1240200 gvtri 34800; kzn_08 upkb 7 hashkb 1 flkb 865 texmiss 15; map load window (f300) mac_01 upkb 634 hashkb 147 flkb 3058
+  texmiss 109, kzn_08 upkb 176 hashkb 50 flkb 1326 texmiss 57. So steady state moves few texture bytes; the map load carries uploads and
+  hashes: the map-load loop cases (seam table, texture decode, list compile) rank first for the one-time generation. The cache flush is
+  the largest steady byte count (about 3.5 KB per frame). cmd is 0: C_CMD is counted only by the nd_cen census (nd_cen.c:491), not a fault
+  of DPCEN1; a GPUCMD words counter (the command buffer offset at the frame end) is a small follow-up row if wanted.
+
 ## Morning list (rows to write next, by the oracle)
 1. Class cuts after HC6B: read M1-hot per class (bench hotset_size on main after the HC6B merge) and the M3 census (hotset.py --fncov on
    fncov_mac01_det/kmr10_det logs of the HC6B lane); cut rare arms of the top functions per class as HCCUT2 did (byte-equal, cold
