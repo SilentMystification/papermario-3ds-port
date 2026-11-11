@@ -4,9 +4,9 @@
   "draw_objs": ["/nd_[^/]*\\.o$", "/pm_gpu[^/]*\\.o$", "/pm_tex\\.o$", "/pm_comb\\.o$", "libcitro3d\\.a"],
   "ext_allow": ["GPUCMD_Add", "BufInfo_Init", "BufInfo_Add", "osConvertVirtToPhys"],
   "classes": {
-    "A": {"name": "stream and op loop", "roots": ["nd_walk_state", "set_tilesize", "op_setcombine", "tex_tile1", "op_settile", "g2_same"]},
+    "A": {"name": "stream and op loop", "roots": ["nd_walk_state", "set_tilesize", "op_setcombine", "tex_tile1"]},
     "B": {"name": "combine sync", "roots": ["pm_comb_eval", "pm_gpu_set_plan", "decide", "const_rgb_tex_alpha", "name_colour"]},
-    "C": {"name": "model record hit", "roots": ["rec_run", "pm_gpu_model_hit", "pm_gpu_model_key", "texsrc_chk", "nd_tex_get"]},
+    "C": {"name": "model record hit", "roots": ["rec_run", "pm_gpu_model_hit", "pm_gpu_model_key", "nd_tex_get"]},
     "D": {"name": "native submit and emit", "roots": ["nd_native_submit", "nd_emit_draw", "C3Di_UpdateContext", "C3D_UpdateUniforms"]},
     "E": {"name": "batch close", "roots": ["nd_raw_native", "nd_tev_build", "rect_sig_check", "nd_tmpl_build"]},
     "F": {"name": "vertex and triangle", "roots": ["gv_tri", "pm_gpu_gtrip", "nd_geom_vtx", "nd_gv_params"]},
