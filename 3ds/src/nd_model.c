@@ -224,7 +224,7 @@ static unsigned sprm_hit, sprm_miss; /* HC8 census: memo hits and misses of nd_m
 unsigned nd_nat_sub;
 unsigned nd_mdl_cur_x; /* MDL-5a census: extraTiles of the handle of the draw in model_draw */
 static unsigned mf_bx[4]; /* sub b by extraTiles (cumulative) */
-static struct { uint32_t p; unsigned s, n; } mf_e[32]; static unsigned mf_k, mf_tot[5]; /* mf_tot: cumulative per sub-case (a 1, b 2, c 3, d 4) */
+static struct { uint32_t p; unsigned s, n; } mf_e[32]; static unsigned mf_k, mf_tot[8]; /* mf_tot: cumulative per sub-case (a 1, b 2, c 3, d 4) */
 void nd_mdlfb_note(uint32_t prod, unsigned sub) {
     mf_tot[sub & 7u]++;
     for (unsigned i = 0; i < mf_k; i++) if (mf_e[i].p == prod && mf_e[i].s == sub) { mf_e[i].n++; return; }
