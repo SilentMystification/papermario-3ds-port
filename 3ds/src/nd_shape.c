@@ -37,14 +37,14 @@ u32 dlc_hash(const Gfx* l) {
     for (unsigned i = 0; i < 4096; i++) {
         u32 w0 = l[i].words.w0, w1 = l[i].words.w1;
         h = (h ^ w0) * 16777619u; h = (h ^ w1) * 16777619u;
-        uint32_t t[2]; /* HC4e2c: the typed unit of the word (G_ENDDL stays raw in nd_op_xlate) */
-        const unsigned op = nd_op_typed(w0 >> 24) ? w0 >> 24 : (nd_op_xlate(w0, w1, t), t[0] >> 24);
+        uint32_t t[2]; nd_op_unit(w0, w1, t); /* HC4f3: the typed unit (G_ENDDL is NDO_END); a typed word is its own unit */
+        const unsigned op = t[0] >> 24;
         if (op == NDO_VTX) {
             unsigned n = (w0 >> 12) & 0xff;
             const unsigned char* v = (const unsigned char*)ptr_of(w1);
             if (v && is_host((u32)v) && n <= 64) for (unsigned k = 0; k < n * 16; k++) h = (h ^ v[k]) * 16777619u;
         }
-        if (op == G_ENDDL) break;
+        if (op == NDO_END) break;
     }
     return h;
 }
@@ -158,7 +158,7 @@ __attribute__((cold, noinline)) int dlc_build(DlcEnt* e, const Gfx* l, int stat)
     const NdSeamList* sl = st ? nd_seam_find(st, (u32)(uintptr_t)l) : NULL;
     const int use_tp = sl && sl->cnt && (sl->cls < 2 || stat); /* SEAM2: a T point list under a moving matrix is split in object space: not used */
     if (sl && sl->cnt && !use_tp) pm_log_evt("seamfix dyn map %s list %08x skip %u", pm_shape_name, (u32)(uintptr_t)l, (unsigned)sl->cnt);
-    for (i = 0; i < ND_DLC_MAXOPS; i++) { dlc_words[2 * i] = l[i].words.w0; dlc_words[2 * i + 1] = l[i].words.w1; if ((l[i].words.w0 >> 24) == G_ENDDL) break; }
+    for (i = 0; i < ND_DLC_MAXOPS; i++) { dlc_words[2 * i] = l[i].words.w0; dlc_words[2 * i + 1] = l[i].words.w1; { uint32_t t[2]; nd_op_unit(l[i].words.w0, l[i].words.w1, t); if ((t[0] >> 24) == NDO_END) break; } }
     NdDlcEnv env = { nd_env_vtx, nd_env_valloc, nd_env_ialloc, use_tp ? st->tp + sl->first : NULL, use_tp ? sl->cnt : 0u }; /* SEAMFIX: the T points of this list */
     int rc = nd_dlc_compile(&e->o, dlc_words, &env), pooled = 1;
     if (rc == NDR_FULL) { /* no room in the static areas: compile without the copies, every group runs through the ring (the source words: no T points) */
@@ -345,9 +345,10 @@ int gp1_box_class(const s16 lo[3], const s16 hi[3], const float (*m)[4], unsigne
 __attribute__((noinline)) void dlc_run_group(const Gfx* l, const DlcGrp* g, unsigned gmi) {
     unsigned tss = ((unsigned)nd_ws.tex_ss << 16) | ((unsigned)nd_ws.tex_ts & 0xffffu);
     for (u32 j = g->op0; j < g->op1; j++) {
-        u32 w0 = l[j].words.w0, w1 = l[j].words.w1;
+        uint32_t t[2]; nd_op_unit(l[j].words.w0, l[j].words.w1, t); /* HC4f3: the typed unit of the list word */
+        u32 w0 = t[0], w1 = t[1];
         switch (w0 >> 24) {
-        case G_VTX: {
+        case NDO_VTX: {
             unsigned n = (w0 >> 12) & 0xff, v0n = (w0 >> 1) & 0x7f, v0 = v0n >= n ? v0n - n : 0;
             const Vtx* src = (const Vtx*)ptr_of(w1);
             if (v0 + n > 64) n = 64 - v0;
@@ -369,16 +370,16 @@ __attribute__((noinline)) void dlc_run_group(const Gfx* l, const DlcGrp* g, unsi
             }
             break;
         }
-        case G_TRI1:
+        case NDO_TRI1:
             tri_prep_ok = 0;
             draw_tri(w0);
             break;
-        case G_TRI2:
+        case NDO_TRI2:
             tri_prep_ok = 0;
             draw_tri(w0);
             draw_tri(w1);
             break;
-        case G_GEOMETRYMODE:
+        case NDO_GEOM:
             set_geom(w0, w1);
             gv_epoch++;
             break;
@@ -424,9 +425,9 @@ static void sbkw_dlchash(const Gfx* l, const DlcEnt* e) {
     if (ns_ > 2) return;
     u32 src = 0; u32 nv = 0;
     for (unsigned i = 0; i < 4096; i++) {
-        u32 w0 = l[i].words.w0;
-        if ((w0 >> 24) == G_VTX) { if (!src) src = l[i].words.w1; nv++; }
-        if ((w0 >> 24) == G_ENDDL) break;
+        uint32_t t[2]; nd_op_unit(l[i].words.w0, l[i].words.w1, t); /* HC4f3: the typed unit */
+        if ((t[0] >> 24) == NDO_VTX) { if (!src) src = l[i].words.w1; nv++; }
+        if ((t[0] >> 24) == NDO_END) break;
     }
     pm_log_prof_line("dlch f%u list %08x live %08x pool %08x vtx0 %08x nvtx %u ngrp %u", f, (u32)(uintptr_t)l, live, e->hash, src, nv, (unsigned)e->ngrp);
 }
