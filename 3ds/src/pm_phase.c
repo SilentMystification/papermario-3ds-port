@@ -307,6 +307,18 @@ static unsigned pf_cd; /* clean drawn frames left before the next sample */
 static int pf_samp; /* the drawn frame in progress is a sample */
 static int pf_prev_s; /* the previous drawn frame was a sample: its wall belongs to the sample sums */
 static char pf_set = 'm';
+/* PMUROT: the prof counter sets of profrot. A window ends on the next set (pf_report). e0, e1 = event enums; n0, n1 = names of the pmx lines. */
+typedef struct { char c; u32 e0, e1; const char* n0; const char* n1; } PfSet;
+static const PfSet pf_sets[6] = {
+    { 'm', PERFCOUNTEREVT_CORE_INST_CACHE_MISS, PERFCOUNTEREVT_CORE_DATA_CACHE_READ_MISS, "imiss", "drmiss" },
+    { 's', PERFCOUNTEREVT_CORE_STALL_BY_LACK_OF_INST, PERFCOUNTEREVT_CORE_STALL_BY_DATA_HAZARD, "istall", "dstall" },
+    { 'b', PERFCOUNTEREVT_CORE_INST_EXECUTED, PERFCOUNTEREVT_CORE_BRANCH_MISS_PREDICTED, "inst", "bmiss" },
+    { 'w', PERFCOUNTEREVT_CORE_DATA_CACHE_WRITE_MISS, PERFCOUNTEREVT_CORE_DATA_CACHE_LINE_EVICTION, "dwmiss", "devict" },
+    { 'q', PERFCOUNTEREVT_CORE_STALL_BY_LSU_FULL, PERFCOUNTEREVT_CORE_STORE_BUFFER_DRAIN, "lsufull", "sbdrain" },
+    { 't', PERFCOUNTEREVT_CORE_MAIN_TLB_MISS, PERFCOUNTEREVT_CORE_EXTERNAL_REQUEST, "tlb", "extreq" },
+};
+static int pf_si, pf_rot; /* pf_si: index into pf_sets of the current window; pf_rot: profrot is on */
+volatile unsigned pm_pf_set_gen; /* PMUROT: bumped at each set change; pm_logic.c lg_main re-sets core 1 on a change */
 static unsigned long long pf_last, pf_wsum, pf_wmax, pf_wksum;
 static unsigned long long pf_vb0;
 static unsigned pf_st0, pf_total, pf_w, pf_wn, pf_wkn, pf_o34;
@@ -542,7 +554,9 @@ static void pf_report(void) {
         gbi / 100u, gbi % 100u, dlc / 100u, dlc % 100u, tex / 100u, tex % 100u, gpu / 100u, gpu % 100u,
         pm_step_calls - pf_st0, vb, pf_iv[0], pf_iv[1], pf_iv[2], pf_iv[3]);
     /* PERF1: the counters on their own line */
-    pm_log_prof_line("prof f%u w%u pmu %c %u %u cyc %u pm %u %u", pf_total, pf_w, pf_set, e0, e1, cy, p0, p1);
+    if (pf_rot) pm_log_prof_line("prof f%u w%u pmx set %c %s %u %s %u cyc %u", pf_total, pf_w, pf_sets[pf_si].c, pf_sets[pf_si].n0, e0,
+        pf_sets[pf_si].n1, e1, cy); /* PMUROT */
+    else pm_log_prof_line("prof f%u w%u pmu %c %u %u cyc %u pm %u %u", pf_total, pf_w, pf_set, e0, e1, cy, p0, p1);
     { /* PERF1: ms per sampled frame of each producer class (exclusive, nd.h NDT_*); PERF2: the op classes split what was rest */
         uint64_t ct[NDT_N]; pm_gpu_ndt_take(ct);
         unsigned cm[NDT_N], csum = 0;
@@ -611,6 +625,8 @@ static void pf_report(void) {
             unsigned cy1 = dn ? (unsigned)((pe[2] - lg0_pe[2]) / dn) : 0u;
             pm_log_prof_line("prof f%u w%u core2 lgms %u.%02u n %u wwait %u.%02u ser %u core %d stk %u ic1 %u dc1 %u cyc1 %u kf %u", pf_total, pf_w,
                 lgc / 100u, lgc % 100u, dn, wwc / 100u, wwc % 100u, sn - lg0_s, core, kb, ic1, dc1, cy1, kf - lg0_kf);
+            if (pf_rot) pm_log_prof_line("prof f%u w%u pmx1 set %c c1_%s %u c1_%s %u c1_cyc %u", pf_total, pf_w, pf_sets[pf_si].c,
+                pf_sets[pf_si].n0, ic1, pf_sets[pf_si].n1, dc1, cy1); /* PMUROT */
             /* C1WAIT: ms per logic step of the waits inside lgms (LF_MAX_ARGS is 16 words: a second line). bw = the logic thread's wait for
              * the walker (every wq_block), fw = its depth 1 frame wait (the part of bw that waits for the walked frame), aj = audio join
              * waits run on the logic thread, au = audio job ticks (audio thread), mx = mixer ticks (render thread). */
@@ -628,6 +644,9 @@ static void pf_report(void) {
         }
     }
     if (c1_st == 1) c1_begin(); /* CORE2C C1P */
+    if (pf_rot) { /* PMUROT: the next window counts the next set; core 1 follows at its next logic step */
+        pf_si = (pf_si + 1) % 6; pm_pf_core_setup(); pf_pmu_read(pf_base); pm_pf_set_gen++;
+    }
     pf_reset();
 }
 /* PF2: the next drawn frame is a sample. The phase stack starts clean, so its first push adds no time from before the sample. */
@@ -706,9 +725,11 @@ void pm_ph_window_close(void) {
 void pm_pf_core_setup(void) {
     u64 out;
     u32 ev0 = pf_set == 's' ? PERFCOUNTEREVT_CORE_STALL_BY_LACK_OF_INST : PERFCOUNTEREVT_CORE_INST_CACHE_MISS;
+    u32 ev1 = PERFCOUNTEREVT_CORE_DATA_CACHE_READ_MISS;
+    if (pf_rot) { ev0 = pf_sets[pf_si].e0; ev1 = pf_sets[pf_si].e1; } /* PMUROT */
     pf_rc = svcControlPerformanceCounter(&out, PERFCOUNTEROP_ENABLE, 0, 0);
     pf_rc = svcControlPerformanceCounter(&out, PERFCOUNTEROP_SET_EVENT, PERFCOUNTERREG_CORE_COUNT_REG_0, ev0);
-    pf_rc = svcControlPerformanceCounter(&out, PERFCOUNTEROP_SET_EVENT, PERFCOUNTERREG_CORE_COUNT_REG_1, PERFCOUNTEREVT_CORE_DATA_CACHE_READ_MISS);
+    pf_rc = svcControlPerformanceCounter(&out, PERFCOUNTEROP_SET_EVENT, PERFCOUNTERREG_CORE_COUNT_REG_1, ev1);
     pf_rc = svcControlPerformanceCounter(&out, PERFCOUNTEROP_SET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_0, 0);
     pf_rc = svcControlPerformanceCounter(&out, PERFCOUNTEROP_SET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_1, 0);
     pf_rc = svcControlPerformanceCounter(&out, PERFCOUNTEROP_SET_VALUE, PERFCOUNTERREG_CORE_CYCLE_COUNTER, 0);
@@ -742,6 +763,8 @@ static void pf_init(void) {
     pf_want = pm_debug_mode("prof") == 1; /* CFG-1: prof=off or prof=0 samples nothing */
     if (pm_debug_value("prof", v, sizeof v)) { unsigned n = (unsigned)atoi(v); if (n >= 4 && n <= 255) pf_every = n; }
     pf_set = pm_debug_has("profstall") ? 's' : 'm';
+    pf_rot = pm_debug_has("profrot"); /* PMUROT: rotate the sets per window */
+    pf_si = pf_set == 's' ? 1 : 0; /* the start set: s with profstall, else m */
     pm_pf_on = pf_want && pm_log_file();
     pf_cd = pf_every - 1;
     if (pm_pf_on) pf_start();
