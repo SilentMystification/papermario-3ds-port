@@ -340,6 +340,20 @@ static void pf_pmu_read(u64 out[3]) {
     pf_rc = svcControlPerformanceCounter(&out[1], PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_1, 0);
     pf_rc = svcControlPerformanceCounter(&out[2], PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_CYCLE_COUNTER, 0);
 }
+/* PMUPH: counter events per phase in sampled frames (switch profph). At each push and pop of a sampled frame PMN0 and PMN1 are read and
+ * their delta goes to the phase being left (as acc[] takes the ticks). pph[k][ph] = window sums per phase; pf_pmxph_line ranks them. */
+static int pf_ph_pmu;
+static u64 pph_last[2];
+static unsigned long long pph[2][PH_N];
+static void pph_read(u64 v[2]) {
+    pf_rc = svcControlPerformanceCounter(&v[0], PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_0, 0);
+    pf_rc = svcControlPerformanceCounter(&v[1], PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_1, 0);
+}
+static void pph_add(int ph) {
+    u64 v[2];
+    pph_read(v);
+    for (int k = 0; k < 2; k++) { pph[k][ph] += (u32)(v[k] - pph_last[k]); pph_last[k] = v[k]; }
+}
 #define PF_OVER_T 9115808ull /* 34 ms in ticks: 34 x TICKS_MS */
 void pm_gpu_pf_read(unsigned long long out[6]); /* pm_gpu.c: per frame counters and GPU busy ticks, read and reset */
 static unsigned long long pf_nd_t; static unsigned pf_leg; /* S0-6: native emit ticks and LEGACY records of the window (pm_pf_nd_add, from S1) */
@@ -483,6 +497,7 @@ static void pf_reset(void) {
     pf_sw_fts = pf_sw_wks = 0;
     pf_sms[0] = pf_sms[1] = pf_sms[2] = 0.f;
     pf_dlc_t = 0;
+    memset(pph, 0, sizeof pph); /* PMUPH */
     pf_vb0 = C3D_FrameCounter(0);
     pf_st0 = pm_step_calls;
     pf_scene_seen = 0; /* PROF2-6: the next drawn frame notes the scene and the start position */
@@ -529,8 +544,33 @@ static void pf_where_line(void) {
     pm_log_prof_line("prof f%u w%u at %s %d:%d m%d sp%d b%d e%d chg0 pos0 %d %d %d pos %d %d %d disp %s", pf_total, pf_w, nm, cur_area, cur_map, cur_mode,
         story, btl, en, pf_ri(pf_pos0[0]), pf_ri(pf_pos0[1]), pf_ri(pf_pos0[2]), pf_ri(pos[0]), pf_ri(pos[1]), pf_ri(pos[2]), pf_disp[dm]);
 }
+/* PMUPH: the 6 phases with the largest e0 sum of the window, values per sampled frame. Two lines of 3 phases (13 words each, LF_MAX_ARGS 16).
+ * A missing phase prints "-" with 0 0. Cold: once per window. */
+static void pf_pmxph_line(void) {
+    int top[6];
+    for (int k = 0; k < 6; k++) {
+        int best = -1; unsigned long long bv = 0;
+        for (int ph = 0; ph < PH_N; ph++) {
+            int dup = 0;
+            for (int j = 0; j < k; j++) if (top[j] == ph) dup = 1;
+            if (!dup && pph[0][ph] > bv) { bv = pph[0][ph]; best = ph; }
+        }
+        top[k] = best;
+    }
+    unsigned s = pf_s ? pf_s : 1u;
+    for (int part = 0; part < 2; part++) {
+        const char* nm[3]; unsigned e0[3], e1[3];
+        for (int j = 0; j < 3; j++) {
+            int ph = top[part * 3 + j];
+            if (ph < 0) { nm[j] = "-"; e0[j] = e1[j] = 0; }
+            else { nm[j] = pname[ph]; e0[j] = (unsigned)(pph[0][ph] / s); e1[j] = (unsigned)(pph[1][ph] / s); }
+        }
+        pm_log_prof_line("prof f%u w%u pmxph %c set %c %s %u %u %s %u %u %s %u %u", pf_total, pf_w, part ? 'b' : 'a', pf_sets[pf_si].c,
+            nm[0], e0[0], e1[0], nm[1], e0[1], e1[1], nm[2], e0[2], e1[2]);
+    }
+}
 static void pf_report(void) {
-    unsigned vb = (unsigned)(C3D_FrameCounter(0) - pf_vb0);
+    unsigned vb =(unsigned)(C3D_FrameCounter(0) - pf_vb0);
     /* fps counts presents: the steps of the window plus the key frames walked (fps60 shows two pictures a step). ft and wk stay per step. */
     unsigned kfw; { unsigned long long t_, w_, pe_[3]; unsigned n_, s_, k_; int c_; pm_lg_pf(&t_, &n_, &w_, &s_, &c_, &k_, pe_, &kfw); kfw -= lg0_kf; }
     unsigned fps10 = vb ? (pf_w + kfw) * 600u / vb : 0u; /* presents x 10 per second */
@@ -558,6 +598,7 @@ static void pf_report(void) {
     if (pf_rot) pm_log_prof_line("prof f%u w%u pmx set %c %s %u %s %u cyc %u", pf_total, pf_w, pf_sets[pf_si].c, pf_sets[pf_si].n0, e0,
         pf_sets[pf_si].n1, e1, cy); /* PMUROT */
     else pm_log_prof_line("prof f%u w%u pmu %c %u %u cyc %u pm %u %u", pf_total, pf_w, pf_set, e0, e1, cy, p0, p1);
+    if (pf_ph_pmu) pf_pmxph_line(); /* PMUPH */
     { /* PERF1: ms per sampled frame of each producer class (exclusive, nd.h NDT_*); PERF2: the op classes split what was rest */
         uint64_t ct[NDT_N]; pm_gpu_ndt_take(ct);
         unsigned cm[NDT_N], csum = 0;
@@ -666,6 +707,7 @@ static void pf_arm(void) {
     pf_samp = 1;
     cold_need(); /* SPRFIX: pm_ph_frame_end reads cold->win for a sampled frame; prof mode 1 never allocates cold otherwise (NULL read at pf_take) */
     pm_ph_on = 1;
+    if (pf_ph_pmu) pph_read(pph_last); /* PMUPH: the counts of this sample start here */
     pm_walk_dbg_set();
 }
 /* PF2: one sampled frame, at its end. r is the frame record: it is not stored in the phase window. */
@@ -765,6 +807,7 @@ static void pf_init(void) {
     if (pm_debug_value("prof", v, sizeof v)) { unsigned n = (unsigned)atoi(v); if (n >= 4 && n <= 255) pf_every = n; }
     pf_set = pm_debug_has("profstall") ? 's' : 'm';
     pf_rot = pm_debug_has("profrot"); /* PMUROT: rotate the sets per window */
+    pf_ph_pmu = pm_debug_has("profph"); /* PMUPH: counts per phase in sampled frames */
     pf_si = pf_set == 's' ? 1 : 0; /* the start set: s with profstall, else m */
     pm_pf_on = pf_want && pm_log_file();
     pf_cd = pf_every - 1;
@@ -838,6 +881,7 @@ void pm_ph_push(int id) {
     if (pm_on_audio()) return; /* AU1c: one phase stack, owned by the game thread */
     unsigned now = pm_ticks();
     acc[cur] += now - last;
+    if (pf_ph_pmu && pf_samp) pph_add(cur); /* PMUPH */
     last = now;
     if (depth < 16) stk[depth++] = cur;
     cur = id;
@@ -847,6 +891,7 @@ void pm_ph_pop(void) {
     if (pm_on_audio()) return;
     unsigned now = pm_ticks();
     acc[cur] += now - last;
+    if (pf_ph_pmu && pf_samp) pph_add(cur); /* PMUPH */
     last = now;
     cur = depth ? stk[--depth] : PH_OTHER;
 }
