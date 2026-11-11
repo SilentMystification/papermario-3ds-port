@@ -181,11 +181,40 @@ static void fx_spawn(int i) {
 static unsigned char sel[FXT_COUNT];
 static int nsel = -1, shotn;
 
+/* FXCEN1: per-effect census. pm_cnt_all (PH_ADD while pm_cnt_on) and the pm_gpu totals are read at a snapshot; the fxcena and
+ * fxcenb lines carry the deltas to the print. Counts only; the picture stays out (CLAUDE.md 2). */
+int pm_cnt_on; unsigned pm_cnt_all[C_N];
+void pm_gpu_cnt_now(unsigned o[8]);
+void pm_gpu_mdl_stat(unsigned* miss, unsigned* clears);
+typedef struct { unsigned cnt[C_N], g[8], mmiss, mclr, tk, f; } FxCen;
+static FxCen fxc_base, fxc_eff;
+static void fxc_take(FxCen* s, unsigned f) {
+    memcpy(s->cnt, pm_cnt_all, sizeof s->cnt);
+    pm_gpu_cnt_now(s->g);
+    pm_gpu_mdl_stat(&s->mmiss, &s->mclr);
+    s->tk = pm_ticks();
+    s->f = f;
+}
+static void fxc_print(int idx, const char* name, const FxCen* s, unsigned f) {
+    FxCen c; int k, live = 0;
+    for (k = 0; k < 96; k++) if (gEffectInstances[k]) live++;
+    fxc_take(&c, f);
+    pm_log_evt("fxcena %d %s frames %u us %u live %d", idx, name, f - s->f, (c.tk - s->tk) / 268u, live);
+    pm_log_evt("fxcenb %d tri %u vtx %u draw %u tex %u texmiss %u texkb %u cmd %u gvtri %u gvrej %u gvfb %u flkb %u ndraw %u nidx %u prg %u shr %u upd %u spl %u sprmiss %u cfull %u mmiss %u mclr %u",
+        idx,
+        c.cnt[C_TRI] - s->cnt[C_TRI], c.cnt[C_VTXLOAD] - s->cnt[C_VTXLOAD], c.cnt[C_DRAW] - s->cnt[C_DRAW],
+        c.cnt[C_TEXCALL] - s->cnt[C_TEXCALL], c.cnt[C_TEXMISS] - s->cnt[C_TEXMISS], (c.cnt[C_TEXBYTE] - s->cnt[C_TEXBYTE]) >> 10,
+        c.cnt[C_CMD] - s->cnt[C_CMD], c.cnt[C_GVTRI] - s->cnt[C_GVTRI], c.cnt[C_GVREJ] - s->cnt[C_GVREJ], c.cnt[C_GVFB] - s->cnt[C_GVFB],
+        c.cnt[C_FLKB] - s->cnt[C_FLKB], c.cnt[C_NDRAW] - s->cnt[C_NDRAW], c.cnt[C_NIDX] - s->cnt[C_NIDX],
+        c.g[0] - s->g[0], c.g[1] - s->g[1], c.g[2] - s->g[2], c.g[3] - s->g[3], c.g[5] - s->g[5], c.g[6] - s->g[6],
+        c.mmiss - s->mmiss, c.mclr - s->mclr);
+}
+
 static void shot(const char* what, int i) {
     { int k, live = 0; for (k = 0; k < 96; k++) if (gEffectInstances[k]) live++; /* FX3f: live effect count at the shot */
       pm_log("fxtest: shot %d effect %d %s %s", shotn++, i, fx_names[i], what);
       pm_log("fxtest: live %d", live); }
-    pm_gpu_shot_burst(1);
+    if (pm_debug_has("shots")) pm_gpu_shot_burst(1); /* FXCEN1: the picture burst only with the shots switch */
 }
 
 static void clear_all(void) {
@@ -215,12 +244,15 @@ void pm_fxtest_tick(unsigned f) {
             }
         }
         pm_log("fxtest: %d effects selected of %d, slot %d frames, start frame %d", nsel, FXT_COUNT, SLOT, START);
+        if (nsel > 0) pm_cnt_on = 1; /* FXCEN1: the census runs with fxtest */
     }
+    if (nsel > 0 && f == START - 40) fxc_take(&fxc_base, f); /* FXCEN1: base window 360..400, no effect */
     if (nsel <= 0 || f < START) return;
+    if (f == START) fxc_print(-1, "base", &fxc_base, f);
     slot = (f - START) / SLOT;
     k = (f - START) % SLOT;
     if (slot >= nsel) {
-        if (slot == nsel && k == 0) pm_log("fxtest: done");
+        if (slot == nsel && k == 0) pm_log_evt("fxtest: done");
         return;
     }
     i = sel[slot];
@@ -231,6 +263,7 @@ void pm_fxtest_tick(unsigned f) {
         shot("base", i);
     } else if (k == 2) {
         int id;
+        fxc_take(&fxc_eff, f); /* FXCEN1: spawn snapshot */
         fx_npc = NULL;
         for (id = 0; id < 16 && !fx_npc; id++) fx_npc = get_npc_safe(id);
         pm_log("fxtest: spawn %d %s at %d %d %d", i, fx_names[i], (int)fx_x, (int)fx_y, (int)fx_z);
@@ -238,5 +271,5 @@ void pm_fxtest_tick(unsigned f) {
         fx_spawn(i);
     } else if (k == (i == FXT_shiny_flare || i == FXT_emote ? 7 : 12)) shot("a", i); /* FX3f: shiny_flare lives 10 frames */
     else if (k == 32) shot("b", i);
-    else if (k == 40) clear_all();
+    else if (k == 40) { fxc_print(i, fx_names[i], &fxc_eff, f); clear_all(); } /* FXCEN1: the slot's census before the clear */
 }

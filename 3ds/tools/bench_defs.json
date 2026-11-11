@@ -7815,6 +7815,145 @@
         "keymiss"
       ],
       "gates": []
+    },
+    {
+      "name": "fxcen_c0",
+      "kind": "azahar_stream",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "FXCEN1 census chunk 0: fxtest effects 0 to 15, per-effect fxcena and fxcenb lines. Azahar counts only; the us column is a proxy.",
+      "scenario": "fxcen_c0",
+      "cap": 45,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "fxcen"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fxcen_c1",
+      "kind": "azahar_stream",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "FXCEN1 census chunk 1: fxtest effects 16 to 31, per-effect fxcena and fxcenb lines. Azahar counts only; the us column is a proxy.",
+      "scenario": "fxcen_c1",
+      "cap": 45,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "fxcen"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fxcen_c2",
+      "kind": "azahar_stream",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "FXCEN1 census chunk 2: fxtest effects 32 to 47, per-effect fxcena and fxcenb lines. Azahar counts only; the us column is a proxy.",
+      "scenario": "fxcen_c2",
+      "cap": 45,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "fxcen"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fxcen_c3",
+      "kind": "azahar_stream",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "FXCEN1 census chunk 3: fxtest effects 48 to 63, per-effect fxcena and fxcenb lines. Azahar counts only; the us column is a proxy.",
+      "scenario": "fxcen_c3",
+      "cap": 45,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "fxcen"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fxcen_c4",
+      "kind": "azahar_stream",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "FXCEN1 census chunk 4: fxtest effects 64 to 79, per-effect fxcena and fxcenb lines. Azahar counts only; the us column is a proxy.",
+      "scenario": "fxcen_c4",
+      "cap": 45,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "fxcen"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fxcen_c5",
+      "kind": "azahar_stream",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "FXCEN1 census chunk 5: fxtest effects 80 to 95, per-effect fxcena and fxcenb lines. Azahar counts only; the us column is a proxy.",
+      "scenario": "fxcen_c5",
+      "cap": 45,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "fxcen"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fxcen_c6",
+      "kind": "azahar_stream",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "FXCEN1 census chunk 6: fxtest effects 96 to 111, per-effect fxcena and fxcenb lines. Azahar counts only; the us column is a proxy.",
+      "scenario": "fxcen_c6",
+      "cap": 45,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "fxcen"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fxcen_c7",
+      "kind": "azahar_stream",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "FXCEN1 census chunk 7: fxtest effects 112 to 127, per-effect fxcena and fxcenb lines. Azahar counts only; the us column is a proxy.",
+      "scenario": "fxcen_c7",
+      "cap": 45,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "fxcen"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fxcen_all_prof",
+      "kind": "console_prof",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FXCEN1 console census: all 128 fxtest effects on mac_01 in prof mode, one fxcena and fxcenb pair per effect. The us column is the console frame time; the console decides.",
+      "scene_match": null,
+      "recipe": "warp=mac_01:0 pos=0:0:200 fxtest=all",
+      "scenario": null,
+      "host": "o3ds",
+      "cap": 240,
+      "until": "fxtest: done",
+      "tags": [
+        "console",
+        "prof",
+        "fxcen"
+      ],
+      "gates": []
     }
   ],
   "legacy": {
