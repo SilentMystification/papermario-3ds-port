@@ -552,7 +552,9 @@ while ($true) {
     Start-Sleep -Milliseconds 400
 }
 $qWaitS = [math]::Round(((Get-Date) - $qT0).TotalSeconds, 1)
-$slotOk = Get-Slot $slotK 900 $azTurbo $azTL
+# AZKEEP: a scenario whose extra args make run_azahar start cold (run_azahar.ps1:238) asks for a free slot without a kept Azahar first
+$needCold = [bool]($extraArgs | Where-Object { $_ -in "-NoWarm", "-Interactive", "-Gdb", "-FaultStop" })
+$slotOk = Get-Slot $slotK 900 $azTurbo $azTL $needCold
 if (-not $slotOk) { Leave-Queue; Write-Output "LOCK TIMEOUT: granted slot $slotK is not free after 900 s. Nothing was run."; exit 3 }
 Write-Output ("queue: granted slot {0} after {1} s (position {2} at enqueue)" -f $slotK, $qWaitS, $qPosAtStart)
 if ($env:PM_AZT_LIST_SLOTFILE -and -not $env:PM_AZT_LIST_SLOT) { Set-Content $env:PM_AZT_LIST_SLOTFILE ([string]$slotK) } # TOOLB3

@@ -207,7 +207,8 @@ $p = $null
 $gdbProc = $null
 if ($env:PM_SLOT_HELD -and $Slot -gt 0) { $slotK = $Slot }
 else {
-    $slotK = Get-Slot $Slot $LockWait $Turbo.IsPresent $(if ($Turbo) { $TurboLimit } else { 0 })
+    # AZKEEP: the switches of the cold list at :238 ask for a free slot without a kept Azahar first
+    $slotK = Get-Slot $Slot $LockWait $Turbo.IsPresent $(if ($Turbo) { $TurboLimit } else { 0 }) ([bool]($NoWarm -or $Interactive -or $Gdb -or $FaultStop))
     if (-not $slotK) { End-Run 3 "LOCK TIMEOUT: no free Azahar slot after $LockWait s. Nothing was run." }
     $heldHere = $true
     Write-Output "Azahar slot $slotK taken."
@@ -351,10 +352,12 @@ if ($warm) {
     $sent = (-not (Test-Path $logOld)) -and (Send-AzHotkey $kept $hk)
     Write-PoolLog $slotK "warm try" $kept.Id $kept.Id ("posted focus+key {0} sent={1} title '{2}'" -f $hk, $sent, $kept.MainWindowTitle)
     $booted = $false; $rotated = $false
+    $resent = $false # AZKEEP: one resend of the key when no BootGame came 3 s after the first
     while ($sent -and -not ($booted -and $rotated)) {
         Start-Sleep -Milliseconds 250
         $el = ((Get-Date) - $start).TotalSeconds
         if (-not $booted) { $booted = Test-EmuBoot $emuLog $keyOff }
+        if (-not $booted -and -not $resent -and $el -gt 3) { $sent = Send-AzHotkey $kept $hk; $resent = $true; Write-PoolLog $slotK "warm resend" $kept.Id $kept.Id "no BootGame 3 s after the key" }
         if ($booted -and -not $rotated) { $rotated = Test-Path $logOld }
         if (-not $booted -and $el -gt 8) { break } # Azahar logs BootGame about 0.1 s after the key: 8 s means the key did not arrive
         if ($el -gt 20) { break } # the game rotates its log about 1 s after BootGame (AZT12-5: boots seen 1.7 to 6.6 s after the key)
@@ -374,6 +377,10 @@ if ($warm) {
             try { $fs = [IO.File]::Open($emuLog, 'Open', 'Read', 'ReadWrite'); try { [void]$fs.Seek([Math]::Min($emuOff, $fs.Length), 'Begin'); $emuTail = (New-Object IO.StreamReader($fs)).ReadToEnd() } finally { $fs.Close() } } catch {}
             Set-Content "$($sl.dir)\warmfail_emu.txt" $emuTail
             Copy-Item $log "$($sl.dir)\warmfail_log.txt" -Force -ErrorAction SilentlyContinue # the game log at the failure
+            # AZKEEP: both evidence files of this failure, copied to the worktree's build3ds/out (n = count of this slot's copies + 1)
+            $wfDir = Join-Path (Split-Path -Parent $PSScriptRoot) "build3ds\out"; New-Item -ItemType Directory -Force -Path $wfDir | Out-Null
+            $wfN = @(Get-ChildItem $wfDir -Filter "azkeep_warmfail_${slotK}_*.txt" -ErrorAction SilentlyContinue).Count + 1
+            Set-Content "$wfDir\azkeep_warmfail_${slotK}_$wfN.txt" (@("== warmfail_emu.txt"; (Get-Content "$($sl.dir)\warmfail_emu.txt" -ErrorAction SilentlyContinue); "== warmfail_log.txt"; (Get-Content "$($sl.dir)\warmfail_log.txt" -ErrorAction SilentlyContinue)))
             $lastEmu = @($emuTail -split "`r?`n" | Where-Object { $_.Trim() } | Select-Object -Last 2) -join ' | '
             Write-PoolLog $slotK "warm fail emu" $kept.Id $kept.Id ("{0} B after the key, windows {1} {2}, last: {3}" -f $emuTail.Length, [AzEnum]::Count([uint32]$kept.Id), [AzEnum]::Titles, $lastEmu)
         }

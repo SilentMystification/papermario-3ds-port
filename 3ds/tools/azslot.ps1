@@ -168,7 +168,7 @@ function Get-WarmState([int]$k, [bool]$turbo, [int]$turbolimit) {
     return "warm"
 }
 
-function Get-Slot([int]$want, [int]$waitSec, [bool]$turbo = $false, [int]$turbolimit = 0) {
+function Get-Slot([int]$want, [int]$waitSec, [bool]$turbo = $false, [int]$turbolimit = 0, [bool]$needCold = $false) {
     # $want > 0 takes that slot. 0 takes the first free slot in this order (AZT2 affinity):
     #   1. a free slot whose kept Azahar restarts this run (same turbo setting, any lane: AZT3-1): warm
     #   2. a free slot with no kept Azahar (cold start, no other lane is disturbed)
@@ -186,7 +186,8 @@ function Get-Slot([int]$want, [int]$waitSec, [bool]$turbo = $false, [int]$turbol
         $liveK = @($all | Where-Object { $warmK -notcontains $_ -and (Get-KeptAzahar $_) })
         $coldK = @($all | Where-Object { $warmK -notcontains $_ -and $liveK -notcontains $_ })
         $capFull = (@(Get-LiveAzahar).Count -ge $script:AzCap)
-        $order = if ($capFull) { $warmK + $liveK + $coldK } else { $warmK + $coldK + $liveK }
+        # AZKEEP: a run that must start cold does not replace a kept session when a free slot has none
+        $order = if ($needCold) { $coldK + $liveK + $warmK } elseif ($capFull) { $warmK + $liveK + $coldK } else { $warmK + $coldK + $liveK }
         foreach ($k in $order) {
             if (-not (Enter-Slot $k 0)) { continue }
             if ($coldK -contains $k -and $capFull) { Exit-Slot $k; continue }
