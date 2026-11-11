@@ -319,6 +319,7 @@ static const PfSet pf_sets[6] = {
 };
 static int pf_si, pf_rot; /* pf_si: index into pf_sets of the current window; pf_rot: profrot is on */
 volatile unsigned pm_pf_set_gen; /* PMUROT: bumped at each set change; pm_logic.c lg_main re-sets core 1 on a change */
+void pm_pf_core_setup(void); /* PMUROT: defined below; pf_report calls it at a window end */
 static unsigned long long pf_last, pf_wsum, pf_wmax, pf_wksum;
 static unsigned long long pf_vb0;
 static unsigned pf_st0, pf_total, pf_w, pf_wn, pf_wkn, pf_o34;
