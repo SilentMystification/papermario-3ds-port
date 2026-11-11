@@ -30,7 +30,7 @@ This is the entry point for every test and profiling run (it replaces the text t
         that commit ONCE (lane base_<short>, the committed tree only), runs the bench, stores the shots, deletes the lane. The store
         keeps the last 5 commits (index.json).
   python 3ds/tools/bench.py base --fill [--row R]
-        Stores the standard byte scenes (spot_mac01_det, battle_start_f182_cold, mdl5_iwa10_det) of the main folder's build
+        Stores the standard byte scenes (mdl5_iwa10_det, spot_mac01_det) of the main folder's build
         (build3ds/pm_3ds.3dsx, its header commit must be main HEAD). Run in the main folder after a merge. No build.
   python 3ds/tools/bench.py cmp <bench> --row R [--commit C]
         Compares the row's last shots of the bench with the stored base: byte-equal count, per shot diff pixel count and bounding
@@ -1373,7 +1373,7 @@ def cmd_build_at(a):
 
 
 BASE_KEEP = 5  # the base store keeps this many commits (the oldest is removed first)
-BASE_FILL = ("spot_mac01_det", "battle_start_f182_cold", "mdl5_iwa10_det")  # the standard byte scenes (CLAUDE.md GATES)
+BASE_FILL = ("mdl5_iwa10_det", "spot_mac01_det")  # TOOLB10: warm byte scenes, in the order the rows run them; battle_start_f182_cold is cold by design (no base)
 BASE_ROW = "BASECACHE"
 
 
