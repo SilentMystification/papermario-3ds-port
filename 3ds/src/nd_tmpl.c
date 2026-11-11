@@ -297,9 +297,9 @@ void nd_render_state(uint32_t omode_h, uint32_t m, int depth_img, NdRender* o) {
         return;
     }
     o->blend = ((m & (3u << 20)) == (1u << 20) && (m & (3u << 16)) == 0) || ((m & (3u << 22)) == (1u << 22) && (m & (3u << 18)) == 0);
-    /* KMR11W: N64 coverage = alpha x cvg, the AA blender mixes a partial pixel with the frame buffer. A bilinear texel with alpha 0 and a dark
-     * key colour gave a dark rim (alpha x neighbour colour, drawn at full weight). Edge AA: blend on, alpha < 32 dropped, the rest blend by alpha. */
-    if (nd_edge_aa(m)) { o->blend = 1; o->atest = 0x1F; }
+    /* EDGEAA: an AA texture edge is a cutout (alpha test 0x30, no blend): a blended edge pixel wrote depth and hid what is drawn behind it
+     * later (osr_04 chains); the dark rim KMR11W blended away is fixed by TEXKEY2's palette bake. */
+    if (nd_edge_aa(m)) { o->blend = 0; o->atest = 0x30; }
     else if (m & 0x1000u) o->atest = o->blend ? 0x08 : 0x30; /* CVG_X_ALPHA, texture edge */
     else if ((m & 3u) == 1u) o->atest = 0x08;                /* G_AC_THRESHOLD */
     /* S25: a blender whose both colour inputs are the frame buffer colour (G_BL_CLR_MEM, cycle 1 bits 30 and 22, cycle 2 bits 28 and 20)
