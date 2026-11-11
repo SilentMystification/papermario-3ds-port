@@ -111,6 +111,77 @@ extern int nd_r11_state(uint32_t addr, const uint32_t** nr, uint32_t* cw, int* h
 int rec_nat_last; /* WCEN2: 1 when the last rec_run drew natively */
 static int nmn_sw(void) { static int v = -1; if (v < 0) v = pm_debug_has("nomodelnat") ? 1 : 0; return v; } /* MDL-5: switch nomodelnat, the walker geometry of every model record (the byte reference) */
 extern int mfr_on; extern unsigned mfr_idx; void pm_gpu_mfr_rec(uint32_t geo, int hit, int nat, unsigned idx, const NdMKey* mk); /* TIK19 debug (switch mfr) */
+/* HC6 step 1 (plan_hotcode 5.4 premise 1): the scalar walker state a miss leaves (rec_apply, in its op order), as a typed copy for a hit. Before, a hit
+ * kept the walker state of before the record (omode, combine, prim, env, fog, blend, texture scale, fog factors), a miss the record's: the state after
+ * NDC_MODEL depended on hit or miss. The copy writes values only (no GPU call): the hit's native draws set their own GPU state, and sc_ok 0 and
+ * nd_sr_forget make the walker send its combine and render state again. The texture filter bits of othermode H stay (set_om sets the filter on a
+ * change of them: the GPU filter is the walker's). Tile, load, light and matrix state is not scalar and not copied. */
+typedef struct { uint32_t omh, oml, kh, kl, geom, prim, plod, env, fog, blend, tss, cw0, cw1; int tex, fm, fo, comb; } HitSt;
+static void hs_op(HitSt* s, const uint32_t* t) {
+    const uint32_t a = t[0] & 0xffffffu, b = t[1];
+    switch (t[0] >> 24) {
+    case NDO_OMH: { const uint32_t m = nd_op_om_mask(a), mv = m & ~(3u << G_MDSFT_TEXTFILT); s->omh = (s->omh & ~mv) | (b & mv); s->kh |= m; break; }
+    case NDO_OML: { const uint32_t m = nd_op_om_mask(a); s->oml = (s->oml & ~m) | (b & m); s->kl |= m; break; }
+    case NDO_GEOM: s->geom = (s->geom & a) | b; break;
+    case NDO_PRIM: s->prim = b; s->plod = a & 0xffffu; break;
+    case NDO_ENV: s->env = b; break;
+    case NDO_FOG: s->fog = b; break;
+    case NDO_BLEND: s->blend = b; break;
+    case NDO_TEXTURE: s->tex = (int)a; s->tss = b; break;
+    case NDO_COMB: s->cw0 = NDO_COMB_W0(a); s->cw1 = b; s->comb = 1; break;
+    case NDO_MW: if ((a >> 16) == NDO_MW_FOG) { s->fm = (s16)(b >> 16); s->fo = (s16)b; } break;
+    default: break;
+    }
+}
+static void hs_run(HitSt* s, const uint32_t* u, unsigned n) { for (unsigned k = 0; k < n; k++, u += 2) hs_op(s, u); }
+static void hs_t(HitSt* s, unsigned id, uint32_t a, uint32_t b) { const uint32_t t[2] = { NDO_W0(id, a), b }; hs_op(s, t); }
+static void hit_state(const Gfx* q, HitSt* s) {
+    const u32 f = q[3].words.w0;
+    s->omh = nd_ws.omode_h; s->oml = nd_ws.omode_l; s->kh = nd_ws.om_kh; s->kl = nd_ws.om_kl; s->geom = nd_ws.geom; s->prim = nd_ws.prim; s->plod = nd_ws.prim_lod;
+    s->env = nd_ws.envc; s->fog = fogc; s->blend = blendc; s->tex = nd_ws.tex_on; s->tss = (uint32_t)nd_ws.tex_ss << 16 | (nd_ws.tex_ts & 0xffffu);
+    s->cw0 = nd_ws.comb_w0; s->cw1 = nd_ws.comb_w1; s->comb = 0; s->fm = fog_fm; s->fo = fog_fo;
+    if (f & 4u) hs_t(s, NDO_PRIM, 0, q[6].words.w0);
+    if (f & 8u) hs_t(s, NDO_ENV, 0, q[6].words.w1);
+    if (f & 64u) { hs_t(s, NDO_FOG, 0, q[4].words.w0); hs_t(s, NDO_MW, NDO_MW_FOG << 16, q[5].words.w1); }
+    if (q[13].words.w0) hs_run(s, (const uint32_t*)(q + G_PM_REC_WORDS), q[13].words.w0);
+    else if (q->words.w1) { const uint32_t* u = (const uint32_t*)(uintptr_t)q->words.w1; for (; (u[0] >> 24) != NDO_END; u += 2) hs_op(s, u); }
+    if (q[4].words.w1) hs_op(s, (const uint32_t*)(uintptr_t)q[4].words.w1);
+    { const unsigned i = (q->words.w0 >> 16) & 0xffu; hs_run(s, nd_rm_tab[i], nd_rm_n[i]); }
+    if (f & 32u) {
+        hs_t(s, NDO_OML, NDO_A_RENDERMODE, (u32)(PM_RM_SHROUD) | q[7].words.w1);
+        hs_t(s, NDO_FOG, 0, q[4].words.w0);
+        if (f & 16u) hs_t(s, NDO_BLEND, 0, q[7].words.w0);
+        hs_t(s, NDO_MW, NDO_MW_FOG << 16, q[5].words.w1);
+    } else if (f & 2u) { hs_t(s, NDO_FOG, 0, q[4].words.w0); hs_t(s, NDO_MW, NDO_MW_FOG << 16, q[5].words.w1); }
+}
+/* HC6 census switch hitst (cold): per field, the hits whose old rule (keep the walker state) left a value other than the miss's. */
+enum { HS_OMH, HS_OML, HS_GEOM, HS_PRIM, HS_ENV, HS_FOG, HS_BLEND, HS_TEX, HS_COMB, HS_FOGF, HS_N };
+static unsigned hs_hits, hs_n[HS_N], hs_f0, hs_fl;
+static __attribute__((cold, noinline)) void hitst_note(const HitSt* s) {
+    hs_hits++;
+    hs_n[HS_OMH] += s->omh != nd_ws.omode_h; hs_n[HS_OML] += s->oml != nd_ws.omode_l; hs_n[HS_GEOM] += s->geom != nd_ws.geom;
+    hs_n[HS_PRIM] += s->prim != nd_ws.prim || s->plod != nd_ws.prim_lod; hs_n[HS_ENV] += s->env != nd_ws.envc; hs_n[HS_FOG] += s->fog != fogc;
+    hs_n[HS_BLEND] += s->blend != blendc; hs_n[HS_TEX] += s->tex != nd_ws.tex_on || s->tss != ((uint32_t)nd_ws.tex_ss << 16 | (nd_ws.tex_ts & 0xffffu));
+    hs_n[HS_COMB] += s->cw0 != nd_ws.comb_w0 || s->cw1 != nd_ws.comb_w1; hs_n[HS_FOGF] += s->fm != fog_fm || s->fo != fog_fo;
+    const unsigned fr = pm_frame_count();
+    if (fr != hs_fl) {
+        hs_fl = fr;
+        if (fr >= hs_f0 + 300u) {
+            pm_log("hitst f%u frames %u hits %u stale omh %u oml %u geom %u prim %u env %u fog %u blend %u tex %u comb %u fogf %u", fr, fr - hs_f0, hs_hits,
+                   hs_n[HS_OMH], hs_n[HS_OML], hs_n[HS_GEOM], hs_n[HS_PRIM], hs_n[HS_ENV], hs_n[HS_FOG], hs_n[HS_BLEND], hs_n[HS_TEX], hs_n[HS_COMB], hs_n[HS_FOGF]);
+            hs_f0 = fr; hs_hits = 0;
+            memset(hs_n, 0, sizeof hs_n);
+        }
+    }
+}
+static void hit_apply(const Gfx* q) {
+    HitSt s;
+    hit_state(q, &s);
+    if (__builtin_expect(PMDL("hitst"), 0)) hitst_note(&s);
+    if (s.comb && !(comb_set && s.cw0 == nd_ws.comb_w0 && s.cw1 == nd_ws.comb_w1 && box_folded == 0 && cmb_gen_seen == comb_gen)) op_setcombine(s.cw0, s.cw1);
+    nd_ws.omode_h = s.omh; nd_ws.omode_l = s.oml; nd_ws.om_kh = s.kh; nd_ws.om_kl = s.kl; nd_ws.geom = s.geom; nd_ws.prim = s.prim; nd_ws.prim_lod = s.plod;
+    nd_ws.envc = s.env; fogc = s.fog; blendc = s.blend; nd_ws.tex_on = s.tex; nd_ws.tex_ss = s.tss >> 16; nd_ws.tex_ts = s.tss & 0xffffu; fog_fm = s.fm; fog_fo = s.fo;
+}
 unsigned rec_run(const Gfx* q) {
     const unsigned mi0 = mfr_idx;
     NdMKey mk;
@@ -133,6 +204,7 @@ unsigned rec_run(const Gfx* q) {
         rec_n++;
         gv_epoch++;
         nat = 1; hit = !wskip;
+        hit_apply(q); /* HC6 step 1: the walker state a miss leaves */
         sc_ok = 0; nd_sr_forget();
     } else {
     rec_apply(q, mdone);

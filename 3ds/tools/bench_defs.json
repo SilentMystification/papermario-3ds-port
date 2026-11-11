@@ -7707,6 +7707,22 @@
                 "shading"
           ],
           "gates": []
+    },
+    {
+      "name": "hitst_mac01",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "HC6 step 1 census: model cache hits per walker field that the old hit rule left stale, per 300 frames on mac_01 (switch hitst).",
+      "scenario": "hitst_mac01",
+      "cap": 25,
+      "until": "hitst f[0-9]+ frames ",
+      "tags": [
+        "azahar",
+        "hc6",
+        "census"
+      ],
+      "gates": []
     }
   ],
   "legacy": {
