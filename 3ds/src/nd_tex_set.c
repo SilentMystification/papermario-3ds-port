@@ -14,7 +14,9 @@
 /* GLOB: definitions moved here from the former pm_gbi.c (layout only). */
 NdTexM nd_tm; /* D4a: the load side of the texture model (nd_int.h) */
 M1Rec m1;
-unsigned shc[8]; /* BOMBLIT: shade path counters of the shadecen switch (0 m1 set, 1 m1 skipped, 2 shaded0 ok, 3 shaded0 cond false, 4 palette NULL, 5 load fail, 6 native why 3) */
+unsigned shc[16]; /* BOMBLIT: shade path counters of the shadecen switch (0 m1 set, 1 m1 skipped, 2 shaded0 ok, 3 shaded0 cond false, 4 palette NULL, 5 load fail, 6 native why 3) */
+/* BOMBLIT2: 7 native ok, 8 native fallback, 9 native why 5, 10 sprite memo hit, 11 sprite memo miss, 12 shaded native draw, 13 shade_mean call */
+int shd_min[3] = { 255, 255, 255 }, shd_max[3] = { 0, 0, 0 }; /* BOMBLIT2: dual_f range of the shaded native draws, x255 */
 int pm_gbi_bind_tile1(void) { /* MDL-1b v2: the walker's pre-draw tile step (gv_epoch_enter); rec_aux already ran the record's combine and tile words */
     if (!plan_active || !cur_plan.uses_tex1) return 0;
     ensure_tile(nd_ws.use_t1 ? 1 : 0);
@@ -667,6 +669,7 @@ int glyph_atlas_bound(void) {
 float dual_f[4];
 static void shade_mean(const void* sp, const void* sh) {
     unsigned cnt[256], cn16[16];
+    if (PMDL("shadecen")) shc[13]++;
     memset(cnt, 0, sizeof cnt);
     const u8* src = (const u8*)m1.src;
     const int bw = m1.w >> 1; /* whole bytes of a row; the row starts on a byte (the stride is even) */
@@ -704,10 +707,13 @@ int load_shaded_sprite(void) {
  * zeroes the counters. Called from pm_gpu.c pm_gpu_end_w. */
 __attribute__((cold, noinline)) void shc_frame(unsigned f) {
     int any = 0;
-    for (unsigned k = 0; k < 8; k++) any |= shc[k] != 0;
+    for (unsigned k = 0; k < 16; k++) any |= shc[k] != 0;
     if (!any) return;
-    pm_log_hw("shadecen f%u m1 %u m1skip %u ok %u cond %u nopal %u loadfail %u why3 %u", f, shc[0], shc[1], shc[2], shc[3], shc[4], shc[5], shc[6]);
+    pm_log_hw("shadecen f%u m1 %u m1skip %u ok %u cond %u nopal %u loadfail %u why3 %u nat %u fb %u why5 %u sprmh %u sprmm %u shnat %u dmin %d,%d,%d dmax %d,%d,%d smean %u",
+        f, shc[0], shc[1], shc[2], shc[3], shc[4], shc[5], shc[6], shc[7], shc[8], shc[9], shc[10], shc[11], shc[12],
+        shd_min[0], shd_min[1], shd_min[2], shd_max[0], shd_max[1], shd_max[2], shc[13]);
     memset(shc, 0, sizeof shc);
+    for (int q = 0; q < 3; q++) { shd_min[q] = 255; shd_max[q] = 0; }
 }
 
 /* ---- MV-10: RDP shift helper, cut from the former pm_gbi.c (no change) ---- */

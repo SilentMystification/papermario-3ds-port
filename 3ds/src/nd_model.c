@@ -421,6 +421,7 @@ static SprMemo* sprm_victim(SprMemo* set, const uint32_t* w) {
     }
     return v;
 }
+extern unsigned shc[16]; /* BOMBLIT2: nd_tex_set.c shade path counters */
 int nd_model_state_spr(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st) {
     uint32_t w[SPRM_W];
     w[0] = c->comb_w0; w[1] = c->comb_w1; w[2] = c->geom_base; w[3] = (uint32_t)c->wind; w[4] = c->base_oh; w[5] = c->base_ol; w[6] = c->known_h; w[7] = c->known_l;
@@ -435,6 +436,7 @@ int nd_model_state_spr(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState
         m->stamp = ++sprm_clk;
         /* the tail of nd_model_state_in for these values (no tile 1, no pm5: fxon is 0 in a stored key) */
         st->why = 0; nd_nat_sub = 0; mw_ok++; sprm_hit++;
+        if (PMDL("shadecen")) shc[10]++;
         nd_tmpl_touch(m->id);
         memset(d, 0, sizeof *d);
         d->tmpl = m->id;
@@ -448,6 +450,7 @@ int nd_model_state_spr(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState
         return 1;
     }
     sprm_miss++;
+    if (PMDL("shadecen")) shc[11]++;
     int r = nd_model_state(rec, c, d, st);
     if (r == 1) { m = sprm_victim(set, w); memcpy(m->kw, w, sizeof w); memcpy(&m->k, &st->k, sizeof st->k); m->to = st->to; m->id = st->tmpl; m->tgen = nd_tmpl_gen(); m->stamp = ++sprm_clk; m->used = 1; }
     return r;
