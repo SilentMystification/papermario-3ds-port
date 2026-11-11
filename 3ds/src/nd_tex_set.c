@@ -148,6 +148,9 @@ static void tex_win0(const NdTst* t, const NdTexM* m, const void* timg, int uls,
         int ldw = t->tile_siz[0] == 0 ? m->ld_w * 2 : m->ld_w; /* VIS3: a 4 bit image loads through an 8 bit tile, m->ld_w counts bytes (walking dust: 88 for 176 texels) */
         if (per > w && per <= 256 && ldw > w) w = ldw < per ? ldw : per;
     }
+    if (t->tile_wrap[0][2] && !(t->tile_wrap[0][0] & 2) && m->ld_valid) { const int per = 1 << t->tile_wrap[0][2]; const int ldw = t->tile_siz[0] == 0 ? m->ld_w * 2 : m->ld_w; if (per <= 256 && ldw >= per) w = per; }
+    if (t->tile_wrap[0][3] && !(t->tile_wrap[0][1] & 2) && m->ld_valid) { const int per = 1 << t->tile_wrap[0][3]; if (per <= 256 && m->ld_h >= per) h = per; }
+    /* TILEWIN2: a wrapping axis reads (s - sl) & mask from TMEM: one period is bound, whatever the window (effect_63, whirlwind) */
     int stride = t->timg_stride > w ? t->timg_stride : w;
     int bpp = t->tile_siz[0] >= 3 ? 4 : t->tile_siz[0] == 2 ? 2 : t->tile_siz[0] == 0 ? 0 : 1;
     const u8* src = (const u8*)timg;
@@ -477,6 +480,9 @@ static void tex_win1(const NdTst* t, const NdTexM* m, const void* timg, int uls,
         int ldw = t->tile_siz[1] == 0 ? m->ld_w * 2 : m->ld_w;
         if (per > w && per <= 256 && ldw > w) w = ldw < per ? ldw : per;
     }
+    if (t->tile_wrap[1][2] && !(t->tile_wrap[1][0] & 2) && m->ld_valid) { const int per = 1 << t->tile_wrap[1][2]; const int ldw = t->tile_siz[1] == 0 ? m->ld_w * 2 : m->ld_w; if (per <= 256 && ldw >= per) w = per; }
+    if (t->tile_wrap[1][3] && !(t->tile_wrap[1][1] & 2) && m->ld_valid) { const int per = 1 << t->tile_wrap[1][3]; if (per <= 256 && m->ld_h >= per) h = per; }
+    /* TILEWIN2: a wrapping axis reads (s - sl) & mask from TMEM: one period is bound, whatever the window (effect_63, whirlwind) */
     int stride = t->timg_stride > w ? t->timg_stride : w;
     int bpp = t->tile_siz[1] >= 3 ? 4 : t->tile_siz[1] == 2 ? 2 : t->tile_siz[1] == 0 ? 0 : 1;
     const u8* src = (const u8*)timg;
