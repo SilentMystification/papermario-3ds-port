@@ -220,6 +220,8 @@ static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, Nd
 /* MDL-0b: every why code of nd_model_state, uncapped, one line per 300 frames (mdlw) */
 static unsigned mw_cnt[32], mw_ok, mw_f = 100u; /* mw_f: the frame of the last line + 300 */
 static unsigned sprm_hit, sprm_miss; /* HC8 census: memo hits and misses of nd_model_state_spr (mdlw line, reset per line) */
+static unsigned sprm_fh, sprm_fm; /* BOMBLIT2: hits and misses since the last take (per frame) */
+void nd_sprm_take(unsigned* h, unsigned* m) { *h = sprm_fh; *m = sprm_fm; sprm_fh = sprm_fm = 0; }
 /* MDL-5 census: why 6 fallbacks of the window by producer (the record address) and sub-case; top 8 per mdlw line, then reset */
 unsigned nd_nat_sub;
 unsigned nd_mdl_cur_x; /* MDL-5a census: extraTiles of the handle of the draw in model_draw */
@@ -421,7 +423,6 @@ static SprMemo* sprm_victim(SprMemo* set, const uint32_t* w) {
     }
     return v;
 }
-extern unsigned shc[16]; /* BOMBLIT2: nd_tex_set.c shade path counters */
 int nd_model_state_spr(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st) {
     uint32_t w[SPRM_W];
     w[0] = c->comb_w0; w[1] = c->comb_w1; w[2] = c->geom_base; w[3] = (uint32_t)c->wind; w[4] = c->base_oh; w[5] = c->base_ol; w[6] = c->known_h; w[7] = c->known_l;
@@ -435,8 +436,7 @@ int nd_model_state_spr(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState
     if (m) {
         m->stamp = ++sprm_clk;
         /* the tail of nd_model_state_in for these values (no tile 1, no pm5: fxon is 0 in a stored key) */
-        st->why = 0; nd_nat_sub = 0; mw_ok++; sprm_hit++;
-        if (PMDL("shadecen")) shc[10]++;
+        st->why = 0; nd_nat_sub = 0; mw_ok++; sprm_hit++; sprm_fh++;
         nd_tmpl_touch(m->id);
         memset(d, 0, sizeof *d);
         d->tmpl = m->id;
@@ -449,8 +449,7 @@ int nd_model_state_spr(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState
         memcpy(&st->k, &m->k, sizeof m->k); st->to = m->to; st->tmpl = m->id;
         return 1;
     }
-    sprm_miss++;
-    if (PMDL("shadecen")) shc[11]++;
+    sprm_miss++; sprm_fm++;
     int r = nd_model_state(rec, c, d, st);
     if (r == 1) { m = sprm_victim(set, w); memcpy(m->kw, w, sizeof w); memcpy(&m->k, &st->k, sizeof st->k); m->to = st->to; m->id = st->tmpl; m->tgen = nd_tmpl_gen(); m->stamp = ++sprm_clk; m->used = 1; }
     return r;
