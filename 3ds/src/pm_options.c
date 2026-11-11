@@ -113,14 +113,13 @@ void pm_options_write(void) {
         pm_log_e("options: write of options.tmp failed");
         return;
     }
-    unlink("options.ini"); /* FAT rename does not replace an existing file */
-    if (rename("options.tmp", "options.ini") != 0) pm_log_e("options: rename to options.ini failed");
+    if (rename("options.tmp", "options.ini") != 0) { unlink("options.ini"); if (rename("options.tmp", "options.ini") != 0) pm_log_e("options: rename to options.ini failed"); } /* SAVEFIX: the old file stays until the new one is complete */
 }
 
 void pm_options_init(void) {
     char line[64];
     int have = 0;
-    FILE* f = fopen("options.ini", "r");
+    FILE* f = fopen("options.ini", "r"); if (!f && (f = fopen("options.tmp", "r")) != NULL) pm_log_w("options: options.ini missing, read options.tmp (a cut write)"); /* SAVEFIX */
     int from_txt = 0;
     if (!f && (f = fopen("options.txt", "r")) != NULL) from_txt = 1; /* PT30: old name, read once, options.ini is written below */
     int ver = 0, migrated = 0, v1set[3] = { 0, 0, 0 }, v1val[3] = { 0, 0, 0 }; /* LOG5: version 1 keys log, loglevel, conlevel are read here and migrated after the loop */
