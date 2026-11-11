@@ -1,8 +1,9 @@
 /* MAPX-4: the map prefetch. A map change knows its target at CHANGE_MAP_INIT (set_game_mode(GAME_MODE_CHANGE_MAP), pm_map.c), about 15 steps
- * before the load. The Yay0 decode of <map>_shape and <map>_hit then runs on a core-1 thread (lowest priority, below the audio threads) into two
- * side buffers allocated from the heap when the job is posted (skipped when the allocation fails), from the asset bytes in the RAM ROM image. decode_yay0 (pm_map.c) takes a buffer whose source bytes and size match: it waits for
- * the job (it is done long before the load), copies the bytes and does the fix-ups and invalidation as before. The bytes are the decoder's
- * own output for the same source, so the result is the same; a job that failed or never ran leaves decode_yay0 to decode on the game thread.
+ * before the load. A core-1 thread (lowest priority, below the audio threads) fills two side buffers allocated from the heap when the job is
+ * posted (skipped when the allocation fails): slot 0 reads romfs:/shape/<map>_shape.nds (MAPROMFS: no Yay0 decode of a shape), slot 1 Yay0-decodes
+ * <map>_hit from the asset bytes in the RAM ROM image. decode_yay0 (pm_map.c) takes a buffer whose source bytes and size match (and, for the shape,
+ * the name): it waits for the job (it is done long before the load), copies the bytes and does the fix-ups and invalidation as before. The bytes are
+ * the same as the game-thread load or decode of the same source, so the result is the same; a job that failed or never ran leaves decode_yay0 to load or decode on the game thread.
  * A taken or failed buffer is freed by decode_yay0's take; a buffer never taken is freed at the next post.
  * The game thread touches a slot only after the job has ended (pf_wait), the worker only between post and its end signal.
  * BTLWIPE F4: the same thread pre-decodes the samples of the battle song (pm_prefetch_song, posted by bgm_push_battle_song at the start of the
@@ -18,6 +19,7 @@
 #include "pm_dspaud.h"
 
 int pm_yay0_raw(const unsigned char* src, unsigned src_len, unsigned char* dst, unsigned dst_len); /* pm_map.c */
+int pm_shape_load_nds(unsigned char* buf, unsigned size, const char* name); /* pm_map.c */
 void pm_log_prof_line(const char* fmt, ...);
 
 #define PF_N 2
@@ -39,7 +41,7 @@ static void pf_maps(void) { /* the posted map job, if any (pf_busy is set after 
     for (int i = 0; i < PF_N; i++) {
         PfSlot* s = &pf[i];
         if (s->st != 1) continue;
-        s->st = pm_yay0_raw(s->src, 0x100000u, pf_buf[i], s->dec) ? 2 : 3; /* the bound of decode_yay0 */
+        s->st = (i == 0 ? pm_shape_load_nds(pf_buf[i], s->dec, s->name) : pm_yay0_raw(s->src, 0x100000u, pf_buf[i], s->dec)) ? 2 : 3; /* MAPROMFS: slot 0 reads the .nds file */
     }
     __atomic_store_n(&pf_busy, 0, __ATOMIC_RELEASE);
     LightEvent_Signal(&pf_done);
@@ -62,7 +64,7 @@ static int pf_start(void) { /* 0 when the thread cannot run (the caller does the
     if (!pf_th) {
         LightEvent_Init(&pf_go, RESET_ONESHOT);
         LightEvent_Init(&pf_done, RESET_STICKY);
-        pf_th = pm_thread_create(pf_main, NULL, 8 * 1024, 0x3F, 1, "prefetch");
+        pf_th = pm_thread_create(pf_main, NULL, 16 * 1024, 0x3F, 1, "prefetch"); /* MAPROMFS: stdio and FS calls on this thread now */
         if (!pf_th) { pf_th = (Thread)1; pm_log_w("prefetch: no core-1 thread, the game thread decodes"); }
     }
     return pf_th != (Thread)1;
@@ -103,12 +105,14 @@ void pm_prefetch_post(const char* shape, const unsigned char* ssrc, unsigned scl
     __atomic_store_n(&pf_busy, 1, __ATOMIC_RELEASE);
     LightEvent_Signal(&pf_go);
 }
-/* Game thread, in decode_yay0: 1 when a slot decoded the same source (size and the compressed bytes equal: the shape load in world.c calls
- * load_asset_by_name inside its own file, so no asset name reaches decode_yay0 for it) and its dec bytes were copied to dst. */
-int pm_prefetch_take(const void* src, void* dst, unsigned dec) {
+/* Game thread, in decode_yay0: 1 when a slot loaded the same source (size and the compressed bytes equal: the shape load in world.c calls
+ * load_asset_by_name inside its own file, so no asset name reaches decode_yay0 for it) and its dec bytes were copied to dst. nds: the shape
+ * name for a shape load (slot 0 holds the .nds bytes of that name only), NULL otherwise (slot 1 only). */
+int pm_prefetch_take(const void* src, void* dst, unsigned dec, const char* nds) {
     if (!pf_th || pf_th == (Thread)1) return 0;
     for (int i = 0; i < PF_N; i++) {
         PfSlot* s = &pf[i];
+        if ((i == 0) != (nds != NULL) || (nds && strcmp(s->name, nds) != 0)) continue; /* MAPROMFS: slot 0 holds .nds bytes, only a shape takes it */
         if (s->st == 0 || s->dec != dec || memcmp(src, s->src, s->clen) != 0) continue;
         pf_wait();
         int ok = s->st == 2;

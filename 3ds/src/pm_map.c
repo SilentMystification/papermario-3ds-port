@@ -55,7 +55,7 @@ static void swap_u32s(void* p, int n) {
 /* HC4f2: the shape loader. romfs:/shape/<name>.nds is written by nd_shape_conv.c (HC4f1): "NDSH", version u32 = 2,
  * size u32, n_reloc u32, reloc[n_reloc] u32 (offsets into data), data[size]. Pointer fields hold shape offsets, so the
  * loader copies data into buf and adds buf to every reloc field. Returns 0 when the file is missing or does not fit buf. */
-static int shape_load_romfs(u8* buf, u32 size, const char* name) {
+static int shape_load_romfs(u8* buf, u32 size, const char* name, u32 base) {
     char path[64];
     u8 hdr[16];
     u32 dsize, n_reloc, k;
@@ -63,6 +63,7 @@ static int shape_load_romfs(u8* buf, u32 size, const char* name) {
     snprintf(path, sizeof path, "romfs:/shape/%s.nds", name);
     f = fopen(path, "rb");
     if (!f) return 0;
+    setvbuf(f, NULL, _IOFBF, 0x10000); /* MAPROMFS: a few FS reads, not one per 1 KB */
     if (fread(hdr, 1, 16, f) != 16 || memcmp(hdr, "NDSH", 4) != 0) goto bad;
     if (hdr[4] != 2 || hdr[5] || hdr[6] || hdr[7]) goto bad; /* HC4f3: version 2, typed list words */
     dsize = (u32)hdr[8] | ((u32)hdr[9] << 8) | ((u32)hdr[10] << 16) | ((u32)hdr[11] << 24);
@@ -81,7 +82,7 @@ static int shape_load_romfs(u8* buf, u32 size, const char* name) {
             u32 v;
             if (r > size - 4) goto bad;
             memcpy(&v, buf + r, 4);
-            v += (u32)(unsigned long)buf;
+            v += base;
             memcpy(buf + r, &v, 4);
         }
         k += c;
@@ -92,6 +93,7 @@ bad:
     fclose(f);
     return 0;
 }
+int pm_shape_load_nds(unsigned char* buf, unsigned size, const char* name) { return shape_load_romfs(buf, size, name, (u32)(unsigned long)pm_shape_buf); } /* MAPROMFS: the prefetch thread loads into a side buffer, relocated for pm_shape_buf */
 
 static int yay0_decode_raw(const u8* src, u32 src_len, u8* dst, u32 dst_len) {
     u32 dec_size, link, count, src_pos, dst_pos, bits, mask;
@@ -174,10 +176,13 @@ void decode_yay0(void* src, void* dst) {
     if (dec > 0x40000u || link < 16u || count < 16u) return;
     { void pm_walk_drain(const char* why); pm_walk_drain("decode"); } /* CORE2-3b: the decode writes RAM that the last walk may have read */
     unsigned xt0 = pm_xf.on ? pm_ticks() : 0u;
-    { /* MAPX-4: the core-1 prefetch decoded this asset (same name and size) at the start of the map change: its bytes, else the decode here */
-        extern int pm_prefetch_take(const void* src, void* dst, unsigned dec);
-        int pre = pm_prefetch_take(s, dst, dec);
+    const int shp = dst == (void*)pm_shape_buf;
+    if (shp) { extern char wMapShapeName[]; memcpy(pm_shape_name, src == last_asset_src ? last_asset_name : wMapShapeName, sizeof pm_shape_name); } /* SEAMFIX: the seamfix log line names the shape (world.c calls its own load_asset_by_name, not the wrap) */
+    { /* MAPX-4: the core-1 prefetch loaded this asset (same name and size) at the start of the map change: its bytes, else the load here */
+        extern int pm_prefetch_take(const void* src, void* dst, unsigned dec, const char* nds);
+        const int pre = pm_prefetch_take(s, dst, dec, shp ? pm_shape_name : NULL);
         if (pre) pm_xf.yay_pre++;
+        else if (shp) { if (!shape_load_romfs(dst, dec, pm_shape_name, (u32)(unsigned long)dst)) pm_log_evt("shape load fail %s", pm_shape_name); } /* MAPROMFS: no Yay0 decode of a shape */
         else if (!yay0_decode(s, bound, dst, dec)) return;
     }
     if (pm_xf.on) { pm_xf.yay_n++; pm_xf.yay_b += dec; pm_xf.yay_t += pm_ticks() - xt0; } /* MAPX-1 */
@@ -185,9 +190,7 @@ void decode_yay0(void* src, void* dst) {
      * fixed address for every map). The cache keys on address and size, so drop what the decode replaced. */
     pm_tex_invalidate(dst, dec);
     /* ROM data is big-endian. The real loaders read these two kinds of file in place, so convert them here, once. */
-    if (dst == (void*)pm_shape_buf) {
-        { extern char wMapShapeName[]; memcpy(pm_shape_name, src == last_asset_src ? last_asset_name : wMapShapeName, sizeof pm_shape_name); } /* SEAMFIX: the seamfix log line names the shape (world.c calls its own load_asset_by_name, not the wrap) */
-        if (!shape_load_romfs(dst, dec, pm_shape_name)) pm_log_evt("shape load fail %s", pm_shape_name);
+    if (shp) {
         { extern unsigned pm_dlc_gen; pm_dlc_gen++; } /* DLC1: the shape file is final now */
     } else if (src == last_asset_src) {
         u32 n = strlen(last_asset_name);
