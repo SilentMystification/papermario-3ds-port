@@ -148,6 +148,14 @@ static void crash_handler(ERRF_ExceptionInfo* excep, CpuRegisters* regs) {
     const StackRec* st = NULL;
     for (int i = 0; i < (int)(sizeof recs / sizeof recs[0]); i++) /* BTLDBG: every registered stack (game, audio, render, logic) */
         if (recs[i].hi && regs->sp >= recs[i].lo && regs->sp <= recs[i].hi + 512) st = &recs[i];
+    StackRec tst_;
+    if (!st) { /* STACKANY */
+        u32 lo_, hi_;
+        if (pm_thread_stack_current(&lo_, &hi_) && regs->sp >= lo_ && regs->sp < hi_) {
+            tst_.lo = lo_; tst_.hi = hi_; tst_.name = "thread";
+            st = &tst_;
+        }
+    }
     const char* tname = pm_thread_name_current();
     if (!tname) tname = st ? st->name : "other";
     n = snprintf(buf, sizeof(buf),
