@@ -441,6 +441,11 @@ unsigned pm_gbi_gvkey(uint32_t* o, unsigned max); /* S3N-6 (the former pm_gbi.c)
 void pm_gpu_model_key(const uint32_t* rec, NdMKey* k); /* S3N-6 (pm_gpu.c) */
 void pm_gpu_model_keyb(const uint32_t* rec, NdMKey* k); /* HC6 step 2: kc only (key A from the payload, key B from the walker) */
 uint32_t nd_mkey_a(const uint32_t* rec); /* HC6 step 2: key A of a record (core 1, nd_rec_model) */
+/* HC6 step 3: the scalar walker state a miss leaves, as a change of the state before the record (nd_recs.c hit_delta): othermode H and L by mask and
+ * value, geometry by AND and OR, the other fields when the record writes them (fl bits HD_*). Kept per cache entry (nd_mc_hd), made at its first hit. */
+enum { HD_PRIM = 1, HD_ENV = 2, HD_FOG = 4, HD_BLEND = 8, HD_TEX = 16, HD_COMB = 32, HD_FOGF = 64, HD_OK = 128 };
+typedef struct NdHitD { uint32_t omh_m, omh_v, oml_m, oml_v, kh, kl, g_and, g_or, prim, plod, env, fog, blend, tss, cw0, cw1; int16_t fm, fo; uint8_t fl, tex; } NdHitD;
+NdHitD* nd_mc_hd(const NdMEnt* e); /* HC6 step 3: the state change of entry e (fl 0: not made yet) */
 /* S3N-3d: the combine choice of one draw (the former pm_gbi.c nd_comb_decide). In: the combine words, the walker flags and the 16 combiner fields of tst1 (comb_a..d, comb_aa..ad,
  * comb2_a..d, comb2_aa..ad). Out: leg (legacy mode, or 8 with plan), use and plan (general plan), cc (constant colour of mode 4), and the walker state (mode5, pat, why, cyc, dual). */
 typedef struct NdCombIn {

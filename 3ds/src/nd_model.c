@@ -460,6 +460,8 @@ int nat_nr; uint32_t nat_geom;
 static NdMEnt mc_tab[NDMC_N];
 static uint32_t mc_keyw[NDMC_N][NDMC_RW + NDMC_SW]; /* PERF2: the key words of mc_tab[i] (HC6 step 2: the diagnostics and the store's model test) */
 static uint32_t mc_kc[NDMC_N][NDMC_KC]; /* HC6 step 2: the compared words of mc_tab[i] (key A and key B, NdMKey kc) */
+static NdHitD mc_hd[NDMC_N]; /* HC6 step 3: the walker state change of a hit of mc_tab[i] (fl 0: made at the next hit) */
+NdHitD* nd_mc_hd(const NdMEnt* e) { return &mc_hd[e - mc_tab]; }
 static NdNatC mc_pool[NDMC_POOL];
 static NdPm5 mc_p5[NDMC_POOL]; /* PERF2: the pm5 block of a pooled draw (use5) */
 const uint32_t* nd_mc_keyw(const NdMEnt* e) { return mc_keyw[e - mc_tab]; }
@@ -554,7 +556,7 @@ static void mc_remove(NdMEnt* e) {
         if (!mc_tab[j].used) return;
         const unsigned h = mc_tab[j].h & (NDMC_N - 1u);
         if (i <= j ? (h > i && h <= j) : (h > i || h <= j)) continue; /* the entry at j stays when its home h lies cyclically in (i, j] */
-        mc_tab[i] = mc_tab[j]; memcpy(mc_keyw[i], mc_keyw[j], sizeof mc_keyw[i]); memcpy(mc_kc[i], mc_kc[j], sizeof mc_kc[i]); mc_tab[j].used = 0;
+        mc_tab[i] = mc_tab[j]; memcpy(mc_keyw[i], mc_keyw[j], sizeof mc_keyw[i]); memcpy(mc_kc[i], mc_kc[j], sizeof mc_kc[i]); mc_hd[i] = mc_hd[j]; mc_tab[j].used = 0;
         i = j;
     }
 }
@@ -595,7 +597,7 @@ static NdMEnt* mc_slot(const NdMKey* k) {
     uint32_t h = k->h & (NDMC_N - 1u);
     for (;;) {
         NdMEnt* e = &mc_tab[h];
-        if (!e->used) { e->used = 1; e->h = k->h; e->rp = k->rp; e->uf = mc_f; e->n = 0; memcpy(mc_keyw[h], k->w, sizeof k->w); memcpy(mc_kc[h], k->kc, sizeof k->kc); mc_n++; mc_ins++; if (mc_n > mc_ent_hi) mc_ent_hi = mc_n; mc_new = 1; return e; }
+        if (!e->used) { e->used = 1; e->h = k->h; e->rp = k->rp; e->uf = mc_f; e->n = 0; memcpy(mc_keyw[h], k->w, sizeof k->w); memcpy(mc_kc[h], k->kc, sizeof k->kc); mc_hd[h].fl = 0; mc_n++; mc_ins++; if (mc_n > mc_ent_hi) mc_ent_hi = mc_n; mc_new = 1; return e; }
         if (e->h == k->h && mc_eq(mc_kc[h], k)) { e->uf = mc_f; mc_new = 0; return e; }
         h = (h + 1u) & (NDMC_N - 1u);
     }
