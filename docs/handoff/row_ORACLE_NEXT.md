@@ -131,6 +131,18 @@ Next console run (user, O3DS XL, prof profile): `warp=mac_01:0 pos=0:0:200 fxtes
   reads it once; the runtime reads native files. That frees most of the 25.7 MB on every model, more than a CIA on an O3DS gives. The
   pre-converted textures are loaded by one read and one upload (no decode, no Morton pass, no palette hash at bind).
 
+- XL run after TILEWIN2/PBATCH1/SPLASHPREV2/EDGEAA/SEAMHOST (fxcen_xl.txt, pmu_xl.txt): effects worst case 17 ms -> 2 ms. Above 1.0 ms:
+  spiky_white_aura 2.0 (8 draws, one prim for all parts, spiky_white_aura.c:186-202: fill of large translucent quads: FILLA0),
+  water_block 1.4 (fill + its 30-vertex mesh per frame), embers 1.2 (a SetTileSize per particle, embers.c:217-218, breaks the ring batch:
+  PBATCH3 design = the atlas cell offset in the copied vertex st, like PBATCH2's colour), energy_shockwave 1.1 (tile scroll + fill:
+  FILLA0), flame 1.0 (off-screen pass, inherent). Re-run after FILLA0 and PBATCH2 decides spiky_white_aura, water_block, energy_shockwave.
+  Negative tri or draw values are noise of the single base window per log (scene activity varies by slot), not a tool fault.
+- Phase sum of I-misses (68.6K) above the clean-frame mean (47.3K): not a fault. pmxph counts sampled frames only (1 in 30), which run
+  the phase timers and two PMU svc reads per push and pop: their own code adds I-misses (the prof line's oh field shows the sampled
+  frame cost). The shares hold; the absolute numbers are of a sampled frame.
+- HC next: row HCM3 (census only) gives M1-hot and M3 per class with call counts on main; the oracle then writes the cuts for the gbi
+  phase (classes A, D, E, F, G first by size: plan_hotcode.md section 0 table) from those numbers.
+
 ## Morning list (rows to write next, by the oracle)
 1. Class cuts after HC6B: read M1-hot per class (bench hotset_size on main after the HC6B merge) and the M3 census (hotset.py --fncov on
    fncov_mac01_det/kmr10_det logs of the HC6B lane); cut rare arms of the top functions per class as HCCUT2 did (byte-equal, cold
