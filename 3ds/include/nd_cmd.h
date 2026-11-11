@@ -18,6 +18,7 @@ enum {
     NDC_TEXRECT = 8, /* D4b-1: gSPTextureRectangle; payload unit 0: w0, w1; unit 1: the RDPHALF_1 and RDPHALF_2 words (s t, dsdx dtdy) */
     NDC_STATE = 9,   /* D4b-3: a run of state ops (othermode, combine, colours, geometry mode, texture, scissor, fill rectangle, tile and image ops); payload: one unit
                       * per op (its w0, w1). The replay runs each op with the walker's per-op rules (g2_same and g2_note, gv_epoch, the op handler). */
+    NDC_NAPI = 10,   /* NATIVEAPI: one native draw (nd_api.h); word 1: the core 0 runner (NdNapiRun); payload: its record */
     NDC_N
 };
 #define NDC_HDR(op, units, arg) (((uint32_t)(op) << 24) | ((uint32_t)(units) << 16) | ((uint32_t)(arg) & 0xffffu))

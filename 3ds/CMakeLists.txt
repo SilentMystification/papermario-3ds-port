@@ -382,6 +382,7 @@ set(PORT_SRC
     src/nd_rect.c
     src/nd_walk.c
     src/nd_rec.c
+    src/nd_api.c
     src/nd_c2haz.c
     src/nd_wq.c
     src/pm_logic.c
