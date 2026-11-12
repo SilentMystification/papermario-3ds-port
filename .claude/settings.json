@@ -32,7 +32,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cat \"$CLAUDE_PROJECT_DIR/docs/handoff/ORCH_RULES.txt\""
+            "command": "sed -n '/<!-- CORE -->/,/<!-- \\/CORE -->/p' \"$CLAUDE_PROJECT_DIR/docs/handoff/orchestrator_rules.md\" | grep -v '^<!--'"
           }
         ]
       }

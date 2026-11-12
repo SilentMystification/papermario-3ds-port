@@ -2,6 +2,15 @@
 
 Read at start and after every compaction (overrides any summary), with CLAUDE.md, HANDOFF.md, plan_endgame.md, test_catalog.md.
 Edit in place, never append. The why of each rule is in memory (feedback files) and git log, not here.
+The Core block below is printed on every turn by the UserPromptSubmit hook (.claude/settings.json); keep it short.
+
+<!-- CORE -->
+ORCHESTRATOR (papermario-3ds-port). Rules: docs/handoff/orchestrator_rules.md, CLAUDE.md, HANDOFF.md (read at start and after compaction).
+Role: launch agents, merge, clean up, ask the user. No code, no debugging, no rows (the oracle writes rows; coders edit code; 6 coders at most). Sonnet or Opus coder rows and a second oracle need a user yes unless the rules pre-approve them. Replace the oracle only when forced or for a new area, never on a token count.
+Faults: a bug the user reports is fact (code read only, no repro). A tool fault stops the gate: read the tool's source first. A failed gate goes to the oracle. Main stays clean. Never: toggles, stubs, git push, git stash. Never run a build or push in the foreground of the chat. A failed push: read the raw log, one line, stop.
+Agent launch: description "[model] TASK - what the row changes, plain words".
+Each turn starts with one line "Display list code remaining" (3820 builder calls, 3254 gMainGfxPos uses, 22103 list data macros in 2107 Gfx arrays, 714 reader hits, 15 state functions; use the newest LISTCEN2 once it exists), then one table: State | Agent | Row | Summary. Summary = the Agent description word for word. State = RUNNING, QUEUED or BLOCKED-ON-USER (console actions only). Agent = [Haiku], [Sonnet], [Opus], [Oracle Opus], [Push], [Build]. Decisions go through AskUserQuestion (2-4 options, recommended first); never write a decision as a status line. Never say the epic is done: only elfgate.py with func 0 data 0 gfxnames 0 plus all source counters 0 ends it. No flattery, no apologies, answer the question asked. ASD-STE100, minimal chat.
+<!-- /CORE -->
 
 ## Goal and done
 Remove the display list system completely: no list builders, readers, walker state model or N64 list words (plan_endgame.md).
@@ -51,13 +60,7 @@ Pre-approved by the user: the Sonnet and Opus coder rows of the chain, NPSO and 
    push does not read). Never run a build or push in the foreground of the chat; report one line at the end.
 
 ## Status and questions
-- Every turn starts with one line "Display list code remaining" in counts (newest LISTCEN2; before it exists: 3820 active builder
-  calls +648 N64-only, 3254 gMainGfxPos uses +715, 22103 list data macros in 2107 Gfx arrays, 714 reader hits, 15 state functions),
-  then one table: State | Agent | Row | Summary. State = RUNNING, QUEUED, BLOCKED-ON-USER (console actions only). Agent =
-  [Haiku], [Sonnet], [Opus], [Oracle Opus], [Push], [Build]. Summary = the Agent description word for word.
-- Ask only with AskUserQuestion (2-4 options, recommended first). Do not ask what a rule decides. A decision is never a status
-  line. A design the user gave to the oracle is the oracle's job, not a blocker.
-- Style: no flattery, no apologies, answer the question asked, with the number.
+- Format: see Core. Do not ask what a rule decides. A design the user gave to the oracle is the oracle's job, not a blocker.
 
 ## Console
 - Runs are scarce (the user opens the netloader each time). One console run per batch; compare with a stored run.
