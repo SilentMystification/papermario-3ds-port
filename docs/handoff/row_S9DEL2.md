@@ -15,6 +15,10 @@ S9DEL1 merged. `sh 3ds/tools/wt_new.sh S9DEL2`; PM_ROW=S9DEL2 PM_LANE=S9DEL2.
 - nd_set.c: sync_render and the op table.
 - nd_tex_set.c: set_tilesize, tex_win0/1, ensure_tile, ensure_tile_slow, tile_bound. nd_tex_bind_desc stays if the native bind
   uses it: it holds no N64 state. Check.
+- Texture binds that replace the tile model (ORACLE7): S7TEX2's NDG_TEX ops carry a build-time NdBindDesc proven equal to the
+  walker's td[0] by `gtexchk`; here gt_tex binds it (nd_tex_bind_desc at the first draw of the group, keeping the fb_prev_base
+  and glyph arms where a group can reach them) instead of running its units. The model record's R13 texture setup (rec_aux,
+  make_texture_gfx output) takes the same form (moved here from S7MDL step B).
 - nd_rect.c (nd_texrect, nd_fillrect).
 - nd_geom.c: the gv walker part (gv_tri state checks, nd_gv_params per range). Native mesh draws stay.
 - nd_mtx_set.c: the list matrix stack, if no native caller is left. Native records carry float matrices.

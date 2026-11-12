@@ -7,10 +7,10 @@ All rows are written as their own files. Blocker for all: S7CONV merged (done, 0
 | row_S7TEX1.md | Haiku | none | tex_win0 and nd_tex_win_desc into nd_texwin.c (host-linkable) |
 | row_S7RUN.md | Sonnet | none | nd_gtab_run (core 0), nd_rec_dl (core 1), the 11 GCONV_SRC placeholder lines |
 | row_S7EFX1.md .. row_S7EFX8.md | Haiku | S7RUN | effect groups (alphabetical, disjoint): GCONV_SRC line + nd_rec_dl call sites |
-| row_S7TEX2.md | Sonnet | S7TEX1, S7RUN | NDG_TEX: texture load groups as build-time NdBindDesc binds |
+| row_S7TEX2.md | Sonnet | S7TEX1, S7RUN, S7ENT | NDG_TEX: texture load groups as build-time NdBindDesc binds |
 | row_S7ENT.md | Sonnet | S7RUN | src/entity/model sources in GCONV_SRC (device link addresses), ent_compile takes the table's defs |
 | row_S7MAP.md | Sonnet | S7RUN | nd_dlc_compile on the host into .nds v3; dlc_build loads it |
-| row_S7MDL.md | Opus | S7RUN, S6KEY, S6VORD, S7TEX2 | rec_rm through the RM defs, R13 texture setup as binds, keymiss proof |
+| row_S7MDL.md | Sonnet | S7RUN, S6KEY, S6VORD (merged) | rec_rm through the RM defs, keymiss proof (R13 binds moved to S9DEL2) |
 
 | row_S7FLAME.md | Haiku | none | flame.c lists: host stub of D_800B32E0/D_800B3AE0 for the tool link; build.sh stamp adds entity sources |
 | row_S7ENT1.md | Haiku | S7ENT | nd_rec_dl at 14 src/entity call sites in 12 files |
