@@ -3178,6 +3178,9 @@ int pm_gpu_gvtx_load(const void* vtx, unsigned n) {
     nb.gring_n += n;
     return (int)b;
 }
+/* PBATCH2: the routed plan colour (0xRRGGBBAA) goes into the colour bytes 12-15 of a ring vertex */
+void pm_gpu_gvtx_colour(unsigned v, uint32_t rgba) { if (v >= GRING_VTX) return; u8* c = nb.gring + v * 16u + 12u; c[0] = (u8)(rgba >> 24); c[1] = (u8)(rgba >> 16); c[2] = (u8)(rgba >> 8); c[3] = (u8)rgba; }
+static int plan_vtx_only(const PmPlan* a, const PmPlan* b) { PmPlan x = *a, y = *b; x.vtx = y.vtx = 0; return memcmp(&x, &y, sizeof x) == 0; }
 
 /* R2B: 1 when pm_gpu_set_mode with these bits would return at once */
 int pm_gpu_mode_is(int zbuffer, int lighting) { return zbuffer == gs.z_on && lighting == light_on; }
@@ -3865,8 +3868,10 @@ static void plan_layout_field_diffs(const PmPlan* a, const PmPlan* b) {
 
 void pm_gpu_render_src(unsigned omode_h, unsigned omode_l, int depth_img) { rs_src[0] = omode_h; rs_src[1] = omode_l; rs_src[2] = (unsigned)depth_img; }
 void pm_gpu_plan_key(unsigned w0, unsigned w1, int two, int t1only) { plan_kp[0] = w0; plan_kp[1] = w1; plan_kp[2] = (unsigned)two; plan_kp[3] = (unsigned)t1only; }
+unsigned gv_vc_vbase; /* PBATCH2: ring vertices below this were loaded before the last routed colour change */
 void pm_gpu_set_plan(const PmPlan* p) {
     if (gs.combine == 8 && memcmp(&gs.plan, p, sizeof gs.plan) == 0) return;
+    extern int gv_vc_vtx; if (gs.combine == 8 && gv_vc_vtx && plan_vtx_only(&gs.plan, p)) { gs.plan.vtx = p->vtx; gv_vc_vbase = nb.gring_n; return; } /* PBATCH2: only the vertex-slot colour changed: it rides in the ring vertices */
     CS_ADD(CS_PLAN, 1);
     if (gs.combine == 8 && plan_same_layout(&gs.plan, p)) {
         CS_ADD(CS_CON, 1);
@@ -3905,7 +3910,7 @@ void pm_gpu_set_rgb_scale(int scale) {
 static unsigned prim_lod_g = 0xffffffffu;
 void pm_gpu_set_prim(unsigned rgba, unsigned lod) {
     int reads = gs.combine == 1 || gs.combine == 5 || gs.combine == 6 || gs.combine == 7 || gs.combine == 8;
-    if (reads && (rgba != prim || lod != prim_lod_g)) flush();
+    extern int gv_vc_vtx; if (reads && (rgba != prim || lod != prim_lod_g) && !(gs.combine == 8 && gv_vc_vtx)) flush(); /* PBATCH2: a routed prim rides in the vertices; the plan compare (pm_gpu_set_plan) flushes when a stage constant changes */
     prim = rgba;
     prim_lod_g = lod;
 }
