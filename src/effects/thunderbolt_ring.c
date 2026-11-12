@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 extern Gfx D_09000000_3B46A0[];
 extern Gfx D_090000C8_3B4768[];
@@ -117,7 +118,11 @@ void thunderbolt_ring_appendGfx(void* effect) {
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+    nd_rec_dl(D_09000000_3B46A0);
+#else
     gSPDisplayList(gMainGfxPos++, D_09000000_3B46A0);
+#endif
 
 #ifdef TARGET_3DS
     nd_sub_open(&sub); /* DIRECT D6c: the list for later is a stream range */
@@ -135,7 +140,11 @@ void thunderbolt_ring_appendGfx(void* effect) {
         guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+        nd_rec_dl(D_090000C8_3B4768);
+#else
         gSPDisplayList(gMainGfxPos++, D_090000C8_3B4768);
+#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     }
 

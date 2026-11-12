@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 void whirlwind_init(EffectInstance* effect);
 void whirlwind_update(EffectInstance* effect);
@@ -181,7 +182,11 @@ void whirlwind_appendGfx(void* effect) {
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+    nd_rec_dl(D_09000400_3D3D30);
+#else
     gSPDisplayList(gMainGfxPos++, D_09000400_3D3D30);
+#endif
 
     // Reserve 0x208 bytes (65 commands) for a vertex buffer (2x16 Vtx + space for the current command)
 #ifdef TARGET_3DS
