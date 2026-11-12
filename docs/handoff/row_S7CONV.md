@@ -74,4 +74,82 @@ row until the completing commit, which copies it into plan_nativeapi.md section 
 row file. Hand back the table API (names and signatures) so the oracle writes the S7EFX, S7ENT, S7MAP and S7MDL rows.
 
 ## Design note (written by the S7CONV agent before code)
-<the answers: input build, symbol map, NdGTab struct, lookup, inherited mask rule, the dynamic producers list, the host test>
+Code read of main e3ada758a.
+
+1. Input build. One shell step, 3ds/tools/gen_gfx_tab.sh <out.c>, run inside docker pm3ds-host:1 by build.sh (gen_gfx_tab, after
+   gen_shapes, skipped by a stamp of its inputs) and by nd_host_test.sh. It reads the gfx sources of the converted set (this row:
+   src/effects/gfx/<g>.c for effect_gfx_<g> of the 7 effects: sparkles, effect_3D, snowfall, snaking_static, water_block, embers;
+   the set is the list GCONV_SRC at the top of the script, which each S7 row extends), compiles each with gcc -m32 and the device
+   defines (TARGET_3DS VERSION_US F3DEX_GBI_2 _LANGUAGE_C _MIPS_SZLONG=32, include paths of 3ds/CMakeLists.txt), so every gs macro
+   gives the same typed unit as on the device (nd_gbi.h ND_GS). Host-only override: 3ds/tools/gconv_inc/include_asset.h (first on
+   the include path) makes INCLUDE_IMG/PAL/RAW with `.balign 8` (x86 gas reads `.align 3` as bytes) and a `<NAME>_gend` label after
+   the incbin (the image size). Output: 3ds/src/nd_gfx_tab.c (git-ignored, never committed, as map_restore_table.c: CMake reads only
+   the synced code dirs, so the file sits in 3ds/src, not build3ds/gen), in the build key.
+2. Symbol map. 3ds/tools/gen_gfx_syms.py (python3, in the same docker step) reads each input .c and its `#include "*.inc.c"` files
+   (under assets/us) and lists `Gfx NAME[] =`, `Vtx NAME[..] =` and INCLUDE_IMG/PAL/RAW NAME. It writes a header for the tool: the
+   extern declarations and `static const GSym gsym[] = { {"NAME", kind, addr, size}, ... }` (size = sizeof, or NAME_gend - NAME for
+   an image). The tool (3ds/tools/nd_gfx_conv.c) is linked with the host objects of the inputs, so a pointer word p of a list is
+   reverse-mapped to the symbol s with s.addr <= p < s.addr + s.size and written as symbol + offset: the same link address on the
+   device. A pointer in no symbol (a segment address, data outside the set) is not mapped: its unit stays a run-time unit (the
+   device reads the word, ptr_of resolves it).
+3. Table form (3ds/include/nd_gtab.h). One NdGTab per Gfx symbol of the set, the list in unit order as 8-byte ops:
+   `typedef struct NdGOp { uint8_t k, a, b, c; const void* p; } NdGOp;`
+   | k | a, b, c | p | from |
+   | NDG_VTX | a = n (1 to 64), b = v0 (first slot) | const Vtx* (symbol + offset) | NDO_VTX with a mapped source |
+   | NDG_TRI | the three slots (index / 2) | NULL | NDO_TRI1; NDO_TRI2 gives two ops |
+   | NDG_DEF | a = units | const NdGDef* | a state run accepted by nd_scomp_analyse (below) |
+   | NDG_UNIT | a = 1 | const uint32_t* (the unit in the list) | every other unit: run-time values (MTX, POPMTX, MOVEMEM, MW SEG,
+     SCISSOR, FILL, FOG, BLEND, PRIMZ, CIMG), RARE, RECT and its halves, MODVTX, a VTX or CALL with an unmapped pointer |
+   | NDG_CALL | a = 1 for the branch form | const NdGTab* (the callee) | NDO_CALL to a list of the set |
+   | NDG_END | - | NULL | NDO_END (the last op; units after it are not converted) |
+   Sync and no-op units (ND_NOP_A) give no op (every reader skips them).
+   `typedef struct NdGDef { NdSDef d; uint32_t inherit; uint16_t ctx; uint16_t k0; } NdGDef;` d is the S6T def made on the host by
+   nd_scomp_analyse itself (d.u = the list + 2 * k0 words, d.n, st = 1, id = the def index & 0xff, nv, pre, vmask, the folded
+   writes), so core 1 never analyses a converted def; nd_scomp_exec_own(&g->d) runs it (st 1: no write to the table). Def split: the
+   units between two draw or control units form a state run; the tool takes from its start the longest prefix (at most 32 units)
+   that nd_scomp_analyse accepts as one NDG_DEF, else the first unit as one NDG_UNIT, and repeats. Texture units (TIMG, TILE,
+   TILESIZE, LOAD*) are ordered value units of the def (SCOMP0 class 4), run by the def from the list words. The NdBindDesc form of
+   a load is not in this row's tables: tex_win0 lives in nd_tex_set.c next to nd_ws, and a host build needs that pure part split out
+   first; the S7EFX row that moves the first setup list does it, with nd_tex_win_desc as the function (a new op NDG_TEX, p = const
+   NdBindDesc*, made by the tool for a load whose inputs are all mapped).
+   `typedef struct NdGTab { const uint32_t* list; const NdGOp* op; uint16_t nop, flags, nvtx, ntri; } NdGTab;` nvtx = the vertices
+   of all loads, ntri = triangles. flags NDG_F_PARTS: a flat particle list (the parts_ok rule: op 0 a VTX at slot 0, then only VTX
+   and TRI to END, each later load starts at a slot <= the slots loaded so far, every triangle index below them).
+   Names: `ndg_<SYM>` (the table), `ndgo_<SYM>` (ops), `ndgd_<SYM>_<k0>` (defs), all const. Declare with NDG_DECL(SYM), take with
+   NDG(SYM) (macros of nd_gtab.h).
+4. Lookup. `const NdGTab* nd_gtab_find(const void* list)` (3ds/src/nd_gtab.c): binary search of nd_gtab_idx[] ({list, tab},
+   generated, nd_gtab_n entries), sorted by address once at the first call (link addresses are unknown when the file is made).
+   Caller: core 1 only (the record carries the table pointer to core 0; core 0 never looks up). nd_parts_add keeps a memo of the
+   last 8 {list, tab} (the per-call-site memo). A list with no table, or a table without NDG_F_PARTS, takes the stream form (as a
+   parts_ok failure did).
+5. First use. nd_parts_add puts the table pointer in the instance's call unit (w1); nd_parts_run and nd_parts_run_v (nd_walk.c,
+   one line each) pass it to `int nd_part_draw(const NdGTab* t)` and, when it returns 0 (lit, no ring room), run t->list as before.
+   nd_part_draw reads only ops: the room check is t->nvtx, the loads and triangles come from the op array (sequential 8-byte reads,
+   no list word read). parts_ok is deleted.
+6. Inherited mask (the S9DEL2 condition). Per def the tool prints `gconv def <SYM>+<k0> n <units> inherit 0x<mask> ctx 0x<ctx>`.
+   mask = the NdCombIn input groups of nd_scomp_key that a static list can set and this def does not set before its decision (the
+   static block plus the pre value units; units after the block run on the op path and decide again there):
+   NDG_IN_COMB 0x01 (w0, w1, tst[16], use_t1, box_prod, box_folded, comb_set, comb_alpha_shade: set by a COMB unit), NDG_IN_CYC
+   0x02 (the two omode_h cycle bits: set when omh_m holds both), NDG_IN_TEXON 0x04 (G_TEXTURE), NDG_IN_PRIM 0x08 (prim and prim_lod
+   low 8: a pre PRIM unit), NDG_IN_ENV 0x10 (a pre ENV unit), NDG_IN_KEY 0x20 (key_c, key_s, conv_k4: RARE units are refused by
+   nd_scomp_analyse, so a def always inherits them; a call site closes them by the static values of its record). ctx = inputs no
+   list sets, keyed by the record kind, never closed by list state: NDG_CTX_T1V 0x1 (td[1].valid, the texture model), NDG_CTX_DUAL
+   0x2 (dual_on), NDG_CTX_VPRIM 0x4 (pm_comb_vprim, 1 only in particle records); ctx is printed as 0x7 for every def.
+   Rule: a def with mask 0 may take its decision at build time keyed only by ctx (one decision per ctx value its call sites can
+   have); mask != 0 keeps the S6T run-time key. S9DEL2 gate: every def mask 0 (KEY closed by its call site), ctx keyed per runner.
+   The table stores inherit and ctx in NdGDef, so a row can test them at run time (debug) without the tool output.
+7. Dynamic producers (no table; data written at run time): imgfx.c (meshes, vertex colours, palettes), hud_element.c (per-element
+   quads), sprite.c quadBuffers and palettes, model.c vertex copies of animated models (its Gfx_RM* render-mode lists are static:
+   S7MDL), actor palette swaps and tattle lerps (palettes edited in place), effects that write vertex or list data per frame into
+   gMainGfxPos or effect heap: chomp_drop, confetti, effect_65, firework, green_impact, hieroglyphs, lightning_bolt, red_impact,
+   shape_spell, shimmer_burst and shimmer_wave (their built strips, not the particle lists), shockwave, squirt, stop_watch,
+   thunderbolt_ring, water_block (its built mesh), waterfall, whirlwind. Map and entity data loaded at run time (pointers by segment
+   address) is outside the set until S7MAP/S7ENT add a host load of it (an unmapped pointer stays a run-time unit).
+8. Host compare (3ds/tools/nd_gtab_test.c, in nd_host). Linked with the host objects of the set, the generated table and
+   nd_scomp.c (ND_SCOMP_HOST). For every table: (a) the old reader, the parts_ok rule and the nd_part_draw list walk (copied from the
+   code this row deletes), on the list words gives the parts verdict, the loads {src, n, v0} and the triangle triples; the table
+   gives the same from its ops; they must be equal (verdict, every load, every triple, nvtx, ntri). (b) Round trip: the ops cover
+   every unit of the list once in order (UNIT p is the unit address, DEF k0 and n the unit range, VTX/TRI/CALL match their word,
+   CALL p->list is the call word). (c) Defs: a copy of the def with st 0 run through nd_scomp_analyse gives the table's fields (st,
+   nv, pre, vmask, has_*, last_op, masks, words), and the mask rule of 6 on it gives the stored inherit. Prints `gtab lists <n>
+   parts <p> defs <d> ops <o> bad <b>`; any difference prints the list and op and fails nd_host.
