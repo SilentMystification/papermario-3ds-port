@@ -2858,6 +2858,22 @@
       ]
     },
     {
+      "name": "ent_kmr03_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "S6E2: entity setupGfx state ranges on kmr_03, cold start with det. Two cold runs of one build give byte-equal shots 200 to 205 (bench compare gate).",
+      "scenario": "ent_kmr03_det",
+      "cap": 25,
+      "until": "shot \\d+ frame 205\\b",
+      "tags": [
+        "azahar",
+        "entity",
+        "pic"
+      ],
+      "gates": []
+    },
+    {
       "name": "ent_item_pic",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -7032,6 +7048,21 @@
       "scenario": "msgbox_talk_det",
       "cap": 30,
       "until": "shot \\d+ frame 330\\b",
+      "tags": [
+        "azahar",
+        "pic"
+      ],
+      "gates": []
+    },
+    {
+      "name": "msgbox_choice_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "S5TIMG byte gate: yard 4:3 (nowide) choice message box with det, shot 300. Compared with the base shot.",
+      "scenario": "msgbox_choice_det",
+      "cap": 30,
+      "until": "shot \\d+ frame 300\\b",
       "tags": [
         "azahar",
         "pic"

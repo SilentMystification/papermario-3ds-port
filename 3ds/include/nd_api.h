@@ -60,13 +60,19 @@ void nd_tex_bind_glyph(uint32_t raster, uint32_t pal, int tlut, int w, int h); /
 uint32_t nd_direct_prim(void);                 /* core 0: the walker's primitive colour */
 uint32_t nd_direct_env(void);                  /* core 0: the walker's environment colour */
 
+/* NATIVEAPI E5b (S5PQUAD): one fill rectangle with its primitive colour (S1FILL's record, plus the kind). x0..x1, y0..y1: the lower right is
+ * exclusive. rgba: 0xRRGGBBAA. kind: 0 overlay translucent, 1 overlay opaque (CVG_DST_SAVE), 2 quad opaque (PM_CC_PRIM_FULL_ALPHA), 3 quad
+ * translucent. nd_fill_run (nd_direct.c, core 0) states the combine and render mode of the kind and fills. */
+typedef struct { int32_t x0, y0, x1, y1; uint32_t rgba, kind; } NdFillRec;
+void nd_fill_run(const uint32_t* u); /* nd_direct.c, core 0: the NDC_NAPI runner of an NdFillRec */
+
 /* S5TRECT: one texture window load plus one texture rectangle (the rect words as gbi.h writes them). 13 units (104 bytes on 32-bit: 2 pointers,
  * 23 words, fill and pad). nd_trect_run (nd_direct.c, core 0) is the NDC_NAPI runner. */
 typedef struct NdTRect {
     const void* img; const void* pal; uint32_t pal_n, fmt, siz, width, height;
     int32_t uls, ult, lrs, lrt; uint32_t cms, cmt, masks, maskt;
     uint32_t w0, w1, hs, hd;
-    uint32_t cw0, cw1, oml, omh, prim, fill, pad;
+    uint32_t cw0, cw1, oml, omh, prim, fill, pad; /* pad bit 0: keep the walker's prim (nd_direct_prim) instead of prim */
 } NdTRect;
 _Static_assert(sizeof(NdTRect) % 8 == 0 && sizeof(NdTRect) == 104, "NdTRect: 13 whole 8-byte units");
 void nd_trect_run(const uint32_t* u);

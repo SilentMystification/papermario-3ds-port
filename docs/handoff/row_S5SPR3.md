@@ -41,10 +41,12 @@ src/sprite.c: the S5SPR2 def block after TranslucentShadedSpriteGfx, and spr_app
    The record block (:459-474) stays where it is (it reads gMatrixListPos - 1, set above).
 
 ## Gate (expected values)
+- Speed rule (oracle 5): a bench list runs at one speed; spot_mac00_det is a turbo bench (bench_defs speed turbo), every
+  other bench here is normal. Run it as its own list: `bench.py run spot_mac00_det --row S5SPR3 --why "..."` (1 start).
 - `PM_ROW=S5SPR3 PM_LANE=S5SPR3 sh 3ds/build.sh > build3ds/out/build.txt 2>&1`: memcheck OK.
 - `python 3ds/tools/bench.py run nd_host --row S5SPR3 --why "S5SPR3 build"`: PASS.
 - `PM_ROW=S5SPR3 PM_LANE=S5SPR3 python 3ds/tools/bench.py base spot_mac01_det`, the same for spot_mac00_det. One list:
-  `python 3ds/tools/bench.py run spot_mac01_det,spot_mac00_det,s6chk_mac01,napicen_mac01 --row S5SPR3 --why "S5SPR3: sprite
+  `python 3ds/tools/bench.py run spot_mac01_det,s6chk_mac01,napicen_mac01 --row S5SPR3 --why "S5SPR3: sprite
   state range"` (4 starts). `bench.py cmp` both det benches: every shot byte-equal. s6chk: `bad 0`. napicen_mac01: hand back the
   sprite.o ops per frame (expected: lower than main's value, each component loses its MTX and PRIM ops). No `scomp: def` line.
   Budget 6 starts.

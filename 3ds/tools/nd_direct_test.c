@@ -57,6 +57,8 @@ void pm_gpu_flush_at(int line) { (void)line; n_flush++; }
 void pm_gpu_set_prim(unsigned rgba, unsigned lod) { (void)lod; n_prim++; last_prim = rgba; }
 void pm_gpu_set_const(unsigned rgba) { n_const++; last_const = rgba; }
 void pm_gpu_set_env(unsigned rgba) { (void)rgba; }
+void pm_gpu_set_replace(int on) { (void)on; }
+void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba) { (void)x0; (void)y0; (void)x1; (void)y1; (void)rgba; }
 void pm_comb_colours(PmPlan* p, unsigned prim, unsigned env, unsigned plod, unsigned key, unsigned ks) { (void)p; (void)prim; (void)env; (void)plod; (void)key; (void)ks; }
 void pm_gpu_plan_key(unsigned w0, unsigned w1, int two, int t1only) { (void)w0; (void)w1; (void)two; (void)t1only; }
 void pm_gpu_set_plan(const PmPlan* p) { (void)p; n_plan++; }

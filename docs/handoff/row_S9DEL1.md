@@ -28,6 +28,9 @@ Delete each function and its callers' arms. A caller that still has a list path 
 back the caller (do not move it here). Remove the deleted files from 3ds/CMakeLists.txt.
 
 ## Gate (expected values)
+- Census rule (user, 2026-11-12): before the gate, write in the commit which listcen classes and which grep terms this row's
+  deletions remove, and expect 0 only for those; a class the row does not touch keeps main's value. A 0 that the row's own
+  edits cannot give (code still left by the row) is a row fault: stop and hand back.
 - Full build, memcheck OK; nd_host PASS (remove the host tests of deleted code, and list them).
 - DIRECT byte set, battle_wheel_nowide_det, pause_tab_det_pic, the talk det scene: every shot byte-equal (bases at the
   merge-base).

@@ -21,8 +21,13 @@ S9DEL3 merged. `sh 3ds/tools/wt_new.sh S9DEL4a` (and b, c, d).
   S7.
 - gMainGfxPos and nd_rec_task's list role: the frame stream keeps its own writer pointer under a native name.
 - gbi.h includes in src and include.
+- src/draw_img_util.c: draw_tiled_image and draw_adjustable_tiled_image have no caller (oracle 5 grep, main 5c3865487):
+  delete both functions (S5TIMG left them).
 
 ## Gate (expected values)
+- Census rule (user, 2026-11-12): before the gate, write in the commit which listcen classes and which grep terms this row's
+  deletions remove, and expect 0 only for those; a class the row does not touch keeps main's value. A 0 that the row's own
+  edits cannot give (code still left by the row) is a row fault: stop and hand back.
 - Full build; nd_host PASS.
 - The byte set of S9DEL1: every shot byte-equal.
 - Per worktree: `grep -rnE "\bg[DS]P[A-Za-z]|\bgs[DS]P[A-Za-z]|\bGfx\b|gMainGfxPos" <its directories>` returns nothing.
