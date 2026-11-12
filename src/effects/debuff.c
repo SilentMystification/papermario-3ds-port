@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 extern Gfx D_09000240_364E40[];
 extern Gfx D_090002E8_364EE8[];
@@ -142,7 +143,11 @@ void debuff_appendGfx(void* effect) {
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(eff->shared->graphics));
+#ifdef TARGET_3DS
+    nd_rec_dl(dlist2);
+#else
     gSPDisplayList(gMainGfxPos++, dlist2);
+#endif
 
     guTranslateF(mtxTranslate, data->pos.x, data->pos.y, data->pos.z);
     guRotateF(mtxRotate, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);
@@ -165,7 +170,11 @@ void debuff_appendGfx(void* effect) {
 
         gSPMatrix(gMainGfxPos++,
                   &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+        nd_rec_dl(dlist);
+#else
         gSPDisplayList(gMainGfxPos++, dlist);
+#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     }
 

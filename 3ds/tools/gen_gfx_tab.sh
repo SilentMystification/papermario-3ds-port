@@ -6,7 +6,7 @@
 set -e
 GCONV_SRC="sparkles effect_3D snowfall snaking_static water_block embers"
 GCONV_SRC="$GCONV_SRC" # S7EFX1
-GCONV_SRC="$GCONV_SRC" # S7EFX2
+GCONV_SRC="$GCONV_SRC damage_stars debuff disable_x drop_leaves dust effect_46 effect_63 effect_65 effect_75 effect_86 emote ending_decals energy_in_out energy_orb_wave" # S7EFX2
 GCONV_SRC="$GCONV_SRC" # S7EFX3
 GCONV_SRC="$GCONV_SRC" # S7EFX4
 GCONV_SRC="$GCONV_SRC" # S7EFX5
