@@ -172,6 +172,7 @@ static gxCmdEntry_s kc_ent[KC_MAX]; /* static: 16 KB */
 static unsigned kc_n, kc_from, kc_skip_n, kc_split0, kc_tail_w, kc_tail_n;
 static int kc_rec, kc_arm, kc_over, kc_valid; /* record on; the walk is an L walk with a patch list; entries lost; the copy is complete */
 static u32* kc_buf; /* linear memory (the GPU reads it) */
+static u32* kc_base; /* the command buffer start of the frame (after C3D_FrameBegin) */
 static u32 kc_cb; /* the command buffer address the recorded lists point into */
 static volatile int kc_cut; /* steps after a scene change that still take the key walk */
 unsigned pm_kc_why[4]; /* copies refused: record or patch list lost / buffer split or too large / list outside the buffer / scene change (census) */
@@ -2784,6 +2785,7 @@ void pm_gpu_begin_wait(void) {
     want_clear = begin_clear;
     noise_off[0] = (float)(noise_next() & 1023u) / 1024.f; noise_off[1] = (float)(noise_next() & 1023u) / 1024.f; /* PT07: one new offset per drawn frame */
     prev_pre = 0;
+    { u32 *b_, sz_, of_; GPUCMD_GetBuffer(&b_, &sz_, &of_); kc_base = b_; }
     kc_rec = pm_interp_on > 0; kc_arm = 0; kc_n = kc_from = kc_skip_n = 0; kc_over = 0; kc_split0 = cmd_split_n; /* INTERPB3: the record of this frame starts with the queue after C3D_FrameBegin */
     if (prev_want && grab_tex_init()) { grab_queue_copy(); prev_pre = 1; kc_skip_n = ((gxCmdQueue_s*)&__C3D_Context)->numEntries; } /* PT12: first entry of the queue, before the clear */
     if (prev_want) prev_want--;
@@ -2860,19 +2862,20 @@ static __attribute__((noinline)) void kc_build(void) {
     kc_rec = 0;
     if (!kc_arm) return;
     kc_arm = 0;
-    u32 *cb, csz, coff;
-    GPUCMD_GetBuffer(&cb, &csz, &coff);
+    u32 *tb, csz, toff;
+    GPUCMD_GetBuffer(&tb, &csz, &toff); /* GPUCMD_Split moves the buffer start: this is the open tail list, the frame's lists are before it */
+    u32* const cb = kc_base;
+    const unsigned coff = (unsigned)(tb - cb) + toff; /* words used since the frame begin */
+    if (tb < cb) { pm_kc_why[1]++; return; }
     if (kc_cut > 0) { kc_cut--; pm_kc_why[3]++; return; }
     if (kc_over || nd_kp_lost) { pm_kc_why[0]++; return; }
     if (!kc_buf) kc_buf = (u32*)pm_linear_alloc(KC_WORDS * 4u);
     if (!kc_buf || cmd_split_n != kc_split0 || coff > KC_WORDS) { pm_kc_why[1]++; return; }
-    unsigned mx = 0;
     for (unsigned i = 0; i < kc_n; i++) {
         if ((kc_ent[i].data[0] & 0xFFu) != 0x01u) continue;
         const u32* l = (const u32*)kc_ent[i].data[1];
         const unsigned n = kc_ent[i].data[2] / 4u;
         if (l < cb || (unsigned)(l - cb) + n > coff) { pm_kc_why[2]++; return; }
-        if ((unsigned)(l - cb) + n > mx) mx = (unsigned)(l - cb) + n;
     }
     memcpy(kc_buf, cb, coff * 4u);
     for (unsigned i = 0; i < nd_kp_n; i++) {
@@ -2884,7 +2887,7 @@ static __attribute__((noinline)) void kc_build(void) {
             if (j <= k && w < coff) memcpy(&kc_buf[w], &p->k[qd], 4);
         }
     }
-    kc_cb = (u32)cb; kc_tail_w = mx; kc_tail_n = coff - mx;
+    kc_cb = (u32)cb; kc_tail_w = (unsigned)(tb - cb); kc_tail_n = toff;
     GSPGPU_FlushDataCache(kc_buf, coff * 4u);
     kc_valid = 1;
 }
