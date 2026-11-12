@@ -1,5 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
+#ifdef TARGET_3DS
+#include "nd_gtab.h"
+#endif
 #include "pm_interp_fi.h"
 #include "nd_api.h"
 
@@ -196,7 +199,11 @@ void snowfall_appendGfx(void* effect) {
             gDPPipeSync(gMainGfxPos++);
             gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
+#ifdef TARGET_3DS
+            nd_rec_dl(D_09000C00_38DC70);
+#else
             gSPDisplayList(gMainGfxPos++, D_09000C00_38DC70);
+#endif
             gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 255, unk_28);
 
             guRotateF(sp18, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);

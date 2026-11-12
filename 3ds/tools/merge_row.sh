@@ -3,8 +3,8 @@
 # then remove the row worktree and the branch. Run in the main folder (Git Bash):
 #   sh 3ds/tools/merge_row.sh <row> <message-file>
 # Exit: 0 merged (summary printed); 2 refused (main dirty, branch missing, not on main); 3 conflict other than the row
-# file (or merge-tree failed); 4 conflict marker line added on the branch; 5 merge failed and aborted (or runs commit
-# failed); 6 branch kept (not merged, or still checked out).
+# file and runs.jsonl (or merge-tree failed); 4 conflict marker line added on the branch; 5 merge failed and aborted (or
+# runs commit failed); 6 branch kept (not merged, or still checked out).
 # WT_GC: a wt_gc.sh replacement read by the host test (run as: sh "$WT_GC" --apply --only <row>).
 set -u
 row=${1:-}; msg=${2:-}
@@ -36,7 +36,9 @@ case $rc in
     1)
         conf=$(awk 'NR>1 && /^$/ {exit} NR>1 {print}' "$tmpd/mt")
         n=$(printf '%s\n' "$conf" | awk 'NF {n++} END {print n+0}')
-        if [ "$n" != 1 ] || [ "$conf" != "$rowfile" ]; then
+        # TOOLB4 (S7TEX1): runs.jsonl may conflict; step 4 takes main's version of it and step 5 appends the row lines
+        bad=$(printf '%s\n' "$conf" | awk -v r="$rowfile" -v j=3ds/logs/perf/runs.jsonl 'NF && $0 != r && $0 != j')
+        if [ "$n" -lt 1 ] || [ -n "$bad" ]; then
             echo "merge_row: conflicts in:" >&2
             printf '%s\n' "$conf" | sed 's/^/  /' >&2
             exit 3
@@ -52,10 +54,21 @@ if [ -n "$marks" ]; then
     exit 4
 fi
 
-# 4. merge (the row file deleted on the branch and edited on main is the one conflict allowed)
+# 4. merge (the row file deleted on the branch and edited on main is the one conflict allowed; TOOLB4 (S7TEX1): runs.jsonl
+# conflicts are resolved with main's version, the row lines come in step 5)
 if ! git merge --no-ff -F "$msg" "$row" > "$tmpd/merge" 2>&1; then
     unm=$(git diff --name-only --diff-filter=U)
-    if [ "$unm" = "$rowfile" ] && git rm -q "$rowfile" && git commit -q --no-edit -F "$msg"; then
+    runs=3ds/logs/perf/runs.jsonl
+    other=$(printf '%s\n' "$unm" | awk -v r="$rowfile" -v j="$runs" 'NF && $0 != r && $0 != j')
+    res=ok
+    [ -n "$unm" ] && [ -z "$other" ] || res=fail
+    if [ "$res" = ok ] && printf '%s\n' "$unm" | grep -qx "$runs"; then
+        git checkout -q --ours -- "$runs" && git add -f -- "$runs" || res=fail
+    fi
+    if [ "$res" = ok ] && printf '%s\n' "$unm" | grep -qx "$rowfile"; then
+        git rm -q "$rowfile" || res=fail
+    fi
+    if [ "$res" = ok ] && git commit -q --no-edit -F "$msg"; then
         :
     else
         cat "$tmpd/merge" >&2
@@ -76,10 +89,12 @@ if [ -f "$wrun" ]; then
             if (match(s, /"run_id":[^,}]*/)) { v = substr(s, RSTART + 9, RLENGTH - 9); gsub(/\r/, "", v); return v }
             return ""
         }
-        FNR == NR { r = rid($0); if (r != "") known[r] = 1; next }
+        FNR == NR { r = rid($0); if (r != "") known[r] = 1; else seen[$0] = 1; next }
         $0 == "" || $0 == "\r" { next }
+        # TOOLB4: a note line (no run_id) is appended only when main has no equal line
         { r = rid($0)
-          if (r == "" || !(r in known)) { print; if (r != "") known[r] = 1 }
+          if (r == "") { if (!($0 in seen)) { print; seen[$0] = 1 } else skip++ }
+          else if (!(r in known)) { print; known[r] = 1 }
           else skip++ }
         END { print skip + 0 > sk }
     ' "$mrun" "$wrun" > "$tmpd/new"

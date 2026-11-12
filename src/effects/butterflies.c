@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 extern Vtx D_09002D40_3ADD70[][6]; // TODO confirm this type is correct
 extern Gfx D_09003880_3AE8B0[];
@@ -181,10 +182,22 @@ void butterflies_appendGfx(void* effect) {
 
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     gDPSetPrimColor(gMainGfxPos++, 0, 0, primColor, primColor, primColor, 255);
+#ifdef TARGET_3DS
+    nd_rec_dl(D_09003880_3AE8B0);
+#else
     gSPDisplayList(gMainGfxPos++, D_09003880_3AE8B0);
+#endif
+#ifdef TARGET_3DS
+    nd_rec_dl(D_E00AA6C0[type]);
+#else
     gSPDisplayList(gMainGfxPos++, D_E00AA6C0[type]);
+#endif
     gSPVertex(gMainGfxPos++, &D_09002D40_3ADD70[data->unk_2C], 6, 0);
+#ifdef TARGET_3DS
+    nd_rec_dl(D_09003DC8_3AEDF8);
+#else
     gSPDisplayList(gMainGfxPos++, D_09003DC8_3AEDF8);
+#endif
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     gDPPipeSync(gMainGfxPos++);
 }

@@ -4,6 +4,10 @@
 #include "message_ids.h"
 #include "sprite.h"
 #include "pm_interp_fi.h"
+#ifdef TARGET_3DS
+#include <string.h>
+#include "nd_api.h"
+#endif
 
 #include "charset/charset.h"
 #include "charset/postcard.png.h"
@@ -2298,9 +2302,35 @@ void msg_draw_choice_pointer(MessagePrintState* printer) {
     draw_ci_image_with_clipping(ui_point_right_png, 16, 16, G_IM_FMT_CI, G_IM_SIZ_4b, ui_point_right_pal, posX, posY, 20, 20, 300, 200, pointerAlpha);
 }
 
+#ifdef TARGET_3DS
+/* S3MSG: the combine words of a draw_number state, as hud_element.c HUD_CW writes them */
+#define MSG_CW_(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1) \
+    { ND_W0_CMB(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1), ND_W1_CMB(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1) }
+#define MSG_CW(a, b) MSG_CW_(a, b)
+static const NdTRect* msg_digit_st; /* S3MSG: the state of the main digits, NULL for the shadow digits */
+#endif
+
 void draw_digit(IMG_PTR img, s32 charset, s32 posX, s32 posY) {
     MessageNumber* num = &gMsgNumbers[charset];
 
+#ifdef TARGET_3DS
+    if (msg_digit_st && !pm_anchor_on()) {
+        NdTRect r = *msg_digit_st;
+        r.img = img;
+        r.width = num->texWidth;
+        r.height = num->texHeight;
+        r.uls = 0;
+        r.ult = 0;
+        r.lrs = num->texWidth - 1;
+        r.lrt = num->texHeight - 1;
+        r.w0 = ND_W0_TR(G_TEXRECT, 4 * (posX + num->texWidth), 4 * (posY + num->texHeight));
+        r.w1 = ND_W1_TR(G_TX_RENDERTILE, 4 * posX, 4 * posY);
+        r.hs = ND_TR_H1(0, 0);
+        r.hd = ND_TR_H2(1 << 10, 1 << 10);
+        nd_rec_napi(nd_trect_run, &r, sizeof r / 8u);
+        return;
+    }
+#endif
     gDPLoadTextureTile_4b(gMainGfxPos++,
         img, G_IM_FMT_CI,
         num->texWidth , num->texHeight,
@@ -2329,6 +2359,10 @@ void draw_number(s32 value, s32 x, s32 y, s32 charset, s32 palette, s32 opacity,
     s32 posX;
     IMG_PTR raster = gMsgNumbers[charset].rasters;
     s32 texSize = gMsgNumbers[charset].texSize;
+#ifdef TARGET_3DS
+    NdTRect st;
+    static const u32 cw_decal[2] = MSG_CW(G_CC_DECALRGBA, G_CC_DECALRGBA), cw_01[2] = MSG_CW(PM_CC_01, PM_CC_01);
+#endif
 
 #if !VERSION_JP
     y -= 2;
@@ -2396,11 +2430,36 @@ void draw_number(s32 value, s32 x, s32 y, s32 charset, s32 palette, s32 opacity,
     }
 
     gDPLoadTLUT_pal16(gMainGfxPos++, 0, D_802F4560[palette]);
+#ifdef TARGET_3DS
+    memset(&st, 0, sizeof st);
+    st.pal = D_802F4560[palette];
+    st.pal_n = 16;
+    st.fmt = G_IM_FMT_CI;
+    st.siz = G_IM_SIZ_4b;
+    st.cms = st.cmt = G_TX_NOMIRROR | G_TX_WRAP;
+    st.masks = st.maskt = G_TX_NOMASK;
+    st.omh = G_TT_RGBA16 | G_TF_POINT;
+    if (opacity == 255) {
+        st.cw0 = cw_decal[0];
+        st.cw1 = cw_decal[1];
+        st.oml = G_RM_TEX_EDGE | G_RM_TEX_EDGE2;
+        st.pad = 1;
+    } else {
+        st.cw0 = cw_01[0];
+        st.cw1 = cw_01[1];
+        st.oml = G_RM_XLU_SURF | G_RM_XLU_SURF2;
+        st.prim = 0xFFFFFF00u | (u8)opacity;
+    }
+    msg_digit_st = &st;
+#endif
     for (i = 0; i < count; i++) {
         posX = digitPosX[i];
         if (posX > 0 && posX < 320) {
             draw_digit(raster + digits[i] * texSize, charset, posX, y);
         }
     }
+#ifdef TARGET_3DS
+    msg_digit_st = NULL;
+#endif
     gDPPipeSync(gMainGfxPos++);
 }

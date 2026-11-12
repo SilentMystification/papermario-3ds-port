@@ -5,6 +5,17 @@
 # The work dir keeps gconv_in.o for the host compare (nd_gtab_test.c). GCONV_SRC: the effect_gfx_<g> sources of the set; S7 rows extend it.
 set -e
 GCONV_SRC="sparkles effect_3D snowfall snaking_static water_block embers"
+GCONV_SRC="$GCONV_SRC aura balloon big_smoke_puff big_snowflakes blast breaking_junk bulb_glow butterflies chomp_drop cloud_puff_trail cold_breath confetti damage_indicator" # S7EFX1
+GCONV_SRC="$GCONV_SRC" # S7EFX2
+GCONV_SRC="$GCONV_SRC" # S7EFX3
+GCONV_SRC="$GCONV_SRC" # S7EFX4
+GCONV_SRC="$GCONV_SRC" # S7EFX5
+GCONV_SRC="$GCONV_SRC" # S7EFX6
+GCONV_SRC="$GCONV_SRC" # S7EFX7
+GCONV_SRC="$GCONV_SRC" # S7EFX8
+GCONV_SRC="$GCONV_SRC" # S7ENT
+GCONV_SRC="$GCONV_SRC" # S7MAP
+GCONV_SRC="$GCONV_SRC" # S7MDL
 OUTC=$1
 T=${2:-/tmp/gconv}
 mkdir -p "$T"

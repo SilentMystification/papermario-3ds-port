@@ -578,19 +578,27 @@ __attribute__((unused)) static void cplx_quad_run(const uint32_t* u) {
     const int xlu = (r->flags & HUD_ELEMENT_FLAG_TRANSPARENT) != 0;
     NdBindDesc d;
     NdPsoN64 pd;
+    int rd = 0;
     pd.cw0 = cw_47[0]; pd.cw1 = cw_47[1];
     if (!xlu) pd.oml = aa ? (G_RM_AA_TEX_EDGE | G_RM_AA_TEX_EDGE2) : (G_RM_TEX_EDGE | G_RM_TEX_EDGE2);
     else pd.oml = aa ? ((AA_EN | G_RM_CLD_SURF) | (AA_EN | G_RM_CLD_SURF2)) : (G_RM_CLD_SURF | G_RM_CLD_SURF2);
     pd.omh = G_TT_NONE | (filt ? G_TF_AVERAGE : G_TF_POINT);
     pd.omh_m = (3u << G_MDSFT_TEXTLUT) | (3u << G_MDSFT_TEXTFILT);
-    if (nd_tex_blk_desc(&d, r->img, G_IM_FMT_IA, G_IM_SIZ_8b, r->w, r->h, wrap, NULL, 0) && nd_direct_ready() == 1 &&
-        nd_direct_bind(nd_pso_n64(&pd), r->prim, nd_direct_env())) {
+    /* S5CHUDB census: why 41 tex block, 44/45/47 nd_direct_ready -1/-2/-4 (off-screen target), 43 bind refused; each failure runs the old ops below.
+     * ready -3 (m1.valid from a shaded sprite) is not a refusal: the direct bind clears it (nd_direct_m1_clear). */
+    if (!nd_tex_blk_desc(&d, r->img, G_IM_FMT_IA, G_IM_SIZ_8b, r->w, r->h, wrap, NULL, 0)) {
+        nd_direct_fallback(41u);
+    } else if ((rd = nd_direct_ready()) != 1 && rd != -3) {
+        nd_direct_fallback((unsigned)(43 - rd));
+    } else if (!nd_direct_bind(nd_pso_n64(&pd), r->prim, nd_direct_env())) {
+        nd_direct_fallback(43u);
+    } else {
+        if (rd == -3) nd_direct_m1_clear();
         nd_direct_tex(&d);
         nd_direct_quad(r->mtx, r->vtx);
         nd_direct_end();
         return;
     }
-    nd_direct_fallback(40u);
     {
         static Gfx buf[32];
         Gfx* p = buf;
@@ -1687,11 +1695,20 @@ void render_complex_hud_element(HudElement* hudElement) {
     s32 ulx, uly, lrx, lry;
     Vtx* vtx;
     Vtx* vtx2;
+    /* S5CHUDB: mode 2 (IA8) is drawn as one direct record (cplx_quad_run); its state comes from the record, not the stream */
+#ifdef TARGET_3DS
+    const int cplx_direct = (hudElement->flags & HUD_ELEMENT_FLAG_FMT_IA8) != 0;
+    Mtx* cplx_mtx;
+#else
+    const int cplx_direct = 0;
+#endif
 
-    if (hudElement->flags & HUD_ELEMENT_FLAG_FILTER_TEX) {
-        gDPSetTextureFilter(gMainGfxPos++, G_TF_AVERAGE);
-    } else {
-        gDPSetTextureFilter(gMainGfxPos++, G_TF_POINT);
+    if (!cplx_direct) {
+        if (hudElement->flags & HUD_ELEMENT_FLAG_FILTER_TEX) {
+            gDPSetTextureFilter(gMainGfxPos++, G_TF_AVERAGE);
+        } else {
+            gDPSetTextureFilter(gMainGfxPos++, G_TF_POINT);
+        }
     }
 
     if (!(hudElement->flags & HUD_ELEMENT_FLAG_RESIZING)) {
@@ -1742,8 +1759,15 @@ void render_complex_hud_element(HudElement* hudElement) {
     guMtxCatF(sp60, sp220, sp20);
     guMtxCatF(sp20, sp1A0, sp60);
     guMtxF2L(sp60, &gDisplayContext->matrixStack[gMatrixListPos]);
+#ifdef TARGET_3DS
+    cplx_mtx = &gDisplayContext->matrixStack[gMatrixListPos++];
+    if (!cplx_direct) {
+        gSPMatrix(gMainGfxPos++, VIRTUAL_TO_PHYSICAL(cplx_mtx), G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    }
+#else
     gSPMatrix(gMainGfxPos++, VIRTUAL_TO_PHYSICAL(&gDisplayContext->matrixStack[gMatrixListPos++]),
               G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+#endif
 
     mode = 0;
     a0 = mode;
@@ -1847,41 +1871,62 @@ void render_complex_hud_element(HudElement* hudElement) {
             vtx[3].v.tc[0] = 0;
             vtx[3].v.tc[1] = 0;
 
-            gDPPipeSync(gMainGfxPos++);
-            gDPSetCombineMode(gMainGfxPos++, PM_CC_47, PM_CC_47);
-            gDPSetPrimColor(gMainGfxPos++, 0, 0,
-                            hudElement->tint.r, hudElement->tint.g, hudElement->tint.b, hudElement->opacity);
+            if (!cplx_direct) {
+                gDPPipeSync(gMainGfxPos++);
+                gDPSetCombineMode(gMainGfxPos++, PM_CC_47, PM_CC_47);
+                gDPSetPrimColor(gMainGfxPos++, 0, 0,
+                                hudElement->tint.r, hudElement->tint.g, hudElement->tint.b, hudElement->opacity);
 
-            if (!(hudElement->flags & HUD_ELEMENT_FLAG_TRANSPARENT)) {
-                if (!(hudElement->flags & HUD_ELEMENT_FLAG_ANTIALIASING)) {
-                    gDPSetRenderMode(gMainGfxPos++, G_RM_TEX_EDGE, G_RM_TEX_EDGE2);
+                if (!(hudElement->flags & HUD_ELEMENT_FLAG_TRANSPARENT)) {
+                    if (!(hudElement->flags & HUD_ELEMENT_FLAG_ANTIALIASING)) {
+                        gDPSetRenderMode(gMainGfxPos++, G_RM_TEX_EDGE, G_RM_TEX_EDGE2);
+                    } else {
+                        gDPSetRenderMode(gMainGfxPos++, G_RM_AA_TEX_EDGE, G_RM_AA_TEX_EDGE2);
+                    }
                 } else {
-                    gDPSetRenderMode(gMainGfxPos++, G_RM_AA_TEX_EDGE, G_RM_AA_TEX_EDGE2);
+                    if (!(hudElement->flags & HUD_ELEMENT_FLAG_ANTIALIASING)) {
+                        gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
+                    } else {
+                        gDPSetRenderMode(gMainGfxPos++, AA_EN | G_RM_CLD_SURF, AA_EN | G_RM_CLD_SURF2);
+                    }
                 }
-            } else {
-                if (!(hudElement->flags & HUD_ELEMENT_FLAG_ANTIALIASING)) {
-                    gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
-                } else {
-                    gDPSetRenderMode(gMainGfxPos++, AA_EN | G_RM_CLD_SURF, AA_EN | G_RM_CLD_SURF2);
-                }
+
+                gDPLoadTextureBlock(gMainGfxPos++, hudElement->imageAddr, G_IM_FMT_IA, G_IM_SIZ_8b, width, height, 0,
+                                    G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK,
+                                    G_TX_NOLOD, G_TX_NOLOD);
+
+                gDPSetTextureLUT(gMainGfxPos++, G_TT_NONE);
+                gSPVertex(gMainGfxPos++, &transform->quadBuffers[FrameQuadIndex], 4, 0);
             }
-
-            gDPLoadTextureBlock(gMainGfxPos++, hudElement->imageAddr, G_IM_FMT_IA, G_IM_SIZ_8b, width, height, 0,
-                                G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK,
-                                G_TX_NOLOD, G_TX_NOLOD);
-
-            gDPSetTextureLUT(gMainGfxPos++, G_TT_NONE);
-            gSPVertex(gMainGfxPos++, &transform->quadBuffers[FrameQuadIndex], 4, 0);
             { static int ctr_sw = -1; extern void ctr_store(const void* q); extern int pm_debug_has(const char* word); /* BTLUI3: cplxtrace stores the quad for nd_geom_vtx */
               if (ctr_sw < 0) ctr_sw = pm_debug_has("cplxtrace") ? 1 : 0;
               if (ctr_sw) ctr_store(&transform->quadBuffers[FrameQuadIndex]); }
-            gSP1Triangle(gMainGfxPos++, 0, 1, 2, 0);
-            gSP1Triangle(gMainGfxPos++, 0, 2, 3, 0);
+#ifdef TARGET_3DS
+            if (cplx_direct) {
+                NdCHudRec rec;
+                rec.img = hudElement->imageAddr;
+                rec.mtx = VIRTUAL_TO_PHYSICAL(cplx_mtx);
+                rec.vtx = &transform->quadBuffers[FrameQuadIndex];
+                rec.w = width;
+                rec.h = height;
+                rec.flags = hudElement->flags;
+                rec.pad = 0;
+                rec.prim = ((u32)hudElement->tint.r << 24) | ((u32)hudElement->tint.g << 16) | ((u32)hudElement->tint.b << 8) |
+                           (u32)hudElement->opacity;
+                nd_rec_napi(cplx_quad_run, &rec, sizeof rec / 8u);
+            } else
+#endif
+            {
+                gSP1Triangle(gMainGfxPos++, 0, 1, 2, 0);
+                gSP1Triangle(gMainGfxPos++, 0, 2, 3, 0);
+            }
             break;
     }
 
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gDPPipeSync(gMainGfxPos++);
+    if (!cplx_direct) {
+        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        gDPPipeSync(gMainGfxPos++);
+    }
 }
 
 void render_transformed_hud_elements(void) {
@@ -2627,4 +2672,5 @@ int pm_anchor_rect(int ulx, int uly, int lrx, int lry, int tile, int s, int t, i
     return true;
 }
 
+int pm_anchor_on(void) { return sAnchorOpen; } /* S3MSG: draw_digit takes the NdTRect path only with no open anchor */
 int pm_anchor_is_open(void) { return sAnchorOpen; }

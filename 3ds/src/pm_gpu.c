@@ -2843,6 +2843,7 @@ static __attribute__((cold, noinline)) void eyecw_log(void) { /* EYECW (debug le
     pm_log_d("eyecw f%u p23 %.3f cw %.1f conv %.1f wn %.3f old %.1f", pm_frame_count(), (double)eyd_p23_dbg, (double)eyd_cw_dbg, (double)eye_conv, (double)eyd_wn_dbg,
              (double)(eye_conv * (eyd_p23_dbg < 0.f ? -eyd_p23_dbg : eyd_p23_dbg))); /* old: the cw of conv x |p23| */
 }
+extern unsigned nd_dlcp_pre, nd_dlcp_rt, nd_dlcp_full; void nd_dlcp_line(unsigned f); /* S7MAP: nd_shape.c */
 void pm_dp_res_line(unsigned f); /* DPCEN2: resident bytes and load transform counts (pm_dpcen.c) */
 /* DPCEN1: byte census line every 300 frames (switch dpcen). Deltas of pm_cnt_all since the last line; bytes >> 10. */
 static __attribute__((cold, noinline)) void dp_frame(unsigned f) {
@@ -2963,6 +2964,7 @@ void pm_gpu_key_show(void) {
 static void pm_gpu_end_w(void) {
     if (__builtin_expect(stereo_frame &&pm_frame_count() % 10u == 0, 0)) eyecw_log();
     if (__builtin_expect(mfr_on, 0)) mfr_frame(); /* TIK19 debug: the mfr line of the frame */
+    if (__builtin_expect(nd_dlcp_pre | nd_dlcp_rt | nd_dlcp_full, 0)) nd_dlcp_line(pm_frame_count()); /* S7MAP: the dlcpre line of the frame that built lists */
     if (__builtin_expect(PMDL("keymiss"), 0)) pm_km_frame(pm_frame_count()); /* KEYMISS: the census window line every 300 frames */
     if (__builtin_expect(pm_cnt_on, 0) && PMDL("dpcen")) dp_frame(pm_frame_count()); /* DPCEN1: byte census line */
     if (__builtin_expect(pm_cen_lines, 0)) cen_lines_frame(); /* PROF2-3: the census lines, once per frame at the frame end (rect_log every 100 frames there) */

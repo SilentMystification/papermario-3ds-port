@@ -13,18 +13,28 @@
 
 static unsigned def_next; /* core 1: the ids of the analysed defs (a hint only: last[]; the key word 0 is the def pointer) */
 
-/* The class of one unit: 0 refused, 1 static, 2 value, 3 no-op (dropped), 4 ordered value (SCOMP0: PRIM, ENV, texture setters; must not lie between two static units). */
+/* The class of one unit: 0 refused, 1 static, 2 value, 3 no-op (dropped), 4 ordered value (SCOMP0: PRIM, ENV, texture setters; must not lie between two static units; class 2 too must not lie between two static units (S6VORD: sc_exec runs it after the block)). */
 static unsigned unit_class(uint32_t w0) {
     const unsigned id = w0 >> 24, a = w0 & 0xffffffu;
     if (w0 == ND_NOP_A) return 3u;
     switch (id) {
     case NDO_OMH: case NDO_OML: case NDO_GEOM: case NDO_TEXTURE: case NDO_COMB: return 1u;
     case NDO_FOG: case NDO_BLEND: case NDO_FILL: case NDO_PRIMZ: case NDO_SCISSOR: case NDO_MTX: case NDO_POPMTX: case NDO_MOVEMEM: return 2u;
-    case NDO_MW: return (a >> 16) == NDO_MW_NONE ? 1u : 2u; /* clip ratio, persp normalize: no field (a static no-op) */
+    case NDO_MW: return (a >> 16) == NDO_MW_NONE ? 3u : 2u; /* S6VORD: clip ratio, persp normalize: no field, a no-op */
     case NDO_MISC: return ((a >> 16) == NDO_MISC_CIMG || (a >> 16) == NDO_MISC_ND) ? 2u : 0u;
     case NDO_PRIM: case NDO_ENV: case NDO_TIMG: case NDO_TILE: case NDO_TILESIZE:
     case NDO_LOADBLOCK: case NDO_LOADTILE: case NDO_LOADTLUT: return 4u; /* SCOMP0: an ordered value unit */
     default: return 0u; /* RARE, draws and control */
+    }
+}
+
+/* S6SYNC: 1 when the op path runs sync_combine on this static unit (set_om over the cycle bits, nd_op_apply TEXTURE and COMB). */
+static int unit_sync(uint32_t w0) {
+    const unsigned a = w0 & 0xffffffu;
+    switch (w0 >> 24) {
+    case NDO_OMH: { const unsigned sft = a & 0xffu, len = (a >> 8) & 0xffu; return sft <= G_MDSFT_CYCLETYPE && sft + len > G_MDSFT_CYCLETYPE; }
+    case NDO_TEXTURE: case NDO_COMB: return 1;
+    default: return 0;
     }
 }
 
@@ -36,12 +46,13 @@ int nd_scomp_analyse(NdSDef* d) {
     d->omh_m = d->omh_v = d->oml_m = d->oml_v = 0;
     d->geom_c = ~0u; d->geom_s = 0;
     d->has_geom = d->has_tex = d->has_comb = 0; d->last_op = 0;
+    d->nsync = 0; memset(d->sync_k, 0, sizeof d->sync_k);
     for (unsigned k = 0; k < d->n && k < 32u; k++) {
         const uint32_t w0 = u[2u * k], b = u[2u * k + 1u], a = w0 & 0xffffffu;
         const unsigned c = unit_class(w0), id = w0 >> 24;
         if (c == 3u) continue;
         if (c == 0u) { ok = 0; continue; }
-        if (c == 4u) om |= 1u << k;
+        if (c == 2u || c == 4u) om |= 1u << k; /* S6VORD: no value unit between statics */
         if (c == 2u || c == 4u) {
             d->vmask |= 1u << k; d->nv++;
             if (!seen) d->pre++;
@@ -51,6 +62,7 @@ int nd_scomp_analyse(NdSDef* d) {
         if (first == 32u) first = k;
         last = k;
         d->last_op = nd_op_n64[id - NDO_BASE];
+        if (unit_sync(w0)) { if (d->nsync >= 4u) ok = 0; else d->sync_k[d->nsync++] = (uint8_t)k; }
         switch (id) {
         case NDO_OMH: { const uint32_t m = nd_op_om_mask(a); d->omh_v = (d->omh_v & ~m) | (b & m); d->omh_m |= m; break; }
         case NDO_OML: { const uint32_t m = nd_op_om_mask(a); d->oml_v = (d->oml_v & ~m) | (b & m); d->oml_m |= m; break; }
@@ -164,17 +176,20 @@ static __attribute__((cold, noinline)) void sc_make(NdCombOut* o, const NdCombIn
     sc_made++;
 }
 
-/* The folded writes of d on the live walker words, as the def's setters leave them. */
-static void sc_block(const NdSDef* d) {
-    if (d->omh_m) {
-        const unsigned old_tf = nd_ws.omode_h & (3u << 12);
-        nd_ws.omode_h = (nd_ws.omode_h & ~d->omh_m) | d->omh_v;
-        nd_ws.om_kh |= d->omh_m;
-        if ((nd_ws.omode_h & (3u << 12)) != old_tf) { /* V15: G_MDSFT_TEXTFILT, as set_om */
-            pm_gpu_flush();
-            pm_tex_set_filter((nd_ws.omode_h & (3u << 12)) != 0);
-        }
+/* The othermode H write as set_om does it, without the combine sync. */
+static void sc_omh(uint32_t m, uint32_t v) {
+    const unsigned old_tf = nd_ws.omode_h & (3u << 12);
+    nd_ws.omode_h = (nd_ws.omode_h & ~m) | (v & m);
+    nd_ws.om_kh |= m;
+    if ((nd_ws.omode_h & (3u << 12)) != old_tf) { /* V15: G_MDSFT_TEXTFILT, as set_om */
+        pm_gpu_flush();
+        pm_tex_set_filter((nd_ws.omode_h & (3u << 12)) != 0);
     }
+}
+
+/* The folded writes of a def with no sync unit on the live walker words, as the def's setters leave them. */
+static void sc_block(const NdSDef* d) {
+    if (d->omh_m) sc_omh(d->omh_m, d->omh_v);
     if (d->oml_m) { nd_ws.omode_l = (nd_ws.omode_l & ~d->oml_m) | d->oml_v; nd_ws.om_kl |= d->oml_m; }
     if (d->has_geom) set_geom(d->geom_c, d->geom_s);
     if (d->has_tex) nd_set_texture(d->tex_a, d->tex_b);
@@ -199,22 +214,46 @@ static void sc_replay(const NdCombOut* o) {
     }
 }
 
-static void sc_exec(const NdSDef* d, const uint32_t* v) {
-    if (d->pre) nd_walk_state(v, d->pre);
-    sc_block(d);
-    {
-        NdCombIn in;
-        uint32_t key[ND_SC_KEYW];
-        int miss;
-        if (__builtin_expect(!sc_tab, 0)) sc_alloc();
-        comb_in_walker(&in);
-        nd_scomp_key(d, &in, (uint32_t)pm_comb_vprim, key);
-        const unsigned i = nd_scomp_find(sc_tab, d->id, key, &miss);
-        if (__builtin_expect(miss, 0)) sc_make(&sc_out[i], &in);
-        sc_replay(&sc_out[i]);
-    }
+static const NdSDef sc_nul; /* no writes: the key of the live state (nd_scomp_key takes every field from the walker) */
+
+/* S6SYNC: sync_combine of the op path at a sync unit: the DIP2 skip, else the decision of the live state (key of the walker's inputs read now). */
+static void sc_decide(const NdSDef* d, unsigned k) {
+    NdCombIn in;
+    uint32_t key[ND_SC_KEYW];
+    int miss;
+    if (sc_ok && sc_sig_now() == sc_sig) return;
+    if (__builtin_expect(!sc_tab, 0)) sc_alloc();
+    comb_in_walker(&in);
+    nd_scomp_key(&sc_nul, &in, (uint32_t)pm_comb_vprim, key);
+    key[0] = (uint32_t)(uintptr_t)d + k; /* the def and the sync unit */
+    key[26] = nd_ws.omode_h; key[27] = nd_ws.omode_l; key[28] = nd_ws.tst1.tile_fmt[0] * 4u + nd_ws.tst1.tile_siz[0]; key[29] = nd_ws.geom;
+    const unsigned i = nd_scomp_find(sc_tab, d->id, key, &miss);
+    if (__builtin_expect(miss, 0)) sc_make(&sc_out[i], &in);
+    sc_replay(&sc_out[i]);
     sc_ok = 1;
     sc_sig = sc_sig_now();
+}
+
+/* S6SYNC: the static units in stream order as the op path runs them: nd_op_same skips the unit, else its write; a sync unit then decides. */
+static void sc_units(const NdSDef* d) {
+    const uint32_t* u = (const uint32_t*)d->u;
+    for (unsigned k = 0; k < d->n; k++) {
+        const uint32_t* p = u + 2u * k;
+        const unsigned id = p[0] >> 24;
+        if (d->vmask >> k & 1u) continue;
+        if (id != NDO_OMH && id != NDO_OML && id != NDO_GEOM && id != NDO_TEXTURE && id != NDO_COMB) continue; /* no-ops */
+        if (nd_op_same(p)) continue;
+        if (!unit_sync(p[0])) { nd_op_apply(p); continue; }
+        if (id == NDO_OMH) { const uint32_t m = nd_op_om_mask(p[0] & 0xffffffu); sc_omh(m, p[1]); }
+        else if (id == NDO_TEXTURE) nd_set_texture(p[0] & 0xffffffu, p[1]);
+        else op_setcombine(NDO_COMB_W0(p[0] & 0xffffffu), p[1]);
+        sc_decide(d, k);
+    }
+}
+
+static void sc_exec(const NdSDef* d, const uint32_t* v) {
+    if (d->pre) nd_walk_state(v, d->pre);
+    if (d->nsync) sc_units(d); else sc_block(d);
     sr_ok = 0; /* the next draw makes the render state again (as after a range sync that worked) */
     gv_epoch++; /* GV1b */
     pm_gbi_cur_op = d->last_op;
@@ -231,15 +270,19 @@ static void sc_exec(const NdSDef* d, const uint32_t* v) {
     X(box_prod, box_prod) X(box_folded, box_folded) X(box_pat, box_pat) X(comb_alpha_shade, comb_alpha_shade) X(cmb_gen_seen, cmb_gen_seen) \
     X(leg_mode, leg_mode) X(comb_mode5, comb_mode5) X(plan_active, plan_active) X(ls_use, ls_use) X(ls_why, ls_why) X(ls_cyc, ls_cyc) \
     X(ls_dual, ls_dual) X(prim, nd_ws.prim) X(envc, nd_ws.envc) X(prim_lod, nd_ws.prim_lod) X(keyc, keyc) X(keys, keys) \
-    X(conv_k4, conv_k4) X(dual_on, dual_on) X(sc_ok, sc_ok)
+    X(conv_k4, conv_k4) X(dual_on, dual_on) \
+    X(fogc, fogc) X(blendc, blendc) X(fog_fm, fog_fm) X(fog_fo, fog_fo) X(prim_z, nd_ws.prim_z) X(fill, nd_ws.fill) \
+    X(sci_x0, sci_x0) X(sci_y0, sci_y0) X(sci_x1, sci_x1) X(sci_y1, sci_y1) X(lt_n, lt_n) \
+    X(sc_ok, sc_ok)
 #define S6_N1(nm, lv) S6F_##nm,
-enum { S6_FIELDS(S6_N1) S6F_plan, S6F_N };
+enum { S6_FIELDS(S6_N1) S6F_plan, S6F_lt, S6F_N };
 #define S6_NM(nm, lv) #nm,
-static const char* const s6_name[S6F_N] = { S6_FIELDS(S6_NM) "cur_plan" };
+static const char* const s6_name[S6F_N] = { S6_FIELDS(S6_NM) "cur_plan", "lights" };
 typedef struct {
     uint32_t f[S6F_N];
     uint32_t sig, srok, slc, sle, slcc, lsf; /* restored, not compared */
     PmPlan plan;
+    NdLight lt[9];
 } S6Snap;
 static void s6_take(S6Snap* s) {
     unsigned i = 0;
@@ -247,6 +290,7 @@ static void s6_take(S6Snap* s) {
     S6_FIELDS(S6_TK)
     s->sig = sc_sig; s->srok = (uint32_t)sr_ok; s->slc = (uint32_t)sl_const; s->sle = (uint32_t)sl_env; s->slcc = sl_cc; s->lsf = (uint32_t)ls_frame;
     s->plan = cur_plan;
+    memcpy(s->lt, lt, sizeof s->lt);
 }
 static void s6_put(const S6Snap* s) {
     unsigned i = 0;
@@ -254,6 +298,7 @@ static void s6_put(const S6Snap* s) {
     S6_FIELDS(S6_PT)
     sc_sig = s->sig; sr_ok = (int)s->srok; sl_const = (int)s->slc; sl_env = (int)s->sle; sl_cc = s->slcc; ls_frame = (int)s->lsf;
     cur_plan = s->plan;
+    memcpy(lt, s->lt, sizeof lt);
 }
 static unsigned s6_ranges, s6_bad, s6_next = 100u, s6_fbad[S6F_N];
 static __attribute__((cold, noinline)) void s6_run(const NdSDef* d, const uint32_t* v) {
@@ -273,6 +318,7 @@ static __attribute__((cold, noinline)) void s6_run(const NdSDef* d, const uint32
     s6_take(&b);
     for (unsigned i = 0; i < S6F_plan; i++) if (a.f[i] != b.f[i]) { s6_fbad[i]++; bad = 1; }
     if (a.f[S6F_plan_active] && b.f[S6F_plan_active] && memcmp(&a.plan, &b.plan, sizeof a.plan)) { s6_fbad[S6F_plan]++; bad = 1; }
+    if (memcmp(a.lt, b.lt, sizeof a.lt)) { s6_fbad[S6F_lt]++; bad = 1; }
     s6_ranges++;
     if (bad) {
         s6_bad++;

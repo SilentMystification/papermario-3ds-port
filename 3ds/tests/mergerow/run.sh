@@ -1,7 +1,7 @@
 #!/bin/sh
-# Host test for 3ds/tools/merge_row.sh: six cases in temp git repos. Run from the repo root:
+# Host test for 3ds/tools/merge_row.sh: seven cases in temp git repos. Run from the repo root:
 #   sh 3ds/tests/mergerow/run.sh
-# Prints "mergerow: N/6 PASS"; exit 0 only when all six pass. wt_gc is a stub (WT_GC).
+# Prints "mergerow: N/7 PASS"; exit 0 only when all seven pass. wt_gc is a stub (WT_GC).
 set -u
 ROOT=$(git rev-parse --show-toplevel) || exit 2
 SCRIPT="$ROOT/3ds/tools/merge_row.sh"
@@ -93,6 +93,17 @@ if [ "$rc" = 0 ] && [ "$(wc -l < 3ds/logs/perf/runs.jsonl | tr -d ' ')" = 3 ] \
    && grep -q "runs lines added 2, known skipped 1" "$OUT" \
    && [ ! -d build3ds/wt/X ]; then p=yes; fi
 result $p "(f) runs.jsonl: 2 appended, 1 known skipped rc=$rc"
+
+# (g) TOOLB4 (S7TEX1): branch and main both edit runs.jsonl: merged, main's version kept, no unmerged file left
+mk g; git checkout -q -b X; echo g > g.txt; printf '{"run_id":1}\n{"run_id":5,"branch":1}\n' > 3ds/logs/perf/runs.jsonl
+git add g.txt 3ds/logs/perf/runs.jsonl; git commit -q -m "X: g, runs"
+git checkout -q main; printf '{"run_id":1}\n{"run_id":4,"main":1}\n' > 3ds/logs/perf/runs.jsonl
+git commit -q -am "main: runs"
+rc=$(run)
+p=no
+if [ "$rc" = 0 ] && [ "$(cat 3ds/logs/perf/runs.jsonl)" = "$(printf '{"run_id":1}\n{"run_id":4,"main":1}')" ] \
+   && [ -f g.txt ] && [ -z "$(git ls-files -u)" ] && [ -z "$(git rev-parse --verify -q refs/heads/X)" ]; then p=yes; fi
+result $p "(g) runs.jsonl edited on branch and main: merged, main's version kept rc=$rc"
 
 if [ "$pass" = "$n" ]; then echo "mergerow: $pass/$n PASS"; exit 0; fi
 echo "mergerow: $pass/$n PASS"; exit 1

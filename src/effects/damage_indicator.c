@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 extern Gfx D_09001D40_351F60[];
 extern Gfx D_09001DE0_352000[];
@@ -227,14 +228,22 @@ void damage_indicator_render_impl(EffectInstance* effect) {
         s32 rIdx = ((i + spA0) % 12) * 3;
 
         gDPSetPrimColor(gMainGfxPos++, 0, 0, D_E003CCF8[rIdx], D_E003CCF8[rIdx + 1], D_E003CCF8[rIdx + 2], part->alpha);
+#ifdef TARGET_3DS
+        nd_rec_dl(D_09001D40_351F60);
+#else
         gSPDisplayList(gMainGfxPos++, D_09001D40_351F60);
+#endif
 
         if (i == lastPartIdx) {
             guPositionF(mtxTransform, 0.0f, 0.0f, 0.0f, part->scale, part->curPos.x, part->curPos.y, part->curPos.z);
             guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
 
             gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+            nd_rec_dl(D_09002150_352370);
+#else
             gSPDisplayList(gMainGfxPos++, D_09002150_352370);
+#endif
             gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 
             guPositionF(mtxTransform, 0.0f, 0.0f, 0.0f, part->scale,
@@ -244,11 +253,19 @@ void damage_indicator_render_impl(EffectInstance* effect) {
             guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
 
             gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+            nd_rec_dl(D_09002160_352380);
+#else
             gSPDisplayList(gMainGfxPos++, D_09002160_352380);
+#endif
             gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         }
 
+#ifdef TARGET_3DS
+        nd_rec_dl(D_09001D40_351F60);
+#else
         gSPDisplayList(gMainGfxPos++, D_09001D40_351F60);
+#endif
 
         guTranslateF(mtxTransform, part->basePos.x, part->basePos.y, part->basePos.z);
         guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
@@ -261,28 +278,72 @@ void damage_indicator_render_impl(EffectInstance* effect) {
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
         if (i == lastPartIdx) {
+#ifdef TARGET_3DS
+            nd_rec_dl(D_09002170_352390);
+#else
             gSPDisplayList(gMainGfxPos++, D_09002170_352390);
+#endif
         } else {
+#ifdef TARGET_3DS
+            nd_rec_dl(D_09002180_3523A0);
+#else
             gSPDisplayList(gMainGfxPos++, D_09002180_3523A0);
+#endif
         }
 
         if (i == lastPartIdx) {
+#ifdef TARGET_3DS
+            nd_rec_dl(D_090021A8_3523C8);
+#else
             gSPDisplayList(gMainGfxPos++, D_090021A8_3523C8);
+#endif
             gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+            nd_rec_dl(D_09001DE0_352000);
+#else
             gSPDisplayList(gMainGfxPos++, D_09001DE0_352000);
+#endif
             if (numParts < 10) {
+#ifdef TARGET_3DS
+                nd_rec_dl(D_E003CCA0[i]);
+#else
                 gSPDisplayList(gMainGfxPos++, D_E003CCA0[i]);
+#endif
+#ifdef TARGET_3DS
+                nd_rec_dl(D_090021C0_3523E0);
+#else
                 gSPDisplayList(gMainGfxPos++, D_090021C0_3523E0);
+#endif
             } else {
                 s32 onesDigit = numParts % 10;
                 s32 tensDigit = numParts / 10;
-                gSPDisplayList(gMainGfxPos++, D_E003CCA0[onesDigit]); // GfxLoadDigitTex
-                gSPDisplayList(gMainGfxPos++, D_09002200_352420); // GfxDrawOnesQuad
+#ifdef TARGET_3DS
+                nd_rec_dl(D_E003CCA0[onesDigit]); // GfxLoadDigitTex
+#else
+                gSPDisplayList(gMainGfxPos++, D_E003CCA0[onesDigit]);
+#endif
+#ifdef TARGET_3DS
+                nd_rec_dl(D_09002200_352420); // GfxDrawOnesQuad
+#else
+                gSPDisplayList(gMainGfxPos++, D_09002200_352420);
+#endif
+#ifdef TARGET_3DS
+                nd_rec_dl(D_E003CCA0[tensDigit]);
+#else
                 gSPDisplayList(gMainGfxPos++, D_E003CCA0[tensDigit]);
-                gSPDisplayList(gMainGfxPos++, D_090021E0_352400); // GfxDrawTensQuad
+#endif
+#ifdef TARGET_3DS
+                nd_rec_dl(D_090021E0_352400); // GfxDrawTensQuad
+#else
+                gSPDisplayList(gMainGfxPos++, D_090021E0_352400);
+#endif
             }
         } else {
+#ifdef TARGET_3DS
+            nd_rec_dl(D_09002190_3523B0);
+#else
             gSPDisplayList(gMainGfxPos++, D_09002190_3523B0);
+#endif
             gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         }
 
