@@ -14828,7 +14828,7 @@
       "status": "unverified",
       "subject": "File select entry turn (frames 282 to 296): walker census armed at frame 289.",
       "proves": "Walker census of the file select entry turn (fileselect_rotate copy, census lane). Measurement only.",
-      "debug": "fileselect fncov=289 loglevel=debug det",
+      "debug": "fileselect fncov=285 loglevel=debug det",
       "extra": [],
       "until": "fncov f\\d+ done",
       "cap": 45,
