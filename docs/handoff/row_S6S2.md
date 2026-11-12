@@ -38,14 +38,13 @@ functions of msg.c later).
 - Done (code 7eff04aa2): build, memcheck, nd_host PASS, pause_tab_det_pic 101/101 byte-equal vs 95aec5aee, s6chk_mac01 f200
   `bad 0`. The pause scene does not draw this prologue: it runs only inside the printer loop of render_messages for an open
   message printer (msg.c:595-602); the pause menu draws its text with draw_msg, not printers. So the talk gate is needed.
-- Step 1: in 3ds/tools/azt_scenarios.json, scenario msgbox_talk_nowide (:12221) only, append ` det` to its debug:
-  `preset=yard nowide uishow=talk shots shotwin=330:1 loglevel=debug det`. Commit it alone. det makes the frame schedule a
-  function of the game steps (pm_main.c:395-396, :680, :710), fixes the seed (pm_os.c:55) and waits the texture gate
-  (pm_tex.c:790): the one shot at frame 330 (box opened at 200 by uishow=talk, pm_warp.c:2060) is then a function of the build.
-- Do not merge main. Base commit: 95aec5aee (`git merge-base S6S2 main`). `PM_ROW=S6S2 PM_LANE=S6S2 python 3ds/tools/bench.py
-  base msgbox_talk_nowide_pic --commit 95aec5aee` (the base runs your scenario file; 2 runs; expected: stored, 1 shot).
-- `python 3ds/tools/bench.py run msgbox_talk_nowide_pic --row S6S2 --why "S6S2 talk gate"` (1 start); `bench.py cmp
-  msgbox_talk_nowide_pic --row S6S2 --commit 95aec5aee`: byte-equal. 3 starts in all (3 of 5 left).
+- Step 1: `git merge main` (NAPI3B is merged and added the det talk scene msgbox_talk_det: `preset=yard nowide uishow=talk
+  shots shotwin=330:1 loglevel=debug det`, until frame 330; it edits msg_draw.c, not msg.c, so no conflict). Do not edit any
+  scenario. The base commit is then `git merge-base HEAD main` (the main you merged): use it as `--commit <that hash>`.
+- `PM_ROW=S6S2 PM_LANE=S6S2 python 3ds/tools/bench.py base msgbox_talk_det --commit <merge-base>` (stored already, or 2 runs;
+  expected 1 shot). Rebuild after the merge; nd_host PASS.
+- `python 3ds/tools/bench.py run msgbox_talk_det --row S6S2 --why "S6S2 talk gate"` (1 start); `bench.py cmp msgbox_talk_det
+  --row S6S2 --commit <merge-base>`: byte-equal. At most 3 starts (3 of 5 left).
 
 ## Stop
 A byte difference or a scomp error line: stop, commit, hand back. Delete this row file in the completing commit.

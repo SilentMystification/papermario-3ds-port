@@ -1,40 +1,50 @@
-# Row S3MSG: msg.c draws (digits, numbers, rewind arrow, choice pointer, message prologue) as direct records (NATIVEAPI S3/S5)
+# Row S3MSG: draw_number's digits through the NdTRect record (NATIVEAPI S3, part 1 of msg.c)
 
-Model: Sonnet (user decides).
-- Why not Haiku: draw_number and draw_digit bind charset images through the glyph and cell arm that NAPI3B builds. The arrow and
-  pointer are ROTSCALE-free texture rectangles with their own palette loads. The order of the state the message prologue leaves
-  must stay as the walker had it for msg_draw's glyph records.
-- Why not Opus: the NAPI2B and NAPI3B helpers state every draw here.
+(Model: Haiku. One function pair in src/msg.c plus a 1-line accessor in src/hud_element.c. The S5TIMG pattern.)
 
 ## Blocker and base
-NAPI3B merged (glyph atlas bind in the direct path). `sh 3ds/tools/wt_new.sh S3MSG`; PM_ROW=S3MSG PM_LANE=S3MSG.
+S5TRECT and S5TIMG merged (S5TIMG step 0: NdTRect `pad` bit 0 = keep the walker's prim). `sh 3ds/tools/wt_new.sh S3MSG`;
+PM_ROW=S3MSG PM_LANE=S3MSG on every build and bench call.
 
-## Code read (src/msg.c; gbi calls per function)
-draw_number 13 (:2298), msg_update_rewind_arrow 8, render_messages 6 (:584, the per-frame prologue), msg_draw_choice_pointer 6
-(:2232), draw_digit 2 (:2276). napicen3 talk: msg.o 46 ops a frame.
+## Code read (oracle 4, main 2fdcf9a8b; re-grep, lines may move)
+- draw_number (src/msg.c:2298-2381): gSPDisplayList(gMsgDlistInitDrawNumber) (:2331; the list :167-179 sets cycle 1, filter
+  POINT, persp off, TLUT RGBA16, texture on); the drop-shadow loop (:2354-2361: render mode XLU_SURF pair, PM_CC_07, prim 40 40
+  40 72, draw_digit); then opacity == 255: render mode TEX_EDGE pair and G_CC_DECALRGBA, no prim; else XLU_SURF pair, PM_CC_01,
+  prim 255 255 255 opacity (:2364-2371); gDPLoadTLUT_pal16(0, D_802F4560[palette]) (:2373); the main loop of draw_digit (:2374-2379).
+- draw_digit (:2276-2296): gDPLoadTextureTile_4b(img, CI, texWidth, texHeight, 0, 0, texWidth - 1, texHeight - 1, 0, NOMIRROR |
+  WRAP twice, NOMASK twice), then the rect unless pm_anchor_rect took it (an open anchor: hud_element.c:2553, sAnchorOpen).
+- The shadow digits run before the LoadTLUT: their palette is the TLUT the previous draw left, unknown on core 1. They keep the ops.
 
-## Design
-1. Every texture rectangle in these functions becomes the HUD pattern (hud_rect_direct in src/hud_element.c):
-   - a pso from nd_pso_n64 of its combine and render words;
-   - an NdBindDesc from nd_tex_win_desc of its load (charset digits through NAPI3B's glyph bind arm);
-   - the rectangle words through the ND_W0_TR / ND_W1_TR / ND_TR_H1 / ND_TR_H2 macros (nd_gbi.h:201-204);
-   - nd_direct_rect, then nd_direct_end.
-   Keep the fallback (the old ops into a local list and nd_walk_state) for walker states nd_direct_ready refuses, counted.
-2. render_messages' prologue (6 state ops) stays as ops in this row; S6S compiles it.
-3. Records are made on core 1 in the functions themselves (nd_rec_napi), as hud_element.c does.
+## Touch only
+src/msg.c: draw_digit, draw_number, one static above draw_digit. src/hud_element.c: one new function right after pm_anchor_rect
+(:2553-2584). include/pm_interp_fi.h: its declaration after pm_anchor_rect's (:14). Other rows edit other functions there.
 
-## Files and places
-src/msg.c (the 5 functions). No new declarations in nd_api.h. If a helper is needed, add it to the end of nd_direct.c and
-nd_api.h only when no other running row appends there (orchestrator check).
+## Exact edits (under `#ifdef TARGET_3DS`; `#else` keeps the old lines)
+1. hud_element.c after pm_anchor_rect: `int pm_anchor_on(void) { return sAnchorOpen; }`; pm_interp_fi.h: `extern int pm_anchor_on(void);`.
+2. msg.c above draw_digit: `static const NdTRect* msg_digit_st; /* S3MSG: the state of the main digits, NULL for the shadow digits */`
+   and `#include "nd_api.h"` in the includes (under TARGET_3DS).
+3. draw_number: right before the main loop (after the LoadTLUT) fill `NdTRect st; memset(&st, 0, sizeof st);` with pal =
+   D_802F4560[palette], pal_n 16, fmt G_IM_FMT_CI, siz G_IM_SIZ_4b, cms = cmt = G_TX_NOMIRROR | G_TX_WRAP, masks = maskt =
+   G_TX_NOMASK, omh = G_TT_RGBA16 | G_TF_POINT; opacity == 255: cw0/cw1 of G_CC_DECALRGBA (twice), oml = G_RM_TEX_EDGE |
+   G_RM_TEX_EDGE2, pad = 1; else cw0/cw1 of PM_CC_01 (twice), oml = G_RM_XLU_SURF | G_RM_XLU_SURF2, prim = 0xFFFFFF00u | (u8)opacity.
+   The combine words as S5TIMG builds them (copy hud_element.c's HUD_CW macros under other names). Set `msg_digit_st = &st;`
+   before the loop and `msg_digit_st = NULL;` after it.
+4. draw_digit: at its top, `if (msg_digit_st && !pm_anchor_on()) { NdTRect r = *msg_digit_st; r.img = img; r.width = num->texWidth;
+   r.height = num->texHeight; r.uls = 0; r.ult = 0; r.lrs = num->texWidth - 1; r.lrt = num->texHeight - 1; r.w0 = ND_W0_TR(G_TEXRECT,
+   4 * (posX + num->texWidth), 4 * (posY + num->texHeight)); r.w1 = ND_W1_TR(G_TX_RENDERTILE, 4 * posX, 4 * posY); r.hs = ND_TR_H1(0, 0);
+   r.hd = ND_TR_H2(1 << 10, 1 << 10); nd_rec_napi(nd_trect_run, &r, sizeof r / 8u); return; }`. The rest of draw_digit stays.
+
+## Merge rule
+Right before the gate runs: `git merge main`, rebuild, nd_host; then take the bases at the new `git merge-base HEAD main`.
 
 ## Gate (expected values)
-- Build, memcheck OK; nd_host PASS.
-- One list, with bases at the merge-base: msgbox_talk_nowide_pic, or the det talk scene napicen_talk uses (pre-flight
-  `bench.py show`; name it in the commit), plus pause_tab_det_pic (draw_number in the pause stats). 2 starts. Every shot
-  byte-equal.
-- napicen_talk (1 start): msg.o down to the render_messages prologue (hand back the per-function numbers); fallback count 0 in
-  steady frames.
-- listcen (host): build count down by the calls moved. Budget 6 Azahar starts.
+- Build, memcheck OK; `bench.py run nd_host --row S3MSG --why "S3MSG digits"`: PASS.
+- `PM_ROW=S3MSG PM_LANE=S3MSG python 3ds/tools/bench.py base pause_tab_det_pic` and the same for spot_mac01_det. One list:
+  `bench.py run pause_tab_det_pic,spot_mac01_det --row S3MSG --why "S3MSG: draw_number digits as NdTRect"` (2 starts).
+  `bench.py cmp` both: every shot byte-equal (pause_stats.c and the HUD call draw_number). No `trect fallback` line in either
+  log after frame 200. Budget 5.
 
-## Stop
-A byte difference: stop, commit, hand back (2 tries per named cause). Delete this row file in the completing commit.
+## Stop and end
+A byte difference, a fallback line, an edit that does not fit, or a test-tool fault: commit, hand back the exact output. Delete
+this row file in the completing commit. Later msg.c parts (not this row): the rewind arrow (a 2-texture quad: after S5CHUD and
+S2W), the choice pointer (its images go through draw_img_util.c: S5TIMG), the render_messages prologue (S6S2).

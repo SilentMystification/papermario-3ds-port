@@ -48,6 +48,12 @@ src/draw_box.c (the non-ROTSCALE path of draw_box only: `quads == nullptr`), 3ds
 :187, :439, :452, :460, :470, :481, :513) and keep every one consistent after a direct box draw (nd_direct_end must leave
 box_pat and box_folded as the walker would, or reset them as the next SETCOMBINE does).
 
+
+## Merge rule (orchestrator, 2026-11-12)
+Rows that append to the end of 3ds/include/nd_api.h, 3ds/src/nd_direct.c or 3ds/tools/nd_direct_test.c conflict when two merge in
+sequence. Right before the gate runs: `git merge main`; at a conflict at those file ends keep both appends (main's first, then
+yours), rebuild, nd_host; then take the bases at the new `git merge-base HEAD main` and run the gate.
+
 ## Gate (expected values)
 - Build, memcheck OK; nd_host PASS (host case: the 2-cycle box decision through the record inputs equals the walker decision for
   the 4 default styles).
