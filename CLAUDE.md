@@ -15,8 +15,8 @@ Orchestrator: read docs/handoff/orchestrator_rules.md at the start and after eve
 4. TOOL FAULTS STOP THE GATE. These faults stop the gate: a base run that fails or hangs, an abnormal exit, a stale build, a shot
    copy failure, two runs that disagree. Stop and hand back the exact output. Never skip a scene, change the base or reset the
    budget to pass. Exception (user, 2026-11-12): the orchestrator resets a row's budget once per oracle correction when the
-   oracle corrected a row spec fault (not a tool fault). A byte difference of at most 1 step per channel inside the touched
-   effect's area passes when the oracle names the code cause in the row (rounding rule); the user checks the look.
+   oracle corrected a row spec fault (not a tool fault). Every compare is exact: one differing bit fails the gate. There is no
+   rounding exception (user, 2026-11-12).
 5. STOP RULE. A failed gate or an unexpected fact: stop, commit, hand back the values. Do not choose a new approach. Hand back
    after 90 minutes or 150 tool calls without a passed gate. 2 tries per named cause.
 6. WORK. Grep and read line ranges. Write tool output to build3ds/out/ of your own worktree. Run builds and benches in the

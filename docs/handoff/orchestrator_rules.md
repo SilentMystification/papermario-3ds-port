@@ -61,8 +61,8 @@ for the epic before that proof. A stage report says what is left, in counts, nev
 - At most 6 code agents.
 - Row spec fault (user, 2026-11-12): after the oracle corrects the row, reset the budget once inside the coder's worktree
   (`cd build3ds/wt/<row>; powershell -File 3ds/run_azahar.ps1 -ResetBudget <row>`; the budget file is per worktree) and tell the
-  user in the status. Tool faults never get a reset. The oracle sends the corrected row to the coder itself. A byte diff of
-  at most 1 step per channel inside the effect area passes when the oracle names the code cause (rounding rule).
+  user in the status. Tool faults never get a reset. The oracle sends the corrected row to the coder itself. Every compare is
+  exact: one differing bit fails the gate, no rounding exception (user, 2026-11-12).
 - Handback triage: a test-tool fault opens a tool row, and the gate waits (CLAUDE.md 4). Send any other failure to the oracle at
   once. Decide alone only what changes no behaviour (a name, a flag, a scope). Never relaunch an unchanged row.
 - A bug row starts from the user facts. When the code read finds no cause, ask the user (AskUserQuestion).
