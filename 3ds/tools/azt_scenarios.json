@@ -7826,6 +7826,26 @@
       "reason": "INTERP2M measurement, copy of spot_mac01_fps60_det without shots. Cap 40 s: boot, warp, and the first 300 compared pairs."
     },
     {
+      "name": "icmp_mac01_stereo",
+      "status": "unverified",
+      "subject": "INTERPB3: icmp_mac01 with forced stereo (both eyes recorded; the patched copy of the L frame compared with the key walk).",
+      "proves": "INTERPB3: the icmpp lines (class counts, lenmis, unused) of the stereo frames: which words of the K copy differ from the key walk in stereo.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fps60 icmp twinchk loglevel=debug det stereo",
+      "until": "twinchk f\d+ entries",
+      "cap": 40,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "icmp pairs",
+          "regex": "twinchk f\d+ entries"
+        }
+      ],
+      "reason": "INTERPB3 measurement, copy of icmp_mac01 with stereo. Cap 40 s."
+    },
+    {
       "name": "icmp_btl",
       "status": "unverified",
       "subject": "INTERP2M: Battle scene, one Goomba on kmr_03, with fps60 and the icmp switch (the t = 0.5 frame and the key frame compared in GPU command words).",

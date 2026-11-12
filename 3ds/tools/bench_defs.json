@@ -1198,6 +1198,23 @@
       "gates": []
     },
     {
+      "name": "icmp_mac01_stereo",
+      "kind": "azahar",
+      "speed": "normal",
+      "default": false,
+      "purpose": "INTERPB3: the patched copy of the L frame against the key walk in forced stereo, Toad Town mac_01 with fps60 and icmp.",
+      "scenario": "icmp_mac01_stereo",
+      "cap": 40,
+      "until": "twinchk f\d+ entries",
+      "tags": [
+        "azahar",
+        "icmp",
+        "interp",
+        "stereo"
+      ],
+      "gates": []
+    },
+    {
       "name": "icmp_btl",
       "kind": "azahar",
       "speed": "normal",

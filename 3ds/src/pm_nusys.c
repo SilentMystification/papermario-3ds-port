@@ -223,10 +223,11 @@ void pm_key_walk(const PmKey* k) { /* walker side */
 
 /* INTERPB3: the key frame of a step from the K copy the L frame of the step made (pm_gpu.c kc_build): no second walk. A frame with no valid copy (a lost
  * record or patch list, a split command buffer, a scene change: pm_gpu.c pm_kc_why) is walked as before. The census counts both (pm_main.c interp line). */
-unsigned pm_kc_n[2]; /* copies shown, key walks */
+unsigned pm_kc_n[2], pm_kc_fb[4]; /* copies shown, key walks; walks by pm_gpu_kc_state (kfb) */
 extern float nd_mv_k[ND_MV_DEPTH][4][4];
 void pm_key_show(const PmKey* k) { /* walker side */
-    if (!pm_gpu_kc_ready()) { pm_kc_n[1]++; pm_key_walk(k); return; }
+    const int kst = pm_gpu_kc_state();
+    if (kst) { pm_kc_n[1]++; pm_kc_fb[kst - 1]++; pm_key_walk(k); return; }
     pm_kc_n[0]++;
     /* the key walk leaves the matrix state the next L walk starts from (K of this step): main stack from the twin stack of the L walk */
     memcpy(nd_mv[0], nd_mv_k[0], sizeof nd_mv[0]); memcpy(nd_proj, nd_proj_k, sizeof nd_proj);

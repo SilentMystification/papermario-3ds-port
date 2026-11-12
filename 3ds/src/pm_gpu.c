@@ -1157,7 +1157,9 @@ static unsigned bc_draws, bc_bad, bc_f0, bc_fl; static int bc_sw = -1;
 static __attribute__((cold, noinline)) void blk_build(NdNatC* q, const NdDraw* d) {
     if (!blk_ar) { blk_ar = (uint32_t*)malloc(BLK_WORDS * 4u); if (!blk_ar) pm_fatal_stop("blk: no memory for the command block arena"); }
     if (blk_n + ND_EMIT_MAX > BLK_WORDS) { blk_n = 0; if (++blk_gen == 0) blk_gen = 1; }
+    const unsigned kp0 = nd_kp_n; /* INTERPB3: the arena words are no command buffer words: the K patches of this emit are dropped (a cache hit copy patches its own row, blk_put) */
     const unsigned n = nd_emit_full(blk_ar + blk_n, d, &q->bo);
+    nd_kp_n = kp0;
     q->boff = blk_n; q->blen = (uint16_t)n; q->bgen = blk_gen; q->bt = d->tmpl;
     blk_n += n;
 }
@@ -1165,7 +1167,8 @@ extern uint32_t nd_emit_dk, nd_emit_da, nd_emit_db;
 static __attribute__((cold, noinline)) void blk_check(const uint32_t* blk, unsigned n, const NdDraw* d, const NdNatC* q) {
     static uint32_t old[ND_EMIT_MAX];
     NdShadow s = ndn_sh;
-    const unsigned no = nd_emit_draw(old, &s, d);
+    const unsigned kp0 = nd_kp_n, no = nd_emit_draw(old, &s, d); /* INTERPB3: no patches for the scratch words */
+    nd_kp_n = kp0;
     bc_draws++;
     if (nd_emit_cmp(old, no, blk, n)) {
         static unsigned nl_;
@@ -2849,7 +2852,16 @@ static void kc_take(gxCmdQueue_s* q) { /* the entries queued since the last take
     kc_from = q->numEntries;
 }
 void pm_gpu_kc_cut(void) { kc_cut = 2; } /* a map change, a game mode change or a camera cut: the frames around it differ in structure */
-int pm_gpu_kc_ready(void) { return kc_valid && !PMDL("icmp"); }
+static unsigned kc_gen, kc_seen, kc_ok_gen; /* kc_build runs, the run seen at the last key decision, the run that made a valid copy */
+/* 0: the copy is ready; else why the key frame is walked: 1 icmp switch, 2 no kc_build since the last key frame, 3 a valid copy was cleared before the show, 4 kc_build refused (a pm_kc_why slot) */
+int pm_gpu_kc_state(void) {
+    if (PMDL("icmp")) return 1;
+    const unsigned g = kc_gen, seen = kc_seen;
+    kc_seen = g;
+    if (kc_valid) return 0;
+    if (g == seen) return 2;
+    return kc_ok_gen == g ? 3 : 4;
+}
 /* The frame end of an L frame (after the right eye replay, before C3D_FrameEnd): the K copy of the frame. The buffer words [0, coff) hold every list of the frame and
  * the open tail list; the patches (nd_kp, base = a command start in this buffer) put the K words in. Any doubt (a record or patch list that lost something, a
  * buffer split, a list outside the used range, a scene change) leaves kc_valid 0: the key frame is then walked. */
@@ -2859,7 +2871,7 @@ static __attribute__((cold, noinline)) void kc_out(const char* kind, unsigned i,
 }
 static __attribute__((noinline)) void kc_build(void) {
     gxCmdQueue_s* q = (gxCmdQueue_s*)&__C3D_Context;
-    kc_valid = 0;
+    kc_valid = 0; kc_gen++;
     if (!kc_rec) { if (pm_icmp_kind == 1) pm_kc_why[4]++; return; }
     kc_take(q);
     kc_rec = 0;
@@ -2892,7 +2904,7 @@ static __attribute__((noinline)) void kc_build(void) {
     }
     kc_cb = (u32)cb; kc_tail_w = (unsigned)(tb - cb); kc_tail_n = toff;
     GSPGPU_FlushDataCache(kc_buf, coff * 4u);
-    kc_valid = 1;
+    kc_valid = 1; kc_ok_gen = kc_gen;
 }
 /* The key frame of the step from the K copy (walker side): a frame of its own (begin, the recorded entries, the recorded tail, end). Nothing of the frame state is
  * made again: no ring chunk, no texture slot and no list is touched between the L frame and this one. */
