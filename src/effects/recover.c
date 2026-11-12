@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 extern Gfx D_09003200_385000[];
 extern Gfx D_09003298_385098[];
@@ -199,9 +200,15 @@ void func_E0080448(EffectInstance* effect) {
                 gDPSetCombineMode(gMainGfxPos++, PM_CC_49, PM_CC_49);
             }
 
+#ifdef TARGET_3DS
+            nd_rec_dl((type == 0 || type == 2) ?
+                (unk_44 == 0 ? D_09003200_385000 : D_09003298_385098) :
+                D_09003330_385130);
+#else
             gSPDisplayList(gMainGfxPos++, (type == 0 || type == 2) ?
                 (unk_44 == 0 ? D_09003200_385000 : D_09003298_385098) :
                 D_09003330_385130);
+#endif
 
             guTranslateF(sp18, part->pos.x + part->offsetX, part->pos.y, part->pos.z);
             guScaleF(sp58, part->scaleX, part->scaleY, 1.0f);
@@ -216,24 +223,60 @@ void func_E0080448(EffectInstance* effect) {
             gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
             if (i == 1 && type != 2) {
+#ifdef TARGET_3DS
+                nd_rec_dl(D_090033D0_3851D0);
+#else
                 gSPDisplayList(gMainGfxPos++, D_090033D0_3851D0);
+#endif
                 gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+                nd_rec_dl(D_090034D0_3852D0);
+#else
                 gSPDisplayList(gMainGfxPos++, D_090034D0_3852D0);
+#endif
 
                 if (unk_40 < 10 && unk_44 == 0) {
+#ifdef TARGET_3DS
+                    nd_rec_dl(D_E0080AC0[unk_40]);
+#else
                     gSPDisplayList(gMainGfxPos++, D_E0080AC0[unk_40]);
+#endif
+#ifdef TARGET_3DS
+                    nd_rec_dl(type == 0 ? D_09003410_385210 : D_09003470_385270);
+#else
                     gSPDisplayList(gMainGfxPos++, type == 0 ? D_09003410_385210 : D_09003470_385270);
+#endif
                 } else {
                     s32 ones = unk_40 % 10;
                     s32 tens = unk_44 == 0 ? (unk_40 / 10) : 10;
 
+#ifdef TARGET_3DS
+                    nd_rec_dl(D_E0080AC0[ones]);
+#else
                     gSPDisplayList(gMainGfxPos++, D_E0080AC0[ones]);
+#endif
+#ifdef TARGET_3DS
+                    nd_rec_dl(type == 0 ? D_09003450_385250 : D_090034B0_3852B0);
+#else
                     gSPDisplayList(gMainGfxPos++, type == 0 ? D_09003450_385250 : D_090034B0_3852B0);
+#endif
+#ifdef TARGET_3DS
+                    nd_rec_dl(D_E0080AC0[tens]);
+#else
                     gSPDisplayList(gMainGfxPos++, D_E0080AC0[tens]);
+#endif
+#ifdef TARGET_3DS
+                    nd_rec_dl(type == 0 ? D_09003430_385230 : D_09003490_385290);
+#else
                     gSPDisplayList(gMainGfxPos++, type == 0 ? D_09003430_385230 : D_09003490_385290);
+#endif
                 }
             } else {
+#ifdef TARGET_3DS
+                nd_rec_dl(D_090033F0_3851F0);
+#else
                 gSPDisplayList(gMainGfxPos++, D_090033F0_3851F0);
+#endif
                 gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
             }
 

@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 void sleep_bubble_appendGfx(void* effect);
 void sleep_bubble_init(EffectInstance* effect);
@@ -135,11 +136,23 @@ void sleep_bubble_appendGfx(void* effect) {
 
     timeLeft = data->timeLeft;
     if (timeLeft == 0) {
+#ifdef TARGET_3DS
+        nd_rec_dl(D_09000440_35D950);
+#else
         gSPDisplayList(gMainGfxPos++, D_09000440_35D950);
+#endif
     } else if (timeLeft == 1) {
+#ifdef TARGET_3DS
+        nd_rec_dl(D_09000390_35D8A0);
+#else
         gSPDisplayList(gMainGfxPos++, D_09000390_35D8A0);
+#endif
     } else {
+#ifdef TARGET_3DS
+        nd_rec_dl(D_090002E0_35D7F0);
+#else
         gSPDisplayList(gMainGfxPos++, D_090002E0_35D7F0);
+#endif
     }
 
     guTranslateF(sp18, data->pos.x, data->pos.y, data->pos.z);

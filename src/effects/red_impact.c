@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 extern Gfx D_09000940_359CF0[];
 extern Gfx D_090009A0_359D50[];
@@ -171,7 +172,11 @@ void red_impact_appendGfx(void* effect) {
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+#ifdef TARGET_3DS
+    nd_rec_dl(dlist);
+#else
     gSPDisplayList(gMainGfxPos++, dlist);
+#endif
 
     guPositionF(sp20, 0.0f, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, part->unk_04, part->unk_08, part->unk_0C);
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
@@ -211,7 +216,11 @@ void red_impact_appendGfx(void* effect) {
             gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, 0, (s32) part->unk_3C, 0x00FC, (s32) part->unk_3C + 0x7C);
             gDPSetTileSize(gMainGfxPos++, 1, 0, (s32) part->unk_44, 0x007C, (s32) part->unk_44 + 0x7C);
             gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+            nd_rec_dl(dlist2);
+#else
             gSPDisplayList(gMainGfxPos++, dlist2);
+#endif
             gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         }
     }

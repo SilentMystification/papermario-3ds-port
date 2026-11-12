@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 extern Gfx D_09000200_356730[];
 extern Gfx D_090002E8_356818[];
@@ -118,7 +119,11 @@ void rising_bubble_appendGfx(void* effect) {
         s32 uls;
         s32 ult;
 
+#ifdef TARGET_3DS
+        nd_rec_dl(D_E0046614[0]);
+#else
         gSPDisplayList(gMainGfxPos++, D_E0046614[0]);
+#endif
         gDPSetPrimColor(gMainGfxPos++, 0, 0, 127, 127, 127, data->unk_14);
 
         uls = 0;
@@ -132,7 +137,11 @@ void rising_bubble_appendGfx(void* effect) {
         guScaleF(sp60, data->unk_10, 1.0f, data->unk_10);
         guMtxCatF(sp60, sp20, sp20);
     } else {
+#ifdef TARGET_3DS
+        nd_rec_dl(D_E0046618[0]);
+#else
         gSPDisplayList(gMainGfxPos++, D_E0046618[0]);
+#endif
         gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 255, data->unk_14);
         gDPSetEnvColor(gMainGfxPos++, 128, 128, 255, data->unk_14);
 
@@ -143,9 +152,17 @@ void rising_bubble_appendGfx(void* effect) {
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
     if (data->pos.y >= data->unk_24) {
+#ifdef TARGET_3DS
+        nd_rec_dl(D_E0046600[0]);
+#else
         gSPDisplayList(gMainGfxPos++, D_E0046600[0]);
+#endif
     } else {
+#ifdef TARGET_3DS
+        nd_rec_dl(D_E0046604[(lifeTime >> 1) & 3]);
+#else
         gSPDisplayList(gMainGfxPos++, D_E0046604[(lifeTime >> 1) & 3]);
+#endif
     }
 
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);

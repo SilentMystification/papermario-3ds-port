@@ -44,6 +44,15 @@ nd_render_state, tex_win) runs only in the host converter at build time.
 ### Stages and rows (id: scope | blocker | model)
 Every row is gated by nd_host, the DIRECT byte set (spot_mac01_det, mdl5_iwa10_det, spot_mac00_det) or its named scenes, and the
 LISTCEN deltas (the counts it removes). CONSOLE = one batch push, compared with a stored run.
+- Oracle 7 notes (2026-11-12, after main 87a256ef5; read with the oracle 6 block below):
+  - Written: S7FLAME (ready), S7ENT1, S7ENTX (after S7ENT), S7ENT3 (after S7ENT and S6E3); corrections in row_S1TSTEN.md
+    (try 5), row_PUSHFIX.md (try 2), row_S7ENT.md (base rule: cmp --commit f8b5d03fb, same code tree as 3d4bc81d5).
+  - Tool facts: a cold start and a warm restart of one build can differ (S7ENT base 3d4bc81d5, shot 0; cmp refuses a cold row
+    run, TOOLB9, but `bench.py base` takes a cold run as a base run). Slot Azahars serve many lanes by warm restart (slot 1 pid
+    33892 ran S1TSTEN, S7EFX2, S7EFX4, S7ENT in 5 minutes). S1TSTEN's spot_mac01_det had 6 byte-identical head shots: a frozen
+    target signature; the try 5 gate decides code or tool.
+  - Next batch: S7MAP1 design (row_S7DATA.md), S6E4.. (src/entity state lines), S7MDL1.. after S7MDL; S8CEN and S8FB1-6 after
+    every S7 row; S9 after S8. Margin 574 KB at 0d511cddf; S7ENT adds about 136 KB: no table-packing row until below 200 KB.
 - Oracle 6 handoff (2026-11-12, context about 500K; replaces the earlier oracle 6 block; the next oracle starts here):
   - Open rows written by oracle 6 (state at writing, main after cd4783813): S7ENT (Sonnet, try 2: gaps run as chains of table
     pieces, gate gapt > 0 and gaps 0), S7MDL (Opus; blockers S6KEY/S6SYNC, S6VORD, S7TEX2), S7TEX2 (Sonnet), S7EFX3/5/6/7/8
