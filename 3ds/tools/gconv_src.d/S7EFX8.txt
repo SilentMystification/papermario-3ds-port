@@ -1,0 +1,8 @@
+thunderbolt_ring
+tubba_heart_attack
+underwater
+water_fountain
+water_splash
+waterfall
+whirlwind
+attack_result_text

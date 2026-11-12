@@ -1,0 +1,14 @@
+fright_jar
+gather_energy_pink
+gather_magic
+got_item_outline
+green_impact
+hieroglyphs
+huff_puff_breath
+ice_pillar
+ice_shard
+landing_dust
+lens_flare
+light_rays
+lightning
+lightning_bolt
