@@ -2,6 +2,9 @@
 #include "npc.h"
 #include "ld_addrs.h"
 #include "entity.h"
+#ifdef TARGET_3DS
+#include "nd_scomp.h"
+#endif
 
 extern Gfx Entity_RenderNone[];
 extern Gfx Entity_WoodenCrate_Render[];
@@ -170,6 +173,20 @@ void entity_WoodenCrate_update_fragments(Entity* entity) {
     }
 }
 
+#ifdef TARGET_3DS
+/* S6E2: the state lines of the fragment loop of entity_WoodenCrate_setupGfx as compiled state ranges (nd_scomp.h). The PRIM is a value slot. */
+static const Gfx WoodenCrate_st_o[] = {
+    gsDPSetRenderMode(G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2),
+    gsDPSetCombineMode(G_CC_MODULATEIA, G_CC_MODULATEIA),
+};
+static NdSDef WoodenCrate_def_o = { WoodenCrate_st_o, sizeof WoodenCrate_st_o / sizeof WoodenCrate_st_o[0] };
+static const Gfx WoodenCrate_st_t[] = {
+    gsDPSetCombineMode(PM_CC_11, PM_CC_12),
+    gsDPSetPrimColor(0, 0, 0, 0, 0, 0),
+};
+static NdSDef WoodenCrate_def_t = { WoodenCrate_st_t, sizeof WoodenCrate_st_t / sizeof WoodenCrate_st_t[0] };
+#endif
+
 void entity_WoodenCrate_setupGfx(s32 entityIndex) {
     s32 i;
     Matrix4f mtxTransInv;
@@ -189,6 +206,16 @@ void entity_WoodenCrate_setupGfx(s32 entityIndex) {
     z_inv = -entity->pos.z;
 
     for (i = 0; i < 35; i++) {
+#ifdef TARGET_3DS
+        if (data->fragmentRebounds[i] < 2) {
+            nd_scomp_rec(&WoodenCrate_def_o, NULL, 0);
+        } else {
+            Gfx v[1];
+
+            gDPSetPrimColor(&v[0], 0, 0, 0, 0, 0, data->fragmentMoveAngle[i]);
+            nd_scomp_rec(&WoodenCrate_def_t, v, 1);
+        }
+#else
         if (data->fragmentRebounds[i] < 2) {
             gDPSetRenderMode(gMainGfxPos++, G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2);
             gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIA, G_CC_MODULATEIA);
@@ -196,6 +223,7 @@ void entity_WoodenCrate_setupGfx(s32 entityIndex) {
             gDPSetCombineMode(gMainGfxPos++, PM_CC_11, PM_CC_12);
             gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, data->fragmentMoveAngle[i]);
         }
+#endif
 
         guTranslateF(mtxTransInv, x_inv, y_inv, z_inv);
         guRotateF(mtxRotX, data->fragmentRotX[i] * 360.0f / 256, 1.0f, 0.0f, 0.0f);
