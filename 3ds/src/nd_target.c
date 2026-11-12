@@ -60,6 +60,7 @@ unsigned hold_grab_f = ~0u;     /* SBLK2 B1: the frame whose one copy the hold r
 void nd_native_rec(unsigned kind, unsigned on) {
     if (kind == G_PM_ND_SPLASH) splash_on = (int)on;
     if (kind == G_PM_ND_GRABHOLD) grab_hold = (int)on;
+    if (kind == G_PM_ND_SPRSHADE) { extern int nd_spr_walk; extern unsigned shc[16]; nd_spr_walk = (int)on; if (on && PMDL("shadecen")) shc[14]++; } /* SHADEIMG: the imgfx shaded sprite, the walker's KZN04 multiply on inside */
     if (kind == G_PM_ND_GUTTER) { extern void pm_gpu_pause_gutters(unsigned fade); pm_gpu_pause_gutters(on); } /* PAUSEOPEN: the pause gutters; PAUSEFADE: on is the fade (0..128), the gutter mix colour */
 }
 void grab_cur(const void* src, int w, int h) {

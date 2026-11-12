@@ -235,6 +235,9 @@
 #define G_PM_ND_GRABHOLD 2
 /* PAUSEOPEN: G_PM_ND_GUTTER (arg = the pause fade, 0 to 128) draws the two wide gutters of the pause picture from the pause slot (pm_gpu.c pm_gpu_pause_gutters). */
 #define G_PM_ND_GUTTER 3
+/* SHADEIMG: G_PM_ND_SPRSHADE (arg 1 opens, 0 closes) brackets the imgfx draw of a shaded sprite (sprite.c spr_appendGfx_component). The walker
+ * multiplies the KZN04 shade colour inside the bracket (nd_geom.c gv_params_calc, nd_spr_walk). */
+#define G_PM_ND_SPRSHADE 4
 
 /* DIRECT D11a: G_PM_LST, the start of a static state list recorded in line (nd_rec.c rec_inline). The replay runs it as the list start of the
  * G_DL it replaces (nd_walk.c: the state epoch, the entity skip mark consumed). w1 unused. */
@@ -242,6 +245,7 @@
 #define gPmNdSplash(pkt, on) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = ((u32)G_PM_ND << 24) | ((u32)G_PM_ND_SPLASH << 16) | ((on) ? 1u : 0u); _g->words.w1 = 0; }
 #define gPmNdGutter(pkt, a) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = ((u32)G_PM_ND << 24) | ((u32)G_PM_ND_GUTTER << 16) | ((u32)(a) & 0xffu); _g->words.w1 = 0; }
 #define gPmNdGrabHold(pkt, on) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = ((u32)G_PM_ND << 24) | ((u32)G_PM_ND_GRABHOLD << 16) | ((on) ? 1u : 0u); _g->words.w1 = 0; }
+#define gPmNdSprShade(pkt, on) { Gfx *_g = (Gfx *)(pkt); _g->words.w0 = ((u32)G_PM_ND << 24) | ((u32)G_PM_ND_SPRSHADE << 16) | ((on) ? 1u : 0u); _g->words.w1 = 0; }
 
 /* CORE2-3: a camera viewport (Camera.vp, Camera.vpAlt) is rewritten in place by the game. A list takes a copy made at list build
  * (pm_nusys.c pm_vp_snap, one pool per display context), so a walk of the list one frame later reads the value of its own frame. */

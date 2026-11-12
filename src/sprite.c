@@ -467,9 +467,15 @@ void spr_appendGfx_component(
         ifxImg.xOffset = -(width / 2);
         ifxImg.yOffset = height;
         ifxImg.alpha = opacity;
+#ifdef TARGET_3DS
+        if (gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED) gPmNdSprShade(gMainGfxPos++, 1); /* SHADEIMG: the shade colour inside the imgfx draw */
+#endif
         if (imgfx_appendGfx_component((u8) CurSpriteImgFX, &ifxImg, IMGFX_FLAG_80000, mtxTransform) == 1) {
             CurSpriteImgFX &= ~SPR_IMGFX_FLAG_ALL;
         }
+#ifdef TARGET_3DS
+        if (gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED) gPmNdSprShade(gMainGfxPos++, 0);
+#endif
     }
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 }

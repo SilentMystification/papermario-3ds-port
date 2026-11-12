@@ -712,9 +712,9 @@ __attribute__((cold, noinline)) void shc_frame(unsigned f) {
     nd_sprm_take(&sh_, &sm_); /* BOMBLIT2: the memo hits and misses of this frame, taken every frame */
     for (unsigned k = 0; k < 16; k++) any |= shc[k] != 0;
     if (!any && !sh_ && !sm_) return;
-    pm_log_hw("shadecen f%u m1 %u m1skip %u ok %u cond %u nopal %u loadfail %u why3 %u nat %u fb %u why5 %u sprmh %u sprmm %u shnat %u dmin %d,%d,%d dmax %d,%d,%d smean %u",
+    pm_log_hw("shadecen f%u m1 %u m1skip %u ok %u cond %u nopal %u loadfail %u why3 %u nat %u fb %u why5 %u sprmh %u sprmm %u shnat %u dmin %d,%d,%d dmax %d,%d,%d smean %u img %u",
         f, shc[0], shc[1], shc[2], shc[3], shc[4], shc[5], shc[6], shc[7], shc[8], shc[9], sh_, sm_, shc[12],
-        shd_min[0], shd_min[1], shd_min[2], shd_max[0], shd_max[1], shd_max[2], shc[13]);
+        shd_min[0], shd_min[1], shd_min[2], shd_max[0], shd_max[1], shd_max[2], shc[13], shc[14]);
     memset(shc, 0, sizeof shc);
     for (int q = 0; q < 3; q++) { shd_min[q] = 255; shd_max[q] = 0; }
 }

@@ -193,6 +193,9 @@ Gfx* nd_rec_task(void);
 #undef gPmNdGrabHold
 #define gPmNdGrabHold(pkt, on) ND_GX(pkt, ND_W0_PMND(G_PM_ND_GRABHOLD, (on) ? 1u : 0u), 0)
 #undef gPmNdGutter
+#undef gPmNdSprShade
+#define gPmNdSprShade(pkt, on) ND_GX(pkt, ND_W0_PMND(G_PM_ND_SPRSHADE, (on) ? 1u : 0u), 0)
+#undef gPmNdGutter
 #define gPmNdGutter(pkt, a) ND_GX(pkt, ND_W0_PMND(G_PM_ND_GUTTER, (u32)(a) & 0xffu), 0) /* PAUSEOPEN: through nd_gx_w (the ND recorder); the gbi_custom.h form writes the word raw and the walker never sees it */
 /* The texture rectangle: the rectangle unit (NDO_RECT with NDO_RECT_TEX), then the two RDPHALF no-op units (their b: s, t and dsdx, dtdy), as gbi.h writes the words. */
 #define ND_W0_TR(op, xh, yh) (_SHIFTL(op, 24, 8) | _SHIFTL(xh, 12, 12) | _SHIFTL(yh, 0, 12))
