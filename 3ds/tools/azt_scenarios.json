@@ -14826,9 +14826,9 @@
     {
       "name": "fsel_fncov_rot",
       "status": "unverified",
-      "subject": "File select entry turn (frames 282 to 296): walker census armed at frame 289.",
+      "subject": "File select entry turn: walker census armed at the first ROTSCALE box with contents (fncovrot=1).",
       "proves": "Walker census of the file select entry turn (fileselect_rotate copy, census lane). Measurement only.",
-      "debug": "fileselect fncov=285 loglevel=debug det",
+      "debug": "fileselect fncovrot=1 loglevel=debug det",
       "extra": [],
       "until": "fncov f\\d+ done",
       "cap": 45,
@@ -14876,9 +14876,9 @@
     {
       "name": "pause_fncov_flip",
       "status": "unverified",
-      "subject": "Pause flip: walker census armed at frame 99, the pause opens at frame 96.",
+      "subject": "Pause flip: walker census armed at the first ROTSCALE box with contents from frame 90 (fncovrot=90).",
       "proves": "Walker census of the pause flip (pause_spin_grab spin switches, census lane). Measurement only.",
-      "debug": "preset=toad padscript=wait80,START*3 fncov=99 loglevel=debug det",
+      "debug": "preset=toad padscript=wait80,START*3 fncovrot=90 loglevel=debug det",
       "extra": [],
       "until": "fncov f\\d+ done",
       "cap": 45,
@@ -14930,6 +14930,31 @@
         }
       ],
       "reason": "Baseline census of the pause at rest for FSELCEN (subtract from pause_fncov_flip). Cap 45 s, deadline 40 s. Log only; the until is the census done line."
+    },
+    {
+      "name": "fsel_fncov_pick",
+      "status": "unverified",
+      "subject": "File select pick flip: freshsave, A on File 1 at frame 400; walker census armed at the first ROTSCALE box with contents from frame 400.",
+      "proves": "Walker census of the file select pick flip (11 windows, A press). Measurement only.",
+      "debug": "fileselect freshsave padscript=wait400,A fncovrot=400 loglevel=debug det",
+      "extra": [],
+      "until": "fncov f\\d+ done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "boot_main",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "file select mode",
+          "regex": "game mode 14 frame"
+        },
+        {
+          "name": "fncov done",
+          "regex": "fncov f\\d+ done"
+        }
+      ],
+      "reason": "FSELCEN try 2 census of the pick flip. Log only; the until is the census done line. Cap 45 s, deadline 40 s."
     }
   ]
 }
