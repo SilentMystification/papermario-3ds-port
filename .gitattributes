@@ -3,3 +3,5 @@
 # suppress asm/nonmatchings/ in GitHub diffs
 asm/nonmatchings/**/*.s linguist-generated
 3ds/logs/perf/runs.jsonl merge=union
+3ds/**/*.sh text eol=lf
+3ds/tools/*.py text eol=lf
