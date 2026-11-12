@@ -118,3 +118,6 @@ background, one line at start and end); decisions go through AskUserQuestion; ne
 
 ## Repo repair before the first push (user chose, 2026-11-12)
 53 blobs in local history are over 100 MB (all 3ds/logs/perf/runs.jsonl, 1.7 to 3.5 GB each). origin/main has none. Local main is 493 commits ahead. GitHub rejects blobs over 100 MB, so a push fails. Decision: rewrite history so runs.jsonl stays small (deduplicated copy, about 7.5 MB). Order: first merge FPS60W2 and REGDIR3, close every worktree, back up with a clone, then run the rewrite (filter-repo) on all branches. Commit hashes change: update this file and the plan. Check with `git rev-list --objects --all | git cat-file --batch-check` (no blob over 100 MB) before any push.
+
+## FPS60VAL (user, 2026-11-12)
+FPS60VAL (host validator of the 60 fps key frame copy, Sonnet row) waits for the next session. The user will decide after the console test of FPS60W2 (main f73457b88 and later). Do not start it before the user says so.
