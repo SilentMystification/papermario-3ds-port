@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 void partner_buff_init(EffectInstance* effect);
 void partner_buff_update(EffectInstance* effect);
@@ -224,7 +225,11 @@ void func_E011A700(EffectInstance* effect) {
         gDPPipeSync(gMainGfxPos++);
         gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
+#ifdef TARGET_3DS
+        nd_rec_dl(D_E011AC20[0]);
+#else
         gSPDisplayList(gMainGfxPos++, D_E011AC20[0]);
+#endif
 
         numShown = 0;
         for (i = 0; i < ARRAY_COUNT(data->unk_0C); i++) {
@@ -269,7 +274,11 @@ void func_E011A700(EffectInstance* effect) {
                     }
                     dlist = D_E011AC24[idx];
                     if (dlist != nullptr) {
+#ifdef TARGET_3DS
+                        nd_rec_dl(dlist);
+#else
                         gSPDisplayList(gMainGfxPos++, dlist);
+#endif
                         scale = D_E011AC4C[(s16)stateTimer] * 0.01f;
                         temp2 = (-(scale - 1.0f) * 16.0f) + 0.5;
                         x = temp2 + 20 + numShown * 32;
@@ -280,7 +289,11 @@ void func_E011A700(EffectInstance* effect) {
 
                 dlist = D_E011AC24[turnsDisplay];
                 if (dlist != nullptr) {
+#ifdef TARGET_3DS
+                    nd_rec_dl(dlist);
+#else
                     gSPDisplayList(gMainGfxPos++, dlist);
+#endif
                     temp1 = D_E011AC64[(s16)stateTimer];
                     temp2 = -temp1;
                     scale = D_E011AC58[(s16)stateTimer] * 0.01f;

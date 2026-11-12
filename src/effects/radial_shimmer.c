@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 void radial_shimmer_init(EffectInstance* effect);
 void radial_shimmer_update(EffectInstance* effect);
@@ -343,7 +344,11 @@ void radial_shimmer_appendGfx(void* effect) {
               G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     alpha = data->unk_24;
     gDPSetEnvColor(gMainGfxPos++, data->unk_6B, data->unk_6C, data->unk_6D, 127);
+#ifdef TARGET_3DS
+    nd_rec_dl(dlist1);
+#else
     gSPDisplayList(gMainGfxPos++, dlist1);
+#endif
 
     for (i = 0; i < effectTemp->numParts; i++, data++) {
         gDPSetPrimColor(gMainGfxPos++, 0, 0, data->unk_68, data->unk_69, data->unk_6A, alpha);
@@ -375,7 +380,11 @@ void radial_shimmer_appendGfx(void* effect) {
 
         gDPSetTileSize(gMainGfxPos++, 0, temp_f0, temp_f2, temp_f0 + other * 4, temp_f2 + var_a3 * 4);
         gDPSetTileSize(gMainGfxPos++, G_TX_MIRROR, temp_f4, temp_f6, temp_f4 + other * 4, temp_f6 + var_a3 * 4);
+#ifdef TARGET_3DS
+        nd_rec_dl(dlist2);
+#else
         gSPDisplayList(gMainGfxPos++, dlist2);
+#endif
     }
 
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
