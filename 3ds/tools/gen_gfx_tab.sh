@@ -9,6 +9,7 @@ GCONV_SRC="$GCONV_SRC aura balloon big_smoke_puff big_snowflakes blast breaking_
 GCONV_SRC="$GCONV_SRC damage_stars debuff disable_x drop_leaves dust effect_46 effect_63 effect_65 effect_75 effect_86 emote ending_decals energy_in_out energy_orb_wave" # S7EFX2
 GCONV_SRC="$GCONV_SRC energy_shockwave explosion falling_leaves fire_breath fire_flower firework firework_rocket flashing_box_shockwave floating_cloud_puff floating_flower floating_rock flower_splash_trail footprint" # S7EFX3
 GCONV_SRC="$GCONV_SRC fright_jar gather_energy_pink gather_magic got_item_outline green_impact hieroglyphs huff_puff_breath ice_pillar ice_shard landing_dust lens_flare light_rays lightning lightning_bolt" # S7EFX4
+GCONV_SRC="$GCONV_SRC lil_oink merlin_house_stars misc_particles motion_blur_flame moving_cloud music_note partner_buff peach_star_beam purple_ring quizmo_answer quizmo_assistant quizmo_audience quizmo_stage radial_shimmer" # S7EFX5
 GCONV_SRC="$GCONV_SRC" # S7EFX5
 GCONV_SRC="$GCONV_SRC radiating_energy_orb recover ring_blast rising_bubble shape_spell shattering_stones shiny_flare shockwave sleep_bubble small_gold_sparkle snowflake snowman_doll spiky_white_aura spirit_card" # S7EFX6
 GCONV_SRC="$GCONV_SRC" # S7EFX7

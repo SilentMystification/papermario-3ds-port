@@ -4120,6 +4120,21 @@
       "gates": []
     },
     {
+      "name": "fxpic_33",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "S7EFX5 byte gate: music_note (effect 33) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.",
+      "scenario": "fxpic_33",
+      "cap": 40,
+      "until": "shot \\d+ frame 415\\b",
+      "tags": [
+        "azahar",
+        "fxcen"
+      ],
+      "gates": []
+    },
+    {
       "name": "fxpic_84",
       "kind": "azahar_pic",
       "speed": "normal",

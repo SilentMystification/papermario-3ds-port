@@ -1487,6 +1487,31 @@
       "reason": "S4 byte gate for the embers particle run (row S4EMB): cold det start as spot_mac01_det, shots 412 to 415. Cap 40 s, deadline 35 s. The shot line at frame 415 is the until."
     },
     {
+      "name": "fxpic_33",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 at 0 0 200, fxtest=33 (music_note), cold det start. Shots at frames 412 to 415.",
+      "proves": "S7EFX5 particle run (music_note, effect 33): shots 412 to 415 byte-equal between the base build and the head build.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=33 shots shotwin=412:4 loglevel=debug det",
+      "extra": [],
+      "until": "shot \\d+ frame 415\\b",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "shot 415",
+          "regex": "shot \\d+ frame 415\\b"
+        }
+      ],
+      "reason": "S7EFX5 byte gate for the music_note particle run (row S7EFX5, nd_rec_dl table lists): cold det start as spot_mac01_det, shots 412 to 415. Cap 40 s, deadline 35 s. The shot line at frame 415 is the until."
+    },
+    {
       "name": "fxpic_84",
       "status": "unverified",
       "subject": "Toad Town mac_01 at 0 0 200, fxtest=84 (water_block), cold det start. Shots at frames 404 to 407.",
