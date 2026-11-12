@@ -36,7 +36,24 @@ static const uint32_t ico_u[] = {
 };
 static const uint32_t bad_u[] = {
     NDO_W0(NDO_OMH, OM_A(G_MDSFT_CYCLETYPE, 2)), G_CYC_1CYCLE,
+    NDO_W0(NDO_VTX, 0), 0,
+};
+/* SCOMP0: primitive colour before the first static unit (a value unit, ordered before the static writes) */
+static const uint32_t pre_u[] = {
     NDO_W0(NDO_PRIM, 0), 0x11223344u,
+    NDO_W0(NDO_OMH, OM_A(G_MDSFT_CYCLETYPE, 2)), G_CYC_1CYCLE,
+};
+/* SCOMP0: primitive colour between two static units: refused */
+static const uint32_t mid_u[] = {
+    NDO_W0(NDO_OMH, OM_A(G_MDSFT_CYCLETYPE, 2)), G_CYC_1CYCLE,
+    NDO_W0(NDO_PRIM, 0), 0x11223344u,
+    NDO_W0(NDO_OML, OM_A(0, 2)), 0,
+};
+/* SCOMP0: texture setters after the last static unit: value units, after the combine */
+static const uint32_t tex_u[] = {
+    NDO_W0(NDO_COMB, 0xfffe7e), 0xfffffbfdu,
+    NDO_W0(NDO_TIMG, 0), 0,
+    NDO_W0(NDO_TILE, 0), 0,
 };
 static void base_in(NdCombIn* in) {
     memset(in, 0, sizeof *in);
@@ -55,6 +72,9 @@ int main(void) {
     NdSDef cam = { cam_u, sizeof cam_u / 8u, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     NdSDef ico = { ico_u, sizeof ico_u / 8u, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     NdSDef bad = { bad_u, sizeof bad_u / 8u, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    NdSDef pre = { pre_u, sizeof pre_u / 8u, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    NdSDef mid = { mid_u, sizeof mid_u / 8u, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    NdSDef tex = { tex_u, sizeof tex_u / 8u, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     NdCombIn a, b;
     int m1, m2;
     unsigned i1, i2;
@@ -64,7 +84,10 @@ int main(void) {
           cam.omh_m == (3u << G_MDSFT_CYCLETYPE) && cam.oml_m == 0xfffffff8u && cam.has_comb && cam.has_tex && cam.has_geom &&
           cam.geom_c == (~(uint32_t)(G_SHADE | G_LIGHTING) & 0xffffffu) && cam.cw0 == 0xfcfffe7eu);
     check("ico def compiles", nd_scomp_analyse(&ico) == 1 && ico.nv == 1u && ico.pre == 1u && !ico.has_comb);
-    check("a def with a primitive colour is refused", nd_scomp_analyse(&bad) == 0);
+    check("a def with a vertex load is refused", nd_scomp_analyse(&bad) == 0);
+    check("prim before the first static compiles", nd_scomp_analyse(&pre) == 1 && pre.nv == 1u && pre.pre == 1u);
+    check("prim between static units is refused", nd_scomp_analyse(&mid) == 0);
+    check("texture units after the last static compile", nd_scomp_analyse(&tex) == 1 && tex.nv == 2u && tex.pre == 0u);
     /* cam: the combine words are set by the def, prim is inherited and read by the decision */
     base_in(&a); i1 = id_of(&t, &cam, &a, 0, &m1);
     check("first run of a key is a miss", m1 == 1);
