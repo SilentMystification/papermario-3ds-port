@@ -325,8 +325,8 @@ static __attribute__((cold, noinline)) void tile_stale_log(int n) {
 }
 
 /* NAPI2B: the bind test on the facts of a bind (a walker tile or a direct descriptor): the texture layer holds this image, palette, format, wrap and window */
-static inline __attribute__((always_inline)) int bound_cmp(const void* src, const void* pal, unsigned fmt, unsigned siz, const unsigned* wrap, const int* sz, int n) {
-    if (pm_tex_cur_idx() < 0 || !ens_src) return 0;
+static inline __attribute__((always_inline)) int bound_cmp(int valid, const void* src, const void* pal, unsigned fmt, unsigned siz, const unsigned* wrap, const int* sz, int n) {
+    if (!valid || pm_tex_cur_idx() < 0 || !ens_src) return 0;
     if (ens_src != src || ens_pal != pal || ens_fmt != fmt || ens_siz != siz) return 0;
     if (memcmp(wrap, ens_wrap, sizeof ens_wrap) || memcmp(sz, ens_sz, sizeof ens_sz)) return 0;
     /* KMR10M: a native load since the bind (nd_tex_get, spr_tex_unit) moves cur; the bind holds only while its slot keeps its generation */
@@ -338,8 +338,7 @@ static inline __attribute__((always_inline)) int bound_cmp(const void* src, cons
 }
 
 int tile_bound(int n) {
-    if (!nd_ws.td[n].valid) return 0;
-    return bound_cmp(nd_ws.td[n].src, nd_ws.td[n].pal, nd_ws.td[n].fmt, nd_ws.td[n].siz, nd_ws.tst1.tile_wrap[n], nd_ws.tst1.tile_sz[n], n);
+    return bound_cmp(nd_ws.td[n].valid, nd_ws.td[n].src, nd_ws.td[n].pal, nd_ws.td[n].fmt, nd_ws.td[n].siz, nd_ws.tst1.tile_wrap[n], nd_ws.tst1.tile_sz[n], n);
 }
 
 int tile_texel(int n, int s, int t, unsigned char o[4]) {
@@ -438,7 +437,7 @@ static __attribute__((cold, noinline)) void ensure_tile_slow(int n) {
  * The tile_bound arm, the GAMEOVER re-window arm and the load arm of the former ensure_tile_slow, in the same order with the same calls.
  * Returns 1 when the texture layer already held the image (nothing loaded), 0 when it was re-windowed or loaded. */
 int nd_tex_bind_desc(const NdBindDesc* d, int n) {
-    if (bound_cmp(d->src, d->pal, d->fmt, d->siz, d->wrap, d->sz, n)) {
+    if (bound_cmp(1, d->src, d->pal, d->fmt, d->siz, d->wrap, d->sz, n)) {
         nd_ws.cur_tile = n;
         return 1;
     }
