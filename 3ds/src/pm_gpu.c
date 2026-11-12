@@ -3896,13 +3896,16 @@ static void spr_nat_log(unsigned f) { /* PROF2-3: census lines, from cen_lines_f
         spr_nat_fb[2], spr_nat_fb[3], spr_nat_fb[4], spr_nat_fb[5], spr_nat_fb[1] + spr_nat_fb[20] + spr_nat_fb[11] + spr_nat_fb[12]);
     pm_log_w("spr5 f%u nopal %u off %u grab %u zmark %u nozt %u", f, spr5_sub[1], spr5_sub[2], spr5_sub[3], spr5_sub[4], spr5_sub[5]);
 }
+extern unsigned shc[16]; /* BOMBLIT2: nd_tex_set.c shade path counters */
+extern int shd_min[3], shd_max[3];
 int pm_gpu_spr_native(const uint32_t* rec) {
     NdDraw n;
     NdMState st;
     float pal0[16];
     int why = 0;
-    if (!nd_sprite_draw(rec, 1, &n, &st, pal0, &why)) { spr_nat_fb[why & 31]++; return 0; }
+    if (!nd_sprite_draw(rec, 1, &n, &st, pal0, &why)) { spr_nat_fb[why & 31]++; if (PMDL("shadecen")) { shc[8]++; if (why == 5) shc[9]++; } return 0; }
     spr_nat_n++;
+    if (PMDL("shadecen")) shc[7]++;
     return 1;
 }
 /* PROF2-3: the census lines, once per frame at the frame end (pm_gpu_end_w), only with pm_cen_lines (phase mode or the census word, never prof mode).
@@ -3930,7 +3933,7 @@ void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, NdGvP* o);
  * (1 mode, 2 unit 0, 10 + nd_model_state code). */
 /* HC8 step 3: the shaded bake and the CI4 texture of a sprite (cold: the spr5 census and the sprtex refusal log are here). Returns 1 with tw, th and un
  * set, or 0 with *why. */
-extern unsigned shc[8]; /* BOMBLIT: nd_tex_set.c shade path counters */
+extern unsigned shc[16]; /* BOMBLIT: nd_tex_set.c shade path counters */
 static int __attribute__((noinline, cold)) spr_build_rare(const NdSprRec* r, int shaded, int tex, NdTexDesc* ds, NdUnit* un, int* tw, int* th, int* why) {
     if (shaded) {
         if (!dual_on || nd_ws.use_t1) { if (PMDL("shadecen")) shc[6]++; *why = 3; return 0; } /* no bake live, or the plan reads TEXEL1 (no unit 1 form yet) */
@@ -3977,7 +3980,8 @@ int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16
     const uint32_t geo = (sw_geo & mode.gand) | mode.gor;
     NdGvP gv;
     pm_gbi_gv_at(mode.has_tx ? mode.tw1 : sw_tss, geo, tw, th, &gv);
-    if (shaded) { extern float dual_f[4]; for (int q = 0; q < 4; q++) { gv.cm[q] *= dual_f[q]; gv.ca[q] *= dual_f[q]; } } /* WALLSHADE: the KZN04 shade colour, the shaded sprite only */
+    if (shaded) { extern float dual_f[4]; for (int q = 0; q < 4; q++) { gv.cm[q] *= dual_f[q]; gv.ca[q] *= dual_f[q]; }
+        if (PMDL("shadecen")) { shc[12]++; for (int q = 0; q < 3; q++) { const int v = (int)(dual_f[q] * 255.f); if (v < shd_min[q]) shd_min[q] = v; if (v > shd_max[q]) shd_max[q] = v; } } } /* WALLSHADE: the KZN04 shade colour, the shaded sprite only */
     NdMCtx c;
     memset(&c, 0, sizeof c);
     c.mode = &mode; c.u0 = (tex || shaded) ? &un : NULL; c.i8_0 = 0; c.gv = &gv;
