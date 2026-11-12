@@ -129,7 +129,11 @@ static __attribute__((cold, noinline)) void wide_walk_note(int built) {
     n++;
     pm_log("wide: walk f%u built %d live %d", pm_frame_count(), built, pm_wide);
 }
+/* INTERP2M: the kind of the frame being built, read at its frame end (pm_gpu.c icmp_frame): 0 plain, 1 L (t = 0.5), 2 K (key). Not cleared
+ * in the walk: the frame end of a step is a later walker message than its walk (pm_main.c wq_step_end). */
+int pm_icmp_kind;
 void pm_frame_walk(const PmFrame* f) {
+    pm_icmp_kind = (f->flags & PMF_REPL) ? 1 : 0; /* INTERP2M */
     iw_tk = 0; /* INTERP1 */
     if (__builtin_expect(((f->flags & PMF_WIDE) != 0) != (pm_wide != 0), 0)) wide_walk_note((f->flags & PMF_WIDE) != 0);
     pm_walk_cfb = f->cfb;
@@ -197,6 +201,7 @@ int pm_interp_key_take(PmKey* k) {
     return n != 0;
 }
 void pm_key_walk(const PmKey* k) { /* walker side */
+    pm_icmp_kind = 2; /* INTERP2M */
     pm_fs_q = 1; /* FS2: a key frame is not a drawn frame: no fsplit mark */
     pm_gpu_begin(1);
     PH_PUSH(PH_DRAW);

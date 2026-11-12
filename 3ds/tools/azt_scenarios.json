@@ -7806,6 +7806,46 @@
       "reason": "SYNC60 byte gate. Copy of spot_mac01_fps60_pic with det (no skip, no key path under det). Cap 60 s: boot, warp, placement and the first 300-frame window."
     },
     {
+      "name": "icmp_mac01",
+      "status": "unverified",
+      "subject": "INTERP2M: Toad Town mac_01 at pos 0 0 200 with fps60 and the icmp switch (the t = 0.5 frame and the key frame compared in GPU command words). No shots.",
+      "proves": "INTERP2M: the icmp line (pairs, word counts, diff counts by class lenmis lost nol) and the icmpo line (the top O registers that differ) per 300 compared pairs.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fps60 icmp loglevel=debug det",
+      "until": "icmp f\\d+ pairs",
+      "cap": 40,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "icmp pairs",
+          "regex": "icmp f\\d+ pairs"
+        }
+      ],
+      "reason": "INTERP2M measurement, copy of spot_mac01_fps60_det without shots. Cap 40 s: boot, warp, and the first 300 compared pairs."
+    },
+    {
+      "name": "icmp_btl",
+      "status": "unverified",
+      "subject": "INTERP2M: Battle scene, one Goomba on kmr_03, with fps60 and the icmp switch (the t = 0.5 frame and the key frame compared in GPU command words).",
+      "proves": "INTERP2M: the icmp line and the icmpo line in a battle step.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 det fps60 icmp",
+      "until": "icmp f\\d+ pairs",
+      "cap": 40,
+      "deadline": 30,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "icmp pairs",
+          "regex": "icmp f\\d+ pairs"
+        }
+      ],
+      "reason": "INTERP2M measurement, copy of battle_start_f182 debug with fps60 and icmp. Cap 40 s."
+    },
+    {
       "name": "spot_mac01_ndmcheck",
       "status": "pending",
       "subject": "Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0). Shots at frames 200 to 205 (the picture) and the prof scene line at the first 300-frame window.",
