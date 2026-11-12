@@ -21,6 +21,8 @@ model (nd_comb decide, nd_render_state, TMEM window model) runs only cold, when 
 nd_ops_run, nd_rect, the gv walker state and the NDC_STATE stream path are deleted. Merged so far: NAPI0, NAPI1, NAPI2A, NAPI3A
 (replay forms), S4P, S4SNOW, S4SNOWG, S4PINK, S4SHIM, S4EMB, S4COL. Running: S4E3D, S4SNAK, S4WBLK, FSELCEN (Haiku).
 Rows in order. Format: id: files | blocker | gate | model. CONSOLE = one batch console run (one push, compared with a stored run).
+- Rows written: NAPI2B, NAPI3B, S1FILL, S1PREV, S4PDIR (all wait for NAPI2B; S4PDIR also for S4E3D, S4SNAK, S4WBLK). Next to write:
+  S1STEN (darkness stencil off-screen pass, screen_render_util.c:130-258), S5CHUD, S4SPLASH, NAPICEN3.
 - A1 NAPI2B (row written): 3ds/src/nd_direct.c (new), 3ds/include/nd_api.h, nd_tex_set.c (bind body of ensure_tile_slow split out),
   src/hud_element.c hud_rect_run | none | nd_host, spot_mac01_det + pause_tab_det_pic byte-equal, fncov | Sonnet (first direct executor:
   the shared helpers every later row uses).
@@ -46,9 +48,20 @@ Rows in order. Format: id: files | blocker | gate | model. CONSOLE = one batch c
   CONSOLE C4: one file select push.
 - D2 S2W: draw_box.c box, corners and pattern (box_pattern_rect, box_fold_sync) through A1 | A1, D1 | byte-equal pause_tab_det_pic +
   msgbox_talk_nowide | Sonnet.
-- E0 NAPICEN2 (row written): census of the typed ops left per producer on main | none | log only | Haiku. Gives the S5 file list.
-- E1-E5 S5 per producer file from E0 (battle UI files, pause_*.c, filemenu_*.c, curtains, title, logos): the gDP/gSP left after A1, A2,
-  D2 through the A1 helpers | A1, A2, D2, E0 | byte-equal of the scene of that menu | Haiku each (exact edits from E0 lines).
+- E0 NAPICEN2 (done 2026-11-12; build3ds/out/napicen2_*.txt): typed ops per frame. mac01 547: sprite.o 96 (spr_appendGfx_component_flat
+  78, component 18), draw_box 74, entity_model 69, background bg_emit 10, entity 7, item_entity 6. talk 635: animator node 100,
+  draw_box 74, sprite 44, entity_model 32. btl 641: render_complex_hud_element 133, draw_box 74, btl_appendGfx_prim_quad 32, bg_emit
+  10. glyphs and msg_draw: 0 (native). About 60 % of the ops are not mapped to a producer in the top 40: a NAPICEN3 row (map the
+  rest: inlined callers, nd_gx_w return addresses in macros) comes before the S6 rows.
+- S5 order by these counts (each row: the producer's state ops into its record or a direct executor through the A1 helpers; gate
+  byte-equal of a det scene that draws it plus napicen of that scene):
+  E1 S5CHUD render_complex_hud_element (hud_element.c; btl 133) | A1 | btlui_menu_det | Sonnet.
+  E2 S5SPR sprite component state (sprite.c spr_appendGfx_component_flat and _component; 96/44): the NDC_SPR record carries the
+  state the walker still gets as ops | A1 | spot_mac01_det, mdl5_iwa10_det | Sonnet.
+  E3 S2W draw_box (74 in every scene) = D2 above.
+  E4 S5ANIM appendGfx_animator_node (animator.c; talk 100) | A1, S6T design for its static lists | msgbox_talk_det | Sonnet.
+  E5 S5EMDL appendGfx_entity_model (entity_model.c; 69) | A1 | spot_mac01_det | Sonnet.
+  E5b S5PQUAD btl_appendGfx_prim_quad (battle/190B20.c; 32) | A1 | btlui_menu_det | Haiku after E1 sets the pattern.
 - E6 S5BG: background_gfx.c (scrolling background strips) | A1 | byte-equal a background map scene | Sonnet.
 - E7 S5IMGFX: imgfx.c (vertex meshes rebuilt per frame in the heap, ent_heap_list nd_ent.c:191) -> nd_mesh with a pso per imgfx mode |
   A1 | byte-equal mdl5_iwa10_det or an imgfx scene, fncov | Opus (the oracle reads imgfx_appendGfx_mesh first).
