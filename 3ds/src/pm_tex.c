@@ -2127,9 +2127,6 @@ int pm_tex_bind_aux(void) {
     return 1;
 }
 
-void pm_tex_unbind_aux(void) {
-    pm_gpu_rect_sync(); /* DR1 */ au_last = NULL; pm_c3d_texbind(1, NULL); }
-
 void pm_tex_aux_size(int* w, int* h) {
     pm_tex_epoch_v++;
     int pw = 1, ph = 1;
