@@ -16,6 +16,15 @@
 - INTERP1 limits (pm_main.c interp_heavy): the walk now runs once per step: the walk limit becomes 26 ms (calm under 20 ms); the GPU
   limit stays 13 ms (two GPU frames per step). Census line interp gets `kcopy <n> kwalk <n>`.
 
+## From INTERPB2 (the copy is built in INTERPB3, INTERPB2 only patched per list while reading)
+- The K copy needs the whole frame: the queued lists and the tail. Build it at the L frame end after C3D_FrameEnd has closed the last
+  list and before the command buffer is reused: record every GX entry of the L frame as it is taken (the icmp_take / sr_take point,
+  before each mid-frame clear by pm_gx_room, pm_gx_drain and the KICK1 kicks), copy the words of each command list entry into the K
+  buffer, apply the patches by their offset in the frame's command buffer, and queue the K frame from the recorded entries with the
+  list addresses moved into the K buffer (fills, copies and transfers as recorded: INTERP2M T 0 shows the same targets).
+- The patch offsets are relative to the frame's command buffer; a frame whose command buffer wrapped or was split into a second
+  buffer (cmd_split_forced) takes the fallback (pm_key_walk) in this row; count it.
+
 ## Start
 `sh 3ds/tools/wt_new.sh INTERPB3` (from main with INTERPB2). PM_ROW=INTERPB3 PM_LANE=INTERPB3.
 

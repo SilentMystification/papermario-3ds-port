@@ -24,6 +24,18 @@ One upload_mvp per step differs between the twin and the key walk (no draw uses 
 to twinchk the index of the first differing upload per step and its caller (__builtin_return_address(0) in upload_mvp) for 3 steps;
 hand the lines back with the gate. The icmpp compare (all command words 0 diff) is the proof that no draw sees it.
 
+## Next step (after try 1, HEAD e47f44d51; resume on branch INTERPB2; 3 Azahar starts)
+Facts: icmpp U, A, T, O 0 in every window; kp patches unused 39 % (f41 276/108, btl f51 212/84), skip 0: the patches lie in the
+open tail list, which is not queued when icmp_frame runs (before C3D_FrameEnd), so INTERP2M's compare and this one never read it.
+The INTERPB1 mismatch was the restore upload_mvp (pm_icmp_kind 2 already set): fixed by pm_icmp_kind = 0 around it (keep).
+1. Tail (the coder's plan, accepted): icmp_take keeps the end of the last queued list (data[1] + data[2] bytes); icmp_frame reads the
+   words from there (the buffer base when no list was queued) up to the current GPUCMD offset through ic_list and ic_list_k, for both L
+   and K, before C3D_FrameEnd. A list split by pm_gx_room in the middle of the tail is already queued (taken), so no word is read twice.
+2. Pass: icmpp U, A, T, O 0 and kp unused 0 in every window after the first of each run (icmp_mac01, icmp_btl), lost 0, skip 0;
+   spot_mac01_fps60_det 12/12 byte-equal (base stored). The site list is proven by the compare: a missing site shows as U in a list
+   the reader now covers; no other site is expected by reading (eye uniform, rect RECT_GM ortho, fog zmix from gv_post, lights and
+   look-at vectors are stream values equal in both walks).
+
 ## Start
 `sh 3ds/tools/wt_new.sh INTERPB2` (from main with INTERPB1). PM_ROW=INTERPB2 PM_LANE=INTERPB2.
 
