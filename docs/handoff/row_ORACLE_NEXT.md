@@ -21,6 +21,18 @@ A replacement oracle starts here: read CLAUDE.md, orchestrator_rules.md, plan_ho
   an NdCombIn) and nd_render_state (nd_tmpl.c:292, pure) give the decision without the walker. A direct executor changes flushes and
   binds: console prof gate (lesson 1). Written after NAPI2A and NAPI3A merge and one console prof push (mac_01 0 0 200 and a talk spot).
 - I-cache note: until S6 deletes the walker model, each direct executor adds code to core 0; the gain arrives at S6.
+- Interpolation: one walk (design, oracle 2). Today an fps60 step walks the stream twice (pm_nusys.c:164-166 the t = 0.5 pass with
+  pm_interp_find per matrix load, nd_mtx_set.c:92; pm_key_walk :191-200 the key frame): the whole state model, the batch closes and the
+  emits run twice; only the matrices differ by intent. Options: (A) GPU-side: upload two matrices per palette row and lerp in the
+  shader with a t uniform, replay the recorded GX entries twice as the stereo right eye does (sr_replay, pm_gpu.c:2111): uniform space
+  doubles (pm5 is near the 96-register limit) and a lerp of MVP rows is not the product of lerped matrices: rejected. (B) one walk,
+  two command streams: the matrix stack keeps a twin (cur and lerp: load_mtx loads both, pm_interp_find for the twin), each gm_tab
+  entry gets its twin row, and each emit (nd_raw_native, nd_native_submit, blk_put) writes its words to K and a copy to L with the twin
+  palette rows and L's ring and target addresses; L is presented first, then K at the next 59.83 Hz slot. Cost: the walk once plus a
+  word copy and the twin products; CPU clip, cull and refusal decisions use K's matrices (a triangle off-screen in K is missing in L
+  at the screen edge for one frame). Off-screen passes and grabs follow the stereo address map (sr_map). Premise row: INTERP2M (L vs K
+  command words by class: uniform, address, target, other); option B rows (twin stack; twin emit; present order) after it, Opus or
+  Sonnet (cross-file GPU stream work).
 
 ## Rows (state at writing)
 - Running (6 coders): HC6B (Opus), WALLSHADE, UB1, HCCUT2 (step after the first try written in its row), HC9B, CRASHEXIT.
