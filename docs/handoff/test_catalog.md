@@ -85,3 +85,5 @@ Per window (sample): frame, map, area, mode, story, battle, entry, chg, position
 - 3ds/logs/perf/runs.jsonl (source of truth, tracked, append only), 3ds/logs/perf/bench.db (index, untracked).
 - Base store: <main folder>/build3ds/basecache/ (index.json, <commit>/<bench>/ shots, run.log, meta.json; last 5 commits). Compare output: build3ds/basecmp/<row>/.
 - Old text catalog: docs/handoff/archive/test_catalog.md and archive/test_catalog/. Read only when a row file names them.
+
+Per-row files (REGDIR2): a row adds its scenarios to 3ds/tools/azt.d/<row>.json and its benches to 3ds/tools/bench.d/<row>.json (each file is {"scenarios": [...]} or {"benches": [...]}). The main files azt_scenarios.json and bench_defs.json keep their content. bench.py and azt.ps1 merge the directory files after the main file, in name order; a name defined twice is an error that names both files. Never edit another row's file or the main file for a new scenario or bench.

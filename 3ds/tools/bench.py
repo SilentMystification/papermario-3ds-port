@@ -87,6 +87,8 @@ import prof_by_scene as pb  # prof line parser, shared with prof_record.py
 REPO = HERE.parent.parent
 DEFS = HERE / "bench_defs.json"
 SCEN = HERE / "azt_scenarios.json"
+BENCH_DIR = HERE / "bench.d"  # REGDIR2: one <row>.json per row, {"benches": [...]}, merged after DEFS
+AZT_DIR = HERE / "azt.d"  # REGDIR2: one <row>.json per row, {"scenarios": [...]}, merged after SCEN
 PERF = REPO / "3ds" / "logs" / "perf"
 RUNS = Path(os.environ["PM_RUNS_FILE"]) if os.environ.get("PM_RUNS_FILE") else PERF / "runs.jsonl"  # PM_RUNS_FILE: a read-only query of another copy (slow)
 DB = PERF / "bench.db"
@@ -205,8 +207,27 @@ def has_area(f):
     return any(k not in ("device", "disp") for k in f)
 
 
+def merged_entries(key, base_path, base_list, sub_dir):
+    """REGDIR2: the entries of the main file (base_list), then the entries under key of every <row>.json in sub_dir, sorted by
+    name. A name defined in two files is an error that names both files; nothing runs."""
+    out = list(base_list)
+    where = {}
+    for e in base_list:
+        where.setdefault(e["name"], base_path.name)
+    if sub_dir.is_dir():
+        for p in sorted(sub_dir.glob("*.json"), key=lambda x: x.name):
+            for e in json.loads(p.read_text(encoding="utf-8"))[key]:
+                if e["name"] in where:
+                    raise SystemExit("%s name %s is defined in both %s and %s. Nothing was run." % (key, e["name"], where[e["name"]], p.name))
+                where[e["name"]] = p.name
+                out.append(e)
+    return out
+
+
 def load_defs():
-    return json.loads(DEFS.read_text(encoding="utf-8"))
+    d = json.loads(DEFS.read_text(encoding="utf-8"))
+    d["benches"] = merged_entries("benches", DEFS, d["benches"], BENCH_DIR)
+    return d
 
 
 def bench_def(name):
@@ -216,8 +237,12 @@ def bench_def(name):
     return None
 
 
+def all_scenarios():
+    return merged_entries("scenarios", SCEN, json.loads(SCEN.read_text(encoding="utf-8"))["scenarios"], AZT_DIR)
+
+
 def scenario(name):
-    for s in json.loads(SCEN.read_text(encoding="utf-8"))["scenarios"]:
+    for s in all_scenarios():
         if s["name"] == name:
             return s
     return None
