@@ -521,6 +521,14 @@ static int interp_heavy(void) {
     }
     return heavy;
 }
+/* FPS60W2 try 4: the copy census. Counts the drawn steps with interp on (det too, unlike interp_heavy); at step 300 it prints once
+ * (prof line). It resets nothing: pm_kc_n and pm_kc_why are counts since boot in det. */
+static void kc_census(void) {
+    extern void pm_log_prof_line(const char* fmt, ...);
+    static unsigned n;
+    if (n >= 300u) return;
+    if (++n == 300u) pm_log_prof_line("kcen f%u steps 300 kcopy %u kwalk %u why %u %u %u %u %u", pm_frame_count(), pm_kc_n[0], pm_kc_n[1], pm_kc_why[0], pm_kc_why[1], pm_kc_why[2], pm_kc_why[3], pm_kc_why[4]);
+}
 /* CORE2C-3: the serial mode: the timers and census that read one stack or table from both sides, and det. */
 static int lp_serial(void) { return pm_det_on() || pm_ph_on || pm_ph_cen || pm_fs_on || pm_dcs_on; }
 void pm_frame_loop(void) {
@@ -707,6 +715,7 @@ void pm_frame_loop(void) {
                 unsigned iv = vb - step_vb;
                 pm_ph_iv = iv; /* PI4 */
                 pace_iv[iv < 1 ? 0 : iv > 4 ? 3 : iv - 1]++;
+                if (pm_interp_on > 0) kc_census(); /* FPS60W2: outside the det condition below */
                 if (!pm_det_on() && (iv > PM_VBLANKS_PER_STEP || (pm_interp_on > 0 && (interp_heavy() || PMDL("iskipall"))))) lc.flags |= LGF_ISKIP; /* F06-5; DET: the key path is never taken on the vblank count. INTERP1: heavy walks skip the key frame */
                 fs1_last_iv = iv;
                 if (iv >= 3) late_n++; /* PT15 */

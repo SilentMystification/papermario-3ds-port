@@ -1,0 +1,24 @@
+{
+  "scenarios": [
+    {
+      "name": "kccen_mac01",
+      "status": "unverified",
+      "subject": "FPS60W2 try 4: Toad Town mac_01 at pos 0 0 200 with fps60 (pm_interp_on) and det, no shots. The kcen census line (kcopy, kwalk, why) at step 300.",
+      "proves": "FPS60W2: the K copy census since boot: kcopy above 0 (the copy path ran) and why[2] 0 (every patch base is a command start).",
+      "debug": "warp=mac_01:0 pos=0:0:200 prof=4 fps60 loglevel=debug det",
+      "until": "kcen f\\d+ ",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp line",
+          "regex": "warp: mac_01 entry 0"
+        }
+      ],
+      "reason": "FPS60W2 census. spot_mac01_fps60_det without shots and without the scene check; the kcen line is the gate. Cap 45 s: boot, warp, and 300 drawn steps."
+    }
+  ]
+}

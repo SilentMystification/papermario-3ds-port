@@ -1,0 +1,20 @@
+{
+  "benches": [
+    {
+      "name": "kccen_mac01",
+      "kind": "azahar",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FPS60W2: the kcen census (copies shown, key walks, copies refused by cause) of Toad Town mac_01 with fps60 and det.",
+      "scenario": "kccen_mac01",
+      "cap": 45,
+      "until": "kcen f\\d+ ",
+      "tags": [
+        "azahar",
+        "interp",
+        "kcen"
+      ],
+      "gates": []
+    }
+  ]
+}
