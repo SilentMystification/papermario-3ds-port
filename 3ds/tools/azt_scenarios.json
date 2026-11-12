@@ -9689,6 +9689,26 @@
       "reason": "LOGFIX fault 2 bench copy of battle_start with cap 60 s, so the run reaches frame 182 on the slow machine."
     },
     {
+      "name": "btlui_cen",
+      "status": "unverified",
+      "subject": "BTLUICEN: battle_start_f182 copy with census and log only. Battle scene, one Goomba on kmr_03, default formation. The rect, rectwhy, tridrop and nrawwhy lines at f300 and f400 name the draw path of the battle UI IA8 quads.",
+      "proves": "BTLUICEN census: per-path drop counters of the battle menu frames, head against 9eeb74b1a.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 census loglevel=debug det",
+      "until": "rectwhy f400",
+      "cap": 40,
+      "deadline": 45,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "rectwhy f400",
+          "regex": "rectwhy f400\\b"
+        }
+      ],
+      "reason": "BTLUICEN census bench: battle_start_f182 without shots, so the run reads the log only."
+    },
+    {
       "name": "nok11_splash_w600",
       "status": "unverified",
       "subject": "Mario in nok_11 (entry 0) with the water splash (EFFECT_WATER_SPLASH, fxtest 89) spawned at Mario. Shot a at 12 frames after the spawn shows the splash drops. Run on to frame 600: the nrawwhy line (cumulative raw refusal counts) prints.",
