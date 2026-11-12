@@ -166,15 +166,25 @@ if [ "$nobuild" -eq 0 ] && [ "$attach" -eq 0 ] && [ -z "$checklog" ] && [ -z "$c
 fi
 if [ "$archonly" -eq 1 ]; then archive_build "archive-only" || exit 1; exit 0; fi
 if [ "$attach" -eq 0 ] && [ -z "$checklog" ] && [ -z "$checksend" ]; then mem_gate; fi
-# PUSHFIX STALE 3DSX: --no-build sends build3ds/pm_3ds.3dsx as it is. Its build must be HEAD, else nothing is sent.
-# PM_BUILD_H (tests only) names another pm_build.h.
-if [ "$nobuild" -eq 1 ] && [ -z "$PM_SRC3DSX" ]; then
-    bh=$(sed -n 's/^#define PM_GIT_HASH "\(.*\)"/\1/p' "${PM_BUILD_H:-3ds/include/pm_build.h}")
-    head_h=$(git rev-parse --short=9 HEAD 2>/dev/null || echo none)
-    if [ "$bh" != "$head_h" ]; then
-        echo "STALE 3DSX: built ${bh:-none}, HEAD $head_h. Build first (go.ps1 without -NoBuild). Nothing was pushed."
+# PUSHFIX STALE 3DSX: --no-build sends the 3dsx as it is. Rule: the key of the current folder (`PM_LANE= PM_KEY_ONLY=1 sh 3ds/build.sh`,
+# run in the folder that holds build3ds/pm_3ds.3dsx) must equal that folder's own build3ds/build_key.txt (written by build.sh at a
+# successful build), else nothing is sent. The key hashes each folder's own generated files (build.sh key_now), so a key is valid
+# only against the build_key.txt of the same folder and output. A push runs from the main folder (go.ps1 Set-Location $repo).
+# PM_BUILD_KEY_FILE (tests only) names another key file; the check then runs even when PM_SRC3DSX is set.
+if [ "$nobuild" -eq 1 ] && { [ -z "$PM_SRC3DSX" ] || [ -n "$PM_BUILD_KEY_FILE" ]; }; then
+    have=$(cat "${PM_BUILD_KEY_FILE:-build3ds/build_key.txt}" 2>/dev/null || true)
+    now=$(PM_LANE= PM_KEY_ONLY=1 sh 3ds/build.sh || true)
+    if [ -z "$have" ] || [ "$have" != "$now" ]; then
+        echo "STALE 3DSX: build key $(echo "$have" | cut -c1-12), tree key $(echo "$now" | cut -c1-12) (a source, include or tool input changed since the build). Build first. Nothing was pushed."
         exit 5
     fi
+fi
+# SEND FILE: the 3dsx this run sends, its size, the build of pm_build.h and the key it was built with (build_key.txt).
+if [ "$attach" -eq 0 ] && [ -z "$checklog" ] && [ -z "$checksend" ]; then
+    if [ -f "$SRC3DSX" ]; then sfz="$(wc -c <"$SRC3DSX" | tr -d ' ')"; else sfz="n/a"; fi
+    sfb=$(sed -n 's/^#define PM_BUILD_STR "\(.*\)"/\1/p' 3ds/include/pm_build.h 2>/dev/null || true)
+    sfk=$(cut -c1-12 "${PM_BUILD_KEY_FILE:-build3ds/build_key.txt}" 2>/dev/null || true)
+    echo "SEND FILE: $SRC3DSX $sfz bytes build ${sfb:-none} key ${sfk:-none}"
 fi
 # PYTHON_EXE lets a caller (3ds/go.ps1) pass a reliably-resolved interpreter path: bash's own PATH
 # (MSYS) does not always see the Windows "py" launcher even when PowerShell's PATH does.

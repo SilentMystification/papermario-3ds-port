@@ -233,6 +233,9 @@ if ($Verb -eq 'push') {
         exit 0
     }
     $rc = 1
+    # PUSHFIX3: a push always builds and sends the default output (build3ds/pm_3ds.3dsx), never a lane's output.
+    Remove-Item Env:PM_LANE -ErrorAction SilentlyContinue
+    Write-Output "push: default output build3ds/pm_3ds.3dsx"
     try {
         Invoke-Build
         # PUSHFIX: Push-One returns only its exit code (0 ok, 1 failed); the text went to the console above.
