@@ -161,6 +161,57 @@
       ]
     },
     {
+      "name": "listcen",
+      "kind": "host_test",
+      "speed": "normal",
+      "default": false,
+      "purpose": "NATIVEAPI end-state census: list builders, list data, list readers and walker model functions left (row_ORACLE_NEXT.md chain section); every class 0 is the S9GATE pass.",
+      "command": "py -3 3ds/tools/listcen.py",
+      "cap": 60,
+      "tags": [
+        "tool",
+        "nativeapi"
+      ],
+      "log_metrics": [
+        {
+          "name": "build",
+          "regex": "listcen total build (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "gfxpos",
+          "regex": "listcen total gfxpos (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "data",
+          "regex": "listcen total data (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "data_arrays",
+          "regex": "listcen total data_arrays (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "gfxtype",
+          "regex": "listcen total gfxtype (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "reader",
+          "regex": "listcen total reader (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "model",
+          "regex": "listcen total model (\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": []
+    },
+    {
       "name": "tidal_pic",
       "kind": "azahar_pic",
       "speed": "normal",
