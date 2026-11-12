@@ -3949,6 +3949,21 @@
       "gates": []
     },
     {
+      "name": "fxpic_0",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "S7EFX1 byte gate: big_smoke_puff (effect 0) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.",
+      "scenario": "fxpic_0",
+      "cap": 40,
+      "until": "shot \\d+ frame 415\\b",
+      "tags": [
+        "azahar",
+        "fxcen"
+      ],
+      "gates": []
+    },
+    {
       "name": "fxpic_50",
       "kind": "azahar_pic",
       "speed": "normal",
