@@ -167,7 +167,7 @@
       "default": false,
       "purpose": "NATIVEAPI end-state census: list builders, list data, list readers and walker model functions left (row_ORACLE_NEXT.md chain section); every class 0 is the S9GATE pass.",
       "command": "py -3 3ds/tools/listcen.py",
-      "cap": 60,
+      "cap": 300,
       "tags": [
         "tool",
         "nativeapi"
