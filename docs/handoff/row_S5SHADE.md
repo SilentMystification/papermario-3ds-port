@@ -27,11 +27,16 @@ Read those before the design.
 src/sprite_shading.c (both functions), src/sprite.c (the shaded arm of the component functions only, after S5SPR), 3ds/src/nd_direct.c
 (nd_direct_ready only, if the refusal must change).
 
-## Gate (expected values)
+## Gate (expected values; oracle 5 pre-flight, main 5c3865487)
+- Blockers: S2W (nd_direct_tex1) and S5SPR2/S5SPR3 merged. Neither S2W nor S1PREV is merged at this writing.
 - Build, memcheck OK; nd_host PASS.
-- One list with bases: a scene with shaded sprites, either a lit area or kmr_10 (pre-flight: grep the scenario list for
-  "shade" or "BOMBLIT"; name it), plus spot_mac01_det. 2 starts. Every shot byte-equal.
-- listcen down by the moved calls. Budget 6.
+- `bench.py base sprshade_hos01_pic` (hos_01 shaded sprites, det, shots 200-205) and `bench.py base spot_mac01_det`; one list
+  `bench.py run sprshade_hos01_pic,spot_mac01_det --row S5SHADE --why "S5SHADE: shaded sprites in the record"` (2 starts).
+  cmp 6/6 and 6/6 byte-equal.
+- Census (rule of 2026-11-12: it counts only what this row moves): `bench.py run bombette_mim11 --row S5SHADE` (1 start; the
+  shadecen switch, line `shadecen f<n> m1 <a> ... nat <n> fb <b> ...` of nd_tex_set.c:736): `m1` (the walker's set_tilesize
+  shaded arm, shc[0]) drops to 0 and `fb` to 0 for the sprites this row moves; hand back the line of main (runs.jsonl) and of the
+  row. Budget 6.
 
 ## Stop
 A byte difference: stop, commit, hand back. Delete this row file in the completing commit.

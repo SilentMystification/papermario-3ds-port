@@ -1,5 +1,9 @@
 # Row S5BTL: battle draws left after S5PQUAD (tattle camera, menu content, bonk) as native records (NATIVEAPI S5)
 
+(Oracle 5 split: row_S5BTL1.md (Haiku) takes the two tattle camera state ranges of 16C8E0.c; row_S5PQUAD2.md takes
+190B20.c btl_appendGfx_prim_quad. This Sonnet row keeps the tattle background strips (16C8E0.c :780-823, CI8 strips with a
+scroll, COPY cycle) and the FILL-cycle fills (:849, :856), and starts after S5BTL1 merges. The small battle files (lava_piranha 5,
+hos_01 stage 4, popup_messages, the item moves, Snowflakes: 1 each) are S7 data rows.)
 Model: Sonnet (user decides).
 - Why not Haiku: tattle_cam_pre_render (48 gbi calls, src/battle/16C8E0.c) sets up the tattle camera view (viewport, scissor,
   projection, fills), and its state is inherited by the world draws that follow. Each op must be classed: a value op stays, a
