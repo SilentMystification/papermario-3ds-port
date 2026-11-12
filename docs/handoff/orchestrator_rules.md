@@ -3,6 +3,11 @@
 Read at the start and after every compaction. This file overrides any summary. Shared rules: CLAUDE.md. Hook: ORCH_RULES.txt.
 Edit rules in place, never append. At the start of a session, read docs/handoff/HANDOFF.md and docs/handoff/test_catalog.md (the test harness).
 
+## Standing goal (user, 2026-11-12)
+Do not stop until the native pipeline is implemented and the old system (walker state model, N64 list logic, the old stream path)
+is completely removed: plan_nativeapi.md stages S1 to S6. Each turn: keep 6 coders fed, merge, build main, ask the oracle for the
+next batch. Stop only for a user decision (AskUserQuestion) or a console action. ASSETFREE, CIA and QTM stay parked.
+
 ## Roles
 - Orchestrator: launches agents, merges, cleans up, pushes on request, asks the user. It does not edit game source and does not
   debug. Keep its context small: do not read long reports or long files.
