@@ -388,8 +388,9 @@ unsigned nd_ent_in, nd_ent_cfull, nd_ent_rfull, nd_ent_gbi;
 unsigned nd_ent_cfull_all(void) { return nd_ent_cfull; }
 unsigned nd_gdl_lists(void) { return gdl_c.lists; }
 #define ENT_GBI(l_, n_) (nd_ent_gbi++, nd_ops_run((l_), (n_) >> 3, 1)) /* PERF2: the pieces of the flattened list keep the walker's sync state (D10b: the op executor) */
-static void ent_gap(NdSDef* d, const Gfx* l, u32 n) { /* S6E: a gap as a compiled range, with nd_ops_run's list start and end */
-    if (d && d->st != 2u) {
+static void ent_gap(NdSDef* d, const Gfx* l, u32 n) { /* S6E: a gap as a compiled range, with nd_ops_run's list start and end; only when every value unit precedes the statics (the op order) */
+    if (d && !d->st) d->st = nd_scomp_analyse(d) ? 1u : 2u;
+    if (d && d->st == 1u && d->nv == d->pre) {
         gv_epoch++; dlc_on = 1; pm_walk_side++; const int ok = nd_scomp_exec_own(d); pm_walk_side--;
         if (ok) { nd_ent_sc++; gv_streak_flush(); tex_streak_flush(); return; } }
     ENT_GBI((void*)l, n * 8u);
