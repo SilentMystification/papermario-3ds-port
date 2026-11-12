@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 extern Gfx D_090000B0_36E040[];
 extern Gfx D_09000110_36E0A0[];
@@ -289,7 +290,11 @@ void light_rays_appendGfx(void* effect) {
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+#ifdef TARGET_3DS
+    nd_rec_dl(dlist2);
+#else
     gSPDisplayList(gMainGfxPos++, dlist2);
+#endif
 
     guTranslateF(mtxTranslate, part->pos.x, part->pos.y, part->pos.z);
 
@@ -359,7 +364,11 @@ void light_rays_appendGfx(void* effect) {
         guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+        nd_rec_dl(dlist);
+#else
         gSPDisplayList(gMainGfxPos++, dlist);
+#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     }
 
