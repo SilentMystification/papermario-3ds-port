@@ -11,6 +11,37 @@ A replacement oracle starts here: read CLAUDE.md, orchestrator_rules.md, plan_ho
 - INTERPB3 (Sonnet coder): pm_key_show must call pm_lg_key_walked once per K frame and do one pm_gpu_begin (sync60_pace), as
   pm_key_walk does (pm_nusys.c:208-219). Give this line to the coder at its next hand-back.
 
+## NATIVEAPI state and graph (oracle 2, 2026-11-12; text for plan_nativeapi.md: the oracle writes row files only, the orchestrator copies it)
+- Merged: S0 (NAPI0 census, NAPI1 skeleton); S2 HUD rects replay form (NAPI2A); S3 glyphs replay form (NAPI3A); S4 particle API and
+  effects (S4P, S4SNOW, S4SNOWG, S4PINK, S4SHIM, S4EMB, S4COL).
+- Ready now (Haiku, run together, disjoint files and JSON insert points): S4E3D (effect_3D.c), S4SNAK (snaking_static.c), S4WBLK
+  (water_block.c), FSELCEN (census only, JSON append). Console gate: one XL `fxtest=all` run after S4E3D, S4SNAK and S4WBLK all merge,
+  compared with xl4a walk per effect.
+- Next batch (oracle reads first; Sonnet with reason: each is a new record form or a new bind rule, not a copy of a merged pattern):
+  S4SPLASH (water_splash.c:215 binds a 32 x 32 window of the previous frame per drop: one bind with the window as a uv offset; needs a
+  read of ensure_tile_slow and tex_win0 for off-screen slot images), S1 (screen_overlays.c, screen_render_util.c in the NAPI2A replay
+  form), NAPI2B and NAPI3B (direct executors of the HUD rect and glyph records, design in the NATIVEAPI section below).
+- Not S4 (no part loop, one draw per effect instance): energy_shockwave (11 live instances, energy_shockwave.c:140-170), explosion,
+  snowman_doll: batching across instances needs a new record that spans appendGfx calls: design after S4SPLASH. radiating_energy_orb
+  (:166-224): 4 part shapes with prim and env changes between them: one nd_parts run needs one shape: design.
+- Graph: NAPI1 -> S1. NAPI2A -> NAPI2B; NAPI3A -> NAPI3B; NAPI2B + NAPI3B merged -> one console prof push (mac_01 0 0 200 and a talk
+  spot). FSELCEN -> S2W (draw_box.c windows and the ROTSCALE flip) -> S5 menus (pause, file menus share draw_box). NAPI2B -> S5 (the
+  direct form). S4P -> S4 batch A -> S4 console run; S4SPLASH after the S4 console run. S1 + S2W + S3B + S4 + S5 -> S6 (map custom gfx
+  and entity lists by host conversion, then the walker state model goes). S6 after S5: rows named when S5 merges.
+
+## File select and pause flip (oracle 2, 2026-11-12; user fault: entry slow, flip on a file pick very laggy)
+- Path (code read): ROTSCALE windows (filemenu_common.c:648, :669; 11 windows: filemenu_main.c:1108-1118, filemenu_createfile.c:589-599;
+  entry appear: windows.c:130-134; pause flip: pause_main.c:59-62; message box msg_draw.c:200) take draw_box.c:432-830: per window per
+  frame an off-screen contents pass (draw_box.c:770-786; pm_gpu_off_begin pm_gpu.c:2022: flush, a 512 x 256 slot clear :2089 though
+  the contents begin with a fill of the window area draw_box.c:777, C3D_FrameDrawOn, rebuild_3d; off_end :2383) and height/6 strips
+  (draw_box.c:801-820: per strip a load of the slot, a tile size, a matrix multiply, one draw). 3 full slots (pm_gpu.c:2059-2068).
+  Loads of the slot bind the render target texture (pm_tex.c offt), no conversion and no CPU read. Save reads are RAM copies
+  (pm_os.c:656), not the entry cost; the entry runs the same appear flip.
+- Shared with the pause menu: yes (same draw_box ROTSCALE path for the pause window flip and every appear/disappear window).
+- Fix candidates after FSELCEN counts: (a) one quad per window instead of height/6 strips (the strips are an N64 TMEM limit; one
+  plane, so the same picture up to rounding: rounding rule); (b) clear only the window area, or no clear when the fill covers it;
+  (c) fewer target switches. The GPU part (clears, fills) needs the console: one push with the file select after the fix.
+
 ## NATIVEAPI (oracle 2, 2026-11-11; plan_nativeapi.md has no section 6: the S2 executor design is here)
 - Rows: NAPI1 (skeleton: NDC_NAPI with the core 0 runner as word 1, nd_rec_napi, pso table + host test), then NAPI2A (HUD rects) and
   NAPI3A (glyphs) in parallel. Form "replay record": core 1 keeps the game arithmetic and records the emit inputs; core 0 runs the same

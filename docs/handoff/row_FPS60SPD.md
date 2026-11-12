@@ -31,12 +31,15 @@ Base: main at `--commit 20d613506`. Worktree build3ds/wt/FPS60SPD, branch FPS60S
 
 ## Edit 2 (debug switch, same function, line :708)
 - Condition becomes `(iv > PM_VBLANKS_PER_STEP || (pm_interp_on > 0 && (interp_heavy() || PMDL("iskipall"))))`. Debug only:
-  every fps60 step skips the key frame, so the scenario below runs path 1 in Azahar. Add `iskipall` to the debug switch list in
-  docs/handoff/test_catalog.md (same form as the other switches).
+  every fps60 step skips the key frame, so the scenario below runs path 1 in Azahar. No doc edit.
+- State (coder, f79344234): Edits 1 and 2 done, build ok, nd_host PASS, spot_mac01_fps60_det 12/12 byte-equal vs 20d613506.
+  Left: the scenario below and gate 2. 7 of 8 Azahar starts left.
 
-## Scenario and bench (one commit with Edit 2)
-- New scenario `spot_mac01_fps60_iskip`: copy `spot_mac01_fps60_det`, remove the det switch, add `pacestat` and `iskipall`.
-  Until-line: the second `pace:` report (one per 5 s); cap 15 s. Bench of the same name, no shots.
+## Scenario and bench (one commit, no code edit)
+- New scenario `spot_mac01_fps60_iskip`: copy `spot_mac01_fps60_det`, remove the det switch and the shot switches, add `pacestat`
+  and `iskipall`, keep `loglevel=debug` (the pace lines are debug level). Until: `pacewk f(4\d\d|[5-9]\d\d|\d{4,}) ` (the first
+  5 s pace window that ends at frame 400 or later: after the mac_01 load). Cap 45 s, deadline 40. Bench of the same name, no shots.
+  Insert both entries right after the `spot_mac01_fps60_det` entries (azt_scenarios.json, bench_defs.json).
 
 ## Commands
 - build: `3ds/tools/build.sh` (Git Bash) in build3ds/wt/FPS60SPD; nd_host: `python 3ds/tools/bench.py run nd_host --row FPS60SPD --why "nd_host"`.
@@ -46,7 +49,9 @@ Base: main at `--commit 20d613506`. Worktree build3ds/wt/FPS60SPD, branch FPS60S
 
 ## Gate (all three)
 1. nd_host PASS.
-2. spot_mac01_fps60_iskip: the second `pace:` report has `steps/s` from 29.0 to 31.0.
+2. spot_mac01_fps60_iskip: the `pace:` line printed just before the until `pacewk` line has `steps/s` from 29.0 to 31.0.
+   Run only this scene now: `bench.py run spot_mac01_fps60_iskip --row FPS60SPD --why "fps60 step rate with iskipall"`
+   (the det byte compare is already done). Hand back that pace line and the pacewk line.
 3. spot_mac01_fps60_det byte-equal to base (det never sets ISKIP; its steps all have key frames, so the edit does not run there).
 
 ## Stop
