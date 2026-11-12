@@ -1,4 +1,4 @@
-/* nd_scomp.c: the state compiler (NATIVEAPI S6T, nd_scomp.h; design note in the S6T row, commit message of its merge). A def (a producer's
+/* nd_scomp.c: the state compiler (NATIVEAPI S6T, nd_scomp.h; design note: git show b16f91c46:docs/handoff/row_S6T.md). A def (a producer's
  * range of typed state units, static data) is analysed once on core 1 into its folded writes; on core 0 each run applies them to the live
  * walker words, binds the combine decision of the range under the inherited inputs (made once per key, cold: nd_comb_decide, the walker's own
  * decision) and runs the value units. The old per-op path (skip tests, setters, a combine sync per op) does not run for the static units.
