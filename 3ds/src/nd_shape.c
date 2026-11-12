@@ -194,6 +194,134 @@ __attribute__((cold, noinline)) static const NdSeamTab* seam_get(void) {
     return &seam_tab;
 }
 __attribute__((cold, noinline)) static void seam_reset(void) { nd_seam_free(&seam_tab); seam_gen = 0; seam_ok = 0; }
+/* S7MAP: the static lists compiled at build time. romfs:/shape/<map>.dlc (nd_shape_conv.c write_dlc, the format is described there) holds the
+ * nd_dlc_compile result of each list and variant (variant 1 with the T points of the seam table, 0 without). dlcp_load copies it into the pools in place of the
+ * run-time compile: the vertices and indices are read into the pool memory and rebased by the first pool vertex number. The index stays in the heap and
+ * the file stays open until dlc_reset. Debug switch dlcchk: dlc_build also compiles the list at run time and compares (dlcpre line, bad). */
+typedef struct { u32 list, var, off, size; } DlcPreIdx;
+static FILE* dlcp_f;
+static DlcPreIdx* dlcp_idx;
+static unsigned dlcp_n, dlcp_gen;
+static int dlcp_chk = -1; /* switch dlcchk */
+unsigned nd_dlcp_pre, nd_dlcp_rt, nd_dlcp_full, nd_dlcp_bad; /* lists since the last dlcpre line: loaded from the file, compiled at run time, without pool room, differing from the run-time compile */
+__attribute__((cold, noinline)) static void dlcp_close(void) {
+    if (dlcp_f) fclose(dlcp_f);
+    free(dlcp_idx);
+    dlcp_f = NULL; dlcp_idx = NULL; dlcp_n = 0; dlcp_gen = 0;
+}
+__attribute__((cold, noinline)) static int dlcp_open(void) {
+    char path[64];
+    u8 hdr[16];
+    FILE* f;
+    u32 nds_size;
+    if (dlcp_gen == pm_dlc_gen) return dlcp_f != NULL;
+    dlcp_close();
+    dlcp_gen = pm_dlc_gen;
+    snprintf(path, sizeof path, "romfs:/shape/%s.nds", pm_shape_name);
+    f = fopen(path, "rb");
+    if (!f) return 0;
+    if (fread(hdr, 1, 16, f) != 16 || memcmp(hdr, "NDSH", 4) != 0) { fclose(f); return 0; }
+    nds_size = seam_le32(hdr + 8);
+    fclose(f);
+    snprintf(path, sizeof path, "romfs:/shape/%s.dlc", pm_shape_name);
+    f = fopen(path, "rb");
+    if (!f) return 0;
+    if (fread(hdr, 1, 16, f) != 16 || memcmp(hdr, "NDDC", 4) != 0 || seam_le32(hdr + 4) != 1 || seam_le32(hdr + 8) != nds_size) goto bad;
+    dlcp_n = seam_le32(hdr + 12);
+    if (dlcp_n > 0x10000u) goto bad;
+    if (dlcp_n) {
+        u8* b = (u8*)malloc(dlcp_n * 16u);
+        if (!b) goto bad;
+        if (fread(b, 16, dlcp_n, f) != dlcp_n) { free(b); goto bad; }
+        dlcp_idx = (DlcPreIdx*)malloc(dlcp_n * sizeof(DlcPreIdx));
+        if (!dlcp_idx) { free(b); goto bad; }
+        for (u32 k = 0; k < dlcp_n; k++) { dlcp_idx[k].list = seam_le32(b + 16 * k); dlcp_idx[k].var = seam_le32(b + 16 * k + 4); dlcp_idx[k].off = seam_le32(b + 16 * k + 8); dlcp_idx[k].size = seam_le32(b + 16 * k + 12); }
+        free(b);
+    }
+    dlcp_f = f;
+    return 1;
+bad:
+    fclose(f);
+    dlcp_n = 0;
+    return 0;
+}
+/* 1: o filled from the file, 0: no section (nothing allocated), -1: no pool room or a read fault (the caller runs the no-pool path) */
+__attribute__((cold, noinline)) static int dlcp_load(NdObj* o, u32 loff, unsigned var) {
+    unsigned lo = 0, hi, k;
+    const DlcPreIdx* x = NULL;
+    u8 h[40];
+    u8* b = NULL;
+    u32 nops, nvtx, nidx, ngrp, ngop, av, ai, apad, bsz;
+    if (!dlcp_open()) return 0;
+    hi = dlcp_n;
+    while (lo < hi) {
+        unsigned m = (lo + hi) >> 1;
+        const DlcPreIdx* c = &dlcp_idx[m];
+        if (c->list < loff || (c->list == loff && c->var < var)) lo = m + 1; else hi = m;
+    }
+    if (lo < dlcp_n && dlcp_idx[lo].list == loff && dlcp_idx[lo].var == var) x = &dlcp_idx[lo];
+    if (!x || fseek(dlcp_f, (long)x->off, SEEK_SET) != 0 || fread(h, 1, 40, dlcp_f) != 40) return 0;
+    nops = seam_le32(h); ngrp = seam_le32(h + 12); ngop = seam_le32(h + 16); nvtx = seam_le32(h + 20); nidx = seam_le32(h + 24);
+    av = seam_le32(h + 32); ai = seam_le32(h + 36);
+    apad = (ngop * 2u + 3u) & ~3u;
+    bsz = ngrp * 48u + ngop * 8u + apad;
+    if (ngrp > ND_DLC_MAXGRP || ngop > ND_DLC_MAXGOP || av < nvtx || ai < nidx || 40u + bsz + nvtx * 16u + nidx * 2u != x->size) return 0;
+    memset(o, 0, sizeof *o);
+    o->nops = nops; o->exit_am = seam_le32(h + 4); o->exit_om = seam_le32(h + 8); o->ngrp = (u16)ngrp; o->ngop = ngop; o->nvtx = nvtx; o->nidx = nidx; o->nins = seam_le32(h + 28);
+    o->grp = ngrp ? (NdGrp*)calloc(ngrp, sizeof(NdGrp)) : NULL;
+    o->gop = ngop ? (u32(*)[2])malloc(ngop * 8u) : NULL;
+    o->gat = ngop ? (u16*)malloc(ngop * 2u) : NULL;
+    b = (u8*)malloc(bsz + 1u);
+    if (!b || (ngrp && !o->grp) || (ngop && (!o->gop || !o->gat)) || (bsz && fread(b, 1, bsz, dlcp_f) != bsz)) goto fault;
+    o->vtx = av ? nd_env_valloc(av, &o->vfirst) : NULL; /* the pools, as nd_dlc_compile asks for them */
+    if (av && !o->vtx) goto fault;
+    o->idx = ai ? nd_env_ialloc(ai) : NULL;
+    if (ai && !o->idx) goto fault;
+    o->pooled = 1;
+    if (nvtx && fread(o->vtx, 16, nvtx, dlcp_f) != nvtx) goto fault;
+    if (nidx) {
+        if (fread(o->idx, 2, nidx, dlcp_f) != nidx) goto fault;
+        for (k = 0; k < nidx; k++) o->idx[k] = (u16)(o->idx[k] + o->vfirst);
+    }
+    for (k = 0; k < ngrp; k++) {
+        const u8* q = b + 48u * k;
+        NdGrp* g = &o->grp[k];
+        for (int j = 0; j < 3; j++) { g->lo[j] = (int16_t)(q[2 * j] | (q[2 * j + 1] << 8)); g->hi[j] = (int16_t)(q[6 + 2 * j] | (q[7 + 2 * j] << 8)); }
+        g->nvtx = (u16)(q[12] | (q[13] << 8)); g->ntri = (u16)(q[14] | (q[15] << 8)); g->ng = (u16)(q[16] | (q[17] << 8)); g->tsv_exit = q[18];
+        g->op0 = seam_le32(q + 20); g->op1 = seam_le32(q + 24); g->am = seam_le32(q + 28); g->om = seam_le32(q + 32);
+        g->vbase = seam_le32(q + 36) + o->vfirst; g->ibase = seam_le32(q + 40); g->gbase = seam_le32(q + 44);
+    }
+    for (k = 0; k < ngop; k++) { o->gop[k][0] = seam_le32(b + ngrp * 48u + 8u * k); o->gop[k][1] = seam_le32(b + ngrp * 48u + 8u * k + 4u); }
+    for (k = 0; k < ngop; k++) o->gat[k] = (u16)(b[ngrp * 48u + ngop * 8u + 2u * k] | (b[ngrp * 48u + ngop * 8u + 2u * k + 1u] << 8));
+    free(b);
+    return 1;
+fault:
+    free(b); free(o->grp); free(o->gop); free(o->gat);
+    memset(o, 0, sizeof *o);
+    return -1;
+}
+/* dlcchk: the run-time compile of the same list against the loaded object. Returns the number of differing parts. */
+__attribute__((cold, noinline)) static unsigned dlcp_check(const NdObj* o, const NdTp* tp, unsigned ntp) {
+    NdObj r;
+    NdDlcEnv env = { nd_env_vtx, NULL, NULL, tp, ntp };
+    unsigned bad = 0, k;
+    if (nd_dlc_compile(&r, dlc_words, &env) != NDR_OK) return 1;
+    if (r.nops != o->nops || r.exit_am != o->exit_am || r.exit_om != o->exit_om || r.ngrp != o->ngrp || r.ngop != o->ngop || r.nvtx != o->nvtx || r.nidx != o->nidx || r.nins != o->nins) bad++;
+    else {
+        for (k = 0; k < r.ngrp; k++) { NdGrp a = o->grp[k]; a.vbase -= o->vfirst; if (memcmp(&a, &r.grp[k], sizeof a) != 0) { bad++; break; } }
+        if (r.ngop && (memcmp(r.gop, o->gop, r.ngop * 8u) != 0 || memcmp(r.gat, o->gat, r.ngop * 2u) != 0)) bad++;
+        if (r.nvtx && memcmp(r.vtx, o->vtx, r.nvtx * 16u) != 0) bad++;
+        for (k = 0; k < r.nidx; k++) if ((u16)(o->idx[k] - o->vfirst) != r.idx[k]) { bad++; break; }
+    }
+    nd_dlc_free(&r);
+    return bad;
+}
+/* the dlcpre line: per frame that built lists (pm_gpu_end) */
+__attribute__((cold, noinline)) void nd_dlcp_line(unsigned f) {
+    if (dlcp_chk > 0) pm_log_evt("dlcpre f%u pre %u rt %u full %u bad %u", f, nd_dlcp_pre, nd_dlcp_rt, nd_dlcp_full, nd_dlcp_bad);
+    else pm_log_evt("dlcpre f%u pre %u rt %u full %u", f, nd_dlcp_pre, nd_dlcp_rt, nd_dlcp_full);
+    nd_dlcp_pre = nd_dlcp_rt = nd_dlcp_full = nd_dlcp_bad = 0;
+}
 extern int nd_mtx_static; /* SEAM2: the last model matrix load was a static matrix (nd_mtx_set.c) */
 __attribute__((cold, noinline)) int dlc_build(DlcEnt* e, const Gfx* l, int stat) {
     unsigned i;
@@ -201,20 +329,29 @@ __attribute__((cold, noinline)) int dlc_build(DlcEnt* e, const Gfx* l, int stat)
     const NdSeamList* sl = st ? nd_seam_find(st, (u32)(uintptr_t)l) : NULL;
     const int use_tp = sl && sl->cnt && (sl->cls < 2 || stat); /* SEAM2: a T point list under a moving matrix is split in object space: not used */
     if (sl && sl->cnt && !use_tp) pm_log_evt("seamfix dyn map %s list %08x skip %u", pm_shape_name, (u32)(uintptr_t)l, (unsigned)sl->cnt);
-    for (i = 0; i < ND_DLC_MAXOPS; i++) { dlc_words[2 * i] = l[i].words.w0; dlc_words[2 * i + 1] = l[i].words.w1; { uint32_t t[2]; t[0] = l[i].words.w0; t[1] = l[i].words.w1; if ((t[0] >> 24) == NDO_END) break; } }
-    NdDlcEnv env = { nd_env_vtx, nd_env_valloc, nd_env_ialloc, use_tp ? st->tp + sl->first : NULL, use_tp ? sl->cnt : 0u }; /* SEAMFIX: the T points of this list */
-    unsigned dp_t0 = pm_ticks(); /* DPCEN2: compile time of the static list */
-    int rc = nd_dlc_compile(&e->o, dlc_words, &env), pooled = 1;
-    { extern unsigned pm_dp_cmp_n, pm_dp_cmp_us; pm_dp_cmp_n++; pm_dp_cmp_us += (pm_ticks() - dp_t0) / 268u; }
-    if (rc == NDR_FULL) { /* no room in the static areas: compile without the copies, every group runs through the ring (the source words: no T points) */
-        NdDlcEnv env2 = { nd_env_vtx, NULL, NULL, NULL, 0 };
-        dlc_c.sfull++;
-        if (use_tp) pm_log_evt("seamfix pool map %s list %08x skip %u", pm_shape_name, (u32)(uintptr_t)l, (unsigned)sl->cnt);
-        dp_t0 = pm_ticks();
-        rc = nd_dlc_compile(&e->o, dlc_words, &env2);
-        { extern unsigned pm_dp_cmp_n, pm_dp_cmp_us; pm_dp_cmp_n++; pm_dp_cmp_us += (pm_ticks() - dp_t0) / 268u; }
-        pooled = 0;
-        if (rc == NDR_OK) { free(e->o.vtx); free(e->o.idx); e->o.vtx = NULL; e->o.idx = NULL; }
+    int rc = NDR_OK, pooled = 1;
+    const int pre = sl ? dlcp_load(&e->o, (u32)(uintptr_t)l - (u32)(uintptr_t)gMapShapeData, use_tp ? 1u : 0u) : 0; /* S7MAP: the build time result */
+    if (dlcp_chk < 0) dlcp_chk = pm_debug_has("dlcchk");
+    if (pre != 1 || dlcp_chk > 0)
+        for (i = 0; i < ND_DLC_MAXOPS; i++) { dlc_words[2 * i] = l[i].words.w0; dlc_words[2 * i + 1] = l[i].words.w1; { uint32_t t[2]; t[0] = l[i].words.w0; t[1] = l[i].words.w1; if ((t[0] >> 24) == NDO_END) break; } }
+    if (pre == 1) {
+        nd_dlcp_pre++;
+        if (dlcp_chk > 0) { unsigned bad = dlcp_check(&e->o, use_tp ? st->tp + sl->first : NULL, use_tp ? sl->cnt : 0u); if (bad) { nd_dlcp_bad++; pm_log_evt("dlcpre bad map %s list %08x var %u parts %u", pm_shape_name, (u32)(uintptr_t)l, (unsigned)use_tp, bad); } }
+    } else {
+        NdDlcEnv env = { nd_env_vtx, nd_env_valloc, nd_env_ialloc, use_tp ? st->tp + sl->first : NULL, use_tp ? sl->cnt : 0u }; /* SEAMFIX: the T points of this list */
+        unsigned dp_t0 = pm_ticks(); /* DPCEN2: compile time of the static list */
+        if (pre < 0) rc = NDR_FULL; /* S7MAP: the pools had no room for the stored copy */
+        else { nd_dlcp_rt++; rc = nd_dlc_compile(&e->o, dlc_words, &env); { extern unsigned pm_dp_cmp_n, pm_dp_cmp_us; pm_dp_cmp_n++; pm_dp_cmp_us += (pm_ticks() - dp_t0) / 268u; } }
+        if (rc == NDR_FULL) { /* no room in the static areas: compile without the copies, every group runs through the ring (the source words: no T points) */
+            NdDlcEnv env2 = { nd_env_vtx, NULL, NULL, NULL, 0 };
+            dlc_c.sfull++; nd_dlcp_full++;
+            if (use_tp) pm_log_evt("seamfix pool map %s list %08x skip %u", pm_shape_name, (u32)(uintptr_t)l, (unsigned)sl->cnt);
+            dp_t0 = pm_ticks();
+            rc = nd_dlc_compile(&e->o, dlc_words, &env2);
+            { extern unsigned pm_dp_cmp_n, pm_dp_cmp_us; pm_dp_cmp_n++; pm_dp_cmp_us += (pm_ticks() - dp_t0) / 268u; }
+            pooled = 0;
+            if (rc == NDR_OK) { free(e->o.vtx); free(e->o.idx); e->o.vtx = NULL; e->o.idx = NULL; }
+        }
     }
     if (rc) return rc;
     e->nops = e->o.nops; e->exit_am = e->o.exit_am; e->exit_om = e->o.exit_om; e->ngrp = e->o.ngrp; e->gop = e->o.gop;
@@ -452,6 +589,7 @@ __attribute__((cold, noinline)) void dlc_reset(void) {
     dlc_nent = 0;
     pm_gpu_gstat_reset();
     seam_reset();
+    dlcp_close();
 }
 unsigned dlc_seen_gen;
 /* A G_DL to l. Returns 1 when the list is done (replayed), 0 when the interpreter must run it. */
