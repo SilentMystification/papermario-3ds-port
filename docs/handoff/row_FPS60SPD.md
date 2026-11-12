@@ -32,14 +32,15 @@ Base: main at `--commit 20d613506`. Worktree build3ds/wt/FPS60SPD, branch FPS60S
 ## Edit 2 (debug switch, same function, line :708)
 - Condition becomes `(iv > PM_VBLANKS_PER_STEP || (pm_interp_on > 0 && (interp_heavy() || PMDL("iskipall"))))`. Debug only:
   every fps60 step skips the key frame, so the scenario below runs path 1 in Azahar. No doc edit.
-- State (coder, f79344234): Edits 1 and 2 done, build ok, nd_host PASS, spot_mac01_fps60_det 12/12 byte-equal vs 20d613506.
-  Left: the scenario below and gate 2. 7 of 8 Azahar starts left.
+- State (coder): f79344234 (Edits 1, 2), d8bddf45d (scenario), 14c057338. Build ok, memcheck static 21292 margin 694, nd_host PASS,
+  spot_mac01_fps60_det 12/12 byte-equal. Try 1 of the scenario: SCENARIO BROKEN, no pace line: the copied `prof=4` turns logging
+  off except prof lines (pm_log.c:655-675), and pace/pacewk are pm_log_d (pm_main.c:429, :433). Azahar ran at 7.5 fps, so no
+  steps/s rule can be a gate. 2 of 8 Azahar starts used.
 
-## Scenario and bench (one commit, no code edit)
-- New scenario `spot_mac01_fps60_iskip`: copy `spot_mac01_fps60_det`, remove the det switch and the shot switches, add `pacestat`
-  and `iskipall`, keep `loglevel=debug` (the pace lines are debug level). Until: `pacewk f(4\d\d|[5-9]\d\d|\d{4,}) ` (the first
-  5 s pace window that ends at frame 400 or later: after the mac_01 load). Cap 45 s, deadline 40. Bench of the same name, no shots.
-  Insert both entries right after the `spot_mac01_fps60_det` entries (azt_scenarios.json, bench_defs.json).
+## Scenario fix (one commit, no code edit)
+- `spot_mac01_fps60_iskip` debug string becomes exactly `warp=mac_01:0 pos=0:0:200 fps60 pacestat iskipall fs1off loglevel=debug` (no prof,
+  no det, no shots; fs1off: an FS1 skip moves step_vb by 2 (pm_main.c:694), which can give iv 0 or 1 at the next drawn step). Until: `pacewk f\d+ wk` (the first pace window, about 5 s of wall time after the boot; any Azahar speed).
+  Cap 45, deadline 40. The bench entry stays as it is.
 
 ## Commands
 - build: `3ds/tools/build.sh` (Git Bash) in build3ds/wt/FPS60SPD; nd_host: `python 3ds/tools/bench.py run nd_host --row FPS60SPD --why "nd_host"`.
@@ -49,11 +50,14 @@ Base: main at `--commit 20d613506`. Worktree build3ds/wt/FPS60SPD, branch FPS60S
 
 ## Gate (all three)
 1. nd_host PASS.
-2. spot_mac01_fps60_iskip: the `pace:` line printed just before the until `pacewk` line has `steps/s` from 29.0 to 31.0.
-   Run only this scene now: `bench.py run spot_mac01_fps60_iskip --row FPS60SPD --why "fps60 step rate with iskipall"`
-   (the det byte compare is already done). Hand back that pace line and the pacewk line.
+2. spot_mac01_fps60_iskip (a code rule, not a speed): the `pace:` line printed just before the until line has `total 1:0` (no
+   drawn step started 1 vblank after the last one; pm_main.c:707 counts iv 1 in pace_iv[0]) and `steps` <= `vblanks` / 2 + 1 in
+   that window. Expected with Edit 1: total 1:0. Before Edit 1, with iskipall, a step that fits one LCD period gives iv 1; in slow
+   Azahar it may not show, so the code read (row Cause) is the proof and this line checks that no iv 1 step happens.
+   Run only this scene: `bench.py run spot_mac01_fps60_iskip --row FPS60SPD --why "fps60 iv rule with iskipall"`. Hand back the
+   pace and pacewk lines.
 3. spot_mac01_fps60_det byte-equal to base (det never sets ISKIP; its steps all have key frames, so the edit does not run there).
 
 ## Stop
-- Gate passes: commit (changed files only), delete this row file in the same commit, hand back the steps/s value and the cmp result.
-- steps/s outside 29-31, cmp not equal, or a tool fault: stop, commit, hand back the exact report lines. Do not change the wait again.
+- Gate passes: commit (changed files only), delete this row file in the same commit, hand back the pace line and the cmp result.
+- total 1: above 0, cmp not equal, or a tool fault: stop, commit, hand back the exact report lines. Do not change the wait again.
