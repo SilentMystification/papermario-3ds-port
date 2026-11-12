@@ -85,14 +85,17 @@ void nd_scomp_key(const NdSDef* d, const NdCombIn* in, uint32_t vprim, uint32_t 
 unsigned nd_scomp_find(NdSTab* t, unsigned def_id, const uint32_t key[ND_SC_KEYW], int* miss) {
     unsigned i = t->last[def_id & 15u];
     if (t->used[i] && !memcmp(t->key[i], key, sizeof t->key[i])) { *miss = 0; return i; }
-    for (i = 0; i < ND_SC_N; i++)
-        if (t->used[i] && t->key[i][0] == key[0] && !memcmp(t->key[i], key, sizeof t->key[i])) { t->last[def_id & 15u] = (uint8_t)i; *miss = 0; return i; }
-    i = t->next++ & (ND_SC_N - 1u);
-    memcpy(t->key[i], key, sizeof t->key[i]);
-    t->used[i] = 1;
-    t->last[def_id & 15u] = (uint8_t)i;
-    *miss = 1;
-    return i;
+    uint32_t h = 2166136261u; unsigned fr; int fr_ok = 0;
+    for (unsigned k = 0; k < ND_SC_KEYW; k++) h = (h ^ key[k]) * 16777619u;
+    i = (h ^ (h >> 15)) & (ND_SC_N - 1u); fr = i;
+    for (unsigned p = 0; p < 8u; p++) {
+        const unsigned j = (i + p) & (ND_SC_N - 1u);
+        if (!t->used[j]) { if (!fr_ok) { fr = j; fr_ok = 1; } continue; }
+        if (t->key[j][0] == key[0] && !memcmp(t->key[j], key, sizeof t->key[j])) { t->last[def_id & 15u] = (uint8_t)j; *miss = 0; return j; }
+    }
+    memcpy(t->key[fr], key, sizeof t->key[fr]); /* a miss: the first free probe slot, else the home slot */
+    t->used[fr] = 1; t->last[def_id & 15u] = (uint8_t)fr; *miss = 1;
+    return fr;
 }
 
 #ifndef ND_SCOMP_HOST
@@ -277,11 +280,23 @@ static __attribute__((cold, noinline)) void s6_run(const NdSDef* d, const uint32
     }
 }
 
-void nd_scomp_run(const uint32_t* rec) {
-    static int chk = -1;
-    const NdSDef* d = (const NdSDef*)(uintptr_t)rec[0];
-    if (__builtin_expect(chk < 0, 0)) chk = pm_debug_has("s6chk") ? 1 : 0;
-    if (__builtin_expect(chk, 0)) { s6_run(d, rec + 2); return; }
-    sc_exec(d, rec + 2);
+static int sc_chk = -1;
+static void sc_go(const NdSDef* d, const uint32_t* v) {
+    if (__builtin_expect(sc_chk < 0, 0)) sc_chk = pm_debug_has("s6chk") ? 1 : 0;
+    if (__builtin_expect(sc_chk, 0)) s6_run(d, v); else sc_exec(d, v);
+}
+void nd_scomp_run(const uint32_t* rec) { sc_go((const NdSDef*)(uintptr_t)rec[0], rec + 2); }
+int nd_scomp_exec(NdSDef* d, const uint32_t* v, unsigned nv) {
+    if (__builtin_expect(!d->st, 0)) d->st = nd_scomp_analyse(d) ? 1u : 2u;
+    if (d->st != 1u || nv != d->nv) return 0;
+    sc_go(d, v);
+    return 1;
+}
+int nd_scomp_exec_own(NdSDef* d) {
+    uint32_t v[2u * 32u]; const uint32_t* u = (const uint32_t*)d->u; unsigned j = 0;
+    if (__builtin_expect(!d->st, 0)) d->st = nd_scomp_analyse(d) ? 1u : 2u;
+    if (d->st != 1u) return 0;
+    for (unsigned k = 0; k < d->n; k++) if (d->vmask >> k & 1u) { v[2u * j] = u[2u * k]; v[2u * j + 1u] = u[2u * k + 1u]; j++; }
+    return nd_scomp_exec(d, v, j);
 }
 #endif
