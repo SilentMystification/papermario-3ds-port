@@ -64,6 +64,28 @@ until grep -q 'PUSH END' build3ds/out/push_last.txt 2>/dev/null || [ $(( $(date 
 if grep -q 'PUSH END' build3ds/out/push_last.txt 2>/dev/null; then echo "ok   detached PUSH END ($(tr -d '\r\n\357\273\277' <build3ds/out/push_last.txt))"
 else echo "FAIL detached PUSH END within 60 s"; fail=1; fi
 
+# (e) slow send (PUSHFIX2): progress every 2 s for 16 s, then 100% and exit 0. NOGROW_SECS=4 must not kill it;
+# the cap for the 13 MB dummy is 195 s (15 s per MB).
+fake_slow="$tmp/fake_slow.sh"; fake_hung="$tmp/fake_hung.sh"
+printf '#!/bin/sh\necho "Sending pm_3ds.3dsx"\nn=1\nwhile [ $n -le 8 ]; do sleep 2; echo "$((n * 1000000)) sent ($((n * 12)).00%%)"; n=$((n + 1)); done\necho "100.00%%"\nexit 0\n' >"$fake_slow"
+printf '#!/bin/sh\necho "Sending pm_3ds.3dsx"\necho "10 sent (5%%)"\nsleep 60\n' >"$fake_hung"
+chmod +x "$fake_slow" "$fake_hung"
+t0=$(date +%s)
+oe=$(env PM_3DSLINK="$fake_slow" NOGROW_SECS=4 PM_SRC3DSX="$tmp/pm_3ds.3dsx" PM_ARCHIVE_DIR="$tmp" PM_PUSH_LOG="$tmp/pushed.txt" \
+    sh 3ds/push_3ds.sh --no-build --ip 127.0.0.1 -t 1 --idle 1 2>&1) && re=0 || re=$?
+t1=$(date +%s)
+# The run ends in PUSH FAILED stage=no log (no game log on this host): the send itself is what is tested, so rc is not checked.
+if ! echo "$oe" | grep -q 'killing 3dslink' && echo "$oe" | grep -q 'send cap 195s for 13 MB' && [ $((t1 - t0)) -ge 15 ]; then echo "ok   slow send not killed"
+else echo "FAIL slow send not killed (rc $re, $((t1 - t0)) s)"; echo "$oe" | tail -n 20; fail=1; fi
+
+# (f) hung send (PUSHFIX2): one progress line, then silence. NOGROW_SECS=4 kills each attempt; 3 attempts of about 6 s, well under 45 s.
+t0=$(date +%s)
+of=$(env PM_3DSLINK="$fake_hung" NOGROW_SECS=4 PM_SRC3DSX="$tmp/pm_3ds.3dsx" PM_ARCHIVE_DIR="$tmp" PM_PUSH_LOG="$tmp/pushed.txt" \
+    sh 3ds/push_3ds.sh --no-build --ip 127.0.0.1 -t 1 --idle 1 2>&1) || true
+t1=$(date +%s)
+if echo "$of" | grep -q 'no send progress for 4s - killing 3dslink' && [ $((t1 - t0)) -lt 45 ]; then echo "ok   hung send killed ($((t1 - t0)) s)"
+else echo "FAIL hung send killed ($((t1 - t0)) s)"; echo "$of" | tail -n 20; fail=1; fi
+
 rm -f build3ds/out/push_127.0.0.1_*
 if [ "$fail" -eq 0 ]; then echo "PUSH TESTS PASS"; else echo "PUSH TESTS FAIL"; fi
 exit $fail

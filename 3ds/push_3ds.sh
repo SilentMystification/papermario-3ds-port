@@ -353,11 +353,15 @@ fi
 attempts=3
 mkdir -p build3ds/out
 stall_secs=15
-# SEND_SECS: the whole upload (13 MB) must end within this time once the console has answered.
-# A flaky Wi-Fi link can hang 3dslink after "Sending ..." for ever (confirmed on the O3DS).
-# The user decision 2026-10-20 overrides the old rule "never kill after the first answer":
-# kill by PID after SEND_SECS, count the attempt as failed, retry.
-send_secs=${SEND_SECS:-60}
+# Send kill rule (user decision 2026-11-12). A fixed send time killed healthy sends of the 38 to 51 MB 3dsx
+# at a random percentage, so the old 60 s cap is gone. The attempt is killed only when the console has
+# answered and the output has not grown for NOGROW_SECS (a stalled send), or when the send runs past a
+# hard cap of 15 s per MB (at least 120 s). SEND_SECS, when set, overrides the cap. A flaky Wi-Fi link can
+# still hang 3dslink after "Sending ..." for ever (confirmed on the O3DS): the no-progress kill ends that.
+nogrow_secs=${NOGROW_SECS:-60}
+size_mb=$(( ($(wc -c <"$SRC3DSX") + 1048575) / 1048576 ))
+send_cap=$(( size_mb * 15 )); [ "$send_cap" -lt 120 ] && send_cap=120
+send_cap=${SEND_SECS:-$send_cap}
 LINK=${PM_3DSLINK:-/opt/devkitpro/tools/bin/3dslink}
 ok=0
 stage=connect
@@ -378,21 +382,21 @@ cleanup() {
 trap cleanup EXIT INT TERM HUP
 i=1
 while [ "$i" -le "$attempts" ]; do
-    echo "netload attempt $i/$attempts (connect timeout ${stall_secs}s, send timeout ${send_secs}s)..."
+    echo "netload attempt $i/$attempts (connect timeout ${stall_secs}s, no-progress ${nogrow_secs}s, send cap ${send_cap}s for ${size_mb} MB)..."
     cname="pm3ds_netload_$$_$i"
     outfile="build3ds/.netload_attempt_$$_$i.log"
     : > "$outfile"
     usedocker=0
     if [ -x "$LINK" ]; then
         echo "+ $LINK -a $ip $SRC3DSX -- --verbose $*"
-        stdbuf -oL "$LINK" -a "$ip" "$SRC3DSX" -- --verbose livelog "$@" >"$outfile" 2>&1 &
+        stdbuf -o0 "$LINK" -a "$ip" "$SRC3DSX" -- --verbose livelog "$@" >"$outfile" 2>&1 &
     else
         usedocker=1
         src_dir=$(cd "$(dirname "$SRC3DSX")" && pwd)
         src_name=$(basename "$SRC3DSX")
         echo "+ docker run devkitpro/devkitarm 3dslink -a $ip /out/$src_name -- --verbose $*"
         MSYS_NO_PATHCONV=1 docker run --name "$cname" --rm -v "$src_dir:/out:ro" devkitpro/devkitarm:latest \
-            stdbuf -oL /opt/devkitpro/tools/bin/3dslink -a "$ip" "/out/$src_name" -- --verbose livelog "$@" >"$outfile" 2>&1 &
+            stdbuf -o0 /opt/devkitpro/tools/bin/3dslink -a "$ip" "/out/$src_name" -- --verbose livelog "$@" >"$outfile" 2>&1 &
     fi
     dpid=$!
     # --pid: the tail ends when this script's bash ends, even when it is killed without its trap.
@@ -424,7 +428,7 @@ while [ "$i" -le "$attempts" ]; do
             warned=1
             echo "attempt $i: no send progress for 30 s (last line: $(tr '\r' '\n' <"$outfile" | tail -n 1))"
         fi
-        # An owner gone: no new attempt, and a silent attempt is killed (a sent one runs on to its own end or SEND_SECS).
+        # An owner gone: no new attempt, and a silent attempt is killed (a sent one runs on to its own end, the no-progress kill or the cap).
         if [ "$ownerdead" -eq 0 ] && owner_gone; then
             ownerdead=1
             echo "owner of this push is gone: stopping the netload"
@@ -434,9 +438,13 @@ while [ "$i" -le "$attempts" ]; do
             echo "attempt $i: no response for ${stall_secs}s - killing (console never answered)"
             stage=connect; reason="no answer from $ip in ${stall_secs}s"
             killed=1
-        elif [ "$started" -eq 1 ] && [ "$sent_for" -ge "$send_secs" ]; then
-            echo "attempt $i: send not finished after ${send_secs}s - killing 3dslink"
-            stage=send; reason="send stalled for ${send_secs}s"
+        elif [ "$started" -eq 1 ] && [ "$nogrow" -ge "$nogrow_secs" ]; then
+            echo "attempt $i: no send progress for ${nogrow_secs}s - killing 3dslink (last line: $(tr '\r' '\n' <"$outfile" | tail -n 1))"
+            stage=send; reason="no send progress for ${nogrow_secs}s"
+            killed=1
+        elif [ "$started" -eq 1 ] && [ "$sent_for" -ge "$send_cap" ]; then
+            echo "attempt $i: send not finished after ${send_cap}s (cap) - killing 3dslink"
+            stage=send; reason="send cap ${send_cap}s"
             killed=1
         fi
         if [ "$killed" -eq 1 ]; then
