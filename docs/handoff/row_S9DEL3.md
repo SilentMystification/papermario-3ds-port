@@ -17,6 +17,9 @@ S9DEL2 merged. `sh 3ds/tools/wt_new.sh S9DEL3`; PM_ROW=S9DEL3 PM_LANE=S9DEL3.
 - nd_walk.c: the G_* and NDO_* arms of the stream walk. The frame stream keeps only NDC_NAPI and the native record kinds.
 
 ## Gate (expected values)
+- Census rule (user, 2026-11-12): before the gate, write in the commit which listcen classes and which grep terms this row's
+  deletions remove, and expect 0 only for those; a class the row does not touch keeps main's value. A 0 that the row's own
+  edits cannot give (code still left by the row) is a row fault: stop and hand back.
 - Full build with the 3DS target: no game file includes nd_gbi.h, and no compile error from a leftover macro in a 3DS-compiled
   branch (a leftover: stop and hand back the file and line).
 - nd_host PASS. The byte set of S9DEL1: every shot byte-equal.

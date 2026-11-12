@@ -1,5 +1,8 @@
 #include "common.h"
 #include "entity.h"
+#ifdef TARGET_3DS
+#include "nd_scomp.h"
+#endif
 
 void entity_shattering_setupGfx(s32 entityIndex);
 
@@ -151,6 +154,20 @@ void entity_shattering_idle(Entity* entity) {
     }
 }
 
+#ifdef TARGET_3DS
+/* S6E2: the state lines of the fragment loop of entity_shattering_setupGfx as compiled state ranges (nd_scomp.h). The PRIM is a value slot. */
+static const Gfx ShatteringBlock_common_st_o[] = {
+    gsDPSetRenderMode(G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2),
+    gsDPSetCombineMode(G_CC_MODULATEIA, G_CC_MODULATEIA),
+};
+static NdSDef ShatteringBlock_common_def_o = { ShatteringBlock_common_st_o, sizeof ShatteringBlock_common_st_o / sizeof ShatteringBlock_common_st_o[0] };
+static const Gfx ShatteringBlock_common_st_t[] = {
+    gsDPSetCombineMode(PM_CC_11, PM_CC_12),
+    gsDPSetPrimColor(0, 0, 0, 0, 0, 0),
+};
+static NdSDef ShatteringBlock_common_def_t = { ShatteringBlock_common_st_t, sizeof ShatteringBlock_common_st_t / sizeof ShatteringBlock_common_st_t[0] };
+#endif
+
 void entity_shattering_setupGfx(s32 entityIndex) {
     s32 i;
     Matrix4f mtxTransInv;
@@ -170,6 +187,16 @@ void entity_shattering_setupGfx(s32 entityIndex) {
     z_inv = -entity->pos.z;
 
     for (i = 0; i < 24; i++) {
+#ifdef TARGET_3DS
+        if (data->alpha == 255) {
+            nd_scomp_rec(&ShatteringBlock_common_def_o, NULL, 0);
+        } else {
+            Gfx v[1];
+
+            gDPSetPrimColor(&v[0], 0, 0, 0, 0, 0, data->alpha);
+            nd_scomp_rec(&ShatteringBlock_common_def_t, v, 1);
+        }
+#else
         if (data->alpha == 255) {
             gDPSetRenderMode(gMainGfxPos++, G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2);
             gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIA, G_CC_MODULATEIA);
@@ -177,6 +204,7 @@ void entity_shattering_setupGfx(s32 entityIndex) {
             gDPSetCombineMode(gMainGfxPos++, PM_CC_11, PM_CC_12);
             gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, data->alpha);
         }
+#endif
 
         guTranslateF(mtxTransInv, x_inv, y_inv, z_inv);
         guRotateF(mtxRotX, data->fragmentRotX[i] * 360.0f / 256, 1.0f, 0.0f, 0.0f);

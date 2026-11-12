@@ -16,7 +16,7 @@
 
 ## Touch only
 src/animator.c: a block after its Gfx_RM extern lines (:39-), the 14 RM lines, :874-888. azt_scenarios.json and bench_defs.json:
-one entry `s6chk_yard` each, right after `s6chk_mac01` (if S6M3 added `s6chk_mac00` there, put it after that one).
+one entry `s6chk_yard` each, right after `msgbox_talk_det` (a unique anchor: other rows insert after s6chk_mac01 and spot_sbk56_det).
 
 ## Exact edits
 1. After the Gfx_RM externs:
@@ -52,9 +52,9 @@ one entry `s6chk_yard` each, right after `s6chk_mac01` (if S6M3 added `s6chk_mac
 - Build, memcheck OK; `bench.py run nd_host --row S5EMDL3 --why "S5EMDL3 nd_host"`: PASS.
 - `bench.py base msgbox_talk_det` (kmr_20: napicen_talk had animator.o 103 ops a frame) and `bench.py base s6chk_yard` (2 runs,
   new bench). One list `bench.py run msgbox_talk_det,s6chk_yard --row S5EMDL3 --why "S5EMDL3: animator ranges"` (2 starts).
-  cmp msgbox_talk_det 1/1 byte-equal; s6chk_yard `bad 0` and `ranges` above the base log's value. No `scomp: def` line.
+  cmp msgbox_talk_det 1/1 byte-equal; s6chk_yard `bad 0` and the `ranges` values of base and head (reach report, not a stop: S6M1 merged with ranges 681 equal to main, as its records ran after f200; hand back both values). No `scomp: def` line.
 - Budget 8 Azahar starts.
 
 ## Stop
-A byte difference, `bad` above 0, ranges not above the base, or a scomp line: stop, commit, hand back (2 tries per named cause).
+A byte difference, `bad` above 0, or a scomp line: stop, commit, hand back (2 tries per named cause).
 Delete this row file in the completing commit.

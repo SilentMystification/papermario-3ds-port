@@ -26,6 +26,9 @@ S9DEL1 merged. `sh 3ds/tools/wt_new.sh S9DEL2`; PM_ROW=S9DEL2 PM_LANE=S9DEL2.
   never set (include/enums.h:5223). Delete them in this row too.
 
 ## Gate (expected values)
+- Census rule (user, 2026-11-12): before the gate, write in the commit which listcen classes and which grep terms this row's
+  deletions remove, and expect 0 only for those; a class the row does not touch keeps main's value. A 0 that the row's own
+  edits cannot give (code still left by the row) is a row fault: stop and hand back.
 - Full build, memcheck OK; nd_host PASS (the converter host test passes from its new place).
 - The byte set of S9DEL1: every shot byte-equal.
 - `grep -rn "sync_combine\|set_tilesize\|tex_win0\|ensure_tile_slow\|nd_texrect\|decide_miss" 3ds/src` returns nothing.
