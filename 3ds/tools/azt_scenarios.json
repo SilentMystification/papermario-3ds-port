@@ -1385,6 +1385,32 @@
       ],
       "reason": "S4 byte gate for the snaking_static particle run (row S4SNAK): cold det start as spot_mac01_det, shots 412 to 415. Cap 40 s, deadline 35 s. The shot line at frame 415 is the until."
     },
+
+    {
+      "name": "fxpic_20",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 at 0 0 200, fxtest=20 (explosion), cold det start. Shots at frames 412 to 415.",
+      "proves": "S7EFX3 particle run (explosion, effect 20): shots 412 to 415 byte-equal between the base build and the head build.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=20 shots shotwin=412:4 loglevel=debug det",
+      "extra": [],
+      "until": "shot \\d+ frame 415\\b",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "shot 415",
+          "regex": "shot \\d+ frame 415\\b"
+        }
+      ],
+      "reason": "S7EFX3 byte gate for the explosion particle run (row S7EFX3, nd_rec_dl table lists): cold det start as spot_mac01_det, shots 412 to 415. Cap 40 s, deadline 35 s. The shot line at frame 415 is the until."
+    },
     {
       "name": "fxpic_105",
       "status": "unverified",

@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 extern Gfx D_09000240_32FD90[];
 
@@ -131,7 +132,11 @@ void footprint_appendGfx(void* effect) {
             gDPSetPrimColor(gMainGfxPos++, 0, 0, 112, 96, 24, part->alpha);
             gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
                         G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+            nd_rec_dl(dlist);
+#else
             gSPDisplayList(gMainGfxPos++, dlist);
+#endif
             gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         }
     }

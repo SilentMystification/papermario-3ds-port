@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 extern Gfx D_090003A0_396490[];
 extern Gfx D_090003E0_3964D0[];
@@ -129,8 +130,16 @@ void floating_rock_appendGfx(void* effect) {
         gDPSetRenderMode(gMainGfxPos++, G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2);
     }
 
+#ifdef TARGET_3DS
+    nd_rec_dl(D_09000450_396540);
+#else
     gSPDisplayList(gMainGfxPos++, D_09000450_396540);
+#endif
+#ifdef TARGET_3DS
+    nd_rec_dl(D_E0098510[data->type]);
+#else
     gSPDisplayList(gMainGfxPos++, D_E0098510[data->type]);
+#endif
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     gDPPipeSync(gMainGfxPos++);
 }
