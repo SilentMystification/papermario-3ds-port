@@ -45,9 +45,11 @@ src/item_entity.c: a def block right after D_8014C620 (:102), and appendGfx_item
    ```
 
 ## Gate (expected values)
+- Speed rule (oracle 5): a bench list runs at one speed; spot_mac00_det is a turbo bench (bench_defs speed turbo), every
+  other bench here is normal. Run it as its own list: `bench.py run spot_mac00_det --row S5ITEM1 --why "..."` (1 start).
 - Build, memcheck OK, no warning in item_entity.c; `bench.py run nd_host --row S5ITEM1 --why "S5ITEM1 nd_host"`: PASS.
-- `bench.py base spot_mac00_det`, `bench.py base spot_mac01_det`; one list `bench.py run spot_mac00_det,spot_mac01_det,s6chk_mac01
-  --row S5ITEM1 --why "S5ITEM1: item entity ranges"` (3 starts). cmp 6/6 and 6/6 byte-equal; s6chk `bad 0`.
+- `bench.py base spot_mac00_det`, `bench.py base spot_mac01_det`; one list `bench.py run spot_mac01_det,s6chk_mac01
+  --row S5ITEM1 --why "S5ITEM1: item entity ranges"` (2 starts) plus spot_mac00_det alone (1 start). cmp 6/6 and 6/6 byte-equal; s6chk `bad 0`.
 - Reach report (not a stop): s6chk_mac01 `ranges` next to main's last s6chk_mac01 run (runs.jsonl). Equal: no item entity ran by
   f200; hand back the values (the proof is then the def, the build and the two byte-equal scenes). No `scomp: def` line. Budget 8.
 

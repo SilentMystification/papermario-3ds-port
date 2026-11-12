@@ -52,6 +52,8 @@ hold only lines both builds print, never the new imgfxcen line: a base would fai
 this row for its mode 1.
 
 ## Gate (expected values)
+- Speed rule (oracle 5): a bench list runs at one speed; spot_mac00_det is a turbo bench (bench_defs speed turbo), every
+  other bench here is normal. Run it as its own list: `bench.py run spot_mac00_det --row S5IMGFX --why "..."` (1 start).
 - nd_host PASS. DIRECT byte set (spot_mac01_det, mdl5_iwa10_det: sprites with imgfx; spot_mac00_det), one list, 3 starts: every
   shot byte-equal.
 - The census line `imgfxcen f<n> native <a> fb <b> by type ...` at f300 of spot_mac01_det: native > 0, and the fallback counted

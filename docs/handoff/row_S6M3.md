@@ -53,9 +53,12 @@ bench_defs.json: one entry `s6chk_mac00` each, inserted right after `s6chk_mac01
    Same commit as steps 1-2.
 
 ## Gate (expected values)
+- Speed rule (oracle 5): a bench list runs at one speed; spot_mac00_det is a turbo bench (bench_defs speed turbo), every
+  other bench here is normal. Run it as its own list: `bench.py run spot_mac00_det --row S6M3 --why "..."` (1 start).
 - Build, memcheck OK; `bench.py run nd_host --row S6M3 --why "S6M3 nd_host"`: PASS.
 - `bench.py base spot_mac00_det` and `bench.py base s6chk_mac00` (merge-base; the base of the new bench takes 2 runs). One list
-  `bench.py run spot_mac00_det,s6chk_mac00 --row S6M3 --why "S6M3: mac_00 water ranges"` (2 starts).
+  `bench.py run spot_mac00_det --row S6M3 --why "S6M3: mac_00 water"` and `bench.py run s6chk_mac00 --row S6M3 --why
+  "S6M3: s6chk mac_00"` (2 starts, two lists: the speeds differ).
   cmp spot_mac00_det 6/6 byte-equal. s6chk_mac00 head: `bad 0`, and the `ranges` values of base and head (reach report, not a stop: S6M1 merged with ranges 681 equal to main, as its records ran after f200; hand back both values). No `scomp: def` line in either log.
 - Budget 8 Azahar starts.
 

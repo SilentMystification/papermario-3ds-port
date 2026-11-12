@@ -6,6 +6,8 @@
 S9DEL4 (all worktrees) merged. `sh 3ds/tools/wt_new.sh S9GATE`; PM_ROW=S9GATE PM_LANE=S9GATE.
 
 ## Steps
+- Speed rule (oracle 5): a bench list runs at one speed; spot_mac00_det is a turbo bench (bench_defs speed turbo), every
+  other bench here is normal. Run it as its own list: `bench.py run spot_mac00_det --row S9GATE --why "..."` (1 start).
 1. `python 3ds/tools/bench.py run listcen --row S9GATE --why "end-state gate"`: all 7 totals are 0 (build, gfxpos, data,
    data_arrays, gfxtype, reader, model).
 2. `grep -rnE "\bg[DS]P[A-Za-z]|\bgs[DS]P[A-Za-z]|\bGfx\b|gMainGfxPos|NDO_|nd_ops_run|nd_walk_state|NDC_STATE|sync_combine|set_tilesize" src include 3ds/src 3ds/include > build3ds/out/s9grep.txt`:

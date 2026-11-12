@@ -47,14 +47,42 @@ nd_int.h (EntSeg, EntKey); nd_ent.c (includes, ent_compile, ent_reset, ent_run, 
    l3). Census only.
 
 ## Gate (expected values)
+- Speed rule (oracle 5): a bench list runs at one speed; spot_mac00_det is a turbo bench (bench_defs speed turbo), every
+  other bench here is normal. Run it as its own list: `bench.py run spot_mac00_det --row S6E --why "..."` (1 start).
 - `PM_ROW=S6E PM_LANE=S6E sh 3ds/build.sh > build3ds/out/build.txt 2>&1`: memcheck OK.
 - `python 3ds/tools/bench.py run nd_host --row S6E --why "S6E entity gaps compiled"`: PASS.
-- `PM_ROW=S6E PM_LANE=S6E python 3ds/tools/bench.py base spot_mac01_det`, the same for spot_mac00_det.
-- One list: `python 3ds/tools/bench.py run spot_mac01_det,spot_mac00_det,s6chk_mac01,ent_kmr03_pic --row S6E --why "S6E: gaps
-  compiled"` (4 starts). `bench.py cmp` spot_mac01_det and spot_mac00_det: every shot byte-equal. s6chk line: `bad 0`.
-  ent_kmr03_pic (census, not a byte gate): hand back its `entsync ... walks <w> sc <s>` and `entnat ... native <n>` lines;
-  expected sc above 0 (walks still counts refused gaps and interpreted segments).
-- No `scomp: def` line in any log. Budget 6 starts.
+- Try 2 (oracle 5, after the fact check): try 1 ran spot_mac00_det alone at turbo against a turbo base, so the speed was not
+  the cause. The base is valid: the branch merge-base is 8354d6335 and the stored base ed83069e6 is its docs-only child
+  (`git diff --stat 8354d6335 ed83069e6` lists only docs/handoff files): the same code minus S6E. So the 0/6 is a code effect of
+  12cc94a0e in mac_00 (S5SPR2 was 6/6 there at turbo).
+- Named paths (code read; the one that fires in mac_00 is not proven by reading): sc_exec (3ds/src/nd_scomp.c:202-221) runs the
+  value units in two groups: `pre` before the folded block, the rest after the block and after the decision and sc_ok/sc_sig
+  (:216-217). The op path (ENT_GBI = nd_ops_run in order) runs each unit in place. So in a gap with a value unit after the first
+  static unit: (a) a class-2 unit between static units (MOVEMEM lights, MW NUMLIGHT/FOG/SEG, MTX, FOG, FILL, SCISSOR) moves
+  behind the later static units: a light write after a GEOM G_LIGHTING change runs lit_freeze (nd_geom.c:163) on another state,
+  and a fog value after G_FOG runs on another state; (b) a class-4 unit after the last static (PRIM, ENV, texture loads) runs
+  after the decision. s6chk compares 50 walker fields after the range but not the light, fog and GPU-side state of (a). An
+  entity drawn with a different fog or light state, and the fog and light state left to every later draw (the tail range runs
+  after the last entity segment), can change the whole frame.
+- Fix (exact, nd_ent.c ent_gap only): take the compiled path only when every value unit precedes the first static unit (the
+  op order; nd_scomp_analyse sets nv and pre). Replace the whole function ent_gap by:
+  ```c
+  static void ent_gap(NdSDef* d, const Gfx* l, u32 n) {
+      if (d && !d->st) d->st = nd_scomp_analyse(d) ? 1u : 2u;
+      if (d && d->st == 1u && d->nv == d->pre) {
+          gv_epoch++; dlc_on = 1; pm_walk_side++; const int ok = nd_scomp_exec_own(d); pm_walk_side--;
+          if (ok) { nd_ent_sc++; gv_streak_flush(); tex_streak_flush(); return; } }
+      ENT_GBI((void*)l, n * 8u);
+  }
+  ```
+- Gate: build, memcheck OK, nd_host PASS. `bench.py base spot_mac00_det --commit $(git merge-base HEAD main)` (turbo base),
+  `bench.py run spot_mac00_det --row S6E --why "S6E try 2: in-order gaps"` alone (turbo), `bench.py cmp spot_mac00_det --row S6E
+  --commit <the same merge-base>`: 6/6 byte-equal. Then one normal list `bench.py run spot_mac01_det,s6chk_mac01,ent_kmr03_pic
+  --row S6E` (3 starts): spot_mac01_det 6/6 byte-equal, s6chk bad 0, entsync `sc` above 0 (hand back sc and walks; sc may drop
+  from try 1's 2016: the gaps with late values now walk).
+- If spot_mac00_det still differs: stop, commit, hand back the cmp lines. The cause is then not the value order; by CLAUDE.md 1
+  the trace goes to the user.
+- No `scomp: def` line in any log. Budget 8 after the orchestrator's reset; try 2 needs 5 or 6 starts.
 
 ## Stop and end
 A byte difference, `bad` above 0, an edit that does not fit, or a test-tool fault: commit, hand back the exact output. Delete this
