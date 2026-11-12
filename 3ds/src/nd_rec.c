@@ -411,17 +411,19 @@ static __attribute__((cold, noinline)) void tr_bad(uint32_t w0) {
 typedef struct { uint32_t ra, n; } napi_e_t;
 static napi_e_t* napi_tab;
 static unsigned napi_next = 300u;
+static unsigned napi_lost; /* ops of callers that found no free slot (all 512 taken) in this window */
 static __attribute__((cold, noinline)) void napi_dump(unsigned f) {
     unsigned total = 0;
     for (unsigned i = 0; i < 512u; i++) total += napi_tab[i].n;
-    for (unsigned r = 0; r < 40u; r++) {
+    for (unsigned r = 0; r < 512u; r++) {
         unsigned b = 512u, bn = 0;
         for (unsigned i = 0; i < 512u; i++) if (napi_tab[i].n > bn) { bn = napi_tab[i].n; b = i; }
         if (b == 512u) break;
         pm_log("napicen f%u ra %08x n %u", f, (unsigned)napi_tab[b].ra, bn / 300u);
         napi_tab[b].n = 0;
     }
-    pm_log_evt("napicen f%u done total %u", f, total / 300u);
+    pm_log_evt("napicen f%u done total %u lost %u", f, total / 300u, napi_lost / 300u);
+    napi_lost = 0;
     memset(napi_tab, 0, 512u * sizeof(napi_e_t));
 }
 static __attribute__((cold, noinline)) void napi_note(uintptr_t ra) {
@@ -435,6 +437,7 @@ static __attribute__((cold, noinline)) void napi_note(uintptr_t ra) {
         if (napi_tab[i].ra == k) { napi_tab[i].n++; return; }
         if (napi_tab[i].ra == 0u) { napi_tab[i].ra = k; napi_tab[i].n = 1u; return; }
     }
+    napi_lost++;
 }
 void nd_gx_w(Gfx* g, uint32_t w0, uint32_t w1) {
     if (g != gMainGfxPos - 1) { g->words.w0 = w0; g->words.w1 = w1; return; }
