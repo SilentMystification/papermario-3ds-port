@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 s32 D_E001C5E0 = 0;
 
@@ -124,7 +125,11 @@ void snowflake_appendGfx(void* effect) {
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(effectTemp->shared->graphics));
+#ifdef TARGET_3DS
+    nd_rec_dl(D_09000900_331800);
+#else
     gSPDisplayList(gMainGfxPos++, D_09000900_331800);
+#endif
 
     guTranslateF(sp18, data->pos.x, data->pos.y, data->pos.z);
     guRotateF(spD8, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);
@@ -140,7 +145,11 @@ void snowflake_appendGfx(void* effect) {
     guMtxF2L(sp118, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+    nd_rec_dl(D_090009E8_3318E8);
+#else
     gSPDisplayList(gMainGfxPos++, D_090009E8_3318E8);
+#endif
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 }

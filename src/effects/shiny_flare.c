@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 extern Gfx D_09000240_3D79B0[];
 extern Gfx D_090002E0_3D7A50[];
@@ -116,7 +117,11 @@ void shiny_flare_appendGfx(void* effect) {
 
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     gSPMatrix(gMainGfxPos++, camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+    nd_rec_dl(D_09000240_3D79B0);
+#else
     gSPDisplayList(gMainGfxPos++, D_09000240_3D79B0);
+#endif
     gDPSetPrimColor(gMainGfxPos++, 0, 0, data->unk_18, data->unk_1C, data->unk_20, unk_24);
 
     idx = data->lifeTime * 3;
@@ -126,6 +131,10 @@ void shiny_flare_appendGfx(void* effect) {
         D_E00DA500[idx % ARRAY_COUNT(D_E00DA500) + 1],
         D_E00DA500[idx % ARRAY_COUNT(D_E00DA500) + 2],
         unk_24);
+#ifdef TARGET_3DS
+    nd_rec_dl(D_090002E0_3D7A50);
+#else
     gSPDisplayList(gMainGfxPos++, D_090002E0_3D7A50);
+#endif
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 }
