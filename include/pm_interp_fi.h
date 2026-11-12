@@ -12,4 +12,5 @@ extern void pm_interp_close(void);
 extern void pm_anchor_begin(const void* key, unsigned idx, int x, int y);
 extern void pm_anchor_end(void);
 extern int pm_anchor_rect(int ulx, int uly, int lrx, int lry, int tile, int s, int t, int dsdx, int dtdy);
+extern int pm_anchor_on(void);
 #endif

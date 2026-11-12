@@ -1,5 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
+#ifdef TARGET_3DS
+#include "nd_gtab.h"
+#endif
 #include "nd_api.h"
 
 void snaking_static_update(EffectInstance*);
@@ -183,7 +186,11 @@ void snaking_static_appendGfx(void* effect) {
               G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     gSPMatrix(gMainGfxPos++, camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     gDPSetEnvColor(gMainGfxPos++, data->envCol.r, data->envCol.g, data->envCol.b, 0);
+#ifdef TARGET_3DS
+    nd_rec_dl(D_09001000_3B3D90);
+#else
     gSPDisplayList(gMainGfxPos++, D_09001000_3B3D90);
+#endif
 
 #ifdef TARGET_3DS
     NdParts pb;

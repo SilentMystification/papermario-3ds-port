@@ -1,38 +1,18 @@
-# Rows S7EFX, S7ENT, S7MAP, S7MDL: list data and its callers through the S7CONV tables (NATIVEAPI S7; one row id each, one worktree each)
+# Rows S7: list data and its callers through the S7CONV tables (index; ORACLE6, 2026-11-12)
 
-Blocker for all: S7CONV merged. First step in each: read S7CONV's design note and its table API. Its host test is the proof tool
-of each row.
+All rows are written as their own files. Blocker for all: S7CONV merged (done, 07d0d9104). Each reads plan_nativeapi.md section 6.
 
-## S7EFX (oracle 5: written as row_S7EFX1.md to row_S7EFX8.md, Haiku, after row_S7RUN.md; the table runner and nd_rec_dl are
-## the design core, S7RUN, Sonnet)
+| row | model | blocker | scope |
+|---|---|---|---|
+| row_S7TEX1.md | Haiku | none | tex_win0 and nd_tex_win_desc into nd_texwin.c (host-linkable) |
+| row_S7RUN.md | Sonnet | none | nd_gtab_run (core 0), nd_rec_dl (core 1), the 11 GCONV_SRC placeholder lines |
+| row_S7EFX1.md .. row_S7EFX8.md | Haiku | S7RUN | effect groups (alphabetical, disjoint): GCONV_SRC line + nd_rec_dl call sites |
+| row_S7TEX2.md | Sonnet | S7TEX1, S7RUN | NDG_TEX: texture load groups as build-time NdBindDesc binds |
+| row_S7ENT.md | Sonnet | S7RUN | entity model blobs linked at 0x0A on the host, NDG_F_SEG tables, ent_compile lookup |
+| row_S7MAP.md | Sonnet | S7RUN, S7ENT | nd_dlc_compile on the host into .nds v3; dlc_build loads it |
+| row_S7MDL.md | Opus | S7RUN, S6KEY, S6VORD, S7TEX2 | rec_rm through the RM defs, R13 texture setup as binds, keymiss proof |
 
-## S7ENT (Sonnet; oracle 5: write after S7RUN merges)
-- Design question first (in the row): entity lists read vertices and sub-lists by segment address (useseg, ent_segkey; data
-  loaded from ROM at run time: 3ds/tools/gen_entity_rom.py), so the S7CONV tool maps none of their pointers. The row adds a host
-  load of the entity data at the device link addresses (or relocatable tables keyed by segment) before any call site moves.
-- Scope: src/entity (169 calls) and the entity data in assets. Entity static lists through the tables; S6E's compiled ranges come
-  from the converter instead of ent_compile at run time.
-- Gate: DIRECT byte set; a block, chest or spring scene (pre-flight `bench.py spots`); listcen src/entity 0. Budget 8.
-
-## S7MAP (Sonnet; oracle 5: after S7RUN and S7ENT's segment answer)
-- nd_shape_conv already runs on the host (build.sh gen_shapes): the row makes it emit NdGTab-form ops into the .nds files.
-- Scope: the map shape lists. nd_shape.c converts N64 shape lists at map load today, and pm_map.c reads .nds shapes. The
-  conversion moves into the build (the shape files hold native meshes and table ids). Also the remaining map custom gfx data of
-  S6M: dro_02 npc_merlee, hos_05 intro (image strips need a scissor-clamped NdTRect form), end Credits (row_S6M.md).
-- Oracle 5: these sections become Haiku or Sonnet rows per effect group, file group and map group when the S7CONV design note
-  (row_S7CONV.md) and its table API exist; the census expectation of each row is the listcen data/build counts of its own files.
-- Gate: the DIRECT byte set (all three are maps) plus kzn_08 and hos_01 det scenes; the map-load census (DPCEN2 compus) shows no
-  list compile at load; listcen reader: nd_shape conversion code gone from the runtime. Budget 8.
-
-## S7MDL (Opus; oracle 5: after S7RUN and S6KEY; the RM defs of S5EMDL1 (Gfx_RM*_def) are the start of its pso descriptors)
-- Why Opus: model.c (125 calls) holds the render-mode lists Gfx_RM1 to Gfx_RM3 (about 32 lists, used by models, entities and
-  animators), the custom gfx builders and the env tint paths (shroud, depth, remap: model.c:2071-2083, :1577). The model record
-  cache (KEYMISS keys) depends on them. A wrong pso key here changes every map.
-- Scope: the render-mode lists become pso descriptors from the converter. The model setup records pso ids and values, not lists.
-  The tint paths become values in the record.
-- Gate: DIRECT byte set; kzn_08 and hos_01 (tint and panner); the keymiss census unchanged (KEYMISS bench); listcen model.c 0.
-  Budget 8. Console: C4.
-
-## Stop (all)
-A byte difference or a host test mismatch: stop, commit, hand back. Each row deletes its own section of this file in its
-completing commit; the last one deletes the file.
+Follow-up Haiku rows (written by the oracle after the core merges, one file group each): S7ENT1.. (src/entity setupGfx call
+sites, the S6E2 form plus nd_rec_dl), S7MAP1.. (dro_02 npc_merlee, hos_05 intro strips, end Credits: row_S6M.md list), S7MDL1..
+(make_texture_gfx and the custom gfx builders of src/model.c). S8 (row_S8FB.md) starts when all S7 rows are merged.
+Delete this file when the last S7 row merges.
