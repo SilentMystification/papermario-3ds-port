@@ -4,6 +4,7 @@
 #ifdef TARGET_3DS
 #include "nd_cmd.h"
 #include "nd_op.h"
+#include "nd_api.h"
 #endif
 
 #define MAX_SPRITE_ID 0xEA // todo generate this
@@ -231,29 +232,23 @@ void spr_clear_quad_cache(void) {
 #ifdef TARGET_3DS
 static Gfx* spr_geo_out; /* DIRECT D6: set by spr_appendGfx_component around the flat path of a recorded sprite */
 #endif
-void spr_appendGfx_component_flat(
-    Quad* vertices,
-    IMG_PTR raster, PAL_PTR palette,
-    s32 width, s32 height,
-    f32 arg5,
-    Matrix4f mtx,
-    s32 alpha
-) {
+/* S5SPR: the state ops of one sprite component. Core 1 runs them on gMainGfxPos for a shaded component (create_shading_palette writes ops too);
+ * core 0 runs them for an unshaded component into a local list (spr_state_run), so core 1 records one state record in place of the ops.
+ * flags, vpAlt and vpMain are the facts of the component that the ops read from game state (the caller took them). The final vertex and
+ * triangle ops are not here (spr_appendGfx_component_flat adds them). */
+#define gMainGfxPos (*gp)
+static void spr_flat_gfx(Gfx** gp, Quad* vertices, IMG_PTR raster, PAL_PTR palette, s32 width, s32 height, Matrix4f mtx, s32 alpha, u32 flags,
+                         Vp* vpAlt, Vp* vpMain) {
     gDPLoadTLUT_pal16(gMainGfxPos++, 0, palette);
-    if (gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED) {
+    if (flags & SPR_SHADING_FLAG_ENABLED) {
         gDPScrollMultiTile2_4b(gMainGfxPos++, raster, G_IM_FMT_CI, width, height,
                               0, 0, width - 1, height - 1, 0,
                               G_TX_CLAMP, G_TX_CLAMP, 8, 8, G_TX_NOLOD, G_TX_NOLOD,
                               256, 256);
         gDPSetTile(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 4, 0x0100, 2, 0, G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
         gDPSetTileSize(gMainGfxPos++, 2, 0, 0, 63 << 2, 0);
-        if (gSpriteShadingProfile->flags & SPR_SHADING_FLAG_SET_VIEWPORT) {
-            Camera* camera = &gCameras[gCurrentCamID];
-            if (gGameStatusPtr->context == CONTEXT_PAUSE) {
-                gSPViewport(gMainGfxPos++, &SpritePauseVpAlt);
-            } else {
-                gSPViewport(gMainGfxPos++, PM_VP(&camera->vpAlt));
-            }
+        if (flags & SPR_SHADING_FLAG_SET_VIEWPORT) {
+            gSPViewport(gMainGfxPos++, vpAlt);
 
             if (alpha == 255) {
                 gDPSetRenderMode(gMainGfxPos++, AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA |
@@ -274,13 +269,8 @@ void spr_appendGfx_component_flat(
         gDPScrollTextureBlock_4b(gMainGfxPos++, raster, G_IM_FMT_CI, width, height, 0,
                                  G_TX_CLAMP, G_TX_CLAMP, 8, 8, G_TX_NOLOD, G_TX_NOLOD,
                                  256, 256);
-        if (gSpriteShadingProfile->flags & SPR_SHADING_FLAG_SET_VIEWPORT) {
-            Camera* camera =  &gCameras[gCurrentCamID];
-            if (gGameStatusPtr->context == CONTEXT_PAUSE) {
-                gSPViewport(gMainGfxPos++, &SpritePauseVpAlt);
-            } else {
-                gSPViewport(gMainGfxPos++, PM_VP(&camera->vpAlt));
-            }
+        if (flags & SPR_SHADING_FLAG_SET_VIEWPORT) {
+            gSPViewport(gMainGfxPos++, vpAlt);
             if (alpha == 255) {
                 gDPSetRenderMode(gMainGfxPos++, AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA | ALPHA_CVG_SEL | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM), AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA | ALPHA_CVG_SEL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM));
             } else {
@@ -309,18 +299,58 @@ void spr_appendGfx_component_flat(
         }
     }
 
-    if (gSpriteShadingProfile->flags & SPR_SHADING_FLAG_SET_VIEWPORT) {
-        Camera* camera =  &gCameras[gCurrentCamID];
+    if (flags & SPR_SHADING_FLAG_SET_VIEWPORT) {
+        gSPViewport(gMainGfxPos++, vpMain);
+    }
+}
+#undef gMainGfxPos
+
+#ifdef TARGET_3DS
+/* S5SPR: the state record of an unshaded component (one NDC_NAPI record in place of its state ops): 4 units. word 0 raster, 1 palette, 2 quad, 3 viewport
+ * of the shadow pass, 4 viewport of the main pass, 5 width << 16 | height, 6 alpha | flags << 8, 7 unused. Core 0 expands it to the ops it replaces. */
+static void spr_state_run(const uint32_t* u) {
+    static Gfx buf[64];
+    Gfx* p = buf;
+    spr_flat_gfx(&p, (Quad*)(uintptr_t)u[2], (IMG_PTR)(uintptr_t)u[0], (PAL_PTR)(uintptr_t)u[1], (s32)(u[5] >> 16), (s32)(u[5] & 0xffffu), nullptr,
+                 (s32)(u[6] & 0xffu), (u32)(u[6] >> 8), (Vp*)(uintptr_t)u[3], (Vp*)(uintptr_t)u[4]);
+    nd_walk_state((const uint32_t*)buf, (unsigned)(p - buf));
+}
+#endif
+void spr_appendGfx_component_flat(
+    Quad* vertices,
+    IMG_PTR raster, PAL_PTR palette,
+    s32 width, s32 height,
+    f32 arg5,
+    Matrix4f mtx,
+    s32 alpha
+) {
+    const u32 flags = gSpriteShadingProfile->flags;
+    Vp* vpAlt = nullptr;
+    Vp* vpMain = nullptr;
+
+    if (flags & SPR_SHADING_FLAG_SET_VIEWPORT) {
+        Camera* camera = &gCameras[gCurrentCamID];
 
         if (gGameStatusPtr->context == CONTEXT_PAUSE) {
-            gSPViewport(gMainGfxPos++, &SpritePauseVp);
+            vpAlt = &SpritePauseVpAlt;
+            vpMain = &SpritePauseVp;
             SpritePauseVpAlt.vp.vtrans[0] = SpritePauseVp.vp.vtrans[0] + gGameStatusPtr->altViewportOffset.x;
             SpritePauseVpAlt.vp.vtrans[1] = SpritePauseVp.vp.vtrans[1] + gGameStatusPtr->altViewportOffset.y;
         } else {
-            gSPViewport(gMainGfxPos++, PM_VP(&camera->vp));
+            vpAlt = PM_VP(&camera->vpAlt);
+            vpMain = PM_VP(&camera->vp);
         }
     }
-
+#ifdef TARGET_3DS
+    if (spr_geo_out != nullptr && !(flags & SPR_SHADING_FLAG_ENABLED)) { /* S5SPR: no state ops from core 1 */
+        const uint32_t st[8] = { (u32)(uintptr_t)raster, (u32)(uintptr_t)palette, (u32)(uintptr_t)vertices, (u32)(uintptr_t)vpAlt, (u32)(uintptr_t)vpMain,
+                                 ((u32)width << 16) | (u32)height, ((u32)alpha & 0xffu) | (flags << 8), 0 };
+        nd_rec_napi(spr_state_run, st, 4u);
+    } else
+#endif
+    {
+        spr_flat_gfx(&gMainGfxPos, vertices, raster, palette, width, height, mtx, alpha, flags, vpAlt, vpMain);
+    }
 #ifdef TARGET_3DS
     if (spr_geo_out != nullptr) { /* DIRECT D6: the final vertex and triangle ops go with the sprite record (nd_rec_spr), not to the stream.
                                     * HC4d2 (W5): written as typed ops (nd_op.h), no word */

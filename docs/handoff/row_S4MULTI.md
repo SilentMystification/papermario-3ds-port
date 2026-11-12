@@ -23,9 +23,16 @@ refuse it:
       so no ring wrap happens between two loads of one list.
    b. In the triangle loop, before `if (q[0] == ND_NOP_A) continue;`, add:
       `if ((q[0] >> 24) == NDO_VTX) { const unsigned n2 = (q[0] >> 12) & 0xffu, v0 = ((q[0] >> 1) & 0x7fu) - n2; const Vtx* s2 = (const Vtx*)ptr_of(q[1]); if (!s2 || !is_host((u32)(uintptr_t)s2)) return 0; const int r2 = pm_gpu_gvtx_load(s2, n2); if (r2 < 0) return 0; PH_ADD(C_VTXLOAD, n2); PH_ADD(C_GVLOAD, n2); gv_load_n += n2; for (unsigned i = 0; i < n2; i++) rs[v0 + i] = (unsigned short)(r2 + (int)i); continue; }`
-   c. Returning 0 after some triangles were emitted would draw them twice: the fallback runs the whole list. So also check every
-      later load's source pointer in step a (`ptr_of` plus is_host) and return 0 there, before anything is drawn.
-      pm_gpu_gvtx_load cannot fail after the room check passed for tot (read pm_gpu_gvtx_load to confirm; if it can, hand back).
+   c. Returning 0 after some triangles were emitted would draw them twice: the fallback runs the whole list. So everything that
+      can refuse is checked before the first load:
+      - check every later load's source pointer in step a (`ptr_of` plus is_host) and return 0 there;
+      - after the room block (:353), add `if (!pm_gpu_gv_room(tot)) return 0;` (try 2, oracle 3). The room block alone does not
+        guarantee room: ring_need returns 0 when no ring chunk is free (pm_gpu_rect.c:59-75).
+      pm_gpu_gvtx_load (pm_gpu.c:3474-3475) refuses only on `!gpu_vtx_on || !gpu_ok || gring_n + n > GRING_VTX`, and
+      pm_gpu_gv_room (:3473) tests the same three for tot. gring_n only grows by the loads of this list. The list's 30 triangles
+      fit the 384 indices that ring_need reserved, so no ring wrap happens mid-list. So no later load can fail.
+   d. Accepted from the try-1 code (54e17b37e): parts_ok requires each later load to start at v0 <= have (no slot gap); triangles
+      are checked with tri_ok(..., have); the loop bound is 64. Keep them.
 3. src/effects/energy_shockwave.c is not edited here: S4INST makes it a caller.
 
 ## Gate

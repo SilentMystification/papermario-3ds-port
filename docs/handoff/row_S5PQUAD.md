@@ -51,14 +51,37 @@ No running row edits these places. NAPI3B edits msg_draw.c, and S1PREV and S1STE
 3. Pre-flight check (do it, hand back the line if it fails): `grep -n "nd_rec_napi" 3ds/include/nd_api.h` shows the 3-argument form
    (nd_api.h:11), and `grep -n "fill_run" src/screen_overlays.c` shows the S1FILL runner you move.
 
+## Try 2 (done: code f026929aa, merge 9b8aaf593; nd_host PASS, memcheck static 21368 margin 618)
+The test stubs and the fallback are in. Do not change the code again.
+
+## Try 3 (tool fault in the scene, oracle 4; the gate starts again: 0 of 6 used)
+Fact: `bench.py base battle_wheel_nowide_det` at afe0b4df1: "two runs differ, not stored (11 and 9 shots)".
+Cause (code read): the scenario has no shotwin and no shotmode, so dump_shot (3ds/src/pm_gpu.c:1988-1990) takes a periodic shot
+every 30 drawn frames until the uiburst burst (btl_states_menus.c:775) arms the shot. Drawn frames per game frame vary from run to
+run in Azahar, so the number of shots before the wheel varies. A shotmode switch sets shot_armed at the start (pm_gpu.c:1967): no
+periodic shot. shotmode=255 names no game mode (pm_map.c:373 compares it to the mode), so no mode burst; the only shot is the
+wheel-open burst shot, which the until (`shot \d+ frame \d+ map`) matches. The scene keeps its subject: the wheel draws the
+prim quads (btl_states_menus.c:1013, :1027; 16C8E0.c:932-948 while the menu is open).
+Steps:
+1. In 3ds/tools/azt_scenarios.json, scenario battle_wheel_nowide_det only: debug becomes
+   `warp=kmr_03:0 story=ch0_toad_town battle battlef=100 nowide shots shotmode=255 loglevel=debug uiburst det`. Commit it alone
+   ("battle_wheel_nowide_det: shotmode=255, no periodic shots"). bench.py base builds the base commit but runs the scenario
+   of your worktree (base_build_run), so the base gets the fix.
+2. Do not merge main again. Merge-base and base commit: afe0b4df1 (= `git merge-base HEAD main` today). Use
+   `--commit afe0b4df1` on every base and cmp call.
+3. After the gate passes: if S5TRECT has merged into main by then (both rows append to the end of nd_api.h and nd_direct.c),
+   `git merge main` once, keep both appends (main's order first, then yours), rebuild and run nd_host only. No new Azahar run.
+
 ## Gate (expected values)
-- Build, memcheck OK; nd_host PASS.
-- `bench.py base battle_wheel_nowide_det` and `bench.py base xfer_map_shots` (the S1FILL scene: the moved runner). Then one list:
-  `bench.py run battle_wheel_nowide_det,xfer_map_shots,napicen_btl --row S5PQUAD --why "E5b: battle prim quads as fill records"`
-  (3 starts).
-- `bench.py cmp` on both det scenes: every shot byte-equal.
+- Build, memcheck OK; nd_host PASS (done in try 2; run it again only if code changed).
+- `PM_ROW=S5PQUAD PM_LANE=S5PQUAD python 3ds/tools/bench.py base battle_wheel_nowide_det --commit afe0b4df1` and the same for
+  xfer_map_shots (the S1FILL scene: the moved runner). Expected: battle_wheel_nowide_det stored with 1 shot; xfer_map_shots
+  stored (shotwin=196:16, a fixed window).
+- One list: `python 3ds/tools/bench.py run battle_wheel_nowide_det,xfer_map_shots,napicen_btl --row S5PQUAD --why "E5b: battle
+  prim quads as fill records"` (3 starts).
+- `bench.py cmp battle_wheel_nowide_det --row S5PQUAD --commit afe0b4df1` and the same for xfer_map_shots: every shot byte-equal.
 - napicen_btl: the battle/190B20.o line is gone, or 0 ops a frame (it was 32).
-- Budget 6 Azahar starts.
+- Budget 6 Azahar starts (base runs included).
 
 ## Stop
 A byte difference: stop. The likely cause is a later draw that inherited a state the record no longer leaves (prim colour or
