@@ -1,0 +1,188 @@
+/* nd_direct.c: the shared direct-draw helpers of the native draw API (NATIVEAPI A1, nd_api.h). Core 0. A direct executor states a draw as a pso (an N64
+ * state description from nd_pso_n64), a texture descriptor and the rectangle words, and skips the op stream of the walker: no typed ops, no per-op
+ * state sync. The combine decision is the walker's own function (nd_comb_decide) made once per distinct inputs; the texture bind is nd_tex_bind_desc
+ * (the walker's bind); the render state is sync_render. The walker state the stream path would have left (other mode, combine words, primitive colour)
+ * is written too, so a later walker draw sees what it saw before. */
+#include <stdint.h>
+#include <string.h>
+#include "ultra64.h"
+#include "nd.h"
+#include "nd_int.h"
+#include "nd_api.h"
+#include "pm_gpu.h"
+#include "pm_tex.h"
+#include "pm_port.h"
+
+#ifndef pm_gpu_flush
+#define pm_gpu_flush() pm_gpu_flush_at(__LINE__)
+#endif
+void comb_in_walker(NdCombIn* in);                 /* nd_comb.c: the walker's combine inputs */
+void ens_clear(void);                              /* nd_tex_set.c */
+void nd_sr_forget(void);                           /* nd_set.c */
+extern int ls_use, ls_why, ls_cyc, ls_dual, ls_frame; /* nd_comb.c: the decision the last sync_combine made (diagnostics, the memo) */
+void pm_tex_set_filter(int linear);                  /* pm_tex.c */
+extern PmPlan cur_plan;                            /* nd_comb.c */
+extern int pm_comb_vprim;                         /* pm_comb.c */
+
+/* One decision: the inputs it was made under (key) and the outputs. Direct mapped by pso id; an entry of another id or other inputs is made again. */
+struct NdDec {
+    NdCombOut out;
+    uint32_t key[8];
+    NdPso id;
+    int ok;       /* 1: the direct path can state it (no tile 1 read, no noise, no box pattern) */
+    uint8_t used;
+};
+#define DEC_N 16u
+static NdDec dec_tab[DEC_N];
+
+static __attribute__((cold, noinline)) NdDec* dec_make(NdDec* e, NdPso id, const NdPsoN64* p, const uint32_t* key) {
+    NdCombIn in;
+    if (nd_ws.comb_w0 != p->cw0 || nd_ws.comb_w1 != p->cw1 || !comb_set) op_setcombine(p->cw0, p->cw1); /* the tile fields of the pso words */
+    comb_in_walker(&in);
+    memset(e, 0, sizeof *e);
+    nd_comb_decide(&in, &e->out);
+    e->ok = !(e->out.plan_on && (e->out.plan.uses_tex1 || e->out.plan.uses_noise)) && !e->out.pat;
+    memcpy(e->key, key, sizeof e->key);
+    e->id = id;
+    e->used = 1;
+    return e;
+}
+
+/* The inputs of the decision that the pso id does not name: the other mode words it runs under, the walker flags and combiner constants the combine
+ * work reads (nd_comb.c decide and sync_legacy). The primitive and environment colours are not inputs: they only colour the result (nd_direct_bind). */
+static void dec_key(uint32_t* k, const NdPsoN64* p, uint32_t mh, uint32_t ml) {
+    k[0] = mh; k[1] = ml;
+    k[2] = (uint32_t)(nd_ws.tex_on | nd_ws.use_t1 << 1 | nd_ws.td[1].valid << 2 | dual_on << 3 | box_prod << 4 | box_pat << 5 | box_folded << 6 | comb_set << 7 |
+                      comb_alpha_shade << 8);
+    k[3] = keyc; k[4] = keys; k[5] = conv_k4;
+    k[6] = (uint32_t)(uint8_t)nd_ws.prim_lod | (uint32_t)pm_comb_vprim << 8;
+    k[7] = p->cw0 ^ (p->cw1 * 2654435761u);
+}
+
+/* The decision of pso id under the current walker state (it sets the pso combine words in the walker state: the decision reads the tile fields they decode to). NULL: not statable. */
+const NdDec* nd_pso_decide(NdPso id) {
+    const NdPsoN64* p = nd_pso_get(id);
+    const uint32_t mh = (nd_ws.omode_h & ~p->omh_m) | (p->omh & p->omh_m);
+    const uint32_t ml = (nd_ws.omode_l & 7u) | (p->oml & ~7u);
+    uint32_t key[8];
+    NdDec* e = &dec_tab[id & (DEC_N - 1u)];
+    dec_key(key, p, mh, ml);
+    if (!e->used || e->id != id || memcmp(e->key, key, sizeof key)) {
+        uint32_t sh = nd_ws.omode_h;
+        nd_ws.omode_h = mh; /* the decision reads the cycle type of the pso's mode */
+        e = dec_make(e, id, p, key);
+        nd_ws.omode_h = sh;
+    }
+    return e->ok ? e : NULL;
+}
+
+int nd_direct_ready(void) {
+    if (img_role(0) != ROLE_MAIN || cimg_zero) return -1;  /* the main colour image: no off-screen target, no depth role, no z-buffer copy */
+    if (nd_ws.cimg && !pm_is_cfb(nd_ws.cimg)) return -2;    /* rect_to_image draws into a non-frame-buffer image */
+    if (m1.valid) return -3;                                /* a shaded sprite tile 1 raster: set_tilesize takes tex_shaded0 */
+    if (pm_tex_aux_off_idx() >= 0) return -4;                /* t1_fold would move the tile 1 map */
+    return 1;
+}
+
+uint32_t nd_direct_prim(void) { return nd_ws.prim; }
+uint32_t nd_direct_env(void) { return nd_ws.envc; }
+
+int nd_direct_bind(NdPso id, uint32_t prim, uint32_t env) {
+    const NdPsoN64* p = nd_pso_get(id);
+    const uint32_t mh = (nd_ws.omode_h & ~p->omh_m) | (p->omh & p->omh_m);
+    const uint32_t ml = (nd_ws.omode_l & 7u) | (p->oml & ~7u);
+    const NdDec* d;
+    if (((mh >> G_MDSFT_CYCLETYPE) & 3u) >= 2u) return 0; /* COPY and FILL rectangles have their own span rules */
+    if ((ml & (1u << G_MDSFT_ZSRCSEL)) && (ml & 0x10u) && (nd_ws.geom & G_ZBUFFER)) return 0; /* G_ZS_PRIM rectangle: its own depth test */
+    {   /* the other mode and combine words the stream would have set, in its order (filter, render mode, combine, primitive colour) */
+        const unsigned old_tf = nd_ws.omode_h & (3u << 12);
+        nd_ws.omode_h = mh; nd_ws.om_kh |= p->omh_m;
+        nd_ws.omode_l = ml; nd_ws.om_kl |= ~7u;
+        if ((nd_ws.omode_h & (3u << 12)) != old_tf) { /* V15: G_MDSFT_TEXTFILT */
+            pm_gpu_flush();
+            pm_tex_set_filter((nd_ws.omode_h & (3u << 12)) != 0);
+        }
+    }
+    if (nd_ws.comb_w0 != p->cw0 || nd_ws.comb_w1 != p->cw1 || !comb_set) op_setcombine(p->cw0, p->cw1);
+    dual_on = 0; /* set_tilesize of tile 0 ends the shaded sprite mode */
+    pm_gpu_set_prim(prim, 0u);
+    nd_ws.prim = prim; nd_ws.prim_lod = 0u;
+    nd_ws.envc = env;
+    d = nd_pso_decide(id);
+    if (!d) return 0; /* the stream path sets the same words again: nothing it reads is changed */
+    {   /* what sync_combine does with the decision (scm_replay) */
+        const NdCombOut* o = &d->out;
+        unsigned cc = 0;
+        leg_mode = o->leg; comb_mode5 = o->mode5; box_pat = o->pat; plan_active = o->plan_on;
+        ls_use = o->use; ls_why = o->why; ls_cyc = o->cyc; ls_dual = o->dual; ls_frame = rm_frame;
+        if (o->cc_on) {
+            if (!const_rgb_tex_alpha(&cc)) cc = o->cc;
+            pm_gpu_set_const(cc);
+        }
+        if (o->env_on) pm_gpu_set_env(nd_ws.envc);
+        if (o->plan_on) {
+            cur_plan = o->plan;
+            pm_comb_colours(&cur_plan, nd_ws.prim, nd_ws.envc, (u8)nd_ws.prim_lod, keyc, keys);
+            pm_gpu_plan_key(nd_ws.comb_w0, nd_ws.comb_w1, o->cyc, nd_ws.use_t1);
+            pm_gpu_set_plan(&cur_plan);
+        } else {
+            pm_gpu_set_combine(leg_mode);
+        }
+    }
+    nd_sr_forget(); /* sync_combine of the stream path clears it when the inputs change: the render state is made again */
+    sync_render();
+    return 1;
+}
+
+/* Tile 0 = d: the state set_tilesize leaves for the bind (origin, quarter texel offsets, the repeated-load record) and the bind. */
+int nd_direct_tex(const NdBindDesc* d) {
+    nd_ws.tile_x0 = d->x0;
+    nd_ws.tile_y0 = d->y0;
+    nd_ws.tile_fx = (float)(d->sz[0] & 3) * 0.25f; /* PT38 */
+    nd_ws.tile_fy = (float)(d->sz[1] & 3) * 0.25f;
+    tsz_last.ok = 0;
+    tsz_last.src = (const u8*)d->src; tsz_last.fmt = d->fmt; tsz_last.siz = d->siz; tsz_last.w = d->w; tsz_last.h = d->h;
+    tsz_last.stride = d->stride; tsz_last.pal = d->pal; tsz_last.pal_n = d->pal_n;
+    return nd_tex_bind_desc(d, 0);
+}
+
+/* One texture rectangle of tile 0: nd_texrect (nd_rect.c) for a 1 or 2 cycle rectangle with no tile shift, no tile 1 and a main colour image. */
+void nd_direct_rect(uint32_t w0, uint32_t w1, uint32_t hs, uint32_t hd) {
+    int tw = 1, th = 1;
+    int xh = (int)((w0 >> 12) & 0xfff), yh = (int)(w0 & 0xfff), xl = (int)((w1 >> 12) & 0xfff), yl = (int)(w1 & 0xfff);
+    if (xh & 0x800) xh |= ~0xfff;
+    if (yh & 0x800) yh |= ~0xfff;
+    if (xl & 0x800) xl |= ~0xfff;
+    if (yl & 0x800) yl |= ~0xfff;
+    gp3_t0_surv();
+    pm_tex_size(&tw, &th);
+    {
+        float s0 = ((float)(s16)(hs >> 16) / 32.f - (float)nd_ws.tile_x0 - nd_ws.tile_fx) / (float)tw;
+        float t0 = ((float)(s16)(hs & 0xffff) / 32.f - (float)nd_ws.tile_y0 - nd_ws.tile_fy) / (float)th;
+        float dsdx = (float)(s16)(hd >> 16) / 1024.f;
+        float dtdy = (float)(s16)(hd & 0xffff) / 1024.f;
+        float width = (float)(xh - xl) / 4.f;
+        float height = (float)(yh - yl) / 4.f;
+        int rx0 = xl / 4, ry0 = yl / 4, ex = xh / 4 - 1, ey = yh / 4 - 1; /* the lower right edge is exclusive in 1 and 2 cycle mode */
+        float s1 = s0 + dsdx * width / (float)tw;
+        float t1 = t0 + dtdy * height / (float)th;
+        if (ex >= rx0 && ey >= ry0) pm_gpu_tex_rect(rx0, ry0, ex, ey, s0, t0, s1, t1);
+    }
+}
+
+void nd_direct_end(void) {
+    ens_clear();
+    nd_ws.cur_tile = -1;
+    sc_ok = 0;
+    nd_sr_forget();
+    gv_epoch++; /* the ops of the stream path each raise it: the first triangle after this draw takes its state again */
+}
+
+/* Census of the records a direct executor hands back to the old path: the first 16 and every 64th are logged (debug level) with the frame and the reason. */
+void pm_log_d(const char* fmt, ...);
+unsigned pm_frame_count(void);
+__attribute__((cold, noinline)) void nd_direct_fallback(unsigned why) {
+    static unsigned n;
+    n++;
+    if (n <= 16u || !(n & 63u)) pm_log_d("napihud fallback f%u n %u why %u", pm_frame_count(), n, why);
+}

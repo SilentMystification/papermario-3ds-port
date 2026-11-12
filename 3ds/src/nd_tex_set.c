@@ -10,6 +10,7 @@
 #include "pm_port.h"
 #include "variables.h"
 #include "nd_op.h"
+#include "nd_api.h"
 
 /* GLOB: definitions moved here from the former pm_gbi.c (layout only). */
 NdTexM nd_tm; /* D4a: the load side of the texture model (nd_int.h) */
@@ -323,16 +324,21 @@ static __attribute__((cold, noinline)) void tile_stale_log(int n) {
     if (stale_n == 1 || !(stale_n & 7)) pm_log_d("ensstale f%u n %u tile %d ens_slot %d cur %d", pm_frame_count(), stale_n, n, ens_slot, pm_tex_cur_idx());
 }
 
-int tile_bound(int n) {
-    if (!nd_ws.td[n].valid || pm_tex_cur_idx() < 0 || !ens_src) return 0;
-    if (ens_src != nd_ws.td[n].src || ens_pal != nd_ws.td[n].pal || ens_fmt != nd_ws.td[n].fmt || ens_siz != nd_ws.td[n].siz) return 0;
-    if (memcmp(nd_ws.tst1.tile_wrap[n], ens_wrap, sizeof ens_wrap) || memcmp(nd_ws.tst1.tile_sz[n], ens_sz, sizeof ens_sz)) return 0;
+/* NAPI2B: the bind test on the facts of a bind (a walker tile or a direct descriptor): the texture layer holds this image, palette, format, wrap and window */
+static inline __attribute__((always_inline)) int bound_cmp(int valid, const void* src, const void* pal, unsigned fmt, unsigned siz, const unsigned* wrap, const int* sz, int n) {
+    if (!valid || pm_tex_cur_idx() < 0 || !ens_src) return 0;
+    if (ens_src != src || ens_pal != pal || ens_fmt != fmt || ens_siz != siz) return 0;
+    if (memcmp(wrap, ens_wrap, sizeof ens_wrap) || memcmp(sz, ens_sz, sizeof ens_sz)) return 0;
     /* KMR10M: a native load since the bind (nd_tex_get, spr_tex_unit) moves cur; the bind holds only while its slot keeps its generation */
     if (pm_tex_cur_idx() != ens_slot || pm_tex_slot_gen(ens_slot) != ens_gen) {
         tile_stale_log(n);
         return 0;
     }
     return 1;
+}
+
+int tile_bound(int n) {
+    return bound_cmp(nd_ws.td[n].valid, nd_ws.td[n].src, nd_ws.td[n].pal, nd_ws.td[n].fmt, nd_ws.td[n].siz, nd_ws.tst1.tile_wrap[n], nd_ws.tst1.tile_sz[n], n);
 }
 
 int tile_texel(int n, int s, int t, unsigned char o[4]) {
@@ -417,37 +423,51 @@ static __attribute__((cold, noinline)) void ensure_tile_slow(int n) {
         nd_ws.cur_tile = 0;
         return;
     }
-    if (tile_bound(n)) {
+    {
+        NdBindDesc d;
+        d.src = nd_ws.td[n].src; d.pal = nd_ws.td[n].pal; d.pal_n = nd_ws.td[n].pal_n; d.fmt = nd_ws.td[n].fmt; d.siz = nd_ws.td[n].siz;
+        d.stride = nd_ws.td[n].stride; d.x0 = nd_ws.td[n].x0; d.y0 = nd_ws.td[n].y0; d.w = nd_ws.td[n].w; d.h = nd_ws.td[n].h;
+        memcpy(d.wrap, nd_ws.tst1.tile_wrap[n], sizeof d.wrap);
+        memcpy(d.sz, nd_ws.tst1.tile_sz[n], sizeof d.sz);
+        nd_tex_bind_desc(&d, n);
+    }
+}
+
+/* NAPI2B: the bind of one texture window to tile n from a descriptor (ensure_tile_slow builds it from nd_ws.td[n] and tst1; a direct executor states it).
+ * The tile_bound arm, the GAMEOVER re-window arm and the load arm of the former ensure_tile_slow, in the same order with the same calls.
+ * Returns 1 when the texture layer already held the image (nothing loaded), 0 when it was re-windowed or loaded. */
+int nd_tex_bind_desc(const NdBindDesc* d, int n) {
+    if (bound_cmp(1, d->src, d->pal, d->fmt, d->siz, d->wrap, d->sz, n)) {
         nd_ws.cur_tile = n;
-        return;
+        return 1;
     }
     /* GAMEOVER: a window of the off-screen image bound now (the 40 six-row strips of the previous-frame blur, one load each) samples the same
      * texture: only the origin moves, so the queued rectangles stay in one batch (it was one flush and one draw per strip). Not the frame buffer
      * being drawn: grab_cur decides a new copy for it. */
-    if (pm_tex_off_idx() >= 0 && ens_src && ens_pal == nd_ws.td[n].pal && ens_fmt == nd_ws.td[n].fmt && ens_siz == nd_ws.td[n].siz &&
-        !memcmp(nd_ws.tst1.tile_wrap[n], ens_wrap, sizeof ens_wrap) && !pm_is_cur_cfb(nd_ws.td[n].src) &&
-        pm_tex_off_rewin(nd_ws.td[n].src, nd_ws.td[n].fmt, nd_ws.td[n].siz)) {
+    if (pm_tex_off_idx() >= 0 && ens_src && ens_pal == d->pal && ens_fmt == d->fmt && ens_siz == d->siz &&
+        !memcmp(d->wrap, ens_wrap, sizeof ens_wrap) && !pm_is_cur_cfb(d->src) &&
+        pm_tex_off_rewin(d->src, d->fmt, d->siz)) {
         int ox, oy, gox, goy;
         pm_tex_origin(&ox, &oy);
         pm_tex_glyph_ofs(&gox, &goy);
-        nd_ws.tile_x0 = nd_ws.td[n].x0 - ox - (n == 0 ? gox : 0);
-        nd_ws.tile_y0 = nd_ws.td[n].y0 - oy - (n == 0 ? goy : 0);
-        ens_src = nd_ws.td[n].src; ens_slot = -1;
-        memcpy(ens_sz, nd_ws.tst1.tile_sz[n], sizeof ens_sz);
-        ens_img[n] = nd_ws.td[n].src;
+        nd_ws.tile_x0 = d->x0 - ox - (n == 0 ? gox : 0);
+        nd_ws.tile_y0 = d->y0 - oy - (n == 0 ? goy : 0);
+        ens_src = d->src; ens_slot = -1;
+        memcpy(ens_sz, d->sz, sizeof ens_sz);
+        ens_img[n] = d->src;
         nd_ws.cur_tile = n;
-        return;
+        return 0;
     }
     pm_gpu_flush();
-    pm_tex_set_wrap(nd_ws.tst1.tile_wrap[n][0], nd_ws.tst1.tile_wrap[n][1], nd_ws.tst1.tile_wrap[n][2], nd_ws.tst1.tile_wrap[n][3]);
-    if (nd_ws.td[n].fmt == 0 && nd_ws.td[n].siz == 2) grab_cur(nd_ws.td[n].src, nd_ws.td[n].w, nd_ws.td[n].h);
-    pm_tex_load(nd_ws.td[n].src, nd_ws.td[n].fmt, nd_ws.td[n].siz, nd_ws.td[n].w, nd_ws.td[n].h, nd_ws.td[n].pal, nd_ws.td[n].pal_n, nd_ws.td[n].stride);
+    pm_tex_set_wrap(d->wrap[0], d->wrap[1], d->wrap[2], d->wrap[3]);
+    if (d->fmt == 0 && d->siz == 2) grab_cur(d->src, d->w, d->h);
+    pm_tex_load(d->src, d->fmt, d->siz, d->w, d->h, d->pal, d->pal_n, d->stride);
     {   /* V05: a window of an off-screen texture starts at (ox, oy) in it */
         int ox, oy, gox, goy;
         pm_tex_origin(&ox, &oy);
         pm_tex_glyph_ofs(&gox, &goy);
-        nd_ws.tile_x0 = nd_ws.td[n].x0 - ox - (n == 0 ? gox : 0);
-        nd_ws.tile_y0 = nd_ws.td[n].y0 - oy - (n == 0 ? goy : 0);
+        nd_ws.tile_x0 = d->x0 - ox - (n == 0 ? gox : 0);
+        nd_ws.tile_y0 = d->y0 - oy - (n == 0 ? goy : 0);
         if (n == 0) {
             tsz_last.ox = ox - gox;
             tsz_last.oy = oy - goy;
@@ -455,15 +475,16 @@ static __attribute__((cold, noinline)) void ensure_tile_slow(int n) {
             tsz_last.ok = pm_tex_off_idx() < 0;
         }
     }
-    ens_src = nd_ws.td[n].src;
-    ens_pal = nd_ws.td[n].pal;
-    ens_fmt = nd_ws.td[n].fmt;
-    ens_siz = nd_ws.td[n].siz;
+    ens_src = d->src;
+    ens_pal = d->pal;
+    ens_fmt = d->fmt;
+    ens_siz = d->siz;
     ens_slot = pm_tex_cur_idx(); ens_gen = pm_tex_slot_gen(ens_slot); /* KMR10M */
-    memcpy(ens_wrap, nd_ws.tst1.tile_wrap[n], sizeof ens_wrap);
-    memcpy(ens_sz, nd_ws.tst1.tile_sz[n], sizeof ens_sz);
-    ens_img[n] = nd_ws.td[n].src;
+    memcpy(ens_wrap, d->wrap, sizeof ens_wrap);
+    memcpy(ens_sz, d->sz, sizeof ens_sz);
+    ens_img[n] = d->src;
     nd_ws.cur_tile = n;
+    return 0;
 }
 
 void ensure_tile(int n) {
@@ -722,3 +743,27 @@ __attribute__((cold, noinline)) void shc_frame(unsigned f) {
 /* ---- MV-10: RDP shift helper, cut from the former pm_gbi.c (no change) ---- */
 /* RDP shift field: 1..10 divide by 2^n, 11..15 multiply by 2^(16-n). */
 float shift_mul(unsigned n) { return nd_shift_mul(n); } /* S3N-1: nd_model.c */
+
+/* NAPI2B: the descriptor of tile 0 after a gDPLoadTextureTile of the stated image, as set_tilesize and tex_win0 make it (the same function): the image
+ * (timg, its row stride in texels of the load size), the tile format and size, the four wrap words, the LoadTile window (ld*: texel origin and size) and the
+ * SetTileSize window (10.2). pal, pal_n: the palette for a CI tile (else NULL, 0). Returns 0 when set_tilesize would leave tile 0 invalid (empty window, no source). */
+int nd_tex_win_desc(NdBindDesc* o, const void* timg, int timg_stride, unsigned fmt, unsigned siz, const unsigned wrap[4], int ldx, int ldy, int ldw, int ldh,
+                    int uls, int ult, int lrs, int lrt, const void* pal, int pal_n) {
+    NdTst t;
+    NdTexM m;
+    NdWin wn;
+    memset(&t, 0, sizeof t);
+    memset(&m, 0, sizeof m);
+    t.timg_stride = timg_stride;
+    t.tile_fmt[0] = fmt; t.tile_siz[0] = siz;
+    memcpy(t.tile_wrap[0], wrap, sizeof t.tile_wrap[0]);
+    m.ld_valid = 1; m.ld_x = ldx; m.ld_y = ldy; m.ld_w = ldw; m.ld_h = ldh;
+    if (((lrs - uls) >> 2) + 1 <= 0 || ((lrt - ult) >> 2) + 1 <= 0) return 0;
+    tex_win0(&t, &m, timg, uls, ult, lrs, lrt, &wn);
+    if (!wn.src || wn.w <= 0 || wn.h <= 0 || (wn.h <= 1 && (unsigned)(uintptr_t)timg - (unsigned)(uintptr_t)nuGfxZBuffer < 320u * 240u * 2u)) return 0;
+    o->src = wn.src; o->pal = pal; o->pal_n = pal_n; o->fmt = fmt; o->siz = siz;
+    o->stride = wn.stride; o->x0 = wn.x0; o->y0 = ult >> 2; o->w = wn.w; o->h = wn.h;
+    memcpy(o->wrap, wrap, sizeof o->wrap);
+    o->sz[0] = uls; o->sz[1] = ult; o->sz[2] = lrs; o->sz[3] = lrt;
+    return 1;
+}

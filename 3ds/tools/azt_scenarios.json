@@ -7131,6 +7131,31 @@
       "reason": "Pause texture demand (SLOT1)."
     },
     {
+      "name": "hud_fncov_pause",
+      "status": "unverified",
+      "subject": "NAPI2B: pause menu open (preset toad, START x3), census of walker frame 200 (draw function call counts).",
+      "proves": "NAPI2B: the HUD rectangles of the open pause menu are drawn by the direct executor: nd_texrect calls drop by the HUD piece count, pm_gpu_tex_rect calls stay, hud_rect_emit (the fallback) runs 0 times on core 0.",
+      "debug": "preset=toad padscript=wait80,START*3,wait100 fncov=200 loglevel=debug det",
+      "extra": [],
+      "until": "fncov f\\d+ done",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "start",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "fncov done",
+          "regex": "fncov f\\d+ done"
+        }
+      ],
+      "reason": "NAPI2B census: the pause_slotpeak start with the fncov census of frame 200 (census lane only). Log only; the until is the census done line."
+    },
+    {
       "name": "chain_slotpeak",
       "status": "unverified",
       "subject": "SLOT1: map change chain mac_00 to mac_01 to kzn_19 to mac_01 with texstat to the frame 1500 report. Log only.",

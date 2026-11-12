@@ -248,6 +248,22 @@
       ],
       "gates": []
     },
+    {
+      "name": "hud_fncov_pause",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "NAPI2B census, pause menu open: the draw functions run in walker frame 200 and their call counts (census lane <L>_fncov, build.sh PM_FNCOV=1). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.",
+      "scenario": "hud_fncov_pause",
+      "cap": 45,
+      "until": "fncov f\\d+ done",
+      "tags": [
+        "azahar",
+        "hotcode",
+        "fncov"
+      ],
+      "gates": []
+    },
 
     {
       "name": "fxfncov_base",
