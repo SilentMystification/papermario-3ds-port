@@ -175,7 +175,7 @@ static u32* kc_buf; /* linear memory (the GPU reads it) */
 static u32* kc_base; /* the command buffer start of the frame (after C3D_FrameBegin) */
 static u32 kc_cb; /* the command buffer address the recorded lists point into */
 static volatile int kc_cut; /* steps after a scene change that still take the key walk */
-unsigned pm_kc_why[4]; /* copies refused: record or patch list lost / buffer split or too large / list outside the buffer / scene change (census) */
+unsigned pm_kc_why[5]; /* copies refused: record or patch list lost / buffer split or too large / list outside the buffer / scene change / L frame not armed (census) */
 static void sr_force_all(void);
 static void kc_take(gxCmdQueue_s* q);
 float pm_nrm5_k[3][4]; /* INTERPB1: the key frame twin of c.nrm5 of the last model_draw of the L walk */
@@ -195,7 +195,6 @@ void pm_gpu_twin_begin(void) {
         nd_kp_n = 0; nd_kp_lost = 0; ic_kc = 0;
     }
     kc_arm = nd_kp_on && kc_rec;
-    if (kc_arm && !stereo_frame) sr_force_all(); /* INTERPB3: the first list of the frame writes all GPU state it uses, so the K copy does not depend on the state the L frame started from (a stereo frame did it at its begin) */
 }
 static unsigned gv_recopy_n, gv_palup_n, gv_palmax, gv_palflush;
 static C3D_Mtx gv_post;
@@ -2309,7 +2308,7 @@ static void sr_force_all(void) {
 static void sr_frame_begin(void) {
     static int sr_prev; if (stereo_frame && !sr_prev) sr_logn = 0; sr_prev = stereo_frame; /* STEREOFX debug */
     sr_on = 0; sr_n = 0; sr_fbn = 0; sr_over = 0; sr_from = 0;
-    if (!stereo_frame) return;
+    if (!stereo_frame) { if (pm_interp_on > 0) sr_force_all(); return; } /* INTERPB3: every fps60 frame starts from forced state (before bind_main and the grab), so the K copy does not depend on the state the L frame started from */
     sr_on = 1;
     sr_force_all();
 }
@@ -2854,13 +2853,17 @@ int pm_gpu_kc_ready(void) { return kc_valid && !PMDL("icmp"); }
 /* The frame end of an L frame (after the right eye replay, before C3D_FrameEnd): the K copy of the frame. The buffer words [0, coff) hold every list of the frame and
  * the open tail list; the patches (nd_kp, base = a command start in this buffer) put the K words in. Any doubt (a record or patch list that lost something, a
  * buffer split, a list outside the used range, a scene change) leaves kc_valid 0: the key frame is then walked. */
+static __attribute__((cold, noinline)) void kc_out(const char* kind, unsigned i, u32 a, unsigned n, const u32* cb, unsigned coff) { /* the first 8 refusals for a list or patch outside the copied range */
+    static unsigned nout;
+    if (nout++ < 8u) pm_log_hw("kcout f%u kind %s i %u addr %08x n %u cb %08x coff %u split %u", pm_frame_count(), kind, i, (unsigned)a, n, (unsigned)(u32)cb, coff, cmd_split_n - kc_split0);
+}
 static __attribute__((noinline)) void kc_build(void) {
     gxCmdQueue_s* q = (gxCmdQueue_s*)&__C3D_Context;
     kc_valid = 0;
-    if (!kc_rec) return;
+    if (!kc_rec) { if (pm_icmp_kind == 1) pm_kc_why[4]++; return; }
     kc_take(q);
     kc_rec = 0;
-    if (!kc_arm) return;
+    if (!kc_arm) { if (pm_icmp_kind == 1) pm_kc_why[4]++; return; }
     kc_arm = 0;
     u32 *tb, csz, toff;
     GPUCMD_GetBuffer(&tb, &csz, &toff); /* GPUCMD_Split moves the buffer start: this is the open tail list, the frame's lists are before it */
@@ -2875,12 +2878,12 @@ static __attribute__((noinline)) void kc_build(void) {
         if ((kc_ent[i].data[0] & 0xFFu) != 0x01u) continue;
         const u32* l = (const u32*)kc_ent[i].data[1];
         const unsigned n = kc_ent[i].data[2] / 4u;
-        if (l < cb || (unsigned)(l - cb) + n > coff) { pm_kc_why[2]++; return; }
+        if (l < cb || (unsigned)(l - cb) + n > coff) { pm_kc_why[2]++; kc_out("list", i, (u32)l, n, cb, coff); return; }
     }
     memcpy(kc_buf, cb, coff * 4u);
     for (unsigned i = 0; i < nd_kp_n; i++) {
         const NdKPatch* p = &nd_kp[i];
-        if (p->base < cb || (unsigned)(p->base - cb) + 2u > coff) { pm_kc_why[2]++; return; }
+        if (p->base < cb || (unsigned)(p->base - cb) + 2u > coff) { pm_kc_why[2]++; kc_out("patch", i, (u32)p->base, 0, cb, coff); return; }
         const unsigned off = (unsigned)(p->base - cb), k = (cb[off + 1u] >> 20) & 0xFFu;
         for (unsigned qd = 0; qd < 4; qd++) {
             const unsigned j = p->first + qd, w = off + (j ? 1u + j : 0u);
@@ -2900,6 +2903,7 @@ void pm_gpu_key_show(void) {
     if (pm_interp_on > 0 && !pm_wd_wake_frames) sync60_pace();
     C3D_FrameBegin(0);
     if (gb_on) { gb_sum += (unsigned)(pm_ticks() - gb_sub); gb_n++; gb_on = 0; pm_pf_late++; }
+    noise_off[0] = (float)(noise_next() & 1023u) / 1024.f; noise_off[1] = (float)(noise_next() & 1023u) / 1024.f; /* PT07: the sequence of a frame begin */
     pm_ph_gpu_note();
     dump_shot();
     for (unsigned i = 0; i < kc_n; i++) {
