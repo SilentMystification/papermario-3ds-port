@@ -148,7 +148,7 @@ void pm_frame_walk(const PmFrame* f) {
         pm_interp_repl = 0;
     }
     pm_iw_us[(f->flags & PMF_REPL) ? 0 : 2] = (unsigned)(iw_tk / 268u); /* INTERP1 */
-    pm_tw_on = 0;
+    pm_tw_on = 0; nd_kp_on = 0; /* INTERPB2: the patches stay in the list until the frame end */
 }
 
 /* The frame the game builds. LB1b: the background task (no swap flag) is recorded and goes with the swap task, after the main list is

@@ -152,12 +152,18 @@ static const float (*pal_tab)[4][4];
 static C3D_Mtx* pcomp_k; /* malloc at the first L walk (with gm_tab_k) */
 static unsigned char* pcomp_k_has;
 extern float (*gm_tab_k)[4][4]; /* nd_mtx_set.c */
+extern float (*gm_nrm_k)[3][4];
 extern int nd_tw_chk;
 extern int pm_tw_on; /* pm_nusys.c: the walk of an L frame */
 extern unsigned nd_tw_m;
 void nd_twinchk_pal(const float* o);
 void nd_twinchk_nrm(const float n[3][4]);
-static float pm_nrm5_k[3][4]; /* INTERPB1: the key frame twin of c.nrm5 of the last model_draw of the L walk */
+static NdShadow ndn_sh; /* the GPU registers a native draw wrote (nd_emit_draw) */
+static float u5kh[C3D_FVUNIF_COUNT][4]; /* INTERPB2: the K value the key walk would hold in each pm5 uniform vector (memory order) */
+static float u5kp[C3D_FVUNIF_COUNT][4]; /* the K value staged for the next flush of a vector whose K differs from L */
+static unsigned char u5kpv[C3D_FVUNIF_COUNT];
+static unsigned ic_kc; /* INTERPB2: the icmp reader cursor in the patch list */
+float pm_nrm5_k[3][4]; /* INTERPB1: the key frame twin of c.nrm5 of the last model_draw of the L walk */
 void pm_gpu_twin_begin(void) {
     if (!pcomp_k) {
         pcomp_k = (C3D_Mtx*)malloc((PM_GM_N + 1u) * sizeof(C3D_Mtx));
@@ -165,6 +171,14 @@ void pm_gpu_twin_begin(void) {
         if (!pcomp_k || !pcomp_k_has) { free(pcomp_k); free(pcomp_k_has); pcomp_k = NULL; pcomp_k_has = NULL; }
     }
     if (pcomp_k_has) memset(pcomp_k_has, 0, PM_GM_N + 1u);
+    nd_kp_on = PMDL("icmp"); /* INTERPB2: the patch list of this L frame (debug: the compare against the key walk) */
+    if (nd_kp_on) { /* the K state the walk starts from is what the key walk before it left (the citro3d copy and the native shadow hold it) */
+        if (!nd_kp) { nd_kp_cap = 16384u; nd_kp = (NdKPatch*)malloc(nd_kp_cap * sizeof(NdKPatch)); if (!nd_kp) { nd_kp_cap = 0; nd_kp_on = 0; } }
+        for (unsigned i = 0; i < C3D_FVUNIF_COUNT; i++) memcpy(u5kh[i], &C3D_FVUnif[GPU_VERTEX_SHADER][i], 16);
+        memset(u5kpv, 0, sizeof u5kpv);
+        memcpy(ndn_sh.pal_k, ndn_sh.pal, sizeof ndn_sh.pal);
+        nd_kp_n = 0; nd_kp_lost = 0; ic_kc = 0;
+    }
 }
 static unsigned gv_recopy_n, gv_palup_n, gv_palmax, gv_palflush;
 static C3D_Mtx gv_post;
@@ -786,9 +800,18 @@ static __attribute__((cold, noinline)) void flush_fl_dbg(int graw) {
  * write only a vector that differs from citro3d's copy, except in the first pm5 batch after a program change (u5_valid 0): the pm4 path writes the shared
  * uniform registers directly, so citro3d's copy is not what the GPU holds then. */
 static int u5_valid;
-static NdShadow ndn_sh; /* the GPU registers a native draw wrote (nd_emit_draw) */
+/* INTERPB2: one vector of the pair (L, K), both in memory order (w z y x). K NULL: K = L. The skip needs both to equal what is held. */
+static __attribute__((noinline)) void u5row_k(int id, const float* l, const float* k) {
+    const float* kv = k ? k : l;
+    if (u5_valid && memcmp(&C3D_FVUnif[GPU_VERTEX_SHADER][id], l, 16) == 0 && memcmp(u5kh[id], kv, 16) == 0) return;
+    C3D_FVUnifSet(GPU_VERTEX_SHADER, id, l[3], l[2], l[1], l[0]);
+    memcpy(u5kh[id], kv, 16);
+    u5kpv[id] = (unsigned char)(memcmp(kv, l, 16) != 0);
+    if (u5kpv[id]) memcpy(u5kp[id], kv, 16);
+}
 static void u5vec(int id, float x, float y, float z, float w) {
     const C3D_FVec* c = &C3D_FVUnif[GPU_VERTEX_SHADER][id];
+    if (__builtin_expect(nd_kp_on, 0)) { const float l[4] = { w, z, y, x }; u5row_k(id, l, NULL); return; }
     if (u5_valid && c->x == x && c->y == y && c->z == z && c->w == w) return;
     C3D_FVUnifSet(GPU_VERTEX_SHADER, id, x, y, z, w);
 }
@@ -809,7 +832,9 @@ static inline void eyd_sync(void) {
     if (__builtin_expect(cw != 0.f, 0)) { eyd_cw_dbg = cw; eyd_p23_dbg = nd_proj[2][3]; eyd_wn_dbg = nd_proj_wn; }
     eye_vec(u_eyd, gv_post.r[0].x, gv_post.r[1].x, gv_post.r[2].x, cw);
 }
+static void u5mtx_k(int id, const C3D_Mtx* m, const C3D_Mtx* mk) { for (int r = 0; r < 4; r++) u5row_k(id + r, m->m + 4 * r, mk ? mk->m + 4 * r : NULL); }
 static void u5mtx(int id, const C3D_Mtx* m) {
+    if (__builtin_expect(nd_kp_on, 0)) { u5mtx_k(id, m, NULL); return; }
     if (u5_valid && memcmp(&C3D_FVUnif[GPU_VERTEX_SHADER][id], m, sizeof *m) == 0) return;
     C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, id, m);
 }
@@ -1024,6 +1049,22 @@ void pm_gpu_ndt_take(uint64_t o[NDT_N]) { for (int k = 0; k < NDT_N; k++) { o[k]
 /* S3N-2: the submit of one native draw, moved from nd_raw_native as it was (the state staging, the shadow, citro3d's context update, the emit and the
  * counters). The palette and the NdDraw are built by the caller before. Model draws (nd_model.c, S3N-4) use this too. */
 static unsigned ndn_tgen;
+/* INTERPB2: the words C3Di_UpdateContext wrote at [from, to) of the command buffer (cold, only with nd_kp_on): a float uniform vector with a staged K (u5kpv) gets a patch. */
+static __attribute__((cold, noinline)) void kp_scan(const u32* cb, unsigned from, unsigned to) {
+    unsigned loc = 0, dn = 0, isf = 0;
+    for (unsigned i = from; i + 1 < to;) {
+        const u32 h = cb[i + 1];
+        const unsigned reg = h & 0xFFFFu, k = (h >> 20) & 0xFFu;
+        if (i + 2 + k > to) break;
+        if (reg == 0x2C0u) { loc = cb[i] & 0xFFu; isf = cb[i] >> 31; dn = 0; }
+        else if (reg >= 0x2C1u && reg <= 0x2C8u && isf) {
+            for (unsigned v = 0; 4u * v + 3u <= k; v++) { const unsigned id = loc + (dn >> 2) + v; if (id < C3D_FVUNIF_COUNT && u5kpv[id]) nd_kp_vec((uint32_t*)(uintptr_t)(cb + i), 4u * v, u5kp[id]); }
+            dn += k + 1u;
+        }
+        i += k + 2u + (k & 1u);
+    }
+    memset(u5kpv, 0, sizeof u5kpv);
+}
 static __attribute__((noinline)) void pm5_upload_draw(const NdDraw* d);
 static __attribute__((cold, noinline)) void t1log_draw(const NdDraw* d);
 static int t1l_on = -1; /* switch t1log: -1 until t1log_draw reads it */
@@ -1124,7 +1165,8 @@ static unsigned blk_put(uint32_t* o, NdNatC* q, const NdDraw* d) {
     const unsigned n = q->blen;
     memcpy(o, blk_ar + q->boff, n * 4u);
     const NdBlkOff* b = &q->bo;
-    { const uint32_t* p = (const uint32_t*)(const void*)d->pal[0]; uint32_t* w = o + b->pal; w[0] = p[0]; for (unsigned i = 1; i < 16u; i++) w[1 + i] = p[i]; }
+    { const uint32_t* p = (const uint32_t*)(const void*)d->pal[0]; uint32_t* w = o + b->pal; w[0] = p[0]; for (unsigned i = 1; i < 16u; i++) w[1 + i] = p[i];
+      if (__builtin_expect(nd_kp_on, 0) && d->pal_k && memcmp(d->pal_k[0], d->pal[0], 64) != 0) for (unsigned r = 0; r < 4; r++) nd_kp_vec(w, 4u * r, d->pal_k[0] + 4u * r); } /* INTERPB2: the K twin of the row */
     if (b->u0 != 0xFFFFu) { uint32_t* w = o + b->u0; w[2] = d->u[0].dim; w[3] = d->u[0].param; w[4] = d->u[0].lod; w[5] = d->u[0].addr; o[b->ty] = d->u[0].type; }
     for (unsigned i = 0; i < 6u; i++) if (b->col[i] != 0xFFFFu) o[b->col[i]] = d->tev_col[i];
     o[b->idx] = d->idx_word;
@@ -1153,7 +1195,10 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
     if (!ndn_mode) { nd_shadow_reset(&ndn_sh); ndn_mode = 1; sc_shr++; }
     if (*(volatile unsigned*)(__C3D_Context + 32) & 0x3800000u) { ndn_sh.cfg_valid = 0; ndn_sh.u_on[0] = ndn_sh.u_on[1] = 0; } /* a dirty texture bind: C3Di_UpdateContext rebuilds the unit enable word from the units citro3d holds (a null unit 0 after a slot drop writes it off) and sends their blocks: the native shadow of both is stale, the native words write them again */
     eyd_sync(); /* STEREO: before the update test (a change marks the uniform dirty) */
-    if (c3d_upd_needed()) { if (u_eye >= 0) C3D_FVUnifDirty[GPU_VERTEX_SHADER][u_eye] = false; C3Di_UpdateContext(); sc_upd++; } /* what citro3d staged (program, buffers, scissor, an older TEV) goes out first, the native words then overwrite it */
+    if (c3d_upd_needed()) { if (u_eye >= 0) C3D_FVUnifDirty[GPU_VERTEX_SHADER][u_eye] = false;
+        if (__builtin_expect(nd_kp_on, 0)) { u32 *cb0, sz0, o0, *cb1, sz1, o1; GPUCMD_GetBuffer(&cb0, &sz0, &o0); C3Di_UpdateContext(); GPUCMD_GetBuffer(&cb1, &sz1, &o1); kp_scan(cb0, o0, o1); } /* INTERPB2: the uniform words citro3d wrote get their K patch */
+        else C3Di_UpdateContext();
+        sc_upd++; } /* what citro3d staged (program, buffers, scissor, an older TEV) goes out first, the native words then overwrite it */
     { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); /* PERF1-6: emitted in place (no copy) */
       GPUCMD_SetBufferOffset(coff + (ndn_bq && !d->use5 && !d->no_uni && d->npal == 1u ? blk_put(cb + coff, ndn_bq, d) : nd_emit_draw(cb + coff, &ndn_sh, d))); } /* HC6 step 4: a cache hit copies its block */
     if (tex) ndunit_after();
@@ -1202,6 +1247,16 @@ static __attribute__((noinline)) void pm5_upload_draw(const NdDraw* d) {
     u5vec(u5_zmix, d->zmix[0], zmix_y_dbg(d->zmix[1]), 0.f, 0.f);
     u5set(u5_lflag, d->p5->fx.lflag); u5set(u5_fogu, d->p5->fx.fogu);
     if (d->p5->fx.lflag[0] != 0.f) flush_light_tab(&d->p5->fx); /* the model range carries its own light block */
+    if (__builtin_expect(nd_kp_on, 0)) { /* INTERPB2: the pairs (L, K) */
+        u5mtx_k(u5_pal, (const C3D_Mtx*)d->pal[0], d->pal_k ? (const C3D_Mtx*)d->pal_k[0] : NULL);
+        for (int r = 0; r < 3; r++) {
+            const float l[4] = { 0.f, d->p5->nrm[r][2], d->p5->nrm[r][1], d->p5->nrm[r][0] };
+            const float k[4] = { 0.f, d->nrm_k ? d->nrm_k[r][2] : l[1], d->nrm_k ? d->nrm_k[r][1] : l[2], d->nrm_k ? d->nrm_k[r][0] : l[3] };
+            u5row_k(u5_pal + 4 + r, l, d->nrm_k ? k : NULL);
+        }
+        u5_valid = 1; gv_palup_n++; pm_dc_c[DC_PALUP]++;
+        return;
+    }
     u5mtx(u5_pal, (const C3D_Mtx*)d->pal[0]);
     for (int r = 0; r < 3; r++) u5vec(u5_pal + 4 + r, d->p5->nrm[r][0], d->p5->nrm[r][1], d->p5->nrm[r][2], 0.f);
     u5_valid = 1;
@@ -1264,6 +1319,18 @@ static __attribute__((noinline)) void pm5_upload(void) {
     for (unsigned k = 0; k < nb.pal_n; k++) {
         unsigned gm = nb.pal_g[k];
         if (gs.pcomp_gen[gm] != post_gen) pcomp_calc(gm);
+        if (__builtin_expect(nd_kp_on, 0)) { /* INTERPB2: the pairs (L, K) of the palette entry and its normal rows */
+            const int hk = pcomp_k && pcomp_k_has[gm] && gm != RECT_GM;
+            u5mtx_k(u5_pal + 7 * (int)k, &pcomp[gm], hk ? &pcomp_k[gm] : NULL);
+            if (pal_ntab) for (int r = 0; r < 3; r++) {
+                const float l[4] = { 0.f, pal_ntab[gm][r][2], pal_ntab[gm][r][1], pal_ntab[gm][r][0] };
+                const int hn = hk && gm_nrm_k;
+                const float kk[4] = { 0.f, hn ? gm_nrm_k[gm][r][2] : 0.f, hn ? gm_nrm_k[gm][r][1] : 0.f, hn ? gm_nrm_k[gm][r][0] : 0.f };
+                u5row_k(u5_pal + 7 * (int)k + 4 + r, l, hn ? kk : NULL);
+            }
+            gv_palup_n++; pm_dc_c[DC_PALUP]++;
+            continue;
+        }
         u5mtx(u5_pal + 7 * (int)k, &pcomp[gm]);
         if (pal_ntab) for (int r = 0; r < 3; r++) u5vec(u5_pal + 7 * (int)k + 4 + r, pal_ntab[gm][r][0], pal_ntab[gm][r][1], pal_ntab[gm][r][2], 0.f);
         gv_palup_n++; pm_dc_c[DC_PALUP]++;
@@ -1335,13 +1402,15 @@ static __attribute__((noinline)) void raw_zmark_pass(const NdTmplKey* nk, const 
     kb.pass = 3; kb.zmark = 0;
     int idb = nd_tmpl_build(&kb);
     if (idb >= 0) {
-        float palz[ND_NPAL][16];
+        float palz[ND_NPAL][16], palzk[ND_NPAL][16];
         for (unsigned k = 0; k < npal; k++) {
             memcpy(palz[k], palk[k], 64);
             for (int i = 0; i < 4; i++) palz[k][8 + i] = gs.r_zmark_zn * palk[k][12 + i];
+            if (nd_kp_on && d->pal_k) { memcpy(palzk[k], d->pal_k[k], 64); for (int i = 0; i < 4; i++) palzk[k][8 + i] = gs.r_zmark_zn * d->pal_k[k][12 + i]; } /* INTERPB2 */
         }
         NdDraw db = *d;
         db.tmpl = idb; db.pal = (const float(*)[16])palz; db.npal = npal;
+        if (nd_kp_on && d->pal_k) db.pal_k = (const float(*)[16])palzk;
         nd_native_submit(&db, tex);
     }
 }
@@ -1438,16 +1507,18 @@ static int nd_raw_native(void) {
     if (ndref_on || cen_fr >= 0) raw_dbg_keys(z, tex, tex1, i8_0, i8_1);
     cen_draws++; cen_tris += nb.gni / 3u;
     dc_on = 0;
-    float palk[ND_NPAL][16];
+    float palk[ND_NPAL][16], palkk[ND_NPAL][16]; /* palkk: INTERPB2, the K twins (filled while nd_kp_on) */
     unsigned npal = nb.g_use5 ? 0u : nb.pal_n < ND_NPAL ? nb.pal_n : ND_NPAL; /* pm5: pm5_upload sends the palette (A4: no copy here) */
     for (unsigned k = 0; k < npal; k++) {
         unsigned gm = nb.pal_g[k];
         if (gs.pcomp_gen[gm] != post_gen) pcomp_calc(gm);
         memcpy(palk[k], pcomp[gm].m, 64);
+        if (__builtin_expect(nd_kp_on, 0)) memcpy(palkk[k], pcomp_k && pcomp_k_has[gm] && gm != RECT_GM ? pcomp_k[gm].m : pcomp[gm].m, 64); /* INTERPB2 */
         gv_palup_n++; pm_dc_c[DC_PALUP]++;
     }
     NdDraw d;
     memset(&d, 0, sizeof d);
+    if (__builtin_expect(nd_kp_on, 0)) d.pal_k = (const float(*)[16])palkk;
     d.tmpl = id;
     for (int i = 0; i < 6; i++) d.tev_col[i] = ndn_to.st[i][3];
     d.buf_col = ndn_to.buf_color; d.has_buf = (uint8_t)ndn_to.buf_set;
@@ -2065,17 +2136,27 @@ static void eye_put(float e) {
  * the current frame in ic_blk. icmp_frame (the frame end, before C3D_FrameEnd) keeps the pairs as the L copy, or compares them with the kept L.
  * Entry: type 0x01 (command list), data[1] the list address, data[2] its size in bytes (as sr_replay). Words: [param0][header][param1..paramk],
  * header bits 0-15 register, 16-19 mask, 20-27 k, 31 consecutive, padded to an even word count (rd_upto). Cold: runs only under the switch. */
-#define IC_HALF 16384u /* pairs per frame: the 256 KB block holds the current frame and the kept L (8 bytes a pair) */
+#define IC_HALF 16384u /* pairs per frame: the 512 KB block holds the current frame, its patched twin, the kept L and the kept patched L (8 bytes a pair) */
 extern int pm_icmp_kind; /* pm_nusys.c: 0 plain, 1 L, 2 K */
-static u32* ic_blk;      /* 256 KB from malloc at first use: current pairs at 0, the kept L at 2 * IC_HALF */
+static u32* ic_blk;      /* 512 KB from malloc at first use: the current pairs at 0, the kept L at 2 * IC_HALF; INTERPB2: the current patched pairs (the K copy of the L frame) at 4 * IC_HALF, the kept ones at 6 * IC_HALF */
 static unsigned ic_n, ic_ln; /* pairs in the current frame, pairs in the kept L (0: none) */
+static unsigned ic_kpn, ic_kpunused, ic_kplost; /* patches made, patches the reader did not reach, patches lost (list full), per log window */
+static unsigned ic_n2, ic_ln2, ic_kskip; /* the same for the patched copy; patches the reader passed without use */
 static unsigned ic_from; /* the queue cursor of the icmp takes */
-static unsigned ic_pairs, ic_wl, ic_wk, ic_du, ic_da, ic_dt, ic_do, ic_lenmis, ic_lost, ic_nol; /* the window of one icmp log line */
-static unsigned ic_oc[0x400]; /* O registers that differ, the window */
+static const u32* ic_tail; /* INTERPB2: the end of the last queued command list of the frame (NULL: none yet), where the open tail list begins */
+typedef struct IcC { unsigned pairs, wl, wk, du, da, dt, dox, lenmis; unsigned ul[256]; } IcC; /* one compare window (dox: O class) */
+static IcC ic_c0, ic_c1; /* plain L against K, patched L against K */
+static unsigned ic_lost, ic_nol; /* lost pairs, K frames without a kept L */
+static unsigned ic_oc[0x400]; /* O registers that differ, the window of the plain compare */
 static __attribute__((cold, noinline)) void ic_add(unsigned reg, u32 v) {
     if (reg >= 0x400u) return;
     if (ic_n >= IC_HALF) { ic_lost++; return; }
     ic_blk[2u * ic_n] = reg; ic_blk[2u * ic_n + 1u] = v; ic_n++;
+}
+static __attribute__((cold, noinline)) void ic_add2(unsigned reg, u32 v) {
+    if (reg >= 0x400u) return;
+    if (ic_n2 >= IC_HALF) { ic_lost++; return; }
+    ic_blk[4u * IC_HALF + 2u * ic_n2] = reg; ic_blk[4u * IC_HALF + 2u * ic_n2 + 1u] = v; ic_n2++;
 }
 static __attribute__((cold, noinline)) void ic_list(const u32* cb, unsigned nw) {
     unsigned i = 0;
@@ -2088,23 +2169,51 @@ static __attribute__((cold, noinline)) void ic_list(const u32* cb, unsigned nw) 
         i += k + 2 + (k & 1u);
     }
 }
-static __attribute__((cold, noinline)) void ic_cmp(const u32* k, unsigned nk, const u32* l, unsigned nl) {
-    ic_wl += nl; ic_wk += nk;
-    if (nl != nk) { ic_lenmis++; return; } /* the compare stops at a length mismatch */
-    for (unsigned i = 0; i < nk; i++) {
-        ic_pairs++;
-        if (k[2u * i] == l[2u * i] && k[2u * i + 1u] == l[2u * i + 1u]) continue;
-        const unsigned r = k[2u * i];
-        if (r >= 0x2C0u && r <= 0x2C8u) ic_du++;
-        else if (r >= 0x200u && r <= 0x227u) ic_da++;
-        else if (r >= 0x110u && r <= 0x12Fu) ic_dt++;
-        else { ic_do++; ic_oc[r]++; }
+/* INTERPB2: the same list read as the K copy: each command that has patches is copied and its K words put in, then read. The patches are in the order of
+ * their words (the buffer fills upward); ic_kc is the reader position. */
+static __attribute__((cold, noinline)) void ic_list_k(const u32* cb, unsigned nw) {
+    unsigned i = 0;
+    while (i + 1 < nw) {
+        u32 h = cb[i + 1];
+        unsigned k = (h >> 20) & 0xFFu, reg = h & 0xFFFFu;
+        if (i + 2 + k > nw) break;
+        const int cons = (int)(h >> 31);
+        u32 tmp[258];
+        const u32* c = cb + i;
+        while (ic_kc < nd_kp_n && nd_kp[ic_kc].base < c) { ic_kskip++; ic_kc++; }
+        if (ic_kc < nd_kp_n && nd_kp[ic_kc].base == c) {
+            memcpy(tmp, c, (k + 2u) * 4u);
+            while (ic_kc < nd_kp_n && nd_kp[ic_kc].base == c) {
+                const NdKPatch* p = &nd_kp[ic_kc++];
+                for (unsigned q = 0; q < 4; q++) { const unsigned j = p->first + q; if (j <= k) memcpy(&tmp[j ? 1u + j : 0u], &p->k[q], 4); }
+            }
+            c = tmp;
+        }
+        for (unsigned j = 0; j <= k; j++) ic_add2(cons ? reg + j : reg, j ? c[1 + j] : c[0]);
+        i += k + 2 + (k & 1u);
     }
 }
-static __attribute__((cold, noinline)) void ic_log(void) { /* every 300 compared pairs: the two lines, then the window is zeroed */
-    char ob[200]; unsigned n = 0;
-    pm_log_hw("icmp f%u pairs %u wl %u wk %u diff U %u A %u T %u O %u lenmis %u lost %u nol %u", pm_frame_count(), ic_pairs, ic_wl, ic_wk,
-              ic_du, ic_da, ic_dt, ic_do, ic_lenmis, ic_lost, ic_nol);
+static __attribute__((cold, noinline)) void ic_cmp(IcC* c, const u32* k, unsigned nk, const u32* l, unsigned nl, int oc) {
+    c->wl += nl; c->wk += nk;
+    if (nl != nk) { c->lenmis++; return; } /* the compare stops at a length mismatch */
+    unsigned lb = 0, dn = 0;
+    for (unsigned i = 0; i < nk; i++) {
+        c->pairs++;
+        const unsigned r = k[2u * i];
+        unsigned loc = 0;
+        if (r == 0x2C0u) { lb = k[2u * i + 1u] & 0xFFu; dn = 0; }
+        else if (r >= 0x2C1u && r <= 0x2C8u) { loc = (lb + (dn >> 2)) & 0xFFu; dn++; }
+        if (k[2u * i] == l[2u * i] && k[2u * i + 1u] == l[2u * i + 1u]) continue;
+        if (r >= 0x2C0u && r <= 0x2C8u) { c->du++; c->ul[loc]++; }
+        else if (r >= 0x200u && r <= 0x227u) c->da++;
+        else if (r >= 0x110u && r <= 0x12Fu) c->dt++;
+        else { c->dox++; if (oc) ic_oc[r]++; }
+    }
+}
+static __attribute__((cold, noinline)) void ic_log(void) { /* every 300 compared pairs: the lines, then the window is zeroed */
+    char ob[260]; unsigned n = 0;
+    pm_log_hw("icmp f%u pairs %u wl %u wk %u diff U %u A %u T %u O %u lenmis %u lost %u nol %u", pm_frame_count(), ic_c0.pairs, ic_c0.wl, ic_c0.wk,
+              ic_c0.du, ic_c0.da, ic_c0.dt, ic_c0.dox, ic_c0.lenmis, ic_lost, ic_nol);
     n = (unsigned)snprintf(ob, sizeof ob, "icmpo f%u", pm_frame_count());
     for (int t = 0; t < 8; t++) {
         unsigned best = 0, br = 0;
@@ -2114,30 +2223,49 @@ static __attribute__((cold, noinline)) void ic_log(void) { /* every 300 compared
         ic_oc[br] = 0;
     }
     pm_log_hw("%s", ob);
+    n = (unsigned)snprintf(ob, sizeof ob, "icmpp f%u pairs %u wl %u wk %u diff U %u A %u T %u O %u lenmis %u kp %u unused %u lost %u skip %u locs", pm_frame_count(), ic_c1.pairs, ic_c1.wl, ic_c1.wk,
+                           ic_c1.du, ic_c1.da, ic_c1.dt, ic_c1.dox, ic_c1.lenmis, ic_kpn, ic_kpunused, ic_kplost, ic_kskip);
+    for (int t = 0; t < 12; t++) {
+        unsigned best = 0, bl = 0;
+        for (unsigned r = 0; r < 256u; r++) if (ic_c1.ul[r] > best) { best = ic_c1.ul[r]; bl = r; }
+        if (!best) break;
+        n += (unsigned)snprintf(ob + n, sizeof ob - n, " %u:%u", bl, best);
+        ic_c1.ul[bl] = 0;
+    }
+    pm_log_hw("%s", ob);
     memset(ic_oc, 0, sizeof ic_oc);
-    ic_pairs = ic_wl = ic_wk = ic_du = ic_da = ic_dt = ic_do = ic_lenmis = ic_lost = ic_nol = 0;
+    memset(&ic_c0, 0, sizeof ic_c0); memset(&ic_c1, 0, sizeof ic_c1);
+    ic_lost = ic_nol = ic_kskip = ic_kpn = ic_kpunused = ic_kplost = 0;
 }
 static __attribute__((cold, noinline)) void icmp_take(gxCmdQueue_s* q) {
     if (q->numEntries < ic_from) { ic_lost++; ic_from = 0; } /* cleared without a take */
-    if (pm_icmp_kind && !ic_blk) ic_blk = (u32*)malloc(256u * 1024u);
+    if (pm_icmp_kind && !ic_blk) ic_blk = (u32*)malloc(512u * 1024u);
     for (unsigned i = ic_from; i < q->numEntries; i++) {
         const gxCmdEntry_s* e = &q->entries[i];
-        if (pm_icmp_kind && ic_blk && (e->data[0] & 0xFFu) == 0x01u) ic_list((const u32*)e->data[1], e->data[2] / 4u);
+        if (pm_icmp_kind && ic_blk && (e->data[0] & 0xFFu) == 0x01u) { ic_list((const u32*)e->data[1], e->data[2] / 4u); if (pm_icmp_kind == 1) ic_list_k((const u32*)e->data[1], e->data[2] / 4u); ic_tail = (const u32*)e->data[1] + e->data[2] / 4u; }
     }
     ic_from = q->numEntries;
 }
 static __attribute__((cold, noinline)) void icmp_frame(gxCmdQueue_s* q) { /* the frame end: the rest of the queue, then the frame kind decides */
     icmp_take(q);
-    if (pm_icmp_kind == 1 && ic_blk) { memcpy(ic_blk + 2u * IC_HALF, ic_blk, ic_n * 8u); ic_ln = ic_n; }
+    if (pm_icmp_kind && ic_blk) { /* INTERPB2: the open tail list (not queued yet): from the end of the last queued list (else the buffer base) to the write position */
+        u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff);
+        const u32* t0 = ic_tail ? ic_tail : cb;
+        if (t0 >= cb && t0 < cb + coff) { ic_list(t0, (unsigned)(cb + coff - t0)); if (pm_icmp_kind == 1) ic_list_k(t0, (unsigned)(cb + coff - t0)); }
+    }
+    ic_tail = NULL;
+    if (pm_icmp_kind == 1 && ic_blk) { memcpy(ic_blk + 2u * IC_HALF, ic_blk, ic_n * 8u); ic_ln = ic_n; memcpy(ic_blk + 6u * IC_HALF, ic_blk + 4u * IC_HALF, ic_n2 * 8u); ic_ln2 = ic_n2; }
     else if (pm_icmp_kind == 2 && ic_blk) {
         if (!ic_ln) ic_nol++;
         else {
-            ic_cmp(ic_blk, ic_n, ic_blk + 2u * IC_HALF, ic_ln);
-            if (ic_pairs >= 300u) ic_log();
+            ic_cmp(&ic_c0, ic_blk, ic_n, ic_blk + 2u * IC_HALF, ic_ln, 1);
+            ic_cmp(&ic_c1, ic_blk, ic_n, ic_blk + 6u * IC_HALF, ic_ln2, 0);
+            if (ic_c0.pairs >= 300u) ic_log();
         }
-        ic_ln = 0;
+        ic_ln = ic_ln2 = 0;
     }
-    ic_n = 0; ic_from = 0; pm_icmp_kind = 0;
+    if (pm_icmp_kind == 1) { ic_kpn += nd_kp_n; ic_kpunused += nd_kp_n - ic_kc; ic_kplost += nd_kp_lost; nd_kp_n = 0; ic_kc = 0; }
+    ic_n = ic_n2 = 0; ic_from = 0; pm_icmp_kind = 0;
 }
 /* the entries queued since the last take go into the record (called before the queue is cleared: pm_gx_room, pm_gx_drain, and at the frame end) */
 static void sr_take(void) {
@@ -3716,6 +3844,8 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
     float comb[4][4];
     nd_mtx_combine(comb);
     pm_gpu_pcomp_native(pal0, comb);
+    static float pal0k[16], zpalk[16]; /* INTERPB2: the K twins of pal0 and zpal (K = L outside the t = 0.5 walk: pal_k stays NULL) */
+    if (pm_tw_on) { memcpy(pal0k, pm_pal0_k, sizeof pal0k); memcpy(zpalk, pal0k, sizeof zpalk); }
     pm_gpu_flush();
     const uint32_t* rw = (const uint32_t*)(uintptr_t)k->rp; /* MERLEE: the shroud mix colour of this frame (the key leaves it out): blend colour RGB, fog colour alpha, as rec_apply sets them */
     const int shr = rw && (rw[6] & 32u);
@@ -3723,8 +3853,9 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
     for (unsigned j = 0; j < e->n; j++) {
         NdNatC* q = nd_mc_nat(e, j);
         if (shr && q->tk.r_mix == 1 && q->mix_st >= 0) q->d.tev_col[q->mix_st] = shc;
-        if (q->zp) { memcpy(zpal, pal0, sizeof pal0); for (int i = 0; i < 4; i++) zpal[8 + i] = q->zn * pal0[12 + i]; q->d.pal = (const float(*)[16])zpal; } /* S5-2: zmark pass 2 */
+        if (q->zp) { memcpy(zpal, pal0, sizeof pal0); for (int i = 0; i < 4; i++) zpal[8 + i] = q->zn * pal0[12 + i]; q->d.pal = (const float(*)[16])zpal; for (int i = 0; i < 4; i++) zpalk[8 + i] = q->zn * pal0k[12 + i]; } /* S5-2: zmark pass 2 */
         else q->d.pal = (const float(*)[16])pal0;
+        q->d.pal_k = pm_tw_on ? (const float(*)[16])(q->zp ? zpalk : pal0k) : NULL; q->d.nrm_k = NULL; /* INTERPB2 */
         if (e->tex) q->d.u[0] = u;
         ndn_bq = q; /* HC6 step 4: the submit copies the draw's command block */
         pm_gpu_native_submit_draw(&q->d, q->sd, q->nidx, q->d.u[0].dim != 0);
@@ -4149,6 +4280,7 @@ int pm_gpu_spr_submit(NdDraw* d, const void* quad, int tex) {
     for (unsigned i = 0; i < 6; i++) ix[i] = (unsigned short)((unsigned)b + tri[i]);
     nb.gidx_n += 6;
     d->loc_pal = (unsigned)u4_pal; d->loc_var = (unsigned)u4_uvso;
+    d->pal_k = pm_tw_on ? (const float(*)[16])pm_pal0_k : NULL; d->nrm_k = NULL; /* INTERPB2: pal0 of the sprite is the last pcomp_native (pm_gpu_spr_build) */
     d->idx_word = 0x80000000u | ((uint32_t)osConvertVirtToPhys(ix) - 0x18000000u);
     d->nidx = 6;
     nd_native_submit(d, tex);

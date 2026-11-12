@@ -262,6 +262,8 @@ typedef struct NdDraw {
     float uvso[4], cmul[4], cadd[4], zmix[2]; /* game order x y z w, the words go out in memory order w z y x */
     float uvx[4];             /* SGEN-2: the unit 1 uv map (pm_gpu_set_tex1), game order; written at loc_uvx when has_uvx */
     float nzo[4];             /* FB-2: the noise offset uniform (game order: 120/64, 200/64, offset x, offset y), written at loc_nzo when has_nzo */
+    const float (*pal_k)[16]; /* INTERPB2: the key frame twin of pal (same entry count), or NULL when K = L; read only while nd_kp_on */
+    const float (*nrm_k)[4];  /* INTERPB2: the key frame twin of p5->nrm (3 rows x, y, z, 0), or NULL when K = L */
 } NdDraw;
 _Static_assert(offsetof(NdDraw, u) + sizeof(NdUnit) <= 64, "PERF2: the NdDraw hot header (to unit 0) fits 64 bytes");
 #define ND_NPAL 21
@@ -278,7 +280,18 @@ typedef struct NdShadow {
     float nzo[4];             /* FB-2 */
     uint32_t tmpl_val[64];    /* ND_TMPL_WORDS max, register values of the template last written (for word level deltas) */
     float pal[ND_NPAL][16];
+    float pal_k[ND_NPAL][16]; /* INTERPB2: the K twin of the pal row last written (valid with pal_valid; kept only while nd_kp_on) */
 } NdShadow;
+/* INTERPB2: the patch list of the t = 0.5 (L) frame. While nd_kp_on, a float uniform write of a matrix-derived value adds a patch: the word position in
+ * the command buffer and the K words. base is the first word of the data command ([param0][header][param1..]); first is the index of the first of the 4
+ * floats among the command parameters (parameter j sits at base[0] for j 0, else base[1 + j]). */
+typedef struct NdKPatch { uint32_t* base; uint32_t first; float k[4]; } NdKPatch;
+extern int nd_kp_on;
+extern NdKPatch* nd_kp; extern unsigned nd_kp_n, nd_kp_cap, nd_kp_lost;
+static inline void nd_kp_vec(uint32_t* base, unsigned first, const float* k) {
+    if (nd_kp_n < nd_kp_cap) { NdKPatch* p = &nd_kp[nd_kp_n++]; p->base = base; p->first = first; p->k[0] = k[0]; p->k[1] = k[1]; p->k[2] = k[2]; p->k[3] = k[3]; }
+    else nd_kp_lost++;
+}
 void nd_shadow_reset(NdShadow* s);
 unsigned nd_emit_draw(uint32_t* out, NdShadow* sh, const NdDraw* d); /* returns the number of words written (even) */
 /* HC6 step 4: the word offsets of the per-frame values in a full-state block (0xFFFF: not written): palette 0 data word 0 (then +2..+16), unit 0 block
@@ -390,7 +403,7 @@ int pm_dlc_geom_keep(const void* list, uint32_t* keep); /* MAPX-2: the entry geo
 /* S3N-3c: a model record as native draws. c: the record state (geom_at is set per range). list: the geometry list (R12). emit 0: build only (ndmcheck);
  * emit 1: flush, then submit each draw (S3N-4). Returns the draw count, -1 fallback (nd_nat_why), -2 nost. Draws are read with nd_model_native. */
 #define ND_NAT_MAX 64
-typedef struct NdNat { NdDraw d; NdMState s; float pal[16]; const uint16_t* sd; unsigned nidx; uint8_t zp; float zn; NdTmplKey tk; /* FB-2: the key of d.tmpl: a cache hit builds the id again (the LRU may have taken it over) */ } NdNat; /* S5-2: zp 1 = zmark pass 2, pal row 2 := zn * row 3. The draws of the record in progress (nd_model_draw); the cache keeps NdNatC */
+typedef struct NdNat { NdDraw d; NdMState s; float pal[16], pal_k[16]; /* INTERPB2: pal_k the K twin of pal */ const uint16_t* sd; unsigned nidx; uint8_t zp; float zn; NdTmplKey tk; /* FB-2: the key of d.tmpl: a cache hit builds the id again (the LRU may have taken it over) */ } NdNat; /* S5-2: zp 1 = zmark pass 2, pal row 2 := zn * row 3. The draws of the record in progress (nd_model_draw); the cache keeps NdNatC */
 /* PERF2 step 3: a cached draw of the native model cache (the pool of an NdMEnt): the draw, its index range, the zmark pass 2 factor, the MERLEE mix stage and
  * the template key. No palette (the hit points d.pal at its palette 0 of this view) and no NdMState (only the mix stage is read); the pm5 block is in a side pool. */
 typedef struct __attribute__((aligned(64))) NdNatC {

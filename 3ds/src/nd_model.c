@@ -668,7 +668,7 @@ NdMEnt* nd_mc_store(const NdMKey* k, int tex, int hs, unsigned hg) {
         const unsigned pi = off + (unsigned)j;
         NdNatC* q = &mc_pool[pi];
         q->d = nat[j].d; q->sd = nat[j].sd; q->nidx = nat[j].nidx; q->zn = nat[j].zn; q->zp = nat[j].zp; q->mix_st = (int8_t)nat[j].s.to.mix_st; q->tk = nat[j].tk; q->bgen = 0; /* HC6 step 4: no command block yet */
-        q->d.pal = NULL; /* the hit points it at the palette 0 of its view */
+        q->d.pal = NULL; q->d.pal_k = NULL; q->d.nrm_k = NULL; /* the hit points it at the palette 0 of its view (INTERPB2: and its K twin) */
         if (q->d.use5) { mc_p5[pi] = nat[j].s.p5; q->d.p5 = &mc_p5[pi]; e->mver = (((const uint32_t*)(uintptr_t)k->rp)[3] >> 16) | 0x10000u; } /* MAPX-2: the pm5 block comes from this matrix */
     }
     if (mc_pool_n > mc_pool_hi) mc_pool_hi = mc_pool_n;
