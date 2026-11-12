@@ -2143,6 +2143,7 @@ static unsigned ic_n, ic_ln; /* pairs in the current frame, pairs in the kept L 
 static unsigned ic_kpn, ic_kpunused, ic_kplost; /* patches made, patches the reader did not reach, patches lost (list full), per log window */
 static unsigned ic_n2, ic_ln2, ic_kskip; /* the same for the patched copy; patches the reader passed without use */
 static unsigned ic_from; /* the queue cursor of the icmp takes */
+static const u32* ic_tail; /* INTERPB2: the end of the last queued command list of the frame (NULL: none yet), where the open tail list begins */
 typedef struct IcC { unsigned pairs, wl, wk, du, da, dt, dox, lenmis; unsigned ul[256]; } IcC; /* one compare window (dox: O class) */
 static IcC ic_c0, ic_c1; /* plain L against K, patched L against K */
 static unsigned ic_lost, ic_nol; /* lost pairs, K frames without a kept L */
@@ -2241,12 +2242,18 @@ static __attribute__((cold, noinline)) void icmp_take(gxCmdQueue_s* q) {
     if (pm_icmp_kind && !ic_blk) ic_blk = (u32*)malloc(512u * 1024u);
     for (unsigned i = ic_from; i < q->numEntries; i++) {
         const gxCmdEntry_s* e = &q->entries[i];
-        if (pm_icmp_kind && ic_blk && (e->data[0] & 0xFFu) == 0x01u) { ic_list((const u32*)e->data[1], e->data[2] / 4u); if (pm_icmp_kind == 1) ic_list_k((const u32*)e->data[1], e->data[2] / 4u); }
+        if (pm_icmp_kind && ic_blk && (e->data[0] & 0xFFu) == 0x01u) { ic_list((const u32*)e->data[1], e->data[2] / 4u); if (pm_icmp_kind == 1) ic_list_k((const u32*)e->data[1], e->data[2] / 4u); ic_tail = (const u32*)e->data[1] + e->data[2] / 4u; }
     }
     ic_from = q->numEntries;
 }
 static __attribute__((cold, noinline)) void icmp_frame(gxCmdQueue_s* q) { /* the frame end: the rest of the queue, then the frame kind decides */
     icmp_take(q);
+    if (pm_icmp_kind && ic_blk) { /* INTERPB2: the open tail list (not queued yet): from the end of the last queued list (else the buffer base) to the write position */
+        u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff);
+        const u32* t0 = ic_tail ? ic_tail : cb;
+        if (t0 >= cb && t0 < cb + coff) { ic_list(t0, (unsigned)(cb + coff - t0)); if (pm_icmp_kind == 1) ic_list_k(t0, (unsigned)(cb + coff - t0)); }
+    }
+    ic_tail = NULL;
     if (pm_icmp_kind == 1 && ic_blk) { memcpy(ic_blk + 2u * IC_HALF, ic_blk, ic_n * 8u); ic_ln = ic_n; memcpy(ic_blk + 6u * IC_HALF, ic_blk + 4u * IC_HALF, ic_n2 * 8u); ic_ln2 = ic_n2; }
     else if (pm_icmp_kind == 2 && ic_blk) {
         if (!ic_ln) ic_nol++;
