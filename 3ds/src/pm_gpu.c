@@ -172,6 +172,7 @@ static unsigned ic_kc; /* INTERPB2: the icmp reader cursor in the patch list */
 static gxCmdEntry_s kc_ent[KC_MAX]; /* static: 16 KB */
 static unsigned kc_n, kc_from, kc_skip_n, kc_split0, kc_tail_w, kc_tail_n;
 static int kc_rec, kc_arm, kc_over, kc_valid; /* record on; the walk is an L walk with a patch list; entries lost; the copy is complete */
+static int kc_fl; /* FPS60FL: the L tail list had a draw (C3DiF_DrawUsed): C3D_FrameEnd wrote the framebuffer flush after kc_build */
 static u32* kc_buf; /* linear memory (the GPU reads it) */
 static u32 kc_cmd[KC_WORDS / 64u]; /* FPS60W2: the command starts of the copied words (nd_kccmd.h, one bit per even word) */
 static u32* kc_base; /* the command buffer start of the frame (after C3D_FrameBegin) */
@@ -2931,6 +2932,7 @@ static __attribute__((noinline)) void kc_build(void) {
         }
     }
     kc_cb = (u32)cb; kc_tail_w = (unsigned)(tb - cb); kc_tail_n = toff;
+    kc_fl = (*(volatile unsigned*)(__C3D_Context + 32) & 2u) != 0u; /* FPS60FL */
     GSPGPU_FlushDataCache(kc_buf, coff * 4u);
     kc_valid = 1; kc_ok_gen = kc_gen;
     kc_plain_shown = !armed;
@@ -2960,7 +2962,7 @@ void pm_gpu_key_show(void) {
     }
     u32 *cb, csz, coff;
     GPUCMD_GetBuffer(&cb, &csz, &coff);
-    if (kc_tail_n && coff + kc_tail_n < csz) { memcpy(cb + coff, kc_buf + kc_tail_w, kc_tail_n * 4u); GPUCMD_SetBufferOffset(coff + kc_tail_n); }
+    if (kc_tail_n && coff + kc_tail_n < csz) { memcpy(cb + coff, kc_buf + kc_tail_w, kc_tail_n * 4u); GPUCMD_SetBufferOffset(coff + kc_tail_n); if (kc_fl) *(volatile unsigned*)(__C3D_Context + 32) |= 2u; } /* FPS60FL: C3D_FrameEnd adds the flush, as in the L frame */
     if (stereo_frame) C3D_FrameDrawOn(targetR); /* the targets C3D_FrameEnd sends */
     C3D_FrameDrawOn(target);
     rd_sync(); C3D_FrameEnd(GX_CMDLIST_FLUSH);
