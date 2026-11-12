@@ -12,6 +12,7 @@
 #include "nd_op.h"
 #include "pm_gpu.h"
 #include "nd.h"
+#include "nd_scomp.h"
 #include "pm_tex.h"
 #include "pm_port.h"
 #include "variables.h"
@@ -192,12 +193,18 @@ static int ent_heap_list(const Gfx* l) {
     extern u8 heap_generalHead[]; extern u16 gFrameBuf2[];
     return (u32)l - (u32)heap_generalHead < (u32)GENERAL_HEAP_SIZE || (u32)l - (u32)gFrameBuf2 < (u32)BATTLE_HEAP_SIZE;
 }
+unsigned nd_ent_sc; /* S6E: gaps run as compiled ranges (entsync line) */
+static NdSDef* ent_sdef(const Gfx* l, u32 a, u32 b) { /* the gap [a, b) of l as an S6T def (1 to 32 units), else NULL */
+    NdSDef* d = (b <= a || b - a > 32u) ? NULL : (NdSDef*)calloc(1, sizeof *d);
+    if (d) { d->u = l + a; d->n = (uint8_t)(b - a); } return d; }
+static void ent_sdef_free(EntKey* k) { for (unsigned s = 0; s < k->nseg && k->seg; s++) free(k->seg[s].sd); free(k->tail); k->tail = NULL; }
 void ent_compile(EntKey* k, const Gfx* l0) {
     pm_xf.ent_n++; /* MAPX-1 */
     unsigned ns = 0, nops = 0;
     u32 bad = 0, ntri = 0;
     const u8 *lo = NULL, *hi = NULL;
     NdObj o;
+    ent_sdef_free(k);
     free(k->seg); k->seg = NULL; k->nseg = 0;
     nd_c2_forget(k->fw); free(k->fw); k->fw = NULL;
     k->st = ENT_REF; k->why = 0; k->fr = pm_frame_count(); k->retry = k->fr + 300u;
@@ -241,7 +248,9 @@ void ent_compile(EntKey* k, const Gfx* l0) {
     for (unsigned s = 0; s < ns; s++) {
         k->seg[s].a0 = s ? ent_sbuf[s - 1].op1 : 0u; k->seg[s].op0 = ent_sbuf[s].op0; k->seg[s].op1 = ent_sbuf[s].op1;
         k->seg[s].tri0 = ent_sbuf[s].tri0; k->seg[s].ntri = ent_sbuf[s].ntri;
+        k->seg[s].sd = ent_sdef(l, k->seg[s].a0, k->seg[s].op0);
     }
+    k->tail = ent_sdef(l, k->seg[ns - 1].op1, nops);
     k->nseg = (u16)ns; k->nops = nops;
     k->idx = o.idx; k->vtx = o.vtx; k->vfirst = o.vfirst; k->nvtx = o.nvtx;
     if (o.nvtx) pm_gpu_gstat_commit(o.vfirst, o.nvtx);
@@ -254,7 +263,7 @@ void ent_compile(EntKey* k, const Gfx* l0) {
 }
 
 void ent_reset(void) {
-    for (unsigned i = 0; i < ENT_TAB; i++) if (ent_tab[i]) { free(ent_tab[i]->seg); nd_c2_forget(ent_tab[i]->fw); free(ent_tab[i]->fw); free(ent_tab[i]); ent_tab[i] = NULL; }
+    for (unsigned i = 0; i < ENT_TAB; i++) if (ent_tab[i]) { ent_sdef_free(ent_tab[i]); free(ent_tab[i]->seg); nd_c2_forget(ent_tab[i]->fw); free(ent_tab[i]->fw); free(ent_tab[i]); ent_tab[i] = NULL; }
     ent_nent = 0; ent_gen_seen = pm_dlc_gen;
 }
 
@@ -306,7 +315,7 @@ void ent_log(void) { /* PROF2-3: census lines, from pm_gpu.c cen_lines_frame (fr
     if (f < next) return;
     next = (f / 300u + 1u) * 300u;
     pm_log_w("entnat f%u draws %u native %u fb %u segs native %u interp %u keys %u comp %u dyn %u", f, ent_c.draws, ent_c.nat, ent_c.fb, ent_c.segn, ent_c.segi, ent_nent, ent_c.comp, ent_c.dyn);
-    { static unsigned l0, l1, l2; pm_log_w("entsync f%u walks %u csync %u rsync %u gdl %u (since the last line)", f, nd_ent_gbi - l0, nd_ent_cfull - l1, nd_ent_rfull - l2, gdl_c.lists); l0 = nd_ent_gbi; l1 = nd_ent_cfull; l2 = nd_ent_rfull; }
+    { static unsigned l0, l1, l2, l3; pm_log_w("entsync f%u walks %u csync %u rsync %u gdl %u sc %u (since the last line)", f, nd_ent_gbi - l0, nd_ent_cfull - l1, nd_ent_rfull - l2, gdl_c.lists, nd_ent_sc - l3); l0 = nd_ent_gbi; l1 = nd_ent_cfull; l2 = nd_ent_rfull; l3 = nd_ent_sc; }
     pm_log_w("entnat why 1 table %u 2 op %u 3 slot %u 4 vtx %u 5 long %u 6 pool %u 7 count %u 8 none %u", ent_c.why[1], ent_c.why[2], ent_c.why[3], ent_c.why[4], ent_c.why[5], ent_c.why[6], ent_c.why[7], ent_c.why[8]);
     for (unsigned q = 0; q < 256u; q++) if (ent_opc[q]) pm_log_w("entnat refused op %02x keys %u", q, ent_opc[q]);
     for (unsigned q = 0, n = 0; q < ENT_TAB && n < 16u; q++) if (ent_tab[q] && (ent_tab[q]->nint || ent_tab[q]->st != ENT_OK)) { const EntKey* k = ent_tab[q]; n++; pm_log_w("entnat key list %08x vb %08x st %u why %u nseg %u nops %u draws %u seg %u int %u", k->list, k->vb, k->st, k->why, k->nseg, k->nops, k->ndraw, k->segid, k->nint); }
@@ -379,6 +388,12 @@ unsigned nd_ent_in, nd_ent_cfull, nd_ent_rfull, nd_ent_gbi;
 unsigned nd_ent_cfull_all(void) { return nd_ent_cfull; }
 unsigned nd_gdl_lists(void) { return gdl_c.lists; }
 #define ENT_GBI(l_, n_) (nd_ent_gbi++, nd_ops_run((l_), (n_) >> 3, 1)) /* PERF2: the pieces of the flattened list keep the walker's sync state (D10b: the op executor) */
+static void ent_gap(NdSDef* d, const Gfx* l, u32 n) { /* S6E: a gap as a compiled range, with nd_ops_run's list start and end */
+    if (d && d->st != 2u) {
+        gv_epoch++; dlc_on = 1; pm_walk_side++; const int ok = nd_scomp_exec_own(d); pm_walk_side--;
+        if (ok) { nd_ent_sc++; gv_streak_flush(); tex_streak_flush(); return; } }
+    ENT_GBI((void*)l, n * 8u);
+}
 /* HC8 step 7: the recompile of a changed entity (content hash), the interpreter run of one segment (the fallback loop) are cold: out of line. */
 static void __attribute__((noinline, cold)) ent_run_recompile(EntKey* k, const Gfx* l) {
     if (++k->nrec > 3) { k->st = ENT_DYN; ent_c.dyn++; }
@@ -404,12 +419,12 @@ int ent_run(const Gfx* l, EntKey* k, u32 segid) {
     for (unsigned s = 0; s < k->nseg; s++) {
         const EntSeg* e = &k->seg[s];
         const Gfx* fw = k->fw;
-        if (e->op0 > e->a0) ENT_GBI((void*)(fw + e->a0), (e->op0 - e->a0) * 8u);
+        if (e->op0 > e->a0) ent_gap(e->sd, fw + e->a0, e->op0 - e->a0);
         if (!e->ntri) continue; /* a state-only or vertex-only segment: the loads replay when a later segment needs them */
         if (e->ntri && ent_seg_native(k, e)) { ent_c.segn++; continue; }
         ent_run_seg_interp(k, e);
     }
-    { const EntSeg* e = &k->seg[k->nseg - 1]; if (k->nops > e->op1) ENT_GBI((void*)(k->fw + e->op1), (k->nops - e->op1) * 8u); }
+    { const EntSeg* e = &k->seg[k->nseg - 1]; if (k->nops > e->op1) ent_gap(k->tail, k->fw + e->op1, k->nops - e->op1); }
     tri_since_vtx = 1; memset(vert_live, 0, sizeof vert_live); dlc_dirty = 1; /* as the skipped groups of dlc_try */
     nd_ent_in = 0;
     ent_c.nat++;
