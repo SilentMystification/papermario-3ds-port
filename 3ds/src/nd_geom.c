@@ -15,6 +15,7 @@
 #include "variables.h"
 #include "nd_op.h"
 #include "nd_api.h"
+#include "nd_gtab.h"
 
 /* GLOB: definitions moved here from the former pm_gbi.c (layout only). */
 u8 vert_live[64];
@@ -198,14 +199,17 @@ int gv_state_why(int* ct, int* both) {
 }
 
 /* the first triangle (or DLC2 range) after a state change */
+extern int nd_dq_on; /* nd_direct.c */
 void gv_epoch_enter(void) {
     ep_flush_stats();
     ep_why = gv_state_why(&ep_ct, &ep_cullboth);
     ep_t1f = 0;
     if (ep_why < 0 && !ep_cullboth) {
         ep_fl = tri_flags();
-        ensure_tile(nd_ws.use_t1 ? 1 : 0);
-        dual_bind();
+        if (!nd_dq_on) { /* S5CHUDA: a direct quad has bound tile 0 itself (nd_direct_quad) */
+            ensure_tile(nd_ws.use_t1 ? 1 : 0);
+            dual_bind();
+        }
         sync_render();
         /* MERLON (B3b case 6 on the ring path): a model drawn into the z-buffer image (crystal ball depth mask, mac_01) tests its own depth against the world
          * and writes the constant depth of the PRIM word where it is nearer (pm_gpu zmark, two native passes). sync_render turned it off.
@@ -344,46 +348,31 @@ void draw_tri(unsigned w) {
 /* NATIVEAPI S4 (nd_parts_run): one flat particle list drawn from the ring with the state of now. The triangle path of draw_tri and gv_tri
  * (the epoch and the state checks, the GPU append and the GPU triangle, the refusal count), with the vertex state of the ring copy in
  * rs[] (no CPU vertex state is kept). No CPU clip test: gv_tri only skipped triangles wholly outside one view plane, which draw no pixel on
- * the GPU either. Lit and refused loads return 0 before any triangle: the caller runs the list. u: the list (its VTX unit, then triangles). */
-int nd_part_draw(const uint32_t* u) {
-    const unsigned n = (u[0] >> 12) & 0xffu;
-    const Vtx* src = (const Vtx*)ptr_of(u[1]);
-    if (!src || !is_host((u32)(uintptr_t)src) || n < 1u || n > 64u) return 0;
-    /* S4MULTI: the vertex loads of the whole list (each NDO_VTX unit) are checked before the first draw: the source of each later load, and the room for all of them */
-    unsigned tot = n;
-    for (const uint32_t* q = u + 2; (q[0] >> 24) != NDO_END; q += 2) {
-        if ((q[0] >> 24) != NDO_VTX) continue;
-        const unsigned n2 = (q[0] >> 12) & 0xffu;
-        const Vtx* s2 = (const Vtx*)ptr_of(q[1]);
-        if (!s2 || !is_host((u32)(uintptr_t)s2) || n2 < 1u || n2 > 64u) return 0;
-        tot += n2;
-    }
+ * the GPU either. Lit and refused loads return 0 before any triangle: the caller runs the list. S7CONV: the list comes as its native table
+ * (nd_gtab.h, NDG_F_PARTS: every load source mapped and inside 64 slots, every index inside the loads), read as sequential 8-byte ops; no
+ * list word is read. */
+int nd_part_draw(const NdGTab* t) {
+    const unsigned tot = t->nvtx; /* S4MULTI: the room for every load of the list, checked before the first draw */
     memset(vert_live, 0, sizeof vert_live);
     if (!pm_gpu_gv_room(tot + 64u)) { extern int ring_need(unsigned nv, unsigned ni); if (ring_need(tot + 64u, 384u)) memset(vert_ring, 0xff, sizeof vert_ring); } /* HUDRING, as nd_geom_vtx */
     if (!pm_gpu_gv_room(tot)) return 0; /* S4MULTI: every load of the list fits, so no later load fails after a draw */
     if (nd_ws.geom & G_LIGHTING) return 0;
     const unsigned gmi = gv_matrix_id(0);
     if (gmi == GV_NONE) return 0;
-    const int r0 = pm_gpu_gvtx_load(src, n);
-    if (r0 < 0) return 0;
-    PH_ADD(C_VTXLOAD, n); PH_ADD(C_GVLOAD, n); gv_load_n += n;
     unsigned short rs[64];
-    for (unsigned i = 0; i < n; i++) rs[i] = (unsigned short)(r0 + (int)i);
     const unsigned tss = ((unsigned)nd_ws.tex_ss << 16) | ((unsigned)nd_ws.tex_ts & 0xffffu);
-    for (const uint32_t* q = u + 2; (q[0] >> 24) != NDO_END; q += 2) {
-        if (q[0] == ND_NOP_A) continue;
-        if ((q[0] >> 24) == NDO_VTX) { /* S4MULTI: a later load, its source checked above; slots v0 .. v0 + n2 - 1 of the ring copy */
-            const unsigned n2 = (q[0] >> 12) & 0xffu, v0 = ((q[0] >> 1) & 0x7fu) - n2;
-            const int r2 = pm_gpu_gvtx_load((const Vtx*)ptr_of(q[1]), n2);
+    for (const NdGOp* o = t->op;; o++) {
+        if (o->k == NDG_VTX) { /* slots v0 .. v0 + n - 1 of the ring copy (the first load: slot 0) */
+            const unsigned n2 = o->a, v0 = o->b;
+            const int r2 = pm_gpu_gvtx_load((const Vtx*)o->p, n2);
             if (r2 < 0) return 0;
             PH_ADD(C_VTXLOAD, n2); PH_ADD(C_GVLOAD, n2); gv_load_n += n2;
             for (unsigned i = 0; i < n2; i++) rs[v0 + i] = (unsigned short)(r2 + (int)i);
             continue;
         }
-        const int two = (q[0] >> 24) == NDO_TRI2;
-        for (int t = 0; t <= two; t++) {
-            const uint32_t w = t ? q[1] : (q[0] & 0xffffffu);
-            const unsigned i0 = ((w >> 16) & 0xffu) >> 1, i1 = ((w >> 8) & 0xffu) >> 1, i2 = (w & 0xffu) >> 1; /* parts_ok: < have */
+        if (o->k != NDG_TRI) break; /* NDG_END */
+        {
+            const unsigned i0 = o->a, i1 = o->b, i2 = o->c;
             GP_START();
             gp_ntri++;
             n_cmd++;

@@ -57,12 +57,29 @@ void pm_gpu_flush_at(int line) { (void)line; n_flush++; }
 void pm_gpu_set_prim(unsigned rgba, unsigned lod) { (void)lod; n_prim++; last_prim = rgba; }
 void pm_gpu_set_const(unsigned rgba) { n_const++; last_const = rgba; }
 void pm_gpu_set_env(unsigned rgba) { (void)rgba; }
+void pm_gpu_set_replace(int on) { (void)on; }
+void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba) { (void)x0; (void)y0; (void)x1; (void)y1; (void)rgba; }
 void pm_comb_colours(PmPlan* p, unsigned prim, unsigned env, unsigned plod, unsigned key, unsigned ks) { (void)p; (void)prim; (void)env; (void)plod; (void)key; (void)ks; }
 void pm_gpu_plan_key(unsigned w0, unsigned w1, int two, int t1only) { (void)w0; (void)w1; (void)two; (void)t1only; }
 void pm_gpu_set_plan(const PmPlan* p) { (void)p; n_plan++; }
 void pm_gpu_set_combine(int mode) { n_leg++; last_leg = (unsigned)mode; }
 int const_rgb_tex_alpha(unsigned* out) { *out = 0xaabbccddu; return 1; }
 int nd_tex_bind_desc(const NdBindDesc* d, int n) { (void)d; (void)n; return 0; }
+/* S5TRECT: the window call of nd_trect_run records its arguments; the list ops count their calls (nd_walk.c and nd_gx_w are not linked here) */
+static int n_win, n_gx, n_walk;
+static int win_a[9];
+int nd_tex_win_desc(NdBindDesc* o, const void* timg, int timg_stride, unsigned fmt, unsigned siz, const unsigned wrap[4], int ldx, int ldy, int ldw, int ldh,
+                    int uls, int ult, int lrs, int lrt, const void* pal, int pal_n) {
+    n_win++;
+    memset(o, 0, sizeof *o);
+    o->src = timg; o->pal = pal; o->pal_n = pal_n; o->fmt = fmt; o->siz = siz; o->stride = timg_stride; o->x0 = ldx; o->y0 = ldy; o->w = ldw; o->h = ldh;
+    o->wrap[0] = wrap[0]; o->wrap[1] = wrap[1]; o->wrap[2] = wrap[2]; o->wrap[3] = wrap[3];
+    win_a[0] = timg_stride; win_a[1] = ldx; win_a[2] = ldy; win_a[3] = ldw; win_a[4] = ldh; win_a[5] = uls; win_a[6] = ult; win_a[7] = lrs; win_a[8] = lrt;
+    return 1;
+}
+static uint32_t gx_log[16][2];
+void nd_gx_w(Gfx* g, uint32_t w0, uint32_t w1) { (void)g; if (n_gx < 16) { gx_log[n_gx][0] = w0; gx_log[n_gx][1] = w1; } n_gx++; }
+void nd_walk_state(const uint32_t* q, unsigned n) { (void)q; n_walk += (int)n; }
 void gp3_t0_surv(void) {}
 unsigned pm_gbi_cur_op; /* NAPI3B: the glyph draw (nd_glyph_draw) is not run by this test, its callees are stubs */
 void nd_tex_bind_glyph(uint32_t r, uint32_t p, int t, int w, int h) { (void)r; (void)p; (void)t; (void)w; (void)h; }
@@ -76,6 +93,15 @@ void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s
     last_rect[0] = x0; last_rect[1] = y0; last_rect[2] = x1; last_rect[3] = y1;
     last_st[0] = s0; last_st[1] = t0; last_st[2] = s1; last_st[3] = t1;
 }
+
+/* S5CHUDA: the walker functions of nd_direct_quad log their arguments in call order */
+int tri_prep_ok;
+static u32 q_log[8][4];
+static int q_n, q_prep[8];
+void load_mtx(u32 w0, u32 w1, u32 hdr) { q_log[q_n][0] = 1; q_log[q_n][1] = w0; q_log[q_n][2] = w1; q_log[q_n][3] = hdr; q_n++; }
+void nd_geom_vtx(u32 w0, u32 w1, const Gfx* list) { (void)list; q_log[q_n][0] = 2; q_log[q_n][1] = w0; q_log[q_n][2] = w1; q_n++; }
+void draw_tri(unsigned w) { q_prep[q_n] = tri_prep_ok; q_log[q_n][0] = 3; q_log[q_n][1] = w; q_log[q_n][3] = pm_gbi_cur_op; q_n++; }
+void gbi_popmtx(u32 w1) { q_log[q_n][0] = 4; q_log[q_n][2] = w1; q_n++; }
 
 int main(void) {
     NdPsoN64 a = { 0xfc000010u, 0x11111111u, 0x00504340u, 0x0u, 0xf000u };
@@ -156,6 +182,63 @@ int main(void) {
     n_forget = 0; n_end_clear = 0; sc_ok = 1; gv_epoch = 7;
     nd_direct_end();
     CHECK(n_end_clear == 1 && n_forget == 1 && sc_ok == 0 && nd_ws.cur_tile == -1 && gv_epoch == 8);
+    /* S5TRECT: nd_trect_run of a 32 x 32 RGBA16 window (uls 0, ult 0, lrs 31, lrt 31): the window arguments are the HUD ones (sh 2, stride = width,
+     * the lower right in quarter texels), then the direct rectangle (the same words as the case above) */
+    {
+        NdTRect t;
+        memset(&t, 0, sizeof t);
+        CHECK(sizeof(NdTRect) == 104);
+        t.img = (const void*)0x1000; t.fmt = G_IM_FMT_RGBA; t.siz = G_IM_SIZ_16b; t.width = 32; t.height = 32;
+        t.lrs = 31; t.lrt = 31; t.masks = 5; t.maskt = 5;
+        t.w0 = (42u * 4u) << 12 | (36u * 4u); t.w1 = (10u * 4u) << 12 | (20u * 4u); t.hs = 0u; t.hd = (1024u << 16) | 1024u;
+        t.cw0 = 0xfc000010u; t.cw1 = 0x11111111u; t.oml = 0x00504340u; t.omh = 0u; t.prim = 0xff00ff00u;
+        nd_ws.omode_h = 0; nd_ws.cimg = NULL; fake_role = ROLE_MAIN; fake_aux = -1; m1.valid = 0;
+        n_win = n_gx = n_walk = 0; n_rect = 0;
+        nd_trect_run((const uint32_t*)&t);
+        CHECK(n_win == 1 && win_a[0] == 32 && win_a[1] == 0 && win_a[2] == 0 && win_a[3] == 32 && win_a[4] == 32);
+        CHECK(win_a[5] == 0 && win_a[6] == 0 && win_a[7] == 124 && win_a[8] == 124);
+        CHECK(n_walk == 0 && n_gx == 0 && n_rect == 1 && last_rect[0] == 10 && last_rect[1] == 20 && last_rect[2] == 41 && last_rect[3] == 35);
+        /* not ready (a slot role): the same ops go to the walker in a local list */
+        fake_role = ROLE_SLOT;
+        n_win = n_gx = n_walk = 0; n_rect = 0;
+        nd_trect_run((const uint32_t*)&t);
+        CHECK(n_win == 1 && n_rect == 0 && n_walk >= 4 && n_gx >= 4); /* n_walk counts units: the load ops and the 3 rectangle units */
+        fake_role = ROLE_MAIN;
+    }
+    /* S5CHUDA: nd_direct_quad runs MTX, VTX, TRI, TRI, POP with the words the typed recorder makes of the old ops (low 24 bits of w0, as op_geo passes them) */
+    {
+        static const float vq[16] = { 0 };
+        Gfx g[5];
+        NdBindDesc bd;
+        const unsigned wr[4] = { 0, 0, 0, 0 };
+        gv_epoch = 5; nd_dq_on = 0; q_n = 0; n_gx = 0;
+        gSPMatrix(&g[0], 0x1234, G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+        gSPVertex(&g[1], vq, 4, 0);
+        gSP1Triangle(&g[2], 0, 1, 2, 0);
+        gSP1Triangle(&g[3], 0, 2, 3, 0);
+        gSPPopMatrix(&g[4], G_MTX_MODELVIEW);
+        CHECK(n_gx == 5);
+        nd_direct_quad(0x1234u, vq);
+        CHECK(q_n == 5 && gv_epoch == 6 && nd_dq_on == 1);
+        CHECK(q_log[0][0] == 1 && q_log[0][1] == (gx_log[0][0] & 0xffffffu) && q_log[0][2] == 0x1234u && q_log[0][3] == 0u && gx_log[0][1] == 0x1234u);
+        CHECK(q_log[1][0] == 2 && q_log[1][1] == (gx_log[1][0] & 0xffffffu) && q_log[1][2] == (u32)(uintptr_t)vq && gx_log[1][1] == (u32)(uintptr_t)vq);
+        CHECK(q_log[2][0] == 3 && q_log[2][1] == (gx_log[2][0] & 0xffffffu) && q_prep[2] == 0 && q_log[2][3] == G_TRI1);
+        CHECK(q_log[3][0] == 3 && q_log[3][1] == (gx_log[3][0] & 0xffffffu) && q_prep[3] == 0);
+        CHECK(q_log[4][0] == 4 && q_log[4][2] == gx_log[4][1]);
+        nd_direct_end();
+        CHECK(nd_dq_on == 0);
+        /* nd_tex_blk_desc is the full window call: origin 0, size w x h, stride w, size (0, 0, (w - 1) << 2, (h - 1) << 2) */
+        n_win = 0;
+        CHECK(nd_tex_blk_desc(&bd, (const void*)0x2000, G_IM_FMT_IA, G_IM_SIZ_8b, 32, 32, wr, NULL, 0) == 1);
+        CHECK(n_win == 1 && win_a[0] == 32 && win_a[1] == 0 && win_a[2] == 0 && win_a[3] == 32 && win_a[4] == 32 && win_a[5] == 0 && win_a[6] == 0 && win_a[7] == 124 && win_a[8] == 124);
+        CHECK(nd_tex_blk_desc(&bd, (const void*)0x2000, G_IM_FMT_IA, G_IM_SIZ_8b, 24, 16, wr, NULL, 0) == 1);
+        CHECK(n_win == 2 && win_a[0] == 24 && win_a[3] == 24 && win_a[4] == 16 && win_a[7] == 92 && win_a[8] == 60);
+        {
+            const unsigned wm[4] = { 0, 0, 5, 5 };
+            CHECK(nd_tex_blk_desc(&bd, (const void*)0x2000, G_IM_FMT_IA, G_IM_SIZ_8b, 32, 32, wm, NULL, 0) == 0);
+            CHECK(nd_tex_blk_desc(&bd, (const void*)0x2000, G_IM_FMT_IA, G_IM_SIZ_8b, 64, 64, wr, NULL, 0) == 0);
+        }
+    }
     if (fails) return 1;
     printf("nd_direct ok\n");
     return 0;

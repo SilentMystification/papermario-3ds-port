@@ -21,7 +21,9 @@ of each row.
 ## S7MAP (Sonnet)
 - Scope: the map shape lists. nd_shape.c converts N64 shape lists at map load today, and pm_map.c reads .nds shapes. The
   conversion moves into the build (the shape files hold native meshes and table ids). Also the remaining map custom gfx data of
-  S6M.
+  S6M: dro_02 npc_merlee, hos_05 intro (image strips need a scissor-clamped NdTRect form), end Credits (row_S6M.md).
+- Oracle 5: these sections become Haiku or Sonnet rows per effect group, file group and map group when the S7CONV design note
+  (row_S7CONV.md) and its table API exist; the census expectation of each row is the listcen data/build counts of its own files.
 - Gate: the DIRECT byte set (all three are maps) plus kzn_08 and hos_01 det scenes; the map-load census (DPCEN2 compus) shows no
   list compile at load; listcen reader: nd_shape conversion code gone from the runtime. Budget 8.
 

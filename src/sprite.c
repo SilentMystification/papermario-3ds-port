@@ -5,6 +5,7 @@
 #include "nd_cmd.h"
 #include "nd_op.h"
 #include "nd_api.h"
+#include "nd_scomp.h"
 #endif
 
 #define MAX_SPRITE_ID 0xEA // todo generate this
@@ -96,6 +97,49 @@ Gfx TranslucentShadedSpriteGfx[] = {
     gsSPSetOtherMode(G_SETOTHERMODE_H, G_MDSFT_ALPHADITHER, 18, G_AD_DISABLE | G_CD_DISABLE | G_CK_NONE | G_TC_FILT | G_TF_BILERP | G_TT_RGBA16 | G_TL_TILE | G_TD_CLAMP | G_TP_PERSP | G_CYC_2CYCLE | G_PM_NPRIMITIVE),
     gsSPEndDisplayList(),
 };
+
+#ifdef TARGET_3DS
+/* S5SPR3: each sprite component's matrix, PRIM colour (translucent unshaded only) and render-mode units as one state range (nd_scomp.h).
+ * Index = shaded * 2 + translucent; the matrix and the PRIM are value units (placeholders here, the record carries them). */
+static const Gfx spr_st_u0[] = {
+    gsSPMatrix(0, G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW),
+    gsSPClearGeometryMode(G_CULL_BOTH | G_LIGHTING),
+    gsDPSetCombineMode(G_CC_DECALRGBA, G_CC_DECALRGBA),
+    gsSPTexture(-1, -1, 0, G_TX_RENDERTILE, G_ON),
+    gsSPSetGeometryMode(G_ZBUFFER | G_SHADE | G_SHADING_SMOOTH),
+    gsDPSetRenderMode(AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM), AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM)),
+    gsSPSetOtherMode(G_SETOTHERMODE_H, G_MDSFT_ALPHADITHER, 18, G_AD_DISABLE | G_CD_DISABLE | G_CK_NONE | G_TC_FILT | G_TF_BILERP | G_TT_RGBA16 | G_TL_TILE | G_TD_CLAMP | G_TP_PERSP | G_CYC_1CYCLE | G_PM_NPRIMITIVE),
+};
+static const Gfx spr_st_u1[] = {
+    gsSPMatrix(0, G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW),
+    gsDPSetPrimColor(0, 0, 0, 0, 0, 0),
+    gsSPClearGeometryMode(G_CULL_BOTH | G_LIGHTING),
+    gsDPSetCombineMode(PM_CC_02, PM_CC_02),
+    gsSPTexture(-1, -1, 0, G_TX_RENDERTILE, G_ON),
+    gsSPSetGeometryMode(G_ZBUFFER | G_SHADE | G_SHADING_SMOOTH),
+    gsDPSetRenderMode(G_RM_ZB_CLD_SURF, G_RM_ZB_CLD_SURF2),
+    gsSPSetOtherMode(G_SETOTHERMODE_H, G_MDSFT_ALPHADITHER, 18, G_AD_DISABLE | G_CD_DISABLE | G_CK_NONE | G_TC_FILT | G_TF_BILERP | G_TT_RGBA16 | G_TL_TILE | G_TD_CLAMP | G_TP_PERSP | G_CYC_1CYCLE | G_PM_NPRIMITIVE),
+};
+static const Gfx spr_st_u2[] = {
+    gsSPMatrix(0, G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW),
+    gsSPClearGeometryMode(G_CULL_BOTH | G_LIGHTING),
+    gsSPTexture(-1, -1, 0, G_TX_RENDERTILE, G_ON),
+    gsSPSetGeometryMode(G_ZBUFFER | G_SHADE | G_SHADING_SMOOTH),
+    gsDPSetRenderMode(AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA | G_RM_PASS, AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM)),
+    gsSPSetOtherMode(G_SETOTHERMODE_H, G_MDSFT_ALPHADITHER, 18, G_AD_DISABLE | G_CD_DISABLE | G_CK_NONE | G_TC_FILT | G_TF_BILERP | G_TT_RGBA16 | G_TL_TILE | G_TD_CLAMP | G_TP_PERSP | G_CYC_2CYCLE | G_PM_NPRIMITIVE),
+};
+static const Gfx spr_st_u3[] = {
+    gsSPMatrix(0, G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW),
+    gsSPClearGeometryMode(G_CULL_BOTH | G_LIGHTING),
+    gsSPTexture(-1, -1, 0, G_TX_RENDERTILE, G_ON),
+    gsSPSetGeometryMode(G_ZBUFFER | G_SHADE | G_SHADING_SMOOTH),
+    gsDPSetRenderMode(G_RM_PASS, G_RM_ZB_CLD_SURF2),
+    gsSPSetOtherMode(G_SETOTHERMODE_H, G_MDSFT_ALPHADITHER, 18, G_AD_DISABLE | G_CD_DISABLE | G_CK_NONE | G_TC_FILT | G_TF_BILERP | G_TT_RGBA16 | G_TL_TILE | G_TD_CLAMP | G_TP_PERSP | G_CYC_2CYCLE | G_PM_NPRIMITIVE),
+};
+static NdSDef spr_st_def[4] = {
+    { spr_st_u0, 7 }, { spr_st_u1, 8 }, { spr_st_u2, 6 }, { spr_st_u3, 6 },
+};
+#endif
 
 f32 SpriteAnimUpdateTimescale = 1.0f;
 
@@ -434,8 +478,14 @@ void spr_appendGfx_component(
     }
 
     guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
+#ifdef TARGET_3DS
+    Gfx stv[2]; /* S5SPR3: the value units of the component range: the matrix (stv[0]), the PRIM colour (stv[1]) */
+    gSPMatrix(&stv[0], VIRTUAL_TO_PHYSICAL(&gDisplayContext->matrixStack[gMatrixListPos++]),
+              G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+#else
     gSPMatrix(gMainGfxPos++, VIRTUAL_TO_PHYSICAL(&gDisplayContext->matrixStack[gMatrixListPos++]),
               G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+#endif
 
     width = cache->width;
     height = cache->height;
@@ -472,10 +522,22 @@ void spr_appendGfx_component(
         rec[3].words.w1 = (u32)(uintptr_t) spr_final_list(gSpriteShadingProfile->flags, (u8) opacity);
     }
 #endif
+#ifdef TARGET_3DS
+    { /* S5SPR3: the matrix, the PRIM (translucent unshaded) and the render mode as one state range, one record */
+        const int si = ((gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED) ? 2 : 0) + ((u8) opacity == 255 ? 0 : 1);
+        unsigned nv = 1;
+        if (si == 1) {
+            gDPSetPrimColor(&stv[1], 0, 0, 0, 0, 0, (u8) opacity);
+            nv = 2;
+        }
+        nd_scomp_rec(&spr_st_def[si], stv, nv);
+    }
+#else
     if (!(gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED) && (u8) opacity != 255) {
         gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, (u8) opacity);
     }
     gSPDisplayList(gMainGfxPos++, rmList); /* DLF5: a render mode list is a G_DL (ST-4) */
+#endif
 
     if (quad != nullptr) {
 #ifdef TARGET_3DS

@@ -26,6 +26,8 @@ build.ninja
 !src/map_shape.ld
 !3ds/ld/hot_order.ld
 /3ds/src/map_restore_table.c
+/3ds/src/nd_gfx_tab.c
+/3ds/src/nd_gfx_tab.c.new
 /3ds/include/texkey_patch.h
 *.elf
 *.z64

@@ -47,10 +47,13 @@ types fall back, counted.
 
 ## Files and places
 src/imgfx.c (imgfx_appendGfx_mesh and mesh_basic under TARGET_3DS), 3ds/src/nd_imgfx.c (new runner), 3ds/include/nd_api.h
-(declarations at the end), azt_scenarios.json and bench_defs.json (one census scene, after `mdl5_iwa10_det`). S5CHUD waits on
+(declarations at the end), azt_scenarios.json and bench_defs.json (one census scene, after `mdl5_iwa10_det`; its expected_events
+hold only lines both builds print, never the new imgfxcen line: a base would fail; grep the census in the head log). S5CHUD waits on
 this row for its mode 1.
 
 ## Gate (expected values)
+- Speed rule (oracle 5): a bench list runs at one speed; spot_mac00_det is a turbo bench (bench_defs speed turbo), every
+  other bench here is normal. Run it as its own list: `bench.py run spot_mac00_det --row S5IMGFX --why "..."` (1 start).
 - nd_host PASS. DIRECT byte set (spot_mac01_det, mdl5_iwa10_det: sprites with imgfx; spot_mac00_det), one list, 3 starts: every
   shot byte-equal.
 - The census line `imgfxcen f<n> native <a> fb <b> by type ...` at f300 of spot_mac01_det: native > 0, and the fallback counted

@@ -1258,6 +1258,13 @@ Gfx Gfx_RM3_CLOUD_NO_ZB[] = {
     gsSPEndDisplayList(),
 };
 
+#ifdef TARGET_3DS
+/* S5EMDL1: the render-mode lists above as S6T defs (nd_rmdef.h). The units are the static classes of nd_scomp.c. */
+#include "nd_rmdef.h"
+#define ND_RM_DEF(n) NdSDef n##_def = { n, sizeof n / sizeof n[0] - 1 };
+ND_RM_LIST(ND_RM_DEF)
+#endif
+
 s32 RenderTaskBasePriorities[] = {
     [RENDER_MODE_SURF_SOLID_AA_ZB_LAYER0]   = -100000,
     [RENDER_MODE_SURFACE_OPA]               = 1000000,

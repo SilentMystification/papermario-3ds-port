@@ -6623,7 +6623,7 @@
       "status": "unverified",
       "subject": "Battle at 4:3 (nowide, det), one Goomba on kmr_03: the wheel opens (4 options) and its open line starts an 8 frame shot burst. Runs on builds before WIDE4 (only older switches).",
       "proves": "WIDE4 byte gate: the 4:3 wheel picture is byte equal to the base build (every WIDE4 change is under pm_wide).",
-      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 nowide shots loglevel=debug uiburst det",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 nowide shots shotmode=255 loglevel=debug uiburst det",
       "until": "shot \\d+ frame \\d+ map",
       "cap": 45,
       "deadline": 20,
@@ -8183,6 +8183,30 @@
         }
       ],
       "reason": "S6-2c-3 picture of the native entity draw on kmr_03 (copy of entcheck_kmr03 without the check switch). Cap 25 s: boot, warp and the first 300-frame window (the until)."
+    },
+    {
+      "name": "ent_kmr03_det",
+      "status": "pending",
+      "subject": "Koopa Village kmr_03 (warp entry 0, default placement), cold start with the det switch. Coin block and entity models on screen. Shots at frames 200 to 205.",
+      "proves": "S6E2: the setupGfx state ranges of the entity files (Block, ItemBlock, SaveBlock, WoodenCrate, ShatteringBlock) compile to the same picture per shot as the N64 state ops; two cold runs of one build give byte-equal shots.",
+      "debug": "warp=kmr_03:0 shots shotwin=200:6 loglevel=debug det",
+      "until": "shot \\d+ frame 205\\b",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 205\\b"
+        }
+      ],
+      "reason": "S6E2 byte compare of the entity state ranges on kmr_03 (copy of ent_kmr03_pic with the det switch). Cap 25 s: boot, warp and the first 300-frame window (the until)."
     },
     {
       "name": "ent_item_pic",
@@ -12366,6 +12390,30 @@
         }
       ],
       "reason": "MSGBOX row. The debug hook uishow (pm_warp.c) opens the messages at scene frame 200 (global frame about 249) with no input; one shot after the text is printed. Cap 30 s: cold start 12 to 16 s plus about 9 s of game time."
+    },
+    {
+      "name": "msgbox_choice_det",
+      "status": "unverified",
+      "subject": "Yard (kmr_20). uishow=choice opens the save choice MSG_Choice_000A; Save is the selected option. Wide off (nowide), det switch. Shot at frame 300.",
+      "proves": "S5TIMG: the choice pointer (msg.c:2273) draws through draw_ci_image_with_clipping; its strips go through the NdTRect record; the shot is byte-equal to the base build.",
+      "debug": "preset=yard nowide uishow=choice shots shotwin=300:1 loglevel=debug det",
+      "until": "shot \\d+ frame 300\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "hook",
+          "regex": "debug uishow: choice opened f200"
+        }
+      ],
+      "reason": "S5TIMG byte gate: msgbox_choice_nowide with det, no drawcensus. Cap 30 s, deadline 25 s."
     },
     {
       "name": "aud_mac01",

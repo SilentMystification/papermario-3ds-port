@@ -7,7 +7,8 @@ Model: Sonnet (user decides).
 - Why not Opus: the helpers exist when it starts.
 
 ## Blocker and base
-S6T merged (with its off-screen answer), S2W and S3MSG merged. S5MENU-P: `sh 3ds/tools/wt_new.sh S5MENUP`. S5MENU-F:
+S6T merged (with its off-screen answer: a colour image switch is a value op), S2W, S3MSG, S5CHUDA and S5MENU0 merged
+(oracle 5: S2W and S5CHUDA are not merged at this writing; S5MENU0 adds fsel_det_pic). S5MENU-P: `sh 3ds/tools/wt_new.sh S5MENUP`. S5MENU-F:
 `sh 3ds/tools/wt_new.sh S5MENUF`. They edit different directories, so both can run at once.
 
 ## Code read (gbi calls per function)
@@ -30,10 +31,13 @@ S5MENU-P: src/pause/*.c (the functions above). S5MENU-F: src/filemenu/*.c (the f
 
 ## Gate (expected values, per row)
 - Build, memcheck OK; nd_host PASS.
-- P: pause_tab_det_pic and pause_spin_grab_det_w300, with bases. F: a det file select scene (pre-flight; else add
-  `fsel_det` from fsel_fncov_idle with `shots shotwin=400:2` instead of fncov) and pause_tab_det_pic. 2 starts each. Every shot
-  byte-equal.
-- listcen: src/pause or src/filemenu build count 0 except the counted fallbacks. Budget 6 each.
+- P: `bench.py base` pause_tab_det_pic and pause_spin_grab_det_w300; one list of both (2 starts). F: `bench.py base`
+  fsel_det_pic (S5MENU0) and pause_tab_det_pic; one list of both (2 starts). Every shot byte-equal.
+- Census (rule 2026-11-12: only what the row moves): listcen build count of the row's directory: the count after equals the
+  calls the row keeps, each named in the commit (the `#else` N64 lines are not counted by listcen if it strips them; else
+  name the rule). The filemenu decorations of filemenu_common.c :974-1031 draw static lists (D_8024B6F0, D_8024B708) and the
+  transition ranges :739-743, :779-783 run only while a window opens: both stay for S7 and are not in F's expectation.
+  Budget 6 each.
 
 ## Stop
 A byte difference: stop, commit, hand back. Delete this row file in the completing commit (the second row to finish deletes it).

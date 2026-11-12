@@ -11,9 +11,9 @@
 #include "nd_op.h"
 #include "nd_scomp.h"
 
-static uint8_t def_next; /* core 1: the ids of the analysed defs (at most 16 compiled defs) */
+static unsigned def_next; /* core 1: the ids of the analysed defs (a hint only: last[]; the key word 0 is the def pointer) */
 
-/* The class of one unit: 0 refused, 1 static, 2 value, 3 no-op (dropped). */
+/* The class of one unit: 0 refused, 1 static, 2 value, 3 no-op (dropped), 4 ordered value (SCOMP0: PRIM, ENV, texture setters; must not lie between two static units). */
 static unsigned unit_class(uint32_t w0) {
     const unsigned id = w0 >> 24, a = w0 & 0xffffffu;
     if (w0 == ND_NOP_A) return 3u;
@@ -22,13 +22,16 @@ static unsigned unit_class(uint32_t w0) {
     case NDO_FOG: case NDO_BLEND: case NDO_FILL: case NDO_PRIMZ: case NDO_SCISSOR: case NDO_MTX: case NDO_POPMTX: case NDO_MOVEMEM: return 2u;
     case NDO_MW: return (a >> 16) == NDO_MW_NONE ? 1u : 2u; /* clip ratio, persp normalize: no field (a static no-op) */
     case NDO_MISC: return ((a >> 16) == NDO_MISC_CIMG || (a >> 16) == NDO_MISC_ND) ? 2u : 0u;
-    default: return 0u; /* PRIM, ENV, RARE (S6T: refused), the texture model ops (the NdTex part, S6E/S6M), draws and control */
+    case NDO_PRIM: case NDO_ENV: case NDO_TIMG: case NDO_TILE: case NDO_TILESIZE:
+    case NDO_LOADBLOCK: case NDO_LOADTILE: case NDO_LOADTLUT: return 4u; /* SCOMP0: an ordered value unit */
+    default: return 0u; /* RARE, draws and control */
     }
 }
 
 int nd_scomp_analyse(NdSDef* d) {
     const uint32_t* u = (const uint32_t*)d->u;
     int ok = d->n >= 1u && d->n <= 32u, seen = 0;
+    unsigned first = 32u, last = 0u; uint32_t om = 0;
     d->nv = d->pre = 0; d->vmask = 0;
     d->omh_m = d->omh_v = d->oml_m = d->oml_v = 0;
     d->geom_c = ~0u; d->geom_s = 0;
@@ -38,12 +41,15 @@ int nd_scomp_analyse(NdSDef* d) {
         const unsigned c = unit_class(w0), id = w0 >> 24;
         if (c == 3u) continue;
         if (c == 0u) { ok = 0; continue; }
-        if (c == 2u) {
+        if (c == 4u) om |= 1u << k;
+        if (c == 2u || c == 4u) {
             d->vmask |= 1u << k; d->nv++;
             if (!seen) d->pre++;
             continue;
         }
         seen = 1;
+        if (first == 32u) first = k;
+        last = k;
         d->last_op = nd_op_n64[id - NDO_BASE];
         switch (id) {
         case NDO_OMH: { const uint32_t m = nd_op_om_mask(a); d->omh_v = (d->omh_v & ~m) | (b & m); d->omh_m |= m; break; }
@@ -55,8 +61,8 @@ int nd_scomp_analyse(NdSDef* d) {
         }
     }
     if (!seen) ok = 0; /* only value units: nothing to compile */
-    if (ok && def_next >= 16u) ok = 0;
-    if (ok) d->id = def_next++;
+    for (unsigned k = 0; k < 32u; k++) if ((om >> k & 1u) && k > first && k < last) ok = 0; /* between two static units */
+    if (ok) d->id = (uint8_t)__atomic_fetch_add(&def_next, 1u, __ATOMIC_RELAXED); /* a hint only (last[]) */
     return ok;
 }
 
@@ -85,14 +91,17 @@ void nd_scomp_key(const NdSDef* d, const NdCombIn* in, uint32_t vprim, uint32_t 
 unsigned nd_scomp_find(NdSTab* t, unsigned def_id, const uint32_t key[ND_SC_KEYW], int* miss) {
     unsigned i = t->last[def_id & 15u];
     if (t->used[i] && !memcmp(t->key[i], key, sizeof t->key[i])) { *miss = 0; return i; }
-    for (i = 0; i < ND_SC_N; i++)
-        if (t->used[i] && t->key[i][0] == key[0] && !memcmp(t->key[i], key, sizeof t->key[i])) { t->last[def_id & 15u] = (uint8_t)i; *miss = 0; return i; }
-    i = t->next++ & (ND_SC_N - 1u);
-    memcpy(t->key[i], key, sizeof t->key[i]);
-    t->used[i] = 1;
-    t->last[def_id & 15u] = (uint8_t)i;
-    *miss = 1;
-    return i;
+    uint32_t h = 2166136261u; unsigned fr; int fr_ok = 0;
+    for (unsigned k = 0; k < ND_SC_KEYW; k++) h = (h ^ key[k]) * 16777619u;
+    i = (h ^ (h >> 15)) & (ND_SC_N - 1u); fr = i;
+    for (unsigned p = 0; p < 8u; p++) {
+        const unsigned j = (i + p) & (ND_SC_N - 1u);
+        if (!t->used[j]) { if (!fr_ok) { fr = j; fr_ok = 1; } continue; }
+        if (t->key[j][0] == key[0] && !memcmp(t->key[j], key, sizeof t->key[j])) { t->last[def_id & 15u] = (uint8_t)j; *miss = 0; return j; }
+    }
+    memcpy(t->key[fr], key, sizeof t->key[fr]); /* a miss: the first free probe slot, else the home slot */
+    t->used[fr] = 1; t->last[def_id & 15u] = (uint8_t)fr; *miss = 1;
+    return fr;
 }
 
 #ifndef ND_SCOMP_HOST
@@ -277,11 +286,23 @@ static __attribute__((cold, noinline)) void s6_run(const NdSDef* d, const uint32
     }
 }
 
-void nd_scomp_run(const uint32_t* rec) {
-    static int chk = -1;
-    const NdSDef* d = (const NdSDef*)(uintptr_t)rec[0];
-    if (__builtin_expect(chk < 0, 0)) chk = pm_debug_has("s6chk") ? 1 : 0;
-    if (__builtin_expect(chk, 0)) { s6_run(d, rec + 2); return; }
-    sc_exec(d, rec + 2);
+static int sc_chk = -1;
+static void sc_go(const NdSDef* d, const uint32_t* v) {
+    if (__builtin_expect(sc_chk < 0, 0)) sc_chk = pm_debug_has("s6chk") ? 1 : 0;
+    if (__builtin_expect(sc_chk, 0)) s6_run(d, v); else sc_exec(d, v);
+}
+void nd_scomp_run(const uint32_t* rec) { sc_go((const NdSDef*)(uintptr_t)rec[0], rec + 2); }
+int nd_scomp_exec(NdSDef* d, const uint32_t* v, unsigned nv) {
+    if (__builtin_expect(!d->st, 0)) d->st = nd_scomp_analyse(d) ? 1u : 2u;
+    if (d->st != 1u || nv != d->nv) return 0;
+    sc_go(d, v);
+    return 1;
+}
+int nd_scomp_exec_own(NdSDef* d) {
+    uint32_t v[2u * 32u]; const uint32_t* u = (const uint32_t*)d->u; unsigned j = 0;
+    if (__builtin_expect(!d->st, 0)) d->st = nd_scomp_analyse(d) ? 1u : 2u;
+    if (d->st != 1u) return 0;
+    for (unsigned k = 0; k < d->n; k++) if (d->vmask >> k & 1u) { v[2u * j] = u[2u * k]; v[2u * j + 1u] = u[2u * k + 1u]; j++; }
+    return nd_scomp_exec(d, v, j);
 }
 #endif

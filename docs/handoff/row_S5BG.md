@@ -31,11 +31,16 @@ S1PREV, S6S and S5PQUAD merged (FB bind arm, compiled state ranges, nd_fill_run 
 ## Files and places
 src/background_gfx.c (gfx_draw_background, func_80027BAC), src/background.c (appendGfx_background_texture). gfx_init_state is S6S's.
 
-## Gate (expected values)
-- Build, memcheck OK; nd_host PASS.
-- One list with bases: spot_mac01_det (mac_01 background), pause_spin_grab_det_w300 (pause picture), xfer_map_shots (map change,
-  background task only frames). 3 starts. Every shot byte-equal.
-- napicen_mac01: background.o and background_gfx.o down to the counted fallbacks. Budget 6.
+## Gate (expected values; oracle 5 pre-flight, main 5c3865487)
+- Blockers: S1PREV merged (not merged at this writing). S6S1 (gfx_init_state) and S5PQUAD (nd_fill_run kinds) are merged. The
+  FILL-cycle fills (the z-buffer clear into nuGfxZBuffer, the bgColor fill, the four bars of :550-565) need a fill kind with the
+  FILL cycle and a colour-image target; design it here (S6T answer 3: a colour image switch is a value op in order).
+- Build, memcheck OK; nd_host PASS (add a host case for the new fill kind).
+- `bench.py base` of spot_mac01_det, pause_spin_grab_det_w300 and xfer_map_shots; one list `bench.py run
+  spot_mac01_det,pause_spin_grab_det_w300,xfer_map_shots --row S5BG --why "S5BG: background as native records"` (3 starts; the
+  three scenes are the three modes: normal, pause picture, background-only frames). Every shot byte-equal.
+- Census: napicen_mac01 (1 start): background.o and background_gfx.o ops per frame. Expected: only the ops this row keeps, each
+  named in the commit with its count; a kept op with no named reason is a fault. Budget 8.
 
 ## Stop
 A byte difference: stop, commit, hand back. Delete this row file in the completing commit.

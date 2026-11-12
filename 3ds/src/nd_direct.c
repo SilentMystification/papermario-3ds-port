@@ -12,10 +12,14 @@
 #include "pm_gpu.h"
 #include "pm_tex.h"
 #include "pm_port.h"
+#include "PR/gbi.h"
+#include "gbi_custom.h"
+#include "nd_gbi.h"
 
 #ifndef pm_gpu_flush
 #define pm_gpu_flush() pm_gpu_flush_at(__LINE__)
 #endif
+int nd_dq_on; /* S5CHUDA: a direct quad is drawing (nd_direct_quad .. nd_direct_end); read by gv_epoch_enter */
 void comb_in_walker(NdCombIn* in);                 /* nd_comb.c: the walker's combine inputs */
 void ens_clear(void);                              /* nd_tex_set.c */
 void nd_sr_forget(void);                           /* nd_set.c */
@@ -174,6 +178,7 @@ void nd_direct_end(void) {
     ens_clear();
     nd_ws.cur_tile = -1;
     sc_ok = 0;
+    nd_dq_on = 0;
     nd_sr_forget();
     gv_epoch++; /* the ops of the stream path each raise it: the first triangle after this draw takes its state again */
 }
@@ -228,4 +233,134 @@ void nd_glyph_draw(uint32_t raster, uint32_t pal, int tlut, int w, int h, int ul
         const float t1 = t0 + dtdy * height / (float)th;
         if (ex >= rx0 && ey >= ry0) pm_gpu_tex_rect(rx0, ry0, ex, ey, s0, t0, s1, t1);
     }
+}
+
+/* NATIVEAPI E5b (S5PQUAD): the combine and other mode low bits of each NdFillRec kind (the walker's words for the same macros). */
+static const struct { Gfx cc; uint32_t rm0, rm1; } kFillKind[4] = {
+    { gsDPSetCombineMode(G_CC_PRIMITIVE, G_CC_PRIMITIVE), G_RM_CLD_SURF, G_RM_CLD_SURF2 },
+    { gsDPSetCombineMode(G_CC_PRIMITIVE, G_CC_PRIMITIVE), CVG_DST_SAVE | G_RM_OPA_SURF, CVG_DST_SAVE | G_RM_OPA_SURF2 },
+    /* PM_CC_PRIM_FULL_ALPHA (include/macros.h:328) written out: macros.h is not included here */
+    { gsDPSetCombineLERP(0, 0, 0, PRIMITIVE, 0, 0, 0, 1, 0, 0, 0, PRIMITIVE, 0, 0, 0, 1), G_RM_OPA_SURF, G_RM_OPA_SURF2 },
+    { gsDPSetCombineMode(G_CC_PRIMITIVE, G_CC_PRIMITIVE), G_RM_XLU_SURF, G_RM_XLU_SURF2 },
+};
+
+void nd_walk_state(const uint32_t* q, unsigned n); /* nd_walk.c, core 0: the op executor */
+
+/* the typed units of the fallback ops: the record-side gbi redirect (nd_gx_w takes a local packet, so the ops are typed as the stream has them) */
+#include "gbi_custom.h"
+#include "nd_gbi.h"
+
+/* Off-screen or depth colour image (row S5PQUAD 2b): the walker's fill takes its own path (off_screen_check). The state of the kind and the
+ * primitive colour as ops, then one fill rectangle (lower right exclusive, as passed). n = 4 ops (nd_walk_state counts ops). */
+static void nd_fill_walk(const NdFillRec* f, unsigned k) {
+    static Gfx buf[4];
+    static unsigned nfb;
+    if (nfb++ < 16u) pm_log_d("fill fallback f%u", pm_frame_count());
+    nd_gx_w(&buf[0], ND_X0(kFillKind[k].cc.words.w0, kFillKind[k].cc.words.w1), ND_X1(kFillKind[k].cc.words.w0, kFillKind[k].cc.words.w1));
+    gDPSetRenderMode(&buf[1], kFillKind[k].rm0, kFillKind[k].rm1);
+    gDPSetPrimColor(&buf[2], 0, 0, (f->rgba >> 24) & 0xffu, (f->rgba >> 16) & 0xffu, (f->rgba >> 8) & 0xffu, f->rgba & 0xffu);
+    gDPFillRectangle(&buf[3], f->x0, f->y0, f->x1, f->y1);
+    nd_walk_state((const uint32_t*)buf, 4u);
+}
+
+/* core 0: the 1-cycle fill of a rectangle, as the walker's fill (nd_rect.c nd_fillrect): primitive colour, lower right exclusive. */
+void nd_fill_run(const uint32_t* u) {
+    const NdFillRec* f = (const NdFillRec*)u;
+    const unsigned k = f->kind & 3u;
+    const int x1 = f->x1 - 1, y1 = f->y1 - 1;
+    NdPsoN64 d;
+    if (nd_direct_ready() != 1) {
+        nd_fill_walk(f, k);
+        return;
+    }
+    d.cw0 = kFillKind[k].cc.words.w0;
+    d.cw1 = kFillKind[k].cc.words.w1;
+    d.oml = kFillKind[k].rm0 | kFillKind[k].rm1;
+    d.omh = G_CYC_1CYCLE;
+    d.omh_m = 3u << G_MDSFT_CYCLETYPE;
+    nd_direct_bind(nd_pso_n64(&d), f->rgba, nd_direct_env());
+    if (x1 >= f->x0 && y1 >= f->y0) {
+        pm_gpu_set_replace(0);
+        pm_gpu_fill_rect(f->x0, f->y0, x1, y1, f->rgba);
+    }
+    nd_direct_end();
+}
+
+/* S5TRECT: the NDC_NAPI runner of one NdTRect (nd_api.h): a texture window and one texture rectangle. Direct when the window is valid and the walker
+ * state lets a direct rectangle draw (nd_direct_ready == 1); else the same load and rectangle ops into a local list, walked with nd_walk_state. */
+void nd_trect_run(const uint32_t* u) {
+    static Gfx buf[16];
+    static unsigned nfb;
+    const NdTRect* r = (const NdTRect*)u;
+    const int is4 = r->siz == G_IM_SIZ_4b;
+    const unsigned sh = is4 ? 1u : 2u;
+    const int stride = is4 ? (int)(r->width >> 1) : (int)r->width;
+    const int32_t lu = r->uls << sh, ll = r->lrs << sh;
+    const unsigned wrap[4] = { r->cms, r->cmt, r->masks, r->maskt };
+    NdBindDesc d;
+    Gfx* p = buf;
+    const int ok = nd_tex_win_desc(&d, r->img, stride, r->fmt, r->siz, wrap, lu >> 2, r->ult, ((ll - lu) >> 2) + 1, r->lrt - r->ult + 1,
+                                   r->uls << 2, r->ult << 2, r->lrs << 2, r->lrt << 2, r->pal, (int)r->pal_n);
+    if (ok && nd_direct_ready() == 1) {
+        const NdPsoN64 pd = { .cw0 = r->cw0, .cw1 = r->cw1, .oml = r->oml, .omh = r->omh, .omh_m = (3u << G_MDSFT_TEXTLUT) | (3u << G_MDSFT_TEXTFILT) };
+        const NdPso id = nd_pso_n64(&pd);
+        if (nd_direct_bind(id, (r->pad & 1u) ? nd_direct_prim() : r->prim, nd_direct_env())) {
+            nd_direct_tex(&d);
+            nd_direct_rect(r->w0, r->w1, r->hs, r->hd);
+            nd_direct_end();
+            return;
+        }
+    }
+    if (nfb++ < 16u) pm_log_d("trect fallback f%u", pm_frame_count());
+    switch (r->siz) {
+        case G_IM_SIZ_4b:
+            gDPLoadTextureTile_4b(p++, r->img, r->fmt, r->width, r->height, r->uls, r->ult, r->lrs, r->lrt, 0, r->cms, r->cmt, r->masks, r->maskt, G_TX_NOLOD, G_TX_NOLOD);
+            break;
+        case G_IM_SIZ_8b:
+            gDPLoadTextureTile(p++, r->img, r->fmt, G_IM_SIZ_8b, r->width, r->height, r->uls, r->ult, r->lrs, r->lrt, 0, r->cms, r->cmt, r->masks, r->maskt, G_TX_NOLOD, G_TX_NOLOD);
+            break;
+        case G_IM_SIZ_16b:
+            gDPLoadTextureTile(p++, r->img, r->fmt, G_IM_SIZ_16b, r->width, r->height, r->uls, r->ult, r->lrs, r->lrt, 0, r->cms, r->cmt, r->masks, r->maskt, G_TX_NOLOD, G_TX_NOLOD);
+            break;
+        default:
+            gDPLoadTextureTile(p++, r->img, r->fmt, G_IM_SIZ_32b, r->width, r->height, r->uls, r->ult, r->lrs, r->lrt, 0, r->cms, r->cmt, r->masks, r->maskt, G_TX_NOLOD, G_TX_NOLOD);
+            break;
+    }
+    ND_GX(p++, r->w0, r->w1);
+    gImmp1(p++, G_RDPHALF_1, r->hs);
+    gImmp1(p++, G_RDPHALF_2, r->hd);
+    nd_walk_state((const uint32_t*)buf, (unsigned)(p - buf));
+}
+
+/* S5CHUDA (NATIVEAPI E1): the geometry of one transformed HUD quad on the bound state. nd_dq_on is set for the length of the quad and cleared by
+ * nd_direct_end: gv_epoch_enter (nd_geom.c) then skips ensure_tile and dual_bind, which would rebind tile 0 from the walker's stale td[0] over
+ * the descriptor nd_direct_tex bound. The walker state a direct bind changed raises gv_epoch once, as the first state op of the stream would. */
+void nd_direct_quad(uint32_t mtx, const void* vtx4) {
+    const u32 wm = ND_W0_D2(G_MTX, sizeof(Mtx), (G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW) ^ G_MTX_PUSH, 0) & 0xffffffu; /* gSPMatrix */
+    const u32 wv = ND_W0_VTX(4, 0) & 0xffffffu;                                                                       /* gSPVertex(v, 4, 0) */
+    const u32 t0 = (_SHIFTL(G_TRI1, 24, 8) | __gsSP1Triangle_w1f(0, 1, 2, 0)) & 0xffffffu;                            /* gSP1Triangle(0, 1, 2) */
+    const u32 t1 = (_SHIFTL(G_TRI1, 24, 8) | __gsSP1Triangle_w1f(0, 2, 3, 0)) & 0xffffffu;                            /* gSP1Triangle(0, 2, 3) */
+    nd_dq_on = 1;
+    gv_epoch++;
+    pm_gbi_cur_op = G_MTX;
+    load_mtx(wm, mtx, 0);
+    pm_gbi_cur_op = G_VTX;
+    nd_geom_vtx(wv, (u32)(uintptr_t)vtx4, NULL);
+    pm_gbi_cur_op = G_TRI1;
+    tri_prep_ok = 0;
+    draw_tri(t0);
+    tri_prep_ok = 0;
+    draw_tri(t1);
+    pm_gbi_cur_op = G_POPMTX;
+    gbi_popmtx(64u); /* gSPPopMatrix: w1 = 1 * 64 */
+}
+
+/* S5CHUDA: tile 0 after gDPLoadTextureBlock(timg, fmt, siz, w, h, 0, cms, cmt, masks, maskt, 0, 0). The block load leaves no LoadTile window (set_timg
+ * clears ld_valid, the block load sets none, and it clears the load record of its TMEM address), the image stride is the width (the macro loads
+ * through a width 1 image, so set_tilesize takes the tile width) and the tile size is (0, 0, (w - 1) << 2, (h - 1) << 2). That is the window of
+ * nd_tex_win_desc with the origin (0, 0), the full size and stride w, so the rule is that call; with a mask the ld_valid rules of tex_win0 would
+ * differ (period widening), so a mask or a block over 2048 texels is not valid (0): the caller runs the old list. */
+int nd_tex_blk_desc(NdBindDesc* o, const void* timg, unsigned fmt, unsigned siz, int w, int h, const unsigned wrap[4], const void* pal, int pal_n) {
+    if (w <= 0 || h <= 0 || siz == 0 || w * h > 2048 || wrap[2] || wrap[3]) return 0;
+    return nd_tex_win_desc(o, timg, w, fmt, siz, wrap, 0, 0, w, h, 0, 0, (w - 1) << 2, (h - 1) << 2, pal, pal_n);
 }

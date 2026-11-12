@@ -418,6 +418,8 @@ set(PORT_SRC
     src/pm_map.c
     src/pm_mapdata.c
     src/map_restore_table.c
+    src/nd_gtab.c
+    src/nd_gfx_tab.c
     src/pm_buffers.c
     src/game_stubs.c
     src/effect_loads.c

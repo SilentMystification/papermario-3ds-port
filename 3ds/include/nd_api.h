@@ -29,7 +29,8 @@ void nd_parts_add(NdParts* b, const uint32_t* units);        /* core 1: units = 
 void nd_parts_end(NdParts* b);                               /* core 1: records the open run (no-op when empty) */
 void nd_parts_run(const uint32_t* rec);                      /* nd_walk.c, core 0: the NDC_NAPI runner of a run */
 void nd_parts_run_v(const uint32_t* rec);                    /* nd_walk.c, core 0: the runner of a run whose units are all typed setters (S4PDIR) */
-int nd_part_draw(const uint32_t* list);                      /* nd_geom.c, core 0: one flat list natively; 0 = not drawn (run the list) */
+struct NdGTab;
+int nd_part_draw(const struct NdGTab* t);                    /* nd_geom.c, core 0: one flat list from its table (S7CONV, nd_gtab.h); 0 = not drawn (run t->list) */
 
 /* NATIVEAPI A1 (NAPI2B): the shared direct-draw helpers. A direct executor (core 0) states a draw without the walker's op stream: the pso gives the
  * combine decision (made once, cold), the texture comes from a descriptor, the rectangle from the N64 rectangle words.
@@ -60,4 +61,28 @@ void nd_tex_bind_glyph(uint32_t raster, uint32_t pal, int tlut, int w, int h); /
 uint32_t nd_direct_prim(void);                 /* core 0: the walker's primitive colour */
 uint32_t nd_direct_env(void);                  /* core 0: the walker's environment colour */
 
+/* NATIVEAPI E5b (S5PQUAD): one fill rectangle with its primitive colour (S1FILL's record, plus the kind). x0..x1, y0..y1: the lower right is
+ * exclusive. rgba: 0xRRGGBBAA. kind: 0 overlay translucent, 1 overlay opaque (CVG_DST_SAVE), 2 quad opaque (PM_CC_PRIM_FULL_ALPHA), 3 quad
+ * translucent. nd_fill_run (nd_direct.c, core 0) states the combine and render mode of the kind and fills. */
+typedef struct { int32_t x0, y0, x1, y1; uint32_t rgba, kind; } NdFillRec;
+void nd_fill_run(const uint32_t* u); /* nd_direct.c, core 0: the NDC_NAPI runner of an NdFillRec */
+
+/* S5TRECT: one texture window load plus one texture rectangle (the rect words as gbi.h writes them). 13 units (104 bytes on 32-bit: 2 pointers,
+ * 23 words, fill and pad). nd_trect_run (nd_direct.c, core 0) is the NDC_NAPI runner. */
+typedef struct NdTRect {
+    const void* img; const void* pal; uint32_t pal_n, fmt, siz, width, height;
+    int32_t uls, ult, lrs, lrt; uint32_t cms, cmt, masks, maskt;
+    uint32_t w0, w1, hs, hd;
+    uint32_t cw0, cw1, oml, omh, prim, fill, pad; /* pad bit 0: keep the walker's prim (nd_direct_prim) instead of prim */
+} NdTRect;
+_Static_assert(sizeof(NdTRect) % 8 == 0 && sizeof(NdTRect) == 104, "NdTRect: 13 whole 8-byte units");
+void nd_trect_run(const uint32_t* u);
+
 #endif
+
+/* S5CHUDA (NATIVEAPI E1): one transformed textured quad of a complex HUD element, between nd_direct_bind/nd_direct_tex and nd_direct_end. nd_direct_quad
+ * runs the matrix push-load of mtx (the old gSPMatrix w1), the load of the 4 Vtx at vtx4 to slots 0 to 3, the triangles (0,1,2) and (0,2,3) and the pop,
+ * each by the walker function of the op; the first triangle does not rebind tile 0 (nd_dq_on). nd_tex_blk_desc: the descriptor of tile 0 after
+ * gDPLoadTextureBlock of an image w x h (wrap = cms, cmt, masks, maskt); 0 = not valid (a mask, a block over 2048 texels, or the window call refuses). */
+void nd_direct_quad(uint32_t mtx, const void* vtx4);
+int nd_tex_blk_desc(NdBindDesc* o, const void* timg, unsigned fmt, unsigned siz, int w, int h, const unsigned wrap[4], const void* pal, int pal_n);

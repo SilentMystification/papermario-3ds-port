@@ -72,7 +72,9 @@ NAPI2B and S1FILL merged. `sh 3ds/tools/wt_new.sh S1TSTEN`; PM_ROW=S1TSTEN PM_LA
 3. Scenario and bench `sten_enter_det` (try 2, oracle 4: no probe run). Insert both right after spot_mac01_det, never at the
    file end; one commit. Debug: `warp=mac_01:0 pos=0:0:200 shots shotwin=1:160:4 loglevel=debug det` (no prof switch: prof mode
    sets `log=off`, which is why try 1's spot_mac01_det run printed no `tsten` and no `warp:` line). Until: `shot \d+ frame 157\b`
-   (shot 39 of 40). Cap 30, deadline 25. expected_events: `warp: mac_01 entry 0` and `tsten f\d+ id 0 direct 1`. Bench: kind
+   (shot 39 of 40). Cap 30, deadline 25. expected_events: only `warp: mac_01 entry 0` (try 3, oracle 5: the base build has no
+   tsten line, so an expected tsten event made every base fail; the tsten count is the log grep of the gate below). Fix of the
+   committed entry c107a5556: delete the tsten object from its expected_events list, commit (scenario file only). Bench: kind
    azahar_pic, scenario sten_enter_det, cap 30, the same until, tags azahar, pic. Purpose: "S1TSTEN byte gate: the Mario stencil
    fade-in of the world entry". Why the window: a warp boot enters GAME_MODE_ENTER_WORLD (3ds/src/pm_warp.c:1149), so
    state_init_enter_world sets TRANSITION_ENTER_WORLD (src/state_map_transitions.c:28) and the fade-in draws
@@ -85,7 +87,8 @@ NAPI2B and S1FILL merged. `sh 3ds/tools/wt_new.sh S1TSTEN`; PM_ROW=S1TSTEN PM_LA
   `git merge-base HEAD main`; the base runs your scenario file). Expected: stored, 40 and 6 shots.
 - One list: `bench.py run sten_enter_det,spot_mac01_det --row S1TSTEN --why "B2a: transition stencil direct"` (2 starts).
   sten_enter_det log: `tsten f<n> id 0 direct 1` lines (at least 1; hand back the first and last frame), no `direct 0`. `bench.py cmp` both: every shot byte-equal.
-- Budget 6 Azahar starts (1 used by try 1; a base of a new bench takes 2 runs).
+- Census: `grep -c "tsten f[0-9]* id 0 direct 1"` on the head sten_enter_det log only (the base prints none): at least 1.
+- Budget 6 Azahar starts, reset once for the try 3 row fault (a base of a new bench takes 2 runs).
 
 ## Stop
 A byte difference or a `direct 0` line: stop, commit, hand back the cmp output and the tsten lines (2 tries per named cause).
