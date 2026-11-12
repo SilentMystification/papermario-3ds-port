@@ -1231,10 +1231,6 @@
         {
           "name": "warp",
           "regex": "warp: mac_01 entry 0"
-        },
-        {
-          "name": "tsten direct",
-          "regex": "tsten f\\d+ id 0 direct 1"
         }
       ],
       "reason": "S1TSTEN byte gate: DET cold start, no prof switch (prof sets log=off, so no tsten line). Shot 39 (frame 157) is the until. Cap 30 s, deadline 25 s."
