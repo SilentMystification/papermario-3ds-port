@@ -17,10 +17,10 @@ static void check(const char* what, int ok) {
 /* cam_main-like: viewport (value), clear geometry, texture off, cycle type, scissor (value), combine SHADE, render mode, matrix (value) */
 static const uint32_t cam_u[] = {
     NDO_W0(NDO_MOVEMEM, G_MV_VIEWPORT), 0,
+    NDO_W0(NDO_SCISSOR, 0), 0,
     NDO_W0(NDO_GEOM, ~(uint32_t)(G_SHADE | G_LIGHTING)), 0,
     NDO_W0(NDO_TEXTURE, 0), 0,
     NDO_W0(NDO_OMH, OM_A(G_MDSFT_CYCLETYPE, 2)), G_CYC_1CYCLE,
-    NDO_W0(NDO_SCISSOR, 0), 0,
     ND_NOP_A, 0,
     NDO_W0(NDO_COMB, 0xfffe7e), 0xfffffbfdu,
     NDO_W0(NDO_OML, OM_A(3, 29)), 0x0f0a4000u,
@@ -49,6 +49,18 @@ static const uint32_t mid_u[] = {
     NDO_W0(NDO_PRIM, 0), 0x11223344u,
     NDO_W0(NDO_OML, OM_A(0, 2)), 0,
 };
+/* S6VORD: a scissor (class 2 value) between two static units: refused */
+static const uint32_t mid2_u[] = {
+    NDO_W0(NDO_OMH, OM_A(G_MDSFT_CYCLETYPE, 2)), G_CYC_1CYCLE,
+    NDO_W0(NDO_SCISSOR, 0), 0,
+    NDO_W0(NDO_OML, OM_A(0, 2)), 0,
+};
+/* S6VORD: MW none is a no-op (dropped); the matrix after it is a value unit before the first static */
+static const uint32_t mwn_u[] = {
+    NDO_W0(NDO_MW, NDO_MW_NONE << 16), 0,
+    NDO_W0(NDO_MTX, 0x07), 0,
+    NDO_W0(NDO_OMH, OM_A(G_MDSFT_CYCLETYPE, 2)), G_CYC_1CYCLE,
+};
 /* SCOMP0: texture setters after the last static unit: value units, after the combine */
 static const uint32_t tex_u[] = {
     NDO_W0(NDO_COMB, 0xfffe7e), 0xfffffbfdu,
@@ -75,11 +87,13 @@ int main(void) {
     NdSDef pre = { pre_u, sizeof pre_u / 8u, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     NdSDef mid = { mid_u, sizeof mid_u / 8u, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     NdSDef tex = { tex_u, sizeof tex_u / 8u, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    NdSDef mid2 = { mid2_u, sizeof mid2_u / 8u, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    NdSDef mwn = { mwn_u, sizeof mwn_u / 8u, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     NdCombIn a, b;
     int m1, m2;
     unsigned i1, i2;
     check("cam def compiles", nd_scomp_analyse(&cam) == 1);
-    check("cam value units 3 (viewport, scissor, matrix), 1 before the first static", cam.nv == 3u && cam.pre == 1u && cam.vmask == (1u | 1u << 4 | 1u << 9));
+    check("cam value units 3 (viewport, scissor, matrix), 2 before the first static", cam.nv == 3u && cam.pre == 2u && cam.vmask == (1u | 1u << 1 | 1u << 9));
     check("cam folds: cycle mask, render mode mask, geometry clear, combine, texture",
           cam.omh_m == (3u << G_MDSFT_CYCLETYPE) && cam.oml_m == 0xfffffff8u && cam.has_comb && cam.has_tex && cam.has_geom &&
           cam.geom_c == (~(uint32_t)(G_SHADE | G_LIGHTING) & 0xffffffu) && cam.cw0 == 0xfcfffe7eu);
@@ -88,6 +102,8 @@ int main(void) {
     check("prim before the first static compiles", nd_scomp_analyse(&pre) == 1 && pre.nv == 1u && pre.pre == 1u);
     check("prim between static units is refused", nd_scomp_analyse(&mid) == 0);
     check("texture units after the last static compile", nd_scomp_analyse(&tex) == 1 && tex.nv == 2u && tex.pre == 0u);
+    check("scissor between static units is refused", nd_scomp_analyse(&mid2) == 0);
+    check("MW none is a no-op: the matrix is a pre value", nd_scomp_analyse(&mwn) == 1 && mwn.nv == 1u && mwn.pre == 1u);
     /* cam: the combine words are set by the def, prim is inherited and read by the decision */
     base_in(&a); i1 = id_of(&t, &cam, &a, 0, &m1);
     check("first run of a key is a miss", m1 == 1);

@@ -18,18 +18,25 @@ static const Gfx cb_post_u[] = {
     gsSPClearGeometryMode(G_TEXTURE_GEN),
 };
 static NdSDef cb_post = { cb_post_u, sizeof cb_post_u / sizeof cb_post_u[0] };
-static const Gfx cb_r1_u[] = {
+/* S6VORD: a value unit between two static units is refused: cb_r1 and cb_r2 are each split at their value unit (the record runs the halves in order). */
+static const Gfx cb_r1a_u[] = {
     gsDPSetCycleType(G_CYC_1CYCLE),
     gsDPSetRenderMode(Z_CMP | CVG_DST_CLAMP | ZMODE_OPA | FORCE_BL | G_RM_PASS, Z_CMP | CVG_DST_CLAMP | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_0, G_BL_CLR_IN, G_BL_1)),
     gsDPSetColorImage(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, 0),
+};
+static NdSDef cb_r1a = { cb_r1a_u, sizeof cb_r1a_u / sizeof cb_r1a_u[0] };
+static const Gfx cb_r1b_u[] = {
     gsDPSetCombineMode(PM_CC_PRIM_NO_ALPHA, PM_CC_PRIM_NO_ALPHA),
     gsDPSetPrimColor(0, 0, 0, 0, 0, 0),
 };
-static NdSDef cb_r1 = { cb_r1_u, sizeof cb_r1_u / sizeof cb_r1_u[0] };
-static const Gfx cb_r2_u[] = {
+static NdSDef cb_r1b = { cb_r1b_u, sizeof cb_r1b_u / sizeof cb_r1b_u[0] };
+static const Gfx cb_r2a_u[] = {
     gsDPSetColorImage(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, 0),
     gsDPSetDepthSource(G_ZS_PRIM),
     gsDPSetPrimDepth(0, 0),
+};
+static NdSDef cb_r2a = { cb_r2a_u, sizeof cb_r2a_u / sizeof cb_r2a_u[0] };
+static const Gfx cb_r2b_u[] = {
     gsDPSetRenderMode(G_RM_ZB_OPA_DECAL, G_RM_ZB_OPA_DECAL2),
     gsDPSetTextureFilter(G_TF_POINT),
     gsDPSetTexturePersp(G_TP_NONE),
@@ -38,7 +45,7 @@ static const Gfx cb_r2_u[] = {
     gsDPSetTextureDetail(G_TD_CLAMP),
     gsDPSetTextureLOD(G_TL_TILE),
 };
-static NdSDef cb_r2 = { cb_r2_u, sizeof cb_r2_u / sizeof cb_r2_u[0] };
+static NdSDef cb_r2b = { cb_r2b_u, sizeof cb_r2b_u / sizeof cb_r2b_u[0] };
 static const Gfx cb_r3_u[] = {
     gsDPSetDepthSource(G_ZS_PIXEL),
     gsDPSetRenderMode(G_RM_AA_ZB_XLU_SURF, G_RM_AA_ZB_XLU_SURF2),
@@ -159,7 +166,8 @@ void N(gfx_build_inside_crystal_ball)(void) {
     p = v1;
     gDPSetColorImage(p++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxZBuffer));
     gDPSetPrimColor(p++, 0, 0, 248, 240, 240, 0);
-    nd_scomp_rec(&cb_r1, v1, (unsigned)(p - v1));
+    nd_scomp_rec(&cb_r1a, v1, 1);
+    nd_scomp_rec(&cb_r1b, v1 + 1, 1);
 #else
     gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
     gDPSetRenderMode(gMainGfxPos++, Z_CMP | CVG_DST_CLAMP | ZMODE_OPA | FORCE_BL | G_RM_PASS, Z_CMP | CVG_DST_CLAMP | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_0, G_BL_CLR_IN, G_BL_1));
@@ -173,7 +181,8 @@ void N(gfx_build_inside_crystal_ball)(void) {
     p = v2;
     gDPSetColorImage(p++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
     gDPSetPrimDepth(p++, 32734, 0);
-    nd_scomp_rec(&cb_r2, v2, (unsigned)(p - v2));
+    nd_scomp_rec(&cb_r2a, v2, 2);
+    nd_scomp_rec(&cb_r2b, NULL, 0);
 #else
     gDPPipeSync(gMainGfxPos++);
     gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
