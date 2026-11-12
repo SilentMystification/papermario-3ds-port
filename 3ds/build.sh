@@ -77,6 +77,27 @@ gen_shapes() {
 }
 gen_shapes
 
+# S7CONV: native tables of the static gfx lists (3ds/tools/gen_gfx_tab.sh, row S7CONV design note): 3ds/src/nd_gfx_tab.c (git-ignored, never
+# committed, in the build key). Run in the host image with the nd_host_test.sh layout (assets read only from ASSET_BASE). Skip: the stamp
+# holds the hashes of the tool, its headers and the gfx sources of the set; the file is replaced only when its content changes.
+gen_gfx_tab() {
+    w=$(pwd -W 2>/dev/null || pwd); ab=$(cd "$ASSET_BASE" && pwd -W 2>/dev/null || pwd)
+    stamp=$OUT/gfx_tab.stamp
+    want="$(cat 3ds/tools/gen_gfx_tab.sh 3ds/tools/gen_gfx_syms.py 3ds/tools/nd_gfx_conv.c 3ds/tools/nd_gconv.h 3ds/tools/gconv_inc/include_asset.h 3ds/src/nd_scomp.c 3ds/include/nd_scomp.h 3ds/include/nd_gtab.h 3ds/include/nd_op.h 3ds/include/nd_gbi.h src/effects/gfx/*.c | sha1sum | cut -d' ' -f1)"
+    if [ -f "$stamp" ] && [ -f 3ds/src/nd_gfx_tab.c ] && [ "$(cat "$stamp")" = "$want" ]; then echo "gen_gfx_tab: up to date"; return 0; fi
+    mkdir -p "$OUT"
+    rm -f "$stamp" 3ds/src/nd_gfx_tab.c.new
+    MSYS_NO_PATHCONV=1 docker run --rm -v "$w:/w" -v "$ab/assets:/ar/assets:ro" -v "$ab/ver/us/build:/ar/ver/us/build:ro" -w /work pm3ds-host:1 sh -c '
+        set -e; mkdir -p /work/ver/us
+        for d in 3ds include src; do ln -s "/w/$d" "/work/$d"; done
+        ln -s /ar/assets /work/assets; ln -s /ar/ver/us/build /work/ver/us/build
+        sh 3ds/tools/gen_gfx_tab.sh /w/3ds/src/nd_gfx_tab.c.new /tmp/gconv 2>&1 | grep -v "^gconv def"' || { echo "gen_gfx_tab failed" >&2; exit 1; }
+    [ -s 3ds/src/nd_gfx_tab.c.new ] || { echo "gen_gfx_tab failed: no output" >&2; exit 1; }
+    if cmp -s 3ds/src/nd_gfx_tab.c.new 3ds/src/nd_gfx_tab.c; then rm -f 3ds/src/nd_gfx_tab.c.new; else mv -f 3ds/src/nd_gfx_tab.c.new 3ds/src/nd_gfx_tab.c; fi
+    echo "$want" > "$stamp"
+}
+gen_gfx_tab
+
 # The inputs CMake reads (3ds/CMakeLists.txt, DECOMP = repo root). Nothing else reaches the build.
 # CODE_DIRS are read from this worktree; ASSET_DIRS from ASSET_BASE (see above).
 CODE_DIRS="3ds/CMakeLists.txt 3ds/effects.cmake 3ds/battle.cmake 3ds/maps.cmake 3ds/map_syms.lds LaunchIcon.png 3ds/ld 3ds/shaders 3ds/stub_include 3ds/include 3ds/src src include"
@@ -100,7 +121,7 @@ key_now() {
         git ls-tree -r HEAD -- $KEY_IN
         git diff HEAD -- $KEY_IN
         git ls-files -o --exclude-standard -- $KEY_IN | while read -r f; do sha1sum "$f"; done
-        sha1sum 3ds/src/map_restore_table.c 3ds/ld/map_restore.ld 3ds/ld/map_restore_bss.ld 3ds/include/texkey_patch.h
+        sha1sum 3ds/src/map_restore_table.c 3ds/src/nd_gfx_tab.c 3ds/ld/map_restore.ld 3ds/ld/map_restore_bss.ld 3ds/include/texkey_patch.h
         (cd "$ASSET_BASE" && find $ASSET_DIRS -type f -printf '%p %s %T@\n' | sort)
     } | sha1sum | cut -d' ' -f1
 }

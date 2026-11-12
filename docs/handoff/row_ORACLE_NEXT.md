@@ -44,27 +44,23 @@ nd_render_state, tex_win) runs only in the host converter at build time.
 ### Stages and rows (id: scope | blocker | model)
 Every row is gated by nd_host, the DIRECT byte set (spot_mac01_det, mdl5_iwa10_det, spot_mac00_det) or its named scenes, and the
 LISTCEN deltas (the counts it removes). CONSOLE = one batch push, compared with a stored run.
-- Oracle 4 handoff (2026-11-12, to ORACLE5; replaces the old running and waiting lists):
-  - Written by oracle 4 (Haiku rows): SCOMP0 and SCOMP1 (compiler: ordered value units PRIM/ENV/texture, no def-id cap, core 0
-    entries nd_scomp_exec/_own, 128-slot hashed table); S5SPR2 and S5SPR3 (sprite render mode, matrix and prim as one range); S6E
-    (entity gaps via nd_scomp_exec_own), S6E2 (5 src/entity setupGfx files), S6E3 (HeartBlock, SuperBlock); S6M1 (mac_01 crystal
-    ball), S6M2 (flo_10 waterfx); S3MSG (draw_number digits via NdTRect). Corrected: S5PQUAD try 3, S1TSTEN try 2, S6S2 try 2,
-    S5TIMG step 0 (NdTRect pad bit 0 = keep the walker prim; S5TTL waits for it).
-  - Not written (ORACLE5): S6M3.. per row_S6M.md index (isk_05/13/14 + dro_02 npc, hos_05 intro, Credits, KnockDownPlayer,
-    trd_05/06, mac_00 water_gfx, small files; S6M1 form); S5CHUD split (A: nd_direct_quad helper, Sonnet: matrix palette entry,
-    ring copy, clip and cull through nd_geom/gv_tri/load_mtx and the fps60 twin; B: the mode 2 call site, Haiku: PM_CC_47, prim,
-    render mode by flags, LoadTextureBlock IA8, Vertex + 2 Tri1 0 1 2 / 0 2 3 at hud_element.c render_complex_hud_element case 2);
-    S5EMDL (2), S5SHADE, S5ITEM, S5BG, S5BTL, S5MENU per file; then all S7, S8, S9 rows.
-  - Order: SCOMP0+SCOMP1 -> S6E, S6E2, S6E3, S6M1, S6M2, S5SPR3 (S5SPR2 any time); S5TRECT -> S5TIMG -> S5TTL, S3MSG.
-  - Facts: SPR_SHADING_FLAG_SET_VIEWPORT is never set (enums.h:5223): the sprite vpAlt arm is dead; the sprite texture ops feed only
-    the walker tile model and the fallback (deleted with set_tilesize in S9DEL2, written there). The S5TRECT fallback replays only
-    the load and the rectangle: every state op and LoadTLUT stays at the call site. Rows appending to the ends of nd_api.h,
-    nd_direct.c or nd_direct_test.c conflict in sequence: merge main right before the gate (rule written in those rows). hotset
-    fncovfn hides functions under 20 calls. det scenes: a scene without shotwin or shotmode takes periodic shots every 30 drawn
-    frames (pm_gpu.c:1988-1990), which vary per run: use shotwin or shotmode (shotmode=255 arms without a mode burst); prof mode
-    sets log=off (no pm_log_d lines). Base cache key includes the scenario hash; bench.py base runs the worktree's scenario file.
-    Custom gfx builders record into a stream range that nd_range_run replays, so scomp records work inside them. A def's value
-    units must match the packet count the g macros write (nv), else the record falls back with a `scomp: def` line.
+- Oracle 5 handoff (2026-11-12, context near 500K; replaces the oracle 4 block):
+  - Rows written by oracle 5 (state at writing; main 3cef2c284): S4INST, S4INST2 (one-instance nd_parts_run_v runs; explosion
+    and snowman_doll go to S7EFX); S5PQUAD2; S5TIMG (draw_ci template); S5CHUDA (merged) / S5CHUDB (try 2: nd_tex_blk_desc cap
+    `w * h > 2048` is the 16-bit limit, IA8 needs bytes <= 4096; why 41-43 split); S6M3-S6M6; S5EMDL1-3 (nd_rmdef.h RM defs);
+    S5ITEM1-2; S5BTL1; S5MENU0 (fsel_det_pic); S6KEY (S6T key misses omode_h full, omode_l, tile fmt/siz 0, geom that scm_sig keys:
+    s6chk_yard bad 211 on Gfx_RM1_DECAL_XLU_NO_AA_def); S7RUN (Sonnet: table runner nd_gtab_run, nd_rec_dl, the 11
+    GCONV_SRC placeholder lines); S7EFX1-8 (Haiku per alphabetical group); S7TEX1 (tex_win0 move). Updated Sonnet rows: S5BG,
+    S5SHADE, S5MENU, S5BTL; S8FB is an index; S9DEL1-4 carry the census rule.
+  - Not written: S7TEX2 (after S7TEX1 + S7RUN), S7ENT (segment-address data needs a host load first), S7MAP, S7MDL (Opus), S8CEN and
+    S8FB1-6 (after S7), the small src/world files, a record-form value-order row (see facts).
+  - Facts: (1) value order: sc_exec runs value units after the first static unit behind the folded block and after the decision;
+    S6E proved it changes pictures (mac_00 0/6 -> 6/6 with ent_gap nv == pre). Record-form defs with mid or late values (S6M3
+    PrimDepth, cam_main, S6E2) carry the risk: write a row that refuses class-2 units between statics or runs them in place,
+    with an s6chk that also compares lights and fog. (2) s6chk `ranges` is not a reach test (S6M1 kept 681). (3) A bench list runs
+    at one speed: spot_mac00_det is turbo, every other det bench normal. (4) expected_events must hold only lines the base build
+    prints. (5) Address -> symbol: python ELF parse of build3ds/lane-<row>/pm_3ds.elf (no nm on the host); script form in the
+    oracle 5 transcript: read .symtab, match value <= a < value + size.
 - L0 LISTCEN (row written, Haiku, ready now): 3ds/tools/listcen.py and bench `listcen` (host_test). Builder, data and reader counts
   per file and per class go into the bench database. This is the measure of every later row and the final gate.
 - S5 rest (one Sonnet row each, by LISTCEN order, after S5CHUD sets the quad helper). Each moves every gDP/gSP call of its files
