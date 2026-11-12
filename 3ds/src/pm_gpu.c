@@ -806,7 +806,8 @@ static __attribute__((cold, noinline)) void dc_kick_smp(void) { /* PERF1: the sa
     DC_T(7);
     dc_end();
 }
-static void dc_bind(int unit, C3D_Tex* t) { pm_dc_c[DC_TB0 + unit]++; C3D_TexBind(unit, t); }
+void pm_c3d_texbind(int unit, C3D_Tex* t); /* GPUHANG1: pm_tex.c, the citro3d bind with the unit shadow */
+static void dc_bind(int unit, C3D_Tex* t) { pm_dc_c[DC_TB0 + unit]++; pm_c3d_texbind(unit, t); }
 /* FLH: cold and per-change parts of flush_draw, moved out of line. Same operations, same order. */
 static __attribute__((cold, noinline)) void flush_fl_dbg(int graw) {
     fl_count(!graw);

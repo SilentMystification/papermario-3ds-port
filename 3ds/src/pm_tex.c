@@ -12,6 +12,19 @@
 #include "pm_port.h"
 #include "pm_tex_idx.h"
 void pm_gpu_rect_sync(void); /* pm_gpu.c */
+static C3D_Tex tex_dummy; static int tex_dummy_ok; /* GPUHANG1: 8 x 8 zero texture for units 1 and 2 (C3D_TexBind(1, NULL) faults) */
+static const C3D_Tex* c3d_unit[3]; /* GPUHANG1: the texture citro3d holds per unit */
+static unsigned texunfix_n;
+void pm_c3d_texbind(int unit, C3D_Tex* t) { if (unit >= 0 && unit < 3) c3d_unit[unit] = t; C3D_TexBind(unit, t); }
+void pm_tex_unit_drop(const C3D_Tex* t) { /* before a C3D_Tex is zeroed or deleted: no citro3d unit may keep it */
+    for (int u = 0; u < 3; u++) {
+        if (!t || c3d_unit[u] != t) continue;
+        if (u == 0) pm_c3d_texbind(0, NULL);
+        else if (tex_dummy_ok) pm_c3d_texbind(u, &tex_dummy);
+        pm_tex_bind_reset(); /* the native unit shadows (tb_last, au_last, nd_lt, nd_lt1): the next draw writes its unit block */
+        if (texunfix_n++ < 32u) pm_log_d("texunfix f%u unit %d", pm_frame_count(), u);
+    }
+}
 
 enum { FMT_RGBA, FMT_YUV, FMT_CI, FMT_IA, FMT_I };
 enum { SIZ_4, SIZ_8, SIZ_16, SIZ_32 };
@@ -262,6 +275,7 @@ static int cell_slot_init(void) {
     for (int w = 0; w < SBIT_W; w++) if (~live_bits[w]) { i = w * 32 + (int)__builtin_ctz(~live_bits[w]); break; }
     if (i < 0) return -1;
     Slot* s = &slots[i];
+    pm_tex_unit_drop(&s->tex);
     memset(&s->tex, 0, sizeof s->tex);
     if (!C3D_TexInit(&s->tex, CELL_DIM, CELL_DIM, GPU_RGBA5551)) { memset(&s->tex, 0, sizeof s->tex); return -1; }
     memset(s->tex.data, 0, s->tex.size);
@@ -800,8 +814,9 @@ static void drop(Slot* s) {
         pf_add(s->tex_vram_ptr ? s->tex_vram_ptr : s->tex.data, s->bytes, 1);
         s->tex_vram_ptr = NULL;
         s->slab = 0;
+        pm_tex_unit_drop(&s->tex);
         memset(&s->tex, 0, sizeof s->tex);
-        C3D_TexBind(0, NULL); /* citro3d must not hold the zeroed texture of this slot on unit 0: nd_leave_native marks unit 0 dirty and C3Di_UpdateContext would send data address 0. Unit 1 cannot be unbound this way: C3D_TexBind reads the type of the texture for any unit above 0 and a null pointer faults. */
+        pm_c3d_texbind(0, NULL); /* citro3d must not hold the zeroed texture of this slot on unit 0: nd_leave_native marks unit 0 dirty and C3Di_UpdateContext would send data address 0. Unit 1 cannot be unbound this way: C3D_TexBind reads the type of the texture for any unit above 0 and a null pointer faults. */
     }
     tb_last = NULL; au_last = NULL;
     if (used >= s->bytes) used -= s->bytes;
@@ -943,7 +958,7 @@ int pm_tex_bind_slot(int i) {
     if (bind_probe) bind_probe_one(i, &slots[i]);
     const C3D_Tex* tp = tex_for_draw(&slots[i]);
     pm_dc_c[DC_TB0]++;
-    C3D_TexBind(0, tp);
+    pm_c3d_texbind(0, tp);
     tb_last = slot_draws_stage(&slots[i]) ? NULL : &slots[i].tex; tb_sg = slots[i].sgen;
     pm_tex_epoch_v++;
     return 1;
@@ -1012,6 +1027,7 @@ void pm_tex_init(void) {
         unsigned kb = pm_debug_value("texcap", v, sizeof v) ? (unsigned)atoi(v) : 0;
         if (kb && kb * 1024u < tex_cap) tex_cap = kb * 1024u;
     }
+    if (C3D_TexInit(&tex_dummy, 8, 8, GPU_RGBA8)) { memset(tex_dummy.data, 0, tex_dummy.size); pm_fl_dc(tex_dummy.data, tex_dummy.size); C3D_TexSetFilter(&tex_dummy, GPU_NEAREST, GPU_NEAREST); tex_dummy_ok = 1; }
     tb_init();
 }
 
@@ -1515,6 +1531,7 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
             }
             return 0;
         }
+        pm_tex_unit_drop(&s->tex);
         memset(&s->tex, 0, sizeof s->tex);
         if (!C3D_TexInit(&s->tex, (u16)pw, (u16)ph, gf)) {
             slab_free(sp, reserve);
@@ -1611,6 +1628,7 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
     sbit_set(att_bits, (int)(s - slots));
     if (!s->vram_stage) {
         slab_free(sp_keep, reserve); /* row 1: the VRAM extent taken above goes back, or it is lost */
+        pm_tex_unit_drop(&s->tex);
         s->tex_vram_ptr = NULL; s->slab = 0; memset(&s->tex, 0, sizeof s->tex);
         fail_last = 1;
         fail_n++;
@@ -1995,7 +2013,7 @@ int pm_tex_bind(void) {
     if (have && off_cur >= 0) {
         if (tb_last == offt[off_cur].tex && tb_f == -2) return 1;
         pm_dc_c[DC_TB0]++;
-        C3D_TexBind(0, offt[off_cur].tex);
+        pm_c3d_texbind(0, offt[off_cur].tex);
         tb_last = offt[off_cur].tex; tb_f = -2;
         return 1;
     }
@@ -2018,7 +2036,7 @@ int pm_tex_bind(void) {
     C3D_TexSetWrap(tp, ws, wt);
     if (td3_wrap >= 0 && td3_nlog < 16) { td3_nlog++; pm_log_d("td3 bind unit0 slot %d programmed ws %d wt %d filter %d", cur, (int)ws, (int)wt, (int)ff); } /* first 16 binds only */
     pm_dc_c[DC_TB0]++; if (slot_draws_stage(&slots[cur])) pm_dc_c[DC_TBS]++;
-    C3D_TexBind(0, tp);
+    pm_c3d_texbind(0, tp);
     nd_lt = NULL; /* citro3d holds a texture the native draws did not see: the next native draw writes its unit block and clears the cache */
     tb_last = slot_draws_stage(&slots[cur]) ? NULL : &slots[cur].tex;
     tb_f = (int)ff; tb_ws = (int)ws; tb_wt = (int)wt; tb_sg = slots[cur].sgen;
@@ -2085,7 +2103,7 @@ int pm_tex_set_aux(unsigned cms, unsigned cmt, unsigned masks, unsigned maskt) {
 int pm_tex_bind_aux(void) {
     if (aux_off >= 0 && aux_off < offt_n) {
         if (au_last == offt[aux_off].tex && au_f == -2) return 1;
-        pm_dc_c[DC_TB1]++; C3D_TexBind(1, offt[aux_off].tex);
+        pm_dc_c[DC_TB1]++; pm_c3d_texbind(1, offt[aux_off].tex);
         au_last = offt[aux_off].tex; au_f = -2;
         return 1;
     }
@@ -2103,14 +2121,14 @@ int pm_tex_bind_aux(void) {
     C3D_TexSetFilter(tp, PMDL("texnear") ? GPU_NEAREST : filt_now(), PMDL("texnear") ? GPU_NEAREST : filt_now());
     C3D_TexSetWrap(tp, ws, wt);
     pm_dc_c[DC_TB1]++;
-    C3D_TexBind(1, tp);
+    pm_c3d_texbind(1, tp);
     nd_lt1 = NULL; /* citro3d holds unit 1: the next native draw writes its block */
     au_last = staged ? NULL : tp; au_f = (int)filt_now(); au_ws = (int)ws; au_wt = (int)wt;
     return 1;
 }
 
 void pm_tex_unbind_aux(void) {
-    pm_gpu_rect_sync(); /* DR1 */ au_last = NULL; C3D_TexBind(1, NULL); }
+    pm_gpu_rect_sync(); /* DR1 */ au_last = NULL; pm_c3d_texbind(1, NULL); }
 
 void pm_tex_aux_size(int* w, int* h) {
     pm_tex_epoch_v++;
