@@ -7,7 +7,7 @@ set -e
 GCONV_SRC="sparkles effect_3D snowfall snaking_static water_block embers"
 GCONV_SRC="$GCONV_SRC aura balloon big_smoke_puff big_snowflakes blast breaking_junk bulb_glow butterflies chomp_drop cloud_puff_trail cold_breath confetti damage_indicator" # S7EFX1
 GCONV_SRC="$GCONV_SRC" # S7EFX2
-GCONV_SRC="$GCONV_SRC" # S7EFX3
+GCONV_SRC="$GCONV_SRC energy_shockwave explosion falling_leaves fire_breath fire_flower firework firework_rocket flashing_box_shockwave floating_cloud_puff floating_flower floating_rock flower_splash_trail footprint" # S7EFX3
 GCONV_SRC="$GCONV_SRC" # S7EFX4
 GCONV_SRC="$GCONV_SRC" # S7EFX5
 GCONV_SRC="$GCONV_SRC" # S7EFX6
