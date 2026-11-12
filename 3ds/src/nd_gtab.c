@@ -39,7 +39,7 @@ const NdGTab* nd_gtab_find(const void* list) {
 #include "nd_api.h"
 
 extern unsigned nd_gtr_ent, nd_gtr_dlc, nd_gtr_ops; /* nd_walk.c, core 0: the arms nd_gtab_run took */
-static unsigned gtr_tab, gtr_dl, gtr_pt, gtr_pd, gtr_pe, gtr_pc, gtr_po, gtr_next = 300u;
+static unsigned gtr_tab, gtr_dl, gtr_pt, gtr_pd, gtr_pe, gtr_pc, gtr_po, gtr_next = 300u, gtr_seen;
 static __attribute__((cold, noinline)) void gtr_cen(unsigned f) {
     const unsigned e = nd_gtr_ent, c = nd_gtr_dlc, o = nd_gtr_ops;
     if (gtr_tab != gtr_pt || gtr_dl != gtr_pd) pm_log_evt("gtabrun f%u tab %u dl %u arm %u/%u/%u", f, gtr_tab - gtr_pt, gtr_dl - gtr_pd, e - gtr_pe, c - gtr_pc, o - gtr_po);
@@ -66,6 +66,7 @@ void nd_rec_dl(const void* list) {
     static const NdGTab* memo_t[8];
     static unsigned memo_f[8], mi;
     const unsigned f = pm_frame_count();
+    if (__builtin_expect(!gtr_seen, 0)) { gtr_seen = 1; gtr_next = f + 3u; } /* the first caller: one early line (a scene shorter than 300 frames) */
     if (__builtin_expect(f >= gtr_next, 0)) gtr_cen(f);
     const NdGTab* t = NULL;
     unsigned fl = 0, k;
