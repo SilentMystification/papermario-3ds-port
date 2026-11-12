@@ -3823,10 +3823,10 @@
       "kind": "azahar_pic",
       "speed": "normal",
       "default": false,
-      "purpose": "S4 byte gate: water_block (effect 84) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.",
+      "purpose": "S4 byte gate: water_block (effect 84) on the particle run, cold det start. Shots 404 to 407 byte-equal base against head.",
       "scenario": "fxpic_84",
       "cap": 40,
-      "until": "shot \\d+ frame 415\\b",
+      "until": "shot \\d+ frame 407\\b",
       "tags": [
         "azahar",
         "fxcen"
