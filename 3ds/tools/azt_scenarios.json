@@ -15318,6 +15318,31 @@
       "reason": "FSELCEN try 2 census of the pick flip. Log only; the until is the census done line. Cap 45 s, deadline 40 s."
     },
     {
+      "name": "fsel_det_pic",
+      "status": "unverified",
+      "subject": "File select at idle (fresh save), det, shots 300 to 305.",
+      "proves": "S5MENU byte gate: the file select picture (shotwin 300 to 305) is byte-equal between two runs of one build.",
+      "debug": "fileselect freshsave shots shotwin=300:6 loglevel=debug det",
+      "extra": [],
+      "until": "shot \\d+ frame 305\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "boot_main",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "file select mode",
+          "regex": "game mode 14 frame"
+        },
+        {
+          "name": "shot 305",
+          "regex": "shot \\d+ frame 305\\b"
+        }
+      ],
+      "reason": "S5MENU byte gate: copy of fsel_fncov_idle with the shots window 300 to 305 in place of the census. Cap 30 s, deadline 25 s. The until is the shot at frame 305."
+    },
+    {
       "name": "s6chk_mac01",
       "status": "unverified",
       "subject": "Toad Town mac_01, Mario at pos 0 0 200, det, debug switch s6chk: each compiled state range (nd_scomp.c: the render_frame camera setup and the status icons prologue) runs the compiled path and the op path and compares the walker state fields. One shot at frame 200 and the s6chk line of frame 200.",

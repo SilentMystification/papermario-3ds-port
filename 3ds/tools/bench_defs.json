@@ -8751,6 +8751,21 @@
         "fncov"
       ],
       "gates": []
+    },
+    {
+      "name": "fsel_det_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "S5MENU byte gate: the file select picture, det.",
+      "scenario": "fsel_det_pic",
+      "cap": 30,
+      "until": "shot \\d+ frame 305\\b",
+      "tags": [
+        "azahar",
+        "pic"
+      ],
+      "gates": []
     }
   ],
   "legacy": {
