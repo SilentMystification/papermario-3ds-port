@@ -209,6 +209,7 @@ static void sc_exec(const NdSDef* d, const uint32_t* v) {
         if (__builtin_expect(!sc_tab, 0)) sc_alloc();
         comb_in_walker(&in);
         nd_scomp_key(d, &in, (uint32_t)pm_comb_vprim, key);
+        key[26] = nd_ws.omode_h; key[27] = nd_ws.omode_l; key[28] = nd_ws.tst1.tile_fmt[0] * 4u + nd_ws.tst1.tile_siz[0]; key[29] = nd_ws.geom;
         const unsigned i = nd_scomp_find(sc_tab, d->id, key, &miss);
         if (__builtin_expect(miss, 0)) sc_make(&sc_out[i], &in);
         sc_replay(&sc_out[i]);

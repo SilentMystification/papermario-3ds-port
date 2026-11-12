@@ -21,7 +21,7 @@ typedef struct NdSDef {
     uint32_t tex_a, tex_b, cw0, cw1;     /* the last G_TEXTURE unit (a, b) and the combine words (NDO_COMB_W0 form) */
 } NdSDef;
 
-#define ND_SC_KEYW 26u /* key words: the def, 25 decision inputs */
+#define ND_SC_KEYW 30u /* key words: the def, 25 decision inputs, 4 walker inputs of the sync memo (sc_exec) */
 
 /* Pure parts (host test nd_scomp_test.c). */
 int nd_scomp_analyse(NdSDef* d);  /* 1 compiled form, 0 refused; sets the fields above */
