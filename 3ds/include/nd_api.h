@@ -47,7 +47,7 @@ int nd_tex_win_desc(NdBindDesc* o, const void* timg, int timg_stride, unsigned f
 
 typedef struct NdDec NdDec; /* nd_direct.c: the combine decision of one pso under the walker inputs */
 const NdDec* nd_pso_decide(NdPso id);          /* core 0: the decision of pso id (made once per distinct inputs, cold); NULL when the walker state decides it */
-int nd_direct_ready(void);                     /* core 0: the walker state lets a direct rectangle draw (main colour image, no shaded sprite, no off-screen tile 1) */
+int nd_direct_ready(void);                     /* core 0: 1 when the walker state lets a direct rectangle draw (main colour image, no shaded sprite, no off-screen tile 1); else -1 role, -2 colour image, -3 shaded sprite, -4 tile 1 target */
 int nd_direct_bind(NdPso id, uint32_t prim, uint32_t env); /* core 0: the state of pso id for the next rectangles; 0 = not stated (nothing changed, run the old path) */
 int nd_direct_tex(const NdBindDesc* d);        /* core 0: tile 0 = d; the walker's set_tilesize bookkeeping and the bind */
 void nd_direct_rect(uint32_t w0, uint32_t w1, uint32_t hs, uint32_t hd); /* core 0: one texture rectangle of tile 0 (the G_TEXRECT words, 1 or 2 cycle) */

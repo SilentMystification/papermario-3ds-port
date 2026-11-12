@@ -77,10 +77,10 @@ const NdDec* nd_pso_decide(NdPso id) {
 }
 
 int nd_direct_ready(void) {
-    if (img_role(0) != ROLE_MAIN || cimg_zero) return 0;   /* the main colour image: no off-screen target, no depth role, no z-buffer copy */
-    if (nd_ws.cimg && !pm_is_cfb(nd_ws.cimg)) return 0;     /* rect_to_image draws into a non-frame-buffer image */
-    if (m1.valid) return 0;                                 /* a shaded sprite tile 1 raster: set_tilesize takes tex_shaded0 */
-    if (pm_tex_aux_off_idx() >= 0) return 0;                /* t1_fold would move the tile 1 map */
+    if (img_role(0) != ROLE_MAIN || cimg_zero) return -1;  /* the main colour image: no off-screen target, no depth role, no z-buffer copy */
+    if (nd_ws.cimg && !pm_is_cfb(nd_ws.cimg)) return -2;    /* rect_to_image draws into a non-frame-buffer image */
+    if (m1.valid) return -3;                                /* a shaded sprite tile 1 raster: set_tilesize takes tex_shaded0 */
+    if (pm_tex_aux_off_idx() >= 0) return -4;                /* t1_fold would move the tile 1 map */
     return 1;
 }
 

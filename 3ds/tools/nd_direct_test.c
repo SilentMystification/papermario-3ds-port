@@ -136,11 +136,11 @@ int main(void) {
     fake_role = ROLE_MAIN; nd_ws.cimg = NULL;
     CHECK(nd_direct_ready() == 1);
     fake_role = ROLE_SLOT;
-    CHECK(nd_direct_ready() == 0);
+    CHECK(nd_direct_ready() < 1);
     fake_role = ROLE_MAIN; m1.valid = 1;
-    CHECK(nd_direct_ready() == 0);
+    CHECK(nd_direct_ready() < 1);
     m1.valid = 0; fake_aux = 3;
-    CHECK(nd_direct_ready() == 0);
+    CHECK(nd_direct_ready() < 1);
     fake_aux = -1;
     /* a rectangle: upper left (10, 20), lower right (42, 36), s 0, t 0, 1:1 on a 32 x 16 texture (inclusive lower right pixel is exclusive here) */
     nd_ws.tile_x0 = 0; nd_ws.tile_y0 = 0; nd_ws.tile_fx = nd_ws.tile_fy = 0.f;

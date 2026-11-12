@@ -536,7 +536,7 @@ static int hud_rect_direct(const NdHudRec* r) { /* 0 drawn, else why the old pat
     pd.cw0 = cw[0]; pd.cw1 = cw[1];
     pd.omh |= filt ? G_TF_AVERAGE : G_TF_POINT;
     pd.omh_m = (3u << G_MDSFT_TEXTLUT) | (3u << G_MDSFT_TEXTFILT);
-    if (!nd_direct_ready()) return 3;
+    { const int rd = nd_direct_ready(); if (rd < 1) return 30 - rd; } /* 31 to 34: which test of nd_direct_ready */
     id = nd_pso_n64(&pd);
     if (!nd_direct_bind(id, prim, nd_direct_env())) return 4;
     for (k = 0; k < r->npc; k++) {
