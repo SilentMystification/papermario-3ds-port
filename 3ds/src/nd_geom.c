@@ -360,6 +360,7 @@ int nd_part_draw(const uint32_t* u) {
     }
     memset(vert_live, 0, sizeof vert_live);
     if (!pm_gpu_gv_room(tot + 64u)) { extern int ring_need(unsigned nv, unsigned ni); if (ring_need(tot + 64u, 384u)) memset(vert_ring, 0xff, sizeof vert_ring); } /* HUDRING, as nd_geom_vtx */
+    if (!pm_gpu_gv_room(tot)) return 0; /* S4MULTI: every load of the list fits, so no later load fails after a draw */
     if (nd_ws.geom & G_LIGHTING) return 0;
     const unsigned gmi = gv_matrix_id(0);
     if (gmi == GV_NONE) return 0;
