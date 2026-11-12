@@ -4008,6 +4008,21 @@
       "gates": []
     },
     {
+      "name": "fxpic_10",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "S7EFX7 byte gate: star (effect 10) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.",
+      "scenario": "fxpic_10",
+      "cap": 40,
+      "until": "shot \\d+ frame 415\\b",
+      "tags": [
+        "azahar",
+        "fxcen"
+      ],
+      "gates": []
+    },
+    {
       "name": "fxpic_81",
       "kind": "azahar_pic",
       "speed": "normal",
