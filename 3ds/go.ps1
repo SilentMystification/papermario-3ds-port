@@ -179,7 +179,8 @@ function Push-One([string]$t) {
             $env:PM_OWNER_PID = "$PID"
             $pushDone = $false
             try {
-                & $gitBash 3ds/push_3ds.sh -t $watchSecs @profArgs @extra
+                # PUSHFIX: every line of push_3ds.sh is printed as it comes (Out-Host), so nothing lands in this function's return value.
+                & $gitBash 3ds/push_3ds.sh -t $watchSecs @profArgs @extra | Out-Host
                 $pushDone = $true
             } finally {
                 if (-not $pushDone) { Stop-PushShell }
@@ -187,10 +188,10 @@ function Push-One([string]$t) {
             if ($LASTEXITCODE -ne 0) { throw "push_3ds.sh exited $LASTEXITCODE" }
         }
         Write-Host "=== push ${t}: done ==="
-        return $true
+        return 0
     } catch {
         Write-Host "=== push ${t}: FAILED - $($_.Exception.Message) ==="
-        return $false
+        return 1
     }
 }
 
@@ -221,15 +222,22 @@ if ($Verb -eq 'push') {
         }
         foreach ($r in @($Rest)) { if ($null -ne $r) { $childArgs += (& $quote ([string]$r)) } }
         $childArgs += '-Fg'
-        $p = Start-Process powershell -ArgumentList $childArgs -WindowStyle Hidden -RedirectStandardOutput $log -RedirectStandardError "$log.err" -PassThru
-        Write-Output "PUSH STARTED pid $($p.Id) log $log"
+        # PUSHFIX second try: Start-Process passes the caller's inheritable handles to the child (CreateProcess bInheritHandles),
+        # so the caller's stdout pipe stayed open until the child ended (test case d: 10 s). Win32_Process.Create inherits no handles;
+        # cmd does the redirect into the same log and err files. ShowWindow 0: no console window.
+        $cmdLine = 'powershell.exe ' + ($childArgs -join ' ') + ' > "' + $log + '" 2> "' + $log + '.err"'
+        $startup = New-CimInstance -ClassName Win32_ProcessStartup -Property @{ ShowWindow = [uint16]0 } -ClientOnly
+        $created = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = "cmd.exe /d /c `"$cmdLine`""; ProcessStartupInformation = $startup }
+        if ($created.ReturnValue -ne 0) { Write-Output "push ${Target}: could not start the detached push (Win32_Process.Create $($created.ReturnValue))"; exit 1 }
+        Write-Output "PUSH STARTED pid $($created.ProcessId) log $log"
         exit 0
     }
     $rc = 1
     try {
         Invoke-Build
+        # PUSHFIX: Push-One returns only its exit code (0 ok, 1 failed); the text went to the console above.
         $results = @{ $Target = Push-One $Target }
-        $rc = $(if (($results.Values | Where-Object { -not $_ }).Count -gt 0) { 1 } else { 0 })
+        $rc = [int]$results[$Target]
     } catch {
         Write-Output "push ${Target}: $($_.Exception.Message)"
     } finally {
