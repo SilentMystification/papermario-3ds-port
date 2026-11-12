@@ -1,46 +1,77 @@
-# Row S7CONV: build-time converter of static display-list data into native tables (NATIVEAPI S7, design and tool)
+# Row S7CONV: build-time converter of static display-list data into native tables (NATIVEAPI S7, design core and tool)
 
-Model: Opus (user decides).
-- Why not Sonnet: this is the core design of the data side of the end state. All static list data (853 asset files and 100 src
-  files with `Gfx X[]`, about 8053 gs macros: effects gfx, entity data, map data, ui) must leave the runtime as N64 words and
-  become native tables. Its key and its handling of run-time state decide whether S7EFX, S7ENT, S7MAP and S7MDL can be exact.
-- Opus may choose its steps inside the gate. Write the design note into this row first.
+Model: Opus (pre-approved for the night run).
+- Why not Sonnet: the table form, its key and the inherited-state rule decide whether S7EFX, S7ENT, S7MAP, S7MDL and S9DEL2 can
+  be exact. A wrong choice shows in no later row's own gate.
+- Why not smaller: the tool, the table form and its proof (the host compare) are one unit; the call-site moves after it are the
+  S7EFX/S7ENT/S7MAP rows (Sonnet or Haiku per effect group, written by the oracle after this merges, from the API below).
+- Opus may choose its steps inside the gate. Write the design note (section at the end) into this row before code.
 
 ## Blocker and base
-S6T, S6E and S6M merged (the compiled range form and its key exist; the converter emits them at build time).
-`sh 3ds/tools/wt_new.sh S7CONV`; PM_ROW=S7CONV PM_LANE=S7CONV.
+None open: S6T, SCOMP0 and the S4 particle callers are merged. `sh 3ds/tools/wt_new.sh S7CONV`; PM_ROW=S7CONV PM_LANE=S7CONV.
+Base: `git merge-base HEAD main`.
 
-## What exists
-- nd_shape_conv: the build-time typed conversion of map shapes (host side; build.sh step).
-- The gs macros already compile to typed units (nd_gbi.h ND_GS).
-- nd_host builds parts of the state model (nd_comb, nd_tmpl) for the host tests.
-- S6T's compiler (nd_scomp.c) compiles a typed range under an inherited signature on core 0, cold.
+## Facts (oracle 5 code read, main 5c3865487)
+- Static lists are already typed at compile time: the gs macros map to typed units (3ds/include/nd_gbi.h ND_GS, nd_op.h). Effect
+  graphics are linked into the ELF (3ds/tools/gen_effect_ld.py: overlays linked in), so their pointers (`&D_09001000_3583A0[0]`)
+  are host addresses; ptr_of (nd_walk.c:529-541) resolves a segment address only for words that are not host (entity and map
+  data loaded at run time).
+- Host tools run in docker pm3ds-host:1 with gcc -m32 and the device defines (3ds/tools/nd_host_test.sh; build.sh:59-75 runs
+  nd_shape_conv.c the same way and writes romfs/shape/*.nds). nd_dlc.c is pure C on typed word pairs and builds on the host.
+- Readers of static list words today (the converter's targets): nd_part_draw and parts_ok (nd_geom.c:348, nd_rec.c:283; the
+  first use), nd_ops_run/nd_walk_state (all lists), ent_run and ENT_GBI (nd_ent.c), nd_dlc.c (map shapes, run-time compile),
+  nd_shape.c (map shapes at load), the model render-mode lists (model.c Gfx_RM*), nd_scomp_analyse (S6T defs, analysed on core 1
+  at their first record).
+- The S6T decision key (nd_scomp.h, row S6T note at b16f91c46): def plus the NdCombIn fields the def does not set (inherited).
 
-## Design questions (the design note)
-1. Input: the typed units of each static Gfx array (link the game data objects into a host tool, or parse the generated
-   .gfx.inc.c sources).
-2. Output per list: native records. Choose between C tables linked into the ELF and a binary blob. Each table holds: pso
-   descriptors (pso ids made at boot), NdBindDesc (texture address relative to the segment), vertex buffers (the list's Vtx data
-   as is, or converted to the native layout), index lists, matrix and segment slots (filled at draw), and the draw order. The
-   per-frame form of a draw from a table: `nd_draw_table(table id, segment bases, matrix, values)`.
-3. Run-time dependence:
-   - segments (0x09 effect graphics base per effect instance, the entity vertex segments);
-   - inherited state (a list that does not set all state it reads: the compiled key must carry the inherited part, as S6T keys
-     it);
-   - lists the game edits at run time (palettes, imgfx meshes, vertex colour edits): these stay dynamic (S5IMGFX form). List them.
-4. Proof: a host test runs each converted list through the old walker (the host build of nd_walk and the state model) and through
-   the native table executor, and compares the emitted draw words (pso, texture, vertices, matrices) per draw.
-5. Build: a build.sh step after the asset generation. Never committed output, like map_restore_table.c.
+## Design (fixed by the oracle; the note answers the open points)
+1. Tool 3ds/tools/nd_gfx_conv.c (host C, docker, gcc -m32, device defines and nd_gbi.h typed macros). Input: the gfx data
+   sources compiled for the host and linked into the tool, plus a generated symbol list (`Gfx NAME[] =` scan of the input files,
+   by a small python step) so every list and every pointer target is known by symbol + offset (reverse map of the host link).
+   Output: build3ds/gen/nd_gfx_tab.c (generated by build.sh, never committed, as map_restore_table.c), linked into the ELF.
+2. Table form per list (`NdGTab`, declared in a new 3ds/include/nd_gtab.h): the draw order as a sequence of
+   - vertex loads {const Vtx* src (symbol + offset), n, v0} and triangle index triples (u8), exactly what nd_part_draw reads from
+     the words today;
+   - state defs: a precomputed NdSDef (the fields nd_scomp_analyse sets, st = 1 or 2, made on the host by the same function) so
+     core 1 never analyses a static def at run time;
+   - texture loads as NdBindDesc inputs (timg symbol, fmt, siz, window, wrap, palette symbol), the tex_win/set_tilesize result
+     computed on the host where the inputs are all static;
+   - list calls (another table) and the units that stay run-time values (matrix, segment, colour image).
+   Run-time lookup: a sorted {list address, table} array with a per-call-site memo; S7EFX rows then reference `ndg_<SYM>` directly.
+3. Inherited state (the S9DEL2 condition): the tool prints per def `gconv def <sym> inherit <mask>` (the NdCombIn fields it does
+   not set). A def with mask 0 gets its combine decision at build time (nd_comb_decide on the host, stored in the table: no core 0
+   decide). A def with mask != 0 keeps the S6T keyed run-time decision; its S7 row closes the mask by adding the missing state at
+   the call site (static values). S9DEL2's gate is: every def mask 0.
+4. Run-time edited data stays dynamic (no table): imgfx meshes, palettes swapped or lerped at run time, vertex buffers written per
+   frame (quadBuffers, effect-built Vtx). The note lists each such producer found.
+5. Proof: a host test (in nd_host) runs each converted list through the old reader (the host build of nd_part_draw's list walk,
+   parts_ok and nd_scomp_analyse) and through the table, and compares per draw: vertex source and count, index triples, the
+   NdSDef fields, the bind inputs. Any difference fails nd_host.
 
 ## First use in this row
-The effects with merged NdParts callers (snowfall, pink_sparkles, shimmer_burst, embers, effect_3D, snaking_static, water_block):
-their static lists come from tables. nd_part_draw then reads the table, not the list words.
+The 7 effects with nd_parts callers: shimmer_burst (fxtest 50), effect_3D (55), snowfall (63), snaking_static (81), water_block
+(84), embers (105), pink_sparkles (124). Their particle lists come from tables: nd_parts_add accepts a list with a table (no
+parts_ok word scan), nd_part_draw draws from the table (no list word read). Their setup lists stay ops in this row.
+
+## Files and places
+New: 3ds/tools/nd_gfx_conv.c, 3ds/include/nd_gtab.h, the python symbol-scan step, a host test file. Edited: 3ds/build.sh (one
+gen step after gen_shapes), 3ds/tools/nd_host_test.sh (the test lines at the end), 3ds/src/nd_geom.c (nd_part_draw only),
+3ds/src/nd_rec.c (parts_ok and nd_parts_add only). S5CHUDA edits nd_geom.c gv_epoch_enter (another function): merge main before
+the gate.
 
 ## Gate (expected values)
-- nd_host PASS with the converter host test: every converted list of the first-use effects equal on both paths.
-- fxpic_63, fxpic_105 and fxpic_124 byte-equal (one list, 3 starts), plus the DIRECT byte set (3 starts).
-- listcen: data for the converted effects 0 in the runtime build (the tables replace the arrays). Budget 8.
+- Build (the gen step runs; memcheck OK); `bench.py run nd_host --row S7CONV --why "S7CONV host compare"`: PASS with the compare
+  test over every list of the 7 effects (hand back the list count and the `gconv def ... inherit` lines).
+- `bench.py base fxpic_63`, `bench.py base fxpic_124`; one list `bench.py run fxpic_63,fxpic_124 --row S7CONV --why "S7CONV:
+  particle lists from tables"` (2 starts, CLAUDE.md 2: 2 scenes of the changed reader nd_part_draw; the host compare covers the
+  other 5 effects). cmp: every shot byte-equal (S4MULTI stored 6 per fxpic scene).
+- partsrun lines: `old 0` in every run (no fallback to the list walk).
+- Budget 8 Azahar starts.
 
 ## Stop
-A byte difference or a host test mismatch: stop, commit, hand back (2 tries per named cause). The design note stays in this row.
-Delete this row file in the completing commit, and list the S7EFX batches in the hand-back.
+A byte difference or a host compare mismatch: stop, commit, hand back (2 tries per named cause). The design note stays in this
+row until the completing commit, which copies it into plan_nativeapi.md section 6 (new section "S7 table form") and deletes this
+row file. Hand back the table API (names and signatures) so the oracle writes the S7EFX, S7ENT, S7MAP and S7MDL rows.
+
+## Design note (written by the S7CONV agent before code)
+<the answers: input build, symbol map, NdGTab struct, lookup, inherited mask rule, the dynamic producers list, the host test>

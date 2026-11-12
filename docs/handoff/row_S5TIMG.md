@@ -1,49 +1,75 @@
-# Row S5TIMG: draw_img_util.c image draws through the NdTRect record (S5 call sites)
+# Row S5TIMG: draw_ci_image_with_clipping passes through the NdTRect record (S5 call sites, draw_img_util.c)
 
-(Model: Haiku. A pattern edit of 4 load-plus-rect sites in one file. Blocker: S5TRECT merged.)
+(Model: Haiku. Rewritten by ORACLE5 after the row spec fault of try 1; budget reset once. Step 0 is done (c4918c833, pad bit 0).
+Worktree build3ds/wt/S5TIMG, merged with main 5c3865487.)
 
-## Start
-`sh 3ds/tools/wt_new.sh S5TIMG`; PM_ROW=S5TIMG PM_LANE=S5TIMG. Only src/draw_img_util.c is edited.
+## Code read (src/draw_img_util.c, main 5c3865487) and design
+- draw_ci_image_with_clipping (:8-41) states the whole draw: cycle 1, filter POINT, persp NONE; opacity 255: TEX_EDGE, DECALRGBA,
+  no prim; 1-254: XLU_SURF, PM_CC_02, prim (0,0,0,opacity); CI: G_TT_RGBA16 and LoadTLUT of `palette` (pal16 for 4b, else pal256).
+  16 callers. draw_image_with_clipping (:50-171) draws strips of 64 x 32 and states nothing; its direct caller msg.c:2272 keeps the
+  old ops (dimg_tpl NULL). draw_tiled_image and draw_adjustable_tiled_image have no callers (row_S9DEL4.md deletes them).
+- Design: draw_ci fills a template NdTRect and sets the file-static `dimg_tpl` around its call; each strip of a 4b, 8b or 16b
+  draw then records one NdTRect. Every state op of draw_ci stays (the S5TRECT fallback replays only the load and the rectangle).
+## Touch only
+src/draw_img_util.c, and 3ds/tools/azt_scenarios.json plus 3ds/tools/bench_defs.json (new entry msgbox_choice_det).
 
-## Sites (src/draw_img_util.c at main ccdb7e3f5; re-grep `gDPLoadTextureTile\|gSPTextureRectangle` first, the lines may move)
-- draw_image_with_clipping: the load switch :142-152 and the rect :155.
-- draw_tiled_image: the loads :275-281 and the rect :284.
-- draw_adjustable_tiled_image: the loads :461-475 and the rect :477.
-- draw_ci_image_with_clipping (:8): it calls draw_image_with_clipping after its state lines :12-39 (check this by reading). Keep
-  the state lines.
+## Exact edits
+1. Replace the empty `#ifdef TARGET_3DS` / `#endif` pair at :2-3 with
+   ```c
+   #ifdef TARGET_3DS
+   #include <string.h>
+   #include "nd_api.h"
+   #define DIMG_CW_(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1) \
+       { ND_W0_CMB(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1), ND_W1_CMB(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1) }
+   #define DIMG_CW(a, b) DIMG_CW_(a, b)
+   static const NdTRect* dimg_tpl; /* S5TIMG: the state of draw_ci_image_with_clipping for the strips of its draw (NULL: old ops) */
+   #endif
+   ```
+2. draw_ci_image_with_clipping: around `ret = draw_image_with_clipping(...);` (the `t` block must live until the call returns:
+   declare `NdTRect t;` at the top of the function under TARGET_3DS and drop it from the block):
+   ```c
+   #ifdef TARGET_3DS
+       {
+           static const u32 cw_decal[2] = DIMG_CW(G_CC_DECALRGBA, G_CC_DECALRGBA), cw_02[2] = DIMG_CW(PM_CC_02, PM_CC_02);
+           memset(&t, 0, sizeof t);
+           if (opacity == 255) { t.cw0 = cw_decal[0]; t.cw1 = cw_decal[1]; t.oml = G_RM_TEX_EDGE | G_RM_TEX_EDGE2; t.pad = 1; }
+           else { t.cw0 = cw_02[0]; t.cw1 = cw_02[1]; t.oml = G_RM_XLU_SURF | G_RM_XLU_SURF2; t.prim = opacity; }
+           t.omh = (fmt == G_IM_FMT_CI ? G_TT_RGBA16 : G_TT_NONE) | G_TF_POINT;
+           if (fmt == G_IM_FMT_CI) { t.pal = palette; t.pal_n = bitDepth == G_IM_SIZ_4b ? 16u : 256u; }
+           dimg_tpl = &t;
+       }
+   #endif
+       ret = draw_image_with_clipping(<unchanged arguments>);
+   #ifdef TARGET_3DS
+       dimg_tpl = NULL;
+   #endif
+   ```
+3. draw_image_with_clipping: wrap the 3-arm load `if` and the gSPTextureRectangle (:142-156) as
+   ```c
+   #ifdef TARGET_3DS
+               if (dimg_tpl && (bitDepth == G_IM_SIZ_4b || bitDepth == G_IM_SIZ_8b || bitDepth == G_IM_SIZ_16b)) {
+                   NdTRect r = *dimg_tpl;
+                   r.img = raster; r.fmt = fmt; r.siz = bitDepth; r.width = width; r.height = height;
+                   r.uls = texRect.ulx; r.ult = texRect.uly; r.lrs = texRect.lrx; r.lrt = texRect.lry;
+                   r.cms = G_TX_WRAP; r.cmt = G_TX_WRAP; r.masks = 6; r.maskt = 5;
+                   r.w0 = ND_W0_TR(G_TEXRECT, drawRect.lrx * 4, drawRect.lry * 4); r.w1 = ND_W1_TR(0, drawRect.ulx * 4, drawRect.uly * 4);
+                   r.hs = ND_TR_H1(texOffsetX * 32, texOffsetY * 32); r.hd = ND_TR_H2(1024, 1024);
+                   nd_rec_napi(nd_trect_run, &r, sizeof r / 8u);
+               } else
+   #endif
+               { <the original 3-arm load if and the gSPTextureRectangle, unchanged> }
+   ```
+4. json: new scenario msgbox_choice_det after msgbox_choice_nowide: a copy of msgbox_choice_nowide with debug
+   `preset=yard nowide uishow=choice shots shotwin=300:1 loglevel=debug det` (drawcensus dropped), expected_events only the
+   warp and `debug uishow: choice opened f200` entries (both builds print them). Bench msgbox_choice_det: a copy of
+   msgbox_talk_det with scenario msgbox_choice_det, until `shot \\d+ frame 300\\b`. Same commit as steps 1-3.
 
-## Step 0 (oracle 4: a gap in nd_trect_run, 3ds/src/nd_direct.c after S5TRECT)
-nd_trect_run passes r->prim to nd_direct_bind, which writes nd_ws.prim and the GPU prim (nd_direct.c nd_direct_bind). A site that
-sets no prim would change the prim later walker draws inherit. In nd_trect_run, replace `nd_direct_bind(id, r->prim,
-nd_direct_env())` with `nd_direct_bind(id, (r->pad & 1u) ? nd_direct_prim() : r->prim, nd_direct_env())`, and in nd_api.h change
-the NdTRect comment to say `pad bit 0: keep the walker's prim`. This is an edit inside nd_trect_run, not an append.
-
-## Exact edit per site (under `#ifdef TARGET_3DS`; `#else` keeps the old lines)
-1. Keep every state op above the loop (PipeSync, cycle, filter, persp, render mode, combine, prim, TLUT, the LoadTLUT).
-   The S5TRECT fallback (nd_trect_run, nd_direct_ready() != 1) replays only the texture load and the rectangle: it relies on the
-   state ops and the LoadTLUT kept in the stream. Remove none of them; the record carries the palette only for the direct path.
-2. Replace the load and the rect of one loop pass with one record: `{ NdTRect r; memset(&r, 0, sizeof r); ...;
-   nd_rec_napi(nd_trect_run, &r, sizeof r / 8u); }`, filled as follows:
-   - img, fmt, siz, width, height, uls, ult, lrs, lrt, cms, cmt, masks, maskt: the arguments of the load macro of that pass, in
-     the same order as the macro call. siz is the literal of the call; for the _4b form, siz is G_IM_SIZ_4b.
-   - pal and pal_n: the palette the function loaded with LoadTLUT. pal16 gives 16, pal256 gives 256, no TLUT gives NULL and 0.
-     If the function only receives the palette from its caller, pass that pointer through.
-   - w0, w1, hs, hd: `ND_W0_TR(G_TEXRECT, xh, yh)`, `ND_W1_TR(G_TX_RENDERTILE, xl, yl)`, `ND_TR_H1(s, t)` and
-     `ND_TR_H2(dsdx, dtdy)`, with the exact argument expressions of that gSPTextureRectangle call (nd_gbi.h:201-204).
-   - cw0 and cw1: the combine words the function set above. Build them as hud_element.c does with HUD_CW: copy its two macros
-     into this file under other names.
-   - oml: the render mode pair it set. omh: its TLUT mode (G_TT_RGBA16 or G_TT_NONE) plus its filter (G_TF_POINT here).
-   - prim: the prim colour the function set before this pass (copy the expression). When no PrimColor of the function runs
-     before the pass, set `r.pad = 1` (keep the walker's prim, step 0) and leave prim 0.
-3. `#include "nd_api.h"` at the top, under `#ifdef TARGET_3DS`.
-
-## Gate
-- Build, memcheck OK; nd_host PASS.
-- Callers: grep the 4 function names in src (20 call sites). Pick 2 det scenes that reach them: pause_tab_det_pic (pause
-  images), and the title or file select det scene. Pre-flight `bench.py list --tag pic`. If no det scene of the title exists,
-  use spot_mac01_det as the second scene and say so.
-- `bench.py base` both; one list run (2 starts); `bench.py cmp` both: every shot byte-equal.
-- No `trect fallback` lines in steady frames. Budget 5.
+## Gate (expected values)
+- Build, memcheck OK; `bench.py run nd_host --row S5TIMG --why "S5TIMG nd_host"`: PASS.
+- `bench.py base msgbox_choice_det` (the choice pointer: msg.c:2273 draws through draw_ci_image_with_clipping) and
+  `bench.py base msgbox_talk_det`; one list `bench.py run msgbox_choice_det,msgbox_talk_det --row S5TIMG --why "S5TIMG: draw_ci
+  strips via NdTRect"` (2 starts). cmp: msgbox_choice_det 1/1, msgbox_talk_det 1/1 byte-equal.
+- 0 `trect fallback` lines in both logs. Budget 8 (reset once).
 
 ## Stop
-A byte difference: stop, commit, hand back. Delete this row file in the completing commit.
+A byte difference: stop, commit, hand back the cmp lines (2 tries per named cause). Delete this row file in the completing commit.

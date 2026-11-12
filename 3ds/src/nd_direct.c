@@ -233,6 +233,57 @@ void nd_glyph_draw(uint32_t raster, uint32_t pal, int tlut, int w, int h, int ul
     }
 }
 
+/* NATIVEAPI E5b (S5PQUAD): the combine and other mode low bits of each NdFillRec kind (the walker's words for the same macros). */
+static const struct { Gfx cc; uint32_t rm0, rm1; } kFillKind[4] = {
+    { gsDPSetCombineMode(G_CC_PRIMITIVE, G_CC_PRIMITIVE), G_RM_CLD_SURF, G_RM_CLD_SURF2 },
+    { gsDPSetCombineMode(G_CC_PRIMITIVE, G_CC_PRIMITIVE), CVG_DST_SAVE | G_RM_OPA_SURF, CVG_DST_SAVE | G_RM_OPA_SURF2 },
+    /* PM_CC_PRIM_FULL_ALPHA (include/macros.h:328) written out: macros.h is not included here */
+    { gsDPSetCombineLERP(0, 0, 0, PRIMITIVE, 0, 0, 0, 1, 0, 0, 0, PRIMITIVE, 0, 0, 0, 1), G_RM_OPA_SURF, G_RM_OPA_SURF2 },
+    { gsDPSetCombineMode(G_CC_PRIMITIVE, G_CC_PRIMITIVE), G_RM_XLU_SURF, G_RM_XLU_SURF2 },
+};
+
+void nd_walk_state(const uint32_t* q, unsigned n); /* nd_walk.c, core 0: the op executor */
+
+/* the typed units of the fallback ops: the record-side gbi redirect (nd_gx_w takes a local packet, so the ops are typed as the stream has them) */
+#include "gbi_custom.h"
+#include "nd_gbi.h"
+
+/* Off-screen or depth colour image (row S5PQUAD 2b): the walker's fill takes its own path (off_screen_check). The state of the kind and the
+ * primitive colour as ops, then one fill rectangle (lower right exclusive, as passed). n = 4 ops (nd_walk_state counts ops). */
+static void nd_fill_walk(const NdFillRec* f, unsigned k) {
+    static Gfx buf[4];
+    static unsigned nfb;
+    if (nfb++ < 16u) pm_log_d("fill fallback f%u", pm_frame_count());
+    nd_gx_w(&buf[0], ND_X0(kFillKind[k].cc.words.w0, kFillKind[k].cc.words.w1), ND_X1(kFillKind[k].cc.words.w0, kFillKind[k].cc.words.w1));
+    gDPSetRenderMode(&buf[1], kFillKind[k].rm0, kFillKind[k].rm1);
+    gDPSetPrimColor(&buf[2], 0, 0, (f->rgba >> 24) & 0xffu, (f->rgba >> 16) & 0xffu, (f->rgba >> 8) & 0xffu, f->rgba & 0xffu);
+    gDPFillRectangle(&buf[3], f->x0, f->y0, f->x1, f->y1);
+    nd_walk_state((const uint32_t*)buf, 4u);
+}
+
+/* core 0: the 1-cycle fill of a rectangle, as the walker's fill (nd_rect.c nd_fillrect): primitive colour, lower right exclusive. */
+void nd_fill_run(const uint32_t* u) {
+    const NdFillRec* f = (const NdFillRec*)u;
+    const unsigned k = f->kind & 3u;
+    const int x1 = f->x1 - 1, y1 = f->y1 - 1;
+    NdPsoN64 d;
+    if (nd_direct_ready() != 1) {
+        nd_fill_walk(f, k);
+        return;
+    }
+    d.cw0 = kFillKind[k].cc.words.w0;
+    d.cw1 = kFillKind[k].cc.words.w1;
+    d.oml = kFillKind[k].rm0 | kFillKind[k].rm1;
+    d.omh = G_CYC_1CYCLE;
+    d.omh_m = 3u << G_MDSFT_CYCLETYPE;
+    nd_direct_bind(nd_pso_n64(&d), f->rgba, nd_direct_env());
+    if (x1 >= f->x0 && y1 >= f->y0) {
+        pm_gpu_set_replace(0);
+        pm_gpu_fill_rect(f->x0, f->y0, x1, y1, f->rgba);
+    }
+    nd_direct_end();
+}
+
 /* S5TRECT: the NDC_NAPI runner of one NdTRect (nd_api.h): a texture window and one texture rectangle. Direct when the window is valid and the walker
  * state lets a direct rectangle draw (nd_direct_ready == 1); else the same load and rectangle ops into a local list, walked with nd_walk_state. */
 void nd_trect_run(const uint32_t* u) {
