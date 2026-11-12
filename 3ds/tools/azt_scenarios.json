@@ -1365,6 +1365,31 @@
       "reason": "S4 byte gate for the embers particle run (row S4EMB): cold det start as spot_mac01_det, shots 412 to 415. Cap 40 s, deadline 35 s. The shot line at frame 415 is the until."
     },
     {
+      "name": "fxpic_84",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 at 0 0 200, fxtest=84 (water_block), cold det start. Shots at frames 404 to 407.",
+      "proves": "S4 particle run (water_block, effect 84): shots 404 to 407 byte-equal between the base build and the head build.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=84 shots shotwin=404:4 loglevel=debug det",
+      "extra": [],
+      "until": "shot \\d+ frame 407\\b",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "shot 407",
+          "regex": "shot \\d+ frame 407\\b"
+        }
+      ],
+      "reason": "S4 byte gate for the water_block particle run (row S4WBLK): cold det start as spot_mac01_det, shots 404 to 407. Cap 40 s, deadline 35 s. The shot line at frame 407 is the until (S4WBLK try 2: 404 to 407 inside the block life)."
+    },
+    {
       "name": "spot_mac01_selfchk_prof",
       "status": "unverified",
       "subject": "Toad Town mac_01, Mario placed at pos 0 0 200, det, prof=30: the first 300-frame prof window (wk, fts, wks, oh, amort, csvc, ssvc). Log only.",
@@ -14092,6 +14117,31 @@
         }
       ],
       "reason": "Per-effect census: which draw functions effect_3D runs per frame and their call counts (fncov lane, census only). Cap 45 s, deadline 40 s. Log only; the until is the census done line."
+    },
+    {
+      "name": "fxfncov_84",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, fxtest=84 (water_block) live in slot 400-443, census of walker frame 406.",
+      "proves": "HC0 M3 for mac_01 with fxtest slot live: which draw functions run in one frame and the calls of each (fncov lane, draw TUs instrumented).",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=84 fncov=406 loglevel=debug det",
+      "extra": [],
+      "until": "fncov f\\d+ done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "fncov done",
+          "regex": "fncov f\\d+ done"
+        }
+      ],
+      "reason": "Per-effect census: which draw functions water_block runs per frame and their call counts (fncov lane, census only). Cap 45 s, deadline 40 s. Log only; the until is the census done line."
     },
     {
       "name": "fncov_kmr10_det",

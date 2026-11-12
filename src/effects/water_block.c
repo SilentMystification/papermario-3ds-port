@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_api.h"
 
 typedef struct WaterBlockVtxData {
     /* 0x00 */ Vec3b pos;
@@ -224,6 +225,9 @@ void water_block_appendGfx(void* effect) {
     Vtx* curVtx;
     s32 timePhase;
     s32 i;
+#ifdef TARGET_3DS
+    NdParts pb;
+#endif
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(effectTemp->shared->graphics));
@@ -277,15 +281,31 @@ void water_block_appendGfx(void* effect) {
     gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 255, alpha);
     gSPDisplayList(gMainGfxPos++, D_090003B0_3B6FA0);
 
+#ifdef TARGET_3DS
+    nd_parts_begin(&pb, 1, 1);
+#endif
     for (i = 0; i < NUM_WATER_BLOCK_COMPONENTS; i++) {
         if (data->unk_88[i] >= 0) {
             guPositionF(sp20, 0.0f, 0.0f, 0.0f, data->unk_78[i], data->unk_38[i], data->unk_48[i], 0.0f);
             guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
+#ifdef TARGET_3DS
+            {
+                Gfx g[3];
+                gSPMatrix(&g[0], &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+                gSPDisplayList(&g[1], D_090004A0_3B7090);
+                gSPPopMatrix(&g[2], G_MTX_MODELVIEW);
+                nd_parts_add(&pb, (const uint32_t*)g);
+            }
+#else
             gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
             gSPDisplayList(gMainGfxPos++, D_090004A0_3B7090);
             gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+#endif
         }
     }
+#ifdef TARGET_3DS
+    nd_parts_end(&pb);
+#endif
 
     gSPDisplayList(gMainGfxPos++, D_09000300_3B6EF0);
     gDPSetPrimColor(gMainGfxPos++, 0, 0, data->color.r, data->color.g, data->color.b, alpha * 0.3);

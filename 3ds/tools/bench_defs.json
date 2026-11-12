@@ -394,6 +394,22 @@
       "gates": []
     },
     {
+      "name": "fxfncov_84",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FXFNCOV census: draw functions run in walker frame of scenario fxfncov_50 and their call counts (census lane <L>_fncov). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.",
+      "scenario": "fxfncov_84",
+      "cap": 45,
+      "until": "fncov f\\d+ done",
+      "tags": [
+        "azahar",
+        "hotcode",
+        "fncov"
+      ],
+      "gates": []
+    },
+    {
       "name": "fncov_kmr10_det",
       "kind": "azahar_stream",
       "speed": "normal",
@@ -3924,6 +3940,21 @@
       "scenario": "fxpic_105",
       "cap": 40,
       "until": "shot \\d+ frame 415\\b",
+      "tags": [
+        "azahar",
+        "fxcen"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fxpic_84",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "S4 byte gate: water_block (effect 84) on the particle run, cold det start. Shots 404 to 407 byte-equal base against head.",
+      "scenario": "fxpic_84",
+      "cap": 40,
+      "until": "shot \\d+ frame 407\\b",
       "tags": [
         "azahar",
         "fxcen"
