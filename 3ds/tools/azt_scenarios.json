@@ -9769,6 +9769,26 @@
       "reason": "BTLUI2 measurement: battle_start copy with the menu draw log, no shots. The until line is the first btlmenu line after frame 300."
     },
     {
+      "name": "btlui_trace",
+      "status": "unverified",
+      "subject": "BTLUI3: battle menu reached on kmr_03 (battlef=100), cplxtrace log of the complex HUD quads (ctrv load, ctrt per triangle, ctrb batch close), census, det. Reads the fate of the IA8 quads.",
+      "proves": "BTLUI3 measurement: ctrv, ctrt and ctrb lines of the battle menu quads from frame 220, serial (det).",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 cplxtrace census loglevel=debug det",
+      "until": "ctrb f2[2-9]\\d",
+      "cap": 40,
+      "deadline": 45,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "ctrb f after 220",
+          "regex": "ctrb f2[2-9]\\d"
+        }
+      ],
+      "reason": "BTLUI3 measurement: btlui_menu_det copy with the cplxtrace switch. The until line is the first ctrb line from frame 220."
+    },
+    {
       "name": "btlui_menu_thr",
       "status": "unverified",
       "subject": "BTLUI2: the same battle menu scene on the threaded path (no det), cplxhud log, btlmenu state line and c2haz census of the walk hazards.",

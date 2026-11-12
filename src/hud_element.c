@@ -1742,6 +1742,9 @@ void render_complex_hud_element(HudElement* hudElement) {
 
             gDPSetTextureLUT(gMainGfxPos++, G_TT_NONE);
             gSPVertex(gMainGfxPos++, &transform->quadBuffers[FrameQuadIndex], 4, 0);
+            { static int ctr_sw = -1; extern void ctr_store(const void* q); extern int pm_debug_has(const char* word); /* BTLUI3: cplxtrace stores the quad for nd_geom_vtx */
+              if (ctr_sw < 0) ctr_sw = pm_debug_has("cplxtrace") ? 1 : 0;
+              if (ctr_sw) ctr_store(&transform->quadBuffers[FrameQuadIndex]); }
             gSP1Triangle(gMainGfxPos++, 0, 1, 2, 0);
             gSP1Triangle(gMainGfxPos++, 0, 2, 3, 0);
             break;
