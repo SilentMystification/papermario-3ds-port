@@ -302,7 +302,7 @@ void nd_trect_run(const uint32_t* u) {
     if (ok && nd_direct_ready() == 1) {
         const NdPsoN64 pd = { .cw0 = r->cw0, .cw1 = r->cw1, .oml = r->oml, .omh = r->omh, .omh_m = (3u << G_MDSFT_TEXTLUT) | (3u << G_MDSFT_TEXTFILT) };
         const NdPso id = nd_pso_n64(&pd);
-        if (nd_direct_bind(id, r->prim, nd_direct_env())) {
+        if (nd_direct_bind(id, (r->pad & 1u) ? nd_direct_prim() : r->prim, nd_direct_env())) {
             nd_direct_tex(&d);
             nd_direct_rect(r->w0, r->w1, r->hs, r->hd);
             nd_direct_end();

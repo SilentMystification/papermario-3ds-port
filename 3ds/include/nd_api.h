@@ -72,7 +72,7 @@ typedef struct NdTRect {
     const void* img; const void* pal; uint32_t pal_n, fmt, siz, width, height;
     int32_t uls, ult, lrs, lrt; uint32_t cms, cmt, masks, maskt;
     uint32_t w0, w1, hs, hd;
-    uint32_t cw0, cw1, oml, omh, prim, fill, pad;
+    uint32_t cw0, cw1, oml, omh, prim, fill, pad; /* pad bit 0: keep the walker's prim (nd_direct_prim) instead of prim */
 } NdTRect;
 _Static_assert(sizeof(NdTRect) % 8 == 0 && sizeof(NdTRect) == 104, "NdTRect: 13 whole 8-byte units");
 void nd_trect_run(const uint32_t* u);
