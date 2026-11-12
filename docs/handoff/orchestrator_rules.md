@@ -8,13 +8,17 @@ Do not stop until the native pipeline is implemented and the old system (walker 
 is completely removed: plan_nativeapi.md stages S1 to S6. Each turn: keep 6 coders fed, merge, build main, ask the oracle for the
 next batch. Stop only for a user decision (AskUserQuestion) or a console action. ASSETFREE, CIA and QTM stay parked.
 Pre-approved by the user (2026-11-12, for the night run): all Sonnet and Opus coder rows of the chain (Sonnet S5, S6, S7, S8, S9
-rows; Opus S6T, S5IMGFX, S7CONV, S7MDL); a fresh Opus oracle when the oracle context passes about 600K or its reads no longer
-fit (the old one stops after it saves notes); one budget reset per row correction. No console push without the user: keep
+rows; Opus S6T, S5IMGFX, S7CONV, S7MDL); a fresh Opus oracle only when forced (the hard context limit is reached or its answers
+visibly degrade) or when the work moves to a new area (user, 2026-11-12: no rotation on a token count, it saves no proven cost
+and a fresh oracle re-reads about 300K tokens); one budget reset per row correction. No console push without the user: keep
 merging passed rows, rebuild main, wait. Hardware-only risk rows (GPU state, texture binds) still merge when their Azahar gates pass.
 Definition of done (user, 2026-11-12): the complete native-only path with ALL display list code removed (the game draws only
 through native calls; no N64 list words, no walker state model, no list readers, no stream replay of list words anywhere).
 A stage that leaves list code behind is not done. The last rows delete it and prove it by grep (no gSP/gDP list builders left in
 the draw path, no ndc/ops readers of list words) plus the byte set and the console run.
+The epic is NOT DONE (user, 2026-11-12, repeated) until the old system is not used at all: removed from the source, or proven
+absent from the final 3ds executable (ELF symbol and section check). Nobody, orchestrator included, says "done" or "complete"
+for the epic before that proof. A stage report says what is left, in counts, never "stage complete".
 
 ## Roles
 - Orchestrator: launches agents, merges, cleans up, pushes on request, asks the user. It does not edit game source and does not
@@ -28,8 +32,8 @@ the draw path, no ndc/ops readers of list words) plus the byte set and the conso
 - Oracle (Opus): reads code and writes only docs/handoff/row_*.md files (rows, findings). It never writes code (oracle.md).
   It plans every fix by code read (CLAUDE.md 1-2). For a data-format change it first lists every reader. The orchestrator starts
   the first oracle of a session and reuses it for related questions, sent in groups. Any other Opus agent (a second or replacement
-  oracle, an Opus code agent) needs a user yes: ask with AskUserQuestion and give the reason (the oracle context passed about 600K, or a
-  new area where its context does not help). Ask the oracle for its own context count; the subagent usage line adds up every turn
+  oracle, an Opus code agent) needs a user yes: ask with AskUserQuestion and give the reason (the oracle hit the hard context limit or its
+  answers visibly degrade, or the work moved to a new area where its context does not help). Never a token count alone (user, 2026-11-12). Ask the oracle for its own context count; the subagent usage line adds up every turn
   and is not the context. Never two oracles at once unless the user says so.
   Never stop or pause the oracle (user 2026-11-11): its context size is no reason to stop its work. Do not tell it to stop at a token count.
 - Code agents: Haiku (coder.md). Sonnet or Opus only when the oracle gives a reason and the user says yes. Reuse an agent of the
@@ -43,12 +47,16 @@ the draw path, no ndc/ops readers of list words) plus the byte set and the conso
 - Keep the coders fed. The oracle writes rows in batches ahead of the coders (oracle.md 7). Each turn the orchestrator checks the
   number of running coders: below 6 with open work, it sends the oracle one "refill" request (a batch for all open work) and starts
   every ready row at once. It does not hand the oracle one job at a time.
-- Avoid merge conflicts. Rows may run in parallel only when no merge conflict can result, and no row depends on the unmerged
-  output of another. Rows may share a file when their edits are in different places (different functions, scenarios or blocks)
-  and no edit moves or reformats the other's lines.
-- Before a launch, compare the files and places that the running rows and the new row edit. A possible overlap of the same lines
-  (or a rename, move or reformat of a shared file) makes the later row wait until the earlier row is merged. It then branches from
-  the new main.
+- No merge conflicts (user, 2026-11-12: "multiple agents can work on the same file but not the same area of code; no extra work
+  for handling merge conflicts"). Rows run in parallel only when no conflict can result and no row depends on unmerged output.
+  Every row names its PLACES (file plus function or region). docs/handoff/places.md (edited in place) lists the places of every
+  open row. Before a launch the orchestrator checks the new row's places against that table: an equal or overlapping place, or a
+  rename, move or reformat of a shared region, makes the later row wait; it then branches from the new main.
+- Shared registries are never edited by rows (they caused a conflict at nearly every S7 merge: the GCONV_SRC lines of
+  3ds/tools/gen_gfx_tab.sh, azt_scenarios.json, bench_defs.json). They become per-row files (rows REGDIR1-3) or are written by
+  the tools only (runs.jsonl, pushed_builds.txt). Until a registry is split, rows that edit it run one at a time.
+- Coders do not merge main into their branch to stay current. The orchestrator merges at once after the hand-back, one row at a
+  time, with the merge-tree check. A coder merges main only when the check shows a conflict, and resolves it in the registry only.
 - Azahar scales by slots (test_catalog.md): PM_AZ_SLOTS private Azahar copies (default 3), one mutex each, so runs on different
   slots go in parallel. A warm restart takes about 1 s. A list (`bench.py run a,b,c`) runs scenarios one after the other on one
   kept slot. Rows with Azahar gates run in parallel, each on its own slot. Plan each row's scenarios as one list. A row waits for
@@ -57,8 +65,8 @@ the draw path, no ndc/ops readers of list words) plus the byte set and the conso
 - At most 6 code agents.
 - Row spec fault (user, 2026-11-12): after the oracle corrects the row, reset the budget once inside the coder's worktree
   (`cd build3ds/wt/<row>; powershell -File 3ds/run_azahar.ps1 -ResetBudget <row>`; the budget file is per worktree) and tell the
-  user in the status. Tool faults never get a reset. The oracle sends the corrected row to the coder itself. A byte diff of
-  at most 1 step per channel inside the effect area passes when the oracle names the code cause (rounding rule).
+  user in the status. Tool faults never get a reset. The oracle sends the corrected row to the coder itself. Every compare is
+  exact: one differing bit fails the gate, no rounding exception (user, 2026-11-12).
 - Handback triage: a test-tool fault opens a tool row, and the gate waits (CLAUDE.md 4). Send any other failure to the oracle at
   once. Decide alone only what changes no behaviour (a name, a flag, a scope). Never relaunch an unchanged row.
 - A bug row starts from the user facts. When the code read finds no cause, ask the user (AskUserQuestion).
@@ -72,15 +80,25 @@ the draw path, no ndc/ops readers of list words) plus the byte set and the conso
   4. Append the new runs.jsonl lines of the worktree to main's runs.jsonl. Commit runs.jsonl and pushed_builds.txt with
      `git add -f` (CLAUDE.md 10: main stays clean).
   5. Delete .wt_keep, run `sh 3ds/tools/wt_gc.sh --apply`, run `git branch -d <row>`.
-  6. Build main at once (foreground, then `python 3ds/tools/bench.py base --fill` in the main folder), so a current build is always ready.
-     A push then starts at the user's answer with `-NoBuild` (the build is never started after the question). Before the question,
-     check that the build matches HEAD (code); rebuild first if a merge came after it.
+  6. Build main in the background with plain `sh 3ds/build.sh` (the default lane: a lane build writes build3ds/lane-main/, which
+     the push does not read), so a current build is ready. Never run builds or pushes in the foreground of the chat (user,
+     2026-11-12: it blocks his messages): run them in the background and report one line at the end. Before asking for a push,
+     check that the build matches HEAD (code). Push at the user's answer with `go.ps1 push` (the stale check by git hash is an open
+     tool fault: see HANDOFF.md); never test port 17491 or build between the question and the push (the netloader accepts one
+     connection and stops listening after a few minutes). A failed push: read build3ds/out/push_<ip>_*.txt, the raw 3dslink output.
+  7. merge_row.sh needs a clean main: commit docs with `git add -A -f docs/handoff 3ds/logs/perf/pushed_builds.txt` first. A
+     coder's worktree runs.jsonl may be huge: run 3ds/tools/dedupe_runs.py on it before the merge.
 
 ## Status and questions
 - Every Agent launch: the description is "[model] TASK - summary", 10 words or fewer for the summary (for example "[Haiku] KEYMISS - key-miss census for the draw cache").
 - Every turn, one markdown table (user, 2026-11-12) with the columns State | Agent | Row | Summary. State is RUNNING, QUEUED
   or BLOCKED-ON-USER. One line per agent or row. Agent = [Haiku], [Sonnet], [Opus], [Oracle Opus], [Push], [Build]. Summary = 10
   words or fewer (the same text as the Agent description). BLOCKED-ON-USER: console actions only.
+- Every status starts with one line "Display list code remaining" in counts (user, 2026-11-12: earlier epics declared done at a
+  stage end while list code remained). Source: the newest LISTCEN2 run (C1..C12 of plan_endgame.md); until it exists, the plan
+  census: 3820 active builder calls (+648 N64-only), 3254 gMainGfxPos uses (+715), 22103 list data macros in 2107 Gfx arrays,
+  714 reader hits, 15 state-model functions. The word "done" is not used for the epic; only `elfgate.py` printing
+  `func 0 data 0 gfxnames 0` plus all source counters 0 ends it, and the user can run that script himself.
 - Ask only with AskUserQuestion (2-4 options, recommended first). Do not ask what a rule decides. A decision or blocker is never
   written as a status line: ask it as a question at once. BLOCKED-ON-USER lists only console actions that wait for the user.
   A design the user gave to the oracle is the oracle's job: it is not a blocker.

@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 extern Gfx D_09002400_409480[];
 extern Gfx D_09002528_4095A8[];
@@ -119,7 +120,11 @@ void quizmo_assistant_appendGfx(void* effect) {
 
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     gDPSetPrimColor(gMainGfxPos++, 0, 0, fadeInAmt, fadeInAmt, fadeInAmt, 255);
+#ifdef TARGET_3DS
+    nd_rec_dl(D_E011C514[0]);
+#else
     gSPDisplayList(gMainGfxPos++, D_E011C514[0]);
+#endif
 
     switch (data->anim) {
         case 0:
@@ -134,7 +139,11 @@ void quizmo_assistant_appendGfx(void* effect) {
             break;
     }
 
+#ifdef TARGET_3DS
+    nd_rec_dl(D_E011C500[idx]);
+#else
     gSPDisplayList(gMainGfxPos++, D_E011C500[idx]);
+#endif
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     gDPPipeSync(gMainGfxPos++);
 }

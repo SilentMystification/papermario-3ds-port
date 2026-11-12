@@ -12,6 +12,10 @@ S9DEL4 (all worktrees) merged. `sh 3ds/tools/wt_new.sh S9GATE`; PM_ROW=S9GATE PM
    data_arrays, gfxtype, reader, model).
 2. `grep -rnE "\bg[DS]P[A-Za-z]|\bgs[DS]P[A-Za-z]|\bGfx\b|gMainGfxPos|NDO_|nd_ops_run|nd_walk_state|NDC_STATE|sync_combine|set_tilesize" src include 3ds/src 3ds/include > build3ds/out/s9grep.txt`:
    the file is empty.
+2b. ELF half (row_ENDGAME.md section 4, user rule 2026-11-12): `python 3ds/tools/elfgate.py build3ds/lane-S9GATE/pm_3ds.elf`
+   prints `elfgate func 0 data 0 gfxnames 0` (gfxscan_skip is handed back), and `python 3ds/tools/listcen.py` prints every total
+   0. Code that is in the source but unreachable counts as gone only through this ELF line. The epic is not reported done unless
+   2, 2b and 4 all pass.
 3. Build, memcheck OK; `bench.py run nd_host`: PASS.
 4. Byte set, with bases at the merge-base. One list: spot_mac01_det, mdl5_iwa10_det, spot_mac00_det, battle_wheel_nowide_det,
    pause_tab_det_pic, pause_spin_grab_det_w300, fxpic_63, the talk det scene and the file select det scene (9 starts: the budget

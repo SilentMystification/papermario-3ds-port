@@ -1215,6 +1215,27 @@
       "reason": "MOVE gate: DET cold start (-NoWarm, a cold start takes 12 to 16 s to the first marker, as nok11_det). Cap 35 s, deadline 30 s. Picture is the subject; the prof scene line is the until."
     },
     {
+      "name": "sten_enter_det",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0), cold det start, no prof switch. The Mario stencil fade-in: 12 shots at frames 37 to 48 (step 1), until frame 48.",
+      "proves": "S1TSTEN byte gate: the Mario stencil fade-in of the world entry is drawn by the direct record (tsten f lines id 0 direct 1); base and head give byte-equal shots.",
+      "debug": "warp=mac_01:0 pos=0:0:200 shots shotwin=37:12:1 loglevel=debug det",
+      "extra": [],
+      "until": "shot \\d+ frame 48\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        }
+      ],
+      "reason": "S1TSTEN byte gate: DET cold start, no prof switch (prof sets log=off, so no tsten line). Shot 11 (frame 48) is the until: 12 shots at frames 37 to 48 (tsten f35..f48). Cap 30 s, deadline 25 s."
+    },
+    {
       "name": "dlcchk_mac01",
       "status": "unverified",
       "subject": "Toad Town mac_01, cold det start with the dlcchk switch: the map shape lists are loaded from the build time .dlc file and each is compared with the run-time compile.",
@@ -1411,6 +1432,31 @@
       "reason": "S4 byte gate for the shimmer_burst particle run (row S4SHIM): cold det start as spot_mac01_det, shots 412 to 415. Cap 40 s, deadline 35 s. The shot line at frame 415 is the until."
     },
     {
+      "name": "fxpic_10",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 at 0 0 200, fxtest=10 (star), cold det start. Shots at frames 412 to 415.",
+      "proves": "S7EFX7 particle run (star, effect 10): shots 412 to 415 byte-equal between the base build and the head build.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=10 shots shotwin=412:4 loglevel=debug det",
+      "extra": [],
+      "until": "shot \\d+ frame 415\\b",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "shot 415",
+          "regex": "shot \\d+ frame 415\\b"
+        }
+      ],
+      "reason": "S7EFX7 byte gate for the star particle run (row S7EFX7): cold det start as spot_mac01_det, shots 412 to 415. Cap 40 s, deadline 35 s. The shot line at frame 415 is the until."
+    },
+    {
       "name": "fxpic_81",
       "status": "unverified",
       "subject": "Toad Town mac_01 at 0 0 200, fxtest=81 (snaking_static), cold det start. Shots at frames 412 to 415.",
@@ -1511,6 +1557,31 @@
         }
       ],
       "reason": "S7EFX8 byte gate for the water_splash particle run (row S7EFX8, nd_rec_dl table lists): cold det start as spot_mac01_det, shots 412 to 415. Cap 40 s, deadline 35 s. The shot line at frame 415 is the until."
+    },
+    {
+      "name": "fxpic_33",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 at 0 0 200, fxtest=33 (music_note), cold det start. Shots at frames 412 to 415.",
+      "proves": "S7EFX5 particle run (music_note, effect 33): shots 412 to 415 byte-equal between the base build and the head build.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=33 shots shotwin=412:4 loglevel=debug det",
+      "extra": [],
+      "until": "shot \\d+ frame 415\\b",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "shot 415",
+          "regex": "shot \\d+ frame 415\\b"
+        }
+      ],
+      "reason": "S7EFX5 byte gate for the music_note particle run (row S7EFX5, nd_rec_dl table lists): cold det start as spot_mac01_det, shots 412 to 415. Cap 40 s, deadline 35 s. The shot line at frame 415 is the until."
     },
     {
       "name": "fxpic_84",

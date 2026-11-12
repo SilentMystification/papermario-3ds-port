@@ -343,7 +343,10 @@ typedef struct { u32 addr, gen, hash, nops, exit_am, exit_om; u16 ngrp; u8 refus
 #define DLC_TAB 2048
 #define DLC_MAXOPS 4096
 #define DLC_GPU_GEOM(g) ((g) & (G_ZBUFFER | G_LIGHTING))
-typedef struct { u32 a0, op0, op1, tri0, ntri; struct NdSDef* sd; } EntSeg; /* S6E sd: the gap before the segment as a compiled def, or NULL */
+typedef struct { u32 a0, op0, op1, tri0, ntri; struct NdSDef* sd; u16 pc0, pcn; } EntSeg; /* S6E sd: the gap before the segment as a compiled def, or NULL; S7ENT pc0, pcn: a range in EntKey.pc, the table pieces that tile the gap (pcn 0: none) */
+enum { ENP_DEF, ENP_UNIT, ENP_SKIP };
+typedef struct { const void* p; u16 n; u8 kind; } EntPiece; /* S7ENT: ENP_DEF p = const NdGDef*, ENP_UNIT p = the unit (n 1), ENP_SKIP a no-op unit (not run) */
+int nd_ent_pieces(const EntPiece* p, unsigned n); /* nd_walk.c, core 0: run a gap as its table pieces; returns the defs run compiled */
 typedef struct {
     u32 list, vb, nops, hash, fr, vlen, retry;
     const u8* vp;
@@ -359,6 +362,8 @@ typedef struct {
     u16 calls, pcalls; u32 cf; /* PBATCH1: calls in frame cf, calls in the frame before */
     Gfx* fw; /* the list with its nested G_DL lists inlined (S6-5), G_ENDDL last: the segment ops index it */
     struct NdSDef* tail; /* S6E: the units after the last segment, or NULL */
+    EntPiece* pc; /* S7ENT: the pieces of the gaps that a table covers (EntSeg pc0, pcn) */
+    u16 tpc0, tpcn; /* the pieces of the tail gap */
 } EntKey;
 enum { ENT_NEW, ENT_OK, ENT_REF, ENT_DYN };
 #define ENT_TAB 1024

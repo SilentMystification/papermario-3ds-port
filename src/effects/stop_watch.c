@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 typedef struct UnkStruct {
     /* 0x00 */ s32 unk_00;
@@ -201,7 +202,11 @@ void stop_watch_appendGfx(void* effect) {
 
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     gSPMatrix(gMainGfxPos++, camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+    nd_rec_dl(D_09001000_3CC890);
+#else
     gSPDisplayList(gMainGfxPos++, D_09001000_3CC890);
+#endif
     gDPSetEnvColor(gMainGfxPos++, 0, 0, 0, data->unk_2C);
 #ifdef TARGET_3DS
     vtxBuffer = (Vtx_t*) nd_rec_data(64 * sizeof(Gfx)); /* DIRECT D6c: the vertex buffer is stream data */

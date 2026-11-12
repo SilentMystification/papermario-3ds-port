@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 u8 D_E00B2BA0[] = { 255, 255, 255, 255, 255, 255, 255, 255, 255, 200, 128, 32, 0, 0, 0, 0 };
 
@@ -251,7 +252,11 @@ void squirt_appendGfx(void* effect) {
     gSPVertex(gMainGfxPos++, savedGfxPos, i * 2, 0);
 
     savedIdx = i;
+#ifdef TARGET_3DS
+    nd_rec_dl(unk_00 == 0 ? D_09000800_3B5B40 : D_090008A8_3B5BE8);
+#else
     gSPDisplayList(gMainGfxPos++, unk_00 == 0 ? D_09000800_3B5B40 : D_090008A8_3B5BE8);
+#endif
 
     for (i = 0; i < savedIdx - 1; i++) {
         s32 i2 = i * 2;
