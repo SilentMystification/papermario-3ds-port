@@ -9749,6 +9749,46 @@
       "reason": "BTLUICEN census bench: battle_start_f182 without shots, so the run reads the log only."
     },
     {
+      "name": "btlui_menu_det",
+      "status": "unverified",
+      "subject": "BTLUI2: battle menu reached on kmr_03 (battlef=100), cplxhud log of each complex HUD draw and the btlmenu state line, census, det. Reads whether the reel, panel and option icons are drawn.",
+      "proves": "BTLUI2 measurement: btlmenu state, cplx mode 2 draws, tridrop and rect census lines of the battle menu frames, serial (det).",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 cplxhud census loglevel=debug det",
+      "until": "btlmenu f(30[1-9]|3[1-9][0-9]|[4-9][0-9][0-9]|[0-9]{4,}) state",
+      "cap": 40,
+      "deadline": 45,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "btlmenu f after 300",
+          "regex": "btlmenu f(30[1-9]|3[1-9][0-9]|[4-9][0-9][0-9]|[0-9]{4,}) state"
+        }
+      ],
+      "reason": "BTLUI2 measurement: battle_start copy with the menu draw log, no shots. The until line is the first btlmenu line after frame 300."
+    },
+    {
+      "name": "btlui_menu_thr",
+      "status": "unverified",
+      "subject": "BTLUI2: the same battle menu scene on the threaded path (no det), cplxhud log, btlmenu state line and c2haz census of the walk hazards.",
+      "proves": "BTLUI2 measurement: btlmenu state, cplx lines, c2haz lines of the threaded run (core 1 writes against the core 0 walk).",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 cplxhud c2haz loglevel=debug",
+      "until": "btlmenu f(30[1-9]|3[1-9][0-9]|[4-9][0-9][0-9]|[0-9]{4,}) state",
+      "cap": 40,
+      "deadline": 45,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "btlmenu f after 300",
+          "regex": "btlmenu f(30[1-9]|3[1-9][0-9]|[4-9][0-9][0-9]|[0-9]{4,}) state"
+        }
+      ],
+      "reason": "BTLUI2 measurement: battle_start copy with the menu draw log and the c2haz hazard census, no shots. The until line is the first btlmenu line after frame 300."
+    },
+    {
       "name": "nok11_splash_w600",
       "status": "unverified",
       "subject": "Mario in nok_11 (entry 0) with the water splash (EFFECT_WATER_SPLASH, fxtest 89) spawned at Mario. Shot a at 12 frames after the spawn shows the splash drops. Run on to frame 600: the nrawwhy line (cumulative raw refusal counts) prints.",

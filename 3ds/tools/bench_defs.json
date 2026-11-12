@@ -4145,6 +4145,40 @@
       "gates": []
     },
     {
+      "name": "btlui_menu_det",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BTLUI2: battle menu cplxhud log (cplx mode, flags, opacity, pos, scale) and btlmenu state lines after frame 300, census, det. Log only.",
+      "scenario": "btlui_menu_det",
+      "cap": 40,
+      "until": "btlmenu f(30[1-9]|3[1-9][0-9]|[4-9][0-9][0-9]|[0-9]{4,}) state",
+      "tags": [
+        "azahar",
+        "log",
+        "census"
+      ],
+      "log_metrics": [],
+      "gates": []
+    },
+    {
+      "name": "btlui_menu_thr",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BTLUI2: the battle menu on the threaded path (no det), cplxhud log and btlmenu state lines, c2haz hazard census. Log only.",
+      "scenario": "btlui_menu_thr",
+      "cap": 40,
+      "until": "btlmenu f(30[1-9]|3[1-9][0-9]|[4-9][0-9][0-9]|[0-9]{4,}) state",
+      "tags": [
+        "azahar",
+        "log",
+        "census"
+      ],
+      "log_metrics": [],
+      "gates": []
+    },
+    {
       "name": "roomtex_hud_pic",
       "kind": "azahar_pic",
       "speed": "normal",
