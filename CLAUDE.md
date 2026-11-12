@@ -26,7 +26,9 @@ Orchestrator: read docs/handoff/orchestrator_rules.md at the start and after eve
    16 KB L1, no division, no double, sequential access).
 8. WORKTREES. One per agent: build3ds/wt/<row>, branch <row>. The orchestrator merges and cleans up. Windows: repo-relative paths,
    the .ps1 tools, Git Bash for sh tools. build.sh generates map_restore_table.c and map_restore*.ld (never committed).
-   Rows that run together may share a file only when they edit different places in it, so merges do not conflict.
+   Rows that run together may share a file only when they edit different places in it (the row names its places; docs/handoff/places.md
+   lists the open ones), so merges do not conflict. Never edit a shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json,
+   bench_defs.json): use your own per-row file when the row says so. Do not merge main into your branch unless told.
 9. DOCS. State lives in a few files, edited in place. Git history is the log. The commit that completes a row deletes its row
    file. Numbers go into the bench database (runs.jsonl is append-only), not into prose. Add a docs/handoff file only for a new
    subject, with its INDEX.md line.

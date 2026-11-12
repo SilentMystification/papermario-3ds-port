@@ -47,12 +47,16 @@ for the epic before that proof. A stage report says what is left, in counts, nev
 - Keep the coders fed. The oracle writes rows in batches ahead of the coders (oracle.md 7). Each turn the orchestrator checks the
   number of running coders: below 6 with open work, it sends the oracle one "refill" request (a batch for all open work) and starts
   every ready row at once. It does not hand the oracle one job at a time.
-- Avoid merge conflicts. Rows may run in parallel only when no merge conflict can result, and no row depends on the unmerged
-  output of another. Rows may share a file when their edits are in different places (different functions, scenarios or blocks)
-  and no edit moves or reformats the other's lines.
-- Before a launch, compare the files and places that the running rows and the new row edit. A possible overlap of the same lines
-  (or a rename, move or reformat of a shared file) makes the later row wait until the earlier row is merged. It then branches from
-  the new main.
+- No merge conflicts (user, 2026-11-12: "multiple agents can work on the same file but not the same area of code; no extra work
+  for handling merge conflicts"). Rows run in parallel only when no conflict can result and no row depends on unmerged output.
+  Every row names its PLACES (file plus function or region). docs/handoff/places.md (edited in place) lists the places of every
+  open row. Before a launch the orchestrator checks the new row's places against that table: an equal or overlapping place, or a
+  rename, move or reformat of a shared region, makes the later row wait; it then branches from the new main.
+- Shared registries are never edited by rows (they caused a conflict at nearly every S7 merge: the GCONV_SRC lines of
+  3ds/tools/gen_gfx_tab.sh, azt_scenarios.json, bench_defs.json). They become per-row files (rows REGDIR1-3) or are written by
+  the tools only (runs.jsonl, pushed_builds.txt). Until a registry is split, rows that edit it run one at a time.
+- Coders do not merge main into their branch to stay current. The orchestrator merges at once after the hand-back, one row at a
+  time, with the merge-tree check. A coder merges main only when the check shows a conflict, and resolves it in the registry only.
 - Azahar scales by slots (test_catalog.md): PM_AZ_SLOTS private Azahar copies (default 3), one mutex each, so runs on different
   slots go in parallel. A warm restart takes about 1 s. A list (`bench.py run a,b,c`) runs scenarios one after the other on one
   kept slot. Rows with Azahar gates run in parallel, each on its own slot. Plan each row's scenarios as one list. A row waits for
@@ -76,9 +80,14 @@ for the epic before that proof. A stage report says what is left, in counts, nev
   4. Append the new runs.jsonl lines of the worktree to main's runs.jsonl. Commit runs.jsonl and pushed_builds.txt with
      `git add -f` (CLAUDE.md 10: main stays clean).
   5. Delete .wt_keep, run `sh 3ds/tools/wt_gc.sh --apply`, run `git branch -d <row>`.
-  6. Build main at once (foreground, then `python 3ds/tools/bench.py base --fill` in the main folder), so a current build is always ready.
-     A push then starts at the user's answer with `-NoBuild` (the build is never started after the question). Before the question,
-     check that the build matches HEAD (code); rebuild first if a merge came after it.
+  6. Build main in the background with plain `sh 3ds/build.sh` (the default lane: a lane build writes build3ds/lane-main/, which
+     the push does not read), so a current build is ready. Never run builds or pushes in the foreground of the chat (user,
+     2026-11-12: it blocks his messages): run them in the background and report one line at the end. Before asking for a push,
+     check that the build matches HEAD (code). Push at the user's answer with `go.ps1 push` (the stale check by git hash is an open
+     tool fault: see HANDOFF.md); never test port 17491 or build between the question and the push (the netloader accepts one
+     connection and stops listening after a few minutes). A failed push: read build3ds/out/push_<ip>_*.txt, the raw 3dslink output.
+  7. merge_row.sh needs a clean main: commit docs with `git add -A -f docs/handoff 3ds/logs/perf/pushed_builds.txt` first. A
+     coder's worktree runs.jsonl may be huge: run 3ds/tools/dedupe_runs.py on it before the merge.
 
 ## Status and questions
 - Every Agent launch: the description is "[model] TASK - summary", 10 words or fewer for the summary (for example "[Haiku] KEYMISS - key-miss census for the draw cache").
