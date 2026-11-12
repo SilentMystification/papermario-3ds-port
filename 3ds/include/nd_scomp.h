@@ -29,7 +29,7 @@ struct NdCombIn;
 /* The key of def d run on the inherited inputs in (the walker's NdCombIn before the range) and vprim (pm_comb_vprim): fields d sets take d's values. */
 void nd_scomp_key(const NdSDef* d, const struct NdCombIn* in, uint32_t vprim, uint32_t key[ND_SC_KEYW]);
 /* The compiled entry table (the ids): find key, or take a slot for it (*miss = 1). Returns the entry id. */
-#define ND_SC_N 32u
+#define ND_SC_N 128u
 typedef struct NdSTab { uint32_t key[ND_SC_N][ND_SC_KEYW]; uint8_t used[ND_SC_N]; uint8_t last[16]; unsigned next; } NdSTab;
 unsigned nd_scomp_find(NdSTab* t, unsigned def_id, const uint32_t key[ND_SC_KEYW], int* miss);
 
@@ -37,4 +37,6 @@ unsigned nd_scomp_find(NdSTab* t, unsigned def_id, const uint32_t key[ND_SC_KEYW
 void nd_scomp_rec(NdSDef* d, const void* v, unsigned nv);
 /* Core 0: the NDC_NAPI runner. */
 void nd_scomp_run(const uint32_t* rec);
+int nd_scomp_exec(NdSDef* d, const uint32_t* v, unsigned nv); /* core 0: run d with nv value units; 0 = refused (run the ops) */
+int nd_scomp_exec_own(NdSDef* d); /* core 0: run d whose value units are its own (static list data); 0 = refused */
 #endif
