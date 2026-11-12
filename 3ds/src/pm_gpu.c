@@ -2140,6 +2140,7 @@ static void eye_put(float e) {
 extern int pm_icmp_kind; /* pm_nusys.c: 0 plain, 1 L, 2 K */
 static u32* ic_blk;      /* 512 KB from malloc at first use: the current pairs at 0, the kept L at 2 * IC_HALF; INTERPB2: the current patched pairs (the K copy of the L frame) at 4 * IC_HALF, the kept ones at 6 * IC_HALF */
 static unsigned ic_n, ic_ln; /* pairs in the current frame, pairs in the kept L (0: none) */
+static unsigned ic_kpn, ic_kpunused, ic_kplost; /* patches made, patches the reader did not reach, patches lost (list full), per log window */
 static unsigned ic_n2, ic_ln2, ic_kskip; /* the same for the patched copy; patches the reader passed without use */
 static unsigned ic_from; /* the queue cursor of the icmp takes */
 typedef struct IcC { unsigned pairs, wl, wk, du, da, dt, dox, lenmis; unsigned ul[256]; } IcC; /* one compare window (dox: O class) */
@@ -2221,8 +2222,8 @@ static __attribute__((cold, noinline)) void ic_log(void) { /* every 300 compared
         ic_oc[br] = 0;
     }
     pm_log_hw("%s", ob);
-    n = (unsigned)snprintf(ob, sizeof ob, "icmpp f%u pairs %u wl %u wk %u diff U %u A %u T %u O %u lenmis %u kp %u lost %u skip %u locs", pm_frame_count(), ic_c1.pairs, ic_c1.wl, ic_c1.wk,
-                           ic_c1.du, ic_c1.da, ic_c1.dt, ic_c1.dox, ic_c1.lenmis, nd_kp_n, nd_kp_lost, ic_kskip);
+    n = (unsigned)snprintf(ob, sizeof ob, "icmpp f%u pairs %u wl %u wk %u diff U %u A %u T %u O %u lenmis %u kp %u unused %u lost %u skip %u locs", pm_frame_count(), ic_c1.pairs, ic_c1.wl, ic_c1.wk,
+                           ic_c1.du, ic_c1.da, ic_c1.dt, ic_c1.dox, ic_c1.lenmis, ic_kpn, ic_kpunused, ic_kplost, ic_kskip);
     for (int t = 0; t < 12; t++) {
         unsigned best = 0, bl = 0;
         for (unsigned r = 0; r < 256u; r++) if (ic_c1.ul[r] > best) { best = ic_c1.ul[r]; bl = r; }
@@ -2233,7 +2234,7 @@ static __attribute__((cold, noinline)) void ic_log(void) { /* every 300 compared
     pm_log_hw("%s", ob);
     memset(ic_oc, 0, sizeof ic_oc);
     memset(&ic_c0, 0, sizeof ic_c0); memset(&ic_c1, 0, sizeof ic_c1);
-    ic_lost = ic_nol = ic_kskip = 0;
+    ic_lost = ic_nol = ic_kskip = ic_kpn = ic_kpunused = ic_kplost = 0;
 }
 static __attribute__((cold, noinline)) void icmp_take(gxCmdQueue_s* q) {
     if (q->numEntries < ic_from) { ic_lost++; ic_from = 0; } /* cleared without a take */
@@ -2256,7 +2257,7 @@ static __attribute__((cold, noinline)) void icmp_frame(gxCmdQueue_s* q) { /* the
         }
         ic_ln = ic_ln2 = 0;
     }
-    if (pm_icmp_kind == 1) { nd_kp_n = 0; ic_kc = 0; }
+    if (pm_icmp_kind == 1) { ic_kpn += nd_kp_n; ic_kpunused += nd_kp_n - ic_kc; ic_kplost += nd_kp_lost; nd_kp_n = 0; ic_kc = 0; }
     ic_n = ic_n2 = 0; ic_from = 0; pm_icmp_kind = 0;
 }
 /* the entries queued since the last take go into the record (called before the queue is cleared: pm_gx_room, pm_gx_drain, and at the frame end) */

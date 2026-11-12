@@ -259,7 +259,7 @@ void nd_twinchk_mvp(const float* m, const void* ra) { /* the matrix of each uplo
     else if (pm_icmp_kind == 2) {
         if (tw_nm_k >= tw_nm_l || tw_nm_k >= TW_N || tw_hm[tw_nm_k] != tw_hash(m, 16)) {
             nd_tw_m++;
-            if (tw_first_step != tw_step + 1u && tw_first_n < 3u && tw_nm_k < TW_N) { /* INTERPB2: the first differing upload of this step (3 steps): index, the caller in the L walk and in the key walk */
+            if (tw_have_l && tw_first_step != tw_step + 1u && tw_first_n < 3u && tw_nm_k < TW_N) { /* INTERPB2: the first differing upload of this step (3 steps): index, the caller in the L walk and in the key walk */
                 tw_first_step = tw_step + 1u; tw_first_n++;
                 pm_log("twinchk mvp first f%u idx %u of %u ra_l %p ra_k %p", pm_frame_count(), tw_nm_k, tw_nm_l, tw_nm_k < tw_nm_l ? tw_ra_l[tw_nm_k] : (const void*)0, ra);
             }
@@ -293,9 +293,11 @@ void nd_twin_frame_begin(int kind) {
     } else if (kind == 2) {
         if (tw_s_ok) { /* the key walk of step n starts from the state L(n) started from, not from what L(n) left (interpolated) */
             memcpy(nd_proj, tw_s_proj, sizeof nd_proj); memcpy(nd_mv[0], tw_s_mv0, sizeof nd_mv[0]); nd_proj_wn = tw_s_wn; tw_s_ok = 0;
+            const int kind_sv = pm_icmp_kind; pm_icmp_kind = 0; /* its upload_mvp is not a site of the L walk: not counted (counted at the leftover index of the step before, it was the one mismatch per step, ra nd_twin_frame_begin) */
             upload_mvp();
+            pm_icmp_kind = kind_sv;
         }
-        tw_np_k = tw_nq_k = tw_nm_k = 0; /* after the restore: its upload_mvp is not a site of the L walk */
+        tw_np_k = tw_nq_k = tw_nm_k = 0;
     }
 }
 /* The end of a walked frame (nd_cen.c pm_gbi_end_frame, before the matrix table is reset). */
