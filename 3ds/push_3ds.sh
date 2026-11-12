@@ -166,10 +166,12 @@ if [ "$nobuild" -eq 0 ] && [ "$attach" -eq 0 ] && [ -z "$checklog" ] && [ -z "$c
 fi
 if [ "$archonly" -eq 1 ]; then archive_build "archive-only" || exit 1; exit 0; fi
 if [ "$attach" -eq 0 ] && [ -z "$checklog" ] && [ -z "$checksend" ]; then mem_gate; fi
-# PUSHFIX STALE 3DSX: --no-build sends build3ds/pm_3ds.3dsx as it is. Its build key (build_key.txt, written by build.sh at a
-# successful build) must equal the content key of the tree now (build.sh PM_KEY_ONLY, the BSTALE key), else nothing is sent.
-# PM_BUILD_KEY_FILE (tests only) names another key file. HEAD moves with docs commits; the key does not.
-if [ "$nobuild" -eq 1 ] && [ -z "$PM_SRC3DSX" ]; then
+# PUSHFIX STALE 3DSX: --no-build sends the 3dsx as it is. Rule: the key of the current folder (`PM_LANE= PM_KEY_ONLY=1 sh 3ds/build.sh`,
+# run in the folder that holds build3ds/pm_3ds.3dsx) must equal that folder's own build3ds/build_key.txt (written by build.sh at a
+# successful build), else nothing is sent. The key hashes each folder's own generated files (build.sh key_now), so a key is valid
+# only against the build_key.txt of the same folder and output. A push runs from the main folder (go.ps1 Set-Location $repo).
+# PM_BUILD_KEY_FILE (tests only) names another key file; the check then runs even when PM_SRC3DSX is set.
+if [ "$nobuild" -eq 1 ] && { [ -z "$PM_SRC3DSX" ] || [ -n "$PM_BUILD_KEY_FILE" ]; }; then
     have=$(cat "${PM_BUILD_KEY_FILE:-build3ds/build_key.txt}" 2>/dev/null || true)
     now=$(PM_LANE= PM_KEY_ONLY=1 sh 3ds/build.sh || true)
     if [ -z "$have" ] || [ "$have" != "$now" ]; then

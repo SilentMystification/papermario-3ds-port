@@ -44,12 +44,11 @@ ob=$(env PM_SRC3DSX= PM_BUILD_KEY_FILE="$tmp/build_key_old.txt" sh 3ds/push_3ds.
 if [ "$rb" -eq 5 ] && echo "$ob" | grep -q 'STALE 3DSX'; then echo "ok   stale 3dsx exit 5"
 else echo "FAIL stale 3dsx (rc $rb)"; echo "$ob" | tail -n 20; fail=1; fi
 
-# (b2) a build key file holding the key of the tree now: no STALE line, SEND FILE printed (the check passed).
-# The default 3dsx is not in this worktree, so the run then stops at "no build3ds/pm_3ds.3dsx" before any 3dslink.
+# (b2) a build key file holding the worktree's own key: no STALE line, SEND FILE printed, the fake 3dslink sends.
 PM_LANE= PM_KEY_ONLY=1 sh 3ds/build.sh >"$tmp/build_key_now.txt"
-ob2=$(env PM_SRC3DSX= PM_BUILD_KEY_FILE="$tmp/build_key_now.txt" PM_3DSLINK="$fake_ok" \
+ob2=$(env PM_SRC3DSX="$tmp/pm_3ds.3dsx" PM_BUILD_KEY_FILE="$tmp/build_key_now.txt" PM_3DSLINK="$fake_ok" PM_ARCHIVE_DIR="$tmp" PM_PUSH_LOG="$tmp/pushed.txt" \
     sh 3ds/push_3ds.sh --no-build --ip 127.0.0.1 -t 1 --idle 1 2>&1) || true
-if ! echo "$ob2" | grep -q 'STALE 3DSX' && echo "$ob2" | grep -q 'SEND FILE:'; then echo "ok   matching key checked, SEND FILE printed"
+if ! echo "$ob2" | grep -q 'STALE 3DSX' && echo "$ob2" | grep -q 'SEND FILE:' && echo "$ob2" | grep -q 'Sending'; then echo "ok   matching key checked, SEND FILE printed, fake 3dslink sent"
 else echo "FAIL matching key"; echo "$ob2" | tail -n 20; fail=1; fi
 
 # (c) a partial send: the attempt's 3dslink output is kept and the NETLOADER REFUSED block is printed.
