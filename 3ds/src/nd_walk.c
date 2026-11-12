@@ -490,6 +490,96 @@ void nd_parts_run_v(const uint32_t* u) {
     gv_streak_flush();
     tex_streak_flush();
 }
+/* S7RUN (nd_gtab.h nd_rec_dl): the core 0 runner of one static list call from its table. rec[0] = the table, rec[1] = the state-only flag.
+ * Arm rule (the commit names it): a state-only list (nd_rec.c rec_inline: fewer than 64 units, all state ops) never reached the walker's G_DL arms,
+ * so it runs as G_PM_LST and its ops (the list start of that unit: gv_epoch, ent_skipgen, gp_prev_op); any other list takes the arms of walk_call
+ * in its order (ent_skipgen, ent_gdl, dlc_try) and, when neither draws it, the list start of nd_ops_run (keep) and its table ops. A def whose value
+ * units all precede the statics (nv == pre, the S6E rule of ent_gap) runs compiled, else as units. A debug walk (pm_walk_dbg) runs the G_DL unit on
+ * the walker so its census hooks see the list. Vertex and triangle ops are the walker's typed units (op_geo), so clip, cull, lit loads and the
+ * ring stay the walker's. */
+unsigned nd_gtr_ent, nd_gtr_dlc, nd_gtr_ops;
+static void gt_ops(const NdGTab* t);
+static void gt_call(const NdGTab* c) { /* a table call inside a list: the walker's G_DL arm at depth */
+    const Gfx* next = (const Gfx*)c->list;
+    pm_gbi_cur_op = nd_op_n64[NDO_CALL - NDO_BASE];
+    int ring = 0;
+    if (ent_skipgen) ent_skipgen = 0;
+    else if (dlc_on && !((u32)next - (u32)gMapShapeData < 0x40000u)) {
+        const int eh = ent_gdl(next);
+        if (eh > 0) { nd_gtr_ent++; return; }
+        if (eh < 0) ring = 1;
+    }
+    if (dlc_on && !ring && dlc_try(next)) { nd_gtr_dlc++; return; }
+    if (ex_depth < ND_LIST_DEPTH) { ex_depth++; gt_ops(c); ex_depth--; }
+    else nd_walk_state((const uint32_t*)c->list, ND_LIST_MAX); /* at the limit: the walker drops a deeper G_DL; its own check decides */
+}
+static void gt_ops(const NdGTab* t) {
+    for (const NdGOp* o = t->op;; o++) {
+        switch (o->k) {
+        case NDG_DEF: {
+            const NdGDef* g = (const NdGDef*)o->p;
+            if (g->d.nv == g->d.pre && nd_scomp_exec_own((NdSDef*)&g->d)) break; /* st is 1: no write to the table */
+            nd_walk_state((const uint32_t*)g->d.u, g->d.n);
+            break;
+        }
+        case NDG_UNIT: nd_walk_state((const uint32_t*)o->p, 1u); break;
+        case NDG_VTX: {
+            const uint32_t u[2] = { NDO_W0(NDO_VTX, ((uint32_t)o->a << 12) | ((uint32_t)(o->a + o->b) << 1)), (uint32_t)(uintptr_t)o->p };
+            nd_walk_state(u, 1u);
+            break;
+        }
+        case NDG_TRI: {
+            const uint32_t u[2] = { NDO_W0(NDO_TRI1, ((uint32_t)o->a << 17) | ((uint32_t)o->b << 9) | ((uint32_t)o->c << 1)), 0u };
+            nd_walk_state(u, 1u);
+            break;
+        }
+        case NDG_CALL:
+            gt_call((const NdGTab*)o->p);
+            if (o->a & 1u) return; /* a branch ends the list that holds it */
+            break;
+        default: return; /* NDG_END */
+        }
+    }
+}
+void nd_gtab_run(const uint32_t* rec) {
+    PM_WALK_OWN();
+    const NdGTab* t = (const NdGTab*)(uintptr_t)rec[0];
+    if (rec[1]) { /* state-only */
+        static const uint32_t lst[2] = { NDO_W0(NDO_MISC, NDO_MISC_LST << 16), 0u };
+        pm_walk_side++;
+        nd_walk_state(lst, 1u);
+        gt_ops(t);
+        pm_walk_side--;
+        return;
+    }
+    if (__builtin_expect(pm_walk_dbg, 0)) {
+        const uint32_t u[2] = { ND_OP_CALL_W0, (uint32_t)(uintptr_t)t->list };
+        nd_walk_state(u, 1u);
+        return;
+    }
+    const Gfx* next = (const Gfx*)t->list;
+    pm_gbi_cur_op = nd_op_n64[NDO_CALL - NDO_BASE];
+    int ring = 0;
+    if (ent_skipgen) ent_skipgen = 0;
+    else if (dlc_on && !((u32)next - (u32)gMapShapeData < 0x40000u)) {
+        const int eh = ent_gdl(next);
+        if (eh > 0) { nd_gtr_ent++; return; }
+        if (eh < 0) ring = 1;
+    }
+    if (dlc_on && !ring && dlc_try(next)) { nd_gtr_dlc++; return; }
+    nd_gtr_ops++;
+    const int d = ex_depth;
+    gv_epoch++; /* GV1b */
+    dlc_on = 1;
+    gp_prev_op = -1;
+    pm_walk_side++;
+    ex_depth = d + 1;
+    gt_ops(t);
+    ex_depth = d;
+    pm_walk_side--;
+    gv_streak_flush();
+    tex_streak_flush();
+}
 /* DIRECT D10a: a custom gfx range of the frame stream (model record R11, build_custom_gfx), run to its NDC_END as the walker ran the list it
  * replaces: the list start (gv_epoch, dlc_on, a full combine and render sync: DIP2) and the list end (the vertex and texture streak flush). */
 void nd_range_run(const uint32_t* a) {

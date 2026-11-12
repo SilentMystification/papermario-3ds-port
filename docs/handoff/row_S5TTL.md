@@ -61,6 +61,15 @@ alpha `alpha` (clamped at 0) when `alpha < 255`, else TitleSetupGfx's G_CC_DECAL
     azahar, pic, det, gates []. Purpose "S5TTL byte gate: title screen hold state, det, shots 200 to 203."
   - Why 200: the hold state lasts TITLE_START_TIME 400 frames (state_title_screen.c:32) from the title start, so frames 200-203
     are inside it; the window has 4 shots, so the until frame is 203 (shotwin F:4 gives F to F+3).
+- Try 3 fix (ORACLE6, base run of 346ed226c: 4 of 4 shots, no until in 30 s). Cause: the committed JSON has the until and the
+  "last shot" regex as the JSON text "shot \\d+ frame 203\b" (one backslash before b). In a JSON string \b is the backspace
+  escape, so the regex ends in a
+  backspace character instead of a word boundary and never matches the line `shot 3 frame 203` (pm_gpu.c:1987, written at :2014
+  by pm_log_evt). The run output shows it: `until /shot \d+ frame 203/` (no \b). intro_native's JSON text is
+  "shot \\d+ frame 334\\b". Edit (nothing else): in azt_scenarios.json (title_det until and the "last shot" regex) and in
+  bench_defs.json (title_det until) the JSON text must be "shot \\d+ frame 203\\b" (two backslashes before d and two before b).
+  Delete the uncommitted "reason": "broken" entry the tool wrote, keep status "unverified", commit both files. Expected in each
+  base run and in the head run: `shot 0 frame 200` to `shot 3 frame 203`, then the until hit and the end within about 1 s.
 - `bench.py base title_det` (2 runs of the merge-base build; they must agree), then one run `bench.py run title_det --row S5TTL
   --why "S5TTL: title rects as NdTRect"` (1 start), `bench.py cmp title_det --row S5TTL`: 4/4 byte-equal. No `trect fallback`
   lines. A log with `game mode 14` (file select) before frame 203 means START landed on the title: stop and hand back the
