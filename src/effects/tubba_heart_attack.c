@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 enum MiniHeartState {
     HEART_STATE_INIT        = 0,
@@ -322,7 +323,11 @@ void tubba_heart_attack_appendGfx(void* effect) {
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     gDPSetPrimColor(gMainGfxPos++, 0, 0, data->primR, data->primG, data->primB, alpha);
     gDPSetEnvColor(gMainGfxPos++, 0, 0, 0, 0);
+#ifdef TARGET_3DS
+    nd_rec_dl(D_09000400_3D2980);
+#else
     gSPDisplayList(gMainGfxPos++, D_09000400_3D2980);
+#endif
 
     for (i = 0; i < TUBBA_MINI_HEART_COUNT; i++) {
         if (data->state[i] != HEART_STATE_INIT && data->state[i] != HEART_STATE_DONE) {
@@ -339,7 +344,11 @@ void tubba_heart_attack_appendGfx(void* effect) {
 
             gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
             gSPMatrix(gMainGfxPos++, camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+            nd_rec_dl(D_09000518_3D2A98);
+#else
             gSPDisplayList(gMainGfxPos++, D_09000518_3D2A98);
+#endif
             gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         }
     }
