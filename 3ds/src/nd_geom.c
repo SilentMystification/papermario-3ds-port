@@ -27,6 +27,8 @@ u8 vert_gvf[64]; /* GV1: bit 0 = vert_p valid, bit 1 = the ring copy's S, T and 
 unsigned gv_fb[GVR_N], gv_load_n, gv_tri_n;
 unsigned gp1_ld_in, gp1_ld_out, gp1_ld_cross, gp1_vx_in, gp1_vx_out, gp1_vx_cross;
 unsigned short vert_ring[64], vert_gmi[64];
+int gv_vc_vtx; /* PBATCH2: the open ring batch takes the plan's routed colour from its vertices (cm 1, ca 0) */
+static unsigned gv_vc_block = ~0u; /* PBATCH2: the epoch in which a triangle met an older vertex after a colour change (the uniform path for it) */
 unsigned vert_tss[64];
 unsigned st_gpu_tri; /* triangles drawn by the raw path */
 unsigned st_vx; /* PO2: vertices transformed at G_VTX, triangle corners read (the old code transformed one matrix product per corner) */
@@ -249,9 +251,17 @@ static int gv_tri_core(const int* idx) {
         if (ep_cullboth) { n_out++; ctr_out = 2; GP_LAP(GPL_EARLY); return 1; }
         if (ep_pepoch != gv_epoch || ep_ptss != tss) {
             gv_params_calc(tss, &ep_p);
+            gv_vc_vtx = gv_vc_block != gv_epoch && plan_active && cur_plan.vtxname != PM_NM_SHADE && cur_plan.vtxname != PM_NM_NONE && !ep_p.boost && !ep_p.fxon; /* PBATCH2 */
+            if (gv_vc_vtx) for (int q = 0; q < 4; q++) { ep_p.cm[q] = 1.f; ep_p.ca[q] = 0.f; }
             pm_gpu_set_rgb_scale(ep_p.boost ? 2 : 1);
             ep_pepoch = gv_epoch; ep_ptss = tss;
         }
+        extern unsigned gv_vc_vbase; /* PBATCH2: an older vertex after a colour change: the uniform path */
+        if (gv_vc_vtx && (vert_ring[a] < gv_vc_vbase || vert_ring[b] < gv_vc_vbase || vert_ring[c] < gv_vc_vbase)) {
+            gv_vc_block = gv_epoch; pm_gpu_flush(); gv_params_calc(tss, &ep_p); pm_gpu_set_rgb_scale(ep_p.boost ? 2 : 1);
+            ep_pepoch = gv_epoch; ep_ptss = tss; gv_vc_vtx = 0;
+        }
+        if (gv_vc_vtx) { extern void pm_gpu_gvtx_colour(unsigned v, uint32_t rgba); pm_gpu_gvtx_colour(vert_ring[a], cur_plan.vtx); pm_gpu_gvtx_colour(vert_ring[b], cur_plan.vtx); pm_gpu_gvtx_colour(vert_ring[c], cur_plan.vtx); }
         if (ep_t1f) {
             if ((vert_litf[a] | vert_litf[b] | vert_litf[c]) & 2) { ctr_why = GVR_TEX1; gv_fb[GVR_TEX1]++; PH_ADD(C_GVFB, 1); return 0; } /* a texgen vertex keeps the refusal */
             unsigned rt[3] = { vert_ring[a], vert_ring[b], vert_ring[c] };
@@ -366,9 +376,12 @@ int nd_part_draw(const uint32_t* u) {
             if (ep_cullboth) { n_out++; GP_LAP(GPL_EARLY); continue; }
             if (ep_pepoch != gv_epoch || ep_ptss != tss) {
                 gv_params_calc(tss, &ep_p);
+                gv_vc_vtx = gv_vc_block != gv_epoch && plan_active && cur_plan.vtxname != PM_NM_SHADE && cur_plan.vtxname != PM_NM_NONE && !ep_p.boost && !ep_p.fxon; /* S4COL: as gv_tri (PBATCH2) */
+                if (gv_vc_vtx) for (int q = 0; q < 4; q++) { ep_p.cm[q] = 1.f; ep_p.ca[q] = 0.f; }
                 pm_gpu_set_rgb_scale(ep_p.boost ? 2 : 1);
                 ep_pepoch = gv_epoch; ep_ptss = tss;
             }
+            if (gv_vc_vtx) { extern void pm_gpu_gvtx_colour(unsigned v, uint32_t rgba); pm_gpu_gvtx_colour(rs[i0], cur_plan.vtx); pm_gpu_gvtx_colour(rs[i1], cur_plan.vtx); pm_gpu_gvtx_colour(rs[i2], cur_plan.vtx); } /* S4COL: the instance's vertices are loaded after its prim op */
             if (ep_t1f) {
                 unsigned rt[3] = { rs[i0], rs[i1], rs[i2] };
                 t1_fold_tri(rt, tss); /* a changed window map flushes the open batch (flush_gen), a new batch opens below */

@@ -308,6 +308,19 @@ static int uses_shade(const Seq* r, const Seq* a) {
     return 0;
 }
 
+/* S4COL: 1 inside a particle record (nd_parts_run): PRIM takes the vertex slot when the combine reads no SHADE */
+int pm_comb_vprim;
+
+/* S4COL: a combine that reads PRIM and no SHADE: the prim rides in the vertex colour (build sets al.vtx = PRIM) */
+static int reads_prim(const Seq* r, const Seq* a) {
+    const Seq* q[2] = { r, a };
+    for (int g = 0; g < 2; g++)
+        for (int i = 0; i < q[g]->n; i++)
+            for (int k = 0; k < 3; k++)
+                if (q[g]->s[i].t[k].n == TN_PR) return 1;
+    return 0;
+}
+
 /* R13c: the RDP reads the texels of cycle 2 swapped: TEXEL0 is the tile 1 texel and TEXEL1 the tile 0 texel. s = A B C D, Aa Ab Ac Ad of cycle 2. */
 void pm_comb_swap_c2(unsigned s[8]) {
     for (int i = 0; i < 8; i++) {
@@ -363,6 +376,7 @@ static int build(unsigned w0, unsigned w1, int two, int t1only, int lead, PmPlan
     for (int i = A.n; i < nst; i++) A.s[i] = mk(PM_F_REPLACE, TM(TN_PRV, 0), TM(TN_PRV, 0), TM(TN_PRV, 0), 0, 0, 0);
     if (nst > 6) return 1;
     if (uses_shade(&R, &A)) al.vtx = PM_NM_SHADE;
+    else if (pm_comb_vprim && reads_prim(&R, &A)) al.vtx = PM_NM_PRIM;
     out->n = nst;
     for (int i = 0; i < nst; i++) {
         const Seq* q[2] = { &R, &A };
