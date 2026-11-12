@@ -319,7 +319,14 @@ void nd_parts_end(NdParts* b) {
     if (!b->n) return;
     b->u[0] = b->n | b->pre << 8 | b->m << 16;
     b->u[1] = 0;
-    nd_rec_napi(nd_parts_run, b->u, 1u + b->n * b->m);
+    /* S4PDIR: a run whose every unit but the list call is MTX, PRIM, ENV, TILESIZE or POPMTX runs the setters by id */
+    int v = 1;
+    for (unsigned k = 0; v && k < b->n; k++)
+        for (unsigned j = 0; j < b->m; j++) {
+            const unsigned id = b->u[2u + 2u * (k * b->m + j)] >> 24;
+            if (j == b->pre ? id != NDO_CALL : !(id == NDO_MTX || id == NDO_PRIM || id == NDO_ENV || id == NDO_TILESIZE || id == NDO_POPMTX)) { v = 0; break; }
+        }
+    nd_rec_napi(v ? nd_parts_run_v : nd_parts_run, b->u, 1u + b->n * b->m);
     b->n = 0;
 }
 /* D4b-3: a state op (HC4a: typed by the recorder) extends the open NDC_STATE run when nothing was recorded after it (no span, no other command) and the chunk has room;
