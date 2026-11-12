@@ -1204,8 +1204,8 @@
       "default": false,
       "purpose": "INTERPB3: the patched copy of the L frame against the key walk in forced stereo, Toad Town mac_01 with fps60 and icmp.",
       "scenario": "icmp_mac01_stereo",
-      "cap": 40,
-      "until": "twinchk f\\d+ entries",
+      "cap": 45,
+      "until": "icmpp f(2\\d\\d|[3-9]\\d\\d|\\d{4,}) ",
       "tags": [
         "azahar",
         "icmp",

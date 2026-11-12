@@ -230,8 +230,10 @@ void pm_key_show(const PmKey* k) { /* walker side */
     if (kst) { pm_kc_n[1]++; pm_kc_fb[kst - 1]++; pm_key_walk(k); return; }
     pm_kc_n[0]++;
     /* the key walk leaves the matrix state the next L walk starts from (K of this step): main stack from the twin stack of the L walk */
-    memcpy(nd_mv[0], nd_mv_k[0], sizeof nd_mv[0]); memcpy(nd_proj, nd_proj_k, sizeof nd_proj);
+    if (!pm_gpu_kc_plain()) { /* an unpatched copy (a step that drew only the background task) has no twins: the state the L walk left stays */
+        memcpy(nd_mv[0], nd_mv_k[0], sizeof nd_mv[0]); memcpy(nd_proj, nd_proj_k, sizeof nd_proj);
     nd_proj_wn = sqrtf(nd_proj[0][3] * nd_proj[0][3] + nd_proj[1][3] * nd_proj[1][3] + nd_proj[2][3] * nd_proj[2][3]);
+    }
     pm_iw_us[1] = 0;
     pm_fs_q = 1; /* FS2: a key frame is not a drawn frame: no fsplit mark */
     pm_gpu_key_show();

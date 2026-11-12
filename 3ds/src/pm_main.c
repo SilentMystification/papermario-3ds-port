@@ -470,7 +470,7 @@ static void wq_frame_end(void) {
 void pm_lg_end_walked(void);
 void pm_lg_key_due(void);
 typedef struct { int drew, key; } StepEnd;
-static void wq_step_end(void* a) { const StepEnd* e = (const StepEnd*)a; if (e->drew) wq_frame_end(); if (e->key) pm_lg_key_due(); pm_lg_end_walked(); }
+static void wq_step_end(void* a) { const StepEnd* e = (const StepEnd*)a; if (e->drew) { pm_gpu_kc_want(e->key); wq_frame_end(); } if (e->key) pm_lg_key_due(); pm_lg_end_walked(); }
 void pm_fxtest_tick(unsigned);
 /* CORE2C-3: the body of one frame loop command (pm_logic.c), on the logic thread or inline. LG_IDLE: the retrace call of an idle pass.
  * LG_STEP: frame begin, the step (step_game_loop, list build, frame push), the audio ticks, the step end; LG_SKIP: the FS1 step with no
@@ -504,7 +504,7 @@ void pm_step_run(const LgCmd* c) {
 /* INTERP1: interpolation stays on only while the walks of a step fit (core 0 walks twice a step with fps60). Heavy: the last walk or the
  * GPU drawing time of the last frame is over 13 ms; calm again after 30 steps in a row under 10 ms. INTERPB3: the walk limit is 26 ms (calm under 20 ms), one walk a step. Heavy: one walk a step (ISKIP). */
 extern unsigned pm_iw_us[3]; /* pm_nusys.c */
-extern unsigned pm_kc_n[2], pm_kc_why[5], pm_kc_fb[4]; /* INTERPB3: copies shown, key walks; copies refused by cause */
+extern unsigned pm_kc_n[2], pm_kc_why[5], pm_kc_fb[4], pm_kc_plain; /* INTERPB3: copies shown, key walks; copies refused by cause */
 static int interp_heavy(void) {
     static int heavy, calm;
     static unsigned n, nh, sl, sk, sp, sg;
@@ -515,8 +515,8 @@ static int interp_heavy(void) {
     else calm = 0;
     n++; nh += heavy; sl += pm_iw_us[0]; sk += pm_iw_us[1]; sp += pm_iw_us[2]; sg += g;
     if (n == 300) {
-        pm_log_hw("interp f%u steps %u heavy %u lerp_us %u key_us %u plain_us %u gpu_us %u kcopy %u kwalk %u why %u %u %u %u %u kfb %u %u %u %u", pm_frame_count(), n, nh, sl / n, sk / n, sp / n, sg / n, pm_kc_n[0], pm_kc_n[1], pm_kc_why[0], pm_kc_why[1], pm_kc_why[2], pm_kc_why[3], pm_kc_why[4], pm_kc_fb[0], pm_kc_fb[1], pm_kc_fb[2], pm_kc_fb[3]);
-        pm_kc_n[0] = pm_kc_n[1] = 0; pm_kc_why[0] = pm_kc_why[1] = pm_kc_why[2] = pm_kc_why[3] = pm_kc_why[4] = pm_kc_fb[0] = pm_kc_fb[1] = pm_kc_fb[2] = pm_kc_fb[3] = 0;
+        pm_log_hw("interp f%u steps %u heavy %u lerp_us %u key_us %u plain_us %u gpu_us %u kcopy %u kwalk %u why %u %u %u %u %u kfb %u %u %u %u kplain %u", pm_frame_count(), n, nh, sl / n, sk / n, sp / n, sg / n, pm_kc_n[0], pm_kc_n[1], pm_kc_why[0], pm_kc_why[1], pm_kc_why[2], pm_kc_why[3], pm_kc_why[4], pm_kc_fb[0], pm_kc_fb[1], pm_kc_fb[2], pm_kc_fb[3], pm_kc_plain);
+        pm_kc_n[0] = pm_kc_n[1] = 0; pm_kc_why[0] = pm_kc_why[1] = pm_kc_why[2] = pm_kc_why[3] = pm_kc_why[4] = pm_kc_fb[0] = pm_kc_fb[1] = pm_kc_fb[2] = pm_kc_fb[3] = pm_kc_plain = 0;
         n = nh = sl = sk = sp = sg = 0;
     }
     return heavy;

@@ -7831,16 +7831,16 @@
       "subject": "INTERPB3: icmp_mac01 with forced stereo (both eyes recorded; the patched copy of the L frame compared with the key walk).",
       "proves": "INTERPB3: the icmpp lines (class counts, lenmis, unused) of the stereo frames: which words of the K copy differ from the key walk in stereo.",
       "debug": "warp=mac_01:0 pos=0:0:200 fps60 icmp twinchk loglevel=debug det stereo",
-      "until": "twinchk f\\d+ entries",
-      "cap": 40,
-      "deadline": 30,
+      "until": "icmpp f(2\\d\\d|[3-9]\\d\\d|\\d{4,}) ",
+      "cap": 45,
+      "deadline": 40,
       "first_marker": "warp: mac_01 entry 0",
       "expects": "warp",
       "needs_picture": false,
       "expected_events": [
         {
           "name": "icmp pairs",
-          "regex": "twinchk f\\d+ entries"
+          "regex": "icmpp f(2\\d\\d|[3-9]\\d\\d|\\d{4,}) "
         }
       ],
       "reason": "INTERPB3 measurement, copy of icmp_mac01 with stereo. Cap 40 s."

@@ -846,6 +846,12 @@ static float eyd_cw_dbg, eyd_p23_dbg, eyd_wn_dbg; /* EYECW log: the last perspec
 static inline void eyd_sync(void) {
     const float cw = eye_conv * nd_proj_wn;
     if (__builtin_expect(cw != 0.f, 0)) { eyd_cw_dbg = cw; eyd_p23_dbg = nd_proj[2][3]; eyd_wn_dbg = nd_proj_wn; }
+    if (__builtin_expect(nd_kp_on && pm_tw_on && u_eyd >= 0, 0)) { /* INTERPB3: the key frame twin of eyd: the same post column, cw from the key frame projection and the conv the key walk's begin reads */
+        const float wk = sqrtf(nd_proj_k[0][3] * nd_proj_k[0][3] + nd_proj_k[1][3] * nd_proj_k[1][3] + nd_proj_k[2][3] * nd_proj_k[2][3]);
+        const float l[4] = { cw, gv_post.r[2].x, gv_post.r[1].x, gv_post.r[0].x }, k[4] = { (stereo_frame ? pm_eye_conv : 0.f) * wk, l[1], l[2], l[3] };
+        u5row_k(u_eyd, l, k);
+        return;
+    }
     eye_vec(u_eyd, gv_post.r[0].x, gv_post.r[1].x, gv_post.r[2].x, cw);
 }
 static void u5mtx_k(int id, const C3D_Mtx* m, const C3D_Mtx* mk) { for (int r = 0; r < 4; r++) u5row_k(id + r, m->m + 4 * r, mk ? mk->m + 4 * r : NULL); }
@@ -2163,7 +2169,7 @@ static unsigned ic_kpn, ic_kpunused, ic_kplost; /* patches made, patches the rea
 static unsigned ic_n2, ic_ln2, ic_kskip; /* the same for the patched copy; patches the reader passed without use */
 static unsigned ic_from; /* the queue cursor of the icmp takes */
 static const u32* ic_tail; /* INTERPB2: the end of the last queued command list of the frame (NULL: none yet), where the open tail list begins */
-typedef struct IcC { unsigned pairs, wl, wk, du, da, dt, dox, lenmis; unsigned ul[256]; } IcC; /* one compare window (dox: O class) */
+typedef struct IcC { unsigned pairs, wl, wk, du, da, dt, dox, lenmis, fset, fi, fr, fl, fk; unsigned ul[256]; } IcC; /* one compare window (dox: O class) */
 static IcC ic_c0, ic_c1; /* plain L against K, patched L against K */
 static unsigned ic_lost, ic_nol; /* lost pairs, K frames without a kept L */
 static unsigned ic_oc[0x400]; /* O registers that differ, the window of the plain compare */
@@ -2214,15 +2220,21 @@ static __attribute__((cold, noinline)) void ic_list_k(const u32* cb, unsigned nw
 }
 static __attribute__((cold, noinline)) void ic_cmp(IcC* c, const u32* k, unsigned nk, const u32* l, unsigned nl, int oc) {
     c->wl += nl; c->wk += nk;
-    if (nl != nk) { c->lenmis++; return; } /* the compare stops at a length mismatch */
+    unsigned nm = nk < nl ? nk : nl; /* INTERPB3: a length mismatch counts, then the common prefix is compared */
+    if (nl != nk) {
+        static unsigned nlm;
+        c->lenmis++;
+        if (nlm++ < 8u) { unsigned fd = 0; while (fd < nm && k[2u * fd] == l[2u * fd] && k[2u * fd + 1u] == l[2u * fd + 1u]) fd++; pm_log_hw("icmpl f%u wl %u wk %u first %u r%03x l %08x k %08x", pm_frame_count(), nl, nk, fd, fd < nm ? k[2u * fd] : 0u, fd < nm ? l[2u * fd + 1u] : 0u, fd < nm ? k[2u * fd + 1u] : 0u); }
+    }
     unsigned lb = 0, dn = 0;
-    for (unsigned i = 0; i < nk; i++) {
+    for (unsigned i = 0; i < nm; i++) {
         c->pairs++;
         const unsigned r = k[2u * i];
         unsigned loc = 0;
         if (r == 0x2C0u) { lb = k[2u * i + 1u] & 0xFFu; dn = 0; }
         else if (r >= 0x2C1u && r <= 0x2C8u) { loc = (lb + (dn >> 2)) & 0xFFu; dn++; }
         if (k[2u * i] == l[2u * i] && k[2u * i + 1u] == l[2u * i + 1u]) continue;
+        if (!c->fset) { c->fset = 1; c->fi = i; c->fr = r; c->fl = l[2u * i + 1u]; c->fk = k[2u * i + 1u]; }
         if (r >= 0x2C0u && r <= 0x2C8u) { c->du++; c->ul[loc]++; }
         else if (r >= 0x200u && r <= 0x227u) c->da++;
         else if (r >= 0x110u && r <= 0x12Fu) c->dt++;
@@ -2251,6 +2263,7 @@ static __attribute__((cold, noinline)) void ic_log(void) { /* every 300 compared
         n += (unsigned)snprintf(ob + n, sizeof ob - n, " %u:%u", bl, best);
         ic_c1.ul[bl] = 0;
     }
+    if (ic_c1.fset) n += (unsigned)snprintf(ob + n, sizeof ob - n, " first i%u r%03x l %08x k %08x", ic_c1.fi, ic_c1.fr, ic_c1.fl, ic_c1.fk); else n += (unsigned)snprintf(ob + n, sizeof ob - n, " first none");
     pm_log_hw("%s", ob);
     memset(ic_oc, 0, sizeof ic_oc);
     memset(&ic_c0, 0, sizeof ic_c0); memset(&ic_c1, 0, sizeof ic_c1);
@@ -2869,21 +2882,28 @@ static __attribute__((cold, noinline)) void kc_out(const char* kind, unsigned i,
     static unsigned nout;
     if (nout++ < 8u) pm_log_hw("kcout f%u kind %s i %u addr %08x n %u cb %08x coff %u split %u", pm_frame_count(), kind, i, (unsigned)a, n, (unsigned)(u32)cb, coff, cmd_split_n - kc_split0);
 }
+/* kc_want: the key frame of this step is shown from the copy (set by the step end message just before the frame end: the step has a key frame). An armed L frame
+ * (patch list) gives a patched copy. A frame with no armed walk (the draw-off steps draw only the background task, no PMF_REPL, no twins) gives an unpatched
+ * copy: its picture is the key picture. kc_plain_shown tells pm_key_show the copy was unpatched (the matrix twins are not this step's). */
+static int kc_want, kc_plain_shown;
+unsigned pm_kc_plain;
+void pm_gpu_kc_want(int k) { kc_want = k; }
+int pm_gpu_kc_plain(void) { return kc_plain_shown; }
 static __attribute__((noinline)) void kc_build(void) {
     gxCmdQueue_s* q = (gxCmdQueue_s*)&__C3D_Context;
-    kc_valid = 0; kc_gen++;
-    if (!kc_rec) { if (pm_icmp_kind == 1) pm_kc_why[4]++; return; }
+    const int want = kc_want, armed = kc_arm;
+    kc_want = 0; kc_valid = 0; kc_gen++;
+    if (!want) { kc_rec = 0; kc_arm = 0; return; }
+    if (!kc_rec) { pm_kc_why[4]++; kc_arm = 0; return; }
     kc_take(q);
-    kc_rec = 0;
-    if (!kc_arm) { if (pm_icmp_kind == 1) pm_kc_why[4]++; return; }
-    kc_arm = 0;
+    kc_rec = 0; kc_arm = 0;
     u32 *tb, csz, toff;
     GPUCMD_GetBuffer(&tb, &csz, &toff); /* GPUCMD_Split moves the buffer start: this is the open tail list, the frame's lists are before it */
     u32* const cb = kc_base;
     const unsigned coff = (unsigned)(tb - cb) + toff; /* words used since the frame begin */
     if (tb < cb) { pm_kc_why[1]++; return; }
-    if (kc_cut > 0) { kc_cut--; pm_kc_why[3]++; return; }
-    if (kc_over || nd_kp_lost) { pm_kc_why[0]++; return; }
+    if (armed && kc_cut > 0) { kc_cut--; pm_kc_why[3]++; return; }
+    if (kc_over || (armed && nd_kp_lost)) { pm_kc_why[0]++; return; }
     if (!kc_buf) kc_buf = (u32*)pm_linear_alloc(KC_WORDS * 4u);
     if (!kc_buf || cmd_split_n != kc_split0 || coff > KC_WORDS) { pm_kc_why[1]++; return; }
     for (unsigned i = 0; i < kc_n; i++) {
@@ -2893,7 +2913,8 @@ static __attribute__((noinline)) void kc_build(void) {
         if (l < cb || (unsigned)(l - cb) + n > coff) { pm_kc_why[2]++; kc_out("list", i, (u32)l, n, cb, coff); return; }
     }
     memcpy(kc_buf, cb, coff * 4u);
-    for (unsigned i = 0; i < nd_kp_n; i++) {
+    const unsigned np = armed ? nd_kp_n : 0; /* nd_kp_n holds the last L frame's list when this frame had no armed walk */
+    for (unsigned i = 0; i < np; i++) {
         const NdKPatch* p = &nd_kp[i];
         if (p->base < cb || (unsigned)(p->base - cb) + 2u > coff) { pm_kc_why[2]++; kc_out("patch", i, (u32)p->base, 0, cb, coff); return; }
         const unsigned off = (unsigned)(p->base - cb), k = (cb[off + 1u] >> 20) & 0xFFu;
@@ -2905,6 +2926,8 @@ static __attribute__((noinline)) void kc_build(void) {
     kc_cb = (u32)cb; kc_tail_w = (unsigned)(tb - cb); kc_tail_n = toff;
     GSPGPU_FlushDataCache(kc_buf, coff * 4u);
     kc_valid = 1; kc_ok_gen = kc_gen;
+    kc_plain_shown = !armed;
+    if (!armed) pm_kc_plain++;
 }
 /* The key frame of the step from the K copy (walker side): a frame of its own (begin, the recorded entries, the recorded tail, end). Nothing of the frame state is
  * made again: no ring chunk, no texture slot and no list is touched between the L frame and this one. */
