@@ -121,3 +121,7 @@ background, one line at start and end); decisions go through AskUserQuestion; ne
 
 ## FPS60VAL (user, 2026-11-12)
 FPS60VAL (host validator of the 60 fps key frame copy, Sonnet row) waits for the next session. The user will decide after the console test of FPS60W2 (main f73457b88 and later). Do not start it before the user says so.
+
+## 60 fps freeze still open (console, 2026-11-12 17:50)
+Build #5018 (main f73457b88, with FPS60W2), 60 fps on: the O3DS .170 froze in Toad Town (mac_01) after some time. FPS60W2 fixed one defect, not this freeze. crash.txt (pulled by FTP, build3ds/hw_o3ds_crash.txt): game thread stuck in phase 7 (gpu end: stream walk, submit, frame end), step 555, pm_gpu_end_w:2986, native draws 20258 refused 0. GX queue n 4 cur 4 last 1: e1 id 01 30189c00 size 6350, e2 id 01 3018ff50 size 2a80 (starts where e1 ends), e3 id 03 1f000000 3008ca00 019000f0. Build #4931 froze the same way (steps 652, :2981). Ruled out by the oracle (row_FPS60W.md, last section): stream chain reuse, idle passes, kc_buf and vertex ring reuse, texture uploads, GX queue depth, scene change refusal. Open: the key frame queues the L frame's fills and VRAM copies again (pm_gpu.c:2946-2955). First step of the next session: the oracle reads what the two list entries contain and why the GPU cannot finish them. FPS60VAL waits too. The oracle context size is not a blocker (user).
+Console push needs -ip 192.168.1.170: without -ip the netloader broadcast got no answer twice.
