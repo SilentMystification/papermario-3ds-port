@@ -14829,11 +14829,7 @@
       "subject": "File select entry turn (frames 282 to 296): walker census armed at frame 289.",
       "proves": "Walker census of the file select entry turn (fileselect_rotate copy, census lane). Measurement only.",
       "debug": "fileselect fncov=289 loglevel=debug det",
-      "extra": [
-        "-Turbo",
-        "-TurboFactor",
-        "1"
-      ],
+      "extra": [],
       "until": "fncov f\\d+ done",
       "cap": 45,
       "deadline": 40,
@@ -14858,11 +14854,7 @@
       "subject": "File select at rest: walker census armed at frame 400, after the turn.",
       "proves": "Walker census of the file select entry turn (fileselect_rotate copy, census lane). Measurement only.",
       "debug": "fileselect fncov=400 loglevel=debug det",
-      "extra": [
-        "-Turbo",
-        "-TurboFactor",
-        "1"
-      ],
+      "extra": [],
       "until": "fncov f\\d+ done",
       "cap": 45,
       "deadline": 40,
