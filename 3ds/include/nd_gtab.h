@@ -61,4 +61,11 @@ const NdGTab* nd_gtab_find(const void* list);
 /* A converted list by symbol: NDG_DECL(D_09001000_3583A0); then NDG(D_09001000_3583A0) is its const NdGTab*. */
 #define NDG_DECL(sym) extern const NdGTab ndg_##sym
 #define NDG(sym) (&ndg_##sym)
+
+/* S7RUN: the static list call from a table. nd_rec_dl(list) replaces gSPDisplayList(gMainGfxPos++, list) at a call site (push form). When the
+ * list has a table (nd_gtab_find, memo of the last 8 lookups) it records one NDC_NAPI record {nd_gtab_run, table, state-only flag}; else it writes
+ * the G_DL unit as the macro did (counted). Core 1. nd_gtab_run (nd_walk.c, core 0) draws the table: a state-only list (what rec_inline records in
+ * line) as G_PM_LST and its state ops; any other list through the walker's G_DL arms (ent_gdl, dlc_try), else its ops. */
+void nd_rec_dl(const void* list);
+void nd_gtab_run(const uint32_t* rec);
 #endif
