@@ -70,9 +70,15 @@ NAPI2B and S1FILL merged. `sh 3ds/tools/wt_new.sh S1TSTEN`; PM_ROW=S1TSTEN PM_LA
    Include "nd_api.h" and, for the ND_* macros, the header that gives them (nd_gbi.h is already in the 3DS gbi chain: check with
    a build).
 3. Scenario and bench `sten_enter_det` (try 2, oracle 4: no probe run). Insert both right after spot_mac01_det, never at the
-   file end; one commit. Debug: `warp=mac_01:0 pos=0:0:200 shots shotwin=1:160:4 loglevel=debug det` (no prof switch: prof mode
+   file end; one commit. Debug: `warp=mac_01:0 pos=0:0:200 shots shotwin=49:112:4 loglevel=debug det` (no prof switch: prof mode
    sets `log=off`, which is why try 1's spot_mac01_det run printed no `tsten` and no `warp:` line). Until: `shot \d+ frame 157\b`
-   (shot 39 of 40). Cap 30, deadline 25. expected_events: only `warp: mac_01 entry 0` (try 3, oracle 5: the base build has no
+   (the last of 28 shots: frames 49, 53, ..., 157). Try 4 (ORACLE6): the window `1:160:4` shot frames 1 to 157, and the two base
+   runs at 111132143 differed on shot 8 = frame 33. Frame 33 is inside GAME_MODE_ENTER_WORLD (mode 7, frames 15 to 48: the base
+   log has `game mode 7 frame 15`, the map load lines `load map`, `spawn npcs` and `seamfix` between shots 5 and 9, then `game
+   mode 4 frame 49`). What a load frame shows depends on the load progress (ROM stream reads on another thread), which det does
+   not fix; shots 9 to 39 (frames 37 to 157) were equal in both runs. So the window starts at frame 49, the first WORLD frame (the
+   fade-in runs after the map load). Fix of the committed entry: change only the shotwin value (scenario file only, one
+   commit). Cap 30, deadline 25. expected_events: only `warp: mac_01 entry 0` (try 3, oracle 5: the base build has no
    tsten line, so an expected tsten event made every base fail; the tsten count is the log grep of the gate below). Fix of the
    committed entry c107a5556: delete the tsten object from its expected_events list, commit (scenario file only). Bench: kind
    azahar_pic, scenario sten_enter_det, cap 30, the same until, tags azahar, pic. Purpose: "S1TSTEN byte gate: the Mario stencil
@@ -84,7 +90,8 @@ NAPI2B and S1FILL merged. `sh 3ds/tools/wt_new.sh S1TSTEN`; PM_ROW=S1TSTEN PM_LA
 ## Gate (expected values)
 - Build, memcheck OK; nd_host PASS (done in try 1: commit 113879c16).
 - `PM_ROW=S1TSTEN PM_LANE=S1TSTEN python 3ds/tools/bench.py base sten_enter_det` and the same for spot_mac01_det (merge-base:
-  `git merge-base HEAD main`; the base runs your scenario file). Expected: stored, 40 and 6 shots.
+  `git merge-base HEAD main`; the base runs your scenario file). Expected: stored, 28 and 6 shots (the
+  new window's base takes 2 runs).
 - One list: `bench.py run sten_enter_det,spot_mac01_det --row S1TSTEN --why "B2a: transition stencil direct"` (2 starts).
   sten_enter_det log: `tsten f<n> id 0 direct 1` lines (at least 1; hand back the first and last frame), no `direct 0`. `bench.py cmp` both: every shot byte-equal.
 - Census: `grep -c "tsten f[0-9]* id 0 direct 1"` on the head sten_enter_det log only (the base prints none): at least 1.
