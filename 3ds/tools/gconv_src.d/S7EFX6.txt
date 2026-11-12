@@ -1,0 +1,14 @@
+radiating_energy_orb
+recover
+ring_blast
+rising_bubble
+shape_spell
+shattering_stones
+shiny_flare
+shockwave
+sleep_bubble
+small_gold_sparkle
+snowflake
+snowman_doll
+spiky_white_aura
+spirit_card

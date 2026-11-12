@@ -1,0 +1,13 @@
+energy_shockwave
+explosion
+falling_leaves
+fire_breath
+fire_flower
+firework
+firework_rocket
+flashing_box_shockwave
+floating_cloud_puff
+floating_flower
+floating_rock
+flower_splash_trail
+footprint

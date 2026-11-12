@@ -1,0 +1,13 @@
+aura
+balloon
+big_smoke_puff
+big_snowflakes
+blast
+breaking_junk
+bulb_glow
+butterflies
+chomp_drop
+cloud_puff_trail
+cold_breath
+confetti
+damage_indicator

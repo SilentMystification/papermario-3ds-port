@@ -1,0 +1,14 @@
+squirt
+star
+star_outline
+star_spirits_energy
+stars_orbiting
+stars_spread
+stat_change
+static_status
+steam_burst
+stop_watch
+sun
+sweat
+tattle_window
+throw_spiny
