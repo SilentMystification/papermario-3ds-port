@@ -7039,6 +7039,21 @@
       "gates": []
     },
     {
+      "name": "msgbox_choice_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "S5TIMG byte gate: yard 4:3 (nowide) choice message box with det, shot 300. Compared with the base shot.",
+      "scenario": "msgbox_choice_det",
+      "cap": 30,
+      "until": "shot \\d+ frame 300\\b",
+      "tags": [
+        "azahar",
+        "pic"
+      ],
+      "gates": []
+    },
+    {
       "name": "glyph_fncov_talk",
       "kind": "azahar_stream",
       "speed": "normal",

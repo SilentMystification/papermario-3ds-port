@@ -12343,6 +12343,30 @@
       "reason": "MSGBOX row. The debug hook uishow (pm_warp.c) opens the messages at scene frame 200 (global frame about 249) with no input; one shot after the text is printed. Cap 30 s: cold start 12 to 16 s plus about 9 s of game time."
     },
     {
+      "name": "msgbox_choice_det",
+      "status": "unverified",
+      "subject": "Yard (kmr_20). uishow=choice opens the save choice MSG_Choice_000A; Save is the selected option. Wide off (nowide), det switch. Shot at frame 300.",
+      "proves": "S5TIMG: the choice pointer (msg.c:2273) draws through draw_ci_image_with_clipping; its strips go through the NdTRect record; the shot is byte-equal to the base build.",
+      "debug": "preset=yard nowide uishow=choice shots shotwin=300:1 loglevel=debug det",
+      "until": "shot \\d+ frame 300\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "hook",
+          "regex": "debug uishow: choice opened f200"
+        }
+      ],
+      "reason": "S5TIMG byte gate: msgbox_choice_nowide with det, no drawcensus. Cap 30 s, deadline 25 s."
+    },
+    {
       "name": "aud_mac01",
       "status": "unverified",
       "subject": "Toad Town mac_01 at pos 0 0 200 (music and sound effects), audiostat census, shot at frame 400.",
