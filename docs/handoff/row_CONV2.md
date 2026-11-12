@@ -44,13 +44,13 @@ host compare, ent_gdl and dlc (until GSET-ENT and GSET-MAP move them). List ever
 3ds/src/nd_ntab.c (runner), nd_rec.c (nd_draw_list recorder only), the 6 pilot effect files. Blocker: NPSO's NdPsoDesc and
 generator interface committed (CONV2 may branch after NPSO's first commit that adds them; it merges after NPSO).
 
-## Gate (expected values)
-- Build, memcheck OK. nd_host PASS with `ntab ... bad 0` and the pilot tables listed.
-- LISTCEN2: nd_rec_dl count down by the pilot files' calls; the pilot effect files' gs data references to v1 tables gone (elfgate
-  data: no `ndg_` symbol of the 6 pilot lists).
-- `bench.py base fxpic_63` (snowfall), `bench.py base fxpic_105` (embers); one list `bench.py run fxpic_63,fxpic_105 --row CONV2
-  --why "CONV2: native tables"` with psochk in a copy scenario of fxpic_63: byte-equal, psochk bad 0. Budget 8.
+## Gate (expected values; plan_endgame.md section 5)
+- Build, memcheck OK. nd_host PASS with `ntab ... bad 0` (G1) and the pilot tables listed.
+- LISTCEN2: nd_rec_dl count down by the pilot files' calls; elfgate data has no `ndg_` symbol of the 6 pilot lists.
+- Golden masters of the 6 pilot effect files (GOLD-FX rows that hold them) equal byte for byte, gcov 100 %; the files include
+  nd_nolist.h if no list call is left in them.
+- Frame hash: fxpic_63_hash with psochk: equal, bad 0. Budget 8 Azahar starts.
 
 ## Stop
-A byte difference, `ntab bad` above 0, psochk bad above 0, or a generator error the design does not cover: stop, commit, hand back
+A golden or frame-hash difference, `ntab bad` above 0, psochk bad above 0, or a generator error the design does not cover: stop, commit, hand back
 (2 tries per named cause). Delete this row file in the completing commit.

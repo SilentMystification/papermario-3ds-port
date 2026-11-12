@@ -45,14 +45,14 @@ the family rows move them (count them in the hand-back).
 new 3ds/tools/gen_pso_tab.sh, 3ds/build.sh (one generator step next to gen_gfx_tab), 3ds/tools/nd_host_test.sh (the compare;
 delete the empty nd_comb_decide test shim at :57 by linking nd_decide.c), 3ds/src/nd_direct.c (the psochk hook), src/draw_img_util.c.
 
-## Gate (expected values)
+## Gate (expected values; plan_endgame.md section 5)
 - Build, memcheck OK. nd_host PASS with `psotab entries <n> bad 0`.
-- LISTCEN2: src/draw_img_util.c build 0 and gfxpos 0 (from 26 and 26).
-- New scenario `psochk_title` only if no existing det scene draws draw_img_util images: pre-flight `grep -rn draw_image\|
-  draw_ci_image src` callers and pick the scene (title screen or the pause map) from bench_defs.json; write the choice in the
-  commit. One list of that scene and spot_mac01_det with `psochk` in the debug of a copy scenario: byte-equal, `psochk ... bad 0`.
-  Budget 8.
+- LISTCEN2: src/draw_img_util.c build 0 and gfxpos 0 (from 26 and 26). The file includes nd_nolist.h (G8).
+- Golden master: GOLD-TTL's file for draw_img_util.c is equal byte for byte after the conversion, gcov 100 % of its converted
+  functions' lines (GMHARN, GMCOV). Blocker for this gate: GOLD-TTL merged.
+- psochk: one frame-hash run of a scene that draws draw_img_util images (pick it with COVMAP or the callers of
+  draw_image/draw_ci_image) with `psochk`: bad 0, frame hashes equal. Budget 8 Azahar starts.
 
 ## Stop
-A byte difference, psochk bad above 0, or a decision the host and device give differently: stop, commit, hand back (2 tries per
+A golden or frame-hash difference, psochk bad above 0, or a decision the host and device give differently: stop, commit, hand back (2 tries per
 named cause). Delete this row file in the completing commit.

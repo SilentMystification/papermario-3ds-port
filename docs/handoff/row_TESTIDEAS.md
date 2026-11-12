@@ -47,3 +47,56 @@ then a row's gate cannot claim to cover its sites.
   "Every compare is exact: one differing bit fails the gate. There is no rounding exception."
 - orchestrator_rules.md, Rows: delete "A byte diff of at most 1 step per channel inside the effect area passes when the oracle
   names the code cause (rounding rule)."
+
+## Unit and golden-master tests (ORACLE7 code read, main 1278b4f02)
+Short answer: yes for about half of the call sites, with a one-time host harness; the other half needs large inputs and keeps a
+scene gate. Where it applies it tests more than today (every line of the converted function, bit exact) and reruns in seconds.
+
+Measured dependencies (undefined symbols of the device objects, arm-none-eabi-nm -u in the pm3ds-build volume):
+| file | undefined symbols | what a host run needs |
+|---|---|---|
+| src/effects/snowfall.c | 26 | the effect's data struct, gCameras, gCurrentCameraID, gDisplayContext, gMatrixListPos (test inputs); the gu math shims and the recorder (nd_gx_w, nd_parts_*, nd_rec_dl): real code linked; the effect system calls (create, remove, heap) sit in the effect's update and init, not in its draw function |
+| src/effects/ring_blast.c | 19 | the same profile |
+| src/entity/Chest.c | 49 | the Entity struct and its model data (real data linked); the script and camera calls are in the update functions, not in setupGfx |
+| src/hud_element.c | 58 | HudElement, its script, raster loading (nuPiReadRom, heap), imgfx: a large input |
+| src/model.c | 57 | the model tree, render tasks, texture heap, ROM pointers: a large input |
+| src/msg_draw.c | 60 | MessagePrintState, charsets, message images and palettes: a large input |
+| world/mac_01/crystal_ball_gfx.c | 19 | the model list and custom gfx registration: a medium input |
+The game headers already compile on the host: gen_gfx_tab.sh compiles every effect gfx source and every entity model source with
+gcc -m32 and the device defines; nd_host_test.sh builds 20 host programs from 3ds/src with 3ds/stub_include for the system headers.
+
+What the harness needs once (3 rows, before any golden file):
+1. HOSTCORE (Sonnet): the draw core built on the host down to the emit boundary, writing a draw record per draw (pso output, bind
+   content, transform rows, vertex and index bytes) instead of PICA words. Most of it is the existing nd_host pieces; the walker,
+   nd_set, nd_tex_set, nd_geom and nd_emit are linked with a record writer at the submit call.
+2. GMHARN (Haiku): one test program per file: links the file, the real recorder, the gu math and HOSTCORE; a fixture C file per
+   draw function gives the inputs (structs with fixed values, the camera, the matrix list); prints the draw records as text.
+3. GMCOV (Haiku): gcov on the host run: the gate requires 100 % line coverage of each converted draw function by its fixtures
+   (a branch no fixture reaches needs one more fixture, or the row names it).
+
+Fraction of the census (3356 call sites outside include/; estimate by dependency profile, the GMHARN rows give exact counts):
+| input size | groups | sites | share |
+|---|---|---|---|
+| small (a struct and the camera) | effects except about 10 % with heap or list data, entity setupGfx, overlays, backgrounds, title and logos, small root files, draw_box and windows | about 1890 | 56 % |
+| medium (a map's model list, a menu state) | world files, pause, filemenu, battle, the rest of effects | about 570 | 17 % |
+| large (model trees, HUD scripts and rasters, message state, sprites) | model.c, entity_model.c, animator.c, hud_element.c, msg_draw.c, msg.c, imgfx.c, sprite.c, sprite_shading.c, item_entity.c, part of world | about 900 | 27 % |
+
+Order: the golden files come from the current code. Capture rows GOLD-<group> (Haiku, one per conversion wave: fixtures plus the
+captured text, committed under 3ds/tests/golden/) run before that wave's conversion rows and block them. N64DEL1-3 do not block
+the capture (they delete only lines that are not compiled for the 3DS, so the output is the same before and after).
+
+Cost per row of 8 effect files: fixtures and capture about 60-90 Haiku minutes once, then seconds per run; today's gate is about
+4-6 Azahar starts and 1-2 base builds (20-40 minutes per try) and reaches under 10 % of the sites. So the first run costs more,
+every rerun and every later row costs less, and it sees every line instead of the lines one scene happens to run.
+
+What a golden master cannot catch:
+- inputs no fixture uses (gcov at 100 % lines limits this, but not value ranges such as an alpha of 0 or a pointer case);
+- state set by other files earlier in the frame (the render state a setup list or another producer leaves): only a scene run or the
+  host replay of a recorded frame (G5) sees the real order;
+- timing, threads, memory pressure, real-GPU behaviour (the 60 fps hang class): the PICA validator (G6) and the console soak (G11).
+
+Verdict: efficient and effective for the small and medium groups (about 73 % of the sites) once HOSTCORE and GMHARN exist; not
+worth it for the large group (27 %), which keeps the frame hash and psochk in scenes chosen by the coverage map. Recommended gate
+set: every conversion row of a small or medium group uses G8 (compile ban), the golden master plus gcov 100 % (replaces G3 for
+that row), and G6 on one capture; every large-group row uses G2 + G3 in scenes that G7 shows run its sites; each phase end runs
+one scene frame-hash set (cross-file state and order), G11 on the console; the final proof is G9.

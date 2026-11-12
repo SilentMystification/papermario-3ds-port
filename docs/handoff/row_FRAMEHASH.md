@@ -1,6 +1,7 @@
 # Row FRAMEHASH: a per-frame hash of what the draw core submits replaces the shot compare (no image anywhere)
 
-Model: Sonnet (user order 2026-11-12: no screenshot comparisons).
+Model: Sonnet (user order 2026-11-12: no screenshot comparisons). Role in plan_endgame.md v2: the gate of the large groups
+(model, HUD, messages, imgfx, sprites, item entities) and of the phase ends; small and medium groups use golden masters.
 - Why not Haiku: the hash must parse the PICA command words of a frame and replace every address word by the content it points to
   (vertex, index and texture bytes, render target role); which registers hold addresses and how large each referenced block is are
   design choices in the GPU submit code.

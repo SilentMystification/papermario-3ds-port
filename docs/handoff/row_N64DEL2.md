@@ -21,8 +21,10 @@ include/**/*.h: only TARGET_3DS conditional lines and the lines they guard. Not 
 ## Gate (expected values)
 - A second tool run changes nothing. Build: memcheck OK. nd_host PASS.
 - `listcen.py --group` for each directory: build_n64 0 and gfxpos_n64 0 (skips excepted); active counts unchanged.
-- `bench.py base spot_mac01_det`, `bench.py base ent_kmr03_det`; one list `bench.py run spot_mac01_det,ent_kmr03_det --row N64DEL2
-  --why "N64DEL2: N64 branches"` (2 starts): byte-equal. Budget 8 (6 planned).
+- Exact preprocessor compare (plan_endgame.md section 5, no Azahar): before the edit, `gcc -E -P` of every touched file with the
+  device defines and include paths of 3ds/CMakeLists.txt (as gen_gfx_tab.sh's DEF and INC) into build3ds/out/pp_before/; after the
+  edit the same into pp_after/; both runs add `-D__LINE__=0 -w` (line numbers move by design) and drop empty lines
+  (`grep -v '^[[:space:]]*$'`); `diff -r` prints nothing. Budget 0 Azahar starts.
 
 ## Stop
 As N64DEL1. Delete this row file in the completing commit.

@@ -28,9 +28,11 @@ New 3ds/tools/unifdef3ds.py; src/effects/*.c (only TARGET_3DS conditional lines 
 - `PM_ROW=N64DEL1 PM_LANE=N64DEL1 sh 3ds/build.sh > build3ds/out/build.txt 2>&1`: memcheck OK. nd_host PASS.
 - `python 3ds/tools/listcen.py --group src/effects`: build_n64 0 and gfxpos_n64 0 for every file (skips excepted: name them);
   active build 1388 and gfxpos 1365 unchanged (within the skips).
-- `bench.py base fxpic_63`, `bench.py base spot_mac01_det`; one list `bench.py run fxpic_63,spot_mac01_det --row N64DEL1 --why
-  "N64DEL1: N64 branches of src/effects"` (2 starts). cmp both: every shot byte-equal. Budget 8 (6 planned).
+- Exact preprocessor compare (plan_endgame.md section 5, no Azahar): before the edit, `gcc -E -P` of every touched file with the
+  device defines and include paths of 3ds/CMakeLists.txt (as gen_gfx_tab.sh's DEF and INC) into build3ds/out/pp_before/; after the
+  edit the same into pp_after/; both runs add `-D__LINE__=0 -w` (line numbers move by design) and drop empty lines
+  (`grep -v '^[[:space:]]*$'`); `diff -r` prints nothing. Budget 0 Azahar starts.
 
 ## Stop
-A build error, an active count that changed, or a byte difference: stop, commit, hand back the exact output (2 tries per named
+A build error, an active count that changed, or a preprocessor difference: stop, commit, hand back the exact output (2 tries per named
 cause). Delete this row file in the completing commit.

@@ -27,11 +27,10 @@ Model: Sonnet (row_ENDGAME.md phase B).
 3ds/include/nd_api.h (the three calls), 3ds/src/nd_direct.c or a new 3ds/src/nd_xf.c (runners), the two pilot effect files.
 Blocker: NPSO merged (table pso ids).
 
-## Gate (expected values)
-- Build, memcheck OK; nd_host PASS. LISTCEN2: the two pilot files build 0 and gfxpos 0.
-- Base and one list of the two pilot fxpic scenes (fxtest index from 3ds/src/pm_fxtest.c FXLIST; add `fxpic_<i>` copies of
-  fxpic_84 if missing, one commit) plus psochk: byte-equal, psochk bad 0. Budget 8.
+## Gate (expected values; plan_endgame.md section 5)
+- Build, memcheck OK; nd_host PASS. LISTCEN2: the two pilot files build 0 and gfxpos 0; both include nd_nolist.h.
+- Golden masters of the two files (their GOLD-FX row) equal byte for byte, gcov 100 % of the converted lines. No Azahar start.
 
 ## Stop
-A byte difference or psochk bad above 0: stop, commit, hand back (2 tries per named cause). Delete this row file in the completing
+A golden or frame-hash difference or psochk bad above 0: stop, commit, hand back (2 tries per named cause). Delete this row file in the completing
 commit.

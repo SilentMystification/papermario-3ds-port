@@ -1,20 +1,23 @@
-# Endgame plan: remove the display lists completely (closed plan; ORACLE7, 2026-11-12, main 235bb8721)
+# Endgame plan: remove the display lists completely (closed plan, version 2; ORACLE7, 2026-11-12)
 
-The oracle writes only row_*.md files: this is plan_endgame.md under a row name. The orchestrator may `git mv` it to
-docs/handoff/plan_endgame.md and add the INDEX.md line. Every row of the chain follows from the tables below; a row that moves no
-counter of section 3 is not a row.
+The oracle writes only row_*.md files: this is the full new text of plan_endgame.md. The orchestrator replaces plan_endgame.md with
+it (`git mv -f docs/handoff/row_ENDGAME.md docs/handoff/plan_endgame.md`). Every row follows from the tables below; a row that
+moves no counter of section 3 and builds no part of the test harness of section 5 is not a row.
 
 ## 0. Rules of this plan
 - Done = both proofs pass (section 4): the source counters are all 0 AND the ELF check of the final pm_3ds.elf finds no list
   symbol and no list data. Source-present code that the linker drops counts as gone only when the ELF check shows it gone.
   Nobody reports the epic done before both pass. Every stage report gives the remaining counts (LISTCEN2 output), not a verdict.
-- Freeze (user, 2026-11-12): running agents finish; nothing new launches until this plan is accepted. Row files not named in
-  section 5 are closed when the plan is accepted (the orchestrator deletes them in one commit): S7TEX2, S7MDL, S7ENT1, S7ENTX,
-  S7ENT3, S7FLAME, S7EFX7/8 if not started, and the old S5*/S6M*/S1PREV/S2W/S5PQUAD2 rows. Their scope is inside the families below.
-- User code rules: no stubs, no stand-ins, no toggles, no feature switches, no culling. Debug check switches (psochk, gtexchk)
-  are debug tools, not feature switches: they compare, they never choose the draw path.
-- Discovery rule: an item found later is appended to section 7 with the family row that covers it; the totals of section 6 are
-  recomputed. The plan is not redesigned.
+- Every compare is exact: one differing bit fails (user, 2026-11-12). No screenshot is stored or compared (user, 2026-11-12).
+- Test harness first (user, 2026-11-12): the host harness and the golden captures of the current code come before the conversion
+  waves; the captured golden files are never edited after their capture row merges.
+- Freeze: nothing new launches until the user accepts this plan. Row files not named in section 6 are closed on acceptance (the
+  orchestrator deletes them in one commit): S7TEX2, S7MDL, S7ENT1, S7ENTX, S7ENT3, S7FLAME, S7EFX7/8 if not started, and the old
+  S5*, S6M*, S1PREV, S2W, S5PQUAD2 rows. Their scope is inside the families below.
+- User code rules: no stubs, no stand-ins, no toggles, no feature switches, no culling. Test inputs (fixture files of fixed values
+  under 3ds/tests) and debug check switches (psochk, fhash) are tests, not product code: they read, they never choose a draw path.
+- Discovery rule: an item found later is appended to section 7 with the row that covers it; section 8's totals are recomputed.
+  The plan is not redesigned.
 
 ## 1. Census from the code (main 235bb8721; scratch census: TARGET_3DS-active lines vs N64-only `#else`/`#ifndef` lines)
 listcen.py totals: build 4468, gfxpos 3967, data 22134, data_arrays 1873, gfxtype 3469, reader 714, model 15.
@@ -57,7 +60,7 @@ nd_gfx_tab.c (612 Gfx uses: S7 v1 tables point into list units).
 | model records | R0 render-mode lists, R13 aux ops, rec_apply list runs | records carry pso ids and bind descs from CONV2 (render modes are static lists) | NMDL |
 | the stream | NDC_STATE typed units, NDC_NAPI | NDC_NAPI native records only (it stays the core 1 to core 0 pipe and the draw order) | S9DEL3 |
 Proof while the old model still exists: debug switch `psochk` (NPSO) compares, at every native draw, the stated pso and bind with
-what the walker state would give; `psochk bad 0` in the gate scenes is the per-row proof that no inherited state is missing.
+what the walker state would give; `psochk bad 0` in the gate scenes is the large-group proof that no inherited state is missing.
 
 ## 3. Counters (LISTCEN2 prints each; the gate of every row names which it moves and to what)
 C1 build_active, C2 gfxpos_active, C3 build_n64, C4 gfxpos_n64, C5 data (gs macros), C6 data_arrays, C7 gfxtype, C8 reader (per
@@ -76,38 +79,59 @@ pm_3ds.elf), C12 elf_data (Gfx array symbols and v1 table symbols in pm_3ds.elf)
   elfgate.py builds from the source and asset scan (the gen_gfx_syms.py scan over all of src and assets/us): 0; and no
   DisplayContext member of type Gfx. Prints `elfgate func <n> data <m> gfxnames <k>`.
 
-## 5. Row families, order and blockers
-Phase A (start now): LISTCEN2 (Haiku: census v2, C1-C10 and the per-group view; row_LISTCEN2.md), ELFGATE (Haiku: the script
-3ds/tools/elfgate.py for C11-C12 now; its final run is S9GATE; row_ELFGATE.md),
-N64DEL1 (after LISTCEN2), N64DEL2 and N64DEL3 (after N64DEL1's tool) (Haiku: delete every N64-only branch; decision 2026-11-12, the port stops building for N64; they move C3
-and C4 to 0: 648 + 715): N64DEL1 src/effects (106 files, 373 blocks), N64DEL2 src/world, src/entity, src/battle, src/pause,
-src/filemenu, include (42 files, 112 blocks), N64DEL3 root src files (27 files, 245 blocks).
-Phase B (design cores): NPSO (Opus, start with A), CONV2 (Opus, branches after NPSO's NdPsoDesc commit, merges after NPSO),
-NXF (Sonnet, after NPSO: nd_xf_* and nd_mesh records). Row files: row_NPSO.md, row_CONV2.md, row_NXF.md.
-Phase C (pilots, after NPSO and NXF; CONV2 for the ones that call static lists), Sonnet, each writes the pattern its Haiku rows copy:
-NFX0 (effects, 8 files), NENT0 (src/entity setupGfx, 17 files, 148 calls), NWLD0 (src/world, 6 files), NMDL1-2 (model.c,
-entity_model.c, animator.c: 155), NHUD (hud_element 145), NMSG1-2 (msg_draw 134, msg 31), NBOX (draw_box 83 with the ROTSCALE
-off-screen pass, windows 9), NIMG1-2 (imgfx 122), NSPR (sprite 34, sprite_shading 23), NITEM (item_entity 103), NOVL
-(screen_overlays 50, screen_render_util 70, curtains 13), NBG (background_gfx 65, background 23), NMENU1-2 (pause 72, filemenu 65),
-NBTL (src/battle 44). 18 Sonnet rows.
-Phase D (Haiku waves, after their pilot): NFX1..NFX15 (the other 119 effect files, 8 per row, about 87 calls each), NWLD1..NWLD6
-(39 files), NTITLE (state_title_screen, state_logos, draw_img_util, titlemenu: 80), NMISC1-2 (the small root files: 116),
-GSET1..GSET6 (CONV2 sets: effects, entity, world, model render modes, star points and level-up, battle and UI arrays: they move C5,
-C6 for their sets and C12 once the device stops referencing the arrays). 30 Haiku rows.
-Phase E (deletes, in order, Sonnet; each needs C1, C2, C10 at 0 for the code it deletes): S9DEL1 (list runners, ENT_GBI, nd_dlc run
-compile), S9DEL2 (decide, sync_combine, tile and TMEM model, nd_rect, gv walker; decision only in gen_pso_tab), S9DEL5 (new: S7 v1
-tables, nd_gtab unit form, nd_scomp run-time exec, nd_shape list parse, nd_seam list reads, nd_direct fallbacks), S9DEL3 (NDC_STATE,
-nd_rec_state, nd_op.h, nd_gbi.h, nd_set op table), S9DEL4 (Gfx type, gMainGfxPos, gbi.h includes, include/PR/gbi.h macros, the
-DisplayContext Gfx buffers). Then S9GATE (Haiku, the final run of LISTCEN2 and elfgate.py): section 4 both parts, the DIRECT byte set, battle, pause, talk and file
-select scenes, and one console push (C5 batch).
-Blockers: NPSO and CONV2 need the user's yes for Opus. Console: one push after S9GATE. No other user decision is open.
+## 5. Gates (row_TESTIDEAS.md G1-G12; adopted by the user 2026-11-12)
+| gate | where | exact rule |
+|---|---|---|
+| G8 compile ban | every converted file includes 3ds/include/nd_nolist.h (poisons gDP*/gSP*/gs*/Gfx/gMainGfxPos); native draws take a static ND_PSO_DESC | the build fails on one leftover |
+| Golden master + gcov | small and medium groups (about 2460 of 3356 call sites, 73 %): the converted draw functions run on the host with the fixed test inputs of their GOLD row and print the same draw records as the golden file captured from the old code; gcov shows 100 % of the converted functions' lines run | text equal byte for byte; coverage 100 % |
+| G1 host differential | every static list (CONV2 and GSET rows): old model vs native table, per draw | field equal |
+| psochk + frame hash | large groups (about 900 sites, 27 %: model, HUD, messages, imgfx, sprites, item entities) in scenes the coverage map (G7) shows run at least 90 % of the row's sites; phase ends | psochk bad 0; every frame hash equal |
+| G6 PICA validator | on the frame-hash capture of each phase end and each large-group row | 0 findings |
+| G11 console soak, G10 dump pull | each phase end (one push, user action) | crash.txt empty, no hang dump |
+| G9 end proof | final | LISTCEN2 all 0, elfgate func 0 data 0 gfxnames 0 |
+| N64DEL gate | N64DEL1-3 | `gcc -E -P` with the device defines gives identical output before and after, per file |
+Today's `bench.py base` + `bench.py cmp` on ppm shots is no longer a gate anywhere.
+Rule text for CLAUDE.md rule 2 (the user confirms): "2. NO VISUAL CHECKS AND NO SHOTS. No agent looks at a shot, describes a
+picture, counts pixels or compares images. Proof is the code read and exact compares: nd_host, the golden draw records of the
+converted functions (3ds/tests/golden, gcov 100 % of their lines), and for large inputs and phase ends the frame hash (`bench.py
+base <scene>_hash`, then `bench.py cmp <scene>_hash --row <row>`) with psochk. One differing bit fails. The user checks the look
+on the console." (Rule 4's exact-compare text is already in, b9aff62a6.)
 
-## 6. Totals and wall time
-Rows left: Haiku 5 (A) + 30 (D) + 1 (S9GATE) = 36; Sonnet 1 (NXF) + 18 (C) + 5 (E) = 24; Opus 2. Total 62, plus about 20 %
-retries (12) = about 73 row runs. Rate this session: 79 merges since 02:00 (14 h, 5.6 per hour, mostly small rows). Critical path:
-B (about 5 h) -> C pilots (about 4 h, parallel) -> D waves (30 rows at about 4 per hour = 8 h, overlapped with C) -> E (5 rows in
-sequence, about 2.5 h each = 12.5 h) -> S9GATE and the console run (2 h). Ideal about 30 h of continuous running; honest estimate
-with retries and tool faults 40 to 50 h, that is 2 to 3 days.
+## 6. Row families, order and blockers
+Phase H (harness and scripts; start now unless a blocker is named):
+| row | model | blocker | builds |
+|---|---|---|---|
+| LISTCEN2 | Haiku | none | census v2, counters C1-C10 (row_LISTCEN2.md) |
+| ELFGATE | Haiku | none | elfgate.py, counters C11-C12 (row_ELFGATE.md) |
+| NOLIST | Haiku | none | G8: 3ds/include/nd_nolist.h and a build check that a poisoned name fails |
+| HOSTCORE | Sonnet | none | the draw core on the host down to the emit boundary, writing one draw record per draw (pso output, bind content, transform rows, vertex and index bytes) |
+| GMHARN | Haiku | HOSTCORE | one host test program per game file (the file, the real recorder, gu math, HOSTCORE, its test-input file), text output, a runner in nd_host |
+| GMCOV | Haiku | GMHARN | gcov of the host runs, per function line coverage |
+| FRAMEHASH | Sonnet | none | the frame hash (fhash) and the `<scene>_hash` benches, for large groups and phase ends (row_FRAMEHASH.md, reduced role) |
+| PICAVAL | Sonnet | FRAMEHASH | G6: host validator over captured command words |
+| COVMAP | Haiku | FRAMEHASH | G7 for the large-group files only: per-site counters in the scenes |
+| N64DEL1, N64DEL2, N64DEL3 | Haiku | LISTCEN2 (N64DEL2/3 also N64DEL1's tool) | C3, C4 to 0 |
+Phase G (golden capture from the current code; Haiku; blocker GMCOV; each row writes test inputs until gcov shows 100 % of its
+draw functions' lines, captures the text twice, commits it under 3ds/tests/golden/<group>/):
+GOLD-FX1..GOLD-FX16 (src/effects, 8 files each, about 87 call sites), GOLD-ENT1..2 (src/entity setupGfx, 17 files), GOLD-WLD1..5
+(src/world, 45 files), GOLD-OVL (screen_overlays, screen_render_util, curtains), GOLD-BG (background_gfx, background), GOLD-TTL
+(state_title_screen, state_logos, draw_img_util, titlemenu), GOLD-BOX (draw_box, windows), GOLD-MISC1..2 (the small root files),
+GOLD-PAUSE, GOLD-FMENU, GOLD-BTL. 32 rows. They run in parallel with phase B and use idle slots.
+Phase B (design cores): NPSO (Opus; blocker GOLD-TTL for its pilot draw_img_util), CONV2 (Opus; branches after NPSO's NdPsoDesc
+commit, merges after NPSO; G1 on its 6 pilot lists plus GOLD-FX of their files), NXF (Sonnet; after NPSO; pilot files' GOLD rows).
+Phase C (pilots, Sonnet; each needs NPSO and NXF, CONV2 where it calls static lists, and its GOLD rows): NFX0, NENT0, NWLD0, NOVL,
+NBG, NBOX, NMENU1 (pause), NMENU2 (filemenu), NBTL: 9 rows, golden + gcov gates. Large groups (Sonnet; need NPSO, NXF, FRAMEHASH,
+COVMAP, PICAVAL): NMDL1, NMDL2, NHUD, NMSG1, NMSG2, NIMG1, NIMG2, NSPR, NITEM: 9 rows, psochk + frame hash + G6 gates.
+Phase D (Haiku waves after their pilot; golden + gcov + G8): NFX1..NFX15, NWLD1..NWLD5, NTITLE, NMISC1..2 (23 rows); GSET1..GSET6
+(CONV2 sets: effects, entity, world, model render modes, star points and level-up, battle and UI arrays; G1 gate; they move C5,
+C6 and C12). 29 rows.
+Phase E (deletes, Sonnet, in order; each needs C1, C2, C10 at 0 for the code it deletes; gate: frame-hash set + G6 + nd_host):
+S9DEL1, S9DEL2, S9DEL5, S9DEL3, S9DEL4. Then S9GATE (Haiku): G9, the frame-hash set, the console batch (G10, G11).
+Phase ends (after B, C, D, E): one frame-hash set (spot_mac01_hash, mdl5_iwa10_hash, spot_mac00_hash plus the group scenes), G6
+on its capture, one console soak push (user).
+First rows to start now (disjoint files): LISTCEN2, ELFGATE, NOLIST, HOSTCORE, FRAMEHASH, NPSO (needs the user's yes for Opus;
+it may start its design part at once, its pilot gate waits for GOLD-TTL). Next when they merge: N64DEL1 (after LISTCEN2), GMHARN
+(after HOSTCORE), PICAVAL and COVMAP (after FRAMEHASH), CONV2 (after NPSO's first commit).
 
 ## 7. What the census cannot see, and how it is covered (discoveries are appended here)
 | item | covered by |
@@ -121,8 +145,22 @@ with retries and tool faults 40 to 50 h, that is 2 to 3 days.
 | S6 compiled defs in game code (static const Gfx X_u[] for nd_scomp_rec) | counted in C5, C6, C10: their call sites move to NPSO descs in the family rows |
 Discoveries: (none yet)
 
-## 8. Earlier stages that were not tied to the end state (so they did not move these counters)
+## 8. Totals and wall time (recomputed with the harness and the golden rows)
+| model | phase H | G | B | C | D | E | total |
+|---|---|---|---|---|---|---|---|
+| Haiku | 9 (LISTCEN2, ELFGATE, NOLIST, GMHARN, GMCOV, COVMAP, N64DEL1-3) | 32 | 0 | 0 | 29 | 1 | 71 |
+| Sonnet | 3 (HOSTCORE, FRAMEHASH, PICAVAL) | 0 | 1 (NXF) | 18 | 0 | 5 | 27 |
+| Opus | 0 | 0 | 2 (NPSO, CONV2) | 0 | 0 | 0 | 2 |
+Total 100 rows (Haiku 71, Sonnet 27, Opus 2), plus about 20 % retries: about 120 row runs. Rate this session: 79 merges in 14 h
+(5.6 per hour, mostly small rows); with 6 coders about 4 rows per hour for Haiku-sized rows.
+Critical path: HOSTCORE (about 4 h) -> GMHARN and GMCOV (about 2 h) -> the GOLD rows of the pilot groups (about 2 h; all 32 GOLD
+rows take about 8 h of slots, in parallel with NPSO and CONV2, about 6 h) -> pilots (about 4 h) -> D waves (29 rows, about 7 h)
+-> E (5 rows in sequence, about 12 h) -> S9GATE and the console batch (about 2 h). Ideal about 33 h of continuous running;
+honest estimate with retries and tool faults 45 to 60 h, that is 2.5 to 3 days. The golden rows add about 32 rows but remove most
+Azahar runs from the waves (seconds per rerun instead of 20-40 minutes per try).
+
+## 9. Earlier stages that were not tied to the end state (so they did not move these counters)
 S6T/S6E/S6M (compiled ranges: still typed units and run-time decide), S7CONV/S7RUN/S7EFX1-6/S7MAP (tables that point into list
 units; S7EFX swapped only gSPDisplayList: C1 in src/effects is still 1388), NAPI2B/S1/S5 direct executors (each kept the old ops
 as a fallback), S7TEX2 and S7MDL as written (walker state kept). From now on a row's gate is its counters going to 0 for its
-files plus the byte set; a file-local byte pass alone is not a row result.
+files plus the gates of section 5.
