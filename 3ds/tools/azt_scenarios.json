@@ -8160,6 +8160,30 @@
       "reason": "S6-2c-3 picture of the native entity draw on kmr_03 (copy of entcheck_kmr03 without the check switch). Cap 25 s: boot, warp and the first 300-frame window (the until)."
     },
     {
+      "name": "ent_kmr03_det",
+      "status": "pending",
+      "subject": "Koopa Village kmr_03 (warp entry 0, default placement), cold start with the det switch. Coin block and entity models on screen. Shots at frames 200 to 205.",
+      "proves": "S6E2: the setupGfx state ranges of the entity files (Block, ItemBlock, SaveBlock, WoodenCrate, ShatteringBlock) compile to the same picture per shot as the N64 state ops; two cold runs of one build give byte-equal shots.",
+      "debug": "warp=kmr_03:0 shots shotwin=200:6 loglevel=debug det",
+      "until": "shot \\d+ frame 205\\b",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "shot",
+          "regex": "shot \\d+ frame 205\\b"
+        }
+      ],
+      "reason": "S6E2 byte compare of the entity state ranges on kmr_03 (copy of ent_kmr03_pic with the det switch). Cap 25 s: boot, warp and the first 300-frame window (the until)."
+    },
+    {
       "name": "ent_item_pic",
       "status": "pending",
       "subject": "Toad Town mac_01, Mario at pos 0 0 200, a coin item entity spawned beside Mario at frame 30 (debug testitem=c). The item quad list is drawn from the static pools (S6-3). Shots at frames 200 to 205 and the entnat window line.",

@@ -2,6 +2,9 @@
 #include "effects.h"
 #include "ld_addrs.h"
 #include "entity.h"
+#ifdef TARGET_3DS
+#include "nd_scomp.h"
+#endif
 
 extern Gfx Entity_InertYellowBlock_Render[];
 extern Gfx Entity_InertRedBlock_Render[];
@@ -30,9 +33,37 @@ void entity_MulticoinBlock_update_timer(Entity* entity);
 
 #define MULTICOIN_BLOCK_MAX_COINS 10
 
+#ifdef TARGET_3DS
+/* S6E2: the state lines of entity_base_block_setupGfx as compiled state ranges (nd_scomp.h). The PRIM slot is the entity alpha. */
+static const Gfx Block_st_o[] = {
+    gsDPSetTextureLUT(G_TT_NONE),
+    gsSPTexture(-1, -1, 0, G_TX_RENDERTILE, G_ON),
+    gsDPSetRenderMode(G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2),
+    gsDPSetCombineMode(G_CC_MODULATEIA, G_CC_MODULATEIA),
+};
+static NdSDef Block_def_o = { Block_st_o, sizeof Block_st_o / sizeof Block_st_o[0] };
+static const Gfx Block_st_t[] = {
+    gsDPSetTextureLUT(G_TT_NONE),
+    gsSPTexture(-1, -1, 0, G_TX_RENDERTILE, G_ON),
+    gsDPSetCombineMode(PM_CC_01, PM_CC_02),
+    gsDPSetPrimColor(0, 0, 0, 0, 0, 0),
+};
+static NdSDef Block_def_t = { Block_st_t, sizeof Block_st_t / sizeof Block_st_t[0] };
+#endif
+
 void entity_base_block_setupGfx(s32 entityIndex) {
     Entity* entity = get_entity_by_index(entityIndex);
 
+#ifdef TARGET_3DS
+    if (entity->alpha >= 255) {
+        nd_scomp_rec(&Block_def_o, NULL, 0);
+    } else {
+        Gfx v[1];
+
+        gDPSetPrimColor(&v[0], 0, 0, 0, 0, 0, entity->alpha);
+        nd_scomp_rec(&Block_def_t, v, 1);
+    }
+#else
     gDPSetTextureLUT(gMainGfxPos++, G_TT_NONE);
     gSPTexture(gMainGfxPos++, -1, -1, 0, G_TX_RENDERTILE, G_ON);
 
@@ -43,6 +74,7 @@ void entity_base_block_setupGfx(s32 entityIndex) {
         gDPSetCombineMode(gMainGfxPos++, PM_CC_01, PM_CC_02);
         gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, entity->alpha);
     }
+#endif
 
 }
 
