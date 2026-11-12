@@ -34,28 +34,40 @@ After this row a mode 2 call records only the NDC_NAPI record; modes 0 and 1 kee
       ```
    d. The gSPPopMatrix and gDPPipeSync after the switch (:1839-1840): under TARGET_3DS `if (!cplx_direct) { both }`.
 
-## Try 2 (oracle 5): every mode 2 call fell back (napicen_btl: 41 of 41 `why 40`)
-- Named cause (code read): nd_tex_blk_desc (3ds/src/nd_direct.c:363-366) refuses `w * h > 2048`. That cap is the 16-bit limit.
-  gDPLoadTextureBlock of an 8-bit image loads it as 16-bit words: texels ((w * h + 1) >> 1) - 1 <= 2047, so an IA8 block holds up
-  to 4096 texels (4 KB TMEM). An IA8 complex HUD image of 48 x 48 (2304) or 64 x 64 (4096) is refused. The other two checks
-  (nd_direct_ready, nd_direct_bind) are the same as hud_rect_direct's, which passes in the same frames (no why 31-34 lines).
-- Fix 1 (nd_direct.c:364): replace `w * h > 2048` by `(((unsigned)(w * h) << siz) >> 1) > 4096u` (bytes of the image: 4b half a
-  byte per texel, 8b one, 16b two, 32b four; siz is G_IM_SIZ_4b..32b = 0..3).
-- Fix 2 (cplx_quad_run in hud_element.c): name the failing check in the census: `why 41` nd_tex_blk_desc, `why 42`
-  nd_direct_ready, `why 43` nd_direct_bind. Write the three tests as separate ifs, each calling nd_direct_fallback with its value
-  and then the old ops block (one shared label or a helper).
-- Both fixes in one commit on branch S5CHUDB (it holds 0d2556b76). Budget reset once.
+## Try 2 (oracle 5, done in 5edc90be1)
+nd_tex_blk_desc's byte cap fixed (nd_direct.c:364), and the census split into why 41 (tex block), 42 (ready) and 43 (bind).
+
+## Try 3 (ORACLE6): why 41 0, why 43 0, why 42 22 (napicen_btl, 5edc90be1)
+- nd_direct_ready (3ds/src/nd_direct.c:83-89) has four refusals: -1 not the main colour image or cimg_zero, -2 a non-frame-buffer
+  colour image, -3 `m1.valid`, -4 an off-screen tile 1 (pm_tex_aux_off_idx).
+- Path -3, named by code read: in battle, the actors are shaded sprites. tex_tile1 (nd_tex_set.c:566-568) sets m1.valid = 1 at
+  the 4-bit tile 1 TILESIZE. Only a later tile 0 TILESIZE clears it (nd_tex_set.c:205-206), and tex_shaded0 (:611-615) clears it
+  only when it takes the shaded draw. So after the last shaded sprite of a frame, m1.valid stays 1 until the next walker tile 0
+  load. The complex HUD record has no such load before it, so it reads -3. The old ops it falls back to then clear m1.valid at
+  their IA8 TILESIZE: tex_shaded0 needs tile 0 CI 4-bit (`tile_fmt[0] == 2 && tile_siz[0] == 0`, :611), and IA8 is never that,
+  so :206 runs `m1.valid = 0`. The direct IA8 bind can leave the same state: clear m1.valid and go on.
+- Paths -1, -2 and -4 are off-screen targets: their fallback is correct and stays.
+- Edits (src/hud_element.c cplx_quad_run only):
+  1. Declare `int rd;` at the top of the function. The test chain becomes:
+     `if (!nd_tex_blk_desc(...)) nd_direct_fallback(41u);`
+     `else if ((rd = nd_direct_ready()) != 1 && rd != -3) nd_direct_fallback((unsigned)(43 - rd));`
+     `else if (!nd_direct_bind(...)) nd_direct_fallback(43u);`
+     `else { if (rd == -3) nd_direct_m1_clear(); nd_direct_tex(&d); nd_direct_quad(...); nd_direct_end(); return; }`.
+     The why values are then 44 (-1), 45 (-2) and 47 (-4).
+  2. 3ds/src/nd_direct.c (end) and nd_api.h (end): `void nd_direct_m1_clear(void) { m1.valid = 0; }` with the comment "the
+     walker's tile 0 TILESIZE of a non-CI4 tile clears the shaded sprite raster (nd_tex_set.c:205-206)". The source line goes in
+     nd_direct.c because m1 is in nd_int.h, which hud_element.c does not include.
+  Apply the merge rule above (file ends) before the gate.
 
 ## Gate (expected values)
-- Build, memcheck OK; `bench.py run nd_host --row S5CHUDB --why "S5CHUDB try 2"`: PASS (nd_direct_test's nd_tex_blk_desc case
-  still passes; add a case 48 x 48 IA8 -> 1).
-- `bench.py base battle_wheel_nowide_det` and `bench.py base spot_mac01_det` (merge-base); one list `bench.py run
-  battle_wheel_nowide_det,spot_mac01_det,napicen_btl --row S5CHUDB --why "S5CHUDB try 2: blk cap"` (3 starts).
-  cmp: battle_wheel_nowide_det 1/1, spot_mac01_det 6/6 byte-equal.
-- napicen_btl log: 0 lines with why 41. A why 42 or 43 line: stop and hand back the count per why (the cause is then the
-  walker state, and the oracle reads that path). hud_element.o ops per frame: hand back the value (expected lower than main's).
-- Budget 8 Azahar starts.
+- Build, memcheck OK; `bench.py run nd_host --row S5CHUDB --why "S5CHUDB try 3"`: PASS.
+- Bases at the new merge-base: battle_wheel_nowide_det, spot_mac01_det. One list `bench.py run battle_wheel_nowide_det,
+  spot_mac01_det,napicen_btl --row S5CHUDB --why "S5CHUDB try 3: m1 clear"` (3 starts). cmp 1/1 and 6/6 byte-equal.
+- napicen_btl: expected 0 lines with why 41, 43, 44, 45 and 47, so all 41 mode 2 quads are direct. If a why 44, 45 or 47 line
+  shows: stop and hand back its count. That would be an off-screen path, which the oracle then reads. Hand back hud_element.o
+  ops per frame.
+- Budget 8 Azahar starts (reset once more for this row fault).
 
 ## Stop
-A byte difference or a why 41-43 line: stop, commit, hand back (2 tries per named cause). Delete this row file in the
+A byte difference, or any why 41 to 47 line: stop, commit, hand back (2 tries per named cause). Delete this row file in the
 completing commit.
