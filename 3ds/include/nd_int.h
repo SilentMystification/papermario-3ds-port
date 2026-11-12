@@ -339,7 +339,7 @@ typedef struct { u32 addr, gen, hash, nops, exit_am, exit_om; u16 ngrp; u8 refus
 #define DLC_TAB 2048
 #define DLC_MAXOPS 4096
 #define DLC_GPU_GEOM(g) ((g) & (G_ZBUFFER | G_LIGHTING))
-typedef struct { u32 a0, op0, op1, tri0, ntri; } EntSeg;
+typedef struct { u32 a0, op0, op1, tri0, ntri; struct NdSDef* sd; } EntSeg; /* S6E sd: the gap before the segment as a compiled def, or NULL */
 typedef struct {
     u32 list, vb, nops, hash, fr, vlen, retry;
     const u8* vp;
@@ -354,6 +354,7 @@ typedef struct {
     u8 useseg; /* S SGEN-1: the list reads vertices through a segment address: its entries are keyed by the segment bases (ent_segkey) */
     u16 calls, pcalls; u32 cf; /* PBATCH1: calls in frame cf, calls in the frame before */
     Gfx* fw; /* the list with its nested G_DL lists inlined (S6-5), G_ENDDL last: the segment ops index it */
+    struct NdSDef* tail; /* S6E: the units after the last segment, or NULL */
 } EntKey;
 enum { ENT_NEW, ENT_OK, ENT_REF, ENT_DYN };
 #define ENT_TAB 1024

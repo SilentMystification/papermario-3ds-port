@@ -3,6 +3,14 @@
 
 #include "world/common/atomic/TexturePan.inc.c"
 
+#ifdef TARGET_3DS
+#include "nd_scomp.h"
+/* S6M6: the glowing star and giving power custom gfx builders as one compiled state range (nd_scomp.h): combine PM_CC_05 and the prim
+ * alpha. The prim colour is a value unit (placeholder here); the record carries the per-frame alpha. */
+static const Gfx N(cc05_u)[] = { gsDPSetCombineMode(PM_CC_05, PM_CC_05), gsDPSetPrimColor(0, 0, 0, 0, 0, 0) };
+static NdSDef N(cc05) = { N(cc05_u), 2 };
+#endif
+
 s32 N(GlowingStarAlpha) = 255;
 s32 N(GivingPowerAlpha) = 255;
 
@@ -35,8 +43,15 @@ API_CALLABLE(N(SetStarBeamMasterAlpha)) {
 }
 
 void N(setup_gfx_glowing_star)(void) {
+#ifdef TARGET_3DS
+    Gfx v[1];
+
+    gDPSetPrimColor(&v[0], 0, 0, 0, 0, 0, N(GlowingStarAlpha));
+    nd_scomp_rec(&N(cc05), v, 1);
+#else
     gDPSetCombineMode(gMainGfxPos++, PM_CC_05, PM_CC_05);
     gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, N(GlowingStarAlpha));
+#endif
 }
 
 API_CALLABLE(N(SetGlowingStarAlpha)) {
@@ -47,8 +62,15 @@ API_CALLABLE(N(SetGlowingStarAlpha)) {
 }
 
 void N(setup_gfx_giving_power)(void) {
+#ifdef TARGET_3DS
+    Gfx v[1];
+
+    gDPSetPrimColor(&v[0], 0, 0, 0, 0, 0, N(GivingPowerAlpha));
+    nd_scomp_rec(&N(cc05), v, 1);
+#else
     gDPSetCombineMode(gMainGfxPos++, PM_CC_05, PM_CC_05);
     gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, N(GivingPowerAlpha));
+#endif
 }
 
 API_CALLABLE(N(SetGivingPowerAlpha)) {

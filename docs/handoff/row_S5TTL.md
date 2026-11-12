@@ -42,13 +42,29 @@ Rows that append to the end of 3ds/include/nd_api.h, 3ds/src/nd_direct.c or 3ds/
 sequence. Right before the gate runs: `git merge main`; at a conflict at those file ends keep both appends (main's first, then
 yours), rebuild, nd_host; then take the bases at the new `git merge-base HEAD main` and run the gate.
 
-## Gate
-- Build, memcheck OK; nd_host PASS.
-- A det title scene. Pre-flight `bench.py list --tag pic` and `bench.py show boot_logo_pic`. If none is det, add `title_det`, a
-  copy of the title scenario with `det shots shotwin=<F>:4`. F is the frame of the `game mode 1` (title) line of a boot log in
-  the base store (build3ds/basecache/*/spot_mac01_det/run.log has the boot lines) plus 60. Until `shot \d+ frame <F+63>\b`.
-  Add the bench in the same commit.
-- `bench.py base title_det`; one run (1 start); `bench.py cmp`: every shot byte-equal. No `trect fallback` lines. Budget 4.
+## Copyright US loop (ORACLE6 check of try 1, c657597b3): correct as written
+The loop's `alpha = 0` writes only the C local (no gfx), so the state at each rectangle is the pre-loop block: PM_CC_02 and prim
+alpha `alpha` (clamped at 0) when `alpha < 255`, else TitleSetupGfx's G_CC_DECALRGBA (state_title_screen.c:95) with the walker prim
+(pad 1). ttlSet/ttlPrim taken after the block keep exactly that. No change.
+
+## Gate (ORACLE6 correction: try 1 found no title det scene and a window/until mismatch; budget reset once)
+- Build, memcheck OK; nd_host PASS (done in try 1 at c657597b3; repeat only after a new code edit).
+- The title is game mode 2 (mode 1 is the logos). No det title scene exists. Add scenario and bench `title_det` (one commit, then
+  `bench.py rebuild`), inserted in 3ds/tools/azt_scenarios.json right after the `intro_native` entry and in bench_defs.json right
+  after the `newgame_handover` entry (not at the end; S5MENU0 inserts after fsel_fncov_pick, another place):
+  - scenario: name `title_det`, status unverified, subject "Title screen (hold state) with det: fast intro, START at frame 60
+    skips to the title (game mode 2, about frame 84 per the INTROSNAP discovery run), shots 200 to 203.", proves "S5TTL byte gate:
+    the title logo, menu and copyright rectangles.", debug `fast padscript=wait60,START*4 det fixedseed fs1off loglevel=debug
+    shots shotwin=200:4`, until `shot \d+ frame 203\b`, cap 30, deadline 25, first_marker `game mode 1 frame`, expects none,
+    needs_picture true, expected_events: `game mode 2 frame` (name "title") and `shot \d+ frame 203\b` (name "last shot").
+  - bench: name `title_det`, kind azahar_pic, speed normal, default false, scenario title_det, cap 30, the same until, tags
+    azahar, pic, det, gates []. Purpose "S5TTL byte gate: title screen hold state, det, shots 200 to 203."
+  - Why 200: the hold state lasts TITLE_START_TIME 400 frames (state_title_screen.c:32) from the title start, so frames 200-203
+    are inside it; the window has 4 shots, so the until frame is 203 (shotwin F:4 gives F to F+3).
+- `bench.py base title_det` (2 runs of the merge-base build; they must agree), then one run `bench.py run title_det --row S5TTL
+  --why "S5TTL: title rects as NdTRect"` (1 start), `bench.py cmp title_det --row S5TTL`: 4/4 byte-equal. No `trect fallback`
+  lines. A log with `game mode 14` (file select) before frame 203 means START landed on the title: stop and hand back the
+  `game mode` lines (scene fault, not a code fault). Budget 4 (3 used by this plan).
 
 ## Stop
 A byte difference: stop, commit, hand back. Delete this row file in the completing commit.

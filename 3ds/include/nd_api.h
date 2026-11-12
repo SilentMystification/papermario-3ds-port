@@ -29,7 +29,8 @@ void nd_parts_add(NdParts* b, const uint32_t* units);        /* core 1: units = 
 void nd_parts_end(NdParts* b);                               /* core 1: records the open run (no-op when empty) */
 void nd_parts_run(const uint32_t* rec);                      /* nd_walk.c, core 0: the NDC_NAPI runner of a run */
 void nd_parts_run_v(const uint32_t* rec);                    /* nd_walk.c, core 0: the runner of a run whose units are all typed setters (S4PDIR) */
-int nd_part_draw(const uint32_t* list);                      /* nd_geom.c, core 0: one flat list natively; 0 = not drawn (run the list) */
+struct NdGTab;
+int nd_part_draw(const struct NdGTab* t);                    /* nd_geom.c, core 0: one flat list from its table (S7CONV, nd_gtab.h); 0 = not drawn (run t->list) */
 
 /* NATIVEAPI A1 (NAPI2B): the shared direct-draw helpers. A direct executor (core 0) states a draw without the walker's op stream: the pso gives the
  * combine decision (made once, cold), the texture comes from a descriptor, the rectangle from the N64 rectangle words.
