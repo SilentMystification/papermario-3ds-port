@@ -202,7 +202,7 @@ int nd_glyph_can(int texW) {
 
 static inline int sx12(int v) { v &= 0xfff; return (v & 0x800) ? v | ~0xfff : v; }
 
-void nd_glyph_draw(u32 raster, u32 pal, int tlut, int w, int h, int ulx, int uly, int lrx, int lry, int s, int t, int dsdx_, int dtdy_) {
+void nd_glyph_draw(uint32_t raster, uint32_t pal, int tlut, int w, int h, int ulx, int uly, int lrx, int lry, int s, int t, int dsdx_, int dtdy_) {
     int tw = 1, th = 1;
     const int xl = sx12(ulx * 4), yl = sx12(uly * 4), xh = sx12(lrx * 4), yh = sx12(lry * 4);
     nd_tex_bind_glyph(raster, pal, tlut, w, h);

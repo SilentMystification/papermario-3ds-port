@@ -773,7 +773,7 @@ int nd_tex_win_desc(NdBindDesc* o, const void* timg, int timg_stride, unsigned f
  * set_tile, set_loadtlut, set_loadblock, set_tilesize: the glyph atlas arm, the PG1 memo arm and the load of set_tilesize and ensure_tile). The ops
  * are not built, decoded or skipped by nd_op_same (none of these ops has a skip test). raster and pal are the N64 addresses of the record. w is a
  * multiple of 16. */
-void nd_tex_bind_glyph(u32 raster, u32 pal, int tlut, int w, int h) {
+void nd_tex_bind_glyph(uint32_t raster, uint32_t pal, int tlut, int w, int h) {
     static const unsigned wr[4] = { 0, 0, 0, 0 };
     unsigned texels = (unsigned)(((w * h + 3) >> 2) - 1);
     gv_epoch++;

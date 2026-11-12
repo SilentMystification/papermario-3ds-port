@@ -64,6 +64,12 @@ void pm_gpu_set_combine(int mode) { n_leg++; last_leg = (unsigned)mode; }
 int const_rgb_tex_alpha(unsigned* out) { *out = 0xaabbccddu; return 1; }
 int nd_tex_bind_desc(const NdBindDesc* d, int n) { (void)d; (void)n; return 0; }
 void gp3_t0_surv(void) {}
+unsigned pm_gbi_cur_op; /* NAPI3B: the glyph draw (nd_glyph_draw) is not run by this test, its callees are stubs */
+void nd_tex_bind_glyph(uint32_t r, uint32_t p, int t, int w, int h) { (void)r; (void)p; (void)t; (void)w; (void)h; }
+void off_screen_check(void) {}
+void box_fold_sync(void) {}
+void ensure_tile(int n) { (void)n; }
+void dual_bind(void) {}
 void pm_tex_size(int* w, int* h) { *w = 32; *h = 16; }
 void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s1, float t1) {
     n_rect++;
