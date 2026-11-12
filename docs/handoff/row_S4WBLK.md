@@ -57,5 +57,46 @@ src/effects/water_block.c (water_block_appendGfx, the include list); 3ds/tools/a
   D_090004D8 and D_09000538 hold 10 + 4 TRI2 = 28 triangles); ent_gdl and nd_ops_run each below 20 per instance plus 20. Expected:
   nd_part_draw equals the number of live components. The fxtest spawns one instance: the per-instance limits are the numbers.
 
+## Try 3 (oracle 3 code read of 12cf5c703; the orchestrator reset the budget once; no code change, no new Azahar run)
+Facts of try 2: fxpic_84 7/7 byte-equal. Census, f406 effect minus f396 base: nd_part_draw 0 against 0, gv_tri +28, draw_tri +28,
+nd_geom_vtx, nd_ops_run and ent_gdl 0.
+
+Cause: this is a spec fault in the gate, not in the code. `hotset.py --fncovfn` prints only functions with 20 or more calls in the
+frame (3ds/tools/hotset.py:319-326, `if n >= 20`), so "nd_part_draw 0" means fewer than 20 calls, not none. In this frame the block
+has one live component:
+- NUM_WATER_BLOCK_COMPONENTS is 4 (include/effects.h:1554);
+- the create loop sets unk_88 = { -1, -5, -9, -13 } (water_block.c:105-107);
+- each update adds 1 (:179-180) from f403, so at f406 component 0 is at 3 (live) and component 1 at -1.
+So one instance: 1 call of nd_part_draw, which the filter hides.
+
+The component draws natively:
+- its list D_090004A0 is VTX 4 at slot 0, TRI2, PipeSync, End (assets/us/effects/gfx/D_090004A0_3B7090.gfx.inc.c), the same
+  shape as embers' D_090003B0_3DC2F0, and it passes parts_ok (nd_rec.c:283-299);
+- nd_ops_run and ent_gdl stayed 0, so there was no fallback.
+The 28 gv_tri are exactly the vertex mesh: D_090004D8 has 10 TRI2 and D_09000538 has 4 TRI2, so 28 triangles (water_block.c:297,
+:301). That is not a part, and 28 is inside the try-2 limit of 48.
+
+Step (no build, no run: the try-2 census logs build3ds/azt/logs/fxfncov_84.txt and fxfncov_base.txt are the data):
+1. Write build3ds/out/fncall.py:
+   ```
+   import sys, re; sys.path.insert(0, "3ds/tools"); import hotset as h
+   m = h.parse_map(h.lane_dir("S4WBLK", True) / "pm_3ds.map")
+   want = {a: e["name"] for a, e in m.items() if e["name"] in ("nd_part_draw", "nd_parts_run", "gv_tri", "nd_ops_run", "ent_gdl")}
+   tot = {}
+   for l in open(sys.argv[1], encoding="utf-8", errors="replace"):
+       mm = re.search(r"fncov f\d+ ((?:[0-9a-f]{8}:\d+ ?)+)", l)
+       if not mm: continue
+       for t in mm.group(1).split():
+           a, n = t.split(":"); a = int(a, 16)
+           if a in want: tot[want[a]] = tot.get(want[a], 0) + int(n)
+   print(sys.argv[1], tot)
+   ```
+   Run it on both logs: `python build3ds/out/fncall.py build3ds/azt/logs/fxfncov_84.txt` and the same for fxfncov_base.txt.
+   The S4WBLK_fncov lane map must be the one of the census build of try 2. If the lane was rebuilt since, rebuild it first with
+   `PM_FNCOV=1 PM_ROW=S4WBLK PM_LANE=S4WBLK sh 3ds/build.sh` (same commit, same map).
+2. Pass (effect minus base): nd_part_draw >= 1 (expected 1) and nd_parts_run >= 1 (expected 1). Hand back both lines.
+3. If both pass, the row is complete (byte gate 7/7 from try 2, census pass): delete this row file in one commit and hand back the
+   hash. If nd_part_draw is 0 in the raw counts: stop and hand back both lines.
+
 ## Stop
 A failed gate or an edit that does not fit: stop, commit, hand back the output. Delete this row file in the completing commit.

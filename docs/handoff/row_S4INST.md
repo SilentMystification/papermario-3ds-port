@@ -49,7 +49,8 @@ ring_blast. radiating_energy_orb as 4 runs only where its parts share a shape in
   (2 starts). `bench.py cmp` both: every shot byte-equal.
 - Census: PM_FNCOV build, `bench.py run fxfncov_base,fxfncov_51 --row S4INST --lane S4INST_fncov` (2 starts, both on the
   row's census lane; never `bench.py base` on fxfncov). Expected effect minus base: nd_parts_run_v about 1 per frame (it was 11),
-  and nd_ops_run below 20.
+  and nd_ops_run below 20. `hotset.py --fncovfn` hides functions under 20 calls (hotset.py:319-326), so count nd_parts_run_v,
+  nd_parts_run and nd_part_draw with the build3ds/out/fncall.py snippet of row_S4WBLK.md try 3 (names changed, lane S4INST).
 - Budget 6 Azahar starts. Console: CONSOLE C3 (XL fxtest=all) after this row.
 
 ## Stop
