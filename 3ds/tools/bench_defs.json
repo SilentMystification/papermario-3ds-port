@@ -314,6 +314,22 @@
       "gates": []
     },
     {
+      "name": "fxfncov_81",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FXFNCOV census: draw functions run in walker frame of scenario fxfncov_81 and their call counts (census lane <L>_fncov). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.",
+      "scenario": "fxfncov_81",
+      "cap": 45,
+      "until": "fncov f\\d+ done",
+      "tags": [
+        "azahar",
+        "hotcode",
+        "fncov"
+      ],
+      "gates": []
+    },
+    {
       "name": "fxfncov_124",
       "kind": "azahar_stream",
       "speed": "normal",
@@ -3779,6 +3795,21 @@
       "default": false,
       "purpose": "S4 byte gate: shimmer_burst (effect 50) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.",
       "scenario": "fxpic_50",
+      "cap": 40,
+      "until": "shot \\d+ frame 415\\b",
+      "tags": [
+        "azahar",
+        "fxcen"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fxpic_81",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "S4 byte gate: snaking_static (effect 81) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.",
+      "scenario": "fxpic_81",
       "cap": 40,
       "until": "shot \\d+ frame 415\\b",
       "tags": [
