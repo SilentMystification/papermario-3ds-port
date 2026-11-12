@@ -202,6 +202,7 @@ typedef struct { u32 list, var, off, size; } DlcPreIdx;
 static FILE* dlcp_f;
 static DlcPreIdx* dlcp_idx;
 static unsigned dlcp_n, dlcp_gen;
+static u32 dlcp_nds; /* shape size of the open .dlc */
 static int dlcp_chk = -1; /* switch dlcchk */
 unsigned nd_dlcp_pre, nd_dlcp_rt, nd_dlcp_full, nd_dlcp_bad; /* lists since the last dlcpre line: loaded from the file, compiled at run time, without pool room, differing from the run-time compile */
 __attribute__((cold, noinline)) static void dlcp_close(void) {
@@ -226,7 +227,8 @@ __attribute__((cold, noinline)) static int dlcp_open(void) {
     snprintf(path, sizeof path, "romfs:/shape/%s.dlc", pm_shape_name);
     f = fopen(path, "rb");
     if (!f) return 0;
-    if (fread(hdr, 1, 16, f) != 16 || memcmp(hdr, "NDDC", 4) != 0 || seam_le32(hdr + 4) != 1 || seam_le32(hdr + 8) != nds_size) goto bad;
+    if (fread(hdr, 1, 16, f) != 16 || memcmp(hdr, "NDDC", 4) != 0 || seam_le32(hdr + 4) != 2 || seam_le32(hdr + 8) != nds_size) goto bad;
+    dlcp_nds = nds_size;
     dlcp_n = seam_le32(hdr + 12);
     if (dlcp_n > 0x10000u) goto bad;
     if (dlcp_n) {
@@ -247,11 +249,12 @@ bad:
 }
 /* 1: o filled from the file, 0: no section (nothing allocated), -1: no pool room or a read fault (the caller runs the no-pool path) */
 __attribute__((cold, noinline)) static int dlcp_load(NdObj* o, u32 loff, unsigned var) {
-    unsigned lo = 0, hi, k;
+    unsigned lo = 0, hi, k, nv;
     const DlcPreIdx* x = NULL;
-    u8 h[40];
+    u8 h[48];
     u8* b = NULL;
-    u32 nops, nvtx, nidx, ngrp, ngop, av, ai, apad, bsz;
+    u8* rn = NULL;
+    u32 nops, nvtx, nidx, ngrp, ngop, av, ai, apad, bsz, nrun, nlit;
     if (!dlcp_open()) return 0;
     hi = dlcp_n;
     while (lo < hi) {
@@ -260,25 +263,37 @@ __attribute__((cold, noinline)) static int dlcp_load(NdObj* o, u32 loff, unsigne
         if (c->list < loff || (c->list == loff && c->var < var)) lo = m + 1; else hi = m;
     }
     if (lo < dlcp_n && dlcp_idx[lo].list == loff && dlcp_idx[lo].var == var) x = &dlcp_idx[lo];
-    if (!x || fseek(dlcp_f, (long)x->off, SEEK_SET) != 0 || fread(h, 1, 40, dlcp_f) != 40) return 0;
+    if (!x || fseek(dlcp_f, (long)x->off, SEEK_SET) != 0 || fread(h, 1, 48, dlcp_f) != 48) return 0;
     nops = seam_le32(h); ngrp = seam_le32(h + 12); ngop = seam_le32(h + 16); nvtx = seam_le32(h + 20); nidx = seam_le32(h + 24);
-    av = seam_le32(h + 32); ai = seam_le32(h + 36);
+    av = seam_le32(h + 32); ai = seam_le32(h + 36); nrun = seam_le32(h + 40); nlit = seam_le32(h + 44);
     apad = (ngop * 2u + 3u) & ~3u;
     bsz = ngrp * 48u + ngop * 8u + apad;
-    if (ngrp > ND_DLC_MAXGRP || ngop > ND_DLC_MAXGOP || av < nvtx || ai < nidx || 40u + bsz + nvtx * 16u + nidx * 2u != x->size) return 0;
+    if (ngrp > ND_DLC_MAXGRP || ngop > ND_DLC_MAXGOP || av < nvtx || ai < nidx || nrun > nvtx || nlit > nvtx || 48u + bsz + nrun * 8u + nlit * 16u + nidx * 2u != x->size) return 0;
     memset(o, 0, sizeof *o);
     o->nops = nops; o->exit_am = seam_le32(h + 4); o->exit_om = seam_le32(h + 8); o->ngrp = (u16)ngrp; o->ngop = ngop; o->nvtx = nvtx; o->nidx = nidx; o->nins = seam_le32(h + 28);
     o->grp = ngrp ? (NdGrp*)calloc(ngrp, sizeof(NdGrp)) : NULL;
     o->gop = ngop ? (u32(*)[2])malloc(ngop * 8u) : NULL;
     o->gat = ngop ? (u16*)malloc(ngop * 2u) : NULL;
     b = (u8*)malloc(bsz + 1u);
-    if (!b || (ngrp && !o->grp) || (ngop && (!o->gop || !o->gat)) || (bsz && fread(b, 1, bsz, dlcp_f) != bsz)) goto fault;
+    rn = (u8*)malloc(nrun * 8u + 1u);
+    if (!b || !rn || (nrun && fread(rn, 8, nrun, dlcp_f) != nrun) || (ngrp && !o->grp) || (ngop && (!o->gop || !o->gat)) || (bsz && fread(b, 1, bsz, dlcp_f) != bsz)) goto fault;
     o->vtx = av ? nd_env_valloc(av, &o->vfirst) : NULL; /* the pools, as nd_dlc_compile asks for them */
     if (av && !o->vtx) goto fault;
     o->idx = ai ? nd_env_ialloc(ai) : NULL;
     if (ai && !o->idx) goto fault;
     o->pooled = 1;
-    if (nvtx && fread(o->vtx, 16, nvtx, dlcp_f) != nvtx) goto fault;
+    for (k = 0, nv = 0; k < nrun; k++) { /* the vertices: runs of shape Vtx (flag word 0) and the literals of the file */
+        u32 so = seam_le32(rn + 8 * k), cnt = seam_le32(rn + 8 * k + 4);
+        if (cnt > nvtx - nv) goto fault;
+        if (so == 0xffffffffu) { if (fread(o->vtx + 16u * nv, 16, cnt, dlcp_f) != cnt) goto fault; }
+        else {
+            if (so > dlcp_nds || cnt * 16u > dlcp_nds - so) goto fault;
+            memcpy(o->vtx + 16u * nv, (const u8*)gMapShapeData + so, cnt * 16u);
+            for (u32 t = 0; t < cnt; t++) o->vtx[16u * (nv + t) + 6] = o->vtx[16u * (nv + t) + 7] = 0;
+        }
+        nv += cnt;
+    }
+    if (nv != nvtx) goto fault;
     if (nidx) {
         if (fread(o->idx, 2, nidx, dlcp_f) != nidx) goto fault;
         for (k = 0; k < nidx; k++) o->idx[k] = (u16)(o->idx[k] + o->vfirst);
@@ -293,10 +308,10 @@ __attribute__((cold, noinline)) static int dlcp_load(NdObj* o, u32 loff, unsigne
     }
     for (k = 0; k < ngop; k++) { o->gop[k][0] = seam_le32(b + ngrp * 48u + 8u * k); o->gop[k][1] = seam_le32(b + ngrp * 48u + 8u * k + 4u); }
     for (k = 0; k < ngop; k++) o->gat[k] = (u16)(b[ngrp * 48u + ngop * 8u + 2u * k] | (b[ngrp * 48u + ngop * 8u + 2u * k + 1u] << 8));
-    free(b);
+    free(b); free(rn);
     return 1;
 fault:
-    free(b); free(o->grp); free(o->gop); free(o->gat);
+    free(b); free(rn); free(o->grp); free(o->gop); free(o->gat);
     memset(o, 0, sizeof *o);
     return -1;
 }
