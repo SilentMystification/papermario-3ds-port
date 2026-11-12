@@ -1,7 +1,6 @@
 # Row S4COL: the prim colour rides in the vertices (NATIVEAPI S4 colour step: pink_sparkles, shimmer_burst)
 
-(Model: Haiku. Starts after S4PINK and S4SHIM are merged. A new named cause after PBATCH2's two tries (CLAUDE.md 5).)
-
+(Model: Haiku. A new named cause after PBATCH2's two tries (CLAUDE.md 5).)
 ## Cause (oracle code read, main 6e171b39a; data FXFNCOV and PBFLUSH)
 pink_sparkles per part: D (submit) +5306 calls, E (batch close) +1373 per frame (FXFNCOV), pm_gpu_set_plan flushes 53.8 per frame
 (PBFLUSH 504363): every prim change makes a new plan. PBATCH2 (branch PBATCH2, f514533db) routes only the plan's vertex slot colour
@@ -10,11 +9,8 @@ stage constant first (:289, :292), then the buffer, and the vertex slot only whe
 PRIM (pink_sparkles list D_09000F20) PRIM is a stage constant, vtxname is NONE, gv_vc_vtx stays 0 and every part flushes.
 
 ## Fix
-In build() (pm_comb.c:365) when the combine reads no SHADE and reads PRIM (any term TN_PR in R or A), preset `al.vtx = PM_NM_PRIM`:
-src_of then maps every PRIM term to PM_S_VTX (:291 comes before :292). With PBATCH2's pieces the prim then rides in the vertex colour
-and a part's prim change changes only plan.vtx (no flush). This changes the plan of every draw whose combine reads PRIM and no SHADE
-(HUD PM_CC_2F, text): the rect path already takes plan.vtx as the vertex colour (pm_gpu_rect.c:237). A vertex colour equal at all
-corners interpolates to itself, so the picture is expected byte-equal; the byte gate decides.
+PRIM takes the plan's vertex slot (pm_comb.c build) inside particle records only (step 2'), with PBATCH2's pieces (vertex colour,
+no flush on a prim change in combine 8).
 
 ## Start
 `sh 3ds/tools/wt_new.sh S4COL`. PM_ROW=S4COL PM_LANE=S4COL on every build and bench call.
@@ -31,6 +27,23 @@ nd_part_draw).
 3. nd_geom.c nd_part_draw: in the per-triangle block, after its params (gv_params_calc) lines, add the PBATCH2 lines of gv_tri: the
    gv_vc_vtx computation with its cm/ca set, and `if (gv_vc_vtx)` the three pm_gpu_gvtx_colour calls with rs[i0], rs[i1], rs[i2] and
    cur_plan.vtx (the vertices of an instance are loaded after its prim op, so no vbase check is needed there).
+
+## Next step (after try 1: nd_host FAIL, HEAD f4f554455; resume on branch S4COL)
+Fact: the global step 2 changes the TEV template of every combine that reads PRIM and no SHADE (pause, battle and splash templates of
+the ndref files: 39 FAIL lines in nd_tmpl_test). The ndref oracle words are recorded walker states of the old plan; regenerating them
+to the new plan would hide any later regression of those draws, and the change is only needed for the particle instances. Decision:
+limit PRIM-in-the-vertex-slot to the particle path; keep the ndref files.
+2'. Replace step 2 by: pm_comb.c: `int pm_comb_vprim; /* S4COL: 1 inside a particle record (nd_parts_run): PRIM takes the vertex slot
+    when the combine reads no SHADE */` (zero in the host test: the ndref templates stay); build() line 365:
+    `if (uses_shade(&R, &A)) al.vtx = PM_NM_SHADE; else if (pm_comb_vprim && reads_prim(&R, &A)) al.vtx = PM_NM_PRIM;`
+    nd_comb.c: add `(unsigned)pm_comb_vprim` to the parts[] of decide (:424, the plan memo key), sc_sig_now (:468) and scm_sig (:437),
+    so the memos keep the two plans apart (`extern int pm_comb_vprim;`).
+    nd_walk.c nd_parts_run (after S4P's lines): at its start `pm_comb_vprim = 1; sc_ok = 0;` (the first pre op resyncs with the vertex
+    plan); at its end `pm_comb_vprim = 0; sc_ok = 0; sync_combine();` (the normal plan is back in gs before the next walker draw).
+    Steps 1 and 3 stay (the PBATCH2 pieces in gv_tri apply only while the plan routes the vertex slot).
+Touch only adds 3ds/src/nd_comb.c (decide, sc_sig_now, scm_sig) and 3ds/src/nd_walk.c (nd_parts_run).
+Gates unchanged; add fxpic_50 to the byte list (shimmer_burst also takes the vertex plan): `bench.py run fxpic_124,fxpic_50 ...`
+(msgbox_talk_nowide no longer needed: text and HUD keep their plan). nd_host must PASS with the ndref files unchanged.
 
 ## Gate (CLAUDE.md 2-3)
 - Build, memcheck OK; nd_host PASS.
