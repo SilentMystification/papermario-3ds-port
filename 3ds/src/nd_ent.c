@@ -289,6 +289,9 @@ void ent_compile(EntKey* k, const Gfx* l0) {
     if (o.nidx != 3u * ntri) { nd_dlc_free(&o); k->why = 7; return; }
     k->seg = (EntSeg*)malloc(ns * sizeof(EntSeg));
     if (!k->seg) { nd_dlc_free(&o); k->why = 5; return; }
+    const NdGTab* gt = nd_gtab_find(l0);
+    ent_ntd = 0;
+    if (gt) { unsigned fl = 0; if (ent_tdwalk(gt, &fl, 0) < 0) ent_ntd = 0; nd_ent_tab++; } else nd_ent_notab++;
     for (unsigned s = 0; s < ns; s++) {
         k->seg[s].a0 = s ? ent_sbuf[s - 1].op1 : 0u; k->seg[s].op0 = ent_sbuf[s].op0; k->seg[s].op1 = ent_sbuf[s].op1;
         k->seg[s].tri0 = ent_sbuf[s].tri0; k->seg[s].ntri = ent_sbuf[s].ntri;
