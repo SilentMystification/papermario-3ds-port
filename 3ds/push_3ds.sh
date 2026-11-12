@@ -166,6 +166,16 @@ if [ "$nobuild" -eq 0 ] && [ "$attach" -eq 0 ] && [ -z "$checklog" ] && [ -z "$c
 fi
 if [ "$archonly" -eq 1 ]; then archive_build "archive-only" || exit 1; exit 0; fi
 if [ "$attach" -eq 0 ] && [ -z "$checklog" ] && [ -z "$checksend" ]; then mem_gate; fi
+# PUSHFIX STALE 3DSX: --no-build sends build3ds/pm_3ds.3dsx as it is. Its build must be HEAD, else nothing is sent.
+# PM_BUILD_H (tests only) names another pm_build.h.
+if [ "$nobuild" -eq 1 ] && [ -z "$PM_SRC3DSX" ]; then
+    bh=$(sed -n 's/^#define PM_GIT_HASH "\(.*\)"/\1/p' "${PM_BUILD_H:-3ds/include/pm_build.h}")
+    head_h=$(git rev-parse --short=9 HEAD 2>/dev/null || echo none)
+    if [ "$bh" != "$head_h" ]; then
+        echo "STALE 3DSX: built ${bh:-none}, HEAD $head_h. Build first (go.ps1 without -NoBuild). Nothing was pushed."
+        exit 5
+    fi
+fi
 # PYTHON_EXE lets a caller (3ds/go.ps1) pass a reliably-resolved interpreter path: bash's own PATH
 # (MSYS) does not always see the Windows "py" launcher even when PowerShell's PATH does.
 PY=${PYTHON_EXE:-py}
@@ -286,7 +296,13 @@ report_log() {
     esac
 }
 
-ip=${ipopt:-${N3DS_IP:-${PM_O3DS_IP:-$(py3 - <<'EOF'
+if [ -n "$ipopt" ]; then ip=$ipopt
+elif [ -n "$N3DS_IP" ]; then ip=$N3DS_IP
+elif [ -n "$PM_O3DS_IP" ]; then ip=$PM_O3DS_IP
+else
+    # PUSHFIX: the broadcast probe takes up to 8 s and printed nothing before; say so, and say when it got no answer.
+    echo "probe: netloader broadcast (8 tries)..."
+    ip=$(py3 - <<'EOF'
 import socket
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
@@ -301,7 +317,9 @@ for _ in range(8):
     except socket.timeout:
         pass
 EOF
-)}}}
+)
+    [ -n "$ip" ] || echo "probe: no answer"
+fi
 if [ -z "$ip" ]; then echo "no 3DS netloader found (press Y in the Homebrew Launcher)"; exit 1; fi
 echo "3DS at $ip"
 # One ping for the log only: ICMP may be blocked, so no reply does not stop the push.
@@ -333,6 +351,7 @@ fi
 # plain "timeout docker run" does not reliably stop a Docker Desktop container (confirmed directly -
 # the very first version of this, timeout-only, still hung past its own timeout).
 attempts=3
+mkdir -p build3ds/out
 stall_secs=15
 # SEND_SECS: the whole upload (13 MB) must end within this time once the console has answered.
 # A flaky Wi-Fi link can hang 3dslink after "Sending ..." for ever (confirmed on the O3DS).
@@ -384,17 +403,27 @@ while [ "$i" -le "$attempts" ]; do
     started=0
     killed=0
     sent_for=0
+    nogrow=0
+    warned=0
     while kill -0 "$dpid" 2>/dev/null; do
         sleep 1
         cur_size=$(wc -c <"$outfile" 2>/dev/null || echo 0)
         if [ "$cur_size" -gt "$last_size" ]; then
             last_size=$cur_size
             stalled=0
+            nogrow=0
             started=1
         elif [ "$started" -eq 0 ]; then
             stalled=$((stalled + 1))
+        else
+            nogrow=$((nogrow + 1))
         fi
         [ "$started" -eq 1 ] && sent_for=$((sent_for + 1))
+        # PUSHFIX: the console answered but the output has not grown for 30 s: say so once. Nothing is killed here.
+        if [ "$started" -eq 1 ] && [ "$nogrow" -ge 30 ] && [ "$warned" -eq 0 ]; then
+            warned=1
+            echo "attempt $i: no send progress for 30 s (last line: $(tr '\r' '\n' <"$outfile" | tail -n 1))"
+        fi
         # An owner gone: no new attempt, and a silent attempt is killed (a sent one runs on to its own end or SEND_SECS).
         if [ "$ownerdead" -eq 0 ] && owner_gone; then
             ownerdead=1
@@ -424,7 +453,10 @@ while [ "$i" -le "$attempts" ]; do
     kill "$tpid" 2>/dev/null || true
     wait "$tpid" 2>/dev/null || true
     note_partial "$outfile"
-    rm -f "$outfile"
+    # PUSHFIX: every attempt's 3dslink output is kept (it was deleted before, and the raw output was lost).
+    keep="build3ds/out/push_${ip}_$(date +%Y%m%d-%H%M%S)_a${i}.txt"
+    mv -f "$outfile" "$keep"
+    echo "3dslink output: $keep"
     if [ "$killed" -eq 0 ] && [ "$rc" -eq 0 ]; then
         ok=1
         partial_pct=""

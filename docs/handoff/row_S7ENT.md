@@ -87,6 +87,20 @@ S7RUN merged (done: 6220a2775). Branch S7ENT at a57c824cb: `git merge main` firs
   --why "S7ENT: entity tables"` (3 starts, all normal): cmp 6/6 and 6/6 byte-equal; ent_kmr03_pic entsync `tab` above 0, `gapt` above 0 and `gaps` 0
   (hand back tab, notab, gapt, gaps, gapn, sc, walks). Budget 8 (reset once for try 2).
 
+## Base of spot_mac01_det (ORACLE7, after try 2 at 3aa495373: not a row fault, no budget change)
+- Why the base at 3d4bc81d5 was not stored: its two runs were one warm restart and one cold start after a failed warm restart
+  (azslots/pool.log 2026-11-12 14:14:30-14:14:39, slot 2 pid 35736 `warm fail`, `start cold: restart failed`). They differed on
+  0000_1_2.ppm. Cold and warm starts are not byte-equal for this scene (bench.py cmp refuses a cold row run for the same reason,
+  TOOLB9); the base command took the cold run as a base run. A third (warm) run did not repair the pair. Tool fact, not a code
+  fact: open a tool row (the base command must retry a cold run warm, as cmp says) if the orchestrator wants it.
+- Rule for this row: 3d4bc81d5, ddc2f813e and f8b5d03fb have the same code tree (their diffs touch only docs/handoff and
+  3ds/logs: `git diff --stat 3d4bc81d5 f8b5d03fb -- . ':!docs' ':!3ds/logs'` prints nothing). f8b5d03fb's spot_mac01_det base
+  is stored (two warm runs). So the base of this row is that stored set:
+  `bench.py cmp spot_mac01_det --row S7ENT --commit f8b5d03fb` (0 Azahar starts: the try 2 head run is the row run).
+  Expected 6/6 byte-equal (the try 2 head shots have the md5 of every stored mac_01 base from 192232c37 to f8b5d03fb).
+- If the orchestrator merges main into S7ENT first (needed anyway when gen_gfx_tab.sh conflicts), the new merge-base gets its own
+  base: `bench.py base spot_mac01_det` (2 warm runs), then the list run again (3 starts; budget 8 holds it).
+
 ## Stop
 A byte difference, gtab bad above 0, `tab` 0 or `gaps` above 0 in ent_kmr03_pic: stop, commit, hand back (2 tries per named cause). Delete this
 row file in the completing commit. Hand back the file set of the `# S7ENT` line (the S7ENT1.. rows use it).
