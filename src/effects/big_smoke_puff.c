@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 static f32 D_E0002760[10] = { 10.0f, 40.0f, 80.0f, 170.0f, 140.0f, 100.0f, 25.0f, 155.0f, 60.0f, 120.0f };
 static f32 D_E0002788[10] = { 2.2f, 2.7f, 3.0f, 2.2f, 2.7f, 3.0f, 1.9f, 1.9f, 1.5f, 1.5f };
@@ -166,7 +167,11 @@ void big_smoke_puff_appendGfx(void* effect) {
 
             gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, (u32)(primAlpha * 105) / 8);
             gDPSetEnvColor(gMainGfxPos++, 0, 0, 0, envAlpha);
+#ifdef TARGET_3DS
+            nd_rec_dl(dlist);
+#else
             gSPDisplayList(gMainGfxPos++, dlist);
+#endif
             gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         }
     }

@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "message_ids.h"
+#include "nd_gtab.h"
 
 typedef struct {
     /* 0x00 */ Gfx* displayList;
@@ -157,7 +158,11 @@ void func_E010E000(ChapterChangeFXData* data, s32 arg1, UnkStruct* arg2) {
 
     if (arg2 != nullptr) {
         for (it = arg2; it->displayList != nullptr; it++) {
+#ifdef TARGET_3DS
+            nd_rec_dl(it->displayList);
+#else
             gSPDisplayList(gMainGfxPos++, it->displayList);
+#endif
 
             temp = it->x - 384;
             gDPSetTileSize(gMainGfxPos++, 1, (unk_1C * 4 - temp) * 4, 0, (unk_1C * 4 - it->x + 511) * 4, 0);

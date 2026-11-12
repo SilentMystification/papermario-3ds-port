@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 void confetti_init(EffectInstance* effect);
 void confetti_update(EffectInstance* effect);
@@ -268,7 +269,11 @@ void confetti_appendGfx(void* effect) {
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+#ifdef TARGET_3DS
+    nd_rec_dl(D_09000940_38C4E0);
+#else
     gSPDisplayList(gMainGfxPos++, D_09000940_38C4E0);
+#endif
 
     guTranslateF(sp18, part->unk_04, part->unk_08, part->unk_0C);
     guRotateF(sp58, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);
@@ -309,7 +314,11 @@ void confetti_appendGfx(void* effect) {
             gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, ulx << 2, uly << 2,
                            (ulx << 2) + ((width >> 1) << 1), (uly << 2) + height);
             gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+            nd_rec_dl(spA0);
+#else
             gSPDisplayList(gMainGfxPos++, spA0);
+#endif
             gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         }
     }
@@ -321,7 +330,11 @@ void confetti_appendGfx(void* effect) {
     gSPEndDisplayList(gMainGfxPos++);
     gSPBranchList(savedGfxPos, gMainGfxPos);
     savedGfxPos++;
+#ifdef TARGET_3DS
+    nd_rec_dl(savedGfxPos);
+#else
     gSPDisplayList(gMainGfxPos++, savedGfxPos);
+#endif
 #endif
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     gDPPipeSync(gMainGfxPos++);
