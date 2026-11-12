@@ -12286,6 +12286,27 @@
       "reason": "NAPI3B byte gate: msgbox_talk_nowide with det. Cap 30 s, deadline 25 s."
     },
     {
+      "name": "s6chk_yard",
+      "status": "unverified",
+      "subject": "Yard (kmr_20), 4:3, uishow=talk, det, debug switch s6chk: each compiled state range (the animator render-mode lists and the per-node state defs, S5EMDL3) runs the compiled path and the op path and compares the walker state fields. One shot at frame 200 and the s6chk line of frame 200.",
+      "proves": "S5EMDL3: the animator compiled ranges leave the walker the same state fields as the op path (s6chk bad 0).",
+      "debug": "preset=yard nowide uishow=talk shots shotwin=200:1 loglevel=debug det s6chk",
+      "extra": [],
+      "until": "s6chk f2\\d\\d ranges \\d+ bad \\d+",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_20 entry 4"
+        }
+      ],
+      "reason": "S5EMDL3 field check on the yard scene (kmr_20, animated model in the talk scene); the s6chk line at frame 200 is the until. Cap 30 s, deadline 25 s."
+    },
+    {
       "name": "glyph_fncov_talk",
       "status": "unverified",
       "subject": "NAPI3B: the talk scene of msgbox_talk_det with no shots, census of walker frame 330 (draw function call counts) and the glyph census line.",
