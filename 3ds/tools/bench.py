@@ -262,14 +262,20 @@ def read_runs():
     return out
 
 
+RUNS_LOCK_WAIT = 900  # TOOLB4: seconds a bench waits for runs.lock (main runs.jsonl is ~1.8 GB: one append takes minutes)
+
+
 class runs_lock:
     """An OS file lock on build3ds/runs.lock of the main folder (shared by every worktree): held while the next run ids are read and
-    the records appended, and while the DB is rebuilt, so two processes never get the same id. Waits up to 120 s, then raises (nothing appended)."""
+    the records appended, and while the DB is rebuilt, so two processes never get the same id. Waits up to RUNS_LOCK_WAIT s (one
+    wait loop; a note is printed once after 120 s), then raises (nothing appended)."""
     def __enter__(self):
         lock = main_folder() / "build3ds" / "runs.lock"
         lock.parent.mkdir(parents=True, exist_ok=True)
         self.f = lock.open("a+b")
-        t_end = time.time() + 120
+        t0 = time.time()
+        t_end = t0 + RUNS_LOCK_WAIT
+        noted = False
         while True:
             try:
                 self.f.seek(0)
@@ -281,9 +287,12 @@ class runs_lock:
                     fcntl.flock(self.f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
                 return self
             except OSError:
+                if not noted and time.time() - t0 > 120:  # TOOLB4: printed once
+                    print("runs.lock: held by another bench process for 120 s, waiting up to %d s" % RUNS_LOCK_WAIT, flush=True)
+                    noted = True
                 if time.time() > t_end:
                     self.f.close()
-                    raise RuntimeError("runs.lock held for 120 s by another bench process. Nothing was appended.")
+                    raise RuntimeError("runs.lock held for %d s by another bench process. Nothing was appended." % RUNS_LOCK_WAIT)
                 time.sleep(0.1)
 
     def __exit__(self, *exc):
@@ -1527,6 +1536,11 @@ def base_run(bds, commit, build_no, row, lane, label, why):
     try:
         rc = cmd_run(argparse.Namespace(bench=",".join([name] * BASE_TWICE), row=row, why=why, label=label, build=build_no, commit=commit,
                                         speed=None, lane=lane))
+        # TOOLB4: a base retry asks for the slot of its list (azt.ps1 PM_AZT_BASE_SLOT)
+        recs = base_warm(bds[0], row, label, commit, since)[0]
+        m = re.search(r"slot(\d+)", (recs[-1].get("log_path") or "") if recs else "")
+        if m:
+            os.environ["PM_AZT_BASE_SLOT"] = m.group(1)
         n = BASE_TWICE
         while n < BASE_MAX_RUNS:
             need = [bd for bd in bds if len(base_warm(bd, row, label, commit, since)[1]) < BASE_TWICE
@@ -1538,6 +1552,7 @@ def base_run(bds, commit, build_no, row, lane, label, why):
             n += 1
     finally:
         os.environ.pop("PM_BASE_SNAP", None)
+        os.environ.pop("PM_AZT_BASE_SLOT", None)  # TOOLB4
     bad = 0
     for bd in bds:
         s = scenario(bd["scenario"])

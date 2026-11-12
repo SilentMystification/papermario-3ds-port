@@ -116,13 +116,17 @@ extern void pm_gbi_mdl_mark(unsigned id, int pan); /* T1B: names the task tail r
 /* S6T: the camera setup range of render_frame as a compiled state range (nd_scomp.h). The units in the order of the N64 code below; the
  * viewport, scissor, colour image and matrix are value units (placeholders here, the record carries them per camera). The persp
  * normalize word is a no-op state unit (no field), so the ortho camera, which skips it, runs the same range. */
-static const Gfx cam_range_u[] = {
+/* S6VORD: a value unit between two static units is refused, so the range is two defs split at the scissor (cam_a) and the colour image
+ * (cam_b is the rest); the record runs them in order. */
+static const Gfx cam_a_u[] = {
     gsSPViewport(0),
     gsSPClearGeometryMode(G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH),
     gsSPTexture(0, 0, 0, G_TX_RENDERTILE, G_OFF),
     gsDPSetCycleType(G_CYC_1CYCLE),
     gsDPPipelineMode(G_PM_NPRIMITIVE),
     gsDPSetScissor(G_SC_NON_INTERLACE, 0, 0, 0, 0),
+};
+static const Gfx cam_b_u[] = {
     gsDPSetTextureLOD(G_TL_TILE),
     gsDPSetTextureLUT(G_TT_NONE),
     gsDPSetTextureDetail(G_TD_CLAMP),
@@ -140,7 +144,8 @@ static const Gfx cam_range_u[] = {
     gsSPPerspNormalize(0),
     gsSPMatrix(0, G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION),
 };
-static NdSDef cam_range = { cam_range_u, sizeof cam_range_u / sizeof cam_range_u[0] };
+static NdSDef cam_a = { cam_a_u, sizeof cam_a_u / sizeof cam_a_u[0] };
+static NdSDef cam_b = { cam_b_u, sizeof cam_b_u / sizeof cam_b_u[0] };
 #else
 #define T1_MARK(k) ((void)0)
 #endif
@@ -182,7 +187,7 @@ void render_frame(s32 isSecondPass) {
             s32 lry;
 
 #ifdef TARGET_3DS
-            Gfx scv[4]; /* S6T: the value units of cam_range */
+            Gfx scv[4]; /* S6T: the value units of cam_a and cam_b (viewport, scissor | colour image, matrix) */
             gSPViewport(&scv[0], PM_VP(&camera->vp));
 #else
             gSPViewport(gMainGfxPos++, PM_VP(&camera->vp));
@@ -255,7 +260,8 @@ void render_frame(s32 isSecondPass) {
             FI_CLOSE();
 #ifdef TARGET_3DS
             gSPMatrix(&scv[3], &gDisplayContext->camPerspMatrix[gCurrentCamID], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
-            nd_scomp_rec(&cam_range, scv, 4);
+            nd_scomp_rec(&cam_a, scv, 2);
+            nd_scomp_rec(&cam_b, scv + 2, 2);
 #else
             gSPMatrix(gMainGfxPos++, &gDisplayContext->camPerspMatrix[gCurrentCamID], G_MTX_NOPUSH | G_MTX_LOAD |
                         G_MTX_PROJECTION);

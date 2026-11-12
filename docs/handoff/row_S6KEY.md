@@ -1,5 +1,7 @@
 # Row S6KEY: the S6T decision key misses inputs that sync_combine reads (main fault: s6chk_yard bad 211)
 
+(SUPERSEDED by ORACLE6: row_S6SYNC.md (Sonnet) continues on branch S6KEY. Try 2 showed that the key was not the cause: the
+decision point is. The Haiku coder stops here; the text below is kept as the record of the key words that stay.)
 (Model: Haiku. One function in 3ds/src/nd_scomp.c and one constant in 3ds/include/nd_scomp.h. No blocker.)
 
 ## Cause (oracle 5 code read, main 3cef2c284)
