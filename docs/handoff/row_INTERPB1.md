@@ -1,8 +1,6 @@
 # Row INTERPB1: design B step 1: twin matrices in the t = 0.5 walk (one walk for both fps60 frames)
 
-(Model: Sonnet (user approved 2026-11-11: cross-file matrix and GPU stream work). Chain INTERPB1 -> INTERPB2 -> INTERPB3, one coder,
-one worktree, merged after each step's gates. Design: row_ORACLE_NEXT.md NATIVEAPI "Interpolation: one walk", option B.)
-
+(Model: Sonnet (user approved). Chain INTERPB1 -> 2 -> 3, one coder, merged per step. Design: row_ORACLE_NEXT.md, option B.)
 ## Facts
 INTERP2M (merged): the t = 0.5 frame L and the key frame K differ only in float uniform words (registers 0x2C0-0x2C8: U 355-454 per
 300-frame window), never in buffer addresses, render targets or other state (A 0, T 0, O 0) on icmp_mac01 and icmp_btl. So K can be
@@ -21,6 +19,28 @@ built from L's command lists with K's matrix uniforms, and the second walk (pm_k
 - Debug check (switch twinchk, cold): the key walk (still running) records gm_tab entries in order; compare entry i of the key walk with
   gm_tab_k[i] of the L walk of the same step (same creation order), and pcomp, pal0, normal rows likewise; one line per 300 frames
   `twinchk f<n> entries <e> mismatch <m> pal0 <p> nrm <q>`.
+
+## Next step (after try 1, head e2f239105; resume on branch INTERPB1; 4 new Azahar starts, orchestrator)
+Causes of the twinchk mismatches (oracle code read of the branch):
+1. Start state: nd_proj and nd_mv[0] are never reset per frame (nd_mtx_reset only at init, nd_walk.c:489; pm_gbi_end_frame resets only
+   nd_mv_sp, nd_cen.c:534). The key walk K(n) starts from what L(n) left (interpolated), while the twin starts from what K(n-1) left
+   (nd_mtx_twin_sync at the L begin). Any draw before its own projection or base load sees different matrices. Fix: at the L frame
+   begin save S = (nd_proj, nd_mv[0], nd_proj_wn) before nd_mtx_twin_sync; at the key walk begin (pm_key_walk, after
+   nd_twin_frame_begin(2)) restore the main nd_proj, nd_mv[0], nd_proj_wn from S and call upload_mvp(). Then K(n) starts from the state
+   L(n) started from: the state INTERPB3's copy shows.
+2. The check compares gm_tab by index: the L walk dedupes on the pair (L, K), the key walk on K alone, so a K matrix that two loads
+   share while their L matrices differ makes one entry in K and two in L: every later index shifts (mac_01: 52 of 126). The index
+   compare is not a twin fault. Replace it: at every upload_mvp, hash combined_k (L walk) / combined (key walk) into a site-order list
+   as nd_twinchk_pal does, and compare in order (`mismatch`); drop the gm index loop and the pcomp_k index compare (pm_gpu.c:832-833)
+   or make it site-ordered the same way.
+3. Memory: pcomp_k (64 KB static, pm_gpu.c:152) and pcomp_k_has: malloc them with gm_tab_k at the first L walk (static margin back to
+   about 780 KB; the 176 KB heap only with fps60 on; heap free is about 3 MB: acceptable).
+4. hot_order.ld: do not delete the nd_mtx_load line: load_mtx now calls nd_mtx_load_tw, so replace the line with
+   `*(.text.nd_mtx_load_tw)` (keeps the stack load in the hot group); hotset_size must PASS (no missing name).
+5. Never git checkout 3ds/logs/perf/runs.jsonl in the worktree (try 1's records were lost that way).
+Gate (fits the 70-frame runs): twinchk windows of 10 steps; pass: mismatch 0, pal0 0, nrm 0 in every window after the first one of
+each run (icmp_mac01, icmp_btl); spot_mac01_fps60_det 12/12 byte-equal against the merge-base. If the restore of step 1 changes
+key-frame shots: stop and hand back the cmp lines (a draw used a leftover matrix; the oracle decides). nd_host PASS, hotset_size PASS.
 
 ## Start
 `sh 3ds/tools/wt_new.sh INTERPB1`. PM_ROW=INTERPB1 PM_LANE=INTERPB1.
