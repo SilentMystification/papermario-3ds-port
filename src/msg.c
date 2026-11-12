@@ -581,6 +581,21 @@ s32 pm_msg_active(void) {
 }
 #endif
 
+#ifdef TARGET_3DS
+#include "nd_scomp.h"
+/* S6S2: the state prologue of render_messages as a compiled state range (nd_scomp.h, the S6T cam_range pattern). The units in the
+ * order of the N64 code below; the viewport and matrix are value units (placeholders here, the record carries them). */
+static const Gfx msg_range_u[] = {
+    gsSPViewport(0),
+    gsSPMatrix(0, G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION),
+    gsDPPipeSync(),
+    gsDPSetCycleType(G_CYC_1CYCLE),
+    gsSPClearGeometryMode(G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH),
+    gsSPSetGeometryMode(G_SHADE | G_SHADING_SMOOTH),
+};
+static NdSDef msg_range = { msg_range_u, sizeof msg_range_u / sizeof msg_range_u[0] };
+#endif
+
 void render_messages(void) {
     Mtx* matrix = &gMessageWindowProjMatrix[gCurrentDisplayContextIndex];
     s32 i;
@@ -592,6 +607,15 @@ void render_messages(void) {
                 FI_OPEN("render_messages", 0);
                 msgInterpScopeOpen = true;
             }
+#ifdef TARGET_3DS
+            guOrtho(matrix, 0.0f, 319.0f, -240.0f, 0.0f, -500.0f, 500.0f, 1.0f);
+            {
+                Gfx scv[2];
+                gSPViewport(&scv[0], &D_8014C280);
+                gSPMatrix(&scv[1], OS_K0_TO_PHYSICAL(matrix), G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
+                nd_scomp_rec(&msg_range, scv, 2);
+            }
+#else
             gSPViewport(gMainGfxPos++, &D_8014C280);
             guOrtho(matrix, 0.0f, 319.0f, -240.0f, 0.0f, -500.0f, 500.0f, 1.0f);
             gSPMatrix(gMainGfxPos++, OS_K0_TO_PHYSICAL(matrix), G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
@@ -600,6 +624,7 @@ void render_messages(void) {
             gSPClearGeometryMode(gMainGfxPos++, G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN |
                                  G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
             gSPSetGeometryMode(gMainGfxPos++, G_SHADE | G_SHADING_SMOOTH);
+#endif
             break;
         }
     }
