@@ -21,7 +21,8 @@ Model: Sonnet (pre-approved for the night run).
   DPCEN2 counts the compile time (pm_dp_cmp_n, pm_dp_cmp_us). nd_ent.c:242 also calls nd_dlc_compile (entity lists: not this row).
 
 ## Blocker and base
-S7RUN and S7ENT merged (S7ENT changes nd_gtab.h and nd_ent.c; this row must not collide with it). `sh 3ds/tools/wt_new.sh S7MAP`;
+S7RUN merged (done). No file overlap with S7ENT (S7ENT edits gen_gfx_tab.sh and nd_ent.c only; ORACLE6 correction: its
+first version wrongly assumed entity ROM blobs), so both can run at once. `sh 3ds/tools/wt_new.sh S7MAP`;
 PM_ROW=S7MAP PM_LANE=S7MAP. Base `git merge-base HEAD main`.
 
 ## Design (fixed; the coder chooses the inner steps)
