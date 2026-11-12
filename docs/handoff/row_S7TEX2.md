@@ -37,7 +37,13 @@ moves the bind before the draw, skips the fb_prev_base and glyph arms and change
    mapped (sym_of), the render tile is tile 0, a CI image (fmt 2) has its own TLUT group in the run, and nd_tex_win_desc (tile
    loads) or nd_tex_blk_desc (block loads) returns 1 on the decoded fields. The def search never extends into a unit that starts a
    load group (cap n there). Else the units stay as today. NdBindDesc src and pal are written as symbol + offset (as NDG_VTX). The
-   tool links 3ds/src/nd_texwin.c (gen_gfx_tab.sh tool compile line; a host stub for nuGfxZBuffer if needed). A table with NDG_TEX
+   tool links 3ds/src/nd_texwin.c (gen_gfx_tab.sh tool compile line). No stub (user rule 2026-11-12): nd_tex_win_desc reads
+   nuGfxZBuffer (nd_texwin.c:74, the one-row z-buffer source rule; nuGfxZBuffer is defined in pm_main.c). Split it for real:
+   nd_texwin.c gets `nd_tex_win_core(...)` = nd_tex_win_desc without the z-buffer test (pure), and nd_tex_win_desc moves to
+   nd_direct.c as `core(...) && !(o->h <= 1 && <the same z-buffer test>)`, so its device callers keep the same result. The same
+   for blocks: nd_texwin.c gets `nd_tex_blk_core` (nd_tex_blk_desc's body on nd_tex_win_core), and nd_tex_blk_desc stays in
+   nd_direct.c as blk_core plus the same z-buffer test. The tool and nd_gtab_test call the two core functions; the device
+   callers keep the desc functions with unchanged results. A table with NDG_TEX
    is never NDG_F_PARTS (the parts rule at nd_gfx_conv.c:121-131 already sets parts 0 for any other op: keep it so).
 3. Runner (nd_walk.c, next to gt_ops): `static void gt_tex(const NdGTex* x, unsigned n)`: for each of the n units from x->u: a sync
    or no-op unit is skipped (as op_typed's caller skips it, before the prologue); else the op prologue and the setter exactly as

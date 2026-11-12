@@ -62,8 +62,8 @@ LISTCEN deltas (the counts it removes). CONSOLE = one batch push, compared with 
     Merged since: S6VORD, S6SYNC/S6KEY, S7RUN, S7TEX1, S7MAP, S7MAP2, S7EFX1, S5CHUDB, S5TTL, S1TSTEN(?), TOOLB4, TOOLB5,
     TOOLDEDUP (check git log).
   - Next rows to write: S7ENT1.. (src/entity setupGfx call sites, after S7ENT; take its file set), S7MAP1.. (dro_02 npc_merlee,
-    hos_05 intro strips, end Credits), S7MDL1.. (make_texture_gfx, custom gfx builders), flame (host stub for the two symbols
-    in gen_gfx_tab.sh's tool link), SaveBlock.c (gen_gfx_syms misses version-conditioned symbols), then S8CEN and S8FB1-6 from
+    hos_05 intro strips, end Credits), S7MDL1.. (make_texture_gfx, custom gfx builders), flame (row S7FLAME: the two buffers move to the flame gfx source; no stub
+    ), SaveBlock.c (gen_gfx_syms misses version-conditioned symbols), then S8CEN and S8FB1-6 from
     row_S8FB.md when every S7 row is merged; S9DEL1-4 and S9GATE are written.
   - Facts:
     (1) S6T decision point: the op path decides at its sync units (OMH cycle bits nd_set.c:95, TEXTURE, COMB) with the DIP2
