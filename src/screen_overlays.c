@@ -218,7 +218,7 @@ void pm_tsten_run(const uint32_t* u) {
     pd.omh = G_TT_NONE | G_TF_AVERAGE;
     pd.omh_m = (3u << G_MDSFT_TEXTLUT) | (3u << G_MDSFT_TEXTFILT);
     if (nd_tex_win_desc(&d, img, strideT[id], G_IM_FMT_I, G_IM_SIZ_4b, wrap, 0, 0, ldwT[id], ldhT[id], 0, 0, sizeT[id], sizeT[id], NULL, 0) &&
-        nd_direct_ready()) {
+        nd_direct_ready() == 1) {
         NdPso pid = nd_pso_n64(&pd);
         if (nd_direct_bind(pid, r->prim, nd_direct_env())) {
             nd_direct_tex(&d);

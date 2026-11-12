@@ -1217,11 +1217,11 @@
     {
       "name": "sten_enter_det",
       "status": "unverified",
-      "subject": "Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0), cold det start, no prof switch. The Mario stencil fades in after the world entry: 40 shots at frames 1 to 157 (step 4), until frame 157.",
+      "subject": "Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0), cold det start, no prof switch. The Mario stencil fade-in: 12 shots at frames 37 to 48 (step 1), until frame 48.",
       "proves": "S1TSTEN byte gate: the Mario stencil fade-in of the world entry is drawn by the direct record (tsten f lines id 0 direct 1); base and head give byte-equal shots.",
-      "debug": "warp=mac_01:0 pos=0:0:200 shots shotwin=49:112:4 loglevel=debug det",
+      "debug": "warp=mac_01:0 pos=0:0:200 shots shotwin=37:12:1 loglevel=debug det",
       "extra": [],
-      "until": "shot \\d+ frame 157\\b",
+      "until": "shot \\d+ frame 48\\b",
       "cap": 30,
       "deadline": 25,
       "first_marker": "warp: mac_01 entry 0",
@@ -1233,7 +1233,7 @@
           "regex": "warp: mac_01 entry 0"
         }
       ],
-      "reason": "S1TSTEN byte gate: DET cold start, no prof switch (prof sets log=off, so no tsten line). Shot 39 (frame 157) is the until. Cap 30 s, deadline 25 s."
+      "reason": "S1TSTEN byte gate: DET cold start, no prof switch (prof sets log=off, so no tsten line). Shot 11 (frame 48) is the until: 12 shots at frames 37 to 48 (tsten f35..f48). Cap 30 s, deadline 25 s."
     },
     {
       "name": "dlcchk_mac01",
