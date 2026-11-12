@@ -29,7 +29,9 @@ src/sprite.c (the imgfx branch of spr_appendGfx_component, :462-473), the shadec
    (:244) with G_PM_ND_SPRSHADE.
 2. nd_gbi.h: `#undef gPmNdSprShade` and `#define gPmNdSprShade(pkt, on) ND_GX(pkt, ND_W0_PMND(G_PM_ND_SPRSHADE, (on) ? 1u : 0u), 0)`.
 3. nd_target.c nd_native_rec: `if (kind == G_PM_ND_SPRSHADE) { extern int nd_spr_walk; nd_spr_walk = (int)on; }` and, for the census,
-   `extern unsigned shc[]; if (on && PMDL("shadecen")) shc[7]++;` (slot 7 is free: shc[0..6] are BOMBLIT's) and print it as `img`.
+   `extern unsigned shc[16]; if (on && PMDL("shadecen")) shc[14]++;`. Slot check (main after BOMBLIT2): shc[16] (nd_tex_set.c:17) uses
+   0-9 (nd_tex_set.c:544-704, pm_gpu.c:3906-3939), 12 (pm_gpu.c:3984), 13 (nd_tex_set.c:673); 10, 11, 14, 15 are free; take 14. Print it
+   at the end of the shadecen print (nd_tex_set.c:714-717) as ` img %u` with shc[14] (the any test at :713 already covers all 16).
 4. sprite.c imgfx branch: before `if (imgfx_appendGfx_component(...` add `#ifdef TARGET_3DS` `if (gSpriteShadingProfile->flags &
    SPR_SHADING_FLAG_ENABLED) gPmNdSprShade(gMainGfxPos++, 1);` `#endif`; after the if-block (before line 473's `}`) the same with 0.
 

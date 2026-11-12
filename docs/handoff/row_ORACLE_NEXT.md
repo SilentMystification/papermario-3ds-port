@@ -31,8 +31,16 @@ A replacement oracle starts here: read CLAUDE.md, orchestrator_rules.md, plan_ho
   palette rows and L's ring and target addresses; L is presented first, then K at the next 59.83 Hz slot. Cost: the walk once plus a
   word copy and the twin products; CPU clip, cull and refusal decisions use K's matrices (a triangle off-screen in K is missing in L
   at the screen edge for one frame). Off-screen passes and grabs follow the stereo address map (sr_map). Premise row: INTERP2M (L vs K
-  command words by class: uniform, address, target, other); option B rows (twin stack; twin emit; present order) after it, Opus or
-  Sonnet (cross-file GPU stream work).
+  command words by class: uniform, address, target, other); option B rows (twin stack; twin emit; present order) after it, Sonnet
+  (user approved).
+- Stereo with design B: the right eye is already no second walk: the walk records the GX queue entries of the left pass (sr_on,
+  sr_frame_begin pm_gpu.c:2049) and sr_replay (:2111) queues them again before C3D_FrameEnd with the right target bind list (bind_main
+  :2066-2089: targetR, eye uniform -eye_e) and fill and copy addresses mapped to targetR (sr_map :2091). Per eye only the eye uniform
+  (u_eye, one register in the bind list) and the render target differ; the vertex ring, textures and command lists are shared. So one
+  walk can give all four pictures: B writes the K and L streams, and each stream's frame end runs the stereo replay for its right eye.
+  Cost per step: 1 walk + 1 command copy (L) + 2 replays (as today per frame). Adds to INTERP2M: nothing new to measure for the eyes
+  (the replay already shows eye independence); the L stream's GX entries must be recorded for its own replay (the B present-order row
+  keeps sr_on per stream). Rows: the B rows carry the stereo case in their gates (spot_mac01_fps60_det with stereo forced, both eyes).
 
 ## Rows (state at writing)
 - Running (6 coders): HC6B (Opus), WALLSHADE, UB1, HCCUT2 (step after the first try written in its row), HC9B, CRASHEXIT.
