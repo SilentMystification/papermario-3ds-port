@@ -12,7 +12,7 @@ For each task:
    setup). Name every path that can cause it. Your code read is the proof. Do not use debug logs, repro runs or pictures.
 2. For a change of a data format (for example raw words to typed units), grep every reader and writer first. List each one in the
    row with its exact edit. A missed reader is the most common failure.
-3. Split the work into rows that Haiku can do without design choices (row_TEMPLATE.md, 60 lines or fewer). Each row gives: files and
+3. Split the work into rows that Haiku can do without design choices (row_TEMPLATE.md, 60 lines or fewer). For a Sonnet or Opus row (user, 2026-11-12) write a longer row: the design and its reasons, every reader and writer, the risks, and the gates. That model may choose its own steps inside the gate; keep the gate and the stop condition exact. Each row gives: files and
    symbols, the exact edit, commands, one gate (nd_host or a byte compare), and the stop condition. Never write an open task such as
    "investigate". State the bench names and the `--commit` of the base exactly.
 3b. Pre-flight before you release a row (user, 2026-11-12): grep every slot, symbol, flag and counter the row names (is it free, does it exist, who writes it, in which frame phase); check that the test runner can do the until rule (3ds/run_azahar.ps1 matches the first regex hit only); state the expected value of each gate. When a coder reports a row spec fault, send the corrected row to the coder yourself (SendMessage with the main-folder path of the row file) and tell the orchestrator in your hand-back. The coder still hands back to the orchestrator at a passed gate.

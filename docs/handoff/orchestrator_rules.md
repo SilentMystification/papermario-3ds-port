@@ -29,7 +29,9 @@ next batch. Stop only for a user decision (AskUserQuestion) or a console action.
   code read the next step needs. Rotate the agent past about 150K, when the work leaves its files, or at the end of a chain.
 
 ## Rows
-- One row file per agent (60 lines or fewer). The prompt is 10 lines or fewer and points to the row.
+- One row file per agent. Haiku rows: 60 lines or fewer. Sonnet and Opus rows may be longer (user, 2026-11-12): the oracle gives
+  the design, the reasons, the files and the checks in full, and the model may choose its own steps inside the gate. The prompt is
+  10 lines or fewer and points to the row.
 - Keep the coders fed. The oracle writes rows in batches ahead of the coders (oracle.md 7). Each turn the orchestrator checks the
   number of running coders: below 6 with open work, it sends the oracle one "refill" request (a batch for all open work) and starts
   every ready row at once. It does not hand the oracle one job at a time.
