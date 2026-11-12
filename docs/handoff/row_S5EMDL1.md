@@ -46,9 +46,9 @@ macro block after its Gfx_RM externs, and the 44 call lines).
 - `sh 3ds/build.sh > build3ds/out/build.txt 2>&1`: memcheck OK. `bench.py run nd_host --row S5EMDL1 --why "S5EMDL1 nd_host"`: PASS.
 - `bench.py base spot_mac01_det`, `bench.py base mdl5_iwa10_det`; one list `bench.py run spot_mac01_det,mdl5_iwa10_det,s6chk_mac01
   --row S5EMDL1 --why "S5EMDL1: entity render-mode lists as defs"` (3 starts). cmp: 6/6 and 6/6 byte-equal. s6chk_mac01: `bad 0`
-  and `ranges` above main's last s6chk_mac01 run in runs.jsonl (entities in mac_01 add one range per drawn entity model).
+  and the `ranges` value next to main's last s6chk_mac01 run in runs.jsonl (reach report, not a stop: S6M1 merged with ranges 681 equal to main, as its records ran after f200; hand back both values).
 - No `scomp: def` line in the 3 logs. Budget 8 Azahar starts.
 
 ## Stop
-A byte difference, `bad` above 0, ranges not above main's or a scomp line: stop, commit, hand back (2 tries per named cause).
+A byte difference, `bad` above 0, or a scomp line: stop, commit, hand back (2 tries per named cause).
 Delete this row file in the completing commit.

@@ -1,10 +1,11 @@
 # Row S6M: map custom gfx (src/world builders and their static lists) through compiled ranges and native records (NATIVEAPI F3)
 
 Model: Haiku per file (oracle 4: split). Written: row_S6M1.md (mac_01 crystal ball), row_S6M2.md (flo_10 waterfx), row_S6M3.md
-(mac_00 water_gfx), row_S6M4.md (isk_05/13/14 ambush setup). Next (oracle 5), one Haiku row per file group in the order of the
-gbi counts: dro_02 npc_merlee (card draws: static lists plus a CI4 tile load per card), hos_05 intro, end Credits,
-KnockDownPlayer, trd_05/06, mgm_00 scoreboard, kmr_20 records, then the small files (<= 8 calls). Each uses the S6M1 form for
-its state lines; list draws stay ops until S7MAP. This file stays as the index until the last batch.
+(mac_00 water_gfx), row_S6M4.md (isk_05/13/14 ambush setup), row_S6M5.md (KnockDownPlayer, trd_05 trap, trd_06 falling).
+Moved to S7MAP (oracle 5 read: their lines are draws, not state ranges): dro_02 npc_merlee (card lists, CI4 tile loads per card),
+hos_05 intro (gfx_setup_story_viewport is one static list; the rest are image strips through gSPScisTextureRectangle, which
+NdTRect does not state: it has no scissor clamp), end Credits (matrices and message draws). Next Haiku rows here: mgm_00
+scoreboard, kmr_20 records, then the small files (<= 8 calls), each read first. This file stays as the index until the last batch.
 
 ## Blocker and base
 S6T and S6E merged. `sh 3ds/tools/wt_new.sh S6M1` (and S6M2, S6M3, S6M4 for the other batches).

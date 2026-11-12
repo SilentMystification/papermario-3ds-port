@@ -53,8 +53,8 @@ draw_entity_model_E :797-798, :801-806.
 ## Gate (expected values)
 - Build, memcheck OK, no warning in entity_model.c; `bench.py run nd_host --row S5EMDL2 --why "S5EMDL2 nd_host"`: PASS.
 - `bench.py base spot_mac01_det`, `bench.py base mdl5_iwa10_det`; one list `bench.py run spot_mac01_det,mdl5_iwa10_det,s6chk_mac01
-  --row S5EMDL2 --why "S5EMDL2: entity state lines as defs"` (3 starts). cmp 6/6 and 6/6 byte-equal; s6chk `bad 0`, `ranges` above
-  the S5EMDL1 merge run of s6chk_mac01 (runs.jsonl). No `scomp: def` line. Budget 8.
+  --row S5EMDL2 --why "S5EMDL2: entity state lines as defs"` (3 starts). cmp 6/6 and 6/6 byte-equal; s6chk `bad 0`; hand back `ranges` next to the
+  S5EMDL1 merge run of s6chk_mac01 (a reach report, not a stop). No `scomp: def` line. Budget 8.
 
 ## Stop
 A byte difference, `bad` above 0 or a scomp line: stop, commit, hand back (2 tries per named cause). Delete this row file in the

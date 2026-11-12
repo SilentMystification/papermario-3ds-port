@@ -56,10 +56,9 @@ bench_defs.json: one entry `s6chk_mac00` each, inserted right after `s6chk_mac01
 - Build, memcheck OK; `bench.py run nd_host --row S6M3 --why "S6M3 nd_host"`: PASS.
 - `bench.py base spot_mac00_det` and `bench.py base s6chk_mac00` (merge-base; the base of the new bench takes 2 runs). One list
   `bench.py run spot_mac00_det,s6chk_mac00 --row S6M3 --why "S6M3: mac_00 water ranges"` (2 starts).
-  cmp spot_mac00_det 6/6 byte-equal. s6chk_mac00 head: `bad 0`, and `ranges` above the base log's value of the same line (the 2
-  new ranges per drawn water frame). No `scomp: def` line in either log.
+  cmp spot_mac00_det 6/6 byte-equal. s6chk_mac00 head: `bad 0`, and the `ranges` values of base and head (reach report, not a stop: S6M1 merged with ranges 681 equal to main, as its records ran after f200; hand back both values). No `scomp: def` line in either log.
 - Budget 8 Azahar starts.
 
 ## Stop
-A byte difference, `bad` above 0, ranges not above the base, or a scomp line: stop, commit, hand back the lines (2 tries per
+A byte difference, `bad` above 0, or a scomp line: stop, commit, hand back the lines (2 tries per
 named cause). Delete this row file in the completing commit.

@@ -45,8 +45,8 @@ The two functions, a def block above each, `#include "nd_scomp.h"` under `#ifdef
   cap 30, deadline 25, expected_events only `warp: sbk_56 entry 0` (both builds print it); bench as s6chk_mac01's.
 - `bench.py base spot_sbk56_det` and `bench.py base s6chk_sbk56` (new bench: 2 runs). One list `bench.py run
   spot_sbk56_det,s6chk_sbk56 --row S6E3 --why "S6E3 try 2: block content ranges"` (2 starts). cmp spot_sbk56_det 6/6 byte-equal;
-  s6chk_sbk56 head `bad 0` and `ranges` above the base log's value (the content records of the drawn block). Equal ranges mean
-  the content is not drawn there: stop and hand back both values (then the gate is build, nd_host and s6chk, as row_S6M4.md).
+  s6chk_sbk56 head `bad 0` and the `ranges` values of base and head (reach report, not a stop: S6M1 merged with ranges 681 equal to main, as its records ran after f200; hand back both values).
+  Equal ranges: the content did not run by f200; the gate is then the byte compare, build, nd_host and bad 0 (as row_S6M4.md).
 - HeartBlock: no det scene draws a heart block; its defs are the unit kinds of SuperBlock's (proof: build and nd_host; say so).
 - No `scomp: def` line. Budget 8 Azahar starts after the reset (row spec fault).
 
