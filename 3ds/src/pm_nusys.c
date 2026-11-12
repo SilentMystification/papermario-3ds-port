@@ -1,4 +1,5 @@
 #include <string.h>
+#include <math.h>
 #include "nu/nusys.h"
 #include "pm_port.h"
 #include "pm_gpu.h"
@@ -216,6 +217,23 @@ void pm_key_walk(const PmKey* k) { /* walker side */
     pm_iw_us[1] = (unsigned)(iw_tk / 268u); /* INTERP1 */
     PH_POP();
     pm_gpu_end();
+    pm_fs_q = 0;
+    pm_lg_key_walked();
+}
+
+/* INTERPB3: the key frame of a step from the K copy the L frame of the step made (pm_gpu.c kc_build): no second walk. A frame with no valid copy (a lost
+ * record or patch list, a split command buffer, a scene change: pm_gpu.c pm_kc_why) is walked as before. The census counts both (pm_main.c interp line). */
+unsigned pm_kc_n[2]; /* copies shown, key walks */
+extern float nd_mv_k[ND_MV_DEPTH][4][4];
+void pm_key_show(const PmKey* k) { /* walker side */
+    if (!pm_gpu_kc_ready()) { pm_kc_n[1]++; pm_key_walk(k); return; }
+    pm_kc_n[0]++;
+    /* the key walk leaves the matrix state the next L walk starts from (K of this step): main stack from the twin stack of the L walk */
+    memcpy(nd_mv[0], nd_mv_k[0], sizeof nd_mv[0]); memcpy(nd_proj, nd_proj_k, sizeof nd_proj);
+    nd_proj_wn = sqrtf(nd_proj[0][3] * nd_proj[0][3] + nd_proj[1][3] * nd_proj[1][3] + nd_proj[2][3] * nd_proj[2][3]);
+    pm_iw_us[1] = 0;
+    pm_fs_q = 1; /* FS2: a key frame is not a drawn frame: no fsplit mark */
+    pm_gpu_key_show();
     pm_fs_q = 0;
     pm_lg_key_walked();
 }
