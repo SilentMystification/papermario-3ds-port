@@ -7813,7 +7813,7 @@
       "proves": "FPS60SPD: steps/s of the pace line is 29.0 to 31.0 with the key frame skipped on every step (the idle wait keeps PM_VBLANKS_PER_STEP vblanks for a step with no key frame). Log only, no shots.",
       "debug": "warp=mac_01:0 pos=0:0:200 fps60 pacestat iskipall fs1off loglevel=debug",
       "extra": [],
-      "until": "pacewk f\\d+ wk",
+      "until": "pacewk f([3-9]\\d\\d|\\d{4,}) wk",
       "cap": 45,
       "deadline": 40,
       "first_marker": "warp: mac_01 entry 0",
@@ -7830,7 +7830,7 @@
         },
         {
           "name": "pacewk",
-          "regex": "pacewk f\\d+ wk \\d+\\.\\d+ drawn \\d+"
+          "regex": "pacewk f([3-9]\\d\\d|\\d{4,}) wk \\d+\\.\\d+ drawn \\d+"
         }
       ],
       "reason": "FPS60SPD gate 2. Copy of spot_mac01_fps60_det without the det and shot switches, with pacestat and iskipall. Ends on the pacewk line of the first 5 s window at frame 400 or later. Cap 45 s: boot, warp, placement and about 7 s of game steps."
