@@ -65,7 +65,8 @@ gen_shapes() {
     rd=$(cd "$ASSET_BASE/ver/us" && pwd -W 2>/dev/null || pwd)
     # Skip: the stamp holds the hash of the converter source, the ROM size and the file count of the last run.
     stamp=$OUT/romfs/shape/.stamp
-    want="$(git hash-object 3ds/tools/nd_shape_conv.c) $(git hash-object 3ds/include/nd_op.h) $(git hash-object 3ds/src/nd_seam.c) $(git hash-object 3ds/src/nd_dlc.c) $(git hash-object 3ds/include/nd_ops.h) $(git hash-object 3ds/include/nd.h) $(git hash-object 3ds/src/nd_yay0.c) $(git hash-object 3ds/include/nd_yay0.h) $(git hash-object 3ds/tools/yay0_test.c) sse2 $(wc -c < "$rom" | tr -d " ")"
+    SH_IN="3ds/tools/nd_shape_conv.c 3ds/src/nd_seam.c 3ds/src/nd_dlc.c 3ds/include 3ds/src/nd_yay0.c 3ds/tools/yay0_test.c"
+    want="$({ git ls-files -s -- $SH_IN; git diff HEAD -- $SH_IN; git ls-files -o --exclude-standard -- $SH_IN | xargs -r sha1sum; } | sha1sum | cut -d' ' -f1) sse2 $(wc -c < "$rom" | tr -d " ")"
     if [ -f "$stamp" ] && [ "$(cat "$stamp")" = "$want $(ls "$OUT/romfs/shape"/*.nds 2>/dev/null | wc -l | tr -d ' ')" ]; then
         echo "gen_shapes: up to date"; return 0
     fi
@@ -83,7 +84,8 @@ gen_shapes
 gen_gfx_tab() {
     w=$(pwd -W 2>/dev/null || pwd); ab=$(cd "$ASSET_BASE" && pwd -W 2>/dev/null || pwd)
     stamp=$OUT/gfx_tab.stamp
-    want="$(cat 3ds/tools/gen_gfx_tab.sh 3ds/tools/gen_gfx_syms.py 3ds/tools/nd_gfx_conv.c 3ds/tools/nd_gconv.h 3ds/tools/gconv_inc/include_asset.h 3ds/src/nd_scomp.c 3ds/include/nd_scomp.h 3ds/include/nd_gtab.h 3ds/include/nd_op.h 3ds/include/nd_gbi.h src/effects/gfx/*.c | sha1sum | cut -d' ' -f1)"
+    GT_IN="3ds/tools/gen_gfx_tab.sh 3ds/tools/gen_gfx_syms.py 3ds/tools/nd_gfx_conv.c 3ds/tools/nd_gconv.h 3ds/tools/gconv_inc 3ds/tools/gconv_src.d 3ds/src/nd_scomp.c 3ds/src/nd_texwin.c 3ds/include src/effects/gfx src/entity"
+    want="$({ git ls-files -s -- $GT_IN; git diff HEAD -- $GT_IN; git ls-files -o --exclude-standard -- $GT_IN | xargs -r sha1sum; } | sha1sum | cut -d' ' -f1)"
     if [ -f "$stamp" ] && [ -f 3ds/src/nd_gfx_tab.c ] && [ "$(cat "$stamp")" = "$want" ]; then echo "gen_gfx_tab: up to date"; return 0; fi
     mkdir -p "$OUT"
     rm -f "$stamp" 3ds/src/nd_gfx_tab.c.new
