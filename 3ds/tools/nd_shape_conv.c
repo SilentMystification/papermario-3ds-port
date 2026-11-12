@@ -419,19 +419,22 @@ _Static_assert(sizeof(NdSeamList) == 24 && sizeof(NdTp) == 10, "NdSeamList or Nd
  * with the seam table of write_seam: one result per (list, variant). Variant 1 compiles with the T points of the list, variant 0 without. A list
  * with no points has variant 0 only, a list with points of class 0 or 1 has variant 1 only (the run-time use_tp rule of nd_shape.c dlc_build),
  * a list of class 2 with points has both (stat 0 and stat 1). A list the compiler refuses has no section (the console compiles it as before).
- * Output <dir>/<name>.dlc, little endian (version 2: the vertices are runs into the shape data, the indices are bytes, the derived fields are left out):
+ * Output <dir>/<name>.dlc, little endian (version 2: the vertices are runs into the shape data, the indices are 7 bit fields, the derived fields are left out):
  *   "NDDC", version u32 = 2, shape size u32 (the key against the .nds), nsec u32,
  *   index[nsec + 1]: key u32 (list offset in the shape file | variant, the list offset is a multiple of 8), file offset u32 of the section. The last entry
  *   has key 0xffffffff and the file size as offset: the size of section k is off[k + 1] - off[k]. Then the sections. A section:
- *   exit_am, exit_om u32; nops, ngrp, ngop, nrun, nlit, nins, dav, dai u16 (dav: the pool vertices the compile asks for minus nvtx, dai: the pool
- *   triangles minus ntri); grp[ngrp] (NDG_GRP bytes); gop[ngop] (u32 and-mask, u32 or-value); gat[ngop] u16; run[nrun] u32; lit[nlit] (16 bytes); idx[nidx] u8.
- *   A group: lo[3], hi[3] i16 at 0, 6; nvtx u8 at 12; ntri, ng u16 at 13, 15; tsv_exit u8 at 17; op0, op1 u16 at 18, 20; am, om u32 at 22, 26.
- *   nvtx (the section's) is the sum of the group nvtx, nidx is 3 * the sum of the group ntri; the group vbase, ibase and gbase are the running sums of
- *   nvtx, 3 * ntri and ng (the reader recomputes them, this writer checks it). A run: (shape offset >> 2) << 8 | count, count 1..255: the next count
- *   pool vertices are the shape Vtx from that offset with the flag word (bytes 6, 7) 0; shape offset field 0xffffff: the next count pool vertices are
- *   taken in order from lit (the vertices nd_dlc_compile made itself or that match no shape vertex; nlit is the sum of these counts). An index is the
- *   vertex number minus the group vbase (the compile gives each group at most 117 vertices). */
-#define NDG_GRP 30u
+ *   am0, om0 u32; nops, ngrp, ngop, nrun, nlit, nins, dav, dai u16 (dav: the pool vertices the compile asks for minus nvtx, dai: the pool
+ *   triangles minus ntri); grp[ngrp] (NDG_GRP bytes); gop[ngop] (u32 and-mask, u32 or-value); gat[ngop] u16; run[nrun] u32; lit[nlit] (14 bytes: a Vtx
+ *   without its flag word); idx[nidx] 7 bit fields, first field in the low bits of the first byte, the last byte padded with 0 bits.
+ *   A group: lo[3], hi[3] i16 at 0, 6; nvtx u8 at 12; ntri, ng u16 at 13, 15; tsv_exit u8 at 17; op0 u16 at 18.
+ *   am0, om0 are the am and om of the first group (exit_am, exit_om when ngrp is 0). The reader derives, and this writer checks: nvtx (the sum of the group
+ *   nvtx), nidx (3 * the sum of the group ntri), the group vbase, ibase, gbase (running sums of nvtx, 3 * ntri, ng), the group op1 (the op0 of the next
+ *   group, nops - 1 for the last), the am and om of each group and the exit state (am0, om0 folded through the gop of all groups in order:
+ *   am &= gop and, om = (om & gop and) | gop or). A run: (shape offset >> 2) << 8 | count, count 1..255: the next count pool vertices are the shape Vtx
+ *   from that offset with the flag word (bytes 6, 7) 0; shape offset field 0xffffff: the next count pool vertices are taken in order from lit (the vertices
+ *   nd_dlc_compile made itself or that match no shape vertex; their flag word is 0; nlit is the sum of these counts). An index is the vertex number
+ *   minus the group vbase (the compile gives each group at most 117 vertices). */
+#define NDG_GRP 20u
 static unsigned hv_req_v, hv_req_i;
 static const u8* hv_base;
 static u32 hv_size;
@@ -525,19 +528,23 @@ static void write_dlc(const NdSeamTab* t, const u8* buf, u32 size, u32 base, con
                 nlit += len; r += len;
             }
             { /* the derived fields */
-                u32 sv = 0, si = 0, sg = 0;
+                u32 sv = 0, si = 0, sg = 0, cam = o.ngrp ? o.grp[0].am : 0, com = o.ngrp ? o.grp[0].om : 0;
                 for (i = 0; i < o.ngrp; i++) {
                     const NdGrp* g = &o.grp[i];
-                    if (g->vbase != sv || g->ibase != si || g->gbase != sg || g->nvtx > 255u) die("dlc group fields not derivable", NULL);
+                    if (g->vbase != sv || g->ibase != si || g->gbase != sg || g->nvtx > 127u) die("dlc group fields not derivable", NULL);
+                    if (g->op1 != (i + 1u < o.ngrp ? o.grp[i + 1u].op0 : o.nops - 1u)) die("dlc group op1 not derivable", NULL);
+                    if (g->am != cam || g->om != com) die("dlc group am om not derivable", NULL);
+                    for (j = 0; j < g->ng; j++) { cam &= o.gop[g->gbase + j][0]; com = (com & o.gop[g->gbase + j][0]) | o.gop[g->gbase + j][1]; }
                     sv += g->nvtx; si += 3u * g->ntri; sg += g->ng;
                 }
+                if (o.ngrp && (cam != o.exit_am || com != o.exit_om)) die("dlc exit state not derivable", NULL);
                 if (sv != o.nvtx || si != o.nidx || sg != o.ngop || hv_req_v < o.nvtx || hv_req_i < o.nidx || (hv_req_i - o.nidx) % 3u) die("dlc section fields not derivable", NULL);
             }
-            ssz = 24u + o.ngrp * NDG_GRP + o.ngop * 10u + nrun * 4u + nlit * 16u + o.nidx;
+            ssz = 24u + o.ngrp * NDG_GRP + o.ngop * 10u + nrun * 4u + nlit * 14u + (o.nidx * 7u + 7u) / 8u;
             sec = (u8*)calloc(1, ssz);
             if (!sec) die("out of memory (dlc section)", NULL);
             pos = 0;
-            pos = put32(sec, pos, o.exit_am); pos = put32(sec, pos, o.exit_om);
+            pos = put32(sec, pos, o.ngrp ? o.grp[0].am : o.exit_am); pos = put32(sec, pos, o.ngrp ? o.grp[0].om : o.exit_om);
             w16b(sec + pos, o.nops); w16b(sec + pos + 2, o.ngrp); w16b(sec + pos + 4, o.ngop); w16b(sec + pos + 6, nrun); w16b(sec + pos + 8, nlit);
             w16b(sec + pos + 10, o.nins); w16b(sec + pos + 12, hv_req_v - o.nvtx); w16b(sec + pos + 14, (hv_req_i - o.nidx) / 3u);
             pos += 16;
@@ -547,8 +554,7 @@ static void write_dlc(const NdSeamTab* t, const u8* buf, u32 size, u32 base, con
                 for (j = 0; j < 3; j++) { w16(q + 2 * j, (u32)(uint16_t)g->lo[j]); w16(q + 6 + 2 * j, (u32)(uint16_t)g->hi[j]); }
                 q[12] = (u8)g->nvtx; w16(q + 13, g->ntri); w16(q + 15, g->ng);
                 q[17] = g->tsv_exit;
-                w16b(q + 18, g->op0); w16b(q + 20, g->op1);
-                w32(q + 22, g->am); w32(q + 26, g->om);
+                w16b(q + 18, g->op0);
                 pos += NDG_GRP;
             }
             for (i = 0; i < o.ngop; i++) { w32(sec + pos, o.gop[i][0]); w32(sec + pos + 4, o.gop[i][1]); pos += 8; }
@@ -556,17 +562,23 @@ static void write_dlc(const NdSeamTab* t, const u8* buf, u32 size, u32 base, con
             pos += 2u * o.ngop;
             for (r = 0; r < nrun; r++) pos = put32(sec, pos, rn[2 * r] == 0xffffffffu ? (0xffffffu << 8 | rn[2 * r + 1]) : ((rn[2 * r] >> 2) << 8 | rn[2 * r + 1]));
             for (r = 0, i = 0; r < nrun; i += rn[2 * r + 1], r++)
-                if (rn[2 * r] == 0xffffffffu) { memcpy(sec + pos, o.vtx + 16u * i, rn[2 * r + 1] * 16u); pos += rn[2 * r + 1] * 16u; }
+                if (rn[2 * r] == 0xffffffffu) for (j = 0; j < rn[2 * r + 1]; j++) {
+                        const u8* lv = o.vtx + 16u * (i + j);
+                        if (lv[6] || lv[7]) die("dlc literal with a flag word", NULL);
+                        memcpy(sec + pos, lv, 6); memcpy(sec + pos + 6, lv + 8, 8); pos += 14u;
+                    }
             free(rn);
             for (i = 0; i < o.ngrp; i++) {
                 const NdGrp* g = &o.grp[i];
                 for (j = 0; j < 3u * g->ntri; j++) {
                     u32 rel = o.idx[g->ibase + j] - g->vbase;
-                    if (rel > 255u) die("dlc index not a byte", NULL);
-                    sec[pos + g->ibase + j] = (u8)rel;
+                    u32 bp = (g->ibase + j) * 7u;
+                    if (rel > 127u) die("dlc index over 7 bits", NULL);
+                    sec[pos + bp / 8u] = (u8)(sec[pos + bp / 8u] | (rel << (bp & 7u)));
+                    if ((bp & 7u) > 1u) sec[pos + bp / 8u + 1u] = (u8)(sec[pos + bp / 8u + 1u] | (rel >> (8u - (bp & 7u))));
                 }
             }
-            if (pos + o.nidx != ssz) die("dlc section size", NULL);
+            if (pos + (o.nidx * 7u + 7u) / 8u != ssz) die("dlc section size", NULL);
             ix[nsec].list = off; ix[nsec].var = v; ix[nsec].size = ssz; ix[nsec].off = 0;
             secs[nsec++] = sec;
             free(o.vtx); free(o.idx);
