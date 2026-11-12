@@ -19,6 +19,11 @@ applied. This row only builds the copy and compares it with the real key walk (s
   uniform location (the 0x2C0 location word before the data) of each differing word: `icmpp f<n> pairs .. diff U .. A .. T .. O ..
   locs <loc:n ...>`. A location left over names a missing site: add it.
 
+## From INTERPB1
+One upload_mvp per step differs between the twin and the key walk (no draw uses it: pal0 and nrm match). In the first run add
+to twinchk the index of the first differing upload per step and its caller (__builtin_return_address(0) in upload_mvp) for 3 steps;
+hand the lines back with the gate. The icmpp compare (all command words 0 diff) is the proof that no draw sees it.
+
 ## Start
 `sh 3ds/tools/wt_new.sh INTERPB2` (from main with INTERPB1). PM_ROW=INTERPB2 PM_LANE=INTERPB2.
 

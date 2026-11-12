@@ -20,19 +20,13 @@ built from L's command lists with K's matrix uniforms, and the second walk (pm_k
   gm_tab_k[i] of the L walk of the same step (same creation order), and pcomp, pal0, normal rows likewise; one line per 300 frames
   `twinchk f<n> entries <e> mismatch <m> pal0 <p> nrm <q>`.
 
-## Next step (after try 2, code d0883048f; resume on branch INTERPB1; 3 more Azahar starts)
-Try 2 facts: restore, heap pcomp_k, hot_order and pal0/nrm are right (pal0 and nrm 0 in steady state, spot_mac01_fps60_det 12/12).
-Cause of the mvp-sequence mismatch: the restore in nd_twin_frame_begin(2) (nd_mtx_set.c:281-284) zeroes tw_nm_k first and then calls
-upload_mvp(), which records one extra entry at index 0 of the key walk's sequence (upload_mvp :49-54 calls nd_twinchk_mvp). The L
-walk has no upload at its start, so every key-walk entry i is compared with L entry i - 1: only runs of equal consecutive matrices
-match (entries minus mismatch about 30 and 80, as measured). The upload_mvp sites (load_mtx :164, gbi_viewport :176, gbi_popmtx
-:197, nd_walk.c:492 init only) are the same ops in both walks.
-Fix: in nd_twin_frame_begin(2) move `tw_np_k = tw_nq_k = tw_nm_k = 0;` after the restore block (after its upload_mvp), so the
-restore's upload is not in the sequence. No other change.
-Gate: the same list as try 2 (icmp_mac01, icmp_btl, spot_mac01_fps60_det; 3 starts). Pass: mismatch 0, pal0 0, nrm 0 in the last 3
-windows of each run (camera at rest); 12/12 byte-equal. Earlier windows (scene start, battle camera moves: try 2 had pal0/nrm there)
-are reported, not gated: while the camera moves, the CPU culls of the L walk use L matrices (box and clip tests), so the two walks can
-draw different site sequences; that is the known limit of design B (row_ORACLE_NEXT.md). A mismatch at rest: stop, hand back the lines.
+## Decision (oracle, after try 3: code 76807e675, records 8ab1c0b13)
+Try 3: mismatch exactly 1 per step (10 per window) in both runs; pal0 0 and nrm 0 at rest (mac_01 f65, btl f69); 12/12 byte-equal.
+pal0 (every draw's palette 0) and nrm (every pm5 normal block) are the matrix values draws upload; both match at rest, so the one
+differing upload_mvp per step reaches no draw (an upload whose matrix is replaced before the next draw, or one after the last draw).
+Its site is not named by reading (the sites :164, :176, :197 are the same ops in both walks). Rule for this step: pass = pal0 0 and nrm
+0 at rest and mvp mismatch at most 1 per step; try 3 meets it. Commit this decision, delete the row file, hand back for the merge.
+INTERPB2 names the site (its first run logs the first differing upload per step: index and caller) and proves the command words.
 
 ## Start
 `sh 3ds/tools/wt_new.sh INTERPB1`. PM_ROW=INTERPB1 PM_LANE=INTERPB1.
