@@ -70,7 +70,9 @@ next batch. Stop only for a user decision (AskUserQuestion) or a console action.
 
 ## Status and questions
 - Every Agent launch: the description is "[model] TASK - summary", 10 words or fewer for the summary (for example "[Haiku] KEYMISS - key-miss census for the draw cache").
-- Every turn: RUNNING (one line per agent, labelled with its model and row: [Haiku] HC8, [Sonnet] KZN04, [Opus] HC5, [Oracle Opus], [Push], [Build]) / READY-NOT-LAUNCHED / BLOCKED-ON-USER.
+- Every turn: RUNNING / QUEUED / BLOCKED-ON-USER (user, 2026-11-12). RUNNING: one line per agent, "[Haiku] HC8 - summary of 10 words
+  or fewer" (the same label as the Agent description; also [Oracle Opus], [Push], [Build]). QUEUED (was READY-NOT-LAUNCHED): one line
+  per row, same label and summary. BLOCKED-ON-USER: console actions only.
 - Ask only with AskUserQuestion (2-4 options, recommended first). Do not ask what a rule decides. A decision or blocker is never
   written as a status line: ask it as a question at once. BLOCKED-ON-USER lists only console actions that wait for the user.
   A design the user gave to the oracle is the oracle's job: it is not a blocker.
