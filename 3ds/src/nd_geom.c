@@ -349,8 +349,18 @@ int nd_part_draw(const uint32_t* u) {
     const unsigned n = (u[0] >> 12) & 0xffu;
     const Vtx* src = (const Vtx*)ptr_of(u[1]);
     if (!src || !is_host((u32)(uintptr_t)src) || n < 1u || n > 64u) return 0;
+    /* S4MULTI: the vertex loads of the whole list (each NDO_VTX unit) are checked before the first draw: the source of each later load, and the room for all of them */
+    unsigned tot = n;
+    for (const uint32_t* q = u + 2; (q[0] >> 24) != NDO_END; q += 2) {
+        if ((q[0] >> 24) != NDO_VTX) continue;
+        const unsigned n2 = (q[0] >> 12) & 0xffu;
+        const Vtx* s2 = (const Vtx*)ptr_of(q[1]);
+        if (!s2 || !is_host((u32)(uintptr_t)s2) || n2 < 1u || n2 > 64u) return 0;
+        tot += n2;
+    }
     memset(vert_live, 0, sizeof vert_live);
-    if (!pm_gpu_gv_room(n + 64u)) { extern int ring_need(unsigned nv, unsigned ni); if (ring_need(n + 64u, 384u)) memset(vert_ring, 0xff, sizeof vert_ring); } /* HUDRING, as nd_geom_vtx */
+    if (!pm_gpu_gv_room(tot + 64u)) { extern int ring_need(unsigned nv, unsigned ni); if (ring_need(tot + 64u, 384u)) memset(vert_ring, 0xff, sizeof vert_ring); } /* HUDRING, as nd_geom_vtx */
+    if (!pm_gpu_gv_room(tot)) return 0; /* S4MULTI: every load of the list fits, so no later load fails after a draw */
     if (nd_ws.geom & G_LIGHTING) return 0;
     const unsigned gmi = gv_matrix_id(0);
     if (gmi == GV_NONE) return 0;
@@ -362,10 +372,18 @@ int nd_part_draw(const uint32_t* u) {
     const unsigned tss = ((unsigned)nd_ws.tex_ss << 16) | ((unsigned)nd_ws.tex_ts & 0xffffu);
     for (const uint32_t* q = u + 2; (q[0] >> 24) != NDO_END; q += 2) {
         if (q[0] == ND_NOP_A) continue;
+        if ((q[0] >> 24) == NDO_VTX) { /* S4MULTI: a later load, its source checked above; slots v0 .. v0 + n2 - 1 of the ring copy */
+            const unsigned n2 = (q[0] >> 12) & 0xffu, v0 = ((q[0] >> 1) & 0x7fu) - n2;
+            const int r2 = pm_gpu_gvtx_load((const Vtx*)ptr_of(q[1]), n2);
+            if (r2 < 0) return 0;
+            PH_ADD(C_VTXLOAD, n2); PH_ADD(C_GVLOAD, n2); gv_load_n += n2;
+            for (unsigned i = 0; i < n2; i++) rs[v0 + i] = (unsigned short)(r2 + (int)i);
+            continue;
+        }
         const int two = (q[0] >> 24) == NDO_TRI2;
         for (int t = 0; t <= two; t++) {
             const uint32_t w = t ? q[1] : (q[0] & 0xffffffu);
-            const unsigned i0 = ((w >> 16) & 0xffu) >> 1, i1 = ((w >> 8) & 0xffu) >> 1, i2 = (w & 0xffu) >> 1; /* parts_ok: < n */
+            const unsigned i0 = ((w >> 16) & 0xffu) >> 1, i1 = ((w >> 8) & 0xffu) >> 1, i2 = (w & 0xffu) >> 1; /* parts_ok: < have */
             GP_START();
             gp_ntri++;
             n_cmd++;
