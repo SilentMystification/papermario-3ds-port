@@ -1,6 +1,8 @@
 #include "common.h"
 #include "overlay.h"
 #include "include_asset.h"
+#include "nd_api.h"
+#include "pm_gpu.h"
 
 extern s32 pm_wide_cam(Camera* c);
 
@@ -177,6 +179,34 @@ Gfx D_8014EA48[] = {
     gsSPEndDisplayList() // ROM has df000000 at 0xE5490, the decomp lacks it (V22b)
 };
 
+#ifdef TARGET_3DS
+/* NATIVEAPI B1 (S1FILL): a screen or viewport colour overlay is one native fill record (nd_api.h). rgba is the primitive colour, 0xRRGGBBAA. */
+typedef struct {
+    s32 x0, y0, x1, y1;
+    u32 rgba, opaque;
+} NdFillRec;
+
+/* core 0: the 1-cycle fill of an overlay, as the walker's fill (nd_rect.c nd_fillrect): primitive colour, lower right exclusive. */
+static void fill_run(const uint32_t* u) {
+    const NdFillRec* f = (const NdFillRec*)u;
+    Gfx cmb[1];
+    NdPsoN64 d;
+    const int x1 = f->x1 - 1, y1 = f->y1 - 1;
+    gDPSetCombineMode(&cmb[0], G_CC_PRIMITIVE, G_CC_PRIMITIVE);
+    d.cw0 = cmb[0].words.w0;
+    d.cw1 = cmb[0].words.w1;
+    d.oml = f->opaque ? ((CVG_DST_SAVE | G_RM_OPA_SURF) | (CVG_DST_SAVE | G_RM_OPA_SURF2)) : (G_RM_CLD_SURF | G_RM_CLD_SURF2);
+    d.omh = G_CYC_1CYCLE;
+    d.omh_m = 3u << G_MDSFT_CYCLETYPE;
+    nd_direct_bind(nd_pso_n64(&d), f->rgba, nd_direct_env());
+    if (x1 >= f->x0 && y1 >= f->y0) {
+        pm_gpu_set_replace(0);
+        pm_gpu_fill_rect(f->x0, f->y0, x1, y1, f->rgba);
+    }
+    nd_direct_end();
+}
+#endif
+
 void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* overlay) {
     Camera* camera = &gCameras[gCurrentCameraID];
     u8 colR, colG, colB;
@@ -207,6 +237,16 @@ void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* ove
 
     switch (stencilType) {
         case OVERLAY_SCREEN_COLOR:
+#ifdef TARGET_3DS
+            /* the scissor stays a stream op before the record: later walker draws may inherit it */
+            gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+            /* 1-cycle fill: the lower right is exclusive (HUDB1). The N64 overscan hides the last column and row, the port shows them. */
+            {
+                const NdFillRec rec = { 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, ((u32)colR << 24) | ((u32)colG << 16) | ((u32)colB << 8) | (u32)(u8)progress,
+                                        progress == 255.0f };
+                nd_rec_napi(fill_run, &rec, 3u);
+            }
+#else
             gDPPipeSync(gMainGfxPos++);
             gDPSetColorDither(gMainGfxPos++, G_CD_MAGICSQ);
             gDPSetAlphaDither(gMainGfxPos++, G_AD_PATTERN);
@@ -219,15 +259,20 @@ void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* ove
             gDPSetCombineMode(gMainGfxPos++, G_CC_PRIMITIVE, G_CC_PRIMITIVE);
             gDPSetPrimColor(gMainGfxPos++, 0, 0, colR, colG, colB, progress);
             gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-#ifdef TARGET_3DS
-            /* 1-cycle fill: the lower right is exclusive (HUDB1). The N64 overscan hides the last column and row, the port shows them. */
-            gDPFillRectangle(gMainGfxPos++, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-#else
             gDPFillRectangle(gMainGfxPos++, 0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1);
-#endif
             gDPSetColorDither(gMainGfxPos++, G_CD_DISABLE);
+#endif
             return;
         case OVERLAY_VIEWPORT_COLOR:
+#ifdef TARGET_3DS
+            gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+            {
+                const s32 vx = camera->viewportStartX, vy = camera->viewportStartY;
+                const NdFillRec rec = { vx, vy, vx + camera->viewportW, vy + camera->viewportH,
+                                        ((u32)colR << 24) | ((u32)colG << 16) | ((u32)colB << 8) | (u32)(u8)progress, progress == 255.0f };
+                nd_rec_napi(fill_run, &rec, 3u);
+            }
+#else
             gDPPipeSync(gMainGfxPos++);
             gDPSetColorDither(gMainGfxPos++, G_CD_MAGICSQ);
             gDPSetAlphaDither(gMainGfxPos++, G_AD_PATTERN);
@@ -243,6 +288,7 @@ void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* ove
             gDPFillRectangle(gMainGfxPos++, camera->viewportStartX, camera->viewportStartY,
                              camera->viewportStartX + camera->viewportW, camera->viewportStartY + camera->viewportH);
             gDPSetColorDither(gMainGfxPos++, G_CD_DISABLE);
+#endif
             return;
     }
 
