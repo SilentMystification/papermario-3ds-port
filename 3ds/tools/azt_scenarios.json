@@ -1261,6 +1261,31 @@
       "reason": "S4 byte gate for the snowfall particle run (row S4SNOW): cold det start as spot_mac01_det, shots 412 to 415 compared with the base. Cap 40 s, deadline 35 s. The shot line at frame 415 is the until."
     },
     {
+      "name": "fxpic_16",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 at 0 0 200, fxtest=16 (dust), cold det start. Shots at frames 412 to 415.",
+      "proves": "S7 group 2 (dust, effect 16): shots 412 to 415 byte-equal between the base build and the head build; the dust list is recorded from its S7 table.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=16 shots shotwin=412:4 loglevel=debug det",
+      "extra": [],
+      "until": "shot \\d+ frame 415\\b",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "shot 415",
+          "regex": "shot \\d+ frame 415\\b"
+        }
+      ],
+      "reason": "S7EFX2 byte gate for the dust particle run (row S7EFX2): cold det start as spot_mac01_det, shots 412 to 415 compared with the base. Cap 40 s, deadline 35 s. The shot line at frame 415 is the until."
+    },
+    {
       "name": "fxpic_124",
       "status": "unverified",
       "subject": "Toad Town mac_01 at 0 0 200, fxtest=124 (pink_sparkles), cold det start. Shots at frames 412 to 415.",
@@ -1460,6 +1485,31 @@
         }
       ],
       "reason": "S4 byte gate for the water_block particle run (row S4WBLK): cold det start as spot_mac01_det, shots 404 to 407. Cap 40 s, deadline 35 s. The shot line at frame 407 is the until (S4WBLK try 2: 404 to 407 inside the block life)."
+    },
+    {
+      "name": "fxpic_21",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 at 0 0 200, fxtest=21 (lens_flare), cold det start. Shots at frames 412 to 415.",
+      "proves": "S4 particle run (lens_flare, effect 21): shots 412 to 415 byte-equal between the base build and the head build.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=21 shots shotwin=412:4 loglevel=debug det",
+      "extra": [],
+      "until": "shot \\d+ frame 415\\b",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "shot 415",
+          "regex": "shot \\d+ frame 415\\b"
+        }
+      ],
+      "reason": "S4 byte gate for the lens_flare particle run (row S7EFX4): cold det start as spot_mac01_det, shots 412 to 415. Cap 40 s, deadline 35 s. The shot line at frame 415 is the until."
     },
     {
       "name": "spot_mac01_selfchk_prof",
@@ -15411,6 +15461,31 @@
         }
       ],
       "reason": "FSELCEN try 2 census of the pick flip. Log only; the until is the census done line. Cap 45 s, deadline 40 s."
+    },
+    {
+      "name": "fsel_det_pic",
+      "status": "unverified",
+      "subject": "File select at idle (fresh save), det, shots 300 to 305.",
+      "proves": "S5MENU byte gate: the file select picture (shotwin 300 to 305) is byte-equal between two runs of one build.",
+      "debug": "fileselect freshsave shots shotwin=300:6 loglevel=debug det",
+      "extra": [],
+      "until": "shot \\d+ frame 305\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "boot_main",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "file select mode",
+          "regex": "game mode 14 frame"
+        },
+        {
+          "name": "shot 305",
+          "regex": "shot \\d+ frame 305\\b"
+        }
+      ],
+      "reason": "S5MENU byte gate: copy of fsel_fncov_idle with the shots window 300 to 305 in place of the census. Cap 30 s, deadline 25 s. The until is the shot at frame 305."
     },
     {
       "name": "s6chk_mac01",

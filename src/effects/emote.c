@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 extern Gfx D_09002170_336DE0[];
 extern Gfx D_09002238_336EA8[];
@@ -235,7 +236,11 @@ void emote_appendGfx(void* effect) {
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+        nd_rec_dl(D_09002170_336DE0);
+#else
         gSPDisplayList(gMainGfxPos++, D_09002170_336DE0);
+#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     } else {
         if (part->unk_38 == 0) {
@@ -251,7 +256,11 @@ void emote_appendGfx(void* effect) {
 
                 gDPSetPrimColor(gMainGfxPos++, 0, 0, 235, 28, 0, 255);
                 gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+                nd_rec_dl(D_09002578_3371E8);
+#else
                 gSPDisplayList(gMainGfxPos++, D_09002578_3371E8);
+#endif
                 gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
             }
         }
@@ -297,13 +306,21 @@ void emote_appendGfx(void* effect) {
     }
 
     if (dlist != nullptr) {
+#ifdef TARGET_3DS
+        nd_rec_dl(dlist);
+#else
         gSPDisplayList(gMainGfxPos++, dlist);
+#endif
     }
 
     gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, uls * 4, ult * 4, (uls + w) * 4, (ult + h) * 4);
 
     if (dlist2 != nullptr) {
+#ifdef TARGET_3DS
+        nd_rec_dl(dlist2);
+#else
         gSPDisplayList(gMainGfxPos++, dlist2);
+#endif
     }
 
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);

@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 extern Gfx D_09001E40_36CD20[];
 extern Gfx D_09001EA8_36CD88[];
@@ -160,7 +161,11 @@ void ending_decals_appendGfx(void* effect) {
     gDPSetEnvColor(gMainGfxPos++, 26, 121, 29, 158);
     gDPSetColorDither(gMainGfxPos++, G_CD_BAYER);
     gDPSetAlphaDither(gMainGfxPos++, G_AD_PATTERN);
+#ifdef TARGET_3DS
+    nd_rec_dl(dlist1);
+#else
     gSPDisplayList(gMainGfxPos++, dlist1);
+#endif
     gDPSetPrimColor(gMainGfxPos++, 0, 0, data->unk_24, data->unk_25, data->unk_26, alpha);
     gDPSetEnvColor(gMainGfxPos++, data->unk_27, data->unk_28, data->unk_29, 0);
 
@@ -168,7 +173,11 @@ void ending_decals_appendGfx(void* effect) {
         dlist2 = D_E00685BC[unk_20 % 14];
     }
 
+#ifdef TARGET_3DS
+    nd_rec_dl(dlist2);
+#else
     gSPDisplayList(gMainGfxPos++, dlist2);
+#endif
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     gDPPipeSync(gMainGfxPos++);
     gDPSetColorDither(gMainGfxPos++, G_CD_DISABLE);

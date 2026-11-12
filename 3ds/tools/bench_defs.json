@@ -3933,6 +3933,21 @@
       "gates": []
     },
     {
+      "name": "fxpic_16",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "S7 group 2 byte gate: dust (effect 16) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.",
+      "scenario": "fxpic_16",
+      "cap": 40,
+      "until": "shot \\d+ frame 415\\b",
+      "tags": [
+        "azahar",
+        "fxcen"
+      ],
+      "gates": []
+    },
+    {
       "name": "fxpic_124",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -4047,6 +4062,21 @@
       "scenario": "fxpic_84",
       "cap": 40,
       "until": "shot \\d+ frame 407\\b",
+      "tags": [
+        "azahar",
+        "fxcen"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fxpic_21",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "S7EFX4 byte gate: lens_flare (effect 21) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.",
+      "scenario": "fxpic_21",
+      "cap": 40,
+      "until": "shot \\d+ frame 415\\b",
       "tags": [
         "azahar",
         "fxcen"
@@ -8810,6 +8840,21 @@
         "azahar",
         "hotcode",
         "fncov"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fsel_det_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "S5MENU byte gate: the file select picture, det.",
+      "scenario": "fsel_det_pic",
+      "cap": 30,
+      "until": "shot \\d+ frame 305\\b",
+      "tags": [
+        "azahar",
+        "pic"
       ],
       "gates": []
     }

@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 extern Gfx D_09001910_3E4270[];
 extern Gfx D_09001A00_3E4360[];
@@ -216,9 +217,17 @@ void effect_75_appendGfx(void* effect) {
     gSPMatrix(gMainGfxPos++, camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     gDPSetPrimColor(gMainGfxPos++, 0, 0, data->primCol.r, data->primCol.g, data->primCol.b, data->unk_34);
     gDPSetEnvColor(gMainGfxPos++, data->envCol.r, data->envCol.g, data->envCol.b, data->unk_24 * data->masterAlpha / 255);
+#ifdef TARGET_3DS
+    nd_rec_dl(D_E00EAA58[0]);
+#else
     gSPDisplayList(gMainGfxPos++, D_E00EAA58[0]);
+#endif
     gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, uls0, ult0, uls0 + 252, ult0 + 252);
     gDPSetTileSize(gMainGfxPos++, 1, uls1, ult1, uls1 + 252, ult1 + 252);
+#ifdef TARGET_3DS
+    nd_rec_dl(D_E00EAA50[type]);
+#else
     gSPDisplayList(gMainGfxPos++, D_E00EAA50[type]);
+#endif
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 }
