@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 extern Gfx D_09000940_359CF0[];
 extern Gfx D_090009A0_359D50[];
@@ -310,7 +311,11 @@ void shockwave_appendGfx(void* effect) {
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+#ifdef TARGET_3DS
+    nd_rec_dl(dlist2);
+#else
     gSPDisplayList(gMainGfxPos++, dlist2);
+#endif
 
     guPositionF(sp20, 0.0f, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f,
                      data->pos.x, data->pos.y, data->pos.z);
@@ -345,7 +350,11 @@ void shockwave_appendGfx(void* effect) {
 
             gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
                       G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+            nd_rec_dl(dlist);
+#else
             gSPDisplayList(gMainGfxPos++, dlist);
+#endif
             gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         }
     }

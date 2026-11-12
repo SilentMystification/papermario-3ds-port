@@ -3963,6 +3963,21 @@
       "gates": []
     },
     {
+      "name": "fxpic_36",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "S7EFX6 byte gate: sleep_bubble (effect 36) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.",
+      "scenario": "fxpic_36",
+      "cap": 40,
+      "until": "shot \\d+ frame 415\\b",
+      "tags": [
+        "azahar",
+        "fxcen"
+      ],
+      "gates": []
+    },
+    {
       "name": "fxpic_55",
       "kind": "azahar_pic",
       "speed": "normal",
