@@ -12,6 +12,9 @@
 #include "pm_gpu.h"
 #include "pm_tex.h"
 #include "pm_port.h"
+#include "PR/gbi.h"
+#include "gbi_custom.h"
+#include "nd_gbi.h"
 
 #ifndef pm_gpu_flush
 #define pm_gpu_flush() pm_gpu_flush_at(__LINE__)
@@ -185,4 +188,50 @@ __attribute__((cold, noinline)) void nd_direct_fallback(unsigned why) {
     static unsigned n;
     n++;
     if (n <= 16u || !(n & 63u)) pm_log_d("napihud fallback f%u n %u why %u", pm_frame_count(), n, why);
+}
+
+/* S5TRECT: the NDC_NAPI runner of one NdTRect (nd_api.h): a texture window and one texture rectangle. Direct when the window is valid and the walker
+ * state lets a direct rectangle draw (nd_direct_ready == 1); else the same load and rectangle ops into a local list, walked with nd_walk_state. */
+void nd_trect_run(const uint32_t* u) {
+    static Gfx buf[16];
+    static unsigned nfb;
+    const NdTRect* r = (const NdTRect*)u;
+    const int is4 = r->siz == G_IM_SIZ_4b;
+    const unsigned sh = is4 ? 1u : 2u;
+    const int stride = is4 ? (int)(r->width >> 1) : (int)r->width;
+    const int32_t lu = r->uls << sh, ll = r->lrs << sh;
+    const unsigned wrap[4] = { r->cms, r->cmt, r->masks, r->maskt };
+    NdBindDesc d;
+    Gfx* p = buf;
+    const int ok = nd_tex_win_desc(&d, r->img, stride, r->fmt, r->siz, wrap, lu >> 2, r->ult, ((ll - lu) >> 2) + 1, r->lrt - r->ult + 1,
+                                   r->uls << 2, r->ult << 2, r->lrs << 2, r->lrt << 2, r->pal, (int)r->pal_n);
+    if (ok && nd_direct_ready() == 1) {
+        const NdPsoN64 pd = { .cw0 = r->cw0, .cw1 = r->cw1, .oml = r->oml, .omh = r->omh, .omh_m = (3u << G_MDSFT_TEXTLUT) | (3u << G_MDSFT_TEXTFILT) };
+        const NdPso id = nd_pso_n64(&pd);
+        if (nd_direct_bind(id, r->prim, nd_direct_env())) {
+            nd_direct_tex(&d);
+            nd_direct_rect(r->w0, r->w1, r->hs, r->hd);
+            nd_direct_end();
+            return;
+        }
+    }
+    if (nfb++ < 16u) pm_log_d("trect fallback f%u", pm_frame_count());
+    switch (r->siz) {
+        case G_IM_SIZ_4b:
+            gDPLoadTextureTile_4b(p++, r->img, r->fmt, r->width, r->height, r->uls, r->ult, r->lrs, r->lrt, 0, r->cms, r->cmt, r->masks, r->maskt, G_TX_NOLOD, G_TX_NOLOD);
+            break;
+        case G_IM_SIZ_8b:
+            gDPLoadTextureTile(p++, r->img, r->fmt, G_IM_SIZ_8b, r->width, r->height, r->uls, r->ult, r->lrs, r->lrt, 0, r->cms, r->cmt, r->masks, r->maskt, G_TX_NOLOD, G_TX_NOLOD);
+            break;
+        case G_IM_SIZ_16b:
+            gDPLoadTextureTile(p++, r->img, r->fmt, G_IM_SIZ_16b, r->width, r->height, r->uls, r->ult, r->lrs, r->lrt, 0, r->cms, r->cmt, r->masks, r->maskt, G_TX_NOLOD, G_TX_NOLOD);
+            break;
+        default:
+            gDPLoadTextureTile(p++, r->img, r->fmt, G_IM_SIZ_32b, r->width, r->height, r->uls, r->ult, r->lrs, r->lrt, 0, r->cms, r->cmt, r->masks, r->maskt, G_TX_NOLOD, G_TX_NOLOD);
+            break;
+    }
+    ND_GX(p++, r->w0, r->w1);
+    gImmp1(p++, G_RDPHALF_1, r->hs);
+    gImmp1(p++, G_RDPHALF_2, r->hd);
+    nd_walk_state((const uint32_t*)buf, (unsigned)(p - buf));
 }
