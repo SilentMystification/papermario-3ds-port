@@ -38,16 +38,18 @@ unsigned gm_n;
 
 /* INTERPB1: the key frame twins of the t = 0.5 pass (pm_interp_repl), same indices as gm_tab and gm_nrm. Allocated at the first L walk. */
 extern int pm_interp_repl;
+int nd_tw_chk; /* switch twinchk, read at each frame start */
+void nd_twinchk_mvp(const float* m);
 extern int pm_tw_on; /* pm_nusys.c: 1 for the whole walk of an L frame (its background and main tasks): the twins are made, K = L where nothing is replaced */
 float combined_k[4][4];
 float (*gm_tab_k)[4][4];
 float (*gm_nrm_k)[3][4];
-int nd_tw_chk; /* switch twinchk, read at each task start */
 extern int pm_icmp_kind; /* pm_nusys.c: 0 plain, 1 L, 2 K frame (twinchk) */
 
 void upload_mvp(void) {
     nd_mtx_combine(combined);
-    if (pm_tw_on) nd_mtx_combine_k(combined_k); /* INTERPB1 */ /* S1-4: modelview x projection (STEREO: one matrix for both eyes, the shader shifts) */
+    if (pm_tw_on) nd_mtx_combine_k(combined_k); /* INTERPB1 */
+    if (__builtin_expect(nd_tw_chk, 0)) nd_twinchk_mvp(pm_tw_on ? (const float*)combined_k : (const float*)combined); /* S1-4: modelview x projection (STEREO: one matrix for both eyes, the shader shifts) */
     pm_gpu_note_mvp(combined, vp_sx, vp_sy, vp_tx, vp_ty); /* GV1c: the matrix is in the palette of the triangles */
 }
 
@@ -232,8 +234,8 @@ const float (*pm_gbi_combined_ptr(void))[4] { return combined; }
  * (the scenarios end soon after the first icmp lines). Cold: runs only under the switch. ---- */
 unsigned nd_tw_m, nd_tw_p, nd_tw_q; /* entry and pcomp mismatches, pal0 mismatches, nrm mismatches */
 #define TW_N 4096u
-static u32 tw_hp[TW_N], tw_hq[TW_N];
-static unsigned tw_e, tw_win, tw_ln, tw_have_l, tw_np_l, tw_nq_l, tw_np_k, tw_nq_k;
+static u32 tw_hp[TW_N], tw_hq[TW_N], tw_hm[TW_N];
+static unsigned tw_e, tw_win, tw_have_l, tw_nm_l, tw_nm_k, tw_np_l, tw_nq_l, tw_np_k, tw_nq_k;
 static u32 tw_hash(const void* v, unsigned nw) {
     const u32* w = (const u32*)v;
     u32 h = 2166136261u;
@@ -248,18 +250,17 @@ void nd_twinchk_nrm(const float n[3][4]) { /* the pm5 normal rows of a range */
     if (pm_icmp_kind == 1) { if (tw_nq_l < TW_N) tw_hq[tw_nq_l] = tw_hash(n, 12); tw_nq_l++; }
     else if (pm_icmp_kind == 2) { if (tw_nq_k >= tw_nq_l || tw_nq_k >= TW_N || tw_hq[tw_nq_k] != tw_hash(n, 12)) nd_tw_q++; tw_nq_k++; }
 }
+void nd_twinchk_mvp(const float* m) { /* the matrix of each upload_mvp, in site order: the K twin in the L walk, the main matrix in the key walk */
+    if (pm_icmp_kind == 1) { if (tw_nm_l < TW_N) tw_hm[tw_nm_l] = tw_hash(m, 16); tw_nm_l++; }
+    else if (pm_icmp_kind == 2) { if (tw_nm_k >= tw_nm_l || tw_nm_k >= TW_N || tw_hm[tw_nm_k] != tw_hash(m, 16)) nd_tw_m++; tw_nm_k++; }
+}
 static __attribute__((cold, noinline)) void tw_frame_end(void) {
-    if (pm_icmp_kind == 1) { tw_ln = gm_n; tw_have_l = 1; }
+    if (pm_icmp_kind == 1) tw_have_l = 1;
     else if (pm_icmp_kind == 2 && tw_have_l) {
-        unsigned n = gm_n < tw_ln ? gm_n : tw_ln;
-        for (unsigned i = 0; i < n; i++) {
-            if (memcmp(gm_tab[i], gm_tab_k[i], sizeof(float[4][4])) != 0) nd_tw_m++;
-            if (memcmp(gm_nrm[i], gm_nrm_k[i], sizeof(float[3][4])) != 0) nd_tw_q++;
-        }
-        nd_tw_m += gm_n > tw_ln ? gm_n - tw_ln : tw_ln - gm_n;
+        nd_tw_m += tw_nm_k > tw_nm_l ? tw_nm_k - tw_nm_l : tw_nm_l - tw_nm_k;
         nd_tw_p += tw_np_k > tw_np_l ? tw_np_k - tw_np_l : tw_np_l - tw_np_k;
         nd_tw_q += tw_nq_k > tw_nq_l ? tw_nq_k - tw_nq_l : tw_nq_l - tw_nq_k;
-        tw_e += n;
+        tw_e += tw_nm_k;
         tw_have_l = 0;
         if (++tw_win >= 10u) {
             pm_log("twinchk f%u entries %u mismatch %u pal0 %u nrm %u", pm_frame_count(), tw_e, nd_tw_m, nd_tw_p, nd_tw_q);
@@ -268,11 +269,21 @@ static __attribute__((cold, noinline)) void tw_frame_end(void) {
     }
 }
 void pm_gpu_twin_begin(void); /* pm_gpu.c */
+static float tw_s_proj[4][4], tw_s_mv0[4][4], tw_s_wn;
+static int tw_s_ok;
 /* The start of a walked frame (pm_nusys.c): kind 1 an L frame, 2 a key frame, 0 plain. */
 void nd_twin_frame_begin(int kind) {
     nd_tw_chk = PMDL("twinchk");
-    if (kind == 1) { nd_mtx_twin_sync(); pm_gpu_twin_begin(); tw_np_l = tw_nq_l = 0; } /* the twin stack starts from the main one */
-    else if (kind == 2) tw_np_k = tw_nq_k = 0;
+    if (kind == 1) { /* save the state the L frame starts from (the key walk restarts from it), then the twin stack starts from the main one */
+        memcpy(tw_s_proj, nd_proj, sizeof nd_proj); memcpy(tw_s_mv0, nd_mv[0], sizeof nd_mv[0]); tw_s_wn = nd_proj_wn; tw_s_ok = 1;
+        nd_mtx_twin_sync(); pm_gpu_twin_begin(); tw_np_l = tw_nq_l = tw_nm_l = 0;
+    } else if (kind == 2) {
+        tw_np_k = tw_nq_k = tw_nm_k = 0;
+        if (tw_s_ok) { /* the key walk of step n starts from the state L(n) started from, not from what L(n) left (interpolated) */
+            memcpy(nd_proj, tw_s_proj, sizeof nd_proj); memcpy(nd_mv[0], tw_s_mv0, sizeof nd_mv[0]); nd_proj_wn = tw_s_wn; tw_s_ok = 0;
+            upload_mvp();
+        }
+    }
 }
 /* The end of a walked frame (nd_cen.c pm_gbi_end_frame, before the matrix table is reset). */
 void nd_twin_frame_end(void) { if (__builtin_expect(nd_tw_chk, 0)) tw_frame_end(); }

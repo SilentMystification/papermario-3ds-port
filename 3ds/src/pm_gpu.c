@@ -149,8 +149,8 @@ static unsigned char* rk;       /* per ring vertex: the flag value */
 static C3D_Mtx pcomp[PM_GM_N + 1u];      /* palette entry per game matrix index: post x game */
 static const float (*pal_tab)[4][4];
 /* INTERPB1: the key frame twin of pcomp (post x gm_tab_k), made with pcomp in the t = 0.5 pass; pcomp_k_has[gm] is 1 when this L task made it */
-static C3D_Mtx pcomp_k[PM_GM_N + 1u];
-static unsigned char pcomp_k_has[PM_GM_N + 1u];
+static C3D_Mtx* pcomp_k; /* malloc at the first L walk (with gm_tab_k) */
+static unsigned char* pcomp_k_has;
 extern float (*gm_tab_k)[4][4]; /* nd_mtx_set.c */
 extern int nd_tw_chk;
 extern int pm_tw_on; /* pm_nusys.c: the walk of an L frame */
@@ -158,7 +158,14 @@ extern unsigned nd_tw_m;
 void nd_twinchk_pal(const float* o);
 void nd_twinchk_nrm(const float n[3][4]);
 static float pm_nrm5_k[3][4]; /* INTERPB1: the key frame twin of c.nrm5 of the last model_draw of the L walk */
-void pm_gpu_twin_begin(void) { memset(pcomp_k_has, 0, sizeof pcomp_k_has); }
+void pm_gpu_twin_begin(void) {
+    if (!pcomp_k) {
+        pcomp_k = (C3D_Mtx*)malloc((PM_GM_N + 1u) * sizeof(C3D_Mtx));
+        pcomp_k_has = (unsigned char*)malloc(PM_GM_N + 1u);
+        if (!pcomp_k || !pcomp_k_has) { free(pcomp_k); free(pcomp_k_has); pcomp_k = NULL; pcomp_k_has = NULL; }
+    }
+    if (pcomp_k_has) memset(pcomp_k_has, 0, PM_GM_N + 1u);
+}
 static unsigned gv_recopy_n, gv_palup_n, gv_palmax, gv_palflush;
 static C3D_Mtx gv_post;
 static int gv_wind = 1;   /* GV1a: sign of the 3 x 3 determinant (x y w) of the matrix after the game matrix: +1 keeps the orientation of N64 clip space */
@@ -828,10 +835,7 @@ static __attribute__((noinline)) void pcomp_calc(unsigned gm) {
         for (int i = 0; i < 4; i++) pcomp[gm].r[i].w += pcomp[gm].r[i].z * nb.rect_pal_z;
     } else
         pal_mul(&pcomp[gm], pal_tab[gm]);
-    if (pm_tw_on && gm != RECT_GM && gm_tab_k) { pal_mul(&pcomp_k[gm], gm_tab_k[gm]); pcomp_k_has[gm] = 1; } /* INTERPB1 */
-    else if (__builtin_expect(nd_tw_chk, 0) && gm != RECT_GM && pcomp_k_has[gm]) { /* twinchk: the key walk's pcomp against the L walk's twin */
-        if (memcmp(pcomp[gm].m, pcomp_k[gm].m, sizeof(float[16])) != 0) nd_tw_m++;
-    }
+    if (pm_tw_on && gm != RECT_GM && gm_tab_k && pcomp_k) { pal_mul(&pcomp_k[gm], gm_tab_k[gm]); pcomp_k_has[gm] = 1; } /* INTERPB1 */
                     gs.pcomp_gen[gm] = post_gen;
                     pm_dc_c[DC_PMUL]++;
 }
