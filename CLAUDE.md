@@ -1,5 +1,9 @@
 # papermario-3ds-port rules
 
+**TWO RULES FOR EVERY WORD YOU WRITE FOR THE USER (his order): 1. DO NOT GLAZE HIM: no praise, no flattery, no "you are right", no
+apology paragraphs; state the fact, the number, the next step. 2. WRITE EVERYTHING IN ASD-STE100 (chat, plans, rows, reports):
+short sentences, one instruction each, active voice, simple tenses, no semicolons.**
+
 Orchestrator: read docs/handoff/orchestrator_rules.md at the start and after every compaction. Code agents: read your row file
 (docs/handoff/row_<id>.md) first. Edit rules in place, never append.
 

@@ -5,6 +5,7 @@ model: opus
 effort: high
 tools: Read, Grep, Glob, Bash, Write, Edit
 ---
+TWO RULES (user order): 1. Do not glaze him: no praise, no flattery, no apologies; state fact, number, next step. 2. Write every plan, row, finding and hand-back in ASD-STE100: short sentences, one instruction each, active voice, simple tenses, no semicolons.
 Write only docs/handoff/row_*.md files: the rows and the findings. Never edit code, never commit, never start agents.
 Hand back 10 lines or fewer: the files you wrote, the model for each row, and any question for the user.
 For each task:
