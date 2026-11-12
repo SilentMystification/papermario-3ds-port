@@ -56,4 +56,50 @@ echo "max overlap $maxov (events in $T/events.txt)"
 [ "$maxov" -eq 3 ] || fail "overlap $maxov, want 3 (the slots were not all used)"
 # No slot left behind.
 [ -z "$(ls -d "$T/slots"/slot*.d 2>/dev/null)" ] || fail "slot dirs left after the runs"
+# DOCKWD: engine health. Fake docker 2: info fails until $UPF exists. line.sh mirrors the build.sh lines (docker check,
+# slot take, docker check after take). DOCKER_RESTART_CMD is a stub that creates $UPF (no Docker Desktop restart).
+D="$T/dock"; mkdir -p "$D/bin"
+UPF="$D/up"; export UPF
+cat > "$D/bin/docker" <<'DK'
+#!/bin/sh
+case "$1" in info) [ -f "$UPF" ] && exit 0; exit 1 ;; esac
+exit 0
+DK
+chmod +x "$D/bin/docker"
+cat > "$D/line.sh" <<'LN'
+#!/bin/sh
+. "$ROOT/3ds/tools/build_slot.sh"
+build_docker_ok || build_docker_restart || { echo "BUILD FAULT: docker engine not answering" >&2; exit 3; }
+build_slot_take
+build_docker_ok || { build_slot_release; echo "BUILD FAULT: docker stopped answering after the slot was taken" >&2; exit 3; }
+echo "BUILD GOES ON"
+build_slot_release
+LN
+# (a) engine down, no slot held: restart runs, build goes on.
+rm -f "$UPF" "$D/restarted"
+rc=0; out_a=$(PATH="$D/bin:$PATH" DOCKER_RESTART_CMD="touch $D/restarted; touch $UPF" sh "$D/line.sh" 2>&1) || rc=$?
+echo "$out_a"
+[ "$rc" -eq 0 ] || fail "docker case a: exit $rc, want 0: $out_a"
+echo "$out_a" | grep -q "BUILD GOES ON" || fail "docker case a: build did not go on: $out_a"
+[ -f "$D/restarted" ] || fail "docker case a: restart command did not run"
+[ -z "$(ls -d "$T/slots"/slot*.d 2>/dev/null)" ] || fail "docker case a: slot left after the run"
+# (b) engine down, one live slot (a sleeping fake build holds it): no restart, exit 3, "builds running".
+rm -f "$UPF" "$D/restarted"
+sleep 60 & lp=$!
+mkdir -p "$T/slots/slot1.d"
+printf '%s %s %s %s\n' "$lp" "$(date +%s)" dockb "" > "$T/slots/slot1.d/pid"
+rc=0; out_b=$(PATH="$D/bin:$PATH" DOCKER_RESTART_CMD="touch $D/restarted; touch $UPF" sh "$D/line.sh" 2>&1) || rc=$?
+kill "$lp" 2>/dev/null; wait "$lp" 2>/dev/null || true
+rm -rf "$T/slots/slot1.d"
+echo "$out_b"
+[ "$rc" -eq 3 ] || fail "docker case b: exit $rc, want 3: $out_b"
+echo "$out_b" | grep -q "docker restart skipped: 1 builds running" || fail "docker case b: no skip line: $out_b"
+[ ! -f "$D/restarted" ] || fail "docker case b: restart ran with a live slot"
+# (c) engine up: no restart call, build goes on.
+touch "$UPF"; rm -f "$D/restarted"
+rc=0; out_c=$(PATH="$D/bin:$PATH" DOCKER_RESTART_CMD="touch $D/restarted" sh "$D/line.sh" 2>&1) || rc=$?
+echo "$out_c"
+[ "$rc" -eq 0 ] || fail "docker case c: exit $rc, want 0: $out_c"
+echo "$out_c" | grep -q "BUILD GOES ON" || fail "docker case c: build did not go on: $out_c"
+[ ! -f "$D/restarted" ] || fail "docker case c: restart ran with the engine up"
 echo "buildlock test: ok"

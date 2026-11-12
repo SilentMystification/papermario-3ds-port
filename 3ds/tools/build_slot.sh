@@ -77,3 +77,40 @@ build_slot_release() {
     BUILD_SLOT_DIR=
     return 0
 }
+
+# DOCKWD: docker engine health. build_docker_ok: 0 when docker info answers within 20 s. build_docker_restart: restarts
+# Docker Desktop only when no build holds a slot (a live slot would lose its container), then waits up to 180 s for the
+# engine. DOCKER_RESTART_CMD replaces the restart command (the host test uses a stub). 0 when the engine answers, 1 when not.
+build_docker_ok() {
+    timeout 20 docker info >/dev/null 2>&1
+}
+
+build_docker_restart() {
+    dir=$(build_slot_dir)
+    live=0
+    for s in "$dir"/slot*.d; do
+        [ -d "$s" ] || continue
+        build_slot_reap "$s" 0 || live=$((live + 1))
+    done
+    if [ "$live" -gt 0 ]; then
+        echo "docker restart skipped: $live builds running" >&2
+        return 1
+    fi
+    echo "docker restart: engine not answering, restarting Docker Desktop" >&2
+    if [ -n "$DOCKER_RESTART_CMD" ]; then
+        sh -c "$DOCKER_RESTART_CMD"
+    else
+        powershell.exe -NoProfile -Command "Stop-Process -Name 'Docker Desktop' -Force -ErrorAction SilentlyContinue; Start-Process 'C:\Program Files\Docker\Docker\Docker Desktop.exe'"
+    fi
+    t=0
+    while :; do
+        if build_docker_ok; then
+            echo "docker restart: engine answers after $t s" >&2
+            return 0
+        fi
+        [ "$t" -ge 180 ] && { echo "docker restart: engine not answering after 180 s" >&2; return 1; }
+        echo "docker restart: try at $t s, engine not answering" >&2
+        sleep 5
+        t=$((t + 5))
+    done
+}
