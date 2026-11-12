@@ -513,7 +513,6 @@ static void write_dlc(const NdSeamTab* t, const u8* buf, u32 size, u32 base, con
             env.tp = v ? t->tp + sl->first : NULL; env.ntp = v ? sl->cnt : 0u;
             hv_req_v = hv_req_i = 0;
             if (nd_dlc_compile(&o, words, &env) != NDR_OK) continue;
-            apad = (o.ngop * 2u + 3u) & ~3u;
             rn = (u32*)malloc((o.nvtx * 2u + 2u) * 4u); /* runs: offset or 0xffffffff, count */
             if (!rn) die("out of memory (dlc runs)", NULL);
             for (r = 0; r < o.nvtx;) {
