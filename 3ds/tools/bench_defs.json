@@ -1189,7 +1189,7 @@
       "purpose": "INTERP2M: how the t = 0.5 and key walks differ in GPU command words, Toad Town mac_01 with fps60 and icmp.",
       "scenario": "icmp_mac01",
       "cap": 40,
-      "until": "icmp f\\d+ pairs",
+      "until": "twinchk f\\d+ entries",
       "tags": [
         "azahar",
         "icmp",
@@ -1205,7 +1205,7 @@
       "purpose": "INTERP2M: how the t = 0.5 and key walks differ in GPU command words, battle with fps60 and icmp.",
       "scenario": "icmp_btl",
       "cap": 40,
-      "until": "icmp f\\d+ pairs",
+      "until": "twinchk f\\d+ entries",
       "tags": [
         "azahar",
         "icmp",

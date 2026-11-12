@@ -36,8 +36,20 @@ float (*gm_nrm)[3][4]; /* GV5: the rows 0 to 2 of the model view matrix of each 
 
 unsigned gm_n;
 
+/* INTERPB1: the key frame twins of the t = 0.5 pass (pm_interp_repl), same indices as gm_tab and gm_nrm. Allocated at the first L walk. */
+extern int pm_interp_repl;
+int nd_tw_chk; /* switch twinchk, read at each frame start */
+void nd_twinchk_mvp(const float* m);
+extern int pm_tw_on; /* pm_nusys.c: 1 for the whole walk of an L frame (its background and main tasks): the twins are made, K = L where nothing is replaced */
+float combined_k[4][4];
+float (*gm_tab_k)[4][4];
+float (*gm_nrm_k)[3][4];
+extern int pm_icmp_kind; /* pm_nusys.c: 0 plain, 1 L, 2 K frame (twinchk) */
+
 void upload_mvp(void) {
-    nd_mtx_combine(combined); /* S1-4: modelview x projection (STEREO: one matrix for both eyes, the shader shifts) */
+    nd_mtx_combine(combined);
+    if (pm_tw_on) nd_mtx_combine_k(combined_k); /* INTERPB1 */
+    if (__builtin_expect(nd_tw_chk, 0)) nd_twinchk_mvp(pm_tw_on ? (const float*)combined_k : (const float*)combined); /* S1-4: modelview x projection (STEREO: one matrix for both eyes, the shader shifts) */
     pm_gpu_note_mvp(combined, vp_sx, vp_sy, vp_tx, vp_ty); /* GV1c: the matrix is in the palette of the triangles */
 }
 
@@ -58,19 +70,32 @@ unsigned gv_matrix_id(int need_nm) {
         if (!gm_tab || !gm_nrm) { free(gm_tab); free(gm_nrm); gm_tab = NULL; gm_nrm = NULL; return GV_NONE; }
         pm_gpu_set_ntab((const float(*)[3][4])gm_nrm);
     }
-    if (gm_last != GV_NONE && gm_last < gm_n && memcmp(gm_tab[gm_last], combined, sizeof(float[4][4])) == 0 && !need_nm) return gm_last;
-    float nm[3][4];
+    const int tw = pm_tw_on; /* INTERPB1: in an L frame an entry is the pair (L, K) */
+    if (tw && !gm_tab_k) {
+        gm_tab_k = (float(*)[4][4])malloc(PM_GM_N * sizeof(float[4][4]));
+        gm_nrm_k = (float(*)[3][4])malloc(PM_GM_N * sizeof(float[3][4]));
+        if (!gm_tab_k || !gm_nrm_k) { free(gm_tab_k); free(gm_nrm_k); gm_tab_k = NULL; gm_nrm_k = NULL; return GV_NONE; }
+    }
+    if (gm_last != GV_NONE && gm_last < gm_n && memcmp(gm_tab[gm_last], combined, sizeof(float[4][4])) == 0 && !need_nm && (!tw || memcmp(gm_tab_k[gm_last], combined_k, sizeof(float[4][4])) == 0)) return gm_last;
+    float nm[3][4], nm_k[3][4];
     for (int i = 0; i < 3; i++) { nm[i][0] = nd_mv[nd_mv_sp][i][0]; nm[i][1] = nd_mv[nd_mv_sp][i][1]; nm[i][2] = nd_mv[nd_mv_sp][i][2]; nm[i][3] = 0.f; }
-    if (gm_last != GV_NONE && gm_last < gm_n && memcmp(gm_tab[gm_last], combined, sizeof(float[4][4])) == 0 && memcmp(gm_nrm[gm_last], nm, sizeof nm) == 0) return gm_last;
+    if (tw) for (int i = 0; i < 3; i++) { nm_k[i][0] = nd_mv_k[nd_mv_sp][i][0]; nm_k[i][1] = nd_mv_k[nd_mv_sp][i][1]; nm_k[i][2] = nd_mv_k[nd_mv_sp][i][2]; nm_k[i][3] = 0.f; }
+    if (gm_last != GV_NONE && gm_last < gm_n && memcmp(gm_tab[gm_last], combined, sizeof(float[4][4])) == 0 && memcmp(gm_nrm[gm_last], nm, sizeof nm) == 0 &&
+        (!tw || (memcmp(gm_tab_k[gm_last], combined_k, sizeof(float[4][4])) == 0 && memcmp(gm_nrm_k[gm_last], nm_k, sizeof nm_k) == 0))) return gm_last;
     unsigned p, best = GV_NONE, gmi;
     /* H3: the newest entry with the same combined matrix (and normal when needed), found by probing its hash chain */
     for (p = gm_hash(combined); gm_idx[p]; p = (p + 1) & (2u * PM_GM_N - 1u)) {
         unsigned e = gm_idx[p] - 1u;
         gm_steps++;
-        if ((best == GV_NONE || e > best) && memcmp(gm_tab[e], combined, sizeof(float[4][4])) == 0 && (!need_nm || memcmp(gm_nrm[e], nm, sizeof nm) == 0)) best = e;
+        if ((best == GV_NONE || e > best) && memcmp(gm_tab[e], combined, sizeof(float[4][4])) == 0 && (!need_nm || memcmp(gm_nrm[e], nm, sizeof nm) == 0) &&
+            (!tw || (memcmp(gm_tab_k[e], combined_k, sizeof(float[4][4])) == 0 && (!need_nm || memcmp(gm_nrm_k[e], nm_k, sizeof nm_k) == 0)))) best = e;
     }
     if (best != GV_NONE) gmi = best;
-    else if (gm_n < PM_GM_N) { memcpy(gm_tab[gm_n], combined, sizeof(float[4][4])); memcpy(gm_nrm[gm_n], nm, sizeof nm); gm_idx[p] = (unsigned short)(gm_n + 1); gmi = gm_n++; }
+    else if (gm_n < PM_GM_N) {
+        memcpy(gm_tab[gm_n], combined, sizeof(float[4][4])); memcpy(gm_nrm[gm_n], nm, sizeof nm);
+        if (tw) { memcpy(gm_tab_k[gm_n], combined_k, sizeof(float[4][4])); memcpy(gm_nrm_k[gm_n], nm_k, sizeof nm_k); }
+        gm_idx[p] = (unsigned short)(gm_n + 1); gmi = gm_n++;
+    }
     else gmi = GV_NONE;
     gm_last = gmi;
     return gmi;
@@ -83,7 +108,6 @@ u32 mtx_tag[256];
 /* hdr: the header w1 of a producer record (model.c R1), 0 for a plain G_MTX. */
 _Static_assert(ND_MTX_PUSH == G_MTX_PUSH && ND_MTX_LOAD == G_MTX_LOAD && ND_MTX_PROJ == G_MTX_PROJECTION, "nd.h matrix flags equal the gbi values");
 /* M4-2 diag, switch ndref=<frame>: one line per G_MTX load of that frame (source pointer, first words, interp hit, slot) */
-extern int pm_interp_repl;
 int pm_gbi_ndref_frame(void);
 extern const float (*pm_interp_find(const void* m))[4];
 static __attribute__((cold, noinline)) void mtx_dbg(const Mtx* src, u32 hdr) {
@@ -124,7 +148,19 @@ void load_mtx(u32 w0, u32 w1, u32 hdr) {
             mtx_tag[slot] = tag;
         }
     }
-    nd_mtx_load(in, flags); /* S1-4: push, load or premultiply */
+    float ink[4][4];
+    if (pm_tw_on) { /* INTERPB1: the key frame matrix K of this G_MTX: the cache rule of the main pass */
+        if (!lm) memcpy(ink, in, sizeof ink);
+        else {
+            const int ck = slot != 0 && (hdr & 0x100u) != 0;
+            if (ck && mtx_tag[slot] == tag) memcpy(ink, mtx_cache[slot], sizeof ink);
+            else {
+                nd_mtx_unpack((const uint32_t*)src->m, ink);
+                if (ck) { memcpy(mtx_cache[slot], ink, sizeof ink); mtx_tag[slot] = tag; }
+            }
+        }
+    }
+    nd_mtx_load_tw(in, pm_tw_on ? ink : 0, flags); /* S1-4: push, load or premultiply */
     upload_mvp();
 }
 
@@ -191,3 +227,63 @@ void nd_light_count(u32 w1) { lit_freeze(); lt_n = w1 / 24; if (lt_n > 7) lt_n =
 
 /* pm_gpu native draw: the combined matrix of the walker's current draw (modelview x projection). */
 const float (*pm_gbi_combined_ptr(void))[4] { return combined; }
+
+/* ---- INTERPB1 debug (switch twinchk): the twins of the L walk (frame kind 1) against the values the key walk (kind 2) makes in the same
+ * order: gm_tab_k[i] against gm_tab[i] (and the nrm rows, and pcomp at the key walk's pcomp_calc), the palette 0 and the pm5 normal rows of each
+ * draw site. The frame end (pm_gbi_end_frame) keeps the L entry count, or compares the K frame with it. One line per 10 compared steps
+ * (the scenarios end soon after the first icmp lines). Cold: runs only under the switch. ---- */
+unsigned nd_tw_m, nd_tw_p, nd_tw_q; /* entry and pcomp mismatches, pal0 mismatches, nrm mismatches */
+#define TW_N 4096u
+static u32 tw_hp[TW_N], tw_hq[TW_N], tw_hm[TW_N];
+static unsigned tw_e, tw_win, tw_have_l, tw_nm_l, tw_nm_k, tw_np_l, tw_nq_l, tw_np_k, tw_nq_k;
+static u32 tw_hash(const void* v, unsigned nw) {
+    const u32* w = (const u32*)v;
+    u32 h = 2166136261u;
+    for (unsigned i = 0; i < nw; i++) h = (h ^ w[i]) * 16777619u;
+    return h;
+}
+void nd_twinchk_pal(const float* o) { /* palette 0 of a draw (the K twin in the L walk, the main value in the key walk) */
+    if (pm_icmp_kind == 1) { if (tw_np_l < TW_N) tw_hp[tw_np_l] = tw_hash(o, 16); tw_np_l++; }
+    else if (pm_icmp_kind == 2) { if (tw_np_k >= tw_np_l || tw_np_k >= TW_N || tw_hp[tw_np_k] != tw_hash(o, 16)) nd_tw_p++; tw_np_k++; }
+}
+void nd_twinchk_nrm(const float n[3][4]) { /* the pm5 normal rows of a range */
+    if (pm_icmp_kind == 1) { if (tw_nq_l < TW_N) tw_hq[tw_nq_l] = tw_hash(n, 12); tw_nq_l++; }
+    else if (pm_icmp_kind == 2) { if (tw_nq_k >= tw_nq_l || tw_nq_k >= TW_N || tw_hq[tw_nq_k] != tw_hash(n, 12)) nd_tw_q++; tw_nq_k++; }
+}
+void nd_twinchk_mvp(const float* m) { /* the matrix of each upload_mvp, in site order: the K twin in the L walk, the main matrix in the key walk */
+    if (pm_icmp_kind == 1) { if (tw_nm_l < TW_N) tw_hm[tw_nm_l] = tw_hash(m, 16); tw_nm_l++; }
+    else if (pm_icmp_kind == 2) { if (tw_nm_k >= tw_nm_l || tw_nm_k >= TW_N || tw_hm[tw_nm_k] != tw_hash(m, 16)) nd_tw_m++; tw_nm_k++; }
+}
+static __attribute__((cold, noinline)) void tw_frame_end(void) {
+    if (pm_icmp_kind == 1) tw_have_l = 1;
+    else if (pm_icmp_kind == 2 && tw_have_l) {
+        nd_tw_m += tw_nm_k > tw_nm_l ? tw_nm_k - tw_nm_l : tw_nm_l - tw_nm_k;
+        nd_tw_p += tw_np_k > tw_np_l ? tw_np_k - tw_np_l : tw_np_l - tw_np_k;
+        nd_tw_q += tw_nq_k > tw_nq_l ? tw_nq_k - tw_nq_l : tw_nq_l - tw_nq_k;
+        tw_e += tw_nm_k;
+        tw_have_l = 0;
+        if (++tw_win >= 10u) {
+            pm_log("twinchk f%u entries %u mismatch %u pal0 %u nrm %u", pm_frame_count(), tw_e, nd_tw_m, nd_tw_p, nd_tw_q);
+            tw_e = tw_win = 0; nd_tw_m = nd_tw_p = nd_tw_q = 0;
+        }
+    }
+}
+void pm_gpu_twin_begin(void); /* pm_gpu.c */
+static float tw_s_proj[4][4], tw_s_mv0[4][4], tw_s_wn;
+static int tw_s_ok;
+/* The start of a walked frame (pm_nusys.c): kind 1 an L frame, 2 a key frame, 0 plain. */
+void nd_twin_frame_begin(int kind) {
+    nd_tw_chk = PMDL("twinchk");
+    if (kind == 1) { /* save the state the L frame starts from (the key walk restarts from it), then the twin stack starts from the main one */
+        memcpy(tw_s_proj, nd_proj, sizeof nd_proj); memcpy(tw_s_mv0, nd_mv[0], sizeof nd_mv[0]); tw_s_wn = nd_proj_wn; tw_s_ok = 1;
+        nd_mtx_twin_sync(); pm_gpu_twin_begin(); tw_np_l = tw_nq_l = tw_nm_l = 0;
+    } else if (kind == 2) {
+        if (tw_s_ok) { /* the key walk of step n starts from the state L(n) started from, not from what L(n) left (interpolated) */
+            memcpy(nd_proj, tw_s_proj, sizeof nd_proj); memcpy(nd_mv[0], tw_s_mv0, sizeof nd_mv[0]); nd_proj_wn = tw_s_wn; tw_s_ok = 0;
+            upload_mvp();
+        }
+        tw_np_k = tw_nq_k = tw_nm_k = 0; /* after the restore: its upload_mvp is not a site of the L walk */
+    }
+}
+/* The end of a walked frame (nd_cen.c pm_gbi_end_frame, before the matrix table is reset). */
+void nd_twin_frame_end(void) { if (__builtin_expect(nd_tw_chk, 0)) tw_frame_end(); }

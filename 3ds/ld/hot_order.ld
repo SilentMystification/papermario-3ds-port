@@ -26,6 +26,7 @@
 		*(.text.fold_colour)  /* 10.0 calls/frame, 304 B */
 		*(.text.cc_alpha_k)  /* 5.7 calls/frame, 188 B */
 		/* class C: model record hit */
+		*(.text.nd_mtx_load_tw)  /* the stack load (was nd_mtx_load, 49.3 calls/frame) */
 		*(.text.nd_mtx_combine)  /* 139.3 calls/frame, 36 B */
 		*(.text.nd_tmpl_gen)  /* 116.0 calls/frame, 16 B */
 		*(.text.nd_handle_gen)  /* 93.7 calls/frame, 16 B */
@@ -207,7 +208,6 @@
 		*(.text.nd_tex_wrap_of)  /* 50.0 calls/frame, 36 B */
 		*(.text.set_geom)  /* 49.7 calls/frame, 44 B */
 		*(.text.load_mtx)  /* 49.3 calls/frame, 460 B */
-		*(.text.nd_mtx_load)  /* 49.3 calls/frame, 436 B */
 		*(.text.nd_mtx_replace)  /* 49.3 calls/frame, 120 B */
 		*(.text.pm_gbi_ndref_frame)  /* 49.3 calls/frame, 52 B */
 		*(.text.combchk_on)  /* 48.7 calls/frame, 44 B */
