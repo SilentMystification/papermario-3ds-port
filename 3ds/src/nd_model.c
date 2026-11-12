@@ -246,7 +246,7 @@ void nd_model_log(unsigned f) {
     char b[200]; unsigned n = 0; for (unsigned i = 0; i < 32; i++) if (mw_cnt[i]) n += (unsigned)snprintf(b + n, sizeof b - n, " %u:%u", i, mw_cnt[i]);
     extern unsigned nd_r13_nohit; pm_log_w("mdlw f%u ok %u why%s r13nohit %u sprm h %u m %u", f, mw_ok, n ? b : " none", nd_r13_nohit, sprm_hit, sprm_miss); nd_r13_nohit = 0; memset(mw_cnt, 0, sizeof mw_cnt); mw_ok = 0; sprm_hit = 0; sprm_miss = 0;
     for (int t = 0; t < 8; t++) { unsigned bi = 32; for (unsigned i = 0; i < mf_k; i++) if (mf_e[i].n && (bi == 32 || mf_e[i].n > mf_e[bi].n)) bi = i; if (bi == 32) break;
-        pm_log_w("mdlfb f%u %08x sub %c %u", f, (unsigned)mf_e[bi].p, "-abcd"[mf_e[bi].s & 3], mf_e[bi].n); mf_e[bi].n = 0; }
+        pm_log_w("mdlfb f%u %08x sub %c %u", f, (unsigned)mf_e[bi].p, "-abcd"[mf_e[bi].s < 5 ? mf_e[bi].s : 0], mf_e[bi].n); mf_e[bi].n = 0; }
     pm_log_w("mdlsub f%u a %u b %u c %u d %u bx0 %u bx1 %u bx2 %u bx3 %u", f, mf_tot[1], mf_tot[2], mf_tot[3], mf_tot[4], mf_bx[0], mf_bx[1], mf_bx[2], mf_bx[3]);
     mf_k = 0;
 }
@@ -354,10 +354,10 @@ static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, Nd
     nd_comb_decide(&ci, &co);
     const int combine = co.plan_on ? 8 : co.leg;
     const int tex = tex_u && combine >= 2; /* the walker reads a texel in the combine modes 2 and up only */
-    /* MDL-1b: tex1 is native when the R13 ctx has unit 1 (the walker's plan reads it); noise and pm5 with tex1 stay why 6 (named) */
+    /* MDL-1b: tex1 is native when the R13 ctx has unit 1 (the walker's plan reads it); noise stays why 6 (named); pm5 with tex1 is native (FB-3 uvx) */
     const int nz = combine == 8 && co.plan.uses_noise; /* FB-3 part 2: noise is native (unit 2, nzo) when the walker has its noise texture */
     if (nz && !pm_gpu_noise_ok()) { nd_nat_sub = 1u; return (st->why = 6, 0); }
-    if (combine == 8 && co.plan.uses_tex1 && (!c->u1 || (c->gv && c->gv->fxon))) { nd_nat_sub = (c->gv && c->gv->fxon) ? 4u : 2u; if (nd_nat_sub == 2u) mf_bx[nd_mdl_cur_x & 3u]++; return (st->why = 6, 0); }
+    if (combine == 8 && co.plan.uses_tex1 && !c->u1) { nd_nat_sub = 2u; mf_bx[nd_mdl_cur_x & 3u]++; return (st->why = 6, 0); }
     const int t1n = combine == 8 && co.plan.uses_tex1;
     if (c->zmark && zb && r->decal) return (st->why = 15, 0); /* S5-2: zmark with decal (the walker's pass 2 bias): named fallback */
     NdTmplKey k;
