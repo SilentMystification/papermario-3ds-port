@@ -28,6 +28,7 @@ int comb_alpha_shade = 1;
 int plan_active; /* S25: the general combiner (mode 8) draws, not the legacy mode */
 PmPlan cur_plan;
 void sync_combine(void);
+extern int pm_comb_vprim; /* S4COL: the particle plan flag (pm_comb.c), in the memo keys */
 int comb_dry;
 const char* const cc_nm_a[8] = { "CMB", "T0", "T1", "PRIM", "SHADE", "ENV", "1", "NOISE" };
 const char* const cc_nm_b[8] = { "CMB", "T0", "T1", "PRIM", "SHADE", "ENV", "KEYC", "K4" };
@@ -422,7 +423,7 @@ static __attribute__((cold, noinline)) Dec* decide_miss(int two, unsigned key) {
 Dec* decide(int two) {
     unsigned key = 2166136261u, i;
     unsigned parts[] = { nd_ws.comb_w0, nd_ws.comb_w1, (unsigned)two, (unsigned)leg_mode, (unsigned)(nd_ws.tex_on | nd_ws.use_t1 << 1 | nd_ws.td[1].valid << 2), (unsigned)comb_alpha_shade,
-                         (unsigned)(u8)nd_ws.prim_lod, keyc, keys, conv_k4 }; /* S3N-3d: pm_comb_colours and the K4 input read these too */
+                         (unsigned)(u8)nd_ws.prim_lod, keyc, keys, conv_k4, (unsigned)pm_comb_vprim }; /* S3N-3d: pm_comb_colours and the K4 input read these too */
     for (i = 0; i < sizeof parts / sizeof parts[0]; i++) key = (key ^ parts[i]) * 16777619u;
     {
         static unsigned last_i;
@@ -435,7 +436,7 @@ Dec* decide(int two) {
 
 unsigned scm_sig(void) {
     unsigned parts[] = { nd_ws.comb_w0, nd_ws.comb_w1, nd_ws.omode_h, nd_ws.omode_l, nd_ws.prim, nd_ws.envc, (unsigned)(u8)nd_ws.prim_lod, nd_ws.tst1.tile_fmt[0] * 4 + nd_ws.tst1.tile_siz[0],
-        (unsigned)(nd_ws.tex_on | nd_ws.use_t1 << 1 | dual_on << 2 | box_prod << 3 | box_pat << 4 | comb_set << 5), nd_ws.geom };
+        (unsigned)(nd_ws.tex_on | nd_ws.use_t1 << 1 | dual_on << 2 | box_prod << 3 | box_pat << 4 | comb_set << 5), nd_ws.geom, (unsigned)pm_comb_vprim };
     unsigned sg = 2166136261u;
     for (unsigned k = 0; k < sizeof parts / sizeof parts[0]; k++) sg = (sg ^ parts[k]) * 16777619u;
     return sg;
@@ -466,7 +467,7 @@ void scm_replay(const ScMemo* m) {
 /* R2B: the sync_combine input hash (the fields the skip test reads); sync_combine and the g2_same skip use the same value */
 unsigned sc_sig_now(void) {
     unsigned parts[] = { nd_ws.comb_w0, nd_ws.comb_w1, nd_ws.omode_h, nd_ws.prim, nd_ws.envc, (unsigned)(u8)nd_ws.prim_lod, keyc, keys, conv_k4, (unsigned)leg_mode,
-                         (unsigned)(nd_ws.tex_on | nd_ws.use_t1 << 1 | nd_ws.td[1].valid << 2 | dual_on << 3 | box_prod << 4 | box_pat << 5 | box_folded << 6 | comb_set << 7 | comb_alpha_shade << 8) };
+                         (unsigned)(nd_ws.tex_on | nd_ws.use_t1 << 1 | nd_ws.td[1].valid << 2 | dual_on << 3 | box_prod << 4 | box_pat << 5 | box_folded << 6 | comb_set << 7 | comb_alpha_shade << 8, (unsigned)pm_comb_vprim << 9) };
     unsigned sg = 2166136261u;
     for (unsigned k = 0; k < sizeof parts / sizeof parts[0]; k++) sg = (sg ^ parts[k]) * 16777619u;
     return sg;

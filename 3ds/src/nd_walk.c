@@ -420,6 +420,7 @@ void nd_parts_run(const uint32_t* u) {
     gv_epoch++; /* GV1b */
     dlc_on = 1;
     gp_prev_op = -1;
+    extern int pm_comb_vprim; pm_comb_vprim = 1; sc_ok = 0; /* S4COL: the particle plan takes PRIM in the vertex slot */
     const uint32_t* p = u + 2;
     for (unsigned k = 0; k < n; k++, p += 2u * m) {
         nd_walk_state(p, pre);
@@ -427,6 +428,7 @@ void nd_parts_run(const uint32_t* u) {
         if (!nd_part_draw(l)) nd_ops_run(l, ND_LIST_MAX, 1);
         nd_walk_state(p + 2u * (pre + 1u), m - pre - 1u);
     }
+    pm_comb_vprim = 0; sc_ok = 0; sync_combine(); /* S4COL: the normal plan is back in gs before the next walker draw */
     pm_walk_side--;
     gv_streak_flush();
     tex_streak_flush();

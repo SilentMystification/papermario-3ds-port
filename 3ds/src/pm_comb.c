@@ -308,6 +308,9 @@ static int uses_shade(const Seq* r, const Seq* a) {
     return 0;
 }
 
+/* S4COL: 1 inside a particle record (nd_parts_run): PRIM takes the vertex slot when the combine reads no SHADE */
+int pm_comb_vprim;
+
 /* S4COL: a combine that reads PRIM and no SHADE: the prim rides in the vertex colour (build sets al.vtx = PRIM) */
 static int reads_prim(const Seq* r, const Seq* a) {
     const Seq* q[2] = { r, a };
@@ -373,7 +376,7 @@ static int build(unsigned w0, unsigned w1, int two, int t1only, int lead, PmPlan
     for (int i = A.n; i < nst; i++) A.s[i] = mk(PM_F_REPLACE, TM(TN_PRV, 0), TM(TN_PRV, 0), TM(TN_PRV, 0), 0, 0, 0);
     if (nst > 6) return 1;
     if (uses_shade(&R, &A)) al.vtx = PM_NM_SHADE;
-    else if (reads_prim(&R, &A)) al.vtx = PM_NM_PRIM;
+    else if (pm_comb_vprim && reads_prim(&R, &A)) al.vtx = PM_NM_PRIM;
     out->n = nst;
     for (int i = 0; i < nst; i++) {
         const Seq* q[2] = { &R, &A };
