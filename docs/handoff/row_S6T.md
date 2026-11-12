@@ -68,7 +68,10 @@ Today they record typed ops. After this row they record one NDC_NAPI record with
 runner applies the compiled output.
 
 ## Files and places (no running row edits them)
-3ds/src/nd_scomp.c (new), 3ds/include/nd_api.h (new declarations at the end), 3ds/src/nd_set.c (only a read helper for the
+Merge rule: rows running in parallel append to the end of nd_api.h and nd_direct.c, and two appends at the same end conflict. So
+this row does not touch nd_api.h or nd_direct.c. Its declarations go in a new header 3ds/include/nd_scomp.h, and its source line
+goes in 3ds/CMakeLists.txt right after `src/nd_rec.c` (:384).
+3ds/src/nd_scomp.c (new), 3ds/include/nd_scomp.h (new), 3ds/CMakeLists.txt (one line after :384), 3ds/src/nd_set.c (only a read helper for the
 fields, if needed), src/cam_main.c (render_frame :150-220 under TARGET_3DS), src/status_icons.c (:600-615 under TARGET_3DS),
 3ds/tools/nd_host_test.sh (one line for a new host test). Pre-flight before you edit: grep `nd_direct_end` and
 `nd_pso_decide` (NAPI2B merged) and `nd_rec_napi` (nd_api.h:11).
