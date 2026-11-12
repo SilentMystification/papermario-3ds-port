@@ -5,6 +5,7 @@
 #include "nd_cmd.h"
 #include "nd_op.h"
 #include "nd_api.h"
+#include "nd_scomp.h"
 #endif
 
 #define MAX_SPRITE_ID 0xEA // todo generate this
@@ -96,6 +97,13 @@ Gfx TranslucentShadedSpriteGfx[] = {
     gsSPSetOtherMode(G_SETOTHERMODE_H, G_MDSFT_ALPHADITHER, 18, G_AD_DISABLE | G_CD_DISABLE | G_CK_NONE | G_TC_FILT | G_TF_BILERP | G_TT_RGBA16 | G_TL_TILE | G_TD_CLAMP | G_TP_PERSP | G_CYC_2CYCLE | G_PM_NPRIMITIVE),
     gsSPEndDisplayList(),
 };
+
+#ifdef TARGET_3DS
+/* S5SPR2: the render-mode lists as compiled state ranges (S6T, nd_scomp.h); index = shaded * 2 + translucent */
+static NdSDef spr_rm_def[4] = {
+    { OpaqueSpriteGfx, 6 }, { TranslucentSpriteGfx, 6 }, { OpaqueShadedSpriteGfx, 5 }, { TranslucentShadedSpriteGfx, 5 },
+};
+#endif
 
 f32 SpriteAnimUpdateTimescale = 1.0f;
 
@@ -475,7 +483,11 @@ void spr_appendGfx_component(
     if (!(gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED) && (u8) opacity != 255) {
         gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, (u8) opacity);
     }
+#ifdef TARGET_3DS
+    nd_scomp_rec(&spr_rm_def[((gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED) ? 2 : 0) + ((u8) opacity == 255 ? 0 : 1)], NULL, 0);
+#else
     gSPDisplayList(gMainGfxPos++, rmList); /* DLF5: a render mode list is a G_DL (ST-4) */
+#endif
 
     if (quad != nullptr) {
 #ifdef TARGET_3DS
