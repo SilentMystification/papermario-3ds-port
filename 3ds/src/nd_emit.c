@@ -24,6 +24,7 @@ static uint32_t* uni(uint32_t* o, unsigned loc, const float* f, unsigned nvec) {
 }
 static void rev4(float* o, const float* g) { o[0] = g[3]; o[1] = g[2]; o[2] = g[1]; o[3] = g[0]; } /* game x y z w to the memory order w z y x */
 
+int nd_kp_on; NdKPatch* nd_kp; unsigned nd_kp_n, nd_kp_cap, nd_kp_lost; /* INTERPB2 */
 void nd_shadow_reset(NdShadow* s) { memset(s, 0, offsetof(NdShadow, pal)); s->tmpl = -1; } /* PERF2: the palette copies are not cleared (pal_valid 0 says they are not held) */
 
 /* the colour word of TEV stage i is register 0xC3 + 8 i (0xF3 + 8 (i - 4) for the stages 4 and 5) */
@@ -88,10 +89,13 @@ static inline __attribute__((always_inline)) unsigned emit_core(uint32_t* out, N
     if (unit_chg && !cfg_cleared) o = one(o, 0x80, 0x4, 0x10000u); /* citro3d clears the texture cache at every bind: a slab that was freed and reused holds new texels under an old address */
     /* palette entries and the per draw uniforms */
     for (unsigned k = 0; k < d->npal && k < ND_NPAL && !d->no_uni; k++) {
-        if (!(sh->pal_valid >> k & 1u) || memcmp(sh->pal[k], d->pal[k], sizeof sh->pal[k]) != 0) {
+        const float* kv = nd_kp_on && d->pal_k ? d->pal_k[k] : d->pal[k]; /* INTERPB2: the pair (L, K) decides the skip */
+        if (!(sh->pal_valid >> k & 1u) || memcmp(sh->pal[k], d->pal[k], sizeof sh->pal[k]) != 0 || (nd_kp_on && memcmp(sh->pal_k[k], kv, sizeof sh->pal_k[k]) != 0)) {
             if (k == 0) OFF(pal, o - out + 2);
+            if (nd_kp_on && kv != d->pal[k] && memcmp(kv, d->pal[k], sizeof sh->pal[k]) != 0) for (unsigned r = 0; r < 4; r++) nd_kp_vec(o + 2, 4u * r, kv + 4u * r); /* the data command follows the 2 word location command */
             o = uni(o, d->loc_pal + 4u * k, d->pal[k], 4);
             memcpy(sh->pal[k], d->pal[k], sizeof sh->pal[k]); sh->pal_valid |= 1u << k;
+            if (nd_kp_on) memcpy(sh->pal_k[k], kv, sizeof sh->pal_k[k]);
         }
     }
     {

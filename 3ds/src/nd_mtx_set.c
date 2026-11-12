@@ -39,7 +39,7 @@ unsigned gm_n;
 /* INTERPB1: the key frame twins of the t = 0.5 pass (pm_interp_repl), same indices as gm_tab and gm_nrm. Allocated at the first L walk. */
 extern int pm_interp_repl;
 int nd_tw_chk; /* switch twinchk, read at each frame start */
-void nd_twinchk_mvp(const float* m);
+void nd_twinchk_mvp(const float* m, const void* ra);
 extern int pm_tw_on; /* pm_nusys.c: 1 for the whole walk of an L frame (its background and main tasks): the twins are made, K = L where nothing is replaced */
 float combined_k[4][4];
 float (*gm_tab_k)[4][4];
@@ -49,7 +49,7 @@ extern int pm_icmp_kind; /* pm_nusys.c: 0 plain, 1 L, 2 K frame (twinchk) */
 void upload_mvp(void) {
     nd_mtx_combine(combined);
     if (pm_tw_on) nd_mtx_combine_k(combined_k); /* INTERPB1 */
-    if (__builtin_expect(nd_tw_chk, 0)) nd_twinchk_mvp(pm_tw_on ? (const float*)combined_k : (const float*)combined); /* S1-4: modelview x projection (STEREO: one matrix for both eyes, the shader shifts) */
+    if (__builtin_expect(nd_tw_chk, 0)) nd_twinchk_mvp(pm_tw_on ? (const float*)combined_k : (const float*)combined, __builtin_return_address(0)); /* S1-4: modelview x projection (STEREO: one matrix for both eyes, the shader shifts) */
     pm_gpu_note_mvp(combined, vp_sx, vp_sy, vp_tx, vp_ty); /* GV1c: the matrix is in the palette of the triangles */
 }
 
@@ -235,6 +235,8 @@ const float (*pm_gbi_combined_ptr(void))[4] { return combined; }
 unsigned nd_tw_m, nd_tw_p, nd_tw_q; /* entry and pcomp mismatches, pal0 mismatches, nrm mismatches */
 #define TW_N 4096u
 static u32 tw_hp[TW_N], tw_hq[TW_N], tw_hm[TW_N];
+static const void* tw_ra_l[TW_N]; /* INTERPB2: the caller of each upload_mvp of the L walk (the first differing upload of a step is named in the log) */
+static unsigned tw_first_n; /* steps logged */
 static unsigned tw_e, tw_win, tw_have_l, tw_nm_l, tw_nm_k, tw_np_l, tw_nq_l, tw_np_k, tw_nq_k;
 static u32 tw_hash(const void* v, unsigned nw) {
     const u32* w = (const u32*)v;
@@ -250,9 +252,20 @@ void nd_twinchk_nrm(const float n[3][4]) { /* the pm5 normal rows of a range */
     if (pm_icmp_kind == 1) { if (tw_nq_l < TW_N) tw_hq[tw_nq_l] = tw_hash(n, 12); tw_nq_l++; }
     else if (pm_icmp_kind == 2) { if (tw_nq_k >= tw_nq_l || tw_nq_k >= TW_N || tw_hq[tw_nq_k] != tw_hash(n, 12)) nd_tw_q++; tw_nq_k++; }
 }
-void nd_twinchk_mvp(const float* m) { /* the matrix of each upload_mvp, in site order: the K twin in the L walk, the main matrix in the key walk */
-    if (pm_icmp_kind == 1) { if (tw_nm_l < TW_N) tw_hm[tw_nm_l] = tw_hash(m, 16); tw_nm_l++; }
-    else if (pm_icmp_kind == 2) { if (tw_nm_k >= tw_nm_l || tw_nm_k >= TW_N || tw_hm[tw_nm_k] != tw_hash(m, 16)) nd_tw_m++; tw_nm_k++; }
+static unsigned tw_first_step; /* the step (key walk count) of the last logged first mismatch */
+static unsigned tw_step;
+void nd_twinchk_mvp(const float* m, const void* ra) { /* the matrix of each upload_mvp, in site order: the K twin in the L walk, the main matrix in the key walk */
+    if (pm_icmp_kind == 1) { if (tw_nm_l < TW_N) { tw_hm[tw_nm_l] = tw_hash(m, 16); tw_ra_l[tw_nm_l] = ra; } tw_nm_l++; }
+    else if (pm_icmp_kind == 2) {
+        if (tw_nm_k >= tw_nm_l || tw_nm_k >= TW_N || tw_hm[tw_nm_k] != tw_hash(m, 16)) {
+            nd_tw_m++;
+            if (tw_first_step != tw_step + 1u && tw_first_n < 3u && tw_nm_k < TW_N) { /* INTERPB2: the first differing upload of this step (3 steps): index, the caller in the L walk and in the key walk */
+                tw_first_step = tw_step + 1u; tw_first_n++;
+                pm_log("twinchk mvp first f%u idx %u of %u ra_l %p ra_k %p", pm_frame_count(), tw_nm_k, tw_nm_l, tw_nm_k < tw_nm_l ? tw_ra_l[tw_nm_k] : (const void*)0, ra);
+            }
+        }
+        tw_nm_k++;
+    }
 }
 static __attribute__((cold, noinline)) void tw_frame_end(void) {
     if (pm_icmp_kind == 1) tw_have_l = 1;
@@ -261,7 +274,7 @@ static __attribute__((cold, noinline)) void tw_frame_end(void) {
         nd_tw_p += tw_np_k > tw_np_l ? tw_np_k - tw_np_l : tw_np_l - tw_np_k;
         nd_tw_q += tw_nq_k > tw_nq_l ? tw_nq_k - tw_nq_l : tw_nq_l - tw_nq_k;
         tw_e += tw_nm_k;
-        tw_have_l = 0;
+        tw_have_l = 0; tw_step++;
         if (++tw_win >= 10u) {
             pm_log("twinchk f%u entries %u mismatch %u pal0 %u nrm %u", pm_frame_count(), tw_e, nd_tw_m, nd_tw_p, nd_tw_q);
             tw_e = tw_win = 0; nd_tw_m = nd_tw_p = nd_tw_q = 0;

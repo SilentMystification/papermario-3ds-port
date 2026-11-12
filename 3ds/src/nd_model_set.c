@@ -15,6 +15,7 @@ extern NdNat nat[ND_NAT_MAX]; extern int nat_n; extern uint64_t nat_vm; extern i
 
 void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, NdGvP* o);
 void pm_gpu_pcomp_native(float o[16], const float m[4][4]);
+extern float pm_pal0_k[16]; extern float pm_nrm5_k[3][4]; extern int pm_tw_on; /* INTERPB2: the K twins of the last pcomp_native and of the last model_draw normal rows (the L walk) */
 void pm_gpu_native_submit_draw(NdDraw* d, const uint16_t* sd, unsigned nidx, int tex);
 void pm_gpu_flush(void);
 
@@ -50,12 +51,14 @@ int nd_model_draw(const uint32_t* rec, const NdMCtx* c0, const void* list, int e
             NdNat* a = &nat[nat_n++];
             memcpy(a->pal, pal0, sizeof pal0);
             a->d = dd; a->d.tmpl = ida; a->d.pal = (const float(*)[16])a->pal; a->d.npal = 1;
+            if (pm_tw_on) { memcpy(a->pal_k, pm_pal0_k, sizeof a->pal_k); a->d.pal_k = (const float(*)[16])a->pal_k; a->d.nrm_k = (const float(*)[4])pm_nrm5_k; } else { a->d.pal_k = NULL; a->d.nrm_k = NULL; }
             a->s = ss; a->sd = rng[r].sd; a->nidx = rng[r].nidx; a->tk = ka;
             if (a->d.use5) a->d.p5 = &a->s.p5; /* PERF2: the pm5 block of this copy */
         }
         NdNat* n = &nat[nat_n++];
         memcpy(n->pal, pal0, sizeof pal0);
         dd.pal = (const float(*)[16])n->pal; dd.npal = 1;
+        if (pm_tw_on) { memcpy(n->pal_k, pm_pal0_k, sizeof n->pal_k); dd.pal_k = (const float(*)[16])n->pal_k; dd.nrm_k = (const float(*)[4])pm_nrm5_k; } else { dd.pal_k = NULL; dd.nrm_k = NULL; } /* INTERPB2 */
         n->d = dd; n->s = ss; n->sd = rng[r].sd; n->nidx = rng[r].nidx; n->zp = 0; n->zn = 0.f; n->tk = ss.k;
         if (n->d.use5) n->d.p5 = &n->s.p5; /* PERF2: the pm5 block of this copy */
         if (ss.k.zmark) { /* S5-2 (a): zmark pass 2 after the pass 1 draw: the same triangles, constant depth zn * w (pal row 2 := zn * row 3 = z clip of the walker's b2.z), stencil EQUAL cleared */
@@ -67,6 +70,7 @@ int nd_model_draw(const uint32_t* rec, const NdMCtx* c0, const void* list, int e
             memcpy(b->pal, pal0, sizeof pal0);
             for (int i = 0; i < 4; i++) b->pal[8 + i] = c.zn * pal0[12 + i];
             b->d = dd; b->d.tmpl = idb; b->d.pal = (const float(*)[16])b->pal; b->d.npal = 1;
+            if (pm_tw_on) { memcpy(b->pal_k, pm_pal0_k, sizeof b->pal_k); for (int i = 0; i < 4; i++) b->pal_k[8 + i] = c.zn * pm_pal0_k[12 + i]; b->d.pal_k = (const float(*)[16])b->pal_k; b->d.nrm_k = (const float(*)[4])pm_nrm5_k; } else { b->d.pal_k = NULL; b->d.nrm_k = NULL; }
             b->s = ss; b->s.k = kb; b->sd = rng[r].sd; b->nidx = rng[r].nidx; b->zp = 1; b->zn = c.zn; b->tk = kb;
             if (b->d.use5) b->d.p5 = &b->s.p5; /* PERF2: the pm5 block of this copy */
         }
