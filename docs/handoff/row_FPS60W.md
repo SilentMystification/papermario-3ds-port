@@ -55,6 +55,23 @@ No timeout and no reset in this row.
   (hand back pm_kc_why and the copies shown pm_kc_n[0]); a value above 0 names frames whose patch bases were not command starts:
   that is the fault proven by value; hand it back. Budget 2 Azahar starts.
 
+## Try 4 (ORACLE7, after 0a371ba29 / 8ed5fa0fa: row spec fault, budget reset once)
+- Why the interp census never printed (code read): pm_main.c:710 calls interp_heavy() only inside `!pm_det_on() && (...)`, so under
+  det (spot_mac01_fps60_det has det) interp_heavy, which holds the 300-step print (:516-520), never runs. Also the print is
+  pm_log_hw, a debug-level line, and the scene's prof=4 sets log=off, so it would be dropped anyway.
+- (a) The copy path runs in this scene: under det LGF_ISKIP is never set (:710), so every drawn step takes its keys
+  (pm_main.c:496), wq_step_end sets kc_want (:473), and kc_build runs at each L frame end (pm_gpu.c:3017); pm_kc_n[0] counts the
+  copies shown. In det the counters are never reset (only interp_heavy resets them), so they are counts since boot.
+- (b) The stale-build refusal after the commit is a normal coder step (rebuild, then run), not a row fault.
+- Edit (pm_main.c only, next to interp_heavy): `static void kc_census(void)`, called once per drawn step when pm_interp_on > 0, at
+  the line before :710 (outside the det condition). It counts steps; at step 300 it prints once with pm_log_prof_line (the line that
+  prints in prof=4 mode): `kcen f<frame> steps 300 kcopy <pm_kc_n[0]> kwalk <pm_kc_n[1]> why <pm_kc_why[0..4]>`. It resets nothing.
+- Scenario in the row's own file 3ds/tools/azt.d/FPS60W2.json and bench in bench.d/FPS60W2.json: `kccen_mac01` = spot_mac01_fps60_det's
+  debug without `shots shotwin=200:6`, until `kcen f\d+ `, cap 45, deadline 40, needs_picture false, expected_events only the
+  warp line.
+- Gate: the kcen entry shows kcopy above 0 (the copy path ran) and why[2] = 0 (no patch base off a command start), exact. Hand back
+  the whole entry. Budget 2 Azahar starts.
+
 ## Stop
 A failed self-test or pm_kc_why[2] above 0: stop, commit, hand back the values (the oracle then fixes the emit site that records
 the base). Delete this row file in the completing commit.
