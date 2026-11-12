@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 extern s32 D_09000000_3C1BA0;
 extern s32 D_09002020_3C3BC0;
@@ -133,7 +134,11 @@ void fright_jar_appendGfx(void* effect) {
 
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     gSPMatrix(gMainGfxPos++, camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+    nd_rec_dl(D_09008BE0_3CA780);
+#else
     gSPDisplayList(gMainGfxPos++, D_09008BE0_3CA780);
+#endif
 
     idx = 54 - unk_14;
     if (idx < 0) {

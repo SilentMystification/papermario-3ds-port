@@ -4053,6 +4053,21 @@
       "gates": []
     },
     {
+      "name": "fxpic_21",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "S7EFX4 byte gate: lens_flare (effect 21) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.",
+      "scenario": "fxpic_21",
+      "cap": 40,
+      "until": "shot \\d+ frame 415\\b",
+      "tags": [
+        "azahar",
+        "fxcen"
+      ],
+      "gates": []
+    },
+    {
       "name": "spot_mac01_selfchk_prof",
       "kind": "azahar_stream",
       "speed": "normal",

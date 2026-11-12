@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 extern Gfx D_09003280_371FE0[];
 extern Gfx D_090032F8_372058[];
@@ -238,7 +239,11 @@ void lightning_appendGfx(void* effect) {
         s32 ult;
         f32* unk_28; // TODO required to match
 
+#ifdef TARGET_3DS
+        nd_rec_dl(dlist2);
+#else
         gSPDisplayList(gMainGfxPos++, dlist2);
+#endif
 
         uls = data->unk_1C * 4.0f;
         ult = data->unk_20 * 4.0f;
@@ -276,7 +281,11 @@ void lightning_appendGfx(void* effect) {
 
         gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, uls, ult, uls + 1020, ult + 124);
         gDPSetTileSize(gMainGfxPos++, 1, uls2, ult2, uls2 + 1020, ult2 + 124);
+#ifdef TARGET_3DS
+        nd_rec_dl(dlist);
+#else
         gSPDisplayList(gMainGfxPos++, dlist);
+#endif
         gDPPipeSync(gMainGfxPos++);
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 
