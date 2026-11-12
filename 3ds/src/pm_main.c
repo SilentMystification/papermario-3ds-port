@@ -638,9 +638,9 @@ void pm_frame_loop(void) {
                 unsigned kn = pm_lg_show_keys();
                 if (kn) { drawn += kn; pm_pace_drawn += kn; det_keys += kn; continue; }
             }
-            /* PC01: keep PM_VBLANKS_PER_STEP vblanks between game steps. The counter is citro3d's own vblank
-             * counter. The next drawn iteration waits for one more vblank in C3D_FrameBegin(SYNCDRAW), so this
-             * waits until the counter is PM_VBLANKS_PER_STEP - 1 past the last drawn iteration. A slow frame is
+            /* PC01, SYNC60: keep PM_VBLANKS_PER_STEP vblanks between game steps. A step with a key frame is paced by
+             * its two frame begins (sync60_pace) and does not come here. A step with no key frame (ISKIP, dropped keys)
+             * waits here for the whole step, because the frame begin waits only for one LCD period. A slow frame is
              * already past it: no wait and no extra step to catch up. `fast` stays uncapped (debug). */
             if (!PMDL("fast") && step_vb_ok && pm_interp_on <= 0 && sched_next) { /* PT88: wait until the next step is due (sleep, then a short spin) */
                 PM_WD_PHASE(3);
@@ -658,7 +658,7 @@ void pm_frame_loop(void) {
                 PM_WD_PHASE(3);
                 int guard = PM_VBLANKS_PER_STEP + 1;
                 PH_PUSH(PH_IDLE);
-                while ((int)(C3D_FrameCounter(0) - step_vb) < PM_VBLANKS_PER_STEP - 1 && guard--) {
+                while ((int)(C3D_FrameCounter(0) - step_vb) < PM_VBLANKS_PER_STEP && guard--) {
                     if (vblank_wait_timed()) continue;
                     static int vb_logs; /* HANG1: the first 20 timeouts only */
                     if (vb_logs++ < 20) pm_log_w("gpu: no vblank for 40 ms in the idle wait (counter %u, last drawn %u)", (unsigned)C3D_FrameCounter(0), step_vb);
@@ -705,7 +705,7 @@ void pm_frame_loop(void) {
                 unsigned iv = vb - step_vb;
                 pm_ph_iv = iv; /* PI4 */
                 pace_iv[iv < 1 ? 0 : iv > 4 ? 3 : iv - 1]++;
-                if (!pm_det_on() && (iv > PM_VBLANKS_PER_STEP || (pm_interp_on > 0 && interp_heavy()))) lc.flags |= LGF_ISKIP; /* F06-5; DET: the key path is never taken on the vblank count. INTERP1: heavy walks skip the key frame */
+                if (!pm_det_on() && (iv > PM_VBLANKS_PER_STEP || (pm_interp_on > 0 && (interp_heavy() || PMDL("iskipall"))))) lc.flags |= LGF_ISKIP; /* F06-5; DET: the key path is never taken on the vblank count. INTERP1: heavy walks skip the key frame */
                 fs1_last_iv = iv;
                 if (iv >= 3) late_n++; /* PT15 */
             }
