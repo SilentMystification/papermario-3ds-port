@@ -24,14 +24,17 @@ src/battle/16C8E0.c: a def block right before tattle_cam_pre_render (:732), the 
 1. Def block: `#include "nd_scomp.h"`; arrays (gs forms in the order above, PipeSync lines left out, value placeholders
    `gsDPSetScissor(G_SC_NON_INTERLACE, 0, 0, 0, 0)`, `gsSPViewport(0)`, `gsDPSetScissorFrac(G_SC_NON_INTERLACE, 0, 0, 0, 0)`,
    `gsDPSetColorImage(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, 0)`, `gsDPSetFillColor(0)`):
-   `static const Gfx tc_copy_u[]` (7 entries) and `static const Gfx tc_cam_u[]` (all of R2 without the PipeSync; gsSPClipRatio
-   may write several entries: count with sizeof). `static NdSDef tc_copy = { tc_copy_u, sizeof tc_copy_u / sizeof tc_copy_u[0] },
-   tc_cam = { tc_cam_u, sizeof tc_cam_u / sizeof tc_cam_u[0] };`
+   `static const Gfx tc_copy_u[]` (7 entries), and R2 as two arrays split right after ScissorFrac (ORACLE6 value-order rule,
+   row_S6VORD.md: a value unit may not lie between two static units): `tc_cam_a_u[]` = Viewport, ClearGeometryMode, Texture,
+   CycleType(1CYCLE), PipelineMode, ScissorFrac (nv 2); `tc_cam_b_u[]` = the rest of R2 from TextureLOD to FillColor without the
+   PipeSync (gsSPClipRatio may write several entries: count with sizeof; nv 2: ColorImage and FillColor after CycleType(FILL)).
+   `static NdSDef tc_copy = { tc_copy_u, sizeof tc_copy_u / sizeof tc_copy_u[0] }, tc_cam_a = { tc_cam_a_u, sizeof tc_cam_a_u /
+   sizeof tc_cam_a_u[0] }, tc_cam_b = { tc_cam_b_u, sizeof tc_cam_b_u / sizeof tc_cam_b_u[0] };`
 2. :771-777 -> `{ Gfx v[1]; gDPSetScissor(&v[0], <the :777 arguments>); nd_scomp_rec(&tc_copy, v, 1); }`
 3. :827-848 -> `{ Gfx v[4]; Gfx* p = v; gSPViewport(p++, PM_VP(&cam->vp)); gDPSetScissorFrac(p++, <the :832 arguments>);
    gDPSetColorImage(p++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxZBuffer));
-   gDPSetFillColor(p++, PACK_FILL_DEPTH(G_MAXFBZ, 0)); nd_scomp_rec(&tc_cam, v, (unsigned)(p - v)); }`
-   Expected nv: 1 and 4 (a mismatch logs `scomp: def ... has N value units`: stop).
+   gDPSetFillColor(p++, PACK_FILL_DEPTH(G_MAXFBZ, 0)); nd_scomp_rec(&tc_cam_a, v, 2); nd_scomp_rec(&tc_cam_b, v + 2, 2); }`
+   Expected nv: 1, 2 and 2 (a mismatch logs `scomp: def ... has N value units`: stop).
 
 ## Gate (expected values)
 - Build, memcheck OK, no warning in 16C8E0.c; `bench.py run nd_host --row S5BTL1 --why "S5BTL1 nd_host"`: PASS.
