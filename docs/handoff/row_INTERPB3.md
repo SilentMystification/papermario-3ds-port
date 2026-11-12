@@ -25,6 +25,12 @@
 - The patch offsets are relative to the frame's command buffer; a frame whose command buffer wrapped or was split into a second
   buffer (cmd_split_forced) takes the fallback (pm_key_walk) in this row; count it.
 
+- Scene changes (INTERPB2 decision b): the frames around a cut differ in structure (mac01 at the warp: 14139 against 10545 words).
+  Fall back to pm_key_walk for the 2 steps after a map change, a game mode change or a camera cut: a counter set in pm_ph_scene_map and
+  pm_ph_scene_mode (pm_phase.c:70-75) and in pm_interp_dont_camera (pm_interp.c:79), counted as kwalk in the interp census.
+- While the camera moves the copy shows L's draw set with K matrices (CPU culls on L matrices): accepted design limit; the user judges
+  the edges on the console.
+
 ## Start
 `sh 3ds/tools/wt_new.sh INTERPB3` (from main with INTERPB2). PM_ROW=INTERPB3 PM_LANE=INTERPB3.
 

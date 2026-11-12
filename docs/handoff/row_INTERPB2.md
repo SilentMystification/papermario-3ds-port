@@ -24,17 +24,21 @@ One upload_mvp per step differs between the twin and the key walk (no draw uses 
 to twinchk the index of the first differing upload per step and its caller (__builtin_return_address(0) in upload_mvp) for 3 steps;
 hand the lines back with the gate. The icmpp compare (all command words 0 diff) is the proof that no draw sees it.
 
-## Next step (after try 1, HEAD e47f44d51; resume on branch INTERPB2; 3 Azahar starts)
-Facts: icmpp U, A, T, O 0 in every window; kp patches unused 39 % (f41 276/108, btl f51 212/84), skip 0: the patches lie in the
-open tail list, which is not queued when icmp_frame runs (before C3D_FrameEnd), so INTERP2M's compare and this one never read it.
-The INTERPB1 mismatch was the restore upload_mvp (pm_icmp_kind 2 already set): fixed by pm_icmp_kind = 0 around it (keep).
-1. Tail (the coder's plan, accepted): icmp_take keeps the end of the last queued list (data[1] + data[2] bytes); icmp_frame reads the
-   words from there (the buffer base when no list was queued) up to the current GPUCMD offset through ic_list and ic_list_k, for both L
-   and K, before C3D_FrameEnd. A list split by pm_gx_room in the middle of the tail is already queued (taken), so no word is read twice.
-2. Pass: icmpp U, A, T, O 0 and kp unused 0 in every window after the first of each run (icmp_mac01, icmp_btl), lost 0, skip 0;
-   spot_mac01_fps60_det 12/12 byte-equal (base stored). The site list is proven by the compare: a missing site shows as U in a list
-   the reader now covers; no other site is expected by reading (eye uniform, rect RECT_GM ortho, fog zmix from gv_post, lights and
-   look-at vectors are stream values equal in both walks).
+## Try 1 to 2 (done)
+Try 1: diff 0 but 39 % of patches unread (the open tail list). Try 2: the tail is read (icmp_take keeps the last list end, icmp_frame
+reads up to the GPUCMD offset); the restore upload_mvp runs with pm_icmp_kind 0. No other site is expected by reading.
+
+## Decision (after try 2: tail fix works; failing windows are mac01 f40, f51, btl f56, f59, all with lenmis > 0)
+(a) cmul and cadd (locations 87, 88 in btl f59) need no twin: they are draw colour parameters (nd_gv_params), not matrix values. In
+    f59 the lists already differ in length (lenmis 2) and twinchk shows pal0 54 nrm 82: while the battle camera moves, the L walk's CPU
+    culls use L matrices, so the two walks draw different site sequences and the compare meets other draws. This is the known design
+    limit (row_ORACLE_NEXT.md); the K copy shows L's draw set with K matrices.
+(b) mac01 f51 is the scene start (warp at f49-f50): wl 14139 against wk 10545: the two frames differ in structure across the cut. Not a
+    twin fault, but INTERPB3 must not show a copy across a scene change: it falls back to the key walk there (rule in row_INTERPB3.md).
+(c) Unused patches in a window with lenmis > 0 are the boundary effect (the compare of a list stops at its length mismatch).
+Gate rule: every window with lenmis 0 must have U, A, T, O 0 and unused 0 (try 2 meets it: mac01 all but f40 and f51, btl f51 and
+f62-f81); windows with lenmis > 0 are reported. Use the 1 spare start for spot_mac01_fps60_det (12/12 byte-equal); then commit this
+decision, delete the row file and hand back for the merge.
 
 ## Start
 `sh 3ds/tools/wt_new.sh INTERPB2` (from main with INTERPB1). PM_ROW=INTERPB2 PM_LANE=INTERPB2.
