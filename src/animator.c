@@ -51,6 +51,21 @@ extern Gfx Gfx_RM3_SURFACE_XLU[];
 extern Gfx Gfx_RM3_DECAL_XLU[];
 extern Gfx Gfx_RM3_INTERSECTING_XLU[];
 
+#ifdef TARGET_3DS
+#include "nd_rmdef.h"
+#define AN_RM(l) ND_RM_REC(l)
+#define AN_NODE_HEAD gsSPTexture(0, 0, 0, G_TX_RENDERTILE, G_OFF), gsDPSetTextureLOD(G_TL_TILE), gsDPSetTextureLUT(G_TT_NONE), gsSPClearGeometryMode(G_LIGHTING)
+/* S5EMDL3: the per-node state of appendGfx_animator_node as four compiled defs (cull x fog, nd_scomp.h). */
+static const Gfx an_n_dec_u[] = { AN_NODE_HEAD, gsSPSetGeometryMode(0), gsDPSetCombineMode(G_CC_DECALRGBA, G_CC_DECALRGBA) };
+static const Gfx an_n_dec_cull_u[] = { AN_NODE_HEAD, gsSPSetGeometryMode(G_CULL_BACK), gsDPSetCombineMode(G_CC_DECALRGBA, G_CC_DECALRGBA) };
+static const Gfx an_n_fog_u[] = { AN_NODE_HEAD, gsSPSetGeometryMode(0), gsDPSetCombineMode(PM_CC_42, PM_CC2_MULTIPLY_SHADE) };
+static const Gfx an_n_fog_cull_u[] = { AN_NODE_HEAD, gsSPSetGeometryMode(G_CULL_BACK), gsDPSetCombineMode(PM_CC_42, PM_CC2_MULTIPLY_SHADE) };
+static NdSDef an_n_dec = { an_n_dec_u, 6 }, an_n_dec_cull = { an_n_dec_cull_u, 6 }, an_n_fog = { an_n_fog_u, 6 },
+              an_n_fog_cull = { an_n_fog_cull_u, 6 };
+#else
+#define AN_RM(l) gSPDisplayList(gMainGfxPos++, l)
+#endif
+
 AnimScript gAnimScriptDefault = {
     as_Wait(60)
     as_End
@@ -795,50 +810,50 @@ void appendGfx_animator(ModelAnimator* animator) {
         case false:
             switch (animator->renderMode) {
                 case RENDER_MODE_SURFACE_OPA:
-                    gSPDisplayList(gMainGfxPos++, Gfx_RM1_SURFACE_OPA);
+                    AN_RM(Gfx_RM1_SURFACE_OPA);
                     break;
                 case RENDER_MODE_DECAL_OPA:
-                    gSPDisplayList(gMainGfxPos++, Gfx_RM1_DECAL_OPA);
+                    AN_RM(Gfx_RM1_DECAL_OPA);
                     break;
                 case RENDER_MODE_INTERSECTING_OPA:
-                    gSPDisplayList(gMainGfxPos++, Gfx_RM1_INTERSECTING_OPA);
+                    AN_RM(Gfx_RM1_INTERSECTING_OPA);
                     break;
                 case RENDER_MODE_ALPHATEST:
-                    gSPDisplayList(gMainGfxPos++, Gfx_RM1_ALPHATEST);
+                    AN_RM(Gfx_RM1_ALPHATEST);
                     break;
                 case RENDER_MODE_SURFACE_XLU_LAYER1:
-                    gSPDisplayList(gMainGfxPos++, Gfx_RM1_SURFACE_XLU);
+                    AN_RM(Gfx_RM1_SURFACE_XLU);
                     break;
                 case RENDER_MODE_DECAL_XLU:
-                    gSPDisplayList(gMainGfxPos++, Gfx_RM1_DECAL_XLU);
+                    AN_RM(Gfx_RM1_DECAL_XLU);
                     break;
                 case RENDER_MODE_INTERSECTING_XLU:
-                    gSPDisplayList(gMainGfxPos++, Gfx_RM1_INTERSECTING_XLU);
+                    AN_RM(Gfx_RM1_INTERSECTING_XLU);
                     break;
             }
             break;
         case true:
             switch (animator->renderMode) {
                 case RENDER_MODE_SURFACE_OPA:
-                    gSPDisplayList(gMainGfxPos++, Gfx_RM3_SURFACE_OPA);
+                    AN_RM(Gfx_RM3_SURFACE_OPA);
                     break;
                 case RENDER_MODE_DECAL_OPA:
-                    gSPDisplayList(gMainGfxPos++, Gfx_RM3_DECAL_OPA);
+                    AN_RM(Gfx_RM3_DECAL_OPA);
                     break;
                 case RENDER_MODE_INTERSECTING_OPA:
-                    gSPDisplayList(gMainGfxPos++, Gfx_RM3_INTERSECTING_OPA);
+                    AN_RM(Gfx_RM3_INTERSECTING_OPA);
                     break;
                 case RENDER_MODE_ALPHATEST:
-                    gSPDisplayList(gMainGfxPos++, Gfx_RM3_ALPHATEST);
+                    AN_RM(Gfx_RM3_ALPHATEST);
                     break;
                 case RENDER_MODE_SURFACE_XLU_LAYER1:
-                    gSPDisplayList(gMainGfxPos++, Gfx_RM3_SURFACE_XLU);
+                    AN_RM(Gfx_RM3_SURFACE_XLU);
                     break;
                 case RENDER_MODE_DECAL_XLU:
-                    gSPDisplayList(gMainGfxPos++, Gfx_RM3_DECAL_XLU);
+                    AN_RM(Gfx_RM3_DECAL_XLU);
                     break;
                 case RENDER_MODE_INTERSECTING_XLU:
-                    gSPDisplayList(gMainGfxPos++, Gfx_RM3_INTERSECTING_XLU);
+                    AN_RM(Gfx_RM3_INTERSECTING_XLU);
                     break;
             }
 
@@ -873,6 +888,12 @@ void appendGfx_animator_node(ModelAnimator* animator, AnimatorNode* node, Matrix
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     gDPPipeSync(gMainGfxPos++);
 
+#ifdef TARGET_3DS
+    {
+        const int cull = (animator->flags & MODEL_ANIMATOR_FLAG_CULL_BACK) != 0;
+        nd_scomp_rec(!gAnimModelFogEnabled ? (cull ? &an_n_dec_cull : &an_n_dec) : (cull ? &an_n_fog_cull : &an_n_fog), NULL, 0);
+    }
+#else
     gSPTexture(gMainGfxPos++, 0, 0, 0, G_TX_RENDERTILE, G_OFF);
     gDPSetTextureLOD(gMainGfxPos++, G_TL_TILE);
     gDPSetTextureLUT(gMainGfxPos++, G_TT_NONE);
@@ -885,6 +906,7 @@ void appendGfx_animator_node(ModelAnimator* animator, AnimatorNode* node, Matrix
     } else {
         gDPSetCombineMode(gMainGfxPos++, PM_CC_42, PM_CC2_MULTIPLY_SHADE);
     }
+#endif
     gDPPipeSync(gMainGfxPos++);
 
     if (animator->fpRenderCallback != nullptr) animator->fpRenderCallback(animator->renderCallbackArg);
