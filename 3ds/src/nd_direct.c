@@ -364,3 +364,7 @@ int nd_tex_blk_desc(NdBindDesc* o, const void* timg, unsigned fmt, unsigned siz,
     if (w <= 0 || h <= 0 || siz == 0 || (((unsigned)(w * h) << siz) >> 1) > 4096u || wrap[2] || wrap[3]) return 0; /* S5CHUDB: byte cap (4 KB TMEM), not the 16-bit word limit */
     return nd_tex_win_desc(o, timg, w, fmt, siz, wrap, 0, 0, w, h, 0, 0, (w - 1) << 2, (h - 1) << 2, pal, pal_n);
 }
+
+/* S5CHUDB try 3: the walker tile 0 TILESIZE of a non-CI4 tile clears the shaded sprite raster (nd_tex_set.c:205-206); a direct
+ * IA8 bind does the same before its draw, so nd_direct_ready no longer refuses on m1.valid (-3). */
+void nd_direct_m1_clear(void) { m1.valid = 0; }
