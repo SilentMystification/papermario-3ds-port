@@ -472,11 +472,96 @@ static void hud_rect_emit(const NdHudRec* hudElement, Gfx** gp, s32 anchor) {
 }
 #undef gMainGfxPos
 
-/* core 0: one HUD element record, emitted into a local list and walked as state ops (at most 9 prologue units + 32 pieces of 14
- * + 1 = 458 units). */
+/* NAPI2B (NATIVEAPI A1): the direct executor of a HUD element record. The record states what hud_rect_emit writes as ops: a pso (the combine and
+ * render mode words of its fmt, flags and drop shadow), the texture window of each piece (nd_tex_win_desc: the tile 0 that the load ops give the
+ * walker) and the rectangle words (the gSPScisTextureRectangle arithmetic). Returns 0 with the old path still to run when the record or the walker
+ * state is not one it can state. The pso table is written here on core 0: no other producer of it runs on core 1 yet. */
+#define HUD_CW_(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1) \
+    { ND_W0_CMB(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1), ND_W1_CMB(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1) }
+#define HUD_CW(a, b) HUD_CW_(a, b) /* a and b are combiner macros of 8 terms: the argument pass expands them before HUD_CW_ counts its 16 */
+static int hud_rect_direct(const NdHudRec* r) {
+    static const u32 cw_decal[2] = HUD_CW(G_CC_DECALRGBA, G_CC_DECALRGBA), cw_01_02[2] = HUD_CW(PM_CC_01, PM_CC_02), cw_2f_32[2] = HUD_CW(PM_CC_2F, PM_CC_32),
+                     cw_07[2] = HUD_CW(PM_CC_07, PM_CC_07), cw_47[2] = HUD_CW(PM_CC_47, PM_CC_47);
+    NdBindDesc ds[ND_HUD_PC];
+    NdPsoN64 pd;
+    NdPso id;
+    const u32* cw;
+    u32 prim;
+    unsigned tfmt, tsiz, wrap[4];
+    s32 k, sh, stride;
+    const s32 fmt = r->fmt;
+    const int filt = (r->flags & HUD_ELEMENT_FLAG_FILTER_TEX) != 0, flip = r->flipX || r->flipY;
+    const void* pal = NULL;
+    int pal_n = 0;
+
+    if (r->npc <= 0 || r->npc > ND_HUD_PC || fmt < 0 || fmt > 2) return 0;
+    switch (fmt) {
+        case 0:
+            pd.oml = G_RM_XLU_SURF | G_RM_XLU_SURF2; pd.omh = G_TT_NONE;
+            cw = (r->flags & HUD_ELEMENT_FLAG_TRANSPARENT) ? cw_01_02 : cw_decal;
+            prim = (r->flags & HUD_ELEMENT_FLAG_TRANSPARENT) ? (u32)r->opacity : nd_direct_prim();
+            tfmt = G_IM_FMT_RGBA; tsiz = G_IM_SIZ_32b; sh = 2; stride = r->texSizeX;
+            wrap[0] = wrap[1] = flip ? 1u : 0u;
+            break;
+        case 1:
+            if (r->dropShadow) {
+                pd.oml = G_RM_XLU_SURF | G_RM_XLU_SURF2; cw = cw_07; prim = (40u << 24) | (40u << 16) | (40u << 8) | 72u;
+            } else {
+                const int aa = (r->flags & HUD_ELEMENT_FLAG_ANTIALIASING) != 0;
+                if (!(r->flags & HUD_ELEMENT_FLAG_TRANSPARENT)) pd.oml = aa ? (G_RM_AA_TEX_EDGE | G_RM_AA_TEX_EDGE2) : (G_RM_TEX_EDGE | G_RM_TEX_EDGE2);
+                else pd.oml = aa ? ((G_RM_CLD_SURF | AA_EN) | (G_RM_CLD_SURF2 | AA_EN)) : (G_RM_CLD_SURF | G_RM_CLD_SURF2);
+                cw = cw_2f_32;
+                prim = ((u32)r->tint.r << 24) | ((u32)r->tint.g << 16) | ((u32)r->tint.b << 8) | ((r->flags & HUD_ELEMENT_FLAG_TRANSPARENT) ? (u32)r->opacity : 255u);
+            }
+            pd.omh = G_TT_RGBA16;
+            tfmt = G_IM_FMT_CI; tsiz = G_IM_SIZ_4b; sh = 1; stride = r->texSizeX >> 1;
+            wrap[0] = wrap[1] = flip ? 1u : 0u;
+            pal = r->paletteAddr; pal_n = 16;
+            break;
+        default:
+            pd.oml = G_RM_XLU_SURF | G_RM_XLU_SURF2; pd.omh = G_TT_NONE; cw = cw_47;
+            prim = ((u32)r->tint.r << 24) | ((u32)r->tint.g << 16) | ((u32)r->tint.b << 8) | (u32)r->opacity;
+            tfmt = G_IM_FMT_IA; tsiz = G_IM_SIZ_8b; sh = 2; stride = r->texSizeX;
+            wrap[0] = wrap[1] = flip ? 1u : (r->clamp ? 2u : 0u);
+            break;
+    }
+    wrap[2] = (unsigned)r->masks; wrap[3] = (unsigned)r->maskt;
+    for (k = 0; k < r->npc; k++) { /* every window first: a window the walker would leave invalid sends the record to the old path before any state is written */
+        const NdHudPiece* pc = &r->pc[k];
+        const s32 lu = pc->uls << sh, ll = pc->lrs << sh;
+        if (!nd_tex_win_desc(&ds[k], r->imageAddr, stride, tfmt, tsiz, wrap, lu >> 2, pc->ult, ((ll - lu) >> 2) + 1, pc->lrt - pc->ult + 1,
+                             pc->uls << 2, pc->ult << 2, pc->lrs << 2, pc->lrt << 2, pal, pal_n)) return 0;
+    }
+    pd.cw0 = cw[0]; pd.cw1 = cw[1];
+    pd.omh |= filt ? G_TF_AVERAGE : G_TF_POINT;
+    pd.omh_m = (3u << G_MDSFT_TEXTLUT) | (3u << G_MDSFT_TEXTFILT);
+    if (!nd_direct_ready()) return 0;
+    id = nd_pso_n64(&pd);
+    if (!nd_direct_bind(id, prim, nd_direct_env())) return 0;
+    for (k = 0; k < r->npc; k++) {
+        const NdHudPiece* pc = &r->pc[k];
+        const s32 xl = pc->ulx * 4, yl = pc->uly * 4, xh = pc->lrx * 4, yh = pc->lry * 4;
+        const s32 s = pc->texStartX * 32 + (filt ? 16 : 0), t = pc->texStartY * 32 + (filt ? 16 : 0);
+        const s32 dsdx = r->widthScale, dtdy = r->heightScale;
+        /* the words of gSPScisTextureRectangle (include/PR/gbi.h) for these arguments */
+        const u32 w0 = _SHIFTL(PM_SCIS_XH(xh), 12, 12) | _SHIFTL(MAX((s16)(yh), 0), 0, 12);
+        const u32 w1 = _SHIFTL(PM_SCIS_XL(xl), 12, 12) | _SHIFTL(MAX((s16)(yl), 0), 0, 12);
+        const u32 hs = _SHIFTL(((s) - (PM_SCIS_CLIP(xl) ? (((s16)(dsdx) < 0) ? (MAX((((s16)(xl) * (s16)(dsdx)) >> 7), 0)) : (MIN((((s16)(xl) * (s16)(dsdx)) >> 7), 0))) : 0)), 16, 16) |
+                       _SHIFTL(((t) - (((yl) < 0) ? (((s16)(dtdy) < 0) ? (MAX((((s16)(yl) * (s16)(dtdy)) >> 7), 0)) : (MIN((((s16)(yl) * (s16)(dtdy)) >> 7), 0))) : 0)), 0, 16);
+        const u32 hd = _SHIFTL(dsdx, 16, 16) | _SHIFTL(dtdy, 0, 16);
+        nd_direct_tex(&ds[k]);
+        nd_direct_rect(w0, w1, hs, hd);
+    }
+    nd_direct_end();
+    return 1;
+}
+
+/* core 0: one HUD element record, drawn directly (hud_rect_direct) or, when it cannot state the record, emitted into a local list and walked as state ops
+ * (at most 9 prologue units + 32 pieces of 14 + 1 = 458 units). */
 static void hud_rect_run(const uint32_t* u) {
     static Gfx buf[512];
     Gfx* p = buf;
+    if (hud_rect_direct((const NdHudRec*)u)) return;
     hud_rect_emit((const NdHudRec*)u, &p, 0);
     nd_walk_state((const uint32_t*)buf, (unsigned)(p - buf));
 }

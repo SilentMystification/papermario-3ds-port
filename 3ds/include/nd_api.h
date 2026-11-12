@@ -30,4 +30,29 @@ void nd_parts_end(NdParts* b);                               /* core 1: records 
 void nd_parts_run(const uint32_t* rec);                      /* nd_walk.c, core 0: the NDC_NAPI runner of a run */
 int nd_part_draw(const uint32_t* list);                      /* nd_geom.c, core 0: one flat list natively; 0 = not drawn (run the list) */
 
+/* NATIVEAPI A1 (NAPI2B): the shared direct-draw helpers. A direct executor (core 0) states a draw without the walker's op stream: the pso gives the
+ * combine decision (made once, cold), the texture comes from a descriptor, the rectangle from the N64 rectangle words.
+ * NdBindDesc: one texture window as a bind needs it (the facts ensure_tile_slow reads from nd_ws.td[n] and tst1). wrap: cms, cmt, masks, maskt (the
+ * G_SETTILE words); sz: the SetTileSize window (10.2); x0, y0: the window origin in texels; stride in texels of the format. */
+typedef struct NdBindDesc {
+    const void* src; const void* pal;
+    int pal_n; unsigned fmt, siz;
+    int stride, x0, y0, w, h;
+    unsigned wrap[4];
+    int sz[4];
+} NdBindDesc;
+int nd_tex_bind_desc(const NdBindDesc* d, int n); /* nd_tex_set.c, core 0: bind d to tile n; 1 when the texture layer already held it */
+int nd_tex_win_desc(NdBindDesc* o, const void* timg, int timg_stride, unsigned fmt, unsigned siz, const unsigned wrap[4], int ldx, int ldy, int ldw, int ldh,
+                    int uls, int ult, int lrs, int lrt, const void* pal, int pal_n); /* nd_tex_set.c: tile 0 after a gDPLoadTextureTile (tex_win0); 0 = not valid */
+
+typedef struct NdDec NdDec; /* nd_direct.c: the combine decision of one pso under the walker inputs */
+const NdDec* nd_pso_decide(NdPso id);          /* core 0: the decision of pso id (made once per distinct inputs, cold); NULL when the walker state decides it */
+int nd_direct_ready(void);                     /* core 0: the walker state lets a direct rectangle draw (main colour image, no shaded sprite, no off-screen tile 1) */
+int nd_direct_bind(NdPso id, uint32_t prim, uint32_t env); /* core 0: the state of pso id for the next rectangles; 0 = not stated (nothing changed, run the old path) */
+int nd_direct_tex(const NdBindDesc* d);        /* core 0: tile 0 = d; the walker's set_tilesize bookkeeping and the bind */
+void nd_direct_rect(uint32_t w0, uint32_t w1, uint32_t hs, uint32_t hd); /* core 0: one texture rectangle of tile 0 (the G_TEXRECT words, 1 or 2 cycle) */
+void nd_direct_end(void);                      /* core 0: the walker rebinds and resyncs at its next draw */
+uint32_t nd_direct_prim(void);                 /* core 0: the walker's primitive colour */
+uint32_t nd_direct_env(void);                  /* core 0: the walker's environment colour */
+
 #endif
