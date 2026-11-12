@@ -48,13 +48,20 @@ one entry `s6chk_yard` each, right after `msgbox_talk_det` (a unique anchor: oth
    `s6chk f2\d\d ranges \d+ bad \d+`, cap 30, deadline 25, expected_events only `warp: kmr_20 entry 4`; bench `s6chk_yard` as the
    s6chk_mac01 bench. Same commit as steps 1-3.
 
+## Try 2 (oracle 5): s6chk_yard bad 211 is on main already
+- Base 883aee0e2: ranges 1955 bad 211; head: ranges 3770 bad 211. Every bad record is one def, 0x59c184 =
+  Gfx_RM1_DECAL_XLU_NO_AA_def (S5EMDL1; the entity SHADOW render mode), fields leg_mode, plan_active, ls_use, ls_why: a main
+  fault of the S6T key, not of this row. Cause and fix: row_S6KEY.md. This row adds no bad record (211 = 211).
+- Gate change: s6chk_yard `bad` equal to the base log's value (211 at 883aee0e2; 0 once S6KEY is merged), not 0. The other gate
+  values of try 1 stand (msgbox_talk_det 1/1, nd_host PASS, memcheck OK): no new run is needed. Hand back as passed.
+
 ## Gate (expected values)
 - Build, memcheck OK; `bench.py run nd_host --row S5EMDL3 --why "S5EMDL3 nd_host"`: PASS.
 - `bench.py base msgbox_talk_det` (kmr_20: napicen_talk had animator.o 103 ops a frame) and `bench.py base s6chk_yard` (2 runs,
   new bench). One list `bench.py run msgbox_talk_det,s6chk_yard --row S5EMDL3 --why "S5EMDL3: animator ranges"` (2 starts).
-  cmp msgbox_talk_det 1/1 byte-equal; s6chk_yard `bad 0` and the `ranges` values of base and head (reach report, not a stop: S6M1 merged with ranges 681 equal to main, as its records ran after f200; hand back both values). No `scomp: def` line.
+  cmp msgbox_talk_det 1/1 byte-equal; s6chk_yard `bad` equal to the base value and the `ranges` values of base and head (reach report, not a stop: S6M1 merged with ranges 681 equal to main, as its records ran after f200; hand back both values). No `scomp: def` line.
 - Budget 8 Azahar starts.
 
 ## Stop
-A byte difference, `bad` above 0, or a scomp line: stop, commit, hand back (2 tries per named cause).
+A byte difference, `bad` above the base value, or a scomp line: stop, commit, hand back (2 tries per named cause).
 Delete this row file in the completing commit.
