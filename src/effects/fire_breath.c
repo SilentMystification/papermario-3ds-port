@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 extern Gfx D_09000A00_373DE0[];
 extern Gfx D_09000B88_373F68[];
@@ -199,12 +200,24 @@ void fire_breath_appendGfx(void* effect) {
 
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
                   G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+        nd_rec_dl(D_09000C20_374000);
+#else
         gSPDisplayList(gMainGfxPos++, D_09000C20_374000);
+#endif
+#ifdef TARGET_3DS
+        nd_rec_dl(D_09000C00_373FE0);
+#else
         gSPDisplayList(gMainGfxPos++, D_09000C00_373FE0);
+#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     }
 
+#ifdef TARGET_3DS
+    nd_rec_dl(dlist2);
+#else
     gSPDisplayList(gMainGfxPos++, dlist2);
+#endif
     gDPSetPrimColor(gMainGfxPos++, 0, 0, data->primR, data->primG, data->primB, data->alpha);
     gDPSetEnvColor(gMainGfxPos++, data->envR, data->envG, data->envB, envAlpha);
     gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, ((imgFrame * 32) + 0)  * 4, 0, ((imgFrame * 32) + 32) * 4, 128);
@@ -219,6 +232,10 @@ void fire_breath_appendGfx(void* effect) {
 
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
               G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+    nd_rec_dl(dlist);
+#else
     gSPDisplayList(gMainGfxPos++, dlist);
+#endif
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 }

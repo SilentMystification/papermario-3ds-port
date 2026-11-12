@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 extern Gfx D_09000DC0_3762D0[];
 extern Gfx D_09000E60_376370[];
@@ -148,7 +149,11 @@ void energy_shockwave_appendGfx(void* effect) {
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+#ifdef TARGET_3DS
+    nd_rec_dl(D_09000E60_376370);
+#else
     gSPDisplayList(gMainGfxPos++, D_09000E60_376370);
+#endif
     gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 179, 30, data->unk_24);
     gDPSetEnvColor(gMainGfxPos++, data->unk_50, data->unk_51, data->unk_52, 128);
 
@@ -166,7 +171,11 @@ void energy_shockwave_appendGfx(void* effect) {
     guMtxF2L(sp10, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+    nd_rec_dl(D_09000DC0_3762D0);
+#else
     gSPDisplayList(gMainGfxPos++, D_09000DC0_3762D0);
+#endif
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     gDPPipeSync(gMainGfxPos++);
 }

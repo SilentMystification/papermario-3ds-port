@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 extern Gfx D_09000600_3936A0[];
 extern Gfx D_090008E8_393988[];
@@ -163,9 +164,17 @@ void flashing_box_shockwave_appendGfx(void* effect) {
         guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+        nd_rec_dl(D_09000600_3936A0);
+#else
         gSPDisplayList(gMainGfxPos++, D_09000600_3936A0);
+#endif
         gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, time * 8, time * 8, time * 8 + 128, time * 8 + 128);
+#ifdef TARGET_3DS
+        nd_rec_dl(D_090008E8_393988);
+#else
         gSPDisplayList(gMainGfxPos++, D_090008E8_393988);
+#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     }
 
@@ -180,8 +189,16 @@ void flashing_box_shockwave_appendGfx(void* effect) {
         guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+        nd_rec_dl(D_09000950_3939F0);
+#else
         gSPDisplayList(gMainGfxPos++, D_09000950_3939F0);
+#endif
+#ifdef TARGET_3DS
+        nd_rec_dl(D_09000FF8_394098);
+#else
         gSPDisplayList(gMainGfxPos++, D_09000FF8_394098);
+#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     }
 
