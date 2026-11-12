@@ -101,6 +101,22 @@ Gfx D_8014C620[] = {
     gsSPEndDisplayList(),
 };
 
+#ifdef TARGET_3DS
+#include "nd_rmdef.h"
+/* S5ITEM1: appendGfx_item_entity state as compiled defs. it_setup = the clear of :963 and the units of D_8014C620 (its PipeSync is
+ * dropped: a no-op in the state model, nd_state.c). The render-mode and prim-colour units of the transparent and hiding branch. */
+static const Gfx it_setup_u[] = { gsSPClearGeometryMode(G_CULL_BOTH | G_LIGHTING),
+    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON), gsDPSetCombineMode(G_CC_DECALRGBA, G_CC_DECALRGBA),
+    gsDPSetTexturePersp(G_TP_PERSP), gsDPSetTextureDetail(G_TD_CLAMP), gsDPSetTextureLOD(G_TL_TILE), gsDPSetTextureLUT(G_TT_NONE),
+    gsDPSetTextureFilter(G_TF_BILERP), gsDPSetTextureConvert(G_TC_FILT), gsDPSetTextureLUT(G_TT_RGBA16) };
+static const Gfx it_xlu_sh_u[] = { gsDPSetRenderMode(AA_EN | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | G_RM_PASS,
+    AA_EN | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA)) };
+static const Gfx it_xlu_u[] = { gsDPSetRenderMode(AA_EN | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA),
+    AA_EN | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA)),
+    gsDPSetCombineMode(PM_CC_2F, PM_CC_32), gsDPSetPrimColor(0, 0, 0, 0, 0, 0) };
+static NdSDef it_setup = { it_setup_u, 10 }, it_xlu_sh = { it_xlu_sh_u, 1 }, it_xlu = { it_xlu_u, 3 };
+#endif
+
 Gfx D_8014C678[] = {
     gsSPClearGeometryMode(G_CULL_BACK | G_LIGHTING | G_SHADING_SMOOTH),
     gsSPVertex(D_8014C5A0, 4, 0),
@@ -955,6 +971,24 @@ void appendGfx_item_entity(void* data) {
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
               G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
+#ifdef TARGET_3DS
+    if (gSpriteShadingProfile->flags != 0) {
+        ND_RM_REC(Gfx_RM2_ALPHATEST);
+    } else {
+        ND_RM_REC(Gfx_RM1_ALPHATEST);
+    }
+    nd_scomp_rec(&it_setup, NULL, 0);
+
+    if (item->flags & (ITEM_ENTITY_FLAG_HIDING | ITEM_ENTITY_FLAG_TRANSPARENT)) {
+        if (gSpriteShadingProfile->flags != 0) {
+            nd_scomp_rec(&it_xlu_sh, NULL, 0);
+        } else {
+            Gfx v[1];
+            gDPSetPrimColor(&v[0], 0, 0, 255, 255, 255, alpha);
+            nd_scomp_rec(&it_xlu, v, 1);
+        }
+    }
+#else
     if (gSpriteShadingProfile->flags != 0) {
         gSPDisplayList(gMainGfxPos++, Gfx_RM2_ALPHATEST);
     } else {
@@ -977,6 +1011,7 @@ void appendGfx_item_entity(void* data) {
             gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 255, alpha);
         }
     }
+#endif
 
     if (!(item->flags & ITEM_ENTITY_FLAG_FULLSIZE)) {
         gDPLoadTLUT_pal16(gMainGfxPos++, 0, gHudElementCacheTablePalette[item->lookupPaletteIndex].data);
