@@ -6826,6 +6826,29 @@
       ]
     },
     {
+      "name": "title_det",
+      "status": "unverified",
+      "subject": "Title screen (hold state) with det: fast intro, START at frame 60 skips to the title (game mode 2, about frame 84 per the INTROSNAP discovery run), shots 200 to 203.",
+      "proves": "S5TTL byte gate: the title logo, menu and copyright rectangles.",
+      "debug": "fast padscript=wait60,START*4 det fixedseed fs1off loglevel=debug shots shotwin=200:4",
+      "until": "shot \\d+ frame 203\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "game mode 1 frame",
+      "expects": "none",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "title",
+          "regex": "game mode 2 frame"
+        },
+        {
+          "name": "last shot",
+          "regex": "shot \\d+ frame 203\\b"
+        }
+      ]
+    },
+    {
       "status": "unverified",
       "cap": 45,
       "deadline": 40,

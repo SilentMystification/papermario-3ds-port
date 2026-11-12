@@ -13,14 +13,14 @@
 
 static unsigned def_next; /* core 1: the ids of the analysed defs (a hint only: last[]; the key word 0 is the def pointer) */
 
-/* The class of one unit: 0 refused, 1 static, 2 value, 3 no-op (dropped), 4 ordered value (SCOMP0: PRIM, ENV, texture setters; must not lie between two static units). */
+/* The class of one unit: 0 refused, 1 static, 2 value, 3 no-op (dropped), 4 ordered value (SCOMP0: PRIM, ENV, texture setters; must not lie between two static units; class 2 too must not lie between two static units (S6VORD: sc_exec runs it after the block)). */
 static unsigned unit_class(uint32_t w0) {
     const unsigned id = w0 >> 24, a = w0 & 0xffffffu;
     if (w0 == ND_NOP_A) return 3u;
     switch (id) {
     case NDO_OMH: case NDO_OML: case NDO_GEOM: case NDO_TEXTURE: case NDO_COMB: return 1u;
     case NDO_FOG: case NDO_BLEND: case NDO_FILL: case NDO_PRIMZ: case NDO_SCISSOR: case NDO_MTX: case NDO_POPMTX: case NDO_MOVEMEM: return 2u;
-    case NDO_MW: return (a >> 16) == NDO_MW_NONE ? 1u : 2u; /* clip ratio, persp normalize: no field (a static no-op) */
+    case NDO_MW: return (a >> 16) == NDO_MW_NONE ? 3u : 2u; /* S6VORD: clip ratio, persp normalize: no field, a no-op */
     case NDO_MISC: return ((a >> 16) == NDO_MISC_CIMG || (a >> 16) == NDO_MISC_ND) ? 2u : 0u;
     case NDO_PRIM: case NDO_ENV: case NDO_TIMG: case NDO_TILE: case NDO_TILESIZE:
     case NDO_LOADBLOCK: case NDO_LOADTILE: case NDO_LOADTLUT: return 4u; /* SCOMP0: an ordered value unit */
@@ -41,7 +41,7 @@ int nd_scomp_analyse(NdSDef* d) {
         const unsigned c = unit_class(w0), id = w0 >> 24;
         if (c == 3u) continue;
         if (c == 0u) { ok = 0; continue; }
-        if (c == 4u) om |= 1u << k;
+        if (c == 2u || c == 4u) om |= 1u << k; /* S6VORD: no value unit between statics */
         if (c == 2u || c == 4u) {
             d->vmask |= 1u << k; d->nv++;
             if (!seen) d->pre++;
@@ -231,15 +231,19 @@ static void sc_exec(const NdSDef* d, const uint32_t* v) {
     X(box_prod, box_prod) X(box_folded, box_folded) X(box_pat, box_pat) X(comb_alpha_shade, comb_alpha_shade) X(cmb_gen_seen, cmb_gen_seen) \
     X(leg_mode, leg_mode) X(comb_mode5, comb_mode5) X(plan_active, plan_active) X(ls_use, ls_use) X(ls_why, ls_why) X(ls_cyc, ls_cyc) \
     X(ls_dual, ls_dual) X(prim, nd_ws.prim) X(envc, nd_ws.envc) X(prim_lod, nd_ws.prim_lod) X(keyc, keyc) X(keys, keys) \
-    X(conv_k4, conv_k4) X(dual_on, dual_on) X(sc_ok, sc_ok)
+    X(conv_k4, conv_k4) X(dual_on, dual_on) \
+    X(fogc, fogc) X(blendc, blendc) X(fog_fm, fog_fm) X(fog_fo, fog_fo) X(prim_z, nd_ws.prim_z) X(fill, nd_ws.fill) \
+    X(sci_x0, sci_x0) X(sci_y0, sci_y0) X(sci_x1, sci_x1) X(sci_y1, sci_y1) X(lt_n, lt_n) \
+    X(sc_ok, sc_ok)
 #define S6_N1(nm, lv) S6F_##nm,
-enum { S6_FIELDS(S6_N1) S6F_plan, S6F_N };
+enum { S6_FIELDS(S6_N1) S6F_plan, S6F_lt, S6F_N };
 #define S6_NM(nm, lv) #nm,
-static const char* const s6_name[S6F_N] = { S6_FIELDS(S6_NM) "cur_plan" };
+static const char* const s6_name[S6F_N] = { S6_FIELDS(S6_NM) "cur_plan", "lights" };
 typedef struct {
     uint32_t f[S6F_N];
     uint32_t sig, srok, slc, sle, slcc, lsf; /* restored, not compared */
     PmPlan plan;
+    NdLight lt[9];
 } S6Snap;
 static void s6_take(S6Snap* s) {
     unsigned i = 0;
@@ -247,6 +251,7 @@ static void s6_take(S6Snap* s) {
     S6_FIELDS(S6_TK)
     s->sig = sc_sig; s->srok = (uint32_t)sr_ok; s->slc = (uint32_t)sl_const; s->sle = (uint32_t)sl_env; s->slcc = sl_cc; s->lsf = (uint32_t)ls_frame;
     s->plan = cur_plan;
+    memcpy(s->lt, lt, sizeof s->lt);
 }
 static void s6_put(const S6Snap* s) {
     unsigned i = 0;
@@ -254,6 +259,7 @@ static void s6_put(const S6Snap* s) {
     S6_FIELDS(S6_PT)
     sc_sig = s->sig; sr_ok = (int)s->srok; sl_const = (int)s->slc; sl_env = (int)s->sle; sl_cc = s->slcc; ls_frame = (int)s->lsf;
     cur_plan = s->plan;
+    memcpy(lt, s->lt, sizeof lt);
 }
 static unsigned s6_ranges, s6_bad, s6_next = 100u, s6_fbad[S6F_N];
 static __attribute__((cold, noinline)) void s6_run(const NdSDef* d, const uint32_t* v) {
@@ -273,6 +279,7 @@ static __attribute__((cold, noinline)) void s6_run(const NdSDef* d, const uint32
     s6_take(&b);
     for (unsigned i = 0; i < S6F_plan; i++) if (a.f[i] != b.f[i]) { s6_fbad[i]++; bad = 1; }
     if (a.f[S6F_plan_active] && b.f[S6F_plan_active] && memcmp(&a.plan, &b.plan, sizeof a.plan)) { s6_fbad[S6F_plan]++; bad = 1; }
+    if (memcmp(a.lt, b.lt, sizeof a.lt)) { s6_fbad[S6F_lt]++; bad = 1; }
     s6_ranges++;
     if (bad) {
         s6_bad++;
