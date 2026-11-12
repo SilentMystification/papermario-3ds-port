@@ -38,6 +38,24 @@ every bind byte-equal. Why not Opus: the decision code exists (nd_comb_decide, n
   count; the fallback count 0. Hand back the 15 largest deltas.
 - Budget 8 Azahar starts. Console: none here; CONSOLE C1 after NAPI3B merges.
 
+## Try 2 (oracle 3 decision; spec fault in the pass rule, the orchestrator resets the budget once)
+Facts of try 1 (code 03615b51c, last 82bf0a164):
+- spot_mac01_det 6/6 and pause_tab_det_pic 101/101 byte-equal (run on 55edf3d47 plus the json fix);
+- census f200: 19 direct records, nd_texrect 173 to 154;
+- 16 `napihud fallback` lines, all why 31 (nd_direct_ready: img_role(0) != ROLE_MAIN or cimg_zero) at f102 and f103, the
+  pause-open frames, where the walker colour image is an off-screen window pass. f200 has 0.
+Decision: the fallback for an off-screen colour image is correct and allowed. The old path draws that record exactly as before (byte
+equality by construction), and the direct path does not handle off-screen targets yet. That is S6T's design question 3 (row_S6T.md);
+the off-screen form belongs to S6T, not to S2W. The deviations are accepted:
+- NdBindDesc as the descriptor;
+- nd_direct_bind returning int;
+- nd_pso_n64 called on core 0 inside the runner. Rule for later rows: the pso table is written on core 0 only, until a row adds
+  core-1 recording of pso ids with a lock.
+New pass rule (replaces "fallback count 0"): every fallback line has why 31, and steady frames (the census frame f200) have 0.
+Step (2 starts): the byte gates ran before the log-only edits, so run them once on the final commit:
+`bench.py run spot_mac01_det,pause_tab_det_pic --row NAPI2B --why "A1 final commit byte gate"`, then `bench.py cmp` both. Expected
+6/6 and 101/101 byte-equal. Then delete this row file in one commit and hand back the hash.
+
 ## Stop
-Byte difference, a fallback above 0 in the pause scene, or a bind the split changes: stop, commit, hand back the values (2 tries per
-named cause). Delete this row file in the completing commit.
+A byte difference, a fallback with a why other than 31, a fallback at f200, or a bind the split changes: stop, commit, hand back
+the values (2 tries per named cause). Delete this row file in the completing commit.
