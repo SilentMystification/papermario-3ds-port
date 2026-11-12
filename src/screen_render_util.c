@@ -1,6 +1,11 @@
 #include "pm_wide.h"
 #include "common.h"
 #include "nu/nusys.h"
+#ifdef TARGET_3DS
+#include "nd_api.h"
+extern u8 gPmStencilId;                      /* screen_overlays.c, NATIVEAPI B2a */
+extern void pm_tsten_run(const uint32_t* u); /* screen_overlays.c, NATIVEAPI B2a */
+#endif
 
 Gfx D_8014ED90[] = {
     gsSPEndDisplayList(),
@@ -289,13 +294,29 @@ void appendGfx_screen_transition_stencil(s32 arg0, s32 arg1, f32 progress, s32 p
     }
 
     gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, x1, y1, x2, y2);
+    texScale = (255.0f - progress) * 10.5f / 255.0f + 0.09; // range from
+#ifdef TARGET_3DS
+    /* NATIVEAPI B2a (S1TSTEN): the combine, the prim colour and the rectangle are one native record; pm_tsten_run (screen_overlays.c) draws it.
+     * The record words: w0, w1 (the G_TEXRECT words), hs, hd (the RDPHALF words), prim, full | id << 1 (id: gPmStencilId, set by the caller). */
+    {
+        const u32 rec[6] = {
+            ND_W0_TR(G_TEXRECT, rectRight * 4, y2 * 4),
+            ND_W1_TR(G_TX_RENDERTILE, rectLeft * 4, y1 * 4),
+            ND_TR_H1((t5 - arg0) * 32.0f / texScale + 16.0f + 1024.0f, (t6 - arg1) * 32.0f / texScale + 16.0f + 1024.0f),
+            ND_TR_H2(1024.0f / texScale, 1024.0f / texScale),
+            ((u32)(u8)primR << 24) | ((u32)(u8)primG << 16) | ((u32)(u8)primB << 8) | (u32)(u8)primA,
+            (u32)(progress == 255.0f) | ((u32)gPmStencilId << 1),
+        };
+        nd_rec_napi(pm_tsten_run, rec, 3u);
+    }
+#else
     if (progress == 255.0f) {
         gDPSetCombineMode(gMainGfxPos++, PM_CC_PRIM_FULL_ALPHA, PM_CC_PRIM_FULL_ALPHA);
     }
     gDPSetPrimColor(gMainGfxPos++, 0, 0, primR, primG, primB, primA);
-    texScale = (255.0f - progress) * 10.5f / 255.0f + 0.09; // range from
     gSPTextureRectangle(gMainGfxPos++, rectLeft * 4, y1 * 4, rectRight * 4, y2 * 4, G_TX_RENDERTILE,
                         (t5 - arg0) * 32.0f / texScale + 16.0f + 1024.0f, (t6 - arg1) * 32.0f / texScale + 16.0f + 1024.0f,
                         1024.0f / texScale, 1024.0f / texScale);
+#endif
     gDPPipeSync(gMainGfxPos++);
 }

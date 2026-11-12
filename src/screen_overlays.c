@@ -179,6 +179,70 @@ Gfx D_8014EA48[] = {
     gsSPEndDisplayList() // ROM has df000000 at 0xE5490, the decomp lacks it (V22b)
 };
 
+#ifdef TARGET_3DS
+/* NATIVEAPI B2a (S1TSTEN): the transition stencil rectangle is one native record (screen_render_util.c writes it). full_and_id = full | id << 1,
+ * id 0 Mario, 1 Star, 2 SharpCircle (gPmStencilId, set by _render_transition_stencil on core 1). */
+u8 gPmStencilId;
+
+typedef struct {
+    u32 w0, w1, hs, hd, prim, full_and_id;
+} NdTStenRec;
+
+/* the combine words of a combiner pair, as hud_element.c HUD_CW (two-level so PM_CC_* expands before the 16 arguments are counted) */
+#define TST_CW_(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1) \
+    { ND_W0_CMB(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1), ND_W1_CMB(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1) }
+#define TST_CW(a, b) TST_CW_(a, b)
+
+/* core 0: the transition stencil rectangle. Direct when the tile 0 window of the image and the walker state allow it (the pso is the
+ * combine of PM_CC_3A, or PM_CC_PRIM_FULL_ALPHA when full, with the stencil render mode); else the old ops run (combine, prim colour, rectangle). */
+void pm_tsten_run(const uint32_t* u) {
+    static const u32 cw_3a[2] = TST_CW(PM_CC_3A, PM_CC_3A), cw_full[2] = TST_CW(PM_CC_PRIM_FULL_ALPHA, PM_CC_PRIM_FULL_ALPHA);
+    static const unsigned wrapT[3][4] = { { 2, 2, 6, 6 }, { 3, 2, 5, 6 }, { 3, 3, 5, 5 } };
+    static const int strideT[3] = { 32, 16, 16 }, ldwT[3] = { 32, 16, 16 }, ldhT[3] = { 64, 64, 32 };
+    static const int sizeT[3] = { 0xFC, 0xFC, 0xFC };
+    static Gfx buf[8];
+    static unsigned n;
+    const NdTStenRec* r = (const NdTStenRec*)u;
+    const int id = (int)((r->full_and_id >> 1) & 3u), full = (int)(r->full_and_id & 1u);
+    const void* img = id == 0 ? (const void*)ui_stencil_mario_png : id == 1 ? (const void*)ui_stencil_star_png : (const void*)ui_stencil_sharp_circle_png;
+    NdBindDesc d;
+    NdPsoN64 pd;
+    Gfx* p = buf;
+    unsigned wrap[4];
+    int ok = 0, k;
+
+    for (k = 0; k < 4; k++) wrap[k] = wrapT[id][k];
+    pd.cw0 = (full ? cw_full : cw_3a)[0];
+    pd.cw1 = (full ? cw_full : cw_3a)[1];
+    pd.oml = G_RM_CLD_SURF | G_RM_CLD_SURF2;
+    pd.omh = G_TT_NONE | G_TF_AVERAGE;
+    pd.omh_m = (3u << G_MDSFT_TEXTLUT) | (3u << G_MDSFT_TEXTFILT);
+    if (nd_tex_win_desc(&d, img, strideT[id], G_IM_FMT_I, G_IM_SIZ_4b, wrap, 0, 0, ldwT[id], ldhT[id], 0, 0, sizeT[id], sizeT[id], NULL, 0) &&
+        nd_direct_ready() == 1) {
+        NdPso pid = nd_pso_n64(&pd);
+        if (nd_direct_bind(pid, r->prim, nd_direct_env())) {
+            nd_direct_tex(&d);
+            nd_direct_rect(r->w0, r->w1, r->hs, r->hd);
+            nd_direct_end();
+            ok = 1;
+        }
+    }
+    if (n++ < 40) {
+        extern void pm_log_d(const char* fmt, ...);
+        extern unsigned pm_frame_count(void);
+        pm_log_d("tsten f%u id %u direct %d", pm_frame_count(), id, ok);
+    }
+    if (ok) return;
+
+    if (full) gDPSetCombineMode(p++, PM_CC_PRIM_FULL_ALPHA, PM_CC_PRIM_FULL_ALPHA);
+    gDPSetPrimColor(p++, 0, 0, (int)(r->prim >> 24), (int)((r->prim >> 16) & 0xFFu), (int)((r->prim >> 8) & 0xFFu), (int)(r->prim & 0xFFu));
+    ND_GX(p++, r->w0, r->w1);
+    gImmp1(p++, G_RDPHALF_1, r->hs);
+    gImmp1(p++, G_RDPHALF_2, r->hd);
+    nd_walk_state((const uint32_t*)buf, (unsigned)(p - buf));
+}
+#endif
+
 void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* overlay) {
     Camera* camera = &gCameras[gCurrentCameraID];
     u8 colR, colG, colB;
@@ -270,26 +334,44 @@ void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* ove
     switch (stencilType) {
         case OVERLAY_VIEWPORT_MARIO:
             gSPDisplayList(gMainGfxPos++, Gfx_LoadStencilTex_Mario);
+#ifdef TARGET_3DS
+            gPmStencilId = 0;
+#endif
             appendGfx_screen_transition_stencil(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, progress, colR, colG, colB, progress * alpha / 255.0f, gCurrentCameraID);
             break;
         case OVERLAY_SCREEN_MARIO:
             gSPDisplayList(gMainGfxPos++, Gfx_LoadStencilTex_Mario);
+#ifdef TARGET_3DS
+            gPmStencilId = 0;
+#endif
             appendGfx_screen_transition_stencil(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, progress, colR, colG, colB, progress * alpha / 255.0f, -1);
             break;
         case OVERLAY_VIEWPORT_STAR:
             gSPDisplayList(gMainGfxPos++, Gfx_LoadStencilTex_Star);
+#ifdef TARGET_3DS
+            gPmStencilId = 1;
+#endif
             appendGfx_screen_transition_stencil(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, progress, colR, colG, colB, progress * alpha / 255.0f, gCurrentCameraID);
             break;
         case OVERLAY_SCREEN_STAR:
             gSPDisplayList(gMainGfxPos++, Gfx_LoadStencilTex_Star);
+#ifdef TARGET_3DS
+            gPmStencilId = 1;
+#endif
             appendGfx_screen_transition_stencil(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, progress, colR, colG, colB, progress * alpha / 255.0f, -1);
             break;
         case OVERLAY_VIEWPORT_SPOTLIGHT:
             gSPDisplayList(gMainGfxPos++, Gfx_LoadStencilTex_SharpCircle);
+#ifdef TARGET_3DS
+            gPmStencilId = 2;
+#endif
             appendGfx_screen_transition_stencil(x1, y1, progress, 0, 0, 0, 0, gCurrentCameraID);
             break;
         case OVERLAY_SCREEN_SPOTLIGHT:
             gSPDisplayList(gMainGfxPos++, Gfx_LoadStencilTex_SharpCircle);
+#ifdef TARGET_3DS
+            gPmStencilId = 2;
+#endif
             appendGfx_screen_transition_stencil(x1, y1, progress, 0, 0, 0, 0, -1);
             break;
         case OVERLAY_TYPE_2:
