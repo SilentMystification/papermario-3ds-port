@@ -7024,6 +7024,37 @@
       "gates": []
     },
     {
+      "name": "msgbox_talk_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "NAPI3B byte gate: yard 4:3 (nowide) talk message box with det, shot 330. Compared with the base shot.",
+      "scenario": "msgbox_talk_det",
+      "cap": 30,
+      "until": "shot \\d+ frame 330\\b",
+      "tags": [
+        "azahar",
+        "pic"
+      ],
+      "gates": []
+    },
+    {
+      "name": "glyph_fncov_talk",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "NAPI3B census, talk scene: the draw functions run in walker frame 330 and their call counts (census lane <L>_fncov, build.sh PM_FNCOV=1). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.",
+      "scenario": "glyph_fncov_talk",
+      "cap": 45,
+      "until": "fncov f\\d+ done",
+      "tags": [
+        "azahar",
+        "hotcode",
+        "fncov"
+      ],
+      "gates": []
+    },
+    {
       "name": "dpcen_xfer",
       "kind": "azahar_stream",
       "speed": "normal",
