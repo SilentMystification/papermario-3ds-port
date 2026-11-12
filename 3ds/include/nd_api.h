@@ -56,4 +56,10 @@ void nd_direct_fallback(unsigned why);        /* core 0, cold: a record the dire
 uint32_t nd_direct_prim(void);                 /* core 0: the walker's primitive colour */
 uint32_t nd_direct_env(void);                  /* core 0: the walker's environment colour */
 
+/* NATIVEAPI E5b (S5PQUAD): one fill rectangle with its primitive colour (S1FILL's record, plus the kind). x0..x1, y0..y1: the lower right is
+ * exclusive. rgba: 0xRRGGBBAA. kind: 0 overlay translucent, 1 overlay opaque (CVG_DST_SAVE), 2 quad opaque (PM_CC_PRIM_FULL_ALPHA), 3 quad
+ * translucent. nd_fill_run (nd_direct.c, core 0) states the combine and render mode of the kind and fills. */
+typedef struct { int32_t x0, y0, x1, y1; uint32_t rgba, kind; } NdFillRec;
+void nd_fill_run(const uint32_t* u); /* nd_direct.c, core 0: the NDC_NAPI runner of an NdFillRec */
+
 #endif

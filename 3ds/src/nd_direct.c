@@ -186,3 +186,31 @@ __attribute__((cold, noinline)) void nd_direct_fallback(unsigned why) {
     n++;
     if (n <= 16u || !(n & 63u)) pm_log_d("napihud fallback f%u n %u why %u", pm_frame_count(), n, why);
 }
+
+/* NATIVEAPI E5b (S5PQUAD): the combine and other mode low bits of each NdFillRec kind (the walker's words for the same macros). */
+static const struct { Gfx cc; uint32_t oml; } kFillKind[4] = {
+    { gsDPSetCombineMode(G_CC_PRIMITIVE, G_CC_PRIMITIVE), G_RM_CLD_SURF | G_RM_CLD_SURF2 },
+    { gsDPSetCombineMode(G_CC_PRIMITIVE, G_CC_PRIMITIVE), (CVG_DST_SAVE | G_RM_OPA_SURF) | (CVG_DST_SAVE | G_RM_OPA_SURF2) },
+    /* PM_CC_PRIM_FULL_ALPHA (include/macros.h:328) written out: macros.h is not included here */
+    { gsDPSetCombineLERP(0, 0, 0, PRIMITIVE, 0, 0, 0, 1, 0, 0, 0, PRIMITIVE, 0, 0, 0, 1), G_RM_OPA_SURF | G_RM_OPA_SURF2 },
+    { gsDPSetCombineMode(G_CC_PRIMITIVE, G_CC_PRIMITIVE), G_RM_XLU_SURF | G_RM_XLU_SURF2 },
+};
+
+/* core 0: the 1-cycle fill of a rectangle, as the walker's fill (nd_rect.c nd_fillrect): primitive colour, lower right exclusive. */
+void nd_fill_run(const uint32_t* u) {
+    const NdFillRec* f = (const NdFillRec*)u;
+    const unsigned k = f->kind & 3u;
+    const int x1 = f->x1 - 1, y1 = f->y1 - 1;
+    NdPsoN64 d;
+    d.cw0 = kFillKind[k].cc.words.w0;
+    d.cw1 = kFillKind[k].cc.words.w1;
+    d.oml = kFillKind[k].oml;
+    d.omh = G_CYC_1CYCLE;
+    d.omh_m = 3u << G_MDSFT_CYCLETYPE;
+    nd_direct_bind(nd_pso_n64(&d), f->rgba, nd_direct_env());
+    if (x1 >= f->x0 && y1 >= f->y0) {
+        pm_gpu_set_replace(0);
+        pm_gpu_fill_rect(f->x0, f->y0, x1, y1, f->rgba);
+    }
+    nd_direct_end();
+}
