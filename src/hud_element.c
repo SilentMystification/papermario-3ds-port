@@ -479,7 +479,7 @@ static void hud_rect_emit(const NdHudRec* hudElement, Gfx** gp, s32 anchor) {
 #define HUD_CW_(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1) \
     { ND_W0_CMB(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1), ND_W1_CMB(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1) }
 #define HUD_CW(a, b) HUD_CW_(a, b) /* a and b are combiner macros of 8 terms: the argument pass expands them before HUD_CW_ counts its 16 */
-static int hud_rect_direct(const NdHudRec* r) { /* 0 drawn, else why the old path runs: 1 shape, 2 window, 3 walker state, 4 pso */
+static int hud_rect_direct(const NdHudRec* r) { /* 0 drawn, else why the old path runs: 1 shape, 2 window, 3 walker state, 4 pso, 5 no piece */
     static const u32 cw_decal[2] = HUD_CW(G_CC_DECALRGBA, G_CC_DECALRGBA), cw_01_02[2] = HUD_CW(PM_CC_01, PM_CC_02), cw_2f_32[2] = HUD_CW(PM_CC_2F, PM_CC_32),
                      cw_07[2] = HUD_CW(PM_CC_07, PM_CC_07), cw_47[2] = HUD_CW(PM_CC_47, PM_CC_47);
     NdBindDesc ds[ND_HUD_PC];
@@ -494,7 +494,8 @@ static int hud_rect_direct(const NdHudRec* r) { /* 0 drawn, else why the old pat
     const void* pal = NULL;
     int pal_n = 0;
 
-    if (r->npc <= 0 || r->npc > ND_HUD_PC || fmt < 0 || fmt > 2) return 1;
+    if (r->npc <= 0) return 5; /* a record with no piece (the element is off screen): only its state ops, the old path runs them */
+    if (r->npc > ND_HUD_PC || fmt < 0 || fmt > 2) return 1;
     switch (fmt) {
         case 0:
             pd.oml = G_RM_XLU_SURF | G_RM_XLU_SURF2; pd.omh = G_TT_NONE;
@@ -561,7 +562,7 @@ static int hud_rect_direct(const NdHudRec* r) { /* 0 drawn, else why the old pat
 static void hud_rect_run(const uint32_t* u) {
     static Gfx buf[512];
     Gfx* p = buf;
-    { const int why = hud_rect_direct((const NdHudRec*)u); if (!why) return; nd_direct_fallback((unsigned)why); }
+    { const int why = hud_rect_direct((const NdHudRec*)u); if (!why) return; if (why != 5) nd_direct_fallback((unsigned)why); }
     hud_rect_emit((const NdHudRec*)u, &p, 0);
     nd_walk_state((const uint32_t*)buf, (unsigned)(p - buf));
 }
