@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 s8 D_E000E660[16] = { 0, 1, 2, 2, 3, 3, 4, 4, 5, 5, 5, 6, 6, 6, -1, 0 };
 
@@ -131,7 +132,11 @@ void walking_dust_appendGfx(void* effect) {
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(effectTemp->shared->graphics));
+#ifdef TARGET_3DS
+    nd_rec_dl(dlist);
+#else
     gSPDisplayList(gMainGfxPos++, dlist);
+#endif
     gDPSetEnvColor(gMainGfxPos++, 0, 0, 0, 127);
     gDPSetPrimColor(gMainGfxPos++, 0, 0, 230, 222, 222, 110);
 
@@ -159,7 +164,11 @@ void walking_dust_appendGfx(void* effect) {
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
                   G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+        nd_rec_dl(dlist2);
+#else
         gSPDisplayList(gMainGfxPos++, dlist2);
+#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     }
     gDPPipeSync(gMainGfxPos++);
