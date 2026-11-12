@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_api.h"
 
 extern Gfx D_09000280_3DC1C0[];
 extern Gfx D_090003B0_3DC2F0[];
@@ -208,18 +209,37 @@ void embers_appendGfx(void* effect) {
     gSPDisplayList(gMainGfxPos++, D_E00E0A40[1]);
 
     part++;
+#ifdef TARGET_3DS
+    NdParts pb;
+    nd_parts_begin(&pb, 3, 1);
+#endif
     for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, part++) {
         if (part->unk_64 >= 0) {
             guTranslateF(sp10, part->unk_04, part->unk_08, part->unk_0C);
             guMtxF2L(sp10, &gDisplayContext->matrixStack[gMatrixListPos]);
 
+#ifdef TARGET_3DS
+            {
+                Gfx g[5];
+                gSPMatrix(&g[0], &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+                gDPSetTileSize(&g[1], G_TX_RENDERTILE, 0, (i % 4) * 16 * 4, 15 * 4, ((i % 4) * 16 + 15) * 4);
+                gDPSetTileSize(&g[2], 1, (s32) part->unk_5C * 4, (s32) part->unk_60 * 4, ((s32) part->unk_5C + 15) * 4, ((s32) part->unk_60 + 15) * 4);
+                gSPDisplayList(&g[3], D_E00E0A40[0]);
+                gSPPopMatrix(&g[4], G_MTX_MODELVIEW);
+                nd_parts_add(&pb, (const uint32_t*)g);
+            }
+#else
             gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
             gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, 0, (i % 4) * 16 * 4, 15 * 4, ((i % 4) * 16 + 15) * 4);
             gDPSetTileSize(gMainGfxPos++, 1, (s32) part->unk_5C * 4, (s32) part->unk_60 * 4, ((s32) part->unk_5C + 15) * 4, ((s32) part->unk_60 + 15) * 4);
             gSPDisplayList(gMainGfxPos++, D_E00E0A40[0]);
             gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+#endif
         }
     }
+#ifdef TARGET_3DS
+    nd_parts_end(&pb);
+#endif
 
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 }
