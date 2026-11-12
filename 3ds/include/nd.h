@@ -29,6 +29,8 @@ void nd_frame_begin(void); /* once per gbi task: the ndst debug line */
 #define ND_MTX_PROJ 4u
 extern float nd_mv[ND_MV_DEPTH][4][4];
 extern int nd_mv_sp;
+extern float nd_mv_k[ND_MV_DEPTH][4][4]; /* INTERPB1: twin stack of the key frame matrices, valid in the t = 0.5 pass */
+extern float nd_proj_k[4][4];
 extern float nd_proj[4][4];
 extern float nd_proj_wn; /* EYECW: |xyz of the w column of nd_proj|, 0 for an orthographic projection; the stereo convergence is conv * nd_proj_wn */
 void nd_mtx_ident(float m[4][4]);
@@ -36,6 +38,9 @@ void nd_mtx_mul(float c[4][4], const float a[4][4], const float b[4][4]);
 void nd_mtx_unpack(const uint32_t* n64, float d[4][4]);      /* 16 words of an N64 Mtx */
 void nd_mtx_reset(void);                                     /* projection and stack bottom to identity, stack empty */
 void nd_mtx_load(const float in[4][4], unsigned flags);      /* push (when flagged), then load or premultiply into the top or the projection */
+void nd_mtx_load_tw(const float in[4][4], const float ink[4][4], unsigned flags); /* INTERPB1: nd_mtx_load plus the twin (ink 0: none) */
+void nd_mtx_combine_k(float c[4][4]);
+void nd_mtx_twin_sync(void);
 void nd_mtx_pop(unsigned count);                             /* count 0 pops one */
 extern float nd_eye_cull_e, nd_eye_cull_k; /* STEREO: nd_geom.c, the x margin of the clip and box tests (0 in a mono frame) */
 void nd_mtx_combine(float c[4][4]);     /* modelview x projection (STEREO: the eye shift is added by the vertex shader) */

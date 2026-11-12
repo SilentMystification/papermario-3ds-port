@@ -207,7 +207,6 @@
 		*(.text.nd_tex_wrap_of)  /* 50.0 calls/frame, 36 B */
 		*(.text.set_geom)  /* 49.7 calls/frame, 44 B */
 		*(.text.load_mtx)  /* 49.3 calls/frame, 460 B */
-		*(.text.nd_mtx_load)  /* 49.3 calls/frame, 436 B */
 		*(.text.nd_mtx_replace)  /* 49.3 calls/frame, 120 B */
 		*(.text.pm_gbi_ndref_frame)  /* 49.3 calls/frame, 52 B */
 		*(.text.combchk_on)  /* 48.7 calls/frame, 44 B */

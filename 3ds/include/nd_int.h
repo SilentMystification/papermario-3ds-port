@@ -220,6 +220,14 @@ extern float vp_sx, vp_sy, vp_sz, vp_tx, vp_ty, vp_tz;
 extern unsigned gm_last, gm_steps, gm_n;
 extern float (*gm_tab)[4][4];
 extern float (*gm_nrm)[3][4];
+extern float combined_k[4][4];     /* INTERPB1: the key frame twins, valid in the t = 0.5 pass (pm_interp_repl) */
+extern float (*gm_tab_k)[4][4];
+extern float (*gm_nrm_k)[3][4];
+extern int nd_tw_chk;              /* switch twinchk */
+extern unsigned nd_tw_m, nd_tw_p, nd_tw_q;
+void nd_twin_task_begin(void);
+void nd_twinchk_pal(const float* o);
+void nd_twinchk_nrm(const float n[3][4]);
 extern unsigned short gm_idx[]; /* HUDGM: 2 * PM_GM_N entries (pm_gpu.h, nd_mtx_set.c:45) */
 extern float mtx_cache[256][16];
 extern u32 mtx_tag[256];

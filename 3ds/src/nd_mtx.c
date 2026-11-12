@@ -11,6 +11,10 @@
 float nd_mv[ND_MV_DEPTH][4][4];
 ND_HOTD int nd_mv_sp;
 float nd_proj[4][4];
+/* INTERPB1: the twin stack of the t = 0.5 pass (pm_interp_repl): the key frame matrices K, built beside the interpolated ones L with the same flags
+ * and the same stack pointer. Computed only while pm_interp_repl is set (the L walk). */
+float nd_mv_k[ND_MV_DEPTH][4][4];
+float nd_proj_k[4][4];
 float nd_proj_wn; /* EYECW: length of the xyz part of the w column of nd_proj (0: orthographic). nd_proj is view x perspective, so |p23| alone follows the camera yaw */
 
 void nd_mtx_ident(float m[4][4]) {
@@ -63,15 +67,30 @@ void nd_mtx_reset(void) {
     nd_mtx_ident(nd_proj);
     nd_proj_wn = 0.f;
     nd_mtx_ident(nd_mv[0]);
+    nd_mtx_ident(nd_mv_k[0]);
+    nd_mtx_ident(nd_proj_k);
     nd_mv_sp = 0;
 }
 
 /* G_MTX: flags already hold G_MTX_PUSH set for a push (the F3DEX2 flag sense is xor-ed by the caller). A push beyond the depth is dropped like the RSP does. */
-void nd_mtx_load(const float in[4][4], unsigned flags) {
+void nd_mtx_load(const float in[4][4], unsigned flags) { nd_mtx_load_tw(in, 0, flags); }
+
+/* INTERPB1: ink is the key frame matrix of the same G_MTX (0: no twin, the plain load). The twin stack takes the same push and the same op. */
+void nd_mtx_load_tw(const float in[4][4], const float ink[4][4], unsigned flags) {
     int is_proj = (flags & ND_MTX_PROJ) != 0;
     if (!is_proj && (flags & ND_MTX_PUSH) && nd_mv_sp + 1 < ND_MV_DEPTH) {
         memcpy(nd_mv[nd_mv_sp + 1], nd_mv[nd_mv_sp], sizeof(nd_mv[0]));
+        if (ink) memcpy(nd_mv_k[nd_mv_sp + 1], nd_mv_k[nd_mv_sp], sizeof(nd_mv_k[0]));
         nd_mv_sp++;
+    }
+    if (ink) {
+        float (*dk)[4] = is_proj ? nd_proj_k : nd_mv_k[nd_mv_sp];
+        if (flags & ND_MTX_LOAD) memcpy(dk, ink, sizeof(float) * 16);
+        else {
+            float curk[4][4];
+            memcpy(curk, dk, sizeof curk);
+            nd_mtx_mul(dk, ink, curk);
+        }
     }
     float (*dst)[4] = is_proj ? nd_proj : nd_mv[nd_mv_sp];
     if (flags & ND_MTX_LOAD) memcpy(dst, in, sizeof(float) * 16);
@@ -91,6 +110,9 @@ void nd_mtx_pop(unsigned count) {
 
 /* combined = modelview x projection. STEREO: the eye shift is not in this matrix: the vertex shader adds it (pm4/pm5 eye, eyd), so both eyes share one matrix. */
 void nd_mtx_combine(float c[4][4]) { nd_mtx_mul(c, nd_mv[nd_mv_sp], nd_proj); }
+void nd_mtx_combine_k(float c[4][4]) { nd_mtx_mul(c, nd_mv_k[nd_mv_sp], nd_proj_k); } /* INTERPB1: the key frame twin */
+/* INTERPB1: the start of an L task: the twin stack bottom and projection take the main values (the earlier tasks of the step are walked without replacements, so they are equal to K's) */
+void nd_mtx_twin_sync(void) { memcpy(nd_mv_k[0], nd_mv[0], sizeof nd_mv[0]); memcpy(nd_proj_k, nd_proj, sizeof nd_proj); }
 
 /* citro3d Mtx_Multiply (libcitro3d.a, one vmul and three vmla per element): out = a x b on matrices in the C3D_Mtx memory order, accumulation from the last column to the first */
 void nd_mtx_cmul(float o[16], const float a[16], const float b[16]) {

@@ -532,6 +532,7 @@ void pm_gbi_end_frame(void) {
         memset(gp_acc, 0, sizeof gp_acc); gp_ntri = gp_frames = 0;
     }
     nd_mv_sp = 0; /* PT70: the RSP matrix stack starts empty in every task. A push without pop in the message draw leaked one level per frame, then the 10 level cap dropped the pad push of the blue pipe and its pop left the wrong matrix (the sunk pipe showed up while a text box waited) */
+    nd_twin_task_begin(); /* INTERPB1 */
     if (gm_n) memset(gm_idx, 0, 2u * PM_GM_N * sizeof gm_idx[0]);
     gm_n = 0; gm_last = GV_NONE; pm_gpu_gv_reset();
     memset(vert_ring, 0xff, sizeof vert_ring);

@@ -132,6 +132,7 @@ static __attribute__((cold, noinline)) void wide_walk_note(int built) {
 /* INTERP2M: the kind of the frame being built, read at its frame end (pm_gpu.c icmp_frame): 0 plain, 1 L (t = 0.5), 2 K (key). Not cleared
  * in the walk: the frame end of a step is a later walker message than its walk (pm_main.c wq_step_end). */
 int pm_icmp_kind;
+int pm_tw_role; /* INTERPB1: 1 while the main task of an L walk starts, 2 for the last task of a key walk (twinchk), else 0 */
 void pm_frame_walk(const PmFrame* f) {
     pm_icmp_kind = (f->flags & PMF_REPL) ? 1 : 0; /* INTERP2M */
     iw_tk = 0; /* INTERP1 */
@@ -140,8 +141,10 @@ void pm_frame_walk(const PmFrame* f) {
     if (f->bg.ptr) gbi_task_w((const uint32_t*)f->bg.ptr);
     if (f->main.ptr) {
         pm_interp_repl = (f->flags & PMF_REPL) != 0;
+        pm_tw_role = pm_interp_repl;
         gbi_task_w((const uint32_t*)f->main.ptr);
         pm_interp_repl = 0;
+        pm_tw_role = 0;
     }
     pm_iw_us[(f->flags & PMF_REPL) ? 0 : 2] = (unsigned)(iw_tk / 268u); /* INTERP1 */
 }
@@ -206,7 +209,11 @@ void pm_key_walk(const PmKey* k) { /* walker side */
     pm_gpu_begin(1);
     PH_PUSH(PH_DRAW);
     iw_tk = 0; /* INTERP1 */
-    for (int i = 0; i < MAX_KEY && k->t[i].ptr; i++) gbi_task_w((const uint32_t*)k->t[i].ptr);
+    for (int i = 0; i < MAX_KEY && k->t[i].ptr; i++) {
+        pm_tw_role = (i + 1 < MAX_KEY && k->t[i + 1].ptr) ? 0 : 2; /* INTERPB1: the last task is the main task */
+        gbi_task_w((const uint32_t*)k->t[i].ptr);
+    }
+    pm_tw_role = 0;
     pm_iw_us[1] = (unsigned)(iw_tk / 268u); /* INTERP1 */
     PH_POP();
     pm_gpu_end();

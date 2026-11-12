@@ -148,6 +148,16 @@ static unsigned* rgen;          /* per ring vertex: the palette generation in wh
 static unsigned char* rk;       /* per ring vertex: the flag value */
 static C3D_Mtx pcomp[PM_GM_N + 1u];      /* palette entry per game matrix index: post x game */
 static const float (*pal_tab)[4][4];
+/* INTERPB1: the key frame twin of pcomp (post x gm_tab_k), made with pcomp in the t = 0.5 pass; pcomp_k_has[gm] is 1 when this L task made it */
+static C3D_Mtx pcomp_k[PM_GM_N + 1u];
+static unsigned char pcomp_k_has[PM_GM_N + 1u];
+extern float (*gm_tab_k)[4][4]; /* nd_mtx_set.c */
+extern int nd_tw_chk;
+extern unsigned nd_tw_m;
+void nd_twinchk_pal(const float* o);
+void nd_twinchk_nrm(const float n[3][4]);
+static float pm_nrm5_k[3][4]; /* INTERPB1: the key frame twin of c.nrm5 of the last model_draw of the L walk */
+void pm_gpu_twin_begin(void) { memset(pcomp_k_has, 0, sizeof pcomp_k_has); }
 static unsigned gv_recopy_n, gv_palup_n, gv_palmax, gv_palflush;
 static C3D_Mtx gv_post;
 static int gv_wind = 1;   /* GV1a: sign of the 3 x 3 determinant (x y w) of the matrix after the game matrix: +1 keeps the orientation of N64 clip space */
@@ -817,6 +827,10 @@ static __attribute__((noinline)) void pcomp_calc(unsigned gm) {
         for (int i = 0; i < 4; i++) pcomp[gm].r[i].w += pcomp[gm].r[i].z * nb.rect_pal_z;
     } else
         pal_mul(&pcomp[gm], pal_tab[gm]);
+    if (pm_interp_repl && gm != RECT_GM && gm_tab_k) { pal_mul(&pcomp_k[gm], gm_tab_k[gm]); pcomp_k_has[gm] = 1; } /* INTERPB1 */
+    else if (__builtin_expect(nd_tw_chk, 0) && gm != RECT_GM && pcomp_k_has[gm]) { /* twinchk: the key walk's pcomp against the L walk's twin */
+        if (memcmp(pcomp[gm].m, pcomp_k[gm].m, sizeof(float[16])) != 0) nd_tw_m++;
+    }
                     gs.pcomp_gen[gm] = post_gen;
                     pm_dc_c[DC_PMUL]++;
 }
@@ -1168,7 +1182,14 @@ static __attribute__((cold, noinline)) void submit_dbg(const NdDraw* d, int tex)
 
 /* S3N-3c: the palette 0 product post x game (the native model draw, nd_model.c) and the submit of one native model draw (emit 1, S3N-4):
  * the attribute locations and the index address of its static range. */
-void pm_gpu_pcomp_native(float o[16], const float m[4][4]) { nd_mtx_pcomp(o, gv_post.m, m); }
+/* INTERPB1: pal0_k is the key frame twin of the palette 0 of the last call (m is the walker combined matrix in every call, so the twin is post x combined_k).
+ * Sites: nd_model_set.c nd_model_draw, pm_gpu.c model cache hit (pm_dlc), pm_gpu.c sprite state (pm_gpu_spr_native). */
+float pm_pal0_k[16];
+void pm_gpu_pcomp_native(float o[16], const float m[4][4]) {
+    nd_mtx_pcomp(o, gv_post.m, m);
+    if (pm_interp_repl) { float ck[4][4]; nd_mtx_combine_k(ck); nd_mtx_pcomp(pm_pal0_k, gv_post.m, ck); if (__builtin_expect(nd_tw_chk, 0)) nd_twinchk_pal(pm_pal0_k); }
+    else if (__builtin_expect(nd_tw_chk, 0)) nd_twinchk_pal(o);
+}
 /* PM5-3: the pm5 block of a model draw from its NdDraw fields (the same calls as pm5_upload, values of the draw) */
 static __attribute__((noinline)) void pm5_upload_draw(const NdDraw* d) {
     prog_use(4);
@@ -3424,6 +3445,10 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
     }
     /* PM5-3: the normal rows of the walker's matrix (gm_nrm: model view rows 0 to 2, w 0) for a lit or fogged range */
     c.nrm_ok = gv5_on; for (int r_ = 0; r_ < 3; r_++) { c.nrm5[r_][0] = nd_mv[nd_mv_sp][r_][0]; c.nrm5[r_][1] = nd_mv[nd_mv_sp][r_][1]; c.nrm5[r_][2] = nd_mv[nd_mv_sp][r_][2]; c.nrm5[r_][3] = 0.f; }
+    if (pm_interp_repl) { /* INTERPB1: the key frame twin of the normal rows (pm_nrm5_k) */
+        for (int r_ = 0; r_ < 3; r_++) { pm_nrm5_k[r_][0] = nd_mv_k[nd_mv_sp][r_][0]; pm_nrm5_k[r_][1] = nd_mv_k[nd_mv_sp][r_][1]; pm_nrm5_k[r_][2] = nd_mv_k[nd_mv_sp][r_][2]; pm_nrm5_k[r_][3] = 0.f; }
+        if (__builtin_expect(nd_tw_chk, 0)) nd_twinchk_nrm(pm_nrm5_k);
+    } else if (__builtin_expect(nd_tw_chk, 0)) nd_twinchk_nrm(c.nrm5);
     nd_mdl_cur_x = nd_tex_handle_extra((int)texidx, gfx); /* MDL-5a census: extraTiles of this draw's handle */
     int n = nd_model_draw(rec, &c, geo, emit);
     if (!emit && pm_gpu_ndm_on()) { /* SBKW-2 diagnostic: the native desc size of the record, read by ndm_cmp against the walker */
