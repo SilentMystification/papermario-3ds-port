@@ -1230,6 +1230,22 @@
       "gates": []
     },
     {
+      "name": "spot_mac01_fps60_iskip",
+      "kind": "azahar",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FPS60SPD gate 2: Toad Town mac_01 with fps60 and iskipall (every step without key frame), pace line steps/s. No shots.",
+      "scenario": "spot_mac01_fps60_iskip",
+      "cap": 45,
+      "until": "pacewk f(4\\d\\d|[5-9]\\d\\d|\\d{4,}) ",
+      "tags": [
+        "azahar",
+        "pace",
+        "spot"
+      ],
+      "gates": []
+    },
+    {
       "name": "yard_hud_pic",
       "kind": "azahar_pic",
       "speed": "normal",

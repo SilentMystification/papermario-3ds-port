@@ -7806,6 +7806,35 @@
       "reason": "SYNC60 byte gate. Copy of spot_mac01_fps60_pic with det (no skip, no key path under det). Cap 60 s: boot, warp, placement and the first 300-frame window."
     },
     {
+      "name": "spot_mac01_fps60_iskip",
+      "status": "unverified",
+      "subject": "FPS60SPD: Toad Town mac_01 at pos 0 0 200 with fps60 and iskipall (every fps60 step skips its key frame, the path of the regression), pacestat. The pace line of the first 5 s window ending at frame 400 or later gives steps/s.",
+      "proves": "FPS60SPD: steps/s of the pace line is 29.0 to 31.0 with the key frame skipped on every step (the idle wait keeps PM_VBLANKS_PER_STEP vblanks for a step with no key frame). Log only, no shots.",
+      "debug": "warp=mac_01:0 pos=0:0:200 prof=4 fps60 pacestat iskipall loglevel=debug",
+      "extra": [],
+      "until": "pacewk f(4\\d\\d|[5-9]\\d\\d|\\d{4,}) ",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "pace",
+          "regex": "pace: wall \\d+\\.\\d ms steps \\d+ .*\\(steps/s \\d+\\.\\d+\\)"
+        },
+        {
+          "name": "pacewk",
+          "regex": "pacewk f(4\\d\\d|[5-9]\\d\\d|\\d{4,}) wk \\d+\\.\\d+ drawn \\d+"
+        }
+      ],
+      "reason": "FPS60SPD gate 2. Copy of spot_mac01_fps60_det without the det and shot switches, with pacestat and iskipall. Ends on the pacewk line of the first 5 s window at frame 400 or later. Cap 45 s: boot, warp, placement and about 7 s of game steps."
+    },
+    {
       "name": "icmp_mac01",
       "status": "unverified",
       "subject": "INTERP2M: Toad Town mac_01 at pos 0 0 200 with fps60 and the icmp switch (the t = 0.5 frame and the key frame compared in GPU command words). No shots.",
