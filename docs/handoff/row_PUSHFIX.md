@@ -47,6 +47,32 @@ check before the send), 3ds/tests/push/run.sh (new cases).
        NETLOADER REFUSED block is printed.
    (d) go.ps1 without -Fg prints `PUSH STARTED` within 5 s, and push_last.txt gets `PUSH END` within 60 s.
 
+## Try 2 (ORACLE7, after try 1 at 0abe24211: cases a and d FAIL; a row spec fault, keep Haiku)
+Causes (code read of 0abe24211 and build3ds/wt/PUSHFIX/build3ds/out/push_tests.txt):
+- Case a, and the user's "exited 1 with no reason": go.ps1 Push-One runs `& $gitBash 3ds/push_3ds.sh ...` (about :182) inside a
+  function, so every line push_3ds.sh prints goes into the function's return value, and :228 stores it in `$results`. Nothing is
+  printed. The same array makes the rc wrong: Push-One returns `@(lines..., $false)`, `-not <non-empty array>` is false, so the
+  child logged `PUSH END rc 0` after `FAILED - push_3ds.sh exited 1`.
+- Case d (10 s): Start-Process with -RedirectStandardOutput/-RedirectStandardError uses CreateProcess with handle inheritance, so
+  the child also inherits the caller's stdout pipe (the `$(...)` of run.sh). The caller's read ends only when the child exits.
+Exact edits (go.ps1 only; push_3ds.sh and run.sh stay as in try 1):
+1. Push-One: `& $gitBash 3ds/push_3ds.sh -t $watchSecs @profArgs @extra | Out-Host` (no `2>&1`: with
+   `$ErrorActionPreference = "Stop"` (:77) a stderr line of a native command would throw). The `$LASTEXITCODE` check stays.
+   Do the same for `& powershell -NoProfile -File 3ds/run_azahar.ps1 @azArgs | Out-Host` (target a).
+2. The push verb block: replace `$results = @{ $Target = Push-One $Target }` and the `$rc = ...` line with
+   `$ok = @(Push-One $Target)[-1]` and `$rc = if ($ok -is [bool] -and $ok) { 0 } else { 1 }`.
+3. The detached branch: no -Redirect* options (they force handle inheritance). Let cmd do the redirection, started through
+   ShellExecute (no inherited handles):
+   build `$childArgs` as in try 1 but with `(& $quote $PSCommandPath)` in place of `$PSCommandPath` (the other values are quoted
+   by the loop already; do not quote them twice), then
+   `$inner = 'powershell ' + ($childArgs -join ' ') + ' > "' + $log + '" 2>&1'` and
+   `$p = Start-Process cmd -ArgumentList ('/d /s /c "' + $inner + '"') -WindowStyle Hidden -PassThru`.
+   Delete the `.err` file use (stderr goes to the same log). The `PUSH STARTED pid <pid> log <log>` line and exit 0 stay.
+Expected: case a prints the push_3ds.sh lines (`3dslink argv` or `Sending`, `3dslink output: ...`) and no `STAGE`; if push_3ds.sh
+still exits 1, its reason line is now in the case a output: hand it back (the case checks no rc). Case d: `PUSH STARTED` in 1 to
+3 s (one powershell start); push_last.txt gets `PUSH END rc 1` or `rc 0` matching the child's `=== push o: done/FAILED ===` line.
+Budget: none (no Azahar). 2 tries per named cause: a third failure of case d with these edits: stop and hand back the output.
+
 ## Gate (expected values)
 - `sh 3ds/tests/push/run.sh`: every old case and the four new ones PASS (hand back the summary line).
 - `sh 3ds/push_3ds.sh --dry --no-build`: prints the 3dslink argv, no build line, exit 0.
