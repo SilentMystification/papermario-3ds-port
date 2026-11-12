@@ -2627,4 +2627,5 @@ int pm_anchor_rect(int ulx, int uly, int lrx, int lry, int tile, int s, int t, i
     return true;
 }
 
+int pm_anchor_on(void) { return sAnchorOpen; } /* S3MSG: draw_digit takes the NdTRect path only with no open anchor */
 int pm_anchor_is_open(void) { return sAnchorOpen; }
