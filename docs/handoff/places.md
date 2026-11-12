@@ -2,18 +2,11 @@
 
 One line per open row: row | model | file: function or region names | merge state. Delete the line when the row is merged or closed.
 A shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json, bench_defs.json) is never a place of a row: see HANDOFF.md
-"Parallel work without merge conflicts". Open rows at the handoff of 2026-11-12: none running; the passed rows S1TSTEN, S7ENT,
-S7EFX7 and S7EFX8 wait for the user's decision (their places: src/screen_overlays.c pm_tsten_run; 3ds/src/nd_ent.c, nd_walk.c
-nd_ent_pieces; src/effects/*.c effect files of groups 7 and 8).
+"Parallel work without merge conflicts". Open rows at the handoff of 2026-11-12 (second update): none runs. TOOLFIX, REGDIR1-3, FPS60W2, S1TSTEN, S7ENT, S7EFX7 and S7EFX8 are merged. The next row is the freeze fix of the oracle read: it edits 3ds/src/pm_gpu.c pm_gpu_key_show :2946-2955 (fills and VRAM copies queued again) and the stream walk end pm_gpu_end_w; FPS60VAL and FRAMEHASH edit nearby lines of the same file and wait for it.
 
 | row | model | places | state |
 |---|---|---|---|
-| TOOLFIX | Haiku | 3ds/push_3ds.sh :169-177 (stale check, SEND FILE line); 3ds/go.ps1 push verb block, Push-One call; 3ds/tests/push/run.sh case (b), new case (b2) | ready |
-| REGDIR1 | Haiku | 3ds/tools/gen_gfx_tab.sh :7-19; new 3ds/tools/gconv_src.d/ | ready |
-| REGDIR2 | Haiku | 3ds/tools/azt.ps1 :44, :124, :451-470; 3ds/tools/bench.py :88-89, :208-223; new 3ds/tools/azt.d/, bench.d/; test_catalog.md one paragraph | ready |
-| REGDIR3 | Haiku | 3ds/CMakeLists.txt :343-430 (PORT_SRC); 3ds/build.sh :68, :86 | ready |
-| FPS60W | Haiku | 3ds/src/pm_gpu.c :1655, :1842, :2461, :2479, :2789, :2941 and a new function above pm_gx_room; 3ds/src/pm_wdog.c :218-222; one scenario wdhang_mac01 (azt.d file after REGDIR2, else after spot_mac01_det) | ready |
-| FPS60VAL | Sonnet | 3ds/src/pm_gpu.c end of kc_build, end of pm_gpu_key_show; new 3ds/tools/kcval.py; scenario kcdump_mac01 | ready (may run with FPS60W: other lines) |
+| FPS60VAL | Sonnet | 3ds/src/pm_gpu.c end of kc_build, end of pm_gpu_key_show; new 3ds/tools/kcval.py; scenario kcdump_mac01 | waits for the next session (user decides after the console test) |
 | LISTCEN2 | Haiku | 3ds/tools/listcen.py; bench_defs.json listcen entry | waits for the plan |
 | ELFGATE | Haiku | new 3ds/tools/elfgate.py, elfgate_patterns.txt | waits for the plan |
 | N64DEL1 / N64DEL2 / N64DEL3 | Haiku | new 3ds/tools/unifdef3ds.py (N64DEL1); TARGET_3DS conditional lines of src/effects / src/world, src/entity, src/battle, src/pause, src/filemenu, include / src/*.c | waits for the plan, LISTCEN2 |

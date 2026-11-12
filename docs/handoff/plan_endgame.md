@@ -19,6 +19,8 @@ moves no counter of section 3 and builds no part of the test harness of section 
 - Discovery rule: an item found later is appended to section 7 with the row that covers it; section 8's totals are recomputed.
   The plan is not redesigned.
 
+Model rule (user, 2026-11-12, after v2 was written): most rows, if not all, are Haiku-sized. A row that Haiku cannot do gets a spec for the model that can. No hard rule picks the model. No stronger model without value. Before the plan is shown again the oracle re-cuts the 27 Sonnet rows and the 2 Opus rows below into Haiku-sized pieces (one file, one function family or one call-site group, exact edit, one gate) and keeps a Sonnet or Opus row only for a design core with a stated reason. The row counts and the wall time in section 8 change with the re-cut.
+
 ## 1. Census from the code (main 235bb8721; scratch census: TARGET_3DS-active lines vs N64-only `#else`/`#ifndef` lines)
 listcen.py totals: build 4468, gfxpos 3967, data 22134, data_arrays 1873, gfxtype 3469, reader 714, model 15.
 Group rows are sums of the per-file census (within a few counts; LISTCEN2 prints the exact values). Active = compiled for the 3DS. n64 = inside `#ifndef TARGET_3DS` or the `#else` of `#ifdef TARGET_3DS`.
