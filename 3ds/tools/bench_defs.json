@@ -3888,6 +3888,21 @@
       "gates": []
     },
     {
+      "name": "sten_enter_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "S1TSTEN byte gate: the Mario stencil fade-in of the world entry, cold det start, 40 shots at frames 1 to 157.",
+      "scenario": "sten_enter_det",
+      "cap": 30,
+      "until": "shot \\d+ frame 157\\b",
+      "tags": [
+        "azahar",
+        "pic"
+      ],
+      "gates": []
+    },
+    {
       "name": "fxpic_63",
       "kind": "azahar_pic",
       "speed": "normal",

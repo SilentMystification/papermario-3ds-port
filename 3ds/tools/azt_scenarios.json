@@ -1215,6 +1215,31 @@
       "reason": "MOVE gate: DET cold start (-NoWarm, a cold start takes 12 to 16 s to the first marker, as nok11_det). Cap 35 s, deadline 30 s. Picture is the subject; the prof scene line is the until."
     },
     {
+      "name": "sten_enter_det",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0), cold det start, no prof switch. The Mario stencil fades in after the world entry: 40 shots at frames 1 to 157 (step 4), until frame 157.",
+      "proves": "S1TSTEN byte gate: the Mario stencil fade-in of the world entry is drawn by the direct record (tsten f lines id 0 direct 1); base and head give byte-equal shots.",
+      "debug": "warp=mac_01:0 pos=0:0:200 shots shotwin=1:160:4 loglevel=debug det",
+      "extra": [],
+      "until": "shot \\d+ frame 157\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "tsten direct",
+          "regex": "tsten f\\d+ id 0 direct 1"
+        }
+      ],
+      "reason": "S1TSTEN byte gate: DET cold start, no prof switch (prof sets log=off, so no tsten line). Shot 39 (frame 157) is the until. Cap 30 s, deadline 25 s."
+    },
+    {
       "name": "fxpic_63",
       "status": "unverified",
       "subject": "Toad Town mac_01 at 0 0 200, fxtest=63 (snowfall), cold det start. Shots at frames 412 to 415.",
