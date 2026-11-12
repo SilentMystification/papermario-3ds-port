@@ -5055,7 +5055,7 @@
     "purpose": "S5TTL byte gate: title screen hold state, det, shots 200 to 203.",
     "scenario": "title_det",
     "cap": 30,
-    "until": "shot \\d+ frame 203\b",
+    "until": "shot \\d+ frame 203\\b",
     "tags": [
       "azahar",
       "pic",
