@@ -9,13 +9,17 @@
       "until": "kcen f\\d+ ",
       "cap": 45,
       "deadline": 40,
-      "first_marker": "warp: mac_01 entry 0",
-      "expects": "warp",
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
       "needs_picture": false,
       "expected_events": [
         {
-          "name": "warp line",
-          "regex": "warp: mac_01 entry 0"
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "kcen",
+          "regex": "kcen f\\d+ steps 300 kcopy [1-9]\\d* kwalk \\d+ why \\d+ \\d+ 0 \\d+ \\d+"
         }
       ],
       "reason": "FPS60W2 census. spot_mac01_fps60_det without shots and without the scene check; the kcen line is the gate. Cap 45 s: boot, warp, and 300 drawn steps."
