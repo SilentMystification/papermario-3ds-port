@@ -44,23 +44,20 @@ nd_render_state, tex_win) runs only in the host converter at build time.
 ### Stages and rows (id: scope | blocker | model)
 Every row is gated by nd_host, the DIRECT byte set (spot_mac01_det, mdl5_iwa10_det, spot_mac00_det) or its named scenes, and the
 LISTCEN deltas (the counts it removes). CONSOLE = one batch push, compared with a stored run.
-- Oracle 5 handoff (2026-11-12, context near 500K; replaces the oracle 4 block):
-  - Rows written by oracle 5 (state at writing; main 3cef2c284): S4INST, S4INST2 (one-instance nd_parts_run_v runs; explosion
-    and snowman_doll go to S7EFX); S5PQUAD2; S5TIMG (draw_ci template); S5CHUDA (merged) / S5CHUDB (try 2: nd_tex_blk_desc cap
-    `w * h > 2048` is the 16-bit limit, IA8 needs bytes <= 4096; why 41-43 split); S6M3-S6M6; S5EMDL1-3 (nd_rmdef.h RM defs);
-    S5ITEM1-2; S5BTL1; S5MENU0 (fsel_det_pic); S6KEY (S6T key misses omode_h full, omode_l, tile fmt/siz 0, geom that scm_sig keys:
-    s6chk_yard bad 211 on Gfx_RM1_DECAL_XLU_NO_AA_def); S7RUN (Sonnet: table runner nd_gtab_run, nd_rec_dl, the 11
-    GCONV_SRC placeholder lines); S7EFX1-8 (Haiku per alphabetical group); S7TEX1 (tex_win0 move). Updated Sonnet rows: S5BG,
-    S5SHADE, S5MENU, S5BTL; S8FB is an index; S9DEL1-4 carry the census rule.
-  - Not written: S7TEX2 (after S7TEX1 + S7RUN), S7ENT (segment-address data needs a host load first), S7MAP, S7MDL (Opus), S8CEN and
-    S8FB1-6 (after S7), the small src/world files, a record-form value-order row (see facts).
-  - Facts: (1) value order: sc_exec runs value units after the first static unit behind the folded block and after the decision;
-    S6E proved it changes pictures (mac_00 0/6 -> 6/6 with ent_gap nv == pre). Record-form defs with mid or late values (S6M3
-    PrimDepth, cam_main, S6E2) carry the risk: write a row that refuses class-2 units between statics or runs them in place,
-    with an s6chk that also compares lights and fog. (2) s6chk `ranges` is not a reach test (S6M1 kept 681). (3) A bench list runs
-    at one speed: spot_mac00_det is turbo, every other det bench normal. (4) expected_events must hold only lines the base build
-    prints. (5) Address -> symbol: python ELF parse of build3ds/lane-<row>/pm_3ds.elf (no nm on the host); script form in the
-    oracle 5 transcript: read .symtab, match value <= a < value + size.
+- Oracle 6 handoff (2026-11-12; replaces the oracle 5 block):
+  - Written by oracle 6: S6VORD (Haiku: value-order rule, MW none a no-op, s6chk compares fog, scissor, lights; splits cam_range,
+    cb_r1, cb_r2), S7TEX2 (Sonnet), S7ENT (Sonnet), S7MAP (Sonnet), S7MDL (Opus); row_S7DATA.md is now an index.
+  - Corrected: S5TTL (title_det scene: title is game mode 2, window 200:4), S1TSTEN (window 49:112:4: frame 33 is a load frame),
+    S6KEY (nd_scomp_test.c id_of zero-init; gate after S5EMDL3), S6M2/S6M3/S6M4/S5ITEM2/S5BTL1 (defs split or reordered so no
+    value unit lies between two static units). Closed: S4INST and S4INST2 (superseded by S7RUN + S7EFX3/S7EFX6: nd_parts_add
+    needs an NDG_F_PARTS table, nd_rec.c:296-304, and the shockwave list starts with ClearGeometryMode).
+  - Facts: (1) value order: nd_scomp_analyse refused only class-4 units between statics; class 2 there moved behind the block
+    (S6VORD fixes it; every def written since splits at a mid value). (2) s6chk `ranges` is not a reach test. (3) A bench list
+    runs at one speed: spot_mac00_det is turbo. (4) expected_events hold only lines the base build prints. (5) Address -> symbol:
+    python ELF parse of build3ds/lane-<row>/pm_3ds.elf (.symtab, value <= a < value + size). (6) The no_guess hook blocks the word
+    "reproduce" in row files; write "give the same".
+  - Next oracle batch: S7ENT1.. after S7ENT (src/entity setupGfx call sites), S7MAP1.. (S6M leftovers), S7MDL1.. after S7MDL,
+    then S8CEN and S8FB1-6 from row_S8FB.md when every S7 row is merged; S9DEL1-4 and S9GATE are written (they wait for S8).
 - L0 LISTCEN (row written, Haiku, ready now): 3ds/tools/listcen.py and bench `listcen` (host_test). Builder, data and reader counts
   per file and per class go into the bench database. This is the measure of every later row and the final gate.
 - S5 rest (one Sonnet row each, by LISTCEN order, after S5CHUD sets the quad helper). Each moves every gDP/gSP call of its files
