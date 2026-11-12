@@ -15198,6 +15198,27 @@
         }
       ],
       "reason": "FSELCEN try 2 census of the pick flip. Log only; the until is the census done line. Cap 45 s, deadline 40 s."
+    },
+    {
+      "name": "s6chk_mac01",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, det, debug switch s6chk: each compiled state range (nd_scomp.c: the render_frame camera setup and the status icons prologue) runs the compiled path and the op path and compares the walker state fields. One shot at frame 200 and the s6chk line of frame 200.",
+      "proves": "S6T: a compiled range leaves the walker the same state fields as the op path (s6chk bad 0).",
+      "debug": "warp=mac_01:0 pos=0:0:200 shots shotwin=200:1 loglevel=debug det s6chk",
+      "extra": [],
+      "until": "s6chk f2\\d\\d ranges \\d+ bad \\d+",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "s6chk line",
+          "regex": "s6chk f2\\d\\d ranges \\d+ bad \\d+"
+        }
+      ],
+      "reason": "S6T field check on the main byte scene (mac_01), as hc4_t4chk_mac01; the s6chk line at frame 200 is the until (about 12 s cold to the warp). Cap 30 s."
     }
   ]
 }

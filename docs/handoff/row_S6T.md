@@ -62,6 +62,77 @@ SaveBlock through ent_run), S6M (map custom gfx incl. crystal_ball_gfx).
 6. Byte-equal proof plan: the compiled path leaves the walker the same fields as the op path. A debug switch `s6chk` runs both
    and compares the fields after each range (cold, debug only), and counts mismatches by field.
 
+## Design note (written by the S6T agent before code; code read of main b52831546)
+Terms: a def (NdSDef) is one producer range: its typed units as static data (gs forms) in stream order. A value unit is a unit whose
+content changes per frame or that only sets a value (no model): it stays a run-time op. A static unit is folded by the compiler.
+A compiled entry (NdSComp) is the output for one def under one set of inherited inputs.
+
+1. Key: the def (its units are static data, so the def names its content; no content hash at run time) plus the inputs of the
+   combine decision after the fold: comb_w0, comb_w1, the 16 tst1 combine fields, the cycle bits of omode_h, prim, envc,
+   prim_lod low 8, keyc, keys, conv_k4, tex_on, use_t1, td[1].valid, dual_on, box_prod, box_folded, comb_set, comb_alpha_shade,
+   pm_comb_vprim (NdCombIn of nd_comb_decide, which combchk proves equal to sync_combine, plus vprim, which decide reads live).
+   A field the def sets takes the def's value in the key (constant per def), so only inherited inputs vary. The masked writes
+   (othermode bits, geometry) are applied on the live words at run time, so their inherited bits need no key. Fields per op kind
+   (R read, W written; every kind of nd_set.c nd_op_same and nd_op_apply):
+   | kind | reads | writes | class in S6T |
+   |------|-------|--------|--------------|
+   | OMH | omode_h outside the mask; skip: sc_ok, sc_sig | omode_h, om_kh; TEXTFILT change: flush, pm_tex_set_filter; CYCLETYPE in the mask: sync_combine | static (mask, value) |
+   | OML | omode_l outside the mask | omode_l, om_kl | static (mask, value) |
+   | GEOM | geom bits kept by the clear mask; skip: pm_gpu_mode_is | geom, pm_gpu_set_mode | static (clear, set; ops compose) |
+   | TEXTURE | tex_on, tex_ss, tex_ts; skip: sc_ok, sc_sig | tex_on, tex_ss, tex_ts; sync_combine | static |
+   | COMB | comb words, comb_set, box_folded, cmb_gen_seen; skip: sc_ok, sc_sig | comb_w0/w1, tst1 combine fields, use_t1, box_prod, box_folded 0, comb_set 1, comb_alpha_shade, cmb_gen_seen, flush on change; sync_combine | static |
+   | PRIM | prim, prim_lod; skip: sc_ok, sc_sig | prim, prim_lod, pm_gpu_set_prim; sync_combine | refused in S6T (def recorded as ops); later a uniform of the bind |
+   | ENV | envc; skip: sc_ok, sc_sig | envc, pm_gpu_set_env; sync_combine | refused in S6T, as PRIM |
+   | RARE | keyc, keys (other bytes) | conv_k4 or keyc, keys; sync_combine | refused in S6T (later: static) |
+   | FOG, BLEND, FILL, PRIMZ | (skip: the field) | fogc, blendc, nd_ws.fill, prim_z | value |
+   | SCISSOR | pm_wide | sci_*, pm_gpu_set_scissor | value |
+   | MW | NUMLIGHT, LIGHTCOL, FOG, SEG: the light, fog or segment field | the same | value; MW none (clip ratio, persp normalize): no field, static no-op |
+   | TIMG, TILE, TILESIZE, LOADBLOCK, LOADTILE, LOADTLUT | the texture model (timg, tst1 tile fields, td[], tlut) | the same | refused in S6T (the NdTex part: S6E, S6M) |
+   | MTX, POPMTX, MOVEMEM | matrix stack, lights, viewport | the same, upload_mvp | value |
+   | MISC CIMG | cimg | cimg, cimg_siz, cimg_stride, cimg_zero, pm_gpu_off_end | value (answer 3) |
+   | MISC ND | - | native payload flags | value |
+   | MISC NOP | - | - | dropped |
+   | VTX, TRI1, TRI2, RECT, CALL, MISC LST, MISC MODVTX, END, DROP | draws and control | - | refused (not a state range) |
+   sync_combine reads exactly the key inputs above (nd_comb_decide NdCombIn: leg_mode and box_pat are inputs it overwrites first).
+   Intermediate syncs inside a range are dead: their outputs are overwritten by the last one, which reads the final inputs
+   (the decision reads omode_h only by its cycle bits, and every op after the last sync in a range leaves those bits).
+2. Output form:
+   - NdSDef (static, one per producer range; analysed once on core 1 at its first record, read only after):
+     `{ const Gfx* u; uint8_t n; uint8_t st (0 new, 1 compiled, 2 refused), id, nv, pre, last_op;
+        uint32_t omh_m, omh_v, oml_m, oml_v, geom_c, geom_s, tex_a, tex_b, cw0, cw1; uint8_t has_geom, has_tex, has_comb; }`
+     pre = value units before the first static unit (they run first); the rest run after the folded block, in their order
+     (a value kind reads no field a static kind writes: checked by the table above).
+   - NdSComp (core 0, heap table of 32, allocated at the first compile): `{ uint32_t key[26]; NdCombOut out; }`, out = the combine
+     decision (leg, mode5, pat, use, why, cyc, dual, plan_on, plan, cc_on, cc, env_on). This is the pso of the range: the
+     nd_pso_n64 form cannot hold it (its oml always sets bits 3 to 31 and takes 0 to 2 from the walker; the status icons
+     prologue sets only the alpha compare bits 0 to 1), so the entry keeps the def masks and the decision itself.
+   - Record (NDC_NAPI, runner nd_scomp_run): unit 0 = the def pointer and nv; units 1..nv = the value units (typed, made with
+     the g macros into a local packet).
+   - Run time: value units before the first static unit (nd_walk_state); the block: masked othermode writes (+ om_kh, om_kl; the
+     filter flush and pm_tex_set_filter on a TEXTFILT change), geometry (clear, set; pm_gpu_set_mode), texture fields,
+     op_setcombine when the words, comb_set, box_folded or cmb_gen_seen differ; then the entry (key compare, miss: nd_comb_decide
+     cold) and the replay (scm_replay form: const, env, plan or legacy mode; ls_* and sl_* fields); then sc_ok 1, sc_sig =
+     sc_sig_now(), sr_ok 0 (the next draw makes the render state again, as after any range sync that worked), gv_epoch++,
+     pm_gbi_cur_op = the last static op; then the other value units.
+3. Off-screen targets: the compiled form carries SetColorImage as a run-time value op (in order with the other value units). The
+   decision reads no target field; img_role is read by sync_render at the next draw (sr_ok 0). So S1DARK, FSELFIX and the pause
+   path may compile ranges that hold a target switch.
+4. Invalidation: an S6T entry holds only the combine decision, a pure function of its key; no counter drops it. pm_tex_epoch and
+   run-time palettes: no texture in S6T entries; when S6E/S6M add NdTex the bind goes through nd_tex_bind_desc every run (the
+   texture layer checks its own epoch and key), so the entry never caches a texture slot. nd_tmpl_gen: the entry holds the PmPlan,
+   not a template id (pm_gpu_set_plan finds the template), so no drop; a later entry that keeps a template id must drop on a
+   nd_tmpl_gen change. pm_dlc_gen and dlc_reset: no static range reads map data; S6M defs that point into map data drop all their
+   entries on a pm_dlc_gen change.
+5. Where: the def analysis on core 1 at its first record (cold; the frame push publishes it, as nd_rm_tab); the entry on core 0
+   at the first run of each key (cold: nd_comb_decide). The record carries the def pointer (the range id).
+6. Proof: switch s6chk runs both on core 0: snapshot the state fields, compiled path, snapshot A, restore, op path (the def units
+   with the value units in place, nd_walk_state), snapshot B, compare. Fields compared: omode_h, omode_l, om_kh, om_kl, geom,
+   tex_on, tex_ss, tex_ts, comb_w0, comb_w1, comb_set, the 16 tst1 combine fields, use_t1, box_prod, box_folded, box_pat,
+   comb_alpha_shade, cmb_gen_seen, leg_mode, comb_mode5, plan_active, cur_plan (when active), ls_use, ls_why, ls_cyc, ls_dual,
+   prim, envc, prim_lod, keyc, keys, conv_k4, dual_on, sc_ok. Not compared (cache marks, the compiled path sets them to the
+   synced value): sc_sig, sr_ok, gv_epoch, pm_gbi_cur_op, sl_*, ls_frame. Log every 100 frames: `s6chk f<n> ranges <r> bad <b>`
+   and one line per field with a mismatch. The op path runs last, so the picture under s6chk is the op path's.
+
 ## First use in this row (to prove the form)
 Compile the cam_main render_frame range (src/cam_main.c:155-208) and the status_icons prologue (src/status_icons.c:602-614).
 Today they record typed ops. After this row they record one NDC_NAPI record with the range id plus the per-frame values; the
