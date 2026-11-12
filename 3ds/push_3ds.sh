@@ -339,14 +339,15 @@ fi
 # A console that isn't sitting in the Homebrew Launcher yet (most common cause - this needs a human
 # to open it there) must not cost minutes of silence. A few short attempts instead of one long one.
 #
-# HARD REQUIREMENT, not a tuning choice: once the console has sent back ANY response at all (the
-# first byte of 3dslink's own --verbose output), this attempt is NEVER force-killed again, no
-# matter how long it runs. Confirmed directly: force-killing a netload that had already started
-# (the old flat-20s-deadline version did this on every attempt) left BOTH O3DS and N3DS executing
-# corrupted code - a DataAbort with a null-ish fault address and a PC that resolves to the wrong
-# function entirely, i.e. a hard crash, not a clean abort. A still-silent attempt (console never
-# answered at all) has not touched the console's running state yet, so killing that one is safe -
-# that is the ONLY case this script ever kills.
+# Kill rule. A still-silent attempt (console never answered at all) has not touched the console's
+# running state yet, so it is killed after stall_secs with no answer. Once the console has sent back
+# ANY response (the first byte of 3dslink's own --verbose output), the attempt is killed only in two
+# cases: (1) NOGROW_SECS (default 60) with no growth of the output (a stalled send), or (2) the
+# size-scaled send cap (15 s per MB, at least 120 s; SEND_SECS overrides). The no-progress limit exists
+# because force-killing a netload that had already started can leave O3DS and N3DS executing corrupted
+# code (a DataAbort with a null-ish fault address, a PC in the wrong function, a hard crash). The old
+# fixed 60 s total send limit was removed (user decision 2026-11-12): it killed healthy sends of the
+# 38 to 51 MB 3dsx.
 # "docker kill" by name, not relying on signal forwarding through the attached client process:
 # plain "timeout docker run" does not reliably stop a Docker Desktop container (confirmed directly -
 # the very first version of this, timeout-only, still hung past its own timeout).
