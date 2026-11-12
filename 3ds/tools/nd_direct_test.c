@@ -184,7 +184,7 @@ int main(void) {
         fake_role = ROLE_SLOT;
         n_win = n_gx = n_walk = 0; n_rect = 0;
         nd_trect_run((const uint32_t*)&t);
-        CHECK(n_win == 1 && n_rect == 0 && n_walk == 1 && n_gx >= 4);
+        CHECK(n_win == 1 && n_rect == 0 && n_walk >= 4 && n_gx >= 4); /* n_walk counts units: the load ops and the 3 rectangle units */
         fake_role = ROLE_MAIN;
     }
     if (fails) return 1;
