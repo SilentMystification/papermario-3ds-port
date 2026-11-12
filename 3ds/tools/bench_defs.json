@@ -4096,6 +4096,23 @@
       "gates": []
     },
     {
+      "name": "btlui_cen",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BTLUICEN census: battle menu frames rect, rectwhy, tridrop, nrawwhy at f300 and f400. Compare head with build-at 9eeb74b1a. Log only.",
+      "scenario": "btlui_cen",
+      "cap": 40,
+      "until": "rectwhy f400",
+      "tags": [
+        "azahar",
+        "log",
+        "census"
+      ],
+      "log_metrics": [],
+      "gates": []
+    },
+    {
       "name": "roomtex_hud_pic",
       "kind": "azahar_pic",
       "speed": "normal",
