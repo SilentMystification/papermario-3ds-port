@@ -7,6 +7,10 @@ src/background_gfx.c:36-51 (S6S1). No blocker: SCOMP0 is merged.)
 - R1 :9-15: DepthSource(G_ZS_PRIM) (OML, static), PrimDepth(0x7FF0, 0) (value, class 2), RenderMode(the Z_CMP | CVG_DST_CLAMP |
   ZMODE_OPA | FORCE_BL pair, :11-12) (static), CombineMode(PM_CC_PRIM_NO_ALPHA x2) (static), PrimColor(0, 0, 0, 128, 0)
   (ordered value, class 4: after the last static unit, allowed), PipeSync (dropped). nv 2.
+- ORACLE6 value-order rule (row_S6VORD.md): a value unit may not lie between two static units. The def puts PrimDepth first
+  (before DepthSource): set_primdepth writes only nd_ws.prim_z (nd_set.c:64-67) and DepthSource only an omode_l bit (set_om, no
+  flush, no sync: nd_set.c:83-96), so the swap gives the same state; then PrimDepth is a pre value (pre 1) and PrimColor a post
+  value. The value packet order (PrimDepth, then PrimColor) is unchanged.
 - :17-19 the model lookup and gSPDisplayList(model list) stay as they are.
 - R2 :20-23: PipeSync (dropped), CycleType(G_CYC_2CYCLE), DepthSource(G_ZS_PIXEL), RenderMode(G_RM_PASS, G_RM_AA_ZB_XLU_SURF2):
   all static. nv 0.
@@ -27,8 +31,8 @@ bench_defs.json: one entry `s6chk_mac00` each, inserted right after `s6chk_mac01
    #ifdef TARGET_3DS
    #include "nd_scomp.h"
    static const Gfx N(water_r1_u)[] = {
-       gsDPSetDepthSource(G_ZS_PRIM),
        gsDPSetPrimDepth(0, 0),
+       gsDPSetDepthSource(G_ZS_PRIM),
        gsDPSetRenderMode(Z_CMP | CVG_DST_CLAMP | ZMODE_OPA | FORCE_BL | G_RM_PASS,
                          Z_CMP | CVG_DST_CLAMP | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_0, G_BL_CLR_IN, G_BL_1)),
        gsDPSetCombineMode(PM_CC_PRIM_NO_ALPHA, PM_CC_PRIM_NO_ALPHA),

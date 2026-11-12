@@ -27,7 +27,6 @@ The 3 npc.c files: a def block right before the function, and the lines :29-50 o
    #include "nd_scomp.h"
    static const Gfx N(ambush_setup_u)[] = {
        gsSPViewport(0),
-       gsSPPerspNormalize(0),
        gsSPMatrix(0, G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION),
        gsDPSetCycleType(G_CYC_1CYCLE),
        gsSPClearGeometryMode(G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH),
@@ -46,6 +45,9 @@ The 3 npc.c files: a def block right before the function, and the lines :29-50 o
    #endif
    ```
    (Copy the ClearGeometryMode and SetGeometryMode masks from the file's own lines :39-41; they must be equal.)
+   ORACLE6 (value order): the def has no gsSPPerspNormalize unit. It is a walker no-op (NDO_MW_NONE: set_mw default arm,
+   nd_set.c:107-117), and in the def it counted as a static unit, which put the Matrix value between two static units (the
+   S6VORD hazard). Without it Viewport and Matrix are both before the first static unit: nv 2, pre 2.
 2. Lines :29-50 become, under TARGET_3DS:
    ```c
        guMtxF2L(cam->mtxPerspective, &gDisplayContext->camPerspMatrix[gCurrentCameraID]);

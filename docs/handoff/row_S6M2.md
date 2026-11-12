@@ -24,11 +24,17 @@ after the includes. 3ds/tools/azt_scenarios.json and bench_defs.json: one entry 
 the file end; S1TSTEN and S6E2 insert after other entries).
 
 ## Exact edits (under `#ifdef TARGET_3DS`; `#else` keeps the old lines)
-1. Def block: wfx_r1_u (5 units), wfx_r2_u (11), wfx_r3_u (2): the gs forms in order without the PipeSync lines, value slots as the
-   S6M1 placeholders (`gsDPSetColorImage(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, 0)`, `gsDPSetPrimColor(0, 0, 0, 0, 0, 0)`,
-   `gsDPSetPrimDepth(0, 0)`); one `static NdSDef` each.
-2. Each range in the function: `{ Gfx v[2]; Gfx* p = v; <the value lines with p++ and their exact arguments>; nd_scomp_rec(&def,
-   v, (unsigned)(p - v)); }`. Expected nv: 2, 2, 0.
+1. Def block (ORACLE6 value-order rule, row_S6VORD.md: no ColorImage, PrimDepth or other value unit may lie between two static
+   units, so R1 and R2 are split at their mid value; each def ends right after it): the gs forms in order without the PipeSync
+   lines, value slots as the S6M1 placeholders (`gsDPSetColorImage(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, 0)`,
+   `gsDPSetPrimColor(0, 0, 0, 0, 0, 0)`, `gsDPSetPrimDepth(0, 0)`); one `static NdSDef` each, n = sizeof / sizeof [0]:
+   - wfx_r1a_u {CycleType, RenderMode pair, ColorImage} (nv 1); wfx_r1b_u {CombineMode, PrimColor} (nv 1);
+   - wfx_r2a_u {ColorImage, DepthSource(G_ZS_PRIM), PrimDepth} (nv 2); wfx_r2b_u {RenderMode(G_RM_ZB_XLU_DECAL pair),
+     TextureFilter, TexturePersp, Texture, TextureLUT, TextureDetail, TextureLOD, CombineMode(PM_CC_10 x2)} (nv 0);
+   - wfx_r3_u {CycleType(2CYCLE), DepthSource(G_ZS_PIXEL)} (nv 0).
+2. In the function: R1 -> `{ Gfx v[2]; Gfx* p = v; <the ColorImage line, then the PrimColor line, with p++ and their exact
+   arguments>; nd_scomp_rec(&wfx_r1a, v, 1); nd_scomp_rec(&wfx_r1b, v + 1, 1); }`. R2 -> `{ Gfx v[2]; Gfx* p = v; <ColorImage,
+   then PrimDepth>; nd_scomp_rec(&wfx_r2a, v, 2); nd_scomp_rec(&wfx_r2b, NULL, 0); }`. R3 -> `nd_scomp_rec(&wfx_r3, NULL, 0);`.
 3. Scenario and bench `flo10_det` (one commit): debug `warp=flo_10:0 shots shotwin=200:6 loglevel=debug det`, until
    `shot \d+ frame 205\b`, cap 25, deadline 20, expected_events: `warp: flo_10 entry 0` and the until line; bench kind azahar_pic,
    tags azahar, pic. Pre-flight: grep flo_10's scripts for `SetCustomGfxBuilders` with UnkModelFunc001 and name the model in the
