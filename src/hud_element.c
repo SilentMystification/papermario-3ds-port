@@ -567,6 +567,50 @@ static void hud_rect_run(const uint32_t* u) {
     nd_walk_state((const uint32_t*)buf, (unsigned)(p - buf));
 }
 
+/* S5CHUDB (NATIVEAPI E1): one complex HUD quad of mode 2 (IA8): the matrix stack entry, the 4 vertices, the image and the state. */
+typedef struct NdCHudRec { const void* img; uint32_t mtx; const void* vtx; int32_t w, h; uint32_t flags, prim, pad; } NdCHudRec;
+_Static_assert(sizeof(NdCHudRec) == 32, "NdCHudRec: 4 units");
+__attribute__((unused)) static void cplx_quad_run(const uint32_t* u) {
+    static const u32 cw_47[2] = HUD_CW(PM_CC_47, PM_CC_47);
+    static const unsigned wrap[4] = { G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK };
+    const NdCHudRec* r = (const NdCHudRec*)u;
+    const int filt = (r->flags & HUD_ELEMENT_FLAG_FILTER_TEX) != 0, aa = (r->flags & HUD_ELEMENT_FLAG_ANTIALIASING) != 0;
+    const int xlu = (r->flags & HUD_ELEMENT_FLAG_TRANSPARENT) != 0;
+    NdBindDesc d;
+    NdPsoN64 pd;
+    pd.cw0 = cw_47[0]; pd.cw1 = cw_47[1];
+    if (!xlu) pd.oml = aa ? (G_RM_AA_TEX_EDGE | G_RM_AA_TEX_EDGE2) : (G_RM_TEX_EDGE | G_RM_TEX_EDGE2);
+    else pd.oml = aa ? ((AA_EN | G_RM_CLD_SURF) | (AA_EN | G_RM_CLD_SURF2)) : (G_RM_CLD_SURF | G_RM_CLD_SURF2);
+    pd.omh = G_TT_NONE | (filt ? G_TF_AVERAGE : G_TF_POINT);
+    pd.omh_m = (3u << G_MDSFT_TEXTLUT) | (3u << G_MDSFT_TEXTFILT);
+    if (nd_tex_blk_desc(&d, r->img, G_IM_FMT_IA, G_IM_SIZ_8b, r->w, r->h, wrap, NULL, 0) && nd_direct_ready() == 1 &&
+        nd_direct_bind(nd_pso_n64(&pd), r->prim, nd_direct_env())) {
+        nd_direct_tex(&d);
+        nd_direct_quad(r->mtx, r->vtx);
+        nd_direct_end();
+        return;
+    }
+    nd_direct_fallback(40u);
+    {
+        static Gfx buf[32];
+        Gfx* p = buf;
+        gDPSetTextureFilter(p++, filt ? G_TF_AVERAGE : G_TF_POINT);
+        gSPMatrix(p++, r->mtx, G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+        gDPSetCombineMode(p++, PM_CC_47, PM_CC_47);
+        gDPSetPrimColor(p++, 0, 0, r->prim >> 24, (r->prim >> 16) & 0xff, (r->prim >> 8) & 0xff, r->prim & 0xff);
+        if (!xlu) { if (!aa) { gDPSetRenderMode(p++, G_RM_TEX_EDGE, G_RM_TEX_EDGE2); } else { gDPSetRenderMode(p++, G_RM_AA_TEX_EDGE, G_RM_AA_TEX_EDGE2); } }
+        else { if (!aa) { gDPSetRenderMode(p++, G_RM_CLD_SURF, G_RM_CLD_SURF2); } else { gDPSetRenderMode(p++, AA_EN | G_RM_CLD_SURF, AA_EN | G_RM_CLD_SURF2); } }
+        gDPLoadTextureBlock(p++, r->img, G_IM_FMT_IA, G_IM_SIZ_8b, r->w, r->h, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP,
+                            G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+        gDPSetTextureLUT(p++, G_TT_NONE);
+        gSPVertex(p++, r->vtx, 4, 0);
+        gSP1Triangle(p++, 0, 1, 2, 0);
+        gSP1Triangle(p++, 0, 2, 3, 0);
+        gSPPopMatrix(p++, G_MTX_MODELVIEW);
+        nd_walk_state((const uint32_t*)buf, (unsigned)(p - buf));
+    }
+}
+
 void hud_element_draw_rect(HudElement* hudElement, s16 texSizeX, s16 texSizeY, s16 drawSizeX, s16 drawSizeY,
                            s16 offsetX, s16 offsetY, s32 clamp, s32 dropShadow) {
     u32 isFmtCI4;

@@ -78,3 +78,10 @@ _Static_assert(sizeof(NdTRect) % 8 == 0 && sizeof(NdTRect) == 104, "NdTRect: 13 
 void nd_trect_run(const uint32_t* u);
 
 #endif
+
+/* S5CHUDA (NATIVEAPI E1): one transformed textured quad of a complex HUD element, between nd_direct_bind/nd_direct_tex and nd_direct_end. nd_direct_quad
+ * runs the matrix push-load of mtx (the old gSPMatrix w1), the load of the 4 Vtx at vtx4 to slots 0 to 3, the triangles (0,1,2) and (0,2,3) and the pop,
+ * each by the walker function of the op; the first triangle does not rebind tile 0 (nd_dq_on). nd_tex_blk_desc: the descriptor of tile 0 after
+ * gDPLoadTextureBlock of an image w x h (wrap = cms, cmt, masks, maskt); 0 = not valid (a mask, a block over 2048 texels, or the window call refuses). */
+void nd_direct_quad(uint32_t mtx, const void* vtx4);
+int nd_tex_blk_desc(NdBindDesc* o, const void* timg, unsigned fmt, unsigned siz, int w, int h, const unsigned wrap[4], const void* pal, int pal_n);

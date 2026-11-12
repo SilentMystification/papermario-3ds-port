@@ -19,6 +19,7 @@
 #ifndef pm_gpu_flush
 #define pm_gpu_flush() pm_gpu_flush_at(__LINE__)
 #endif
+int nd_dq_on; /* S5CHUDA: a direct quad is drawing (nd_direct_quad .. nd_direct_end); read by gv_epoch_enter */
 void comb_in_walker(NdCombIn* in);                 /* nd_comb.c: the walker's combine inputs */
 void ens_clear(void);                              /* nd_tex_set.c */
 void nd_sr_forget(void);                           /* nd_set.c */
@@ -177,6 +178,7 @@ void nd_direct_end(void) {
     ens_clear();
     nd_ws.cur_tile = -1;
     sc_ok = 0;
+    nd_dq_on = 0;
     nd_sr_forget();
     gv_epoch++; /* the ops of the stream path each raise it: the first triangle after this draw takes its state again */
 }
@@ -328,4 +330,37 @@ void nd_trect_run(const uint32_t* u) {
     gImmp1(p++, G_RDPHALF_1, r->hs);
     gImmp1(p++, G_RDPHALF_2, r->hd);
     nd_walk_state((const uint32_t*)buf, (unsigned)(p - buf));
+}
+
+/* S5CHUDA (NATIVEAPI E1): the geometry of one transformed HUD quad on the bound state. nd_dq_on is set for the length of the quad and cleared by
+ * nd_direct_end: gv_epoch_enter (nd_geom.c) then skips ensure_tile and dual_bind, which would rebind tile 0 from the walker's stale td[0] over
+ * the descriptor nd_direct_tex bound. The walker state a direct bind changed raises gv_epoch once, as the first state op of the stream would. */
+void nd_direct_quad(uint32_t mtx, const void* vtx4) {
+    const u32 wm = ND_W0_D2(G_MTX, sizeof(Mtx), (G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW) ^ G_MTX_PUSH, 0) & 0xffffffu; /* gSPMatrix */
+    const u32 wv = ND_W0_VTX(4, 0) & 0xffffffu;                                                                       /* gSPVertex(v, 4, 0) */
+    const u32 t0 = (_SHIFTL(G_TRI1, 24, 8) | __gsSP1Triangle_w1f(0, 1, 2, 0)) & 0xffffffu;                            /* gSP1Triangle(0, 1, 2) */
+    const u32 t1 = (_SHIFTL(G_TRI1, 24, 8) | __gsSP1Triangle_w1f(0, 2, 3, 0)) & 0xffffffu;                            /* gSP1Triangle(0, 2, 3) */
+    nd_dq_on = 1;
+    gv_epoch++;
+    pm_gbi_cur_op = G_MTX;
+    load_mtx(wm, mtx, 0);
+    pm_gbi_cur_op = G_VTX;
+    nd_geom_vtx(wv, (u32)(uintptr_t)vtx4, NULL);
+    pm_gbi_cur_op = G_TRI1;
+    tri_prep_ok = 0;
+    draw_tri(t0);
+    tri_prep_ok = 0;
+    draw_tri(t1);
+    pm_gbi_cur_op = G_POPMTX;
+    gbi_popmtx(64u); /* gSPPopMatrix: w1 = 1 * 64 */
+}
+
+/* S5CHUDA: tile 0 after gDPLoadTextureBlock(timg, fmt, siz, w, h, 0, cms, cmt, masks, maskt, 0, 0). The block load leaves no LoadTile window (set_timg
+ * clears ld_valid, the block load sets none, and it clears the load record of its TMEM address), the image stride is the width (the macro loads
+ * through a width 1 image, so set_tilesize takes the tile width) and the tile size is (0, 0, (w - 1) << 2, (h - 1) << 2). That is the window of
+ * nd_tex_win_desc with the origin (0, 0), the full size and stride w, so the rule is that call; with a mask the ld_valid rules of tex_win0 would
+ * differ (period widening), so a mask or a block over 2048 texels is not valid (0): the caller runs the old list. */
+int nd_tex_blk_desc(NdBindDesc* o, const void* timg, unsigned fmt, unsigned siz, int w, int h, const unsigned wrap[4], const void* pal, int pal_n) {
+    if (w <= 0 || h <= 0 || siz == 0 || w * h > 2048 || wrap[2] || wrap[3]) return 0;
+    return nd_tex_win_desc(o, timg, w, fmt, siz, wrap, 0, 0, w, h, 0, 0, (w - 1) << 2, (h - 1) << 2, pal, pal_n);
 }

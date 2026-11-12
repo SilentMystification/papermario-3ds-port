@@ -198,14 +198,17 @@ int gv_state_why(int* ct, int* both) {
 }
 
 /* the first triangle (or DLC2 range) after a state change */
+extern int nd_dq_on; /* nd_direct.c */
 void gv_epoch_enter(void) {
     ep_flush_stats();
     ep_why = gv_state_why(&ep_ct, &ep_cullboth);
     ep_t1f = 0;
     if (ep_why < 0 && !ep_cullboth) {
         ep_fl = tri_flags();
-        ensure_tile(nd_ws.use_t1 ? 1 : 0);
-        dual_bind();
+        if (!nd_dq_on) { /* S5CHUDA: a direct quad has bound tile 0 itself (nd_direct_quad) */
+            ensure_tile(nd_ws.use_t1 ? 1 : 0);
+            dual_bind();
+        }
         sync_render();
         /* MERLON (B3b case 6 on the ring path): a model drawn into the z-buffer image (crystal ball depth mask, mac_01) tests its own depth against the world
          * and writes the constant depth of the PRIM word where it is nearer (pm_gpu zmark, two native passes). sync_render turned it off.

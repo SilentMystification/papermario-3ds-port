@@ -77,7 +77,8 @@ int nd_tex_win_desc(NdBindDesc* o, const void* timg, int timg_stride, unsigned f
     win_a[0] = timg_stride; win_a[1] = ldx; win_a[2] = ldy; win_a[3] = ldw; win_a[4] = ldh; win_a[5] = uls; win_a[6] = ult; win_a[7] = lrs; win_a[8] = lrt;
     return 1;
 }
-void nd_gx_w(Gfx* g, uint32_t w0, uint32_t w1) { (void)g; (void)w0; (void)w1; n_gx++; }
+static uint32_t gx_log[16][2];
+void nd_gx_w(Gfx* g, uint32_t w0, uint32_t w1) { (void)g; if (n_gx < 16) { gx_log[n_gx][0] = w0; gx_log[n_gx][1] = w1; } n_gx++; }
 void nd_walk_state(const uint32_t* q, unsigned n) { (void)q; n_walk += (int)n; }
 void gp3_t0_surv(void) {}
 unsigned pm_gbi_cur_op; /* NAPI3B: the glyph draw (nd_glyph_draw) is not run by this test, its callees are stubs */
@@ -92,6 +93,15 @@ void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s
     last_rect[0] = x0; last_rect[1] = y0; last_rect[2] = x1; last_rect[3] = y1;
     last_st[0] = s0; last_st[1] = t0; last_st[2] = s1; last_st[3] = t1;
 }
+
+/* S5CHUDA: the walker functions of nd_direct_quad log their arguments in call order */
+int tri_prep_ok;
+static u32 q_log[8][4];
+static int q_n, q_prep[8];
+void load_mtx(u32 w0, u32 w1, u32 hdr) { q_log[q_n][0] = 1; q_log[q_n][1] = w0; q_log[q_n][2] = w1; q_log[q_n][3] = hdr; q_n++; }
+void nd_geom_vtx(u32 w0, u32 w1, const Gfx* list) { (void)list; q_log[q_n][0] = 2; q_log[q_n][1] = w0; q_log[q_n][2] = w1; q_n++; }
+void draw_tri(unsigned w) { q_prep[q_n] = tri_prep_ok; q_log[q_n][0] = 3; q_log[q_n][1] = w; q_log[q_n][3] = pm_gbi_cur_op; q_n++; }
+void gbi_popmtx(u32 w1) { q_log[q_n][0] = 4; q_log[q_n][2] = w1; q_n++; }
 
 int main(void) {
     NdPsoN64 a = { 0xfc000010u, 0x11111111u, 0x00504340u, 0x0u, 0xf000u };
@@ -194,6 +204,40 @@ int main(void) {
         nd_trect_run((const uint32_t*)&t);
         CHECK(n_win == 1 && n_rect == 0 && n_walk >= 4 && n_gx >= 4); /* n_walk counts units: the load ops and the 3 rectangle units */
         fake_role = ROLE_MAIN;
+    }
+    /* S5CHUDA: nd_direct_quad runs MTX, VTX, TRI, TRI, POP with the words the typed recorder makes of the old ops (low 24 bits of w0, as op_geo passes them) */
+    {
+        static const float vq[16] = { 0 };
+        Gfx g[5];
+        NdBindDesc bd;
+        const unsigned wr[4] = { 0, 0, 0, 0 };
+        gv_epoch = 5; nd_dq_on = 0; q_n = 0; n_gx = 0;
+        gSPMatrix(&g[0], 0x1234, G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+        gSPVertex(&g[1], vq, 4, 0);
+        gSP1Triangle(&g[2], 0, 1, 2, 0);
+        gSP1Triangle(&g[3], 0, 2, 3, 0);
+        gSPPopMatrix(&g[4], G_MTX_MODELVIEW);
+        CHECK(n_gx == 5);
+        nd_direct_quad(0x1234u, vq);
+        CHECK(q_n == 5 && gv_epoch == 6 && nd_dq_on == 1);
+        CHECK(q_log[0][0] == 1 && q_log[0][1] == (gx_log[0][0] & 0xffffffu) && q_log[0][2] == 0x1234u && q_log[0][3] == 0u && gx_log[0][1] == 0x1234u);
+        CHECK(q_log[1][0] == 2 && q_log[1][1] == (gx_log[1][0] & 0xffffffu) && q_log[1][2] == (u32)(uintptr_t)vq && gx_log[1][1] == (u32)(uintptr_t)vq);
+        CHECK(q_log[2][0] == 3 && q_log[2][1] == (gx_log[2][0] & 0xffffffu) && q_prep[2] == 0 && q_log[2][3] == G_TRI1);
+        CHECK(q_log[3][0] == 3 && q_log[3][1] == (gx_log[3][0] & 0xffffffu) && q_prep[3] == 0);
+        CHECK(q_log[4][0] == 4 && q_log[4][2] == gx_log[4][1]);
+        nd_direct_end();
+        CHECK(nd_dq_on == 0);
+        /* nd_tex_blk_desc is the full window call: origin 0, size w x h, stride w, size (0, 0, (w - 1) << 2, (h - 1) << 2) */
+        n_win = 0;
+        CHECK(nd_tex_blk_desc(&bd, (const void*)0x2000, G_IM_FMT_IA, G_IM_SIZ_8b, 32, 32, wr, NULL, 0) == 1);
+        CHECK(n_win == 1 && win_a[0] == 32 && win_a[1] == 0 && win_a[2] == 0 && win_a[3] == 32 && win_a[4] == 32 && win_a[5] == 0 && win_a[6] == 0 && win_a[7] == 124 && win_a[8] == 124);
+        CHECK(nd_tex_blk_desc(&bd, (const void*)0x2000, G_IM_FMT_IA, G_IM_SIZ_8b, 24, 16, wr, NULL, 0) == 1);
+        CHECK(n_win == 2 && win_a[0] == 24 && win_a[3] == 24 && win_a[4] == 16 && win_a[7] == 92 && win_a[8] == 60);
+        {
+            const unsigned wm[4] = { 0, 0, 5, 5 };
+            CHECK(nd_tex_blk_desc(&bd, (const void*)0x2000, G_IM_FMT_IA, G_IM_SIZ_8b, 32, 32, wm, NULL, 0) == 0);
+            CHECK(nd_tex_blk_desc(&bd, (const void*)0x2000, G_IM_FMT_IA, G_IM_SIZ_8b, 64, 64, wr, NULL, 0) == 0);
+        }
     }
     if (fails) return 1;
     printf("nd_direct ok\n");
