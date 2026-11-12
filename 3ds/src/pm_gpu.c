@@ -153,6 +153,7 @@ static C3D_Mtx pcomp_k[PM_GM_N + 1u];
 static unsigned char pcomp_k_has[PM_GM_N + 1u];
 extern float (*gm_tab_k)[4][4]; /* nd_mtx_set.c */
 extern int nd_tw_chk;
+extern int pm_tw_on; /* pm_nusys.c: the walk of an L frame */
 extern unsigned nd_tw_m;
 void nd_twinchk_pal(const float* o);
 void nd_twinchk_nrm(const float n[3][4]);
@@ -827,7 +828,7 @@ static __attribute__((noinline)) void pcomp_calc(unsigned gm) {
         for (int i = 0; i < 4; i++) pcomp[gm].r[i].w += pcomp[gm].r[i].z * nb.rect_pal_z;
     } else
         pal_mul(&pcomp[gm], pal_tab[gm]);
-    if (pm_interp_repl && gm != RECT_GM && gm_tab_k) { pal_mul(&pcomp_k[gm], gm_tab_k[gm]); pcomp_k_has[gm] = 1; } /* INTERPB1 */
+    if (pm_tw_on && gm != RECT_GM && gm_tab_k) { pal_mul(&pcomp_k[gm], gm_tab_k[gm]); pcomp_k_has[gm] = 1; } /* INTERPB1 */
     else if (__builtin_expect(nd_tw_chk, 0) && gm != RECT_GM && pcomp_k_has[gm]) { /* twinchk: the key walk's pcomp against the L walk's twin */
         if (memcmp(pcomp[gm].m, pcomp_k[gm].m, sizeof(float[16])) != 0) nd_tw_m++;
     }
@@ -1187,7 +1188,7 @@ static __attribute__((cold, noinline)) void submit_dbg(const NdDraw* d, int tex)
 float pm_pal0_k[16];
 void pm_gpu_pcomp_native(float o[16], const float m[4][4]) {
     nd_mtx_pcomp(o, gv_post.m, m);
-    if (pm_interp_repl) { float ck[4][4]; nd_mtx_combine_k(ck); nd_mtx_pcomp(pm_pal0_k, gv_post.m, ck); if (__builtin_expect(nd_tw_chk, 0)) nd_twinchk_pal(pm_pal0_k); }
+    if (pm_tw_on) { float ck[4][4]; nd_mtx_combine_k(ck); nd_mtx_pcomp(pm_pal0_k, gv_post.m, ck); if (__builtin_expect(nd_tw_chk, 0)) nd_twinchk_pal(pm_pal0_k); }
     else if (__builtin_expect(nd_tw_chk, 0)) nd_twinchk_pal(o);
 }
 /* PM5-3: the pm5 block of a model draw from its NdDraw fields (the same calls as pm5_upload, values of the draw) */
@@ -3445,7 +3446,7 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
     }
     /* PM5-3: the normal rows of the walker's matrix (gm_nrm: model view rows 0 to 2, w 0) for a lit or fogged range */
     c.nrm_ok = gv5_on; for (int r_ = 0; r_ < 3; r_++) { c.nrm5[r_][0] = nd_mv[nd_mv_sp][r_][0]; c.nrm5[r_][1] = nd_mv[nd_mv_sp][r_][1]; c.nrm5[r_][2] = nd_mv[nd_mv_sp][r_][2]; c.nrm5[r_][3] = 0.f; }
-    if (pm_interp_repl) { /* INTERPB1: the key frame twin of the normal rows (pm_nrm5_k) */
+    if (pm_tw_on) { /* INTERPB1: the key frame twin of the normal rows (pm_nrm5_k) */
         for (int r_ = 0; r_ < 3; r_++) { pm_nrm5_k[r_][0] = nd_mv_k[nd_mv_sp][r_][0]; pm_nrm5_k[r_][1] = nd_mv_k[nd_mv_sp][r_][1]; pm_nrm5_k[r_][2] = nd_mv_k[nd_mv_sp][r_][2]; pm_nrm5_k[r_][3] = 0.f; }
         if (__builtin_expect(nd_tw_chk, 0)) nd_twinchk_nrm(pm_nrm5_k);
     } else if (__builtin_expect(nd_tw_chk, 0)) nd_twinchk_nrm(c.nrm5);
