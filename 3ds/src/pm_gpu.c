@@ -14,6 +14,7 @@ void pm_gx_room(void); /* HANG1a */
 #include "nd.h"
 #include "nd_op.h"
 #include "nd_sprite.h"
+#include "nd_kccmd.h"
 #include "pm_shader4_shbin.h"
 #include "pm_gpu.h"
 #include "pm_tex.h"
@@ -172,6 +173,7 @@ static gxCmdEntry_s kc_ent[KC_MAX]; /* static: 16 KB */
 static unsigned kc_n, kc_from, kc_skip_n, kc_split0, kc_tail_w, kc_tail_n;
 static int kc_rec, kc_arm, kc_over, kc_valid; /* record on; the walk is an L walk with a patch list; entries lost; the copy is complete */
 static u32* kc_buf; /* linear memory (the GPU reads it) */
+static u32 kc_cmd[KC_WORDS / 64u]; /* FPS60W2: the command starts of the copied words (nd_kccmd.h, one bit per even word) */
 static u32* kc_base; /* the command buffer start of the frame (after C3D_FrameBegin) */
 static u32 kc_cb; /* the command buffer address the recorded lists point into */
 static volatile int kc_cut; /* steps after a scene change that still take the key walk */
@@ -2914,12 +2916,15 @@ static __attribute__((noinline)) void kc_build(void) {
         const unsigned n = kc_ent[i].data[2] / 4u;
         if (l < cb || (unsigned)(l - cb) + n > coff) { pm_kc_why[2]++; kc_out("list", i, (u32)l, n, cb, coff); return; }
     }
+    if (!nd_kccmd_decode(cb, coff, kc_cmd, KC_WORDS / 64u)) { pm_kc_why[2]++; return; } /* FPS60W2: a command steps past the copied words */
     memcpy(kc_buf, cb, coff * 4u);
     const unsigned np = armed ? nd_kp_n : 0; /* nd_kp_n holds the last L frame's list when this frame had no armed walk */
     for (unsigned i = 0; i < np; i++) {
         const NdKPatch* p = &nd_kp[i];
         if (p->base < cb || (unsigned)(p->base - cb) + 2u > coff) { pm_kc_why[2]++; kc_out("patch", i, (u32)p->base, 0, cb, coff); return; }
-        const unsigned off = (unsigned)(p->base - cb), k = (cb[off + 1u] >> 20) & 0xFFu;
+        const unsigned off = (unsigned)(p->base - cb);
+        if (!nd_kccmd_is_start(kc_cmd, off)) { pm_kc_why[2]++; kc_out("patch", i, (u32)p->base, 0, cb, coff); return; } /* FPS60W2: the base is not a command start */
+        const unsigned k = (cb[off + 1u] >> 20) & 0xFFu;
         for (unsigned qd = 0; qd < 4; qd++) {
             const unsigned j = p->first + qd, w = off + (j ? 1u + j : 0u);
             if (j <= k && w < coff) memcpy(&kc_buf[w], &p->k[qd], 4);
@@ -2938,7 +2943,7 @@ void pm_gpu_key_show(void) {
     kc_valid = 0;
     if (!gs.gpu_ok) return;
     if (pm_interp_on > 0 && !pm_wd_wake_frames) sync60_pace();
-    C3D_FrameBegin(0);
+    if (!C3D_FrameBegin(0)) { pm_kc_why[4]++; return; } /* FPS60W2: a frame already begun: nothing is queued into a frame citro3d did not open */
     if (gb_on) { gb_sum += (unsigned)(pm_ticks() - gb_sub); gb_n++; gb_on = 0; pm_pf_late++; }
     noise_off[0] = (float)(noise_next() & 1023u) / 1024.f; noise_off[1] = (float)(noise_next() & 1023u) / 1024.f; /* PT07: the sequence of a frame begin */
     pm_ph_gpu_note();
