@@ -15,6 +15,7 @@ For each task:
 3. Split the work into rows that Haiku can do without design choices (row_TEMPLATE.md, 60 lines or fewer). Each row gives: files and
    symbols, the exact edit, commands, one gate (nd_host or a byte compare), and the stop condition. Never write an open task such as
    "investigate". State the bench names and the `--commit` of the base exactly.
+3b. Pre-flight before you release a row (user, 2026-11-12): grep every slot, symbol, flag and counter the row names (is it free, does it exist, who writes it, in which frame phase); check that the test runner can do the until rule (3ds/run_azahar.ps1 matches the first regex hit only); state the expected value of each gate. When a coder reports a row spec fault, send the corrected row to the coder yourself (SendMessage with the main-folder path of the row file) and tell the orchestrator in your hand-back. The coder still hands back to the orchestrator at a passed gate.
 3a. Plan the row's Azahar runs with the harness (docs/handoff/test_catalog.md): one list per row (`bench.py run a,b,c`), warm restarts, runs on separate slots. Do not add a rule that Azahar runs must run alone.
 4. Choose the model per row. Default: Haiku. Sonnet or Opus only with a reason (why not Haiku, why not smaller). The user decides.
 5. List the files and the places (functions, scenarios, blocks) each row edits. Rows that run together may share a file only when their edits are in different places (no merge conflict).
