@@ -85,6 +85,11 @@ for the epic before that proof. A stage report says what is left, in counts, nev
 - Every turn, one markdown table (user, 2026-11-12) with the columns State | Agent | Row | Summary. State is RUNNING, QUEUED
   or BLOCKED-ON-USER. One line per agent or row. Agent = [Haiku], [Sonnet], [Opus], [Oracle Opus], [Push], [Build]. Summary = 10
   words or fewer (the same text as the Agent description). BLOCKED-ON-USER: console actions only.
+- Every status starts with one line "Display list code remaining" in counts (user, 2026-11-12: earlier epics declared done at a
+  stage end while list code remained). Source: the newest LISTCEN2 run (C1..C12 of plan_endgame.md); until it exists, the plan
+  census: 3820 active builder calls (+648 N64-only), 3254 gMainGfxPos uses (+715), 22103 list data macros in 2107 Gfx arrays,
+  714 reader hits, 15 state-model functions. The word "done" is not used for the epic; only `elfgate.py` printing
+  `func 0 data 0 gfxnames 0` plus all source counters 0 ends it, and the user can run that script himself.
 - Ask only with AskUserQuestion (2-4 options, recommended first). Do not ask what a rule decides. A decision or blocker is never
   written as a status line: ask it as a question at once. BLOCKED-ON-USER lists only console actions that wait for the user.
   A design the user gave to the oracle is the oracle's job: it is not a blocker.
