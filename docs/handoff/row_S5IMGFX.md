@@ -47,7 +47,8 @@ types fall back, counted.
 
 ## Files and places
 src/imgfx.c (imgfx_appendGfx_mesh and mesh_basic under TARGET_3DS), 3ds/src/nd_imgfx.c (new runner), 3ds/include/nd_api.h
-(declarations at the end), azt_scenarios.json and bench_defs.json (one census scene, after `mdl5_iwa10_det`). S5CHUD waits on
+(declarations at the end), azt_scenarios.json and bench_defs.json (one census scene, after `mdl5_iwa10_det`; its expected_events
+hold only lines both builds print, never the new imgfxcen line: a base would fail; grep the census in the head log). S5CHUD waits on
 this row for its mode 1.
 
 ## Gate (expected values)

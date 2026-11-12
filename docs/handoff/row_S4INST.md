@@ -1,66 +1,63 @@
-# Row S4INST: one particle run per run of render tasks of the same effect (NATIVEAPI C4; order rule by oracle 3)
+# Row S4INST: energy_shockwave draw list through a one-instance particle run (setter form)
 
-Model: Sonnet (user decides).
-- Why not Haiku: the run crosses the render task loop in model.c and needs the order, reflection and setup-list rules below. The
-  setup-list check (rule 3) is a read of two static lists, and its result decides the run form.
-- Why not Opus: the order rule is written here; the run uses the S4PDIR setter form.
+(Model: Haiku. One function, one exact edit. Rewritten by ORACLE5 after the row spec fault of try 1: the old text named two
+effects and predated S4MULTI. Budget reset once (row spec fault). Ring blast is row_S4INST2.md.)
 
-## Blocker and base
-S4PDIR merged (per-instance PRIM, ENV, TILESIZE, MTX units through setters, nd_parts_run_v). Then `sh 3ds/tools/wt_new.sh S4INST`;
-PM_ROW=S4INST PM_LANE=S4INST.
+## Decision (oracle 5)
+- One run per appendGfx call (begin, add, end in energy_shockwave_appendGfx). No run across render tasks: with the setup list
+  D_09000E60 per instance (D_09000DC0 clears G_SHADING_SMOOTH that E60 sets), a joined run must carry Segment and CALL E60
+  in its units, which forces the slower nd_parts_run form (every pre unit through nd_walk_state). One NDC_NAPI header per task
+  costs less. S7EFX replaces the setup list later.
+- No change to nd_rec.c or nd_walk.c. PipeSync, Segment and CALL E60 stay ordinary ops before the run; the trailing PipeSync
+  stays an op after it. The run units are PRIM, ENV, TILESIZE, TILESIZE, MTX, CALL DC0, POPMTX: every unit but the call is a
+  setter id, so nd_parts_end (nd_rec.c:325-337) records nd_parts_run_v (nd_walk.c:469).
+- DC0 (two vertex loads, 32 and 28 at slot 0, triangles) passes parts_ok since S4MULTI (nd_rec.c:283-306).
 
-## Code read
-- Effects queue render tasks (energy_shockwave_render, energy_shockwave.c:127-138: dist 10, RENDER_MODE_SURFACE_XLU_LAYER3, and
-  RENDER_TASK_FLAG_REFLECT_FLOOR).
-- execute_render_tasks (src/model.c:5181-5320) sorts by dist: ascending, with the >= 3M and <= 800k bands descending. Then
-  bat1_sort_runs (:5149) groups plain opaque model tasks only (bat1_plain, :5110-5135); effects keep the distance order. Then each
-  task's appendGfx runs in sorted order:
-  - with GLOBAL_OVERRIDES_ENABLE_FLOOR_REFLECTION: each REFLECT_FLOOR task is wrapped in nd_range_begin / nd_range_repeat, so its
-    range is drawn again flipped, right after it (:5271-5292);
-  - else the plain loop (:5293-5305).
-- energy_shockwave_appendGfx (:140-170), per instance: PipeSync, gSPSegment 0x09, setup list D_09000E60, prim, env, 2 SetTileSize
-  (tiles 0 and 1), matrix (translate x scale), list D_09000DC0, pop, PipeSync. There are 11 live instances in fxtest 51.
+## Start
+Worktree build3ds/wt/S4INST exists (branch S4INST). First `git merge main` in it. PM_ROW=S4INST PM_LANE=S4INST on every call.
 
-## Order rule (the result must keep the draw order of today)
-1. A run is a maximal sequence of consecutive entries of `sorted` (after bat1_sort_runs) whose tasks have the same appendGfx and
-   whose appendGfx is in the run table (this row: energy_shockwave_appendGfx only). Never reorder tasks: a run only joins
-   neighbours, so the draw order stays the same.
-2. Floor reflection: when GLOBAL_OVERRIDES_ENABLE_FLOOR_REFLECTION is set and the tasks carry REFLECT_FLOOR, do not form runs.
-   Today the order is A, A-flipped, B, B-flipped. A run would give A, B, A-flipped, B-flipped, which changes translucent order.
-3. Setup list per instance (oracle 3 read of the lists, assets/us/effects/gfx):
-   - D_09000DC0_3762D0 clears G_LIGHTING | G_SHADING_SMOOTH, and D_09000E60_376370 sets G_SHADE | G_SHADING_SMOOTH. So instance
-     2..n must run the setup list again: keep it per instance.
-   - DC0 has two vertex loads (32 and 28 vertices), and parts_ok (nd_rec.c:283-299) refuses a second NDO_VTX. So the shockwave
-     list cannot take nd_part_draw until a multi-load form exists.
-   - Do this row with explosion, snowman_doll or ring_blast first: the first of them whose list is one load at slot 0 plus
-     triangles. Check each list file before the edit. The shockwave needs a row S4MULTI (nd_part_draw for lists with several
-     vertex loads, a design core: Sonnet).
-   Old text, kept for those effects:
-   - Instance 2..n may skip D_09000E60 and gSPSegment only if D_09000DC0 sets none of the state that D_09000E60 sets. Read both
-     lists (effect data, energy_shockwave graphics) and write the comparison into the commit.
-   - If DC0 sets any such state, keep the setup list per instance as a unit. S4PDIR's run form allows one CALL at index pre: then
-     extend the run form so a second CALL (the setup list) is allowed before the pre units. Name that in the commit.
-4. Opening: the first instance of a run opens the NdParts run (nd_parts_begin) and the last one closes it (nd_parts_end).
-   execute_render_tasks marks the run: a flag `gNdRunOpen` with the run's appendGfx, set before the first call of a run and
-   cleared after the last. energy_shockwave_appendGfx then calls nd_parts_add for its instance and does not begin or end the run
-   itself when the flag is set. Alone (a run of 1), it behaves as today.
+## Touch only
+src/effects/energy_shockwave.c (energy_shockwave_appendGfx), 3ds/tools/azt_scenarios.json and 3ds/tools/bench_defs.json
+(new entry fxpic_51 after fxpic_50 in each).
 
-## Files and places
-src/model.c (execute_render_tasks, the plain loop :5293-5305 only), src/effects/energy_shockwave.c (energy_shockwave_appendGfx),
-3ds/include/nd_api.h (the flag declaration at the end). Follow-ups (one row each, after this merges): explosion, snowman_doll,
-ring_blast. radiating_energy_orb as 4 runs only where its parts share a shape in sequence.
+## Exact edits
+1. energy_shockwave.c: replace the 5 lines from `gDPSetPrimColor(...)` through `gDPSetEnvColor(...)` and the 2 gDPSetTileSize
+   lines and the 3 lines gSPMatrix / gSPDisplayList(D_09000DC0_3762D0) / gSPPopMatrix with this form (the uls/ult arithmetic and
+   the guTranslateF/guScaleF/guMtxCatF/guMtxF2L lines stay where they are, before the block; the block goes where gSPMatrix was):
+   ```c
+   #ifdef TARGET_3DS
+       {
+           NdParts pb;
+           Gfx g[7];
+           gDPSetPrimColor(&g[0], 0, 0, 255, 179, 30, data->unk_24);
+           gDPSetEnvColor(&g[1], data->unk_50, data->unk_51, data->unk_52, 128);
+           gDPSetTileSize(&g[2], G_TX_RENDERTILE, uls, ult, uls + 252, ult + 252);
+           gDPSetTileSize(&g[3], 1, uls2, ult2, uls2 + 124, ult2 + 124);
+           gSPMatrix(&g[4], &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+           gSPDisplayList(&g[5], D_09000DC0_3762D0);
+           gSPPopMatrix(&g[6], G_MTX_MODELVIEW);
+           nd_parts_begin(&pb, 5, 1);
+           nd_parts_add(&pb, (const uint32_t*)g);
+           nd_parts_end(&pb);
+       }
+   #else
+       <the original prim, env, 2 tile size, matrix, display list and pop lines, unchanged, in their original order>
+   #endif
+   ```
+   The original order puts prim and env before the uls arithmetic: under TARGET_3DS they move into the block (state setters before
+   the same draw: no order change for the walker). Add `#include "nd_api.h"` as line 3 (after `#include "effects_internal.h"`),
+   the form of src/effects/effect_3D.c:3.
+2. azt_scenarios.json and bench_defs.json: copy the fxpic_50 entries to fxpic_51, insert after fxpic_50; change `fxtest=50` to
+   `fxtest=51`, shimmer_burst to energy_shockwave, effect 50 to effect 51. Commit them with step 1 (one commit).
 
 ## Gate (expected values)
-- Build, memcheck OK; nd_host PASS.
-- Scenario and bench `fxpic_51`, a copy of `fxpic_50` with `fxtest=51` (insert after fxpic_50). `bench.py base fxpic_51` at the
-  merge-base. Then one list: `bench.py run fxpic_51,spot_mac01_det --row S4INST --why "C4: shockwave instances as one run"`
-  (2 starts). `bench.py cmp` both: every shot byte-equal.
-- Census: PM_FNCOV build, `bench.py run fxfncov_base,fxfncov_51 --row S4INST --lane S4INST_fncov` (2 starts, both on the
-  row's census lane; never `bench.py base` on fxfncov). Expected effect minus base: nd_parts_run_v about 1 per frame (it was 11),
-  and nd_ops_run below 20. `hotset.py --fncovfn` hides functions under 20 calls (hotset.py:319-326), so count nd_parts_run_v,
-  nd_parts_run and nd_part_draw with the build3ds/out/fncall.py snippet of row_S4WBLK.md try 3 (names changed, lane S4INST).
-- Budget 6 Azahar starts. Console: CONSOLE C3 (XL fxtest=all) after this row.
+- `sh 3ds/build.sh > build3ds/out/build.txt 2>&1`: memcheck OK. `bench.py run nd_host --row S4INST --why "S4INST nd_host"`: PASS.
+- `bench.py base fxpic_51` and `bench.py base spot_mac01_det` (merge-base of HEAD with main). One list:
+  `bench.py run fxpic_51,spot_mac01_det --row S4INST --why "S4INST: shockwave list via nd_parts_run_v"` (2 starts).
+  `bench.py cmp fxpic_51 --row S4INST`: 4/4 byte-equal. `bench.py cmp spot_mac01_det --row S4INST`: 6/6 byte-equal.
+- Census in the fxpic_51 run log: the first `partsrun f4\d\d v N old M` line has N >= 1 and M = 0 (pr_cen, nd_walk.c:417).
+- Budget 8 Azahar starts (reset once).
 
 ## Stop
-A byte difference: stop, commit, hand back the cmp and the setup-list comparison (2 tries per named cause). Delete this row file in
-the completing commit.
+A byte difference: stop, commit, hand back the cmp lines (2 tries per named cause). `old` above 0: the record took nd_parts_run:
+hand back the unit ids of g[] (stop). Delete this row file in the completing commit.
