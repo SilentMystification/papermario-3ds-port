@@ -51,6 +51,18 @@ No running row edits these places. NAPI3B edits msg_draw.c, and S1PREV and S1STE
 3. Pre-flight check (do it, hand back the line if it fails): `grep -n "nd_rec_napi" 3ds/include/nd_api.h` shows the 3-argument form
    (nd_api.h:11), and `grep -n "fill_run" src/screen_overlays.c` shows the S1FILL runner you move.
 
+## Try 2 (row fault: try 1 did not list the host-test link; the orchestrator resets the budget once)
+Fact: code 7dd4a8ee6 builds, but nd_host fails to link 3ds/tools/nd_direct_test.c (nd_host_test.sh:45 links nd_direct_test.c and
+nd_api.c only; the test includes nd_direct.c): `undefined reference to pm_gpu_set_replace` and `pm_gpu_fill_rect`, which
+nd_fill_run now calls. Step: in 3ds/tools/nd_direct_test.c, next to the other pm_gpu_* stubs (:56-68), add test stubs with the
+signatures of 3ds/include/pm_gpu.h:109-110:
+`void pm_gpu_set_replace(int on) { (void)on; }` and
+`void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba) { (void)x0; (void)y0; (void)x1; (void)y1; (void)rgba; }`.
+If the link then names nd_walk_state (the step 2b fallback), add `void nd_walk_state(const uint32_t* q, unsigned n) { (void)q;
+(void)n; }` the same way. Do not change nd_host_test.sh. Then run the gate below.
+Merge note: S5TRECT runs at the same time and also appends to the end of nd_api.h and nd_direct.c. Before your final gate run,
+`git merge main`. If S5TRECT merged first, keep both appends: yours first, then S5TRECT's, or the order main has.
+
 ## Gate (expected values)
 - Build, memcheck OK; nd_host PASS.
 - `bench.py base battle_wheel_nowide_det` and `bench.py base xfer_map_shots` (the S1FILL scene: the moved runner). Then one list:
