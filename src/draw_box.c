@@ -333,6 +333,16 @@ Mtx gBoxMatrix = RDP_MATRIX(
     0.000000, 0.000000, 0.000000,  0.000000
 );
 
+#ifdef TARGET_3DS
+/* FSELFIX: a ROTSCALE window's contents image is one texture and one vertex batch (one strip vertex per 6 rows,
+ * 4 vertices per strip). One pool per display context: a context is built again only after the walk of the frame that used it
+ * (nd_wq.c:7-8), so the walker has read these vertices. sBoxStripFrame resets the pool on a new frame. */
+#define BOX_STRIP_VTX 1024
+static Vtx sBoxStripVtx[2][BOX_STRIP_VTX];
+static s32 sBoxStripN[2];
+static u16 sBoxStripFrame[2];
+#endif
+
 // @bug there's an issue with the way the "quads" temp below is used, sometimes going out of bounds.
 // In vanilla, this results in some data being written to an unused struct field inside gPartnerStatus, which doesn't
 // cause any issues. In shiftable builds, there's no telling where quads might be, so we make some adjustments to
@@ -354,6 +364,9 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
     Vtx* quads;
     s32 idx;
     s32 i, j;
+#ifdef TARGET_3DS
+    s32 ns, c, k, n;
+#endif
     s32 tmem = 0x100;
     u32 bgScrollOffsetX, bgScrollOffsetY;
 
@@ -801,6 +814,37 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
                     guTranslateF(mtx3, 0.0f, -height / 2, 0.0f);
                     guMtxF2L(mtx3, &gDisplayContext->matrixStack[gMatrixListPos]);
                     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+                    ns = height / 6;
+                    c = gCurrentDisplayContextIndex;
+                    if (sBoxStripFrame[c] != (u16)gGameStatusPtr->frameCounter) {
+                        sBoxStripFrame[c] = (u16)gGameStatusPtr->frameCounter;
+                        sBoxStripN[c] = 0;
+                    }
+                    if (ns > 0 && sBoxStripN[c] + ns * 4 <= BOX_STRIP_VTX) {
+                        Vtx* v = &sBoxStripVtx[c][sBoxStripN[c]];
+                        for (idx = 0; idx < ns; idx++) {
+                            for (k = 0; k < 4; k++) {
+                                v[idx * 4 + k] = vtx_drawbox1[k];
+                                v[idx * 4 + k].v.ob[1] = 6 * idx + (k >= 2 ? 6 : 0);
+                                v[idx * 4 + k].v.tc[1] = idx * 6 * 32 + (k >= 2 ? 208 : 0);
+                            }
+                        }
+                        gDPLoadTextureTile(gMainGfxPos++, OS_K0_TO_PHYSICAL(mdl_address), G_IM_FMT_RGBA, G_IM_SIZ_16b, width, 0,
+                                        0, 0, width - 1, height - 1, 0,
+                                        G_TX_CLAMP, G_TX_CLAMP, 9, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+                        gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, (160 - width / 2) * 4, 0, ((160 - width / 2) + width - 1) * 4, (height - 1) * 4);
+                        for (k = 0; k < ns; k += 8) {
+                            n = ns - k < 8 ? ns - k : 8;
+                            gSPVertex(gMainGfxPos++, &v[k * 4], n * 4, 0);
+                            for (j = 0; j < n; j++) {
+                                gSP2Triangles(gMainGfxPos++, 4 * j + 0, 4 * j + 3, 4 * j + 1, 0, 4 * j + 0, 4 * j + 2, 4 * j + 3, 0);
+                            }
+                        }
+                        gDPPipeSync(gMainGfxPos++);
+                        sBoxStripN[c] += ns * 4;
+                    } else
+#endif
                     for (idx = 0; idx < height / 6; idx++) {
                         s32 extraHeight, lineHeight;
                         if (idx == height / 6 - 1) {
