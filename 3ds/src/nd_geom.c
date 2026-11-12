@@ -340,9 +340,12 @@ int nd_part_draw(const uint32_t* u) {
             if (ep_cullboth) { n_out++; GP_LAP(GPL_EARLY); continue; }
             if (ep_pepoch != gv_epoch || ep_ptss != tss) {
                 gv_params_calc(tss, &ep_p);
+                gv_vc_vtx = gv_vc_block != gv_epoch && plan_active && cur_plan.vtxname != PM_NM_SHADE && cur_plan.vtxname != PM_NM_NONE && !ep_p.boost && !ep_p.fxon; /* S4COL: as gv_tri (PBATCH2) */
+                if (gv_vc_vtx) for (int q = 0; q < 4; q++) { ep_p.cm[q] = 1.f; ep_p.ca[q] = 0.f; }
                 pm_gpu_set_rgb_scale(ep_p.boost ? 2 : 1);
                 ep_pepoch = gv_epoch; ep_ptss = tss;
             }
+            if (gv_vc_vtx) { extern void pm_gpu_gvtx_colour(unsigned v, uint32_t rgba); pm_gpu_gvtx_colour(rs[i0], cur_plan.vtx); pm_gpu_gvtx_colour(rs[i1], cur_plan.vtx); pm_gpu_gvtx_colour(rs[i2], cur_plan.vtx); } /* S4COL: the instance's vertices are loaded after its prim op */
             if (ep_t1f) {
                 unsigned rt[3] = { rs[i0], rs[i1], rs[i2] };
                 t1_fold_tri(rt, tss); /* a changed window map flushes the open batch (flush_gen), a new batch opens below */
