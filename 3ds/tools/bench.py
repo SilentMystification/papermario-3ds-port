@@ -306,7 +306,11 @@ def append_runs(recs):
     with runs_lock():
         n = max((r["run_id"] for r in read_runs()), default=0)
         for f in all_tree_runs_files():
-            n = max([n] + [json.loads(x).get("run_id", 0) for x in f.read_text(encoding="utf-8").splitlines() if x.strip()])
+            try:
+                txt = f.read_text(encoding="utf-8")
+            except OSError:  # BENCHPATH: a tree removed during the run (wt_gc)
+                continue
+            n = max([n] + [json.loads(x).get("run_id", 0) for x in txt.splitlines() if x.strip()])
         ids = []
         with RUNS.open("a", encoding="utf-8", newline="\n") as f:
             for r in recs:
@@ -1056,7 +1060,11 @@ def cmd_azstat(a):
     since = a.since or datetime.date.today().isoformat()
     runs = {}
     for f in all_tree_runs_files():
-        for x in f.read_text(encoding="utf-8", errors="replace").splitlines():
+        try:
+            txt = f.read_text(encoding="utf-8", errors="replace")
+        except OSError:  # BENCHPATH: a tree removed during the read (wt_gc)
+            continue
+        for x in txt.splitlines():
             if not x.strip():
                 continue
             try:
