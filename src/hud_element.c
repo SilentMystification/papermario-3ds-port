@@ -479,7 +479,7 @@ static void hud_rect_emit(const NdHudRec* hudElement, Gfx** gp, s32 anchor) {
 #define HUD_CW_(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1) \
     { ND_W0_CMB(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1), ND_W1_CMB(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1) }
 #define HUD_CW(a, b) HUD_CW_(a, b) /* a and b are combiner macros of 8 terms: the argument pass expands them before HUD_CW_ counts its 16 */
-static int hud_rect_direct(const NdHudRec* r) {
+static int hud_rect_direct(const NdHudRec* r) { /* 0 drawn, else why the old path runs: 1 shape, 2 window, 3 walker state, 4 pso */
     static const u32 cw_decal[2] = HUD_CW(G_CC_DECALRGBA, G_CC_DECALRGBA), cw_01_02[2] = HUD_CW(PM_CC_01, PM_CC_02), cw_2f_32[2] = HUD_CW(PM_CC_2F, PM_CC_32),
                      cw_07[2] = HUD_CW(PM_CC_07, PM_CC_07), cw_47[2] = HUD_CW(PM_CC_47, PM_CC_47);
     NdBindDesc ds[ND_HUD_PC];
@@ -494,7 +494,7 @@ static int hud_rect_direct(const NdHudRec* r) {
     const void* pal = NULL;
     int pal_n = 0;
 
-    if (r->npc <= 0 || r->npc > ND_HUD_PC || fmt < 0 || fmt > 2) return 0;
+    if (r->npc <= 0 || r->npc > ND_HUD_PC || fmt < 0 || fmt > 2) return 1;
     switch (fmt) {
         case 0:
             pd.oml = G_RM_XLU_SURF | G_RM_XLU_SURF2; pd.omh = G_TT_NONE;
@@ -530,14 +530,14 @@ static int hud_rect_direct(const NdHudRec* r) {
         const NdHudPiece* pc = &r->pc[k];
         const s32 lu = pc->uls << sh, ll = pc->lrs << sh;
         if (!nd_tex_win_desc(&ds[k], r->imageAddr, stride, tfmt, tsiz, wrap, lu >> 2, pc->ult, ((ll - lu) >> 2) + 1, pc->lrt - pc->ult + 1,
-                             pc->uls << 2, pc->ult << 2, pc->lrs << 2, pc->lrt << 2, pal, pal_n)) return 0;
+                             pc->uls << 2, pc->ult << 2, pc->lrs << 2, pc->lrt << 2, pal, pal_n)) return 2;
     }
     pd.cw0 = cw[0]; pd.cw1 = cw[1];
     pd.omh |= filt ? G_TF_AVERAGE : G_TF_POINT;
     pd.omh_m = (3u << G_MDSFT_TEXTLUT) | (3u << G_MDSFT_TEXTFILT);
-    if (!nd_direct_ready()) return 0;
+    if (!nd_direct_ready()) return 3;
     id = nd_pso_n64(&pd);
-    if (!nd_direct_bind(id, prim, nd_direct_env())) return 0;
+    if (!nd_direct_bind(id, prim, nd_direct_env())) return 4;
     for (k = 0; k < r->npc; k++) {
         const NdHudPiece* pc = &r->pc[k];
         const s32 xl = pc->ulx * 4, yl = pc->uly * 4, xh = pc->lrx * 4, yh = pc->lry * 4;
@@ -553,7 +553,7 @@ static int hud_rect_direct(const NdHudRec* r) {
         nd_direct_rect(w0, w1, hs, hd);
     }
     nd_direct_end();
-    return 1;
+    return 0;
 }
 
 /* core 0: one HUD element record, drawn directly (hud_rect_direct) or, when it cannot state the record, emitted into a local list and walked as state ops
@@ -561,7 +561,7 @@ static int hud_rect_direct(const NdHudRec* r) {
 static void hud_rect_run(const uint32_t* u) {
     static Gfx buf[512];
     Gfx* p = buf;
-    if (hud_rect_direct((const NdHudRec*)u)) return;
+    { const int why = hud_rect_direct((const NdHudRec*)u); if (!why) return; nd_direct_fallback((unsigned)why); }
     hud_rect_emit((const NdHudRec*)u, &p, 0);
     nd_walk_state((const uint32_t*)buf, (unsigned)(p - buf));
 }

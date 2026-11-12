@@ -52,6 +52,7 @@ int nd_direct_bind(NdPso id, uint32_t prim, uint32_t env); /* core 0: the state 
 int nd_direct_tex(const NdBindDesc* d);        /* core 0: tile 0 = d; the walker's set_tilesize bookkeeping and the bind */
 void nd_direct_rect(uint32_t w0, uint32_t w1, uint32_t hs, uint32_t hd); /* core 0: one texture rectangle of tile 0 (the G_TEXRECT words, 1 or 2 cycle) */
 void nd_direct_end(void);                      /* core 0: the walker rebinds and resyncs at its next draw */
+void nd_direct_fallback(unsigned why);        /* core 0, cold: a record the direct executor handed back to the old path (census line napihud) */
 uint32_t nd_direct_prim(void);                 /* core 0: the walker's primitive colour */
 uint32_t nd_direct_env(void);                  /* core 0: the walker's environment colour */
 

@@ -16,6 +16,8 @@ static int fails;
 #define CHECK(c) do { if (!(c)) { printf("FAIL nd_direct line %d\n", __LINE__); fails++; } } while (0)
 
 void pm_log_e(const char* fmt, ...) { (void)fmt; }
+void pm_log_d(const char* fmt, ...) { (void)fmt; }
+unsigned pm_frame_count(void) { return 0; }
 void pm_fatal_stop(const char* msg) { printf("FAIL nd_direct fatal %s\n", msg); exit(1); }
 
 NdWs nd_ws;

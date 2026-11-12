@@ -177,3 +177,12 @@ void nd_direct_end(void) {
     nd_sr_forget();
     gv_epoch++; /* the ops of the stream path each raise it: the first triangle after this draw takes its state again */
 }
+
+/* Census of the records a direct executor hands back to the old path: the first 16 and every 64th are logged (debug level) with the frame and the reason. */
+void pm_log_d(const char* fmt, ...);
+unsigned pm_frame_count(void);
+__attribute__((cold, noinline)) void nd_direct_fallback(unsigned why) {
+    static unsigned n;
+    n++;
+    if (n <= 16u || !(n & 63u)) pm_log_d("napihud fallback f%u n %u why %u", pm_frame_count(), n, why);
+}
