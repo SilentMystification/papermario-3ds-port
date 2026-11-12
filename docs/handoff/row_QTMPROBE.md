@@ -1,32 +1,33 @@
-# Row QTMPROBE: can an N3DS CIA map, write and read the QTM RAM region (probe, do not start)
+# Row QTMPROBE: can a New 3DS CIA map and use the QTM RAM region (probe; PARKED: do not start)
 
-(Model: Haiku. Feasibility probe for the N3DS QTM RAM note in row_ORACLE_NEXT.md. BLOCKED: needs a CIA build (RSF + makerom), which
-the repo does not have; that build is its own row, written when the user asks for CIA output.)
+(Model: Haiku. Planned work, user 2026-11-11: released as a possible avenue for more performance, with CIA packaging. It joins the
+ASSETFREE epic (parked) together with the CIA build row; start only when the user starts that epic.)
 
-## Facts (libctru os.h)
-OS_QTMRAM_VADDR 0x1E800000, OS_QTMRAM_PADDR 0x1F000000, OS_QTMRAM_SIZE 0x400000; the last 128 KiB is kernel-reserved. Unverified
-claim: a static memory mapping descriptor in the ExHeader ARM11 kernel capabilities maps it for the title.
+## Question (user's plan)
+Can a CIA title on a New 3DS map the 4 MiB QTM RAM (libctru os.h: OS_QTMRAM_VADDR 0x1E800000, OS_QTMRAM_PADDR 0x1F000000,
+OS_QTMRAM_SIZE 4 MiB; the last 128 KiB kernel-reserved), read and write it, and sample a texture from it on the GPU? A .3dsx cannot (it
+runs under the launcher's ExHeader); the QTM service (head tracking of the 3D camera) owns the region while it runs.
 
-## Start (after the CIA build row is merged)
-`sh 3ds/tools/wt_new.sh QTMPROBE`. PM_ROW=QTMPROBE PM_LANE=QTMPROBE.
+## Files (a standalone probe, not the game)
+probe.c (the test program), probe.rsf (the CIA ExHeader: the static memory mapping under MemoryMapping), Makefile (target qtmprobe.cia,
+devkitPro libctru and citro3d, makerom). Put them in 3ds/tools/qtmprobe/; nothing in the game build changes.
 
-## Touch only
-The CIA RSF (the ARM11 kernel capability list: one static mapping descriptor for 0x1F000000 .. 0x1F3E0000), a new cold function
-`pm_qtm_probe()` in 3ds/src/pm_mem.c called once at boot under the debug switch `qtmprobe`.
+## Steps (user's plan)
+1. Build qtmprobe.cia with devkitPro (make in 3ds/tools/qtmprobe).
+2. Install it with FBI on a New 3DS.
+3. Run it from the HOME Menu, not the Homebrew Launcher, with camera and head-tracking apps closed (QTM not holding the region).
+4. Read the results on the top screen: map ok, write and read back at the start, middle and last word before the reserved 128 KiB,
+   the QTM state.
+5. Texture sampling test with citro3d: a 64x64 RGBA8 texture placed in the region, drawn on one quad, 4 pixels read back and shown.
+6. Adopt: add `- 1e800000-1ebfffff` under MemoryMapping in the rsf (the game's CIA rsf, once the CIA build row exists), and a fixed
+   carve-up of the region (no libctru allocator: hot native textures, command and vertex rings, frame matrices).
 
-## Exact edits
-1. RSF: add the mapping descriptor for the physical range 0x1F000000 - 0x1F3E0000 (3.875 MiB) read-write, as the libctru os.h
-   addresses name it; keep every other capability.
-2. pm_qtm_probe (switch qtmprobe): `if (!APT_CheckNew3DS)` log "qtmprobe: o3ds, skipped" and return. Query the QTM service state
-   (qtmCheckInitialized or the service handle) and log it. Then, at OS_QTMRAM_VADDR: write a 32-bit pattern (0x5A5A0000 | i) at the
-   start, the middle and the last word before the reserved 128 KiB, flush the data cache for those lines, read back, and log
-   `qtmprobe: map ok %d write ok %d/%d qtm %d` with the three compares. A data abort is the answer "not mapped": the crash handler
-   (pm_crash_page) prints the address; record that line.
-3. A GPU read check: copy a 64x64 RGBA8 test texture into the region, bind it with C3D_TexInit pointing there (if C3D refuses a
-   non-linear address, log the refusal), draw one quad to an off-screen target, read 4 pixels back, log them.
+## Not covered
+Latency: the probe shows whether the region works, not its read or write speed against FCRAM or VRAM for the CPU or the GPU; a speed
+step follows only if the probe passes.
 
-## Gate (probe; console, N3DS 192.168.1.224, one push of the CIA with qtmprobe)
-The qtmprobe lines as printed (or the crash line). No Azahar gate (Azahar has no QTM RAM model). Hand back the lines.
+## Gate
+The top screen results of steps 4 and 5, read by the user and handed back as text. No Azahar gate (Azahar has no QTM RAM).
 
 ## At the end
 Delete this row file in the completing commit.

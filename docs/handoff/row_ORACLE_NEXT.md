@@ -179,7 +179,8 @@ ms floor). Counts per frame from fxcenb. Bound = oracle code read only; FXSPLIT 
   applet .3dsx (the user's current push path) cannot use it; O3DS has no such region, so every use needs an O3DS path anyway.
 - Worth: low next to ASSETFREE (the 25.7 MB resident ROM image leaves the heap) and the N3DS CIA SystemModeExt 124 MB (about +60 MB
   on N3DS with no new code path). 3.9 MiB is one extra pool on one model behind a new build type. Do after a CIA build exists and
-  only if a measured N3DS memory limit remains. Probe row: row_QTMPROBE.md (blocked on a CIA build row).
+  only if a measured N3DS memory limit remains. Probe row: row_QTMPROBE.md (user 2026-11-11: planned work, parked with the
+  ASSETFREE epic and the CIA build row; the user's probe plan: standalone probe.c, probe.rsf, qtmprobe.cia).
 
 ## Texture pre-conversion study, CIA memory (old oracle, for plan_datapath.md section 2 and 5)
 - Memory today (pm_mem.c:72-110 __system_allocateHeaps): the budget is already read at run time: commit = svcGetResourceLimit
