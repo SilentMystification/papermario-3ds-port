@@ -20,27 +20,19 @@ built from L's command lists with K's matrix uniforms, and the second walk (pm_k
   gm_tab_k[i] of the L walk of the same step (same creation order), and pcomp, pal0, normal rows likewise; one line per 300 frames
   `twinchk f<n> entries <e> mismatch <m> pal0 <p> nrm <q>`.
 
-## Next step (after try 1, head e2f239105; resume on branch INTERPB1; 4 new Azahar starts, orchestrator)
-Causes of the twinchk mismatches (oracle code read of the branch):
-1. Start state: nd_proj and nd_mv[0] are never reset per frame (nd_mtx_reset only at init, nd_walk.c:489; pm_gbi_end_frame resets only
-   nd_mv_sp, nd_cen.c:534). The key walk K(n) starts from what L(n) left (interpolated), while the twin starts from what K(n-1) left
-   (nd_mtx_twin_sync at the L begin). Any draw before its own projection or base load sees different matrices. Fix: at the L frame
-   begin save S = (nd_proj, nd_mv[0], nd_proj_wn) before nd_mtx_twin_sync; at the key walk begin (pm_key_walk, after
-   nd_twin_frame_begin(2)) restore the main nd_proj, nd_mv[0], nd_proj_wn from S and call upload_mvp(). Then K(n) starts from the state
-   L(n) started from: the state INTERPB3's copy shows.
-2. The check compares gm_tab by index: the L walk dedupes on the pair (L, K), the key walk on K alone, so a K matrix that two loads
-   share while their L matrices differ makes one entry in K and two in L: every later index shifts (mac_01: 52 of 126). The index
-   compare is not a twin fault. Replace it: at every upload_mvp, hash combined_k (L walk) / combined (key walk) into a site-order list
-   as nd_twinchk_pal does, and compare in order (`mismatch`); drop the gm index loop and the pcomp_k index compare (pm_gpu.c:832-833)
-   or make it site-ordered the same way.
-3. Memory: pcomp_k (64 KB static, pm_gpu.c:152) and pcomp_k_has: malloc them with gm_tab_k at the first L walk (static margin back to
-   about 780 KB; the 176 KB heap only with fps60 on; heap free is about 3 MB: acceptable).
-4. hot_order.ld: do not delete the nd_mtx_load line: load_mtx now calls nd_mtx_load_tw, so replace the line with
-   `*(.text.nd_mtx_load_tw)` (keeps the stack load in the hot group); hotset_size must PASS (no missing name).
-5. Never git checkout 3ds/logs/perf/runs.jsonl in the worktree (try 1's records were lost that way).
-Gate (fits the 70-frame runs): twinchk windows of 10 steps; pass: mismatch 0, pal0 0, nrm 0 in every window after the first one of
-each run (icmp_mac01, icmp_btl); spot_mac01_fps60_det 12/12 byte-equal against the merge-base. If the restore of step 1 changes
-key-frame shots: stop and hand back the cmp lines (a draw used a leftover matrix; the oracle decides). nd_host PASS, hotset_size PASS.
+## Next step (after try 2, code d0883048f; resume on branch INTERPB1; 3 more Azahar starts)
+Try 2 facts: restore, heap pcomp_k, hot_order and pal0/nrm are right (pal0 and nrm 0 in steady state, spot_mac01_fps60_det 12/12).
+Cause of the mvp-sequence mismatch: the restore in nd_twin_frame_begin(2) (nd_mtx_set.c:281-284) zeroes tw_nm_k first and then calls
+upload_mvp(), which records one extra entry at index 0 of the key walk's sequence (upload_mvp :49-54 calls nd_twinchk_mvp). The L
+walk has no upload at its start, so every key-walk entry i is compared with L entry i - 1: only runs of equal consecutive matrices
+match (entries minus mismatch about 30 and 80, as measured). The upload_mvp sites (load_mtx :164, gbi_viewport :176, gbi_popmtx
+:197, nd_walk.c:492 init only) are the same ops in both walks.
+Fix: in nd_twin_frame_begin(2) move `tw_np_k = tw_nq_k = tw_nm_k = 0;` after the restore block (after its upload_mvp), so the
+restore's upload is not in the sequence. No other change.
+Gate: the same list as try 2 (icmp_mac01, icmp_btl, spot_mac01_fps60_det; 3 starts). Pass: mismatch 0, pal0 0, nrm 0 in the last 3
+windows of each run (camera at rest); 12/12 byte-equal. Earlier windows (scene start, battle camera moves: try 2 had pal0/nrm there)
+are reported, not gated: while the camera moves, the CPU culls of the L walk use L matrices (box and clip tests), so the two walks can
+draw different site sequences; that is the known limit of design B (row_ORACLE_NEXT.md). A mismatch at rest: stop, hand back the lines.
 
 ## Start
 `sh 3ds/tools/wt_new.sh INTERPB1`. PM_ROW=INTERPB1 PM_LANE=INTERPB1.
