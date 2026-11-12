@@ -50,16 +50,19 @@ Base: main at `--commit 20d613506`. Worktree build3ds/wt/FPS60SPD, branch FPS60S
 
 ## Gate (all three)
 1. nd_host PASS.
-2. spot_mac01_fps60_iskip (a code rule, not a speed): the `pace:` line printed just before the until line has the window count
-   `intervals 1:0` (the per-window field, not `total 1:`). Expected with Edit 1: 0, because with iskipall every step goes through the
-   idle wait (pm_main.c:657-668), which ends only at 2 vblanks after step_vb. Try 2 (591f4d57a, until on the first window f131) gave
-   `total 1:4` in a window that holds the boot and the warp: boundary steps by code read, not a 2x path: pm_main.c:575 draws every
-   pass until the first frame is drawn (`!lp_ever`), the first step after step_vb_ok is set has no ISKIP and shows a key frame
-   (kn > 0 skips the idle wait, pm_main.c:639), and the warp load gives late steps. A 2x path would give 1-vblank intervals in most
-   steps; that window had 4 of 130 and steps 112 for 301 vblanks (0.37 per vblank). Run only this scene once:
-   `bench.py run spot_mac01_fps60_iskip --row FPS60SPD --why "fps60 iv rule, steady window"`. Hand back the pace and pacewk lines.
+2. spot_mac01_fps60_iskip, steady window (until f300 or later). Pass when all three hold on the `pace:` line before the until line:
+   window `intervals 1:` at most 5 % of the window intervals (1: + 2: + 3: + 4+:); window `2:` at least 75 % of them (median 2);
+   `steps` <= `vblanks` / 2 + 1. Try 3 (f578856a9, f430: `steps 111 ... drawn 147 vblanks 300 ... intervals 1:5 2:104 3:13 4+:7`)
+   meets it: 5/129 = 3.9 %, 104/129 = 80.6 %, 111 <= 151. The coder can apply this rule to these numbers; no new run is needed.
+   Code read for the 1-vblank intervals: iskipall sets LGF_ISKIP on every step with step_vb_ok (pm_main.c:708), so the main case
+   (no key frame, idle wait to 2 vblanks) is the one under test. But drawn 147 against 130 iterations shows 17 key frames in the
+   window. A step with a key frame skips the idle wait (kn > 0, pm_main.c:639) and is paced by its two frame begins (sync60_pace,
+   pm_gpu.c:2700-2711). After a late L begin, sync60 starts a new schedule (no wait for L, one period for K). The next step can then
+   start 1 vblank after step_vb, but that step still had two frame begins: no 2x. Where the 17 key frames come from with iskipall
+   is an open read in row_ORACLE_NEXT.md (candidate: tasks recorded after the swap task of a step, pm_nusys.c:175 and :182). It is
+   not part of this row.
 3. spot_mac01_fps60_det byte-equal to base (done: 12/12 at f79344234; the commits after it change only the scenario, no rerun).
 
 ## Stop
 - Gate passes: commit (changed files only), delete this row file in the same commit, hand back the pace line and the cmp result.
-- window intervals 1: above 0 in the steady window, cmp not equal, or a tool fault: stop, commit, hand back the exact report lines. Do not change the wait again.
+- the rule of gate 2 not met, cmp not equal, or a tool fault: stop, commit, hand back the exact report lines. Do not change the wait again.

@@ -37,5 +37,25 @@ src/effects/water_block.c (water_block_appendGfx, the include list); 3ds/tools/a
   if only its calls remain above 20, hand back the deltas; do not change the mesh). Hand back the 15 largest deltas.
 - Budget: 5 Azahar starts (1 base, 1 byte run, 2 census, 1 spare). Console: none here; the S4 batch console run after the merge.
 
+## Try 2 (oracle code read; the code edit 12cf5c703 stays, no code change)
+- Facts of try 1: fxpic_84 6/6 byte-equal; census at fxfncov_84 f420: nd_part_draw 0, gv_tri +80, ent_gdl +42, rec_open +448.
+- Cause: the census frame is after the water block is gone. fxtest spawns at slot frame 2 (pm_fxtest.c:179-180, :263-275: START 400,
+  so spawn at f402) with `fx_water_block(FX_WATER_BLOCK_DESTROY, X, Y, Z, 1.5f, 10)` (pm_fxtest.c:116). duration 10 sets timeLeft 10
+  (water_block.c:91); at timeLeft < 0 the DESTROY type starts water_splash and removes the block (water_block.c:145-153), about f413.
+  At f420 only the splash draws: its drops (water_splash.c:193-228, a LoadMultiTile and a list per drop) are the deltas. No component
+  draw happens in that frame, so nd_part_draw 0 is not a shape fallback. The list D_090004A0_3B7090 (VTX 4 at slot 0, TRI2, PipeSync,
+  End) has the same shape as embers' D_090003B0_3DC2F0, which passes parts_ok (nd_rec.c:283-299). Components are live from the first
+  update: unk_88 starts at -13, -9, ..., +111 (water_block.c:105-107).
+- The base frame f396 of fxfncov_base is by design: it is before the spawn (f402), so it is the frame with no effect.
+- Scenario edits (one commit): `fxfncov_84` gets `fncov=406` (4 frames after the spawn, inside the block's life). `fxpic_84` gets
+  `shotwin=404:4` and until `shot \d+ frame 407\b` (the old shots 412-415 straddle the destroy at about f413).
+- Runs (4 starts; budget 3 used): `bench.py base fxpic_84 --commit <merge-base>`; `bench.py run fxpic_84 --row S4WBLK --why "S4WBLK
+  try 2: shots inside the block life"`; `bench.py cmp fxpic_84 --row S4WBLK --commit <merge-base>`. Then the census lane:
+  `bench.py run fxfncov_base,fxfncov_84 --row S4WBLK --lane S4WBLK_fncov --why "S4WBLK census at f406"`; hotset with `--lane S4WBLK`.
+- Pass: every fxpic_84 shot byte-equal. Census (effect minus base, per frame): nd_part_draw above 0; nd_geom_vtx at most 2 per live
+  instance (the mesh loads at water_block.c:295 and :299); gv_tri and draw_tri at most 28 per instance plus 20 (the mesh lists
+  D_090004D8 and D_09000538 hold 10 + 4 TRI2 = 28 triangles); ent_gdl and nd_ops_run each below 20 per instance plus 20. Expected:
+  nd_part_draw equals the number of live components. The fxtest spawns one instance: the per-instance limits are the numbers.
+
 ## Stop
 A failed gate or an edit that does not fit: stop, commit, hand back the output. Delete this row file in the completing commit.
