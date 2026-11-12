@@ -1,5 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
+#ifdef TARGET_3DS
+#include "nd_gtab.h"
+#endif
 #include "nd_api.h"
 
 extern Gfx D_09000280_3DC1C0[];
@@ -206,7 +209,11 @@ void embers_appendGfx(void* effect) {
     gSPMatrix(gMainGfxPos++, camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     gDPSetPrimColor(gMainGfxPos++, 0, 0, part->unk_20, part->unk_24, part->unk_28, unk_2C);
     gDPSetEnvColor(gMainGfxPos++, part->unk_30, part->unk_34, part->unk_38, part->unk_3C);
+#ifdef TARGET_3DS
+    nd_rec_dl(D_E00E0A40[1]);
+#else
     gSPDisplayList(gMainGfxPos++, D_E00E0A40[1]);
+#endif
 
     part++;
 #ifdef TARGET_3DS

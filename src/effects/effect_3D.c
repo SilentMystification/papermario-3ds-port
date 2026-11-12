@@ -1,5 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
+#ifdef TARGET_3DS
+#include "nd_gtab.h"
+#endif
 #include "nd_api.h"
 
 extern Gfx D_09000240_37D3C0[];
@@ -223,7 +226,11 @@ void effect_3D_appendGfx(void* effect) {
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+#ifdef TARGET_3DS
+    nd_rec_dl(D_09000240_37D3C0);
+#else
     gSPDisplayList(gMainGfxPos++, D_09000240_37D3C0);
+#endif
 
     guTranslateF(sp18, part->pos.x, part->pos.y, part->pos.z);
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
