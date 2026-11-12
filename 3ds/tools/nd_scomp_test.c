@@ -63,7 +63,7 @@ static void base_in(NdCombIn* in) {
     in->tex_on = 1; in->use_t1 = 0; in->comb_set = 1;
 }
 static unsigned id_of(NdSTab* t, const NdSDef* d, const NdCombIn* in, uint32_t vprim, int* miss) {
-    uint32_t k[ND_SC_KEYW];
+    uint32_t k[ND_SC_KEYW] = { 0 };
     nd_scomp_key(d, in, vprim, k);
     return nd_scomp_find(t, d->id, k, miss);
 }
