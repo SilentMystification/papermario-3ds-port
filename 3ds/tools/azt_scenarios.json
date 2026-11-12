@@ -14824,31 +14824,6 @@
       "reason": "BOMBLIT census (measurement, no picture): the shade path counters of the shadecen switch, one line per frame with a count. Cap 30 s: the first marker takes 12 to 16 s, then the script runs 240 scans."
     },
     {
-      "name": "fsel_fncov_rot",
-      "status": "unverified",
-      "subject": "File select entry turn: walker census armed at the first ROTSCALE box with contents (fncovrot=1).",
-      "proves": "Walker census of the file select entry turn (fileselect_rotate copy, census lane). Measurement only.",
-      "debug": "fileselect fncovrot=1 loglevel=debug det",
-      "extra": [],
-      "until": "fncov f\\d+ done",
-      "cap": 45,
-      "deadline": 40,
-      "first_marker": "boot_main",
-      "expects": "none",
-      "needs_picture": false,
-      "expected_events": [
-        {
-          "name": "file select mode",
-          "regex": "game mode 14 frame"
-        },
-        {
-          "name": "fncov done",
-          "regex": "fncov f\\d+ done"
-        }
-      ],
-      "reason": "Census of the file select box turn for FSELCEN. Copy of fileselect_rotate with fncov=289 instead of shots. Cap 45 s, deadline 40 s. Log only; the until is the census done line."
-    },
-    {
       "name": "fsel_fncov_idle",
       "status": "unverified",
       "subject": "File select at rest: walker census armed at frame 400, after the turn.",
@@ -14934,9 +14909,9 @@
     {
       "name": "fsel_fncov_pick",
       "status": "unverified",
-      "subject": "File select pick flip: freshsave, A on File 1 at frame 400; walker census armed at the first ROTSCALE box with contents from frame 400.",
+      "subject": "A on File 1 at about frame 200 (400 scans); census armed at the first ROTSCALE box with contents from frame 150.",
       "proves": "Walker census of the file select pick flip (11 windows, A press). Measurement only.",
-      "debug": "fileselect freshsave padscript=wait400,A fncovrot=400 loglevel=debug det",
+      "debug": "fileselect freshsave padscript=wait400,A*6 fncovrot=150 loglevel=debug det",
       "extra": [],
       "until": "fncov f\\d+ done",
       "cap": 45,

@@ -8422,22 +8422,6 @@
       "gates": []
     },
     {
-      "name": "fsel_fncov_rot",
-      "kind": "azahar_stream",
-      "speed": "normal",
-      "default": false,
-      "purpose": "FSELCEN census: draw functions run in walker frame of scenario fsel_fncov_rot and their call counts (census lane <L>_fncov). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.",
-      "scenario": "fsel_fncov_rot",
-      "cap": 45,
-      "until": "fncov f\\d+ done",
-      "tags": [
-        "azahar",
-        "hotcode",
-        "fncov"
-      ],
-      "gates": []
-    },
-    {
       "name": "fsel_fncov_idle",
       "kind": "azahar_stream",
       "speed": "normal",
