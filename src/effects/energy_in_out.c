@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 extern Gfx D_09000200_3D6130[];
 extern Gfx D_090003A8_3D62D8[];
@@ -261,7 +262,11 @@ void energy_in_out_appendGfx(void* effect) {
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     gDPSetPrimColor(gMainGfxPos++, 0, 0, part->unk_18, part->unk_1C, part->unk_20, unk_24);
     gDPSetEnvColor(gMainGfxPos++, part->unk_28, part->unk_2C, part->unk_30, 0);
+#ifdef TARGET_3DS
+    nd_rec_dl(D_09000200_3D6130);
+#else
     gSPDisplayList(gMainGfxPos++, D_09000200_3D6130);
+#endif
 
     part++;
     for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, part++) {
@@ -281,7 +286,11 @@ void energy_in_out_appendGfx(void* effect) {
         guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+        nd_rec_dl(D_E00D6E40[unk_00]);
+#else
         gSPDisplayList(gMainGfxPos++, D_E00D6E40[unk_00]);
+#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     }
 

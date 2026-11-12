@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 void explosion_init(EffectInstance* effect);
 void explosion_update(EffectInstance* effect);
@@ -183,20 +184,32 @@ void explosion_appendGfx(void* effect) {
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
     if (part->unk_00 != -1) {
+#ifdef TARGET_3DS
+        nd_rec_dl(D_09000840_3447B0);
+#else
         gSPDisplayList(gMainGfxPos++, D_09000840_3447B0);
+#endif
 
         guScaleF(sp18, part->unk_20, part->unk_20, 1.0f);
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 240, part->unk_38);
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+        nd_rec_dl(D_090008F0_344860);
+#else
         gSPDisplayList(gMainGfxPos++, D_090008F0_344860);
+#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     }
 
     part++;
 
+#ifdef TARGET_3DS
+    nd_rec_dl(D_09000910_344880);
+#else
     gSPDisplayList(gMainGfxPos++, D_09000910_344880);
+#endif
 
     guScaleF(sp18, part->unk_20, part->unk_20, part->unk_20);
     guRotateF(sp58, part->unk_28, 0.0f, 0.0f, 1.0f);
@@ -224,7 +237,11 @@ void explosion_appendGfx(void* effect) {
 
     gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, primB, primAlpha);
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+    nd_rec_dl(D_E00328B0[unk_34 % 3]);
+#else
     gSPDisplayList(gMainGfxPos++, D_E00328B0[unk_34 % 3]);
+#endif
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 }

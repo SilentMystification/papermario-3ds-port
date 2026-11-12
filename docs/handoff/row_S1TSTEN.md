@@ -87,16 +87,44 @@ NAPI2B and S1FILL merged. `sh 3ds/tools/wt_new.sh S1TSTEN`; PM_ROW=S1TSTEN PM_LA
    OVERLAY_VIEWPORT_MARIO (screen_overlays.c:722) through render_screen_overlay_frontUI (main_loop.c:285) after the map load,
    which is before frame 120 (the map load line comes before `audiohash f120` in try 1's log).
 
+## Try 5 (ORACLE7, after try 4 at 1a959cf65: sten_enter_det 28/28 equal, spot_mac01_det 0/6; row spec fault, keep Haiku)
+Code read of the branch diff (git diff main...S1TSTEN) and the try 4 records:
+- R1, gate fault: the stencil draws only at frames 35 to 48 (head sten_enter_det record: `tsten f35` .. `tsten f48`, 14 entries,
+  then `game mode 4 frame 49`; the fade ends in state_step_enter_world, src/state_map_transitions.c:91-97, OVERLAY_NONE and
+  GAME_MODE_WORLD). The window 49:112:4 holds no stencil frame, so 28/28 proves nothing about this row.
+- R2, code fault: screen_overlays.c (branch) pm_tsten_run, the test `if (nd_tex_win_desc(...) && nd_direct_ready())`.
+  nd_direct_ready (3ds/src/nd_direct.c:83-88) returns -1 to -4 when the direct draw is not allowed (not the main colour image,
+  cimg_zero, a non-frame-buffer cimg, a valid m1 shaded raster, an aux off-screen tile 1). Those values are true in C, so the
+  direct draw runs where the old ops must run. Every other caller tests `== 1` (nd_direct.c:201, :272, :304).
+- spot_mac01_det 0/6: the 6 head shots are byte-identical to each other (one md5 for 0000..0005); the 6 base shots all differ
+  from each other. The head run's prof values equal the base's (audiohash f120 to f480, `dr 26`, `tri 163`, the ndc and cls
+  counts), so the game state and the recorded draws of frames 88 to 388 are the base's. No code of this diff runs after f48
+  (no stencil overlay in GAME_MODE_WORLD). The read finds no path from the f35-48 direct draws to a whole top target that stops
+  changing; R2 is the only path that draws under a state the old ops handle differently. The run shared slot 1 Azahar pid 33892
+  with S7EFX2, S7EFX4 and S7ENT runs by warm restart (pool.log 14:12-14:17; the run before it was S7EFX4's at 14:15:12 with
+  `warm resend no BootGame`). The code read says no more: the gate below decides.
+Edits (one commit, then the gate):
+1. screen_overlays.c pm_tsten_run: `nd_direct_ready()` becomes `nd_direct_ready() == 1`. Nothing else in the function.
+2. azt_scenarios.json sten_enter_det: debug `warp=mac_01:0 pos=0:0:200 shots shotwin=37:12:1 loglevel=debug det`, until
+   `shot \d+ frame 48\b`, subject and reason "12 shots at frames 37 to 48: the Mario stencil fade-in (tsten f35..f48)". Frames 37+
+   were equal in both try 4 base runs (frame 33 differed: map load). bench_defs.json sten_enter_det: the same until and purpose.
+   Frames 35 and 36 stay out (no base proof).
+
 ## Gate (expected values)
-- Build, memcheck OK; nd_host PASS (done in try 1: commit 113879c16).
-- `PM_ROW=S1TSTEN PM_LANE=S1TSTEN python 3ds/tools/bench.py base sten_enter_det` and the same for spot_mac01_det (merge-base:
-  `git merge-base HEAD main`; the base runs your scenario file). Expected: stored, 28 and 6 shots (the
-  new window's base takes 2 runs).
-- One list: `bench.py run sten_enter_det,spot_mac01_det --row S1TSTEN --why "B2a: transition stencil direct"` (2 starts).
-  sten_enter_det log: `tsten f<n> id 0 direct 1` lines (at least 1; hand back the first and last frame), no `direct 0`. `bench.py cmp` both: every shot byte-equal.
-- Census: `grep -c "tsten f[0-9]* id 0 direct 1"` on the head sten_enter_det log only (the base prints none): at least 1.
-- Budget 6 Azahar starts, reset once for the try 3 row fault (a base of a new bench takes 2 runs).
+- Build, memcheck OK; nd_host PASS.
+- Base: `bench.py base sten_enter_det` (new scenario hash: 2 runs, expected stored 12 shots); spot_mac01_det is stored at the
+  merge-base f8b5d03fb (after a merge of main: `bench.py base spot_mac01_det`).
+- One list: `bench.py run sten_enter_det,spot_mac01_det --row S1TSTEN --why "B2a try 5: ready == 1, stencil window"` (2 starts).
+  Expected: cmp sten_enter_det 12/12 and spot_mac01_det 6/6 byte-equal; the head sten run prints 14 entries `tsten f35 .. f48
+  id 0 direct 1` (a `direct 0` entry now means nd_direct_ready said no: hand back its frames).
+- Budget: reset once by the orchestrator for this row correction; 4 starts planned (2 base, 2 list).
+- Merge note for the orchestrator: the branch runs.jsonl holds about 141000 added lines (pre-TOOLDEDUP copies): append only
+  the S1TSTEN run lines (fact 4 of the oracle handoff).
 
 ## Stop
-A byte difference or a `direct 0` line: stop, commit, hand back the cmp output and the tsten lines (2 tries per named cause).
-Delete this row file in the completing commit.
+- sten_enter_det differs: stop, commit, hand back the cmp output and the tsten entries (R2 fixed, so a difference is in the
+  direct draw itself: the oracle reads the bind desc next).
+- spot_mac01_det differs again: stop, commit, hand back the cmp output, the md5 of each head shot (`md5sum` of the 6 files) and
+  the pool.log entries of this run's slot from 2 minutes before it. Six identical head shots twice from one build is a code
+  fact for the oracle; one identical set and one passing run is a tool fault (CLAUDE.md 4): the orchestrator opens a tool row.
+- 2 tries per named cause. Delete this row file in the completing commit.

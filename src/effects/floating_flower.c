@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 s32 D_E001A610 = 0;
 
@@ -164,7 +165,11 @@ void floating_flower_appendGfx(void* effect) {
 
     if (alpha != 0) {
         gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, alpha);
+#ifdef TARGET_3DS
+        nd_rec_dl(D_090002F0_330750);
+#else
         gSPDisplayList(gMainGfxPos++, D_090002F0_330750);
+#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     }
 }

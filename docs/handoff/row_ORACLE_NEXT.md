@@ -44,20 +44,43 @@ nd_render_state, tex_win) runs only in the host converter at build time.
 ### Stages and rows (id: scope | blocker | model)
 Every row is gated by nd_host, the DIRECT byte set (spot_mac01_det, mdl5_iwa10_det, spot_mac00_det) or its named scenes, and the
 LISTCEN deltas (the counts it removes). CONSOLE = one batch push, compared with a stored run.
-- Oracle 6 handoff (2026-11-12; replaces the oracle 5 block):
-  - Written by oracle 6: S6VORD (Haiku: value-order rule, MW none a no-op, s6chk compares fog, scissor, lights; splits cam_range,
-    cb_r1, cb_r2), S7TEX2 (Sonnet), S7ENT (Sonnet), S7MAP (Sonnet), S7MDL (Opus); row_S7DATA.md is now an index.
-  - Corrected: S5TTL (title_det scene: title is game mode 2, window 200:4), S1TSTEN (window 49:112:4: frame 33 is a load frame),
-    S6KEY (nd_scomp_test.c id_of zero-init; gate after S5EMDL3), S6M2/S6M3/S6M4/S5ITEM2/S5BTL1 (defs split or reordered so no
-    value unit lies between two static units). Closed: S4INST and S4INST2 (superseded by S7RUN + S7EFX3/S7EFX6: nd_parts_add
-    needs an NDG_F_PARTS table, nd_rec.c:296-304, and the shockwave list starts with ClearGeometryMode).
-  - Facts: (1) value order: nd_scomp_analyse refused only class-4 units between statics; class 2 there moved behind the block
-    (S6VORD fixes it; every def written since splits at a mid value). (2) s6chk `ranges` is not a reach test. (3) A bench list
-    runs at one speed: spot_mac00_det is turbo. (4) expected_events hold only lines the base build prints. (5) Address -> symbol:
-    python ELF parse of build3ds/lane-<row>/pm_3ds.elf (.symtab, value <= a < value + size). (6) The no_guess hook blocks the word
-    "reproduce" in row files; write "give the same".
-  - Next oracle batch: S7ENT1.. after S7ENT (src/entity setupGfx call sites), S7MAP1.. (S6M leftovers), S7MDL1.. after S7MDL,
-    then S8CEN and S8FB1-6 from row_S8FB.md when every S7 row is merged; S9DEL1-4 and S9GATE are written (they wait for S8).
+- Oracle 7 notes (2026-11-12, after main 87a256ef5; read with the oracle 6 block below):
+  - Written: S7FLAME (ready), S7ENT1, S7ENTX (after S7ENT), S7ENT3 (after S7ENT and S6E3); corrections in row_S1TSTEN.md
+    (try 5), row_PUSHFIX.md (try 2), row_S7ENT.md (base rule: cmp --commit f8b5d03fb, same code tree as 3d4bc81d5).
+  - Tool facts: a cold start and a warm restart of one build can differ (S7ENT base 3d4bc81d5, shot 0; cmp refuses a cold row
+    run, TOOLB9, but `bench.py base` takes a cold run as a base run). Slot Azahars serve many lanes by warm restart (slot 1 pid
+    33892 ran S1TSTEN, S7EFX2, S7EFX4, S7ENT in 5 minutes). S1TSTEN's spot_mac01_det had 6 byte-identical head shots: a frozen
+    target signature; the try 5 gate decides code or tool.
+  - Next batch: S7MAP1 design (row_S7DATA.md), S6E4.. (src/entity state lines), S7MDL1.. after S7MDL; S8CEN and S8FB1-6 after
+    every S7 row; S9 after S8. Margin 574 KB at 0d511cddf; S7ENT adds about 136 KB: no table-packing row until below 200 KB.
+- Oracle 6 handoff (2026-11-12, context about 500K; replaces the earlier oracle 6 block; the next oracle starts here):
+  - Open rows written by oracle 6 (state at writing, main after cd4783813): S7ENT (Sonnet, try 2: gaps run as chains of table
+    pieces, gate gapt > 0 and gaps 0), S7MDL (Opus; blockers S6KEY/S6SYNC, S6VORD, S7TEX2), S7TEX2 (Sonnet), S7EFX3/5/6/7/8
+    (Haiku; step 3 has the ORACLE6 rule: a gSPDisplayList already in a TARGET_3DS branch or an nd_sub range becomes nd_rec_dl
+    in place; flame is the only known drop: D_800B32E0/D_800B3AE0 are game symbols), PUSHFIX (Haiku: -NoBuild passes
+    --no-build, stale-3dsx check, detached push, kept 3dslink logs). S4INST and S4INST2 are closure notes: delete them.
+    Merged since: S6VORD, S6SYNC/S6KEY, S7RUN, S7TEX1, S7MAP, S7MAP2, S7EFX1, S5CHUDB, S5TTL, S1TSTEN(?), TOOLB4, TOOLB5,
+    TOOLDEDUP (check git log).
+  - Next rows to write: S7ENT1.. (src/entity setupGfx call sites, after S7ENT; take its file set), S7MAP1.. (dro_02 npc_merlee,
+    hos_05 intro strips, end Credits), S7MDL1.. (make_texture_gfx, custom gfx builders), flame (host stub for the two symbols
+    in gen_gfx_tab.sh's tool link), SaveBlock.c (gen_gfx_syms misses version-conditioned symbols), then S8CEN and S8FB1-6 from
+    row_S8FB.md when every S7 row is merged; S9DEL1-4 and S9GATE are written.
+  - Facts:
+    (1) S6T decision point: the op path decides at its sync units (OMH cycle bits nd_set.c:95, TEXTURE, COMB) with the DIP2
+        skip; sc_sig_now (nd_comb.c:468) excludes geom and omode_l, so later geometry writes never redecide. sc_exec must
+        follow that (S6SYNC).
+    (2) Value order: no value unit between two static units (S6VORD in nd_scomp_analyse); every new def splits at a mid value.
+        MW none is a no-op unit.
+    (3) Entity model data is ELF-compiled under TARGET_3DS (include/entity.h:64-67 ENTITY_ADDR); the heap ROM blob only
+        feeds model->vertexArray (segment D_80154374).
+    (4) runs.jsonl blew up to 1.8-3.6 GB through merge_row.sh re-appending notes (fixed by TOOLB4, cleaned by TOOLDEDUP);
+        check worktree copies (ls -la build3ds/wt/*/3ds/logs/perf/runs.jsonl) before blaming slow benches on Azahar.
+    (5) The XL crash dump 02 of 14:23 was the Homebrew Launcher netloader (newlib strcpy to address 0, 3dslink argv on the
+        stack) failing on the 51 MB 3dsx; the GPU-stuck game log of that minute was build 4576 (67b270c94). No console run of
+        main yet; the user decides the push (title mode, hold R, if the 3dsx is still large).
+    (6) The memcheck margin is shrinking (S7ENT try 1: 466 KB); write a table-packing row when it falls below 200 KB.
+    (7) A row file must not contain the phrase the no_guess hook blocks; in JSON text a regex needs `\b` (S5TTL try 3).
+    (8) Address -> symbol: python ELF parse of the .symtab (script in the oracle 6 transcript: value <= a < value + size).
 - L0 LISTCEN (row written, Haiku, ready now): 3ds/tools/listcen.py and bench `listcen` (host_test). Builder, data and reader counts
   per file and per class go into the bench database. This is the measure of every later row and the final gate.
 - S5 rest (one Sonnet row each, by LISTCEN order, after S5CHUD sets the quad helper). Each moves every gDP/gSP call of its files

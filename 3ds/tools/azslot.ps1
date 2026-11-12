@@ -412,7 +412,9 @@ function Invoke-QGrant {
             if (-not $waiting.Count) { continue }
             if (-not (Test-SlotFree $k)) { continue }
             $key = Get-SlotLane $k
-            $pick = @($waiting | Where-Object { [int]$_.skipped -ge 2 } | Select-Object -First 1)
+            # TOOLB5: a run that can use only this slot goes first; its wait is at most one run
+            $pick = @($waiting | Where-Object { [int]$_.want -eq $k } | Select-Object -First 1)
+            if (-not $pick.Count) { $pick = @($waiting | Where-Object { [int]$_.skipped -ge 2 } | Select-Object -First 1) }
             if (-not $pick.Count) { $pick = @($waiting | Where-Object { ([string]$_.lane + "|" + [string]$_.speed) -eq $key } | Select-Object -First 1) }
             if (-not $pick.Count) { $pick = @($waiting | Select-Object -First 1) }
             $pick = $pick[0]

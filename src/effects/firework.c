@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 extern Gfx D_09000940_38AC90[];
 extern Gfx D_09000A00_38AD50[];
@@ -290,7 +291,7 @@ void func_E00863B4(EffectInstance* effect) {
             guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
             nd_sub_open(&sub); /* DIRECT D6c: the pass list is a stream range, drawn three times */
-            gSPDisplayList(gMainGfxPos++, D_E0086AB4[unk_00]);
+            nd_rec_dl(D_E0086AB4[unk_00]); /* S7EFX3: replayed by each nd_sub_call (stream_run NDC_NAPI) */
             gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
             gSPVertex(gMainGfxPos++, vbuf, nsp * 4, 0);
             for (i = 0; i < nsp; i++) {

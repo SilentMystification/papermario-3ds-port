@@ -161,6 +161,57 @@
       ]
     },
     {
+      "name": "listcen",
+      "kind": "host_test",
+      "speed": "normal",
+      "default": false,
+      "purpose": "NATIVEAPI end-state census: list builders, list data, list readers and walker model functions left (row_ORACLE_NEXT.md chain section); every class 0 is the S9GATE pass.",
+      "command": "py -3 3ds/tools/listcen.py",
+      "cap": 300,
+      "tags": [
+        "tool",
+        "nativeapi"
+      ],
+      "log_metrics": [
+        {
+          "name": "build",
+          "regex": "listcen total build (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "gfxpos",
+          "regex": "listcen total gfxpos (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "data",
+          "regex": "listcen total data (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "data_arrays",
+          "regex": "listcen total data_arrays (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "gfxtype",
+          "regex": "listcen total gfxtype (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "reader",
+          "regex": "listcen total reader (\\d+)",
+          "pick": "last"
+        },
+        {
+          "name": "model",
+          "regex": "listcen total model (\\d+)",
+          "pick": "last"
+        }
+      ],
+      "gates": []
+    },
+    {
       "name": "tidal_pic",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -3948,6 +3999,21 @@
       "gates": []
     },
     {
+      "name": "fxpic_16",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "S7 group 2 byte gate: dust (effect 16) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.",
+      "scenario": "fxpic_16",
+      "cap": 40,
+      "until": "shot \\d+ frame 415\\b",
+      "tags": [
+        "azahar",
+        "fxcen"
+      ],
+      "gates": []
+    },
+    {
       "name": "fxpic_124",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -4022,6 +4088,22 @@
       ],
       "gates": []
     },
+
+    {
+      "name": "fxpic_20",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "S7EFX3 byte gate: explosion (effect 20) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.",
+      "scenario": "fxpic_20",
+      "cap": 40,
+      "until": "shot \\d+ frame 415\\b",
+      "tags": [
+        "azahar",
+        "fxcen"
+      ],
+      "gates": []
+    },
     {
       "name": "fxpic_105",
       "kind": "azahar_pic",
@@ -4046,6 +4128,21 @@
       "scenario": "fxpic_84",
       "cap": 40,
       "until": "shot \\d+ frame 407\\b",
+      "tags": [
+        "azahar",
+        "fxcen"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fxpic_21",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "S7EFX4 byte gate: lens_flare (effect 21) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.",
+      "scenario": "fxpic_21",
+      "cap": 40,
+      "until": "shot \\d+ frame 415\\b",
       "tags": [
         "azahar",
         "fxcen"
@@ -8809,6 +8906,21 @@
         "azahar",
         "hotcode",
         "fncov"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fsel_det_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "S5MENU byte gate: the file select picture, det.",
+      "scenario": "fsel_det_pic",
+      "cap": 30,
+      "until": "shot \\d+ frame 305\\b",
+      "tags": [
+        "azahar",
+        "pic"
       ],
       "gates": []
     }
