@@ -128,9 +128,10 @@ hotset_line() {
 }
 IMG=pm3ds-build:1
 # BUILDLOCK: the engine must answer (a dead engine stops here, not in a docker call), then at most 3 builds run at once.
-timeout 20 docker info >/dev/null 2>&1 || { echo "BUILD FAULT: docker engine not answering in 20 s (docker info). Restart Docker Desktop / WSL, then build again." >&2; exit 3; }
 . 3ds/tools/build_slot.sh
+build_docker_ok || build_docker_restart || { echo "BUILD FAULT: docker engine not answering in 20 s (docker info), restart not done. Restart Docker Desktop / WSL, then build again." >&2; exit 3; }
 build_slot_take
+build_docker_ok || { build_slot_release; echo "BUILD FAULT: docker stopped answering after the slot was taken" >&2; exit 3; }
 trap 'build_slot_release' EXIT
 trap 'build_slot_release; exit 130' INT TERM
 docker build -q -t $IMG -f docker/Dockerfile.build docker >/dev/null

@@ -314,6 +314,22 @@
       "gates": []
     },
     {
+      "name": "fxfncov_81",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FXFNCOV census: draw functions run in walker frame of scenario fxfncov_81 and their call counts (census lane <L>_fncov). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.",
+      "scenario": "fxfncov_81",
+      "cap": 45,
+      "until": "fncov f\\d+ done",
+      "tags": [
+        "azahar",
+        "hotcode",
+        "fncov"
+      ],
+      "gates": []
+    },
+    {
       "name": "fxfncov_124",
       "kind": "azahar_stream",
       "speed": "normal",
@@ -1241,6 +1257,22 @@
       "tags": [
         "azahar",
         "pic",
+        "spot"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_mac01_fps60_iskip",
+      "kind": "azahar",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FPS60SPD gate 2: Toad Town mac_01 with fps60 and iskipall (every step without key frame), pace line steps/s. No shots.",
+      "scenario": "spot_mac01_fps60_iskip",
+      "cap": 45,
+      "until": "pacewk f(4\\d\\d|[5-9]\\d\\d|\\d{4,}) ",
+      "tags": [
+        "azahar",
+        "pace",
         "spot"
       ],
       "gates": []
@@ -3789,12 +3821,42 @@
       "gates": []
     },
     {
+      "name": "fxpic_55",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "S4 byte gate: effect_3D (effect 55) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.",
+      "scenario": "fxpic_55",
+      "cap": 40,
+      "until": "shot \\d+ frame 415\\b",
+      "tags": [
+        "azahar",
+        "fxcen"
+      ],
+      "gates": []
+    },
+    {
       "name": "fxpic_50",
       "kind": "azahar_pic",
       "speed": "normal",
       "default": false,
       "purpose": "S4 byte gate: shimmer_burst (effect 50) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.",
       "scenario": "fxpic_50",
+      "cap": 40,
+      "until": "shot \\d+ frame 415\\b",
+      "tags": [
+        "azahar",
+        "fxcen"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fxpic_81",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "S4 byte gate: snaking_static (effect 81) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.",
+      "scenario": "fxpic_81",
       "cap": 40,
       "until": "shot \\d+ frame 415\\b",
       "tags": [

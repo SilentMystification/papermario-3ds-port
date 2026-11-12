@@ -1265,6 +1265,31 @@
       "reason": "S4 byte gate for the pink_sparkles particle run (row S4PINK): cold det start as spot_mac01_det, shots 412 to 415. Cap 40 s, deadline 35 s. The shot line at frame 415 is the until."
     },
     {
+      "name": "fxpic_55",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 at 0 0 200, fxtest=55 (effect_3D), cold det start. Shots at frames 412 to 415.",
+      "proves": "S4 particle run (effect_3D, effect 55): shots 412 to 415 byte-equal between the base build and the head build.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=55 shots shotwin=412:4 loglevel=debug det",
+      "extra": [],
+      "until": "shot \\d+ frame 415\\b",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "shot 415",
+          "regex": "shot \\d+ frame 415\\b"
+        }
+      ],
+      "reason": "S4 byte gate for the effect_3D particle run (row S4E3D): cold det start as spot_mac01_det, shots 412 to 415. Cap 40 s, deadline 35 s. The shot line at frame 415 is the until."
+    },
+    {
       "name": "fxpic_50",
       "status": "unverified",
       "subject": "Toad Town mac_01 at 0 0 200, fxtest=50 (shimmer_burst), cold det start. Shots at frames 412 to 415.",
@@ -1288,6 +1313,31 @@
         }
       ],
       "reason": "S4 byte gate for the shimmer_burst particle run (row S4SHIM): cold det start as spot_mac01_det, shots 412 to 415. Cap 40 s, deadline 35 s. The shot line at frame 415 is the until."
+    },
+    {
+      "name": "fxpic_81",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 at 0 0 200, fxtest=81 (snaking_static), cold det start. Shots at frames 412 to 415.",
+      "proves": "S4 particle run (snaking_static, effect 81): shots 412 to 415 byte-equal between the base build and the head build.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=81 shots shotwin=412:4 loglevel=debug det",
+      "extra": [],
+      "until": "shot \\d+ frame 415\\b",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "shot 415",
+          "regex": "shot \\d+ frame 415\\b"
+        }
+      ],
+      "reason": "S4 byte gate for the snaking_static particle run (row S4SNAK): cold det start as spot_mac01_det, shots 412 to 415. Cap 40 s, deadline 35 s. The shot line at frame 415 is the until."
     },
     {
       "name": "fxpic_105",
@@ -7831,6 +7881,36 @@
       "reason": "SYNC60 byte gate. Copy of spot_mac01_fps60_pic with det (no skip, no key path under det). Cap 60 s: boot, warp, placement and the first 300-frame window."
     },
     {
+      "name": "spot_mac01_fps60_iskip",
+      "status": "unverified",
+      "reason": "broken: no until in 45 s (AZT11-5, 2026-11-12)",
+      "subject": "FPS60SPD: Toad Town mac_01 at pos 0 0 200 with fps60 and iskipall (every fps60 step skips its key frame, the path of the regression), pacestat. The pace line of the first 5 s window ending at frame 400 or later gives steps/s.",
+      "proves": "FPS60SPD: steps/s of the pace line is 29.0 to 31.0 with the key frame skipped on every step (the idle wait keeps PM_VBLANKS_PER_STEP vblanks for a step with no key frame). Log only, no shots.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fps60 pacestat iskipall fs1off loglevel=debug",
+      "extra": [],
+      "until": "pacewk f([3-9]\\d\\d|\\d{4,}) wk",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "pace",
+          "regex": "pace: wall \\d+\\.\\d ms steps \\d+ .*\\(steps/s \\d+\\.\\d+\\)"
+        },
+        {
+          "name": "pacewk",
+          "regex": "pacewk f([3-9]\\d\\d|\\d{4,}) wk \\d+\\.\\d+ drawn \\d+"
+        }
+      ],
+      "reason": "FPS60SPD gate 2. Copy of spot_mac01_fps60_det without the det and shot switches, with pacestat and iskipall. Ends on the pacewk line of the first 5 s window at frame 400 or later. Cap 45 s: boot, warp, placement and about 7 s of game steps."
+    },
+    {
       "name": "icmp_mac01",
       "status": "unverified",
       "subject": "INTERP2M: Toad Town mac_01 at pos 0 0 200 with fps60 and the icmp switch (the t = 0.5 frame and the key frame compared in GPU command words). No shots.",
@@ -13824,6 +13904,31 @@
         }
       ],
       "reason": "Per-effect census: which draw functions energy_shockwave runs per frame and their call counts (fncov lane, census only). Cap 45 s, deadline 40 s. Log only; the until is the census done line."
+    },
+    {
+      "name": "fxfncov_81",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, fxtest=81 (snaking_static) live in slot 400-443, census of walker frame 420.",
+      "proves": "HC0 M3 for mac_01 with fxtest slot live: which draw functions run in one frame and the calls of each (fncov lane, draw TUs instrumented).",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=81 fncov=420 loglevel=debug det",
+      "extra": [],
+      "until": "fncov f\\d+ done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "fncov done",
+          "regex": "fncov f\\d+ done"
+        }
+      ],
+      "reason": "Per-effect census: which draw functions snaking_static runs per frame and their call counts (fncov lane, census only). Cap 45 s, deadline 40 s. Log only; the until is the census done line."
     },
     {
       "name": "fxfncov_124",

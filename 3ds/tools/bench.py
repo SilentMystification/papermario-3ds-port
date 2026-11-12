@@ -77,7 +77,7 @@ sample has one row per window (win "f<frame> w<size>"; ts is the run wall time; 
 a window count and no window records (imported history) gets one row with win "agg" and extra_json agg_windows = count.
 Gate: {metric, op, value} or {metric, op, ref: baseline}. The baseline is the earliest run of the bench with that metric.
 """
-import argparse, collections, csv, datetime, io, json, os, re, shutil, sqlite3, struct, subprocess, sys, tarfile, time, zlib
+import argparse, collections, csv, datetime, hashlib, io, json, os, re, shutil, sqlite3, struct, subprocess, sys, tarfile, time, zlib
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -1409,10 +1409,31 @@ def save_index(idx):
     (store_root() / "index.json").write_text(json.dumps(idx, indent=1) + "\n", encoding="utf-8")
 
 
+SCEN_KEYS = ("debug", "extra", "until", "first_marker", "cap", "deadline")
+
+
+def scen_hash(s):
+    """BASEKEY: 12 hex digits of the scenario fields that change a run."""
+    d = {k: (s or {}).get(k) for k in SCEN_KEYS}
+    return hashlib.sha1(json.dumps(d, sort_keys=True).encode("utf-8")).hexdigest()[:12]
+
+
 def stored(commit, bench):
-    """True when the store holds the shots of bench at commit. meta.json is written last, after the shots."""
+    """True when the store holds the shots of bench at commit and they were made for the scenario definition bench names now.
+    meta.json is written last, after the shots."""
     d = store_root() / commit / bench
-    return (d / "meta.json").exists() and any(d.glob("*.ppm"))
+    if not ((d / "meta.json").exists() and any(d.glob("*.ppm"))):
+        return False
+    bd = bench_def(bench)
+    want = scen_hash(scenario(bd["scenario"])) if bd and bd.get("scenario") else None
+    try:
+        have = json.loads((d / "meta.json").read_text(encoding="utf-8")).get("scen_hash")
+    except (OSError, ValueError):
+        have = None
+    if want and have != want:
+        print("base %s at %s: stored for another scenario definition (hash %s, now %s): stale" % (bench, commit[:9], have or "none", want))
+        return False
+    return True
 
 
 def store_base(commit, bench, scenario_name, shots, log, info):
@@ -1474,13 +1495,21 @@ def shots_diff(a, b):
     return ""
 
 
-BASE_TWICE = 2  # a base is stored only when this many runs of its scenario in one list are byte-equal on every shot
-BASE_RUNS = 3  # TOOLB9: a warm-up run, then two warm runs are compared
+BASE_TWICE = 2  # a base is stored only when this many warm runs of its scenario in one list are byte-equal on every shot
+BASE_MAX_RUNS = 4  # BASEKEY: a list of 2, then single runs until two warm runs pass
+
+
+def base_warm(bd, row, label, commit, since):
+    """BASEKEY: (recs, warm): the run records of bd since since, and those of them that are log_pass and warm."""
+    recs = base_records(bd["name"], row, label, commit, since)
+    warm = [r for r in recs if r.get("result") == "log_pass" and r.get("warm") == 1]
+    return recs, warm
 
 
 def base_run(bds, commit, build_no, row, lane, label, why):
-    """Runs the benches bds twice in one azt list (one kept slot: bds, then bds again), copies each run's shots (snap_shots),
-    and stores a bench only when its two runs are byte-equal on every shot. A bench whose runs differ is not stored and
+    """Runs the benches bds in one azt list of two starts (one kept slot: bds, then bds again), then single starts (at most
+    BASE_MAX_RUNS) until two warm log_pass runs exist; the last two warm runs are compared (snap_shots copies each run's
+    shots), and a bench is stored only when they are byte-equal on every shot. A bench whose runs differ is not stored and
     the rc is 1. lane "" is the main folder build. Returns the rc of the run."""
     name = ",".join(b["name"] for b in bds)
     snap = REPO / "build3ds" / "basesnap" / (lane or "main")
@@ -1488,23 +1517,32 @@ def base_run(bds, commit, build_no, row, lane, label, why):
     since = now_iso()
     os.environ["PM_BASE_SNAP"] = str(snap)
     try:
-        rc = cmd_run(argparse.Namespace(bench=",".join([name] * BASE_RUNS), row=row, why=why, label=label, build=build_no, commit=commit,
+        rc = cmd_run(argparse.Namespace(bench=",".join([name] * BASE_TWICE), row=row, why=why, label=label, build=build_no, commit=commit,
                                         speed=None, lane=lane))
+        n = BASE_TWICE
+        while n < BASE_MAX_RUNS:
+            need = [bd for bd in bds if len(base_warm(bd, row, label, commit, since)[1]) < BASE_TWICE
+                    and all(r.get("result") == "log_pass" for r in base_warm(bd, row, label, commit, since)[0])]
+            if not need:
+                break
+            rc = cmd_run(argparse.Namespace(bench=",".join(b["name"] for b in need), row=row, why=why, label=label, build=build_no,
+                                            commit=commit, speed=None, lane=lane))
+            n += 1
     finally:
         os.environ.pop("PM_BASE_SNAP", None)
     bad = 0
     for bd in bds:
         s = scenario(bd["scenario"])
-        recs = base_records(bd["name"], row, label, commit, since)
-        if len(recs) < BASE_TWICE or any(r.get("result") != "log_pass" for r in recs[-BASE_TWICE:]):
+        recs, warm = base_warm(bd, row, label, commit, since)
+        if any(r.get("result") != "log_pass" for r in recs):
             print("base %s: not stored (run results %s)." % (bd["name"], ", ".join(str(r.get("result")) for r in recs) or "none"))
             bad += 1
             continue
-        first, last = recs[-2], recs[-1]
-        if first.get("warm") != 1 or last.get("warm") != 1:
-            print("base %s: the compared runs are not both warm (warm %s, %s), not stored." % (bd["name"], first.get("warm"), last.get("warm")))
+        if len(warm) < BASE_TWICE:
+            print("base %s: fewer than two warm runs in %d starts (warm %s), not stored." % (bd["name"], len(recs), ", ".join(str(r.get("warm")) for r in recs)))
             bad += 1
             continue
+        first, last = warm[-2], warm[-1]
         sa, sb = re.search(r"slot(\d+)", first.get("log_path") or ""), re.search(r"slot(\d+)", last.get("log_path") or "")
         if not sa or not sb or sa.group(1) != sb.group(1):
             print("base %s: TOOL FAULT: the two runs ran on slots %s and %s, not stored." % (bd["name"], sa.group(1) if sa else "?", sb.group(1) if sb else "?"))
@@ -1517,7 +1555,7 @@ def base_run(bds, commit, build_no, row, lane, label, why):
             continue
         names = store_base(commit, bd["name"], s["name"], Path(last["shot_path"]), REPO / "build3ds" / "azt" / "logs" / (s["name"] + ".txt"),
                            {"row": row, "label": label, "build_no": build_no, "run_log_path": last.get("log_path"),
-                            "two_runs_log_paths": [first.get("log_path"), last.get("log_path")]})
+                            "two_runs_log_paths": [first.get("log_path"), last.get("log_path")], "scen_hash": scen_hash(s)})
         print("base %s at %s: two runs equal, stored %d shots at %s" % (bd["name"], commit[:9], len(names), store_root() / commit / bd["name"]))
     shutil.rmtree(snap, ignore_errors=True)
     return rc if rc else (1 if bad else 0)

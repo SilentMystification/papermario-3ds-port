@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_api.h"
 
 extern Gfx D_09000240_37D3C0[];
 extern Gfx D_090002E8_37D468[];
@@ -230,8 +231,14 @@ void effect_3D_appendGfx(void* effect) {
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
     part++;
+#ifdef TARGET_3DS
+    NdParts pb;
+    nd_parts_begin(&pb, 2, 1);
+#endif
     for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, part++) {
+#ifndef TARGET_3DS
         gDPSetPrimColor(gMainGfxPos++, 0, 0, 200, 255, 255, part->unk_58);
+#endif
 
         guTranslateF(sp18, part->pos.x, part->pos.y, part->pos.z);
         guRotateF(sp58, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);
@@ -242,10 +249,24 @@ void effect_3D_appendGfx(void* effect) {
         guMtxCatF(sp58, sp18, sp18);
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
+#ifdef TARGET_3DS
+        {
+            Gfx g[4];
+            gDPSetPrimColor(&g[0], 0, 0, 200, 255, 255, part->unk_58);
+            gSPMatrix(&g[1], &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+            gSPDisplayList(&g[2], D_090002E8_37D468);
+            gSPPopMatrix(&g[3], G_MTX_MODELVIEW);
+            nd_parts_add(&pb, (const uint32_t*)g);
+        }
+#else
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         gSPDisplayList(gMainGfxPos++, D_090002E8_37D468);
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+#endif
     }
+#ifdef TARGET_3DS
+    nd_parts_end(&pb);
+#endif
 
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     gDPPipeSync(gMainGfxPos++);

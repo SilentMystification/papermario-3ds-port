@@ -3,6 +3,11 @@
 Read at the start and after every compaction. This file overrides any summary. Shared rules: CLAUDE.md. Hook: ORCH_RULES.txt.
 Edit rules in place, never append. At the start of a session, read docs/handoff/HANDOFF.md and docs/handoff/test_catalog.md (the test harness).
 
+## Standing goal (user, 2026-11-12)
+Do not stop until the native pipeline is implemented and the old system (walker state model, N64 list logic, the old stream path)
+is completely removed: plan_nativeapi.md stages S1 to S6. Each turn: keep 6 coders fed, merge, build main, ask the oracle for the
+next batch. Stop only for a user decision (AskUserQuestion) or a console action. ASSETFREE, CIA and QTM stay parked.
+
 ## Roles
 - Orchestrator: launches agents, merges, cleans up, pushes on request, asks the user. It does not edit game source and does not
   debug. Keep its context small: do not read long reports or long files.
@@ -24,7 +29,9 @@ Edit rules in place, never append. At the start of a session, read docs/handoff/
   code read the next step needs. Rotate the agent past about 150K, when the work leaves its files, or at the end of a chain.
 
 ## Rows
-- One row file per agent (60 lines or fewer). The prompt is 10 lines or fewer and points to the row.
+- One row file per agent. Haiku rows: 60 lines or fewer. Sonnet and Opus rows may be longer (user, 2026-11-12): the oracle gives
+  the design, the reasons, the files and the checks in full, and the model may choose its own steps inside the gate. The prompt is
+  10 lines or fewer and points to the row.
 - Keep the coders fed. The oracle writes rows in batches ahead of the coders (oracle.md 7). Each turn the orchestrator checks the
   number of running coders: below 6 with open work, it sends the oracle one "refill" request (a batch for all open work) and starts
   every ready row at once. It does not hand the oracle one job at a time.
@@ -40,6 +47,10 @@ Edit rules in place, never append. At the start of a session, read docs/handoff/
   Azahar only when 3 slots are in use. Only a fault of the tool (two runs of one build differ, a silent start) stops a gate.
 - A conflict at merge is a planning fault. Stop and ask the oracle. Do not resolve it by guessing.
 - At most 6 code agents.
+- Row spec fault (user, 2026-11-12): after the oracle corrects the row, reset the budget once inside the coder's worktree
+  (`cd build3ds/wt/<row>; powershell -File 3ds/run_azahar.ps1 -ResetBudget <row>`; the budget file is per worktree) and tell the
+  user in the status. Tool faults never get a reset. The oracle sends the corrected row to the coder itself. A byte diff of
+  at most 1 step per channel inside the effect area passes when the oracle names the code cause (rounding rule).
 - Handback triage: a test-tool fault opens a tool row, and the gate waits (CLAUDE.md 4). Send any other failure to the oracle at
   once. Decide alone only what changes no behaviour (a name, a flag, a scope). Never relaunch an unchanged row.
 - A bug row starts from the user facts. When the code read finds no cause, ask the user (AskUserQuestion).
@@ -59,7 +70,9 @@ Edit rules in place, never append. At the start of a session, read docs/handoff/
 
 ## Status and questions
 - Every Agent launch: the description is "[model] TASK - summary", 10 words or fewer for the summary (for example "[Haiku] KEYMISS - key-miss census for the draw cache").
-- Every turn: RUNNING (one line per agent, labelled with its model and row: [Haiku] HC8, [Sonnet] KZN04, [Opus] HC5, [Oracle Opus], [Push], [Build]) / READY-NOT-LAUNCHED / BLOCKED-ON-USER.
+- Every turn, one markdown table (user, 2026-11-12) with the columns State | Agent | Row | Summary. State is RUNNING, QUEUED
+  or BLOCKED-ON-USER. One line per agent or row. Agent = [Haiku], [Sonnet], [Opus], [Oracle Opus], [Push], [Build]. Summary = 10
+  words or fewer (the same text as the Agent description). BLOCKED-ON-USER: console actions only.
 - Ask only with AskUserQuestion (2-4 options, recommended first). Do not ask what a rule decides. A decision or blocker is never
   written as a status line: ask it as a question at once. BLOCKED-ON-USER lists only console actions that wait for the user.
   A design the user gave to the oracle is the oracle's job: it is not a blocker.

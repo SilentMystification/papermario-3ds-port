@@ -8,26 +8,89 @@ A replacement oracle starts here: read CLAUDE.md, orchestrator_rules.md, plan_ho
 - Open, not read (machine restart): retrace_call(0) of the LG_IDLE pass (pm_nusys.c:236) to confirm it never runs step_game_loop
   (the D_80073E0A flip); audio tick count per step (pm_audio_step at pm_main.c:493 and pm_nusys.c:168: two call sites, check that one
   step runs only one tick set). Neither is needed for row FPS60SPD.
+- Open read (FPS60SPD try 3): with iskipall, 17 key frames in 130 steps (drawn 147 against 130 iterations). LGF_ISKIP is set on every
+  step (pm_main.c:708) and nuGfxTaskStart clears nkey at the swap (pm_nusys.c:182). gfxRetrace_Callback runs the bg task before the swap
+  (src/main.c:138-139), so no post-swap task is known. Find what queues these key frames; a key frame of only part of a step would show
+  as a flash. Related: INTERPB3 try 3 kfb census.
 - INTERPB3 (Sonnet coder): pm_key_show must call pm_lg_key_walked once per K frame and do one pm_gpu_begin (sync60_pace), as
   pm_key_walk does (pm_nusys.c:208-219). Give this line to the coder at its next hand-back.
 
-## NATIVEAPI state and graph (oracle 2, 2026-11-12; text for plan_nativeapi.md: the oracle writes row files only, the orchestrator copies it)
-- Merged: S0 (NAPI0 census, NAPI1 skeleton); S2 HUD rects replay form (NAPI2A); S3 glyphs replay form (NAPI3A); S4 particle API and
-  effects (S4P, S4SNOW, S4SNOWG, S4PINK, S4SHIM, S4EMB, S4COL).
-- Ready now (Haiku, run together, disjoint files and JSON insert points): S4E3D (effect_3D.c), S4SNAK (snaking_static.c), S4WBLK
-  (water_block.c), FSELCEN (census only, JSON append). Console gate: one XL `fxtest=all` run after S4E3D, S4SNAK and S4WBLK all merge,
-  compared with xl4a walk per effect.
-- Next batch (oracle reads first; Sonnet with reason: each is a new record form or a new bind rule, not a copy of a merged pattern):
-  S4SPLASH (water_splash.c:215 binds a 32 x 32 window of the previous frame per drop: one bind with the window as a uv offset; needs a
-  read of ensure_tile_slow and tex_win0 for off-screen slot images), S1 (screen_overlays.c, screen_render_util.c in the NAPI2A replay
-  form), NAPI2B and NAPI3B (direct executors of the HUD rect and glyph records, design in the NATIVEAPI section below).
-- Not S4 (no part loop, one draw per effect instance): energy_shockwave (11 live instances, energy_shockwave.c:140-170), explosion,
-  snowman_doll: batching across instances needs a new record that spans appendGfx calls: design after S4SPLASH. radiating_energy_orb
-  (:166-224): 4 part shapes with prim and env changes between them: one nd_parts run needs one shape: design.
-- Graph: NAPI1 -> S1. NAPI2A -> NAPI2B; NAPI3A -> NAPI3B; NAPI2B + NAPI3B merged -> one console prof push (mac_01 0 0 200 and a talk
-  spot). FSELCEN -> S2W (draw_box.c windows and the ROTSCALE flip) -> S5 menus (pause, file menus share draw_box). NAPI2B -> S5 (the
-  direct form). S4P -> S4 batch A -> S4 console run; S4SPLASH after the S4 console run. S1 + S2W + S3B + S4 + S5 -> S6 (map custom gfx
-  and entity lists by host conversion, then the walker state model goes). S6 after S5: rows named when S5 merges.
+## NATIVEAPI full chain (oracle 2, 2026-11-12; text for plan_nativeapi.md: the oracle writes row files only, the orchestrator copies it)
+End state: every producer records NDC_NAPI commands; core 0 runs native executors that bind by NdPso and NdTex ids. The N64 state
+model (nd_comb decide, nd_render_state, TMEM window model) runs only cold, when an id is made. Per-frame typed state ops, nd_walk_state,
+nd_ops_run, nd_rect, the gv walker state and the NDC_STATE stream path are deleted. Merged so far: NAPI0, NAPI1, NAPI2A, NAPI3A
+(replay forms), S4P, S4SNOW, S4SNOWG, S4PINK, S4SHIM, S4EMB, S4COL. Running: S4E3D, S4SNAK, S4WBLK, FSELCEN (Haiku).
+Rows in order. Format: id: files | blocker | gate | model. CONSOLE = one batch console run (one push, compared with a stored run).
+- Rows written: NAPI2B (running), NAPI3B, S1FILL, S1PREV, S4PDIR, S4SPLASH, NAPICEN3 (ready, Haiku: the napicen dump printed only
+  the top 40 callers, nd_rec.c:417; the 60 % was the cut, not unmapped ops).
+- Notes for the next oracle (reads done, rows not written):
+  S1STEN: appendGfx_darkness_stencil (screen_render_util.c:130-257) draws into nuGfxZBuffer as a 64 x 64 32-bit image (two stencil
+  quads with PM_CC_CONST_1 then PM_CC_56), converts it to I8 with 4 texture rects of 16 rows reading its own output, fills the z
+  image back, then draws the I8 image on the screen with PM_CC_57/58 (pm_wide arms :235-250). On 3DS this is the X02/FX2a off-screen
+  slot path (pm_gpu.c:2036-2054, off_snapshot). Gate scene: dark_kgr01 has no det: add dark_kgr01_det.
+  S4INST: effects queue render tasks (energy_shockwave.c:127-138 queue_render_task); execute_render_tasks (model.c:5181, appendGfx at
+  :5284 and :5303) runs them in sorted order. Order rule: batch only consecutive tasks with the same appendGfx (draw order kept); open
+  the run before the first, close after the last; each appendGfx adds an instance instead of emitting. energy_shockwave per
+  instance: setup list D_09000E60, prim, env, 2 tile sizes, matrix, list D_09000DC0, pop (energy_shockwave.c:140-170).
+  S5CHUD: read render_complex_hud_element (hud_element.c) first. S5IMGFX: read imgfx_appendGfx_mesh; its heap meshes are hashed per
+  frame by ent_heap_list (nd_ent.c:188-194). S6T: ent_run (nd_ent.c:393-417) replays the state pieces between segments with
+  ENT_GBI (nd_ops_run); the compiled form keys a piece by its content hash and the inherited walker signature (sc_sig_now).
+- A1 NAPI2B (row written): 3ds/src/nd_direct.c (new), 3ds/include/nd_api.h, nd_tex_set.c (bind body of ensure_tile_slow split out),
+  src/hud_element.c hud_rect_run | none | nd_host, spot_mac01_det + pause_tab_det_pic byte-equal, fncov | Sonnet (first direct executor:
+  the shared helpers every later row uses).
+- A2 NAPI3B: src/msg_draw.c msg_glyph_run (glyph atlas bind, CI4 cell path of set_tilesize) | A1 | nd_host, msgbox_talk_nowide +
+  ndref_text-scene byte-equal, fncov | Sonnet (atlas cell rules).
+- CONSOLE C1 after A1 + A2: prof push mac_01 0 0 200 and the talk spot, compared with the last stored prof run.
+- B1 S1FILL: screen_overlays.c SCREEN_COLOR and VIEWPORT_COLOR fills (:209-246) through the A1 fill helper | A1 | byte-equal a fade
+  scene + spot_mac01_det | Haiku (one pso, pm_gpu_fill_rect).
+- B2 S1STEN: screen_render_util.c appendGfx_screen_transition_stencil, appendGfx_darkness_stencil (64 x 64 off-screen pass) | A1 |
+  byte-equal battle wipe + a darkness map scene | Sonnet (off-screen pass and stencil textures).
+- B3 S1PREV: screen_render_util.c appendGfx_draw_prev_frame_buffer (FB1 strips of the previous buffer) | A1 | byte-equal pause_spin_grab_det_w300 | Sonnet.
+- C1 S4 batch A (running) -> CONSOLE C2: XL `fxtest=all`, compared with xl4a walk per effect.
+- C2 S4SPLASH: water_splash.c, nd_tex_set.c fb_prev_base (a mask-5 wrap window of the previous buffer bound once, window as tile_x0/y0
+  as FB1 does for clamp windows) | C1 merged | byte-equal fxpic_89 or rounding rule, fncov fxfncov_89 (ensure_tile_slow per drop -> 1) | Sonnet.
+- C3 S4PDIR: nd_walk.c nd_parts_run: per-instance prim, env, tile sizes and matrix as record values; the run binds its pso and tex
+  once | A1, C1 | fxpic_63 + fxpic_105 byte-equal, fncov nd_walk_state from parts 0 | Sonnet.
+- C4 S4INST: effects.c render loop: one NdParts run per effect type per frame across instances (energy_shockwave, explosion,
+  snowman_doll, ring_blast); radiating_energy_orb as 4 runs only where its parts share a shape in sequence | C3 | fxpic of each, fncov |
+  Opus (draw order across instances: the oracle reads render_effects_World first and writes the order rule into the row).
+- CONSOLE C3 after C2-C4: XL `fxtest=all`.
+- D1 FSELFIX: draw_box.c ROTSCALE (one quad per window instead of height/6 strips, :801-820), pm_gpu.c:2089 clear of the window area
+  only | FSELCEN values | rounding rule on fileselect_rotate shots + pause_spin_grab_det_w300 | Haiku or Sonnet by the census.
+  CONSOLE C4: one file select push.
+- D2 S2W: draw_box.c box, corners and pattern (box_pattern_rect, box_fold_sync) through A1 | A1, D1 | byte-equal pause_tab_det_pic +
+  msgbox_talk_nowide | Sonnet.
+- E0 NAPICEN2 (done 2026-11-12; build3ds/out/napicen2_*.txt): typed ops per frame. mac01 547: sprite.o 96 (spr_appendGfx_component_flat
+  78, component 18), draw_box 74, entity_model 69, background bg_emit 10, entity 7, item_entity 6. talk 635: animator node 100,
+  draw_box 74, sprite 44, entity_model 32. btl 641: render_complex_hud_element 133, draw_box 74, btl_appendGfx_prim_quad 32, bg_emit
+  10. glyphs and msg_draw: 0 (native). About 60 % of the ops are not mapped to a producer in the top 40: a NAPICEN3 row (map the
+  rest: inlined callers, nd_gx_w return addresses in macros) comes before the S6 rows.
+- S5 order by these counts (each row: the producer's state ops into its record or a direct executor through the A1 helpers; gate
+  byte-equal of a det scene that draws it plus napicen of that scene):
+  E1 S5CHUD render_complex_hud_element (hud_element.c; btl 133) | A1 | btlui_menu_det | Sonnet.
+  E2 S5SPR sprite component state (sprite.c spr_appendGfx_component_flat and _component; 96/44): the NDC_SPR record carries the
+  state the walker still gets as ops | A1 | spot_mac01_det, mdl5_iwa10_det | Sonnet.
+  E3 S2W draw_box (74 in every scene) = D2 above.
+  E4 S5ANIM appendGfx_animator_node (animator.c; talk 100) | A1, S6T design for its static lists | msgbox_talk_det | Sonnet.
+  E5 S5EMDL appendGfx_entity_model (entity_model.c; 69) | A1 | spot_mac01_det | Sonnet.
+  E5b S5PQUAD btl_appendGfx_prim_quad (battle/190B20.c; 32) | A1 | btlui_menu_det | Haiku after E1 sets the pattern.
+- E6 S5BG: background_gfx.c (scrolling background strips) | A1 | byte-equal a background map scene | Sonnet.
+- E7 S5IMGFX: imgfx.c (vertex meshes rebuilt per frame in the heap, ent_heap_list nd_ent.c:191) -> nd_mesh with a pso per imgfx mode |
+  A1 | byte-equal mdl5_iwa10_det or an imgfx scene, fncov | Opus (the oracle reads imgfx_appendGfx_mesh first).
+- CONSOLE C5 after S5: prof push mac_01 0 0 200 + pause + battle.
+- F1 S6T: state compiler: a typed state-op range (the ENT_GBI pieces nd_ent.c:381-412, effect setup lists, map custom gfx) compiled once
+  into NdPso + NdTex ids keyed by (range content hash, inherited-state signature as sc_sig_now), run time binds ids | all E | nd_host,
+  DIRECT byte set (spot_mac01_det, mdl5_iwa10_det, spot_mac00_det) | Opus (core design).
+- F2 S6E: nd_ent.c ent_run through F1 (no ENT_GBI per frame) | F1 | DIRECT byte set, entnat census | Sonnet.
+- F3 S6M: map custom gfx (src/world, 45 files) through F1: their lists record as compiled ranges | F1 | DIRECT byte set + kzn_08 and
+  hos_01 scenes | Sonnet.
+- F4 S6DEL1: delete per-frame nd_walk_state and nd_ops_run use (compile path only) | F2, F3 | nd_host, DIRECT byte set, napicen 0 state ops | Sonnet.
+- F5 S6DEL2: delete run-time sync_combine, scm memo, sync_render, nd_rect, set_tilesize/tex_win/ensure_tile run-time path, gv walker
+  state | F4 | same + hotset M1 per class | Sonnet.
+- F6 S6DEL3: delete NDC_STATE in nd_rec.c, the typed-op macro mapping in nd_gbi.h for the game side, every reader of N64 list words left
+  (nd_walk.c G_DL arms) | F5 | build (no caller left), nd_host, DIRECT byte set | Sonnet.
+- CONSOLE C6 after F6: prof push + PMU (pmu_i, cycles) + hotset M1.
+- Tool rows (written, Haiku, no game code): MERGEROW, PUSHBATCH, DOCKWD.
 
 ## File select and pause flip (oracle 2, 2026-11-12; user fault: entry slow, flip on a file pick very laggy)
 - Path (code read): ROTSCALE windows (filemenu_common.c:648, :669; 11 windows: filemenu_main.c:1108-1118, filemenu_createfile.c:589-599;
