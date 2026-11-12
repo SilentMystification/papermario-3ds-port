@@ -8,13 +8,17 @@ Do not stop until the native pipeline is implemented and the old system (walker 
 is completely removed: plan_nativeapi.md stages S1 to S6. Each turn: keep 6 coders fed, merge, build main, ask the oracle for the
 next batch. Stop only for a user decision (AskUserQuestion) or a console action. ASSETFREE, CIA and QTM stay parked.
 Pre-approved by the user (2026-11-12, for the night run): all Sonnet and Opus coder rows of the chain (Sonnet S5, S6, S7, S8, S9
-rows; Opus S6T, S5IMGFX, S7CONV, S7MDL); a fresh Opus oracle when the oracle context passes about 600K or its reads no longer
-fit (the old one stops after it saves notes); one budget reset per row correction. No console push without the user: keep
+rows; Opus S6T, S5IMGFX, S7CONV, S7MDL); a fresh Opus oracle only when forced (the hard context limit is reached or its answers
+visibly degrade) or when the work moves to a new area (user, 2026-11-12: no rotation on a token count, it saves no proven cost
+and a fresh oracle re-reads about 300K tokens); one budget reset per row correction. No console push without the user: keep
 merging passed rows, rebuild main, wait. Hardware-only risk rows (GPU state, texture binds) still merge when their Azahar gates pass.
 Definition of done (user, 2026-11-12): the complete native-only path with ALL display list code removed (the game draws only
 through native calls; no N64 list words, no walker state model, no list readers, no stream replay of list words anywhere).
 A stage that leaves list code behind is not done. The last rows delete it and prove it by grep (no gSP/gDP list builders left in
 the draw path, no ndc/ops readers of list words) plus the byte set and the console run.
+The epic is NOT DONE (user, 2026-11-12, repeated) until the old system is not used at all: removed from the source, or proven
+absent from the final 3ds executable (ELF symbol and section check). Nobody, orchestrator included, says "done" or "complete"
+for the epic before that proof. A stage report says what is left, in counts, never "stage complete".
 
 ## Roles
 - Orchestrator: launches agents, merges, cleans up, pushes on request, asks the user. It does not edit game source and does not
@@ -28,8 +32,8 @@ the draw path, no ndc/ops readers of list words) plus the byte set and the conso
 - Oracle (Opus): reads code and writes only docs/handoff/row_*.md files (rows, findings). It never writes code (oracle.md).
   It plans every fix by code read (CLAUDE.md 1-2). For a data-format change it first lists every reader. The orchestrator starts
   the first oracle of a session and reuses it for related questions, sent in groups. Any other Opus agent (a second or replacement
-  oracle, an Opus code agent) needs a user yes: ask with AskUserQuestion and give the reason (the oracle context passed about 600K, or a
-  new area where its context does not help). Ask the oracle for its own context count; the subagent usage line adds up every turn
+  oracle, an Opus code agent) needs a user yes: ask with AskUserQuestion and give the reason (the oracle hit the hard context limit or its
+  answers visibly degrade, or the work moved to a new area where its context does not help). Never a token count alone (user, 2026-11-12). Ask the oracle for its own context count; the subagent usage line adds up every turn
   and is not the context. Never two oracles at once unless the user says so.
   Never stop or pause the oracle (user 2026-11-11): its context size is no reason to stop its work. Do not tell it to stop at a token count.
 - Code agents: Haiku (coder.md). Sonnet or Opus only when the oracle gives a reason and the user says yes. Reuse an agent of the
