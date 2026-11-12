@@ -61,6 +61,13 @@ static const uint32_t mwn_u[] = {
     NDO_W0(NDO_MTX, 0x07), 0,
     NDO_W0(NDO_OMH, OM_A(G_MDSFT_CYCLETYPE, 2)), G_CYC_1CYCLE,
 };
+/* S6SYNC: the render mode list form {OML, OMH cycle, GEOM, GEOM}: one sync unit (the cycle), index 1 */
+static const uint32_t rml_u[] = {
+    NDO_W0(NDO_OML, OM_A(0, 2)), 0,
+    NDO_W0(NDO_OMH, OM_A(G_MDSFT_CYCLETYPE, 2)), G_CYC_1CYCLE,
+    NDO_W0(NDO_GEOM, ~(uint32_t)G_CULL_BOTH), 0,
+    NDO_W0(NDO_GEOM, ~(uint32_t)0), G_ZBUFFER,
+};
 /* SCOMP0: texture setters after the last static unit: value units, after the combine */
 static const uint32_t tex_u[] = {
     NDO_W0(NDO_COMB, 0xfffe7e), 0xfffffbfdu,
@@ -89,6 +96,7 @@ int main(void) {
     NdSDef tex = { tex_u, sizeof tex_u / 8u, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     NdSDef mid2 = { mid2_u, sizeof mid2_u / 8u, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     NdSDef mwn = { mwn_u, sizeof mwn_u / 8u, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    NdSDef rml = { rml_u, sizeof rml_u / 8u, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     NdCombIn a, b;
     int m1, m2;
     unsigned i1, i2;
@@ -104,6 +112,8 @@ int main(void) {
     check("texture units after the last static compile", nd_scomp_analyse(&tex) == 1 && tex.nv == 2u && tex.pre == 0u);
     check("scissor between static units is refused", nd_scomp_analyse(&mid2) == 0);
     check("MW none is a no-op: the matrix is a pre value", nd_scomp_analyse(&mwn) == 1 && mwn.nv == 1u && mwn.pre == 1u);
+    check("RM list form: one sync unit at index 1", nd_scomp_analyse(&rml) == 1 && rml.nsync == 1u && rml.sync_k[0] == 1u);
+    check("cam sync units: texture, cycle type, combine", cam.nsync == 3u);
     /* cam: the combine words are set by the def, prim is inherited and read by the decision */
     base_in(&a); i1 = id_of(&t, &cam, &a, 0, &m1);
     check("first run of a key is a miss", m1 == 1);
