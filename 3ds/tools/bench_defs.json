@@ -3904,6 +3904,20 @@
       "gates": []
     },
     {
+      "name": "dlcchk_mac01",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "S7MAP: mac_01 with the dlcchk switch. The shape lists come from the build time .dlc file; the dlcpre line has pre above 0 and bad 0. Log check only.",
+      "scenario": "dlcchk_mac01",
+      "cap": 25,
+      "until": "dlcpre f\\d+ pre \\d+ rt \\d+ full \\d+ bad \\d+",
+      "tags": [
+        "azahar"
+      ],
+      "gates": []
+    },
+    {
       "name": "fxpic_63",
       "kind": "azahar_pic",
       "speed": "normal",
@@ -3940,6 +3954,21 @@
       "default": false,
       "purpose": "S4 byte gate: effect_3D (effect 55) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.",
       "scenario": "fxpic_55",
+      "cap": 40,
+      "until": "shot \\d+ frame 415\\b",
+      "tags": [
+        "azahar",
+        "fxcen"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fxpic_0",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "S7EFX1 byte gate: big_smoke_puff (effect 0) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.",
+      "scenario": "fxpic_0",
       "cap": 40,
       "until": "shot \\d+ frame 415\\b",
       "tags": [

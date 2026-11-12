@@ -28,6 +28,16 @@ static unsigned unit_class(uint32_t w0) {
     }
 }
 
+/* S6SYNC: 1 when the op path runs sync_combine on this static unit (set_om over the cycle bits, nd_op_apply TEXTURE and COMB). */
+static int unit_sync(uint32_t w0) {
+    const unsigned a = w0 & 0xffffffu;
+    switch (w0 >> 24) {
+    case NDO_OMH: { const unsigned sft = a & 0xffu, len = (a >> 8) & 0xffu; return sft <= G_MDSFT_CYCLETYPE && sft + len > G_MDSFT_CYCLETYPE; }
+    case NDO_TEXTURE: case NDO_COMB: return 1;
+    default: return 0;
+    }
+}
+
 int nd_scomp_analyse(NdSDef* d) {
     const uint32_t* u = (const uint32_t*)d->u;
     int ok = d->n >= 1u && d->n <= 32u, seen = 0;
@@ -36,6 +46,7 @@ int nd_scomp_analyse(NdSDef* d) {
     d->omh_m = d->omh_v = d->oml_m = d->oml_v = 0;
     d->geom_c = ~0u; d->geom_s = 0;
     d->has_geom = d->has_tex = d->has_comb = 0; d->last_op = 0;
+    d->nsync = 0; memset(d->sync_k, 0, sizeof d->sync_k);
     for (unsigned k = 0; k < d->n && k < 32u; k++) {
         const uint32_t w0 = u[2u * k], b = u[2u * k + 1u], a = w0 & 0xffffffu;
         const unsigned c = unit_class(w0), id = w0 >> 24;
@@ -51,6 +62,7 @@ int nd_scomp_analyse(NdSDef* d) {
         if (first == 32u) first = k;
         last = k;
         d->last_op = nd_op_n64[id - NDO_BASE];
+        if (unit_sync(w0)) { if (d->nsync >= 4u) ok = 0; else d->sync_k[d->nsync++] = (uint8_t)k; }
         switch (id) {
         case NDO_OMH: { const uint32_t m = nd_op_om_mask(a); d->omh_v = (d->omh_v & ~m) | (b & m); d->omh_m |= m; break; }
         case NDO_OML: { const uint32_t m = nd_op_om_mask(a); d->oml_v = (d->oml_v & ~m) | (b & m); d->oml_m |= m; break; }
@@ -164,17 +176,20 @@ static __attribute__((cold, noinline)) void sc_make(NdCombOut* o, const NdCombIn
     sc_made++;
 }
 
-/* The folded writes of d on the live walker words, as the def's setters leave them. */
-static void sc_block(const NdSDef* d) {
-    if (d->omh_m) {
-        const unsigned old_tf = nd_ws.omode_h & (3u << 12);
-        nd_ws.omode_h = (nd_ws.omode_h & ~d->omh_m) | d->omh_v;
-        nd_ws.om_kh |= d->omh_m;
-        if ((nd_ws.omode_h & (3u << 12)) != old_tf) { /* V15: G_MDSFT_TEXTFILT, as set_om */
-            pm_gpu_flush();
-            pm_tex_set_filter((nd_ws.omode_h & (3u << 12)) != 0);
-        }
+/* The othermode H write as set_om does it, without the combine sync. */
+static void sc_omh(uint32_t m, uint32_t v) {
+    const unsigned old_tf = nd_ws.omode_h & (3u << 12);
+    nd_ws.omode_h = (nd_ws.omode_h & ~m) | (v & m);
+    nd_ws.om_kh |= m;
+    if ((nd_ws.omode_h & (3u << 12)) != old_tf) { /* V15: G_MDSFT_TEXTFILT, as set_om */
+        pm_gpu_flush();
+        pm_tex_set_filter((nd_ws.omode_h & (3u << 12)) != 0);
     }
+}
+
+/* The folded writes of a def with no sync unit on the live walker words, as the def's setters leave them. */
+static void sc_block(const NdSDef* d) {
+    if (d->omh_m) sc_omh(d->omh_m, d->omh_v);
     if (d->oml_m) { nd_ws.omode_l = (nd_ws.omode_l & ~d->oml_m) | d->oml_v; nd_ws.om_kl |= d->oml_m; }
     if (d->has_geom) set_geom(d->geom_c, d->geom_s);
     if (d->has_tex) nd_set_texture(d->tex_a, d->tex_b);
@@ -199,22 +214,46 @@ static void sc_replay(const NdCombOut* o) {
     }
 }
 
-static void sc_exec(const NdSDef* d, const uint32_t* v) {
-    if (d->pre) nd_walk_state(v, d->pre);
-    sc_block(d);
-    {
-        NdCombIn in;
-        uint32_t key[ND_SC_KEYW];
-        int miss;
-        if (__builtin_expect(!sc_tab, 0)) sc_alloc();
-        comb_in_walker(&in);
-        nd_scomp_key(d, &in, (uint32_t)pm_comb_vprim, key);
-        const unsigned i = nd_scomp_find(sc_tab, d->id, key, &miss);
-        if (__builtin_expect(miss, 0)) sc_make(&sc_out[i], &in);
-        sc_replay(&sc_out[i]);
-    }
+static const NdSDef sc_nul; /* no writes: the key of the live state (nd_scomp_key takes every field from the walker) */
+
+/* S6SYNC: sync_combine of the op path at a sync unit: the DIP2 skip, else the decision of the live state (key of the walker's inputs read now). */
+static void sc_decide(const NdSDef* d, unsigned k) {
+    NdCombIn in;
+    uint32_t key[ND_SC_KEYW];
+    int miss;
+    if (sc_ok && sc_sig_now() == sc_sig) return;
+    if (__builtin_expect(!sc_tab, 0)) sc_alloc();
+    comb_in_walker(&in);
+    nd_scomp_key(&sc_nul, &in, (uint32_t)pm_comb_vprim, key);
+    key[0] = (uint32_t)(uintptr_t)d + k; /* the def and the sync unit */
+    key[26] = nd_ws.omode_h; key[27] = nd_ws.omode_l; key[28] = nd_ws.tst1.tile_fmt[0] * 4u + nd_ws.tst1.tile_siz[0]; key[29] = nd_ws.geom;
+    const unsigned i = nd_scomp_find(sc_tab, d->id, key, &miss);
+    if (__builtin_expect(miss, 0)) sc_make(&sc_out[i], &in);
+    sc_replay(&sc_out[i]);
     sc_ok = 1;
     sc_sig = sc_sig_now();
+}
+
+/* S6SYNC: the static units in stream order as the op path runs them: nd_op_same skips the unit, else its write; a sync unit then decides. */
+static void sc_units(const NdSDef* d) {
+    const uint32_t* u = (const uint32_t*)d->u;
+    for (unsigned k = 0; k < d->n; k++) {
+        const uint32_t* p = u + 2u * k;
+        const unsigned id = p[0] >> 24;
+        if (d->vmask >> k & 1u) continue;
+        if (id != NDO_OMH && id != NDO_OML && id != NDO_GEOM && id != NDO_TEXTURE && id != NDO_COMB) continue; /* no-ops */
+        if (nd_op_same(p)) continue;
+        if (!unit_sync(p[0])) { nd_op_apply(p); continue; }
+        if (id == NDO_OMH) { const uint32_t m = nd_op_om_mask(p[0] & 0xffffffu); sc_omh(m, p[1]); }
+        else if (id == NDO_TEXTURE) nd_set_texture(p[0] & 0xffffffu, p[1]);
+        else op_setcombine(NDO_COMB_W0(p[0] & 0xffffffu), p[1]);
+        sc_decide(d, k);
+    }
+}
+
+static void sc_exec(const NdSDef* d, const uint32_t* v) {
+    if (d->pre) nd_walk_state(v, d->pre);
+    if (d->nsync) sc_units(d); else sc_block(d);
     sr_ok = 0; /* the next draw makes the render state again (as after a range sync that worked) */
     gv_epoch++; /* GV1b */
     pm_gbi_cur_op = d->last_op;

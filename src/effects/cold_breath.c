@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 extern Gfx D_09002000_3DB100[];
 extern Gfx D_09002200_3DB300[];
@@ -205,7 +206,11 @@ void cold_breath_appendGfx(void* effect) {
     gSPMatrix(gMainGfxPos++, camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     gDPSetPrimColor(gMainGfxPos++, 0, 0, data->primCol.r, data->primCol.g, data->primCol.b, 0.5 * unk24);
     gDPSetAlphaDither(gMainGfxPos++, G_AD_NOISE);
+#ifdef TARGET_3DS
+    nd_rec_dl(D_E00DE84C[unk00]);
+#else
     gSPDisplayList(gMainGfxPos++, D_E00DE84C[unk00]);
+#endif
 
     unkIndex = (unk14 < 30 ? unk14 : 29) + unk00 * 30;
     temp1 = D_E00DE96C[unkIndex];
@@ -228,7 +233,11 @@ void cold_breath_appendGfx(void* effect) {
             gDPSetTileSize(gMainGfxPos++, 1, 0, 0, 31 << 2, 127 << 2);
         }
         gDPSetEnvColor(gMainGfxPos++, data->envCol.r, data->envCol.g, data->envCol.b, envAlpha);
+#ifdef TARGET_3DS
+        nd_rec_dl(D_E00DE810[unk00][temp_s32]);
+#else
         gSPDisplayList(gMainGfxPos++, D_E00DE810[unk00][temp_s32]);
+#endif
     }
 
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
