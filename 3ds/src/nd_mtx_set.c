@@ -228,7 +228,7 @@ const float (*pm_gbi_combined_ptr(void))[4] { return combined; }
 /* ---- INTERPB1 debug (switch twinchk): the twins of the L walk (t = 0.5 pass, role 1) against the values the key walk (role 2) makes in the same
  * order: gm_tab_k[i] against gm_tab[i] (and the nrm rows, and pcomp at the key walk's pcomp_calc), the palette 0 and the pm5 normal rows of each
  * draw site. Each task start ends the task before it (the L entries count is kept at the end of the L main task; the compare runs at the end
- * of the K main task). One line per 300 compared steps. Cold: runs only under the switch. ---- */
+ * of the K main task). One line per 10 compared steps (the scenarios end soon after the first icmp lines). Cold: runs only under the switch. ---- */
 unsigned nd_tw_m, nd_tw_p, nd_tw_q; /* pcomp or entry mismatches, pal0 mismatches, nrm mismatches (pm_gpu.c adds the pcomp ones to m) */
 #define TW_N 2048u
 static u32 tw_hp[TW_N], tw_hq[TW_N];
@@ -261,7 +261,7 @@ static __attribute__((cold, noinline)) void tw_task_end(void) {
         nd_tw_q += tw_nq_k > tw_nq_l ? tw_nq_k - tw_nq_l : tw_nq_l - tw_nq_k;
         tw_e += n;
         tw_have_l = 0;
-        if (++tw_win >= 300u) {
+        if (++tw_win >= 10u) {
             pm_log("twinchk f%u entries %u mismatch %u pal0 %u nrm %u", pm_frame_count(), tw_e, nd_tw_m, nd_tw_p, nd_tw_q);
             tw_e = tw_win = 0; nd_tw_m = nd_tw_p = nd_tw_q = 0;
         }
