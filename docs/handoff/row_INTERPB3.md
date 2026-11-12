@@ -86,5 +86,40 @@ force at frame begin"`; base 20d613506 as before):
 Stop after try 2 with the values in all cases. The oracle then writes the K-site step (the patch for the class that the icmp census
 names for the odd-shot area) or a fix for the outside lists from the kcout lines.
 
+## Try 3 (oracle code read of 75804ba05; the orchestrator reset the budget once more: 3 Azahar starts)
+Facts of try 2: mono 12/12 byte-equal (L and K copies). Stereo left 6/12: the odd (K) shots 1, 3, 5, 7, 11 each have 102 px in
+x65..190 y279..325, and shot 9 has 104 px in x65..214 y4..325. kcopy_btl f511: `kcopy 266 kwalk 34 why 0 0 8 6 0`. kcout: all 8 are
+kind patch with addr 0x329xxxxx against cb 0x30189c00, at f164-f191.
+Causes and edits:
+1. The 8 outside patches (named): blk_build (pm_gpu.c:1157) emits a new model command block into the arena blk_ar with nd_emit_full.
+   That emit runs the palette path of nd_emit.c:92-98, which calls nd_kp_vec with o in blk_ar. The patch base then points into the
+   arena, not the command buffer. The cache hit copy patches its own K row (blk_put, pm_gpu.c:1185), so the arena patch is extra. It
+   comes only when a block is first built: the early battle frames f164-191 with new models. Edit: in blk_build, keep
+   `const unsigned kp0 = nd_kp_n;` before nd_emit_full and set `nd_kp_n = kp0;` after it. Do the same in blk_check around its
+   nd_emit_draw (debug, the same leak). No other change: the emitted words stay the same.
+2. The 20 walks with no counted cause: not named by code read. Every kc_build return is counted. kc_build clears kc_valid at its
+   start for every frame end. The key message of step n follows step n's frame end in the walker queue (pm_main.c:497, :502), and all
+   300 steps had a key frame (266 + 34). Census edit (no fix): in pm_key_show's fallback, count one of 4 slots `kfb`:
+   (a) icmp on; (b) no kc_build since the last key show (a counter kc_gen++ in kc_build, read in pm_key_show); (c) kc_build ran and
+   succeeded, but a later kc_build or key show cleared kc_valid before this show (keep kc_ok_gen = kc_gen at success); (d) kc_build ran
+   and refused (a why slot counted). Add `kfb a b c d` to the interp line.
+3. The stereo K diff, 102 px in one area of the left eye. Mono K copies are now exact, so the patch set is complete for mono. The diff
+   is stereo-only. Candidates by read: CPU eye culling uses L's matrices (nd_eye_cull_e and nd_eye_cull_k, set per frame at the
+   begin; a model or triangle near an eye plane is kept in one and dropped in the other); and words that differ by eye and are not in
+   the patch list. Not named. Measure: new scenario `icmp_mac01_stereo` = `icmp_mac01` with `stereo` added (same until). It compares
+   the patched copy with the key walk (icmpp lines, INTERPB2), now with stereo. Insert it right after `icmp_mac01` in both JSON files.
+Runs (one list, 3 starts): `bench.py run spot_mac01_fps60_stereo_det,icmp_mac01_stereo,kcopy_btl --row INTERPB3 --why "try 3: arena
+patches, fallback census, stereo icmp"`.
+Gate of try 3:
+- nd_host PASS, memcheck OK. Mono is not rerun (edits 1 and 2 do not change a mono word: 1 only drops arena patches; mono had no
+  arena-patch refusal in spot_mac01_fps60_det).
+- kcopy_btl: why[2] = 0 and no kcout line. Hand back the interp line with kfb.
+- icmp_mac01_stereo: hand back every icmpp line (class counts U A T O, lenmis, unused, the first differing word with its site).
+- spot_mac01_fps60_stereo_det: L shots stay byte-equal. Hand back the K-shot px counts (no change expected from edit 1).
+Revised pass rule for the row (replaces try 2's): kwalk equals the sum of named causes (why slots plus kfb). kwalk minus 2 x cuts is
+at most 3 % of the interpolated steps in mac_01 scenes and at most 5 % in battle scenes: a battle has more mode and camera events,
+and each walks 2 frames. Stereo K shots byte-equal, or within the rounding rule (at most 1 step per channel) when the oracle names the
+code cause from the icmpp lines. Stop after try 3 with the values; the oracle writes the next step from kfb and icmpp.
+
 ## Stop / At the end
 A failed gate: commit, hand back the values. Delete this row file in the completing commit.

@@ -8,6 +8,10 @@ A replacement oracle starts here: read CLAUDE.md, orchestrator_rules.md, plan_ho
 - Open, not read (machine restart): retrace_call(0) of the LG_IDLE pass (pm_nusys.c:236) to confirm it never runs step_game_loop
   (the D_80073E0A flip); audio tick count per step (pm_audio_step at pm_main.c:493 and pm_nusys.c:168: two call sites, check that one
   step runs only one tick set). Neither is needed for row FPS60SPD.
+- Open read (FPS60SPD try 3): with iskipall, 17 key frames in 130 steps (drawn 147 against 130 iterations). LGF_ISKIP is set on every
+  step (pm_main.c:708) and nuGfxTaskStart clears nkey at the swap (pm_nusys.c:182). gfxRetrace_Callback runs the bg task before the swap
+  (src/main.c:138-139), so no post-swap task is known. Find what queues these key frames; a key frame of only part of a step would show
+  as a flash. Related: INTERPB3 try 3 kfb census.
 - INTERPB3 (Sonnet coder): pm_key_show must call pm_lg_key_walked once per K frame and do one pm_gpu_begin (sync60_pace), as
   pm_key_walk does (pm_nusys.c:208-219). Give this line to the coder at its next hand-back.
 
