@@ -3805,6 +3805,21 @@
       "gates": []
     },
     {
+      "name": "fxpic_55",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "S4 byte gate: effect_3D (effect 55) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.",
+      "scenario": "fxpic_55",
+      "cap": 40,
+      "until": "shot \\d+ frame 415\\b",
+      "tags": [
+        "azahar",
+        "fxcen"
+      ],
+      "gates": []
+    },
+    {
       "name": "fxpic_50",
       "kind": "azahar_pic",
       "speed": "normal",
