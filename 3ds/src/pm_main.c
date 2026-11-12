@@ -470,7 +470,7 @@ static void wq_frame_end(void) {
 void pm_lg_end_walked(void);
 void pm_lg_key_due(void);
 typedef struct { int drew, key; } StepEnd;
-static void wq_step_end(void* a) { const StepEnd* e = (const StepEnd*)a; if (e->drew) wq_frame_end(); if (e->key) pm_lg_key_due(); pm_lg_end_walked(); }
+static void wq_step_end(void* a) { const StepEnd* e = (const StepEnd*)a; if (e->drew) { pm_gpu_kc_want(e->key); wq_frame_end(); } if (e->key) pm_lg_key_due(); pm_lg_end_walked(); }
 void pm_fxtest_tick(unsigned);
 /* CORE2C-3: the body of one frame loop command (pm_logic.c), on the logic thread or inline. LG_IDLE: the retrace call of an idle pass.
  * LG_STEP: frame begin, the step (step_game_loop, list build, frame push), the audio ticks, the step end; LG_SKIP: the FS1 step with no
@@ -502,19 +502,21 @@ void pm_step_run(const LgCmd* c) {
     if (se.key) pm_wq_key(&k); /* the key frame goes after the step tail: the logic of the next step runs while it walks */
 }
 /* INTERP1: interpolation stays on only while the walks of a step fit (core 0 walks twice a step with fps60). Heavy: the last walk or the
- * GPU drawing time of the last frame is over 13 ms; calm again after 30 steps in a row under 10 ms. Heavy: one walk a step (ISKIP). */
+ * GPU drawing time of the last frame is over 13 ms; calm again after 30 steps in a row under 10 ms. INTERPB3: the walk limit is 26 ms (calm under 20 ms), one walk a step. Heavy: one walk a step (ISKIP). */
 extern unsigned pm_iw_us[3]; /* pm_nusys.c */
+extern unsigned pm_kc_n[2], pm_kc_why[5], pm_kc_fb[4], pm_kc_plain; /* INTERPB3: copies shown, key walks; copies refused by cause */
 static int interp_heavy(void) {
     static int heavy, calm;
     static unsigned n, nh, sl, sk, sp, sg;
     unsigned w = heavy ? pm_iw_us[2] : (pm_iw_us[0] > pm_iw_us[1] ? pm_iw_us[0] : pm_iw_us[1]);
     unsigned g = (unsigned)(C3D_GetDrawingTime() * 1000.f);
-    if (w > 13000u || g > 13000u) { heavy = 1; calm = 0; }
-    else if (heavy && w < 10000u && g < 10000u) { if (++calm >= 30) heavy = 0; }
+    if (w > 26000u || g > 13000u) { heavy = 1; calm = 0; } /* INTERPB3: one walk a step (the key frame is the K copy): the walk limit is 26 ms, calm under 20 ms; two GPU frames a step: the GPU limit stays 13 ms */
+    else if (heavy && w < 20000u && g < 10000u) { if (++calm >= 30) heavy = 0; }
     else calm = 0;
     n++; nh += heavy; sl += pm_iw_us[0]; sk += pm_iw_us[1]; sp += pm_iw_us[2]; sg += g;
     if (n == 300) {
-        pm_log_hw("interp f%u steps %u heavy %u lerp_us %u key_us %u plain_us %u gpu_us %u", pm_frame_count(), n, nh, sl / n, sk / n, sp / n, sg / n);
+        pm_log_hw("interp f%u steps %u heavy %u lerp_us %u key_us %u plain_us %u gpu_us %u kcopy %u kwalk %u why %u %u %u %u %u kfb %u %u %u %u kplain %u", pm_frame_count(), n, nh, sl / n, sk / n, sp / n, sg / n, pm_kc_n[0], pm_kc_n[1], pm_kc_why[0], pm_kc_why[1], pm_kc_why[2], pm_kc_why[3], pm_kc_why[4], pm_kc_fb[0], pm_kc_fb[1], pm_kc_fb[2], pm_kc_fb[3], pm_kc_plain);
+        pm_kc_n[0] = pm_kc_n[1] = 0; pm_kc_why[0] = pm_kc_why[1] = pm_kc_why[2] = pm_kc_why[3] = pm_kc_why[4] = pm_kc_fb[0] = pm_kc_fb[1] = pm_kc_fb[2] = pm_kc_fb[3] = pm_kc_plain = 0;
         n = nh = sl = sk = sp = sg = 0;
     }
     return heavy;

@@ -1214,6 +1214,23 @@
       "gates": []
     },
     {
+      "name": "icmp_mac01_stereo",
+      "kind": "azahar",
+      "speed": "normal",
+      "default": false,
+      "purpose": "INTERPB3: the patched copy of the L frame against the key walk in forced stereo, Toad Town mac_01 with fps60 and icmp.",
+      "scenario": "icmp_mac01_stereo",
+      "cap": 45,
+      "until": "icmpp f(2\\d\\d|[3-9]\\d\\d|\\d{4,}) ",
+      "tags": [
+        "azahar",
+        "icmp",
+        "interp",
+        "stereo"
+      ],
+      "gates": []
+    },
+    {
       "name": "icmp_btl",
       "kind": "azahar",
       "speed": "normal",
@@ -1226,6 +1243,55 @@
         "azahar",
         "icmp",
         "interp"
+      ],
+      "gates": []
+    },
+    {
+      "name": "kcopy_btl",
+      "kind": "azahar",
+      "speed": "normal",
+      "default": false,
+      "purpose": "INTERPB3: the interp census line (kcopy, kwalk, refusal causes) of a battle with fps60, no det.",
+      "scenario": "kcopy_btl",
+      "cap": 45,
+      "until": "interp f\\d+ steps",
+      "tags": [
+        "azahar",
+        "interp"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_mac01_fps60_stereo_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "INTERPB3 byte gate: mac_01 with fps60, det and forced stereo, left target shots 200 to 205, byte-equal to the base build of the same bench.",
+      "scenario": "spot_mac01_fps60_stereo_det",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "pic",
+        "spot",
+        "stereo"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spot_mac01_fps60_stereo_det_r",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "INTERPB3 byte gate: the same, right target shots (shoteye).",
+      "scenario": "spot_mac01_fps60_stereo_det_r",
+      "cap": 60,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "pic",
+        "spot",
+        "stereo"
       ],
       "gates": []
     },

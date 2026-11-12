@@ -67,11 +67,11 @@ unsigned pm_ph_gpu_us[2];
 unsigned pm_ph_cmd_pm;
 unsigned pm_ph_kick_n, pm_ph_kick_us, pm_ph_draws, pm_ph_iv, pm_ph_hud_us; /* PI4, PI5: per frame, reset in pm_ph_frame_end */
 
-void pm_ph_scene_mode(int mode) { cur_mode = mode; pf_scene_seen = 0; }
+void pm_ph_scene_mode(int mode) { pm_gpu_kc_cut(); cur_mode = mode; pf_scene_seen = 0; }
 static void fs_win_reset(void);
 void pm_gbi_win_reset(void);
 /* CAP1: a map load starts the opsplit, mr0, ms0 and fsplit windows */
-void pm_ph_scene_map(int area, int map) { cur_area = area; cur_map = map; pf_scene_seen = 0; pm_gbi_win_reset(); fs_win_reset(); }
+void pm_ph_scene_map(int area, int map) { pm_gpu_kc_cut(); cur_area = area; cur_map = map; pf_scene_seen = 0; pm_gbi_win_reset(); fs_win_reset(); }
 void pm_ph_scene_get(int* mode, int* area, int* map) { *mode = cur_mode; *area = cur_area; *map = cur_map; }
 void pm_ph_gpu_note(void) {
     if (!pm_ph_on) return;

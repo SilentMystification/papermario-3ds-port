@@ -165,7 +165,7 @@ void pm_wq_frame(const PmFrame* f) {
 void pm_wq_frame_slot(void) {
     if (pm_wq_on_logic() && wq_fr_walked != wq_fr_push) wq_block(c_walked, NULL, WQB_WALKED);
 }
-static void wq_key_run(void* a) { pm_key_walk((const PmKey*)a); __sync_synchronize(); wq_fr_walked++; }
+static void wq_key_run(void* a) { pm_key_show((const PmKey*)a); __sync_synchronize(); wq_fr_walked++; }
 void pm_wq_key(const PmKey* k) {
     wq_fr_push++;
     if (pm_wq_on_logic()) { wq_put(wq_key_run, k, sizeof *k); pm_wq_kick_walker(); return; }

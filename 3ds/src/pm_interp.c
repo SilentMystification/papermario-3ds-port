@@ -76,7 +76,7 @@ void pm_interp_close(void) {
 
 /* F06-4: camera cut counter (PaperBoat FrameInterpolation_DontInterpolateCamera). No reader, as in PaperBoat. */
 static unsigned camera_epoch, previous_camera_epoch;
-void pm_interp_dont_camera(void) { camera_epoch = previous_camera_epoch + 1; }
+void pm_interp_dont_camera(void) { pm_gpu_kc_cut(); camera_epoch = previous_camera_epoch + 1; }
 
 void pm_interp_drop_keys(void);
 void pm_interp_start(void) {

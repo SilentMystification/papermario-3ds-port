@@ -131,6 +131,10 @@ void pm_frame_walk(const PmFrame* f); /* pm_nusys.c, walker side: walk the tasks
 typedef struct { PmTask t[4]; } PmKey; /* the tasks of the key frame of one step (MAX_KEY 4 in pm_nusys.c) */
 int pm_interp_key_take(PmKey* k); /* the key frame tasks the last step recorded (clears the list); 0 when none */
 void pm_key_walk(const PmKey* k); /* pm_nusys.c, walker side */
+void pm_key_show(const PmKey* k); /* pm_nusys.c, walker side: the key frame from the K copy of the L frame (INTERPB3), else walked */
+void pm_gpu_kc_cut(void); /* pm_gpu.c: a scene change, the next 2 key frames are walked */
+void pm_gpu_kc_want(int k); int pm_gpu_kc_plain(void); /* pm_gpu.c: the step has a key frame (before its frame end); the shown copy has no patches */
+int pm_gpu_kc_state(void); void pm_gpu_key_show(void);
 void pm_wq_key(const PmKey* k); /* queue the key frame (nd_wq.c) */
 void pm_wq_frame_slot(void); /* logic: wait until the frame and key frame before are walked (the rtab and display context rule) */
 extern void* pm_walk_cfb; /* the colour buffer of the frame the walker draws (pm_main.c) */

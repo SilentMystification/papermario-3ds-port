@@ -163,6 +163,21 @@ static float u5kh[C3D_FVUNIF_COUNT][4]; /* INTERPB2: the K value the key walk wo
 static float u5kp[C3D_FVUNIF_COUNT][4]; /* the K value staged for the next flush of a vector whose K differs from L */
 static unsigned char u5kpv[C3D_FVUNIF_COUNT];
 static unsigned ic_kc; /* INTERPB2: the icmp reader cursor in the patch list */
+/* INTERPB3: the K copy. An L frame records every GX entry it queues (kc_take, at each take point: before a queue clear and at the frame end). At the frame end
+ * kc_build copies the used command buffer words into kc_buf and puts the K words of the patch list in. pm_gpu_key_show then queues the recorded entries again
+ * (lists moved into kc_buf, fills and copies as recorded) in a frame of its own: the key frame with no second walk. */
+#define KC_MAX 512u
+#define KC_WORDS (48u * 1024u)
+static gxCmdEntry_s kc_ent[KC_MAX]; /* static: 16 KB */
+static unsigned kc_n, kc_from, kc_skip_n, kc_split0, kc_tail_w, kc_tail_n;
+static int kc_rec, kc_arm, kc_over, kc_valid; /* record on; the walk is an L walk with a patch list; entries lost; the copy is complete */
+static u32* kc_buf; /* linear memory (the GPU reads it) */
+static u32* kc_base; /* the command buffer start of the frame (after C3D_FrameBegin) */
+static u32 kc_cb; /* the command buffer address the recorded lists point into */
+static volatile int kc_cut; /* steps after a scene change that still take the key walk */
+unsigned pm_kc_why[5]; /* copies refused: record or patch list lost / buffer split or too large / list outside the buffer / scene change / L frame not armed (census) */
+static void sr_force_all(void);
+static void kc_take(gxCmdQueue_s* q);
 float pm_nrm5_k[3][4]; /* INTERPB1: the key frame twin of c.nrm5 of the last model_draw of the L walk */
 void pm_gpu_twin_begin(void) {
     if (!pcomp_k) {
@@ -171,7 +186,7 @@ void pm_gpu_twin_begin(void) {
         if (!pcomp_k || !pcomp_k_has) { free(pcomp_k); free(pcomp_k_has); pcomp_k = NULL; pcomp_k_has = NULL; }
     }
     if (pcomp_k_has) memset(pcomp_k_has, 0, PM_GM_N + 1u);
-    nd_kp_on = PMDL("icmp"); /* INTERPB2: the patch list of this L frame (debug: the compare against the key walk) */
+    nd_kp_on = 1; /* INTERPB2: the patch list of this L frame (INTERPB3: the K copy of the frame is made from it at the frame end) */
     if (nd_kp_on) { /* the K state the walk starts from is what the key walk before it left (the citro3d copy and the native shadow hold it) */
         if (!nd_kp) { nd_kp_cap = 16384u; nd_kp = (NdKPatch*)malloc(nd_kp_cap * sizeof(NdKPatch)); if (!nd_kp) { nd_kp_cap = 0; nd_kp_on = 0; } }
         for (unsigned i = 0; i < C3D_FVUNIF_COUNT; i++) memcpy(u5kh[i], &C3D_FVUnif[GPU_VERTEX_SHADER][i], 16);
@@ -179,6 +194,7 @@ void pm_gpu_twin_begin(void) {
         memcpy(ndn_sh.pal_k, ndn_sh.pal, sizeof ndn_sh.pal);
         nd_kp_n = 0; nd_kp_lost = 0; ic_kc = 0;
     }
+    kc_arm = nd_kp_on && kc_rec;
 }
 static unsigned gv_recopy_n, gv_palup_n, gv_palmax, gv_palflush;
 static C3D_Mtx gv_post;
@@ -830,6 +846,12 @@ static float eyd_cw_dbg, eyd_p23_dbg, eyd_wn_dbg; /* EYECW log: the last perspec
 static inline void eyd_sync(void) {
     const float cw = eye_conv * nd_proj_wn;
     if (__builtin_expect(cw != 0.f, 0)) { eyd_cw_dbg = cw; eyd_p23_dbg = nd_proj[2][3]; eyd_wn_dbg = nd_proj_wn; }
+    if (__builtin_expect(nd_kp_on && pm_tw_on && u_eyd >= 0, 0)) { /* INTERPB3: the key frame twin of eyd: the same post column, cw from the key frame projection and the conv the key walk's begin reads */
+        const float wk = sqrtf(nd_proj_k[0][3] * nd_proj_k[0][3] + nd_proj_k[1][3] * nd_proj_k[1][3] + nd_proj_k[2][3] * nd_proj_k[2][3]);
+        const float l[4] = { cw, gv_post.r[2].x, gv_post.r[1].x, gv_post.r[0].x }, k[4] = { (stereo_frame ? pm_eye_conv : 0.f) * wk, l[1], l[2], l[3] };
+        u5row_k(u_eyd, l, k);
+        return;
+    }
     eye_vec(u_eyd, gv_post.r[0].x, gv_post.r[1].x, gv_post.r[2].x, cw);
 }
 static void u5mtx_k(int id, const C3D_Mtx* m, const C3D_Mtx* mk) { for (int r = 0; r < 4; r++) u5row_k(id + r, m->m + 4 * r, mk ? mk->m + 4 * r : NULL); }
@@ -1141,7 +1163,9 @@ static unsigned bc_draws, bc_bad, bc_f0, bc_fl; static int bc_sw = -1;
 static __attribute__((cold, noinline)) void blk_build(NdNatC* q, const NdDraw* d) {
     if (!blk_ar) { blk_ar = (uint32_t*)malloc(BLK_WORDS * 4u); if (!blk_ar) pm_fatal_stop("blk: no memory for the command block arena"); }
     if (blk_n + ND_EMIT_MAX > BLK_WORDS) { blk_n = 0; if (++blk_gen == 0) blk_gen = 1; }
+    const unsigned kp0 = nd_kp_n; /* INTERPB3: the arena words are no command buffer words: the K patches of this emit are dropped (a cache hit copy patches its own row, blk_put) */
     const unsigned n = nd_emit_full(blk_ar + blk_n, d, &q->bo);
+    nd_kp_n = kp0;
     q->boff = blk_n; q->blen = (uint16_t)n; q->bgen = blk_gen; q->bt = d->tmpl;
     blk_n += n;
 }
@@ -1149,7 +1173,8 @@ extern uint32_t nd_emit_dk, nd_emit_da, nd_emit_db;
 static __attribute__((cold, noinline)) void blk_check(const uint32_t* blk, unsigned n, const NdDraw* d, const NdNatC* q) {
     static uint32_t old[ND_EMIT_MAX];
     NdShadow s = ndn_sh;
-    const unsigned no = nd_emit_draw(old, &s, d);
+    const unsigned kp0 = nd_kp_n, no = nd_emit_draw(old, &s, d); /* INTERPB3: no patches for the scratch words */
+    nd_kp_n = kp0;
     bc_draws++;
     if (nd_emit_cmp(old, no, blk, n)) {
         static unsigned nl_;
@@ -2144,7 +2169,7 @@ static unsigned ic_kpn, ic_kpunused, ic_kplost; /* patches made, patches the rea
 static unsigned ic_n2, ic_ln2, ic_kskip; /* the same for the patched copy; patches the reader passed without use */
 static unsigned ic_from; /* the queue cursor of the icmp takes */
 static const u32* ic_tail; /* INTERPB2: the end of the last queued command list of the frame (NULL: none yet), where the open tail list begins */
-typedef struct IcC { unsigned pairs, wl, wk, du, da, dt, dox, lenmis; unsigned ul[256]; } IcC; /* one compare window (dox: O class) */
+typedef struct IcC { unsigned pairs, wl, wk, du, da, dt, dox, lenmis, fset, fi, fr, fl, fk; unsigned ul[256]; } IcC; /* one compare window (dox: O class) */
 static IcC ic_c0, ic_c1; /* plain L against K, patched L against K */
 static unsigned ic_lost, ic_nol; /* lost pairs, K frames without a kept L */
 static unsigned ic_oc[0x400]; /* O registers that differ, the window of the plain compare */
@@ -2195,15 +2220,21 @@ static __attribute__((cold, noinline)) void ic_list_k(const u32* cb, unsigned nw
 }
 static __attribute__((cold, noinline)) void ic_cmp(IcC* c, const u32* k, unsigned nk, const u32* l, unsigned nl, int oc) {
     c->wl += nl; c->wk += nk;
-    if (nl != nk) { c->lenmis++; return; } /* the compare stops at a length mismatch */
+    unsigned nm = nk < nl ? nk : nl; /* INTERPB3: a length mismatch counts, then the common prefix is compared */
+    if (nl != nk) {
+        static unsigned nlm;
+        c->lenmis++;
+        if (nlm++ < 8u) { unsigned fd = 0; while (fd < nm && k[2u * fd] == l[2u * fd] && k[2u * fd + 1u] == l[2u * fd + 1u]) fd++; pm_log_hw("icmpl f%u wl %u wk %u first %u r%03x l %08x k %08x", pm_frame_count(), nl, nk, fd, fd < nm ? k[2u * fd] : 0u, fd < nm ? l[2u * fd + 1u] : 0u, fd < nm ? k[2u * fd + 1u] : 0u); }
+    }
     unsigned lb = 0, dn = 0;
-    for (unsigned i = 0; i < nk; i++) {
+    for (unsigned i = 0; i < nm; i++) {
         c->pairs++;
         const unsigned r = k[2u * i];
         unsigned loc = 0;
         if (r == 0x2C0u) { lb = k[2u * i + 1u] & 0xFFu; dn = 0; }
         else if (r >= 0x2C1u && r <= 0x2C8u) { loc = (lb + (dn >> 2)) & 0xFFu; dn++; }
         if (k[2u * i] == l[2u * i] && k[2u * i + 1u] == l[2u * i + 1u]) continue;
+        if (!c->fset) { c->fset = 1; c->fi = i; c->fr = r; c->fl = l[2u * i + 1u]; c->fk = k[2u * i + 1u]; }
         if (r >= 0x2C0u && r <= 0x2C8u) { c->du++; c->ul[loc]++; }
         else if (r >= 0x200u && r <= 0x227u) c->da++;
         else if (r >= 0x110u && r <= 0x12Fu) c->dt++;
@@ -2232,6 +2263,7 @@ static __attribute__((cold, noinline)) void ic_log(void) { /* every 300 compared
         n += (unsigned)snprintf(ob + n, sizeof ob - n, " %u:%u", bl, best);
         ic_c1.ul[bl] = 0;
     }
+    if (ic_c1.fset) n += (unsigned)snprintf(ob + n, sizeof ob - n, " first i%u r%03x l %08x k %08x", ic_c1.fi, ic_c1.fr, ic_c1.fl, ic_c1.fk); else n += (unsigned)snprintf(ob + n, sizeof ob - n, " first none");
     pm_log_hw("%s", ob);
     memset(ic_oc, 0, sizeof ic_oc);
     memset(&ic_c0, 0, sizeof ic_c0); memset(&ic_c1, 0, sizeof ic_c1);
@@ -2271,6 +2303,7 @@ static __attribute__((cold, noinline)) void icmp_frame(gxCmdQueue_s* q) { /* the
 static void sr_take(void) {
     gxCmdQueue_s* q = (gxCmdQueue_s*)&__C3D_Context;
     if (__builtin_expect(PMDL("icmp"), 0)) icmp_take(q); /* INTERP2M */
+    kc_take(q); /* INTERPB3 */
     if (!sr_on) { sr_from = 0; return; }
     if (q->numEntries < sr_from) { sr_over = 1; sr_from = 0; } /* cleared by someone else: entries are lost, the frame cannot replay */
     for (unsigned i = sr_from; i < q->numEntries; i++) { if (sr_n < SR_MAX) sr_ent[sr_n++] = q->entries[i]; else sr_over = 1; }
@@ -2291,7 +2324,7 @@ static void sr_force_all(void) {
 static void sr_frame_begin(void) {
     static int sr_prev; if (stereo_frame && !sr_prev) sr_logn = 0; sr_prev = stereo_frame; /* STEREOFX debug */
     sr_on = 0; sr_n = 0; sr_fbn = 0; sr_over = 0; sr_from = 0;
-    if (!stereo_frame) return;
+    if (!stereo_frame) { if (pm_interp_on > 0) sr_force_all(); return; } /* INTERPB3: every fps60 frame starts from forced state (before bind_main and the grab), so the K copy does not depend on the state the L frame started from */
     sr_on = 1;
     sr_force_all();
 }
@@ -2422,7 +2455,7 @@ void pm_gx_room(void) {
     gxCmdQueue_s* q = (gxCmdQueue_s*)&__C3D_Context;
     sr_take(); /* STEREO: the record holds every entry before the queue is cleared (here, or by a citro3d texture load after this call) */
     if (q->numEntries < 24) return;
-    sr_from = 0; ic_from = 0; /* INTERP2M: the take above read the entries before this clear */
+    sr_from = 0; ic_from = 0; kc_from = 0; /* INTERP2M: the take above read the entries before this clear */
     gxCmdQueueRun(q);
     gxCmdQueueWait(q, -1);
     gxCmdQueueStop(q);
@@ -2439,7 +2472,8 @@ void pm_gx_drain(void) {
     gxCmdQueue_s* q = (gxCmdQueue_s*)&__C3D_Context;
     sr_take();
     if (sr_on) { if (sr_n < SR_MAX) { memset(&sr_ent[sr_n], 0, sizeof sr_ent[0]); sr_ent[sr_n++].data[0] = SR_DRAIN; } else sr_over = 1; } /* STEREO: the replay waits here too */
-    sr_from = 0; ic_from = 0; /* INTERP2M */
+    if (kc_rec) { if (kc_n < KC_MAX) { memset(&kc_ent[kc_n], 0, sizeof kc_ent[0]); kc_ent[kc_n++].data[0] = SR_DRAIN; } else kc_over = 1; } /* INTERPB3: the K frame waits here too */
+    sr_from = 0; ic_from = 0; kc_from = 0; /* INTERP2M */
     gxCmdQueueRun(q);
     gxCmdQueueWait(q, -1);
     gxCmdQueueStop(q);
@@ -2766,7 +2800,9 @@ void pm_gpu_begin_wait(void) {
     want_clear = begin_clear;
     noise_off[0] = (float)(noise_next() & 1023u) / 1024.f; noise_off[1] = (float)(noise_next() & 1023u) / 1024.f; /* PT07: one new offset per drawn frame */
     prev_pre = 0;
-    if (prev_want && grab_tex_init()) { grab_queue_copy(); prev_pre = 1; } /* PT12: first entry of the queue, before the clear */
+    { u32 *b_, sz_, of_; GPUCMD_GetBuffer(&b_, &sz_, &of_); kc_base = b_; }
+    kc_rec = pm_interp_on > 0; kc_arm = 0; kc_n = kc_from = kc_skip_n = 0; kc_over = 0; kc_split0 = cmd_split_n; /* INTERPB3: the record of this frame starts with the queue after C3D_FrameBegin */
+    if (prev_want && grab_tex_init()) { grab_queue_copy(); prev_pre = 1; kc_skip_n = ((gxCmdQueue_s*)&__C3D_Context)->numEntries; } /* PT12: first entry of the queue, before the clear */
     if (prev_want) prev_want--;
     eye_slider = osGet3DSliderState(); /* STEREO: the slider decides per frame. At 0 the frame is mono: one pass, the original perspective, no shift. */
     if (PMDL("stereo")) eye_slider = 1.f;
@@ -2822,8 +2858,109 @@ static __attribute__((cold, noinline)) void dp_frame(unsigned f) {
     while (next <= f) next += 300u;
 }
 void shc_frame(unsigned f); /* BOMBLIT: nd_tex_set.c */
+static void kc_take(gxCmdQueue_s* q) { /* the entries queued since the last take go into the K record (before the queue is cleared) */
+    if (!kc_rec) return;
+    if (q->numEntries < kc_from) { kc_over = 1; kc_from = 0; } /* cleared by someone else */
+    for (unsigned i = kc_from; i < q->numEntries; i++) { if (kc_n < KC_MAX) kc_ent[kc_n++] = q->entries[i]; else kc_over = 1; }
+    kc_from = q->numEntries;
+}
+void pm_gpu_kc_cut(void) { kc_cut = 2; } /* a map change, a game mode change or a camera cut: the frames around it differ in structure */
+static unsigned kc_gen, kc_seen, kc_ok_gen; /* kc_build runs, the run seen at the last key decision, the run that made a valid copy */
+/* 0: the copy is ready; else why the key frame is walked: 1 icmp switch, 2 no kc_build since the last key frame, 3 a valid copy was cleared before the show, 4 kc_build refused (a pm_kc_why slot) */
+int pm_gpu_kc_state(void) {
+    if (PMDL("icmp")) return 1;
+    const unsigned g = kc_gen, seen = kc_seen;
+    kc_seen = g;
+    if (kc_valid) return 0;
+    if (g == seen) return 2;
+    return kc_ok_gen == g ? 3 : 4;
+}
+/* The frame end of an L frame (after the right eye replay, before C3D_FrameEnd): the K copy of the frame. The buffer words [0, coff) hold every list of the frame and
+ * the open tail list; the patches (nd_kp, base = a command start in this buffer) put the K words in. Any doubt (a record or patch list that lost something, a
+ * buffer split, a list outside the used range, a scene change) leaves kc_valid 0: the key frame is then walked. */
+static __attribute__((cold, noinline)) void kc_out(const char* kind, unsigned i, u32 a, unsigned n, const u32* cb, unsigned coff) { /* the first 8 refusals for a list or patch outside the copied range */
+    static unsigned nout;
+    if (nout++ < 8u) pm_log_hw("kcout f%u kind %s i %u addr %08x n %u cb %08x coff %u split %u", pm_frame_count(), kind, i, (unsigned)a, n, (unsigned)(u32)cb, coff, cmd_split_n - kc_split0);
+}
+/* kc_want: the key frame of this step is shown from the copy (set by the step end message just before the frame end: the step has a key frame). An armed L frame
+ * (patch list) gives a patched copy. A frame with no armed walk (the draw-off steps draw only the background task, no PMF_REPL, no twins) gives an unpatched
+ * copy: its picture is the key picture. kc_plain_shown tells pm_key_show the copy was unpatched (the matrix twins are not this step's). */
+static int kc_want, kc_plain_shown;
+unsigned pm_kc_plain;
+void pm_gpu_kc_want(int k) { kc_want = k; }
+int pm_gpu_kc_plain(void) { return kc_plain_shown; }
+static __attribute__((noinline)) void kc_build(void) {
+    gxCmdQueue_s* q = (gxCmdQueue_s*)&__C3D_Context;
+    const int want = kc_want, armed = kc_arm;
+    kc_want = 0; kc_valid = 0; kc_gen++;
+    if (!want) { kc_rec = 0; kc_arm = 0; return; }
+    if (!kc_rec) { pm_kc_why[4]++; kc_arm = 0; return; }
+    kc_take(q);
+    kc_rec = 0; kc_arm = 0;
+    u32 *tb, csz, toff;
+    GPUCMD_GetBuffer(&tb, &csz, &toff); /* GPUCMD_Split moves the buffer start: this is the open tail list, the frame's lists are before it */
+    u32* const cb = kc_base;
+    const unsigned coff = (unsigned)(tb - cb) + toff; /* words used since the frame begin */
+    if (tb < cb) { pm_kc_why[1]++; return; }
+    if (armed && kc_cut > 0) { kc_cut--; pm_kc_why[3]++; return; }
+    if (kc_over || (armed && nd_kp_lost)) { pm_kc_why[0]++; return; }
+    if (!kc_buf) kc_buf = (u32*)pm_linear_alloc(KC_WORDS * 4u);
+    if (!kc_buf || cmd_split_n != kc_split0 || coff > KC_WORDS) { pm_kc_why[1]++; return; }
+    for (unsigned i = 0; i < kc_n; i++) {
+        if ((kc_ent[i].data[0] & 0xFFu) != 0x01u) continue;
+        const u32* l = (const u32*)kc_ent[i].data[1];
+        const unsigned n = kc_ent[i].data[2] / 4u;
+        if (l < cb || (unsigned)(l - cb) + n > coff) { pm_kc_why[2]++; kc_out("list", i, (u32)l, n, cb, coff); return; }
+    }
+    memcpy(kc_buf, cb, coff * 4u);
+    const unsigned np = armed ? nd_kp_n : 0; /* nd_kp_n holds the last L frame's list when this frame had no armed walk */
+    for (unsigned i = 0; i < np; i++) {
+        const NdKPatch* p = &nd_kp[i];
+        if (p->base < cb || (unsigned)(p->base - cb) + 2u > coff) { pm_kc_why[2]++; kc_out("patch", i, (u32)p->base, 0, cb, coff); return; }
+        const unsigned off = (unsigned)(p->base - cb), k = (cb[off + 1u] >> 20) & 0xFFu;
+        for (unsigned qd = 0; qd < 4; qd++) {
+            const unsigned j = p->first + qd, w = off + (j ? 1u + j : 0u);
+            if (j <= k && w < coff) memcpy(&kc_buf[w], &p->k[qd], 4);
+        }
+    }
+    kc_cb = (u32)cb; kc_tail_w = (unsigned)(tb - cb); kc_tail_n = toff;
+    GSPGPU_FlushDataCache(kc_buf, coff * 4u);
+    kc_valid = 1; kc_ok_gen = kc_gen;
+    kc_plain_shown = !armed;
+    if (!armed) pm_kc_plain++;
+}
+/* The key frame of the step from the K copy (walker side): a frame of its own (begin, the recorded entries, the recorded tail, end). Nothing of the frame state is
+ * made again: no ring chunk, no texture slot and no list is touched between the L frame and this one. */
+void pm_gpu_key_show(void) {
+    gxCmdQueue_s* q = (gxCmdQueue_s*)&__C3D_Context;
+    kc_valid = 0;
+    if (!gs.gpu_ok) return;
+    if (pm_interp_on > 0 && !pm_wd_wake_frames) sync60_pace();
+    C3D_FrameBegin(0);
+    if (gb_on) { gb_sum += (unsigned)(pm_ticks() - gb_sub); gb_n++; gb_on = 0; pm_pf_late++; }
+    noise_off[0] = (float)(noise_next() & 1023u) / 1024.f; noise_off[1] = (float)(noise_next() & 1023u) / 1024.f; /* PT07: the sequence of a frame begin */
+    pm_ph_gpu_note();
+    dump_shot();
+    for (unsigned i = 0; i < kc_n; i++) {
+        gxCmdEntry_s e = kc_ent[i];
+        const u32 id = e.data[0] & 0xFFu;
+        if (id == SR_DRAIN) { pm_gx_drain(); continue; }
+        if (id == 0x01u) e.data[1] = (u32)kc_buf + (e.data[1] - kc_cb);
+        else if (id == 0x04u) { if (i < kc_skip_n || (!sr_vram(e.data[1]) && !sr_vram(e.data[2]))) continue; } /* the copy of the old picture at the L begin is not made again; a copy between two RAM places is done */
+        else if (id != 0x02u) continue;
+        pm_gx_room();
+        gxCmdQueueAdd(q, &e);
+    }
+    u32 *cb, csz, coff;
+    GPUCMD_GetBuffer(&cb, &csz, &coff);
+    if (kc_tail_n && coff + kc_tail_n < csz) { memcpy(cb + coff, kc_buf + kc_tail_w, kc_tail_n * 4u); GPUCMD_SetBufferOffset(coff + kc_tail_n); }
+    if (stereo_frame) C3D_FrameDrawOn(targetR); /* the targets C3D_FrameEnd sends */
+    C3D_FrameDrawOn(target);
+    rd_sync(); C3D_FrameEnd(GX_CMDLIST_FLUSH);
+    if (pm_ph_on) { gb_sub = pm_ticks(); gb_on = 1; }
+}
 static void pm_gpu_end_w(void) {
-    if (__builtin_expect(stereo_frame && pm_frame_count() % 10u == 0, 0)) eyecw_log();
+    if (__builtin_expect(stereo_frame &&pm_frame_count() % 10u == 0, 0)) eyecw_log();
     if (__builtin_expect(mfr_on, 0)) mfr_frame(); /* TIK19 debug: the mfr line of the frame */
     if (__builtin_expect(PMDL("keymiss"), 0)) pm_km_frame(pm_frame_count()); /* KEYMISS: the census window line every 300 frames */
     if (__builtin_expect(pm_cnt_on, 0) && PMDL("dpcen")) dp_frame(pm_frame_count()); /* DPCEN1: byte census line */
@@ -2874,6 +3011,7 @@ static void pm_gpu_end_w(void) {
     FS_MARK(FS_SWAP);
     PH_PUSH(PH_FEND);
     if (sr_on) sr_replay(); /* STEREO: the right eye */
+    kc_build(); /* INTERPB3: the K copy of an L frame, from the recorded entries and the used command buffer */
     if (__builtin_expect(PMDL("icmp"), 0)) icmp_frame((gxCmdQueue_s*)&__C3D_Context); /* INTERP2M: after the frame-end take, before the queue is cleared */
     ndunit_scan(); rd_sync(); C3D_FrameEnd(GX_CMDLIST_FLUSH);
     if (pm_ph_on) { gb_sub = pm_ticks(); gb_on = 1; } /* S0-6: submit tick of a sampled frame */

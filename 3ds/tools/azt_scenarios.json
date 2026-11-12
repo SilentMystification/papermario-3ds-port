@@ -7906,6 +7906,26 @@
       "reason": "INTERP2M measurement, copy of spot_mac01_fps60_det without shots. Cap 40 s: boot, warp, and the first 300 compared pairs."
     },
     {
+      "name": "icmp_mac01_stereo",
+      "status": "unverified",
+      "subject": "INTERPB3: icmp_mac01 with forced stereo (both eyes recorded; the patched copy of the L frame compared with the key walk).",
+      "proves": "INTERPB3: the icmpp lines (class counts, lenmis, unused) of the stereo frames: which words of the K copy differ from the key walk in stereo.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fps60 icmp twinchk loglevel=debug det stereo",
+      "until": "icmpp f(2\\d\\d|[3-9]\\d\\d|\\d{4,}) ",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "icmp pairs",
+          "regex": "icmpp f(2\\d\\d|[3-9]\\d\\d|\\d{4,}) "
+        }
+      ],
+      "reason": "INTERPB3 measurement, copy of icmp_mac01 with stereo. Cap 40 s."
+    },
+    {
       "name": "icmp_btl",
       "status": "unverified",
       "subject": "INTERP2M: Battle scene, one Goomba on kmr_03, with fps60 and the icmp switch (the t = 0.5 frame and the key frame compared in GPU command words).",
@@ -7924,6 +7944,74 @@
         }
       ],
       "reason": "INTERP2M measurement, copy of battle_start_f182 debug with fps60 and icmp. Cap 40 s."
+    },
+    {
+      "name": "kcopy_btl",
+      "status": "unverified",
+      "subject": "INTERPB3: Battle scene, one Goomba on kmr_03, with fps60 and no det (the interp census runs only without det). The key frame is the K copy of the L frame.",
+      "proves": "INTERPB3: the interp line (kcopy and kwalk counts per 300 steps, the refusal causes) of a battle.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 fps60 loglevel=debug",
+      "until": "interp f\\d+ steps",
+      "cap": 45,
+      "deadline": 30,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "interp census",
+          "regex": "interp f\\d+ steps"
+        }
+      ],
+      "reason": "INTERPB3 census, copy of icmp_btl without det, icmp, twinchk and shots. Cap 45 s: boot, warp, battle start and the first 300 steps."
+    },
+    {
+      "name": "spot_mac01_fps60_stereo_det",
+      "status": "unverified",
+      "subject": "INTERPB3 byte gate: Toad Town mac_01 at pos 0 0 200 with fps60 on, the det switch and forced stereo. Shots at frames 200 to 205 of the left target.",
+      "proves": "INTERPB3: the key frame from the K copy (both eyes recorded and shown) gives the same left eye shots as the key walk on the base build.",
+      "debug": "warp=mac_01:0 pos=0:0:200 prof=4 fps60 shots shotwin=200:6 loglevel=debug det stereo",
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at mac_01 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 0 0 200 pos -?\\d+ -?\\d+ -?\\d+( disp w[01] s[01] f\\d+)?$"
+        }
+      ],
+      "reason": "INTERPB3 byte gate. Copy of spot_mac01_fps60_det with the stereo switch (forced, both eyes). Cap 60 s."
+    },
+    {
+      "name": "spot_mac01_fps60_stereo_det_r",
+      "status": "unverified",
+      "subject": "INTERPB3 byte gate: the same as spot_mac01_fps60_stereo_det, shots of the right target (shoteye).",
+      "proves": "INTERPB3: the right eye of the K copy gives the same right eye shots as the key walk on the base build.",
+      "debug": "warp=mac_01:0 pos=0:0:200 prof=4 fps60 shots shotwin=200:6 loglevel=debug det stereo shoteye",
+      "until": "prof f\\d+ w\\d+ at ",
+      "cap": 60,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "scene line",
+          "regex": "prof f\\d+ w\\d+ at mac_01 \\d+:\\d+ m\\d+ sp-?\\d+ b\\d+ e0 chg0 pos0 0 0 200 pos -?\\d+ -?\\d+ -?\\d+( disp w[01] s[01] f\\d+)?$"
+        }
+      ],
+      "reason": "INTERPB3 byte gate, right eye. Cap 60 s."
     },
     {
       "name": "spot_mac01_ndmcheck",
