@@ -16,7 +16,7 @@
 
 ## Touch only
 src/animator.c: a block after its Gfx_RM extern lines (:39-), the 14 RM lines, :874-888. azt_scenarios.json and bench_defs.json:
-one entry `s6chk_yard` each, right after `s6chk_mac01` (if S6M3 added `s6chk_mac00` there, put it after that one).
+one entry `s6chk_yard` each, right after `msgbox_talk_det` (a unique anchor: other rows insert after s6chk_mac01 and spot_sbk56_det).
 
 ## Exact edits
 1. After the Gfx_RM externs:

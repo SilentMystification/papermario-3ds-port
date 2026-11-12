@@ -37,10 +37,18 @@ The two functions, a def block above each, `#include "nd_scomp.h"` under `#ifdef
 ## Gate (expected values)
 - `PM_ROW=S6E3 PM_LANE=S6E3 sh 3ds/build.sh > build3ds/out/build.txt 2>&1`: memcheck OK. `bench.py run nd_host --row S6E3
   --why "S6E3"`: PASS.
-- `PM_ROW=S6E3 PM_LANE=S6E3 python 3ds/tools/bench.py base sbk56_orbdbg_det` (sbk_56 has the super block; det, shots 520:12).
-  One list: `bench.py run sbk56_orbdbg_det,s6chk_mac01 --row S6E3 --why "S6E3 block content ranges"` (2 starts). `bench.py cmp
-  sbk56_orbdbg_det --row S6E3`: every shot byte-equal; s6chk `bad 0`; no `scomp: def` line. No det scene draws a heart block:
-  the HeartBlock defs are the same unit kinds as SuperBlock's (say so in the hand-back). Budget 5.
+- Try 2 (oracle 5): sbk56_orbdbg_det is not deterministic (two base runs differed at shot 0000 = frame 520, the padscript hit
+  scene): it is no gate. The super block content (entity_SuperBlockContent_setupGfx, the orb inside the block) draws in the
+  plain spot scene, which is det-proven: spot_sbk56_det (warp=sbk_56:0 pos=20:0:440 det, shots 200-205).
+- New scenario and bench `s6chk_sbk56`, inserted right after `spot_sbk56_det` in azt_scenarios.json and bench_defs.json (one
+  commit): debug `warp=sbk_56:0 pos=20:0:440 shots shotwin=200:1 loglevel=debug det s6chk`, until `s6chk f2\d\d ranges \d+ bad \d+`,
+  cap 30, deadline 25, expected_events only `warp: sbk_56 entry 0` (both builds print it); bench as s6chk_mac01's.
+- `bench.py base spot_sbk56_det` and `bench.py base s6chk_sbk56` (new bench: 2 runs). One list `bench.py run
+  spot_sbk56_det,s6chk_sbk56 --row S6E3 --why "S6E3 try 2: block content ranges"` (2 starts). cmp spot_sbk56_det 6/6 byte-equal;
+  s6chk_sbk56 head `bad 0` and `ranges` above the base log's value (the content records of the drawn block). Equal ranges mean
+  the content is not drawn there: stop and hand back both values (then the gate is build, nd_host and s6chk, as row_S6M4.md).
+- HeartBlock: no det scene draws a heart block; its defs are the unit kinds of SuperBlock's (proof: build and nd_host; say so).
+- No `scomp: def` line. Budget 8 Azahar starts after the reset (row spec fault).
 
 ## Stop and end
 A byte difference, `bad` above 0, a scomp error line, an edit that does not fit, or a test-tool fault: commit, hand back the exact
