@@ -11,6 +11,7 @@
  *   "NDSH" (4 bytes), version u32 = 2 (HC4f3: each list word is its typed unit, ND_X0/ND_X1 of nd_op.h), size u32, n_reloc u32, reloc[n_reloc] u32 (offsets into data),
  *   data[size] (native little endian; pointer fields hold shape offsets).
  * All header words are little endian. Prints "shapeconv maps N bytes B reloc R" on success.
+ * Sidecars: <out_dir>/<asset>.seam (the T-point table) and <out_dir>/<asset>.dlc (S7MAP: the compiled static lists, see write_dlc).
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,6 +35,7 @@ typedef struct ShapeFix {
     u32 cap_reloc;
 } ShapeFix;
 
+static u32 dlc_secs, dlc_bytes; /* S7MAP: sections and bytes written to the .dlc files */
 static u32 n_nop; /* list words G_NOOP, RDPHALF_1/2, SETZIMG: typed as ND_NOP_A */
 
 static void die(const char* msg, const char* what) {
@@ -413,6 +415,111 @@ static u8* read_file(const char* path, u32* len) {
  * nd_seam_build result, 0 ok), nlist u32, ntp u32, the 12 NdSeamTab stats in struct order, list[nlist] (NdSeamList, addr as the
  * offset in the shape file), tp[ntp] (NdTp). Little endian: the struct records are copied as the device lays them out. */
 _Static_assert(sizeof(NdSeamList) == 24 && sizeof(NdTp) == 10, "NdSeamList or NdTp layout changed");
+/* S7MAP: the compiled static lists of this shape, built here by nd_dlc_compile (the code the console ran at the first draw of each list)
+ * with the seam table of write_seam: one result per (list, variant). Variant 1 compiles with the T points of the list, variant 0 without. A list
+ * with no points has variant 0 only, a list with points of class 0 or 1 has variant 1 only (the run-time use_tp rule of nd_shape.c dlc_build),
+ * a list of class 2 with points has both (stat 0 and stat 1). A list the compiler refuses has no section (the console compiles it as before).
+ * Output <dir>/<name>.dlc, little endian:
+ *   "NDDC", version u32 = 1, shape size u32 (the key against the .nds), nsec u32,
+ *   index[nsec] (in list order, variant): list offset u32 (shape offset), variant u32, file offset u32 of the section, section size u32,
+ *   sections. A section: nops, exit_am, exit_om, ngrp, ngop, nvtx, nidx, nins, alloc_nvtx, alloc_nidx (u32 each; the alloc fields are the pool
+ *   sizes the compile asks for), grp[ngrp] (NDG_GRP bytes each), gop[ngop] (u32 and-mask, u32 or-value), gat[ngop] u16 (padded to 4 bytes),
+ *   vtx[nvtx] (16 bytes), idx[nidx] u16 (vertex numbers relative to the section: the console adds the first pool vertex number of its copy).
+ *   A group: lo[3], hi[3] i16, nvtx, ntri, ng u16 at 0, 6, 12; tsv_exit u8 at 18; op0, op1, am, om, vbase, ibase, gbase u32 at 20..44 (vbase is
+ *   relative the same way as idx). */
+#define NDG_GRP 48u
+static unsigned hv_req_v, hv_req_i;
+static const u8* hv_base;
+static u32 hv_size;
+static const void* hv_vtx(uint32_t w1, unsigned n) {
+    if (!n || n > 64 || w1 < (u32)(uintptr_t)hv_base || w1 - (u32)(uintptr_t)hv_base + 16u * n > hv_size) return NULL;
+    return (const void*)(uintptr_t)w1;
+}
+static uint8_t* hv_valloc(unsigned n, unsigned* first) { hv_req_v = n; *first = 0; return (uint8_t*)malloc(n * 16u); }
+static uint16_t* hv_ialloc(unsigned n) { hv_req_i = n; return (uint16_t*)malloc(n * 2u); }
+static void w16(u8* p, u32 v) { p[0] = (u8)v; p[1] = (u8)(v >> 8); }
+static u32 put32(u8* b, u32 pos, u32 v) { w32(b + pos, v); return pos + 4; }
+typedef struct { u32 list, var, off, size; } DlcIdx;
+static void write_dlc(const NdSeamTab* t, const u8* buf, u32 size, u32 base, const char* dir, const char* name) {
+    static uint32_t words[2 * (ND_DLC_MAXOPS + 1)];
+    DlcIdx* ix = (DlcIdx*)malloc((t->nlist * 2u + 1u) * sizeof(DlcIdx));
+    u8** secs = (u8**)malloc((t->nlist * 2u + 1u) * sizeof(u8*));
+    u32 nsec = 0, k, v, foff, i, j;
+    char out[4096];
+    FILE* f;
+    u8 hdr[16];
+    if (!ix || !secs) die("out of memory (dlc index)", NULL);
+    hv_base = buf; hv_size = size;
+    for (k = 0; k < t->nlist; k++) {
+        const NdSeamList* sl = &t->list[k];
+        u32 off = sl->addr - base;
+        unsigned nops;
+        if (off >= size || (off & 7u)) continue;
+        for (nops = 0; nops < ND_DLC_MAXOPS && off + 8u * (nops + 1u) <= size; nops++) {
+            const u8* p = buf + off + 8u * nops;
+            words[2 * nops] = le32(p); words[2 * nops + 1] = le32(p + 4);
+            if ((words[2 * nops] >> 24) == NDO_END) break;
+        }
+        if (nops >= ND_DLC_MAXOPS || off + 8u * (nops + 1u) > size) continue; /* no end word: the console refuses it too */
+        for (v = 0; v < 2; v++) {
+            NdObj o;
+            NdDlcEnv env;
+            u8* sec;
+            u32 pos, ssz, apad;
+            if (v == 1 && !sl->cnt) continue;
+            if (v == 0 && sl->cnt && sl->cls < 2) continue;
+            env.vtx = hv_vtx; env.valloc = hv_valloc; env.ialloc = hv_ialloc;
+            env.tp = v ? t->tp + sl->first : NULL; env.ntp = v ? sl->cnt : 0u;
+            hv_req_v = hv_req_i = 0;
+            if (nd_dlc_compile(&o, words, &env) != NDR_OK) continue;
+            apad = (o.ngop * 2u + 3u) & ~3u;
+            ssz = 40u + o.ngrp * NDG_GRP + o.ngop * 8u + apad + o.nvtx * 16u + o.nidx * 2u;
+            sec = (u8*)calloc(1, ssz);
+            if (!sec) die("out of memory (dlc section)", NULL);
+            pos = 0;
+            pos = put32(sec, pos, o.nops); pos = put32(sec, pos, o.exit_am); pos = put32(sec, pos, o.exit_om); pos = put32(sec, pos, o.ngrp);
+            pos = put32(sec, pos, o.ngop); pos = put32(sec, pos, o.nvtx); pos = put32(sec, pos, o.nidx); pos = put32(sec, pos, o.nins);
+            pos = put32(sec, pos, hv_req_v); pos = put32(sec, pos, hv_req_i);
+            for (i = 0; i < o.ngrp; i++) {
+                const NdGrp* g = &o.grp[i];
+                u8* q = sec + pos;
+                for (j = 0; j < 3; j++) { w16(q + 2 * j, (u32)(uint16_t)g->lo[j]); w16(q + 6 + 2 * j, (u32)(uint16_t)g->hi[j]); }
+                w16(q + 12, g->nvtx); w16(q + 14, g->ntri); w16(q + 16, g->ng);
+                q[18] = g->tsv_exit;
+                w32(q + 20, g->op0); w32(q + 24, g->op1); w32(q + 28, g->am); w32(q + 32, g->om);
+                w32(q + 36, g->vbase); w32(q + 40, g->ibase); w32(q + 44, g->gbase);
+                pos += NDG_GRP;
+            }
+            for (i = 0; i < o.ngop; i++) { w32(sec + pos, o.gop[i][0]); w32(sec + pos + 4, o.gop[i][1]); pos += 8; }
+            for (i = 0; i < o.ngop; i++) w16(sec + pos + 2 * i, o.gat[i]);
+            pos += apad;
+            memcpy(sec + pos, o.vtx, o.nvtx * 16u); pos += o.nvtx * 16u;
+            for (i = 0; i < o.nidx; i++) w16(sec + pos + 2 * i, o.idx[i]);
+            ix[nsec].list = off; ix[nsec].var = v; ix[nsec].size = ssz; ix[nsec].off = 0;
+            secs[nsec++] = sec;
+            free(o.vtx); free(o.idx);
+            o.vtx = NULL; o.idx = NULL;
+            nd_dlc_free(&o);
+        }
+    }
+    snprintf(out, sizeof out, "%s/%s.dlc", dir, name);
+    f = fopen(out, "wb");
+    if (!f) die("cannot write ", out);
+    memcpy(hdr, "NDDC", 4);
+    w32(hdr + 4, 1); w32(hdr + 8, size); w32(hdr + 12, nsec);
+    fwrite(hdr, 1, 16, f);
+    foff = 16u + nsec * 16u;
+    for (k = 0; k < nsec; k++) { ix[k].off = foff; foff += ix[k].size; }
+    for (k = 0; k < nsec; k++) {
+        u8 e[16];
+        w32(e, ix[k].list); w32(e + 4, ix[k].var); w32(e + 8, ix[k].off); w32(e + 12, ix[k].size);
+        fwrite(e, 1, 16, f);
+    }
+    for (k = 0; k < nsec; k++) { fwrite(secs[k], 1, ix[k].size, f); free(secs[k]); }
+    fclose(f);
+    dlc_secs += nsec; dlc_bytes += foff;
+    free(ix); free(secs);
+}
 static void write_seam(const ShapeFix* s, const char* dir, const char* name) {
     u8* tmp;
     NdSeamTab t;
@@ -431,6 +538,7 @@ static void write_seam(const ShapeFix* s, const char* dir, const char* name) {
     }
     memset(&t, 0, sizeof t);
     r = nd_seam_build(&t, tmp, s->size);
+    if (r == 0) write_dlc(&t, tmp, s->size, base, dir, name);
     stat[0] = t.tp_all; stat[1] = t.tp_id; stat[2] = t.tp_int; stat[3] = t.tp_mtx; stat[4] = t.skip_ref;
     stat[5] = t.ntri; stat[6] = t.nvert; stat[7] = t.nbedge; stat[8] = t.nl_cls[0]; stat[9] = t.nl_cls[1];
     stat[10] = t.nl_cls[2]; stat[11] = t.far;
@@ -514,7 +622,7 @@ int main(int argc, char** argv) {
         free(s.seen);
         free(s.buf);
     }
-    printf("shapeconv maps %u bytes %u reloc %u nop %u\n", (unsigned)maps, (unsigned)total_bytes, (unsigned)total_reloc, (unsigned)n_nop);
+    printf("shapeconv maps %u bytes %u reloc %u nop %u dlc sections %u bytes %u\n", (unsigned)maps, (unsigned)total_bytes, (unsigned)total_reloc, (unsigned)n_nop, (unsigned)dlc_secs, (unsigned)dlc_bytes);
     free(rom);
     return 0;
 }

@@ -143,6 +143,8 @@ Code read of main e3ada758a.
    Rule: a def with mask 0 may take its decision at build time keyed only by ctx (one decision per ctx value its call sites can
    have); mask != 0 keeps the S6T run-time key. S9DEL2 gate: every def mask 0 (KEY closed by its call site), ctx keyed per runner.
    The table stores inherit and ctx in NdGDef, so a row can test them at run time (debug) without the tool output.
+   S9DEL2: the S6KEY run-time key (sc_exec) also holds omode_h, omode_l, the tile 0 format and size and geom (4 walker inputs,
+   ND_SC_KEYW 30), so a def keyed at build time must also be keyed by these 4 walker inputs.
 7. Dynamic producers (no table; data written at run time): imgfx.c (meshes, vertex colours, palettes), hud_element.c (per-element
    quads), sprite.c quadBuffers and palettes, model.c vertex copies of animated models (its Gfx_RM* render-mode lists are static:
    S7MDL), actor palette swaps and tattle lerps (palettes edited in place), effects that write vertex or list data per frame into

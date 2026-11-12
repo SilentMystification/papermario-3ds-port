@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 void chomp_drop_init(EffectInstance* effect);
 void chomp_drop_update(EffectInstance* effect);
@@ -164,16 +165,40 @@ void chomp_drop_appendGfx(void* effect) {
     );
 
     if (data->unk_2C == 1) {
+#ifdef TARGET_3DS
+        nd_rec_dl(D_09001040_398080);
+#else
         gSPDisplayList(gMainGfxPos++, D_09001040_398080);
+#endif
+#ifdef TARGET_3DS
+        nd_rec_dl(D_09001190_3981D0);
+#else
         gSPDisplayList(gMainGfxPos++, D_09001190_3981D0);
+#endif
         gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, ((30 - data->unk_30) * 255) / 30);
+#ifdef TARGET_3DS
+        nd_rec_dl(D_090010E8_398128);
+#else
         gSPDisplayList(gMainGfxPos++, D_090010E8_398128);
+#endif
+#ifdef TARGET_3DS
+        nd_rec_dl(D_09001190_3981D0);
+#else
         gSPDisplayList(gMainGfxPos++, D_09001190_3981D0);
+#endif
     } else {
         if (data->unk_2C > 0) {
+#ifdef TARGET_3DS
+            nd_rec_dl(D_090010E8_398128);
+#else
             gSPDisplayList(gMainGfxPos++, D_090010E8_398128);
+#endif
         } else {
+#ifdef TARGET_3DS
+            nd_rec_dl(D_09001040_398080);
+#else
             gSPDisplayList(gMainGfxPos++, D_09001040_398080);
+#endif
         }
 
 #ifdef TARGET_3DS

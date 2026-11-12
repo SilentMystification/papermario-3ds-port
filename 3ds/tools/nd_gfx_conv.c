@@ -137,9 +137,9 @@ static void conv(const GSym* g) {
         const NdSDef* d = &o->d;
         printf("static const NdGDef ndgd_%s_%u = { { .u = &%s[%u], .n = %u, .st = 1, .id = %u, .nv = %u, .pre = %u, .has_geom = %u, .has_tex = %u, .has_comb = %u, "
                ".last_op = %u, .vmask = 0x%xu, .omh_m = 0x%xu, .omh_v = 0x%xu, .oml_m = 0x%xu, .oml_v = 0x%xu, .geom_c = 0x%xu, .geom_s = 0x%xu, "
-               ".tex_a = 0x%xu, .tex_b = 0x%xu, .cw0 = 0x%xu, .cw1 = 0x%xu }, 0x%xu, 0x%xu, %u };\n",
+               ".tex_a = 0x%xu, .tex_b = 0x%xu, .cw0 = 0x%xu, .cw1 = 0x%xu, .nsync = %u, .sync_k = { %u, %u, %u, %u } }, 0x%xu, 0x%xu, %u };\n",
                g->name, o->k, g->name, o->k, d->n, d->id, d->nv, d->pre, d->has_geom, d->has_tex, d->has_comb, d->last_op, d->vmask, d->omh_m, d->omh_v,
-               d->oml_m, d->oml_v, d->geom_c, d->geom_s, d->tex_a, d->tex_b, d->cw0, d->cw1, o->inh, NDG_CTX_T1V | NDG_CTX_DUAL | NDG_CTX_VPRIM, o->k);
+               d->oml_m, d->oml_v, d->geom_c, d->geom_s, d->tex_a, d->tex_b, d->cw0, d->cw1, d->nsync, d->sync_k[0], d->sync_k[1], d->sync_k[2], d->sync_k[3], o->inh, NDG_CTX_T1V | NDG_CTX_DUAL | NDG_CTX_VPRIM, o->k);
         fprintf(stderr, "gconv def %s+%u n %u inherit 0x%02x ctx 0x%x\n", g->name, o->k, d->n, o->inh, NDG_CTX_T1V | NDG_CTX_DUAL | NDG_CTX_VPRIM);
     }
     printf("static const NdGOp ndgo_%s[%u] = {\n", g->name, no);
