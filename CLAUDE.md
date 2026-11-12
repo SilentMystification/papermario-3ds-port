@@ -19,8 +19,8 @@ Orchestrator: read docs/handoff/orchestrator_rules.md at the start and after eve
    after 90 minutes or 150 tool calls without a passed gate. 2 tries per named cause.
 6. WORK. Grep and read line ranges. Write tool output to build3ds/out/ of your own worktree. Run builds and benches in the
    foreground (timeout up to 600000 ms). No Monitor or tail loops. Stop every background task you start.
-7. CODE. Commit each finished piece (changed files only). No feature toggles, no stubs, no git push, no git stash, no Claude
-   attribution. Debug tools may stay. Untested code stays on a branch. Follow docs/handoff/hw_guidelines.md (ARM11: hot loops fit
+7. CODE. Commit each finished piece (changed files only). No feature toggles, no stubs, no git push, no git stash. Claude
+   attribution lines in commits are allowed (user, 2026-11-12). Debug tools may stay. Untested code stays on a branch. Follow docs/handoff/hw_guidelines.md (ARM11: hot loops fit
    16 KB L1, no division, no double, sequential access).
 8. WORKTREES. One per agent: build3ds/wt/<row>, branch <row>. The orchestrator merges and cleans up. Windows: repo-relative paths,
    the .ps1 tools, Git Bash for sh tools. build.sh generates map_restore_table.c and map_restore*.ld (never committed).

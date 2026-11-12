@@ -48,7 +48,7 @@ Edit rules in place, never append. At the start of a session, read docs/handoff/
 - `sh 3ds/tools/wt_new.sh <row>` makes build3ds/wt/<row> on branch <row> from main.
 - Merge the commit hash the agent reports, never the branch tip.
   1. `git merge-tree --write-tree --name-only main <hash>`: exit 1 means conflicts.
-  2. Check the diff for conflict markers and attribution.
+  2. Check the diff for conflict markers. Attribution lines are allowed (user, 2026-11-12).
   3. Merge with `--no-ff`. Put the memcheck line in the merge message.
   4. Append the new runs.jsonl lines of the worktree to main's runs.jsonl. Commit runs.jsonl and pushed_builds.txt with
      `git add -f` (CLAUDE.md 10: main stays clean).
