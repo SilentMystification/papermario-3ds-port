@@ -115,3 +115,6 @@ No flattery and no apologies ("STOP GLAZING ME"); answer the question that was a
 description word for word and says what the row changes; read a failing tool's source first (timeouts, kills, swallowed output)
 before re-running or reporting symptoms; never run a push, build or long command in the foreground of the chat (detached or
 background, one line at start and end); decisions go through AskUserQuestion; never say the epic is done; no stubs, no toggles.
+
+## Repo repair before the first push (user chose, 2026-11-12)
+53 blobs in local history are over 100 MB (all 3ds/logs/perf/runs.jsonl, 1.7 to 3.5 GB each). origin/main has none. Local main is 493 commits ahead. GitHub rejects blobs over 100 MB, so a push fails. Decision: rewrite history so runs.jsonl stays small (deduplicated copy, about 7.5 MB). Order: first merge FPS60W2 and REGDIR3, close every worktree, back up with a clone, then run the rewrite (filter-repo) on all branches. Commit hashes change: update this file and the plan. Check with `git rev-list --objects --all | git cat-file --batch-check` (no blob over 100 MB) before any push.
