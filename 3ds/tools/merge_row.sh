@@ -63,7 +63,7 @@ if ! git merge --no-ff -F "$msg" "$row" > "$tmpd/merge" 2>&1; then
     res=ok
     [ -n "$unm" ] && [ -z "$other" ] || res=fail
     if [ "$res" = ok ] && printf '%s\n' "$unm" | grep -qx "$runs"; then
-        git checkout -q --ours -- "$runs" && git add -- "$runs" || res=fail
+        git checkout -q --ours -- "$runs" && git add -f -- "$runs" || res=fail
     fi
     if [ "$res" = ok ] && printf '%s\n' "$unm" | grep -qx "$rowfile"; then
         git rm -q "$rowfile" || res=fail
