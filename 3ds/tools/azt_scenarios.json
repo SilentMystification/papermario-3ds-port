@@ -6598,7 +6598,7 @@
       "status": "unverified",
       "subject": "Battle at 4:3 (nowide, det), one Goomba on kmr_03: the wheel opens (4 options) and its open line starts an 8 frame shot burst. Runs on builds before WIDE4 (only older switches).",
       "proves": "WIDE4 byte gate: the 4:3 wheel picture is byte equal to the base build (every WIDE4 change is under pm_wide).",
-      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 nowide shots loglevel=debug uiburst det",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 nowide shots shotmode=255 loglevel=debug uiburst det",
       "until": "shot \\d+ frame \\d+ map",
       "cap": 45,
       "deadline": 20,
