@@ -1527,6 +1527,11 @@ def base_run(bds, commit, build_no, row, lane, label, why):
     try:
         rc = cmd_run(argparse.Namespace(bench=",".join([name] * BASE_TWICE), row=row, why=why, label=label, build=build_no, commit=commit,
                                         speed=None, lane=lane))
+        # TOOLB4: a base retry asks for the slot of its list (azt.ps1 PM_AZT_BASE_SLOT)
+        recs = base_warm(bds[0], row, label, commit, since)[0]
+        m = re.search(r"slot(\d+)", (recs[-1].get("log_path") or "") if recs else "")
+        if m:
+            os.environ["PM_AZT_BASE_SLOT"] = m.group(1)
         n = BASE_TWICE
         while n < BASE_MAX_RUNS:
             need = [bd for bd in bds if len(base_warm(bd, row, label, commit, since)[1]) < BASE_TWICE
@@ -1538,6 +1543,7 @@ def base_run(bds, commit, build_no, row, lane, label, why):
             n += 1
     finally:
         os.environ.pop("PM_BASE_SNAP", None)
+        os.environ.pop("PM_AZT_BASE_SLOT", None)  # TOOLB4
     bad = 0
     for bd in bds:
         s = scenario(bd["scenario"])

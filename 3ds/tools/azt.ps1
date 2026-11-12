@@ -521,7 +521,7 @@ $azTurbo = ($speed -eq "turbo")
 $azTL = if ($azTurbo) { [int]$frameLimit } else { 0 }
 # AZT11-1: the run waits in the machine-wide queue (azslot.ps1 Invoke-QGrant grants a slot). The GPU retry asks for its slot (want).
 # The entry is the run's own file: it is removed at every exit (Leave-Queue), and a dead owner's entry is swept by any queue user (AZT11-2).
-$wantSlot = if ($env:PM_AZT_RETRY_RUN -and $env:PM_AZT_RETRY_SLOT) { [int]$env:PM_AZT_RETRY_SLOT } elseif ($env:PM_AZT_LIST_SLOT) { [int]$env:PM_AZT_LIST_SLOT } else { 0 } # TOOLB3: a list child asks for the slot of the first child
+$wantSlot = if ($env:PM_AZT_RETRY_RUN -and $env:PM_AZT_RETRY_SLOT) { [int]$env:PM_AZT_RETRY_SLOT } elseif ($env:PM_AZT_LIST_SLOT) { [int]$env:PM_AZT_LIST_SLOT } elseif ($env:PM_AZT_BASE_SLOT) { [int]$env:PM_AZT_BASE_SLOT } else { 0 } # TOOLB3: a list child asks for the slot of the first child; TOOLB4: a base retry asks for the slot of its list
 $qTree = Split-Path -Leaf $script:AzTree
 $qE = New-QEntry $sc.name $Row $lane $speed $qTree $wantSlot (Get-NowMs)
 $qPath = Join-Path (Get-QueueDir) ("{0:D15}-{1}-{2}.json" -f [long]$qE.t, $PID, (Get-Random))
