@@ -24,4 +24,46 @@ check refused 3ds/tests/push/refused_partial.txt
 check refused "$tmp/refused_cr.txt"
 check none 3ds/tests/push/full_send.txt
 check none 3ds/tests/push/connect_only.txt
+
+# PUSHFIX cases (no console). PM_3DSLINK = a fake 3dslink script, PM_SRC3DSX = the dummy 3dsx above,
+# archive and push log in $tmp. Cases a, c, d pass -Seconds 5 / -t 1 / -IdleSeconds 5 so the live-log read ends fast.
+fake_ok="$tmp/fake_ok.sh"; fake_partial="$tmp/fake_partial.sh"
+printf '#!/bin/sh\necho "Sending pm_3ds.3dsx"\nexit 0\n' >"$fake_ok"
+printf '#!/bin/sh\necho "10 sent (5%%)"\nexit 1\n' >"$fake_partial"
+chmod +x "$fake_ok" "$fake_partial"
+
+# (a) go.ps1 push o -NoBuild -Fg: no build, the fake 3dslink runs.
+oa=$(env PM_3DSLINK="$fake_ok" PM_SRC3DSX="$tmp/pm_3ds.3dsx" PM_ARCHIVE_DIR="$tmp" PM_PUSH_LOG="$tmp/pushed.txt" \
+    powershell -NoProfile -File 3ds/go.ps1 push o -NoBuild -Fg -ip 127.0.0.1 -Seconds 5 -IdleSeconds 5 2>&1) || true
+if echo "$oa" | grep -q 'Sending' && ! echo "$oa" | grep -q 'STAGE' && ! echo "$oa" | grep -qi '^build'; then echo "ok   go -NoBuild no build"
+else echo "FAIL go -NoBuild no build"; echo "$oa" | tail -n 20; fail=1; fi
+
+# (b) a 3dsx built from another hash than HEAD: exit 5, nothing sent.
+printf '#define PM_BUILD_STR "1-x"\n#define PM_GIT_HASH "000000000"\n' >"$tmp/pm_build.h"
+ob=$(env PM_SRC3DSX= PM_BUILD_H="$tmp/pm_build.h" sh 3ds/push_3ds.sh --no-build -t 1 2>&1) && rb=0 || rb=$?
+if [ "$rb" -eq 5 ] && echo "$ob" | grep -q 'STALE 3DSX'; then echo "ok   stale 3dsx exit 5"
+else echo "FAIL stale 3dsx (rc $rb)"; echo "$ob" | tail -n 20; fail=1; fi
+
+# (c) a partial send: the attempt's 3dslink output is kept and the NETLOADER REFUSED block is printed.
+oc=$(env PM_3DSLINK="$fake_partial" PM_SRC3DSX="$tmp/pm_3ds.3dsx" PM_ARCHIVE_DIR="$tmp" PM_PUSH_LOG="$tmp/pushed.txt" \
+    sh 3ds/push_3ds.sh --no-build --ip 127.0.0.1 -t 1 --idle 1 2>&1) || true
+kept=$(grep -l '10 sent (5%)' build3ds/out/push_127.0.0.1_*_a1.txt 2>/dev/null | head -n 1)
+if [ -n "$kept" ] && echo "$oc" | grep -q 'NETLOADER REFUSED'; then echo "ok   partial send kept output"
+else echo "FAIL partial send kept output"; echo "$oc" | tail -n 20; fail=1; fi
+
+# (d) go.ps1 push o without -Fg: detached, PUSH STARTED at once, PUSH END in build3ds/out/push_last.txt within 60 s.
+rm -f build3ds/out/push_last.txt
+t0=$(date +%s)
+od=$(env PM_3DSLINK="$fake_ok" PM_SRC3DSX="$tmp/pm_3ds.3dsx" PM_ARCHIVE_DIR="$tmp" PM_PUSH_LOG="$tmp/pushed.txt" \
+    powershell -NoProfile -File 3ds/go.ps1 push o -NoBuild -ip 127.0.0.1 -Seconds 5 -IdleSeconds 5 2>&1) || true
+t1=$(date +%s)
+if echo "$od" | grep -q 'PUSH STARTED' && [ $((t1 - t0)) -le 5 ]; then echo "ok   detached PUSH STARTED in $((t1 - t0)) s"
+else echo "FAIL detached PUSH STARTED ($((t1 - t0)) s)"; echo "$od" | tail -n 20; fail=1; fi
+w0=$(date +%s)
+until grep -q 'PUSH END' build3ds/out/push_last.txt 2>/dev/null || [ $(( $(date +%s) - w0 )) -ge 60 ]; do sleep 1; done
+if grep -q 'PUSH END' build3ds/out/push_last.txt 2>/dev/null; then echo "ok   detached PUSH END ($(tr -d '\r\n\357\273\277' <build3ds/out/push_last.txt))"
+else echo "FAIL detached PUSH END within 60 s"; fail=1; fi
+
+rm -f build3ds/out/push_127.0.0.1_*
+if [ "$fail" -eq 0 ]; then echo "PUSH TESTS PASS"; else echo "PUSH TESTS FAIL"; fi
 exit $fail

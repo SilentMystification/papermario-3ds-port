@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 typedef struct UnkStruct {
     /* 0x00 */ u8 unk_00;
@@ -248,7 +249,7 @@ void shape_spell_appendGfx(void* effect) {
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    gSPDisplayList(gMainGfxPos++, D_09001080_33AFE0);
+    nd_rec_dl(D_09001080_33AFE0);
 
     guPositionF(mL, 0.0f, yawOut, 0.0f, 1.0f, data->pos.x, data->pos.y, data->pos.z);
     guMtxF2L(mL, &gDisplayContext->matrixStack[gMatrixListPos]);
