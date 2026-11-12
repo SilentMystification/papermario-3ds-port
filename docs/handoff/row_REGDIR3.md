@@ -33,5 +33,22 @@
 - A second build with no change prints `gen_gfx_tab: up to date` and `gen_shapes: up to date`; touching one file under
   src/entity/model makes gen_gfx_tab run (revert after).
 
+## Try 2 (ORACLE7, after 53971954e: row spec fault, budget reset once)
+
+- Facts accepted: pm_audio_gate.c is tracked (keep it as the explicit item); PORT_SRC is now in glob order (alphabetical): the sorted
+  object lists are equal, so the link has the same objects (the order of hot code is set by hot_order.ld, not by PORT_SRC).
+- The table compare was against a stale main copy. REGDIR3 does not change gen_gfx_tab.sh, so the generated table depends only on
+  the tree; what this row can break is the stamp (a table left stale). Corrected gate, in the worktree after `git merge main`:
+  1. Fresh table: delete build3ds/lane-REGDIR3/gfx_tab.stamp and 3ds/src/nd_gfx_tab.c, build
+     (`PM_ROW=REGDIR3 PM_LANE=REGDIR3 sh 3ds/build.sh > build3ds/out/b1.txt 2>&1`), copy 3ds/src/nd_gfx_tab.c to
+     build3ds/out/tab_fresh.c, sha1sum it.
+  2. Build again with no change: b2.txt shows `gen_gfx_tab: up to date` and `gen_shapes: up to date`; the table is cmp-identical.
+  3. Add one comment line at the end of src/entity/model/Chest.c, build: b3.txt shows gen_gfx_tab ran; remove the line, build:
+     gen_gfx_tab ran again and the table is cmp-identical to tab_fresh.c (equal sha1). No commit of the comment line.
+  4. The object list and memcheck as before; nd_host PASS. Budget 0 Azahar starts.
+- REGDIR1 (running) changes gen_gfx_tab.sh :7-19 and adds 3ds/tools/gconv_src.d/: GT_IN already names both; before REGDIR1 merges,
+  `git ls-files 3ds/tools/gconv_src.d` is empty, which is valid. No overlap with REGDIR1's lines (this row edits build.sh and
+  CMakeLists only). Merge order: either.
+
 ## Stop
 A different object list or a table difference: stop, commit, hand back. Delete this row file in the completing commit.

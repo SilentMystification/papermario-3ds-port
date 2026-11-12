@@ -37,5 +37,22 @@ and one new case before the summary). Not build.sh (REGDIR3 edits it).
 - `sh 3ds/tests/push/run.sh`: every case ok, last line `PUSH TESTS PASS`; hand back the last 14 lines.
 - `sh 3ds/push_3ds.sh --dry --no-build`: rc 0 when build3ds/build_key.txt equals the tree key. Budget 0.
 
+## Try 2 (ORACLE7, after 2ca2a3728: row spec fault, budget reset once)
+
+- Why the worktree key differs from main's build_key.txt at the same HEAD (build.sh:119-126, key_now): besides the tracked tree it
+  hashes files that each folder generates or holds itself: the untracked files under KEY_IN (`git ls-files -o`), the uncommitted
+  diff, the generated 3ds/src/map_restore_table.c, 3ds/src/nd_gfx_tab.c, 3ds/ld/map_restore.ld, map_restore_bss.ld and
+  3ds/include/texkey_patch.h of that folder (main's nd_gfx_tab.c is older than the worktree's), and the asset list with mtimes. So a
+  key is valid only against the build_key.txt of the same folder and output. That is the rule, not a fault to remove: the 3dsx is
+  the output of that folder's generated files.
+- Rule for the check (push_3ds.sh): compare the key of the current folder (`PM_LANE= PM_KEY_ONLY=1 sh 3ds/build.sh` run in the folder
+  that holds build3ds/pm_3ds.3dsx) with that folder's build3ds/build_key.txt. A push runs from the main folder (go.ps1 Set-Location
+  $repo). Write this rule as the comment above the check.
+- Test hook: the check runs when nobuild is 1 and (PM_SRC3DSX is empty or PM_BUILD_KEY_FILE is set). Case (b2): PM_BUILD_KEY_FILE =
+  a temp file with the worktree's own key (the command above, run in the worktree), PM_SRC3DSX = the dummy 3dsx of run.sh,
+  PM_3DSLINK = the fake of case (a): expect no STALE line, the `SEND FILE:` line and the fake's `Sending` line. Case (b): a key file
+  holding `0000`: exit 5 and `STALE 3DSX`.
+- Gate: `sh 3ds/tests/push/run.sh`: every case ok, `PUSH TESTS PASS`. No Azahar, no main-folder file used. Budget 0.
+
 ## Stop
 A failing case: stop, commit, hand back. Delete this row file in the completing commit.

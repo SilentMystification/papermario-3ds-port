@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 extern Gfx D_09001500_3918D0[];
 extern Gfx D_090015A8_391978[];
@@ -201,16 +202,36 @@ void func_E0090444(EffectInstance* effect) {
             gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
                       G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
             gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 255, data->alpha);
+#ifdef TARGET_3DS
+            nd_rec_dl(D_090015A8_391978);
+#else
             gSPDisplayList(gMainGfxPos++, D_090015A8_391978);
+#endif
+#ifdef TARGET_3DS
+            nd_rec_dl(D_E0090A40[data->unk_04]);
+#else
             gSPDisplayList(gMainGfxPos++, D_E0090A40[data->unk_04]);
+#endif
+#ifdef TARGET_3DS
+            nd_rec_dl(D_E0090A54[data->unk_04]);
+#else
             gSPDisplayList(gMainGfxPos++, D_E0090A54[data->unk_04]);
+#endif
             gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         } else {
             type -= 5;
             gDPSetPrimColor(gMainGfxPos++, 0, 0, D_E0090A78[type][0], D_E0090A78[type][1], D_E0090A78[type][2], data->alpha);
             gDPSetEnvColor(gMainGfxPos++, D_E0090A78[type][3], D_E0090A78[type][4], D_E0090A78[type][5], 0);
+#ifdef TARGET_3DS
+            nd_rec_dl(D_09001500_3918D0);
+#else
             gSPDisplayList(gMainGfxPos++, D_09001500_3918D0);
+#endif
+#ifdef TARGET_3DS
+            nd_rec_dl(D_E0090A40[data->unk_04]);
+#else
             gSPDisplayList(gMainGfxPos++, D_E0090A40[data->unk_04]);
+#endif
 
             gSPScisTextureRectangle(gMainGfxPos++,
                 data->pos.x * 4.0f,

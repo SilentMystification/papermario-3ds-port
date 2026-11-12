@@ -1,6 +1,7 @@
 #include "common.h"
 #include "nu/nusys.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 extern Gfx D_09000100_3BCB90[];
 extern Gfx D_09000268_3BCCF8[];
@@ -184,7 +185,11 @@ void water_splash_appendGfx(void* effect) {
     guMtxF2L(sp10, &gDisplayContext->matrixStack[gMatrixListPos]);
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     gSPMatrix(gMainGfxPos++, currentCamera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+    nd_rec_dl(D_09000100_3BCB90);
+#else
     gSPDisplayList(gMainGfxPos++, D_09000100_3BCB90);
+#endif
 
     data++;
 #ifdef TARGET_3DS
@@ -223,7 +228,11 @@ void water_splash_appendGfx(void* effect) {
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         gDPSetPrimColor(gMainGfxPos++, 0, 0, 200, 255, 255, (sp90 * data->unk_30) / 255);
         gDPSetEnvColor(gMainGfxPos++, 0, 32, 32, 0);
+#ifdef TARGET_3DS
+        nd_rec_dl(D_E00BEAF0[(i + (gGameStatusPtr->frameCounter / 2)) & 3]);
+#else
         gSPDisplayList(gMainGfxPos++, D_E00BEAF0[(i + (gGameStatusPtr->frameCounter / 2)) & 3]);
+#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     }
 #ifdef TARGET_3DS

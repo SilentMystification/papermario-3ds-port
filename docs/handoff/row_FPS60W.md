@@ -42,5 +42,23 @@
   with `wdhang=200` (new scenario `wdhang_mac01`, until `watchdog: no progress`): the crash lines appear in the log (budget 2
   starts). The GPU-stuck branch is proven by code read only (Azahar cannot stick the GPU): name its lines in the commit.
 
+## Try 2 (ORACLE7, after 37ed263e4: row spec fault, budget reset once)
+
+- Scenario and bench in per-row files (REGDIR2 merged; never the shared files): 3ds/tools/azt.d/FPS60W.json =
+  `{"scenarios": [ <a copy of spot_mac01_det with: "name": "wdhang_mac01", "debug": "warp=mac_01:0 pos=0:0:200 loglevel=debug det
+  wdhang=200" (no prof: prof sets log=off; no shots), "until": "watchdog: no progress", "cap": 45, "deadline": 40, "needs_picture":
+  false, "expects": "warp", "first_marker": "warp: mac_01 entry 0", "expected_events": [{"name": "warp", "regex": "warp: mac_01
+  entry 0"}], subject, proves and reason naming FPS60W> ]}` and 3ds/tools/bench.d/FPS60W.json = `{"benches": [ <a copy of the
+  spot_mac01_det bench with "name": "wdhang_mac01", "scenario": "wdhang_mac01", "until": the same, "cap": 45, "tags": ["azahar"]> ]}`.
+  Timing: the park at frame 200 (about 7 s after boot) plus the 10 s watchdog limit; the process then ends by the watchdog's exit
+  path, after the until entry. One run, no base (a log check: hand back the watchdog crash lines).
+- Coder choices: the label `key_show` at :2941 is right (the row's crash text names frame_begin or key_show). The two GSP waits:
+  libctru has no timed gspWaitForEvent and keeps its event handles private, so no svcWaitSynchronization form exists without
+  changing libctru. Edit for :1842 (pm_gpu_menu_grey): replace `gspWaitForPPF();` by `gx_wait_or_reset((gxCmdQueue_s*)&__C3D_Context,
+  "menu_grey");` (the menu present's display transfer is an entry of the citro3d GX queue, so the queue's completion bounds it).
+  :1655 (jt_result) stays: it runs only under the `jumptest` debug switch; name it in the commit as the one unbounded debug wait.
+- Gate grep becomes: `grep -n "gxCmdQueueWait(q, -1)\|gspWaitForPPF()" 3ds/src/*.c` prints nothing; `gspWaitForP3D()` only at the
+  jumptest line. Budget: 2 Azahar starts.
+
 ## Stop
 A build error or a wait left: stop, commit, hand back. Delete this row file in the completing commit.
