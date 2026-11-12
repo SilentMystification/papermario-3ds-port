@@ -14822,6 +14822,122 @@
         }
       ],
       "reason": "BOMBLIT census (measurement, no picture): the shade path counters of the shadecen switch, one line per frame with a count. Cap 30 s: the first marker takes 12 to 16 s, then the script runs 240 scans."
+    },
+    {
+      "name": "fsel_fncov_rot",
+      "status": "unverified",
+      "subject": "File select entry turn (frames 282 to 296): walker census armed at frame 289.",
+      "proves": "Walker census of the file select entry turn (fileselect_rotate copy, census lane). Measurement only.",
+      "debug": "fileselect fncov=289 loglevel=debug det",
+      "extra": [
+        "-Turbo",
+        "-TurboFactor",
+        "1"
+      ],
+      "until": "fncov f\\d+ done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "boot_main",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "file select mode",
+          "regex": "game mode 14 frame"
+        },
+        {
+          "name": "fncov done",
+          "regex": "fncov f\\d+ done"
+        }
+      ],
+      "reason": "Census of the file select box turn for FSELCEN. Copy of fileselect_rotate with fncov=289 instead of shots. Cap 45 s, deadline 40 s. Log only; the until is the census done line."
+    },
+    {
+      "name": "fsel_fncov_idle",
+      "status": "unverified",
+      "subject": "File select at rest: walker census armed at frame 400, after the turn.",
+      "proves": "Walker census of the file select entry turn (fileselect_rotate copy, census lane). Measurement only.",
+      "debug": "fileselect fncov=400 loglevel=debug det",
+      "extra": [
+        "-Turbo",
+        "-TurboFactor",
+        "1"
+      ],
+      "until": "fncov f\\d+ done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "boot_main",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "file select mode",
+          "regex": "game mode 14 frame"
+        },
+        {
+          "name": "fncov done",
+          "regex": "fncov f\\d+ done"
+        }
+      ],
+      "reason": "Baseline census of the file select at rest for FSELCEN (subtract from fsel_fncov_rot). Cap 45 s, deadline 40 s. Log only; the until is the census done line."
+    },
+    {
+      "name": "pause_fncov_flip",
+      "status": "unverified",
+      "subject": "Pause flip: walker census armed at frame 99, the pause opens at frame 96.",
+      "proves": "Walker census of the pause flip (pause_spin_grab spin switches, census lane). Measurement only.",
+      "debug": "preset=toad padscript=wait80,START*3 fncov=99 loglevel=debug det",
+      "extra": [],
+      "until": "fncov f\\d+ done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "pause mode",
+          "regex": "game mode 10 frame"
+        },
+        {
+          "name": "fncov done",
+          "regex": "fncov f\\d+ done"
+        }
+      ],
+      "reason": "Census of the pause flip for FSELCEN. Copy of the pause_spin_grab spin switches with fncov=99. Cap 45 s, deadline 40 s. Log only; the until is the census done line."
+    },
+    {
+      "name": "pause_fncov_idle",
+      "status": "unverified",
+      "subject": "Pause at rest: walker census armed at frame 200, after the flip.",
+      "proves": "Walker census of the pause flip (pause_spin_grab spin switches, census lane). Measurement only.",
+      "debug": "preset=toad padscript=wait80,START*3 fncov=200 loglevel=debug det",
+      "extra": [],
+      "until": "fncov f\\d+ done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "pause mode",
+          "regex": "game mode 10 frame"
+        },
+        {
+          "name": "fncov done",
+          "regex": "fncov f\\d+ done"
+        }
+      ],
+      "reason": "Baseline census of the pause at rest for FSELCEN (subtract from pause_fncov_flip). Cap 45 s, deadline 40 s. Log only; the until is the census done line."
     }
   ]
 }
