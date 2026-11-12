@@ -325,7 +325,7 @@ static __attribute__((cold, noinline)) void tile_stale_log(int n) {
 }
 
 /* NAPI2B: the bind test on the facts of a bind (a walker tile or a direct descriptor): the texture layer holds this image, palette, format, wrap and window */
-static int bound_cmp(const void* src, const void* pal, unsigned fmt, unsigned siz, const unsigned* wrap, const int* sz, int n) {
+static inline __attribute__((always_inline)) int bound_cmp(const void* src, const void* pal, unsigned fmt, unsigned siz, const unsigned* wrap, const int* sz, int n) {
     if (pm_tex_cur_idx() < 0 || !ens_src) return 0;
     if (ens_src != src || ens_pal != pal || ens_fmt != fmt || ens_siz != siz) return 0;
     if (memcmp(wrap, ens_wrap, sizeof ens_wrap) || memcmp(sz, ens_sz, sizeof ens_sz)) return 0;
