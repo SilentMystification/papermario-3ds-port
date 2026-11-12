@@ -24,6 +24,12 @@ NAPI2B merged (nd_tex_bind_desc, nd_direct_bind, nd_direct_end). `sh 3ds/tools/w
 3. One rect gives the same texels as the strips: every pixel maps to texel (x, y) in both (dsdx 1.0, absolute origin). Expected
    byte-equal; if the 3DS rect rasterizes the strip seams differently, the rounding rule applies only with the cause named.
 
+
+## Merge rule (orchestrator, 2026-11-12)
+Rows that append to the end of 3ds/include/nd_api.h, 3ds/src/nd_direct.c or 3ds/tools/nd_direct_test.c conflict when two merge in
+sequence. Right before the gate runs: `git merge main`; at a conflict at those file ends keep both appends (main's first, then
+yours), rebuild, nd_host; then take the bases at the new `git merge-base HEAD main` and run the gate.
+
 ## Gate (expected values)
 - Build, memcheck OK; nd_host PASS.
 - A det scene that draws OVERLAY_BLUR or OVERLAY_START_BATTLE: pre-flight finds none in azt_scenarios.json. Add `prevfb_btl_det`:

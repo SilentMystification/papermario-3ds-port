@@ -69,20 +69,23 @@ NAPI2B and S1FILL merged. `sh 3ds/tools/wt_new.sh S1TSTEN`; PM_ROW=S1TSTEN PM_LA
    - keep the trailing gDPPipeSync. The `#else` keeps the old lines.
    Include "nd_api.h" and, for the ND_* macros, the header that gives them (nd_gbi.h is already in the 3DS gbi chain: check with
    a build).
-3. Scenario and bench `sten_enter_det`: copy of spot_mac01_det.
-   - Debug: replace its shotwin with `shotwin=<F>:16:2`. F is the frame of the first `tsten f` line that you get from a run of
-     your build with the debug `warp=mac_01:0 pos=0:0:200 loglevel=debug det` (one start, not a byte run): F = that frame.
-   - Until: `shot \d+ frame <F+30>\b`. Cap 45.
-   - Purpose: "S1TSTEN byte gate: the Mario stencil fade-in of the world entry".
+3. Scenario and bench `sten_enter_det` (try 2, oracle 4: no probe run). Insert both right after spot_mac01_det, never at the
+   file end; one commit. Debug: `warp=mac_01:0 pos=0:0:200 shots shotwin=1:160:4 loglevel=debug det` (no prof switch: prof mode
+   sets `log=off`, which is why try 1's spot_mac01_det run printed no `tsten` and no `warp:` line). Until: `shot \d+ frame 157\b`
+   (shot 39 of 40). Cap 30, deadline 25. expected_events: `warp: mac_01 entry 0` and `tsten f\d+ id 0 direct 1`. Bench: kind
+   azahar_pic, scenario sten_enter_det, cap 30, the same until, tags azahar, pic. Purpose: "S1TSTEN byte gate: the Mario stencil
+   fade-in of the world entry". Why the window: a warp boot enters GAME_MODE_ENTER_WORLD (3ds/src/pm_warp.c:1149), so
+   state_init_enter_world sets TRANSITION_ENTER_WORLD (src/state_map_transitions.c:28) and the fade-in draws
+   OVERLAY_VIEWPORT_MARIO (screen_overlays.c:722) through render_screen_overlay_frontUI (main_loop.c:285) after the map load,
+   which is before frame 120 (the map load line comes before `audiohash f120` in try 1's log).
 
 ## Gate (expected values)
-- Build, memcheck OK; nd_host PASS.
-- The probe run (1 start) prints `tsten f<n> id 0 direct 1` lines. Any `direct 0` line: hand back (the fallback ran, so the
-  direct path has a gap).
-- `bench.py base sten_enter_det`, `bench.py base spot_mac01_det`; one list
-  `bench.py run sten_enter_det,spot_mac01_det --row S1TSTEN --why "B2a: transition stencil direct"` (2 starts);
-  `bench.py cmp` both: every shot byte-equal.
-- Budget 6 Azahar starts.
+- Build, memcheck OK; nd_host PASS (done in try 1: commit 113879c16).
+- `PM_ROW=S1TSTEN PM_LANE=S1TSTEN python 3ds/tools/bench.py base sten_enter_det` and the same for spot_mac01_det (merge-base:
+  `git merge-base HEAD main`; the base runs your scenario file). Expected: stored, 40 and 6 shots.
+- One list: `bench.py run sten_enter_det,spot_mac01_det --row S1TSTEN --why "B2a: transition stencil direct"` (2 starts).
+  sten_enter_det log: `tsten f<n> id 0 direct 1` lines (at least 1; hand back the first and last frame), no `direct 0`. `bench.py cmp` both: every shot byte-equal.
+- Budget 6 Azahar starts (1 used by try 1; a base of a new bench takes 2 runs).
 
 ## Stop
 A byte difference or a `direct 0` line: stop, commit, hand back the cmp output and the tsten lines (2 tries per named cause).

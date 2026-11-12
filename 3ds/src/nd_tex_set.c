@@ -767,3 +767,32 @@ int nd_tex_win_desc(NdBindDesc* o, const void* timg, int timg_stride, unsigned f
     o->sz[0] = uls; o->sz[1] = ult; o->sz[2] = lrs; o->sz[3] = lrt;
     return 1;
 }
+
+/* NAPI3B: the texture state of one message glyph (the palette load when tlut, then the 4 bit block load of the raster and the tile size of
+ * gDPLoadTLUT_pal16 and gDPLoadTextureBlock_4b), by the same setters in the same order as the typed ops the walker ran for them (set_timg,
+ * set_tile, set_loadtlut, set_loadblock, set_tilesize: the glyph atlas arm, the PG1 memo arm and the load of set_tilesize and ensure_tile). The ops
+ * are not built, decoded or skipped by nd_op_same (none of these ops has a skip test). raster and pal are the N64 addresses of the record. w is a
+ * multiple of 16. */
+void nd_tex_bind_glyph(uint32_t raster, uint32_t pal, int tlut, int w, int h) {
+    static const unsigned wr[4] = { 0, 0, 0, 0 };
+    unsigned texels = (unsigned)(((w * h + 3) >> 2) - 1);
+    gv_epoch++;
+    if (tlut) {
+        pm_gbi_cur_op = G_SETTIMG;
+        set_timg(pal, 0, 2, 1);
+        pm_gbi_cur_op = G_SETTILE;
+        set_tile(7, 0, 0, 256, 0, wr, 0, 0);
+        pm_gbi_cur_op = G_LOADTLUT;
+        set_loadtlut(7, 15);
+    }
+    pm_gbi_cur_op = G_SETTIMG;
+    set_timg(raster, 2, 2, 1);
+    pm_gbi_cur_op = G_SETTILE;
+    set_tile(7, 2, 2, 0, 0, wr, 0, 0);
+    pm_gbi_cur_op = G_LOADBLOCK;
+    set_loadblock(7, texels > G_TX_LDBLK_MAX_TXL ? G_TX_LDBLK_MAX_TXL : texels);
+    pm_gbi_cur_op = G_SETTILE;
+    set_tile(0, 2, 0, 0, 0, wr, 0, 0);
+    pm_gbi_cur_op = G_SETTILESIZE;
+    set_tilesize(0, 0, 0, (w - 1) << 2, (h - 1) << 2);
+}

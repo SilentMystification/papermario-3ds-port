@@ -45,6 +45,12 @@ PM_LANE=S5CHUD.
 src/hud_element.c (render_complex_hud_element mode 2 case only; hud_rect_direct stays), 3ds/src/nd_direct.c (nd_direct_quad at the
 end), 3ds/include/nd_api.h (the declaration at the end).
 
+
+## Merge rule (orchestrator, 2026-11-12)
+Rows that append to the end of 3ds/include/nd_api.h, 3ds/src/nd_direct.c or 3ds/tools/nd_direct_test.c conflict when two merge in
+sequence. Right before the gate runs: `git merge main`; at a conflict at those file ends keep both appends (main's first, then
+yours), rebuild, nd_host; then take the bases at the new `git merge-base HEAD main` and run the gate.
+
 ## Gate (expected values)
 - Build, memcheck OK; nd_host PASS (add a host case: nd_direct_quad with the identity matrix gives the same ring vertices as the
   gSPVertex path).

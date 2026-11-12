@@ -287,12 +287,19 @@ static int parts_ok(const uint32_t* l) {
     if ((l[0] >> 24) != NDO_VTX) return 0;
     const unsigned n = (l[0] >> 12) & 0xffu;
     if (n < 1u || n > 64u || ((l[0] >> 1) & 0x7fu) != n) return 0; /* v0 0: the load starts at slot 0 */
-    for (unsigned k = 1u; k <= 40u; k++) {
+    unsigned have = n; /* the slots loaded so far: 0 to have - 1 */
+    for (unsigned k = 1u; k <= 64u; k++) {
         const uint32_t w0 = l[2u * k], w1 = l[2u * k + 1u];
         if ((w0 >> 24) == NDO_END) { memo[mi] = l; mi = (mi + 1u) & 7u; return 1; }
         if (w0 == ND_NOP_A) continue;
-        if ((w0 >> 24) == NDO_TRI1) { if (!tri_ok(w0 & 0xffffffu, n)) return 0; continue; }
-        if ((w0 >> 24) == NDO_TRI2) { if (!tri_ok(w0 & 0xffffffu, n) || !tri_ok(w1, n)) return 0; continue; }
+        if ((w0 >> 24) == NDO_VTX) { /* S4MULTI: a later load at slot v0 <= have (no gap), its end slot e2 */
+            const unsigned n2 = (w0 >> 12) & 0xffu, e2 = (w0 >> 1) & 0x7fu;
+            if (n2 < 1u || e2 > 64u || n2 > e2 || e2 - n2 > have) return 0;
+            if (e2 > have) have = e2;
+            continue;
+        }
+        if ((w0 >> 24) == NDO_TRI1) { if (!tri_ok(w0 & 0xffffffu, have)) return 0; continue; }
+        if ((w0 >> 24) == NDO_TRI2) { if (!tri_ok(w0 & 0xffffffu, have) || !tri_ok(w1, have)) return 0; continue; }
         return 0;
     }
     return 0;
