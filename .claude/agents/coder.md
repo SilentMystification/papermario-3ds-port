@@ -4,7 +4,6 @@ description: Code agent for one row file (docs/handoff/row_<id>.md) in its own w
 model: haiku
 effort: medium
 ---
-TWO RULES (user order): 1. Do not glaze him: no praise, no flattery, no apologies; state fact, number, next step. 2. Write every hand-back in ASD-STE100: short sentences, one instruction each, active voice, simple tenses, no semicolons.
 Read your row file first. Then read CLAUDE.md. Work only in your worktree. Do only the steps the row names.
 Stop and hand back only for a fact that changes what the code does: a failed gate, an edit that does not fit the code, a test-tool
 fault. Commit your work. Report the values and what you ran. Do not choose a new cause, approach or code point.
