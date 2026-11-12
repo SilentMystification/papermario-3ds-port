@@ -1781,11 +1781,24 @@ typedef struct NdGlyphRec {
 } NdGlyphRec;
 _Static_assert(sizeof(NdGlyphRec) == 48, "NdGlyphRec: 6 stream units");
 
+unsigned pm_frame_count(void);
+void pm_log_evt(const char* fmt, ...);
 static void msg_glyph_run(const uint32_t* u) {
     const NdGlyphRec* r = (const NdGlyphRec*)u;
     Gfx buf[24];
     Gfx* p = buf;
+    static unsigned g_dir, g_fb, g_next;
 
+    if (pm_frame_count() >= g_next) { /* census every 300 frames: glyphs drawn direct (gdir) and handed to the old list (gfb) */
+        g_next = pm_frame_count() / 300u * 300u + 300u;
+        pm_log_evt("glyph f%u gdir %u gfb %u", pm_frame_count(), g_dir, g_fb);
+    }
+    if (nd_glyph_can(r->texW)) {
+        g_dir++;
+        nd_glyph_draw(r->raster, r->pal, r->tlut, r->texW, r->texH, r->ulx, r->uly, r->lrx, r->lry, r->texOffsetX, r->texOffsetY, r->dsdx, r->dtdy);
+        return;
+    }
+    g_fb++;
     if (r->tlut) {
         gDPLoadTLUT_pal16(p++, 0, r->pal);
     }
