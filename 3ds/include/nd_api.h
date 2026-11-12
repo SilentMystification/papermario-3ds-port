@@ -54,6 +54,9 @@ int nd_direct_tex(const NdBindDesc* d);        /* core 0: tile 0 = d; the walker
 void nd_direct_rect(uint32_t w0, uint32_t w1, uint32_t hs, uint32_t hd); /* core 0: one texture rectangle of tile 0 (the G_TEXRECT words, 1 or 2 cycle) */
 void nd_direct_end(void);                      /* core 0: the walker rebinds and resyncs at its next draw */
 void nd_direct_fallback(unsigned why);        /* core 0, cold: a record the direct executor handed back to the old path (census line napihud) */
+int nd_glyph_can(int texW);                    /* NAPI3B, core 0: 1 when a message glyph of this raster width can be drawn by nd_glyph_draw under the walker state (checked before any state is touched) */
+void nd_glyph_draw(uint32_t raster, uint32_t pal, int tlut, int w, int h, int ulx, int uly, int lrx, int lry, int s, int t, int dsdx, int dtdy); /* core 0: the glyph texture state (nd_tex_bind_glyph) and its rectangle */
+void nd_tex_bind_glyph(uint32_t raster, uint32_t pal, int tlut, int w, int h); /* nd_tex_set.c, core 0: the palette and block load and tile size ops of a glyph, run as setters */
 uint32_t nd_direct_prim(void);                 /* core 0: the walker's primitive colour */
 uint32_t nd_direct_env(void);                  /* core 0: the walker's environment colour */
 

@@ -1,10 +1,8 @@
 # Row S6M: map custom gfx (src/world builders and their static lists) through compiled ranges and native records (NATIVEAPI F3)
 
-Model: Sonnet (user decides).
-- Why not Haiku: src/world has 416 gbi calls in custom gfx builders (build_custom_gfx callbacks, model record R11 ranges,
-  nd_range_run in nd_walk.c:438-453) across 45 map files. Each builder mixes state, values and draws.
-- Why not Opus: S6T's form plus the direct helpers cover them. This row splits the 45 files into batches of about 10 files
-  (S6M-1 to S6M-4, one worktree each, different files).
+Model: Haiku per file (oracle 4: split). Written: row_S6M1.md (mac_01 crystal ball). Next, one Haiku row per file group in
+the order of the gbi counts: flo_10 waterfx, hos_05 intro, end Credits, isk_05/13/14 and dro_02 npc (one pattern), KnockDownPlayer,
+trd_05/06, mac_00 water_gfx, then the small files. Each uses the S6M1 form. This file stays as the index until the last batch.
 
 ## Blocker and base
 S6T and S6E merged. `sh 3ds/tools/wt_new.sh S6M1` (and S6M2, S6M3, S6M4 for the other batches).

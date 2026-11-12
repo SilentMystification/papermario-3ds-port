@@ -186,3 +186,46 @@ __attribute__((cold, noinline)) void nd_direct_fallback(unsigned why) {
     n++;
     if (n <= 16u || !(n & 63u)) pm_log_d("napihud fallback f%u n %u why %u", pm_frame_count(), n, why);
 }
+
+/* NAPI3B: one message glyph (msg_draw.c msg_glyph_run). The walker state before it (combine, render mode, primitive colour) comes from the typed ops
+ * the printer setup recorded; the glyph states its texture (nd_tex_bind_glyph) and its rectangle. nd_glyph_can: 1 when the direct draw takes the
+ * walker's own path (nd_texrect for a 1 cycle rectangle on the main colour image, tile 0, no shift, no tile 1 product); checked before any state is
+ * touched, 0 runs the old list. No nd_direct_end: the walker leaves the bind (ens_*, tsz_last) as the glyph arms keep it, and so does this. */
+int nd_glyph_can(int texW) {
+    if (texW < 16 || (texW & 15)) return 0;
+    if (nd_direct_ready() != 1) return 0;
+    if (((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3u) >= 2u) return 0;
+    if ((nd_ws.omode_l & (1u << G_MDSFT_ZSRCSEL)) && (nd_ws.omode_l & 0x10u) && (nd_ws.geom & G_ZBUFFER)) return 0;
+    if (nd_ws.use_t1 || dual_on || box_prod || box_pat) return 0;
+    return 1;
+}
+
+static inline int sx12(int v) { v &= 0xfff; return (v & 0x800) ? v | ~0xfff : v; }
+
+void nd_glyph_draw(uint32_t raster, uint32_t pal, int tlut, int w, int h, int ulx, int uly, int lrx, int lry, int s, int t, int dsdx_, int dtdy_) {
+    int tw = 1, th = 1;
+    const int xl = sx12(ulx * 4), yl = sx12(uly * 4), xh = sx12(lrx * 4), yh = sx12(lry * 4);
+    nd_tex_bind_glyph(raster, pal, tlut, w, h);
+    pm_gbi_cur_op = G_TEXRECT;
+    gv_epoch++;
+    off_screen_check();
+    box_fold_sync();
+    sync_render();
+    gp3_t0_surv();
+    ensure_tile(0);
+    dual_bind();
+    pm_tex_size(&tw, &th);
+    {
+        const float s0 = ((float)(s16)s / 32.f - (float)nd_ws.tile_x0 - nd_ws.tile_fx) / (float)tw;
+        const float t0 = ((float)(s16)t / 32.f - (float)nd_ws.tile_y0 - nd_ws.tile_fy) / (float)th;
+        const float dsdx = (float)(s16)dsdx_ / 1024.f;
+        const float dtdy = (float)(s16)dtdy_ / 1024.f;
+        const float width = (float)(xh - xl) / 4.f;
+        const float height = (float)(yh - yl) / 4.f;
+        /* nd_texrect names the rectangle by xh, yh of the first word: the lower right corner; xl, yl the upper left */
+        const int rx0 = xl / 4, ry0 = yl / 4, ex = xh / 4 - 1, ey = yh / 4 - 1;
+        const float s1 = s0 + dsdx * width / (float)tw;
+        const float t1 = t0 + dtdy * height / (float)th;
+        if (ex >= rx0 && ey >= ry0) pm_gpu_tex_rect(rx0, ry0, ex, ey, s0, t0, s1, t1);
+    }
+}
