@@ -72,6 +72,14 @@ No timeout and no reset in this row.
 - Gate: the kcen entry shows kcopy above 0 (the copy path ran) and why[2] = 0 (no patch base off a command start), exact. Hand back
   the whole entry. Budget 2 Azahar starts.
 
+## Try 5 (ORACLE7, after 546cfc70f: scenario check only; the census gate passed: kcen f301 kcopy 279 kwalk 4 why 0 0 0 4 0)
+- The warp print is pm_log (3ds/src/pm_warp.c:838, `warp: %s entry %d ...`); the scenario's prof=4 sets log=off
+  (pm_log.c:655-661), so it is dropped. The one boot entry that prints in prof mode is `prof=1 log=off` (pm_log.c:660,
+  pm_log_prof_line); spot_mac01_det uses it as its first expected event and first_marker.
+- Edit 3ds/tools/azt.d/FPS60W2.json, scenario kccen_mac01 only: `"first_marker": "prof=1 log=off"`, `"expects": "none"`,
+  `"expected_events": [{"name": "prof on", "regex": "prof=1 log=off"}, {"name": "kcen", "regex": "kcen f\\d+ steps 300 kcopy [1-9]\\d* kwalk \\d+ why \\d+ \\d+ 0 \\d+ \\d+"}]`.
+  One run (1 start): both events pass.
+
 ## Stop
 A failed self-test or pm_kc_why[2] above 0: stop, commit, hand back the values (the oracle then fixes the emit site that records
 the base). Delete this row file in the completing commit.
