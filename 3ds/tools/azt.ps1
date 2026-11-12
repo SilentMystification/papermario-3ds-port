@@ -41,7 +41,22 @@ param(
 $ErrorActionPreference = "Stop"
 . "$PSScriptRoot\azslot.ps1"
 $repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-$scs = @((Get-Content (Join-Path $PSScriptRoot "azt_scenarios.json") -Raw | ConvertFrom-Json).scenarios)
+function Get-AztScenarios {
+    # REGDIR2: the scenarios of azt_scenarios.json, then of every azt.d\<row>.json (sorted by name). A name defined in two files is an error that names both files.
+    $all = @(); $where = @{}
+    foreach ($s in @((Get-Content (Join-Path $PSScriptRoot "azt_scenarios.json") -Raw | ConvertFrom-Json).scenarios)) { $all += $s; $where[$s.name] = "azt_scenarios.json" }
+    $dir = Join-Path $PSScriptRoot "azt.d"
+    if (Test-Path $dir) {
+        foreach ($f in @(Get-ChildItem $dir -Filter *.json | Sort-Object Name)) {
+            foreach ($s in @((Get-Content $f.FullName -Raw | ConvertFrom-Json).scenarios)) {
+                if ($where.ContainsKey($s.name)) { throw "scenario name $($s.name) is defined in both $($where[$s.name]) and $($f.Name). Nothing was run." }
+                $where[$s.name] = $f.Name; $all += $s
+            }
+        }
+    }
+    return $all
+}
+$scs = @(Get-AztScenarios)
 $attractRe = 'game mode (2|3|17) frame' # GAME_MODE_TITLE_SCREEN, GAME_MODE_ENTER_DEMO_WORLD, GAME_MODE_DEMO (game_modes.h)
 # UNTILCHK: static check of a scenario's until line (no start). Stall rule: a run with no new log line for $stallSec stops (exit 6).
 $stallSec = 40
@@ -121,8 +136,7 @@ if ($SelfTest) {
     # Self-test: bad scenario copies are written to a temp file and loaded like the real file. No Azahar start.
     $fails = 0
     $tmp = Join-Path $env:TEMP "azt_selftest_scenarios.json"
-    $allObj = Get-Content (Join-Path $PSScriptRoot "azt_scenarios.json") -Raw | ConvertFrom-Json
-    $base = @($allObj.scenarios | Where-Object { $_.name -eq "toad_pond" })[0]
+    $base = @(Get-AztScenarios | Where-Object { $_.name -eq "toad_pond" })[0]
     $cases = @(
         @{ n = "good until (frame 196 in shotwin 160:40)"; u = 'shot \d+ frame 196\b'; ok = $true },
         @{ n = "bad frame (300 outside shotwin 160:40)"; u = 'shot \d+ frame 300\b'; ok = $false },
@@ -450,11 +464,17 @@ function Show-Checks([string]$file, [string]$shots, [datetime]$since) {
 
 function Set-ScenarioStatus([string]$name, [string]$status, [string]$reason) {
     # AZT11-5: the status (and the reason, when the object has none) of one scenario in azt_scenarios.json, text edit only (the file keeps its layout)
-    $p = Join-Path $PSScriptRoot "azt_scenarios.json"
-    $t = [IO.File]::ReadAllText($p)
+    # REGDIR2: the file that holds the name is azt_scenarios.json or one azt.d\<row>.json; that file is edited in place.
+    $cands = @(Join-Path $PSScriptRoot "azt_scenarios.json")
+    if (Test-Path (Join-Path $PSScriptRoot "azt.d")) { $cands += @(Get-ChildItem (Join-Path $PSScriptRoot "azt.d") -Filter *.json | Sort-Object Name | ForEach-Object { $_.FullName }) }
     $rx = [regex]('"name":\s*"' + [regex]::Escape($name) + '"')
-    $m = $rx.Match($t)
-    if (-not $m.Success) { return $false }
+    $p = $null; $t = $null; $m = $null
+    foreach ($c in $cands) {
+        $tc = [IO.File]::ReadAllText($c)
+        $mc = $rx.Match($tc)
+        if ($mc.Success) { $p = $c; $t = $tc; $m = $mc; break }
+    }
+    if (-not $m) { return $false }
     $next = $t.IndexOf('"name":', $m.Index + $m.Length)
     $end = if ($next -gt 0) { $next } else { $t.Length }
     $seg = $t.Substring($m.Index, $end - $m.Index)
