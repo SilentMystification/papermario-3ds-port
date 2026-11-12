@@ -27,7 +27,15 @@ PM_ROW=S4INST PM_LANE=S4INST.
    neighbours, so the draw order stays the same.
 2. Floor reflection: when GLOBAL_OVERRIDES_ENABLE_FLOOR_REFLECTION is set and the tasks carry REFLECT_FLOOR, do not form runs.
    Today the order is A, A-flipped, B, B-flipped. A run would give A, B, A-flipped, B-flipped, which changes translucent order.
-3. Setup list per instance:
+3. Setup list per instance (oracle 3 read of the lists, assets/us/effects/gfx):
+   - D_09000DC0_3762D0 clears G_LIGHTING | G_SHADING_SMOOTH, and D_09000E60_376370 sets G_SHADE | G_SHADING_SMOOTH. So instance
+     2..n must run the setup list again: keep it per instance.
+   - DC0 has two vertex loads (32 and 28 vertices), and parts_ok (nd_rec.c:283-299) refuses a second NDO_VTX. So the shockwave
+     list cannot take nd_part_draw until a multi-load form exists.
+   - Do this row with explosion, snowman_doll or ring_blast first: the first of them whose list is one load at slot 0 plus
+     triangles. Check each list file before the edit. The shockwave needs a row S4MULTI (nd_part_draw for lists with several
+     vertex loads, a design core: Sonnet).
+   Old text, kept for those effects:
    - Instance 2..n may skip D_09000E60 and gSPSegment only if D_09000DC0 sets none of the state that D_09000E60 sets. Read both
      lists (effect data, energy_shockwave graphics) and write the comparison into the commit.
    - If DC0 sets any such state, keep the setup list per instance as a unit. S4PDIR's run form allows one CALL at index pre: then
