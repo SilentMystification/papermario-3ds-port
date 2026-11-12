@@ -767,6 +767,9 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
         gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
         if(fpDrawContents != nullptr) {
             if (quads != nullptr) {
+#ifdef PM_FNCOV
+                { extern void pm_fncov_event(unsigned f); extern unsigned pm_frame_n; pm_fncov_event(pm_frame_n); } /* HC0 census lane only */
+#endif
                 void* mdl_address = mdl_get_next_texture_address(width * height * 2);
                 if(mdl_address != 0) {
                     gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, width, OS_K0_TO_PHYSICAL(mdl_address));

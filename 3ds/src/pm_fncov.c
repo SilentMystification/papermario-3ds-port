@@ -47,15 +47,35 @@ static void fn_dump(unsigned f) {
     pm_log_hw("fncov f%u done", f);
 }
 
-/* Called by nd_wq.c before each walker entry runs (game thread), with the frame of the entry. */
-void pm_fncov_walk(unsigned f) __attribute__((no_instrument_function));
-void pm_fncov_walk(unsigned f) {
-    if (!fn_init) {
-        char v[16];
-        fn_init = 1;
+/* Switch fncovrot=<min frame>: no fixed frame. The census arms at the walker entry of the first frame >= min in which
+ * pm_fncov_event is called (draw_box.c: a ROTSCALE box whose contents go to an off-screen pass). */
+static unsigned fn_min;
+static void fn_init_once(void) __attribute__((no_instrument_function));
+static void fn_init_once(void) {
+    char v[16];
+    if (fn_init) return;
+    fn_init = 1;
+    if (pm_debug_value("fncovrot", v, sizeof v) != 0) {
+        fn_on = 1;
+        fn_min = (unsigned)atoi(v);
+        fn_want = 0xFFFFFFFFu;
+    } else {
         fn_on = pm_debug_value("fncov", v, sizeof v) != 0;
         fn_want = fn_on ? (unsigned)atoi(v) : 0u;
     }
+}
+
+/* Called by draw_box.c at the off-screen contents branch, with the frame of the step being built. */
+void pm_fncov_event(unsigned f) __attribute__((no_instrument_function));
+void pm_fncov_event(unsigned f) {
+    fn_init_once();
+    if (fn_on && !fn_active && !fn_done && fn_want == 0xFFFFFFFFu && f >= fn_min) fn_want = f;
+}
+
+/* Called by nd_wq.c before each walker entry runs (game thread), with the frame of the entry. */
+void pm_fncov_walk(unsigned f) __attribute__((no_instrument_function));
+void pm_fncov_walk(unsigned f) {
+    fn_init_once();
     if (!fn_on || fn_done) return;
     if (!fn_active && f >= fn_want) { memset(fn_tab, 0, sizeof fn_tab); fn_f0 = f; fn_active = 1; }
     else if (fn_active && f > fn_f0) { fn_active = 0; fn_done = 1; fn_dump(fn_f0); }
