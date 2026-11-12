@@ -88,15 +88,15 @@ static unsigned id_of(NdSTab* t, const NdSDef* d, const NdCombIn* in, uint32_t v
 }
 int main(void) {
     static NdSTab t;
-    NdSDef cam = { cam_u, sizeof cam_u / 8u, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-    NdSDef ico = { ico_u, sizeof ico_u / 8u, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-    NdSDef bad = { bad_u, sizeof bad_u / 8u, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-    NdSDef pre = { pre_u, sizeof pre_u / 8u, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-    NdSDef mid = { mid_u, sizeof mid_u / 8u, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-    NdSDef tex = { tex_u, sizeof tex_u / 8u, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-    NdSDef mid2 = { mid2_u, sizeof mid2_u / 8u, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-    NdSDef mwn = { mwn_u, sizeof mwn_u / 8u, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-    NdSDef rml = { rml_u, sizeof rml_u / 8u, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    NdSDef cam = { cam_u, sizeof cam_u / 8u, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, { 0, 0, 0, 0 } };
+    NdSDef ico = { ico_u, sizeof ico_u / 8u, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, { 0, 0, 0, 0 } };
+    NdSDef bad = { bad_u, sizeof bad_u / 8u, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, { 0, 0, 0, 0 } };
+    NdSDef pre = { pre_u, sizeof pre_u / 8u, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, { 0, 0, 0, 0 } };
+    NdSDef mid = { mid_u, sizeof mid_u / 8u, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, { 0, 0, 0, 0 } };
+    NdSDef tex = { tex_u, sizeof tex_u / 8u, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, { 0, 0, 0, 0 } };
+    NdSDef mid2 = { mid2_u, sizeof mid2_u / 8u, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, { 0, 0, 0, 0 } };
+    NdSDef mwn = { mwn_u, sizeof mwn_u / 8u, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, { 0, 0, 0, 0 } };
+    NdSDef rml = { rml_u, sizeof rml_u / 8u, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, { 0, 0, 0, 0 } };
     NdCombIn a, b;
     int m1, m2;
     unsigned i1, i2;
