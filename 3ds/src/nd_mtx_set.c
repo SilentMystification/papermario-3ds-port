@@ -278,11 +278,11 @@ void nd_twin_frame_begin(int kind) {
         memcpy(tw_s_proj, nd_proj, sizeof nd_proj); memcpy(tw_s_mv0, nd_mv[0], sizeof nd_mv[0]); tw_s_wn = nd_proj_wn; tw_s_ok = 1;
         nd_mtx_twin_sync(); pm_gpu_twin_begin(); tw_np_l = tw_nq_l = tw_nm_l = 0;
     } else if (kind == 2) {
-        tw_np_k = tw_nq_k = tw_nm_k = 0;
         if (tw_s_ok) { /* the key walk of step n starts from the state L(n) started from, not from what L(n) left (interpolated) */
             memcpy(nd_proj, tw_s_proj, sizeof nd_proj); memcpy(nd_mv[0], tw_s_mv0, sizeof nd_mv[0]); nd_proj_wn = tw_s_wn; tw_s_ok = 0;
             upload_mvp();
         }
+        tw_np_k = tw_nq_k = tw_nm_k = 0; /* after the restore: its upload_mvp is not a site of the L walk */
     }
 }
 /* The end of a walked frame (nd_cen.c pm_gbi_end_frame, before the matrix table is reset). */
