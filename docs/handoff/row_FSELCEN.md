@@ -63,7 +63,36 @@ sh 3ds/build.sh`.
   pm_tex_load grow with the strips (height/6 per window). 0 in pick: stop and hand back the log tail (the A press may not have
   reached the menu).
 
+## Try 3 (oracle code read of 94c94e794 and 0c467afb4; the orchestrator reset the budget once more: spec fault)
+Facts of try 2: pause_fncov_flip armed at f101 and PASSED (off_begin 3, flush_draw 182, total 39481 against idle 63556). Two scenes
+timed out (no `fncov f<n> done`): fsel_fncov_rot (fncovrot=1) and fsel_fncov_pick (wait400,A, fncovrot=400).
+Causes (code read):
+1. fsel_fncov_rot can never arm. On the `fileselect` entry no window draws a ROTSCALE box. The file menu windows come in with
+   slide updates (filemenu_main.c:178-410: filemenu_update_show_title, _options_left/_right/_bottom) or with WINDOW_UPDATE_SHOW. That
+   is the simple path (windows.c:291-304), which never sets childFlags. The appear rotation (windows.c:130 gWindowAppearFlags,
+   basic_window_update) is not used by the file menu. So the entry has no off-screen contents pass. The cost of the entry is not this
+   path, and the scenario goes.
+2. fsel_fncov_pick arms too late. The padscript unit is a pad scan, and 2 scans are 1 game frame (pm_input.c:39-43). So `wait400`
+   presses A at about frame 200, but fncovrot=400 arms only at frame 400 or later (pm_fncov.c:72). The 10-frame flip
+   (filemenu_main.c:1108-1118, filemenu_common.c:667) is over by then. A 1-scan A can also fall on a scan the game does not read.
+Steps:
+1. First, in build3ds/wt/FSELCEN: `git status --short`. Revert the two stamps (uncommitted) with
+   `git checkout -- 3ds/tools/azt_scenarios.json`. Any other uncommitted file: stop and hand back the list.
+2. azt_scenarios.json and bench_defs.json: delete the `fsel_fncov_rot` entry from both files. In `fsel_fncov_pick`, set debug
+   `fileselect freshsave padscript=wait400,A*6 fncovrot=150 loglevel=debug det`, and change the subject to "A on File 1 at about
+   frame 200 (400 scans); census armed at the first ROTSCALE box with contents from frame 150". freshsave erases the save
+   (pm_os.c:579-602), so File 1 is empty and A takes the hidden_with_rotation flip of 11 windows (filemenu_main.c:1095-1118). Commit
+   both files.
+3. Census build as before (lane FSELCEN_fncov; your code 94c94e794 is unchanged). Run one list:
+   `python 3ds/tools/bench.py run fsel_fncov_pick,pause_fncov_idle --row FSELCEN --lane FSELCEN_fncov --why "file select pick flip census; pause idle"`
+   (2 starts. pause_fncov_idle was refused by the budget in try 2).
+Gate: fsel_fncov_pick prints `fncov f<n> done` with n between 195 and 230, and pm_gpu_off_begin >= 1 (expected about 11: one per
+rotating window with contents). pause_fncov_idle prints `fncov f200 done`. No done line in the pick run: tool fault, stop. Keep
+the log copy (build3ds/azt/logs/fsel_fncov_pick.txt) and the padscript lines (`padscript:`) of the log, then hand back. Do not
+try a third way.
+
 ## Hand back (values only, no fix)
+- Try 3: give the pairs pick minus fsel_fncov_idle (try 1, f400) and pause_fncov_flip minus pause_fncov_idle. Drop the rot pair.
 - Per pair (rot minus idle, flip minus idle): the 25 largest call deltas by function, and the counts of pm_gpu_off_begin,
   pm_gpu_off_end, flush, flush_draw, rebuild_3d, bind_main, ensure_tile_slow, pm_tex_load, gv_tri, nd_ops_run in each log.
 - The count of "V05 demand" lines in the fsel_fncov_rot log.

@@ -47,79 +47,113 @@
   kwalk 0 and kcopy = the interpolated steps on icmp_btl after frame 300. Budget: 6 Azahar starts.
 - Console (orchestrator): the batch XL run with fps60 on: interp lines (key_us 0, kcopy) and the frame time against the INTERP1 run.
 
-## Try 2 (oracle code read of 23e092261 and 60bbc5601; budget reset once by the orchestrator: 3 Azahar starts)
-Facts of try 1: kcopy_btl `kcopy 267 kwalk 34 why 0 0 8 6`; spot_mac01_fps60_det 0/12 (about 91750 px, whole screen, even shots
-too); spot_mac01_fps60_stereo_det 6/12 (odd shots only, 102 px, x65..190 y279..325 of the rotated shot); stereo_det_r 11/12 (1 px).
-Causes (code read):
-1. Mono L frames differ, stereo L frames are equal. The only head change that runs in mono L and not in stereo L is the new
-   `if (kc_arm && !stereo_frame) sr_force_all();` in pm_gpu_twin_begin (pm_gpu.c:198). It runs at the walk start, after the frame
-   begin made bind_main and the PT12 grab draw (pm_gpu_begin_wait). sr_force_all marks every citro3d vertex uniform dirty
-   (C3D_FVUnifDirty) and resets the native shadow. The next citro3d draw then uploads citro3d's CPU copy of the uniforms, which is
-   stale for registers the grab draw and the native path wrote. Stereo calls the same function in sr_frame_begin, before bind_main
-   and the grab, and its L shots are byte-equal: that is the place where the force is safe.
-2. The K copy frame skips pm_gpu_begin_wait, so the two noise_next() calls of a frame begin (PT07) do not run. The noise sequence of
-   every later frame shifts against the base, and the det line's noise value differs. This is not the cause of the shot diffs here,
-   but it is a real divergence.
-3. The odd (K) stereo shots differ only in one object (102 px). The K copy has L's words wherever the patch list has no K word. In
-   INTERPB2 the cmul and cadd sites were left without a twin, and those values depend on the matrices. That class is the expected
-   cause, but this try does not prove it (step 3 below only measures).
-4. why[2] 8 (a list or a patch outside the copied range): no cause is found by code read. GPUCMD_Split, the stereo bind lists and
-   the off-screen passes all stay in the frame's command buffer. These frames fall back to the key walk, so the picture is right
-   and only the cost is wrong. This try measures it.
-5. kwalk 0 is the wrong pass rule. A scene cut walks 2 key frames by design (kc_cut), so kwalk >= 2 x cuts. Also kwalk 34 against
-   why sum 14 leaves 20 walks with no counted cause: an L frame end with kc_rec or kc_arm 0.
-Edits:
-a. pm_gpu.c: delete the sr_force_all call in pm_gpu_twin_begin. In sr_frame_begin replace `if (!stereo_frame) return;` by
-   `if (!stereo_frame) { if (pm_interp_on > 0) sr_force_all(); return; }` (the same point as stereo; every fps60 mono frame).
-b. pm_gpu_key_show: after C3D_FrameBegin, call noise_next() twice, as a frame begin does.
-c. Census: pm_kc_why gets a fifth slot, "no armed L frame": counted in kc_build at the `!kc_rec` and `!kc_arm` returns, only when
-   pm_icmp_kind == 1. Add it to the interp line. For why[2], log the first 8 per run with pm_log_hw: `kcout f<n> kind list|patch i
-   <index> addr <a> n <words> cb <cb> coff <coff> split <cmd_split_n - kc_split0>`.
-Gate of try 2 (one list, 3 starts: `bench.py run spot_mac01_fps60_det,spot_mac01_fps60_stereo_det,kcopy_btl --row INTERPB3 --why "try 2:
-force at frame begin"`; base 20d613506 as before):
-- nd_host PASS, memcheck OK.
-- Mono and stereo: every even shot (the L frames) is byte-equal. Odd shots (K copies): at most 150 px per shot, all inside the area
-  of try 1 (x65..190, y279..325 in stereo). Hand back the diff counts and bounding boxes per shot.
-- kcopy_btl: kwalk = why[2] + why[3] + why[4], and why[0] = why[1] = 0. Hand back the interp line and the kcout lines.
-- The pass rule for the row (replaces kwalk 0): kwalk equals the sum of the named causes, and kwalk minus 2 x cuts is at most 3 % of
-  the interpolated steps.
-Stop after try 2 with the values in all cases. The oracle then writes the K-site step (the patch for the class that the icmp census
-names for the odd-shot area) or a fix for the outside lists from the kcout lines.
+## History (tries 1-3, code 540e96f5f)
+- Try 1-2: sr_force_all moved to sr_frame_begin (every fps60 frame), noise_next twice in pm_gpu_key_show, census slots why[0..4] and
+  kcout. Mono spot_mac01_fps60_det 12/12 byte-equal since try 2.
+- Try 3: arena patches dropped in blk_build and blk_check (why[2] 0 now), kfb census, scenario icmp_mac01_stereo.
+- Facts of try 3: kcopy_btl f510 `kcopy 274 kwalk 26 why 0 0 0 6 0 kfb 0 0 0 26`. spot_mac01_fps60_stereo_det 6/12: even (L) shots
+  equal, odd (K) shots 102 or 104 px in x65..190 y279..325. icmp_mac01_stereo printed no icmpp line.
 
-## Try 3 (oracle code read of 75804ba05; the orchestrator reset the budget once more: 3 Azahar starts)
-Facts of try 2: mono 12/12 byte-equal (L and K copies). Stereo left 6/12: the odd (K) shots 1, 3, 5, 7, 11 each have 102 px in
-x65..190 y279..325, and shot 9 has 104 px in x65..214 y4..325. kcopy_btl f511: `kcopy 266 kwalk 34 why 0 0 8 6 0`. kcout: all 8 are
-kind patch with addr 0x329xxxxx against cb 0x30189c00, at f164-f191.
-Causes and edits:
-1. The 8 outside patches (named): blk_build (pm_gpu.c:1157) emits a new model command block into the arena blk_ar with nd_emit_full.
-   That emit runs the palette path of nd_emit.c:92-98, which calls nd_kp_vec with o in blk_ar. The patch base then points into the
-   arena, not the command buffer. The cache hit copy patches its own K row (blk_put, pm_gpu.c:1185), so the arena patch is extra. It
-   comes only when a block is first built: the early battle frames f164-191 with new models. Edit: in blk_build, keep
-   `const unsigned kp0 = nd_kp_n;` before nd_emit_full and set `nd_kp_n = kp0;` after it. Do the same in blk_check around its
-   nd_emit_draw (debug, the same leak). No other change: the emitted words stay the same.
-2. The 20 walks with no counted cause: not named by code read. Every kc_build return is counted. kc_build clears kc_valid at its
-   start for every frame end. The key message of step n follows step n's frame end in the walker queue (pm_main.c:497, :502), and all
-   300 steps had a key frame (266 + 34). Census edit (no fix): in pm_key_show's fallback, count one of 4 slots `kfb`:
-   (a) icmp on; (b) no kc_build since the last key show (a counter kc_gen++ in kc_build, read in pm_key_show); (c) kc_build ran and
-   succeeded, but a later kc_build or key show cleared kc_valid before this show (keep kc_ok_gen = kc_gen at success); (d) kc_build ran
-   and refused (a why slot counted). Add `kfb a b c d` to the interp line.
-3. The stereo K diff, 102 px in one area of the left eye. Mono K copies are now exact, so the patch set is complete for mono. The diff
-   is stereo-only. Candidates by read: CPU eye culling uses L's matrices (nd_eye_cull_e and nd_eye_cull_k, set per frame at the
-   begin; a model or triangle near an eye plane is kept in one and dropped in the other); and words that differ by eye and are not in
-   the patch list. Not named. Measure: new scenario `icmp_mac01_stereo` = `icmp_mac01` with `stereo` added (same until). It compares
-   the patched copy with the key walk (icmpp lines, INTERPB2), now with stereo. Insert it right after `icmp_mac01` in both JSON files.
-Runs (one list, 3 starts): `bench.py run spot_mac01_fps60_stereo_det,icmp_mac01_stereo,kcopy_btl --row INTERPB3 --why "try 3: arena
-patches, fallback census, stereo icmp"`.
-Gate of try 3:
-- nd_host PASS, memcheck OK. Mono is not rerun (edits 1 and 2 do not change a mono word: 1 only drops arena patches; mono had no
-  arena-patch refusal in spot_mac01_fps60_det).
-- kcopy_btl: why[2] = 0 and no kcout line. Hand back the interp line with kfb.
-- icmp_mac01_stereo: hand back every icmpp line (class counts U A T O, lenmis, unused, the first differing word with its site).
-- spot_mac01_fps60_stereo_det: L shots stay byte-equal. Hand back the K-shot px counts (no change expected from edit 1).
-Revised pass rule for the row (replaces try 2's): kwalk equals the sum of named causes (why slots plus kfb). kwalk minus 2 x cuts is
-at most 3 % of the interpolated steps in mac_01 scenes and at most 5 % in battle scenes: a battle has more mode and camera events,
-and each walks 2 frames. Stereo K shots byte-equal, or within the rounding rule (at most 1 step per channel) when the oracle names the
-code cause from the icmpp lines. Stop after try 3 with the values; the oracle writes the next step from kfb and icmpp.
+## Try 4 (oracle 3 code read of 540e96f5f; the orchestrator resets the budget once: 3 Azahar starts)
+Model: Sonnet. This try has a design part with choices inside the gate: the unpatched copy rule, the eyd twin and the icmp prefix
+compare. Haiku is not enough: the edits touch the frame record lifetime in three files, and the coder must keep the walker and
+stereo invariants that this row lists.
+
+### Cause A: the 20 uncounted walks (named)
+- A step whose game draw is off (GLOBAL_OVERRIDES_DISABLE_DRAW_FRAME: battle entry state_battle.c:47-105, battle exit :129-145, map
+  transitions state_map_transitions.c:40/145/224, pause state_pause.c:113/234) draws only the background task.
+  gfx_draw_frame returns at main_loop.c:225-228, so no swap task is started. gfx_task_background still calls
+  nuGfxTaskStart(no swap). That puts the stream into key_list (pm_nusys.c:176, nkey 1). pm_gfx_bg_flush (pm_nusys.c:193, from
+  retrace_call :251) then pushes a frame with no PMF_REPL.
+- That frame's walk sets pm_icmp_kind 0 (pm_nusys.c:139), and nd_twin_frame_begin(0) does not call pm_gpu_twin_begin, so kc_arm
+  stays 0. At the frame end kc_build returns at `!kc_arm` without a count, because kind is not 1 (pm_gpu.c:2878).
+- pm_interp_key_take returns 1 (nkey 1, pm_main.c:496), so pm_key_show runs. kc_valid is 0, g != seen, and kc_ok_gen != g, so the
+  show counts kfb d and walks the key frame.
+- In this window that is about 20 steps: the battle entry (5 to 6 steps with the draw off) plus the map-load steps of the
+  kmr_03 warp.
+- No other path gives an uncounted refusal followed by a key show:
+  - the key walk's own frame end (kind 2) runs after its show decision;
+  - ISKIP steps clear nkey at the swap (pm_nusys.c:183), and their background task comes before the swap, so they have no key.
+- In such a step the L frame walked the same streams the key walk would walk, with no replacement (no PMF_REPL, so
+  pm_interp_repl is 0). The K picture therefore equals the L picture: the copy needs no patch.
+
+### Cause B: the stereo K diff (one class named; the rest needs the repaired measure)
+- The eyd uniform has no K twin in stereo. eyd_sync (pm_gpu.c:846-850) writes (gv_post col 0, cw = eye_conv x nd_proj_wn) through
+  eye_vec, a plain C3D_FVUnifSet. With nd_kp_on it does not go through u5row_k, so u5kpv[u_eyd] is never set. kp_scan
+  (pm_gpu.c:1069-1077) then has nothing to patch, and the K copy keeps L's cw.
+- In mono, cw is 0 in both frames, which is why mono is exact.
+- In stereo, cw differs between L and K in two cases:
+  - nd_proj_wn of the draw differs (a projection that L interpolates);
+  - pm_eye_conv changes in the step. The L begin reads it before the step's camera update in serial mode
+    (pm_gpu_begin_w -> pm_gpu_begin_wait from pm_step_run :486, before pm_gfx_retrace). The key walk reads it after
+    (cam_main.c:78).
+- Not proven to be the 102 px. The measure was blind for two reasons:
+  - the until `twinchk f\d+ entries` ends the run before a window;
+  - ic_cmp (pm_gpu.c:2215-2217) returns at a length mismatch before it counts a pair, so a stereo window never reaches 300 pairs.
+
+### Edits
+1. pm_main.c wq_step_end (:473): before `wq_frame_end()`, call `pm_gpu_kc_want(e->drew && e->key)`. New in pm_gpu.c:
+   `static int kc_want; void pm_gpu_kc_want(int k) { kc_want = k; }`, with its declaration in pm_port.h next to pm_gpu_kc_cut.
+   pm_key_walk's frame end never sets it, so it stays 0 there.
+2. pm_gpu.c kc_build, at the top after `kc_valid = 0; kc_gen++;`: `const int want = kc_want; kc_want = 0;`. Then:
+   - `!want`: `kc_rec = 0; return;` with no count. No key show follows, which saves the copy on ISKIP, NOKEY and key-walk frame
+     ends.
+   - want and `!kc_rec`: why[4]++ (now counted for every kind) and return.
+   - want, kc_rec, and `!kc_arm`: an unpatched copy. Run the same buffer checks (tb < cb, kc_over, split, size, lists inside),
+     but not the kc_cut test (do not consume kc_cut) and not nd_kp_lost. Use a patch count of 0, not nd_kp_n (nd_kp_n holds the
+     last L frame's list: it is reset only in pm_gpu_twin_begin). Count `pm_kc_plain++` (a new unsigned, printed in the interp
+     line as `kplain <n>` after kfb and reset with the others at pm_main.c:519).
+   - armed: as today.
+   - Write it as one body with a local `np = kc_arm ? nd_kp_n : 0`, and test kc_cut and nd_kp_lost only when kc_arm.
+3. pm_gpu.c eyd K twin. In eyd_sync, when `nd_kp_on && u_eyd >= 0`:
+   - L value: `l = { cw, gv_post.r[2].x, gv_post.r[1].x, gv_post.r[0].x }` (memory order w z y x, as u5vec does).
+   - K value: the same with `cw_k = pm_eye_conv_live x wn_k`. wn_k is `sqrtf(nd_proj_k[0][3]^2 + nd_proj_k[1][3]^2 +
+     nd_proj_k[2][3]^2)` (the nd_proj_wn formula of pm_key_show, pm_nusys.c:234). pm_eye_conv_live is `stereo_frame ?
+     pm_eye_conv : 0.f`, the value the key walk's begin will read.
+   - Then `u5row_k(u_eyd, l, k)` instead of eye_vec. u5row_k does the C3D_FVUnifSet, the u5kh record and the u5kp stage, and
+     kp_scan patches the words. eyd_sync runs before the c3d_upd_needed test (:1216), so the uniform goes out in the scanned
+     update.
+   - Keep `C3D_FVUnifDirty[u_eye] = false` as today: the eye register itself is not touched.
+   - Mono stays byte-equal by construction: cw and cw_k are 0, so u5kpv is 0.
+4. pm_gpu.c icmp measure (debug, cold, under the icmp switch only):
+   - ic_cmp: on nl != nk, count lenmis, then compare the first min(nl, nk) pairs as for equal lengths (pairs and class counts).
+   - Keep the index, register and both values of the first differing pair of the window in IcC (fields fi, fr, fl, fk; fi
+     = ~0u when none).
+   - Print them in the icmpp line: ` first <i> r<reg> l <v> k <v>`.
+   - Add one cold line for the first 8 length mismatches of the run: `icmpl f%u wl %u wk %u first %u r%03x l %08x k %08x`.
+5. azt_scenarios.json icmp_mac01_stereo: until `icmpp f(2\d\d|[3-9]\d\d|\d{4,}) ` (the first window at or after frame 200, when
+   the scene is at rest). Set cap 45, deadline 40, and set the same until in its bench_defs entry and in expected_events.
+   run_azahar.ps1 matches the first hit only, and this regex has no earlier hit.
+
+### Invariants the coder keeps (any break is a stop)
+- The walker state after a key show must equal the state after a key walk. pm_key_show copies nd_mv and nd_proj from the twins.
+  For an unpatched copy the twins are L's own: nd_mtx_twin_sync ran at the last kind-1 begin, but a kind-0 frame walks without
+  twins. So in pm_key_show, when the shown copy was unpatched, do not copy nd_mv_k or nd_proj_k: keep the state the L walk left.
+  Keep a flag kc_plain_shown set in kc_build and read it in pm_gpu_key_show, through an accessor, as pm_key_show needs it.
+- Lifetimes and noise: no change (the copy rule of try 1 holds for unpatched copies too).
+- No new per-frame cost on the mono or stereo path outside nd_kp_on, except the kc_want store.
+
+### Runs (one list, 3 starts)
+`bench.py run kcopy_btl,icmp_mac01_stereo,spot_mac01_fps60_stereo_det --row INTERPB3 --why "try 4: unpatched copy for draw-off
+steps, eyd K twin, icmp prefix compare"`. The bases are those of try 3 (20d613506). Mono is not rerun: edits 1-2 change no mono
+word of spot_mac01 (that scene has no draw-off step), and edit 3 writes the same L word in mono.
+
+### Gate of try 4 (expected values)
+- nd_host PASS, memcheck OK.
+- kcopy_btl, interp line:
+  - why[0] = why[1] = why[2] = why[4] = 0;
+  - kfb a = b = c = 0;
+  - kwalk = why[3] = kfb d (expected 6);
+  - kplain > 0 (expected about 20);
+  - kcopy + kwalk = 300.
+  - Pass rule: kwalk - why[3] <= 15 (5 % of 300 steps; expected 0).
+- spot_mac01_fps60_stereo_det: L shots stay 6/6 equal. K shots byte-equal, or within the rounding rule (at most 1 step per channel)
+  with the cause named by the icmpp first-pair fields.
+- icmp_mac01_stereo: an icmpp line at f200 or later, with the first differing pair. If the K shots still differ, hand back the
+  icmpp and icmpl lines: they name the register (U uniform location, A, T, O), and the oracle writes the patch.
+
+### Stop
+A failed gate or a broken invariant: commit, hand back the values. No fifth try without an oracle step.
 
 ## Stop / At the end
 A failed gate: commit, hand back the values. Delete this row file in the completing commit.
