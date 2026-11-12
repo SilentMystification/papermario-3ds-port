@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 extern Vtx_t D_09001400_333AA0[];
 extern Gfx D_09001530_333BD0[];
@@ -225,14 +226,26 @@ void star_appendGfx(void* effect) {
     gDPSetPrimColor(gMainGfxPos++, 0, 80, primR, primG, primB, 255);
     gDPSetEnvColor(gMainGfxPos++, 127, 127, 127, 127);
 
+#ifdef TARGET_3DS
+    nd_rec_dl((data->type >= FX_STAR_LARGE_BOUNCING) ? D_09001650_333CF0 : D_09001530_333BD0);
+#else
     gSPDisplayList(gMainGfxPos++, (data->type >= FX_STAR_LARGE_BOUNCING) ? D_09001650_333CF0 : D_09001530_333BD0);
+#endif
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     gDPPipeSync(gMainGfxPos++);
 
     if (type == FX_STAR_SMALL_BOUNCING) {
+#ifdef TARGET_3DS
+        nd_rec_dl(D_090017D0_333E70);
+#else
         gSPDisplayList(gMainGfxPos++, D_090017D0_333E70);
+#endif
     } else {
+#ifdef TARGET_3DS
+        nd_rec_dl(D_09001780_333E20);
+#else
         gSPDisplayList(gMainGfxPos++, D_09001780_333E20);
+#endif
     }
 
     data->trailMatrixPos++;
