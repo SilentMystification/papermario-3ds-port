@@ -61,6 +61,9 @@ param(
     [switch]$Interactive,
     # MEMGATE: push an O3DS-applet memory OVER build anyway (push_3ds.sh --mem-ok; the override is logged in pushed_builds.txt).
     [switch]$MemOk,
+    # PUSHFIX: a push runs detached by default (a child powershell with its whole output in build3ds/out/push_<Target>_<stamp>.txt);
+    # -Fg runs it in this process (the child). -Interactive stays in the foreground.
+    [switch]$Fg,
     # Render/game debug switches (pm_main.c read_debug_switches: nofog nolight notex ... perfctr
     # calls), space-separated in one string. NOT named -Debug: PowerShell gives every script with a
     # [Parameter()] attribute an automatic common -Debug switch, and a script cannot redeclare a
@@ -170,6 +173,8 @@ function Push-One([string]$t) {
             $extra += $randWarp
             $profArgs = @('--idle', "$IdleSeconds"); if ($Profile) { $profArgs += @('--profile', $Profile) }
             if ($MemOk) { $profArgs += '--mem-ok' }
+            # PUSHFIX: -NoBuild means no build here either (push_3ds.sh --no-build), else push_3ds.sh runs build.sh itself.
+            if ($NoBuild) { $profArgs += '--no-build' }
             # PM_OWNER_PID: push_3ds.sh ends its live log and netload when this script is gone.
             $env:PM_OWNER_PID = "$PID"
             $pushDone = $false
@@ -198,9 +203,45 @@ function Pull-One([string]$t) {
 }
 
 if ($Verb -eq 'push') {
-    Invoke-Build
-    $results = @{ $Target = Push-One $Target }
-    exit $(if (($results.Values | Where-Object { -not $_ }).Count -gt 0) { 1 } else { 0 })
+    if (-not $Fg -and -not $Interactive) {
+        # PUSHFIX: detached. The same command runs again as a hidden child with -Fg; its whole output goes to a log file,
+        # and this call returns at once. Blocking the orchestrator chat was the reason.
+        $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+        $logDir = Join-Path $repo 'build3ds/out'
+        New-Item -ItemType Directory -Force -Path $logDir | Out-Null
+        $log = Join-Path $logDir "push_${Target}_$stamp.txt"
+        # Bound args back into a command line; values with spaces are quoted (Start-Process joins the array with spaces).
+        $quote = { param($a) if ($a -match '\s' -or $a -eq '') { '"' + $a + '"' } else { $a } }
+        $childArgs = @('-NoProfile', '-File', $PSCommandPath)
+        foreach ($k in $PSBoundParameters.Keys) {
+            if ($k -in @('Rest', 'Fg')) { continue }
+            $v = $PSBoundParameters[$k]
+            if ($v -is [System.Management.Automation.SwitchParameter] -or $v -is [bool]) { if ($v) { $childArgs += "-$k" } }
+            else { $childArgs += "-$k"; $childArgs += (& $quote ([string]$v)) }
+        }
+        foreach ($r in @($Rest)) { if ($null -ne $r) { $childArgs += (& $quote ([string]$r)) } }
+        $childArgs += '-Fg'
+        $p = Start-Process powershell -ArgumentList $childArgs -WindowStyle Hidden -RedirectStandardOutput $log -RedirectStandardError "$log.err" -PassThru
+        Write-Output "PUSH STARTED pid $($p.Id) log $log"
+        exit 0
+    }
+    $rc = 1
+    try {
+        Invoke-Build
+        $results = @{ $Target = Push-One $Target }
+        $rc = $(if (($results.Values | Where-Object { -not $_ }).Count -gt 0) { 1 } else { 0 })
+    } catch {
+        Write-Output "push ${Target}: $($_.Exception.Message)"
+    } finally {
+        if ($Fg) {
+            # PUSHFIX: the child's end line, in the log (stdout) and in build3ds/out/push_last.txt.
+            $endLine = "PUSH END rc $rc $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+            Write-Output $endLine
+            New-Item -ItemType Directory -Force -Path (Join-Path $repo 'build3ds/out') | Out-Null
+            Set-Content -Path (Join-Path $repo 'build3ds/out/push_last.txt') -Value $endLine
+        }
+    }
+    exit $rc
 }
 
 # pull
