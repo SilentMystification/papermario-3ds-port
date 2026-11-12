@@ -54,7 +54,7 @@ src/effects/energy_shockwave.c (energy_shockwave_appendGfx), 3ds/tools/azt_scena
 - `sh 3ds/build.sh > build3ds/out/build.txt 2>&1`: memcheck OK. `bench.py run nd_host --row S4INST --why "S4INST nd_host"`: PASS.
 - `bench.py base fxpic_51` and `bench.py base spot_mac01_det` (merge-base of HEAD with main). One list:
   `bench.py run fxpic_51,spot_mac01_det --row S4INST --why "S4INST: shockwave list via nd_parts_run_v"` (2 starts).
-  `bench.py cmp fxpic_51 --row S4INST`: 4/4 byte-equal. `bench.py cmp spot_mac01_det --row S4INST`: 6/6 byte-equal.
+  `bench.py cmp fxpic_51 --row S4INST`: every shot byte-equal (fxpic scenes store 6). `bench.py cmp spot_mac01_det --row S4INST`: 6/6 byte-equal.
 - Census in the fxpic_51 run log: the first `partsrun f4\d\d v N old M` line has N >= 1 and M = 0 (pr_cen, nd_walk.c:417).
 - Budget 8 Azahar starts (reset once).
 

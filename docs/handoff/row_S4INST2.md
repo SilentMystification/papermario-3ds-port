@@ -62,7 +62,7 @@ entry fxpic_31 right before fxpic_50 in each).
 ## Gate (expected values)
 - Build, memcheck OK; `bench.py run nd_host --row S4INST2 --why "S4INST2 nd_host"`: PASS.
 - `bench.py base fxpic_31`, `bench.py base spot_mac01_det`; one list `bench.py run fxpic_31,spot_mac01_det --row S4INST2 --why
-  "S4INST2: ring_blast list via nd_parts_run_v"` (2 starts). cmp fxpic_31 4/4 byte-equal, spot_mac01_det 6/6 byte-equal.
+  "S4INST2: ring_blast list via nd_parts_run_v"` (2 starts). cmp fxpic_31 every shot byte-equal (fxpic scenes store 6), spot_mac01_det 6/6 byte-equal.
 - fxpic_31 run log: the first `partsrun f4\d\d v N old M` line has N = 1, M = 0 (fx_ring_blast lives 24 frames from the spawn at
   about 402: shots 412-415 see it).
 - Budget 8 Azahar starts.
