@@ -14,7 +14,8 @@ src/screen_overlays.c (_render_transition_stencil, the cases OVERLAY_SCREEN_COLO
    opaque; } NdFillRec;` (24 bytes: 3 units) and `static void fill_run(const uint32_t* u)`: build an NdPsoN64 with cw0/cw1 of
    `G_CC_PRIMITIVE, G_CC_PRIMITIVE` and oml of `CVG_DST_SAVE | G_RM_OPA_SURF, ...2` when opaque else `G_RM_CLD_SURF, G_RM_CLD_SURF2`
    (take the words from the macros into a local Gfx[2], as hud_rect_run does in NAPI2B), omh G_CYC_1CYCLE; `nd_direct_bind(nd_pso_n64(&d),
-   rgba, 0)` (it sets the blender as sync_render would); then as the walker's 1-cycle fill (nd_rect.c:318-334): the lower right is
+   rgba, nd_direct_env())` (it sets the blender as sync_render would; pass the walker's env colour, never 0: nd_direct_bind
+   stores env in nd_ws.envc and later walker draws read it, nd_direct.c in NAPI2B); then as the walker's 1-cycle fill (nd_rect.c:318-334): the lower right is
    exclusive (`x1 - 1`, `y1 - 1`; return when empty), `pm_gpu_set_replace(0)`, `pm_gpu_fill_rect(x0, y0, x1 - 1, y1 - 1, rgba)`;
    then `nd_direct_end()`. rgba is the prim word format of nd_ws.prim (0xRRGGBBAA).
 2. In both cases, under `#ifdef TARGET_3DS`, replace the gDP lines from gDPPipeSync to gDPSetColorDither(G_CD_DISABLE) by one
