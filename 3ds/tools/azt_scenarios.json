@@ -7808,6 +7808,7 @@
     {
       "name": "spot_mac01_fps60_iskip",
       "status": "unverified",
+      "reason": "broken: no until in 45 s (AZT11-5, 2026-11-12)",
       "subject": "FPS60SPD: Toad Town mac_01 at pos 0 0 200 with fps60 and iskipall (every fps60 step skips its key frame, the path of the regression), pacestat. The pace line of the first 5 s window ending at frame 400 or later gives steps/s.",
       "proves": "FPS60SPD: steps/s of the pace line is 29.0 to 31.0 with the key frame skipped on every step (the idle wait keeps PM_VBLANKS_PER_STEP vblanks for a step with no key frame). Log only, no shots.",
       "debug": "warp=mac_01:0 pos=0:0:200 prof=4 fps60 pacestat iskipall loglevel=debug",
