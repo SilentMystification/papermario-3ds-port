@@ -1352,6 +1352,13 @@ static __attribute__((cold, noinline)) void i8aux_log(int tex1, int i8_1) {
     int k = pm_tex_aux_info(&af, &as, &ag);
     pm_log("i8aux f%u t1 %d i8_1 %d aux %d fmt %d siz %d gpu %d", f, tex1, i8_1, k, af, as, ag);
 }
+/* BTLUI3 (cplxtrace, cold): the first raw batch close after a ctrt line (ctr_pend, nd_geom.c): the bound unit 0 and the render state */
+extern unsigned char ctr_pend;
+static __attribute__((cold, noinline)) void ctr_batch_log(int t, int tex, int z, const NdUnit* u0) {
+    ctr_pend = 0;
+    pm_log_d("ctrb f%u comb %d tex %d slot %d dim %dx%d fmt %d prim %08x blend %d atest %d z %d %d use5 %d", pm_frame_count(), gs.combine, tex, t,
+             (int)(u0->dim & 0xffffu), (int)(u0->dim >> 16), (int)u0->type, prim, (int)gs.r_blend, (int)gs.r_atest, z, (int)gs.r_zcmp, (int)nb.g_use5);
+}
 static int nd_raw_native(void) {
     nd_tmpl_pin(); /* FB-2: the template ids of this batch stay valid until its submit */
     if (!(nb.gni > 0 && nb.g_pal && gs.gv4_on && (!nb.g_use5 || gv5_on))) { cen_why = nb.g_use5 ? CW_PM5 : CW_OTHER; return 0; } /* CEN-1a; PM5-2: program 5 batches go native too */
@@ -1372,6 +1379,7 @@ static int nd_raw_native(void) {
     if (gs.combine == 8 && gs.plan.uses_tex1) { t1 = raw_unit1(&u1); if (t1 < 0) { nd_native_refused++; nraw_why[6]++; cen_why = CW_NRK(6); return 0; } } /* SGEN-2: unit 1 words and the uv map uniform (PERF2: out of line) */
     const int tex = t > 0, i8_0 = tex && pm_tex_i8(0), tex1 = t1 > 0, i8_1 = tex1 && pm_tex_i8(1);
     if (__builtin_expect(tex1 && pm_frame_count() % 60u == 0u, 0)) i8aux_log(tex1, i8_1); /* I8AUX debug: once per 60 frames */
+    if (__builtin_expect(ctr_pend, 0)) ctr_batch_log(t, tex, z, &u0); /* BTLUI3 */
     const int noise = gs.combine == 8 && gs.plan.uses_noise && noise_init(); /* FB-2: as flush_draw; noise_init 0 (no memory): the walker draws without it, so does the native draw */
     NdTmplKey nk;
     memset(&nk, 0, sizeof nk);

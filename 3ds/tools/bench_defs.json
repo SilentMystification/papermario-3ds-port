@@ -4162,6 +4162,23 @@
       "gates": []
     },
     {
+      "name": "btlui_trace",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "BTLUI3: battle menu cplxtrace lines (ctrv quad loads, ctrt per triangle, ctrb batch close) from frame 220, census, det. Log only.",
+      "scenario": "btlui_trace",
+      "cap": 40,
+      "until": "ctrb f2[2-9]\\d",
+      "tags": [
+        "azahar",
+        "log",
+        "census"
+      ],
+      "log_metrics": [],
+      "gates": []
+    },
+    {
       "name": "btlui_menu_thr",
       "kind": "azahar_stream",
       "speed": "normal",

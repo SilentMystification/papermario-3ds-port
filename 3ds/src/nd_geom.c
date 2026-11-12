@@ -34,6 +34,32 @@ int pm_nolight = -1; /* F11-10: -1 = read the switch at first use, the Options r
 unsigned st_lit, st_fogg, st_fogb, st_blc, st_tgen, st_tri; /* S25: draws that use lights, fog, blend colour, texgen */
 int n_cmd, n_in, n_drop, n_out;
 
+/* BTLUI3 (debug switch cplxtrace, cold): the fate of the complex HUD quads. hud_element.c stores each quad's vertex block (ctr_store); a
+ * vertex load of one sets ctr_live and logs it (ctrv); gv_tri logs each triangle while ctr_live (ctrt) and sets ctr_pend; the next raw
+ * batch close logs it (ctrb, pm_gpu.c). */
+const void* ctr_vtx[8];
+unsigned ctr_n;
+unsigned char ctr_live, ctr_pend;
+static int ctr_sw = -1;
+static int ctr_out, ctr_why, ctr_app, ctr_trip;
+void ctr_store(const void* q) { ctr_vtx[ctr_n++ & 7u] = q; }
+static int ctr_on(void) { if (ctr_sw < 0) ctr_sw = pm_debug_has("cplxtrace") ? 1 : 0; return ctr_sw; }
+static int ctr_sc(const float* p, int k) { return p[3] != 0.f ? (int)(p[k] * 100.f / p[3]) : 0; }
+static __attribute__((cold, noinline)) void ctr_vtx_log(const Vtx* src, unsigned n, unsigned v0, unsigned gmi, int cls) {
+    int m = 0;
+    for (int i = 0; i < 8; i++) if (ctr_vtx[i] == (const void*)src) m = 1;
+    if (!m) return;
+    ctr_live = 1;
+    pm_log_d("ctrv f%u src %p n %u gmi %u cls %d cb %02x %02x %02x %02x p %d,%d,%d,%d", pm_frame_count(), (const void*)src, n, gmi, cls,
+             vert_cb[v0 & 63u], vert_cb[(v0 + 1) & 63u], vert_cb[(v0 + 2) & 63u], vert_cb[(v0 + 3) & 63u],
+             ctr_sc(vert_p[v0 & 63u], 0), ctr_sc(vert_p[v0 & 63u], 1), ctr_sc(vert_p[(v0 + 2) & 63u], 0), ctr_sc(vert_p[(v0 + 2) & 63u], 1));
+}
+static __attribute__((cold, noinline)) void ctr_tri_log(int r) {
+    (void)r;
+    pm_log_d("ctrt f%u out %d why %d app %d trip %d", pm_frame_count(), ctr_out, ctr_why, ctr_app, ctr_trip);
+    ctr_pend = 1;
+}
+
 typedef NdGvP GvP;
 
 
@@ -197,16 +223,16 @@ void gv_epoch_enter(void) {
 
 /* GV1: one triangle of ring vertices. Returns 1 when it is done (rejected or sent to the GPU). Returns 0 when the CPU path must take it (reason in gv_fb). */
 extern unsigned char pm_gv_rejm; /* pm_gpu.c */
-int gv_tri(const int* idx) {
+static int gv_tri_core(const int* idx) {
     int a = idx[0], b = idx[1], c = idx[2];
     int why = -1;
     const unsigned rm = pm_gv_rejm; /* WIDE4: 0x2c with wide and an orthographic matrix (pm_gpu_set_mvp): the UI spans clip x -1.25..1.25, so the x planes reject nothing (the GPU clips at the screen edge) */
-    if ((vert_cb[a] & vert_cb[b] & vert_cb[c]) & rm) { n_out++; PH_ADD(C_GVREJ, 1); GP_LAP(GPL_EARLY); return 1; }
+    if ((vert_cb[a] & vert_cb[b] & vert_cb[c]) & rm) { n_out++; ctr_out = 1; PH_ADD(C_GVREJ, 1); GP_LAP(GPL_EARLY); return 1; }
     if ((vert_cb[a] | vert_cb[b] | vert_cb[c]) & 0x2f) {
         if (!(vert_gvf[a] & 1) && vert_cb[a]) gv_xf(a);
         if (!(vert_gvf[b] & 1) && vert_cb[b]) gv_xf(b);
         if (!(vert_gvf[c] & 1) && vert_cb[c]) gv_xf(c);
-        if ((vert_cb[a] & vert_cb[b] & vert_cb[c]) & rm) { n_out++; PH_ADD(C_GVREJ, 1); GP_LAP(GPL_EARLY); return 1; }
+        if ((vert_cb[a] & vert_cb[b] & vert_cb[c]) & rm) { n_out++; ctr_out = 1; PH_ADD(C_GVREJ, 1); GP_LAP(GPL_EARLY); return 1; }
     }
     if (vert_scr[a] | vert_scr[b] | vert_scr[c]) why = GVR_SCR;
     else if (vert_tss[a] != vert_tss[b] || vert_tss[a] != vert_tss[c]) why = GVR_TSS;
@@ -220,20 +246,20 @@ int gv_tri(const int* idx) {
     }
     if (why < 0) {
         unsigned tss = vert_tss[a];
-        if (ep_cullboth) { n_out++; GP_LAP(GPL_EARLY); return 1; }
+        if (ep_cullboth) { n_out++; ctr_out = 2; GP_LAP(GPL_EARLY); return 1; }
         if (ep_pepoch != gv_epoch || ep_ptss != tss) {
             gv_params_calc(tss, &ep_p);
             pm_gpu_set_rgb_scale(ep_p.boost ? 2 : 1);
             ep_pepoch = gv_epoch; ep_ptss = tss;
         }
         if (ep_t1f) {
-            if ((vert_litf[a] | vert_litf[b] | vert_litf[c]) & 2) { gv_fb[GVR_TEX1]++; PH_ADD(C_GVFB, 1); return 0; } /* a texgen vertex keeps the refusal */
+            if ((vert_litf[a] | vert_litf[b] | vert_litf[c]) & 2) { ctr_why = GVR_TEX1; gv_fb[GVR_TEX1]++; PH_ADD(C_GVFB, 1); return 0; } /* a texgen vertex keeps the refusal */
             unsigned rt[3] = { vert_ring[a], vert_ring[b], vert_ring[c] };
             t1_fold_tri(rt, tss); /* a changed window map flushes the open batch (flush_gen), a new batch opens below */
         }
         ep_n++;
         if (ep_open && ep_open_gen == pm_gpu_flush_gen() && ep_open_epoch == gv_epoch && ep_open_tss == tss && pm_gpu_gappend((unsigned)vert_ring[a], (unsigned)vert_ring[b], (unsigned)vert_ring[c], vert_gmi[a], vert_gmi[b], vert_gmi[c])) {
-            gp3_t0_surv(); n_in++; st_gpu_tri++; gv_tri_n++; PH_ADD(C_GVTRI, 1); GP_LAP(GPL_EMIT); return 1;
+            ctr_app = 1; gp3_t0_surv(); n_in++; st_gpu_tri++; gv_tri_n++; PH_ADD(C_GVTRI, 1); GP_LAP(GPL_EMIT); return 1;
         }
         unsigned gg[3] = { vert_gmi[a], vert_gmi[b], vert_gmi[c] }, ri[3] = { vert_ring[a], vert_ring[b], vert_ring[c] }, ro[3];
         unsigned mvm = 0; /* TRI-2: a moved copy (edge vertex) is not the ring slot of the CPU path */
@@ -242,14 +268,24 @@ int gv_tri(const int* idx) {
             if (!(mvm & 2u)) vert_ring[b] = (unsigned short)ro[1];
             if (!(mvm & 4u)) vert_ring[c] = (unsigned short)ro[2];
             ep_open = 1; ep_open_gen = pm_gpu_flush_gen(); ep_open_epoch = gv_epoch; ep_open_tss = tss;
-            gp3_t0_surv(); n_in++; st_gpu_tri++; gv_tri_n++; PH_ADD(C_GVTRI, 1); GP_LAP(GPL_EMIT); return 1;
+            ctr_trip = 1; gp3_t0_surv(); n_in++; st_gpu_tri++; gv_tri_n++; PH_ADD(C_GVTRI, 1); GP_LAP(GPL_EMIT); return 1;
         }
         ep_n--; ep_open = 0;
         why = GVR_REFUSE;
     }
+    ctr_why = why;
     gv_fb[why]++;
     PH_ADD(C_GVFB, 1);
     return 0;
+}
+
+/* BTLUI3: a triangle of a traced quad (ctr_live, set by the vertex load of the quad) gets one ctrt line */
+int gv_tri(const int* idx) {
+    if (!ctr_live) return gv_tri_core(idx);
+    ctr_out = 0; ctr_why = -1; ctr_app = 0; ctr_trip = 0;
+    int r = gv_tri_core(idx);
+    ctr_tri_log(r);
+    return r;
 }
 
 /* PF1: software prefetch (PLD) of the display list, list targets and vertex data. The ARM11 of the O3DS has no hardware prefetcher and a small L1. Azahar has no cache model: no change there. */
@@ -361,6 +397,7 @@ int nd_part_draw(const uint32_t* u) {
 
 void nd_geom_vtx(u32 w0, u32 w1, const Gfx* list) { /* G_VTX: the vertex load (cut from nd_walk.c, GM-2) */
     unsigned gv_t0 = gp_on() ? pm_ticks() : 0;
+    ctr_live = 0; /* BTLUI3: a load ends the trace of the last one */
     unsigned n = (w0 >> 12) & 0xff;
     unsigned v0n = (w0 >> 1) & 0x7f;
     unsigned v0 = (v0n >= n) ? v0n - n : 0;
@@ -443,6 +480,7 @@ void nd_geom_vtx(u32 w0, u32 w1, const Gfx* list) { /* G_VTX: the vertex load (c
             }
             vert_gvf[v0 + i] = 3;
         }
+        if (__builtin_expect(ctr_on(), 0)) ctr_vtx_log(src, n, v0, gmi, gp1_cls); /* BTLUI3 */
     }
     if (gp_on()) gp_acc[7] += pm_ticks() - gv_t0;
 }
