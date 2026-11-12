@@ -2,6 +2,15 @@
 
 A replacement oracle starts here: read CLAUDE.md, orchestrator_rules.md, plan_hotcode.md (sections 2 and 5), then this file.
 
+## fps60 2x speed (oracle 2, 2026-11-12; user fault on XL build 4492; first in the queue)
+- Cause and fix: row_FPS60SPD.md (Haiku). The fps60 idle wait (pm_main.c:657-668) waits 1 vblank; SYNC60 removed the second vblank
+  of SYNCDRAW; INTERP1 interp_heavy (pm_main.c:708) makes no-key-frame steps (ISKIP) common, so steps run 1 LCD period apart.
+- Open, not read (machine restart): retrace_call(0) of the LG_IDLE pass (pm_nusys.c:236) to confirm it never runs step_game_loop
+  (the D_80073E0A flip); audio tick count per step (pm_audio_step at pm_main.c:493 and pm_nusys.c:168: two call sites, check that one
+  step runs only one tick set). Neither is needed for row FPS60SPD.
+- INTERPB3 (Sonnet coder): pm_key_show must call pm_lg_key_walked once per K frame and do one pm_gpu_begin (sync60_pace), as
+  pm_key_walk does (pm_nusys.c:208-219). Give this line to the coder at its next hand-back.
+
 ## NATIVEAPI (oracle 2, 2026-11-11; plan_nativeapi.md has no section 6: the S2 executor design is here)
 - Rows: NAPI1 (skeleton: NDC_NAPI with the core 0 runner as word 1, nd_rec_napi, pso table + host test), then NAPI2A (HUD rects) and
   NAPI3A (glyphs) in parallel. Form "replay record": core 1 keeps the game arithmetic and records the emit inputs; core 0 runs the same
