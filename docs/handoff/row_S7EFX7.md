@@ -23,10 +23,17 @@ bench_defs.json (one entry `fxpic_10`, right after `fxpic_50`).
 1. gen_gfx_tab.sh: `GCONV_SRC="$GCONV_SRC" # S7EFX7` becomes `GCONV_SRC="$GCONV_SRC squirt star star_outline star_spirits_energy stars_orbiting stars_spread stat_change static_status steam_burst stop_watch sun sweat tattle_window throw_spiny" # S7EFX7`.
 2. Build once and run nd_host (step 1 of the gate). A source the tool cannot convert (nd_host or the gen step fails on it): drop
    that one name from the line, write it in the commit, go on.
+   Known drop: flame (src/effects/gfx/flame.c references D_800B32E0 and D_800B3AE0, defined in src/main.c, so the host
+   link of gconv_in.o fails); no other effect gfx source references outside symbols (ORACLE6 grep).
 3. In each effect file of the group: every `gSPDisplayList(gMainGfxPos++, X);` becomes, under `#ifdef TARGET_3DS`,
    `nd_rec_dl(X);` with the old line in `#else` (X unchanged: a symbol, a table element or a pointer variable). Lines inside a
    local packet (`gSPDisplayList(&g[...], ...)` for nd_parts_add) and gSPBranchList stay. Add `#include "nd_gtab.h"` at the top of
    each edited file (after its includes). Count the swapped lines per file into the commit.
+   ORACLE6 rule for the special forms (code read of firework.c:255-330, nd_rec.c:566-581): a `gSPDisplayList(gMainGfxPos++, X)`
+   that is already inside a `#ifdef TARGET_3DS` branch becomes `nd_rec_dl(X);` in place (no new #ifdef). This holds inside an
+   nd_sub_open/nd_sub_close range too: stream_run replays the NDC_NAPI record of nd_rec_dl on each nd_sub_call
+   (nd_rec.c:578, NDC_NAPI arm), as it replays the call unit today. Lines in an `#else` (N64) branch, nd_sub_call lines,
+   `savedGfxPos + 1` forms and local packets stay.
 4. Scenario and bench `fxpic_10`: a copy of fxpic_50 with fxtest=10 (star), same window. Same commit as step 3.
 
 ## Gate (expected values)
