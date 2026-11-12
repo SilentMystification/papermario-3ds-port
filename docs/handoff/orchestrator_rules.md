@@ -7,6 +7,10 @@ Edit rules in place, never append. At the start of a session, read docs/handoff/
 Do not stop until the native pipeline is implemented and the old system (walker state model, N64 list logic, the old stream path)
 is completely removed: plan_nativeapi.md stages S1 to S6. Each turn: keep 6 coders fed, merge, build main, ask the oracle for the
 next batch. Stop only for a user decision (AskUserQuestion) or a console action. ASSETFREE, CIA and QTM stay parked.
+Pre-approved by the user (2026-11-12, for the night run): all Sonnet and Opus coder rows of the chain (Sonnet S5, S6, S7, S8, S9
+rows; Opus S6T, S5IMGFX, S7CONV, S7MDL); a fresh Opus oracle when the oracle context passes about 600K or its reads no longer
+fit (the old one stops after it saves notes); one budget reset per row correction. No console push without the user: keep
+merging passed rows, rebuild main, wait. Hardware-only risk rows (GPU state, texture binds) still merge when their Azahar gates pass.
 Definition of done (user, 2026-11-12): the complete native-only path with ALL display list code removed (the game draws only
 through native calls; no N64 list words, no walker state model, no list readers, no stream replay of list words anywhere).
 A stage that leaves list code behind is not done. The last rows delete it and prove it by grep (no gSP/gDP list builders left in

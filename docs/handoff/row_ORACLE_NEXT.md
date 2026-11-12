@@ -96,8 +96,8 @@ LISTCEN deltas (the counts it removes). CONSOLE = one batch push, compared with 
   - S9DEL3: NDC_STATE and nd_rec_state, the nd_op.h typed ops, the nd_gbi.h macro mapping, the nd_walk.c G_* arms and the nd_set.c
     op table.
   - S9DEL4: the Gfx type and gMainGfxPos in game code, the gbi.h includes in src and include, and the decomp gDP/gSP call sites
-    left as `#else` (N64) branches. **User decision before S9DEL4: delete the N64 `#else` branches (the port stops building for
-    N64), or keep them outside the 3DS build. The definition of done reads as "delete".**
+    left as `#else` (N64) branches: DELETED (decision 2026-11-12, best practice chosen for the user: the port stops building for N64;
+    the tag pre-list-removal keeps the old tree).
   - S9GATE (Haiku): LISTCEN with every class at 0 (builders, data, readers), plus this grep returning nothing:
     `grep -rnE "\bg[DS]P[A-Za-z]|\bgs[DS]P[A-Za-z]|\bGfx\b|gMainGfxPos|NDO_|nd_ops_run|nd_walk_state" src include 3ds/src 3ds/include`.
     The full DIRECT byte set and the battle, pause, talk and fileselect scenes are byte-equal to the last S9 base. CONSOLE: prof push
@@ -112,7 +112,8 @@ LISTCEN deltas (the counts it removes). CONSOLE = one batch push, compared with 
   4. S8;
   5. S9DEL1 to S9DEL4 in sequence;
   6. S9GATE.
-- Blockers that are user decisions: S9DEL4 (the N64 branches). ASSETFREE stays parked: S7 converts list data into native tables
+- Recovery: the orchestrator tags main `pre-list-removal` before S9DEL1 starts (row_S9DEL1.md step 0): `git checkout pre-list-removal` restores the last tree with list code.
+- No user decision is open in the chain. ASSETFREE stays parked: S7 converts list data into native tables
   inside the ELF, and ASSETFREE (assets out of the ELF) is separate.
 
 ## File select and pause flip (oracle 2, 2026-11-12; user fault: entry slow, flip on a file pick very laggy)
