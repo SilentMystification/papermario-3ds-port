@@ -21,8 +21,20 @@ model (nd_comb decide, nd_render_state, TMEM window model) runs only cold, when 
 nd_ops_run, nd_rect, the gv walker state and the NDC_STATE stream path are deleted. Merged so far: NAPI0, NAPI1, NAPI2A, NAPI3A
 (replay forms), S4P, S4SNOW, S4SNOWG, S4PINK, S4SHIM, S4EMB, S4COL. Running: S4E3D, S4SNAK, S4WBLK, FSELCEN (Haiku).
 Rows in order. Format: id: files | blocker | gate | model. CONSOLE = one batch console run (one push, compared with a stored run).
-- Rows written: NAPI2B, NAPI3B, S1FILL, S1PREV, S4PDIR (all wait for NAPI2B; S4PDIR also for S4E3D, S4SNAK, S4WBLK). Next to write:
-  S1STEN (darkness stencil off-screen pass, screen_render_util.c:130-258), S5CHUD, S4SPLASH, NAPICEN3.
+- Rows written: NAPI2B (running), NAPI3B, S1FILL, S1PREV, S4PDIR, S4SPLASH, NAPICEN3 (ready, Haiku: the napicen dump printed only
+  the top 40 callers, nd_rec.c:417; the 60 % was the cut, not unmapped ops).
+- Notes for the next oracle (reads done, rows not written):
+  S1STEN: appendGfx_darkness_stencil (screen_render_util.c:130-257) draws into nuGfxZBuffer as a 64 x 64 32-bit image (two stencil
+  quads with PM_CC_CONST_1 then PM_CC_56), converts it to I8 with 4 texture rects of 16 rows reading its own output, fills the z
+  image back, then draws the I8 image on the screen with PM_CC_57/58 (pm_wide arms :235-250). On 3DS this is the X02/FX2a off-screen
+  slot path (pm_gpu.c:2036-2054, off_snapshot). Gate scene: dark_kgr01 has no det: add dark_kgr01_det.
+  S4INST: effects queue render tasks (energy_shockwave.c:127-138 queue_render_task); execute_render_tasks (model.c:5181, appendGfx at
+  :5284 and :5303) runs them in sorted order. Order rule: batch only consecutive tasks with the same appendGfx (draw order kept); open
+  the run before the first, close after the last; each appendGfx adds an instance instead of emitting. energy_shockwave per
+  instance: setup list D_09000E60, prim, env, 2 tile sizes, matrix, list D_09000DC0, pop (energy_shockwave.c:140-170).
+  S5CHUD: read render_complex_hud_element (hud_element.c) first. S5IMGFX: read imgfx_appendGfx_mesh; its heap meshes are hashed per
+  frame by ent_heap_list (nd_ent.c:188-194). S6T: ent_run (nd_ent.c:393-417) replays the state pieces between segments with
+  ENT_GBI (nd_ops_run); the compiled form keys a piece by its content hash and the inherited walker signature (sc_sig_now).
 - A1 NAPI2B (row written): 3ds/src/nd_direct.c (new), 3ds/include/nd_api.h, nd_tex_set.c (bind body of ensure_tile_slow split out),
   src/hud_element.c hud_rect_run | none | nd_host, spot_mac01_det + pause_tab_det_pic byte-equal, fncov | Sonnet (first direct executor:
   the shared helpers every later row uses).
