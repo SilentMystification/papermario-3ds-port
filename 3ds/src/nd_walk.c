@@ -541,6 +541,30 @@ static void gt_ops(const NdGTab* t) {
         }
     }
 }
+/* S7ENT: a gap of an entity list as the chain of its table pieces (nd_ent.c ent_compile): the start rules of nd_ops_run (keep 1), then each piece in
+ * flat order: a def with no late values runs compiled, any other def and each unit as ops (the S6E rule, as gt_ops). Returns the defs run compiled. */
+int nd_ent_pieces(const EntPiece* p, unsigned n) {
+    PM_WALK_OWN();
+    int sc = 0;
+    const int d = ex_depth;
+    gv_epoch++;
+    dlc_on = 1;
+    gp_prev_op = -1;
+    pm_walk_side++;
+    ex_depth = d + 1;
+    for (unsigned i = 0; i < n; i++) {
+        if (p[i].kind == ENP_DEF) {
+            const NdGDef* g = (const NdGDef*)p[i].p;
+            if (g->d.nv == g->d.pre && nd_scomp_exec_own((NdSDef*)&g->d)) { sc++; continue; }
+            nd_walk_state((const uint32_t*)g->d.u, g->d.n);
+        } else if (p[i].kind == ENP_UNIT) nd_walk_state((const uint32_t*)p[i].p, 1u);
+    }
+    ex_depth = d;
+    pm_walk_side--;
+    gv_streak_flush();
+    tex_streak_flush();
+    return sc;
+}
 void nd_gtab_run(const uint32_t* rec) {
     PM_WALK_OWN();
     const NdGTab* t = (const NdGTab*)(uintptr_t)rec[0];
