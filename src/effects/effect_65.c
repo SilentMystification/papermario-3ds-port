@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 
 #define MAX_POINTS      30
 #define VTX_BUF_SIZE    2 * MAX_POINTS * sizeof(Vtx) / sizeof(Gfx)
@@ -254,7 +255,11 @@ void effect_65_appendGfx(void* effect) {
     guMtxF2L(mtx, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+    nd_rec_dl(D_E00CACB0[variation]);
+#else
     gSPDisplayList(gMainGfxPos++, D_E00CACB0[variation]);
+#endif
 
     if (variation >= 2) {
         gDPSetCombineMode(gMainGfxPos++, PM_CC_4E, PM_CC_4F);

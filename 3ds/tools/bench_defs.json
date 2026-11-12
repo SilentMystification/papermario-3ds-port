@@ -3933,6 +3933,21 @@
       "gates": []
     },
     {
+      "name": "fxpic_16",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "S7 group 2 byte gate: dust (effect 16) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.",
+      "scenario": "fxpic_16",
+      "cap": 40,
+      "until": "shot \\d+ frame 415\\b",
+      "tags": [
+        "azahar",
+        "fxcen"
+      ],
+      "gates": []
+    },
+    {
       "name": "fxpic_124",
       "kind": "azahar_pic",
       "speed": "normal",

@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_gtab.h"
 #ifdef TARGET_3DS
 #include "nd_op.h" /* HC4e2b: the typed unit of a list word */
 #endif
@@ -281,13 +282,21 @@ void energy_orb_wave_appendGfx(void* effect) {
     gDPSetAlphaDither(gMainGfxPos++, G_AD_PATTERN);
 
     if (unk_00 < 3) {
+#ifdef TARGET_3DS
+        nd_rec_dl(D_09001000_3A5320);
+#else
         gSPDisplayList(gMainGfxPos++, D_09001000_3A5320);
+#endif
 
         guRotateF(sp18, unk_14, 0.0f, 0.0f, 1.0f);
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+        nd_rec_dl(D_090011D0_3A54F0);
+#else
         gSPDisplayList(gMainGfxPos++, D_090011D0_3A54F0);
+#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         gDPSetColorDither(gMainGfxPos++, G_CD_MAGICSQ);
 
@@ -295,11 +304,23 @@ void energy_orb_wave_appendGfx(void* effect) {
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+#ifdef TARGET_3DS
+        nd_rec_dl(D_090011F0_3A5510);
+#else
         gSPDisplayList(gMainGfxPos++, D_090011F0_3A5510);
+#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     } else {
+#ifdef TARGET_3DS
+        nd_rec_dl(D_090010A8_3A53C8);
+#else
         gSPDisplayList(gMainGfxPos++, D_090010A8_3A53C8);
+#endif
+#ifdef TARGET_3DS
+        nd_rec_dl(D_09001210_3A5530);
+#else
         gSPDisplayList(gMainGfxPos++, D_09001210_3A5530);
+#endif
     }
 
     gDPSetColorDither(gMainGfxPos++, G_CD_DISABLE);
