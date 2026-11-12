@@ -39,7 +39,7 @@ Base: main at `--commit 20d613506`. Worktree build3ds/wt/FPS60SPD, branch FPS60S
 
 ## Scenario fix (one commit, no code edit)
 - `spot_mac01_fps60_iskip` debug string becomes exactly `warp=mac_01:0 pos=0:0:200 fps60 pacestat iskipall fs1off loglevel=debug` (no prof,
-  no det, no shots; fs1off: an FS1 skip moves step_vb by 2 (pm_main.c:694), which can give iv 0 or 1 at the next drawn step). Until: `pacewk f\d+ wk` (the first pace window, about 5 s of wall time after the boot; any Azahar speed).
+  no det, no shots; fs1off: an FS1 skip moves step_vb by 2 (pm_main.c:694), which can give iv 0 or 1 at the next drawn step). Until: `pacewk f([3-9]\d\d|\d{4,}) wk` (the first 5 s pace window that ends at frame 300 or later: a steady mac_01 window, no boot or warp in it).
   Cap 45, deadline 40. The bench entry stays as it is.
 
 ## Commands
@@ -50,14 +50,16 @@ Base: main at `--commit 20d613506`. Worktree build3ds/wt/FPS60SPD, branch FPS60S
 
 ## Gate (all three)
 1. nd_host PASS.
-2. spot_mac01_fps60_iskip (a code rule, not a speed): the `pace:` line printed just before the until line has `total 1:0` (no
-   drawn step started 1 vblank after the last one; pm_main.c:707 counts iv 1 in pace_iv[0]) and `steps` <= `vblanks` / 2 + 1 in
-   that window. Expected with Edit 1: total 1:0. Before Edit 1, with iskipall, a step that fits one LCD period gives iv 1; in slow
-   Azahar it may not show, so the code read (row Cause) is the proof and this line checks that no iv 1 step happens.
-   Run only this scene: `bench.py run spot_mac01_fps60_iskip --row FPS60SPD --why "fps60 iv rule with iskipall"`. Hand back the
-   pace and pacewk lines.
-3. spot_mac01_fps60_det byte-equal to base (det never sets ISKIP; its steps all have key frames, so the edit does not run there).
+2. spot_mac01_fps60_iskip (a code rule, not a speed): the `pace:` line printed just before the until line has the window count
+   `intervals 1:0` (the per-window field, not `total 1:`). Expected with Edit 1: 0, because with iskipall every step goes through the
+   idle wait (pm_main.c:657-668), which ends only at 2 vblanks after step_vb. Try 2 (591f4d57a, until on the first window f131) gave
+   `total 1:4` in a window that holds the boot and the warp: boundary steps by code read, not a 2x path: pm_main.c:575 draws every
+   pass until the first frame is drawn (`!lp_ever`), the first step after step_vb_ok is set has no ISKIP and shows a key frame
+   (kn > 0 skips the idle wait, pm_main.c:639), and the warp load gives late steps. A 2x path would give 1-vblank intervals in most
+   steps; that window had 4 of 130 and steps 112 for 301 vblanks (0.37 per vblank). Run only this scene once:
+   `bench.py run spot_mac01_fps60_iskip --row FPS60SPD --why "fps60 iv rule, steady window"`. Hand back the pace and pacewk lines.
+3. spot_mac01_fps60_det byte-equal to base (done: 12/12 at f79344234; the commits after it change only the scenario, no rerun).
 
 ## Stop
 - Gate passes: commit (changed files only), delete this row file in the same commit, hand back the pace line and the cmp result.
-- total 1: above 0, cmp not equal, or a tool fault: stop, commit, hand back the exact report lines. Do not change the wait again.
+- window intervals 1: above 0 in the steady window, cmp not equal, or a tool fault: stop, commit, hand back the exact report lines. Do not change the wait again.

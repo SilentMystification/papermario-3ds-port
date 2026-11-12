@@ -47,5 +47,44 @@
   kwalk 0 and kcopy = the interpolated steps on icmp_btl after frame 300. Budget: 6 Azahar starts.
 - Console (orchestrator): the batch XL run with fps60 on: interp lines (key_us 0, kcopy) and the frame time against the INTERP1 run.
 
+## Try 2 (oracle code read of 23e092261 and 60bbc5601; budget reset once by the orchestrator: 3 Azahar starts)
+Facts of try 1: kcopy_btl `kcopy 267 kwalk 34 why 0 0 8 6`; spot_mac01_fps60_det 0/12 (about 91750 px, whole screen, even shots
+too); spot_mac01_fps60_stereo_det 6/12 (odd shots only, 102 px, x65..190 y279..325 of the rotated shot); stereo_det_r 11/12 (1 px).
+Causes (code read):
+1. Mono L frames differ, stereo L frames are equal. The only head change that runs in mono L and not in stereo L is the new
+   `if (kc_arm && !stereo_frame) sr_force_all();` in pm_gpu_twin_begin (pm_gpu.c:198). It runs at the walk start, after the frame
+   begin made bind_main and the PT12 grab draw (pm_gpu_begin_wait). sr_force_all marks every citro3d vertex uniform dirty
+   (C3D_FVUnifDirty) and resets the native shadow. The next citro3d draw then uploads citro3d's CPU copy of the uniforms, which is
+   stale for registers the grab draw and the native path wrote. Stereo calls the same function in sr_frame_begin, before bind_main
+   and the grab, and its L shots are byte-equal: that is the place where the force is safe.
+2. The K copy frame skips pm_gpu_begin_wait, so the two noise_next() calls of a frame begin (PT07) do not run. The noise sequence of
+   every later frame shifts against the base, and the det line's noise value differs. This is not the cause of the shot diffs here,
+   but it is a real divergence.
+3. The odd (K) stereo shots differ only in one object (102 px). The K copy has L's words wherever the patch list has no K word. In
+   INTERPB2 the cmul and cadd sites were left without a twin, and those values depend on the matrices. That class is the expected
+   cause, but this try does not prove it (step 3 below only measures).
+4. why[2] 8 (a list or a patch outside the copied range): no cause is found by code read. GPUCMD_Split, the stereo bind lists and
+   the off-screen passes all stay in the frame's command buffer. These frames fall back to the key walk, so the picture is right
+   and only the cost is wrong. This try measures it.
+5. kwalk 0 is the wrong pass rule. A scene cut walks 2 key frames by design (kc_cut), so kwalk >= 2 x cuts. Also kwalk 34 against
+   why sum 14 leaves 20 walks with no counted cause: an L frame end with kc_rec or kc_arm 0.
+Edits:
+a. pm_gpu.c: delete the sr_force_all call in pm_gpu_twin_begin. In sr_frame_begin replace `if (!stereo_frame) return;` by
+   `if (!stereo_frame) { if (pm_interp_on > 0) sr_force_all(); return; }` (the same point as stereo; every fps60 mono frame).
+b. pm_gpu_key_show: after C3D_FrameBegin, call noise_next() twice, as a frame begin does.
+c. Census: pm_kc_why gets a fifth slot, "no armed L frame": counted in kc_build at the `!kc_rec` and `!kc_arm` returns, only when
+   pm_icmp_kind == 1. Add it to the interp line. For why[2], log the first 8 per run with pm_log_hw: `kcout f<n> kind list|patch i
+   <index> addr <a> n <words> cb <cb> coff <coff> split <cmd_split_n - kc_split0>`.
+Gate of try 2 (one list, 3 starts: `bench.py run spot_mac01_fps60_det,spot_mac01_fps60_stereo_det,kcopy_btl --row INTERPB3 --why "try 2:
+force at frame begin"`; base 20d613506 as before):
+- nd_host PASS, memcheck OK.
+- Mono and stereo: every even shot (the L frames) is byte-equal. Odd shots (K copies): at most 150 px per shot, all inside the area
+  of try 1 (x65..190, y279..325 in stereo). Hand back the diff counts and bounding boxes per shot.
+- kcopy_btl: kwalk = why[2] + why[3] + why[4], and why[0] = why[1] = 0. Hand back the interp line and the kcout lines.
+- The pass rule for the row (replaces kwalk 0): kwalk equals the sum of the named causes, and kwalk minus 2 x cuts is at most 3 % of
+  the interpolated steps.
+Stop after try 2 with the values in all cases. The oracle then writes the K-site step (the patch for the class that the icmp census
+names for the odd-shot area) or a fix for the outside lists from the kcout lines.
+
 ## Stop / At the end
 A failed gate: commit, hand back the values. Delete this row file in the completing commit.
