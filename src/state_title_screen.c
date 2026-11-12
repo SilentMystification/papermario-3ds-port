@@ -6,6 +6,10 @@
 #include "sprite.h"
 #include "game_modes.h"
 #include "ld_addrs.h"
+#ifdef TARGET_3DS
+#include <string.h>
+#include "nd_api.h"
+#endif
 
 #if VERSION_JP
 #define TITLE_WIDTH 272
@@ -497,6 +501,48 @@ void title_screen_draw_images(f32 logoMoveAlpha, f32 copyrightMoveAlpha) {
     title_screen_draw_copyright(copyrightMoveAlpha);
 }
 
+#ifdef TARGET_3DS
+/* S5TTL: each texture load and rectangle pair is one NdTRect (nd_trect_run). The state ops stay in the stream (the fallback replays the
+ * load and the rectangle only). The record carries the combine, render mode, TLUT and filter the function set before the pair. */
+#define TTL_CW_(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1) \
+    { ND_W0_CMB(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1), ND_W1_CMB(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1) }
+#define TTL_CW(a, b) TTL_CW_(a, b) /* the argument pass expands the 8-term combiner macros before TTL_CW_ counts its 16 */
+static const u32 ttl_cw_decal[2] = TTL_CW(G_CC_DECALRGBA, G_CC_DECALRGBA);
+static const u32 ttl_cw_mod_prim[2] = TTL_CW(G_CC_MODULATEIA_PRIM, G_CC_MODULATEIA_PRIM);
+static const u32 ttl_cw_02[2] = TTL_CW(PM_CC_02, PM_CC_02);
+#define TTL_PRIM(a) ((248u << 24) | (240u << 16) | (152u << 8) | ((u32)(a) & 0xffu)) /* the title prim colour with alpha a */
+
+static void ttl_load(NdTRect* t, const void* img, u32 fmt, u32 siz, u32 width, u32 height, s32 uls, s32 ult, s32 lrs, s32 lrt, u32 cms, u32 cmt,
+                     u32 masks, u32 maskt) { /* the texture load (tile or block; shifts are G_TX_NOLOD) */
+    memset(t, 0, sizeof *t);
+    t->img = img; t->fmt = fmt; t->siz = siz; t->width = width; t->height = height;
+    t->uls = uls; t->ult = ult; t->lrs = lrs; t->lrt = lrt;
+    t->cms = cms; t->cmt = cmt; t->masks = masks; t->maskt = maskt;
+}
+
+static void ttl_state(NdTRect* t, const u32* cw, u32 oml, u32 omh, u32 prim, u32 pad) {
+    t->cw0 = cw[0]; t->cw1 = cw[1]; t->oml = oml; t->omh = omh; t->prim = prim; t->pad = pad;
+}
+
+static void ttl_rect(NdTRect* t, s32 xl, s32 yl, s32 xh, s32 yh, s32 s, s32 tt, s32 dsdx, s32 dtdy) { /* gSPTextureRectangle, tile G_TX_RENDERTILE */
+    t->w0 = ND_W0_TR(G_TEXRECT, xh, yh); t->w1 = ND_W1_TR(G_TX_RENDERTILE, xl, yl);
+    t->hs = ND_TR_H1(s, tt); t->hd = ND_TR_H2(dsdx, dtdy);
+}
+
+/* gSPScisTextureRectangle, tile G_TX_RENDERTILE: the words of gbi.h (PM_SCIS_*), as hud_rect_direct writes them */
+static void ttl_scis(NdTRect* t, s32 xl, s32 yl, s32 xh, s32 yh, s32 s, s32 tt, s32 dsdx, s32 dtdy) {
+    t->w0 = _SHIFTL(G_TEXRECT, 24, 8) | _SHIFTL(PM_SCIS_XH(xh), 12, 12) | _SHIFTL(MAX((s16)(yh), 0), 0, 12);
+    t->w1 = _SHIFTL(G_TX_RENDERTILE, 24, 3) | _SHIFTL(PM_SCIS_XL(xl), 12, 12) | _SHIFTL(MAX((s16)(yl), 0), 0, 12);
+    t->hs = _SHIFTL(((s) - (PM_SCIS_CLIP(xl) ? (((s16)(dsdx) < 0) ? (MAX((((s16)(xl) * (s16)(dsdx)) >> 7), 0)) : (MIN((((s16)(xl) * (s16)(dsdx)) >> 7), 0))) : 0)), 16, 16) |
+                    _SHIFTL(((tt) - (((yl) < 0) ? (((s16)(dtdy) < 0) ? (MAX((((s16)(yl) * (s16)(dtdy)) >> 7), 0)) : (MIN((((s16)(yl) * (s16)(dtdy)) >> 7), 0))) : 0)), 0, 16);
+    t->hd = ND_TR_H2(dsdx, dtdy);
+}
+
+static void ttl_run(NdTRect* t) {
+    nd_rec_napi(nd_trect_run, t, sizeof *t / 8u);
+}
+#endif
+
 void title_screen_draw_logo(f32 moveAlpha) {
     s32 yOffset;
     s32 i;
@@ -506,6 +552,17 @@ void title_screen_draw_logo(f32 moveAlpha) {
     yOffset = TITLE_LOGO_YOFFSET * moveAlpha;
 
     for (i = 0; i < TITLE_NUM_TILES; i++) {
+#ifdef TARGET_3DS
+        NdTRect tr;
+
+        // Load a tile from the logo texture, then a scissored texture rectangle with the loaded tile
+        ttl_load(&tr, &TitleScreen_ImgList_Logo[i * TITLE_TILE_PIXELS], G_IM_FMT_RGBA, G_IM_SIZ_32b, TITLE_WIDTH, TITLE_TILE_HEIGHT,
+                 0, 0, (TITLE_WIDTH - 1), (TITLE_TILE_HEIGHT - 1), G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK);
+        ttl_state(&tr, ttl_cw_decal, G_RM_CLD_SURF | G_RM_CLD_SURF2, G_TT_NONE | G_TF_POINT, 0, 1);
+        ttl_scis(&tr, (TITLE_POS_LEFT) << 2, (TITLE_POS_TOP + TITLE_TILE_HEIGHT * i + yOffset) << 2,
+                 (TITLE_POS_LEFT + TITLE_WIDTH) << 2, (TITLE_POS_TOP + TITLE_TILE_HEIGHT + TITLE_TILE_HEIGHT * i + yOffset) << 2, 0, 0, 1 << 10, 1 << 10);
+        ttl_run(&tr);
+#else
         // Load a tile from the logo texture
         gDPLoadTextureTile(gMainGfxPos++, &TitleScreen_ImgList_Logo[i * TITLE_TILE_PIXELS], G_IM_FMT_RGBA, G_IM_SIZ_32b,
                            TITLE_WIDTH, TITLE_TILE_HEIGHT, // width, height
@@ -521,6 +578,7 @@ void title_screen_draw_logo(f32 moveAlpha) {
             (TITLE_POS_LEFT + TITLE_WIDTH)                                        << 2, // lrx
             (TITLE_POS_TOP + TITLE_TILE_HEIGHT + TITLE_TILE_HEIGHT * i + yOffset) << 2, // lry
             G_TX_RENDERTILE, 0, 0, 1 << 10, 1 << 10);
+#endif
     }
 
     gDPPipeSync(gMainGfxPos++);
@@ -616,6 +674,18 @@ void title_screen_draw_menu(void) {
     gDPSetPrimColor(gMainGfxPos++, 0, 0, 248, 240, 152, (u8)StartGame_Alpha);
     gDPPipeSync(gMainGfxPos++);
 
+#ifdef TARGET_3DS
+    {
+        NdTRect tr;
+
+        ttl_load(&tr, TitleMenu_ImgList_StartGame, G_IM_FMT_IA, G_IM_SIZ_8b, StartGame_Width[gCurrentLanguage], 16, 0, 0,
+                 StartGame_Width[gCurrentLanguage] - 1, 16 - 1, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK);
+        ttl_state(&tr, ttl_cw_mod_prim, G_RM_CLD_SURF | G_RM_CLD_SURF2, G_TF_POINT, TTL_PRIM(StartGame_Alpha), 0);
+        ttl_rect(&tr, StartGame_PosX[gCurrentLanguage] * 4, 149 * 4,
+                 (StartGame_PosX[gCurrentLanguage] + StartGame_Width[gCurrentLanguage]) * 4, (149 + 16) * 4, 0, 0, 0x0400, 0x0400);
+        ttl_run(&tr);
+    }
+#else
     gDPLoadTextureBlock(gMainGfxPos++, TitleMenu_ImgList_StartGame, G_IM_FMT_IA, G_IM_SIZ_8b,
                         StartGame_Width[gCurrentLanguage], 16, 0,
                         G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD,
@@ -623,9 +693,22 @@ void title_screen_draw_menu(void) {
     gSPTextureRectangle(gMainGfxPos++, StartGame_PosX[gCurrentLanguage] * 4, 149 * 4,
                         (StartGame_PosX[gCurrentLanguage] + StartGame_Width[gCurrentLanguage]) * 4, (149 + 16) * 4,
                         G_TX_RENDERTILE, 0, 0, 0x0400, 0x0400);
+#endif
     gDPSetPrimColor(gMainGfxPos++, 0, 0, 248, 240, 152, (u8)Languages_Alpha);
     gDPPipeSync(gMainGfxPos++);
 
+#ifdef TARGET_3DS
+    {
+        NdTRect tr;
+
+        ttl_load(&tr, TitleMenu_ImgList_Languages, G_IM_FMT_IA, G_IM_SIZ_8b, Languages_Width[gCurrentLanguage], 16, 0, 0,
+                 Languages_Width[gCurrentLanguage] - 1, 16 - 1, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK);
+        ttl_state(&tr, ttl_cw_mod_prim, G_RM_CLD_SURF | G_RM_CLD_SURF2, G_TF_POINT, TTL_PRIM(Languages_Alpha), 0);
+        ttl_rect(&tr, Languages_PosX[gCurrentLanguage] * 4, 169 * 4,
+                 (Languages_PosX[gCurrentLanguage] + Languages_Width[gCurrentLanguage]) * 4, (169 + 16) * 4, 0, 0, 0x0400, 0x0400);
+        ttl_run(&tr);
+    }
+#else
     gDPLoadTextureBlock(gMainGfxPos++, TitleMenu_ImgList_Languages, G_IM_FMT_IA, G_IM_SIZ_8b,
                         Languages_Width[gCurrentLanguage], 16, 0,
                         G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD,
@@ -633,13 +716,26 @@ void title_screen_draw_menu(void) {
     gSPTextureRectangle(gMainGfxPos++, Languages_PosX[gCurrentLanguage] * 4, 169 * 4,
                         (Languages_PosX[gCurrentLanguage] + Languages_Width[gCurrentLanguage]) * 4, (169 + 16) * 4,
                         G_TX_RENDERTILE, 0, 0, 0x0400, 0x0400);
+#endif
 #else
     gDPSetPrimColor(gMainGfxPos++, 0, 0, 248, 240, 152, TitleMenu_Alpha);
     gDPPipeSync(gMainGfxPos++);
+#ifdef TARGET_3DS
+    {
+        NdTRect tr;
+
+        ttl_load(&tr, TitleScreen_ImgList_PressStart, G_IM_FMT_IA, G_IM_SIZ_8b, 128, VAR_1, 0, 0, 127, VAR_1 - 1,
+                 G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK);
+        ttl_state(&tr, ttl_cw_mod_prim, G_RM_CLD_SURF | G_RM_CLD_SURF2, G_TF_POINT, TTL_PRIM(TitleMenu_Alpha), 0);
+        ttl_rect(&tr, 384, 548, 896, VAR_2, 0, 0, 0x0400, 0x0400);
+        ttl_run(&tr);
+    }
+#else
     gDPLoadTextureBlock(gMainGfxPos++, TitleScreen_ImgList_PressStart, G_IM_FMT_IA, G_IM_SIZ_8b, 128, VAR_1, 0,
                         G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD,
                         G_TX_NOLOD);
     gSPTextureRectangle(gMainGfxPos++, 384, 548, 896, VAR_2, G_TX_RENDERTILE, 0, 0, 0x0400, 0x0400);
+#endif
 #endif
     gDPPipeSync(gMainGfxPos++);
 }
@@ -663,6 +759,10 @@ void title_screen_draw_menu(void) {
 void title_screen_draw_copyright(f32 moveAlpha) {
     s32 alpha;
     s32 i;
+#ifdef TARGET_3DS
+    s32 ttlSet; /* S5TTL: the pre-loop block set PM_CC_02 and the prim alpha (the US loop overwrites alpha) */
+    u32 ttlPrim;
+#endif
 
     gSPDisplayList(gMainGfxPos++, &TitleSetupGfx);
 #if VERSION_JP
@@ -678,8 +778,25 @@ void title_screen_draw_copyright(f32 moveAlpha) {
         gDPSetCombineMode(gMainGfxPos++, PM_CC_02, PM_CC_02);
         gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, alpha);
     }
+#ifdef TARGET_3DS
+    ttlSet = alpha < 255;
+    ttlPrim = (u32)alpha;
+#endif
 
 #if VERSION_JP
+#ifdef TARGET_3DS
+    {
+        NdTRect tr;
+
+        ttl_load(&tr, TitleScreen_ImgList_Copyright, G_IM_FMT_CI, G_IM_SIZ_4b, COPYRIGHT_WIDTH, 0, 0, 0, 127, 31,
+                 G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK);
+        tr.pal = TitleScreen_ImgList_CopyrightPalette;
+        tr.pal_n = 16;
+        ttl_state(&tr, ttlSet ? ttl_cw_02 : ttl_cw_decal, G_RM_CLD_SURF | G_RM_CLD_SURF2, G_TT_RGBA16 | G_TF_POINT, ttlPrim, !ttlSet);
+        ttl_rect(&tr, 388, YL_BASE, 900, 892, 0, 0, 0x0400, 0x0400);
+        ttl_run(&tr);
+    }
+#else
     gDPLoadTLUT_pal16(gMainGfxPos++, 0, TitleScreen_ImgList_CopyrightPalette);
     gDPLoadTextureTile_4b(gMainGfxPos++, TitleScreen_ImgList_Copyright, G_IM_FMT_CI,
                           COPYRIGHT_WIDTH, 0, 0, 0, 127, 31, 0,
@@ -687,17 +804,30 @@ void title_screen_draw_copyright(f32 moveAlpha) {
                           G_TX_NOLOD);
     gSPTextureRectangle(gMainGfxPos++, 388, YL_BASE, 900, 892, G_TX_RENDERTILE,
                         0, 0, 0x0400, 0x0400);
+#endif
 #else
     for (i = 0; i < COPYRIGHT_TEX_CHUNKS; i++) {
         s32 k = 10 * i;
         alpha = 0; // TODO figure out why this is needed
 
+#ifdef TARGET_3DS
+        {
+            NdTRect tr;
+
+            ttl_load(&tr, COPYRIGHT_IMG(k, i), G_IM_FMT_IA, G_IM_SIZ_8b, COPYRIGHT_WIDTH, 32, 0, 0, 143, LTT_LRT,
+                     G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK);
+            ttl_state(&tr, ttlSet ? ttl_cw_02 : ttl_cw_decal, G_RM_CLD_SURF | G_RM_CLD_SURF2, G_TT_NONE | G_TF_POINT, ttlPrim, !ttlSet);
+            ttl_rect(&tr, 356, YL_BASE + (RECT_SIZE * i), 932, YH_BASE + (RECT_SIZE * i), 0, 0, 0x0400, 0x0400);
+            ttl_run(&tr);
+        }
+#else
         gDPLoadTextureTile(gMainGfxPos++, COPYRIGHT_IMG(k, i), G_IM_FMT_IA, G_IM_SIZ_8b,
                            COPYRIGHT_WIDTH, 32, 0, 0, 143, LTT_LRT, 0,
                            G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD,
                            G_TX_NOLOD);
         gSPTextureRectangle(gMainGfxPos++, 356, YL_BASE + (RECT_SIZE * i), 932, YH_BASE + (RECT_SIZE * i),
                             G_TX_RENDERTILE, 0, 0, 0x0400, 0x0400);
+#endif
     }
 #endif
     gDPPipeSync(gMainGfxPos++);
