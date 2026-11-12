@@ -233,10 +233,13 @@ int main(void) {
         CHECK(n_win == 1 && win_a[0] == 32 && win_a[1] == 0 && win_a[2] == 0 && win_a[3] == 32 && win_a[4] == 32 && win_a[5] == 0 && win_a[6] == 0 && win_a[7] == 124 && win_a[8] == 124);
         CHECK(nd_tex_blk_desc(&bd, (const void*)0x2000, G_IM_FMT_IA, G_IM_SIZ_8b, 24, 16, wr, NULL, 0) == 1);
         CHECK(n_win == 2 && win_a[0] == 24 && win_a[3] == 24 && win_a[4] == 16 && win_a[7] == 92 && win_a[8] == 60);
+        /* S5CHUDB: an IA8 block of 48 x 48 (2304 bytes) and 64 x 64 (4096 bytes) is within the 4 KB byte cap */
+        CHECK(nd_tex_blk_desc(&bd, (const void*)0x2000, G_IM_FMT_IA, G_IM_SIZ_8b, 48, 48, wr, NULL, 0) == 1);
+        CHECK(nd_tex_blk_desc(&bd, (const void*)0x2000, G_IM_FMT_IA, G_IM_SIZ_8b, 64, 64, wr, NULL, 0) == 1);
         {
             const unsigned wm[4] = { 0, 0, 5, 5 };
             CHECK(nd_tex_blk_desc(&bd, (const void*)0x2000, G_IM_FMT_IA, G_IM_SIZ_8b, 32, 32, wm, NULL, 0) == 0);
-            CHECK(nd_tex_blk_desc(&bd, (const void*)0x2000, G_IM_FMT_IA, G_IM_SIZ_8b, 64, 64, wr, NULL, 0) == 0);
+            CHECK(nd_tex_blk_desc(&bd, (const void*)0x2000, G_IM_FMT_IA, G_IM_SIZ_8b, 80, 64, wr, NULL, 0) == 0);
         }
     }
     if (fails) return 1;

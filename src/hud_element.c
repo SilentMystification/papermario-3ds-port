@@ -583,14 +583,19 @@ __attribute__((unused)) static void cplx_quad_run(const uint32_t* u) {
     else pd.oml = aa ? ((AA_EN | G_RM_CLD_SURF) | (AA_EN | G_RM_CLD_SURF2)) : (G_RM_CLD_SURF | G_RM_CLD_SURF2);
     pd.omh = G_TT_NONE | (filt ? G_TF_AVERAGE : G_TF_POINT);
     pd.omh_m = (3u << G_MDSFT_TEXTLUT) | (3u << G_MDSFT_TEXTFILT);
-    if (nd_tex_blk_desc(&d, r->img, G_IM_FMT_IA, G_IM_SIZ_8b, r->w, r->h, wrap, NULL, 0) && nd_direct_ready() == 1 &&
-        nd_direct_bind(nd_pso_n64(&pd), r->prim, nd_direct_env())) {
+    /* S5CHUDB census: why 41 tex block, 42 direct state not ready, 43 bind refused; each failure runs the old ops below */
+    if (!nd_tex_blk_desc(&d, r->img, G_IM_FMT_IA, G_IM_SIZ_8b, r->w, r->h, wrap, NULL, 0)) {
+        nd_direct_fallback(41u);
+    } else if (nd_direct_ready() != 1) {
+        nd_direct_fallback(42u);
+    } else if (!nd_direct_bind(nd_pso_n64(&pd), r->prim, nd_direct_env())) {
+        nd_direct_fallback(43u);
+    } else {
         nd_direct_tex(&d);
         nd_direct_quad(r->mtx, r->vtx);
         nd_direct_end();
         return;
     }
-    nd_direct_fallback(40u);
     {
         static Gfx buf[32];
         Gfx* p = buf;
