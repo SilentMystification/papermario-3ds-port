@@ -1635,6 +1635,22 @@ void render_complex_hud_element(HudElement* hudElement) {
         }
     }
 
+    { /* BTLUI2 debug switch cplxhud: mode, flags, opacity, position and scale of each complex HUD draw, 120 calls after frame 150 */
+        static int cplx_sw = -1;
+        static unsigned cplx_n;
+        extern void pm_log_d(const char* fmt, ...);
+        extern unsigned pm_frame_count(void);
+        extern int pm_debug_has(const char* word);
+        if (cplx_sw < 0) cplx_sw = pm_debug_has("cplxhud") ? 1 : 0;
+        if (cplx_sw && pm_frame_count() > 150 && cplx_n < 120) {
+            cplx_n++;
+            pm_log_d("cplx f%u mode %d flags %08x op %u pos %d,%d scale %d tsc %d,%d img %08x q %d", pm_frame_count(), mode,
+                     hudElement->flags, (unsigned)hudElement->opacity, (int)hudElement->renderPosX, (int)hudElement->renderPosY,
+                     (int)(hudElement->uniformScale * 100), (int)(transform->scale.x * 100), (int)(transform->scale.y * 100),
+                     (unsigned)(uintptr_t)hudElement->imageAddr, (int)FrameQuadIndex);
+        }
+    }
+
     switch (mode) {
         case 1:
             if (hudElement->flags & HUD_ELEMENT_FLAG_NO_FOLD) {

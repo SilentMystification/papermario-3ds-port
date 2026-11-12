@@ -859,6 +859,18 @@ void btl_main_menu_draw(void) {
     s32 i;
     s32 l, t;
 
+    { /* BTLUI2 debug switch cplxhud: menu state, reel and menu alpha, reel hide, one line per 30 frames */
+        static int cplx_sw = -1;
+        extern void pm_log_d(const char* fmt, ...);
+        extern unsigned pm_frame_count(void);
+        extern int pm_debug_has(const char* word);
+        if (cplx_sw < 0) cplx_sw = pm_debug_has("cplxhud") ? 1 : 0;
+        if (cplx_sw && (pm_frame_count() % 30) == 0) {
+            pm_log_d("btlmenu f%u state %d reelalpha %d menualpha %d hide %d", pm_frame_count(), BattleMenuState,
+                     BattleMenu_ReelAlpha, BattleMenuAlpha, BattleMenu_ReelHidePercent);
+        }
+    }
+
     switch (BattleMenuState) {
         case BTL_MENU_STATE_SHOW_REEL:
             hud_element_draw_complex_hud_first(-1);
