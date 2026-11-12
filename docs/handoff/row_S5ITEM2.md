@@ -8,8 +8,8 @@ it_xlu and the nd_rmdef.h include). Re-grep the lines after the merge: the text 
   (not CULL_BOTH as appendGfx_item_entity), :1180 gSPDisplayList(D_8014C620); :1192-1200 the same render mode pairs, combine
   and prim as appendGfx_item_entity :968-977 (equal text: S5ITEM1's it_xlu_sh and it_xlu fit).
 - draw_coin_sparkles :173-: :195-207 CycleType(1CYCLE), ClearGeometryMode(the 9 flags of :196), SetGeometryMode(G_ZBUFFER |
-  G_SHADE | G_LIGHTING | G_SHADING_SMOOTH), SetLights1(ItemEntityLights) (NUMLIGHT and 2 MOVEMEM: value units, class 2, allowed
-  between statics), Texture(-1, -1, 0, RENDERTILE, ON), TextureLOD, TexturePersp(PERSP), TextureFilter(BILERP), ColorDither
+  G_SHADE | G_LIGHTING | G_SHADING_SMOOTH), SetLights1(ItemEntityLights) (NUMLIGHT and 2 MOVEMEM: value units, class 2; ORACLE6
+  value-order rule, row_S6VORD.md: not allowed between statics, so the range is two defs split right after the lights), Texture(-1, -1, 0, RENDERTILE, ON), TextureLOD, TexturePersp(PERSP), TextureFilter(BILERP), ColorDither
   (DISABLE), TextureDetail(CLAMP), TextureConvert(FILT), CombineKey(NONE), AlphaCompare(NONE). nv 3. The imgfx draw after stays.
 
 ## Start
@@ -26,22 +26,24 @@ src/item_entity.c: S5ITEM1's def block (append 2 defs at its end, before its `#e
        gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON), gsDPSetCombineMode(G_CC_DECALRGBA, G_CC_DECALRGBA),
        gsDPSetTexturePersp(G_TP_PERSP), gsDPSetTextureDetail(G_TD_CLAMP), gsDPSetTextureLOD(G_TL_TILE), gsDPSetTextureLUT(G_TT_NONE),
        gsDPSetTextureFilter(G_TF_BILERP), gsDPSetTextureConvert(G_TC_FILT), gsDPSetTextureLUT(G_TT_RGBA16) };
-   static const Gfx it_spark_u[] = { gsDPSetCycleType(G_CYC_1CYCLE),
+   static const Gfx it_spark_a_u[] = { gsDPSetCycleType(G_CYC_1CYCLE),
        gsSPClearGeometryMode(<the :196 flags>), gsSPSetGeometryMode(G_ZBUFFER | G_SHADE | G_LIGHTING | G_SHADING_SMOOTH),
-       gsSPSetLights1(ItemEntityLights), gsSPTexture(-1, -1, 0, G_TX_RENDERTILE, G_ON), gsDPSetTextureLOD(G_TL_TILE),
+       gsSPSetLights1(ItemEntityLights) };
+   static const Gfx it_spark_b_u[] = { gsSPTexture(-1, -1, 0, G_TX_RENDERTILE, G_ON), gsDPSetTextureLOD(G_TL_TILE),
        gsDPSetTexturePersp(G_TP_PERSP), gsDPSetTextureFilter(G_TF_BILERP), gsDPSetColorDither(G_CD_DISABLE),
        gsDPSetTextureDetail(G_TD_CLAMP), gsDPSetTextureConvert(G_TC_FILT), gsDPSetCombineKey(G_CK_NONE), gsDPSetAlphaCompare(G_AC_NONE) };
-   static NdSDef it_setup2 = { it_setup2_u, 10 }, it_spark = { it_spark_u, sizeof it_spark_u / sizeof it_spark_u[0] };
+   static NdSDef it_setup2 = { it_setup2_u, 10 }, it_spark_a = { it_spark_a_u, sizeof it_spark_a_u / sizeof it_spark_a_u[0] },
+       it_spark_b = { it_spark_b_u, sizeof it_spark_b_u / sizeof it_spark_b_u[0] };
    ```
-   If ItemEntityLights is defined after S5ITEM1's block, move only these two defs to right after its definition.
+   If ItemEntityLights is defined after S5ITEM1's block, move only the it_spark defs to right after its definition.
 2. render_item_entities :1174-1180 ->
    `if (gSpriteShadingProfile->flags != 0) ND_RM_REC(Gfx_RM2_ALPHATEST); else ND_RM_REC(Gfx_RM1_ALPHATEST);`
    `nd_scomp_rec(&it_setup2, NULL, 0);`
 3. :1191-1201 (the inner `if (item->flags & (TRANSPARENT | HIDING))` block) ->
    `if (gSpriteShadingProfile->flags != 0) nd_scomp_rec(&it_xlu_sh, NULL, 0);`
    `else { Gfx v[1]; gDPSetPrimColor(&v[0], 0, 0, 255, 255, 255, alpha); nd_scomp_rec(&it_xlu, v, 1); }` inside the same if.
-4. draw_coin_sparkles :195-207 -> `{ Gfx v[3]; Gfx* p = v; gSPSetLights1(p++, ItemEntityLights); nd_scomp_rec(&it_spark, v,
-   (unsigned)(p - v)); }`. Expected nv 3 (a `scomp: def ... has N value units` line means the macro wrote another count: stop).
+4. draw_coin_sparkles :195-207 -> `{ Gfx v[3]; Gfx* p = v; gSPSetLights1(p++, ItemEntityLights); nd_scomp_rec(&it_spark_a, v,
+   (unsigned)(p - v)); nd_scomp_rec(&it_spark_b, NULL, 0); }`. Expected nv 3 for it_spark_a (a `scomp: def ... has N value units` line means the macro wrote another count: stop).
 
 ## Gate (expected values)
 - Speed rule (oracle 5): a bench list runs at one speed; spot_mac00_det is a turbo bench (bench_defs speed turbo), every

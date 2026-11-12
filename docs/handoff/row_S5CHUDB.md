@@ -34,15 +34,28 @@ After this row a mode 2 call records only the NDC_NAPI record; modes 0 and 1 kee
       ```
    d. The gSPPopMatrix and gDPPipeSync after the switch (:1839-1840): under TARGET_3DS `if (!cplx_direct) { both }`.
 
+## Try 2 (oracle 5): every mode 2 call fell back (napicen_btl: 41 of 41 `why 40`)
+- Named cause (code read): nd_tex_blk_desc (3ds/src/nd_direct.c:363-366) refuses `w * h > 2048`. That cap is the 16-bit limit.
+  gDPLoadTextureBlock of an 8-bit image loads it as 16-bit words: texels ((w * h + 1) >> 1) - 1 <= 2047, so an IA8 block holds up
+  to 4096 texels (4 KB TMEM). An IA8 complex HUD image of 48 x 48 (2304) or 64 x 64 (4096) is refused. The other two checks
+  (nd_direct_ready, nd_direct_bind) are the same as hud_rect_direct's, which passes in the same frames (no why 31-34 lines).
+- Fix 1 (nd_direct.c:364): replace `w * h > 2048` by `(((unsigned)(w * h) << siz) >> 1) > 4096u` (bytes of the image: 4b half a
+  byte per texel, 8b one, 16b two, 32b four; siz is G_IM_SIZ_4b..32b = 0..3).
+- Fix 2 (cplx_quad_run in hud_element.c): name the failing check in the census: `why 41` nd_tex_blk_desc, `why 42`
+  nd_direct_ready, `why 43` nd_direct_bind. Write the three tests as separate ifs, each calling nd_direct_fallback with its value
+  and then the old ops block (one shared label or a helper).
+- Both fixes in one commit on branch S5CHUDB (it holds 0d2556b76). Budget reset once.
+
 ## Gate (expected values)
-- Build, memcheck OK; `bench.py run nd_host --row S5CHUDB --why "S5CHUDB nd_host"`: PASS.
-- `bench.py base battle_wheel_nowide_det`, `bench.py base spot_mac01_det`; one list `bench.py run
-  battle_wheel_nowide_det,spot_mac01_det,napicen_btl --row S5CHUDB --why "S5CHUDB: complex HUD quads direct"` (3 starts).
+- Build, memcheck OK; `bench.py run nd_host --row S5CHUDB --why "S5CHUDB try 2"`: PASS (nd_direct_test's nd_tex_blk_desc case
+  still passes; add a case 48 x 48 IA8 -> 1).
+- `bench.py base battle_wheel_nowide_det` and `bench.py base spot_mac01_det` (merge-base); one list `bench.py run
+  battle_wheel_nowide_det,spot_mac01_det,napicen_btl --row S5CHUDB --why "S5CHUDB try 2: blk cap"` (3 starts).
   cmp: battle_wheel_nowide_det 1/1, spot_mac01_det 6/6 byte-equal.
-- napicen_btl (no base: compare with the S5CHUDA-merge main run in runs.jsonl, or hand back both): hud_element.o ops per frame
-  drop; a mode 2 call records 0 typed ops. No `napihud fallback ... why 40` line in the battle_wheel_nowide_det log.
+- napicen_btl log: 0 lines with why 41. A why 42 or 43 line: stop and hand back the count per why (the cause is then the
+  walker state, and the oracle reads that path). hud_element.o ops per frame: hand back the value (expected lower than main's).
 - Budget 8 Azahar starts.
 
 ## Stop
-A byte difference or a why 40 line: stop, commit, hand back (2 tries per named cause). Delete this row file in the completing
-commit.
+A byte difference or a why 41-43 line: stop, commit, hand back (2 tries per named cause). Delete this row file in the
+completing commit.
