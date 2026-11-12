@@ -413,8 +413,16 @@ void nd_ops_run(const void* l, unsigned n, int keep) {
 /* NATIVEAPI S4 (nd_api.h NdParts): the core 0 runner of a particle run. Per instance: the pre units on the walker, the list drawn natively
  * (nd_part_draw) or run as a list (nd_ops_run, keep), the post units on the walker. One list start for the run (gv_epoch once: the state
  * ops of the units bump it themselves). */
+static unsigned pr_v, pr_old, pr_next = 300u;
+static __attribute__((cold, noinline)) void pr_cen(void) {
+    const unsigned f = pm_frame_count();
+    pr_next = (f / 300u + 1u) * 300u;
+    pm_log_evt("partsrun f%u v %u old %u", f, pr_v, pr_old);
+}
 void nd_parts_run(const uint32_t* u) {
     PM_WALK_OWN();
+    pr_old++;
+    if (__builtin_expect(pm_frame_count() >= pr_next, 0)) pr_cen();
     const unsigned n = u[0] & 0xffu, pre = (u[0] >> 8) & 0xffu, m = (u[0] >> 16) & 0xffu;
     pm_walk_side++;
     gv_epoch++; /* GV1b */
@@ -429,6 +437,54 @@ void nd_parts_run(const uint32_t* u) {
         nd_walk_state(p + 2u * (pre + 1u), m - pre - 1u);
     }
     pm_comb_vprim = 0; sc_ok = 0; sync_combine(); /* S4COL: the normal plan is back in gs before the next walker draw */
+    pm_walk_side--;
+    gv_streak_flush();
+    tex_streak_flush();
+}
+/* NATIVEAPI S4 (S4PDIR): the runner of a run whose units are all MTX, PRIM, ENV, TILESIZE, POPMTX and the list call (nd_rec.c nd_parts_end).
+ * The frame of nd_parts_run; each unit goes to its setter by id with what nd_walk_state does around it: the skip test and gv_epoch of a scalar
+ * op (op_typed), pm_gbi_cur_op, the cold bad-matrix check of NDO_MTX (op_geo: no gv_epoch for a matrix op). With a walker debug switch on, the
+ * units take nd_walk_state (the census hooks live there). */
+static inline void part_units(const uint32_t* p, unsigned n) {
+    for (; n; n--, p += 2) {
+        const unsigned id = p[0] >> 24;
+        const u32 a = p[0] & 0xffffffu, b = p[1];
+        pm_gbi_cur_op = nd_op_n64[id - NDO_BASE];
+        switch (id) {
+        case NDO_MTX:
+            if (!is_host((u32)(uintptr_t)ptr_of(b))) gbi_cold_bad_mtx(a, b, (Gfx*)p, (Gfx*)p + 1);
+            load_mtx(a, b, 0);
+            break;
+        case NDO_POPMTX: gbi_popmtx(b); break;
+        default:
+            if (nd_op_same(p)) break;
+            gv_epoch++; /* GV1b */
+            if (id == NDO_PRIM) nd_set_prim(a, b);
+            else if (id == NDO_ENV) gbi_setenv(b);
+            else nd_set_tilesize(a, b);
+            break;
+        }
+    }
+}
+void nd_parts_run_v(const uint32_t* u) {
+    PM_WALK_OWN();
+    pr_v++;
+    if (__builtin_expect(pm_frame_count() >= pr_next, 0)) pr_cen();
+    const unsigned n = u[0] & 0xffu, pre = (u[0] >> 8) & 0xffu, m = (u[0] >> 16) & 0xffu;
+    const unsigned dbg = pm_walk_dbg;
+    pm_walk_side++;
+    gv_epoch++; /* GV1b */
+    dlc_on = 1;
+    gp_prev_op = -1;
+    extern int pm_comb_vprim; pm_comb_vprim = 1; sc_ok = 0; /* S4COL */
+    const uint32_t* p = u + 2;
+    for (unsigned k = 0; k < n; k++, p += 2u * m) {
+        if (__builtin_expect(dbg, 0)) nd_walk_state(p, pre); else part_units(p, pre);
+        const uint32_t* l = (const uint32_t*)ptr_of(p[2u * pre + 1u]);
+        if (!nd_part_draw(l)) nd_ops_run(l, ND_LIST_MAX, 1);
+        if (__builtin_expect(dbg, 0)) nd_walk_state(p + 2u * (pre + 1u), m - pre - 1u); else part_units(p + 2u * (pre + 1u), m - pre - 1u);
+    }
+    pm_comb_vprim = 0; sc_ok = 0; sync_combine();
     pm_walk_side--;
     gv_streak_flush();
     tex_streak_flush();
