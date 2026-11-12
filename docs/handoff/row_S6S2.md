@@ -34,11 +34,17 @@ functions of msg.c later).
    `{ Gfx scv[2]; gSPViewport(&scv[0], &D_8014C280); gSPMatrix(&scv[1], OS_K0_TO_PHYSICAL(matrix), G_MTX_NOPUSH | G_MTX_LOAD |
    G_MTX_PROJECTION); nd_scomp_rec(&msg_range, scv, 2); }`. `#else` keeps the old lines.
 
-## Gate
-- Build, memcheck OK; nd_host PASS.
-- The talk det scene with shots (pre-flight `bench.py list --tag pic`; msgbox_talk_nowide_pic if det, else the det scene
-  napicen_talk uses), plus pause_tab_det_pic. Bases, one list (2 starts), `bench.py cmp` both: every shot byte-equal.
-- `bench.py run s6chk_mac01 --row S6S2 --why "s6chk"` (1 start): every `s6chk ... bad <b>` line has b = 0. No `scomp: def` error line. Budget 5.
+## Gate (try 2, oracle 4: the talk scene had no det)
+- Done (code 7eff04aa2): build, memcheck, nd_host PASS, pause_tab_det_pic 101/101 byte-equal vs 95aec5aee, s6chk_mac01 f200
+  `bad 0`. The pause scene does not draw this prologue: it runs only inside the printer loop of render_messages for an open
+  message printer (msg.c:595-602); the pause menu draws its text with draw_msg, not printers. So the talk gate is needed.
+- Step 1: `git merge main` (NAPI3B is merged and added the det talk scene msgbox_talk_det: `preset=yard nowide uishow=talk
+  shots shotwin=330:1 loglevel=debug det`, until frame 330; it edits msg_draw.c, not msg.c, so no conflict). Do not edit any
+  scenario. The base commit is then `git merge-base HEAD main` (the main you merged): use it as `--commit <that hash>`.
+- `PM_ROW=S6S2 PM_LANE=S6S2 python 3ds/tools/bench.py base msgbox_talk_det --commit <merge-base>` (stored already, or 2 runs;
+  expected 1 shot). Rebuild after the merge; nd_host PASS.
+- `python 3ds/tools/bench.py run msgbox_talk_det --row S6S2 --why "S6S2 talk gate"` (1 start); `bench.py cmp msgbox_talk_det
+  --row S6S2 --commit <merge-base>`: byte-equal. At most 3 starts (3 of 5 left).
 
 ## Stop
 A byte difference or a scomp error line: stop, commit, hand back. Delete this row file in the completing commit.

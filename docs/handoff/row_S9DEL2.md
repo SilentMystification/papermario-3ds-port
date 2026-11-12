@@ -19,6 +19,11 @@ S9DEL1 merged. `sh 3ds/tools/wt_new.sh S9DEL2`; PM_ROW=S9DEL2 PM_LANE=S9DEL2.
 - nd_geom.c: the gv walker part (gv_tri state checks, nd_gv_params per range). Native mesh draws stay.
 - nd_mtx_set.c: the list matrix stack, if no native caller is left. Native records carry float matrices.
 - The nd_ws fields that only these read (nd.h NdWs).
+- src/sprite.c (oracle 4): spr_state_run and spr_flat_gfx's unshaded arm. The native sprite reads its texture from the record
+  (pm_gpu_spr_build, spr_build_rare: raster and palette words), so the TLUT and texture block ops of spr_state_run feed only the
+  walker tile model and the sprite fallback (nd_walk_spr). Delete them with set_tilesize, and delete the record (nd_rec_napi of
+  spr_state_run). The SPR_SHADING_FLAG_SET_VIEWPORT arms (the vpAlt pass, spr_final_list, SprFinal*) are dead code: the flag is
+  never set (include/enums.h:5223). Delete them in this row too.
 
 ## Gate (expected values)
 - Full build, memcheck OK; nd_host PASS (the converter host test passes from its new place).

@@ -12238,6 +12238,55 @@
       "reason": "MSGBOX row. The debug hook uishow (pm_warp.c) opens the messages at scene frame 200 (global frame about 249) with no input; one shot after the text is printed. Cap 30 s: cold start 12 to 16 s plus about 9 s of game time."
     },
     {
+      "name": "msgbox_talk_det",
+      "status": "unverified",
+      "subject": "Yard (kmr_20), 4:3, uishow=talk as msgbox_talk_nowide with the det switch. Shot at frame 330.",
+      "proves": "NAPI3B: the glyphs of the talk box and the tattle bubble are drawn by the direct executor; the shot is byte-equal to the base build.",
+      "debug": "preset=yard nowide uishow=talk shots shotwin=330:1 loglevel=debug det",
+      "until": "shot \\d+ frame 330\\b",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "hook",
+          "regex": "debug uishow: talk opened f200"
+        }
+      ],
+      "reason": "NAPI3B byte gate: msgbox_talk_nowide with det. Cap 30 s, deadline 25 s."
+    },
+    {
+      "name": "glyph_fncov_talk",
+      "status": "unverified",
+      "subject": "NAPI3B: the talk scene of msgbox_talk_det with no shots, census of walker frame 330 (draw function call counts) and the glyph census line.",
+      "proves": "NAPI3B: pm_gpu_tex_rect calls equal base and head; nd_walk_state calls lower by the glyph count; gfb 0.",
+      "debug": "preset=yard nowide uishow=talk fncov=330 loglevel=debug det",
+      "extra": [],
+      "until": "fncov f\\d+ done",
+      "cap": 45,
+      "deadline": 25,
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "fncov done",
+          "regex": "fncov f\\d+ done"
+        }
+      ],
+      "reason": "NAPI3B census: the talk scene with the fncov census of frame 330 (census lane only). Log only."
+    },
+    {
       "name": "msgbox_choice",
       "status": "unverified",
       "subject": "Yard (kmr_20). uishow=choice opens the save choice MSG_Choice_000A; Save is the selected option (rainbow, wave, drop shadow). drawcensus at frame 298, shot at frame 300. Wide on.",

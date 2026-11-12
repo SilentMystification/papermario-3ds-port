@@ -32,10 +32,23 @@ Gfx D_80074230[] = {
     gsSPEndDisplayList(),
 };
 
+#ifdef TARGET_3DS
+#include "nd_scomp.h"
+/* S6S1: the two init lists as compiled state ranges (nd_scomp.h). The counts leave out the End unit. D_80074230 has one value unit
+ * (the viewport, unit 0); D_80074210 has none. */
+static NdSDef init_def_vp = { D_80074230, 4 };
+static NdSDef init_def_rm = { D_80074210, 3 };
+#endif
+
 void gfx_init_state(void) {
     gSPSegment(gMainGfxPos++, 0x00, 0x0);
+#ifdef TARGET_3DS
+    nd_scomp_rec(&init_def_vp, &D_80074230[0], 1);
+    nd_scomp_rec(&init_def_rm, NULL, 0);
+#else
     gSPDisplayList(gMainGfxPos++, OS_K0_TO_PHYSICAL(D_80074230));
     gSPDisplayList(gMainGfxPos++, OS_K0_TO_PHYSICAL(D_80074210));
+#endif
 }
 
 void gfx_frame_filter_pass_0(const u16* frameBuffer0, const u16* frameBuffer1, s32 y, s32 x, Color_RGBA8* out) {
