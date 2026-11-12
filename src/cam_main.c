@@ -112,6 +112,35 @@ void update_cameras(void) {
 extern int pm_ph_on;
 extern void pm_gbi_mdl_mark(unsigned id, int pan); /* T1B: names the task tail rows 0xF0E0 + k */
 #define T1_MARK(k) do { if (pm_ph_on) pm_gbi_mdl_mark(0xF0E0u + (k), 0); } while (0)
+#include "nd_scomp.h"
+/* S6T: the camera setup range of render_frame as a compiled state range (nd_scomp.h). The units in the order of the N64 code below; the
+ * viewport, scissor, colour image and matrix are value units (placeholders here, the record carries them per camera). The persp
+ * normalize word is a no-op state unit (no field), so the ortho camera, which skips it, runs the same range. */
+static const Gfx cam_range_u[] = {
+    gsSPViewport(0),
+    gsSPClearGeometryMode(G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH),
+    gsSPTexture(0, 0, 0, G_TX_RENDERTILE, G_OFF),
+    gsDPSetCycleType(G_CYC_1CYCLE),
+    gsDPPipelineMode(G_PM_NPRIMITIVE),
+    gsDPSetScissor(G_SC_NON_INTERLACE, 0, 0, 0, 0),
+    gsDPSetTextureLOD(G_TL_TILE),
+    gsDPSetTextureLUT(G_TT_NONE),
+    gsDPSetTextureDetail(G_TD_CLAMP),
+    gsDPSetTexturePersp(G_TP_PERSP),
+    gsDPSetTextureFilter(G_TF_BILERP),
+    gsDPSetTextureConvert(G_TC_FILT),
+    gsDPSetCombineMode(G_CC_SHADE, G_CC_SHADE),
+    gsDPSetCombineKey(G_CK_NONE),
+    gsDPSetAlphaCompare(G_AC_NONE),
+    gsDPSetRenderMode(G_RM_OPA_SURF, G_RM_OPA_SURF2),
+    gsDPSetColorDither(G_CD_DISABLE),
+    gsSPClipRatio(FRUSTRATIO_2),
+    gsDPSetColorImage(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, 0),
+    gsDPPipeSync(),
+    gsSPPerspNormalize(0),
+    gsSPMatrix(0, G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION),
+};
+static NdSDef cam_range = { cam_range_u, sizeof cam_range_u / sizeof cam_range_u[0] };
 #else
 #define T1_MARK(k) ((void)0)
 #endif
@@ -152,12 +181,17 @@ void render_frame(s32 isSecondPass) {
             s32 lrx;
             s32 lry;
 
+#ifdef TARGET_3DS
+            Gfx scv[4]; /* S6T: the value units of cam_range */
+            gSPViewport(&scv[0], PM_VP(&camera->vp));
+#else
             gSPViewport(gMainGfxPos++, PM_VP(&camera->vp));
             gSPClearGeometryMode(gMainGfxPos++, G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN |
                                     G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
             gSPTexture(gMainGfxPos++, 0, 0, 0, G_TX_RENDERTILE, G_OFF);
             gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
             gDPPipelineMode(gMainGfxPos++, G_PM_NPRIMITIVE);
+#endif
 
             ulx = camera->viewportStartX;
             uly = camera->viewportStartY;
@@ -190,6 +224,10 @@ void render_frame(s32 isSecondPass) {
                 lry = SCREEN_HEIGHT;
             }
 
+#ifdef TARGET_3DS
+            gDPSetScissor(&scv[1], G_SC_NON_INTERLACE, ulx, uly, lrx, lry);
+            gDPSetColorImage(&scv[2], G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
+#else
             gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, ulx, uly, lrx, lry);
             gDPSetTextureLOD(gMainGfxPos++, G_TL_TILE);
             gDPSetTextureLUT(gMainGfxPos++, G_TT_NONE);
@@ -210,12 +248,18 @@ void render_frame(s32 isSecondPass) {
             if (!(camera->flags & CAMERA_FLAG_ORTHO)) {
                 gSPPerspNormalize(gMainGfxPos++, camera->perspNorm);
             }
+#endif
 
             FI_OPEN("camera_persp", 0);
             guMtxF2L(camera->mtxPerspective, &gDisplayContext->camPerspMatrix[gCurrentCamID]);
             FI_CLOSE();
+#ifdef TARGET_3DS
+            gSPMatrix(&scv[3], &gDisplayContext->camPerspMatrix[gCurrentCamID], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
+            nd_scomp_rec(&cam_range, scv, 4);
+#else
             gSPMatrix(gMainGfxPos++, &gDisplayContext->camPerspMatrix[gCurrentCamID], G_MTX_NOPUSH | G_MTX_LOAD |
                         G_MTX_PROJECTION);
+#endif
         }
 
         camera->mtxBillboard = &gDisplayContext->matrixStack[gMatrixListPos];

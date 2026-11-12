@@ -41,8 +41,27 @@ No running row edits these places. NAPI3B edits msg_draw.c, and S1PREV and S1STE
      `{ NdFillRec q = { left, top, right, bottom, (u32)r << 24 | (u32)g << 16 | (u32)b << 8 | a, a == 255 ? 2u : 3u }; nd_rec_napi(nd_fill_run, &q, 3); }`;
    - keep the trailing PipeSync, TEX_EDGE render mode and DECALRGBA combine lines (later walker draws inherit them).
    The `#else` keeps the old lines.
+2b. S1FILL gap, fixed here. fill_run skips off_screen_check. The walker fill (nd_rect.c:306-334) handles a CPU-fill or depth
+   colour image (img_role(1)) and calls off_screen_check (:327) before it draws. Make nd_fill_run start with
+   `if (!nd_direct_ready()) { fallback; return; }`. nd_direct_ready refuses every colour image that is not the main target.
+   Fallback: into `static Gfx buf[8]`, with the gbi macros, write SetCombineMode and SetRenderMode of the kind's table row,
+   SetPrimColor from rgba, and `gDPFillRectangle(p++, x0, y0, x1, y1)` (the record's exclusive lower right, as the call site
+   passed it). Then `nd_walk_state((const uint32_t*)buf, (unsigned)(p - buf));`. The walker fill then takes its own path for
+   those images. Count it: `static unsigned nfb; if (nfb++ < 16) pm_log_d("fill fallback f%u", pm_frame_count());`.
 3. Pre-flight check (do it, hand back the line if it fails): `grep -n "nd_rec_napi" 3ds/include/nd_api.h` shows the 3-argument form
    (nd_api.h:11), and `grep -n "fill_run" src/screen_overlays.c` shows the S1FILL runner you move.
+
+## Try 2 (row fault: try 1 did not list the host-test link; the orchestrator resets the budget once)
+Fact: code 7dd4a8ee6 builds, but nd_host fails to link 3ds/tools/nd_direct_test.c (nd_host_test.sh:45 links nd_direct_test.c and
+nd_api.c only; the test includes nd_direct.c): `undefined reference to pm_gpu_set_replace` and `pm_gpu_fill_rect`, which
+nd_fill_run now calls. Step: in 3ds/tools/nd_direct_test.c, next to the other pm_gpu_* stubs (:56-68), add test stubs with the
+signatures of 3ds/include/pm_gpu.h:109-110:
+`void pm_gpu_set_replace(int on) { (void)on; }` and
+`void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba) { (void)x0; (void)y0; (void)x1; (void)y1; (void)rgba; }`.
+If the link then names nd_walk_state (the step 2b fallback), add `void nd_walk_state(const uint32_t* q, unsigned n) { (void)q;
+(void)n; }` the same way. Do not change nd_host_test.sh. Then run the gate below.
+Merge note: S5TRECT runs at the same time and also appends to the end of nd_api.h and nd_direct.c. Before your final gate run,
+`git merge main`. If S5TRECT merged first, keep both appends: yours first, then S5TRECT's, or the order main has.
 
 ## Gate (expected values)
 - Build, memcheck OK; nd_host PASS.
