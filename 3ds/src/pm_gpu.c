@@ -2026,9 +2026,89 @@ static void eye_put(float e) {
     GPUCMD_AddWrites(GPUREG_VSH_FLOATUNIFORM_DATA, w, 4);
     eye_gpu = e;
 }
+/* INTERP2M debug (switch icmp): the GPU command words of the t = 0.5 frame (kind 1) and of the key frame (kind 2) of one step, compared in
+ * order. icmp_take reads the list entries queued since its cursor (sr_take, before each clear) and appends their (register, value) pairs to
+ * the current frame in ic_blk. icmp_frame (the frame end, before C3D_FrameEnd) keeps the pairs as the L copy, or compares them with the kept L.
+ * Entry: type 0x01 (command list), data[1] the list address, data[2] its size in bytes (as sr_replay). Words: [param0][header][param1..paramk],
+ * header bits 0-15 register, 16-19 mask, 20-27 k, 31 consecutive, padded to an even word count (rd_upto). Cold: runs only under the switch. */
+#define IC_HALF 16384u /* pairs per frame: the 256 KB block holds the current frame and the kept L (8 bytes a pair) */
+extern int pm_icmp_kind; /* pm_nusys.c: 0 plain, 1 L, 2 K */
+static u32* ic_blk;      /* 256 KB from malloc at first use: current pairs at 0, the kept L at 2 * IC_HALF */
+static unsigned ic_n, ic_ln; /* pairs in the current frame, pairs in the kept L (0: none) */
+static unsigned ic_from; /* the queue cursor of the icmp takes */
+static unsigned ic_pairs, ic_wl, ic_wk, ic_du, ic_da, ic_dt, ic_do, ic_lenmis, ic_lost, ic_nol; /* the window of one icmp log line */
+static unsigned ic_oc[0x400]; /* O registers that differ, the window */
+static __attribute__((cold, noinline)) void ic_add(unsigned reg, u32 v) {
+    if (reg >= 0x400u) return;
+    if (ic_n >= IC_HALF) { ic_lost++; return; }
+    ic_blk[2u * ic_n] = reg; ic_blk[2u * ic_n + 1u] = v; ic_n++;
+}
+static __attribute__((cold, noinline)) void ic_list(const u32* cb, unsigned nw) {
+    unsigned i = 0;
+    while (i + 1 < nw) {
+        u32 h = cb[i + 1];
+        unsigned k = (h >> 20) & 0xFFu, reg = h & 0xFFFFu;
+        if (i + 2 + k > nw) break;
+        const int cons = (int)(h >> 31);
+        for (unsigned j = 0; j <= k; j++) ic_add(cons ? reg + j : reg, j ? cb[i + 1 + j] : cb[i]);
+        i += k + 2 + (k & 1u);
+    }
+}
+static __attribute__((cold, noinline)) void ic_cmp(const u32* k, unsigned nk, const u32* l, unsigned nl) {
+    ic_wl += nl; ic_wk += nk;
+    if (nl != nk) { ic_lenmis++; return; } /* the compare stops at a length mismatch */
+    for (unsigned i = 0; i < nk; i++) {
+        ic_pairs++;
+        if (k[2u * i] == l[2u * i] && k[2u * i + 1u] == l[2u * i + 1u]) continue;
+        const unsigned r = k[2u * i];
+        if (r >= 0x2C0u && r <= 0x2C8u) ic_du++;
+        else if (r >= 0x200u && r <= 0x227u) ic_da++;
+        else if (r >= 0x110u && r <= 0x12Fu) ic_dt++;
+        else { ic_do++; ic_oc[r]++; }
+    }
+}
+static __attribute__((cold, noinline)) void ic_log(void) { /* every 300 compared pairs: the two lines, then the window is zeroed */
+    char ob[200]; unsigned n = 0;
+    pm_log_hw("icmp f%u pairs %u wl %u wk %u diff U %u A %u T %u O %u lenmis %u lost %u nol %u", pm_frame_count(), ic_pairs, ic_wl, ic_wk,
+              ic_du, ic_da, ic_dt, ic_do, ic_lenmis, ic_lost, ic_nol);
+    n = (unsigned)snprintf(ob, sizeof ob, "icmpo f%u", pm_frame_count());
+    for (int t = 0; t < 8; t++) {
+        unsigned best = 0, br = 0;
+        for (unsigned r = 0; r < 0x400u; r++) if (ic_oc[r] > best) { best = ic_oc[r]; br = r; }
+        if (!best) break;
+        n += (unsigned)snprintf(ob + n, sizeof ob - n, " r%03x:%u", br, best);
+        ic_oc[br] = 0;
+    }
+    pm_log_hw("%s", ob);
+    memset(ic_oc, 0, sizeof ic_oc);
+    ic_pairs = ic_wl = ic_wk = ic_du = ic_da = ic_dt = ic_do = ic_lenmis = ic_lost = ic_nol = 0;
+}
+static __attribute__((cold, noinline)) void icmp_take(gxCmdQueue_s* q) {
+    if (q->numEntries < ic_from) { ic_lost++; ic_from = 0; } /* cleared without a take */
+    if (pm_icmp_kind && !ic_blk) ic_blk = (u32*)malloc(256u * 1024u);
+    for (unsigned i = ic_from; i < q->numEntries; i++) {
+        const gxCmdEntry_s* e = &q->entries[i];
+        if (pm_icmp_kind && ic_blk && (e->data[0] & 0xFFu) == 0x01u) ic_list((const u32*)e->data[1], e->data[2] / 4u);
+    }
+    ic_from = q->numEntries;
+}
+static __attribute__((cold, noinline)) void icmp_frame(gxCmdQueue_s* q) { /* the frame end: the rest of the queue, then the frame kind decides */
+    icmp_take(q);
+    if (pm_icmp_kind == 1 && ic_blk) { memcpy(ic_blk + 2u * IC_HALF, ic_blk, ic_n * 8u); ic_ln = ic_n; }
+    else if (pm_icmp_kind == 2 && ic_blk) {
+        if (!ic_ln) ic_nol++;
+        else {
+            ic_cmp(ic_blk, ic_n, ic_blk + 2u * IC_HALF, ic_ln);
+            if (ic_pairs >= 300u) ic_log();
+        }
+        ic_ln = 0;
+    }
+    ic_n = 0; ic_from = 0; pm_icmp_kind = 0;
+}
 /* the entries queued since the last take go into the record (called before the queue is cleared: pm_gx_room, pm_gx_drain, and at the frame end) */
 static void sr_take(void) {
     gxCmdQueue_s* q = (gxCmdQueue_s*)&__C3D_Context;
+    if (__builtin_expect(PMDL("icmp"), 0)) icmp_take(q); /* INTERP2M */
     if (!sr_on) { sr_from = 0; return; }
     if (q->numEntries < sr_from) { sr_over = 1; sr_from = 0; } /* cleared by someone else: entries are lost, the frame cannot replay */
     for (unsigned i = sr_from; i < q->numEntries; i++) { if (sr_n < SR_MAX) sr_ent[sr_n++] = q->entries[i]; else sr_over = 1; }
@@ -2180,7 +2260,7 @@ void pm_gx_room(void) {
     gxCmdQueue_s* q = (gxCmdQueue_s*)&__C3D_Context;
     sr_take(); /* STEREO: the record holds every entry before the queue is cleared (here, or by a citro3d texture load after this call) */
     if (q->numEntries < 24) return;
-    sr_from = 0;
+    sr_from = 0; ic_from = 0; /* INTERP2M: the take above read the entries before this clear */
     gxCmdQueueRun(q);
     gxCmdQueueWait(q, -1);
     gxCmdQueueStop(q);
@@ -2197,7 +2277,7 @@ void pm_gx_drain(void) {
     gxCmdQueue_s* q = (gxCmdQueue_s*)&__C3D_Context;
     sr_take();
     if (sr_on) { if (sr_n < SR_MAX) { memset(&sr_ent[sr_n], 0, sizeof sr_ent[0]); sr_ent[sr_n++].data[0] = SR_DRAIN; } else sr_over = 1; } /* STEREO: the replay waits here too */
-    sr_from = 0;
+    sr_from = 0; ic_from = 0; /* INTERP2M */
     gxCmdQueueRun(q);
     gxCmdQueueWait(q, -1);
     gxCmdQueueStop(q);
@@ -2632,6 +2712,7 @@ static void pm_gpu_end_w(void) {
     FS_MARK(FS_SWAP);
     PH_PUSH(PH_FEND);
     if (sr_on) sr_replay(); /* STEREO: the right eye */
+    if (__builtin_expect(PMDL("icmp"), 0)) icmp_frame((gxCmdQueue_s*)&__C3D_Context); /* INTERP2M: after the frame-end take, before the queue is cleared */
     ndunit_scan(); rd_sync(); C3D_FrameEnd(GX_CMDLIST_FLUSH);
     if (pm_ph_on) { gb_sub = pm_ticks(); gb_on = 1; } /* S0-6: submit tick of a sampled frame */
     PH_POP();
