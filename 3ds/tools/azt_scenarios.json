@@ -7062,7 +7062,7 @@
       "proves": "NAPI2B: the HUD rectangles of the open pause menu are drawn by the direct executor: nd_texrect calls drop by the HUD piece count, pm_gpu_tex_rect calls stay, hud_rect_emit (the fallback) runs 0 times on core 0.",
       "debug": "preset=toad padscript=wait80,START*3,wait100 fncov=200 loglevel=debug det",
       "extra": [],
-      "until": "fncov f\d+ done",
+      "until": "fncov f\\d+ done",
       "cap": 45,
       "deadline": 20,
       "first_marker": "warp: mac_00 entry 4",
@@ -7075,7 +7075,7 @@
         },
         {
           "name": "fncov done",
-          "regex": "fncov f\d+ done"
+          "regex": "fncov f\\d+ done"
         }
       ],
       "reason": "NAPI2B census: the pause_slotpeak start with the fncov census of frame 200 (census lane only). Log only; the until is the census done line."
