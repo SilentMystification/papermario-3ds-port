@@ -15,9 +15,8 @@ damage_stars debuff disable_x drop_leaves dust effect_46 effect_63 effect_65 eff
 `sh 3ds/tools/wt_new.sh S7EFX2`. PM_ROW=S7EFX2 PM_LANE=S7EFX2 on every call.
 
 ## Touch only
-3ds/tools/gen_gfx_tab.sh (the `# S7EFX2` line only); the src/effects/*.c files that call lists of the group (find them: for each
-g, `grep -ho "^Gfx [A-Za-z0-9_]*" src/effects/gfx/<g>.c assets/us/effects/gfx/*.inc.c` is not needed: grep the effect file
-src/effects/<g>.c and any file that includes the group's gfx headers for `gSPDisplayList(gMainGfxPos++,`); azt_scenarios.json and
+3ds/tools/gen_gfx_tab.sh (the `# S7EFX2` line only); the src/effects/*.c files whose `gSPDisplayList(gMainGfxPos++, X)` calls name a list of the group (for each g:
+src/effects/<g>.c, plus any file that grep shows naming a `Gfx` symbol of src/effects/gfx/<g>.c); azt_scenarios.json and
 bench_defs.json (one entry `fxpic_16`, right after `fxpic_63`).
 
 ## Exact edits
