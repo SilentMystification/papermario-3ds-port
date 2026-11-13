@@ -22,7 +22,8 @@ its start). New 3ds/tools/azt.d/AMBWARP.json, 3ds/tools/bench.d/AMBWARP.json. No
    demoState was %d, game mode %d"`.
 2. pm_warp_world_mode, at its start: debug switch ambchk (read once, as `static int ac = -1; if (ac < 0) ac =
    pm_debug_has("ambchk");`): when on, `pm_log_evt("ambchk f%u map %s stopped %d", frame, gAreas[gGameStatusPtr->areaID].maps[
-   gGameStatusPtr->mapID].id, snd_ambient_is_stopped(0) == AU_RESULT_OK);` (include "audio/public.h" if the file lacks it).
+   gGameStatusPtr->mapID].id, rc == AU_RESULT_OK || rc == AU_AMBIENCE_ERROR_3);` with `AuResult rc = snd_ambient_is_stopped(0);` before it (ORACLE8
+   correction 1: no ambient player at all, numActivePlayers 0, gives AU_AMBIENCE_ERROR_3 and is silent too: row_AMBTITLE.md) (include "audio/public.h" if the file lacks it).
 3. Scenario (all fields of the azt.d format, as 3ds/tools/azt.d/FPS60W2.json) in 3ds/tools/azt.d/AMBWARP.json: name
    `amb_warp_arn02_mac01`, status `unverified`, subject, proves, debug `warp=arn_02:0 story=ch0_toad_town tour=arn_02:0,mac_01:0
    tourtime=3 ambchk loglevel=debug det`, until `ambchk f\d+ map mac_01 `, cap 45, deadline 20, first_marker `warp: arn_02 entry 0`,
