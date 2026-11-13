@@ -1,7 +1,7 @@
 # Row N64DEL2: delete the N64-only branches of include and the src subfolders other than src/effects
 
 (Model: Haiku. 60 lines or fewer. N64DEL1's tools over more folders. Plan v3 phase H: C3 and C4 of these groups to 0.)
-## Code read (ORACLE8, main b8b314758, merged LISTCEN2 tool)
+## Code read (ORACLE8, refreshed at main 182ac5091: the block counts and the n64 counts below are unchanged; C3 272, C4 280)
 - TARGET_3DS blocks: include 14 files 27, src/world 12 files 38, src/entity 6 files 20, src/battle 9 files 19, src/pause 1 file 1,
   src/filemenu 5 files 18, src/audio 8 files 30, src/evt 4 files 5, src/os 1 file 1. Total 159.
 - N64-only counts (listcen groups): world build_n64 42 gfxpos_n64 47, entity 29 and 29, battle 36 and 41. Sum 107 and 117.
@@ -30,7 +30,7 @@ TARGET_3DS directive lines and the lines they guard.
 - `diff -r build3ds/out/pp_before build3ds/out/pp_after` prints nothing. Seeded fault first: append `int ppcmp_seed;` to one
   pp_after file, diff names it, delete the line.
 - `python 3ds/tools/listcen.py`: no group of src/world, src/entity, src/battle has a build_n64 or gfxpos_n64 line. Totals
-  build_n64 and gfxpos_n64 fall by 107 and 117 from the value before the row. Active build and gfxpos totals unchanged.
+  build_n64 and gfxpos_n64 fall from 272 and 280 to 165 and 163. Active totals stay build 3697 and gfxpos 3127.
 - `PM_ROW=N64DEL2 PM_LANE=N64DEL2 sh 3ds/build.sh > build3ds/out/build.txt 2>&1`: memcheck OK. nd_host PASS. Budget 0 Azahar.
 ## Stop and end
 A build error, a skip line that is not in the Facts, a block count other than 153, a changed active count, or a preprocessor
