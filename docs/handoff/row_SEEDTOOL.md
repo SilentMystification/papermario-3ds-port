@@ -22,7 +22,10 @@ New 3ds/tools/seedprobe.py. New names: none. Host link: none.
    d. `bench.py run <bench> --row $PM_ROW --why "seedprobe"` (output to build3ds/out/seedprobe_run.txt), then
       `bench.py cmp <bench> --row $PM_ROW` (output to build3ds/out/seedprobe_cmp.txt).
    e. `git checkout -- <files>` (restore), always, also after a fault.
-   f. Verdict, one line per seed: for `@<frame>`, compare the drec.txt sections of that frame in the run and in the base:
+   f. Verdict, one line per seed: for `@<frame>`, compare the drec.txt sections of that frame in the run and in the base, with
+      each `draw <n>` line read as `draw` (Correction 1, ORACLE8 2026-11-13: drec numbers the draws over the whole window, so a
+      seed that changes the draw count of an earlier frame renames every later draw; 88a8bd874 gave B live for that reason. The
+      draw count of the frame still counts, as the number of draw lines.):
       `seed <file>:<line> live (frame <f> differs)` or `seed <file>:<line> dead (frame <f> equal)`. For `@-`: live when cmp
       shows any difference. A tool fault (no run record, no drec.txt): `seedprobe tool-fault <text>`, exit 3.
    g. Option `--write <seeds file>` (the probe rows pass docs/handoff/row_SEEDS.md): for each verdict, the line of that file
@@ -30,6 +33,7 @@ New 3ds/tools/seedprobe.py. New names: none. Host link: none.
       set to the verdict. No such line: `seedprobe no-seed-line <file>:<line>`, exit 2.
    It prints nothing else on stdout.
 2. Commit: `SEEDTOOL: seedprobe.py gives one live or dead line per seed`.
+Resume after 88a8bd874 (base drecstep_89_33 stored, bad-spec passed; budget reset once): edit f, commit, then gate 1.
 ## Gate (expected values)
 1. On drecstep_89_33 (DRECSTEP, fxtest 89 at frame 412, 33 at 456): seed A =
    `src/effects/water_splash.c:183@412|guTranslateF(sp10, sp94, temp_fp, data->unk_04.z)|guTranslateF(sp10, sp94, temp_fp + 20.0f, data->unk_04.z)`.
