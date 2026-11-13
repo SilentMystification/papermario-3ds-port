@@ -1,0 +1,20 @@
+{
+  "benches": [
+    {
+      "name": "fxpic_89_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CONV2D2: draw records (drec.txt) of the water_splash frames 412 and 413 (fxtest=89), cold det start. Two runs of one build byte-equal; the head equals the base. The ntabrun line shows the native table run.",
+      "scenario": "fxpic_89_drec",
+      "cap": 40,
+      "until": "drec f413 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "drec"
+      ],
+      "gates": []
+    }
+  ]
+}

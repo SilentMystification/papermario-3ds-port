@@ -497,7 +497,7 @@ void nd_parts_run_v(const uint32_t* u) {
  * units all precede the statics (nv == pre, the S6E rule of ent_gap) runs compiled, else as units. A debug walk (pm_walk_dbg) runs the G_DL unit on
  * the walker so its census hooks see the list. Vertex and triangle ops are the walker's typed units (op_geo), so clip, cull, lit loads and the
  * ring stay the walker's. */
-unsigned nd_gtr_ent, nd_gtr_dlc, nd_gtr_ops;
+unsigned nd_gtr_ent, nd_gtr_dlc, nd_gtr_ops, nd_gtr_ntab;
 static void gt_ops(const NdGTab* t);
 static void gt_call(const NdGTab* c) { /* a table call inside a list: the walker's G_DL arm at depth */
     const Gfx* next = (const Gfx*)c->list;
@@ -565,6 +565,14 @@ int nd_ent_pieces(const EntPiece* p, unsigned n) {
     tex_streak_flush();
     return sc;
 }
+/* CONV2D2: the words of a v2 list (nd_gtab.h NdNDev) run with nd_walk_state: NOPs skipped there, the stop at n. */
+void nd_ntab_run(const NdNDev* e) { nd_walk_state((const uint32_t*)e->list, e->n); }
+/* CONV2D2: a list's ops: its v2 device entry when it has one, else its v1 table ops (gt_ops). */
+static void gt_body(const NdGTab* t) {
+    const NdNDev* nt = nd_ntab_find(t->list);
+    if (nt) { nd_gtr_ntab++; nd_ntab_run(nt); }
+    else gt_ops(t);
+}
 void nd_gtab_run(const uint32_t* rec) {
     PM_WALK_OWN();
     const NdGTab* t = (const NdGTab*)(uintptr_t)rec[0];
@@ -572,7 +580,7 @@ void nd_gtab_run(const uint32_t* rec) {
         static const uint32_t lst[2] = { NDO_W0(NDO_MISC, NDO_MISC_LST << 16), 0u };
         pm_walk_side++;
         nd_walk_state(lst, 1u);
-        gt_ops(t);
+        gt_body(t);
         pm_walk_side--;
         return;
     }
@@ -598,7 +606,7 @@ void nd_gtab_run(const uint32_t* rec) {
     gp_prev_op = -1;
     pm_walk_side++;
     ex_depth = d + 1;
-    gt_ops(t);
+    gt_body(t);
     ex_depth = d;
     pm_walk_side--;
     gv_streak_flush();

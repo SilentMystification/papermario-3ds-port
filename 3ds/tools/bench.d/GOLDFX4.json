@@ -1,0 +1,71 @@
+{
+  "benches": [
+    {
+      "name": "gold_fx4_fncov",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "GOLDFX4: FXFNCOV census of snaking_static, water_block and embers (fxtest=81,84,105) in walker frame 412 (census lane <L>_fncov). Log only; covsites.py reads the log.",
+      "scenario": "gold_fx4_fncov",
+      "cap": 45,
+      "until": "fncov f\\d+ done",
+      "tags": [
+        "azahar",
+        "hotcode",
+        "fncov"
+      ],
+      "gates": []
+    },
+    {
+      "name": "gold_81_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "GOLDFX4: draw records (drec.txt) of snaking_static frames 412 and 413, cold det start. Two runs of one build byte-equal; the golden base of the conversion rows.",
+      "scenario": "gold_81_drec",
+      "cap": 40,
+      "until": "drec f413 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "drec"
+      ],
+      "gates": []
+    },
+    {
+      "name": "gold_84_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "GOLDFX4: draw records (drec.txt) of water_block frames 412 and 413, cold det start. Two runs of one build byte-equal; the golden base of the conversion rows.",
+      "scenario": "gold_84_drec",
+      "cap": 40,
+      "until": "drec f413 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "drec"
+      ],
+      "gates": []
+    },
+    {
+      "name": "gold_105_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "GOLDFX4: draw records (drec.txt) of embers frames 412 and 413, cold det start. Two runs of one build byte-equal; the golden base of the conversion rows.",
+      "scenario": "gold_105_drec",
+      "cap": 40,
+      "until": "drec f413 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "drec"
+      ],
+      "gates": []
+    }
+  ]
+}

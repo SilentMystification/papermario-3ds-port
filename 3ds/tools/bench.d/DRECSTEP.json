@@ -1,0 +1,20 @@
+{
+  "benches": [
+    {
+      "name": "drecstep_89_33",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "DRECSTEP: draw records of frames 412 and 456 (drec=412:2:44, fxtest effects 89 and 33). drec.txt has one frame line per recorded frame. A head build with the step switch equals the base at step 1 (spot_mac01_drec).",
+      "scenario": "drecstep_89_33",
+      "cap": 40,
+      "until": "drec f456 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "drec"
+      ],
+      "gates": []
+    }
+  ]
+}

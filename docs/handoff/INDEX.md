@@ -5,10 +5,10 @@ Live files only. Older logs are in archive/ (agent_*, diag_*, inv_*, plan_*, tra
 
 ## Rules and process
 - ../../CLAUDE.md: shared rules (tests, code, platform).
-- orchestrator_rules.md: orchestrator only (roles, rows without merge conflicts, merge steps, console); its Core block is printed every turn by the hook in .claude/settings.json. subagent_style.txt, subagent_hook.js: style hooks.
+- orchestrator_rules.md: orchestrator only (workstreams, roles, merge steps, console); its Core block is printed every turn by the hook in .claude/settings.json. subagent_style.txt, subagent_hook.js: style hooks. no_guess_hook.js, no_poll_hook.js: PreToolUse guards (no guess and check; no sleep, ping or tail --pid in Bash).
 - ../../.claude/agents/coder.md, oracle.md: agent definitions.
-- places.md: places (file and function names) of every open row; the orchestrator launches a row only when no open row owns its places.
 - plan_endgame.md: the closed plan to remove the display list system (census, gates, row families, counters, end proof); row_TESTIDEAS.md: the gate ideas and the host golden-master evaluation.
+- oracle_handoff.md: start file of a fresh oracle. ws_HUNIT.md, ws_A.md, ws_B.md, ws_C.md: workstream goal pages (deleted by the commit that completes each). design_state_calls.md: one native setter per state-call shape, readers, writers and edit order.
 - row_TEMPLATE.md: template for the row file each new agent reads first.
 - hw_guidelines.md: 3DS cache and ARM11 rules for all code (3 KB).
 - git_branches.md: tip hash of every branch deleted or kept in the row GIT cleanup (recovery record).

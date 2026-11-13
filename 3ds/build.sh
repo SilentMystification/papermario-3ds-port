@@ -133,7 +133,7 @@ gen_pso_tab >&2 # NPSO3
 
 # The inputs CMake reads (3ds/CMakeLists.txt, DECOMP = repo root). Nothing else reaches the build.
 # CODE_DIRS are read from this worktree; ASSET_DIRS from ASSET_BASE (see above).
-CODE_DIRS="3ds/CMakeLists.txt 3ds/effects.cmake 3ds/battle.cmake 3ds/maps.cmake 3ds/map_syms.lds LaunchIcon.png 3ds/ld 3ds/shaders 3ds/stub_include 3ds/include 3ds/src src include"
+CODE_DIRS="3ds/CMakeLists.txt 3ds/effects.cmake 3ds/battle.cmake 3ds/maps.cmake 3ds/map_syms.lds LaunchIcon.png 3ds/ld 3ds/shaders 3ds/stub_include 3ds/include 3ds/src 3ds/tools/cov.d src include"
 ASSET_DIRS="assets/us ver/us/build"
 for p in $CODE_DIRS; do
     [ -e "$p" ] || { echo "missing build input: $p" >&2; exit 1; }
@@ -147,7 +147,7 @@ done
 # in the key: a commit that only changes the build number does not rebuild. A PM_BUILD_REV build (bench build-at) always builds.
 # The skip also needs the source volume to carry the id of the last sync (SRCID, below): a recreated volume rebuilds.
 # build.sh is the only stale check: go.ps1 Invoke-Build and push_3ds.sh call it and never compare times themselves.
-KEY_IN="3ds/CMakeLists.txt 3ds/effects.cmake 3ds/battle.cmake 3ds/maps.cmake 3ds/map_syms.lds LaunchIcon.png 3ds/ld 3ds/shaders 3ds/stub_include 3ds/include 3ds/src src include docker/Dockerfile.build 3ds/build.sh"
+KEY_IN="3ds/CMakeLists.txt 3ds/effects.cmake 3ds/battle.cmake 3ds/maps.cmake 3ds/map_syms.lds LaunchIcon.png 3ds/ld 3ds/shaders 3ds/stub_include 3ds/include 3ds/src 3ds/tools/cov.d src include docker/Dockerfile.build 3ds/build.sh"
 KEY_FILE=$OUT/build_key.txt
 key_now() {
     {

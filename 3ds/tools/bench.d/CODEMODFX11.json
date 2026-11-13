@@ -1,0 +1,20 @@
+{
+  "benches": [
+    {
+      "name": "fxpic_81_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CODEMODFX11 drec gate: snaking_static (effect 81) draw records of frames 412 and 413, cold det start. Base against head byte-equal.",
+      "scenario": "fxpic_81_drec",
+      "cap": 40,
+      "until": "drec f413 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "drec"
+      ],
+      "gates": []
+    }
+  ]
+}

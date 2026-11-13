@@ -1,0 +1,104 @@
+{
+  "scenarios": [
+    {
+      "name": "gold_fx3_fncov",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, fxtest=12,55,63 (sparkles, effect_3D, snowfall) live in slots 400-531, census of walker frame 412.",
+      "proves": "GOLDFX3: coverage of src/effects/sparkles.c, effect_3D.c and snowfall.c by the fncov lane (draw functions instrumented, appendGfx call counts).",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=12,55,63 fncov=412:120 loglevel=debug det",
+      "extra": [],
+      "until": "fncov f\\d+ done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "fncov done",
+          "regex": "fncov f\\d+ done"
+        }
+      ],
+      "reason": "GOLDFX3 coverage: census of sparkles, effect_3D and snowfall (fncov lane, census only). Cap 45 s, deadline 40 s. Log only; the until is the census done line."
+    },
+    {
+      "name": "gold_12_drec",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, fxtest=12 (sparkles) live, cold det start with the drec switch: the draw records of frames 412 and 413 go to shots/drec.txt.",
+      "proves": "GOLDFX3: golden draw record of sparkles frames 412-413 is a function of the build (det), so a base and a conversion head give a byte-equal drec.txt when no draw changes.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=12 loglevel=debug det drec=412:2",
+      "extra": [],
+      "until": "drec f413 draws [1-9]\\d* bytes \\d+",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f413 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "reason": "GOLDFX3: fxtest=12 with drec=412:2 in place of the shots. Cold start, cap 40 s, deadline 35 s. The drec log line of frame 413 is the until."
+    },
+    {
+      "name": "gold_55_drec",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, fxtest=55 (effect_3D) live, cold det start with the drec switch: the draw records of frames 412 and 413 go to shots/drec.txt.",
+      "proves": "GOLDFX3: golden draw record of effect_3D frames 412-413 is a function of the build (det), so a base and a conversion head give a byte-equal drec.txt when no draw changes.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=55 loglevel=debug det drec=412:2",
+      "extra": [],
+      "until": "drec f413 draws [1-9]\\d* bytes \\d+",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f413 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "reason": "GOLDFX3: fxtest=55 with drec=412:2 in place of the shots. Cold start, cap 40 s, deadline 35 s. The drec log line of frame 413 is the until."
+    },
+    {
+      "name": "gold_63_drec",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, fxtest=63 (snowfall) live, cold det start with the drec switch: the draw records of frames 412 and 413 go to shots/drec.txt.",
+      "proves": "GOLDFX3: golden draw record of snowfall frames 412-413 is a function of the build (det), so a base and a conversion head give a byte-equal drec.txt when no draw changes.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=63 loglevel=debug det drec=412:2",
+      "extra": [],
+      "until": "drec f413 draws [1-9]\\d* bytes \\d+",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f413 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "reason": "GOLDFX3: fxtest=63 with drec=412:2 in place of the shots. Cold start, cap 40 s, deadline 35 s. The drec log line of frame 413 is the until."
+    }
+  ]
+}

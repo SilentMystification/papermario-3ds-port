@@ -1,0 +1,29 @@
+{
+  "scenarios": [
+    {
+      "name": "fxfncov_89_33",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, fxtest=89,33 (water_splash at 400-443, music_note at 444-487), census window of frames 412-487 (fncov=412:76).",
+      "proves": "COVMAP2 window census: fncov=<first>:<count> counts the frames first..first+count-1 in one run, so the calls of two effects are counted in one dump.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=89,33 fncov=412:76 loglevel=debug det",
+      "extra": [],
+      "until": "fncov f\\d+ done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "fncov done",
+          "regex": "fncov f\\d+ done"
+        }
+      ],
+      "reason": "COVMAP2 census window: water_splash and music_note draw functions over frames 412-487 in one run (fncov lane, census only). Cap 45 s, deadline 40 s. Log only; the until is the census done line."
+    }
+  ]
+}
