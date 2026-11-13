@@ -8,10 +8,7 @@ A shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json, bench_def
 |---|---|---|---|
 | PUSHLANE | Haiku | 3ds/go.ps1 :236-238; 3ds/push_3ds.sh :176; new 3ds/tests/push/lane.sh | ready |
 | HOSTDIR | Haiku | 3ds/tools/nd_host_test.sh one new line after `/tmp/kcc` (:73); new 3ds/tests/host.d/README.txt, 00_hostd.sh | ready (first: the 5 rows below wait for it) |
-| NOLIST | Haiku | new 3ds/tools/gen_nolist.py, 3ds/include/nd_nolist.h, 3ds/tests/host.d/nolist.sh | ready after HOSTDIR |
-| FRAMEHASH1 | Haiku | new 3ds/include/nd_fhash.h, 3ds/src/nd_fhash.c, 3ds/tools/nd_fhash_test.c, 3ds/tests/host.d/fhash.sh | ready after HOSTDIR |
 | FRAMEHASH2 | Haiku | 3ds/include/nd_fhash.h after nd_fh_words; 3ds/src/nd_fhash.c new functions after nd_fh_words; 3ds/tools/nd_fhash_test.c new cases at the end | waits for FRAMEHASH1 |
 | HOSTCORE2 | Sonnet | new 3ds/tools/host_c3d.c, host_core.c, host_core.h, 3ds/tests/host.d/hostcore.sh | ready (HOSTCORE1 merged) |
 | NPSO2 | Sonnet | new 3ds/src/nd_decide.c, 3ds/tools/nd_decide_test.c, 3ds/tests/host.d/decide.sh; nd.h one struct after NdTevOut; nd_comb.c nd_comb_decide and the code it moves; nd_tmpl.c only if needed | waits for NPSO1 |
 | FPS60VAL | Sonnet | 3ds/src/pm_gpu.c end of kc_build, end of pm_gpu_key_show; new 3ds/tools/kcval.py | not started (user decides) |
-| N64DEL1 / N64DEL2 / N64DEL3 | Haiku | new 3ds/tools/unifdef3ds.py and 3ds/tools/ppcmp.sh (N64DEL1, N64DEL2 edits their condition regex and gcc line); TARGET_3DS conditional lines of src/effects / include, src/world, src/entity, src/battle, src/pause, src/filemenu, src/audio, src/evt, src/os / src/*.c (N64DEL3 waits for N64DEL2) | ready |
