@@ -39,6 +39,12 @@ the cut is found while moving. Why not Opus: NPSO1 fixes the field list.
    of the capture) equals the old path (NdCombIn with the same fields, nd_comb_decide, nd_render_state, nd_tev_build) byte for byte. Prints `decide entries <n> bad 0`.
    A test that links nd_tmpl.c defines f32tof24 itself (copy 3ds/tools/nd_cmd_test.c:16-26, as the other host tests do).
 
+## Correction 2 (ORACLE8, hot_order.ld)
+The 4 hot names that moved into nd_decide.c (cc_const_in 176 calls/frame, decide 36, sync_legacy 40, cc_alpha_k 5.7: lines 18, 23,
+223, 27 of 3ds/ld/hot_order.ld on main) stay hot: do not delete their lines. Replace each name in place by the section of its new
+function (`*(.text.<new name>)`, GCC -ffunction-sections gives a static function its own section), keep the comment. Gate: the
+build output line `hotset: ... M2 linker ... stale 0` (no hot_order name missing from the map).
+
 ## Readers and writers
 Writers: nd_decide.c. Readers: nd_comb_decide (device, unchanged behaviour), NPSO3's generator, NPSO4's psochk. List every global
 the moved code read before and its NdPsoDesc field in the commit.

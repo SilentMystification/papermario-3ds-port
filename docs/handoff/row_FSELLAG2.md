@@ -43,8 +43,9 @@ Not src/draw_box.c (plan row NBOX waits).
 
 ## Gate (expected values)
 - Build, memcheck OK. nd_host PASS.
-- Byte compare (rule 2): `bench.py base fsel_det_pic` at the merge-base, run, `bench.py cmp fsel_det_pic --row FSELLAG`: every
-  shot byte-equal. Second scene `pause_tab_det_pic` (the pause flip shares the path): byte-equal.
+- Byte compare (rule 2, correction 1): the scene `fsel_pick_det_pic` of FSELLAG1 (shots 200-239 over the pick flip, the idle
+  fsel_det_pic and the pause shots after the flip do not reach pm_gpu_off_begin): base at the merge-base, run, cmp: 40/40
+  byte-equal. A seeded fault (projection width + 1 in pm_gpu_off_begin) must show a difference first.
 - Census: fsel_fncov_pick before and after: C3D_RenderTargetClear calls per pick frame and sh_clear calls per pick frame go down
   (hand back both pairs of numbers). Budget 8 Azahar starts.
 - The user checks the lag on the console (one push of the build after the merge).

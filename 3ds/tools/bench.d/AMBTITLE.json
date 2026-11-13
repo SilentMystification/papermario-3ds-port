@@ -1,0 +1,18 @@
+{
+  "benches": [
+    {
+      "name": "amb_title_arn02",
+      "kind": "azahar",
+      "speed": "normal",
+      "default": false,
+      "purpose": "AMBTITLE: return to the title from Gusty Gulch leaves the ambient MSEQ player silent (ambchk title line).",
+      "scenario": "amb_title_arn02",
+      "cap": 45,
+      "until": "ambchk title f\\d+ stopped ",
+      "tags": [
+        "azahar"
+      ],
+      "gates": []
+    }
+  ]
+}

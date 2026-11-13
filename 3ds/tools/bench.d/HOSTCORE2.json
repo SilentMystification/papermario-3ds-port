@@ -1,0 +1,21 @@
+{
+  "benches": [
+    {
+      "name": "spot_mac01_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "HOSTCORE2: draw records (drec.txt) of mac_01 frames 200 and 201, cold det start. Two runs of one build byte-equal; a conversion row's head equals the base.",
+      "scenario": "spot_mac01_drec",
+      "cap": 35,
+      "until": "drec f\\d+ draws \\d+ bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "drec"
+      ],
+      "gates": []
+    }
+  ]
+}
