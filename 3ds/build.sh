@@ -44,6 +44,16 @@ gen_map_restore() {
     if command -v py >/dev/null 2>&1; then py -3 3ds/tools/gen_map_restore.py >/dev/null
     else python3 3ds/tools/gen_map_restore.py >/dev/null; fi || { echo "gen_map_restore.py failed" >&2; exit 1; }
 }
+# BUILDLOCK: the engine must answer (a dead engine stops here, not in a docker call), then at most 3 builds run at once.
+# HOSTSLOT: the slot is taken before the generators (their docker runs are under the slot). A key-only call takes no slot.
+if [ -z "$PM_KEY_ONLY" ]; then
+. 3ds/tools/build_slot.sh
+build_docker_ok || build_docker_restart || { echo "BUILD FAULT: docker engine not answering in 20 s (docker info), restart not done. Restart Docker Desktop / WSL, then build again." >&2; exit 3; }
+build_slot_take
+build_docker_ok || { build_slot_release; echo "BUILD FAULT: docker stopped answering after the slot was taken" >&2; exit 3; }
+trap 'build_slot_release' EXIT
+trap 'build_slot_release; exit 130' INT TERM
+fi
 gen_map_restore
 
 # TEXKEY2: 3ds/include/texkey_patch.h (git-ignored, generated) holds the palette fix of the map texture archives: the alpha-0
@@ -72,7 +82,7 @@ gen_shapes() {
     fi
     mkdir -p "$OUT/romfs/shape"
     rm -f "$stamp"
-    MSYS_NO_PATHCONV=1 docker run --rm -v "$w:/w:ro" -v "$od:/out" -v "$rd/baserom.z64:/ar/ver/us/baserom.z64:ro" -w /tmp pm3ds-host:1 sh -c \
+    MSYS_NO_PATHCONV=1 docker run --rm --memory "${PM_BUILD_MEM:-4g}" -v "$w:/w:ro" -v "$od:/out" -v "$rd/baserom.z64:/ar/ver/us/baserom.z64:ro" -w /tmp pm3ds-host:1 sh -c \
         'gcc -m32 -O2 -Wall -I /w/3ds/include -o /tmp/yay0_test /w/3ds/tools/yay0_test.c /w/3ds/src/nd_yay0.c && /tmp/yay0_test /ar && gcc -m32 -O2 -Wall -msse2 -mfpmath=sse -ffp-contract=off -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I /w/include -I /w/3ds/include -I /w/3ds/stub_include -o /tmp/nd_shape_conv /w/3ds/tools/nd_shape_conv.c /w/3ds/src/nd_seam.c /w/3ds/src/nd_dlc.c && /tmp/nd_shape_conv /ar /out' || { echo "gen_shapes failed" >&2; exit 1; }
     echo "$want $(ls "$OUT/romfs/shape"/*.nds 2>/dev/null | wc -l | tr -d ' ')" > "$stamp"
 }
@@ -89,7 +99,7 @@ gen_gfx_tab() {
     if [ -f "$stamp" ] && [ -f 3ds/src/nd_gfx_tab.c ] && [ "$(cat "$stamp")" = "$want" ]; then echo "gen_gfx_tab: up to date"; return 0; fi
     mkdir -p "$OUT"
     rm -f "$stamp" 3ds/src/nd_gfx_tab.c.new
-    MSYS_NO_PATHCONV=1 docker run --rm -v "$w:/w" -v "$ab/assets:/ar/assets:ro" -v "$ab/ver/us/build:/ar/ver/us/build:ro" -w /work pm3ds-host:1 sh -c '
+    MSYS_NO_PATHCONV=1 docker run --rm --memory "${PM_BUILD_MEM:-4g}" -v "$w:/w" -v "$ab/assets:/ar/assets:ro" -v "$ab/ver/us/build:/ar/ver/us/build:ro" -w /work pm3ds-host:1 sh -c '
         set -e; mkdir -p /work/ver/us
         for d in 3ds include src; do ln -s "/w/$d" "/work/$d"; done
         ln -s /ar/assets /work/assets; ln -s /ar/ver/us/build /work/ver/us/build
@@ -150,13 +160,6 @@ hotset_line() {
     else python3 3ds/tools/hotset.py --line || echo "hotset: failed (the build is not affected)"; fi
 }
 IMG=pm3ds-build:1
-# BUILDLOCK: the engine must answer (a dead engine stops here, not in a docker call), then at most 3 builds run at once.
-. 3ds/tools/build_slot.sh
-build_docker_ok || build_docker_restart || { echo "BUILD FAULT: docker engine not answering in 20 s (docker info), restart not done. Restart Docker Desktop / WSL, then build again." >&2; exit 3; }
-build_slot_take
-build_docker_ok || { build_slot_release; echo "BUILD FAULT: docker stopped answering after the slot was taken" >&2; exit 3; }
-trap 'build_slot_release' EXIT
-trap 'build_slot_release; exit 130' INT TERM
 docker build -q -t $IMG -f docker/Dockerfile.build docker >/dev/null
 # SRCID: the source volume keeps the id of its last sync in /src/.pm_manifest_id, and $VID holds the id the manifest was
 # written with. The manifest is valid only while both match. A missing, recreated or foreign source volume has no id
@@ -221,7 +224,7 @@ WD=${PM_BUILD_CAP:-600}
   fi ) &
 wdpid=$!
 rc=0
-MSYS_NO_PATHCONV=1 docker run --rm --name "$NAME" -v $SRCVOL:/src:ro \
+MSYS_NO_PATHCONV=1 docker run --rm --memory "${PM_BUILD_MEM:-4g}" --name "$NAME" -v $SRCVOL:/src:ro \
     -e CCACHE_DIR=/ccache -e CCACHE_MAXSIZE="${PM_CCACHE_MAX:-2G}" -e PM_BUILD_NUM="$BN" -e PM_FNCOV_V="$FNV" \
     -v "$(pwd)/$OUT:/out" \
     -v $VOL:/work \
@@ -239,7 +242,7 @@ MSYS_NO_PATHCONV=1 docker run --rm --name "$NAME" -v $SRCVOL:/src:ro \
     fi
     stage configure
     status=0
-    cmake --build /work/build --parallel "$(nproc)" -- -k 0 '"$*"' || status=$?
+    cmake --build /work/build --parallel "${PM_BUILD_JOBS:-8}" -- -k 0 '"$*"' || status=$?
     stage compile-link
     cp -f /work/build/pm_3ds.3dsx /work/build/pm_3ds.smdh /work/build/pm_3ds.map /work/build/pm_3ds.elf /out/ 2>/dev/null || true
     # The objects stay: ninja then rebuilds only the sources whose mtime is newer (BSTALE). ccache is the cache for a clean build.
@@ -248,7 +251,7 @@ MSYS_NO_PATHCONV=1 docker run --rm --name "$NAME" -v $SRCVOL:/src:ro \
 ' || rc=$?
 kill "$wdpid" 2>/dev/null || true
 if [ -n "$PM_BUILD_REV" ]; then docker volume rm $SRCVOL >/dev/null 2>&1 || true; fi
-if [ "$rc" -ne 0 ]; then echo "BUILD FAILED exit $rc (container $NAME; stage timings above)" >&2; exit "$rc"; fi
+if [ "$rc" -ne 0 ]; then echo "BUILD FAILED exit $rc (container $NAME; stage timings above; memory limit ${PM_BUILD_MEM:-4g}, ${PM_BUILD_JOBS:-8} jobs: a \"Killed signal\" above is an out-of-memory kill)" >&2; exit "$rc"; fi
 if [ -z "$PM_BUILD_REV" ]; then echo "$KEY" > $KEY_FILE; fi
 # HW5: keep the ELF of each build under its build number, so a Luma crash dump can be decoded later (3ds/tools/decode_dump.py).
 if [ -f $OUT/pm_3ds.elf ]; then
