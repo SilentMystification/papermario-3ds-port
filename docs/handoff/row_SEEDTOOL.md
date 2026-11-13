@@ -25,6 +25,9 @@ New 3ds/tools/seedprobe.py. New names: none. Host link: none.
    f. Verdict, one line per seed: for `@<frame>`, compare the drec.txt sections of that frame in the run and in the base:
       `seed <file>:<line> live (frame <f> differs)` or `seed <file>:<line> dead (frame <f> equal)`. For `@-`: live when cmp
       shows any difference. A tool fault (no run record, no drec.txt): `seedprobe tool-fault <text>`, exit 3.
+   g. Option `--write <seeds file>` (the probe rows pass docs/handoff/row_SEEDS.md): for each verdict, the line of that file
+      whose first field is the file stem and whose fourth field is the line number gets its last field (unprobed, live or dead)
+      set to the verdict. No such line: `seedprobe no-seed-line <file>:<line>`, exit 2.
    It prints nothing else on stdout.
 2. Commit: `SEEDTOOL: seedprobe.py gives one live or dead line per seed`.
 ## Gate (expected values)
@@ -32,7 +35,8 @@ New 3ds/tools/seedprobe.py. New names: none. Host link: none.
    `src/effects/water_splash.c:183@412|guTranslateF(sp10, sp94, temp_fp, data->unk_04.z)|guTranslateF(sp10, sp94, temp_fp + 20.0f, data->unk_04.z)`.
    Seed B = `src/effects/music_note.c:149@456|fxData->pos.y|fxData->pos.y` (old equal to new: no change). Expected: A live, B dead.
    This is the seeded set: B is the dead control. Before the probe, `git status` shows the file clean; after, clean again.
-2. A spec with old text not on the line: `bad-spec`, exit 2, no build.
+2. A spec with old text not on the line: `bad-spec`, exit 2, no build. `--write` on a copy of row_SEEDS.md with a seed of aura
+   (aura.c:307) sets only that line's last field (diff of the copy: one line).
 3. Budget 8 Azahar starts (the base pair and 1 run). Counter: none moves (tool row).
 ## Stop and end
 A verdict other than the gate, a file left changed, or a tool fault: stop, commit, hand back the exact output. Delete this row
