@@ -20,12 +20,16 @@ New files 3ds/tools/gen_nolist.py, 3ds/include/nd_nolist.h (written by the tool,
    then `#endif`. Print `nolist names <n>`. Expected `nolist names 305`.
 2. Run `python 3ds/tools/gen_nolist.py` once and commit its output 3ds/include/nd_nolist.h.
 3. 3ds/tests/host.d/nolist.sh (LF): F="-m32 -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I include
-   -I ver/us/build/include -I 3ds/include -I 3ds/stub_include". Write test files into /tmp and run `gcc $F -fsyntax-only`:
+   -I src -I ver/us/build/include -I 3ds/include -I 3ds/stub_include" (correction 1: `-I src`, include/map.h:6 includes
+   world/entrances.h = src/world/entrances.h). No -Werror (common.h gives a `round` builtin warning). Write test files into /tmp
+   and run `gcc $F -fsyntax-only`:
    - good1: `#include "nd_nolist.h"` + `int nl_f(void) { return 0; }`: must compile.
    - good2: `#include "common.h"`, `#include "nd_nolist.h"`, `int nl_f(void) { return 0; }`: must compile.
    - bad, one file per name for Gfx, gMainGfxPos, gDPPipeSync, gsSPEndDisplayList, gSPDisplayList: `#include "common.h"`,
      `#include "nd_nolist.h"`, `void nl_f(void) { (void)&<name>; }` (for Gfx: `Gfx* nl_p;`): must fail, and the compiler
-     output must hold `poisoned`.
+     output must hold `poisoned` (a second error `undeclared` for a macro name is expected: the header #undefs it).
+   ORACLE8 checked good2 and the 5 bad cases in docker pm3ds-host:1 with this F and c0ecf0cbb's nd_nolist.h: good2 compiles (one warning),
+   each bad case prints one `poisoned` line.
    Print `nolist ok good 2 bad 5` when all hold, else `nolist FAIL <case>` and `exit 1`.
 4. Commit: `NOLIST: nd_nolist.h poisons the 303 list macro names, Gfx and gMainGfxPos (G8), host test`.
 
