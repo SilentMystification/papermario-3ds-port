@@ -7,6 +7,7 @@
 #define ND_GTAB_H
 #include <stdint.h>
 #include "nd_scomp.h"
+#include "nd_api.h"
 
 enum {
     NDG_END = 0, /* the list end (the last op) */
@@ -68,4 +69,24 @@ const NdGTab* nd_gtab_find(const void* list);
  * line) as G_PM_LST and its state ops; any other list through the walker's G_DL arms (ent_gdl, dlc_try), else its ops. */
 void nd_rec_dl(const void* list);
 void nd_gtab_run(const uint32_t* rec);
+
+/* CONV2A (plan v3 section 2): the native table of one (static list, entry pso) pair. No pointer into a Gfx array, no typed unit.
+ * The converter (CONV2C) writes the tables. nd_ntab_run (CONV2D) runs them on core 0 into the native emit. */
+enum {
+    NDN_END = 0,  /* end of the op list */
+    NDN_PSO,      /* b = NdPso id of the pipeline state from here on */
+    NDN_TEX,      /* a = tile (0 or 1), p = const NdBindDesc* */
+    NDN_XF,       /* a = gSPMatrix flags (0xFF = pop one modelview matrix), p = const Mtx* (NULL: v = segmented address, input of the caller) */
+    NDN_COL,      /* a = 0 prim, 1 env, 2 fog, 3 blend; v = RGBA; b = minlod << 8 | lodfrac for prim */
+    NDN_DRAW,     /* p = const Vtx* base (NULL: v = segmented address), b = index count, a = 0; the indices follow in the table's idx from idx_pos */
+    NDN_CALL      /* p = const NdNTab* of another (list, entry) pair */
+};
+typedef struct NdNOp { uint8_t op, a; uint16_t b; uint32_t v; const void* p; uint32_t idx_pos; } NdNOp;
+typedef struct NdNTab {
+    const void* list;     /* the static list this table replaces (the key with entry) */
+    NdPso entry;          /* the pipeline state the caller states at nd_draw_list */
+    uint16_t nops;
+    const NdNOp* ops;     /* nops entries, the last one NDN_END */
+    const uint16_t* idx;  /* the index buffer of every NDN_DRAW of the table (absolute vertex indices, CONV2B resolver) */
+} NdNTab;
 #endif
