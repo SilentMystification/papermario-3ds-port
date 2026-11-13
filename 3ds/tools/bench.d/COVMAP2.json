@@ -1,0 +1,20 @@
+{
+  "benches": [
+    {
+      "name": "fxfncov_89_33",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "COVMAP2: fncov window census of scenario fxfncov_89_33 (frames 412-487, water_splash and music_note). Log only; covsites.py on the log.",
+      "scenario": "fxfncov_89_33",
+      "cap": 45,
+      "until": "fncov f\\d+ done",
+      "tags": [
+        "azahar",
+        "det",
+        "fncov"
+      ],
+      "gates": []
+    }
+  ]
+}
