@@ -2,6 +2,8 @@
 #include "effects_internal.h"
 #include "nd_gtab.h"
 #include "nd_api.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 typedef struct WaterBlockVtxData {
     /* 0x00 */ Vec3b pos;
@@ -228,12 +230,11 @@ void water_block_appendGfx(void* effect) {
     s32 i;
     NdParts pb;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(effectTemp->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(effectTemp->shared->graphics));
     guTranslateF(sp20, data->pos.x, data->pos.y, data->pos.z);
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
     vtxBase = (Vtx*) nd_rec_data(80 * sizeof(Gfx)); /* DIRECT D6c: the vertex buffer is stream data */
 
@@ -269,9 +270,9 @@ void water_block_appendGfx(void* effect) {
     guScaleF(sp20, 0.1f, 0.1f, 0.1f);
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gDPSetEnvColor(gMainGfxPos++, 0, 0, 255, data->alpha);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 255, alpha);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_val_env(0, 0, 255, data->alpha);
+    nd_val_prim(0, 0, 255, 255, 255, alpha);
     nd_rec_dl(D_090003B0_3B6FA0);
 
     nd_parts_begin(&pb, 1, 1);
@@ -291,7 +292,7 @@ void water_block_appendGfx(void* effect) {
     nd_parts_end(&pb);
 
     nd_rec_dl(D_09000300_3B6EF0);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, data->color.r, data->color.g, data->color.b, alpha * 0.3);
+    nd_val_prim(0, 0, data->color.r, data->color.g, data->color.b, alpha * 0.3);
     gSPClearGeometryMode(gMainGfxPos++, G_CULL_BOTH);
     gSPSetGeometryMode(gMainGfxPos++, G_CULL_BACK);
 
@@ -302,6 +303,6 @@ void water_block_appendGfx(void* effect) {
     gSPVertex(gMainGfxPos++, &vtxBase[28], 12, 0);
 
     nd_rec_dl(D_09000538_3B7128);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }
