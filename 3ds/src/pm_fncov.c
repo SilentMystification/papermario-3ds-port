@@ -12,6 +12,7 @@ typedef struct { unsigned addr, n; } FnEnt;
 static FnEnt fn_tab[FN_N];
 static int fn_init, fn_on, fn_active, fn_done;
 static unsigned fn_want, fn_f0;
+static unsigned fn_cnt = 1u; /* frames counted from fn_f0: fncov=<first>:<count>, 1 without ':' */
 
 static FnEnt* fn_slot(unsigned a) __attribute__((no_instrument_function));
 static FnEnt* fn_slot(unsigned a) {
@@ -62,6 +63,10 @@ static void fn_init_once(void) {
     } else {
         fn_on = pm_debug_value("fncov", v, sizeof v) != 0;
         fn_want = fn_on ? (unsigned)atoi(v) : 0u;
+        if (fn_on && strchr(v, ':')) {
+            fn_cnt = (unsigned)atoi(strchr(v, ':') + 1);
+            if (fn_cnt == 0u) fn_cnt = 1u;
+        }
     }
 }
 
@@ -78,5 +83,5 @@ void pm_fncov_walk(unsigned f) {
     fn_init_once();
     if (!fn_on || fn_done) return;
     if (!fn_active && f >= fn_want) { memset(fn_tab, 0, sizeof fn_tab); fn_f0 = f; fn_active = 1; }
-    else if (fn_active && f > fn_f0) { fn_active = 0; fn_done = 1; fn_dump(fn_f0); }
+    else if (fn_active && f >= fn_f0 + fn_cnt) { fn_active = 0; fn_done = 1; fn_dump(fn_f0); }
 }
