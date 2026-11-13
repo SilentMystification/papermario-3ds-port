@@ -99,7 +99,7 @@ void pm_gpu_gbiprof_report(unsigned frames);
 void pm_gpu_set_scissor(int x0, int y0, int x1, int y1);
 
 /* V05: draws go to an off-screen RGBA image for the colour image at base (width stride pixels) until pm_gpu_off_end. */
-int pm_gpu_off_begin(const void* base, int stride, int siz); /* siz: 3 = 32 bit, 2 = 16 bit, 1 = 8 bit */
+int pm_gpu_off_begin(const void* base, int stride, int siz, int band_h); /* siz: 3 = 32 bit, 2 = 16 bit, 1 = 8 bit. band_h: 0 whole slot cleared, else only the band of the rows 0..band_h */
 void pm_gpu_off_end(void);
 int pm_gpu_off_count(void); /* B1: off-screen slots started this frame */
 /* B2: T2 grab. Copies the full width of the frame being drawn (rows y0..y1-1 are the window: the copy is reused when texrects drew only other rows) into the upright slot (cfb, siz 2).
