@@ -29,6 +29,7 @@ build.ninja
 /3ds/src/nd_gfx_tab.c
 /3ds/src/nd_pso_tab.c
 /3ds/src/nd_gfx_tab.c.new
+/3ds/src/nd_ntab_descs.c
 /3ds/include/texkey_patch.h
 *.elf
 *.z64
