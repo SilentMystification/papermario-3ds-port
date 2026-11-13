@@ -34,18 +34,20 @@ not draw_box.c (plan row NBOX waits), not nd_native_submit (HOSTCORE2, another p
 - What each proof can show: pixels (shots) show any state that the narrowed switch fails to send again and that changes a
   pixel. drec (HOSTCORE2) records NdDraw at nd_native_submit: the target switch changes no NdDraw, so drec is equal with or without
   the bug: no proof here. Command words (FRAMEHASH3) are not on main. Azahar shows no GPU or CPU cost: the console decides the lag.
-## Gate (expected values, correction 1)
-1. Build, memcheck OK. nd_host PASS. Code f90c92162 stays.
-2. New scenario `fsel_pick_det_pic` in 3ds/tools/azt.d/FSELLAG1.json (all fields as fsel_det_pic): debug `fileselect freshsave
-   padscript=wait400,A*6 shots shotwin=200:40 loglevel=debug det`, until `shot \d+ frame 239\b`, cap 45, deadline 25,
-   first_marker `boot_main`, expects `none`, needs_picture false, expected_events [{name "file select mode", regex `game mode 14
-   frame`}, {name "shot 239", regex `shot \d+ frame 239\b`}]. Bench `fsel_pick_det_pic` in bench.d/FSELLAG1.json, kind
-   azahar_pic, default false, cap 45, the same until.
-3. Seeded fault first (projection width + 1, as before): `bench.py base fsel_pick_det_pic` at the merge-base, run the seeded
-   build, `bench.py cmp fsel_pick_det_pic --row FSELLAG1`: at least one shot differs (the scene reaches the flip). If all 40 are
-   equal: stop and hand back (the pick is outside frames 200-239: hand back the `game mode` and pad lines of the log).
-4. Real edit: run, cmp: 40/40 byte-equal. Budget: the orchestrator resets it (row spec fault).
-5. The user checks the flip lag on the O3DS XL after the merge (one push).
+## Correction 2 (ORACLE8, after bd352acc8 and the seeded run): the honest gate
+- The seed changed off_proj (Mtx_Ortho in pm_gpu_off_begin). off_proj reaches only draws through the post matrix (rebuild_3d,
+  pm_gpu.c:223-246, gs.off_active). The window contents (fill, glyphs, rectangles) draw without it: no pixel of the flip changed,
+  so the seed did not prove that the scene reaches the path. A pixel seed inside the target switch is not known by code read.
+- The change keeps pixels by design (it removes repeated state sends). So the proof is: no pixel changes on the flip frames (done:
+  fsel_pick_det_pic 40/40 byte-equal, base 2c32f79f3 two runs equal), plus a reach proof that the flip runs pm_gpu_off_begin with
+  this build, plus the user's console check of the lag. No Azahar seed for this row (and FSELLAG2).
+## Gate (expected values, correction 2)
+1. Done: build, memcheck, nd_host PASS, fsel_pick_det_pic 40/40 and pause_spin_grab_det_w300 40/40 byte-equal (f90c92162).
+2. Reach: build the census lane first, `PM_FNCOV=1 PM_ROW=FSELLAG1 PM_LANE=FSELLAG1 sh 3ds/build.sh` (lane FSELLAG1_fncov,
+   build.sh:24), then `PM_ROW=FSELLAG1 PM_LANE=FSELLAG1 python 3ds/tools/bench.py run fsel_fncov_pick --row FSELLAG1 --lane FSELLAG1_fncov --why "FSELLAG1 reach"`
+   (the census lane of this build: the same pad input as fsel_pick_det_pic). Expected: the census lines of the pick window list
+   pm_gpu_off_begin with a count above 0 (oracle census: 86 on f208). Hand back the pm_gpu_off_begin and nd_native_submit lines.
+3. After the merge the user checks the file select flip lag on the O3DS XL (one push). Budget: 2 Azahar starts.
 ## Stop and end
-A shot difference with the real edit, a seeded fault that shows no difference (see gate 3), or a tool
+A shot difference, a census with pm_gpu_off_begin 0 in the pick window (the scene does not reach the path), or a tool
 fault: stop, commit, hand back the exact output (CLAUDE.md 4-5). Delete this row file in the completing commit.

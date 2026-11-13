@@ -45,7 +45,8 @@ Not src/draw_box.c (plan row NBOX waits).
 - Build, memcheck OK. nd_host PASS.
 - Byte compare (rule 2, correction 1): the scene `fsel_pick_det_pic` of FSELLAG1 (shots 200-239 over the pick flip, the idle
   fsel_det_pic and the pause shots after the flip do not reach pm_gpu_off_begin): base at the merge-base, run, cmp: 40/40
-  byte-equal. A seeded fault (projection width + 1 in pm_gpu_off_begin) must show a difference first.
+  byte-equal. No pixel seed (row_FSELLAG1.md correction 2: the projection seed reaches no window pixel). Reach proof: the
+  fsel_fncov_pick census of this build lists pm_gpu_off_begin above 0.
 - Census: fsel_fncov_pick before and after: C3D_RenderTargetClear calls per pick frame and sh_clear calls per pick frame go down
   (hand back both pairs of numbers). Budget 8 Azahar starts.
 - The user checks the lag on the console (one push of the build after the merge).
