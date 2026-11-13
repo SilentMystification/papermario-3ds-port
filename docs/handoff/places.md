@@ -14,4 +14,6 @@ A shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json, bench_def
 | FSELLAG2 | Sonnet (needs the user's yes) | 3ds/src/pm_gpu.c pm_gpu_off_begin signature and clear, its callers :2656 :2667 :2685; pm_gpu.h; nd_target.c off_screen_check | waits for FSELLAG1 |
 | NXF1 | Haiku | new 3ds/include/nd_xf.h, 3ds/src/nd_xf.c, 3ds/tools/nd_xf_test.c, 3ds/tests/host.d/nxf.sh | ready (no blocker) |
 | CONV2A | Haiku | 3ds/include/nd_gtab.h: one include after :9, new lines before `#endif`; new 3ds/tools/nd_ntab_test.c, 3ds/tests/host.d/ntab.sh | ready |
+| AMBWARP | Haiku | 3ds/src/pm_warp.c warp_end_intro (the stop lines and its log), pm_warp_world_mode (start); new azt.d/bench.d AMBWARP.json | ready |
+| AMBTITLE | Haiku | src/state_startup.c after `sfx_clear_sounds();` (:65); 3ds/src/pm_warp.c pm_warp_tick after `bypass_tick();`; new azt.d/bench.d AMBTITLE.json | ready (other places than AMBWARP: both may run) |
 | FPS60VAL | Sonnet | 3ds/src/pm_gpu.c end of kc_build, end of pm_gpu_key_show; new 3ds/tools/kcval.py | not started (user decides) |
