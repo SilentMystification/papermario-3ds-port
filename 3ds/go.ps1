@@ -238,9 +238,16 @@ if ($Verb -eq 'push') {
         exit 0
     }
     $rc = 1
-    # PUSHFIX3: a push always builds and sends the default output (build3ds/pm_3ds.3dsx), never a lane's output.
-    Remove-Item Env:PM_LANE -ErrorAction SilentlyContinue
-    Write-Output "push: default output build3ds/pm_3ds.3dsx"
+    # PUSHLANE: -NoBuild with PM_LANE set, no PM_SRC3DSX, and that lane's 3dsx present sends the lane build with that lane's key check.
+    # Else a push builds and sends the default output (build3ds/pm_3ds.3dsx), never a lane's output (PUSHFIX3).
+    $laneDir = if ($env:PM_LANE) { Join-Path $repo "build3ds/lane-$($env:PM_LANE)" } else { $null }
+    if ($NoBuild -and -not $env:PM_SRC3DSX -and $laneDir -and (Test-Path (Join-Path $laneDir 'pm_3ds.3dsx'))) {
+        $env:PM_SRC3DSX = Join-Path $laneDir 'pm_3ds.3dsx'; $env:PM_BUILD_KEY_FILE = Join-Path $laneDir 'build_key.txt'; $env:PM_KEY_LANE = $env:PM_LANE
+        Write-Output "push: lane output build3ds/lane-$($env:PM_LANE)/pm_3ds.3dsx (no build)"
+    } else {
+        Remove-Item Env:PM_LANE -ErrorAction SilentlyContinue
+        Write-Output "push: default output build3ds/pm_3ds.3dsx"
+    }
     try {
         Invoke-Build
         # PUSHFIX: Push-One returns only its exit code (0 ok, 1 failed); the text went to the console above.
