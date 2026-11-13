@@ -1,0 +1,2 @@
+codemod keep refuse_first_arg.c:2 gSPMatrix first-arg
+codemod keep refuse_first_arg.c:3 gDPSetPrimColor first-arg

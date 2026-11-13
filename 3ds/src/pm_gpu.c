@@ -15,6 +15,7 @@ void pm_gx_room(void); /* HANG1a */
 #include "nd_op.h"
 #include "nd_sprite.h"
 #include "nd_kccmd.h"
+#include "nd_drec.h"
 #include "pm_shader4_shbin.h"
 #include "pm_gpu.h"
 #include "pm_tex.h"
@@ -570,6 +571,109 @@ static __attribute__((cold, noinline)) void ndref_end(void) { /* end of frame: w
     pm_log_evt("ndref f%u done draws %u bytes %u%s%s", fr, ndref_draws, ndref_len, f ? "" : " open failed", ndref_over ? " over" : "");
     free(ndref_buf); ndref_buf = NULL;
 }
+/* HOSTCORE2: golden draw records, switch drec=<first>:<count>. For the game frames first .. first+count-1, nd_native_submit (the one function every draw of the game
+ * goes through) hands its NdDraw to drec_draw, which writes one NdDrec text block (3ds/src/nd_drec.c) with no address in it. At the end of the last frame the file
+ * sdmc:/3ds/PaperMario/shots/drec.txt is closed (the text goes through a 1 MB stdio buffer: one write per megabyte) and one log line says draws and bytes.
+ * The record reads the draw and the memory it points to; it never changes a draw. Off: one predicted-false test (drec_on).
+ * regs, in this order, each with mask F:
+ *   the template words of d->tmpl (nd_tmpl_words), the stage colours of d->tev_col and the texenv buffer colour put in as emit_core does (nd_emit.c);
+ *   per texture unit on: the real unit registers dim, param, lod, address (always 0), then the type register (0x8E, 0x96, 0x9E);
+ *   pseudo registers (not PICA registers) for the float uniforms nd_emit_draw writes, the float bits of each word:
+ *     0x1000 + 0x10 k + j  palette row k (k < npal), word j of the 16 floats, C3D_Mtx memory order (not written when no_uni)
+ *     0x1200 + j           the uniform block uvso, cmul, cadd, zmix as nd_emit_draw writes it (rev4 order, 16 words; not written when no_uni)
+ *     0x1210 + j           uvx, 4 words in memory order (written when has_uvx)
+ *     0x1220 + j           nzo, 4 words in memory order (written when has_nzo)
+ *     0x1300 + i           the NdPm5 block behind d->p5 (the program 5 uniforms), word i (written when use5 and p5)
+ * tex[u]: the level 0 texel bytes of unit u (width * height * the bits of the format of the type register), read from the unit address << 3.
+ * vtx: the 16-byte vertices of the index range min .. max of the draw. idx: the indices minus min (u16): the same picture gives the same record wherever the
+ * ring put the draw. kind 1, n = the index count. The template id is not written (an LRU slot). */
+#include "nd_drec.h"
+static int drec_win = -2; static unsigned drec_first, drec_count;
+static int drec_on;
+static FILE* drec_f; static char* drec_vb; static NdDrecReg* drec_regs; static uint16_t* drec_idx; static unsigned drec_idx_cap, drec_seq, drec_over;
+#define DREC_REGS 640u
+static __attribute__((cold, noinline)) void drec_begin(void) { /* per frame, from pm_gpu_begin_w */
+    if (drec_win == -2) {
+        char v[24]; drec_win = -1;
+        if (pm_debug_value("drec", v, sizeof v)) { char* e; drec_first = (unsigned)strtoul(v, &e, 10); drec_count = *e == ':' ? (unsigned)strtoul(e + 1, NULL, 10) : 1u; if (drec_count) drec_win = 1; }
+    }
+    const unsigned fr = pm_frame_count();
+    drec_on = drec_win > 0 && fr >= drec_first && fr < drec_first + drec_count;
+    if (!drec_on || drec_f) return;
+    mkdir("sdmc:/3ds/PaperMario/shots", 0777);
+    drec_f = fopen("sdmc:/3ds/PaperMario/shots/drec.txt", "wb");
+    drec_vb = (char*)malloc(1u << 20); drec_regs = (NdDrecReg*)malloc(DREC_REGS * sizeof(NdDrecReg));
+    if (!drec_f || !drec_vb || !drec_regs) { pm_log_e("drec: no file or memory"); if (drec_f) fclose(drec_f); free(drec_vb); free(drec_regs); drec_f = NULL; drec_vb = NULL; drec_regs = NULL; drec_on = 0; drec_win = -1; return; }
+    setvbuf(drec_f, drec_vb, _IOFBF, 1u << 20);
+    drec_seq = drec_over = 0;
+}
+static __attribute__((cold, noinline)) void drec_end(void) { /* end of a frame, from cen_frame_end: the last frame of the window closes the file */
+    if (!drec_f || pm_frame_count() + 1u < drec_first + drec_count) return;
+    const long bytes = ftell(drec_f);
+    fclose(drec_f); free(drec_vb); free(drec_regs); free(drec_idx);
+    pm_log_evt("drec f%u draws %u bytes %ld%s", pm_frame_count(), drec_seq, bytes, drec_over ? " over" : "");
+    drec_f = NULL; drec_vb = NULL; drec_regs = NULL; drec_idx = NULL; drec_idx_cap = 0; drec_on = 0; drec_win = -1; /* one window per run */
+}
+static const uint8_t* drec_p2v(uint32_t phys, uint32_t dl) { /* the inverse of osConvertVirtToPhys for the two regions a draw reads: VRAM (the texture cache) and the linear heap (dl = phys - virt of a linear pointer) */
+    if (phys >= 0x18000000u && phys < 0x18600000u) return (const uint8_t*)(uintptr_t)(phys + 0x07000000u);
+    return (const uint8_t*)(uintptr_t)(phys - dl);
+}
+static __attribute__((cold, noinline)) void drec_draw(const NdDraw* d, int stat) {
+    if (!drec_f) return;
+    NdDrecReg* r = drec_regs; unsigned n = 0;
+    if (d->tmpl >= 0) {
+        const NdTmplWord* w; const unsigned nw = nd_tmpl_words(d->tmpl, &w);
+        for (unsigned i = 0; i < nw && n + 1u < DREC_REGS; i++) {
+            uint32_t val = w[i].val; const unsigned rg = w[i].reg;
+            int cs = -1; /* the colour word of stage i is register 0xC3 + 8 i (0xF3, 0xFB for the stages 4 and 5), as col_stage in nd_emit.c */
+            if (rg >= 0xC3 && rg <= 0xDB && ((rg - 0xC3) & 7) == 0) cs = (int)((rg - 0xC3) >> 3); else if (rg == 0xF3) cs = 4; else if (rg == 0xFB) cs = 5;
+            if (cs >= 0 && val != 0xFFFFFFFFu) val = d->tev_col[cs];
+            else if (rg == 0xFD) { if (!d->has_buf) continue; val = d->buf_col; }
+            r[n].reg = (uint16_t)rg; r[n].mask = 0xF; r[n++].val = val;
+        }
+    }
+    static const uint16_t blk[3] = { 0x81, 0x91, 0x99 }, fmt[3] = { 0x8E, 0x96, 0x9E }; /* unit border registers; dim, param, lod, addr follow; type */
+    for (unsigned u = 0; u < 3; u++) if (d->u[u].dim) {
+        const NdUnit* t = &d->u[u];
+        r[n].reg = blk[u] + 1; r[n].mask = 0xF; r[n++].val = t->dim;
+        r[n].reg = blk[u] + 2; r[n].mask = 0xF; r[n++].val = t->param;
+        r[n].reg = blk[u] + 3; r[n].mask = 0xF; r[n++].val = t->lod;
+        r[n].reg = blk[u] + 4; r[n].mask = 0xF; r[n++].val = 0; /* the address: never written */
+        r[n].reg = fmt[u]; r[n].mask = 0xF; r[n++].val = t->type;
+    }
+    #define DREC_F(base, f, cnt) do { uint32_t b_[16]; memcpy(b_, (f), 4u * (cnt)); for (unsigned j_ = 0; j_ < (cnt); j_++) { r[n].reg = (uint16_t)((base) + j_); r[n].mask = 0xF; r[n++].val = b_[j_]; } } while (0)
+    if (!d->no_uni) {
+        for (unsigned k = 0; k < d->npal && k < ND_NPAL; k++) DREC_F(0x1000u + 0x10u * k, d->pal[k], 16u);
+        float all[16], z[4] = { d->zmix[0], d->zmix[1], 0.f, 0.f };
+        for (unsigned i = 0; i < 4; i++) { const float* s = i == 0 ? d->uvso : i == 1 ? d->cmul : i == 2 ? d->cadd : z; all[4 * i] = s[3]; all[4 * i + 1] = s[2]; all[4 * i + 2] = s[1]; all[4 * i + 3] = s[0]; }
+        DREC_F(0x1200u, all, 16u);
+    }
+    if (d->has_uvx) { const float v[4] = { d->uvx[3], d->uvx[2], d->uvx[1], d->uvx[0] }; DREC_F(0x1210u, v, 4u); }
+    if (d->has_nzo) { const float v[4] = { d->nzo[3], d->nzo[2], d->nzo[1], d->nzo[0] }; DREC_F(0x1220u, v, 4u); }
+    if (d->use5 && d->p5) for (unsigned i = 0; i < sizeof(NdPm5) / 4u && n < DREC_REGS; i++) { r[n].reg = (uint16_t)(0x1300u + i); r[n].mask = 0xF; memcpy(&r[n++].val, (const uint32_t*)(const void*)d->p5 + i, 4); }
+    #undef DREC_F
+    NdDrec rec; memset(&rec, 0, sizeof rec);
+    rec.seq = drec_seq++; rec.kind = 1; rec.n = d->nidx; rec.regs = r; rec.nregs = n;
+    const uint8_t* vb = (const uint8_t*)(stat ? (const void*)nb.rchunk[0].vtx : (const void*)nb.gring);
+    const uint32_t dl = (uint32_t)osConvertVirtToPhys(vb) - (uint32_t)(uintptr_t)vb;
+    for (unsigned u = 0; u < 3; u++) if (d->u[u].dim) {
+        static const uint8_t bits[14] = { 32, 24, 16, 16, 16, 16, 16, 8, 8, 8, 4, 4, 4, 8 };
+        const unsigned ty = d->u[u].type & 0xFu, w = d->u[u].dim >> 16 & 0x7FFu, h = d->u[u].dim & 0x7FFu;
+        if (ty > 13u) { drec_over = 1; continue; }
+        rec.tex[u].p = drec_p2v(d->u[u].addr << 3, dl); rec.tex[u].n = w * h * bits[ty] / 8u;
+        rec.tex_type[u] = d->u[u].type; rec.tex_dim[u] = d->u[u].dim;
+    }
+    const uint16_t* ix = (const uint16_t*)(const void*)drec_p2v((d->idx_word & 0x7FFFFFFFu) + 0x18000000u, dl);
+    if (d->nidx > drec_idx_cap) { free(drec_idx); drec_idx_cap = d->nidx; drec_idx = (uint16_t*)malloc(drec_idx_cap * 2u); }
+    if (drec_idx && d->nidx) {
+        unsigned lo = 0xFFFFu, hi = 0;
+        for (unsigned i = 0; i < d->nidx; i++) { if (ix[i] < lo) lo = ix[i]; if (ix[i] > hi) hi = ix[i]; }
+        for (unsigned i = 0; i < d->nidx; i++) drec_idx[i] = (uint16_t)(ix[i] - lo);
+        rec.vtx.p = vb + 16u * lo; rec.vtx.n = 16u * (hi - lo + 1u);
+        rec.idx.p = drec_idx; rec.idx.n = d->nidx * 2u;
+    } else drec_over = 1;
+    nd_drec_write(drec_f, &rec);
+}
 /* S0-6: prof counters. pfd_add runs at each frame end (cen_frame_end), before pm_dc_c is cleared: draws, TEV rebuilds, texture binds and
  * triangles of the frame. gb: GPU busy ticks of the sampled frames, from the submit (pm_gpu_end) to the sync (the frame begin after it). */
 static unsigned long long pfd_sum[4], gb_sum, gb_n;
@@ -587,7 +691,7 @@ void pm_gpu_pf_read(unsigned long long out[6]) {
     out[4] = gb_sum; out[5] = gb_n; gb_sum = gb_n = 0;
 }
 static void cen_frame_end(void) {
-    ndref_end();
+    ndref_end(); if (__builtin_expect(drec_f != NULL, 0)) drec_end();
     pfd_add();
     if (cen_fr == -2) { char v[16]; cen_fr = pm_debug_value("drawcensus", v, sizeof v) ? atoi(v) : -1; }
     const int fr = cen_fr;
@@ -1231,6 +1335,7 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
     { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); /* PERF1-6: emitted in place (no copy) */
       GPUCMD_SetBufferOffset(coff + (ndn_bq && !d->use5 && !d->no_uni && d->npal == 1u ? blk_put(cb + coff, ndn_bq, d) : nd_emit_draw(cb + coff, &ndn_sh, d))); } /* HC6 step 4: a cache hit copies its block */
     if (tex) ndunit_after();
+    if (__builtin_expect(drec_on, 0)) drec_draw(d, ndt_mdl || nb.gi_kind == 1); /* HOSTCORE2: the golden record of this draw */
     *(volatile unsigned*)(__C3D_Context + 32) |= 2u; /* C3DiF_DrawUsed, as the citro3d draw sets it: citro3d then sends the framebuffer flush at a target change, a split and the frame end */
     if (ndref_on) ndref_cmd();
     nd_native_draws++;
@@ -2828,7 +2933,7 @@ typedef struct { int clear; } Wq_pm_gpu_begin;
 static void wq_pm_gpu_begin(void* a) { Wq_pm_gpu_begin* q = (Wq_pm_gpu_begin*)a; (void)q; pm_gpu_begin_w(q->clear); }
 void pm_gpu_begin(int clear) { Wq_pm_gpu_begin q = { clear }; pm_wq_post(wq_pm_gpu_begin, &q, sizeof q); }
 static void pm_gpu_begin_w(int clear) {
-    ndref_begin();
+    ndref_begin(); if (__builtin_expect(drec_win != -1, 0)) drec_begin();
     begin_clear = clear;
     begin_pend = 1;
     if (pm_interp_on > 0) pm_gpu_begin_wait();

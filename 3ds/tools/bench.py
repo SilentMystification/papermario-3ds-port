@@ -1527,9 +1527,9 @@ FHASH_RX = re.compile(r"fhash f(\d+) h ([0-9a-f]{16}) draws (\d+) words (\d+)")
 
 
 def shot_names(d):
-    """FRAMEHASH4: the compared files of a shot folder: the *.ppm shots and fhash.txt (frame hashes), sorted."""
+    """FRAMEHASH4: the compared files of a shot folder: the *.ppm shots, fhash.txt (frame hashes) and drec.txt (HOSTCORE2: draw records), sorted."""
     d = Path(d)
-    return sorted(p.name for p in d.glob("*.ppm")) + (["fhash.txt"] if (d / "fhash.txt").is_file() else [])
+    return sorted(p.name for p in d.glob("*.ppm")) + [n for n in ("fhash.txt", "drec.txt") if (d / n).is_file()]
 
 
 def fhash_extract(log, folder):
@@ -1558,6 +1558,19 @@ def ingest_fhash(bd, log, shot):
     return fhash_extract(log, shot) if bd and bd.get("kind") == "azahar_hash" else 0
 
 
+def drec_cmp(a, b):
+    """HOSTCORE2: (bad, lines) for two drec.txt files, compared line by line. The first differing line names its draw block: `drec draw <seq> DIFF`."""
+    la, lb = Path(a).read_text(encoding="utf-8").split("\n"), Path(b).read_text(encoding="utf-8").split("\n")
+    seq, nd = "?", sum(1 for x in la if x.startswith("draw "))
+    for i in range(max(len(la), len(lb))):
+        x = la[i] if i < len(la) else None
+        if x is not None and x.startswith("draw "): seq = x.split(" ")[1]
+        y = lb[i] if i < len(lb) else None
+        if x != y:
+            return 1, ["  drec draw %s DIFF line %d: base %r, row %r" % (seq, i + 1, x, y)]
+    return (0 if nd else 1), ["  drec %d draws equal" % nd if nd else "  drec.txt has no draw"]
+
+
 def shots_diff(a, b):
     """"" when the two shot folders hold the same shot names with the same bytes, else a text for the first difference."""
     an = shot_names(a)
@@ -1570,6 +1583,31 @@ def shots_diff(a, b):
         if md5_of(Path(a) / n) != md5_of(Path(b) / n):
             return "%s differs" % n
     return ""
+
+
+def shots_diff_all(a, b):
+    """BASEKEEP: [(name, text)] for every shot name of either folder that is missing in one or differs: a .ppm gives its
+    differing pixel count and bounding box (compare_ppm, no PNG), fhash.txt gives "text differs". [] when equal."""
+    an, bn = shot_names(a), shot_names(b)
+    out = []
+    for n in sorted(set(an) | set(bn)):
+        if n not in an or n not in bn:
+            out.append((n, "missing in %s" % ("b" if n not in bn else "a")))
+            continue
+        if md5_of(Path(a) / n) == md5_of(Path(b) / n):
+            continue
+        if not n.endswith(".ppm"):
+            out.append((n, "text differs"))
+            continue
+        r = compare_ppm(Path(a) / n, Path(b) / n, None)
+        if r is None:
+            out.append((n, "bytes differ, pixels equal"))
+        elif "size" in r:
+            out.append((n, "size " + r["size"]))
+        else:
+            x0, y0, x1, y1 = r["bbox"]
+            out.append((n, "px %d bbox x%d..%d y%d..%d" % (r["px"], x0, x1, y0, y1)))
+    return out
 
 
 BASE_TWICE = 2  # a base is stored only when this many warm runs of its scenario in one list are byte-equal on every shot
@@ -1633,7 +1671,13 @@ def base_run(bds, commit, build_no, row, lane, label, why):
             continue
         diff = shots_diff(first.get("shot_path") or "", last.get("shot_path") or "")
         if diff:
-            print("base %s: two runs differ, not stored (%s)." % (bd["name"], diff))
+            # BASEKEEP: keep both shot sets of the pair and name every differing shot
+            fails = shots_diff_all(first.get("shot_path") or "", last.get("shot_path") or "")
+            keep = REPO / "build3ds" / "basesnap_fail" / (lane or "main") / time.strftime("%Y%m%d-%H%M%S")
+            shutil.copytree(first["shot_path"], keep / "a")
+            shutil.copytree(last["shot_path"], keep / "b")
+            print("base %s: two runs differ, not stored, %d shots: %s, kept at %s" % (
+                bd["name"], len(fails), "; ".join("%s %s" % f for f in fails), keep))
             bad += 1
             continue
         names = store_base(commit, bd["name"], s["name"], Path(last["shot_path"]), REPO / "build3ds" / "azt" / "logs" / (s["name"] + ".txt"),
@@ -1918,7 +1962,8 @@ def write_png(path, w, h, rgb):
 
 def compare_ppm(base_path, row_path, png_path):
     """None when the two PPM files are byte-equal. Else {"px": differing pixels, "bbox": (x0, y0, x1, y1)} and png_path is
-    written (the base shot dimmed, the differing pixels red). {"size": text} when the sizes differ (no PNG)."""
+    written (the base shot dimmed, the differing pixels red). {"size": text} when the sizes differ (no PNG).
+    png_path None: no PNG (BASEKEEP)."""
     bw, bh, bp = ppm_read(base_path)
     rw, rh, rp = ppm_read(row_path)
     if (bw, bh) != (rw, rh):
@@ -1936,7 +1981,8 @@ def compare_ppm(base_path, row_path, png_path):
             out[o:o + 3] = b"\xff\x00\x00"
         else:
             out[o:o + 3] = bytes(v // 3 for v in bp[o:o + 3])
-    write_png(png_path, bw, bh, bytes(out))
+    if png_path is not None:
+        write_png(png_path, bw, bh, bytes(out))
     return {"px": n, "bbox": (x0, y0, x1, y1)}
 
 
@@ -1978,6 +2024,13 @@ def cmd_cmp(a):
         if n not in row_names:
             print("  %s missing in the row run" % n)
             bad += 1
+            continue
+        if n == "drec.txt":
+            fb, lines = drec_cmp(base_dir / n, row_dir / n)
+            print("\n".join(lines))
+            bad += fb
+            if fb == 0:
+                equal += 1
             continue
         if n == "fhash.txt":
             fb, lines = fhash_cmp(base_dir / n, row_dir / n)
