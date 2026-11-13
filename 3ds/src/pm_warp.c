@@ -15,6 +15,7 @@
 extern bool fio_fetch_saved_file_info(void);
 #include "map.h"
 #include "pm_port.h"
+#include "audio/public.h" /* AMBTITLE: snd_ambient_is_stopped and the AU result names */
 #include <stdio.h>
 #include <string.h>
 float strtof(const char* s, char** end); /* POSWARP: the decomp headers do not declare it (stdlib.h conflicts) */
@@ -1967,6 +1968,24 @@ void pm_warp_tick(unsigned frame) {
     boss_tick();
     battle_tick(); /* BT2 */
     bypass_tick();
+    {   /* AMBTITLE test: titleret=<frame> returns to the title once, in the world (the soft reset path, as the Select menu) */
+        static int tr = -2, ambchk_armed;
+        if (tr == -2) {
+            char tv[16];
+            tr = pm_debug_value("titleret", tv, sizeof tv) ? atoi(tv) : -1;
+        }
+        if (frame == (unsigned)tr && get_game_mode() == GAME_MODE_WORLD) {
+            tr = -1;
+            pm_title_return();
+            pm_log_evt("titleret f%u", frame);
+            ambchk_armed = 1;
+        }
+        if (ambchk_armed && get_game_mode() == GAME_MODE_TITLE_SCREEN) { /* AMBTITLE: the ambient player at the first title frame, many audio frames after the stop */
+            AuResult rc = snd_ambient_is_stopped(0);
+            ambchk_armed = 0;
+            pm_log_evt("ambchk title f%u stopped %d rc %d", frame, rc == AU_RESULT_OK || rc == AU_AMBIENCE_ERROR_3, (int)rc);
+        }
+    }
     wq_tick(); /* WARPQ: a warp queued during a map change runs in the world */
     pos_tick(frame); /* POSWARP */
     pm_cheat_tick(); /* CH6: moon jump, after the game logic of this step */

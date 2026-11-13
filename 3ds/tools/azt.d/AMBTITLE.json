@@ -1,0 +1,28 @@
+{
+  "scenarios": [
+    {
+      "name": "amb_title_arn02",
+      "status": "unverified",
+      "subject": "AMBTITLE: Gusty Gulch (arn_02) wind plays, then the soft reset to the title leaves ambient MSEQ player 0 silent at the title.",
+      "proves": "AMBTITLE: at the first title-screen frame after the return, snd_ambient_is_stopped(0) is AU_RESULT_OK or AU_AMBIENCE_ERROR_3.",
+      "debug": "warp=arn_02:0 story=ch0_toad_town titleret=240 loglevel=debug det",
+      "until": "ambchk title f\\d+ stopped ",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: arn_02 entry 0",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "titleret",
+          "regex": "titleret f240"
+        },
+        {
+          "name": "silent at title",
+          "regex": "ambchk title f\\d+ stopped 1"
+        }
+      ],
+      "reason": "AMBTITLE gate. No shots. The ambchk title line is read at the first title frame, after the stop has run on the audio thread."
+    }
+  ]
+}
