@@ -1,0 +1,3 @@
+func ^(nd_walk_state|nd_ops_run|op_typed|op_geo|walk_call|nd_op_apply|nd_op_same|nd_op_xlate|nd_rec_state|sync_combine|nd_comb_decide|decide|decide_miss|sync_render|set_tilesize|tex_win[01]|ensure_tile|ensure_tile_slow|nd_texrect|nd_fillrect|gv_tri|op_setcombine|load_mtx|ent_flat|ent_run|ent_compile|dlc_try|dlc_build|nd_gtab_run|gt_ops|nd_scomp_exec.*|nd_rec_dl|nd_set_(timg|tile|tilesize|loadblock|loadtile|loadtlut|texture)|gbi_.*|nd_lstcen|img_role|off_screen_check)$
+data ^ndg[odx]?_
+data ^gMainGfxPos$
