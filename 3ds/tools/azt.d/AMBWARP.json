@@ -1,0 +1,36 @@
+{
+  "scenarios": [
+    {
+      "name": "amb_warp_arn02_mac01",
+      "status": "unverified",
+      "subject": "AMBWARP: the Select menu warp (livewarp, the call pm_warp_live -> warp_end_intro) from Gusty Gulch arn_02 (AMBIENT_WIND MSEQ) to Toad Town mac_01 (no ambient clear). The ambchk line on mac_01 shows whether the wind MSEQ stopped.",
+      "proves": "AMBWARP: warp_end_intro calls play_ambient_sounds(-1, 0), so snd_ambient_is_stopped(0) is AU_RESULT_OK or AU_AMBIENCE_ERROR_3 on the first world frame of mac_01.",
+      "debug": "warp=arn_02:0 story=ch0_toad_town livewarp=300:mac_01:0 ambchk loglevel=debug det",
+      "until": "ambchk f\\d+ map mac_01 ",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: arn_02 entry 0",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "arn_02 reached",
+          "regex": "ambchk f\\d+ map arn_02 "
+        },
+        {
+          "name": "menu warp ran",
+          "regex": "livewarp: scene frame 300 to mac_01 entry 0"
+        },
+        {
+          "name": "warp_end_intro ran",
+          "regex": "warp: songs, loop sounds and ambient stopped"
+        },
+        {
+          "name": "ambient stopped",
+          "regex": "ambchk f\\d+ map mac_01 stopped 1"
+        }
+      ],
+      "reason": "AMBWARP gate. No shots: the ambchk lines are the gate. Menu warp path (livewarp), not the tour. Cap 45 s."
+    }
+  ]
+}
