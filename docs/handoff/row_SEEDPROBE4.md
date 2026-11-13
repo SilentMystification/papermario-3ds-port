@@ -11,7 +11,7 @@ docs/handoff/row_SEEDS.md (the verdict field of these 12 lines, written by seedp
 bench.d/SEEDPROBE4.json. No source file stays changed (seedprobe.py restores it). New names: seedprobe4_a_drec, seedprobe4_b_drec. Host link: none.
 Needs: 3ds/tools/seedprobe.py has --write
 ## Exact edits
-1. New azt.d/SEEDPROBE4.json: copies of spot_mac01_drec (azt.d/HOSTCORE2.json) with these `debug` fields and untils, cap 40, deadline 35,
+1. New azt.d/SEEDPROBE4.json: copies of the fxpic_89 scenario (azt_scenarios.json: first_marker and warp event `warp: mac_01 entry 0`; not the prof marker of spot_mac01_drec) with these `debug` fields and untils, cap 40, deadline 35,
    needs_picture false. bench.d/SEEDPROBE4.json: the same names, kind azahar_pic, tags azahar det drec. Commit them.
    - seedprobe4_a_drec: `warp=mac_01:0 pos=0:0:200 fxtest=109,124,26,120,78,72 loglevel=debug det drec=412:6:44`, until
      `drec f632 draws [1-9]\d* bytes \d+`.

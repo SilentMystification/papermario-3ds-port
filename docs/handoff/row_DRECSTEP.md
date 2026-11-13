@@ -23,10 +23,13 @@ New names: drecstep_89_33. Host link: none (pm_gpu.c is not in a host link).
    of drec_begin, `if (drec_step > 1u) fprintf(drec_f, "frame %u\n", fr);`. A per-file diff of a batch reads these lines.
 3. drec_end: the close test becomes `if (!drec_f || pm_frame_count() < drec_first + (drec_count - 1u) * drec_step) return;`
    (with step 1 this is the old test).
-4. azt.d/DRECSTEP.json drecstep_89_33: a copy of spot_mac01_drec (bench.d/HOSTCORE2.json, azt.d/HOSTCORE2.json) with `debug`
+4. azt.d/DRECSTEP.json drecstep_89_33: a copy of the fxpic_89 scenario (azt_scenarios.json: first_marker and warp event `warp: mac_01 entry 0`; not the prof marker of spot_mac01_drec) with `debug`
    `warp=mac_01:0 pos=0:0:200 fxtest=89,33 loglevel=debug det drec=412:2:44`, until `drec f456 draws [1-9]\d* bytes \d+`, cap
    40, deadline 35. bench.d/DRECSTEP.json: drecstep_89_33, kind azahar_pic, tags azahar det drec.
 5. Commit: `DRECSTEP: drec=<first>:<count>:<step> records one frame per step`.
+Correction 1 (ORACLE8, 2026-11-13; resume after 4d6727c95, budget reset once): azt.d/DRECSTEP.json takes first_marker
+`warp: mac_01 entry 0` and the warp event in place of `prof=1 log=off` and the prof event (pm_log.c:655-658 prints that only with
+prof=). Fix the json, commit, then the seed step again.
 ## Gate (expected values)
 1. Build, memcheck OK. nd_host PASS.
 2. No change at step 1: `bench.py base spot_mac01_drec` (merge-base), run it on the row, cmp: drec.txt byte-equal.

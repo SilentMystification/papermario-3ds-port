@@ -14,7 +14,8 @@ What the user did and saw, in the user's words. The fault is fact (CLAUDE.md 1).
 ## Touch only
 Files: <paths>. Symbols: <symbol> in <file>. The oracle checks that no other running row edits the same places (merge conflicts).
 New names: <every new bench and scenario name, or "none">. Host link: <the host test that links a touched 3ds/src file, or "none">.
-Needs: <path> has <text>, one line per data state a gate needs on main (a verdict, a stored base, a merged tool), or none.
+One line per data state a gate needs on main (a verdict, a stored base, a merged tool): the word Needs, a colon, the path,
+the word has, the text.
 (rowlint.py reads these lines.)
 
 ## Exact edits
@@ -44,6 +45,8 @@ Needs: <path> has <text>, one line per data state a gate needs on main (a verdic
   files, then base the renamed scene.
 - Scene does not draw the file (the draw proof fails): an effect file `<n>.c` uses fxtest id = the index of `E(<n>,` in FXLIST
   (3ds/src/pm_fxtest.c, from 0) in a copy of fxpic_89. A map file of src/world/area_<a>/<map>/ uses `warp=<map>:0`. Else stop.
+- A scenario that is copied keeps its first_marker only when its debug string has the switch that prints it (the marker
+  `prof=1 log=off` needs prof=, pm_log.c:655-658). Else use `warp: <map> entry <n>` with the warp event (as fxpic_89).
 - A line number that moved: find the quoted text in the same function and use its line.
 
 ## Stop

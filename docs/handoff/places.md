@@ -40,3 +40,4 @@ A shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json, bench_def
 | SEEDPROBE4 | Haiku | docs/handoff/row_SEEDS.md verdict fields of its lines; new azt.d/bench.d SEEDPROBE4.json | waits for SEEDPROBE3 merge (adjacent lines of one file) |
 | SEEDPROBE5 | Haiku | docs/handoff/row_SEEDS.md verdict fields of its lines; new azt.d/bench.d SEEDPROBE5.json | waits for SEEDPROBE4 merge (adjacent lines of one file) |
 | SEEDPROBE6 | Haiku | docs/handoff/row_SEEDS.md verdict fields of its lines; new azt.d/bench.d SEEDPROBE6.json | waits for SEEDPROBE5 merge (adjacent lines of one file) |
+| ROWLINT3 | Haiku | 3ds/tools/rowlint.py new check_marker and its call in main, kinds line; new rowlint_fixtures/marker.md | ready |

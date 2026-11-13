@@ -14,7 +14,7 @@ The value call lines and the include lines of: {FILES}. New azt.d/{ID}.json and 
 New names: {SCENE}. Host link: none.
 {NEEDS}
 ## Exact edits
-1. azt.d/{ID}.json {SCENE}: a copy of spot_mac01_drec (azt.d/HOSTCORE2.json) with `debug`
+1. azt.d/{ID}.json {SCENE}: a copy of the fxpic_89 scenario (azt_scenarios.json: first_marker and warp event `warp: mac_01 entry 0`; not the prof marker of spot_mac01_drec) with `debug`
    `warp=mac_01:0 pos=0:0:200 fxtest={IDS} loglevel=debug det drec=412:{N}:44`, until `drec f{LAST} draws [1-9]\d* bytes \d+`,
    cap 45, deadline 40, needs_picture false. bench.d/{ID}.json: {SCENE}, kind azahar_pic, tags azahar det drec. Commit them.
 2. `python 3ds/tools/codemod.py {PATHS}`.
