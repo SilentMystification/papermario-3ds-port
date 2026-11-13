@@ -1572,6 +1572,31 @@ def shots_diff(a, b):
     return ""
 
 
+def shots_diff_all(a, b):
+    """BASEKEEP: [(name, text)] for every shot name of either folder that is missing in one or differs: a .ppm gives its
+    differing pixel count and bounding box (compare_ppm, no PNG), fhash.txt gives "text differs". [] when equal."""
+    an, bn = shot_names(a), shot_names(b)
+    out = []
+    for n in sorted(set(an) | set(bn)):
+        if n not in an or n not in bn:
+            out.append((n, "missing in %s" % ("b" if n not in bn else "a")))
+            continue
+        if md5_of(Path(a) / n) == md5_of(Path(b) / n):
+            continue
+        if not n.endswith(".ppm"):
+            out.append((n, "text differs"))
+            continue
+        r = compare_ppm(Path(a) / n, Path(b) / n, None)
+        if r is None:
+            out.append((n, "bytes differ, pixels equal"))
+        elif "size" in r:
+            out.append((n, "size " + r["size"]))
+        else:
+            x0, y0, x1, y1 = r["bbox"]
+            out.append((n, "px %d bbox x%d..%d y%d..%d" % (r["px"], x0, x1, y0, y1)))
+    return out
+
+
 BASE_TWICE = 2  # a base is stored only when this many warm runs of its scenario in one list are byte-equal on every shot
 BASE_MAX_RUNS = 4  # BASEKEY: a list of 2, then single runs until two warm runs pass
 
@@ -1633,7 +1658,13 @@ def base_run(bds, commit, build_no, row, lane, label, why):
             continue
         diff = shots_diff(first.get("shot_path") or "", last.get("shot_path") or "")
         if diff:
-            print("base %s: two runs differ, not stored (%s)." % (bd["name"], diff))
+            # BASEKEEP: keep both shot sets of the pair and name every differing shot
+            fails = shots_diff_all(first.get("shot_path") or "", last.get("shot_path") or "")
+            keep = REPO / "build3ds" / "basesnap_fail" / (lane or "main") / time.strftime("%Y%m%d-%H%M%S")
+            shutil.copytree(first["shot_path"], keep / "a")
+            shutil.copytree(last["shot_path"], keep / "b")
+            print("base %s: two runs differ, not stored, %d shots: %s, kept at %s" % (
+                bd["name"], len(fails), "; ".join("%s %s" % f for f in fails), keep))
             bad += 1
             continue
         names = store_base(commit, bd["name"], s["name"], Path(last["shot_path"]), REPO / "build3ds" / "azt" / "logs" / (s["name"] + ".txt"),
@@ -1918,7 +1949,8 @@ def write_png(path, w, h, rgb):
 
 def compare_ppm(base_path, row_path, png_path):
     """None when the two PPM files are byte-equal. Else {"px": differing pixels, "bbox": (x0, y0, x1, y1)} and png_path is
-    written (the base shot dimmed, the differing pixels red). {"size": text} when the sizes differ (no PNG)."""
+    written (the base shot dimmed, the differing pixels red). {"size": text} when the sizes differ (no PNG).
+    png_path None: no PNG (BASEKEEP)."""
     bw, bh, bp = ppm_read(base_path)
     rw, rh, rp = ppm_read(row_path)
     if (bw, bh) != (rw, rh):
@@ -1936,7 +1968,8 @@ def compare_ppm(base_path, row_path, png_path):
             out[o:o + 3] = b"\xff\x00\x00"
         else:
             out[o:o + 3] = bytes(v // 3 for v in bp[o:o + 3])
-    write_png(png_path, bw, bh, bytes(out))
+    if png_path is not None:
+        write_png(png_path, bw, bh, bytes(out))
     return {"px": n, "bbox": (x0, y0, x1, y1)}
 
 
