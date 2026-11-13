@@ -24,6 +24,13 @@ Start: `sh 3ds/tools/wt_new.sh AMBWARP`. PM_ROW=AMBWARP PM_LANE=AMBWARP on every
   AU_AMBIENCE_ERROR_3, read at the first world frame of the new map (pm_warp_world_mode), many audio frames after the stop.
   `stopped 0` at arn_02 is right (the wind plays there).
 - Code 74b1ce319 stays. Only the probe expression (if not yet the rc rule) and the scenario change.
+## Correction 3 (ORACLE8, after 4267f2fe6, runs 5b8fcae99)
+- That run did not take the menu path: its log has no `livewarp:` line and no `warp: songs` line, so the map changed by the
+  tour (tour_step, no stop). The scenario debug must be exactly `warp=arn_02:0 story=ch0_toad_town livewarp=300:mac_01:0 ambchk
+  loglevel=debug det`, with no `tour=` and no `tourtime=`. The two new expected events prove the path ran.
+- The probe place is right: mac_01 starts no ambient of its own (grep PlayAmbientSounds and ClearAmbientSounds in
+  src/world/area_mac/mac_01: none), so player 0 at the first world frame of mac_01 can only hold the wind of arn_02. The seed
+  (the same id AMBIENT_WIND) keeps it: `stopped 0`. The real edit stops it: `stopped 1`.
 ## Touch only (places)
 3ds/src/pm_warp.c: warp_end_intro (the 4 lines from `bgm_set_song(0, ...` to its pm_log), pm_warp_world_mode (:1416, one block at
 its start). New 3ds/tools/azt.d/AMBWARP.json, 3ds/tools/bench.d/AMBWARP.json. Nothing else (no open row edits these places).
@@ -39,7 +46,8 @@ its start). New 3ds/tools/azt.d/AMBWARP.json, 3ds/tools/bench.d/AMBWARP.json. No
    `amb_warp_arn02_mac01`, status `unverified`, subject, proves, debug `warp=arn_02:0 story=ch0_toad_town livewarp=300:mac_01:0
    ambchk loglevel=debug det` (correction 2: the menu warp, not the tour), until `ambchk f\d+ map mac_01 `, cap 45, deadline 20, first_marker `warp: arn_02 entry 0`,
    expects `none`, needs_picture false, expected_events [{name "arn_02 reached", regex `ambchk f\d+ map arn_02 `}, {name
-   "ambient stopped", regex `ambchk f\d+ map mac_01 stopped 1`}], reason. Bench in bench.d/AMBWARP.json: name
+   "menu warp ran", regex `livewarp: scene frame 300 to mac_01 entry 0`}, {name "warp_end_intro ran", regex `warp: songs, loop
+   sounds and ambient stopped`}, {name "ambient stopped", regex `ambchk f\d+ map mac_01 stopped 1`}], reason. Bench in bench.d/AMBWARP.json: name
    `amb_warp_arn02_mac01`, kind `azahar`, speed `normal`, default false, purpose, scenario, cap 45, the same until, tags
    ["azahar"], gates [].
 4. Commit: `AMBWARP: warps stop the MSEQ ambient of the left map (play_ambient_sounds(-1)), ambchk probe and scene`.
