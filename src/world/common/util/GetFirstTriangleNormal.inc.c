@@ -1,18 +1,10 @@
 #include "common.h"
 
-#ifdef TARGET_3DS /* HC4f3: the map list words are typed (nd_op.h); the names are the typed ids */
 #define GFTN_END NDO_END
 #define GFTN_DL NDO_CALL
 #define GFTN_VTX NDO_VTX
 #define GFTN_TRI1 NDO_TRI1
 #define GFTN_TRI2 NDO_TRI2
-#else
-#define GFTN_END G_ENDDL
-#define GFTN_DL G_DL
-#define GFTN_VTX G_VTX
-#define GFTN_TRI1 G_TRI1
-#define GFTN_TRI2 G_TRI2
-#endif
 
 static Vtx_t* N(TriNormVertexBuffer)[32]; // unk length
 
@@ -44,13 +36,8 @@ void N(GetFirstTriangleNormal)(Gfx* inGfx, f32* outNx, f32* outNy, f32* outNz) {
     v3x = v3y = v3z = 0.0f;
 
     while (true) {
-#ifdef TARGET_3DS
         uint32_t t[2]; t[0] = gfx->words.w0; t[1] = gfx->words.w1; /* HC4f3: the typed unit */
         u32 w0 = t[0]; u32 w1 = t[1];
-#else
-        u32 w0 = gfx->words.w0;
-        u32 w1 = gfx->words.w1;
-#endif
         s32 op = w0 >> 24;
         readState = READ_STATE_CONTINUE;
         switch (op) {

@@ -5320,10 +5320,8 @@ enum WindowID {
     WIN_FILES_SLOT2_TITLE                   = 61,
     WIN_FILES_SLOT3_TITLE                   = 62,
     WIN_FILES_SLOT4_TITLE                   = 63,
-#ifdef TARGET_3DS
     WIN_FILES_OPTIONS_ITEM                  = 64, // port: Options item under Copy
     WIN_FILES_OPTIONS_PANEL                 = 65, // port: Options panel
-#endif
 };
 
 enum SimpleWindowUpdateId {
@@ -5409,7 +5407,6 @@ enum FileMenuMessages {
     FILE_MESSAGE_PAL_FILENUM_3,
     FILE_MESSAGE_PAL_FILENUM_4,
 #endif
-#ifdef TARGET_3DS
     FILE_MESSAGE_OPTIONS,                              // port: Options[End]
     FILE_MESSAGE_OPT_FPS60,
     FILE_MESSAGE_OPT_WIDE,
@@ -5427,7 +5424,6 @@ enum FileMenuMessages {
     FILE_MESSAGE_OPT_LV_WARN,
     FILE_MESSAGE_OPT_LV_INFO,
     FILE_MESSAGE_OPT_LV_DEBUG,
-#endif
 };
 
 // specifically used with draw_msg, not to be confused with MsgStyles

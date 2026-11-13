@@ -62,15 +62,10 @@
 #define MAP_RODATA_PAD(n,name) const s32 N(rodata_pad_##name)[n] = {};
 #define MAP_STATIC_PAD(n,name) BSS s32 N(static_pad_##name)[n];
 
-#if defined(TARGET_3DS)
 /* Host pointers are already the addresses the GPU reader uses. Subtracting
  * the N64 KSEG0 base wraps them into unmapped space and drops the sprite matrices. */
 #define PHYSICAL_TO_VIRTUAL(addr) ((void*)(addr))
 #define VIRTUAL_TO_PHYSICAL(addr) ((u32)(addr))
-#else
-#define PHYSICAL_TO_VIRTUAL(addr) (void*)((u32)(addr) + 0x80000000)
-#define VIRTUAL_TO_PHYSICAL(addr) (u32)((u8*)(addr) - 0x80000000)
-#endif
 
 #ifdef DEBUG
 #define IS_DEBUG_PANIC(statement, file, line) is_debug_panic(statement, file, line)
@@ -138,18 +133,10 @@ typedef s32 Difficulty2D[AC_DIFFICULTY_LEN][2];
 
 #define WORLD_ENTITY_HEAP_SIZE 0x17FF0
 #define COLLISION_HEAP_SIZE 0x18000
-#if defined(TARGET_3DS)
 #define GENERAL_HEAP_SIZE 0x180000
-#else
-#define GENERAL_HEAP_SIZE 0x54000
-#endif
-#if defined(TARGET_3DS)
 /* The intro cast alone is ~386KB of decoded sprites, and they stay resident.
  * 256KB fits Bowser and then drops everyone standing in the room. */
 #define SPRITE_HEAP_SIZE 0x100000
-#else
-#define SPRITE_HEAP_SIZE 0x40000
-#endif
 #define BATTLE_HEAP_SIZE 0x25800
 #define FRAME_BUFFER_SIZE 0x25800
 
@@ -310,11 +297,7 @@ typedef s32 Difficulty2D[AC_DIFFICULTY_LEN][2];
 
 #define PACK_PAL_RGBA(r, g, b, a) (((r) << 11) | ((g) << 6) | ((b) << 1) | (a));
 /* V24: sprite palettes stay big-endian bytes in memory on the 3DS (the GBI reads them as big-endian). Code that does colour math on a palette word reads it with PAL_MEM and writes it back with PAL_MEM. */
-#ifdef TARGET_3DS
 #define PAL_MEM(c) ((u16) __builtin_bswap16((u16) (c)))
-#else
-#define PAL_MEM(c) (c)
-#endif
 
 #define PM_RM_SHROUD    GBL_c1(G_BL_CLR_BL, G_BL_A_FOG, G_BL_CLR_IN, G_BL_1MA)
 
@@ -582,37 +565,20 @@ typedef enum {
 
 /* A message buffer passed where a message ID goes. On the N64 a buffer pointer is negative (KSEG0) and a message ID is not, so
  * "id < 0" means "buffer". A 3DS pointer is positive (below 0x80000000), so the buffer is tagged with bit 31. */
-#ifdef TARGET_3DS
 #define MSG_BUF_ID(p) ((s32)((u32)(p) + 0x80000000u))
 #define MSG_BUF_PTR(id) ((void*)((u32)(id) & 0x7FFFFFFFu))
-#else
-#define MSG_BUF_ID(p) ((s32)(p))
-#define MSG_BUF_PTR(id) ((void*)(id))
-#endif
 
 /* "Is this a message buffer, not a message ID?" N64: the sign. 3DS: every message ID is below 0x2F0000 (the last section is
  * 0x2E), every data or heap address is above it (image data starts after the 1.9 MB of code), so this accepts a tagged buffer
  * (MSG_BUF_ID) and a raw pointer (shops, credits, Quizmo scripts, static data). */
-#ifdef TARGET_3DS
 #define MSG_IS_BUF(id) ((u32)(id) >= 0x2F0000u)
-#else
-#define MSG_IS_BUF(id) ((s32)(id) < 0)
-#endif
 
 /* "Is this value a data address?" for code that tells a pointer from a small number. N64: a KSEG0 address is negative as an s32.
  * 3DS: addresses are positive and start at 0x100000 (the image), so use the same bound as EVT_IS_PTR. */
-#ifdef TARGET_3DS
 #define IS_ADDR(v) ((s32)(v) >= 0x100000)
-#else
-#define IS_ADDR(v) ((s32)(v) < 0)
-#endif
 
 /* P02 debug check (switch `ptrcheck`): log once per (site, caller) when a value in the 3DS host pointer range 0x100000 to
  * 0x1FFFFFFF reaches a place that expects an ID, a number or a float. Port function in 3ds/src/pm_warp.c. */
-#ifdef TARGET_3DS
 void pm_ptrcheck(const char* what, unsigned val, const void* caller);
 #define PTRCHECK(what, val) do { if ((u32)(val) >= 0x100000u && (u32)(val) < 0x20000000u) pm_ptrcheck(what, (u32)(val), __builtin_return_address(0)); } while (0)
-#else
-#define PTRCHECK(what, val) do { } while (0)
-#endif
 #endif

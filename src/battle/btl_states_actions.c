@@ -1,7 +1,5 @@
 #include "common.h"
-#ifdef TARGET_3DS
 int pm_debug_has(const char* word); /* debug switches (3ds/src/pm_log.c) */
-#endif
 #include "audio.h"
 #include "audio/public.h"
 #include "script_api/battle.h"
@@ -269,9 +267,7 @@ void btl_state_update_normal_start(void) {
             if (is_ability_active(ABILITY_MYSTERY_SCROLL)) {
                 battleStatus->actionCommandMode = AC_MODE_LEARNED;
             }
-#ifdef TARGET_3DS
             if (pm_debug_has("acmd")) battleStatus->actionCommandMode = AC_MODE_LEARNED; /* test switch acmd: action commands in a battle without the Goompa tutorial (the mode is NOT_LEARNED here, jump.c N(start) returns) */
-#endif
             battleStatus->actionQuality = 0;
             battleStatus->maxActionQuality = 0;
             battleStatus->enabledMenusFlags = -1;

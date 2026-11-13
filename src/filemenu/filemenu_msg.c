@@ -438,7 +438,6 @@ u8 filemenu_createfile_gridData[] = { 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 
 };
 u8 filemenu_msg_33[] = { 0x1F, 0xFD };
 u8 filemenu_msg_34[] = { 0x0E, 0xFD };
-#ifdef TARGET_3DS
 u8 filemenu_msg_options[] = { 0x2F, 0x50, 0x54, 0x49, 0x4F, 0x4E, 0x53, 0xFD }; // Options[End]
 u8 filemenu_msg_opt_fps60[] = { 0x16, 0x10, 0xF7, 0x26, 0x30, 0x33, 0xFD }; // 60 FPS[End]
 u8 filemenu_msg_opt_wide[] = { 0x37, 0x49, 0x44, 0x45, 0x53, 0x43, 0x52, 0x45, 0x45, 0x4E, 0xFD }; // Widescreen[End]
@@ -456,7 +455,6 @@ u8 filemenu_msg_opt_lv_error[] = { 0x25, 0x52, 0x52, 0x4F, 0x52, 0xFD }; // Erro
 u8 filemenu_msg_opt_lv_warn[] = { 0x37, 0x41, 0x52, 0x4E, 0xFD }; // Warn[End]
 u8 filemenu_msg_opt_lv_info[] = { 0x29, 0x4E, 0x46, 0x4F, 0xFD }; // Info[End]
 u8 filemenu_msg_opt_lv_debug[] = { 0x24, 0x45, 0x42, 0x55, 0x47, 0xFD }; // Debug[End]
-#endif
 #endif
 
 u8 *gFileMenuMessages[] = {
@@ -529,7 +527,6 @@ u8 *gFileMenuMessages[] = {
     [FILE_MESSAGE_QUESTION]                    filemenu_msg_33,
     [FILE_MESSAGE_PERIOD_34]                   filemenu_msg_34,
 #endif
-#ifdef TARGET_3DS
     [FILE_MESSAGE_OPTIONS]                     filemenu_msg_options,
     [FILE_MESSAGE_OPT_FPS60]                  filemenu_msg_opt_fps60,
     [FILE_MESSAGE_OPT_WIDE]                  filemenu_msg_opt_wide,
@@ -547,7 +544,6 @@ u8 *gFileMenuMessages[] = {
     [FILE_MESSAGE_OPT_LV_WARN]                  filemenu_msg_opt_lv_warn,
     [FILE_MESSAGE_OPT_LV_INFO]                  filemenu_msg_opt_lv_info,
     [FILE_MESSAGE_OPT_LV_DEBUG]                  filemenu_msg_opt_lv_debug,
-#endif
 };
 
 #if VERSION_PAL

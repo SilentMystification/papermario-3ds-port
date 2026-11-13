@@ -4499,16 +4499,10 @@ typedef union {
     gImmp1(pkt, G_RDPHALF_2, (_SHIFTL(dsdx, 16, 16) | _SHIFTL(dtdy, 0, 16)));\
 }
 
-#ifdef TARGET_3DS
 extern int pm_wide; /* WIDEHUD: with wide a rect left of x 0 is drawn in the gutter. Clipping it to 0 made the port extend the rect to the screen edge and repeat its texture. */
 #define PM_SCIS_XL(v) (pm_wide ? (s16)(v) : MAX((s16)(v), 0))
 #define PM_SCIS_XH(v) (pm_wide ? (s16)(v) : MAX((s16)(v), 0)) /* WIDE4: the right edge too: a rect wholly left of x 0 (battle wheel option at x -27) kept xl and clamped xh to 0, so it stretched to x 0 and repeated its texture (two flags) */
 #define PM_SCIS_CLIP(v) (!pm_wide && (s16)(v) < 0)
-#else
-#define PM_SCIS_XL(v) MAX((s16)(v), 0)
-#define PM_SCIS_XH(v) MAX((s16)(v), 0)
-#define PM_SCIS_CLIP(v) ((s16)(v) < 0)
-#endif
 /* like gSPTextureRectangle but accepts negative position arguments */
 #define gSPScisTextureRectangle(pkt, xl, yl, xh, yh, tile, s, t, dsdx, dtdy) \
 {                                                                            \
