@@ -1,0 +1,29 @@
+{
+  "scenarios": [
+    {
+      "name": "fxpic_89_drec",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 at 0 0 200, fxtest=89 (water_splash), cold det start with the drec switch: the draw records of frames 412 and 413 go to shots/drec.txt.",
+      "proves": "CONV2D2: the draw record text of the water_splash frames 412 and 413 is a function of the build (det), so a base and a head build give a byte-equal drec.txt, and the native unit copy (nd_ntab_run) runs for the list.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=89 loglevel=debug det drec=412:2",
+      "extra": [],
+      "until": "drec f413 draws [1-9]\\d* bytes \\d+",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f413 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "reason": "CONV2D2 byte gate for the water_splash particle run (fxpic_89 with drec in place of the shots). Cold det start, cap 40 s, deadline 35 s. The drec line at frame 413 is the until."
+    }
+  ]
+}
