@@ -11,20 +11,16 @@ Orchestrator: read docs/handoff/orchestrator_rules.md at the start and after eve
    changed shared draw code. The user checks the look on the console.
 3. TESTS. Every run uses `python 3ds/tools/bench.py run <bench> --row <row> --why "<text>"` with PM_ROW=<row> and PM_LANE=<row>.
    Test only what the row changes. A scenario has an until-line (a log event of the subject), ends within 5 s of it, and has a cap
-   of 10-25 s (45 s max). A new scenario and its bench go in one commit. Budget: 8 Azahar starts per row.
-   Exception (user, 2026-11-13): the oracle runs verdict tools under row id ORACLE (worktree build3ds/wt/ORACLE, 8 starts per
-   day, PM_ROW=ORACLE): rowlint.py, seedprobe.py, bench.py cmp. It reads one verdict line per call, never a log or a shot, and
-   never runs to find the cause of a user fault. An ORACLE run uses one of the 6 coder slots.
+   of 10-25 s (45 s max). A new scenario and its bench go in one commit. Budget: 8 Azahar starts per row. The oracle runs only
+   rowlint.py, seedprobe.py and bench.py cmp, as row ORACLE (8 starts per day), one verdict line per call, one coder slot.
 4. TOOL FAULTS STOP THE GATE. These faults stop the gate: a base run that fails or hangs, an abnormal exit, a stale build, a shot
    copy failure, two runs that disagree. Stop and hand back the exact output. Never skip a scene, change the base or reset the
    budget to pass. Exception (user, 2026-11-12): the orchestrator resets a row's budget once per oracle correction when the
    oracle corrected a row spec fault (not a tool fault). Every compare is exact: one differing bit fails the gate. There is no
    rounding exception (user, 2026-11-12).
 5. STOP RULE. A failed gate or an unexpected fact: stop, commit, hand back the values. Do not choose a new approach. Hand back
-   after 90 minutes or 150 tool calls without a passed gate. 2 tries per named cause. Exception (user, 2026-11-13): a row text
-   fault that row_TEMPLATE.md covers (a dead seed, a clashing bench name, the scene the row names) the coder fixes by the
-   template rule and notes in the commit. The coder still stops on a tool fault, a real picture or drec difference of the real
-   edit, and a counter that does not fall.
+   after 90 minutes or 150 tool calls without a passed gate. 2 tries per named cause. A row text fault that row_TEMPLATE.md
+   covers (dead seed, clashing bench name, scene) the coder fixes by the template and notes in the commit.
 6. WORK. Grep and read line ranges. Write tool output to build3ds/out/ of your own worktree. Run builds and benches in the
    foreground (timeout up to 600000 ms). No Monitor or tail loops. Stop every background task you start.
 7. CODE. Commit each finished piece (changed files only). No feature toggles, no stubs, no git push, no git stash. Claude
