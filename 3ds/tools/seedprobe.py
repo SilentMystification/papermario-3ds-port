@@ -26,6 +26,7 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parent.parent
 OUT = REPO / "build3ds" / "out"
 SEED_RX = re.compile(r"^(.+):(\d+)@(-|\d+)$")
+DRAW_RX = re.compile(r"^draw \d+")
 
 
 class Stop(Exception):
@@ -211,7 +212,11 @@ def main(argv):
             bs, rs = frame_section(bl, frame), frame_section(rl, frame)
             if bs is None or rs is None:
                 raise Stop(3, "seedprobe tool-fault no frame %s in drec.txt (base %s, row %s)" % (frame, bs is not None, rs is not None))
-            word = "dead" if bs == rs else "live"
+            # Correction 1 (ORACLE8 2026-11-13): each `draw <n>` line reads as `draw` (drec numbers draws over the whole window);
+            # the draw count of the frame still counts (the number of draw lines must match).
+            norm = lambda sec: [DRAW_RX.sub("draw", x) for x in sec]
+            same = norm(bs) == norm(rs) and sum(x.startswith("draw ") for x in bs) == sum(x.startswith("draw ") for x in rs)
+            word = "dead" if same else "live"
             detail = ("frame %s equal" if word == "dead" else "frame %s differs") % frame
         out.append("seed %s:%d %s (%s)" % (f, line, word, detail))
         verdicts.append((f, line, word))
