@@ -2,10 +2,10 @@
 """covsites.py: site coverage of game files from a census log (fncov lane, COVMAP).
 
 usage (repo root; Windows: py -3 3ds/tools/covsites.py ...):
-  covsites.py <fncov log> --lane <L> <src file>...
+  covsites.py <fncov log>... --lane <L> <src file>...
 
 <L> is the lane name of the normal build (PM_LANE); the census map is read from build3ds/lane-<L>_fncov/pm_3ds.map.
-Calls per address = sum over all "fncov f<n> <addr>:<calls>" tokens of the log (all frames).
+Calls per address = sum over all "fncov f<n> <addr>:<calls>" tokens of all the logs (all frames).
 
 A site is a line of an active branch (listcen.py TARGET_3DS rule) that matches
   \\bg(DP|SP)\\w+\\(|\\bnd_(rec_dl|scomp_rec|draw_list|val_\\w+|xf_\\w+)\\(
@@ -29,18 +29,20 @@ FN_RX = re.compile(r"^[A-Za-z_][^(;=]*?\b(\w+)\s*\(")
 HIT_MIN = 0  # seed check (COVMAP gate 3) sets this to 1000000 for one run, then back to 0
 
 
-def census_calls(log):
-    tot, seen = Counter(), False
-    with open(log, encoding="utf-8", errors="replace") as fh:
-        for l in fh:
-            m = re.search(r"fncov f(\d+) ((?:[0-9a-f]{8}:\d+ ?)+)", l)
-            if m:
-                seen = True
-                for tok in m.group(2).split():
-                    a, n = tok.split(":")
-                    tot[int(a, 16) & ~1] += int(n)
-    if not seen:
-        raise SystemExit("covsites: no fncov frame in %s" % log)
+def census_calls(logs):
+    tot = Counter()
+    for log in logs:
+        seen = False
+        with open(log, encoding="utf-8", errors="replace") as fh:
+            for l in fh:
+                m = re.search(r"fncov f(\d+) ((?:[0-9a-f]{8}:\d+ ?)+)", l)
+                if m:
+                    seen = True
+                    for tok in m.group(2).split():
+                        a, n = tok.split(":")
+                        tot[int(a, 16) & ~1] += int(n)
+        if not seen:
+            raise SystemExit("covsites: no fncov frame in %s" % log)
     return tot
 
 
@@ -75,12 +77,16 @@ def map_addrs(mp, name, stem):
 
 
 def main(argv):
+    if "--lane" not in argv or argv.index("--lane") == 0:
+        raise SystemExit("usage: covsites.py <fncov log>... --lane <L> <src file>...")
+    k = argv.index("--lane")
+    logs = argv[:k]  # the logs come before --lane (one or more)
     ap = argparse.ArgumentParser()
-    ap.add_argument("log")
     ap.add_argument("--lane", required=True)
     ap.add_argument("files", nargs="+")
-    a = ap.parse_args(argv)
-    calls = census_calls(a.log)
+    a = ap.parse_args(argv[k:])
+    a.logs = logs
+    calls = census_calls(a.logs)
     mp = H.parse_map(H.lane_dir(a.lane, True) / "pm_3ds.map")
     for f in a.files:
         stem = Path(f).stem

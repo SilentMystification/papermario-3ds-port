@@ -1,0 +1,20 @@
+{
+  "benches": [
+    {
+      "name": "gm_fncov_89",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "GMHARN: fncov census of scenario fxfncov_89 for gold.py (log only; gold.py sums the logs with covsites.py).",
+      "scenario": "fxfncov_89",
+      "cap": 45,
+      "until": "fncov f\\d+ done",
+      "tags": [
+        "azahar",
+        "det",
+        "fncov"
+      ],
+      "gates": []
+    }
+  ]
+}
