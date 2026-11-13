@@ -1967,6 +1967,18 @@ void pm_warp_tick(unsigned frame) {
     boss_tick();
     battle_tick(); /* BT2 */
     bypass_tick();
+    {   /* AMBTITLE test: titleret=<frame> returns to the title once, in the world (the soft reset path, as the Select menu) */
+        static int tr = -2;
+        if (tr == -2) {
+            char tv[16];
+            tr = pm_debug_value("titleret", tv, sizeof tv) ? atoi(tv) : -1;
+        }
+        if (frame == (unsigned)tr && get_game_mode() == GAME_MODE_WORLD) {
+            tr = -1;
+            pm_title_return();
+            pm_log_evt("titleret f%u", frame);
+        }
+    }
     wq_tick(); /* WARPQ: a warp queued during a map change runs in the world */
     pos_tick(frame); /* POSWARP */
     pm_cheat_tick(); /* CH6: moon jump, after the game logic of this step */

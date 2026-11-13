@@ -5,6 +5,8 @@
 #include "sprite.h"
 #include "game_modes.h"
 
+void pm_log_evt(const char* fmt, ...); /* AMBTITLE: harness test-event line (pm_port.h) */
+
 void state_init_startup(void) {
     gOverrideFlags |= GLOBAL_OVERRIDES_DISABLE_DRAW_FRAME;
     gGameStatusPtr->startupState = 3;
@@ -63,6 +65,9 @@ void state_step_startup(void) {
     clear_windows();
     partner_initialize_data();
     sfx_clear_sounds();
+    snd_ambient_stop_quick(0); /* AMBTITLE: the soft reset (return to title) does not reboot the audio: stop the ambient MSEQ player */
+    reset_ambient_sounds();
+    { static int n; pm_log_evt("startup %d ambient stopped %d", n++, snd_ambient_is_stopped(0) == AU_RESULT_OK); }
     bgm_reset_volume();
     initialize_curtains();
 
