@@ -321,28 +321,6 @@ void gfx_transfer_frame_to_depth(u16* frameBuffer0, u16* frameBuffer1, u16* zBuf
 #endif
 }
 
-void func_80027BAC(s32 arg0, s32 arg1) {
-    s32 i;
-    s32 temp = 24; // todo figure out why this is needed and can't be used elsewhere
-
-    gDPPipeSync(gMainGfxPos++);
-    gSPTexture(gMainGfxPos++, -1, -1, 0, G_TX_RENDERTILE, G_ON);
-    gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, arg1);
-    gDPSetCycleType(gMainGfxPos++, G_CYC_COPY);
-    gDPSetTexturePersp(gMainGfxPos++, G_TP_NONE);
-    gDPSetTextureLUT(gMainGfxPos++, G_TT_NONE);
-    gDPSetRenderMode(gMainGfxPos++, G_RM_NOOP, G_RM_NOOP2);
-    gDPSetTextureFilter(gMainGfxPos++, G_TF_POINT);
-
-    for (i = 0; i < 40; i++) {
-        gDPLoadTextureTile(gMainGfxPos++, arg0 + (0xF00 * i), G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH,
-                           SCREEN_HEIGHT, 0, 0, SCREEN_WIDTH - 1, 5, 0, G_TX_NOMIRROR | G_TX_WRAP,
-                           G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
-        gSPTextureRectangle(gMainGfxPos++, 0, i * temp, 0x04FC, (i * 24) + 20, G_TX_RENDERTILE, 0, 0, 0x1000, 0x0400);
-        gDPPipeSync(gMainGfxPos++);
-    }
-}
-
 /// Logic for the drawing the scene background. In normal operation, it draws the regular background.
 /// While opening pause menu, it does the following:
 ///  * Extracts coverage from the current framebuffer and saves it to nuGfxCfb[1] on the first frame.
