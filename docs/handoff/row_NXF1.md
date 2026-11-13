@@ -22,8 +22,9 @@ New files 3ds/include/nd_xf.h, 3ds/src/nd_xf.c, 3ds/tools/nd_xf_test.c, 3ds/test
    - nd_xf_push: `const uint32_t u[2] = { NDO_W0(NDO_MTX, 0x380000u | ((p ^ 1u) & 0xffu)), (uint32_t)(uintptr_t)m };
      nd_rec_napi(nd_xf_run, u, 1u);`
    - nd_xf_pop: `(void)which; const uint32_t u[2] = { NDO_W0(NDO_POPMTX, 0x380002u), 64u }; nd_rec_napi(nd_xf_run, u, 1u);`
-3. nd_xf_test.c (host): defines `nd_rec_napi` (copies the units of the last call into a test array) and `nd_walk_state` (empty)
-   for the test link. For each p in {0, 1, 2, 3, 4, 5, 6, 7} and m = (void*)0x00123450: build `Gfx g; gSPMatrix(&g, m, p);`, run
+3. nd_xf_test.c (host): defines `nd_rec_napi` (copies the units of the last call into a test array), `nd_walk_state` (empty)
+   and `uint32_t f32tof24(float vf)` (correction 1: nd_tmpl.c calls it. Copy the 11 lines of 3ds/tools/nd_cmd_test.c:16-26, as
+   nd_cmd_test, nd_emit_test, nd_gv_test, nd_model_test and nd_tmpl_test do) for the test link. For each p in {0, 1, 2, 3, 4, 5, 6, 7} and m = (void*)0x00123450: build `Gfx g; gSPMatrix(&g, m, p);`, run
    nd_op_xlate(g.words.w0, g.words.w1, want), call nd_xf_push(m, p), compare the 2 recorded words with want. The same for
    `gSPPopMatrix(&g, G_MTX_MODELVIEW)` against nd_xf_pop(G_MTX_MODELVIEW). Print `nxf ok 9/9` or `nxf FAIL <case>` and exit 1.
 4. host.d/nxf.sh (LF), the flags and link set of nd_host_test.sh:41 (nd_cmd_test links nd_op.c the same way. /tmp/ndcomb.o is

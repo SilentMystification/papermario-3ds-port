@@ -37,6 +37,7 @@ the cut is found while moving. Why not Opus: NPSO1 fixes the field list.
 4. Host compare 3ds/tools/nd_decide_test.c (host.d/decide.sh): for every description of a fixed corpus (all NdCombIn values the
    ndref captures in 3ds/tests/ndref/ndref_*.bin hold, converted to NdPsoDesc), nd_pso_build plus nd_pso_colour (with the prim and env
    of the capture) equals the old path (NdCombIn with the same fields, nd_comb_decide, nd_render_state, nd_tev_build) byte for byte. Prints `decide entries <n> bad 0`.
+   A test that links nd_tmpl.c defines f32tof24 itself (copy 3ds/tools/nd_cmd_test.c:16-26, as the other host tests do).
 
 ## Readers and writers
 Writers: nd_decide.c. Readers: nd_comb_decide (device, unchanged behaviour), NPSO3's generator, NPSO4's psochk. List every global
