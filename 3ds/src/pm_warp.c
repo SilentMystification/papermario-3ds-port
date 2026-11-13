@@ -2111,7 +2111,7 @@ void pm_warp_tick(unsigned frame) {
         }
         if (bs0 >= 0 && (int)frame >= bs0 && (int)frame < bs1) {
             pm_log_evt("bootstate f%u wide %d stretch %d interp %d optwide %d fps60 %d seed %08x cam %d %d %d tgt %d %d %d mario %d %d %d mode %d",
-                frame, pm_wide, pm_stretch, pm_interp_on, pm_opt.wide, pm_opt.fps60, (unsigned)gRandSeed,
+                frame + 1, pm_wide, pm_stretch, pm_interp_on, pm_opt.wide, pm_opt.fps60, (unsigned)gRandSeed,
                 (int)gCameras[0].lookAt_eye.x, (int)gCameras[0].lookAt_eye.y, (int)gCameras[0].lookAt_eye.z,
                 (int)gCameras[0].lookAt_obj.x, (int)gCameras[0].lookAt_obj.y, (int)gCameras[0].lookAt_obj.z,
                 (int)gPlayerStatus.pos.x, (int)gPlayerStatus.pos.y, (int)gPlayerStatus.pos.z, (int)get_game_mode());
