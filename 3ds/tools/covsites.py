@@ -38,7 +38,7 @@ def census_calls(log):
                 seen = True
                 for tok in m.group(2).split():
                     a, n = tok.split(":")
-                    tot[int(a, 16)] += int(n)
+                    tot[int(a, 16) & ~1] += int(n)
     if not seen:
         raise SystemExit("covsites: no fncov frame in %s" % log)
     return tot
