@@ -12,6 +12,9 @@ Orchestrator: read docs/handoff/orchestrator_rules.md at the start and after eve
 3. TESTS. Every run uses `python 3ds/tools/bench.py run <bench> --row <row> --why "<text>"` with PM_ROW=<row> and PM_LANE=<row>.
    Test only what the row changes. A scenario has an until-line (a log event of the subject), ends within 5 s of it, and has a cap
    of 10-25 s (45 s max). A new scenario and its bench go in one commit. Budget: 8 Azahar starts per row.
+   Exception (user, 2026-11-13): the oracle runs verdict tools under row id ORACLE (worktree build3ds/wt/ORACLE, 8 starts per
+   day, PM_ROW=ORACLE): rowlint.py, seedprobe.py, bench.py cmp. It reads one verdict line per call, never a log or a shot, and
+   never runs to find the cause of a user fault. An ORACLE run uses one of the 6 coder slots.
 4. TOOL FAULTS STOP THE GATE. These faults stop the gate: a base run that fails or hangs, an abnormal exit, a stale build, a shot
    copy failure, two runs that disagree. Stop and hand back the exact output. Never skip a scene, change the base or reset the
    budget to pass. Exception (user, 2026-11-12): the orchestrator resets a row's budget once per oracle correction when the
