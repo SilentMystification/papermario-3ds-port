@@ -155,6 +155,10 @@ Phase B (design cores and their mechanical parts):
 | CONV2D | Haiku | CONV2A | new 3ds/src/nd_ntab.c: nd_ntab_run, one switch from NdNOp to the native emit calls (mapping given by the oracle) |
 | CONV2E | Haiku | CONV2C | 3ds/tools/nd_gtab_test.c v2: per draw compare of the v1 host model against the v2 table, `ntab tables <n> draws <d> bad <b>` |
 | CONV2F | Haiku | CONV2C, CONV2D | nd_rec.c nd_draw_list recorder, nd_gtab_find v2 key (list, entry), nd_part_draw on v2 |
+| CONV2WIN1, CONV2MTX, CONV2MIX | Haiku | CONV2C | the 121 lists CONV2C could not convert: the tile 1 window in the pure part (77), Mtx symbols (21), one generated vertex array for mixed-array triangles (16); 7 others (SCISSOR, RECT, MOVEWORD, FILLCOLOR, MOVEMEM and lights, 2 RARE) get an oracle read |
+| ENTRYCAP | Haiku | CONV2D, NPSO4 | a device switch logs, at each run of an inheriting list's table, the walker's NdPsoDesc (nd_walker_desc) with the list and the call site |
+| ENTRY1..n | Haiku | ENTRYCAP, CONV2F | per file group: the logged description written as ND_PSO_DESC at the call site of each of the 426 inheriting lists (CODEMOD keeps those 317 nd_rec_dl sites as no-entry); psochk bad 0 proves each entry |
+| CONV2C2 | Haiku | ENTRY rows | the converter takes the entry of an inheriting list from the call-site scan and writes its v2 table |
 | CONV2G, CONV2H | Haiku | CONV2E, CONV2F, their GOLD-FX rows | pilot effect files: sparkles, effect_3D, snowfall (G), snaking_static, water_block, embers (H). Gate G1 + golden |
 Phase C (Haiku rows per file or function family. The oracle writes them after NPSO5, NXF4, NTGT and CONV2H merge. Small groups
 need their GOLD row: gate golden + gcov + G8. Large groups need FRAMEHASH5, COVMAP and PICAVAL4: gate psochk + frame hash + G6):
@@ -207,6 +211,7 @@ Next when they merge: HOSTCORE2 (after HOSTCORE1), FRAMEHASH2, NPSO2 and CONV2A 
 | version-conditioned data (#if VERSION_PAL) | the GSET scan reads only the active branch (S7ENTX form, moved into GSET2) |
 | S6 compiled defs in game code (static const Gfx X_u[] for nd_scomp_rec) | counted in C5, C6, C10. Their call sites move to NPSO descs in the family rows |
 Discoveries:
+| static lists that inherit the pipeline state of the call (CONV2C, 2026-11-12: 825 self-contained lists converted, 426 inherit the combine, cycle type or texture state, 121 unsupported) | CONV2C converts the self-contained lists. The 426 get their entry state at the call site from a device capture (ENTRYCAP, ENTRY rows), then CONV2C2. The 121: CONV2WIN1, CONV2MTX, CONV2MIX and an oracle read of the last 7 |
 | item | covered by |
 |---|---|
 | colour and depth image switches (gDPSetColorImage, gDPSetDepthImage in about 18 files: background_gfx.c 7, model.c 4, screen_render_util.c 4, crystal_ball_gfx.c 4, 16C8E0.c 3, cam_main.c 3 and others). v2 section 2 had no end form for them. nd_target.c decides the role from walker state (nd_ws.cimg, :32-33) | NTGT (Sonnet core). The sites move in their family rows |

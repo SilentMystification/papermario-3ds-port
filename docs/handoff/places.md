@@ -12,4 +12,7 @@ A shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json, bench_def
 | CODEMODFX1 | Haiku | src/effects/water_splash.c, src/effects/music_note.c (value call lines, one include line each) | ready |
 | N64DEL2 | Haiku | 3ds/tools/unifdef3ds.py condition regex, 3ds/tools/ppcmp.sh gcc line; TARGET_3DS lines of include, src/world, src/entity, src/battle, src/pause, src/filemenu, src/audio, src/evt, src/os | ready |
 | N64DEL3 | Haiku | TARGET_3DS lines of src/*.c (root only) | waits for N64DEL2 |
+| CONV2WIN1 | Haiku | 3ds/src/nd_tex_set.c :451-514 (moved out), nd_texwin.c (append), nd_int.h one prototype; 3ds/tools/nd_gfx_conv.c tile branch :330-345 | ready |
+| CONV2MTX | Haiku | 3ds/tools/gen_gfx_syms.py :10 and :49-52, nd_gconv.h GS_ enum, nd_gfx_conv.c matrix branch :383, build.sh GT_IN line :86 | waits for CONV2WIN1 (nd_gfx_conv.c) |
+| CONV2MIX | Haiku | 3ds/tools/nd_gfx_conv.c resolve block :270-295 | waits for CONV2MTX |
 | FPS60VAL | Sonnet | 3ds/src/pm_gpu.c end of kc_build, end of pm_gpu_key_show; new 3ds/tools/kcval.py | not started (user decides) |
