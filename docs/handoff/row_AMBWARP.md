@@ -13,6 +13,17 @@ Sometimes warps do not free the audio channels: the ambient sounds of the old ma
   log says "song and ambient sounds stopped", but it stops only the two songs (bgm_set_song) and the loop sounds
   (sfx_stop_env_sounds, src/audio/sfx_control.c:361). It never calls play_ambient_sounds(-1, ...): the MSEQ wind keeps playing.
 Start: `sh 3ds/tools/wt_new.sh AMBWARP`. PM_ROW=AMBWARP PM_LANE=AMBWARP on every call.
+## Correction 2 (ORACLE8, after 74b1ce319, run of commit 43e3f1358)
+- The scene used the tour. The tour changes the map in tour_step (pm_warp.c:1445-1492: its own curtain, song B and
+  set_game_mode(GAME_MODE_CHANGE_MAP)), not through warp_end_intro: the edit never ran (no "warp: songs" line in the log).
+- The user's warp is the Select menu: pm_options.c:856 and :862 -> pm_warp_live -> pm_warp_live_now -> warp_end_intro
+  (pm_warp.c:1143). fswarp (:1947), the boss warp (:1205) and pm_warp_now for the title and intro (:1226) also call it. The test
+  switch livewarp=<scene frame>:<map>:<entry> (livewarp_hook, pm_warp.c:1881-1890) runs exactly the menu call. The tour is a test
+  tool only: it stays as it is.
+- Observable: the same rule as AMBTITLE (row_AMBTITLE.md correction 2): silent = snd_ambient_is_stopped(0) is AU_RESULT_OK or
+  AU_AMBIENCE_ERROR_3, read at the first world frame of the new map (pm_warp_world_mode), many audio frames after the stop.
+  `stopped 0` at arn_02 is right (the wind plays there).
+- Code 74b1ce319 stays. Only the probe expression (if not yet the rc rule) and the scenario change.
 ## Touch only (places)
 3ds/src/pm_warp.c: warp_end_intro (the 4 lines from `bgm_set_song(0, ...` to its pm_log), pm_warp_world_mode (:1416, one block at
 its start). New 3ds/tools/azt.d/AMBWARP.json, 3ds/tools/bench.d/AMBWARP.json. Nothing else (no open row edits these places).
@@ -25,8 +36,8 @@ its start). New 3ds/tools/azt.d/AMBWARP.json, 3ds/tools/bench.d/AMBWARP.json. No
    gGameStatusPtr->mapID].id, rc == AU_RESULT_OK || rc == AU_AMBIENCE_ERROR_3);` with `AuResult rc = snd_ambient_is_stopped(0);` before it (ORACLE8
    correction 1: no ambient player at all, numActivePlayers 0, gives AU_AMBIENCE_ERROR_3 and is silent too: row_AMBTITLE.md) (include "audio/public.h" if the file lacks it).
 3. Scenario (all fields of the azt.d format, as 3ds/tools/azt.d/FPS60W2.json) in 3ds/tools/azt.d/AMBWARP.json: name
-   `amb_warp_arn02_mac01`, status `unverified`, subject, proves, debug `warp=arn_02:0 story=ch0_toad_town tour=arn_02:0,mac_01:0
-   tourtime=3 ambchk loglevel=debug det`, until `ambchk f\d+ map mac_01 `, cap 45, deadline 20, first_marker `warp: arn_02 entry 0`,
+   `amb_warp_arn02_mac01`, status `unverified`, subject, proves, debug `warp=arn_02:0 story=ch0_toad_town livewarp=300:mac_01:0
+   ambchk loglevel=debug det` (correction 2: the menu warp, not the tour), until `ambchk f\d+ map mac_01 `, cap 45, deadline 20, first_marker `warp: arn_02 entry 0`,
    expects `none`, needs_picture false, expected_events [{name "arn_02 reached", regex `ambchk f\d+ map arn_02 `}, {name
    "ambient stopped", regex `ambchk f\d+ map mac_01 stopped 1`}], reason. Bench in bench.d/AMBWARP.json: name
    `amb_warp_arn02_mac01`, kind `azahar`, speed `normal`, default false, purpose, scenario, cap 45, the same until, tags
