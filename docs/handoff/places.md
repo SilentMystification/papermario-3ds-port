@@ -15,7 +15,6 @@ A shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json, bench_def
 | CODEMODFX3 | Haiku | src/effects/explosion.c (value call lines, include lines) | ready |
 | ENTRYCAP | Haiku | 3ds/src/nd_gtab.c nd_rec_dl :84-85; nd_walk.c nd_gtab_run top of the non-state-only arm; new 3ds/tools/entcap.py, azt.d/bench.d ENTRYCAP.json | waits for CONV2D2 (nd_ntab_find, same nd_gtab_run) |
 | CODEMODFX5 | Haiku | src/effects/dust.c (value call lines, include lines) | ready |
-| CODEMODFX6 | Haiku | src/effects/sleep_bubble.c (value call lines, include lines) | ready |
 | CODEMODFX7 | Haiku | src/effects/big_smoke_puff.c (value call lines, include lines) | ready |
 | CODEMODFX8 | Haiku | src/effects/water_block.c (value call lines, include lines) | ready |
 | CODEMODFX9 | Haiku | src/effects/embers.c (value call lines, include lines) | ready |
