@@ -64,6 +64,8 @@ param(
     # PUSHFIX: a push runs detached by default (a child powershell with its whole output in build3ds/out/push_<Target>_<stamp>.txt);
     # -Fg runs it in this process (the child). -Interactive stays in the foreground.
     [switch]$Fg,
+    # PUSHWARP: push o/n boots to Toad Town (warp=mac_01:0 pos=0:0:200). Without it a console push boots to the file select screen.
+    [switch]$Toad,
     # Render/game debug switches (pm_main.c read_debug_switches: nofog nolight notex ... perfctr
     # calls), space-separated in one string. NOT named -Debug: PowerShell gives every script with a
     # [Parameter()] attribute an automatic common -Debug switch, and a script cannot redeclare a
@@ -136,8 +138,8 @@ function Invoke-Build {
 
 # Runs one target, never throws - failures are captured and reported, not fatal to the others.
 # Banners use Write-Host: the caller stores the return value of this function, so Write-Output lines would end up in it.
-# RANDWARP: a push that names no spot (no warp=, tour=, tourlist=, preset=, loadslot=, savefile=) boots to a random spot: warp=random.
-# The run log line `warp: random seed <n>` repeats it: give warp=random:<n> in the game args.
+# RANDWARP: an Azahar run (push a) that names no spot (no warp=, tour=, tourlist=, preset=, loadslot=, savefile=) boots to a random
+# spot: warp=random. A console push never gets it (user 2026-11-12). The run log repeats the seed: give warp=random:<n> to repeat.
 $gameSwitches = (@($GameDebug) + @($Rest)) -join ' '
 $randWarp = @(); if ($gameSwitches -notmatch '(^|\s)(warp|tour|tourlist|preset|loadslot|savefile)=') { $randWarp = @('warp=random') }
 
@@ -170,7 +172,7 @@ function Push-One([string]$t) {
             $env:N3DS_IP = $ip
             $watchSecs = if ($Interactive) { 86400 } else { $Seconds }
             $extra = @($Rest); if ($GameDebug) { $extra += $GameDebug }
-            $extra += $randWarp
+            if ($Toad) { $extra += @('warp=mac_01:0', 'pos=0:0:200') } # PUSHWARP: no warp word = the file select screen
             $profArgs = @('--idle', "$IdleSeconds"); if ($Profile) { $profArgs += @('--profile', $Profile) }
             if ($MemOk) { $profArgs += '--mem-ok' }
             # PUSHFIX: -NoBuild means no build here either (push_3ds.sh --no-build), else push_3ds.sh runs build.sh itself.
