@@ -1,0 +1,2 @@
+codemod keep refuse_macro.c:2 gDPSetEnvColor macro
+codemod keep refuse_macro.c:3 gDPPipeSync macro
