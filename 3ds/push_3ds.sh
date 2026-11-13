@@ -35,6 +35,9 @@
 # is never killed (the console answered): only a silent attempt is killed, as before.
 set -e
 cd "$(dirname "$0")/.."
+# PUSHEND1: end_push <rc> <result> <reason>: the one end line of a push (result ok, sent-no-log or failed), also in
+# build3ds/out/push_result.txt (go.ps1 puts it into its PUSH END line). Exit codes: 0 ok, 6 sent but the game sent no line, else failed.
+end_push() { line="PUSH RESULT $2 rc $1: $3"; echo "$line"; mkdir -p build3ds/out; printf '%s\n' "$line" >build3ds/out/push_result.txt; exit "$1"; }
 secs=0
 idle=300
 ipopt=""
@@ -125,7 +128,7 @@ mem_gate() {
     echo "the game stops at boot with \"Not enough memory for the ROM\". Push not sent."
     echo "Make the build smaller (largest .data/.bss above), or push anyway with --mem-ok (go.ps1 -MemOk)."
     echo "=================================================================="
-    exit 4
+    end_push 4 failed "memory OVER, push not sent (go.ps1 -MemOk sends anyway)"
 }
 if [ "$dry" -eq 1 ]; then
     mem_gate
@@ -183,7 +186,7 @@ if [ "$nobuild" -eq 1 ] && { [ -z "$PM_SRC3DSX" ] || [ -n "$PM_BUILD_KEY_FILE" ]
     now=$(PM_LANE= PM_KEY_ONLY=1 sh 3ds/build.sh || true)
     if [ -z "$have" ] || [ "$have" != "$now" ]; then
         echo "STALE 3DSX: build key $(echo "$have" | cut -c1-12), tree key $(echo "$now" | cut -c1-12) (a source, include or tool input changed since the build). Build first. Nothing was pushed."
-        exit 5
+        end_push 5 failed "stale 3dsx, nothing sent"
     fi
 fi
 # SEND FILE: the 3dsx this run sends, its size, the build of pm_build.h and the key it was built with (build_key.txt).
@@ -205,7 +208,7 @@ owner_gone() { ! py3 -u 3ds/tools/livelog.py --alive "$owners" >/dev/null 2>&1; 
 # Read the live log of $ip for $secs (0: until the game closes, at most PM_LOG_MAX). A reconnect after an early end
 # (livelog.py exit 3) appends to the same file, one line each, 3 times at most. Sets $log.
 read_live_log() {
-    if [ "$secs" = 0 ]; then secs=${PM_LOG_MAX:-3600}; echo "reading the game's log from $ip:17492 until the game closes, at most $secs s"; else echo "reading the game's log from $ip:17492 for $secs s"; fi
+    if [ "$secs" = 0 ]; then secs=${PM_LOG_MAX:-3600}; echo "reading the game's log from $ip:17492 until the game closes, at most $secs s (stops at $idle s without a line, or when the game closes)"; else echo "reading the game's log from $ip:17492 for $secs s (stops at $idle s without a line, or when the game closes)"; fi
     log="build3ds/hw_live_log_${ip##*.}.txt"
     t_end=$(( $(date +%s) + secs ))
     rc=0
@@ -283,33 +286,15 @@ report_log() {
         # One TCP connect now: refused = the game's server is not up (game side), timeout/unreachable = network, connected = no line came.
         # After an idle stop the probe is skipped: the idle line already says the console sent nothing.
         if [ "${idle_stop:-0}" -eq 0 ]; then py3 -u 3ds/tools/livelog.py --probe "$ip" || true; fi
-        case "$1" in
-            attach) echo "ATTACH FAILED: no live log from $ip" ;;
-            send) echo "PUSH FAILED stage=send, and no live log" ;;
-            *) echo "PUSH FAILED stage=no log" ;;
-        esac
-        refusal_hint
-        exit 1
-    fi
-    if [ "$1" = send ]; then
-        # The send failed: the live log may be of another binary (an older game still running). Ingest only when it is the sent build.
-        if ! boot_check "$log"; then
-            echo "STALE BINARY: log build ${boot_log}, sent ${sent_b:-none}"
-            refusal_hint
-            echo "PUSH FAILED stage=send, $nlines log lines, not the sent build: nothing to record"
-            exit 1
-        fi
-        bno=${sent_b%%-*}
-        echo "record: python 3ds/tools/bench.py ingest $log --bench ${PM_BENCH:-<name>} --host o3ds --build $bno --commit $sent_h"
-        echo "PUSH FAILED stage=send, but the live log is the sent build ($nlines lines: the game ran)"
-        exit 1
+        [ "$1" = attach ] && end_push 1 failed "attach: no live log from $ip"
+        end_push 6 sent-no-log "the 3dsx was sent, the game sent no line to $ip:17492 (see the NO LOG line above)"
     fi
     # The bench record of this log: bench name from PM_BENCH (else <name>), build number from the log's "build N git H" line.
     bno=$(sed -n 's/.* build \([0-9][0-9]*\) git .*/\1/p' "$log" | head -1)
     echo "record: python 3ds/tools/bench.py ingest $log --bench ${PM_BENCH:-<name>} --host o3ds${bno:+ --build $bno}"
     case "$1" in
-        push) echo "PUSH OK, $nlines log lines"; exit 0 ;;
-        attach) echo "ATTACH OK, $nlines log lines"; exit 0 ;;
+        push) end_push 0 ok "sent, $nlines lines read" ;;
+        attach) end_push 0 ok "attach, $nlines lines read" ;;
     esac
 }
 
@@ -337,7 +322,7 @@ EOF
 )
     [ -n "$ip" ] || echo "probe: no answer"
 fi
-if [ -z "$ip" ]; then echo "no 3DS netloader found (press Y in the Homebrew Launcher)"; exit 1; fi
+if [ -z "$ip" ]; then end_push 1 failed "no 3DS netloader found (press Y in the Homebrew Launcher)"; fi
 echo "3DS at $ip"
 # One ping for the log only: ICMP may be blocked, so no reply does not stop the push.
 if ping -n 1 -w 1000 "$ip" >/dev/null 2>&1; then echo "ping $ip: reply"; else echo "ping $ip: no reply (ICMP may be blocked, the push goes on)"; fi
@@ -351,7 +336,7 @@ if [ -n "$PM_SRC3DSX" ]; then
 else
     archive_build "ip=$ip $memflag$*" || true # best effort: the push goes on without an archive (its warning line is printed above)
 fi
-[ -f "$SRC3DSX" ] || { echo "no $SRC3DSX. Nothing was pushed."; exit 1; }
+[ -f "$SRC3DSX" ] || end_push 1 failed "no $SRC3DSX, nothing was pushed"
 
 # A console that isn't sitting in the Homebrew Launcher yet (most common cause - this needs a human
 # to open it there) must not cost minutes of silence. A few short attempts instead of one long one.
@@ -503,15 +488,9 @@ while [ "$i" -le "$attempts" ]; do
     [ "$i" -le "$attempts" ] && sleep 2
 done
 if [ "$ok" -ne 1 ]; then
-    if [ "$ownerdead" -eq 1 ]; then echo "PUSH STOPPED: the caller of this push is gone ($reason)"; exit 1; fi
-    if [ "$stage" != send ]; then
-        echo "PUSH FAILED stage=$stage: $reason (after $attempts attempts, $ip)"
-        refusal_hint
-        exit 1
-    fi
-    echo "PUSH FAILED stage=send: $reason (after $attempts attempts, $ip). The console answered, so the live log is read anyway: the game may be running."
-    read_live_log
-    report_log send
+    [ "$ownerdead" -eq 1 ] && end_push 1 failed "the caller of this push is gone ($reason)"
+    refusal_hint
+    end_push 1 failed "stage=$stage: $reason (after $attempts attempts, $ip). The live log is not read."
 fi
 read_live_log
 report_log push

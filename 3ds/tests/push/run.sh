@@ -63,6 +63,10 @@ kept=$(grep -l '10 sent (5%)' build3ds/out/push_127.0.0.1_*_a1.txt 2>/dev/null |
 if [ -n "$kept" ] && echo "$oc" | grep -q 'NETLOADER REFUSED'; then echo "ok   partial send kept output"
 else echo "FAIL partial send kept output"; echo "$oc" | tail -n 20; fail=1; fi
 
+# (c2) PUSHEND1: a failed send ends with one PUSH RESULT failed line and reads no live log.
+if echo "$oc" | grep -q '^PUSH RESULT failed rc 1: stage=send' && ! echo "$oc" | grep -q "reading the game's log"; then echo "ok   failed send: result line, no live log"
+else echo "FAIL failed send result"; echo "$oc" | tail -n 8; fail=1; fi
+
 # (d) go.ps1 push o without -Fg: detached, PUSH STARTED at once, PUSH END in build3ds/out/push_last.txt within 60 s.
 rm -f build3ds/out/push_last.txt
 t0=$(date +%s)
