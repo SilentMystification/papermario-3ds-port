@@ -25,7 +25,7 @@ v2_convert_all signature, a write after its table loop), 3ds/tools/gen_gfx_tab.s
 (argv loop, :204, :223, docstring Mapping), src/effects/water_splash.c:189.
 New names: none. Host link: none (no 3ds/src file changes).
 Needs: 3ds/include/nd_gtab.h has nd_ntab_find
-Needs: 3ds/tools/azt.d/CONV2D2.json has fxpic_89_drec
+(The same CONV2D2 merge brings the scene fxpic_89_drec.)
 ## Exact edits
 1. nd_gtab.h after the nd_rec_dl prototype: `#define ND_SELF 0` and
    `#define nd_draw_list(list, entry) do { _Static_assert((entry) == ND_SELF, "an entry needs row ENTRY1"); nd_rec_dl(list); } while (0)`.

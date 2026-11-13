@@ -12,13 +12,15 @@ A shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json, bench_def
 | N64DEL2 | Haiku | 3ds/tools/unifdef3ds.py condition regex, 3ds/tools/ppcmp.sh gcc line; TARGET_3DS lines of include, src/world, src/entity, src/battle, src/pause, src/filemenu, src/audio, src/evt, src/os | ready |
 | N64DEL3 | Haiku | TARGET_3DS lines of src/*.c (root only) | waits for N64DEL2 |
 | FPS60VAL | Sonnet | 3ds/src/pm_gpu.c end of kc_build, end of pm_gpu_key_show; new 3ds/tools/kcval.py | not started (user decides) |
-| ENTRYCAP | Haiku | 3ds/src/nd_gtab.c nd_rec_dl :84-85; nd_walk.c nd_gtab_run top of the non-state-only arm; new 3ds/tools/entcap.py, azt.d/bench.d ENTRYCAP.json | waits for CONV2D2 (nd_ntab_find, same nd_gtab_run) |
-| CONV2D2 | Haiku | nd_gtab.h NdNIdx and 2 prototypes; nd_gfx_conv.c v2_convert_all device index; nd_gtab.c inside the ND_SCOMP_HOST guard, gtr_cen; nd_walk.c before nd_gtab_run, :500 and :601; azt.d/bench.d CONV2D2.json | waits for CONV2D |
-| CONV2F | Haiku | nd_gtab.h after the nd_rec_dl prototype; nd_gfx_conv.c main argc line, v2_convert_all signature and table loop; gen_gfx_tab.sh :18, :23; codemod.py argv loop, :204, :223; src/effects/water_splash.c:189 | waits for CONV2D2 |
+| ENTRYCAP | Haiku | 3ds/src/nd_gtab.c nd_rec_dl :84-85; 3ds/src/nd_walk.c entcap_rec (added before nd_gtab_run), first line of the non-state-only arm of nd_gtab_run; new 3ds/tools/entcap.py, azt.d/bench.d ENTRYCAP.json | waits for CONV2D2 (nd_ntab_find, same nd_gtab_run); runs with CONV2F |
+| CONV2D2 | Haiku | nd_gtab.h CONV2D2 block (NdNDev, 2 prototypes); nd_gfx_conv.c V2C, v2_tab line, v2_units_top, v2_convert_all loop and dev index print; nd_gtab.c nd_ntab_find (inside the ND_SCOMP_HOST guard), gtr_cen; nd_walk.c nd_ntab_run, gt_body, the two gt_ops(t) calls of nd_gtab_run; nd_gtab_test.c v2_dev, v2_compare; azt.d/bench.d CONV2D2.json | ready (resume on 82f55531a, correction 3) |
+| CONV2F | Haiku | nd_gtab.h after the nd_rec_dl prototype; nd_gfx_conv.c main argc and call lines, v2_convert_all signature, a write after its table loop; gen_gfx_tab.sh :18, :23; codemod.py argv loop, :204, :223, docstring Mapping; src/effects/water_splash.c:189 | waits for CONV2D2; runs with ENTRYCAP |
 | CODEMODW1 | Haiku | src/world/area_mac/mac_00/water_gfx.c value call lines, include line; new azt.d/bench.d CODEMODW1.json | parked (CODEMODW1 trace) |
 | GOLDWLD0 | Haiku | new cov.d/azt.d/bench.d GOLDWLD0 files | waits for COVMAP and the user's fortune scene |
 | N64DEL4 | Haiku | the 9 skip blocks: include/PR/os_convert.h, common.h, common_structs.h, include_asm.h, macros.h, src/entity.c, kzn2 lava_piranha.c, WaterEffects.inc.c, lava_piranha/part1.inc.c | waits for N64DEL2 and N64DEL3 |
-| GOLDFX2 | Haiku | new cov.d/azt.d/bench.d GOLDFX2 files | waits for GMHARN |
+| GOLDFX2 | Haiku | new cov.d/azt.d/bench.d GOLDFX2 files | running (gold 29/29 pass, bases) |
+| GOLDFX3 | Haiku | new cov.d/azt.d/bench.d GOLDFX3 files | ready |
+| GOLDFX4 | Haiku | new cov.d/azt.d/bench.d GOLDFX4 files | ready |
 | CODEMODFX12 | Haiku | src/effects/effect_3D.c (value call lines, include lines); new azt.d/bench.d CODEMODFX12.json | ready |
 | CODEMODFX13 | Haiku | src/effects/snowfall.c (value call lines, include lines); new azt.d/bench.d CODEMODFX13.json | ready |
 | CODEMODFX14 | Haiku | src/effects/pink_sparkles.c (value call lines, include lines); new azt.d/bench.d CODEMODFX14.json | ready |
