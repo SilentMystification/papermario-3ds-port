@@ -16,4 +16,6 @@ A shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json, bench_def
 | CONV2A | Haiku | 3ds/include/nd_gtab.h: one include after :9, new lines before `#endif`; new 3ds/tools/nd_ntab_test.c, 3ds/tests/host.d/ntab.sh | ready |
 | AMBWARP | Haiku | 3ds/src/pm_warp.c warp_end_intro (the stop lines and its log), pm_warp_world_mode (start); new azt.d/bench.d AMBWARP.json | ready |
 | AMBTITLE | Haiku | src/state_startup.c after `sfx_clear_sounds();` (:65); 3ds/src/pm_warp.c pm_warp_tick after `bypass_tick();`; new azt.d/bench.d AMBTITLE.json | ready (other places than AMBWARP: both may run) |
+| BASEKEEP | Haiku | 3ds/tools/bench.py shots_diff (+ new shots_diff_all), base_run diff block and final rmtree line; new 3ds/tests/basediff/ | ready (tool fault: first) |
+| BOTHUD | Haiku | 3ds/src/pm_log.c sink_main wait line (:888); 3ds/src/pm_gpu_ui.c pm_gpu_hud_flush counter; 3ds/src/pm_main.c probe next to shotbottom (:813-818); new azt.d/bench.d BOTHUD.json | ready |
 | FPS60VAL | Sonnet | 3ds/src/pm_gpu.c end of kc_build, end of pm_gpu_key_show; new 3ds/tools/kcval.py | not started (user decides) |
