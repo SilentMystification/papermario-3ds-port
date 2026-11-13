@@ -143,7 +143,6 @@ HudScript* filemenu_main_hudScripts[][20] = {
 #endif
 };
 
-#ifdef TARGET_3DS
 // port: 4 rows per state. Row 3 is the Options item, only in the select file state.
 u8 filemenu_main_gridData[] = {
     0, 0, 1, 2, 2, 3, 4, 5, 6, 7, 7, 7,
@@ -152,17 +151,6 @@ u8 filemenu_main_gridData[] = {
     0, 0, 1, 2, 2, 3, 6, 6, 6, 6, 6, 6,
     0, 0, 1, 2, 2, 3, 6, 6, 6, 6, 6, 6,
 };
-#else
-u8 filemenu_main_gridData[] = {
-    0, 0, 1, 2, 2, 3, 4, 5, 6,
-    0, 0, 1, 2, 2, 3, 6, 6, 6,
-    0, 0, 1, 2, 2, 3, 6, 6, 6,
-    0, 0, 1, 2, 2, 3, 6, 6, 6,
-#if !VERSION_PAL
-    0, 0, 1, 2, 2, 3, 6, 6, 6,
-#endif
-};
-#endif
 
 MenuWindowBP filemenu_main_windowBPs[] = {
     {
@@ -395,7 +383,6 @@ MenuWindowBP filemenu_main_windowBPs[] = {
         .extraFlags = 0,
         .style = { .customStyle = &filemenu_windowStyles[12] }
     },
-#ifdef TARGET_3DS
     {
         // port: Options item, a child of the Copy window so it moves and hides with it
         .windowID = WIN_FILES_OPTIONS_ITEM,
@@ -411,7 +398,6 @@ MenuWindowBP filemenu_main_windowBPs[] = {
         .extraFlags = 0,
         .style = { .customStyle = &filemenu_windowStyles[5] }
     },
-#endif
 };
 
 MenuPanel filemenu_main_menuBP = {
@@ -421,11 +407,7 @@ MenuPanel filemenu_main_menuBP = {
     .selected = 0,
     .state = 0,
     .numCols = 3,
-#ifdef TARGET_3DS
     .numRows = 4,
-#else
-    .numRows = 3,
-#endif
     .numPages = 0,
     .gridData = filemenu_main_gridData,
     .fpInit = &filemenu_main_init,
@@ -989,7 +971,6 @@ void filemenu_main_handle_input(MenuPanel* menu) {
         }
     }
 
-#ifdef TARGET_3DS
     // port: row 3 (Options) exists only in the select file state, and only in column 1
     if (menu->state != FM_MAIN_SELECT_FILE && menu->row > 2) {
         menu->row = 2;
@@ -997,16 +978,13 @@ void filemenu_main_handle_input(MenuPanel* menu) {
     if (menu->state == FM_MAIN_SELECT_FILE && menu->row == 3) {
         menu->col = 1;
     }
-#endif
 
     switch (menu->state) {
         case FM_MAIN_SELECT_FILE:
-#ifdef TARGET_3DS
             if (pm_pad_take_select()) { // port: Select opens the Options panel
                 filemenu_options_open();
                 break;
             }
-#endif
             // force selection to column 0 when navigating up from bottom row
             if (menu->col == 1 && (u8) menu->row < 2) {
                 menu->col = 0;
@@ -1155,11 +1133,9 @@ void filemenu_main_handle_input(MenuPanel* menu) {
                     set_window_update(WIN_FILES_MONO, (s32)filemenu_update_hidden_options_right);
                     set_window_update(WIN_FILES_OPTION_LEFT, (s32)filemenu_update_hidden_options_bottom);
                     set_window_update(WIN_FILES_OPTION_RIGHT, (s32)filemenu_update_hidden_options_bottom);
-#ifdef TARGET_3DS
                 } else if (menu->selected == FM_MAIN_OPT_OPTIONS) {
                     // port: selected "Options" item, open the panel
                     filemenu_options_open();
-#endif
                 } else if (menu->selected <= FM_MAIN_OPT_FILE_4) {
                     MenuPanel* confirmMenu;
 
@@ -1291,9 +1267,7 @@ void filemenu_main_handle_input(MenuPanel* menu) {
                             fio_save_game(filemenu_iterFileIdx);
                             gSaveSlotHasData[filemenu_iterFileIdx] = true;
 #endif
-#ifdef TARGET_3DS
                             pm_cheat_file_copy(filemenu_CopyFromFileIdx, filemenu_iterFileIdx); // port: the cheat file goes with the copy (pm_cheatsave.c)
-#endif
                         } else {
                             MenuPanel* confirmMenu;
 
@@ -1437,10 +1411,8 @@ void filemenu_main_handle_input(MenuPanel* menu) {
 }
 
 void filemenu_main_update(MenuPanel* menu) {
-#ifdef TARGET_3DS
     // port: the Options item shows only in the select file state
     set_window_update(WIN_FILES_OPTIONS_ITEM, menu->state == FM_MAIN_SELECT_FILE && filemenu_currentMenu == FILE_MENU_MAIN ? WINDOW_UPDATE_SHOW : WINDOW_UPDATE_HIDE);
-#endif
     // set default styles for all file slot panels
     gWindowStyles[WIN_FILES_SLOT1_BODY].customStyle = &filemenu_windowStyles[15];
     gWindowStyles[WIN_FILES_SLOT2_BODY].customStyle = &filemenu_windowStyles[15];
@@ -1502,7 +1474,6 @@ void filemenu_main_cleanup(MenuPanel* menu) {
     }
 }
 
-#ifdef TARGET_3DS
 // port: Options item draw callback, same layout as the Copy item
 void filemenu_draw_contents_option_options(
     MenuPanel* menu,
@@ -1518,4 +1489,3 @@ void filemenu_draw_contents_option_options(
     }
     filemenu_draw_message(filemenu_get_menu_message(FILE_MESSAGE_OPTIONS), baseX + 22, baseY + 2, 255, 0, 1);
 }
-#endif

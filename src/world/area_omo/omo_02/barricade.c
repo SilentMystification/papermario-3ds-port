@@ -2,15 +2,9 @@
 #include "model.h"
 #include "effects.h"
 
-#ifdef TARGET_3DS /* HC4f3: the map list words are typed (nd_op.h); the names are the typed ids */
 #define BAR_DL NDO_CALL
 #define BAR_VTX NDO_VTX
 #define BAR_END NDO_END
-#else
-#define BAR_DL G_DL
-#define BAR_VTX G_VTX
-#define BAR_END G_ENDDL
-#endif
 
 s32 N(BarricadeModels)[] = {
     MODEL_t2, MODEL_t3, MODEL_t4, MODEL_t5,
@@ -53,13 +47,8 @@ void N(DetermineSphericalSize)(Gfx* displayList, s32* outDist) {
     u8 cmd;
 
     do {
-#ifdef TARGET_3DS
         uint32_t t[2]; t[0] = dlist->words.w0; t[1] = dlist->words.w1; /* HC4f3: the typed unit */
         u32 w0 = t[0]; u32 w1 = t[1];
-#else
-        u32 w0 = dlist->words.w0;
-        u32 w1 = dlist->words.w1;
-#endif
 
         cmd = w0 >> 0x18;
         if (cmd == BAR_DL) {

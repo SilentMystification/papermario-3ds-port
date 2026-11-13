@@ -17,7 +17,6 @@ API_CALLABLE(N(DrawAppearSparkles)) {
 
 #include "world/common/npc/StarSpirit.inc.c"
 
-#ifdef TARGET_3DS
 /* 3DS test lines (STARFX row): the frame, the time and the native model cache misses and clears before and after the star spirits pop in. */
 API_CALLABLE(N(StarFxLine)) {
     extern void pm_log_evt(const char* fmt, ...); extern unsigned pm_frame_count(void); extern unsigned pm_uptime_ms(void);
@@ -28,7 +27,6 @@ API_CALLABLE(N(StarFxLine)) {
     pm_log_evt(fmts[evt_get_variable(script, *script->ptrReadPos) & 3], pm_frame_count(), pm_uptime_ms(), miss, clears);
     return ApiStatus_DONE2;
 }
-#endif
 
 EvtScript N(EVS_MuteMusicOnPlayerApproach) = {
     Set(LVarA, 0)
@@ -89,18 +87,14 @@ EvtScript N(EVS_Scene_StarSpiritsPlea) = {
     Call(PlayerFaceNpc, NPC_Eldstar, true)
     Call(SetNpcFlagBits, NPC_Eldstar, NPC_FLAG_IGNORE_PLAYER_COLLISION, true)
     Call(SetNpcJumpscale, NPC_Eldstar, 0)
-#ifdef TARGET_3DS
     Call(N(StarFxLine), 0)
-#endif
     Call(NpcJump0, NPC_Eldstar, 21, 260, -277, 30 * DT)
     Call(EnableModel, MODEL_1, true)
-#ifdef TARGET_3DS
     Call(N(StarFxLine), 1)
     Thread
         Wait(210)
         Call(N(StarFxLine), 2)
     EndThread
-#endif
     Call(PlaySound, SOUND_MULTIPLE_STAR_SPIRITS_APPEAR)
     Call(GetNpcPos, NPC_Mamar, LVar0, LVar1, LVar2)
     Add(LVar1, 15)

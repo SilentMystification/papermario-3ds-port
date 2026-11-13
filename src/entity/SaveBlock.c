@@ -3,9 +3,7 @@
 #include "ld_addrs.h"
 #include "entity.h"
 #include "message_ids.h"
-#ifdef TARGET_3DS
 #include "nd_scomp.h"
-#endif
 
 extern Mtx Entity_SaveBlock_Mtx;
 extern Gfx Entity_SaveBlock_RenderContent[];
@@ -24,7 +22,6 @@ extern Gfx Entity_SaveBlock_RenderBlock_es[];
 extern s32 gCurrentLanguage;
 #endif
 
-#ifdef TARGET_3DS
 /* S6E2: the state lines of entity_SaveBlock_setupGfx as compiled state ranges (nd_scomp.h). The matrix and the PRIM are value slots. */
 static const Gfx SaveBlock_st_a[] = {
     gsSPMatrix(0, G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW),
@@ -40,7 +37,6 @@ static const Gfx SaveBlock_st_b[] = {
     gsDPSetPrimColor(0, 0, 0, 0, 0, 0),
 };
 static NdSDef SaveBlock_def_b = { SaveBlock_st_b, sizeof SaveBlock_st_b / sizeof SaveBlock_st_b[0] };
-#endif
 
 void entity_SaveBlock_setupGfx(s32 index) {
     Gfx* dlist = Entity_SaveBlock_RenderContent;
@@ -56,7 +52,6 @@ void entity_SaveBlock_setupGfx(s32 index) {
     guMtxCatF(sp58, sp18, sp58);
     guMtxF2L(sp58, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-#ifdef TARGET_3DS
     {
         Gfx v[2];
 
@@ -64,12 +59,6 @@ void entity_SaveBlock_setupGfx(s32 index) {
         gDPSetPrimColor(&v[1], 0, 0, 0, 0, 0, alpha);
         nd_scomp_rec(&SaveBlock_def_a, v, 2);
     }
-#else
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gDPSetRenderMode(gMainGfxPos++, G_RM_ZB_CLD_SURF, G_RM_ZB_CLD_SURF2);
-    gDPSetCombineMode(gMainGfxPos++, PM_CC_01, PM_CC_02);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, alpha);
-#endif
     gSPDisplayList(gMainGfxPos++, dlist);
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 
@@ -88,12 +77,8 @@ void entity_SaveBlock_setupGfx(s32 index) {
 #endif
     guMtxL2F(sp58, ENTITY_ADDR(entity, Mtx*, &Entity_SaveBlock_Mtx));
     sp58[3][1] += 12.5f;
-#ifndef TARGET_3DS
-    gDPPipeSync(gMainGfxPos++);
-#endif
     guMtxF2L(sp58, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-#ifdef TARGET_3DS
     {
         Gfx v[2];
 
@@ -101,12 +86,6 @@ void entity_SaveBlock_setupGfx(s32 index) {
         gDPSetPrimColor(&v[1], 0, 0, 0, 0, 0, alpha);
         nd_scomp_rec(&SaveBlock_def_b, v, 2);
     }
-#else
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gDPSetRenderMode(gMainGfxPos++, G_RM_AA_XLU_SURF | Z_CMP, G_RM_AA_XLU_SURF2 | Z_CMP);
-    gDPSetCombineMode(gMainGfxPos++, PM_CC_01, PM_CC_02);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, alpha);
-#endif
     gSPDisplayList(gMainGfxPos++, dlist);
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 
@@ -120,14 +99,10 @@ void entity_SaveBlock_idle(Entity* entity) {
     entity_base_block_idle(entity);
 }
 
-#ifdef TARGET_3DS
 void pm_save_prompt(void); /* WARPFIX2: logs a blocked save at the prompt (pm_warp.c) */
-#endif
 
 void entity_SaveBlock_pause_game(void) {
-#ifdef TARGET_3DS
     pm_save_prompt();
-#endif
     set_time_freeze_mode(TIME_FREEZE_PARTIAL);
     disable_player_input();
     gPlayerStatusPtr->curSpeed = 0.0f;

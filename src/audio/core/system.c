@@ -272,7 +272,6 @@ ALDMAproc nuAuDmaNew(NUDMAState** state) {
     return (ALDMAproc)nuAuDmaCallBack;
 }
 
-#ifdef TARGET_3DS
 #include "pm_au2.h"
 void nuAuCleanDMABuffers_x(void);
 /// AU2: the DMA cache belongs to the render thread. With the queue active this only records the call.
@@ -281,9 +280,6 @@ void nuAuCleanDMABuffers(void) {
 }
 void au2_clean_dma_exec(void) { nuAuCleanDMABuffers_x(); }
 #define NU_AU_CLEAN nuAuCleanDMABuffers_x
-#else
-#define NU_AU_CLEAN nuAuCleanDMABuffers
-#endif
 
 /// Recycles DMA buffers which are no longer in use (based on frame count).
 void NU_AU_CLEAN(void) {

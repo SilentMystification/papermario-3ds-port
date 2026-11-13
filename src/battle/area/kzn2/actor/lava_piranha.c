@@ -464,15 +464,8 @@ void N(appendGfx_vines)(void* data) {
         // here and leave space behind for the gSPBranchList command followed by two vertices
         // for each point in numPoints
 
-#ifdef TARGET_3DS
         vtxBuffer = (Vtx_t*) nd_rec_data(2 * (2 * numPoints) * sizeof(Gfx)); /* DIRECT D6c: the vine vertices are stream data */
         vtx = vtxBuffer;
-#else
-        vtxBuffer = (Vtx_t*)(gMainGfxPos + 1);
-        gSPBranchList(gMainGfxPos, &gMainGfxPos[1 + 2 * (2 * numPoints)]);
-        vtx = (Vtx_t*) (++gMainGfxPos);
-        gMainGfxPos = &gMainGfxPos[2 * (2 * numPoints)];
-#endif
 
         for (j = 0; j < numPoints; j++) {
             posX = vine->points[j].x;

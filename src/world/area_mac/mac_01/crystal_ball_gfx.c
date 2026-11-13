@@ -1,7 +1,6 @@
 #include "mac_01.h"
 #include "model.h"
 #include "nu/nusys.h"
-#ifdef TARGET_3DS
 #include "nd_scomp.h"
 /* S6M1: the crystal ball custom gfx builders as compiled state ranges (nd_scomp.h). The units in the order of the N64 code in each builder
  * (PipeSync lines left out). The value units are placeholders of their kind; the record carries the per-frame values. */
@@ -54,7 +53,6 @@ static const Gfx cb_r3_u[] = {
     gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF),
 };
 static NdSDef cb_r3 = { cb_r3_u, sizeof cb_r3_u / sizeof cb_r3_u[0] };
-#endif
 
 s32 N(CrystallBallRenderCounter) = 0;
 s32 N(UnusedCrystalBallField) = 0;
@@ -63,10 +61,8 @@ void N(gfx_build_crystal_ball_pre)(void) {
     Camera* camera = &gCameras[gCurrentCameraID];
     Matrix4f sp50;
     LookAt sp90;
-#ifdef TARGET_3DS
     Gfx v[4];
     Gfx* p = v;
-#endif
 
     N(CrystallBallRenderCounter)++;
     guLookAtHiliteF(sp50, &sp90, &gDisplayContext->hilite,
@@ -76,28 +72,15 @@ void N(gfx_build_crystal_ball_pre)(void) {
                     -50.0f, 63.0f, 95.0f,
                     31.0f, 63.0f, 95.0f,
                     64, 64);
-#ifdef TARGET_3DS
     gSPLookAtX(p++, &gDisplayContext->lookAt.l[0]);
     gSPLookAtY(p++, &gDisplayContext->lookAt.l[1]);
     gDPSetHilite1Tile(p++, G_TX_RENDERTILE, &gDisplayContext->hilite, 64, 64);
     gDPSetHilite2Tile(p++, G_TX_MIRROR, &gDisplayContext->hilite, 64, 64);
     nd_scomp_rec(&cb_pre, v, (unsigned)(p - v));
-#else
-    gSPLookAtX(gMainGfxPos++, &gDisplayContext->lookAt.l[0]);
-    gSPLookAtY(gMainGfxPos++, &gDisplayContext->lookAt.l[1]);
-    gDPSetHilite1Tile(gMainGfxPos++, G_TX_RENDERTILE, &gDisplayContext->hilite, 64, 64);
-    gDPSetHilite2Tile(gMainGfxPos++, G_TX_MIRROR, &gDisplayContext->hilite, 64, 64);
-    gSPTexture(gMainGfxPos++, 0x1000, 0x1000, 0, G_TX_RENDERTILE, G_ON);
-    gSPSetGeometryMode(gMainGfxPos++, G_TEXTURE_GEN);
-#endif
 }
 
 void N(gfx_build_crystal_ball_post)(void) {
-#ifdef TARGET_3DS
     nd_scomp_rec(&cb_post, NULL, 0);
-#else
-    gSPClearGeometryMode(gMainGfxPos++, G_TEXTURE_GEN);
-#endif
     gSPEndDisplayList(gMainGfxPos++);
 }
 
@@ -108,11 +91,9 @@ void N(gfx_build_inside_crystal_ball)(void) {
     s32 ulx, uly;
     Camera* camera = &gCameras[gCurrentCameraID];
     Model* model = get_model_from_list_index(get_model_list_index_from_tree_index(MODEL_tama));
-#ifdef TARGET_3DS
     Gfx v1[2];
     Gfx v2[2];
     Gfx* p;
-#endif
 
     transform_point(camera->mtxPerspective, model->center.x, model->center.y, model->center.z, 1.0f, &x, &y, &z, &s);
     s = 1.0f / s;
@@ -157,46 +138,20 @@ void N(gfx_build_inside_crystal_ball)(void) {
     }
 
     f20 += camera->viewportStartX;
-#ifdef TARGET_3DS
     f20 = (f32) pm_wide_draw_x(camera, (s32) f20); /* MERLON: the 2D x of the ball (wide: the 3D draw is at 1.25 x, a rectangle and the grab window at x + 40) */
-#endif
     f22 += camera->viewportStartY;
 
-#ifdef TARGET_3DS
     p = v1;
     gDPSetColorImage(p++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxZBuffer));
     gDPSetPrimColor(p++, 0, 0, 248, 240, 240, 0);
     nd_scomp_rec(&cb_r1a, v1, 1);
     nd_scomp_rec(&cb_r1b, v1 + 1, 1);
-#else
-    gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
-    gDPSetRenderMode(gMainGfxPos++, Z_CMP | CVG_DST_CLAMP | ZMODE_OPA | FORCE_BL | G_RM_PASS, Z_CMP | CVG_DST_CLAMP | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_0, G_BL_CLR_IN, G_BL_1));
-    gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxZBuffer));
-    gDPSetCombineMode(gMainGfxPos++, PM_CC_PRIM_NO_ALPHA, PM_CC_PRIM_NO_ALPHA);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, 248, 240, 240, 0);
-    gDPPipeSync(gMainGfxPos++);
-#endif
     gSPDisplayList(gMainGfxPos++, model->modelNode->displayData->displayList);
-#ifdef TARGET_3DS
     p = v2;
     gDPSetColorImage(p++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
     gDPSetPrimDepth(p++, 32734, 0);
     nd_scomp_rec(&cb_r2a, v2, 2);
     nd_scomp_rec(&cb_r2b, NULL, 0);
-#else
-    gDPPipeSync(gMainGfxPos++);
-    gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
-    gDPSetDepthSource(gMainGfxPos++, G_ZS_PRIM);
-    gDPSetPrimDepth(gMainGfxPos++, 32734, 0);
-    gDPSetRenderMode(gMainGfxPos++, G_RM_ZB_OPA_DECAL, G_RM_ZB_OPA_DECAL2);
-    gDPSetTextureFilter(gMainGfxPos++, G_TF_POINT);
-    gDPSetTexturePersp(gMainGfxPos++, G_TP_NONE);
-    gSPTexture(gMainGfxPos++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
-    gDPSetTextureLUT(gMainGfxPos++, G_TT_NONE);
-    gDPSetTextureDetail(gMainGfxPos++, G_TD_CLAMP);
-    gDPSetTextureLOD(gMainGfxPos++, G_TL_TILE);
-    gDPPipeSync(gMainGfxPos++);
-#endif
 
     ulx = f20 / 32.0f * 32.0f - 8.0f;
     uly = f22 / 32.0f * 32.0f - 8.0f;
@@ -209,16 +164,7 @@ void N(gfx_build_inside_crystal_ball)(void) {
                                 G_TX_RENDERTILE, (ulx & 0x1F) << 5, (uly & 0x1F) << 5, 700, 700);
     }
 
-#ifdef TARGET_3DS
     nd_scomp_rec(&cb_r3, NULL, 0);
-#else
-    gDPPipeSync(gMainGfxPos++);
-    gDPSetDepthSource(gMainGfxPos++, G_ZS_PIXEL);
-    gDPSetRenderMode(gMainGfxPos++, G_RM_AA_ZB_XLU_SURF, G_RM_AA_ZB_XLU_SURF2);
-    gDPSetCombineMode(gMainGfxPos++, G_CC_SHADE, G_CC_SHADE);
-    gDPSetTexturePersp(gMainGfxPos++, G_TP_PERSP);
-    gSPTexture(gMainGfxPos++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF);
-#endif
 }
 
 EvtScript N(EVS_SetupCrystalBallGfx) = {

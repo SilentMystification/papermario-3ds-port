@@ -729,7 +729,6 @@ u16 blend_tattle_background_channel(u16 a, s32 b, s32 alpha) {
     return a + (b - a) * alpha / 256;
 }
 
-#ifdef TARGET_3DS
 #include "nd_scomp.h"
 /* S5BTL1: the tattle camera setup ranges as compiled state ranges (nd_scomp.h, the cam_main form). The value units (scissor, viewport,
  * colour image, fill colour) are placeholders; the record carries them. Value units in each def sit at the ends (S6VORD), so R2 is two
@@ -771,7 +770,6 @@ static const Gfx tc_cam_b_u[] = {
 static NdSDef tc_copy = { tc_copy_u, sizeof tc_copy_u / sizeof tc_copy_u[0] };
 static NdSDef tc_cam_a = { tc_cam_a_u, sizeof tc_cam_a_u / sizeof tc_cam_a_u[0] };
 static NdSDef tc_cam_b = { tc_cam_b_u, sizeof tc_cam_b_u / sizeof tc_cam_b_u[0] };
-#endif
 
 void tattle_cam_pre_render(Camera* camera) {
     Camera* cam = &gCameras[gCurrentCamID];
@@ -812,20 +810,10 @@ void tattle_cam_pre_render(Camera* camera) {
 
     if (gGameStatusPtr->backgroundFlags & BACKGROUND_FLAG_TEXTURE) {
         gDPPipeSync(gMainGfxPos++);
-#ifdef TARGET_3DS
         { Gfx v[1];
           gDPSetScissor(&v[0], G_SC_NON_INTERLACE, cam->viewportStartX, cam->viewportStartY, cam->viewportStartX + cam->viewportW - 1, cam->viewportStartY + cam->viewportH - 1);
           nd_scomp_rec(&tc_copy, v, 1);
         }
-#else
-        gDPSetCycleType(gMainGfxPos++, G_CYC_COPY);
-        gDPSetTexturePersp(gMainGfxPos++, G_TP_NONE);
-        gDPSetTextureLUT(gMainGfxPos++, G_TT_RGBA16);
-        gDPSetCombineMode(gMainGfxPos++, G_CC_DECALRGB, G_CC_DECALRGB);
-        gDPSetRenderMode(gMainGfxPos++, G_RM_NOOP, G_RM_NOOP2);
-        gDPSetTextureFilter(gMainGfxPos++, G_TF_POINT);
-        gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, cam->viewportStartX, cam->viewportStartY, cam->viewportStartX + cam->viewportW - 1, cam->viewportStartY + cam->viewportH - 1);
-#endif
         gDPPipeSync(gMainGfxPos++);
         if (!fogEnabled) {
             gDPLoadTLUT_pal256(gMainGfxPos++, gGameStatusPtr->backgroundPalette);
@@ -875,7 +863,6 @@ void tattle_cam_pre_render(Camera* camera) {
         }
     }
 
-#ifdef TARGET_3DS
     { Gfx v[4]; Gfx* p = v;
         gSPViewport(p++, PM_VP(&cam->vp));
         gDPSetScissorFrac(p++, G_SC_NON_INTERLACE, cam->viewportStartX * 4.0f, cam->viewportStartY * 4.0f, (cam->viewportStartX + cam->viewportW) * 4.0f, (cam->viewportStartY + cam->viewportH) * 4.0f);
@@ -884,30 +871,6 @@ void tattle_cam_pre_render(Camera* camera) {
         nd_scomp_rec(&tc_cam_a, v, 2);
         nd_scomp_rec(&tc_cam_b, v + 2, 2);
     }
-#else
-    gSPViewport(gMainGfxPos++, PM_VP(&cam->vp));
-    gSPClearGeometryMode(gMainGfxPos++, G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
-    gSPTexture(gMainGfxPos++, 0, 0, 0, G_TX_RENDERTILE, G_OFF);
-    gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
-    gDPPipelineMode(gMainGfxPos++, G_PM_NPRIMITIVE);
-    gDPSetScissorFrac(gMainGfxPos++, G_SC_NON_INTERLACE, cam->viewportStartX * 4.0f, cam->viewportStartY * 4.0f, (cam->viewportStartX + cam->viewportW) * 4.0f, (cam->viewportStartY + cam->viewportH) * 4.0f);
-    gDPSetTextureLOD(gMainGfxPos++, G_TL_TILE);
-    gDPSetTextureLUT(gMainGfxPos++, G_TT_NONE);
-    gDPSetTextureDetail(gMainGfxPos++, G_TD_CLAMP);
-    gDPSetTexturePersp(gMainGfxPos++, G_TP_PERSP);
-    gDPSetTextureFilter(gMainGfxPos++, G_TF_BILERP);
-    gDPSetTextureConvert(gMainGfxPos++, G_TC_FILT);
-    gDPSetCombineMode(gMainGfxPos++, G_CC_SHADE, G_CC_SHADE);
-    gDPSetCombineKey(gMainGfxPos++, G_CK_NONE);
-    gDPSetAlphaCompare(gMainGfxPos++, G_AC_NONE);
-    gDPSetRenderMode(gMainGfxPos++, G_RM_OPA_SURF, G_RM_OPA_SURF2);
-    gDPSetColorDither(gMainGfxPos++, G_CD_DISABLE);
-    gSPClipRatio(gMainGfxPos++, FRUSTRATIO_2);
-    gDPPipeSync(gMainGfxPos++);
-    gDPSetCycleType(gMainGfxPos++, G_CYC_FILL);
-    gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxZBuffer));
-    gDPSetFillColor(gMainGfxPos++, PACK_FILL_DEPTH(G_MAXFBZ, 0));
-#endif
     gDPFillRectangle(gMainGfxPos++, cam->viewportStartX, cam->viewportStartY, cam->viewportStartX + cam->viewportW - 1, cam->viewportStartY + cam->viewportH - 1);
     gDPPipeSync(gMainGfxPos++);
     gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));

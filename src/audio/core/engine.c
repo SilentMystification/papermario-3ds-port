@@ -1,17 +1,11 @@
 #include "audio.h"
 #include "audio/core.h"
-#ifdef TARGET_3DS
 #include "pm_dspaud.h"
 #define AUD_EV(r, id) pm_aud_ev((r), (unsigned)(id))
-#else
-#define AUD_EV(r, id) ((void)0)
-#endif
-#ifdef TARGET_3DS
 #include "pm_au2.h"
 #include "pm_port.h"
 #include "pm_romload.h"
 #include <string.h>
-#endif
 #include "ld_addrs.h"
 
 AuCallback BeginSoundUpdateCallback;
@@ -38,7 +32,6 @@ extern f32 AlTuneScaling[];
 #define SBN_ROM_OFFSET 0xF00000
 #endif
 
-#ifdef TARGET_3DS
 void au_swap16(void* p, s32 count) {
     u16* v = p;
     while (count-- > 0) {
@@ -151,12 +144,6 @@ static void au_swap_bk_file(BKFileBuffer* bk) {
         au_swap16(preset->offsets, preset->count * 2);
     }
 }
-#else
-#define au_swap_bgm_file(bgm) ((void)0)
-#define au_swap_mseq_file(mseq) ((void)0)
-#define au_swap_bk_header(h) ((void)0)
-#define au_swap_bk_file(bk) ((void)0)
-#endif
 
 void au_release_voice(u8 index) {
     AuVoice* voice = &gSoundGlobals->voices[index];
@@ -499,9 +486,7 @@ void au_syn_begin_audio_frame(AuGlobals* globals) {
         if (voiceUpdateFlags & AU_VOICE_SYNC_FLAG_ALL) {
             au_voice_start(voice, &voice->envelope);
             au_syn_start_voice_params(i, voice->busID, voice->instrument, voice->pitchRatio, voice->volume, voice->pan, voice->reverb, voice->delta);
-#ifdef TARGET_3DS
             pm_au2_vstart((unsigned)(uintptr_t)voice->instrument->wavData, voice->instrument->wavDataLength);
-#endif
             // priority may be AU_PRIORITY_FREE if this voice was stolen and reset
             voice->priority = voice->clientPriority;
         } else {
@@ -517,7 +502,6 @@ void au_syn_begin_audio_frame(AuGlobals* globals) {
         }
         voice->syncFlags = 0;
     }
-#ifdef TARGET_3DS
     {   /* AUDDSP A1: voice statistics for docs/plans/AUD_DSP.md (pm_au2.c prints them with audiostat) */
         int used = 0, bus[4] = {0, 0, 0, 0}, adpcm = 0, loop = 0, hi = 0;
         for (i = 0; i < ARRAY_COUNT(globals->voices); i++) {
@@ -532,7 +516,6 @@ void au_syn_begin_audio_frame(AuGlobals* globals) {
         pm_au2_vstat(used, bus, adpcm, loop, hi,
                      globals->effectChanges[0].type, globals->effectChanges[1].type, globals->effectChanges[2].type, globals->effectChanges[3].type);
     }
-#endif
 }
 
 void au_reset_nonfree_voice(AuVoice* voice, u8 index) {
@@ -994,7 +977,6 @@ void au_load_PER(AuGlobals* globals, s32 romAddr) {
     au_swap32(&header, 2);
     size = header.mdata.size - sizeof(header);
     au_read_rom(romAddr + sizeof(header), globals->dataPER, size);
-#ifdef TARGET_3DS
     {
         BGMDrumInfo* drum = (BGMDrumInfo*)globals->dataPER;
         s32 i;
@@ -1002,7 +984,6 @@ void au_load_PER(AuGlobals* globals, s32 romAddr) {
             au_swap16(&drum->bankPatch, 2);
         }
     }
-#endif
     numItems = size / sizeof(PEREntry);
     numItemsLeft = 6 - numItems;
     if (numItemsLeft > 0) {
@@ -1028,7 +1009,6 @@ void au_load_PRG(AuGlobals* globals, s32 romAddr) {
         size = PRG_MAX_COUNT * sizeof(BGMInstrumentInfo);
     }
     au_read_rom(dataRomAddr, globals->dataPRG, size);
-#ifdef TARGET_3DS
     {
         BGMInstrumentInfo* ins = globals->dataPRG;
         s32 i;
@@ -1036,7 +1016,6 @@ void au_load_PRG(AuGlobals* globals, s32 romAddr) {
             au_swap16(&ins->bankPatch, 1);
         }
     }
-#endif
     numItems = size / sizeof(BGMInstrumentInfo);
     numItemsLeft = PRG_MAX_COUNT - numItems;
     if (numItemsLeft > 0) {
@@ -1133,10 +1112,8 @@ enum BKParseState {
 /// Instruments in the bank will be configured to use DMA streaming for sample/codebook data.
 /// This is the standard loader for streamed instrument banks.
 BKFileBuffer* au_load_BK_to_bank(s32 bkFileOffset, BKFileBuffer* bkFile, s32 bankIndex, BankSet bankSet) {
-#ifdef TARGET_3DS
     unsigned xt0 = pm_xf.on ? pm_ticks() : 0u; /* BTLWIPE: the bks stage of the xfer line */
     pm_au2_sync(AU2_SYNC_BANK); /* AU2: the mixer reads these instruments */
-#endif
     ALHeap* heap = gSynDriverPtr->heap;
     BKHeader localHeader;
     BKHeader* header = &localHeader;
@@ -1226,9 +1203,7 @@ BKFileBuffer* au_load_BK_to_bank(s32 bkFileOffset, BKFileBuffer* bkFile, s32 ban
                 break;
         }
     }
-#ifdef TARGET_3DS
     if (pm_xf.on) { pm_xf.bk_n++; pm_xf.bk_t += pm_ticks() - xt0; }
-#endif
     return bkFile;
 }
 
@@ -1265,7 +1240,6 @@ void au_swizzle_BK_instruments(s32 bkFileOffset, BKFileBuffer* file, InstrumentB
             }
         }
         header->swizzled = true;
-#ifdef TARGET_3DS
         {   /* AUDDSP A1: size of the sample data one bank brings (unique wavData) */
             u32 bytes = 0, nunique = 0, nloop = 0, nraw = 0, maxlen = 0;
             s32 j;
@@ -1282,7 +1256,6 @@ void au_swizzle_BK_instruments(s32 bkFileOffset, BKFileBuffer* file, InstrumentB
             }
             pm_au2_bankstat(bkFileOffset, instrumentCount, nunique, bytes, maxlen, nloop, nraw);
         }
-#endif
     }
 }
 
@@ -1291,9 +1264,7 @@ void au_swizzle_BK_instruments(s32 bkFileOffset, BKFileBuffer* file, InstrumentB
 /// Instruments are configured to always bypass DMA: sample and codebook data is assumed to be already present in RAM.
 /// Use this only for banks whose sample data is guaranteed to be preloaded, not for standard streaming.
 BKFileBuffer* au_load_static_BK_to_bank(s32* inAddr, void* outAddr, s32 bankIndex, BankSet bankSet) {
-#ifdef TARGET_3DS
     pm_au2_sync(AU2_SYNC_BANK); /* AU2: the mixer reads these instruments */
-#endif
     ALHeap* heap = gSynDriverPtr->heap;
     BKFileBuffer* bkFile = outAddr;
     BKHeader localHeader;
@@ -1371,9 +1342,7 @@ s32 au_load_aux_bank(s32 bkFileOffset, s32 bankIndex) {
 
 /// unused. resets all instruments in (bankIndex, bankSet) to default
 void au_clear_instrument_group(s32 bankIndex, BankSet bankSet) {
-#ifdef TARGET_3DS
     pm_au2_sync(AU2_SYNC_BANK); /* AU2: the mixer reads these instruments */
-#endif
     Instrument* instrument = gSoundGlobals->defaultInstrument;
     InstrumentBank* group =  au_get_BK_instruments(bankSet, bankIndex);
     Instrument** ptr = *group;
@@ -1427,7 +1396,6 @@ void au_sync_channel_delay_enabled(u32 bMonoSound) {
 // probable split
 
 void au_read_rom(s32 romAddr, void* buffer, u32 size) {
-#ifdef TARGET_3DS
     pm_rs_auread((unsigned)romAddr, size); /* BOOT2 auread: count before the stream is done */
     /* BTLWIPE F2: the sound data (SBN 0xF00000 to 0x1942C40) is in the resident ROM image: one copy. nuPiReadRom per 8 KB drained the walk
      * and invalidated the texture cache on each piece (the song and bank loads run on the logic thread). Its byte swaps do not apply here:
@@ -1437,7 +1405,6 @@ void au_read_rom(s32 romAddr, void* buffer, u32 size) {
         const unsigned char* src = pm_rom_ptr((unsigned)romAddr, size);
         if (src) { memcpy(buffer, src, size); return; }
     }
-#endif
     s32 nchunks = size / 0x2000;
     s32 offset = 0;
 

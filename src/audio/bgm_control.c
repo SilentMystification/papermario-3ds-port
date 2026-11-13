@@ -424,9 +424,7 @@ void bgm_push_battle_song(void) {
             music->savedSongName = music->songName;
             music->flags |= MUSIC_FLAG_PUSHING;
             bgm_set_song(0, music->battleSongID, music->battleVariation, 500, VOL_LEVEL_FULL);
-#ifdef TARGET_3DS
             { extern void pm_prefetch_song(int songID); pm_prefetch_song(music->battleSongID); } /* BTLWIPE F4: its samples decode on core 1 during the star wipe */
-#endif
         }
     }
 }

@@ -5,7 +5,6 @@
 
 // port: Options panel of the file select screen (F11-3). TARGET_3DS only.
 // UI1a: three tabs (General, Controls, Debug), L and R change the tab. The rows, values and actions come from the port layer (pm_options.c, pm_optui_*).
-#ifdef TARGET_3DS
 
 #define OPT_ROWS 22 // longest tab (Controls, 20 rows) with spare
 #define OPT_TABS 3
@@ -275,4 +274,3 @@ void filemenu_options_update(MenuPanel* menu) {
 
 void filemenu_options_cleanup(MenuPanel* menu) {
 }
-#endif
