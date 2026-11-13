@@ -6,9 +6,8 @@ A shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json, bench_def
 
 | row | model | places | state |
 |---|---|---|---|
-| PUSHKEY | Haiku | 3ds/build.sh the 3 generator call lines (:57, :79, :101); 3ds/tests/push/run.sh after case (b2) (:52) | running |
 | PUSHEND2 | Haiku | 3ds/go.ps1 :188 and the `finally` block (:246-253); 3ds/tests/push/run.sh (d) :71-73 | running |
-| PUSHLANE | Haiku | 3ds/go.ps1 :236-238; 3ds/push_3ds.sh :176; new 3ds/tests/push/lane.sh | waits for PUSHKEY, PUSHEND2 |
+| PUSHLANE | Haiku | 3ds/go.ps1 :236-238; 3ds/push_3ds.sh :176; new 3ds/tests/push/lane.sh | waits for PUSHEND2 |
 | FPS60VAL | Sonnet | 3ds/src/pm_gpu.c end of kc_build, end of pm_gpu_key_show; new 3ds/tools/kcval.py | not started (user decides) |
 | LISTCEN2 | Haiku | 3ds/tools/listcen.py; bench_defs.json listcen entry (per-row file) | plan phase H, first rows |
 | ELFGATE | Haiku | new 3ds/tools/elfgate.py, elfgate_patterns.txt | plan phase H, first rows |
