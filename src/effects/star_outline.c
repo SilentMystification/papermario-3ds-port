@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09000800_4147A0[];
 extern Gfx D_09000B20_414AC0[];
@@ -207,8 +209,7 @@ void star_outline_appendGfx(void* effect) {
         unk_34 = 0;
     }
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
     nd_rec_dl(D_E0126BC8[0]);
 
     if (unk_34 != 0) {
@@ -217,7 +218,7 @@ void star_outline_appendGfx(void* effect) {
         guMtxCatF(sp60, sp20, sp20);
         guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
         if (data->unk_00 == 0) {
             gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
@@ -225,10 +226,10 @@ void star_outline_appendGfx(void* effect) {
             gDPSetRenderMode(gMainGfxPos++, G_RM_ZB_CLD_SURF, G_RM_ZB_CLD_SURF2);
         }
 
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, unk_18, unk_1C, unk_20, unk_34 >> 1);
-        gDPSetEnvColor(gMainGfxPos++, unk_28, unk_2C, unk_30, unk_34 >> 1);
+        nd_val_prim(0, 0, unk_18, unk_1C, unk_20, unk_34 >> 1);
+        nd_val_env(unk_28, unk_2C, unk_30, unk_34 >> 1);
         nd_rec_dl(D_E0126BC4[0]);
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        nd_xf_pop(G_MTX_MODELVIEW);
     }
 
     guPositionF(sp20, 0.0f, -gCameras[gCurrentCameraID].curYaw, 0.0f, data->unk_38 * 0.4, data->pos.x, data->pos.y, data->pos.z);
@@ -236,7 +237,7 @@ void star_outline_appendGfx(void* effect) {
     guMtxCatF(sp60, sp20, sp20);
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
     if (unk_34 != 0) {
         if (data->unk_00 == 0) {
@@ -253,8 +254,8 @@ void star_outline_appendGfx(void* effect) {
         gDPSetRenderMode(gMainGfxPos++, G_RM_AA_ZB_XLU_SURF, G_RM_AA_ZB_XLU_SURF2);
     }
 
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, unk_18, unk_1C, unk_20, unk_24);
-    gDPSetEnvColor(gMainGfxPos++, unk_28, unk_2C, unk_30, unk_24);
+    nd_val_prim(0, 0, unk_18, unk_1C, unk_20, unk_24);
+    nd_val_env(unk_28, unk_2C, unk_30, unk_24);
     nd_rec_dl(D_E0126BC0[0]);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }

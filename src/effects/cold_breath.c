@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09002000_3DB100[];
 extern Gfx D_09002200_3DB300[];
@@ -194,17 +196,16 @@ void cold_breath_appendGfx(void* effect) {
     s32 envAlpha;
     s32 cond;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
     guTranslateF(sp20, data->pos.x, data->pos.y, data->pos.z);
     guScaleF(sp60, data->scale, data->scale, data->scale);
     guMtxCatF(sp60, sp20, sp20);
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gSPMatrix(gMainGfxPos++, camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, data->primCol.r, data->primCol.g, data->primCol.b, 0.5 * unk24);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_val_prim(0, 0, data->primCol.r, data->primCol.g, data->primCol.b, 0.5 * unk24);
     gDPSetAlphaDither(gMainGfxPos++, G_AD_NOISE);
     nd_rec_dl(D_E00DE84C[unk00]);
 
@@ -215,7 +216,7 @@ void cold_breath_appendGfx(void* effect) {
 
     guPositionF(sp20, 0.0f, 0.0f, -temp1, temp2 * 0.01f, temp3, 0.0f, 0.0f);
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
     temp_f32 = D_E00DE910[unkIndex] * 5.0f / 256.0f;
     temp_s32 = temp_f32;
@@ -224,16 +225,15 @@ void cold_breath_appendGfx(void* effect) {
     cond = temp_s32 >= 4;
     if (temp_s32 < 5) {
         if (cond) {
-            gDPSetTileSize(gMainGfxPos++, 1, 0, 0, 0, 0);
+            nd_val_tile_size(1, 0, 0, 0, 0);
         } else {
-            gDPSetTileSize(gMainGfxPos++, 1, 0, 0, 31 << 2, 127 << 2);
+            nd_val_tile_size(1, 0, 0, 31 << 2, 127 << 2);
         }
-        gDPSetEnvColor(gMainGfxPos++, data->envCol.r, data->envCol.g, data->envCol.b, envAlpha);
+        nd_val_env(data->envCol.r, data->envCol.g, data->envCol.b, envAlpha);
         nd_rec_dl(D_E00DE810[unk00][temp_s32]);
     }
 
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
     gDPSetAlphaDither(gMainGfxPos++, G_AD_DISABLE);
-    gDPPipeSync(gMainGfxPos++);
 }

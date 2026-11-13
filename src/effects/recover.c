@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09003200_385000[];
 extern Gfx D_09003298_385098[];
@@ -174,15 +176,14 @@ void func_E0080448(EffectInstance* effect) {
     Matrix4f sp58;
     Matrix4f sp98;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
     guTranslateF(sp18, part->pos.x, part->pos.y, part->pos.z);
     guRotateF(sp58, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);
     guMtxCatF(sp58, sp18, sp98);
     guMtxF2L(sp98, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
     type = part->type;
     unk_40 = part->unk_40;
@@ -190,7 +191,7 @@ void func_E0080448(EffectInstance* effect) {
     part++;
     for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, part++) {
         if (part->unk_34 <= 0) {
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, part->alpha);
+            nd_val_prim(0, 0, 0, 0, 0, part->alpha);
 
             if (part->alpha == 255) {
                 gDPSetRenderMode(gMainGfxPos++, AA_EN | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM), AA_EN | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM));
@@ -209,16 +210,16 @@ void func_E0080448(EffectInstance* effect) {
             guMtxCatF(sp58, sp18, sp18);
             guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-            gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+            nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
             guRotateF(sp18, part->angle, 0.0f, 0.0f, 1.0f);
             guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-            gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+            nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
             if (i == 1 && type != 2) {
                 nd_rec_dl(D_090033D0_3851D0);
-                gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+                nd_xf_pop(G_MTX_MODELVIEW);
                 nd_rec_dl(D_090034D0_3852D0);
 
                 if (unk_40 < 10 && unk_44 == 0) {
@@ -235,12 +236,12 @@ void func_E0080448(EffectInstance* effect) {
                 }
             } else {
                 nd_rec_dl(D_090033F0_3851F0);
-                gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+                nd_xf_pop(G_MTX_MODELVIEW);
             }
 
-            gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+            nd_xf_pop(G_MTX_MODELVIEW);
         }
     }
 
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }

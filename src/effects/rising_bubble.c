@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09000200_356730[];
 extern Gfx D_090002E8_356818[];
@@ -112,36 +114,33 @@ void rising_bubble_appendGfx(void* effect) {
     Matrix4f sp20;
     Matrix4f sp60;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
     if (data->pos.y >= data->unk_24) {
         s32 uls;
         s32 ult;
 
         nd_rec_dl(D_E0046614[0]);
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, 127, 127, 127, data->unk_14);
+        nd_val_prim(0, 0, 127, 127, 127, data->unk_14);
 
         uls = 0;
         ult = data->unk_20;
 
-        gDPSetTileSize(gMainGfxPos++, 1,
-            (uls     ) * 4, (ult     ) * 4,
-            (uls + 32) * 4, (ult + 32) * 4);
+        nd_val_tile_size(1, (uls     ) * 4, (ult     ) * 4, (uls + 32) * 4, (ult + 32) * 4);
 
         guTranslateF(sp20, data->pos.x, data->pos.y, data->pos.z);
         guScaleF(sp60, data->unk_10, 1.0f, data->unk_10);
         guMtxCatF(sp60, sp20, sp20);
     } else {
         nd_rec_dl(D_E0046618[0]);
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 255, data->unk_14);
-        gDPSetEnvColor(gMainGfxPos++, 128, 128, 255, data->unk_14);
+        nd_val_prim(0, 0, 255, 255, 255, data->unk_14);
+        nd_val_env(128, 128, 255, data->unk_14);
 
         guPositionF(sp20, 0.0f, -gCameras[gCurrentCameraID].curYaw, 0.0f, data->unk_10, data->pos.x, data->pos.y, data->pos.z);
     }
 
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
     if (data->pos.y >= data->unk_24) {
         nd_rec_dl(D_E0046600[0]);
@@ -149,6 +148,5 @@ void rising_bubble_appendGfx(void* effect) {
         nd_rec_dl(D_E0046604[(lifeTime >> 1) & 3]);
     }
 
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gDPPipeSync(gMainGfxPos++);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }

@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09000A00_373DE0[];
 extern Gfx D_09000B88_373F68[];
@@ -189,8 +191,7 @@ void fire_breath_appendGfx(void* effect) {
     Gfx* dlist2 = D_E006EC0C[type];
     s32 imgFrame = data->animTime;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
     if (type == FIRE_BREATH_SMALL) {
         guTranslateF(transformMtx, data->initPos.x, data->initPos.y, data->initPos.z);
@@ -198,18 +199,17 @@ void fire_breath_appendGfx(void* effect) {
         guMtxCatF(tempMtx, transformMtx, transformMtx);
         guMtxF2L(transformMtx, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-                  G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
         nd_rec_dl(D_09000C20_374000);
         nd_rec_dl(D_09000C00_373FE0);
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        nd_xf_pop(G_MTX_MODELVIEW);
     }
 
     nd_rec_dl(dlist2);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, data->primR, data->primG, data->primB, data->alpha);
-    gDPSetEnvColor(gMainGfxPos++, data->envR, data->envG, data->envB, envAlpha);
-    gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, ((imgFrame * 32) + 0)  * 4, 0, ((imgFrame * 32) + 32) * 4, 128);
-    gDPSetTileSize(gMainGfxPos++, 1,               ((imgFrame * 32) + 32) * 4, 0, ((imgFrame * 32) + 64) * 4, 128);
+    nd_val_prim(0, 0, data->primR, data->primG, data->primB, data->alpha);
+    nd_val_env(data->envR, data->envG, data->envB, envAlpha);
+    nd_val_tile_size(G_TX_RENDERTILE, ((imgFrame * 32) + 0)  * 4, 0, ((imgFrame * 32) + 32) * 4, 128);
+    nd_val_tile_size(1, ((imgFrame * 32) + 32) * 4, 0, ((imgFrame * 32) + 64) * 4, 128);
 
     guTranslateF(transformMtx, data->pos.x, data->pos.y, data->pos.z);
     guRotateF(tempMtx, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);
@@ -218,8 +218,7 @@ void fire_breath_appendGfx(void* effect) {
     guMtxCatF(tempMtx, transformMtx, transformMtx);
     guMtxF2L(transformMtx, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-              G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_rec_dl(dlist);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }

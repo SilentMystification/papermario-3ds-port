@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_090000B0_36E040[];
 extern Gfx D_09000110_36E0A0[];
@@ -274,8 +276,8 @@ void func_E006A85C(LightRaysFXData* part) {
     s32 uls2 = part->unk_3C * 4.0f;
     s32 ult2 = part->unk_40 * 4.0f;
 
-    gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, uls, ult, uls + 512, ult + 256);
-    gDPSetTileSize(gMainGfxPos++, 1, uls2, ult2, uls2 + 512, ult2 + 256);
+    nd_val_tile_size(G_TX_RENDERTILE, uls, ult, uls + 512, ult + 256);
+    nd_val_tile_size(1, uls2, ult2, uls2 + 512, ult2 + 256);
 }
 
 void light_rays_appendGfx(void* effect) {
@@ -288,8 +290,7 @@ void light_rays_appendGfx(void* effect) {
     Matrix4f mtxTranslate;
     s32 i;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
     nd_rec_dl(dlist2);
 
     guTranslateF(mtxTranslate, part->pos.x, part->pos.y, part->pos.z);
@@ -345,7 +346,7 @@ void light_rays_appendGfx(void* effect) {
             guScaleF(mtxTemp, scaleX, scaleY, scaleZ);
             guMtxCatF(mtxTemp, mtxTransform, mtxTransform);
 
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 240, part->alpha);
+            nd_val_prim(0, 0, 255, 255, 240, part->alpha);
         } else {
             guRotateF(mtxTemp, part->rot.y, 0.0f, 1.0f, 0.0f);
             guMtxCatF(mtxTemp, mtxTransform, mtxTransform);
@@ -354,15 +355,14 @@ void light_rays_appendGfx(void* effect) {
             guTranslateF(mtxTemp, part->unk_58, 0.0f, 0.0f);
             guMtxCatF(mtxTemp, mtxTransform, mtxTransform);
 
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 181, part->alpha);
+            nd_val_prim(0, 0, 255, 255, 181, part->alpha);
         }
 
         guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
         nd_rec_dl(dlist);
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        nd_xf_pop(G_MTX_MODELVIEW);
     }
 
-    gDPPipeSync(gMainGfxPos++);
 }

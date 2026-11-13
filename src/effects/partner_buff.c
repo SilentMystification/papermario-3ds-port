@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
 
 void partner_buff_init(EffectInstance* effect);
 void partner_buff_update(EffectInstance* effect);
@@ -191,7 +192,7 @@ void func_E011A3BC(s16 alpha) {
     } else {
         gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
         gDPSetCombineMode(gMainGfxPos++, PM_CC_01, PM_CC_01);
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, alpha);
+        nd_val_prim(0, 0, 0, 0, 0, alpha);
     }
 }
 
@@ -206,7 +207,6 @@ void func_E011A48C(s32 posX, s32 posY, s32 tile, f32 scale) {
         1024,
         scale,
         -scale);
-    gDPPipeSync(gMainGfxPos++);
 }
 
 void func_E011A700(EffectInstance* effect) {
@@ -222,8 +222,7 @@ void func_E011A700(EffectInstance* effect) {
     s32 i;
 
     if (data->visible) {
-        gDPPipeSync(gMainGfxPos++);
-        gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+        nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
         nd_rec_dl(D_E011AC20[0]);
 
@@ -299,6 +298,5 @@ void func_E011A700(EffectInstance* effect) {
             camera->viewportStartX + camera->viewportW,
             camera->viewportStartY + camera->viewportH
         );
-        gDPPipeSync(gMainGfxPos++);
     }
 }

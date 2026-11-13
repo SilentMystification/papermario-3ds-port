@@ -1,5 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09000F20_338EE0[];
 extern Gfx D_090011C8_339188[];
@@ -196,16 +198,15 @@ void shimmer_wave_appendGfx(void* effect) {
     Matrix4f sp60;
     s32 i;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
     guTranslateF(sp20, part->unk_04, part->unk_08, part->unk_0C);
     guScaleF(sp60, part->unk_60, part->unk_60, part->unk_60);
     guMtxCatF(sp60, sp20, sp20);
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gDPSetEnvColor(gMainGfxPos++, part->unk_40, part->unk_44, part->unk_48, part->unk_5C);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_val_env(part->unk_40, part->unk_44, part->unk_48, part->unk_5C);
     gSPDisplayList(gMainGfxPos++, D_09000F20_338EE0);
 
     nd_sub_open(&sub); /* DIRECT D6c: the list for later is a stream range */
@@ -216,10 +217,10 @@ void shimmer_wave_appendGfx(void* effect) {
             guPositionF(sp20, 0.0f, 0.0f, part->unk_34, part->unk_60 * temp_4C, part->unk_04, part->unk_08, part->unk_0C);
             guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-            gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, unk_50, unk_54, unk_58, part->unk_4C * temp_4C);
+            nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+            nd_val_prim(0, 0, unk_50, unk_54, unk_58, part->unk_4C * temp_4C);
             gSPDisplayList(gMainGfxPos++, D_E0074B60[i & 7]);
-            gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+            nd_xf_pop(G_MTX_MODELVIEW);
         }
     }
 
@@ -229,15 +230,15 @@ void shimmer_wave_appendGfx(void* effect) {
     guRotateF(sp20, 120.0f, 0.0f, 1.0f, 0.0f);
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_sub_call(&sub);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 
     guRotateF(sp20, -120.0f, 0.0f, 1.0f, 0.0f);
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_sub_call(&sub);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }

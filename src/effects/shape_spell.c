@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 typedef struct UnkStruct {
     /* 0x00 */ u8 unk_00;
@@ -244,40 +246,29 @@ void shape_spell_appendGfx(void* effect) {
         }
     }
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
     nd_rec_dl(D_09001080_33AFE0);
 
     guPositionF(mL, 0.0f, yawOut, 0.0f, 1.0f, data->pos.x, data->pos.y, data->pos.z);
     guMtxF2L(mL, &gDisplayContext->matrixStack[gMatrixListPos]);
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     guScaleF(mL, 1.0f / SHAPE_SPELL_FIX, 1.0f / SHAPE_SPELL_FIX, 1.0f / SHAPE_SPELL_FIX);
     guMtxF2L(mL, &gDisplayContext->matrixStack[gMatrixListPos]);
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
     for (i = 0; i < 3; i++) {
         s32 primA = i == 0 ? data->unk_34 : data->unk_34 * 100 / 255;
         for (j = 0; j < 3; j++) {
             Vtx* v = vbuf + (i * 3 + j) * 4 * ncopy;
-            gDPSetPrimColor(gMainGfxPos++, 0, 0,
-                func_E00243BC(D_E0024CC0[j].unk_01, D_E0024CC0[j].unk_00),
-                func_E00243BC(D_E0024CC0[j].unk_02, D_E0024CC0[j].unk_00),
-                func_E00243BC(D_E0024CC0[j].unk_03, D_E0024CC0[j].unk_00),
-                primA);
-            gDPSetEnvColor(gMainGfxPos++,
-                func_E0024324(D_E0024CC0[j].unk_01, D_E0024CC0[j].unk_00),
-                func_E0024324(D_E0024CC0[j].unk_02, D_E0024CC0[j].unk_00),
-                func_E0024324(D_E0024CC0[j].unk_03, D_E0024CC0[j].unk_00),
-                255);
-            gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, 0, shape_spell_ult[j], 0x0100, shape_spell_ult[j] + 0x0100);
+            nd_val_prim(0, 0, func_E00243BC(D_E0024CC0[j].unk_01, D_E0024CC0[j].unk_00), func_E00243BC(D_E0024CC0[j].unk_02, D_E0024CC0[j].unk_00), func_E00243BC(D_E0024CC0[j].unk_03, D_E0024CC0[j].unk_00), primA);
+            nd_val_env(func_E0024324(D_E0024CC0[j].unk_01, D_E0024CC0[j].unk_00), func_E0024324(D_E0024CC0[j].unk_02, D_E0024CC0[j].unk_00), func_E0024324(D_E0024CC0[j].unk_03, D_E0024CC0[j].unk_00), 255);
+            nd_val_tile_size(G_TX_RENDERTILE, 0, shape_spell_ult[j], 0x0100, shape_spell_ult[j] + 0x0100);
             gSPVertex(gMainGfxPos++, v, 4 * ncopy, 0);
             for (k = 0; k < ncopy; k++) {
                 gSP2Triangles(gMainGfxPos++, 4 * k, 4 * k + 1, 4 * k + 2, 0, 4 * k, 4 * k + 2, 4 * k + 3, 0);
             }
-            gDPPipeSync(gMainGfxPos++);
         }
     }
 
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gDPPipeSync(gMainGfxPos++);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }

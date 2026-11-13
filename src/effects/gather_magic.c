@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09000080_38F790[];
 extern Gfx D_090001A8_38F8B8[];
@@ -162,35 +164,34 @@ void gather_magic_appendGfx(void* effect) {
     Matrix4f sp98;
     s32 i;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
     guTranslateF(sp18, part->unk_08, part->unk_0C, part->unk_10);
     guRotateF(sp98, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);
     guMtxCatF(sp98, sp18, sp18);
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_rec_dl(D_09000080_38F790);
-    gDPSetEnvColor(gMainGfxPos++, part->unk_3C, part->unk_40, part->unk_44, 0);
+    nd_val_env(part->unk_3C, part->unk_40, part->unk_44, 0);
 
     part++;
     for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, part++) {
         f32 scale = part->unk_28;
 
         if (scale != 0.0f) {
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, unk_30, unk_34, unk_38, part->unk_14);
+            nd_val_prim(0, 0, unk_30, unk_34, unk_38, part->unk_14);
 
             guTranslateF(sp18, part->unk_08, part->unk_0C, part->unk_10);
             guScaleF(sp58, scale, scale, scale);
             guMtxCatF(sp58, sp18, sp18);
             guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-            gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+            nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
             nd_rec_dl(D_E008E890[i & 1]);
-            gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+            nd_xf_pop(G_MTX_MODELVIEW);
         }
     }
 
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }

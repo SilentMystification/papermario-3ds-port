@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern s32 D_09000000_3C1BA0;
 extern s32 D_09002020_3C3BC0;
@@ -124,16 +126,15 @@ void fright_jar_appendGfx(void* effect) {
     Matrix4f sp50;
     s32 i;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
     guTranslateF(sp10, data->unk_04, data->unk_08, data->unk_0C);
     guScaleF(sp50, -data->unk_28, data->unk_28, data->unk_28);
     guMtxCatF(sp50, sp10, sp10);
     guMtxF2L(sp10, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gSPMatrix(gMainGfxPos++, camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_rec_dl(D_09008BE0_3CA780);
 
     idx = 54 - unk_14;
@@ -144,7 +145,7 @@ void fright_jar_appendGfx(void* effect) {
     gSPVertex(gMainGfxPos++, &D_09004040_3C5BE0[idx], 22, 0);
 
     alpha = D_E00C2990[unk_14 % 16];
-    gDPSetEnvColor(gMainGfxPos++, 0, 0, 0, alpha);
+    nd_val_env(0, 0, 0, alpha);
 
     for (i = 0; i < 10; i++) {
         s32 temp1;
@@ -164,23 +165,21 @@ void fright_jar_appendGfx(void* effect) {
             temp3 = 255.0f;
         }
 
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, data->unk_18, data->unk_1C, data->unk_20, temp3);
+        nd_val_prim(0, 0, data->unk_18, data->unk_1C, data->unk_20, temp3);
         gDPSetTextureImage(gMainGfxPos++, G_IM_FMT_CI, G_IM_SIZ_8b, 64, &D_09002020_3C3BC0);
         gDPSetTile(gMainGfxPos++, G_IM_FMT_CI, G_IM_SIZ_8b, 8, 0, G_TX_LOADTILE, 0, G_TX_NOMIRROR | G_TX_CLAMP, 7, 14, G_TX_NOMIRROR | G_TX_CLAMP, 7, 14);
         gDPLoadSync(gMainGfxPos++);
         gDPLoadTile(gMainGfxPos++, G_TX_LOADTILE, 0, temp1 * 4, 254, (temp1 + 15) * 4);
-        gDPPipeSync(gMainGfxPos++);
         gDPSetTile(gMainGfxPos++, G_IM_FMT_CI, G_IM_SIZ_4b, 8, 0, G_TX_RENDERTILE, 0, G_TX_NOMIRROR | G_TX_CLAMP, 7, 14, G_TX_NOMIRROR | G_TX_CLAMP, 7, 14);
-        gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, 0, temp1 * 4, 508, (temp1 + 15) * 4);
-        gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, 0, temp2 * 128.0f * 4.0f, 2000, 2000);
+        nd_val_tile_size(G_TX_RENDERTILE, 0, temp1 * 4, 508, (temp1 + 15) * 4);
+        nd_val_tile_size(G_TX_RENDERTILE, 0, temp2 * 128.0f * 4.0f, 2000, 2000);
         gDPSetTextureImage(gMainGfxPos++, G_IM_FMT_CI, G_IM_SIZ_8b, 64, &D_09000000_3C1BA0);
         gDPSetTile(gMainGfxPos++, G_IM_FMT_CI, G_IM_SIZ_8b, 8, 0x80, G_TX_LOADTILE, 0, G_TX_NOMIRROR | G_TX_CLAMP, 7, 14, G_TX_NOMIRROR | G_TX_CLAMP, 7, 14);
         gDPLoadSync(gMainGfxPos++);
         gDPLoadTile(gMainGfxPos++, G_TX_LOADTILE, 0, temp1 * 4, 254, (temp1 + 15) * 4);
-        gDPPipeSync(gMainGfxPos++);
         gDPSetTile(gMainGfxPos++, G_IM_FMT_CI, G_IM_SIZ_4b, 8, 0x80, 1, 1, G_TX_NOMIRROR | G_TX_CLAMP, 7, 14, G_TX_NOMIRROR | G_TX_CLAMP, 7, 14);
-        gDPSetTileSize(gMainGfxPos++, 1, 0, temp1 * 4, 508, (temp1 + 15) * 4);
-        gDPSetTileSize(gMainGfxPos++, 1, 0, temp2 * 128.0f * 4.0f, 2000, 2000);
+        nd_val_tile_size(1, 0, temp1 * 4, 508, (temp1 + 15) * 4);
+        nd_val_tile_size(1, 0, temp2 * 128.0f * 4.0f, 2000, 2000);
 
         switch (i) {
             case 0:
@@ -215,8 +214,7 @@ void fright_jar_appendGfx(void* effect) {
                 break;
         }
 
-        gDPPipeSync(gMainGfxPos++);
     }
 
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }

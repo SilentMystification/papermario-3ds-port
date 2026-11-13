@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09000940_38AC90[];
 extern Gfx D_09000A00_38AD50[];
@@ -195,15 +197,14 @@ void func_E00863B4(EffectInstance* effect) {
         s32 cond;
         f32 unk_28;
 
-        gDPPipeSync(gMainGfxPos++);
-        gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(effect->shared->graphics));
+        nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(effect->shared->graphics));
 
         unk_28 = part->unk_28;
 
         guPositionF(sp20, 0.0f, -gCameras[gCurrentCameraID].curYaw, 0.0f, unk_28, part->unk_04, part->unk_08, part->unk_0C);
         guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
         envA = (temp_f32 - temp_s32) * 256.0f;
         primA = part->unk_2C;
@@ -294,24 +295,22 @@ void func_E00863B4(EffectInstance* effect) {
             for (i = 0; i < nsp; i++) {
                 gSP2Triangles(gMainGfxPos++, 4 * i, 4 * i + 1, 4 * i + 2, 0, 4 * i, 4 * i + 2, 4 * i + 3, 0);
             }
-            gDPPipeSync(gMainGfxPos++);
-            gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+            nd_xf_pop(G_MTX_MODELVIEW);
         }
 
         nd_sub_close(&sub);
 
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, primR, primG, primB, primA);
-        gDPSetEnvColor(gMainGfxPos++, envR, envG, engB, envA);
+        nd_val_prim(0, 0, primR, primG, primB, primA);
+        nd_val_env(envR, envG, engB, envA);
         nd_sub_call(&sub);
 
         guRotateF(sp20, 120.0f, 1.0f, 1.0f, 1.0f);
         guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         nd_sub_call(&sub);
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         nd_sub_call(&sub);
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-        gDPPipeSync(gMainGfxPos++);
+        nd_xf_pop(G_MTX_MODELVIEW);
     }
 }

@@ -2,6 +2,7 @@
 #include "effects_internal.h"
 #include "nd_gtab.h"
 #include "nd_api.h"
+#include "nd_val.h"
 
 extern Gfx D_09000F20_338EE0[];
 extern Gfx D_090011C8_339188[];
@@ -242,8 +243,7 @@ void pink_sparkles_appendGfx(void* effect) {
     s32 colorIdx;
     s32 i;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
     nd_rec_dl(D_09000F20_338EE0);
 
     colorIdx = (part->unk_20 - 1) * 3;
@@ -296,5 +296,4 @@ void pink_sparkles_appendGfx(void* effect) {
     }
     nd_parts_end(&pb);
 
-    gDPPipeSync(gMainGfxPos++);
 }

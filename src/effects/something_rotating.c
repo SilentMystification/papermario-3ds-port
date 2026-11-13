@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09003F98_3FE448[];
 extern Gfx D_09004010_3FE4C0[];
@@ -275,8 +277,7 @@ void func_E01166E8(s32 arg0, SomethingRotatingFXData* part) {
     guMtxCatF(sp60, sp20, sp20);
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-              G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 }
 
 void something_rotating_appendGfx(void* effect) {
@@ -285,36 +286,35 @@ void something_rotating_appendGfx(void* effect) {
     s32 l, t;
     s32 i;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
     nd_rec_dl(D_090042E0_3FE790);
-    gDPSetEnvColor(gMainGfxPos++, 0, 0, 0, 255);
+    nd_val_env(0, 0, 0, 255);
 
     data++;
     for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, data++) {
         if (data->state != 5) {
             func_E01166E8(1, data);
             if (data->primAlpha != 255) {
-                gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, data->primAlpha);
-                gDPSetEnvColor(gMainGfxPos++, data->env.r, data->env.g, data->env.b, 0x78);
+                nd_val_prim(0, 0, 0, 0, 0, data->primAlpha);
+                nd_val_env(data->env.r, data->env.g, data->env.b, 0x78);
                 nd_rec_dl(D_E0116C6C[0]);
 
                 l = ((unk_14 * 4.0f) * 100.0f) * (1.0 / 1024);
                 t = ((unk_14 * 4.0f) * 40.0f) * (1.0 / 1024);
-                gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, l, t, l + 0xFC, t + 0xFC);
+                nd_val_tile_size(G_TX_RENDERTILE, l, t, l + 0xFC, t + 0xFC);
 
                 l = ((unk_14 * 4.0f) * 200.0f) * (1.0 / 1024);
                 t = ((unk_14 * 4.0f) * 90.0f) * (1.0 / 1024);
-                gDPSetTileSize(gMainGfxPos++, 1, l, t, l + 0xFC, t + 0xFC);
+                nd_val_tile_size(1, l, t, l + 0xFC, t + 0xFC);
                 nd_rec_dl(D_E0116C64[0]);
             } else {
                 nd_rec_dl(D_E0116C68[0]);
-                gDPSetEnvColor(gMainGfxPos++, data->env.r, data->env.g, data->env.b, data->unk_25);
+                nd_val_env(data->env.r, data->env.g, data->env.b, data->unk_25);
                 nd_rec_dl(D_E0116C70[i - 1]);
                 nd_rec_dl(D_E0116C60[0]);
             }
-            gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+            nd_xf_pop(G_MTX_MODELVIEW);
         }
     }
 }

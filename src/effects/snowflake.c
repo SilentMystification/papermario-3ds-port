@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 s32 D_E001C5E0 = 0;
 
@@ -123,8 +125,7 @@ void snowflake_appendGfx(void* effect) {
     EffectInstance* effectTemp = effect;
     SnowflakeFXData* data = effectTemp->data.snowflake;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(effectTemp->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(effectTemp->shared->graphics));
     nd_rec_dl(D_09000900_331800);
 
     guTranslateF(sp18, data->pos.x, data->pos.y, data->pos.z);
@@ -132,16 +133,16 @@ void snowflake_appendGfx(void* effect) {
     guMtxCatF(spD8, sp18, sp118);
     guMtxF2L(sp118, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, 255);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_val_prim(0, 0, 0, 0, 0, 255);
 
     guRotateF(sp58, data->unk_18, 1.0f, 0.0f, 0.0f);
     guRotateF(sp98, data->unk_1C, 0.0f, 1.0f, 0.0f);
     guMtxCatF(sp58, sp98, sp118);
     guMtxF2L(sp118, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_rec_dl(D_090009E8_3318E8);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }

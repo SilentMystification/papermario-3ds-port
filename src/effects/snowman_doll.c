@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_090037A8_3C1148[];
 extern Gfx D_09003818_3C11B8[];
@@ -296,15 +298,14 @@ void snowman_doll_appendGfx(void* effect) {
     Matrix4f sp18;
     Matrix4f sp58;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
     guTranslateF(sp18, data->unk_04, data->unk_08, data->unk_0C);
     guScaleF(sp58, data->unk_28, data->unk_28, data->unk_28);
     guMtxCatF(sp58, sp18, sp18);
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
     guTranslateF(sp18, data->unk_30, data->unk_34, data->unk_38);
     guScaleF(sp58, data->unk_48, data->unk_4C, data->unk_48);
@@ -313,10 +314,10 @@ void snowman_doll_appendGfx(void* effect) {
     guMtxCatF(sp58, sp18, sp18);
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, data->unk_18, data->unk_1C, data->unk_20, unk_24);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_val_prim(0, 0, data->unk_18, data->unk_1C, data->unk_20, unk_24);
     nd_rec_dl(D_090037A8_3C1148);
     nd_rec_dl(D_09003818_3C11B8);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }

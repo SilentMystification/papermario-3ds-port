@@ -1,5 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 void stars_shimmer_init(EffectInstance* effect);
 void stars_shimmer_update(EffectInstance* effect);
@@ -291,8 +293,7 @@ void stars_shimmer_appendGfx(void* effect) {
 
     state = data->state;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
     gSPDisplayList(gMainGfxPos++, D_09000F20_338EE0);
 
     temp_s4 = (data->lifeTime - 1) * 3;
@@ -353,12 +354,10 @@ void stars_shimmer_appendGfx(void* effect) {
             if (b > 255) {
                 b = 255;
             }
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, r, g, b, 255);
-            gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-                      G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+            nd_val_prim(0, 0, r, g, b, 255);
+            nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
             gSPDisplayList(gMainGfxPos++, D_E0044DB0[unk_28 & 7]);
-            gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+            nd_xf_pop(G_MTX_MODELVIEW);
         }
     }
-    gDPPipeSync(gMainGfxPos++);
 }

@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 typedef struct LightningPreset {
     /* 0x00 */ u8 offset[12];
@@ -206,15 +208,14 @@ void lightning_bolt_appendGfx(void* effect) {
     type = data->type;
     widthScale = data->widthScale;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
     guScaleF(sp10, 0.1f, 0.1f, 0.1f);
     guMtxF2L(sp10, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, data->outerColor.r, data->outerColor.g, data->outerColor.b, alpha);
-    gDPSetEnvColor(gMainGfxPos++, data->innerColor.r, data->innerColor.g, data->innerColor.b, 128);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_val_prim(0, 0, data->outerColor.r, data->outerColor.g, data->outerColor.b, alpha);
+    nd_val_env(data->innerColor.r, data->innerColor.g, data->innerColor.b, 128);
     nd_rec_dl(D_09001000_3BBEA0);
 
     temp_a0 = lifetime - 1;
@@ -317,5 +318,5 @@ void lightning_bolt_appendGfx(void* effect) {
                                        i * 2 + 1, i * 2 + 2, i * 2 + 3, 0);
     }
 
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }

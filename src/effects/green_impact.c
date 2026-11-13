@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09000540_365EF0[];
 extern Gfx D_090005A0_365F50[];
@@ -161,14 +163,13 @@ void green_impact_appendGfx(void* effect) {
     envG = part->unk_53.g;
     envB = part->unk_53.b;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
     nd_rec_dl(dlist);
 
     guPositionF(sp20, 0.0f, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, part->unk_04, part->unk_08, part->unk_0C);
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
     alpha = part->unk_38;
     primR2 = primR;
@@ -194,27 +195,27 @@ void green_impact_appendGfx(void* effect) {
 
             dlist2 = D_09000540_365EF0;
 
-            gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, 0, (s32) part->unk_3C, 252, (s32) part->unk_3C + 124);
-            gDPSetTileSize(gMainGfxPos++, 1, 0, (s32) part->unk_44, 124, (s32) part->unk_44 + 124);
-            gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+            nd_val_tile_size(G_TX_RENDERTILE, 0, (s32) part->unk_3C, 252, (s32) part->unk_3C + 124);
+            nd_val_tile_size(1, 0, (s32) part->unk_44, 124, (s32) part->unk_44 + 124);
+            nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
             nd_rec_dl(dlist2);
-            gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+            nd_xf_pop(G_MTX_MODELVIEW);
         }
     }
 
     nd_sub_close(&sub);
 
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, primR2, primG2, primB2, alpha);
-    gDPSetEnvColor(gMainGfxPos++, envR2, envG2, envB2, 0);
+    nd_val_prim(0, 0, primR2, primG2, primB2, alpha);
+    nd_val_env(envR2, envG2, envB2, 0);
     gSPClearGeometryMode(gMainGfxPos++, G_CULL_BOTH);
     gSPSetGeometryMode(gMainGfxPos++, G_CULL_FRONT);
     nd_sub_call(&sub);
 
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, primR, primG, primB, alpha);
-    gDPSetEnvColor(gMainGfxPos++, envR, envG, envB, 0);
+    nd_val_prim(0, 0, primR, primG, primB, alpha);
+    nd_val_env(envR, envG, envB, 0);
     gSPClearGeometryMode(gMainGfxPos++, G_CULL_BOTH);
     gSPSetGeometryMode(gMainGfxPos++, G_CULL_BACK);
     nd_sub_call(&sub);
 
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }

@@ -2,6 +2,8 @@
 #include "effects_internal.h"
 #include "nu/nusys.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Vtx D_09000428_3B9E98[];
 extern Gfx D_09000528_3B9F98[];
@@ -202,8 +204,7 @@ void underwater_appendGfx(void* effect) {
     Matrix4f mtx;
     s32 b, c, k, i;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
     nd_rec_dl(D_09000528_3B9F98);
 
     tidal_grid_fill(data);
@@ -216,7 +217,7 @@ void underwater_appendGfx(void* effect) {
     }
 
     gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, nuGfxCfb_ptr);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, data->waterColor.r, data->waterColor.g, data->waterColor.b, alpha >> 1);
+    nd_val_prim(0, 0, data->waterColor.r, data->waterColor.g, data->waterColor.b, alpha >> 1);
     gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
     gDPSetCombineMode(gMainGfxPos++, PM_CC_48, PM_CC_48);
     gDPSetTextureImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, OS_K0_TO_PHYSICAL(nuGfxCfb_ptr));
@@ -227,7 +228,7 @@ void underwater_appendGfx(void* effect) {
 
     guOrthoF(mtx, 0.0f, 1280.0f, 960.0f, 0.0f, -16384.0f, 16384.0f, 1.0f);
     guMtxF2L(mtx, &gDisplayContext->matrixStack[gMatrixListPos]);
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
     gSPClearGeometryMode(gMainGfxPos++, G_CULL_BOTH | G_LIGHTING);
     gSPSetGeometryMode(gMainGfxPos++, G_SHADE | G_SHADING_SMOOTH);
     gSPTexture(gMainGfxPos++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
@@ -240,13 +241,12 @@ void underwater_appendGfx(void* effect) {
         G_TX_NOMIRROR | G_TX_CLAMP, 0, G_TX_NOLOD);
     gDPLoadSync(gMainGfxPos++);
     gDPLoadTile(gMainGfxPos++, G_TX_LOADTILE, 0, 0, (SCREEN_WIDTH - 1) * 4, (240 - 1) * 4);
-    gDPPipeSync(gMainGfxPos++);
     gDPSetTile(
         gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b,
         80, 0x0000, G_TX_RENDERTILE, 0,
         G_TX_NOMIRROR | G_TX_CLAMP, 0, G_TX_NOLOD,
         G_TX_NOMIRROR | G_TX_CLAMP, 0, G_TX_NOLOD);
-    gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, 0, 0, (SCREEN_WIDTH - 1) * 4, (240 - 1) * 4);
+    nd_val_tile_size(G_TX_RENDERTILE, 0, 0, (SCREEN_WIDTH - 1) * 4, (240 - 1) * 4);
 
     // cells: a load holds the 20 + k contiguous grid vertices of a row pair (k cells, k <= 12); one triangle op per cell
     for (b = 0; b < TIDAL_ROWS - 1; b++) {
@@ -261,7 +261,5 @@ void underwater_appendGfx(void* effect) {
 
     gPmNdGrabHold(gMainGfxPos++, 0);
     gSPTexture(gMainGfxPos++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF);
-    gDPPipeSync(gMainGfxPos++);
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->camPerspMatrix[gCurrentCameraID], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
-    gDPPipeSync(gMainGfxPos++);
+    nd_xf_push(&gDisplayContext->camPerspMatrix[gCurrentCameraID], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
 }

@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09001040_3583E0[];
 extern Gfx D_090010F8_358498[];
@@ -95,8 +97,7 @@ void ring_blast_appendGfx(void* effect) {
     Matrix4f sp20;
     Matrix4f sp60;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
     nd_rec_dl(dlist2);
 
     guPositionF(sp20, 0.0f, -gCameras[gCurrentCameraID].curYaw, 0.0f, data->unk_10, data->pos.x, data->pos.y, data->pos.z);
@@ -104,7 +105,7 @@ void ring_blast_appendGfx(void* effect) {
     guMtxCatF(sp60, sp20, sp20);
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
     if (unk_00 == 0) {
         f32 var_f4 = 1.0f;
@@ -116,31 +117,25 @@ void ring_blast_appendGfx(void* effect) {
             }
         }
 
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, var_f4 * 255.0f, var_f4 * 18.0f, var_f4 * 59.0f, 0);
-        gDPSetEnvColor(gMainGfxPos++, var_f4 * 255.0f, var_f4 * 53.0f, var_f4 * 24.0f, envAlpha);
+        nd_val_prim(0, 0, var_f4 * 255.0f, var_f4 * 18.0f, var_f4 * 59.0f, 0);
+        nd_val_env(var_f4 * 255.0f, var_f4 * 53.0f, var_f4 * 24.0f, envAlpha);
         gDPSetKeyR(gMainGfxPos++, var_f4 * 211.0f, 0, 0);
         gDPSetKeyGB(gMainGfxPos++, var_f4 * 255.0f, 0, 0, var_f4 * 216.0f, 0, 0);
         gDPSetCombineMode(gMainGfxPos++, PM_CC_4A, PM_CC_4B);
     } else {
         gDPSetCombineMode(gMainGfxPos++, PM_CC_4A, PM_CC_4C);
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 40, 127);
-        gDPSetEnvColor(gMainGfxPos++, 255, 255, 139, envAlpha);
+        nd_val_prim(0, 0, 255, 255, 40, 127);
+        nd_val_env(255, 255, 139, envAlpha);
     }
 
-    gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE,
-        (unk_20_s32 * 32     ) * 4, 0,
-        (unk_20_s32 * 32 + 32) * 4, 32 * 4);
+    nd_val_tile_size(G_TX_RENDERTILE, (unk_20_s32 * 32     ) * 4, 0, (unk_20_s32 * 32 + 32) * 4, 32 * 4);
 
     if (cond) {
-        gDPSetTileSize(gMainGfxPos++, 1,
-            (unk_20_s32 * 32 + 32) * 4, 32 * 4,
-            (unk_20_s32 * 32 + 64) * 4, 64 * 4);
+        nd_val_tile_size(1, (unk_20_s32 * 32 + 32) * 4, 32 * 4, (unk_20_s32 * 32 + 64) * 4, 64 * 4);
     } else {
-        gDPSetTileSize(gMainGfxPos++, 1,
-            (unk_20_s32 * 32 + 32) * 4, 0,
-            (unk_20_s32 * 32 + 64) * 4, 32 * 4);
+        nd_val_tile_size(1, (unk_20_s32 * 32 + 32) * 4, 0, (unk_20_s32 * 32 + 64) * 4, 32 * 4);
     }
 
     nd_rec_dl(dlist);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }

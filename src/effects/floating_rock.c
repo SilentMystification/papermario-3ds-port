@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_090003A0_396490[];
 extern Gfx D_090003E0_3964D0[];
@@ -115,14 +117,13 @@ void floating_rock_appendGfx(void* effect) {
     s32 alpha = data->alpha;
     Matrix4f mtxTransform;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
     guPositionF(mtxTransform, data->rot.x, data->rot.z, data->rot.y, data->scale, data->pos.x, data->pos.y, data->pos.z);
     guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, 215, 215, 110, alpha);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_val_prim(0, 0, 215, 215, 110, alpha);
 
     if (alpha != 255) {
         gDPSetRenderMode(gMainGfxPos++, G_RM_AA_ZB_XLU_SURF, G_RM_AA_ZB_XLU_SURF2);
@@ -132,6 +133,5 @@ void floating_rock_appendGfx(void* effect) {
 
     nd_rec_dl(D_09000450_396540);
     nd_rec_dl(D_E0098510[data->type]);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gDPPipeSync(gMainGfxPos++);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }
