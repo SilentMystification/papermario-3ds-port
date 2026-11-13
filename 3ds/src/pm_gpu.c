@@ -2858,6 +2858,7 @@ static void sync60_pace(void) {
  * pm_gpu_begin_wait: at the first gbi task, at the first CPU read of GPU memory, at pm_gpu_drew and at pm_gpu_end. So the game
  * logic and the draw recording run before the wait for the GPU tail of the last frame. */
 static int begin_pend, begin_clear;
+static int fh_on(void); /* FRAMEHASH3: defined with fh_frame, above pm_gpu_end_w */
 void pm_gpu_begin_wait(void) {
     PM_WALK_OWN(); /* CORE2-3a */
     if (!begin_pend) return;
@@ -2910,7 +2911,7 @@ void pm_gpu_begin_wait(void) {
     noise_off[0] = (float)(noise_next() & 1023u) / 1024.f; noise_off[1] = (float)(noise_next() & 1023u) / 1024.f; /* PT07: one new offset per drawn frame */
     prev_pre = 0;
     { u32 *b_, sz_, of_; GPUCMD_GetBuffer(&b_, &sz_, &of_); kc_base = b_; }
-    kc_rec = pm_interp_on > 0; kc_arm = 0; kc_n = kc_from = kc_skip_n = 0; kc_over = 0; kc_split0 = cmd_split_n; /* INTERPB3: the record of this frame starts with the queue after C3D_FrameBegin */
+    kc_rec = pm_interp_on > 0 || fh_on(); kc_arm = 0; kc_n = kc_from = kc_skip_n = 0; kc_over = 0; kc_split0 = cmd_split_n; /* INTERPB3: the record of this frame starts with the queue after C3D_FrameBegin */
     if (prev_want && grab_tex_init()) { grab_queue_copy(); prev_pre = 1; kc_skip_n = ((gxCmdQueue_s*)&__C3D_Context)->numEntries; } /* PT12: first entry of the queue, before the clear */
     if (prev_want) prev_want--;
     eye_slider = osGet3DSliderState(); /* STEREO: the slider decides per frame. At 0 the frame is mono: one pass, the original perspective, no shift. */
@@ -3073,6 +3074,53 @@ void pm_gpu_key_show(void) {
     rd_sync(); C3D_FrameEnd(GX_CMDLIST_FLUSH);
     if (pm_ph_on) { gb_sub = pm_ticks(); gb_on = 1; }
 }
+/* FRAMEHASH3: the fhash switch (fhash fhwin=<first>:<count>). At the frame end of a window frame the GX lists of the frame are hashed (nd_fh_frame) and
+ * one log line `fhash f<n> h <hash> draws <d> words <w>` is written. Cold: only with the switch. */
+#include "nd_fhash.h"
+static int fh_sw = -2, fh_w0, fh_w1;
+static int fh_on(void) {
+    if (fh_sw == -2) {
+        char v[32];
+        fh_sw = 0;
+        if (pm_debug_has("fhash") && pm_debug_value("fhwin", v, sizeof v) && sscanf(v, "%d:%d", &fh_w0, &fh_w1) == 2) fh_sw = 1;
+    }
+    if (!fh_sw) return 0;
+    const unsigned f = pm_frame_count();
+    return f >= (unsigned)fh_w0 && f < (unsigned)(fh_w0 + fh_w1);
+}
+static const void* fh_map(uint32_t pa, uint32_t n, void* ctx) { (void)n; (void)ctx; return pa ? osConvertPhysToVirt(pa) : NULL; }
+static uint32_t fh_role(uint32_t pa, void* ctx) {
+    (void)ctx;
+    C3D_RenderTarget* t[2] = { target, targetR };
+    for (int r = 0; r < 2; r++) {
+        if (!t[r]) continue;
+        if (pa == (uint32_t)osConvertVirtToPhys(t[r]->frameBuf.colorBuf)) return r ? 3u : 1u;
+        if (pa == (uint32_t)osConvertVirtToPhys(t[r]->frameBuf.depthBuf)) return r ? 4u : 2u;
+    }
+    for (int k = 0; k < OFF_ALL; k++) {
+        if (!gs.offs[k].tex.data) continue;
+        if (pa == (uint32_t)osConvertVirtToPhys(gs.offs[k].tex.data)) return 16u + (uint32_t)k;
+    }
+    return 255u;
+}
+static __attribute__((cold, noinline)) void fh_frame(void) {
+    gxCmdQueue_s* q = (gxCmdQueue_s*)&__C3D_Context;
+    NdFhEnv env = { fh_map, fh_role, NULL };
+    kc_take(q);
+    uint64_t h = ND_FH_INIT;
+    unsigned words = 0;
+    for (unsigned i = 0; i < kc_n; i++) {
+        if ((kc_ent[i].data[0] & 0xFFu) != 1u) continue;
+        const uint32_t n = kc_ent[i].data[2] / 4u;
+        nd_fh_frame(&h, (const uint32_t*)(uintptr_t)kc_ent[i].data[1], n, &env);
+        words += n;
+    }
+    u32 *tb, csz, toff;
+    GPUCMD_GetBuffer(&tb, &csz, &toff); /* the open tail list, base + 0 .. toff */
+    nd_fh_frame(&h, (const uint32_t*)tb, toff, &env);
+    words += toff;
+    pm_log_evt("fhash f%u h %016llx draws %u words %u", pm_frame_count(), (unsigned long long)h, draws_frame, words);
+}
 static void pm_gpu_end_w(void) {
     if (__builtin_expect(stereo_frame &&pm_frame_count() % 10u == 0, 0)) eyecw_log();
     if (__builtin_expect(mfr_on, 0)) mfr_frame(); /* TIK19 debug: the mfr line of the frame */
@@ -3126,6 +3174,7 @@ static void pm_gpu_end_w(void) {
     FS_MARK(FS_SWAP);
     PH_PUSH(PH_FEND);
     if (sr_on) sr_replay(); /* STEREO: the right eye */
+    if (__builtin_expect(fh_on(), 0)) fh_frame(); /* FRAMEHASH3: before kc_build, which takes the same entries */
     kc_build(); /* INTERPB3: the K copy of an L frame, from the recorded entries and the used command buffer */
     if (__builtin_expect(PMDL("icmp"), 0)) icmp_frame((gxCmdQueue_s*)&__C3D_Context); /* INTERP2M: after the frame-end take, before the queue is cleared */
     ndunit_scan(); rd_sync(); C3D_FrameEnd(GX_CMDLIST_FLUSH);

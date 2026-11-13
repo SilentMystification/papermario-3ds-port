@@ -1,0 +1,21 @@
+{
+  "benches": [
+    {
+      "name": "spot_mac01_hash",
+      "kind": "azahar_hash",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FRAMEHASH3: per-frame command word hash (fhash.txt) of mac_01 frames 200 to 205, cold det start. Two runs of one build equal; a row with no draw change keeps the base.",
+      "scenario": "spot_mac01_hash",
+      "cap": 35,
+      "until": "fhash f205 ",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "fhash"
+      ],
+      "gates": []
+    }
+  ]
+}
