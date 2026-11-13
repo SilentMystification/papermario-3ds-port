@@ -52,6 +52,7 @@ in the background, build first with plain `sh 3ds/build.sh`. Ask the console wit
 After a freeze: power cycle, FTP on the console, `go.ps1 pull o -ip <ip>`; dumps with 3ds/tools/decode_dump.py.
 
 ## Tools and facts that cost time
+- Hook no_poll_hook.js (PreToolUse, Bash) blocks sleep, ping -n/-c, tail --pid, timeout /t, Start-Sleep for all agents. FACT: a coder test (HOOKTEST) was blocked. OPEN: a wait hidden inside a script file; coder SendMessage to a live oracle.
 - Merge: `sh 3ds/tools/merge_row.sh <id> <msgfile>` (main must be clean; steps in orchestrator_rules.md). Rebuild main in the background.
 - runs.jsonl: a worktree copy can be huge: `python -I 3ds/tools/dedupe_runs.py <file>`, commit with `git add -f`.
 - Lane build (PM_LANE=<row>) writes build3ds/lane-<row>/, not build3ds/pm_3ds.3dsx. Build main plain before a push.
