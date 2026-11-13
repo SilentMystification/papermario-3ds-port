@@ -4,7 +4,7 @@
 Run from the repo root. Paths, file lines, registries, build.sh lists and host tests are read from main (HEAD);
 the row file itself is read from disk. Prints `rowlint FAULT <kind>: <detail>` per fault, then
 `rowlint <file> faults <n>`. Exit 1 when n > 0, else 0 (2 for a missing row file).
-Kinds: path (a), line and quote (b), names (c), sync (d), host (e), seed (f), symbol (g), needs (h).
+Kinds: path (a), line and quote (b), names (c), sync (d), host (e), seed (f), symbol (g), needs (h), marker (i).
 """
 import json
 import os
@@ -244,6 +244,59 @@ def check_needs(lines, faults):
             faults.append(('needs', f'{p} lacks {text}'))
 
 
+COPY_RE = re.compile(r'\bcop(?:y|ies) of (?:the )?`?([A-Za-z_]\w*)`?')
+DEBUG_RE = re.compile(r'`debug`\s*`([^`]*)`')
+
+
+def scenario_markers():
+    """scenario name -> first_marker, from the scenario registries on main."""
+    out = {}
+    files = ['3ds/tools/azt_scenarios.json'] + [f for f in ls_tree('3ds/tools/azt.d') if f.endswith('.json')]
+    stack = []
+    for f in files:
+        text = head(f)
+        if text is None:
+            continue
+        try:
+            stack.append(json.loads(text))
+        except ValueError:
+            continue
+    while stack:
+        node = stack.pop()
+        if isinstance(node, dict):
+            if isinstance(node.get('name'), str) and isinstance(node.get('first_marker'), str):
+                out.setdefault(node['name'], node['first_marker'])
+            stack.extend(node.values())
+        elif isinstance(node, list):
+            stack.extend(node)
+    return out
+
+
+def check_marker(lines, faults):
+    """Check i: a copy of a scenario whose first_marker starts prof= needs prof= in the edit's debug string."""
+    sec = section(lines, '## Exact edits')
+    markers = None
+    seen = set()
+    for i, ln in enumerate(sec):
+        for m in COPY_RE.finditer(ln):
+            if markers is None:
+                markers = scenario_markers()
+            x = m.group(1)
+            mark = markers.get(x)
+            if mark is None or not mark.startswith('prof='):
+                continue
+            text = '\n'.join(sec[i:i + 4])
+            dm = DEBUG_RE.search(text)
+            if dm is None or 'prof=' in dm.group(1):
+                continue
+            if any(n != x and n in markers for n in re.findall(r'[A-Za-z_]\w*', text)):
+                continue  # the edit names another scenario with a first_marker
+            if (x, mark) in seen:
+                continue
+            seen.add((x, mark))
+            faults.append(('marker', f'{x} first_marker {mark} needs prof= in the debug string'))
+
+
 def main():
     if len(sys.argv) != 2:
         print('usage: python 3ds/tools/rowlint.py <row file>')
@@ -346,6 +399,9 @@ def main():
 
     # h. needs: each Needs: line holds on main
     check_needs(lines, faults)
+
+    # i. marker: a copy of a prof= scenario keeps prof= in its debug string
+    check_marker(lines, faults)
 
     # f. seed: a CODEMOD row names each 3ds/src/*.c of Touch only with a seed line (file:line, seed, scene or drec)
     if title.startswith('# Row CODEMOD'):
