@@ -1,0 +1,19 @@
+{
+  "benches": [
+    {
+      "name": "fxpic_20_entcap",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "ENTRYCAP: entcap log lines of the explosion run (fxtest=20), cold det start. entcap.py names the static lists without a v2 table with their call sites.",
+      "scenario": "fxpic_20_entcap",
+      "cap": 40,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "det"
+      ],
+      "gates": []
+    }
+  ]
+}
