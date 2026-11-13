@@ -12,15 +12,19 @@
   text: an exact compare that names the input.
 Start: `sh 3ds/tools/wt_new.sh BOOTSTATE`. PM_ROW=BOOTSTATE PM_LANE=BOOTSTATE on every call.
 ## Touch only (places)
-3ds/src/pm_main.c: one new block next to the shotbottom probe (:813-818). Nothing else.
+3ds/src/pm_warp.c: one new block at the end of pm_warp_tick (correction 1). Nothing else. (pm_main.c cannot include the game
+structs: libctru's bool and the game's bool enum clash, build1.txt of d82e292d7. pm_warp.c includes common.h and pm_port.h
+(pm_opt) and reads gPlayerStatus already. pm_warp_tick(frame) runs once per game step from pm_main.c:499 with the step frame,
+the frame numbering of the shots.) Revert the pm_main.c probe of d82e292d7 first.
 ## Exact edits
-1. pm_main.c probe, debug switch `bootstate` (read once): at every frame of the shot window (shot_w0 is in pm_gpu.c: use the
-   frames given by the switch value `bootstate=<first>:<count>`), print one entry:
+1. pm_warp.c, end of pm_warp_tick(frame): debug switch `bootstate=<first>:<count>` (pm_debug_value, read once): for frame in
+   [first, first + count), print one entry:
    `pm_log_evt("bootstate f%u wide %d stretch %d interp %d optwide %d fps60 %d seed %08x cam %d %d %d tgt %d %d %d mario %d %d %d
    mode %d", frame, pm_wide, pm_stretch, pm_interp_on, pm_opt.wide, pm_opt.fps60, (unsigned)gRandSeed, (int)gCameras[0].lookAt_eye.x,
    (int)gCameras[0].lookAt_eye.y, (int)gCameras[0].lookAt_eye.z, (int)gCameras[0].lookAt_obj.x, (int)gCameras[0].lookAt_obj.y,
    (int)gCameras[0].lookAt_obj.z, (int)gPlayerStatus.pos.x, (int)gPlayerStatus.pos.y, (int)gPlayerStatus.pos.z, get_game_mode());`
-   (declare what the file lacks with extern lines, as pm_main.c does for other globals).
+   (add `extern int pm_stretch, pm_interp_on;` and any other missing extern line above pm_warp_tick; pm_wide and pm_opt come from
+   the headers pm_warp.c has).
 2. Commit: `BOOTSTATE: bootstate probe of the global draw inputs (layout, interp, seed, camera, Mario)`.
 ## Gate (expected values)
 1. Build, memcheck OK. nd_host PASS.

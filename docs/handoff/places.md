@@ -15,5 +15,5 @@ A shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json, bench_def
 | N64DEL3 | Haiku | TARGET_3DS lines of src/*.c (root only) | waits for N64DEL2 |
 | NPSO3 | Haiku | new 3ds/tools/gen_pso_tab.py, gen_pso_main.c, nd_psotab_test.c, 3ds/tests/pso/, 3ds/tests/host.d/psotab.sh; 3ds/build.sh new gen_pso_tab after gen_gfx_tab (:100-101) and key_now sha1sum list; .gitignore one line | ready |
 | CONV2C | Sonnet (accepted) | 3ds/tools/nd_gfx_conv.c, gen_gfx_tab.sh, nd_gtab_test.c; new generated 3ds/src/nd_ntab_descs.c; .gitignore one line | ready (NPSO3 numbers its descs: merge NPSO3 first or CONV2C waits for it at its last step) |
-| BOOTSTATE | Haiku | 3ds/src/pm_main.c one probe block next to the shotbottom probe (:813-818); new azt.d/bench.d BOOTSTATE.json | ready (evidence for the unstable bases) |
+| BOOTSTATE | Haiku | 3ds/src/pm_warp.c one block at the end of pm_warp_tick; new azt.d/bench.d BOOTSTATE.json | ready (evidence for the unstable bases) |
 | FPS60VAL | Sonnet | 3ds/src/pm_gpu.c end of kc_build, end of pm_gpu_key_show; new 3ds/tools/kcval.py | not started (user decides) |
