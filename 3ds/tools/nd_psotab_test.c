@@ -10,6 +10,12 @@
 
 extern const unsigned nd_pso_n; /* nd_pso_tab.c */
 
+/* same values as pm_f255 (pm_gpu.c:1717) */
+void unpack8(unsigned c, float o[4]) { /* host copy, as gen_pso_main.c has it (nd_decide.c calls it) */
+    o[0] = (float)((c >> 24) & 255u) / 255.f; o[1] = (float)((c >> 16) & 255u) / 255.f;
+    o[2] = (float)((c >> 8) & 255u) / 255.f;  o[3] = (float)(c & 255u) / 255.f;
+}
+
 uint32_t f32tof24(float vf) { /* host copy of libctru f32tof24, as nd_decide_test.c has it */
     union { float f; uint32_t i; } v;
     v.f = vf;

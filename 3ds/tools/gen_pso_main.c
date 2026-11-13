@@ -22,6 +22,12 @@ uint32_t f32tof24(float vf) { /* host copy of libctru f32tof24, as nd_decide_tes
     return mant | (uint32_t)exp << 16 | sign << 23;
 }
 
+/* same values as pm_f255 (pm_gpu.c:1717) */
+void unpack8(unsigned c, float o[4]) { /* host copy, as nd_decide_test.c has it */
+    o[0] = (float)((c >> 24) & 255u) / 255.f; o[1] = (float)((c >> 16) & 255u) / 255.f;
+    o[2] = (float)((c >> 8) & 255u) / 255.f;  o[3] = (float)(c & 255u) / 255.f;
+}
+
 int main(int argc, char** argv) {
     unsigned n = 0, i, j, rows;
     FILE* f;
