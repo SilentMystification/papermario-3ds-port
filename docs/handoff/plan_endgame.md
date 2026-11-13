@@ -93,7 +93,7 @@ pm_3ds.elf), C12 elf_data (Gfx array symbols and v1 table symbols in pm_3ds.elf)
 | gate | where | exact rule |
 |---|---|---|
 | G8 compile ban | every converted file includes 3ds/include/nd_nolist.h (poisons gDP*/gSP*/gs*/Gfx/gMainGfxPos). Native draws take a static ND_PSO_DESC | the build fails on one leftover |
-| Golden master + gcov | small and medium groups (about 2460 of 3356 call sites, 73 %): the converted draw functions run on the host with the fixed test inputs of their GOLD row and print the same draw records as the golden file captured from the old code. gcov shows 100 % of the converted functions' lines run | text equal byte for byte, coverage 100 % |
+| Golden master (device drec) | every group (correction of HOSTCORE2, 2026-11-12): the scenes of the GOLD row run with the switch drec on Azahar. nd_native_submit writes one record per draw (template words, unit words, uniforms, texel, vertex and index bytes, no address). The converted code gives the same drec.txt as the base captured from the old code. COVMAP shows that the scenes run at least 90 % of the row's call sites | text equal byte for byte, coverage at least 90 % |
 | G1 host differential | every static list (CONV2 and GSET rows): old model vs native table, per draw | field equal |
 | psochk + frame hash | large groups (about 900 sites, 27 %: model, HUD, messages, imgfx, sprites, item entities, target switches) in scenes that COVMAP shows run at least 90 % of the row's sites. Phase ends | psochk bad 0, every frame hash equal |
 | G6 PICA validator | on the frame-hash capture of each phase end and each large-group row | 0 findings |
@@ -118,10 +118,10 @@ Phase H (harness and scripts):
 | ELFGATE | Haiku | none | new elfgate.py, elfgate_patterns.txt: C11-C12 (row_ELFGATE.md) |
 | NOLIST | Haiku | none | new 3ds/include/nd_nolist.h and a build check that a poisoned name fails (G8) |
 | HOSTCORE1 | Haiku | none | new 3ds/include/nd_drec.h, 3ds/tools/nd_drec.c: the draw record format (fields given by the oracle: pso output, bind content, transform rows, vertex and index bytes) as text, a writer, a host unit test with a seeded fault |
-| HOSTCORE2 | Sonnet | HOSTCORE1 | nd_host_test.sh link set: the core 0 native emit on the host down to the GPUCMD boundary, the record hook at the emit boundary. Reason: the link closure of about 10 shared emit files and the host side of the citro3d calls appear only while it links, so no exact step list exists before |
-| HOSTCORE3 | Haiku | HOSTCORE2 | nd_host runner entry: one record file per test program, a seeded-fault self-test |
-| GMHARN | Haiku | HOSTCORE3 | one host test program per game file (the file, the real recorder, gu math, HOSTCORE, its test-input file), text output, a runner in nd_host |
-| GMCOV | Haiku | GMHARN | gcov of the host runs, per function line coverage |
+| HOSTCORE2 | Sonnet | HOSTCORE1 | the drec switch: one NdDrec per draw at nd_native_submit on the device (every draw passes it), drec.txt in the shots folder, bench cmp of drec.txt. Reason: the record content behind physical addresses is a design choice in shared emit code. (Correction 2026-11-12: a host build of core 0 needed 335 undefined symbols.) |
+| HOSTCORE3 | Haiku | HOSTCORE2 | the capture scenes per GOLD group (fxtest per effect id, spot and menu scenes) with a drec window, per-row azt.d and bench.d files |
+| GMHARN | Haiku | HOSTCORE3, COVMAP | the list of the call sites of each GOLD group that its scenes reach (COVMAP counters), printed per file |
+| GMCOV | Haiku | GMHARN | the coverage gate: a GOLD group passes when its scenes reach at least 90 % of its call sites, else the row names the sites |
 | FRAMEHASH1 | Haiku | none | new 3ds/src/nd_fhash.c (pure C, device and host): PICA header decode, FNV-1a of (register, mask, value), address registers masked (register table given by the oracle), host test with a seeded fault |
 | FRAMEHASH2 | Haiku | FRAMEHASH1 | nd_fhash.c: the content feed (vertex range bytes per draw, index bytes, level 0 texels, target role, GX entry kind and size, formulas given by the oracle), host test |
 | FRAMEHASH3 | Haiku | FRAMEHASH2, FPS60FL | pm_gpu.c: the fhash switch, `|| fh_on` on the kc_rec line (begin_wait), the fh_frame call at the frame end, the fhash entry (pm_log_evt) |
@@ -133,8 +133,8 @@ Phase H (harness and scripts):
 | PICAVAL4 | Haiku | PICAVAL3, FRAMEHASH5 | bench.py: a hash bench with `fhdump` runs picaval on the dump and prints `picaval findings <n>` |
 | COVMAP | Haiku | FRAMEHASH5 | G7 for the large-group files only: per-site counters in the scenes |
 | N64DEL1, N64DEL2, N64DEL3 | Haiku | LISTCEN2 (N64DEL2/3 also N64DEL1's tool) | C3, C4 to 0 |
-Phase G (golden capture from the current code. Haiku. Blocker GMCOV. Each row writes test inputs until gcov shows 100 % of its
-draw functions' lines, captures the text twice, commits it under 3ds/tests/golden/<group>/): GOLD-FX1..GOLD-FX16 (src/effects,
+Phase G (golden capture from the current code. Haiku. Blocker GMCOV. Each row adds scenes until COVMAP shows at least 90 % of its
+call sites run, then stores the drec base of each scene with `bench.py base` (two runs equal)): GOLD-FX1..GOLD-FX16 (src/effects,
 8 files each), GOLD-ENT1..2 (src/entity setupGfx, 17 files), GOLD-WLD1..5 (src/world, 45 files), GOLD-OVL, GOLD-BG, GOLD-TTL,
 GOLD-BOX, GOLD-MISC1..2, GOLD-PAUSE, GOLD-FMENU, GOLD-BTL. 32 rows. They run in parallel with phase B and use idle slots.
 Phase B (design cores and their mechanical parts):

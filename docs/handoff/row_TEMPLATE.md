@@ -21,6 +21,8 @@ Files: <paths>. Symbols: <symbol> in <file>. The oracle checks that no other run
 - `PM_ROW=<id> PM_LANE=<id> sh 3ds/build.sh > build3ds/out/build.txt 2>&1`, memcheck OK.
 - `python 3ds/tools/bench.py run nd_host --row <id> --why "<text>"`: PASS.
 - `python 3ds/tools/bench.py cmp <bench> --row <id> --commit <merge-base>` after a run of <bench>: byte-equal (at most 2 scenes).
+- A new gate has a seeded fault first. The seed changes a value (a constant, a length, a mask). It never deletes a statement or a
+  call: with -Werror an unused variable, parameter or function then stops the build before the gate runs. State the exact FAIL set.
 
 ## Stop
 A failed gate, an edit that does not fit the code, or a test-tool fault: commit, then hand back the exact output (CLAUDE.md 4-5).

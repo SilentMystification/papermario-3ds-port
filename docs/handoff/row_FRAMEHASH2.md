@@ -41,10 +41,13 @@ FRAMEHASH1 merged. Start: `sh 3ds/tools/wt_new.sh FRAMEHASH2`. PM_ROW=FRAMEHASH2
    Print `fhframe ok 6/6` or `fhframe FAIL S<k>` and exit 1. The old line `fhash ok 6/6` stays.
 4. Commit: `FRAMEHASH2: nd_fh_frame feeds vertex, index and texel bytes and the target role, host test`.
 ## Gate (expected values)
-1. Seeded fault (correction 1): in fh_tex delete only the one statement that feeds the w * ht * bits / 8 texel bytes. Keep
-   the tag and the w, ht, fmt feeds, so fh_tex stays used (-Werror: an unused static function fails the build). `python
-   3ds/tools/bench.py run nd_host --row FRAMEHASH2 --why "FRAMEHASH2 seeded fault"`: expected `fhframe FAIL S4`, nd_host FAIL.
-2. Restore. Same command, --why "FRAMEHASH2 gate": expected `fhash ok 6/6`, `fhframe ok 6/6`, `ND HOST TESTS PASS`.
+1. Seeded fault (correction 2: a value change, every variable stays used): in fh_tex change the length argument of
+   `h = fh_data(h, e, fh_tab[addrr[u]] << 3, n);` from `n` to `(n > 4u ? 4u : n)` (only the first 4 texel bytes are fed).
+   Code read of the cases: only S4 changes a texel byte, at offset 4 of the 8 x 8 RGBA8 texture (0x20001004 - 0x20001000), which
+   the seed no longer feeds. S1, S3, S5, S6 expect equal and stay equal. S2 changes a vertex byte and still differs. So the
+   expected output is exactly one FAIL line, `fhframe FAIL S4`, and nd_host FAIL. `python 3ds/tools/bench.py run nd_host
+   --row FRAMEHASH2 --why "FRAMEHASH2 seeded fault"`.
+2. Restore `n`. Same command, --why "FRAMEHASH2 gate": expected `fhash ok 6/6`, `fhframe ok 6/6`, `ND HOST TESTS PASS`.
 3. `PM_ROW=FRAMEHASH2 PM_LANE=FRAMEHASH2 sh 3ds/build.sh > build3ds/out/build.txt 2>&1`: memcheck OK. No Azahar. Counter: none.
 ## Stop and end
 A failed gate, a line that does not match the text above, or a tool fault: commit, hand back the exact output (CLAUDE.md 4-5).
