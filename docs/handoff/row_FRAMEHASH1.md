@@ -24,13 +24,15 @@ New files 3ds/include/nd_fhash.h, 3ds/src/nd_fhash.c, 3ds/tools/nd_fhash_test.c,
 3. nd_fhash_test.c: words A (12) = { 0x00012340, 0x000F0085, 0x00400040, 0x801F0082, 0x00000006, 0x00000000, 0x80001000, 0x000F0227,
    0x00000040, 0x000F0203, 0x00000001, 0x000F022F }. B = A with A[0] 0x00055550, A[6] 0x80002000, A[8] 0x00000080 (only masked
    bits). C = A with A[4] 0x00000007. C2 = A with A[6] 0x00001000. Run nd_fh_words from ND_FH_INIT. Expected, exact:
-   A e1f5449bd8d7a601 ret 1, B e1f5449bd8d7a601 ret 1, C 821500b103d744e2 ret 1, C2 ef582e03fd998881 ret 1, A with n 11 ret 0,
+   A e1f5449bd8d7a601 ret 1, B e1f5449bd8d7a601 ret 1, C 821500b103d744e2 ret 1, C2 ef582e03fd998881 ret 1, A with n 11 ret 0 (case A11: check ret only, the walk hashes 4 commands, then fewer than 2 words remain),
    nd_fh_bytes(ND_FH_INIT, "abc", 3) = e71fa2190541574b. Print `fhash ok 6/6`, else `fhash FAIL <case> <hash>` and exit 1.
 4. host.d/fhash.sh (LF): `gcc -m32 -Wall -Wextra -Werror -I 3ds/include -o /tmp/fhash 3ds/tools/nd_fhash_test.c 3ds/src/nd_fhash.c && /tmp/fhash`.
 5. Commit: `FRAMEHASH1: nd_fhash.c, PICA command hash with masked address registers, host test`.
 ## Gate (expected values)
 1. Seeded fault: in nd_fh_keep return v for 0x203 (drop the mask of ATTRIBBUFFER0_OFFSET). `python 3ds/tools/bench.py run nd_host
-   --row FRAMEHASH1 --why "FRAMEHASH1 seeded fault"`: expected `fhash FAIL B ...`, nd_host FAIL.
+   --row FRAMEHASH1 --why "FRAMEHASH1 seeded fault"`: expected exactly 4 FAIL lines `fhash FAIL A`, `B`, `C`, `C2` (each
+   with its hash: all 4 word sets write 0x203 at word 8) and no FAIL for A11 and abc, nd_host FAIL (correction 1, ORACLE8).
+   Resume after 072619e42: step 1 is done (its 4 FAIL lines match). Run steps 2 and 3.
 2. Put the mask back. Same command, --why "FRAMEHASH1 gate": expected `fhash ok 6/6`, `ND HOST TESTS PASS`.
 3. `PM_ROW=FRAMEHASH1 PM_LANE=FRAMEHASH1 sh 3ds/build.sh > build3ds/out/build.txt 2>&1`: build OK, memcheck OK (nd_fhash.c is
    in the 3ds/src glob). No Azahar start. Counter: none (harness row).
