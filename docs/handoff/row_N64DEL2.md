@@ -20,6 +20,8 @@ N64DEL1 merged (3ds/tools/unifdef3ds.py, ppcmp.sh). Start: `sh 3ds/tools/wt_new.
 3ds/tools/unifdef3ds.py: the regex that reads the condition of a directive. 3ds/tools/ppcmp.sh: the gcc line. Files of
 `git ls-files include src/world src/entity src/battle src/pause src/filemenu src/audio src/evt src/os` ending .c or .h: only
 TARGET_3DS directive lines and the lines they guard.
+New names: none. Host link: none (no 3ds/src file).
+Needs: 3ds/tools/unifdef3ds.py has total blocks
 ## Exact edits
 1. unifdef3ds.py: before the condition is matched, remove a trailing `/* ... */` or `// ...` comment and trailing blanks from
    the directive text. Nothing else changes.
@@ -40,7 +42,8 @@ Resume: edit 2 is done (6fce31e6f). Do edit 1 and edit 3. The 7 skip lines are e
 - `diff -r build3ds/out/pp_before build3ds/out/pp_after` prints nothing. Seeded fault first: append `int ppcmp_seed;` to one
   pp_after file, diff names it, delete the line.
 - `python 3ds/tools/listcen.py`: no group of src/world, src/entity, src/battle has a build_n64 or gfxpos_n64 line. Totals
-  build_n64 and gfxpos_n64 fall from 272 and 280 to 165 and 163. Active totals stay build 3697 and gfxpos 3127.
+  build_n64 and gfxpos_n64 fall from 272 and 280 to 165 and 163. The active totals build and gfxpos are equal to a listcen run
+  before the unifdef3ds run (hand back both runs).
 - `PM_ROW=N64DEL2 PM_LANE=N64DEL2 sh 3ds/build.sh > build3ds/out/build.txt 2>&1`: memcheck OK. nd_host PASS. Budget 0 Azahar.
 ## Stop and end
 A ppcmp exit other than 0, a build error, a skip line that is not in the Facts, a block count other than 151, a changed active count, or a preprocessor

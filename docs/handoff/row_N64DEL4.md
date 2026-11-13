@@ -1,7 +1,8 @@
 # Row N64DEL4: remove by hand the TARGET_3DS directives that unifdef3ds.py skips (7 skip blocks, 2 #elif chains)
 
 Blocked by N64DEL2 and N64DEL3 (same files; their edits move the line numbers). Find each block by its directive text below.
-(Model: Haiku. 60 lines or fewer. Read only this file, CLAUDE.md and what it names. ORACLE8 2026-11-13.)
+(Model: Haiku. 60 lines or fewer. Read only this file, CLAUDE.md and what it names. ORACLE8 2026-11-13, ORACLE2 checked the
+lines at 5c30af943.)
 ## Facts (ORACLE8, main cff324713; line numbers are main's)
 - The device build always defines TARGET_3DS. It never defines SHIFT, AVOID_UB, SPLAT, __CTX__, PERMUTER or ND_GBI_WORDS (no
   -D in 3ds/CMakeLists.txt, the *.cmake files or ppcmp.sh DEF :13, and no `#define ND_GBI_WORDS` in the tree). So each form
@@ -11,6 +12,8 @@ Blocked by N64DEL2 and N64DEL3 (same files; their edits move the line numbers). 
 include/PR/os_convert.h, include/common.h, include/common_structs.h, include/include_asm.h, include/macros.h, src/entity.c,
 src/battle/area/kzn2/actor/lava_piranha.c, src/battle/common/stage/lib/WaterEffects.inc.c,
 src/world/common/lava_piranha/part1.inc.c. Only the blocks below.
+New names: none. Host link: none (no 3ds/src file).
+Needs: 3ds/tools/ppcmp.sh has -D__LINE__=0
 ## Exact edits (keep the live lines byte for byte, delete the directive lines and the dead branches)
 1. os_convert.h:74-84 `#if defined(TARGET_3DS)` / `#elif !defined(__MWERKS__)` / `#else` / `#endif`: keep :75-77 (the comment and
    the 2 OS_K?_TO_PHYSICAL defines of the 3DS branch).

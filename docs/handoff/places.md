@@ -34,4 +34,9 @@ A shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json, bench_def
 | CODEMODW4 | Haiku | src/world/area_hos/hos_04/fountains.c value call lines, include lines; new azt.d/bench.d CODEMODW4.json | parked (CODEMODW1 trace) |
 | DRECSTEP | Haiku | 3ds/src/pm_gpu.c drec_begin, drec_end; new azt.d/bench.d DRECSTEP.json | ready |
 | SEEDTOOL | Haiku | new 3ds/tools/seedprobe.py | waits for DRECSTEP |
-| SEEDPROBE1 | Haiku | docs/handoff/row_SEEDS.md verdict column (12 lines); new azt.d/bench.d SEEDPROBE1.json | waits for SEEDTOOL (pilot) |
+| SEEDPROBE1 | Haiku | docs/handoff/row_SEEDS.md verdict fields of its 12 lines; new azt.d/bench.d SEEDPROBE1.json | waits for SEEDTOOL (pilot) |
+| SEEDPROBE2 | Haiku | docs/handoff/row_SEEDS.md verdict fields of its lines; new azt.d/bench.d SEEDPROBE2.json | waits for SEEDPROBE1 merge (adjacent lines of one file) |
+| SEEDPROBE3 | Haiku | docs/handoff/row_SEEDS.md verdict fields of its lines; new azt.d/bench.d SEEDPROBE3.json | waits for SEEDPROBE2 merge (adjacent lines of one file) |
+| SEEDPROBE4 | Haiku | docs/handoff/row_SEEDS.md verdict fields of its lines; new azt.d/bench.d SEEDPROBE4.json | waits for SEEDPROBE3 merge (adjacent lines of one file) |
+| SEEDPROBE5 | Haiku | docs/handoff/row_SEEDS.md verdict fields of its lines; new azt.d/bench.d SEEDPROBE5.json | waits for SEEDPROBE4 merge (adjacent lines of one file) |
+| SEEDPROBE6 | Haiku | docs/handoff/row_SEEDS.md verdict fields of its lines; new azt.d/bench.d SEEDPROBE6.json | waits for SEEDPROBE5 merge (adjacent lines of one file) |
