@@ -25,8 +25,12 @@ Start: `sh 3ds/tools/wt_new.sh BOTHUD`. PM_ROW=BOTHUD PM_LANE=BOTHUD on every ca
 2. pm_gpu_ui.c: `unsigned pm_hud_draws;` and in pm_gpu_hud_flush, after the early return `if (!(hud || foot || frame) || ...)`
    and the menu test, `pm_hud_draws++;`.
 3. pm_main.c probe: switch `hudchk` (read once): at frame 300, `pm_log_evt("hudchk f%u draws %u", frame, pm_hud_draws);`.
-4. Scenario `bothud_prof`: debug `warp=mac_01:0 pos=0:0:200 prof=30 hudchk`, until `hudchk f300 `, cap 30, expected event
-   `hudchk f300 draws ([1-9]\d{1,})` (10 or more: about 10 per second after the boot). Bench `bothud_prof`, kind azahar.
+4. Scenario (all fields of the azt.d format, as 3ds/tools/azt.d/FPS60W2.json) in 3ds/tools/azt.d/BOTHUD.json: name
+   `bothud_prof`, status `unverified`, subject, proves, debug `warp=mac_01:0 pos=0:0:200 prof=30 hudchk`, until `hudchk f300 `,
+   cap 30, deadline 20, first_marker `prof=1 log=off` (pm_log_prof_apply prints it at boot when prof is on), expects `none`,
+   needs_picture false, expected_events [{name "prof on", regex `prof=1 log=off`}, {name "hud draws", regex
+   `hudchk f300 draws [1-9]\d+`}], reason. Bench in bench.d/BOTHUD.json: name `bothud_prof`, kind `azahar`, speed `normal`,
+   default false, purpose, scenario, cap 30, the same until, tags ["azahar"], gates [].
 5. Commit: `BOTHUD: the log sink draws the bottom HUD at 10 Hz with logging off (prof pushes), hudchk probe`.
 ## Gate (expected values)
 1. Seeded fault (a value change, first): edit 1 with the timeout `0x7FFFFFFFFFFFFFFFLL` (waits as before). Run the bench:

@@ -25,9 +25,13 @@ src/state_startup.c: the line after `sfx_clear_sounds();` (:65). 3ds/src/pm_warp
    `void pm_log_evt(const char* fmt, ...);` at the top if no header gives it).
 2. pm_warp_tick after `bypass_tick();`: debug switch `titleret=<frame>` (read once): at that frame, if the game mode is
    GAME_MODE_WORLD, call pm_title_return() once and `pm_log_evt("titleret f%u", frame)`.
-3. Scenario `amb_title_arn02`: debug `warp=arn_02:0 story=ch0_toad_town titleret=240 loglevel=debug det`, until `startup [1-9]\d* ambient
-   stopped ` (the runner takes the first hit: the boot line has n 0), cap 45, expected events `titleret f240` and
-   `startup 1 ambient stopped 1`. Bench `amb_title_arn02`, kind azahar.
+3. Scenario (correction 1: every field of the azt.d format, as 3ds/tools/azt.d/FPS60W2.json) in 3ds/tools/azt.d/AMBTITLE.json:
+   name `amb_title_arn02`, status `unverified`, subject and proves (one sentence each), debug `warp=arn_02:0 story=ch0_toad_town
+   titleret=240 loglevel=debug det`, until `startup [1-9]\d* ambient stopped ` (the boot line has n 0), cap 45, deadline 20,
+   first_marker `warp: arn_02 entry 0`, expects `none`, needs_picture false, expected_events [{name "titleret", regex
+   `titleret f240`}, {name "ambient stopped", regex `startup [1-9]\d* ambient stopped 1`}], reason (one sentence). Bench in
+   bench.d/AMBTITLE.json: name `amb_title_arn02`, kind `azahar`, speed `normal`, default false, purpose, scenario, cap 45, the
+   same until, tags ["azahar"], gates [].
 4. Commit: `AMBTITLE: the soft reset to the title stops the ambient MSEQ player, titleret switch and scene`.
 ## Gate (expected values)
 1. Seeded fault (a value change, first): edit 1 with `snd_ambient_stop_quick(1)` (another player index: player 0 stays).
