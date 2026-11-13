@@ -18,11 +18,25 @@ the cut is found while moving. Why not Opus: NPSO1 fixes the field list.
 2. New 3ds/src/nd_decide.c: `void nd_pso_build(const NdPsoDesc* d, NdPsoOut* o)`: the tst decode of cw0/cw1, then the combine
    decision, nd_render_state(omh, oml, zimg, &o->rnd), the TEV build. No walker global is read (nd_ws, tst_f, keyc ... are
    inputs through d only). nd_comb_decide keeps its signature and calls the same moved code, so the device does not change.
-3. prim and env: prove by code that the decision does not read them for any field of NdCombOut except the constant colour cc
-   (cc_on, cc). If any other output reads them, stop and hand back the line (the description form is then not complete).
+3. Colour form (correction 1, ORACLE8 decision by code read, main 344822275): prim and env do not join the description. The
+   decision makes names, the draw makes colours:
+   - PmPlan already holds colour NAMES: st[i].cname, bufname, vtxname. pm_comb_colours (pm_comb.c:496-500) turns them into
+     values with name_colour (pm_comb.c:477-494) from prim, env, plod, key, keys. nd_comb.c:561 calls it inside the decision.
+   - nd_tev_build writes a colour only into e[3] of a stage (`e[3] = nd_abgr(st->constant)`, nd_tmpl.c:206) and buf_color
+     (:194). Sources, operands, functions and scales of the stages read no colour. nd_emit.c:53 already takes the stage colours
+     from the draw (tev_col[6], buf_col).
+   - nd_comb.c const_rgb_tex_alpha (:110-135) returns 1 or 0 by the combiner fields only (a negative input code), and its RGB
+     out is a colour. cc_cycle1 (:340) computes colours. List every other read of nd_ws.prim and nd_ws.envc in the commit with
+     the output it feeds.
+   So: nd_pso_build fills NdPsoOut with the plan WITHOUT pm_comb_colours (names kept, constants 0) and the TEV words with e[3]
+   and buf_color 0. New pure function `void nd_pso_colour(const NdPsoOut* o, uint32_t prim, uint32_t env, uint32_t plod,
+   uint32_t key, uint32_t keys, uint32_t tev_col[6], uint32_t* buf_col, uint32_t* vtx)` = name_colour per stage name, buf and vtx,
+   in nd_decide.c. If any non-colour field of NdCombOut, NdRender or the stage words reads prim or env: stop, hand back the line.
+   nd_comb.c is not host-linkable (globals nd_ws, tst_f, keyc, keys, conv_k4, leg_mode, comb_set, box_*): nd_decide.c takes
+   them only from NdPsoDesc. The empty nd_comb_decide shim at nd_host_test.sh:57 stays until NPSO3.
 4. Host compare 3ds/tools/nd_decide_test.c (host.d/decide.sh): for every description of a fixed corpus (all NdCombIn values the
-   ndref captures in 3ds/tests/ndref/ndref_*.bin hold, converted to NdPsoDesc), nd_pso_build equals the old path (NdCombIn with
-   the same fields, nd_comb_decide, nd_render_state, nd_tev_build) byte for byte. Prints `decide entries <n> bad 0`.
+   ndref captures in 3ds/tests/ndref/ndref_*.bin hold, converted to NdPsoDesc), nd_pso_build plus nd_pso_colour (with the prim and env
+   of the capture) equals the old path (NdCombIn with the same fields, nd_comb_decide, nd_render_state, nd_tev_build) byte for byte. Prints `decide entries <n> bad 0`.
 
 ## Readers and writers
 Writers: nd_decide.c. Readers: nd_comb_decide (device, unchanged behaviour), NPSO3's generator, NPSO4's psochk. List every global
