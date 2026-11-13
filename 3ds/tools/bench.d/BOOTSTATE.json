@@ -5,7 +5,7 @@
       "kind": "azahar_pic",
       "speed": "normal",
       "default": false,
-      "purpose": "BOOTSTATE: fxpic_89 with bootstate=412:4, the global draw inputs as text at shot frames 412 to 415\b.",
+      "purpose": "S7EFX8 byte gate: water_splash (effect 89) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.",
       "scenario": "fxpic_89_bs",
       "cap": 40,
       "until": "shot \\d+ frame 415\\b",
