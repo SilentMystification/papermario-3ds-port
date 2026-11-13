@@ -70,6 +70,11 @@ const NdGTab* nd_gtab_find(const void* list);
 void nd_rec_dl(const void* list);
 void nd_gtab_run(const uint32_t* rec);
 
+/* CONV2F: nd_draw_list(list, ND_SELF) at the call site of a self-contained v2 table (no entry: the table has its own pipeline state).
+ * Any other entry is a build error until the entry form (ENTRY1) exists. */
+#define ND_SELF 0
+#define nd_draw_list(list, entry) do { _Static_assert((entry) == ND_SELF, "an entry needs row ENTRY1"); nd_rec_dl(list); } while (0)
+
 /* CONV2A (plan v3 section 2): the native table of one (static list, entry pso) pair. No pointer into a Gfx array, no typed unit.
  * The converter (CONV2C) writes the tables. nd_ntab_run (CONV2D) runs them on core 0 into the native emit. */
 enum {

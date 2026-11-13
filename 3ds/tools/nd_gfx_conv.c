@@ -580,7 +580,7 @@ static void v2_emit_table(const V2C* c) {
 }
 
 static V2C v2c_mem;
-static void v2_convert_all(const char* descs_path, const char* inh_path, const char* uns_path, const char* idx_path) {
+static void v2_convert_all(const char* descs_path, const char* inh_path, const char* uns_path, const char* idx_path, const char* tab_path) {
     FILE* fi = fopen(inh_path, "w");
     FILE* fu = fopen(uns_path, "w");
     if (!fi || !fu) { fprintf(stderr, "gconv: cannot write the ntab logs\n"); exit(1); }
@@ -607,6 +607,11 @@ static void v2_convert_all(const char* descs_path, const char* inh_path, const c
         v2_nk[v2_n_tab] = cx->nk;
         v2_tab[v2_n_tab++] = g;
     }
+    /* CONV2F: the names of the v2 tables, one per line in table order (codemod.py --ntab reads them) */
+    FILE* ft = fopen(tab_path, "w");
+    if (!ft) { fprintf(stderr, "gconv: cannot write %s\n", tab_path); exit(1); }
+    for (unsigned i = 0; i < v2_n_tab; i++) fprintf(ft, "%s\n", v2_tab[i]->name);
+    fclose(ft);
     /* CONV2D2: the device index of the tables (nd_gtab.h NdNDev), after the tables in nd_gfx_tab.c */
     printf("NdNDev ndn_dev_idx[%u] = {\n", v2_n_tab ? v2_n_tab : 1u);
     for (unsigned i = 0; i < v2_n_tab; i++) printf("    { (const void*)%s, %uu },\n", v2_tab[i]->name, v2_nk[i]);
@@ -656,8 +661,8 @@ int main(int argc, char** argv) {
     printf("NdGIdx nd_gtab_idx[%u] = {\n", n_lists ? n_lists : 1u);
     for (unsigned i = 0; i < gconv_nsym; i++) if (gconv_sym[i].kind == GS_GFX) printf("    { %s, &ndg_%s },\n", gconv_sym[i].name, gconv_sym[i].name);
     printf("};\nconst unsigned nd_gtab_n = %uu;\n", n_lists);
-    if (argc < 5) { fprintf(stderr, "usage: nd_gfx_conv <nd_ntab_descs.c> <ntab_inherit.txt> <ntab_unsup.txt> <nd_ntab_idx.c>\n"); return 2; }
-    v2_convert_all(argv[1], argv[2], argv[3], argv[4]);
+    if (argc < 6) { fprintf(stderr, "usage: nd_gfx_conv <nd_ntab_descs.c> <ntab_inherit.txt> <ntab_unsup.txt> <nd_ntab_idx.c> <ntab_tables.txt>\n"); return 2; }
+    v2_convert_all(argv[1], argv[2], argv[3], argv[4], argv[5]);
     fprintf(stderr, "gconv lists %u parts %u defs %u ops %u bad %u\n", n_lists, n_parts, n_defs, n_ops, n_bad);
     return n_bad ? 1 : 0;
 }
