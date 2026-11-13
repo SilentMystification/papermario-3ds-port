@@ -14,12 +14,12 @@ A shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json, bench_def
 | FPS60VAL | Sonnet | 3ds/src/pm_gpu.c end of kc_build, end of pm_gpu_key_show; new 3ds/tools/kcval.py | not started (user decides) |
 | ENTRYCAP | Haiku | 3ds/src/nd_gtab.c nd_rec_dl :84-85; 3ds/src/nd_walk.c entcap_rec (added before nd_gtab_run), first line of the non-state-only arm of nd_gtab_run; new 3ds/tools/entcap.py, azt.d/bench.d ENTRYCAP.json | running (CONV2D2 merged 0f5d3960b); runs with CONV2F |
 | CONV2F | Haiku | nd_gtab.h after the nd_rec_dl prototype; nd_gfx_conv.c main argc and call lines, v2_convert_all signature, a write after its table loop; gen_gfx_tab.sh :18, :23; codemod.py argv loop, :204, :223, docstring Mapping; src/effects/water_splash.c:189 | ready (lint 0 at 0f5d3960b); runs with ENTRYCAP |
-| CODEMODW1 | Haiku | src/world/area_mac/mac_00/water_gfx.c value call lines, include line; new azt.d/bench.d CODEMODW1.json | parked (CODEMODW1 trace) |
+| CODEMODW1 | Haiku | 3ds/src/nd_val.c (comment, includes, val_rec, nd_val_run); 3ds/include/nd_val.h (comment, nd_val_run prototype); src/world/area_mac/mac_00/water_gfx.c (done at fc6cbc44f); azt.d/bench.d CODEMODW1.json | ready (resume on a2c877bf5, correction 2) |
 | GOLDWLD0 | Haiku | new cov.d/azt.d/bench.d GOLDWLD0 files | waits for COVMAP and the user's fortune scene |
 | N64DEL4 | Haiku | the 9 skip blocks: include/PR/os_convert.h, common.h, common_structs.h, include_asm.h, macros.h, src/entity.c, kzn2 lava_piranha.c, WaterEffects.inc.c, lava_piranha/part1.inc.c | waits for N64DEL2 and N64DEL3 |
-| CODEMODW2 | Haiku | src/world/area_iwa/iwa_01/splash.c value call lines, include lines; new azt.d/bench.d CODEMODW2.json | parked (CODEMODW1 trace) |
-| CODEMODW3 | Haiku | src/world/area_flo/flo_10/waterfx.c value call lines, include lines; new azt.d/bench.d CODEMODW3.json | parked (CODEMODW1 trace) |
-| CODEMODW4 | Haiku | src/world/area_hos/hos_04/fountains.c value call lines, include lines; new azt.d/bench.d CODEMODW4.json | parked (CODEMODW1 trace) |
+| CODEMODW2 | Haiku | src/world/area_iwa/iwa_01/splash.c value call lines, include lines; new azt.d/bench.d CODEMODW2.json | waits for the CODEMODW1 merge |
+| CODEMODW3 | Haiku | src/world/area_flo/flo_10/waterfx.c value call lines, include lines; new azt.d/bench.d CODEMODW3.json | waits for the CODEMODW1 merge |
+| CODEMODW4 | Haiku | src/world/area_hos/hos_04/fountains.c value call lines, include lines; new azt.d/bench.d CODEMODW4.json | waits for the CODEMODW1 merge |
 | SEEDPROBE1 | Haiku | docs/handoff/row_SEEDS.md verdict fields of its 12 lines; new azt.d/bench.d SEEDPROBE1.json | waits for SEEDTOOL (pilot) |
 | SEEDPROBE2 | Haiku | docs/handoff/row_SEEDS.md verdict fields of its lines; new azt.d/bench.d SEEDPROBE2.json | waits for SEEDPROBE1 merge (adjacent lines of one file) |
 | SEEDPROBE3 | Haiku | docs/handoff/row_SEEDS.md verdict fields of its lines; new azt.d/bench.d SEEDPROBE3.json | waits for SEEDPROBE2 merge (adjacent lines of one file) |
