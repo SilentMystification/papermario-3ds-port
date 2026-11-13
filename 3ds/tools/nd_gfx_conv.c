@@ -397,7 +397,15 @@ static int v2_walk(const GSym* g, unsigned k0, unsigned depth) {
         case NDO_FOG: v2_state_op(NDN_COL, 2, 0, w1, NULL); break;
         case NDO_BLEND: v2_state_op(NDN_COL, 3, 0, w1, NULL); break;
         case NDO_MTX: /* a segmented address stays a value (an input of the caller); a host address of a matrix object has no symbol in the map: no v2 form */
-            if ((w1 >> 24) >= 16u) { v2_unsup("matrix address outside the symbol map", k); break; }
+            if ((w1 >> 24) >= 16u) {
+                unsigned moff = 0;
+                const GSym* ms = sym_of(w1, GS_MTX, &moff);
+                if (!ms) { v2_unsup("matrix address outside the symbol map", k); break; }
+                char mp[160];
+                snprintf(mp, sizeof mp, "(const char*)%s + %u", ms->name, moff);
+                v2_state_op(NDN_XF, a & 0xffu, 0, w1, mp);
+                break;
+            }
             v2_state_op(NDN_XF, a & 0xffu, 0, w1, NULL);
             break;
         case NDO_POPMTX: v2_state_op(NDN_XF, 0xffu, 0, w1, NULL); break;
