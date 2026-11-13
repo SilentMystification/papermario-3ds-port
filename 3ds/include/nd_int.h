@@ -195,6 +195,7 @@ extern NdTexM nd_tm;
  * load model m (no global writes). set_tilesize applies it (td[0], the origin, the repeated-load skips). tex_win0 is in nd_texwin.c. */
 typedef struct NdWin { const u8* src; int w, h, stride, x0; } NdWin;
 void tex_win0(const NdTst* t, const NdTexM* m, const void* timg, int uls, int ult, int lrs, int lrt, NdWin* o);
+void tex_win1(const NdTst* t, const NdTexM* m, const void* timg, int uls, int ult, int lrs, int lrt, NdWin* o); /* D4a-1: the tile 1 window, in nd_texwin.c */
 extern int dual_on;              /* the former pm_gbi.c */
 extern void* const zb_fake;      /* the former pm_gbi.c */
 extern unsigned sp0_cur;         /* the former pm_gbi.c: split timer kind */
