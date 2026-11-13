@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09000240_345420[];
 extern Gfx D_090002E0_3454C0[];
@@ -116,8 +118,7 @@ void lens_flare_appendGfx(void* effect) {
     Matrix4f mtxTemp;
     Matrix4f mtxShared;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
     nd_rec_dl(D_E0034788[type]);
 
     guTranslateF(mtxTransform, data->pos.x, data->pos.y, data->pos.z);
@@ -135,10 +136,10 @@ void lens_flare_appendGfx(void* effect) {
 
         idx %= ARRAY_COUNT(D_E0034790);
 
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, D_E0034790[idx], D_E0034790[idx + 1], D_E0034790[idx + 2], alpha);
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+        nd_val_prim(0, 0, D_E0034790[idx], D_E0034790[idx + 1], D_E0034790[idx + 2], alpha);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         nd_rec_dl(D_E0034780[0]);
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        nd_xf_pop(G_MTX_MODELVIEW);
     }
 
     alpha = data->largeFlareAlpha;
@@ -154,12 +155,11 @@ void lens_flare_appendGfx(void* effect) {
         guMtxCatF(mtxTemp, mtxTransform, mtxTransform);
         guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, D_E0034790[idx], D_E0034790[idx + 1], D_E0034790[idx + 2], alpha);
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 255, alpha);
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+        nd_val_prim(0, 0, D_E0034790[idx], D_E0034790[idx + 1], D_E0034790[idx + 2], alpha);
+        nd_val_prim(0, 0, 255, 255, 255, alpha);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         nd_rec_dl(D_E0034780[type]);
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        nd_xf_pop(G_MTX_MODELVIEW);
     }
 
-    gDPPipeSync(gMainGfxPos++);
 }
