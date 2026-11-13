@@ -16,4 +16,5 @@ A shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json, bench_def
 | CONV2C | Sonnet (accepted) | 3ds/tools/nd_gfx_conv.c, gen_gfx_tab.sh, nd_gtab_test.c; new generated 3ds/src/nd_ntab_descs.c; .gitignore one line | ready (NPSO3 numbers its descs: merge NPSO3 first or CONV2C waits for it at its last step) |
 | BOOTSTATE | Haiku | 3ds/src/pm_warp.c one block at the end of pm_warp_tick; new azt.d/bench.d BOOTSTATE.json | ready (evidence for the unstable bases) |
 | HOSTSLOT | Haiku | 3ds/build.sh slot block (:153-159) and `gen_map_restore` line (:47), docker run lines :75 :92 :224, the --parallel line :242 and the BUILD FAILED line; 3ds/tools/nd_host_test.sh top and docker lines :15 :81; new 3ds/tests/buildlock/hostslot.sh | ready (tool fault first) |
+| NPSO4 | Haiku | 3ds/src/nd_comb.c two new functions right after comb_in_walker (:482); new nd_psochk.c, nd_psochk.h, nd_psochk_test.c, 3ds/tests/host.d/psochk.sh | ready |
 | FPS60VAL | Sonnet | 3ds/src/pm_gpu.c end of kc_build, end of pm_gpu_key_show; new 3ds/tools/kcval.py | not started (user decides) |
