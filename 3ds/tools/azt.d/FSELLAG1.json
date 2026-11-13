@@ -1,0 +1,29 @@
+{
+  "scenarios": [
+    {
+      "name": "fsel_pick_det_pic",
+      "status": "unverified",
+      "subject": "FSELLAG1: file select, pick flip (A x6 from wait400), det, shots 200 to 239 (the census pick frame f208 is in the window). The ROTSCALE windows of the save rectangles draw here.",
+      "proves": "FSELLAG1: the pick flip reaches pm_gpu_off_begin and pm_gpu_off_end: a changed off-screen projection (seeded fault) changes at least one shot; the real edit keeps all 40 shots byte-equal.",
+      "debug": "fileselect freshsave padscript=wait400,A*6 shots shotwin=200:40 loglevel=debug det",
+      "extra": [],
+      "until": "shot \\d+ frame 239\\b",
+      "cap": 45,
+      "deadline": 25,
+      "first_marker": "boot_main",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "file select mode",
+          "regex": "game mode 14 frame"
+        },
+        {
+          "name": "shot 239",
+          "regex": "shot \\d+ frame 239\\b"
+        }
+      ],
+      "reason": "FSELLAG1 gate 2 (correction 1): the pick flip scene. Shots 200 to 239 cover the census pick frame f208. Cap 45 s, deadline 25 s. The until is the shot at frame 239."
+    }
+  ]
+}
