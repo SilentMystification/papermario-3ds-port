@@ -1,6 +1,6 @@
 #!/bin/sh
 # NOLIST: nd_nolist.h poisons the list macro names, Gfx and gMainGfxPos (G8). Prints one line.
-F="-m32 -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I include -I ver/us/build/include -I 3ds/include -I 3ds/stub_include"
+F="-m32 -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I include -I src -I ver/us/build/include -I 3ds/include -I 3ds/stub_include"
 T=$(mktemp -d /tmp/nolist.XXXXXX) || exit 1
 
 fail() {
