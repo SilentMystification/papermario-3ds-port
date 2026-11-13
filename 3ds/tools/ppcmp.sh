@@ -22,7 +22,7 @@ MSYS_NO_PATHCONV=1 docker run --rm -v "$ROOT:/w" -v "$AR/assets:/ar/assets:ro" -
   fail=0
   for f in "$@"; do
     o="/w/$out/$(echo "$f" | sed "s#/#_#g").i"
-    if gcc -E -P -w '"$DEF"' '"$INC"' "$f" > /tmp/pp.raw; then
+    if gcc -E -P -w -Wno-builtin-macro-redefined -D__LINE__=0 '"$DEF"' '"$INC"' "$f" > /tmp/pp.raw; then
       grep -v "^[[:space:]]*$" /tmp/pp.raw > "$o"
     else
       echo "FAIL gcc -E $f"; fail=1
