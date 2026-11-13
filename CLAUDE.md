@@ -18,7 +18,10 @@ Orchestrator: read docs/handoff/orchestrator_rules.md at the start and after eve
    oracle corrected a row spec fault (not a tool fault). Every compare is exact: one differing bit fails the gate. There is no
    rounding exception (user, 2026-11-12).
 5. STOP RULE. A failed gate or an unexpected fact: stop, commit, hand back the values. Do not choose a new approach. Hand back
-   after 90 minutes or 150 tool calls without a passed gate. 2 tries per named cause.
+   after 90 minutes or 150 tool calls without a passed gate. 2 tries per named cause. Exception (user, 2026-11-13): a row text
+   fault that row_TEMPLATE.md covers (a dead seed, a clashing bench name, the scene the row names) the coder fixes by the
+   template rule and notes in the commit. The coder still stops on a tool fault, a real picture or drec difference of the real
+   edit, and a counter that does not fall.
 6. WORK. Grep and read line ranges. Write tool output to build3ds/out/ of your own worktree. Run builds and benches in the
    foreground (timeout up to 600000 ms). No Monitor or tail loops. Stop every background task you start.
 7. CODE. Commit each finished piece (changed files only). No feature toggles, no stubs, no git push, no git stash. Claude
