@@ -403,7 +403,7 @@ static int v2_walk(const GSym* g, unsigned k0, unsigned depth) {
                 if (!ms) { v2_unsup("matrix address outside the symbol map", k); break; }
                 char mp[160];
                 snprintf(mp, sizeof mp, "(const char*)&%s + %u", ms->name, moff);
-                v2_state_op(NDN_XF, a & 0xffu, 0, w1, mp);
+                v2_state_op(NDN_XF, a & 0xffu, 0, 0, mp);
                 break;
             }
             v2_state_op(NDN_XF, a & 0xffu, 0, w1, NULL);
