@@ -8,7 +8,8 @@
 - `python 3ds/tools/codemod.py --dry src/effects/peach_star_beam.c` on main: `value 15 keep 0 state 0 dl 8`.
 - The file has no TARGET_3DS line. Its last include is `#include "nd_gtab.h"`. The tool adds no #include.
 - fxtest 112 = peach_star_beam (pm_fxtest.c FXLIST). No stored scene draws it, so this row adds fxpic_112 (a copy of fxpic_89).
-- Seed source (ORACLE8 correction, 2026-11-13: a nd_val_seg seed is dead, see row_TEMPLATE.md): peach_star_beam.c:218 `gSPMatrix(gMainGfxPos++, camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW)` (no guard).
+- Seed source (ORACLE8, 2026-11-13, seed rule of row_TEMPLATE.md): peach_star_beam.c:211 `guTranslateF(sp20, data->pos.x, data->pos.y - (...), data->pos.z)`, the first transform of the file (no
+  guard before it). Every draw of the effect moves by 20 units.
 Start: `sh 3ds/tools/wt_new.sh CODEMODFX17`. PM_ROW=CODEMODFX17 PM_LANE=CODEMODFX17 on every call.
 ## Touch only (places)
 src/effects/peach_star_beam.c only (the 15 value call lines and 2 include lines). New 3ds/tools/azt.d/CODEMODFX17.json and
@@ -21,14 +22,17 @@ src/effects/peach_star_beam.c only (the 15 value call lines and 2 include lines)
 3. After `#include "nd_gtab.h"` add `#include "nd_val.h"` and `#include "nd_xf.h"`.
 4. Commit: `CODEMODFX17: codemod run on peach_star_beam.c (15 value calls to native records)`.
 ## Gate (expected values)
+0. Draw proof first, from the log of the base run (no extra start): after `fxtest: spawn 112` the log has `fxtest: live 1` at
+   shot 1, and `fxcenb 112 tri <T>` with T above the `fxcenb -1 tri` value of the base window (the file adds triangles).
+   No: stop and hand back (the scene does not draw the file).
 1. `python 3ds/tools/codemod.py --dry src/effects/peach_star_beam.c` after the edit: `value 0 keep 0 state 0 dl 8`.
 2. `python 3ds/tools/listcen.py --group src/effects` before edit 2 and after: the build count of peach_star_beam.c falls by 15. Hand back
    both numbers.
 3. Build, memcheck OK. `python 3ds/tools/bench.py run nd_host --row CODEMODFX17 --why "CODEMODFX17"`: PASS.
 4. At commit 1: `bench.py base fxpic_112`. After edit 4: `bench.py run fxpic_112 --row CODEMODFX17 --why "CODEMODFX17 byte gate"` and
    `bench.py cmp fxpic_112 --row CODEMODFX17`: every shot byte-equal.
-5. Seeded fault first (a value change, then undo): in its nd_xf_push call, `G_MTX_MUL` -> `G_MTX_LOAD`. The ELF sha1 must differ from the real edit. cmp fxpic_112 must
-   show a difference. If it shows none: stop and hand back.
+5. Seeded fault first (a value change, then undo): at :211 add ` + 20.0f` to the y argument. The ELF sha1 must differ from the real edit. cmp fxpic_112
+   must show a difference. If it shows none: stop and hand back.
 6. Budget 8 Azahar starts. Counter: C1 -15, C2 -15.
 ## Stop and end
 A cmp difference with the real edit, a seed with no difference, a base pair that differs (BASEKEEP line: tool fault), or a build

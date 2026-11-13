@@ -25,8 +25,9 @@ src/world/area_hos/hos_04/fountains.c (the 2 value call lines, the include lines
 2. Build, memcheck OK. nd_host PASS.
 3. At commit 1: `bench.py base spot_hos04_det`. After edit 4: `bench.py run spot_hos04_det --row CODEMODW4 --why "CODEMODW4 byte gate"` and
    `bench.py cmp spot_hos04_det --row CODEMODW4`: every shot byte-equal.
-4. Seeded fault (a value change, then undo): the nd_xf_push call of :9 with G_MTX_MUL -> G_MTX_LOAD in its flags. Before the run, the sha1sum of build3ds/lane-CODEMODW4/pm_3ds.elf must
-   differ from its value at the real edit. The cmp must differ.
+4. Seeded fault (a value change, then undo): fountains.c:8 `guScale(&...matrixStack[...], (temp_f0 * 0.3) + 0.5, temp_f0,
+   (temp_f0 * 0.3) + 0.5)` with the y argument `temp_f0 * 2.0f` (the transform of the fountain water; a LOAD/MUL flip can be
+   dead, row_TEMPLATE.md). The ELF sha1 must differ from the real edit. cmp spot_hos04_det must show a difference.
 5. Budget 8 Azahar starts. Counter: C1 -2, C2 -2.
 ## Stop and end
 A seed with no difference (hand back: the drawing is not in the shots), a cmp difference with the real edit, a base pair that

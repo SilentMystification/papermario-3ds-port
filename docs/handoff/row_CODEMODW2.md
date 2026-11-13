@@ -25,8 +25,9 @@ src/world/area_iwa/iwa_01/splash.c (the 4 value call lines, the include lines). 
 2. Build, memcheck OK. nd_host PASS.
 3. At commit 1: `bench.py base spot_iwa01_det`. After edit 4: `bench.py run spot_iwa01_det --row CODEMODW2 --why "CODEMODW2 byte gate"` and
    `bench.py cmp spot_iwa01_det --row CODEMODW2`: every shot byte-equal.
-4. Seeded fault first (a value change, then undo): in the nd_xf_push call of :63, `G_MTX_MUL` -> `G_MTX_LOAD`. The ELF sha1 must differ from the real edit. cmp must must
-   show a difference. If it shows none: stop and hand back.
+4. Seeded fault first (a value change, then undo): splash.c:59-62 `guPosition(&...matrixStack[...], splash->rot.x, ..., splash->pos.x,
+   splash->pos.y, splash->pos.z)` with `splash->pos.y + 20.0f` (the transform of each splash; a LOAD/MUL flip can be dead,
+   row_TEMPLATE.md). The ELF sha1 must differ from the real edit. cmp spot_iwa01_det must show a difference.
 5. Budget 8 Azahar starts. Counter: C1 -4, C2 -4.
 ## Stop and end
 A seed with no difference (hand back: the drawing is not in the shots), a cmp difference with the real edit, a base pair that

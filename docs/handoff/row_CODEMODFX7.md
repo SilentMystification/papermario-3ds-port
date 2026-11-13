@@ -42,8 +42,10 @@ Correction 1 (ORACLE8, 2026-11-13). Resume after 9489d0c9b (gates 1-3 passed).
    `gsDPSetCombineLERP(TEXEL1, TEXEL0, ENV_ALPHA, TEXEL0, ..., 0, 0, 0, COMBINED, COMBINED, 0, PRIMITIVE, 0)`, so cycle 2 alpha
    is COMBINED * PRIMITIVE alpha. The call at :167 runs for each live part (big_smoke_puff.c appendGfx loop: a part draws
    while unk_02 >= 0, and unk_02 starts at 16-22 at spawn frame 400, so it still draws at 412-413).
-   Seeded fault (a value change, then undo): `nd_val_prim(0, 0, 0, 0, 0, 255);` at :167 (the last argument is 255). The ELF
-   sha1 must differ. cmp fxpic_0_drec must differ.
+   Correction 3: seeded fault (a value change, then undo): big_smoke_puff.c:132
+   `guPositionF(mtx, 0.0f, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, data->x, data->y, data->z)` with `data->y + 20.0f`
+   (the first transform; drec records the matrix uniforms). Draw proof first: the base log has `fxtest: live 1` after the
+   spawn of effect 0. The ELF sha1 must differ. cmp fxpic_0_drec must differ.
 6. Budget 8 Azahar starts. Counter: C1 -9, C2 -9.
 ## Stop and end
 A cmp difference with the real edit, a seed with no difference, a base pair that differs (BASEKEEP line: tool fault), or a build
