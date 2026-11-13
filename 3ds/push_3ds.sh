@@ -183,7 +183,7 @@ if [ "$attach" -eq 0 ] && [ -z "$checklog" ] && [ -z "$checksend" ]; then mem_ga
 # PM_BUILD_KEY_FILE (tests only) names another key file; the check then runs even when PM_SRC3DSX is set.
 if [ "$nobuild" -eq 1 ] && { [ -z "$PM_SRC3DSX" ] || [ -n "$PM_BUILD_KEY_FILE" ]; }; then
     have=$(cat "${PM_BUILD_KEY_FILE:-build3ds/build_key.txt}" 2>/dev/null || true)
-    now=$(PM_LANE= PM_KEY_ONLY=1 sh 3ds/build.sh || true)
+    now=$(PM_LANE=${PM_KEY_LANE:-} PM_KEY_ONLY=1 sh 3ds/build.sh || true)
     if [ -z "$have" ] || [ "$have" != "$now" ]; then
         echo "STALE 3DSX: build key $(echo "$have" | cut -c1-12), tree key $(echo "$now" | cut -c1-12) (a source, include or tool input changed since the build). Build first. Nothing was pushed."
         end_push 5 failed "stale 3dsx, nothing sent"
