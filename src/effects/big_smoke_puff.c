@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 static f32 D_E0002760[10] = { 10.0f, 40.0f, 80.0f, 170.0f, 140.0f, 100.0f, 25.0f, 155.0f, 60.0f, 120.0f };
 static f32 D_E0002788[10] = { 2.2f, 2.7f, 3.0f, 2.2f, 2.7f, 3.0f, 1.9f, 1.9f, 1.5f, 1.5f };
@@ -126,14 +128,12 @@ void big_smoke_puff_appendGfx(void* effect) {
     Matrix4f mtx;
     s32 i;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
     guPositionF(mtx, 0.0f, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, data->x, data->y, data->z);
     guMtxF2L(mtx, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++,
-              &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
     for (i = 0; i < ((EffectInstance*)effect)->numParts; i++, data++) {
         if (data->unk_02 >= 0 && data->unk_08 < 0) {
@@ -150,8 +150,7 @@ void big_smoke_puff_appendGfx(void* effect) {
                              data->partY, 0.0f);
             guMtxF2L(mtx, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-            gSPMatrix(gMainGfxPos++,
-                      &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+            nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
             temp_f12 = data->unk_00 - 1;
 
@@ -165,15 +164,14 @@ void big_smoke_puff_appendGfx(void* effect) {
                 dlist = sDlists[(s32)temp];
             }
 
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, (u32)(primAlpha * 105) / 8);
-            gDPSetEnvColor(gMainGfxPos++, 0, 0, 0, envAlpha);
+            nd_val_prim(0, 0, 0, 0, 0, (u32)(primAlpha * 105) / 8);
+            nd_val_env(0, 0, 0, envAlpha);
             nd_rec_dl(dlist);
-            gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+            nd_xf_pop(G_MTX_MODELVIEW);
         }
     }
 
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gDPPipeSync(gMainGfxPos++);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }
 
 void func_E0002738(EffectInstance* effect) {

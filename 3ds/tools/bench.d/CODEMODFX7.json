@@ -1,0 +1,20 @@
+{
+  "benches": [
+    {
+      "name": "fxpic_0_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CODEMODFX7 drec gate: big_smoke_puff (effect 0) draw records of frames 412 and 413, cold det start. Base against head byte-equal.",
+      "scenario": "fxpic_0_drec",
+      "cap": 40,
+      "until": "drec f413 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "drec"
+      ],
+      "gates": []
+    }
+  ]
+}
