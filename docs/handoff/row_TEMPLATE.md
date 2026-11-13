@@ -23,6 +23,8 @@ Files: <paths>. Symbols: <symbol> in <file>. The oracle checks that no other run
 - `python 3ds/tools/bench.py cmp <bench> --row <id> --commit <merge-base>` after a run of <bench>: byte-equal (at most 2 scenes).
 - A new gate has a seeded fault first. The seed changes a value (a constant, a length, a mask). It never deletes a statement or a
   call: with -Werror an unused variable, parameter or function then stops the build before the gate runs. State the exact FAIL set.
+- A row that adds a debug switch or a new scene: its merge-base cannot run the scene. Base the new scene at the row's own first
+  real-code commit, prove the seed against that base, and prove "no draw changes" with an old scene against the merge-base.
 
 ## Stop
 A failed gate, an edit that does not fit the code, or a test-tool fault: commit, then hand back the exact output (CLAUDE.md 4-5).

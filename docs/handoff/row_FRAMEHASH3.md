@@ -34,12 +34,20 @@ line right before `kc_build();` (:3129). New azt.d/FRAMEHASH3.json, bench.d/FRAM
    until `fhash f205 `, needs_picture false, expected_events [{name "fhash f200", regex `fhash f200 h [0-9a-f]{16}`}, {name
    "fhash f205", regex `fhash f205 h [0-9a-f]{16}`}]. Bench `spot_mac01_hash`, kind azahar_hash.
 5. Commit: `FRAMEHASH3: fhash switch, per-frame command word hash at the frame end, scene spot_mac01_hash`.
-## Gate (expected values)
-1. Build, memcheck OK. nd_host PASS.
-2. `bench.py base spot_mac01_hash` (FRAMEHASH4: fhash.txt in the shot folder): two runs equal, stored (6 frames).
-3. Seeded fault first (a value change): feed `(u32)svcGetSystemTick()` into h after each list (one extra nd_fh_bytes call with a
-   value): base must print "two runs differ" (BASEKEEP names fhash.txt). Remove it, then gate 2.
-4. `bench.py cmp spot_mac01_hash --row FRAMEHASH3` at head vs merge-base: 6/6 frames equal (this row changes no draw).
+## Gate (expected values, correction 2: a new switch has no base at the merge-base)
+The merge-base (0316d7f46) has no fhash switch, so its build never prints `fhash f205`: `bench.py base spot_mac01_hash` at the
+merge-base can only end "no until". The base of the new scene is taken at this row's own commit.
+1. Build, memcheck OK. nd_host PASS. (Done: static 21660 margin 326.)
+2. Remove the tool's `"reason": "broken: no until in 35 s ..."` from 3ds/tools/azt.d/FRAMEHASH3.json (back to the row's reason
+   text) and commit the real code (no seed). Then `bench.py base spot_mac01_hash --commit <that commit> --row FRAMEHASH3`: two
+   runs equal, stored (6 frames in fhash.txt).
+3. Seeded fault (a value change, every variable stays used): in fh_frame, right before the pm_log_evt line, feed one constant
+   byte into the hash: `{ const uint8_t sd = 0x5A; h = nd_fh_bytes(h, &sd, 1); }`. Build, `bench.py run spot_mac01_hash --row
+   FRAMEHASH3 --why "FRAMEHASH3 seeded fault"`, `bench.py cmp spot_mac01_hash --row FRAMEHASH3 --commit <the real-code commit>`:
+   6/6 frames DIFF. Remove the seed, build again.
+4. No draw change: `bench.py base spot_mac01_det` at the merge-base (stored or one base build), `bench.py run spot_mac01_det`
+   with the real code, `bench.py cmp spot_mac01_det --row FRAMEHASH3`: 6/6 byte-equal.
+5. Budget: the orchestrator resets it (row spec fault). A base pair that differs is a tool fault (BASEKEEP line): stop.
 ## Stop and end
 Two runs that differ without the seed (hand back the BASEKEEP line), a tool fault, or a line that does not match: stop, commit,
 hand back the exact output (CLAUDE.md 4-5). Delete this row file in the completing commit.
