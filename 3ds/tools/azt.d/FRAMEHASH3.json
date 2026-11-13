@@ -1,0 +1,29 @@
+{
+  "scenarios": [
+    {
+      "name": "spot_mac01_hash",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0), cold det start with the fhash switch: the GX lists of frames 200 to 205 are hashed at the frame end (fhash lines).",
+      "proves": "FRAMEHASH3: the fhash line of a frame is a function of the build (det), so a base and a head build give equal fhash.txt when no draw changes.",
+      "debug": "warp=mac_01:0 pos=0:0:200 prof=4 fhash fhwin=200:6 loglevel=debug det",
+      "extra": [],
+      "until": "fhash f205 ",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "fhash f200",
+          "regex": "fhash f200 h [0-9a-f]{16}"
+        },
+        {
+          "name": "fhash f205",
+          "regex": "fhash f205 h [0-9a-f]{16}"
+        }
+      ],
+      "reason": "FRAMEHASH3: spot_mac01_det with fhash fhwin=200:6 in place of the shots. Cold start (as spot_mac01_det), cap 35 s, deadline 30 s. The fhash f205 line is the until."
+    }
+  ]
+}

@@ -68,7 +68,7 @@ static __attribute__((cold, noinline)) int ring_wrap(void) {
         ring_wraps++;
         pm_log_d("ringwrap f%u wraps %u chunk %d", pm_frame_count(), ring_wraps, c);
     }
-    if (was_off) pm_gpu_off_begin(gs.offs[prev].base, gs.offs[prev].w == 64 ? 64 : 320, gs.offs[prev].siz);
+    if (was_off) pm_gpu_off_begin(gs.offs[prev].base, gs.offs[prev].w == 64 ? 64 : 320, gs.offs[prev].siz, 0);
     return c >= 0;
 }
 /* FB-1: 1 when nv vertices and ni indices fit the ring, after a ring_wrap when they do not. 0 when they cannot fit an empty chunk or no chunk is free. */
