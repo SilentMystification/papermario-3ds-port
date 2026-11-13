@@ -1,66 +1,50 @@
-# Row CONV2D: nd_ntab_run, the core 0 runner of the v2 tables (NdNTab) into the native emit, used by nd_gtab_run
+# Row CONV2D (part 1 of 2): each v2 table carries the typed units of its list (NDN_UNIT), so the runner (CONV2D2) is exact by construction
 
-Missing fact: there is no device consumer of NdPsoOut yet. The grep of 3ds/src for nd_pso( and nd_pso_colour finds only nd_decide.c and the generated table. So this row writes the pso apply (design part B).
-(Model: Sonnet. The user decides. Reason: the row adds a new emit path in shared draw code. It has four design choices that Haiku cannot make: the pso apply from NdPsoOut, the draw of absolute indices on the ring, the walker-state handover, and the id map. The gate is a byte-exact drec. It cannot be cut smaller: a runner without its emit and its caller is untested code (CLAUDE.md 7). The mechanical call-site moves that follow are CONV2F and the ENTRY rows (Haiku).)
-## Facts (ORACLE8, main 182ac5091)
-- The form is at 3ds/include/nd_gtab.h:73-96: NdNOp {op, a, b, v, p, idx_pos} and NdNTab {list, entry, nops, ops, idx}. The
-  converter is 3ds/tools/nd_gfx_conv.c (v2_walk :380-470, output :528). The tables are in the device nd_gfx_tab.c. The index ndn_all
-  is only in the host file nd_ntab_idx.c (gen_gfx_tab.sh:18). The host compare 3ds/tools/nd_gtab_test.c v2_compare gives
-  `ntab tables 923 ... bad 0` and `unsup 23 descs 105` (CONV2MTX).
-- NDN_PSO b is the converter-local description index (nd_gfx_conv.c:461, :563 "b = the line number below"). It is not an nd_pso
-  id. gen_pso_tab.py (:105, sorted file order) gives the ids. nd_ntab_descs.c (in 3ds/src, written by gen_gfx_tab.sh:22) names
-  them ndn_pso_<i>. gen_pso_main.c (:42-58) writes nd_pso_raw and nd_pso(id).
-- NDN_XF: a = the low byte of the G_MTX w0 (the converter keeps `a & 0xff`, :409). The unit is
-  `NDO_W0(NDO_MTX, 0x380000u | a)` with w1 = p or v (nd_xf.c:14 makes the same unit). a 0xFF = pop: `NDO_W0(NDO_POPMTX, 0x380002u)`
-  with w1 = v (64). NDN_COL: a 0..3 = NDO_PRIM (unit a = b), NDO_ENV, NDO_FOG, NDO_BLEND (unit a = 0) with w1 = v (nd_op.c:22-25).
-- NDN_TEX: p = NdBindDesc, a = tile. nd_tex_bind_desc(d, n) is at nd_tex_set.c:390. nd_direct_tex (nd_direct.c:142) shows the walker
-  bookkeeping for tile 0 (tile_x0, tile_y0, tile_fx, tile_fy, tsz_last). The walker draw reads nd_ws.td[0..1] (nd_comb.c:73, :201,
-  nd_geom.c:222).
-- NDN_DRAW: p = Vtx base, b = index count, idx from idx_pos (absolute indices). The ring draw of a flat list is nd_part_draw
-  (nd_geom.c:354-404): room check, refusals (lighting, gv_matrix_id) before the first draw, the gv_tri epoch path per triangle.
-- The caller is nd_gtab_run (nd_walk.c:568). It takes the state-only arm, then ent_gdl, dlc_try, and else the ops. nd_rec_dl records
-  it (nd_gtab.c:85). nd_rec_dl is used in 119 src files.
-- The gates are HOSTCORE2 drec (pm_gpu.c:574, `drec=<first>:<count>`, one record per draw at nd_native_submit :1310) and the bench
-  spot_mac01_drec (bench.d/HOSTCORE2.json). fxpic_89 (water_splash, 2 nd_rec_dl sites) has a stable base (BASEEVID, BOOTSTATE).
-## Design (you choose the steps inside it, not the gate)
-A. Id map: gen_pso_main.c also writes `const NdPso nd_ntab_pso[]` (the nd_pso id of ndn_pso_0 .. ndn_pso_<n-1>, in local
-   order) and `const unsigned nd_ntab_npso`. A missing name is a generator error.
-B. Pso apply: nd_pso_apply(id, prim, env, plod) in nd_ntab.c. It writes NdPsoOut (comb, rnd, tev) through the same pm_gpu setters
-   that gv_epoch_enter (nd_geom.c:203) and its callees use for the walker decision, and nd_pso_colour for the colours. Reason: the
-   drec must be byte-equal, so the setters and their order must be the walker's.
-C. Walker handover: before the first op, the runner sets the nd_ws fields that the draw reads (comb words, omode, geom, tex_on,
-   td[0..1], tile bookkeeping) from the desc and the bind, or it bumps gv_epoch so that the walker resyncs. After the table, the
-   walker state must equal what the list's own ops leave (the state ops of the list still run through nd_walk_state). Reason: the
-   next walker draw reads nd_ws.
-D. Draw: nd_ntab_draw(base, idx, n) in nd_geom.c, next to nd_part_draw. It does one ring load of the index range of the table
-   (min..max of its idx, checked before any op, as nd_part_draw) and the same triangle body (factor it out of nd_part_draw into a
-   static function and call it from both; nd_part_draw output must not change).
-E. Runner: `int nd_ntab_run(const NdNTab* t)`, core 0, one switch over NdNOp (the mapping of the Facts, NDN_CALL recursive).
-   It returns 0 before any emit when a precondition fails, and then the caller runs the old path.
-F. Hookup: nd_gfx_conv.c also writes a sorted index (list -> NdNTab) into nd_gfx_tab.c, read by
-   `const NdNTab* nd_ntab_find(const void* list)` (nd_gtab.h; NULL = no v2 table; ENTRYCAP calls it). nd_gtab_run tries nd_ntab_run first in
-   the non-state-only arm, before ent_gdl. It counts the runs in `nd_gtr_ntab` and writes `ntab runs %u` to the log next to the
-   drec entry.
-## Readers and writers (edit each one)
-nd_gtab.h (prototypes), new 3ds/src/nd_ntab.c, nd_geom.c (nd_part_draw split, nd_ntab_draw), nd_walk.c nd_gtab_run, gen_pso_main.c
-(the map), nd_gfx_conv.c (the device index output only, not v2_walk), nd_gtab_test.c (link the runner with stubs only if the
-host test needs it), new 3ds/tests/host.d/ntabrun.sh, new azt.d/CONV2D.json and bench.d/CONV2D.json.
-## Places
-The files above: nd_walk.c nd_gtab_run only, nd_geom.c nd_part_draw and the new function after it, nd_gfx_conv.c the main output
-block after :594, gen_pso_main.c the writer :42-58. CONV2MIX (nd_gfx_conv.c resolve block :270-295) can run at the same time.
-## Gates (exact, in this order). Start: `sh 3ds/tools/wt_new.sh CONV2D`. PM_ROW=CONV2D PM_LANE=CONV2D.
-1. Commit 1 holds only the scene: azt.d/CONV2D.json fxpic_89_drec (the `debug` field of fxpic_89 with `drec=412:2` in place of
-   `shots shotwin=412:4`, until `drec f413 draws [1-9]\d* bytes`, cap 40, deadline 35, needs_picture false) and
-   bench.d/CONV2D.json (kind azahar_pic, as spot_mac01_drec). Run `bench.py base fxpic_89_drec` and `base spot_mac01_drec` at
-   commit 1 (before any code).
-2. Host: ntabrun.sh runs the id map and the op-to-unit mapping of every table (XF, COL) against the v1 units of nd_gtab_test's
-   model: `ntabrun ok <n>` with 0 bad. Seed first (a value change): pop unit a 0x380002 -> 0x380003: bad above 0.
-   nd_host PASS. Build, memcheck OK.
-3. Device: `bench.py run fxpic_89_drec,spot_mac01_drec --row CONV2D --why "CONV2D drec"`, then `bench.py cmp` of each:
-   drec.txt byte-equal. The log of fxpic_89_drec shows `ntab runs` above 0. Seed first (a value change): in nd_ntab_run, NDN_COL
-   prim v + 1: cmp fxpic_89_drec must differ. Budget 8 Azahar starts.
-Counter: none of C1-C12 moves. This is the plan v3 runner row (blocker of CONV2F, ENTRYCAP).
+(Model: Haiku. 60 lines or fewer. Read only this file, CLAUDE.md and what it names. Rewritten by ORACLE8 on 2026-11-13: the design is fixed below.)
+## Design decisions (ORACLE8 code read, main 0250d5221). Do not change them.
+- No pso apply in CONV2D. The NdPsoDesc of a v2 table is not a full state. The converter tracks omh, oml and geom from 0 (V2St,
+  nd_gfx_conv.c:181-189). Only comb, cycle and texon must be set (v2_inherit_check :356-366). NDO_TEXTURE drops the scale (:392).
+  NdBindDesc has no tile shift and no TLUT slot. An apply of the desc (nd_direct_bind :94-140 setters) would overwrite the render
+  mode and geometry bits of the call and lose the texture scale, so the drec would differ. The native emit from NdPsoOut waits for
+  a form with set masks (a later row).
+- The runner runs the list's own typed units through nd_walk_state, the executor that gt_ops (nd_walk.c:516-545) uses today. So
+  there is no walker handover: nd_ws after the table is what the v1 path leaves, and the next walker draw sees the same state.
+- The units are a copy of the top-level units of the list (depth 0). An NDO_CALL unit stays a unit and is not inlined, so the walker
+  takes its G_DL arms (ent_gdl, dlc_try), as gt_call does. NDN_PSO, NDN_TEX, NDN_XF, NDN_COL and NDN_DRAW stay for the host
+  compare and the later native emit. The runner skips them.
+## Facts
+- nd_gtab.h:76-83 enum (NDN_END .. NDN_CALL). nd_gfx_conv.c: V2_MAX defines :174-179, V2C struct :190-201, v2_walk :380 (NOP skip
+  `if (w0 == ND_NOP_A) continue;` :387, `depth` is its argument), v2_emit_table :510-530 (ops array printed at :524-528),
+  v2_sym_expr :222 gives `(const char*)NAME + off`. Address w1 kinds: NDO_VTX (GS_VTX), NDO_TIMG (GS_IMG), NDO_CALL (GS_GFX),
+  NDO_MTX (GS_MTX). Each is an address only when `w1 && (w1 >> 24) >= 16u`. Else w1 is a number (segment address or 0).
+- nd_gtab_test.c v2_compare :471 (m_walk :482, v_replay :483). The test binary links gconv_in.o (the lists) and nd_gfx_tab.o, so
+  a list address and its `&NAME` expression are equal there.
+Start: `sh 3ds/tools/wt_new.sh CONV2D`. PM_ROW=CONV2D PM_LANE=CONV2D on every call.
+## Touch only (places)
+3ds/include/nd_gtab.h (the enum), 3ds/tools/nd_gfx_conv.c (V2C struct, v2_walk top, v2_emit_table), 3ds/tools/nd_gtab_test.c
+(v2_compare). CONV2MIX (resolve block :270-295) is parked.
+## Exact edits
+1. nd_gtab.h: after NDN_CALL add `NDN_UNIT` with the comment `p = const uint32_t* the depth-0 typed units of the list (word
+   pairs, NOPs and the end left out, a call stays a unit), b = their count; the first op of every table; CONV2D2 runs them with
+   nd_walk_state`.
+2. nd_gfx_conv.c V2C: `uint32_t uw[2u * V2_MAXOPS]; char ue[V2_MAXOPS][160]; unsigned nu;` (ue[i][0] == 0: no address).
+3. v2_walk, after the NOP skip: `if (depth == 0u && id != NDO_END) v2_unit_add(k, id, w0, w1);`. v2_unit_add (new static, before
+   v2_walk): unsup "too many units" when nu == V2_MAXOPS. It stores w0 and w1. For the 4 address kinds it calls v2_sym_expr with
+   the kind (for NDO_MTX it writes `(const char*)&NAME + off` itself, as :404-405 do: an Mtx is not an array), puts the
+   text in ue[nu] and sets uw[2nu+1] = 0. On a miss it calls `v2_unsup("unit address outside the symbol map", k)`.
+4. v2_emit_table, before the ops array: `static const uint32_t ndnu_<n>[<nu or 1>] = { ... };`. Each unit prints as
+   `0x%xu, 0x%xu,`, or as `0x%xu, (uint32_t)(uintptr_t)(<ue>),` when ue is set. The ops array then starts with
+   `{ NDN_UNIT, 0, <nu>, 0, ndnu_<n>, 0 },` before the other ops (op count + 1 in the NdNTab line).
+5. nd_gtab_test.c v2_compare, after v_replay: the expected stream is the list words from t->list at k = 0. Skip ND_NOP_A. Stop
+   before NDO_END. Stop after an NDO_CALL with `(w0 & 1u)` (a branch). t->ops[0] must be NDN_UNIT with b equal to the count, and
+   every pair must be equal (`v2_fail("unit stream", name, i)` on the first difference).
+6. Commit: `CONV2D: v2 tables carry the depth-0 typed units of their list (NDN_UNIT), host unit stream compare`.
+## Gate (expected values)
+1. Seeded fault first (a value change): in v2_unit_add store `w1 ^ 1u` for NDO_GEOM. nd_host: `ntab ... bad` above 0 with
+   "unit stream" lines. Undo it.
+2. nd_host PASS: `ntab tables 923 draws 6245 bad 0` and `ntab inherit 426 unsup 23 descs 105` (unchanged). Build, memcheck OK
+   (hand back the memcheck static and margin numbers: the copy adds 8 bytes per unit).
+3. No Azahar (the device does not read NDN_UNIT before CONV2D2). Counter: none moves (runner row).
 ## Stop and end
-`ntab runs 0` in fxpic_89_drec (no v2 table is on that path: hand back the list names of its nd_rec_dl sites), a drec difference
-with the real code, a seed with no difference, a base pair that differs, or a tool fault: stop, commit, hand back the exact output
-(CLAUDE.md 4-5). 2 tries per named cause. Delete this row file in the completing commit.
+A table count other than 923, unsup other than 23, bad above 0 with the real edit, memcheck FAIL, or a tool fault: stop, commit,
+hand back the exact output (CLAUDE.md 4-5). Delete this row file in the completing commit.

@@ -1,6 +1,6 @@
 # Row ENTRYCAP: device switch `entcap` logs the walker's NdPsoDesc at each run of a list without a v2 table, with its call site
 
-Blocked by CONV2D (needs nd_ntab_find, nd_gtab.h) and NPSO4 (merged 423801c53). Release this row after CONV2D merges. Then
+Blocked by CONV2D2 (needs nd_ntab_find, nd_gtab.h; same function nd_gtab_run) and NPSO4 (merged 423801c53). Release this row after CONV2D2 merges. Then
 re-check the line numbers below against that merge.
 (Model: Haiku. 60 lines or fewer. Read only this file, CLAUDE.md and what it names.)
 ## Facts (ORACLE8, main 182ac5091)
