@@ -1,5 +1,5 @@
 /* nd_comb.c: the combine group (plan_s10_path group C, ST-2, cut from the former pm_gbi.c, pure cut). 3DS only: the decision and the
- * sync_combine work call pm_gpu_*. The typedefs CcIn, Dec and ScMemo are copies of the the former pm_gbi.c ones (ST-2). */
+ * sync_combine work call pm_gpu_*. The typedef ScMemo is a copy of the former pm_gbi.c one (ST-2). The decision itself is nd_decide.c (NPSO2). */
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -29,14 +29,12 @@ int plan_active; /* S25: the general combiner (mode 8) draws, not the legacy mod
 PmPlan cur_plan;
 void sync_combine(void);
 extern int pm_comb_vprim; /* S4COL: the particle plan flag (pm_comb.c), in the memo keys */
-int comb_dry;
 const char* const cc_nm_a[8] = { "CMB", "T0", "T1", "PRIM", "SHADE", "ENV", "1", "NOISE" };
 const char* const cc_nm_b[8] = { "CMB", "T0", "T1", "PRIM", "SHADE", "ENV", "KEYC", "K4" };
 const char* const cc_nm_c[16] = { "CMB", "T0", "T1", "PRIM", "SHADE", "ENV", "KEYS", "CMBA", "T0A", "T1A", "PRIMA", "SHADEA", "ENVA", "LODF", "PLODF", "K5" };
 const char* const cc_nm_d[8] = { "CMB", "T0", "T1", "PRIM", "SHADE", "ENV", "1", "0" };
 const char* const cc_nm_aa[8] = { "CMBA", "T0A", "T1A", "PRIMA", "SHADEA", "ENVA", "1", "0" };
 const char* const cc_nm_ac[8] = { "LODF", "T0A", "T1A", "PRIMA", "SHADEA", "ENVA", "PLODF", "0" };
-typedef struct { unsigned key; int use, why; float el, ep; PmPlan plan; } Dec;
 int ls_use = -9, ls_why, ls_cyc, ls_dual, ls_frame;
 unsigned sc_sig; PM_HOTD int sc_ok; /* DIP2: the inputs of the last sync_combine and whether its result is still what pm_gpu holds */
 typedef struct { unsigned sg; int ok, leg, mode5, pat, use, why, cyc, dual, plan_on, cc_on, env_on; unsigned cc; PmPlan plan; } ScMemo;
@@ -47,262 +45,39 @@ unsigned aux_key;
 
 /* globals of the combine state, owned by the former pm_gbi.c until their group moves (D10 debt, listed in the ST-2 commit) */
 extern unsigned aux_key, box_save[4];
-extern int box_pat, box_prod, comb_alpha_shade, comb_dry, dual_on, plan_active;
+extern int box_pat, box_prod, comb_alpha_shade, dual_on, plan_active;
 extern int ls_use, ls_why, ls_cyc, ls_dual, ls_frame;
 extern PmPlan cur_plan;
 extern const char* const cc_nm_a[8], * const cc_nm_aa[8], * const cc_nm_ac[8];
 extern unsigned* const tst_f[16];
 extern float vp_sx, vp_sy, vp_tx, vp_ty;
 int ph_pick(void); void grab_cur(const void* src, int w, int h); void ens_clear(void);
-float lcg_f(void); void unpack8(unsigned c, float o[4]);
-/* the 24 random inputs of the decision (nd_comb_decide, sync_combine_work): a fixed seed per decision, so the choice is repeatable */
-unsigned lcg_s = 12345u;
-float lcg_f(void) { lcg_s = lcg_s * 1664525u + 1013904223u; return (float)((lcg_s >> 8) & 0xffff) / 65535.f; }
+void unpack8(unsigned c, float o[4]);
 static void sync_combine_work(void);
 
 #define GP_SET(k, same) do { if (gp_on()) gp_note(k, (same)); } while (0)
 #define pm_gpu_flush() pm_gpu_flush_at(__LINE__) /* PG0: the flush counter by cause (prof mode) */
 
-typedef struct { float t0[4], t1[4], sh[4], pr[4], en[4], ke[4], ks[4]; float k4; } CcIn;
-void set_leg(int m);
-void sync_legacy(void);
 int combchk_on(void);
 void combchk_run(const NdCombIn* in, int worked);
-__attribute__((cold)) void cc_legacy(int mode, const CcIn* in, int t1src, float out[4]);
-Dec dec[128];
-int dec_n, dec_next; /* a full table replaces the oldest entry (a decision is recomputed in microseconds) */
 ScMemo scm[16];
 unsigned scm_next;
 extern const char* const cc_nm_b[8], * const cc_nm_c[16], * const cc_nm_d[8];
 
 
-/* Combiner input as a constant, or -1 when it needs a texel or the shade, -2 for COMBINED.
- * slot 0..3 is A, B, C, D of the colour equation. */
-float cc_const_in(int slot, unsigned sel, int ch, const float* pr, const float* en) {
-    if (sel == 0) return -2.f;
-    if (sel == 3) return pr[ch];
-    if (sel == 5) return en[ch];
-    if (slot == 0 && sel == 6) return 1.f;
-    if (slot == 3 && sel == 6) return 1.f;
-    if (slot == 3 && sel == 7) return 0.f;
-    if (slot == 1 && sel == 7) return (float)conv_k4 / 255.f;
-    if (slot == 1 && sel > 7) return 0.f;
-    if (slot == 0 && sel >= 8) return 0.f;
-    if (slot == 2 && sel == 10) return pr[3];
-    if (slot == 2 && sel == 12) return en[3];
-    if (slot == 2 && sel >= 16) return 0.f;
-    return -1.f;
-}
-
-/* Alpha of one cycle as K * TEXEL0 alpha. Returns K, or -1 if the form is not that.
- * (T1 - T0) * E + T0 reads two textures. Tile 1 is not loaded, so TEXEL0 stands for both. */
-float cc_alpha_k(unsigned aa, unsigned ab, unsigned ac, unsigned ad, const float* pr, const float* en) {
-    if (ab == 7 && ad == 7 && aa == 1 && (ac == 3 || ac == 5)) return ac == 3 ? pr[3] : en[3];
-    if (ab == 7 && ad == 7 && ac == 1 && (aa == 3 || aa == 5)) return aa == 3 ? pr[3] : en[3];
-    if (aa == 2 && ab == 1 && ad == 1 && (ac == 3 || ac == 5)) return 1.f;
-    if (aa == 3 && ab == 0 && ac == 1 && ad == 0) return pr[3];
-    return -1.f;
-}
-
-/* A combiner whose colour needs no texel and no shade, and whose alpha is a constant times
- * TEXEL0 alpha: a flat colour through a texture's alpha mask (a drop shadow is black this way).
- * Returns 1 and the RGBA constant, the alpha byte being the factor on texture alpha. */
+/* The constant colour mode of the walker state (nd_decide.c nd_const_rgb on the walker's inputs). */
 int const_rgb_tex_alpha(unsigned* out) {
-    float pr[4], en[4], rgb[3], k, k2;
-    int ch;
-    int two = ((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) == 1;
-    if (((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) > 1 || !comb_set || !nd_ws.tex_on) return 0;
-    unpack8(nd_ws.prim, pr);
-    unpack8(nd_ws.envc, en);
-    for (ch = 0; ch < 3; ch++) {
-        float a, b, c, d;
-        if (two) {
-            a = cc_const_in(0, nd_ws.tst1.comb2_a, ch, pr, en); b = cc_const_in(1, nd_ws.tst1.comb2_b, ch, pr, en);
-            c = cc_const_in(2, nd_ws.tst1.comb2_c, ch, pr, en); d = cc_const_in(3, nd_ws.tst1.comb2_d, ch, pr, en);
-        } else {
-            a = cc_const_in(0, nd_ws.tst1.comb_a, ch, pr, en); b = cc_const_in(1, nd_ws.tst1.comb_b, ch, pr, en);
-            c = cc_const_in(2, nd_ws.tst1.comb_c, ch, pr, en); d = cc_const_in(3, nd_ws.tst1.comb_d, ch, pr, en);
-            if (a == -2.f) a = 0.f; /* COMBINED is 0 in the only cycle */
-            if (b == -2.f) b = 0.f;
-            if (c == -2.f) c = 0.f;
-            if (d == -2.f) d = 0.f;
-        }
-        if (a < 0.f || b < 0.f || c < 0.f || d < 0.f) return 0;
-        rgb[ch] = (a - b) * c + d;
-        rgb[ch] = rgb[ch] < 0.f ? 0.f : rgb[ch] > 1.f ? 1.f : rgb[ch];
-    }
-    if (nd_ws.tst1.comb_aa == 2 && nd_ws.td[1].valid) return 0; /* VIS3: (T1 - T0) * E + T0 reads tile 1 when it is loaded */
-    k = cc_alpha_k(nd_ws.tst1.comb_aa, nd_ws.tst1.comb_ab, nd_ws.tst1.comb_ac, nd_ws.tst1.comb_ad, pr, en);
-    if (k < 0.f) return 0;
-    if (two) {
-        /* Second cycle alpha: COMBINED * constant, or COMBINED passed through. */
-        if (nd_ws.tst1.comb2_aa == 0 && nd_ws.tst1.comb2_ab == 7 && nd_ws.tst1.comb2_ad == 7 && (nd_ws.tst1.comb2_ac == 3 || nd_ws.tst1.comb2_ac == 5)) k2 = nd_ws.tst1.comb2_ac == 3 ? pr[3] : en[3];
-        else if (nd_ws.tst1.comb2_aa == 7 && nd_ws.tst1.comb2_ab == 7 && nd_ws.tst1.comb2_ac == 7 && nd_ws.tst1.comb2_ad == 0) k2 = 1.f;
-        else return 0;
-        k *= k2;
-    }
-    *out = ((unsigned)(rgb[0] * 255.f + .5f) << 24) | ((unsigned)(rgb[1] * 255.f + .5f) << 16) |
-           ((unsigned)(rgb[2] * 255.f + .5f) << 8) | (unsigned)(k * 255.f + .5f);
-    return 1;
+    NdCombIn c;
+    c.omode_h = nd_ws.omode_h; c.comb_set = comb_set; c.tex_on = nd_ws.tex_on; c.prim = nd_ws.prim; c.env = nd_ws.envc; c.t1_valid = nd_ws.td[1].valid; c.conv_k4 = conv_k4;
+    for (int i = 0; i < 16; i++) c.tst[i] = *tst_f[i];
+    return nd_const_rgb(&c, out);
 }
 
-/* ST-3: the legacy combine mode (moved from the former pm_gbi.c, pure move). leg_mode is the mode pm_gpu got last; sl_* the gpu calls of the last sync_legacy. */
+/* ST-3: leg_mode is the mode pm_gpu got last; sl_* the gpu calls of the last sync_combine work (the legacy mode and the audit are in nd_decide.c, NPSO2). */
 int leg_mode;               /* S25: the combine mode sync_combine() last gave pm_gpu */
 int comb_mode5; /* (PRIM - ENV) * TEXEL + ENV */
-int sl_const, sl_env; /* OPT-SC: the gpu calls of the last sync_legacy, kept in the memo */
+int sl_const, sl_env; /* OPT-SC: the gpu calls of the last sync work, kept in the memo */
 unsigned sl_cc;
-void set_leg(int m) { leg_mode = m; }
-
-void sync_legacy(void) {
-    unsigned cc;
-    sl_const = sl_env = 0;
-    if (const_rgb_tex_alpha(&cc)) {
-        if (!comb_dry) pm_gpu_set_const(cc);
-        sl_const = 1; sl_cc = cc;
-        set_leg(4);
-        return;
-    }
-    /* Decal modes put TEXEL0 in the addend, which is mux d, not a/b/c.
-     * Missing it draws the sprite quad's vertex colors: a grey gradient. */
-    /* H06b1: with G_TEXTURE off the RSP sends a triangle with no S and T, the RDP reads texel (0, 0) of tile 0 (draw_tri sets that), so TEXEL0 is read whatever the flag says. */
-    int wants_tex = (nd_ws.tst1.comb_a == G_CCMUX_TEXEL0 || nd_ws.tst1.comb_b == G_CCMUX_TEXEL0 ||
-        nd_ws.tst1.comb_c == G_CCMUX_TEXEL0 || nd_ws.tst1.comb_d == G_CCMUX_TEXEL0 || nd_ws.tst1.comb_c == G_CCMUX_TEXEL0_ALPHA);
-    int wants_prim = nd_ws.tst1.comb_a == G_CCMUX_PRIMITIVE || nd_ws.tst1.comb_b == G_CCMUX_PRIMITIVE || nd_ws.tst1.comb_c == G_CCMUX_PRIMITIVE;
-    int mode = 0;
-    /* Mode 3 = texture colour, but alpha only from the vertex: the alpha combiner does not read TEXEL0. */
-    int alpha_tex = nd_ws.tst1.comb_aa == 1 || nd_ws.tst1.comb_ab == 1 || nd_ws.tst1.comb_ac == 1 || nd_ws.tst1.comb_ad == 1 ||
-                    nd_ws.tst1.comb_aa == 2 || nd_ws.tst1.comb_ab == 2 || nd_ws.tst1.comb_ac == 2 || nd_ws.tst1.comb_ad == 2;
-    comb_mode5 = 0;
-    box_pat = box_prod && !box_folded; /* V10: the 2-cycle window with a pattern in tile 0 (not white): product on the CPU */
-    if (wants_tex && nd_ws.tst1.comb_a == G_CCMUX_PRIMITIVE && nd_ws.tst1.comb_b == G_CCMUX_ENVIRONMENT && nd_ws.tst1.comb_c == G_CCMUX_TEXEL0 &&
-        nd_ws.tst1.comb_d == G_CCMUX_ENVIRONMENT && alpha_tex && nd_ws.tst1.comb2_aa != 0) { /* FX2f: a cycle 2 alpha that reads COMBINED (huff_puff_breath, times PRIM) is no window pass */
-        comb_mode5 = 1;
-        if (!comb_dry) pm_gpu_set_env(nd_ws.envc);
-        sl_env = 1;
-        /* D03: draw_box windows with the bg_tile pattern (tile 0, I4 0/F checker) take their alpha from
-         * TEXEL1 (the corner image). Tile 0 alpha is the checker itself, so it must not become the alpha:
-         * mode 7 draws the body opaque (the 8x8 rounded corner shape is lost). */
-        {
-            int a_t0 = nd_ws.tst1.comb_aa == 1 || nd_ws.tst1.comb_ab == 1 || nd_ws.tst1.comb_ac == 1 || nd_ws.tst1.comb_ad == 1;
-            box_pat = !a_t0;
-            set_leg(a_t0 ? 5 : 7);
-        }
-        return;
-    }
-    /* D03: (TEXEL0 - PRIM) * PRIM_ALPHA + PRIM, the pause screen background fade. */
-    /* Texture rectangles read the texture whatever gSPTexture says, so tex_on is not tested. */
-    if (nd_ws.tst1.comb_a == G_CCMUX_PRIMITIVE && nd_ws.tst1.comb_b == G_CCMUX_TEXEL0 && nd_ws.tst1.comb_c == G_CCMUX_PRIMITIVE_ALPHA &&
-        nd_ws.tst1.comb_d == G_CCMUX_TEXEL0) {
-        set_leg(6);
-        return;
-    }
-    if (wants_tex) mode = alpha_tex ? 2 : 3;
-    else if (wants_prim && !comb_set) mode = 1;
-    else if (wants_prim && nd_ws.tst1.comb_a != G_CCMUX_SHADE) mode = 1;
-    set_leg(mode);
-}
-
-/* What the legacy combine mode draws. */
-__attribute__((cold)) void cc_legacy(int mode, const CcIn* in, int t1src, float out[4]) {
-    const float* t = t1src ? in->t1 : in->t0;
-    float sa = comb_alpha_shade ? in->sh[3] : 1.f;
-    unsigned cc = 0;
-    switch (mode) {
-    case 1: memcpy(out, in->pr, 4 * sizeof(float)); return;
-    case 2: for (int i = 0; i < 3; i++) out[i] = t[i] * in->sh[i]; out[3] = t[3] * sa; return;
-    case 3: for (int i = 0; i < 3; i++) out[i] = t[i] * in->sh[i]; out[3] = sa; return;
-    case 4:
-        if (const_rgb_tex_alpha(&cc)) {
-            float c[4];
-            unpack8(cc, c);
-            out[0] = c[0]; out[1] = c[1]; out[2] = c[2]; out[3] = t[3] * c[3];
-            return;
-        }
-        break;
-    case 5: case 7:
-        for (int i = 0; i < 3; i++) out[i] = (in->pr[i] - in->en[i]) * t[i] + in->en[i];
-        out[3] = mode == 7 ? 1.f : t[3];
-        return;
-    case 6:
-        for (int i = 0; i < 3; i++) out[i] = cc_clamp((t[i] - in->pr[i]) * in->pr[3] + in->pr[i]);
-        out[3] = t[3];
-        return;
-    default: break;
-    }
-    memcpy(out, in->sh, 4 * sizeof(float));
-}
-
-
-float cc_v(int slot, unsigned sel, int ch, const CcIn* in, const float* cb, int alpha, float prlod) {
-    int rgb_c = !alpha && slot == 2;
-    if (alpha) {
-        switch (sel) {
-        case 0: return slot == 2 ? 0.f : cb[3];
-        case 1: return in->t0[3];
-        case 2: return in->t1[3];
-        case 3: return in->pr[3];
-        case 4: return in->sh[3];
-        case 5: return in->en[3];
-        case 6: return slot == 2 ? prlod : 1.f;
-        default: return 0.f;
-        }
-    }
-    switch (sel) {
-    case 0: return cb[ch];
-    case 1: return in->t0[ch];
-    case 2: return in->t1[ch];
-    case 3: return in->pr[ch];
-    case 4: return in->sh[ch];
-    case 5: return in->en[ch];
-    case 6: return slot == 1 ? in->ke[ch] : slot == 2 ? in->ks[ch] : slot == 0 || slot == 3 ? 1.f : 0.f;
-    case 7: return slot == 1 ? in->k4 : slot == 0 ? 0.5f /* PT07: NOISE, the audit uses the mean */ : rgb_c ? cb[3] : 0.f;
-    case 8: return rgb_c ? in->t0[3] : 0.f;
-    case 9: return rgb_c ? in->t1[3] : 0.f;
-    case 10: return rgb_c ? in->pr[3] : 0.f;
-    case 11: return rgb_c ? in->sh[3] : 0.f;
-    case 12: return rgb_c ? in->en[3] : 0.f;
-    case 14: return rgb_c ? prlod : 0.f;
-    default: return 0.f;
-    }
-}
-
-/* s[cycle][0..7] = A B C D (colour), Aa Ab Ac Ad (alpha) */
-void cc_decode(unsigned w0, unsigned w1, unsigned s[2][8]) {
-    s[0][0] = (w0 >> 20) & 0xf; s[0][1] = (w1 >> 28) & 0xf; s[0][2] = (w0 >> 15) & 0x1f; s[0][3] = (w1 >> 15) & 7;
-    s[0][4] = (w0 >> 12) & 7;   s[0][5] = (w1 >> 12) & 7;   s[0][6] = (w0 >> 9) & 7;      s[0][7] = (w1 >> 9) & 7;
-    s[1][0] = (w0 >> 5) & 0xf;  s[1][1] = (w1 >> 24) & 0xf; s[1][2] = w0 & 0x1f;          s[1][3] = (w1 >> 6) & 7;
-    s[1][4] = (w1 >> 21) & 7;   s[1][5] = (w1 >> 3) & 7;    s[1][6] = (w1 >> 18) & 7;     s[1][7] = w1 & 7;
-    pm_comb_swap_c2(s[1]);
-}
-
-float cc_clamp(float v) { return v < 0.f ? 0.f : v > 1.f ? 1.f : v; }
-
-/* (A-B)*C+D. RDP: the result is a 9 bit value, 129..255 below zero wraps to 255 and 1..128 below zero gives 0. The plan models this for
- * 0 - B*C only (pm_comb.c lower), so the reference applies it only there. Other negative results clamp to 0 as before. */
-float cc_rdp(float a, float b, float c, float d) {
-    if (a == 0.f && d == 0.f && b * c > 0.f) return floorf(b * c * 255.f + .5f) >= 129.f ? 1.f : 0.f;
-    return cc_clamp((a - b) * c + d);
-}
-
-/* The RDP result, one or two cycles. */
-__attribute__((cold)) void cc_eval(const unsigned s[2][8], int two, const CcIn* in, float prlod, float out[4]) {
-    float cb[4] = { 0, 0, 0, 0 };
-    for (int cyc = 0; cyc < (two ? 2 : 1); cyc++) {
-        float r[4];
-        for (int ch = 0; ch < 3; ch++) {
-            float a = cc_v(0, s[cyc][0], ch, in, cb, 0, prlod), b = cc_v(1, s[cyc][1], ch, in, cb, 0, prlod);
-            float c = cc_v(2, s[cyc][2], ch, in, cb, 0, prlod), d = cc_v(3, s[cyc][3], ch, in, cb, 0, prlod);
-            r[ch] = cc_rdp(a, b, c, d);
-        }
-        {
-            float a = cc_v(0, s[cyc][4], 3, in, cb, 1, prlod), b = cc_v(1, s[cyc][5], 3, in, cb, 1, prlod);
-            float c = cc_v(2, s[cyc][6], 3, in, cb, 1, prlod), d = cc_v(3, s[cyc][7], 3, in, cb, 1, prlod);
-            r[3] = cc_rdp(a, b, c, d);
-        }
-        memcpy(cb, r, sizeof cb);
-    }
-    memcpy(out, cb, sizeof cb);
-}
 
 void cc_text(const unsigned s[2][8], int cyc, char* o, int n) {
     snprintf(o, n, "(%s-%s)*%s+%s / (%s-%s)*%s+%s",
@@ -378,62 +153,6 @@ void cc_cycle1(const float* t0, const float* t1, float out[4]) {
     }
 }
 
-static __attribute__((cold, noinline)) Dec* decide_miss(int two, unsigned key) {
-    Dec* d;
-    if (dec_n < 128) d = &dec[dec_n++];
-    else { d = &dec[dec_next]; dec_next = (dec_next + 1) & 127; }
-    unsigned s[2][8];
-    float plod_f = (float)(u8)nd_ws.prim_lod / 255.f;
-    memset(d, 0, sizeof *d);
-    d->key = key;
-    cc_decode(nd_ws.comb_w0, nd_ws.comb_w1, s);
-    if (leg_mode == 4) { d->why = -2; return d; } /* mode 4 is exact by construction (const_rgb_tex_alpha) */
-    d->why = pm_comb_build(nd_ws.comb_w0, nd_ws.comb_w1, two, nd_ws.use_t1, &d->plan);
-    if (!d->why && d->plan.uses_tex1 && !nd_ws.td[1].valid) d->why = 6; /* TEXEL1 read, tile 1 not loaded */
-    {
-        float el = 0.f, ep = 0.f;
-        lcg_s = 777u;
-        for (int k = 0; k < 24; k++) {
-            CcIn in;
-            float f[4], g[4], h[4];
-            unsigned pc = 0, ec = 0, pcs[2];
-            for (int c = 0; c < 4; c++) {
-                in.t0[c] = lcg_f(); in.t1[c] = lcg_f(); in.sh[c] = lcg_f();
-                pcs[0] = (unsigned)(lcg_f() * 255.f + .5f); pcs[1] = (unsigned)(lcg_f() * 255.f + .5f);
-                pc = pc << 8 | pcs[0]; ec = ec << 8 | pcs[1];
-            }
-            unpack8(pc, in.pr); unpack8(ec, in.en); unpack8(keyc, in.ke); unpack8(keys, in.ks); in.k4 = (float)conv_k4 / 255.f;
-            cc_eval(s, two, &in, plod_f, f);
-            cc_legacy(leg_mode, &in, nd_ws.use_t1, g);
-            for (int c = 0; c < 4; c++) { float e = f[c] > g[c] ? f[c] - g[c] : g[c] - f[c]; if (e > el) el = e; }
-            if (!d->why) {
-                PmPlan t = d->plan;
-                pm_comb_colours(&t, pc, ec, (u8)nd_ws.prim_lod, keyc, keys);
-                pm_comb_eval(&t, nd_ws.use_t1 ? in.t1 : in.t0, in.t1, in.sh, h);
-                for (int c = 0; c < 4; c++) { float e = f[c] > h[c] ? f[c] - h[c] : h[c] - f[c]; if (e > ep) ep = e; }
-            }
-        }
-        d->el = el;
-        d->ep = d->why ? 9.f : ep;
-        d->use = !d->why && el > 0.012f && ep < el;
-    }
-    return d;
-}
-
-Dec* decide(int two) {
-    unsigned key = 2166136261u, i;
-    unsigned parts[] = { nd_ws.comb_w0, nd_ws.comb_w1, (unsigned)two, (unsigned)leg_mode, (unsigned)(nd_ws.tex_on | nd_ws.use_t1 << 1 | nd_ws.td[1].valid << 2), (unsigned)comb_alpha_shade,
-                         (unsigned)(u8)nd_ws.prim_lod, keyc, keys, conv_k4, (unsigned)pm_comb_vprim }; /* S3N-3d: pm_comb_colours and the K4 input read these too */
-    for (i = 0; i < sizeof parts / sizeof parts[0]; i++) key = (key ^ parts[i]) * 16777619u;
-    {
-        static unsigned last_i;
-        if (last_i < (unsigned)dec_n && dec[last_i].key == key) return &dec[last_i];
-        for (i = 0; i < (unsigned)dec_n; i++)
-            if (dec[i].key == key) { last_i = i; return &dec[i]; }
-    }
-    return decide_miss(two, key); /* HCCUT4: the miss part (a new combine key) is cold */
-}
-
 unsigned scm_sig(void) {
     unsigned parts[] = { nd_ws.comb_w0, nd_ws.comb_w1, nd_ws.omode_h, nd_ws.omode_l, nd_ws.prim, nd_ws.envc, (unsigned)(u8)nd_ws.prim_lod, nd_ws.tst1.tile_fmt[0] * 4 + nd_ws.tst1.tile_siz[0],
         (unsigned)(nd_ws.tex_on | nd_ws.use_t1 << 1 | dual_on << 2 | box_prod << 3 | box_pat << 4 | comb_set << 5), nd_ws.geom, (unsigned)pm_comb_vprim };
@@ -503,34 +222,14 @@ void pm_gbi_sticky(unsigned* tss, unsigned* geo, unsigned* cw0, unsigned* cw1) {
     *tss = ((unsigned)nd_ws.tex_ss << 16) | ((unsigned)nd_ws.tex_ts & 0xffffu); *geo = nd_ws.geom; *cw0 = nd_ws.comb_w0; *cw1 = nd_ws.comb_w1;
 }
 
-/* S3N-3d: nd_comb_decide. The combine work (sync_combine_work) on the inputs in. Every global it reads or writes is set from in and put back
- * after the call, so the walker state is the same before and after. comb_dry: no pm_gpu call, no stats, no log. */
+/* S3N-3d: nd_comb_decide. The combine work on the inputs in (nd_comb_core, nd_decide.c, no walker global), then the plan colours of in->prim and in->env.
+ * The fields the work leaves as they were keep the walker's value as before (mode5 when leg 4, why without a decision, cc without the constant mode, plan without a plan). */
 void nd_comb_decide(const NdCombIn* in, NdCombOut* out) {
-    struct { uint32_t w0, w1, omh, prim, env, kc, ks, ck4; unsigned alod, slcc, tst[16]; int leg, tex, use1, t1v, dual, bprod, bpat, bfold, cset, cas;
-             int mode5, pact, use, why, cyc, dualo, lsf, slc, sle; PmPlan plan; } sv;
-    int i;
-    sv.w0 = nd_ws.comb_w0; sv.w1 = nd_ws.comb_w1; sv.omh = nd_ws.omode_h; sv.prim = nd_ws.prim; sv.env = nd_ws.envc; sv.alod = nd_ws.prim_lod; sv.kc = keyc; sv.ks = keys; sv.ck4 = conv_k4;
-    sv.leg = leg_mode; sv.tex = nd_ws.tex_on; sv.use1 = nd_ws.use_t1; sv.t1v = nd_ws.td[1].valid; sv.dual = dual_on; sv.bprod = box_prod; sv.bpat = box_pat; sv.bfold = box_folded;
-    sv.cset = comb_set; sv.cas = comb_alpha_shade;
-    for (i = 0; i < 16; i++) sv.tst[i] = *tst_f[i];
-    sv.mode5 = comb_mode5; sv.pact = plan_active; sv.plan = cur_plan; sv.use = ls_use; sv.why = ls_why; sv.cyc = ls_cyc; sv.dualo = ls_dual; sv.lsf = ls_frame;
-    sv.slc = sl_const; sv.sle = sl_env; sv.slcc = sl_cc;
-    nd_ws.comb_w0 = in->w0; nd_ws.comb_w1 = in->w1; nd_ws.omode_h = in->omode_h; nd_ws.prim = in->prim; nd_ws.envc = in->env; nd_ws.prim_lod = (nd_ws.prim_lod & 0xff00u) | in->prim_lo8;
-    keyc = in->key_c; keys = in->key_s; conv_k4 = in->conv_k4;
-    leg_mode = in->leg_mode; nd_ws.tex_on = in->tex_on; nd_ws.use_t1 = in->use_t1; nd_ws.td[1].valid = in->t1_valid; dual_on = in->dual_on;
-    box_prod = in->box_prod; box_pat = in->box_pat; box_folded = in->box_folded; comb_set = in->comb_set; comb_alpha_shade = in->comb_alpha_shade;
-    for (i = 0; i < 16; i++) *tst_f[i] = in->tst[i];
-    comb_dry = 1;
-    sync_combine_work();
-    comb_dry = 0;
-    out->leg = leg_mode; out->mode5 = comb_mode5; out->pat = box_pat; out->use = ls_use; out->why = ls_why; out->cyc = ls_cyc; out->dual = ls_dual;
-    out->plan_on = plan_active; out->cc_on = sl_const; out->cc = sl_cc; out->env_on = sl_env; out->plan = cur_plan;
-    nd_ws.comb_w0 = sv.w0; nd_ws.comb_w1 = sv.w1; nd_ws.omode_h = sv.omh; nd_ws.prim = sv.prim; nd_ws.envc = sv.env; nd_ws.prim_lod = sv.alod; keyc = sv.kc; keys = sv.ks; conv_k4 = sv.ck4;
-    leg_mode = sv.leg; nd_ws.tex_on = sv.tex; nd_ws.use_t1 = sv.use1; nd_ws.td[1].valid = sv.t1v; dual_on = sv.dual; box_prod = sv.bprod; box_pat = sv.bpat; box_folded = sv.bfold;
-    comb_set = sv.cset; comb_alpha_shade = sv.cas;
-    for (i = 0; i < 16; i++) *tst_f[i] = sv.tst[i];
-    comb_mode5 = sv.mode5; plan_active = sv.pact; cur_plan = sv.plan; ls_use = sv.use; ls_why = sv.why; ls_cyc = sv.cyc; ls_dual = sv.dualo; ls_frame = sv.lsf;
-    sl_const = sv.slc; sl_env = sv.sle; sl_cc = sv.slcc;
+    nd_comb_core(in, (unsigned)pm_comb_vprim, comb_mode5, out);
+    if (out->plan_on) pm_comb_colours(&out->plan, in->prim, in->env, in->prim_lo8, in->key_c, in->key_s);
+    else out->plan = cur_plan;
+    if (out->use < 0) out->why = ls_why;
+    if (!out->cc_on) out->cc = sl_cc;
 }
 
 void sync_combine_work_timed(void) {
@@ -548,23 +247,26 @@ static __attribute__((cold, noinline)) void scw_census(void) { /* PG0 census, pr
 }
 
 void sync_combine_work(void) {
-    if (gp_on() && !comb_dry) scw_census(); /* PG0: an estimate of how many calls repeat the inputs of the call before (hash of the combiner, render and tile state the function reads) */
-    unsigned cyc = (nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3;
-    sync_legacy();
+    NdCombIn in;
+    NdCombOut o;
+    if (gp_on()) scw_census(); /* PG0: an estimate of how many calls repeat the inputs of the call before (hash of the combiner, render and tile state the function reads) */
+    comb_in_walker(&in);
+    nd_comb_core(&in, (unsigned)pm_comb_vprim, comb_mode5, &o);
+    sl_const = o.cc_on; sl_env = o.env_on;
+    if (o.cc_on) { sl_cc = o.cc; pm_gpu_set_const(o.cc); }
+    if (o.env_on) pm_gpu_set_env(nd_ws.envc);
+    leg_mode = o.leg; comb_mode5 = o.mode5; box_pat = o.pat;
     plan_active = 0;
-    ls_use = -1; ls_cyc = (int)cyc; ls_dual = dual_on | box_prod << 1 | box_pat << 2; ls_frame = rm_frame;
-    if (cyc <= 1 && comb_set && !dual_on && (!box_prod || !box_folded)) { /* VIS1: a draw_box window with a pattern in tile 0 reads TEXEL0 * TEXEL1 on the GPU plan too. Triangles (rotated and scaled windows) have no CPU composite like box_pattern_rect, so they lost the corner image: no border, no round corners */
-        Dec* d = decide((int)cyc);
-        ls_use = d->use; ls_why = d->why;
-        if (d->use) {
-            cur_plan = d->plan;
-            pm_comb_colours(&cur_plan, nd_ws.prim, nd_ws.envc, (u8)nd_ws.prim_lod, keyc, keys);
-            if (!comb_dry) { pm_gpu_plan_key(nd_ws.comb_w0, nd_ws.comb_w1, (int)cyc, nd_ws.use_t1); pm_gpu_set_plan(&cur_plan); }
-            plan_active = 1;
-            return;
-        }
+    ls_use = o.use; if (o.use >= 0) ls_why = o.why; ls_cyc = o.cyc; ls_dual = o.dual; ls_frame = rm_frame;
+    if (o.plan_on) {
+        cur_plan = o.plan;
+        pm_comb_colours(&cur_plan, nd_ws.prim, nd_ws.envc, (u8)nd_ws.prim_lod, keyc, keys);
+        pm_gpu_plan_key(nd_ws.comb_w0, nd_ws.comb_w1, o.cyc, nd_ws.use_t1);
+        pm_gpu_set_plan(&cur_plan);
+        plan_active = 1;
+        return;
     }
-    if (!comb_dry) pm_gpu_set_combine(leg_mode);
+    pm_gpu_set_combine(leg_mode);
 }
 
 void sync_combine(void) {

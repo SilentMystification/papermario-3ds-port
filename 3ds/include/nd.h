@@ -486,6 +486,17 @@ typedef struct NdCombOut {
     PmPlan plan;
 } NdCombOut;
 void nd_comb_decide(const NdCombIn* in, NdCombOut* out);
+/* NPSO2 (nd_decide.c, no walker global): the combine decision on explicit inputs; plan not coloured. mode5_prev: the value kept when leg 4 returns first. */
+void nd_comb_core(const NdCombIn* in, unsigned vprim, int mode5_prev, NdCombOut* out);
+int nd_const_rgb(const NdCombIn* c, unsigned* out);
+void nd_comb_tst(uint32_t w0, uint32_t w1, int use_t1, int box_folded, uint32_t t[16]);
+/* NPSO2: the decided pipeline of one NdPsoDesc (nd_decide.c). Colours are draw values: the plan has no constants, the TEV words no colour (nd_pso_colour). */
+struct NdPsoOut { NdCombOut comb; NdRender rnd; NdTevOut tev; };
+struct NdPsoDesc;
+void nd_pso_build(const struct NdPsoDesc* d, struct NdPsoOut* o);
+int nd_pso_cc(const struct NdPsoDesc* d, uint32_t prim, uint32_t env, uint32_t* cc);
+void nd_pso_colour(const struct NdPsoOut* o, uint32_t prim, uint32_t env, uint32_t plod, uint32_t key, uint32_t keys, uint32_t cconst,
+                   uint32_t tev_col[6], uint32_t* buf_col, uint32_t* vtx);
 
 /* S6-2c-1: an entity list cut at its state ops (segment compile, row S6-2c). A segment is the geometry ops [op0, op1) (VTX, TRI1, TRI2; its triangles are
  * tri0 to tri0 + ntri - 1 in list order) and the state ops [sop0, op0) that come before it, decoded into d (the delta, the nd_mode_compile rules).
