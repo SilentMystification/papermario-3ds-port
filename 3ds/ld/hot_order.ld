@@ -15,16 +15,16 @@
 		*(.text.tex_tile1)  /* 5.3 calls/frame, 1488 B */
 		/* class B: combine sync */
 		*(.text.flush_impl)  /* 192.7 calls/frame, 112 B */
-		*(.text.cc_const_in)  /* 176.0 calls/frame, 340 B */
+		*(.text.dc_const_in)  /* 176.0 calls/frame, 340 B */
 		*(.text.k_val)  /* 120.0 calls/frame, 140 B */
 		*(.text.unpack8)  /* 101.3 calls/frame, 80 B */
 		*(.text.name_colour)  /* 71.3 calls/frame, 600 B */
 		*(.text.const_rgb_tex_alpha)  /* 40.0 calls/frame, 864 B */
-		*(.text.decide)  /* 36.0 calls/frame, 348 B */
+		*(.text.nd_comb_core)  /* 36.0 calls/frame, 348 B */
 		*(.text.pm_gpu_set_plan)  /* 27.0 calls/frame, 1004 B */
 		*(.text.unp)  /* 20.0 calls/frame, 92 B */
 		*(.text.fold_colour)  /* 10.0 calls/frame, 304 B */
-		*(.text.cc_alpha_k)  /* 5.7 calls/frame, 188 B */
+		*(.text.nd_const_rgb)  /* 5.7 calls/frame, 188 B */
 		/* class C: model record hit */
 		*(.text.nd_mtx_load_tw)  /* the stack load (was nd_mtx_load, 49.3 calls/frame) */
 		*(.text.nd_mtx_combine)  /* 139.3 calls/frame, 36 B */
@@ -220,7 +220,7 @@
 		*(.text.pm_gpu_rect_sync)  /* 42.3 calls/frame, 64 B */
 		*(.text.scm_store)  /* 40.0 calls/frame, 268 B */
 		*(.text.sync_combine_work_timed)  /* 40.0 calls/frame, 92 B */
-		*(.text.sync_legacy)  /* 40.0 calls/frame, 684 B */
+		*(.text.nd_comb_core)  /* 40.0 calls/frame, 684 B */
 		*(.text.pm_tex_wrap_gen)  /* 35.0 calls/frame, 16 B */
 		*(.text.nd_set_loadtlut)  /* 32.7 calls/frame, 88 B */
 		*(.text.tlut_v20)  /* 32.7 calls/frame, 252 B */
