@@ -1,7 +1,7 @@
-# Row CODEMODW2: codemod run on src/world/area_iwa/iwa_01/splash.c (4 value calls to native records), new scene spot_iwa01_det
+# Row CODEMODW2: codemod run on src/world/area_iwa/iwa_01/splash.c (4 value calls to native records), new scene spot_iwa01_drec
 
-Missing fact: no stored scene is known to draw this file. This row adds spot_iwa01_det. If the seed shows no difference, the drawing
-is not in the shots: stop and hand back. The oracle then gives a position or a story value.
+Missing fact: no stored scene is known to draw this file. This row adds spot_iwa01_drec. If the seed shows no difference, the drawing
+is not drawn in frames 200-201: stop and hand back. The oracle then gives a position or a story value.
 (Model: Haiku. 60 lines or fewer. Read only this file, CLAUDE.md and what it names. Recipe of CODEMODW1.)
 ## Facts (ORACLE8, main cff324713)
 - `python 3ds/tools/codemod.py --dry src/world/area_iwa/iwa_01/splash.c`: `value 4 keep 0 state 2 dl 1`. The value calls: :57 gDPSetPrimColor (0, 0, 230, 255, 255, 255), :63 gSPMatrix, :65 gSPPopMatrix, :69 gDPPipeSync. :64 gSPDisplayList stays (no-entry).
@@ -13,22 +13,22 @@ Start: `sh 3ds/tools/wt_new.sh CODEMODW2`. PM_ROW=CODEMODW2 PM_LANE=CODEMODW2 on
 ## Touch only (places)
 src/world/area_iwa/iwa_01/splash.c (the 4 value call lines, the include lines). New 3ds/tools/azt.d/CODEMODW2.json and 3ds/tools/bench.d/CODEMODW2.json.
 ## Exact edits
-1. Commit 1 holds only the scene. azt.d/CODEMODW2.json spot_iwa01_det is a copy of the spot_mac01_det scenario. Its `debug` is
-   `warp=iwa_01:0 shots shotwin=200:4 loglevel=debug det`. Its first_marker and warp event are `warp: iwa_01 entry 0`. Its until is
-   `shot \d+ frame 203\b`. It has cap 40, deadline 35 and needs_picture true. bench.d/CODEMODW2.json: spot_iwa01_det, kind azahar_pic, as
-   spot_mac01_det in bench_defs.json.
+1. Commit 1 holds only the scene. azt.d/CODEMODW2.json spot_iwa01_drec is a copy of the spot_mac01_det scenario. Its `debug` is
+   `warp=iwa_01:0 loglevel=debug det drec=200:2`. Its first_marker and warp event are `warp: iwa_01 entry 0`. Its until is
+   `drec f201 draws [1-9]\d* bytes \d+`. It has cap 40, deadline 35 and needs_picture false. bench.d/CODEMODW2.json: spot_iwa01_drec, kind azahar_pic, tags azahar det drec, as
+   spot_mac01_drec (bench.d/HOSTCORE2.json).
 2. `python 3ds/tools/codemod.py src/world/area_iwa/iwa_01/splash.c`.
 3. After `#include "iwa_01.h"` add `#include "nd_val.h"` and `#include "nd_xf.h"`.
 4. Commit: `CODEMODW2: codemod run on iwa_01/splash.c (4 value calls to native records)`.
 ## Gate (expected values)
 1. `codemod.py --dry` after the edit: `value 0 keep 0 state 2 dl 1`. listcen: build 7 -> 3, gfxpos 7 -> 3.
 2. Build, memcheck OK. nd_host PASS.
-3. At commit 1: `bench.py base spot_iwa01_det`. After edit 4: `bench.py run spot_iwa01_det --row CODEMODW2 --why "CODEMODW2 byte gate"` and
-   `bench.py cmp spot_iwa01_det --row CODEMODW2`: every shot byte-equal.
+3. At commit 1: `bench.py base spot_iwa01_drec`. After edit 4: `bench.py run spot_iwa01_drec --row CODEMODW2 --why "CODEMODW2 drec gate"` and
+   `bench.py cmp spot_iwa01_drec --row CODEMODW2`: drec.txt byte-equal.
 4. Seeded fault first (a value change, then undo): splash.c:59-62 `guPosition(&...matrixStack[...], splash->rot.x, ..., splash->pos.x,
    splash->pos.y, splash->pos.z)` with `splash->pos.y + 20.0f` (the transform of each splash; a LOAD/MUL flip can be dead,
-   row_TEMPLATE.md). The ELF sha1 must differ from the real edit. cmp spot_iwa01_det must show a difference.
+   row_TEMPLATE.md). The ELF sha1 must differ from the real edit. cmp spot_iwa01_drec must show a difference.
 5. Budget 8 Azahar starts. Counter: C1 -4, C2 -4.
 ## Stop and end
-A seed with no difference (hand back: the drawing is not in the shots), a cmp difference with the real edit, a base pair that
+A seed with no difference (hand back: the drawing is not drawn in frames 200-201), a cmp difference with the real edit, a base pair that
 differs, or a tool fault: stop, commit, hand back the exact output (CLAUDE.md 4-5). Delete this row file in the completing commit.

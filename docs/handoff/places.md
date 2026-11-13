@@ -14,7 +14,7 @@ A shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json, bench_def
 | FPS60VAL | Sonnet | 3ds/src/pm_gpu.c end of kc_build, end of pm_gpu_key_show; new 3ds/tools/kcval.py | not started (user decides) |
 | ENTRYCAP | Haiku | 3ds/src/nd_gtab.c nd_rec_dl :84-85; nd_walk.c nd_gtab_run top of the non-state-only arm; new 3ds/tools/entcap.py, azt.d/bench.d ENTRYCAP.json | waits for CONV2D2 (nd_ntab_find, same nd_gtab_run) |
 | CODEMODFX7 | Haiku | src/effects/big_smoke_puff.c (value call lines, include lines); new azt.d/bench.d CODEMODFX7.json | ready |
-| CODEMODFX10 | Haiku | src/effects/shimmer_burst.c (value call lines, include lines) | ready |
+| CODEMODFX10 | Haiku | src/effects/shimmer_burst.c (value call lines, include lines); new azt.d/bench.d CODEMODFX10.json | ready |
 | CONV2D2 | Haiku | nd_gtab.h NdNIdx and 2 prototypes; nd_gfx_conv.c v2_convert_all device index; nd_gtab.c inside the ND_SCOMP_HOST guard, gtr_cen; nd_walk.c before nd_gtab_run, :500 and :601; azt.d/bench.d CONV2D2.json | waits for CONV2D |
 | CONV2F | Haiku | nd_gtab.h after the nd_rec_dl prototype; nd_gfx_conv.c main argc line, v2_convert_all signature and table loop; gen_gfx_tab.sh :18, :23; codemod.py argv loop, :204, :223; src/effects/water_splash.c:189 | waits for CONV2D2 |
 | CODEMODW1 | Haiku | src/world/area_mac/mac_00/water_gfx.c value call lines, include line; new azt.d/bench.d CODEMODW1.json | ready |
@@ -24,10 +24,10 @@ A shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json, bench_def
 | COVMAP2 | Haiku | 3ds/src/pm_fncov.c fn_init_once, pm_fncov_walk; new cov.d/azt.d/bench.d COVMAP2 files | waits for COVMAP |
 | GMHARN | Haiku | new 3ds/tools/gold.py; covsites.py argument parsing; new cov.d/bench.d GMHARN files | waits for COVMAP2 |
 | GOLDFX2 | Haiku | new cov.d/azt.d/bench.d GOLDFX2 files | waits for GMHARN |
-| CODEMODFX11 | Haiku | src/effects/snaking_static.c (value call lines, include lines) | ready |
-| CODEMODFX12 | Haiku | src/effects/effect_3D.c (value call lines, include lines) | ready |
-| CODEMODFX13 | Haiku | src/effects/snowfall.c (value call lines, include lines) | ready |
-| CODEMODFX14 | Haiku | src/effects/pink_sparkles.c (value call lines, include lines) | ready |
+| CODEMODFX11 | Haiku | src/effects/snaking_static.c (value call lines, include lines); new azt.d/bench.d CODEMODFX11.json | ready |
+| CODEMODFX12 | Haiku | src/effects/effect_3D.c (value call lines, include lines); new azt.d/bench.d CODEMODFX12.json | ready |
+| CODEMODFX13 | Haiku | src/effects/snowfall.c (value call lines, include lines); new azt.d/bench.d CODEMODFX13.json | ready |
+| CODEMODFX14 | Haiku | src/effects/pink_sparkles.c (value call lines, include lines); new azt.d/bench.d CODEMODFX14.json | ready |
 | CODEMODFX15 | Haiku | src/effects/radiating_energy_orb.c (value call lines, include lines); new azt.d/bench.d CODEMODFX15.json | ready |
 | CODEMODFX16 | Haiku | src/effects/quizmo_stage.c (value call lines, include lines); new azt.d/bench.d CODEMODFX16.json | ready |
 | CODEMODFX17 | Haiku | src/effects/peach_star_beam.c (value call lines, include lines); new azt.d/bench.d CODEMODFX17.json | ready |

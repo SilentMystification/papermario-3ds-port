@@ -8,11 +8,14 @@
 - `python 3ds/tools/codemod.py --dry src/effects/effect_3D.c` on main: `value 5 keep 3 state 0 dl 2`. The 3 kept calls write into a local Gfx array (first argument is not gMainGfxPos++): they stay.
 - The file has no TARGET_3DS line. Its last include is `#include "nd_api.h"`. The tool adds no #include.
 - Scene: fxpic_55 (fxtest 55 = effect_3D, pm_fxtest.c FXLIST), kind azahar_pic, shots 412 to 415, in bench_defs.json.
+- Gate form (ORACLE8, 2026-11-13, row_TEMPLATE.md gate rule): the drec gate. In CODEMODFX10 three seeds with three ELFs left
+  all 6 fxpic_50 shots byte-equal, though the effect drew triangles in the window: the shots do not show the effect. drec
+  records every draw of the window from game memory, seen or not.
 - Seed source (ORACLE8, 2026-11-13, seed rule of row_TEMPLATE.md): effect_3D.c:229 `guTranslateF(sp18, part->pos.x, part->pos.y, part->pos.z)`, the first transform of the file (no
   guard before it). Every draw of the effect moves by 20 units.
 Start: `sh 3ds/tools/wt_new.sh CODEMODFX12`. PM_ROW=CODEMODFX12 PM_LANE=CODEMODFX12 on every call.
 ## Touch only (places)
-src/effects/effect_3D.c only (the 5 value call lines and 2 include lines). No other file.
+src/effects/effect_3D.c (the 5 value call lines and 2 include lines). New azt.d/CODEMODFX12.json and bench.d/CODEMODFX12.json.
 ## Exact edits
 1. `python 3ds/tools/codemod.py src/effects/effect_3D.c` (rewrites in place).
 2. After `#include "nd_api.h"` add `#include "nd_val.h"` and `#include "nd_xf.h"` (skip a line that is already there).
@@ -25,11 +28,14 @@ src/effects/effect_3D.c only (the 5 value call lines and 2 include lines). No ot
 2. `python 3ds/tools/listcen.py --group src/effects` before edit 1 and after: the build count of effect_3D.c falls by 5. Hand back
    both numbers.
 3. Build, memcheck OK. `python 3ds/tools/bench.py run nd_host --row CODEMODFX12 --why "CODEMODFX12"`: PASS.
-4. Byte compare: `bench.py base fxpic_55` at the merge-base, then `bench.py run fxpic_55 --row CODEMODFX12 --why "CODEMODFX12 byte gate"` and
-   `bench.py cmp fxpic_55 --row CODEMODFX12`: every shot byte-equal.
-5. Seeded fault first (a value change, then undo): at :229 `part->pos.y` -> `part->pos.y + 20.0f`. The ELF sha1 must differ from the real edit. cmp fxpic_55
+4. Drec gate: add azt.d/CODEMODFX12.json fxpic_55_drec, a copy of the fxpic_55 scenario with `debug`
+   `warp=mac_01:0 pos=0:0:200 fxtest=55 loglevel=debug det drec=412:2`, until `drec f413 draws [1-9]\d* bytes \d+`, needs_picture false,
+   cap 40, deadline 35, and bench.d/CODEMODFX12.json (kind azahar_pic, tags azahar det drec, as spot_mac01_drec). Commit them.
+   `bench.py base fxpic_55_drec` (merge-base build), `bench.py run fxpic_55_drec --row CODEMODFX12 --why "CODEMODFX12 drec gate"`, `bench.py cmp fxpic_55_drec
+   --row CODEMODFX12`: drec.txt byte-equal.
+5. Seeded fault first (a value change, then undo): at :229 `part->pos.y` -> `part->pos.y + 20.0f`. The ELF sha1 must differ from the real edit. cmp fxpic_55_drec
    must show a difference. If it shows none: stop and hand back.
 6. Budget 8 Azahar starts. Counter: C1 -5, C2 -5.
 ## Stop and end
-A cmp difference with the real edit, a seed with no difference, a base pair that differs (BASEKEEP line: tool fault), or a build
+A drec difference with the real edit, a seed with no difference, a base pair that differs (BASEKEEP line: tool fault), or a build
 error: stop, commit, hand back the exact output (CLAUDE.md 4-5). Delete this row file in the completing commit.

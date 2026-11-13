@@ -21,6 +21,10 @@ Files: <paths>. Symbols: <symbol> in <file>. The oracle checks that no other run
 - `PM_ROW=<id> PM_LANE=<id> sh 3ds/build.sh > build3ds/out/build.txt 2>&1`, memcheck OK.
 - `python 3ds/tools/bench.py run nd_host --row <id> --why "<text>"`: PASS.
 - `python 3ds/tools/bench.py cmp <bench> --row <id> --commit <merge-base>` after a run of <bench>: byte-equal (at most 2 scenes).
+- A codemod or conversion row of one file uses the drec gate (`drec=<first>:2` in frames where the file draws, drec.txt
+  byte-equal), not the pixel gate. A pixel gate is live only if the file's pixels are in the shots, and no agent may count
+  pixels (CLAUDE.md 2). drec records every draw of the window from game memory, seen or not (CODEMODFX10: 3 seeds, 3 ELFs,
+  6/6 shots equal while the effect drew 9808 triangles). The draw proof stays: a log line of the base run shows the file draws.
 - The oracle picks the seed from the code read, before any run, never by trial. The row first proves that the scene draws the
   file in the gate frames, from a line the base run writes anyway (fxtest rows: `fxtest: live 1` and the fxcenb triangle count
   above the base window). The seed is then a numeric input of the first transform the file builds (a translate or scale
