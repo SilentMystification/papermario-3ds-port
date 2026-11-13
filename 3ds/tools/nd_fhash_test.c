@@ -29,7 +29,11 @@ int main(void) {
     check_words("B", B, 12, 0xe1f5449bd8d7a601ull, 1);
     check_words("C", C, 12, 0x821500b103d744e2ull, 1);
     check_words("C2", C2, 12, 0xef582e03fd998881ull, 1);
-    check_words("A11", A, 11, 0, 0);
+    h = ND_FH_INIT; /* a partial walk: the return value only (the row gives no hash) */
+    if (nd_fh_words(&h, A, 11) != 0) {
+        printf("fhash FAIL A11 %016llx\n", (unsigned long long)h);
+        fails++;
+    }
 
     h = nd_fh_bytes(ND_FH_INIT, "abc", 3);
     if (h != 0xe71fa2190541574bull) {
