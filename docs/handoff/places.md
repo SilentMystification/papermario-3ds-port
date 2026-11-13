@@ -10,5 +10,4 @@ A shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json, bench_def
 | FRAMEHASH2 | Haiku | 3ds/include/nd_fhash.h after nd_fh_words; 3ds/src/nd_fhash.c new functions after nd_fh_words; 3ds/tools/nd_fhash_test.c new cases at the end | ready (FRAMEHASH1 merged) |
 | HOSTCORE2 | Sonnet | new 3ds/tools/host_c3d.c, host_core.c, host_core.h, 3ds/tests/host.d/hostcore.sh, new 3ds/tests/hostcore/include/ | ready (HOSTCORE1 merged) |
 | NPSO2 | Sonnet | new 3ds/src/nd_decide.c, 3ds/tools/nd_decide_test.c, 3ds/tests/host.d/decide.sh; nd.h one struct after NdTevOut; nd_comb.c nd_comb_decide and the code it moves; nd_tmpl.c only if needed | waits for NPSO1 |
-| CODEMOD | Sonnet | new 3ds/tools/codemod.py, 3ds/src/nd_val.c, 3ds/include/nd_val.h, 3ds/tests/codemod/ | ready (tool and tests; runners wait for NXF1, CONV2F) |
 | FPS60VAL | Sonnet | 3ds/src/pm_gpu.c end of kc_build, end of pm_gpu_key_show; new 3ds/tools/kcval.py | not started (user decides) |
