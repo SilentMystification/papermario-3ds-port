@@ -11,7 +11,7 @@ A shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json, bench_def
 | BOTHUD | Haiku | 3ds/src/pm_log.c sink_main wait line (:888); 3ds/src/pm_gpu_ui.c pm_gpu_hud_flush counter; 3ds/src/pm_main.c probe next to shotbottom (:813-818); new azt.d/bench.d BOTHUD.json | ready |
 | N64DEL2 | Haiku | 3ds/tools/unifdef3ds.py condition regex, 3ds/tools/ppcmp.sh gcc line; TARGET_3DS lines of include, src/world, src/entity, src/battle, src/pause, src/filemenu, src/audio, src/evt, src/os | ready |
 | N64DEL3 | Haiku | TARGET_3DS lines of src/*.c (root only) | waits for N64DEL2 |
-| CONV2WIN1 | Haiku | 3ds/src/nd_tex_set.c :451-514 (moved out), nd_texwin.c (append), nd_int.h one prototype; 3ds/tools/nd_gfx_conv.c state struct :187, tile tracker :330-345, draw handler :437-451; nd_gtab_test.c NDN_TEX case :408 and bind compare | running |
+| CONV2WIN1 | Haiku | 3ds/src/nd_tex_set.c :451-514 (moved out), nd_texwin.c (append), nd_int.h one prototype; 3ds/tools/nd_gfx_conv.c state struct :187, tile tracker :330-345, draw handler :437-451, v2_make_desc :228-236; nd_gtab_test.c TriEv, MSt, m_desc, m_tilesize, m_tri, v_replay, v2_compare | running |
 | CONV2MTX | Haiku | 3ds/tools/gen_gfx_syms.py :10 and :49-52, nd_gconv.h GS_ enum, nd_gfx_conv.c matrix branch :383, build.sh GT_IN line :86 | waits for CONV2WIN1 (nd_gfx_conv.c) |
 | CONV2MIX | Haiku | 3ds/tools/nd_gfx_conv.c resolve block :270-295 | waits for CONV2MTX |
 | FPS60VAL | Sonnet | 3ds/src/pm_gpu.c end of kc_build, end of pm_gpu_key_show; new 3ds/tools/kcval.py | not started (user decides) |
