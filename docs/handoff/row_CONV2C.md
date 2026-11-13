@@ -16,26 +16,33 @@ the vertex slots, the state units to a pso), and its error cases are not known p
   gen_pso_tab.py scans (3ds/src/nd_ntab_descs.c, generated) before it numbers the ids.
 - Not in main yet: nd_ntab_run (CONV2D, the runner), nd_draw_list (CONV2F, the call site API).
 
+## Correction 1 (ORACLE8, after the coder's read): scope = the lists that state their own pipeline state
+- No entry state exists for a v1 list: nd_gtab_test.c main (:189-206) only checks the tables, NdGDef.inherit and ctx (nd_gtab.h)
+  only name the groups the live walker gives at run time. 544 of the 1372 lists draw before they set a combine (16 of 24 in
+  000_base.txt), with state that callers and earlier lists built at run time (src/effects/snowfall.c:199-201 and
+  src/effects/gfx/snowfall.c:13-17). No call site names an entry yet (CONV2F and the entry rows are later).
+- Decision: this row converts only the SELF-CONTAINED lists: before every draw the list itself has set every group that
+  NdPsoDesc holds (combine, other mode H and L, geometry mode, texture on, the tile 1 role): the NdGDef inherit mask of those groups
+  is 0 at each draw. Their table needs no entry. An inheriting list gets no v2 table: the
+  generator lists it in build3ds/out/ntab_inherit.txt (list name, the inherited groups, the first draw op). Never a v1 fallback
+  inside a v2 table.
 ## Design (fixed. The coder chooses the inner steps)
-1. Entry state: a table is per (list, entry). Entry = a named ND_PSO_DESC at the call site (CONV2F). For the 6 pilot lists of
-   000_base.txt the entry is the state the S7 v1 path gives at its call (read it from the host model: nd_decide on the walker
-   state the nd_gtab_test.c harness builds before the list). A list called from a list passes its own state (NDN_CALL with the
-   entry of that point). A state the scan cannot name statically is an error with the list name, never a v1 fallback.
-2. Ops: every G_SETCOMBINE / SETOTHERMODE / GEOMETRYMODE run up to a draw becomes one NdPsoDesc (decided by nd_pso_build at
-   generation time, numbered with the NPSO3 table) and one NDN_PSO. Texture loads become one NdBindDesc and NDN_TEX. Matrices
-   NDN_XF. Prim, env, fog, blend colours NDN_COL. VTX/TRI runs through nd_vslot_resolve into NDN_DRAW with a generated u16 index
-   array. Run-time values (a segment base) become an explicit input of NDN_DRAW (p NULL, v the segmented address).
-3. Output: v2 tables next to v1 in nd_gfx_tab.c (`const NdNTab ndn_<list>_<entry>`), for the gconv_src.d sets. v1 stays until the
-   GSET rows and S9DEL5.
-4. Host compare (nd_gtab_test.c v2 part): per table and per draw, the v2 table against the v1 path on the host model: pso output
-   bytes, bind desc, transform op sequence, triangles as absolute vertex triples. `ntab tables <n> draws <d> bad <b>`.
-
+1. Per self-contained list one NdNTab with entry 0 (the table states every group: the entry is not read; nd_ntab_run, CONV2D,
+   ignores it for these tables). Name it `ndn_<list>`.
+2. Ops: every state run up to a draw becomes one NdPsoDesc decided by nd_pso_build (written to 3ds/src/nd_ntab_descs.c, which
+   gen_pso_tab.py of NPSO3 scans for the ids), NDN_PSO; texture loads (TIMG, TILE, TILESIZE, LOADTILE, LOADBLOCK, LOADTLUT) one
+   NdBindDesc through a tile tracker, NDN_TEX; matrices NDN_XF; colours NDN_COL; VTX/TRI through nd_vslot_resolve into NDN_DRAW
+   with a generated u16 index array. A run-time value (segment base) is an NDN_DRAW input (p NULL, v the segmented address).
+3. Output: v2 tables next to v1 in nd_gfx_tab.c, v1 unchanged.
+4. Host compare (nd_gtab_test.c v2): per table and draw, v2 against the v1 path on the host model started from the reset walker
+   state (a self-contained list needs no other): pso output bytes, bind desc, transform ops, absolute triangles.
+   `ntab tables <n> draws <d> bad <b>`; and `ntab inherit <k>` (expected 544 by the coder's count).
 ## Places
 3ds/tools/nd_gfx_conv.c, 3ds/tools/gen_gfx_tab.sh, 3ds/tools/nd_gtab_test.c (the v2 compare), new generated
 3ds/src/nd_ntab_descs.c (.gitignore line). Not nd_gtab.h (CONV2A form is fixed), not 3ds/src runtime files.
 
 ## Gate (expected values)
-- Build, memcheck OK. nd_host PASS with `ntab tables <n> draws <d> bad 0` over the 000_base.txt lists (n and d above 0), and
+- Build, memcheck OK. nd_host PASS with `ntab tables <n> draws <d> bad 0` (n = 1372 - inherit count) and `ntab inherit 544`, and
   a seeded fault (a value change: one NDN_COL value + 1 in the compare's copy) shown first with bad above 0.
 - v1 output unchanged: the v1 tables of nd_gfx_tab.c are byte-equal to the merge-base's (diff of the generated file parts).
 - No Azahar (no runtime file reads v2 yet). Budget 0.
