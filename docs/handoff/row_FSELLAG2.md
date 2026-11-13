@@ -1,9 +1,11 @@
-# Row FSELLAG: the file select flip lag after FSELFIX: one slot clear and two full target switches per window per frame
+# Row FSELLAG2: clear only the needed band of an off-screen slot (file select lag P1), Sonnet design core, needs the user's yes
 
-Model: Sonnet. Reason: the fix changes when an off-screen slot is cleared and how a draw_box contents pass binds its target,
-shared code of every ROTSCALE window (file select, pause flip, appear windows, message box). The exactness rule (where a clear is
-redundant) needs a read of every full-slot user. Why not Haiku: no single exact edit is known before that read. Why not Opus:
-one function family (pm_gpu_off_begin, pm_gpu_off_end) and one caller (draw_box.c contents pass).
+Model: Sonnet (not in the 5 accepted Sonnet rows: the orchestrator asks the user). Reason in one line: the band to clear needs the
+memory orientation of a PICA render-target texture (which buffer rows a game row lands in, citro3d C3D_RenderTargetCreateFromTex)
+and the bilinear edge reads of every full-slot user, which no single code line gives. P2 (the full sh_clear) is row FSELLAG1
+(Haiku). Height source (decided): the scissor that draw_box sets before the fill (draw_box.c:789 gDPSetScissor 0, 0, width,
+height) is in force at the first draw of the pass, which calls off_screen_check -> pm_gpu_off_begin (nd_target.c:88-93): pass
+that scissor height (nd_set.c:59-60 sci_y1) as a new argument, 0 for every other caller (whole slot, as today).
 
 ## User fact (2026-11-12)
 The file select screen is laggy while the save rectangles rotate. Build 5101 (main a2b28500a, FSELFIX included) is on the O3DS XL.
@@ -31,13 +33,13 @@ The file select screen is laggy while the save rectangles rotate. Build 5101 (ma
    area the later strips sample (record the covered area of the first fill per pass, clear the rest lazily only if a later read
    samples outside it), or (b) a fill restricted to the 8-row block band of the image height (the tiled layout keeps a band of
    block rows contiguous) plus one block row for bilinear. The coder picks one and proves it by the byte gate.
-2. P2: keep the main target state across a pass when nothing but the target changes: sh_clear only the parts the off-screen
-   pass changes (viewport, scissor, projection: rebuild_3d), not the whole citro3d state. Prove with the byte gate.
+2. P2: row FSELLAG1.
 3. P3: only if 1 and 2 do not end the lag on the console (not in this row).
 
 ## Places
-3ds/src/pm_gpu.c: pm_gpu_off_begin (:2051-2140) and pm_gpu_off_end (:2420-2430). Not src/draw_box.c (plan row NBOX waits for
-this row, it edits draw_box). HOSTCORE2 edits nd_native_submit (another place of pm_gpu.c): no overlap, both may run.
+3ds/src/pm_gpu.c: pm_gpu_off_begin (signature, the clear at :2118), its 3 other callers (:2656, :2667, :2685: argument 0),
+3ds/include/pm_gpu.h prototype, 3ds/src/nd_target.c off_screen_check (:88-93). Waits for FSELLAG1 (same function).
+Not src/draw_box.c (plan row NBOX waits).
 
 ## Gate (expected values)
 - Build, memcheck OK. nd_host PASS.
