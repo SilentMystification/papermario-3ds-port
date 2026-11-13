@@ -20,6 +20,21 @@ typedef struct NdPsoN64 { uint32_t cw0, cw1, oml, omh, omh_m; } NdPsoN64;
 NdPso nd_pso_n64(const NdPsoN64* d); /* core 1 */
 const NdPsoN64* nd_pso_get(NdPso id); /* core 0 */
 
+/* NPSO1 (plan_endgame.md v3 section 2): the complete static pipeline state of a draw. gen_pso_tab (NPSO3) decides each
+ * description once at build time. A call site states it with ND_PSO_DESC. Colours (prim, env) are draw values, not state. */
+typedef struct NdPsoDesc {
+    uint32_t cw0, cw1;   /* combine words with the 0xFC byte (G_SETCOMBINE w0, w1) */
+    uint32_t omh, oml;   /* other mode H and L, full words */
+    uint32_t geom;       /* geometry mode word */
+    uint32_t key_c, key_s, conv_k4; /* G_SETKEYR/GB words, G_SETCONVERT k4 */
+    uint8_t tex_on, use_t1, t1_valid, dual_on; /* texture on, combine uses tile 1, tile 1 loaded, two-cycle dual texture */
+    uint8_t box_prod, box_folded, comb_set, comb_alpha_shade; /* draw_box window product state, combine set, alpha shade */
+    uint8_t leg_prev, vprim, zimg, plod; /* mode of the previous decision, pm_comb_vprim, colour image is the z image, prim LOD byte */
+} NdPsoDesc;
+#define ND_PSO_DESC(name, ...) static const NdPsoDesc name = { __VA_ARGS__ } /* NPSO1: the scan of gen_pso_tab finds this name */
+typedef struct NdPsoOut NdPsoOut;  /* NPSO2: the decided TEV, blend and render blocks of one description */
+const NdPsoOut* nd_pso(NdPso id);  /* NPSO3: core 0, the table entry of a description id */
+
 /* NATIVEAPI S4 (particles): one NDC_NAPI record for a run of effect draws, one instance per nd_parts_add. Each instance is m units of the
  * stream form (8 bytes each): pre state units, the NDO_CALL unit of its static flat list (a triangle list with one vertex load at slot 0),
  * post units. Core 0 (nd_parts_run) runs the pre units with the walker, draws the list natively (nd_part_draw) and runs the post units. */
