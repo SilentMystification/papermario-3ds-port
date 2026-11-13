@@ -18,7 +18,6 @@ A shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json, bench_def
 | CODEMODFX8 | Haiku | src/effects/water_block.c (value call lines, include lines) | ready |
 | CODEMODFX9 | Haiku | src/effects/embers.c (value call lines, include lines) | ready |
 | CODEMODFX10 | Haiku | src/effects/shimmer_burst.c (value call lines, include lines) | ready |
-| CONV2D | Haiku | 3ds/include/nd_gtab.h enum; 3ds/tools/nd_gfx_conv.c V2C struct, v2_walk top, new v2_unit_add, v2_emit_table; 3ds/tools/nd_gtab_test.c v2_compare | ready (rewritten 2026-11-13) |
 | CONV2D2 | Haiku | nd_gtab.h NdNIdx and 2 prototypes; nd_gfx_conv.c v2_convert_all device index; nd_gtab.c after nd_gtab_find, gtr_cen; nd_walk.c nd_gtab_run :601 and :500; azt.d/bench.d CONV2D2.json | waits for CONV2D |
 | CONV2F | Haiku | nd_gtab.h after the nd_rec_dl prototype; nd_gfx_conv.c main argc line, v2_convert_all signature and table loop; gen_gfx_tab.sh :18, :23; codemod.py argv loop, :204, :223; src/effects/water_splash.c:189 | waits for CONV2D2 |
 | CODEMODW1 | Haiku | src/world/area_mac/mac_00/water_gfx.c value call lines, include line; new azt.d/bench.d CODEMODW1.json | ready |
