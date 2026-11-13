@@ -8,7 +8,11 @@
 - `python 3ds/tools/codemod.py --dry src/effects/explosion.c` on main: `value 10 keep 0 state 0 dl 4`.
 - The file has no TARGET_3DS line. Its includes end with `#include "nd_gtab.h"` (line 3). The tool adds no #include.
 - Scene: fxpic_20 (fxtest 20 = explosion, pm_fxtest.c FXLIST), kind azahar_pic, shots 412 to 415, in bench_defs.json.
-- Seed source: explosion.c:192 `gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 240, part->unk_38)`. After edit 1 it is an nd_val_prim call with the same arguments.
+- Seed source (correction 1, ORACLE8 2026-11-13): explosion.c:227 on branch CODEMODFX3 (2fd29e760),
+  `nd_val_prim(0, 0, 255, 255, primB, primAlpha);`. The old seed at :193 is dead in this scene. fxtest spawns
+  `fx_explosion(0, X, Y, Z)` (pm_fxtest.c:52). With type 0, explosion_main sets part 1 `unk_00 = -1` (explosion.c:56-58), so the
+  `if (part->unk_00 != -1)` block (:187-196) never runs. :227 always runs. D_09000910_344880 (nd_rec_dl at :201) sets
+  `gsDPSetCombineLERP(0, 0, 0, PRIMITIVE, ...)`, so the colour output is the prim RGB, and part 2 starts with alpha 255.
 Start: `sh 3ds/tools/wt_new.sh CODEMODFX3`. PM_ROW=CODEMODFX3 PM_LANE=CODEMODFX3 on every call.
 ## Touch only (places)
 src/effects/explosion.c only (the 10 value call lines and 2 include lines). No other file.
@@ -23,8 +27,10 @@ src/effects/explosion.c only (the 10 value call lines and 2 include lines). No o
 3. Build, memcheck OK. `python 3ds/tools/bench.py run nd_host --row CODEMODFX3 --why "CODEMODFX3"`: PASS.
 4. Byte compare: `bench.py base fxpic_20` at the merge-base, then `bench.py run fxpic_20 --row CODEMODFX3 --why "CODEMODFX3 byte gate"` and
    `bench.py cmp fxpic_20 --row CODEMODFX3`: every shot byte-equal.
-5. Seeded fault first (a value change, then undo): in the nd_val_prim call of the seed source change its fifth argument 240 to 241. cmp fxpic_20
-   must show a difference. If it shows none: stop and hand back.
+5. Seeded fault (a value change, then undo): at :227 the third argument 255 -> 128, i.e. `nd_val_prim(0, 0, 128, 255, primB,
+   primAlpha);`. Before the run, `sha1sum build3ds/lane-CODEMODFX3/pm_3ds.elf` must differ from its value at the real edit
+   (the build number does not change for an uncommitted edit, so it proves nothing). cmp fxpic_20 must show a difference.
+   If it shows none: stop and hand back. Budget: one reset for this oracle correction (CLAUDE.md 4).
 6. Budget 8 Azahar starts. Counter: C1 -10, C2 -10.
 ## Stop and end
 A cmp difference with the real edit, a seed with no difference, a base pair that differs (BASEKEEP line: tool fault), or a build
