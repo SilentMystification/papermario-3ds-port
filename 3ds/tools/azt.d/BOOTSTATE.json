@@ -1,0 +1,29 @@
+{
+  "scenarios": [
+    {
+      "name": "fxpic_89_bs",
+      "status": "unverified",
+      "subject": "BOOTSTATE: Toad Town mac_01 at 0 0 200, fxtest=89 (water_splash), cold det start, as fxpic_89, with the bootstate log at frames 412 to 415\b.",
+      "proves": "BOOTSTATE: the bootstate lines (global draw inputs at each shot frame) are equal across runs of one build, or name the input that differs.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=89 shots shotwin=412:4 bootstate=412:4 loglevel=debug det",
+      "extra": [],
+      "until": "shot \\d+ frame 415\\b",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "shot 415\b",
+          "regex": "shot \\d+ frame 415\b\b\b"
+        }
+      ],
+      "reason": "BOOTSTATE: as fxpic_89 (cap 40 s, deadline 35 s, until the shot line at frame 415\b), plus bootstate=412:4."
+    }
+  ]
+}
