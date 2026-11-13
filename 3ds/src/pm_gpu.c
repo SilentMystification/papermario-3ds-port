@@ -3088,7 +3088,16 @@ static int fh_on(void) {
     const unsigned f = pm_frame_count();
     return f >= (unsigned)fh_w0 && f < (unsigned)(fh_w0 + fh_w1);
 }
-static const void* fh_map(uint32_t pa, uint32_t n, void* ctx) { (void)n; (void)ctx; return pa ? osConvertPhysToVirt(pa) : NULL; }
+extern u32 __ctru_linear_heap, __ctru_linear_heap_size; /* FRAMEHASH3: the linear heap (libctru) */
+/* ctx: the u32 dl = phys - virt of a linear pointer (set in fh_frame). VRAM by drec_p2v; the linear heap by dl; NULL else. */
+static const void* fh_map(uint32_t pa, uint32_t n, void* ctx) {
+    const u32 dl = *(const u32*)ctx;
+    if (pa >= 0x18000000u && n <= 0x600000u && pa - 0x18000000u <= 0x600000u - n) return drec_p2v(pa, 0);
+    const u32 v = pa - dl;
+    const u32 heap = __ctru_linear_heap, size = __ctru_linear_heap_size;
+    if (n <= size && v >= heap && v - heap <= size - n) return (const void*)(uintptr_t)v;
+    return NULL;
+}
 static uint32_t fh_role(uint32_t pa, void* ctx) {
     (void)ctx;
     C3D_RenderTarget* t[2] = { target, targetR };
@@ -3105,7 +3114,8 @@ static uint32_t fh_role(uint32_t pa, void* ctx) {
 }
 static __attribute__((cold, noinline)) void fh_frame(void) {
     gxCmdQueue_s* q = (gxCmdQueue_s*)&__C3D_Context;
-    NdFhEnv env = { fh_map, fh_role, NULL };
+    const u32 dl = (u32)osConvertVirtToPhys(kc_base) - (u32)(uintptr_t)kc_base; /* phys - virt of the command buffer (linear heap) */
+    NdFhEnv env = { fh_map, fh_role, (void*)&dl };
     kc_take(q);
     uint64_t h = ND_FH_INIT;
     unsigned words = 0;
