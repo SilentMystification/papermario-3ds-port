@@ -603,6 +603,11 @@ static void v2_convert_all(const char* descs_path, const char* inh_path, const c
         v2_emit_table(cx);
         v2_tab[v2_n_tab++] = g;
     }
+    /* CONV2D2: the device index of the tables (nd_gtab.h NdNIdx), after the tables in nd_gfx_tab.c */
+    printf("NdNIdx ndn_dev_idx[%u] = {\n", v2_n_tab ? v2_n_tab : 1u);
+    for (unsigned i = 0; i < v2_n_tab; i++) printf("    { (const void*)%s, &ndn_%s },\n", v2_tab[i]->name, v2_tab[i]->name);
+    if (!v2_n_tab) printf("    { 0, 0 }\n");
+    printf("};\nconst unsigned ndn_dev_n = %uu;\n", v2_n_tab);
     fclose(fi); fclose(fu);
     /* the pso descriptions: the file gen_pso_tab.py of NPSO3 scans for the ids (the id of a description is its line order) */
     FILE* fd = fopen(descs_path, "w");

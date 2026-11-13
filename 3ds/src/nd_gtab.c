@@ -38,12 +38,37 @@ const NdGTab* nd_gtab_find(const void* list) {
 #include "gbi_custom.h"
 #include "nd_api.h"
 
+/* CONV2D2: nd_ntab_find (nd_gtab.h), core 0 only (nd_gtab_run). The same lookup as nd_gtab_find over the device index ndn_dev_idx. */
+static int nt_sorted;
+static __attribute__((cold, noinline)) void nt_sort(void) {
+    for (unsigned i = 1; i < ndn_dev_n; i++) {
+        const NdNIdx e = ndn_dev_idx[i];
+        unsigned j = i;
+        for (; j > 0u && (uintptr_t)ndn_dev_idx[j - 1u].list > (uintptr_t)e.list; j--) ndn_dev_idx[j] = ndn_dev_idx[j - 1u];
+        ndn_dev_idx[j] = e;
+    }
+    nt_sorted = 1;
+}
+const NdNTab* nd_ntab_find(const void* list) {
+    if (__builtin_expect(!nt_sorted, 0)) nt_sort();
+    unsigned lo = 0, hi = ndn_dev_n;
+    while (lo < hi) {
+        const unsigned mid = (lo + hi) >> 1;
+        const uintptr_t a = (uintptr_t)ndn_dev_idx[mid].list;
+        if (a == (uintptr_t)list) return ndn_dev_idx[mid].tab;
+        if (a < (uintptr_t)list) lo = mid + 1u; else hi = mid;
+    }
+    return 0;
+}
+
 extern unsigned nd_gtr_ent, nd_gtr_dlc, nd_gtr_ops; /* nd_walk.c, core 0: the arms nd_gtab_run took */
-static unsigned gtr_tab, gtr_dl, gtr_pt, gtr_pd, gtr_pe, gtr_pc, gtr_po, gtr_next = 300u, gtr_seen;
+extern unsigned nd_gtr_ntab; /* nd_walk.c, core 0: the runs of nd_ntab_run */
+static unsigned gtr_tab, gtr_dl, gtr_pt, gtr_pd, gtr_pe, gtr_pc, gtr_po, gtr_pn, gtr_next = 300u, gtr_seen;
 static __attribute__((cold, noinline)) void gtr_cen(unsigned f) {
     const unsigned e = nd_gtr_ent, c = nd_gtr_dlc, o = nd_gtr_ops;
     if (gtr_tab != gtr_pt || gtr_dl != gtr_pd) pm_log_evt("gtabrun f%u tab %u dl %u arm %u/%u/%u", f, gtr_tab - gtr_pt, gtr_dl - gtr_pd, e - gtr_pe, c - gtr_pc, o - gtr_po);
-    gtr_pt = gtr_tab; gtr_pd = gtr_dl; gtr_pe = e; gtr_pc = c; gtr_po = o;
+    if (gtr_tab != gtr_pt || gtr_dl != gtr_pd) pm_log_evt("ntabrun f%u runs %u", f, nd_gtr_ntab - gtr_pn);
+    gtr_pt = gtr_tab; gtr_pd = gtr_dl; gtr_pe = e; gtr_pc = c; gtr_po = o; gtr_pn = nd_gtr_ntab;
     gtr_next = (f / 300u + 1u) * 300u;
 }
 static unsigned gt_kind(uint32_t w0) { /* as st_kind of nd_rec.c: 0 not a state op, 1 a state op, 2 a sync, 3 the list end */

@@ -90,4 +90,11 @@ typedef struct NdNTab {
     const NdNOp* ops;     /* nops entries, the last one NDN_END */
     const uint16_t* idx;  /* the index buffer of every NDN_DRAW of the table (absolute vertex indices, CONV2B resolver) */
 } NdNTab;
+/* CONV2D2 (core 0): the device index of the v2 tables, written by nd_gfx_conv.c after the tables (nd_gfx_tab.c): one entry per table, sorted by
+ * list address at the first nd_ntab_find. nd_ntab_find: the table of a list, or NULL. nd_ntab_run: a table as its NDN_UNIT copy in nd_walk.c. */
+typedef struct NdNIdx { const void* list; const NdNTab* tab; } NdNIdx;
+extern NdNIdx ndn_dev_idx[];
+extern const unsigned ndn_dev_n;
+const NdNTab* nd_ntab_find(const void* list);
+void nd_ntab_run(const NdNTab* t);
 #endif
