@@ -28,6 +28,9 @@ FRAMEHASH1 merged. Start: `sh 3ds/tools/wt_new.sh FRAMEHASH2`. PM_ROW=FRAMEHASH2
      0xD0000000 | i, then the bytes [base + OFFSET_i + lo * stride, base + OFFSET_i + (hi + 1) * stride). Per unit u with bit u of
      reg 0x080: w, ht, fmt from its registers, feed 0xD2000000 | u, w, ht, fmt, then w * ht * bits / 8 bytes at its address << 3.
    - bytes that map gives NULL for: feed 0xDEADBEEF and the length instead. No division (bits / 8 is a shift).
+   - Correction 1 (ORACLE8, spec of the coder's choices in bce564bb3): an indexed draw whose index bytes map gives NULL feeds
+     0xD1000000, 0xDEADBEEF and count * size, and no vertex feed (the range is not known). A texel format above 13 feeds w, ht
+     and fmt and 0 texel bytes. 0x11D is the colour buffer and 0x11C the depth buffer: both feed only their role.
 3. nd_fhash_test.c new cases, one map callback over a 64 KB fixture array at physical 0x20000000 (pa outside: NULL), role =
    0 for 0x20008000 and 0x20009000, else 1. Command words: base 0x20000000 >> 3, buffer 0 offset 0x100 stride 16 count 3, index
    u16 at offset 0x400 {0, 1, 2}, NUMVERTICES 3, unit 0 on, 8 x 8 RGBA8 at 0x20001000, colour buffer 0x20008000, DRAWELEMENTS.
@@ -38,8 +41,9 @@ FRAMEHASH1 merged. Start: `sh 3ds/tools/wt_new.sh FRAMEHASH2`. PM_ROW=FRAMEHASH2
    Print `fhframe ok 6/6` or `fhframe FAIL S<k>` and exit 1. The old line `fhash ok 6/6` stays.
 4. Commit: `FRAMEHASH2: nd_fh_frame feeds vertex, index and texel bytes and the target role, host test`.
 ## Gate (expected values)
-1. Seeded fault: in nd_fh_frame skip the texel feed. `python 3ds/tools/bench.py run nd_host --row FRAMEHASH2 --why "FRAMEHASH2
-   seeded fault"`: expected `fhframe FAIL S4`, nd_host FAIL.
+1. Seeded fault (correction 1): in fh_tex delete only the one statement that feeds the w * ht * bits / 8 texel bytes. Keep
+   the tag and the w, ht, fmt feeds, so fh_tex stays used (-Werror: an unused static function fails the build). `python
+   3ds/tools/bench.py run nd_host --row FRAMEHASH2 --why "FRAMEHASH2 seeded fault"`: expected `fhframe FAIL S4`, nd_host FAIL.
 2. Restore. Same command, --why "FRAMEHASH2 gate": expected `fhash ok 6/6`, `fhframe ok 6/6`, `ND HOST TESTS PASS`.
 3. `PM_ROW=FRAMEHASH2 PM_LANE=FRAMEHASH2 sh 3ds/build.sh > build3ds/out/build.txt 2>&1`: memcheck OK. No Azahar. Counter: none.
 ## Stop and end
