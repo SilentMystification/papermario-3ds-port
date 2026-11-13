@@ -54,7 +54,7 @@ gen_texkey() {
     if command -v py >/dev/null 2>&1; then py -3 3ds/tools/texkey_bake.py "$tkb" 3ds/include/texkey_patch.h
     else python3 3ds/tools/texkey_bake.py "$tkb" 3ds/include/texkey_patch.h; fi || { echo "texkey_bake.py failed" >&2; exit 1; }
 }
-gen_texkey
+gen_texkey >&2 # PUSHKEY: stdout of build.sh is the key only (PM_KEY_ONLY)
 
 # HC4f1: host shape converter (3ds/tools/nd_shape_conv.c, host C, read only on ASSET_BASE). Writes $OUT/romfs/shape/<asset>.nds
 # for every *_shape table entry: the Yay0 decode with pointer fields as shape offsets and their reloc list.
@@ -76,7 +76,7 @@ gen_shapes() {
         'gcc -m32 -O2 -Wall -I /w/3ds/include -o /tmp/yay0_test /w/3ds/tools/yay0_test.c /w/3ds/src/nd_yay0.c && /tmp/yay0_test /ar && gcc -m32 -O2 -Wall -msse2 -mfpmath=sse -ffp-contract=off -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I /w/include -I /w/3ds/include -I /w/3ds/stub_include -o /tmp/nd_shape_conv /w/3ds/tools/nd_shape_conv.c /w/3ds/src/nd_seam.c /w/3ds/src/nd_dlc.c && /tmp/nd_shape_conv /ar /out' || { echo "gen_shapes failed" >&2; exit 1; }
     echo "$want $(ls "$OUT/romfs/shape"/*.nds 2>/dev/null | wc -l | tr -d ' ')" > "$stamp"
 }
-gen_shapes
+gen_shapes >&2 # PUSHKEY
 
 # S7CONV: native tables of the static gfx lists (3ds/tools/gen_gfx_tab.sh, row S7CONV design note): 3ds/src/nd_gfx_tab.c (git-ignored, never
 # committed, in the build key). Run in the host image with the nd_host_test.sh layout (assets read only from ASSET_BASE). Skip: the stamp
@@ -98,7 +98,7 @@ gen_gfx_tab() {
     if cmp -s 3ds/src/nd_gfx_tab.c.new 3ds/src/nd_gfx_tab.c; then rm -f 3ds/src/nd_gfx_tab.c.new; else mv -f 3ds/src/nd_gfx_tab.c.new 3ds/src/nd_gfx_tab.c; fi
     echo "$want" > "$stamp"
 }
-gen_gfx_tab
+gen_gfx_tab >&2 # PUSHKEY
 
 # The inputs CMake reads (3ds/CMakeLists.txt, DECOMP = repo root). Nothing else reaches the build.
 # CODE_DIRS are read from this worktree; ASSET_DIRS from ASSET_BASE (see above).
