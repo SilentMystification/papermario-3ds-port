@@ -39,3 +39,6 @@ A shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json, bench_def
 | CODEMODFX18 | Haiku | src/effects/whirlwind.c (value call lines, include lines); new azt.d/bench.d CODEMODFX18.json | ready |
 | CODEMODFX19 | Haiku | src/effects/landing_dust.c (value call lines, include lines); new azt.d/bench.d CODEMODFX19.json | ready |
 | CODEMODFX20 | Haiku | src/effects/damage_indicator.c (value call lines, include lines); new azt.d/bench.d CODEMODFX20.json | ready |
+| CODEMODW2 | Haiku | src/world/area_iwa/iwa_01/splash.c value call lines, include lines; new azt.d/bench.d CODEMODW2.json | ready |
+| CODEMODW3 | Haiku | src/world/area_flo/flo_10/waterfx.c value call lines, include lines; new azt.d/bench.d CODEMODW3.json | ready |
+| CODEMODW4 | Haiku | src/world/area_hos/hos_04/fountains.c value call lines, include lines; new azt.d/bench.d CODEMODW4.json | ready |

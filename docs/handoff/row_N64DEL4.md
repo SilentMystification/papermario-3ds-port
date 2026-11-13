@@ -29,8 +29,9 @@ src/world/common/lava_piranha/part1.inc.c. Only the blocks below.
 9. part1.inc.c:9-23 `#if defined(SHIFT) || defined(TARGET_3DS) // ...`: keep :10-17.
 10. Commit: `N64DEL4: the last TARGET_3DS directives of include and src by hand (skip forms of unifdef3ds)`.
 ## Gate (expected values)
-1. Before the edits: `sh 3ds/tools/ppcmp.sh build3ds/out/pp_before <the 9 files> src/main.c src/model.c src/hud_element.c
-   src/battle/area/kzn2/area.c`. After: the same into build3ds/out/pp_after. `diff -r` of both prints nothing. Seeded fault first:
+1. Before the edits: `sh 3ds/tools/ppcmp.sh build3ds/out/pp_before <the 7 files that are not .inc.c> src/main.c src/model.c
+   src/hud_element.c src/battle/area/kzn2/area.c src/battle/area/kgr/stage/kgr_01.c src/world/area_kmr/kmr_22/npc.c` (a .inc.c
+   goes through its includer, as in N64DEL2 correction 2). After: the same into build3ds/out/pp_after. `diff -r` of both prints nothing. Seeded fault first:
    append `int ppcmp_seed;` to one pp_after file. diff names it. Delete the line.
 2. `git grep -nE '^\s*#\s*(if|ifdef|ifndef|elif).*TARGET_3DS' -- include src` prints nothing.
 3. `python 3ds/tools/listcen.py`: the active totals are unchanged against the run before edit 1 (hand back both).

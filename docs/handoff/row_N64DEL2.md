@@ -24,9 +24,16 @@ TARGET_3DS directive lines and the lines they guard.
 1. unifdef3ds.py: before the condition is matched, remove a trailing `/* ... */` or `// ...` comment and trailing blanks from
    the directive text. Nothing else changes.
 2. ppcmp.sh: add `-Wno-builtin-macro-redefined -D__LINE__=0` to the gcc options.
-3. `sh 3ds/tools/ppcmp.sh build3ds/out/pp_before <the .c and .h files of the list> src/main.c src/model.c src/hud_element.c`.
-   `python 3ds/tools/unifdef3ds.py <the same files of the list>`. ppcmp again into build3ds/out/pp_after. One commit (tools and
-   files). The message lists the skip lines.
+3. Correction 2 (ORACLE8, 2026-11-13): ppcmp takes no `*.inc.c` file. The 616 fragments are not translation units (14 of them
+   stop gcc -E with a deliberate #error, because the including .c defines their macros). Each fragment is compared through the
+   .c files that include it. The 5 fragments with TARGET_3DS blocks all have includers in the list: WaterEffects.inc.c (through
+   the battle stage .inc.c into src/battle/area/*/stage/*.c), entity/SuperBlock.inc.c (18 .c), lava_piranha/part1.inc.c and
+   part2.inc.c (src/world/area_kmr/kmr_22/npc.c), util/GetFirstTriangleNormal.inc.c (3 .c).
+   PP = `git ls-files include src/world src/entity src/battle src/pause src/filemenu src/audio src/evt src/os | grep -E '\.(c|h)$'
+   | grep -v '\.inc\.c$'` (5160 files: 3316 .c, 1844 .h) and src/main.c src/model.c src/hud_element.c.
+   `sh 3ds/tools/ppcmp.sh build3ds/out/pp_before <PP>`: exit 0, 5163 outputs. Then `python 3ds/tools/unifdef3ds.py <every .c and
+   .h of the list, the .inc.c files too>`. ppcmp of PP again into build3ds/out/pp_after. One commit (tools and files). The
+   message lists the skip lines.
 Resume: edit 2 is done (6fce31e6f). Do edit 1 and edit 3. The 7 skip lines are expected now.
 ## Gate (expected values)
 - Tool output: the 7 skip lines of the Facts and `unifdef3ds: total blocks 151`. A second run changes nothing.
@@ -36,5 +43,5 @@ Resume: edit 2 is done (6fce31e6f). Do edit 1 and edit 3. The 7 skip lines are e
   build_n64 and gfxpos_n64 fall from 272 and 280 to 165 and 163. Active totals stay build 3697 and gfxpos 3127.
 - `PM_ROW=N64DEL2 PM_LANE=N64DEL2 sh 3ds/build.sh > build3ds/out/build.txt 2>&1`: memcheck OK. nd_host PASS. Budget 0 Azahar.
 ## Stop and end
-A build error, a skip line that is not in the Facts, a block count other than 151, a changed active count, or a preprocessor
+A ppcmp exit other than 0, a build error, a skip line that is not in the Facts, a block count other than 151, a changed active count, or a preprocessor
 difference: stop, commit, hand back the exact output (2 tries per named cause). Delete this row file in the completing commit.

@@ -198,8 +198,8 @@ grep in each row. A caller with a list path left is a fault of an earlier row: s
 Before S9DEL1A the orchestrator tags main `pre-list-removal`. Then S9GATE (Haiku): G9, the frame-hash set, the console batch (G10, G11).
 Phase ends (after B, C, D, E): one frame-hash set (spot_mac01_hash, mdl5_iwa10_hash, spot_mac00_hash plus the group scenes), G6
 on its capture, one console soak push (user).
-Open now (2026-11-13): CONV2D, N64DEL2, COVMAP, CODEMODW1, CODEMODFX2-20 (one effect file each, C1 and C2 fall by the value
-count of the file). Order after them: CONV2D2 -> CONV2F and ENTRYCAP -> ENTRY1..n; N64DEL3 -> N64DEL4; COVMAP -> COVMAP2 ->
+Open now (2026-11-13): CONV2D, N64DEL2, COVMAP, CODEMODW1-4, CODEMODFX2-20 (one file each; C1 and C2 fall by the value count
+of the file: effects 1077 value calls in 125 files, world 137 in 37 files at cff324713; the world rows need a new scene each). Order after them: CONV2D2 -> CONV2F and ENTRYCAP -> ENTRY1..n; N64DEL3 -> N64DEL4; COVMAP -> COVMAP2 ->
 GMHARN -> GOLDFX2 and the next GOLD rows (GOLDFX1, GOLDENT1 after COVMAP).
 
 ## 7. What the census cannot see, and how it is covered (discoveries are appended here)
