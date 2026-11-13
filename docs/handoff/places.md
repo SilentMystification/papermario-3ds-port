@@ -7,7 +7,6 @@ A shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json, bench_def
 | row | model | places | state |
 |---|---|---|---|
 | HOSTDIR | Haiku | 3ds/tools/nd_host_test.sh one new line after `/tmp/kcc` (:73); new 3ds/tests/host.d/README.txt, 00_hostd.sh | ready (first: the 5 rows below wait for it) |
-| NPSO2 | Sonnet | new 3ds/src/nd_decide.c, 3ds/tools/nd_decide_test.c, 3ds/tests/host.d/decide.sh; nd.h one struct after NdTevOut; nd_comb.c nd_comb_decide and the code it moves; nd_tmpl.c only if needed | waits for NPSO1 |
 | DEADDEL1 | Haiku | src/draw_img_util.c :216-343, :359-530; src/background_gfx.c :324-344; src/effect_utils.c :59-111; src/model.c comment block to :4897 | ready |
 | FSELLAG2 | Sonnet (needs the user's yes) | 3ds/src/pm_gpu.c pm_gpu_off_begin signature and clear, its callers :2656 :2667 :2685; pm_gpu.h; nd_target.c off_screen_check | waits for FSELLAG1 |
 | BOTHUD | Haiku | 3ds/src/pm_log.c sink_main wait line (:888); 3ds/src/pm_gpu_ui.c pm_gpu_hud_flush counter; 3ds/src/pm_main.c probe next to shotbottom (:813-818); new azt.d/bench.d BOTHUD.json | ready |
