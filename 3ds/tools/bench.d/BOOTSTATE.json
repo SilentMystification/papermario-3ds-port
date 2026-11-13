@@ -1,0 +1,19 @@
+{
+  "benches": [
+    {
+      "name": "fxpic_89_bs",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "S7EFX8 byte gate: water_splash (effect 89) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.",
+      "scenario": "fxpic_89_bs",
+      "cap": 40,
+      "until": "shot \\d+ frame 415\\b",
+      "tags": [
+        "azahar",
+        "fxcen"
+      ],
+      "gates": []
+    }
+  ]
+}

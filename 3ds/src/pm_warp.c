@@ -1970,6 +1970,7 @@ static void bosstest_hook(unsigned f) {
     }
 }
 
+extern int pm_stretch;
 void pm_warp_tick(unsigned frame) {
     pm_statehash(frame); /* MA1 step 0: runs in every scene, also without warp */
     boss_tick();
@@ -2100,6 +2101,22 @@ void pm_warp_tick(unsigned frame) {
     }
     if (smoke_on && f == smoke_frames) pm_audio_hash_log();
     if (smoke_on && f == smoke_frames) pm_log("warp: smoke done (%d frames in the scene) t=%u ms", smoke_frames, pm_uptime_ms());
+    { /* BOOTSTATE: bootstate=<first>:<count> logs one text line per step frame of the window: the global draw inputs (layout, interp, seed, camera, Mario). The base compare of two runs reads them. */
+        static int bs0 = -2, bs1;
+        if (bs0 == -2) {
+            char bsv[24];
+            bs0 = -1;
+            if (pm_debug_value("bootstate", bsv, sizeof bsv) && sscanf(bsv, "%d:%d", &bs0, &bs1) == 2) bs1 += bs0;
+            else bs0 = -1;
+        }
+        if (bs0 >= 0 && (int)frame >= bs0 && (int)frame < bs1) {
+            pm_log_evt("bootstate f%u wide %d stretch %d interp %d optwide %d fps60 %d seed %08x cam %d %d %d tgt %d %d %d mario %d %d %d mode %d",
+                frame, pm_wide, pm_stretch, pm_interp_on, pm_opt.wide, pm_opt.fps60, (unsigned)gRandSeed,
+                (int)gCameras[0].lookAt_eye.x, (int)gCameras[0].lookAt_eye.y, (int)gCameras[0].lookAt_eye.z,
+                (int)gCameras[0].lookAt_obj.x, (int)gCameras[0].lookAt_obj.y, (int)gCameras[0].lookAt_obj.z,
+                (int)gPlayerStatus.pos.x, (int)gPlayerStatus.pos.y, (int)gPlayerStatus.pos.z, (int)get_game_mode());
+        }
+    }
 }
 
 /* P02: switch `ptrcheck`. Called by the PTRCHECK macro (include/macros.h) when a value in the host pointer range reaches an
