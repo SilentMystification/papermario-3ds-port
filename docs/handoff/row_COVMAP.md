@@ -20,8 +20,8 @@ the GOLD rows need. ORACLE8 2026-11-13.)
 - Expected, computed by the oracle with the site rule: src/effects/water_splash.c has 11 sites, all in water_splash_appendGfx.
 Start: `sh 3ds/tools/wt_new.sh COVMAP`. PM_ROW=COVMAP PM_LANE=COVMAP on every call.
 ## Touch only (places)
-3ds/CMakeLists.txt inside `if(PM_FNCOV)` (:386-391) only; new 3ds/tools/cov.d/README.txt and cov.d/COVMAP.txt; new
-3ds/tools/covsites.py.
+3ds/CMakeLists.txt inside `if(PM_FNCOV)` (:386-391) only; 3ds/build.sh CODE_DIRS (:136) and KEY_IN (:150) lines; new
+3ds/tools/cov.d/README.txt and cov.d/COVMAP.txt; new 3ds/tools/covsites.py.
 ## Exact edits
 1. CMakeLists.txt, after the FNCOV_TUS GLOB line (:387):
    `file(GLOB COV_LISTS CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tools/cov.d/*.txt)`, then for each list
@@ -35,8 +35,19 @@ Start: `sh 3ds/tools/wt_new.sh COVMAP`. PM_ROW=COVMAP PM_LANE=COVMAP on every ca
    file `cov <file> sites <hit>/<total> funcs <hit>/<n>` and one `cov miss <file> <func> sites <k>` per function with sites
    and 0 calls.
 4. Commit: `COVMAP: fncov lane instruments the game files of tools/cov.d, covsites.py gives site coverage`.
+## Correction 1 (ORACLE8, 2026-11-13). Resume after 0c6d12aa4.
+- The cause of `sites 0/11`: water_splash.c was not instrumented. The map has `.text.water_splash_appendGfx` (fncov lane map
+  line 52759, 0x002114d0, size 0x3f8), but its size is the same as in the normal lane map (0x3f8). An instrumented function
+  grows (load_mtx 0x2d8 -> 0x2f0). The fncov log has no 0x00211xxx address. build.sh copies only CODE_DIRS into the docker
+  source volume (:136: 3ds/CMakeLists.txt ... 3ds/include 3ds/src src include). 3ds/tools is not there, so the CMake GLOB of
+  tools/cov.d/*.txt finds nothing in the container. KEY_IN (:150) also lacks it, so a list change does not rebuild.
+5. build.sh: add `3ds/tools/cov.d` to CODE_DIRS (:136) and to KEY_IN (:150).
+6. covsites.py: match a census address with bit 0 cleared (`addr & ~1`) against the map address. A Thumb function's
+   __cyg_profile_func_enter `self` has bit 0 set.
+7. Commit: `COVMAP: build.sh syncs tools/cov.d into the build volume and the build key`. Then run the gate from gate 1.
 ## Gate (expected values)
-1. `PM_FNCOV=1 PM_LANE=COVMAP sh 3ds/build.sh` OK, and the normal build OK (no change: the lists are read only under PM_FNCOV).
+1. `PM_FNCOV=1 PM_LANE=COVMAP sh 3ds/build.sh` OK. In build3ds/lane-COVMAP_fncov/pm_3ds.map the size of
+   `.text.water_splash_appendGfx` is above 0x3f8 (proof of the instrumentation). The normal build is OK (no change: the lists are read only under PM_FNCOV).
 2. `bench.py run fxfncov_89 --row COVMAP --lane COVMAP_fncov --why "COVMAP coverage"`, then
    `python 3ds/tools/covsites.py <its log> --lane COVMAP src/effects/water_splash.c`:
    `cov src/effects/water_splash.c sites 11/11 funcs 1/1`.
