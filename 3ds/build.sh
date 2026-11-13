@@ -94,7 +94,7 @@ gen_shapes >&2 # PUSHKEY
 gen_gfx_tab() {
     w=$(pwd -W 2>/dev/null || pwd); ab=$(cd "$ASSET_BASE" && pwd -W 2>/dev/null || pwd)
     stamp=$OUT/gfx_tab.stamp
-    GT_IN="3ds/tools/gen_gfx_tab.sh 3ds/tools/gen_gfx_syms.py 3ds/tools/nd_gfx_conv.c 3ds/tools/nd_gconv.h 3ds/tools/gconv_inc 3ds/tools/gconv_src.d 3ds/src/nd_scomp.c 3ds/src/nd_texwin.c 3ds/include src/effects/gfx src/entity"
+    GT_IN="3ds/tools/gen_gfx_tab.sh 3ds/tools/gen_gfx_syms.py 3ds/tools/nd_gfx_conv.c 3ds/tools/nd_gconv.h 3ds/tools/nd_vslot.c 3ds/tools/gconv_inc 3ds/tools/gconv_src.d 3ds/src/nd_scomp.c 3ds/src/nd_texwin.c 3ds/include src/effects/gfx src/entity"
     want="$({ git ls-files -s -- $GT_IN; git diff HEAD -- $GT_IN; git ls-files -o --exclude-standard -- $GT_IN | xargs -r sha1sum; } | sha1sum | cut -d' ' -f1)"
     if [ -f "$stamp" ] && [ -f 3ds/src/nd_gfx_tab.c ] && [ "$(cat "$stamp")" = "$want" ]; then echo "gen_gfx_tab: up to date"; return 0; fi
     mkdir -p "$OUT"

@@ -426,7 +426,7 @@ static void v_replay(const NdNTab* t, int fault) {
         switch (o->op) {
         case NDN_PSO: pso = o->b; break;
         case NDN_TEX: if (o->a) bind1 = (const NdBindDesc*)o->p; else bind = (const NdBindDesc*)o->p; break;
-        case NDN_XF: if (nvxf < EVMAX) { vxf[nvxf].a = o->a; vxf[nvxf].v = o->v; vxf[nvxf].b = 0; nvxf++; } break;
+        case NDN_XF: if (nvxf < EVMAX) { vxf[nvxf].a = o->a; vxf[nvxf].v = o->p ? (uint32_t)(uintptr_t)o->p : o->v; vxf[nvxf].b = 0; nvxf++; } break;
         case NDN_COL:
             if (nvcol < EVMAX) {
                 vcol[nvcol].a = o->a; vcol[nvcol].b = o->b; vcol[nvcol].v = o->v;

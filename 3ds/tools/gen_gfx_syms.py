@@ -8,6 +8,7 @@ import sys
 import pathlib
 
 DEF = re.compile(r"^(Gfx|Vtx)\s+(\w+)\s*\[[^\]]*\]\s*=", re.M)
+MTX = re.compile(r"^Mtx\s+(\w+)\s*(\[[^\]]*\])?\s*=", re.M)
 INC = re.compile(r'^\s*#include\s+"([^"]+\.inc\.c)"', re.M)
 IMG = re.compile(r"INCLUDE_(?:IMG|PAL|RAW)\(\s*\"[^\"]*\"\s*,\s*(\w+)\s*\)")
 
@@ -16,6 +17,8 @@ def scan(path, out):
     text = path.read_text(encoding="utf-8", errors="replace")
     for kind, name in DEF.findall(text):
         out.append((kind, name))
+    for m in MTX.finditer(text):
+        out.append(("Mtx", m.group(1)))
     for name in IMG.findall(text):
         out.append(("Img", name))
     for inc in INC.findall(text):
@@ -48,8 +51,11 @@ def main():
         if k == "Img":
             lines.append(f'    {{ "{n}", GS_IMG, (const void*){n}, (const void*){n}_gend }},')
         else:
-            gk = "GS_GFX" if k == "Gfx" else "GS_VTX"
-            lines.append(f'    {{ "{n}", {gk}, (const void*){n}, (const void*)((const char*){n} + sizeof {n}) }},')
+            gk = {"Gfx": "GS_GFX", "Vtx": "GS_VTX", "Mtx": "GS_MTX"}[k]
+            if k == "Mtx":
+                lines.append(f'    {{ "{n}", {gk}, (const void*)&{n}, (const void*)((const char*)&{n} + sizeof {n}) }},')
+            else:
+                lines.append(f'    {{ "{n}", {gk}, (const void*){n}, (const void*)((const char*){n} + sizeof {n}) }},')
     lines.append("};")
     lines.append(f"const unsigned gconv_nsym = {len(uniq)}u;")
     pathlib.Path(out_c).write_text("\n".join(lines) + "\n")

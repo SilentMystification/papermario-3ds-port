@@ -397,7 +397,15 @@ static int v2_walk(const GSym* g, unsigned k0, unsigned depth) {
         case NDO_FOG: v2_state_op(NDN_COL, 2, 0, w1, NULL); break;
         case NDO_BLEND: v2_state_op(NDN_COL, 3, 0, w1, NULL); break;
         case NDO_MTX: /* a segmented address stays a value (an input of the caller); a host address of a matrix object has no symbol in the map: no v2 form */
-            if ((w1 >> 24) >= 16u) { v2_unsup("matrix address outside the symbol map", k); break; }
+            if ((w1 >> 24) >= 16u) {
+                unsigned moff = 0;
+                const GSym* ms = sym_of(w1, GS_MTX, &moff);
+                if (!ms) { v2_unsup("matrix address outside the symbol map", k); break; }
+                char mp[160];
+                snprintf(mp, sizeof mp, "(const char*)&%s + %u", ms->name, moff);
+                v2_state_op(NDN_XF, a & 0xffu, 0, 0, mp);
+                break;
+            }
             v2_state_op(NDN_XF, a & 0xffu, 0, w1, NULL);
             break;
         case NDO_POPMTX: v2_state_op(NDN_XF, 0xffu, 0, w1, NULL); break;
@@ -529,6 +537,7 @@ static void v2_convert_all(const char* descs_path, const char* inh_path, const c
     if (!fi || !fu) { fprintf(stderr, "gconv: cannot write the ntab logs\n"); exit(1); }
     printf("/* CONV2C: native tables v2 of the self-contained lists (nd_gtab.h NdNTab; 3ds/tools/nd_gfx_conv.c). */\n#include <stdint.h>\n");
     for (unsigned i = 0; i < gconv_nsym; i++) if (gconv_sym[i].kind == GS_IMG) printf("extern char %s[];\n", gconv_sym[i].name);
+    for (unsigned i = 0; i < gconv_nsym; i++) if (gconv_sym[i].kind == GS_MTX) printf("extern Mtx %s;\n", gconv_sym[i].name);
     cx = &v2c_mem;
     for (unsigned i = 0; i < gconv_nsym; i++) {
         const GSym* g = &gconv_sym[i];
@@ -585,6 +594,7 @@ int main(int argc, char** argv) {
         const GSym* s = &gconv_sym[i];
         if (s->kind == GS_GFX) printf("extern Gfx %s[];\nextern const NdGTab ndg_%s;\n", s->name, s->name);
         else if (s->kind == GS_VTX) printf("extern Vtx %s[];\n", s->name);
+        else if (s->kind == GS_MTX) printf("extern Mtx %s;\n", s->name);
     }
     for (unsigned i = 0; i < gconv_nsym; i++) if (gconv_sym[i].kind == GS_GFX) conv(&gconv_sym[i]);
     printf("NdGIdx nd_gtab_idx[%u] = {\n", n_lists ? n_lists : 1u);
