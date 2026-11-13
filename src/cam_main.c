@@ -108,7 +108,6 @@ void update_cameras(void) {
     gCurrentCamID = CAM_DEFAULT;
 }
 
-#ifdef TARGET_3DS
 extern int pm_ph_on;
 extern void pm_gbi_mdl_mark(unsigned id, int pan); /* T1B: names the task tail rows 0xF0E0 + k */
 #define T1_MARK(k) do { if (pm_ph_on) pm_gbi_mdl_mark(0xF0E0u + (k), 0); } while (0)
@@ -146,9 +145,6 @@ static const Gfx cam_b_u[] = {
 };
 static NdSDef cam_a = { cam_a_u, sizeof cam_a_u / sizeof cam_a_u[0] };
 static NdSDef cam_b = { cam_b_u, sizeof cam_b_u / sizeof cam_b_u[0] };
-#else
-#define T1_MARK(k) ((void)0)
-#endif
 void render_frame(s32 isSecondPass) {
     s32 camID;
 
@@ -186,17 +182,8 @@ void render_frame(s32 isSecondPass) {
             s32 lrx;
             s32 lry;
 
-#ifdef TARGET_3DS
             Gfx scv[4]; /* S6T: the value units of cam_a and cam_b (viewport, scissor | colour image, matrix) */
             gSPViewport(&scv[0], PM_VP(&camera->vp));
-#else
-            gSPViewport(gMainGfxPos++, PM_VP(&camera->vp));
-            gSPClearGeometryMode(gMainGfxPos++, G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN |
-                                    G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
-            gSPTexture(gMainGfxPos++, 0, 0, 0, G_TX_RENDERTILE, G_OFF);
-            gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
-            gDPPipelineMode(gMainGfxPos++, G_PM_NPRIMITIVE);
-#endif
 
             ulx = camera->viewportStartX;
             uly = camera->viewportStartY;
@@ -229,43 +216,15 @@ void render_frame(s32 isSecondPass) {
                 lry = SCREEN_HEIGHT;
             }
 
-#ifdef TARGET_3DS
             gDPSetScissor(&scv[1], G_SC_NON_INTERLACE, ulx, uly, lrx, lry);
             gDPSetColorImage(&scv[2], G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
-#else
-            gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, ulx, uly, lrx, lry);
-            gDPSetTextureLOD(gMainGfxPos++, G_TL_TILE);
-            gDPSetTextureLUT(gMainGfxPos++, G_TT_NONE);
-            gDPSetTextureDetail(gMainGfxPos++, G_TD_CLAMP);
-            gDPSetTexturePersp(gMainGfxPos++, G_TP_PERSP);
-            gDPSetTextureFilter(gMainGfxPos++, G_TF_BILERP);
-            gDPSetTextureConvert(gMainGfxPos++, G_TC_FILT);
-            gDPSetCombineMode(gMainGfxPos++, G_CC_SHADE, G_CC_SHADE);
-            gDPSetCombineKey(gMainGfxPos++, G_CK_NONE);
-            gDPSetAlphaCompare(gMainGfxPos++, G_AC_NONE);
-            gDPSetRenderMode(gMainGfxPos++, G_RM_OPA_SURF, G_RM_OPA_SURF2);
-            gDPSetColorDither(gMainGfxPos++, G_CD_DISABLE);
-            gSPClipRatio(gMainGfxPos++, FRUSTRATIO_2);
-            gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH,
-                                osVirtualToPhysical(nuGfxCfb_ptr));
-            gDPPipeSync(gMainGfxPos++);
-
-            if (!(camera->flags & CAMERA_FLAG_ORTHO)) {
-                gSPPerspNormalize(gMainGfxPos++, camera->perspNorm);
-            }
-#endif
 
             FI_OPEN("camera_persp", 0);
             guMtxF2L(camera->mtxPerspective, &gDisplayContext->camPerspMatrix[gCurrentCamID]);
             FI_CLOSE();
-#ifdef TARGET_3DS
             gSPMatrix(&scv[3], &gDisplayContext->camPerspMatrix[gCurrentCamID], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
             nd_scomp_rec(&cam_a, scv, 2);
             nd_scomp_rec(&cam_b, scv + 2, 2);
-#else
-            gSPMatrix(gMainGfxPos++, &gDisplayContext->camPerspMatrix[gCurrentCamID], G_MTX_NOPUSH | G_MTX_LOAD |
-                        G_MTX_PROJECTION);
-#endif
         }
 
         camera->mtxBillboard = &gDisplayContext->matrixStack[gMatrixListPos];

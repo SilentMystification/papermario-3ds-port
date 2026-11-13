@@ -588,7 +588,6 @@ void update_all_status_icons(void* data) {
     }
 }
 
-#ifdef TARGET_3DS
 #include "nd_scomp.h"
 /* S6T: the prologue of draw_all_status_icons as a compiled state range (nd_scomp.h), the units in the order of the N64 code; the scissor is
  * its value unit (the record carries it). */
@@ -608,7 +607,6 @@ static const Gfx icons_range_u[] = {
     gsSPTexture(-1, -1, 0, G_TX_RENDERTILE, G_ON),
 };
 static NdSDef icons_range = { icons_range_u, sizeof icons_range_u / sizeof icons_range_u[0] };
-#endif
 
 void draw_all_status_icons(void* data) {
     PopupMessage* popup = data;
@@ -621,27 +619,11 @@ void draw_all_status_icons(void* data) {
     Camera* camera = &gCameras[gCurrentCameraID];
     int i;
 
-#ifdef TARGET_3DS
     {
         Gfx scv[1]; /* S6T: the value unit of icons_range */
         gDPSetScissor(&scv[0], G_SC_NON_INTERLACE, 12, 20, SCREEN_WIDTH - 12, SCREEN_HEIGHT - 20);
         nd_scomp_rec(&icons_range, scv, 1);
     }
-#else
-    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 12, 20, SCREEN_WIDTH - 12, SCREEN_HEIGHT - 20);
-    gDPPipeSync(gMainGfxPos++);
-    gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
-    gDPSetTexturePersp(gMainGfxPos++, G_TP_NONE);
-    gDPSetTextureLOD(gMainGfxPos++, G_TL_TILE);
-    gDPSetTextureDetail(gMainGfxPos++, G_TD_CLAMP);
-    gDPSetTextureConvert(gMainGfxPos++, G_TC_FILT);
-    gDPSetCombineKey(gMainGfxPos++, G_CK_NONE);
-    gDPSetAlphaCompare(gMainGfxPos++, G_AC_NONE);
-    gDPNoOp(gMainGfxPos++);
-    gDPSetColorDither(gMainGfxPos++, G_CD_DISABLE);
-    gDPSetAlphaDither(gMainGfxPos++, G_AD_DISABLE);
-    gSPTexture(gMainGfxPos++, -1, -1, 0, G_TX_RENDERTILE, G_ON);
-#endif
 
     for (i = 0, icon = D_800A0F44; i < MAX_ICONS; i++, icon++) {
         if (icon->flags == 0) {

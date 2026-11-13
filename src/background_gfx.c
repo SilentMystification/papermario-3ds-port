@@ -32,23 +32,16 @@ Gfx D_80074230[] = {
     gsSPEndDisplayList(),
 };
 
-#ifdef TARGET_3DS
 #include "nd_scomp.h"
 /* S6S1: the two init lists as compiled state ranges (nd_scomp.h). The counts leave out the End unit. D_80074230 has one value unit
  * (the viewport, unit 0); D_80074210 has none. */
 static NdSDef init_def_vp = { D_80074230, 4 };
 static NdSDef init_def_rm = { D_80074210, 3 };
-#endif
 
 void gfx_init_state(void) {
     gSPSegment(gMainGfxPos++, 0x00, 0x0);
-#ifdef TARGET_3DS
     nd_scomp_rec(&init_def_vp, &D_80074230[0], 1);
     nd_scomp_rec(&init_def_rm, NULL, 0);
-#else
-    gSPDisplayList(gMainGfxPos++, OS_K0_TO_PHYSICAL(D_80074230));
-    gSPDisplayList(gMainGfxPos++, OS_K0_TO_PHYSICAL(D_80074210));
-#endif
 }
 
 void gfx_frame_filter_pass_0(const u16* frameBuffer0, const u16* frameBuffer1, s32 y, s32 x, Color_RGBA8* out) {
@@ -256,7 +249,6 @@ void func_80027774(u16* frameBuffer0, u16* frameBuffer1, u16* zBuffer) {
             }
         }
     }
-#ifdef TARGET_3DS
     /* PT52: the loops skip the edge pixels. The z-buffer image of the 3DS is not cleared, so the edge showed stale colours. */
     for (y = 0; y < SCREEN_HEIGHT; y++) {
         for (x = 0; x < SCREEN_WIDTH; x++) {
@@ -265,25 +257,20 @@ void func_80027774(u16* frameBuffer0, u16* frameBuffer1, u16* zBuffer) {
             }
         }
     }
-#endif
 }
 
 // transfers the framebuffer into the depth buffer and applies filters
-#ifdef TARGET_3DS
 extern void pm_tex_invalidate(const void* ptr, unsigned size);
 extern void pm_gpu_want_prev(void); /* PAUSEOPEN: pm_gpu.c, the GPU copy of the last frame */
 /* PAUSEOPEN: the colour buffer not drawn now: the last frame (its GPU copy is the texture of this address) */
 static const void* pause_cfb_src(void) { return nuGfxCfb_ptr == nuGfxCfb[0] ? nuGfxCfb[1] : nuGfxCfb[0]; }
-#endif
 void gfx_transfer_frame_to_depth(u16* frameBuffer0, u16* frameBuffer1, u16* zBuffer) {
     Color_RGBA8 filterBuf0[6];
     Color_RGBA8 filterBuf1;
     s32 y;
     s32 x;
 
-#ifdef TARGET_3DS
     { void pm_walk_drain(const char* why); pm_walk_drain("cfb"); } /* CORE2-3a: the filter reads the frame buffers the last walk drew (pause) */
-#endif
     for (y = 1; y < SCREEN_HEIGHT - 1; y++) {
         for (x = 2; x < SCREEN_WIDTH - 2; x++) {
             s32 pixel = SCREEN_WIDTH * y + x;
@@ -309,7 +296,6 @@ void gfx_transfer_frame_to_depth(u16* frameBuffer0, u16* frameBuffer1, u16* zBuf
             }
         }
     }
-#ifdef TARGET_3DS
     /* PT52: the loops skip row 0, row 239 and the columns 0, 1, 318, 319. Copy them from the frame. */
     for (y = 0; y < SCREEN_HEIGHT; y++) {
         for (x = 0; x < SCREEN_WIDTH; x++) {
@@ -318,7 +304,6 @@ void gfx_transfer_frame_to_depth(u16* frameBuffer0, u16* frameBuffer1, u16* zBuf
             }
         }
     }
-#endif
 }
 
 /// Logic for the drawing the scene background. In normal operation, it draws the regular background.
@@ -358,24 +343,17 @@ void gfx_draw_background(void) {
             gDPSetDepthSource(gMainGfxPos++, G_ZS_PIXEL);
             gGameStatusPtr->backgroundFlags &= ~BACKGROUND_RENDER_STATE_MASK;
             gGameStatusPtr->backgroundFlags |= BACKGROUND_RENDER_STATE_FILTER_PAUSED;
-#ifdef TARGET_3DS
             pm_gpu_want_prev(); /* PAUSEOPEN: the picture is the GPU copy of the last frame (SHOW_PAUSED), armed here for the next drawn frames */
-#endif
             break;
         case BACKGROUND_RENDER_STATE_FILTER_PAUSED:
             // Save the framebuffer into the depth buffer and run a filter on it based on the saved coverage values
-#ifndef TARGET_3DS
-            gfx_transfer_frame_to_depth(nuGfxCfb[0], nuGfxCfb[1], nuGfxZBuffer); // applies filters to the framebuffer
-#endif
             /* PAUSEOPEN: on the 3DS no CPU filter. The coverage of the fill is full (0x8421), so the filter copied the frame anyway. */
             gPauseBackgroundFade = 0;
             gGameStatusPtr->backgroundFlags &= ~BACKGROUND_RENDER_STATE_MASK;
             gGameStatusPtr->backgroundFlags |= BACKGROUND_RENDER_STATE_SHOW_PAUSED;
             // fallthrough
         case BACKGROUND_RENDER_STATE_SHOW_PAUSED:
-#ifdef TARGET_3DS
             pm_gpu_want_prev(); /* PAUSEOPEN: each drawn frame of the pause asks for its copy (the request holds 2 drawn frames) */
-#endif
             // Draw the saved framebuffer to the background, fading in at a rate of 16 opacity per frame until reaching 128 opacity
             gPauseBackgroundFade += 16;
             if (gPauseBackgroundFade > 128) {
@@ -400,7 +378,6 @@ void gfx_draw_background(void) {
             gDPSetPrimColor(gMainGfxPos++, 0, 0, 40, 40, 40, gPauseBackgroundFade);
             gDPSetTextureFilter(gMainGfxPos++, G_TF_POINT);
 
-#ifdef TARGET_3DS
             /* PAUSE4A: the saved picture is one 320 x 240 image. One load and one texrect draw all of it (the strips below are the N64 TMEM split). */
             /* PAUSEOPEN: the other colour buffer (not the one drawn now) is the last frame. Its texture load is the GPU copy (nd_tex_set.c set_timg). */
             gDPLoadTextureTile(gMainGfxPos++, pause_cfb_src(), G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH,
@@ -411,26 +388,7 @@ void gfx_draw_background(void) {
                                 G_TX_RENDERTILE,
                                 0 << 5, 0 << 5, 1 << 10, 1 << 10);
             gDPPipeSync(gMainGfxPos++);
-#else
-            for (i = 0; i < 40; i++) {
-                gDPLoadTextureTile(gMainGfxPos++, nuGfxZBuffer + (i * SCREEN_WIDTH * SCREEN_COPY_TILE_HEIGHT), G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH,
-                                   SCREEN_HEIGHT, 0, 0, SCREEN_WIDTH - 1, SCREEN_COPY_TILE_HEIGHT - 1, 0, G_TX_NOMIRROR | G_TX_WRAP,
-                                   G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
-                /// @bug Due to the previous issue with the incorrect second cycle combiner, the devs added a 1-pixel offset to texture coordinates
-                /// in this texrect to compensate for the combiner error.
-                gSPTextureRectangle(gMainGfxPos++,
-                                    // ulx, uly, lrx, lry
-                                    0 << 2, i * a, SCREEN_WIDTH << 2, a + (i * (SCREEN_COPY_TILE_HEIGHT << 2)),
-                                    // tile
-                                    G_TX_RENDERTILE,
-                                    // s, t, dsdx, dtdy
-                                    -1 << 5, 0 << 5, 1 << 10, 1 << 10);
-                gDPPipeSync(gMainGfxPos++);
-            }
-#endif
-#ifdef TARGET_3DS
             if (pm_wide) gPmNdGutter(gMainGfxPos++, gPauseBackgroundFade); /* PAUSEOPEN: the gutters from the pause slot, walker side (pm_gpu_pause_gutters) */
-#endif
             break;
         default:
             // Draw the scene's background as normal

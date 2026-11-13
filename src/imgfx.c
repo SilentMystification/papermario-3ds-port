@@ -3,9 +3,7 @@
 #include "sprite.h"
 #include "imgfx.h"
 #include "pm_interp_fi.h"
-#ifdef TARGET_3DS
 #include "nd_op.h" /* HC4e2b: the typed unit of a list word */
-#endif
 
 typedef union ImgFXIntVars {
     s32 raw[2][4];
@@ -215,7 +213,6 @@ extern Addr flip_card_2_header;
 extern Addr flip_card_3_header;
 extern Addr cymbal_crush_header;
 
-#ifdef TARGET_3DS
 // offsets from ver/us/splat.yaml imgfx_data; the *_header linker symbols do not exist here
 u8* ImgFXAnimOffsets[] = {
     [IMGFX_ANIM_SHOCK] (u8*)0x14358,
@@ -239,33 +236,7 @@ u8* ImgFXAnimOffsets[] = {
     [IMGFX_ANIM_FLIP_CARD_3] (u8*)0xC6150,
     [IMGFX_ANIM_CYMBAL_CRUSH] (u8*)0xCA380,
 };
-#else
-// all relative to imgfx_data_ROM_START
-u8* ImgFXAnimOffsets[] = {
-    [IMGFX_ANIM_SHOCK]                 shock_header,
-    [IMGFX_ANIM_SHIVER]                shiver_header,
-    [IMGFX_ANIM_VERTICAL_PIPE_CURL]    vertical_pipe_curl_header,
-    [IMGFX_ANIM_HORIZONTAL_PIPE_CURL]  horizontal_pipe_curl_header,
-    [IMGFX_ANIM_STARTLE]               startle_header,
-    [IMGFX_ANIM_FLUTTER_DOWN]          flutter_down_header,
-    [IMGFX_ANIM_UNFURL]                unfurl_header,
-    [IMGFX_ANIM_GET_IN_BED]            get_in_bed_header,
-    [IMGFX_ANIM_SPIRIT_CAPTURE]        spirit_capture_header,
-    [IMGFX_ANIM_UNUSED_1]              unused_1_header,
-    [IMGFX_ANIM_UNUSED_2]              unused_2_header,
-    [IMGFX_ANIM_UNUSED_3]              unused_3_header,
-    [IMGFX_ANIM_TUTANKOOPA_GATHER]     tutankoopa_gather_header,
-    [IMGFX_ANIM_TUTANKOOPA_SWIRL_2]    tutankoopa_swirl_2_header,
-    [IMGFX_ANIM_TUTANKOOPA_SWIRL_1]    tutankoopa_swirl_1_header,
-    [IMGFX_ANIM_SHUFFLE_CARDS]         shuffle_cards_header,
-    [IMGFX_ANIM_FLIP_CARD_1]           flip_card_1_header,
-    [IMGFX_ANIM_FLIP_CARD_2]           flip_card_2_header,
-    [IMGFX_ANIM_FLIP_CARD_3]           flip_card_3_header,
-    [IMGFX_ANIM_CYMBAL_CRUSH]          cymbal_crush_header,
-};
-#endif
 
-#ifdef TARGET_3DS
 /* imgfx_data is read straight from the big-endian ROM. */
 static void imgfx_swap32(void* p, u32 words) {
     u32* w = p;
@@ -279,7 +250,6 @@ static void imgfx_swap_keyframe(ImgFXVtx* v, u32 count) {
         v++;
     }
 }
-#endif
 
 void imgfx_cache_instance_data(ImgFXState* state);
 void imgfx_clear_instance_data(ImgFXState* state);
@@ -1263,13 +1233,11 @@ ImgFXAnimHeader* imgfx_load_anim(ImgFXState* state) {
         state->curAnimOffset = romStart;
 
         dma_copy(state->curAnimOffset, state->curAnimOffset + sizeof(*anim), anim);
-#ifdef TARGET_3DS
         imgfx_swap32(anim, 2);
         anim->vtxCount = __builtin_bswap16(anim->vtxCount);
         anim->gfxCount = __builtin_bswap16(anim->gfxCount);
         anim->keyframesCount = __builtin_bswap16(anim->keyframesCount);
         anim->flags = __builtin_bswap16(anim->flags);
-#endif
 
         if (state->vtxBufs[0] != nullptr) {
             imgfx_add_to_cache(state->vtxBufs[0], 1);
@@ -1298,10 +1266,8 @@ ImgFXAnimHeader* imgfx_load_anim(ImgFXState* state) {
         romEnd = romStart + anim->gfxCount * sizeof(Gfx);
         dma_copy(romStart, romEnd, state->gfxBufs[0]);
         dma_copy(romStart, romEnd, state->gfxBufs[1]);
-#ifdef TARGET_3DS
         imgfx_swap32(state->gfxBufs[0], anim->gfxCount * 2);
         imgfx_swap32(state->gfxBufs[1], anim->gfxCount * 2);
-#endif
 
         // Search through the state's displaylists for vertex commands
         // and adjust their addresses to point into the vertex buffers
@@ -1313,7 +1279,6 @@ ImgFXAnimHeader* imgfx_load_anim(ImgFXState* state) {
             // Loop over the displaylist commands until we hit an ENDDL
             do {
                 u32 w0 = gfxBuffer[j++].words.w0;
-#ifdef TARGET_3DS
                 { /* HC4e2b: the typed unit (a typed word stays) */
                     uint32_t t[2];
                     t[0] = w0; t[1] = gfxBuffer[j-1].words.w1;
@@ -1323,23 +1288,13 @@ ImgFXAnimHeader* imgfx_load_anim(ImgFXState* state) {
 
                 // If this command is a vertex command, adjust the vertex buffer address
                 if (cmd == NDO_VTX) {
-#else
-                cmd = w0 >> 0x18;
-
-                // If this command is a vertex command, adjust the vertex buffer address
-                if (cmd == G_VTX) {
-#endif
                     // ImgFXVtx structs are 0xC bytes while Vtx are 0x10, so we need a (4/3) scaling factor
                     // to compute a new, equivalent Vtx[i] address for an existing ImgFXVtx[i] address.
                     // Unfortunately, using sizeof here does not match.
                     gfxBuffer[j-1].words.w1 = ((((s32) gfxBuffer[j-1].words.w1 - (s32) anim->keyframesOffset) / 3) * 4) +
                                               (s32) state->vtxBufs[i];
                 }
-#ifdef TARGET_3DS
             } while (cmd != NDO_END);
-#else
-            } while (cmd != G_ENDDL);
-#endif
         }
     }
 
@@ -1396,25 +1351,19 @@ void imgfx_mesh_anim_update(ImgFXState* state) {
 
     // find the current + next keyframe vertex data
     curKeyframe = heap_malloc(header->vtxCount * sizeof(ImgFXVtx));
-#ifdef TARGET_3DS
     if (curKeyframe == nullptr) {
         extern void pm_log(const char* fmt, ...); extern void pm_log_e(const char* fmt, ...); extern void pm_log_w(const char* fmt, ...); extern void pm_log_d(const char* fmt, ...);
         pm_log_e("imgfx anim alloc failed vtx %d type %d", header->vtxCount, state->ints.anim.type);
         return;
     }
-#endif
     romStart = (u8*)((s32)imgfx_data_ROM_START + (s32) header->keyframesOffset + curKeyIdx * header->vtxCount * sizeof(ImgFXVtx));
     dma_copy(romStart, romStart + header->vtxCount * sizeof(ImgFXVtx), curKeyframe);
-#ifdef TARGET_3DS
     imgfx_swap_keyframe(curKeyframe, header->vtxCount);
-#endif
     if (keyframeInterval > 1) {
         nextKeyframe = heap_malloc(header->vtxCount * sizeof(*nextKeyframe));
         romStart = (u8*)((s32)imgfx_data_ROM_START + (s32) header->keyframesOffset + nextKeyIdx * header->vtxCount * sizeof(ImgFXVtx));
         dma_copy(romStart, romStart + header->vtxCount * sizeof(ImgFXVtx), nextKeyframe);
-#ifdef TARGET_3DS
         imgfx_swap_keyframe(nextKeyframe, header->vtxCount);
-#endif
     }
 
     lerpAlpha = (f32) curSubframe / (f32) keyframeInterval;

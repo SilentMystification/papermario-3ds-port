@@ -8,12 +8,8 @@ s8 gBackroundWaveEnabled = false;
 s16 gBackroundTextureYOffset = 0;
 f32 gBackroundWavePhase = 0.0f;
 
-#ifdef TARGET_3DS
 // Palettes are big-endian in the ROM asset and the GBI reads them big-endian, so C code swaps on access.
 #define BG_PAL(x) ((u16)__builtin_bswap16((u16)(x)))
-#else
-#define BG_PAL(x) (x)
-#endif
 BSS PAL_BIN gBackgroundPalette[256];
 BSS f32 gBackroundLastScrollValue;
 BSS s32 D_801595A4[3];
@@ -36,7 +32,6 @@ void load_map_bg(char* optAssetName) {
 
         compressedData = load_asset_by_name(assetName, &assetSize);
         decode_yay0(compressedData, &gBackgroundImage);
-#ifdef TARGET_3DS
         {
             // The asset header holds big-endian N64 pointers relative to 0x80200000 (the address of gBackgroundImage).
             u32 raster = __builtin_bswap32(*(u32*)&gBackgroundImage.raster);
@@ -48,7 +43,6 @@ void load_map_bg(char* optAssetName) {
             gBackgroundImage.width = __builtin_bswap16(gBackgroundImage.width);
             gBackgroundImage.height = __builtin_bswap16(gBackgroundImage.height);
         }
-#endif
         general_heap_free(compressedData);
     }
 }
@@ -88,31 +82,21 @@ extern s32 pm_wide_cam(Camera* c);
  * ZOOM: with the wide camera the 296 x 200 view is zoomed by 6 / 5 about game (160, 20), so the 200 sky rows fill the 240 screen rows. bg_zoom is set once per sky draw.
  * The rectangles are made in the unzoomed frame and mapped when they are emitted. An edge maps as an exclusive edge (+4 quarter pixels), so neighbouring rectangles stay seamless. */
 static s32 bg_zoom;
-#ifdef TARGET_3DS
 /* DOORSKY: set while a fully shrouded sky (fogA 255: every palette entry is black) is drawn. Each sky rectangle becomes a
  * fill of the same pixels: the 296 x 200 CI8 sky with an all-black palette was a new full-size sky texture on the first map entry (xfer2 tex 313 -> 57 KB). */
 static s32 bg_fill;
 /* BG1/BG2 oracle plan 2, fix 2: floor division by 5 (C division rounds toward zero, which moved the negative zoomed edges). */
 static s32 fdiv5(s32 v) { return v >= 0 ? v / 5 : -((-v + 4) / 5); }
-#endif
 static void bg_emit(s32 xl, s32 yl, s32 xh, s32 yh, s32 tile, s32 s, s32 t, s32 dsdx, s32 dtdy) {
     if (bg_zoom) {
-#ifdef TARGET_3DS
         /* The inclusive last quarter pixel is the exclusive zoomed edge minus 1: minus 4 left a one pixel gap between a zoomed group and the next (the BG2 row). */
         xl = fdiv5((xl - 640) * 6) + 640;
         xh = fdiv5((xh + 4 - 640) * 6) + 640 - 1;
         yl = fdiv5((yl - 80) * 6);
         yh = fdiv5((yh + 4 - 80) * 6) - 1;
-#else
-        xl = (xl - 640) * 6 / 5 + 640;
-        xh = (xh + 4 - 640) * 6 / 5 + 640 - 4;
-        yl = (yl - 80) * 6 / 5;
-        yh = (yh + 4 - 80) * 6 / 5 - 4;
-#endif
         dsdx = dsdx * 5 / 6;
         dtdy = dtdy * 5 / 6;
     }
-#ifdef TARGET_3DS
     if (bg_fill) { /* DOORSKY: the pixels of a COPY texrect, first pixel at or after xl, last at or before xh (nd_rect.c COPY rule) */
         s32 fx0 = (xl + 3) >> 2, fy0 = (yl + 3) >> 2, fx1 = xh >> 2, fy1 = yh >> 2;
         if (fx1 >= fx0 && fy1 >= fy0) {
@@ -128,7 +112,6 @@ static void bg_emit(s32 xl, s32 yl, s32 xh, s32 yh, s32 tile, s32 s, s32 t, s32 
         if (bgl < 0) bgl = pm_debug_has("bgrect");
         if (bgl) pm_log_d("bgrect f%u xl %d yl %d xh %d yh %d s %d t %d dsdx %d dtdy %d zoom %d", pm_frame_count(), xl, yl, xh, yh, s, t, dsdx, dtdy, bg_zoom);
     }
-#endif
     gSPTextureRectangle(gMainGfxPos++, xl, yl, xh, yh, tile, s, t, dsdx, dtdy);
 }
 static void bg_texrect(s32 xl, s32 yl, s32 xh, s32 yh, s32 tile, s32 s, s32 t, s32 dsdx, s32 dtdy) {
@@ -145,7 +128,6 @@ static void bg_texrect(s32 xl, s32 yl, s32 xh, s32 yh, s32 tile, s32 s, s32 t, s
     }
 }
 
-#ifdef TARGET_3DS
 /* BG (port): rows row0..row0+rows-1 of the screen, sampled from the bound sky from source row t/32. */
 static void bg_sky_rows(s32 minX, s32 minY, s32 xOff, s32 maxX, s32 row0, s32 rows, s32 t) {
     s32 yl, yh;
@@ -157,7 +139,6 @@ static void bg_sky_rows(s32 minX, s32 minY, s32 xOff, s32 maxX, s32 row0, s32 ro
     bg_texrect(minX * 4, yl, (xOff + minX - 1) * 4, yh, G_TX_RENDERTILE, (maxX - xOff) * 32, t, 4096, 1024);
     bg_texrect((xOff + minX) * 4, yl, (maxX + minX - 1) * 4, yh, G_TX_RENDERTILE, 0, t, 4096, 1024);
 }
-#endif
 
 void appendGfx_background_texture(void) {
     Camera* cam = &gCameras[gCurrentCameraID];
@@ -167,9 +148,7 @@ void appendGfx_background_texture(void) {
     u8 r2, g2, b2;
     u16 blendedR, blendedG, blendedB;
     s32 i;
-#ifdef TARGET_3DS
     s32 bgMix = 0; /* BTLDIM: the shroud fade is mixed by the GPU (PM_RM_SHROUD) instead of a palette lerp */
-#endif
 
     f32 theta, sinTheta, cosTheta, scrollValue, f5, waveOffset;
 
@@ -247,7 +226,6 @@ void appendGfx_background_texture(void) {
         switch (*gBackgroundTintModePtr) {
             case ENV_TINT_NONE:
             case ENV_TINT_SHROUD:
-#ifdef TARGET_3DS
                 /* BTLDIM: a shroud fade (Shooting Star, Merlee) is mixed on the GPU over the source palette. The palette lerp
                  * rewrote 256 entries and forced a new CI8 decode, VRAM slot and copy per fade step (pm_tex.c load_miss).
                  * Here only the mix colour is set (4 GBI words below). The full black case (fogA 255) stays a palette fill. */
@@ -260,7 +238,6 @@ void appendGfx_background_texture(void) {
                     bg_fill = 1;
                     break;
                 }
-#endif
                 if (fogA == 255) {
                     for (i = 0; i < ARRAY_COUNT(gBackgroundPalette); i++) {
                         gBackgroundPalette[i] = BG_PAL(1);
@@ -333,31 +310,24 @@ void appendGfx_background_texture(void) {
     gDPSetTextureLUT(gMainGfxPos++, G_TT_RGBA16);
     gDPSetCombineMode(gMainGfxPos++, G_CC_DECALRGB, G_CC_DECALRGB);
     gDPSetRenderMode(gMainGfxPos++, G_RM_NOOP, G_RM_NOOP2);
-#ifdef TARGET_3DS
     if (bgMix) { /* BTLDIM: the mix stage gets P = shroud colour, A = fogA: P * A + M * (1 - A) per sky texel */
         gDPSetFogColor(gMainGfxPos++, fogR, fogG, fogB, fogA);
         gDPSetBlendColor(gMainGfxPos++, fogR, fogG, fogB, 255);
         gDPSetRenderMode(gMainGfxPos++, PM_RM_SHROUD, G_RM_NOOP2);
     }
-#endif
     gDPSetTextureFilter(gMainGfxPos++, G_TF_POINT);
     gDPPipeSync(gMainGfxPos++);
 
-#ifdef TARGET_3DS
     if (bg_fill) {
         gDPSetCycleType(gMainGfxPos++, G_CYC_FILL);
         gDPSetFillColor(gMainGfxPos++, PACK_FILL_COLOR(0, 0, 0, 1)); /* BG_PAL(1): the colour of every entry of the full black palette */
     } else if (!(gGameStatusPtr->backgroundFlags & BACKGROUND_FLAG_FOG) || bgMix) {
-#else
-    if (!(gGameStatusPtr->backgroundFlags & BACKGROUND_FLAG_FOG)) {
-#endif
         gDPLoadTLUT_pal256(gMainGfxPos++, gGameStatusPtr->backgroundPalette);
     } else {
         gDPLoadTLUT_pal256(gMainGfxPos++, gBackgroundPalette);
     }
 
     if (!gBackroundWaveEnabled) {
-#ifdef TARGET_3DS
         /* BG (port): no TMEM limit, so the whole sky is one bind. The screen rows come from source rows y0.. and then 0..y0-1. */
         {
             s32 h = gGameStatusPtr->backgroundMaxY;
@@ -386,44 +356,6 @@ void appendGfx_background_texture(void) {
                 gDPSetCycleType(gMainGfxPos++, G_CYC_COPY);
             }
         }
-#else
-        lineHeight = 2048 / gGameStatusPtr->backgroundMaxX;
-        numLines = gGameStatusPtr->backgroundMaxY / lineHeight;
-        extraHeight = gGameStatusPtr->backgroundMaxY % lineHeight;
-        for (i = 0; i < numLines; i++) {
-            texOffsetY = gBackroundTextureYOffset + lineHeight * i;
-            if (texOffsetY > gGameStatusPtr->backgroundMaxY) {
-                texOffsetY -= gGameStatusPtr->backgroundMaxY;
-            }
-            gDPLoadTextureTile(gMainGfxPos++, gGameStatusPtr->backgroundRaster + bgMaxX * texOffsetY,
-                               G_IM_FMT_CI, G_IM_SIZ_8b, bgMaxX, 6,
-                               0, 0, 295, 5, 0,
-                               G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
-
-            bg_texrect( bgMinX * 4, (lineHeight * i + bgMinY) * 4,
-                                                 (bgXOffset + bgMinX - 1) * 4, (lineHeight * i + lineHeight - 1 + bgMinY) * 4,
-                                                 G_TX_RENDERTILE, (bgMaxX - bgXOffset) * 32, 0, 4096, 1024);
-            bg_texrect( (bgXOffset + bgMinX) * 4, (lineHeight * i + bgMinY) * 4,
-                                                 (bgMaxX + bgMinX - 1) * 4, (lineHeight * i + lineHeight - 1 + bgMinY) * 4,
-                                                 G_TX_RENDERTILE, 0, 0, 4096, 1024);
-        }
-        if (extraHeight != 0) {
-            texOffsetY = gBackroundTextureYOffset + lineHeight * i;
-            if (texOffsetY > gGameStatusPtr->backgroundMaxY) {
-                texOffsetY -= gGameStatusPtr->backgroundMaxY;
-            }
-            gDPLoadTextureTile(gMainGfxPos++, gGameStatusPtr->backgroundRaster + bgMaxX * texOffsetY,
-                               G_IM_FMT_CI, G_IM_SIZ_8b, bgMaxX, extraHeight,
-                               0, 0, 295, extraHeight - 1, 0,
-                               G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
-            bg_texrect( bgMinX * 4, (lineHeight * i + bgMinY) * 4,
-                                                 (bgXOffset + bgMinX - 1) * 4, (bgMaxY - 1 + bgMinY) * 4,
-                                                 G_TX_RENDERTILE, (bgMaxX - bgXOffset) * 32, 0, 4096, 1024);
-            bg_texrect( (bgXOffset + bgMinX) * 4, (lineHeight * i + bgMinY) * 4,
-                                                 (bgMaxX + bgMinX - 1) * 4, (bgMaxY - 1 + bgMinY) * 4,
-                                                 G_TX_RENDERTILE, 0, 0, 4096, 1024);
-        }
-#endif
     } else {
         lineHeight = 6;
         numLines = gGameStatusPtr->backgroundMaxY / lineHeight;
@@ -467,9 +399,7 @@ void appendGfx_background_texture(void) {
                                                  G_TX_RENDERTILE, 0, 0, 4096, 1024);
         }
     }
-#ifdef TARGET_3DS
     if (bgMix) gDPSetRenderMode(gMainGfxPos++, G_RM_NOOP, G_RM_NOOP2); /* BTLDIM: back to the plain mode for the rest of the frame */
-#endif
 }
 
 void enable_background_wave(void) {
