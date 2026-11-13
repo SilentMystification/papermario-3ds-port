@@ -25,6 +25,11 @@ check refused "$tmp/refused_cr.txt"
 check none 3ds/tests/push/full_send.txt
 check none 3ds/tests/push/connect_only.txt
 
+# (g) PUSHSTALL: docker stats NetIO to tx bytes.
+for c in '0B / 0B=0' '1.45kB / 12.3MB=12300000' '648B / 1.2GB=1200000000' '3.5MB / 950kB=950000' '12kB / 512B=512'; do
+    got=$(sh 3ds/push_3ds.sh --netio "${c%=*}"); if [ "$got" = "${c##*=}" ]; then echo "ok   netio ${c%=*}"; else echo "FAIL netio ${c%=*}: $got"; fail=1; fi
+done
+
 # PUSHFIX cases (no console). PM_3DSLINK = a fake 3dslink script, PM_SRC3DSX = the dummy 3dsx above,
 # archive and push log in $tmp. Cases a, c, d pass -Seconds 5 / -t 1 / -IdleSeconds 5 so the live-log read ends fast.
 fake_ok="$tmp/fake_ok.sh"; fake_partial="$tmp/fake_partial.sh"

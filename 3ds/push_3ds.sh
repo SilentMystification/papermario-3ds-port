@@ -48,6 +48,12 @@ profname=""
 dry=0
 memok=0
 memflag=""
+# PUSHSTALL: netio_tx "<rx> / <tx>" prints the tx part of docker stats NetIO in bytes (decimal units B, kB, MB, GB, TB).
+netio_tx() {
+    printf '%s\n' "$1" | awk -F'/' '{ v = $2; gsub(/ /, "", v); n = v + 0; u = v; sub(/^[0-9.]+/, "", u); m = 1
+        if (u == "kB") m = 1e3; else if (u == "MB") m = 1e6; else if (u == "GB") m = 1e9; else if (u == "TB") m = 1e12
+        printf "%.0f\n", n * m }'
+}
 while :; do
     case "$1" in
         -t) secs=$2; shift 2 ;;
@@ -61,6 +67,7 @@ while :; do
         --dry) dry=1; shift ;;
         --mem-ok) memok=1; shift ;;
         --idle) idle=$2; shift 2 ;;
+        --netio) netio_tx "$2"; exit 0 ;;
         *) break ;;
     esac
 done
@@ -420,6 +427,7 @@ while [ "$i" -le "$attempts" ]; do
     sent_for=0
     nogrow=0
     warned=0
+    last_tx=0
     while kill -0 "$dpid" 2>/dev/null; do
         sleep 1
         cur_size=$(wc -c <"$outfile" 2>/dev/null || echo 0)
@@ -434,10 +442,15 @@ while [ "$i" -le "$attempts" ]; do
             nogrow=$((nogrow + 1))
         fi
         [ "$started" -eq 1 ] && sent_for=$((sent_for + 1))
+        # PUSHSTALL: 3dslink prints nothing while it sends. In docker the container's sent bytes are the progress (every 5 s).
+        if [ "$usedocker" -eq 1 ] && [ "$started" -eq 1 ] && [ $((sent_for % 5)) -eq 0 ]; then
+            tx=$(netio_tx "$(docker stats --no-stream --format '{{.NetIO}}' "$cname" 2>/dev/null || true)")
+            if [ -n "$tx" ] && [ "$tx" -gt "$last_tx" ]; then last_tx=$tx; nogrow=0; fi
+        fi
         # PUSHFIX: the console answered but the output has not grown for 30 s: say so once. Nothing is killed here.
         if [ "$started" -eq 1 ] && [ "$nogrow" -ge 30 ] && [ "$warned" -eq 0 ]; then
             warned=1
-            echo "attempt $i: no send progress for 30 s (last line: $(tr '\r' '\n' <"$outfile" | tail -n 1))"
+            echo "attempt $i: no send progress for 30 s (no output, no network bytes, last line: $(tr '\r' '\n' <"$outfile" | tail -n 1))"
         fi
         # An owner gone: no new attempt, and a silent attempt is killed (a sent one runs on to its own end, the no-progress kill or the cap).
         if [ "$ownerdead" -eq 0 ] && owner_gone; then
