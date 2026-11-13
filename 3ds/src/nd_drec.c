@@ -30,7 +30,7 @@ void nd_drec_write(FILE* f, const NdDrec* r) {
         }
     }
     fprintf(f, "v bytes %u h %016llx\n", (unsigned)r->vtx.n,
-            (unsigned long long)(nd_drec_fnv(r->vtx.p, r->vtx.n) ^ (r->seq == 0 ? 1ull : 0ull)));
+            (unsigned long long)nd_drec_fnv(r->vtx.p, r->vtx.n));
     fprintf(f, "i bytes %u h %016llx\n", (unsigned)r->idx.n,
             (unsigned long long)nd_drec_fnv(r->idx.p, r->idx.n));
     for (k = 0; k < r->nmtx; k++) {
