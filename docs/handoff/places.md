@@ -11,4 +11,7 @@ A shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json, bench_def
 | FSELLAG2 | Sonnet (needs the user's yes) | 3ds/src/pm_gpu.c pm_gpu_off_begin signature and clear, its callers :2656 :2667 :2685; pm_gpu.h; nd_target.c off_screen_check | waits for FSELLAG1 |
 | BOTHUD | Haiku | 3ds/src/pm_log.c sink_main wait line (:888); 3ds/src/pm_gpu_ui.c pm_gpu_hud_flush counter; 3ds/src/pm_main.c probe next to shotbottom (:813-818); new azt.d/bench.d BOTHUD.json | ready |
 | FRAMEHASH3 | Haiku | 3ds/src/pm_gpu.c one forward declaration above pm_gpu_begin_wait, the kc_rec line in pm_gpu_begin_wait (:2913), a new cold block above pm_gpu_end_w, one line before `kc_build();` (:3129); new azt.d/bench.d FRAMEHASH3.json | ready |
+| CODEMODFX1 | Haiku | src/effects/water_splash.c, src/effects/music_note.c (value call lines, one include line each) | ready |
+| N64DEL2 | Haiku | 3ds/tools/unifdef3ds.py condition regex, 3ds/tools/ppcmp.sh gcc line; TARGET_3DS lines of include, src/world, src/entity, src/battle, src/pause, src/filemenu, src/audio, src/evt, src/os | ready |
+| N64DEL3 | Haiku | TARGET_3DS lines of src/*.c (root only) | waits for N64DEL2 |
 | FPS60VAL | Sonnet | 3ds/src/pm_gpu.c end of kc_build, end of pm_gpu_key_show; new 3ds/tools/kcval.py | not started (user decides) |
