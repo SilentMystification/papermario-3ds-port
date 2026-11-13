@@ -226,7 +226,9 @@ if ($Verb -eq 'push') {
         # PUSHFIX second try: Start-Process passes the caller's inheritable handles to the child (CreateProcess bInheritHandles),
         # so the caller's stdout pipe stayed open until the child ended (test case d: 10 s). Win32_Process.Create inherits no handles;
         # cmd does the redirect into the same log and err files. ShowWindow 0: no console window.
-        $cmdLine = 'powershell.exe ' + ($childArgs -join ' ') + ' > "' + $log + '" 2> "' + $log + '.err"'
+        # PUSHEND2: Win32_Process.Create gives the child the default environment: the PM_* and N3DS_IP values of this call go through cmd's set.
+        $envSet = ''; foreach ($e in @(Get-ChildItem Env: | Where-Object { $_.Name -like 'PM_*' -or $_.Name -eq 'N3DS_IP' })) { $envSet += 'set "' + $e.Name + '=' + $e.Value + '" && ' }
+        $cmdLine = $envSet + 'powershell.exe ' + ($childArgs -join ' ') + ' > "' + $log + '" 2> "' + $log + '.err"'
         $startup = New-CimInstance -ClassName Win32_ProcessStartup -Property @{ ShowWindow = [uint16]0 } -ClientOnly
         $created = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = "cmd.exe /d /c `"$cmdLine`""; ProcessStartupInformation = $startup }
         if ($created.ReturnValue -ne 0) { Write-Output "push ${Target}: could not start the detached push (Win32_Process.Create $($created.ReturnValue))"; exit 1 }
