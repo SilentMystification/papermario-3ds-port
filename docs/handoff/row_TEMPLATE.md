@@ -13,6 +13,8 @@ What the user did and saw, in the user's words. The fault is fact (CLAUDE.md 1).
 
 ## Touch only
 Files: <paths>. Symbols: <symbol> in <file>. The oracle checks that no other running row edits the same places (merge conflicts).
+New names: <every new bench and scenario name, or "none">. Host link: <the host test that links a touched 3ds/src file, or "none">.
+(rowlint.py reads these two lines.)
 
 ## Exact edits
 1. <file, function, the edit>
@@ -20,25 +22,32 @@ Files: <paths>. Symbols: <symbol> in <file>. The oracle checks that no other run
 ## Gate (CLAUDE.md 2: nd_host and byte compare only, no picture)
 - `PM_ROW=<id> PM_LANE=<id> sh 3ds/build.sh > build3ds/out/build.txt 2>&1`, memcheck OK.
 - `python 3ds/tools/bench.py run nd_host --row <id> --why "<text>"`: PASS.
-- `python 3ds/tools/bench.py cmp <bench> --row <id> --commit <merge-base>` after a run of <bench>: byte-equal (at most 2 scenes).
-- A codemod or conversion row of one file uses the drec gate (`drec=<first>:2` in frames where the file draws, drec.txt
-  byte-equal), not the pixel gate. A pixel gate is live only if the file's pixels are in the shots, and no agent may count
-  pixels (CLAUDE.md 2). drec records every draw of the window from game memory, seen or not (CODEMODFX10: 3 seeds, 3 ELFs,
-  6/6 shots equal while the effect drew 9808 triangles). The draw proof stays: a log line of the base run shows the file draws.
-- The oracle picks the seed from the code read, before any run, never by trial. The row first proves that the scene draws the
-  file in the gate frames, from a line the base run writes anyway (fxtest rows: `fxtest: live 1` and the fxcenb triangle count
-  above the base window). The seed is then a numeric input of the first transform the file builds (a translate or scale
-  argument of the gu*F call before its first matrix call, + 20.0f): every draw of the file moves. A G_MTX_LOAD <-> G_MTX_MUL
-  flip is dead on the first matrix of an effect (the stack top is the identity there: CODEMODFX10 seed 2). A colour seed only
-  when the combine of the list drawn next names the channel and the blender writes it. Never nd_val_seg (the lists hold host
-  addresses). The coder proves the rebuild by the ELF sha1 (an uncommitted edit keeps the build number).
-- A new gate has a seeded fault first. The seed changes a value (a constant, a length, a mask). It never deletes a statement or a
-  call: with -Werror an unused variable, parameter or function then stops the build before the gate runs. State the exact FAIL set.
-- A row that adds a debug switch or a new scene: its merge-base cannot run the scene. Base the new scene at the row's own first
-  real-code commit, prove the seed against that base, and prove "no draw changes" with an old scene against the merge-base.
+- A codemod or conversion row uses the drec gate (`drec=<first>:<count>[:<step>]` in frames where each file draws, drec.txt
+  byte-equal), not the pixel gate: no agent may count pixels, and drec records every draw of the window, seen or not
+  (CODEMODFX10). The draw proof: a line the base run writes anyway (fxtest: `fxtest: live 1` and `fxcenb <id> tri` above the
+  `fxcenb -1 tri` base window).
+- The seed (picked from the code read before any run): + 20.0f on the y argument of the first guTranslateF or guPositionF of the
+  file's draw function with no branch above it (every draw of the file moves; drec records the matrix uniforms). Not a
+  G_MTX_LOAD/MUL flip on a first matrix (the stack top is the identity), not a colour the combine does not read, never
+  nd_val_seg (the lists hold host addresses). The coder proves the rebuild by the ELF sha1 (the build number does not change).
+- A new gate has a seeded fault first. The seed changes a value; it never deletes a statement or a call (-Werror).
+- A row that adds a debug switch or a new scene bases that scene at its own first commit and proves "no draw change" with an old
+  scene against the merge-base. The first row of a new kind is a pilot: the oracle reads its result before it writes copies.
+
+## Row text faults the coder fixes (CLAUDE.md 5; note the fix in the commit message)
+- Dead seed (the ELF sha1 changed, the gate shows no difference): take the next transform of the same function by the seed rule
+  above (the next unguarded guTranslateF, guPositionF or guScaleF; for guScaleF multiply its y argument by 2.0f). If the
+  function has none: the first matrix call pushed under an earlier push of the same function, G_MTX_MUL <-> G_MTX_LOAD. If none:
+  stop and hand back.
+- Name clash (bench.py: "defined in both"): rename the row's new name to `<name>_<id in lower case>` in its azt.d and bench.d
+  files, then base the renamed scene.
+- Scene does not draw the file (the draw proof fails): an effect file `<n>.c` uses fxtest id = the index of `E(<n>,` in FXLIST
+  (3ds/src/pm_fxtest.c, from 0) in a copy of fxpic_89. A map file of src/world/area_<a>/<map>/ uses `warp=<map>:0`. Else stop.
+- A line number that moved: find the quoted text in the same function and use its line.
 
 ## Stop
-A failed gate, an edit that does not fit the code, or a test-tool fault: commit, then hand back the exact output (CLAUDE.md 4-5).
+A tool fault, a difference of the real edit (drec or bytes), a counter that does not fall, or an edit that does not fit the code:
+commit, then hand back the exact output (CLAUDE.md 4-5).
 
 ## At the end
 Delete this row file in the commit that completes the row. Hand back: the ready hash, the gate results, the memcheck line.

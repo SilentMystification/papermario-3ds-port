@@ -1,5 +1,8 @@
 # Row CODEMODW3: codemod run on src/world/area_flo/flo_10/waterfx.c (7 value calls to native records), new scene spot_flo10_drec
 
+PARKED (ORACLE8, 2026-11-13): same call shape as CODEMODW1 (a value call in a model custom gfx builder); see row_CODEMODW1.md.
+
+
 Missing fact: no stored scene is known to draw this file. This row adds spot_flo10_drec. If the seed shows no difference, the drawing
 is not drawn in frames 200-201: stop and hand back. The oracle then gives a position or a story value.
 (Model: Haiku. 60 lines or fewer. Read only this file, CLAUDE.md and what it names. Recipe of CODEMODW1.)

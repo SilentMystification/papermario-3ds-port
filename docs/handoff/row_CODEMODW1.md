@@ -1,5 +1,17 @@
 # Row CODEMODW1: codemod run on src/world/area_mac/mac_00/water_gfx.c (3 value calls to native records), the first world file
 
+PARKED (ORACLE8, 2026-11-13). The real edit changed the picture (fc6cbc44f: 4/4 shots differ in one band). No cause is read yet.
+Trace (code read): the builder N(gfx_build_water) runs inside build_custom_gfx (model.c:4319-4329), between nd_rec_mark and nd_rec_end
+(nd_cgfx_one, model.c:4309-4318). The range replays at the model draw through nd_range_run (nd_walk.c:608, nd_stream_run). Before:
+gDPSetPrimColor went through the redirect (rec_op_t, nd_rec.c:351: the state shadow sh_drop, then st_put into the open NDC_STATE
+run). After: nd_val_prim writes one NDC_NAPI record (nd_rec.c:269). rec_take closes the open state run and calls sh_all, which
+resets the shadow (nd_rec.c:166-168). The walker side runs the same setter (nd_set_prim, nd_set.c:74, with sync_combine). The
+removed gDPPipeSync were dropped by the redirect before too (nd_rec.c:371). So the difference is in how the range replays a
+NAPI record inside an NDC_STATE sequence, or in the shadow reset. The call shape: a value call inside a model custom gfx builder
+(SetCustomGfxBuilders). W2, W3 and W4 have the same shape, so they are parked too. Effect files (render tasks) do not have it:
+FX1, FX3 and FX7 kept byte or drec equality with the real edit. The orchestrator asks the user before more work on this shape.
+
+
 Correction 1 (ORACLE8, 2026-11-13): spot_mac00_det exists (azt_scenarios.json:11278, an INTERIOR scene at -135 0 85; it is not
 known to show the water). The row scene is renamed spot_mac00w_drec. On branch CODEMODW1 make one new commit that renames the name in
 azt.d/CODEMODW1.json and bench.d/CODEMODW1.json (no amend). Base spot_mac00w_drec at the merge-base (no new switch). Missing fact:
