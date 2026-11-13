@@ -15,8 +15,8 @@ through nd_walk_state, no pso apply, no walker handover.)
 Start: `sh 3ds/tools/wt_new.sh CONV2D2`. PM_ROW=CONV2D2 PM_LANE=CONV2D2 on every call.
 ## Touch only (places)
 3ds/include/nd_gtab.h (NdNIdx, 2 prototypes), 3ds/tools/nd_gfx_conv.c (v2_convert_all: the device index after the tables),
-3ds/src/nd_gtab.c (nd_ntab_find and nd_ntab_run after nd_gtab_find; gtr_cen one line), 3ds/src/nd_walk.c (nd_gtab_run :601
-only), new 3ds/tools/azt.d/CONV2D2.json and 3ds/tools/bench.d/CONV2D2.json.
+3ds/src/nd_gtab.c (nd_ntab_find inside the ND_SCOMP_HOST guard; gtr_cen one line), 3ds/src/nd_walk.c (nd_ntab_run before
+nd_gtab_run, :500 and :601), new 3ds/tools/azt.d/CONV2D2.json and 3ds/tools/bench.d/CONV2D2.json.
 ## Exact edits
 1. Commit 1 holds only the scene. azt.d/CONV2D2.json fxpic_89_drec is the fxpic_89 scenario of azt_scenarios.json. Its `debug` is
    `warp=mac_01:0 pos=0:0:200 fxtest=89 loglevel=debug det drec=412:2`. Its until is `drec f413 draws [1-9]\d* bytes \d+`, and
@@ -27,8 +27,13 @@ only), new 3ds/tools/azt.d/CONV2D2.json and 3ds/tools/bench.d/CONV2D2.json.
    (comments: core 0).
 3. nd_gfx_conv.c v2_convert_all, after the loop that prints the tables, prints to stdout:
    `NdNIdx ndn_dev_idx[<n or 1>] = { { (const void*)NAME, &ndn_NAME }, ... };` and `const unsigned ndn_dev_n = <n>u;`.
-4. nd_gtab.c after nd_gtab_find: nd_ntab_find, a copy of gt_sort and nd_gtab_find over ndn_dev_idx and ndn_dev_n (own sorted
-   flag). Then `void nd_ntab_run(const NdNTab* t) { const NdNOp* o = t->ops; if (o->op == NDN_UNIT) nd_walk_state((const uint32_t*)o->p, o->b); }`.
+4. Correction 1 (ORACLE8, 2026-11-13; resume after 3c8996af3, bases stored): the host links nd_gtab.c with -DND_SCOMP_HOST
+   and without nd_walk.c (nd_host_test.sh:73, host.d/conv2c.sh:8). So nothing new goes into the host part of nd_gtab.c.
+   a. nd_gtab.c: put nd_ntab_find (a copy of gt_sort and nd_gtab_find over ndn_dev_idx and ndn_dev_n, with its own sorted flag)
+      inside the `#ifndef ND_SCOMP_HOST` block (from :29), after its #include lines. Only the device calls it (nd_gtab_run, ENTRYCAP).
+   b. nd_walk.c: put `void nd_ntab_run(const NdNTab* t) { const NdNOp* o = t->ops; if (o->op == NDN_UNIT)
+      nd_walk_state((const uint32_t*)o->p, o->b); }` before nd_gtab_run (:568). nd_walk.c includes nd_gtab.h (:19) and defines
+      nd_walk_state. No host stub is needed.
 5. nd_walk.c :601: `{ const NdNTab* nt = nd_ntab_find(t->list); if (nt) { nd_gtr_ntab++; nd_ntab_run(nt); } else gt_ops(t); }`.
    Add `nd_gtr_ntab` to the `unsigned nd_gtr_ent, ...` line (:500). gtr_cen: one more line,
    `pm_log_evt("ntabrun f%u runs %u", f, nd_gtr_ntab - <its previous value>)`, under the same condition as the gtabrun line.
