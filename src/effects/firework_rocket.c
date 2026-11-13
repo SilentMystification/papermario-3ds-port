@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
 
 void firework_rocket_init(EffectInstance* effect);
 void firework_rocket_render(EffectInstance* effect);
@@ -253,8 +254,7 @@ void firework_rocket_appendGfx(void* effect) {
         firework_rocket_blur_alpha = minBlurAlpha;
     }
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
     mtx_0_0 = camera->mtxPerspective[0][0];
     mtx_0_1 = camera->mtxPerspective[0][1];
@@ -278,8 +278,8 @@ void firework_rocket_appendGfx(void* effect) {
     centerY = data->pos.y;
     centerZ = data->pos.z;
     radius = data->radius;
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, data->r, data->g, data->b, minBlurAlpha);
-    gDPSetEnvColor(gMainGfxPos++, data->r, data->g, data->b, 0);
+    nd_val_prim(0, 0, data->r, data->g, data->b, minBlurAlpha);
+    nd_val_env(data->r, data->g, data->b, 0);
 
     if (isExploded == true) {
         sparkDir = D_E010AF68[variation].sparks;

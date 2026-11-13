@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "pm_interp_fi.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09000E08_32DCC8[];
 
@@ -150,8 +152,7 @@ void flower_splash_appendGfx(void* effect) {
     FlowerFXData* data = effectTemp->data.flowerSplash;
     s32 i;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(effectTemp->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(effectTemp->shared->graphics));
 
     for (i = 0; i < effectTemp->numParts; i++, data++) {
         if (data->alive) {
@@ -159,12 +160,10 @@ void flower_splash_appendGfx(void* effect) {
 
             gDisplayContext->matrixStack[gMatrixListPos] = data->transformMtx;
 
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, 112, 96, 24, data->primAlpha);
-            gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-                        G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+            nd_val_prim(0, 0, 112, 96, 24, data->primAlpha);
+            nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
             gSPDisplayList(gMainGfxPos++, dlist);
-            gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+            nd_xf_pop(G_MTX_MODELVIEW);
         }
     }
-    gDPPipeSync(gMainGfxPos++);
 }

@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09000DA0_33C970[];
 extern Gfx D_09000E28_33C9F8[];
@@ -172,8 +174,7 @@ void gather_energy_pink_appendGfx(void* effect) {
     s32 idx;
     s32 i;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
     nd_rec_dl(dlist);
 
     guTranslateF(sp20, part->posB.x, part->posB.y, part->posB.z);
@@ -183,7 +184,7 @@ void gather_energy_pink_appendGfx(void* effect) {
     guMtxCatF(sp60, sp20, sp20);
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
 
     switch (unk_00) {
         case 1:
@@ -196,7 +197,7 @@ void gather_energy_pink_appendGfx(void* effect) {
 
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
     idx = part->unk_2C * 3;
     alpha = part->unk_24;
@@ -210,20 +211,19 @@ void gather_energy_pink_appendGfx(void* effect) {
         idx += 30;
         idx %= 24;
 
-        gDPSetEnvColor(gMainGfxPos++, 0, 0, 0, alpha / 2);
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, D_E0026A00[idx], 0, D_E0026A00[idx + 2], alpha);
+        nd_val_env(0, 0, 0, alpha / 2);
+        nd_val_prim(0, 0, D_E0026A00[idx], 0, D_E0026A00[idx + 2], alpha);
 
         tempX = part->unk_30;
         tempY = part->unk_40;
         tempX2 = part->unk_38;
         tempY2 = part->unk_48;
 
-        gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, tempX, tempY, tempX + 256, tempY + 256);
-        gDPSetTileSize(gMainGfxPos++, 1, tempX2, tempY2, tempX2 + 256, tempY2 + 256);
+        nd_val_tile_size(G_TX_RENDERTILE, tempX, tempY, tempX + 256, tempY + 256);
+        nd_val_tile_size(1, tempX2, tempY2, tempX2 + 256, tempY2 + 256);
         nd_rec_dl(dlist2);
     }
 
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->camPerspMatrix[gCurrentCameraID], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
-    gDPPipeSync(gMainGfxPos++);
+    nd_xf_pop(G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->camPerspMatrix[gCurrentCameraID], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
 }

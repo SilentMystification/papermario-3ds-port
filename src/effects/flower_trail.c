@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "pm_interp_fi.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09000E20_32DCE0[];
 extern Gfx D_09000E38_32DCF8[];
@@ -167,8 +169,7 @@ void flower_trail_appendGfx(void* argEffect) {
     Gfx* dlist;
     s32 i;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(effect->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(effect->shared->graphics));
 
     for (i = 0; i < effect->numParts; i++, part++) {
         if (part->alive) {
@@ -180,13 +181,10 @@ void flower_trail_appendGfx(void* argEffect) {
 
             gDisplayContext->matrixStack[gMatrixListPos] = part->transformMtx;
 
-            gDPPipeSync(gMainGfxPos++);
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, 112, 96, 24, part->primAlpha);
-            gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-                        G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+            nd_val_prim(0, 0, 112, 96, 24, part->primAlpha);
+            nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
             gSPDisplayList(gMainGfxPos++, dlist);
-            gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+            nd_xf_pop(G_MTX_MODELVIEW);
         }
     }
-    gDPPipeSync(gMainGfxPos++);
 }

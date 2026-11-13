@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern IMG_BIN D_09000000_345B40[][0x1000];
 extern IMG_BIN D_09004000_349B40[][0x1000];
@@ -117,16 +119,15 @@ void got_item_outline_appendGfx(void* effect) {
     s32 i;
 
     if (scale != 0.0f) {
-        gDPPipeSync(gMainGfxPos++);
-        gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+        nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
         nd_rec_dl(D_09008100_34DC40);
 
         if (type == 0) {
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 255, data->alpha);
-            gDPSetEnvColor(gMainGfxPos++, 0, 0, 0, 255);
+            nd_val_prim(0, 0, 255, 255, 255, data->alpha);
+            nd_val_env(0, 0, 0, 255);
         } else {
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 255, data->alpha);
-            gDPSetEnvColor(gMainGfxPos++, 255, 255, 0, 255);
+            nd_val_prim(0, 0, 255, 255, 255, data->alpha);
+            nd_val_env(255, 255, 0, 255);
         }
 
         guTranslateF(mtxTransform, data->pos.x, data->pos.y, data->pos.z);
@@ -141,7 +142,7 @@ void got_item_outline_appendGfx(void* effect) {
         guMtxCatF(mtxTemp, mtxTransform, mtxTransform);
         guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
         for (i = 0; i < 4; i++) {
             IMG_PTR img;
@@ -158,15 +159,13 @@ void got_item_outline_appendGfx(void* effect) {
                        G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
             gDPLoadSync(gMainGfxPos++);
             gDPLoadTile(gMainGfxPos++, G_TX_LOADTILE, 0, 0, 508, 124);
-            gDPPipeSync(gMainGfxPos++);
             gDPSetTile(gMainGfxPos++, G_IM_FMT_IA, G_IM_SIZ_8b, 16, 0, G_TX_RENDERTILE, 0,
                        G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD,
                        G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
-            gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, 0, 0, 508, 124);
+            nd_val_tile_size(G_TX_RENDERTILE, 0, 0, 508, 124);
             nd_rec_dl(D_E0036630[i]);
         }
 
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-        gDPPipeSync(gMainGfxPos++);
+        nd_xf_pop(G_MTX_MODELVIEW);
     }
 }
