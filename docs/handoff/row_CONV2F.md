@@ -36,7 +36,7 @@ at :223), src/effects/water_splash.c:189.
    `python 3ds/tools/codemod.py --ntab build3ds/out/ntab_tables.txt src/effects/water_splash.c`.
 6. Commit: `CONV2F: nd_draw_list(list, ND_SELF) for self-contained v2 tables, codemod --ntab, pilot water_splash.c`.
 ## Gate (expected values)
-1. build3ds/out/ntab_tables.txt has 923 lines, and D_09000100_3BCB90 is one of them. Build, memcheck OK. nd_host PASS.
+1. build3ds/out/ntab_tables.txt has 922 lines, and D_09000100_3BCB90 is one of them. Build, memcheck OK. nd_host PASS.
 2. `codemod.py --dry --ntab build3ds/out/ntab_tables.txt src/effects/water_splash.c` before edit 5:
    `value 0 keep 0 state 3 dl 2` and one keep line (:222 no-entry). After: `dl 1`. listcen --group src/effects: recdl of
    water_splash.c 2 -> 1.
@@ -45,5 +45,5 @@ at :223), src/effects/water_splash.c:189.
    `nd_draw_list(D_09000100_3BCB90 + 1, ND_SELF)`. The cmp must differ.
 4. Budget 8 Azahar starts. Counter: listcen recdl -1 (water_splash.c).
 ## Stop and end
-A table count other than 923, a codemod count other than the gate, a cmp difference with the real edit, a seed with no
+A table count other than 922, a codemod count other than the gate, a cmp difference with the real edit, a seed with no
 difference, or a tool fault: stop, commit, hand back the exact output (CLAUDE.md 4-5). Delete this row file at the end.

@@ -120,8 +120,8 @@ Phase H (harness and scripts):
 | HOSTCORE1 | Haiku | none | new 3ds/include/nd_drec.h, 3ds/tools/nd_drec.c: the draw record format (fields given by the oracle: pso output, bind content, transform rows, vertex and index bytes) as text, a writer, a host unit test with a seeded fault |
 | HOSTCORE2 | Sonnet | HOSTCORE1 | the drec switch: one NdDrec per draw at nd_native_submit on the device (every draw passes it), drec.txt in the shots folder, bench cmp of drec.txt. Reason: the record content behind physical addresses is a design choice in shared emit code. (Correction 2026-11-12: a host build of core 0 needed 335 undefined symbols.) |
 | HOSTCORE3 | Haiku | HOSTCORE2 | the capture scenes per GOLD group (fxtest per effect id, spot and menu scenes) with a drec window, per-row azt.d and bench.d files |
-| GMHARN | Haiku | HOSTCORE3, COVMAP | the list of the call sites of each GOLD group that its scenes reach (COVMAP counters), printed per file |
-| GMCOV | Haiku | GMHARN | the coverage gate: a GOLD group passes when its scenes reach at least 90 % of its call sites, else the row names the sites |
+| GMHARN | Haiku | COVMAP2 | gold.py <row>: builds the fncov lane, runs the row's fncov benches, covsites.py over cov.d/<row>.txt, verdict `gold <row> sites H/T pass` at 90 % (GMCOV merged into it, 2026-11-13) |
+| GMCOV | - | - | merged into GMHARN (gold.py verdict), no own row |
 | FRAMEHASH1 | Haiku | none | new 3ds/src/nd_fhash.c (pure C, device and host): PICA header decode, FNV-1a of (register, mask, value), address registers masked (register table given by the oracle), host test with a seeded fault |
 | FRAMEHASH2 | Haiku | FRAMEHASH1 | nd_fhash.c: the content feed (vertex range bytes per draw, index bytes, level 0 texels, target role, GX entry kind and size, formulas given by the oracle), host test |
 | FRAMEHASH3 | Haiku | FRAMEHASH2, FPS60FL | pm_gpu.c: the fhash switch, `|| fh_on` on the kc_rec line (begin_wait), the fh_frame call at the frame end, the fhash entry (pm_log_evt) |
@@ -131,9 +131,10 @@ Phase H (harness and scripts):
 | PICAVAL2 | Haiku | PICAVAL1 | new 3ds/tools/picaval.c rules R1-R5 (rules given by the oracle, among them: every list with a draw ends with the framebuffer flush, the FPS60FL cause), one seeded-fault fixture per rule |
 | PICAVAL3 | Haiku | PICAVAL2 | picaval.c rules R6-R10 (attribute count against shader input count, draw mode around config writes, index and attribute ranges inside linear memory or VRAM, list end, GX entry targets), fixtures |
 | PICAVAL4 | Haiku | PICAVAL3, FRAMEHASH5 | bench.py: a hash bench with `fhdump` runs picaval on the dump and prints `picaval findings <n>` |
-| COVMAP | Haiku | FRAMEHASH5 | G7 for the large-group files only: per-site counters in the scenes |
-| N64DEL1, N64DEL2, N64DEL3 | Haiku | LISTCEN2 (N64DEL2/3 also N64DEL1's tool) | C3, C4 to 0 |
-Phase G (golden capture from the current code. Haiku. Blocker GMCOV. Each row adds scenes until COVMAP shows at least 90 % of its
+| COVMAP, COVMAP2 | Haiku | none | site coverage from the fncov census lane: game files listed in tools/cov.d/<row>.txt get -finstrument-functions, covsites.py maps calls per function to its sites (COVMAP); `fncov=<first>:<count>` counts a window (COVMAP2). No game source edit (2026-11-13) |
+| N64DEL1, N64DEL2, N64DEL3, N64DEL4 | Haiku | LISTCEN2 (N64DEL2-4 also N64DEL1's tool) | C3, C4 to 0 (N64DEL1 merged; N64DEL2: 272/280 -> 165/163; N64DEL3: -> 0/0); N64DEL4: the 7 skip blocks and 2 #elif chains by hand, TARGET_3DS directives of include/ and src/ to 0 |
+Phase G (golden capture from the current code. Haiku. Blocker GMHARN; pilots GOLDFX1 (fright_jar), GOLDENT1 (Tweester), GOLDWLD0
+(crystal ball, waits for a user scene), GOLDFX2 (water_splash, music_note, star). Budget: 3 effect files per row. Each row adds scenes until COVMAP shows at least 90 % of its
 call sites run, then stores the drec base of each scene with `bench.py base` (two runs equal)): GOLD-FX1..GOLD-FX16 (src/effects,
 8 files each), GOLD-ENT1..2 (src/entity setupGfx, 17 files), GOLD-WLD1..5 (src/world, 45 files), GOLD-OVL, GOLD-BG, GOLD-TTL,
 GOLD-BOX, GOLD-MISC1..2, GOLD-PAUSE, GOLD-FMENU, GOLD-BTL. 32 rows. They run in parallel with phase B and use idle slots.
@@ -152,11 +153,11 @@ Phase B (design cores and their mechanical parts):
 | CONV2A | Haiku | NPSO1 | 3ds/include/nd_gtab.h: v2 types NdNOp (NDN_PSO, NDN_TEX, NDN_XF, NDN_COL, NDN_DRAW, NDN_CALL) next to v1, text given by the oracle |
 | CONV2B | Haiku | none | new 3ds/tools/nd_vslot.c: the N64 vertex slot resolver (VTX loads into 32 slots, TRI names slots, output absolute index triples), host unit test with fixtures |
 | CONV2C | Sonnet | CONV2A, CONV2B, NPSO2 | 3ds/tools/nd_gfx_conv.c v2 output: (list, entry) pairs from the nd_draw_list call scan and the static call graph, state units to pso via nd_pso_build, generator errors that name the call site. Reason: one algorithm over every static list, and its error cases are not known per list before it runs |
-| CONV2D | Haiku | CONV2A | new 3ds/src/nd_ntab.c: nd_ntab_run, one switch from NdNOp to the native emit calls (mapping given by the oracle) |
+| CONV2D, CONV2D2 | Haiku | CONV2C (merged) | CONV2D: each v2 table carries the depth-0 typed units of its list (NDN_UNIT), host unit-stream compare; CONV2D2: nd_ntab_run runs them with nd_walk_state in nd_gtab_run, nd_ntab_find, drec gate. No pso apply yet (the desc is not a full state); the native emit from NdPsoOut is a later row (2026-11-13) |
 | CONV2E | Haiku | CONV2C | 3ds/tools/nd_gtab_test.c v2: per draw compare of the v1 host model against the v2 table, `ntab tables <n> draws <d> bad <b>` |
-| CONV2F | Haiku | CONV2C, CONV2D | nd_rec.c nd_draw_list recorder, nd_gtab_find v2 key (list, entry), nd_part_draw on v2 |
-| CONV2WIN1, CONV2MTX, CONV2MIX | Haiku | CONV2C | the 121 lists CONV2C could not convert: the tile 1 window in the pure part (77), Mtx symbols (21), one generated vertex array for mixed-array triangles (16); 7 others (SCISSOR, RECT, MOVEWORD, FILLCOLOR, MOVEMEM and lights, 2 RARE) get an oracle read |
-| ENTRYCAP | Haiku | CONV2D, NPSO4 | a device switch logs, at each run of an inheriting list's table, the walker's NdPsoDesc (nd_walker_desc) with the list and the call site |
+| CONV2F | Haiku | CONV2D2 | nd_draw_list(list, ND_SELF) for self-contained v2 tables, codemod --ntab, pilot water_splash.c. The particle run keeps v1 (nd_part_draw) until the native emit row |
+| CONV2WIN1, CONV2MTX, CONV2MIX | Haiku | CONV2C | WIN1 (77 lists) and MTX (21) merged; MIX closed 2026-11-13: its 16 lists stay on v1 as exceptions until the native emit row (a Vtx symbol merge). Tables now 922 (HeartBlockContent_LoadPalette has an image outside the symbol map; state-only, no cost) |
+| ENTRYCAP | Haiku | CONV2D2, NPSO4 | a device switch logs, at each run of a list without a v2 table, the walker's NdPsoDesc (nd_walker_desc) with the list and the call site; entcap.py names them |
 | ENTRY1..n | Haiku | ENTRYCAP, CONV2F | per file group: the logged description written as ND_PSO_DESC at the call site of each of the 426 inheriting lists (CODEMOD keeps those 317 nd_rec_dl sites as no-entry); psochk bad 0 proves each entry |
 | CONV2C2 | Haiku | ENTRY rows | the converter takes the entry of an inheriting list from the call-site scan and writes its v2 table |
 | CONV2G, CONV2H | Haiku | CONV2E, CONV2F, their GOLD-FX rows | pilot effect files: sparkles, effect_3D, snowfall (G), snaking_static, water_block, embers (H). Gate G1 + golden |
@@ -197,8 +198,9 @@ grep in each row. A caller with a list path left is a fault of an earlier row: s
 Before S9DEL1A the orchestrator tags main `pre-list-removal`. Then S9GATE (Haiku): G9, the frame-hash set, the console batch (G10, G11).
 Phase ends (after B, C, D, E): one frame-hash set (spot_mac01_hash, mdl5_iwa10_hash, spot_mac00_hash plus the group scenes), G6
 on its capture, one console soak push (user).
-First rows to start now (disjoint files): LISTCEN2, ELFGATE, NOLIST, HOSTCORE1, FRAMEHASH1, FRAMEHASH4, NPSO1, CONV2B.
-Next when they merge: HOSTCORE2 (after HOSTCORE1), FRAMEHASH2, NPSO2 and CONV2A (after NPSO1), N64DEL1 (after LISTCEN2).
+Open now (2026-11-13): CONV2D, N64DEL2, COVMAP, CODEMODW1, CODEMODFX2-20 (one effect file each, C1 and C2 fall by the value
+count of the file). Order after them: CONV2D2 -> CONV2F and ENTRYCAP -> ENTRY1..n; N64DEL3 -> N64DEL4; COVMAP -> COVMAP2 ->
+GMHARN -> GOLDFX2 and the next GOLD rows (GOLDFX1, GOLDENT1 after COVMAP).
 
 ## 7. What the census cannot see, and how it is covered (discoveries are appended here)
 | item | covered by |

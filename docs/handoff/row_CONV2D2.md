@@ -34,7 +34,7 @@ only), new 3ds/tools/azt.d/CONV2D2.json and 3ds/tools/bench.d/CONV2D2.json.
    `pm_log_evt("ntabrun f%u runs %u", f, nd_gtr_ntab - <its previous value>)`, under the same condition as the gtabrun line.
 6. Commit: `CONV2D2: nd_ntab_run runs the unit copy of the v2 table in nd_gtab_run, nd_ntab_find`.
 ## Gate (expected values)
-1. Build, memcheck OK. nd_host PASS (tables 923, bad 0).
+1. Build, memcheck OK. nd_host PASS (tables 922, bad 0).
 2. At commit 1: `bench.py base fxpic_89_drec` and `bench.py base spot_mac01_drec`. After edit 6:
    `bench.py run fxpic_89_drec,spot_mac01_drec --row CONV2D2 --why "CONV2D2 drec"`, then `bench.py cmp` of each: drec.txt
    byte-equal. The fxpic_89_drec log has `ntabrun f\d+ runs [1-9]`.

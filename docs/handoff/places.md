@@ -30,3 +30,17 @@ A shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json, bench_def
 | GOLDFX1 | Haiku | new cov.d/azt.d/bench.d GOLDFX1 files | waits for COVMAP |
 | GOLDENT1 | Haiku | new cov.d/azt.d/bench.d GOLDENT1 files | waits for COVMAP |
 | GOLDWLD0 | Haiku | new cov.d/azt.d/bench.d GOLDWLD0 files | waits for COVMAP and the user's fortune scene |
+| N64DEL4 | Haiku | the 9 skip blocks: include/PR/os_convert.h, common.h, common_structs.h, include_asm.h, macros.h, src/entity.c, kzn2 lava_piranha.c, WaterEffects.inc.c, lava_piranha/part1.inc.c | waits for N64DEL2 and N64DEL3 |
+| COVMAP2 | Haiku | 3ds/src/pm_fncov.c fn_init_once, pm_fncov_walk; new cov.d/azt.d/bench.d COVMAP2 files | waits for COVMAP |
+| GMHARN | Haiku | new 3ds/tools/gold.py; covsites.py argument parsing; new cov.d/bench.d GMHARN files | waits for COVMAP2 |
+| GOLDFX2 | Haiku | new cov.d/azt.d/bench.d GOLDFX2 files | waits for GMHARN |
+| CODEMODFX11 | Haiku | src/effects/snaking_static.c (value call lines, include lines) | ready |
+| CODEMODFX12 | Haiku | src/effects/effect_3D.c (value call lines, include lines) | ready |
+| CODEMODFX13 | Haiku | src/effects/snowfall.c (value call lines, include lines) | ready |
+| CODEMODFX14 | Haiku | src/effects/pink_sparkles.c (value call lines, include lines) | ready |
+| CODEMODFX15 | Haiku | src/effects/radiating_energy_orb.c (value call lines, include lines); new azt.d/bench.d CODEMODFX15.json | ready |
+| CODEMODFX16 | Haiku | src/effects/quizmo_stage.c (value call lines, include lines); new azt.d/bench.d CODEMODFX16.json | ready |
+| CODEMODFX17 | Haiku | src/effects/peach_star_beam.c (value call lines, include lines); new azt.d/bench.d CODEMODFX17.json | ready |
+| CODEMODFX18 | Haiku | src/effects/whirlwind.c (value call lines, include lines); new azt.d/bench.d CODEMODFX18.json | ready |
+| CODEMODFX19 | Haiku | src/effects/landing_dust.c (value call lines, include lines); new azt.d/bench.d CODEMODFX19.json | ready |
+| CODEMODFX20 | Haiku | src/effects/damage_indicator.c (value call lines, include lines); new azt.d/bench.d CODEMODFX20.json | ready |

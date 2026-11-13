@@ -2,16 +2,10 @@
 
 (Model: Haiku. 60 lines or fewer. Read only this file, CLAUDE.md and what it names. Rewritten by ORACLE8 on 2026-11-13: the design is fixed below.)
 ## Design decisions (ORACLE8 code read, main 0250d5221). Do not change them.
-- No pso apply in CONV2D. The NdPsoDesc of a v2 table is not a full state. The converter tracks omh, oml and geom from 0 (V2St,
-  nd_gfx_conv.c:181-189). Only comb, cycle and texon must be set (v2_inherit_check :356-366). NDO_TEXTURE drops the scale (:392).
-  NdBindDesc has no tile shift and no TLUT slot. An apply of the desc (nd_direct_bind :94-140 setters) would overwrite the render
-  mode and geometry bits of the call and lose the texture scale, so the drec would differ. The native emit from NdPsoOut waits for
-  a form with set masks (a later row).
-- The runner runs the list's own typed units through nd_walk_state, the executor that gt_ops (nd_walk.c:516-545) uses today. So
-  there is no walker handover: nd_ws after the table is what the v1 path leaves, and the next walker draw sees the same state.
-- The units are a copy of the top-level units of the list (depth 0). An NDO_CALL unit stays a unit and is not inlined, so the walker
-  takes its G_DL arms (ent_gdl, dlc_try), as gt_call does. NDN_PSO, NDN_TEX, NDN_XF, NDN_COL and NDN_DRAW stay for the host
-  compare and the later native emit. The runner skips them.
+- No pso apply: the table's NdPsoDesc is not a full state (omh, oml, geom tracked from 0, nd_gfx_conv.c:181-189; no texture
+  scale, :392). The runner runs the list's own typed units through nd_walk_state, as gt_ops (nd_walk.c:516-545) does, so there
+  is no walker handover. The units are the depth-0 units (a call stays a unit, so the walker takes its G_DL arms). NDN_PSO, TEX,
+  XF, COL and DRAW stay for the host compare and the later native emit. The runner skips them.
 ## Facts
 - nd_gtab.h:76-83 enum (NDN_END .. NDN_CALL). nd_gfx_conv.c: V2_MAX defines :174-179, V2C struct :190-201, v2_walk :380 (NOP skip
   `if (w0 == ND_NOP_A) continue;` :387, `depth` is its argument), v2_emit_table :510-530 (ops array printed at :524-528),
@@ -39,12 +33,28 @@ Start: `sh 3ds/tools/wt_new.sh CONV2D`. PM_ROW=CONV2D PM_LANE=CONV2D on every ca
    before NDO_END. Stop after an NDO_CALL with `(w0 & 1u)` (a branch). t->ops[0] must be NDN_UNIT with b equal to the count, and
    every pair must be equal (`v2_fail("unit stream", name, i)` on the first difference).
 6. Commit: `CONV2D: v2 tables carry the depth-0 typed units of their list (NDN_UNIT), host unit stream compare`.
+## Correction 1 (ORACLE8, 2026-11-13, after the stop at 41718cf81). Resume from 41718cf81: edits 1-5 are there.
+- The TIMG miss is right, and the counts change. Entity_HeartBlockContent_LoadPalette (src/entity/model/HeartBlockContent.c:27-36)
+  unit 1 loads D_0A000600_E4A440, an `unsigned char[]` that the GS_IMG map does not hold (gen_gfx_syms.py scans only
+  INCLUDE_IMG/PAL/RAW). A unit copy has no form for an address without a symbol, so the list has no v2 table. It costs nothing:
+  its 8 units are all state ops (gt_kind, nd_gtab.c:50-56), so nd_rec_dl flags it state-only and nd_gtab_run runs it in the
+  state-only arm, which never reaches gt_ops or nd_ntab_run. New expected values: tables 922, unsup 24, descs 105,
+  triangles 6245. D_09005090_3EAFC0 keeps its unsup with a new first reason (same count).
+- The stop rule. gt_ops (nd_walk.c:536-538) ends a list only at its own branch (`if (o->a & 1u) return;`). A callee's branch
+  does not end the caller. v2_walk instead returns at `(a & 1u) || term`, so units emitted inside v2_walk stop early when a
+  callee branches. Edit 7: delete the line `if (depth == 0u && id != NDO_END) v2_unit_add(k, id, w0, w1);` from v2_walk. Add
+  `static void v2_units_top(const GSym* g)` before v2_walk. It loops k from 0 over the units of g, skips ND_NOP_A, stops at
+  NDO_END, calls v2_unit_add(k, id, w0, w1), and stops after an NDO_CALL with `(w0 & 1u)`. This is the rule of v2_units in
+  nd_gtab_test.c. Call `v2_units_top(g);` on the line before `v2_walk(g, 0, 0);` (:580). (Finding for the native emit row: the
+  `term` rule of v2_walk and m_walk differs from gt_ops. Do not change it in this row.)
+- Externs: the unit texts use only names that nd_gfx_tab.c already declares. Add no extern line (the coder's revert is right).
+- Commit edit 7 as `CONV2D: depth-0 units from their own loop (the gt_ops stop rule)`. Then the gate, from gate 1 (the seed).
 ## Gate (expected values)
 1. Seeded fault first (a value change): in v2_unit_add store `w1 ^ 1u` for NDO_GEOM. nd_host: `ntab ... bad` above 0 with
    "unit stream" lines. Undo it.
-2. nd_host PASS: `ntab tables 923 draws 6245 bad 0` and `ntab inherit 426 unsup 23 descs 105` (unchanged). Build, memcheck OK
+2. nd_host PASS: `ntab tables 922 draws 6245 bad 0` and `ntab inherit 426 unsup 24 descs 105` (Correction 1). Build, memcheck OK
    (hand back the memcheck static and margin numbers: the copy adds 8 bytes per unit).
 3. No Azahar (the device does not read NDN_UNIT before CONV2D2). Counter: none moves (runner row).
 ## Stop and end
-A table count other than 923, unsup other than 23, bad above 0 with the real edit, memcheck FAIL, or a tool fault: stop, commit,
+A table count other than 922, unsup other than 24, bad above 0 with the real edit, memcheck FAIL, or a tool fault: stop, commit,
 hand back the exact output (CLAUDE.md 4-5). Delete this row file in the completing commit.
