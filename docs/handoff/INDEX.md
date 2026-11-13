@@ -5,7 +5,7 @@ Live files only. Older logs are in archive/ (agent_*, diag_*, inv_*, plan_*, tra
 
 ## Rules and process
 - ../../CLAUDE.md: shared rules (tests, code, platform).
-- orchestrator_rules.md: orchestrator only (workstreams, roles, merge steps, console); its Core block is printed every turn by the hook in .claude/settings.json. subagent_style.txt, subagent_hook.js: style hooks.
+- orchestrator_rules.md: orchestrator only (workstreams, roles, merge steps, console); its Core block is printed every turn by the hook in .claude/settings.json. subagent_style.txt, subagent_hook.js: style hooks. no_guess_hook.js, no_poll_hook.js: PreToolUse guards (no guess and check; no sleep, ping or tail --pid in Bash).
 - ../../.claude/agents/coder.md, oracle.md: agent definitions.
 - plan_endgame.md: the closed plan to remove the display list system (census, gates, row families, counters, end proof); row_TESTIDEAS.md: the gate ideas and the host golden-master evaluation.
 - row_TEMPLATE.md: template for the row file each new agent reads first.
