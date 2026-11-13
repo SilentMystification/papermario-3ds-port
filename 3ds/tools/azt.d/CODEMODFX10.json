@@ -1,0 +1,29 @@
+{
+  "scenarios": [
+    {
+      "name": "fxpic_50_drec",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 at 0 0 200, fxtest=50 (shimmer_burst), cold det start with the drec switch: the draw records of frame 412 and 413 go to shots/drec.txt.",
+      "proves": "CODEMODFX10 drec gate: the draw record text of frame 413 (shimmer_burst effect 50) is byte-equal between the base build and the head build, so the codemod draws the same triangles from game memory.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=50 loglevel=debug det drec=412:2",
+      "extra": [],
+      "until": "drec f413 draws [1-9]\\d* bytes \\d+",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f413 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "reason": "CODEMODFX10 drec gate: fxpic_50 with drec=412:2 in place of the shots (the shots do not show the effect). Cold start as fxpic_50, cap 40 s, deadline 35 s. The drec f413 line is the until."
+    }
+  ]
+}

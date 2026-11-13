@@ -1,0 +1,20 @@
+{
+  "benches": [
+    {
+      "name": "fxpic_50_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CODEMODFX10 drec gate: draw records (drec.txt) of shimmer_burst (effect 50) frames 412 and 413, cold det start. Base and head byte-equal.",
+      "scenario": "fxpic_50_drec",
+      "cap": 40,
+      "until": "drec f413 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "drec"
+      ],
+      "gates": []
+    }
+  ]
+}
