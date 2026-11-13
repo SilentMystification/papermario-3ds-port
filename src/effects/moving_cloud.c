@@ -196,15 +196,7 @@ void moving_cloud_appendGfx(void* effect) {
     gSPMatrix(gMainGfxPos++, camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     gDPSetPrimColor(gMainGfxPos++, 0, 0, data->unk_24, data->unk_28, data->unk_2C, unk_30);
     gDPSetEnvColor(gMainGfxPos++, data->unk_34, data->unk_38, data->unk_3C, data->unk_40);
-#ifdef TARGET_3DS
     nd_rec_dl(D_E00E8634[0]);
-#else
-    gSPDisplayList(gMainGfxPos++, D_E00E8634[0]);
-#endif
-#ifdef TARGET_3DS
     nd_rec_dl(D_E00E8630[0]);
-#else
-    gSPDisplayList(gMainGfxPos++, D_E00E8630[0]);
-#endif
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 }

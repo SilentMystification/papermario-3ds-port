@@ -127,11 +127,7 @@ void small_gold_sparkle_appendGfx(void* effect) {
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
     nd_rec_dl(D_090002C0_392700);
-#else
-    gSPDisplayList(gMainGfxPos++, D_090002C0_392700);
-#endif
     gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 15, 255);
 
     part++;
@@ -148,16 +144,8 @@ void small_gold_sparkle_appendGfx(void* effect) {
             gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
                       G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
             gSPMatrix(gMainGfxPos++, spD8, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
             nd_rec_dl(sDlists[part->unk_04 >> 1]);
-#else
-            gSPDisplayList(gMainGfxPos++, sDlists[part->unk_04 >> 1]);
-#endif
-#ifdef TARGET_3DS
             nd_rec_dl(D_09000470_3928B0);
-#else
-            gSPDisplayList(gMainGfxPos++, D_09000470_3928B0);
-#endif
             gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         }
     }

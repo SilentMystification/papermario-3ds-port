@@ -156,31 +156,15 @@ void spirit_card_appendGfx(void* effect) {
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-#ifdef TARGET_3DS
     nd_rec_dl(D_090042E0_3FE790);
-#else
-    gSPDisplayList(gMainGfxPos++, D_090042E0_3FE790);
-#endif
     gDPSetEnvColor(gMainGfxPos++, 0, 0, 0, 255);
 
     if (unk_00 < 2) {
         func_E0112330(0, data);
 
-#ifdef TARGET_3DS
         nd_rec_dl(D_E0112638[0]);
-#else
-        gSPDisplayList(gMainGfxPos++, D_E0112638[0]);
-#endif
-#ifdef TARGET_3DS
         nd_rec_dl(D_E0112640[data->chapter]);
-#else
-        gSPDisplayList(gMainGfxPos++, D_E0112640[data->chapter]);
-#endif
-#ifdef TARGET_3DS
         nd_rec_dl(D_E0112630[0]);
-#else
-        gSPDisplayList(gMainGfxPos++, D_E0112630[0]);
-#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     }
 

@@ -102,9 +102,7 @@ void shape_spell_update(EffectInstance* effect) {
     isChild = part->isChild;
 
     if (!isChild && part->timeLeft == 0) {
-#ifdef TARGET_3DS
         { extern void pm_fspk_mark(const char* what); pm_fspk_mark("shape_spell hit"); } /* MAGI: the spell reaches its target */
-#endif
         ShapeSpellFXData* newPart = shape_spell_main(
             1,
             part->pos.x + part->unk_10,
@@ -151,7 +149,6 @@ s32 func_E00243BC(s32 arg0, s32 arg1) {
     return (f32)((sin_deg(frameCounter + arg1) * -arg0 + -arg0) * 0.5 + arg0);
 }
 
-#ifdef TARGET_3DS
 /* MAGI: the 3DS draws the spell as 9 batches (one per trail step i and colour j) instead of one draw per quad. The N64 list gave every quad
  * its own matrix (12 copies x 3 steps x 3 colours = 108 quads of the hit burst, 9 for the flying spell), and every matrix is its own draw on
  * the port. Here the quad corners go through the same float matrices on the CPU (T_j, then A_i, then the copy rotation R_k, row vectors as
@@ -284,143 +281,3 @@ void shape_spell_appendGfx(void* effect) {
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     gDPPipeSync(gMainGfxPos++);
 }
-#else
-void shape_spell_appendGfx(void* effect) {
-    ShapeSpellFXData* data = ((EffectInstance*)effect)->data.shapeSpell;
-    s32 isChild;
-    Gfx* savedGfxPos2;
-    Gfx* savedGfxPos;
-    f32 unk_28 = data->unk_28;
-    s32 primA;
-    f32 unk_10;
-    f32 unk_14;
-    f32 unk_18;
-    f32 angle;
-    f32 factor;
-    f32 var_f30;
-    s32 timeLeft;
-    Matrix4f sp20;
-    Mtx* sp60[3];
-    Mtx* mtx;
-    s32 i;
-    s32 j;
-
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    gSPDisplayList(gMainGfxPos++, D_09001080_33AFE0);
-
-    savedGfxPos = gMainGfxPos++;
-    savedGfxPos2 = gMainGfxPos;
-    isChild = data->isChild;
-    primA = data->unk_34;
-    unk_10 = data->unk_10;
-    unk_14 = data->unk_14;
-    unk_18 = data->unk_18;
-    timeLeft = data->timeLeft;
-
-    if (isChild == 0) {
-        angle = timeLeft * 35;
-        factor = 9.0f;
-        var_f30 = -gCameras[gCurrentCameraID].curYaw;
-    } else {
-        angle = timeLeft * 25;
-        factor = 6.0f;
-        var_f30 = 0.0f;
-        unk_10 *= unk_28;
-    }
-
-    for (i = 0; i < 3; i++) {
-        if (i > 0) {
-            if (!isChild) {
-                angle -= 70.0f;
-                unk_10 -= 2.0f * data->unk_1C;
-                unk_14 -= 2.0f * data->unk_20;
-                unk_18 -= 2.0f * data->unk_24;
-            } else {
-                angle -= 50.0f;
-                unk_10 -= data->unk_1C * (100.0 / 83) * 2.0;
-            }
-            primA = data->unk_34 * 100 / 255;
-        }
-
-        guPositionF(sp20, 0.0f, var_f30, 0.0f, unk_28, unk_10, unk_14, unk_18);
-        guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
-
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-
-        guTranslateF(sp20,
-            sin_deg(angle) * factor,
-            cos_deg(angle) * factor, 0.0f);
-
-        angle += 120.0f;
-        sp60[0] = &gDisplayContext->matrixStack[gMatrixListPos++];
-
-        guMtxF2L(sp20, sp60[0]);
-        guTranslateF(sp20,
-            sin_deg(angle) * factor,
-            cos_deg(angle) * factor, 0.0f);
-
-        angle += 120.0f;
-        sp60[1] = &gDisplayContext->matrixStack[gMatrixListPos++];
-
-        guMtxF2L(sp20, sp60[1]);
-        guTranslateF(sp20,
-            sin_deg(angle) * factor,
-            cos_deg(angle) * factor, 0.0f);
-
-        sp60[2] = &gDisplayContext->matrixStack[gMatrixListPos++];
-
-        guMtxF2L(sp20, sp60[2]);
-
-        for (j = 0; j < 3; j++) {
-            gSPMatrix(gMainGfxPos++, sp60[j], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            gDPSetPrimColor(gMainGfxPos++, 0, 0,
-                func_E00243BC(D_E0024CC0[j].unk_01, D_E0024CC0[j].unk_00),
-                func_E00243BC(D_E0024CC0[j].unk_02, D_E0024CC0[j].unk_00),
-                func_E00243BC(D_E0024CC0[j].unk_03, D_E0024CC0[j].unk_00),
-                primA);
-            gDPSetEnvColor(gMainGfxPos++,
-                func_E0024324(D_E0024CC0[j].unk_01, D_E0024CC0[j].unk_00),
-                func_E0024324(D_E0024CC0[j].unk_02, D_E0024CC0[j].unk_00),
-                func_E0024324(D_E0024CC0[j].unk_03, D_E0024CC0[j].unk_00),
-                255);
-            gSPDisplayList(gMainGfxPos++, !isChild ?
-                D_E0024CC0[j].unk_04 : D_E0024CC0[j].unk_08);
-            gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-        }
-
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    }
-
-    gSPEndDisplayList(gMainGfxPos++);
-    gSPBranchList(savedGfxPos, gMainGfxPos);
-
-    if (!isChild) {
-        var_f30 = 0.0f;
-    } else {
-        var_f30 = -gCameras[gCurrentCameraID].curYaw;
-    }
-
-    guPositionF(sp20, 0.0f, var_f30, 0.0f, 1.0f, data->pos.x, data->pos.y, data->pos.z);
-    guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
-
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-
-    if (!isChild) {
-        gSPDisplayList(gMainGfxPos++, savedGfxPos2);
-    } else {
-        guRotateF(sp20, 30.0f, 0.0f, 0.0f, 1.0f);
-
-        mtx = &gDisplayContext->matrixStack[gMatrixListPos++];
-        guMtxF2L(sp20, mtx);
-
-        for (i = 0; i < 12; i++) {
-            gSPMatrix(gMainGfxPos++, mtx, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            gSPDisplayList(gMainGfxPos++, savedGfxPos2);
-        }
-    }
-
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gDPPipeSync(gMainGfxPos++);
-}
-#endif

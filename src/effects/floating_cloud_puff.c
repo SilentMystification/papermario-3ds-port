@@ -134,15 +134,7 @@ void floating_cloud_puff_appendGfx(void* effect) {
     gSPMatrix(gMainGfxPos++, camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     gDPSetPrimColor(gMainGfxPos++, 0, 0, data->unk_18, data->unk_1C, data->unk_20, unk_24);
     gDPSetEnvColor(gMainGfxPos++, data->unk_28, data->unk_2C, data->unk_30, 0);
-#ifdef TARGET_3DS
     nd_rec_dl(D_09000080_3D4F10);
-#else
-    gSPDisplayList(gMainGfxPos++, D_09000080_3D4F10);
-#endif
-#ifdef TARGET_3DS
     nd_rec_dl(D_09000168_3D4FF8);
-#else
-    gSPDisplayList(gMainGfxPos++, D_09000168_3D4FF8);
-#endif
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 }

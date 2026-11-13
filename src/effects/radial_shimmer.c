@@ -310,7 +310,6 @@ void radial_shimmer_appendGfx(void* effect) {
     temp_s5 = data->unk_00;
     dlist1 = D_E0066C8C[temp_s5];
     dlist2 = D_E0066C50[temp_s5];
-#ifdef TARGET_3DS
     /* SBLK2 A1 debug, switch orbdbg: tag the strip list (its draws log in pm_gpu.c orb_log) and print the segment 9 base this effect sends */
     {
         extern int pm_debug_has(const char* name);
@@ -322,7 +321,6 @@ void radial_shimmer_appendGfx(void* effect) {
             pm_log("shimdbg f%u k%d seg9 %08x", pm_frame_count(), temp_s5, (unsigned)VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
         }
     }
-#endif
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
@@ -344,11 +342,7 @@ void radial_shimmer_appendGfx(void* effect) {
               G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     alpha = data->unk_24;
     gDPSetEnvColor(gMainGfxPos++, data->unk_6B, data->unk_6C, data->unk_6D, 127);
-#ifdef TARGET_3DS
     nd_rec_dl(dlist1);
-#else
-    gSPDisplayList(gMainGfxPos++, dlist1);
-#endif
 
     for (i = 0; i < effectTemp->numParts; i++, data++) {
         gDPSetPrimColor(gMainGfxPos++, 0, 0, data->unk_68, data->unk_69, data->unk_6A, alpha);
@@ -380,11 +374,7 @@ void radial_shimmer_appendGfx(void* effect) {
 
         gDPSetTileSize(gMainGfxPos++, 0, temp_f0, temp_f2, temp_f0 + other * 4, temp_f2 + var_a3 * 4);
         gDPSetTileSize(gMainGfxPos++, G_TX_MIRROR, temp_f4, temp_f6, temp_f4 + other * 4, temp_f6 + var_a3 * 4);
-#ifdef TARGET_3DS
         nd_rec_dl(dlist2);
-#else
-        gSPDisplayList(gMainGfxPos++, dlist2);
-#endif
     }
 
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);

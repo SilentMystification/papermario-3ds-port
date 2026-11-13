@@ -185,9 +185,7 @@ void stop_watch_appendGfx(void* effect) {
     s32 unk_24 = data->unk_24;
     Vtx_t* vtxBuffer;
     Gfx* savedGfxPos;
-#ifdef TARGET_3DS
     NdSub sub;
-#endif
     Matrix4f sp20;
     Matrix4f sp60;
     s32 i;
@@ -202,20 +200,9 @@ void stop_watch_appendGfx(void* effect) {
 
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     gSPMatrix(gMainGfxPos++, camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
     nd_rec_dl(D_09001000_3CC890);
-#else
-    gSPDisplayList(gMainGfxPos++, D_09001000_3CC890);
-#endif
     gDPSetEnvColor(gMainGfxPos++, 0, 0, 0, data->unk_2C);
-#ifdef TARGET_3DS
     vtxBuffer = (Vtx_t*) nd_rec_data(64 * sizeof(Gfx)); /* DIRECT D6c: the vertex buffer is stream data */
-#else
-    gSPBranchList(gMainGfxPos, &gMainGfxPos[65]);
-
-    vtxBuffer = (Vtx_t*) (gMainGfxPos + 1);
-    gMainGfxPos = &gMainGfxPos[65];
-#endif
 
     for (i = 0; i < 16; i++) {
         Vtx_t* vtx = &vtxBuffer[i * 2];
@@ -238,14 +225,7 @@ void stop_watch_appendGfx(void* effect) {
         vtx->tc[1] = i * 128;
     }
 
-#ifdef TARGET_3DS
     nd_sub_open(&sub); /* DIRECT D6c: the list for later is a stream range */
-#else
-    gSPBranchList(gMainGfxPos, &gMainGfxPos[20]);
-
-    gMainGfxPos++;
-    savedGfxPos = gMainGfxPos;
-#endif
 
     guScaleF(sp20, 0.01f, 0.01f, 0.01f);
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
@@ -261,11 +241,7 @@ void stop_watch_appendGfx(void* effect) {
     }
 
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
     nd_sub_close(&sub);
-#else
-    gSPEndDisplayList(gMainGfxPos++);
-#endif
 
     for (i = 0; i < 10; i++) {
         guPositionF(sp20, data->unk_AC[i], data->unk_D4[i], data->unk_FC[i], D_E00C49D0[i % 4] * 0.01, data->unk_34[i], data->unk_5C[i], data->unk_84[i]);
@@ -273,11 +249,7 @@ void stop_watch_appendGfx(void* effect) {
 
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         gDPSetPrimColor(gMainGfxPos++, 0, 0, D_E00C49D4[i], D_E00C49E8[i], D_E00C49FC[i], unk_24 * data->unk_124[i] / 255);
-#ifdef TARGET_3DS
         nd_sub_call(&sub);
-#else
-        gSPDisplayList(gMainGfxPos++, savedGfxPos);
-#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     }
 

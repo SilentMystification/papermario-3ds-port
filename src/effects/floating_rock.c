@@ -130,16 +130,8 @@ void floating_rock_appendGfx(void* effect) {
         gDPSetRenderMode(gMainGfxPos++, G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2);
     }
 
-#ifdef TARGET_3DS
     nd_rec_dl(D_09000450_396540);
-#else
-    gSPDisplayList(gMainGfxPos++, D_09000450_396540);
-#endif
-#ifdef TARGET_3DS
     nd_rec_dl(D_E0098510[data->type]);
-#else
-    gSPDisplayList(gMainGfxPos++, D_E0098510[data->type]);
-#endif
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     gDPPipeSync(gMainGfxPos++);
 }

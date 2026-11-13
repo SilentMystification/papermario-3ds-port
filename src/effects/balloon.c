@@ -102,16 +102,8 @@ void balloon_appendGfx(void* effect) {
 
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
               G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
     nd_rec_dl(D_E00963E0[idx]);
-#else
-    gSPDisplayList(gMainGfxPos++, D_E00963E0[idx]);
-#endif
-#ifdef TARGET_3DS
     nd_rec_dl(D_09001508_395B78);
-#else
-    gSPDisplayList(gMainGfxPos++, D_09001508_395B78);
-#endif
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     gDPPipeSync(gMainGfxPos++);
 }

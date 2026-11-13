@@ -99,17 +99,9 @@ void sweat_appendGfx(void* effect) {
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
     if (data->unk_10 > 0.0f) {
-#ifdef TARGET_3DS
         nd_rec_dl(data->unk_00 == 0 ? D_09000200_35C750 : D_090002C8_35C818);
-#else
-        gSPDisplayList(gMainGfxPos++, data->unk_00 == 0 ? D_09000200_35C750 : D_090002C8_35C818);
-#endif
     } else {
-#ifdef TARGET_3DS
         nd_rec_dl(data->unk_00 == 0 ? D_09000390_35C8E0 : D_09000460_35C9B0);
-#else
-        gSPDisplayList(gMainGfxPos++, data->unk_00 == 0 ? D_09000390_35C8E0 : D_09000460_35C9B0);
-#endif
     }
 
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);

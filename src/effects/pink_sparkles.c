@@ -1,8 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
-#ifdef TARGET_3DS
 #include "nd_gtab.h"
-#endif
 #include "nd_api.h"
 
 extern Gfx D_09000F20_338EE0[];
@@ -246,11 +244,7 @@ void pink_sparkles_appendGfx(void* effect) {
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-#ifdef TARGET_3DS
     nd_rec_dl(D_09000F20_338EE0);
-#else
-    gSPDisplayList(gMainGfxPos++, D_09000F20_338EE0);
-#endif
 
     colorIdx = (part->unk_20 - 1) * 3;
 
@@ -259,10 +253,8 @@ void pink_sparkles_appendGfx(void* effect) {
     guMtxCatF(sp58, sp98, sp98);
 
     part++;
-#ifdef TARGET_3DS
     NdParts pb;
     nd_parts_begin(&pb, 2, 1);
-#endif
     for (i = 0; i < ((EffectInstance*)effect)->numParts - 1; i++, part++) {
         s32 unk_28 = part->unk_28;
 
@@ -292,7 +284,6 @@ void pink_sparkles_appendGfx(void* effect) {
                 primB = 255;
             }
 
-#ifdef TARGET_3DS
             {
                 Gfx g[4];
                 gDPSetPrimColor(&g[0], 0, 0, primR, primG, primB, 255);
@@ -301,17 +292,9 @@ void pink_sparkles_appendGfx(void* effect) {
                 gSPPopMatrix(&g[3], G_MTX_MODELVIEW);
                 nd_parts_add(&pb, (const uint32_t*)g);
             }
-#else
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, primR, primG, primB, 255);
-            gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            gSPDisplayList(gMainGfxPos++, D_E01248A0[unk_28 & 7]);
-            gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-#endif
         }
     }
-#ifdef TARGET_3DS
     nd_parts_end(&pb);
-#endif
 
     gDPPipeSync(gMainGfxPos++);
 }

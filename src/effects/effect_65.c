@@ -255,11 +255,7 @@ void effect_65_appendGfx(void* effect) {
     guMtxF2L(mtx, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
     nd_rec_dl(D_E00CACB0[variation]);
-#else
-    gSPDisplayList(gMainGfxPos++, D_E00CACB0[variation]);
-#endif
 
     if (variation >= 2) {
         gDPSetCombineMode(gMainGfxPos++, PM_CC_4E, PM_CC_4F);
@@ -267,16 +263,7 @@ void effect_65_appendGfx(void* effect) {
 
     gDPSetPrimColor(gMainGfxPos++, 0, 0, data->primR, data->primG, data->primB, primAlpha);
     gDPSetEnvColor(gMainGfxPos++, data->envR, data->envG, data->envB, 0);
-#ifdef TARGET_3DS
     vtxBuffer = (Vtx_t*) nd_rec_data(VTX_BUF_SIZE * sizeof(Gfx)); /* DIRECT D6c: the vertex buffer is stream data */
-#else
-    gSPBranchList(gMainGfxPos, gMainGfxPos + 1 + VTX_BUF_SIZE);
-    gMainGfxPos++;
-
-    // reserve space in the display list for the vertices
-    vtxBuffer = (Vtx_t*)gMainGfxPos;
-    gMainGfxPos += VTX_BUF_SIZE;
-#endif
 
     firstPointIdx = -1;
     baseTexOffset = (lifeTime & 0x3F) << 5;

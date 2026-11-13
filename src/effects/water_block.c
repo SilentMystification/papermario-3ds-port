@@ -1,8 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
-#ifdef TARGET_3DS
 #include "nd_gtab.h"
-#endif
 #include "nd_api.h"
 
 typedef struct WaterBlockVtxData {
@@ -228,9 +226,7 @@ void water_block_appendGfx(void* effect) {
     Vtx* curVtx;
     s32 timePhase;
     s32 i;
-#ifdef TARGET_3DS
     NdParts pb;
-#endif
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(effectTemp->shared->graphics));
@@ -239,13 +235,7 @@ void water_block_appendGfx(void* effect) {
 
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
-#ifdef TARGET_3DS
     vtxBase = (Vtx*) nd_rec_data(80 * sizeof(Gfx)); /* DIRECT D6c: the vertex buffer is stream data */
-#else
-    gSPBranchList(gMainGfxPos, &gMainGfxPos[81]);
-    vtxBase = (Vtx*)++gMainGfxPos;
-    gMainGfxPos = &gMainGfxPos[80];
-#endif
 
     timePhase = gGameStatusPtr->frameCounter * 4;
 
@@ -282,20 +272,13 @@ void water_block_appendGfx(void* effect) {
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     gDPSetEnvColor(gMainGfxPos++, 0, 0, 255, data->alpha);
     gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 255, alpha);
-#ifdef TARGET_3DS
     nd_rec_dl(D_090003B0_3B6FA0);
-#else
-    gSPDisplayList(gMainGfxPos++, D_090003B0_3B6FA0);
-#endif
 
-#ifdef TARGET_3DS
     nd_parts_begin(&pb, 1, 1);
-#endif
     for (i = 0; i < NUM_WATER_BLOCK_COMPONENTS; i++) {
         if (data->unk_88[i] >= 0) {
             guPositionF(sp20, 0.0f, 0.0f, 0.0f, data->unk_78[i], data->unk_38[i], data->unk_48[i], 0.0f);
             guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
-#ifdef TARGET_3DS
             {
                 Gfx g[3];
                 gSPMatrix(&g[0], &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
@@ -303,41 +286,22 @@ void water_block_appendGfx(void* effect) {
                 gSPPopMatrix(&g[2], G_MTX_MODELVIEW);
                 nd_parts_add(&pb, (const uint32_t*)g);
             }
-#else
-            gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            gSPDisplayList(gMainGfxPos++, D_090004A0_3B7090);
-            gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-#endif
         }
     }
-#ifdef TARGET_3DS
     nd_parts_end(&pb);
-#endif
 
-#ifdef TARGET_3DS
     nd_rec_dl(D_09000300_3B6EF0);
-#else
-    gSPDisplayList(gMainGfxPos++, D_09000300_3B6EF0);
-#endif
     gDPSetPrimColor(gMainGfxPos++, 0, 0, data->color.r, data->color.g, data->color.b, alpha * 0.3);
     gSPClearGeometryMode(gMainGfxPos++, G_CULL_BOTH);
     gSPSetGeometryMode(gMainGfxPos++, G_CULL_BACK);
 
     gSPVertex(gMainGfxPos++, vtxBase, 30, 0);
 
-#ifdef TARGET_3DS
     nd_rec_dl(D_090004D8_3B70C8);
-#else
-    gSPDisplayList(gMainGfxPos++, D_090004D8_3B70C8);
-#endif
 
     gSPVertex(gMainGfxPos++, &vtxBase[28], 12, 0);
 
-#ifdef TARGET_3DS
     nd_rec_dl(D_09000538_3B7128);
-#else
-    gSPDisplayList(gMainGfxPos++, D_09000538_3B7128);
-#endif
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 }

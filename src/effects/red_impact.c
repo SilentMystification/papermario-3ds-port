@@ -163,20 +163,14 @@ void red_impact_appendGfx(void* effect) {
     s32 envB2;
     Gfx* savedGfxPos;
     Gfx* savedGfxPos2;
-#ifdef TARGET_3DS
     NdSub sub;
-#endif
     Matrix4f sp20;
     Matrix4f sp60;
     s32 i;
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-#ifdef TARGET_3DS
     nd_rec_dl(dlist);
-#else
-    gSPDisplayList(gMainGfxPos++, dlist);
-#endif
 
     guPositionF(sp20, 0.0f, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, part->unk_04, part->unk_08, part->unk_0C);
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
@@ -191,13 +185,7 @@ void red_impact_appendGfx(void* effect) {
     envG2 = envG;
     envB2 = envB;
 
-#ifdef TARGET_3DS
     nd_sub_open(&sub); /* DIRECT D6c: the list for later is a stream range */
-#else
-    savedGfxPos = gMainGfxPos;
-    gMainGfxPos++;
-    savedGfxPos2 = savedGfxPos + 1;
-#endif
 
     part++;
     for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, part++) {
@@ -216,41 +204,24 @@ void red_impact_appendGfx(void* effect) {
             gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, 0, (s32) part->unk_3C, 0x00FC, (s32) part->unk_3C + 0x7C);
             gDPSetTileSize(gMainGfxPos++, 1, 0, (s32) part->unk_44, 0x007C, (s32) part->unk_44 + 0x7C);
             gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
             nd_rec_dl(dlist2);
-#else
-            gSPDisplayList(gMainGfxPos++, dlist2);
-#endif
             gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         }
     }
 
-#ifdef TARGET_3DS
     nd_sub_close(&sub);
-#else
-    gSPEndDisplayList(gMainGfxPos++);
-    gSPBranchList(savedGfxPos, gMainGfxPos);
-#endif
 
     gDPSetPrimColor(gMainGfxPos++, 0, 0, primR2, primG2, primB2, alpha);
     gDPSetEnvColor(gMainGfxPos++, envR2, envG2, envB2, 0);
     gSPClearGeometryMode(gMainGfxPos++, G_CULL_BOTH);
     gSPSetGeometryMode(gMainGfxPos++, G_CULL_FRONT);
-#ifdef TARGET_3DS
     nd_sub_call(&sub);
-#else
-    gSPDisplayList(gMainGfxPos++, savedGfxPos2);
-#endif
 
     gDPSetPrimColor(gMainGfxPos++, 0, 0, primR, primG, primB, alpha);
     gDPSetEnvColor(gMainGfxPos++, envR, envG, envB, 0);
     gSPClearGeometryMode(gMainGfxPos++, G_CULL_BOTH);
     gSPSetGeometryMode(gMainGfxPos++, G_CULL_BACK);
-#ifdef TARGET_3DS
     nd_sub_call(&sub);
-#else
-    gSPDisplayList(gMainGfxPos++, savedGfxPos2);
-#endif
 
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 }

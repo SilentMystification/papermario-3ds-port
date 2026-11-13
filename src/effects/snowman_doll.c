@@ -315,16 +315,8 @@ void snowman_doll_appendGfx(void* effect) {
 
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     gDPSetPrimColor(gMainGfxPos++, 0, 0, data->unk_18, data->unk_1C, data->unk_20, unk_24);
-#ifdef TARGET_3DS
     nd_rec_dl(D_090037A8_3C1148);
-#else
-    gSPDisplayList(gMainGfxPos++, D_090037A8_3C1148);
-#endif
-#ifdef TARGET_3DS
     nd_rec_dl(D_09003818_3C11B8);
-#else
-    gSPDisplayList(gMainGfxPos++, D_09003818_3C11B8);
-#endif
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 }

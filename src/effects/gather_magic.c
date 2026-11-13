@@ -171,11 +171,7 @@ void gather_magic_appendGfx(void* effect) {
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
     nd_rec_dl(D_09000080_38F790);
-#else
-    gSPDisplayList(gMainGfxPos++, D_09000080_38F790);
-#endif
     gDPSetEnvColor(gMainGfxPos++, part->unk_3C, part->unk_40, part->unk_44, 0);
 
     part++;
@@ -191,11 +187,7 @@ void gather_magic_appendGfx(void* effect) {
             guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
             gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
             nd_rec_dl(D_E008E890[i & 1]);
-#else
-            gSPDisplayList(gMainGfxPos++, D_E008E890[i & 1]);
-#endif
             gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         }
     }

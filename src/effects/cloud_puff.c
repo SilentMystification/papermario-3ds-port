@@ -122,11 +122,7 @@ void cloud_puff_appendGfx(void* effect) {
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(effectTemp->shared->graphics));
-#ifdef TARGET_3DS
     nd_rec_dl(D_090000E0_32ED30);
-#else
-    gSPDisplayList(gMainGfxPos++, D_090000E0_32ED30);
-#endif
 
     for (i = 0; i < effectTemp->numParts; i++, part++) {
         if (part->alive) {
@@ -139,11 +135,7 @@ void cloud_puff_appendGfx(void* effect) {
             gDPSetPrimColor(gMainGfxPos++, 0, 0, 112, 96, 24, part->alpha);
             gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
                         G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
             nd_rec_dl(D_090001B8_32EE08);
-#else
-            gSPDisplayList(gMainGfxPos++, D_090001B8_32EE08);
-#endif
             gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         }
     }

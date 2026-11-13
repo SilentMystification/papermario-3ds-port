@@ -119,9 +119,7 @@ void hieroglyphs_appendGfx(void* effect) {
     s32 lifeTime = data->lifeTime;
     s32 unk_24 = data->unk_24;
     Gfx* savedGfxPos;
-#ifdef TARGET_3DS
     NdSub sub;
-#endif
     Matrix4f sp20;
     Matrix4f sp60;
     s32 i;
@@ -138,26 +136,11 @@ void hieroglyphs_appendGfx(void* effect) {
     gSPMatrix(gMainGfxPos++, camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     gDPSetPrimColor(gMainGfxPos++, 0, 0, data->unk_18, data->unk_1C, data->unk_20, unk_24);
     gDPSetEnvColor(gMainGfxPos++, data->unk_28, data->unk_2C, data->unk_30, data->unk_34);
-#ifdef TARGET_3DS
     nd_rec_dl(D_E00E29F0[0]);
-#else
-    gSPDisplayList(gMainGfxPos++, D_E00E29F0[0]);
-#endif
-#ifdef TARGET_3DS
     nd_sub_open(&sub); /* DIRECT D6c: the list for later is a stream range */
     gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE,
         (lifeTime * 2      ) * 4, 0,
         (lifeTime * 2 + 127) * 4, 31 * 4);
-#else
-    gSPBranchList(gMainGfxPos, gMainGfxPos + 52);
-
-    savedGfxPos = gMainGfxPos + 1;
-
-    gDPSetTileSize(savedGfxPos, G_TX_RENDERTILE,
-        (lifeTime * 2      ) * 4, 0,
-        (lifeTime * 2 + 127) * 4, 31 * 4);
-    gMainGfxPos += 2;
-#endif
 
     guRotateF(sp20, 20.0f, 1.0f, 0.0f, 0.0f);
     guPositionF(sp60, 0.0f, sin_deg(lifeTime * 8 + 78.75) * -30.0f, 0.0f, 1.0f, 6.0f, 0.0f, 0.0f);
@@ -184,11 +167,7 @@ void hieroglyphs_appendGfx(void* effect) {
     }
 
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
     nd_sub_close(&sub);
-#else
-    gSPEndDisplayList(gMainGfxPos++);
-#endif
 
     for (i = 0; i < 2; i++) {
         s32 idx = (lifeTime + i * 4) % 17;
@@ -199,11 +178,7 @@ void hieroglyphs_appendGfx(void* effect) {
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         gDPSetPrimColor(gMainGfxPos++, 0, 0, D_E00E29F4[idx], D_E00E2A08[idx], D_E00E2A1C[idx], data->unk_24);
         gDPSetEnvColor(gMainGfxPos++, 255, 255, 255, 0);
-#ifdef TARGET_3DS
         nd_sub_call(&sub);
-#else
-        gSPDisplayList(gMainGfxPos++, savedGfxPos);
-#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     }
 

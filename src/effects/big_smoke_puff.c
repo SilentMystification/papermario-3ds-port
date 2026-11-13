@@ -167,11 +167,7 @@ void big_smoke_puff_appendGfx(void* effect) {
 
             gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, (u32)(primAlpha * 105) / 8);
             gDPSetEnvColor(gMainGfxPos++, 0, 0, 0, envAlpha);
-#ifdef TARGET_3DS
             nd_rec_dl(dlist);
-#else
-            gSPDisplayList(gMainGfxPos++, dlist);
-#endif
             gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         }
     }

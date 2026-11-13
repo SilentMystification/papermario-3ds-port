@@ -1,8 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
-#ifdef TARGET_3DS
 #include "nd_gtab.h"
-#endif
 #include "nd_api.h"
 
 void snaking_static_update(EffectInstance*);
@@ -186,21 +184,12 @@ void snaking_static_appendGfx(void* effect) {
               G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     gSPMatrix(gMainGfxPos++, camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     gDPSetEnvColor(gMainGfxPos++, data->envCol.r, data->envCol.g, data->envCol.b, 0);
-#ifdef TARGET_3DS
     nd_rec_dl(D_09001000_3B3D90);
-#else
-    gSPDisplayList(gMainGfxPos++, D_09001000_3B3D90);
-#endif
 
-#ifdef TARGET_3DS
     NdParts pb;
     nd_parts_begin(&pb, 4, 1);
-#endif
     data++;
     for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, data++) {
-#ifndef TARGET_3DS
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, primR, primG, primB, (data->unk_24 * unk_24) / 255);
-#endif
         guTranslateF(sp18, data->pos.x, data->pos.y, 0.0f);
         guRotateF(sp58, data->unk_3C, 0.0f, 0.0f, 1.0f);
         guMtxCatF(sp58, sp18, sp18);
@@ -208,7 +197,6 @@ void snaking_static_appendGfx(void* effect) {
         guMtxCatF(sp58, sp18, sp18);
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-#ifdef TARGET_3DS
         {
             Gfx g[6];
             gDPSetPrimColor(&g[0], 0, 0, primR, primG, primB, (data->unk_24 * unk_24) / 255);
@@ -219,19 +207,8 @@ void snaking_static_appendGfx(void* effect) {
             gSPPopMatrix(&g[5], G_MTX_MODELVIEW);
             nd_parts_add(&pb, (const uint32_t*)g);
         }
-#else
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-                  G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, data->unk_40 * 64, 0, (data->unk_40 * 64) | 0x3C, 0x007C);
-        gDPSetTileSize(gMainGfxPos++, 1, (lifeTime * 12), 0, ((lifeTime * 3) + 0x1F) * 4, 0x007C);
-
-        gSPDisplayList(gMainGfxPos++, D_090010F8_3B3E88);
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-#endif
     }
-#ifdef TARGET_3DS
     nd_parts_end(&pb);
-#endif
     gDPSetAlphaCompare(gMainGfxPos++, G_AC_NONE);
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 }

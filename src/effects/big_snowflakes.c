@@ -117,11 +117,7 @@ void big_snowflakes_appendGfx(void* effect) {
     s32 i;
 
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-#ifdef TARGET_3DS
     nd_rec_dl(dlist);
-#else
-    gSPDisplayList(gMainGfxPos++, dlist);
-#endif
     gDPSetPrimColor(gMainGfxPos++, 0, 0, 20, 100, 20, data->unk_24);
 
     guTranslateF(sp18, data->unk_04, data->unk_08, data->unk_0C);
@@ -144,11 +140,7 @@ void big_snowflakes_appendGfx(void* effect) {
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
         nd_rec_dl(dlist2);
-#else
-        gSPDisplayList(gMainGfxPos++, dlist2);
-#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     }
 }

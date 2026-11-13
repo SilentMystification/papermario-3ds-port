@@ -204,11 +204,7 @@ void underwater_appendGfx(void* effect) {
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-#ifdef TARGET_3DS
     nd_rec_dl(D_09000528_3B9F98);
-#else
-    gSPDisplayList(gMainGfxPos++, D_09000528_3B9F98);
-#endif
 
     tidal_grid_fill(data);
     if (!tidal_logged) {

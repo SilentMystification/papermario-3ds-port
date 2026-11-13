@@ -172,15 +172,7 @@ void ice_pillar_appendGfx(void* effect) {
     gSPMatrix(gMainGfxPos++, camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     gDPSetPrimColor(gMainGfxPos++, 0, 0, data->prim.r, data->prim.g, data->prim.b, alpha);
     gDPSetEnvColor(gMainGfxPos++, data->env.r, data->env.g, data->env.b, data->env.a);
-#ifdef TARGET_3DS
     nd_rec_dl(D_E011E800[0]);
-#else
-    gSPDisplayList(gMainGfxPos++, D_E011E800[0]);
-#endif
-#ifdef TARGET_3DS
     nd_rec_dl(D_E011E7F0[data->unk_24]);
-#else
-    gSPDisplayList(gMainGfxPos++, D_E011E7F0[data->unk_24]);
-#endif
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 }

@@ -183,11 +183,7 @@ void spiky_white_aura_appendGfx(void* effect) {
     s32 i;
 
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-#ifdef TARGET_3DS
     nd_rec_dl(D_09000440_34EBB0);
-#else
-    gSPDisplayList(gMainGfxPos++, D_09000440_34EBB0);
-#endif
     gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 255, part->unk_24);
 
     for (i = 0; i < ((EffectInstance*)effect)->numParts; i++, part++) {
@@ -202,11 +198,7 @@ void spiky_white_aura_appendGfx(void* effect) {
 
         gDPPipeSync(gMainGfxPos++);
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
         nd_rec_dl(D_090004E8_34EC58);
-#else
-        gSPDisplayList(gMainGfxPos++, D_090004E8_34EC58);
-#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     }
 }

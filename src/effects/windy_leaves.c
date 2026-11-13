@@ -243,11 +243,7 @@ void windy_leaves_appendGfx(void* effect) {
     }
 
     gSPSegment(gMainGfxPos++, 0x09, OS_K0_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-#ifdef TARGET_3DS
     nd_rec_dl(D_09001180_33E790);
-#else
-    gSPDisplayList(gMainGfxPos++, D_09001180_33E790);
-#endif
     gDPSetPrimColor(gMainGfxPos++, 0, 0, 20, 100, 20, part->alpha);
     guTranslateF(sp18, part->unk_04.x, part->unk_04.y, part->unk_04.z);
     guRotateF(sp58, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);
@@ -263,11 +259,7 @@ void windy_leaves_appendGfx(void* effect) {
         guMtxCatF(sp58, sp18, sp18);
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
         nd_rec_dl(dlist);
-#else
-        gSPDisplayList(gMainGfxPos++, dlist);
-#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     }
 }

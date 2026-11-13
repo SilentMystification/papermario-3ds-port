@@ -165,50 +165,19 @@ void chomp_drop_appendGfx(void* effect) {
     );
 
     if (data->unk_2C == 1) {
-#ifdef TARGET_3DS
         nd_rec_dl(D_09001040_398080);
-#else
-        gSPDisplayList(gMainGfxPos++, D_09001040_398080);
-#endif
-#ifdef TARGET_3DS
         nd_rec_dl(D_09001190_3981D0);
-#else
-        gSPDisplayList(gMainGfxPos++, D_09001190_3981D0);
-#endif
         gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, ((30 - data->unk_30) * 255) / 30);
-#ifdef TARGET_3DS
         nd_rec_dl(D_090010E8_398128);
-#else
-        gSPDisplayList(gMainGfxPos++, D_090010E8_398128);
-#endif
-#ifdef TARGET_3DS
         nd_rec_dl(D_09001190_3981D0);
-#else
-        gSPDisplayList(gMainGfxPos++, D_09001190_3981D0);
-#endif
     } else {
         if (data->unk_2C > 0) {
-#ifdef TARGET_3DS
             nd_rec_dl(D_090010E8_398128);
-#else
-            gSPDisplayList(gMainGfxPos++, D_090010E8_398128);
-#endif
         } else {
-#ifdef TARGET_3DS
             nd_rec_dl(D_09001040_398080);
-#else
-            gSPDisplayList(gMainGfxPos++, D_09001040_398080);
-#endif
         }
 
-#ifdef TARGET_3DS
         vtxTemp = (Vtx_t*) nd_rec_data(32 * sizeof(Vtx_t)); /* DIRECT D6c: the vertex buffer is stream data */
-#else
-        savedGfxPos = gMainGfxPos + 1;
-        gSPBranchList(gMainGfxPos, gMainGfxPos + 0x41);
-        gMainGfxPos = savedGfxPos;
-        vtxTemp = (Vtx_t*) savedGfxPos;
-#endif
 
         for (i = 0; i < 16; i++) {
             Vtx_t* vtx = &vtxTemp[i * 2];
@@ -229,9 +198,6 @@ void chomp_drop_appendGfx(void* effect) {
             vtx->tc[1] = i * 128;
         }
 
-#ifndef TARGET_3DS
-        gMainGfxPos += 0x40;
-#endif
         gSPVertex(gMainGfxPos++, vtxTemp, 32, 0);
 
         for (i = 0; i < 15; i++) {

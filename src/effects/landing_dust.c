@@ -282,11 +282,7 @@ void landing_dust_appendGfx(void* effect) {
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-#ifdef TARGET_3DS
     nd_rec_dl(dlist2);
-#else
-    gSPDisplayList(gMainGfxPos++, dlist2);
-#endif
 
     spD8 = temp_t0 & 7;
     spDC = temp_t0 & 0x40;
@@ -331,11 +327,7 @@ void landing_dust_appendGfx(void* effect) {
     }
 
     if (type == 2) {
-#ifdef TARGET_3DS
         nd_rec_dl(dlist1);
-#else
-        gSPDisplayList(gMainGfxPos++, dlist1);
-#endif
     }
 
     part++;
@@ -345,11 +337,7 @@ void landing_dust_appendGfx(void* effect) {
         guMtxF2L(mtx1, &gDisplayContext->matrixStack[gMatrixListPos]);
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
                   G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
         nd_rec_dl(dlist1);
-#else
-        gSPDisplayList(gMainGfxPos++, dlist1);
-#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     }
 

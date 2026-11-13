@@ -104,9 +104,7 @@ void thunderbolt_ring_appendGfx(void* effect) {
     f32 scaleY = 1.0f;
     Gfx* savedGfxPos;
     Gfx* savedGfxPos2;
-#ifdef TARGET_3DS
     NdSub sub;
-#endif
     Matrix4f sp20;
     Matrix4f sp60;
     s32 i;
@@ -118,18 +116,9 @@ void thunderbolt_ring_appendGfx(void* effect) {
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
     nd_rec_dl(D_09000000_3B46A0);
-#else
-    gSPDisplayList(gMainGfxPos++, D_09000000_3B46A0);
-#endif
 
-#ifdef TARGET_3DS
     nd_sub_open(&sub); /* DIRECT D6c: the list for later is a stream range */
-#else
-    savedGfxPos = gMainGfxPos++;
-    savedGfxPos2 = gMainGfxPos;
-#endif
 
     for (i = 0; i < 5; i++) {
         guRotateF(sp20, i * 72 + 90, 0.0f, 0.0f, 1.0f);
@@ -140,20 +129,11 @@ void thunderbolt_ring_appendGfx(void* effect) {
         guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
         nd_rec_dl(D_090000C8_3B4768);
-#else
-        gSPDisplayList(gMainGfxPos++, D_090000C8_3B4768);
-#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     }
 
-#ifdef TARGET_3DS
     nd_sub_close(&sub);
-#else
-    gSPEndDisplayList(gMainGfxPos++);
-    gSPBranchList(savedGfxPos, gMainGfxPos);
-#endif
     gDPSetPrimColor(gMainGfxPos++, 0, 0, data->unk_18, data->unk_1C, data->unk_20, unk_24);
     gDPSetEnvColor(gMainGfxPos++, 255, 255, 255, 0);
 
@@ -165,11 +145,7 @@ void thunderbolt_ring_appendGfx(void* effect) {
         guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
         nd_sub_call(&sub);
-#else
-        gSPDisplayList(gMainGfxPos++, savedGfxPos2);
-#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     }
 

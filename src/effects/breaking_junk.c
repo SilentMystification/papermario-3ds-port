@@ -140,11 +140,7 @@ void breaking_junk_appendGfx(void* effect) {
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-#ifdef TARGET_3DS
     nd_rec_dl(D_E01187C0[0]);
-#else
-    gSPDisplayList(gMainGfxPos++, D_E01187C0[0]);
-#endif
 
     for (i = 0; i < ((EffectInstance*)effect)->numParts; i++, data++) {
         guPositionF(sp20, 0.0f, -gCameras[gCurrentCameraID].curYaw, 0.0f, data->scale * 0.5, data->pos.x, data->pos.y, data->pos.z);
@@ -154,11 +150,7 @@ void breaking_junk_appendGfx(void* effect) {
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
         gDPSetPrimColor(gMainGfxPos++, 0, 0, data->primR, data->primG, data->primB, alpha);
         gDPSetEnvColor(gMainGfxPos++, data->envR, data->envG, data->envB, data->envA);
-#ifdef TARGET_3DS
         nd_rec_dl(D_E01187B0[(u32)i % ARRAY_COUNT(D_E01187B0)]);
-#else
-        gSPDisplayList(gMainGfxPos++, D_E01187B0[(u32)i % ARRAY_COUNT(D_E01187B0)]);
-#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     }
 

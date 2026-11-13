@@ -211,11 +211,7 @@ void bulb_glow_appendGfx(void* effect) {
         return;
     }
 
-#ifdef TARGET_3DS
     nd_rec_dl(D_E0078900[type]);
-#else
-    gSPDisplayList(gMainGfxPos++, D_E0078900[type]);
-#endif
     color = &D_E00789AC[data->unk_20];
     colorScale = brightness * 2;
     r = color->r * colorScale / 255;

@@ -215,11 +215,7 @@ void lightning_bolt_appendGfx(void* effect) {
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     gDPSetPrimColor(gMainGfxPos++, 0, 0, data->outerColor.r, data->outerColor.g, data->outerColor.b, alpha);
     gDPSetEnvColor(gMainGfxPos++, data->innerColor.r, data->innerColor.g, data->innerColor.b, 128);
-#ifdef TARGET_3DS
     nd_rec_dl(D_09001000_3BBEA0);
-#else
-    gSPDisplayList(gMainGfxPos++, D_09001000_3BBEA0);
-#endif
 
     temp_a0 = lifetime - 1;
     if (type != 2) {
@@ -255,15 +251,8 @@ void lightning_bolt_appendGfx(void* effect) {
         data->edgeLength[i] = (f32) preset->width[i] * 0.1;
     }
 
-#ifdef TARGET_3DS
     vtxBuffer = (Vtx_t*) nd_rec_data(0x30 * sizeof(Gfx)); /* DIRECT D6c: the vertex buffer is stream data */
     vtx = vtxBuffer;
-#else
-    vtxBuffer = (Vtx_t*) (gMainGfxPos + 1);
-    vtx = (Vtx_t*) (gMainGfxPos + 1);
-    gSPBranchList(gMainGfxPos, gMainGfxPos + 0x31);
-    gMainGfxPos += 0x31;
-#endif
 
     for (i = 0; i < ARRAY_COUNT(data->boltVertexPosX); i++) {
         if (i == 0) {

@@ -136,11 +136,7 @@ void dust_appendGfx(void* effect) {
     s32 i;
 
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-#ifdef TARGET_3DS
     nd_rec_dl(part->unk_00 == 0 ? D_09000CC0_33FCC0 : D_09000D68_33FD68);
-#else
-    gSPDisplayList(gMainGfxPos++, part->unk_00 == 0 ? D_09000CC0_33FCC0 : D_09000D68_33FD68);
-#endif
     gDPSetPrimColor(gMainGfxPos++, 0, 0, part->unk_30, part->unk_34, part->unk_38, part->unk_18);
     gDPSetEnvColor(gMainGfxPos++, part->unk_3C, part->unk_40, part->unk_44, 0);
 
@@ -163,17 +159,9 @@ void dust_appendGfx(void* effect) {
         gSPMatrix(gMainGfxPos++, matrix, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
         if (unk_00 < 2) {
-#ifdef TARGET_3DS
             nd_rec_dl((i % 2) ? D_09000E18_33FE18 : D_09000E38_33FE38);
-#else
-            gSPDisplayList(gMainGfxPos++, (i % 2) ? D_09000E18_33FE18 : D_09000E38_33FE38);
-#endif
         } else {
-#ifdef TARGET_3DS
             nd_rec_dl(D_09000E58_33FE58);
-#else
-            gSPDisplayList(gMainGfxPos++, D_09000E58_33FE58);
-#endif
         }
 
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);

@@ -198,11 +198,7 @@ void purple_ring_appendGfx(void* effect) {
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-#ifdef TARGET_3DS
     nd_rec_dl(D_09000200_352EE0);
-#else
-    gSPDisplayList(gMainGfxPos++, D_09000200_352EE0);
-#endif
     gDPSetPrimColor(gMainGfxPos++, 0, 0, data->unk_74, data->unk_75, data->unk_76, data->unk_68);
 
     guTranslateF(sp10, data->unk_04, data->unk_08, data->unk_0C);
@@ -213,11 +209,7 @@ void purple_ring_appendGfx(void* effect) {
 
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, 0, unk_5C, temp * 4, unk_5C + temp);
-#ifdef TARGET_3DS
     nd_rec_dl(D_090004E8_3531C8);
-#else
-    gSPDisplayList(gMainGfxPos++, D_090004E8_3531C8);
-#endif
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     gDPPipeSync(gMainGfxPos++);
 }

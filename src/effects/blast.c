@@ -105,16 +105,8 @@ void blast_appendGfx(void* effect) {
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-#ifdef TARGET_3DS
     nd_rec_dl(D_09001300_37ECD0);
-#else
-    gSPDisplayList(gMainGfxPos++, D_09001300_37ECD0);
-#endif
-#ifdef TARGET_3DS
     nd_rec_dl(D_E007C510[unk_20]);
-#else
-    gSPDisplayList(gMainGfxPos++, D_E007C510[unk_20]);
-#endif
 
     guTranslateF(sp18, data->pos.x, data->pos.y, data->pos.z);
     guRotateF(sp58, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);
@@ -136,10 +128,6 @@ void blast_appendGfx(void* effect) {
     t = !(s32)t; // required to match
     gDPSetEnvColor(gMainGfxPos++, 255, 255, 139, envAlpha);
 
-#ifdef TARGET_3DS
     nd_rec_dl(dlist);
-#else
-    gSPDisplayList(gMainGfxPos++, dlist);
-#endif
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 }

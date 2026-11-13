@@ -140,11 +140,7 @@ void stars_burst_appendGfx(void* effect) {
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-#ifdef TARGET_3DS
     nd_rec_dl(D_090004C0_343500);
-#else
-    gSPDisplayList(gMainGfxPos++, D_090004C0_343500);
-#endif
 
     unk_2C = part->unk_2C;
 
@@ -167,11 +163,7 @@ void stars_burst_appendGfx(void* effect) {
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
         nd_rec_dl(dlist);
-#else
-        gSPDisplayList(gMainGfxPos++, dlist);
-#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     }
 }

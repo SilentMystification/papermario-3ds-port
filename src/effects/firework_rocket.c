@@ -273,11 +273,7 @@ void firework_rocket_appendGfx(void* effect) {
     mtx_3_2 = camera->mtxPerspective[3][2];
     mtx_3_3 = camera->mtxPerspective[3][3];
 
-#ifdef TARGET_3DS
     nd_rec_dl(D_E010ACCC[variation]);
-#else
-    gSPDisplayList(gMainGfxPos++, D_E010ACCC[variation]);
-#endif
     centerX = data->pos.x;
     centerY = data->pos.y;
     centerZ = data->pos.z;

@@ -135,11 +135,7 @@ void drop_leaves_appendGfx(void* effect) {
     s32 i;
 
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-#ifdef TARGET_3DS
     nd_rec_dl(D_09001180_33E790);
-#else
-    gSPDisplayList(gMainGfxPos++, D_09001180_33E790);
-#endif
     gDPSetPrimColor(gMainGfxPos++, 0, 0, 20, 100, 20, part->unk_24);
 
     guTranslateF(sp18, part->unk_04, part->unk_08, part->unk_0C);
@@ -157,11 +153,7 @@ void drop_leaves_appendGfx(void* effect) {
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
         nd_rec_dl(D_09001230_33E840);
-#else
-        gSPDisplayList(gMainGfxPos++, D_09001230_33E840);
-#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     }
 }

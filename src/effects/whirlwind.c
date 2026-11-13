@@ -159,9 +159,7 @@ void whirlwind_appendGfx(void* effect) {
     f32 spB8;
     Gfx* whirlwindMainDisplayList;
     Gfx* savedPos;
-#ifdef TARGET_3DS
     NdSub triSub, mainSub;
-#endif
     f32 temp_f20_2;
     f32 temp_f20_3;
     f32 var_f4;
@@ -182,22 +180,10 @@ void whirlwind_appendGfx(void* effect) {
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
     nd_rec_dl(D_09000400_3D3D30);
-#else
-    gSPDisplayList(gMainGfxPos++, D_09000400_3D3D30);
-#endif
 
     // Reserve 0x208 bytes (65 commands) for a vertex buffer (2x16 Vtx + space for the current command)
-#ifdef TARGET_3DS
     vertexBuffer = (Vtx*) nd_rec_data(64 * sizeof(Gfx)); /* DIRECT D6c: the vertex buffer is stream data */
-#else
-    gSPBranchList(gMainGfxPos, &gMainGfxPos[65]);
-    vertexBuffer = (Vtx*)(gMainGfxPos + 1);
-
-    // set the current position we're writing gfx commands to past the vertex buffer
-    gMainGfxPos = &gMainGfxPos[65];
-#endif
 
     // fill the vertex buffer; 2 sets of 16 verticies
     for (i = 0; i <= (360 / 24); i++) {
@@ -217,40 +203,21 @@ void whirlwind_appendGfx(void* effect) {
     }
 
     // Reserve 0x88 bytes (17 commands, including this one) for a separate dynamically generated display list
-#ifdef TARGET_3DS
     nd_sub_open(&triSub); /* DIRECT D6c: the lists for later are stream ranges */
-#else
-    gSPBranchList(gMainGfxPos, &gMainGfxPos[17]);
-
-    // Get a reference to the dynamically generated display list
-    triangleDisplayList = ++gMainGfxPos;
-#endif
 
     // Generate display list
     for (i = 0; i < 15; i++) {
         gSP2Triangles(gMainGfxPos++, i + 0x10, i + 1, i, 0, i + 0x10, i + 0x11, i + 1, 0);
     }
 
-#ifdef TARGET_3DS
     nd_sub_close(&triSub);
-#else
-    // This marks the end of our dynamically generated display list, return control back to the main display list
-    gSPEndDisplayList(gMainGfxPos++);
-#endif
 
     guScaleF(sp20, 0.1f, 0.1f, 0.1f);
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
     // Save position to later insert a branch around the commands that follow this
-#ifdef TARGET_3DS
     nd_sub_open(&mainSub);
-#else
-    savedPos = gMainGfxPos++;
-
-    // Save position of main display list
-    whirlwindMainDisplayList = gMainGfxPos;
-#endif
 
     // Generate main display list
     for(i = 0; i < (MAX_WHIRLWIND_SEGMENTS - 1); i++) {
@@ -289,31 +256,16 @@ void whirlwind_appendGfx(void* effect) {
         gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE + 1, spB4 + i * 8, 0, (spB4 + i * 8 + 63) << 2, 31 << 2);
 
         // Call the display list to create triangles from the verticies
-#ifdef TARGET_3DS
         nd_sub_call(&triSub);
-#else
-        gSPDisplayList(gMainGfxPos++, triangleDisplayList);
-#endif
     }
 
-#ifdef TARGET_3DS
     nd_sub_close(&mainSub);
-#else
-    gSPEndDisplayList(gMainGfxPos++);
-
-    // Now that the length of our display list is known, insert a branch at the previously saved location
-    gSPBranchList(savedPos, gMainGfxPos);
-#endif
     gSPClearGeometryMode(gMainGfxPos++, G_CULL_BOTH);
     gDPSetPrimColor(gMainGfxPos++, 0, 0, data->primR, data->primG, data->primB, primAlpha);
     gDPSetEnvColor(gMainGfxPos++, data->envR, data->envG, data->envB, 32);
 
     // Call the main display list
-#ifdef TARGET_3DS
     nd_sub_call(&mainSub);
-#else
-    gSPDisplayList(gMainGfxPos++, whirlwindMainDisplayList);
-#endif
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 }

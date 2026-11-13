@@ -175,11 +175,7 @@ void peach_star_beam_appendGfx(void* effect) {
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x9, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-#ifdef TARGET_3DS
     nd_rec_dl(D_09005090_3EAFC0);
-#else
-    gSPDisplayList(gMainGfxPos++, D_09005090_3EAFC0);
-#endif
 
     for (i = 0; i < ARRAY_COUNT(data->spirits); i++) {
         part = &data->spirits[i];
@@ -203,16 +199,8 @@ void peach_star_beam_appendGfx(void* effect) {
                           G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
                 gDPSetPrimColor(gMainGfxPos++, 0, 0, 128, 128, 128, 255);
                 gDPSetEnvColor(gMainGfxPos++, 128, 128, 128, 127);
-#ifdef TARGET_3DS
                 nd_rec_dl(D_E010CA38[i]);
-#else
-                gSPDisplayList(gMainGfxPos++, D_E010CA38[i]);
-#endif
-#ifdef TARGET_3DS
                 nd_rec_dl(D_E010CA18[i]);
-#else
-                gSPDisplayList(gMainGfxPos++, D_E010CA18[i]);
-#endif
                 gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
                 FI_CLOSE();
             }
@@ -230,23 +218,11 @@ void peach_star_beam_appendGfx(void* effect) {
     gSPMatrix(gMainGfxPos++, camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     gDPSetPrimColor(gMainGfxPos++, 0, 0, data->primR, data->primG, data->primB, alpha);
     gDPSetEnvColor(gMainGfxPos++, data->envR, data->envG, data->envB, data->envA);
-#ifdef TARGET_3DS
     nd_rec_dl(D_E010CA14[0]);
-#else
-    gSPDisplayList(gMainGfxPos++, D_E010CA14[0]);
-#endif
-#ifdef TARGET_3DS
     nd_rec_dl(D_E010CA10[0]);
-#else
-    gSPDisplayList(gMainGfxPos++, D_E010CA10[0]);
-#endif
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     FI_CLOSE();
-#ifdef TARGET_3DS
     nd_rec_dl(D_09005090_3EAFC0);
-#else
-    gSPDisplayList(gMainGfxPos++, D_09005090_3EAFC0);
-#endif
 
     for (i = 0; i < ARRAY_COUNT(data->spirits); i++) {
         part = &data->spirits[i];
@@ -271,16 +247,8 @@ void peach_star_beam_appendGfx(void* effect) {
                           G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
                 gDPSetPrimColor(gMainGfxPos++, 0, 0, 128, 128, 128, 255);
                 gDPSetEnvColor(gMainGfxPos++, 128, 128, 128, 127);
-#ifdef TARGET_3DS
                 nd_rec_dl(D_E010CA38[i]);
-#else
-                gSPDisplayList(gMainGfxPos++, D_E010CA38[i]);
-#endif
-#ifdef TARGET_3DS
                 nd_rec_dl(D_E010CA18[i]);
-#else
-                gSPDisplayList(gMainGfxPos++, D_E010CA18[i]);
-#endif
                 gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
                 FI_CLOSE();
             }
