@@ -186,7 +186,305 @@ static void check_tab(const char* name, const NdGTab* t, unsigned nu) {
     if (nd_gtab_find(L) != t) fail("nd_gtab_find", 0);
 }
 
+#ifdef NTAB_V2
+/* ---- CONV2C: the host compare of the v2 tables (nd_gtab.h NdNTab). Compiled with -DNTAB_V2 by 3ds/tests/host.d/conv2c.sh, linked with nd_ntab_idx.c, nd_decide.c,
+ * nd_tmpl.c, nd_texwin.c and pm_comb.c. For every v2 table the v1 table of the same list is walked as the v1 path walks it (the NdGDef words and the unit ops, the
+ * calls of the callee tables), on the reset walker state (all zero: a self-contained list needs no other), by a state model written here from the walker's setters
+ * (op_setcombine, set_tile, set_loadtile, set_loadblock, set_timg, set_loadtlut, set_tilesize; tex_win0 of nd_texwin.c is the one shared function). The model gives, per
+ * triangle: the vertex array and the three absolute indices, the pipeline description (nd_pso_build output bytes and the description bytes), the tile 0 bind
+ * descriptor; and the transform and colour op sequences. The table is replayed the same way. Any difference counts in bad.
+ * --fault: one NDN_COL value + 1 in the compare's copy (the compare must then report bad above 0). ---- */
+#include <stdlib.h>
+#include "nd_int.h"
+
+unsigned short* nuGfxZBuffer;
+uint32_t f32tof24(float vf) { /* host copy of libctru f32tof24, as nd_decide_test.c */
+    union { float f; uint32_t i; } v;
+    v.f = vf;
+    uint32_t sign = v.i >> 31, mant = (v.i & 0x7FFFFFu) >> 7;
+    int exp = (int)((v.i >> 23) & 0xFF);
+    if (exp == 0) return sign << 23;
+    exp = exp - 127 + 63;
+    if (exp < 0) return sign << 23;
+    if (exp > 0x7F) return sign << 23 | 0x7Fu << 16;
+    return mant | (uint32_t)exp << 16 | sign << 23;
+}
+void unpack8(unsigned c, float o[4]) {
+    o[0] = (float)((c >> 24) & 255u) / 255.f; o[1] = (float)((c >> 16) & 255u) / 255.f;
+    o[2] = (float)((c >> 8) & 255u) / 255.f;  o[3] = (float)(c & 255u) / 255.f;
+}
+
+extern const NdNTab* const ndn_all[];
+extern const unsigned ndn_n, ndn_inherit, ndn_unsup, ndn_ndesc;
+extern const NdPsoDesc* const ndn_desc[];
+
+typedef struct { const void* base; unsigned i[3]; NdPsoDesc d; int tex; NdBindDesc b; unsigned nx, nc; } TriEv;
+typedef struct { unsigned a, b; uint32_t v; } XcEv;
+#define EVMAX 16384u
+static TriEv mtri[EVMAX], vtri[EVMAX];
+static XcEv mxf[EVMAX], mcol[EVMAX], vxf[EVMAX], vcol[EVMAX];
+static unsigned nmtri, nvtri, nmxf, nmcol, nvxf, nvcol;
+
+typedef struct {
+    uint32_t cw0, cw1, omh, oml, geom, plod;
+    unsigned tex_on, has_comb;
+    NdTst t; NdTexM m;
+    const void* timg; const void* tlut; int tlut_n;
+    int td_valid; NdBindDesc td;
+} MSt;
+static MSt ms;
+static struct { const void* base; unsigned idx; int ok; } mslot[64];
+static int m_over;
+
+static const GSym* m_vsym(uint32_t p) {
+    for (unsigned i = 0; i < gconv_nsym; i++)
+        if (gconv_sym[i].kind == GS_VTX && p >= (uintptr_t)gconv_sym[i].addr && p < (uintptr_t)gconv_sym[i].end) return &gconv_sym[i];
+    return NULL;
+}
+/* the walker's combine rules (op_setcombine and box_prod, as nd_decide_test.c walker_comb) */
+static NdPsoDesc m_desc(const MSt* s) {
+    NdPsoDesc d;
+    memset(&d, 0, sizeof d);
+    d.cw0 = s->cw0; d.cw1 = s->cw1; d.omh = s->omh; d.oml = s->oml; d.geom = s->geom; d.tex_on = (uint8_t)s->tex_on; d.comb_set = (uint8_t)s->has_comb; d.plod = (uint8_t)s->plod;
+    const uint32_t w0 = s->cw0, w1 = s->cw1;
+    uint32_t t[16];
+    t[0] = (w0 >> 20) & 0xf;  t[2] = (w0 >> 15) & 0x1f; t[1] = (w1 >> 28) & 0xf; t[3] = (w1 >> 15) & 7;
+    t[4] = (w0 >> 12) & 7;    t[6] = (w0 >> 9) & 7;     t[5] = (w1 >> 12) & 7;   t[7] = (w1 >> 9) & 7;
+    t[8] = (w0 >> 5) & 0xf;   t[10] = w0 & 0x1f;        t[9] = (w1 >> 24) & 0xf; t[11] = (w1 >> 6) & 7;
+    t[12] = (w1 >> 21) & 7;   t[14] = (w1 >> 18) & 7;   t[13] = (w1 >> 3) & 7;   t[15] = w1 & 7;
+    const int t0 = t[0] == 1 || t[1] == 1 || t[3] == 1 || t[2] == 1 || t[2] == 8 || t[4] == 1 || t[5] == 1 || t[6] == 1 || t[7] == 1;
+    const int t1 = t[0] == 2 || t[1] == 2 || t[3] == 2 || t[2] == 2 || t[2] == 9 || t[4] == 2 || t[5] == 2 || t[6] == 2 || t[7] == 2;
+    int c2 = 0;
+    for (int i = 8; i < 16; i++) if (t[i] == 1 || t[i] == 2) c2 = 1;
+    if (t[10] == 8 || t[10] == 9) c2 = 1;
+    d.use_t1 = (uint8_t)(t1 && !t0 && !c2);
+    if (d.use_t1) { /* the rename of tile 1 to tile 0 changes t[], so box_prod reads the renamed fields */
+        for (int i = 0; i < 8; i++) if (t[i] == 2) t[i] = 1;
+        if (t[2] == 9) t[2] = 8;
+    }
+    d.box_prod = (uint8_t)(t[0] == 1 && t[1] >= 7 && t[2] == 2 && t[3] == 7 && t[4] == 7 && t[5] == 7 && t[6] == 7 && t[7] == 2 &&
+                           t[8] == 3 && t[9] == 5 && t[10] == 0 && t[11] == 5 && t[12] == 7 && t[13] == 7 && t[14] == 7 && t[15] == 0);
+    d.comb_alpha_shade = (uint8_t)(((w0 >> 12) & 7) == 4 || ((w0 >> 9) & 7) == 4 || ((w1 >> 12) & 7) == 4 || ((w1 >> 9) & 7) == 4);
+    return d;
+}
+static void m_xf(unsigned a, uint32_t v) { if (nmxf < EVMAX) { mxf[nmxf].a = a; mxf[nmxf].v = v; mxf[nmxf].b = 0; nmxf++; } else m_over = 1; }
+static void m_col(unsigned a, unsigned b, uint32_t v) { if (nmcol < EVMAX) { mcol[nmcol].a = a; mcol[nmcol].b = b; mcol[nmcol].v = v; nmcol++; } else m_over = 1; }
+static void m_tilesize(unsigned tile, int uls, int ult, int lrs, int lrt) {
+    ms.t.tile_sz[tile][0] = uls; ms.t.tile_sz[tile][1] = ult; ms.t.tile_sz[tile][2] = lrs; ms.t.tile_sz[tile][3] = lrt;
+    if (tile != 0) return;
+    ms.td_valid = 0;
+    NdWin w;
+    tex_win0(&ms.t, &ms.m, ms.timg, uls, ult, lrs, lrt, &w);
+    if (!(w.src && w.w > 0 && w.h > 0 && (w.h > 1 || (unsigned)(uintptr_t)ms.timg - (unsigned)(uintptr_t)nuGfxZBuffer >= 320u * 240u * 2u))) return;
+    const unsigned pi = ms.t.tile_pal[0] & 15u;
+    NdBindDesc* d = &ms.td;
+    memset(d, 0, sizeof *d);
+    d->src = w.src; d->pal = ms.m.tlut_pal[pi] ? ms.m.tlut_pal[pi] : ms.tlut; d->pal_n = ms.tlut_n;
+    d->fmt = ms.t.tile_fmt[0]; d->siz = ms.t.tile_siz[0]; d->stride = w.stride; d->x0 = uls >> 2; d->y0 = ult >> 2; d->w = w.w; d->h = w.h;
+    memcpy(d->wrap, ms.t.tile_wrap[0], sizeof d->wrap);
+    memcpy(d->sz, ms.t.tile_sz[0], sizeof d->sz);
+    ms.td_valid = 1;
+}
+static void m_unit(const uint32_t* u) {
+    const uint32_t w0 = u[0], w1 = u[1], a = w0 & 0xffffffu;
+    switch (w0 >> 24) {
+    case NDO_OMH: { const uint32_t m = nd_op_om_mask(a); ms.omh = (ms.omh & ~m) | (w1 & m); break; }
+    case NDO_OML: { const uint32_t m = nd_op_om_mask(a); ms.oml = (ms.oml & ~m) | (w1 & m); break; }
+    case NDO_GEOM: ms.geom = (ms.geom & a) | w1; break;
+    case NDO_TEXTURE: ms.tex_on = a & 1u; break;
+    case NDO_COMB: ms.cw0 = NDO_COMB_W0(a); ms.cw1 = w1; ms.has_comb = 1; break;
+    case NDO_PRIM: ms.plod = a & 0xffffu; m_col(0, a & 0xffffu, w1); break;
+    case NDO_ENV: m_col(1, 0, w1); break;
+    case NDO_FOG: m_col(2, 0, w1); break;
+    case NDO_BLEND: m_col(3, 0, w1); break;
+    case NDO_MTX: m_xf(a & 0xffu, w1); break;
+    case NDO_POPMTX: m_xf(0xffu, w1); break;
+    case NDO_TIMG:
+        ms.timg = (const void*)(uintptr_t)w1; ms.t.timg_fmt = (a >> 21) & 7u; ms.t.timg_siz = (a >> 19) & 3u; ms.t.timg_stride = (int)(a & 0xfffu) + 1; ms.m.ld_valid = 0;
+        break;
+    case NDO_TILE: {
+        const unsigned tile = (w1 >> 24) & 7u;
+        ms.t.tile_fmt[tile] = (a >> 21) & 7u; ms.t.tile_siz[tile] = (a >> 19) & 3u; ms.t.tile_tmem[tile] = a & 0x1ffu; ms.t.tile_pal[tile] = (w1 >> 20) & 15u;
+        ms.t.tile_wrap[tile][0] = (w1 >> 8) & 3u; ms.t.tile_wrap[tile][1] = (w1 >> 18) & 3u; ms.t.tile_wrap[tile][2] = (w1 >> 4) & 15u; ms.t.tile_wrap[tile][3] = (w1 >> 14) & 15u;
+        ms.t.tile_shift[tile][0] = w1 & 15u; ms.t.tile_shift[tile][1] = (w1 >> 10) & 15u;
+        break;
+    }
+    case NDO_LOADBLOCK: {
+        const unsigned tile = (w1 >> 24) & 7u, tm = ms.t.tile_tmem[tile], texels = (w1 >> 12) & 0xfffu;
+        const unsigned words = ((texels + 1u) << ms.t.tile_siz[tile]) >> 4;
+        for (unsigned k = 0; k < 4; k++)
+            if (ms.t.ldrec[k].tmem >= tm && (ms.t.ldrec[k].tmem == tm || ms.t.ldrec[k].tmem < tm + words)) ms.t.ldrec[k].img = NULL;
+        unsigned k = 0;
+        while (k < 4 && !(ms.t.blk[k].img && ms.t.blk[k].tmem == tm)) k++;
+        if (k == 4) k = ms.m.blk_n++ & 3u;
+        ms.t.blk[k].tmem = tm; ms.t.blk[k].img = ms.timg; ms.t.blk[k].bytes = ((texels + 1u) << ms.t.tile_siz[tile]) >> 1;
+        break;
+    }
+    case NDO_LOADTILE: {
+        const unsigned tile = (w1 >> 24) & 7u;
+        const int uls = (int)((a >> 12) & 0xfffu), ult = (int)(a & 0xfffu), lrs = (int)((w1 >> 12) & 0xfffu), lrt = (int)(w1 & 0xfffu);
+        ms.m.ld_valid = 1; ms.m.ld_x = uls >> 2; ms.m.ld_y = ult >> 2; ms.m.ld_h = ((lrt - ult) >> 2) + 1; ms.m.ld_w = ((lrs - uls) >> 2) + 1;
+        const unsigned tm = ms.t.tile_tmem[tile];
+        unsigned k = 0;
+        while (k < 4 && !(ms.t.ldrec[k].img && ms.t.ldrec[k].tmem == tm)) k++;
+        if (k == 4) k = ms.m.ldrec_n++ & 3u;
+        ms.t.ldrec[k].tmem = tm; ms.t.ldrec[k].img = ms.timg; ms.t.ldrec[k].stride = ms.t.timg_stride; ms.t.ldrec[k].x = uls >> 2; ms.t.ldrec[k].y = ult >> 2;
+        break;
+    }
+    case NDO_LOADTLUT: {
+        const unsigned tile = (w1 >> 24) & 7u, slot = (ms.t.tile_tmem[tile] - 256u) >> 4;
+        ms.tlut = ms.timg; ms.tlut_n = (int)((w1 >> 14) & 0x3ffu) + 1;
+        if (slot < 16u) ms.m.tlut_pal[slot] = ms.timg;
+        break;
+    }
+    case NDO_TILESIZE: m_tilesize((w1 >> 24) & 7u, (int)((a >> 12) & 0xfffu), (int)(a & 0xfffu), (int)((w1 >> 12) & 0xfffu), (int)(w1 & 0xfffu)); break;
+    default: break; /* no-op units; a list with another unit has no v2 table */
+    }
+}
+static int m_isstatic(uint32_t w0) {
+    const unsigned id = w0 >> 24;
+    return id == NDO_OMH || id == NDO_OML || id == NDO_GEOM || id == NDO_TEXTURE || id == NDO_COMB;
+}
+static void m_tri(unsigned a, unsigned b, unsigned c) {
+    if (nmtri >= EVMAX) { m_over = 1; return; }
+    TriEv* e = &mtri[nmtri++];
+    memset(e, 0, sizeof *e);
+    const unsigned s[3] = { a, b, c };
+    for (int j = 0; j < 3; j++) {
+        if (s[j] >= 64u || !mslot[s[j]].ok) { m_over = 1; return; }
+        if (j && mslot[s[j]].base != mslot[a].base) { m_over = 1; return; }
+        e->i[j] = mslot[s[j]].idx;
+    }
+    e->base = mslot[a].base;
+    e->d = m_desc(&ms);
+    e->tex = ms.td_valid && ms.tex_on;
+    if (e->tex) e->b = ms.td;
+    e->nx = nmxf; e->nc = nmcol;
+}
+/* the v1 table as the v1 path walks it; 1 when a branch call ended the walk */
+static int m_walk(const NdGTab* t) {
+    for (unsigned i = 0; i < t->nop; i++) {
+        const NdGOp* o = &t->op[i];
+        switch (o->k) {
+        case NDG_END: return 0;
+        case NDG_DEF: {
+            const NdSDef* d = &((const NdGDef*)o->p)->d;
+            ms.omh = (ms.omh & ~d->omh_m) | d->omh_v; ms.oml = (ms.oml & ~d->oml_m) | d->oml_v;
+            if (d->has_geom) ms.geom = (ms.geom & d->geom_c) | d->geom_s;
+            if (d->has_tex) ms.tex_on = d->tex_a & 1u;
+            if (d->has_comb) { ms.cw0 = d->cw0; ms.cw1 = d->cw1; ms.has_comb = 1; }
+            const uint32_t* u = (const uint32_t*)d->u;
+            for (unsigned j = 0; j < d->n; j++) if (u[2u * j] != ND_NOP_A && !m_isstatic(u[2u * j])) m_unit(u + 2u * j);
+            break;
+        }
+        case NDG_UNIT: m_unit((const uint32_t*)o->p); break;
+        case NDG_VTX: {
+            const GSym* s = m_vsym((uint32_t)(uintptr_t)o->p);
+            if (!s) { m_over = 1; break; }
+            const unsigned first = (unsigned)((uintptr_t)o->p - (uintptr_t)s->addr) / 16u;
+            for (unsigned j = 0; j < o->a; j++) { mslot[o->b + j].base = s->addr; mslot[o->b + j].idx = first + j; mslot[o->b + j].ok = 1; }
+            break;
+        }
+        case NDG_TRI: m_tri(o->a, o->b, o->c); break;
+        case NDG_CALL: {
+            const int term = m_walk((const NdGTab*)o->p);
+            if (o->a || term) return 1;
+            break;
+        }
+        default: m_over = 1; break;
+        }
+    }
+    return 0;
+}
+
+static void v_replay(const NdNTab* t, int fault) {
+    int pso = -1;
+    const NdBindDesc* bind = NULL;
+    static int fault_done;
+    for (const NdNOp* o = t->ops;; o++) {
+        if (o->op == NDN_END) break;
+        switch (o->op) {
+        case NDN_PSO: pso = o->b; break;
+        case NDN_TEX: bind = (const NdBindDesc*)o->p; break;
+        case NDN_XF: if (nvxf < EVMAX) { vxf[nvxf].a = o->a; vxf[nvxf].v = o->v; vxf[nvxf].b = 0; nvxf++; } break;
+        case NDN_COL:
+            if (nvcol < EVMAX) {
+                vcol[nvcol].a = o->a; vcol[nvcol].b = o->b; vcol[nvcol].v = o->v;
+                if (fault && !fault_done) { vcol[nvcol].v += 1u; fault_done = 1; }
+                nvcol++;
+            }
+            break;
+        case NDN_DRAW:
+            for (unsigned j = 0; j + 3u <= o->b; j += 3u) {
+                if (nvtri >= EVMAX) break;
+                TriEv* e = &vtri[nvtri++];
+                memset(e, 0, sizeof *e);
+                e->base = o->p;
+                for (int q = 0; q < 3; q++) e->i[q] = t->idx[o->idx_pos + j + (unsigned)q];
+                if (pso >= 0 && (unsigned)pso < ndn_ndesc) e->d = *ndn_desc[pso];
+                else e->d.cw0 = 0xdeadbeefu;
+                e->tex = bind != NULL;
+                if (bind) e->b = *bind;
+                e->nx = nvxf; e->nc = nvcol;
+            }
+            break;
+        default: break;
+        }
+    }
+}
+
+static unsigned v2_bad, v2_draws;
+static void v2_fail(const char* what, const char* list, unsigned k) {
+    if (v2_bad < 40u) printf("FAIL ntab %s #%u: %s\n", list, k, what);
+    v2_bad++;
+}
+static int pso_same(const NdPsoDesc* a, const NdPsoDesc* b) {
+    static NdPsoOut oa, ob;
+    memset(&oa, 0, sizeof oa); memset(&ob, 0, sizeof ob);
+    nd_pso_build(a, &oa);
+    nd_pso_build(b, &ob);
+    if (memcmp(&oa, &ob, sizeof oa)) return 0;
+    return !memcmp(a, b, sizeof *a);
+}
+static void v2_compare(int fault) {
+    unsigned tables = 0;
+    for (unsigned n = 0; n < ndn_n; n++) {
+        const NdNTab* t = ndn_all[n];
+        const char* name = "?";
+        const NdGTab* g1 = NULL;
+        for (unsigned s = 0; s < gconv_nsym; s++) if (gconv_sym[s].kind == GS_GFX && gconv_sym[s].addr == t->list) name = gconv_sym[s].name;
+        for (unsigned i = 0; i < nd_gtab_n; i++) if (nd_gtab_idx[i].list == t->list) g1 = nd_gtab_idx[i].tab;
+        if (!g1) { v2_fail("no v1 table for the list", name, 0); continue; }
+        memset(&ms, 0, sizeof ms); memset(mslot, 0, sizeof mslot);
+        nmtri = nvtri = nmxf = nmcol = nvxf = nvcol = 0; m_over = 0;
+        m_walk(g1);
+        v_replay(t, fault);
+        tables++;
+        if (m_over) v2_fail("the model could not follow the v1 table", name, 0);
+        if (nmtri != nvtri) { v2_fail("triangle count", name, nmtri); continue; }
+        if (nmxf != nvxf || nmcol != nvcol) v2_fail("transform or colour op count", name, nmcol);
+        for (unsigned i = 0; i < nmxf && i < nvxf; i++) if (mxf[i].a != vxf[i].a || mxf[i].v != vxf[i].v) { printf("  xf model a %x v %x table a %x v %x (n %u/%u)\n", mxf[i].a, mxf[i].v, vxf[i].a, vxf[i].v, nmxf, nvxf); v2_fail("transform op", name, i); }
+        for (unsigned i = 0; i < nmcol && i < nvcol; i++) if (mcol[i].a != vcol[i].a || mcol[i].b != vcol[i].b || mcol[i].v != vcol[i].v) v2_fail("colour op", name, i);
+        for (unsigned i = 0; i < nmtri; i++) {
+            const TriEv *m = &mtri[i], *v = &vtri[i];
+            v2_draws++;
+            if (m->base != v->base || m->i[0] != v->i[0] || m->i[1] != v->i[1] || m->i[2] != v->i[2]) v2_fail("triangle vertex triple", name, i);
+            if (!pso_same(&m->d, &v->d)) v2_fail("pso output", name, i);
+            if (m->tex && (!v->tex || memcmp(&m->b, &v->b, sizeof m->b))) v2_fail("bind descriptor", name, i);
+            if (m->nx != v->nx || m->nc != v->nc) v2_fail("transform or colour position", name, i);
+        }
+    }
+    printf("ntab tables %u draws %u bad %u\n", tables, v2_draws, v2_bad);
+    printf("ntab inherit %u unsup %u descs %u\n", ndn_inherit, ndn_unsup, ndn_ndesc);
+}
+#endif
+
+#ifdef NTAB_V2
+int main(int argc, char** argv) {
+    const int fault = argc > 1 && !strcmp(argv[1], "--fault");
+#else
 int main(void) {
+#endif
     unsigned lists = 0;
     for (unsigned s = 0; s < gconv_nsym; s++) {
         const GSym* g = &gconv_sym[s];
@@ -202,5 +500,10 @@ int main(void) {
     static const uint32_t not_a_list[2];
     if (nd_gtab_find(not_a_list)) { cur = "all"; fail("nd_gtab_find of a non-list", 0); }
     printf("gtab lists %u parts %u draws %u defs %u ops %u bad %u\n", lists, n_parts, n_draws, n_defs, n_ops, bad);
+#ifdef NTAB_V2
+    v2_compare(fault);
+    return bad || v2_bad ? 1 : 0;
+#else
     return bad ? 1 : 0;
+#endif
 }
