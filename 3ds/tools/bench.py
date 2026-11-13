@@ -1527,9 +1527,9 @@ FHASH_RX = re.compile(r"fhash f(\d+) h ([0-9a-f]{16}) draws (\d+) words (\d+)")
 
 
 def shot_names(d):
-    """FRAMEHASH4: the compared files of a shot folder: the *.ppm shots and fhash.txt (frame hashes), sorted."""
+    """FRAMEHASH4: the compared files of a shot folder: the *.ppm shots, fhash.txt (frame hashes) and drec.txt (HOSTCORE2: draw records), sorted."""
     d = Path(d)
-    return sorted(p.name for p in d.glob("*.ppm")) + (["fhash.txt"] if (d / "fhash.txt").is_file() else [])
+    return sorted(p.name for p in d.glob("*.ppm")) + [n for n in ("fhash.txt", "drec.txt") if (d / n).is_file()]
 
 
 def fhash_extract(log, folder):
@@ -1556,6 +1556,19 @@ def fhash_cmp(a, b):
 def ingest_fhash(bd, log, shot):
     """FRAMEHASH4: a run of a bench of kind azahar_hash (kind of its bench entry, FRAMEHASH5) gets fhash.txt. Returns the count, 0 for other kinds."""
     return fhash_extract(log, shot) if bd and bd.get("kind") == "azahar_hash" else 0
+
+
+def drec_cmp(a, b):
+    """HOSTCORE2: (bad, lines) for two drec.txt files, compared line by line. The first differing line names its draw block: `drec draw <seq> DIFF`."""
+    la, lb = Path(a).read_text(encoding="utf-8").split("\n"), Path(b).read_text(encoding="utf-8").split("\n")
+    seq, nd = "?", sum(1 for x in la if x.startswith("draw "))
+    for i in range(max(len(la), len(lb))):
+        x = la[i] if i < len(la) else None
+        if x is not None and x.startswith("draw "): seq = x.split(" ")[1]
+        y = lb[i] if i < len(lb) else None
+        if x != y:
+            return 1, ["  drec draw %s DIFF line %d: base %r, row %r" % (seq, i + 1, x, y)]
+    return (0 if nd else 1), ["  drec %d draws equal" % nd if nd else "  drec.txt has no draw"]
 
 
 def shots_diff(a, b):
@@ -1978,6 +1991,13 @@ def cmd_cmp(a):
         if n not in row_names:
             print("  %s missing in the row run" % n)
             bad += 1
+            continue
+        if n == "drec.txt":
+            fb, lines = drec_cmp(base_dir / n, row_dir / n)
+            print("\n".join(lines))
+            bad += fb
+            if fb == 0:
+                equal += 1
             continue
         if n == "fhash.txt":
             fb, lines = fhash_cmp(base_dir / n, row_dir / n)

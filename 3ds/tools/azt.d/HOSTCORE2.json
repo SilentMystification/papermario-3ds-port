@@ -1,0 +1,29 @@
+{
+  "scenarios": [
+    {
+      "name": "spot_mac01_drec",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0), cold det start with the drec switch: the draw records of frames 200 and 201 go to shots/drec.txt.",
+      "proves": "HOSTCORE2: the draw record text of the mac_01 frames 200 and 201 is a function of the build (det), so a base and a head build give a byte-equal drec.txt when no draw changes.",
+      "debug": "warp=mac_01:0 pos=0:0:200 prof=4 loglevel=debug det drec=200:2",
+      "extra": [],
+      "until": "drec f\d+ draws \d+ bytes \d+",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f201 draws [1-9]\d* bytes [1-9]\d*"
+        }
+      ],
+      "reason": "HOSTCORE2: spot_mac01_det with drec=200:2 in place of the shots. Cold start (as spot_mac01_det, 12 to 16 s to the first marker), cap 35 s, deadline 30 s. The drec log line is the until."
+    }
+  ]
+}
