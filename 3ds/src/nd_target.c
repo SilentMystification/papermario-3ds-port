@@ -89,7 +89,12 @@ void off_screen_check(void) {
     int r;
     r = img_role(0);
     /* X02: an image that is not 16 bit (the darkness stencil: 32 bit, then 8 bit, in the z-buffer memory) always renders off-screen */
-    if ((r == ROLE_SLOT || r == ROLE_DEPTHQ)) pm_gpu_off_begin(nd_ws.cimg ? nd_ws.cimg : zb_fake, cimg_stride, nd_ws.cimg_siz);
+    if ((r == ROLE_SLOT || r == ROLE_DEPTHQ)) {
+        /* FSELLAG2: a window image (draw_box: scissor 0, 0, width, height, then the fill of that rectangle) needs a clear only in the row blocks of its height.
+         * Only a stride from 65 to 319 with the scissor equal to the image width qualifies: the 320 wide users (zbuffer copies, frozen frame, water) and the 64 wide stencils clear the whole slot. */
+        int band = (cimg_stride > 64 && cimg_stride < 320 && nd_ws.cimg_siz == 2 && sci_x0 == 0 && sci_y0 == 0 && sci_x1 == cimg_stride && sci_y1 > 0) ? sci_y1 : 0;
+        pm_gpu_off_begin(nd_ws.cimg ? nd_ws.cimg : zb_fake, cimg_stride, nd_ws.cimg_siz, band);
+    }
 }
 /* CORE-2b batch D: colour image setter (decoded fields; cimg_zero is set from the address word). */
 static __attribute__((noinline)) void set_cimg(u32 addr, int ns, int stride) {

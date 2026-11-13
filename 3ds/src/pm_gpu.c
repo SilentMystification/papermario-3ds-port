@@ -2151,9 +2151,12 @@ void pm_gpu_read_frame(unsigned short* dst) {
 }
 
 /* V05: start (or go back to) the off-screen pass for the colour image at base, width stride pixels. Returns 1 if
- * drawing goes there now. Each base gets one image for the frame (cleared on first use). */
+ * drawing goes there now. Each base gets one image for the frame (cleared on first use). band_h: 0 clears the whole slot. Above 0 the pass draws
+ * the whole window rectangle 0..stride x 0..band_h first (draw_box: scissor and fill), so only the 8 row blocks of the image rows 0..band_h and one
+ * more (the bilinear read of the row after the last) are cleared. Game row 0 is the last memory row of the slot (scissor_off), a block row is
+ * 8 rows x PM_OFF_W x 2 bytes, so the band is the last bytes of the slot. FSELLAG2: the other rows are never sampled. */
 extern int pm_is_cfb(const void* p);
-int pm_gpu_off_begin(const void* base, int stride, int siz) {
+int pm_gpu_off_begin(const void* base, int stride, int siz, int band_h) {
     pm_gpu_begin_wait();
     if (nb.rect_open) flush(); /* DR1 */
     int i, w, h;
@@ -2220,7 +2223,13 @@ int pm_gpu_off_begin(const void* base, int stride, int siz) {
             gs.offs[i].w = w;
             gs.offs[i].h = h;
         }
-        C3D_RenderTargetClear(gs.offs[i].rt, C3D_CLEAR_COLOR, 0, 0);
+        if (band_h > 0 && w != 64 && band_h < h) {
+            const u32 blk = 8u * (u32)w * 2u; /* bytes of one block row of the RGBA5551 slot */
+            u32 n = (u32)((band_h + 7) / 8 + 1) * blk, all = (u32)h * (u32)w * 2u;
+            u8* cb = (u8*)gs.offs[i].rt->frameBuf.colorBuf;
+            if (n > all) n = all;
+            GX_MemoryFill((u32*)(cb + all - n), 0, (u32*)(cb + all), GX_FILL_TRIGGER | GX_FILL_16BIT_DEPTH, NULL, 0, NULL, 0);
+        } else C3D_RenderTargetClear(gs.offs[i].rt, C3D_CLEAR_COLOR, 0, 0);
         gs.offs[i].base = base;
         gs.offs[i].siz = siz;
         gs.offs[i].stride = (unsigned)stride;
@@ -2758,7 +2767,7 @@ static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
     if (prev_frame && (!prev_pre || grab_n)) return 0;
     if (!ring_need(4, 6)) return 0; /* FB-1 GRAB: the copy quad is native; a full ring wraps first */
     if (!grab_tex_init()) return 0;
-    if (!pm_gpu_off_begin(cfb, 320, 2)) return 0; /* no free slot: the load reads the frame buffer memory as before */
+    if (!pm_gpu_off_begin(cfb, 320, 2, 0)) return 0; /* no free slot: the load reads the frame buffer memory as before */
     pm_gpu_off_end(); /* the slot exists (cleared on first use); the copy goes before the quad */
     if (!prev_frame) {
         if (!grab_split++ && want_clear) { /* queue entry order: clear, part 1, copy, part 2 */
@@ -2769,7 +2778,7 @@ static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
         sh_clear(); ndunit_scan(); rd_sync(); C3D_FrameSplit(GX_CMDLIST_FLUSH); sc_spl++;
     }
     if (!prev_frame) grab_queue_copy(); /* PT12: the old frame was copied at pm_gpu_begin */
-    pm_gpu_off_begin(cfb, 320, 2);
+    pm_gpu_off_begin(cfb, 320, 2, 0);
     {
         int sc[4] = { sci_x0, sci_y0, sci_x1, sci_y1 };
         int s_comb = gs.combine, s_2d = nb.rect_2d, s_bi = batch_identity, s_rep = r_replace, s_at = gs.r_atest, s_nc = gs.r_nocol, s_mix = gs.r_mix,
@@ -2787,7 +2796,7 @@ static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
         gs.combine = s_comb; nb.rect_2d = s_2d; batch_identity = s_bi; r_replace = s_rep; gs.r_atest = s_at; gs.r_nocol = s_nc; gs.r_mix = s_mix;
         rgb_scale = s_rs; nb.draw_3d = s_3d;
     }
-    if (was_off) pm_gpu_off_begin(gs.offs[prev].base, gs.offs[prev].w == 64 ? 64 : 320, gs.offs[prev].siz);
+    if (was_off) pm_gpu_off_begin(gs.offs[prev].base, gs.offs[prev].w == 64 ? 64 : 320, gs.offs[prev].siz, 0);
     else pm_gpu_off_end();
     grab_log(cfb, y0, y1, 0);
     if (!prev_frame) { /* PT12: the old frame in grab_tex does not stand for the current frame */
