@@ -401,6 +401,20 @@ static void v2_unit_add(unsigned k, unsigned id, uint32_t w0, uint32_t w1) {
     cx->uw[2u * i + 1u] = 0;
 }
 
+/* CONV2D: the depth-0 units of g from its own loop (the gt_ops stop rule: a callee's branch does not end the caller) */
+static void v2_units_top(const GSym* g) {
+    const uint32_t* L = (const uint32_t*)g->addr;
+    const unsigned nu = (unsigned)(((uintptr_t)g->end - (uintptr_t)g->addr) / 8u);
+    for (unsigned k = 0; k < nu; k++) {
+        const uint32_t w0 = L[2u * k], w1 = L[2u * k + 1u];
+        const unsigned id = w0 >> 24;
+        if (w0 == ND_NOP_A) continue;
+        if (id == NDO_END) break;
+        v2_unit_add(k, id, w0, w1);
+        if (id == NDO_CALL && (w0 & 1u)) break;
+    }
+}
+
 /* returns 1 when a branch call ended the walk (the rest of the calling list does not run) */
 static int v2_walk(const GSym* g, unsigned k0, unsigned depth) {
     const uint32_t* L = (const uint32_t*)g->addr;
@@ -410,7 +424,6 @@ static int v2_walk(const GSym* g, unsigned k0, unsigned depth) {
         const uint32_t w0 = L[2u * k], w1 = L[2u * k + 1u], a = w0 & 0xffffffu;
         const unsigned id = w0 >> 24;
         if (w0 == ND_NOP_A) continue;
-        if (depth == 0u && id != NDO_END) v2_unit_add(k, id, w0, w1);
         switch (id) {
         case NDO_END: return 0;
         case NDO_OMH: { const uint32_t m = nd_op_om_mask(a); s->omh = (s->omh & ~m) | (w1 & m); s->omh_set |= m; break; }
@@ -577,6 +590,7 @@ static void v2_convert_all(const char* descs_path, const char* inh_path, const c
         if (g->kind != GS_GFX) continue;
         memset(cx, 0, sizeof *cx);
         cx->top = g; cx->emitted_pso = -1; cx->emitted_bind = -1; cx->emitted_bind1 = -1;
+        v2_units_top(g);
         v2_walk(g, 0, 0);
         v2_flush();
         if (cx->inh) {
