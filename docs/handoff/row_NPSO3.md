@@ -15,7 +15,9 @@ New 3ds/tools/gen_pso_tab.py, 3ds/tools/gen_pso_main.c, 3ds/tests/pso/fix_descs.
 after `gen_gfx_tab >&2 # PUSHKEY` (:101), and `3ds/src/nd_pso_tab.c` added to the sha1sum list in key_now. .gitignore: one line.
 ## Exact edits
 1. gen_pso_tab.py `<out.c> <src dir>...`: scan every .c file under the dirs for `ND_PSO_DESC(` and take the whole call (balanced
-   parentheses). Write a host C file /tmp/pso_descs.c: `#include "common.h"`, `#include "nd_api.h"`, one `ND_PSO_DESC(<same
+   parentheses). Write a host C file /tmp/pso_descs.c: `#include "nd_api.h"` only (correction 1: common.h pulls include/functions.h,
+   whose `round` and `atan2` prototypes fail -Werror=builtin-declaration-mismatch; the fixture and NdPsoDesc need nothing else.
+   A later desc that uses a G_ macro needs `#include <PR/ultratypes.h>` and `#include <PR/gbi.h>`: NPSO5 adds them), one `ND_PSO_DESC(<same
    text>);` per call, then `const NdPsoDesc* const pso_descs[] = { &name0, ..., NULL };` and `const char* const pso_names[] = {
    "name0", ..., NULL };`. Duplicate names: error with both file:line. Then compile and run gen_pso_main.c with it (gcc -m32,
    flags of decide.sh plus -I src, linking nd_decide.c, nd_tmpl.c, pm_comb.c and a f32tof24 copy as nd_decide_test.c has it).
@@ -24,8 +26,8 @@ after `gen_gfx_tab >&2 # PUSHKEY` (:101), and `3ds/src/nd_pso_tab.c` added to th
    (the bytes of each NdPsoOut; with 0 descs one all-zero row), `const unsigned nd_pso_n = <n>;`,
    `const NdPsoOut* nd_pso(NdPso id) { return id < nd_pso_n ? (const NdPsoOut*)(const void*)nd_pso_raw[id] : 0; }`, and as
    comments one line per id with its name. Ids follow the scan order (file name order, then line).
-3. build.sh gen_pso_tab(): like gen_gfx_tab (docker pm3ds-host:1, the same mounts, a stamp of the inputs: the scan dirs src and
-   3ds/src and the two tools), output 3ds/src/nd_pso_tab.c, replaced only when its content changes. Call it after gen_gfx_tab.
+3. build.sh gen_pso_tab(): like gen_gfx_tab (docker pm3ds-host:1, the same mounts, a stamp of the inputs PT_IN: the scan dirs src
+   and 3ds/src, the two tools, and 3ds/include (correction 1: nd.h and nd_api.h set the NdPsoOut layout and the desc type)), output 3ds/src/nd_pso_tab.c, replaced only when its content changes. Call it after gen_gfx_tab.
 4. fix_descs.c: two descs, `ND_PSO_DESC(pso_fix_a, .cw0 = 0xFC121824u, .cw1 = 0xFF33FFFFu, .oml = 0x00552048u, .tex_on = 1);`
    and `ND_PSO_DESC(pso_fix_b, .cw0 = 0xFCFFFFFFu, .cw1 = 0xFFFE793Cu, .oml = 0x00552078u);`.
    nd_psotab_test.c: links the table that gen_pso_tab.py makes from 3ds/tests/pso, and for i 0 and 1 compares nd_pso(i) byte for
