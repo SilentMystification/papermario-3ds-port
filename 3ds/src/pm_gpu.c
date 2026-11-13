@@ -588,17 +588,18 @@ static __attribute__((cold, noinline)) void ndref_end(void) { /* end of frame: w
  * vtx: the 16-byte vertices of the index range min .. max of the draw. idx: the indices minus min (u16): the same picture gives the same record wherever the
  * ring put the draw. kind 1, n = the index count. The template id is not written (an LRU slot). */
 #include "nd_drec.h"
-static int drec_win = -2; static unsigned drec_first, drec_count;
+static int drec_win = -2; static unsigned drec_first, drec_count, drec_step = 1u;
 static int drec_on;
 static FILE* drec_f; static char* drec_vb; static NdDrecReg* drec_regs; static uint16_t* drec_idx; static unsigned drec_idx_cap, drec_seq, drec_over;
 #define DREC_REGS 640u
 static __attribute__((cold, noinline)) void drec_begin(void) { /* per frame, from pm_gpu_begin_w */
     if (drec_win == -2) {
         char v[24]; drec_win = -1;
-        if (pm_debug_value("drec", v, sizeof v)) { char* e; drec_first = (unsigned)strtoul(v, &e, 10); drec_count = *e == ':' ? (unsigned)strtoul(e + 1, NULL, 10) : 1u; if (drec_count) drec_win = 1; }
+        if (pm_debug_value("drec", v, sizeof v)) { char* e; char* e2; drec_first = (unsigned)strtoul(v, &e, 10); e2 = e; drec_count = 1u; if (*e == ':') { drec_count = (unsigned)strtoul(e + 1, &e2, 10); if (*e2 == ':') drec_step = (unsigned)strtoul(e2 + 1, NULL, 10); } if (!drec_step) drec_step = 1u; if (drec_count) drec_win = 1; }
     }
     const unsigned fr = pm_frame_count();
-    drec_on = drec_win > 0 && fr >= drec_first && fr < drec_first + drec_count;
+    drec_on = drec_win > 0 && fr >= drec_first && fr <= drec_first + (drec_count - 1u) * drec_step && (fr - drec_first) % drec_step == 0u;
+    if (drec_on && drec_f && drec_step > 1u) fprintf(drec_f, "frame %u\n", fr);
     if (!drec_on || drec_f) return;
     mkdir("sdmc:/3ds/PaperMario/shots", 0777);
     drec_f = fopen("sdmc:/3ds/PaperMario/shots/drec.txt", "wb");
@@ -606,9 +607,10 @@ static __attribute__((cold, noinline)) void drec_begin(void) { /* per frame, fro
     if (!drec_f || !drec_vb || !drec_regs) { pm_log_e("drec: no file or memory"); if (drec_f) fclose(drec_f); free(drec_vb); free(drec_regs); drec_f = NULL; drec_vb = NULL; drec_regs = NULL; drec_on = 0; drec_win = -1; return; }
     setvbuf(drec_f, drec_vb, _IOFBF, 1u << 20);
     drec_seq = drec_over = 0;
+    if (drec_step > 1u) fprintf(drec_f, "frame %u\n", fr);
 }
 static __attribute__((cold, noinline)) void drec_end(void) { /* end of a frame, from cen_frame_end: the last frame of the window closes the file */
-    if (!drec_f || pm_frame_count() + 1u < drec_first + drec_count) return;
+    if (!drec_f || pm_frame_count() < drec_first + (drec_count - 1u) * drec_step) return;
     const long bytes = ftell(drec_f);
     fclose(drec_f); free(drec_vb); free(drec_regs); free(drec_idx);
     pm_log_evt("drec f%u draws %u bytes %ld%s", pm_frame_count(), drec_seq, bytes, drec_over ? " over" : "");
