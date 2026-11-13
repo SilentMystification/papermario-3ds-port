@@ -2,6 +2,8 @@
 #include "effects_internal.h"
 #include "pm_interp_fi.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09004FE8_3EAF18[];
 extern Gfx D_09005090_3EAFC0[];
@@ -173,8 +175,7 @@ void peach_star_beam_appendGfx(void* effect) {
     f32 partX, partY, partZ;
     s32 i;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x9, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x9, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
     nd_rec_dl(D_09005090_3EAFC0);
 
     for (i = 0; i < ARRAY_COUNT(data->spirits); i++) {
@@ -195,13 +196,12 @@ void peach_star_beam_appendGfx(void* effect) {
                 guPositionF(sp20, 0.0f, 0.0f, 0.0f, SPRITE_WORLD_SCALE_F, partX, partY, partZ);
                 guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-                gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-                          G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-                gDPSetPrimColor(gMainGfxPos++, 0, 0, 128, 128, 128, 255);
-                gDPSetEnvColor(gMainGfxPos++, 128, 128, 128, 127);
+                nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+                nd_val_prim(0, 0, 128, 128, 128, 255);
+                nd_val_env(128, 128, 128, 127);
                 nd_rec_dl(D_E010CA38[i]);
                 nd_rec_dl(D_E010CA18[i]);
-                gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+                nd_xf_pop(G_MTX_MODELVIEW);
                 FI_CLOSE();
             }
         }
@@ -213,14 +213,13 @@ void peach_star_beam_appendGfx(void* effect) {
     guMtxCatF(sp60, sp20, sp20);
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-              G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gSPMatrix(gMainGfxPos++, camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, data->primR, data->primG, data->primB, alpha);
-    gDPSetEnvColor(gMainGfxPos++, data->envR, data->envG, data->envB, data->envA);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_val_prim(0, 0, data->primR, data->primG, data->primB, alpha);
+    nd_val_env(data->envR, data->envG, data->envB, data->envA);
     nd_rec_dl(D_E010CA14[0]);
     nd_rec_dl(D_E010CA10[0]);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
     FI_CLOSE();
     nd_rec_dl(D_09005090_3EAFC0);
 
@@ -243,13 +242,12 @@ void peach_star_beam_appendGfx(void* effect) {
                 guPositionF(sp20, 0.0f, 0.0f, 0.0f, 0.67f, partX, partY, partZ);
                 guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-                gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-                          G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-                gDPSetPrimColor(gMainGfxPos++, 0, 0, 128, 128, 128, 255);
-                gDPSetEnvColor(gMainGfxPos++, 128, 128, 128, 127);
+                nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+                nd_val_prim(0, 0, 128, 128, 128, 255);
+                nd_val_env(128, 128, 128, 127);
                 nd_rec_dl(D_E010CA38[i]);
                 nd_rec_dl(D_E010CA18[i]);
-                gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+                nd_xf_pop(G_MTX_MODELVIEW);
                 FI_CLOSE();
             }
         }

@@ -17,9 +17,11 @@ src/*.c (root only, not subfolders): only TARGET_3DS directive lines and the lin
 New names: none. Host link: none (no 3ds/src file).
 Needs: 3ds/tools/ppcmp.sh has -D__LINE__=0
 ## Exact edits
-1. `sh 3ds/tools/ppcmp.sh build3ds/out/pp_before src/*.c`.
-2. `python 3ds/tools/unifdef3ds.py src/*.c`.
-3. `sh 3ds/tools/ppcmp.sh build3ds/out/pp_after src/*.c`. One commit.
+Gate rule (ORACLE2): compare only the changed files. 1 build, 0 Azahar. ppcmp has `-dD` after N64DEL2 (macros compared too).
+1. The list L of the 28 files: `git grep -l -E '^\s*#\s*(if|ifdef|ifndef|elif).*TARGET_3DS' -- ':(glob)src/*.c' > build3ds/out/pp_list.txt`.
+   `sh 3ds/tools/ppcmp.sh build3ds/out/pp_before $(cat build3ds/out/pp_list.txt)` (one docker run).
+2. `python 3ds/tools/unifdef3ds.py $(cat build3ds/out/pp_list.txt)`.
+3. `sh 3ds/tools/ppcmp.sh build3ds/out/pp_after $(cat build3ds/out/pp_list.txt)`. One commit.
 ## Gate (expected values)
 - Tool output: no skip line and `unifdef3ds: total blocks 254`. src/entity.c:16 `#elif defined(TARGET_3DS)` stays. A second
   run changes nothing.

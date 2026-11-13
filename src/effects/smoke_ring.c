@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09002950_32B7F0[];
 extern Gfx D_09002B40_32B9E0[];
@@ -137,8 +139,7 @@ void smoke_ring_appendGfx(void* effect) {
         dlist = D_09002B40_32B9E0;
     }
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
     nd_rec_dl(D_09002950_32B7F0);
 
     guTranslateF(sp18, part->unk_04, part->unk_08, part->unk_0C);
@@ -146,23 +147,17 @@ void smoke_ring_appendGfx(void* effect) {
     guMtxCatF(sp58, sp18, sp98);
     guMtxF2L(sp98, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, 238, 220, 215, 160);
-    gDPSetEnvColor(gMainGfxPos++, 0, 0, 0, envAlpha);
-    gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE,
-        (temp_s5 * 32       ) * 4, 0,
-        (temp_s5 * 32 + 0x1F) * 4, 31 * 4);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_val_prim(0, 0, 238, 220, 215, 160);
+    nd_val_env(0, 0, 0, envAlpha);
+    nd_val_tile_size(G_TX_RENDERTILE, (temp_s5 * 32       ) * 4, 0, (temp_s5 * 32 + 0x1F) * 4, 31 * 4);
 
     temp_a3 = temp_s5 * 32 + 32;
 
     if (spD8 != 0) {
-        gDPSetTileSize(gMainGfxPos++, 1,
-            (temp_a3     ) * 4, 32 * 4,
-            (temp_a3 + 31) * 4, 63 * 4);
+        nd_val_tile_size(1, (temp_a3     ) * 4, 32 * 4, (temp_a3 + 31) * 4, 63 * 4);
     } else {
-        gDPSetTileSize(gMainGfxPos++, 1,
-            (temp_a3     ) * 4, 0,
-            (temp_a3 + 31) * 4, 31 * 4);
+        nd_val_tile_size(1, (temp_a3     ) * 4, 0, (temp_a3 + 31) * 4, 31 * 4);
     }
 
     part++;
@@ -170,11 +165,10 @@ void smoke_ring_appendGfx(void* effect) {
         guTranslateF(sp18, part->unk_04, part->unk_08, part->unk_0C);
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         nd_rec_dl(dlist);
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        nd_xf_pop(G_MTX_MODELVIEW);
     }
 
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gDPPipeSync(gMainGfxPos++);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }

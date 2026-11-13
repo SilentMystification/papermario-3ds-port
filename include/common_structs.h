@@ -2276,10 +2276,6 @@ typedef struct {
     /* 0x00000 */ LookAt lookAt;
     /* 0x00020 */ Hilite hilite;
     /* 0x00030 */ Mtx camPerspMatrix[8]; // could only be length 4, unsure
-#ifndef TARGET_3DS /* DIRECT D9: the 3DS game records frame streams (3ds/src/nd_rec.c), no task lists */
-    /* 0x00230 */ Gfx mainGfx[DISPLAYCONTEXT_GFX_COUNT];
-    /* 0x10630 */ Gfx backgroundGfx[DISPLAYCONTEXT_BG_COUNT]; // used by gfx_task_background
-#endif
     /* 0x11630 */ Mtx matrixStack[DISPLAYCONTEXT_MTX_COUNT];
 } DisplayContext; // size = 0x19630
 

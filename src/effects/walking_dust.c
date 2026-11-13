@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 s8 D_E000E660[16] = { 0, 1, 2, 2, 3, 3, 4, 4, 5, 5, 5, 6, 6, 6, -1, 0 };
 
@@ -130,11 +132,10 @@ void walking_dust_appendGfx(void* effect) {
         cond = true;
     }
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(effectTemp->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(effectTemp->shared->graphics));
     nd_rec_dl(dlist);
-    gDPSetEnvColor(gMainGfxPos++, 0, 0, 0, 127);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, 230, 222, 222, 110);
+    nd_val_env(0, 0, 0, 127);
+    nd_val_prim(0, 0, 230, 222, 222, 110);
 
     if (temp_t3 == 0) {
         phi_t1 = 24;
@@ -145,12 +146,12 @@ void walking_dust_appendGfx(void* effect) {
     temp_lo = temp_t4 * phi_t1;
     temp_a0 = temp_lo + phi_t1;
 
-    gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, temp_lo * 4, 0, (temp_a0 - 1) * 4, ((phi_t1 - 1) * 4));
+    nd_val_tile_size(G_TX_RENDERTILE, temp_lo * 4, 0, (temp_a0 - 1) * 4, ((phi_t1 - 1) * 4));
 
     if (cond) {
-        gDPSetTileSize(gMainGfxPos++, 1, temp_a0 * 4, 0, ((temp_lo + (phi_t1 * 2)) - 1) * 4, 0);
+        nd_val_tile_size(1, temp_a0 * 4, 0, ((temp_lo + (phi_t1 * 2)) - 1) * 4, 0);
     } else {
-        gDPSetTileSize(gMainGfxPos++, 1, temp_a0 * 4, 0, ((temp_lo + (phi_t1 * 2)) - 1) * 4, (phi_t1 - 1) * 4);
+        nd_val_tile_size(1, temp_a0 * 4, 0, ((temp_lo + (phi_t1 * 2)) - 1) * 4, (phi_t1 - 1) * 4);
     }
 
     for (i = 0; i < effectTemp->numParts; i++, data++) {
@@ -158,10 +159,8 @@ void walking_dust_appendGfx(void* effect) {
         guRotateF(sp58, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);
         guMtxCatF(sp58, sp18, sp18);
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-                  G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
         nd_rec_dl(dlist2);
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        nd_xf_pop(G_MTX_MODELVIEW);
     }
-    gDPPipeSync(gMainGfxPos++);
 }

@@ -2,6 +2,7 @@
 #include "effects_internal.h"
 #include "nu/nusys.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
 
 extern Gfx D_09000200_3A35D0[];
 extern Gfx D_090002A8_3A3678[];
@@ -154,8 +155,7 @@ void motion_blur_flame_appendGfx(void* effect) {
     s32 t6;
     s32 var_v1;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
     nd_rec_dl(D_E00A29D0[temp_a2]);
     gPmNdGrabHold(gMainGfxPos++, 1); /* SBLK2 B1: the strips share one frame copy */
 
@@ -184,12 +184,7 @@ void motion_blur_flame_appendGfx(void* effect) {
             temp_v0_2 = (data->unk_60 * temp_a0) >> 9;
             temp_v0_3 = (data->unk_64 * temp_a0) >> 9;
 
-            gDPSetPrimColor(gMainGfxPos++, 0, 0,
-                (temp_v1 * temp_a0) >> 8,
-                (temp_v0_2 * temp_a0) >> 8,
-                (temp_v0_3 * temp_a0) >> 8,
-                255
-            );
+            nd_val_prim(0, 0, (temp_v1 * temp_a0) >> 8, (temp_v0_2 * temp_a0) >> 8, (temp_v0_3 * temp_a0) >> 8, 255);
 
             envR = temp_v1 + 32;
             envG = temp_v0_2 + 32;
@@ -204,7 +199,7 @@ void motion_blur_flame_appendGfx(void* effect) {
                 envB = 127;
             }
 
-            gDPSetEnvColor(gMainGfxPos++, envR, envG, envB, 0);
+            nd_val_env(envR, envG, envB, 0);
 
             s3 = sp48 - temp_s5;
             t6 = s3 + temp_s5 * 2;
@@ -240,11 +235,7 @@ void motion_blur_flame_appendGfx(void* effect) {
                     break;
                 }
 
-                gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE,
-                    (s32) (s3 * temp_s1->unk_08) * 4,
-                    (s32) (temp_s1->unk_04 * 20 - var_t2_2 * temp_s1->unk_14 * temp_s1->unk_0C) * 4,
-                    (s32) (s3 * temp_s1->unk_08 + temp_s1->unk_00) * 4,
-                    (s32) (temp_s1->unk_04 * 21 - var_t2_2 * temp_s1->unk_14 * temp_s1->unk_0C) * 4);
+                nd_val_tile_size(G_TX_RENDERTILE, (s32) (s3 * temp_s1->unk_08) * 4, (s32) (temp_s1->unk_04 * 20 - var_t2_2 * temp_s1->unk_14 * temp_s1->unk_0C) * 4, (s32) (s3 * temp_s1->unk_08 + temp_s1->unk_00) * 4, (s32) (temp_s1->unk_04 * 21 - var_t2_2 * temp_s1->unk_14 * temp_s1->unk_0C) * 4);
 
                 for (var_t4 = 0; var_t4 < 2; var_t4++) {
                     gDPLoadMultiTile(gMainGfxPos++, VIRTUAL_TO_PHYSICAL(nuGfxCfb_ptr + uly * SCREEN_WIDTH),
@@ -267,7 +258,6 @@ void motion_blur_flame_appendGfx(void* effect) {
                         0x0400,
                         0x0400
                     );
-                    gDPPipeSync(gMainGfxPos++);
                 }
                 var_t2_2++;
             }

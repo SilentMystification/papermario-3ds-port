@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09002950_32B7F0[];
 extern Gfx D_09002B60_32BA00[];
@@ -110,8 +112,7 @@ void smoke_burst_appendGfx(void* effect) {
     Matrix4f sp20;
     Matrix4f sp60;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
     nd_rec_dl(dlist2);
 
     guPositionF(sp20, 0.0f, -gCameras[gCurrentCameraID].curYaw, 0.0f, data->unk_10, data->pos.x, data->pos.y, data->pos.z);
@@ -119,27 +120,21 @@ void smoke_burst_appendGfx(void* effect) {
     guMtxCatF(sp60, sp20, sp20);
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, data->rgba.r, data->rgba.g, data->rgba.b, data->rgba.a);
-    gDPSetEnvColor(gMainGfxPos++, 0, 0, 0, envAlpha);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_val_prim(0, 0, data->rgba.r, data->rgba.g, data->rgba.b, data->rgba.a);
+    nd_val_env(0, 0, 0, envAlpha);
     gDPSetAlphaCompare(gMainGfxPos++, G_AC_DITHER);
-    gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE,
-        (unk_20_s32 * 32     ) * 4, 0,
-        (unk_20_s32 * 32 + 31) * 4, 31 * 4);
+    nd_val_tile_size(G_TX_RENDERTILE, (unk_20_s32 * 32     ) * 4, 0, (unk_20_s32 * 32 + 31) * 4, 31 * 4);
 
     temp_a1 = unk_20_s32 * 32 + 32;
 
     if (cond) {
-        gDPSetTileSize(gMainGfxPos++, 1,
-            (temp_a1     ) * 4, 32 * 4,
-            (temp_a1 + 31) * 4, 63 * 4);
+        nd_val_tile_size(1, (temp_a1     ) * 4, 32 * 4, (temp_a1 + 31) * 4, 63 * 4);
     } else {
-        gDPSetTileSize(gMainGfxPos++, 1,
-            (temp_a1     ) * 4, 0,
-            (temp_a1 + 31) * 4, 31 * 4);
+        nd_val_tile_size(1, (temp_a1     ) * 4, 0, (temp_a1 + 31) * 4, 31 * 4);
     }
 
     nd_rec_dl(dlist);
     gDPSetAlphaCompare(gMainGfxPos++, G_AC_NONE);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }

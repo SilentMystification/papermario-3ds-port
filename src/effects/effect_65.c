@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 #define MAX_POINTS      30
 #define VTX_BUF_SIZE    2 * MAX_POINTS * sizeof(Vtx) / sizeof(Gfx)
@@ -248,21 +250,20 @@ void effect_65_appendGfx(void* effect) {
     variation = data->variation;
     scale = data->scale;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
     guTranslateF(mtx, 0.0f, 0.0f, 0.0f);
     guMtxF2L(mtx, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_rec_dl(D_E00CACB0[variation]);
 
     if (variation >= 2) {
         gDPSetCombineMode(gMainGfxPos++, PM_CC_4E, PM_CC_4F);
     }
 
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, data->primR, data->primG, data->primB, primAlpha);
-    gDPSetEnvColor(gMainGfxPos++, data->envR, data->envG, data->envB, 0);
+    nd_val_prim(0, 0, data->primR, data->primG, data->primB, primAlpha);
+    nd_val_env(data->envR, data->envG, data->envB, 0);
     vtxBuffer = (Vtx_t*) nd_rec_data(VTX_BUF_SIZE * sizeof(Gfx)); /* DIRECT D6c: the vertex buffer is stream data */
 
     firstPointIdx = -1;
@@ -388,5 +389,5 @@ void effect_65_appendGfx(void* effect) {
         }
     }
 
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }

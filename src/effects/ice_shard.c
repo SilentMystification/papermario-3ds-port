@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09001000_3F9CC0[];
 extern Gfx D_09001148_3F9E08[];
@@ -141,41 +143,36 @@ void ice_shard_appendGfx(void* effect) {
     Matrix4f sp20;
     Matrix4f unused;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
     guPositionF(sp20, 0.0f, -gCameras[gCurrentCameraID].curYaw, 0.0f, data->scale, data->pos.x, data->pos.y, data->pos.z);
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
     guRotateF(sp20, data->rot, 0.0f, 0.0f, 1.0f);
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_rec_dl(D_E01108B4[0]);
 
     texCoordS = (type % 2) * 32;
     texCoordT = (s32) (data->animFrame * 4.0f) * 32;
     envAlpha = (data->animFrame * 4.0f - (s32) data->animFrame * 4) * 256.0f;
 
-    gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE,
-        (texCoordS     ) * 4, (texCoordT     ) * 4,
-        (texCoordS + 31) * 4, (texCoordT + 31) * 4);
-    gDPSetTileSize(gMainGfxPos++, 1,
-        (texCoordS     ) * 4, (texCoordT + 32) * 4,
-        (texCoordS + 31) * 4, (texCoordT + 63) * 4);
+    nd_val_tile_size(G_TX_RENDERTILE, (texCoordS     ) * 4, (texCoordT     ) * 4, (texCoordS + 31) * 4, (texCoordT + 31) * 4);
+    nd_val_tile_size(1, (texCoordS     ) * 4, (texCoordT + 32) * 4, (texCoordS + 31) * 4, (texCoordT + 63) * 4);
 
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, data->primCol.r, data->primCol.g, data->primCol.b, alpha);
-    gDPSetEnvColor(gMainGfxPos++, data->envCol.r, data->envCol.g, data->envCol.b, envAlpha);
+    nd_val_prim(0, 0, data->primCol.r, data->primCol.g, data->primCol.b, alpha);
+    nd_val_env(data->envCol.r, data->envCol.g, data->envCol.b, envAlpha);
     nd_rec_dl(D_E01108B0[0]);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 
     if (type % 2 == 1 && (s32) (data->animFrame * 4.0f) == 3) {
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, data->primCol.r, data->primCol.g, data->primCol.b, alpha * envAlpha / 255);
+        nd_val_prim(0, 0, data->primCol.r, data->primCol.g, data->primCol.b, alpha * envAlpha / 255);
         gDPSetCombineMode(gMainGfxPos++, PM_CC_3C, PM_CC_3C);
         nd_rec_dl(D_09001168_3F9E28);
     }
 
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }

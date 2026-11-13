@@ -1381,7 +1381,6 @@ void au_bgm_player_update_playing(BGMPlayer *player) {
                                 POST_BGM_READ();
                             }
                             bgm_args_done:
-#ifdef TARGET_3DS
                             // The arguments were read as bytes in file order. The multi-byte fields of SeqArgs are read in host order.
                             switch (opcode) {
                                 case 0xE0: // MasterTempo: u16
@@ -1399,7 +1398,6 @@ void au_bgm_player_update_playing(BGMPlayer *player) {
                                     au_swap32(&player->seqCmdArgs.raw[0], 1);
                                     break;
                             }
-#endif
                             CurrentSeqCmdHandler = SeqCmdHandlers[opcode - 0xE0];
                             CurrentSeqCmdHandler(player, track);
                         }

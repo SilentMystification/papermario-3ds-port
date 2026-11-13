@@ -24,7 +24,6 @@ INCLUDE_IMG("entity/shadow/circle.png", D_802E91F0);
 INCLUDE_IMG("entity/shadow/square_big.png", D_802E92F0);
 INCLUDE_IMG("entity/shadow/circle_big.png", D_802E94F0);
 
-#ifdef TARGET_3DS
 /* EN2: the texture load of each shadow is plain N64 words. */
 Gfx Entity_RenderSquareShadow[] = {
     gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
@@ -63,53 +62,6 @@ Gfx Entity_RenderCircularShadow[] = {
     gsSP2Triangles(0, 1, 2, 0, 0, 2, 3, 0),
     gsSPEndDisplayList(),
 };
-#else
-Gfx Entity_Shadow_GfxCommon[] = {
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsDPPipeSync(),
-    gsDPSetCombineMode(PM_CC1_SHADOW, PM_CC2_SHADOW),
-    gsDPSetTexturePersp(G_TP_PERSP),
-    gsDPSetTextureDetail(G_TD_CLAMP),
-    gsDPSetTextureLOD(G_TL_TILE),
-    gsDPSetTextureLUT(G_TT_NONE),
-    gsDPSetTextureFilter(G_TF_BILERP),
-    gsDPSetTextureConvert(G_TC_FILT),
-    gsSPEndDisplayList(),
-};
-
-Gfx Entity_Shadow_LoadTexSquare[] = {
-    gsSPDisplayList(Entity_Shadow_GfxCommon),
-    gsDPSetTextureLUT(G_TT_NONE),
-    gsDPLoadTextureTile_4b(D_802E9170, G_IM_FMT_I, 16, 16, 0, 0, 15, 15, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP, 4, 4, G_TX_NOLOD, G_TX_NOLOD),
-    gsSPEndDisplayList(),
-};
-
-Gfx Entity_Shadow_LoadTexCircle[] = {
-    gsSPDisplayList(Entity_Shadow_GfxCommon),
-    gsDPSetTextureLUT(G_TT_NONE),
-    gsDPLoadTextureTile_4b(D_802E91F0, G_IM_FMT_I, 16, 16, 0, 0, 15, 15, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP, 4, 4, G_TX_NOLOD, G_TX_NOLOD),
-    gsDPSetCombineMode(PM_CC1_SHADOW, PM_CC2_SHADOW),
-    gsSPEndDisplayList(),
-};
-
-Gfx Entity_RenderSquareShadow[] = {
-    gsSPDisplayList(Entity_Shadow_LoadTexSquare),
-    gsSPClearGeometryMode(G_CULL_BACK | G_LIGHTING | G_SHADING_SMOOTH),
-    gsSPVertex(D_802E92B0, 4, 0),
-    gsSP2Triangles(0, 1, 2, 0, 0, 2, 3, 0),
-    gsSPEndDisplayList(),
-};
-
-Gfx Entity_RenderCircularShadow[] = {
-    gsSPDisplayList(Entity_Shadow_LoadTexCircle),
-    gsDPSetCombineMode(PM_CC1_SHADOW, PM_CC2_SHADOW),
-    gsSPClearGeometryMode(G_CULL_BACK | G_LIGHTING | G_SHADING_SMOOTH),
-    gsSPVertex(D_802E9270, 4, 0),
-    gsSP2Triangles(0, 1, 2, 0, 0, 2, 3, 0),
-    gsSPEndDisplayList(),
-};
-
-#endif
 
 Gfx Entity_RenderNone[] = {
     gsSPEndDisplayList(),

@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 void confetti_init(EffectInstance* effect);
 void confetti_update(EffectInstance* effect);
@@ -267,8 +269,7 @@ void confetti_appendGfx(void* effect) {
     unk_28 = part->unk_28;
     spA0 = D_E0088CC0[part->unk_00];
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
     nd_rec_dl(D_09000940_38C4E0);
 
     guTranslateF(sp18, part->unk_04, part->unk_08, part->unk_0C);
@@ -276,7 +277,7 @@ void confetti_appendGfx(void* effect) {
     guMtxCatF(sp58, sp18, sp18);
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     NdSub sub;
     nd_sub_open(&sub); /* DIRECT D6c: the part list is a stream range */
 
@@ -288,7 +289,7 @@ void confetti_appendGfx(void* effect) {
             guTranslateF(sp18, part->unk_04, part->unk_08, part->unk_0C);
             guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, color->r, color->g, color->b, unk_28);
+            nd_val_prim(0, 0, color->r, color->g, color->b, unk_28);
 
             switch ((unk_24 + i) % 3) {
                 case 0:
@@ -303,17 +304,15 @@ void confetti_appendGfx(void* effect) {
             }
             uly = ((i + D_E0088D00[unk_24 % 6]) & 0xF) * 16;
 
-            gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, ulx << 2, uly << 2,
-                           (ulx << 2) + ((width >> 1) << 1), (uly << 2) + height);
-            gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+            nd_val_tile_size(G_TX_RENDERTILE, ulx << 2, uly << 2, (ulx << 2) + ((width >> 1) << 1), (uly << 2) + height);
+            nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
             nd_rec_dl(spA0);
-            gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+            nd_xf_pop(G_MTX_MODELVIEW);
         }
     }
 
     nd_sub_close(&sub);
     nd_sub_call(&sub);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gDPPipeSync(gMainGfxPos++);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }
 

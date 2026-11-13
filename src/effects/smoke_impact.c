@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09002A38_32B8D8[];
 extern Gfx D_09002B60_32BA00[];
@@ -131,8 +133,7 @@ void smoke_impact_appendGfx(void* effect) {
     Matrix4f sp98;
     s32 i;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
     nd_rec_dl(dlist2);
 
     guTranslateF(sp18, part->unk_04, part->unk_08, part->unk_0C);
@@ -140,28 +141,22 @@ void smoke_impact_appendGfx(void* effect) {
     guMtxCatF(sp58, sp18, sp98);
     guMtxF2L(sp98, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
     if (unk_00 < 2) {
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, 230, 222, 222, 130);
+        nd_val_prim(0, 0, 230, 222, 222, 130);
     } else {
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 40, 10, 160);
+        nd_val_prim(0, 0, 255, 40, 10, 160);
         gDPSetAlphaCompare(gMainGfxPos++, G_AC_DITHER);
     }
 
-    gDPSetEnvColor(gMainGfxPos++, 0, 0, 0, envAlpha);
-    gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE,
-        (unk_30_s32 * 32     ) * 4, 0,
-        (unk_30_s32 * 32 + 32) * 4, 32 * 4);
+    nd_val_env(0, 0, 0, envAlpha);
+    nd_val_tile_size(G_TX_RENDERTILE, (unk_30_s32 * 32     ) * 4, 0, (unk_30_s32 * 32 + 32) * 4, 32 * 4);
 
     if (cond) {
-        gDPSetTileSize(gMainGfxPos++, 1,
-            (unk_30_s32 * 32 + 32) * 4, 32 * 4,
-            (unk_30_s32 * 32 + 64) * 4, 64 * 4);
+        nd_val_tile_size(1, (unk_30_s32 * 32 + 32) * 4, 32 * 4, (unk_30_s32 * 32 + 64) * 4, 64 * 4);
     } else {
-        gDPSetTileSize(gMainGfxPos++, 1,
-            (unk_30_s32 * 32 + 32) * 4, 0,
-            (unk_30_s32 * 32 + 64) * 4, 32 * 4);
+        nd_val_tile_size(1, (unk_30_s32 * 32 + 32) * 4, 0, (unk_30_s32 * 32 + 64) * 4, 32 * 4);
     }
 
     part++;
@@ -169,16 +164,15 @@ void smoke_impact_appendGfx(void* effect) {
         guTranslateF(sp18, part->unk_04, part->unk_08, part->unk_0C);
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         nd_rec_dl(dlist);
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        nd_xf_pop(G_MTX_MODELVIEW);
     }
 
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 
     if (unk_00 == 2) {
         gDPSetAlphaCompare(gMainGfxPos++, G_AC_NONE);
     }
 
-    gDPPipeSync(gMainGfxPos++);
 }

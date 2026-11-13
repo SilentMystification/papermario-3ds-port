@@ -19,7 +19,6 @@ u8 AuSynStereoDirty = false;
 
 extern s16 AuEqPower[128];
 
-#ifdef TARGET_3DS
 /* AU2: the render part of every call below runs as a command (docs/plans/AU2_design.md). */
 #include "pm_au2.h"
 #include "pm_dspaud.h"
@@ -99,9 +98,6 @@ static void au2_frame_end(void) {
     au2_hist_job[au2_frame_no & 3] = pm_au2_committed();
     au2_frame_no++;
 }
-#else
-#define AU2_X(name) name
-#endif
 
 #define AU_EQPOW_MID_IDX 64
 #define AU_EQPOW_MAX_IDX 127
@@ -201,7 +197,6 @@ void au_driver_release(void) {
 }
 
 /* AU2: repan every playing voice (stereo flag changed). Render part. */
-#ifdef TARGET_3DS
 void au_repan_x(void) {
     s32 busID;
     for (busID = 0; busID < gSynDriverPtr->num_pvoice; busID++) {
@@ -211,7 +206,6 @@ void au_repan_x(void) {
         }
     }
 }
-#endif
 
 /* Render one block of AUDIO_SAMPLES samples into bufPos: organize the voices by bus, pull every voice, effects, delay, mix, interleave, save.
  * Render part of the old alAudioFrame loop body. On the 3DS the a* macros run at once (pm_rsp_audio.c), the Acmd pointer only counts. */
@@ -349,42 +343,24 @@ Acmd* alAudioFrame(Acmd* cmdList, s32* cmdLen, s16* outBuf, s32 outLen) {
         return cmdListPos;
     }
 
-#ifdef TARGET_3DS
     au2_apply_stops();
-#endif
     au_update_clients_for_video_frame();
 
     // reapply panning if dirty
     if (AuSynStereoDirty) {
-#ifdef TARGET_3DS
         { AuCmd c = { AUC_STEREO_REPAN }; au2_put(&c); }
-#else
-        s32 busID;
-        for (busID = 0; busID < gSynDriverPtr->num_pvoice; busID++) {
-            AuPVoice* pvoice = &gSynDriverPtr->pvoices[busID];
-            if (pvoice->envMixer.motion == AL_PLAYING) {
-                au_syn_set_pan(busID, pvoice->envMixer.pan);
-            }
-        }
-#endif
         AuSynStereoDirty = false;
     }
 
     // process blocks of AUDIO_SAMPLES until outLen is consumed
     while (outLen > 0) {
         au_update_clients_for_audio_frame();
-#ifdef TARGET_3DS
         { AuCmd c = { AUC_BLOCK }; c.v0 = (s32)(uintptr_t)bufPos; au2_put(&c); cmdListPos++; }
-#else
-        cmdListPos = au_render_block_x(cmdListPos, bufPos);
-#endif
         outLen -= AUDIO_SAMPLES;
         bufPos += 2 * AUDIO_SAMPLES;
     }
-#ifdef TARGET_3DS
     pm_au2_commit(); /* one job per audio frame */
     au2_frame_end();
-#endif
     *cmdLen = (cmdListPos - cmdList);
 
     return cmdListPos;
@@ -399,16 +375,6 @@ void AU2_X(au_set_global_volume)(s16 volume) {
     AuGlobalVolume = volume;
 }
 
-#ifndef TARGET_3DS
-s16 au_get_global_volume(void) {
-    return AuGlobalVolume;
-}
-
-void au_set_stereo_enabled(b8 enabled) {
-    AuSynUseStereo = enabled;
-    AuSynStereoDirty = true;
-}
-#endif
 
 
 void AU2_X(au_bus_set_volume)(u8 busID, u16 value) {
@@ -921,7 +887,6 @@ static s16 _getVol(s16 ivol, s32 samples, s16 ratem, u16 ratel) {
     return ivol + tmpl;
 }
 
-#ifdef TARGET_3DS
 /* AU2: control side entry points. With the queue active they only record the call; the render thread runs the _x function with the
  * same arguments in the same order (au2_exec). Without the queue (switch au2off, or before the render thread starts) they run at once. */
 #include <string.h>
@@ -1068,4 +1033,3 @@ void au2_exec(const AuCmd* c) {
         default: break;
     }
 }
-#endif

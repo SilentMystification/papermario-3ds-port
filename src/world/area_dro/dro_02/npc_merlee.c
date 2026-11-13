@@ -51,7 +51,6 @@ enum {
 };
 
 BSS RitualCard N(RitualCards)[3];
-#ifdef TARGET_3DS
 /* 3DS test lines: the frame, the time and the native model cache misses and clears at the ends of the world fades (MERLEE row). */
 static void N(fade_line)(const char* fmt) {
     extern void pm_log_evt(const char* fmt, ...); extern unsigned pm_frame_count(void); extern unsigned pm_uptime_ms(void);
@@ -60,7 +59,6 @@ static void N(fade_line)(const char* fmt) {
     pm_gpu_mdl_stat(&miss, &clears);
     pm_log_evt(fmt, pm_frame_count(), pm_uptime_ms(), miss, clears);
 }
-#endif
 
 MAP_STATIC_PAD(1,merlee);
 
@@ -127,9 +125,7 @@ API_CALLABLE(N(DarkenWorld)) {
     s32 i;
 
     if (isInitialCall) {
-#ifdef TARGET_3DS
         N(fade_line)("merlee: darken start f%u t=%u ms mdlmiss %u clears %u");
-#endif
         mdl_set_all_tint_type(ENV_TINT_SHROUD);
         *gBackgroundTintModePtr = ENV_TINT_SHROUD;
         mdl_set_shroud_tint_params(0, 0, 0, 0);
@@ -148,9 +144,7 @@ API_CALLABLE(N(DarkenWorld)) {
         script->functionTemp[0] = 255;
     }
     mdl_set_shroud_tint_params(0, 0, 0, script->functionTemp[0]);
-#ifdef TARGET_3DS
     if (script->functionTemp[0] == 255) N(fade_line)("merlee: darken done f%u t=%u ms mdlmiss %u clears %u");
-#endif
 
     return (script->functionTemp[0] == 255) * ApiStatus_DONE2;
 }
@@ -159,9 +153,7 @@ API_CALLABLE(N(UndarkenWorld)) {
     s32 i;
 
     if (isInitialCall) {
-#ifdef TARGET_3DS
         N(fade_line)("merlee: undarken start f%u t=%u ms mdlmiss %u clears %u");
-#endif
         mdl_set_shroud_tint_params(0, 0, 0, 255);
         script->functionTemp[0] = 255;
         script->functionTemp[1] = 0;
@@ -175,9 +167,7 @@ API_CALLABLE(N(UndarkenWorld)) {
     if (script->functionTemp[0] == 0 && script->functionTemp[1] == 0) {
         script->functionTemp[1] = 1;
     } else if (script->functionTemp[1] == 1) {
-#ifdef TARGET_3DS
         N(fade_line)("merlee: undarken done f%u t=%u ms mdlmiss %u clears %u");
-#endif
         mdl_set_all_tint_type(ENV_TINT_NONE);
         *gBackgroundTintModePtr = ENV_TINT_NONE;
         for (i = 0; i < MAX_NPCS; i++) {
@@ -228,12 +218,8 @@ API_CALLABLE(N(DestroyRitualCards)) {
 u32 N(appendGfx_ritual_card)(RitualCard* card, Matrix4f mtxParent) {
     Matrix4f mtxTransform;
     Matrix4f mtxTemp;
-#ifdef TARGET_3DS
     /* The 3DS stack slot is not zero; alpha 0 makes imgfx_appendGfx_component return 0 before any draw. */
     ImgFXTexture ifxImg = { .alpha = 255 };
-#else
-    ImgFXTexture ifxImg;
-#endif
     SpriteRasterInfo rasterInfo;
     s32 ret;
 
@@ -575,9 +561,7 @@ void N(card_worker_update)(void) {
                 N(RitualCards)[1].pos.y = -5.0f;
                 N(RitualStateTime) = 0;
                 evt_set_variable(N(CreatorScript), RITUAL_VAR_STATE, RITUAL_STATE_D);
-#ifdef TARGET_3DS
                 { extern void pm_log_evt(const char* fmt, ...); extern unsigned pm_frame_count(void); pm_log_evt("merlee: ritual state D (spell done) f%u", pm_frame_count()); }
-#endif
                 N(RitualCards)[0].unk_00 = 0;
                 N(RitualCards)[1].unk_00 = 0;
                 N(GetCardOrientation)(1, &sp68, &sp6C, &sp70, &sp74);
@@ -607,9 +591,7 @@ void N(card_worker_render)(void) {
     N(appendGfx_ritual_card)(&N(RitualCards)[1], mtx);
     N(appendGfx_ritual_card)(&N(RitualCards)[2], mtx);
     if ((N(RitualCards)[0].unk_00 == 2) && ((temp_s1 - 1) < 2)) {
-#ifdef TARGET_3DS
         { extern void pm_log_evt(const char* fmt, ...); extern unsigned pm_frame_count(void); pm_log_evt("merlee: shuffle ret %d, state 3 f%u", (int)temp_s1, pm_frame_count()); }
-#endif
         evt_set_variable(N(CreatorScript), RITUAL_VAR_STATE, RITUAL_STATE_3);
     }
     if ((N(RitualCards)[0].unk_00 == 3) && ((temp_s1 - 1) < 2)) {

@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09001D40_351F60[];
 extern Gfx D_09001DE0_352000[];
@@ -202,15 +204,14 @@ void damage_indicator_render_impl(EffectInstance* effect) {
     s32 numParts = part->damageAmt;
     s32 i;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(effect->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(effect->shared->graphics));
 
     guTranslateF(mtxTransform, part->basePos.x, part->basePos.y, part->basePos.z);
     guRotateF(mtxTemp, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);
     guMtxCatF(mtxTemp, mtxTransform, mtxTransform);
     guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
     spA0 = part->lifetime - 1;
     lastPartIdx = effect->numParts - 1;
@@ -227,16 +228,16 @@ void damage_indicator_render_impl(EffectInstance* effect) {
     for(i = 1; i < effect->numParts; i++, part--) {
         s32 rIdx = ((i + spA0) % 12) * 3;
 
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, D_E003CCF8[rIdx], D_E003CCF8[rIdx + 1], D_E003CCF8[rIdx + 2], part->alpha);
+        nd_val_prim(0, 0, D_E003CCF8[rIdx], D_E003CCF8[rIdx + 1], D_E003CCF8[rIdx + 2], part->alpha);
         nd_rec_dl(D_09001D40_351F60);
 
         if (i == lastPartIdx) {
             guPositionF(mtxTransform, 0.0f, 0.0f, 0.0f, part->scale, part->curPos.x, part->curPos.y, part->curPos.z);
             guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-            gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+            nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
             nd_rec_dl(D_09002150_352370);
-            gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+            nd_xf_pop(G_MTX_MODELVIEW);
 
             guPositionF(mtxTransform, 0.0f, 0.0f, 0.0f, part->scale,
                 (part->curPos.x + part->basePos.x) * 0.5,
@@ -244,9 +245,9 @@ void damage_indicator_render_impl(EffectInstance* effect) {
                 (part->curPos.z + part->basePos.z) * 0.5);
             guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-            gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+            nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
             nd_rec_dl(D_09002160_352380);
-            gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+            nd_xf_pop(G_MTX_MODELVIEW);
         }
 
         nd_rec_dl(D_09001D40_351F60);
@@ -254,12 +255,12 @@ void damage_indicator_render_impl(EffectInstance* effect) {
         guTranslateF(mtxTransform, part->basePos.x, part->basePos.y, part->basePos.z);
         guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
         guScaleF(mtxTransform, part->scale, part->scale, 1.0f);
         guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
         if (i == lastPartIdx) {
             nd_rec_dl(D_09002170_352390);
@@ -269,7 +270,7 @@ void damage_indicator_render_impl(EffectInstance* effect) {
 
         if (i == lastPartIdx) {
             nd_rec_dl(D_090021A8_3523C8);
-            gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+            nd_xf_pop(G_MTX_MODELVIEW);
             nd_rec_dl(D_09001DE0_352000);
             if (numParts < 10) {
                 nd_rec_dl(D_E003CCA0[i]);
@@ -284,11 +285,11 @@ void damage_indicator_render_impl(EffectInstance* effect) {
             }
         } else {
             nd_rec_dl(D_09002190_3523B0);
-            gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+            nd_xf_pop(G_MTX_MODELVIEW);
         }
 
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        nd_xf_pop(G_MTX_MODELVIEW);
     }
 
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }

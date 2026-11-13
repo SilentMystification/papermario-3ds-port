@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 s32 D_E001A610 = 0;
 
@@ -148,15 +150,14 @@ void floating_flower_appendGfx(void* effect) {
     u32 alpha;
     u8 rgb, a;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(effectTemp->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(effectTemp->shared->graphics));
 
     guPositionF(mtxTransform, part->rot.x, part->rot.y, 0.0f, 1.0f, part->pos.x, part->pos.y, part->pos.z);
     guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     a = alpha = 255;
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
     if (*gBackgroundTintModePtr == ENV_TINT_SHROUD) {
         mdl_get_shroud_tint_params(&rgb, &rgb, &rgb, &a);
@@ -164,8 +165,8 @@ void floating_flower_appendGfx(void* effect) {
     }
 
     if (alpha != 0) {
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, alpha);
+        nd_val_prim(0, 0, 0, 0, 0, alpha);
         nd_rec_dl(D_090002F0_330750);
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        nd_xf_pop(G_MTX_MODELVIEW);
     }
 }

@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09002100_3884B0[];
 extern Gfx D_09002198_388548[];
@@ -221,8 +223,7 @@ void func_E0082580(DisableXFXData* data) {
     guRotateF(sp58, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);
     guMtxCatF(sp58, sp18, sp18);
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-              G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 }
 
 void func_E00826C4(DisableXFXData* data) {
@@ -237,9 +238,8 @@ void func_E00826C4(DisableXFXData* data) {
     guMtxCatF(sp58, sp18, sp18);
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-              G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, data->alpha);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_val_prim(0, 0, 0, 0, 0, data->alpha);
 
     if (data->alpha == 255) {
         gDPSetRenderMode(gMainGfxPos++, AA_EN | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA |
@@ -259,8 +259,7 @@ void func_E00828B4(EffectInstance* effect) {
     s32 unk_38;
     s32 i;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(effect->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(effect->shared->graphics));
     func_E0082580(data);
     unk_38 = data->unk_38;
     type = data->type;
@@ -275,11 +274,10 @@ void func_E00828B4(EffectInstance* effect) {
             }
             func_E00826C4(data);
             nd_rec_dl(D_09002230_3885E0);
-            gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+            nd_xf_pop(G_MTX_MODELVIEW);
         }
     }
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gDPPipeSync(gMainGfxPos++);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }
 
 void func_E0082A84(EffectInstance* effect) {
@@ -287,8 +285,7 @@ void func_E0082A84(EffectInstance* effect) {
     s32 unk_38;
     s32 i;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(effect->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(effect->shared->graphics));
     func_E0082580(data);
     unk_38 = data->unk_38;
 
@@ -311,8 +308,7 @@ void func_E0082A84(EffectInstance* effect) {
                 nd_rec_dl(D_09002270_388620);
             }
         }
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        nd_xf_pop(G_MTX_MODELVIEW);
     }
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gDPPipeSync(gMainGfxPos++);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }

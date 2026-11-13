@@ -1,0 +1,21 @@
+{
+  "benches": [
+    {
+      "name": "spot_mac00w_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CODEMODW1: mac_00 water spot, cold start with the det switch, shots 200 to 203. Two cold runs of one build must give byte-equal shots (byte gate of the water builder codemod).",
+      "scenario": "spot_mac00w_det",
+      "cap": 40,
+      "until": "shot \\d+ frame 203\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "det",
+        "cold"
+      ],
+      "gates": []
+    }
+  ]
+}

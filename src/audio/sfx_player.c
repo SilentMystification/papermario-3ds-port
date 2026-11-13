@@ -1,13 +1,8 @@
 #include "audio.h"
 #include "audio/core.h"
-#ifdef TARGET_3DS
 #include "pm_port.h"
 #include "pm_dspaud.h"
 #define AUD_EV(r, id) pm_aud_ev((r), (unsigned)(id))
-#else
-#define AUD_EV(r, id) ((void)0)
-#endif
-#ifdef TARGET_3DS
 /* AUDDROP census: a stop and an earlier start of one sound in the same batch of the queue (audiostat only). */
 static __attribute__((noinline)) void au_sfx_merge_census(SoundManager* manager, u32 first, s32 n) {
     for (s32 k = 1; k < n; k++) {
@@ -21,7 +16,6 @@ static __attribute__((noinline)) void au_sfx_merge_census(SoundManager* manager,
         }
     }
 }
-#endif
 
 static void au_sfx_play_sound(SoundManager* manager, SoundPlayer* player, s8* readPos, SoundRequest* request, s32 priority, s32 exclusiveID);
 static void au_sfx_set_triggers(SoundManager* manager, u32 soundID);
@@ -708,9 +702,7 @@ void au_sfx_begin_video_frame(SoundManager* manager) {
         pending += SFX_QUEUE_SIZE;
     }
 
-#ifdef TARGET_3DS
     if (pending > 1 && PMDL("audiostat")) au_sfx_merge_census(manager, manager->sfxQueueReadPos, pending);
-#endif
     // Process each pending sound effect in the queue
     j = manager->sfxQueueReadPos;
     if (pending > 0 && pending < SFX_QUEUE_SIZE) {

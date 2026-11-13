@@ -12,9 +12,7 @@ extern MenuPanel filemenu_yesno_menuBP;
 extern MenuPanel filemenu_info_menuBP;
 extern MenuPanel filemenu_createfile_menuBP;
 extern MenuPanel filemenu_selectlanguage_menuBP;
-#ifdef TARGET_3DS
 extern MenuPanel filemenu_options_menuBP;
-#endif
 
 HudScript* filemenu_cursor_hudElemScripts[] = { &HES_AnimatedCursorHand };
 MenuPanel* filemenu_menus[] = {
@@ -25,9 +23,7 @@ MenuPanel* filemenu_menus[] = {
 #if VERSION_PAL
     &filemenu_selectlanguage_menuBP,
 #endif
-#ifdef TARGET_3DS
     &filemenu_options_menuBP,
-#endif
 };
 s32 filemenu_cursor_posX = SCREEN_WIDTH / 2;
 s32 filemenu_cursor_posY = -SCREEN_HEIGHT / 2;
@@ -118,11 +114,7 @@ MenuWindowBP filemenu_common_windowBPs[3] = {
             .y = 24,
         },
         .width = 288,
-#ifdef TARGET_3DS
         .height = 212, // port: room for the Options row
-#else
-        .height = 192,
-#endif
         .priority = WINDOW_PRIORITY_0,
         .fpDrawContents = nullptr,
         .tab = nullptr,
@@ -1100,11 +1092,7 @@ void filemenu_init(s32 mode) {
     }
 
     if (menu->state == FM_MAIN_SELECT_FILE) {
-#ifdef TARGET_3DS
         for (i = 0; i < 4; i++) { // port: one pass per save slot, not per menu panel
-#else
-        for (i = 0; i < ARRAY_COUNT(filemenu_menus); i++) {
-#endif
             if (!fio_load_game(i)) {
                 gSaveSlotHasData[i] = false;
             } else {
@@ -1162,11 +1150,9 @@ void filemenu_cleanup(void) {
 }
 
 s32 filemenu_get_exit_mode() {
-#ifdef TARGET_3DS
     if (pm_warp_pending) {
         return 1; // port UI1a: Warp now leaves the file select as a file load does
     }
-#endif
     if (filemenu_menus[FILE_MENU_MAIN]->state == FM_MAIN_SELECT_FILE
         && filemenu_currentMenu == FILE_MENU_CONFIRM
         && filemenu_menus[FILE_MENU_CONFIRM]->selected == 0

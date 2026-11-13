@@ -23,11 +23,7 @@ uint32_t f32tof24(float vf) {
 
 /* test doubles: the recorder keeps the units of the last call; the walker is not run here */
 static uint32_t last[2]; static unsigned nlast;
-void nd_rec_napi(NdNapiRun run, const void* rec, unsigned units) {
-    (void)run;
-    memcpy(last, rec, units * 8u);
-    nlast = units * 2u;
-}
+void nd_rec_state(uint32_t w0, uint32_t w1) { last[0] = w0; last[1] = w1; nlast = 2u; }
 void nd_walk_state(const uint32_t* q, unsigned n) { (void)q; (void)n; }
 
 static int fails;

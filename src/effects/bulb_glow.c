@@ -2,6 +2,7 @@
 #include "nu/nusys.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
 
 typedef struct UnkBulbGlow {
     /* 0x00 */ s32 unk_00;
@@ -184,8 +185,7 @@ void bulb_glow_appendGfx(void* effect) {
         brightness = 127;
     }
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
     temp_s1 = &D_E0078918[type];
     glowExtent = temp_s1->unk_10;
@@ -218,7 +218,7 @@ void bulb_glow_appendGfx(void* effect) {
     g = color->g * colorScale / 255;
     b = color->b * colorScale / 255;
 
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, r, g, b, 127);
+    nd_val_prim(0, 0, r, g, b, 127);
 
     xMin = centerX - glowExtent;
     xMax = xMin + glowExtent * 2;
@@ -248,11 +248,7 @@ void bulb_glow_appendGfx(void* effect) {
             break;
         }
 
-        gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE,
-            (s32) (xMin * temp_s1->unk_08) * 4,
-            (s32) (temp_s1->unk_04 * 20 - i * temp_s1->unk_14 * temp_s1->unk_0C) * 4,
-            (s32) (xMin * temp_s1->unk_08 + temp_s1->unk_00) * 4,
-            (s32) (temp_s1->unk_04 * 21 - i * temp_s1->unk_14 * temp_s1->unk_0C) * 4);
+        nd_val_tile_size(G_TX_RENDERTILE, (s32) (xMin * temp_s1->unk_08) * 4, (s32) (temp_s1->unk_04 * 20 - i * temp_s1->unk_14 * temp_s1->unk_0C) * 4, (s32) (xMin * temp_s1->unk_08 + temp_s1->unk_00) * 4, (s32) (temp_s1->unk_04 * 21 - i * temp_s1->unk_14 * temp_s1->unk_0C) * 4);
 
         for (j = 0; j < 1; j++) {
             gDPLoadMultiTile(gMainGfxPos++,
@@ -266,7 +262,6 @@ void bulb_glow_appendGfx(void* effect) {
                 G_TX_RENDERTILE,
                 ((xMin + xStart + off) & 0x1FF) << 5, 0,
                 1 << 10, 1 << 10);
-            gDPPipeSync(gMainGfxPos++);
         }
     }
 }

@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09003280_371FE0[];
 extern Gfx D_090032F8_372058[];
@@ -229,8 +231,7 @@ void lightning_appendGfx(void* effect) {
     Matrix4f sp60;
     u16 perspNorm;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
     if (unk_00 != 1 || unk_18 >= 18) {
         s32 ult2;
@@ -254,13 +255,13 @@ void lightning_appendGfx(void* effect) {
                 guPerspectiveF(sp20, &perspNorm, 30.0f, (f32) camera->viewportW / (f32) camera->viewportH, 4.0f, 16384.0f, 1.0f);
                 guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-                gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
+                nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
 
                 guTranslateF(sp20, data->unk_04, data->unk_08, -500.0f);
                 guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-                gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-                gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 47, 198, 255);
+                nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+                nd_val_prim(0, 0, 255, 47, 198, 255);
                 break;
             default:
                 guTranslateF(sp20, data->unk_04, data->unk_08, data->unk_0C);
@@ -270,21 +271,19 @@ void lightning_appendGfx(void* effect) {
                 guMtxCatF(sp60, sp20, sp20);
                 guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-                gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-                gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 0, data->unk_10);
+                nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+                nd_val_prim(0, 0, 255, 255, 0, data->unk_10);
                 break;
         }
 
-        gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, uls, ult, uls + 1020, ult + 124);
-        gDPSetTileSize(gMainGfxPos++, 1, uls2, ult2, uls2 + 1020, ult2 + 124);
+        nd_val_tile_size(G_TX_RENDERTILE, uls, ult, uls + 1020, ult + 124);
+        nd_val_tile_size(1, uls2, ult2, uls2 + 1020, ult2 + 124);
         nd_rec_dl(dlist);
-        gDPPipeSync(gMainGfxPos++);
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        nd_xf_pop(G_MTX_MODELVIEW);
 
         if (unk_00 < 3) {
-            gSPMatrix(gMainGfxPos++, &gDisplayContext->camPerspMatrix[gCurrentCameraID], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
+            nd_xf_push(&gDisplayContext->camPerspMatrix[gCurrentCameraID], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
         }
 
-        gDPPipeSync(gMainGfxPos++);
     }
 }

@@ -277,4 +277,5 @@ def main(argv):
 
 
 if __name__ == '__main__':
+    sys.stdout.reconfigure(newline='\n')  # the keep lines end in LF on every platform (Windows print() wrote CRLF; HUNIT fix)
     sys.exit(main(sys.argv[1:]))

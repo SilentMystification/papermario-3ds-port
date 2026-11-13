@@ -1,0 +1,29 @@
+{
+  "scenarios": [
+    {
+      "name": "spot_mac00w_det",
+      "status": "unverified",
+      "subject": "Toad Town mac_00, Mario placed at pos -57 0 76 (warp entry 0), cold start with the det switch. MODEL_water is drawn by N(gfx_build_water) (water_gfx.c). Shots at frames 200 to 203.",
+      "proves": "CODEMODW1 byte gate: the mac_00 water builder (N(gfx_build_water), CUSTOM_GFX_0) is a function of the build (det), so a base and a head build give byte-equal shots.",
+      "debug": "warp=mac_00:0 pos=-57:0:76 shots shotwin=200:4 loglevel=debug det",
+      "extra": [],
+      "until": "shot \\d+ frame 203\\b",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "warp: mac_00 entry 0",
+      "expects": "warp",
+      "needs_picture": true,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 0"
+        },
+        {
+          "name": "shot 203",
+          "regex": "shot \\d+ frame 203\\b"
+        }
+      ],
+      "reason": "CODEMODW1 gate: mac_00 water scene, cold det start, shots 200 to 203. Cap 40 s, deadline 35 s. The until is the shot at frame 203."
+    }
+  ]
+}

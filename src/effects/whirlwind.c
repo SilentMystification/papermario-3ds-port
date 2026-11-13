@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 void whirlwind_init(EffectInstance* effect);
 void whirlwind_update(EffectInstance* effect);
@@ -173,13 +175,12 @@ void whirlwind_appendGfx(void* effect) {
     spB8 = data->unk_34;
     spB0 = data->unk_13C * 4.0f;
     spB4 = data->unk_140 * 4.0f;
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, OS_K0_TO_PHYSICAL(eff->shared->graphics));
+    nd_val_seg(0x09, OS_K0_TO_PHYSICAL(eff->shared->graphics));
 
     guTranslateF(sp20, 0.0f, 0.0f, 0.0f);
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_rec_dl(D_09000400_3D3D30);
 
     // Reserve 0x208 bytes (65 commands) for a vertex buffer (2x16 Vtx + space for the current command)
@@ -214,7 +215,7 @@ void whirlwind_appendGfx(void* effect) {
 
     guScaleF(sp20, 0.1f, 0.1f, 0.1f);
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
     // Save position to later insert a branch around the commands that follow this
     nd_sub_open(&mainSub);
@@ -235,9 +236,9 @@ void whirlwind_appendGfx(void* effect) {
         guTranslateF(sp60, temp_f20_2 * sin_deg(f22), 0.0f, temp_f20_2 * cos_deg(f22));
         guMtxCatF(sp60, sp20, sp20);
         guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         gSPVertex(gMainGfxPos++, vertexBuffer, 16, 0);
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        nd_xf_pop(G_MTX_MODELVIEW);
 
         guPositionF(sp20, 0.0f, 0.0f, data->unk_118[i + 1], 1.0f, data->unk_38[i + 1] * 10.0f, data->unk_58[i + 1] * 10.0f, data->unk_78[i + 1] * 10.0f);
         guRotateF(sp60, data->unk_138 + i * i, 0.03f, 1.0f, 0.0f);
@@ -248,12 +249,12 @@ void whirlwind_appendGfx(void* effect) {
         guTranslateF(sp60, temp_f20_3 * sin_deg(data->unk_B8[i]), 0.0f, temp_f20_3 * cos_deg(data->unk_B8[i]));
         guMtxCatF(sp60, sp20, sp20);
         guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         gSPVertex(gMainGfxPos++, &vertexBuffer[16], 16, 16);
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        nd_xf_pop(G_MTX_MODELVIEW);
 
-        gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, spB0 + i * 16, 0, (spB0 + i * 16 + 63) << 2, 31 << 2);
-        gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE + 1, spB4 + i * 8, 0, (spB4 + i * 8 + 63) << 2, 31 << 2);
+        nd_val_tile_size(G_TX_RENDERTILE, spB0 + i * 16, 0, (spB0 + i * 16 + 63) << 2, 31 << 2);
+        nd_val_tile_size(G_TX_RENDERTILE + 1, spB4 + i * 8, 0, (spB4 + i * 8 + 63) << 2, 31 << 2);
 
         // Call the display list to create triangles from the verticies
         nd_sub_call(&triSub);
@@ -261,11 +262,11 @@ void whirlwind_appendGfx(void* effect) {
 
     nd_sub_close(&mainSub);
     gSPClearGeometryMode(gMainGfxPos++, G_CULL_BOTH);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, data->primR, data->primG, data->primB, primAlpha);
-    gDPSetEnvColor(gMainGfxPos++, data->envR, data->envG, data->envB, 32);
+    nd_val_prim(0, 0, data->primR, data->primG, data->primB, primAlpha);
+    nd_val_env(data->envR, data->envG, data->envB, 32);
 
     // Call the main display list
     nd_sub_call(&mainSub);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }

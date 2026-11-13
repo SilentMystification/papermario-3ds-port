@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09001000_3A6BE0[];
 extern Gfx D_09001418_3A6FF8[];
@@ -138,29 +140,27 @@ void merlin_house_stars_appendGfx(void* effect) {
     s32 uls;
     s32 ult;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
     guTranslateF(sp10, data->unk_0C, data->unk_10, data->unk_14);
     guScaleF(sp50, 0.96f, 0.96f, 0.96f);
     guMtxCatF(sp50, sp10, sp10);
     guMtxF2L(sp10, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, 127);
-    gDPSetEnvColor(gMainGfxPos++, 0, 0, 0, envAlpha);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_val_prim(0, 0, 0, 0, 0, 127);
+    nd_val_env(0, 0, 0, envAlpha);
     gDPSetCombineMode(gMainGfxPos++, PM_CC1_MERLIN_STARS, PM_CC2_MERLIN_STARS);
     nd_rec_dl(D_09001000_3A6BE0);
 
     uls = data->unk_1C * 4.0f;
     ult = data->unk_20 * 4.0f;
-    gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, uls, ult, uls + 252, ult + 252);
+    nd_val_tile_size(G_TX_RENDERTILE, uls, ult, uls + 252, ult + 252);
 
     uls = data->unk_24 * 4.0f;
     ult = data->unk_28 * 4.0f;
-    gDPSetTileSize(gMainGfxPos++, 1, uls, ult, uls + 252, ult + 252);
+    nd_val_tile_size(1, uls, ult, uls + 252, ult + 252);
 
     nd_rec_dl(D_09001418_3A6FF8);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gDPPipeSync(gMainGfxPos++);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }

@@ -1,6 +1,8 @@
 #include "common.h"
 #include "model.h"
 #include "effects_internal.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 void bombette_breaking_init(EffectInstance* effect);
 void bombette_breaking_update(EffectInstance* effect);
@@ -216,11 +218,10 @@ void bombette_breaking_appendGfx(void* effect) {
 
     timeLeft *= 4;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
     guTranslateF(sp20, data->center.x, data->center.y, data->center.z);
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
     mdl_draw_hidden_panel_surface(&gMainGfxPos, data->treeIndex);
 
@@ -229,10 +230,9 @@ void bombette_breaking_appendGfx(void* effect) {
         guPositionF(sp20, timeLeft + (130 * i), timeLeft - (40 * i), timeLeft + (80 * i), unk_40,
                          data->unk_14.x, data->unk_14.y, data->unk_14.z);
         guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-                  G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         gSPDisplayList(gMainGfxPos++, D_E0084E1C[type]);
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        nd_xf_pop(G_MTX_MODELVIEW);
     }
 
     gSPDisplayList(gMainGfxPos++, sp64);
@@ -240,15 +240,14 @@ void bombette_breaking_appendGfx(void* effect) {
     data = ((EffectInstance*)effect)->data.bombetteBreaking;
     data++;
     for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, data++) {
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 255, (data->alpha * mainAlpha) / 255);
+        nd_val_prim(0, 0, 255, 255, 255, (data->alpha * mainAlpha) / 255);
         guPositionF(sp20, 0.0f, -gCameras[gCurrentCameraID].curYaw, 0.0f, unk_38,
                          data->center.x, data->center.y, data->center.z);
         guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-                  G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         gSPDisplayList(gMainGfxPos++, sp60);
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        nd_xf_pop(G_MTX_MODELVIEW);
     }
 
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }

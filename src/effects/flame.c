@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nu/nusys.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 typedef struct FlamePreset {
     /* 0x00 */ Color_RGB8 colorScale;
@@ -176,13 +178,12 @@ void flame_appendGfx(void* effect) {
     Matrix4f sp58;
     Matrix4f sp98;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
     if (LastFlameRenderFrame != gGameStatusPtr->frameCounter) {
         LastFlameRenderFrame = gGameStatusPtr->frameCounter;
         gSPDisplayList(gMainGfxPos++, D_09000918_3544C8);
-        gDPSetTileSize(gMainGfxPos++, 1, uls, ult, uls + 128, ult + 256);
+        nd_val_tile_size(1, uls, ult, uls + 128, ult + 256);
         gSPDisplayList(gMainGfxPos++, D_090009E0_354590);
         gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, VIRTUAL_TO_PHYSICAL(nuGfxCfb_ptr));
         gDPSetScissorFrac(gMainGfxPos++, G_SC_NON_INTERLACE,
@@ -197,8 +198,8 @@ void flame_appendGfx(void* effect) {
     gSPDisplayList(gMainGfxPos++, preset->dlist);
     gDPSetKeyR(gMainGfxPos++, preset->keyCenter, preset->colorScale.r, 0);
     gDPSetKeyGB(gMainGfxPos++, preset->keyCenter, preset->colorScale.g, 0, preset->keyCenter, preset->colorScale.b, 0);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, preset->primIntensity, preset->primIntensity, preset->primIntensity, 0);
-    gDPSetEnvColor(gMainGfxPos++, preset->envColor.r, preset->envColor.g, preset->envColor.b, 0);
+    nd_val_prim(0, 0, preset->primIntensity, preset->primIntensity, preset->primIntensity, 0);
+    nd_val_env(preset->envColor.r, preset->envColor.g, preset->envColor.b, 0);
 
     guTranslateF(sp18, data->pos.x, data->pos.y, data->pos.z);
     guRotateF(sp58, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);
@@ -207,9 +208,7 @@ void flame_appendGfx(void* effect) {
     guMtxCatF(sp58, sp98, sp98);
     guMtxF2L(sp98, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-              G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     gSPDisplayList(gMainGfxPos++, D_090008F8_3544A8);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gDPPipeSync(gMainGfxPos++);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }

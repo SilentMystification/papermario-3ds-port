@@ -3021,24 +3021,11 @@ void btl_appendGfx_prim_quad(u8 r, u8 g, u8 b, u8 a, u16 left, u16 top, u16 righ
     gDPPipeSync(gMainGfxPos++);
     gSPDisplayList(gMainGfxPos++, D_80293970);
 
-#ifdef TARGET_3DS
     /* NATIVEAPI E5b (S5PQUAD): the quad is one fill record (nd_api.h NdFillRec): kind 2 opaque (PM_CC_PRIM_FULL_ALPHA), 3 translucent. */
     {
         NdFillRec q = { left, top, right, bottom, ((u32)r << 24) | ((u32)g << 16) | ((u32)b << 8) | (u32)a, a == 255 ? 2u : 3u };
         nd_rec_napi(nd_fill_run, &q, 3u);
     }
-#else
-    if (a == 255) {
-        gDPSetRenderMode(gMainGfxPos++, G_RM_OPA_SURF, G_RM_OPA_SURF2);
-        gDPSetCombineMode(gMainGfxPos++, PM_CC_PRIM_FULL_ALPHA, PM_CC_PRIM_FULL_ALPHA);
-    } else {
-        gDPSetRenderMode(gMainGfxPos++, G_RM_XLU_SURF, G_RM_XLU_SURF2);
-        gDPSetCombineMode(gMainGfxPos++, G_CC_PRIMITIVE, G_CC_PRIMITIVE);
-    }
-
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, r, g, b, a);
-    gDPFillRectangle(gMainGfxPos++, left, top, right, bottom);
-#endif
 
     gDPPipeSync(gMainGfxPos++);
     gDPSetRenderMode(gMainGfxPos++, G_RM_TEX_EDGE, G_RM_TEX_EDGE2);

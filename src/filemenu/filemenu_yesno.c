@@ -380,9 +380,7 @@ void filemenu_yesno_handle_input(MenuPanel* menu) {
                         fio_save_game(filemenu_iterFileIdx);
                         gSaveSlotHasData[filemenu_iterFileIdx] = true;
 #endif
-#ifdef TARGET_3DS
                         pm_cheat_file_copy(filemenu_CopyFromFileIdx, filemenu_iterFileIdx); // port: the cheat file goes with the copy (pm_cheatsave.c)
-#endif
                         break;
 #if !VERSION_PAL
                     case FM_CONFIRM_DUMMY:

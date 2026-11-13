@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Vtx D_09002D40_3ADD70[][6]; // TODO confirm this type is correct
 extern Gfx D_09003880_3AE8B0[];
@@ -170,8 +172,7 @@ void butterflies_appendGfx(void* effect) {
     s32 primColor = data->unk_24;
     s32 type = data->unk_00;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(effectTemp->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(effectTemp->shared->graphics));
 
     guTranslateF(sp18, data->unk_0C, data->unk_10 + D_E00AA6EC[data->unk_2C] * 0.3f, data->unk_14);
     guRotateF(sp58, data->unk_28, 0.0f, 1.0f, 0.0f);
@@ -180,12 +181,11 @@ void butterflies_appendGfx(void* effect) {
     guMtxCatF(sp58, sp18, sp18);
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, primColor, primColor, primColor, 255);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_val_prim(0, 0, primColor, primColor, primColor, 255);
     nd_rec_dl(D_09003880_3AE8B0);
     nd_rec_dl(D_E00AA6C0[type]);
     gSPVertex(gMainGfxPos++, &D_09002D40_3ADD70[data->unk_2C], 6, 0);
     nd_rec_dl(D_09003DC8_3AEDF8);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gDPPipeSync(gMainGfxPos++);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }

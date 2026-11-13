@@ -1,7 +1,7 @@
 # Row CONV2F: nd_draw_list(list, ND_SELF) at the call sites of self-contained v2 tables (codemod rule, pilot water_splash.c)
 
-(Model: Haiku. 60 lines or fewer. Read only this file, CLAUDE.md and what it names. Release after CONV2D2 merges: the Needs
-lines below then hold, and rowlint passes. ORACLE2 checked it on 2026-11-13.)
+(Model: Haiku. 60 lines or fewer. Read only this file, CLAUDE.md and what it names. ORACLE2 checked the lines at 0f5d3960b,
+after the CONV2D2 merge.)
 ## Design (fixed)
 - A self-contained v2 table needs no entry. Its call site becomes `nd_draw_list(list, ND_SELF)`. The macro calls nd_rec_dl
   (3ds/src/nd_gtab.c:64-86), so core 0 takes nd_gtab_run and then the v2 run of CONV2D2. An entry other than ND_SELF is a build
@@ -9,12 +9,12 @@ lines below then hold, and rowlint passes. ORACLE2 checked it on 2026-11-13.)
 - The particle run (nd_parts_run, nd_walk.c:423-444) keeps its v1 flat tables until the native emit row (nd_part_draw reads
   NDG_VTX and NDG_TRI ops).
 - The converter writes the table names to build3ds/out/ntab_tables.txt. codemod.py reads it with `--ntab <file>`.
-## Facts (main 5c30af943; CONV2D2 adds about 3 lines to nd_gfx_conv.c: find the quoted text)
+## Facts (main 0f5d3960b)
 - 3ds/tools/codemod.py:44 `'nd_rec_dl': (1, False, 'nd_draw_list', (0,)),`. The entry check is :204
   `if not why and nm in DL_NAMES and entry is None:`. The output is :223 `out.append(entry)`. The argv loop starts at :236.
 - 3ds/tools/gen_gfx_tab.sh:18 calls nd_gfx_conv with 4 paths. :23 copies ntab_inherit.txt and ntab_unsup.txt to /w/build3ds/out.
-- 3ds/tools/nd_gfx_conv.c:650 `if (argc < 5)`, :651 `v2_convert_all(argv[1], argv[2], argv[3], argv[4]);`, :580 the
-  v2_convert_all signature.
+- 3ds/tools/nd_gfx_conv.c:659 `if (argc < 5)`, :660 `v2_convert_all(argv[1], argv[2], argv[3], argv[4]);`, :583 the
+  v2_convert_all signature. Its table loop ends before the CONV2D2 dev index print (`NdNDev ndn_dev_idx`).
 - src/effects/water_splash.c:189 `nd_rec_dl(D_09000100_3BCB90);` has a v2 table (ndn_D_09000100_3BCB90). :222 calls an element
   of D_E00BEAF0, so it stays (`no-entry`).
 ## Start
@@ -25,7 +25,6 @@ v2_convert_all signature, a write after its table loop), 3ds/tools/gen_gfx_tab.s
 (argv loop, :204, :223, docstring Mapping), src/effects/water_splash.c:189.
 New names: none. Host link: none (no 3ds/src file changes).
 Needs: 3ds/include/nd_gtab.h has nd_ntab_find
-(The same CONV2D2 merge brings the scene fxpic_89_drec.)
 ## Exact edits
 1. nd_gtab.h after the nd_rec_dl prototype: `#define ND_SELF 0` and
    `#define nd_draw_list(list, entry) do { _Static_assert((entry) == ND_SELF, "an entry needs row ENTRY1"); nd_rec_dl(list); } while (0)`.
