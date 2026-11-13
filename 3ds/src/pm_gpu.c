@@ -2131,7 +2131,7 @@ int pm_gpu_off_begin(const void* base, int stride, int siz) {
     Mtx_Ortho(&off_proj, 0.f, (float)off_w, 0.f, (float)off_h, 0.f, 1.f, true);
     gs.off_active = 1;
     rebuild_3d();
-    sh_clear(); C3D_FrameDrawOn(gs.offs[i].rt);
+    sh.has &= ~SH_SC; pm_tex_bind_reset(); C3D_FrameDrawOn(gs.offs[i].rt); /* FSELLAG1: a target switch changes only the scissor of the sh state */
     return 1;
 }
 
@@ -2424,7 +2424,7 @@ void pm_gpu_off_end(void) {
     gs.off_active = 0;
     off_i8 = 0;
     rebuild_3d();
-    bind_main();
+    if (!sr_on || sr_over) { sh.has &= ~SH_SC; pm_tex_bind_reset(); C3D_FrameDrawOn(target); if (eye_gpu != eye_e) eye_put(eye_e); } else bind_main(); /* FSELLAG1 */
 }
 
 int pm_gpu_stereo_flag(void) { return stereo_frame; } /* read only (the prof line) */
