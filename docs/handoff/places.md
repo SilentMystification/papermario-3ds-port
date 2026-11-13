@@ -31,7 +31,6 @@ A shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json, bench_def
 | CODEMODW2 | Haiku | src/world/area_iwa/iwa_01/splash.c value call lines, include lines; new azt.d/bench.d CODEMODW2.json | parked (CODEMODW1 trace) |
 | CODEMODW3 | Haiku | src/world/area_flo/flo_10/waterfx.c value call lines, include lines; new azt.d/bench.d CODEMODW3.json | parked (CODEMODW1 trace) |
 | CODEMODW4 | Haiku | src/world/area_hos/hos_04/fountains.c value call lines, include lines; new azt.d/bench.d CODEMODW4.json | parked (CODEMODW1 trace) |
-| SEEDTOOL | Haiku | new 3ds/tools/seedprobe.py | waits for DRECSTEP |
 | SEEDPROBE1 | Haiku | docs/handoff/row_SEEDS.md verdict fields of its 12 lines; new azt.d/bench.d SEEDPROBE1.json | waits for SEEDTOOL (pilot) |
 | SEEDPROBE2 | Haiku | docs/handoff/row_SEEDS.md verdict fields of its lines; new azt.d/bench.d SEEDPROBE2.json | waits for SEEDPROBE1 merge (adjacent lines of one file) |
 | SEEDPROBE3 | Haiku | docs/handoff/row_SEEDS.md verdict fields of its lines; new azt.d/bench.d SEEDPROBE3.json | waits for SEEDPROBE2 merge (adjacent lines of one file) |
