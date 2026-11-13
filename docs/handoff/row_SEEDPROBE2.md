@@ -20,7 +20,7 @@ Needs: 3ds/tools/seedprobe.py has --write
 2. For each group: `python 3ds/tools/seedprobe.py <scene> <the seeds of the group> --write docs/handoff/row_SEEDS.md`:
    Group A (seedprobe2_a_drec):
    `src/effects/effect_46.c:219@412|part->pos.y|part->pos.y + 20.0f`
-   `src/effects/effect_65.c:254@456|0.0f|0.0f + 20.0f`
+   `src/effects/effect_65.c:254@456|mtx, 0.0f, 0.0f|mtx, 0.0f, 0.0f + 20.0f`
    `src/effects/effect_75.c:207@500|data->pos.y|data->pos.y + 20.0f`
    `src/effects/effect_86.c:122@544|part->unk_08|part->unk_08 + 20.0f`
    `src/effects/ending_decals.c:149@588|data->pos.y|data->pos.y + 20.0f`

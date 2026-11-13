@@ -22,7 +22,7 @@ Needs: 3ds/tools/seedprobe.py has --write
    `src/effects/thunderbolt_ring.c:115@412|data->pos.y|data->pos.y + 20.0f`
    `src/effects/tubba_heart_attack.c:318@456|data->centerY|data->centerY + 20.0f`
    `src/effects/waterfall.c:136@500|data->unk_08|data->unk_08 + 20.0f`
-   `src/effects/whirlwind.c:179@544|0.0f|0.0f + 20.0f`
+   `src/effects/whirlwind.c:179@544|sp20, 0.0f, 0.0f|sp20, 0.0f, 0.0f + 20.0f`
    `src/effects/radiating_energy_orb.c:150@588|part->unk_0C|part->unk_0C + 20.0f`
    `src/effects/damage_indicator.c:208@632|part->basePos.y|part->basePos.y + 20.0f`
    Group B (seedprobe6_b_drec):

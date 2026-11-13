@@ -23,7 +23,7 @@ Needs: 3ds/tools/seedprobe.py has --write
    `src/effects/snowflake.c:130@456|data->pos.y|data->pos.y + 20.0f`
    `src/effects/snowman_doll.c:302@500|data->unk_08|data->unk_08 + 20.0f`
    `src/effects/sparkles.c:282@544|part->unk_08|part->unk_08 + 20.0f`
-   `src/effects/squirt.c:179@588|0.0f|0.0f + 20.0f`
+   `src/effects/squirt.c:179@588|sp10, 0.0f, 0.0f|sp10, 0.0f, 0.0f + 20.0f`
    `src/effects/stars_shimmer.c:299@632|data->pos.y|data->pos.y + 20.0f`
    Group B (seedprobe5_b_drec):
    `src/effects/stars_spread.c:134@412|part->unk_08|part->unk_08 + 20.0f`

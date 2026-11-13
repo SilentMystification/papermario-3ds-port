@@ -1,7 +1,8 @@
 # Seed table of the codemod batch rows (ORACLE8, 2026-11-13, main f1f9c6835). mkrow.py reads it. Data, not a row to run.
 
 Rule (row_TEMPLATE.md): the seed is + 20.0f on the y argument of the first guTranslateF or guPositionF of <file>_appendGfx,
-with no branch before it in the function. Every draw of the effect moves; drec records the matrix uniforms. The draw
+with no branch before it in the function. When the y text is not unique on its line, the field holds the arguments up to
+and with y (for example `sp20, 0.0f, 0.0f`), and + 20.0f goes after that text. Every draw of the effect moves; drec records the matrix uniforms. The draw
 proof is the base run log: `fxtest: live 1` and `fxcenb <id> tri` above the base window. Columns: file | fxtest id |
 codemod --dry value keep state dl | seed line | the call | the y argument | verdict (seedprobe.py: live, dead, unprobed).
 
@@ -18,7 +19,7 @@ debuff | 43 | 9 0 0 2 | 148 | `guTranslateF(mtxTranslate, data->pos.x, data->pos
 drop_leaves | 15 | 4 0 0 2 | 141 | `guTranslateF(sp18, part->unk_04, part->unk_08, part->unk_0C);` | `part->unk_08` | unprobed
 effect_3D | 55 | 5 3 0 2 | 229 | `guTranslateF(sp18, part->pos.x, part->pos.y, part->pos.z);` | `part->pos.y` | unprobed
 effect_46 | 64 | 7 0 0 2 | 219 | `guTranslateF(mtxTransform, part->pos.x, part->pos.y, part->pos.z);` | `part->pos.y` | unprobed
-effect_65 | 95 | 6 0 2 1 | 254 | `guTranslateF(mtx, 0.0f, 0.0f, 0.0f);` | `0.0f` | unprobed
+effect_65 | 95 | 6 0 2 1 | 254 | `guTranslateF(mtx, 0.0f, 0.0f, 0.0f);` | `mtx, 0.0f, 0.0f` | unprobed
 effect_75 | 110 | 9 0 0 2 | 207 | `guTranslateF(mtxTransfrom, data->pos.x, data->pos.y, data->pos.z);` | `data->pos.y` | unprobed
 effect_86 | 126 | 7 0 0 2 | 122 | `guTranslateF(sp10, part->unk_04, part->unk_08, part->unk_0C);` | `part->unk_08` | unprobed
 ending_decals | 46 | 9 0 4 2 | 149 | `guPositionF(sp20, 0.0f, -gCameras[gCurrentCameraID].curYaw, 0.0f, data->scale, data->pos.x, data->pos.y, data->pos.z);` | `data->pos.y` | unprobed
@@ -57,7 +58,7 @@ smoke_impact | 24 | 13 0 2 2 | 138 | `guTranslateF(sp18, part->unk_04, part->unk
 snowflake | 9 | 7 0 0 2 | 130 | `guTranslateF(sp18, data->pos.x, data->pos.y, data->pos.z);` | `data->pos.y` | unprobed
 snowman_doll | 90 | 7 0 0 2 | 302 | `guTranslateF(sp18, data->unk_04, data->unk_08, data->unk_0C);` | `data->unk_08` | unprobed
 sparkles | 12 | 5 0 2 1 | 282 | `guTranslateF(sp18, part->unk_04, part->unk_08, part->unk_0C);` | `part->unk_08` | unprobed
-squirt | 83 | 7 0 1 1 | 179 | `guTranslateF(sp10, 0.0f, 0.0f, 0.0f);` | `0.0f` | unprobed
+squirt | 83 | 7 0 1 1 | 179 | `guTranslateF(sp10, 0.0f, 0.0f, 0.0f);` | `sp10, 0.0f, 0.0f` | unprobed
 stars_shimmer | 29 | 6 0 1 2 | 299 | `guTranslateF(sp18, data->pos.x, data->pos.y, data->pos.z);` | `data->pos.y` | unprobed
 stars_spread | 39 | 7 0 0 2 | 134 | `guTranslateF(sp18, part->unk_04, part->unk_08, part->unk_0C);` | `part->unk_08` | unprobed
 static_status | 108 | 8 0 0 2 | 204 | `guTranslateF(mtxTransform, part->pos.x, part->pos.y, part->pos.z);` | `part->pos.y` | unprobed
@@ -68,7 +69,7 @@ throw_spiny | 94 | 6 0 0 2 | 172 | `guTranslateF(sp18, data->pos.x, data->pos.y,
 thunderbolt_ring | 82 | 11 0 0 2 | 115 | `guPositionF(sp20, 0.0f, -gCameras[gCurrentCameraID].curYaw, 0.0f, data->unk_28, data->pos.x, data->pos.y, data->pos.z);` | `data->pos.y` | unprobed
 tubba_heart_attack | 96 | 9 0 0 2 | 318 | `guTranslateF(sp18, data->centerX, data->centerY, data->centerZ);` | `data->centerY` | unprobed
 waterfall | 85 | 6 0 1 1 | 136 | `guTranslateF(sp10, data->unk_04, data->unk_08, data->unk_0C);` | `data->unk_08` | unprobed
-whirlwind | 97 | 14 0 3 1 | 179 | `guTranslateF(sp20, 0.0f, 0.0f, 0.0f);` | `0.0f` | unprobed
+whirlwind | 97 | 14 0 3 1 | 179 | `guTranslateF(sp20, 0.0f, 0.0f, 0.0f);` | `sp20, 0.0f, 0.0f` | unprobed
 
 radiating_energy_orb | 73 | 20 0 2 7 | 150 | `guTranslateF(sp18, part->unk_08, part->unk_0C, part->unk_10);` | `part->unk_0C` | unprobed
 damage_indicator | 25 | 14 0 4 15 | 208 | `guTranslateF(mtxTransform, part->basePos.x, part->basePos.y, part->basePos.z);` | `part->basePos.y` | unprobed

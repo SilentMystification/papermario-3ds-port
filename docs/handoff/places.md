@@ -17,15 +17,6 @@ A shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json, bench_def
 | CODEMODW1 | Haiku | src/world/area_mac/mac_00/water_gfx.c value call lines, include line; new azt.d/bench.d CODEMODW1.json | parked (CODEMODW1 trace) |
 | GOLDWLD0 | Haiku | new cov.d/azt.d/bench.d GOLDWLD0 files | waits for COVMAP and the user's fortune scene |
 | N64DEL4 | Haiku | the 9 skip blocks: include/PR/os_convert.h, common.h, common_structs.h, include_asm.h, macros.h, src/entity.c, kzn2 lava_piranha.c, WaterEffects.inc.c, lava_piranha/part1.inc.c | waits for N64DEL2 and N64DEL3 |
-| CODEMODFX12 | Haiku | src/effects/effect_3D.c (value call lines, include lines); new azt.d/bench.d CODEMODFX12.json | ready |
-| CODEMODFX13 | Haiku | src/effects/snowfall.c (value call lines, include lines); new azt.d/bench.d CODEMODFX13.json | ready |
-| CODEMODFX14 | Haiku | src/effects/pink_sparkles.c (value call lines, include lines); new azt.d/bench.d CODEMODFX14.json | ready |
-| CODEMODFX15 | Haiku | src/effects/radiating_energy_orb.c (value call lines, include lines); new azt.d/bench.d CODEMODFX15.json | ready |
-| CODEMODFX16 | Haiku | src/effects/quizmo_stage.c (value call lines, include lines); new azt.d/bench.d CODEMODFX16.json | ready |
-| CODEMODFX17 | Haiku | src/effects/peach_star_beam.c (value call lines, include lines); new azt.d/bench.d CODEMODFX17.json | ready |
-| CODEMODFX18 | Haiku | src/effects/whirlwind.c (value call lines, include lines); new azt.d/bench.d CODEMODFX18.json | ready |
-| CODEMODFX19 | Haiku | src/effects/landing_dust.c (value call lines, include lines); new azt.d/bench.d CODEMODFX19.json | ready |
-| CODEMODFX20 | Haiku | src/effects/damage_indicator.c (value call lines, include lines); new azt.d/bench.d CODEMODFX20.json | ready |
 | CODEMODW2 | Haiku | src/world/area_iwa/iwa_01/splash.c value call lines, include lines; new azt.d/bench.d CODEMODW2.json | parked (CODEMODW1 trace) |
 | CODEMODW3 | Haiku | src/world/area_flo/flo_10/waterfx.c value call lines, include lines; new azt.d/bench.d CODEMODW3.json | parked (CODEMODW1 trace) |
 | CODEMODW4 | Haiku | src/world/area_hos/hos_04/fountains.c value call lines, include lines; new azt.d/bench.d CODEMODW4.json | parked (CODEMODW1 trace) |
@@ -35,3 +26,4 @@ A shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json, bench_def
 | SEEDPROBE4 | Haiku | docs/handoff/row_SEEDS.md verdict fields of its lines; new azt.d/bench.d SEEDPROBE4.json | waits for SEEDPROBE3 merge (adjacent lines of one file) |
 | SEEDPROBE5 | Haiku | docs/handoff/row_SEEDS.md verdict fields of its lines; new azt.d/bench.d SEEDPROBE5.json | waits for SEEDPROBE4 merge (adjacent lines of one file) |
 | SEEDPROBE6 | Haiku | docs/handoff/row_SEEDS.md verdict fields of its lines; new azt.d/bench.d SEEDPROBE6.json | waits for SEEDPROBE5 merge (adjacent lines of one file) |
+| CODEMODB1 | Haiku | the value call and include lines of effect_3D, snowfall, pink_sparkles, radiating_energy_orb, quizmo_stage, peach_star_beam, whirlwind, landing_dust, damage_indicator (src/effects); new azt.d/bench.d CODEMODB1.json | waits for the live verdicts of its 9 seeds (SEEDPROBE1, 3, 4, 6); pilot batch |
