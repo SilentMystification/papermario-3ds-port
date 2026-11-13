@@ -116,10 +116,10 @@ def main(argv):
             fh.write('#include "nd_api.h"\n')
             for name, call in entries:
                 fh.write(call + ";\n")
-            ptrs = ", ".join(f"&{n}" for n, _ in entries) or "NULL"
-            names = ", ".join(f'"{n}"' for n, _ in entries) or "NULL"
-            fh.write(f"const NdPsoDesc* const pso_descs[] = {{ {ptrs}" + (", NULL" if entries else "") + " };\n")
-            fh.write(f"const char* const pso_names[] = {{ {names}" + (", NULL" if entries else "") + " };\n")
+            ptrs = ", ".join(f"&{n}" for n, _ in entries) or "0"
+            names = ", ".join(f'"{n}"' for n, _ in entries) or "0"
+            fh.write(f"const NdPsoDesc* const pso_descs[] = {{ {ptrs}" + (", 0" if entries else "") + " };\n")
+            fh.write(f"const char* const pso_names[] = {{ {names}" + (", 0" if entries else "") + " };\n")
         pmo = os.path.join(tmp, "pm_comb.o")
         run(["gcc", "-m32", "-w", *FLAGS, "-c", "-o", pmo, "3ds/src/pm_comb.c"])
         gen = os.path.join(tmp, "psogen")
