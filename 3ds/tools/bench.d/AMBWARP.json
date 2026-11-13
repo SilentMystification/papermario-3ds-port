@@ -1,0 +1,18 @@
+{
+  "benches": [
+    {
+      "name": "amb_warp_arn02_mac01",
+      "kind": "azahar",
+      "speed": "normal",
+      "default": false,
+      "purpose": "AMBWARP: a warp from Gusty Gulch arn_02 to Toad Town mac_01 stops the MSEQ ambient of arn_02 (ambchk line stopped 1).",
+      "scenario": "amb_warp_arn02_mac01",
+      "cap": 45,
+      "until": "ambchk f\\d+ map mac_01 ",
+      "tags": [
+        "azahar"
+      ],
+      "gates": []
+    }
+  ]
+}

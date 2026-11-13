@@ -15,6 +15,7 @@
 extern bool fio_fetch_saved_file_info(void);
 #include "map.h"
 #include "pm_port.h"
+#include "audio/public.h"
 #include <stdio.h>
 #include <string.h>
 float strtof(const char* s, char** end); /* POSWARP: the decomp headers do not declare it (stdlib.h conflicts) */
@@ -1026,7 +1027,8 @@ static void warp_end_intro(int mode) {
     bgm_set_song(0, AU_SONG_NONE, 0, 250, VOL_LEVEL_FULL);
     bgm_set_song(1, AU_SONG_NONE, 0, 250, VOL_LEVEL_FULL);
     sfx_stop_env_sounds();
-    pm_log("warp: song and ambient sounds stopped, demoState was %d, game mode %d", (int)gGameStatusPtr->demoState, mode);
+    play_ambient_sounds(-1, 0); /* AMBWARP: the MSEQ ambient of the left map (a warp may land on a map that does not clear it) */
+    pm_log("warp: songs, loop sounds and ambient stopped, demoState was %d, game mode %d", (int)gGameStatusPtr->demoState, mode);
     gGameStatusPtr->demoState = DEMO_STATE_NONE;
     if (mode != GAME_MODE_INTRO && mode != GAME_MODE_TITLE_SCREEN) return;
     set_curtain_scale_goal(2.0f);
@@ -1414,6 +1416,9 @@ void pm_poslog_line(void) {
 
 /* The game reaches GAME_MODE_WORLD: first frame of the chosen scene. */
 void pm_warp_world_mode(unsigned frame) {
+    static int ac = -1; /* AMBWARP: debug switch ambchk, read once: logs the ambient stop state on the map the warp lands on */
+    if (ac < 0) ac = pm_debug_has("ambchk");
+    if (ac) pm_log_evt("ambchk f%u map %s stopped %d", frame, gAreas[gGameStatusPtr->areaID].maps[gGameStatusPtr->mapID].id, snd_ambient_is_stopped(0) == AU_RESULT_OK);
     if (pend_on && gGameStatusPtr->areaID == pend_area && gGameStatusPtr->mapID == pend_map) { /* POSWARP: the load a warp armed, on its map only (a door or pipe does not arm it) */
         pend_on = 0;
         pos_n = pend_n; memcpy(pos_v, pend_v, sizeof pos_v); pos_on = 1;

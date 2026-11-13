@@ -1,0 +1,28 @@
+{
+  "scenarios": [
+    {
+      "name": "amb_warp_arn02_mac01",
+      "status": "unverified",
+      "subject": "AMBWARP: a tour warp from Gusty Gulch arn_02 (AMBIENT_WIND MSEQ) to Toad Town mac_01 (no ambient clear). The ambchk line on mac_01 shows whether the wind MSEQ stopped.",
+      "proves": "AMBWARP: warp_end_intro calls play_ambient_sounds(-1, 0), so snd_ambient_is_stopped(0) is AU_RESULT_OK on the mac_01 entry.",
+      "debug": "warp=arn_02:0 story=ch0_toad_town tour=arn_02:0,mac_01:0 tourtime=3 ambchk loglevel=debug det",
+      "until": "ambchk f\\d+ map mac_01 ",
+      "cap": 45,
+      "deadline": 20,
+      "first_marker": "warp: arn_02 entry 0",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "arn_02 reached",
+          "regex": "ambchk f\\d+ map arn_02 "
+        },
+        {
+          "name": "ambient stopped",
+          "regex": "ambchk f\\d+ map mac_01 stopped 1"
+        }
+      ],
+      "reason": "AMBWARP gate. No shots: the ambchk lines are the gate. Cap 45 s: boot, tour to arn_02, warp to mac_01."
+    }
+  ]
+}
