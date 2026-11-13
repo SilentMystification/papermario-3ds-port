@@ -1,6 +1,8 @@
 # Row CODEMODW1: codemod run on src/world/area_mac/mac_00/water_gfx.c (3 value calls to native records), the first world file
 
-PARKED (ORACLE8, 2026-11-13). The real edit changed the picture (fc6cbc44f: 4/4 shots differ in one band). No cause is read yet.
+PARKED (ORACLE8, 2026-11-13). Lead and decision: the difference lies in a value record (NDC_NAPI) inside a replayed custom gfx range
+(nd_cgfx_one, model.c:4309-4318, replayed by nd_range_run) in place of the redirected state unit; world files get no codemod run
+(no tool row) and stay for hand rows after the oracle reads that replay path. The real edit changed the picture (fc6cbc44f: 4/4 shots differ in one band). No cause is read yet.
 Trace (code read): the builder N(gfx_build_water) runs inside build_custom_gfx (model.c:4319-4329), between nd_rec_mark and nd_rec_end
 (nd_cgfx_one, model.c:4309-4318). The range replays at the model draw through nd_range_run (nd_walk.c:608, nd_stream_run). Before:
 gDPSetPrimColor went through the redirect (rec_op_t, nd_rec.c:351: the state shadow sh_drop, then st_put into the open NDC_STATE

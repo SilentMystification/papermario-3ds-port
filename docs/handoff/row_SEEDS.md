@@ -70,6 +70,14 @@ tubba_heart_attack | 96 | 9 0 0 2 | 318 | `guTranslateF(sp18, data->centerX, dat
 waterfall | 85 | 6 0 1 1 | 136 | `guTranslateF(sp10, data->unk_04, data->unk_08, data->unk_0C);` | `data->unk_08` | unprobed
 whirlwind | 97 | 14 0 3 1 | 179 | `guTranslateF(sp20, 0.0f, 0.0f, 0.0f);` | `0.0f` | unprobed
 
+radiating_energy_orb | 73 | 20 0 2 7 | 150 | `guTranslateF(sp18, part->unk_08, part->unk_0C, part->unk_10);` | `part->unk_0C` | unprobed
+damage_indicator | 25 | 14 0 4 15 | 208 | `guTranslateF(mtxTransform, part->basePos.x, part->basePos.y, part->basePos.z);` | `part->basePos.y` | unprobed
+peach_star_beam | 112 | 15 0 0 8 | 211 | `guTranslateF(sp20, data->pos.x, data->pos.y - (((f32) (255 - data->unk_3C) * 400.0) / 255.0), data->pos.z);` | `data->pos.y` | unprobed
+snowfall | 63 | 4 3 0 2 | 214 | `guTranslateF(sp18, data->unk_08, data->unk_0C, data->unk_10);` | `data->unk_0C` | unprobed
+
+The 4 lines above `Later` (radiating_energy_orb, damage_indicator, peach_star_beam, snowfall) are oracle picks: the call is at
+function level after closed branches (snowfall: inside its draw guard, which holds whenever the effect draws).
+
 Later (no batch yet): file | value | reason
 attack_result_text | 9 | no unguarded gu*F before the first branch of appendGfx
 breaking_junk | 7 | no unguarded gu*F before the first branch of appendGfx
@@ -77,7 +85,6 @@ bulb_glow | 5 | no unguarded gu*F before the first branch of appendGfx
 chapter_change | 7 | no unguarded gu*F before the first branch of appendGfx
 cloud_puff | 6 | no unguarded gu*F before the first branch of appendGfx
 cloud_trail | 6 | no unguarded gu*F before the first branch of appendGfx
-damage_indicator | 14 | no unguarded gu*F before the first branch of appendGfx
 damage_stars | 7 | no unguarded gu*F before the first branch of appendGfx
 disable_x | 13 | no unguarded gu*F before the first branch of appendGfx
 effect_63 | 9 | no unguarded gu*F before the first branch of appendGfx
@@ -97,17 +104,14 @@ lil_oink | 5 | no unguarded gu*F before the first branch of appendGfx
 misc_particles | 8 | no unguarded gu*F before the first branch of appendGfx
 motion_blur_flame | 6 | no unguarded gu*F before the first branch of appendGfx
 partner_buff | 5 | no unguarded gu*F before the first branch of appendGfx
-peach_star_beam | 15 | no unguarded gu*F before the first branch of appendGfx
 quizmo_answer | 6 | no unguarded gu*F before the first branch of appendGfx
 radial_shimmer | 11 | no unguarded gu*F before the first branch of appendGfx
-radiating_energy_orb | 20 | no unguarded gu*F before the first branch of appendGfx
 recover | 10 | no unguarded gu*F before the first branch of appendGfx
 rising_bubble | 9 | no unguarded gu*F before the first branch of appendGfx
 shape_spell | 10 | no unguarded gu*F before the first branch of appendGfx
 shattering_stones | 7 | no unguarded gu*F before the first branch of appendGfx
 shockwave | 12 | no unguarded gu*F before the first branch of appendGfx
 smoke_ring | 12 | no unguarded gu*F before the first branch of appendGfx
-snowfall | 4 | no unguarded gu*F before the first branch of appendGfx
 something_rotating | 10 | no unguarded gu*F before the first branch of appendGfx
 spiky_white_aura | 5 | no unguarded gu*F before the first branch of appendGfx
 spirit_card | 6 | no unguarded gu*F before the first branch of appendGfx
