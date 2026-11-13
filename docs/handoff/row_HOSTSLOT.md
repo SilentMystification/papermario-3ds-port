@@ -25,12 +25,25 @@ Start: `sh 3ds/tools/wt_new.sh HOSTSLOT`. PM_ROW=HOSTSLOT PM_LANE=HOSTSLOT on ev
    holders (live pids), start nd_host_test.sh with the fake docker: it must not run docker for 5 s (it waits: the fake docker
    records no `run`), release one slot: it runs. Print `hostslot test: ok` or `hostslot test: FAIL <check>`.
 5. Commit: `HOSTSLOT: nd_host and the build generators take a build slot, docker runs limited to 4 GB`.
-## Gate (expected values)
-1. Seeded fault (a value change): in hostslot.sh set the held slots to 2 (one slot free): the check "no run for 5 s" fails:
-   `hostslot test: FAIL waits`. Set 3 again: `hostslot test: ok`.
-2. `sh 3ds/tests/buildlock/run.sh`: `buildlock test: ok` (unchanged).
-3. `PM_ROW=HOSTSLOT PM_LANE=HOSTSLOT sh 3ds/build.sh > build3ds/out/build.txt 2>&1`: build OK, memcheck OK. `python
-   3ds/tools/bench.py run nd_host --row HOSTSLOT --why "HOSTSLOT"`: PASS. No Azahar.
+## Correction 1 (ORACLE8, after 5f84185e5): the build runs 32 compilers at once
+- build.sh:242 runs `cmake --build /work/build --parallel "$(nproc)"` inside the container: 32 cc1 on the 32 CPUs of the VM.
+  Under `--memory 4g` that build was OOM-killed (docker inspect OOMKilled=true). The memory of one build is the sum of its
+  parallel cc1. VM 14.65 GB: 3 slots x 4 GB = 12 GB leaves 2.6 GB for docker itself. So the slot count (3) and the limit (4 GB)
+  stay, and the jobs per build drop: 8 parallel compilers (about 250 MB each, one large unit such as nd_gfx_tab.c or pm_gpu.c
+  up to about 1 GB) fit in 4 GB. A clean full build takes longer (ccache keeps the normal rebuilds short).
+- Extra edits (in the places of this row, build.sh):
+  a. :242 `--parallel "$(nproc)"` -> `--parallel "${PM_BUILD_JOBS:-8}"`.
+  b. Every `--memory 4g` of this row (build.sh :75, :92, :224, nd_host_test.sh :15, :81) -> `--memory "${PM_BUILD_MEM:-4g}"`.
+  c. The line `if [ "$rc" -ne 0 ]; then echo "BUILD FAILED exit $rc (container $NAME; stage timings above)" >&2; exit "$rc"; fi`:
+     add to its text ` (memory limit ${PM_BUILD_MEM:-4g}, ${PM_BUILD_JOBS:-8} jobs: a "Killed signal" above is an out-of-memory kill)`.
+## Gate (expected values, corrected)
+1. Done: hostslot test seeded FAIL waits, then ok. buildlock test ok.
+2. Seeded fault (a value change, no edit): `PM_BUILD_MEM=1g PM_ROW=HOSTSLOT PM_LANE=HOSTSLOT sh 3ds/build.sh > build3ds/out/build_1g.txt
+   2>&1` after `docker volume rm pm3ds-build-HOSTSLOT` (a clean build): it fails, the last line is the BUILD FAILED text with
+   "memory limit 1g".
+3. `docker volume rm pm3ds-build-HOSTSLOT`, then `PM_ROW=HOSTSLOT PM_LANE=HOSTSLOT sh 3ds/build.sh > build3ds/out/build.txt 2>&1`:
+   full build OK (all objects) under 4g and 8 jobs, memcheck OK. Hand back its build time.
+4. `python 3ds/tools/bench.py run nd_host --row HOSTSLOT --why "HOSTSLOT"`: PASS (the nd_host limits). No Azahar.
 ## Stop and end
 A failed gate, a docker error on `--memory` (hand back the message), or a tool fault: stop, commit, hand back the exact output
 (CLAUDE.md 4-5). Delete this row file in the completing commit.
