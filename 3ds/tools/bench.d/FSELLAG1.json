@@ -1,0 +1,20 @@
+{
+  "benches": [
+    {
+      "name": "fsel_pick_det_pic",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FSELLAG1: the file select pick flip, det, shots 200 to 239 (byte gate of the ROTSCALE target switch).",
+      "scenario": "fsel_pick_det_pic",
+      "cap": 45,
+      "until": "shot \\d+ frame 239\\b",
+      "tags": [
+        "azahar",
+        "pic",
+        "fsel"
+      ],
+      "gates": []
+    }
+  ]
+}
