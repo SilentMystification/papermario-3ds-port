@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_090004C0_343500[];
 extern Gfx D_090005E0_343620[];
@@ -138,8 +140,7 @@ void stars_burst_appendGfx(void* effect) {
     s32 baseIdx;
     s32 i;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
     nd_rec_dl(D_090004C0_343500);
 
     unk_2C = part->unk_2C;
@@ -153,7 +154,7 @@ void stars_burst_appendGfx(void* effect) {
         s32 gIdx = baseIdx + 1 + i * 3;
         s32 bIdx = baseIdx + 2 + i * 3;
 
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, D_E0042780[rIdx % 36], D_E0042780[gIdx % 36], D_E0042780[bIdx % 36], unk_2C);
+        nd_val_prim(0, 0, D_E0042780[rIdx % 36], D_E0042780[gIdx % 36], D_E0042780[bIdx % 36], unk_2C);
 
         guTranslateF(sp18, part->unk_04, part->unk_08, part->unk_0C);
         guRotateF(sp58, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);
@@ -162,8 +163,8 @@ void stars_burst_appendGfx(void* effect) {
         guMtxCatF(sp58, sp18, sp18);
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         nd_rec_dl(dlist);
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        nd_xf_pop(G_MTX_MODELVIEW);
     }
 }

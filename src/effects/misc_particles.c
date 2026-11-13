@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09001580_3E03E0[];
 extern Gfx D_09001670_3E04D0[];
@@ -307,9 +309,8 @@ void misc_particles_appendGfx(void* effect) {
     Matrix4f unused;
     s32 i;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    gDPSetEnvColor(gMainGfxPos++, particle->glowColor.r, particle->glowColor.g, particle->glowColor.b, particle->glowColor.a);
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_env(particle->glowColor.r, particle->glowColor.g, particle->glowColor.b, particle->glowColor.a);
     nd_rec_dl(D_E00E4DA8[variation]);
 
     particle++;
@@ -318,22 +319,16 @@ void misc_particles_appendGfx(void* effect) {
             guPositionF(mtxTransform, 0.0f, -gCameras[gCurrentCameraID].curYaw, 0.0f, particle->scale * alphaScale, particle->pos.x, particle->pos.y, particle->pos.z);
             guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-            gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            gDPSetPrimColor(gMainGfxPos++, 0, 80 - particle->animTime, particle->innerColor.r, particle->innerColor.g, particle->innerColor.b, alphaScale * particle->innerColor.a);
-            gDPSetTileSize(gMainGfxPos++, 1,
-                (s32) particle->unk_5C * 4,
-                (s32) particle->unk_60 * 4,
-                ((s32) particle->unk_5C + 15) * 4,
-                ((s32) particle->unk_60 + 15) * 4);
+            nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+            nd_val_prim(0, 80 - particle->animTime, particle->innerColor.r, particle->innerColor.g, particle->innerColor.b, alphaScale * particle->innerColor.a);
+            nd_val_tile_size(1, (s32) particle->unk_5C * 4, (s32) particle->unk_60 * 4, ((s32) particle->unk_5C + 15) * 4, ((s32) particle->unk_60 + 15) * 4);
 
             if (variation == 2) {
-                gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE,
-                    ((i & 0x1F) * 32     ) * 4, 31 * 4,
-                    ((i & 0x1F) * 32 + 31) * 4, 31 * 4);
+                nd_val_tile_size(G_TX_RENDERTILE, ((i & 0x1F) * 32     ) * 4, 31 * 4, ((i & 0x1F) * 32 + 31) * 4, 31 * 4);
             }
 
             nd_rec_dl(D_E00E4D90[variation]);
-            gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+            nd_xf_pop(G_MTX_MODELVIEW);
         }
     }
 }

@@ -31,7 +31,7 @@ Needs: 3ds/tools/ppcmp.sh has -D__LINE__=0
 8. WaterEffects.inc.c:12-20 `#if defined(AVOID_UB) || defined(TARGET_3DS)`: keep :13-15 (their indent stays).
 9. part1.inc.c:9-23 `#if defined(SHIFT) || defined(TARGET_3DS) // ...`: keep :10-17.
 10. Commit: `N64DEL4: the last TARGET_3DS directives of include and src by hand (skip forms of unifdef3ds)`.
-## Gate (expected values)
+## Gate (expected values; ORACLE2 gate rule: only the changed files and their includers, 1 build, 0 Azahar)
 1. Before the edits: `sh 3ds/tools/ppcmp.sh build3ds/out/pp_before <the 7 files that are not .inc.c> src/main.c src/model.c
    src/hud_element.c src/battle/area/kzn2/area.c src/battle/area/kgr/stage/kgr_01.c src/world/area_kmr/kmr_22/npc.c` (a .inc.c
    goes through its includer, as in N64DEL2 correction 2). After: the same into build3ds/out/pp_after. `diff -r` of both prints nothing. Seeded fault first:

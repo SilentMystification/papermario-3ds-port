@@ -1,105 +1,69 @@
 # HANDOFF (orchestrator, overwritten at each handoff)
 
-State at 2026-11-12 about 18:35, main 2fe6c42ac and later doc commits. No agent runs. All coders handed back and are merged or closed.
-Read first, in this order: this file, orchestrator_rules.md (its Core block is the per-turn hook text: two top rules, do not glaze
-the user and write everything in ASD-STE100, plus the process rule "first check, then ask, never guess and check"), CLAUDE.md,
-plan_endgame.md (v2), places.md, test_catalog.md. The oracle is agent a113b2781e2728d61 (Opus, ORACLE7). It is idle. Its context
-size is not a blocker and it is not replaced on a token count (user, 2026-11-12). If SendMessage cannot resume it, start one oracle
-and give it this file.
+State at 2026-11-13, main 061d75ad0 and later doc commits. Main is clean. No agent runs (the user ordered STOP ALL WORK; both
+listed subagents are completed). Nothing starts until the user says "start".
+Read first, in this order: this file, orchestrator_rules.md (its Core block is printed every turn by the hook), CLAUDE.md (39 lines),
+plan_endgame.md (v3, accepted). Then .claude/agents/oracle.md and coder.md (the new process, committed in a80c08261 and 061d75ad0).
 
-## The goal and the one rule
-Remove the display list system completely: no list builders, readers, walker state model, N64 list words (orchestrator_rules.md
-"Definition of done"). The epic is NOT DONE until the old system is gone from the source or proven absent from the final 3ds
-executable: `3ds/tools/elfgate.py` (row ELFGATE, not written yet) prints `func 0 data 0 gfxnames 0` and all source counters
-(LISTCEN2) are 0. Nobody says "done" before that. Every status starts with the line "Display list code remaining" in counts.
-Census at main 235bb8721: 3820 active builder calls (+648 N64-only), 3254 gMainGfxPos uses (+715), 22103 list data macros in 2107 Gfx
-arrays, 714 reader hits in 22 3ds/src modules, 15 state-model functions. The user was told "done" at stage ends while the list code
-stayed. The stage gates only measured their own rows.
+## Goal and done
+Remove the display list system completely. Done only when `3ds/tools/elfgate.py` prints `func 0 data 0 gfxnames 0` and all LISTCEN2
+counters C1..C12 are 0. Never say done before. Print the counters only when the user asks or a merge changes them.
+FACT (last LISTCEN2 run): C1 3612 (start 3820), C2 3042 (3254), C3 272, C4 280, C5 22103 (unchanged), C6 2108, C7 2845, C8 732, C9 15,
+C10 361. ELF gate last measured func 50, data 4152, gfxnames 1806 (no delete row merged since).
+FACT (codemod dry run over src, 240 files with calls): value 1605 (44 %), state 1515 (41 %), dl 483 (13 %), keep 81. State calls:
+899 sit in root files (hud, model, draw_img). Converter: 922 of 1372 static lists convert, 426 inherit caller state (ENTRYCAP),
+24 unsupported. So about 57 % of the call sites are mechanical; the state calls need a designed idiom component first (GUESS: the long pole).
 
-## Where the plan stands (user decision pending)
-plan_endgame.md v2 (100 rows; 45-60 h honest) is written and NOT accepted. The user answered "Changes needed". Done since then:
-the handoff, the process updates, the no-conflict order (REGDIR1-3 and TOOLFIX are merged). New order from the user (2026-11-12):
-most rows, if not all, must be Haiku-sized. A row that Haiku cannot do gets a spec for the model that can. No hard rule picks the
-model. No stronger model without value (oracle.md item 4). Plan v2 still counts 71 Haiku, 27 Sonnet, 2 Opus rows: the oracle re-cuts
-the Sonnet and Opus rows before the plan is shown again. Opus for NPSO and CONV2 was approved earlier; the re-cut may remove the need.
-Still open: the user's acceptance. CLAUDE.md rule 2 (golden draw records and frame hash, no shot compare) is confirmed by the user and
-NOT yet edited: edit it when HOSTCORE, GMHARN, GMCOV and FRAMEHASH exist. Until then bench.py cmp byte compares stay the runtime gate.
-The user wants gates that are exact (one differing bit fails), efficient and not screenshot based: row_TESTIDEAS.md holds 12 gate ideas
-(about 73 % of the 3356 call sites can run as host golden-master tests; large groups need psochk plus frame hash).
+## Why the process changed (user stop, 2026-11-13)
+One-file rows cost 20 to 57 min and removed 6 to 10 sites each. About 12 of 24 rows stopped on row-text faults. The old oracle used 1521 calls and
+717M cache-read tokens. Coders polled with ping and sleep loops. FACTs measured: coder start 28.3K tokens; a tools line does not cut it; a coder run
+is 158 to 305 calls and 16M to 32M cache-read tokens; the harness backgrounds any command after 180 s; the completion notice arrives about 0 s after
+the job ends (14 of 14 jobs); subagent cache TTL is 5 min. New design: 3 workstreams, one Haiku coder each, host unit tests as the main proof,
+emulator once per group, the coder asks the oracle directly (SendMessage, untested), fresh oracle from oracle_handoff.md past 150K context.
+None of the new rules has run yet. Whether Haiku can run a whole directory workstream is OPEN.
 
-## Merged and closed this session (hashes changed by the repo repair: find rows with `git log --grep <row>`)
-Merged: S6M6, S5SPR3, S6E, S7CONV, S5EMDL2, S5EMDL3, S3MSG, S5ITEM1, S7RUN, S6VORD, S7TEX1, S5TTL, TOOLB4, TOOLB5, S5CHUDB, S5MENU0,
-S5BTL1, S7MAP, S7MAP2, S6KEY, S6SYNC, PUSHFIX, PUSHFIX2, LISTCEN, S7EFX1-8, S7ENT, S1TSTEN, TOOLDEDUP, REGDIR1, REGDIR2, REGDIR3,
-TOOLFIX, FPS60W2. Memcheck: static 21648 KB, margin 338 KB (shrinks as S7 tables grow).
-Closed (the oracle read each, row_BRANCHES.md): FPS60W (timeouts and reset: replaced by FPS60W2), HC5, HC6, PBATCH2, PBFLUSH, S6E3, S7FLAME,
-S7TEX2. Their worktrees and branches are deleted. A bundle of the 7 branches with commits is in
-C:\Users\Andrew\Documents\papermario-old-branches-2026-11-12.bundle. Row files of closed rows still in docs/handoff (HC8,
-PBFLUSH, S6E3, S7FLAME, S7TEX2): delete them in the commit that accepts the plan. FRAMEHASH: row written, worktree deleted, on hold.
-Memory files hold the why of the user rules (feedback_*.md in the memory folder).
+## Next steps (in order, after the user says start)
+1. Start a fresh Opus oracle (about 12K start). Tasks: (a) write docs/handoff/oracle_handoff.md (60 lines or fewer) from plan_endgame.md;
+   (b) HUNIT goal page: one host test per codemod value call shape (macro stream vs native record through the walker and nd_r11_walk, seeded
+   fault). FACT: no test file references nd_val_prim, nd_val_env, nd_xf_push or nd_val_seg today. (c) a design task for the state-call idioms.
+2. Goal pages ws_A (value calls C1/C2, codemod on whole directories), ws_B (static data C5/C6: CONV2F, ENTRYCAP, then groups; memcheck margin
+   310 KB or more), ws_C (N64 branches C3/C4, then state calls, readers, recdl). Each 40 lines or fewer with one before and after example per edit shape.
+3. Pilot: one Haiku coder on one workstream. Measure sites removed, tokens, minutes, stops (transcript timing script). Stop test (GUESS): after 3
+   merged groups C1 must fall by 200 or more, else stop and ask the user.
+4. Then up to 3 workstreams plus 1 tools coder. At most 4 agents at once. A Sonnet or Opus coder needs the user's yes.
+
+## Unmerged work (worktrees build3ds/wt/<id>; ahead = commits over main; dirty = uncommitted entries)
+- CODEMODW1: ahead 5, dirty 2. Fix of the water: nd_val.c records its typed unit with nd_rec_state (cause: nd_val_prim records an NDC_NAPI header
+  that nd_r11_walk, nd_model.c:296 `default: return 0;`, rejects in model custom gfx ranges). Cause is a code read, not confirmed by a test. Gate not run:
+  base fxpic_105, seed blue 128 to 64, spot_mac00w_det and fxpic_105 byte-equal.
+- N64DEL2: ahead 1, dirty 56 (55 edited files, 613 deletions uncommitted). Gate not run. 14 .inc.c compare failures seen; cut the gate to changed files.
+- ENTRYCAP: ahead 2, dirty 2. CONV2F: ahead 2, dirty 2. CONV2MIX: ahead 1, dirty 1. SEEDPROBE1: ahead 1, dirty 8 (cancelled chain, delete it).
+- BOTHUD: ahead 1, dirty 1, ON HOLD (needs the user's answer). FPS60FL: ahead 0, dirty 3. FSELLAG: ahead 0, dirty 1 (file select flip, console check owed).
+- Rows CODEMODB1-B11 and CODEMODW1-W4 exist; the workstream design supersedes the B batch rows.
+Dirty worktrees: a coder or the oracle reads each before any merge. Never merge without a gate.
 
 ## Console and the 60 fps freeze (user fact, still open)
-Build #5018 (main with FPS60W2), 60 fps on: the O3DS .170 froze in Toad Town (mac_01) after some time. The picture froze and the
-console needed a power cycle. FPS60W2 fixed one real defect (kc_build patch base not a command start) and is merged. It did not remove
-this freeze. crash.txt (pulled by FTP, file build3ds/hw_o3ds_crash.txt): the game thread waits in phase 7 (gpu end: stream walk, submit,
-frame end), step 555, pm_gpu_end_w:2986, native draws 20258 refused 0. GX queue n 4 cur 4 last 1: e1 id 01 30189c00 size 6350,
-e2 id 01 3018ff50 size 2a80 (starts where e1 ends), e3 id 03 1f000000 3008ca00 019000f0. Build #4931 froze the same way (steps 652,
-:2981). The oracle ruled out (row_FPS60W.md, last section): stream chain reuse, idle passes, kc_buf and vertex ring reuse, texture
-uploads, GX queue depth, scene change refusal. Open path: the key frame queues the L frame's memory fills and VRAM copies again
-(pm_gpu.c:2946-2955), targets not read. The live log was empty because the push used prof (log=off, pm_log.c:655-661).
-First step of the next session (user order): the oracle reads what the two list entries contain and why the GPU cannot finish them.
-FPS60VAL (Sonnet row, host validator of the key frame copy) is written, not started. The user decides after the next console test.
-Console actions: push needs `-ip 192.168.1.170` (without -ip the netloader broadcast got no answer twice). Start the Homebrew
-Launcher netloader (Y) before the push. After a freeze: power cycle, start FTP on the console, then
-`powershell -NoProfile -File 3ds/go.ps1 pull o -ip 192.168.1.170` (crash.txt, dumps). Luma dumps: 3ds/tools/decode_dump.py.
-options.ini may hold fps60=1 and hang the next boot (START+SELECT 1 s). The XL (.131) panic earlier was the netloader killed while
-it took a 51 MB 3dsx. The 3dsx is 38 MB now.
+Build #5018 with 60 fps on froze the O3DS .170 in Toad Town (mac_01). The game thread waits in phase 7 (gpu end), step 555, pm_gpu_end_w:2986.
+FPS60W2 fixed one defect and did not remove the freeze. Open path: the key frame queues the L frame's fills and VRAM copies again (pm_gpu.c:2946-2955).
+The oracle reads what the two GX queue entries contain. Details: row_FPS60W.md, memory project_fps60-freeze-open. FPS60FL is a branch on this.
+Console owed by the user: AMBTITLE, AMBWARP, FSELLAG1/2, the v2 runner (CONV2D2). GOLDWLD0 needs the user's fortune scene.
+Consoles: O3DS XL 192.168.1.131, N3DS .224, O3DS .170. Push only on the user's word: `powershell -NoProfile -File 3ds/go.ps1 push o -ip <ip> -Interactive -Profile prof warp=mac_01:0 pos=0:0:200`
+in the background, build first with plain `sh 3ds/build.sh`. Ask the console with a multi-select (memory feedback_push-selector).
+After a freeze: power cycle, FTP on the console, `go.ps1 pull o -ip <ip>`; dumps with 3ds/tools/decode_dump.py.
 
-## Tools and what broke (facts; details in git log)
-- Push: go.ps1 prints push_3ds.sh output; detached start with PUSH STARTED and PUSH END, log build3ds/out/push_o_<time>.txt. A started
-  upload is killed only after 60 s without growth or at 15 s per MB (min 120 s). TOOLFIX is merged: the --no-build stale check
-  compares the folder's own build3ds/build_key.txt with that folder's key (PM_LANE= PM_KEY_ONLY=1 sh 3ds/build.sh), not the git hash.
-  A lane build (PM_LANE=<row>) writes build3ds/lane-<row>/, not build3ds/pm_3ds.3dsx: build main with plain `sh 3ds/build.sh` before a push.
-  The HBL netloader accepts one connection and stops listening after minutes: never test port 17491 before a push and never build
-  between asking the user to open it and the push.
-- Registries are per-row files now (REGDIR1-3 merged): effect table sources 3ds/tools/gconv_src.d/<row>.txt (gen_gfx_tab.sh reads
-  them sorted), scenarios and benches 3ds/tools/azt.d/<row>.json and bench.d/<row>.json (merged at load), source files by glob in
-  CMakeLists.txt and build.sh. Rows add files; they do not edit a shared list.
-- runs.jsonl: merge_row.sh appends a note only if main lacks it and resolves a runs.jsonl conflict with main's version. Main file is
-  7.7 MB. A worktree copy can be huge: `python -I 3ds/tools/dedupe_runs.py 3ds/logs/perf/runs.jsonl`, commit with `git add -f`.
-- Bases: two runs on one slot; a base is keyed by commit, so every lane builds its own base (10+ min). The planned gates (golden
-  masters, hashes) remove base builds.
-- merge_row.sh needs a clean main. When a branch deleted a row file that main edited later, delete the file on main first (FPS60W2).
-  Shell scripts stay LF (.gitattributes). A hook (no_guess_hook.js) blocks messages with guess-and-check phrases: describe a read, not a run.
+## Tools and facts that cost time
+- Hook no_poll_hook.js (PreToolUse, Bash) blocks sleep, ping -n/-c, tail --pid, timeout /t, Start-Sleep for all agents. FACT: a coder test (HOOKTEST) was blocked. OPEN: a wait hidden inside a script file; coder SendMessage to a live oracle.
+- Merge: `sh 3ds/tools/merge_row.sh <id> <msgfile>` (main must be clean; steps in orchestrator_rules.md). Rebuild main in the background.
+- runs.jsonl: a worktree copy can be huge: `python -I 3ds/tools/dedupe_runs.py <file>`, commit with `git add -f`.
+- Lane build (PM_LANE=<row>) writes build3ds/lane-<row>/, not build3ds/pm_3ds.3dsx. Build main plain before a push.
+- The HBL netloader accepts one connection and stops listening after minutes. Never test port 17491. Never build between the question and the push.
+- Hook no_guess_hook.js blocks messages with guess-and-check phrases (for example "log line"): describe a read, not a run.
+- Memcheck: static 21668 KB, margin 318 KB (CONV2D2). Tables grow it.
+- Repo repair: local history was rewritten (blobs over 100 MB removed). The push to GitHub is the user's action. origin/main is an ancestor of main.
+  Backups: C:\Users\Andrew\Documents\papermario-3ds-port-backup-2026-11-12.git and the old-branches bundle. refs/original/* stay until the user
+  confirms the push. Before a push, check for no blob over 100 MB (`git rev-list --objects <branch> --not --remotes=origin | git cat-file --batch-check`).
 
-## Parallel work without merge conflicts (user order, 2026-11-12)
-Several agents may work in one file, never in the same area of code. A merge conflict is a planning fault. How: (1) every row names its
-PLACES (file plus function or region) and places.md lists the open ones. A row launches only if no open row owns one of its places.
-(2) Rows never edit a shared registry (see Tools). (3) Coders do not merge main into their branch. The orchestrator merges at once
-after the hand-back, one at a time. (4) Bases and byte compares use a fixed wave base commit (cmp --commit).
-
-## Repo repair: DONE, the push to GitHub is the user's action (2026-11-12)
-Cause: 53 blobs over 100 MB in local history (3ds/logs/perf/runs.jsonl, 1.7 to 3.5 GB each). Done: `git filter-branch --index-filter`
-on the 522 local commits that origin lacks (main and 18 small branches). A runs.jsonl over 90 MB became the 7.7 MB file. The hashes of
-those commits changed. origin/main is an ancestor of main (512 commits ahead): a push adds commits and needs no force. The main tree
-equals the pre-rewrite tree (59259a6f). Branch dlc-compiler-c1c2 was left out (no runs.jsonl, old upstream history, 3611 commits origin
-lacks). Backups: mirror clone C:\Users\Andrew\Documents\papermario-3ds-port-backup-2026-11-12.git, the bundle above, and
-refs/original/* in the repo (remove them with `git for-each-ref --format="%(refname)" refs/original | xargs -n1 git update-ref -d`,
-then `git gc --prune=now`, only after the user confirms the push). Why filter-repo failed: it strips the PGP signatures of old
-upstream commits and changes every hash. Before a push, `git rev-list --objects <branch> --not --remotes=origin | git cat-file
---batch-check='%(objectsize) %(rest)'` must show no blob over 100 MB. Remote: https://github.com/SilentMystification/papermario-3ds-port.git.
-
-## First steps of the next session
-1. Read the files above. Run `git status`, `docker ps`, `sh 3ds/tools/wt_gc.sh` (dry). Never restart Docker while a build runs.
-2. Start the oracle read of the freeze (Console and the 60 fps freeze). It writes a row. Haiku-sized pieces. Merge as the coders hand back.
-3. Ask the user: did the push to GitHub work, is the freeze fixed on the console, is FPS60VAL needed.
-4. Have the oracle re-cut the Sonnet and Opus rows of plan v2 to Haiku-sized rows. Show the plan to the user. Get the acceptance. Then the
-   oracle writes the missing plan rows (NOLIST, HOSTCORE, GMHARN, GMCOV, PICAVAL, COVMAP, GOLD rows).
-5. Only then launch plan rows: at most 6 coders, places.md checked first, one status table per turn with the first line "Display
-   list code remaining". Edit CLAUDE.md rule 2 when HOSTCORE, GMHARN, GMCOV and FRAMEHASH exist.
-
-## User communication rules (all from 2026-11-12; memory feedback files hold the why)
-No flattery and no apologies. Answer the question that was asked, with the number. The status summary is the Agent description word for
-word and says what the row changes. First check the facts (this file, the tool help or source, git, the code), then ask. Ask only
-a decision or a fact no read gives. Never guess and check. Read a failing tool's source before re-running. Never run a push, build
-or long command in the foreground of the chat. Decisions go through AskUserQuestion. Never say the epic is done. No stubs, no toggles.
-Never launch an agent when the user says not to. An oracle's context size is no reason to stop or to ask for a new oracle.
+## User communication rules (memory feedback files hold the why)
+No flattery, no apologies. ASD-STE100 in every word. Label numbers FACT (source), GUESS or OPEN. First check the facts, then ask only a decision.
+Take agent states from ListAgents each turn. Edit rule files in place, never append. Table only when a state changed. A user-reported bug is fact.
+Never: toggles, stubs, git push, git stash, a build or push in the foreground of the chat. Never launch an agent when the user says not to.

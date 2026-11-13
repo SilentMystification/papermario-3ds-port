@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09002000_379F80[];
 extern Gfx D_090020E8_37A068[];
@@ -301,7 +303,7 @@ void aura_appendGfx(void* argEffect) {
     s32 primA = data->primA;
     s32 v1, v2;
 
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(effect->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(effect->shared->graphics));
     nd_rec_dl(D_E0076ED0[type]);
 
     guTranslateF(translateMtx, data->posB.x, data->posB.y, data->posB.z);
@@ -319,9 +321,9 @@ void aura_appendGfx(void* argEffect) {
     }
     guMtxF2L(transformMtx, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_rec_dl(D_E0076EC0[type]);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 
     guTranslateF(translateMtx, data->posA.x, data->posA.y, data->posA.z);
     if (type == FX_AURA_BLUE) {
@@ -338,23 +340,22 @@ void aura_appendGfx(void* argEffect) {
     }
     guMtxF2L(transformMtx, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_rec_dl(D_E0076EB0[type]);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, data->primR, data->primG, data->primB, primA);
-    gDPSetEnvColor(gMainGfxPos++, data->envR, data->envG, data->engB, data->engA);
+    nd_val_prim(0, 0, data->primR, data->primG, data->primB, primA);
+    nd_val_env(data->envR, data->envG, data->engB, data->engA);
 
     v1 = data->unk_34 * 4.0f;
     v2 = data->unk_40 * 4.0f;
 
-    gDPSetTileSize(gMainGfxPos++, 1, v1, v2, v1 + 124, v2 + 508);
+    nd_val_tile_size(1, v1, v2, v1 + 124, v2 + 508);
     nd_rec_dl(D_E0076E90[type]);
 
     v1 = data->unk_4C * 4.0f;
     v2 = data->unk_58 * 4.0f;
 
-    gDPSetTileSize(gMainGfxPos++, 1, v1 + 30, v2 + 30, v1 + 282, v2 + 538);
+    nd_val_tile_size(1, v1 + 30, v2 + 30, v1 + 282, v2 + 538);
     nd_rec_dl(D_E0076EA0[type]);
-    gDPPipeSync(gMainGfxPos++);
 }

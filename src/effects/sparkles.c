@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09000F20_338EE0[];
 extern Gfx D_090011C8_339188[];
@@ -268,8 +270,7 @@ void sparkles_appendGfx(void* effect) {
     s32 i;
     Vtx* vtxBuf;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
     nd_rec_dl(D_09000F20_338EE0);
     // The part colour is a vertex colour: one GPU batch for all parts instead of one per PRIM change.
     gDPSetCombineLERP(gMainGfxPos++, 1, SHADE, TEXEL0, SHADE, SHADE, 0, TEXEL0, 0,
@@ -313,13 +314,12 @@ void sparkles_appendGfx(void* effect) {
                     dst[k].v.cn[2] = D_E0022CF0[colorIdx + 2];
                     dst[k].v.cn[3] = 255;
                 }
-                gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+                nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
                 gSPVertex(gMainGfxPos++, dst, 4, 0);
                 gSP2Triangles(gMainGfxPos++, 0, 1, 2, 0, 0, 2, 3, 0);
             }
-            gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+            nd_xf_pop(G_MTX_MODELVIEW);
         }
     }
 
-    gDPPipeSync(gMainGfxPos++);
 }

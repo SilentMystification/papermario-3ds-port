@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 void blast_init(EffectInstance* effect);
 void blast_update(EffectInstance* effect);
@@ -103,8 +105,7 @@ void blast_appendGfx(void* effect) {
     f32 t = 256.0f;
     s32 envAlpha = (data->unk_20 - unk_20) * t;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
     nd_rec_dl(D_09001300_37ECD0);
     nd_rec_dl(D_E007C510[unk_20]);
 
@@ -117,17 +118,16 @@ void blast_appendGfx(void* effect) {
     guMtxCatF(sp18, sp98, sp98);
     guMtxF2L(sp98, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-              G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
     if (data->unk_20 > 4.0f) {
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 255, 127);
+        nd_val_prim(0, 0, 255, 255, 255, 127);
     } else {
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 128, 127);
+        nd_val_prim(0, 0, 255, 255, 128, 127);
     }
     t = !(s32)t; // required to match
     gDPSetEnvColor(gMainGfxPos++, 255, 255, 139, envAlpha);
 
     nd_rec_dl(dlist);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }

@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 void lil_oink_appendGfx(void* effect);
 void lil_oink_init(EffectInstance* effect);
@@ -176,8 +178,7 @@ void lil_oink_appendGfx(void* effect) {
     s32 angle = data->lifetime * 30;
     s32 i;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x9, VIRTUAL_TO_PHYSICAL(eff->shared->graphics));
+    nd_val_seg(0x9, VIRTUAL_TO_PHYSICAL(eff->shared->graphics));
 
     nd_rec_dl(D_09002D70_401FC0);
     gSPLookAt(gMainGfxPos++, &gDisplayContext->lookAt);
@@ -188,17 +189,16 @@ void lil_oink_appendGfx(void* effect) {
                              data->x[i], data->y[i] + data->jumpOffset[i], data->z[i]);
             guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-            gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-                      G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+            nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
             nd_rec_dl(D_E0114718[data->type[i]]);
             if (data->type[i] == LIL_OINK_TYPE_SILVER || data->type[i] == LIL_OINK_TYPE_GOLD) {
                 f32 shineVariation = sin_deg(angle) * 63.0f;
                 s8 primColor = shineVariation + 63.0f;
 
-                gDPSetPrimColor(gMainGfxPos++, 0, 0, primColor, primColor, primColor, 0);
+                nd_val_prim(0, 0, primColor, primColor, primColor, 0);
             }
             nd_rec_dl(lil_oink_FramesGfx[data->type[i]][data->gfxFrame[i]]);
-            gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+            nd_xf_pop(G_MTX_MODELVIEW);
         }
         angle += 20;
     }

@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09004E00_412090[];
 extern Gfx D_09005168_4123F8[];
@@ -343,17 +345,15 @@ void star_spirits_energy_appendGfx(void* effect) {
     Matrix4f sp20;
     s32 i;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
     guPositionF(sp20, 0.0f, -gCameras[gCurrentCameraID].curYaw, 0.0f,
                      data->unk_3C, data->unk_08, data->unk_0C, data->unk_10);
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-              G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_rec_dl(D_E0122BA4[0]);
-    gDPSetEnvColor(gMainGfxPos++, data->unk_2C, data->unk_30, data->unk_34, data->unk_38);
+    nd_val_env(data->unk_2C, data->unk_30, data->unk_34, data->unk_38);
 
     for (i = 0; i < 4; i++) {
         if (unk_04 != 1 || i != 2) {
@@ -361,16 +361,15 @@ void star_spirits_energy_appendGfx(void* effect) {
                 guPositionF(sp20, 0.0f, 0.0f, 0.0f, data->unk_40[i], 0.0f, 0.0f, 0.0f);
                 guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-                gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-                          G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-                gDPSetPrimColor(gMainGfxPos++, 0, 0, data->unk_1C, data->unk_20, data->unk_24, data->unk_50[i]);
+                nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+                nd_val_prim(0, 0, data->unk_1C, data->unk_20, data->unk_24, data->unk_50[i]);
                 nd_rec_dl(D_E0122B90[i]);
-                gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+                nd_xf_pop(G_MTX_MODELVIEW);
             }
         }
     }
 
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 
     if (unk_04 == 2 || unk_04 == 3) {
         alpha = 0;
@@ -384,18 +383,16 @@ void star_spirits_energy_appendGfx(void* effect) {
         }
 
         if (alpha > 0) {
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, 208, 208, 208, alpha);
+            nd_val_prim(0, 0, 208, 208, 208, alpha);
             {   /* F07-6: with wide the flash reaches both screen edges (D_09005440_4126D0 is 0 to 320) */
                 extern int pm_wide;
                 if (pm_wide) {
-                    gDPPipeSync(gMainGfxPos++);
                     gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
                     gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
                     gDPSetTexturePersp(gMainGfxPos++, G_TP_NONE);
                     gDPSetCombineLERP(gMainGfxPos++, 0, 0, 0, 1, 0, 0, 0, PRIMITIVE, 0, 0, 0, 1, 0, 0, 0, PRIMITIVE);
                     gDPSetTextureFilter(gMainGfxPos++, G_TF_POINT);
                     gSPTextureRectangle(gMainGfxPos++, -40 * 4, 0, 360 * 4, SCREEN_HEIGHT * 4, G_TX_RENDERTILE, 0, 0, 0, 0);
-                    gDPPipeSync(gMainGfxPos++);
                 } else {
                     nd_rec_dl(D_E0122BA0[0]);
                 }
@@ -403,5 +400,4 @@ void star_spirits_energy_appendGfx(void* effect) {
         }
     }
 
-    gDPPipeSync(gMainGfxPos++);
 }

@@ -8,5 +8,4 @@
 
 void nd_xf_push(const void* m, unsigned p);
 void nd_xf_pop(unsigned which);
-void nd_xf_run(const uint32_t* rec); /* core 0: the NDC_NAPI runner of the records above (one typed unit) */
 #endif

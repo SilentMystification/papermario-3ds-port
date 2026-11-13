@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 void breaking_junk_init(EffectInstance* effect);
 void breaking_junk_update(EffectInstance* effect);
@@ -138,8 +140,7 @@ void breaking_junk_appendGfx(void* effect) {
     s32 alpha = data->primA;
     s32 i;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
     nd_rec_dl(D_E01187C0[0]);
 
     for (i = 0; i < ((EffectInstance*)effect)->numParts; i++, data++) {
@@ -147,12 +148,11 @@ void breaking_junk_appendGfx(void* effect) {
         guRotateF(sp60, data->rot, 0.0f, 0.0f, 1.0f);
         guMtxCatF(sp60, sp20, sp20);
         guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, data->primR, data->primG, data->primB, alpha);
-        gDPSetEnvColor(gMainGfxPos++, data->envR, data->envG, data->envB, data->envA);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+        nd_val_prim(0, 0, data->primR, data->primG, data->primB, alpha);
+        nd_val_env(data->envR, data->envG, data->envB, data->envA);
         nd_rec_dl(D_E01187B0[(u32)i % ARRAY_COUNT(D_E01187B0)]);
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        nd_xf_pop(G_MTX_MODELVIEW);
     }
 
-    gDPPipeSync(gMainGfxPos++);
 }

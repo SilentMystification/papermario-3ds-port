@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09001E40_36CD20[];
 extern Gfx D_09001EA8_36CD88[];
@@ -143,13 +145,12 @@ void ending_decals_appendGfx(void* effect) {
     dlist1 = D_E00685F4[data->type];
     dlist2 = D_E00685B0[data->type];
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
     guPositionF(sp20, 0.0f, -gCameras[gCurrentCameraID].curYaw, 0.0f, data->scale, data->pos.x, data->pos.y, data->pos.z);
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
     temp_f64 = data->haloAlpha;
     if (unk_20 % 2 == 0) {
@@ -158,21 +159,19 @@ void ending_decals_appendGfx(void* effect) {
         alpha = temp_f64;
     }
 
-    gDPSetEnvColor(gMainGfxPos++, 26, 121, 29, 158);
+    nd_val_env(26, 121, 29, 158);
     gDPSetColorDither(gMainGfxPos++, G_CD_BAYER);
     gDPSetAlphaDither(gMainGfxPos++, G_AD_PATTERN);
     nd_rec_dl(dlist1);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, data->unk_24, data->unk_25, data->unk_26, alpha);
-    gDPSetEnvColor(gMainGfxPos++, data->unk_27, data->unk_28, data->unk_29, 0);
+    nd_val_prim(0, 0, data->unk_24, data->unk_25, data->unk_26, alpha);
+    nd_val_env(data->unk_27, data->unk_28, data->unk_29, 0);
 
     if (dlist2 == D_09001E40_36CD20) {
         dlist2 = D_E00685BC[unk_20 % 14];
     }
 
     nd_rec_dl(dlist2);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gDPPipeSync(gMainGfxPos++);
+    nd_xf_pop(G_MTX_MODELVIEW);
     gDPSetColorDither(gMainGfxPos++, G_CD_DISABLE);
     gDPSetAlphaDither(gMainGfxPos++, G_AD_DISABLE);
-    gDPPipeSync(gMainGfxPos++);
 }

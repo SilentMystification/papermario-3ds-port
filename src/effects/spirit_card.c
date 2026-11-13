@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09003F98_3FE448[];
 extern Gfx D_09004010_3FE4C0[];
@@ -147,17 +149,16 @@ void func_E0112330(s32 arg0, SpiritCardFXData* data) {
     guMtxCatF(sp60, sp20, sp20);
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 }
 
 void spirit_card_appendGfx(void* effect) {
     SpiritCardFXData* data = ((EffectInstance*)effect)->data.spiritCard;
     s32 unk_00 = data->unk_00;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
     nd_rec_dl(D_090042E0_3FE790);
-    gDPSetEnvColor(gMainGfxPos++, 0, 0, 0, 255);
+    nd_val_env(0, 0, 0, 255);
 
     if (unk_00 < 2) {
         func_E0112330(0, data);
@@ -165,8 +166,7 @@ void spirit_card_appendGfx(void* effect) {
         nd_rec_dl(D_E0112638[0]);
         nd_rec_dl(D_E0112640[data->chapter]);
         nd_rec_dl(D_E0112630[0]);
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        nd_xf_pop(G_MTX_MODELVIEW);
     }
 
-    gDPPipeSync(gMainGfxPos++);
 }

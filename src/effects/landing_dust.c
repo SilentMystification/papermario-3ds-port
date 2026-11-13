@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09002780_32B620[];
 extern Gfx D_09002868_32B708[];
@@ -280,8 +282,7 @@ void landing_dust_appendGfx(void* effect) {
     dlist1 = sDlists[type];
     dlist2 = sDlists2[type];
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
     nd_rec_dl(dlist2);
 
     spD8 = temp_t0 & 7;
@@ -292,20 +293,19 @@ void landing_dust_appendGfx(void* effect) {
     guMtxCatF(mtx2, mtx1, mtx3);
     guMtxF2L(mtx3, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++,
-              &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
     switch (type) {
         case 0:
         case 1:
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, 230, 222, 222, 110);
-            gDPSetEnvColor(gMainGfxPos++, 0, 0, 0, envAlpha);
+            nd_val_prim(0, 0, 230, 222, 222, 110);
+            nd_val_env(0, 0, 0, envAlpha);
             break;
         case 2:
         case 3:
         case 4:
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, 230, 222, 222, 130);
-            gDPSetEnvColor(gMainGfxPos++, 0, 0, 0, envAlpha);
+            nd_val_prim(0, 0, 230, 222, 222, 130);
+            nd_val_env(0, 0, 0, envAlpha);
             break;
     }
 
@@ -318,12 +318,12 @@ void landing_dust_appendGfx(void* effect) {
     temp_lo = spD8 * phi_a0;
     temp = temp_lo + phi_a0;
 
-    gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, temp_lo * 4, 0, temp * 4, phi_a0 * 4);
+    nd_val_tile_size(G_TX_RENDERTILE, temp_lo * 4, 0, temp * 4, phi_a0 * 4);
 
     if (spDC) {
-        gDPSetTileSize(gMainGfxPos++, 1, temp * 4, phi_a0 * 4, (temp_lo + (phi_a0 * 2)) * 4, phi_a0 * 8);
+        nd_val_tile_size(1, temp * 4, phi_a0 * 4, (temp_lo + (phi_a0 * 2)) * 4, phi_a0 * 8);
     } else {
-        gDPSetTileSize(gMainGfxPos++, 1, temp * 4, 0,          (temp_lo + (phi_a0 * 2)) * 4, phi_a0 * 4);
+        nd_val_tile_size(1, temp * 4, 0, (temp_lo + (phi_a0 * 2)) * 4, phi_a0 * 4);
     }
 
     if (type == 2) {
@@ -335,12 +335,10 @@ void landing_dust_appendGfx(void* effect) {
     for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, part++) {
         guTranslateF(mtx1, part->x, part->y, part->z);
         guMtxF2L(mtx1, &gDisplayContext->matrixStack[gMatrixListPos]);
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-                  G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         nd_rec_dl(dlist1);
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        nd_xf_pop(G_MTX_MODELVIEW);
     }
 
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gDPPipeSync(gMainGfxPos++);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }

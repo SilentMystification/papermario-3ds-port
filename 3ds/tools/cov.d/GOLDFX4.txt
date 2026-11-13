@@ -1,0 +1,3 @@
+src/effects/snaking_static.c
+src/effects/water_block.c
+src/effects/embers.c
