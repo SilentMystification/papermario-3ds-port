@@ -79,7 +79,8 @@ enum {
     NDN_XF,       /* a = gSPMatrix flags (0xFF = pop one modelview matrix), p = const Mtx* (NULL: v = segmented address, input of the caller) */
     NDN_COL,      /* a = 0 prim, 1 env, 2 fog, 3 blend; v = RGBA; b = minlod << 8 | lodfrac for prim */
     NDN_DRAW,     /* p = const Vtx* base (NULL: v = segmented address), b = index count, a = 0; the indices follow in the table's idx from idx_pos */
-    NDN_CALL      /* p = const NdNTab* of another (list, entry) pair */
+    NDN_CALL,     /* p = const NdNTab* of another (list, entry) pair */
+    NDN_UNIT      /* p = const uint32_t* the depth-0 typed units of the list (word pairs, NOPs and the end left out, a call stays a unit), b = their count; the first op of every table; CONV2D2 runs them with nd_walk_state */
 };
 typedef struct NdNOp { uint8_t op, a; uint16_t b; uint32_t v; const void* p; uint32_t idx_pos; } NdNOp;
 typedef struct NdNTab {
