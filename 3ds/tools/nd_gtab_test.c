@@ -468,6 +468,28 @@ static int pso_same(const NdPsoDesc* a, const NdPsoDesc* b) {
     if (memcmp(&oa, &ob, sizeof oa)) return 0;
     return !memcmp(a, b, sizeof *a);
 }
+/* CONV2D: the unit stream of a table (its first op, NDN_UNIT) is the depth-0 words of the list from k = 0: NOPs and the end left out, the
+ * walk stops after a branch call (the call stays a unit) */
+static void v2_units(const NdNTab* t, const char* name) {
+    const GSym* g = NULL;
+    for (unsigned s = 0; s < gconv_nsym; s++) if (gconv_sym[s].kind == GS_GFX && gconv_sym[s].addr == t->list) g = &gconv_sym[s];
+    if (!g || t->nops < 2u || t->ops[0].op != NDN_UNIT) { v2_fail("unit op first", name, 0); return; }
+    const NdNOp* u = &t->ops[0];
+    const uint32_t* L = (const uint32_t*)g->addr;
+    const uint32_t* U = (const uint32_t*)u->p;
+    const unsigned nl = (unsigned)(((uintptr_t)g->end - (uintptr_t)g->addr) / 8u);
+    unsigned n = 0;
+    for (unsigned k = 0; k < nl; k++) {
+        const uint32_t w0 = L[2u * k], w1 = L[2u * k + 1u];
+        if (w0 == ND_NOP_A) continue;
+        if ((w0 >> 24) == NDO_END) break;
+        if (n >= u->b) { v2_fail("unit stream", name, n); return; }
+        if (U[2u * n] != w0 || U[2u * n + 1u] != w1) { v2_fail("unit stream", name, n); return; }
+        n++;
+        if ((w0 >> 24) == NDO_CALL && (w0 & 1u)) break;
+    }
+    if (n != u->b) v2_fail("unit stream count", name, n);
+}
 static void v2_compare(int fault) {
     unsigned tables = 0;
     for (unsigned n = 0; n < ndn_n; n++) {
@@ -481,6 +503,7 @@ static void v2_compare(int fault) {
         nmtri = nvtri = nmxf = nmcol = nvxf = nvcol = 0; m_over = 0;
         m_walk(g1);
         v_replay(t, fault);
+        v2_units(t, name);
         tables++;
         if (m_over) v2_fail("the model could not follow the v1 table", name, 0);
         if (nmtri != nvtri) { v2_fail("triangle count", name, nmtri); continue; }

@@ -198,6 +198,7 @@ typedef struct {
     int emitted_pso, emitted_bind, emitted_bind1;
     char unsup[160];
     int inh; char inh_groups[64], inh_first[160];
+    uint32_t uw[2u * V2_MAXOPS]; char ue[V2_MAXOPS][160]; unsigned nu; /* the depth-0 typed units (CONV2D): words, and the address text (ue[i][0] == 0: no address) */
 } V2C;
 static NdPsoDesc v2_desc[V2_MAXDESC];
 static unsigned v2_ndesc;
@@ -376,6 +377,30 @@ static void v2_inherit_check(unsigned k, const GSym* g, unsigned id) {
     }
 }
 
+/* CONV2D: one depth-0 typed unit of the list (NOPs and the end left out by the caller). The four address kinds keep their symbol as text */
+static void v2_unit_add(unsigned k, unsigned id, uint32_t w0, uint32_t w1) {
+    if (cx->nu == V2_MAXOPS) { v2_unsup("too many units", k); return; }
+    const unsigned i = cx->nu++;
+    cx->uw[2u * i] = w0; cx->uw[2u * i + 1u] = w1;
+    cx->ue[i][0] = 0;
+    int kind = -1;
+    if (id == NDO_VTX) kind = GS_VTX;
+    else if (id == NDO_TIMG) kind = GS_IMG;
+    else if (id == NDO_CALL) kind = GS_GFX;
+    else if (id == NDO_MTX) kind = GS_MTX;
+    if (kind < 0 || !(w1 && (w1 >> 24) >= 16u)) return;
+    if (kind == GS_MTX) { /* an Mtx is not an array: its address is the object itself */
+        unsigned off = 0;
+        const GSym* ms = sym_of(w1, GS_MTX, &off);
+        if (!ms) { v2_unsup("unit address outside the symbol map", k); return; }
+        snprintf(cx->ue[i], sizeof cx->ue[i], "(const char*)&%s + %u", ms->name, off);
+    } else if (!v2_sym_expr(cx->ue[i], sizeof cx->ue[i], (uintptr_t)w1, kind)) {
+        v2_unsup("unit address outside the symbol map", k);
+        return;
+    }
+    cx->uw[2u * i + 1u] = 0;
+}
+
 /* returns 1 when a branch call ended the walk (the rest of the calling list does not run) */
 static int v2_walk(const GSym* g, unsigned k0, unsigned depth) {
     const uint32_t* L = (const uint32_t*)g->addr;
@@ -385,6 +410,7 @@ static int v2_walk(const GSym* g, unsigned k0, unsigned depth) {
         const uint32_t w0 = L[2u * k], w1 = L[2u * k + 1u], a = w0 & 0xffffffu;
         const unsigned id = w0 >> 24;
         if (w0 == ND_NOP_A) continue;
+        if (depth == 0u && id != NDO_END) v2_unit_add(k, id, w0, w1);
         switch (id) {
         case NDO_END: return 0;
         case NDO_OMH: { const uint32_t m = nd_op_om_mask(a); s->omh = (s->omh & ~m) | (w1 & m); s->omh_set |= m; break; }
@@ -522,12 +548,19 @@ static void v2_emit_table(const V2C* c) {
     printf("static const uint16_t ndni_%s[%u] = {", n, c->nidx ? c->nidx : 1u);
     for (unsigned i = 0; i < c->nidx; i++) printf("%s%u", i ? "," : "", c->idx[i]);
     if (!c->nidx) printf("0");
-    printf("};\nstatic const NdNOp ndno_%s[%u] = {\n", n, c->nops + 1u);
+    printf("};\nstatic const uint32_t ndnu_%s[%u] = {", n, c->nu ? 2u * c->nu : 1u);
+    for (unsigned i = 0; i < c->nu; i++) {
+        if (c->ue[i][0]) printf("%s0x%xu, (uint32_t)(uintptr_t)(%s)", i ? "," : "", c->uw[2u * i], c->ue[i]);
+        else printf("%s0x%xu, 0x%xu", i ? "," : "", c->uw[2u * i], c->uw[2u * i + 1u]);
+    }
+    if (!c->nu) printf("0");
+    printf("};\nstatic const NdNOp ndno_%s[%u] = {\n", n, c->nops + 2u);
+    printf("    { %u, 0, %u, 0, ndnu_%s, 0 },\n", (unsigned)NDN_UNIT, c->nu, n);
     for (unsigned i = 0; i < c->nops; i++) {
         const COp* o = &c->ops[i];
         printf("    { %u, %u, %u, 0x%xu, %s, %u },\n", o->op, o->a, o->b, o->v, o->p, o->idx_pos);
     }
-    printf("    { %u, 0, 0, 0, 0, 0 },\n};\nconst NdNTab ndn_%s = { (const void*)%s, 0, %u, ndno_%s, ndni_%s };\n", (unsigned)NDN_END, n, n, c->nops + 1u, n, n);
+    printf("    { %u, 0, 0, 0, 0, 0 },\n};\nconst NdNTab ndn_%s = { (const void*)%s, 0, %u, ndno_%s, ndni_%s };\n", (unsigned)NDN_END, n, n, c->nops + 2u, n, n);
 }
 
 static V2C v2c_mem;
