@@ -1464,7 +1464,7 @@ def stored(commit, bench):
     """True when the store holds the shots of bench at commit and they were made for the scenario definition bench names now.
     meta.json is written last, after the shots."""
     d = store_root() / commit / bench
-    if not ((d / "meta.json").exists() and any(d.glob("*.ppm"))):
+    if not ((d / "meta.json").exists() and shot_names(d)):
         return False
     bd = bench_def(bench)
     want = scen_hash(scenario(bd["scenario"])) if bd and bd.get("scenario") else None
@@ -1514,7 +1514,7 @@ def snap_shots(shots, scenario_name):
     run of a list would otherwise hide the shots of the first."""
     snap = os.environ.get("PM_BASE_SNAP")
     shots = Path(shots)
-    if not snap or not shots.is_dir() or not any(shots.glob("*.ppm")):
+    if not snap or not shots.is_dir() or not shot_names(shots):
         return None
     root = Path(snap)
     root.mkdir(parents=True, exist_ok=True)
@@ -1523,10 +1523,45 @@ def snap_shots(shots, scenario_name):
     return str(dst)
 
 
+FHASH_RX = re.compile(r"fhash f(\d+) h ([0-9a-f]{16}) draws (\d+) words (\d+)")
+
+
+def shot_names(d):
+    """FRAMEHASH4: the compared files of a shot folder: the *.ppm shots and fhash.txt (frame hashes), sorted."""
+    d = Path(d)
+    return sorted(p.name for p in d.glob("*.ppm")) + (["fhash.txt"] if (d / "fhash.txt").is_file() else [])
+
+
+def fhash_extract(log, folder):
+    """FRAMEHASH4: the fhash entries of a log as folder/fhash.txt, one line `f<n> h <h> draws <d> words <w>` each. Returns the count."""
+    rows = ["f%s h %s draws %s words %s" % m.groups() for m in FHASH_RX.finditer(Path(log).read_text(encoding="utf-8", errors="replace"))]
+    if rows:
+        Path(folder).mkdir(parents=True, exist_ok=True)
+        (Path(folder) / "fhash.txt").write_text("\n".join(rows) + "\n", encoding="utf-8")
+    return len(rows)
+
+
+def fhash_cmp(a, b):
+    """FRAMEHASH4: (bad, lines) for two fhash.txt files: per frame `f<n> equal` or `f<n> DIFF`, then `<k>/<n> frames equal`."""
+    la, lb = Path(a).read_text(encoding="utf-8").split("\n")[:-1], Path(b).read_text(encoding="utf-8").split("\n")[:-1]
+    out, eq = [], 0
+    for i, x in enumerate(la):
+        f = x.split(" ")[0]
+        if i < len(lb) and lb[i] == x: eq += 1; out.append("  %s equal" % f)
+        else: out.append("  %s DIFF (rerun with fhashdraw=%s to name the draw)" % (f, f[1:]))
+    out.append("%d/%d frames equal" % (eq, len(la)))
+    return (0 if eq == len(la) == len(lb) and la else 1), out
+
+
+def ingest_fhash(bd, log, shot):
+    """FRAMEHASH4: a run of a bench of kind azahar_hash (kind of its bench entry, FRAMEHASH5) gets fhash.txt. Returns the count, 0 for other kinds."""
+    return fhash_extract(log, shot) if bd and bd.get("kind") == "azahar_hash" else 0
+
+
 def shots_diff(a, b):
     """"" when the two shot folders hold the same shot names with the same bytes, else a text for the first difference."""
-    an = sorted(p.name for p in Path(a).glob("*.ppm"))
-    bn = sorted(p.name for p in Path(b).glob("*.ppm"))
+    an = shot_names(a)
+    bn = shot_names(b)
     if not an:
         return "no shots in %s" % posix(a)
     if an != bn:
@@ -1812,7 +1847,7 @@ def cmd_base(a):
         print("no base commit (the merge-base of HEAD with main, or --commit %s is unknown). Nothing was built." % a.commit)
         return 5
     if stored(commit, bd["name"]):
-        n = len(list((store_root() / commit / bd["name"]).glob("*.ppm")))
+        n = len(shot_names(store_root() / commit / bd["name"]))
         print("base %s at %s: stored, %d shots at %s. No build, no run." % (bd["name"], commit[:9], n, store_root() / commit / bd["name"]))
         return 0
     print("base %s at %s: not stored. Building that commit once (lane base_%s), then one run." % (bd["name"], commit[:9], commit[:9]))
@@ -1910,7 +1945,7 @@ def row_shots_run(bench, row):
     best = None
     for r in read_runs():
         sp = r.get("shot_path")
-        if r.get("bench") == bench and r.get("row") == row and sp and Path(sp).is_dir() and any(Path(sp).glob("*.ppm")):
+        if r.get("bench") == bench and r.get("row") == row and sp and Path(sp).is_dir() and shot_names(sp):
             best = r
     return best
 
@@ -1932,8 +1967,8 @@ def cmd_cmp(a):
         print("no run of %s under row %s with shots. Run the bench first." % (a.bench, a.row))
         return 5
     base_dir, row_dir = store_root() / commit / a.bench, Path(rr["shot_path"])
-    base_names = sorted(p.name for p in base_dir.glob("*.ppm"))
-    row_names = sorted(p.name for p in row_dir.glob("*.ppm"))
+    base_names = shot_names(base_dir)
+    row_names = shot_names(row_dir)
     out = REPO / "build3ds" / "basecmp" / a.row / a.bench
     print("cmp %s: row %s run at commit %s build %s, base %s (%d shots)" % (
         a.bench, a.row, (rr.get("commit") or "?")[:9], rr.get("build_no"), commit[:9], len(base_names)))
@@ -1943,6 +1978,13 @@ def cmd_cmp(a):
         if n not in row_names:
             print("  %s missing in the row run" % n)
             bad += 1
+            continue
+        if n == "fhash.txt":
+            fb, lines = fhash_cmp(base_dir / n, row_dir / n)
+            print("\n".join(lines))
+            bad += fb
+            if fb == 0:
+                equal += 1
             continue
         res = compare_ppm(base_dir / n, row_dir / n, out / ("diff_" + n[:-4] + ".png"))
         if res is None:
@@ -1968,13 +2010,13 @@ def cmd_cmp(a):
 
 def stored_matches(bench, row_dir):
     """The commits whose stored base of bench holds shots byte-equal to the shots of row_dir (every shot, same names)."""
-    rn = sorted(p.name for p in Path(row_dir).glob("*.ppm"))
+    rn = shot_names(row_dir)
     out = []
     if not rn:
         return out
     for meta in sorted(store_root().glob("*/%s/meta.json" % bench)):
         d = meta.parent
-        if sorted(p.name for p in d.glob("*.ppm")) == rn and all(md5_of(d / n) == md5_of(Path(row_dir) / n) for n in rn):
+        if shot_names(d) == rn and all(md5_of(d / n) == md5_of(Path(row_dir) / n) for n in rn):
             out.append(d.parent.name)
     return out
 
@@ -2028,6 +2070,7 @@ def cmd_ingest_last(a):
     result = "log_pass" if a.rc == 0 else ("broken" if a.rc == 10 else "fail:%d" % a.rc) # AZT11-5: rc 10 = no until line in the cap (broken, not a code fail)
     note = "picture: a person reads the shot" if bd and bd["kind"] == "azahar_pic" else ""
     shot = a.shots or str(SHOTS / s / (os.environ.get("PM_LANE") or "main"))  # SHOTLANE: per scenario and build
+    ingest_fhash(bd, p, shot)  # FRAMEHASH4: before snap_shots, so the base copy holds fhash.txt
     shot = snap_shots(shot, s) or shot  # BASEVERIFY: a base list's run keeps its own shot copy (PM_BASE_SNAP)
     dv = os.environ.get("PM_BENCH_DIRTY")
     lb, _ = log_build(text)
