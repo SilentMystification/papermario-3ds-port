@@ -187,6 +187,7 @@ function Push-One([string]$t) {
             } finally {
                 if (-not $pushDone) { Stop-PushShell }
             }
+            if ($LASTEXITCODE -eq 6) { Write-Host "=== push ${t}: sent, the game sent no line ==="; return 6 } # PUSHEND2
             if ($LASTEXITCODE -ne 0) { throw "push_3ds.sh exited $LASTEXITCODE" }
         }
         Write-Host "=== push ${t}: done ==="
@@ -227,7 +228,9 @@ if ($Verb -eq 'push') {
         # PUSHFIX second try: Start-Process passes the caller's inheritable handles to the child (CreateProcess bInheritHandles),
         # so the caller's stdout pipe stayed open until the child ended (test case d: 10 s). Win32_Process.Create inherits no handles;
         # cmd does the redirect into the same log and err files. ShowWindow 0: no console window.
-        $cmdLine = 'powershell.exe ' + ($childArgs -join ' ') + ' > "' + $log + '" 2> "' + $log + '.err"'
+        # PUSHEND2: Win32_Process.Create gives the child the default environment: the PM_* and N3DS_IP values of this call go through cmd's set.
+        $envSet = ''; foreach ($e in @(Get-ChildItem Env: | Where-Object { $_.Name -like 'PM_*' -or $_.Name -eq 'N3DS_IP' })) { $envSet += 'set "' + $e.Name + '=' + $e.Value + '" && ' }
+        $cmdLine = $envSet + 'powershell.exe ' + ($childArgs -join ' ') + ' > "' + $log + '" 2> "' + $log + '.err"'
         $startup = New-CimInstance -ClassName Win32_ProcessStartup -Property @{ ShowWindow = [uint16]0 } -ClientOnly
         $created = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = "cmd.exe /d /c `"$cmdLine`""; ProcessStartupInformation = $startup }
         if ($created.ReturnValue -ne 0) { Write-Output "push ${Target}: could not start the detached push (Win32_Process.Create $($created.ReturnValue))"; exit 1 }
@@ -246,13 +249,15 @@ if ($Verb -eq 'push') {
     } catch {
         Write-Output "push ${Target}: $($_.Exception.Message)"
     } finally {
-        if ($Fg) {
-            # PUSHFIX: the child's end line, in the log (stdout) and in build3ds/out/push_last.txt.
-            $endLine = "PUSH END rc $rc $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
-            Write-Output $endLine
-            New-Item -ItemType Directory -Force -Path (Join-Path $repo 'build3ds/out') | Out-Null
-            Set-Content -Path (Join-Path $repo 'build3ds/out/push_last.txt') -Value $endLine
-        }
+        # PUSHEND2: one end line in every mode: rc, time and the PUSH RESULT line of push_3ds.sh (only one written by this run).
+        $rf = Join-Path $repo 'build3ds/out/push_result.txt'
+        $res = $null
+        if ((Test-Path $rf) -and (Get-Item $rf).LastWriteTime -ge (Get-Process -Id $PID).StartTime) { $res = Get-Content $rf | Select-Object -Last 1 }
+        if (-not $res) { $res = "PUSH RESULT failed rc ${rc}: go.ps1 ended before push_3ds.sh wrote a result (see the lines above)" }
+        $endLine = "PUSH END rc $rc $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') $res"
+        Write-Output $endLine
+        New-Item -ItemType Directory -Force -Path (Join-Path $repo 'build3ds/out') | Out-Null
+        Set-Content -Path (Join-Path $repo 'build3ds/out/push_last.txt') -Value $endLine
     }
     exit $rc
 }
