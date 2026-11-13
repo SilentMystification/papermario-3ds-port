@@ -14,7 +14,6 @@ A shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json, bench_def
 | FPS60VAL | Sonnet | 3ds/src/pm_gpu.c end of kc_build, end of pm_gpu_key_show; new 3ds/tools/kcval.py | not started (user decides) |
 | ENTRYCAP | Haiku | 3ds/src/nd_gtab.c nd_rec_dl :84-85; nd_walk.c nd_gtab_run top of the non-state-only arm; new 3ds/tools/entcap.py, azt.d/bench.d ENTRYCAP.json | waits for CONV2D2 (nd_ntab_find, same nd_gtab_run) |
 | CODEMODFX7 | Haiku | src/effects/big_smoke_puff.c (value call lines, include lines); new azt.d/bench.d CODEMODFX7.json | ready |
-| CODEMODFX8 | Haiku | src/effects/water_block.c (value call lines, include lines) | ready |
 | CODEMODFX9 | Haiku | src/effects/embers.c (value call lines, include lines) | ready |
 | CODEMODFX10 | Haiku | src/effects/shimmer_burst.c (value call lines, include lines) | ready |
 | CONV2D2 | Haiku | nd_gtab.h NdNIdx and 2 prototypes; nd_gfx_conv.c v2_convert_all device index; nd_gtab.c after nd_gtab_find, gtr_cen; nd_walk.c nd_gtab_run :601 and :500; azt.d/bench.d CONV2D2.json | waits for CONV2D |
