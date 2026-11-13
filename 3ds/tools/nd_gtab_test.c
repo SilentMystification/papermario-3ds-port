@@ -218,7 +218,7 @@ extern const NdNTab* const ndn_all[];
 extern const unsigned ndn_n, ndn_inherit, ndn_unsup, ndn_ndesc;
 extern const NdPsoDesc* const ndn_desc[];
 
-typedef struct { const void* base; unsigned i[3]; NdPsoDesc d; int tex; NdBindDesc b; unsigned nx, nc; } TriEv;
+typedef struct { const void* base; unsigned i[3]; NdPsoDesc d; int tex; NdBindDesc b; unsigned nx, nc; int tex1; NdBindDesc b1; } TriEv;
 typedef struct { unsigned a, b; uint32_t v; } XcEv;
 #define EVMAX 16384u
 static TriEv mtri[EVMAX], vtri[EVMAX];
@@ -231,6 +231,7 @@ typedef struct {
     NdTst t; NdTexM m;
     const void* timg; const void* tlut; int tlut_n;
     int td_valid; NdBindDesc td;
+    int td1_valid; NdBindDesc td1;
 } MSt;
 static MSt ms;
 static struct { const void* base; unsigned idx; int ok; } mslot[64];
@@ -245,7 +246,7 @@ static const GSym* m_vsym(uint32_t p) {
 static NdPsoDesc m_desc(const MSt* s) {
     NdPsoDesc d;
     memset(&d, 0, sizeof d);
-    d.cw0 = s->cw0; d.cw1 = s->cw1; d.omh = s->omh; d.oml = s->oml; d.geom = s->geom; d.tex_on = (uint8_t)s->tex_on; d.comb_set = (uint8_t)s->has_comb; d.plod = (uint8_t)s->plod;
+    d.cw0 = s->cw0; d.cw1 = s->cw1; d.omh = s->omh; d.oml = s->oml; d.geom = s->geom; d.t1_valid = (uint8_t)s->td1_valid; d.tex_on = (uint8_t)s->tex_on; d.comb_set = (uint8_t)s->has_comb; d.plod = (uint8_t)s->plod;
     const uint32_t w0 = s->cw0, w1 = s->cw1;
     uint32_t t[16];
     t[0] = (w0 >> 20) & 0xf;  t[2] = (w0 >> 15) & 0x1f; t[1] = (w1 >> 28) & 0xf; t[3] = (w1 >> 15) & 7;
@@ -271,6 +272,22 @@ static void m_xf(unsigned a, uint32_t v) { if (nmxf < EVMAX) { mxf[nmxf].a = a; 
 static void m_col(unsigned a, unsigned b, uint32_t v) { if (nmcol < EVMAX) { mcol[nmcol].a = a; mcol[nmcol].b = b; mcol[nmcol].v = v; nmcol++; } else m_over = 1; }
 static void m_tilesize(unsigned tile, int uls, int ult, int lrs, int lrt) {
     ms.t.tile_sz[tile][0] = uls; ms.t.tile_sz[tile][1] = ult; ms.t.tile_sz[tile][2] = lrs; ms.t.tile_sz[tile][3] = lrt;
+    if (tile == 1) {
+        ms.td1_valid = 0;
+        NdWin w1;
+        tex_win1(&ms.t, &ms.m, ms.timg, uls, ult, lrs, lrt, &w1);
+        if (w1.src && w1.w > 0 && w1.h > 0) {
+            const unsigned pi = ms.t.tile_pal[1] & 15u;
+            NdBindDesc* d = &ms.td1;
+            memset(d, 0, sizeof *d);
+            d->src = w1.src; d->pal = ms.m.tlut_pal[pi] ? ms.m.tlut_pal[pi] : ms.tlut; d->pal_n = ms.tlut_n; d->fmt = ms.t.tile_fmt[1];
+            d->siz = ms.t.tile_siz[1]; d->stride = w1.stride; d->x0 = w1.x0; d->y0 = ult >> 2; d->w = w1.w; d->h = w1.h;
+            memcpy(d->wrap, ms.t.tile_wrap[1], sizeof d->wrap);
+            memcpy(d->sz, ms.t.tile_sz[1], sizeof d->sz);
+            ms.td1_valid = 1;
+        }
+        return;
+    }
     if (tile != 0) return;
     ms.td_valid = 0;
     NdWin w;
@@ -359,6 +376,8 @@ static void m_tri(unsigned a, unsigned b, unsigned c) {
     e->d = m_desc(&ms);
     e->tex = ms.td_valid && ms.tex_on;
     if (e->tex) e->b = ms.td;
+    e->tex1 = ms.td1_valid && ms.tex_on;
+    if (e->tex1) e->b1 = ms.td1;
     e->nx = nmxf; e->nc = nmcol;
 }
 /* the v1 table as the v1 path walks it; 1 when a branch call ended the walk */
@@ -400,12 +419,13 @@ static int m_walk(const NdGTab* t) {
 static void v_replay(const NdNTab* t, int fault) {
     int pso = -1;
     const NdBindDesc* bind = NULL;
+    const NdBindDesc* bind1 = NULL;
     static int fault_done;
     for (const NdNOp* o = t->ops;; o++) {
         if (o->op == NDN_END) break;
         switch (o->op) {
         case NDN_PSO: pso = o->b; break;
-        case NDN_TEX: bind = (const NdBindDesc*)o->p; break;
+        case NDN_TEX: if (o->a) bind1 = (const NdBindDesc*)o->p; else bind = (const NdBindDesc*)o->p; break;
         case NDN_XF: if (nvxf < EVMAX) { vxf[nvxf].a = o->a; vxf[nvxf].v = o->v; vxf[nvxf].b = 0; nvxf++; } break;
         case NDN_COL:
             if (nvcol < EVMAX) {
@@ -425,6 +445,8 @@ static void v_replay(const NdNTab* t, int fault) {
                 else e->d.cw0 = 0xdeadbeefu;
                 e->tex = bind != NULL;
                 if (bind) e->b = *bind;
+                e->tex1 = bind1 != NULL;
+                if (bind1) e->b1 = *bind1;
                 e->nx = nvxf; e->nc = nvcol;
             }
             break;
@@ -471,6 +493,7 @@ static void v2_compare(int fault) {
             if (m->base != v->base || m->i[0] != v->i[0] || m->i[1] != v->i[1] || m->i[2] != v->i[2]) v2_fail("triangle vertex triple", name, i);
             if (!pso_same(&m->d, &v->d)) v2_fail("pso output", name, i);
             if (m->tex && (!v->tex || memcmp(&m->b, &v->b, sizeof m->b))) v2_fail("bind descriptor", name, i);
+            if (m->tex1 && (!v->tex1 || memcmp(&m->b1, &v->b1, sizeof m->b1))) v2_fail("tile 1 bind descriptor", name, i);
             if (m->nx != v->nx || m->nc != v->nc) v2_fail("transform or colour position", name, i);
         }
     }

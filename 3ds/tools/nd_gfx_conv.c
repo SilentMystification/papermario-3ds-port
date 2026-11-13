@@ -185,6 +185,7 @@ typedef struct {
     const void* timg; int timg_ok;
     const void* tlut; int tlut_n;
     int td_valid; NdBindDesc td;
+    int td1_valid; NdBindDesc td1;
 } V2St;
 typedef struct {
     const GSym* top;
@@ -194,7 +195,7 @@ typedef struct {
     NdBindDesc bind[V2_MAXBIND]; unsigned nbind;
     NdVsOp vs[V2_MAXVS]; unsigned nvs;     /* the loads so far (all segments) */
     NdVsOp seg[V2_MAXVS]; unsigned nseg, seg_tri; /* the ops of the open segment */
-    int emitted_pso, emitted_bind;
+    int emitted_pso, emitted_bind, emitted_bind1;
     char unsup[160];
     int inh; char inh_groups[64], inh_first[160];
 } V2C;
@@ -230,6 +231,7 @@ static NdPsoDesc v2_make_desc(const V2St* s) {
     memset(&d, 0, sizeof d);
     d.cw0 = s->cw0; d.cw1 = s->cw1; d.omh = s->omh; d.oml = s->oml; d.geom = s->geom; d.key_c = s->key_c; d.key_s = s->key_s; d.conv_k4 = s->conv_k4;
     d.tex_on = (uint8_t)s->tex_on;
+    d.t1_valid = (uint8_t)s->td1_valid;
     const uint32_t w0 = s->cw0, w1 = s->cw1;
     uint32_t f[16];
     f[0] = (w0 >> 20) & 0xf;  f[1] = (w1 >> 28) & 0xf;  f[2] = (w0 >> 15) & 0x1f; f[3] = (w1 >> 15) & 7;
@@ -329,7 +331,22 @@ static void v2_loadtile(V2St* s, unsigned tile, int uls, int ult, int lrs, int l
 static void v2_tilesize(V2St* s, unsigned k, unsigned tile, int uls, int ult, int lrs, int lrt) {
     if (((lrs - uls) >> 2) + 1 <= 0 || ((lrt - ult) >> 2) + 1 <= 0) { v2_unsup("tile size window not positive", k); return; }
     s->t.tile_sz[tile][0] = uls; s->t.tile_sz[tile][1] = ult; s->t.tile_sz[tile][2] = lrs; s->t.tile_sz[tile][3] = lrt;
-    if (tile == 1) { v2_unsup("tile 1 size (the tile 1 window is not in the pure part)", k); return; }
+    if (tile == 1) {
+        s->td1_valid = 0;
+        if (!s->timg_ok) { v2_unsup("texture image outside the set", k); return; }
+        NdWin wn;
+        tex_win1(&s->t, &s->m, s->timg, uls, ult, lrs, lrt, &wn);
+        if (wn.src && wn.w > 0 && wn.h > 0) {
+            const unsigned pi = s->t.tile_pal[1] & 15u;
+            NdBindDesc* d = &s->td1;
+            memset(d, 0, sizeof *d);
+            d->src = wn.src; d->pal = s->m.tlut_pal[pi] ? s->m.tlut_pal[pi] : s->tlut; d->pal_n = s->tlut_n; d->fmt = s->t.tile_fmt[1];
+            d->siz = s->t.tile_siz[1]; d->stride = wn.stride; d->x0 = wn.x0; d->y0 = ult >> 2; d->w = wn.w; d->h = wn.h;
+            for (int i = 0; i < 4; i++) { d->wrap[i] = s->t.tile_wrap[1][i]; d->sz[i] = s->t.tile_sz[1][i]; }
+            s->td1_valid = 1;
+        }
+        return;
+    }
     if (tile != 0) return;
     s->td_valid = 0;
     if (!s->timg_ok) { v2_unsup("texture image outside the set", k); return; }
@@ -449,6 +466,21 @@ static int v2_walk(const GSym* g, unsigned k0, unsigned depth) {
                     cx->emitted_bind = (int)i;
                 }
             }
+            if (s->td1_valid && s->tex_on) {
+                unsigned i;
+                for (i = 0; i < cx->nbind && memcmp(&cx->bind[i], &s->td1, sizeof s->td1); i++) {}
+                if (i == cx->nbind) {
+                    if (cx->nbind >= V2_MAXBIND) { v2_unsup("too many binds", k); break; }
+                    cx->bind[cx->nbind++] = s->td1;
+                }
+                if ((int)i != cx->emitted_bind1) {
+                    v2_flush();
+                    char p[160];
+                    snprintf(p, sizeof p, "&ndnb_%s_%u", cx->top->name, i);
+                    v2_push(NDN_TEX, 1, 0, 0, p, 0);
+                    cx->emitted_bind1 = (int)i;
+                }
+            }
             v2_seg_add(&o);
             cx->seg_tri = 1;
             break;
@@ -502,7 +534,7 @@ static void v2_convert_all(const char* descs_path, const char* inh_path, const c
         const GSym* g = &gconv_sym[i];
         if (g->kind != GS_GFX) continue;
         memset(cx, 0, sizeof *cx);
-        cx->top = g; cx->emitted_pso = -1; cx->emitted_bind = -1;
+        cx->top = g; cx->emitted_pso = -1; cx->emitted_bind = -1; cx->emitted_bind1 = -1;
         v2_walk(g, 0, 0);
         v2_flush();
         if (cx->inh) {
