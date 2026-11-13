@@ -12,7 +12,17 @@
 #include "nd.h"
 #include "nd_api.h"
 
-uint32_t f32tof24(float vf) { (void)vf; return 0; } /* nd_tmpl.c template words only: nd_tev_build does not call it */
+uint32_t f32tof24(float vf) { /* host copy of libctru f32tof24, as 3ds/tools/nd_cmd_test.c */
+    union { float f; uint32_t i; } v;
+    v.f = vf;
+    uint32_t sign = v.i >> 31, mant = (v.i & 0x7FFFFFu) >> 7;
+    int exp = (int)((v.i >> 23) & 0xFF);
+    if (exp == 0) return sign << 23;
+    exp = exp - 127 + 63;
+    if (exp < 0) return sign << 23;
+    if (exp > 0x7F) return sign << 23 | 0x7Fu << 16;
+    return mant | (uint32_t)exp << 16 | sign << 23;
+}
 
 void unpack8(unsigned c, float o[4]) {
     o[0] = (float)((c >> 24) & 255u) / 255.f; o[1] = (float)((c >> 16) & 255u) / 255.f;
