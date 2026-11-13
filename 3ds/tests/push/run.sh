@@ -93,6 +93,17 @@ t1=$(date +%s)
 if echo "$of" | grep -q 'no send progress for 4s - killing 3dslink' && [ $((t1 - t0)) -lt 45 ]; then echo "ok   hung send killed ($((t1 - t0)) s)"
 else echo "FAIL hung send killed ($((t1 - t0)) s)"; echo "$of" | tail -n 20; fail=1; fi
 
+# (h) PUSHWARP: a console push sends no warp=random. -Toad sends warp=mac_01:0 pos=0:0:200. The fake 3dslink prints its argv.
+fake_args="$tmp/fake_args.sh"; printf '#!/bin/sh\necho "Sending argv: $*"\nexit 0\n' >"$fake_args"; chmod +x "$fake_args"
+oh=$(env PM_3DSLINK="$fake_args" PM_SRC3DSX="$tmp/pm_3ds.3dsx" PM_ARCHIVE_DIR="$tmp" PM_PUSH_LOG="$tmp/pushed.txt" \
+    powershell -NoProfile -File 3ds/go.ps1 push o -NoBuild -Fg -ip 127.0.0.1 -Seconds 5 -IdleSeconds 5 2>&1) || true
+oh2=$(env PM_3DSLINK="$fake_args" PM_SRC3DSX="$tmp/pm_3ds.3dsx" PM_ARCHIVE_DIR="$tmp" PM_PUSH_LOG="$tmp/pushed.txt" \
+    powershell -NoProfile -File 3ds/go.ps1 push o -NoBuild -Fg -Toad -ip 127.0.0.1 -Seconds 5 -IdleSeconds 5 2>&1) || true
+if echo "$oh" | grep -q '^Sending argv:' && ! echo "$oh" | grep -q 'warp='; then echo "ok   console push: no warp word"
+else echo "FAIL console push warp ($(echo "$oh" | grep '^Sending argv:'))"; fail=1; fi
+if echo "$oh2" | grep -q '^Sending argv:.*warp=mac_01:0 pos=0:0:200' && ! echo "$oh2" | grep -q 'warp=random'; then echo "ok   -Toad: Toad Town"
+else echo "FAIL -Toad ($(echo "$oh2" | grep '^Sending argv:'))"; fail=1; fi
+
 rm -f build3ds/out/push_127.0.0.1_*
 if [ "$fail" -eq 0 ]; then echo "PUSH TESTS PASS"; else echo "PUSH TESTS FAIL"; fi
 exit $fail
