@@ -246,6 +246,7 @@ if ($Verb -eq 'push') {
         Write-Output "push: lane output build3ds/lane-$($env:PM_LANE)/pm_3ds.3dsx (no build)"
     } else {
         Remove-Item Env:PM_LANE -ErrorAction SilentlyContinue
+        Remove-Item Env:PM_KEY_LANE -ErrorAction SilentlyContinue # correction 1: a PM_KEY_LANE of the caller would key the default output by a lane
         Write-Output "push: default output build3ds/pm_3ds.3dsx"
     }
     try {
