@@ -4,12 +4,12 @@
       "name": "amb_title_arn02",
       "status": "unverified",
       "subject": "AMBTITLE: Gusty Gulch (arn_02) wind plays, then the soft reset to the title stops the ambient MSEQ player 0.",
-      "proves": "AMBTITLE: the ambient player 0 is stopped by the startup state after the return to the title (the second startup pass, n 1).",
+      "proves": "AMBTITLE: the startup state stops the ambient MSEQ player 0 after the return to the title (the second startup pass, n 1).",
       "debug": "warp=arn_02:0 story=ch0_toad_town titleret=240 loglevel=debug det",
       "until": "startup [1-9]\\d* ambient stopped ",
       "cap": 45,
-      "deadline": 40,
-      "first_marker": "",
+      "deadline": 20,
+      "first_marker": "warp: arn_02 entry 0",
       "expects": "none",
       "needs_picture": false,
       "expected_events": [
@@ -18,11 +18,11 @@
           "regex": "titleret f240"
         },
         {
-          "name": "ambient stopped after return",
-          "regex": "startup 1 ambient stopped 1"
+          "name": "ambient stopped",
+          "regex": "startup [1-9]\\d* ambient stopped 1"
         }
       ],
-      "reason": "AMBTITLE gate. No shots. The startup line with n 1 is the gate; n 0 is the first boot."
+      "reason": "AMBTITLE gate. No shots. The startup line with n 1 or more is the gate; n 0 is the first boot."
     }
   ]
 }

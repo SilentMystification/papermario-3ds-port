@@ -10,9 +10,7 @@
       "cap": 45,
       "until": "startup [1-9]\\d* ambient stopped ",
       "tags": [
-        "azahar",
-        "ambient",
-        "title"
+        "azahar"
       ],
       "gates": []
     }
