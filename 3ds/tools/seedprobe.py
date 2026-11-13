@@ -84,7 +84,7 @@ def frame_section(lines, f):
 def write_verdicts(seeds_file, verdicts):
     """--write: set the last field of the seeds-file line for each (file, line, word)."""
     p = Path(seeds_file)
-    lines = p.read_text(encoding="utf-8").splitlines(keepends=True)
+    lines = p.read_text(encoding="utf-8", newline="").splitlines(keepends=True)
     for f, line, word in verdicts:
         stem = Path(f).stem
         idx = None
@@ -103,7 +103,8 @@ def write_verdicts(seeds_file, verdicts):
         lead = tail[:len(tail) - len(tail.lstrip())]
         trail = tail[len(tail.rstrip()):]
         lines[idx] = body[:cut + 1] + lead + word + trail + eol
-    p.write_text("".join(lines), encoding="utf-8", newline="")
+    with open(str(p), "w", encoding="utf-8", newline="") as f:
+        f.write("".join(lines))
 
 
 def main(argv):
@@ -150,7 +151,7 @@ def main(argv):
             ls[line - 1] = ls[line - 1].replace(old, new, 1)
         if write:
             # no-seed-line is checked before the build too
-            wl = Path(write).read_text(encoding="utf-8").splitlines()
+            wl = Path(write).read_text(encoding="utf-8", newline="").splitlines()
             for f, line, frame, old, new in plan:
                 stem = Path(f).stem
                 if not any(len(x.split("|")) >= 4 and x.split("|")[0].strip() == stem and x.split("|")[3].strip() == str(line) for x in wl):
