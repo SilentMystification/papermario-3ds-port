@@ -52,7 +52,10 @@ def main():
             lines.append(f'    {{ "{n}", GS_IMG, (const void*){n}, (const void*){n}_gend }},')
         else:
             gk = {"Gfx": "GS_GFX", "Vtx": "GS_VTX", "Mtx": "GS_MTX"}[k]
-            lines.append(f'    {{ "{n}", {gk}, (const void*){n}, (const void*)((const char*){n} + sizeof {n}) }},')
+            if k == "Mtx":
+                lines.append(f'    {{ "{n}", {gk}, (const void*)&{n}, (const void*)((const char*)&{n} + sizeof {n}) }},')
+            else:
+                lines.append(f'    {{ "{n}", {gk}, (const void*){n}, (const void*)((const char*){n} + sizeof {n}) }},')
     lines.append("};")
     lines.append(f"const unsigned gconv_nsym = {len(uniq)}u;")
     pathlib.Path(out_c).write_text("\n".join(lines) + "\n")
