@@ -3,7 +3,6 @@
     {
       "name": "spot_mac01_hash",
       "status": "unverified",
-"reason": "broken: no until in 35 s (AZT11-5, 2026-11-12)",
       "subject": "Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0), cold det start with the fhash switch: the GX lists of frames 200 to 205 are hashed at the frame end (fhash lines).",
       "proves": "FRAMEHASH3: the fhash line of a frame is a function of the build (det), so a base and a head build give equal fhash.txt when no draw changes.",
       "debug": "warp=mac_01:0 pos=0:0:200 prof=4 fhash fhwin=200:6 loglevel=debug det",
