@@ -16,7 +16,7 @@
 Start: `sh 3ds/tools/wt_new.sh CODEMODFX16`. PM_ROW=CODEMODFX16 PM_LANE=CODEMODFX16 on every call.
 ## Touch only (places)
 src/effects/quizmo_stage.c only (the 20 value call lines and 2 include lines). New 3ds/tools/azt.d/CODEMODFX16.json and
-3ds/tools/bench.d/CODEMODFX16.json.
+new 3ds/tools/bench.d/CODEMODFX16.json.
 ## Exact edits
 1. Commit 1 holds only the scene. azt.d/CODEMODFX16.json: fxpic_72_drec, a copy of the fxpic_89 scenario (azt_scenarios.json) with `debug`
    `warp=mac_01:0 pos=0:0:200 fxtest=72 loglevel=debug det drec=412:2`, until `drec f413 draws [1-9]\d* bytes \d+`, needs_picture false,

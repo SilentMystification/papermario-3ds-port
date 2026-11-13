@@ -1,4 +1,4 @@
-# Row SEEDTOOL: 3ds/tools/seedprobe.py, one verdict line per seed (build, one run, cmp against the stored base, restore)
+# Row SEEDTOOL: new 3ds/tools/seedprobe.py, one verdict line per seed (build, one run, cmp against the stored base, restore)
 
 (Model: Haiku. 60 lines or fewer. Read only this file, CLAUDE.md and what it names. ORACLE8 2026-11-13.)
 Blocked by DRECSTEP (frame lines in drec.txt for a step window).

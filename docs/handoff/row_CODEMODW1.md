@@ -31,7 +31,7 @@ water is not drawn in frames 200-201: stop and hand back. The oracle then gives 
 Start: `sh 3ds/tools/wt_new.sh CODEMODW1`. PM_ROW=CODEMODW1 PM_LANE=CODEMODW1 on every call.
 ## Touch only (places)
 src/world/area_mac/mac_00/water_gfx.c (the 3 value call lines, 2 include lines). New 3ds/tools/azt.d/CODEMODW1.json and
-3ds/tools/bench.d/CODEMODW1.json.
+new 3ds/tools/bench.d/CODEMODW1.json.
 ## Exact edits
 1. Commit 1 holds only the scene. azt.d/CODEMODW1.json spot_mac00w_drec is a copy of the spot_mac01_det scenario. Its `debug` is
    `warp=mac_00:0 pos=-57:0:76 loglevel=debug det drec=200:2`. Its first_marker and warp event are

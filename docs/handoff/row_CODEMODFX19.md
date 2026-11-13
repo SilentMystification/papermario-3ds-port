@@ -16,7 +16,7 @@
 Start: `sh 3ds/tools/wt_new.sh CODEMODFX19`. PM_ROW=CODEMODFX19 PM_LANE=CODEMODFX19 on every call.
 ## Touch only (places)
 src/effects/landing_dust.c only (the 14 value call lines and 2 include lines). New 3ds/tools/azt.d/CODEMODFX19.json and
-3ds/tools/bench.d/CODEMODFX19.json.
+new 3ds/tools/bench.d/CODEMODFX19.json.
 ## Exact edits
 1. Commit 1 holds only the scene. azt.d/CODEMODFX19.json: fxpic_1_drec, a copy of the fxpic_89 scenario (azt_scenarios.json) with `debug`
    `warp=mac_01:0 pos=0:0:200 fxtest=1 loglevel=debug det drec=412:2`, until `drec f413 draws [1-9]\d* bytes \d+`, needs_picture false,

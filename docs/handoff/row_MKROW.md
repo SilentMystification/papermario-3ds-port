@@ -1,4 +1,4 @@
-# Row MKROW: 3ds/tools/mkrow.py writes a codemod batch row from row_BATCHTEMPLATE.md and the live seeds of row_SEEDS.md
+# Row MKROW: new 3ds/tools/mkrow.py writes a codemod batch row from row_BATCHTEMPLATE.md and the live seeds of row_SEEDS.md
 
 (Model: Haiku. 60 lines or fewer. Read only this file, CLAUDE.md and what it names. ORACLE8 2026-11-13.)
 Blocked by ROWLINT (mkrow.py runs rowlint.py on its output).
@@ -22,12 +22,14 @@ New 3ds/tools/mkrow.py and 3ds/tools/mkrow_fixtures/ (a seed table fixture). New
       followed by the spec `src/effects/<name>.c:<line>@<frame>|<y>|<y> + 20.0f` in backticks.
    d. Write docs/handoff/row_<row id>.md, then run `python 3ds/tools/rowlint.py` on it and print its last line. A rowlint fault
       deletes the written file and exits 1.
-2. mkrow_fixtures/seeds.md: 3 lines of real effect files from row_SEEDS.md, two with verdict live and one with verdict dead.
+2. New fixture file 3ds/tools/mkrow_fixtures/seeds.md (first line `# FIXTURE: synthetic verdicts, not probe results`): the lines of
+   aura and balloon copied from row_SEEDS.md with the verdict set to `live`, and the line of big_snowflakes with `dead`.
+   row_SEEDS.md stays unprobed (seedprobe.py is not on main); mkrow.py reads the fixture through --seeds.
 3. Commit: `MKROW: mkrow.py writes codemod batch rows from the template and the live seeds`.
 ## Gate (expected values)
-1. `python 3ds/tools/mkrow.py MKTEST <the 2 live names> --seeds 3ds/tools/mkrow_fixtures/seeds.md`: it writes
-   docs/handoff/row_MKTEST.md with 2 table lines and prints `rowlint ... faults 0`. Delete row_MKTEST.md after the check.
-2. Seeded fault: the same call with the dead name added: `mkrow FAULT <name> verdict dead`, exit 1, no file written.
+1. With the new tool and fixture: `python 3ds/tools/mkrow.py MKTEST aura balloon --seeds 3ds/tools/mkrow_fixtures/seeds.md`: it
+   writes the new file docs/handoff/row_MKTEST.md with 2 table lines and prints `rowlint ... faults 0`. Delete row_MKTEST.md after the check.
+2. Seeded fault: the same call with big_snowflakes added: `mkrow FAULT big_snowflakes verdict dead`, exit 1, no file written.
 3. Budget 0 Azahar starts. Counter: none moves (tool row).
 ## Stop and end
 A written row with a rowlint fault, or a tool fault: stop, commit, hand back the exact output. Delete this row file at the end.

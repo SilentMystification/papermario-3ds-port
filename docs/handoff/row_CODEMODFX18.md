@@ -16,7 +16,7 @@
 Start: `sh 3ds/tools/wt_new.sh CODEMODFX18`. PM_ROW=CODEMODFX18 PM_LANE=CODEMODFX18 on every call.
 ## Touch only (places)
 src/effects/whirlwind.c only (the 14 value call lines and 2 include lines). New 3ds/tools/azt.d/CODEMODFX18.json and
-3ds/tools/bench.d/CODEMODFX18.json.
+new 3ds/tools/bench.d/CODEMODFX18.json.
 ## Exact edits
 1. Commit 1 holds only the scene. azt.d/CODEMODFX18.json: fxpic_97_drec, a copy of the fxpic_89 scenario (azt_scenarios.json) with `debug`
    `warp=mac_01:0 pos=0:0:200 fxtest=97 loglevel=debug det drec=412:2`, until `drec f413 draws [1-9]\d* bytes \d+`, needs_picture false,

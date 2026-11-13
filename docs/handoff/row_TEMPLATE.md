@@ -14,7 +14,8 @@ What the user did and saw, in the user's words. The fault is fact (CLAUDE.md 1).
 ## Touch only
 Files: <paths>. Symbols: <symbol> in <file>. The oracle checks that no other running row edits the same places (merge conflicts).
 New names: <every new bench and scenario name, or "none">. Host link: <the host test that links a touched 3ds/src file, or "none">.
-(rowlint.py reads these two lines.)
+Needs: <path> has <text>, one line per data state a gate needs on main (a verdict, a stored base, a merged tool), or none.
+(rowlint.py reads these lines.)
 
 ## Exact edits
 1. <file, function, the edit>

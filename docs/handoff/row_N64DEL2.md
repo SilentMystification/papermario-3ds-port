@@ -7,9 +7,9 @@
 - N64-only counts (listcen groups): world build_n64 42 gfxpos_n64 47, entity 29 and 29, battle 36 and 41. Sum 107 and 117.
 - Correction (ORACLE8, 2026-11-13, from the coder's dry run at 6fce31e6f): the tool prints 7 skip lines, and N64DEL4 removes
   them by hand. include/PR/os_convert.h:74 and include/common_structs.h:2258 (`#if defined(TARGET_3DS)` blocks that have an
-  #elif), include/common.h:20 (`&& !defined(ND_GBI_WORDS)`), include/include_asm.h:7 (`!defined(SPLAT) && ...`),
-  src/battle/area/kzn2/actor/lava_piranha.c:292 and src/world/common/lava_piranha/part1.inc.c:9 (`SHIFT || TARGET_3DS`),
-  src/battle/common/stage/lib/WaterEffects.inc.c:12 (`AVOID_UB || TARGET_3DS`). include/macros.h:77 `#elif defined(TARGET_3DS)`
+  #elif), include/common.h:20 (`&& !defined(ND_GBI_WORDS)`), include/include_asm.h:7 (`!defined(SPLAT) && !defined(__CTX__)`),
+  src/battle/area/kzn2/actor/lava_piranha.c:292 and src/world/common/lava_piranha/part1.inc.c:9 (`defined(SHIFT) || defined(TARGET_3DS)`),
+  src/battle/common/stage/lib/WaterEffects.inc.c:12 (`defined(AVOID_UB) || defined(TARGET_3DS)`). include/macros.h:77 `#elif defined(TARGET_3DS)`
   sits in an `#ifdef DEBUG` block. The tool copies it, prints no skip line and counts no block. Blocks: 159 - 7 - 1 = 151.
 - Forms with a comment after the name: include `#ifndef TARGET_3DS /* DIRECT D9 ... */` 1, src/world `#ifdef TARGET_3DS /* HC4f3 ...
   */` 2 (and src/*.c 2 for N64DEL3). include/macros.h and include/PR/libaudio.h use __LINE__: a deleted line moves the __LINE__

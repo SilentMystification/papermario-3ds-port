@@ -6,7 +6,7 @@ re-check the line numbers below against that merge.
 ## Facts (ORACLE8, main 182ac5091)
 - 426 static lists inherit the pipeline state of their call (build3ds/out/ntab_inherit.txt, CONV2C). ENTRY1..n write that state
   as ND_PSO_DESC at each call site. This row captures it on the device.
-- nd_rec_dl (3ds/src/nd_gtab.c:64-86, core 1) records `rec[2] = {table, state-only flag}` with `nd_rec_napi(nd_gtab_run, rec, 1u)`
+- nd_rec_dl (3ds/src/nd_gtab.c:64-86, core 1) records rec[2] = {table, state-only flag} with `nd_rec_napi(nd_gtab_run, rec, 1u)`
   (:84-85). nd_rec_napi takes 1 to 255 8-byte units (nd_api.h:11). nd_rec_dl is a real function in its own file, called from 119
   src files, and the build has no -flto. So `__builtin_return_address(0)` in it is the call site.
 - nd_gtab_run (3ds/src/nd_walk.c:568, core 0) reads rec[0] and rec[1] only. Its arm for lists that are not state-only starts at
@@ -44,7 +44,7 @@ new 3ds/tools/azt.d/ENTRYCAP.json and 3ds/tools/bench.d/ENTRYCAP.json.
 1. Build, memcheck OK. nd_host PASS (no host file changes).
 2. At commit 1: `bench.py base spot_mac01_drec`. After edit 5: `bench.py run fxpic_20_entcap,spot_mac01_drec --row ENTRYCAP
    --why "ENTRYCAP"`. The cmp of spot_mac01_drec (switch off) is byte-equal: no draw change.
-3. `python 3ds/tools/entcap.py <the fxpic_20_entcap log>`: a line `D_090008F0_344860 ... explosion.c:<n>` and `over 0`.
+3. With the new tool: `python 3ds/tools/entcap.py <the fxpic_20_entcap log>`: a line `D_090008F0_344860 ... explosion.c:<n>` and `over 0`.
    Seed first (a value change): the logged site + 0x100000. Then the explosion.c line is missing. Undo the seed.
 4. Budget 8 Azahar starts. Counter: none moves. This is the capture that ENTRY1..n use (plan v3 section 6).
 ## Stop and end
