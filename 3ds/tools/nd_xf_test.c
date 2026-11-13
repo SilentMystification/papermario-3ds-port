@@ -9,6 +9,18 @@
 #include "nd_api.h"
 #include "nd_xf.h"
 
+uint32_t f32tof24(float vf) {
+    union { float f; uint32_t i; } v;
+    v.f = vf;
+    uint32_t sign = v.i >> 31, mant = (v.i & 0x7FFFFFu) >> 7;
+    int exp = (int)((v.i >> 23) & 0xFF);
+    if (exp == 0) return sign << 23;
+    exp = exp - 127 + 63;
+    if (exp < 0) return sign << 23;
+    if (exp > 0x7F) return sign << 23 | 0x7Fu << 16;
+    return mant | (uint32_t)exp << 16 | sign << 23;
+}
+
 /* test doubles: the recorder keeps the units of the last call; the walker is not run here */
 static uint32_t last[2]; static unsigned nlast;
 void nd_rec_napi(NdNapiRun run, const void* rec, unsigned units) {
