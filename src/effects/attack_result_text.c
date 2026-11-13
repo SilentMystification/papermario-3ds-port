@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09001500_3918D0[];
 extern Gfx D_090015A8_391978[];
@@ -183,8 +185,7 @@ void func_E0090444(EffectInstance* effect) {
 
     if (data->isVisible) {
         scale = data->scale;
-        gDPPipeSync(gMainGfxPos++);
-        gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(effect->shared->graphics));
+        nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(effect->shared->graphics));
         gDPSetDepthSource(gMainGfxPos++, G_ZS_PRIM);
         z = 200 - unk_1C;
         if (z < 0) {
@@ -199,17 +200,16 @@ void func_E0090444(EffectInstance* effect) {
             guScaleF(mtxB, scale, scale, 1.0f);
             guMtxCatF(mtxB, mtxA, mtxA);
             guMtxF2L(mtxA, &gDisplayContext->matrixStack[gMatrixListPos]);
-            gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-                      G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 255, data->alpha);
+            nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+            nd_val_prim(0, 0, 255, 255, 255, data->alpha);
             nd_rec_dl(D_090015A8_391978);
             nd_rec_dl(D_E0090A40[data->unk_04]);
             nd_rec_dl(D_E0090A54[data->unk_04]);
-            gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+            nd_xf_pop(G_MTX_MODELVIEW);
         } else {
             type -= 5;
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, D_E0090A78[type][0], D_E0090A78[type][1], D_E0090A78[type][2], data->alpha);
-            gDPSetEnvColor(gMainGfxPos++, D_E0090A78[type][3], D_E0090A78[type][4], D_E0090A78[type][5], 0);
+            nd_val_prim(0, 0, D_E0090A78[type][0], D_E0090A78[type][1], D_E0090A78[type][2], data->alpha);
+            nd_val_env(D_E0090A78[type][3], D_E0090A78[type][4], D_E0090A78[type][5], 0);
             nd_rec_dl(D_09001500_3918D0);
             nd_rec_dl(D_E0090A40[data->unk_04]);
 
@@ -220,8 +220,6 @@ void func_E0090444(EffectInstance* effect) {
                 (data->pos.y + 64.0f) * 4.0f,
                 G_TX_RENDERTILE, 0, 1024, 512, 65024);
         }
-        gDPPipeSync(gMainGfxPos++);
         gDPSetDepthSource(gMainGfxPos++, G_ZS_PIXEL);
-        gDPPipeSync(gMainGfxPos++);
     }
 }

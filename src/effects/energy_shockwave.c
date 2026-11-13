@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09000DC0_3762D0[];
 extern Gfx D_09000E60_376370[];
@@ -147,27 +149,25 @@ void energy_shockwave_appendGfx(void* effect) {
     s32 uls2;
     s32 ult2;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
     nd_rec_dl(D_09000E60_376370);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 179, 30, data->unk_24);
-    gDPSetEnvColor(gMainGfxPos++, data->unk_50, data->unk_51, data->unk_52, 128);
+    nd_val_prim(0, 0, 255, 179, 30, data->unk_24);
+    nd_val_env(data->unk_50, data->unk_51, data->unk_52, 128);
 
     uls = data->unk_30 * 4;
     ult = data->unk_34 * 4;
     uls2 = data->unk_38 * 4;
     ult2 = data->unk_3C * 4;
 
-    gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, uls, ult, uls + 252, ult + 252);
-    gDPSetTileSize(gMainGfxPos++, 1, uls2, ult2, uls2 + 124, ult2 + 124);
+    nd_val_tile_size(G_TX_RENDERTILE, uls, ult, uls + 252, ult + 252);
+    nd_val_tile_size(1, uls2, ult2, uls2 + 124, ult2 + 124);
 
     guTranslateF(sp10, data->unk_04, data->unk_08, data->unk_0C);
     guScaleF(sp50, data->unk_1C, data->unk_1C, data->unk_1C);
     guMtxCatF(sp50, sp10, sp10);
     guMtxF2L(sp10, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_rec_dl(D_09000DC0_3762D0);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gDPPipeSync(gMainGfxPos++);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }

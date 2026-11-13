@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09000800_415860[];
 extern Gfx D_09000BA8_415C08[];
@@ -116,19 +118,18 @@ void effect_86_appendGfx(void* effect) {
     s32 primAlpha = part->unk_24;
     s32 dlistIdx = part->unk_00;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
     guTranslateF(sp10, part->unk_04, part->unk_08, part->unk_0C);
     guScaleF(sp50, part->unk_34, part->unk_34, part->unk_34);
     guMtxCatF(sp50, sp10, sp10);
     guMtxF2L(sp10, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gSPMatrix(gMainGfxPos++, camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, part->unk_18, part->unk_1C, part->unk_20, primAlpha);
-    gDPSetEnvColor(gMainGfxPos++, part->unk_28, part->unk_2C, part->unk_30, 0);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_val_prim(0, 0, part->unk_18, part->unk_1C, part->unk_20, primAlpha);
+    nd_val_env(part->unk_28, part->unk_2C, part->unk_30, 0);
     nd_rec_dl(D_E01284B0[0]);
     nd_rec_dl(D_E0128480[dlistIdx % ARRAY_COUNT(D_E0128480)]);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }

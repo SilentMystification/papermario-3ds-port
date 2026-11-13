@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09002170_336DE0[];
 extern Gfx D_09002238_336EA8[];
@@ -218,8 +220,7 @@ void emote_appendGfx(void* effect) {
     Matrix4f sp58;
     s32 i;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
     if (type != 1) {
         guTranslateF(sp18, part->unk_04, part->unk_08, part->unk_0C);
@@ -235,9 +236,9 @@ void emote_appendGfx(void* effect) {
         guMtxCatF(sp58, sp18, sp18);
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
         nd_rec_dl(D_09002170_336DE0);
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        nd_xf_pop(G_MTX_MODELVIEW);
     } else {
         if (part->unk_38 == 0) {
             for (i = 0; i < 3; i++, part++) {
@@ -250,17 +251,17 @@ void emote_appendGfx(void* effect) {
                 guMtxCatF(sp58, sp18, sp18);
                 guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-                gDPSetPrimColor(gMainGfxPos++, 0, 0, 235, 28, 0, 255);
-                gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+                nd_val_prim(0, 0, 235, 28, 0, 255);
+                nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
                 nd_rec_dl(D_09002578_3371E8);
-                gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+                nd_xf_pop(G_MTX_MODELVIEW);
             }
         }
 
         return;
     }
 
-    gSPMatrix(gMainGfxPos++, matrix, G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(matrix, G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
     unk_38 = part->unk_38;
     dlist = D_E0020CA4[type];
@@ -272,14 +273,14 @@ void emote_appendGfx(void* effect) {
             h = 16;
             uls = 128 - unk_38 * 16;
             ult = 0;
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, 220, 0, 0, 255);
+            nd_val_prim(0, 0, 220, 0, 0, 255);
             break;
         case 2:
             w = 32;
             h = 48;
             uls = 128 - unk_38 * 32;
             ult = 0;
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, 220, 0, 0, 255);
+            nd_val_prim(0, 0, 220, 0, 0, 255);
             break;
         case 3:
             w = 32;
@@ -287,7 +288,7 @@ void emote_appendGfx(void* effect) {
             uls = 128 - unk_38 * 32;
             ult = 0;
             idx = (part->unk_2C * 3) % (ARRAY_COUNT(D_E0020D94) / 3);
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, D_E0020D94[idx], D_E0020D94[idx + 1], D_E0020D94[idx + 2], 255);
+            nd_val_prim(0, 0, D_E0020D94[idx], D_E0020D94[idx + 1], D_E0020D94[idx + 2], 255);
             break;
         case 4:
             w = 32;
@@ -301,11 +302,11 @@ void emote_appendGfx(void* effect) {
         nd_rec_dl(dlist);
     }
 
-    gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, uls * 4, ult * 4, (uls + w) * 4, (ult + h) * 4);
+    nd_val_tile_size(G_TX_RENDERTILE, uls * 4, ult * 4, (uls + w) * 4, (ult + h) * 4);
 
     if (dlist2 != nullptr) {
         nd_rec_dl(dlist2);
     }
 
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }

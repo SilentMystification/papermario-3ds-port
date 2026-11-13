@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 void chomp_drop_init(EffectInstance* effect);
 void chomp_drop_update(EffectInstance* effect);
@@ -146,28 +148,20 @@ void chomp_drop_appendGfx(void* effect) {
     Vtx_t* vtxTemp;
     s32 i;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effectTemp)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effectTemp)->shared->graphics));
 
     guScaleF(sp20, 0.01f, 0.01f, 0.01f);
     guPositionF(sp60, 0.0f, 0.0f, 0.0f, data->unk_24, data->unk_04 * 100.0f, data->unk_08 * 100.0f, data->unk_0C * 100.0f);
     guMtxCatF(sp60, sp20, sp20);
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-              G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gDPSetPrimColor(
-        gMainGfxPos++, 0, 0,
-        (sin_deg(temp_s6 * 30) * 25.0f) + 225.0f,
-        (sin_deg(temp_s6 * 30) * 25.0f) + 225.0f,
-        255,
-        primA
-    );
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_val_prim(0, 0, (sin_deg(temp_s6 * 30) * 25.0f) + 225.0f, (sin_deg(temp_s6 * 30) * 25.0f) + 225.0f, 255, primA);
 
     if (data->unk_2C == 1) {
         nd_rec_dl(D_09001040_398080);
         nd_rec_dl(D_09001190_3981D0);
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, ((30 - data->unk_30) * 255) / 30);
+        nd_val_prim(0, 0, 0, 0, 0, ((30 - data->unk_30) * 255) / 30);
         nd_rec_dl(D_090010E8_398128);
         nd_rec_dl(D_09001190_3981D0);
     } else {
@@ -208,6 +202,5 @@ void chomp_drop_appendGfx(void* effect) {
             };
     }
 
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gDPPipeSync(gMainGfxPos++);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }

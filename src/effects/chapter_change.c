@@ -2,6 +2,7 @@
 #include "effects_internal.h"
 #include "message_ids.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
 
 typedef struct {
     /* 0x00 */ Gfx* displayList;
@@ -161,7 +162,7 @@ void func_E010E000(ChapterChangeFXData* data, s32 arg1, UnkStruct* arg2) {
             nd_rec_dl(it->displayList);
 
             temp = it->x - 384;
-            gDPSetTileSize(gMainGfxPos++, 1, (unk_1C * 4 - temp) * 4, 0, (unk_1C * 4 - it->x + 511) * 4, 0);
+            nd_val_tile_size(1, (unk_1C * 4 - temp) * 4, 0, (unk_1C * 4 - it->x + 511) * 4, 0);
             gSPScisTextureRectangle(gMainGfxPos++,
                 (posX + it->x) * 4,
                 (posY + it->y) * 4,
@@ -170,7 +171,6 @@ void func_E010E000(ChapterChangeFXData* data, s32 arg1, UnkStruct* arg2) {
                 G_TX_RENDERTILE, 0, 0, 1024, 1024);
         }
 
-        gDPPipeSync(gMainGfxPos++);
     }
 }
 
@@ -268,8 +268,7 @@ void chapter_change_appendGfx(void* effect) {
     UnkStruct* ptr0;
     UnkStruct* ptr1;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
     switch (unk_00) {
         case 1:
@@ -313,8 +312,8 @@ void chapter_change_appendGfx(void* effect) {
             break;
     }
 
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, data->unk_20, data->unk_24, data->unk_28, unk_2C);
-    gDPSetEnvColor(gMainGfxPos++, data->unk_30, data->unk_34, data->unk_38, data->unk_3C);
+    nd_val_prim(0, 0, data->unk_20, data->unk_24, data->unk_28, unk_2C);
+    nd_val_env(data->unk_30, data->unk_34, data->unk_38, data->unk_3C);
 
     func_E010E000(data, 0, ptr0);
     func_E010E000(data, 1, ptr1);
@@ -323,5 +322,4 @@ void chapter_change_appendGfx(void* effect) {
         draw_msg(data->unk_54, data->unk_40 - data->unk_48, data->unk_44, 255, 21, 0);
     }
 
-    gDPPipeSync(gMainGfxPos++);
 }
