@@ -1,0 +1,71 @@
+{
+  "benches": [
+    {
+      "name": "gold_fx2_fncov",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "GOLDFX2: FXFNCOV census of water_splash, music_note and star (fxtest=89,33,10) in frames 412-531 (census lane GOLDFX2_fncov). Log only; gold.py reads the log.",
+      "scenario": "gold_fx2_fncov",
+      "cap": 45,
+      "until": "fncov f\\d+ done",
+      "tags": [
+        "azahar",
+        "hotcode",
+        "fncov"
+      ],
+      "gates": []
+    },
+    {
+      "name": "gold_89_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "GOLDFX2: golden draw records (drec.txt) of frames 412-413 with fxtest=89, cold det start. Two runs of one build byte-equal; the golden base of the conversion rows.",
+      "scenario": "gold_89_drec",
+      "cap": 40,
+      "until": "drec f413 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "drec"
+      ],
+      "gates": []
+    },
+    {
+      "name": "gold_33_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "GOLDFX2: golden draw records (drec.txt) of frames 412-413 with fxtest=33, cold det start. Two runs of one build byte-equal; the golden base of the conversion rows.",
+      "scenario": "gold_33_drec",
+      "cap": 40,
+      "until": "drec f413 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "drec"
+      ],
+      "gates": []
+    },
+    {
+      "name": "gold_10_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "GOLDFX2: golden draw records (drec.txt) of frames 412-413 with fxtest=10, cold det start. Two runs of one build byte-equal; the golden base of the conversion rows.",
+      "scenario": "gold_10_drec",
+      "cap": 40,
+      "until": "drec f413 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "drec"
+      ],
+      "gates": []
+    }
+  ]
+}

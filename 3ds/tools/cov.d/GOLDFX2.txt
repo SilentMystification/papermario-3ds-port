@@ -1,0 +1,3 @@
+src/effects/water_splash.c
+src/effects/music_note.c
+src/effects/star.c
