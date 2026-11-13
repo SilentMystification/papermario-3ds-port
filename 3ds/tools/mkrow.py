@@ -23,13 +23,16 @@ def fault(name, reason):
 
 
 def read_seeds(path):
-    """Data lines of the seed table: 7 fields split by ' | '. Other lines are not data."""
+    """Data lines of the seed table: 7 fields split by ' | '. Other lines are not data.
+
+    Returns name -> (fields, exact line text)."""
     rows = {}
     with open(path, encoding='utf-8') as fh:
         for ln in fh:
-            parts = [p.strip() for p in ln.rstrip('\n').split(' | ')]
+            raw = ln.rstrip('\n')
+            parts = [p.strip() for p in raw.split(' | ')]
             if len(parts) == 7:
-                rows.setdefault(parts[0], parts)
+                rows.setdefault(parts[0], (parts, raw))
     return rows
 
 
@@ -66,9 +69,10 @@ def main(argv):
 
     recs = []
     for n in names:
-        p = table.get(n)
-        if p is None:
+        hit = table.get(n)
+        if hit is None:
             fault(n, 'no seed line')
+        p, raw = hit
         if p[6] != 'live':
             fault(n, f'verdict {p[6]}')
         path = f'src/effects/{n}.c'
@@ -78,7 +82,7 @@ def main(argv):
             fault(n, 'codemod --dry printed no line for ' + path)
         if got != want:
             fault(n, f'codemod value/keep/state/dl {got} differs from table {want}')
-        recs.append({'name': n, 'path': path, 'id': p[1], 'line': p[3], 'y': p[5].strip('`'),
+        recs.append({'name': n, 'path': path, 'id': p[1], 'line': p[3], 'y': p[5].strip('`'), 'raw': raw,
                      'v': got[0], 'k': got[1], 's': got[2], 'd': got[3]})
 
     n_files = len(recs)
@@ -101,6 +105,7 @@ def main(argv):
         'SCENE': rid.lower() + '_drec',
         'IDS': ','.join(r['id'] for r in recs),
         'LAST': str(412 + 44 * (n_files - 1)),
+        'NEEDS': '\n'.join(f"Needs: {seeds} has {r['raw']}" for r in recs),
     }
     with open(TEMPLATE, encoding='utf-8') as fh:
         text = fh.read()
