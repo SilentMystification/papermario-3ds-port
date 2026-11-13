@@ -17,7 +17,6 @@ A shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json, bench_def
 | CODEMODW1 | Haiku | src/world/area_mac/mac_00/water_gfx.c value call lines, include line; new azt.d/bench.d CODEMODW1.json | parked (CODEMODW1 trace) |
 | GOLDWLD0 | Haiku | new cov.d/azt.d/bench.d GOLDWLD0 files | waits for COVMAP and the user's fortune scene |
 | N64DEL4 | Haiku | the 9 skip blocks: include/PR/os_convert.h, common.h, common_structs.h, include_asm.h, macros.h, src/entity.c, kzn2 lava_piranha.c, WaterEffects.inc.c, lava_piranha/part1.inc.c | waits for N64DEL2 and N64DEL3 |
-| GOLDFX4 | Haiku | new cov.d/azt.d/bench.d GOLDFX4 files | ready |
 | CODEMODFX12 | Haiku | src/effects/effect_3D.c (value call lines, include lines); new azt.d/bench.d CODEMODFX12.json | ready |
 | CODEMODFX13 | Haiku | src/effects/snowfall.c (value call lines, include lines); new azt.d/bench.d CODEMODFX13.json | ready |
 | CODEMODFX14 | Haiku | src/effects/pink_sparkles.c (value call lines, include lines); new azt.d/bench.d CODEMODFX14.json | ready |
