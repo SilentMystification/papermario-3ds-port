@@ -185,16 +185,10 @@ void water_splash_appendGfx(void* effect) {
     guMtxF2L(sp10, &gDisplayContext->matrixStack[gMatrixListPos]);
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     gSPMatrix(gMainGfxPos++, currentCamera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
     nd_rec_dl(D_09000100_3BCB90);
-#else
-    gSPDisplayList(gMainGfxPos++, D_09000100_3BCB90);
-#endif
 
     data++;
-#ifdef TARGET_3DS
     gPmNdSplash(gMainGfxPos++, 1);
-#endif
     for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, data++) {
         s32 temp_t2 = (s32)data->unk_04.x + sp94;
         s32 temp_t3 = (s32)data->unk_04.y + temp_fp;
@@ -211,12 +205,8 @@ void water_splash_appendGfx(void* effect) {
             temp_t3 = temp_t3 & 0x3F;
         }
 
-#ifdef TARGET_3DS
         u16* refrBuf = nuGfxCfb[0]; { u32 k_; for (k_ = 0; k_ < nuGfxCfbNum; k_++) if (nuGfxCfb[k_] == nuGfxCfb_ptr) { refrBuf = nuGfxCfb[(k_ + nuGfxCfbNum - 1) % nuGfxCfbNum]; break; } }
         /* SPLASHPREV2: the buffer before the current one (2 or 3 buffers), the one pm_cfb_capture_prev copies on the GPU */
-#else
-        u16* refrBuf = nuGfxCfb_ptr;
-#endif
         gDPLoadMultiTile(gMainGfxPos++, OS_K0_TO_PHYSICAL(refrBuf), 0x100, 1, G_IM_FMT_RGBA, G_IM_SIZ_16b, 320, 0,
                          temp_t2 + 0xA0, temp_t3 + 0x78, temp_t2 + 0xBF, temp_t3 + 0x97, 0,
                          G_TX_WRAP, G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD);
@@ -228,15 +218,9 @@ void water_splash_appendGfx(void* effect) {
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         gDPSetPrimColor(gMainGfxPos++, 0, 0, 200, 255, 255, (sp90 * data->unk_30) / 255);
         gDPSetEnvColor(gMainGfxPos++, 0, 32, 32, 0);
-#ifdef TARGET_3DS
         nd_rec_dl(D_E00BEAF0[(i + (gGameStatusPtr->frameCounter / 2)) & 3]);
-#else
-        gSPDisplayList(gMainGfxPos++, D_E00BEAF0[(i + (gGameStatusPtr->frameCounter / 2)) & 3]);
-#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     }
-#ifdef TARGET_3DS
     gPmNdSplash(gMainGfxPos++, 0);
-#endif
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 }

@@ -208,11 +208,7 @@ void static_status_appendGfx(void* effect) {
 
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     gSPMatrix(gMainGfxPos++, camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
     nd_rec_dl(D_E00E6888[unk_00]);
-#else
-    gSPDisplayList(gMainGfxPos++, D_E00E6888[unk_00]);
-#endif
 
     part++;
     for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, part++) {
@@ -222,11 +218,7 @@ void static_status_appendGfx(void* effect) {
 
             gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
             gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, (unk_30 * part->alpha) >> 8);
-#ifdef TARGET_3DS
             nd_rec_dl(D_E00E6880[unk_00]);
-#else
-            gSPDisplayList(gMainGfxPos++, D_E00E6880[unk_00]);
-#endif
             gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         }
     }

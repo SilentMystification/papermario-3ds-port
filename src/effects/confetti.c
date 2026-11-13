@@ -269,11 +269,7 @@ void confetti_appendGfx(void* effect) {
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-#ifdef TARGET_3DS
     nd_rec_dl(D_09000940_38C4E0);
-#else
-    gSPDisplayList(gMainGfxPos++, D_09000940_38C4E0);
-#endif
 
     guTranslateF(sp18, part->unk_04, part->unk_08, part->unk_0C);
     guRotateF(sp58, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);
@@ -281,12 +277,8 @@ void confetti_appendGfx(void* effect) {
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
     NdSub sub;
     nd_sub_open(&sub); /* DIRECT D6c: the part list is a stream range */
-#else
-    savedGfxPos = gMainGfxPos++;
-#endif
 
     part++;
     for (i = 0; i < unk_2C; i++, part++) {
@@ -314,28 +306,13 @@ void confetti_appendGfx(void* effect) {
             gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, ulx << 2, uly << 2,
                            (ulx << 2) + ((width >> 1) << 1), (uly << 2) + height);
             gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
             nd_rec_dl(spA0);
-#else
-            gSPDisplayList(gMainGfxPos++, spA0);
-#endif
             gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         }
     }
 
-#ifdef TARGET_3DS
     nd_sub_close(&sub);
     nd_sub_call(&sub);
-#else
-    gSPEndDisplayList(gMainGfxPos++);
-    gSPBranchList(savedGfxPos, gMainGfxPos);
-    savedGfxPos++;
-#ifdef TARGET_3DS
-    nd_rec_dl(savedGfxPos);
-#else
-    gSPDisplayList(gMainGfxPos++, savedGfxPos);
-#endif
-#endif
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     gDPPipeSync(gMainGfxPos++);
 }

@@ -123,11 +123,7 @@ void quizmo_stage_appendGfx(void* effect) {
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     gDPSetPrimColor(gMainGfxPos++, 0, 0, microphoneRaiseAmt, microphoneRaiseAmt, microphoneRaiseAmt, 255);
     gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIA, PM_CC2_MULTIPLY_PRIM);
-#ifdef TARGET_3DS
     nd_rec_dl(D_09007230_39FDF0);
-#else
-    gSPDisplayList(gMainGfxPos++, D_09007230_39FDF0);
-#endif
 
     if (data->unk_3C != 255) {
         gSPMatrix(gMainGfxPos++, &D_09004148_39CD08[2], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
@@ -136,22 +132,10 @@ void quizmo_stage_appendGfx(void* effect) {
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
         nd_rec_dl(D_09006E28_39F9E8);
-#else
-        gSPDisplayList(gMainGfxPos++, D_09006E28_39F9E8);
-#endif
-#ifdef TARGET_3DS
         nd_rec_dl(D_09001518_39A0D8);
-#else
-        gSPDisplayList(gMainGfxPos++, D_09001518_39A0D8);
-#endif
         gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, data->lightScrollAmt, 0, data->lightScrollAmt + 252, 60);
-#ifdef TARGET_3DS
         nd_rec_dl(D_09006DA0_39F960);
-#else
-        gSPDisplayList(gMainGfxPos++, D_09006DA0_39F960);
-#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         gSPMatrix(gMainGfxPos++, &D_09004148_39CD08[0], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
@@ -159,11 +143,7 @@ void quizmo_stage_appendGfx(void* effect) {
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
         nd_rec_dl(D_09006FB0_39FB70);
-#else
-        gSPDisplayList(gMainGfxPos++, D_09006FB0_39FB70);
-#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         gSPMatrix(gMainGfxPos++, &D_09004148_39CD08[1], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
@@ -171,55 +151,23 @@ void quizmo_stage_appendGfx(void* effect) {
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
         nd_rec_dl(D_09006F20_39FAE0);
-#else
-        gSPDisplayList(gMainGfxPos++, D_09006F20_39FAE0);
-#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
         nd_rec_dl(D_090070E8_39FCA8);
-#else
-        gSPDisplayList(gMainGfxPos++, D_090070E8_39FCA8);
-#endif
-#ifdef TARGET_3DS
         nd_rec_dl(D_09007030_39FBF0);
-#else
-        gSPDisplayList(gMainGfxPos++, D_09007030_39FBF0);
-#endif
-#ifdef TARGET_3DS
         nd_rec_dl(D_09001518_39A0D8);
-#else
-        gSPDisplayList(gMainGfxPos++, D_09001518_39A0D8);
-#endif
         gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, data->lightScrollAmt, 0, data->lightScrollAmt + 252, 60);
-#ifdef TARGET_3DS
         nd_rec_dl(D_09006FD8_39FB98);
-#else
-        gSPDisplayList(gMainGfxPos++, D_09006FD8_39FB98);
-#endif
         gSPMatrix(gMainGfxPos++, &D_09004148_39CD08[3], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
         guRotateF(sp18, 90 - (data->podiumRaiseAmt * 90) / 255, 1.0f, 0.0f, 0.0f);
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
         nd_rec_dl(D_09006D48_39F908);
-#else
-        gSPDisplayList(gMainGfxPos++, D_09006D48_39F908);
-#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
         nd_rec_dl(D_09000218_398DD8);
-#else
-        gSPDisplayList(gMainGfxPos++, D_09000218_398DD8);
-#endif
-#ifdef TARGET_3DS
         nd_rec_dl(D_09007090_39FC50);
-#else
-        gSPDisplayList(gMainGfxPos++, D_09007090_39FC50);
-#endif
     }
 
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);

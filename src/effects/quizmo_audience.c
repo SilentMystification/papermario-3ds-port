@@ -199,11 +199,7 @@ void quizmo_audience_appendGfx(void* effect) {
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
               G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     gDPSetPrimColor(gMainGfxPos++, 0, 0, primColor, primColor, primColor, 255);
-#ifdef TARGET_3DS
     nd_rec_dl(D_09003110_3AA8B0);
-#else
-    gSPDisplayList(gMainGfxPos++, D_09003110_3AA8B0);
-#endif
 
     for (i = 0; i < MAX_QUIZMO_AUDIENCE; i++) {
         guTranslateF(sp18, data->compX[i], data->compY[i], 0.0f);
@@ -211,11 +207,7 @@ void quizmo_audience_appendGfx(void* effect) {
 
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
                   G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
         nd_rec_dl(quizmo_audience_renderAudienceMember[i]);
-#else
-        gSPDisplayList(gMainGfxPos++, quizmo_audience_renderAudienceMember[i]);
-#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     }
 

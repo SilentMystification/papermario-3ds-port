@@ -174,11 +174,7 @@ void gather_energy_pink_appendGfx(void* effect) {
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-#ifdef TARGET_3DS
     nd_rec_dl(dlist);
-#else
-    gSPDisplayList(gMainGfxPos++, dlist);
-#endif
 
     guTranslateF(sp20, part->posB.x, part->posB.y, part->posB.z);
     guScaleF(sp60, part->unk_1C, part->unk_1C, 1.0f);
@@ -224,11 +220,7 @@ void gather_energy_pink_appendGfx(void* effect) {
 
         gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, tempX, tempY, tempX + 256, tempY + 256);
         gDPSetTileSize(gMainGfxPos++, 1, tempX2, tempY2, tempX2 + 256, tempY2 + 256);
-#ifdef TARGET_3DS
         nd_rec_dl(dlist2);
-#else
-        gSPDisplayList(gMainGfxPos++, dlist2);
-#endif
     }
 
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);

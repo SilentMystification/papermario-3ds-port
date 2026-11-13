@@ -288,11 +288,7 @@ void something_rotating_appendGfx(void* effect) {
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
-#ifdef TARGET_3DS
     nd_rec_dl(D_090042E0_3FE790);
-#else
-    gSPDisplayList(gMainGfxPos++, D_090042E0_3FE790);
-#endif
     gDPSetEnvColor(gMainGfxPos++, 0, 0, 0, 255);
 
     data++;
@@ -302,11 +298,7 @@ void something_rotating_appendGfx(void* effect) {
             if (data->primAlpha != 255) {
                 gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, data->primAlpha);
                 gDPSetEnvColor(gMainGfxPos++, data->env.r, data->env.g, data->env.b, 0x78);
-#ifdef TARGET_3DS
                 nd_rec_dl(D_E0116C6C[0]);
-#else
-                gSPDisplayList(gMainGfxPos++, D_E0116C6C[0]);
-#endif
 
                 l = ((unk_14 * 4.0f) * 100.0f) * (1.0 / 1024);
                 t = ((unk_14 * 4.0f) * 40.0f) * (1.0 / 1024);
@@ -315,28 +307,12 @@ void something_rotating_appendGfx(void* effect) {
                 l = ((unk_14 * 4.0f) * 200.0f) * (1.0 / 1024);
                 t = ((unk_14 * 4.0f) * 90.0f) * (1.0 / 1024);
                 gDPSetTileSize(gMainGfxPos++, 1, l, t, l + 0xFC, t + 0xFC);
-#ifdef TARGET_3DS
                 nd_rec_dl(D_E0116C64[0]);
-#else
-                gSPDisplayList(gMainGfxPos++, D_E0116C64[0]);
-#endif
             } else {
-#ifdef TARGET_3DS
                 nd_rec_dl(D_E0116C68[0]);
-#else
-                gSPDisplayList(gMainGfxPos++, D_E0116C68[0]);
-#endif
                 gDPSetEnvColor(gMainGfxPos++, data->env.r, data->env.g, data->env.b, data->unk_25);
-#ifdef TARGET_3DS
                 nd_rec_dl(D_E0116C70[i - 1]);
-#else
-                gSPDisplayList(gMainGfxPos++, D_E0116C70[i - 1]);
-#endif
-#ifdef TARGET_3DS
                 nd_rec_dl(D_E0116C60[0]);
-#else
-                gSPDisplayList(gMainGfxPos++, D_E0116C60[0]);
-#endif
             }
             gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         }

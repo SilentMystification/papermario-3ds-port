@@ -156,11 +156,7 @@ void motion_blur_flame_appendGfx(void* effect) {
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-#ifdef TARGET_3DS
     nd_rec_dl(D_E00A29D0[temp_a2]);
-#else
-    gSPDisplayList(gMainGfxPos++, D_E00A29D0[temp_a2]);
-#endif
     gPmNdGrabHold(gMainGfxPos++, 1); /* SBLK2 B1: the strips share one frame copy */
 
     for (i = 0; i < UNK_ARRAY_SIZE_1; i++) {

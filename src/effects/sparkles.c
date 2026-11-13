@@ -1,8 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
-#ifdef TARGET_3DS
 #include "nd_gtab.h"
-#endif
 
 extern Gfx D_09000F20_338EE0[];
 extern Gfx D_090011C8_339188[];
@@ -245,7 +243,6 @@ void sparkles_render(EffectInstance* effect) {
     retTask = queue_render_task(&renderTask);
 }
 
-#ifdef TARGET_3DS
 extern Vtx D_09000FC8_338F88[4];
 extern Vtx D_09001008_338FC8[4];
 extern Vtx D_09001048_339008[4];
@@ -261,7 +258,6 @@ static Vtx* const sparkle_vtx[8] = {
     D_09001148_339108, D_09001188_339148, D_09000FC8_338F88,
     D_09001008_338FC8, D_09001048_339008
 };
-#endif
 
 void sparkles_appendGfx(void* effect) {
     SparklesFXData* part = ((EffectInstance*)effect)->data.sparkles;
@@ -270,24 +266,16 @@ void sparkles_appendGfx(void* effect) {
     Matrix4f sp98;
     s32 colorIdx;
     s32 i;
-#ifdef TARGET_3DS
     Vtx* vtxBuf;
-#endif
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-#ifdef TARGET_3DS
     nd_rec_dl(D_09000F20_338EE0);
-#else
-    gSPDisplayList(gMainGfxPos++, D_09000F20_338EE0);
-#endif
-#ifdef TARGET_3DS
     // The part colour is a vertex colour: one GPU batch for all parts instead of one per PRIM change.
     gDPSetCombineLERP(gMainGfxPos++, 1, SHADE, TEXEL0, SHADE, SHADE, 0, TEXEL0, 0,
                       1, SHADE, TEXEL0, SHADE, SHADE, 0, TEXEL0, 0);
     // Per-frame vertices are stream data: the recorded list reads them after this function returns.
     vtxBuf = (Vtx*) nd_rec_data(((EffectInstance*)effect)->numParts * 4 * sizeof(Vtx));
-#endif
 
     colorIdx = (part->unk_20 - 1) * 3;
 
@@ -312,7 +300,6 @@ void sparkles_appendGfx(void* effect) {
 
             colorIdx %= ARRAY_COUNT(D_E0022CF0);
 
-#ifdef TARGET_3DS
             {
                 Vtx* src = sparkle_vtx[unk_2C & 7];
                 Vtx* dst = vtxBuf;
@@ -330,11 +317,6 @@ void sparkles_appendGfx(void* effect) {
                 gSPVertex(gMainGfxPos++, dst, 4, 0);
                 gSP2Triangles(gMainGfxPos++, 0, 1, 2, 0, 0, 2, 3, 0);
             }
-#else
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, D_E0022CF0[colorIdx], D_E0022CF0[colorIdx + 1], D_E0022CF0[colorIdx + 2], 255);
-            gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            gSPDisplayList(gMainGfxPos++, D_E0022CD0[unk_2C & 7]);
-#endif
             gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         }
     }

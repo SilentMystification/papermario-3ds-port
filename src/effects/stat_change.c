@@ -265,23 +265,11 @@ void func_E00AC2A4(EffectInstance* effect) {
         guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
         nd_rec_dl(D_E00AC7B0[arrowType]);
-#else
-        gSPDisplayList(gMainGfxPos++, D_E00AC7B0[arrowType]);
-#endif
         gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, data->unk_24);
-#ifdef TARGET_3DS
         nd_rec_dl(D_E00AC7BC[arrowType]);
-#else
-        gSPDisplayList(gMainGfxPos++, D_E00AC7BC[arrowType]);
-#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
         nd_rec_dl(D_090028E0_3B1FE0);
-#else
-        gSPDisplayList(gMainGfxPos++, D_090028E0_3B1FE0);
-#endif
 
         guTranslateF(sp20, 0.0f, data->unk_3C, 0.0f);
         guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
@@ -294,36 +282,16 @@ void func_E00AC2A4(EffectInstance* effect) {
             idx = arrowValue;
         }
 
-#ifdef TARGET_3DS
         nd_rec_dl(D_E00AC7C8[idx % 10]);
-#else
-        gSPDisplayList(gMainGfxPos++, D_E00AC7C8[idx % 10]);
-#endif
-#ifdef TARGET_3DS
         nd_rec_dl(D_090028C0_3B1FC0);
-#else
-        gSPDisplayList(gMainGfxPos++, D_090028C0_3B1FC0);
-#endif
 
         if (arrowValue >= 0) {
-#ifdef TARGET_3DS
             nd_rec_dl(D_E00AC7C8[11]);
-#else
-            gSPDisplayList(gMainGfxPos++, D_E00AC7C8[11]);
-#endif
         } else {
-#ifdef TARGET_3DS
             nd_rec_dl(D_E00AC7C8[10]);
-#else
-            gSPDisplayList(gMainGfxPos++, D_E00AC7C8[10]);
-#endif
         }
 
-#ifdef TARGET_3DS
         nd_rec_dl(D_090028A0_3B1FA0);
-#else
-        gSPDisplayList(gMainGfxPos++, D_090028A0_3B1FA0);
-#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         gDPPipeSync(gMainGfxPos++);

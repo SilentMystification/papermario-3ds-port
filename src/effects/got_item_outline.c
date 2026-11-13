@@ -119,11 +119,7 @@ void got_item_outline_appendGfx(void* effect) {
     if (scale != 0.0f) {
         gDPPipeSync(gMainGfxPos++);
         gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-#ifdef TARGET_3DS
         nd_rec_dl(D_09008100_34DC40);
-#else
-        gSPDisplayList(gMainGfxPos++, D_09008100_34DC40);
-#endif
 
         if (type == 0) {
             gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 255, data->alpha);
@@ -167,11 +163,7 @@ void got_item_outline_appendGfx(void* effect) {
                        G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD,
                        G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
             gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, 0, 0, 508, 124);
-#ifdef TARGET_3DS
             nd_rec_dl(D_E0036630[i]);
-#else
-            gSPDisplayList(gMainGfxPos++, D_E0036630[i]);
-#endif
         }
 
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);

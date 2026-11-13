@@ -173,9 +173,7 @@ void func_E0086398(EffectInstance* effect) {
 void func_E00863B4(EffectInstance* effect) {
     FireworkFXData* part = effect->data.firework;
     Gfx* savedGfxPos;
-#ifdef TARGET_3DS
     NdSub sub;
-#endif
     f32 temp_f32 = part->unk_38 * 5.0f;
     s32 envA;
     s32 temp_s32 = temp_f32;
@@ -253,7 +251,6 @@ void func_E00863B4(EffectInstance* effect) {
                 break;
         }
 
-#ifdef TARGET_3DS
         /* MAGI: the 3DS draws the sparks of one pass as one batch. The N64 list gave each spark its own matrix and its own setup list
          * (D_E0086AB4: texture load and modes), 8 to 11 sparks x 3 passes = 24 to 33 draws per frame on the port. Here the spark corners
          * (the quad of D_E0086AA0[temp_s32]: +-16, v from 1024 * temp_s32) go through the same matrix on the CPU (T, then rotY, then
@@ -300,63 +297,20 @@ void func_E00863B4(EffectInstance* effect) {
             gDPPipeSync(gMainGfxPos++);
             gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         }
-#else
-        savedGfxPos = gMainGfxPos++;
-        gSPDisplayList(gMainGfxPos++, D_E0086AB4[unk_00]);
 
-        part++;
-
-        if (cond) {
-            gDPSetTileSize(gMainGfxPos++, 1, 0, 0, 0, 0);
-        }
-
-        for (i = 1; i < effect->numParts; i++, part++) {
-            gSPDisplayList(gMainGfxPos++, D_E0086AB4[part->unk_00]);
-
-            guRotateF(sp20, part->unk_1C, 0.0f, 0.0f, 1.0f);
-            guRotateF(sp60, part->unk_24, 0.0f, 1.0f, 0.0f);
-            guMtxCatF(sp60, sp20, sp20);
-            guTranslateF(sp60, part->unk_04, part->unk_08, part->unk_0C);
-            guMtxCatF(sp60, sp20, sp20);
-            guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
-
-            gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            gSPDisplayList(gMainGfxPos++, D_E0086AA0[temp_s32]);
-            gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-        }
-
-#endif
-
-#ifdef TARGET_3DS
         nd_sub_close(&sub);
-#else
-        gSPEndDisplayList(gMainGfxPos++);
-        gSPBranchList(savedGfxPos, gMainGfxPos);
-#endif
 
         gDPSetPrimColor(gMainGfxPos++, 0, 0, primR, primG, primB, primA);
         gDPSetEnvColor(gMainGfxPos++, envR, envG, engB, envA);
-#ifdef TARGET_3DS
         nd_sub_call(&sub);
-#else
-        gSPDisplayList(gMainGfxPos++, savedGfxPos + 1);
-#endif
 
         guRotateF(sp20, 120.0f, 1.0f, 1.0f, 1.0f);
         guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
         nd_sub_call(&sub);
-#else
-        gSPDisplayList(gMainGfxPos++, savedGfxPos + 1);
-#endif
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
         nd_sub_call(&sub);
-#else
-        gSPDisplayList(gMainGfxPos++, savedGfxPos + 1);
-#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         gDPPipeSync(gMainGfxPos++);
     }

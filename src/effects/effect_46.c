@@ -214,11 +214,7 @@ void effect_46_appendGfx(void* effect) {
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-#ifdef TARGET_3DS
     nd_rec_dl(D_09000420_38EDB0);
-#else
-    gSPDisplayList(gMainGfxPos++, D_09000420_38EDB0);
-#endif
 
     guTranslateF(mtxTransform, part->pos.x, part->pos.y, part->pos.z);
     guRotateF(mtxTemp, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);
@@ -246,11 +242,7 @@ void effect_46_appendGfx(void* effect) {
         guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
         nd_rec_dl(D_090003A0_38ED30);
-#else
-        gSPDisplayList(gMainGfxPos++, D_090003A0_38ED30);
-#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     }
 

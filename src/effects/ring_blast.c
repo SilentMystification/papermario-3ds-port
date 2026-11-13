@@ -97,11 +97,7 @@ void ring_blast_appendGfx(void* effect) {
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-#ifdef TARGET_3DS
     nd_rec_dl(dlist2);
-#else
-    gSPDisplayList(gMainGfxPos++, dlist2);
-#endif
 
     guPositionF(sp20, 0.0f, -gCameras[gCurrentCameraID].curYaw, 0.0f, data->unk_10, data->pos.x, data->pos.y, data->pos.z);
     guRotateF(sp60, data->unk_24, 0.0f, 0.0f, 1.0f);
@@ -145,10 +141,6 @@ void ring_blast_appendGfx(void* effect) {
             (unk_20_s32 * 32 + 64) * 4, 32 * 4);
     }
 
-#ifdef TARGET_3DS
     nd_rec_dl(dlist);
-#else
-    gSPDisplayList(gMainGfxPos++, dlist);
-#endif
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 }

@@ -352,11 +352,7 @@ void star_spirits_energy_appendGfx(void* effect) {
 
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
               G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
     nd_rec_dl(D_E0122BA4[0]);
-#else
-    gSPDisplayList(gMainGfxPos++, D_E0122BA4[0]);
-#endif
     gDPSetEnvColor(gMainGfxPos++, data->unk_2C, data->unk_30, data->unk_34, data->unk_38);
 
     for (i = 0; i < 4; i++) {
@@ -368,11 +364,7 @@ void star_spirits_energy_appendGfx(void* effect) {
                 gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
                           G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
                 gDPSetPrimColor(gMainGfxPos++, 0, 0, data->unk_1C, data->unk_20, data->unk_24, data->unk_50[i]);
-#ifdef TARGET_3DS
                 nd_rec_dl(D_E0122B90[i]);
-#else
-                gSPDisplayList(gMainGfxPos++, D_E0122B90[i]);
-#endif
                 gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
             }
         }
@@ -405,11 +397,7 @@ void star_spirits_energy_appendGfx(void* effect) {
                     gSPTextureRectangle(gMainGfxPos++, -40 * 4, 0, 360 * 4, SCREEN_HEIGHT * 4, G_TX_RENDERTILE, 0, 0, 0, 0);
                     gDPPipeSync(gMainGfxPos++);
                 } else {
-#ifdef TARGET_3DS
                     nd_rec_dl(D_E0122BA0[0]);
-#else
-                    gSPDisplayList(gMainGfxPos++, D_E0122BA0[0]);
-#endif
                 }
             }
         }

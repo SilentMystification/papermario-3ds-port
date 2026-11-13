@@ -185,14 +185,7 @@ void squirt_appendGfx(void* effect) {
     gDPSetPrimColor(gMainGfxPos++, 0, 0, data->unk_34, data->unk_38, data->unk_3C, data->unk_40);
     gDPSetEnvColor(gMainGfxPos++, data->unk_44, data->unk_48, data->unk_4C, 200);
 
-#ifdef TARGET_3DS
     savedGfxPos = (Gfx*) nd_rec_data(48 * sizeof(Gfx)); /* DIRECT D6c: the vertex buffer is stream data */
-#else
-    gSPBranchList(gMainGfxPos, &gMainGfxPos[49]);
-    savedGfxPos = gMainGfxPos + 1;
-
-    gMainGfxPos = &gMainGfxPos[49];
-#endif
 
     vtx = (Vtx_t*) savedGfxPos;
     for (i = 0; i < 12; i++) {
@@ -252,11 +245,7 @@ void squirt_appendGfx(void* effect) {
     gSPVertex(gMainGfxPos++, savedGfxPos, i * 2, 0);
 
     savedIdx = i;
-#ifdef TARGET_3DS
     nd_rec_dl(unk_00 == 0 ? D_09000800_3B5B40 : D_090008A8_3B5BE8);
-#else
-    gSPDisplayList(gMainGfxPos++, unk_00 == 0 ? D_09000800_3B5B40 : D_090008A8_3B5BE8);
-#endif
 
     for (i = 0; i < savedIdx - 1; i++) {
         s32 i2 = i * 2;

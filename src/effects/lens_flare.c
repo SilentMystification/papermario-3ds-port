@@ -118,11 +118,7 @@ void lens_flare_appendGfx(void* effect) {
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-#ifdef TARGET_3DS
     nd_rec_dl(D_E0034788[type]);
-#else
-    gSPDisplayList(gMainGfxPos++, D_E0034788[type]);
-#endif
 
     guTranslateF(mtxTransform, data->pos.x, data->pos.y, data->pos.z);
     guRotateF(mtxTemp, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);
@@ -141,11 +137,7 @@ void lens_flare_appendGfx(void* effect) {
 
         gDPSetPrimColor(gMainGfxPos++, 0, 0, D_E0034790[idx], D_E0034790[idx + 1], D_E0034790[idx + 2], alpha);
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
         nd_rec_dl(D_E0034780[0]);
-#else
-        gSPDisplayList(gMainGfxPos++, D_E0034780[0]);
-#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     }
 
@@ -165,11 +157,7 @@ void lens_flare_appendGfx(void* effect) {
         gDPSetPrimColor(gMainGfxPos++, 0, 0, D_E0034790[idx], D_E0034790[idx + 1], D_E0034790[idx + 2], alpha);
         gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 255, alpha);
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
         nd_rec_dl(D_E0034780[type]);
-#else
-        gSPDisplayList(gMainGfxPos++, D_E0034780[type]);
-#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     }
 

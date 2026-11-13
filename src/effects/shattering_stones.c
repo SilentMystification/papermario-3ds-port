@@ -148,11 +148,7 @@ void shattering_stones_appendGfx(void* effect) {
     s32 i;
 
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-#ifdef TARGET_3DS
     nd_rec_dl(D_09000C00_341480);
-#else
-    gSPDisplayList(gMainGfxPos++, D_09000C00_341480);
-#endif
 
     if (part->unk_24 == 0) {
         guTranslateF(sp20, part->unk_00, part->unk_04, part->unk_08);
@@ -170,11 +166,7 @@ void shattering_stones_appendGfx(void* effect) {
 
         gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         gDPSetPrimColor(gMainGfxPos++, 0, 0, 102, 109, 123, part->unk_28);
-#ifdef TARGET_3DS
         nd_rec_dl(D_E002C940[0]);
-#else
-        gSPDisplayList(gMainGfxPos++, D_E002C940[0]);
-#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     } else {
         s32 unk_28 = part->unk_28;
@@ -199,11 +191,7 @@ void shattering_stones_appendGfx(void* effect) {
 
             gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
             gDPSetPrimColor(gMainGfxPos++, 0, 0, 150, 150, 200, unk_28);
-#ifdef TARGET_3DS
             nd_rec_dl(dlist);
-#else
-            gSPDisplayList(gMainGfxPos++, dlist);
-#endif
             gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         }
     }

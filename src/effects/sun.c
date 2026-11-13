@@ -180,20 +180,12 @@ void sun_appendGfx(void* argEffect) {
 
         gDPSetPrimColor(gMainGfxPos++, 0, 0, data->primColor.r, data->primColor.g, data->primColor.b, alpha >> 1);
         gDPSetEnvColor(gMainGfxPos++, data->envColor.r, data->envColor.g, data->envColor.b, data->envColor.a);
-#ifdef TARGET_3DS
         nd_rec_dl(D_E0120794[0]);
-#else
-        gSPDisplayList(gMainGfxPos++, D_E0120794[0]);
-#endif
 
         for (i = 0; i < ARRAY_COUNT(data->texScrollAmt); i++) {
             offsetS = data->texScrollAmt[i] * 4.0f;
             gDPSetTileSize(gMainGfxPos++, 1, offsetS + (44 * i), 0, offsetS + (44 * i) + 252, 124);
-#ifdef TARGET_3DS
             nd_rec_dl(D_E0120780[i]);
-#else
-            gSPDisplayList(gMainGfxPos++, D_E0120780[i]);
-#endif
         }
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         gSPMatrix(gMainGfxPos++, &gDisplayContext->camPerspMatrix[gCurrentCameraID],

@@ -143,11 +143,7 @@ void music_note_appendGfx(void* data) {
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-#ifdef TARGET_3DS
     nd_rec_dl(D_09000FC0_35B5A0);
-#else
-    gSPDisplayList(gMainGfxPos++, D_09000FC0_35B5A0);
-#endif
     gDPSetPrimColor(gMainGfxPos++, 0, 0,
         D_E004C67C[rgbOffset], D_E004C67C[rgbOffset + 1], D_E004C67C[rgbOffset + 2], fxData->alpha
     );
@@ -158,11 +154,7 @@ void music_note_appendGfx(void* data) {
     guMtxCatF(mtxTemp, mtxTransform, mtxTransform);
     guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
     nd_rec_dl(D_E004C660[dlistIdx]);
-#else
-    gSPDisplayList(gMainGfxPos++, D_E004C660[dlistIdx]);
-#endif
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
     gDPPipeSync(gMainGfxPos++);
 }

@@ -23,18 +23,10 @@ EffectInstance* quizmo_answer_main(s32 arg0, f32 arg1, f32 arg2, f32 arg3) {
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(effect->shared->graphics));
 
     if (arg0 == 0) {
-#ifdef TARGET_3DS
         nd_rec_dl(D_09000400_3A2840);
-#else
-        gSPDisplayList(gMainGfxPos++, D_09000400_3A2840);
-#endif
         gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 64, 64, 230);
     } else {
-#ifdef TARGET_3DS
         nd_rec_dl(D_090004A8_3A28E8);
-#else
-        gSPDisplayList(gMainGfxPos++, D_090004A8_3A28E8);
-#endif
         gDPSetPrimColor(gMainGfxPos++, 0, 0, 80, 80, 255, 230);
     }
 

@@ -269,24 +269,12 @@ void func_E00828B4(EffectInstance* effect) {
     for (i = 1; i < effect->numParts; i++, data++) {
         if (unk_38 > 0 || type == 10) {
             if (type == 1) {
-#ifdef TARGET_3DS
                 nd_rec_dl(D_09002198_388548);
-#else
-                gSPDisplayList(gMainGfxPos++, D_09002198_388548);
-#endif
             } else {
-#ifdef TARGET_3DS
                 nd_rec_dl(D_09002100_3884B0);
-#else
-                gSPDisplayList(gMainGfxPos++, D_09002100_3884B0);
-#endif
             }
             func_E00826C4(data);
-#ifdef TARGET_3DS
             nd_rec_dl(D_09002230_3885E0);
-#else
-            gSPDisplayList(gMainGfxPos++, D_09002230_3885E0);
-#endif
             gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         }
     }
@@ -308,51 +296,19 @@ void func_E0082A84(EffectInstance* effect) {
     for (i = 1; i < effect->numParts; i++, data++) {
         func_E00826C4(data);
         if (unk_38 > 0) {
-#ifdef TARGET_3DS
             nd_rec_dl(D_090022B0_388660);
-#else
-            gSPDisplayList(gMainGfxPos++, D_090022B0_388660);
-#endif
             if (unk_38 < 10) {
-#ifdef TARGET_3DS
                 nd_rec_dl(D_E0082D00[unk_38]);
-#else
-                gSPDisplayList(gMainGfxPos++, D_E0082D00[unk_38]);
-#endif
-#ifdef TARGET_3DS
                 nd_rec_dl(D_09002250_388600);
-#else
-                gSPDisplayList(gMainGfxPos++, D_09002250_388600);
-#endif
             } else {
                 s32 ones = unk_38 % 10;
                 s32 tens = unk_38 / 10;
 
-#ifdef TARGET_3DS
                 nd_rec_dl(D_E0082D00[ones]);
-#else
-                gSPDisplayList(gMainGfxPos++, D_E0082D00[ones]);
-#endif
-#ifdef TARGET_3DS
                 nd_rec_dl(D_E0082D00[tens]);
-#else
-                gSPDisplayList(gMainGfxPos++, D_E0082D00[tens]);
-#endif
-#ifdef TARGET_3DS
                 nd_rec_dl(D_09002290_388640);
-#else
-                gSPDisplayList(gMainGfxPos++, D_09002290_388640);
-#endif
-#ifdef TARGET_3DS
                 nd_rec_dl(D_E0082D00[tens]);
-#else
-                gSPDisplayList(gMainGfxPos++, D_E0082D00[tens]);
-#endif
-#ifdef TARGET_3DS
                 nd_rec_dl(D_09002270_388620);
-#else
-                gSPDisplayList(gMainGfxPos++, D_09002270_388620);
-#endif
             }
         }
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);

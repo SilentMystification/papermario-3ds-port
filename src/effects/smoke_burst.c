@@ -112,11 +112,7 @@ void smoke_burst_appendGfx(void* effect) {
 
     gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-#ifdef TARGET_3DS
     nd_rec_dl(dlist2);
-#else
-    gSPDisplayList(gMainGfxPos++, dlist2);
-#endif
 
     guPositionF(sp20, 0.0f, -gCameras[gCurrentCameraID].curYaw, 0.0f, data->unk_10, data->pos.x, data->pos.y, data->pos.z);
     guRotateF(sp60, 20.0f, 0.0f, 0.0f, 1.0f);
@@ -143,11 +139,7 @@ void smoke_burst_appendGfx(void* effect) {
             (temp_a1 + 31) * 4, 31 * 4);
     }
 
-#ifdef TARGET_3DS
     nd_rec_dl(dlist);
-#else
-    gSPDisplayList(gMainGfxPos++, dlist);
-#endif
     gDPSetAlphaCompare(gMainGfxPos++, G_AC_NONE);
     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
 }
