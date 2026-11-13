@@ -98,7 +98,28 @@ gen_gfx_tab() {
     if cmp -s 3ds/src/nd_gfx_tab.c.new 3ds/src/nd_gfx_tab.c; then rm -f 3ds/src/nd_gfx_tab.c.new; else mv -f 3ds/src/nd_gfx_tab.c.new 3ds/src/nd_gfx_tab.c; fi
     echo "$want" > "$stamp"
 }
+# NPSO3: the build-time pipeline table (3ds/tools/gen_pso_tab.py): every ND_PSO_DESC of src and 3ds/src decided once on the host
+# in the host image, written to 3ds/src/nd_pso_tab.c (git-ignored, in the build key). Skip: the stamp holds the hashes of the two
+# tools and the sources of the scan; the file is replaced only when its content changes.
+gen_pso_tab() {
+    w=$(pwd -W 2>/dev/null || pwd); ab=$(cd "$ASSET_BASE" && pwd -W 2>/dev/null || pwd)
+    stamp=$OUT/pso_tab.stamp
+    PT_IN="3ds/tools/gen_pso_tab.py 3ds/tools/gen_pso_main.c src 3ds/src"
+    want="$({ git ls-files -s -- $PT_IN; git diff HEAD -- $PT_IN; git ls-files -o --exclude-standard -- $PT_IN | xargs -r sha1sum; } | sha1sum | cut -d' ' -f1)"
+    if [ -f "$stamp" ] && [ -f 3ds/src/nd_pso_tab.c ] && [ "$(cat "$stamp")" = "$want" ]; then echo "gen_pso_tab: up to date"; return 0; fi
+    mkdir -p "$OUT"
+    rm -f "$stamp" 3ds/src/nd_pso_tab.c.new
+    MSYS_NO_PATHCONV=1 docker run --rm -v "$w:/w" -v "$ab/assets:/ar/assets:ro" -v "$ab/ver/us/build:/ar/ver/us/build:ro" -w /work pm3ds-host:1 sh -c '
+        set -e; mkdir -p /work/ver/us
+        for d in 3ds include src; do ln -s "/w/$d" "/work/$d"; done
+        ln -s /ar/assets /work/assets; ln -s /ar/ver/us/build /work/ver/us/build
+        python3 3ds/tools/gen_pso_tab.py /w/3ds/src/nd_pso_tab.c.new src 3ds/src' || { echo "gen_pso_tab failed" >&2; exit 1; }
+    [ -s 3ds/src/nd_pso_tab.c.new ] || { echo "gen_pso_tab failed: no output" >&2; exit 1; }
+    if cmp -s 3ds/src/nd_pso_tab.c.new 3ds/src/nd_pso_tab.c; then rm -f 3ds/src/nd_pso_tab.c.new; else mv -f 3ds/src/nd_pso_tab.c.new 3ds/src/nd_pso_tab.c; fi
+    echo "$want" > "$stamp"
+}
 gen_gfx_tab >&2 # PUSHKEY
+gen_pso_tab >&2 # NPSO3
 
 # The inputs CMake reads (3ds/CMakeLists.txt, DECOMP = repo root). Nothing else reaches the build.
 # CODE_DIRS are read from this worktree; ASSET_DIRS from ASSET_BASE (see above).
@@ -123,7 +144,7 @@ key_now() {
         git ls-tree -r HEAD -- $KEY_IN
         git diff HEAD -- $KEY_IN
         git ls-files -o --exclude-standard -- $KEY_IN | while read -r f; do sha1sum "$f"; done
-        sha1sum 3ds/src/map_restore_table.c 3ds/src/nd_gfx_tab.c 3ds/ld/map_restore.ld 3ds/ld/map_restore_bss.ld 3ds/include/texkey_patch.h
+        sha1sum 3ds/src/map_restore_table.c 3ds/src/nd_gfx_tab.c 3ds/src/nd_pso_tab.c 3ds/ld/map_restore.ld 3ds/ld/map_restore_bss.ld 3ds/include/texkey_patch.h
         (cd "$ASSET_BASE" && find $ASSET_DIRS -type f -printf '%p %s %T@\n' | sort)
     } | sha1sum | cut -d' ' -f1
 }
