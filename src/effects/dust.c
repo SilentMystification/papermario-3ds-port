@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09000CC0_33FCC0[];
 extern Gfx D_09000D68_33FD68[];
@@ -135,10 +137,10 @@ void dust_appendGfx(void* effect) {
     Mtx* matrix;
     s32 i;
 
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
     nd_rec_dl(part->unk_00 == 0 ? D_09000CC0_33FCC0 : D_09000D68_33FD68);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, part->unk_30, part->unk_34, part->unk_38, part->unk_18);
-    gDPSetEnvColor(gMainGfxPos++, part->unk_3C, part->unk_40, part->unk_44, 0);
+    nd_val_prim(0, 0, part->unk_30, part->unk_34, part->unk_38, part->unk_18);
+    nd_val_env(part->unk_3C, part->unk_40, part->unk_44, 0);
 
     guTranslateF(sp18, part->unk_04, part->unk_08, part->unk_0C);
     guRotateF(sp58, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);
@@ -155,8 +157,8 @@ void dust_appendGfx(void* effect) {
         guMtxCatF(sp58, sp98, sp18);
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        gSPMatrix(gMainGfxPos++, matrix, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+        nd_xf_push(matrix, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
         if (unk_00 < 2) {
             nd_rec_dl((i % 2) ? D_09000E18_33FE18 : D_09000E38_33FE38);
@@ -164,6 +166,6 @@ void dust_appendGfx(void* effect) {
             nd_rec_dl(D_09000E58_33FE58);
         }
 
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        nd_xf_pop(G_MTX_MODELVIEW);
     }
 }
