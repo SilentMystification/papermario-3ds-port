@@ -119,7 +119,7 @@ gen_pso_tab() {
     if [ -f "$stamp" ] && [ -f 3ds/src/nd_pso_tab.c ] && [ "$(cat "$stamp")" = "$want" ]; then echo "gen_pso_tab: up to date"; return 0; fi
     mkdir -p "$OUT"
     rm -f "$stamp" 3ds/src/nd_pso_tab.c.new
-    MSYS_NO_PATHCONV=1 docker run --rm -v "$w:/w" -v "$ab/assets:/ar/assets:ro" -v "$ab/ver/us/build:/ar/ver/us/build:ro" -w /work pm3ds-host:1 sh -c '
+    MSYS_NO_PATHCONV=1 docker run --rm --memory "${PM_BUILD_MEM:-4g}" -v "$w:/w" -v "$ab/assets:/ar/assets:ro" -v "$ab/ver/us/build:/ar/ver/us/build:ro" -w /work pm3ds-host:1 sh -c '
         set -e; mkdir -p /work/ver/us
         for d in 3ds include src; do ln -s "/w/$d" "/work/$d"; done
         ln -s /ar/assets /work/assets; ln -s /ar/ver/us/build /work/ver/us/build
