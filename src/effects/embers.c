@@ -2,6 +2,8 @@
 #include "effects_internal.h"
 #include "nd_gtab.h"
 #include "nd_api.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09000280_3DC1C0[];
 extern Gfx D_090003B0_3DC2F0[];
@@ -195,18 +197,17 @@ void embers_appendGfx(void* effect) {
     Matrix4f sp50;
     s32 i;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
     guTranslateF(sp10, part->unk_04, part->unk_08, part->unk_0C);
     guScaleF(sp50, part->unk_40, part->unk_40, part->unk_40);
     guMtxCatF(sp50, sp10, sp10);
     guMtxF2L(sp10, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gSPMatrix(gMainGfxPos++, camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, part->unk_20, part->unk_24, part->unk_28, unk_2C);
-    gDPSetEnvColor(gMainGfxPos++, part->unk_30, part->unk_34, part->unk_38, part->unk_3C);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_val_prim(0, 0, part->unk_20, part->unk_24, part->unk_28, unk_2C);
+    nd_val_env(part->unk_30, part->unk_34, part->unk_38, part->unk_3C);
     nd_rec_dl(D_E00E0A40[1]);
 
     part++;
@@ -230,5 +231,5 @@ void embers_appendGfx(void* effect) {
     }
     nd_parts_end(&pb);
 
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }
