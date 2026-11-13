@@ -1,0 +1,30 @@
+{
+  "scenarios": [
+    {
+      "name": "drecstep_89_33",
+      "status": "unverified",
+"reason": "broken: no until in 40 s (AZT11-5, 2026-11-13)",
+      "subject": "Toad Town mac_01, Mario placed at pos 0 0 200, fxtest effects 89 and 33 (slots 0 and 1), cold det start with drec=412:2:44: the draw records of frames 412 and 456 go to shots/drec.txt.",
+      "proves": "DRECSTEP: drec=<first>:<count>:<step> records one frame per step. The window closes at the last recorded frame (f456), and drec.txt has one frame line per recorded frame.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=89,33 loglevel=debug det drec=412:2:44",
+      "extra": [],
+      "until": "drec f456 draws [1-9]\\d* bytes \\d+",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f456 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "reason": "DRECSTEP: copy of spot_mac01_drec (HOSTCORE2) with drec=412:2:44 and fxtest=89,33. Cap 40 s, deadline 35 s. The drec f456 log line is the until. First marker and warp event as fxpic_89 (the prof marker needs prof=, which the debug string does not have)."
+    }
+  ]
+}
