@@ -64,6 +64,15 @@ with tempfile.TemporaryDirectory() as tmp:
     bad, lines = bench.fhash_cmp(e, e)
     check("e: empty file gives bad 1", bad == 1)
 
+    # (f) ingest_fhash: kind azahar_hash writes fhash.txt, another kind writes nothing
+    fn = getattr(bench, "ingest_fhash", None)
+    d4 = tmp / "shots4"
+    r4 = fn({"kind": "azahar_hash"}, log, d4) if fn else None
+    check("f: ingest_fhash azahar_hash == 3 with fhash.txt present", r4 == 3 and (d4 / "fhash.txt").is_file())
+    d5 = tmp / "shots5"
+    r5 = fn({"kind": "azahar_pic"}, log, d5) if fn else None
+    check("f: ingest_fhash azahar_pic == 0 with no fhash.txt", r5 == 0 and not (d5 / "fhash.txt").exists())
+
 if fails:
     print("FAILED: %d case(s)" % len(fails))
     sys.exit(1)

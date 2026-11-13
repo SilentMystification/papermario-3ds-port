@@ -1553,6 +1553,11 @@ def fhash_cmp(a, b):
     return (0 if eq == len(la) == len(lb) and la else 1), out
 
 
+def ingest_fhash(bd, log, shot):
+    """FRAMEHASH4: a run of a bench of kind azahar_hash (kind of its bench entry, FRAMEHASH5) gets fhash.txt. Returns the count, 0 for other kinds."""
+    return fhash_extract(log, shot) if bd and bd.get("kind") == "azahar_hash" else 0
+
+
 def shots_diff(a, b):
     """"" when the two shot folders hold the same shot names with the same bytes, else a text for the first difference."""
     an = shot_names(a)
@@ -2065,6 +2070,7 @@ def cmd_ingest_last(a):
     result = "log_pass" if a.rc == 0 else ("broken" if a.rc == 10 else "fail:%d" % a.rc) # AZT11-5: rc 10 = no until line in the cap (broken, not a code fail)
     note = "picture: a person reads the shot" if bd and bd["kind"] == "azahar_pic" else ""
     shot = a.shots or str(SHOTS / s / (os.environ.get("PM_LANE") or "main"))  # SHOTLANE: per scenario and build
+    ingest_fhash(bd, p, shot)  # FRAMEHASH4: before snap_shots, so the base copy holds fhash.txt
     shot = snap_shots(shot, s) or shot  # BASEVERIFY: a base list's run keeps its own shot copy (PM_BASE_SNAP)
     dv = os.environ.get("PM_BENCH_DIRTY")
     lb, _ = log_build(text)
