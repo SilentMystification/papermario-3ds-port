@@ -565,10 +565,13 @@ int nd_ent_pieces(const EntPiece* p, unsigned n) {
     tex_streak_flush();
     return sc;
 }
-/* CONV2D2: the NDN_UNIT copy of a v2 table (nd_gtab.h NdNTab; its first op) run with nd_walk_state, in place of the v1 table ops of gt_ops. */
-void nd_ntab_run(const NdNTab* t) {
-    const NdNOp* o = t->ops;
-    if (o->op == NDN_UNIT) nd_walk_state((const uint32_t*)o->p, o->b);
+/* CONV2D2: the words of a v2 list (nd_gtab.h NdNDev) run with nd_walk_state: NOPs skipped there, the stop at n. */
+void nd_ntab_run(const NdNDev* e) { nd_walk_state((const uint32_t*)e->list, e->n); }
+/* CONV2D2: a list's ops: its v2 device entry when it has one, else its v1 table ops (gt_ops). */
+static void gt_body(const NdGTab* t) {
+    const NdNDev* nt = nd_ntab_find(t->list);
+    if (nt) { nd_gtr_ntab++; nd_ntab_run(nt); }
+    else gt_ops(t);
 }
 void nd_gtab_run(const uint32_t* rec) {
     PM_WALK_OWN();
@@ -577,7 +580,7 @@ void nd_gtab_run(const uint32_t* rec) {
         static const uint32_t lst[2] = { NDO_W0(NDO_MISC, NDO_MISC_LST << 16), 0u };
         pm_walk_side++;
         nd_walk_state(lst, 1u);
-        gt_ops(t);
+        gt_body(t);
         pm_walk_side--;
         return;
     }
@@ -603,7 +606,7 @@ void nd_gtab_run(const uint32_t* rec) {
     gp_prev_op = -1;
     pm_walk_side++;
     ex_depth = d + 1;
-    { const NdNTab* nt = nd_ntab_find(t->list); if (nt) { nd_gtr_ntab++; nd_ntab_run(nt); } else gt_ops(t); }
+    gt_body(t);
     ex_depth = d;
     pm_walk_side--;
     gv_streak_flush();

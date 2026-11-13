@@ -92,9 +92,10 @@ typedef struct NdNTab {
 } NdNTab;
 /* CONV2D2 (core 0): the device index of the v2 tables, written by nd_gfx_conv.c after the tables (nd_gfx_tab.c): one entry per table, sorted by
  * list address at the first nd_ntab_find. nd_ntab_find: the table of a list, or NULL. nd_ntab_run: a table as its NDN_UNIT copy in nd_walk.c. */
-typedef struct NdNIdx { const void* list; const NdNTab* tab; } NdNIdx;
-extern NdNIdx ndn_dev_idx[];
+/* CONV2D2, core 0 only. n = the word pairs of the list from unit 0 to the stop (NOPs counted): nd_walk_state(list, n) runs the unit copy. */
+typedef struct NdNDev { const void* list; uint32_t n; } NdNDev;
+extern NdNDev ndn_dev_idx[];
 extern const unsigned ndn_dev_n;
-const NdNTab* nd_ntab_find(const void* list);
-void nd_ntab_run(const NdNTab* t);
+const NdNDev* nd_ntab_find(const void* list);
+void nd_ntab_run(const NdNDev* e);
 #endif

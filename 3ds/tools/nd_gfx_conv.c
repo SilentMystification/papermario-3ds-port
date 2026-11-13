@@ -199,10 +199,12 @@ typedef struct {
     char unsup[160];
     int inh; char inh_groups[64], inh_first[160];
     uint32_t uw[2u * V2_MAXOPS]; char ue[V2_MAXOPS][160]; unsigned nu; /* the depth-0 typed units (CONV2D): words, and the address text (ue[i][0] == 0: no address) */
+    unsigned nk; /* CONV2D2: words to the stop */
 } V2C;
 static NdPsoDesc v2_desc[V2_MAXDESC];
 static unsigned v2_ndesc;
 static const GSym* v2_tab[V2_MAXTAB];
+static unsigned v2_nk[V2_MAXTAB];
 static V2C* cx;
 static unsigned v2_n_tab, v2_n_inh, v2_n_unsup, v2_n_draw;
 
@@ -405,13 +407,14 @@ static void v2_unit_add(unsigned k, unsigned id, uint32_t w0, uint32_t w1) {
 static void v2_units_top(const GSym* g) {
     const uint32_t* L = (const uint32_t*)g->addr;
     const unsigned nu = (unsigned)(((uintptr_t)g->end - (uintptr_t)g->addr) / 8u);
+    cx->nk = nu;
     for (unsigned k = 0; k < nu; k++) {
         const uint32_t w0 = L[2u * k], w1 = L[2u * k + 1u];
         const unsigned id = w0 >> 24;
         if (w0 == ND_NOP_A) continue;
-        if (id == NDO_END) break;
+        if (id == NDO_END) { cx->nk = k; break; }
         v2_unit_add(k, id, w0, w1);
-        if (id == NDO_CALL && (w0 & 1u)) break;
+        if (id == NDO_CALL && (w0 & 1u)) { cx->nk = k + 1u; break; }
     }
 }
 
@@ -601,11 +604,12 @@ static void v2_convert_all(const char* descs_path, const char* inh_path, const c
         if (cx->unsup[0]) { fprintf(fu, "%s: %s\n", g->name, cx->unsup); v2_n_unsup++; continue; }
         if (v2_n_tab >= V2_MAXTAB) { fprintf(stderr, "gconv: too many v2 tables\n"); exit(1); }
         v2_emit_table(cx);
+        v2_nk[v2_n_tab] = cx->nk;
         v2_tab[v2_n_tab++] = g;
     }
-    /* CONV2D2: the device index of the tables (nd_gtab.h NdNIdx), after the tables in nd_gfx_tab.c */
-    printf("NdNIdx ndn_dev_idx[%u] = {\n", v2_n_tab ? v2_n_tab : 1u);
-    for (unsigned i = 0; i < v2_n_tab; i++) printf("    { (const void*)%s, &ndn_%s },\n", v2_tab[i]->name, v2_tab[i]->name);
+    /* CONV2D2: the device index of the tables (nd_gtab.h NdNDev), after the tables in nd_gfx_tab.c */
+    printf("NdNDev ndn_dev_idx[%u] = {\n", v2_n_tab ? v2_n_tab : 1u);
+    for (unsigned i = 0; i < v2_n_tab; i++) printf("    { (const void*)%s, %uu },\n", v2_tab[i]->name, v2_nk[i]);
     if (!v2_n_tab) printf("    { 0, 0 }\n");
     printf("};\nconst unsigned ndn_dev_n = %uu;\n", v2_n_tab);
     fclose(fi); fclose(fu);

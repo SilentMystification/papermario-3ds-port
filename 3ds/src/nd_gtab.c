@@ -42,20 +42,20 @@ const NdGTab* nd_gtab_find(const void* list) {
 static int nt_sorted;
 static __attribute__((cold, noinline)) void nt_sort(void) {
     for (unsigned i = 1; i < ndn_dev_n; i++) {
-        const NdNIdx e = ndn_dev_idx[i];
+        const NdNDev e = ndn_dev_idx[i];
         unsigned j = i;
         for (; j > 0u && (uintptr_t)ndn_dev_idx[j - 1u].list > (uintptr_t)e.list; j--) ndn_dev_idx[j] = ndn_dev_idx[j - 1u];
         ndn_dev_idx[j] = e;
     }
     nt_sorted = 1;
 }
-const NdNTab* nd_ntab_find(const void* list) {
+const NdNDev* nd_ntab_find(const void* list) {
     if (__builtin_expect(!nt_sorted, 0)) nt_sort();
     unsigned lo = 0, hi = ndn_dev_n;
     while (lo < hi) {
         const unsigned mid = (lo + hi) >> 1;
         const uintptr_t a = (uintptr_t)ndn_dev_idx[mid].list;
-        if (a == (uintptr_t)list) return ndn_dev_idx[mid].tab;
+        if (a == (uintptr_t)list) return &ndn_dev_idx[mid];
         if (a < (uintptr_t)list) lo = mid + 1u; else hi = mid;
     }
     return 0;

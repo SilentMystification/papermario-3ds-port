@@ -490,6 +490,25 @@ static void v2_units(const NdNTab* t, const char* name) {
     }
     if (n != u->b) v2_fail("unit stream count", name, n);
 }
+/* CONV2D2: the device index entry of a table's list (nd_gtab.h NdNDev): n is the word pairs from unit 0 to the stop, NOPs counted */
+static unsigned v2_dev_bad;
+static void v2_dev(const NdNTab* t, const char* name) {
+    const GSym* g = NULL;
+    for (unsigned s = 0; s < gconv_nsym; s++) if (gconv_sym[s].kind == GS_GFX && gconv_sym[s].addr == t->list) g = &gconv_sym[s];
+    const NdNDev* dv = NULL;
+    for (unsigned i = 0; i < ndn_dev_n; i++) if (ndn_dev_idx[i].list == t->list) dv = &ndn_dev_idx[i];
+    if (!dv || !g) { v2_dev_bad++; v2_fail("device index entry", name, 0); return; }
+    const uint32_t* L = (const uint32_t*)g->addr;
+    const unsigned nl = (unsigned)(((uintptr_t)g->end - (uintptr_t)g->addr) / 8u);
+    unsigned ks = nl;
+    for (unsigned k = 0; k < nl; k++) {
+        const uint32_t w0 = L[2u * k];
+        if (w0 == ND_NOP_A) continue;
+        if ((w0 >> 24) == NDO_END) { ks = k; break; }
+        if ((w0 >> 24) == NDO_CALL && (w0 & 1u)) { ks = k + 1u; break; }
+    }
+    if (dv->n != ks) { v2_dev_bad++; v2_fail("device index count", name, ks); }
+}
 static void v2_compare(int fault) {
     unsigned tables = 0;
     for (unsigned n = 0; n < ndn_n; n++) {
@@ -504,6 +523,7 @@ static void v2_compare(int fault) {
         m_walk(g1);
         v_replay(t, fault);
         v2_units(t, name);
+        v2_dev(t, name);
         tables++;
         if (m_over) v2_fail("the model could not follow the v1 table", name, 0);
         if (nmtri != nvtri) { v2_fail("triangle count", name, nmtri); continue; }
@@ -521,6 +541,7 @@ static void v2_compare(int fault) {
         }
     }
     printf("ntab tables %u draws %u bad %u\n", tables, v2_draws, v2_bad);
+    printf("ntab dev entries %u bad %u\n", ndn_dev_n, v2_dev_bad);
     printf("ntab inherit %u unsup %u descs %u\n", ndn_inherit, ndn_unsup, ndn_ndesc);
 }
 #endif
