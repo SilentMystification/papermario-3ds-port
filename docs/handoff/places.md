@@ -21,7 +21,6 @@ A shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json, bench_def
 | GOLDENT1 | Haiku | new cov.d/azt.d/bench.d GOLDENT1 files | waits for COVMAP |
 | GOLDWLD0 | Haiku | new cov.d/azt.d/bench.d GOLDWLD0 files | waits for COVMAP and the user's fortune scene |
 | N64DEL4 | Haiku | the 9 skip blocks: include/PR/os_convert.h, common.h, common_structs.h, include_asm.h, macros.h, src/entity.c, kzn2 lava_piranha.c, WaterEffects.inc.c, lava_piranha/part1.inc.c | waits for N64DEL2 and N64DEL3 |
-| COVMAP2 | Haiku | 3ds/src/pm_fncov.c fn_init_once, pm_fncov_walk; new cov.d/azt.d/bench.d COVMAP2 files | waits for COVMAP |
 | GMHARN | Haiku | new 3ds/tools/gold.py; covsites.py argument parsing; new cov.d/bench.d GMHARN files | waits for COVMAP2 |
 | GOLDFX2 | Haiku | new cov.d/azt.d/bench.d GOLDFX2 files | waits for GMHARN |
 | CODEMODFX11 | Haiku | src/effects/snaking_static.c (value call lines, include lines); new azt.d/bench.d CODEMODFX11.json | ready |
