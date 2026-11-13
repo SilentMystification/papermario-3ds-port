@@ -1,0 +1,2 @@
+codemod keep i3.c:4 nd_rec_dl no-entry
+codemod keep i3.c:5 gSPDisplayList no-entry

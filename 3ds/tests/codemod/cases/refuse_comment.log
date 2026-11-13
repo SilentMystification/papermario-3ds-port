@@ -1,0 +1,4 @@
+codemod keep refuse_comment.c:2 gDPSetEnvColor comment
+codemod keep refuse_comment.c:3 gSPSegment comment
+codemod keep refuse_comment.c:5 gDPPipeSync stmt
+codemod keep refuse_comment.c:6 gSPMatrix stmt
