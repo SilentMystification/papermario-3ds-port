@@ -29,6 +29,7 @@ static NdDrecReg regs[2] = {
 
 static uint8_t tex0[16];
 static uint8_t vtx[48];
+static uint8_t vtx_b[48];
 static uint16_t idx[3] = { 0, 1, 2 };
 static float ident[1][16] = {
     { 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f },
@@ -62,9 +63,10 @@ int main(void) {
 
     for (i = 0; i < 16; i++) tex0[i] = (uint8_t)i;
     for (i = 0; i < 48; i++) vtx[i] = (uint8_t)((i * 3) & 0xFF);
+    memcpy(vtx_b, vtx, sizeof(vtx));
+    vtx_b[5] = 0xFF;
     build(&a, 0, vtx);
-    vtx[5] = 0xFF;
-    build(&b, 1, vtx);
+    build(&b, 1, vtx_b);
 
     f = tmpfile();
     if (!f) { printf("drec FAIL\n"); return 1; }
