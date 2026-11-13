@@ -51,7 +51,7 @@ static float dc_alpha_k(unsigned aa, unsigned ab, unsigned ac, unsigned ad, cons
 int nd_const_rgb(const NdCombIn* c, unsigned* out) {
     float pr[4], en[4], rgb[3], k, k2;
     int ch;
-    const unsigned* t = c->tst;
+    const uint32_t* t = c->tst;
     int two = ((c->omode_h >> G_MDSFT_CYCLETYPE) & 3) == 1;
     if (((c->omode_h >> G_MDSFT_CYCLETYPE) & 3) > 1 || !c->comb_set || !c->tex_on) return 0;
     unpack8(c->prim, pr);
@@ -90,7 +90,7 @@ int nd_const_rgb(const NdCombIn* c, unsigned* out) {
 /* ---- the legacy combine mode (sync_legacy) on explicit state. c->leg_mode and c->box_pat are updated. o: mode5, cc_on, cc, env_on. ---- */
 static void dc_legacy(NdCombIn* c, int mode5_prev, NdCombOut* o) {
     unsigned cc;
-    const unsigned* t = c->tst;
+    const uint32_t* t = c->tst;
     o->cc_on = o->env_on = 0;
     o->mode5 = mode5_prev; /* kept when the constant mode returns first */
     if (nd_const_rgb(c, &cc)) {
