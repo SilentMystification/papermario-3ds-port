@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 u8 D_E00B2BA0[] = { 255, 255, 255, 255, 255, 255, 255, 255, 255, 200, 128, 32, 0, 0, 0, 0 };
 
@@ -173,17 +175,16 @@ void squirt_appendGfx(void* effect) {
     f32 var_f22;
     f32 theta;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
     guTranslateF(sp10, 0.0f, 0.0f, 0.0f);
     guScaleF(sp50, 0.05f, 0.05f, 0.05f);
     guMtxCatF(sp50, sp10, sp10);
     guMtxF2L(sp10, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, data->unk_34, data->unk_38, data->unk_3C, data->unk_40);
-    gDPSetEnvColor(gMainGfxPos++, data->unk_44, data->unk_48, data->unk_4C, 200);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_val_prim(0, 0, data->unk_34, data->unk_38, data->unk_3C, data->unk_40);
+    nd_val_env(data->unk_44, data->unk_48, data->unk_4C, 200);
 
     savedGfxPos = (Gfx*) nd_rec_data(48 * sizeof(Gfx)); /* DIRECT D6c: the vertex buffer is stream data */
 
@@ -258,6 +259,5 @@ void squirt_appendGfx(void* effect) {
             i2 + 1, i2 + 2, i2 + 3, i2);
     }
 
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gDPPipeSync(gMainGfxPos++);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }

@@ -3,6 +3,7 @@
 #include "nd_gtab.h"
 #include "pm_interp_fi.h"
 #include "nd_api.h"
+#include "nd_val.h"
 
 void snowfall_init(EffectInstance* effect);
 void snowfall_update(EffectInstance* effect);
@@ -194,11 +195,10 @@ void snowfall_appendGfx(void* effect) {
         }
 
         if (unk_28 != 0) {
-            gDPPipeSync(gMainGfxPos++);
-            gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+            nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
             nd_rec_dl(D_09000C00_38DC70);
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 255, unk_28);
+            nd_val_prim(0, 0, 255, 255, 255, unk_28);
 
             guRotateF(sp18, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);
             guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
@@ -227,7 +227,6 @@ void snowfall_appendGfx(void* effect) {
                 FI_CLOSE();
             }
             nd_parts_end(&pb);
-            gDPPipeSync(gMainGfxPos++);
         }
     }
 }

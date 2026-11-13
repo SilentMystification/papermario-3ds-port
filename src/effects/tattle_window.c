@@ -1,5 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
+#include "nd_val.h"
 
 void tattle_window_init(EffectInstance* effect);
 void tattle_window_update(EffectInstance* effect);
@@ -196,7 +197,6 @@ void func_E00D8334(TattleWindowFXData* data, s32 left, s32 top, s32 right, s32 b
 
     // draw the 'shades' which appear over the window and tattle viewport to animate opening and closing
     if (data->closeAmt.x > 0 || data->closeAmt.y > 0) {
-        gDPPipeSync(gMainGfxPos++);
         gSPTexture(gMainGfxPos++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF);
         gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
         gDPSetTexturePersp(gMainGfxPos++, G_TP_NONE);
@@ -207,7 +207,7 @@ void func_E00D8334(TattleWindowFXData* data, s32 left, s32 top, s32 right, s32 b
         gDPSetTextureConvert(gMainGfxPos++, G_TC_FILT);
         gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
         gDPSetCombineMode(gMainGfxPos++, G_CC_PRIMITIVE, G_CC_PRIMITIVE);
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, 24, 48, 96, 255);
+        nd_val_prim(0, 0, 24, 48, 96, 255);
         l = left + 4;
         r = (left + right) - 4;
         t = top + 4;
@@ -225,8 +225,7 @@ void func_E00D8630(EffectInstance* effect) {
     TattleWindowFXData* data = effect->data.tattleWindow;
     s32 flags;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
     if (data->scale == 1.0f && data->rot.x == 0.0f && data->rot.y == 0.0f && data->rot.z == 0.0f) {
         flags = 0;
@@ -244,5 +243,4 @@ void func_E00D8630(EffectInstance* effect) {
         data->scale, data->scale,
         data->rot.x, data->rot.y, data->rot.z,
         (void (*)(void*)) func_E00D8334, data, nullptr, SCREEN_WIDTH, SCREEN_HEIGHT, nullptr);
-    gDPPipeSync(gMainGfxPos++);
 }

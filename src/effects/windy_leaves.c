@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 void windy_leaves_init(EffectInstance* effect);
 void windy_leaves_update(EffectInstance* effect);
@@ -242,9 +244,9 @@ void windy_leaves_appendGfx(void* effect) {
         dlist = D_09001258_33E868;
     }
 
-    gSPSegment(gMainGfxPos++, 0x09, OS_K0_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, OS_K0_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
     nd_rec_dl(D_09001180_33E790);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, 20, 100, 20, part->alpha);
+    nd_val_prim(0, 0, 20, 100, 20, part->alpha);
     guTranslateF(sp18, part->unk_04.x, part->unk_04.y, part->unk_04.z);
     guRotateF(sp58, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);
     guMtxCatF(sp58, sp18, sp98);
@@ -258,9 +260,9 @@ void windy_leaves_appendGfx(void* effect) {
         guRotateF(sp58, part->unk_20, 0.0f, 1.0f, 0.0f);
         guMtxCatF(sp58, sp18, sp18);
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         nd_rec_dl(dlist);
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        nd_xf_pop(G_MTX_MODELVIEW);
     }
 }
 

@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 typedef struct UnkStruct {
     /* 0x00 */ s32 unk_00;
@@ -190,18 +192,17 @@ void stop_watch_appendGfx(void* effect) {
     Matrix4f sp60;
     s32 i;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
     guTranslateF(sp20, data->unk_04, data->unk_08, data->unk_0C);
     guScaleF(sp60, data->unk_28, data->unk_28, data->unk_28);
     guMtxCatF(sp60, sp20, sp20);
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gSPMatrix(gMainGfxPos++, camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_rec_dl(D_09001000_3CC890);
-    gDPSetEnvColor(gMainGfxPos++, 0, 0, 0, data->unk_2C);
+    nd_val_env(0, 0, 0, data->unk_2C);
     vtxBuffer = (Vtx_t*) nd_rec_data(64 * sizeof(Gfx)); /* DIRECT D6c: the vertex buffer is stream data */
 
     for (i = 0; i < 16; i++) {
@@ -230,7 +231,7 @@ void stop_watch_appendGfx(void* effect) {
     guScaleF(sp20, 0.01f, 0.01f, 0.01f);
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     gSPVertex(gMainGfxPos++, vtxBuffer, 32, 0);
 
     for (i = 0; i < 15; i++) {
@@ -240,18 +241,18 @@ void stop_watch_appendGfx(void* effect) {
             i2 + 1, i2 + 2, i2 + 3, i2);
     }
 
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
     nd_sub_close(&sub);
 
     for (i = 0; i < 10; i++) {
         guPositionF(sp20, data->unk_AC[i], data->unk_D4[i], data->unk_FC[i], D_E00C49D0[i % 4] * 0.01, data->unk_34[i], data->unk_5C[i], data->unk_84[i]);
         guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, D_E00C49D4[i], D_E00C49E8[i], D_E00C49FC[i], unk_24 * data->unk_124[i] / 255);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+        nd_val_prim(0, 0, D_E00C49D4[i], D_E00C49E8[i], D_E00C49FC[i], unk_24 * data->unk_124[i] / 255);
         nd_sub_call(&sub);
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        nd_xf_pop(G_MTX_MODELVIEW);
     }
 
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }

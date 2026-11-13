@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09000C00_341480[];
 extern Gfx D_09001068_3418E8[];
@@ -147,7 +149,7 @@ void shattering_stones_appendGfx(void* effect) {
     Matrix4f spE0;
     s32 i;
 
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
     nd_rec_dl(D_09000C00_341480);
 
     if (part->unk_24 == 0) {
@@ -164,10 +166,10 @@ void shattering_stones_appendGfx(void* effect) {
         guMtxCatF(sp60, spA0, spA0);
         guMtxF2L(spA0, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, 102, 109, 123, part->unk_28);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+        nd_val_prim(0, 0, 102, 109, 123, part->unk_28);
         nd_rec_dl(D_E002C940[0]);
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        nd_xf_pop(G_MTX_MODELVIEW);
     } else {
         s32 unk_28 = part->unk_28;
 
@@ -189,10 +191,10 @@ void shattering_stones_appendGfx(void* effect) {
             guMtxCatF(sp60, sp20, sp20);
             guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-            gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, 150, 150, 200, unk_28);
+            nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+            nd_val_prim(0, 0, 150, 150, 200, unk_28);
             nd_rec_dl(dlist);
-            gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+            nd_xf_pop(G_MTX_MODELVIEW);
         }
     }
 }

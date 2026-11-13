@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx D_09000200_35C750[];
 extern Gfx D_090002C8_35C818[];
@@ -86,8 +88,7 @@ void sweat_appendGfx(void* effect) {
     Matrix4f sp18;
     Matrix4f sp58;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
     guTranslateF(sp18, data->pos.x, data->pos.y, data->pos.z);
     guRotateF(sp58, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);
@@ -96,7 +97,7 @@ void sweat_appendGfx(void* effect) {
     guMtxCatF(sp58, sp18, sp18);
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
     if (data->unk_10 > 0.0f) {
         nd_rec_dl(data->unk_00 == 0 ? D_09000200_35C750 : D_090002C8_35C818);
@@ -104,5 +105,5 @@ void sweat_appendGfx(void* effect) {
         nd_rec_dl(data->unk_00 == 0 ? D_09000390_35C8E0 : D_09000460_35C9B0);
     }
 
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }

@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 typedef struct UnkStruct {
     /* 0x00 */ s8 unk_00;
@@ -235,16 +237,15 @@ void water_fountain_appendGfx(void* effect) {
         basePtr = D_E00B8B58;
     }
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
     guTranslateF(sp18, data->pos.x, data->pos.y, data->pos.z);
     guScaleF(sp58, data->unk_34, data->unk_34, data->unk_34);
     guMtxCatF(sp58, sp18, sp18);
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gSPMatrix(gMainGfxPos++, camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_rec_dl(D_09000280_3B8AE0);
 
     guRotateF(sp18, data->unk_38, 0.0f, 0.0f, 1.0f);
@@ -252,12 +253,12 @@ void water_fountain_appendGfx(void* effect) {
     guMtxCatF(sp58, sp18, sp18);
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gDPSetEnvColor(gMainGfxPos++, data->unk_28, data->unk_2C, data->unk_30, unk_24);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_val_env(data->unk_28, data->unk_2C, data->unk_30, unk_24);
 
     temp = sp9C + 1;
     if (timeLeft >= var_s6 - temp) {
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, unk_18, unk_1C, unk_20, unk_24);
+        nd_val_prim(0, 0, unk_18, unk_1C, unk_20, unk_24);
         nd_rec_dl(D_09000348_3B8BA8);
     }
 
@@ -276,16 +277,15 @@ void water_fountain_appendGfx(void* effect) {
                     guMtxCatF(sp58, sp18, sp18);
                     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-                    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-                    gDPSetPrimColor(gMainGfxPos++, 0, 0, unk_18, unk_1C, unk_20, (unk_24 * basePtr[idx].sizeScale) >> 8);
+                    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+                    nd_val_prim(0, 0, unk_18, unk_1C, unk_20, (unk_24 * basePtr[idx].sizeScale) >> 8);
                     nd_rec_dl(D_09000328_3B8B88);
-                    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+                    nd_xf_pop(G_MTX_MODELVIEW);
                 }
             }
         }
     }
 
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gDPPipeSync(gMainGfxPos++);
+    nd_xf_pop(G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }
