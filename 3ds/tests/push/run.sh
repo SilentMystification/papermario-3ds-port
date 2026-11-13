@@ -50,6 +50,11 @@ ob2=$(env PM_SRC3DSX="$tmp/pm_3ds.3dsx" PM_BUILD_KEY_FILE="$tmp/build_key_now.tx
     sh 3ds/push_3ds.sh --no-build --ip 127.0.0.1 -t 1 --idle 1 2>&1) || true
 if ! echo "$ob2" | grep -q 'STALE 3DSX' && echo "$ob2" | grep -q 'SEND FILE:' && echo "$ob2" | grep -q 'Sending'; then echo "ok   matching key checked, SEND FILE printed, fake 3dslink sent"
 else echo "FAIL matching key"; echo "$ob2" | tail -n 20; fail=1; fi
+# (b3) PUSHKEY: the key-only output is one line of 40 hex digits, twice the same, and equal to the build_key.txt of a built folder.
+kf=build3ds/${PM_LANE:+lane-$PM_LANE/}build_key.txt
+k1=$(PM_KEY_ONLY=1 sh 3ds/build.sh 2>/dev/null); k2=$(PM_KEY_ONLY=1 sh 3ds/build.sh 2>/dev/null)
+if [ "$(printf '%s\n' "$k1" | wc -l | tr -d ' ')" = 1 ] && echo "$k1" | grep -Eq '^[0-9a-f]{40}$' && [ "$k1" = "$k2" ] && [ -f "$kf" ] && [ "$k1" = "$(cat "$kf")" ]; then echo "ok   key only: one key line, equal to $kf"
+else echo "FAIL key only (k1 '$(printf '%s' "$k1" | tr '\n' '|')', file $kf '$(cat "$kf" 2>/dev/null)')"; fail=1; fi
 
 # (c) a partial send: the attempt's 3dslink output is kept and the NETLOADER REFUSED block is printed.
 oc=$(env PM_3DSLINK="$fake_partial" PM_SRC3DSX="$tmp/pm_3ds.3dsx" PM_ARCHIVE_DIR="$tmp" PM_PUSH_LOG="$tmp/pushed.txt" \
