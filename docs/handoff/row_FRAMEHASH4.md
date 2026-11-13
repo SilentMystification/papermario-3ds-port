@@ -13,35 +13,7 @@ Start: `sh 3ds/tools/wt_new.sh FRAMEHASH4`. PM_ROW=FRAMEHASH4 PM_LANE=FRAMEHASH4
 3ds/tools/bench.py: a new block of 3 functions right before `def shots_diff` (:1526), the 10 glob lines of the Facts, the
 compare loop of cmd_cmp (:1941-1959), cmd_ingest_last (:2030-2031). New 3ds/tests/fhashcmp/run.sh and test_fhashcmp.py.
 ## Exact edits
-1. Before `def shots_diff` add:
-```
-FHASH_RX = re.compile(r"fhash f(\d+) h ([0-9a-f]{16}) draws (\d+) words (\d+)")
-def shot_names(d):
-    """FRAMEHASH4: the compared files of a shot folder: the *.ppm shots and fhash.txt (frame hashes), sorted."""
-    d = Path(d)
-    return sorted(p.name for p in d.glob("*.ppm")) + (["fhash.txt"] if (d / "fhash.txt").is_file() else [])
-def fhash_extract(log, folder):
-    """FRAMEHASH4: the fhash entries of a log as folder/fhash.txt, one line `f<n> h <h> draws <d> words <w>` each. Returns the count."""
-    rows = ["f%s h %s draws %s words %s" % m.groups() for m in FHASH_RX.finditer(Path(log).read_text(encoding="utf-8", errors="replace"))]
-    if rows:
-        Path(folder).mkdir(parents=True, exist_ok=True)
-        (Path(folder) / "fhash.txt").write_text("\n".join(rows) + "\n", encoding="utf-8")
-    return len(rows)
-def fhash_cmp(a, b):
-    """FRAMEHASH4: (bad, lines) for two fhash.txt files: per frame `f<n> equal` or `f<n> DIFF`, then `<k>/<n> frames equal`."""
-    la, lb = Path(a).read_text(encoding="utf-8").split("\n")[:-1], Path(b).read_text(encoding="utf-8").split("\n")[:-1]
-    out, eq = [], 0
-    for i, x in enumerate(la):
-        f = x.split(" ")[0]
-        if i < len(lb) and lb[i] == x: eq += 1; out.append("  %s equal" % f)
-        else: out.append("  %s DIFF (rerun with fhashdraw=%s to name the draw)" % (f, f[1:]))
-    out.append("%d/%d frames equal" % (eq, len(la)))
-    return (0 if eq == len(la) == len(lb) and la else 1), out
-```
-2. Replace each glob of the Facts: `x.glob("*.ppm")` used for names -> `shot_names(x)`, `any(x.glob("*.ppm"))` -> `shot_names(x)`.
-   Keep `compare_ppm` for *.ppm names.
-3. cmd_cmp loop: for the name `fhash.txt` call fhash_cmp(base_dir / n, row_dir / n), print its lines, add its bad to `bad`, and
-   count it as equal when bad is 0. Other names: as today.
+1.-3. Done in 91666e3ee (FHASH_RX, shot_names, fhash_extract, fhash_cmp before shots_diff, the 10 globs, the cmd_cmp loop).
 4. Correction 1 (ORACLE8): a bench kind is a free string of the bench entry ("kind" in bench_defs.json or bench.d/<row>.json).
    bench.py has no kind list: every path tests `kind.startswith("azahar")` (:872, :901, :988, :1200, :1371, :1807, :1920, :2023).
    So "azahar_hash" needs no declaration in bench.py. FRAMEHASH5 declares it in its bench entries ("kind": "azahar_hash" in
@@ -54,16 +26,12 @@ def ingest_fhash(bd, log, shot):
 ```
    b. cmd_ingest_last: right after the line `shot = a.shots or str(SHOTS / s / ...)` add `ingest_fhash(bd, p, shot)` (before
       snap_shots, so the base copy holds fhash.txt).
-5. test_fhashcmp.py (import bench, as 3ds/tests/basekey/test_basekey.py does) with tmp folders: a log with 3 fhash entries and
-   other lines -> fhash_extract gives 3 and the exact 3 lines; shot_names of that folder == ["fhash.txt"]; fhash_cmp of two equal
-   files -> (0, [..., "3/3 frames equal"]); one hash changed in frame 2 of 3 -> bad 1 and "  f2 DIFF (rerun with fhashdraw=2 to
-   name the draw)" and "2/3 frames equal"; an empty file -> bad 1; ingest_fhash({"kind": "azahar_hash"}, log, tmp1)
-   == 3 with tmp1/fhash.txt present; ingest_fhash({"kind": "azahar_pic"}, log, tmp2) == 0 with no tmp2/fhash.txt. Print `PASS: <case>` / `FAIL: <case>`, exit 1 on a FAIL.
-   run.sh: `cd "$(dirname "$0")/../../.." && python 3ds/tests/fhashcmp/test_fhashcmp.py`.
+5. Done in 91666e3ee (9 cases). Add 2 cases to test_fhashcmp.py: ingest_fhash({"kind": "azahar_hash"}, log, tmp1) == 3 with
+   tmp1/fhash.txt present, and ingest_fhash({"kind": "azahar_pic"}, log, tmp2) == 0 with no tmp2/fhash.txt.
 6. Commit: `FRAMEHASH4: bench.py fhash.txt in the shot folder, base and cmp compare frame hashes`.
 ## Gate (expected values)
-1. Seeded fault: edits 1 and 5 only, with fhash_cmp returning 0 always: `sh 3ds/tests/fhashcmp/run.sh > build3ds/out/fh_before.txt`
-   -> a FAIL line for the changed frame. Fix fhash_cmp. All edits: run it again -> only PASS lines (11 cases), exit 0.
+1. Seeded fault (done for edits 1-3, 5). For edit 4: add the 2 cases first, run `sh 3ds/tests/fhashcmp/run.sh` -> FAIL (no
+   ingest_fhash). Then edit 4, run again -> 11 PASS lines, exit 0.
 2. `sh 3ds/tests/basekey/run.sh` and `sh 3ds/tests/benchpath/run.sh`: pass as before (the *.ppm path is unchanged).
 3. No Azahar start. Counter: none (harness row).
 ## Stop and end
