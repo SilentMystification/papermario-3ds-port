@@ -11,7 +11,7 @@
 Start: `sh 3ds/tools/wt_new.sh CONV2MTX`. PM_ROW=CONV2MTX PM_LANE=CONV2MTX on every call. Waits for CONV2WIN1 (same file).
 ## Touch only (places)
 3ds/tools/gen_gfx_syms.py (:10 and :49-52), 3ds/tools/nd_gconv.h (the GS_ kind enum), 3ds/tools/nd_gfx_conv.c :383 (the
-matrix branch), 3ds/build.sh the GT_IN line (:86).
+matrix branch), 3ds/build.sh the GT_IN line (:86), 3ds/tools/nd_gtab_test.c v_replay NDN_XF case (:429).
 ## Exact edits
 1. gen_gfx_syms.py: a second regex `MTX = re.compile(r"^Mtx\s+(\w+)\s*(\[[^\]]*\])?\s*=", re.M)`, its names added with kind
    "Mtx" and written as GS_MTX entries (address and end by `sizeof`). nd_gconv.h: GS_MTX next to GS_VTX.
@@ -19,9 +19,19 @@ matrix branch), 3ds/build.sh the GT_IN line (:86).
    symbol address + off (the table names the Mtx object). Not found: the v2_unsup line as today.
 3. build.sh :86: add 3ds/tools/nd_vslot.c to GT_IN.
 4. Commit: `CONV2MTX: Mtx symbols for the converter, matrix ops of entity lists, GT_IN lists nd_vslot.c`.
+5. Correction 1 (ORACLE8). Edits 1-4 are done (614f024cb, 77790a634, ee418504f): resume here. Cause of bad 28 (all 28 FAIL
+   lines are "transform op"): the converter is its own binary. Its w1 is the Mtx address in the converter process, and :406
+   prints it as the literal v. The compare (nd_gtab_test.c:429) reads v. The model reads w1 from the list unit in the test
+   binary (m_unit NDO_MTX, unit words of gconv_in.o). The two addresses differ by 0x1d540 every time. The p field
+   `(const char*)&NAME + off` is right: conv2c.sh links nd_gfx_tab.o and gconv_in.o into one binary, so &NAME there is the
+   address in the model's units. NDN_XF form (nd_gtab.h:79): p = const Mtx*, v only when p is NULL. The other symbol fields
+   (NDN_TEX bind, NDN_DRAW base) also compare p, never a literal address.
+   a. nd_gfx_conv.c:406: `v2_state_op(NDN_XF, a & 0xffu, 0, 0, mp);` (v 0: a converter-process address is not table data).
+   b. nd_gtab_test.c:429: `vxf[nvxf].v = o->p ? (uint32_t)(uintptr_t)o->p : o->v;` in place of `vxf[nvxf].v = o->v;`.
+   c. Commit: `CONV2MTX: matrix ops compare the linked &NAME address, no converter-process literal`.
 ## Gate (expected values)
-1. nd_host PASS with `ntab ... unsup` 21 lower than before this row and `bad 0`. Seeded fault first (a value change): add 64 to
-   the matrix symbol address in edit 2: bad above 0. Then restore.
+1. nd_host PASS with `ntab tables 923 draws 6245 bad 0` and `ntab inherit 426 unsup 23 descs 105`. Seeded fault first (a
+   value change): `moff + 64u` in the snprintf at :405 gives `bad 28` (the same 28 transform ops). Then restore.
 2. Build, memcheck OK. A second build with nd_vslot.c touched rebuilds nd_gfx_tab.c (the stamp line changes). No Azahar.
 ## Stop and end
 A matrix address that no Mtx symbol holds (hand back the list), bad above 0, or a tool fault: stop, commit, hand back the exact

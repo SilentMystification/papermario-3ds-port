@@ -11,6 +11,6 @@ A shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json, bench_def
 | BOTHUD | Haiku | 3ds/src/pm_log.c sink_main wait line (:888); 3ds/src/pm_gpu_ui.c pm_gpu_hud_flush counter; 3ds/src/pm_main.c probe next to shotbottom (:813-818); new azt.d/bench.d BOTHUD.json | ready |
 | N64DEL2 | Haiku | 3ds/tools/unifdef3ds.py condition regex, 3ds/tools/ppcmp.sh gcc line; TARGET_3DS lines of include, src/world, src/entity, src/battle, src/pause, src/filemenu, src/audio, src/evt, src/os | ready |
 | N64DEL3 | Haiku | TARGET_3DS lines of src/*.c (root only) | waits for N64DEL2 |
-| CONV2MTX | Haiku | 3ds/tools/gen_gfx_syms.py :10 and :49-52, nd_gconv.h GS_ enum, nd_gfx_conv.c matrix branch :383, build.sh GT_IN line :86 | ready|
+| CONV2MTX | Haiku | 3ds/tools/gen_gfx_syms.py :10 and :49-52, nd_gconv.h GS_ enum, nd_gfx_conv.c matrix branch :383, build.sh GT_IN line :86, nd_gtab_test.c v_replay NDN_XF case :429 | ready|
 | CONV2MIX | Haiku | 3ds/tools/nd_gfx_conv.c resolve block :270-295 | waits for CONV2MTX |
 | FPS60VAL | Sonnet | 3ds/src/pm_gpu.c end of kc_build, end of pm_gpu_key_show; new 3ds/tools/kcval.py | not started (user decides) |
