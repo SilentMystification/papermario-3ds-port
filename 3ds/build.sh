@@ -104,7 +104,7 @@ gen_gfx_tab() {
 gen_pso_tab() {
     w=$(pwd -W 2>/dev/null || pwd); ab=$(cd "$ASSET_BASE" && pwd -W 2>/dev/null || pwd)
     stamp=$OUT/pso_tab.stamp
-    PT_IN="3ds/tools/gen_pso_tab.py 3ds/tools/gen_pso_main.c src 3ds/src"
+    PT_IN="3ds/tools/gen_pso_tab.py 3ds/tools/gen_pso_main.c src 3ds/src 3ds/include"
     want="$({ git ls-files -s -- $PT_IN; git diff HEAD -- $PT_IN; git ls-files -o --exclude-standard -- $PT_IN | xargs -r sha1sum; } | sha1sum | cut -d' ' -f1)"
     if [ -f "$stamp" ] && [ -f 3ds/src/nd_pso_tab.c ] && [ "$(cat "$stamp")" = "$want" ]; then echo "gen_pso_tab: up to date"; return 0; fi
     mkdir -p "$OUT"

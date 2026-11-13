@@ -113,7 +113,7 @@ def main(argv):
     try:
         descs_c = os.path.join(tmp, "pso_descs.c")
         with open(descs_c, "w", encoding="utf-8") as fh:
-            fh.write('#include "common.h"\n#include "nd_api.h"\n')
+            fh.write('#include "nd_api.h"\n')
             for name, call in entries:
                 fh.write(call + ";\n")
             ptrs = ", ".join(f"&{n}" for n, _ in entries) or "NULL"
