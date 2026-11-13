@@ -8,7 +8,7 @@
 - `python 3ds/tools/codemod.py --dry src/effects/pink_sparkles.c` on main: `value 3 keep 3 state 0 dl 2`. The 3 kept calls write into a local Gfx array (first argument is not gMainGfxPos++): they stay.
 - The file has no TARGET_3DS line. Its last include is `#include "nd_api.h"`. The tool adds no #include.
 - Scene: fxpic_124 (fxtest 124 = pink_sparkles, pm_fxtest.c FXLIST), kind azahar_pic, shots 412 to 415, in bench_defs.json.
-- Seed source: pink_sparkles.c:246 `gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics))`. After edit 1 it is the native call with the same arguments.
+- Seed source (ORACLE8 correction, 2026-11-13: a nd_val_seg seed is dead, see row_TEMPLATE.md): pink_sparkles.c:290 `gSPMatrix(&g[1], ..., G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW)` (a kept call, in the part loop).
 Start: `sh 3ds/tools/wt_new.sh CODEMODFX14`. PM_ROW=CODEMODFX14 PM_LANE=CODEMODFX14 on every call.
 ## Touch only (places)
 src/effects/pink_sparkles.c only (the 3 value call lines and 2 include lines). No other file.
@@ -23,8 +23,8 @@ src/effects/pink_sparkles.c only (the 3 value call lines and 2 include lines). N
 3. Build, memcheck OK. `python 3ds/tools/bench.py run nd_host --row CODEMODFX14 --why "CODEMODFX14"`: PASS.
 4. Byte compare: `bench.py base fxpic_124` at the merge-base, then `bench.py run fxpic_124 --row CODEMODFX14 --why "CODEMODFX14 byte gate"` and
    `bench.py cmp fxpic_124 --row CODEMODFX14`: every shot byte-equal.
-5. Seeded fault first (a value change, then undo): in its nd_val_seg call, the base + 16. cmp fxpic_124 must show a difference. If it shows none: stop and
-   hand back.
+5. Seeded fault first (a value change, then undo): at :290 `G_MTX_MUL` -> `G_MTX_LOAD` (the kept gSPMatrix; it is not rewritten). The ELF sha1 must differ from the real edit. cmp fxpic_124 must
+   show a difference. If it shows none: stop and hand back.
 6. Budget 8 Azahar starts. Counter: C1 -3, C2 -3.
 ## Stop and end
 A cmp difference with the real edit, a seed with no difference, a base pair that differs (BASEKEEP line: tool fault), or a build

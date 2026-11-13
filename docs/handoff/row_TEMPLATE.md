@@ -21,6 +21,9 @@ Files: <paths>. Symbols: <symbol> in <file>. The oracle checks that no other run
 - `PM_ROW=<id> PM_LANE=<id> sh 3ds/build.sh > build3ds/out/build.txt 2>&1`, memcheck OK.
 - `python 3ds/tools/bench.py run nd_host --row <id> --why "<text>"`: PASS.
 - `python 3ds/tools/bench.py cmp <bench> --row <id> --commit <merge-base>` after a run of <bench>: byte-equal (at most 2 scenes).
+- A seed is live only when (1) its call runs in the frames the gate records, for the scene's spawn arguments (no guard is
+  false for them), and (2) the draw reads its value: a matrix argument, or a colour channel that the combine of the list drawn
+  next reads. Never nd_val_seg: the effect lists hold host addresses, so the segment base is not read.
 - A new gate has a seeded fault first. The seed changes a value (a constant, a length, a mask). It never deletes a statement or a
   call: with -Werror an unused variable, parameter or function then stops the build before the gate runs. State the exact FAIL set.
 - A row that adds a debug switch or a new scene: its merge-base cannot run the scene. Base the new scene at the row's own first

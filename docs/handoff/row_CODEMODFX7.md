@@ -36,9 +36,14 @@ Correction 1 (ORACLE8, 2026-11-13). Resume after 9489d0c9b (gates 1-3 passed).
    as spot_mac01_drec (bench.d/HOSTCORE2.json). Commit them. Then `bench.py base fxpic_0_drec` (merge-base build: drec is
    there since HOSTCORE2), `bench.py run fxpic_0_drec --row CODEMODFX7 --why "CODEMODFX7 drec gate"`, and
    `bench.py cmp fxpic_0_drec --row CODEMODFX7`: drec.txt byte-equal.
-5. Seeded fault (a value change, then undo): the nd_val_seg call at :131 with base + 16. This moves the segment 9 texel
-   and vertex addresses that drec records. Before the run, the sha1sum of build3ds/lane-CODEMODFX7/pm_3ds.elf must differ
-   from its value at the real edit. cmp fxpic_0_drec must differ. Budget: one reset for this oracle correction (CLAUDE.md 4).
+5. Correction 2 (ORACLE8, 2026-11-13; resume after d5f1c5172, the base and the real-edit cmp stand). The seg seed is dead:
+   the lists of the effect hold host addresses (gsDPLoadTextureTile_4b(D_09000CC0_3270D0) is a C symbol on the 3DS), so no
+   draw reads the segment 9 base. The draw reads the prim alpha: D_09000F20_327330 (the head of every sDlists list) sets
+   `gsDPSetCombineLERP(TEXEL1, TEXEL0, ENV_ALPHA, TEXEL0, ..., 0, 0, 0, COMBINED, COMBINED, 0, PRIMITIVE, 0)`, so cycle 2 alpha
+   is COMBINED * PRIMITIVE alpha. The call at :167 runs for each live part (big_smoke_puff.c appendGfx loop: a part draws
+   while unk_02 >= 0, and unk_02 starts at 16-22 at spawn frame 400, so it still draws at 412-413).
+   Seeded fault (a value change, then undo): `nd_val_prim(0, 0, 0, 0, 0, 255);` at :167 (the last argument is 255). The ELF
+   sha1 must differ. cmp fxpic_0_drec must differ.
 6. Budget 8 Azahar starts. Counter: C1 -9, C2 -9.
 ## Stop and end
 A cmp difference with the real edit, a seed with no difference, a base pair that differs (BASEKEEP line: tool fault), or a build

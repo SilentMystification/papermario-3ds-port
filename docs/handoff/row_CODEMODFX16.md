@@ -8,8 +8,7 @@
 - `python 3ds/tools/codemod.py --dry src/effects/quizmo_stage.c` on main: `value 20 keep 0 state 1 dl 13`.
 - The file has no TARGET_3DS line. Its last include is `#include "nd_gtab.h"`. The tool adds no #include.
 - fxtest 72 = quizmo_stage (pm_fxtest.c FXLIST). No stored scene draws it, so this row adds fxpic_72 (a copy of fxpic_89).
-- Seed source: src/effects/quizmo_stage.c:116 `gSPSegment(gMainGfxPos++, 0x09, ...)`. After edit 2 it is nd_val_seg with the same
-  arguments. A base + 16 moves every segment 9 address of the effect, so its texels and vertices change.
+- Seed source (ORACLE8 correction, 2026-11-13: a nd_val_seg seed is dead, see row_TEMPLATE.md): quizmo_stage.c:123 `gSPMatrix(gMainGfxPos++, ..., G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW)` (no guard).
 Start: `sh 3ds/tools/wt_new.sh CODEMODFX16`. PM_ROW=CODEMODFX16 PM_LANE=CODEMODFX16 on every call.
 ## Touch only (places)
 src/effects/quizmo_stage.c only (the 20 value call lines and 2 include lines). New 3ds/tools/azt.d/CODEMODFX16.json and
@@ -28,8 +27,8 @@ src/effects/quizmo_stage.c only (the 20 value call lines and 2 include lines). N
 3. Build, memcheck OK. `python 3ds/tools/bench.py run nd_host --row CODEMODFX16 --why "CODEMODFX16"`: PASS.
 4. At commit 1: `bench.py base fxpic_72`. After edit 4: `bench.py run fxpic_72 --row CODEMODFX16 --why "CODEMODFX16 byte gate"` and
    `bench.py cmp fxpic_72 --row CODEMODFX16`: every shot byte-equal.
-5. Seeded fault first (a value change, then undo): in that nd_val_seg call, base + 16. cmp fxpic_72 must show a difference. If it
-   shows none (the effect is not in shots 412-415): stop and hand back.
+5. Seeded fault first (a value change, then undo): in its nd_xf_push call, `G_MTX_LOAD` -> `G_MTX_MUL`. The ELF sha1 must differ from the real edit. cmp fxpic_72 must
+   show a difference. If it shows none: stop and hand back.
 6. Budget 8 Azahar starts. Counter: C1 -20, C2 -20.
 ## Stop and end
 A cmp difference with the real edit, a seed with no difference, a base pair that differs (BASEKEEP line: tool fault), or a build

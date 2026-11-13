@@ -14,7 +14,7 @@ through nd_walk_state, no pso apply, no walker handover.)
 - Hot loop (hw_guidelines.md): the runner is one call `nd_walk_state(p, b)` per table (sequential 8-byte units, no division).
 Start: `sh 3ds/tools/wt_new.sh CONV2D2`. PM_ROW=CONV2D2 PM_LANE=CONV2D2 on every call.
 ## Touch only (places)
-3ds/include/nd_gtab.h (NdNIdx, 2 prototypes), 3ds/tools/nd_gfx_conv.c (v2_convert_all: the device index after the tables),
+3ds/include/nd_gtab.h (NdNDev, 2 prototypes), 3ds/tools/nd_gfx_conv.c (V2C nk, v2_units_top, v2_convert_all index), 3ds/tools/nd_gtab_test.c (v2_compare),
 3ds/src/nd_gtab.c (nd_ntab_find inside the ND_SCOMP_HOST guard; gtr_cen one line), 3ds/src/nd_walk.c (nd_ntab_run before
 nd_gtab_run, :500 and :601), new 3ds/tools/azt.d/CONV2D2.json and 3ds/tools/bench.d/CONV2D2.json.
 ## Exact edits
@@ -22,28 +22,37 @@ nd_gtab_run, :500 and :601), new 3ds/tools/azt.d/CONV2D2.json and 3ds/tools/benc
    `warp=mac_01:0 pos=0:0:200 fxtest=89 loglevel=debug det drec=412:2`. Its until is `drec f413 draws [1-9]\d* bytes \d+`, and
    expected_events are the warp and that until. It has cap 40, deadline 35 and needs_picture false. bench.d/CONV2D2.json:
    fxpic_89_drec, kind azahar_pic, tags azahar det drec, as spot_mac01_drec in bench.d/HOSTCORE2.json.
-2. nd_gtab.h: `typedef struct NdNIdx { const void* list; const NdNTab* tab; } NdNIdx;` `extern NdNIdx ndn_dev_idx[];`
-   `extern const unsigned ndn_dev_n;` `const NdNTab* nd_ntab_find(const void* list);` `void nd_ntab_run(const NdNTab* t);`
-   (comments: core 0).
-3. nd_gfx_conv.c v2_convert_all, after the loop that prints the tables, prints to stdout:
-   `NdNIdx ndn_dev_idx[<n or 1>] = { { (const void*)NAME, &ndn_NAME }, ... };` and `const unsigned ndn_dev_n = <n>u;`.
-4. Correction 1 (ORACLE8, 2026-11-13; resume after 3c8996af3, bases stored): the host links nd_gtab.c with -DND_SCOMP_HOST
-   and without nd_walk.c (nd_host_test.sh:73, host.d/conv2c.sh:8). So nothing new goes into the host part of nd_gtab.c.
-   a. nd_gtab.c: put nd_ntab_find (a copy of gt_sort and nd_gtab_find over ndn_dev_idx and ndn_dev_n, with its own sorted flag)
-      inside the `#ifndef ND_SCOMP_HOST` block (from :29), after its #include lines. Only the device calls it (nd_gtab_run, ENTRYCAP).
-   b. nd_walk.c: put `void nd_ntab_run(const NdNTab* t) { const NdNOp* o = t->ops; if (o->op == NDN_UNIT)
-      nd_walk_state((const uint32_t*)o->p, o->b); }` before nd_gtab_run (:568). nd_walk.c includes nd_gtab.h (:19) and defines
-      nd_walk_state. No host stub is needed.
-5. nd_walk.c :601: `{ const NdNTab* nt = nd_ntab_find(t->list); if (nt) { nd_gtr_ntab++; nd_ntab_run(nt); } else gt_ops(t); }`.
+Correction 2 (ORACLE8, 2026-11-13; commit on top of 82f55531a; memcheck OVER there: static 21884, margin 102 KB; at CONV2D 21660, 326 KB).
+- What grew: ndn_dev_idx points at every NdNTab, so the linker keeps all v2 data, which it dropped before (nothing referenced
+  it). Sizes in nd_gfx_tab.c: unit copies 18633 words = 74.5 KB, ops 3742 x 16 = 59.9 KB, indices 19101 x 2 = 38.2 KB,
+  binds 442 x 72 = 31.8 KB, 922 NdNTab = 18 KB, the index 922 x 8 = 7.4 KB. Sum about 230 KB.
+- Size plan: the device gets only the index. A unit copy equals the list's own words from unit 0 to the stop (NOPs skipped by
+  nd_walk_state at nd_walk.c:368, addresses already host addresses), so the device runs the list words with the count of the
+  copy. The v2 tables stay host data (the host compare and the later native emit). The copy moves to the device when a row
+  deletes the Gfx arrays, so the net size is 0 at that time. Device cost now: 7.4 KB. Expected memcheck: margin 310 KB or more.
+2. nd_gtab.h: `typedef struct NdNDev { const void* list; uint32_t n; } NdNDev;` `extern NdNDev ndn_dev_idx[];`
+   `extern const unsigned ndn_dev_n;` `const NdNDev* nd_ntab_find(const void* list);` `void nd_ntab_run(const NdNDev* e);`
+   (comments: core 0; n = the word pairs from unit 0 to the stop of v2_units_top, NOPs included).
+3. nd_gfx_conv.c: V2C gets `unsigned nk;`. v2_units_top sets `cx->nk = k` when it stops at NDO_END, and `cx->nk = k + 1`
+   after a branch call (or at the end of g). v2_convert_all stores nk per emitted table and prints after the tables
+   `NdNDev ndn_dev_idx[<n or 1>] = { { (const void*)NAME, <nk>u }, ... };` and `const unsigned ndn_dev_n = <n>u;` (no &ndn_NAME).
+4. a. nd_gtab.c (inside `#ifndef ND_SCOMP_HOST`, as Correction 1): nd_ntab_find over ndn_dev_idx, the gt_sort and binary search
+      form, own sorted flag, returns `const NdNDev*`.
+   b. nd_walk.c before nd_gtab_run: `void nd_ntab_run(const NdNDev* e) { nd_walk_state((const uint32_t*)e->list, e->n); }`.
+   c. nd_gtab_test.c v2_compare: for each table, ndn_dev_idx holds its list with n equal to the stop index of the v2_units loop
+      (the k after the last unit, NOPs counted). Print `ntab dev entries <n> bad <b>`. The host links nd_gfx_tab.o, so the
+      index is there.
+5. nd_walk.c :601: `{ const NdNDev* nt = nd_ntab_find(t->list); if (nt) { nd_gtr_ntab++; nd_ntab_run(nt); } else gt_ops(t); }`.
    Add `nd_gtr_ntab` to the `unsigned nd_gtr_ent, ...` line (:500). gtr_cen: one more line,
    `pm_log_evt("ntabrun f%u runs %u", f, nd_gtr_ntab - <its previous value>)`, under the same condition as the gtabrun line.
-6. Commit: `CONV2D2: nd_ntab_run runs the unit copy of the v2 table in nd_gtab_run, nd_ntab_find`.
+6. Commit: `CONV2D2: device index of the v2 lists (list, unit count), nd_ntab_run runs the list words in nd_gtab_run`.
 ## Gate (expected values)
-1. Build, memcheck OK. nd_host PASS (tables 922, bad 0).
+1. Build, memcheck OK with margin 310 KB or more (hand back the static and margin numbers). nd_host PASS (tables 922, bad 0,
+   `ntab dev entries 922 bad 0`).
 2. At commit 1: `bench.py base fxpic_89_drec` and `bench.py base spot_mac01_drec`. After edit 6:
    `bench.py run fxpic_89_drec,spot_mac01_drec --row CONV2D2 --why "CONV2D2 drec"`, then `bench.py cmp` of each: drec.txt
    byte-equal. The fxpic_89_drec log has `ntabrun f\d+ runs [1-9]`.
-3. Seeded fault first (a value change, then undo): `o->b - 1u` in nd_ntab_run. cmp of fxpic_89_drec must differ.
+3. Seeded fault first (a value change, then undo): `e->n - 1u` in nd_ntab_run. cmp of fxpic_89_drec must differ.
 4. Budget 8 Azahar starts. Counter: none moves (runner row, blocker of CONV2F and ENTRYCAP).
 ## Stop and end
 No `ntabrun ... runs [1-9]` line (the scene's lists take ent_gdl or dlc_try: hand back the gtabrun lines), a drec difference with
