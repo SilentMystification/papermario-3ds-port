@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Vtx_t D_09001400_333AA0[];
 extern Gfx D_09001530_333BD0[];
@@ -214,21 +216,19 @@ void star_appendGfx(void* effect) {
     Matrix4f sp60;
     s32 i;
 
-    gDPPipeSync(gMainGfxPos++);
-    gSPSegment(gMainGfxPos++, 0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
     guPositionF(sp20, 0.0f, -gCameras[gCurrentCameraID].curYaw, 0.0f, scale, data->pos.x, data->pos.y, data->pos.z);
     guRotateF(sp60, data->starAngle, 0.0f, 0.0f, 1.0f);
     guMtxCatF(sp60, sp20, sp20);
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gDPSetPrimColor(gMainGfxPos++, 0, 80, primR, primG, primB, 255);
-    gDPSetEnvColor(gMainGfxPos++, 127, 127, 127, 127);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_val_prim(0, 80, primR, primG, primB, 255);
+    nd_val_env(127, 127, 127, 127);
 
     nd_rec_dl((data->type >= FX_STAR_LARGE_BOUNCING) ? D_09001650_333CF0 : D_09001530_333BD0);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gDPPipeSync(gMainGfxPos++);
+    nd_xf_pop(G_MTX_MODELVIEW);
 
     if (type == FX_STAR_SMALL_BOUNCING) {
         nd_rec_dl(D_090017D0_333E70);
@@ -253,9 +253,9 @@ void star_appendGfx(void* effect) {
             idx = (baseIdx - i + ARRAY_COUNT(data->trailMatrices)) % ARRAY_COUNT(data->trailMatrices);
             gDisplayContext->matrixStack[gMatrixListPos] = data->trailMatrices[idx];
 
-            gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+            nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
             gSPVertex(gMainGfxPos++, &D_09001400_333AA0[i * 2], 2, i * 2);
-            gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+            nd_xf_pop(G_MTX_MODELVIEW);
         }
 
         for (i = 0; i < 4; i++) {
@@ -265,6 +265,5 @@ void star_appendGfx(void* effect) {
                 i2 + 1, i2 + 3, i2 + 2, i2 + 1);
         }
 
-        gDPPipeSync(gMainGfxPos++);
     }
 }
