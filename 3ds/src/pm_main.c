@@ -19,6 +19,7 @@ unsigned pm_log_con_copies(void), pm_log_con_nomenu(void), pm_log_late_drop(void
 #include "pm_dspaud.h"
 #include "pm_romload.h"
 #include "nd.h"
+#include "common_structs.h" /* BOOTSTATE: Camera and PlayerStatus types for the bootstate probe */
 
 
 extern void boot_main(void* data);
@@ -815,6 +816,25 @@ void pm_frame_loop(void) {
                 snprintf(bname, sizeof bname, "bot_%04u", frame);
                 pm_gpu_shot_bottom(bname); /* MN0: the writer is pm_gpu_shot_bottom */
                 pm_log_evt("shotbottom bot_%04u frame %u", frame, frame); /* CFG-2: test-event line, the until of the panel scenarios (the file alone is not logged) */
+            }
+        }
+        { /* BOOTSTATE: bootstate=<first>:<count> logs one text line per frame of the window: the global draw inputs (layout, interp, seed, camera, Mario). The base compare of two runs reads them. */
+            static int bs0 = -2, bs1;
+            extern int pm_stretch;
+            extern Camera gCameras[4];
+            extern PlayerStatus gPlayerStatus;
+            if (bs0 == -2) {
+                char bsv[24];
+                bs0 = -1;
+                if (pm_debug_value("bootstate", bsv, sizeof bsv) && sscanf(bsv, "%d:%d", &bs0, &bs1) == 2) bs1 += bs0;
+                else bs0 = -1;
+            }
+            if (bs0 >= 0 && (int)frame >= bs0 && (int)frame < bs1) {
+                pm_log_evt("bootstate f%u wide %d stretch %d interp %d optwide %d fps60 %d seed %08x cam %d %d %d tgt %d %d %d mario %d %d %d mode %d",
+                    frame, pm_wide, pm_stretch, pm_interp_on, pm_opt.wide, pm_opt.fps60, (unsigned)gRandSeed,
+                    (int)gCameras[0].lookAt_eye.x, (int)gCameras[0].lookAt_eye.y, (int)gCameras[0].lookAt_eye.z,
+                    (int)gCameras[0].lookAt_obj.x, (int)gCameras[0].lookAt_obj.y, (int)gCameras[0].lookAt_obj.z,
+                    (int)gPlayerStatus.pos.x, (int)gPlayerStatus.pos.y, (int)gPlayerStatus.pos.z, (int)get_game_mode());
             }
         }
         PM_WD_PHASE(10);
