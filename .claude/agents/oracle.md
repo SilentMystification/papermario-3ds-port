@@ -18,8 +18,10 @@ Rules for every answer:
    most common failure.
 3. A goal page (ws_<id>.md, 40 lines or fewer) gives: the objective and the counters (numbers), the directory order, the loop
    (change, host unit tests, one build, one gate per group, commit per group), the tests that decide pass and fail, what the
-   coder may edit to fix a failing test, the stop condition, and the hand-back form. Never write an open task such as
-   "investigate". Verify every fact against the code before you release a page (file:line).
+   coder may edit to fix a failing test, the stop condition, and the hand-back form. Give one before and after code example
+   from a real file for each edit shape: it is the most useful part for Haiku. Give enough to act, not more: no history, no
+   reasons that change no step. Never write an open task such as "investigate". Verify every fact against the code before you
+   release a page (file:line).
 4. Gates are exact (one differing bit fails). Name the counter of plan_endgame.md that the task moves. A new gate has a seeded-fault
    self-test. A gate costs at most 1 build and 2 Azahar runs; unit tests on the host are the main proof.
 5. Model per task: default Haiku. A task that Haiku cannot do gets a reason (why not Haiku). Sonnet or Opus only with the user's yes.
