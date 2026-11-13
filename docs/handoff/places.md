@@ -12,5 +12,4 @@ A shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json, bench_def
 | CODEMODFX1 | Haiku | src/effects/water_splash.c, src/effects/music_note.c (value call lines, one include line each) | ready |
 | N64DEL2 | Haiku | 3ds/tools/unifdef3ds.py condition regex, 3ds/tools/ppcmp.sh gcc line; TARGET_3DS lines of include, src/world, src/entity, src/battle, src/pause, src/filemenu, src/audio, src/evt, src/os | ready |
 | N64DEL3 | Haiku | TARGET_3DS lines of src/*.c (root only) | waits for N64DEL2 |
-| CONV2C | Sonnet (accepted) | 3ds/tools/nd_gfx_conv.c, gen_gfx_tab.sh, nd_gtab_test.c; new generated 3ds/src/nd_ntab_descs.c; .gitignore one line | ready (NPSO3 numbers its descs: merge NPSO3 first or CONV2C waits for it at its last step) |
 | FPS60VAL | Sonnet | 3ds/src/pm_gpu.c end of kc_build, end of pm_gpu_key_show; new 3ds/tools/kcval.py | not started (user decides) |
