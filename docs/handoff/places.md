@@ -6,7 +6,7 @@ A shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json, bench_def
 
 | row | model | places | state |
 |---|---|---|---|
-| PUSHEND2 | Haiku | 3ds/go.ps1 :188 and the `finally` block (:246-253); 3ds/tests/push/run.sh (d) :71-73 | running |
+| PUSHEND2 | Haiku | 3ds/go.ps1 :188, the detached `$cmdLine` line (:228) and the `finally` block (:246-253); 3ds/tests/push/run.sh (d) :71-73 | running |
 | PUSHLANE | Haiku | 3ds/go.ps1 :236-238; 3ds/push_3ds.sh :176; new 3ds/tests/push/lane.sh | waits for PUSHEND2 |
 | HOSTDIR | Haiku | 3ds/tools/nd_host_test.sh one new line after `/tmp/kcc` (:73); new 3ds/tests/host.d/README.txt, 00_hostd.sh | ready (first: the 5 rows below wait for it) |
 | NOLIST | Haiku | new 3ds/tools/gen_nolist.py, 3ds/include/nd_nolist.h, 3ds/tests/host.d/nolist.sh | ready after HOSTDIR |
