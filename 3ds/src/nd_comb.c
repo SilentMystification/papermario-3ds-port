@@ -10,6 +10,8 @@
 #include "nd_int.h"
 #include "pm_gpu.h"
 #include "nd.h"
+#include "nd_api.h"
+#include "nd_psochk.h"
 #include "pm_tex.h"
 #include "pm_port.h"
 #include "variables.h"
@@ -198,6 +200,35 @@ void comb_in_walker(NdCombIn* in) {
     for (int i = 0; i < 16; i++) in->tst[i] = *tst_f[i];
     in->leg_mode = leg_mode; in->tex_on = nd_ws.tex_on; in->use_t1 = nd_ws.use_t1; in->t1_valid = nd_ws.td[1].valid; in->dual_on = dual_on;
     in->box_prod = box_prod; in->box_pat = box_pat; in->box_folded = box_folded; in->comb_set = comb_set; in->comb_alpha_shade = comb_alpha_shade;
+}
+
+/* NPSO4: the walker's description of the draw, the NdPsoDesc fields that comb_in_walker and nd_ws give (the psochk compare, nd_psochk.c). */
+void nd_walker_desc(NdPsoDesc* d) {
+    NdCombIn in; comb_in_walker(&in); memset(d, 0, sizeof *d);
+    d->cw0 = in.w0; d->cw1 = in.w1; d->omh = in.omode_h; d->oml = nd_ws.omode_l; d->geom = nd_ws.geom;
+    d->key_c = in.key_c; d->key_s = in.key_s; d->conv_k4 = in.conv_k4;
+    d->tex_on = (uint8_t)in.tex_on; d->use_t1 = (uint8_t)in.use_t1; d->t1_valid = (uint8_t)in.t1_valid; d->dual_on = (uint8_t)in.dual_on;
+    d->box_prod = (uint8_t)in.box_prod; d->box_folded = (uint8_t)in.box_folded; d->comb_set = (uint8_t)in.comb_set; d->comb_alpha_shade = (uint8_t)in.comb_alpha_shade;
+    d->leg_prev = (uint8_t)in.leg_mode; d->vprim = (uint8_t)pm_comb_vprim; d->zimg = (uint8_t)(img_role(0) == ROLE_DEPTHQ); d->plod = (uint8_t)nd_ws.prim_lod;
+}
+
+/* NPSO4: the psochk debug switch (read once). Each draw that states a description compares it with the walker's; the first 8 bad ones are logged, and a line every 100 frames. Off: one test. */
+static int psochk_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("psochk"); return v; }
+static unsigned psochk_draws, psochk_bad, psochk_nlog, psochk_bucket;
+extern unsigned pm_frame_n; /* pm_main.c: the logic step counter */
+void nd_psochk_draw(const NdPsoDesc* stated) {
+    if (!psochk_on()) return;
+    NdPsoDesc w; char txt[96];
+    nd_walker_desc(&w);
+    psochk_draws++;
+    if (nd_psochk_cmp(stated, &w, txt, sizeof txt)) {
+        psochk_bad++;
+        if (psochk_nlog < 8) { psochk_nlog++; pm_log_evt("psochk bad %s", txt); }
+    }
+    if (pm_frame_n / 100 != psochk_bucket) {
+        psochk_bucket = pm_frame_n / 100;
+        pm_log_evt("psochk f%u draws %u bad %u", pm_frame_n, psochk_draws, psochk_bad);
+    }
 }
 
 uint32_t gvk_bits(float f) { uint32_t u; memcpy(&u, &f, 4); return u; }
