@@ -8,7 +8,7 @@
 - `python 3ds/tools/codemod.py --dry src/effects/shimmer_burst.c` on main: `value 9 keep 3 state 0 dl 2`. The 3 kept calls write into a local Gfx array (first argument is not gMainGfxPos++): they stay.
 - The file has no TARGET_3DS line. Its last include is `#include "nd_api.h"`. The tool adds no #include.
 - Scene: fxpic_50 (fxtest 50 = shimmer_burst, pm_fxtest.c FXLIST), kind azahar_pic, shots 412 to 415, in bench_defs.json.
-- Seed source: shimmer_burst.c:225 `gDPSetEnvColor(gMainGfxPos++, part->unk_40, part->unk_44, part->unk_48, part->unk_5C)`. After edit 1 it is the native call with the same arguments.
+- Seed source (ORACLE8, 2026-11-13, by the seed rule of row_TEMPLATE.md): shimmer_burst.c:224 `gSPMatrix(gMainGfxPos++, ..., G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW)`, no guard (the env call at :225 is dead for the gate: its unk_40 is not shown read by the combine). Resume after 6efe2bf94.
 Start: `sh 3ds/tools/wt_new.sh CODEMODFX10`. PM_ROW=CODEMODFX10 PM_LANE=CODEMODFX10 on every call.
 ## Touch only (places)
 src/effects/shimmer_burst.c only (the 9 value call lines and 2 include lines). No other file.
@@ -23,8 +23,8 @@ src/effects/shimmer_burst.c only (the 9 value call lines and 2 include lines). N
 3. Build, memcheck OK. `python 3ds/tools/bench.py run nd_host --row CODEMODFX10 --why "CODEMODFX10"`: PASS.
 4. Byte compare: `bench.py base fxpic_50` at the merge-base, then `bench.py run fxpic_50 --row CODEMODFX10 --why "CODEMODFX10 byte gate"` and
    `bench.py cmp fxpic_50 --row CODEMODFX10`: every shot byte-equal.
-5. Seeded fault first (a value change, then undo): in its nd_val_env call, `part->unk_40` to `part->unk_40 + 1`. cmp fxpic_50 must show a difference. If it shows none: stop and
-   hand back.
+5. Seeded fault first (a value change, then undo): in the nd_xf_push call of :224, `G_MTX_LOAD` -> `G_MTX_MUL`. The ELF sha1 must differ from the real edit. cmp fxpic_50 must
+   show a difference. If it shows none: stop and hand back.
 6. Budget 8 Azahar starts. Counter: C1 -9, C2 -9.
 ## Stop and end
 A cmp difference with the real edit, a seed with no difference, a base pair that differs (BASEKEEP line: tool fault), or a build

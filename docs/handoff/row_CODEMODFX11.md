@@ -8,7 +8,7 @@
 - `python 3ds/tools/codemod.py --dry src/effects/snaking_static.c` on main: `value 6 keep 5 state 1 dl 2`. The 5 kept calls write into a local Gfx array (first argument is not gMainGfxPos++): they stay.
 - The file has no TARGET_3DS line. Its last include is `#include "nd_api.h"`. The tool adds no #include.
 - Scene: fxpic_81 (fxtest 81 = snaking_static, pm_fxtest.c FXLIST), kind azahar_pic, shots 412 to 415, in bench_defs.json.
-- Seed source: snaking_static.c:186 `gDPSetEnvColor(gMainGfxPos++, data->envCol.r, data->envCol.g, data->envCol.b, 0)`. After edit 1 it is the native call with the same arguments.
+- Seed source (ORACLE8, 2026-11-13, by the seed rule of row_TEMPLATE.md): snaking_static.c:185 `gSPMatrix(gMainGfxPos++, camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW)`, no guard.
 Start: `sh 3ds/tools/wt_new.sh CODEMODFX11`. PM_ROW=CODEMODFX11 PM_LANE=CODEMODFX11 on every call.
 ## Touch only (places)
 src/effects/snaking_static.c only (the 6 value call lines and 2 include lines). No other file.
@@ -23,8 +23,8 @@ src/effects/snaking_static.c only (the 6 value call lines and 2 include lines). 
 3. Build, memcheck OK. `python 3ds/tools/bench.py run nd_host --row CODEMODFX11 --why "CODEMODFX11"`: PASS.
 4. Byte compare: `bench.py base fxpic_81` at the merge-base, then `bench.py run fxpic_81 --row CODEMODFX11 --why "CODEMODFX11 byte gate"` and
    `bench.py cmp fxpic_81 --row CODEMODFX11`: every shot byte-equal.
-5. Seeded fault first (a value change, then undo): in its nd_val_env call, `data->envCol.r` to `data->envCol.r + 1`. cmp fxpic_81 must show a difference. If it shows none: stop and
-   hand back.
+5. Seeded fault first (a value change, then undo): in the nd_xf_push call of :185, `G_MTX_MUL` -> `G_MTX_LOAD`. The ELF sha1 must differ from the real edit. cmp fxpic_81 must
+   show a difference. If it shows none: stop and hand back.
 6. Budget 8 Azahar starts. Counter: C1 -6, C2 -6.
 ## Stop and end
 A cmp difference with the real edit, a seed with no difference, a base pair that differs (BASEKEEP line: tool fault), or a build

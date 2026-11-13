@@ -25,8 +25,8 @@ src/world/area_iwa/iwa_01/splash.c (the 4 value call lines, the include lines). 
 2. Build, memcheck OK. nd_host PASS.
 3. At commit 1: `bench.py base spot_iwa01_det`. After edit 4: `bench.py run spot_iwa01_det --row CODEMODW2 --why "CODEMODW2 byte gate"` and
    `bench.py cmp spot_iwa01_det --row CODEMODW2`: every shot byte-equal.
-4. Seeded fault (a value change, then undo): the nd_val_prim call of :57 with the third argument 230 -> 100. Before the run, the sha1sum of build3ds/lane-CODEMODW2/pm_3ds.elf must
-   differ from its value at the real edit. The cmp must differ.
+4. Seeded fault first (a value change, then undo): in the nd_xf_push call of :63, `G_MTX_MUL` -> `G_MTX_LOAD`. The ELF sha1 must differ from the real edit. cmp must must
+   show a difference. If it shows none: stop and hand back.
 5. Budget 8 Azahar starts. Counter: C1 -4, C2 -4.
 ## Stop and end
 A seed with no difference (hand back: the drawing is not in the shots), a cmp difference with the real edit, a base pair that

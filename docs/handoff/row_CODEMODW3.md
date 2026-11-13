@@ -25,7 +25,8 @@ src/world/area_flo/flo_10/waterfx.c (the 7 value call lines, the include lines).
 2. Build, memcheck OK. nd_host PASS.
 3. At commit 1: `bench.py base spot_flo10_det`. After edit 4: `bench.py run spot_flo10_det --row CODEMODW3 --why "CODEMODW3 byte gate"` and
    `bench.py cmp spot_flo10_det --row CODEMODW3`: every shot byte-equal.
-4. Seeded fault (a value change, then undo): the nd_val_prim call of :71 with the third argument 255 -> 64. Before the run, the sha1sum of build3ds/lane-CODEMODW3/pm_3ds.elf must
+4. Seeded fault (a value change, then undo): the nd_val_prim call of :71 with the last argument `alpha` -> `alpha / 2` (PM_CC_10,
+   macros.h:338, set at :250: colour TEXEL0, alpha PRIMITIVE; prim RGB is not read). Before the run, the sha1sum of build3ds/lane-CODEMODW3/pm_3ds.elf must
    differ from its value at the real edit. The cmp must differ.
 5. Budget 8 Azahar starts. Counter: C1 -7, C2 -7.
 ## Stop and end

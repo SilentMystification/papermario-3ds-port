@@ -8,7 +8,7 @@
 - `python 3ds/tools/codemod.py --dry src/effects/snowfall.c` on main: `value 4 keep 3 state 0 dl 2`. The 3 kept calls write into a local Gfx array (first argument is not gMainGfxPos++): they stay.
 - The file has no TARGET_3DS line. Its last include is `#include "nd_api.h"`. The tool adds no #include.
 - Scene: fxpic_63 (fxtest 63 = snowfall, pm_fxtest.c FXLIST), kind azahar_pic, shots 412 to 415, in bench_defs.json.
-- Seed source: snowfall.c:201 `gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 255, unk_28)`. After edit 1 it is the native call with the same arguments.
+- Seed source (ORACLE8, 2026-11-13, by the seed rule of row_TEMPLATE.md): snowfall.c:219-220 `gSPMatrix(&g[0], ..., G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW)` (a kept call, run for each flake with unk_30 <= 0 and unk_28 != 0; every flake draws through it).
 Start: `sh 3ds/tools/wt_new.sh CODEMODFX13`. PM_ROW=CODEMODFX13 PM_LANE=CODEMODFX13 on every call.
 ## Touch only (places)
 src/effects/snowfall.c only (the 4 value call lines and 2 include lines). No other file.
@@ -23,8 +23,8 @@ src/effects/snowfall.c only (the 4 value call lines and 2 include lines). No oth
 3. Build, memcheck OK. `python 3ds/tools/bench.py run nd_host --row CODEMODFX13 --why "CODEMODFX13"`: PASS.
 4. Byte compare: `bench.py base fxpic_63` at the merge-base, then `bench.py run fxpic_63 --row CODEMODFX13 --why "CODEMODFX13 byte gate"` and
    `bench.py cmp fxpic_63 --row CODEMODFX13`: every shot byte-equal.
-5. Seeded fault first (a value change, then undo): in its nd_val_prim call, the third argument 255 to 254. cmp fxpic_63 must show a difference. If it shows none: stop and
-   hand back.
+5. Seeded fault first (a value change, then undo): at :220 `G_MTX_LOAD` -> `G_MTX_MUL` (the kept gSPMatrix; it is not rewritten). The ELF sha1 must differ from the real edit. cmp fxpic_63 must
+   show a difference. If it shows none: stop and hand back.
 6. Budget 8 Azahar starts. Counter: C1 -4, C2 -4.
 ## Stop and end
 A cmp difference with the real edit, a seed with no difference, a base pair that differs (BASEKEEP line: tool fault), or a build
