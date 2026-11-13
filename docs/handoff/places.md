@@ -35,4 +35,3 @@ A shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json, bench_def
 | DRECSTEP | Haiku | 3ds/src/pm_gpu.c drec_begin, drec_end; new azt.d/bench.d DRECSTEP.json | ready |
 | SEEDTOOL | Haiku | new 3ds/tools/seedprobe.py | waits for DRECSTEP |
 | SEEDPROBE1 | Haiku | docs/handoff/row_SEEDS.md verdict column (12 lines); new azt.d/bench.d SEEDPROBE1.json | waits for SEEDTOOL (pilot) |
-| ROWLINT2 | Haiku | 3ds/tools/rowlint.py new check_symbols and its call in main, docstring kinds line; new rowlint_fixtures/symbol.md | ready |
