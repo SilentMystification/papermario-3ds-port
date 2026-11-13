@@ -1,0 +1,3 @@
+src/effects/sparkles.c
+src/effects/effect_3D.c
+src/effects/snowfall.c
