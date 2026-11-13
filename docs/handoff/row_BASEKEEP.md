@@ -12,9 +12,14 @@
   snapshot folders (bench.py:1608 `shutil.rmtree(snap ...)`). So nobody can say which shots differ, by how many pixels, where.
 Start: `sh 3ds/tools/wt_new.sh BASEKEEP`. PM_ROW=BASEKEEP PM_LANE=BASEKEEP on every call.
 ## Touch only (places)
-3ds/tools/bench.py: shots_diff (:1526-1537), the `diff = shots_diff(...)` block of base_run (:1599-1603) and its final rmtree line
-(:1608). New 3ds/tests/basediff/run.sh and test_basediff.py.
+3ds/tools/bench.py (by name, line numbers move): shots_diff, the `diff = shots_diff(...)` block of base_run and its final
+`shutil.rmtree(snap, ...)` line, and the write_png line at the end of compare_ppm. New 3ds/tests/basediff/run.sh and test_basediff.py.
 ## Exact edits
+0. Correction 1 (ORACLE8): compare_ppm(base, row, png_path) always calls write_png(png_path, ...) for differing same-size shots,
+   and write_png makes png_path's folder: None raises TypeError. In compare_ppm replace the line
+   `    write_png(png_path, bw, bh, bytes(out))` with `    if png_path is not None:` and, indented one level below it,
+   `        write_png(png_path, bw, bh, bytes(out))`, and add to its docstring "png_path None: no PNG (BASEKEEP)". cmd_cmp passes a
+   path as before. No PNG is stored or looked at for the base pair (CLAUDE.md rule 2).
 1. New function after shots_diff: `def shots_diff_all(a, b)` -> list of (name, text) for every name in shot_names(a) or
    shot_names(b): missing in one, or md5 differs (for a .ppm: text from compare_ppm(a/n, b/n, None) as "px <n> bbox x0..x1
    y0..y1", for fhash.txt or drec.txt: "text differs"). Empty list when equal.
