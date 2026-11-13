@@ -15,4 +15,4 @@ A shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json, bench_def
 | NPSO1 | Haiku | 3ds/include/nd_api.h new lines after `nd_pso_get` (:21); new 3ds/tools/nd_psodesc_test.c, 3ds/tests/host.d/psodesc.sh | ready after HOSTDIR |
 | CONV2B | Haiku | new 3ds/tools/nd_vslot.h, nd_vslot.c, nd_vslot_test.c, 3ds/tests/host.d/vslot.sh | ready after HOSTDIR |
 | FPS60VAL | Sonnet | 3ds/src/pm_gpu.c end of kc_build, end of pm_gpu_key_show; new 3ds/tools/kcval.py | not started (user decides) |
-| N64DEL1 / N64DEL2 / N64DEL3 | Haiku | new 3ds/tools/unifdef3ds.py (N64DEL1); TARGET_3DS conditional lines of src/effects / src/world, src/entity, src/battle, src/pause, src/filemenu, include / src/*.c | ready |
+| N64DEL1 / N64DEL2 / N64DEL3 | Haiku | new 3ds/tools/unifdef3ds.py and 3ds/tools/ppcmp.sh (N64DEL1); TARGET_3DS conditional lines of src/effects / src/world, src/entity, src/battle, src/pause, src/filemenu, include / src/*.c | ready |
