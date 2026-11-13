@@ -10,6 +10,5 @@ A shared registry (gen_gfx_tab.sh GCONV_SRC lines, azt_scenarios.json, bench_def
 | HOSTDIR | Haiku | 3ds/tools/nd_host_test.sh one new line after `/tmp/kcc` (:73); new 3ds/tests/host.d/README.txt, 00_hostd.sh | ready (first: the 5 rows below wait for it) |
 | NOLIST | Haiku | new 3ds/tools/gen_nolist.py, 3ds/include/nd_nolist.h, 3ds/tests/host.d/nolist.sh | ready after HOSTDIR |
 | FRAMEHASH1 | Haiku | new 3ds/include/nd_fhash.h, 3ds/src/nd_fhash.c, 3ds/tools/nd_fhash_test.c, 3ds/tests/host.d/fhash.sh | ready after HOSTDIR |
-| NPSO1 | Haiku | 3ds/include/nd_api.h new lines after `nd_pso_get` (:21); new 3ds/tools/nd_psodesc_test.c, 3ds/tests/host.d/psodesc.sh | ready after HOSTDIR |
 | FPS60VAL | Sonnet | 3ds/src/pm_gpu.c end of kc_build, end of pm_gpu_key_show; new 3ds/tools/kcval.py | not started (user decides) |
 | N64DEL1 / N64DEL2 / N64DEL3 | Haiku | new 3ds/tools/unifdef3ds.py and 3ds/tools/ppcmp.sh (N64DEL1); TARGET_3DS conditional lines of src/effects / src/world, src/entity, src/battle, src/pause, src/filemenu, include / src/*.c | ready |
