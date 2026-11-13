@@ -1,0 +1,29 @@
+{
+  "scenarios": [
+    {
+      "name": "fxpic_81_drec",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 at 0 0 200, fxtest=81 (snaking_static), cold det start. Draw records of frames 412 and 413 go to shots/drec.txt in place of the shots.",
+      "proves": "CODEMODFX11: the draw record text of snaking_static frames 412 and 413 (nd_native_submit, HOSTCORE2) is byte-equal between the base build and the head build.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=81 loglevel=debug det drec=412:2",
+      "extra": [],
+      "until": "drec f413 draws [1-9]\\d* bytes \\d+",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "drec 413",
+          "regex": "drec f413 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "reason": "CODEMODFX11 drec gate for the snaking_static run: fxpic_81 with drec=412:2 in place of the shots (drec does not read the framebuffer). Cold det start, cap 40 s, deadline 35 s. The drec line at frame 413 is the until."
+    }
+  ]
+}
