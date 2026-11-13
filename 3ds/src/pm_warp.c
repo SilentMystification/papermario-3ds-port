@@ -1971,7 +1971,6 @@ static void bosstest_hook(unsigned f) {
 }
 
 extern int pm_stretch;
-extern unsigned gRandSeed;
 void pm_warp_tick(unsigned frame) {
     pm_statehash(frame); /* MA1 step 0: runs in every scene, also without warp */
     boss_tick();
