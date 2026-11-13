@@ -5,10 +5,10 @@
       "kind": "azahar",
       "speed": "normal",
       "default": false,
-      "purpose": "AMBTITLE: return to the title from Gusty Gulch stops the ambient MSEQ player (startup ambient stopped line).",
+      "purpose": "AMBTITLE: return to the title from Gusty Gulch leaves the ambient MSEQ player silent (ambchk title line).",
       "scenario": "amb_title_arn02",
       "cap": 45,
-      "until": "startup [1-9]\\d* ambient stopped ",
+      "until": "ambchk title f\\d+ stopped ",
       "tags": [
         "azahar"
       ],

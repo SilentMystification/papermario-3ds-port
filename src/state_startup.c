@@ -67,7 +67,7 @@ void state_step_startup(void) {
     sfx_clear_sounds();
     snd_ambient_stop_quick(0); /* AMBTITLE: the soft reset (return to title) does not reboot the audio: stop the ambient MSEQ player */
     reset_ambient_sounds();
-    { static int n; pm_log_evt("startup %d ambient stopped %d", n++, snd_ambient_is_stopped(0) == AU_RESULT_OK); }
+    { static int n; pm_log_evt("startup %d ambient stop issued", n++); }
     bgm_reset_volume();
     initialize_curtains();
 
