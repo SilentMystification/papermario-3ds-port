@@ -1418,7 +1418,10 @@ void pm_poslog_line(void) {
 void pm_warp_world_mode(unsigned frame) {
     static int ac = -1; /* AMBWARP: debug switch ambchk, read once: logs the ambient stop state on the map the warp lands on */
     if (ac < 0) ac = pm_debug_has("ambchk");
-    if (ac) pm_log_evt("ambchk f%u map %s stopped %d", frame, gAreas[gGameStatusPtr->areaID].maps[gGameStatusPtr->mapID].id, snd_ambient_is_stopped(0) == AU_RESULT_OK);
+    if (ac) {
+        AuResult rc = snd_ambient_is_stopped(0); /* AMBWARP: no ambient player at all (numActivePlayers 0) gives AU_AMBIENCE_ERROR_3 and is silent too */
+        pm_log_evt("ambchk f%u map %s stopped %d", frame, gAreas[gGameStatusPtr->areaID].maps[gGameStatusPtr->mapID].id, rc == AU_RESULT_OK || rc == AU_AMBIENCE_ERROR_3);
+    }
     if (pend_on && gGameStatusPtr->areaID == pend_area && gGameStatusPtr->mapID == pend_map) { /* POSWARP: the load a warp armed, on its map only (a door or pipe does not arm it) */
         pend_on = 0;
         pos_n = pend_n; memcpy(pos_v, pend_v, sizeof pos_v); pos_on = 1;
