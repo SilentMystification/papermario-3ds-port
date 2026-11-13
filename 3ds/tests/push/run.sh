@@ -77,8 +77,8 @@ if echo "$od" | grep -q 'PUSH STARTED' && [ $((t1 - t0)) -le 5 ]; then echo "ok 
 else echo "FAIL detached PUSH STARTED ($((t1 - t0)) s)"; echo "$od" | tail -n 20; fail=1; fi
 w0=$(date +%s)
 until grep -q 'PUSH END' build3ds/out/push_last.txt 2>/dev/null || [ $(( $(date +%s) - w0 )) -ge 60 ]; do sleep 1; done
-if grep -q 'PUSH END' build3ds/out/push_last.txt 2>/dev/null; then echo "ok   detached PUSH END ($(tr -d '\r\n\357\273\277' <build3ds/out/push_last.txt))"
-else echo "FAIL detached PUSH END within 60 s"; fail=1; fi
+if grep -q 'PUSH END rc 6 .*PUSH RESULT sent-no-log rc 6' build3ds/out/push_last.txt 2>/dev/null; then echo "ok   detached PUSH END ($(tr -d '\r\n\357\273\277' <build3ds/out/push_last.txt))"
+else echo "FAIL detached PUSH END with the result ($(cat build3ds/out/push_last.txt 2>/dev/null))"; fail=1; fi
 
 # (e) slow send (PUSHFIX2): progress every 2 s for 16 s, then 100% and exit 0. NOGROW_SECS=4 must not kill it;
 # the cap for the 13 MB dummy is 195 s (15 s per MB).

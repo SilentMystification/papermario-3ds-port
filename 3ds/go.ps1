@@ -185,6 +185,7 @@ function Push-One([string]$t) {
             } finally {
                 if (-not $pushDone) { Stop-PushShell }
             }
+            if ($LASTEXITCODE -eq 6) { Write-Host "=== push ${t}: sent, the game sent no line ==="; return 6 } # PUSHEND2
             if ($LASTEXITCODE -ne 0) { throw "push_3ds.sh exited $LASTEXITCODE" }
         }
         Write-Host "=== push ${t}: done ==="
@@ -244,13 +245,15 @@ if ($Verb -eq 'push') {
     } catch {
         Write-Output "push ${Target}: $($_.Exception.Message)"
     } finally {
-        if ($Fg) {
-            # PUSHFIX: the child's end line, in the log (stdout) and in build3ds/out/push_last.txt.
-            $endLine = "PUSH END rc $rc $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
-            Write-Output $endLine
-            New-Item -ItemType Directory -Force -Path (Join-Path $repo 'build3ds/out') | Out-Null
-            Set-Content -Path (Join-Path $repo 'build3ds/out/push_last.txt') -Value $endLine
-        }
+        # PUSHEND2: one end line in every mode: rc, time and the PUSH RESULT line of push_3ds.sh (only one written by this run).
+        $rf = Join-Path $repo 'build3ds/out/push_result.txt'
+        $res = $null
+        if ((Test-Path $rf) -and (Get-Item $rf).LastWriteTime -ge (Get-Process -Id $PID).StartTime) { $res = Get-Content $rf | Select-Object -Last 1 }
+        if (-not $res) { $res = "PUSH RESULT failed rc ${rc}: go.ps1 ended before push_3ds.sh wrote a result (see the lines above)" }
+        $endLine = "PUSH END rc $rc $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') $res"
+        Write-Output $endLine
+        New-Item -ItemType Directory -Force -Path (Join-Path $repo 'build3ds/out') | Out-Null
+        Set-Content -Path (Join-Path $repo 'build3ds/out/push_last.txt') -Value $endLine
     }
     exit $rc
 }
