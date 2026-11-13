@@ -7,16 +7,22 @@
 - pm_gpu.c records the GX entries of a frame only while kc_rec is set: begin_wait :2913 `kc_rec = pm_interp_on > 0; ...`, kc_take
   (:~2970, static) copies q->entries into kc_ent, kc_build (:3129, before C3D_FrameEnd) takes them. A process list entry is
   `data[0] & 0xFF == 1`, data[1] = list address (virtual), data[2] = bytes. The open tail list is GPUCMD_GetBuffer (base, toff).
-- Physical to virtual: osConvertPhysToVirt (libctru). Targets: target and targetR colorBuf / depthBuf, the off-screen slots
+- Physical to virtual (correction 1): libctru has no osConvertPhysToVirt. pm_gpu.c:617-620 drec_p2v(phys, dl) (HOSTCORE2) maps
+  VRAM 0x18000000-0x18600000 to +0x07000000 and the linear heap by dl = phys - virt of any linear pointer. nd_fh_frame reads
+  vertex and index bytes (ring and static area: linear heap), texels (linear stage copies or VRAM slots); targets give only a
+  role. Every read is VRAM or linear heap. drec_p2v has no range check: fh_map adds it. Targets: target and targetR colorBuf / depthBuf, the off-screen slots
   gs.offs[k].tex.data (pm_gpu.c :2051-2140).
 Start: `sh 3ds/tools/wt_new.sh FRAMEHASH3`. PM_ROW=FRAMEHASH3 PM_LANE=FRAMEHASH3 on every call. Blocker FRAMEHASH2: merged.
 ## Touch only (places)
-3ds/src/pm_gpu.c: the kc_rec line in pm_gpu_begin_wait (:2913), one new cold function block right above pm_gpu_end_w, one call
+3ds/src/pm_gpu.c: one forward declaration `static int fh_on(void);` right above pm_gpu_begin_wait (correction 1), the kc_rec line in pm_gpu_begin_wait (:2913), one new cold function block right above pm_gpu_end_w, one call
 line right before `kc_build();` (:3129). New azt.d/FRAMEHASH3.json, bench.d/FRAMEHASH3.json. FPS60VAL (not started) waits.
 ## Exact edits
-1. Above pm_gpu_end_w add a cold block: `static int fh_sw = -2, fh_w0, fh_w1;` and `static int fh_on(void)` that reads once
+1. Above pm_gpu_end_w add a cold block, starting with `#include "nd_fhash.h"` (correction 1): `static int fh_sw = -2, fh_w0, fh_w1;` and `static int fh_on(void)` that reads once
    `fhash` (pm_debug_has) and `fhwin=<first>:<count>` (pm_debug_value, sscanf "%d:%d") and returns 1 when the switch is on and
-   pm_frame_count() is in [first, first + count). Callbacks: `fh_map(pa, n, ctx)` = `osConvertPhysToVirt(pa)` (NULL stays NULL),
+   pm_frame_count() is in [first, first + count). Callbacks: `fh_map(pa, n, ctx)`: VRAM (pa in
+   0x18000000..0x18600000 - n) -> drec_p2v(pa, 0); else v = pa - dl with dl = osConvertVirtToPhys(kc_base) - (u32)kc_base (set in
+   fh_frame, passed in ctx); return v when [v, v + n) lies in [__ctru_linear_heap, __ctru_linear_heap + __ctru_linear_heap_size)
+   (`extern u32 __ctru_linear_heap, __ctru_linear_heap_size;`), else NULL (nd_fh_frame then feeds 0xDEADBEEF and n),
    `fh_role(pa, ctx)`: 1 colour and 2 depth of target, 3 and 4 of targetR, 16 + k for off-screen slot k (compare pa with
    osConvertVirtToPhys of each buffer), else 255. `static __attribute__((cold, noinline)) void fh_frame(void)`: kc_take(q);
    h = ND_FH_INIT; words = 0; for each kc_ent with id 1: nd_fh_frame(&h, (const u32*)data[1], data[2] / 4, &env), words +=
