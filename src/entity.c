@@ -5,28 +5,12 @@
 #include "sprite/player.h"
 #include "pm_interp_fi.h"
 
-#ifdef SHIFT
-extern Addr WorldEntityHeapBottom;
-extern Addr WorldEntityHeapBase;
-#define WORLD_ENTITY_HEAP_BOTTOM (s32) WorldEntityHeapBottom
-#define WORLD_ENTITY_HEAP_BASE (s32) WorldEntityHeapBase
-#define entity_jan_iwa_VRAM (void*) entity_jan_iwa_VRAM
-#define entity_sbk_omo_VRAM (void*) entity_sbk_omo_VRAM
-#define entity_default_VRAM (void*) entity_default_VRAM
-#elif defined(TARGET_3DS)
 extern u8 pm_world_entity_heap[];
 #define WORLD_ENTITY_HEAP_BOTTOM ((s32)pm_world_entity_heap)
 #define WORLD_ENTITY_HEAP_BASE ((s32)pm_world_entity_heap + 0x17FF0)
 #define entity_jan_iwa_VRAM (void*) 0x802BAE00
 #define entity_sbk_omo_VRAM (void*) 0x802BAE00
 #define entity_default_VRAM (void*) 0x802BAE00
-#else
-#define WORLD_ENTITY_HEAP_BOTTOM 0x80250000
-#define WORLD_ENTITY_HEAP_BASE 0x80267FF0
-#define entity_jan_iwa_VRAM (void*) 0x802BAE00
-#define entity_sbk_omo_VRAM (void*) 0x802BAE00
-#define entity_default_VRAM (void*) 0x802BAE00
-#endif
 
 s32 D_8014AFB0 = 255;
 

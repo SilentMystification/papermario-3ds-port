@@ -289,7 +289,6 @@ enum {
     VINE_RENDER_STATE_OK        = 1,
 };
 
-#if defined(SHIFT) || defined(TARGET_3DS) // 3DS: no fixed N64 address, use the real buffers
 extern Addr Vine3Base;
 extern Addr Vine2Base;
 extern Addr Vine1Base;
@@ -298,12 +297,6 @@ extern Addr Vine0Base;
 #define VINE_1_BASE (s32) Vine1Base
 #define VINE_2_BASE (s32) Vine2Base
 #define VINE_3_BASE (s32) Vine3Base
-#else
-#define VINE_0_BASE 0x80234000
-#define VINE_1_BASE 0x80231000
-#define VINE_2_BASE 0x8022E000
-#define VINE_3_BASE 0x8022C000
-#endif
 
 BSS LavaPiranhaVine N(VineData)[NUM_VINES];
 BSS s32 N(VineRenderState);
