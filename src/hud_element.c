@@ -291,8 +291,8 @@ typedef struct NdHudRec {
 } NdHudRec;
 _Static_assert(sizeof(NdHudPiece) == 48 && __builtin_offsetof(NdHudRec, pc) == 64, "NdHudRec: whole 8-byte units");
 
-#define gMainGfxPos (*gp)
-static void hud_rect_emit(const NdHudRec* hudElement, Gfx** gp, s32 anchor) {
+#define HO(k, v) nd_nr_o(o, (k), (v))
+static void hud_rect_emit(const NdHudRec* hudElement, uint32_t** o, s32 anchor) {
     s32 fmt, masks, maskt, flipX, flipY, clamp, dropShadow, widthScale, heightScale;
     s16 texSizeX, texSizeY;
     IMG_PTR imageAddr;
@@ -316,36 +316,36 @@ static void hud_rect_emit(const NdHudRec* hudElement, Gfx** gp, s32 anchor) {
 
     switch (fmt) {
         case 0:
-            nd_pso_rm(G_RM_XLU_SURF, G_RM_XLU_SURF2);
-            nd_pso_lut(G_TT_NONE);
+            NDST_RM(HO, G_RM_XLU_SURF, G_RM_XLU_SURF2);
+            NDST_LUT(HO, G_TT_NONE);
             break;
         case 1:
             if (!(hudElement->flags & HUD_ELEMENT_FLAG_TRANSPARENT)) {
                 if (!(hudElement->flags & HUD_ELEMENT_FLAG_ANTIALIASING)) {
-                    nd_pso_rm(G_RM_TEX_EDGE, G_RM_TEX_EDGE2);
+                    NDST_RM(HO, G_RM_TEX_EDGE, G_RM_TEX_EDGE2);
                 } else {
-                    nd_pso_rm(G_RM_AA_TEX_EDGE, G_RM_AA_TEX_EDGE2);
+                    NDST_RM(HO, G_RM_AA_TEX_EDGE, G_RM_AA_TEX_EDGE2);
                 }
             } else {
                 if (!(hudElement->flags & HUD_ELEMENT_FLAG_ANTIALIASING)) {
-                    nd_pso_rm(G_RM_CLD_SURF, G_RM_CLD_SURF2);
+                    NDST_RM(HO, G_RM_CLD_SURF, G_RM_CLD_SURF2);
                 } else {
-                    nd_pso_rm(G_RM_CLD_SURF | AA_EN, G_RM_CLD_SURF2 | AA_EN);
+                    NDST_RM(HO, G_RM_CLD_SURF | AA_EN, G_RM_CLD_SURF2 | AA_EN);
                 }
             }
-            nd_pso_lut(G_TT_RGBA16);
-            gDPLoadTLUT_pal16(gMainGfxPos++, 0, paletteAddr);
+            NDST_LUT(HO, G_TT_RGBA16);
+            NDTX_LOAD_TLUT16(HO, 0, paletteAddr);
             break;
         case 2:
-            nd_pso_rm(G_RM_XLU_SURF, G_RM_XLU_SURF2);
-            nd_pso_lut(G_TT_NONE);
+            NDST_RM(HO, G_RM_XLU_SURF, G_RM_XLU_SURF2);
+            NDST_LUT(HO, G_TT_NONE);
             break;
     }
 
     if (hudElement->flags & HUD_ELEMENT_FLAG_FILTER_TEX) {
-        nd_pso_filt(G_TF_AVERAGE);
+        NDST_FILT(HO, G_TF_AVERAGE);
     } else {
-        nd_pso_filt(G_TF_POINT);
+        NDST_FILT(HO, G_TF_POINT);
     }
 
     for (k = 0; k < hudElement->npc; k++) {
@@ -357,103 +357,103 @@ static void hud_rect_emit(const NdHudRec* hudElement, Gfx** gp, s32 anchor) {
 
             switch (fmt) {
                 case 0:
-                    nd_pso_cc(G_CC_DECALRGBA, G_CC_DECALRGBA);
+                    NDST_CC(HO, G_CC_DECALRGBA, G_CC_DECALRGBA);
                     if (!(hudElement->flags & HUD_ELEMENT_FLAG_TRANSPARENT)) {
-                        nd_pso_cc(G_CC_DECALRGBA, G_CC_DECALRGBA);
+                        NDST_CC(HO, G_CC_DECALRGBA, G_CC_DECALRGBA);
                     } else {
-                        nd_pso_cc(PM_CC_01, PM_CC_02);
+                        NDST_CC(HO, PM_CC_01, PM_CC_02);
                     }
 
                     if (hudElement->flags & HUD_ELEMENT_FLAG_TRANSPARENT) {
-                        nd_val_prim(0, 0, 0, 0, 0, hudElement->opacity);
+                        NDVAL_PRIM(HO, 0, 0, 0, 0, 0, hudElement->opacity);
                     }
 
                     if (!flipX && !flipY) {
-                        gDPLoadTextureTile(gMainGfxPos++, imageAddr, G_IM_FMT_RGBA, G_IM_SIZ_32b, texSizeX, texSizeY, uls, ult, lrs, lrt, 0,
+                        NDTX_LOAD_TILE(HO, imageAddr, G_IM_FMT_RGBA, G_IM_SIZ_32b, texSizeX, texSizeY, uls, ult, lrs, lrt, 0,
                                             G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, masks, maskt, G_TX_NOLOD, G_TX_NOLOD);
                     } else {
-                        gDPLoadTextureTile(gMainGfxPos++, imageAddr, G_IM_FMT_RGBA, G_IM_SIZ_32b, texSizeX, texSizeY, uls, ult, lrs, lrt, 0,
+                        NDTX_LOAD_TILE(HO, imageAddr, G_IM_FMT_RGBA, G_IM_SIZ_32b, texSizeX, texSizeY, uls, ult, lrs, lrt, 0,
                                             G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP, masks, maskt, G_TX_NOLOD, G_TX_NOLOD);
                     }
                     break;
                 case 1:
                     if (!dropShadow) {
                         if (hudElement->flags & HUD_ELEMENT_FLAG_TRANSPARENT) {
-                            nd_pso_cc(PM_CC_2F, PM_CC_32);
+                            NDST_CC(HO, PM_CC_2F, PM_CC_32);
                         } else {
-                            nd_pso_cc(PM_CC_2F, PM_CC_32);
+                            NDST_CC(HO, PM_CC_2F, PM_CC_32);
                         }
 
                         if (hudElement->flags & HUD_ELEMENT_FLAG_TRANSPARENT) {
-                            nd_val_prim(0, 0, hudElement->tint.r, hudElement->tint.g, hudElement->tint.b, hudElement->opacity);
+                            NDVAL_PRIM(HO, 0, 0, hudElement->tint.r, hudElement->tint.g, hudElement->tint.b, hudElement->opacity);
                         } else {
-                            nd_val_prim(0, 0, hudElement->tint.r, hudElement->tint.g, hudElement->tint.b, 255);
+                            NDVAL_PRIM(HO, 0, 0, hudElement->tint.r, hudElement->tint.g, hudElement->tint.b, 255);
                         }
                     } else {
-                        nd_pso_rm(G_RM_XLU_SURF, G_RM_XLU_SURF2);
-                        nd_pso_cc(PM_CC_07, PM_CC_07);
-                        nd_val_prim(0, 0, 40, 40, 40, 72);
+                        NDST_RM(HO, G_RM_XLU_SURF, G_RM_XLU_SURF2);
+                        NDST_CC(HO, PM_CC_07, PM_CC_07);
+                        NDVAL_PRIM(HO, 0, 0, 40, 40, 40, 72);
                     }
 
                     if (!flipX && !flipY) {
                         if (!clamp) {
-                            gDPLoadTextureTile_4b(gMainGfxPos++, imageAddr, G_IM_FMT_CI, texSizeX, texSizeY, uls, ult, lrs, lrt, 0,
+                            NDTX_LOAD_TILE_4B(HO, imageAddr, G_IM_FMT_CI, texSizeX, texSizeY, uls, ult, lrs, lrt, 0,
                                             G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, masks, maskt, G_TX_NOLOD, G_TX_NOLOD);
                         } else {
                             switch (tileMode) {
                                 case 0:
-                                    gDPLoadTextureTile_4b(gMainGfxPos++, imageAddr, G_IM_FMT_CI, texSizeX, texSizeY, uls, ult, lrs, lrt, 0,
+                                    NDTX_LOAD_TILE_4B(HO, imageAddr, G_IM_FMT_CI, texSizeX, texSizeY, uls, ult, lrs, lrt, 0,
                                             G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, masks, maskt, G_TX_NOLOD, G_TX_NOLOD);
                                     break;
                                 case 1:
-                                    gDPLoadTextureTile_4b(gMainGfxPos++, imageAddr, G_IM_FMT_CI, texSizeX, texSizeY, uls, ult, lrs, lrt, 0,
+                                    NDTX_LOAD_TILE_4B(HO, imageAddr, G_IM_FMT_CI, texSizeX, texSizeY, uls, ult, lrs, lrt, 0,
                                             G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, masks, maskt, G_TX_NOLOD, G_TX_NOLOD);
                                     break;
                                 case 2:
-                                    gDPLoadTextureTile_4b(gMainGfxPos++, imageAddr, G_IM_FMT_CI, texSizeX, texSizeY, uls, ult, lrs, lrt, 0,
+                                    NDTX_LOAD_TILE_4B(HO, imageAddr, G_IM_FMT_CI, texSizeX, texSizeY, uls, ult, lrs, lrt, 0,
                                             G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, masks, maskt, G_TX_NOLOD, G_TX_NOLOD);
                                     break;
                                 case 3:
-                                    gDPLoadTextureTile_4b(gMainGfxPos++, imageAddr, G_IM_FMT_CI, texSizeX, texSizeY, uls, ult, lrs, lrt, 0,
+                                    NDTX_LOAD_TILE_4B(HO, imageAddr, G_IM_FMT_CI, texSizeX, texSizeY, uls, ult, lrs, lrt, 0,
                                             G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, masks, maskt, G_TX_NOLOD, G_TX_NOLOD);
                                     break;
                             }
                         }
                     } else {
-                        gDPLoadTextureTile_4b(gMainGfxPos++, imageAddr, G_IM_FMT_CI, texSizeX, texSizeY, uls, ult, lrs, lrt, 0,
+                        NDTX_LOAD_TILE_4B(HO, imageAddr, G_IM_FMT_CI, texSizeX, texSizeY, uls, ult, lrs, lrt, 0,
                                             G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP, masks, maskt, G_TX_NOLOD, G_TX_NOLOD);
                     }
                     break;
                 case 2:
-                    nd_pso_cc(PM_CC_47, PM_CC_47);
-                    nd_val_prim(0, 0, hudElement->tint.r, hudElement->tint.g, hudElement->tint.b, hudElement->opacity);
+                    NDST_CC(HO, PM_CC_47, PM_CC_47);
+                    NDVAL_PRIM(HO, 0, 0, hudElement->tint.r, hudElement->tint.g, hudElement->tint.b, hudElement->opacity);
 
                     if (!flipX && !flipY) {
                         if (!clamp) {
                             switch (tileMode) {
                                 case 0:
-                                    gDPLoadTextureTile(gMainGfxPos++, imageAddr, G_IM_FMT_IA, G_IM_SIZ_8b, texSizeX, texSizeY, uls, ult, lrs, lrt, 0,
+                                    NDTX_LOAD_TILE(HO, imageAddr, G_IM_FMT_IA, G_IM_SIZ_8b, texSizeX, texSizeY, uls, ult, lrs, lrt, 0,
                                             G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, masks, maskt, G_TX_NOLOD, G_TX_NOLOD);
                                     break;
                                 case 1:
-                                    gDPLoadTextureTile(gMainGfxPos++, imageAddr, G_IM_FMT_IA, G_IM_SIZ_8b, texSizeX, texSizeY, uls, ult, lrs, lrt, 0,
+                                    NDTX_LOAD_TILE(HO, imageAddr, G_IM_FMT_IA, G_IM_SIZ_8b, texSizeX, texSizeY, uls, ult, lrs, lrt, 0,
                                             G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, masks, maskt, G_TX_NOLOD, G_TX_NOLOD);
                                     break;
                                 case 2:
-                                    gDPLoadTextureTile(gMainGfxPos++, imageAddr, G_IM_FMT_IA, G_IM_SIZ_8b, texSizeX, texSizeY, uls, ult, lrs, lrt, 0,
+                                    NDTX_LOAD_TILE(HO, imageAddr, G_IM_FMT_IA, G_IM_SIZ_8b, texSizeX, texSizeY, uls, ult, lrs, lrt, 0,
                                             G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, masks, maskt, G_TX_NOLOD, G_TX_NOLOD);
                                     break;
                                 case 3:
-                                    gDPLoadTextureTile(gMainGfxPos++, imageAddr, G_IM_FMT_IA, G_IM_SIZ_8b, texSizeX, texSizeY, uls, ult, lrs, lrt, 0,
+                                    NDTX_LOAD_TILE(HO, imageAddr, G_IM_FMT_IA, G_IM_SIZ_8b, texSizeX, texSizeY, uls, ult, lrs, lrt, 0,
                                             G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, masks, maskt, G_TX_NOLOD, G_TX_NOLOD);
                                     break;
                             }
                         } else {
-                            gDPLoadTextureTile(gMainGfxPos++, imageAddr, G_IM_FMT_IA, G_IM_SIZ_8b, texSizeX, texSizeY, uls, ult, lrs, lrt, 0,
+                            NDTX_LOAD_TILE(HO, imageAddr, G_IM_FMT_IA, G_IM_SIZ_8b, texSizeX, texSizeY, uls, ult, lrs, lrt, 0,
                                             G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, masks, maskt, G_TX_NOLOD, G_TX_NOLOD);
                         }
                     } else {
-                        gDPLoadTextureTile(gMainGfxPos++, imageAddr, G_IM_FMT_IA, G_IM_SIZ_8b, texSizeX, texSizeY, uls, ult, lrs, lrt, 0,
+                        NDTX_LOAD_TILE(HO, imageAddr, G_IM_FMT_IA, G_IM_SIZ_8b, texSizeX, texSizeY, uls, ult, lrs, lrt, 0,
                                             G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP, masks, maskt, G_TX_NOLOD, G_TX_NOLOD);
                     }
                     break;
@@ -461,16 +461,16 @@ static void hud_rect_emit(const NdHudRec* hudElement, Gfx** gp, s32 anchor) {
 
             if (hudElement->flags & HUD_ELEMENT_FLAG_FILTER_TEX) {
                 if (!(anchor && pm_anchor_rect(ulx * 4, uly * 4, lrx * 4, lry * 4, 0, texStartX * 32 + 16, texStartY * 32 + 16, widthScale, heightScale))) {
-                    gSPScisTextureRectangle(gMainGfxPos++, ulx * 4, uly * 4, lrx * 4, lry * 4, 0, texStartX * 32 + 16, texStartY * 32 + 16, widthScale, heightScale);
+                    if (o) NDTX_RECT_SCIS(HO, ulx * 4, uly * 4, lrx * 4, lry * 4, 0, texStartX * 32 + 16, texStartY * 32 + 16, widthScale, heightScale); else nd_rect_scis(ulx * 4, uly * 4, lrx * 4, lry * 4, 0, texStartX * 32 + 16, texStartY * 32 + 16, widthScale, heightScale);
                 }
             } else {
                 if (!(anchor && pm_anchor_rect(ulx * 4, uly * 4, lrx * 4, lry * 4, 0, texStartX * 32, texStartY * 32, widthScale, heightScale))) {
-                    gSPScisTextureRectangle(gMainGfxPos++, ulx * 4, uly * 4, lrx * 4, lry * 4, 0, texStartX * 32, texStartY * 32, widthScale, heightScale);
+                    if (o) NDTX_RECT_SCIS(HO, ulx * 4, uly * 4, lrx * 4, lry * 4, 0, texStartX * 32, texStartY * 32, widthScale, heightScale); else nd_rect_scis(ulx * 4, uly * 4, lrx * 4, lry * 4, 0, texStartX * 32, texStartY * 32, widthScale, heightScale);
                 }
             }
     }
 }
-#undef gMainGfxPos
+#undef HO
 
 /* NAPI2B (NATIVEAPI A1): the direct executor of a HUD element record. The record states what hud_rect_emit writes as ops: a pso (the combine and
  * render mode words of its fmt, flags and drop shadow), the texture window of each piece (nd_tex_win_desc: the tile 0 that the load ops give the
@@ -560,11 +560,11 @@ static int hud_rect_direct(const NdHudRec* r) { /* 0 drawn, else why the old pat
 /* core 0: one HUD element record, drawn directly (hud_rect_direct) or, when it cannot state the record, emitted into a local list and walked as state ops
  * (at most 9 prologue units + 32 pieces of 14 + 1 = 458 units). */
 static void hud_rect_run(const uint32_t* u) {
-    static Gfx buf[512];
-    Gfx* p = buf;
+    static uint32_t buf[1024];
+    uint32_t* nrp = buf;
     { const int why = hud_rect_direct((const NdHudRec*)u); if (!why) return; if (why != 5) nd_direct_fallback((unsigned)why); }
-    hud_rect_emit((const NdHudRec*)u, &p, 0);
-    nd_walk_state((const uint32_t*)buf, (unsigned)(p - buf));
+    hud_rect_emit((const NdHudRec*)u, &nrp, 0);
+    nd_nr_exec(buf, (unsigned)(nrp - buf) / 2u);
 }
 
 /* S5CHUDB (NATIVEAPI E1): one complex HUD quad of mode 2 (IA8): the matrix stack entry, the 4 vertices, the image and the state. */
@@ -856,7 +856,7 @@ void hud_element_draw_rect(HudElement* hudElement, s16 texSizeX, s16 texSizeY, s
     }
 
     if (pm_anchor_is_open()) {
-        hud_rect_emit(&rec, &gMainGfxPos, 1);
+        hud_rect_emit(&rec, nullptr, 1);
     } else {
         nd_rec_napi(hud_rect_run, &rec, 8u + 6u * (unsigned)rec.npc);
     }
