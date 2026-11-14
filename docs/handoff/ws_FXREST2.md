@@ -1,5 +1,5 @@
 # ws_FXREST2: entries for the 10 multi and kmiss effect sites (moves C10 recdl 22 -> 12 when all apply, GUESS)
-Model: Haiku. PM_ROW, PM_LANE = FXREST2. Branch FXREST2, worktree build3ds/wt/FXREST2. Budget: 2 builds, 5 Azahar runs. Start now (main 49f252400).
+Model: Haiku. PM_ROW, PM_LANE = FXREST2. Branch FXREST2, worktree build3ds/wt/FXREST2. Budget: 3 builds, 5 Azahar runs. Start now (main 49f252400).
 FACT (git grep, 49f252400): 22 `nd_rec_dl(` in src/effects. chapter_change.c:163 stays. Never edit chapter_change.c or the 11 other rest sites.
 Design (oracle). geom, plod, key_c, key_s are draw values: nd_pso_build reads no geom (nd_decide.c:346-365); nd_pso_colour takes plod and keys per draw (nd_decide.c:380).
 The compare drops them, entcap writes them as 0. Real pipelines get a branch key. B0 666 no longer applies: the compare changes. B1 (step 4) is the new base.
@@ -19,7 +19,10 @@ Files: 3ds/src/nd_psochk.c nd_walk.c nd_comb.c pm_fxtest.c, 3ds/include/nd_psoch
       cold_breath_t1 `fx_cold_breath(1, X, Y, Z, 2.0f, 45)`, cold_breath_t2 (type 2), ring_blast_t1 `fx_ring_blast(1, X, Y, Z, 4.0f, 20)`, shockwave_t2 `fx_shockwave(2, X, Y, Z)`,
       recover_n0 `fx_recover(0, X, Y, Z, -15)`, recover_n2 `fx_recover(2, X, Y, Z, -15)`, stat_change_a3 `fx_stat_change(3, X, Y, Z, 1.5f, 60)`, stat_change_a6 (arg 6),
       misc_particles_v0, _v2, _v3, _v4, _v5 `fx_misc_particles(<v>, X, Y, Z, 24.0f, 24.0f, 1.0f, 5, 0)`. Form: `E(cold_breath_t1, fx_cold_breath(1, X, Y, Z, 2.0f, 45)) \`; no ` \` on the last.
-      azt.d/FXENT3.json:8 and :40: `136,137,138,139 loglevel` -> `136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152 loglevel`. Do not edit :68 (fxr_drec).
+      azt.d/FXENT3.json:8 and :40: `123,127,128,` ... `139 loglevel` -> `123,127-152 loglevel` (170 characters, run_azahar.ps1:89 stops above 255). Do not edit :68 (fxr_drec).
+   g. pm_fxtest.c:271-274 (range form a-b). Before `n = atoi(p);` / `if (n >= 0 && n < FXT_COUNT) sel[nsel++] = n;` After
+      `char* d = strchr(p, '-'); int m;` / `n = atoi(p); m = d ? atoi(d + 1) : n;` / `for (; n <= m; n++) if (n >= 0 && n < FXT_COUNT && nsel < FXT_COUNT) sel[nsel++] = n;`
+      Check: the fxr_cap log has `fxtest: 56 effects selected of 153`.
 2. Keys (main line numbers). Before (ring_blast.c:141) `    nd_rec_dl(dlist);` After `    nd_rec_dl_k(dlist, unk_00 != 0, 2);`. Keep the indent.
    cold_breath:234 `nd_rec_dl_k(D_E00DE810[unk00][temp_s32], unk00, 3);` | gather_energy_pink:224 `nd_rec_dl_k(dlist2, unk_00, 2);` | shockwave:341 `nd_rec_dl_k(dlist, temp_v0 >= 2, 2);`
    misc_particles:330 `nd_rec_dl_k(D_E00E4D90[variation], variation, 6);` | stat_change:274 `nd_rec_dl_k(D_E00AC7BC[arrowType], (data->unk_24 != 255) * 3 + arrowType, 6);`
