@@ -202,9 +202,7 @@ void func_E0080448(EffectInstance* effect) {
                 nd_pso_cc(PM_CC_49, PM_CC_49);
             }
 
-            nd_rec_dl((type == 0 || type == 2) ?
-                (unk_44 == 0 ? NDN(D_09003200_385000) : NDN(D_09003298_385098)) :
-                NDN(D_09003330_385130));
+            nd_rec_dl((type == 0 || type == 2) ? (unk_44 == 0 ? NDN(D_09003200_385000) : NDN(D_09003298_385098)) : NDN(D_09003330_385130));
 
             guTranslateF(sp18, part->pos.x + part->offsetX, part->pos.y, part->pos.z);
             guScaleF(sp58, part->scaleX, part->scaleY, 1.0f);

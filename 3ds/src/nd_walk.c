@@ -495,17 +495,18 @@ void nd_parts_run_v(const uint32_t* u) {
     tex_streak_flush();
 }
 /* ENTRYCAP: the device switch entcap (PMDL). A static list without a v2 table logs its walker entry description (nd_walker_desc) once per
- * distinct key: FNV-1a 32 over the list address, the call site (nd_rec_dl's return address) and the 44 bytes of the description. 1024 keys. */
+ * distinct key: FNV-1a 32 over the list address, the call site (nd_rec_dl's return address) and the 44 bytes of the description. 4096 keys. */
 static uint32_t entcap_fnv(uint32_t h, const void* p, unsigned n) {
     const uint8_t* b = (const uint8_t*)p;
     for (unsigned i = 0; i < n; i++) h = (h ^ b[i]) * 16777619u;
     return h;
 }
-static __attribute__((cold, noinline)) void entcap_rec(const NdGTab* t, uint32_t site) {
-    static uint32_t keys[1024];
+static __attribute__((cold, noinline)) void entcap_rec(const NdGTab* t, uint32_t site, uint32_t ent) { /* a static list call with no stated entry */
+    static uint32_t keys[4096];
     static unsigned nkeys, over;
     void nd_walker_desc(NdPsoDesc* d);
     if (nd_ntab_find(t->list)) return; /* a v2 table: not a list without one */
+    if (ent) return; /* FXENT2: a call with a stated entry (nd_draw_list with an ND_PSO_DESC); ND_SELF and nd_rec_dl calls are logged */
     NdPsoDesc d;
     nd_walker_desc(&d);
     const uint32_t la = (uint32_t)(uintptr_t)t->list;
@@ -513,7 +514,7 @@ static __attribute__((cold, noinline)) void entcap_rec(const NdGTab* t, uint32_t
     h = entcap_fnv(h, &site, 4u);
     h = entcap_fnv(h, &d, sizeof d);
     for (unsigned i = 0; i < nkeys; i++) if (keys[i] == h) return;
-    if (nkeys == 1024u) { if (!over) { over = 1; pm_log_evt("entcap over"); } return; }
+    if (nkeys == 4096u) { if (!over) { over = 1; pm_log_evt("entcap over"); } return; }
     keys[nkeys++] = h;
     const uint32_t* w = (const uint32_t*)&d;
     pm_log_evt("entcap l %08x s %08x d %08x %08x %08x %08x %08x %08x %08x %08x %08x %08x %08x", la, site, w[0], w[1], w[2], w[3], w[4], w[5], w[6], w[7], w[8], w[9], w[10]);
@@ -610,7 +611,7 @@ static void gt_run(const void* key, const NdGTab* t, const NdNDev* nt, const uin
         pm_walk_side--;
         return;
     }
-    if (__builtin_expect(PMDL("entcap") && !nt, 0)) entcap_rec(t, rec[2]);
+    if (__builtin_expect(PMDL("entcap") && !nt, 0)) entcap_rec(t, rec[2], rec[3]);
     if (__builtin_expect(pm_walk_dbg, 0)) {
         const uint32_t u[2] = { ND_OP_CALL_W0, (uint32_t)(uintptr_t)key };
         nd_walk_state(u, 1u);
