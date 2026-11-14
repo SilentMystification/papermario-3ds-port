@@ -306,7 +306,7 @@ void aura_appendGfx(void* argEffect) {
     s32 v1, v2;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(effect->shared->graphics));
-    nd_rec_dl(D_E0076ED0[type]);
+    nd_draw_list(D_E0076ED0[type], ND_SELF);
 
     guTranslateF(translateMtx, data->posB.x, data->posB.y, data->posB.z);
     if (type == FX_AURA_BLUE) {
@@ -324,7 +324,7 @@ void aura_appendGfx(void* argEffect) {
     guMtxF2L(transformMtx, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    nd_rec_dl(D_E0076EC0[type]);
+    nd_draw_list(D_E0076EC0[type], ND_SELF);
     nd_xf_pop(G_MTX_MODELVIEW);
 
     guTranslateF(translateMtx, data->posA.x, data->posA.y, data->posA.z);
@@ -343,7 +343,7 @@ void aura_appendGfx(void* argEffect) {
     guMtxF2L(transformMtx, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    nd_rec_dl(D_E0076EB0[type]);
+    nd_draw_list(D_E0076EB0[type], ND_SELF);
     nd_xf_pop(G_MTX_MODELVIEW);
 
     nd_val_prim(0, 0, data->primR, data->primG, data->primB, primA);

@@ -62,9 +62,11 @@
   call units into moved callees as &ndd_<callee>, and writes gset_ok.txt: entry, not NDG_F_PARTS (the particle run needs v1, nd_rec.c:281-288), every callee
   with an entry (else the ent path reads words: EMIT4 ent_flat_w), every caller ok (an unmoved caller keeps a reference). listcen skips assets that only
   twins include (listcen.py:249 counts all assets). Pilot fright_jar (fxpic_91_drec draws it).
-- Next GSET rows (one gset.d file each, same gate): the rest of src/effects/gfx by C5 size, then src/entity (S7ENT files hold arrays in the .c text: gset.py
-  needs a block move for them: a page after GSET1), world, model.c render modes, battle, pause, level_up and starpoint. Lists outside the converter set first
-  join a gconv_src.d row. Map shapes: GSET-MAP (plan section 7).
+- Next GSET rows (oracle 9, 2026-11-14): ws_GSET2 (effects rest, groups a and b by gconv_src.d rows, after `Merge GSET1`), ws_GSET3 (src/entity/model, gset.py block
+  mode: a `Gfx X[] = {` .. `};` block goes to the twin, NDN_DECL(X) stays; after `Merge GSET2`). World, model.c render modes, battle, pause, level_up and starpoint
+  lists are not in the converter set (gconv_src.d has only effects and S7ENT). Choice for world (13 files with `Gfx N(x)[]`, FACT grep): gen_gfx_syms expands N(x) to
+  <NAMESPACE>_x from the map header's `#define NAMESPACE` (include/macros.h:45), and a world source joins as its own row GCONVW. Page GCONVW after `Merge GSET3`
+  (not closed now: the host compile of a world TU is not tried yet; that is its first group). Map shapes: GSET-MAP (plan section 7).
 ## 6. Discoveries (for plan_endgame.md section 7)
 - listcen counts src/world/dead (3 files, build 30, gfxpos 32: FACT listcen), but maps.cmake builds no file of it. Choice: listcen.py skips
   src/world/dead after ws_D and ws_GEO G2 merge. Reason: no build or drec can prove an edit there.
@@ -72,12 +74,11 @@
 - The 25 world, entity and battle recdl sites are nd_scomp_rec defs (S6E2, S6M6, S5BTL1), not list entries: entcap never sees them
   (it logs nd_gtab_run lists only, nd_walk.c:501-505). Choice: each def becomes setter calls in unit order (ws_SCOMP.md, 18 sites). The 7 sites of
   mac_01/crystal_ball_gfx.c: ws_CBALL.md (closed; nd_lit_lookat for the X/Y pair, new nd_tex_hilite1/2 in nd_tx.h; after `Merge GEO2`).
-- recdl effects 127 (FACT listcen e0e468ff6): about 84 all-self sites -> ws_FXSELF.md (ND_SELF is the same record, nd_gtab.c:114). Blocked, GUESS counts: 33 reach
-  an inheriting list with no captured entry (needs an entcap capture of the site; no scenario reached them in ENTRYFX), 6 an unsup list (v2_unsup op kinds,
-  nd_gfx_conv.c:455-456), 3 do not resolve (chapter_change.c:162, cold_breath.c:234, lil_oink.c:195: hand rows), multi-line calls (recover.c:205): hand rows.
-- recdl root 15 (FACT listcen): nd_scomp_rec in animator.c:889 (ternary of 4 defs: if/else), background_gfx.c:45-46, cam_main.c:229-230, entity_model.c:72-73,
-  :383, :481, item_entity.c:976-984, msg.c:616, sprite.c:508 (spr_st_def[si], nv values: a switch per def), status_icons.c:625. The ws_SCOMP rule covers them;
-  every gs macro there has a map entry (oracle census). Blocked by ownership only: GEO G3 runs on root files, TEX T4 follows. Page after `Merge TEX4`.
+- recdl effects: FXSELF merged (85 sites, Merge 1149b5513). 42 `nd_rec_dl(` lines stay in src/effects (FACT grep), 13 of them multi (FACT Merge ENTRYFX). Cause of the
+  missed captures (code read): entcap_rec skips any list with a v2 table (nd_walk.c:506; CONV2C2 gave inheriting lists with a pair one entry), and a list with no NdGTab
+  never reaches nd_gtab_run. ws_FXENT2 (after `Merge NSTREAM2`): filter by stated entry, an `entcap nt` line for no-table lists, recapture, entapply, then
+  build3ds/out/fxent2_rest.txt classes (multi, nt, seen, unseen) feed the hand rows.
+- recdl root 15: ws_RECROOT (after `Merge TEX4`; the ws_SCOMP rule, value units take the g macro arguments of v[k]). It owns sprite.c until merged (NS3 waits).
 ## 7. Phase E deletions (S9DEL): readers C8 756 per file and the trigger of each stage (FACT listcen 3eba999c4; no stage can start today)
 - Blocker for stages 1D and 3: NSTREAM (section 8, Haiku pages ws_NSTREAM1, ws_NSTREAM2; NS3 page at its trigger). FACT (listcen a37368582): C1 1166, C2 617,
   C10 145, C5 22040, C6 2075, C8 757.
@@ -129,5 +130,12 @@
   merged, GSET done (C5 0, C6 0: every CALL unit names a table with an entry), NS3 merged. Then nd_nr_exec takes the arms of nd_walk_state minus END, branch, DROP
   and op_unknown, its CALL arm runs the callee entry (the list start of nd_ops_run, then nd_nr_exec(nt->u, nt->nu)), and nd_walk_state goes. Stage 3: stage 1D,
   C5 0 (no gs macro uses ND_X0), C10 0 (nd_scomp gone).
-- Not Haiku: the stage 2 core (a pso table lookup in place of sync_combine and the decide code). Its draws are not equal by construction (psochk is the proof);
-  plan row NPSO2 needs the user's yes for Sonnet.
+## 9. Stage 2 core: the pso table lookup (oracle 9, 2026-11-14, main 1149b5513). Page ws_PSOLK (Haiku, start now)
+- Choice: a content lookup, not an id per draw. sync_combine_work (nd_comb.c:280) and then nd_comb_decide (:258) ask nd_pso_find with the walker's NdCombIn. A hit
+  takes the table's NdCombOut plus nd_pso_fix (leg 4: mode5 and box_pat of the walker; cc from the walker colours; dual). Equal by construction: nd_comb_core reads
+  prim and env only for cc, leg_mode never, box_pat and mode5_prev only on the leg 4 return (nd_decide.c:91-126, :294-308). The table is built with SSE floats
+  (x87 extended precision can flip `use`, nd_decide.c:273). Device proof: under psochk each hit also computes and counts lkbad.
+- Next steps (pages after Merge PSOLK): PSOCAP (each miss logs its walker NdPsoDesc once, a tool writes them as ND_PSO_DESC lines of a new committed file, so the
+  table covers the gate scenes; miss falls to 0 there), then the same lookup for the render state (nd_render_state is pure: sync_render). S9DEL2A deletes the decide
+  code. The one part only the user decides: what a draw does with a state that has no table entry once the decide code is gone (a fixed fallback mode and a log
+  line, or keep nd_comb_core as a cold fallback on the device).

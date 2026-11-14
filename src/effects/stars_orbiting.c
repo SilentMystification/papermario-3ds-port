@@ -117,7 +117,7 @@ void func_E005E334(EffectInstance* effect) {
         Gfx* dlist2 = D_E005E674[0];
 
         nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-        nd_rec_dl(dlist2);
+        nd_draw_list(dlist2, ND_SELF);
 
         guTranslateF(sp18, part->pos.x, part->pos.y, part->pos.z);
         guRotateF(sp58, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);

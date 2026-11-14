@@ -130,7 +130,7 @@ void effect_86_appendGfx(void* effect) {
     nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_val_prim(0, 0, part->unk_18, part->unk_1C, part->unk_20, primAlpha);
     nd_val_env(part->unk_28, part->unk_2C, part->unk_30, 0);
-    nd_rec_dl(D_E01284B0[0]);
+    nd_draw_list(D_E01284B0[0], ND_SELF);
     nd_draw_list(D_E0128480[dlistIdx % ARRAY_COUNT(D_E0128480)], pe_effect_86_133);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

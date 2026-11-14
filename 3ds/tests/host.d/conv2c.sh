@@ -11,6 +11,7 @@ echo "seeded fault (one NDN_COL value + 1), bad above 0 expected:"
 /tmp/ndntab --fault > /tmp/ndntab_fault.txt || true
 if grep -q "^ntab tables [0-9]* draws [0-9]* bad 0$" /tmp/ndntab_fault.txt; then echo "seeded fault not seen"; exit 1; fi
 grep -q "^ntab dev entries [0-9]* bad 0$" /tmp/ndntab_fault.txt && { echo "seeded dev fault not seen"; exit 1; }
+grep -q "^ntab dev flag bad [1-9]" /tmp/ndntab_fault.txt || { echo "seeded flag fault not seen"; exit 1; }
 if grep -q "^ntab flat v2 [0-9]* words [0-9]* bad 0$" /tmp/ndntab_fault.txt; then echo "seeded flat fault not seen"; exit 1; fi
 grep "^ntab tables" /tmp/ndntab_fault.txt
 /tmp/ndntab | grep -v "^gtab def"

@@ -103,7 +103,7 @@ void balloon_appendGfx(void* effect) {
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    nd_rec_dl(D_E00963E0[idx]);
+    nd_draw_list(D_E00963E0[idx], ND_SELF);
     nd_draw_list(D_09001508_395B78, pe_balloon_106);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

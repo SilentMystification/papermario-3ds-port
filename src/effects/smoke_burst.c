@@ -115,7 +115,7 @@ void smoke_burst_appendGfx(void* effect) {
     Matrix4f sp60;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_rec_dl(dlist2);
+    nd_draw_list(dlist2, ND_SELF);
 
     guPositionF(sp20, 0.0f, -gCameras[gCurrentCameraID].curYaw, 0.0f, data->unk_10, data->pos.x, data->pos.y, data->pos.z);
     guRotateF(sp60, 20.0f, 0.0f, 0.0f, 1.0f);

@@ -142,7 +142,7 @@ void breaking_junk_appendGfx(void* effect) {
     s32 i;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_rec_dl(D_E01187C0[0]);
+    nd_draw_list(D_E01187C0[0], ND_SELF);
 
     for (i = 0; i < ((EffectInstance*)effect)->numParts; i++, data++) {
         guPositionF(sp20, 0.0f, -gCameras[gCurrentCameraID].curYaw, 0.0f, data->scale * 0.5, data->pos.x, data->pos.y, data->pos.z);

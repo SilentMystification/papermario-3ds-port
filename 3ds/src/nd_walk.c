@@ -242,8 +242,8 @@ static void walk_call(unsigned dbg, const Gfx* at, u32 w0, u32 w1) {
         NDT_BD(td, dbg); int dh = dlc_try(next); NDT_E(td, NDT_DLC);
         if (dh) { if (__builtin_expect(dbg & WD_CEN, 0)) walk_dbg_dlc(); return; }
     }
-    if (__builtin_expect(nd_lc_frame != -1, 0)) nd_lstcen(next, ex_depth ? 2u : 1u);
-    if (!ex_depth) nd_ops_run(next, ND_LIST_MAX, 1);
+    if (__builtin_expect(nd_lc_frame != -1, 0) && !nt) nd_lstcen(next, ex_depth ? 2u : 1u);
+    if (!ex_depth) { if (nt) nd_ops_run(nt->u, nt->nu, 1); else nd_ops_run(next, ND_LIST_MAX, 1); } /* GKEY2: a list with an entry runs its unit copy */
     else if (ex_depth < ND_LIST_DEPTH) { ex_depth++; if (nt) nd_ntab_run(nt); else nd_walk_state((const uint32_t*)next, ND_LIST_MAX); ex_depth--; }
     if (__builtin_expect(dbg & WD_ORB, 0) && orb_tag != ot) { pm_gpu_flush(); orb_tag = ot; } /* FX1-3 */
 }
@@ -598,10 +598,8 @@ static void gt_body(const NdGTab* t, const NdNDev* nt) {
     if (nt) { nd_gtr_ntab++; nd_ntab_run(nt); }
     else gt_ops(t);
 }
-void nd_gtab_run(const uint32_t* rec) {
+static void gt_run(const void* key, const NdGTab* t, const NdNDev* nt, const uint32_t* rec) {
     PM_WALK_OWN();
-    const NdGTab* t = (const NdGTab*)(uintptr_t)rec[0];
-    const NdNDev* nt = nd_ntab_find(t->list);
     if (rec[1]) { /* state-only */
         static const uint32_t lst[2] = { NDO_W0(NDO_MISC, NDO_MISC_LST << 16), 0u };
         pm_walk_side++;
@@ -610,13 +608,13 @@ void nd_gtab_run(const uint32_t* rec) {
         pm_walk_side--;
         return;
     }
-    if (__builtin_expect(PMDL("entcap"), 0)) entcap_rec(t, rec[2]);
+    if (__builtin_expect(PMDL("entcap") && !nt, 0)) entcap_rec(t, rec[2]);
     if (__builtin_expect(pm_walk_dbg, 0)) {
-        const uint32_t u[2] = { ND_OP_CALL_W0, (uint32_t)(uintptr_t)t->list };
+        const uint32_t u[2] = { ND_OP_CALL_W0, (uint32_t)(uintptr_t)key };
         nd_walk_state(u, 1u);
         return;
     }
-    const Gfx* next = (const Gfx*)t->list;
+    const Gfx* next = (const Gfx*)key;
     pm_gbi_cur_op = nd_op_n64[NDO_CALL - NDO_BASE];
     int ring = 0;
     if (ent_skipgen) ent_skipgen = 0;
@@ -639,6 +637,10 @@ void nd_gtab_run(const uint32_t* rec) {
     gv_streak_flush();
     tex_streak_flush();
 }
+void nd_gtab_run(const uint32_t* rec) { const NdGTab* t = (const NdGTab*)(uintptr_t)rec[0]; gt_run(t->list, t, NULL, rec); }
+unsigned nd_gtr_rec; /* GKEY2: the runs of nd_ntab_rec */
+void nd_ntab_rec(const uint32_t* rec) { const NdNDev* nt = (const NdNDev*)(uintptr_t)rec[0]; nd_gtr_rec++; gt_run(nt->list, NULL, nt, rec); }
+void nd_ntab_rec_e(const uint32_t* rec) { nd_psochk_draw((const NdPsoDesc*)(uintptr_t)rec[3]); nd_ntab_rec(rec); }
 void nd_gtab_run_e(const uint32_t* rec) { nd_psochk_draw((const NdPsoDesc*)(uintptr_t)rec[3]); nd_gtab_run(rec); }
 /* DIRECT D10a: a custom gfx range of the frame stream (model record R11, build_custom_gfx), run to its NDC_END as the walker ran the list it
  * replaces: the list start (gv_epoch, dlc_on, a full combine and render sync: DIP2) and the list end (the vertex and texture streak flush). */

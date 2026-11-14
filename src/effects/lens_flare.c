@@ -121,7 +121,7 @@ void lens_flare_appendGfx(void* effect) {
     Matrix4f mtxShared;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_rec_dl(D_E0034788[type]);
+    nd_draw_list(D_E0034788[type], ND_SELF);
 
     guTranslateF(mtxTransform, data->pos.x, data->pos.y, data->pos.z);
     guRotateF(mtxTemp, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);

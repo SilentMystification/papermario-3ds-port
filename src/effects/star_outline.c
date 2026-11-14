@@ -214,7 +214,7 @@ void star_outline_appendGfx(void* effect) {
     }
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_rec_dl(D_E0126BC8[0]);
+    nd_draw_list(D_E0126BC8[0], ND_SELF);
 
     if (unk_34 != 0) {
         guPositionF(sp20, 0.0f, -gCameras[gCurrentCameraID].curYaw, 0.0f, (f32) ((f64) data->unk_54 * 0.4), data->pos.x, data->pos.y, data->pos.z);

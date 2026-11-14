@@ -138,7 +138,7 @@ void hieroglyphs_appendGfx(void* effect) {
     nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_val_prim(0, 0, data->unk_18, data->unk_1C, data->unk_20, unk_24);
     nd_val_env(data->unk_28, data->unk_2C, data->unk_30, data->unk_34);
-    nd_rec_dl(D_E00E29F0[0]);
+    nd_draw_list(D_E00E29F0[0], ND_SELF);
     nd_sub_open(&sub); /* DIRECT D6c: the list for later is a stream range */
     gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE,
         (lifeTime * 2      ) * 4, 0,

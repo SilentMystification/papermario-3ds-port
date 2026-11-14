@@ -108,7 +108,7 @@ void blast_appendGfx(void* effect) {
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
     nd_draw_list(D_09001300_37ECD0, ND_SELF);
-    nd_rec_dl(D_E007C510[unk_20]);
+    nd_draw_list(D_E007C510[unk_20], ND_SELF);
 
     guTranslateF(sp18, data->pos.x, data->pos.y, data->pos.z);
     guRotateF(sp58, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);

@@ -269,7 +269,7 @@ void func_E00AC2A4(EffectInstance* effect) {
         guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        nd_rec_dl(D_E00AC7B0[arrowType]);
+        nd_draw_list(D_E00AC7B0[arrowType], ND_SELF);
         nd_val_prim(0, 0, 0, 0, 0, data->unk_24);
         nd_rec_dl(D_E00AC7BC[arrowType]);
         nd_xf_pop(G_MTX_MODELVIEW);
@@ -286,13 +286,13 @@ void func_E00AC2A4(EffectInstance* effect) {
             idx = arrowValue;
         }
 
-        nd_rec_dl(D_E00AC7C8[idx % 10]);
+        nd_draw_list(D_E00AC7C8[idx % 10], ND_SELF);
         nd_draw_list(D_090028C0_3B1FC0, pe_stat_change_288);
 
         if (arrowValue >= 0) {
-            nd_rec_dl(D_E00AC7C8[11]);
+            nd_draw_list(D_E00AC7C8[11], ND_SELF);
         } else {
-            nd_rec_dl(D_E00AC7C8[10]);
+            nd_draw_list(D_E00AC7C8[10], ND_SELF);
         }
 
         nd_draw_list(D_090028A0_3B1FA0, pe_stat_change_296);

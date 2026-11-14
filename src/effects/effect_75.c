@@ -219,7 +219,7 @@ void effect_75_appendGfx(void* effect) {
     nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_val_prim(0, 0, data->primCol.r, data->primCol.g, data->primCol.b, data->unk_34);
     nd_val_env(data->envCol.r, data->envCol.g, data->envCol.b, data->unk_24 * data->masterAlpha / 255);
-    nd_rec_dl(D_E00EAA58[0]);
+    nd_draw_list(D_E00EAA58[0], ND_SELF);
     nd_val_tile_size(G_TX_RENDERTILE, uls0, ult0, uls0 + 252, ult0 + 252);
     nd_val_tile_size(1, uls1, ult1, uls1 + 252, ult1 + 252);
     nd_draw_list(D_E00EAA50[type], pe_effect_75_224);

@@ -247,7 +247,7 @@ void squirt_appendGfx(void* effect) {
     nd_mesh_vtx(savedGfxPos, i * 2, 0);
 
     savedIdx = i;
-    nd_rec_dl(unk_00 == 0 ? D_09000800_3B5B40 : D_090008A8_3B5BE8);
+    nd_draw_list(unk_00 == 0 ? D_09000800_3B5B40 : D_090008A8_3B5BE8, ND_SELF);
 
     for (i = 0; i < savedIdx - 1; i++) {
         s32 i2 = i * 2;

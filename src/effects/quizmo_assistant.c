@@ -122,7 +122,7 @@ void quizmo_assistant_appendGfx(void* effect) {
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_val_prim(0, 0, fadeInAmt, fadeInAmt, fadeInAmt, 255);
-    nd_rec_dl(D_E011C514[0]);
+    nd_draw_list(D_E011C514[0], ND_SELF);
 
     switch (data->anim) {
         case 0:

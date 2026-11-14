@@ -206,7 +206,7 @@ void fire_breath_appendGfx(void* effect) {
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 
-    nd_rec_dl(dlist2);
+    nd_draw_list(dlist2, ND_SELF);
     nd_val_prim(0, 0, data->primR, data->primG, data->primB, data->alpha);
     nd_val_env(data->envR, data->envG, data->envB, envAlpha);
     nd_val_tile_size(G_TX_RENDERTILE, ((imgFrame * 32) + 0)  * 4, 0, ((imgFrame * 32) + 32) * 4, 128);

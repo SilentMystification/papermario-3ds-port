@@ -226,7 +226,7 @@ static XcEv mxf[EVMAX], mcol[EVMAX], vxf[EVMAX], vcol[EVMAX];
 static unsigned nmtri, nvtri, nmxf, nmcol, nvxf, nvcol;
 
 typedef struct {
-    uint32_t cw0, cw1, omh, oml, geom, plod;
+    uint32_t cw0, cw1, omh, oml, geom, plod, key_c, key_s, conv_k4; /* CONV2C2: the key and convert words of the seed (cw0 kind) */
     unsigned tex_on, has_comb;
     NdTst t; NdTexM m;
     const void* timg; const void* tlut; int tlut_n;
@@ -247,6 +247,7 @@ static NdPsoDesc m_desc(const MSt* s) {
     NdPsoDesc d;
     memset(&d, 0, sizeof d);
     d.cw0 = s->cw0; d.cw1 = s->cw1; d.omh = s->omh; d.oml = s->oml; d.geom = s->geom; d.t1_valid = (uint8_t)s->td1_valid; d.tex_on = (uint8_t)s->tex_on; d.comb_set = (uint8_t)s->has_comb; d.plod = (uint8_t)s->plod;
+    d.key_c = s->key_c; d.key_s = s->key_s; d.conv_k4 = s->conv_k4;
     const uint32_t w0 = s->cw0, w1 = s->cw1;
     uint32_t t[16];
     t[0] = (w0 >> 20) & 0xf;  t[2] = (w0 >> 15) & 0x1f; t[1] = (w1 >> 28) & 0xf; t[3] = (w1 >> 15) & 7;
@@ -490,12 +491,12 @@ static void v2_units(const NdNTab* t, const char* name) {
     if (n != u->b) v2_fail("unit stream count", name, n);
 }
 /* CONV2D2: the device index entry of a table's list (nd_gtab.h NdNDev): n is the word pairs from unit 0 to the stop, NOPs counted */
-static unsigned v2_dev_bad;
+static unsigned v2_dev_bad, v2_fl_bad; /* GKEY1: v2_fl_bad counts the state-only flag */
 static void v2_dev(const NdNTab* t, const char* name, int fault) {
     const GSym* g = NULL;
     for (unsigned s = 0; s < gconv_nsym; s++) if (gconv_sym[s].kind == GS_GFX && gconv_sym[s].addr == t->list) g = &gconv_sym[s];
     const NdNDev* dv = NULL;
-    for (unsigned i = 0; i < ndn_dev_n; i++) if (ndn_dev_idx[i].list == t->list) dv = &ndn_dev_idx[i];
+    dv = nd_ntab_find(t->list);
     if (!dv || !g) { v2_dev_bad++; v2_fail("device index entry", name, 0); return; }
     const uint32_t* L = (const uint32_t*)g->addr;
     const unsigned nl = (unsigned)(((uintptr_t)g->end - (uintptr_t)g->addr) / 8u);
@@ -506,8 +507,8 @@ static void v2_dev(const NdNTab* t, const char* name, int fault) {
         if ((w0 >> 24) == NDO_END) { ks = k; break; }
         if ((w0 >> 24) == NDO_CALL && (w0 & 1u)) { ks = k + 1u; break; }
     }
-    if (dv->n != ks) { v2_dev_bad++; v2_fail("device index count", name, ks); }
-    if (dv->u != (const uint32_t*)t->list || dv->nu != dv->n + (fault ? 1u : 0u)) { v2_dev_bad++; v2_fail("device index units", name, 0); }
+    if (dv->u != (const uint32_t*)t->list || dv->nu != ks + (fault ? 1u : 0u)) { v2_dev_bad++; v2_fail("device index units", name, 0); }
+    if (dv->fl != nd_gt_state_only(L) + (fault ? 1u : 0u)) { v2_fl_bad++; v2_fail("device index state-only flag", name, 0); }
     unsigned ntri = 0;
     for (unsigned k = 0; t->ops[k].op != NDN_END; k++) if (t->ops[k].op == NDN_DRAW) ntri += t->ops[k].b;
     if (dv->ntri != ntri / 3u) { v2_dev_bad++; v2_fail("device index triangles", name, 0); }
@@ -565,7 +566,7 @@ static void v2_flat(const NdNTab* t, const char* name, int fault) {
     f_w += f_words;
 }
 static void v2_compare(int fault) {
-    unsigned tables = 0;
+    unsigned tables = 0, n_seed = 0, seed_bad = 0; /* CONV2C2: seeded tables and those with a compare fail */
     for (unsigned n = 0; n < ndn_n; n++) {
         const NdNTab* t = ndn_all[n];
         const char* name = "?";
@@ -574,6 +575,14 @@ static void v2_compare(int fault) {
         for (unsigned i = 0; i < nd_gtab_n; i++) if (nd_gtab_idx[i].list == t->list) g1 = nd_gtab_idx[i].tab;
         if (!g1) { v2_fail("no v1 table for the list", name, 0); continue; }
         memset(&ms, 0, sizeof ms); memset(mslot, 0, sizeof mslot);
+        /* CONV2C2: a seeded table starts the model from the desc of its site (the caller state); the seeded fault is key_c ^ 1 in the model */
+        const unsigned bad0 = v2_bad;
+        if (t->entry) {
+            const NdPsoDesc* e = ndn_desc[t->entry - 1u];
+            ms.cw0 = e->cw0; ms.cw1 = e->cw1; ms.omh = e->omh; ms.oml = e->oml; ms.geom = e->geom; ms.key_c = e->key_c; ms.key_s = e->key_s; ms.conv_k4 = e->conv_k4;
+            ms.tex_on = e->tex_on; ms.plod = e->plod; ms.has_comb = 1;
+            ms.key_c = e->key_c ^ (fault ? 1u : 0u);
+        }
         nmtri = nvtri = nmxf = nmcol = nvxf = nvcol = 0; m_over = 0;
         m_walk(g1);
         v_replay(t, fault);
@@ -582,11 +591,11 @@ static void v2_compare(int fault) {
         v2_flat(t, name, fault && tables == 0);
         tables++;
         if (m_over) v2_fail("the model could not follow the v1 table", name, 0);
-        if (nmtri != nvtri) { v2_fail("triangle count", name, nmtri); continue; }
+        if (nmtri != nvtri) v2_fail("triangle count", name, nmtri);
         if (nmxf != nvxf || nmcol != nvcol) v2_fail("transform or colour op count", name, nmcol);
         for (unsigned i = 0; i < nmxf && i < nvxf; i++) if (mxf[i].a != vxf[i].a || mxf[i].v != vxf[i].v) { printf("  xf model a %x v %x table a %x v %x (n %u/%u)\n", mxf[i].a, mxf[i].v, vxf[i].a, vxf[i].v, nmxf, nvxf); v2_fail("transform op", name, i); }
         for (unsigned i = 0; i < nmcol && i < nvcol; i++) if (mcol[i].a != vcol[i].a || mcol[i].b != vcol[i].b || mcol[i].v != vcol[i].v) v2_fail("colour op", name, i);
-        for (unsigned i = 0; i < nmtri; i++) {
+        for (unsigned i = 0; i < nmtri && nmtri == nvtri; i++) {
             const TriEv *m = &mtri[i], *v = &vtri[i];
             v2_draws++;
             if (m->base != v->base || m->i[0] != v->i[0] || m->i[1] != v->i[1] || m->i[2] != v->i[2]) v2_fail("triangle vertex triple", name, i);
@@ -595,12 +604,15 @@ static void v2_compare(int fault) {
             if (m->tex1 && (!v->tex1 || memcmp(&m->b1, &v->b1, sizeof m->b1))) v2_fail("tile 1 bind descriptor", name, i);
             if (m->nx != v->nx || m->nc != v->nc) v2_fail("transform or colour position", name, i);
         }
+        if (t->entry) { n_seed++; if (v2_bad != bad0) seed_bad++; }
     }
     printf("ntab tables %u draws %u bad %u\n", tables, v2_draws, v2_bad);
     printf("ntab dev entries %u bad %u\n", ndn_dev_n, v2_dev_bad);
+    printf("ntab dev flag bad %u\n", v2_fl_bad);
     printf("ntab flat v2 %u words %u bad %u\n", f_v2, f_w, v2_flat_bad);
-    { unsigned nt0 = 0; for (unsigned i = 0; i < ndn_dev_n; i++) if (ndn_dev_idx[i].ntri == 0) nt0++; printf("ntab notri %u of %u\n", nt0, ndn_dev_n); }
+    { unsigned nt0 = 0; for (unsigned i = 0; i < ndn_dev_n; i++) if (ndn_dev_idx[i]->ntri == 0) nt0++; printf("ntab notri %u of %u\n", nt0, ndn_dev_n); }
     printf("ntab inherit %u unsup %u descs %u\n", ndn_inherit, ndn_unsup, ndn_ndesc);
+    printf("ntab seeded %u bad %u\n", n_seed, seed_bad);
 }
 #endif
 
@@ -624,6 +636,9 @@ int main(void) {
     if (lists != nd_gtab_n) { cur = "all"; fail("table count differs from the Gfx symbols", lists); }
     static const uint32_t not_a_list[2];
     if (nd_gtab_find(not_a_list)) { cur = "all"; fail("nd_gtab_find of a non-list", 0); }
+#ifdef NTAB_V2
+    if (nd_ntab_find(not_a_list)) { cur = "all"; fail("nd_ntab_find of a non-list", 0); }
+#endif
     printf("gtab lists %u parts %u draws %u defs %u ops %u bad %u\n", lists, n_parts, n_draws, n_defs, n_ops, bad);
 #ifdef NTAB_V2
     v2_compare(fault);

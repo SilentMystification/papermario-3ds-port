@@ -6,3 +6,5 @@ asm/nonmatchings/**/*.s linguist-generated
 3ds/**/*.sh text eol=lf
 3ds/tools/*.py text eol=lf
 3ds/tests/codemod/cases/* text eol=lf
+3ds/tests/gne/a.txt text eol=lf
+3ds/tests/selfapply/* text eol=lf

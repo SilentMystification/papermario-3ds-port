@@ -164,7 +164,7 @@ void ending_decals_appendGfx(void* effect) {
     nd_val_env(26, 121, 29, 158);
     nd_pso_dither(G_CD_BAYER);
     nd_pso_aldith(G_AD_PATTERN);
-    nd_rec_dl(dlist1);
+    nd_draw_list(dlist1, ND_SELF);
     nd_val_prim(0, 0, data->unk_24, data->unk_25, data->unk_26, alpha);
     nd_val_env(data->unk_27, data->unk_28, data->unk_29, 0);
 

@@ -151,7 +151,7 @@ void huff_puff_breath_appendGfx(void* effect) {
     nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_val_prim(0, 0, data->primCol.r, data->primCol.g, data->primCol.b, alpha);
     nd_val_env(data->envCol.r, data->envCol.g, data->envCol.b, data->envCol.a);
-    nd_rec_dl(D_E00DC648[unk_00]);
+    nd_draw_list(D_E00DC648[unk_00], ND_SELF);
     nd_val_tile_size(G_TX_RENDERTILE, uls, ult, uls + 31 * 4, ult + 15 * 4);
     nd_draw_list(D_E00DC640[unk_00], pe_huff_puff_breath_155);
     nd_xf_pop(G_MTX_MODELVIEW);

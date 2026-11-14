@@ -299,7 +299,7 @@ void something_rotating_appendGfx(void* effect) {
             if (data->primAlpha != 255) {
                 nd_val_prim(0, 0, 0, 0, 0, data->primAlpha);
                 nd_val_env(data->env.r, data->env.g, data->env.b, 0x78);
-                nd_rec_dl(D_E0116C6C[0]);
+                nd_draw_list(D_E0116C6C[0], ND_SELF);
 
                 l = ((unk_14 * 4.0f) * 100.0f) * (1.0 / 1024);
                 t = ((unk_14 * 4.0f) * 40.0f) * (1.0 / 1024);
@@ -310,9 +310,9 @@ void something_rotating_appendGfx(void* effect) {
                 nd_val_tile_size(1, l, t, l + 0xFC, t + 0xFC);
                 nd_draw_list(D_E0116C64[0], pe_something_rotating_310);
             } else {
-                nd_rec_dl(D_E0116C68[0]);
+                nd_draw_list(D_E0116C68[0], ND_SELF);
                 nd_val_env(data->env.r, data->env.g, data->env.b, data->unk_25);
-                nd_rec_dl(D_E0116C70[i - 1]);
+                nd_draw_list(D_E0116C70[i - 1], ND_SELF);
                 nd_rec_dl(D_E0116C60[0]);
             }
             nd_xf_pop(G_MTX_MODELVIEW);

@@ -311,7 +311,7 @@ void misc_particles_appendGfx(void* effect) {
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
     nd_val_env(particle->glowColor.r, particle->glowColor.g, particle->glowColor.b, particle->glowColor.a);
-    nd_rec_dl(D_E00E4DA8[variation]);
+    nd_draw_list(D_E00E4DA8[variation], ND_SELF);
 
     particle++;
     for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, particle++) {

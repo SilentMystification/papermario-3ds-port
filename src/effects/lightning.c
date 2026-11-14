@@ -241,7 +241,7 @@ void lightning_appendGfx(void* effect) {
         s32 ult;
         f32* unk_28; // TODO required to match
 
-        nd_rec_dl(dlist2);
+        nd_draw_list(dlist2, ND_SELF);
 
         uls = data->unk_1C * 4.0f;
         ult = data->unk_20 * 4.0f;

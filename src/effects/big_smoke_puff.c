@@ -166,7 +166,7 @@ void big_smoke_puff_appendGfx(void* effect) {
 
             nd_val_prim(0, 0, 0, 0, 0, (u32)(primAlpha * 105) / 8);
             nd_val_env(0, 0, 0, envAlpha);
-            nd_rec_dl(dlist);
+            nd_draw_list(dlist, ND_SELF);
             nd_xf_pop(G_MTX_MODELVIEW);
         }
     }

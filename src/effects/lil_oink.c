@@ -192,7 +192,7 @@ void lil_oink_appendGfx(void* effect) {
             guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
 
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-            nd_rec_dl(D_E0114718[data->type[i]]);
+            nd_draw_list(D_E0114718[data->type[i]], ND_SELF);
             if (data->type[i] == LIL_OINK_TYPE_SILVER || data->type[i] == LIL_OINK_TYPE_GOLD) {
                 f32 shineVariation = sin_deg(angle) * 63.0f;
                 s8 primColor = shineVariation + 63.0f;

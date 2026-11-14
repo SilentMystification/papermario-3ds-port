@@ -206,7 +206,7 @@ void func_E0090444(EffectInstance* effect) {
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
             nd_val_prim(0, 0, 255, 255, 255, data->alpha);
             nd_draw_list(D_090015A8_391978, ND_SELF);
-            nd_rec_dl(D_E0090A40[data->unk_04]);
+            nd_draw_list(D_E0090A40[data->unk_04], ND_SELF);
             nd_draw_list(D_E0090A54[data->unk_04], pe_attack_result_text_207);
             nd_xf_pop(G_MTX_MODELVIEW);
         } else {
@@ -214,7 +214,7 @@ void func_E0090444(EffectInstance* effect) {
             nd_val_prim(0, 0, D_E0090A78[type][0], D_E0090A78[type][1], D_E0090A78[type][2], data->alpha);
             nd_val_env(D_E0090A78[type][3], D_E0090A78[type][4], D_E0090A78[type][5], 0);
             nd_draw_list(D_09001500_3918D0, ND_SELF);
-            nd_rec_dl(D_E0090A40[data->unk_04]);
+            nd_draw_list(D_E0090A40[data->unk_04], ND_SELF);
 
             nd_rect_scis(data->pos.x * 4.0f, data->pos.y * 4.0f, (data->pos.x + 128.0f) * 4.0f, (data->pos.y + 64.0f) * 4.0f, G_TX_RENDERTILE, 0, 1024, 512, 65024);
         }
