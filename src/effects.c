@@ -2,6 +2,8 @@
 #include "effects.h"
 #include "ld_addrs.h"
 #include "pm_interp_fi.h"
+#include "nd_st.h"
+#include "nd_xf.h"
 
 typedef s8 TlbEntry[0x1000];
 typedef TlbEntry TlbMappablePage[15];
@@ -166,24 +168,18 @@ void render_effects_UI(void) {
                         if (cond) {
                             Camera* camera = &gCameras[gCurrentCameraID];
 
-                            gDPPipeSync(gMainGfxPos++);
                             gSPViewport(gMainGfxPos++, PM_VP(&camera->vp));
-                            gSPClearGeometryMode(gMainGfxPos++, G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG |
+                            nd_pso_geom_clr(G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG |
                                                 G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD |
                                                 G_SHADING_SMOOTH | G_CLIPPING | 0x40F9FA);
-                            gSPSetGeometryMode(gMainGfxPos++, G_ZBUFFER | G_SHADE | G_CULL_BACK | G_SHADING_SMOOTH);
-                            gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE,
-                                              camera->viewportStartX,
-                                              camera->viewportStartY,
-                                              camera->viewportStartX + camera->viewportW,
-                                              camera->viewportStartY + camera->viewportH);
+                            nd_pso_geom_set(G_ZBUFFER | G_SHADE | G_CULL_BACK | G_SHADING_SMOOTH);
+                            nd_pso_scis(G_SC_NON_INTERLACE, camera->viewportStartX, camera->viewportStartY, camera->viewportStartX + camera->viewportW, camera->viewportStartY + camera->viewportH);
                             gSPClipRatio(gMainGfxPos++, FRUSTRATIO_2);
 
                             cond = false;
                             if (!(camera->flags & CAMERA_FLAG_ORTHO)) {
                                 gSPPerspNormalize(gMainGfxPos++, camera->perspNorm);
-                                gSPMatrix(gMainGfxPos++, &gDisplayContext->camPerspMatrix[gCurrentCameraID],
-                                          G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
+                                nd_xf_push(&gDisplayContext->camPerspMatrix[gCurrentCameraID], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
                             }
                         }
 

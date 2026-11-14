@@ -1,6 +1,8 @@
 #include "common.h"
 #include <string.h>
 #include "nd_api.h"
+#include "nd_st.h"
+#include "nd_val.h"
 #define DIMG_CW_(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1)     { ND_W0_CMB(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1), ND_W1_CMB(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1) }
 #define DIMG_CW(a, b) DIMG_CW_(a, b)
 static const NdTRect* dimg_tpl; /* S5TIMG: the state of draw_ci_image_with_clipping for the strips of its draw (NULL: old ops) */
@@ -13,31 +15,30 @@ s32 draw_ci_image_with_clipping(IMG_PTR raster, s32 width, s32 height, s32 fmt, 
     s32 ret = 1;
     NdTRect t;
 
-    gDPPipeSync(gMainGfxPos++);
-    gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
-    gDPSetTextureFilter(gMainGfxPos++, G_TF_POINT);
-    gDPSetTexturePersp(gMainGfxPos++, G_TP_NONE);
+    nd_pso_cyc(G_CYC_1CYCLE);
+    nd_pso_filt(G_TF_POINT);
+    nd_pso_persp(G_TP_NONE);
 
     if (opacity == 255) {
-        gDPSetRenderMode(gMainGfxPos++, G_RM_TEX_EDGE, G_RM_TEX_EDGE2);
-        gDPSetCombineMode(gMainGfxPos++, G_CC_DECALRGBA, G_CC_DECALRGBA);
+        nd_pso_rm(G_RM_TEX_EDGE, G_RM_TEX_EDGE2);
+        nd_pso_cc(G_CC_DECALRGBA, G_CC_DECALRGBA);
     } else if (opacity == 0) {
         return ret;
     } else {
-        gDPSetRenderMode(gMainGfxPos++, G_RM_XLU_SURF, G_RM_XLU_SURF2);
-        gDPSetCombineMode(gMainGfxPos++, PM_CC_02, PM_CC_02);
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, opacity);
+        nd_pso_rm(G_RM_XLU_SURF, G_RM_XLU_SURF2);
+        nd_pso_cc(PM_CC_02, PM_CC_02);
+        nd_val_prim(0, 0, 0, 0, 0, opacity);
     }
 
     if (fmt == G_IM_FMT_CI) {
-        gDPSetTextureLUT(gMainGfxPos++, G_TT_RGBA16);
+        nd_pso_lut(G_TT_RGBA16);
         if (bitDepth == G_IM_SIZ_4b) {
             gDPLoadTLUT_pal16(gMainGfxPos++, 0, palette);
         } else {
             gDPLoadTLUT_pal256(gMainGfxPos++, palette);
         }
     } else {
-        gDPSetTextureLUT(gMainGfxPos++, G_TT_NONE);
+        nd_pso_lut(G_TT_NONE);
     }
     {
         static const u32 cw_decal[2] = DIMG_CW(G_CC_DECALRGBA, G_CC_DECALRGBA), cw_02[2] = DIMG_CW(PM_CC_02, PM_CC_02);
@@ -56,7 +57,6 @@ s32 draw_ci_image_with_clipping(IMG_PTR raster, s32 width, s32 height, s32 fmt, 
     }
     ret = draw_image_with_clipping(raster, width, height, fmt, bitDepth, posX, posY, clipULx, clipULy, clipLRx, clipRLy);
     dimg_tpl = NULL;
-    gDPPipeSync(gMainGfxPos++);
     return ret;
 }
 

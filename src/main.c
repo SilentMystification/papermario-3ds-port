@@ -1,5 +1,6 @@
 #include "common.h"
 #include "nu/nusys.h"
+#include "nd_st.h"
 
 // TODO move these somewhere else...
 u8 nuYieldBuf[NU_GFX_YIELD_BUF_SIZE] ALIGNED(16);
@@ -151,15 +152,15 @@ void appendGfx_reset_tile_pattern(void) {
 
     gDPSetDepthImage(gMainGfxPos++, OS_K0_TO_PHYSICAL(nuGfxZBuffer));
     gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(frozenFrame));
-    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-    gSPTexture(gMainGfxPos++, -1, -1, 0, G_TX_RENDERTILE, G_ON);
-    gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
-    gDPSetTexturePersp(gMainGfxPos++, G_TP_NONE);
-    gDPSetTextureLUT(gMainGfxPos++, G_TT_NONE);
-    gDPSetRenderMode(gMainGfxPos++, G_RM_OPA_SURF, G_RM_OPA_SURF2);
-    gDPSetTextureFilter(gMainGfxPos++, G_TF_POINT);
-    gDPSetCombineMode(gMainGfxPos++, PM_CC_RESET_TILES, PM_CC_RESET_TILES);
-    gDPSetAlphaCompare(gMainGfxPos++, G_AC_THRESHOLD);
+    nd_pso_scis(G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    nd_tex_on(-1, -1, 0, G_TX_RENDERTILE, G_ON);
+    nd_pso_cyc(G_CYC_1CYCLE);
+    nd_pso_persp(G_TP_NONE);
+    nd_pso_lut(G_TT_NONE);
+    nd_pso_rm(G_RM_OPA_SURF, G_RM_OPA_SURF2);
+    nd_pso_filt(G_TF_POINT);
+    nd_pso_cc(PM_CC_RESET_TILES, PM_CC_RESET_TILES);
+    nd_pso_alcmp(G_AC_THRESHOLD);
     gDPSetBlendColor(gMainGfxPos++, 0, 0, 0, 127);
     gDPLoadTextureTile_4b(gMainGfxPos++, ResetTilesImg, G_IM_FMT_I, 128, 8, 0, 0, 127, 7, 0, G_TX_NOMIRROR | G_TX_WRAP,
                           G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
