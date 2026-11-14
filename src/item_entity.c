@@ -100,6 +100,9 @@ Gfx D_8014C620[] = {
 };
 
 #include "nd_rmdef.h"
+#include "nd_st.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 /* S5ITEM1: appendGfx_item_entity state as compiled defs. it_setup = the clear of :963 and the units of D_8014C620 (its PipeSync is
  * dropped: a no-op in the state model, nd_state.c). The render-mode and prim-colour units of the transparent and hiding branch. */
 static const Gfx it_setup_u[] = { gsSPClearGeometryMode(G_CULL_BOTH | G_LIGHTING),
@@ -203,20 +206,20 @@ void draw_coin_sparkles(ItemEntity* item) {
     guMtxCatF(sp98, sp58, spD8);
     guMtxF2L(spD8, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
-    gSPClearGeometryMode(gMainGfxPos++, G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
-    gSPSetGeometryMode(gMainGfxPos++, G_ZBUFFER | G_SHADE | G_LIGHTING | G_SHADING_SMOOTH);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_pso_cyc(G_CYC_1CYCLE);
+    nd_pso_geom_clr(G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
+    nd_pso_geom_set(G_ZBUFFER | G_SHADE | G_LIGHTING | G_SHADING_SMOOTH);
     gSPSetLights1(gMainGfxPos++, ItemEntityLights);
-    gSPTexture(gMainGfxPos++, -1, -1, 0, G_TX_RENDERTILE, G_ON);
-    gDPSetTextureLOD(gMainGfxPos++, G_TL_TILE);
-    gDPSetTexturePersp(gMainGfxPos++, G_TP_PERSP);
-    gDPSetTextureFilter(gMainGfxPos++, G_TF_BILERP);
-    gDPSetColorDither(gMainGfxPos++, G_CD_DISABLE);
-    gDPSetTextureDetail(gMainGfxPos++, G_TD_CLAMP);
-    gDPSetTextureConvert(gMainGfxPos++, G_TC_FILT);
-    gDPSetCombineKey(gMainGfxPos++, G_CK_NONE);
-    gDPSetAlphaCompare(gMainGfxPos++, G_AC_NONE);
+    nd_tex_on(-1, -1, 0, G_TX_RENDERTILE, G_ON);
+    nd_pso_lod(G_TL_TILE);
+    nd_pso_persp(G_TP_PERSP);
+    nd_pso_filt(G_TF_BILERP);
+    nd_pso_dither(G_CD_DISABLE);
+    nd_pso_detail(G_TD_CLAMP);
+    nd_pso_conv(G_TC_FILT);
+    nd_pso_combkey(G_CK_NONE);
+    nd_pso_alcmp(G_AC_NONE);
 
     ifxImg.raster = item->sparkleRaster;
     ifxImg.palette = item->sparklePalette;
@@ -227,8 +230,7 @@ void draw_coin_sparkles(ItemEntity* item) {
     ifxImg.alpha = 255;
     imgfx_appendGfx_component(0, &ifxImg, 0, spD8);
 
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gDPPipeSync(gMainGfxPos++);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }
 
 ItemEntity* get_item_entity(s32 itemEntityIndex) {
@@ -964,8 +966,7 @@ void appendGfx_item_entity(void* data) {
 
     gDisplayContext->matrixStack[gMatrixListPos] = mtxTransform;
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-              G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
     if (gSpriteShadingProfile->flags != 0) {
         ND_RM_REC(Gfx_RM2_ALPHATEST);
@@ -992,15 +993,14 @@ void appendGfx_item_entity(void* data) {
                        G_TX_CLAMP, 8, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD);
             gDPLoadSync(gMainGfxPos++);
             gDPLoadTile(gMainGfxPos++, G_TX_LOADTILE, 0, 0, 0x002E, 0x005C);
-            gDPPipeSync(gMainGfxPos++);
             gDPSetTile(gMainGfxPos++, G_IM_FMT_CI, G_IM_SIZ_4b, 2, 0x0000, 1, 0, G_TX_NOMIRROR | G_TX_CLAMP, 8,
                        G_TX_NOLOD, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD);
-            gDPSetTileSize(gMainGfxPos++, 1, 0x0400, 0x0400, 0x045C, 0x045C);
+            nd_val_tile_size(1, 0x0400, 0x0400, 0x045C, 0x045C);
             gDPSetTile(gMainGfxPos++, G_IM_FMT_CI, G_IM_SIZ_4b, 2, 0x0000, G_TX_RENDERTILE, 1,
                        G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD);
             gDPSetTile(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 4, 0x0100, 2, 0, G_TX_NOMIRROR | G_TX_WRAP,
                        G_TX_NOMASK, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
-            gDPSetTileSize(gMainGfxPos++, 2, 0, 0, 0x00FC, 0);
+            nd_val_tile_size(2, 0, 0, 0x00FC, 0);
 
             if (item->flags & (ITEM_ENTITY_FLAG_HIDING | ITEM_ENTITY_FLAG_TRANSPARENT)) {
                 func_801491E4(mtxTranslate, 0, 0, 24, 24, alpha);
@@ -1013,10 +1013,9 @@ void appendGfx_item_entity(void* data) {
                        G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD);
             gDPLoadSync(gMainGfxPos++);
             gDPLoadTile(gMainGfxPos++, G_TX_LOADTILE, 0, 0, 0x002E, 0x005C);
-            gDPPipeSync(gMainGfxPos++);
             gDPSetTile(gMainGfxPos++, G_IM_FMT_CI, G_IM_SIZ_4b, 2, 0x0000, G_TX_RENDERTILE, 0,
                        G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD);
-            gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, 0x0400, 0x0400, 0x045C, 0x045C);
+            nd_val_tile_size(G_TX_RENDERTILE, 0x0400, 0x0400, 0x045C, 0x045C);
         }
         nd_rec_ent_draw(D_8014C678, 0, 0, 0); /* S6-3, DIRECT D3: the draw record and its G_DL go to the frame stream */
     } else {
@@ -1027,15 +1026,14 @@ void appendGfx_item_entity(void* data) {
                        G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD);
             gDPLoadSync(gMainGfxPos++);
             gDPLoadTile(gMainGfxPos++, G_TX_LOADTILE, 0, 0, 0x003E, 0x007C);
-            gDPPipeSync(gMainGfxPos++);
             gDPSetTile(gMainGfxPos++, G_IM_FMT_CI, G_IM_SIZ_4b, 2, 0x0000, 1, 0, G_TX_NOMIRROR | G_TX_CLAMP,
                        8, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD);
-            gDPSetTileSize(gMainGfxPos++, 1, 0x0400, 0x0400, 0x047C, 0x047C);
+            nd_val_tile_size(1, 0x0400, 0x0400, 0x047C, 0x047C);
             gDPSetTile(gMainGfxPos++, G_IM_FMT_CI, G_IM_SIZ_4b, 2, 0x0000, G_TX_RENDERTILE, 1,
                        G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD);
             gDPSetTile(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 4, 0x0100, 2, 0, G_TX_NOMIRROR | G_TX_WRAP,
                        G_TX_NOMASK, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
-            gDPSetTileSize(gMainGfxPos++, 2, 0, 0, 0x00FC, 0);
+            nd_val_tile_size(2, 0, 0, 0x00FC, 0);
             if (item->flags & (ITEM_ENTITY_FLAG_HIDING | ITEM_ENTITY_FLAG_TRANSPARENT)) {
                 func_801491E4(mtxTranslate, 0, 0, 32, 32, alpha);
             } else {
@@ -1047,15 +1045,13 @@ void appendGfx_item_entity(void* data) {
                        G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD);
             gDPLoadSync(gMainGfxPos++);
             gDPLoadTile(gMainGfxPos++, G_TX_LOADTILE, 0, 0, 0x003E, 0x007C);
-            gDPPipeSync(gMainGfxPos++);
             gDPSetTile(gMainGfxPos++, G_IM_FMT_CI, G_IM_SIZ_4b, 2, 0x0000, G_TX_RENDERTILE, 0,
                        G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD);
-            gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, 0x0400, 0x0400, 0x047C, 0x047C);
+            nd_val_tile_size(G_TX_RENDERTILE, 0x0400, 0x0400, 0x047C, 0x047C);
         }
         nd_rec_ent_draw(D_8014C6A0, 0, 0, 0); /* S6-3, DIRECT D3: the draw record and its G_DL go to the frame stream */
     }
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gDPPipeSync(gMainGfxPos++);
+    nd_xf_pop(G_MTX_MODELVIEW);
 
     if (item->itemID == ITEM_COIN) {
         draw_coin_sparkles(item);
@@ -1167,14 +1163,14 @@ void render_item_entities(void) {
                         guMtxCatF(sp98, sp58, sp58);
                         guMtxF2L(sp58, &sp18);
                         gDisplayContext->matrixStack[gMatrixListPos] = sp18;
-                        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+                        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
                         if (gSpriteShadingProfile->flags != 0) {
                             gSPDisplayList(gMainGfxPos++, Gfx_RM2_ALPHATEST);
                         } else {
                             gSPDisplayList(gMainGfxPos++, Gfx_RM1_ALPHATEST);
                         }
-                        gSPClearGeometryMode(gMainGfxPos++, G_LIGHTING);
+                        nd_pso_geom_clr(G_LIGHTING);
                         gSPDisplayList(gMainGfxPos++, D_8014C620);
 
                         alpha = 255;
@@ -1188,13 +1184,11 @@ void render_item_entities(void) {
                             }
                             if (item->flags & (ITEM_ENTITY_FLAG_TRANSPARENT | ITEM_ENTITY_FLAG_HIDING)) {
                                 if (gSpriteShadingProfile->flags != 0) {
-                                    gDPSetRenderMode(gMainGfxPos++, AA_EN | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | G_RM_PASS,
-                                        AA_EN | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA));
+                                    nd_pso_rm(AA_EN | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | G_RM_PASS, AA_EN | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA));
                                 } else {
-                                    gDPSetRenderMode(gMainGfxPos++, AA_EN | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA),
-                                                                    AA_EN | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA));
-                                    gDPSetCombineMode(gMainGfxPos++, PM_CC_2F, PM_CC_32);
-                                    gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 255, alpha);
+                                    nd_pso_rm(AA_EN | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA), AA_EN | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA));
+                                    nd_pso_cc(PM_CC_2F, PM_CC_32);
+                                    nd_val_prim(0, 0, 255, 255, 255, alpha);
                                 }
                             }
                         }
@@ -1206,12 +1200,11 @@ void render_item_entities(void) {
                                 gDPSetTile(gMainGfxPos++, G_IM_FMT_CI, G_IM_SIZ_8b, 2, 0x0000, G_TX_LOADTILE, 0, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD);
                                 gDPLoadSync(gMainGfxPos++);
                                 gDPLoadTile(gMainGfxPos++, G_TX_LOADTILE, 0, 0, 0x002E, 0x005C);
-                                gDPPipeSync(gMainGfxPos++);
                                 gDPSetTile(gMainGfxPos++, G_IM_FMT_CI, G_IM_SIZ_4b, 2, 0x0000, 1, 0, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD);
-                                gDPSetTileSize(gMainGfxPos++, 1, 0x0400, 0x0400, 0x045C, 0x045C);
+                                nd_val_tile_size(1, 0x0400, 0x0400, 0x045C, 0x045C);
                                 gDPSetTile(gMainGfxPos++, G_IM_FMT_CI, G_IM_SIZ_4b, 2, 0x0000, G_TX_RENDERTILE, 1, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD);
                                 gDPSetTile(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 4, 0x0100, 2, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
-                                gDPSetTileSize(gMainGfxPos++, 2, 0, 0, 0x00FC, 0);
+                                nd_val_tile_size(2, 0, 0, 0x00FC, 0);
                                 if (item->flags & (ITEM_ENTITY_FLAG_TRANSPARENT | ITEM_ENTITY_FLAG_HIDING)) {
                                     func_801491E4(sp58, 0, 0, 24, 24, alpha);
                                 } else {
@@ -1222,9 +1215,8 @@ void render_item_entities(void) {
                                 gDPSetTile(gMainGfxPos++, G_IM_FMT_CI, G_IM_SIZ_8b, 2, 0x0000, G_TX_LOADTILE, 0, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD);
                                 gDPLoadSync(gMainGfxPos++);
                                 gDPLoadTile(gMainGfxPos++, G_TX_LOADTILE, 0, 0, 0x002E, 0x005C);
-                                gDPPipeSync(gMainGfxPos++);
                                 gDPSetTile(gMainGfxPos++, G_IM_FMT_CI, G_IM_SIZ_4b, 2, 0x0000, G_TX_RENDERTILE, 0, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD);
-                                gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, 0x0400, 0x0400, 0x045C, 0x045C);
+                                nd_val_tile_size(G_TX_RENDERTILE, 0x0400, 0x0400, 0x045C, 0x045C);
                             }
                             nd_rec_ent_draw(D_8014C678, 0, 0, 0); /* S6-3, DIRECT D3: the draw record and its G_DL go to the frame stream */
                         } else {
@@ -1234,12 +1226,11 @@ void render_item_entities(void) {
                                 gDPSetTile(gMainGfxPos++, G_IM_FMT_CI, G_IM_SIZ_8b, 2, 0x0000, G_TX_LOADTILE, 0, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD);
                                 gDPLoadSync(gMainGfxPos++);
                                 gDPLoadTile(gMainGfxPos++, G_TX_LOADTILE, 0, 0, 0x003E, 0x007C);
-                                gDPPipeSync(gMainGfxPos++);
                                 gDPSetTile(gMainGfxPos++, G_IM_FMT_CI, G_IM_SIZ_4b, 2, 0x0000, 1, 0, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD);
-                                gDPSetTileSize(gMainGfxPos++, 1, 0x0400, 0x0400, 0x047C, 0x047C);
+                                nd_val_tile_size(1, 0x0400, 0x0400, 0x047C, 0x047C);
                                 gDPSetTile(gMainGfxPos++, G_IM_FMT_CI, G_IM_SIZ_4b, 2, 0x0000, G_TX_RENDERTILE, 1, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD);
                                 gDPSetTile(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 4, 0x0100, 2, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
-                                gDPSetTileSize(gMainGfxPos++, 2, 0, 0, 0x00FC, 0);
+                                nd_val_tile_size(2, 0, 0, 0x00FC, 0);
                                 if (item->flags & (ITEM_ENTITY_FLAG_TRANSPARENT | ITEM_ENTITY_FLAG_HIDING)) {
                                     func_801491E4(sp58, 0, 0, 32, 32, alpha);
                                 } else {
@@ -1250,14 +1241,12 @@ void render_item_entities(void) {
                                 gDPSetTile(gMainGfxPos++, G_IM_FMT_CI, G_IM_SIZ_8b, 2, 0x0000, G_TX_LOADTILE, 0, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD);
                                 gDPLoadSync(gMainGfxPos++);
                                 gDPLoadTile(gMainGfxPos++, G_TX_LOADTILE, 0, 0, 0x003E, 0x007C);
-                                gDPPipeSync(gMainGfxPos++);
                                 gDPSetTile(gMainGfxPos++, G_IM_FMT_CI, G_IM_SIZ_4b, 2, 0x0000, G_TX_RENDERTILE, 0, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD);
-                                gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, 0x0400, 0x0400, 0x047C, 0x047C);
+                                nd_val_tile_size(G_TX_RENDERTILE, 0x0400, 0x0400, 0x047C, 0x047C);
                             }
                             nd_rec_ent_draw(D_8014C6A0, 0, 0, 0); /* S6-3, DIRECT D3: the draw record and its G_DL go to the frame stream */
                         }
-                        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-                        gDPPipeSync(gMainGfxPos++);
+                        nd_xf_pop(G_MTX_MODELVIEW);
                         FI_CLOSE();
                     }
                 }
