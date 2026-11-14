@@ -9,6 +9,7 @@
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_st.h"
+#include "nd_tx.h"
 
 extern MenuPanel gPausePanelTabs;
 extern MenuPanel gPausePanelStats;
@@ -554,7 +555,7 @@ void pause_tutorial_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 wid
     pause_draw_rect(baseX * 4, baseY * 4, (baseX + width) * 4, (baseY + 12) * 4, 0, 0, 0, 0, 0);
     nd_val_prim(0, 0, 185, 185, 185, 255);
     pause_draw_rect(baseX * 4, (baseY + 12) * 4, (baseX + width) * 4, (baseY + height) * 4, 0, 0, 0, 0, 0);
-    gSPViewport(gMainGfxPos++, &gPauseTutorialViewport);
+    nd_xf_viewport(&gPauseTutorialViewport);
     guOrthoF(matrix1, 0.0f, 320.0f, 240.0f, 0.0f, -100.0f, 100.0f, 1.0f);
     guMtxF2L(matrix1, &gDisplayContext->matrixStack[gMatrixListPos]);
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
@@ -856,7 +857,7 @@ void pause_draw_rect(s32 ulx, s32 uly, s32 lrx, s32 lry, s32 tileIdx, s32 uls, s
     if (ulx >= 1280 || uly >= 960 || lrx >= 2688 || lry >= 2688) {
         return;
     }
-    gSPScisTextureRectangle(gMainGfxPos++, ulx, uly, lrx, lry, tileIdx, uls, ult, dsdx, dtdy);
+    nd_rect_scis(ulx, uly, lrx, lry, tileIdx, uls, ult, dsdx, dtdy);
 }
 
 void pause_sort_item_list(s16* arr, s32 len, s32 (*compare)(s16*, s16 *)) {

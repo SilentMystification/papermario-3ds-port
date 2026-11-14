@@ -1,6 +1,8 @@
 #include "kmr_20.h"
 
 #include "world/area_kmr/kmr_20/records_screen.gfx.inc.c"
+#include "nd_tx.h"
+#include "nd_val.h"
 
 enum {
     RECORDS_STATE_BEGIN_FADE_IN     = 0,
@@ -70,7 +72,7 @@ void N(appendGfx_records_impl)(GameRecords* records, s32 alpha) {
 #if VERSION_JP
         gSPDisplayList(gMainGfxPos++, N(records_screen_gfx));
         nd_val_prim(0, 0, 16, 120, 24, alpha * 0.65);
-        gDPFillRectangle(gMainGfxPos++, 63, 43, 257, 192);
+        nd_rect_fill(63, 43, 257, 192);
 
         msg_draw_frame(60, 40, 200, 155, MSG_STYLE_INSPECT, MSG_PAL_WHITE, true, alpha * 0.55, alpha);
         draw_msg(MSG_CH0_00FC, 88, 50, alpha, MSG_PAL_WHITE, DRAW_MSG_STYLE_MENU);
@@ -127,7 +129,7 @@ void N(appendGfx_records_impl)(GameRecords* records, s32 alpha) {
 #else
         gSPDisplayList(gMainGfxPos++, N(records_screen_gfx));
         nd_val_prim(0, 0, 16, 120, 24, alpha * 0.65);
-        gDPFillRectangle(gMainGfxPos++, 33, 43, 287, 192);
+        nd_rect_fill(33, 43, 287, 192);
 
         msg_draw_frame(30, 40, 260, 155, MSG_STYLE_INSPECT, MSG_PAL_WHITE, true, alpha * 0.55, alpha);
         draw_msg(MSG_CH0_00FC, 206 - get_msg_width(MSG_CH0_00FC, CHARSET), 50, alpha, MSG_PAL_WHITE, DRAW_MSG_STYLE_MENU);

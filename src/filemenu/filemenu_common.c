@@ -7,6 +7,7 @@
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_st.h"
+#include "nd_tx.h"
 
 extern HudScript HES_AnimatedCursorHand;
 
@@ -194,7 +195,7 @@ void filemenu_draw_rect(s32 ulx, s32 uly, s32 lrx, s32 lry, s32 tileIdx, s32 uls
     if (ulx >= 1280 || uly >= 960 || lrx >= 2688 || lry >= 2688) {
         return;
     }
-    gSPScisTextureRectangle(gMainGfxPos++, ulx, uly, lrx, lry, tileIdx, uls, ult, dsdx, dtdy);
+    nd_rect_scis(ulx, uly, lrx, lry, tileIdx, uls, ult, dsdx, dtdy);
 }
 
 void filemenu_set_selected(MenuPanel* menu, s32 col, s32 row) {
@@ -964,7 +965,7 @@ void filemenu_draw_contents_copy_arrow(MenuPanel* menu, s32 baseX, s32 baseY, s3
 
     rotAngle = -atan2(startX, startZ, endX, endZ) - 90.0f;
 
-    gSPViewport(gMainGfxPos++, &D_80249D60);
+    nd_xf_viewport(&D_80249D60);
 
     guOrthoF(transformMtx, 0.0f, SCREEN_WIDTH, SCREEN_HEIGHT, 0.0f, -100.0f, 100.0f, 1.0f);
     guMtxF2L(transformMtx, &gDisplayContext->matrixStack[gMatrixListPos]);

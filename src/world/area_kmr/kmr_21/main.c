@@ -1,4 +1,6 @@
 #include "kmr_21.h"
+#include "nd_tx.h"
+#include "nd_val.h"
 
 typedef struct TitleDataFile {
     /* 0x00 */ s32 img_offset_title;
@@ -47,9 +49,7 @@ void worker_render_title_image(void) {
 
 #if VERSION_JP
     for (i = 0; i < 44; i++) {
-        gDPLoadTextureTile(gMainGfxPos++, &TitleImage[2176 * i], G_IM_FMT_RGBA, G_IM_SIZ_32b, 272, 112,
-                           0, 0, 271, 1, 0,
-                           G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+        nd_tex_load_tile(&TitleImage[2176 * i], G_IM_FMT_RGBA, G_IM_SIZ_32b, 272, 112, 0, 0, 271, 1, 0, G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
         gSPTextureRectangle(gMainGfxPos++,
             /* ulx */ 25 * 4,
             /* uly */ (i * 2 + TitlePosY) * 4,
@@ -59,9 +59,7 @@ void worker_render_title_image(void) {
     }
 #else
     for (i = 0; i < 56; i++) {
-        gDPLoadTextureTile(gMainGfxPos++, &TitleImage[1600 * i], G_IM_FMT_RGBA, G_IM_SIZ_32b, 200, 112,
-                           0, 0, 199, 1, 0,
-                           G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+        nd_tex_load_tile(&TitleImage[1600 * i], G_IM_FMT_RGBA, G_IM_SIZ_32b, 200, 112, 0, 0, 199, 1, 0, G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
         gSPTextureRectangle(gMainGfxPos++,
             /* ulx */ 60 * 4,
             /* uly */ (i * 2 + TitlePosY) * 4,

@@ -3,6 +3,7 @@
 #include "nd_st.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_tx.h"
 
 INCLUDE_IMG("world/area_iwa/iwa_01/splash.png", iwa_01_splash_img);
 #include "world/area_iwa/iwa_01/splash.vtx.inc.c"
@@ -58,7 +59,7 @@ void N(gfx_build_splashes)(s32 index) {
         }
 
         nd_val_prim(0, 0, 230, 255, 255, 255);
-        gDPSetBlendColor(gMainGfxPos++, 0, 0, 0, alpha);
+        nd_val_blend(0, 0, 0, alpha);
         guPosition(&gDisplayContext->matrixStack[gMatrixListPos],
                    splash->rot.x, splash->rot.y, splash->rot.z,
                    splash->scale,

@@ -4,6 +4,7 @@
 #include "nd_st.h"
 #include "nd_val.h"
 #include "nd_geo.h"
+#include "nd_tx.h"
 
 s32 N(WavePhase) = {
     0
@@ -72,12 +73,8 @@ void N(UnkModelFunc000)(s32 x1, s32 y1, s32 x2, s32 y2) {
                 alpha = 255;
             }
             nd_val_prim(0, 0, 255, 255, 255, alpha);
-            gDPLoadTextureTile(gMainGfxPos++, osVirtualToPhysical(img), G_IM_FMT_RGBA, G_IM_SIZ_16b,
-                            SCREEN_WIDTH, 6,
-                            x1, y1 - 6 * i - 6, x2 - 1, y1 - 6 * i - 1, 0,
-                            G_TX_WRAP, G_TX_WRAP, 9, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
-            gSPTextureRectangle(gMainGfxPos++, x1 * 4, (y1 + i * 6) * 4, x2 * 4, (y1 + i * 6 + 6) * 4,
-                                G_TX_RENDERTILE, x1 * 32, (y1 - i * 6) * 32, 1024, (s32)(sin_deg(N(WavePhase) + i * 30) * 500.0f) - 500);
+            nd_tex_load_tile(osVirtualToPhysical(img), G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, 6, x1, y1 - 6 * i - 6, x2 - 1, y1 - 6 * i - 1, 0, G_TX_WRAP, G_TX_WRAP, 9, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+            nd_rect_tex(x1 * 4, (y1 + i * 6) * 4, x2 * 4, (y1 + i * 6 + 6) * 4, G_TX_RENDERTILE, x1 * 32, (y1 - i * 6) * 32, 1024, (s32)(sin_deg(N(WavePhase) + i * 30) * 500.0f) - 500);
         }
     }
 
@@ -88,12 +85,8 @@ void N(UnkModelFunc000)(s32 x1, s32 y1, s32 x2, s32 y2) {
                 alpha = 255;
             }
             nd_val_prim(0, 0, 255, 255, 255, alpha);
-            gDPLoadTextureTile(gMainGfxPos++, osVirtualToPhysical(img), G_IM_FMT_RGBA, G_IM_SIZ_16b,
-                            SCREEN_WIDTH, 6,
-                            x1, y1 - 6 * i - m, x2 - 1, y1 - 6 * i - 1, 0,
-                            G_TX_WRAP, G_TX_WRAP, 9, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
-            gSPTextureRectangle(gMainGfxPos++, x1 * 4, (y1 + i * 6) * 4, x2 * 4, (y1 + i * 6 + m) * 4,
-                                G_TX_RENDERTILE, x1 * 32, (y1 - i * 6) * 32, 1024, -1024);
+            nd_tex_load_tile(osVirtualToPhysical(img), G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, 6, x1, y1 - 6 * i - m, x2 - 1, y1 - 6 * i - 1, 0, G_TX_WRAP, G_TX_WRAP, 9, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+            nd_rect_tex(x1 * 4, (y1 + i * 6) * 4, x2 * 4, (y1 + i * 6 + m) * 4, G_TX_RENDERTILE, x1 * 32, (y1 - i * 6) * 32, 1024, -1024);
         }
     }
 }
