@@ -5,6 +5,7 @@
 #include "nd_st.h"
 #include "nd_xf.h"
 #include "nd_geo.h"
+#include "nd_tx.h"
 
 typedef s8 TlbEntry[0x1000];
 typedef TlbEntry TlbMappablePage[15];
@@ -169,7 +170,7 @@ void render_effects_UI(void) {
                         if (cond) {
                             Camera* camera = &gCameras[gCurrentCameraID];
 
-                            gSPViewport(gMainGfxPos++, PM_VP(&camera->vp));
+                            nd_xf_viewport(PM_VP(&camera->vp));
                             nd_pso_geom_clr(G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG |
                                                 G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD |
                                                 G_SHADING_SMOOTH | G_CLIPPING | 0x40F9FA);

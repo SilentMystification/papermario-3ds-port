@@ -2,6 +2,7 @@
 #include "nu/nusys.h"
 #include "nd_st.h"
 #include "nd_geo.h"
+#include "nd_tx.h"
 
 enum SimpleWindowUpdateFlags {
     SIMPLE_WINDOW_UPDATE_1          = 0x1,
@@ -368,9 +369,9 @@ void render_window_root(void) {
         }
     }
 
-    gSPLoadGeometryMode(gMainGfxPos++, 0);
+    nd_pso_geom_load(0);
     nd_pso_geom_set(G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_SHADING_SMOOTH);
-    gDPPipelineMode(gMainGfxPos++, G_PM_NPRIMITIVE);
+    nd_pso_pipe(G_PM_NPRIMITIVE);
     nd_pso_cc(G_CC_SHADE, G_CC_SHADE);
     nd_pso_alcmp(G_AC_NONE);
     nd_pso_som(G_SETOTHERMODE_H, G_MDSFT_ALPHADITHER, 16, G_AD_DISABLE | G_CD_DISABLE | G_CK_NONE | G_TC_FILT | G_TF_BILERP | G_TT_NONE | G_TL_TILE | G_TD_CLAMP | G_TP_NONE);

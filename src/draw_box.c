@@ -6,6 +6,7 @@
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_geo.h"
+#include "nd_tx.h"
 
 #define INTEGER_LOG2(x) ((x) <= 1 ? 0 : (x) <= 2 ? 1 : (x) <= 4 ? 2 : (x) <= 8 ? 3 : (x) <= 16 ? 4 : (x) <= 32 ? 5 : (x) <= 64 ? 6 : (x) <= 128 ? 7 : (x) <= 256 ? 8 : (x) <= 512 ? 9 : 10)
 
@@ -448,8 +449,8 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
         }
 
         nd_pso_cyc(G_CYC_2CYCLE);
-        gDPSetBlendColor(gMainGfxPos++, 0, 0, 0, 0);
-        gDPSetFogColor(gMainGfxPos++, 0, 0, 0, darkening);
+        nd_val_blend(0, 0, 0, 0);
+        nd_val_fog(0, 0, 0, darkening);
         nd_pso_rm(PM_RM_SHROUD, G_RM_XLU_SURF2);
         if (!(flags & DRAW_FLAG_NO_CLIP)) {
             nd_pso_scis(G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -463,7 +464,7 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
         nd_pso_filt(G_TF_POINT);
 
         if (quads != nullptr) {
-            gSPViewport(gMainGfxPos++, &gBoxViewport);
+            nd_xf_viewport(&gBoxViewport);
             /* UA7: the port scales perspective x by 1.25 with wide. A 4:3 box frustum of +-100 cancels it, so the box keeps its 4:3 shape (spin included). */
             guFrustumF(mtx1, pm_wide ? -100.0f : -80.0f, pm_wide ? 100.0f : 80.0f, 60.0f, -60.0f, 160.0f, 480.0f, 1.0f);
             guMtxF2L(mtx1, &gDisplayContext->matrixStack[gMatrixListPos]);
@@ -509,16 +510,16 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
         if (bgImage != nullptr) {
             switch (background->bitDepth) {
                 case G_IM_SIZ_4b:
-                    gDPLoadTextureTile_4b(gMainGfxPos++, bgImage, bgFmt, bgWidth, bgHeight, 0, 0, bgWidth - 1, bgHeight - 1, 0, G_TX_WRAP, G_TX_WRAP, bgMasks, bgMaskt, G_TX_NOLOD, G_TX_NOLOD);
+                    nd_tex_load_tile_4b(bgImage, bgFmt, bgWidth, bgHeight, 0, 0, bgWidth - 1, bgHeight - 1, 0, G_TX_WRAP, G_TX_WRAP, bgMasks, bgMaskt, G_TX_NOLOD, G_TX_NOLOD);
                     break;
                 case G_IM_SIZ_8b:
-                    gDPLoadTextureTile(gMainGfxPos++, bgImage, bgFmt, G_IM_SIZ_8b, bgWidth, bgHeight, 0, 0, bgWidth - 1, bgHeight - 1, 0, G_TX_WRAP, G_TX_WRAP, bgMasks, bgMaskt, G_TX_NOLOD, G_TX_NOLOD);
+                    nd_tex_load_tile(bgImage, bgFmt, G_IM_SIZ_8b, bgWidth, bgHeight, 0, 0, bgWidth - 1, bgHeight - 1, 0, G_TX_WRAP, G_TX_WRAP, bgMasks, bgMaskt, G_TX_NOLOD, G_TX_NOLOD);
                     break;
                 case G_IM_SIZ_16b:
-                    gDPLoadTextureTile(gMainGfxPos++, bgImage, bgFmt, G_IM_SIZ_16b, bgWidth, bgHeight, 0, 0, bgWidth - 1, bgHeight - 1, 0, G_TX_WRAP, G_TX_WRAP, bgMasks, bgMaskt, G_TX_NOLOD, G_TX_NOLOD);
+                    nd_tex_load_tile(bgImage, bgFmt, G_IM_SIZ_16b, bgWidth, bgHeight, 0, 0, bgWidth - 1, bgHeight - 1, 0, G_TX_WRAP, G_TX_WRAP, bgMasks, bgMaskt, G_TX_NOLOD, G_TX_NOLOD);
                     break;
                 case G_IM_SIZ_32b:
-                    gDPLoadTextureTile(gMainGfxPos++, bgImage, bgFmt, G_IM_SIZ_32b, bgWidth, bgHeight, 0, 0, bgWidth - 1, bgHeight - 1, 0, G_TX_WRAP, G_TX_WRAP, bgMasks, bgMaskt, G_TX_NOLOD, G_TX_NOLOD);
+                    nd_tex_load_tile(bgImage, bgFmt, G_IM_SIZ_32b, bgWidth, bgHeight, 0, 0, bgWidth - 1, bgHeight - 1, 0, G_TX_WRAP, G_TX_WRAP, bgMasks, bgMaskt, G_TX_NOLOD, G_TX_NOLOD);
                     break;
             }
 
@@ -540,19 +541,19 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
 
                 switch (cornersBitDepth) {
                     case G_IM_SIZ_4b:
-                        gDPLoadMultiTile_4b(gMainGfxPos++, cornersImage, tmem, 1, cornersFmt, cornerWidth, cornerHeight, 0, 0, cornerWidth - 1, cornerHeight - 1, 0, G_TX_CLAMP, G_TX_CLAMP, masks, maskt, G_TX_NOLOD, G_TX_NOLOD);
+                        nd_tex_load_mtile_4b(cornersImage, tmem, 1, cornersFmt, cornerWidth, cornerHeight, 0, 0, cornerWidth - 1, cornerHeight - 1, 0, G_TX_CLAMP, G_TX_CLAMP, masks, maskt, G_TX_NOLOD, G_TX_NOLOD);
                         cornersImage += cornerWidth * cornerHeight / 2;
                         break;
                     case G_IM_SIZ_8b:
-                        gDPLoadMultiTile(gMainGfxPos++, cornersImage, tmem, 1, cornersFmt, G_IM_SIZ_8b, cornerWidth, cornerHeight, 0, 0, cornerWidth - 1, cornerHeight - 1, 0, G_TX_CLAMP, G_TX_CLAMP, masks, maskt, G_TX_NOLOD, G_TX_NOLOD);
+                        nd_tex_load_mtile(cornersImage, tmem, 1, cornersFmt, G_IM_SIZ_8b, cornerWidth, cornerHeight, 0, 0, cornerWidth - 1, cornerHeight - 1, 0, G_TX_CLAMP, G_TX_CLAMP, masks, maskt, G_TX_NOLOD, G_TX_NOLOD);
                         cornersImage += cornerWidth * cornerHeight;
                         break;
                     case G_IM_SIZ_16b:
-                        gDPLoadMultiTile(gMainGfxPos++, cornersImage, tmem, 1, cornersFmt, G_IM_SIZ_16b, cornerWidth, cornerHeight, 0, 0, cornerWidth - 1, cornerHeight - 1, 0, G_TX_CLAMP, G_TX_CLAMP, masks, maskt, G_TX_NOLOD, G_TX_NOLOD);
+                        nd_tex_load_mtile(cornersImage, tmem, 1, cornersFmt, G_IM_SIZ_16b, cornerWidth, cornerHeight, 0, 0, cornerWidth - 1, cornerHeight - 1, 0, G_TX_CLAMP, G_TX_CLAMP, masks, maskt, G_TX_NOLOD, G_TX_NOLOD);
                         cornersImage += cornerWidth * cornerHeight * 2;
                         break;
                     case G_IM_SIZ_32b:
-                        gDPLoadMultiTile(gMainGfxPos++, cornersImage, tmem, 1, cornersFmt, G_IM_SIZ_32b, cornerWidth, cornerHeight, 0, 0, cornerWidth - 1, cornerHeight - 1, 0, G_TX_CLAMP, G_TX_CLAMP, masks, maskt, G_TX_NOLOD, G_TX_NOLOD);
+                        nd_tex_load_mtile(cornersImage, tmem, 1, cornersFmt, G_IM_SIZ_32b, cornerWidth, cornerHeight, 0, 0, cornerWidth - 1, cornerHeight - 1, 0, G_TX_CLAMP, G_TX_CLAMP, masks, maskt, G_TX_NOLOD, G_TX_NOLOD);
                         cornersImage += cornerWidth * cornerHeight * 4;
                         break;
                 }
@@ -698,16 +699,16 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
                 } else {
                     switch (idx) {
                         case 0:
-                            gSPScisTextureRectangle(gMainGfxPos++, posX * 4, posY * 4, (posX + width / 2) * 4, (posY + height / 2) * 4, G_TX_RENDERTILE, 0, 0, 0x400, 0x400);
+                            nd_rect_scis(posX * 4, posY * 4, (posX + width / 2) * 4, (posY + height / 2) * 4, G_TX_RENDERTILE, 0, 0, 0x400, 0x400);
                             break;
                         case 1:
-                            gSPScisTextureRectangle(gMainGfxPos++, (posX + width / 2) * 4, posY * 4, (posX + width) * 4, (posY + height / 2) * 4, G_TX_RENDERTILE, (width / 2) * 32, 0, 0x400, 0x400);
+                            nd_rect_scis((posX + width / 2) * 4, posY * 4, (posX + width) * 4, (posY + height / 2) * 4, G_TX_RENDERTILE, (width / 2) * 32, 0, 0x400, 0x400);
                             break;
                         case 2:
-                            gSPScisTextureRectangle(gMainGfxPos++, posX * 4, (posY + height / 2) * 4, (posX + width / 2) * 4, (posY + height) * 4, G_TX_RENDERTILE, 0, (height / 2) * 32, 0x400, 0x400);
+                            nd_rect_scis(posX * 4, (posY + height / 2) * 4, (posX + width / 2) * 4, (posY + height) * 4, G_TX_RENDERTILE, 0, (height / 2) * 32, 0x400, 0x400);
                             break;
                         case 3:
-                            gSPScisTextureRectangle(gMainGfxPos++, (posX + width / 2) * 4, (posY + height / 2) * 4, (posX + width) * 4, (posY + height) * 4, G_TX_RENDERTILE, (width / 2) * 32, (height / 2) * 32, 0x400, 0x400);
+                            nd_rect_scis((posX + width / 2) * 4, (posY + height / 2) * 4, (posX + width) * 4, (posY + height) * 4, G_TX_RENDERTILE, (width / 2) * 32, (height / 2) * 32, 0x400, 0x400);
                             break;
                     }
 
@@ -746,7 +747,7 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
                 nd_mesh_vtx(&quads[0], 4, 0);
                 nd_mesh_tri2(0, 3, 1, 0, 0, 2, 3, 0);
             } else {
-                gSPScisTextureRectangle(gMainGfxPos++, posX * 4, posY * 4, (posX + width) * 4, (posY + height) * 4, G_TX_RENDERTILE, 0, 0, 0x0400, 0x0400);
+                nd_rect_scis(posX * 4, posY * 4, (posX + width) * 4, (posY + height) * 4, G_TX_RENDERTILE, 0, 0, 0x0400, 0x0400);
             }
         }
 
@@ -762,17 +763,17 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
                     nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, width, OS_K0_TO_PHYSICAL(mdl_address));
                     nd_pso_scis(G_SC_NON_INTERLACE, 0, 0, width, height);
                     nd_pso_cyc(G_CYC_FILL);
-                    gDPSetFillColor(gMainGfxPos++, PACK_FILL_COLOR(primR, primG, primB, 0));
+                    nd_val_fill(PACK_FILL_COLOR(primR, primG, primB, 0));
                     nd_pso_rm(G_RM_NOOP, G_RM_NOOP2);
-                    gDPFillRectangle(gMainGfxPos++, 0, 0, width - 1, height - 1);
-                    gDPSetScissorFrac(gMainGfxPos++, G_SC_NON_INTERLACE, 4, 4, (width - 1) * 4.0f, (height - 1) * 4.0f);
+                    nd_rect_fill(0, 0, width - 1, height - 1);
+                    nd_pso_scisf(G_SC_NON_INTERLACE, 4, 4, (width - 1) * 4.0f, (height - 1) * 4.0f);
                     nd_pso_cyc(G_CYC_1CYCLE);
 
                     fpDrawContents((s32)drawContentsArg0, 0, 0, width, height, opacity, darkening);
 
                     nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, 320, OS_K0_TO_PHYSICAL(nuGfxCfb_ptr));
                     nd_pso_scis(G_SC_NON_INTERLACE, 0, 0, 320, 240);
-                    gSPViewport(gMainGfxPos++, &gBoxViewport);
+                    nd_xf_viewport(&gBoxViewport);
                     nd_xf_push(sp154, G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
                     nd_tex_on(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
                     nd_pso_cyc(G_CYC_1CYCLE);
@@ -801,9 +802,7 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
                                 v[idx * 4 + k].v.tc[1] = idx * 6 * 32 + (k >= 2 ? 208 : 0);
                             }
                         }
-                        gDPLoadTextureTile(gMainGfxPos++, OS_K0_TO_PHYSICAL(mdl_address), G_IM_FMT_RGBA, G_IM_SIZ_16b, width, 0,
-                                        0, 0, width - 1, height - 1, 0,
-                                        G_TX_CLAMP, G_TX_CLAMP, 9, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+                        nd_tex_load_tile(OS_K0_TO_PHYSICAL(mdl_address), G_IM_FMT_RGBA, G_IM_SIZ_16b, width, 0, 0, 0, width - 1, height - 1, 0, G_TX_CLAMP, G_TX_CLAMP, 9, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
                         nd_val_tile_size(G_TX_RENDERTILE, (160 - width / 2) * 4, 0, ((160 - width / 2) + width - 1) * 4, (height - 1) * 4);
                         for (k = 0; k < ns; k += 8) {
                             n = ns - k < 8 ? ns - k : 8;
@@ -825,9 +824,7 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
                             extraHeight = 1;
                         }
                         lineHeight = extraHeight + 5;
-                        gDPLoadTextureTile(gMainGfxPos++, OS_K0_TO_PHYSICAL(mdl_address), G_IM_FMT_RGBA, G_IM_SIZ_16b, width, 0,
-                                        0, idx * 6, width - 1, idx * 6 + lineHeight, 0,
-                                        G_TX_CLAMP, G_TX_CLAMP, 9, 3, G_TX_NOLOD, G_TX_NOLOD);
+                        nd_tex_load_tile(OS_K0_TO_PHYSICAL(mdl_address), G_IM_FMT_RGBA, G_IM_SIZ_16b, width, 0, 0, idx * 6, width - 1, idx * 6 + lineHeight, 0, G_TX_CLAMP, G_TX_CLAMP, 9, 3, G_TX_NOLOD, G_TX_NOLOD);
                         nd_val_tile_size(G_TX_RENDERTILE, (160 - width / 2) * 4, 0, ((160 - width / 2) + width - 1) * 4, lineHeight * 4);
                         nd_mesh_vtx(&vtx_drawbox1, 4, 0);
                         nd_mesh_tri2(0, 3, 1, 0, 0, 2, 3, 0);

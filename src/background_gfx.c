@@ -7,6 +7,7 @@
 #include "nd_st.h"
 #include "nd_val.h"
 #include "nd_geo.h"
+#include "nd_tx.h"
 
 extern s32 gPauseBackgroundFade;
 extern int pm_wide; /* F07-4 */
@@ -337,11 +338,11 @@ void gfx_draw_background(void) {
             gDPPipeSync(gMainGfxPos++);
             nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, nuGfxCfb[1]);
             nd_pso_cyc(G_CYC_1CYCLE);
-            gDPSetBlendColor(gMainGfxPos++, 0x80, 0x80, 0x80, 0xFF);
+            nd_val_blend(0x80, 0x80, 0x80, 0xFF);
             nd_val_primz(0xFFFF, 0xFFFF);
             nd_pso_zsrc(G_ZS_PRIM);
             nd_pso_rm(G_RM_VISCVG, G_RM_VISCVG2);
-            gDPFillRectangle(gMainGfxPos++, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+            nd_rect_fill(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
             nd_pso_zsrc(G_ZS_PIXEL);
             gGameStatusPtr->backgroundFlags &= ~BACKGROUND_RENDER_STATE_MASK;
             gGameStatusPtr->backgroundFlags |= BACKGROUND_RENDER_STATE_FILTER_PAUSED;
@@ -366,8 +367,8 @@ void gfx_draw_background(void) {
             nd_pso_cyc(G_CYC_FILL);
             nd_pso_rm(G_RM_NOOP, G_RM_NOOP2);
             nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, nuGfxCfb_ptr);
-            gDPSetFillColor(gMainGfxPos++, PACK_FILL_COLOR(0, 0, 0, 1));
-            gDPFillRectangle(gMainGfxPos++, 0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1);
+            nd_val_fill(PACK_FILL_COLOR(0, 0, 0, 1));
+            nd_rect_fill(0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1);
             nd_pso_cyc(G_CYC_1CYCLE);
             nd_pso_persp(G_TP_NONE);
             nd_pso_lut(G_TT_NONE);
@@ -384,10 +385,7 @@ void gfx_draw_background(void) {
             gDPLoadTextureTile(gMainGfxPos++, pause_cfb_src(), G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH,
                                SCREEN_HEIGHT, 0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1, 0, G_TX_NOMIRROR | G_TX_WRAP,
                                G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
-            gSPTextureRectangle(gMainGfxPos++,
-                                0 << 2, 0, SCREEN_WIDTH << 2, SCREEN_HEIGHT << 2,
-                                G_TX_RENDERTILE,
-                                0 << 5, 0 << 5, 1 << 10, 1 << 10);
+            nd_rect_tex(0 << 2, 0, SCREEN_WIDTH << 2, SCREEN_HEIGHT << 2, G_TX_RENDERTILE, 0 << 5, 0 << 5, 1 << 10, 1 << 10);
             if (pm_wide) gPmNdGutter(gMainGfxPos++, gPauseBackgroundFade); /* PAUSEOPEN: the gutters from the pause slot, walker side (pm_gpu_pause_gutters) */
             break;
         default:
@@ -400,10 +398,10 @@ void gfx_draw_background(void) {
             nd_pso_cyc(G_CYC_FILL);
             nd_pso_rm(G_RM_NOOP, G_RM_NOOP2);
             nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, OS_K0_TO_PHYSICAL(nuGfxZBuffer));
-            gDPSetFillColor(gMainGfxPos++, PACK_FILL_DEPTH(G_MAXFBZ, 0));
-            gDPFillRectangle(gMainGfxPos++, 0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1);
+            nd_val_fill(PACK_FILL_DEPTH(G_MAXFBZ, 0));
+            nd_rect_fill(0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1);
             nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
-            gDPSetFillColor(gMainGfxPos++, PACK_FILL_COLOR(camera->bgColor[0], camera->bgColor[1], camera->bgColor[2], 1));
+            nd_val_fill(PACK_FILL_COLOR(camera->bgColor[0], camera->bgColor[1], camera->bgColor[2], 1));
 
             backgroundMinX = gGameStatusPtr->backgroundMinX;
             backgroundMaxX = backgroundMinX + gGameStatusPtr->backgroundMaxX;
@@ -469,33 +467,29 @@ void gfx_draw_background(void) {
             }
 
             if (!(gGameStatusPtr->backgroundFlags & BACKGROUND_FLAG_TEXTURE)) {
-                gDPFillRectangle(gMainGfxPos++, backgroundMinX, backgroundMinY, backgroundMaxX - 1, backgroundMaxY - 1);
+                nd_rect_fill(backgroundMinX, backgroundMinY, backgroundMaxX - 1, backgroundMaxY - 1);
             } else {
                 appendGfx_background_texture();
             }
 
             nd_pso_cyc(G_CYC_FILL);
             nd_pso_rm(G_RM_NOOP, G_RM_NOOP2);
-            gDPSetFillColor(gMainGfxPos++, PACK_FILL_COLOR(0, 0, 0, 1));
+            nd_val_fill(PACK_FILL_COLOR(0, 0, 0, 1));
 
             if (backgroundMinY > 0) {
-                gDPFillRectangle(gMainGfxPos++, 0, 0, SCREEN_WIDTH - 1, backgroundMinY - 1);
-                gDPNoOp(gMainGfxPos++);
+                nd_rect_fill(0, 0, SCREEN_WIDTH - 1, backgroundMinY - 1);
             }
 
             if (backgroundMinX > 0) {
-                gDPFillRectangle(gMainGfxPos++, 0, backgroundMinY, backgroundMinX - 1, backgroundMaxY - 1);
-                gDPNoOp(gMainGfxPos++);
+                nd_rect_fill(0, backgroundMinY, backgroundMinX - 1, backgroundMaxY - 1);
             }
 
             if (backgroundMaxX < SCREEN_WIDTH) {
-                gDPFillRectangle(gMainGfxPos++, backgroundMaxX, backgroundMinY, SCREEN_WIDTH - 1, backgroundMaxY - 1);
-                gDPNoOp(gMainGfxPos++);
+                nd_rect_fill(backgroundMaxX, backgroundMinY, SCREEN_WIDTH - 1, backgroundMaxY - 1);
             }
 
             if (backgroundMaxY < SCREEN_HEIGHT) {
-                gDPFillRectangle(gMainGfxPos++, 0, backgroundMaxY, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1);
-                gDPNoOp(gMainGfxPos++);
+                nd_rect_fill(0, backgroundMaxY, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1);
             }
             break;
     }

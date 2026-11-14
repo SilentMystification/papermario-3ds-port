@@ -2,6 +2,7 @@
 #include "nu/nusys.h"
 #include "nd_st.h"
 #include "nd_geo.h"
+#include "nd_tx.h"
 
 // TODO move these somewhere else...
 u8 nuYieldBuf[NU_GFX_YIELD_BUF_SIZE] ALIGNED(16);
@@ -161,9 +162,8 @@ void appendGfx_reset_tile_pattern(void) {
     nd_pso_filt(G_TF_POINT);
     nd_pso_cc(PM_CC_RESET_TILES, PM_CC_RESET_TILES);
     nd_pso_alcmp(G_AC_THRESHOLD);
-    gDPSetBlendColor(gMainGfxPos++, 0, 0, 0, 127);
-    gDPLoadTextureTile_4b(gMainGfxPos++, ResetTilesImg, G_IM_FMT_I, 128, 8, 0, 0, 127, 7, 0, G_TX_NOMIRROR | G_TX_WRAP,
-                          G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+    nd_val_blend(0, 0, 0, 127);
+    nd_tex_load_tile_4b(ResetTilesImg, G_IM_FMT_I, 128, 8, 0, 0, 127, 7, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
 
     for (i = 0; i < 20; i++) {
         for (j = 0; j < 15; j++) {
@@ -175,30 +175,10 @@ void appendGfx_reset_tile_pattern(void) {
             if (t < 0) {
                 continue;
             }
-            gSPTextureRectangle(gMainGfxPos++, ((i * 8) + 160) * 4,
-                                                 ((j * 8)) * 4,
-                                                 ((i * 8) + 168) * 4,
-                                                 ((j * 8) + 8) * 4,
-                                                 G_TX_RENDERTILE,
-                                                 (t * 8) * 32, 0, 0x0400, 0x0400);
-            gSPTextureRectangle(gMainGfxPos++, ((i * 8) + 160) * 4,
-                                                 (232 - (j * 8)) * 4,
-                                                 ((i * 8) + 168) * 4,
-                                                 (240 - (j * 8)) * 4,
-                                                 G_TX_RENDERTILE,
-                                                 (t * 8) * 32, 7 * 32, 0x0400, -0x0400);
-            gSPTextureRectangle(gMainGfxPos++, (152 - (i * 8)) * 4,
-                                                 ((j * 8)) * 4,
-                                                 (160 - (i * 8)) * 4,
-                                                 ((j * 8) + 8) * 4,
-                                                 G_TX_RENDERTILE,
-                                                 (t * 8 + 7) * 32, 0, -0x0400, 0x0400);
-            gSPTextureRectangle(gMainGfxPos++, (152 - (i * 8)) * 4,
-                                                 (232 - (j * 8)) * 4,
-                                                 (160 - (i * 8)) * 4,
-                                                 (240 - (j * 8)) * 4,
-                                                 G_TX_RENDERTILE,
-                                                 (t * 8 + 7) * 32, 7 * 32, -0x0400, -0x0400);
+            nd_rect_tex(((i * 8) + 160) * 4, ((j * 8)) * 4, ((i * 8) + 168) * 4, ((j * 8) + 8) * 4, G_TX_RENDERTILE, (t * 8) * 32, 0, 0x0400, 0x0400);
+            nd_rect_tex(((i * 8) + 160) * 4, (232 - (j * 8)) * 4, ((i * 8) + 168) * 4, (240 - (j * 8)) * 4, G_TX_RENDERTILE, (t * 8) * 32, 7 * 32, 0x0400, -0x0400);
+            nd_rect_tex((152 - (i * 8)) * 4, ((j * 8)) * 4, (160 - (i * 8)) * 4, ((j * 8) + 8) * 4, G_TX_RENDERTILE, (t * 8 + 7) * 32, 0, -0x0400, 0x0400);
+            nd_rect_tex((152 - (i * 8)) * 4, (232 - (j * 8)) * 4, (160 - (i * 8)) * 4, (240 - (j * 8)) * 4, G_TX_RENDERTILE, (t * 8 + 7) * 32, 7 * 32, -0x0400, -0x0400);
         }
     }
 

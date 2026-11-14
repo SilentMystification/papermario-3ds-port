@@ -1,5 +1,6 @@
 #include "common.h"
 #include "include_asset.h"
+#include "nd_tx.h"
 
 INCLUDE_IMG("ui/status/shimmer_particle.png", ui_status_shimmer_particle_png);
 
@@ -155,10 +156,9 @@ void star_power_shimmer_draw(void) {
     f32 emitterScale;
     s32 i, j;
 
-    gDPPipeSync(gMainGfxPos++);
     gSPSegment(gMainGfxPos++, 0x00, 0x00000000);
     gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-    gSPViewport(gMainGfxPos++, &ShimmerViewport);
+    nd_xf_viewport(&ShimmerViewport);
 
     guOrthoF(viewMtx, 0.0f, SCREEN_WIDTH, SCREEN_HEIGHT, 0.0f, -100.0f, 100.0f, 1.0f);
     guMtxF2L(viewMtx, &gDisplayContext->matrixStack[gMatrixListPos]);
