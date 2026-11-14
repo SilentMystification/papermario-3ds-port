@@ -4,6 +4,9 @@
 #include "imgfx.h"
 #include "pm_interp_fi.h"
 #include "nd_op.h" /* HC4e2b: the typed unit of a list word */
+#include "nd_st.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 typedef union ImgFXIntVars {
     s32 raw[2][4];
@@ -844,18 +847,17 @@ void imgfx_appendGfx_mesh(ImgFXState* state, Matrix4f mtx) {
     s32 dirX1;
     s32 dirZ2;
 
-    gDPPipeSync(gMainGfxPos++);
 
     if (!(state->flags & IMGFX_FLAG_SKIP_GFX_SETUP)) {
         gSPDisplayList(gMainGfxPos++, DefaultImgFXSetupGfx);
         if (state->flags & IMGFX_FLAG_NO_FILTERING) {
-            gDPSetTextureFilter(gMainGfxPos++, G_TF_POINT);
+            nd_pso_filt(G_TF_POINT);
         }
         if (state->flags & IMGFX_FLAG_G_CULL_BACK) {
-            gSPSetGeometryMode(gMainGfxPos++, G_CULL_BACK);
+            nd_pso_geom_set(G_CULL_BACK);
         }
         if (state->flags & IMGFX_FLAG_G_CULL_FRONT) {
-            gSPSetGeometryMode(gMainGfxPos++, G_CULL_FRONT);
+            nd_pso_geom_set(G_CULL_FRONT);
         }
 
         renderMode = &ImgFXRenderModes[state->renderType];
@@ -898,9 +900,9 @@ void imgfx_appendGfx_mesh(ImgFXState* state, Matrix4f mtx) {
         }
 
         if (state->flags & IMGFX_FLAG_SKIP_ZBUF) {
-            gSPClearGeometryMode(gMainGfxPos++, G_ZBUFFER);
+            nd_pso_geom_clr(G_ZBUFFER);
         } else {
-            gSPSetGeometryMode(gMainGfxPos++, G_ZBUFFER);
+            nd_pso_geom_set(G_ZBUFFER);
             if (skipModeChange) {
                 mode1 |= Z_CMP;
                 mode2 |= Z_CMP;
@@ -910,15 +912,14 @@ void imgfx_appendGfx_mesh(ImgFXState* state, Matrix4f mtx) {
             }
         }
         state->otherModeL = mode2;
-        gDPSetRenderMode(gMainGfxPos++, mode1, mode2);
+        nd_pso_rm(mode1, mode2);
 
         switch (renderType) {
             case IMGFX_RENDER_MULTIPLY_RGB:
                 // color: texture * prim
                 // alpha: texture
                 gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIDECALA_PRIM, G_CC_MODULATEIDECALA_PRIM);
-                gDPSetPrimColor(gMainGfxPos++, 0, 0, state->ints.color.r, state->ints.color.g,
-                                state->ints.color.b, 0);
+                nd_val_prim(0, 0, state->ints.color.r, state->ints.color.g, state->ints.color.b, 0);
                 break;
             case IMGFX_RENDER_MULTIPLY_ALPHA:
                 // color: texture
@@ -926,8 +927,8 @@ void imgfx_appendGfx_mesh(ImgFXState* state, Matrix4f mtx) {
                 if (primAlpha <= 0) {
                     return;
                 }
-                gDPSetCombineMode(gMainGfxPos++, PM_CC_02, PM_CC_02);
-                gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, primAlpha);
+                nd_pso_cc(PM_CC_02, PM_CC_02);
+                nd_val_prim(0, 0, 0, 0, 0, primAlpha);
                 break;
             case IMGFX_RENDER_MULTIPLY_RGBA:
                 // color: texture * prim
@@ -935,16 +936,14 @@ void imgfx_appendGfx_mesh(ImgFXState* state, Matrix4f mtx) {
                 if (primAlpha <= 0) {
                     return;
                 }
-                gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIA_PRIM, G_CC_MODULATEIA_PRIM);
-                gDPSetPrimColor(gMainGfxPos++, 0, 0, state->ints.color.r, state->ints.color.g,
-                                state->ints.color.b, primAlpha);
+                nd_pso_cc(G_CC_MODULATEIA_PRIM, G_CC_MODULATEIA_PRIM);
+                nd_val_prim(0, 0, state->ints.color.r, state->ints.color.g, state->ints.color.b, primAlpha);
                 break;
             case IMGFX_RENDER_MODULATE_PRIM_RGB:
                 // color: lerp from prim color to 1 based on texture intensity
                 // alpha: texture
                 gDPSetCombineMode(gMainGfxPos++, PM_CC_5B, PM_CC_5B);
-                gDPSetPrimColor(gMainGfxPos++, 0, 0, state->ints.color.r, state->ints.color.g,
-                                state->ints.color.b, 0);
+                nd_val_prim(0, 0, state->ints.color.r, state->ints.color.g, state->ints.color.b, 0);
                 break;
             case IMGFX_RENDER_MODULATE_PRIM_RGBA:
                 // color: lerp from prim color to 1 based on texture intensity
@@ -952,51 +951,50 @@ void imgfx_appendGfx_mesh(ImgFXState* state, Matrix4f mtx) {
                 if (primAlpha <= 0) {
                     return;
                 }
-                gDPSetCombineMode(gMainGfxPos++, PM_CC_5C, PM_CC_5C);
-                gDPSetPrimColor(gMainGfxPos++, 0, 0, state->ints.color.r, state->ints.color.g,
-                                state->ints.color.b, primAlpha);
+                nd_pso_cc(PM_CC_5C, PM_CC_5C);
+                nd_val_prim(0, 0, state->ints.color.r, state->ints.color.g, state->ints.color.b, primAlpha);
                 break;
             case IMGFX_RENDER_MULTIPLY_SHADE_RGB:
                 // color: modulate vtx color by texture intensity
                 // alpha: texture
                 gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIDECALA, G_CC_MODULATEIDECALA);
-                gSPSetGeometryMode(gMainGfxPos++, G_SHADE | G_SHADING_SMOOTH);
-                gSPClearGeometryMode(gMainGfxPos++, G_LIGHTING);
+                nd_pso_geom_set(G_SHADE | G_SHADING_SMOOTH);
+                nd_pso_geom_clr(G_LIGHTING);
                 break;
             case IMGFX_RENDER_MODULATE_SHADE_RGB:
                 // color: lerp from vtx color to 1 based on texture intensity
                 // alpha: texture
                 gDPSetCombineMode(gMainGfxPos++, PM_CC_5D, PM_CC_5D);
-                gSPSetGeometryMode(gMainGfxPos++, G_SHADE | G_SHADING_SMOOTH);
-                gSPClearGeometryMode(gMainGfxPos++, G_LIGHTING);
+                nd_pso_geom_set(G_SHADE | G_SHADING_SMOOTH);
+                nd_pso_geom_clr(G_LIGHTING);
                 break;
             case IMGFX_RENDER_MULTIPLY_SHADE_ALPHA:
                 // color: texture
                 // alpha: texture * vtx color
                 gDPSetCombineMode(gMainGfxPos++, PM_CC_12, PM_CC_12);
-                gSPSetGeometryMode(gMainGfxPos++, G_SHADE | G_SHADING_SMOOTH);
-                gSPClearGeometryMode(gMainGfxPos++, G_LIGHTING);
+                nd_pso_geom_set(G_SHADE | G_SHADING_SMOOTH);
+                nd_pso_geom_clr(G_LIGHTING);
                 break;
             case IMGFX_RENDER_MULTIPLY_SHADE_RGBA:
                 // color: modulate vtx color by texture intensity
                 // alpha: modulate vtx alpha by texture intensity
                 gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIA, G_CC_MODULATEIA);
-                gSPSetGeometryMode(gMainGfxPos++, G_SHADE | G_SHADING_SMOOTH);
-                gSPClearGeometryMode(gMainGfxPos++, G_LIGHTING);
+                nd_pso_geom_set(G_SHADE | G_SHADING_SMOOTH);
+                nd_pso_geom_clr(G_LIGHTING);
                 break;
             case IMGFX_RENDER_MODULATE_SHADE_RGBA:
                 // color: lerp from vtx color to 1 based on texture intensity
                 // alpha: vtx color * texture
                 gDPSetCombineMode(gMainGfxPos++, PM_CC_5E, PM_CC_5E);
-                gSPSetGeometryMode(gMainGfxPos++, G_SHADE | G_SHADING_SMOOTH);
-                gSPClearGeometryMode(gMainGfxPos++, G_LIGHTING);
+                nd_pso_geom_set(G_SHADE | G_SHADING_SMOOTH);
+                nd_pso_geom_clr(G_LIGHTING);
                 break;
             case IMGFX_RENDER_ANIM:
                 if (state->flags & (IMGFX_FLAG_2000 | IMGFX_FLAG_8000)) {
                     Camera* currentCam = &gCameras[gCurrentCameraID];
 
-                    gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIDECALA, G_CC_MODULATEIDECALA);
-                    gSPSetGeometryMode(gMainGfxPos++, G_SHADE | G_LIGHTING | G_SHADING_SMOOTH);
+                    nd_pso_cc(G_CC_MODULATEIDECALA, G_CC_MODULATEIDECALA);
+                    nd_pso_geom_set(G_SHADE | G_LIGHTING | G_SHADING_SMOOTH);
 
                     angle1 = cosine(currentCam->curYaw) * 120.0f;
                     angle2 = cosine(currentCam->curYaw + 90.0f) * 120.0f;
@@ -1009,7 +1007,7 @@ void imgfx_appendGfx_mesh(ImgFXState* state, Matrix4f mtx) {
                     gSPSetLights2(gMainGfxPos++, ImgFXLights);
                     break;
                 }
-                gDPSetCombineMode(gMainGfxPos++, G_CC_DECALRGBA, G_CC_DECALRGBA);
+                nd_pso_cc(G_CC_DECALRGBA, G_CC_DECALRGBA);
                 break;
             case IMGFX_RENDER_HOLOGRAM:
                 if (state->ints.hologram.mode == IMGFX_HOLOGRAM_NOISE) {
@@ -1017,18 +1015,14 @@ void imgfx_appendGfx_mesh(ImgFXState* state, Matrix4f mtx) {
                     // color: blend texure and noise
                     // alpha: texure * prim
                     gDPSetCombineMode(gMainGfxPos++, PM_CC_IMGFX_HOLOGRAM, PM_CC_IMGFX_HOLOGRAM);
-                    gDPSetPrimColor(gMainGfxPos++, 0, 0,
-                                    state->ints.hologram.noiseAmt,
-                                    state->ints.hologram.noiseAmt,
-                                    state->ints.hologram.noiseAmt,
-                                    primAlpha);
+                    nd_val_prim(0, 0, state->ints.hologram.noiseAmt, state->ints.hologram.noiseAmt, state->ints.hologram.noiseAmt, primAlpha);
                 } else if (state->ints.hologram.mode == IMGFX_HOLOGRAM_DITHER) {
                     primAlpha = state->ints.hologram.alphaAmt * ifxImgAlpha;
                     // color: texture
                     // alpha: texture * prim
                     gDPSetCombineMode(gMainGfxPos++, PM_CC_02, PM_CC_02);
-                    gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, primAlpha);
-                    gDPSetAlphaCompare(gMainGfxPos++, G_AC_DITHER);
+                    nd_val_prim(0, 0, 0, 0, 0, primAlpha);
+                    nd_pso_alcmp(G_AC_DITHER);
                 } else if (state->ints.hologram.mode == IMGFX_HOLOGRAM_THRESHOLD) {
                     s32 blendAlpha = state->ints.hologram.alphaAmt + state->ints.hologram.noiseAmt;
                     if (blendAlpha > 255) {
@@ -1038,9 +1032,9 @@ void imgfx_appendGfx_mesh(ImgFXState* state, Matrix4f mtx) {
                     // color: texture
                     // alpha: texture * prim
                     gDPSetCombineMode(gMainGfxPos++, PM_CC_02, PM_CC_02);
-                    gDPSetAlphaDither(gMainGfxPos++, G_AD_NOISE);
-                    gDPSetAlphaCompare(gMainGfxPos++, G_AC_THRESHOLD);
-                    gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, primAlpha);
+                    nd_pso_aldith(G_AD_NOISE);
+                    nd_pso_alcmp(G_AC_THRESHOLD);
+                    nd_val_prim(0, 0, 0, 0, 0, primAlpha);
                     gDPSetBlendColor(gMainGfxPos++, 0, 0, 0, blendAlpha);
                 }
                 break;
@@ -1048,8 +1042,7 @@ void imgfx_appendGfx_mesh(ImgFXState* state, Matrix4f mtx) {
                 // color: prim
                 // alpha: texture
                 gDPSetCombineMode(gMainGfxPos++, PM_CC_IMGFX_COLOR_FILL, PM_CC_IMGFX_COLOR_FILL);
-                gDPSetPrimColor(gMainGfxPos++, 0, 0, state->ints.color.r, state->ints.color.g,
-                                state->ints.color.b, 0);
+                nd_val_prim(0, 0, state->ints.color.r, state->ints.color.g, state->ints.color.b, 0);
                 break;
             case IMGFX_RENDER_DEFAULT:
             case IMGFX_RENDER_OVERLAY_RGB:
@@ -1062,7 +1055,7 @@ void imgfx_appendGfx_mesh(ImgFXState* state, Matrix4f mtx) {
                 // color: texture
                 // alpha: texture * prim
                 gDPSetCombineMode(gMainGfxPos++, PM_CC_02, PM_CC_02);
-                gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, state->ints.overlay.alpha);
+                nd_val_prim(0, 0, 0, 0, 0, state->ints.overlay.alpha);
                 break;
         }
     }
@@ -1080,16 +1073,14 @@ void imgfx_appendGfx_mesh(ImgFXState* state, Matrix4f mtx) {
             break;
         case IMGFX_MESH_STRIP:
             imgfx_appendGfx_mesh_basic(state, mtx);
-            gDPPipeSync(gMainGfxPos++);
             imgfx_appendGfx_mesh_strip(state, mtx);
             break;
     }
 
-    gDPPipeSync(gMainGfxPos++);
 
     if (state->renderType == IMGFX_RENDER_HOLOGRAM) {
-        gDPSetAlphaCompare(gMainGfxPos++, G_AC_NONE);
-        gDPSetAlphaDither(gMainGfxPos++, G_AD_DISABLE);
+        nd_pso_alcmp(G_AC_NONE);
+        nd_pso_aldith(G_AD_DISABLE);
     }
 }
 
@@ -1511,7 +1502,7 @@ void imgfx_appendGfx_mesh_basic(ImgFXState* state, Matrix4f mtx) {
     s32 i;
 
     if (!(state->flags & IMGFX_FLAG_SKIP_TEX_SETUP)) {
-        gDPSetTextureLUT(gMainGfxPos++, G_TT_RGBA16);
+        nd_pso_lut(G_TT_RGBA16);
         gDPLoadTLUT_pal16(gMainGfxPos++, 0, ImgFXCurrentTexturePtr->tex.palette);
     }
 
@@ -1549,7 +1540,7 @@ void imgfx_appendGfx_mesh_basic(ImgFXState* state, Matrix4f mtx) {
                 gDPSetTile(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 4, 0x100, 2, 0,
                             G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_WRAP,
                             G_TX_NOMASK, G_TX_NOLOD);
-                gDPSetTileSize(gMainGfxPos++, 2, 0, 0, 252, 0);
+                nd_val_tile_size(2, 0, 0, 252, 0);
 
                 alpha = 255;
                 switch (state->renderType) {
@@ -1576,18 +1567,17 @@ void imgfx_appendGfx_mesh_basic(ImgFXState* state, Matrix4f mtx) {
                         gSPViewport(gMainGfxPos++, PM_VP(&cam->vpAlt));
                     }
 
-                    gDPSetRenderMode(gMainGfxPos++, G_RM_PASS, state->otherModeL);
+                    nd_pso_rm(G_RM_PASS, state->otherModeL);
 
                     if (alpha == -1) {
-                        gDPSetCombineMode(gMainGfxPos++, PM_CC_0D, PM_CC_0C);
+                        nd_pso_cc(PM_CC_0D, PM_CC_0C);
                     } else {
-                        gDPSetEnvColor(gMainGfxPos++, 0, 0, 0, alpha);
-                        gDPSetCombineMode(gMainGfxPos++, PM_CC_0B, PM_CC_0C);
+                        nd_val_env(0, 0, 0, alpha);
+                        nd_pso_cc(PM_CC_0B, PM_CC_0C);
                     }
 
                     gSPVertex(gMainGfxPos++, &imgfx_vtxBuf[i], 4, 0);
                     gSP2Triangles(gMainGfxPos++, 0, 2, 1, 0, 1, 2, 3, 0);
-                    gDPPipeSync(gMainGfxPos++);
                 }
                 create_shading_palette(mtx, uls, ult, lrs, lrt, alpha, state->otherModeL);
             } else {
@@ -1616,9 +1606,9 @@ void imgfx_appendGfx_mesh_basic(ImgFXState* state, Matrix4f mtx) {
                     }
 
                     if (alpha2 == 255) {
-                        gDPSetRenderMode(gMainGfxPos++, G_RM_AA_ZB_TEX_EDGE, G_RM_AA_ZB_TEX_EDGE2);
+                        nd_pso_rm(G_RM_AA_ZB_TEX_EDGE, G_RM_AA_ZB_TEX_EDGE2);
                     } else {
-                        gDPSetRenderMode(gMainGfxPos++, G_RM_ZB_XLU_SURF, G_RM_ZB_XLU_SURF2);
+                        nd_pso_rm(G_RM_ZB_XLU_SURF, G_RM_ZB_XLU_SURF2);
                     }
 
                     switch (state->renderType) {
@@ -1635,26 +1625,25 @@ void imgfx_appendGfx_mesh_basic(ImgFXState* state, Matrix4f mtx) {
                     }
 
                     if (alpha2 == -1) {
-                        gDPSetCombineMode(gMainGfxPos++, PM_CC_59, PM_CC_59);
+                        nd_pso_cc(PM_CC_59, PM_CC_59);
                     } else {
-                        gDPSetEnvColor(gMainGfxPos++, 0, 0, 0, alpha2);
-                        gDPSetCombineMode(gMainGfxPos++, PM_CC_0A, PM_CC_0A);
+                        nd_val_env(0, 0, 0, alpha2);
+                        nd_pso_cc(PM_CC_0A, PM_CC_0A);
                     }
 
                     gSPVertex(gMainGfxPos++, &imgfx_vtxBuf[i], 4, 0);
                     gSP2Triangles(gMainGfxPos++, 0, 2, 1, 0, 1, 2, 3, 0);
-                    gDPPipeSync(gMainGfxPos++);
 
                     if (alpha2 == 255) {
-                        gDPSetRenderMode(gMainGfxPos++, G_RM_AA_ZB_TEX_EDGE, G_RM_AA_ZB_TEX_EDGE2);
+                        nd_pso_rm(G_RM_AA_ZB_TEX_EDGE, G_RM_AA_ZB_TEX_EDGE2);
                     } else {
-                        gDPSetRenderMode(gMainGfxPos++, G_RM_ZB_XLU_SURF, G_RM_ZB_XLU_SURF2);
+                        nd_pso_rm(G_RM_ZB_XLU_SURF, G_RM_ZB_XLU_SURF2);
                     }
 
-                    gDPSetEnvColor(gMainGfxPos++, 100, 100, 100, 255);
-                    gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, alpha2);
-                    gDPSetCombineMode(gMainGfxPos++, PM_CC_5A, PM_CC_5A);
-                    gDPSetColorDither(gMainGfxPos++, G_CD_MAGICSQ);
+                    nd_val_env(100, 100, 100, 255);
+                    nd_val_prim(0, 0, 0, 0, 0, alpha2);
+                    nd_pso_cc(PM_CC_5A, PM_CC_5A);
+                    nd_pso_dither(G_CD_MAGICSQ);
                 }
             }
         }
@@ -1689,7 +1678,7 @@ void imgfx_appendGfx_mesh_grid(ImgFXState* state, Matrix4f mtx) {
     s32 firstVtxIdx;
 
     if (!(state->flags & IMGFX_FLAG_SKIP_TEX_SETUP)) {
-        gDPSetTextureLUT(gMainGfxPos++, G_TT_RGBA16);
+        nd_pso_lut(G_TT_RGBA16);
         gDPLoadTLUT_pal16(gMainGfxPos++, 0, ImgFXCurrentTexturePtr->tex.palette);
     }
 
@@ -1720,7 +1709,7 @@ void imgfx_appendGfx_mesh_grid(ImgFXState* state, Matrix4f mtx) {
                         G_TX_NOLOD, G_TX_NOLOD, // shift,
                         0x100, 0x100); // scroll
                     gDPSetTile(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 4, 0x0100, 2, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
-                    gDPSetTileSize(gMainGfxPos++, 2, 0, 0, 63 << 2, 0);
+                    nd_val_tile_size(2, 0, 0, 63 << 2, 0);
                     switch (state->renderType) {
                         case IMGFX_RENDER_DEFAULT:
                             alpha = 255;
@@ -1767,11 +1756,11 @@ void imgfx_appendGfx_mesh_anim(ImgFXState* state, Matrix4f mtx) {
 
     FI_OPEN("imgfx_anim", (uintptr_t)state);
     guScale(&gDisplayContext->matrixStack[gMatrixListPos], 0.1f, 0.1f, 0.1f);
-    gSPMatrix(gMainGfxPos++, VIRTUAL_TO_PHYSICAL(&gDisplayContext->matrixStack[gMatrixListPos++]), G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(VIRTUAL_TO_PHYSICAL(&gDisplayContext->matrixStack[gMatrixListPos++]), G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     FI_CLOSE();
 
     if (!(state->flags & IMGFX_FLAG_SKIP_TEX_SETUP)) {
-        gDPSetTextureLUT(gMainGfxPos++, G_TT_RGBA16);
+        nd_pso_lut(G_TT_RGBA16);
         gDPLoadTLUT_pal16(gMainGfxPos++, 0, ImgFXCurrentTexturePtr->tex.palette);
         if ((gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED)
             && (state->flags & (IMGFX_FLAG_100000 | IMGFX_FLAG_80000))
@@ -1788,7 +1777,7 @@ void imgfx_appendGfx_mesh_anim(ImgFXState* state, Matrix4f mtx) {
                                     256, 256);
             gDPSetTile(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 4, 0x0100, 2, 0,
                             G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
-            gDPSetTileSize(gMainGfxPos++, 2, 0, 0, 252, 0);
+            nd_val_tile_size(2, 0, 0, 252, 0);
 
             switch (state->renderType) {
                 case IMGFX_RENDER_DEFAULT:
@@ -1813,7 +1802,7 @@ void imgfx_appendGfx_mesh_anim(ImgFXState* state, Matrix4f mtx) {
         }
     }
     gSPDisplayList(gMainGfxPos++, state->gfxBufs[gCurrentDisplayContextIndex]);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }
 
 void imgfx_appendGfx_mesh_strip(ImgFXState* state, Matrix4f mtx) {
@@ -1825,18 +1814,18 @@ void imgfx_appendGfx_mesh_strip(ImgFXState* state, Matrix4f mtx) {
 
     FI_OPEN("imgfx_strip", (uintptr_t)state);
     guScale(&gDisplayContext->matrixStack[gMatrixListPos], (f32)ImgFXCurrentTexturePtr->tex.width / 100.0, (f32)ImgFXCurrentTexturePtr->tex.height / 100.0, 1.0f);
-    gSPMatrix(gMainGfxPos++, VIRTUAL_TO_PHYSICAL(&gDisplayContext->matrixStack[gMatrixListPos++]), G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(VIRTUAL_TO_PHYSICAL(&gDisplayContext->matrixStack[gMatrixListPos++]), G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     FI_CLOSE();
-    gDPSetRenderMode(gMainGfxPos++, G_RM_ZB_XLU_DECAL, G_RM_ZB_XLU_DECAL2);
+    nd_pso_rm(G_RM_ZB_XLU_DECAL, G_RM_ZB_XLU_DECAL2);
 
     if (state->renderType == IMGFX_RENDER_OVERLAY_RGBA) {
         s32 alpha = state->ints.overlay.alpha;
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, alpha);
-        gDPSetCombineMode(gMainGfxPos++, PM_CC_05, PM_CC_05);
+        nd_val_prim(0, 0, 0, 0, 0, alpha);
+        nd_pso_cc(PM_CC_05, PM_CC_05);
     } else {
-        gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIA, G_CC_MODULATEIA);
+        nd_pso_cc(G_CC_MODULATEIA, G_CC_MODULATEIA);
     }
-    gDPSetTextureLUT(gMainGfxPos++, G_TT_RGBA16);
+    nd_pso_lut(G_TT_RGBA16);
     gDPLoadTLUT_pal16(gMainGfxPos++, 0, ufs->palette);
     gDPScrollTextureTile_4b(gMainGfxPos++, ufs->raster, G_IM_FMT_CI, ufs->width, ufs->height,
                           0, 0, ufs->width - 1, ufs->height - 1, 0,
@@ -1847,12 +1836,12 @@ void imgfx_appendGfx_mesh_strip(ImgFXState* state, Matrix4f mtx) {
     ult = state->floats.overlay.posY;
     lrs = ufs->width * 4 + state->floats.overlay.posX;
     lrt = ufs->height * 4 + state->floats.overlay.posY;
-    gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, uls, ult, lrs, lrt);
+    nd_val_tile_size(G_TX_RENDERTILE, uls, ult, lrs, lrt);
 
     state->floats.overlay.posX = (s32)(state->floats.overlay.posX + ufs->offsetX) % (ufs->width * 4);
     state->floats.overlay.posY = (s32)(state->floats.overlay.posY + ufs->offsetY) % (ufs->height * 4);
     gSPDisplayList(gMainGfxPos++, ufs->displayList);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }
 
 void imgfx_wavy_init(ImgFXState* state) {
