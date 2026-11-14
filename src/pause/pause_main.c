@@ -6,6 +6,8 @@
 #include "sprite/npc/Goombaria.h"
 #include "sprite/npc/WorldGoombario.h"
 #include "sprite/npc/Goompa.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern MenuPanel gPausePanelTabs;
 extern MenuPanel gPausePanelStats;
@@ -509,7 +511,6 @@ void pause_textbox_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 widt
         hud_element_draw_without_clipping(gPauseCommonHIDs[2]);
     }
 
-    gDPPipeSync(gMainGfxPos++);
     gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, baseX + 1, baseY + 1, baseX + width - 1, baseY + height - 1);
     draw_msg(msgID, baseX + 10, baseY - gPauseDescTextOffset, 255, MSG_PAL_STANDARD, 0);
     if (gPauseShownDescIconScript != 0) {
@@ -548,16 +549,14 @@ void pause_tutorial_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 wid
     gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
     gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
     gDPSetCombineMode(gMainGfxPos++, G_CC_PRIMITIVE, G_CC_PRIMITIVE);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, 55, 55, 55, 255);
+    nd_val_prim(0, 0, 55, 55, 55, 255);
     pause_draw_rect(baseX * 4, baseY * 4, (baseX + width) * 4, (baseY + 12) * 4, 0, 0, 0, 0, 0);
-    gDPPipeSync(gMainGfxPos++);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, 185, 185, 185, 255);
+    nd_val_prim(0, 0, 185, 185, 185, 255);
     pause_draw_rect(baseX * 4, (baseY + 12) * 4, (baseX + width) * 4, (baseY + height) * 4, 0, 0, 0, 0, 0);
-    gDPPipeSync(gMainGfxPos++);
     gSPViewport(gMainGfxPos++, &gPauseTutorialViewport);
     guOrthoF(matrix1, 0.0f, 320.0f, 240.0f, 0.0f, -100.0f, 100.0f, 1.0f);
     guMtxF2L(matrix1, &gDisplayContext->matrixStack[gMatrixListPos]);
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
 
     for (i = 0; i < 3; i++) {
         //needed to match
@@ -583,10 +582,10 @@ void pause_tutorial_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 wid
         guRotateF(matrix2ptr, 180.0f, 0.0f, 1.0f, 0.0f);
         guMtxCatF(matrix2ptr, matrix1, matrix1);
         guMtxF2L(matrix1, &gDisplayContext->matrixStack[gMatrixListPos]);
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
         set_npc_imgfx_all(gPauseTutorialSprites[i], IMGFX_SET_COLOR, 255, 255, 255, 255, 64);
         spr_draw_npc_sprite(gPauseTutorialSprites[i], 0, 0, 0, matrix1);
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        nd_xf_pop(G_MTX_MODELVIEW);
     }
 
     get_msg_properties(pause_get_menu_msg(PAUSE_MSG_TUT_NAME_BADGES), &msgHeight, &msgWidth, &msgMaxLineChars, &msgNumLines, &msgMaxLinesPerPage, nullptr, 1);

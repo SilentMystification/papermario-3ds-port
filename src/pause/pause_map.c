@@ -39,6 +39,7 @@ HudScript* PauseMapHudScripts[] = { &HES_MapWalk0 };
 s32 D_8024FA34 = -1;
 
 #include "world_map.inc.c"
+#include "nd_val.h"
 
 s32 PauseMapArrowWobble[] = { 0, 2, 3, 3, 4, 4, 4, 4, 3, 2, 1, 0 };
 MenuWindowBP PauseMapWindowBPs[] = {
@@ -166,7 +167,6 @@ void pause_map_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 width, s
                         G_TX_CLAMP, G_TX_CLAMP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
         pause_draw_rect((baseX + 26) * 4, (baseY + 22 + 4 * i) * 4, (baseX + 260) * 4,
         (baseY + 22 + i * 4 + tileHeight) * 4, 0, ult, (-cameraY + i * 4) * 32, 0x400, 0x400);
-        gDPPipeSync(gMainGfxPos++);
 
         if (4 * i + 4 >= 110) {
             break;
@@ -212,18 +212,15 @@ void pause_map_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 width, s
         }
 
         if (i != PauseMapCursorCurrentOption) {
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, 220, 80, 30, 255);
+            nd_val_prim(0, 0, 220, 80, 30, 255);
         } else {
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, (gGameStatusPtr->frameCounter * 10) % 120 + 120,
-                                                   (gGameStatusPtr->frameCounter * 10) % 120 + 120,
-                                                   (gGameStatusPtr->frameCounter * 10) % 120, 255);
+            nd_val_prim(0, 0, (gGameStatusPtr->frameCounter * 10) % 120 + 120, (gGameStatusPtr->frameCounter * 10) % 120 + 120, (gGameStatusPtr->frameCounter * 10) % 120, 255);
         }
 
         bigPointX = camX + 26 + posX;
         bigPointY = camY + 22 + posY;
         pause_draw_rect((bigPointX - 8) * 4, (bigPointY - 8) * 4, (bigPointX + 8) * 4, (bigPointY + 8) * 4, 0, 0, 0, 0x400, 0x400);
-        gDPPipeSync(gMainGfxPos++);
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, 230, 190, 180, 255);
+        nd_val_prim(0, 0, 230, 190, 180, 255);
 
         pathLength = mapSpace->pathLength;
         path = mapSpace->path;

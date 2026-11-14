@@ -314,7 +314,6 @@ void pause_items_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 width,
     y1 = baseY + 1;
     x2 = baseX + width - 1;
     y2 = baseY + height - 1;
-    gDPPipeSync(gMainGfxPos++);
 
     if (x1 <= 0) {
         x1 = 1;

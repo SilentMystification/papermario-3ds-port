@@ -3,6 +3,7 @@
 #include "entity.h"
 #include "battle/battle.h"
 #include "battle/action_cmd.h"
+#include "nd_val.h"
 
 extern EntityModelScript EMS_BonkIcon;
 
@@ -561,7 +562,7 @@ void btl_bonk_setup_gfx(void* data) {
     if (alphaAmt > 10) {
         alphaAmt = 10;
     }
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, (alphaAmt * 255) / 10);
+    nd_val_prim(0, 0, 0, 0, 0, (alphaAmt * 255) / 10);
 }
 
 void btl_bonk_cleanup(void) {
