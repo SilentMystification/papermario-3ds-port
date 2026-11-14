@@ -2,10 +2,8 @@
 #include "animation_script.h"
 #include "model.h"
 #include "pm_interp_fi.h"
-#ifdef TARGET_3DS
 #include "nd_cmd.h"
 #include "nd_op.h" /* HC4e2b: the typed unit of a list word */
-#endif
 
 typedef struct DisplayListBufferHandle {
     /* 0x0 */ s32 ttl;
@@ -51,7 +49,6 @@ extern Gfx Gfx_RM3_SURFACE_XLU[];
 extern Gfx Gfx_RM3_DECAL_XLU[];
 extern Gfx Gfx_RM3_INTERSECTING_XLU[];
 
-#ifdef TARGET_3DS
 #include "nd_rmdef.h"
 #define AN_RM(l) ND_RM_REC(l)
 #define AN_NODE_HEAD gsSPTexture(0, 0, 0, G_TX_RENDERTILE, G_OFF), gsDPSetTextureLOD(G_TL_TILE), gsDPSetTextureLUT(G_TT_NONE), gsSPClearGeometryMode(G_LIGHTING)
@@ -62,9 +59,6 @@ static const Gfx an_n_fog_u[] = { AN_NODE_HEAD, gsSPSetGeometryMode(0), gsDPSetC
 static const Gfx an_n_fog_cull_u[] = { AN_NODE_HEAD, gsSPSetGeometryMode(G_CULL_BACK), gsDPSetCombineMode(PM_CC_42, PM_CC2_MULTIPLY_SHADE) };
 static NdSDef an_n_dec = { an_n_dec_u, 6 }, an_n_dec_cull = { an_n_dec_cull_u, 6 }, an_n_fog = { an_n_fog_u, 6 },
               an_n_fog_cull = { an_n_fog_cull_u, 6 };
-#else
-#define AN_RM(l) gSPDisplayList(gMainGfxPos++, l)
-#endif
 
 AnimScript gAnimScriptDefault = {
     as_Wait(60)
@@ -888,25 +882,10 @@ void appendGfx_animator_node(ModelAnimator* animator, AnimatorNode* node, Matrix
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     gDPPipeSync(gMainGfxPos++);
 
-#ifdef TARGET_3DS
     {
         const int cull = (animator->flags & MODEL_ANIMATOR_FLAG_CULL_BACK) != 0;
         nd_scomp_rec(!gAnimModelFogEnabled ? (cull ? &an_n_dec_cull : &an_n_dec) : (cull ? &an_n_fog_cull : &an_n_fog), NULL, 0);
     }
-#else
-    gSPTexture(gMainGfxPos++, 0, 0, 0, G_TX_RENDERTILE, G_OFF);
-    gDPSetTextureLOD(gMainGfxPos++, G_TL_TILE);
-    gDPSetTextureLUT(gMainGfxPos++, G_TT_NONE);
-    gSPClearGeometryMode(gMainGfxPos++, G_LIGHTING);
-    if (animator->flags & MODEL_ANIMATOR_FLAG_CULL_BACK) {
-        gSPSetGeometryMode(gMainGfxPos++, G_CULL_BACK);
-    }
-    if (!gAnimModelFogEnabled) {
-        gDPSetCombineMode(gMainGfxPos++, G_CC_DECALRGBA, G_CC_DECALRGBA);
-    } else {
-        gDPSetCombineMode(gMainGfxPos++, PM_CC_42, PM_CC2_MULTIPLY_SHADE);
-    }
-#endif
     gDPPipeSync(gMainGfxPos++);
 
     if (animator->fpRenderCallback != nullptr) animator->fpRenderCallback(animator->renderCallbackArg);
@@ -915,20 +894,15 @@ void appendGfx_animator_node(ModelAnimator* animator, AnimatorNode* node, Matrix
 
     if (node->displayList != nullptr) {
         if (node->vertexStartOffset < 0) {
-#ifdef TARGET_3DS
             /* S6-4: a static node list (its vertices sit in the model data behind gAnimVtxSegment): the walker draws it from the static pools. The other form
              * (vertexStartOffset >= 0) is a fresh heap copy of the list with per frame vertices every frame: named fallback ent_dynvtx, the walker runs it. */
             nd_rec_ent_draw(node->displayList, gAnimVtxSegment, animator->baseAddr != nullptr ? VIRTUAL_TO_PHYSICAL(animator->baseAddr) : 0, 1); /* DIRECT D3: word 2 w0 1 = the animator form (log); the record and its G_DL go to the frame stream */
-#else
-            gSPDisplayList(gMainGfxPos++, node->displayList);
-#endif
         } else {
             Gfx* gfxPos;
             s32 vtxIdx, dlIdx;
             s32 j = 0;
             s32 k;
 
-#ifdef TARGET_3DS
             {
                 uint32_t t0[2];
                 t0[0] = node->displayList[0].words.w0; t0[1] = node->displayList[0].words.w1;
@@ -948,21 +922,6 @@ void appendGfx_animator_node(ModelAnimator* animator, AnimatorNode* node, Matrix
                     }
                 }
             }
-#else
-            if ((node->displayList[0].words.w0 >> 0x18) != G_ENDDL) {
-                Gfx* gfxPtr = node->displayList;
-                s32 endDL = G_ENDDL;
-
-                for(;; j++) {
-                    w0 = gfxPtr->words.w0;
-                    gfxPtr++;
-                    cmd = w0 >> 0x18;
-                    if (cmd == endDL) {
-                        break;
-                    }
-                }
-            }
-#endif
             j++;
             for (k = 0; k < ARRAY_COUNT(D_801536C0); k++) {
                 bufferHandle = &D_801536C0[k];
@@ -982,7 +941,6 @@ void appendGfx_animator_node(ModelAnimator* animator, AnimatorNode* node, Matrix
             do {
                 w0 = ((s32*)node->displayList)[dlIdx++];
                 w1 = ((s32*)node->displayList)[dlIdx++];
-#ifdef TARGET_3DS
                 { /* HC4e2b: the copy takes the typed unit (ND_X0/ND_X1 of the word; a typed word stays) */
                     uint32_t t[2];
                     t[0] = (uint32_t)w0; t[1] = (uint32_t)w1;
@@ -994,13 +952,6 @@ void appendGfx_animator_node(ModelAnimator* animator, AnimatorNode* node, Matrix
                     break;
                 }
                 if (cmd == NDO_VTX) {
-#else
-                cmd = w0 >> 0x18;
-                if (cmd == G_ENDDL) {
-                    break;
-                }
-                if (cmd == G_VTX) {
-#endif
                     s32 startIdx = _SHIFTR(w0,1,7);
                     s32 vtxCount = _SHIFTR(w0,12,8);
                     Vtx* newBuffer;

@@ -166,10 +166,8 @@ SpriteAnimData* spr_load_sprite(s32 idx, s32 isPlayerSprite, s32 useTailAlloc) {
     s32 count;
     s32** data;
     s32** palettes;
-#ifdef TARGET_3DS
     extern unsigned pm_ticks(void);
     unsigned dp_t0 = pm_ticks();
-#endif
 
     if (isPlayerSprite) {
         base = SpriteDataHeader[1];
@@ -190,18 +188,14 @@ SpriteAnimData* spr_load_sprite(s32 idx, s32 isPlayerSprite, s32 useTailAlloc) {
             once++;
             pm_log_d("spr %d size %d base %08x", idx, compressedSize, base);
         }
-#ifdef TARGET_3DS
         { extern unsigned pm_dp_spr_n, pm_dp_spr_us; pm_dp_spr_n++; pm_dp_spr_us += (pm_ticks() - dp_t0) / 268u; }
-#endif
         return nullptr;
     }
     data = general_heap_malloc(compressedSize);
     if (data == nullptr) {
         extern void pm_log(const char* fmt, ...); extern void pm_log_e(const char* fmt, ...); extern void pm_log_w(const char* fmt, ...); extern void pm_log_d(const char* fmt, ...);
         pm_log_d("spr %d heap %d", idx, compressedSize);
-#ifdef TARGET_3DS
         { extern unsigned pm_dp_spr_n, pm_dp_spr_us; pm_dp_spr_n++; pm_dp_spr_us += (pm_ticks() - dp_t0) / 268u; }
-#endif
         return nullptr;
     }
     nuPiReadRom(base + spr_asset_entry[0], data, compressedSize);
@@ -217,9 +211,7 @@ SpriteAnimData* spr_load_sprite(s32 idx, s32 isPlayerSprite, s32 useTailAlloc) {
                 pm_log_d("spr %d yay0 %08x dest %d", idx, ((u32*)data)[0], destSize);
             }
             general_heap_free(data);
-#ifdef TARGET_3DS
             { extern unsigned pm_dp_spr_n, pm_dp_spr_us; pm_dp_spr_n++; pm_dp_spr_us += (pm_ticks() - dp_t0) / 268u; }
-#endif
             return nullptr;
         }
         if (useTailAlloc) {
@@ -229,9 +221,7 @@ SpriteAnimData* spr_load_sprite(s32 idx, s32 isPlayerSprite, s32 useTailAlloc) {
         }
         if (!animData) {
             general_heap_free(data);
-#ifdef TARGET_3DS
             { extern unsigned pm_dp_spr_n, pm_dp_spr_us; pm_dp_spr_n++; pm_dp_spr_us += (pm_ticks() - dp_t0) / 268u; }
-#endif
             return nullptr;
         }
         {
@@ -240,9 +230,7 @@ SpriteAnimData* spr_load_sprite(s32 idx, s32 isPlayerSprite, s32 useTailAlloc) {
                 extern void pm_log(const char* fmt, ...); extern void pm_log_e(const char* fmt, ...); extern void pm_log_w(const char* fmt, ...); extern void pm_log_d(const char* fmt, ...);
                 pm_log_e("spr %d decode fail %d", idx, destSize);
                 general_heap_free(data);
-#ifdef TARGET_3DS
                 { extern unsigned pm_dp_spr_n, pm_dp_spr_us; pm_dp_spr_n++; pm_dp_spr_us += (pm_ticks() - dp_t0) / 268u; }
-#endif
                 return nullptr;
             }
         }
@@ -297,9 +285,7 @@ SpriteAnimData* spr_load_sprite(s32 idx, s32 isPlayerSprite, s32 useTailAlloc) {
     }
 
     spr_swizzle_anim_offsets(0, 0, animData);
-#ifdef TARGET_3DS
     { extern unsigned pm_dp_spr_n, pm_dp_spr_us; pm_dp_spr_n++; pm_dp_spr_us += (pm_ticks() - dp_t0) / 268u; }
-#endif
     return animData;
 }
 

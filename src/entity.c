@@ -883,12 +883,10 @@ void reload_world_entity_data(void) {
             break;
         }
 
-#ifdef TARGET_3DS
         /* Animated meshes use the compiled C node data, not the ROM copy. */
         if (bp->flags & ENTITY_FLAG_HAS_ANIMATED_MODEL) {
             continue;
         }
-#endif
         if (!(bp->flags & ENTITY_FLAG_HAS_ANIMATED_MODEL)) {
             void* gfxData;
 
@@ -1073,7 +1071,6 @@ void load_split_entity_data(Entity* entity, EntityBlueprint* entityData, s32 lis
     s32 dma2size_2;
     s32 totalLoaded;
 
-#ifdef TARGET_3DS
     if (entityData->flags & ENTITY_FLAG_HAS_ANIMATED_MODEL) {
         StaticAnimatorNode** nodes = (StaticAnimatorNode**)entityData->modelAnimationNodes;
         /* The C nodes mark empty links with -1. The ROM swizzle turns those into null. */
@@ -1094,7 +1091,6 @@ void load_split_entity_data(Entity* entity, EntityBlueprint* entityData, s32 lis
         entity->flags |= ENTITY_FLAG_HAS_ANIMATED_MODEL;
         return;
     }
-#endif
     if (entityData->flags & ENTITY_FLAG_HAS_ANIMATED_MODEL) {
         DmaEntry* dmaList = entityData->dmaList;
         entity->vertexSegment = 0xA;

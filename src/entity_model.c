@@ -1,10 +1,8 @@
 #include "common.h"
 #include "entity.h"
-#ifdef TARGET_3DS
 #include "nd.h" /* S6-2a: nd_dlc_tex_decode (entcheck census) */
 #include "nd_cmd.h" /* DIRECT D3 */
 #include "nd_op.h" /* HC4e2b: the typed unit of a list word */
-#endif
 
 EntityModelScript D_8014C260 = {
     ems_End
@@ -49,13 +47,8 @@ extern Gfx Gfx_RM3_ALPHATEST[];
 extern Gfx Gfx_RM3_SURFACE_XLU[];
 extern Gfx Gfx_RM3_DECAL_XLU[];
 extern Gfx Gfx_RM3_INTERSECTING_XLU[];
-#ifdef TARGET_3DS
 #include "nd_rmdef.h" /* S5EMDL1: the Gfx_RM* lists as compiled ranges */
 #define EM_RM(l) ND_RM_REC(l)
-#else
-#define EM_RM(l) gSPDisplayList(gMainGfxPos++, l)
-#endif
-#ifdef TARGET_3DS
 /* S5EMDL2: the entity state lines around the render-mode list as S6T defs (nd_scomp.h). The prim colour is an ordered value
  * (class 4), so it leads its def; the syncs are dropped by the compiler (nd_scomp.c, as nd_gx_w). */
 static const Gfx em_pre_u[] = { gsDPSetPrimColor(0, 0, 0, 0, 0, 0), gsDPSetRenderMode(G_RM_TEX_EDGE, G_RM_TEX_EDGE2),
@@ -76,7 +69,6 @@ static void em_tail(int fog, int comb) { /* S5EMDL2: ClearGeometryMode(G_LIGHTIN
         nd_scomp_rec(&em_fog, v, 2);
     } else nd_scomp_rec(comb ? &em_plain : &em_noncomb, NULL, 0);
 }
-#endif
 
 s32 step_entity_model_commandlist(EntityModel* entityModel);
 void free_entity_model_by_ref(EntityModel* entityModel);
@@ -274,7 +266,6 @@ void make_entity_model_mtx_flipZ(Matrix4f mtx) {
     mtx[3][3] = 1.0f;
 }
 
-#ifdef TARGET_3DS
 /* S6-1 entcheck (debug switch): a census of the entity draw records (DIRECT D6: the draw is stream commands, so the record is no longer compared
  * with list words). One line per 300 frames: entcheck f<frame> recs <n>, then the entcls and ndobj lines. */
 extern int pm_debug_has(const char* key);
@@ -361,19 +352,15 @@ static void entcheck_draw(const Gfx* rec, const EntityModel* model) { /* DIRECT 
         pm_log_prof_line("ndobj f%u vtx draws static %u dyn %u new %u keys static %u dyn %u ovf %u", f, ent_vs_draw[1], ent_vs_draw[2], ent_vs_draw[0], ks, kd, ent_vs_ovf);
     }
 }
-#endif
 
 void appendGfx_entity_model(EntityModel* model) {
     Matrix4f mtx;
     Matrix4f mtx2;
     ImgFXTexture ifxImg;
     Matrix4f imgfxMtx;
-#ifdef TARGET_3DS
     Gfx* entRec = nullptr; /* S6-1: entity record (G_PM_ENT) of a model draw, 4 words, see gbi_custom.h. DIRECT D3: a local record (the walker reads only the draw record) */
     Gfx entBuf[G_PM_ENT_WORDS];
-#endif
 
-#ifdef TARGET_3DS
     if (!(model->flags & ENTITY_MODEL_FLAG_USE_IMAGE)) { /* S6-1: the entity record. w3 (render mode list) is set after the render mode switch. */
         entRec = entBuf;
         entRec[0].words.w0 = ((u32)G_PM_ENT << 24) | (((u32)model->renderMode & 0xffu) << 16) | ((entity_fog_enabled && !(model->flags & ENTITY_MODEL_FLAG_FOG_DISABLED)) ? 1u : 0u);
@@ -385,22 +372,12 @@ void appendGfx_entity_model(EntityModel* model) {
         entRec[3].words.w0 = 0;
         entRec[3].words.w1 = 0;
     }
-#endif
     gDisplayContext->matrixStack[gMatrixListPos] = model->transform;
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     if (!(model->flags & ENTITY_MODEL_FLAG_USE_IMAGE)) {
         if (!(model->flags & ENTITY_MODEL_FLAG_10000)) {
             if (model->renderMode != RENDER_MODE_SHADOW) {
-#ifdef TARGET_3DS
                 { Gfx v[1]; gDPSetPrimColor(&v[0], 0, 0, 255, 255, 255, 255); nd_scomp_rec(&em_pre, v, 1); }
-#else
-                gDPPipeSync(gMainGfxPos++);
-                gDPSetRenderMode(gMainGfxPos++, G_RM_TEX_EDGE, G_RM_TEX_EDGE2);
-                gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 255, 255);
-                gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIA_PRIM, G_CC_MODULATEIA_PRIM);
-                gDPSetAlphaCompare(gMainGfxPos++, G_AC_NONE);
-                gSPSetOtherMode(gMainGfxPos++, G_SETOTHERMODE_H, G_MDSFT_ALPHADITHER, 18, G_AD_DISABLE | G_CD_DISABLE | G_CK_NONE | G_TC_FILT | G_TF_POINT | G_TT_NONE | G_TL_TILE | G_TD_CLAMP | G_TP_NONE | G_CYC_1CYCLE);
-#endif
             }
 
             switch (entity_fog_enabled && !(model->flags & ENTITY_MODEL_FLAG_FOG_DISABLED)) {
@@ -484,24 +461,9 @@ void appendGfx_entity_model(EntityModel* model) {
                             EM_RM(Gfx_RM3_INTERSECTING_XLU);
                             break;
                     }
-#ifndef TARGET_3DS
-                    gDPSetFogColor(gMainGfxPos++, entity_fog_red, entity_fog_green, entity_fog_blue, entity_fog_alpha);
-                    gSPFogPosition(gMainGfxPos++, entity_fog_dist_min, entity_fog_dist_max);
-#endif
                     break;
             }
-#ifdef TARGET_3DS
             em_tail(entity_fog_enabled && !(model->flags & ENTITY_MODEL_FLAG_FOG_DISABLED), model->renderMode != RENDER_MODE_SHADOW);
-#else
-            gSPClearGeometryMode(gMainGfxPos++, G_LIGHTING);
-            if (!entity_fog_enabled || (model->flags & ENTITY_MODEL_FLAG_FOG_DISABLED)) {
-                if (model->renderMode != RENDER_MODE_SHADOW) {
-                    gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIA, G_CC_MODULATEIA);
-                }
-            } else {
-                gDPSetCombineMode(gMainGfxPos++, PM_CC_42, PM_CC2_MULTIPLY_SHADE);
-            }
-#endif
         }
         if (model->vertexArray != nullptr) {
             gSPSegment(gMainGfxPos++, D_80154374, VIRTUAL_TO_PHYSICAL(model->vertexArray));
@@ -514,26 +476,17 @@ void appendGfx_entity_model(EntityModel* model) {
         if (!(model->flags & ENTITY_MODEL_FLAG_10000)) {
             if (!entity_fog_enabled || (model->flags & ENTITY_MODEL_FLAG_FOG_DISABLED)) {
                 if (model->renderMode == RENDER_MODE_SHADOW) {
-#ifdef TARGET_3DS
                     nd_scomp_rec(&em_shadow, NULL, 0);
-#else
-                    gDPSetCombineMode(gMainGfxPos++, PM_CC1_SHADOW, PM_CC2_SHADOW);
-#endif
                 }
             }
         }
         gDPPipeSync(gMainGfxPos++);
 
-#ifdef TARGET_3DS
         if (entRec != nullptr) { /* S6-2c-3, DIRECT D3: the draw record and the model list G_DL go to the frame stream (the walker draws the list from the static pools, or runs the G_DL) */
             nd_rec_ent_draw(model->gfx.displayList, entRec[1].words.w0, entRec[1].words.w1, 0);
         } else {
             gSPDisplayList(gMainGfxPos++, model->gfx.displayList);
         }
-#else
-        gSPDisplayList(gMainGfxPos++, model->gfx.displayList);
-#endif
-#ifdef TARGET_3DS
         if (entRec != nullptr && entcheck_on()) { /* S6-2a: end record, the walker checks its tile 0 state against the decode of the list (pm_gbi.c G_PM_ENT) */
             Gfx endRec[G_PM_ENT_WORDS];
             endRec[0].words.w0 = ((u32)G_PM_ENT << 24) | (u32)G_PM_ENT_END;
@@ -541,12 +494,9 @@ void appendGfx_entity_model(EntityModel* model) {
             endRec[1].words.w0 = endRec[1].words.w1 = endRec[2].words.w0 = endRec[2].words.w1 = endRec[3].words.w0 = endRec[3].words.w1 = 0;
             nd_rec_ent(endRec);
         }
-#endif
         gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
         gDPPipeSync(gMainGfxPos++);
-#ifdef TARGET_3DS
         if (entRec != nullptr) entcheck_draw(entRec, model);
-#endif
 
         if (!(model->flags & ENTITY_MODEL_FLAG_REFLECT)) {
             return;
@@ -836,22 +786,9 @@ void draw_entity_model_E(s32 modelIdx, Mtx* transformMtx) {
                         EM_RM(Gfx_RM3_INTERSECTING_XLU);
                         break;
                 }
-#ifndef TARGET_3DS
-                gDPSetFogColor(gMainGfxPos++, entity_fog_red, entity_fog_green, entity_fog_blue, entity_fog_alpha);
-                gSPFogPosition(gMainGfxPos++, entity_fog_dist_min, entity_fog_dist_max);
-#endif
                 break;
         }
-#ifdef TARGET_3DS
         em_tail(entity_fog_enabled && !(model->flags & ENTITY_MODEL_FLAG_FOG_DISABLED), 1);
-#else
-        gSPClearGeometryMode(gMainGfxPos++, G_LIGHTING);
-        if (!entity_fog_enabled || (model->flags & ENTITY_MODEL_FLAG_FOG_DISABLED)) {
-            gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIA, G_CC_MODULATEIA);
-        } else {
-            gDPSetCombineMode(gMainGfxPos++, PM_CC_42, PM_CC2_MULTIPLY_SHADE);
-        }
-#endif
         if (model->vertexArray != nullptr) {
             gSPSegment(gMainGfxPos++, D_80154374, VIRTUAL_TO_PHYSICAL(model->vertexArray));
         }

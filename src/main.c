@@ -20,9 +20,7 @@ void appendGfx_reset_tile_pattern(void);
 
 void gfx_draw_frame(void);
 void gfx_init_state(void);
-#ifdef TARGET_3DS
 void pm_frame_loop(void);
-#endif
 
 void create_audio_system(void);
 void load_engine_data(void);
@@ -100,11 +98,7 @@ void boot_main(void* data) {
     gRandSeed += osGetCount();
     nuGfxDisplayOn();
 
-#ifdef TARGET_3DS
     pm_frame_loop();
-#else
-    while (true) {}
-#endif
 }
 
 void gfxRetrace_Callback(s32 gfxTaskNum) {
@@ -151,11 +145,7 @@ void appendGfx_reset_tile_pattern(void) {
 
     gMatrixListPos = 0;
     gDisplayContext = &D_80164000[gCurrentDisplayContextIndex];
-#ifdef TARGET_3DS
     gMainGfxPos = nd_rec_task(); /* DIRECT D9: the task is a frame stream (no list) */
-#else
-    gMainGfxPos = gDisplayContext->mainGfx;
-#endif
     frozenFrame = ResetSavedFrameImg;
     gfx_init_state();
 
@@ -212,13 +202,7 @@ void appendGfx_reset_tile_pattern(void) {
     }
 
     D_80074010++;
-#ifdef TARGET_3DS
     nuGfxTaskStart(nullptr, 0, NU_GFX_UCODE_F3DEX, NU_SC_TASK_LODABLE); /* DIRECT D9: the task is a frame stream */
-#else
-    gDPFullSync(gMainGfxPos++);
-    gSPEndDisplayList(gMainGfxPos++);
-    nuGfxTaskStart(gDisplayContext->mainGfx, (u32)(gMainGfxPos - gDisplayContext->mainGfx) * 8, NU_GFX_UCODE_F3DEX, NU_SC_TASK_LODABLE);
-#endif
     gCurrentDisplayContextIndex ^= 1;
 }
 

@@ -179,7 +179,6 @@ Gfx D_8014EA48[] = {
     gsSPEndDisplayList() // ROM has df000000 at 0xE5490, the decomp lacks it (V22b)
 };
 
-#ifdef TARGET_3DS
 /* NATIVEAPI B2a (S1TSTEN): the transition stencil rectangle is one native record (screen_render_util.c writes it). full_and_id = full | id << 1,
  * id 0 Mario, 1 Star, 2 SharpCircle (gPmStencilId, set by _render_transition_stencil on core 1). */
 u8 gPmStencilId;
@@ -241,7 +240,6 @@ void pm_tsten_run(const uint32_t* u) {
     gImmp1(p++, G_RDPHALF_2, r->hd);
     nd_walk_state((const uint32_t*)buf, (unsigned)(p - buf));
 }
-#endif
 
 void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* overlay) {
     Camera* camera = &gCameras[gCurrentCameraID];
@@ -273,7 +271,6 @@ void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* ove
 
     switch (stencilType) {
         case OVERLAY_SCREEN_COLOR:
-#ifdef TARGET_3DS
             /* the scissor stays a stream op before the record: later walker draws may inherit it */
             gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
             /* 1-cycle fill: the lower right is exclusive (HUDB1). The N64 overscan hides the last column and row, the port shows them. */
@@ -282,25 +279,8 @@ void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* ove
                                         progress == 255.0f ? 1u : 0u };
                 nd_rec_napi(nd_fill_run, &rec, 3u);
             }
-#else
-            gDPPipeSync(gMainGfxPos++);
-            gDPSetColorDither(gMainGfxPos++, G_CD_MAGICSQ);
-            gDPSetAlphaDither(gMainGfxPos++, G_AD_PATTERN);
-            gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
-            if (progress == 255.0f) {
-                gDPSetRenderMode(gMainGfxPos++, CVG_DST_SAVE | G_RM_OPA_SURF, CVG_DST_SAVE | G_RM_OPA_SURF2);
-            } else {
-                gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
-            }
-            gDPSetCombineMode(gMainGfxPos++, G_CC_PRIMITIVE, G_CC_PRIMITIVE);
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, colR, colG, colB, progress);
-            gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-            gDPFillRectangle(gMainGfxPos++, 0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1);
-            gDPSetColorDither(gMainGfxPos++, G_CD_DISABLE);
-#endif
             return;
         case OVERLAY_VIEWPORT_COLOR:
-#ifdef TARGET_3DS
             gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
             {
                 const s32 vx = camera->viewportStartX, vy = camera->viewportStartY;
@@ -308,23 +288,6 @@ void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* ove
                                         ((u32)colR << 24) | ((u32)colG << 16) | ((u32)colB << 8) | (u32)(u8)progress, progress == 255.0f ? 1u : 0u };
                 nd_rec_napi(nd_fill_run, &rec, 3u);
             }
-#else
-            gDPPipeSync(gMainGfxPos++);
-            gDPSetColorDither(gMainGfxPos++, G_CD_MAGICSQ);
-            gDPSetAlphaDither(gMainGfxPos++, G_AD_PATTERN);
-            gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
-            if (progress == 255.0f) {
-                gDPSetRenderMode(gMainGfxPos++, CVG_DST_SAVE | G_RM_OPA_SURF, CVG_DST_SAVE | G_RM_OPA_SURF2);
-            } else {
-                gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
-            }
-            gDPSetCombineMode(gMainGfxPos++, G_CC_PRIMITIVE, G_CC_PRIMITIVE);
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, colR, colG, colB, progress);
-            gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-            gDPFillRectangle(gMainGfxPos++, camera->viewportStartX, camera->viewportStartY,
-                             camera->viewportStartX + camera->viewportW, camera->viewportStartY + camera->viewportH);
-            gDPSetColorDither(gMainGfxPos++, G_CD_DISABLE);
-#endif
             return;
     }
 
@@ -334,44 +297,32 @@ void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* ove
     switch (stencilType) {
         case OVERLAY_VIEWPORT_MARIO:
             gSPDisplayList(gMainGfxPos++, Gfx_LoadStencilTex_Mario);
-#ifdef TARGET_3DS
             gPmStencilId = 0;
-#endif
             appendGfx_screen_transition_stencil(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, progress, colR, colG, colB, progress * alpha / 255.0f, gCurrentCameraID);
             break;
         case OVERLAY_SCREEN_MARIO:
             gSPDisplayList(gMainGfxPos++, Gfx_LoadStencilTex_Mario);
-#ifdef TARGET_3DS
             gPmStencilId = 0;
-#endif
             appendGfx_screen_transition_stencil(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, progress, colR, colG, colB, progress * alpha / 255.0f, -1);
             break;
         case OVERLAY_VIEWPORT_STAR:
             gSPDisplayList(gMainGfxPos++, Gfx_LoadStencilTex_Star);
-#ifdef TARGET_3DS
             gPmStencilId = 1;
-#endif
             appendGfx_screen_transition_stencil(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, progress, colR, colG, colB, progress * alpha / 255.0f, gCurrentCameraID);
             break;
         case OVERLAY_SCREEN_STAR:
             gSPDisplayList(gMainGfxPos++, Gfx_LoadStencilTex_Star);
-#ifdef TARGET_3DS
             gPmStencilId = 1;
-#endif
             appendGfx_screen_transition_stencil(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, progress, colR, colG, colB, progress * alpha / 255.0f, -1);
             break;
         case OVERLAY_VIEWPORT_SPOTLIGHT:
             gSPDisplayList(gMainGfxPos++, Gfx_LoadStencilTex_SharpCircle);
-#ifdef TARGET_3DS
             gPmStencilId = 2;
-#endif
             appendGfx_screen_transition_stencil(x1, y1, progress, 0, 0, 0, 0, gCurrentCameraID);
             break;
         case OVERLAY_SCREEN_SPOTLIGHT:
             gSPDisplayList(gMainGfxPos++, Gfx_LoadStencilTex_SharpCircle);
-#ifdef TARGET_3DS
             gPmStencilId = 2;
-#endif
             appendGfx_screen_transition_stencil(x1, y1, progress, 0, 0, 0, 0, -1);
             break;
         case OVERLAY_TYPE_2:

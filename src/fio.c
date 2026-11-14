@@ -27,11 +27,9 @@ void fio_deserialize_state(void);
 void fio_serialize_state(void);
 bool fio_read_flash(s32 pageNum, void* readBuffer, u32 numBytes);
 bool fio_write_flash(s32 pageNum, s8* readBuffer, u32 numBytes);
-#ifdef TARGET_3DS
 void pm_cheat_file_erase(s32 slot); /* CHEATSAVE (pm_cheatsave.c): the cheat file goes with the save */
 void pm_flash_slots_line(const char* why); /* SAVETITLE log (pm_flash.c) */
 void pm_flash_save_line(int slot, int phys, unsigned count, unsigned crc); /* SAVETITLE log (pm_flash.c) */
-#endif
 void fio_erase_flash(s32 pageNum);
 
 #if VERSION_PAL
@@ -161,9 +159,7 @@ bool fio_validate_file_checksum(SaveData* saveData) {
 
 bool fio_fetch_saved_file_info(void) {
     SaveData* fetchBuf = &FetchSaveBuffer; // temps required to match
-#ifdef TARGET_3DS
     pm_flash_slots_line("fetch"); /* SAVETITLE log */
-#endif
 #if VERSION_PAL
     SaveData* checkBuf = &SaveCheckBuffer;
 #endif
@@ -310,17 +306,13 @@ void fio_save_game(s32 saveSlot) {
     fio_erase_flash(NextAvailablePhysicalSave);
     fio_write_flash(NextAvailablePhysicalSave, (s8*)saveData, sizeof(SaveData));
 #endif
-#ifdef TARGET_3DS
     pm_flash_save_line(saveSlot, NextAvailablePhysicalSave, saveData->saveCount, saveData->crc1); /* SAVETITLE log */
-#endif
 }
 
 void fio_erase_game(s32 saveSlot) {
     s32 i;
 
-#ifdef TARGET_3DS
     pm_cheat_file_erase(saveSlot);
-#endif
     fio_fetch_saved_file_info();
 
     for (i = 0; i < ARRAY_COUNT(PhysicalSaveInfo); i++) {

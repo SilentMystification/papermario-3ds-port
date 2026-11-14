@@ -5,8 +5,6 @@
 #include "ld_addrs.h"
 #include "pm_interp_fi.h"
 #include "nd_api.h"
-#ifdef TARGET_3DS
-#endif
 
 #define MAX_HUD_CACHE_ENTRIES 192
 
@@ -456,8 +454,6 @@ static void hud_rect_emit(const NdHudRec* hudElement, Gfx** gp, s32 anchor) {
                     break;
             }
 
-#ifdef TARGET_3DS
-#endif
             if (hudElement->flags & HUD_ELEMENT_FLAG_FILTER_TEX) {
                 if (!(anchor && pm_anchor_rect(ulx * 4, uly * 4, lrx * 4, lry * 4, 0, texStartX * 32 + 16, texStartY * 32 + 16, widthScale, heightScale))) {
                     gSPScisTextureRectangle(gMainGfxPos++, ulx * 4, uly * 4, lrx * 4, lry * 4, 0, texStartX * 32 + 16, texStartY * 32 + 16, widthScale, heightScale);
@@ -1696,12 +1692,8 @@ void render_complex_hud_element(HudElement* hudElement) {
     Vtx* vtx;
     Vtx* vtx2;
     /* S5CHUDB: mode 2 (IA8) is drawn as one direct record (cplx_quad_run); its state comes from the record, not the stream */
-#ifdef TARGET_3DS
     const int cplx_direct = (hudElement->flags & HUD_ELEMENT_FLAG_FMT_IA8) != 0;
     Mtx* cplx_mtx;
-#else
-    const int cplx_direct = 0;
-#endif
 
     if (!cplx_direct) {
         if (hudElement->flags & HUD_ELEMENT_FLAG_FILTER_TEX) {
@@ -1759,15 +1751,10 @@ void render_complex_hud_element(HudElement* hudElement) {
     guMtxCatF(sp60, sp220, sp20);
     guMtxCatF(sp20, sp1A0, sp60);
     guMtxF2L(sp60, &gDisplayContext->matrixStack[gMatrixListPos]);
-#ifdef TARGET_3DS
     cplx_mtx = &gDisplayContext->matrixStack[gMatrixListPos++];
     if (!cplx_direct) {
         gSPMatrix(gMainGfxPos++, VIRTUAL_TO_PHYSICAL(cplx_mtx), G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     }
-#else
-    gSPMatrix(gMainGfxPos++, VIRTUAL_TO_PHYSICAL(&gDisplayContext->matrixStack[gMatrixListPos++]),
-              G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-#endif
 
     mode = 0;
     a0 = mode;
@@ -1901,7 +1888,6 @@ void render_complex_hud_element(HudElement* hudElement) {
             { static int ctr_sw = -1; extern void ctr_store(const void* q); extern int pm_debug_has(const char* word); /* BTLUI3: cplxtrace stores the quad for nd_geom_vtx */
               if (ctr_sw < 0) ctr_sw = pm_debug_has("cplxtrace") ? 1 : 0;
               if (ctr_sw) ctr_store(&transform->quadBuffers[FrameQuadIndex]); }
-#ifdef TARGET_3DS
             if (cplx_direct) {
                 NdCHudRec rec;
                 rec.img = hudElement->imageAddr;
@@ -1915,7 +1901,6 @@ void render_complex_hud_element(HudElement* hudElement) {
                            (u32)hudElement->opacity;
                 nd_rec_napi(cplx_quad_run, &rec, sizeof rec / 8u);
             } else
-#endif
             {
                 gSP1Triangle(gMainGfxPos++, 0, 1, 2, 0);
                 gSP1Triangle(gMainGfxPos++, 0, 2, 3, 0);

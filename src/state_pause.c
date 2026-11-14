@@ -93,12 +93,10 @@ void state_init_pause(void) {
 
 extern Addr D_80200000;
 
-#ifdef TARGET_3DS
 /* PAUSE5B: cold timing of the pause open (3ds/src/pm_phase.c). Without the fsplit switch these return at once. */
 extern void pm_pc_begin(void);
 extern unsigned pm_pc_t(void);
 extern void pm_pc_add(int k, unsigned t0);
-#endif
 
 void state_step_pause(void) {
     switch (StepPauseState) {
@@ -113,9 +111,7 @@ void state_step_pause(void) {
                 gOverrideFlags |= GLOBAL_OVERRIDES_DISABLE_DRAW_FRAME;
                 gGameStatusPtr->backgroundFlags &= ~BACKGROUND_RENDER_STATE_MASK;
                 gGameStatusPtr->backgroundFlags |= BACKGROUND_RENDER_STATE_BEGIN_PAUSED;
-#ifdef TARGET_3DS
                 pm_pc_begin();
-#endif
 
             }
             break;
@@ -126,10 +122,8 @@ void state_step_pause(void) {
                 }
 
                 if (StepPauseDelay == 0) {
-#ifdef TARGET_3DS
                     unsigned pc_t0 = pm_pc_t(); /* PAUSE5B: setup block, rom and init below */
                     unsigned pc_r;
-#endif
                     StepPauseDelay = -1;
                     nuGfxSetCfb(pause_frameBuffers, 2);
                     gGameStatusPtr->savedBackgroundDarkness = gGameStatusPtr->backgroundDarkness;
@@ -158,13 +152,9 @@ void state_step_pause(void) {
                     SavedReverbMode = sfx_get_reverb_mode();
                     sfx_set_reverb_mode(0);
                     bgm_quiet_max_volume();
-#ifdef TARGET_3DS
                     pc_r = pm_pc_t();
-#endif
                     nuPiReadRomOverlay(&PauseOverlaySegment);
-#ifdef TARGET_3DS
                     pm_pc_add(0, pc_r);
-#endif
 #if VERSION_PAL
                     switch (gCurrentLanguage) {
                         case LANGUAGE_EN:
@@ -181,14 +171,10 @@ void state_step_pause(void) {
                             break;
                     }
 #endif
-#ifdef TARGET_3DS
                     pc_r = pm_pc_t();
-#endif
                     pause_init();
-#ifdef TARGET_3DS
                     pm_pc_add(1, pc_r);
                     pm_pc_add(2, pc_t0);
-#endif
                     pm_ph_ui("pause menu open", 0);
                     gOverrideFlags &= ~GLOBAL_OVERRIDES_DISABLE_DRAW_FRAME;
                 }
