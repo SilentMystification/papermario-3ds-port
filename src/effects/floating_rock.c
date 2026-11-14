@@ -1,8 +1,6 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
-ND_PSO_DESC(pe_floating_rock_136_k0, 0xfc327e64, 0xfffff7fb, 0x1e082cf0, 0x00552078, 0x00200405, 0x00000000, 0x00000000, 0x00000000, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0);
-ND_PSO_DESC(pe_floating_rock_136_k1, 0xfc327e64, 0xfffff7fb, 0x1e082cf0, 0x005049d8, 0x00200405, 0x00000000, 0x00000000, 0x00000000, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_st.h"
@@ -135,9 +133,6 @@ void floating_rock_appendGfx(void* effect) {
     }
 
     nd_draw_list(NDN(D_09000450_396540), ND_SELF);
-    switch (alpha != 255) {
-        case 0: nd_draw_list(D_E0098510[data->type], pe_floating_rock_136_k0); break;
-        default: nd_draw_list(D_E0098510[data->type], pe_floating_rock_136_k1); break;
-    }
+    nd_rec_dl(D_E0098510[data->type]);
     nd_xf_pop(G_MTX_MODELVIEW);
 }
