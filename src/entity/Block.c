@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "effects.h"
 #include "ld_addrs.h"
 #include "entity.h"
@@ -7,12 +8,12 @@
 
 extern Gfx Entity_InertYellowBlock_Render[];
 extern Gfx Entity_InertRedBlock_Render[];
-extern Gfx Entity_BrickBlock_Render[];
+NDN_DECL(Entity_BrickBlock_Render);
 extern Gfx Entity_Hammer1Block_Render[];
 extern Gfx Entity_Hammer2Block_Render[];
 extern Gfx Entity_Hammer3Block_Render[];
-extern Gfx Entity_PushBlock_Render[];
-extern Gfx Entity_PowBlock_Render[];
+NDN_DECL(Entity_PushBlock_Render);
+NDN_DECL(Entity_PowBlock_Render);
 
 extern EntityScript Entity_CreatedInertBlock_Script;
 extern EntityScript Entity_BreakingBlock_Script;
@@ -532,7 +533,7 @@ EntityModelScript Entity_InertYellowBlock_RenderScript = STANDARD_ENTITY_MODEL_S
 
 EntityModelScript Entity_InertRedBlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_InertRedBlock_Render, RENDER_MODE_SURFACE_OPA);
 
-EntityModelScript Entity_MulticoinBrick_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_BrickBlock_Render, RENDER_MODE_SURFACE_OPA);
+EntityModelScript Entity_MulticoinBrick_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_BrickBlock_Render), RENDER_MODE_SURFACE_OPA);
 
 EntityModelScript Entity_Hammer1Block_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_Hammer1Block_Render, RENDER_MODE_SURFACE_OPA);
 
@@ -540,11 +541,11 @@ EntityModelScript Entity_Hammer2Block_RenderScript = STANDARD_ENTITY_MODEL_SCRIP
 
 EntityModelScript Entity_Hammer3Block_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_Hammer3Block_Render, RENDER_MODE_SURFACE_OPA);
 
-EntityModelScript Entity_PushBlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_PushBlock_Render, RENDER_MODE_SURFACE_OPA);
+EntityModelScript Entity_PushBlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_PushBlock_Render), RENDER_MODE_SURFACE_OPA);
 
-EntityModelScript Entity_BrickBlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_BrickBlock_Render, RENDER_MODE_SURFACE_OPA);
+EntityModelScript Entity_BrickBlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_BrickBlock_Render), RENDER_MODE_SURFACE_OPA);
 
-EntityModelScript Entity_PowBlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_PowBlock_Render, RENDER_MODE_SURFACE_OPA);
+EntityModelScript Entity_PowBlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_PowBlock_Render), RENDER_MODE_SURFACE_OPA);
 
 EntityBlueprint Entity_InertYellowBlock = {
     .flags = ENTITY_FLAG_4000 | ENTITY_FLAG_FIXED_SHADOW_SIZE,

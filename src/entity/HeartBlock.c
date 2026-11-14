@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "effects.h"
 #include "message_ids.h"
 #include "ld_addrs.h"
@@ -13,7 +14,7 @@ extern EntityModelScript Entity_HeartBlockContent_RenderScriptHit;
 
 extern EntityBlueprint Entity_HeartBlockContent;
 
-extern Gfx Entity_HeartBlock_Render[];
+NDN_DECL(Entity_HeartBlock_Render);
 extern Gfx Entity_HeartBlockContent_RenderHeartSleeping[];
 extern Gfx Entity_HeartBlockContent_RenderHeartAwake[];
 extern Gfx Entity_HeartBlockContent_RenderHeartHappy[];
@@ -426,7 +427,7 @@ EntityScript Entity_HeartBlock_Script = {
 EntityModelScript Entity_HeartBlockContent_RenderScriptIdle = STANDARD_ENTITY_MODEL_SCRIPT(Entity_HeartBlockContent_RenderHeartSleeping, RENDER_MODE_ALPHATEST);
 EntityModelScript Entity_HeartBlockContent_RenderScriptHit = STANDARD_ENTITY_MODEL_SCRIPT(Entity_HeartBlockContent_RenderHeartAwake, RENDER_MODE_SURFACE_XLU_LAYER2);
 EntityModelScript Entity_HeartBlockContent_RenderScriptAfterHit = STANDARD_ENTITY_MODEL_SCRIPT(Entity_HeartBlockContent_RenderHeartHappy, RENDER_MODE_SURFACE_XLU_LAYER2);
-EntityModelScript Entity_HeartBlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_HeartBlock_Render, RENDER_MODE_SURFACE_XLU_LAYER3);
+EntityModelScript Entity_HeartBlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_HeartBlock_Render), RENDER_MODE_SURFACE_XLU_LAYER3);
 
 EntityBlueprint Entity_HeartBlockFrame = {
     .flags = ENTITY_FLAG_4000 | ENTITY_FLAG_FIXED_SHADOW_SIZE,

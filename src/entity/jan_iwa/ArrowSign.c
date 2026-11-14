@@ -1,10 +1,11 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "entity.h"
 #include "ld_addrs.h"
 #include "nd_xf.h"
 
-extern Gfx Entity_ArrowSign_Render[];
-extern Gfx Entity_ArrowSign_RenderRotatedSign[];
+NDN_DECL(Entity_ArrowSign_Render);
+NDN_DECL(Entity_ArrowSign_RenderRotatedSign);
 extern Mtx Entity_ArrowSign_mtxSign;
 
 void entity_ArrowSign_setupGfx(s32 entityIndex) {
@@ -20,7 +21,7 @@ void entity_ArrowSign_setupGfx(s32 entityIndex) {
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gfx = ENTITY_ADDR(entity, Gfx*, Entity_ArrowSign_RenderRotatedSign);
+    gfx = ENTITY_ADDR(entity, Gfx*, NDN(Entity_ArrowSign_RenderRotatedSign));
     gSPDisplayList(gMainGfxPos++, gfx);
     nd_xf_pop(G_MTX_MODELVIEW);
 }
@@ -51,7 +52,7 @@ EntityScript Entity_ArrowSign_Script = {
     es_End
 };
 
-EntityModelScript Entity_ArrowSign_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_ArrowSign_Render, RENDER_MODE_SURFACE_OPA);
+EntityModelScript Entity_ArrowSign_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_ArrowSign_Render), RENDER_MODE_SURFACE_OPA);
 
 EntityBlueprint Entity_ArrowSign = {
     .flags = ENTITY_FLAG_CIRCULAR_SHADOW | ENTITY_FLAG_400 | ENTITY_FLAG_FIXED_SHADOW_SIZE,

@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "include_asset.h"
 
 #include "entity/model/WoodenCrate.vtx.inc.c"
@@ -20,18 +21,7 @@ Gfx Entity_WoodenCrate_LoadTexture1[] = {
 
 INCLUDE_IMG("entity/model/WoodenCrate_img2.png", D_0A001E28_E53468);
 INCLUDE_PAL("entity/model/WoodenCrate_img2.pal", D_0A002628_E53C68);
-Gfx Entity_WoodenCrate_LoadTexture2[] = {
-    gsDPSetTextureLUT(G_TT_RGBA16),
-    gsDPLoadTLUT_pal16(0, D_0A002628_E53C68),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsDPSetCombineMode(G_CC_MODULATEIA, G_CC_MODULATEIA),
-    gsDPSetTextureDetail(G_TD_CLAMP),
-    gsDPSetTextureLOD(G_TL_TILE),
-    gsDPLoadTextureBlock_4b(D_0A001E28_E53468, G_IM_FMT_CI, 64, 64, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP, 6, 6, G_TX_NOLOD, G_TX_NOLOD),
-    gsDPSetTexturePersp(G_TP_PERSP),
-    gsDPSetTextureFilter(G_TF_BILERP),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(Entity_WoodenCrate_LoadTexture2);
 
 Mtx Entity_WoodenCrate_FragmentsMatrices[] = {
     {
@@ -1314,80 +1304,11 @@ Gfx D_0A004130_E55770[] = {
     gsSPEndDisplayList(),
 };
 
-Gfx D_0A004140_E55780[] = {
-    gsDPPipeSync(),
-    gsDPSetCycleType(G_CYC_1CYCLE),
-    gsSPDisplayList(Entity_WoodenCrate_LoadTexture2),
-    gsSPClearGeometryMode(G_CULL_BACK | G_LIGHTING | G_SHADING_SMOOTH),
-    gsSPVertex(&D_0A000000_E51640[9], 3, 0),
-    gsSPVertex(&D_0A000000_E51640[24], 1, 3),
-    gsSPVertex(&D_0A000000_E51640[30], 2, 4),
-    gsSPVertex(&D_0A000000_E51640[48], 25, 6),
-    gsSP2Triangles(0, 6, 7, 0, 2, 1, 7, 0),
-    gsSP2Triangles(2, 7, 8, 0, 9, 10, 3, 0),
-    gsSP2Triangles(11, 9, 5, 0, 11, 5, 4, 0),
-    gsSP2Triangles(12, 11, 13, 0, 14, 15, 9, 0),
-    gsSP2Triangles(14, 9, 11, 0, 13, 11, 16, 0),
-    gsSP2Triangles(17, 10, 9, 0, 18, 10, 17, 0),
-    gsSP2Triangles(19, 20, 21, 0, 21, 22, 19, 0),
-    gsSP2Triangles(23, 22, 21, 0, 22, 24, 25, 0),
-    gsSP2Triangles(22, 25, 26, 0, 27, 28, 24, 0),
-    gsSP2Triangles(27, 24, 22, 0, 29, 30, 24, 0),
-    gsSPVertex(&D_0A000000_E51640[49], 2, 0),
-    gsSPVertex(&D_0A000000_E51640[66], 1, 2),
-    gsSPVertex(&D_0A000000_E51640[72], 14, 3),
-    gsSPVertex(&D_0A000000_E51640[88], 15, 17),
-    gsSP2Triangles(2, 3, 4, 0, 5, 17, 18, 0),
-    gsSP2Triangles(6, 19, 20, 0, 7, 10, 21, 0),
-    gsSP2Triangles(7, 21, 22, 0, 8, 23, 10, 0),
-    gsSP2Triangles(9, 24, 10, 0, 9, 10, 7, 0),
-    gsSP2Triangles(10, 23, 25, 0, 11, 26, 12, 0),
-    gsSP2Triangles(12, 7, 11, 0, 11, 7, 27, 0),
-    gsSP2Triangles(13, 28, 29, 0, 14, 1, 16, 0),
-    gsSP2Triangles(1, 0, 15, 0, 1, 15, 30, 0),
-    gsSP1Triangle(16, 1, 31, 0),
-    gsSPVertex(&D_0A000000_E51640[48], 2, 0),
-    gsSPVertex(&D_0A000000_E51640[86], 2, 2),
-    gsSPVertex(&D_0A000000_E51640[103], 3, 4),
-    gsSP2Triangles(1, 0, 2, 0, 2, 0, 4, 0),
-    gsSP1Triangle(3, 5, 6, 0),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(D_0A004140_E55780);
 
-Gfx D_0A004268_E558A8[] = {
-    gsDPPipeSync(),
-    gsDPSetCycleType(G_CYC_1CYCLE),
-    gsSPDisplayList(Entity_WoodenCrate_LoadTexture1),
-    gsSPClearGeometryMode(G_LIGHTING | G_SHADING_SMOOTH),
-    gsSPSetGeometryMode(G_CULL_BACK),
-    gsSPVertex(&D_0A000000_E51640[0], 32, 0),
-    gsSP2Triangles(0, 1, 2, 0, 0, 2, 3, 0),
-    gsSP2Triangles(0, 3, 4, 0, 0, 4, 5, 0),
-    gsSP2Triangles(0, 5, 6, 0, 0, 6, 7, 0),
-    gsSP2Triangles(8, 9, 10, 0, 8, 10, 11, 0),
-    gsSP2Triangles(8, 11, 12, 0, 8, 12, 13, 0),
-    gsSP2Triangles(8, 13, 14, 0, 8, 14, 15, 0),
-    gsSP2Triangles(16, 17, 18, 0, 16, 18, 19, 0),
-    gsSP2Triangles(16, 19, 20, 0, 16, 20, 21, 0),
-    gsSP2Triangles(16, 21, 22, 0, 16, 22, 23, 0),
-    gsSP2Triangles(24, 25, 26, 0, 24, 26, 27, 0),
-    gsSP2Triangles(24, 27, 28, 0, 24, 28, 29, 0),
-    gsSP2Triangles(24, 29, 30, 0, 24, 30, 31, 0),
-    gsSPVertex(&D_0A000000_E51640[32], 16, 0),
-    gsSP2Triangles(0, 2, 3, 0, 0, 3, 4, 0),
-    gsSP2Triangles(0, 4, 5, 0, 0, 5, 6, 0),
-    gsSP2Triangles(0, 6, 7, 0, 0, 7, 8, 0),
-    gsSP2Triangles(1, 9, 10, 0, 1, 10, 11, 0),
-    gsSP2Triangles(1, 11, 12, 0, 1, 12, 13, 0),
-    gsSP2Triangles(1, 13, 14, 0, 1, 14, 15, 0),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(D_0A004268_E558A8);
 
-Gfx Entity_WoodenCrate_Render[] = {
-    gsSPDisplayList(D_0A004268_E558A8),
-    gsSPDisplayList(D_0A004140_E55780),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(Entity_WoodenCrate_Render);
 
 Gfx* Entity_WoodenCrate_FragmentsRender[] = {
     D_0A004130_E55770,
