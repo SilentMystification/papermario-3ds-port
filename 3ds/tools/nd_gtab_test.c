@@ -216,6 +216,7 @@ void unpack8(unsigned c, float o[4]) {
 
 extern const NdNTab* const ndn_all[];
 extern const unsigned ndn_n, ndn_inherit, ndn_unsup, ndn_ndesc;
+extern const NdNDev* const ndn_dev_of[]; /* GSET1: the device entry of each table (nd_ntab_idx.c) */
 extern const NdPsoDesc* const ndn_desc[];
 
 typedef struct { const void* base; unsigned i[3]; NdPsoDesc d; int tex; NdBindDesc b; unsigned nx, nc; int tex1; NdBindDesc b1; } TriEv;
@@ -491,13 +492,17 @@ static void v2_units(const NdNTab* t, const char* name) {
     if (n != u->b) v2_fail("unit stream count", name, n);
 }
 /* CONV2D2: the device index entry of a table's list (nd_gtab.h NdNDev): n is the word pairs from unit 0 to the stop, NOPs counted */
-static unsigned v2_dev_bad, v2_fl_bad; /* GKEY1: v2_fl_bad counts the state-only flag */
-static void v2_dev(const NdNTab* t, const char* name, int fault) {
+static unsigned v2_dev_bad, v2_fl_bad, v2_moved; /* GKEY1: v2_fl_bad counts the state-only flag; GSET1: v2_moved counts the tables of a moved list */
+static void v2_dev(const NdNTab* t, const char* name, int fault, unsigned n) {
     const GSym* g = NULL;
     for (unsigned s = 0; s < gconv_nsym; s++) if (gconv_sym[s].kind == GS_GFX && gconv_sym[s].addr == t->list) g = &gconv_sym[s];
-    const NdNDev* dv = NULL;
-    dv = nd_ntab_find(t->list);
+    const NdNDev* dv = n < ndn_n ? ndn_dev_of[n] : NULL; /* GSET1: the device entry of the table's list (nd_ntab_idx.c) */
     if (!dv || !g) { v2_dev_bad++; v2_fail("device index entry", name, 0); return; }
+    const int mv = g->moved;
+    if (mv) v2_moved++;
+    /* a moved list has no symbol: its key is the entry itself (nd_ntab_find(&ndd_<list>)), and the entry's list is that key */
+    const void* key = mv ? (const void*)dv : t->list;
+    if (nd_ntab_find(key) != dv || (mv && dv->list != (const void*)dv)) { v2_dev_bad++; v2_fail("device index key", name, 0); }
     const uint32_t* L = (const uint32_t*)g->addr;
     const unsigned nl = (unsigned)(((uintptr_t)g->end - (uintptr_t)g->addr) / 8u);
     unsigned ks = nl;
@@ -507,7 +512,12 @@ static void v2_dev(const NdNTab* t, const char* name, int fault) {
         if ((w0 >> 24) == NDO_END) { ks = k; break; }
         if ((w0 >> 24) == NDO_CALL && (w0 & 1u)) { ks = k + 1u; break; }
     }
-    if (dv->u != (const uint32_t*)t->list || dv->nu != ks + (fault ? 1u : 0u)) { v2_dev_bad++; v2_fail("device index units", name, 0); }
+    /* the units: the list itself, or for a moved list the ndnu of the entry's own (first) table */
+    unsigned first = n;
+    for (unsigned j = 0; j < n; j++) if (ndn_dev_of[j] == dv) { first = j; break; }
+    if (!mv) { if (dv->u != (const uint32_t*)t->list) { v2_dev_bad++; v2_fail("device index units", name, 0); } }
+    else if (first == n && dv->u != (const uint32_t*)t->ops[0].p) { v2_dev_bad++; v2_fail("device index units (moved)", name, 0); }
+    if (dv->nu != ks + (fault ? 1u : 0u)) { v2_dev_bad++; v2_fail("device index units", name, 0); }
     if (dv->fl != nd_gt_state_only(L) + (fault ? 1u : 0u)) { v2_fl_bad++; v2_fail("device index state-only flag", name, 0); }
     unsigned ntri = 0;
     for (unsigned k = 0; t->ops[k].op != NDN_END; k++) if (t->ops[k].op == NDN_DRAW) ntri += t->ops[k].b;
@@ -587,7 +597,7 @@ static void v2_compare(int fault) {
         m_walk(g1);
         v_replay(t, fault);
         v2_units(t, name);
-        v2_dev(t, name, fault && tables == 0);
+        v2_dev(t, name, fault && tables == 0, n);
         v2_flat(t, name, fault && tables == 0);
         tables++;
         if (m_over) v2_fail("the model could not follow the v1 table", name, 0);
@@ -609,6 +619,7 @@ static void v2_compare(int fault) {
     printf("ntab tables %u draws %u bad %u\n", tables, v2_draws, v2_bad);
     printf("ntab dev entries %u bad %u\n", ndn_dev_n, v2_dev_bad);
     printf("ntab dev flag bad %u\n", v2_fl_bad);
+    printf("ntab moved %u\n", v2_moved);
     printf("ntab flat v2 %u words %u bad %u\n", f_v2, f_w, v2_flat_bad);
     { unsigned nt0 = 0; for (unsigned i = 0; i < ndn_dev_n; i++) if (ndn_dev_idx[i]->ntri == 0) nt0++; printf("ntab notri %u of %u\n", nt0, ndn_dev_n); }
     printf("ntab inherit %u unsup %u descs %u\n", ndn_inherit, ndn_unsup, ndn_ndesc);

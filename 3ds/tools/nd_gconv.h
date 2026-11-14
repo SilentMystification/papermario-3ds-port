@@ -7,6 +7,7 @@ typedef struct GSym {
     int kind;
     const void* addr;
     const void* end;
+    int moved; /* GSET: defined in a 3ds/tools/gfxin twin */
 } GSym;
 extern const GSym gconv_sym[];
 extern const unsigned gconv_nsym;
