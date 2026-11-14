@@ -59,10 +59,15 @@ if (mode === 'facts') {
   const lines = [];
   lines.push('FACTS FROM DISK (orch_facts.js). Agent states: call ListAgents now (completed = IDLE). Then check idle capacity.');
   lines.push('main ' + sh('git rev-parse --short HEAD') + (dirty.length ? ' DIRTY: ' + dirty.slice(0, 4).join(' | ') + (dirty.length > 4 ? ' ...' : '') : ' clean'));
+  // Token cost: list only worktrees with a file in the last 4 hours or a young hand-back. The rest is one count.
+  let old = 0;
   for (const w of wts) {
-    lines.push('worktree ' + w.id + ': ahead ' + w.ahead + ', newest file ' + (w.actMin === null ? 'none' : w.actMin + ' min ago') +
-      (w.hb && w.hbAge !== null && w.hbAge < 180 ? ', HAND-BACK FILE ' + w.hb + ' (' + Math.round(w.hbAge) + ' min old)' : ''));
+    const young = w.hb && w.hbAge !== null && w.hbAge < 180;
+    if (!young && (w.actMin === null || w.actMin > 240)) { old++; continue; }
+    lines.push('worktree ' + w.id + ': ahead ' + w.ahead + ', newest file ' + w.actMin + ' min ago' +
+      (young ? ', HAND-BACK FILE ' + w.hb + ' (' + Math.round(w.hbAge) + ' min old)' : ''));
   }
+  if (old) lines.push(old + ' old worktrees with no file in 4 h (parked branches, ignore)');
   let pages = [];
   try { pages = fs.readdirSync(path.join(root, 'docs', 'handoff')).filter(n => /^ws_.*\.md$/.test(n)); } catch (e) { /* none */ }
   lines.push('goal pages: ' + (pages.length ? pages.join(' ') : 'NONE (ask the oracle for pages)'));
