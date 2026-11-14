@@ -389,16 +389,18 @@ static unsigned st_kind(uint32_t w0) {
 }
 static int rec_inline(uint32_t a) {
     if (a < 0x00100000u || a >= (uint32_t)(uintptr_t)__end__ || (a & 7u) || a - (uint32_t)(uintptr_t)gMapShapeData < 0x40000u) return 0;
-    const Gfx* l = (const Gfx*)(uintptr_t)a;
+    const NdNDev* nt = nd_ntab_find((const void*)(uintptr_t)a);
+    const uint32_t* w = nt ? nt->u : (const uint32_t*)(uintptr_t)a; /* GKEY2: the words of a list with a device entry come from the entry, its end at nu */
     unsigned n = 0;
     for (;; n++) {
         if (n == 64u) return 0;
-        const unsigned k = st_kind(l[n].words.w0);
+        if (nt && n == nt->nu) break;
+        const unsigned k = st_kind(w[2u * n]);
         if (k == 3u) break;
         if (!k) return 0;
     }
     { static const uint32_t lst[2] = { NDO_W0(NDO_MISC, NDO_MISC_LST << 16), 0 }; rec_op_t(lst); }
-    for (unsigned i = 0; i < n; i++) if (st_kind(l[i].words.w0) == 1u) nd_rec_state(l[i].words.w0, l[i].words.w1);
+    for (unsigned i = 0; i < n; i++) if (st_kind(w[2u * i]) == 1u) nd_rec_state(w[2u * i], w[2u * i + 1u]);
     return 1;
 }
 static uint32_t tr_w[3];
