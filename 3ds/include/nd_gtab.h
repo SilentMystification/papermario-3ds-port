@@ -87,7 +87,7 @@ enum {
     NDN_COL,      /* a = 0 prim, 1 env, 2 fog, 3 blend; v = RGBA; b = minlod << 8 | lodfrac for prim */
     NDN_DRAW,     /* p = const Vtx* base (NULL: v = segmented address), b = index count, a = 0; the indices follow in the table's idx from idx_pos */
     NDN_CALL,     /* p = const NdNTab* of another (list, entry) pair */
-    NDN_UNIT      /* p = const uint32_t* the depth-0 typed units of the list (word pairs, NOPs and the end left out, a call stays a unit), b = their count; the first op of every table; CONV2D2 runs them with nd_walk_state */
+    NDN_UNIT      /* p = const uint32_t* the depth-0 typed units of the list (word pairs, NOPs kept, the end left out, a call stays a unit), b = their count; the first op of every table; CONV2D2 runs them with nd_walk_state */
 };
 typedef struct NdNOp { uint8_t op, a; uint16_t b; uint32_t v; const void* p; uint32_t idx_pos; } NdNOp;
 typedef struct NdNTab {
@@ -105,4 +105,5 @@ extern NdNDev ndn_dev_idx[];
 extern const unsigned ndn_dev_n;
 const NdNDev* nd_ntab_find(const void* list);
 void nd_ntab_run(const NdNDev* e);
+int nd_ntab_flat(const NdNDev* e, void* out, unsigned* n, unsigned max, int depth, int (*call)(uint32_t w1, unsigned* n, int depth)); /* EMIT4: the ent_flat words of a v2 list from e->u (1 done, 0 refused) */
 #endif

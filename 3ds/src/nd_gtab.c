@@ -2,7 +2,9 @@
  * link addresses are not known when it is made, so the first call sorts it by list address (insertion sort, cold, once). Core 1 only: the
  * records carry the table pointer to core 0. */
 #include <stdint.h>
+#include <string.h>
 #include "nd_gtab.h"
+#include "nd_op.h"
 
 static int gt_sorted;
 static __attribute__((cold, noinline)) void gt_sort(void) {
@@ -24,6 +26,17 @@ const NdGTab* nd_gtab_find(const void* list) {
         if (a < (uintptr_t)list) lo = mid + 1u; else hi = mid;
     }
     return 0;
+}
+/* EMIT4: the flat words of a v2 list from its unit copy (e->u, e->nu): a call unit is the callee's flat words through call, the others copy */
+int nd_ntab_flat(const NdNDev* e, void* out, unsigned* n, unsigned max, int depth, int (*call)(uint32_t w1, unsigned* n, int depth)) {
+    for (unsigned i = 0; i < e->nu; i++) {
+        const uint32_t* u = e->u + 2u * i;
+        if ((u[0] >> 24) == NDO_CALL) { if (!call(u[1], n, depth)) return 0; if (u[0] & 1u) return 1; continue; }
+        if (*n >= max) return 0;
+        memcpy((char*)out + 8u * *n, u, 8u);
+        (*n)++;
+    }
+    return e->nu < max;
 }
 
 #ifndef ND_SCOMP_HOST

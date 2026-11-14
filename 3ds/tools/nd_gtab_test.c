@@ -481,7 +481,6 @@ static void v2_units(const NdNTab* t, const char* name) {
     unsigned n = 0;
     for (unsigned k = 0; k < nl; k++) {
         const uint32_t w0 = L[2u * k], w1 = L[2u * k + 1u];
-        if (w0 == ND_NOP_A) continue;
         if ((w0 >> 24) == NDO_END) break;
         if (n >= u->b) { v2_fail("unit stream", name, n); return; }
         if (U[2u * n] != w0 || U[2u * n + 1u] != w1) { v2_fail("unit stream", name, n); return; }
@@ -513,6 +512,58 @@ static void v2_dev(const NdNTab* t, const char* name, int fault) {
     for (unsigned k = 0; t->ops[k].op != NDN_END; k++) if (t->ops[k].op == NDN_DRAW) ntri += t->ops[k].b;
     if (dv->ntri != ntri / 3u) { v2_dev_bad++; v2_fail("device index triangles", name, 0); }
 }
+/* EMIT4: the flat words of a v2 list. f_list copies ent_flat (nd_ent.c) from the static list (the reference, into ffa); nd_ntab_flat walks the
+ * unit copy of the list (ndnu) with f_call for its calls (into ffb). A call target is a Gfx symbol (f_gfx), as is_host in ent_flat. */
+static uint32_t ffa[2u * ND_DLC_MAXOPS], ffb[2u * ND_DLC_MAXOPS];
+static unsigned f_words, f_v2, f_w, v2_flat_bad;
+static const GSym* f_sym(uint32_t w1) {
+    for (unsigned s = 0; s < gconv_nsym; s++) if (gconv_sym[s].kind == GS_GFX && (uintptr_t)gconv_sym[s].addr == (uintptr_t)w1) return &gconv_sym[s];
+    return NULL;
+}
+static unsigned f_nl(const GSym* s) { return (unsigned)(((uintptr_t)s->end - (uintptr_t)s->addr) / 8u); }
+/* the list ends at its G_ENDDL or at the end of its symbol (a list without an end op, e.g. gsDPNoOp last): nl units, as nd_ntab_flat */
+static int f_list(const uint32_t* l, unsigned nl, uint32_t* o, unsigned* n, int depth) {
+    for (unsigned i = 0; i < nl && i < ND_DLC_MAXOPS; i++) {
+        const uint32_t w0 = l[2u * i], w1 = l[2u * i + 1u];
+        if ((w0 >> 24) == NDO_END) return 1;
+        if ((w0 >> 24) == NDO_CALL) {
+            const GSym* s = f_sym(w1);
+            if (!s || depth >= 5 || !f_list((const uint32_t*)s->addr, f_nl(s), o, n, depth + 1)) return 0;
+            if (w0 & 1u) return 1;
+            continue;
+        }
+        if (*n >= ND_DLC_MAXOPS) return 0;
+        o[2u * *n] = w0; o[2u * *n + 1u] = w1;
+        (*n)++;
+    }
+    return nl < ND_DLC_MAXOPS;
+}
+static int f_call(uint32_t w1, unsigned* n, int depth) {
+    const GSym* sym = f_sym(w1);
+    if (depth >= 5 || !sym) return 0;
+    for (unsigned i = 0; i < ndn_n; i++) {
+        const NdNTab* t = ndn_all[i];
+        if ((uintptr_t)t->list != (uintptr_t)w1) continue;
+        NdNDev c = { t->list, 0, (const uint32_t*)t->ops[0].p, t->ops[0].b, 0 };
+        return nd_ntab_flat(&c, ffb, n, ND_DLC_MAXOPS, depth + 1, f_call);
+    }
+    f_words++;
+    return f_list((const uint32_t*)sym->addr, f_nl(sym), ffb, n, depth + 1);
+}
+static void v2_flat(const NdNTab* t, const char* name, int fault) {
+    const GSym* g = NULL;
+    for (unsigned s = 0; s < gconv_nsym; s++) if (gconv_sym[s].kind == GS_GFX && gconv_sym[s].addr == t->list) g = &gconv_sym[s];
+    NdNDev e = { t->list, 0, (const uint32_t*)t->ops[0].p, t->ops[0].b, 0 };
+    if (fault && e.nu) e.nu--;
+    unsigned na = 0, nb = 0;
+    f_words = 0;
+    if (!g) { v2_flat_bad++; v2_fail("flat words symbol", name, 0); return; }
+    const int ra = f_list((const uint32_t*)t->list, f_nl(g), ffa, &na, 0);
+    const int rb = nd_ntab_flat(&e, ffb, &nb, ND_DLC_MAXOPS, 0, f_call);
+    if (ra != rb || (ra && (na != nb || memcmp(ffa, ffb, 8u * na)))) { v2_flat_bad++; v2_fail("flat words", name, na); }
+    if (ra && !f_words) f_v2++;
+    f_w += f_words;
+}
 static void v2_compare(int fault) {
     unsigned tables = 0;
     for (unsigned n = 0; n < ndn_n; n++) {
@@ -528,6 +579,7 @@ static void v2_compare(int fault) {
         v_replay(t, fault);
         v2_units(t, name);
         v2_dev(t, name, fault && tables == 0);
+        v2_flat(t, name, fault && tables == 0);
         tables++;
         if (m_over) v2_fail("the model could not follow the v1 table", name, 0);
         if (nmtri != nvtri) { v2_fail("triangle count", name, nmtri); continue; }
@@ -546,6 +598,7 @@ static void v2_compare(int fault) {
     }
     printf("ntab tables %u draws %u bad %u\n", tables, v2_draws, v2_bad);
     printf("ntab dev entries %u bad %u\n", ndn_dev_n, v2_dev_bad);
+    printf("ntab flat v2 %u words %u bad %u\n", f_v2, f_w, v2_flat_bad);
     { unsigned nt0 = 0; for (unsigned i = 0; i < ndn_dev_n; i++) if (ndn_dev_idx[i].ntri == 0) nt0++; printf("ntab notri %u of %u\n", nt0, ndn_dev_n); }
     printf("ntab inherit %u unsup %u descs %u\n", ndn_inherit, ndn_unsup, ndn_ndesc);
 }
