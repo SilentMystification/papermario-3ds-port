@@ -1,9 +1,7 @@
 # ws_PSOLK: the device takes the combine decision from the pso table (plan row NPSO2, device part; enabler of S9DEL2A)
 Model: Haiku. PM_ROW, PM_LANE = PSOLK. Budget: 4 Azahar runs. Start now (no owner of these files runs). Branch PSOLK. No counter moves (C1-C12 stay): the hand-back
-gives the hit and miss counts, the facts of the next step. Files: 3ds/include/nd.h, 3ds/src/nd_decide.c, nd_comb.c, new nd_psolk.c, 3ds/tools/gen_pso_main.c,
-gen_pso_tab.py, new nd_psolk_test.c, 3ds/tests/host.d/psotab.sh, new 3ds/tests/host.d/psolk.sh.
-## Why a hit is equal (code read, main 1149b5513)
-nd_comb_core (nd_decide.c:294) reads every NdCombIn field, but prim and env only for cc (nd_const_rgb :51; decide_miss :236 uses random colours), leg_mode never
+gives hit and miss counts. Files: 3ds/include/nd.h, 3ds/src/nd_decide.c, nd_comb.c, new nd_psolk.c, 3ds/tools/gen_pso_main.c, gen_pso_tab.py, new nd_psolk_test.c, psolk.sh, psotab.sh.
+Why a hit is equal (code read, main 1149b5513): nd_comb_core (nd_decide.c:294) reads every NdCombIn field, but prim and env only for cc (nd_const_rgb :51; decide_miss :236 uses random colours), leg_mode never
 (dc_legacy :91 writes it first), box_pat and mode5_prev only on the leg 4 return (:95-99) and in dual (:301). The table entry is nd_pso_build (:346) with prim 0,
 env 0, box_pat 0, mode5 0. So: same other inputs + nd_pso_fix = nd_comb_core. The host table is built with SSE floats (x87 extended precision can flip use, :273).
 ## Group 1: host (commit `PSOLK 1: ...`)
