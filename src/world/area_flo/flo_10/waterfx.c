@@ -3,6 +3,7 @@
 #include "model.h"
 #include "nd_st.h"
 #include "nd_val.h"
+#include "nd_geo.h"
 
 s32 N(WavePhase) = {
     0
@@ -230,15 +231,15 @@ void N(UnkModelFunc001)(void) {
 
         nd_pso_cyc(G_CYC_1CYCLE);
         nd_pso_rm(Z_CMP | CVG_DST_CLAMP | ZMODE_OPA | FORCE_BL | G_RM_PASS, Z_CMP | CVG_DST_CLAMP | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_0, G_BL_CLR_IN, G_BL_1));
-        gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxZBuffer));
+        nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxZBuffer));
         nd_pso_cc(PM_CC_PRIM_NO_ALPHA, PM_CC_PRIM_NO_ALPHA);
         nd_val_prim(0, 0, 248, 240, 240, 0);
 
         gSPDisplayList(gMainGfxPos++, model->modelNode->displayData->displayList);
 
-        gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
-        gDPSetDepthSource(gMainGfxPos++, G_ZS_PRIM);
-        gDPSetPrimDepth(gMainGfxPos++, 32734, 0);
+        nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
+        nd_pso_zsrc(G_ZS_PRIM);
+        nd_val_primz(32734, 0);
         nd_pso_rm(G_RM_ZB_XLU_DECAL, G_RM_ZB_XLU_DECAL2);
         nd_pso_filt(G_TF_POINT);
         nd_pso_persp(G_TP_NONE);
@@ -251,7 +252,7 @@ void N(UnkModelFunc001)(void) {
         N(UnkModelFunc000)(temp_f24, temp_f26, temp_f20, temp_f22);
 
         nd_pso_cyc(G_CYC_2CYCLE);
-        gDPSetDepthSource(gMainGfxPos++, G_ZS_PIXEL);
+        nd_pso_zsrc(G_ZS_PIXEL);
     }
 }
 

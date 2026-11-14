@@ -1,4 +1,5 @@
 #include "ld_addrs.h"
+#include "nd_geo.h"
 
 BSS s32 N(VineRenderState);
 
@@ -260,8 +261,8 @@ void N(appendGfx_piranha_vines)(void* data) {
         }
 
         for (j = 0; j < numPoints - 1; j++) {
-            gSPVertex(gMainGfxPos++, &vtxBuffer[2*j], 4, 0);
-            gSP2Triangles(gMainGfxPos++, 1, 0, 2, 0, 1, 2, 3, 0);
+            nd_mesh_vtx(&vtxBuffer[2*j], 4, 0);
+            nd_mesh_tri2(1, 0, 2, 0, 1, 2, 3, 0);
         }
     }
 
