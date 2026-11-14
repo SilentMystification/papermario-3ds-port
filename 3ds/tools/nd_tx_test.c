@@ -57,6 +57,7 @@ int nd_r11_state(uint32_t addr, const uint32_t** nr, uint32_t* cw, int* has_cb, 
 /* the fixtures of the shapes: a texture image, a viewport */
 static uint8_t gTimg[1024];
 static Vp gVp;
+static Hilite ghl = { { 12, 34, 56, 78 } };
 
 /* the macro form (A) and the setter form (B) of each shape. The syncs and G_NOOP, G_ENDDL have no setter output (the empty form). */
 static void m_img(void) { gDPSetTextureImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 64, gTimg); }
@@ -67,6 +68,8 @@ static void m_ldtile(void) { gDPLoadTile(gMainGfxPos++, G_TX_LOADTILE, 0, 0, 127
 static void n_ldtile(void) { nd_tex_ldtile(G_TX_LOADTILE, 0, 0, 127, 15); }
 static void m_tsz(void) { gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, 0, 0, 127 << 2, 15 << 2); }
 static void n_tsz(void) { nd_tex_tsz(G_TX_RENDERTILE, 0, 0, 127 << 2, 15 << 2); }
+static void m_hilite(void) { gDPSetHilite1Tile(gMainGfxPos++, G_TX_RENDERTILE, &ghl, 64, 64); gDPSetHilite2Tile(gMainGfxPos++, G_TX_MIRROR, &ghl, 64, 64); }
+static void n_hilite(void) { nd_tex_hilite1(G_TX_RENDERTILE, &ghl, 64, 64); nd_tex_hilite2(G_TX_MIRROR, &ghl, 64, 64); }
 static void m_ldblk(void) { gDPLoadBlock(gMainGfxPos++, G_TX_LOADTILE, 0, 0, 255, 0x80); }
 static void n_ldblk(void) { nd_tex_ldblk(G_TX_LOADTILE, 0, 0, 255, 0x80); }
 static void m_ldtlut(void) { gDPLoadTLUTCmd(gMainGfxPos++, G_TX_LOADTILE, 15); }
@@ -170,6 +173,7 @@ static const Shape shapes[] = {
     { "lblk", m_lblk, n_lblk }, { "lblk4", m_lblk4, n_lblk4 }, { "tlut16", m_tlut16, n_tlut16 }, { "tlut256", m_tlut256, n_tlut256 },
     { "smtile2", m_smtile2, n_smtile2 }, { "stile4", m_stile4, n_stile4 }, { "sblk4", m_sblk4, n_sblk4 },
     { "loadsync", m_loadsync, n_empty }, { "tilesync", m_tilesync, n_empty }, { "noop", m_noop, n_empty }, { "endlist", m_endlist, n_empty },
+    { "hilite", m_hilite, n_hilite },
 };
 
 int main(void) {

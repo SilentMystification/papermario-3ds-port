@@ -1,7 +1,7 @@
 /* nd_geo_test.c: host test of the target, depth, vertex, triangle and light calls (nd_geo.h) against the macros they replace (GEOUNIT).
  * Each shape records the macro form under the redirect of nd_gbi.h (A) and the setter form (B) in a custom gfx range. The two must agree on
  * (1) the stream words from the mark to the NDC_END word, (2) the unit log of nd_stream_run(mark), (3) the nd_r11_state result (return, cw,
- * has_cb, nmo, mo). Prints "geounit ok 12/12", or "geounit FAIL <name>" for the first shape that differs, and exits 1. The depth image
+ * has_cb, nmo, mo). Prints "geounit ok 13/13", or "geounit FAIL <name>" for the first shape that differs, and exits 1. The depth image
  * shape (zimg) has no setter: its macro records a NOP unit, so both forms are empty. */
 #include <stdint.h>
 #include <stdio.h>
@@ -83,6 +83,8 @@ static void m_lit2(void) { gSPSetLights2(gMainGfxPos++, gl2); }
 static void n_lit2(void) { nd_lit_set2(gl2); }
 static void m_lookat(void) { gSPLookAt(gMainGfxPos++, glk); }
 static void n_lookat(void) { nd_lit_lookat(glk); }
+static void m_lookatxy(void) { gSPLookAtX(gMainGfxPos++, &glk[0]); gSPLookAtY(gMainGfxPos++, &glk[1]); }
+static void n_lookatxy(void) { nd_lit_lookat(glk); }
 static void m_pnorm(void) { gSPPerspNormalize(gMainGfxPos++, 0x0c00); }
 static void n_pnorm(void) { nd_xf_pnorm(0x0c00); }
 static void m_clip(void) { gSPClipRatio(gMainGfxPos++, FRUSTRATIO_3); }
@@ -124,7 +126,7 @@ typedef struct { const char* name; void (*mac)(void); void (*nat)(void); } Shape
 static const Shape shapes[] = {
     { "cimg", m_cimg, n_cimg }, { "zimg", m_zimg, n_zimg }, { "zsrc", m_zsrc, n_zsrc }, { "primz", m_primz, n_primz },
     { "vtx", m_vtx, n_vtx }, { "tri2", m_tri2, n_tri2 }, { "tri1", m_tri1, n_tri1 }, { "lit1", m_lit1, n_lit1 },
-    { "lit2", m_lit2, n_lit2 }, { "lookat", m_lookat, n_lookat }, { "pnorm", m_pnorm, n_pnorm }, { "clip", m_clip, n_clip },
+    { "lit2", m_lit2, n_lit2 }, { "lookat", m_lookat, n_lookat }, { "lookatxy", m_lookatxy, n_lookatxy }, { "pnorm", m_pnorm, n_pnorm }, { "clip", m_clip, n_clip },
 };
 
 int main(void) {

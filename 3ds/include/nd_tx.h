@@ -25,6 +25,8 @@ static inline void nd_tx_rect(uint32_t w0, uint32_t w1, uint32_t h1, uint32_t h2
     nd_tx_rec(ND_W0_TILE(fmt, siz, line, tmem), ND_W1_TILE(tile, palette, cmt, maskt, shiftt, cms, masks, shifts))
 #define nd_tex_ldtile(t, uls, ult, lrs, lrt) nd_tx_rec(ND_W0_LDT(G_LOADTILE, uls, ult), ND_W1_LDT(t, lrs, lrt))
 #define nd_tex_tsz(t, uls, ult, lrs, lrt) nd_tx_rec(ND_W0_LDT(G_SETTILESIZE, uls, ult), ND_W1_LDT(t, lrs, lrt))
+#define nd_tex_hilite1(t, hl, wd, ht) nd_tex_tsz(t, ((hl)->h.x1 & 0xfff), ((hl)->h.y1 & 0xfff), (((((wd)-1)*4)+(hl)->h.x1) & 0xfff), (((((ht)-1)*4)+(hl)->h.y1) & 0xfff)) /* gDPSetHilite1Tile */
+#define nd_tex_hilite2(t, hl, wd, ht) nd_tex_tsz(t, ((hl)->h.x2 & 0xfff), ((hl)->h.y2 & 0xfff), (((((wd)-1)*4)+(hl)->h.x2) & 0xfff), (((((ht)-1)*4)+(hl)->h.y2) & 0xfff)) /* gDPSetHilite2Tile */
 #define nd_tex_ldblk(tile, uls, ult, lrs, dxt) nd_tx_rec(ND_W0_LDB(uls, ult), ND_W1_LDB(tile, lrs, dxt))
 #define nd_tex_ldtlut(tile, count) nd_tx_rec(_SHIFTL(G_LOADTLUT, 24, 8), _SHIFTL((tile), 24, 3) | _SHIFTL((count), 14, 10))
 
