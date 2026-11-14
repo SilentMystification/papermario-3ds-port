@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_falling_leaves_153, 0xfc40b281, 0xff67ffff, 0x1e082cf0, 0x00504a50, 0x00200405, 0x00000000, 0x00000000, 0x0000005c, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -150,7 +151,7 @@ void falling_leaves_appendGfx(void* effect) {
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        nd_rec_dl(D_090011B0_360290);
+        nd_draw_list(D_090011B0_360290, pe_falling_leaves_153);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 }

@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_got_item_outline_166, 0xfc309661, 0x552eff7f, 0x1e082cf0, 0x00504b50, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 5, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -163,7 +164,7 @@ void got_item_outline_appendGfx(void* effect) {
                        G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD,
                        G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
             nd_val_tile_size(G_TX_RENDERTILE, 0, 0, 508, 124);
-            nd_rec_dl(D_E0036630[i]);
+            nd_draw_list(D_E0036630[i], pe_got_item_outline_166);
         }
 
         nd_xf_pop(G_MTX_MODELVIEW);

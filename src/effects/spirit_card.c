@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_spirit_card_168, 0xfcffffff, 0xfffe793c, 0x1e18ac00, 0x0c193078, 0x00220405, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -165,7 +166,7 @@ void spirit_card_appendGfx(void* effect) {
 
         nd_rec_dl(D_E0112638[0]);
         nd_rec_dl(D_E0112640[data->chapter]);
-        nd_rec_dl(D_E0112630[0]);
+        nd_draw_list(D_E0112630[0], pe_spirit_card_168);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 

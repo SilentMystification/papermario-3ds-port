@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_thunderbolt_ring_133, 0xfcffc6a0, 0xf3fe7ef8, 0x1e182cf0, 0x0c1841c8, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -130,7 +131,7 @@ void thunderbolt_ring_appendGfx(void* effect) {
         guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        nd_rec_dl(D_090000C8_3B4768);
+        nd_draw_list(D_090000C8_3B4768, pe_thunderbolt_ring_133);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 

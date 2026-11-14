@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_moving_cloud_201, 0xfc309661, 0x552eff7f, 0x1e082cf0, 0x00504b50, 0x00200005, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 5, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -198,6 +199,6 @@ void moving_cloud_appendGfx(void* effect) {
     nd_val_prim(0, 0, data->unk_24, data->unk_28, data->unk_2C, unk_30);
     nd_val_env(data->unk_34, data->unk_38, data->unk_3C, data->unk_40);
     nd_rec_dl(D_E00E8634[0]);
-    nd_rec_dl(D_E00E8630[0]);
+    nd_draw_list(D_E00E8630[0], pe_moving_cloud_201);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_effect_63_266, 0xfc20aa01, 0x12eab2c7, 0x1e182cf0, 0x0c184b50, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -263,7 +264,7 @@ void effect_63_appendGfx(void* effect) {
 
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
             nd_val_tile_size(1, tempX, tempY, (tempX + 0x3F) * 4, (tempY + 0xF) * 4);
-            nd_rec_dl(D_E00C6C90[unk_00]);
+            nd_draw_list(D_E00C6C90[unk_00], pe_effect_63_266);
             nd_xf_pop(G_MTX_MODELVIEW);
         }
     }

@@ -2,6 +2,7 @@
 #include "effects_internal.h"
 #include "effects.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_throw_spiny_184, 0xfcffffff, 0xfffcf279, 0x1e08acf0, 0x00551238, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -181,6 +182,6 @@ void throw_spiny_appendGfx(void* effect) {
     nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_val_prim(0, 0, data->unk_30, data->unk_34, data->unk_38, temp_s5);
     nd_rec_dl(D_E00C8710[temp_s6]);
-    nd_rec_dl(D_090009F0_3D04E0);
+    nd_draw_list(D_090009F0_3D04E0, pe_throw_spiny_184);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

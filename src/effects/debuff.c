@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_debuff_168, 0xfc55b2ab, 0x3365feff, 0x1e082cf0, 0x00504b50, 0x00000005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -165,7 +166,7 @@ void debuff_appendGfx(void* effect) {
         guMtxF2L(mtxTranslate, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        nd_rec_dl(dlist);
+        nd_draw_list(dlist, pe_debuff_168);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 

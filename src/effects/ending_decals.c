@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_ending_decals_174, 0xfc5096a1, 0x332dfeff, 0x1e082c40, 0x00504b50, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_st.h"
@@ -171,7 +172,7 @@ void ending_decals_appendGfx(void* effect) {
         dlist2 = D_E00685BC[unk_20 % 14];
     }
 
-    nd_rec_dl(dlist2);
+    nd_draw_list(dlist2, pe_ending_decals_174);
     nd_xf_pop(G_MTX_MODELVIEW);
     nd_pso_dither(G_CD_DISABLE);
     nd_pso_aldith(G_AD_DISABLE);

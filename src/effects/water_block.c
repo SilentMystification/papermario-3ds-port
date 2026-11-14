@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_water_block_302, 0xfc40b260, 0xf5ffdb78, 0x1e182cf0, 0x0c1849d8, 0x00000405, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_water_block_306, 0xfc40b260, 0xf5ffdb78, 0x1e182cf0, 0x0c1849d8, 0x00000405, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_api.h"
 #include "nd_val.h"
 #include "nd_xf.h"
@@ -299,11 +301,11 @@ void water_block_appendGfx(void* effect) {
 
     gSPVertex(gMainGfxPos++, vtxBase, 30, 0);
 
-    nd_rec_dl(D_090004D8_3B70C8);
+    nd_draw_list(D_090004D8_3B70C8, pe_water_block_302);
 
     gSPVertex(gMainGfxPos++, &vtxBase[28], 12, 0);
 
-    nd_rec_dl(D_09000538_3B7128);
+    nd_draw_list(D_09000538_3B7128, pe_water_block_306);
     nd_xf_pop(G_MTX_MODELVIEW);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

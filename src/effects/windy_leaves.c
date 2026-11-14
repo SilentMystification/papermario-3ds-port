@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_windy_leaves_264, 0xfc40b281, 0xff67ffff, 0x1e082cf0, 0x00504a50, 0x00200405, 0x00000000, 0x00000000, 0x0000005c, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -261,7 +262,7 @@ void windy_leaves_appendGfx(void* effect) {
         guMtxCatF(sp58, sp18, sp18);
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        nd_rec_dl(dlist);
+        nd_draw_list(dlist, pe_windy_leaves_264);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 }

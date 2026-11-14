@@ -1,6 +1,15 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_quizmo_stage_137, 0xfc121803, 0xfffffff8, 0x1e082c00, 0x00552078, 0x00200405, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 1, 2, 0, 0, 0);
+ND_PSO_DESC(pe_quizmo_stage_140, 0xfc121803, 0xfffffff8, 0x1e18ac00, 0x0c192078, 0x00200405, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 1, 2, 0, 0, 0);
+ND_PSO_DESC(pe_quizmo_stage_148, 0xfc121803, 0xfffffff8, 0x1e18ac00, 0x0c193078, 0x00200405, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 1, 2, 0, 0, 0);
+ND_PSO_DESC(pe_quizmo_stage_156, 0xfc121803, 0xfffffff8, 0x1e182c00, 0x0c192078, 0x00200405, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 1, 2, 0, 0, 0);
+ND_PSO_DESC(pe_quizmo_stage_158, 0xfc121803, 0xfffffff8, 0x1e182c00, 0x0c192078, 0x00200405, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 1, 2, 0, 0, 0);
+ND_PSO_DESC(pe_quizmo_stage_159, 0xfc121803, 0xfffffff8, 0x1e182c00, 0x0c192078, 0x00200405, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 1, 2, 0, 0, 0);
+ND_PSO_DESC(pe_quizmo_stage_162, 0xfc121803, 0xfffffff8, 0x1e18ac00, 0x0c184dd8, 0x00000405, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 1, 2, 0, 0, 0);
+ND_PSO_DESC(pe_quizmo_stage_169, 0xfc121803, 0xfffffff8, 0x1e18ac00, 0x0c193078, 0x00200405, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 1, 2, 0, 0, 0);
+ND_PSO_DESC(pe_quizmo_stage_172, 0xfc121803, 0xfffffff8, 0x1e182c00, 0x0c193078, 0x00220405, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 1, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_st.h"
@@ -134,10 +143,10 @@ void quizmo_stage_appendGfx(void* effect) {
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        nd_rec_dl(D_09006E28_39F9E8);
+        nd_draw_list(D_09006E28_39F9E8, pe_quizmo_stage_137);
         nd_draw_list(D_09001518_39A0D8, ND_SELF);
         nd_val_tile_size(G_TX_RENDERTILE, data->lightScrollAmt, 0, data->lightScrollAmt + 252, 60);
-        nd_rec_dl(D_09006DA0_39F960);
+        nd_draw_list(D_09006DA0_39F960, pe_quizmo_stage_140);
         nd_xf_pop(G_MTX_MODELVIEW);
         nd_xf_push(&D_09004148_39CD08[0], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
@@ -145,7 +154,7 @@ void quizmo_stage_appendGfx(void* effect) {
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        nd_rec_dl(D_09006FB0_39FB70);
+        nd_draw_list(D_09006FB0_39FB70, pe_quizmo_stage_148);
         nd_xf_pop(G_MTX_MODELVIEW);
         nd_xf_push(&D_09004148_39CD08[1], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
@@ -153,23 +162,23 @@ void quizmo_stage_appendGfx(void* effect) {
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        nd_rec_dl(D_09006F20_39FAE0);
+        nd_draw_list(D_09006F20_39FAE0, pe_quizmo_stage_156);
         nd_xf_pop(G_MTX_MODELVIEW);
-        nd_rec_dl(D_090070E8_39FCA8);
-        nd_rec_dl(D_09007030_39FBF0);
+        nd_draw_list(D_090070E8_39FCA8, pe_quizmo_stage_158);
+        nd_draw_list(D_09007030_39FBF0, pe_quizmo_stage_159);
         nd_draw_list(D_09001518_39A0D8, ND_SELF);
         nd_val_tile_size(G_TX_RENDERTILE, data->lightScrollAmt, 0, data->lightScrollAmt + 252, 60);
-        nd_rec_dl(D_09006FD8_39FB98);
+        nd_draw_list(D_09006FD8_39FB98, pe_quizmo_stage_162);
         nd_xf_push(&D_09004148_39CD08[3], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
         guRotateF(sp18, 90 - (data->podiumRaiseAmt * 90) / 255, 1.0f, 0.0f, 0.0f);
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        nd_rec_dl(D_09006D48_39F908);
+        nd_draw_list(D_09006D48_39F908, pe_quizmo_stage_169);
         nd_xf_pop(G_MTX_MODELVIEW);
         nd_draw_list(D_09000218_398DD8, ND_SELF);
-        nd_rec_dl(D_09007090_39FC50);
+        nd_draw_list(D_09007090_39FC50, pe_quizmo_stage_172);
     }
 
     nd_xf_pop(G_MTX_MODELVIEW);

@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_walking_dust_163, 0xfcffabff, 0xff0d92ff, 0x1e182cf0, 0x0c184b50, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -160,7 +161,7 @@ void walking_dust_appendGfx(void* effect) {
         guMtxCatF(sp58, sp18, sp18);
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-        nd_rec_dl(dlist2);
+        nd_draw_list(dlist2, pe_walking_dust_163);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 }

@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_smoke_burst_138, 0xfcffabff, 0xff0d92ff, 0x1e182cf0, 0x0c184b53, 0x00200005, 0x00000000, 0x00000000, 0x0000005c, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_st.h"
@@ -135,7 +136,7 @@ void smoke_burst_appendGfx(void* effect) {
         nd_val_tile_size(1, (temp_a1     ) * 4, 0, (temp_a1 + 31) * 4, 31 * 4);
     }
 
-    nd_rec_dl(dlist);
+    nd_draw_list(dlist, pe_smoke_burst_138);
     nd_pso_alcmp(G_AC_NONE);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

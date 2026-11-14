@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_ice_pillar_176, 0xfc309661, 0x552eff7f, 0x1e082cf0, 0x00504b50, 0x00200005, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 5, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -173,6 +174,6 @@ void ice_pillar_appendGfx(void* effect) {
     nd_val_prim(0, 0, data->prim.r, data->prim.g, data->prim.b, alpha);
     nd_val_env(data->env.r, data->env.g, data->env.b, data->env.a);
     nd_rec_dl(D_E011E800[0]);
-    nd_rec_dl(D_E011E7F0[data->unk_24]);
+    nd_draw_list(D_E011E7F0[data->unk_24], pe_ice_pillar_176);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

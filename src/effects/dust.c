@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_dust_164, 0xfcffb3ff, 0xff65feff, 0x1e083c00, 0x00504b50, 0x00000005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 4, 0, 0, 0);
+ND_PSO_DESC(pe_dust_166, 0xfc30b261, 0x5566ff7f, 0x1e083c00, 0x00504b50, 0x00000005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 5, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -161,9 +163,9 @@ void dust_appendGfx(void* effect) {
         nd_xf_push(matrix, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
         if (unk_00 < 2) {
-            nd_rec_dl((i % 2) ? D_09000E18_33FE18 : D_09000E38_33FE38);
+            nd_draw_list((i % 2) ? D_09000E18_33FE18 : D_09000E38_33FE38, pe_dust_164);
         } else {
-            nd_rec_dl(D_09000E58_33FE58);
+            nd_draw_list(D_09000E58_33FE58, pe_dust_166);
         }
 
         nd_xf_pop(G_MTX_MODELVIEW);

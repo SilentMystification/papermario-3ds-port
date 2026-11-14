@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_water_fountain_262, 0xfc30b261, 0x5566ff7f, 0x1e082cf0, 0x00504b50, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 5, 0, 0, 0);
+ND_PSO_DESC(pe_water_fountain_282, 0xfc30b261, 0x5566ff7f, 0x1e082cf0, 0x00504b50, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 5, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -259,7 +261,7 @@ void water_fountain_appendGfx(void* effect) {
     temp = sp9C + 1;
     if (timeLeft >= var_s6 - temp) {
         nd_val_prim(0, 0, unk_18, unk_1C, unk_20, unk_24);
-        nd_rec_dl(D_09000348_3B8BA8);
+        nd_draw_list(D_09000348_3B8BA8, pe_water_fountain_262);
     }
 
     for (i = 0; i < var_s6 / 2; i++) {
@@ -279,7 +281,7 @@ void water_fountain_appendGfx(void* effect) {
 
                     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
                     nd_val_prim(0, 0, unk_18, unk_1C, unk_20, (unk_24 * basePtr[idx].sizeScale) >> 8);
-                    nd_rec_dl(D_09000328_3B8B88);
+                    nd_draw_list(D_09000328_3B8B88, pe_water_fountain_282);
                     nd_xf_pop(G_MTX_MODELVIEW);
                 }
             }

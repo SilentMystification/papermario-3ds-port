@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_sun_187, 0xfc309861, 0x550eff4f, 0x1e182cf0, 0x0c184340, 0x00200005, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 1, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -184,7 +185,7 @@ void sun_appendGfx(void* argEffect) {
         for (i = 0; i < ARRAY_COUNT(data->texScrollAmt); i++) {
             offsetS = data->texScrollAmt[i] * 4.0f;
             nd_val_tile_size(1, offsetS + (44 * i), 0, offsetS + (44 * i) + 252, 124);
-            nd_rec_dl(D_E0120780[i]);
+            nd_draw_list(D_E0120780[i], pe_sun_187);
         }
         nd_xf_pop(G_MTX_MODELVIEW);
         nd_xf_push(&gDisplayContext->camPerspMatrix[gCurrentCameraID], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);

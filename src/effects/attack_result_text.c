@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_attack_result_text_207, 0xfc40fe81, 0xfffff3f9, 0x1e082cf0, 0x0055307c, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -204,7 +205,7 @@ void func_E0090444(EffectInstance* effect) {
             nd_val_prim(0, 0, 255, 255, 255, data->alpha);
             nd_draw_list(D_090015A8_391978, ND_SELF);
             nd_rec_dl(D_E0090A40[data->unk_04]);
-            nd_rec_dl(D_E0090A54[data->unk_04]);
+            nd_draw_list(D_E0090A54[data->unk_04], pe_attack_result_text_207);
             nd_xf_pop(G_MTX_MODELVIEW);
         } else {
             type -= 5;

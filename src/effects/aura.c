@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_aura_354, 0xfc21a3ff, 0xff0dd22f, 0x1e182cf0, 0x0c184b50, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0);
+ND_PSO_DESC(pe_aura_360, 0xfc21a3ff, 0xff0dd22f, 0x1e182cf0, 0x0c184b50, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -351,11 +353,11 @@ void aura_appendGfx(void* argEffect) {
     v2 = data->unk_40 * 4.0f;
 
     nd_val_tile_size(1, v1, v2, v1 + 124, v2 + 508);
-    nd_rec_dl(D_E0076E90[type]);
+    nd_draw_list(D_E0076E90[type], pe_aura_354);
 
     v1 = data->unk_4C * 4.0f;
     v2 = data->unk_58 * 4.0f;
 
     nd_val_tile_size(1, v1 + 30, v2 + 30, v1 + 282, v2 + 538);
-    nd_rec_dl(D_E0076EA0[type]);
+    nd_draw_list(D_E0076EA0[type], pe_aura_360);
 }

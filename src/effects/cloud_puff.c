@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_cloud_puff_138, 0xfc6096c1, 0xff2dfeff, 0x1e08acf0, 0x00504a50, 0x00000005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -135,7 +136,7 @@ void cloud_puff_appendGfx(void* effect) {
 
             nd_val_prim(0, 0, 112, 96, 24, part->alpha);
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            nd_rec_dl(D_090001B8_32EE08);
+            nd_draw_list(D_090001B8_32EE08, pe_cloud_puff_138);
             nd_xf_pop(G_MTX_MODELVIEW);
         }
     }

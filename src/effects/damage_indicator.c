@@ -1,6 +1,9 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_damage_indicator_273, 0xfc6232c4, 0xff65feff, 0x1e082cf0, 0x00553048, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0);
+ND_PSO_DESC(pe_damage_indicator_278, 0xfc123224, 0xff67ffff, 0x1e082cf0, 0x00504340, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_damage_indicator_288, 0xfc6232c4, 0xff65feff, 0x1e082cf0, 0x00553048, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_st.h"
@@ -270,12 +273,12 @@ void damage_indicator_render_impl(EffectInstance* effect) {
         }
 
         if (i == lastPartIdx) {
-            nd_rec_dl(D_090021A8_3523C8);
+            nd_draw_list(D_090021A8_3523C8, pe_damage_indicator_273);
             nd_xf_pop(G_MTX_MODELVIEW);
             nd_draw_list(D_09001DE0_352000, ND_SELF);
             if (numParts < 10) {
                 nd_rec_dl(D_E003CCA0[i]);
-                nd_rec_dl(D_090021C0_3523E0);
+                nd_draw_list(D_090021C0_3523E0, pe_damage_indicator_278);
             } else {
                 s32 onesDigit = numParts % 10;
                 s32 tensDigit = numParts / 10;
@@ -285,7 +288,7 @@ void damage_indicator_render_impl(EffectInstance* effect) {
                 nd_rec_dl(D_090021E0_352400); // GfxDrawTensQuad
             }
         } else {
-            nd_rec_dl(D_09002190_3523B0);
+            nd_draw_list(D_09002190_3523B0, pe_damage_indicator_288);
             nd_xf_pop(G_MTX_MODELVIEW);
         }
 

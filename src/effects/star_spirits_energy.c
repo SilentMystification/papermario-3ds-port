@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_star_spirits_energy_367, 0xfc309661, 0x552eff7f, 0x1e082cf0, 0x00504340, 0x00200005, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 5, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_st.h"
@@ -364,7 +365,7 @@ void star_spirits_energy_appendGfx(void* effect) {
 
                 nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
                 nd_val_prim(0, 0, data->unk_1C, data->unk_20, data->unk_24, data->unk_50[i]);
-                nd_rec_dl(D_E0122B90[i]);
+                nd_draw_list(D_E0122B90[i], pe_star_spirits_energy_367);
                 nd_xf_pop(G_MTX_MODELVIEW);
             }
         }

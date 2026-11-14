@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_stars_burst_167, 0xfcffb3ff, 0xff65feff, 0x1e082cf0, 0x00504340, 0x00000005, 0x00000000, 0xffffff00, 0x0000005c, 1, 0, 1, 0, 0, 0, 1, 0, 4, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -164,7 +165,7 @@ void stars_burst_appendGfx(void* effect) {
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        nd_rec_dl(dlist);
+        nd_draw_list(dlist, pe_stars_burst_167);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 }

@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_emote_308, 0xfcffffff, 0xfffdf2f9, 0x1e082cf0, 0x00504b50, 0x00000005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -305,7 +306,7 @@ void emote_appendGfx(void* effect) {
     nd_val_tile_size(G_TX_RENDERTILE, uls * 4, ult * 4, (uls + w) * 4, (ult + h) * 4);
 
     if (dlist2 != nullptr) {
-        nd_rec_dl(dlist2);
+        nd_draw_list(dlist2, pe_emote_308);
     }
 
     nd_xf_pop(G_MTX_MODELVIEW);

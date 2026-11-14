@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_radial_shimmer_376, 0xfc1092a0, 0x230d24ff, 0x1e182cf0, 0x0c184340, 0x00000005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -373,7 +374,7 @@ void radial_shimmer_appendGfx(void* effect) {
 
         nd_val_tile_size(0, temp_f0, temp_f2, temp_f0 + other * 4, temp_f2 + var_a3 * 4);
         nd_val_tile_size(G_TX_MIRROR, temp_f4, temp_f6, temp_f4 + other * 4, temp_f6 + var_a3 * 4);
-        nd_rec_dl(dlist2);
+        nd_draw_list(dlist2, pe_radial_shimmer_376);
     }
 
     nd_xf_pop(G_MTX_MODELVIEW);

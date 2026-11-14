@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_snowflake_145, 0xfcffffff, 0xffff73b9, 0x1e082cf0, 0x00504b50, 0x00000005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -142,7 +143,7 @@ void snowflake_appendGfx(void* effect) {
     guMtxF2L(sp118, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    nd_rec_dl(D_090009E8_3318E8);
+    nd_draw_list(D_090009E8_3318E8, pe_snowflake_145);
     nd_xf_pop(G_MTX_MODELVIEW);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

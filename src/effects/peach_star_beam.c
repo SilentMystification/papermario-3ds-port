@@ -2,6 +2,11 @@
 #include "effects_internal.h"
 #include "pm_interp_fi.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_peach_star_beam_179, 0xfc121824, 0xff33ffff, 0x1e082cf0, 0x005041d8, 0x00200405, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 1, 2, 0, 0, 0);
+ND_PSO_DESC(pe_peach_star_beam_203, 0xfc367fff, 0x5ffcf238, 0x1e18acf0, 0x0c191238, 0x00000005, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_peach_star_beam_221, 0xfc3217ff, 0x5ffefe38, 0x1e182cf0, 0x0c1845d8, 0x00000005, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0);
+ND_PSO_DESC(pe_peach_star_beam_224, 0xfcffc7ff, 0xfffefe38, 0x1e182cf0, 0x0c184b50, 0x00200405, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0);
+ND_PSO_DESC(pe_peach_star_beam_249, 0xfc367fff, 0x5ffcf238, 0x1e18acf0, 0x0c191238, 0x00000005, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -176,7 +181,7 @@ void peach_star_beam_appendGfx(void* effect) {
     s32 i;
 
     nd_val_seg(0x9, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_rec_dl(D_09005090_3EAFC0);
+    nd_draw_list(D_09005090_3EAFC0, pe_peach_star_beam_179);
 
     for (i = 0; i < ARRAY_COUNT(data->spirits); i++) {
         part = &data->spirits[i];
@@ -200,7 +205,7 @@ void peach_star_beam_appendGfx(void* effect) {
                 nd_val_prim(0, 0, 128, 128, 128, 255);
                 nd_val_env(128, 128, 128, 127);
                 nd_rec_dl(D_E010CA38[i]);
-                nd_rec_dl(D_E010CA18[i]);
+                nd_draw_list(D_E010CA18[i], pe_peach_star_beam_203);
                 nd_xf_pop(G_MTX_MODELVIEW);
                 FI_CLOSE();
             }
@@ -218,10 +223,10 @@ void peach_star_beam_appendGfx(void* effect) {
     nd_val_prim(0, 0, data->primR, data->primG, data->primB, alpha);
     nd_val_env(data->envR, data->envG, data->envB, data->envA);
     nd_rec_dl(D_E010CA14[0]);
-    nd_rec_dl(D_E010CA10[0]);
+    nd_draw_list(D_E010CA10[0], pe_peach_star_beam_221);
     nd_xf_pop(G_MTX_MODELVIEW);
     FI_CLOSE();
-    nd_rec_dl(D_09005090_3EAFC0);
+    nd_draw_list(D_09005090_3EAFC0, pe_peach_star_beam_224);
 
     for (i = 0; i < ARRAY_COUNT(data->spirits); i++) {
         part = &data->spirits[i];
@@ -246,7 +251,7 @@ void peach_star_beam_appendGfx(void* effect) {
                 nd_val_prim(0, 0, 128, 128, 128, 255);
                 nd_val_env(128, 128, 128, 127);
                 nd_rec_dl(D_E010CA38[i]);
-                nd_rec_dl(D_E010CA18[i]);
+                nd_draw_list(D_E010CA18[i], pe_peach_star_beam_249);
                 nd_xf_pop(G_MTX_MODELVIEW);
                 FI_CLOSE();
             }

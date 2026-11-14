@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_fire_flower_244, 0xfc121624, 0xff2fffff, 0x1e08acf0, 0x00504b50, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_fire_flower_272, 0xfc262bff, 0x1f0c923f, 0x1e18acf0, 0x0c184b50, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -241,7 +243,7 @@ void fire_flower_appendGfx(void* effect) {
                 guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
                 nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-                nd_rec_dl(part->unk_00 != 0 ? D_09000ED8_381278 : D_09000EB8_381258);
+                nd_draw_list(part->unk_00 != 0 ? D_09000ED8_381278 : D_09000EB8_381258, pe_fire_flower_244);
                 nd_xf_pop(G_MTX_MODELVIEW);
             }
         }
@@ -269,7 +271,7 @@ void fire_flower_appendGfx(void* effect) {
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    nd_rec_dl(D_09000EF8_381298);
+    nd_draw_list(D_09000EF8_381298, pe_fire_flower_272);
     nd_xf_pop(G_MTX_MODELVIEW);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

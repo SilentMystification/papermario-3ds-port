@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_quizmo_audience_209, 0xfc119623, 0xff2fffff, 0x1e082cf0, 0x00553078, 0x00200405, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -206,7 +207,7 @@ void quizmo_audience_appendGfx(void* effect) {
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        nd_rec_dl(quizmo_audience_renderAudienceMember[i]);
+        nd_draw_list(quizmo_audience_renderAudienceMember[i], pe_quizmo_audience_209);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 

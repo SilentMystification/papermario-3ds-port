@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_energy_orb_wave_301, 0xfcff97ff, 0xff2dfeff, 0x1e082c40, 0x00504340, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 4, 0, 0, 0);
 #include "nd_op.h" /* HC4e2b: the typed unit of a list word */
 #include "nd_val.h"
 #include "nd_xf.h"
@@ -298,7 +299,7 @@ void energy_orb_wave_appendGfx(void* effect) {
         nd_xf_pop(G_MTX_MODELVIEW);
     } else {
         nd_draw_list(D_090010A8_3A53C8, ND_SELF);
-        nd_rec_dl(D_09001210_3A5530);
+        nd_draw_list(D_09001210_3A5530, pe_energy_orb_wave_301);
     }
 
     nd_pso_dither(G_CD_DISABLE);
