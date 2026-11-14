@@ -10,7 +10,7 @@ build, one gate per group, commit per group. A failing host test is your signal:
 Fix a mechanical fault of the goal page yourself and note it in the commit. After 2 tries on one named cause, write the test
 output to build3ds/out/ and message the designer (oracle) with the path. Go on with the next group while you wait.
 Hand back to the orchestrator only when the task is done, when only the user can decide, or after 90 minutes without a commit.
-Hand-back: 8 lines or fewer (commit hash, gate values, counter change). Details go to build3ds/out/handback_<id>.txt.
+Hand-back: write build3ds/out/handback_<id>.txt (first 8 lines: commit hash, gate values, counter change) and end your turn with one short line. Send no hand-back message to the orchestrator (the completion notice reaches it once). Ask the oracle that wrote your page (its id is in your launch prompt).
 Cost rules: every command re-reads your whole context. Use one script per step. Never poll (sleep, tail --pid, Monitor, ping).
 Write long output to a file and read the last 20 lines. Do not use ToolSearch or TaskStop.
 Standard answers (do not stop for these):

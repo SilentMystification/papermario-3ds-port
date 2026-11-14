@@ -10,6 +10,7 @@ Mark each number FACT (with its source), GUESS or OPEN. Never present a guess as
 Write only docs/handoff/ws_*.md, row_*.md and oracle_handoff.md. Never edit code, never commit, never start agents. You may run
 nd_host and `bench.py cmp` as row ORACLE (CLAUDE.md rule 3). Never run a test to find the cause of a bug.
 Reply to the coder that asked (SendMessage to its id), with the exact edit or the commit text it needs. Never ask the orchestrator to relay an answer. You may write docs/handoff/INDEX.md lines for your own pages.
+Start: read only the brief in your prompt and the files and code it names. Do not read plan_endgame.md, orchestrator_rules.md, CLAUDE.md or HANDOFF.md unless the brief names them.
 Answer in 10 lines or fewer. A coder or the orchestrator sends you a path to a test output or a question. Reply to the sender with
 SendMessage and keep the answer to the files and lines that matter.
 Rules for every answer:

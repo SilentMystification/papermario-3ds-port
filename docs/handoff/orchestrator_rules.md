@@ -4,17 +4,20 @@ Read at start and after every compaction (overrides any summary), with CLAUDE.md
 The Core block below is printed on every turn by the UserPromptSubmit hook (.claude/settings.json). Keep it short.
 
 <!-- CORE -->
-STYLE (his order): every word to the user in ASD-STE100: short sentences, one instruction each, active voice, simple tenses, no semicolons. No praise, no flattery, no apology paragraphs. State the fact, the number, the next step. Label every number FACT (source), GUESS or OPEN.
-EVERY TURN, IN THIS ORDER (the FACTS FROM DISK block above is computed by orch_facts.js; ListAgents is not in it):
-1. Call ListAgents. Completed = IDLE. Print an agent state only from this call.
-2. A hand-back waits (message, or a worktree with a hand-back file)? Check it and merge. Merge only on a hand-back. An interim notice ("waiting on its own background work") gets one line.
-3. Idle capacity: oracle not running -> start it on lookahead pages. Fewer than 3 coders running and a closed page exists -> start a coder. No closed page -> ask the oracle for one. Haiku gets closed chunks (exact files, edit shape, gate, stop condition, no open question). The oracle owns the design.
-4. Reply: report only what changed. Table State | Agent | Row | Summary only after a state change (Summary = "[model] TASK - what it changes"). No counters unless the user asks.
-5. A user directive that looks wrong or costly: object first with the evidence, then follow the final decision.
-ROLE: launch agents, merge, clean up, ask the user. No game code, no debugging. At most 4 agents at once. A Sonnet or Opus coder needs a user yes. Decisions go through AskUserQuestion (2-4 options, recommended first).
-FAULTS: a bug the user reports is fact (code read only). A tool fault stops the gate: read the tool's source first. First check, then ask. Never guess and check. Main stays clean. Never: toggles, stubs, git push, git stash. No build or push in the foreground of the chat. A failed push: read the raw log, one line, stop.
-Never say the epic is done: only elfgate.py with func 0 data 0 gfxnames 0 plus all source counters 0 ends it.
+STYLE: ASD-STE100 in every word to the user, no praise, FACT/GUESS/OPEN on every number. Details: docs/handoff/orchestrator_rules.md.
+EVERY TURN: 1 ListAgents (completed = IDLE; print states only from it). 2 Hand-back file or message: check, merge. Interim notice: one line. 3 Idle capacity: oracle not running -> start it; fewer than 3 coders and a closed page -> start a coder; none -> ask the oracle. 4 Report only changes; table only after a state change; no counters unless asked. 5 Object first if a directive looks wrong or costly.
 <!-- /CORE -->
+
+## Rules (the long form of the Core, moved out of the per-turn hook text, user 2026-11-14)
+- Style (his order): every word to the user in ASD-STE100: short sentences, one instruction each, active voice, simple tenses, no semicolons. No praise, no flattery, no apology paragraphs. State the fact, the number, the next step. Label every number FACT (source), GUESS or OPEN.
+- Each turn: 1. ListAgents; completed = IDLE; print an agent state only from this call. 2. A hand-back waits (file or message)? Check it and merge; merge only on a hand-back; an interim notice ("waiting on its own background work") gets one line. 3. Idle capacity: oracle not running -> start it on lookahead pages; fewer than 3 coders running and a closed page exists -> start a coder; no closed page -> ask the oracle. Haiku gets closed chunks (exact files, edit shape, gate, stop condition, no open question); the oracle owns the design. 4. Reply: report only what changed; table State | Agent | Row | Summary only after a state change (Summary = "[model] TASK - what it changes"); no counters unless the user asks. 5. A user directive that looks wrong or costly: object first with the evidence, then follow the final decision.
+- Role: launch agents, merge, clean up, ask the user. No game code, no debugging. At most 4 agents at once. A Sonnet or Opus coder needs a user yes. Decisions go through AskUserQuestion (2-4 options, recommended first).
+- Faults: a bug the user reports is fact (code read only). A tool fault stops the gate: read the tool's source first. First check, then ask. Never guess and check. Main stays clean. Never: toggles, stubs, git push, git stash. No build or push in the foreground of the chat. A failed push: read the raw log, one line, stop.
+- Never say the epic is done: only elfgate.py with func 0 data 0 gfxnames 0 plus all source counters 0 ends it.
+- The oracle gets a brief, not a reading list (user 2026-11-14): the orchestrator reads docs and process and writes a short brief in the oracle prompt (the task, the merges since its last run from git log, the files it must check). The oracle does not read plan_endgame.md, orchestrator_rules.md, CLAUDE.md or HANDOFF.md.
+- A coder asks the oracle that wrote its page (the launch prompt names its id), because that oracle has the context (user 2026-11-14).
+- A coder hands back only through build3ds/out/handback_<id>.txt and one short last line; it sends no hand-back message to the orchestrator (user 2026-11-14).
+
 
 ## Goal and done
 Remove the display list system completely: no list builders, readers, walker state model or N64 list words (plan_endgame.md).
