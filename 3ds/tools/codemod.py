@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """codemod.py: rewrite the value calls of the call sites to their native form (CODEMOD row, plan section 2).
 
-    python 3ds/tools/codemod.py [--dry] <file or directory>...   (a directory: every *.c below it)
+    python 3ds/tools/codemod.py [--dry] [--ntab <ntab_tables.txt>] <file or directory>...   (a directory: every *.c below it)
 
 A tokenizer (comments, strings, character constants and preprocessor lines are tokens of their own) finds each call of a mapped
 name with its whole argument list (balanced brackets). A call is rewritten only when it is exact:
@@ -22,6 +22,7 @@ Mapping (P is gMainGfxPos++):
   gSPSegment(P, s, base)                   -> nd_val_seg(s, base)
   gDPSetTileSize(P, t, uls, ult, lrs, lrt) -> nd_val_tile_size(t, uls, ult, lrs, lrt)
   nd_rec_dl(list), gSPDisplayList(P, list) -> nd_draw_list(list, <the ND_PSO_DESC name of the file>)
+  nd_rec_dl(list) of a v2 table (--ntab)      -> nd_draw_list(list, ND_SELF)
 
 --dry changes no file and prints per file `codemod file <path> value <v> keep <k> state <s> dl <d>` (v, k: the seven value groups;
 state: the other gDP/gSP/gPm calls the tool leaves to the hand rows; d: static list call sites), then per name
@@ -45,6 +46,7 @@ MAP = {
     'gSPDisplayList': (2, True, 'nd_draw_list', (1,)),
 }
 DL_NAMES = ('nd_rec_dl', 'gSPDisplayList')
+NTAB = set()  # CONV2F: the names of the self-contained v2 tables (--ntab <file>); empty without the option
 STATE_RE = re.compile(r'^g(DP|SP|Pm)[A-Z]\w*$')
 STMT_PREV = (';', '{', '}', ':')
 ID_RE = re.compile(r'[A-Za-z_]\w*')
@@ -201,7 +203,9 @@ def rewrite(path, s):
             why = 'ctx'
         if not why and native is not None and not (pk == 'pp' or prev_txt in STMT_PREV or prev_txt == ')' or prev_txt == 'else'):
             why = 'ctx'
-        if not why and nm in DL_NAMES and entry is None:
+        # CONV2F: a v2 table of the file (--ntab) takes ND_SELF and needs no entry
+        self_ok = nm == 'nd_rec_dl' and bool(args) and re.sub(r'\s+', '', args[0]) in NTAB
+        if not why and nm in DL_NAMES and entry is None and not self_ok:
             why = entry_why
         if why:
             keep(nm, a, why)
@@ -220,7 +224,7 @@ def rewrite(path, s):
         else:
             out = [args[x] for x in idx]
             if nm in DL_NAMES:
-                out.append(entry)
+                out.append('ND_SELF' if self_ok else entry)
             edits.append((a, endpos, '%s(%s)' % (native, ', '.join(out))))
         i = close + 1
     out = s
@@ -231,10 +235,21 @@ def rewrite(path, s):
 
 
 def main(argv):
+    global NTAB
     dry = False
     files = []
-    for a in argv:
-        if a == '--dry':
+    k = 0
+    while k < len(argv):
+        a = argv[k]
+        k += 1
+        if a == '--ntab':
+            if k >= len(argv):
+                print('codemod: --ntab needs a file', file=sys.stderr)
+                return 2
+            with open(argv[k], 'r', encoding='utf-8') as fh:
+                NTAB = set(x.strip() for x in fh if x.strip())
+            k += 1
+        elif a == '--dry':
             dry = True
         elif os.path.isdir(a):
             for root, _, names in sorted(os.walk(a)):
