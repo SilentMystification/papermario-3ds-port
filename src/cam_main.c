@@ -112,43 +112,10 @@ void update_cameras(void) {
 extern int pm_ph_on;
 extern void pm_gbi_mdl_mark(unsigned id, int pan); /* T1B: names the task tail rows 0xF0E0 + k */
 #define T1_MARK(k) do { if (pm_ph_on) pm_gbi_mdl_mark(0xF0E0u + (k), 0); } while (0)
-#include "nd_scomp.h"
+#include "nd_tx.h"
 #include "nd_st.h"
 #include "nd_val.h"
 #include "nd_xf.h"
-/* S6T: the camera setup range of render_frame as a compiled state range (nd_scomp.h). The units in the order of the N64 code below; the
- * viewport, scissor, colour image and matrix are value units (placeholders here, the record carries them per camera). The persp
- * normalize word is a no-op state unit (no field), so the ortho camera, which skips it, runs the same range. */
-/* S6VORD: a value unit between two static units is refused, so the range is two defs split at the scissor (cam_a) and the colour image
- * (cam_b is the rest); the record runs them in order. */
-static const Gfx cam_a_u[] = {
-    gsSPViewport(0),
-    gsSPClearGeometryMode(G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH),
-    gsSPTexture(0, 0, 0, G_TX_RENDERTILE, G_OFF),
-    gsDPSetCycleType(G_CYC_1CYCLE),
-    gsDPPipelineMode(G_PM_NPRIMITIVE),
-    gsDPSetScissor(G_SC_NON_INTERLACE, 0, 0, 0, 0),
-};
-static const Gfx cam_b_u[] = {
-    gsDPSetTextureLOD(G_TL_TILE),
-    gsDPSetTextureLUT(G_TT_NONE),
-    gsDPSetTextureDetail(G_TD_CLAMP),
-    gsDPSetTexturePersp(G_TP_PERSP),
-    gsDPSetTextureFilter(G_TF_BILERP),
-    gsDPSetTextureConvert(G_TC_FILT),
-    gsDPSetCombineMode(G_CC_SHADE, G_CC_SHADE),
-    gsDPSetCombineKey(G_CK_NONE),
-    gsDPSetAlphaCompare(G_AC_NONE),
-    gsDPSetRenderMode(G_RM_OPA_SURF, G_RM_OPA_SURF2),
-    gsDPSetColorDither(G_CD_DISABLE),
-    gsSPClipRatio(FRUSTRATIO_2),
-    gsDPSetColorImage(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, 0),
-    gsDPPipeSync(),
-    gsSPPerspNormalize(0),
-    gsSPMatrix(0, G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION),
-};
-static NdSDef cam_a = { cam_a_u, sizeof cam_a_u / sizeof cam_a_u[0] };
-static NdSDef cam_b = { cam_b_u, sizeof cam_b_u / sizeof cam_b_u[0] };
 void render_frame(s32 isSecondPass) {
     s32 camID;
 
@@ -186,8 +153,6 @@ void render_frame(s32 isSecondPass) {
             s32 lrx;
             s32 lry;
 
-            Gfx scv[4]; /* S6T: the value units of cam_a and cam_b (viewport, scissor | colour image, matrix) */
-            gSPViewport(&scv[0], PM_VP(&camera->vp));
 
             ulx = camera->viewportStartX;
             uly = camera->viewportStartY;
@@ -220,15 +185,31 @@ void render_frame(s32 isSecondPass) {
                 lry = SCREEN_HEIGHT;
             }
 
-            gDPSetScissor(&scv[1], G_SC_NON_INTERLACE, ulx, uly, lrx, lry);
-            gDPSetColorImage(&scv[2], G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
-
             FI_OPEN("camera_persp", 0);
             guMtxF2L(camera->mtxPerspective, &gDisplayContext->camPerspMatrix[gCurrentCamID]);
             FI_CLOSE();
-            gSPMatrix(&scv[3], &gDisplayContext->camPerspMatrix[gCurrentCamID], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
-            nd_scomp_rec(&cam_a, scv, 2);
-            nd_scomp_rec(&cam_b, scv + 2, 2);
+            /* RECROOT: the camera setup range (was cam_a and cam_b, nd_scomp_rec), one setter per unit in the N64 order. */
+            nd_xf_viewport(PM_VP(&camera->vp));
+            nd_pso_geom_clr(G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
+            nd_tex_on(0, 0, 0, G_TX_RENDERTILE, G_OFF);
+            nd_pso_cyc(G_CYC_1CYCLE);
+            nd_pso_pipe(G_PM_NPRIMITIVE);
+            nd_pso_scis(G_SC_NON_INTERLACE, ulx, uly, lrx, lry);
+            nd_pso_lod(G_TL_TILE);
+            nd_pso_lut(G_TT_NONE);
+            nd_pso_detail(G_TD_CLAMP);
+            nd_pso_persp(G_TP_PERSP);
+            nd_pso_filt(G_TF_BILERP);
+            nd_pso_conv(G_TC_FILT);
+            nd_pso_cc(G_CC_SHADE, G_CC_SHADE);
+            nd_pso_combkey(G_CK_NONE);
+            nd_pso_alcmp(G_AC_NONE);
+            nd_pso_rm(G_RM_OPA_SURF, G_RM_OPA_SURF2);
+            nd_pso_dither(G_CD_DISABLE);
+            nd_xf_clip(FRUSTRATIO_2);
+            nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
+            nd_xf_pnorm(0);
+            nd_xf_push(&gDisplayContext->camPerspMatrix[gCurrentCamID], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
         }
 
         camera->mtxBillboard = &gDisplayContext->matrixStack[gMatrixListPos];
