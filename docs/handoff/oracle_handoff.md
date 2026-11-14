@@ -1,6 +1,6 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main 6fbd4d6c6, 2026-11-13. Written by the second workstream oracle.
+State: main 8fbb0c1ae, 2026-11-14. Written by the third workstream oracle (lookahead).
 ## Goal
 Remove the display list system completely (plan_endgame.md v3). Done only when `3ds/tools/elfgate.py` prints
 `func 0 data 0 gfxnames 0` and every LISTCEN2 counter C1..C12 is 0.
@@ -24,9 +24,11 @@ FACT (codemod.py --dry --state per dir, 6fbd4d6c6): rewrites effects 103, world 
 - ws_ENTRY.md (branch ENTRYFX, page 2026-11-13): effects state calls + 89 ND_SELF sites (E1), entapply.py (E2), entcap capture in 3
   fxtest chunks and the entry descs (E3). Owns src/effects, entapply.py, tests/entapply, azt.d and bench.d ENTRYFX.json.
 - ws_D.md (branch WSD, page 2026-11-13): state calls of world, entity, evt, battle, pause, filemenu (222 rewrites, 3 groups).
-- ws_B.md: done (groups 1-3 merged). The orchestrator deletes it.
+- ws_GEO.md (page 2026-11-14, not launched): G0 setters nd_geo.h/.c, geounit, codemod --geo (no blocker); G1-G3 call sites (161) after
+  ENTRYFX, WSD, WSCR4 merge. design_lookahead.md: the choices for target, mesh, lights, CONV2C2, NEMIT, GSET (needs an INDEX.md line).
 - Blocked: root-file recdl (15) and root entries: wait for ws_C R6. World/entity/battle entries (25 sites): need capture scenes per
-  site (fxtest covers only effects); write after ws_ENTRY E3 merges. CONV2C2: after the ENTRY pages. GSET (C5, C6): after CONV2C2.
+  site (fxtest covers only effects); write after ws_ENTRY E3 merges. CONV2C2 (design_lookahead 3): after E3. GSET (C5, C6): after
+  NEMIT (Sonnet core, needs the user's yes; nd_ntab_run nd_walk.c:594 still walks the Gfx array) and the set's CONV2C2.
   Readers C8 and the S9DEL stages: plan section 6 phase E needs C1, C2 and C10 at 0 for the deleted code first.
 ## Facts that cost time
 - codemod.py gives a file's single ND_PSO_DESC to every nd_rec_dl/gSPDisplayList of that file (codemod.py:14, :142-144). After ENTRY E3
@@ -38,7 +40,11 @@ FACT (codemod.py --dry --state per dir, 6fbd4d6c6): rewrites effects 103, world 
 - C1 counts `g[DS]P...(` (listcen.py:42), C2 gMainGfxPos (:43), C10 `nd_rec_dl(` and `nd_scomp_rec(` (:47), C8 (:48-49).
   A rewrite moves C1 and C2 by exactly the codemod value: the exact gate of every group. nd_draw_list does not count in C10.
 - Directory ownership: ws_C root src/*.c, include/, nd_st.*; ws_ENTRY src/effects; ws_D world, entity, evt, battle, pause, filemenu.
+- codemod --geo clears MAP (ws_GEO G0), so it never touches a list call: safe on src/effects after E3. --state or plain runs are not.
+- Unmapped C1 after ws_GEO: 357 on gMainGfxPos++ and 53 local (texture, rectangle, viewport, colour; design_lookahead 2). listcen counts
+  src/world/dead (build 30, gfxpos 32), which maps.cmake does not build.
 ## What to do first
 1. Answer coder questions (SendMessage, 10 lines, file:line).
+1b. Write ws_TEX (design_lookahead 2: new nd_tx.h/.c, codemod --tex, G0 now, call sites after the owners merge; copy the ws_GEO form).
 2. After ws_ENTRY E3 merges: write the world/entity/battle entry page (scenes per site from gold.py coverage) and then CONV2C2.
 3. After ws_C R6 merges: write the root recdl and entry page (15 sites) with ws_C's files.
