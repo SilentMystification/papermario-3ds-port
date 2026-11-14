@@ -23,3 +23,10 @@ src/filemenu/filemenu_msg.c
 src/pause/pause_gfx.c
 src/pause/pause_partners.c
 src/state_logos.c
+src/43F0.c
+src/draw_box.c
+src/entity/Shadow.c
+src/imgfx.c
+src/item_entity.c
+src/msg.c
+src/screen_render_util.c
