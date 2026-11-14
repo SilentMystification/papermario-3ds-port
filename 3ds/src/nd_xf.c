@@ -5,13 +5,14 @@
 #include "ultra64.h"
 #include "nd_op.h"
 #include "nd_cmd.h"
+#include "nd_nr.h"
 #include "nd_xf.h"
 
 void nd_xf_push(const void* m, unsigned p) {
-    nd_rec_state(NDO_W0(NDO_MTX, 0x380000u | ((p ^ 1u) & 0xffu)), (uint32_t)(uintptr_t)m);
+    nd_nr(NDO_W0(NDO_MTX, 0x380000u | ((p ^ 1u) & 0xffu)), (uint32_t)(uintptr_t)m);
 }
 
 void nd_xf_pop(unsigned which) {
     (void)which;
-    nd_rec_state(NDO_W0(NDO_POPMTX, 0x380002u), 64u);
+    nd_nr(NDO_W0(NDO_POPMTX, 0x380002u), 64u);
 }

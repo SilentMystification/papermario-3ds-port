@@ -6,12 +6,13 @@
 #include "nd_op.h"
 #include "nd_api.h"
 #include "nd_cmd.h"
+#include "nd_nr.h"
 #include "nd_val.h"
 
 #define VAL_COL(r, g, b, a) (((uint32_t)(r) & 0xffu) << 24 | ((uint32_t)(g) & 0xffu) << 16 | ((uint32_t)(b) & 0xffu) << 8 | ((uint32_t)(a) & 0xffu))
 
 static void val_rec(uint32_t id, uint32_t a, uint32_t b) {
-    nd_rec_state(NDO_W0(id, a), b);
+    nd_nr(NDO_W0(id, a), b);
 }
 
 void nd_val_prim(unsigned minlod, unsigned lodfrac, unsigned r, unsigned g, unsigned b, unsigned a) {
