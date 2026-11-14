@@ -1,5 +1,6 @@
 #include "pause_common.h"
 #include "message_ids.h"
+#include "nd_val.h"
 
 extern Gfx PauseGfxOrbs[];
 
@@ -568,7 +569,7 @@ void pause_badges_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 width
 
                     if (isEquipped == 0) {
                         for (j = 0; j < numOrbs; j++) {
-                            gDPSetPrimColor(gMainGfxPos++, 0, 0, 227, 227, 227, 255);
+                            nd_val_prim(0, 0, 227, 227, 227, 255);
 #if VERSION_JP
                             pause_badges_draw_bp_orbs(0,
                                 baseX + 211 + pause_badges_scroll_offset_x(posX) + 1 + (j % 10) * 6,
@@ -583,9 +584,8 @@ void pause_badges_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 width
 #endif
                         }
 
-                        gDPPipeSync(gMainGfxPos++);
                         gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
-                        gDPSetPrimColor(gMainGfxPos++, 0, 0, orbColorR1, orbColorG1, orbColorB1, 128);
+                        nd_val_prim(0, 0, orbColorR1, orbColorG1, orbColorB1, 128);
 
                         for (j = 0; j < numOrbs; j++) {
                             if (j < bpAvailable) {
@@ -604,7 +604,7 @@ void pause_badges_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 width
                             }
                         }
                     } else {
-                        gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 255, 100, 255);
+                        nd_val_prim(0, 0, 0, 255, 100, 255);
                         for (j = 0; j < numOrbs; j++) {
 #if VERSION_JP
                             pause_badges_draw_bp_orbs(2,
@@ -619,7 +619,6 @@ void pause_badges_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 width
                             pause_badges_draw_bp_orbs(2, orbX, orbY);
 #endif
                         }
-                        gDPPipeSync(gMainGfxPos++);
                     }
                 }
             }
@@ -630,7 +629,6 @@ void pause_badges_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 width
     y1 = baseY + 1;
     x2 = baseX + width - 1;
     y2 = baseY + height - 1;
-    gDPPipeSync(gMainGfxPos++);
 
     if (x1 <= 0) {
         x1 = 1;
@@ -695,34 +693,30 @@ void pause_badges_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 width
     gSPDisplayList(gMainGfxPos++, PauseGfxOrbs);
     gDPSetTextureFilter(gMainGfxPos++, G_TF_BILERP);
     for (orbIndex = 0; orbIndex < maxBP; orbIndex++) {
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, 227, 227, 227, 255);
+        nd_val_prim(0, 0, 227, 227, 227, 255);
         pause_badges_draw_bp_orbs(0, baseX + 11 + (orbIndex % 10) * 6, baseY + 92 + (orbIndex / 10) * 8);
     }
 
-    gDPPipeSync(gMainGfxPos++);
     if (canBeEquipped) {
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, orbColorR, orbColorG, orbColorB, 255);
+        nd_val_prim(0, 0, orbColorR, orbColorG, orbColorB, 255);
         for (orbIndex = 0; orbIndex < bpAvailable - costBP; orbIndex++) {
             pause_badges_draw_bp_orbs(2, baseX + 11 +(orbIndex % 10) * 6, baseY + 92 + (orbIndex / 10) * 8);
         }
 
-        gDPPipeSync(gMainGfxPos++);
         orbBlinkValue = (sin_deg(gGameStatusPtr->frameCounter * 15) + 1.0f) * 0.2 + 0.5;
         gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
 
         orbBlinkOpacity = orbBlinkValue * 255.0f;
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, orbColorR, orbColorG, orbColorB, orbBlinkOpacity);
+        nd_val_prim(0, 0, orbColorR, orbColorG, orbColorB, orbBlinkOpacity);
 
         for (orbIndex = bpAvailable - costBP; orbIndex < bpAvailable; orbIndex++) {
             pause_badges_draw_bp_orbs(2, baseX + 11 +(orbIndex % 10) * 6, baseY + 92 + (orbIndex / 10) * 8);
         }
-        gDPPipeSync(gMainGfxPos++);
     } else {
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, orbColorR, orbColorG, orbColorB, 255);
+        nd_val_prim(0, 0, orbColorR, orbColorG, orbColorB, 255);
         for (orbIndex = 0; orbIndex < bpAvailable; orbIndex++) {
             pause_badges_draw_bp_orbs(2, baseX + 11 + (orbIndex % 10) * 6, baseY + 92 + (orbIndex / 10) * 8);
         }
-        gDPPipeSync(gMainGfxPos++);
     }
 
     draw_box(DRAW_FLAG_NO_CLIP, &gPauseWS_13, gPauseBadgesCurrentTab == 0 ? baseX + 9 : baseX, baseY + 7, 0,

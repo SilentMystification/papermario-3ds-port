@@ -4,6 +4,8 @@
 #include "fio.h"
 #include "ld_addrs.h"
 #include "game_modes.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern HudScript HES_AnimatedCursorHand;
 
@@ -728,11 +730,10 @@ void filemenu_update_show_name_confirm(
     s32 updateCounter = window->updateCounter;
     u32 counter;
 
-    gDPPipeSync(gMainGfxPos++);
     gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
     gDPSetCombineMode(gMainGfxPos++, G_CC_PRIMITIVE, G_CC_PRIMITIVE);
     gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, 140);
+    nd_val_prim(0, 0, 0, 0, 0, 140);
 
     if (updateCounter < 10) {
         s32 x = updateCounter * 16;
@@ -768,11 +769,10 @@ void filemenu_update_hidden_name_confirm(
     s32 updateCounter = window->updateCounter;
 
     if (updateCounter < ARRAY_COUNT(D_80249D48)) {
-        gDPPipeSync(gMainGfxPos++);
         gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
         gDPSetCombineMode(gMainGfxPos++, G_CC_PRIMITIVE, G_CC_PRIMITIVE);
         gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, 140 - updateCounter * 14);
+        nd_val_prim(0, 0, 0, 0, 0, 140 - updateCounter * 14);
         filemenu_draw_rect(0, 0, 1280, 960, 0, 0, 0, 0, 0);
         *posY -= D_80249D48[updateCounter];
     } else {
@@ -968,11 +968,10 @@ void filemenu_draw_contents_copy_arrow(MenuPanel* menu, s32 baseX, s32 baseY, s3
     guOrthoF(transformMtx, 0.0f, SCREEN_WIDTH, SCREEN_HEIGHT, 0.0f, -100.0f, 100.0f, 1.0f);
     guMtxF2L(transformMtx, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-                G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
     gSPDisplayList(gMainGfxPos++, filemenu_dl_copyarrow);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, 128);
-    gDPSetEnvColor(gMainGfxPos++, 0, 0, 0, 0);
+    nd_val_prim(0, 0, 0, 0, 0, 128);
+    nd_val_env(0, 0, 0, 0);
 
     guTranslateF(transformMtx, startX + 4.0f, startZ + 4.0f, 0.0f);
     guScaleF(tempMtx, -1.0f, 1.0f, 1.0f);
@@ -981,23 +980,20 @@ void filemenu_draw_contents_copy_arrow(MenuPanel* menu, s32 baseX, s32 baseY, s3
     guMtxCatF(tempMtx, transformMtx, transformMtx);
     guMtxF2L(transformMtx, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-                G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     gSPDisplayList(gMainGfxPos++, D_8024B6F0);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 
     guTranslateF(tempMtx, CopyArrowAnimOffsets[gGameStatusPtr->frameCounter % ARRAY_COUNT(CopyArrowAnimOffsets)], 0.0f, 0.0f);
     guMtxCatF(tempMtx, transformMtx, transformMtx);
     guMtxF2L(transformMtx, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-                G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gDPSetTileSize(gMainGfxPos++, 1, (gGameStatusPtr->frameCounter * 8) % 512, 0,
-                                        ((gGameStatusPtr->frameCounter * 8) % 512) + 60, 0);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_val_tile_size(1, (gGameStatusPtr->frameCounter * 8) % 512, 0, ((gGameStatusPtr->frameCounter * 8) % 512) + 60, 0);
     gSPDisplayList(gMainGfxPos++, D_8024B708);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, 230, 230, 230, 255);
-    gDPSetEnvColor(gMainGfxPos++, 232, 40, 160, 0);
+    nd_xf_pop(G_MTX_MODELVIEW);
+    nd_val_prim(0, 0, 230, 230, 230, 255);
+    nd_val_env(232, 40, 160, 0);
 
     guTranslateF(transformMtx, startX, startZ, 0.0f);
     guScaleF(tempMtx, -1.0f, 1.0f, 1.0f);
@@ -1006,21 +1002,18 @@ void filemenu_draw_contents_copy_arrow(MenuPanel* menu, s32 baseX, s32 baseY, s3
     guMtxCatF(tempMtx, transformMtx, transformMtx);
     guMtxF2L(transformMtx, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-                G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     gSPDisplayList(gMainGfxPos++, D_8024B6F0);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 
     guTranslateF(tempMtx, CopyArrowAnimOffsets[(gGameStatusPtr->frameCounter % ARRAY_COUNT(CopyArrowAnimOffsets))], 0.0f, 0.0f);
     guMtxCatF(tempMtx, transformMtx, transformMtx);
     guMtxF2L(transformMtx, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-                G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gDPSetTileSize(gMainGfxPos++, 1, (gGameStatusPtr->frameCounter * 8) % 512, 0,
-                                        ((gGameStatusPtr->frameCounter * 8) % 512) + 60, 0);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_val_tile_size(1, (gGameStatusPtr->frameCounter * 8) % 512, 0, ((gGameStatusPtr->frameCounter * 8) % 512) + 60, 0);
     gSPDisplayList(gMainGfxPos++, D_8024B708);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 
 }
 

@@ -730,6 +730,7 @@ u16 blend_tattle_background_channel(u16 a, s32 b, s32 alpha) {
 }
 
 #include "nd_scomp.h"
+#include "nd_xf.h"
 /* S5BTL1: the tattle camera setup ranges as compiled state ranges (nd_scomp.h, the cam_main form). The value units (scissor, viewport,
  * colour image, fill colour) are placeholders; the record carries them. Value units in each def sit at the ends (S6VORD), so R2 is two
  * defs split after the scissor. */
@@ -809,12 +810,10 @@ void tattle_cam_pre_render(Camera* camera) {
     }
 
     if (gGameStatusPtr->backgroundFlags & BACKGROUND_FLAG_TEXTURE) {
-        gDPPipeSync(gMainGfxPos++);
         { Gfx v[1];
           gDPSetScissor(&v[0], G_SC_NON_INTERLACE, cam->viewportStartX, cam->viewportStartY, cam->viewportStartX + cam->viewportW - 1, cam->viewportStartY + cam->viewportH - 1);
           nd_scomp_rec(&tc_copy, v, 1);
         }
-        gDPPipeSync(gMainGfxPos++);
         if (!fogEnabled) {
             gDPLoadTLUT_pal256(gMainGfxPos++, gGameStatusPtr->backgroundPalette);
         } else {
@@ -872,7 +871,6 @@ void tattle_cam_pre_render(Camera* camera) {
         nd_scomp_rec(&tc_cam_b, v + 2, 2);
     }
     gDPFillRectangle(gMainGfxPos++, cam->viewportStartX, cam->viewportStartY, cam->viewportStartX + cam->viewportW - 1, cam->viewportStartY + cam->viewportH - 1);
-    gDPPipeSync(gMainGfxPos++);
     gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
 
     if (!(gGameStatusPtr->backgroundFlags & BACKGROUND_FLAG_TEXTURE)) {
@@ -881,10 +879,9 @@ void tattle_cam_pre_render(Camera* camera) {
         gDPFillRectangle(gMainGfxPos++, cam->viewportStartX, cam->viewportStartY, cam->viewportStartX + cam->viewportW - 1, cam->viewportStartY + cam->viewportH - 1);
     }
 
-    gDPPipeSync(gMainGfxPos++);
     gSPPerspNormalize(gMainGfxPos++, cam->perspNorm);
     guMtxF2L(cam->mtxPerspective, &gDisplayContext->camPerspMatrix[gCurrentCamID]);
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->camPerspMatrix[gCurrentCamID], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
+    nd_xf_push(&gDisplayContext->camPerspMatrix[gCurrentCamID], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
 }
 
 void tattle_cam_post_render(Camera* camera) {

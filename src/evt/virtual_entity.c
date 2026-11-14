@@ -1,5 +1,6 @@
 #include "common.h"
 #include "entity.h"
+#include "nd_val.h"
 
 extern VirtualEntityList bBattleVirtualEntityList;
 extern VirtualEntityList wWorldVirtualEntityList;
@@ -8,7 +9,6 @@ extern VirtualEntityList* gCurrentVirtualEntityListPtr;
 s32 create_worker_backUI(void (*updateFunc)(void), void (*drawFunc)(void));
 
 void virtual_entity_appendGfx_quad(u8 r, u8 g, u8 b, u8 a, u16 left, u16 top, u16 right, u16 bottom) {
-    gDPPipeSync(gMainGfxPos++);
 
     if (a == 0xFF) {
         gDPSetCombineMode(gMainGfxPos++, PM_CC_PRIM_FULL_ALPHA, PM_CC_PRIM_FULL_ALPHA);
@@ -17,9 +17,8 @@ void virtual_entity_appendGfx_quad(u8 r, u8 g, u8 b, u8 a, u16 left, u16 top, u1
         gDPSetCombineMode(gMainGfxPos++, G_CC_PRIMITIVE, G_CC_PRIMITIVE);
     }
 
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, r, g, b, a);
+    nd_val_prim(0, 0, r, g, b, a);
     gDPFillRectangle(gMainGfxPos++, left, top, right, bottom);
-    gDPPipeSync(gMainGfxPos++);
     gDPSetRenderMode(gMainGfxPos++, G_RM_TEX_EDGE, G_RM_TEX_EDGE2);
     gDPSetCombineMode(gMainGfxPos++, G_CC_DECALRGBA, G_CC_DECALRGBA);
 }

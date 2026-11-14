@@ -3018,7 +3018,6 @@ void btl_update_ko_status(void) {
 }
 
 void btl_appendGfx_prim_quad(u8 r, u8 g, u8 b, u8 a, u16 left, u16 top, u16 right, u16 bottom) {
-    gDPPipeSync(gMainGfxPos++);
     gSPDisplayList(gMainGfxPos++, D_80293970);
 
     /* NATIVEAPI E5b (S5PQUAD): the quad is one fill record (nd_api.h NdFillRec): kind 2 opaque (PM_CC_PRIM_FULL_ALPHA), 3 translucent. */
@@ -3027,7 +3026,6 @@ void btl_appendGfx_prim_quad(u8 r, u8 g, u8 b, u8 a, u16 left, u16 top, u16 righ
         nd_rec_napi(nd_fill_run, &q, 3u);
     }
 
-    gDPPipeSync(gMainGfxPos++);
     gDPSetRenderMode(gMainGfxPos++, G_RM_TEX_EDGE, G_RM_TEX_EDGE2);
     gDPSetCombineMode(gMainGfxPos++, G_CC_DECALRGBA, G_CC_DECALRGBA);
 }

@@ -741,7 +741,6 @@ s32 filemenu_draw_char(s32 c, s32 x, s32 y, s32 flag1, s32 color, s32 flag2) {
             gDPSetCombineMode(gMainGfxPos++, PM_CC_07, PM_CC_07);
             gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
             filemenu_draw_rect((x + 2) * 4, (y + 2) * 4, (2 + x + texSizeX) * 4, (2 + y + texSizeY) * 4, 0, 0, 0, 0x400, 0x400);
-            gDPPipeSync(gMainGfxPos++);
             gDPSetCombineMode(gMainGfxPos++, G_CC_DECALRGBA, G_CC_DECALRGBA);
             gDPSetRenderMode(gMainGfxPos++, G_RM_TEX_EDGE, G_RM_TEX_EDGE2);
         }
@@ -780,7 +779,6 @@ s32 filemenu_draw_char(s32 c, s32 x, s32 y, s32 flag1, s32 color, s32 flag2) {
             gDPSetCombineMode(gMainGfxPos++, PM_CC_07, PM_CC_07);
             gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
             filemenu_draw_rect((x + 2) * 4, (y + 2) * 4, (x + 18) * 4, (y + 18) * 4, 0, 0, 0, 0x400, 0x400);
-            gDPPipeSync(gMainGfxPos++);
             gDPSetCombineMode(gMainGfxPos++, G_CC_DECALRGBA, G_CC_DECALRGBA);
             gDPSetRenderMode(gMainGfxPos++, G_RM_TEX_EDGE, G_RM_TEX_EDGE2);
         }

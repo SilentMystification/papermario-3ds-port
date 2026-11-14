@@ -4,6 +4,7 @@
 #include "hud_element.h"
 #include "ld_addrs.h"
 #include "game_modes.h"
+#include "nd_val.h"
 
 extern HudScript HES_Spirit1;
 
@@ -168,21 +169,19 @@ void func_filemenu_8024D710(s32 arg0, MenuPanel* menu, s32 baseX, s32 baseY, s32
     gSPDisplayList(gMainGfxPos++, D_filemenu_8024F140);
 
     if (arg0 != gCurrentLanguage) {
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 255, 128);
+        nd_val_prim(0, 0, 255, 255, 255, 128);
         gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIA_PRIM, G_CC_MODULATEIA_PRIM);
     } else {
         gDPSetCombineMode(gMainGfxPos++, G_CC_DECALRGBA, G_CC_DECALRGBA);
     }
 
-    gDPPipeSync(gMainGfxPos++);
     gDPSetTextureImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 1, &D_802517E0[D_filemenu_8024F124][D_filemenu_8024F1C8[arg0]]);
 
     gDPSetTile(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 0, 0x0000, G_TX_LOADTILE, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
     gDPLoadSync(gMainGfxPos++);
     gDPLoadBlock(gMainGfxPos++, G_TX_LOADTILE, 0, 0, 255, 512);
-    gDPPipeSync(gMainGfxPos++);
     gDPSetTile(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 4, 0x0000, G_TX_RENDERTILE, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
-    gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, 0, 0, (16 - 1) << 2, (16 - 1) << 2);
+    nd_val_tile_size(G_TX_RENDERTILE, 0, 0, (16 - 1) << 2, (16 - 1) << 2);
     gSPTextureRectangle(gMainGfxPos++, (baseX + 15) << 2, (baseY + 2) << 2, (baseX + 31) << 2, (baseY + 18) << 2, 0, 0, 0, 0x400, 0x400);
 }
 
