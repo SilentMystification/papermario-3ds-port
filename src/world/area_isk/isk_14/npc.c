@@ -5,6 +5,7 @@
 #include "world/common/enemy/StoneChomp.inc.c"
 #include "nd_st.h"
 #include "nd_xf.h"
+#include "nd_geo.h"
 
 typedef struct StoneChompAmbushIsk14 {
     /* 0x00 */ s32 imgfxIdx;
@@ -30,7 +31,7 @@ void N(func_80241610_993D40)(void) {
 
     gSPViewport(gMainGfxPos++, &cam->vp);
     if (!(cam->flags & CAMERA_FLAG_ORTHO)) {
-        gSPPerspNormalize(gMainGfxPos++, cam->perspNorm);
+        nd_xf_pnorm(cam->perspNorm);
     }
     guMtxF2L(cam->mtxPerspective, &gDisplayContext->camPerspMatrix[gCurrentCameraID]);
 

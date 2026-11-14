@@ -3,6 +3,7 @@
 #include "model.h"
 #include "nd_st.h"
 #include "nd_val.h"
+#include "nd_geo.h"
 
 s32 N(WavePhase) = {
     0
@@ -318,8 +319,8 @@ void N(UnkModelFunc001)(void) {
         }
         gDPSetColorImage(new_var, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
 
-        gDPSetDepthSource(gMainGfxPos++, G_ZS_PRIM);
-        gDPSetPrimDepth(gMainGfxPos++, 32734, 0);
+        nd_pso_zsrc(G_ZS_PRIM);
+        nd_val_primz(32734, 0);
         nd_pso_rm(G_RM_ZB_XLU_DECAL, G_RM_ZB_XLU_DECAL2);
         nd_pso_filt(G_TF_POINT);
         nd_pso_persp(G_TP_NONE);
@@ -332,7 +333,7 @@ void N(UnkModelFunc001)(void) {
         N(UnkModelFunc000)(temp_f24, temp_f26, temp_f20, temp_f22);
 
         nd_pso_cyc(G_CYC_2CYCLE);
-        gDPSetDepthSource(gMainGfxPos++, G_ZS_PIXEL);
+        nd_pso_zsrc(G_ZS_PIXEL);
     }
 }
 

@@ -6,6 +6,7 @@
 #include "sprite.h"
 #include "effects.h"
 #include "nd_st.h"
+#include "nd_geo.h"
 
 f32 StarPointsIncrementInterp = 0.0f;
 b8 BtlStarPointsBlinking = false;
@@ -872,7 +873,7 @@ void tattle_cam_pre_render(Camera* camera) {
         nd_scomp_rec(&tc_cam_b, v + 2, 2);
     }
     gDPFillRectangle(gMainGfxPos++, cam->viewportStartX, cam->viewportStartY, cam->viewportStartX + cam->viewportW - 1, cam->viewportStartY + cam->viewportH - 1);
-    gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
+    nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
 
     if (!(gGameStatusPtr->backgroundFlags & BACKGROUND_FLAG_TEXTURE)) {
         nd_pso_cyc(G_CYC_FILL);
@@ -880,7 +881,7 @@ void tattle_cam_pre_render(Camera* camera) {
         gDPFillRectangle(gMainGfxPos++, cam->viewportStartX, cam->viewportStartY, cam->viewportStartX + cam->viewportW - 1, cam->viewportStartY + cam->viewportH - 1);
     }
 
-    gSPPerspNormalize(gMainGfxPos++, cam->perspNorm);
+    nd_xf_pnorm(cam->perspNorm);
     guMtxF2L(cam->mtxPerspective, &gDisplayContext->camPerspMatrix[gCurrentCamID]);
     nd_xf_push(&gDisplayContext->camPerspMatrix[gCurrentCamID], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
 }

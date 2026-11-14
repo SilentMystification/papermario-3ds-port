@@ -2,6 +2,7 @@
 #include "nok_04.h"
 #include "effects.h"
 #include "sprite/player.h"
+#include "nd_geo.h"
 
 #define NUM_THREAD_SEGMENTS 16
 
@@ -309,11 +310,11 @@ void N(build_gfx_thread)(void) {
         segLength = -N(ThreadData).curLength;
         x += -segLength * sin_rad(N(ThreadData).curAngle * i / 180.0f * PI);
         y +=  segLength * cos_rad(N(ThreadData).curAngle * i / 180.0f * PI);
-        gSPVertex(gMainGfxPos++, N(ThreadSegmentVertices), 2, 0);
+        nd_mesh_vtx(N(ThreadSegmentVertices), 2, 0);
         guPosition(&gDisplayContext->matrixStack[gMatrixListPos], 0.0f, 0.0f, segAngle, 1.0f, 0.0f, segLength, 0.0f);
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        gSPVertex(gMainGfxPos++, N(ThreadSegmentVertices), 2, 2);
-        gSP2Triangles(gMainGfxPos++, 0, 2, 1, 0, 2, 3, 1, 0);
+        nd_mesh_vtx(N(ThreadSegmentVertices), 2, 2);
+        nd_mesh_tri2(0, 2, 1, 0, 2, 3, 1, 0);
     }
 
     nd_xf_pop(G_MTX_MODELVIEW);

@@ -5,6 +5,7 @@
 #include "ld_addrs.h"
 #include "nd_st.h"
 #include "nd_val.h"
+#include "nd_geo.h"
 
 enum {
     STORY_PAGE_BLANK        = 0,
@@ -1431,7 +1432,7 @@ void N(worker_draw_story_graphics)(void) {
     N(draw_background_tape)();
 
     gSPDisplayList(gMainGfxPos++, N(gfx_setup_story_viewport));
-    gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, nuGfxCfb_ptr);
+    nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, nuGfxCfb_ptr);
 
     if (N(StoryGraphicsPtr)->storyPageAlpha < 255) {
         nd_pso_rm(G_RM_CLD_SURF, G_RM_CLD_SURF2);

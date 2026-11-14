@@ -2,14 +2,15 @@
 #include "model.h"
 #include "nd_val.h"
 #include "nd_st.h"
+#include "nd_geo.h"
 
 MAP_RODATA_PAD(1,unk);
 
 void N(gfx_build_water)(void) {
     Model* model;
 
-    gDPSetDepthSource(gMainGfxPos++, G_ZS_PRIM);
-    gDPSetPrimDepth(gMainGfxPos++, 0x7FF0, 0);
+    nd_pso_zsrc(G_ZS_PRIM);
+    nd_val_primz(0x7FF0, 0);
     nd_pso_rm(Z_CMP | CVG_DST_CLAMP | ZMODE_OPA | FORCE_BL | G_RM_PASS, Z_CMP | CVG_DST_CLAMP | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_0, G_BL_CLR_IN, G_BL_1));
     nd_pso_cc(PM_CC_PRIM_NO_ALPHA, PM_CC_PRIM_NO_ALPHA);
     nd_val_prim(0, 0, 0, 0, 128, 0);
@@ -18,7 +19,7 @@ void N(gfx_build_water)(void) {
 
     gSPDisplayList(gMainGfxPos++, model->modelNode->displayData->displayList);
     nd_pso_cyc(G_CYC_2CYCLE);
-    gDPSetDepthSource(gMainGfxPos++, G_ZS_PIXEL);
+    nd_pso_zsrc(G_ZS_PIXEL);
     nd_pso_rm(G_RM_PASS, G_RM_AA_ZB_XLU_SURF2);
 
     mdl_draw_hidden_panel_surface(&gMainGfxPos, MODEL_water);
