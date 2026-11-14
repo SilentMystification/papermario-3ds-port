@@ -69,11 +69,9 @@
 
 #ifdef DEBUG
 #define IS_DEBUG_PANIC(statement, file, line) is_debug_panic(statement, file, line)
-#elif defined(TARGET_3DS)
+#else
 void pm_assert_fail(const char* statement);
 #define IS_DEBUG_PANIC(statement, file, line) pm_assert_fail(statement)
-#else
-#define IS_DEBUG_PANIC(statement, file, line) do {} while(true)
 #endif
 
 #define PANIC() IS_DEBUG_PANIC("Panic", __FILE__, __LINE__)

@@ -1,11 +1,9 @@
 #include "common.h"
-#ifdef TARGET_3DS
 #include <string.h>
 #include "nd_api.h"
 #define DIMG_CW_(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1)     { ND_W0_CMB(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1), ND_W1_CMB(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1) }
 #define DIMG_CW(a, b) DIMG_CW_(a, b)
 static const NdTRect* dimg_tpl; /* S5TIMG: the state of draw_ci_image_with_clipping for the strips of its draw (NULL: old ops) */
-#endif
 
 s32 draw_image_with_clipping(IMG_PTR raster, u32 width, u32 height, s32 fmt, s32 bitDepth, s16 posX, s16 posY,
                              u16 clipX, u16 clipY, u16 clipWidth, u16 clipHeight);
@@ -13,9 +11,7 @@ s32 draw_image_with_clipping(IMG_PTR raster, u32 width, u32 height, s32 fmt, s32
 s32 draw_ci_image_with_clipping(IMG_PTR raster, s32 width, s32 height, s32 fmt, s32 bitDepth, PAL_PTR palette, s16 posX,
                                 s16 posY, u16 clipULx, u16 clipULy, u16 clipLRx, u16 clipRLy, u8 opacity) {
     s32 ret = 1;
-#ifdef TARGET_3DS
     NdTRect t;
-#endif
 
     gDPPipeSync(gMainGfxPos++);
     gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
@@ -43,7 +39,6 @@ s32 draw_ci_image_with_clipping(IMG_PTR raster, s32 width, s32 height, s32 fmt, 
     } else {
         gDPSetTextureLUT(gMainGfxPos++, G_TT_NONE);
     }
-#ifdef TARGET_3DS
     {
         static const u32 cw_decal[2] = DIMG_CW(G_CC_DECALRGBA, G_CC_DECALRGBA), cw_02[2] = DIMG_CW(PM_CC_02, PM_CC_02);
         memset(&t, 0, sizeof t);
@@ -59,11 +54,8 @@ s32 draw_ci_image_with_clipping(IMG_PTR raster, s32 width, s32 height, s32 fmt, 
         }
         dimg_tpl = &t;
     }
-#endif
     ret = draw_image_with_clipping(raster, width, height, fmt, bitDepth, posX, posY, clipULx, clipULy, clipLRx, clipRLy);
-#ifdef TARGET_3DS
     dimg_tpl = NULL;
-#endif
     gDPPipeSync(gMainGfxPos++);
     return ret;
 }
@@ -166,7 +158,6 @@ s32 draw_image_with_clipping(IMG_PTR raster, u32 width, u32 height, s32 fmt, s32
                 stopDrawingLine = true;
             }
 
-#ifdef TARGET_3DS
             if (dimg_tpl && (bitDepth == G_IM_SIZ_4b || bitDepth == G_IM_SIZ_8b || bitDepth == G_IM_SIZ_16b)) {
                 NdTRect r = *dimg_tpl;
                 r.img = raster; r.fmt = fmt; r.siz = bitDepth; r.width = width; r.height = height;
@@ -176,7 +167,6 @@ s32 draw_image_with_clipping(IMG_PTR raster, u32 width, u32 height, s32 fmt, s32
                 r.hs = ND_TR_H1(texOffsetX * 32, texOffsetY * 32); r.hd = ND_TR_H2(1024, 1024);
                 nd_rec_napi(nd_trect_run, &r, sizeof r / 8u);
             } else
-#endif
             {
                 if (bitDepth == G_IM_SIZ_4b) {
                     gDPLoadTextureTile_4b(gMainGfxPos++, raster, fmt, width, height,

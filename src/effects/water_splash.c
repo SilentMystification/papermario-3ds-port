@@ -186,7 +186,7 @@ void water_splash_appendGfx(void* effect) {
     guMtxF2L(sp10, &gDisplayContext->matrixStack[gMatrixListPos]);
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_xf_push(currentCamera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    nd_rec_dl(D_09000100_3BCB90);
+    nd_draw_list(D_09000100_3BCB90, ND_SELF);
 
     data++;
     gPmNdSplash(gMainGfxPos++, 1);

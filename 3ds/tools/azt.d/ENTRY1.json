@@ -1,0 +1,34 @@
+{
+  "scenarios": [
+    {
+      "name": "fxpic_20_psochk",
+      "status": "unverified",
+"reason": "broken: no until in 40 s (AZT11-5, 2026-11-13)",
+      "subject": "Toad Town mac_01 at 0 0 200, fxtest=20 (explosion), cold det start with the psochk switch: the entry-form draw of the explosion pilot (explosion.c:229, pe_explosion_0) is compared with the walker description (psochk f<frame> draws <n> bad <n> lines).",
+      "proves": "ENTRY1: nd_draw_list(list, entry) with the ND_PSO_DESC entry runs through nd_rec_dl_e and nd_gtab_run_e, and the psochk compare counts the draws with no mismatch (bad 0).",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=20 loglevel=debug det psochk",
+      "extra": [],
+      "until": "psochk f4\\d\\d draws \\d+ bad \\d+",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "psochk",
+          "regex": "psochk f[0-9]+ draws [0-9]+ bad [0-9]+"
+        },
+        {
+          "name": "done",
+          "regex": "psochk f4\\d\\d draws \\d+ bad \\d+"
+        }
+      ],
+      "reason": "ENTRY1: copy of fxpic_20_entcap with the psochk switch in place of entcap. The until is the first psochk line at frame 500 or later (the explosion draws at frame 402 to 444 are counted before it)."
+    }
+  ]
+}

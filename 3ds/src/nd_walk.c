@@ -13,6 +13,7 @@
 #include "pm_port.h"
 #include "nd_cmd.h"
 #include "variables.h"
+#include "nd_psochk.h"
 #include "nd_int.h"
 #include "nd_op.h"
 #include "nd_api.h"
@@ -490,6 +491,30 @@ void nd_parts_run_v(const uint32_t* u) {
     gv_streak_flush();
     tex_streak_flush();
 }
+/* ENTRYCAP: the device switch entcap (PMDL). A static list without a v2 table logs its walker entry description (nd_walker_desc) once per
+ * distinct key: FNV-1a 32 over the list address, the call site (nd_rec_dl's return address) and the 44 bytes of the description. 1024 keys. */
+static uint32_t entcap_fnv(uint32_t h, const void* p, unsigned n) {
+    const uint8_t* b = (const uint8_t*)p;
+    for (unsigned i = 0; i < n; i++) h = (h ^ b[i]) * 16777619u;
+    return h;
+}
+static __attribute__((cold, noinline)) void entcap_rec(const NdGTab* t, uint32_t site) {
+    static uint32_t keys[1024];
+    static unsigned nkeys, over;
+    void nd_walker_desc(NdPsoDesc* d);
+    if (nd_ntab_find(t->list)) return; /* a v2 table: not a list without one */
+    NdPsoDesc d;
+    nd_walker_desc(&d);
+    const uint32_t la = (uint32_t)(uintptr_t)t->list;
+    uint32_t h = entcap_fnv(2166136261u, &la, 4u);
+    h = entcap_fnv(h, &site, 4u);
+    h = entcap_fnv(h, &d, sizeof d);
+    for (unsigned i = 0; i < nkeys; i++) if (keys[i] == h) return;
+    if (nkeys == 1024u) { if (!over) { over = 1; pm_log_evt("entcap over"); } return; }
+    keys[nkeys++] = h;
+    const uint32_t* w = (const uint32_t*)&d;
+    pm_log_evt("entcap l %08x s %08x d %08x %08x %08x %08x %08x %08x %08x %08x %08x %08x %08x", la, site, w[0], w[1], w[2], w[3], w[4], w[5], w[6], w[7], w[8], w[9], w[10]);
+}
 /* S7RUN (nd_gtab.h nd_rec_dl): the core 0 runner of one static list call from its table. rec[0] = the table, rec[1] = the state-only flag.
  * Arm rule (the commit names it): a state-only list (nd_rec.c rec_inline: fewer than 64 units, all state ops) never reached the walker's G_DL arms,
  * so it runs as G_PM_LST and its ops (the list start of that unit: gv_epoch, ent_skipgen, gp_prev_op); any other list takes the arms of walk_call
@@ -584,6 +609,7 @@ void nd_gtab_run(const uint32_t* rec) {
         pm_walk_side--;
         return;
     }
+    if (__builtin_expect(PMDL("entcap"), 0)) entcap_rec(t, rec[2]);
     if (__builtin_expect(pm_walk_dbg, 0)) {
         const uint32_t u[2] = { ND_OP_CALL_W0, (uint32_t)(uintptr_t)t->list };
         nd_walk_state(u, 1u);
@@ -612,6 +638,7 @@ void nd_gtab_run(const uint32_t* rec) {
     gv_streak_flush();
     tex_streak_flush();
 }
+void nd_gtab_run_e(const uint32_t* rec) { nd_psochk_draw((const NdPsoDesc*)(uintptr_t)rec[3]); nd_gtab_run(rec); }
 /* DIRECT D10a: a custom gfx range of the frame stream (model record R11, build_custom_gfx), run to its NDC_END as the walker ran the list it
  * replaces: the list start (gv_epoch, dlc_on, a full combine and render sync: DIP2) and the list end (the vertex and texture streak flush). */
 void nd_range_run(const uint32_t* a) {

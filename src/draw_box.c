@@ -2,8 +2,6 @@
 #include "common.h"
 #include "nu/nusys.h"
 #include "include_asset.h"
-#ifdef TARGET_3DS
-#endif
 
 #define INTEGER_LOG2(x) ((x) <= 1 ? 0 : (x) <= 2 ? 1 : (x) <= 4 ? 2 : (x) <= 8 ? 3 : (x) <= 16 ? 4 : (x) <= 32 ? 5 : (x) <= 64 ? 6 : (x) <= 128 ? 7 : (x) <= 256 ? 8 : (x) <= 512 ? 9 : 10)
 
@@ -333,7 +331,6 @@ Mtx gBoxMatrix = RDP_MATRIX(
     0.000000, 0.000000, 0.000000,  0.000000
 );
 
-#ifdef TARGET_3DS
 /* FSELFIX: a ROTSCALE window's contents image is one texture and one vertex batch (one strip vertex per 6 rows,
  * 4 vertices per strip). One pool per display context: a context is built again only after the walk of the frame that used it
  * (nd_wq.c:7-8), so the walker has read these vertices. sBoxStripFrame resets the pool on a new frame. */
@@ -341,7 +338,6 @@ Mtx gBoxMatrix = RDP_MATRIX(
 static Vtx sBoxStripVtx[2][BOX_STRIP_VTX];
 static s32 sBoxStripN[2];
 static u16 sBoxStripFrame[2];
-#endif
 
 // @bug there's an issue with the way the "quads" temp below is used, sometimes going out of bounds.
 // In vanilla, this results in some data being written to an unused struct field inside gPartnerStatus, which doesn't
@@ -364,9 +360,7 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
     Vtx* quads;
     s32 idx;
     s32 i, j;
-#ifdef TARGET_3DS
     s32 ns, c, k, n;
-#endif
     s32 tmem = 0x100;
     u32 bgScrollOffsetX, bgScrollOffsetY;
 
@@ -458,27 +452,11 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
             gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
         }
 
-#ifdef TARGET_3DS
         { /* DIRECT D7: the preset combine word is recorded as a stream state op */
             const Gfx* cw = defaultStyle != nullptr ? &gBoxCombineModes[defaultStyle->combineModeIndex + (primA != 255 ? 2 : 0)]
                           : primA != 255 ? &customStyle->transparentCombineMode : &customStyle->opaqueCombineMode;
             nd_gx_w(gMainGfxPos++, cw->words.w0, cw->words.w1);
         }
-#else
-        if (defaultStyle != nullptr) {
-            Gfx* gfxPos = gMainGfxPos;
-            *gfxPos = gBoxCombineModes[defaultStyle->combineModeIndex + (primA != 255 ? 2 : 0)];
-        } else {
-            Gfx* gfxPos = gMainGfxPos;
-            if (primA != 255) {
-                *gfxPos = customStyle->transparentCombineMode;
-            } else {
-                *gfxPos = customStyle->opaqueCombineMode;
-            }
-        }
-
-        gMainGfxPos++;
-#endif
         gDPSetTextureFilter(gMainGfxPos++, G_TF_POINT);
 
         if (quads != nullptr) {
@@ -814,7 +792,6 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
                     guTranslateF(mtx3, 0.0f, -height / 2, 0.0f);
                     guMtxF2L(mtx3, &gDisplayContext->matrixStack[gMatrixListPos]);
                     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-#ifdef TARGET_3DS
                     ns = height / 6;
                     c = gCurrentDisplayContextIndex;
                     if (sBoxStripFrame[c] != (u16)gGameStatusPtr->frameCounter) {
@@ -844,7 +821,6 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
                         gDPPipeSync(gMainGfxPos++);
                         sBoxStripN[c] += ns * 4;
                     } else
-#endif
                     for (idx = 0; idx < height / 6; idx++) {
                         s32 extraHeight, lineHeight;
                         if (idx == height / 6 - 1) {

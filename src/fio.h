@@ -16,8 +16,6 @@ extern SaveMetadata gSaveSlotMetadata[4];
 extern u8 gSaveSlotHasData[4];
 extern SaveGlobals gSaveGlobals;
 
-#ifdef TARGET_3DS
 void pm_cheat_file_copy(s32 from, s32 to); // port (pm_cheatsave.c): Copy File copies the cheat file of the source slot
-#endif
 
 #endif

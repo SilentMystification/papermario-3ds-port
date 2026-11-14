@@ -9,7 +9,7 @@ CONV2D2, HANDOFF.md). C5 22103 and C6 2108 (FACT, listcen at b2442aa97) move onl
 ## Group 2: ENTRYCAP (worktree build3ds/wt/ENTRYCAP, branch ENTRYCAP, head 8a01f500e)
 - Commit 1 (9276f8bda, scene fxpic_20_entcap) and commit 2 (a165990e8: nd_gtab.c:109, nd_walk.c entcap_rec, entcap.py) exist.
   First: `git merge main`. Run row_ENTRYCAP.md "Gate" steps 1-3. Save the entcap.py output to build3ds/out/entcap_fx20.txt
-  (group 3 needs the D_090008F0_344860 line). Commit, delete row_ENTRYCAP.md, hand the hash over.
+  (group 3 needs the explosion.c:229 lines; type 0 never runs :195, oracle 2026-11-13). Commit, delete row_ENTRYCAP.md, hand the hash over.
 ## Group 3: the entry form (new branch ENTRY1 from main after groups 1 and 2 merged; `sh 3ds/tools/wt_new.sh ENTRY1`)
 Edit shape a, 3ds/include/nd_gtab.h:75-76 (CONV2F). Before:
   `#define ND_SELF 0` / `#define nd_draw_list(list, entry) do { _Static_assert((entry) == ND_SELF, "an entry needs row ENTRY1"); nd_rec_dl(list); } while (0)`
@@ -21,8 +21,8 @@ Edit shape b, 3ds/src/nd_gtab.c. Add `static const NdPsoDesc* dl_ent;` and after
   After: `if (dl_ent || __builtin_expect(PMDL("entcap"), 0)) { const uint32_t r4[4] = { ..., (uint32_t)(uintptr_t)dl_ent }; nd_rec_napi(dl_ent ? nd_gtab_run_e : nd_gtab_run, r4, 2u); return; }`
 Edit shape c, 3ds/src/nd_walk.c after nd_gtab_run: `void nd_gtab_run_e(const uint32_t* rec) { nd_psochk_draw((const NdPsoDesc*)(uintptr_t)rec[3]); nd_gtab_run(rec); }`
   (`#include "nd_psochk.h"`, prototype in nd_gtab.h next to nd_gtab_run :71). nd_psochk_draw: nd_comb.c:219 (one test when off).
-Edit shape d, the pilot src/effects/explosion.c:195. Before: `nd_rec_dl(D_090008F0_344860);` After: `nd_draw_list(D_090008F0_344860, pe_explosion_0);`
-  and at file scope after the externs (:13): `ND_PSO_DESC(pe_explosion_0, w0, ..., w7, b0, ..., b11);` from the entcap line:
+Edit shape d, the pilot src/effects/explosion.c:229. Before: `nd_rec_dl(D_E00328B0[unk_34 % 3]);` After: `nd_draw_list(D_E00328B0[unk_34 % 3], pe_explosion_0);`
+  and at file scope after the externs (:13): `ND_PSO_DESC(pe_explosion_0, w0, ..., w7, b0, ..., b11);` from the entcap lines of :229 (the 3 lists log the same 11 words):
   w0-w7 = the first 8 of the 11 words after `d`, b0-b11 = the bytes of the last 3 words, low byte first (nd_api.h:25-33).
 New scene fxpic_20_psochk (azt.d/ENTRY1.json, bench.d/ENTRY1.json, copy of fxpic_20_entcap with `psochk` for `entcap`, until
 `psochk f5\d\d draws \d+ bad \d+`). One commit with the scene, one with edits a-d.
@@ -30,10 +30,10 @@ New scene fxpic_20_psochk (azt.d/ENTRY1.json, bench.d/ENTRY1.json, copy of fxpic
 1. nd_host PASS (psodesc.sh and psotab.sh see the new desc). Build: memcheck margin 310 or more. gen_pso_tab: no duplicate name.
 2. Seed: one byte of pe_explosion_0 changed (b0 tex_on flipped). Run fxpic_20_psochk: the line shows `bad` 1 or more. Undo.
 3. Real: fxpic_20_psochk shows `draws` 1 or more and `bad 0`. `bench.py cmp fxpic_89_drec --row ENTRY1`: byte-equal (ND_SELF path).
-4. Counter: listcen recdl -1 (explosion.c:195). C1 unchanged.
+4. Counter: listcen recdl -1 (explosion.c:229). C1 unchanged.
 ## What you may edit to fix a failing test
 Groups 1-2: only what the row file names. Group 3: the four edit places above and the two scene files. Never a ws_A directory
-file other than explosion.c, and explosion.c only at :13 and :195.
+file other than explosion.c, and explosion.c only at :13 and :229.
 ## Stop and hand-back
 Stop after group 3. The oracle writes the ENTRY group page (all 426 inheriting lists) from the group 3 result. Failures: CLAUDE.md
 5 (2 tries per cause, then build3ds/out/wsb_<g>.txt to the oracle). Hand-back (8 lines): hashes, gate values, memcheck line.

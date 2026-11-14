@@ -16,6 +16,9 @@ extern Gfx D_09000978_3448E8[];
 extern Gfx D_090009D8_344948[];
 extern Gfx D_09000A38_3449A8[];
 
+/* ENTRY1 pilot (explosion.c:229): the walker description of the three lists of D_E00328B0 (entcap, fxpic_20_entcap). */
+ND_PSO_DESC(pe_explosion_0, 0xfcffb3ff, 0xff65feff, 0x1e080cf0, 0x00504340, 0x00000005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 4, 0, 0, 0);
+
 Gfx* D_E00328B0[] = { D_09000978_3448E8, D_090009D8_344948, D_09000A38_3449A8 };
 
 void explosion_main(s32 type, f32 x, f32 y, f32 z) {
@@ -226,7 +229,7 @@ void explosion_appendGfx(void* effect) {
 
     nd_val_prim(0, 0, 255, 255, primB, primAlpha);
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    nd_rec_dl(D_E00328B0[unk_34 % 3]);
+    nd_draw_list(D_E00328B0[unk_34 % 3], pe_explosion_0);
     nd_xf_pop(G_MTX_MODELVIEW);
     nd_xf_pop(G_MTX_MODELVIEW);
 }
