@@ -28,5 +28,6 @@ Standard answers (do not stop for these):
   it; retry in the foreground (timeout 600000). A base of an unstored commit builds it once (10+ min). A base pair must be two
   runs on one slot.
 - Do not merge main into your branch unless the orchestrator tells you to or the merge-tree check shows a conflict.
+- Never edit docs/handoff/INDEX.md (it conflicts at every merge). The orchestrator edits it. Delete your own goal page only.
 - Never write a stub or a stand-in for product code (user rule). Never run a push, and never touch the netloader or the console.
 - Before the first edit of a Sonnet or Opus task, check its Facts against the code. If a Fact does not match, hand back the lines.
