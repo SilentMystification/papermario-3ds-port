@@ -491,12 +491,12 @@ static void v2_units(const NdNTab* t, const char* name) {
     if (n != u->b) v2_fail("unit stream count", name, n);
 }
 /* CONV2D2: the device index entry of a table's list (nd_gtab.h NdNDev): n is the word pairs from unit 0 to the stop, NOPs counted */
-static unsigned v2_dev_bad;
+static unsigned v2_dev_bad, v2_fl_bad; /* GKEY1: v2_fl_bad counts the state-only flag */
 static void v2_dev(const NdNTab* t, const char* name, int fault) {
     const GSym* g = NULL;
     for (unsigned s = 0; s < gconv_nsym; s++) if (gconv_sym[s].kind == GS_GFX && gconv_sym[s].addr == t->list) g = &gconv_sym[s];
     const NdNDev* dv = NULL;
-    for (unsigned i = 0; i < ndn_dev_n; i++) if (ndn_dev_idx[i].list == t->list) dv = &ndn_dev_idx[i];
+    dv = nd_ntab_find(t->list);
     if (!dv || !g) { v2_dev_bad++; v2_fail("device index entry", name, 0); return; }
     const uint32_t* L = (const uint32_t*)g->addr;
     const unsigned nl = (unsigned)(((uintptr_t)g->end - (uintptr_t)g->addr) / 8u);
@@ -507,8 +507,8 @@ static void v2_dev(const NdNTab* t, const char* name, int fault) {
         if ((w0 >> 24) == NDO_END) { ks = k; break; }
         if ((w0 >> 24) == NDO_CALL && (w0 & 1u)) { ks = k + 1u; break; }
     }
-    if (dv->n != ks) { v2_dev_bad++; v2_fail("device index count", name, ks); }
-    if (dv->u != (const uint32_t*)t->list || dv->nu != dv->n + (fault ? 1u : 0u)) { v2_dev_bad++; v2_fail("device index units", name, 0); }
+    if (dv->u != (const uint32_t*)t->list || dv->nu != ks + (fault ? 1u : 0u)) { v2_dev_bad++; v2_fail("device index units", name, 0); }
+    if (dv->fl != nd_gt_state_only(L) + (fault ? 1u : 0u)) { v2_fl_bad++; v2_fail("device index state-only flag", name, 0); }
     unsigned ntri = 0;
     for (unsigned k = 0; t->ops[k].op != NDN_END; k++) if (t->ops[k].op == NDN_DRAW) ntri += t->ops[k].b;
     if (dv->ntri != ntri / 3u) { v2_dev_bad++; v2_fail("device index triangles", name, 0); }
@@ -608,8 +608,9 @@ static void v2_compare(int fault) {
     }
     printf("ntab tables %u draws %u bad %u\n", tables, v2_draws, v2_bad);
     printf("ntab dev entries %u bad %u\n", ndn_dev_n, v2_dev_bad);
+    printf("ntab dev flag bad %u\n", v2_fl_bad);
     printf("ntab flat v2 %u words %u bad %u\n", f_v2, f_w, v2_flat_bad);
-    { unsigned nt0 = 0; for (unsigned i = 0; i < ndn_dev_n; i++) if (ndn_dev_idx[i].ntri == 0) nt0++; printf("ntab notri %u of %u\n", nt0, ndn_dev_n); }
+    { unsigned nt0 = 0; for (unsigned i = 0; i < ndn_dev_n; i++) if (ndn_dev_idx[i]->ntri == 0) nt0++; printf("ntab notri %u of %u\n", nt0, ndn_dev_n); }
     printf("ntab inherit %u unsup %u descs %u\n", ndn_inherit, ndn_unsup, ndn_ndesc);
     printf("ntab seeded %u bad %u\n", n_seed, seed_bad);
 }
@@ -635,6 +636,9 @@ int main(void) {
     if (lists != nd_gtab_n) { cur = "all"; fail("table count differs from the Gfx symbols", lists); }
     static const uint32_t not_a_list[2];
     if (nd_gtab_find(not_a_list)) { cur = "all"; fail("nd_gtab_find of a non-list", 0); }
+#ifdef NTAB_V2
+    if (nd_ntab_find(not_a_list)) { cur = "all"; fail("nd_ntab_find of a non-list", 0); }
+#endif
     printf("gtab lists %u parts %u draws %u defs %u ops %u bad %u\n", lists, n_parts, n_draws, n_defs, n_ops, bad);
 #ifdef NTAB_V2
     v2_compare(fault);

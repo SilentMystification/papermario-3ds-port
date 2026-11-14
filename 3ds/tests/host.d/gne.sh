@@ -4,8 +4,8 @@
 T=/tmp/gne
 mkdir -p $T
 python3 -I 3ds/tools/gen_ntab_entries.py 3ds/tests/gne/cases > $T/out.txt || { echo "gne FAIL tool exit"; exit 1; }
-if ! cmp -s $T/out.txt 3ds/tests/gne/a.txt; then echo "gne FAIL output differs from a.txt"; diff $T/out.txt 3ds/tests/gne/a.txt | head -20; exit 1; fi
+if ! tr -d '\r' < 3ds/tests/gne/a.txt | cmp -s $T/out.txt -; then echo "gne FAIL output differs from a.txt"; diff $T/out.txt 3ds/tests/gne/a.txt | head -20; exit 1; fi  # GKEY1: CR stripped (core.autocrlf checkouts)
 sed '/# designators/d' 3ds/tools/gen_ntab_entries.py > $T/fault_tool.py
 python3 -I $T/fault_tool.py 3ds/tests/gne/cases > $T/fault.txt || true
-if cmp -s $T/fault.txt 3ds/tests/gne/a.txt; then echo "gne FAIL seeded fault not seen"; exit 1; fi
+if tr -d '\r' < 3ds/tests/gne/a.txt | cmp -s $T/fault.txt -; then echo "gne FAIL seeded fault not seen"; exit 1; fi
 echo "gne ok"
