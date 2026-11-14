@@ -1,0 +1,7 @@
+#include "src/effects/gfx/partner_buff.c"
+#include "effects/gfx/D_09001800_406740.gfx.inc.c"
+#include "effects/gfx/D_090019A0_4068E0.gfx.inc.c"
+#include "effects/gfx/D_09001A18_406958.gfx.inc.c"
+#include "effects/gfx/D_09001A90_4069D0.gfx.inc.c"
+#include "effects/gfx/D_09001B08_406A48.gfx.inc.c"
+#include "effects/gfx/D_09001B80_406AC0.gfx.inc.c"

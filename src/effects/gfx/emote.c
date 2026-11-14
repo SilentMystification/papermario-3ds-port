@@ -13,13 +13,7 @@ INCLUDE_IMG("effects/gfx/D_09001E00_336A70.png", D_09001E00_336A70);
 #include "effects/gfx/D_09002100_336D70.vtx.inc.c"
 #include "effects/gfx/D_09002140_336DB0.vtx.inc.c"
 
-#include "effects/gfx/D_09002170_336DE0.gfx.inc.c"
-#include "effects/gfx/D_09002238_336EA8.gfx.inc.c"
 #include "effects/gfx/D_090022E0_336F50.gfx.inc.c"
-#include "effects/gfx/D_09002308_336F78.gfx.inc.c"
 #include "effects/gfx/D_090023B0_337020.gfx.inc.c"
-#include "effects/gfx/D_090023D8_337048.gfx.inc.c"
 #include "effects/gfx/D_09002480_3370F0.gfx.inc.c"
-#include "effects/gfx/D_090024A8_337118.gfx.inc.c"
 #include "effects/gfx/D_09002550_3371C0.gfx.inc.c"
-#include "effects/gfx/D_09002578_3371E8.gfx.inc.c"

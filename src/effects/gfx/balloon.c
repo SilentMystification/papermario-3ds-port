@@ -21,7 +21,4 @@ INCLUDE_PAL("effects/gfx/D_09000C00_395270.pal", D_09001000_395670);
 u8 D_09001020_395690[0x1E0] = {};
 
 #include "effects/gfx/D_09001200_395870.vtx.inc.c"
-#include "effects/gfx/D_09001280_3958F0.gfx.inc.c"
-#include "effects/gfx/D_09001358_3959C8.gfx.inc.c"
-#include "effects/gfx/D_09001430_395AA0.gfx.inc.c"
 #include "effects/gfx/D_09001508_395B78.gfx.inc.c"

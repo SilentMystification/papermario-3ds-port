@@ -1,0 +1,7 @@
+#include "src/effects/gfx/small_gold_sparkle.c"
+#include "effects/gfx/D_090002C0_392700.gfx.inc.c"
+#include "effects/gfx/D_09000330_392770.gfx.inc.c"
+#include "effects/gfx/D_09000370_3927B0.gfx.inc.c"
+#include "effects/gfx/D_090003B0_3927F0.gfx.inc.c"
+#include "effects/gfx/D_090003F0_392830.gfx.inc.c"
+#include "effects/gfx/D_09000430_392870.gfx.inc.c"

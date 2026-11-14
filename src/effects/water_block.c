@@ -59,8 +59,8 @@ WaterBlockVtxData D_E00B4CF0[] = {
     {{-22,  50,  22 },    61,   1021,   { 240, 240, 240 }},
 };
 
-extern Gfx D_09000300_3B6EF0[];
-extern Gfx D_090003B0_3B6FA0[];
+NDN_DECL(D_09000300_3B6EF0);
+NDN_DECL(D_090003B0_3B6FA0);
 extern Gfx D_090004A0_3B7090[];
 extern Gfx D_090004D8_3B70C8[];
 extern Gfx D_09000538_3B7128[];
@@ -277,7 +277,7 @@ void water_block_appendGfx(void* effect) {
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_val_env(0, 0, 255, data->alpha);
     nd_val_prim(0, 0, 255, 255, 255, alpha);
-    nd_draw_list(D_090003B0_3B6FA0, ND_SELF);
+    nd_draw_list(NDN(D_090003B0_3B6FA0), ND_SELF);
 
     nd_parts_begin(&pb, 1, 1);
     for (i = 0; i < NUM_WATER_BLOCK_COMPONENTS; i++) {
@@ -295,7 +295,7 @@ void water_block_appendGfx(void* effect) {
     }
     nd_parts_end(&pb);
 
-    nd_draw_list(D_09000300_3B6EF0, ND_SELF);
+    nd_draw_list(NDN(D_09000300_3B6EF0), ND_SELF);
     nd_val_prim(0, 0, data->color.r, data->color.g, data->color.b, alpha * 0.3);
     nd_pso_geom_clr(G_CULL_BOTH);
     nd_pso_geom_set(G_CULL_BACK);

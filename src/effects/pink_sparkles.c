@@ -4,7 +4,7 @@
 #include "nd_api.h"
 #include "nd_val.h"
 
-extern Gfx D_09000F20_338EE0[];
+NDN_DECL(D_09000F20_338EE0);
 extern Gfx D_090011C8_339188[];
 extern Gfx D_090011E0_3391A0[];
 extern Gfx D_090011F8_3391B8[];
@@ -244,7 +244,7 @@ void pink_sparkles_appendGfx(void* effect) {
     s32 i;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_draw_list(D_09000F20_338EE0, ND_SELF);
+    nd_draw_list(NDN(D_09000F20_338EE0), ND_SELF);
 
     colorIdx = (part->unk_20 - 1) * 3;
 

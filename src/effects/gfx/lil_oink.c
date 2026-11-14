@@ -27,7 +27,6 @@
 #include "effects/gfx/D_09000B50_3FFDA0.gfx.inc.c"
 #include "effects/gfx/D_09000B70_3FFDC0.gfx.inc.c"
 #include "effects/gfx/D_09000B80_3FFDD0.gfx.inc.c"
-#include "effects/gfx/D_09000B90_3FFDE0.gfx.inc.c"
 
 #include "effects/gfx/D_09000B98_3FFDE8.vtx.inc.c"
 #include "effects/gfx/D_09000C18_3FFE68.vtx.inc.c"
@@ -110,17 +109,6 @@ INCLUDE_PAL("effects/gfx/D_09002A70_401CC0.pal", D_09002B70_401DC0);
 
 u8 D_09002B90_401DE0[0x1E0] = {};
 
-#include "effects/gfx/D_09002D70_401FC0.gfx.inc.c"
-#include "effects/gfx/D_09002DD8_402028.gfx.inc.c"
-#include "effects/gfx/D_09002E70_4020C0.gfx.inc.c"
-#include "effects/gfx/D_09002E98_4020E8.gfx.inc.c"
-#include "effects/gfx/D_09002F30_402180.gfx.inc.c"
-#include "effects/gfx/D_09002FC8_402218.gfx.inc.c"
-#include "effects/gfx/D_09003060_4022B0.gfx.inc.c"
-#include "effects/gfx/D_090030F8_402348.gfx.inc.c"
-#include "effects/gfx/D_09003190_4023E0.gfx.inc.c"
-#include "effects/gfx/D_09003228_402478.gfx.inc.c"
-#include "effects/gfx/D_090032C0_402510.gfx.inc.c"
 #include "effects/gfx/D_09003358_4025A8.gfx.inc.c"
 #include "effects/gfx/D_09003370_4025C0.gfx.inc.c"
 #include "effects/gfx/D_09003388_4025D8.gfx.inc.c"

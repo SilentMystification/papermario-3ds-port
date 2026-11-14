@@ -6,7 +6,7 @@ ND_PSO_DESC(pe_water_splash_222, 0xfc2196c2, 0xf0fefe38, 0x1e182cf0, 0x0c184b50,
 #include "nd_val.h"
 #include "nd_xf.h"
 
-extern Gfx D_09000100_3BCB90[];
+NDN_DECL(D_09000100_3BCB90);
 extern Gfx D_09000268_3BCCF8[];
 extern Gfx D_09000288_3BCD18[];
 extern Gfx D_090002A8_3BCD38[];
@@ -187,7 +187,7 @@ void water_splash_appendGfx(void* effect) {
     guMtxF2L(sp10, &gDisplayContext->matrixStack[gMatrixListPos]);
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_xf_push(currentCamera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    nd_draw_list(D_09000100_3BCB90, ND_SELF);
+    nd_draw_list(NDN(D_09000100_3BCB90), ND_SELF);
 
     data++;
     gPmNdSplash(gMainGfxPos++, 1);

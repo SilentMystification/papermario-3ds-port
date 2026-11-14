@@ -16,9 +16,6 @@ INCLUDE_IMG("effects/gfx/D_09001000_3CE6E0.png", D_09001000_3CE6E0);
 #include "effects/gfx/D_090019A8_3CF088.gfx.inc.c"
 #include "effects/gfx/D_090019C8_3CF0A8.gfx.inc.c"
 #include "effects/gfx/D_090019E8_3CF0C8.gfx.inc.c"
-#include "effects/gfx/D_09001A08_3CF0E8.gfx.inc.c"
-#include "effects/gfx/D_09001AF0_3CF1D0.gfx.inc.c"
-#include "effects/gfx/D_09001B70_3CF250.gfx.inc.c"
 
 #include "effects/gfx/D_09001C58_3CF338.vtx.inc.c"
 

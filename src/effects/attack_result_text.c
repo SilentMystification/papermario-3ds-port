@@ -7,20 +7,20 @@ ND_PSO_DESC(pe_attack_result_text_207, 0xfc40fe81, 0xfffff3f9, 0x1e082cf0, 0x005
 #include "nd_val.h"
 #include "nd_xf.h"
 
-extern Gfx D_09001500_3918D0[];
-extern Gfx D_090015A8_391978[];
-extern Gfx D_09001610_3919E0[];
-extern Gfx D_09001658_391A28[];
-extern Gfx D_090016A0_391A70[];
-extern Gfx D_090016E8_391AB8[];
-extern Gfx D_09001730_391B00[];
+NDN_DECL(D_09001500_3918D0);
+NDN_DECL(D_090015A8_391978);
+NDN_DECL(D_09001610_3919E0);
+NDN_DECL(D_09001658_391A28);
+NDN_DECL(D_090016A0_391A70);
+NDN_DECL(D_090016E8_391AB8);
+NDN_DECL(D_09001730_391B00);
 extern Gfx D_090018B8_391C88[];
 extern Gfx D_090018D8_391CA8[];
 extern Gfx D_090018F8_391CC8[];
 extern Gfx D_09001918_391CE8[];
 extern Gfx D_09001938_391D08[];
 
-Gfx* D_E0090A40[5] = { D_09001658_391A28, D_09001610_3919E0, D_090016A0_391A70, D_090016E8_391AB8, D_09001730_391B00 };
+Gfx* D_E0090A40[5] = { NDN(D_09001658_391A28), NDN(D_09001610_3919E0), NDN(D_090016A0_391A70), NDN(D_090016E8_391AB8), NDN(D_09001730_391B00) };
 Gfx* D_E0090A54[5] = { D_090018D8_391CA8, D_090018B8_391C88, D_090018F8_391CC8, D_09001918_391CE8, D_09001938_391D08 };
 
 u8 D_E0090A68[8] = { 10, 40, 80, 120, 125, 100, 90, 100 };
@@ -205,7 +205,7 @@ void func_E0090444(EffectInstance* effect) {
             guMtxF2L(mtxA, &gDisplayContext->matrixStack[gMatrixListPos]);
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
             nd_val_prim(0, 0, 255, 255, 255, data->alpha);
-            nd_draw_list(D_090015A8_391978, ND_SELF);
+            nd_draw_list(NDN(D_090015A8_391978), ND_SELF);
             nd_draw_list(D_E0090A40[data->unk_04], ND_SELF);
             nd_draw_list(D_E0090A54[data->unk_04], pe_attack_result_text_207);
             nd_xf_pop(G_MTX_MODELVIEW);
@@ -213,7 +213,7 @@ void func_E0090444(EffectInstance* effect) {
             type -= 5;
             nd_val_prim(0, 0, D_E0090A78[type][0], D_E0090A78[type][1], D_E0090A78[type][2], data->alpha);
             nd_val_env(D_E0090A78[type][3], D_E0090A78[type][4], D_E0090A78[type][5], 0);
-            nd_draw_list(D_09001500_3918D0, ND_SELF);
+            nd_draw_list(NDN(D_09001500_3918D0), ND_SELF);
             nd_draw_list(D_E0090A40[data->unk_04], ND_SELF);
 
             nd_rect_scis(data->pos.x * 4.0f, data->pos.y * 4.0f, (data->pos.x + 128.0f) * 4.0f, (data->pos.y + 64.0f) * 4.0f, G_TX_RENDERTILE, 0, 1024, 512, 65024);

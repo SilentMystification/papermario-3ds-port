@@ -7,8 +7,8 @@ ND_PSO_DESC(pe_energy_orb_wave_301, 0xfcff97ff, 0xff2dfeff, 0x1e082c40, 0x005043
 #include "nd_xf.h"
 #include "nd_st.h"
 
-extern Gfx D_09001000_3A5320[];
-extern Gfx D_090010A8_3A53C8[];
+NDN_DECL(D_09001000_3A5320);
+NDN_DECL(D_090010A8_3A53C8);
 extern Gfx D_090011D0_3A54F0[];
 extern Gfx D_090011F0_3A5510[];
 extern Gfx D_09001210_3A5530[];
@@ -246,14 +246,14 @@ void energy_orb_wave_appendGfx(void* effect) {
         if (pm_debug_has("orbdbg")) {
             extern void pm_gbi_dbg_reg(const void* l, unsigned tag);
             /* FX1-3: the five lists of this effect get tags 1 to 5; orb_log (pm_gpu.c) logs each draw inside them */
-            pm_gbi_dbg_reg(D_09001000_3A5320, 1);
-            pm_gbi_dbg_reg(D_090010A8_3A53C8, 2);
+            pm_gbi_dbg_reg(NDN(D_09001000_3A5320), 1);
+            pm_gbi_dbg_reg(NDN(D_090010A8_3A53C8), 2);
             pm_gbi_dbg_reg(D_090011D0_3A54F0, 3);
             pm_gbi_dbg_reg(D_090011F0_3A5510, 4);
             pm_gbi_dbg_reg(D_09001210_3A5530, 5);
             static char orbBuf[640];
             int n = 0;
-            const Gfx* g = D_09001000_3A5320;
+            const Gfx* g = NDN(D_09001000_3A5320);
             n += snprintf(orbBuf + n, sizeof orbBuf - n, "orbdbg f%u prim %d %d %d a %d dl", (unsigned)pm_frame_count(),
                           (int)data->unk_20, (int)data->unk_24, (int)data->unk_28, (int)unk_2C);
             for (; n < 560; g++) {
@@ -281,7 +281,7 @@ void energy_orb_wave_appendGfx(void* effect) {
     nd_pso_aldith(G_AD_PATTERN);
 
     if (unk_00 < 3) {
-        nd_draw_list(D_09001000_3A5320, ND_SELF);
+        nd_draw_list(NDN(D_09001000_3A5320), ND_SELF);
 
         guRotateF(sp18, unk_14, 0.0f, 0.0f, 1.0f);
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
@@ -298,7 +298,7 @@ void energy_orb_wave_appendGfx(void* effect) {
         nd_rec_dl(D_090011F0_3A5510);
         nd_xf_pop(G_MTX_MODELVIEW);
     } else {
-        nd_draw_list(D_090010A8_3A53C8, ND_SELF);
+        nd_draw_list(NDN(D_090010A8_3A53C8), ND_SELF);
         nd_draw_list(D_09001210_3A5530, pe_energy_orb_wave_301);
     }
 

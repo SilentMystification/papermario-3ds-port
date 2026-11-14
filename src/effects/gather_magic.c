@@ -5,7 +5,7 @@ ND_PSO_DESC(pe_gather_magic_191, 0xfc10fea0, 0xf30ff2ff, 0x1e182cf0, 0x0c184b50,
 #include "nd_val.h"
 #include "nd_xf.h"
 
-extern Gfx D_09000080_38F790[];
+NDN_DECL(D_09000080_38F790);
 extern Gfx D_090001A8_38F8B8[];
 extern Gfx D_090001C8_38F8D8[];
 
@@ -173,7 +173,7 @@ void gather_magic_appendGfx(void* effect) {
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    nd_draw_list(D_09000080_38F790, ND_SELF);
+    nd_draw_list(NDN(D_09000080_38F790), ND_SELF);
     nd_val_env(part->unk_3C, part->unk_40, part->unk_44, 0);
 
     part++;

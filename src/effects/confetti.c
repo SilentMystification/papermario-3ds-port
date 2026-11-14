@@ -12,7 +12,7 @@ void confetti_appendGfx(void* effect);
 
 extern Gfx D_090009E8_38C588[];
 extern Gfx D_09000A00_38C5A0[];
-extern Gfx D_09000940_38C4E0[];
+NDN_DECL(D_09000940_38C4E0);
 
 Gfx* D_E0088CC0[] = {
     D_090009E8_38C588, D_090009E8_38C588, D_090009E8_38C588, D_09000A00_38C5A0,
@@ -271,7 +271,7 @@ void confetti_appendGfx(void* effect) {
     spA0 = D_E0088CC0[part->unk_00];
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_draw_list(D_09000940_38C4E0, ND_SELF);
+    nd_draw_list(NDN(D_09000940_38C4E0), ND_SELF);
 
     guTranslateF(sp18, part->unk_04, part->unk_08, part->unk_0C);
     guRotateF(sp58, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);

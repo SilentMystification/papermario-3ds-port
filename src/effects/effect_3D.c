@@ -5,7 +5,7 @@
 #include "nd_val.h"
 #include "nd_xf.h"
 
-extern Gfx D_09000240_37D3C0[];
+NDN_DECL(D_09000240_37D3C0);
 extern Gfx D_090002E8_37D468[];
 
 void effect_3D_init(EffectInstance* effect);
@@ -225,7 +225,7 @@ void effect_3D_appendGfx(void* effect) {
     s32 i;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_draw_list(D_09000240_37D3C0, ND_SELF);
+    nd_draw_list(NDN(D_09000240_37D3C0), ND_SELF);
 
     guTranslateF(sp18, part->pos.x, part->pos.y, part->pos.z);
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);

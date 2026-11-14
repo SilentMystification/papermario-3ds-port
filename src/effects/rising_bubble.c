@@ -5,9 +5,9 @@ ND_PSO_DESC(pe_rising_bubble_146, 0xfcffe5ff, 0xff4f123f, 0x1e182cf0, 0x0c184b50
 #include "nd_val.h"
 #include "nd_xf.h"
 
-extern Gfx D_09000200_356730[];
+NDN_DECL(D_09000200_356730);
 extern Gfx D_090002E8_356818[];
-extern Gfx D_09000308_356838[];
+NDN_DECL(D_09000308_356838);
 extern Gfx D_090003F0_356920[];
 extern Gfx D_09000410_356940[];
 extern Gfx D_09000430_356960[];
@@ -18,8 +18,8 @@ Gfx* D_E0046604[] = {
     D_090003F0_356920, D_09000410_356940, D_090003F0_356920, D_09000430_356960
 };
 
-Gfx* D_E0046614[] = { D_09000200_356730 };
-Gfx* D_E0046618[] = { D_09000308_356838 };
+Gfx* D_E0046614[] = { NDN(D_09000200_356730) };
+Gfx* D_E0046618[] = { NDN(D_09000308_356838) };
 
 void rising_bubble_init(EffectInstance* effect);
 void rising_bubble_update(EffectInstance* effect);

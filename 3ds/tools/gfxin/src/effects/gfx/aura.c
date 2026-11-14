@@ -1,0 +1,8 @@
+#include "src/effects/gfx/aura.c"
+#include "effects/gfx/D_09002000_379F80.gfx.inc.c"
+#include "effects/gfx/D_090020E8_37A068.gfx.inc.c"
+#include "effects/gfx/D_090021D0_37A150.gfx.inc.c"
+#include "effects/gfx/D_090023B0_37A330.gfx.inc.c"
+#include "effects/gfx/D_090023C8_37A348.gfx.inc.c"
+#include "effects/gfx/D_09002410_37A390.gfx.inc.c"
+#include "effects/gfx/D_09002428_37A3A8.gfx.inc.c"

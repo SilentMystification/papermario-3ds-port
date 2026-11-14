@@ -8,23 +8,23 @@ ND_PSO_DESC(pe_damage_indicator_288, 0xfc6232c4, 0xff65feff, 0x1e082cf0, 0x00553
 #include "nd_xf.h"
 #include "nd_st.h"
 
-extern Gfx D_09001D40_351F60[];
-extern Gfx D_09001DE0_352000[];
-extern Gfx D_09001E50_352070[];
-extern Gfx D_09001E90_3520B0[];
-extern Gfx D_09001ED0_3520F0[];
-extern Gfx D_09001F10_352130[];
-extern Gfx D_09001F50_352170[];
-extern Gfx D_09001F90_3521B0[];
-extern Gfx D_09001FD0_3521F0[];
-extern Gfx D_09002010_352230[];
-extern Gfx D_09002050_352270[];
-extern Gfx D_09002090_3522B0[];
-extern Gfx D_090020D0_3522F0[];
-extern Gfx D_09002110_352330[];
+NDN_DECL(D_09001D40_351F60);
+NDN_DECL(D_09001DE0_352000);
+NDN_DECL(D_09001E50_352070);
+NDN_DECL(D_09001E90_3520B0);
+NDN_DECL(D_09001ED0_3520F0);
+NDN_DECL(D_09001F10_352130);
+NDN_DECL(D_09001F50_352170);
+NDN_DECL(D_09001F90_3521B0);
+NDN_DECL(D_09001FD0_3521F0);
+NDN_DECL(D_09002010_352230);
+NDN_DECL(D_09002050_352270);
+NDN_DECL(D_09002090_3522B0);
+NDN_DECL(D_090020D0_3522F0);
+NDN_DECL(D_09002110_352330);
 extern Gfx D_09002150_352370[];
-extern Gfx D_09002160_352380[];
-extern Gfx D_09002170_352390[];
+NDN_DECL(D_09002160_352380);
+NDN_DECL(D_09002170_352390);
 extern Gfx D_09002180_3523A0[];
 extern Gfx D_09002190_3523B0[];
 extern Gfx D_090021A8_3523C8[];
@@ -33,9 +33,9 @@ extern Gfx D_090021E0_352400[];
 extern Gfx D_09002200_352420[];
 
 Gfx* D_E003CCA0[] = {
-    D_09001E50_352070, D_09001E90_3520B0, D_09001ED0_3520F0, D_09001F10_352130,
-    D_09001F50_352170, D_09001F90_3521B0, D_09001FD0_3521F0, D_09002010_352230,
-    D_09002050_352270, D_09002090_3522B0, D_090020D0_3522F0, D_09002110_352330
+    NDN(D_09001E50_352070), NDN(D_09001E90_3520B0), NDN(D_09001ED0_3520F0), NDN(D_09001F10_352130),
+    NDN(D_09001F50_352170), NDN(D_09001F90_3521B0), NDN(D_09001FD0_3521F0), NDN(D_09002010_352230),
+    NDN(D_09002050_352270), NDN(D_09002090_3522B0), NDN(D_090020D0_3522F0), NDN(D_09002110_352330)
 };
 
 u8 D_E003CCD0[] = {
@@ -233,7 +233,7 @@ void damage_indicator_render_impl(EffectInstance* effect) {
         s32 rIdx = ((i + spA0) % 12) * 3;
 
         nd_val_prim(0, 0, D_E003CCF8[rIdx], D_E003CCF8[rIdx + 1], D_E003CCF8[rIdx + 2], part->alpha);
-        nd_draw_list(D_09001D40_351F60, ND_SELF);
+        nd_draw_list(NDN(D_09001D40_351F60), ND_SELF);
 
         if (i == lastPartIdx) {
             guPositionF(mtxTransform, 0.0f, 0.0f, 0.0f, part->scale, part->curPos.x, part->curPos.y, part->curPos.z);
@@ -250,11 +250,11 @@ void damage_indicator_render_impl(EffectInstance* effect) {
             guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
 
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            nd_draw_list(D_09002160_352380, ND_SELF);
+            nd_draw_list(NDN(D_09002160_352380), ND_SELF);
             nd_xf_pop(G_MTX_MODELVIEW);
         }
 
-        nd_draw_list(D_09001D40_351F60, ND_SELF);
+        nd_draw_list(NDN(D_09001D40_351F60), ND_SELF);
 
         guTranslateF(mtxTransform, part->basePos.x, part->basePos.y, part->basePos.z);
         guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
@@ -267,7 +267,7 @@ void damage_indicator_render_impl(EffectInstance* effect) {
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
         if (i == lastPartIdx) {
-            nd_draw_list(D_09002170_352390, ND_SELF);
+            nd_draw_list(NDN(D_09002170_352390), ND_SELF);
         } else {
             nd_draw_list(D_09002180_3523A0, ND_SELF);
         }
@@ -275,7 +275,7 @@ void damage_indicator_render_impl(EffectInstance* effect) {
         if (i == lastPartIdx) {
             nd_draw_list(D_090021A8_3523C8, pe_damage_indicator_273);
             nd_xf_pop(G_MTX_MODELVIEW);
-            nd_draw_list(D_09001DE0_352000, ND_SELF);
+            nd_draw_list(NDN(D_09001DE0_352000), ND_SELF);
             if (numParts < 10) {
                 nd_draw_list(D_E003CCA0[i], ND_SELF);
                 nd_draw_list(D_090021C0_3523E0, pe_damage_indicator_278);

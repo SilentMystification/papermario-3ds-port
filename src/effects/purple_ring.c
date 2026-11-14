@@ -5,7 +5,7 @@ ND_PSO_DESC(pe_purple_ring_213, 0xfcffb3ff, 0xff65feff, 0x1e082cf0, 0x00504b50, 
 #include "nd_val.h"
 #include "nd_xf.h"
 
-extern Gfx D_09000200_352EE0[];
+NDN_DECL(D_09000200_352EE0);
 extern Gfx D_090004E8_3531C8[];
 
 void purple_ring_init(EffectInstance* effect);
@@ -200,7 +200,7 @@ void purple_ring_appendGfx(void* effect) {
     Matrix4f sp50;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_draw_list(D_09000200_352EE0, ND_SELF);
+    nd_draw_list(NDN(D_09000200_352EE0), ND_SELF);
     nd_val_prim(0, 0, data->unk_74, data->unk_75, data->unk_76, data->unk_68);
 
     guTranslateF(sp10, data->unk_04, data->unk_08, data->unk_0C);

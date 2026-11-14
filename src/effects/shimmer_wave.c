@@ -1,9 +1,10 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "effects_internal.h"
 #include "nd_val.h"
 #include "nd_xf.h"
 
-extern Gfx D_09000F20_338EE0[];
+NDN_DECL(D_09000F20_338EE0);
 extern Gfx D_090011C8_339188[];
 extern Gfx D_090011E0_3391A0[];
 extern Gfx D_090011F8_3391B8[];
@@ -207,7 +208,7 @@ void shimmer_wave_appendGfx(void* effect) {
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_val_env(part->unk_40, part->unk_44, part->unk_48, part->unk_5C);
-    gSPDisplayList(gMainGfxPos++, D_09000F20_338EE0);
+    gSPDisplayList(gMainGfxPos++, NDN(D_09000F20_338EE0));
 
     nd_sub_open(&sub); /* DIRECT D6c: the list for later is a stream range */
 

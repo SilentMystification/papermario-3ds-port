@@ -10,8 +10,8 @@ void chomp_drop_update(EffectInstance* effect);
 void chomp_drop_render(EffectInstance* effect);
 void chomp_drop_appendGfx(void* effect);
 
-extern Gfx D_09001040_398080[];
-extern Gfx D_090010E8_398128[];
+NDN_DECL(D_09001040_398080);
+NDN_DECL(D_090010E8_398128);
 extern Gfx D_09001190_3981D0[];
 
 EffectInstance* chomp_drop_main(s32 arg0, f32 arg1, f32 arg2, f32 arg3, f32 arg4, s32 arg5, f32 arg6, s32 arg7,
@@ -160,16 +160,16 @@ void chomp_drop_appendGfx(void* effect) {
     nd_val_prim(0, 0, (sin_deg(temp_s6 * 30) * 25.0f) + 225.0f, (sin_deg(temp_s6 * 30) * 25.0f) + 225.0f, 255, primA);
 
     if (data->unk_2C == 1) {
-        nd_draw_list(D_09001040_398080, ND_SELF);
+        nd_draw_list(NDN(D_09001040_398080), ND_SELF);
         nd_rec_dl(D_09001190_3981D0);
         nd_val_prim(0, 0, 0, 0, 0, ((30 - data->unk_30) * 255) / 30);
-        nd_draw_list(D_090010E8_398128, ND_SELF);
+        nd_draw_list(NDN(D_090010E8_398128), ND_SELF);
         nd_rec_dl(D_09001190_3981D0);
     } else {
         if (data->unk_2C > 0) {
-            nd_draw_list(D_090010E8_398128, ND_SELF);
+            nd_draw_list(NDN(D_090010E8_398128), ND_SELF);
         } else {
-            nd_draw_list(D_09001040_398080, ND_SELF);
+            nd_draw_list(NDN(D_09001040_398080), ND_SELF);
         }
 
         vtxTemp = (Vtx_t*) nd_rec_data(32 * sizeof(Vtx_t)); /* DIRECT D6c: the vertex buffer is stream data */

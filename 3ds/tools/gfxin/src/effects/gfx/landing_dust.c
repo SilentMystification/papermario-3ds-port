@@ -1,0 +1,5 @@
+#include "src/effects/gfx/landing_dust.c"
+#include "effects/gfx/D_09002780_32B620.gfx.inc.c"
+#include "effects/gfx/D_09002868_32B708.gfx.inc.c"
+#include "effects/gfx/D_09002950_32B7F0.gfx.inc.c"
+#include "effects/gfx/D_09002A38_32B8D8.gfx.inc.c"

@@ -5,7 +5,7 @@ ND_PSO_DESC(pe_sun_187, 0xfc309861, 0x550eff4f, 0x1e182cf0, 0x0c184340, 0x002000
 #include "nd_val.h"
 #include "nd_xf.h"
 
-extern Gfx D_09000898_40C438[];
+NDN_DECL(D_09000898_40C438);
 extern Gfx D_09000980_40C520[];
 extern Gfx D_09000998_40C538[];
 extern Gfx D_090009B0_40C550[];
@@ -17,7 +17,7 @@ Gfx* D_E0120780[] = {
     D_090009C8_40C568, D_090009E0_40C580
 };
 
-Gfx* D_E0120794[] = { D_09000898_40C438 };
+Gfx* D_E0120794[] = { NDN(D_09000898_40C438) };
 
 void sun_init(EffectInstance* effect);
 void sun_update(EffectInstance* effect);

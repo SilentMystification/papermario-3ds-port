@@ -14,7 +14,7 @@ typedef struct UnkStruct {
     /* 0x08 */ Gfx* unk_08;
 } UnkStruct; // size = 0xC
 
-extern Gfx D_09001080_33AFE0[];
+NDN_DECL(D_09001080_33AFE0);
 extern Gfx D_09001128_33B088[];
 extern Gfx D_09001150_33B0B0[];
 extern Gfx D_09001178_33B0D8[];
@@ -248,7 +248,7 @@ void shape_spell_appendGfx(void* effect) {
     }
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_draw_list(D_09001080_33AFE0, ND_SELF);
+    nd_draw_list(NDN(D_09001080_33AFE0), ND_SELF);
 
     guPositionF(mL, 0.0f, yawOut, 0.0f, 1.0f, data->pos.x, data->pos.y, data->pos.z);
     guMtxF2L(mL, &gDisplayContext->matrixStack[gMatrixListPos]);

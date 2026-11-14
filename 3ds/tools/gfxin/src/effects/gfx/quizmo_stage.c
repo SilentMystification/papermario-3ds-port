@@ -1,0 +1,5 @@
+#include "src/effects/gfx/quizmo_stage.c"
+#include "effects/gfx/D_09000218_398DD8.gfx.inc.c"
+#include "effects/gfx/D_09001518_39A0D8.gfx.inc.c"
+#include "effects/gfx/D_09007230_39FDF0.gfx.inc.c"
+#include "effects/gfx/D_090072D8_39FE98.gfx.inc.c"

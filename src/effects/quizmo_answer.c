@@ -5,8 +5,8 @@
 #include "nd_st.h"
 #include "nd_tx.h"
 
-extern Gfx D_09000400_3A2840[];
-extern Gfx D_090004A8_3A28E8[];
+NDN_DECL(D_09000400_3A2840);
+NDN_DECL(D_090004A8_3A28E8);
 
 EffectInstance* quizmo_answer_main(s32 arg0, f32 arg1, f32 arg2, f32 arg3) {
     EffectBlueprint bp;
@@ -25,10 +25,10 @@ EffectInstance* quizmo_answer_main(s32 arg0, f32 arg1, f32 arg2, f32 arg3) {
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(effect->shared->graphics));
 
     if (arg0 == 0) {
-        nd_draw_list(D_09000400_3A2840, ND_SELF);
+        nd_draw_list(NDN(D_09000400_3A2840), ND_SELF);
         nd_val_prim(0, 0, 255, 64, 64, 230);
     } else {
-        nd_draw_list(D_090004A8_3A28E8, ND_SELF);
+        nd_draw_list(NDN(D_090004A8_3A28E8), ND_SELF);
         nd_val_prim(0, 0, 80, 80, 255, 230);
     }
 

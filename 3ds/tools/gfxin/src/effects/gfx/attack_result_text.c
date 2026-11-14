@@ -1,0 +1,8 @@
+#include "src/effects/gfx/attack_result_text.c"
+#include "effects/gfx/D_09001500_3918D0.gfx.inc.c"
+#include "effects/gfx/D_090015A8_391978.gfx.inc.c"
+#include "effects/gfx/D_09001610_3919E0.gfx.inc.c"
+#include "effects/gfx/D_09001658_391A28.gfx.inc.c"
+#include "effects/gfx/D_090016A0_391A70.gfx.inc.c"
+#include "effects/gfx/D_090016E8_391AB8.gfx.inc.c"
+#include "effects/gfx/D_09001730_391B00.gfx.inc.c"

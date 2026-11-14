@@ -5,7 +5,7 @@ ND_PSO_DESC(pe_thunderbolt_ring_133, 0xfcffc6a0, 0xf3fe7ef8, 0x1e182cf0, 0x0c184
 #include "nd_val.h"
 #include "nd_xf.h"
 
-extern Gfx D_09000000_3B46A0[];
+NDN_DECL(D_09000000_3B46A0);
 extern Gfx D_090000C8_3B4768[];
 
 void thunderbolt_ring_init(EffectInstance* effect);
@@ -118,7 +118,7 @@ void thunderbolt_ring_appendGfx(void* effect) {
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    nd_draw_list(D_09000000_3B46A0, ND_SELF);
+    nd_draw_list(NDN(D_09000000_3B46A0), ND_SELF);
 
     nd_sub_open(&sub); /* DIRECT D6c: the list for later is a stream range */
 

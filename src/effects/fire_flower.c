@@ -8,8 +8,8 @@ ND_PSO_DESC(pe_fire_flower_272, 0xfc262bff, 0x1f0c923f, 0x1e18acf0, 0x0c184b50, 
 #include "nd_xf.h"
 
 extern char D_09000000_3803A0[][0x200];
-extern Gfx D_09000D40_3810E0[];
-extern Gfx D_09000DE0_381180[];
+NDN_DECL(D_09000D40_3810E0);
+NDN_DECL(D_09000DE0_381180);
 extern Gfx D_09000EB8_381258[];
 extern Gfx D_09000ED8_381278[];
 extern Gfx D_09000EF8_381298[];
@@ -233,7 +233,7 @@ void fire_flower_appendGfx(void* effect) {
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        nd_draw_list(D_09000DE0_381180, ND_SELF);
+        nd_draw_list(NDN(D_09000DE0_381180), ND_SELF);
 
         part++;
         for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, part++) {
@@ -252,7 +252,7 @@ void fire_flower_appendGfx(void* effect) {
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 
-    nd_draw_list(D_09000D40_3810E0, ND_SELF);
+    nd_draw_list(NDN(D_09000D40_3810E0), ND_SELF);
     nd_tex_load_tile_4b(D_09000000_3803A0[3 - unk_34], G_IM_FMT_CI, 32, 0, 0, 0, 31, 31, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD);
     nd_tex_load_mtile_4b(D_09000000_3803A0[2 - unk_34], 0x0080, 1, G_IM_FMT_CI, 32, 0, 0, 0, 31, 31, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD);
 

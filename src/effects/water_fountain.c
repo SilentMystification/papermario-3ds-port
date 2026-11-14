@@ -16,7 +16,7 @@ typedef struct UnkStruct {
     /* 0x09 */ char unk_09[1];
 } UnkStruct; // size = 0xA
 
-extern Gfx D_09000280_3B8AE0[];
+NDN_DECL(D_09000280_3B8AE0);
 extern Gfx D_09000328_3B8B88[];
 extern Gfx D_09000348_3B8BA8[];
 
@@ -248,7 +248,7 @@ void water_fountain_appendGfx(void* effect) {
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    nd_draw_list(D_09000280_3B8AE0, ND_SELF);
+    nd_draw_list(NDN(D_09000280_3B8AE0), ND_SELF);
 
     guRotateF(sp18, data->unk_38, 0.0f, 0.0f, 1.0f);
     guScaleF(sp58, data->unk_3C, data->unk_40, 1.0f);

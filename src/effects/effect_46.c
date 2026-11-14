@@ -5,7 +5,7 @@
 #include "nd_xf.h"
 
 extern Gfx D_090003A0_38ED30[];
-extern Gfx D_09000420_38EDB0[];
+NDN_DECL(D_09000420_38EDB0);
 
 // perhaps additional, unused colors? 36 bytes would give 12 RGB colors
 s32 D_E008CAF0[] = {
@@ -215,7 +215,7 @@ void effect_46_appendGfx(void* effect) {
     type = part->type;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_draw_list(D_09000420_38EDB0, ND_SELF);
+    nd_draw_list(NDN(D_09000420_38EDB0), ND_SELF);
 
     guTranslateF(mtxTransform, part->pos.x, part->pos.y, part->pos.z);
     guRotateF(mtxTemp, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);

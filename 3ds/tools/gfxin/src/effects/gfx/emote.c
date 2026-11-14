@@ -1,0 +1,7 @@
+#include "src/effects/gfx/emote.c"
+#include "effects/gfx/D_09002170_336DE0.gfx.inc.c"
+#include "effects/gfx/D_09002238_336EA8.gfx.inc.c"
+#include "effects/gfx/D_09002308_336F78.gfx.inc.c"
+#include "effects/gfx/D_090023D8_337048.gfx.inc.c"
+#include "effects/gfx/D_090024A8_337118.gfx.inc.c"
+#include "effects/gfx/D_09002578_3371E8.gfx.inc.c"

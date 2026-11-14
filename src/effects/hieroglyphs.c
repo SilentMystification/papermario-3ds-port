@@ -5,10 +5,10 @@
 #include "nd_xf.h"
 #include "nd_geo.h"
 
-extern Gfx D_09001000_3DDD50[];
+NDN_DECL(D_09001000_3DDD50);
 extern Vtx_t D_090010A8_3DDDF8[];
 
-Gfx* D_E00E29F0[] = { D_09001000_3DDD50 };
+Gfx* D_E00E29F0[] = { NDN(D_09001000_3DDD50) };
 
 u8 D_E00E29F4[] = {
     120, 130, 140, 150, 160, 170, 180, 190, 200, 200,

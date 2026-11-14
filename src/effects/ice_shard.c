@@ -6,12 +6,12 @@ ND_PSO_DESC(pe_ice_shard_169, 0xfc262a60, 0x150c937f, 0x1e182cf0, 0x0c184b50, 0x
 #include "nd_xf.h"
 #include "nd_st.h"
 
-extern Gfx D_09001000_3F9CC0[];
+NDN_DECL(D_09001000_3F9CC0);
 extern Gfx D_09001148_3F9E08[];
 extern Gfx D_09001168_3F9E28[];
 
 Gfx* D_E01108B0[] = { D_09001148_3F9E08 };
-Gfx* D_E01108B4[] = { D_09001000_3F9CC0 };
+Gfx* D_E01108B4[] = { NDN(D_09001000_3F9CC0) };
 
 void ice_shard_init(EffectInstance* effect);
 void ice_shard_update(EffectInstance* effect);

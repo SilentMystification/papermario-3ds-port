@@ -19,6 +19,5 @@ INCLUDE_IMG("effects/gfx/D_09000800_3E3160.png", D_09000800_3E3160);
 
 u8 D_09001908_3E4268[8] = {};
 
-#include "effects/gfx/D_09001910_3E4270.gfx.inc.c"
 #include "effects/gfx/D_09001A00_3E4360.gfx.inc.c"
 #include "effects/gfx/D_09001A20_3E4380.gfx.inc.c"

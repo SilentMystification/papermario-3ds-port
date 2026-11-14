@@ -10,10 +10,6 @@ INCLUDE_IMG("effects/gfx/D_09001840_32A6E0.png", D_09001840_32A6E0);
 #include "effects/gfx/D_09002700_32B5A0.vtx.inc.c"
 #include "effects/gfx/D_09002740_32B5E0.vtx.inc.c"
 
-#include "effects/gfx/D_09002780_32B620.gfx.inc.c"
-#include "effects/gfx/D_09002868_32B708.gfx.inc.c"
-#include "effects/gfx/D_09002950_32B7F0.gfx.inc.c"
-#include "effects/gfx/D_09002A38_32B8D8.gfx.inc.c"
 #include "effects/gfx/D_09002B20_32B9C0.gfx.inc.c"
 #include "effects/gfx/D_09002B40_32B9E0.gfx.inc.c"
 #include "effects/gfx/D_09002B60_32BA00.gfx.inc.c"

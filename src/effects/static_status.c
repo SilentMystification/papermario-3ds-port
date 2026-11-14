@@ -5,11 +5,11 @@ ND_PSO_DESC(pe_static_status_222, 0xfcffffff, 0xfffcf279, 0x1e08ac00, 0x00551238
 #include "nd_val.h"
 #include "nd_xf.h"
 
-extern Gfx D_09000280_3E1550[];
+NDN_DECL(D_09000280_3E1550);
 extern Gfx D_090003A0_3E1670[];
 
 Gfx* D_E00E6880[] = { D_090003A0_3E1670, D_090003A0_3E1670 };
-Gfx* D_E00E6888[] = { D_09000280_3E1550, D_09000280_3E1550 };
+Gfx* D_E00E6888[] = { NDN(D_09000280_3E1550), NDN(D_09000280_3E1550) };
 
 // number of frames in animation for type 0 and type 1
 s32 StaticEffectFrameCount[] = { 24, 12 };
