@@ -181,7 +181,7 @@ void throw_spiny_appendGfx(void* effect) {
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_val_prim(0, 0, data->unk_30, data->unk_34, data->unk_38, temp_s5);
-    nd_rec_dl(D_E00C8710[temp_s6]);
+    nd_draw_list(D_E00C8710[temp_s6], ND_SELF);
     nd_draw_list(D_090009F0_3D04E0, pe_throw_spiny_184);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

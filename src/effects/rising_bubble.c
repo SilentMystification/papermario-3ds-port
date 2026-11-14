@@ -121,7 +121,7 @@ void rising_bubble_appendGfx(void* effect) {
         s32 uls;
         s32 ult;
 
-        nd_rec_dl(D_E0046614[0]);
+        nd_draw_list(D_E0046614[0], ND_SELF);
         nd_val_prim(0, 0, 127, 127, 127, data->unk_14);
 
         uls = 0;
@@ -133,7 +133,7 @@ void rising_bubble_appendGfx(void* effect) {
         guScaleF(sp60, data->unk_10, 1.0f, data->unk_10);
         guMtxCatF(sp60, sp20, sp20);
     } else {
-        nd_rec_dl(D_E0046618[0]);
+        nd_draw_list(D_E0046618[0], ND_SELF);
         nd_val_prim(0, 0, 255, 255, 255, data->unk_14);
         nd_val_env(128, 128, 255, data->unk_14);
 

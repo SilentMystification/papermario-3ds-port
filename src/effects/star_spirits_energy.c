@@ -355,7 +355,7 @@ void star_spirits_energy_appendGfx(void* effect) {
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    nd_rec_dl(D_E0122BA4[0]);
+    nd_draw_list(D_E0122BA4[0], ND_SELF);
     nd_val_env(data->unk_2C, data->unk_30, data->unk_34, data->unk_38);
 
     for (i = 0; i < 4; i++) {

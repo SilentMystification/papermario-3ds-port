@@ -172,7 +172,7 @@ void red_impact_appendGfx(void* effect) {
     s32 i;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_rec_dl(dlist);
+    nd_draw_list(dlist, ND_SELF);
 
     guPositionF(sp20, 0.0f, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, part->unk_04, part->unk_08, part->unk_0C);
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);

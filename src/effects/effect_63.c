@@ -228,7 +228,7 @@ void effect_63_appendGfx(void* effect) {
         nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
         nd_val_prim(0, 0, part->unk_28, part->unk_2C, part->unk_30, unk_34);
         nd_val_env(part->unk_38, part->unk_3C, part->unk_40, part->unk_44);
-        nd_rec_dl(D_E00C6C9C[unk_00]);
+        nd_draw_list(D_E00C6C9C[unk_00], ND_SELF);
 
         for (i = 0; i < ((EffectInstance*)effect)->numParts; i++, part++) {
             part->unk_4C += part->unk_54;

@@ -132,7 +132,7 @@ void footprint_appendGfx(void* effect) {
 
             nd_val_prim(0, 0, 112, 96, 24, part->alpha);
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            nd_rec_dl(dlist);
+            nd_draw_list(dlist, ND_SELF);
             nd_xf_pop(G_MTX_MODELVIEW);
         }
     }

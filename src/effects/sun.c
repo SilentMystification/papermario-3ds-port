@@ -180,7 +180,7 @@ void sun_appendGfx(void* argEffect) {
 
         nd_val_prim(0, 0, data->primColor.r, data->primColor.g, data->primColor.b, alpha >> 1);
         nd_val_env(data->envColor.r, data->envColor.g, data->envColor.b, data->envColor.a);
-        nd_rec_dl(D_E0120794[0]);
+        nd_draw_list(D_E0120794[0], ND_SELF);
 
         for (i = 0; i < ARRAY_COUNT(data->texScrollAmt); i++) {
             offsetS = data->texScrollAmt[i] * 4.0f;

@@ -157,7 +157,7 @@ void motion_blur_flame_appendGfx(void* effect) {
     s32 var_v1;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_rec_dl(D_E00A29D0[temp_a2]);
+    nd_draw_list(D_E00A29D0[temp_a2], ND_SELF);
     gPmNdGrabHold(gMainGfxPos++, 1); /* SBLK2 B1: the strips share one frame copy */
 
     for (i = 0; i < UNK_ARRAY_SIZE_1; i++) {

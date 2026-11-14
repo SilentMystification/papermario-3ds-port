@@ -258,7 +258,7 @@ void effect_65_appendGfx(void* effect) {
     guMtxF2L(mtx, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    nd_rec_dl(D_E00CACB0[variation]);
+    nd_draw_list(D_E00CACB0[variation], ND_SELF);
 
     if (variation >= 2) {
         nd_pso_cc(PM_CC_4E, PM_CC_4F);

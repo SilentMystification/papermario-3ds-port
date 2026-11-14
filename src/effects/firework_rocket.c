@@ -274,7 +274,7 @@ void firework_rocket_appendGfx(void* effect) {
     mtx_3_2 = camera->mtxPerspective[3][2];
     mtx_3_3 = camera->mtxPerspective[3][3];
 
-    nd_rec_dl(D_E010ACCC[variation]);
+    nd_draw_list(D_E010ACCC[variation], ND_SELF);
     centerX = data->pos.x;
     centerY = data->pos.y;
     centerZ = data->pos.z;

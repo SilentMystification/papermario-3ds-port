@@ -290,7 +290,7 @@ void func_E00863B4(EffectInstance* effect) {
             guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
             nd_sub_open(&sub); /* DIRECT D6c: the pass list is a stream range, drawn three times */
-            nd_rec_dl(D_E0086AB4[unk_00]); /* S7EFX3: replayed by each nd_sub_call (stream_run NDC_NAPI) */
+            nd_draw_list(D_E0086AB4[unk_00], ND_SELF); /* S7EFX3: replayed by each nd_sub_call (stream_run NDC_NAPI) */
             gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
             nd_mesh_vtx(vbuf, nsp * 4, 0);
             for (i = 0; i < nsp; i++) {

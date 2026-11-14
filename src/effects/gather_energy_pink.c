@@ -175,7 +175,7 @@ void gather_energy_pink_appendGfx(void* effect) {
     s32 i;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_rec_dl(dlist);
+    nd_draw_list(dlist, ND_SELF);
 
     guTranslateF(sp20, part->posB.x, part->posB.y, part->posB.z);
     guScaleF(sp60, part->unk_1C, part->unk_1C, 1.0f);

@@ -145,7 +145,7 @@ void small_gold_sparkle_appendGfx(void* effect) {
             guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
             nd_xf_push(spD8, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            nd_rec_dl(sDlists[part->unk_04 >> 1]);
+            nd_draw_list(sDlists[part->unk_04 >> 1], ND_SELF);
             nd_draw_list(D_09000470_3928B0, pe_small_gold_sparkle_148);
             nd_xf_pop(G_MTX_MODELVIEW);
         }

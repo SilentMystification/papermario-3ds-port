@@ -228,7 +228,7 @@ void star_appendGfx(void* effect) {
     nd_val_prim(0, 80, primR, primG, primB, 255);
     nd_val_env(127, 127, 127, 127);
 
-    nd_rec_dl((data->type >= FX_STAR_LARGE_BOUNCING) ? D_09001650_333CF0 : D_09001530_333BD0);
+    nd_draw_list((data->type >= FX_STAR_LARGE_BOUNCING) ? D_09001650_333CF0 : D_09001530_333BD0, ND_SELF);
     nd_xf_pop(G_MTX_MODELVIEW);
 
     if (type == FX_STAR_SMALL_BOUNCING) {

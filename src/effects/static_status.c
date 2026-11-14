@@ -210,7 +210,7 @@ void static_status_appendGfx(void* effect) {
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    nd_rec_dl(D_E00E6888[unk_00]);
+    nd_draw_list(D_E00E6888[unk_00], ND_SELF);
 
     part++;
     for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, part++) {
