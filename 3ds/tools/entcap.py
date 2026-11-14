@@ -6,7 +6,8 @@ Without --elf the newest 3ds/logs/builds/pm_3ds_*.elf is used.
 Input lines: `entcap l <list> s <site> d <11 words>` (one per new walker entry description of a list without a v2 table)
 and `entcap over` (the key table is full).
 Output per entcap l line: <list symbol> <site function> <file:line> <the 11 words>.
-Last line: `entcap.py lists <n> sites <m> over <count of entcap over lines>` (n = distinct list addresses, m = distinct sites).
+Last line: `entcap.py lists <n> sites <m> over <count of entcap over lines> nt <count of nt lines>` (n = distinct list addresses, m = distinct sites).
+An `entcap nt l <list> s <site>` line (FXENT2, a list call with no device table) prints `nt <list symbol> <site function> <file:line>`.
 Symbols come from arm-none-eabi-nm, names and lines from arm-none-eabi-addr2line (decode_dump.py:16-20 lookup).
 The site is the nd_rec_dl call site: the return address minus 4 (the bl instruction).
 """
@@ -14,6 +15,7 @@ import bisect, glob, os, re, shutil, subprocess, sys
 
 LINE = re.compile(r"entcap l ([0-9a-f]{8}) s ([0-9a-f]{8}) d((?: [0-9a-f]{8}){11})")
 OVER = re.compile(r"entcap over")
+NT = re.compile(r"entcap nt l ([0-9a-f]{8}) s ([0-9a-f]{8})")  # FXENT2: a static list call with no device table (nd_gtab.c nd_rec_dl)
 
 
 IMG = "pm3ds-build:1"  # the build image (build.sh IMG): devkitARM in the container
@@ -87,11 +89,18 @@ def main(a):
     if not nm or not addr2line:
         sys.exit("arm-none-eabi-nm or arm-none-eabi-addr2line not found (host, or docker image %s)" % IMG)
     syms = load_symbols(nm, elf_nm)
-    lists, sites, over = set(), set(), 0
+    lists, sites, over, nt = set(), set(), 0, 0
     with open(log, "r", errors="replace") as f:
         for ln in f:
             if OVER.search(ln):
                 over += 1
+                continue
+            mn = NT.search(ln)
+            if mn:
+                nt += 1
+                lst, site = int(mn.group(1), 16), int(mn.group(2), 16)
+                fn, loc = site_name(addr2line, elf, site - 4)
+                print("nt %s %s %s" % (list_symbol(syms, lst), fn, loc))
                 continue
             m = LINE.search(ln)
             if not m:
@@ -102,7 +111,7 @@ def main(a):
             sites.add(site)
             fn, loc = site_name(addr2line, elf, site - 4)
             print("%s %s %s %s" % (list_symbol(syms, lst), fn, loc, " ".join(words)))
-    print("entcap.py lists %d sites %d over %d" % (len(lists), len(sites), over))
+    print("entcap.py lists %d sites %d over %d nt %d" % (len(lists), len(sites), over, nt))
 
 
 if __name__ == "__main__":

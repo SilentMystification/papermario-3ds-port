@@ -101,6 +101,9 @@ static __attribute__((cold, noinline)) void gtr_cen(unsigned f) {
     gtr_pt = gtr_tab; gtr_pd = gtr_dl; gtr_pe = e; gtr_pc = c; gtr_po = o; gtr_pn = nd_gtr_ntab; gtr_pr = nd_gtr_rec;
     gtr_next = (f / 300u + 1u) * 300u;
 }
+static __attribute__((cold, noinline)) void entcap_nt(const void* l, uint32_t site) { static uint32_t k[256]; static unsigned n;
+    const uint32_t a = (uint32_t)(uintptr_t)l; for (unsigned i = 0; i < n; i++) if (k[i] == (a ^ site * 2654435761u)) return; if (n == 256u) return;
+    k[n++] = a ^ site * 2654435761u; pm_log_evt("entcap nt l %08x s %08x", a, site); }
 static const NdPsoDesc* dl_ent; /* ENTRY1: the entry of the nd_rec_dl_e call in progress (null: none) */
 void nd_rec_dl(const void* list) {
     static const void* memo_l[8];
@@ -119,6 +122,7 @@ void nd_rec_dl(const void* list) {
         if (t) { memo_l[mi] = list; memo_t[mi] = t; memo_f[mi] = fl; mi = (mi + 1u) & 7u; }
     }
     if (!t) {
+        if (__builtin_expect(PMDL("entcap"), 0)) entcap_nt(list, (uint32_t)(uintptr_t)__builtin_return_address(0));
         gtr_dl++;
         gSPDisplayList(gMainGfxPos++, list);
         return;
