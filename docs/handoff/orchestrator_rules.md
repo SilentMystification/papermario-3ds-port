@@ -5,18 +5,19 @@ The Core block below is printed on every turn by the UserPromptSubmit hook (.cla
 
 <!-- CORE -->
 STYLE: ASD-STE100 in every word to the user, no praise, FACT/GUESS/OPEN on every number. Details: docs/handoff/orchestrator_rules.md.
-EVERY TURN: 1 ListAgents (completed = IDLE; print states only from it). 2 Hand-back file or message: check, merge. Interim notice: one line. 3 Idle capacity: oracle not running -> start it; fewer than 3 coders and a closed page -> start a coder; none -> ask the oracle. 4 Report only changes; table only after a state change; no counters unless asked. 5 Object first if a directive looks wrong or costly.
+EVERY TURN: 1 ListAgents (completed = IDLE; print states only from it). 2 Hand-back file: check, merge. An IDLE coder with no hand-back file waits on the oracle and keeps its slot. Interim notice: one line. 3 Idle capacity: fewer than 3 coders and a closed page -> start a coder. A free slot and no closed page -> ask the oracle (start it only if it does not run). Never start an oracle while a closed page waits. 4 Report only changes; table only after a state change; no counters unless asked. 5 Object first if a directive looks wrong or costly.
 <!-- /CORE -->
 
 ## Rules (the long form of the Core, moved out of the per-turn hook text, user 2026-11-14)
 - Style (his order): every word to the user in ASD-STE100: short sentences, one instruction each, active voice, simple tenses, no semicolons. No praise, no flattery, no apology paragraphs. State the fact, the number, the next step. Label every number FACT (source), GUESS or OPEN.
-- Each turn: 1. ListAgents; completed = IDLE; print an agent state only from this call. 2. A hand-back waits (file or message)? Check it and merge; merge only on a hand-back; an interim notice ("waiting on its own background work") gets one line. 3. Idle capacity: oracle not running -> start it on lookahead pages; fewer than 3 coders running and a closed page exists -> start a coder; no closed page -> ask the oracle. Haiku gets closed chunks (exact files, edit shape, gate, stop condition, no open question); the oracle owns the design. 4. Reply: report only what changed; table State | Agent | Row | Summary only after a state change (Summary = "[model] TASK - what it changes"); no counters unless the user asks. 5. A user directive that looks wrong or costly: object first with the evidence, then follow the final decision.
-- Role: launch agents, merge, clean up, ask the user. No game code, no debugging. At most 4 agents at once. A Sonnet or Opus coder needs a user yes. Decisions go through AskUserQuestion (2-4 options, recommended first).
+- Each turn: 1. ListAgents; completed = IDLE; print an agent state only from this call. 2. A hand-back file waits? Check it and merge; merge only on a hand-back; an interim notice ("waiting on its own background work") gets one line. 3. Idle capacity: fewer than 3 coders running and a closed page exists -> start a coder; a free slot and no closed page -> ask the oracle (start it only if it does not run); never start an oracle while a closed page waits (cost about 200K tokens a run). Haiku gets closed chunks (exact files, edit shape, gate, stop condition, no open question); the oracle owns the design. 4. Reply: report only what changed; table State | Agent | Row | Summary only after a state change (Summary = "[model] TASK - what it changes"); no counters unless the user asks. 5. A user directive that looks wrong or costly: object first with the evidence, then follow the final decision.
+- Role: launch agents, merge, clean up, ask the user. No game code, no debugging. At most 4 agents at once in total (coders plus the oracle). A Sonnet or Opus coder needs a user yes. Decisions go through AskUserQuestion (2-4 options, recommended first).
 - Faults: a bug the user reports is fact (code read only). A tool fault stops the gate: read the tool's source first. First check, then ask. Never guess and check. Main stays clean. Never: toggles, stubs, git push, git stash. No build or push in the foreground of the chat. A failed push: read the raw log, one line, stop.
 - Never say the epic is done: only elfgate.py with func 0 data 0 gfxnames 0 plus all source counters 0 ends it.
 - The oracle gets a brief, not a reading list (user 2026-11-14): the orchestrator reads docs and process and writes a short brief in the oracle prompt (the task, the merges since its last run from git log, the files it must check). The oracle does not read plan_endgame.md, orchestrator_rules.md, CLAUDE.md or HANDOFF.md.
 - A coder asks the oracle that wrote its page (the launch prompt names its id), because that oracle has the context (user 2026-11-14).
 - A coder hands back only through build3ds/out/handback_<id>.txt and one short last line; it sends no hand-back message to the orchestrator (user 2026-11-14).
+- Stop point (user asks): launch nothing. Let each running coder finish. Merge each hand-back. Then update HANDOFF.md and report the state table once.
 
 
 ## Goal and done
@@ -36,20 +37,18 @@ as they are.
 
 ## Roles
 - Orchestrator: launches, merges, reports, asks. Does not relay a fault: the coder asks the designer directly.
-- Designer (Opus oracle): on call. Reads code, answers in 10 lines or fewer, writes goal pages and the handoff file only.
+- Designer (Opus oracle): on call. Reads code, answers in 10 lines or fewer, writes goal pages, the handoff file and their INDEX lines only.
   The oracle stays ahead of the coders (user approved, 2026-11-13): while a coder runs, the oracle writes the next closed pages, so
   no coder slot idles for want of a page. When a workstream ends, the orchestrator asks the oracle for the next pages at once.
   A resume after 5 minutes of idle rewrites the whole context into the cache (FACT, docs). The old oracle used 717M cache-read
   and 26M cache-write tokens in 1521 calls (FACT, transcript). Rule: start a fresh oracle with docs/handoff/oracle_handoff.md
   (60 lines or fewer) when the context passes about 150K tokens. The user allows this (2026-11-13).
-- Coders: Haiku (coder.md). One per workstream, at most 3, plus 1 for tools. A Sonnet or Opus coder needs the user's yes.
+- Coders: Haiku (coder.md). One per workstream. Coders and the oracle together stay within the cap of 4 agents. A Sonnet or Opus coder needs the user's yes.
 
 ## Routine and cost
-- Each hand-back: merge (below), then report the counter change and the tokens of the run (usage in the notice). Nothing else.
+- Each hand-back: merge (below), then report the merge in one line. Counters and tokens only when the user asks.
 - A coder run costs 16M to 32M cache-read tokens (158 to 305 model calls, FACT). The levers are fewer calls and shorter output.
-- Stale check: an agent with no commit for 45 minutes gets one message asking for its state in one line.
-- Stop test (GUESS, set by the orchestrator; the user may change it): after 3 merged groups, C1 must have fallen by 200 or more.
-  If not, stop all work and ask the user.
+- Stale check: read the worktree file times (the facts block). Message an agent only when no file changed for 45 minutes and it does not wait on the oracle (a message resumes it at full context cost).
 - Agent start costs about 28K tokens (FACT: no-op coder, 28.5K). A tools line does not cut it (FACT, measured). Fewer starts help.
 - Agent files in .claude/agents reload within seconds, no restart (docs).
 

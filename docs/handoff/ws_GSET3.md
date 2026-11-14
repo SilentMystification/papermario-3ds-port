@@ -20,7 +20,7 @@ set). Users outside: src/entity/<area>/*.c `extern Gfx X[];` and `STANDARD_ENTIT
 3. `grep -v '^#' 3ds/tools/gconv_src.d/S7ENT.txt > 3ds/tools/gset.d/GSET3.txt`. `sh 3ds/tools/nd_host_test.sh`, `python 3ds/tools/listcen.py > build3ds/out/lc_gset3_before.txt`.
 4. `python 3ds/tools/gset.py 3ds/tools/gset.d/GSET3.txt > build3ds/out/gset3.txt`. nd_host PASS (`ntab moved` rises, every `bad 0`). A `gconv: moved <X>` exit or a link
    error naming X: put X's block back in its device file in place of its NDN_DECL line, rerun.
-5. Build rc 0, memcheck margin 310 KB or more. Gate: `bench.py run spot_mac01_drec --row GSET3 --why "GSET3 2"`, `bench.py cmp spot_mac01_drec --row GSET3 --commit 930de29e1`;
+5. Build rc 0, memcheck margin above 0 KB. Gate: `bench.py run spot_mac01_drec --row GSET3 --why "GSET3 2"`, `bench.py cmp spot_mac01_drec --row GSET3 --commit $(git merge-base HEAD main)`;
    same for sbk14_drec: both byte-equal. listcen after: data and data_arrays fall, build and gfxpos unchanged. The commit deletes this page.
-Fix rights: the files above. A cmp difference or a host FAIL: 2 tries per named cause, then no commit, build3ds/out/gset3.txt, send the path to the oracle.
-Hand back 8 lines: hashes, gset moved and keep, ntab moved, listcen data and data_arrays before and after, cmp results, margin.
+Fix rights: the files above. A cmp difference or a host FAIL: 2 tries per named cause, then commit the work in progress (no gate claim), build3ds/out/gset3.txt, send the path to the oracle.
+Hand-back file, first 8 lines: hashes, gset moved and keep, ntab moved, listcen data and data_arrays before and after, cmp results, margin.

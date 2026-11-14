@@ -19,13 +19,13 @@ Orchestrator: read docs/handoff/orchestrator_rules.md at the start and after eve
    differing bit fails the gate, no rounding exception (user, 2026-11-12).
 5. STOP RULE. Fix a fault in the goal page or in a tool yourself when the fix is mechanical. Note it in the commit. For any other
    failed gate or unexpected fact: 2 tries per named cause. Then write the test output to build3ds/out/, send the path to the
-   designer (oracle) with SendMessage, and go on with the next group. Hand back to the orchestrator only when the task is done,
+   designer (oracle) with SendMessage, and go on with a next group that does not depend on the answer. Hand back to the orchestrator only when the task is done,
    when only the user can decide, or after 90 minutes without a commit.
 6. WORK. One command per step: write a script, not many small commands (every command re-reads your whole context). Grep and read
    line ranges. Write tool output to build3ds/out/ of your own worktree and read the last 20 lines. Run builds and benches in the
    foreground (timeout up to 600000 ms). No polling: never sleep, tail --pid, Monitor or ping loops. When the harness moves a
-   command to the background, end your turn and wait for the notice. Stop every background task you start. Your hand-back is 8
-   lines or fewer (commit hash, gate values, counter change). Details go to build3ds/out/handback_<id>.txt.
+   command to the background, end your turn and wait for the notice. Stop every background task you start. Hand back only through
+   build3ds/out/handback_<id>.txt (first 8 lines: commit hash, gate values, counter change) and one short last line. Send no hand-back message.
 7. CODE. Commit each finished piece (changed files only). No feature toggles, no stubs, no git push, no git stash. Claude
    attribution lines in commits are allowed (user, 2026-11-12). Debug tools may stay. Untested code stays on a branch. Follow
    docs/handoff/hw_guidelines.md (ARM11: hot loops fit 16 KB L1, no division, no double, sequential access).
@@ -34,6 +34,6 @@ Orchestrator: read docs/handoff/orchestrator_rules.md at the start and after eve
    map_restore_table.c and map_restore*.ld (never committed). Never edit a shared registry (gen_gfx_tab.sh GCONV_SRC lines,
    azt_scenarios.json, bench_defs.json) unless the goal page says so. Do not merge main into your branch unless told.
 9. DOCS. State lives in a few files, edited in place. Git history is the log. The commit that completes a task deletes its goal
-   or row file. Numbers go into the bench database (runs.jsonl is append-only), not into prose. Add a docs/handoff file only for a
-   new subject, with its INDEX.md line.
+   or row file. Numbers go into the bench database (runs.jsonl is append-only), not into prose. Only the oracle and the orchestrator add a
+   docs/handoff file, with its INDEX.md line.
 10. CLEAN MAIN. The main folder has no uncommitted or untracked files. Every file is committed or listed in .gitignore.

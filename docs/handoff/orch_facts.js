@@ -69,8 +69,8 @@ if (mode === 'facts') {
   }
   if (old) lines.push(old + ' old worktrees with no file in 4 h (parked branches, ignore)');
   let pages = [];
-  try { pages = fs.readdirSync(path.join(root, 'docs', 'handoff')).filter(n => /^ws_.*\.md$/.test(n)); } catch (e) { /* none */ }
-  lines.push('goal pages: ' + (pages.length ? pages.join(' ') : 'NONE (ask the oracle for pages)'));
+  try { pages = fs.readdirSync(path.join(root, 'docs', 'handoff')).filter(n => /^ws_.*\.md$/.test(n) && !wts.some(w => 'ws_' + w.id + '.md' === n)); } catch (e) { /* none */ }
+  lines.push('free goal pages: ' + (pages.length ? pages.join(' ') : 'NONE (ask the oracle for pages)'));
   process.stdout.write(lines.join('\n') + '\n');
   process.exit(0);
 }
@@ -83,7 +83,7 @@ if (mode === 'stop') {
   if (data.stop_hook_active) process.exit(0); // never loop
   const problems = [];
   // Files the oracle writes while it runs are not a problem yet: the orchestrator commits them at the hand-back.
-  const stray = dirty.filter(l => !/docs\/handoff\/(ws_|design_|oracle_handoff|row_)/.test(l));
+  const stray = dirty.filter(l => !/docs\/handoff\/(ws_|design_|oracle_handoff|row_|INDEX\.md|audit_)/.test(l));
   if (stray.length) problems.push('main is dirty (' + stray.slice(0, 3).join(', ') + '): commit or remove the files');
   for (const w of wts) {
     if (w.ahead > 0 && w.hb && w.hbAge !== null && w.hbAge < 180) {
