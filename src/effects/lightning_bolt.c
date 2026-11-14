@@ -4,6 +4,7 @@
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_st.h"
+#include "nd_geo.h"
 
 typedef struct LightningPreset {
     /* 0x00 */ u8 offset[12];
@@ -311,12 +312,11 @@ void lightning_bolt_appendGfx(void* effect) {
 
     quadCount = i;
 
-    gSPVertex(gMainGfxPos++, vtxBuffer, i * 2, 0);
+    nd_mesh_vtx(vtxBuffer, i * 2, 0);
     nd_pso_geom_clr(G_SHADING_SMOOTH);
 
     for (i = 0; i < quadCount - 1; i++) {
-        gSP2Triangles(gMainGfxPos++, i * 2 + 1, i * 2 + 0, i * 2 + 2, 0,
-                                       i * 2 + 1, i * 2 + 2, i * 2 + 3, 0);
+        nd_mesh_tri2(i * 2 + 1, i * 2 + 0, i * 2 + 2, 0, i * 2 + 1, i * 2 + 2, i * 2 + 3, 0);
     }
 
     nd_xf_pop(G_MTX_MODELVIEW);

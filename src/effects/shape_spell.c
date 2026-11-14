@@ -3,6 +3,7 @@
 #include "nd_gtab.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_geo.h"
 
 typedef struct UnkStruct {
     /* 0x00 */ u8 unk_00;
@@ -263,9 +264,9 @@ void shape_spell_appendGfx(void* effect) {
             nd_val_prim(0, 0, func_E00243BC(D_E0024CC0[j].unk_01, D_E0024CC0[j].unk_00), func_E00243BC(D_E0024CC0[j].unk_02, D_E0024CC0[j].unk_00), func_E00243BC(D_E0024CC0[j].unk_03, D_E0024CC0[j].unk_00), primA);
             nd_val_env(func_E0024324(D_E0024CC0[j].unk_01, D_E0024CC0[j].unk_00), func_E0024324(D_E0024CC0[j].unk_02, D_E0024CC0[j].unk_00), func_E0024324(D_E0024CC0[j].unk_03, D_E0024CC0[j].unk_00), 255);
             nd_val_tile_size(G_TX_RENDERTILE, 0, shape_spell_ult[j], 0x0100, shape_spell_ult[j] + 0x0100);
-            gSPVertex(gMainGfxPos++, v, 4 * ncopy, 0);
+            nd_mesh_vtx(v, 4 * ncopy, 0);
             for (k = 0; k < ncopy; k++) {
-                gSP2Triangles(gMainGfxPos++, 4 * k, 4 * k + 1, 4 * k + 2, 0, 4 * k, 4 * k + 2, 4 * k + 3, 0);
+                nd_mesh_tri2(4 * k, 4 * k + 1, 4 * k + 2, 0, 4 * k, 4 * k + 2, 4 * k + 3, 0);
             }
         }
     }

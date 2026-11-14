@@ -3,6 +3,7 @@
 #include "nd_gtab.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_geo.h"
 
 extern s32 D_09000000_3C1BA0;
 extern s32 D_09002020_3C3BC0;
@@ -142,7 +143,7 @@ void fright_jar_appendGfx(void* effect) {
         idx = 0;
     }
 
-    gSPVertex(gMainGfxPos++, &D_09004040_3C5BE0[idx], 22, 0);
+    nd_mesh_vtx(&D_09004040_3C5BE0[idx], 22, 0);
 
     alpha = D_E00C2990[unk_14 % 16];
     nd_val_env(0, 0, 0, alpha);
@@ -183,34 +184,34 @@ void fright_jar_appendGfx(void* effect) {
 
         switch (i) {
             case 0:
-                gSP2Triangles(gMainGfxPos++, 0, 1, 2, 0, 0, 2, 3, 0);
+                nd_mesh_tri2(0, 1, 2, 0, 0, 2, 3, 0);
                 break;
             case 1:
-                gSP2Triangles(gMainGfxPos++, 1, 4, 5, 0, 1, 5, 2, 0);
+                nd_mesh_tri2(1, 4, 5, 0, 1, 5, 2, 0);
                 break;
             case 2:
-                gSP2Triangles(gMainGfxPos++, 4, 6, 7, 0, 4, 7, 5, 0);
+                nd_mesh_tri2(4, 6, 7, 0, 4, 7, 5, 0);
                 break;
             case 3:
-                gSP2Triangles(gMainGfxPos++, 6, 8, 9, 0, 6, 9, 7, 0);
+                nd_mesh_tri2(6, 8, 9, 0, 6, 9, 7, 0);
                 break;
             case 4:
-                gSP2Triangles(gMainGfxPos++, 8, 10, 11, 0, 8, 11, 9, 0);
+                nd_mesh_tri2(8, 10, 11, 0, 8, 11, 9, 0);
                 break;
             case 5:
-                gSP2Triangles(gMainGfxPos++, 10, 12, 13, 0, 10, 13, 11, 0);
+                nd_mesh_tri2(10, 12, 13, 0, 10, 13, 11, 0);
                 break;
             case 6:
-                gSP2Triangles(gMainGfxPos++, 12, 14, 15, 0, 12, 15, 13, 0);
+                nd_mesh_tri2(12, 14, 15, 0, 12, 15, 13, 0);
                 break;
             case 7:
-                gSP2Triangles(gMainGfxPos++, 14, 16, 17, 0, 14, 17, 15, 0);
+                nd_mesh_tri2(14, 16, 17, 0, 14, 17, 15, 0);
                 break;
             case 8:
-                gSP2Triangles(gMainGfxPos++, 16, 18, 19, 0, 16, 19, 17, 0);
+                nd_mesh_tri2(16, 18, 19, 0, 16, 19, 17, 0);
                 break;
             case 9:
-                gSP2Triangles(gMainGfxPos++, 18, 20, 21, 0, 18, 21, 19, 0);
+                nd_mesh_tri2(18, 20, 21, 0, 18, 21, 19, 0);
                 break;
         }
 

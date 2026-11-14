@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_geo.h"
 ND_PSO_DESC(pe_lil_oink_200, 0xfc40fe81, 0xfffff9fc, 0x1e08acf0, 0x00552078, 0x00200405, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 1, 3, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
@@ -182,7 +183,7 @@ void lil_oink_appendGfx(void* effect) {
     nd_val_seg(0x9, VIRTUAL_TO_PHYSICAL(eff->shared->graphics));
 
     nd_draw_list(D_09002D70_401FC0, ND_SELF);
-    gSPLookAt(gMainGfxPos++, &gDisplayContext->lookAt);
+    nd_lit_lookat(&gDisplayContext->lookAt);
 
     for (i = 0; i < MAX_LIL_OINKS; i++) {
         if (data->flags[i] & LIL_OINK_FLAG_VISIBLE) {

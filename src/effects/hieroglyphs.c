@@ -3,6 +3,7 @@
 #include "nd_gtab.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_geo.h"
 
 extern Gfx D_09001000_3DDD50[];
 extern Vtx_t D_090010A8_3DDDF8[];
@@ -157,14 +158,12 @@ void hieroglyphs_appendGfx(void* effect) {
         guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        gSPVertex(gMainGfxPos++, &D_090010A8_3DDDF8[i * 2], 2, i * 2);
+        nd_mesh_vtx(&D_090010A8_3DDDF8[i * 2], 2, i * 2);
     }
 
     for (i = 0; i < 15; i++) {
         s32 i2 = i * 2;
-        gSP2Triangles(gMainGfxPos++,
-            i2    , i2 + 2, i2 + 1, i2,
-            i2 + 1, i2 + 2, i2 + 3, i2);
+        nd_mesh_tri2(i2, i2 + 2, i2 + 1, i2, i2 + 1, i2 + 2, i2 + 3, i2);
     }
 
     nd_xf_pop(G_MTX_MODELVIEW);

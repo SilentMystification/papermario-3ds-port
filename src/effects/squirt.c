@@ -3,6 +3,7 @@
 #include "nd_gtab.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_geo.h"
 
 u8 D_E00B2BA0[] = { 255, 255, 255, 255, 255, 255, 255, 255, 255, 200, 128, 32, 0, 0, 0, 0 };
 
@@ -243,7 +244,7 @@ void squirt_appendGfx(void* effect) {
         vtx++;
     }
 
-    gSPVertex(gMainGfxPos++, savedGfxPos, i * 2, 0);
+    nd_mesh_vtx(savedGfxPos, i * 2, 0);
 
     savedIdx = i;
     nd_rec_dl(unk_00 == 0 ? D_09000800_3B5B40 : D_090008A8_3B5BE8);
@@ -254,9 +255,7 @@ void squirt_appendGfx(void* effect) {
         if (i < zero) {
             continue;
         }
-        gSP2Triangles(gMainGfxPos++,
-            i2,     i2 + 2, i2 + 1, i2,
-            i2 + 1, i2 + 2, i2 + 3, i2);
+        nd_mesh_tri2(i2, i2 + 2, i2 + 1, i2, i2 + 1, i2 + 2, i2 + 3, i2);
     }
 
     nd_xf_pop(G_MTX_MODELVIEW);

@@ -3,6 +3,7 @@
 #include "nd_gtab.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_geo.h"
 
 extern Gfx D_09000F20_338EE0[];
 extern Gfx D_090011C8_339188[];
@@ -315,8 +316,8 @@ void sparkles_appendGfx(void* effect) {
                     dst[k].v.cn[3] = 255;
                 }
                 nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-                gSPVertex(gMainGfxPos++, dst, 4, 0);
-                gSP2Triangles(gMainGfxPos++, 0, 1, 2, 0, 0, 2, 3, 0);
+                nd_mesh_vtx(dst, 4, 0);
+                nd_mesh_tri2(0, 1, 2, 0, 0, 2, 3, 0);
             }
             nd_xf_pop(G_MTX_MODELVIEW);
         }

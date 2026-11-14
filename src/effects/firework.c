@@ -3,6 +3,7 @@
 #include "nd_gtab.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_geo.h"
 
 extern Gfx D_09000940_38AC90[];
 extern Gfx D_09000A00_38AD50[];
@@ -291,9 +292,9 @@ void func_E00863B4(EffectInstance* effect) {
             nd_sub_open(&sub); /* DIRECT D6c: the pass list is a stream range, drawn three times */
             nd_rec_dl(D_E0086AB4[unk_00]); /* S7EFX3: replayed by each nd_sub_call (stream_run NDC_NAPI) */
             gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            gSPVertex(gMainGfxPos++, vbuf, nsp * 4, 0);
+            nd_mesh_vtx(vbuf, nsp * 4, 0);
             for (i = 0; i < nsp; i++) {
-                gSP2Triangles(gMainGfxPos++, 4 * i, 4 * i + 1, 4 * i + 2, 0, 4 * i, 4 * i + 2, 4 * i + 3, 0);
+                nd_mesh_tri2(4 * i, 4 * i + 1, 4 * i + 2, 0, 4 * i, 4 * i + 2, 4 * i + 3, 0);
             }
             nd_xf_pop(G_MTX_MODELVIEW);
         }
