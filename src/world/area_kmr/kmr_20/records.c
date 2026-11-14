@@ -69,10 +69,8 @@ void N(appendGfx_records_impl)(GameRecords* records, s32 alpha) {
     if (alpha > 0) {
 #if VERSION_JP
         gSPDisplayList(gMainGfxPos++, N(records_screen_gfx));
-        gDPPipeSync(gMainGfxPos++);
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, 16, 120, 24, alpha * 0.65);
+        nd_val_prim(0, 0, 16, 120, 24, alpha * 0.65);
         gDPFillRectangle(gMainGfxPos++, 63, 43, 257, 192);
-        gDPPipeSync(gMainGfxPos++);
 
         msg_draw_frame(60, 40, 200, 155, MSG_STYLE_INSPECT, MSG_PAL_WHITE, true, alpha * 0.55, alpha);
         draw_msg(MSG_CH0_00FC, 88, 50, alpha, MSG_PAL_WHITE, DRAW_MSG_STYLE_MENU);
@@ -128,10 +126,8 @@ void N(appendGfx_records_impl)(GameRecords* records, s32 alpha) {
         }
 #else
         gSPDisplayList(gMainGfxPos++, N(records_screen_gfx));
-        gDPPipeSync(gMainGfxPos++);
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, 16, 120, 24, alpha * 0.65);
+        nd_val_prim(0, 0, 16, 120, 24, alpha * 0.65);
         gDPFillRectangle(gMainGfxPos++, 33, 43, 287, 192);
-        gDPPipeSync(gMainGfxPos++);
 
         msg_draw_frame(30, 40, 260, 155, MSG_STYLE_INSPECT, MSG_PAL_WHITE, true, alpha * 0.55, alpha);
         draw_msg(MSG_CH0_00FC, 206 - get_msg_width(MSG_CH0_00FC, CHARSET), 50, alpha, MSG_PAL_WHITE, DRAW_MSG_STYLE_MENU);

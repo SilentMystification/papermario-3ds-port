@@ -15,7 +15,7 @@ void N(func_8024033C_A1B43C)(void) {
     f32 angle = sins(N(D_80243BCC_A1ECCC)) * (1.0f / 32768.0f) * 45.0f;
     N(D_80243BCC_A1ECCC) += 0x400;
     guRotate(&gDisplayContext->matrixStack[gMatrixListPos], angle, 0.0f, 1.0f, 0.0f);
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
     mdl_get_copied_vertices(VTX_COPY_1, &firstVertex, &copiedVertices, &numVertices);
 
@@ -87,8 +87,7 @@ void N(build_gfx_lamp_halos)(void) {
 
     N(HaloScalePhaseAngle) += (s32)RAD_TO_BINANG(25.1720);
     guScale(&gDisplayContext->matrixStack[gMatrixListPos], scale, scale, scale);
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-              G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 }
 
 API_CALLABLE(N(func_80240A50_A1BB50)) {

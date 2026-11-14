@@ -27,7 +27,7 @@ API_CALLABLE(N(SetSpillLightAmount)) {
 void N(setup_gfx_spill_light)(void) {
     if (N(SpillLightAmount) > 0) {
         gDPSetCombineMode(gMainGfxPos++, PM_CC_KKJ_SPILL_LIGHT, PM_CC_KKJ_SPILL_LIGHT);
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, N(SpillLightAmount));
+        nd_val_prim(0, 0, 0, 0, 0, N(SpillLightAmount));
     }
 }
 

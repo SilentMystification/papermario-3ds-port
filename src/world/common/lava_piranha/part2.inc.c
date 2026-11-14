@@ -195,7 +195,6 @@ void N(appendGfx_piranha_vines)(void* data) {
         N(VineRenderState) = 1;
     }
 
-    gDPPipeSync(gMainGfxPos++);
     gSPDisplayList(gMainGfxPos++, N(lava_piranha_vine_gfx));
 
     for (i = 0; i < NUM_VINES; i++) {
@@ -266,7 +265,6 @@ void N(appendGfx_piranha_vines)(void* data) {
         }
     }
 
-    gDPPipeSync(gMainGfxPos++);
 }
 
 void N(worker_render_piranha_vines)(void) {

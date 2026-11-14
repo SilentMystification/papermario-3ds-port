@@ -25,7 +25,6 @@ void N(appendGfx_FallingSprite)(void) {
     u32 animFrame;
     FallingSprite* falling = &N(Falling);
 
-    gDPPipeSync(gMainGfxPos++);
     gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
     gSPClearGeometryMode(gMainGfxPos++, G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
     gSPSetGeometryMode(gMainGfxPos++, G_ZBUFFER | G_SHADE | G_SHADING_SMOOTH);
@@ -48,8 +47,7 @@ void N(appendGfx_FallingSprite)(void) {
     guScaleF(mtxTemp, falling->scale.x, falling->scale.y, falling->scale.z);
     guMtxCatF(mtxTemp, mtxTransform, mtxTransform);
     guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
-    gSPMatrix(gMainGfxPos++, VIRTUAL_TO_PHYSICAL(&gDisplayContext->matrixStack[gMatrixListPos++]),
-        G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(VIRTUAL_TO_PHYSICAL(&gDisplayContext->matrixStack[gMatrixListPos++]), G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
     //TODO use SPR_RASTER_Mario8_XYZ here once they are defined
     if (!falling->animationEnabled) {
@@ -75,7 +73,7 @@ void N(appendGfx_FallingSprite)(void) {
     ifxImg.yOffset = rasterInfo.height / 2;
     ifxImg.alpha = 255;
     imgfx_appendGfx_component(falling->imgfxIdx, &ifxImg, 0, mtxTransform);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }
 
 API_CALLABLE(N(InitializeFallingSprite)) {

@@ -112,7 +112,7 @@ API_CALLABLE(N(SetSpotlightsAlpha)) {
 
 void N(gfx_build_set_spotlight_alpha)(void) {
     gDPSetCombineMode(gMainGfxPos++, PM_CC_3F, PM_CC_3F);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, N(SpotlightsAlpha));
+    nd_val_prim(0, 0, 0, 0, 0, N(SpotlightsAlpha));
 }
 
 EvtScript N(EVS_MakeSpiritAppear) = {

@@ -198,7 +198,7 @@ API_CALLABLE(N(SetFlowerGateGlowAlpha)) {
 
 void N(gfx_build_flower_gate_glow)(void) {
     gDPSetCombineMode(gMainGfxPos++, PM_CC_FLOWER_GATE_GLOW, PM_CC_FLOWER_GATE_GLOW);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, N(FlowerGatePrimAlpha));
+    nd_val_prim(0, 0, 0, 0, 0, N(FlowerGatePrimAlpha));
 }
 
 API_CALLABLE(N(SetPartnerTetherClose)) {

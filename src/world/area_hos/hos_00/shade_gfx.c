@@ -11,7 +11,7 @@ void N(setup_gfx_background_shade)(void) {
     }
     gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
     gDPSetCombineMode(gMainGfxPos++, PM_CC_HOS_BG_SHADE, PM_CC_HOS_BG_SHADE);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, alpha);
+    nd_val_prim(0, 0, 0, 0, 0, alpha);
 }
 
 EvtScript N(EVS_SetupBackgroundShade) = {

@@ -99,7 +99,7 @@ API_CALLABLE(N(UpdateTheEndAlpha)) {
 }
 void N(gfx_build_the_end)(void) {
     gDPSetCombineMode(gMainGfxPos++, PM_CC_05, PM_CC_05);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, TheEndModelAlpha);
+    nd_val_prim(0, 0, 0, 0, 0, TheEndModelAlpha);
 }
 
 EvtScript N(EVS_Scene_TheEnd) = {

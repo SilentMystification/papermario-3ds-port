@@ -294,7 +294,7 @@ void N(build_gfx_thread)(void) {
 
     gSPDisplayList(gMainGfxPos++, N(ThreadGfx));
     guTranslate(&gDisplayContext->matrixStack[gMatrixListPos], N(ThreadData).anchorPos.x, N(ThreadData).anchorPos.y, N(ThreadData).anchorPos.z);
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
     segAngle = N(ThreadData).curAngle;
     segLength = -N(ThreadData).curLength;
@@ -302,7 +302,7 @@ void N(build_gfx_thread)(void) {
     y +=  segLength * cos_rad(N(ThreadData).curAngle * 0 / 180.0f * PI);
 
     guPosition(&gDisplayContext->matrixStack[gMatrixListPos], 0.0f, 0.0f, segAngle, 1.0f, 0.0f, segLength, 0.0f);
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
     for (i = 1; i < NUM_THREAD_SEGMENTS; i++) {
         segAngle = N(ThreadData).curAngle;
@@ -311,13 +311,12 @@ void N(build_gfx_thread)(void) {
         y +=  segLength * cos_rad(N(ThreadData).curAngle * i / 180.0f * PI);
         gSPVertex(gMainGfxPos++, N(ThreadSegmentVertices), 2, 0);
         guPosition(&gDisplayContext->matrixStack[gMatrixListPos], 0.0f, 0.0f, segAngle, 1.0f, 0.0f, segLength, 0.0f);
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         gSPVertex(gMainGfxPos++, N(ThreadSegmentVertices), 2, 2);
         gSP2Triangles(gMainGfxPos++, 0, 2, 1, 0, 2, 3, 1, 0);
     }
 
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gDPPipeSync(gMainGfxPos++);
+    nd_xf_pop(G_MTX_MODELVIEW);
 
     N(ThreadData).endPoint.x = x;
     N(ThreadData).endPoint.y = y;
