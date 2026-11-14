@@ -1,4 +1,6 @@
 #include "common.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 extern int pm_wide; /* F07-4 */
 #include "theater/walls.png.h"
 #include "theater/curtains.png.h"
@@ -250,14 +252,13 @@ void render_curtains(void) {
         f32 scale;
         s8 rgb;
 
-        gDPPipeSync(gMainGfxPos++);
         gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
         gSPDisplayList(gMainGfxPos++, &TheaterInitGfx);
 
         guFrustumF(m, -80.0f * (pm_wide ? 1.25f : 1.0f), 80.0f * (pm_wide ? 1.25f : 1.0f), -60.0f, 60.0f, 160.0f, 640.0f, 1.0f);
         guMtxF2L(m, &D_8009BAA8[0]);
 
-        gSPMatrix(gMainGfxPos++, &D_8009BAA8[0], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
+        nd_xf_push(&D_8009BAA8[0], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
 
         scale = gCurtainScale - 0.01;
         if (scale < 1.0f) {
@@ -268,12 +269,11 @@ void render_curtains(void) {
 
         guMtxF2L(m, &D_8009BAA8[1]);
 
-        gSPMatrix(gMainGfxPos++, &D_8009BAA8[1], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+        nd_xf_push(&D_8009BAA8[1], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
         rgb = 255.0f - (gCurtainFade * 255.0f);
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, rgb, rgb, rgb, 255);
+        nd_val_prim(0, 0, rgb, rgb, rgb, 255);
         gSPDisplayList(gMainGfxPos++, &TheaterGfx);
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-        gDPPipeSync(gMainGfxPos++);
+        nd_xf_pop(G_MTX_MODELVIEW);
     }
 
     if (gCurtainDrawCallback != nullptr) {
@@ -299,7 +299,7 @@ void render_curtains(void) {
 #endif
                 gSPDisplayList(gMainGfxPos++, &TheaterInitGfx);
                 gSPDisplayList(gMainGfxPos++, &NoControllerSetupTexGfx);
-                gDPSetPrimColor(gMainGfxPos++, 0, 0, 0xFF, 0x20, 0x10, alpha);
+                nd_val_prim(0, 0, 0xFF, 0x20, 0x10, alpha);
                 gSPDisplayList(gMainGfxPos++, &NoControllerGfx);
 #if VERSION_PAL
             }

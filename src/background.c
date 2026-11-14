@@ -1,6 +1,7 @@
 #include "common.h"
 #include "model.h"
 #include "gcc/string.h"
+#include "nd_st.h"
 
 char gCloudyFlowerFieldsBg[] = "fla_bg";
 char gSunnyFlowerFieldsBg[] = "flb_bg";
@@ -304,22 +305,20 @@ void appendGfx_background_texture(void) {
     bgMinY = gGameStatusPtr->backgroundMinY;
     bg_zoom = pm_wide_cam(cam) && bgMinY == 20 && bgMaxY == 200 && bgMaxX == 296;
 
-    gDPPipeSync(gMainGfxPos++);
-    gDPSetCycleType(gMainGfxPos++, G_CYC_COPY);
-    gDPSetTexturePersp(gMainGfxPos++, G_TP_NONE);
-    gDPSetTextureLUT(gMainGfxPos++, G_TT_RGBA16);
-    gDPSetCombineMode(gMainGfxPos++, G_CC_DECALRGB, G_CC_DECALRGB);
-    gDPSetRenderMode(gMainGfxPos++, G_RM_NOOP, G_RM_NOOP2);
+    nd_pso_cyc(G_CYC_COPY);
+    nd_pso_persp(G_TP_NONE);
+    nd_pso_lut(G_TT_RGBA16);
+    nd_pso_cc(G_CC_DECALRGB, G_CC_DECALRGB);
+    nd_pso_rm(G_RM_NOOP, G_RM_NOOP2);
     if (bgMix) { /* BTLDIM: the mix stage gets P = shroud colour, A = fogA: P * A + M * (1 - A) per sky texel */
         gDPSetFogColor(gMainGfxPos++, fogR, fogG, fogB, fogA);
         gDPSetBlendColor(gMainGfxPos++, fogR, fogG, fogB, 255);
-        gDPSetRenderMode(gMainGfxPos++, PM_RM_SHROUD, G_RM_NOOP2);
+        nd_pso_rm(PM_RM_SHROUD, G_RM_NOOP2);
     }
-    gDPSetTextureFilter(gMainGfxPos++, G_TF_POINT);
-    gDPPipeSync(gMainGfxPos++);
+    nd_pso_filt(G_TF_POINT);
 
     if (bg_fill) {
-        gDPSetCycleType(gMainGfxPos++, G_CYC_FILL);
+        nd_pso_cyc(G_CYC_FILL);
         gDPSetFillColor(gMainGfxPos++, PACK_FILL_COLOR(0, 0, 0, 1)); /* BG_PAL(1): the colour of every entry of the full black palette */
     } else if (!(gGameStatusPtr->backgroundFlags & BACKGROUND_FLAG_FOG) || bgMix) {
         gDPLoadTLUT_pal256(gMainGfxPos++, gGameStatusPtr->backgroundPalette);
@@ -352,8 +351,7 @@ void appendGfx_background_texture(void) {
             bg_sky_rows(bgMinX, bgMinY, bgXOffset, bgMaxX, h - y0, y0, 0);
             if (bg_fill) { /* DOORSKY: back to the COPY cycle the texture path leaves for the rest of the frame */
                 bg_fill = 0;
-                gDPPipeSync(gMainGfxPos++);
-                gDPSetCycleType(gMainGfxPos++, G_CYC_COPY);
+                nd_pso_cyc(G_CYC_COPY);
             }
         }
     } else {
@@ -399,7 +397,7 @@ void appendGfx_background_texture(void) {
                                                  G_TX_RENDERTILE, 0, 0, 4096, 1024);
         }
     }
-    if (bgMix) gDPSetRenderMode(gMainGfxPos++, G_RM_NOOP, G_RM_NOOP2); /* BTLDIM: back to the plain mode for the rest of the frame */
+    if (bgMix) nd_pso_rm(G_RM_NOOP, G_RM_NOOP2); /* BTLDIM: back to the plain mode for the rest of the frame */
 }
 
 void enable_background_wave(void) {

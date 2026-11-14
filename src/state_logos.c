@@ -5,6 +5,7 @@
 #include "sprite.h"
 #include "nu/nusys.h"
 #include "game_modes.h"
+#include "nd_st.h"
 
 void appendGfx_intro_logos(void);
 
@@ -267,13 +268,11 @@ void state_drawUI_logos(void) {
 void appendGfx_intro_logos(void) {
     s32 i;
 
-    gDPPipeSync(gMainGfxPos++);
-    gDPSetRenderMode(gMainGfxPos++, G_RM_NOOP, G_RM_NOOP2);
-    gDPSetCombineMode(gMainGfxPos++, G_CC_DECALRGB, G_CC_DECALRGB);
-    gDPSetCycleType(gMainGfxPos++, G_CYC_FILL);
+    nd_pso_rm(G_RM_NOOP, G_RM_NOOP2);
+    nd_pso_cc(G_CC_DECALRGB, G_CC_DECALRGB);
+    nd_pso_cyc(G_CYC_FILL);
     gDPSetFillColor(gMainGfxPos++, PACK_FILL_COLOR(224, 224, 224, 1));
     gDPFillRectangle(gMainGfxPos++, 0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1);
-    gDPPipeSync(gMainGfxPos++);
 
     switch (gGameStatusPtr->startupState) {
         case LOGOS_STATE_N64_FADE_IN:
@@ -285,7 +284,6 @@ void appendGfx_intro_logos(void) {
                                    0, 0, 127, 15, 0,
                                    G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
                 gSPTextureRectangle(gMainGfxPos++, 96 * 4, (64 + i * 16) * 4, 224 * 4, (80 + i * 16) * 4, G_TX_RENDERTILE, 0, 0, 1024, 1024);
-                gDPPipeSync(gMainGfxPos++);
             }
             break;
         case LOGOS_STATE_NINTENDO_FADE_IN:
@@ -308,7 +306,6 @@ void appendGfx_intro_logos(void) {
                         32 * 4, (LOGO_1_Y + i * 8) * 4,
                         288 * 4, (LOGO_1_Y + 8 + i * 8) * 4,
                         G_TX_RENDERTILE, 0, 0, 1024, 1024);
-                gDPPipeSync(gMainGfxPos++);
             }
 #if !VERSION_JP
             break;
@@ -326,7 +323,6 @@ void appendGfx_intro_logos(void) {
                                     32 * 4, (LOGO_2_Y + i * 8) * 4,
                                     288 * 4, (LOGO_2_Y + 8 + i * 8) * 4,
                                     G_TX_RENDERTILE, 0, 0, 1024, 1024);
-                gDPPipeSync(gMainGfxPos++);
             }
             break;
     }

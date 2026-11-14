@@ -10,6 +10,9 @@
 #include "charset/charset.h"
 #include "charset/postcard.png.h"
 #include "charset/letter_content_1.png.h"
+#include "nd_st.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 enum RewindArrowStates {
     REWIND_ARROW_STATE_INIT = 0,
@@ -2135,7 +2138,6 @@ void msg_update_rewind_arrow(s32 printerIndex) {
     Matrix4f sp58;
     f32 temp;
 
-    gDPPipeSync(gMainGfxPos++);
     gSPDisplayList(gMainGfxPos++, D_8014C2D8);
 
     switch (printer->rewindArrowAnimState) {
@@ -2178,7 +2180,7 @@ void msg_update_rewind_arrow(s32 printerIndex) {
             break;
     }
 
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, colorR, colorG, colorB, 255);
+    nd_val_prim(0, 0, colorR, colorG, colorB, 255);
 
     if (printer->rewindArrowAnimState == REWIND_ARROW_STATE_NEUTRAL ||
         printer->rewindArrowAnimState == REWIND_ARROW_STATE_CHANGE_COLOR ||
@@ -2202,7 +2204,7 @@ void msg_update_rewind_arrow(s32 printerIndex) {
     }
 
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
-    gSPMatrix(gMainGfxPos++, VIRTUAL_TO_PHYSICAL(&gDisplayContext->matrixStack[gMatrixListPos++]), G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(VIRTUAL_TO_PHYSICAL(&gDisplayContext->matrixStack[gMatrixListPos++]), G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     gDPLoadTextureTile(gMainGfxPos++, ui_msg_star_png, G_IM_FMT_RGBA, G_IM_SIZ_16b, 16, 0, 0, 0, 15, 17, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 4, 4, G_TX_NOLOD, G_TX_NOLOD);
     gDPLoadMultiTile_4b(gMainGfxPos++, ui_msg_star_silhouette_png, 0x0100, 1, G_IM_FMT_I, 16, 0, 0, 0, 15, 18, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 4, 5, G_TX_NOLOD, G_TX_NOLOD);
     gSPVertex(gMainGfxPos++, gRewindArrowQuad, 4, 0);
@@ -2258,12 +2260,11 @@ void msg_draw_choice_pointer(MessagePrintState* printer) {
         shadowAlpha = opacity;
     }
 
-    gDPPipeSync(gMainGfxPos++);
-    gDPSetTextureLUT(gMainGfxPos++, G_TT_RGBA16);
+    nd_pso_lut(G_TT_RGBA16);
     gDPLoadTLUT_pal16(gMainGfxPos++, 0, ui_point_right_pal);
-    gDPSetRenderMode(gMainGfxPos++, G_RM_XLU_SURF, G_RM_XLU_SURF2);
-    gDPSetCombineMode(gMainGfxPos++, PM_CC_07, PM_CC_07);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, 40, 40, 40, shadowAlpha);
+    nd_pso_rm(G_RM_XLU_SURF, G_RM_XLU_SURF2);
+    nd_pso_cc(PM_CC_07, PM_CC_07);
+    nd_val_prim(0, 0, 40, 40, 40, shadowAlpha);
     draw_image_with_clipping(ui_point_right_png, 16, 16, G_IM_FMT_CI, G_IM_SIZ_4b, posX + 2, posY + 2, 10, 10, 300, 220);
     draw_ci_image_with_clipping(ui_point_right_png, 16, 16, G_IM_FMT_CI, G_IM_SIZ_4b, ui_point_right_pal, posX, posY, 20, 20, 300, 200, pointerAlpha);
 }
@@ -2371,22 +2372,20 @@ void draw_number(s32 value, s32 x, s32 y, s32 charset, s32 palette, s32 opacity,
 
     if (style & DRAW_NUMBER_STYLE_DROP_SHADOW) {
         for (i = 0; i < count; i++) {
-            gDPPipeSync(gMainGfxPos++);
-            gDPSetRenderMode(gMainGfxPos++, G_RM_XLU_SURF, G_RM_XLU_SURF2);
-            gDPSetCombineMode(gMainGfxPos++, PM_CC_07, PM_CC_07);
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, 40, 40, 40, 72);
+            nd_pso_rm(G_RM_XLU_SURF, G_RM_XLU_SURF2);
+            nd_pso_cc(PM_CC_07, PM_CC_07);
+            nd_val_prim(0, 0, 40, 40, 40, 72);
             draw_digit(raster + digits[i] * texSize, charset, digitPosX[i] + 2, y + 2);
-            gDPPipeSync(gMainGfxPos++);
         }
     }
 
     if (opacity == 255) {
-        gDPSetRenderMode(gMainGfxPos++, G_RM_TEX_EDGE, G_RM_TEX_EDGE2);
-        gDPSetCombineMode(gMainGfxPos++, G_CC_DECALRGBA, G_CC_DECALRGBA);
+        nd_pso_rm(G_RM_TEX_EDGE, G_RM_TEX_EDGE2);
+        nd_pso_cc(G_CC_DECALRGBA, G_CC_DECALRGBA);
     } else {
-        gDPSetRenderMode(gMainGfxPos++, G_RM_XLU_SURF, G_RM_XLU_SURF2);
-        gDPSetCombineMode(gMainGfxPos++, PM_CC_01, PM_CC_01);
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 255, opacity);
+        nd_pso_rm(G_RM_XLU_SURF, G_RM_XLU_SURF2);
+        nd_pso_cc(PM_CC_01, PM_CC_01);
+        nd_val_prim(0, 0, 255, 255, 255, opacity);
     }
 
     gDPLoadTLUT_pal16(gMainGfxPos++, 0, D_802F4560[palette]);
@@ -2417,5 +2416,4 @@ void draw_number(s32 value, s32 x, s32 y, s32 charset, s32 palette, s32 opacity,
         }
     }
     msg_digit_st = NULL;
-    gDPPipeSync(gMainGfxPos++);
 }

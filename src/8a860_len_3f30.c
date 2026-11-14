@@ -2,6 +2,7 @@
 #include "hud_element.h"
 #include "message_ids.h"
 #include "pm_wide.h"
+#include "nd_st.h"
 
 #define LINE_HEIGHT 13
 
@@ -1459,15 +1460,15 @@ void popup_draw_menu_content(s32* userData, s32 baseX, s32 baseY, s32 width, s32
         case POPUP_MENU_READ_POSTCARD:
         case POPUP_MENU_USEKEY:
         case POPUP_MENU_POST_OFFICE:
-            gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, x, y, x + 112, y1);
+            nd_pso_scis(G_SC_NON_INTERLACE, x, y, x + 112, y1);
             break;
         case POPUP_MENU_SWITCH_PARTNER:
         case POPUP_MENU_UPGRADE_PARTNER:
-            gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, x, y, x + 90, y1);
+            nd_pso_scis(G_SC_NON_INTERLACE, x, y, x + 90, y1);
             break;
 #if !VERSION_JP
         case POPUP_MENU_THROW_AWAY_ITEM:
-            gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, x, y, x + 160, y1);
+            nd_pso_scis(G_SC_NON_INTERLACE, x, y, x + 160, y1);
             break;
 #endif
     }
@@ -1502,23 +1503,23 @@ void popup_draw_menu_content(s32* userData, s32 baseX, s32 baseY, s32 width, s32
         case POPUP_MENU_READ_POSTCARD:
         case POPUP_MENU_USEKEY:
         case POPUP_MENU_POST_OFFICE:
-            gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, x, y, x + 112, y1);
+            nd_pso_scis(G_SC_NON_INTERLACE, x, y, x + 112, y1);
             break;
         case POPUP_MENU_SWITCH_PARTNER:
-            gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, x, y, x + 98, y1);
+            nd_pso_scis(G_SC_NON_INTERLACE, x, y, x + 98, y1);
             break;
         case POPUP_MENU_TRADE_FOR_BADGE:
-            gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, x, y, x + 144, y1);
+            nd_pso_scis(G_SC_NON_INTERLACE, x, y, x + 144, y1);
             break;
         case POPUP_MENU_UPGRADE_PARTNER:
-            gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, x, y, x + 144, y1);
+            nd_pso_scis(G_SC_NON_INTERLACE, x, y, x + 144, y1);
             break;
         case POPUP_MENU_SELL_ITEM:
-            gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, x, y, x + 140, y1);
+            nd_pso_scis(G_SC_NON_INTERLACE, x, y, x + 140, y1);
             break;
     }
 #else
-    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, x, y, x + PopupContentScissorWidths[gPopupMenu->popupType], y1);
+    nd_pso_scis(G_SC_NON_INTERLACE, x, y, x + PopupContentScissorWidths[gPopupMenu->popupType], y1);
 #endif
 
     x = baseX + 32;
@@ -1733,11 +1734,11 @@ void popup_draw_menu_content(s32* userData, s32 baseX, s32 baseY, s32 width, s32
         case POPUP_MENU_READ_POSTCARD:
         case POPUP_MENU_USEKEY:
         case POPUP_MENU_POST_OFFICE:
-            gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, x, y, x + 112, y1);
+            nd_pso_scis(G_SC_NON_INTERLACE, x, y, x + 112, y1);
             break;
         case POPUP_MENU_SWITCH_PARTNER:
         case POPUP_MENU_UPGRADE_PARTNER:
-            gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, x, y, x + POPUP_PARTNER_WIDTH, y1);
+            nd_pso_scis(G_SC_NON_INTERLACE, x, y, x + POPUP_PARTNER_WIDTH, y1);
             break;
     }
 

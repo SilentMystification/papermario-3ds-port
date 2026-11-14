@@ -2,6 +2,9 @@
 #include "common.h"
 #include "nu/nusys.h"
 #include "nd_api.h"
+#include "nd_st.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 extern u8 gPmStencilId;                      /* screen_overlays.c, NATIVEAPI B2a */
 extern void pm_tsten_run(const uint32_t* u); /* screen_overlays.c, NATIVEAPI B2a */
 
@@ -49,18 +52,18 @@ void appendGfx_draw_prev_frame_buffer(s32 x1, s32 y1, s32 x2, s32 y2, f32 alpha)
         }
     }
 
-    gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
-    gDPSetCombineMode(gMainGfxPos++, PM_CC_10, PM_CC_10);
-    gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
-    gDPSetColorDither(gMainGfxPos++, G_CD_DISABLE);
-    gDPSetAlphaDither(gMainGfxPos++, G_AD_NOISE);
-    gDPSetTextureFilter(gMainGfxPos++, G_TF_POINT);
-    gDPSetTexturePersp(gMainGfxPos++, G_TP_NONE);
-    gSPTexture(gMainGfxPos++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
-    gDPSetTextureLUT(gMainGfxPos++, G_TT_NONE);
-    gDPSetTextureDetail(gMainGfxPos++, G_TD_CLAMP);
-    gDPSetTextureLOD(gMainGfxPos++, G_TL_TILE);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 255, alpha);
+    nd_pso_cyc(G_CYC_1CYCLE);
+    nd_pso_cc(PM_CC_10, PM_CC_10);
+    nd_pso_rm(G_RM_CLD_SURF, G_RM_CLD_SURF2);
+    nd_pso_dither(G_CD_DISABLE);
+    nd_pso_aldith(G_AD_NOISE);
+    nd_pso_filt(G_TF_POINT);
+    nd_pso_persp(G_TP_NONE);
+    nd_tex_on(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
+    nd_pso_lut(G_TT_NONE);
+    nd_pso_detail(G_TD_CLAMP);
+    nd_pso_lod(G_TL_TILE);
+    nd_val_prim(0, 0, 255, 255, 255, alpha);
 
     for (i = 0; i < stripY; i++) {
         gDPLoadTextureTile(gMainGfxPos++, osVirtualToPhysical(prevGfxCfb), G_IM_FMT_RGBA, G_IM_SIZ_16b, 320, 6,
@@ -151,20 +154,19 @@ void appendGfx_darkness_stencil(bool isWorld, s32 posX, s32 posY, f32 alpha, f32
     }
 
     guOrtho(&gDisplayContext->matrixStack[gMatrixListPos], -16.0f, 0.0f, 0.0f, 16.0f, -1000.0f, 1000.0f, 1.0f);
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
-    gDPSetAlphaDither(gMainGfxPos++, G_AD_PATTERN);
-    gDPSetTextureFilter(gMainGfxPos++, G_TF_POINT);
-    gDPSetTexturePersp(gMainGfxPos++, G_TP_PERSP);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
+    nd_pso_aldith(G_AD_PATTERN);
+    nd_pso_filt(G_TF_POINT);
+    nd_pso_persp(G_TP_PERSP);
     gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_32b, 64, osVirtualToPhysical(nuGfxZBuffer));
-    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 0, 0, 64, 64);
+    nd_pso_scis(G_SC_NON_INTERLACE, 0, 0, 64, 64);
     gSPViewport(gMainGfxPos++, &DarknessStencilViewport);
-    gDPSetCombineMode(gMainGfxPos++, PM_CC_CONST_1, PM_CC_CONST_1);
+    nd_pso_cc(PM_CC_CONST_1, PM_CC_CONST_1);
     guRotate(&gDisplayContext->matrixStack[gMatrixListPos], 0.0f, 0.0f, 0.0f, 1.0f);
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     gSPDisplayList(gMainGfxPos++, Gfx_DarknessStencilQuad);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gDPPipeSync(gMainGfxPos++);
-    gDPSetCombineMode(gMainGfxPos++, PM_CC_56, PM_CC_56);
+    nd_xf_pop(G_MTX_MODELVIEW);
+    nd_pso_cc(PM_CC_56, PM_CC_56);
 
     for (i = 0; i < 2; i++) {
         f32 f20;
@@ -181,56 +183,51 @@ void appendGfx_darkness_stencil(bool isWorld, s32 posX, s32 posY, f32 alpha, f32
             s0 = 255;
         }
 
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 255, s0);
+        nd_val_prim(0, 0, 255, 255, 255, s0);
         guRotate(&gDisplayContext->matrixStack[gMatrixListPos], i * 70 + f2, 0.0f, 0.0f, 1.0f);
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
         guScale(&gDisplayContext->matrixStack[gMatrixListPos], f20, f20, 1.0f);
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         gSPDisplayList(gMainGfxPos++, Gfx_DarknessStencilQuad);
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        nd_xf_pop(G_MTX_MODELVIEW);
     }
 
-    gDPPipeSync(gMainGfxPos++);
-    gDPSetTexturePersp(gMainGfxPos++, G_TP_NONE);
+    nd_pso_persp(G_TP_NONE);
     gDPSetColorImage(gMainGfxPos++, G_IM_FMT_I, G_IM_SIZ_8b, 64, osVirtualToPhysical(nuGfxZBuffer));
-    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 0, 0, 64, 64);
-    gDPSetCombineMode(gMainGfxPos++, PM_CC_0F, PM_CC_0F);
+    nd_pso_scis(G_SC_NON_INTERLACE, 0, 0, 64, 64);
+    nd_pso_cc(PM_CC_0F, PM_CC_0F);
 
     for (i = 0; i < 4; i++) {
         gDPLoadTextureTile(gMainGfxPos++, osVirtualToPhysical(&nuGfxZBuffer[i * 2048]), G_IM_FMT_RGBA, G_IM_SIZ_32b, 64, 16, 0, 0, 63, 15, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
-        gDPPipeSync(gMainGfxPos++);
         gSPTextureRectangle(gMainGfxPos++, 0, (i * 16) * 4, 64 * 4, (i * 16 + 16) * 4, G_TX_RENDERTILE, 0, 0, 0x400, 0x400);
-        gDPPipeSync(gMainGfxPos++);
     }
 
     gDPLoadTextureTile(gMainGfxPos++, osVirtualToPhysical(nuGfxZBuffer), G_IM_FMT_I, G_IM_SIZ_8b, 64, 64, 0, 0, 63, 63,
                        0, G_TX_MIRROR | G_TX_CLAMP, G_TX_MIRROR | G_TX_CLAMP, 6, 6, 15, 15);
-    gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, 0, 0, 0x01FC, 0x01FC);
-    gDPPipeSync(gMainGfxPos++);
+    nd_val_tile_size(G_TX_RENDERTILE, 0, 0, 0x01FC, 0x01FC);
 
-    gDPSetCycleType(gMainGfxPos++, G_CYC_FILL);
-    gDPSetRenderMode(gMainGfxPos++, G_RM_NOOP, G_RM_NOOP2);
+    nd_pso_cyc(G_CYC_FILL);
+    nd_pso_rm(G_RM_NOOP, G_RM_NOOP2);
     gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_32b, 64, osVirtualToPhysical(nuGfxZBuffer));
     gDPSetFillColor(gMainGfxPos++, GPACK_ZDZ(G_MAXFBZ, 0)<<16 | GPACK_ZDZ(G_MAXFBZ, 0));
     gDPFillRectangle(gMainGfxPos++, 0, 0, 63, 63);
-    gDPPipeSync(gMainGfxPos++);
 
     gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
-    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-    gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
-    gDPSetColorDither(gMainGfxPos++, G_CD_MAGICSQ);
-    gDPSetAlphaDither(gMainGfxPos++, G_AD_PATTERN);
-    gDPSetTextureFilter(gMainGfxPos++, G_TF_AVERAGE);
-    gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
+    nd_pso_scis(G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    nd_pso_cyc(G_CYC_1CYCLE);
+    nd_pso_dither(G_CD_MAGICSQ);
+    nd_pso_aldith(G_AD_PATTERN);
+    nd_pso_filt(G_TF_AVERAGE);
+    nd_pso_rm(G_RM_CLD_SURF, G_RM_CLD_SURF2);
 
     if (alpha != 255.0f || isWorld == 1) {
-        gDPSetCombineMode(gMainGfxPos++, PM_CC_57, PM_CC_57);
+        nd_pso_cc(PM_CC_57, PM_CC_57);
     } else {
-        gDPSetCombineMode(gMainGfxPos++, PM_CC_58, PM_CC_58);
+        nd_pso_cc(PM_CC_58, PM_CC_58);
     }
     alpha *= 0.5f;
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, alpha * 0.5f * progress / 255.0f);
-    gDPSetEnvColor(gMainGfxPos++, 255, 255, 255, (255.0f - alpha * 0.5f) * progress / 255.0f);
+    nd_val_prim(0, 0, 0, 0, 0, alpha * 0.5f * progress / 255.0f);
+    nd_val_env(255, 255, 255, (255.0f - alpha * 0.5f) * progress / 255.0f);
 
     /* F07-6: with wide the rect reaches both screen edges. s moves by 32 / texScale per pixel, so it shifts with the left edge. */
     rectLeft = camera->viewportStartX;
@@ -291,7 +288,7 @@ void appendGfx_screen_transition_stencil(s32 arg0, s32 arg1, f32 progress, s32 p
         return;
     }
 
-    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, x1, y1, x2, y2);
+    nd_pso_scis(G_SC_NON_INTERLACE, x1, y1, x2, y2);
     texScale = (255.0f - progress) * 10.5f / 255.0f + 0.09; // range from
     /* NATIVEAPI B2a (S1TSTEN): the combine, the prim colour and the rectangle are one native record; pm_tsten_run (screen_overlays.c) draws it.
      * The record words: w0, w1 (the G_TEXRECT words), hs, hd (the RDPHALF words), prim, full | id << 1 (id: gPmStencilId, set by the caller). */
@@ -306,5 +303,4 @@ void appendGfx_screen_transition_stencil(s32 arg0, s32 arg1, f32 progress, s32 p
         };
         nd_rec_napi(pm_tsten_run, rec, 3u);
     }
-    gDPPipeSync(gMainGfxPos++);
 }
