@@ -323,6 +323,7 @@ void shockwave_appendGfx(void* effect) {
     nd_sub_open(&sub); /* DIRECT D6c: the list for later is a stream range */
 
     data++;
+    s32 fxk = 0;
     for (i = 1; i < ((EffectInstance*) effect)->numParts; i++, data++) {
         if (data->unk_4C >= 0) {
             guTranslateF(sp20, data->pos.x, data->pos.y, data->pos.z);
@@ -338,7 +339,8 @@ void shockwave_appendGfx(void* effect) {
             nd_val_tile_size(1, 0, (s32) data->unk_44, 0x007C, (s32) data->unk_44 + 0x7C);
 
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            nd_rec_dl(dlist);
+            nd_rec_dl_k(dlist, (temp_v0 >= 2) * 2 + fxk, 4);
+            fxk = 1;
             nd_xf_pop(G_MTX_MODELVIEW);
         }
     }

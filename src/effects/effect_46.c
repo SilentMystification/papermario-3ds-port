@@ -225,6 +225,7 @@ void effect_46_appendGfx(void* effect) {
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
     part++;
+    s32 fxk = 0;
     for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, part++) {
         guPositionF(mtxTransform, part->rot.x, 0.0f, part->rot.z, curScale * part->scale, part->pos.x, part->pos.y, part->pos.z);
         guRotateF(mtxTemp, part->rot.y, 0.0f, 1.0f, 0.0f);
@@ -243,7 +244,8 @@ void effect_46_appendGfx(void* effect) {
         guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        nd_rec_dl(D_090003A0_38ED30);
+        nd_rec_dl_k(D_090003A0_38ED30, fxk, 2);
+        fxk = 1;
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 

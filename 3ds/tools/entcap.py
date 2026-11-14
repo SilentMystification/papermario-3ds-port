@@ -10,11 +10,15 @@ Last line: `entcap.py lists <n> sites <m> over <count of entcap over lines> nt <
 An `entcap nt l <list> s <site>` line (FXENT2, a list call with no device table) prints `nt <list symbol> <site function> <file:line>`.
 Symbols come from arm-none-eabi-nm, names and lines from arm-none-eabi-addr2line (decode_dump.py:16-20 lookup).
 The site is the nd_rec_dl call site: the return address minus 4 (the bl instruction).
+FXENT3: a site word carries the key of an nd_rec_dl_k call in bits 28-31 (key + 1, nd_gtab.c nd_rec_dl_key). The key is masked
+off and printed as `#<key>` after the file:line of an l or so line. An `entcap so l <list> s <site>` line (a state-only list, no
+words) prints `so <list symbol> <fn> <file:line>`.
 """
 import bisect, glob, os, re, shutil, subprocess, sys
 
 LINE = re.compile(r"entcap l ([0-9a-f]{8}) s ([0-9a-f]{8}) d((?: [0-9a-f]{8}){11})")
 OVER = re.compile(r"entcap over")
+SO = re.compile(r"entcap so l ([0-9a-f]{8}) s ([0-9a-f]{8})")  # FXENT3: a state-only list (nd_walk.c gt_run), no words
 NT = re.compile(r"entcap nt l ([0-9a-f]{8}) s ([0-9a-f]{8})")  # FXENT2: a static list call with no device table (nd_gtab.c nd_rec_dl)
 
 
@@ -72,6 +76,12 @@ def site_name(addr2line, elf, site):
     return fn, loc
 
 
+def key_suffix(site):
+    """FXENT3: the key of an nd_rec_dl_k site word (bits 28-31 = key + 1), as `#<key>`; empty for an unkeyed site."""
+    kb = site >> 28
+    return "#%d" % (kb - 1) if kb > 0 else ""
+
+
 def main(a):
     if not a or a[0].startswith("-"):
         sys.exit(__doc__)
@@ -102,15 +112,21 @@ def main(a):
                 fn, loc = site_name(addr2line, elf, site - 4)
                 print("nt %s %s %s" % (list_symbol(syms, lst), fn, loc))
                 continue
+            ms = SO.search(ln)
+            if ms:
+                lst, site = int(ms.group(1), 16), int(ms.group(2), 16)
+                fn, loc = site_name(addr2line, elf, (site & 0x0fffffff) - 4)
+                print("so %s %s %s" % (list_symbol(syms, lst), fn, loc + key_suffix(site)))
+                continue
             m = LINE.search(ln)
             if not m:
                 continue
             lst, site = int(m.group(1), 16), int(m.group(2), 16)
             words = m.group(3).split()
             lists.add(lst)
-            sites.add(site)
-            fn, loc = site_name(addr2line, elf, site - 4)
-            print("%s %s %s %s" % (list_symbol(syms, lst), fn, loc, " ".join(words)))
+            sites.add(site & 0x0fffffff)
+            fn, loc = site_name(addr2line, elf, (site & 0x0fffffff) - 4)
+            print("%s %s %s%s %s" % (list_symbol(syms, lst), fn, loc, key_suffix(site), " ".join(words)))
     print("entcap.py lists %d sites %d over %d nt %d" % (len(lists), len(sites), over, nt))
 
 

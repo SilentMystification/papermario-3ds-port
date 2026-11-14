@@ -133,6 +133,6 @@ void floating_rock_appendGfx(void* effect) {
     }
 
     nd_draw_list(NDN(D_09000450_396540), ND_SELF);
-    nd_rec_dl(D_E0098510[data->type]);
+    nd_rec_dl_k(D_E0098510[data->type], alpha != 255, 2);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

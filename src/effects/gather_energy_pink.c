@@ -202,6 +202,7 @@ void gather_energy_pink_appendGfx(void* effect) {
     idx = part->unk_2C * 3;
     alpha = part->unk_24;
 
+    s32 fxk = 0;
     for (i = 0; i < ((EffectInstance*)effect)->numParts; i++, part++) {
         s32 tempX;
         s32 tempY;
@@ -221,7 +222,8 @@ void gather_energy_pink_appendGfx(void* effect) {
 
         nd_val_tile_size(G_TX_RENDERTILE, tempX, tempY, tempX + 256, tempY + 256);
         nd_val_tile_size(1, tempX2, tempY2, tempX2 + 256, tempY2 + 256);
-        nd_rec_dl(dlist2);
+        nd_rec_dl_k(dlist2, unk_00 * 2 + fxk, 4);
+        fxk = 1;
     }
 
     nd_xf_pop(G_MTX_MODELVIEW);

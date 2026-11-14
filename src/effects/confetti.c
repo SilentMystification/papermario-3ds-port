@@ -307,7 +307,7 @@ void confetti_appendGfx(void* effect) {
 
             nd_val_tile_size(G_TX_RENDERTILE, ulx << 2, uly << 2, (ulx << 2) + ((width >> 1) << 1), (uly << 2) + height);
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            nd_rec_dl(spA0);
+            nd_rec_dl_k(spA0, (unk_24 + i) % 3, 3);
             nd_xf_pop(G_MTX_MODELVIEW);
         }
     }

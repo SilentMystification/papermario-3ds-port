@@ -156,7 +156,19 @@ E(star_spirits_energy, fx_star_spirits_energy(2, X, Y, Z, 1.0f, 0)) \
 E(pink_sparkles, fx_pink_sparkles(0, X, Y, Z, 1.0f, 0)) \
 E(star_outline, fx_star_outline(0, X, Y, Z, 1.0f, 0)) \
 E(effect_86, fx_effect_86(0, X, Y, Z, 3.0f, 0)) \
-E(gather_energy_pink_t1, fx_gather_energy_pink(1, X, Y, Z, 1.0f, 30))
+E(gather_energy_pink_t1, fx_gather_energy_pink(1, X, Y, Z, 1.0f, 30)) \
+E(landing_dust_t2, fx_landing_dust(2, X, Y, Z, 0)) \
+E(damage_indicator_12, fx_damage_indicator(0, X, Y, Z, 10.0f, 0, 12, &oe)) \
+E(disable_x_t1, fx_disable_x(1, X, Y, Z, 0)) \
+E(disable_x_d3, fx_disable_x(0, X, Y, Z, 3)) \
+E(disable_x_d12, fx_disable_x(0, X, Y, Z, 12)) \
+E(energy_orb_wave_t0, fx_energy_orb_wave(0, X, Y, Z, 1.0f, 20)) \
+E(fire_breath_t1, fx_fire_breath(1, X, Y, Z, X + 10, Y, Z, 5, 2, 30)) \
+E(ice_shard_t1, fx_ice_shard(1, X, Y, Z, 1.0f, 30)) \
+E(recover_d5, fx_recover(0, X, Y, Z, 5)) \
+E(recover_d15, fx_recover(0, X, Y, Z, 15)) \
+E(recover_t1, fx_recover(1, X, Y, Z, 15)) \
+E(rising_bubble_a30, fx_rising_bubble(0, X, Y, Z, 30.0f))
 
 static void fxt_lil_oink(void) {
     EffectInstance* o = fx_lil_oink(0, 0.0f, 0.0f, 0.0f, 0.0f, 0);

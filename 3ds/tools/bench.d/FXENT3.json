@@ -1,0 +1,51 @@
+{
+  "benches": [
+    {
+      "name": "fxr_cap",
+      "kind": "azahar_stream",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "FXENT3 capture: entcap and psochk lines of the rest effects and the 12 variants (cold det start). Log only.",
+      "scenario": "fxr_cap",
+      "cap": 45,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "det"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fxr_chk",
+      "kind": "azahar_stream",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "FXENT3 check: psochk lines of the same effects (cold det start). Log only.",
+      "scenario": "fxr_chk",
+      "cap": 45,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "det"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fxr_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FXENT3 draw records: drec.txt of the rest effects, frames 412 to 1732 step 44 (cold det start). Two runs of one build byte-equal.",
+      "scenario": "fxr_drec",
+      "cap": 40,
+      "until": "drec f1732 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "drec"
+      ],
+      "gates": []
+    }
+  ]
+}

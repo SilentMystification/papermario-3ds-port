@@ -141,6 +141,7 @@ void stars_spread_appendGfx(void* effect) {
     nd_val_prim(0, 0, 220, 220, 40, 230);
 
     part++;
+    s32 fxk = 0;
     for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, part++) {
         guTranslateF(sp18, part->unk_04, part->unk_08, part->unk_0C);
         guRotateF(sp58, part->unk_1C, 0.0f, 0.0f, 1.0f);
@@ -150,7 +151,8 @@ void stars_spread_appendGfx(void* effect) {
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        nd_rec_dl(dlist);
+        nd_rec_dl_k(dlist, fxk, 2);
+        fxk = 1;
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 
