@@ -1,44 +1,44 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main b2442aa97, 2026-11-13. Written by the first workstream oracle.
+State: main 6fbd4d6c6, 2026-11-13. Written by the second workstream oracle.
 ## Goal
 Remove the display list system completely (plan_endgame.md v3). Done only when `3ds/tools/elfgate.py` prints
 `func 0 data 0 gfxnames 0` and every LISTCEN2 counter C1..C12 is 0.
-FACT (listcen.py at b2442aa97): C1 build 3612, C2 gfxpos 3042, C3 build_n64 272, C4 gfxpos_n64 280, C5 data 22103, C6 data_arrays
-2108, C7 gfxtype 2845, C8 reader 732, C9 model 15, C10 recdl 361. ELF last measured: func 50, data 4152, gfxnames 1806 (HANDOFF.md).
-FACT (codemod.py --dry src): value 1605, keep 81, state 1515, dl 496 (nd_rec_dl 321, gSPDisplayList 175). Keep reasons: no-entry
-477, first-arg 76, ctx 17, macro 5, stmt 2. Root src/*.c: value 325, state 899.
+FACT (`python 3ds/tools/listcen.py` at 6fbd4d6c6): C1 build 2008, C2 gfxpos 1438, C3 0, C4 0, C5 data 22103, C6 data_arrays 2108,
+C7 gfxtype 2845, C8 reader 746, C9 model 15, C10 recdl 359 (effects 319, world 12, entity 10, battle 3, root files 15).
+FACT (codemod.py --dry --state per dir, 6fbd4d6c6): rewrites effects 103, world 131, entity 39, evt 5, battle 9, pause 19, filemenu 19.
 ## Tools on main (all in 3ds/tools unless named)
-- listcen.py (C1-C10; `--group <prefix>` per file), elfgate.py (C11-C12), codemod.py (7 value shapes, `--dry`), tests/codemod/run.sh.
-- nd_host_test.sh: the host tests in docker; host.d/*.sh run last in the same block (/tmp/ndcomb.o, /tmp/ndlogs.c exist there).
-- bench.py base/run/cmp (drec benches: gold_*_drec, fxpic_*_drec, spot_mac01_drec, sbk14_drec; spot_mac00w_det on CODEMODW1).
-- gold.py (coverage verdict), covsites.py, entcap.py (branch ENTRYCAP), unifdef3ds.py and ppcmp.sh (N64DEL), memcheck.py.
-- gen_pso_tab.py scans ND_PSO_DESC names in src (a duplicate name is an error). psochk switch: nd_comb.c:219, line every 100 frames.
-## Open work (pages written 2026-11-13; each page names its start branch)
-- ws_HUNIT.md: branch CODEMODW1. nd_xf.c to nd_rec_state, new nd_val_test.c (macro stream vs native, walker log, nd_r11_state).
-- ws_A.md: branch WSA after HUNIT. codemod on src/effects (4 groups, v 992), then world, entity, pause/filemenu/battle/evt after N64DEL2.
-- ws_B.md: CONV2F gate (branch CONV2F), ENTRYCAP gate (branch ENTRYCAP), then ENTRY1 entry form (nd_rec_dl_e, nd_gtab_run_e, psochk).
-  Stops after group 3. Next oracle task: the ENTRY group page (426 inheriting lists) and later the GSET page (C5, C6).
-- ws_C.md: N64DEL2 (branch N64DEL2, gate only), N64DEL3, N64DEL4, then nd_st setters + codemod --state + root groups R1-R6.
-- design_state_calls.md: the setter idiom per state shape (orchestrator adds its INDEX.md line).
-- Other branches: CONV2MIX (ahead 1; plan says MIX closed, its 16 lists stay v1: orchestrator decides delete or merge),
-  SEEDPROBE1 (cancelled: delete), BOTHUD (on hold, user), FPS60FL (60 fps freeze, open), FSELLAG (console check owed).
+- listcen.py (C1-C10, `--group`), elfgate.py (C11-C12), codemod.py (`--state` STATE_MAP :52-72, `--ntab <ntab_tables.txt>` ND_SELF,
+  `--dry`), tests/codemod/run.sh (26 cases). nd_st.h/nd_st.c: 18 setters (stunit 18/18). nd_val, nd_xf (hunit 7/7).
+- Entry form (ENTRY1): nd_draw_list(list, entry) -> nd_rec_dl_e (nd_gtab.c:114) -> nd_rec_dl; dl_ent set gives the 4-word record
+  nd_gtab_run_e (nd_walk.c:641) = nd_psochk_draw (nd_comb.c:219) + nd_gtab_run. Draws are equal by construction; the desc is only checked.
+- entcap switch: entcap_rec (nd_walk.c:501) logs `entcap l <list> s <site> d <11 words>` for a list with no v2 table; entcap.py names
+  them (addr2line). 1024 keys. psochk switch prints `psochk f<n> draws <d> bad <b>` per 100 frames and `psochk bad <field> ...` (8 max).
+- build3ds/out/ntab_tables.txt (922), ntab_inherit.txt (426), ntab_unsup.txt (24): written by gen_gfx_tab.sh:18-23 at each build.
+- fxtest=<n,n,...> runs effects one per 44 frames from frame 400 (pm_fxtest.c:179-180), 128 effects. fxcen_c0..c7 (16 each, turbo) took
+  7-21 s (FACT, runs.jsonl).
+- Drec bases (bench.py cmp uses the merge-base unless `--commit`): spot_mac01_drec, sbk14_drec, gold_12_drec at 930de29e1;
+  spot_mac00w_det at a0e0414d8; gold_33/55/63_drec, fxpic_91_drec at d29deacc3; fxpic_89_drec at 2e6ac0825 (FACT, runs.jsonl).
+## Open work
+- ws_C (branch WSCR4, coder running): root src/*.c state calls R4-R6. Owns root src/*.c, include/, nd_st.*.
+- ws_ENTRY.md (branch ENTRYFX, page 2026-11-13): effects state calls + 89 ND_SELF sites (E1), entapply.py (E2), entcap capture in 3
+  fxtest chunks and the entry descs (E3). Owns src/effects, entapply.py, tests/entapply, azt.d and bench.d ENTRYFX.json.
+- ws_D.md (branch WSD, page 2026-11-13): state calls of world, entity, evt, battle, pause, filemenu (222 rewrites, 3 groups).
+- ws_B.md: done (groups 1-3 merged). The orchestrator deletes it.
+- Blocked: root-file recdl (15) and root entries: wait for ws_C R6. World/entity/battle entries (25 sites): need capture scenes per
+  site (fxtest covers only effects); write after ws_ENTRY E3 merges. CONV2C2: after the ENTRY pages. GSET (C5, C6): after CONV2C2.
+  Readers C8 and the S9DEL stages: plan section 6 phase E needs C1, C2 and C10 at 0 for the deleted code first.
 ## Facts that cost time
-- The macro path records the typed unit into the open NDC_STATE run (nd_rec.c:442-459). main's nd_val.c and nd_xf.c record NDC_NAPI
-  records instead. nd_r11_walk (nd_model.c:274-299, :296 `default: return 0;`) rejects NDC_NAPI in a model custom gfx range: the
-  mac_00 water cause (code read). CODEMODW1 03d1bfe66 moves nd_val.c to nd_rec_state. nd_xf.c still uses NAPI (HUNIT fixes it).
-- 12 effect files already use nd_val/nd_xf on main (CODEMODFX1-11). Their drec gates passed with the NAPI form.
-- codemod.py does not see `#ifdef TARGET_3DS`: it rewrites calls in N64 blocks too. src/effects has no TARGET_3DS line (N64DEL1).
-  The other subdirs have N64 blocks until N64DEL2 merges, root files until N64DEL3: so ws_A groups 5-7 wait for N64DEL2.
-- codemod.py adds no #include: the coder adds nd_val.h, nd_xf.h (and nd_st.h) after the last include.
-- Directory ownership: ws_A = src subdirs (value calls), ws_B = 3ds/src gtab files, nd_gfx_conv, explosion.c pilot,
-  ws_C = include/, root src/*.c, nd_st.*, codemod STATE_MAP. codemod.py is shared: CONV2F (ws_B) edits it first, ws_C after.
-- N64DEL2 must not merge main before its gate: the row diffs against 6fce31e6f.
-- C1 counts `g[DS]P...(` (listcen.py:42), C2 every gMainGfxPos (:43), C8 NDO_ and G_ words in 3ds/src (:48). A value or state
-  rewrite moves C1 and C2 by exactly the codemod count: the exact gate of every group.
-- nd_rec.c has never been linked on the host before HUNIT. Its doubles are listed in ws_HUNIT.md (code read, not linked yet).
+- codemod.py gives a file's single ND_PSO_DESC to every nd_rec_dl/gSPDisplayList of that file (codemod.py:14, :142-144). After ENTRY E3
+  many effect files have one desc: never run codemod on src/effects again unless that rule is removed first.
+- explosion.c: :191 and :204 lists are self-contained (ntab_tables), :198 D_090008F0_344860 inherits (ntab_inherit.txt:117).
+- A converted site calls nd_rec_dl from nd_rec_dl_e, so entcap names it as 3ds/src/nd_gtab.c:114, not the game line.
+- entcap_rec skips state-only lists (nd_walk.c:604-611 return before :612) and lists with a v2 table (:505).
+- codemod.py does not see `#ifdef`; C3, C4 are 0 now, so no N64 block is left. codemod adds no #include.
+- C1 counts `g[DS]P...(` (listcen.py:42), C2 gMainGfxPos (:43), C10 `nd_rec_dl(` and `nd_scomp_rec(` (:47), C8 (:48-49).
+  A rewrite moves C1 and C2 by exactly the codemod value: the exact gate of every group. nd_draw_list does not count in C10.
+- Directory ownership: ws_C root src/*.c, include/, nd_st.*; ws_ENTRY src/effects; ws_D world, entity, evt, battle, pause, filemenu.
 ## What to do first
-1. Read SendMessage questions from coders; answer in 10 lines with file:line.
-2. After HUNIT merges: confirm `hunit ok 7/7` and the CODEMODW1 cmp lines in runs.jsonl; then ws_A can start.
-3. After ws_B group 3: write ws_ENTRY.md (entcap capture per directory, ND_PSO_DESC names pe_<file>_<n>, psochk bad 0).
-4. After ws_C R6: write the readers and recdl page (C8, C10).
+1. Answer coder questions (SendMessage, 10 lines, file:line).
+2. After ws_ENTRY E3 merges: write the world/entity/battle entry page (scenes per site from gold.py coverage) and then CONV2C2.
+3. After ws_C R6 merges: write the root recdl and entry page (15 sites) with ws_C's files.
