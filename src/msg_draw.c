@@ -13,6 +13,7 @@
 #include "nd_xf.h"
 #include "nd_geo.h"
 #include "nd_tx.h"
+#include "nd_at.h"
 
 extern IMG_BIN ui_msg_bubble_left_png[];
 extern IMG_BIN ui_msg_bubble_mid_png[];
@@ -1727,8 +1728,8 @@ unsigned pm_frame_count(void);
 void pm_log_evt(const char* fmt, ...);
 static void msg_glyph_run(const uint32_t* u) {
     const NdGlyphRec* r = (const NdGlyphRec*)u;
-    Gfx buf[24];
-    Gfx* p = buf;
+    uint32_t buf[48];
+    uint32_t* nrp = buf;
     static unsigned g_dir, g_fb, g_next;
 
     if (pm_frame_count() >= g_next) { /* census every 300 frames: glyphs drawn direct (gdir) and handed to the old list (gfb) */
@@ -1742,19 +1743,19 @@ static void msg_glyph_run(const uint32_t* u) {
     }
     g_fb++;
     if (r->tlut) {
-        gDPLoadTLUT_pal16(p++, 0, r->pal);
+        NDTX_LOAD_TLUT16(ND_NR_AT, 0, r->pal);
     }
     if (r->texW >= 16 && r->texW % 16 == 0) {
-        gDPLoadTextureBlock_4b(p++, r->raster, G_IM_FMT_CI, r->texW, r->texH, 0,
+        NDTX_LOAD_BLOCK_4B(ND_NR_AT, r->raster, G_IM_FMT_CI, r->texW, r->texH, 0,
                                G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
     } else {
-        gDPLoadTextureTile_4b(p++, r->raster, G_IM_FMT_CI, r->texW, r->texH,
+        NDTX_LOAD_TILE_4B(ND_NR_AT, r->raster, G_IM_FMT_CI, r->texW, r->texH,
                               0, 0, r->texW - 1, r->texH - 1, 0,
                               G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
     }
-    gSPTextureRectangle(p++, r->ulx * 4, r->uly * 4, r->lrx * 4, r->lry * 4, G_TX_RENDERTILE, r->texOffsetX, r->texOffsetY,
+    NDTX_RECT_TEX(ND_NR_AT, r->ulx * 4, r->uly * 4, r->lrx * 4, r->lry * 4, G_TX_RENDERTILE, r->texOffsetX, r->texOffsetY,
                         r->dsdx, r->dtdy);
-    nd_walk_state((const uint32_t*)buf, (unsigned)(p - buf));
+    nd_nr_exec(buf, (unsigned)(nrp - buf) / 2u);
 }
 
 void msg_draw_char(MessagePrintState* printer, MessageDrawState* drawState, s32 charIndex, s32 palette, s32 posX, s32 posY) {

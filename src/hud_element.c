@@ -10,6 +10,7 @@
 #include "nd_xf.h"
 #include "nd_geo.h"
 #include "nd_tx.h"
+#include "nd_at.h"
 
 #define MAX_HUD_CACHE_ENTRIES 192
 
@@ -599,22 +600,22 @@ __attribute__((unused)) static void cplx_quad_run(const uint32_t* u) {
         return;
     }
     {
-        static Gfx buf[32];
-        Gfx* p = buf;
-        gDPSetTextureFilter(p++, filt ? G_TF_AVERAGE : G_TF_POINT);
-        gSPMatrix(p++, r->mtx, G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-        gDPSetCombineMode(p++, PM_CC_47, PM_CC_47);
-        gDPSetPrimColor(p++, 0, 0, r->prim >> 24, (r->prim >> 16) & 0xff, (r->prim >> 8) & 0xff, r->prim & 0xff);
-        if (!xlu) { if (!aa) { gDPSetRenderMode(p++, G_RM_TEX_EDGE, G_RM_TEX_EDGE2); } else { gDPSetRenderMode(p++, G_RM_AA_TEX_EDGE, G_RM_AA_TEX_EDGE2); } }
-        else { if (!aa) { gDPSetRenderMode(p++, G_RM_CLD_SURF, G_RM_CLD_SURF2); } else { gDPSetRenderMode(p++, AA_EN | G_RM_CLD_SURF, AA_EN | G_RM_CLD_SURF2); } }
-        gDPLoadTextureBlock(p++, r->img, G_IM_FMT_IA, G_IM_SIZ_8b, r->w, r->h, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP,
+        static uint32_t buf[64];
+        uint32_t* nrp = buf;
+        NDST_FILT(ND_NR_AT, filt ? G_TF_AVERAGE : G_TF_POINT);
+        NDXF_PUSH(ND_NR_AT, r->mtx, G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+        NDST_CC(ND_NR_AT, PM_CC_47, PM_CC_47);
+        NDVAL_PRIM(ND_NR_AT, 0, 0, r->prim >> 24, (r->prim >> 16) & 0xff, (r->prim >> 8) & 0xff, r->prim & 0xff);
+        if (!xlu) { if (!aa) { NDST_RM(ND_NR_AT, G_RM_TEX_EDGE, G_RM_TEX_EDGE2); } else { NDST_RM(ND_NR_AT, G_RM_AA_TEX_EDGE, G_RM_AA_TEX_EDGE2); } }
+        else { if (!aa) { NDST_RM(ND_NR_AT, G_RM_CLD_SURF, G_RM_CLD_SURF2); } else { NDST_RM(ND_NR_AT, AA_EN | G_RM_CLD_SURF, AA_EN | G_RM_CLD_SURF2); } }
+        NDTX_LOAD_BLOCK(ND_NR_AT, r->img, G_IM_FMT_IA, G_IM_SIZ_8b, r->w, r->h, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP,
                             G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
-        gDPSetTextureLUT(p++, G_TT_NONE);
-        gSPVertex(p++, r->vtx, 4, 0);
-        gSP1Triangle(p++, 0, 1, 2, 0);
-        gSP1Triangle(p++, 0, 2, 3, 0);
-        gSPPopMatrix(p++, G_MTX_MODELVIEW);
-        nd_walk_state((const uint32_t*)buf, (unsigned)(p - buf));
+        NDST_LUT(ND_NR_AT, G_TT_NONE);
+        NDGEO_VTX(ND_NR_AT, r->vtx, 4, 0);
+        NDGEO_TRI1(ND_NR_AT, 0, 1, 2, 0);
+        NDGEO_TRI1(ND_NR_AT, 0, 2, 3, 0);
+        NDXF_POP(ND_NR_AT);
+        nd_nr_exec(buf, (unsigned)(nrp - buf) / 2u);
     }
 }
 
