@@ -26,7 +26,7 @@ No console push without the user. Pre-approved by the user: the Sonnet and Opus 
 One coder owns one workstream, with its own goal page (docs/handoff/ws_<id>.md: objective, output form, loop, directory
 boundaries, tests that decide pass and fail). The coder commits per group of directories and hands back at the end.
 - A value calls (C1, C2): codemod on whole directories (effects, world, hud, models, rest). Host unit tests for the 7 call shapes first.
-- B static data (C5, C6): Gfx arrays to v2 tables (CONV2F, ENTRYCAP, then groups); memcheck margin 310 KB or more.
+- B static data (C5, C6): Gfx arrays to v2 tables (CONV2F, ENTRYCAP, then groups); memcheck margin above 0 KB (the real limit, soft: user 2026-11-08). The old "310 KB" had no source (user, 2026-11-14): a page may name a buffer only with a reason, and a coder never rewrites a design to chase a buffer: it hands back the numbers.
 - C N64 branches (C3, C4: N64DEL2 branch exists with 55 edited files), then the remaining state calls, readers and recdl.
 The goal pages are written by the designer (oracle). Until they exist, run the open branches (N64DEL2, ENTRYCAP, CONV2F, CODEMODW1)
 as they are.
