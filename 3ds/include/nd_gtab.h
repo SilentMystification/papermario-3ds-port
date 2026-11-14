@@ -100,10 +100,11 @@ typedef struct NdNTab {
 /* CONV2D2 (core 0): the device index of the v2 tables, written by nd_gfx_conv.c after the tables (nd_gfx_tab.c): one entry per table, sorted by
  * list address at the first nd_ntab_find. nd_ntab_find: the table of a list, or NULL. nd_ntab_run: a table as its NDN_UNIT copy in nd_walk.c. */
 /* CONV2D2, core 0 only. n = the word pairs of the list from unit 0 to the stop (NOPs counted): nd_walk_state(list, n) runs the unit copy. */
-typedef struct NdNDev { const void* list; uint32_t n; const uint32_t* u; uint32_t nu; uint32_t ntri; } NdNDev;
-extern NdNDev ndn_dev_idx[];
+typedef struct NdNDev { const void* list; uint32_t fl; const uint32_t* u; uint32_t nu; uint32_t ntri; } NdNDev; /* GKEY1: fl = nd_gt_state_only of the list (converter) */
+extern const NdNDev* ndn_dev_idx[]; /* GKEY1: &ndd_<list> per entry, sorted by ->list at the first nd_ntab_find */
 extern const unsigned ndn_dev_n;
 const NdNDev* nd_ntab_find(const void* list);
 void nd_ntab_run(const NdNDev* e);
+unsigned nd_gt_state_only(const uint32_t* l); /* 1: the end within 64 units, every unit before it a state op or a sync */
 int nd_ntab_flat(const NdNDev* e, void* out, unsigned* n, unsigned max, int depth, int (*call)(uint32_t w1, unsigned* n, int depth)); /* EMIT4: the ent_flat words of a v2 list from e->u (1 done, 0 refused) */
 #endif

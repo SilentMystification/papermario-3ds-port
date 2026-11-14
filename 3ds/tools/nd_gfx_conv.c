@@ -642,6 +642,21 @@ static int v2_one(const GSym* g, const NdPsoDesc* seed, FILE* fu) {
     return 1;
 }
 
+/* GKEY1: the state-only flag of a v2 list (nd_gt_state_only of nd_gtab.c, the same body; gt_kind written in line) */
+static unsigned v2_state_only(const uint32_t* l) {
+    for (unsigned n = 0; n < 64u; n++) {
+        const uint32_t w0 = l[2u * n];
+        const unsigned op = w0 >> 24;
+        unsigned k;
+        if (!nd_op_typed(op)) k = 0u;
+        else if (op == NDO_END) k = 3u;
+        else if (op == NDO_MISC) k = (w0 & 0xffffffu) == (NDO_MISC_NOP << 16) ? 2u : 0u;
+        else k = (op <= NDO_COMB || nd_op_tex(op) || (op >= NDO_MTX && op <= NDO_MOVEMEM)) ? 1u : 0u;
+        if (k == 3u) return 1u;
+        if (!k) return 0u;
+    }
+    return 0u;
+}
 static V2C v2c_mem;
 static void v2_convert_all(const char* descs_path, const char* inh_path, const char* uns_path, const char* idx_path, const char* tab_path, const char* pairs_path) {
     FILE* fi = fopen(inh_path, "w");
@@ -688,12 +703,18 @@ static void v2_convert_all(const char* descs_path, const char* inh_path, const c
     if (!fp) { fprintf(stderr, "gconv: cannot write %s\n", pairs_path); exit(1); }
     for (unsigned i = 0; i < v2_n_tab; i++) if (v2_seed_t[i]) fprintf(fp, "%s %s\n", v2_tab[i]->name, v2_nm[i]);
     fclose(fp);
-    /* CONV2D2: the device index of the tables (nd_gtab.h NdNDev), after the tables in nd_gfx_tab.c; one entry per list (CONV2C2: the seeded tables of a list share it) */
+    /* CONV2D2: the device index of the tables (nd_gtab.h NdNDev), after the tables in nd_gfx_tab.c; one entry per list (CONV2C2: the seeded tables of a list share it).
+     * GKEY1: one standalone ndd_<list> per list (fl = the state-only flag), and a pointer index to them */
     unsigned ndev = 0;
-    for (unsigned i = 0; i < v2_n_tab; i++) if (!v2_dup[i]) ndev++;
-    printf("NdNDev ndn_dev_idx[%u] = {\n", ndev ? ndev : 1u);
-    for (unsigned i = 0; i < v2_n_tab; i++) if (!v2_dup[i]) printf("    { (const void*)%s, %uu, (const uint32_t*)%s, %uu, %uu },\n", v2_tab[i]->name, v2_nk[i], v2_tab[i]->name, v2_nk[i], v2_ntri[i]);
-    if (!ndev) printf("    { 0, 0, 0, 0, 0 }\n");
+    for (unsigned i = 0; i < v2_n_tab; i++) {
+        if (v2_dup[i]) continue;
+        const char* nm = v2_tab[i]->name;
+        printf("const NdNDev ndd_%s = { (const void*)%s, %uu, (const uint32_t*)%s, %uu, %uu };\n", nm, nm, v2_state_only((const uint32_t*)v2_tab[i]->addr), nm, v2_nk[i], v2_ntri[i]);
+        ndev++;
+    }
+    printf("const NdNDev* ndn_dev_idx[%u] = {\n", ndev ? ndev : 1u);
+    for (unsigned i = 0; i < v2_n_tab; i++) if (!v2_dup[i]) printf("    &ndd_%s,\n", v2_tab[i]->name);
+    if (!ndev) printf("    0\n");
     printf("};\nconst unsigned ndn_dev_n = %uu;\n", ndev);
     fclose(fi); fclose(fu);
     /* the pso descriptions: the file gen_pso_tab.py of NPSO3 scans for the ids (the id of a description is its line order) */
