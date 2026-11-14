@@ -1,6 +1,8 @@
 #include "end_01.h"
 #include "effects.h"
 #include "model.h"
+#include "nd_st.h"
+#include "nd_val.h"
 
 extern s32 N(SpotlightsAlpha);
 
@@ -111,7 +113,7 @@ API_CALLABLE(N(SetSpotlightsAlpha)) {
 }
 
 void N(gfx_build_set_spotlight_alpha)(void) {
-    gDPSetCombineMode(gMainGfxPos++, PM_CC_3F, PM_CC_3F);
+    nd_pso_cc(PM_CC_3F, PM_CC_3F);
     nd_val_prim(0, 0, 0, 0, 0, N(SpotlightsAlpha));
 }
 

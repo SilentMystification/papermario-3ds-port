@@ -1,5 +1,7 @@
 #include "kmr_30.h"
 #include "effects.h"
+#include "nd_st.h"
+#include "nd_val.h"
 
 API_CALLABLE(N(ChooseFireworkColors)) {
     Bytecode* args = script->ptrReadPos;
@@ -98,7 +100,7 @@ API_CALLABLE(N(UpdateTheEndAlpha)) {
     return ApiStatus_DONE2;
 }
 void N(gfx_build_the_end)(void) {
-    gDPSetCombineMode(gMainGfxPos++, PM_CC_05, PM_CC_05);
+    nd_pso_cc(PM_CC_05, PM_CC_05);
     nd_val_prim(0, 0, 0, 0, 0, TheEndModelAlpha);
 }
 

@@ -2,6 +2,9 @@
 #include "model.h"
 #include "sprite/player.h"
 #include "include_asset.h"
+#include "nd_st.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 // cards used during Merlee's ritual
 typedef struct RitualCard {
@@ -245,7 +248,7 @@ u32 N(appendGfx_ritual_card)(RitualCard* card, Matrix4f mtxParent) {
 
         if (card->unk_00 == 1 || card->unk_00 == 5) {
             spr_get_player_raster_info(&rasterInfo, card->spriteID, card->rasterIndex);
-            gDPSetTextureLUT(gMainGfxPos++, G_TT_RGBA16);
+            nd_pso_lut(G_TT_RGBA16);
             gDPLoadTLUT_pal16(gMainGfxPos++, 0, rasterInfo.defaultPal);
             gDPLoadTextureTile_4b(gMainGfxPos++, rasterInfo.raster, G_IM_FMT_CI, rasterInfo.width, rasterInfo.height,
                                     0, 0, rasterInfo.width - 1, rasterInfo.height - 1, 0,

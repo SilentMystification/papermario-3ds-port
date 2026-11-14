@@ -1,6 +1,8 @@
 #include "hos_03.h"
 
 #include "world/common/atomic/TexturePan.inc.c"
+#include "nd_st.h"
+#include "nd_xf.h"
 
 u16 N(D_80243BCC_A1ECCC) = 0;
 u16 N(D_80243BCE_A1ECCE) = 0;
@@ -29,7 +31,7 @@ void N(func_8024033C_A1B43C)(void) {
         colors[2] = colors[0] * temp3 / 0x10000;
     }
 
-    gSPClearGeometryMode(gMainGfxPos++, G_CULL_BOTH);
+    nd_pso_geom_clr(G_CULL_BOTH);
     gSPDisplayList(gMainGfxPos++, mdl_get_copied_gfx(VTX_COPY_1));
     N(D_80243BCE_A1ECCE) += 0x666;
 }

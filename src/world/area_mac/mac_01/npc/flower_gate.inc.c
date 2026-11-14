@@ -1,3 +1,5 @@
+#include "nd_st.h"
+#include "nd_val.h"
 EvtScript N(EVS_MinhThankYou) = {
     Call(DisablePlayerInput, true)
     Call(GetNpcPos, NPC_MinhT, LVar0, LVar1, LVar2)
@@ -197,7 +199,7 @@ API_CALLABLE(N(SetFlowerGateGlowAlpha)) {
 }
 
 void N(gfx_build_flower_gate_glow)(void) {
-    gDPSetCombineMode(gMainGfxPos++, PM_CC_FLOWER_GATE_GLOW, PM_CC_FLOWER_GATE_GLOW);
+    nd_pso_cc(PM_CC_FLOWER_GATE_GLOW, PM_CC_FLOWER_GATE_GLOW);
     nd_val_prim(0, 0, 0, 0, 0, N(FlowerGatePrimAlpha));
 }
 

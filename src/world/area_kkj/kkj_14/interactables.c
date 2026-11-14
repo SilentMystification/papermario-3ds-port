@@ -3,6 +3,8 @@
 #include "sprite/player.h"
 
 #include "world/common/todo/GetPeachDisguise.inc.c"
+#include "nd_st.h"
+#include "nd_val.h"
 
 EvtScript N(EVS_Inspect_Fireplace) = {
     Call(DisablePlayerInput, true)
@@ -210,9 +212,9 @@ API_CALLABLE(N(SetFireplaceAlpha)) {
 }
 
 void N(setup_gfx_fireplace)(void) {
-    gDPSetCycleType(gMainGfxPos++, G_CYC_2CYCLE);
-    gDPSetRenderMode(gMainGfxPos++, G_RM_PASS, G_RM_AA_ZB_XLU_SURF2);
-    gDPSetCombineMode(gMainGfxPos++, G_CC_INTERFERENCE, PM_CC_KKJ14_FIRE);
+    nd_pso_cyc(G_CYC_2CYCLE);
+    nd_pso_rm(G_RM_PASS, G_RM_AA_ZB_XLU_SURF2);
+    nd_pso_cc(G_CC_INTERFERENCE, PM_CC_KKJ14_FIRE);
     nd_val_prim(0, 0, 0, 0, 0, N(FireplaceAlpha));
 }
 

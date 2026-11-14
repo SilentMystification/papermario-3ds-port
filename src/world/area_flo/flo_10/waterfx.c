@@ -1,6 +1,8 @@
 #include "flo_10.h"
 #include "nu/nusys.h"
 #include "model.h"
+#include "nd_st.h"
+#include "nd_val.h"
 
 s32 N(WavePhase) = {
     0
@@ -226,11 +228,10 @@ void N(UnkModelFunc001)(void) {
         temp_f20 += camera->viewportStartX;
         temp_f22 += camera->viewportStartY;
 
-        gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
-        gDPSetRenderMode(gMainGfxPos++, Z_CMP | CVG_DST_CLAMP | ZMODE_OPA | FORCE_BL | G_RM_PASS,
-                         Z_CMP | CVG_DST_CLAMP | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_0, G_BL_CLR_IN, G_BL_1));
+        nd_pso_cyc(G_CYC_1CYCLE);
+        nd_pso_rm(Z_CMP | CVG_DST_CLAMP | ZMODE_OPA | FORCE_BL | G_RM_PASS, Z_CMP | CVG_DST_CLAMP | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_0, G_BL_CLR_IN, G_BL_1));
         gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxZBuffer));
-        gDPSetCombineMode(gMainGfxPos++, PM_CC_PRIM_NO_ALPHA, PM_CC_PRIM_NO_ALPHA);
+        nd_pso_cc(PM_CC_PRIM_NO_ALPHA, PM_CC_PRIM_NO_ALPHA);
         nd_val_prim(0, 0, 248, 240, 240, 0);
 
         gSPDisplayList(gMainGfxPos++, model->modelNode->displayData->displayList);
@@ -238,18 +239,18 @@ void N(UnkModelFunc001)(void) {
         gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
         gDPSetDepthSource(gMainGfxPos++, G_ZS_PRIM);
         gDPSetPrimDepth(gMainGfxPos++, 32734, 0);
-        gDPSetRenderMode(gMainGfxPos++, G_RM_ZB_XLU_DECAL, G_RM_ZB_XLU_DECAL2);
-        gDPSetTextureFilter(gMainGfxPos++, G_TF_POINT);
-        gDPSetTexturePersp(gMainGfxPos++, G_TP_NONE);
-        gSPTexture(gMainGfxPos++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
-        gDPSetTextureLUT(gMainGfxPos++, G_TT_NONE);
-        gDPSetTextureDetail(gMainGfxPos++, G_TD_CLAMP);
-        gDPSetTextureLOD(gMainGfxPos++, G_TL_TILE);
-        gDPSetCombineMode(gMainGfxPos++, PM_CC_10, PM_CC_10);
+        nd_pso_rm(G_RM_ZB_XLU_DECAL, G_RM_ZB_XLU_DECAL2);
+        nd_pso_filt(G_TF_POINT);
+        nd_pso_persp(G_TP_NONE);
+        nd_tex_on(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
+        nd_pso_lut(G_TT_NONE);
+        nd_pso_detail(G_TD_CLAMP);
+        nd_pso_lod(G_TL_TILE);
+        nd_pso_cc(PM_CC_10, PM_CC_10);
 
         N(UnkModelFunc000)(temp_f24, temp_f26, temp_f20, temp_f22);
 
-        gDPSetCycleType(gMainGfxPos++, G_CYC_2CYCLE);
+        nd_pso_cyc(G_CYC_2CYCLE);
         gDPSetDepthSource(gMainGfxPos++, G_ZS_PIXEL);
     }
 }

@@ -1,4 +1,6 @@
 #include "mim_07.h"
+#include "nd_st.h"
+#include "nd_val.h"
 
 API_CALLABLE(N(ResetForeverForestFog)) {
     enable_world_fog();
@@ -54,10 +56,10 @@ void N(gfx_build_evil_rock_face)(s32 index) {
             break;
     }
 
-    gDPSetCycleType(gMainGfxPos++, G_CYC_2CYCLE);
+    nd_pso_cyc(G_CYC_2CYCLE);
     nd_val_prim(0, 0, 0, 0, 0, N(EvilRockAlpha));
-    gDPSetCombineMode(gMainGfxPos++, PM_CC_05, PM_CC_06);
-    gDPSetRenderMode(gMainGfxPos++, G_RM_FOG_SHADE_A, G_RM_AA_ZB_XLU_DECAL2);
+    nd_pso_cc(PM_CC_05, PM_CC_06);
+    nd_pso_rm(G_RM_FOG_SHADE_A, G_RM_AA_ZB_XLU_DECAL2);
 }
 
 API_CALLABLE(N(TryEvilRockLaugh)) {
