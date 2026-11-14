@@ -1,5 +1,5 @@
 /* nd_st.h: the state calls of a call site (nd_st.c). Each setter takes the macro's arguments minus the packet and records the same typed
- * unit(s) the nd_gbi.h redirect records for the macro (nd_rec_state; a texture rectangle is nd_rec_texrect). The words are the macro's
+ * unit(s) the nd_gbi.h redirect records for the macro (nd_rec_nr; a texture rectangle is nd_rec_texrect). The words are the macro's
  * (gbi.h, the ND_W0_* / ND_W1_* helpers of nd_gbi.h). Shape: gDPSetCycleType(gMainGfxPos++, t) -> nd_pso_cyc(t).
  * gDPSetCombineMode(P, a, b) -> nd_pso_cc(a, b): a macro, because each G_CC_* argument is 8 tokens (the 16 ND_W0_CMB arguments). */
 #ifndef ND_ST_H

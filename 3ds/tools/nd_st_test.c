@@ -45,7 +45,7 @@ uint32_t nd_mkey_a(const uint32_t* rec) { (void)rec; return 0; }
 
 /* the walker side: nd_stream_run hands each state run to nd_walk_state; the double logs each unit (word pair) */
 static uint32_t ulog[512]; static unsigned nulog;
-void nd_walk_state(const uint32_t* q, unsigned n) {
+void nd_nr_run(const uint32_t* q) { const unsigned n = (q[-2] >> 16) & 0xffu;
     for (unsigned i = 0; i < n && nulog < 256u; i++) { ulog[2u * nulog] = q[2u * i]; ulog[2u * nulog + 1u] = q[2u * i + 1u]; nulog++; }
 }
 
@@ -140,6 +140,9 @@ int main(void) {
         if (!same(&a, &b)) { printf("stunit FAIL %s\n", shapes[i].name); return 1; }
         ok++;
     }
+    run_one(n_cyc, &b);
+    if (b.nw < 4u || b.w[0] != NDC_HDR(NDC_NAPI, 1, 0) || b.w[1] != (uint32_t)(uintptr_t)nd_nr_run || b.nu != 2u
+        || b.u[0] != NDO_W0(NDO_OMH, G_MDSFT_CYCLETYPE | 2u << 8) || b.u[1] != G_CYC_1CYCLE) { printf("stunit FAIL run\n"); return 1; }
     printf("stunit ok %u/%u\n", ok, n);
     return 0;
 }

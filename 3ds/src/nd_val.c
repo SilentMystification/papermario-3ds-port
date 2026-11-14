@@ -1,4 +1,4 @@
-/* nd_val.c: the value calls of a call site (nd_val.h). Each call records its typed unit into the open NDC_STATE run (nd_rec_state), the
+/* nd_val.c: the value calls of a call site (nd_val.h). Each call records its typed unit into the open native record run (nd_rec_nr), the
  * unit the nd_gbi.h redirect records for the macro, so the frame stream is the one the macro gave (CODEMODW1: custom gfx ranges read by
  * nd_r11_walk). */
 #include <stdint.h>

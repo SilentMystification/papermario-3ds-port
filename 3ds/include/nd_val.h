@@ -1,4 +1,4 @@
-/* nd_val.h: the value calls of a call site. One typed unit per call into the open state run (nd_rec_state), as the macro's redirect.
+/* nd_val.h: the value calls of a call site. One typed unit per call into the open state run (nd_rec_nr), as the macro's redirect.
  * gDPSetPrimColor(gMainGfxPos++, m, l, r, g, b, a) -> nd_val_prim(m, l, r, g, b, a)
  * gDPSetEnvColor(gMainGfxPos++, r, g, b, a)         -> nd_val_env(r, g, b, a)
  * gSPSegment(gMainGfxPos++, seg, base)              -> nd_val_seg(seg, base)

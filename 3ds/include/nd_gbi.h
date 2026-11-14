@@ -2,7 +2,7 @@
  * every game file (a file that defines ND_GBI_WORDS before its includes keeps list words: the named fallbacks of plan section 5).
  * The base macros are redefined, so every derived and compound macro follows (gDPSetRenderMode, gDPLoadTextureBlock, gSPDisplayList, ...).
  * Each base macro (g form, gs form) builds the typed unit of nd_op.h (ND_X0, ND_X1: the id and fields of the op, no N64 word) and the g form calls
- * nd_gx_w (nd_rec.c) with it: a packet that is gMainGfxPos++ is taken back and the unit recorded into the open NDC_STATE run of the frame stream;
+ * nd_gx_w (nd_rec.c) with it: a packet that is gMainGfxPos++ is taken back and the unit recorded into the open native record run of the frame stream;
  * any other packet (a local list) gets the unit. The branch form of G_DL (NDO_CALL, a = 1) stays a unit of the list (a branch skips data in the
  * list); a top-level NDO_END is dropped (NDC_END ends the task or range). The texture rectangle (NDO_RECT with NDO_RECT_TEX and its two
  * no-op units of the RDPHALF words) is recorded as one NDC_TEXRECT. The gs form is the same unit in a static initializer. */

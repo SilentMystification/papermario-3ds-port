@@ -8,5 +8,10 @@ sed 's/G_MDSFT_CYCLETYPE, 2)/G_MDSFT_CYCLETYPE, 3)/' 3ds/src/nd_st.c > /tmp/nd_s
 gcc $FL $FP -o /tmp/stunit_seed 3ds/tools/nd_st_test.c /tmp/nd_st_seed.c $LIBS || exit 1
 got=$(/tmp/stunit_seed)
 if [ "$got" != "stunit FAIL cyc" ]; then echo "stunit seed FAIL: got [$got], want [stunit FAIL cyc]"; exit 1; fi
+sed 's/p\[0\] = NDC_HDR(NDC_NAPI, 1, 0);/p[0] = NDC_HDR(NDC_NRUN, 1, 0);/' 3ds/src/nd_rec.c > /tmp/nd_rec_seed.c
+LIBS_RS=$(echo "$LIBS" | sed 's#3ds/src/nd_rec.c#/tmp/nd_rec_seed.c#')
+gcc $FL $FP -o /tmp/stunit_rseed 3ds/tools/nd_st_test.c 3ds/src/nd_st.c $LIBS_RS || exit 1
+got=$(/tmp/stunit_rseed)
+if [ "$got" != "stunit FAIL run" ]; then echo "stunit run seed FAIL: got [$got], want [stunit FAIL run]"; exit 1; fi
 gcc $FL $FP -o /tmp/stunit 3ds/tools/nd_st_test.c 3ds/src/nd_st.c $LIBS || exit 1
 /tmp/stunit || exit 1

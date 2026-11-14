@@ -1,5 +1,5 @@
-/* nd_xf.c: the native transform calls (nd_xf.h). Each call records one typed matrix op unit (nd_op.h) into the open NDC_STATE run
- * (nd_rec_state), the unit the nd_gbi.h redirect records for gSPMatrix and gSPPopMatrix, so the frame stream is the one the macro gave.
+/* nd_xf.c: the native transform calls (nd_xf.h). Each call records one typed matrix op unit (nd_op.h) into the open native record run
+ * (nd_rec_nr), the unit the nd_gbi.h redirect records for gSPMatrix and gSPPopMatrix, so the frame stream is the one the macro gave.
  * The state run is executed by nd_walk_state with the walker's own matrix code (NDO_MTX: load_mtx, NDO_POPMTX: gbi_popmtx). */
 #include <stdint.h>
 #include "ultra64.h"

@@ -1,13 +1,13 @@
 /* nd_nr.h: the native record of the frame stream (NSTREAM step 1, design_lookahead section 8). A setter builds its record from its native
  * fields (no gbi word, no ND_X0 translation): k = the typed id (NDO_*) << 24 | a (24 bits), v = b. The fields keep the layout of the HC4
- * units (nd_op.h), so every record is the bit pattern the gbi macro gave through ND_X0 and ND_X1. nd_nr writes it with nd_rec_state. */
+ * units (nd_op.h), so every record is the bit pattern the gbi macro gave through ND_X0 and ND_X1. nd_nr writes it with nd_rec_nr. */
 #ifndef ND_NR_H
 #define ND_NR_H
 #include <stdint.h>
 #include "nd_op.h"
 #include "nd_cmd.h"
 
-#define nd_nr(k, v) nd_rec_state((k), (v)) /* one native record into the open run (NSTREAM2 renames the recorder) */
+#define nd_nr(k, v) nd_rec_nr((k), (v)) /* one native record into the open run (NSTREAM2 renames the recorder) */
 #define ND_NR_OM(h, sft, len) NDO_W0((h) ? NDO_OMH : NDO_OML, ((uint32_t)(sft) & 0xffu) | ((uint32_t)(len) & 0xffu) << 8)
 #define ND_NR_GEOM(clr) NDO_W0(NDO_GEOM, ~(uint32_t)(clr) & 0xffffffu)
 #define ND_NR_TEXON(on) NDO_W0(NDO_TEXTURE, ((uint32_t)(on) & 0x7fu) != 0u)

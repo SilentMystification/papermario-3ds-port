@@ -9,7 +9,9 @@
 
 typedef void (*NdNapiRun)(const uint32_t* rec); /* core 0: draw one recorded command; rec = the payload, 8-byte aligned */
 void nd_rec_napi(NdNapiRun run, const void* rec, unsigned units); /* nd_rec.c, core 1: rec holds units 8-byte units, 1 to 255 */
-void nd_walk_state(const uint32_t* q, unsigned n); /* nd_walk.c, core 0: the typed op executor, as NDC_STATE runs it */
+void nd_walk_state(const uint32_t* q, unsigned n); /* nd_walk.c, core 0: the typed op executor, as native record runs it */
+void nd_nr_exec(const uint32_t* u, unsigned n); /* nd_walk.c, core 0: n native records (nd_nr.h) */
+void nd_nr_run(const uint32_t* rec); /* nd_walk.c, core 0: the NDC_NAPI runner of a run; n = the units field of its header at rec[-2] */
 
 typedef uint16_t NdPso;
 #define ND_PSO_MAX 256u
