@@ -282,13 +282,16 @@ static Gfx* spr_geo_out; /* DIRECT D6: set by spr_appendGfx_component around the
 #define gMainGfxPos (*gp)
 static void spr_flat_gfx(Gfx** gp, Quad* vertices, IMG_PTR raster, PAL_PTR palette, s32 width, s32 height, Matrix4f mtx, s32 alpha, u32 flags,
                          Vp* vpAlt, Vp* vpMain) {
-    nd_tex_load_tlut16(0, palette);
+    gDPLoadTLUT_pal16(gMainGfxPos++, 0, palette);
     if (flags & SPR_SHADING_FLAG_ENABLED) {
-        nd_tex_scroll_mtile2_4b(raster, G_IM_FMT_CI, width, height, 0, 0, width - 1, height - 1, 0, G_TX_CLAMP, G_TX_CLAMP, 8, 8, G_TX_NOLOD, G_TX_NOLOD, 256, 256);
-        nd_tex_tile(G_IM_FMT_RGBA, G_IM_SIZ_16b, 4, 0x0100, 2, 0, G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
+        gDPScrollMultiTile2_4b(gMainGfxPos++, raster, G_IM_FMT_CI, width, height,
+                              0, 0, width - 1, height - 1, 0,
+                              G_TX_CLAMP, G_TX_CLAMP, 8, 8, G_TX_NOLOD, G_TX_NOLOD,
+                              256, 256);
+        gDPSetTile(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 4, 0x0100, 2, 0, G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
         nd_val_tile_size(2, 0, 0, 63 << 2, 0);
         if (flags & SPR_SHADING_FLAG_SET_VIEWPORT) {
-            nd_xf_viewport(vpAlt);
+            gSPViewport(gMainGfxPos++, vpAlt);
 
             if (alpha == 255) {
                 nd_pso_rm(AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA |
@@ -305,9 +308,11 @@ static void spr_flat_gfx(Gfx** gp, Quad* vertices, IMG_PTR raster, PAL_PTR palet
         }
         create_shading_palette(mtx, 0, 0, width, height, alpha, alpha == 255 ? 0x111238 : 0x104B50); // TODO make macro for render mode
     } else {
-        nd_tex_scroll_block_4b(raster, G_IM_FMT_CI, width, height, 0, G_TX_CLAMP, G_TX_CLAMP, 8, 8, G_TX_NOLOD, G_TX_NOLOD, 256, 256);
+        gDPScrollTextureBlock_4b(gMainGfxPos++, raster, G_IM_FMT_CI, width, height, 0,
+                                 G_TX_CLAMP, G_TX_CLAMP, 8, 8, G_TX_NOLOD, G_TX_NOLOD,
+                                 256, 256);
         if (flags & SPR_SHADING_FLAG_SET_VIEWPORT) {
-            nd_xf_viewport(vpAlt);
+            gSPViewport(gMainGfxPos++, vpAlt);
             if (alpha == 255) {
                 nd_pso_rm(AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA | ALPHA_CVG_SEL | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM), AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA | ALPHA_CVG_SEL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM));
             } else {
@@ -335,7 +340,7 @@ static void spr_flat_gfx(Gfx** gp, Quad* vertices, IMG_PTR raster, PAL_PTR palet
     }
 
     if (flags & SPR_SHADING_FLAG_SET_VIEWPORT) {
-        nd_xf_viewport(vpMain);
+        gSPViewport(gMainGfxPos++, vpMain);
     }
 }
 #undef gMainGfxPos
