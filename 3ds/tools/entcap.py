@@ -16,6 +16,9 @@ LINE = re.compile(r"entcap l ([0-9a-f]{8}) s ([0-9a-f]{8}) d((?: [0-9a-f]{8}){11
 OVER = re.compile(r"entcap over")
 
 
+IMG = "pm3ds-build:1"  # the build image (build.sh IMG): devkitARM in the container
+
+
 def find_tool(name):
     for c in (shutil.which("arm-none-eabi-" + name), "/opt/devkitpro/devkitARM/bin/arm-none-eabi-" + name):
         if c and os.path.exists(c):
@@ -23,8 +26,20 @@ def find_tool(name):
     return None
 
 
+def tool_cmd(name, elf):
+    """Host arm binutil, else the same binutil in the build image (the host has no devkitARM). Returns (argv prefix, elf arg)."""
+    host = find_tool(name)
+    if host:
+        return [host], elf
+    if not shutil.which("docker"):
+        return None, None
+    d = os.path.dirname(os.path.abspath(elf))
+    return (["docker", "run", "--rm", "-v", d + ":/e:ro", "-w", "/e", IMG, "/opt/devkitpro/devkitARM/bin/arm-none-eabi-" + name],
+            "/e/" + os.path.basename(elf))
+
+
 def load_symbols(nm, elf):
-    out = subprocess.run([nm, "-n", elf], capture_output=True, text=True).stdout.split("\n")
+    out = subprocess.run(nm + ["-n", elf], capture_output=True, text=True).stdout.split("\n")
     syms = []
     for ln in out:
         p = ln.split()
@@ -49,7 +64,7 @@ def list_symbol(syms, addr):
 
 
 def site_name(addr2line, elf, site):
-    out = subprocess.run([addr2line, "-f", "-C", "-e", elf, "0x%x" % site], capture_output=True, text=True).stdout.split("\n")
+    out = subprocess.run(addr2line + ["-f", "-C", "-e", elf, "0x%x" % site], capture_output=True, text=True).stdout.split("\n")
     fn = out[0].strip() if out and out[0].strip() else "??"
     loc = out[1].strip() if len(out) > 1 and out[1].strip() else "??:0"
     return fn, loc
@@ -67,11 +82,11 @@ def main(a):
         elf = c[-1] if c else None
     if not elf or not os.path.exists(elf):
         sys.exit("no ELF: pass --elf")
-    nm = find_tool("nm")
-    addr2line = find_tool("addr2line")
+    nm, elf_nm = tool_cmd("nm", elf)
+    addr2line, elf = tool_cmd("addr2line", elf)
     if not nm or not addr2line:
-        sys.exit("arm-none-eabi-nm or arm-none-eabi-addr2line not found")
-    syms = load_symbols(nm, elf)
+        sys.exit("arm-none-eabi-nm or arm-none-eabi-addr2line not found (host, or docker image %s)" % IMG)
+    syms = load_symbols(nm, elf_nm)
     lists, sites, over = set(), set(), 0
     with open(log, "r", errors="replace") as f:
         for ln in f:
