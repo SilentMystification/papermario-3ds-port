@@ -13,10 +13,11 @@ Model: Haiku. PM_ROW, PM_LANE = EMIT. Budget: 4 Azahar runs. Branch EMIT (`sh 3d
 1. nd_gtab.h:102 Before `typedef struct NdNDev { const void* list; uint32_t n; } NdNDev;` After `typedef struct NdNDev { const void* list; uint32_t n;
    const uint32_t* u; uint32_t nu; uint32_t ntri; } NdNDev;`
 2. nd_gfx_conv.c:207: add `static unsigned v2_nu[V2_MAXTAB], v2_ntri[V2_MAXTAB];`. After :607 add `v2_nu[v2_n_tab] = cx->nu; v2_ntri[v2_n_tab] = cx->nidx / 3u;`.
-   :617 Before `printf("    { (const void*)%s, %uu },\n", v2_tab[i]->name, v2_nk[i]);` After `printf("    { (const void*)%s, %uu, ndnu_%s, %uu, %uu },\n",
-   v2_tab[i]->name, v2_nk[i], v2_tab[i]->name, v2_nu[i], v2_ntri[i]);`. :618 `{ 0, 0 }` becomes `{ 0, 0, 0, 0, 0 }`.
-3. nd_gtab_test.c: v2_dev(t, name, fault) (:495, call :526 `v2_dev(t, name, fault && tables == 0)`). After :510 add: `if (dv->u != (const uint32_t*)t->ops[0].p
-   || dv->nu != t->ops[0].b + (fault ? 1u : 0u)) { v2_dev_bad++; v2_fail("device index units", name, 0); }` and the same form for ntri against the sum of
+   :617 Before `printf("    { (const void*)%s, %uu },\n", v2_tab[i]->name, v2_nk[i]);` After `printf("    { (const void*)%s, %uu, (const uint32_t*)%s, %uu,
+   %uu },\n", v2_tab[i]->name, v2_nk[i], v2_tab[i]->name, v2_nk[i], v2_ntri[i]);`. :618 `{ 0, 0 }` becomes `{ 0, 0, 0, 0, 0 }`. Memory rule: u = the list and
+   nu = n until GSET moves the list (then u = ndnu_<list>, nu = v2_nu). A reference to ndnu keeps 73 KB on the device (FACT, EMIT memcheck: margin 254 KB).
+3. nd_gtab_test.c: v2_dev(t, name, fault) (:495, call :526 `v2_dev(t, name, fault && tables == 0)`). After :510 add: `if (dv->u != (const uint32_t*)t->list
+   || dv->nu != dv->n + (fault ? 1u : 0u)) { v2_dev_bad++; v2_fail("device index units", name, 0); }` and the same form for ntri against the sum of
    `b` of the NDN_DRAW ops / 3 (`device index triangles`). After :544 print `ntab notri <tables with ntri 0> of <ndn_dev_n>`. conv2c.sh after the fault
    run: `grep -q "^ntab dev entries [0-9]* bad 0$" /tmp/ndntab_fault.txt && { echo "seeded dev fault not seen"; exit 1; }`.
 4. nd_walk.c:594 Before `void nd_ntab_run(const NdNDev* e) { nd_walk_state((const uint32_t*)e->list, e->n); }` After `void nd_ntab_run(const NdNDev* e) {
