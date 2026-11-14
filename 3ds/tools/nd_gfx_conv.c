@@ -200,6 +200,7 @@ typedef struct {
     int inh; char inh_groups[64], inh_first[160];
     uint32_t uw[2u * V2_MAXOPS]; char ue[V2_MAXOPS][160]; unsigned nu; /* the depth-0 typed units (CONV2D): words, and the address text (ue[i][0] == 0: no address) */
     unsigned nk; /* CONV2D2: words to the stop */
+    char nm[96]; unsigned entry; /* CONV2C2: table name, NdNTab.entry (0 none, else desc id + 1) */
 } V2C;
 static NdPsoDesc v2_desc[V2_MAXDESC];
 static unsigned v2_ndesc;
@@ -208,6 +209,8 @@ static unsigned v2_nk[V2_MAXTAB];
 static unsigned v2_ntri[V2_MAXTAB];
 static V2C* cx;
 static unsigned v2_n_tab, v2_n_inh, v2_n_unsup, v2_n_draw;
+static char v2_nm[V2_MAXTAB][96]; static unsigned char v2_seed_t[V2_MAXTAB], v2_dup[V2_MAXTAB]; static unsigned v2_n_seed;
+typedef struct { char list[96]; NdPsoDesc d; } V2Pair; static V2Pair v2_pr[1024]; static unsigned v2_npr;
 
 static void v2_unsup(const char* what, unsigned k) {
     if (cx->unsup[0]) return;
@@ -512,7 +515,7 @@ static int v2_walk(const GSym* g, unsigned k0, unsigned depth) {
                 if ((int)i != cx->emitted_bind) {
                     v2_flush();
                     char p[160];
-                    snprintf(p, sizeof p, "&ndnb_%s_%u", cx->top->name, i);
+                    snprintf(p, sizeof p, "&ndnb_%s_%u", cx->nm, i);
                     v2_push(NDN_TEX, 0, 0, 0, p, 0);
                     cx->emitted_bind = (int)i;
                 }
@@ -527,7 +530,7 @@ static int v2_walk(const GSym* g, unsigned k0, unsigned depth) {
                 if ((int)i != cx->emitted_bind1) {
                     v2_flush();
                     char p[160];
-                    snprintf(p, sizeof p, "&ndnb_%s_%u", cx->top->name, i);
+                    snprintf(p, sizeof p, "&ndnb_%s_%u", cx->nm, i);
                     v2_push(NDN_TEX, 1, 0, 0, p, 0);
                     cx->emitted_bind1 = (int)i;
                 }
@@ -551,7 +554,7 @@ static int v2_walk(const GSym* g, unsigned k0, unsigned depth) {
 }
 
 static void v2_emit_table(const V2C* c) {
-    const char* n = c->top->name;
+    const char* n = c->nm;
     v2_n_draw += c->nidx / 3u;
     for (unsigned i = 0; i < c->nbind; i++) {
         const NdBindDesc* d = &c->bind[i];
@@ -577,11 +580,70 @@ static void v2_emit_table(const V2C* c) {
         const COp* o = &c->ops[i];
         printf("    { %u, %u, %u, 0x%xu, %s, %u },\n", o->op, o->a, o->b, o->v, o->p, o->idx_pos);
     }
-    printf("    { %u, 0, 0, 0, 0, 0 },\n};\nconst NdNTab ndn_%s = { (const void*)%s, 0, %u, ndno_%s, ndni_%s };\n", (unsigned)NDN_END, n, n, c->nops + 2u, n, n);
+    printf("    { %u, 0, 0, 0, 0, 0 },\n};\nconst NdNTab ndn_%s = { (const void*)%s, %uu, %u, ndno_%s, ndni_%s };\n", (unsigned)NDN_END, n, c->top->name, c->entry, c->nops + 2u, n, n);
+}
+
+/* CONV2C2: the (list, ND_PSO_DESC) pairs of the device entry writer (gen_ntab_entries.py, ntab_entries.txt): one line per pair, "gne" lines are skips */
+static void v2_pairs_load(const char* path) {
+    FILE* f = fopen(path, "r");
+    if (!f) { fprintf(stderr, "gconv: cannot read %s\n", path); exit(1); }
+    char line[1024];
+    while (fgets(line, sizeof line, f)) {
+        char* tok[32]; unsigned nt = 0;
+        for (char* t = strtok(line, " \t\r\n"); t && nt < 32; t = strtok(NULL, " \t\r\n")) tok[nt++] = t;
+        if (!nt || !strcmp(tok[0], "gne")) continue;
+        if (nt != 23u) { fprintf(stderr, "gconv: %s: pair %s has %u tokens, want 23\n", path, tok[0], nt); exit(1); }
+        if (v2_npr >= 1024u) { fprintf(stderr, "gconv: more than 1024 pairs in %s\n", path); exit(1); }
+        uint32_t w[8]; uint8_t b[12];
+        for (unsigned i = 0; i < 8u; i++) w[i] = (uint32_t)strtoul(tok[3u + i], NULL, 0);
+        for (unsigned i = 0; i < 12u; i++) b[i] = (uint8_t)strtoul(tok[11u + i], NULL, 0);
+        _Static_assert(sizeof(NdPsoDesc) == 44, "desc layout");
+        V2Pair* p = &v2_pr[v2_npr++];
+        snprintf(p->list, sizeof p->list, "%s", tok[0]);
+        memset(&p->d, 0, sizeof p->d);
+        memcpy(&p->d, w, 32);
+        memcpy((char*)&p->d + 32, b, 12);
+    }
+    fclose(f);
+}
+
+/* CONV2C2: the seed of an inheriting list: the pipeline state its caller states at nd_draw_list (the desc of the site) */
+static void v2_seed(V2St* s, const NdPsoDesc* d) {
+    s->cw0 = d->cw0; s->cw1 = d->cw1; s->omh = d->omh; s->oml = d->oml; s->geom = d->geom; s->key_c = d->key_c; s->key_s = d->key_s; s->conv_k4 = d->conv_k4;
+    s->tex_on = d->tex_on; s->plod = d->plod;
+    s->has_comb = 1; s->has_tex = 1; s->omh_set |= 3u << G_MDSFT_CYCLETYPE;
+}
+
+/* CONV2C2: one table of g, unseeded (seed NULL) or seeded with a desc. Returns 1 table emitted, 0 unsup, -1 inherits (the state of inh_* in cx) */
+static int v2_one(const GSym* g, const NdPsoDesc* seed, FILE* fu) {
+    memset(cx, 0, sizeof *cx);
+    cx->top = g; cx->emitted_pso = -1; cx->emitted_bind = -1; cx->emitted_bind1 = -1;
+    snprintf(cx->nm, sizeof cx->nm, "%s", g->name);
+    if (seed) {
+        cx->entry = v2_desc_id(seed) + 1u;
+        snprintf(cx->nm, sizeof cx->nm, "%s_e%u", g->name, cx->entry - 1u);
+        v2_seed(&cx->st, seed);
+    }
+    v2_units_top(g);
+    v2_walk(g, 0, 0);
+    v2_flush();
+    if (cx->inh) return -1;
+    if (cx->unsup[0]) { if (!seed) { fprintf(fu, "%s: %s\n", g->name, cx->unsup); v2_n_unsup++; } return 0; }
+    if (v2_n_tab >= V2_MAXTAB) { fprintf(stderr, "gconv: too many v2 tables\n"); exit(1); }
+    v2_emit_table(cx);
+    v2_nk[v2_n_tab] = cx->nk;
+    v2_ntri[v2_n_tab] = cx->nidx / 3u;
+    snprintf(v2_nm[v2_n_tab], sizeof v2_nm[0], "%s", cx->nm);
+    v2_seed_t[v2_n_tab] = seed != NULL;
+    v2_dup[v2_n_tab] = 0;
+    for (unsigned j = 0; j < v2_n_tab; j++) if (v2_tab[j] == g) v2_dup[v2_n_tab] = 1;
+    if (seed) v2_n_seed++;
+    v2_tab[v2_n_tab++] = g;
+    return 1;
 }
 
 static V2C v2c_mem;
-static void v2_convert_all(const char* descs_path, const char* inh_path, const char* uns_path, const char* idx_path, const char* tab_path) {
+static void v2_convert_all(const char* descs_path, const char* inh_path, const char* uns_path, const char* idx_path, const char* tab_path, const char* pairs_path) {
     FILE* fi = fopen(inh_path, "w");
     FILE* fu = fopen(uns_path, "w");
     if (!fi || !fu) { fprintf(stderr, "gconv: cannot write the ntab logs\n"); exit(1); }
@@ -592,33 +654,47 @@ static void v2_convert_all(const char* descs_path, const char* inh_path, const c
     for (unsigned i = 0; i < gconv_nsym; i++) {
         const GSym* g = &gconv_sym[i];
         if (g->kind != GS_GFX) continue;
-        memset(cx, 0, sizeof *cx);
-        cx->top = g; cx->emitted_pso = -1; cx->emitted_bind = -1; cx->emitted_bind1 = -1;
-        v2_units_top(g);
-        v2_walk(g, 0, 0);
-        v2_flush();
-        if (cx->inh) {
-            fprintf(fi, "%s: inherits %sfirst draw %s\n", g->name, cx->inh_groups, cx->inh_first);
-            v2_n_inh++;
-            continue;
+        const int r = v2_one(g, NULL, fu);
+        if (r >= 0) continue;
+        /* CONV2C2: an inheriting list gets one table per site desc of its pairs (the seeds); the unseeded inherit line stays when none succeeds */
+        char ig[64], ifi[160];
+        memcpy(ig, cx->inh_groups, sizeof ig); memcpy(ifi, cx->inh_first, sizeof ifi);
+        unsigned tried[256]; unsigned ntr = 0; int any = 0;
+        for (unsigned p = 0; p < v2_npr; p++) {
+            if (strcmp(v2_pr[p].list, g->name)) continue;
+            const unsigned id = v2_desc_id(&v2_pr[p].d);
+            unsigned j;
+            for (j = 0; j < ntr && tried[j] != id; j++) {}
+            if (j < ntr) continue;
+            if (ntr >= 256u) { fprintf(stderr, "gconv: more than 256 descs of %s\n", g->name); exit(1); }
+            tried[ntr++] = id;
+            const int s = v2_one(g, &v2_pr[p].d, fu);
+            if (s > 0) { any = 1; continue; }
+            if (s < 0) fprintf(fi, "%s: seed %u inherits %s\n", g->name, id, cx->inh_groups);
+            else fprintf(fi, "%s: seed %u unsup %s\n", g->name, id, cx->unsup);
         }
-        if (cx->unsup[0]) { fprintf(fu, "%s: %s\n", g->name, cx->unsup); v2_n_unsup++; continue; }
-        if (v2_n_tab >= V2_MAXTAB) { fprintf(stderr, "gconv: too many v2 tables\n"); exit(1); }
-        v2_emit_table(cx);
-        v2_nk[v2_n_tab] = cx->nk;
-        v2_ntri[v2_n_tab] = cx->nidx / 3u;
-        v2_tab[v2_n_tab++] = g;
+        if (!any) {
+            fprintf(fi, "%s: inherits %sfirst draw %s\n", g->name, ig, ifi);
+            v2_n_inh++;
+        }
     }
-    /* CONV2F: the names of the v2 tables, one per line in table order (codemod.py --ntab reads them) */
+    /* CONV2F: the names of the v2 tables, one per line in table order (codemod.py --ntab reads them); seeded tables are not in it (codemod --ntab gives ND_SELF) */
     FILE* ft = fopen(tab_path, "w");
     if (!ft) { fprintf(stderr, "gconv: cannot write %s\n", tab_path); exit(1); }
-    for (unsigned i = 0; i < v2_n_tab; i++) fprintf(ft, "%s\n", v2_tab[i]->name);
+    for (unsigned i = 0; i < v2_n_tab; i++) if (!v2_seed_t[i]) fprintf(ft, "%s\n", v2_tab[i]->name);
     fclose(ft);
-    /* CONV2D2: the device index of the tables (nd_gtab.h NdNDev), after the tables in nd_gfx_tab.c */
-    printf("NdNDev ndn_dev_idx[%u] = {\n", v2_n_tab ? v2_n_tab : 1u);
-    for (unsigned i = 0; i < v2_n_tab; i++) printf("    { (const void*)%s, %uu, (const uint32_t*)%s, %uu, %uu },\n", v2_tab[i]->name, v2_nk[i], v2_tab[i]->name, v2_nk[i], v2_ntri[i]);
-    if (!v2_n_tab) printf("    { 0, 0, 0, 0, 0 }\n");
-    printf("};\nconst unsigned ndn_dev_n = %uu;\n", v2_n_tab);
+    /* CONV2C2: the seeded tables, "<list> <table name>" per line (codemod reads the site pairs from it) */
+    FILE* fp = fopen(pairs_path, "w");
+    if (!fp) { fprintf(stderr, "gconv: cannot write %s\n", pairs_path); exit(1); }
+    for (unsigned i = 0; i < v2_n_tab; i++) if (v2_seed_t[i]) fprintf(fp, "%s %s\n", v2_tab[i]->name, v2_nm[i]);
+    fclose(fp);
+    /* CONV2D2: the device index of the tables (nd_gtab.h NdNDev), after the tables in nd_gfx_tab.c; one entry per list (CONV2C2: the seeded tables of a list share it) */
+    unsigned ndev = 0;
+    for (unsigned i = 0; i < v2_n_tab; i++) if (!v2_dup[i]) ndev++;
+    printf("NdNDev ndn_dev_idx[%u] = {\n", ndev ? ndev : 1u);
+    for (unsigned i = 0; i < v2_n_tab; i++) if (!v2_dup[i]) printf("    { (const void*)%s, %uu, (const uint32_t*)%s, %uu, %uu },\n", v2_tab[i]->name, v2_nk[i], v2_tab[i]->name, v2_nk[i], v2_ntri[i]);
+    if (!ndev) printf("    { 0, 0, 0, 0, 0 }\n");
+    printf("};\nconst unsigned ndn_dev_n = %uu;\n", ndev);
     fclose(fi); fclose(fu);
     /* the pso descriptions: the file gen_pso_tab.py of NPSO3 scans for the ids (the id of a description is its line order) */
     FILE* fd = fopen(descs_path, "w");
@@ -638,16 +714,16 @@ static void v2_convert_all(const char* descs_path, const char* inh_path, const c
     FILE* fx = fopen(idx_path, "w");
     if (!fx) { fprintf(stderr, "gconv: cannot write %s\n", idx_path); exit(1); }
     fprintf(fx, "/* Generated by 3ds/tools/nd_gfx_conv.c (CONV2C): the index of the v2 tables for the host compare. */\n#include \"nd_gtab.h\"\n#include \"nd_ntab_descs.c\"\n");
-    for (unsigned i = 0; i < v2_n_tab; i++) fprintf(fx, "extern const NdNTab ndn_%s;\n", v2_tab[i]->name);
+    for (unsigned i = 0; i < v2_n_tab; i++) fprintf(fx, "extern const NdNTab ndn_%s;\n", v2_nm[i]);
     fprintf(fx, "const NdNTab* const ndn_all[%u] = {\n", v2_n_tab ? v2_n_tab : 1u);
-    for (unsigned i = 0; i < v2_n_tab; i++) fprintf(fx, "    &ndn_%s,\n", v2_tab[i]->name);
+    for (unsigned i = 0; i < v2_n_tab; i++) fprintf(fx, "    &ndn_%s,\n", v2_nm[i]);
     if (!v2_n_tab) fprintf(fx, "    0\n");
     fprintf(fx, "};\nconst unsigned ndn_n = %uu;\nconst NdPsoDesc* const ndn_desc[%u] = {\n", v2_n_tab, v2_ndesc ? v2_ndesc : 1u);
     for (unsigned i = 0; i < v2_ndesc; i++) fprintf(fx, "    &ndn_pso_%u,\n", i);
     if (!v2_ndesc) fprintf(fx, "    0\n");
     fprintf(fx, "};\nconst unsigned ndn_ndesc = %uu;\nconst unsigned ndn_inherit = %uu, ndn_unsup = %uu;\n", v2_ndesc, v2_n_inh, v2_n_unsup);
     fclose(fx);
-    fprintf(stderr, "gconv ntab tables %u inherit %u unsup %u descs %u triangles %u\n", v2_n_tab, v2_n_inh, v2_n_unsup, v2_ndesc, v2_n_draw);
+    fprintf(stderr, "gconv ntab tables %u inherit %u unsup %u descs %u triangles %u seeded %u\n", v2_n_tab, v2_n_inh, v2_n_unsup, v2_ndesc, v2_n_draw, v2_n_seed);
 }
 
 int main(int argc, char** argv) {
@@ -663,8 +739,9 @@ int main(int argc, char** argv) {
     printf("NdGIdx nd_gtab_idx[%u] = {\n", n_lists ? n_lists : 1u);
     for (unsigned i = 0; i < gconv_nsym; i++) if (gconv_sym[i].kind == GS_GFX) printf("    { %s, &ndg_%s },\n", gconv_sym[i].name, gconv_sym[i].name);
     printf("};\nconst unsigned nd_gtab_n = %uu;\n", n_lists);
-    if (argc < 6) { fprintf(stderr, "usage: nd_gfx_conv <nd_ntab_descs.c> <ntab_inherit.txt> <ntab_unsup.txt> <nd_ntab_idx.c> <ntab_tables.txt>\n"); return 2; }
-    v2_convert_all(argv[1], argv[2], argv[3], argv[4], argv[5]);
+    if (argc < 8) { fprintf(stderr, "usage: nd_gfx_conv <nd_ntab_descs.c> <ntab_inherit.txt> <ntab_unsup.txt> <nd_ntab_idx.c> <ntab_tables.txt> <ntab_entries.txt> <ntab_pairs.txt>\n"); return 2; }
+    v2_pairs_load(argv[6]);
+    v2_convert_all(argv[1], argv[2], argv[3], argv[4], argv[5], argv[7]);
     fprintf(stderr, "gconv lists %u parts %u defs %u ops %u bad %u\n", n_lists, n_parts, n_defs, n_ops, n_bad);
     return n_bad ? 1 : 0;
 }
