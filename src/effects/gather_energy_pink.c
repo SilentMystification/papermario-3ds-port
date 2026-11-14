@@ -221,7 +221,7 @@ void gather_energy_pink_appendGfx(void* effect) {
 
         nd_val_tile_size(G_TX_RENDERTILE, tempX, tempY, tempX + 256, tempY + 256);
         nd_val_tile_size(1, tempX2, tempY2, tempX2 + 256, tempY2 + 256);
-        nd_rec_dl(dlist2);
+        nd_rec_dl_k(dlist2, unk_00, 2);
     }
 
     nd_xf_pop(G_MTX_MODELVIEW);

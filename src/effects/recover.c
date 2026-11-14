@@ -220,7 +220,7 @@ void func_E0080448(EffectInstance* effect) {
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
             if (i == 1 && type != 2) {
-                nd_rec_dl(D_090033D0_3851D0);
+                nd_rec_dl_k(D_090033D0_3851D0, (part->alpha != 255) + 2 * unk_44, 4);
                 nd_xf_pop(G_MTX_MODELVIEW);
                 nd_draw_list(NDN(D_090034D0_3852D0), ND_SELF);
 
@@ -237,7 +237,7 @@ void func_E0080448(EffectInstance* effect) {
                     nd_draw_list(type == 0 ? D_09003430_385230 : D_09003490_385290, pe_recover_234);
                 }
             } else {
-                nd_rec_dl(D_090033F0_3851F0);
+                nd_rec_dl_k(D_090033F0_3851F0, (part->alpha != 255) + 2 * unk_44, 4);
                 nd_xf_pop(G_MTX_MODELVIEW);
             }
 

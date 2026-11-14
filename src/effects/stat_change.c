@@ -271,7 +271,7 @@ void func_E00AC2A4(EffectInstance* effect) {
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         nd_draw_list(D_E00AC7B0[arrowType], ND_SELF);
         nd_val_prim(0, 0, 0, 0, 0, data->unk_24);
-        nd_rec_dl(D_E00AC7BC[arrowType]);
+        nd_rec_dl_k(D_E00AC7BC[arrowType], (data->unk_24 != 255) * 3 + arrowType, 6);
         nd_xf_pop(G_MTX_MODELVIEW);
         nd_draw_list(NDN(D_090028E0_3B1FE0), ND_SELF);
 

@@ -27,7 +27,7 @@ import re
 import sys
 
 WORDS = re.compile(r"((?: [0-9a-f]{8}){11})\s*$")
-SITE = re.compile(r"(src/effects/\w+\.c):(\d+)(?:#(\d+))?")
+SITE = re.compile(r"(src/effects/\w+\.c):(\d+)(?: \(discriminator \d+\))?(?:#(\d+))?")
 NDREC = re.compile(r"^(\s*)nd_rec_dl\((.+)\);\s*$")
 NDKEY = re.compile(r"^(\s*)nd_rec_dl_k\((.+), (.+), (\d+)\);\s*$")
 INC = '#include "nd_gtab.h"'

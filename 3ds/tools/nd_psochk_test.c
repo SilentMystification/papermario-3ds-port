@@ -1,4 +1,4 @@
-/* NPSO4: nd_psochk_cmp on three cases. Prints "psochk ok 3/3" or "psochk FAIL <case>", exit 1 on a fail. */
+/* NPSO4: nd_psochk_cmp on four cases. Prints "psochk ok 4/4" or "psochk FAIL <case>", exit 1 on a fail. */
 #include <stdio.h>
 #include <string.h>
 #include "nd_psochk.h"
@@ -26,9 +26,15 @@ int main(void) {
     base_desc(&s); base_desc(&w);
     w.tex_on = 1; w.plod = 0x10;
     r = nd_psochk_cmp(&s, &w, out, sizeof out);
-    if (r == 2 && strcmp(out, "tex_on stated 00 walker 01") == 0) ok++;
+    if (r == 1 && strcmp(out, "tex_on stated 00 walker 01") == 0) ok++;
     else { printf("psochk FAIL tex_on (r %d out '%s')\n", r, out); return 1; }
 
-    printf("psochk ok %d/3\n", ok);
+    base_desc(&s); base_desc(&w);
+    w.geom = 1; w.key_c = 2; w.key_s = 3; w.plod = 4;
+    r = nd_psochk_cmp(&s, &w, out, sizeof out);
+    if (r == 0) ok++;
+    else { printf("psochk FAIL draw (r %d out '%s')\n", r, out); return 1; }
+
+    printf("psochk ok %d/4\n", ok);
     return 0;
 }

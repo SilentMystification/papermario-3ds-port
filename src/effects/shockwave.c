@@ -338,7 +338,7 @@ void shockwave_appendGfx(void* effect) {
             nd_val_tile_size(1, 0, (s32) data->unk_44, 0x007C, (s32) data->unk_44 + 0x7C);
 
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            nd_rec_dl(dlist);
+            nd_rec_dl_k(dlist, temp_v0 >= 2, 2);
             nd_xf_pop(G_MTX_MODELVIEW);
         }
     }
