@@ -4,6 +4,7 @@
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_st.h"
+#include "nd_tx.h"
 
 extern Gfx D_09001040_3583E0[];
 extern Gfx D_090010F8_358498[];
@@ -120,8 +121,8 @@ void ring_blast_appendGfx(void* effect) {
 
         nd_val_prim(0, 0, var_f4 * 255.0f, var_f4 * 18.0f, var_f4 * 59.0f, 0);
         nd_val_env(var_f4 * 255.0f, var_f4 * 53.0f, var_f4 * 24.0f, envAlpha);
-        gDPSetKeyR(gMainGfxPos++, var_f4 * 211.0f, 0, 0);
-        gDPSetKeyGB(gMainGfxPos++, var_f4 * 255.0f, 0, 0, var_f4 * 216.0f, 0, 0);
+        nd_pso_keyr(var_f4 * 211.0f, 0, 0);
+        nd_pso_keygb(var_f4 * 255.0f, 0, 0, var_f4 * 216.0f, 0, 0);
         nd_pso_cc(PM_CC_4A, PM_CC_4B);
     } else {
         nd_pso_cc(PM_CC_4A, PM_CC_4C);

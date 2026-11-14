@@ -6,6 +6,7 @@
 #include "nd_xf.h"
 #include "nd_st.h"
 #include "nd_geo.h"
+#include "nd_tx.h"
 
 extern Vtx D_09000428_3B9E98[];
 extern Gfx D_09000528_3B9F98[];
@@ -222,7 +223,7 @@ void underwater_appendGfx(void* effect) {
     nd_val_prim(0, 0, data->waterColor.r, data->waterColor.g, data->waterColor.b, alpha >> 1);
     nd_pso_cyc(G_CYC_1CYCLE);
     nd_pso_cc(PM_CC_48, PM_CC_48);
-    gDPSetTextureImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, OS_K0_TO_PHYSICAL(nuGfxCfb_ptr));
+    nd_tex_img(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, OS_K0_TO_PHYSICAL(nuGfxCfb_ptr));
     nd_pso_rm(CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | G_RM_PASS, CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_0, G_BL_CLR_IN, G_BL_1));
     nd_pso_persp(G_TP_PERSP);
     nd_pso_filt(G_TF_BILERP);
@@ -241,13 +242,8 @@ void underwater_appendGfx(void* effect) {
         80, 0x0000, G_TX_LOADTILE, 0,
         G_TX_NOMIRROR | G_TX_CLAMP, 0, G_TX_NOLOD,
         G_TX_NOMIRROR | G_TX_CLAMP, 0, G_TX_NOLOD);
-    gDPLoadSync(gMainGfxPos++);
-    gDPLoadTile(gMainGfxPos++, G_TX_LOADTILE, 0, 0, (SCREEN_WIDTH - 1) * 4, (240 - 1) * 4);
-    gDPSetTile(
-        gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b,
-        80, 0x0000, G_TX_RENDERTILE, 0,
-        G_TX_NOMIRROR | G_TX_CLAMP, 0, G_TX_NOLOD,
-        G_TX_NOMIRROR | G_TX_CLAMP, 0, G_TX_NOLOD);
+    nd_tex_ldtile(G_TX_LOADTILE, 0, 0, (SCREEN_WIDTH - 1) * 4, (240 - 1) * 4);
+    nd_tex_tile(G_IM_FMT_RGBA, G_IM_SIZ_16b, 80, 0x0000, G_TX_RENDERTILE, 0, G_TX_NOMIRROR | G_TX_CLAMP, 0, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_CLAMP, 0, G_TX_NOLOD);
     nd_val_tile_size(G_TX_RENDERTILE, 0, 0, (SCREEN_WIDTH - 1) * 4, (240 - 1) * 4);
 
     // cells: a load holds the 20 + k contiguous grid vertices of a row pair (k cells, k <= 12); one triangle op per cell

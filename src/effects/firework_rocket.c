@@ -2,6 +2,7 @@
 #include "effects_internal.h"
 #include "nd_gtab.h"
 #include "nd_val.h"
+#include "nd_tx.h"
 
 void firework_rocket_init(EffectInstance* effect);
 void firework_rocket_render(EffectInstance* effect);
@@ -329,9 +330,7 @@ void firework_rocket_appendGfx(void* effect) {
             y += camera->viewportStartY;
             y *= 4.0f;
 
-            gSPScisTextureRectangle(gMainGfxPos++,
-                x, y, x + 8.0f, y + 8.0f,
-                G_TX_RENDERTILE, 4 << 5, 4 << 5, 16 << 10, 16 << 10);
+            nd_rect_scis(x, y, x + 8.0f, y + 8.0f, G_TX_RENDERTILE, 4 << 5, 4 << 5, 16 << 10, 16 << 10);
         }
     }
 }

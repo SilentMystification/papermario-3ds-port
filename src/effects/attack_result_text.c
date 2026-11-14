@@ -2,6 +2,7 @@
 #include "effects_internal.h"
 #include "nd_gtab.h"
 #include "nd_geo.h"
+#include "nd_tx.h"
 ND_PSO_DESC(pe_attack_result_text_207, 0xfc40fe81, 0xfffff3f9, 0x1e082cf0, 0x0055307c, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
@@ -215,12 +216,7 @@ void func_E0090444(EffectInstance* effect) {
             nd_draw_list(D_09001500_3918D0, ND_SELF);
             nd_rec_dl(D_E0090A40[data->unk_04]);
 
-            gSPScisTextureRectangle(gMainGfxPos++,
-                data->pos.x * 4.0f,
-                data->pos.y * 4.0f,
-                (data->pos.x + 128.0f) * 4.0f,
-                (data->pos.y + 64.0f) * 4.0f,
-                G_TX_RENDERTILE, 0, 1024, 512, 65024);
+            nd_rect_scis(data->pos.x * 4.0f, data->pos.y * 4.0f, (data->pos.x + 128.0f) * 4.0f, (data->pos.y + 64.0f) * 4.0f, G_TX_RENDERTILE, 0, 1024, 512, 65024);
         }
         nd_pso_zsrc(G_ZS_PIXEL);
     }

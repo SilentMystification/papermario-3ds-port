@@ -3,6 +3,7 @@
 #include "message_ids.h"
 #include "nd_gtab.h"
 #include "nd_val.h"
+#include "nd_tx.h"
 
 typedef struct {
     /* 0x00 */ Gfx* displayList;
@@ -163,12 +164,7 @@ void func_E010E000(ChapterChangeFXData* data, s32 arg1, UnkStruct* arg2) {
 
             temp = it->x - 384;
             nd_val_tile_size(1, (unk_1C * 4 - temp) * 4, 0, (unk_1C * 4 - it->x + 511) * 4, 0);
-            gSPScisTextureRectangle(gMainGfxPos++,
-                (posX + it->x) * 4,
-                (posY + it->y) * 4,
-                (posX + it->x + it->width) * 4,
-                (posY + it->y + it->height) * 4,
-                G_TX_RENDERTILE, 0, 0, 1024, 1024);
+            nd_rect_scis((posX + it->x) * 4, (posY + it->y) * 4, (posX + it->x + it->width) * 4, (posY + it->y + it->height) * 4, G_TX_RENDERTILE, 0, 0, 1024, 1024);
         }
 
     }

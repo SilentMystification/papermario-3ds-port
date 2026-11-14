@@ -3,6 +3,7 @@
 #include "nu/nusys.h"
 #include "nd_gtab.h"
 #include "nd_val.h"
+#include "nd_tx.h"
 
 extern Gfx D_09000200_3A35D0[];
 extern Gfx D_090002A8_3A3678[];
@@ -238,26 +239,8 @@ void motion_blur_flame_appendGfx(void* effect) {
                 nd_val_tile_size(G_TX_RENDERTILE, (s32) (s3 * temp_s1->unk_08) * 4, (s32) (temp_s1->unk_04 * 20 - var_t2_2 * temp_s1->unk_14 * temp_s1->unk_0C) * 4, (s32) (s3 * temp_s1->unk_08 + temp_s1->unk_00) * 4, (s32) (temp_s1->unk_04 * 21 - var_t2_2 * temp_s1->unk_14 * temp_s1->unk_0C) * 4);
 
                 for (var_t4 = 0; var_t4 < 2; var_t4++) {
-                    gDPLoadMultiTile(gMainGfxPos++, VIRTUAL_TO_PHYSICAL(nuGfxCfb_ptr + uly * SCREEN_WIDTH),
-                        0x0100, 1, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, SCREEN_HEIGHT,
-                        s3 + var_a1,
-                        0,
-                        t6 - 1,
-                        height - 1,
-                        0,
-                        G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 9, 8, G_TX_NOLOD, G_TX_NOLOD
-                    );
-                    gSPTextureRectangle(gMainGfxPos++,
-                        (s3 + var_a1) * 4,
-                        uly * 4,
-                        t6 * 4,
-                        (uly + height) * 4,
-                        G_TX_RENDERTILE,
-                        ((u32) (s3 + var_a1) % 0x200) * 32,
-                        0,
-                        0x0400,
-                        0x0400
-                    );
+                    nd_tex_load_mtile(VIRTUAL_TO_PHYSICAL(nuGfxCfb_ptr + uly * SCREEN_WIDTH), 0x0100, 1, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, SCREEN_HEIGHT, s3 + var_a1, 0, t6 - 1, height - 1, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 9, 8, G_TX_NOLOD, G_TX_NOLOD);
+                    nd_rect_tex((s3 + var_a1) * 4, uly * 4, t6 * 4, (uly + height) * 4, G_TX_RENDERTILE, ((u32) (s3 + var_a1) % 0x200) * 32, 0, 0x0400, 0x0400);
                 }
                 var_t2_2++;
             }
