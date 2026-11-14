@@ -7,6 +7,7 @@
 #include "nd_st.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_geo.h"
 
 typedef union ImgFXIntVars {
     s32 raw[2][4];
@@ -1004,7 +1005,7 @@ void imgfx_appendGfx_mesh(ImgFXState* state, Matrix4f mtx) {
                     ImgFXLights.l[1].l.dir[0] = angle1;
                     ImgFXLights.l[0].l.dir[2] = angle2;
                     ImgFXLights.l[1].l.dir[2] = dirZ2;
-                    gSPSetLights2(gMainGfxPos++, ImgFXLights);
+                    nd_lit_set2(ImgFXLights);
                     break;
                 }
                 nd_pso_cc(G_CC_DECALRGBA, G_CC_DECALRGBA);
@@ -1576,8 +1577,8 @@ void imgfx_appendGfx_mesh_basic(ImgFXState* state, Matrix4f mtx) {
                         nd_pso_cc(PM_CC_0B, PM_CC_0C);
                     }
 
-                    gSPVertex(gMainGfxPos++, &imgfx_vtxBuf[i], 4, 0);
-                    gSP2Triangles(gMainGfxPos++, 0, 2, 1, 0, 1, 2, 3, 0);
+                    nd_mesh_vtx(&imgfx_vtxBuf[i], 4, 0);
+                    nd_mesh_tri2(0, 2, 1, 0, 1, 2, 3, 0);
                 }
                 create_shading_palette(mtx, uls, ult, lrs, lrt, alpha, state->otherModeL);
             } else {
@@ -1631,8 +1632,8 @@ void imgfx_appendGfx_mesh_basic(ImgFXState* state, Matrix4f mtx) {
                         nd_pso_cc(PM_CC_0A, PM_CC_0A);
                     }
 
-                    gSPVertex(gMainGfxPos++, &imgfx_vtxBuf[i], 4, 0);
-                    gSP2Triangles(gMainGfxPos++, 0, 2, 1, 0, 1, 2, 3, 0);
+                    nd_mesh_vtx(&imgfx_vtxBuf[i], 4, 0);
+                    nd_mesh_tri2(0, 2, 1, 0, 1, 2, 3, 0);
 
                     if (alpha2 == 255) {
                         nd_pso_rm(G_RM_AA_ZB_TEX_EDGE, G_RM_AA_ZB_TEX_EDGE2);
@@ -1662,8 +1663,8 @@ void imgfx_appendGfx_mesh_basic(ImgFXState* state, Matrix4f mtx) {
             }
         }
 
-        gSPVertex(gMainGfxPos++, &imgfx_vtxBuf[i], 4, 0);
-        gSP2Triangles(gMainGfxPos++, 0, 2, 1, 0, 1, 2, 3, 0);
+        nd_mesh_vtx(&imgfx_vtxBuf[i], 4, 0);
+        nd_mesh_tri2(0, 2, 1, 0, 1, 2, 3, 0);
 
         if (i + 3 >= state->lastVtxIdx) {
             break;
@@ -1740,11 +1741,11 @@ void imgfx_appendGfx_mesh_grid(ImgFXState* state, Matrix4f mtx) {
                 }
             }
 
-            gSPVertex(gMainGfxPos++, &imgfx_vtxBuf[ulIdx], 1, 0);
-            gSPVertex(gMainGfxPos++, &imgfx_vtxBuf[urIdx], 1, 1);
-            gSPVertex(gMainGfxPos++, &imgfx_vtxBuf[llIdx], 1, 2);
-            gSPVertex(gMainGfxPos++, &imgfx_vtxBuf[lrIdx], 1, 3);
-            gSP2Triangles(gMainGfxPos++, 0, 2, 1, 0, 1, 2, 3, 0);
+            nd_mesh_vtx(&imgfx_vtxBuf[ulIdx], 1, 0);
+            nd_mesh_vtx(&imgfx_vtxBuf[urIdx], 1, 1);
+            nd_mesh_vtx(&imgfx_vtxBuf[llIdx], 1, 2);
+            nd_mesh_vtx(&imgfx_vtxBuf[lrIdx], 1, 3);
+            nd_mesh_tri2(0, 2, 1, 0, 1, 2, 3, 0);
         }
     }
 }

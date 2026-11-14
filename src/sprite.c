@@ -8,6 +8,7 @@
 #include "nd_st.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_geo.h"
 
 #define MAX_SPRITE_ID 0xEA // todo generate this
 
@@ -301,8 +302,8 @@ static void spr_flat_gfx(Gfx** gp, Quad* vertices, IMG_PTR raster, PAL_PTR palet
 
             nd_val_env(0, 0, 0, alpha);
             nd_pso_cc(PM_CC_0B, PM_CC_0C);
-            gSPVertex(gMainGfxPos++, vertices, 4, 0);
-            gSP2Triangles(gMainGfxPos++, 0, 2, 1, 0, 0, 3, 2, 0);
+            nd_mesh_vtx(vertices, 4, 0);
+            nd_mesh_tri2(0, 2, 1, 0, 0, 3, 2, 0);
         }
         create_shading_palette(mtx, 0, 0, width, height, alpha, alpha == 255 ? 0x111238 : 0x104B50); // TODO make macro for render mode
     } else {
@@ -319,8 +320,8 @@ static void spr_flat_gfx(Gfx** gp, Quad* vertices, IMG_PTR raster, PAL_PTR palet
 
             nd_val_env(0, 0, 0, alpha);
             nd_pso_cc(PM_CC_0A, PM_CC_0A);
-            gSPVertex(gMainGfxPos++, vertices, 4, 0);
-            gSP2Triangles(gMainGfxPos++, 0, 2, 1, 0, 0, 3, 2, 0);
+            nd_mesh_vtx(vertices, 4, 0);
+            nd_mesh_tri2(0, 2, 1, 0, 0, 3, 2, 0);
 
             if (alpha == 255) {
                 nd_pso_rm(AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA |
@@ -393,8 +394,8 @@ void spr_appendGfx_component_flat(
         spr_geo_out[1].words.w1 = ND_OP_TRI_A(0, 3, 2);
         return;
     }
-    gSPVertex(gMainGfxPos++, vertices, 4, 0);
-    gSP2Triangles(gMainGfxPos++, 0, 2, 1, 0, 0, 3, 2, 0);
+    nd_mesh_vtx(vertices, 4, 0);
+    nd_mesh_tri2(0, 2, 1, 0, 0, 3, 2, 0);
 }
 
 /* S4-1: the render mode, combine and dither the flat path leaves for its final draw (the viewport blocks of spr_appendGfx_component_flat).

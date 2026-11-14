@@ -1,6 +1,7 @@
 #include "common.h"
 #include "nu/nusys.h"
 #include "nd_st.h"
+#include "nd_geo.h"
 
 // TODO move these somewhere else...
 u8 nuYieldBuf[NU_GFX_YIELD_BUF_SIZE] ALIGNED(16);
@@ -150,8 +151,7 @@ void appendGfx_reset_tile_pattern(void) {
     frozenFrame = ResetSavedFrameImg;
     gfx_init_state();
 
-    gDPSetDepthImage(gMainGfxPos++, OS_K0_TO_PHYSICAL(nuGfxZBuffer));
-    gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(frozenFrame));
+    nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(frozenFrame));
     nd_pso_scis(G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
     nd_tex_on(-1, -1, 0, G_TX_RENDERTILE, G_ON);
     nd_pso_cyc(G_CYC_1CYCLE);

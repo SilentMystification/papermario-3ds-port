@@ -12,6 +12,7 @@
 #include "sprite/player.h"
 #include "pm_interp_fi.h"
 #include "nd_cmd.h"
+#include "nd_geo.h"
 
 #define MAX_ITEM_ENTITIES 256
 
@@ -210,7 +211,7 @@ void draw_coin_sparkles(ItemEntity* item) {
     nd_pso_cyc(G_CYC_1CYCLE);
     nd_pso_geom_clr(G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
     nd_pso_geom_set(G_ZBUFFER | G_SHADE | G_LIGHTING | G_SHADING_SMOOTH);
-    gSPSetLights1(gMainGfxPos++, ItemEntityLights);
+    nd_lit_set1(ItemEntityLights);
     nd_tex_on(-1, -1, 0, G_TX_RENDERTILE, G_ON);
     nd_pso_lod(G_TL_TILE);
     nd_pso_persp(G_TP_PERSP);

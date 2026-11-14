@@ -4,6 +4,7 @@
 #include "pm_interp_fi.h"
 #include "nd_st.h"
 #include "nd_xf.h"
+#include "nd_geo.h"
 
 typedef s8 TlbEntry[0x1000];
 typedef TlbEntry TlbMappablePage[15];
@@ -174,11 +175,11 @@ void render_effects_UI(void) {
                                                 G_SHADING_SMOOTH | G_CLIPPING | 0x40F9FA);
                             nd_pso_geom_set(G_ZBUFFER | G_SHADE | G_CULL_BACK | G_SHADING_SMOOTH);
                             nd_pso_scis(G_SC_NON_INTERLACE, camera->viewportStartX, camera->viewportStartY, camera->viewportStartX + camera->viewportW, camera->viewportStartY + camera->viewportH);
-                            gSPClipRatio(gMainGfxPos++, FRUSTRATIO_2);
+                            nd_xf_clip(FRUSTRATIO_2);
 
                             cond = false;
                             if (!(camera->flags & CAMERA_FLAG_ORTHO)) {
-                                gSPPerspNormalize(gMainGfxPos++, camera->perspNorm);
+                                nd_xf_pnorm(camera->perspNorm);
                                 nd_xf_push(&gDisplayContext->camPerspMatrix[gCurrentCameraID], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
                             }
                         }

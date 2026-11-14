@@ -8,6 +8,7 @@
 #include "nd_st.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_geo.h"
 
 #define MAX_HUD_CACHE_ENTRIES 192
 
@@ -1882,7 +1883,7 @@ void render_complex_hud_element(HudElement* hudElement) {
                                     G_TX_NOLOD, G_TX_NOLOD);
 
                 nd_pso_lut(G_TT_NONE);
-                gSPVertex(gMainGfxPos++, &transform->quadBuffers[FrameQuadIndex], 4, 0);
+                nd_mesh_vtx(&transform->quadBuffers[FrameQuadIndex], 4, 0);
             }
             { static int ctr_sw = -1; extern void ctr_store(const void* q); extern int pm_debug_has(const char* word); /* BTLUI3: cplxtrace stores the quad for nd_geom_vtx */
               if (ctr_sw < 0) ctr_sw = pm_debug_has("cplxtrace") ? 1 : 0;
@@ -1901,8 +1902,8 @@ void render_complex_hud_element(HudElement* hudElement) {
                 nd_rec_napi(cplx_quad_run, &rec, sizeof rec / 8u);
             } else
             {
-                gSP1Triangle(gMainGfxPos++, 0, 1, 2, 0);
-                gSP1Triangle(gMainGfxPos++, 0, 2, 3, 0);
+                nd_mesh_tri1(0, 1, 2, 0);
+                nd_mesh_tri1(0, 2, 3, 0);
             }
             break;
     }
@@ -1975,7 +1976,7 @@ void render_transformed_hud_elements(void) {
                     gDPPipeSync(gMainGfxPos++);
                     nd_pso_geom_clr(G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
                     nd_pso_geom_set(G_ZBUFFER | G_SHADE | G_LIGHTING | G_SHADING_SMOOTH);
-                    gSPSetLights1(gMainGfxPos++, HudElemLights);
+                    nd_lit_set1(HudElemLights);
                     nd_tex_on(-1, -1, 0, G_TX_RENDERTILE, G_ON);
                     nd_pso_alcmp(G_AC_NONE);
                     nd_pso_som(G_SETOTHERMODE_H, G_MDSFT_ALPHADITHER, 18, G_AD_DISABLE | G_CD_DISABLE | G_CK_NONE | G_TC_FILT | G_TF_BILERP | G_TT_NONE | G_TL_TILE | G_TD_CLAMP | G_TP_PERSP | G_CYC_1CYCLE);
@@ -2040,7 +2041,7 @@ void render_transformed_hud_elements(void) {
                     gDPPipeSync(gMainGfxPos++);
                     nd_pso_geom_clr(G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
                     nd_pso_geom_set(G_ZBUFFER | G_SHADE | G_LIGHTING | G_SHADING_SMOOTH);
-                    gSPSetLights1(gMainGfxPos++, HudElemLights);
+                    nd_lit_set1(HudElemLights);
                     nd_tex_on(-1, -1, 0, G_TX_RENDERTILE, G_ON);
                     nd_pso_alcmp(G_AC_NONE);
                     nd_pso_som(G_SETOTHERMODE_H, G_MDSFT_ALPHADITHER, 18, G_AD_DISABLE | G_CD_DISABLE | G_CK_NONE | G_TC_FILT | G_TF_BILERP | G_TT_NONE | G_TL_TILE | G_TD_CLAMP | G_TP_PERSP | G_CYC_1CYCLE);
@@ -2075,16 +2076,16 @@ void immediately_render_complex_hud_element(s32 elemID, s32 arg1, s32 camID) {
         nd_pso_filt(G_TF_BILERP);
         nd_pso_cc(G_CC_SHADE, G_CC_SHADE);
         nd_pso_rm(G_RM_OPA_SURF, G_RM_OPA_SURF2);
-        gSPClipRatio(gMainGfxPos++, FRUSTRATIO_2);
+        nd_xf_clip(FRUSTRATIO_2);
         //clear Z buffer inside camera viewport
         gDPSetCycleType(gMainGfxPos++, G_CYC_FILL);
-        gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxZBuffer));
+        nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxZBuffer));
         gDPSetFillColor(gMainGfxPos++, GPACK_ZDZ(G_MAXFBZ, 0)<<16 | GPACK_ZDZ(G_MAXFBZ, 0));
         gDPFillRectangle(gMainGfxPos++, camera->viewportStartX, camera->viewportStartY,
                          camera->viewportStartX + camera->viewportW - 1,
                          camera->viewportStartY + camera->viewportH - 1);
 
-        gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
+        nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
 
         guOrthoF(camera->mtxPerspective, 0.0f, 320.0f, -240.0f, 0.0f, -1000.0f, 1000.0f, 1.0f);
         guMtxF2L(camera->mtxPerspective, &gDisplayContext->camPerspMatrix[gCurrentCamID]);
@@ -2097,7 +2098,7 @@ void immediately_render_complex_hud_element(s32 elemID, s32 arg1, s32 camID) {
         nd_pso_geom_clr(G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING |
                                                 G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
         nd_pso_geom_set(G_ZBUFFER | G_SHADE | G_LIGHTING | G_SHADING_SMOOTH);
-        gSPSetLights1(gMainGfxPos++, HudElemLights);
+        nd_lit_set1(HudElemLights);
         nd_tex_on(-1, -1, 0, G_TX_RENDERTILE, G_ON);
         nd_pso_lod(G_TL_TILE);
         nd_pso_persp(G_TP_PERSP);
@@ -2646,8 +2647,8 @@ int pm_anchor_rect(int ulx, int uly, int lrx, int lry, int tile, int s, int t, i
         vtx[i].tc[1] = corners[i][3];
         vtx[i].cn[0] = vtx[i].cn[1] = vtx[i].cn[2] = vtx[i].cn[3] = 255;
     }
-    gSPVertex(gMainGfxPos++, vtx, 4, 0);
-    gSP2Triangles(gMainGfxPos++, 0, 3, 1, 0, 3, 2, 1, 0);
+    nd_mesh_vtx(vtx, 4, 0);
+    nd_mesh_tri2(0, 3, 1, 0, 3, 2, 1, 0);
     return true;
 }
 

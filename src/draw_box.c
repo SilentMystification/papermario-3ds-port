@@ -5,6 +5,7 @@
 #include "nd_st.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_geo.h"
 
 #define INTEGER_LOG2(x) ((x) <= 1 ? 0 : (x) <= 2 ? 1 : (x) <= 4 ? 2 : (x) <= 8 ? 3 : (x) <= 16 ? 4 : (x) <= 32 ? 5 : (x) <= 64 ? 6 : (x) <= 128 ? 7 : (x) <= 256 ? 8 : (x) <= 512 ? 9 : 10)
 
@@ -494,7 +495,7 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
             guMtxF2L(mtx1, &gDisplayContext->matrixStack[gMatrixListPos]);
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
             nd_pso_persp(G_TP_PERSP);
-            gSPPerspNormalize(gMainGfxPos++, 20);
+            nd_xf_pnorm(20);
         } else {
             nd_pso_persp(G_TP_NONE);
         }
@@ -693,7 +694,7 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
                     /* PAUSEFLK: corner idx reads its own 4 vertices of the slot (the decomp SHIFT form). The US form moved quads by 4, 8 and 12 after
                      * corners 1 to 3, so corner 3 wrote slot + 24..27: past the 16-vertex slot, and past the array for slot 20 (InspectIcon, ISpyData). */
                     gSPVertex(gMainGfxPos++, &quads[idx * 4], 4, 0);
-                    gSP2Triangles(gMainGfxPos++, 0, 3, 1, 0, 0, 2, 3, 0);
+                    nd_mesh_tri2(0, 3, 1, 0, 0, 2, 3, 0);
                 } else {
                     switch (idx) {
                         case 0:
@@ -742,8 +743,8 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
                 quads[3].v.tc[0] = width * 32;
                 quads[3].v.tc[1] = height * 32;
 
-                gSPVertex(gMainGfxPos++, &quads[0], 4, 0);
-                gSP2Triangles(gMainGfxPos++, 0, 3, 1, 0, 0, 2, 3, 0);
+                nd_mesh_vtx(&quads[0], 4, 0);
+                nd_mesh_tri2(0, 3, 1, 0, 0, 2, 3, 0);
             } else {
                 gSPScisTextureRectangle(gMainGfxPos++, posX * 4, posY * 4, (posX + width) * 4, (posY + height) * 4, G_TX_RENDERTILE, 0, 0, 0x0400, 0x0400);
             }
@@ -758,7 +759,7 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
 #endif
                 void* mdl_address = mdl_get_next_texture_address(width * height * 2);
                 if(mdl_address != 0) {
-                    gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, width, OS_K0_TO_PHYSICAL(mdl_address));
+                    nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, width, OS_K0_TO_PHYSICAL(mdl_address));
                     nd_pso_scis(G_SC_NON_INTERLACE, 0, 0, width, height);
                     nd_pso_cyc(G_CYC_FILL);
                     gDPSetFillColor(gMainGfxPos++, PACK_FILL_COLOR(primR, primG, primB, 0));
@@ -769,7 +770,7 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
 
                     fpDrawContents((s32)drawContentsArg0, 0, 0, width, height, opacity, darkening);
 
-                    gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 320, OS_K0_TO_PHYSICAL(nuGfxCfb_ptr));
+                    nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, 320, OS_K0_TO_PHYSICAL(nuGfxCfb_ptr));
                     nd_pso_scis(G_SC_NON_INTERLACE, 0, 0, 320, 240);
                     gSPViewport(gMainGfxPos++, &gBoxViewport);
                     nd_xf_push(sp154, G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
@@ -806,9 +807,9 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
                         nd_val_tile_size(G_TX_RENDERTILE, (160 - width / 2) * 4, 0, ((160 - width / 2) + width - 1) * 4, (height - 1) * 4);
                         for (k = 0; k < ns; k += 8) {
                             n = ns - k < 8 ? ns - k : 8;
-                            gSPVertex(gMainGfxPos++, &v[k * 4], n * 4, 0);
+                            nd_mesh_vtx(&v[k * 4], n * 4, 0);
                             for (j = 0; j < n; j++) {
-                                gSP2Triangles(gMainGfxPos++, 4 * j + 0, 4 * j + 3, 4 * j + 1, 0, 4 * j + 0, 4 * j + 2, 4 * j + 3, 0);
+                                nd_mesh_tri2(4 * j + 0, 4 * j + 3, 4 * j + 1, 0, 4 * j + 0, 4 * j + 2, 4 * j + 3, 0);
                             }
                         }
                         sBoxStripN[c] += ns * 4;
@@ -828,8 +829,8 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
                                         0, idx * 6, width - 1, idx * 6 + lineHeight, 0,
                                         G_TX_CLAMP, G_TX_CLAMP, 9, 3, G_TX_NOLOD, G_TX_NOLOD);
                         nd_val_tile_size(G_TX_RENDERTILE, (160 - width / 2) * 4, 0, ((160 - width / 2) + width - 1) * 4, lineHeight * 4);
-                        gSPVertex(gMainGfxPos++, &vtx_drawbox1, 4, 0);
-                        gSP2Triangles(gMainGfxPos++, 0, 3, 1, 0, 0, 2, 3, 0);
+                        nd_mesh_vtx(&vtx_drawbox1, 4, 0);
+                        nd_mesh_tri2(0, 3, 1, 0, 0, 2, 3, 0);
                         nd_xf_push(&gBoxMatrix, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
                     }
                 }

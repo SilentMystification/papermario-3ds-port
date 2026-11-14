@@ -3,6 +3,7 @@
 #include "nd.h" /* S6-2a: nd_dlc_tex_decode (entcheck census) */
 #include "nd_cmd.h" /* DIRECT D3 */
 #include "nd_op.h" /* HC4e2b: the typed unit of a list word */
+#include "nd_geo.h"
 
 EntityModelScript D_8014C260 = {
     ems_End
@@ -514,7 +515,7 @@ void appendGfx_entity_model(EntityModel* model) {
 
         nd_pso_geom_clr(G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
         nd_pso_geom_set(G_ZBUFFER | G_SHADE | G_LIGHTING | G_SHADING_SMOOTH);
-        gSPSetLights1(gMainGfxPos++, D_8014C268);
+        nd_lit_set1(D_8014C268);
         nd_tex_on(-1, -1, 0, G_TX_RENDERTILE, G_ON);
         nd_pso_alcmp(G_AC_NONE);
         nd_pso_som(G_SETOTHERMODE_H, G_MDSFT_ALPHADITHER, 18, G_AD_DISABLE | G_CD_DISABLE | G_CK_NONE | G_TC_FILT | G_TF_BILERP | G_TT_NONE | G_TL_TILE | G_TD_CLAMP | G_TP_PERSP | G_CYC_1CYCLE);
@@ -808,7 +809,7 @@ void draw_entity_model_E(s32 modelIdx, Mtx* transformMtx) {
 
         nd_pso_geom_clr(G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
         nd_pso_geom_set(G_ZBUFFER | G_SHADE | G_LIGHTING | G_SHADING_SMOOTH);
-        gSPSetLights1(gMainGfxPos++, D_8014C268);
+        nd_lit_set1(D_8014C268);
         nd_tex_on(-1, -1, 0, G_TX_RENDERTILE, G_ON);
         nd_pso_alcmp(G_AC_NONE);
         nd_pso_som(G_SETOTHERMODE_H, G_MDSFT_ALPHADITHER, 18, G_AD_DISABLE | G_CD_DISABLE | G_CK_NONE | G_TC_FILT | G_TF_BILERP | G_TT_NONE | G_TL_TILE | G_TD_CLAMP | G_TP_PERSP | G_CYC_1CYCLE);

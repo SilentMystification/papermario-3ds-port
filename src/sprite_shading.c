@@ -4,6 +4,7 @@
 #include "nd_st.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_geo.h"
 
 SpriteShadingProfile* gSpriteShadingProfile;
 SpriteShadingProfile* gAuxSpriteShadingProfile;
@@ -389,7 +390,7 @@ void appendGfx_shading_palette(
 
     nd_val_prim(0, 0, shadowR, shadowG, shadowB, alpha);
     nd_pso_cc(PM_CC_53, PM_CC_54);
-    gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, SpriteShadingPalette);
+    nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, SpriteShadingPalette);
     nd_pso_scis(G_SC_NON_INTERLACE, 0, 0, 16, 1);
 
     nd_pso_som(G_SETOTHERMODE_H, 4, 18, G_AD_DISABLE | G_CD_DISABLE | G_CK_NONE | G_TC_FILT | G_TF_POINT | G_TT_NONE | G_TL_TILE |
@@ -401,7 +402,7 @@ void appendGfx_shading_palette(
     nd_val_env(highlightR, highlightG, highlightB, 0);
     nd_pso_cc(PM_CC_55, PM_CC_55);
     gSPTextureRectangle(gMainGfxPos++, 0, 0, 16 << 2, 1 << 2, 2, 0, 0, 4 << 10, 1 << 10);
-    gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
+    nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
 
     nd_pso_scis(0, camera->viewportStartX, camera->viewportStartY, camera->viewportStartX + camera->viewportW, camera->viewportStartY + camera->viewportH);
 

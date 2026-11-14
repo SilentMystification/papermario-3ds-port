@@ -8,6 +8,7 @@
 #include "ld_addrs.h"
 #include <string.h>
 #include "nd_api.h"
+#include "nd_geo.h"
 
 #if VERSION_JP
 #define TITLE_WIDTH 272
@@ -469,14 +470,14 @@ void appendGfx_title_screen(void) {
     }
 
     gDPPipeSync(gMainGfxPos++);
-    gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
+    nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
     gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
     gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
     gDPPipeSync(gMainGfxPos++);
     gSPClearGeometryMode(gMainGfxPos++, G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING |
                             G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
     gSPSetGeometryMode(gMainGfxPos++, G_ZBUFFER | G_SHADE | G_LIGHTING | G_SHADING_SMOOTH);
-    gSPSetLights1(gMainGfxPos++, D_80077A38);
+    nd_lit_set1(D_80077A38);
 
     gSPTexture(gMainGfxPos++, -1, -1, 0, G_TX_RENDERTILE, G_ON);
     gDPSetTextureLOD(gMainGfxPos++, G_TL_TILE);

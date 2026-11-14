@@ -5,6 +5,7 @@
 #include "nd_st.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_geo.h"
 extern u8 gPmStencilId;                      /* screen_overlays.c, NATIVEAPI B2a */
 extern void pm_tsten_run(const uint32_t* u); /* screen_overlays.c, NATIVEAPI B2a */
 
@@ -158,7 +159,7 @@ void appendGfx_darkness_stencil(bool isWorld, s32 posX, s32 posY, f32 alpha, f32
     nd_pso_aldith(G_AD_PATTERN);
     nd_pso_filt(G_TF_POINT);
     nd_pso_persp(G_TP_PERSP);
-    gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_32b, 64, osVirtualToPhysical(nuGfxZBuffer));
+    nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_32b, 64, osVirtualToPhysical(nuGfxZBuffer));
     nd_pso_scis(G_SC_NON_INTERLACE, 0, 0, 64, 64);
     gSPViewport(gMainGfxPos++, &DarknessStencilViewport);
     nd_pso_cc(PM_CC_CONST_1, PM_CC_CONST_1);
@@ -193,7 +194,7 @@ void appendGfx_darkness_stencil(bool isWorld, s32 posX, s32 posY, f32 alpha, f32
     }
 
     nd_pso_persp(G_TP_NONE);
-    gDPSetColorImage(gMainGfxPos++, G_IM_FMT_I, G_IM_SIZ_8b, 64, osVirtualToPhysical(nuGfxZBuffer));
+    nd_tgt_cimg(G_IM_FMT_I, G_IM_SIZ_8b, 64, osVirtualToPhysical(nuGfxZBuffer));
     nd_pso_scis(G_SC_NON_INTERLACE, 0, 0, 64, 64);
     nd_pso_cc(PM_CC_0F, PM_CC_0F);
 
@@ -208,11 +209,11 @@ void appendGfx_darkness_stencil(bool isWorld, s32 posX, s32 posY, f32 alpha, f32
 
     nd_pso_cyc(G_CYC_FILL);
     nd_pso_rm(G_RM_NOOP, G_RM_NOOP2);
-    gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_32b, 64, osVirtualToPhysical(nuGfxZBuffer));
+    nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_32b, 64, osVirtualToPhysical(nuGfxZBuffer));
     gDPSetFillColor(gMainGfxPos++, GPACK_ZDZ(G_MAXFBZ, 0)<<16 | GPACK_ZDZ(G_MAXFBZ, 0));
     gDPFillRectangle(gMainGfxPos++, 0, 0, 63, 63);
 
-    gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
+    nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
     nd_pso_scis(G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
     nd_pso_cyc(G_CYC_1CYCLE);
     nd_pso_dither(G_CD_MAGICSQ);
