@@ -55,14 +55,6 @@ extern Gfx Gfx_RM3_INTERSECTING_XLU[];
 #include "nd_val.h"
 #include "nd_xf.h"
 #define AN_RM(l) ND_RM_REC(l)
-#define AN_NODE_HEAD gsSPTexture(0, 0, 0, G_TX_RENDERTILE, G_OFF), gsDPSetTextureLOD(G_TL_TILE), gsDPSetTextureLUT(G_TT_NONE), gsSPClearGeometryMode(G_LIGHTING)
-/* S5EMDL3: the per-node state of appendGfx_animator_node as four compiled defs (cull x fog, nd_scomp.h). */
-static const Gfx an_n_dec_u[] = { AN_NODE_HEAD, gsSPSetGeometryMode(0), gsDPSetCombineMode(G_CC_DECALRGBA, G_CC_DECALRGBA) };
-static const Gfx an_n_dec_cull_u[] = { AN_NODE_HEAD, gsSPSetGeometryMode(G_CULL_BACK), gsDPSetCombineMode(G_CC_DECALRGBA, G_CC_DECALRGBA) };
-static const Gfx an_n_fog_u[] = { AN_NODE_HEAD, gsSPSetGeometryMode(0), gsDPSetCombineMode(PM_CC_42, PM_CC2_MULTIPLY_SHADE) };
-static const Gfx an_n_fog_cull_u[] = { AN_NODE_HEAD, gsSPSetGeometryMode(G_CULL_BACK), gsDPSetCombineMode(PM_CC_42, PM_CC2_MULTIPLY_SHADE) };
-static NdSDef an_n_dec = { an_n_dec_u, 6 }, an_n_dec_cull = { an_n_dec_cull_u, 6 }, an_n_fog = { an_n_fog_u, 6 },
-              an_n_fog_cull = { an_n_fog_cull_u, 6 };
 
 AnimScript gAnimScriptDefault = {
     as_Wait(60)
@@ -887,7 +879,13 @@ void appendGfx_animator_node(ModelAnimator* animator, AnimatorNode* node, Matrix
 
     {
         const int cull = (animator->flags & MODEL_ANIMATOR_FLAG_CULL_BACK) != 0;
-        nd_scomp_rec(!gAnimModelFogEnabled ? (cull ? &an_n_dec_cull : &an_n_dec) : (cull ? &an_n_fog_cull : &an_n_fog), NULL, 0);
+        nd_tex_on(0, 0, 0, G_TX_RENDERTILE, G_OFF);
+        nd_pso_lod(G_TL_TILE);
+        nd_pso_lut(G_TT_NONE);
+        nd_pso_geom_clr(G_LIGHTING);
+        nd_pso_geom_set(cull ? G_CULL_BACK : 0);
+        if (!gAnimModelFogEnabled) nd_pso_cc(G_CC_DECALRGBA, G_CC_DECALRGBA);
+        else nd_pso_cc(PM_CC_42, PM_CC2_MULTIPLY_SHADE);
     }
 
     if (animator->fpRenderCallback != nullptr) animator->fpRenderCallback(animator->renderCallbackArg);

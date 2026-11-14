@@ -588,25 +588,8 @@ void update_all_status_icons(void* data) {
     }
 }
 
-#include "nd_scomp.h"
-/* S6T: the prologue of draw_all_status_icons as a compiled state range (nd_scomp.h), the units in the order of the N64 code; the scissor is
- * its value unit (the record carries it). */
-static const Gfx icons_range_u[] = {
-    gsDPSetScissor(G_SC_NON_INTERLACE, 0, 0, 0, 0),
-    gsDPPipeSync(),
-    gsDPSetCycleType(G_CYC_1CYCLE),
-    gsDPSetTexturePersp(G_TP_NONE),
-    gsDPSetTextureLOD(G_TL_TILE),
-    gsDPSetTextureDetail(G_TD_CLAMP),
-    gsDPSetTextureConvert(G_TC_FILT),
-    gsDPSetCombineKey(G_CK_NONE),
-    gsDPSetAlphaCompare(G_AC_NONE),
-    gsDPNoOp(),
-    gsDPSetColorDither(G_CD_DISABLE),
-    gsDPSetAlphaDither(G_AD_DISABLE),
-    gsSPTexture(-1, -1, 0, G_TX_RENDERTILE, G_ON),
-};
-static NdSDef icons_range = { icons_range_u, sizeof icons_range_u / sizeof icons_range_u[0] };
+#include "nd_st.h"
+#include "nd_tx.h"
 
 void draw_all_status_icons(void* data) {
     PopupMessage* popup = data;
@@ -619,11 +602,18 @@ void draw_all_status_icons(void* data) {
     Camera* camera = &gCameras[gCurrentCameraID];
     int i;
 
-    {
-        Gfx scv[1]; /* S6T: the value unit of icons_range */
-        gDPSetScissor(&scv[0], G_SC_NON_INTERLACE, 12, 20, SCREEN_WIDTH - 12, SCREEN_HEIGHT - 20);
-        nd_scomp_rec(&icons_range, scv, 1);
-    }
+    /* RECROOT: the prologue of draw_all_status_icons (was icons_range, nd_scomp_rec), one setter per unit in the N64 order. */
+    nd_pso_scis(G_SC_NON_INTERLACE, 12, 20, SCREEN_WIDTH - 12, SCREEN_HEIGHT - 20);
+    nd_pso_cyc(G_CYC_1CYCLE);
+    nd_pso_persp(G_TP_NONE);
+    nd_pso_lod(G_TL_TILE);
+    nd_pso_detail(G_TD_CLAMP);
+    nd_pso_conv(G_TC_FILT);
+    nd_pso_combkey(G_CK_NONE);
+    nd_pso_alcmp(G_AC_NONE);
+    nd_pso_dither(G_CD_DISABLE);
+    nd_pso_aldith(G_AD_DISABLE);
+    nd_tex_on(-1, -1, 0, G_TX_RENDERTILE, G_ON);
 
     for (i = 0, icon = D_800A0F44; i < MAX_ICONS; i++, icon++) {
         if (icon->flags == 0) {

@@ -20,32 +20,16 @@ Vp D_80074200 = {
     }
 };
 
-Gfx D_80074210[] = {
-    gsDPSetRenderMode(G_RM_OPA_SURF, G_RM_OPA_SURF2),
-    gsDPSetCombineMode(G_CC_SHADE, G_CC_SHADE),
-    gsDPSetColorDither(G_CD_BAYER),
-    gsSPEndDisplayList(),
-};
-
-Gfx D_80074230[] = {
-    gsSPViewport(&D_80074200),
-    gsSPClearGeometryMode(G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN |
-                          G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH | G_CLIPPING | 0x0040F9FA),
-    gsSPSetGeometryMode(G_ZBUFFER | G_SHADE | G_CULL_BACK | G_SHADING_SMOOTH),
-    gsSPTexture(0, 0, 0, G_TX_RENDERTILE, G_OFF),
-    gsSPEndDisplayList(),
-};
-
-#include "nd_scomp.h"
-/* S6S1: the two init lists as compiled state ranges (nd_scomp.h). The counts leave out the End unit. D_80074230 has one value unit
- * (the viewport, unit 0); D_80074210 has none. */
-static NdSDef init_def_vp = { D_80074230, 4 };
-static NdSDef init_def_rm = { D_80074210, 3 };
-
 void gfx_init_state(void) {
     nd_val_seg(0x00, 0x0);
-    nd_scomp_rec(&init_def_vp, &D_80074230[0], 1);
-    nd_scomp_rec(&init_def_rm, NULL, 0);
+    nd_xf_viewport(&D_80074200);
+    nd_pso_geom_clr(G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN |
+                    G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH | G_CLIPPING | 0x0040F9FA);
+    nd_pso_geom_set(G_ZBUFFER | G_SHADE | G_CULL_BACK | G_SHADING_SMOOTH);
+    nd_tex_on(0, 0, 0, G_TX_RENDERTILE, G_OFF);
+    nd_pso_rm(G_RM_OPA_SURF, G_RM_OPA_SURF2);
+    nd_pso_cc(G_CC_SHADE, G_CC_SHADE);
+    nd_pso_dither(G_CD_BAYER);
 }
 
 void gfx_frame_filter_pass_0(const u16* frameBuffer0, const u16* frameBuffer1, s32 y, s32 x, Color_RGBA8* out) {

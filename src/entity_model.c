@@ -50,28 +50,22 @@ extern Gfx Gfx_RM3_DECAL_XLU[];
 extern Gfx Gfx_RM3_INTERSECTING_XLU[];
 #include "nd_rmdef.h" /* S5EMDL1: the Gfx_RM* lists as compiled ranges */
 #include "nd_st.h"
+#include "nd_tx.h"
 #include "nd_val.h"
 #include "nd_xf.h"
 #define EM_RM(l) ND_RM_REC(l)
-/* S5EMDL2: the entity state lines around the render-mode list as S6T defs (nd_scomp.h). The prim colour is an ordered value
- * (class 4), so it leads its def; the syncs are dropped by the compiler (nd_scomp.c, as nd_gx_w). */
-static const Gfx em_pre_u[] = { gsDPSetPrimColor(0, 0, 0, 0, 0, 0), gsDPSetRenderMode(G_RM_TEX_EDGE, G_RM_TEX_EDGE2),
-    gsDPSetCombineMode(G_CC_MODULATEIA_PRIM, G_CC_MODULATEIA_PRIM), gsDPSetAlphaCompare(G_AC_NONE),
-    gsSPSetOtherMode(G_SETOTHERMODE_H, G_MDSFT_ALPHADITHER, 18, G_AD_DISABLE | G_CD_DISABLE | G_CK_NONE | G_TC_FILT | G_TF_POINT | G_TT_NONE | G_TL_TILE | G_TD_CLAMP | G_TP_NONE | G_CYC_1CYCLE) };
-static const Gfx em_plain_u[] = { gsSPClearGeometryMode(G_LIGHTING), gsDPSetCombineMode(G_CC_MODULATEIA, G_CC_MODULATEIA) };
-static const Gfx em_noncomb_u[] = { gsSPClearGeometryMode(G_LIGHTING) };
-static const Gfx em_fog_u[] = { gsDPSetFogColor(0, 0, 0, 0), gsSPFogPosition(0, 1000), gsSPClearGeometryMode(G_LIGHTING),
-    gsDPSetCombineMode(PM_CC_42, PM_CC2_MULTIPLY_SHADE) };
-static const Gfx em_shadow_u[] = { gsDPSetCombineMode(PM_CC1_SHADOW, PM_CC2_SHADOW) };
-static NdSDef em_pre = { em_pre_u, 5 }, em_plain = { em_plain_u, 2 }, em_noncomb = { em_noncomb_u, 1 }, em_fog = { em_fog_u, 4 },
-              em_shadow = { em_shadow_u, 1 };
 static void em_tail(int fog, int comb) { /* S5EMDL2: ClearGeometryMode(G_LIGHTING) and the combine; fog: with the fog values first */
     if (fog) {
-        Gfx v[2];
-        gDPSetFogColor(&v[0], entity_fog_red, entity_fog_green, entity_fog_blue, entity_fog_alpha);
-        gSPFogPosition(&v[1], entity_fog_dist_min, entity_fog_dist_max);
-        nd_scomp_rec(&em_fog, v, 2);
-    } else nd_scomp_rec(comb ? &em_plain : &em_noncomb, NULL, 0);
+        nd_val_fog(entity_fog_red, entity_fog_green, entity_fog_blue, entity_fog_alpha);
+        nd_pso_fogpos(entity_fog_dist_min, entity_fog_dist_max);
+        nd_pso_geom_clr(G_LIGHTING);
+        nd_pso_cc(PM_CC_42, PM_CC2_MULTIPLY_SHADE);
+    } else if (comb) {
+        nd_pso_geom_clr(G_LIGHTING);
+        nd_pso_cc(G_CC_MODULATEIA, G_CC_MODULATEIA);
+    } else {
+        nd_pso_geom_clr(G_LIGHTING);
+    }
 }
 
 s32 step_entity_model_commandlist(EntityModel* entityModel);
@@ -381,7 +375,11 @@ void appendGfx_entity_model(EntityModel* model) {
     if (!(model->flags & ENTITY_MODEL_FLAG_USE_IMAGE)) {
         if (!(model->flags & ENTITY_MODEL_FLAG_10000)) {
             if (model->renderMode != RENDER_MODE_SHADOW) {
-                { Gfx v[1]; gDPSetPrimColor(&v[0], 0, 0, 255, 255, 255, 255); nd_scomp_rec(&em_pre, v, 1); }
+                nd_val_prim(0, 0, 255, 255, 255, 255);
+                nd_pso_rm(G_RM_TEX_EDGE, G_RM_TEX_EDGE2);
+                nd_pso_cc(G_CC_MODULATEIA_PRIM, G_CC_MODULATEIA_PRIM);
+                nd_pso_alcmp(G_AC_NONE);
+                nd_pso_som(G_SETOTHERMODE_H, G_MDSFT_ALPHADITHER, 18, G_AD_DISABLE | G_CD_DISABLE | G_CK_NONE | G_TC_FILT | G_TF_POINT | G_TT_NONE | G_TL_TILE | G_TD_CLAMP | G_TP_NONE | G_CYC_1CYCLE);
             }
 
             switch (entity_fog_enabled && !(model->flags & ENTITY_MODEL_FLAG_FOG_DISABLED)) {
@@ -479,7 +477,7 @@ void appendGfx_entity_model(EntityModel* model) {
         if (!(model->flags & ENTITY_MODEL_FLAG_10000)) {
             if (!entity_fog_enabled || (model->flags & ENTITY_MODEL_FLAG_FOG_DISABLED)) {
                 if (model->renderMode == RENDER_MODE_SHADOW) {
-                    nd_scomp_rec(&em_shadow, NULL, 0);
+                    nd_pso_cc(PM_CC1_SHADOW, PM_CC2_SHADOW);
                 }
             }
         }
