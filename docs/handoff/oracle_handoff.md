@@ -1,6 +1,6 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main cac60bf48, 2026-11-14. Eleventh oracle: ws_GCONVW. Tenth: ws_FXENT3. Ninth oracle: ws_PSOLK, ws_RECROOT, ws_FXENT2, ws_GSET2, ws_GSET3; design_lookahead 5, 6, 9.
+State: main b1d32df25, 2026-11-14. Twelfth oracle: FXENT3 fault answers, FXREST2 facts (below). Eleventh oracle: ws_GCONVW. Tenth: ws_FXENT3. Ninth oracle: ws_PSOLK, ws_RECROOT, ws_FXENT2, ws_GSET2, ws_GSET3; design_lookahead 5, 6, 9.
 ## Goal
 Remove the display list system completely (plan_endgame.md v3). Done only when `3ds/tools/elfgate.py` prints
 `func 0 data 0 gfxnames 0` and every LISTCEN2 counter C1..C12 is 0.
@@ -16,10 +16,14 @@ FACT (Merge FXSELF 1149b5513): C10 recdl 57 (42 `nd_rec_dl(` in src/effects + 15
 ## Open work
 - Merged: TEX4, RECROOT, NSTREAM2, NSTREAM3, GKEY2, GSET1-3, FXENT2, FXENT3 (20 sites; nd_rec_dl_k keyed form). PSOLK: check `git log` for its merge.
 - Merged: GCONVW (75d442afb, ntab tables 1153). Ready page: ws_FXREST1 (start now; owns the 21 effect site files, 3ds/tools/fxrest.d/).
-- To write next: the key page from 3ds/tools/fxrest.d/classes.txt (after FXREST1 group 1). The 22 `nd_rec_dl(` lines of src/effects (FACT grep cac60bf48). fxent3_rest.txt is lost: classes need one capture (fxent/fxchk benches) and
-  `entapply.py --dry`. Arg shapes (FACT grep): plain symbol 9 (chomp_drop:164,:167, damage_indicator:286,:288, disable_x:308,:310, explosion:198, recover:223,:240);
-  local variable 6 (gather_energy_pink:224, green_impact:202, landing_dust:331, red_impact:209, ring_blast:141, shockwave:341); indexed 6 (cold_breath:234, misc_particles:330,
-  shattering_stones:172, something_rotating:316, star_spirits_energy:400, stat_change:274); chapter_change:163 waits for the user.
+- Write now: ws_FXREST2 (merged FXREST1 b1d32df25; coder question build3ds/wt/FXREST1/build3ds/out/fxrest1.txt: the key design for multi 8, kmiss 2).
+  Gate: fxr_chk bucket-21 psochk line bad == 666 (psochk logs only the first checked draw of a 100-frame bucket, nd_comb.c:229-231), fxr_drec byte-equal to merge-base.
+  FACT 3ds/tools/fxrest.d/cap.txt (column order nd_walker_desc, nd_comb.c:206-213). The tuples of one key differ in one place only:
+  geom 00000205 vs 00000405: green_impact:203#0/#1, red_impact:210#0/#1, shockwave:342#2/#3. Last word high byte 0x33..0x50: misc_particles:331#2/#3/#6/#7 (GUESS plod).
+  key_c d3ffd800/8ca98f00/46554800/0: ring_blast:141#0. Two real combine states (cw0 fc127e24/fc123224, oml 00551208/00504340): recover:240#0, recover:223, stat_change:274.
+  kmiss: cold_breath:234 keys 2-5 and gather_energy_pink:224 keys 1,3 were not seen.
+  First step: read nd_psochk.c (nd_psochk_cmp). For each varying field, decide whether it is a per-draw value (set by a setter, so drop it from the compare or the entry) or a pipeline (so add a branch key).
+  Read each site's code for the key expression. chapter_change:163 stays nd_rec_dl (the user decides). The chomp_drop vtx fix is on main (b31e07f23).
 - After GCONVW: GSET-W (move the joined lists; NDN_DECL(X) pastes ndd_##X, so an N(x) argument needs an expanded name, nd_gtab.h:65-66). Converter light support
   (MOVEMEM is unsup, nd_gfx_conv.c:475) decides dgb_01/gfx.c (168 lists), level_up*, starpoint* (GUESS by macro grep: their lists hold lights, rects or scissors).
   model.c (63 lists) are ND_RM_REC scomp defs (nd_rmdef.h): design before it joins.
@@ -40,4 +44,5 @@ FACT (Merge FXSELF 1149b5513): C10 recdl 57 (42 `nd_rec_dl(` in src/effects + 15
 ## What to do first
 1. Answer coder questions (SendMessage, 10 lines, file:line). Check each ready page's quoted anchors against main after the merge it waits for.
 2. After `Merge PSOLK`: read its hand-back (lk, miss) and write ws_PSOCAP.
-3. Write the effects hand-rows page (above).
+3. Write ws_FXREST2 (above). Reply to the FXREST1 coder with SendMessage.
+- An uninitialised vtx field from nd_rec_data (nd_rec.c:482 does not clear the memory) makes the drec bytes depend on the stream layout. Such a gate fails only at that draw (chomp_drop, FXENT3).
