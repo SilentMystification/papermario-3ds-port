@@ -5,6 +5,7 @@
 #include "entity.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 
 extern EntityModelScript Entity_HeartBlockContent_RenderScriptIdle;
 extern EntityModelScript Entity_HeartBlockContent_RenderScriptAfterHit;
@@ -36,7 +37,7 @@ void entity_HeartBlockContent__setupGfx(s32 entityIndex, Gfx* arg1) {
 
     dlist = ENTITY_ADDR(entity, Gfx*, arg1);
 
-    gDPSetCombineMode(gMainGfxPos++, PM_CC_01, PM_CC_02);
+    nd_pso_cc(PM_CC_01, PM_CC_02);
     nd_val_prim(0, 0, 0, 0, 0, entity->alpha);
 
     alpha = 92;
@@ -48,9 +49,9 @@ void entity_HeartBlockContent__setupGfx(s32 entityIndex, Gfx* arg1) {
     guMtxF2L(sp18, &data->unk_58);
     gDisplayContext->matrixStack[gMatrixListPos] = data->unk_58;
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gDPSetRenderMode(gMainGfxPos++, AA_EN | Z_CMP | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA), AA_EN | Z_CMP | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA));
+    nd_pso_rm(AA_EN | Z_CMP | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA), AA_EN | Z_CMP | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA));
     gSPDisplayList(gMainGfxPos++, dlist);
-    gDPSetCombineMode(gMainGfxPos++, PM_CC_01, PM_CC_02);
+    nd_pso_cc(PM_CC_01, PM_CC_02);
     nd_val_prim(0, 0, 0, 0, 0, alpha);
     nd_xf_pop(G_MTX_MODELVIEW);
 
@@ -63,9 +64,9 @@ void entity_HeartBlockContent__setupGfx(s32 entityIndex, Gfx* arg1) {
     guMtxF2L(sp18, &data->unk_98);
     gDisplayContext->matrixStack[gMatrixListPos] = data->unk_98;
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gDPSetRenderMode(gMainGfxPos++, AA_EN | Z_CMP | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA), AA_EN | Z_CMP | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA));
+    nd_pso_rm(AA_EN | Z_CMP | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA), AA_EN | Z_CMP | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA));
     gSPDisplayList(gMainGfxPos++, dlist);
-    gDPSetCombineMode(gMainGfxPos++, PM_CC_01, PM_CC_02);
+    nd_pso_cc(PM_CC_01, PM_CC_02);
     nd_val_prim(0, 0, 0, 0, 0, alpha);
     nd_xf_pop(G_MTX_MODELVIEW);
 

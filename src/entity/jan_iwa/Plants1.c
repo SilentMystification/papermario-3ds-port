@@ -7,6 +7,7 @@
 #include "sprite/player.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 
 extern Gfx Entity_RenderNone[];
 extern AnimScript Entity_CymbalPlant_AnimationIdle;
@@ -168,7 +169,7 @@ void entity_PinkFlowerLight_setupGfx(s32 entityIndex) {
     guMtxCatF(sp18, sp58, sp18);
     guTranslateF(sp58, entity->pos.x + 16.0f * sinAngle, entity->pos.y , entity->pos.z - 16.0f * cosAngle);
     guMtxCatF(sp18, sp58, sp18);
-    gDPSetCombineMode(gMainGfxPos++, PM_CC_01, PM_CC_02);
+    nd_pso_cc(PM_CC_01, PM_CC_02);
     nd_val_prim(0, 0, 0, 0, 0, entity->alpha);
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);

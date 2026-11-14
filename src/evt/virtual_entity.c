@@ -1,6 +1,7 @@
 #include "common.h"
 #include "entity.h"
 #include "nd_val.h"
+#include "nd_st.h"
 
 extern VirtualEntityList bBattleVirtualEntityList;
 extern VirtualEntityList wWorldVirtualEntityList;
@@ -11,16 +12,16 @@ s32 create_worker_backUI(void (*updateFunc)(void), void (*drawFunc)(void));
 void virtual_entity_appendGfx_quad(u8 r, u8 g, u8 b, u8 a, u16 left, u16 top, u16 right, u16 bottom) {
 
     if (a == 0xFF) {
-        gDPSetCombineMode(gMainGfxPos++, PM_CC_PRIM_FULL_ALPHA, PM_CC_PRIM_FULL_ALPHA);
+        nd_pso_cc(PM_CC_PRIM_FULL_ALPHA, PM_CC_PRIM_FULL_ALPHA);
     } else {
-        gDPSetRenderMode(gMainGfxPos++, G_RM_XLU_SURF, G_RM_XLU_SURF2);
-        gDPSetCombineMode(gMainGfxPos++, G_CC_PRIMITIVE, G_CC_PRIMITIVE);
+        nd_pso_rm(G_RM_XLU_SURF, G_RM_XLU_SURF2);
+        nd_pso_cc(G_CC_PRIMITIVE, G_CC_PRIMITIVE);
     }
 
     nd_val_prim(0, 0, r, g, b, a);
     gDPFillRectangle(gMainGfxPos++, left, top, right, bottom);
-    gDPSetRenderMode(gMainGfxPos++, G_RM_TEX_EDGE, G_RM_TEX_EDGE2);
-    gDPSetCombineMode(gMainGfxPos++, G_CC_DECALRGBA, G_CC_DECALRGBA);
+    nd_pso_rm(G_RM_TEX_EDGE, G_RM_TEX_EDGE2);
+    nd_pso_cc(G_CC_DECALRGBA, G_CC_DECALRGBA);
 }
 
 void virtual_entity_render_quad(s32 r, s32 g, s32 b, s32 a, s32 posX, s32 posY, s32 width, s32 height) {

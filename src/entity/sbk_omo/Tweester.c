@@ -3,6 +3,7 @@
 #include "ld_addrs.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 
 u8 Entity_Tweester_FaceAnimationData[] = {
       0,  2,
@@ -63,15 +64,15 @@ void entity_Tweester_render_face(s32 entityIndex) {
     Entity* entity = get_entity_by_index(entityIndex);
     TweesterData* data = entity->dataBuf.tweester;
 
-    gDPSetTextureLUT(gMainGfxPos++, G_TT_RGBA16);
+    nd_pso_lut(G_TT_RGBA16);
     gDPLoadTLUT_pal16(gMainGfxPos++, 0, D_0A0018A0_E58700);
-    gSPTexture(gMainGfxPos++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
-    gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIA, G_CC_MODULATEIA);
-    gDPSetTextureDetail(gMainGfxPos++, G_TD_CLAMP);
-    gDPSetTextureLOD(gMainGfxPos++, G_TL_TILE);
+    nd_tex_on(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
+    nd_pso_cc(G_CC_MODULATEIA, G_CC_MODULATEIA);
+    nd_pso_detail(G_TD_CLAMP);
+    nd_pso_lod(G_TL_TILE);
     gDPLoadTextureBlock_4b(gMainGfxPos++, D_0A0014A0_E58300, G_IM_FMT_CI, 64, 32, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_CLAMP, 6, 5, G_TX_NOLOD, G_TX_NOLOD);
-    gDPSetTexturePersp(gMainGfxPos++, G_TP_PERSP);
-    gDPSetTextureFilter(gMainGfxPos++, G_TF_BILERP);
+    nd_pso_persp(G_TP_PERSP);
+    nd_pso_filt(G_TF_BILERP);
     nd_val_tile_size(G_TX_RENDERTILE, data->faceAnimTexOffset * 4, 0, (data->faceAnimTexOffset + 124) * 4, 31 * 4);
 }
 
@@ -79,11 +80,11 @@ void entity_Tweester_setupGfx(s32 entityIndex) {
     Entity* entity = get_entity_by_index(entityIndex);
     TweesterData* data = entity->dataBuf.tweester;
 
-    gDPSetTextureLUT(gMainGfxPos++, G_TT_NONE);
-    gSPTexture(gMainGfxPos++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
-    gDPSetCombineMode(gMainGfxPos++, PM_CC_ALT_INTERFERENCE, G_CC_MODULATEIA2);
-    gDPSetTextureDetail(gMainGfxPos++, G_TD_CLAMP);
-    gDPSetTextureLOD(gMainGfxPos++, G_TL_TILE);
+    nd_pso_lut(G_TT_NONE);
+    nd_tex_on(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
+    nd_pso_cc(PM_CC_ALT_INTERFERENCE, G_CC_MODULATEIA2);
+    nd_pso_detail(G_TD_CLAMP);
+    nd_pso_lod(G_TL_TILE);
     gDPSetTextureImage(gMainGfxPos++, G_IM_FMT_I, G_IM_SIZ_8b, 32, D_0A000BF0_E57A50);
     gDPSetTile(gMainGfxPos++, G_IM_FMT_I, G_IM_SIZ_8b, 4, 0x0000, G_TX_LOADTILE, 0, G_TX_NOMIRROR | G_TX_WRAP, 5, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_WRAP, 5, G_TX_NOLOD);
     gDPLoadSync(gMainGfxPos++);
@@ -96,8 +97,8 @@ void entity_Tweester_setupGfx(s32 entityIndex) {
     gDPLoadTile(gMainGfxPos++, G_TX_LOADTILE, 0, 0, 0x007C, 0x007C);
     gDPSetTile(gMainGfxPos++, G_IM_FMT_I, G_IM_SIZ_8b, 4, 0x0080, 1, 0, G_TX_NOMIRROR | G_TX_WRAP, 5, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_WRAP, 5, G_TX_NOLOD);
     nd_val_tile_size(1, 0, 0, 0x007C, 0x007C);
-    gDPSetTexturePersp(gMainGfxPos++, G_TP_PERSP);
-    gDPSetTextureFilter(gMainGfxPos++, G_TF_BILERP);
+    nd_pso_persp(G_TP_PERSP);
+    nd_pso_filt(G_TF_BILERP);
     nd_val_tile_size(G_TX_RENDERTILE, data->innerWhirlTexOffsetX, data->innerWhirlTexOffsetY, data->innerWhirlTexOffsetX + 124, data->innerWhirlTexOffsetY + 124);
     entity_Tweester_render_inner_whirl(entityIndex);
     nd_val_tile_size(G_TX_RENDERTILE, data->outerWhirlTexOffsetX, data->outerWhirlTexOffsetY, data->outerWhirlTexOffsetX + 124, data->outerWhirlTexOffsetY + 124);
