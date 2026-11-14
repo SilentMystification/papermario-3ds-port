@@ -1,4 +1,4 @@
-# ws_RECROOT: the 15 root nd_scomp_rec sites become setter calls in unit order (C10 recdl 15 to 0 in root src/*.c; C5, C6, C7 fall)
+# ws_RECROOT: the 15 root nd_scomp_rec sites become setter calls in unit order (C10 recdl 15 to 0 in root src/*.c; C1, C5, C6, C7 fall)
 Model: Haiku. PM_ROW, PM_LANE = RECROOT. Budget: 4 Azahar runs. Start after `Merge TEX4` shows in `git log --oneline main` (TEX T4 owns root src/*.c). Branch RECROOT.
 Files (this page owns them until merged; NS3 waits for `Merge RECROOT` on sprite.c): src/animator.c, background_gfx.c, cam_main.c, entity_model.c, item_entity.c,
 msg.c, sprite.c, status_icons.c. FACT (grep, main 1149b5513): sites animator.c:889, background_gfx.c:46-47, cam_main.c:230-231, entity_model.c:73, :74, :384, :482,
