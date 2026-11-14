@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """codemod.py: rewrite the value calls of the call sites to their native form (CODEMOD row, plan section 2).
 
-    python 3ds/tools/codemod.py [--dry] [--ntab <ntab_tables.txt>] <file or directory>...   (a directory: every *.c below it)
+    python 3ds/tools/codemod.py [--dry] [--state] [--ntab <ntab_tables.txt>] <file or directory>...   (a directory: every *.c below it)
+--state adds the state calls of STATE_MAP (gDP/gSP set calls -> nd_pso_*, nd_tex_on, nd_pso_scis; nd_st.h) to the mapping.
 
 A tokenizer (comments, strings, character constants and preprocessor lines are tokens of their own) finds each call of a mapped
 name with its whole argument list (balanced brackets). A call is rewritten only when it is exact:
@@ -44,6 +45,30 @@ MAP = {
     'gDPSetTileSize': (6, True, 'nd_val_tile_size', (1, 2, 3, 4, 5)),
     'nd_rec_dl': (1, False, 'nd_draw_list', (0,)),
     'gSPDisplayList': (2, True, 'nd_draw_list', (1,)),
+}
+# STATE_MAP: the state calls of the root files (design_state_calls.md), added to MAP by --state only (ws_A never passes it).
+# Same rule as MAP: first argument gMainGfxPos++, the macro's argument count, the whole statement. nd_pso_cc takes both G_CC_* arguments
+# as tokens (its variadic macro is ND_W0_CMB of nd_gbi.h); gDPSetCombineLERP has the 16 of the same form.
+STATE_MAP = {
+    'gDPSetRenderMode': (3, True, 'nd_pso_rm', (1, 2)),
+    'gDPSetCycleType': (2, True, 'nd_pso_cyc', (1,)),
+    'gDPSetTextureFilter': (2, True, 'nd_pso_filt', (1,)),
+    'gDPSetTexturePersp': (2, True, 'nd_pso_persp', (1,)),
+    'gDPSetTextureLUT': (2, True, 'nd_pso_lut', (1,)),
+    'gDPSetColorDither': (2, True, 'nd_pso_dither', (1,)),
+    'gDPSetAlphaCompare': (2, True, 'nd_pso_alcmp', (1,)),
+    'gDPSetAlphaDither': (2, True, 'nd_pso_aldith', (1,)),
+    'gDPSetTextureLOD': (2, True, 'nd_pso_lod', (1,)),
+    'gDPSetTextureDetail': (2, True, 'nd_pso_detail', (1,)),
+    'gDPSetTextureConvert': (2, True, 'nd_pso_conv', (1,)),
+    'gDPSetCombineKey': (2, True, 'nd_pso_combkey', (1,)),
+    'gDPSetCombineMode': (3, True, 'nd_pso_cc', (1, 2)),
+    'gDPSetCombineLERP': (17, True, 'nd_pso_cc', tuple(range(1, 17))),
+    'gSPSetOtherMode': (5, True, 'nd_pso_som', (1, 2, 3, 4)),
+    'gSPSetGeometryMode': (2, True, 'nd_pso_geom_set', (1,)),
+    'gSPClearGeometryMode': (2, True, 'nd_pso_geom_clr', (1,)),
+    'gSPTexture': (6, True, 'nd_tex_on', (1, 2, 3, 4, 5)),
+    'gDPSetScissor': (6, True, 'nd_pso_scis', (1, 2, 3, 4, 5)),
 }
 DL_NAMES = ('nd_rec_dl', 'gSPDisplayList')
 NTAB = set()  # CONV2F: the names of the self-contained v2 tables (--ntab <file>); empty without the option
@@ -251,6 +276,8 @@ def main(argv):
             k += 1
         elif a == '--dry':
             dry = True
+        elif a == '--state':
+            MAP.update(STATE_MAP)  # the state calls (STATE_MAP): adds the setter names to MAP for this run only
         elif os.path.isdir(a):
             for root, _, names in sorted(os.walk(a)):
                 files.extend(os.path.join(root, x) for x in sorted(names) if x.endswith('.c'))
