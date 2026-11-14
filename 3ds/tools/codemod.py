@@ -86,6 +86,45 @@ GEO_MAP = {
     'gSPPerspNormalize': (2, True, 'nd_xf_pnorm', (1,)),
     'gSPClipRatio': (2, True, 'nd_xf_clip', (1,)),
 }
+# TEX_MAP: the texture, rectangle, viewport and colour calls (ws_TEX, nd_tx.h), set by --tex only. The syncs and the end of a list are removed.
+TEX_MAP = {
+    'gDPSetTextureImage': (5, True, 'nd_tex_img', (1, 2, 3, 4)),
+    'gDPSetTile': (13, True, 'nd_tex_tile', tuple(range(1, 13))),
+    'gDPLoadTile': (6, True, 'nd_tex_ldtile', tuple(range(1, 6))),
+    'gDPSetTileSize': (6, True, 'nd_tex_tsz', tuple(range(1, 6))),
+    'gDPLoadBlock': (6, True, 'nd_tex_ldblk', tuple(range(1, 6))),
+    'gDPLoadTLUTCmd': (3, True, 'nd_tex_ldtlut', (1, 2)),
+    'gDPSetFillColor': (2, True, 'nd_val_fill', (1,)),
+    'gDPSetFogColor': (5, True, 'nd_val_fog', (1, 2, 3, 4)),
+    'gDPSetBlendColor': (5, True, 'nd_val_blend', (1, 2, 3, 4)),
+    'gSPViewport': (2, True, 'nd_xf_viewport', (1,)),
+    'gSPFogPosition': (3, True, 'nd_pso_fogpos', (1, 2)),
+    'gDPPipelineMode': (2, True, 'nd_pso_pipe', (1,)),
+    'gSPLoadGeometryMode': (2, True, 'nd_pso_geom_load', (1,)),
+    'gDPSetKeyR': (4, True, 'nd_pso_keyr', (1, 2, 3)),
+    'gDPSetKeyGB': (7, True, 'nd_pso_keygb', tuple(range(1, 7))),
+    'gDPSetScissorFrac': (6, True, 'nd_pso_scisf', tuple(range(1, 6))),
+    'gDPFillRectangle': (5, True, 'nd_rect_fill', (1, 2, 3, 4)),
+    'gDPScisFillRectangle': (5, True, 'nd_rect_sfill', (1, 2, 3, 4)),
+    'gSPTextureRectangle': (10, True, 'nd_rect_tex', tuple(range(1, 10))),
+    'gSPScisTextureRectangle': (10, True, 'nd_rect_scis', tuple(range(1, 10))),
+    'gDPLoadTextureTile': (17, True, 'nd_tex_load_tile', tuple(range(1, 17))),
+    'gDPLoadTextureTile_4b': (16, True, 'nd_tex_load_tile_4b', tuple(range(1, 16))),
+    'gDPLoadMultiTile': (19, True, 'nd_tex_load_mtile', tuple(range(1, 19))),
+    'gDPLoadMultiTile_4b': (18, True, 'nd_tex_load_mtile_4b', tuple(range(1, 18))),
+    'gDPLoadTextureBlock': (13, True, 'nd_tex_load_block', tuple(range(1, 13))),
+    'gDPLoadTextureBlock_4b': (12, True, 'nd_tex_load_block_4b', tuple(range(1, 12))),
+    'gDPLoadTLUT_pal16': (3, True, 'nd_tex_load_tlut16', (1, 2)),
+    'gDPLoadTLUT_pal256': (2, True, 'nd_tex_load_tlut256', (1,)),
+    'gDPScrollMultiTile2_4b': (18, True, 'nd_tex_scroll_mtile2_4b', tuple(range(1, 18))),
+    'gDPScrollTextureTile_4b': (18, True, 'nd_tex_scroll_tile_4b', tuple(range(1, 18))),
+    'gDPScrollTextureBlock_4b': (14, True, 'nd_tex_scroll_block_4b', tuple(range(1, 14))),
+    'gDPLoadSync': (1, True, None, None),
+    'gDPTileSync': (1, True, None, None),
+    'gDPPipeSync': (1, True, None, None),
+    'gDPNoOp': (1, True, None, None),
+    'gSPEndDisplayList': (1, True, None, None),
+}
 DL_NAMES = ('nd_rec_dl', 'gSPDisplayList')
 NTAB = set()  # CONV2F: the names of the self-contained v2 tables (--ntab <file>); empty without the option
 STATE_RE = re.compile(r'^g(DP|SP|Pm)[A-Z]\w*$')
@@ -296,6 +335,8 @@ def main(argv):
             MAP.update(STATE_MAP)  # the state calls (STATE_MAP): adds the setter names to MAP for this run only
         elif a == '--geo':
             MAP.clear(); MAP.update(GEO_MAP)  # the geometry, depth, target and light calls (GEO_MAP): no list call
+        elif a == '--tex':
+            MAP.clear(); MAP.update(TEX_MAP)  # the texture, rectangle, viewport and colour calls (TEX_MAP): no list call
         elif os.path.isdir(a):
             for root, _, names in sorted(os.walk(a)):
                 files.extend(os.path.join(root, x) for x in sorted(names) if x.endswith('.c'))
