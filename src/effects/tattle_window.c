@@ -2,6 +2,7 @@
 #include "effects_internal.h"
 #include "nd_val.h"
 #include "nd_st.h"
+#include "nd_tx.h"
 
 void tattle_window_init(EffectInstance* effect);
 void tattle_window_update(EffectInstance* effect);
@@ -187,7 +188,7 @@ void tattle_window_fill_clipped_quad(s32 l, s32 t, s32 r, s32 b) {
         b = SCREEN_HEIGHT - 1;
     }
 
-    gDPFillRectangle(gMainGfxPos++, l, t, r, b);
+    nd_rect_fill(l, t, r, b);
 }
 
 void func_E00D8334(TattleWindowFXData* data, s32 left, s32 top, s32 right, s32 bottom) {

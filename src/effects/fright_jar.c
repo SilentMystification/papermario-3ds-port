@@ -4,6 +4,7 @@
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_geo.h"
+#include "nd_tx.h"
 
 extern s32 D_09000000_3C1BA0;
 extern s32 D_09002020_3C3BC0;
@@ -167,18 +168,16 @@ void fright_jar_appendGfx(void* effect) {
         }
 
         nd_val_prim(0, 0, data->unk_18, data->unk_1C, data->unk_20, temp3);
-        gDPSetTextureImage(gMainGfxPos++, G_IM_FMT_CI, G_IM_SIZ_8b, 64, &D_09002020_3C3BC0);
-        gDPSetTile(gMainGfxPos++, G_IM_FMT_CI, G_IM_SIZ_8b, 8, 0, G_TX_LOADTILE, 0, G_TX_NOMIRROR | G_TX_CLAMP, 7, 14, G_TX_NOMIRROR | G_TX_CLAMP, 7, 14);
-        gDPLoadSync(gMainGfxPos++);
-        gDPLoadTile(gMainGfxPos++, G_TX_LOADTILE, 0, temp1 * 4, 254, (temp1 + 15) * 4);
-        gDPSetTile(gMainGfxPos++, G_IM_FMT_CI, G_IM_SIZ_4b, 8, 0, G_TX_RENDERTILE, 0, G_TX_NOMIRROR | G_TX_CLAMP, 7, 14, G_TX_NOMIRROR | G_TX_CLAMP, 7, 14);
+        nd_tex_img(G_IM_FMT_CI, G_IM_SIZ_8b, 64, &D_09002020_3C3BC0);
+        nd_tex_tile(G_IM_FMT_CI, G_IM_SIZ_8b, 8, 0, G_TX_LOADTILE, 0, G_TX_NOMIRROR | G_TX_CLAMP, 7, 14, G_TX_NOMIRROR | G_TX_CLAMP, 7, 14);
+        nd_tex_ldtile(G_TX_LOADTILE, 0, temp1 * 4, 254, (temp1 + 15) * 4);
+        nd_tex_tile(G_IM_FMT_CI, G_IM_SIZ_4b, 8, 0, G_TX_RENDERTILE, 0, G_TX_NOMIRROR | G_TX_CLAMP, 7, 14, G_TX_NOMIRROR | G_TX_CLAMP, 7, 14);
         nd_val_tile_size(G_TX_RENDERTILE, 0, temp1 * 4, 508, (temp1 + 15) * 4);
         nd_val_tile_size(G_TX_RENDERTILE, 0, temp2 * 128.0f * 4.0f, 2000, 2000);
-        gDPSetTextureImage(gMainGfxPos++, G_IM_FMT_CI, G_IM_SIZ_8b, 64, &D_09000000_3C1BA0);
-        gDPSetTile(gMainGfxPos++, G_IM_FMT_CI, G_IM_SIZ_8b, 8, 0x80, G_TX_LOADTILE, 0, G_TX_NOMIRROR | G_TX_CLAMP, 7, 14, G_TX_NOMIRROR | G_TX_CLAMP, 7, 14);
-        gDPLoadSync(gMainGfxPos++);
-        gDPLoadTile(gMainGfxPos++, G_TX_LOADTILE, 0, temp1 * 4, 254, (temp1 + 15) * 4);
-        gDPSetTile(gMainGfxPos++, G_IM_FMT_CI, G_IM_SIZ_4b, 8, 0x80, 1, 1, G_TX_NOMIRROR | G_TX_CLAMP, 7, 14, G_TX_NOMIRROR | G_TX_CLAMP, 7, 14);
+        nd_tex_img(G_IM_FMT_CI, G_IM_SIZ_8b, 64, &D_09000000_3C1BA0);
+        nd_tex_tile(G_IM_FMT_CI, G_IM_SIZ_8b, 8, 0x80, G_TX_LOADTILE, 0, G_TX_NOMIRROR | G_TX_CLAMP, 7, 14, G_TX_NOMIRROR | G_TX_CLAMP, 7, 14);
+        nd_tex_ldtile(G_TX_LOADTILE, 0, temp1 * 4, 254, (temp1 + 15) * 4);
+        nd_tex_tile(G_IM_FMT_CI, G_IM_SIZ_4b, 8, 0x80, 1, 1, G_TX_NOMIRROR | G_TX_CLAMP, 7, 14, G_TX_NOMIRROR | G_TX_CLAMP, 7, 14);
         nd_val_tile_size(1, 0, temp1 * 4, 508, (temp1 + 15) * 4);
         nd_val_tile_size(1, 0, temp2 * 128.0f * 4.0f, 2000, 2000);
 

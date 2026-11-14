@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_tx.h"
 ND_PSO_DESC(pe_star_spirits_energy_367, 0xfc309661, 0x552eff7f, 0x1e082cf0, 0x00504340, 0x00200005, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 5, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
@@ -394,7 +395,7 @@ void star_spirits_energy_appendGfx(void* effect) {
                     nd_pso_persp(G_TP_NONE);
                     nd_pso_cc(0, 0, 0, 1, 0, 0, 0, PRIMITIVE, 0, 0, 0, 1, 0, 0, 0, PRIMITIVE);
                     nd_pso_filt(G_TF_POINT);
-                    gSPTextureRectangle(gMainGfxPos++, -40 * 4, 0, 360 * 4, SCREEN_HEIGHT * 4, G_TX_RENDERTILE, 0, 0, 0, 0);
+                    nd_rect_tex(-40 * 4, 0, 360 * 4, SCREEN_HEIGHT * 4, G_TX_RENDERTILE, 0, 0, 0, 0);
                 } else {
                     nd_rec_dl(D_E0122BA0[0]);
                 }

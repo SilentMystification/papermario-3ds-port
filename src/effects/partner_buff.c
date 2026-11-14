@@ -3,6 +3,7 @@
 #include "nd_gtab.h"
 #include "nd_val.h"
 #include "nd_st.h"
+#include "nd_tx.h"
 
 void partner_buff_init(EffectInstance* effect);
 void partner_buff_update(EffectInstance* effect);
@@ -197,16 +198,7 @@ void func_E011A3BC(s16 alpha) {
 }
 
 void func_E011A48C(s32 posX, s32 posY, s32 tile, f32 scale) {
-    gSPScisTextureRectangle(gMainGfxPos++,
-        posX * 4,
-        posY * 4,
-        (posX + 32) * 4,
-        (posY + 32) * 4,
-        tile,
-        0,
-        1024,
-        scale,
-        -scale);
+    nd_rect_scis(posX * 4, posY * 4, (posX + 32) * 4, (posY + 32) * 4, tile, 0, 1024, scale, -scale);
 }
 
 void func_E011A700(EffectInstance* effect) {

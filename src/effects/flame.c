@@ -4,6 +4,7 @@
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_geo.h"
+#include "nd_tx.h"
 
 typedef struct FlamePreset {
     /* 0x00 */ Color_RGB8 colorScale;
@@ -187,18 +188,14 @@ void flame_appendGfx(void* effect) {
         nd_val_tile_size(1, uls, ult, uls + 128, ult + 256);
         gSPDisplayList(gMainGfxPos++, D_090009E0_354590);
         nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, VIRTUAL_TO_PHYSICAL(nuGfxCfb_ptr));
-        gDPSetScissorFrac(gMainGfxPos++, G_SC_NON_INTERLACE,
-            camera->viewportStartX * 4.0f,
-            camera->viewportStartY * 4.0f,
-            (camera->viewportStartX + camera->viewportW) * 4.0f,
-            (camera->viewportStartY + camera->viewportH) * 4.0f);
+        nd_pso_scisf(G_SC_NON_INTERLACE, camera->viewportStartX * 4.0f, camera->viewportStartY * 4.0f, (camera->viewportStartX + camera->viewportW) * 4.0f, (camera->viewportStartY + camera->viewportH) * 4.0f);
     }
 
     preset = &FlamePresets[type];
 
     gSPDisplayList(gMainGfxPos++, preset->dlist);
-    gDPSetKeyR(gMainGfxPos++, preset->keyCenter, preset->colorScale.r, 0);
-    gDPSetKeyGB(gMainGfxPos++, preset->keyCenter, preset->colorScale.g, 0, preset->keyCenter, preset->colorScale.b, 0);
+    nd_pso_keyr(preset->keyCenter, preset->colorScale.r, 0);
+    nd_pso_keygb(preset->keyCenter, preset->colorScale.g, 0, preset->keyCenter, preset->colorScale.b, 0);
     nd_val_prim(0, 0, preset->primIntensity, preset->primIntensity, preset->primIntensity, 0);
     nd_val_env(preset->envColor.r, preset->envColor.g, preset->envColor.b, 0);
 

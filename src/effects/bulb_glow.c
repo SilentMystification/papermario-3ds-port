@@ -3,6 +3,7 @@
 #include "effects_internal.h"
 #include "nd_gtab.h"
 #include "nd_val.h"
+#include "nd_tx.h"
 
 typedef struct UnkBulbGlow {
     /* 0x00 */ s32 unk_00;
@@ -251,17 +252,8 @@ void bulb_glow_appendGfx(void* effect) {
         nd_val_tile_size(G_TX_RENDERTILE, (s32) (xMin * temp_s1->unk_08) * 4, (s32) (temp_s1->unk_04 * 20 - i * temp_s1->unk_14 * temp_s1->unk_0C) * 4, (s32) (xMin * temp_s1->unk_08 + temp_s1->unk_00) * 4, (s32) (temp_s1->unk_04 * 21 - i * temp_s1->unk_14 * temp_s1->unk_0C) * 4);
 
         for (j = 0; j < 1; j++) {
-            gDPLoadMultiTile(gMainGfxPos++,
-                VIRTUAL_TO_PHYSICAL(nuGfxCfb_ptr + y * SCREEN_WIDTH - off),
-                TMEM_ADDR(TMEM_SIZE/2), G_TX_RENDERTILE + 1, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, 0,
-                xMin + xStart + off, 0, xMax - 1 + off, rectHeight - 1,
-                0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 9, 8, G_TX_NOLOD, G_TX_NOLOD);
-            gSPTextureRectangle(gMainGfxPos++,
-                (xMin + xStart) * 4, y * 4,
-                xMax * 4, (y + rectHeight) * 4,
-                G_TX_RENDERTILE,
-                ((xMin + xStart + off) & 0x1FF) << 5, 0,
-                1 << 10, 1 << 10);
+            nd_tex_load_mtile(VIRTUAL_TO_PHYSICAL(nuGfxCfb_ptr + y * SCREEN_WIDTH - off), TMEM_ADDR(TMEM_SIZE/2), G_TX_RENDERTILE + 1, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, 0, xMin + xStart + off, 0, xMax - 1 + off, rectHeight - 1, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 9, 8, G_TX_NOLOD, G_TX_NOLOD);
+            nd_rect_tex((xMin + xStart) * 4, y * 4, xMax * 4, (y + rectHeight) * 4, G_TX_RENDERTILE, ((xMin + xStart + off) & 0x1FF) << 5, 0, 1 << 10, 1 << 10);
         }
     }
 }

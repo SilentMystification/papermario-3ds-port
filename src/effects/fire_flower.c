@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_tx.h"
 ND_PSO_DESC(pe_fire_flower_244, 0xfc121624, 0xff2fffff, 0x1e08acf0, 0x00504b50, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 ND_PSO_DESC(pe_fire_flower_272, 0xfc262bff, 0x1f0c923f, 0x1e18acf0, 0x0c184b50, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
@@ -252,16 +253,8 @@ void fire_flower_appendGfx(void* effect) {
     }
 
     nd_draw_list(D_09000D40_3810E0, ND_SELF);
-    gDPLoadTextureTile_4b(
-        gMainGfxPos++, D_09000000_3803A0[3 - unk_34],
-        G_IM_FMT_CI, 32, 0, 0, 0, 31, 31, 0,
-        G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP,
-        5, 5, G_TX_NOLOD, G_TX_NOLOD);
-    gDPLoadMultiTile_4b(
-        gMainGfxPos++, D_09000000_3803A0[2 - unk_34],
-        0x0080, 1, G_IM_FMT_CI, 32, 0, 0, 0, 31, 31, 0,
-        G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP,
-        5, 5, G_TX_NOLOD, G_TX_NOLOD);
+    nd_tex_load_tile_4b(D_09000000_3803A0[3 - unk_34], G_IM_FMT_CI, 32, 0, 0, 0, 31, 31, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD);
+    nd_tex_load_mtile_4b(D_09000000_3803A0[2 - unk_34], 0x0080, 1, G_IM_FMT_CI, 32, 0, 0, 0, 31, 31, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD);
 
     guTranslateF(sp18, unk_2C, 0.0f, 0.0f);
     guScaleF(sp58, unk_30, unk_30, unk_30);
