@@ -3,6 +3,7 @@
 #include "effects.h"
 #include "ld_addrs.h"
 #include "sprite/player.h"
+#include "nd_xf.h"
 
 extern Gfx Entity_Padlock_Render[];
 extern Gfx Entity_Padlock_RenderShackle[];
@@ -43,9 +44,9 @@ void entity_Padlock_setupGfx(s32 entityIndex) {
     guMtxCatF(sp18, sp58, sp58);
     guMtxF2L(sp58, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     gSPDisplayList(gMainGfxPos++, data->shackleGfx);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }
 
 void entity_Padlock_push_player(Entity* entity) {

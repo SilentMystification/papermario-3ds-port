@@ -2,6 +2,8 @@
 #include "effects.h"
 #include "entity.h"
 #include "ld_addrs.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx Entity_StarBoxLauncher_RenderBottom[];
 extern Gfx Entity_StarBoxLauncher_RenderTop[];
@@ -39,11 +41,10 @@ void entity_StarBoxLauncher_setupGfx(s32 entityIndex) {
     guTranslateF(sp50, entity->pos.x, data->basePosY, entity->pos.z);
     guMtxCatF(sp50, sp10, sp50);
     guMtxF2L(sp50, &gDisplayContext->matrixStack[gMatrixListPos]);
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     gSPDisplayList(gMainGfxPos++, ENTITY_ADDR(entity, Gfx*, Entity_StarBoxLauncher_RenderBottom));
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 
-    gDPPipeSync(gMainGfxPos++);
     gDPSetTextureLUT(gMainGfxPos++, G_TT_RGBA16);
     gDPLoadTLUT_pal16(gMainGfxPos++, 0, D_0A000D08_E56748);
     gSPTexture(gMainGfxPos++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
@@ -53,7 +54,7 @@ void entity_StarBoxLauncher_setupGfx(s32 entityIndex) {
     gDPLoadTextureBlock_4b(gMainGfxPos++, D_0A000508_E55F48, G_IM_FMT_CI, 128, 32, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 7, 5, G_TX_NOLOD, G_TX_NOLOD);
     gDPSetTexturePersp(gMainGfxPos++, G_TP_PERSP);
     gDPSetTextureFilter(gMainGfxPos++, G_TF_BILERP);
-    gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, data->faceTexOffset * 4, 0, (data->faceTexOffset + 124) * 4, 31 * 4);
+    nd_val_tile_size(G_TX_RENDERTILE, data->faceTexOffset * 4, 0, (data->faceTexOffset + 124) * 4, 31 * 4);
 
 }
 

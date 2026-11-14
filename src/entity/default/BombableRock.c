@@ -2,6 +2,8 @@
 #include "effects.h"
 #include "entity.h"
 #include "ld_addrs.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx Entity_RenderNone[];
 extern Gfx* Entity_BombableRock_FragmentsRender[];
@@ -206,7 +208,7 @@ void entity_BombableRock_setupGfx(s32 entityIndex) {
             gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIA, G_CC_MODULATEIA);
         } else {
             gDPSetCombineMode(gMainGfxPos++, PM_CC_11, PM_CC_12);
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, data->fragmentMoveAngle[i]);
+            nd_val_prim(0, 0, 0, 0, 0, data->fragmentMoveAngle[i]);
         }
 
         guTranslateF(mtxTransInv, x_inv, y_inv, z_inv);
@@ -218,10 +220,10 @@ void entity_BombableRock_setupGfx(s32 entityIndex) {
         guMtxCatF(mtxTransInv, mtx, mtx);
         guMtxF2L(mtx, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         fragmentDlist = ENTITY_ADDR(entity, Gfx*, *gfx++);
         gSPDisplayList(gMainGfxPos++, fragmentDlist);
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        nd_xf_pop(G_MTX_MODELVIEW);
     }
 
 }

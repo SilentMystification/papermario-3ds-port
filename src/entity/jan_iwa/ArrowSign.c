@@ -1,6 +1,7 @@
 #include "common.h"
 #include "entity.h"
 #include "ld_addrs.h"
+#include "nd_xf.h"
 
 extern Gfx Entity_ArrowSign_Render[];
 extern Gfx Entity_ArrowSign_RenderRotatedSign[];
@@ -18,10 +19,10 @@ void entity_ArrowSign_setupGfx(s32 entityIndex) {
     guMtxCatF(sp58, sp18, sp18);
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     gfx = ENTITY_ADDR(entity, Gfx*, Entity_ArrowSign_RenderRotatedSign);
     gSPDisplayList(gMainGfxPos++, gfx);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }
 
 void entity_ArrowSign_idle(void) {

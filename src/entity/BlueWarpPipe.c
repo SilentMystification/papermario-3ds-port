@@ -4,6 +4,7 @@
 #include "ld_addrs.h"
 #include "entity.h"
 #include "sprite/player.h"
+#include "nd_xf.h"
 
 extern Gfx Entity_BlueWarpPipe_RenderPipe[];
 extern Gfx Entity_BlueWarpPipe_RenderBase[];
@@ -154,9 +155,9 @@ void entity_BlueWarpPipe_setupGfx(s32 entityIndex) {
     guTranslateF(sp50, entity->pos.x, data->finalPosY + 1.0f, entity->pos.z);
     guMtxCatF(sp10, sp50, sp50);
     guMtxF2L(sp50, &gDisplayContext->matrixStack[gMatrixListPos]);
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     gSPDisplayList(gMainGfxPos++, Entity_BlueWarpPipe_RenderBase);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }
 
 void entity_init_BlueWarpPipe(Entity* entity) {

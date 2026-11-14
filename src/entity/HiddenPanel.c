@@ -1,6 +1,7 @@
 #include "common.h"
 #include "ld_addrs.h"
 #include "entity.h"
+#include "nd_xf.h"
 
 s32 entity_HiddenPanel_is_item_on_top(Entity*);
 void entity_HiddenPanel_flip_over(Entity*);
@@ -27,9 +28,9 @@ void entity_HiddenPanel_setupGfx(s32 entityIndex) {
         guTranslateF(tempMtx, entity->pos.x, data->initialY + 1.0f, entity->pos.z);
         guMtxCatF(tempMtx, rotMtx, tempMtx);
         guMtxF2L(tempMtx, &gDisplayContext->matrixStack[gMatrixListPos]);
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
         gSPDisplayList(gMainGfxPos++, ENTITY_ADDR(entity, Gfx*, Gfx_HiddenPanel_RenderHole));
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        nd_xf_pop(G_MTX_MODELVIEW);
     }
     mdl_project_tex_coords(data->modelID, data->renderDList, data->entityMatrix, entity->gfxBaseAddr);
     mdl_draw_hidden_panel_surface(&gMainGfxPos, data->modelID);

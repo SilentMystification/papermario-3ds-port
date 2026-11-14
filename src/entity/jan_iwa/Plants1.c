@@ -5,6 +5,8 @@
 #include "ld_addrs.h"
 #include "model.h"
 #include "sprite/player.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 extern Gfx Entity_RenderNone[];
 extern AnimScript Entity_CymbalPlant_AnimationIdle;
@@ -43,10 +45,10 @@ void entity_SpinningFlower_setupGfx(s32 entityIndex) {
     guMtxCatF(sp58, sp18, sp18);
     guMtxF2L(sp18, &data->unk_30);
     gDisplayContext->matrixStack[gMatrixListPos] = data->unk_30;
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     gfx = ENTITY_ADDR(entity, Gfx*, D_0A000D18_E9D618);
     gSPDisplayList(gMainGfxPos++, gfx);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }
 
 void func_802BB000_E2D930(Entity* entity) {
@@ -167,11 +169,11 @@ void entity_PinkFlowerLight_setupGfx(s32 entityIndex) {
     guTranslateF(sp58, entity->pos.x + 16.0f * sinAngle, entity->pos.y , entity->pos.z - 16.0f * cosAngle);
     guMtxCatF(sp18, sp58, sp18);
     gDPSetCombineMode(gMainGfxPos++, PM_CC_01, PM_CC_02);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, entity->alpha);
+    nd_val_prim(0, 0, 0, 0, 0, entity->alpha);
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     gSPDisplayList(gMainGfxPos++, D_0A0013B8_E9C8B8);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }
 
 void entity_PinkFlower_idle(Entity* entity) {

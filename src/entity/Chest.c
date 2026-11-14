@@ -3,6 +3,7 @@
 #include "ld_addrs.h"
 #include "entity.h"
 #include "sprite/player.h"
+#include "nd_xf.h"
 
 extern EntityScript Entity_Chest_ScriptOpened;
 
@@ -100,10 +101,10 @@ void entity_Chest_setupGfx(s32 entityIndex) {
     guMtxL2F(sp18, ENTITY_ADDR(entity, Mtx*, &Entity_Chest_LidMtx));
     guMtxCatF(sp58, sp18, sp18);
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     gfx = ENTITY_ADDR(entity, Gfx*, Entity_Chest_RenderLid);
     gSPDisplayList(gMainGfxPos++, gfx);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }
 
 void entity_Chest_check_opened(Entity* entity) {
