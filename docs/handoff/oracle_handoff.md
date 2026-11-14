@@ -15,8 +15,8 @@ FACT (Merge FXSELF 1149b5513): C10 recdl 57 (42 `nd_rec_dl(` in src/effects + 15
   Capture benches fxent_a/b/c and fxchk_a/b/c (bench.d/ENTRYFX.json).
 ## Open work
 - Merged: TEX4, RECROOT, NSTREAM2, NSTREAM3, GKEY2, GSET1-3, FXENT2, FXENT3 (20 sites; nd_rec_dl_k keyed form). PSOLK: check `git log` for its merge.
-- Ready page: ws_GCONVW (start now; owns gen_gfx_syms.py, nd_gconv.h, gen_gfx_tab.sh, gconv_src.d/GCONVW.txt, host.d/gconvw.sh; one flag in nd_host_test.sh:75 and conv2c.sh:9).
-- To write next: hand rows for the 22 `nd_rec_dl(` lines of src/effects (FACT grep cac60bf48). fxent3_rest.txt is lost: classes need one capture (fxent/fxchk benches) and
+- Merged: GCONVW (75d442afb, ntab tables 1153). Ready page: ws_FXREST1 (start now; owns the 21 effect site files, 3ds/tools/fxrest.d/).
+- To write next: the key page from 3ds/tools/fxrest.d/classes.txt (after FXREST1 group 1). The 22 `nd_rec_dl(` lines of src/effects (FACT grep cac60bf48). fxent3_rest.txt is lost: classes need one capture (fxent/fxchk benches) and
   `entapply.py --dry`. Arg shapes (FACT grep): plain symbol 9 (chomp_drop:164,:167, damage_indicator:286,:288, disable_x:308,:310, explosion:198, recover:223,:240);
   local variable 6 (gather_energy_pink:224, green_impact:202, landing_dust:331, red_impact:209, ring_blast:141, shockwave:341); indexed 6 (cold_breath:234, misc_particles:330,
   shattering_stones:172, something_rotating:316, star_spirits_energy:400, stat_change:274); chapter_change:163 waits for the user.
