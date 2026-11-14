@@ -106,6 +106,7 @@ void nd_rec_dl(const void* list) {
         return;
     }
     gtr_tab++;
+    if (__builtin_expect(PMDL("entcap"), 0)) { const uint32_t r4[4] = { (uint32_t)(uintptr_t)t, fl, (uint32_t)(uintptr_t)__builtin_return_address(0), 0u }; nd_rec_napi(nd_gtab_run, r4, 2u); return; }
     const uint32_t rec[2] = { (uint32_t)(uintptr_t)t, fl };
     nd_rec_napi(nd_gtab_run, rec, 1u);
 }

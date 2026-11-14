@@ -1,0 +1,33 @@
+{
+  "scenarios": [
+    {
+      "name": "fxpic_20_entcap",
+      "status": "unverified",
+      "subject": "Toad Town mac_01 at 0 0 200, fxtest=20 (explosion), cold det start with the entcap switch: the device switch logs the walker entry description of each static list call without a v2 table (entcap l / entcap over lines).",
+      "proves": "ENTRYCAP: the explosion list D_090008F0_344860 (inheriting, no v2 table) is logged as an entcap l line with its nd_rec_dl call site, and the walker entry description of the list is captured on the device.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=20 loglevel=debug det entcap",
+      "extra": [],
+      "until": "fxtest: done",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "entcap",
+          "regex": "entcap l [0-9a-f]{8} s [0-9a-f]{8}"
+        },
+        {
+          "name": "done",
+          "regex": "fxtest: done"
+        }
+      ],
+      "reason": "ENTRYCAP: copy of fxpic_89 (CONV2D2) with fxtest=20 in place of fxtest=89 and the entcap switch in place of drec. Cap 40 s, deadline 35 s. The fxtest: done line (frame 444, after the explosion slot clears) is the until."
+    }
+  ]
+}
