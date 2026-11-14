@@ -49,22 +49,22 @@
   (ndnu 74.5 KB, FACT pm_3ds.map) against the 310 KB margin; no game file writes a static Gfx array (grep). EMIT4 keeps the NOPs in ndnu, so
   v2_nu == n and the host test proves the flat words from ndnu. GSET then sets u = ndnu_<list>, nu = v2_nu: no device reader of the list is left on
   the entity path. A list whose callee has no device entry (host line `ntab flat ... words <n>`) keeps its words until the callee gets an entry.
-## 5. GSET: the Gfx arrays leave the device (blocker: NEMIT and CONV2C2 of the set; Haiku, one set per row)
-- Tool (Haiku, test first): new 3ds/tools/gset.py <3ds/tools/gset.d/<set>.txt>. (1) Moves each `Gfx X[] = {...};` of a listed file into the
-  host-only twin 3ds/tools/gfxin/<same path>, whose first line is `#include "<path>"` (Vtx and textures stay on the device). (2) Rewrites the uses:
-  `nd_draw_list(X, e)` -> `nd_draw_tab(NDN(X), e)`, `extern Gfx X[];` -> `NDN_DECL(X);`, an initializer element X -> NDN(X). Any other use prints
-  `gset keep <file>:<line>` (struct member types Gfx* -> const NdNTab*: hand edit in the same row). (3) gen_gfx_tab.sh takes GCONV_SRC from the
-  gfxin twins of gset.d. The converter writes `const NdNTab ndn_X` per moved list. NDN/NDN_DECL go next to NDG (nd_gtab.h:63-64).
-- A row: one gset.d file, the tool run, at most 10 keep lines by hand. Gate: G1 host differential, drec byte-equal, listcen C5 and C6 fall by the
-  set's counts, elfgate gfxnames falls. Order (largest C5 first): src/entity, assets/us effects, src/world, model.c render modes, battle, pause,
-  level_up and starpoint, the rest. Map shapes in the ROM blob: GSET-MAP (plan section 7), not this tool.
-- BLOCKER GKEY (oracle 2026-11-14): the device keys a list by its Gfx address. Key and word reads: nd_rec_dl nd_gtab_find(list) and gt_state_only reads
-  t->list words (nd_gtab.c:101-102); nd_gtab_run next = t->list into ent_gdl and dlc_try (nd_walk.c:618-627, also gt_call :533-537 and walk_call :236-241); ndnu call units hold the callee symbol address
-  (nd_gfx_conv.c:391, :399, :569) and walk_call keys nd_ntab_find on it (EMIT E3); v1 table pieces point into the list (nd_gfx_conv.c:138, :153, :159).
-  Choice: the converter writes one standalone `const NdNDev ndd_X` per list whose list field is its own address after GSET; ndn_dev_idx becomes an array of
-  pointers (the first-find sort, nd_gtab.c:44-48, sorts pointers); ndnu call units take &ndd_callee; nd_rec_dl records the ntab run when nd_ntab_find(list)
-  hits and no v1 table exists; gt_state_only takes e->u, e->nu. Rows GKEY1 (converter + host test), GKEY2 (nd_gtab.c, nd_walk.c device; drec gate), then gset.py.
-  GSET needs every list of the set to have a device entry: effects after CONV2C2 still miss the callee-only inheriting lists and the unsup lists.
+## 5. GSET: the Gfx arrays leave the device (pages ws_GKEY1, ws_GKEY2, ws_GSET1 written 2026-11-14, oracle 7; chain EMIT4 -> CONV2C2 -> GKEY1 -> GKEY2 -> GSET1)
+- Key: a moved list X has no device symbol. Its key is &ndd_X (`const NdNDev ndd_X`, aligned 8 because ent_gdl and rec_inline refuse a key with a & 7: nd_ent.c:417,
+  nd_rec.c:391). ndd_X.list = &ndd_X, u = ndnu_X, nu = v2_nk. An unmoved list keeps key X, u = X. NDN(X) = `((Gfx*)&ndd_X)`: handles keep their Gfx* type, so
+  initializers (blast.c:25) and nd_draw_list calls need no type edit. NDN_DECL(X) replaces `extern Gfx X[];`.
+- GKEY1: standalone ndd_<list>, pointer index (sort moves pointers), field n -> fl (the state-only flag: gt_state_only read words on core 1, nd_gtab.c:102).
+- GKEY2: every device read of a list with an entry takes nt->u: nd_rec_dl records nd_ntab_rec (key nt->list), walk_call depth 0 runs nd_ops_run(nt->u, nt->nu, 1)
+  (nd_walk_state stops at the same unit, nd_walk.c:365-382), rec_inline takes the entry words with the end at nu, nd_lstcen skips entries. Both indices sort in
+  nd_tab_init before pm_lg_start (pm_main.c:539): core 1 now looks up too. Draw-equal before any move.
+- GSET1: an effect list is an asset include line (water_splash.c:6), so a move is that line going into the twin 3ds/tools/gfxin/<path>. The converter knows
+  moved symbols from gen_gfx_syms (twin text), hides their v1 table, idx line and NdNTab behind ND_HOST_GFX (the host test keeps the v1 model), writes
+  call units into moved callees as &ndd_<callee>, and writes gset_ok.txt: entry, not NDG_F_PARTS (the particle run needs v1, nd_rec.c:281-288), every callee
+  with an entry (else the ent path reads words: EMIT4 ent_flat_w), every caller ok (an unmoved caller keeps a reference). listcen skips assets that only
+  twins include (listcen.py:249 counts all assets). Pilot fright_jar (fxpic_91_drec draws it).
+- Next GSET rows (one gset.d file each, same gate): the rest of src/effects/gfx by C5 size, then src/entity (S7ENT files hold arrays in the .c text: gset.py
+  needs a block move for them: a page after GSET1), world, model.c render modes, battle, pause, level_up and starpoint. Lists outside the converter set first
+  join a gconv_src.d row. Map shapes: GSET-MAP (plan section 7).
 ## 6. Discoveries (for plan_endgame.md section 7)
 - listcen counts src/world/dead (3 files, build 30, gfxpos 32: FACT listcen), but maps.cmake builds no file of it. Choice: listcen.py skips
   src/world/dead after ws_D and ws_GEO G2 merge. Reason: no build or drec can prove an edit there.
@@ -78,3 +78,18 @@
 - recdl root 15 (FACT listcen): nd_scomp_rec in animator.c:889 (ternary of 4 defs: if/else), background_gfx.c:45-46, cam_main.c:229-230, entity_model.c:72-73,
   :383, :481, item_entity.c:976-984, msg.c:616, sprite.c:508 (spr_st_def[si], nv values: a switch per def), status_icons.c:625. The ws_SCOMP rule covers them;
   every gs macro there has a map entry (oracle census). Blocked by ownership only: GEO G3 runs on root files, TEX T4 follows. Page after `Merge TEX4`.
+## 7. Phase E deletions (S9DEL): readers C8 756 per file and the trigger of each stage (FACT listcen 3eba999c4; no stage can start today)
+- Blocker for stages 1D and 3: every setter (nd_st.c:14, nd_geo.c:14, nd_xf.c, nd_val.c, nd_tx.h) records NDC_STATE typed units that nd_walk_state runs. C1, C2
+  and C10 at 0 do not remove the walker. A design core NSTREAM (the oracle writes it next; reason not Haiku: a new record form for state, bind, transform and mesh
+  into nd_native_submit) must make the setters and nd_ntab_run write native records first. Counters today: C1 1187, C2 617, C10 167, C5 22103, C6 2108.
+- Order 1 -> 2 -> 5 -> 3 -> 4 (plan section 6). Per stage: trigger, files (reader hits), grep terms that must return nothing after the stage.
+  1 runners. Trigger C1 0, C2 0, C10 0, NSTREAM merged. A nd_rec.c 80, nd_recs.c 48, nd_model.c 33, nd_shape.c 12, pm_phase.c 1; B nd_ent.c 24; C nd_dlc.c 27;
+    D nd_walk.c 81, nd_cen.c 42 (census of list words). Terms: `nd_walk_state|nd_ops_run|walk_call|nd_range_run|ENT_GBI|ent_flat|ent_run|ent_compile|dlc_try|dlc_build|nd_lstcen`.
+  2 state model. Trigger stage 1 merged, NPSO3 table lookup on the device, NTGT. nd_set.c 39, nd_direct.c 11, nd_tex_set.c 7, nd_mtx_set.c 3, model hits C9 15
+    (nd_comb.c 3, nd_tex_set.c 3, nd_decide.c 2, nd_rect.c 2, nd_texwin.c 2, nd_geom.c 1, nd_mtx_set.c 1, nd_set.c 1). Terms: `sync_combine|nd_comb_decide|sync_render|set_tilesize|ensure_tile|img_role|off_screen_check|gv_tri`.
+  5 static list parse. Trigger C6 0 and GSET-MAP merged. nd_gtab.c 6, nd_seam.c 9 (GUESS: shape seams), nd_shape.c list parse, gen_gfx_tab.sh v1 output. Terms: `NdGTab|gt_ops|ndg_|NDG_`.
+  3 typed stream. Trigger stages 1, 2, 5 merged. nd_op.h 173, nd_op.c 62, nd_scomp.c 49, nd_st.c 13, nd_gbi.h 9, nd_val.c 7, nd_tx.h 6, nd_xf.c 6, nd_geo.c 4,
+    nd_cmd.h 2, nd.h 1, nd_api.h 1. Terms: `NDO_|NDC_STATE|nd_rec_state|nd_scomp_exec|op_typed|nd_op_apply`.
+  4 Gfx type. Trigger C5 0 and stage 3 merged. C7 2845, gbi.h, gbi_custom.h, gs2dex.h, gt.h. Terms: plan section 4 grep.
+- Gate of every stage row: build rc 0, nd_host PASS, the terms return nothing in 3ds/src 3ds/include src include, elfgate func falls, drec byte-equal
+  (gold_12_drec, fxpic_91_drec, spot_mac01_drec, sbk14_drec). Rows: one file or one symbol family; callers first, the definition last.
