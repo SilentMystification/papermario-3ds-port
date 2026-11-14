@@ -1,52 +1,41 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main d1bc5fa39, 2026-11-14. Written by the fourth workstream oracle (ws_TEX, ws_EMIT).
+State: main b8fcf0e17, 2026-11-14. Written by the fifth workstream oracle (ws_EMIT4, ws_SCOMP, ws_GEO and ws_TEX refresh).
 ## Goal
 Remove the display list system completely (plan_endgame.md v3). Done only when `3ds/tools/elfgate.py` prints
 `func 0 data 0 gfxnames 0` and every LISTCEN2 counter C1..C12 is 0.
-FACT (`python 3ds/tools/listcen.py` at 6fbd4d6c6): C1 build 2008, C2 gfxpos 1438, C3 0, C4 0, C5 data 22103, C6 data_arrays 2108,
-C7 gfxtype 2845, C8 reader 746, C9 model 15, C10 recdl 359 (effects 319, world 12, entity 10, battle 3, root files 15).
-FACT (codemod.py --dry --state per dir, 6fbd4d6c6): rewrites effects 103, world 131, entity 39, evt 5, battle 9, pause 19, filemenu 19.
+FACT (`python 3ds/tools/listcen.py`, b8fcf0e17): C1 build 1328, C2 gfxpos 758, C3 0, C4 0, C5 data 22103, C6 data_arrays 2108, C7 gfxtype 2845,
+C8 reader 756, C9 model 15, C10 recdl 167 (effects 127, world 12, entity 10, battle 3, root files 15).
+FACT (`codemod.py --dry --geo`, b8fcf0e17): src/world src/battle value 26, root src/*.c value 78.
 ## Tools on main (all in 3ds/tools unless named)
-- listcen.py (C1-C10, `--group`), elfgate.py (C11-C12), codemod.py (`--state` STATE_MAP :52-72, `--ntab <ntab_tables.txt>` ND_SELF,
-  `--dry`), tests/codemod/run.sh (26 cases). nd_st.h/nd_st.c: 18 setters (stunit 18/18). nd_val, nd_xf (hunit 7/7).
-- Entry form (ENTRY1): nd_draw_list(list, entry) -> nd_rec_dl_e (nd_gtab.c:114) -> nd_rec_dl; dl_ent set gives the 4-word record
-  nd_gtab_run_e (nd_walk.c:641) = nd_psochk_draw (nd_comb.c:219) + nd_gtab_run. Draws are equal by construction; the desc is only checked.
-- entcap switch: entcap_rec (nd_walk.c:501) logs `entcap l <list> s <site> d <11 words>` for a list with no v2 table; entcap.py names
-  them (addr2line). 1024 keys. psochk switch prints `psochk f<n> draws <d> bad <b>` per 100 frames and `psochk bad <field> ...` (8 max).
-- build3ds/out/ntab_tables.txt (922), ntab_inherit.txt (426), ntab_unsup.txt (24): written by gen_gfx_tab.sh:18-23 at each build.
-- fxtest=<n,n,...> runs effects one per 44 frames from frame 400 (pm_fxtest.c:179-180), 128 effects. fxcen_c0..c7 (16 each, turbo) took
-  7-21 s (FACT, runs.jsonl).
-- Drec bases (bench.py cmp uses the merge-base unless `--commit`): spot_mac01_drec, sbk14_drec, gold_12_drec at 930de29e1;
-  spot_mac00w_det at a0e0414d8; gold_33/55/63_drec, fxpic_91_drec at d29deacc3; fxpic_89_drec at 2e6ac0825 (FACT, runs.jsonl).
+- listcen.py (C1-C10, regexes :42-49), elfgate.py (C11-C12), codemod.py (MAP :38-49, STATE_MAP :53-73 `--state`, GEO_MAP :75-88 `--geo`, TEX_MAP
+  :90-127 `--tex`, `--ntab`, `--dry`), tests/codemod/run.sh (45 cases). Setters: nd_st.h, nd_val.h, nd_xf.h, nd_geo.h/.c, nd_tx.h (header only).
+  Host units: stunit 18/18, geounit 12/12, texunit 35/35, hunit 7/7, entapply 1/1.
+- Entry form: nd_draw_list(list, entry) -> nd_rec_dl_e (nd_gtab.c) -> nd_gtab_run_e (nd_walk.c) = nd_psochk_draw + nd_gtab_run.
+- entcap switch: entcap_rec (nd_walk.c:501) logs lists with a v1 table and no v2 table, at nd_gtab_run only. entapply.py writes the sites.
+- build3ds/out/ntab_tables.txt, ntab_inherit.txt, ntab_unsup.txt: written by gen_gfx_tab.sh at each build.
+- bench.py base <bench> builds the merge-base once when the store misses it (basecache keeps 5 commits). Drec bases: gold_12_drec and
+  spot_mac01_drec, sbk14_drec at 930de29e1; fxpic_91_drec at d29deacc3. Shot det benches for state defs: ent_kmr03_det, sprshade_hos01_pic,
+  battle_wheel_nowide_det.
 ## Open work
-- ws_C (branch WSCR4, coder running): root src/*.c state calls R4-R6. Owns root src/*.c, include/, nd_st.*.
-- ws_ENTRY.md (branch ENTRYFX, page 2026-11-13): effects state calls + 89 ND_SELF sites (E1), entapply.py (E2), entcap capture in 3
-  fxtest chunks and the entry descs (E3). Owns src/effects, entapply.py, tests/entapply, azt.d and bench.d ENTRYFX.json.
-- ws_D.md (branch WSD, page 2026-11-13): state calls of world, entity, evt, battle, pause, filemenu (222 rewrites, 3 groups).
-- ws_GEO.md (page 2026-11-14, not launched): G0 setters nd_geo.h/.c, geounit, codemod --geo (no blocker); G1-G3 call sites (161) after
-  ENTRYFX, WSD, WSCR4 merge. design_lookahead.md: the choices for target, mesh, lights, CONV2C2, NEMIT, GSET (needs an INDEX.md line).
-- ws_TEX.md (page 2026-11-14): T0 nd_tx.h + texunit now, T1 codemod --tex after `Merge GEO`, T2-T4 call sites after GEO1-3.
-- ws_EMIT.md (page 2026-11-14, no blocker, Haiku): unit copy in the device index, v2 callees, no-triangle lists skip ent_gdl.
-- Blocked: root-file recdl (15) and root entries: wait for ws_C R6. World/entity/battle entries (25 sites): need capture scenes per
-  site (fxtest covers only effects); write after ws_ENTRY E3 merges. CONV2C2 (design_lookahead 3): after E3 and `Merge EMIT`.
-  GSET (C5, C6): after EMIT, E4 (design_lookahead 4, oracle writes it next) and the set's CONV2C2. No Sonnet core is left.
-  Readers C8 and the S9DEL stages: plan section 6 phase E needs C1, C2 and C10 at 0 for the deleted code first.
+- ws_EMIT (branch EMIT, coder running): E1-E3. Device entry u = the list itself, nu = n until GSET (memory: ndnu costs 73 KB).
+- ws_EMIT4.md (page, closed, Haiku): after `Merge EMIT`. Entity path words through NdNDev.u, ndnu keeps NOPs, host flat test.
+- ws_SCOMP.md (page, closed, Haiku, start now): 18 nd_scomp_rec defs to setter calls (entity S1, hos S2, battle S3 after `Merge GEO2`).
+- ws_GEO.md: G2 (src/world src/battle) and G3 (root) start now. ws_TEX.md: T2 effects starts now, T3 after GEO2 and SCOMP, T4 after GEO3.
+- CONV2C2 (design_lookahead 3): write the closed page next. Blocker: `Merge EMIT4` (same converter file).
+- crystal_ball_gfx.c (7 nd_scomp_rec sites): design open. gsSPLookAtX/Y alone and gDPSetHilite1Tile/2Tile have no setter or map entry.
+- Effects recdl 127: 13 multi sites (entapply skipped) and the lists no fxtest capture reached. Root recdl 15: model.c, entity_model.c, item_entity.c,
+  animator.c, cam_main.c, background_gfx.c, msg.c, sprite.c, status_icons.c. Both need a page (oracle read per site kind first).
+- GSET (design_lookahead 5): after EMIT4 and the set's CONV2C2. Readers C8 and S9DEL: plan section 6 phase E needs C1, C2, C10 at 0.
 ## Facts that cost time
-- codemod.py gives a file's single ND_PSO_DESC to every nd_rec_dl/gSPDisplayList of that file (codemod.py:14, :142-144). After ENTRY E3
-  many effect files have one desc: never run codemod on src/effects again unless that rule is removed first.
-- explosion.c: :191 and :204 lists are self-contained (ntab_tables), :198 D_090008F0_344860 inherits (ntab_inherit.txt:117).
-- A converted site calls nd_rec_dl from nd_rec_dl_e, so entcap names it as 3ds/src/nd_gtab.c:114, not the game line.
-- entcap_rec skips state-only lists (nd_walk.c:604-611 return before :612) and lists with a v2 table (:505).
-- codemod.py does not see `#ifdef`; C3, C4 are 0 now, so no N64 block is left. codemod adds no #include.
-- C1 counts `g[DS]P...(` (listcen.py:42), C2 gMainGfxPos (:43), C10 `nd_rec_dl(` and `nd_scomp_rec(` (:47), C8 (:48-49).
-  A rewrite moves C1 and C2 by exactly the codemod value: the exact gate of every group. nd_draw_list does not count in C10.
-- Directory ownership: ws_C root src/*.c, include/, nd_st.*; ws_ENTRY src/effects; ws_D world, entity, evt, battle, pause, filemenu.
-- codemod --geo clears MAP (ws_GEO G0), so it never touches a list call: safe on src/effects after E3. --state or plain runs are not.
-- Unmapped C1 after ws_GEO: 357 on gMainGfxPos++ and 53 local (texture, rectangle, viewport, colour; design_lookahead 2). listcen counts
-  src/world/dead (build 30, gfxpos 32), which maps.cmake does not build.
+- Main moves fast: run `git log --oneline -10 main` before you write a page. Pages wrote "after Merge X" for groups that had merged.
+- codemod.py gives a file's single ND_PSO_DESC to every list call of that file (codemod.py:14). Never run --state or plain codemod on src/effects.
+- The v1 table points into the list (nd_gfx_conv.c:138 def u, :153 unit, :159 list). GSET must drop or repoint it.
+- nd_ntab_find is device-only (nd_gtab.c `#ifndef ND_SCOMP_HOST`); the host tests search ndn_dev_idx or ndn_all themselves.
+- listcen ARRAYS_RX also counts `Gfx v[n];` locals; GFXTYPE counts every `Gfx` word.
+- No game file writes into a static Gfx array (grep `\]\.words\.w[01] *=` in src: record buffers and imgfx heap buffer only).
+- Directory ownership: GEO G2 src/world src/battle, TEX T2 src/effects, SCOMP its 8 files, EMIT/EMIT4 the converter, nd_gtab.*, nd_walk.c, nd_ent.c.
 ## What to do first
 1. Answer coder questions (SendMessage, 10 lines, file:line).
-1b. Write the E4 page (design_lookahead 4): read nd_ent.c ent_compile :253-340, ent_lookup :343, ent_draw :449, ent_run :482 first.
-2. After ws_ENTRY E3 merges: write the world/entity/battle entry page (scenes per site from gold.py coverage) and then CONV2C2.
-3. After ws_C R6 merges: write the root recdl and entry page (15 sites) with ws_C's files.
+2. Write the CONV2C2 page (design_lookahead 3) so it is ready at `Merge EMIT4`.
+3. Design crystal_ball_gfx.c, then the root and effects recdl pages.

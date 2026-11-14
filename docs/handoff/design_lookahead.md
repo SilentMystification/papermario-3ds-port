@@ -29,7 +29,7 @@
   gDPSetFillColor 10, 30 more names with 8 or fewer. Idiom: design_state_calls.md table rows (nd_tex_img .. nd_tex_load_tlut16, nd_rect_tex,
   nd_rect_scis, nd_rect_fill, nd_xf_viewport, nd_val_fill/fog/blend; syncs removed). Files: new nd_tx.h, nd_tx.c (ws_C owns nd_st.* until R6).
   Same form as ws_GEO: G0 tool group now (no blocker), call-site groups after the owner merges. The oracle writes ws_TEX next.
-## 3. CONV2C2: v2 tables for the inheriting lists (blocker: ws_ENTRY E3 merged; Haiku, 3 chunks)
+## 3. CONV2C2: v2 tables for the inheriting lists (blocker: `Merge EMIT4`, same converter file; ENTRY E3 is merged; Haiku, 3 chunks)
 - Writer 1, chunk C2a: new 3ds/tools/gen_ntab_entries.py <src dir> > <work>/ntab_entries.txt. Per `nd_draw_list(<arg>, <desc>)` with desc not
   ND_SELF: arg `\w+` gives one pair; arg `<arr>[...]` gives one pair per element of the initializer of `<arr>` in the same file; any other arg prints
   `gne skip <file>:<line>`. The 20 numbers of the desc come from the `ND_PSO_DESC(<desc>, ...)` text of the file (the entapply.py form, ws_ENTRY E2).
@@ -48,9 +48,12 @@
   NDN_DRAW into nd_native_submit) is the reader removal of plan section 6 phase E (C8), not a GSET blocker. Same words, so each step is draw-equal.
 - ws_EMIT.md (closed page): E1 the device index carries the unit copy ndnu and nd_ntab_run walks it (nd_walk.c:594), E3 walk_call runs a v2 callee
   from it (:245), E2 a v2 list with no triangle skips ent_gdl. Then a list with ntri 0 whose callees are free reads no Gfx word (the notri count, E1).
-- E4 (next oracle design): a v2 list with triangles. ent_compile (nd_ent.c:253) flattens the Gfx (ent_flat :133-148), ent_run hashes it per frame
-  (:486), ent_draw (:449-457) reaches it from entity records. Form: the converter writes the ent_flat copy and the ent_hash_walk value per table, and
-  the ent path takes both from the device entry. Host test: the copied functions against the converter output.
+- E4 = ws_EMIT4.md (closed page, after `Merge EMIT`). Choice: the entity path takes a v2 list's words through NdNDev.u (nd_ntab_flat in nd_gtab.c,
+  ent_flat_call in nd_ent.c), the hash of a v2 list covers only its vertex span, and its gaps run as ent_sdef on k->fw (no v1 table pieces).
+  Reasons: the converter cannot write a hash (the words hold link addresses, nd_gfx_conv.c:569); a converter flat copy costs about 75 KB
+  (ndnu 74.5 KB, FACT pm_3ds.map) against the 310 KB margin; no game file writes a static Gfx array (grep). EMIT4 keeps the NOPs in ndnu, so
+  v2_nu == n and the host test proves the flat words from ndnu. GSET then sets u = ndnu_<list>, nu = v2_nu: no device reader of the list is left on
+  the entity path. A list whose callee has no device entry (host line `ntab flat ... words <n>`) keeps its words until the callee gets an entry.
 ## 5. GSET: the Gfx arrays leave the device (blocker: NEMIT and CONV2C2 of the set; Haiku, one set per row)
 - Tool (Haiku, test first): new 3ds/tools/gset.py <3ds/tools/gset.d/<set>.txt>. (1) Moves each `Gfx X[] = {...};` of a listed file into the
   host-only twin 3ds/tools/gfxin/<same path>, whose first line is `#include "<path>"` (Vtx and textures stay on the device). (2) Rewrites the uses:
@@ -64,3 +67,6 @@
 - listcen counts src/world/dead (3 files, build 30, gfxpos 32: FACT listcen), but maps.cmake builds no file of it. Choice: listcen.py skips
   src/world/dead after ws_D and ws_GEO G2 merge. Reason: no build or drec can prove an edit there.
 - Plan rows to change: NTGT is no Sonnet core (section 1). NXF2-4 are ws_GEO. NEMIT is ws_EMIT plus E4 (Haiku), before GSET1-6.
+- The 25 world, entity and battle recdl sites are nd_scomp_rec defs (S6E2, S6M6, S5BTL1), not list entries: entcap never sees them
+  (it logs nd_gtab_run lists only, nd_walk.c:501-505). Choice: each def becomes setter calls in unit order (ws_SCOMP.md, 18 sites). The 7 sites of
+  mac_01/crystal_ball_gfx.c wait for a design of gsSPLookAtX/Y alone and of gDPSetHilite1Tile/2Tile in a value packet (no codemod map entry).
