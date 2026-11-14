@@ -1,0 +1,10 @@
+src/world/area_kkj/kkj_03/main.c
+src/world/area_kkj/kkj_13/main.c
+src/world/area_kkj/kkj_14/main.c
+src/world/area_kkj/kkj_15/main.c
+src/world/area_kkj/kkj_18/main.c
+src/world/area_kkj/kkj_27/main.c
+src/world/area_kmr/kmr_21/main.c
+src/world/area_isk/isk_01/haze.c
+src/world/area_nok/nok_04/npc.c
+src/world/area_tst/tst_13/main.c
