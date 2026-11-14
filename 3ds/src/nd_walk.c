@@ -233,7 +233,7 @@ static void walk_call(unsigned dbg, const Gfx* at, u32 w0, u32 w1) {
     if (__builtin_expect(dbg & WD_ORB, 0) && PMDL("orbdbg")) { unsigned t = orb_tag_of(next); if (t) { orb_enter(t); ow = 1; } }
     int ring = 0; /* PBATCH1: a particle list (ent_gdl -1) runs on the op executor, not dlc_try */
     if (ent_skipgen) ent_skipgen = 0;
-    else if (!ow && dlc_on && !((u32)next - (u32)gMapShapeData < 0x40000u)) {
+    else if (!ow && dlc_on && !(nt && !nt->ntri) && !((u32)next - (u32)gMapShapeData < 0x40000u)) {
         NDT_BD(te, dbg); pm_tex_tagi = 5; int eh = ent_gdl(next); NDT_E(te, NDT_ENT);
         if (eh > 0) return;
         if (eh < 0) ring = 1;
@@ -594,19 +594,19 @@ int nd_ent_pieces(const EntPiece* p, unsigned n) {
 /* CONV2D2: the words of a v2 list (nd_gtab.h NdNDev) run with nd_walk_state: NOPs skipped there, the stop at n. */
 void nd_ntab_run(const NdNDev* e) { nd_walk_state(e->u, e->nu); }
 /* CONV2D2: a list's ops: its v2 device entry when it has one, else its v1 table ops (gt_ops). */
-static void gt_body(const NdGTab* t) {
-    const NdNDev* nt = nd_ntab_find(t->list);
+static void gt_body(const NdGTab* t, const NdNDev* nt) {
     if (nt) { nd_gtr_ntab++; nd_ntab_run(nt); }
     else gt_ops(t);
 }
 void nd_gtab_run(const uint32_t* rec) {
     PM_WALK_OWN();
     const NdGTab* t = (const NdGTab*)(uintptr_t)rec[0];
+    const NdNDev* nt = nd_ntab_find(t->list);
     if (rec[1]) { /* state-only */
         static const uint32_t lst[2] = { NDO_W0(NDO_MISC, NDO_MISC_LST << 16), 0u };
         pm_walk_side++;
         nd_walk_state(lst, 1u);
-        gt_body(t);
+        gt_body(t, nt);
         pm_walk_side--;
         return;
     }
@@ -620,7 +620,7 @@ void nd_gtab_run(const uint32_t* rec) {
     pm_gbi_cur_op = nd_op_n64[NDO_CALL - NDO_BASE];
     int ring = 0;
     if (ent_skipgen) ent_skipgen = 0;
-    else if (dlc_on && !((u32)next - (u32)gMapShapeData < 0x40000u)) {
+    else if (dlc_on && !(nt && !nt->ntri) && !((u32)next - (u32)gMapShapeData < 0x40000u)) {
         const int eh = ent_gdl(next);
         if (eh > 0) { nd_gtr_ent++; return; }
         if (eh < 0) ring = 1;
@@ -633,7 +633,7 @@ void nd_gtab_run(const uint32_t* rec) {
     gp_prev_op = -1;
     pm_walk_side++;
     ex_depth = d + 1;
-    gt_body(t);
+    gt_body(t, nt);
     ex_depth = d;
     pm_walk_side--;
     gv_streak_flush();
