@@ -132,7 +132,7 @@ void falling_leaves_appendGfx(void* effect) {
     s32 i;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_rec_dl(D_09001100_3601E0);
+    nd_draw_list(D_09001100_3601E0, ND_SELF);
     nd_val_prim(0, 0, 20, 100, 20, part->unk_24);
 
     guTranslateF(sp18, part->unk_04, part->unk_08, part->unk_0C);

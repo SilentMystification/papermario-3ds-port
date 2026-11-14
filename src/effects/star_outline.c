@@ -3,6 +3,7 @@
 #include "nd_gtab.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 
 extern Gfx D_09000800_4147A0[];
 extern Gfx D_09000B20_414AC0[];
@@ -221,9 +222,9 @@ void star_outline_appendGfx(void* effect) {
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
         if (data->unk_00 == 0) {
-            gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
+            nd_pso_rm(G_RM_CLD_SURF, G_RM_CLD_SURF2);
         } else {
-            gDPSetRenderMode(gMainGfxPos++, G_RM_ZB_CLD_SURF, G_RM_ZB_CLD_SURF2);
+            nd_pso_rm(G_RM_ZB_CLD_SURF, G_RM_ZB_CLD_SURF2);
         }
 
         nd_val_prim(0, 0, unk_18, unk_1C, unk_20, unk_34 >> 1);
@@ -241,17 +242,17 @@ void star_outline_appendGfx(void* effect) {
 
     if (unk_34 != 0) {
         if (data->unk_00 == 0) {
-            gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
+            nd_pso_rm(G_RM_CLD_SURF, G_RM_CLD_SURF2);
         } else {
-            gDPSetRenderMode(gMainGfxPos++, G_RM_ZB_CLD_SURF, G_RM_ZB_CLD_SURF2);
+            nd_pso_rm(G_RM_ZB_CLD_SURF, G_RM_ZB_CLD_SURF2);
         }
         nd_rec_dl(D_E0126BC4[0]);
     }
 
     if (data->unk_00 == 0) {
-        gDPSetRenderMode(gMainGfxPos++, G_RM_AA_XLU_SURF, G_RM_AA_XLU_SURF2);
+        nd_pso_rm(G_RM_AA_XLU_SURF, G_RM_AA_XLU_SURF2);
     } else {
-        gDPSetRenderMode(gMainGfxPos++, G_RM_AA_ZB_XLU_SURF, G_RM_AA_ZB_XLU_SURF2);
+        nd_pso_rm(G_RM_AA_ZB_XLU_SURF, G_RM_AA_ZB_XLU_SURF2);
     }
 
     nd_val_prim(0, 0, unk_18, unk_1C, unk_20, unk_24);

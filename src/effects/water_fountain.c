@@ -246,7 +246,7 @@ void water_fountain_appendGfx(void* effect) {
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    nd_rec_dl(D_09000280_3B8AE0);
+    nd_draw_list(D_09000280_3B8AE0, ND_SELF);
 
     guRotateF(sp18, data->unk_38, 0.0f, 0.0f, 1.0f);
     guScaleF(sp58, data->unk_3C, data->unk_40, 1.0f);

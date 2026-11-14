@@ -271,7 +271,7 @@ void sparkles_appendGfx(void* effect) {
     Vtx* vtxBuf;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_rec_dl(D_09000F20_338EE0);
+    nd_draw_list(D_09000F20_338EE0, ND_SELF);
     // The part colour is a vertex colour: one GPU batch for all parts instead of one per PRIM change.
     gDPSetCombineLERP(gMainGfxPos++, 1, SHADE, TEXEL0, SHADE, SHADE, 0, TEXEL0, 0,
                       1, SHADE, TEXEL0, SHADE, SHADE, 0, TEXEL0, 0);

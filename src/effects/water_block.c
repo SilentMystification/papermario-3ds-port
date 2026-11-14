@@ -4,6 +4,7 @@
 #include "nd_api.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 
 typedef struct WaterBlockVtxData {
     /* 0x00 */ Vec3b pos;
@@ -273,7 +274,7 @@ void water_block_appendGfx(void* effect) {
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_val_env(0, 0, 255, data->alpha);
     nd_val_prim(0, 0, 255, 255, 255, alpha);
-    nd_rec_dl(D_090003B0_3B6FA0);
+    nd_draw_list(D_090003B0_3B6FA0, ND_SELF);
 
     nd_parts_begin(&pb, 1, 1);
     for (i = 0; i < NUM_WATER_BLOCK_COMPONENTS; i++) {
@@ -291,10 +292,10 @@ void water_block_appendGfx(void* effect) {
     }
     nd_parts_end(&pb);
 
-    nd_rec_dl(D_09000300_3B6EF0);
+    nd_draw_list(D_09000300_3B6EF0, ND_SELF);
     nd_val_prim(0, 0, data->color.r, data->color.g, data->color.b, alpha * 0.3);
-    gSPClearGeometryMode(gMainGfxPos++, G_CULL_BOTH);
-    gSPSetGeometryMode(gMainGfxPos++, G_CULL_BACK);
+    nd_pso_geom_clr(G_CULL_BOTH);
+    nd_pso_geom_set(G_CULL_BACK);
 
     gSPVertex(gMainGfxPos++, vtxBase, 30, 0);
 

@@ -200,7 +200,7 @@ void fire_breath_appendGfx(void* effect) {
         guMtxF2L(transformMtx, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-        nd_rec_dl(D_09000C20_374000);
+        nd_draw_list(D_09000C20_374000, ND_SELF);
         nd_rec_dl(D_09000C00_373FE0);
         nd_xf_pop(G_MTX_MODELVIEW);
     }

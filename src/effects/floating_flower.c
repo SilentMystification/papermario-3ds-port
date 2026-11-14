@@ -166,7 +166,7 @@ void floating_flower_appendGfx(void* effect) {
 
     if (alpha != 0) {
         nd_val_prim(0, 0, 0, 0, 0, alpha);
-        nd_rec_dl(D_090002F0_330750);
+        nd_draw_list(D_090002F0_330750, ND_SELF);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 }

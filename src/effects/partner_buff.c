@@ -2,6 +2,7 @@
 #include "effects_internal.h"
 #include "nd_gtab.h"
 #include "nd_val.h"
+#include "nd_st.h"
 
 void partner_buff_init(EffectInstance* effect);
 void partner_buff_update(EffectInstance* effect);
@@ -185,13 +186,12 @@ void func_E011A3A0(EffectInstance* effect) {
 
 void func_E011A3BC(s16 alpha) {
     if (alpha == 255) {
-        gDPSetRenderMode(gMainGfxPos++, AA_EN | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA |
-            GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM),
-            GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM));
-        gDPSetCombineMode(gMainGfxPos++, G_CC_DECALRGBA, G_CC_DECALRGBA);
+        nd_pso_rm(AA_EN | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA |
+            GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM), GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM));
+        nd_pso_cc(G_CC_DECALRGBA, G_CC_DECALRGBA);
     } else {
-        gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
-        gDPSetCombineMode(gMainGfxPos++, PM_CC_01, PM_CC_01);
+        nd_pso_rm(G_RM_CLD_SURF, G_RM_CLD_SURF2);
+        nd_pso_cc(PM_CC_01, PM_CC_01);
         nd_val_prim(0, 0, 0, 0, 0, alpha);
     }
 }
@@ -232,15 +232,15 @@ void func_E011A700(EffectInstance* effect) {
 
             alpha = buffData->alpha;
             if (alpha != 0) {
-                gSPTexture(gMainGfxPos++, 0xFFFF, 0xFFFF, 2, i, G_ON);
+                nd_tex_on(0xFFFF, 0xFFFF, 2, i, G_ON);
                 func_E011A3BC(alpha);
                 func_E011A48C(20 + numShown * 32, 50, i, 1024.0f);
                 numShown++;
             }
         }
 
-        gSPTexture(gMainGfxPos++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
-        gDPSetTextureLUT(gMainGfxPos++, G_TT_NONE);
+        nd_tex_on(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
+        nd_pso_lut(G_TT_NONE);
 
         numShown = 0;
         for (i = 0; i < ARRAY_COUNT(data->unk_0C); i++) {
@@ -292,11 +292,6 @@ void func_E011A700(EffectInstance* effect) {
             }
         }
 
-        gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE,
-            camera->viewportStartX,
-            camera->viewportStartY,
-            camera->viewportStartX + camera->viewportW,
-            camera->viewportStartY + camera->viewportH
-        );
+        nd_pso_scis(G_SC_NON_INTERLACE, camera->viewportStartX, camera->viewportStartY, camera->viewportStartX + camera->viewportW, camera->viewportStartY + camera->viewportH);
     }
 }

@@ -3,6 +3,7 @@
 #include "nd_gtab.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 
 extern Gfx D_09000218_398DD8[];
 extern Gfx D_09001518_39A0D8[];
@@ -123,8 +124,8 @@ void quizmo_stage_appendGfx(void* effect) {
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_val_prim(0, 0, microphoneRaiseAmt, microphoneRaiseAmt, microphoneRaiseAmt, 255);
-    gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIA, PM_CC2_MULTIPLY_PRIM);
-    nd_rec_dl(D_09007230_39FDF0);
+    nd_pso_cc(G_CC_MODULATEIA, PM_CC2_MULTIPLY_PRIM);
+    nd_draw_list(D_09007230_39FDF0, ND_SELF);
 
     if (data->unk_3C != 255) {
         nd_xf_push(&D_09004148_39CD08[2], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
@@ -134,7 +135,7 @@ void quizmo_stage_appendGfx(void* effect) {
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         nd_rec_dl(D_09006E28_39F9E8);
-        nd_rec_dl(D_09001518_39A0D8);
+        nd_draw_list(D_09001518_39A0D8, ND_SELF);
         nd_val_tile_size(G_TX_RENDERTILE, data->lightScrollAmt, 0, data->lightScrollAmt + 252, 60);
         nd_rec_dl(D_09006DA0_39F960);
         nd_xf_pop(G_MTX_MODELVIEW);
@@ -156,7 +157,7 @@ void quizmo_stage_appendGfx(void* effect) {
         nd_xf_pop(G_MTX_MODELVIEW);
         nd_rec_dl(D_090070E8_39FCA8);
         nd_rec_dl(D_09007030_39FBF0);
-        nd_rec_dl(D_09001518_39A0D8);
+        nd_draw_list(D_09001518_39A0D8, ND_SELF);
         nd_val_tile_size(G_TX_RENDERTILE, data->lightScrollAmt, 0, data->lightScrollAmt + 252, 60);
         nd_rec_dl(D_09006FD8_39FB98);
         nd_xf_push(&D_09004148_39CD08[3], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
@@ -167,7 +168,7 @@ void quizmo_stage_appendGfx(void* effect) {
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         nd_rec_dl(D_09006D48_39F908);
         nd_xf_pop(G_MTX_MODELVIEW);
-        nd_rec_dl(D_09000218_398DD8);
+        nd_draw_list(D_09000218_398DD8, ND_SELF);
         nd_rec_dl(D_09007090_39FC50);
     }
 

@@ -159,16 +159,16 @@ void chomp_drop_appendGfx(void* effect) {
     nd_val_prim(0, 0, (sin_deg(temp_s6 * 30) * 25.0f) + 225.0f, (sin_deg(temp_s6 * 30) * 25.0f) + 225.0f, 255, primA);
 
     if (data->unk_2C == 1) {
-        nd_rec_dl(D_09001040_398080);
+        nd_draw_list(D_09001040_398080, ND_SELF);
         nd_rec_dl(D_09001190_3981D0);
         nd_val_prim(0, 0, 0, 0, 0, ((30 - data->unk_30) * 255) / 30);
-        nd_rec_dl(D_090010E8_398128);
+        nd_draw_list(D_090010E8_398128, ND_SELF);
         nd_rec_dl(D_09001190_3981D0);
     } else {
         if (data->unk_2C > 0) {
-            nd_rec_dl(D_090010E8_398128);
+            nd_draw_list(D_090010E8_398128, ND_SELF);
         } else {
-            nd_rec_dl(D_09001040_398080);
+            nd_draw_list(D_09001040_398080, ND_SELF);
         }
 
         vtxTemp = (Vtx_t*) nd_rec_data(32 * sizeof(Vtx_t)); /* DIRECT D6c: the vertex buffer is stream data */

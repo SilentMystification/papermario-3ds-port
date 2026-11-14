@@ -4,6 +4,7 @@
 #include "nd_op.h" /* HC4e2b: the typed unit of a list word */
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 
 extern Gfx D_09001000_3A5320[];
 extern Gfx D_090010A8_3A53C8[];
@@ -275,11 +276,11 @@ void energy_orb_wave_appendGfx(void* effect) {
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_val_prim(0, 0, data->unk_20, data->unk_24, data->unk_28, unk_2C);
-    gDPSetColorDither(gMainGfxPos++, G_CD_BAYER);
-    gDPSetAlphaDither(gMainGfxPos++, G_AD_PATTERN);
+    nd_pso_dither(G_CD_BAYER);
+    nd_pso_aldith(G_AD_PATTERN);
 
     if (unk_00 < 3) {
-        nd_rec_dl(D_09001000_3A5320);
+        nd_draw_list(D_09001000_3A5320, ND_SELF);
 
         guRotateF(sp18, unk_14, 0.0f, 0.0f, 1.0f);
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
@@ -287,7 +288,7 @@ void energy_orb_wave_appendGfx(void* effect) {
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         nd_rec_dl(D_090011D0_3A54F0);
         nd_xf_pop(G_MTX_MODELVIEW);
-        gDPSetColorDither(gMainGfxPos++, G_CD_MAGICSQ);
+        nd_pso_dither(G_CD_MAGICSQ);
 
         guRotateF(sp18, -unk_14 * 8, 0.0f, 0.0f, 1.0f);
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
@@ -296,11 +297,11 @@ void energy_orb_wave_appendGfx(void* effect) {
         nd_rec_dl(D_090011F0_3A5510);
         nd_xf_pop(G_MTX_MODELVIEW);
     } else {
-        nd_rec_dl(D_090010A8_3A53C8);
+        nd_draw_list(D_090010A8_3A53C8, ND_SELF);
         nd_rec_dl(D_09001210_3A5530);
     }
 
-    gDPSetColorDither(gMainGfxPos++, G_CD_DISABLE);
-    gDPSetAlphaDither(gMainGfxPos++, G_AD_DISABLE);
+    nd_pso_dither(G_CD_DISABLE);
+    nd_pso_aldith(G_AD_DISABLE);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

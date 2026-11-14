@@ -140,7 +140,7 @@ void smoke_ring_appendGfx(void* effect) {
     }
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_rec_dl(D_09002950_32B7F0);
+    nd_draw_list(D_09002950_32B7F0, ND_SELF);
 
     guTranslateF(sp18, part->unk_04, part->unk_08, part->unk_0C);
     guRotateF(sp58, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);

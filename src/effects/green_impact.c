@@ -3,6 +3,7 @@
 #include "nd_gtab.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 
 extern Gfx D_09000540_365EF0[];
 extern Gfx D_090005A0_365F50[];
@@ -207,14 +208,14 @@ void green_impact_appendGfx(void* effect) {
 
     nd_val_prim(0, 0, primR2, primG2, primB2, alpha);
     nd_val_env(envR2, envG2, envB2, 0);
-    gSPClearGeometryMode(gMainGfxPos++, G_CULL_BOTH);
-    gSPSetGeometryMode(gMainGfxPos++, G_CULL_FRONT);
+    nd_pso_geom_clr(G_CULL_BOTH);
+    nd_pso_geom_set(G_CULL_FRONT);
     nd_sub_call(&sub);
 
     nd_val_prim(0, 0, primR, primG, primB, alpha);
     nd_val_env(envR, envG, envB, 0);
-    gSPClearGeometryMode(gMainGfxPos++, G_CULL_BOTH);
-    gSPSetGeometryMode(gMainGfxPos++, G_CULL_BACK);
+    nd_pso_geom_clr(G_CULL_BOTH);
+    nd_pso_geom_set(G_CULL_BACK);
     nd_sub_call(&sub);
 
     nd_xf_pop(G_MTX_MODELVIEW);

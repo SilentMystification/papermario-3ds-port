@@ -3,6 +3,7 @@
 #include "nd_gtab.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 
 typedef struct LightningPreset {
     /* 0x00 */ u8 offset[12];
@@ -216,7 +217,7 @@ void lightning_bolt_appendGfx(void* effect) {
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_val_prim(0, 0, data->outerColor.r, data->outerColor.g, data->outerColor.b, alpha);
     nd_val_env(data->innerColor.r, data->innerColor.g, data->innerColor.b, 128);
-    nd_rec_dl(D_09001000_3BBEA0);
+    nd_draw_list(D_09001000_3BBEA0, ND_SELF);
 
     temp_a0 = lifetime - 1;
     if (type != 2) {
@@ -311,7 +312,7 @@ void lightning_bolt_appendGfx(void* effect) {
     quadCount = i;
 
     gSPVertex(gMainGfxPos++, vtxBuffer, i * 2, 0);
-    gSPClearGeometryMode(gMainGfxPos++, G_SHADING_SMOOTH);
+    nd_pso_geom_clr(G_SHADING_SMOOTH);
 
     for (i = 0; i < quadCount - 1; i++) {
         gSP2Triangles(gMainGfxPos++, i * 2 + 1, i * 2 + 0, i * 2 + 2, 0,

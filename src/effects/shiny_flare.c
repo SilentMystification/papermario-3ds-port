@@ -118,7 +118,7 @@ void shiny_flare_appendGfx(void* effect) {
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    nd_rec_dl(D_09000240_3D79B0);
+    nd_draw_list(D_09000240_3D79B0, ND_SELF);
     nd_val_prim(0, 0, data->unk_18, data->unk_1C, data->unk_20, unk_24);
 
     idx = data->lifeTime * 3;

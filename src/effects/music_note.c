@@ -144,7 +144,7 @@ void music_note_appendGfx(void* data) {
     rgbOffset = (colorIdx * 3) % ARRAY_COUNT(D_E004C67C);
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_rec_dl(D_09000FC0_35B5A0);
+    nd_draw_list(D_09000FC0_35B5A0, ND_SELF);
     nd_val_prim(0, 0, D_E004C67C[rgbOffset], D_E004C67C[rgbOffset + 1], D_E004C67C[rgbOffset + 2], fxData->alpha);
     guTranslateF(mtxTransform, fxData->pos.x, fxData->pos.y, fxData->pos.z);
     guRotateF(mtxTemp, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);

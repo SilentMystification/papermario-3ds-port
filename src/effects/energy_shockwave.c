@@ -150,7 +150,7 @@ void energy_shockwave_appendGfx(void* effect) {
     s32 ult2;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_rec_dl(D_09000E60_376370);
+    nd_draw_list(D_09000E60_376370, ND_SELF);
     nd_val_prim(0, 0, 255, 179, 30, data->unk_24);
     nd_val_env(data->unk_50, data->unk_51, data->unk_52, 128);
 

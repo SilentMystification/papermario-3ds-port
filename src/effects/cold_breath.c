@@ -3,6 +3,7 @@
 #include "nd_gtab.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 
 extern Gfx D_09002000_3DB100[];
 extern Gfx D_09002200_3DB300[];
@@ -206,7 +207,7 @@ void cold_breath_appendGfx(void* effect) {
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_val_prim(0, 0, data->primCol.r, data->primCol.g, data->primCol.b, 0.5 * unk24);
-    gDPSetAlphaDither(gMainGfxPos++, G_AD_NOISE);
+    nd_pso_aldith(G_AD_NOISE);
     nd_rec_dl(D_E00DE84C[unk00]);
 
     unkIndex = (unk14 < 30 ? unk14 : 29) + unk00 * 30;
@@ -235,5 +236,5 @@ void cold_breath_appendGfx(void* effect) {
 
     nd_xf_pop(G_MTX_MODELVIEW);
     nd_xf_pop(G_MTX_MODELVIEW);
-    gDPSetAlphaDither(gMainGfxPos++, G_AD_DISABLE);
+    nd_pso_aldith(G_AD_DISABLE);
 }

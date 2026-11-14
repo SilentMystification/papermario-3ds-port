@@ -3,6 +3,7 @@
 #include "nd_gtab.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 
 extern Gfx D_09001000_3A6BE0[];
 extern Gfx D_09001418_3A6FF8[];
@@ -150,8 +151,8 @@ void merlin_house_stars_appendGfx(void* effect) {
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_val_prim(0, 0, 0, 0, 0, 127);
     nd_val_env(0, 0, 0, envAlpha);
-    gDPSetCombineMode(gMainGfxPos++, PM_CC1_MERLIN_STARS, PM_CC2_MERLIN_STARS);
-    nd_rec_dl(D_09001000_3A6BE0);
+    nd_pso_cc(PM_CC1_MERLIN_STARS, PM_CC2_MERLIN_STARS);
+    nd_draw_list(D_09001000_3A6BE0, ND_SELF);
 
     uls = data->unk_1C * 4.0f;
     ult = data->unk_20 * 4.0f;

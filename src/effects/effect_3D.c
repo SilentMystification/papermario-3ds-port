@@ -225,7 +225,7 @@ void effect_3D_appendGfx(void* effect) {
     s32 i;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_rec_dl(D_09000240_37D3C0);
+    nd_draw_list(D_09000240_37D3C0, ND_SELF);
 
     guTranslateF(sp18, part->pos.x, part->pos.y, part->pos.z);
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);

@@ -3,6 +3,7 @@
 #include "nd_gtab.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 
 extern Gfx D_09001000_3F9CC0[];
 extern Gfx D_09001148_3F9E08[];
@@ -170,7 +171,7 @@ void ice_shard_appendGfx(void* effect) {
 
     if (type % 2 == 1 && (s32) (data->animFrame * 4.0f) == 3) {
         nd_val_prim(0, 0, data->primCol.r, data->primCol.g, data->primCol.b, alpha * envAlpha / 255);
-        gDPSetCombineMode(gMainGfxPos++, PM_CC_3C, PM_CC_3C);
+        nd_pso_cc(PM_CC_3C, PM_CC_3C);
         nd_rec_dl(D_09001168_3F9E28);
     }
 

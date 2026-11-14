@@ -141,7 +141,7 @@ void stars_burst_appendGfx(void* effect) {
     s32 i;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_rec_dl(D_090004C0_343500);
+    nd_draw_list(D_090004C0_343500, ND_SELF);
 
     unk_2C = part->unk_2C;
 

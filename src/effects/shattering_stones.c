@@ -150,7 +150,7 @@ void shattering_stones_appendGfx(void* effect) {
     s32 i;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_rec_dl(D_09000C00_341480);
+    nd_draw_list(D_09000C00_341480, ND_SELF);
 
     if (part->unk_24 == 0) {
         guTranslateF(sp20, part->unk_00, part->unk_04, part->unk_08);

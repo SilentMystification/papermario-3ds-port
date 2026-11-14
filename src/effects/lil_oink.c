@@ -180,7 +180,7 @@ void lil_oink_appendGfx(void* effect) {
 
     nd_val_seg(0x9, VIRTUAL_TO_PHYSICAL(eff->shared->graphics));
 
-    nd_rec_dl(D_09002D70_401FC0);
+    nd_draw_list(D_09002D70_401FC0, ND_SELF);
     gSPLookAt(gMainGfxPos++, &gDisplayContext->lookAt);
 
     for (i = 0; i < MAX_LIL_OINKS; i++) {

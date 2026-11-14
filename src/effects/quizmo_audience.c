@@ -199,7 +199,7 @@ void quizmo_audience_appendGfx(void* effect) {
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_val_prim(0, 0, primColor, primColor, primColor, 255);
-    nd_rec_dl(D_09003110_3AA8B0);
+    nd_draw_list(D_09003110_3AA8B0, ND_SELF);
 
     for (i = 0; i < MAX_QUIZMO_AUDIENCE; i++) {
         guTranslateF(sp18, data->compX[i], data->compY[i], 0.0f);

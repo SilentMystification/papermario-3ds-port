@@ -237,7 +237,7 @@ void emote_appendGfx(void* effect) {
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-        nd_rec_dl(D_09002170_336DE0);
+        nd_draw_list(D_09002170_336DE0, ND_SELF);
         nd_xf_pop(G_MTX_MODELVIEW);
     } else {
         if (part->unk_38 == 0) {
@@ -253,7 +253,7 @@ void emote_appendGfx(void* effect) {
 
                 nd_val_prim(0, 0, 235, 28, 0, 255);
                 nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-                nd_rec_dl(D_09002578_3371E8);
+                nd_draw_list(D_09002578_3371E8, ND_SELF);
                 nd_xf_pop(G_MTX_MODELVIEW);
             }
         }

@@ -124,7 +124,7 @@ void cloud_trail_appendGfx(void* effect) {
     s32 i;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(effectTemp->shared->graphics));
-    nd_rec_dl(D_090000E0_32ED30);
+    nd_draw_list(D_090000E0_32ED30, ND_SELF);
 
     for (i = 0; i < effectTemp->numParts; i++, part++) {
         if (part->alive) {

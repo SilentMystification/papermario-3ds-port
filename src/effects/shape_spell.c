@@ -247,7 +247,7 @@ void shape_spell_appendGfx(void* effect) {
     }
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_rec_dl(D_09001080_33AFE0);
+    nd_draw_list(D_09001080_33AFE0, ND_SELF);
 
     guPositionF(mL, 0.0f, yawOut, 0.0f, 1.0f, data->pos.x, data->pos.y, data->pos.z);
     guMtxF2L(mL, &gDisplayContext->matrixStack[gMatrixListPos]);

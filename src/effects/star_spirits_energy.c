@@ -3,6 +3,7 @@
 #include "nd_gtab.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 
 extern Gfx D_09004E00_412090[];
 extern Gfx D_09005168_4123F8[];
@@ -387,11 +388,11 @@ void star_spirits_energy_appendGfx(void* effect) {
             {   /* F07-6: with wide the flash reaches both screen edges (D_09005440_4126D0 is 0 to 320) */
                 extern int pm_wide;
                 if (pm_wide) {
-                    gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
-                    gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
-                    gDPSetTexturePersp(gMainGfxPos++, G_TP_NONE);
-                    gDPSetCombineLERP(gMainGfxPos++, 0, 0, 0, 1, 0, 0, 0, PRIMITIVE, 0, 0, 0, 1, 0, 0, 0, PRIMITIVE);
-                    gDPSetTextureFilter(gMainGfxPos++, G_TF_POINT);
+                    nd_pso_cyc(G_CYC_1CYCLE);
+                    nd_pso_rm(G_RM_CLD_SURF, G_RM_CLD_SURF2);
+                    nd_pso_persp(G_TP_NONE);
+                    nd_pso_cc(0, 0, 0, 1, 0, 0, 0, PRIMITIVE, 0, 0, 0, 1, 0, 0, 0, PRIMITIVE);
+                    nd_pso_filt(G_TF_POINT);
                     gSPTextureRectangle(gMainGfxPos++, -40 * 4, 0, 360 * 4, SCREEN_HEIGHT * 4, G_TX_RENDERTILE, 0, 0, 0, 0);
                 } else {
                     nd_rec_dl(D_E0122BA0[0]);

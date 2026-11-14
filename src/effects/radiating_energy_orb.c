@@ -3,6 +3,7 @@
 #include "nd_gtab.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 
 extern Gfx D_09001200_3A1F60[];
 extern Gfx D_090012A8_3A2008[];
@@ -159,10 +160,10 @@ void radiating_energy_orb_appendGfx(void* effect) {
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    nd_rec_dl(D_090012A8_3A2008);
+    nd_draw_list(D_090012A8_3A2008, ND_SELF);
     nd_rec_dl(D_09001510_3A2270);
     nd_xf_pop(G_MTX_MODELVIEW);
-    nd_rec_dl(D_09001200_3A1F60);
+    nd_draw_list(D_09001200_3A1F60, ND_SELF);
 
     part++;
     for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, part++) {
@@ -170,7 +171,7 @@ void radiating_energy_orb_appendGfx(void* effect) {
 
         if (scale != 0.0f) {
             nd_val_prim(0, 0, 255, 255, 255, (part->unk_14 * unk_14) >> 8);
-            gDPSetCombineMode(gMainGfxPos++, PM_CC_07, PM_CC_07);
+            nd_pso_cc(PM_CC_07, PM_CC_07);
 
             guRotateF(sp18, part->unk_20, 0.0f, 0.0f, 1.0f);
             guTranslateF(sp58, part->unk_2C, 0.0f, 0.0f);
@@ -195,7 +196,7 @@ void radiating_energy_orb_appendGfx(void* effect) {
             nd_xf_pop(G_MTX_MODELVIEW);
             nd_val_prim(0, 0, 255, 0, 255, (part->unk_14 * unk_14) >> 9);
             nd_val_env(255, 128, 255, 0);
-            gDPSetCombineMode(gMainGfxPos++, PM_CC_4D, PM_CC_4D);
+            nd_pso_cc(PM_CC_4D, PM_CC_4D);
 
             guRotateF(sp18, part->unk_20 + 14.0f, 0.0f, 0.0f, 1.0f);
             guRotateF(sp58, (i * 10) % 45 + unk_1C, 0.0f, 1.0f, 0.0f);

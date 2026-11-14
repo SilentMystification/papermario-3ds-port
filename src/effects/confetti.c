@@ -3,6 +3,7 @@
 #include "nd_gtab.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 
 void confetti_init(EffectInstance* effect);
 void confetti_update(EffectInstance* effect);
@@ -270,7 +271,7 @@ void confetti_appendGfx(void* effect) {
     spA0 = D_E0088CC0[part->unk_00];
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_rec_dl(D_09000940_38C4E0);
+    nd_draw_list(D_09000940_38C4E0, ND_SELF);
 
     guTranslateF(sp18, part->unk_04, part->unk_08, part->unk_0C);
     guRotateF(sp58, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);
@@ -293,13 +294,13 @@ void confetti_appendGfx(void* effect) {
 
             switch ((unk_24 + i) % 3) {
                 case 0:
-                    gDPSetCombineMode(gMainGfxPos++, PM_CC_45, PM_CC_46);
+                    nd_pso_cc(PM_CC_45, PM_CC_46);
                     break;
                 case 1:
-                    gDPSetCombineMode(gMainGfxPos++, PM_CC_45, PM_CC_45);
+                    nd_pso_cc(PM_CC_45, PM_CC_45);
                     break;
                 case 2:
-                    gDPSetCombineMode(gMainGfxPos++, PM_CC_45, PM_CC_47);
+                    nd_pso_cc(PM_CC_45, PM_CC_47);
                     break;
             }
             uly = ((i + D_E0088D00[unk_24 % 6]) & 0xF) * 16;

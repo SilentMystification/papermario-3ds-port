@@ -230,7 +230,7 @@ void fire_flower_appendGfx(void* effect) {
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        nd_rec_dl(D_09000DE0_381180);
+        nd_draw_list(D_09000DE0_381180, ND_SELF);
 
         part++;
         for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, part++) {
@@ -249,7 +249,7 @@ void fire_flower_appendGfx(void* effect) {
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 
-    nd_rec_dl(D_09000D40_3810E0);
+    nd_draw_list(D_09000D40_3810E0, ND_SELF);
     gDPLoadTextureTile_4b(
         gMainGfxPos++, D_09000000_3803A0[3 - unk_34],
         G_IM_FMT_CI, 32, 0, 0, 0, 31, 31, 0,

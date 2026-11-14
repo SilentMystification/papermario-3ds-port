@@ -199,7 +199,7 @@ void purple_ring_appendGfx(void* effect) {
     Matrix4f sp50;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_rec_dl(D_09000200_352EE0);
+    nd_draw_list(D_09000200_352EE0, ND_SELF);
     nd_val_prim(0, 0, data->unk_74, data->unk_75, data->unk_76, data->unk_68);
 
     guTranslateF(sp10, data->unk_04, data->unk_08, data->unk_0C);

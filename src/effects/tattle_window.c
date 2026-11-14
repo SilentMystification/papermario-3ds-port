@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_val.h"
+#include "nd_st.h"
 
 void tattle_window_init(EffectInstance* effect);
 void tattle_window_update(EffectInstance* effect);
@@ -197,16 +198,16 @@ void func_E00D8334(TattleWindowFXData* data, s32 left, s32 top, s32 right, s32 b
 
     // draw the 'shades' which appear over the window and tattle viewport to animate opening and closing
     if (data->closeAmt.x > 0 || data->closeAmt.y > 0) {
-        gSPTexture(gMainGfxPos++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF);
-        gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
-        gDPSetTexturePersp(gMainGfxPos++, G_TP_NONE);
-        gDPSetTextureDetail(gMainGfxPos++, G_TD_CLAMP);
-        gDPSetTextureLOD(gMainGfxPos++, G_TL_TILE);
-        gDPSetTextureLUT(gMainGfxPos++, G_TT_NONE);
-        gDPSetTextureFilter(gMainGfxPos++, G_TF_AVERAGE);
-        gDPSetTextureConvert(gMainGfxPos++, G_TC_FILT);
-        gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
-        gDPSetCombineMode(gMainGfxPos++, G_CC_PRIMITIVE, G_CC_PRIMITIVE);
+        nd_tex_on(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF);
+        nd_pso_cyc(G_CYC_1CYCLE);
+        nd_pso_persp(G_TP_NONE);
+        nd_pso_detail(G_TD_CLAMP);
+        nd_pso_lod(G_TL_TILE);
+        nd_pso_lut(G_TT_NONE);
+        nd_pso_filt(G_TF_AVERAGE);
+        nd_pso_conv(G_TC_FILT);
+        nd_pso_rm(G_RM_CLD_SURF, G_RM_CLD_SURF2);
+        nd_pso_cc(G_CC_PRIMITIVE, G_CC_PRIMITIVE);
         nd_val_prim(0, 0, 24, 48, 96, 255);
         l = left + 4;
         r = (left + right) - 4;

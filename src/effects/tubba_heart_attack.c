@@ -324,7 +324,7 @@ void tubba_heart_attack_appendGfx(void* effect) {
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_val_prim(0, 0, data->primR, data->primG, data->primB, alpha);
     nd_val_env(0, 0, 0, 0);
-    nd_rec_dl(D_09000400_3D2980);
+    nd_draw_list(D_09000400_3D2980, ND_SELF);
 
     for (i = 0; i < TUBBA_MINI_HEART_COUNT; i++) {
         if (data->state[i] != HEART_STATE_INIT && data->state[i] != HEART_STATE_DONE) {

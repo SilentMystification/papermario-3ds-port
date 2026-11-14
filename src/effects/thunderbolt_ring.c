@@ -117,7 +117,7 @@ void thunderbolt_ring_appendGfx(void* effect) {
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    nd_rec_dl(D_09000000_3B46A0);
+    nd_draw_list(D_09000000_3B46A0, ND_SELF);
 
     nd_sub_open(&sub); /* DIRECT D6c: the list for later is a stream range */
 

@@ -185,7 +185,7 @@ void spiky_white_aura_appendGfx(void* effect) {
     s32 i;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_rec_dl(D_09000440_34EBB0);
+    nd_draw_list(D_09000440_34EBB0, ND_SELF);
     nd_val_prim(0, 0, 255, 255, 255, part->unk_24);
 
     for (i = 0; i < ((EffectInstance*)effect)->numParts; i++, part++) {

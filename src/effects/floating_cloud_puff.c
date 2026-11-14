@@ -135,7 +135,7 @@ void floating_cloud_puff_appendGfx(void* effect) {
     nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_val_prim(0, 0, data->unk_18, data->unk_1C, data->unk_20, unk_24);
     nd_val_env(data->unk_28, data->unk_2C, data->unk_30, 0);
-    nd_rec_dl(D_09000080_3D4F10);
+    nd_draw_list(D_09000080_3D4F10, ND_SELF);
     nd_rec_dl(D_09000168_3D4FF8);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

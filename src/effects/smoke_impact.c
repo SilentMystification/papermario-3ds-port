@@ -3,6 +3,7 @@
 #include "nd_gtab.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 
 extern Gfx D_09002A38_32B8D8[];
 extern Gfx D_09002B60_32BA00[];
@@ -147,7 +148,7 @@ void smoke_impact_appendGfx(void* effect) {
         nd_val_prim(0, 0, 230, 222, 222, 130);
     } else {
         nd_val_prim(0, 0, 255, 40, 10, 160);
-        gDPSetAlphaCompare(gMainGfxPos++, G_AC_DITHER);
+        nd_pso_alcmp(G_AC_DITHER);
     }
 
     nd_val_env(0, 0, 0, envAlpha);
@@ -172,7 +173,7 @@ void smoke_impact_appendGfx(void* effect) {
     nd_xf_pop(G_MTX_MODELVIEW);
 
     if (unk_00 == 2) {
-        gDPSetAlphaCompare(gMainGfxPos++, G_AC_NONE);
+        nd_pso_alcmp(G_AC_NONE);
     }
 
 }

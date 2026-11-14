@@ -201,7 +201,7 @@ void stop_watch_appendGfx(void* effect) {
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    nd_rec_dl(D_09001000_3CC890);
+    nd_draw_list(D_09001000_3CC890, ND_SELF);
     nd_val_env(0, 0, 0, data->unk_2C);
     vtxBuffer = (Vtx_t*) nd_rec_data(64 * sizeof(Gfx)); /* DIRECT D6c: the vertex buffer is stream data */
 

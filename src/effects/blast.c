@@ -106,7 +106,7 @@ void blast_appendGfx(void* effect) {
     s32 envAlpha = (data->unk_20 - unk_20) * t;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_rec_dl(D_09001300_37ECD0);
+    nd_draw_list(D_09001300_37ECD0, ND_SELF);
     nd_rec_dl(D_E007C510[unk_20]);
 
     guTranslateF(sp18, data->pos.x, data->pos.y, data->pos.z);
