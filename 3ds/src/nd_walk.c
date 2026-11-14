@@ -601,9 +601,13 @@ static void gt_body(const NdGTab* t, const NdNDev* nt) {
     if (nt) { nd_gtr_ntab++; nd_ntab_run(nt); }
     else gt_ops(t);
 }
+static __attribute__((cold, noinline)) void entcap_so(const void* l, uint32_t site) { static uint32_t k[256]; static unsigned n;
+    const uint32_t a = (uint32_t)(uintptr_t)l; for (unsigned i = 0; i < n; i++) if (k[i] == (a ^ site * 2654435761u)) return; if (n == 256u) return;
+    k[n++] = a ^ site * 2654435761u; pm_log_evt("entcap so l %08x s %08x", a, site); }
 static void gt_run(const void* key, const NdGTab* t, const NdNDev* nt, const uint32_t* rec) {
     PM_WALK_OWN();
     if (rec[1]) { /* state-only */
+        if (__builtin_expect(PMDL("entcap"), 0)) entcap_so(key, rec[2]);
         static const uint32_t lst[2] = { NDO_W0(NDO_MISC, NDO_MISC_LST << 16), 0u };
         pm_walk_side++;
         nd_nr_exec(lst, 1u);

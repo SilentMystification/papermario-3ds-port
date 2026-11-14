@@ -8,6 +8,7 @@ import sys
 import pathlib
 
 DEF = re.compile(r"^(Gfx|Vtx)\s+(\w+)\s*\[[^\]]*\]\s*=", re.M)
+JP = re.compile(r"^#if VERSION_JP\b.*?^#(?:else|endif)\b", re.M | re.S)  # FXENT3: the JP branch is not in the ELF
 MTX = re.compile(r"^Mtx\s+(\w+)\s*(\[[^\]]*\])?\s*=", re.M)
 INC = re.compile(r'^\s*#include\s+"([^"]+\.inc\.c)"', re.M)
 IMG = re.compile(r"INCLUDE_(?:IMG|PAL|RAW)\(\s*\"[^\"]*\"\s*,\s*(\w+)\s*\)")
@@ -15,6 +16,7 @@ IMG = re.compile(r"INCLUDE_(?:IMG|PAL|RAW)\(\s*\"[^\"]*\"\s*,\s*(\w+)\s*\)")
 
 def scan(path, out, moved=False):
     text = path.read_text(encoding="utf-8", errors="replace")
+    text = JP.sub("", text)  # FXENT3
     for kind, name in DEF.findall(text):
         out.append((kind, name, moved))
     for m in MTX.finditer(text):

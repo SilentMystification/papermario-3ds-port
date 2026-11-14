@@ -158,7 +158,7 @@ void spirit_card_appendGfx(void* effect) {
     s32 unk_00 = data->unk_00;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_rec_dl(D_090042E0_3FE790);
+    nd_draw_list(D_090042E0_3FE790, ND_SELF);
     nd_val_env(0, 0, 0, 255);
 
     if (unk_00 < 2) {

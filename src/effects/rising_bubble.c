@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_rising_bubble_149, 0xfc309661, 0x552eff7f, 0x1e082cf0, 0x00504b50, 0x00000005, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 5, 0, 0, 0);
 ND_PSO_DESC(pe_rising_bubble_146, 0xfcffe5ff, 0xff4f123f, 0x1e182cf0, 0x0c184b50, 0x00000005, 0x00000000, 0xffffff00, 0x0000005c, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
@@ -146,7 +147,7 @@ void rising_bubble_appendGfx(void* effect) {
     if (data->pos.y >= data->unk_24) {
         nd_draw_list(D_E0046600[0], pe_rising_bubble_146);
     } else {
-        nd_rec_dl(D_E0046604[(lifeTime >> 1) & 3]);
+        nd_draw_list(D_E0046604[(lifeTime >> 1) & 3], pe_rising_bubble_149);
     }
 
     nd_xf_pop(G_MTX_MODELVIEW);

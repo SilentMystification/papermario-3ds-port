@@ -208,7 +208,7 @@ void embers_appendGfx(void* effect) {
     nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_val_prim(0, 0, part->unk_20, part->unk_24, part->unk_28, unk_2C);
     nd_val_env(part->unk_30, part->unk_34, part->unk_38, part->unk_3C);
-    nd_rec_dl(D_E00E0A40[1]);
+    nd_draw_list(D_E00E0A40[1], ND_SELF);
 
     part++;
     NdParts pb;

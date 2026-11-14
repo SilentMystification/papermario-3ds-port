@@ -79,6 +79,8 @@ void nd_ntab_rec(const uint32_t* rec); void nd_ntab_rec_e(const uint32_t* rec); 
 #define ND_SELF (*(const NdPsoDesc*)0)
 void nd_rec_dl_e(const void* list, const NdPsoDesc* e);
 #define nd_draw_list(list, entry) nd_rec_dl_e((list), &(entry))
+void nd_rec_dl_key(const void* list, unsigned k); /* FXENT3: capture form; key k 0..14 goes to bits 28-31 of the entcap site word as k + 1 */
+#define nd_rec_dl_k(list, k, n) nd_rec_dl_key((list), (unsigned)(k)) /* n = the key count; entapply.py reads it */
 
 /* CONV2A (plan v3 section 2): the native table of one (static list, entry pso) pair. No pointer into a Gfx array, no typed unit.
  * The converter (CONV2C) writes the tables. nd_ntab_run (CONV2D) runs them on core 0 into the native emit. */

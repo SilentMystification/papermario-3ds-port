@@ -208,7 +208,7 @@ void underwater_appendGfx(void* effect) {
     s32 b, c, k, i;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_rec_dl(D_09000528_3B9F98);
+    nd_draw_list(D_09000528_3B9F98, ND_SELF);
 
     tidal_grid_fill(data);
     if (!tidal_logged) {

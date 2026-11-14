@@ -1,6 +1,9 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_confetti_310_k0, 0xfc11b223, 0xf566ffff, 0x1e082cf0, 0x00504340, 0x00000005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_confetti_310_k1, 0xfc11b223, 0xff66ff7f, 0x1e082cf0, 0x00504340, 0x00000005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_confetti_310_k2, 0xfc11b223, 0xff66ffff, 0x1e082cf0, 0x00504340, 0x00000005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_st.h"
@@ -307,7 +310,11 @@ void confetti_appendGfx(void* effect) {
 
             nd_val_tile_size(G_TX_RENDERTILE, ulx << 2, uly << 2, (ulx << 2) + ((width >> 1) << 1), (uly << 2) + height);
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            nd_rec_dl(spA0);
+            switch ((unk_24 + i) % 3) {
+                case 0: nd_draw_list(spA0, pe_confetti_310_k0); break;
+                case 1: nd_draw_list(spA0, pe_confetti_310_k1); break;
+                default: nd_draw_list(spA0, pe_confetti_310_k2); break;
+            }
             nd_xf_pop(G_MTX_MODELVIEW);
         }
     }

@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_fire_breath_205, 0xfcffffff, 0xfffcf279, 0x1e082cf0, 0x50553378, 0x00200005, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 ND_PSO_DESC(pe_fire_breath_222, 0xfc322bff, 0x5f0e923f, 0x1e182cf0, 0x0c184b50, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
@@ -202,7 +203,7 @@ void fire_breath_appendGfx(void* effect) {
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
         nd_draw_list(NDN(D_09000C20_374000), ND_SELF);
-        nd_rec_dl(D_09000C00_373FE0);
+        nd_draw_list(D_09000C00_373FE0, pe_fire_breath_205);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 
