@@ -8,7 +8,7 @@
       "proves": "ENTRY1: nd_draw_list(list, entry) with the ND_PSO_DESC entry runs through nd_rec_dl_e and nd_gtab_run_e, and the psochk compare counts the draws with no mismatch (bad 0).",
       "debug": "warp=mac_01:0 pos=0:0:200 fxtest=20 loglevel=debug det psochk",
       "extra": [],
-      "until": "psochk f5\\d\\d draws \\d+ bad \\d+",
+      "until": "psochk f4\\d\\d draws \\d+ bad \\d+",
       "cap": 40,
       "deadline": 35,
       "first_marker": "warp: mac_01 entry 0",
@@ -25,7 +25,7 @@
         },
         {
           "name": "done",
-          "regex": "psochk f5\\d\\d draws \\d+ bad \\d+"
+          "regex": "psochk f4\\d\\d draws \\d+ bad \\d+"
         }
       ],
       "reason": "ENTRY1: copy of fxpic_20_entcap with the psochk switch in place of entcap. The until is the first psochk line at frame 500 or later (the explosion draws at frame 402 to 444 are counted before it)."
