@@ -138,6 +138,6 @@ void ring_blast_appendGfx(void* effect) {
         nd_val_tile_size(1, (unk_20_s32 * 32 + 32) * 4, 0, (unk_20_s32 * 32 + 64) * 4, 32 * 4);
     }
 
-    nd_rec_dl_k(dlist, unk_00 != 0, 2);
+    nd_rec_dl(dlist);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

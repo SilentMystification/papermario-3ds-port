@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_disable_x_276, 0xfc127e24, 0xfffff3f9, 0x1e082cf0, 0x00551208, 0x00200005, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_disable_x_299, 0xfc123224, 0xff67ffff, 0x1e082cf0, 0x00504340, 0x00200005, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_st.h"
@@ -273,7 +275,7 @@ void func_E00828B4(EffectInstance* effect) {
                 nd_draw_list(NDN(D_09002100_3884B0), ND_SELF);
             }
             func_E00826C4(data);
-            nd_rec_dl(D_09002230_3885E0);
+            nd_draw_list(D_09002230_3885E0, pe_disable_x_276);
             nd_xf_pop(G_MTX_MODELVIEW);
         }
     }
@@ -296,7 +298,7 @@ void func_E0082A84(EffectInstance* effect) {
             nd_draw_list(NDN(D_090022B0_388660), ND_SELF);
             if (unk_38 < 10) {
                 nd_draw_list(D_E0082D00[unk_38], ND_SELF);
-                nd_rec_dl(D_09002250_388600);
+                nd_draw_list(D_09002250_388600, pe_disable_x_299);
             } else {
                 s32 ones = unk_38 % 10;
                 s32 tens = unk_38 / 10;

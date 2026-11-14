@@ -231,7 +231,7 @@ void cold_breath_appendGfx(void* effect) {
             nd_val_tile_size(1, 0, 0, 31 << 2, 127 << 2);
         }
         nd_val_env(data->envCol.r, data->envCol.g, data->envCol.b, envAlpha);
-        nd_rec_dl_k(D_E00DE810[unk00][temp_s32], unk00 * 2 + cond, 6);
+        nd_rec_dl(D_E00DE810[unk00][temp_s32]);
     }
 
     nd_xf_pop(G_MTX_MODELVIEW);

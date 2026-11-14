@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_effect_46_247_k0, 0xfcff97ff, 0xff2dfeff, 0x1e082cf0, 0x00504b50, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 4, 0, 0, 0);
+ND_PSO_DESC(pe_effect_46_247_k1, 0xfcff97ff, 0xff2dfeff, 0x1e082cf0, 0x00504b50, 0x00000005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 4, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -244,7 +246,10 @@ void effect_46_appendGfx(void* effect) {
         guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        nd_rec_dl_k(D_090003A0_38ED30, fxk, 2);
+        switch (fxk) {
+            case 0: nd_draw_list(D_090003A0_38ED30, pe_effect_46_247_k0); break;
+            default: nd_draw_list(D_090003A0_38ED30, pe_effect_46_247_k1); break;
+        }
         fxk = 1;
         nd_xf_pop(G_MTX_MODELVIEW);
     }

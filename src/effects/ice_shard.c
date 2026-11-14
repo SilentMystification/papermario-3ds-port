@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_ice_shard_176, 0xfcffc7ff, 0xff8dfeff, 0x1e182cf0, 0x0c184b50, 0x00200005, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0);
 ND_PSO_DESC(pe_ice_shard_169, 0xfc262a60, 0x150c937f, 0x1e182cf0, 0x0c184b50, 0x00200005, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
@@ -173,7 +174,7 @@ void ice_shard_appendGfx(void* effect) {
     if (type % 2 == 1 && (s32) (data->animFrame * 4.0f) == 3) {
         nd_val_prim(0, 0, data->primCol.r, data->primCol.g, data->primCol.b, alpha * envAlpha / 255);
         nd_pso_cc(PM_CC_3C, PM_CC_3C);
-        nd_rec_dl(D_09001168_3F9E28);
+        nd_draw_list(D_09001168_3F9E28, pe_ice_shard_176);
     }
 
     nd_xf_pop(G_MTX_MODELVIEW);

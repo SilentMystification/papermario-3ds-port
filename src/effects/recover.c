@@ -1,6 +1,9 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_recover_226, 0xfc123224, 0xff67ffff, 0x1e082cf0, 0x00504340, 0x00200005, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_recover_232, 0xfc123224, 0xff67ffff, 0x1e082cf0, 0x00504340, 0x00200005, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_recover_234, 0xfc123224, 0xff67ffff, 0x1e082cf0, 0x00504340, 0x00200005, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_st.h"
@@ -223,18 +226,18 @@ void func_E0080448(EffectInstance* effect) {
 
                 if (unk_40 < 10 && unk_44 == 0) {
                     nd_draw_list(D_E0080AC0[unk_40], ND_SELF);
-                    nd_rec_dl(type == 0 ? D_09003410_385210 : D_09003470_385270);
+                    nd_draw_list(type == 0 ? D_09003410_385210 : D_09003470_385270, pe_recover_226);
                 } else {
                     s32 ones = unk_40 % 10;
                     s32 tens = unk_44 == 0 ? (unk_40 / 10) : 10;
 
                     nd_draw_list(D_E0080AC0[ones], ND_SELF);
-                    nd_rec_dl(type == 0 ? D_09003450_385250 : D_090034B0_3852B0);
+                    nd_draw_list(type == 0 ? D_09003450_385250 : D_090034B0_3852B0, pe_recover_232);
                     nd_draw_list(D_E0080AC0[tens], ND_SELF);
-                    nd_rec_dl(type == 0 ? D_09003430_385230 : D_09003490_385290);
+                    nd_draw_list(type == 0 ? D_09003430_385230 : D_09003490_385290, pe_recover_234);
                 }
             } else {
-                nd_rec_dl_k(D_090033F0_3851F0, (type == 0 || type == 2) ? (unk_44 == 0 ? 0 : 1) : 2, 3);
+                nd_rec_dl(D_090033F0_3851F0);
                 nd_xf_pop(G_MTX_MODELVIEW);
             }
 

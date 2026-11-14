@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_energy_orb_wave_290, 0xfc6196c3, 0x112cfe7f, 0x1e082c40, 0x00504b50, 0x00200005, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_energy_orb_wave_298, 0xfc6196c3, 0x112cfe7f, 0x1e082c00, 0x00504b50, 0x00200005, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 ND_PSO_DESC(pe_energy_orb_wave_301, 0xfcff97ff, 0xff2dfeff, 0x1e082c40, 0x00504340, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 4, 0, 0, 0);
 #include "nd_op.h" /* HC4e2b: the typed unit of a list word */
 #include "nd_val.h"
@@ -287,7 +289,7 @@ void energy_orb_wave_appendGfx(void* effect) {
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        nd_rec_dl(D_090011D0_3A54F0);
+        nd_draw_list(D_090011D0_3A54F0, pe_energy_orb_wave_290);
         nd_xf_pop(G_MTX_MODELVIEW);
         nd_pso_dither(G_CD_MAGICSQ);
 
@@ -295,7 +297,7 @@ void energy_orb_wave_appendGfx(void* effect) {
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        nd_rec_dl(D_090011F0_3A5510);
+        nd_draw_list(D_090011F0_3A5510, pe_energy_orb_wave_298);
         nd_xf_pop(G_MTX_MODELVIEW);
     } else {
         nd_draw_list(NDN(D_090010A8_3A53C8), ND_SELF);

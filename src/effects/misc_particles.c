@@ -314,7 +314,6 @@ void misc_particles_appendGfx(void* effect) {
     nd_draw_list(D_E00E4DA8[variation], ND_SELF);
 
     particle++;
-    s32 fxk = 0;
     for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, particle++) {
         if (particle->animTime >= 0) {
             guPositionF(mtxTransform, 0.0f, -gCameras[gCurrentCameraID].curYaw, 0.0f, particle->scale * alphaScale, particle->pos.x, particle->pos.y, particle->pos.z);
@@ -328,8 +327,7 @@ void misc_particles_appendGfx(void* effect) {
                 nd_val_tile_size(G_TX_RENDERTILE, ((i & 0x1F) * 32     ) * 4, 31 * 4, ((i & 0x1F) * 32 + 31) * 4, 31 * 4);
             }
 
-            nd_rec_dl_k(D_E00E4D90[variation], variation * 2 + fxk, 12);
-            fxk = 1;
+            nd_rec_dl(D_E00E4D90[variation]);
             nd_xf_pop(G_MTX_MODELVIEW);
         }
     }

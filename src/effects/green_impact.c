@@ -183,7 +183,6 @@ void green_impact_appendGfx(void* effect) {
     nd_sub_open(&sub); /* DIRECT D6c: the list for later is a stream range */
 
     part++;
-    s32 fxk = 0;
     for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, part++) {
         if (part->unk_4C >= 0) {
             guTranslateF(sp20, part->unk_04, part->unk_08, part->unk_0C);
@@ -200,8 +199,7 @@ void green_impact_appendGfx(void* effect) {
             nd_val_tile_size(G_TX_RENDERTILE, 0, (s32) part->unk_3C, 252, (s32) part->unk_3C + 124);
             nd_val_tile_size(1, 0, (s32) part->unk_44, 124, (s32) part->unk_44 + 124);
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            nd_rec_dl_k(dlist2, fxk, 2);
-            fxk = 1;
+            nd_rec_dl(dlist2);
             nd_xf_pop(G_MTX_MODELVIEW);
         }
     }

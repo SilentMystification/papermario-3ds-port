@@ -342,7 +342,7 @@ void radial_shimmer_appendGfx(void* effect) {
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     alpha = data->unk_24;
     nd_val_env(data->unk_6B, data->unk_6C, data->unk_6D, 127);
-    nd_rec_dl(dlist1);
+    nd_draw_list(dlist1, ND_SELF);
 
     for (i = 0; i < effectTemp->numParts; i++, data++) {
         nd_val_prim(0, 0, data->unk_68, data->unk_69, data->unk_6A, alpha);
