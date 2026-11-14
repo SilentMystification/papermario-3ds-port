@@ -1,0 +1,21 @@
+src/effects/cold_breath.c:234 kmiss 2,3,4,5
+src/effects/gather_energy_pink.c:224 kmiss 1,3
+src/effects/green_impact.c:202 multi 2
+src/effects/misc_particles.c:330 multi 30
+src/effects/red_impact.c:209 multi 2
+src/effects/shockwave.c:341 multi 2
+src/effects/recover.c:240 multi 2
+src/effects/ring_blast.c:141 multi 4
+src/effects/stat_change.c:274 multi 2
+src/effects/chomp_drop.c:164 unseen
+src/effects/chomp_drop.c:167 unseen
+src/effects/damage_indicator.c:286 skip
+src/effects/damage_indicator.c:288 skip
+src/effects/disable_x.c:308 unseen
+src/effects/disable_x.c:310 unseen
+src/effects/explosion.c:198 unseen
+src/effects/recover.c:223 multi 2
+src/effects/landing_dust.c:331 unseen
+src/effects/shattering_stones.c:172 unseen
+src/effects/something_rotating.c:316 unseen
+src/effects/star_spirits_energy.c:400 unseen
