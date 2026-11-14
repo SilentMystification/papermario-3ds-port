@@ -4,8 +4,10 @@
 FP="-msse2 -mfpmath=sse -ffp-contract=off"
 FL="-m32 -Wall -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I include -I ver/us/build/include -I 3ds/include -I 3ds/stub_include"
 LIBS="3ds/src/nd_xf.c 3ds/src/nd_rec.c 3ds/src/nd_model.c 3ds/src/nd_op.c 3ds/src/nd_mtx.c 3ds/src/nd_tmpl.c /tmp/ndcomb.o /tmp/ndcombs.c /tmp/ndlogs.c -lm"
-sed 's/NDO_ENV, 0u/NDO_PRIM, 0u/' 3ds/src/nd_val.c > /tmp/nd_val_seed.c
-gcc $FL $FP -o /tmp/hunit_seed 3ds/tools/nd_val_test.c /tmp/nd_val_seed.c $LIBS || exit 1
+# NSTREAM3: the env record is an O form now (nd_at.h NDVAL_ENV), so the seed is a copy of nd_at.h in a first include dir.
+mkdir -p /tmp/hunit_seed_inc
+sed 's/NDO_ENV, 0u/NDO_PRIM, 0u/' 3ds/include/nd_at.h > /tmp/hunit_seed_inc/nd_at.h
+gcc -I /tmp/hunit_seed_inc $FL $FP -o /tmp/hunit_seed 3ds/tools/nd_val_test.c 3ds/src/nd_val.c $LIBS || exit 1
 got=$(/tmp/hunit_seed)
 if [ "$got" != "hunit FAIL env" ]; then echo "hunit seed FAIL: got [$got], want [hunit FAIL env]"; exit 1; fi
 gcc $FL $FP -o /tmp/hunit 3ds/tools/nd_val_test.c 3ds/src/nd_val.c $LIBS || exit 1

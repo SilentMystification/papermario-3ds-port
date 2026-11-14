@@ -8,6 +8,8 @@
 #include "nd_cmd.h"
 
 #define nd_nr(k, v) nd_rec_nr((k), (v)) /* one native record into the open run (NSTREAM2 renames the recorder) */
+#define ND_NR_AT(k, v) (nrp[0] = (k), nrp[1] = (v), nrp += 2) /* NSTREAM3: core 0, into the site's uint32_t* nrp */
+static inline void nd_nr_o(uint32_t** o, uint32_t k, uint32_t v) { if (o) { uint32_t* q = *o; q[0] = k; q[1] = v; *o = q + 2; } else nd_rec_nr(k, v); }
 #define ND_NR_OM(h, sft, len) NDO_W0((h) ? NDO_OMH : NDO_OML, ((uint32_t)(sft) & 0xffu) | ((uint32_t)(len) & 0xffu) << 8)
 #define ND_NR_GEOM(clr) NDO_W0(NDO_GEOM, ~(uint32_t)(clr) & 0xffffffu)
 #define ND_NR_TEXON(on) NDO_W0(NDO_TEXTURE, ((uint32_t)(on) & 0x7fu) != 0u)

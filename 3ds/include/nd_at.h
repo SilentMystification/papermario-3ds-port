@@ -1,0 +1,27 @@
+/* nd_at.h: the O forms of the state, value, transform and geometry setters (NSTREAM3). Each NDX_* macro takes an emitter O first:
+ * O(k, v) writes one native record (k = the typed id and a field, v = the b field). The setter functions pass nd_nr (the core 1 stream,
+ * nd_rec_nr); a core 0 local buffer passes ND_NR_AT (nd_nr.h, into the site's uint32_t* nrp) or HO (hud_element.c, nd_nr_o). The body of
+ * each macro is the setter body of nd_st.c, nd_val.c, nd_xf.c and nd_geo.c with nd_nr( replaced by O(. */
+#ifndef ND_AT_H
+#define ND_AT_H
+#include <stdint.h>
+#include "nd_nr.h"
+#include "nd_gbi.h"
+
+#define NDST_RM(O, c0, c1) O(ND_NR_OM(0, G_MDSFT_RENDERMODE, 29), (unsigned)(c0) | (unsigned)(c1))
+#define NDST_LUT(O, t) O(ND_NR_OM(1, G_MDSFT_TEXTLUT, 2), (unsigned)(t))
+#define NDST_FILT(O, t) O(ND_NR_OM(1, G_MDSFT_TEXTFILT, 2), (unsigned)(t))
+#define NDST_DITHER(O, t) O(ND_NR_OM(1, G_MDSFT_RGBDITHER, 2), (unsigned)(t))
+#define NDST_CC(O, ...) O(NDO_W0(NDO_COMB, ND_W0_CMB(__VA_ARGS__)), ND_W1_CMB(__VA_ARGS__))
+#define NDST_COMB(O, w0, w1) O(NDO_W0(NDO_COMB, (w0)), (w1))
+
+#define NDVAL_PRIM(O, minlod, lodfrac, r, g, b, a) O(NDO_W0(NDO_PRIM, (((minlod) & 0xffu) << 8) | ((lodfrac) & 0xffu)), ND_NR_RGBA(r, g, b, a))
+#define NDVAL_ENV(O, r, g, b, a) O(NDO_W0(NDO_ENV, 0u), ND_NR_RGBA(r, g, b, a))
+
+#define NDXF_PUSH(O, m, p) O(NDO_W0(NDO_MTX, 0x380000u | (((p) ^ 1u) & 0xffu)), (uint32_t)(uintptr_t)(m))
+#define NDXF_POP(O) O(NDO_W0(NDO_POPMTX, 0x380002u), 64u)
+
+#define NDGEO_VTX(O, v, n, v0) O(ND_NR_VTX(n, v0), (uint32_t)(uintptr_t)(v))
+#define NDGEO_TRI1(O, a, b, c, f) O(NDO_W0(NDO_TRI1, __gsSP1Triangle_w1f(a, b, c, f)), 0u)
+#define NDGEO_TRI2(O, a, b, c, f, d, e, g, h) O(NDO_W0(NDO_TRI2, __gsSP1Triangle_w1f(a, b, c, f)), __gsSP1Triangle_w1f(d, e, g, h))
+#endif

@@ -8,28 +8,29 @@
 #include "nd_api.h"
 #include "nd_cmd.h"
 #include "nd_nr.h"
+#include "nd_at.h"
 #include "nd_st.h"
 
 void nd_pso_comb(uint32_t w0, uint32_t w1) {
-    nd_nr(NDO_W0(NDO_COMB, w0), w1);
+    NDST_COMB(nd_nr, w0, w1);
 }
 void nd_pso_rm(unsigned c0, unsigned c1) {
-    nd_nr(ND_NR_OM(0, G_MDSFT_RENDERMODE, 29), (unsigned)(c0) | (unsigned)(c1));
+    NDST_RM(nd_nr, c0, c1);
 }
 void nd_pso_cyc(unsigned t) {
     nd_nr(ND_NR_OM(1, G_MDSFT_CYCLETYPE, 2), (unsigned)(t));
 }
 void nd_pso_filt(unsigned t) {
-    nd_nr(ND_NR_OM(1, G_MDSFT_TEXTFILT, 2), (unsigned)(t));
+    NDST_FILT(nd_nr, t);
 }
 void nd_pso_persp(unsigned t) {
     nd_nr(ND_NR_OM(1, G_MDSFT_TEXTPERSP, 1), (unsigned)(t));
 }
 void nd_pso_lut(unsigned t) {
-    nd_nr(ND_NR_OM(1, G_MDSFT_TEXTLUT, 2), (unsigned)(t));
+    NDST_LUT(nd_nr, t);
 }
 void nd_pso_dither(unsigned t) {
-    nd_nr(ND_NR_OM(1, G_MDSFT_RGBDITHER, 2), (unsigned)(t));
+    NDST_DITHER(nd_nr, t);
 }
 void nd_pso_alcmp(unsigned t) {
     nd_nr(ND_NR_OM(0, G_MDSFT_ALPHACOMPARE, 2), (unsigned)(t));

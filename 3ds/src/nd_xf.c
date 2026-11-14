@@ -6,13 +6,14 @@
 #include "nd_op.h"
 #include "nd_cmd.h"
 #include "nd_nr.h"
+#include "nd_at.h"
 #include "nd_xf.h"
 
 void nd_xf_push(const void* m, unsigned p) {
-    nd_nr(NDO_W0(NDO_MTX, 0x380000u | ((p ^ 1u) & 0xffu)), (uint32_t)(uintptr_t)m);
+    NDXF_PUSH(nd_nr, m, p);
 }
 
 void nd_xf_pop(unsigned which) {
     (void)which;
-    nd_nr(NDO_W0(NDO_POPMTX, 0x380002u), 64u);
+    NDXF_POP(nd_nr);
 }
