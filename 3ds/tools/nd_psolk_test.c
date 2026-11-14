@@ -13,9 +13,19 @@
 #include "nd.h"
 #include "nd_api.h"
 
-extern const NdPsoDesc nd_pso_dsc[]; /* nd_pso_tab.c */
-extern const uint16_t nd_pso_ord[];  /* nd_pso_tab.c */
-extern const unsigned nd_pso_n;      /* nd_pso_tab.c */
+extern const NdPsoKey nd_pso_key[];                     /* nd_pso_tab.c */
+extern const NdPsoSmall nd_pso_small[];                 /* nd_pso_tab.c */
+extern const NdPlanRec nd_pso_plan[];                  /* nd_pso_tab.c */
+extern const unsigned nd_pso_nkey;                      /* nd_pso_tab.c */
+extern const unsigned nd_pso_n;                        /* nd_pso_tab.c */
+#include "../tests/pso/fix_descs.c" /* the table descriptions: pso_fix_a is id 0, pso_fix_b id 1 (the one file of tests/pso) */
+
+static void key_of(const NdPsoDesc* d, NdPsoKey* k) { /* the key of a description (gen_pso_main.c makes the same) */
+    memset(k, 0, sizeof *k);
+    k->cw0 = d->cw0; k->cw1 = d->cw1; k->omh = d->omh; k->key_c = d->key_c; k->key_s = d->key_s;
+    k->conv_k4 = (uint8_t)d->conv_k4; k->plod = d->plod; k->vprim = d->vprim;
+    k->flags = nd_pso_flags(d->tex_on, d->use_t1, d->t1_valid, d->dual_on, d->box_prod, d->box_folded, d->comb_set, d->comb_alpha_shade);
+}
 
 uint32_t f32tof24(float vf) { /* host copy of libctru f32tof24, as nd_decide_test.c has it */
     union { float f; uint32_t i; } v;
@@ -106,7 +116,9 @@ static void point(const St* s, int tex_on, int t1v, int dual, int cset, uint32_t
     nd_pso_build(&d, &o);
     NdCombOut got = o.comb;
     if (!fault) nd_pso_fix(&got, &in, m5);
-    if (!nd_pso_in_eq(&d, &in, (unsigned)vprim)) { n_neq++; return; }
+    NdPsoKey kd;
+    key_of(&d, &kd);
+    if (!nd_pso_in_eq(&kd, &in, (unsigned)vprim)) { n_neq++; return; }
     n_ent++;
     if (memcmp(&got, &ref, sizeof ref) != 0) {
         n_bad++;
@@ -115,21 +127,37 @@ static void point(const St* s, int tex_on, int t1v, int dual, int cset, uint32_t
     }
 }
 
-/* the find part: each table id, the walker inputs of its description */
+/* the walker inputs of a key (the fields nd_pso_in_eq reads, the tst from the words) */
+static void win_of_key(const NdPsoKey* key, NdCombIn* w) {
+    memset(w, 0, sizeof *w);
+    w->w0 = key->cw0; w->w1 = key->cw1; w->omode_h = key->omh; w->prim_lo8 = key->plod; w->key_c = key->key_c; w->key_s = key->key_s; w->conv_k4 = key->conv_k4;
+    nd_comb_tst(key->cw0, key->cw1, (key->flags >> 1) & 1, (key->flags >> 5) & 1, w->tst);
+    w->tex_on = key->flags & 1; w->use_t1 = (key->flags >> 1) & 1; w->t1_valid = (key->flags >> 2) & 1; w->dual_on = (key->flags >> 3) & 1;
+    w->box_prod = (key->flags >> 4) & 1; w->box_folded = (key->flags >> 5) & 1; w->comb_set = (key->flags >> 6) & 1; w->comb_alpha_shade = (key->flags >> 7) & 1;
+}
+
+/* the find part: each table key finds an entry; each table id (the descriptions of tests/pso) finds the whole NdCombOut of nd_pso(id); w1 ^ 1 gives 0 */
 static unsigned n_find, n_fbad;
-static void find_check(unsigned id) {
-    const NdPsoDesc* dsc = &nd_pso_dsc[id];
+static void find_key(unsigned k) {
+    const NdPsoKey* key = &nd_pso_key[k];
     NdCombIn w;
-    memset(&w, 0, sizeof w);
-    w.w0 = dsc->cw0; w.w1 = dsc->cw1; w.omode_h = dsc->omh; w.prim_lo8 = dsc->plod; w.key_c = dsc->key_c; w.key_s = dsc->key_s; w.conv_k4 = dsc->conv_k4;
-    nd_comb_tst(dsc->cw0, dsc->cw1, dsc->use_t1, dsc->box_folded, w.tst);
-    w.leg_mode = dsc->leg_prev; w.tex_on = dsc->tex_on; w.use_t1 = dsc->use_t1; w.t1_valid = dsc->t1_valid; w.dual_on = dsc->dual_on;
-    w.box_prod = dsc->box_prod; w.box_pat = 0; w.box_folded = dsc->box_folded; w.comb_set = dsc->comb_set; w.comb_alpha_shade = dsc->comb_alpha_shade;
+    NdCombOut o;
+    win_of_key(key, &w);
     n_find++;
-    const NdPsoOut* p = nd_pso_find(&w, (unsigned)dsc->vprim);
-    if (!p || memcmp(&p->comb, &nd_pso((NdPso)id)->comb, sizeof p->comb) != 0) { n_fbad++; printf("BAD find id %u: %s\n", id, p ? "comb differs" : "no entry"); return; }
+    if (nd_pso_find(&w, key->vprim, &o) != 1) { n_fbad++; printf("BAD find key %u: no entry\n", k); return; }
     w.w1 ^= 1u;
-    if (nd_pso_find(&w, (unsigned)dsc->vprim)) { n_fbad++; printf("BAD find id %u: w1 ^ 1 hits\n", id); }
+    if (nd_pso_find(&w, key->vprim, &o)) { n_fbad++; printf("BAD find key %u: w1 ^ 1 hits\n", k); }
+}
+static void find_id(unsigned id, const NdPsoDesc* d) {
+    NdPsoKey key;
+    NdCombIn w;
+    NdCombOut o;
+    key_of(d, &key);
+    win_of_key(&key, &w);
+    n_find++;
+    if (nd_pso_find(&w, d->vprim, &o) != 1 || memcmp(&o, &nd_pso(id)->comb, sizeof o) != 0) { n_fbad++; printf("BAD find id %u: comb differs\n", id); return; }
+    w.w1 ^= 1u;
+    if (nd_pso_find(&w, d->vprim, &o)) { n_fbad++; printf("BAD find id %u: w1 ^ 1 hits\n", id); }
 }
 
 int main(int argc, char** argv) {
@@ -169,7 +197,12 @@ int main(int argc, char** argv) {
                 point(s, tex, t1v, dual, cset, kc, ks, k4, v == 2, v == 0 ? 0u : 0x7fu, folded, leg ? 4 : 0, bp, m5, pe[p][0], pe[p][1]);
         }
     }
-    for (unsigned id = 0; id < nd_pso_n; id++) find_check(id);
+    for (unsigned k = 0; k < nd_pso_nkey; k++) find_key(k);
+    {
+        const NdPsoDesc* ids[] = { &pso_fix_a, &pso_fix_b };
+        if (nd_pso_n != 2) { n_fbad++; printf("BAD table: %u ids, the descriptions are 2\n", nd_pso_n); }
+        for (unsigned id = 0; id < 2 && id < nd_pso_n; id++) find_id(id, ids[id]);
+    }
     printf("psolk find %u bad %u\n", n_find, n_fbad);
     printf("psolk entries %u neq %u bad %u\n", n_ent, n_neq, n_bad);
     return n_bad || n_fbad ? 1 : 0;

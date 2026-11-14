@@ -215,6 +215,7 @@ void nd_walker_desc(NdPsoDesc* d) {
 /* NPSO4: the psochk debug switch (read once). Each draw that states a description compares it with the walker's; the first 8 bad ones are logged, and a line every 100 frames. Off: one test. */
 static int psochk_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("psochk"); return v; }
 static unsigned psochk_draws, psochk_bad, psochk_nlog, psochk_bucket;
+static unsigned pk_hit, pk_miss, pk_bad; /* PSOLK: table hits, misses, and hits whose core decision differs (psochk only) */
 extern unsigned pm_frame_n; /* pm_main.c: the logic step counter */
 void nd_psochk_draw(const NdPsoDesc* stated) {
     if (!psochk_on()) return;
@@ -227,7 +228,19 @@ void nd_psochk_draw(const NdPsoDesc* stated) {
     }
     if (pm_frame_n / 100 != psochk_bucket) {
         psochk_bucket = pm_frame_n / 100;
-        pm_log_evt("psochk f%u draws %u bad %u", pm_frame_n, psochk_draws, psochk_bad);
+        pm_log_evt("psochk f%u draws %u bad %u lk %u miss %u lkbad %u", pm_frame_n, psochk_draws, psochk_bad, pk_hit, pk_miss, pk_bad);
+    }
+}
+
+/* PSOLK: the combine decision of the walker inputs in: the pso table entry (nd_pso_find) with the walker's colours, or nd_comb_core on a miss. */
+static void nd_comb_pick(const NdCombIn* in, NdCombOut* o) {
+    if (!nd_pso_find(in, (unsigned)pm_comb_vprim, o)) { pk_miss++; nd_comb_core(in, (unsigned)pm_comb_vprim, comb_mode5, o); return; }
+    pk_hit++;
+    nd_pso_fix(o, in, comb_mode5);
+    if (psochk_on()) {
+        NdCombOut r;
+        nd_comb_core(in, (unsigned)pm_comb_vprim, comb_mode5, &r);
+        if (memcmp(&r, o, sizeof r)) pk_bad++;
     }
 }
 
@@ -282,7 +295,7 @@ void sync_combine_work(void) {
     NdCombOut o;
     if (gp_on()) scw_census(); /* PG0: an estimate of how many calls repeat the inputs of the call before (hash of the combiner, render and tile state the function reads) */
     comb_in_walker(&in);
-    nd_comb_core(&in, (unsigned)pm_comb_vprim, comb_mode5, &o);
+    nd_comb_pick(&in, &o);
     sl_const = o.cc_on; sl_env = o.env_on;
     if (o.cc_on) { sl_cc = o.cc; pm_gpu_set_const(o.cc); }
     if (o.env_on) pm_gpu_set_env(nd_ws.envc);

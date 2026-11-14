@@ -497,9 +497,31 @@ void nd_pso_build(const struct NdPsoDesc* d, struct NdPsoOut* o);
 int nd_pso_cc(const struct NdPsoDesc* d, uint32_t prim, uint32_t env, uint32_t* cc);
 void nd_pso_colour(const struct NdPsoOut* o, uint32_t prim, uint32_t env, uint32_t plod, uint32_t key, uint32_t keys, uint32_t cconst,
                    uint32_t tev_col[6], uint32_t* buf_col, uint32_t* vtx);
-int nd_pso_in_eq(const struct NdPsoDesc* d, const NdCombIn* w, unsigned vprim); /* NPSO2D: w equals d in every input of nd_comb_core but prim, env, leg_mode, box_pat */
+/* NPSO2D: one key of the pso lookup table (nd_pso_tab.c, from gen_pso_main.c): the inputs nd_comb_core reads except prim, env, leg_mode and box_pat.
+ * flags: nd_pso_flags of the one-bit inputs; plod, vprim, conv_k4 as bytes; si: the index of the key's NdPsoSmall (the key index). */
+typedef struct NdPsoKey {
+    uint32_t cw0, cw1, omh, key_c, key_s;
+    uint8_t conv_k4, plod, vprim, flags;
+    uint16_t si;
+} NdPsoKey;
+/* NPSO2D: a plan of the table: its fields, and si[i], the index of its stage i in nd_pso_stage_raw (PmTevStage bytes, index 0 all zero). */
+typedef struct NdPlanRec {
+    int n;
+    unsigned buf, vtx;
+    unsigned char bufname, vtxname, uses_tex, uses_sha, uses_tex1, uses_noise;
+    unsigned char ks[4][5], fold[6];
+    uint8_t si[6];
+} NdPlanRec;
+/* NPSO2D: the small part of a key's NdCombOut: the plan is nd_pso_plan[pi] when plan_on (else no plan). */
+typedef struct NdPsoSmall {
+    uint32_t cc;
+    int8_t leg, mode5, pat, use, why, cyc, dual, plan_on, cc_on, env_on;
+    uint8_t pi, pad;
+} NdPsoSmall;
+uint8_t nd_pso_flags(int tex_on, int use_t1, int t1_valid, int dual_on, int box_prod, int box_folded, int comb_set, int comb_alpha_shade);
+int nd_pso_in_eq(const NdPsoKey* d, const NdCombIn* w, unsigned vprim); /* NPSO2D: w equals key d in every input of nd_comb_core but prim, env, leg_mode, box_pat */
 void nd_pso_fix(NdCombOut* o, const NdCombIn* w, int mode5_prev); /* NPSO2D: a table decision under w's colours, box_pat and mode5 */
-const struct NdPsoOut* nd_pso_find(const NdCombIn* w, unsigned vprim); /* nd_psolk.c */
+int nd_pso_find(const NdCombIn* w, unsigned vprim, NdCombOut* o); /* nd_psolk.c: 1 and the table comb of the key equal to w in o; 0 when none */
 
 /* S6-2c-1: an entity list cut at its state ops (segment compile, row S6-2c). A segment is the geometry ops [op0, op1) (VTX, TRI1, TRI2; its triangles are
  * tri0 to tri0 + ntri - 1 in list order) and the state ops [sop0, op0) that come before it, decoded into d (the delta, the nd_mode_compile rules).

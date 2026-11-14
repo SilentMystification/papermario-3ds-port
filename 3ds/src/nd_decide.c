@@ -398,15 +398,22 @@ void nd_pso_colour(const NdPsoOut* o, uint32_t prim, uint32_t env, uint32_t plod
 
 /* NPSO2D: the walker inputs w equal the description d in every input nd_comb_core reads except prim, env (leg 4 colour only), leg_mode (written
  * first) and box_pat (leg 4 and dual only). Equal inputs give the table's decision (nd_pso_fix adds the rest). */
-int nd_pso_in_eq(const NdPsoDesc* d, const NdCombIn* w, unsigned vprim) {
+/* The one-bit inputs packed in one byte (NdPsoKey.flags). Callers pass 0 or 1 values. */
+uint8_t nd_pso_flags(int tex_on, int use_t1, int t1_valid, int dual_on, int box_prod, int box_folded, int comb_set, int comb_alpha_shade) {
+    return (uint8_t)((tex_on ? 1u : 0u) | (use_t1 ? 2u : 0u) | (t1_valid ? 4u : 0u) | (dual_on ? 8u : 0u) | (box_prod ? 16u : 0u) |
+                     (box_folded ? 32u : 0u) | (comb_set ? 64u : 0u) | (comb_alpha_shade ? 128u : 0u));
+}
+
+/* NPSO2D: the walker inputs w equal the key d in every input nd_comb_core reads except prim, env (leg 4 colour only), leg_mode (written first)
+ * and box_pat (leg 4 and dual only). Equal inputs give the table's decision (nd_pso_fix adds the rest). A one-bit input above 1 is no match. */
+int nd_pso_in_eq(const NdPsoKey* d, const NdCombIn* w, unsigned vprim) {
     uint32_t t[16];
+    if ((unsigned)(w->tex_on | w->use_t1 | w->t1_valid | w->dual_on | w->box_prod | w->box_folded | w->comb_set | w->comb_alpha_shade) > 1u) return 0;
     if (w->w0 != d->cw0 || w->w1 != d->cw1 || w->omode_h != d->omh || (uint8_t)w->prim_lo8 != d->plod || w->key_c != d->key_c || w->key_s != d->key_s ||
         w->conv_k4 != d->conv_k4 || vprim != (unsigned)d->vprim)
         return 0;
-    if (w->tex_on != d->tex_on || w->use_t1 != d->use_t1 || w->t1_valid != d->t1_valid || w->dual_on != d->dual_on || w->box_prod != d->box_prod ||
-        w->box_folded != d->box_folded || w->comb_set != d->comb_set || w->comb_alpha_shade != d->comb_alpha_shade)
-        return 0;
-    nd_comb_tst(d->cw0, d->cw1, d->use_t1, d->box_folded, t);
+    if (nd_pso_flags(w->tex_on, w->use_t1, w->t1_valid, w->dual_on, w->box_prod, w->box_folded, w->comb_set, w->comb_alpha_shade) != d->flags) return 0;
+    nd_comb_tst(d->cw0, d->cw1, (d->flags >> 1) & 1, (d->flags >> 5) & 1, t);
     return memcmp(t, w->tst, sizeof t) == 0;
 }
 
