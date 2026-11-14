@@ -327,7 +327,7 @@ void misc_particles_appendGfx(void* effect) {
                 nd_val_tile_size(G_TX_RENDERTILE, ((i & 0x1F) * 32     ) * 4, 31 * 4, ((i & 0x1F) * 32 + 31) * 4, 31 * 4);
             }
 
-            nd_rec_dl_k(D_E00E4D90[variation], variation, 6);
+            nd_rec_dl(D_E00E4D90[variation]);
             nd_xf_pop(G_MTX_MODELVIEW);
         }
     }

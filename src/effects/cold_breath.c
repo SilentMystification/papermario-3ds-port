@@ -1,6 +1,9 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_cold_breath_234_k0, 0xfc262a60, 0x150c937f, 0x1e182ce0, 0x0c184b50, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_cold_breath_234_k1, 0xfc262a60, 0x15fc9378, 0x1e182ce0, 0x0c184b50, 0x00000000, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_cold_breath_234_k2, 0xfc262a60, 0x150c937f, 0x1e182ce0, 0x0c184b50, 0x00000000, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_st.h"
@@ -231,7 +234,11 @@ void cold_breath_appendGfx(void* effect) {
             nd_val_tile_size(1, 0, 0, 31 << 2, 127 << 2);
         }
         nd_val_env(data->envCol.r, data->envCol.g, data->envCol.b, envAlpha);
-        nd_rec_dl_k(D_E00DE810[unk00][temp_s32], unk00, 3);
+        switch (unk00) {
+            case 0: nd_draw_list(D_E00DE810[unk00][temp_s32], pe_cold_breath_234_k0); break;
+            case 1: nd_draw_list(D_E00DE810[unk00][temp_s32], pe_cold_breath_234_k1); break;
+            default: nd_draw_list(D_E00DE810[unk00][temp_s32], pe_cold_breath_234_k2); break;
+        }
     }
 
     nd_xf_pop(G_MTX_MODELVIEW);

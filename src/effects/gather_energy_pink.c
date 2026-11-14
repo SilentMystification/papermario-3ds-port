@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_gather_energy_pink_224_k0, 0xfcf09a61, 0x501374ff, 0x1e182cf0, 0x0c184340, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_gather_energy_pink_224_k1, 0xfcf09a61, 0x500f74ff, 0x1e182cf0, 0x0c184340, 0x00000000, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -221,7 +223,10 @@ void gather_energy_pink_appendGfx(void* effect) {
 
         nd_val_tile_size(G_TX_RENDERTILE, tempX, tempY, tempX + 256, tempY + 256);
         nd_val_tile_size(1, tempX2, tempY2, tempX2 + 256, tempY2 + 256);
-        nd_rec_dl_k(dlist2, unk_00, 2);
+        switch (unk_00) {
+            case 0: nd_draw_list(dlist2, pe_gather_energy_pink_224_k0); break;
+            default: nd_draw_list(dlist2, pe_gather_energy_pink_224_k1); break;
+        }
     }
 
     nd_xf_pop(G_MTX_MODELVIEW);

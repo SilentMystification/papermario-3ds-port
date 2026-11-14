@@ -1,6 +1,12 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_stat_change_274_k0, 0xfc127e24, 0xfffff3f9, 0x1e082cf0, 0x00551208, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_stat_change_274_k1, 0xfc127e24, 0xfffff3f9, 0x1e082cf0, 0x00551208, 0x00000000, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_stat_change_274_k2, 0xfc127e24, 0xfffff3f9, 0x1e08acf0, 0x00551208, 0x00000000, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_stat_change_274_k3, 0xfc123224, 0xff67ffff, 0x1e082cf0, 0x00504340, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_stat_change_274_k4, 0xfc123224, 0xff67ffff, 0x1e082cf0, 0x00504340, 0x00000000, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_stat_change_274_k5, 0xfc123224, 0xff67ffff, 0x1e08acf0, 0x00504340, 0x00000000, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 ND_PSO_DESC(pe_stat_change_288, 0xfc123224, 0xff67ffff, 0x1e082cf0, 0x00504340, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 ND_PSO_DESC(pe_stat_change_296, 0xfc123224, 0xff67ffff, 0x1e082cf0, 0x00504340, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
@@ -271,7 +277,14 @@ void func_E00AC2A4(EffectInstance* effect) {
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         nd_draw_list(D_E00AC7B0[arrowType], ND_SELF);
         nd_val_prim(0, 0, 0, 0, 0, data->unk_24);
-        nd_rec_dl_k(D_E00AC7BC[arrowType], (data->unk_24 != 255) * 3 + arrowType, 6);
+        switch ((data->unk_24 != 255) * 3 + arrowType) {
+            case 0: nd_draw_list(D_E00AC7BC[arrowType], pe_stat_change_274_k0); break;
+            case 1: nd_draw_list(D_E00AC7BC[arrowType], pe_stat_change_274_k1); break;
+            case 2: nd_draw_list(D_E00AC7BC[arrowType], pe_stat_change_274_k2); break;
+            case 3: nd_draw_list(D_E00AC7BC[arrowType], pe_stat_change_274_k3); break;
+            case 4: nd_draw_list(D_E00AC7BC[arrowType], pe_stat_change_274_k4); break;
+            default: nd_draw_list(D_E00AC7BC[arrowType], pe_stat_change_274_k5); break;
+        }
         nd_xf_pop(G_MTX_MODELVIEW);
         nd_draw_list(NDN(D_090028E0_3B1FE0), ND_SELF);
 
