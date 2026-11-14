@@ -4,6 +4,8 @@
 #include "hud_element.h"
 #include "sprite.h"
 #include "overlay.h"
+#include "nd_st.h"
+#include "nd_val.h"
 
 extern s32 gPauseBackgroundFade;
 extern int pm_wide; /* F07-4 */
@@ -39,7 +41,7 @@ static NdSDef init_def_vp = { D_80074230, 4 };
 static NdSDef init_def_rm = { D_80074210, 3 };
 
 void gfx_init_state(void) {
-    gSPSegment(gMainGfxPos++, 0x00, 0x0);
+    nd_val_seg(0x00, 0x0);
     nd_scomp_rec(&init_def_vp, &D_80074230[0], 1);
     nd_scomp_rec(&init_def_rm, NULL, 0);
 }
@@ -323,7 +325,7 @@ void gfx_draw_background(void) {
     s32 i;
     s32 a = SCREEN_COPY_TILE_HEIGHT << 2;
 
-    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    nd_pso_scis(G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
     camera = &gCameras[gCurrentCameraID];
     bgRenderState = gGameStatusPtr->backgroundFlags & BACKGROUND_RENDER_STATE_MASK;
@@ -333,13 +335,12 @@ void gfx_draw_background(void) {
             // Save coverage to nunGfxCfb[1] using the VISCVG render mode
             gDPPipeSync(gMainGfxPos++);
             gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, nuGfxCfb[1]);
-            gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
+            nd_pso_cyc(G_CYC_1CYCLE);
             gDPSetBlendColor(gMainGfxPos++, 0x80, 0x80, 0x80, 0xFF);
             gDPSetPrimDepth(gMainGfxPos++, 0xFFFF, 0xFFFF);
             gDPSetDepthSource(gMainGfxPos++, G_ZS_PRIM);
-            gDPSetRenderMode(gMainGfxPos++, G_RM_VISCVG, G_RM_VISCVG2);
+            nd_pso_rm(G_RM_VISCVG, G_RM_VISCVG2);
             gDPFillRectangle(gMainGfxPos++, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-            gDPPipeSync(gMainGfxPos++);
             gDPSetDepthSource(gMainGfxPos++, G_ZS_PIXEL);
             gGameStatusPtr->backgroundFlags &= ~BACKGROUND_RENDER_STATE_MASK;
             gGameStatusPtr->backgroundFlags |= BACKGROUND_RENDER_STATE_FILTER_PAUSED;
@@ -360,23 +361,22 @@ void gfx_draw_background(void) {
                 gPauseBackgroundFade = 128;
             }
 
-            gDPPipeSync(gMainGfxPos++);
-            gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-            gDPSetCycleType(gMainGfxPos++, G_CYC_FILL);
-            gDPSetRenderMode(gMainGfxPos++, G_RM_NOOP, G_RM_NOOP2);
+            nd_pso_scis(G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+            nd_pso_cyc(G_CYC_FILL);
+            nd_pso_rm(G_RM_NOOP, G_RM_NOOP2);
             gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, nuGfxCfb_ptr);
             gDPSetFillColor(gMainGfxPos++, PACK_FILL_COLOR(0, 0, 0, 1));
             gDPFillRectangle(gMainGfxPos++, 0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1);
-            gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
-            gDPSetTexturePersp(gMainGfxPos++, G_TP_NONE);
-            gDPSetTextureLUT(gMainGfxPos++, G_TT_NONE);
-            gDPSetRenderMode(gMainGfxPos++, G_RM_OPA_SURF, G_RM_OPA_SURF2);
+            nd_pso_cyc(G_CYC_1CYCLE);
+            nd_pso_persp(G_TP_NONE);
+            nd_pso_lut(G_TT_NONE);
+            nd_pso_rm(G_RM_OPA_SURF, G_RM_OPA_SURF2);
             /// @bug In 1-cycle mode, the two combiner cycles should be identical. Using Texel1 here in the second cycle,
             /// which is the actual cycle of the combiner used on hardware in 1-cycle mode, actually samples the next
             /// pixel's texel value instead of the current pixel's. This results in a one-pixel offset.
             gDPSetCombineMode(gMainGfxPos++, PM_CC_43, PM_CC_44);
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, 40, 40, 40, gPauseBackgroundFade);
-            gDPSetTextureFilter(gMainGfxPos++, G_TF_POINT);
+            nd_val_prim(0, 0, 40, 40, 40, gPauseBackgroundFade);
+            nd_pso_filt(G_TF_POINT);
 
             /* PAUSE4A: the saved picture is one 320 x 240 image. One load and one texrect draw all of it (the strips below are the N64 TMEM split). */
             /* PAUSEOPEN: the other colour buffer (not the one drawn now) is the last frame. Its texture load is the GPU copy (nd_tex_set.c set_timg). */
@@ -387,7 +387,6 @@ void gfx_draw_background(void) {
                                 0 << 2, 0, SCREEN_WIDTH << 2, SCREEN_HEIGHT << 2,
                                 G_TX_RENDERTILE,
                                 0 << 5, 0 << 5, 1 << 10, 1 << 10);
-            gDPPipeSync(gMainGfxPos++);
             if (pm_wide) gPmNdGutter(gMainGfxPos++, gPauseBackgroundFade); /* PAUSEOPEN: the gutters from the pause slot, walker side (pm_gpu_pause_gutters) */
             break;
         default:
@@ -398,12 +397,11 @@ void gfx_draw_background(void) {
             }
 
             gDPSetDepthImage(gMainGfxPos++, OS_K0_TO_PHYSICAL(nuGfxZBuffer));
-            gDPSetCycleType(gMainGfxPos++, G_CYC_FILL);
-            gDPSetRenderMode(gMainGfxPos++, G_RM_NOOP, G_RM_NOOP2);
+            nd_pso_cyc(G_CYC_FILL);
+            nd_pso_rm(G_RM_NOOP, G_RM_NOOP2);
             gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, OS_K0_TO_PHYSICAL(nuGfxZBuffer));
             gDPSetFillColor(gMainGfxPos++, PACK_FILL_DEPTH(G_MAXFBZ, 0));
             gDPFillRectangle(gMainGfxPos++, 0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1);
-            gDPPipeSync(gMainGfxPos++);
             gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
             gDPSetFillColor(gMainGfxPos++, PACK_FILL_COLOR(camera->bgColor[0], camera->bgColor[1], camera->bgColor[2], 1));
 
@@ -476,11 +474,9 @@ void gfx_draw_background(void) {
                 appendGfx_background_texture();
             }
 
-            gDPPipeSync(gMainGfxPos++);
-            gDPSetCycleType(gMainGfxPos++, G_CYC_FILL);
-            gDPSetRenderMode(gMainGfxPos++, G_RM_NOOP, G_RM_NOOP2);
+            nd_pso_cyc(G_CYC_FILL);
+            nd_pso_rm(G_RM_NOOP, G_RM_NOOP2);
             gDPSetFillColor(gMainGfxPos++, PACK_FILL_COLOR(0, 0, 0, 1));
-            gDPPipeSync(gMainGfxPos++);
 
             if (backgroundMinY > 0) {
                 gDPFillRectangle(gMainGfxPos++, 0, 0, SCREEN_WIDTH - 1, backgroundMinY - 1);
@@ -503,5 +499,4 @@ void gfx_draw_background(void) {
             }
             break;
     }
-    gDPPipeSync(gMainGfxPos++);
 }
