@@ -386,6 +386,7 @@ static void v2_unit_add(unsigned k, unsigned id, uint32_t w0, uint32_t w1) {
     const unsigned i = cx->nu++;
     cx->uw[2u * i] = w0; cx->uw[2u * i + 1u] = w1;
     cx->ue[i][0] = 0;
+    if (w0 == ND_NOP_A) { if ((w1 >> 24) >= 16u) v2_unsup("no-op unit with an address", k); return; } /* EMIT4: the NOPs stay in the unit copy */
     int kind = -1;
     if (id == NDO_VTX) kind = GS_VTX;
     else if (id == NDO_TIMG) kind = GS_IMG;
@@ -412,7 +413,6 @@ static void v2_units_top(const GSym* g) {
     for (unsigned k = 0; k < nu; k++) {
         const uint32_t w0 = L[2u * k], w1 = L[2u * k + 1u];
         const unsigned id = w0 >> 24;
-        if (w0 == ND_NOP_A) continue;
         if (id == NDO_END) { cx->nk = k; break; }
         v2_unit_add(k, id, w0, w1);
         if (id == NDO_CALL && (w0 & 1u)) { cx->nk = k + 1u; break; }

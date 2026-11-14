@@ -125,7 +125,7 @@ u32 ent_hash_walk(const Gfx* l, u32 h, int depth) {
 }
 
 u32 ent_hash(const Gfx* l, const u8* vp, u32 vlen) {
-    u32 h = ent_hash_walk(l, 2166136261u, 0);
+    u32 h = l ? ent_hash_walk(l, 2166136261u, 0) : 2166136261u;
     for (u32 i = 0; i < vlen; i += 4u) { u32 v; memcpy(&v, vp + i, 4); h = (h ^ v) * 16777619u; }
     return h;
 }
@@ -146,6 +146,16 @@ int ent_flat(const Gfx* l, unsigned* n, int depth) {
         ent_flat_buf[(*n)++] = l[i];
     }
     return 0;
+}
+/* EMIT4: a v2 list reads its flat words from the device entries (nd_ntab_flat); a callee without an entry is read from its Gfx list (ent_flat) */
+static unsigned ent_flat_w, ent_v2_log;
+static int ent_flat_call(uint32_t w1, unsigned* n, int depth) {
+    const Gfx* t = (const Gfx*)ptr_of(w1);
+    if (!t || !is_host((u32)t) || depth >= 5) return 0;
+    const NdNDev* c = nd_ntab_find(t);
+    if (c) return nd_ntab_flat(c, ent_flat_buf, n, ND_DLC_MAXOPS, depth + 1, ent_flat_call);
+    ent_flat_w++;
+    return ent_flat(t, n, depth + 1);
 }
 
 /* the pool copies against the list: every triangle corner is the vertex the slot holds at the triangle (bytes 0 to 5 and 8 to 15; the flag word is the palette index). Per segment. */
@@ -261,7 +271,10 @@ void ent_compile(EntKey* k, const Gfx* l0) {
     nd_c2_forget(k->fw); free(k->fw); k->fw = NULL;
     k->st = ENT_REF; k->why = 0; k->fr = pm_frame_count(); k->retry = k->fr + 300u;
     ent_c.comp++;
-    if (!ent_flat(l0, &nops, 0)) { k->why = 5; return; }
+    const NdNDev* nt = nd_ntab_find(l0); ent_flat_w = 0;
+    const int fl = nt ? nd_ntab_flat(nt, ent_flat_buf, &nops, ND_DLC_MAXOPS, 0, ent_flat_call) : ent_flat(l0, &nops, 0);
+    k->v2 = (u8)(nt && !ent_flat_w);
+    if (!fl) { k->why = 5; return; }
     ent_flat_buf[nops].words.w0 = NDO_W0(NDO_END, 0); ent_flat_buf[nops].words.w1 = 0;
     if (!k->vb) { for (unsigned i = 0; i < nops; i++) if (ent_uid(ent_flat_buf[i].words.w0, ent_flat_buf[i].words.w1) == NDO_VTX) { u32 a = ent_flat_buf[i].words.w1; if (!is_host(a) && (a >> 24) > 0 && (a >> 24) < 16u) { k->useseg = 1; break; } } if (k->useseg) { k->why = 9; return; } }
     k->fw = (Gfx*)malloc((nops + 1u) * sizeof(Gfx));
@@ -297,7 +310,7 @@ void ent_compile(EntKey* k, const Gfx* l0) {
     if (o.nidx != 3u * ntri) { nd_dlc_free(&o); k->why = 7; return; }
     k->seg = (EntSeg*)malloc(ns * sizeof(EntSeg));
     if (!k->seg) { nd_dlc_free(&o); k->why = 5; return; }
-    const NdGTab* gt = nd_gtab_find(l0);
+    const NdGTab* gt = k->v2 ? NULL : nd_gtab_find(l0);
     for (unsigned s = 0; s < ns; s++) { ent_ga[s] = s ? ent_sbuf[s - 1].op1 : 0u; ent_gb[s] = ent_sbuf[s].op0; }
     ent_ga[ns] = ent_sbuf[ns - 1].op1; ent_gb[ns] = nops;
     ent_ngap = ns + 1u; ent_ntp = 0; ent_gc = 0;
@@ -330,8 +343,9 @@ void ent_compile(EntKey* k, const Gfx* l0) {
     if (o.nidx) pm_gpu_gidxs_commit(o.idx, o.nidx);
     nd_dlc_free(&o); /* the groups and geometry ops; the pool copies stay */
     k->vp = lo; k->vlen = lo ? (u32)(hi - lo) & ~3u : 0u;
-    k->hash = ent_hash(l0, k->vp, k->vlen);
+    k->hash = ent_hash(k->v2 ? NULL : l0, k->vp, k->vlen);
     k->st = ENT_OK;
+    if (k->v2 && !ent_v2_log) { ent_v2_log = 1; pm_log_evt("entv2 l %08x n %u", (unsigned)k->list, nops); }
     if (entchk_on()) ent_refcheck(k, l);
 }
 
@@ -484,7 +498,7 @@ int ent_run(const Gfx* l, EntKey* k, u32 segid) {
     if (!k) { ent_c.why[1]++; ent_c.fb++; return 0; }
     if (k->st == ENT_OK && k->fr != f) { /* content, once per frame */
         k->fr = f;
-        if (ent_hash(l, k->vp, k->vlen) != k->hash) ent_run_recompile(k, l);
+        if (ent_hash(k->v2 ? NULL : l, k->vp, k->vlen) != k->hash) ent_run_recompile(k, l);
     } else if (k->st == ENT_REF && k->why == 6 && f >= k->retry) { ent_compile(k, l); }
     k->ndraw++; k->segid = segid;
     if (k->st != ENT_OK) { ent_c.fb++; if (k->st == ENT_REF) ent_c.why[k->why < 12 ? k->why : 0]++; return 0; }
