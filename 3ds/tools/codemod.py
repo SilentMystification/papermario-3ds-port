@@ -3,6 +3,7 @@
 
     python 3ds/tools/codemod.py [--dry] [--state] [--ntab <ntab_tables.txt>] <file or directory>...   (a directory: every *.c below it)
 --state adds the state calls of STATE_MAP (gDP/gSP set calls -> nd_pso_*, nd_tex_on, nd_pso_scis; nd_st.h) to the mapping.
+--geo maps only GEO_MAP (target, depth, vertex, triangle, light calls -> nd_geo.h); no list call is touched.
 
 A tokenizer (comments, strings, character constants and preprocessor lines are tokens of their own) finds each call of a mapped
 name with its whole argument list (balanced brackets). A call is rewritten only when it is exact:
@@ -69,6 +70,21 @@ STATE_MAP = {
     'gSPClearGeometryMode': (2, True, 'nd_pso_geom_clr', (1,)),
     'gSPTexture': (6, True, 'nd_tex_on', (1, 2, 3, 4, 5)),
     'gDPSetScissor': (6, True, 'nd_pso_scis', (1, 2, 3, 4, 5)),
+}
+# GEO_MAP: the target, depth, vertex, triangle and light calls (ws_GEO, nd_geo.h), set by --geo only. No list call is in it.
+GEO_MAP = {
+    'gDPSetColorImage': (5, True, 'nd_tgt_cimg', (1, 2, 3, 4)),
+    'gDPSetDepthImage': (2, True, None, None),
+    'gDPSetDepthSource': (2, True, 'nd_pso_zsrc', (1,)),
+    'gDPSetPrimDepth': (3, True, 'nd_val_primz', (1, 2)),
+    'gSPVertex': (4, True, 'nd_mesh_vtx', (1, 2, 3)),
+    'gSP1Triangle': (5, True, 'nd_mesh_tri1', (1, 2, 3, 4)),
+    'gSP2Triangles': (9, True, 'nd_mesh_tri2', tuple(range(1, 9))),
+    'gSPSetLights1': (2, True, 'nd_lit_set1', (1,)),
+    'gSPSetLights2': (2, True, 'nd_lit_set2', (1,)),
+    'gSPLookAt': (2, True, 'nd_lit_lookat', (1,)),
+    'gSPPerspNormalize': (2, True, 'nd_xf_pnorm', (1,)),
+    'gSPClipRatio': (2, True, 'nd_xf_clip', (1,)),
 }
 DL_NAMES = ('nd_rec_dl', 'gSPDisplayList')
 NTAB = set()  # CONV2F: the names of the self-contained v2 tables (--ntab <file>); empty without the option
@@ -255,7 +271,7 @@ def rewrite(path, s):
     out = s
     for a, b, t in sorted(edits, reverse=True):
         out = out[:a] + t + out[b:]
-    dl = sum(stats[x][0] + stats[x][1] for x in DL_NAMES)
+    dl = sum(stats[x][0] + stats[x][1] for x in DL_NAMES if x in stats)
     return out, stats, state, dl, keeps
 
 
@@ -278,6 +294,8 @@ def main(argv):
             dry = True
         elif a == '--state':
             MAP.update(STATE_MAP)  # the state calls (STATE_MAP): adds the setter names to MAP for this run only
+        elif a == '--geo':
+            MAP.clear(); MAP.update(GEO_MAP)  # the geometry, depth, target and light calls (GEO_MAP): no list call
         elif os.path.isdir(a):
             for root, _, names in sorted(os.walk(a)):
                 files.extend(os.path.join(root, x) for x in sorted(names) if x.endswith('.c'))
@@ -311,7 +329,7 @@ def main(argv):
             print('codemod group %s value %d keep %d' % (x, tot[x][0], tot[x][1]))
         v = sum(tot[x][0] for x in MAP if x not in DL_NAMES)
         kp = sum(tot[x][1] for x in MAP if x not in DL_NAMES)
-        dl = sum(tot[x][0] + tot[x][1] for x in DL_NAMES)
+        dl = sum(tot[x][0] + tot[x][1] for x in DL_NAMES if x in tot)
         act = v + kp + tstate
         share = (100.0 * v / act) if act else 0.0
         print('codemod total value %d keep %d state %d dl %d active %d share %.1f%%' % (v, kp, tstate, dl, act, share))
