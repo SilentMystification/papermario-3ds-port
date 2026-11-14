@@ -62,6 +62,8 @@ const NdGTab* nd_gtab_find(const void* list);
 /* A converted list by symbol: NDG_DECL(D_09001000_3583A0); then NDG(D_09001000_3583A0) is its const NdGTab*. */
 #define NDG_DECL(sym) extern const NdGTab ndg_##sym
 #define NDG(sym) (&ndg_##sym)
+#define NDN_DECL(sym) extern const NdNDev ndd_##sym
+#define NDN(sym) ((Gfx*)&ndd_##sym) /* GSET: the key of a moved list (nd_draw_list, handles) */
 
 /* S7RUN: the static list call from a table. nd_rec_dl(list) replaces gSPDisplayList(gMainGfxPos++, list) at a call site (push form). When the
  * list has a table (nd_gtab_find, memo of the last 8 lookups) it records one NDC_NAPI record {nd_gtab_run, table, state-only flag}; else it writes

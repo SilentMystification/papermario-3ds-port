@@ -12,13 +12,13 @@ mkdir -p "$T"
 DEF="-DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -DVERSION=us -D_MIPS_SZLONG=32 -Dnullptr=NULL"
 TINC="-I 3ds/tools -I include -I ver/us/build/include -I 3ds/include -I 3ds/stub_include" # the nd_host order
 INC="-I 3ds/tools/gconv_inc -I 3ds/tools -I 3ds/include -I 3ds/stub_include -I include -I src -I assets/us -I ver/us/build/include -I ."
-python3 3ds/tools/gen_gfx_syms.py "$T/gconv_in.c" $(for g in $GCONV_SRC; do case $g in *.c) echo "$g";; *) echo "src/effects/gfx/$g.c";; esac; done)
+python3 3ds/tools/gen_gfx_syms.py "$T/gconv_in.c" $(for g in $GCONV_SRC; do case $g in *.c) p=$g;; *) p=src/effects/gfx/$g.c;; esac; [ -f "3ds/tools/gfxin/$p" ] && p="3ds/tools/gfxin/$p"; echo "$p"; done)
 gcc -m32 -w $DEF $INC -c -o "$T/gconv_in.o" "$T/gconv_in.c"
 gcc -m32 -Wall -Wextra -Werror -DND_SCOMP_HOST $DEF $TINC -o "$T/nd_gfx_conv" 3ds/tools/nd_gfx_conv.c 3ds/src/nd_scomp.c 3ds/src/nd_texwin.c 3ds/tools/nd_vslot.c "$T/gconv_in.o"
 python3 3ds/tools/gen_ntab_entries.py src/effects > "$T/ntab_entries.txt"
-"$T/nd_gfx_conv" "$T/nd_ntab_descs.c" "$T/ntab_inherit.txt" "$T/ntab_unsup.txt" "$T/nd_ntab_idx.c" "$T/ntab_tables.txt" "$T/ntab_entries.txt" "$T/ntab_pairs.txt" > "$T/nd_gfx_tab.c"
+"$T/nd_gfx_conv" "$T/nd_ntab_descs.c" "$T/ntab_inherit.txt" "$T/ntab_unsup.txt" "$T/nd_ntab_idx.c" "$T/ntab_tables.txt" "$T/ntab_entries.txt" "$T/ntab_pairs.txt" "$T/gset_ok.txt" > "$T/nd_gfx_tab.c"
 [ "$T/nd_gfx_tab.c" -ef "$OUTC" ] || cp "$T/nd_gfx_tab.c" "$OUTC"
 # CONV2C: the pso descriptions next to the table file (gen_pso_tab.py scans them), the logs of the lists without a v2 table in build3ds/out
 OUTD=$(dirname "$OUTC")
 [ "$T/nd_ntab_descs.c" -ef "$OUTD/nd_ntab_descs.c" ] || cp "$T/nd_ntab_descs.c" "$OUTD/nd_ntab_descs.c"
-for lg in ntab_inherit.txt ntab_unsup.txt ntab_tables.txt ntab_entries.txt ntab_pairs.txt; do [ -d /w/build3ds/out ] && cp "$T/$lg" /w/build3ds/out/$lg || true; done
+for lg in ntab_inherit.txt ntab_unsup.txt ntab_tables.txt ntab_entries.txt ntab_pairs.txt gset_ok.txt; do [ -d /w/build3ds/out ] && cp "$T/$lg" /w/build3ds/out/$lg || true; done

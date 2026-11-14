@@ -70,7 +70,7 @@ void* nd_ntab_find(const void* list) { (void)list; return 0; } /* GKEY2: rec_inl
   /tmp/ndmd
   # S7CONV: the gfx table tool and the host compare of its tables (nd_gtab_test.c: old list reader against the tables)
   sh 3ds/tools/gen_gfx_tab.sh /tmp/gconv/nd_gfx_tab.c /tmp/gconv
-  gcc -m32 -w -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -DVERSION=us -D_MIPS_SZLONG=32 -Dnullptr=NULL -I 3ds/include -I 3ds/stub_include -I include -I src -I assets/us -I ver/us/build/include -c -o /tmp/gconv/nd_gfx_tab.o /tmp/gconv/nd_gfx_tab.c
+  gcc -m32 -w -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -DVERSION=us -D_MIPS_SZLONG=32 -Dnullptr=NULL -DND_HOST_GFX -I 3ds/include -I 3ds/stub_include -I include -I src -I assets/us -I ver/us/build/include -c -o /tmp/gconv/nd_gfx_tab.o /tmp/gconv/nd_gfx_tab.c
   gcc -m32 -Wall -Wextra -Werror -DND_SCOMP_HOST -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I 3ds/tools -I include -I ver/us/build/include -I 3ds/include -I 3ds/stub_include -o /tmp/ndgt 3ds/tools/nd_gtab_test.c 3ds/src/nd_gtab.c 3ds/src/nd_scomp.c /tmp/gconv/nd_gfx_tab.o /tmp/gconv/gconv_in.o
   /tmp/ndgt
   /tmp/ndseam assets/us/mapfs/geom/mac_01_shape.bin assets/us/mapfs/geom/mac_02_shape.bin 3ds/tests/ndref/ndref_*.bin -- assets/us/mapfs/geom/mac_01_shape.bin assets/us/mapfs/geom/mac_00_shape.bin assets/us/mapfs/geom/kkj_14_shape.bin assets/us/mapfs/geom/iwa_10_shape.bin assets/us/mapfs/geom/kmr_20_shape.bin assets/us/mapfs/geom/nok_11_shape.bin

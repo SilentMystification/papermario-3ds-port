@@ -9,7 +9,7 @@
 extern s32 D_09000000_3C1BA0;
 extern s32 D_09002020_3C3BC0;
 extern Vtx D_09004040_3C5BE0[][22];
-extern Gfx D_09008BE0_3CA780[];
+NDN_DECL(D_09008BE0_3CA780);
 
 u8 D_E00C2990[] = {
     0xFF, 0xFF, 0xDC, 0xBE, 0xA0, 0x78, 0x50, 0x28,
@@ -137,7 +137,7 @@ void fright_jar_appendGfx(void* effect) {
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    nd_draw_list(D_09008BE0_3CA780, ND_SELF);
+    nd_draw_list(NDN(D_09008BE0_3CA780), ND_SELF);
 
     idx = 54 - unk_14;
     if (idx < 0) {

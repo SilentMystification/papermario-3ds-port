@@ -247,6 +247,16 @@ def main(argv):
     src_ch = list(files(['src/**/*.c', 'src/**/*.h']))
     inc_h = list(files(['include/**/*.h']))
     assets_c = list(files(['assets/**/*.c'], base=ASSET_ROOT))
+    # GSET1: an asset that only a host twin (3ds/tools/gfxin) includes is not in the device build
+    twin_incs = set()
+    for tw in (ROOT / '3ds/tools/gfxin').glob('**/*.c'):
+        twin_incs.update(re.findall(r'#include\s+"([^"]+)"', tw.read_text(encoding='utf-8', errors='replace')))
+    def _in_twin(p):
+        try:
+            return p.relative_to(ASSET_ROOT / 'assets/us').as_posix() in twin_incs
+        except ValueError:
+            return False
+    assets_c = [p for p in assets_c if not _in_twin(p)]
 
     # (name, file set, twin): twin classes print the active and _n64 dicts.
     split = []
