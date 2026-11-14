@@ -6,6 +6,7 @@
 #include "overlay.h"
 #include "nd_st.h"
 #include "nd_val.h"
+#include "nd_geo.h"
 
 extern s32 gPauseBackgroundFade;
 extern int pm_wide; /* F07-4 */
@@ -334,14 +335,14 @@ void gfx_draw_background(void) {
         case BACKGROUND_RENDER_STATE_BEGIN_PAUSED:
             // Save coverage to nunGfxCfb[1] using the VISCVG render mode
             gDPPipeSync(gMainGfxPos++);
-            gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, nuGfxCfb[1]);
+            nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, nuGfxCfb[1]);
             nd_pso_cyc(G_CYC_1CYCLE);
             gDPSetBlendColor(gMainGfxPos++, 0x80, 0x80, 0x80, 0xFF);
-            gDPSetPrimDepth(gMainGfxPos++, 0xFFFF, 0xFFFF);
-            gDPSetDepthSource(gMainGfxPos++, G_ZS_PRIM);
+            nd_val_primz(0xFFFF, 0xFFFF);
+            nd_pso_zsrc(G_ZS_PRIM);
             nd_pso_rm(G_RM_VISCVG, G_RM_VISCVG2);
             gDPFillRectangle(gMainGfxPos++, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-            gDPSetDepthSource(gMainGfxPos++, G_ZS_PIXEL);
+            nd_pso_zsrc(G_ZS_PIXEL);
             gGameStatusPtr->backgroundFlags &= ~BACKGROUND_RENDER_STATE_MASK;
             gGameStatusPtr->backgroundFlags |= BACKGROUND_RENDER_STATE_FILTER_PAUSED;
             pm_gpu_want_prev(); /* PAUSEOPEN: the picture is the GPU copy of the last frame (SHOW_PAUSED), armed here for the next drawn frames */
@@ -364,7 +365,7 @@ void gfx_draw_background(void) {
             nd_pso_scis(G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
             nd_pso_cyc(G_CYC_FILL);
             nd_pso_rm(G_RM_NOOP, G_RM_NOOP2);
-            gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, nuGfxCfb_ptr);
+            nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, nuGfxCfb_ptr);
             gDPSetFillColor(gMainGfxPos++, PACK_FILL_COLOR(0, 0, 0, 1));
             gDPFillRectangle(gMainGfxPos++, 0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1);
             nd_pso_cyc(G_CYC_1CYCLE);
@@ -392,17 +393,16 @@ void gfx_draw_background(void) {
         default:
             // Draw the scene's background as normal
             if (gOverrideFlags & GLOBAL_OVERRIDES_DISABLE_DRAW_FRAME) {
-                gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
+                nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
                 return;
             }
 
-            gDPSetDepthImage(gMainGfxPos++, OS_K0_TO_PHYSICAL(nuGfxZBuffer));
             nd_pso_cyc(G_CYC_FILL);
             nd_pso_rm(G_RM_NOOP, G_RM_NOOP2);
-            gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, OS_K0_TO_PHYSICAL(nuGfxZBuffer));
+            nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, OS_K0_TO_PHYSICAL(nuGfxZBuffer));
             gDPSetFillColor(gMainGfxPos++, PACK_FILL_DEPTH(G_MAXFBZ, 0));
             gDPFillRectangle(gMainGfxPos++, 0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1);
-            gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
+            nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
             gDPSetFillColor(gMainGfxPos++, PACK_FILL_COLOR(camera->bgColor[0], camera->bgColor[1], camera->bgColor[2], 1));
 
             backgroundMinX = gGameStatusPtr->backgroundMinX;

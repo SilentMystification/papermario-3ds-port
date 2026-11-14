@@ -13,6 +13,7 @@
 #include "nd_st.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_geo.h"
 
 enum RewindArrowStates {
     REWIND_ARROW_STATE_INIT = 0,
@@ -2207,8 +2208,8 @@ void msg_update_rewind_arrow(s32 printerIndex) {
     nd_xf_push(VIRTUAL_TO_PHYSICAL(&gDisplayContext->matrixStack[gMatrixListPos++]), G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     gDPLoadTextureTile(gMainGfxPos++, ui_msg_star_png, G_IM_FMT_RGBA, G_IM_SIZ_16b, 16, 0, 0, 0, 15, 17, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 4, 4, G_TX_NOLOD, G_TX_NOLOD);
     gDPLoadMultiTile_4b(gMainGfxPos++, ui_msg_star_silhouette_png, 0x0100, 1, G_IM_FMT_I, 16, 0, 0, 0, 15, 18, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 4, 5, G_TX_NOLOD, G_TX_NOLOD);
-    gSPVertex(gMainGfxPos++, gRewindArrowQuad, 4, 0);
-    gSP2Triangles(gMainGfxPos++, 0, 2, 1, 0, 1, 2, 3, 0);
+    nd_mesh_vtx(gRewindArrowQuad, 4, 0);
+    nd_mesh_tri2(0, 2, 1, 0, 1, 2, 3, 0);
     FI_CLOSE();
 }
 

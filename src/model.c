@@ -9,6 +9,7 @@
 #include "pm_interp_fi.h"
 #include "nd_cmd.h"
 #include "nd_op.h"
+#include "nd_geo.h"
 
 // models are rendered in two stages by the RDP:
 // (1) main and aux textures are combined in the color combiner
@@ -4604,7 +4605,7 @@ bool is_point_visible(f32 x, f32 y, f32 z, s32 depthQueryID, f32* screenX, f32* 
         gSPTextureRectangle(gMainGfxPos++, depthQueryID << 2, 0 << 2, (depthQueryID + 1) << 2, 1 << 2, G_TX_RENDERTILE, (s32) outX << 5, 0, 1 << 10, 1 << 10);
         // Sync and swap the color image back to the current framebuffer.
         gDPPipeSync(gMainGfxPos++);
-        gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
+        nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
         // Reconfigure the frame's normal scissor.
         gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, camera->viewportStartX, camera->viewportStartY, camera->viewportStartX + camera->viewportW, camera->viewportStartY + camera->viewportH);
 

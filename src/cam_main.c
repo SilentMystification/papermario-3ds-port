@@ -3,6 +3,7 @@
 #include "nu/nusys.h"
 #include "hud_element.h"
 #include "camera.h"
+#include "nd_geo.h"
 
 extern int pm_wide; /* F07-2 */
 /* PT53, PT54: with wide the standard game view (12 20 296 200) becomes the whole 320 x 240 picture. The vertical field of view stays the original one, so the 200 rows fill the 240 rows (zoom 6 / 5).
@@ -281,8 +282,7 @@ void render_frame(s32 isSecondPass) {
         }
 
         T1_MARK(14);
-        gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH,
-                            osVirtualToPhysical(nuGfxCfb_ptr));
+        nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
         FI_CLOSE();
     }
 }

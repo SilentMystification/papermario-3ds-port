@@ -11,6 +11,7 @@
 #include "nd_st.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_geo.h"
 
 extern IMG_BIN ui_msg_bubble_left_png[];
 extern IMG_BIN ui_msg_bubble_mid_png[];
@@ -2001,16 +2002,16 @@ void msg_draw_speech_bubble(
     gDPLoadTLUTCmd(gMainGfxPos++, G_TX_LOADTILE, 15);
     gDPLoadTextureTile_4b(gMainGfxPos++, ui_msg_bubble_left_png, G_IM_FMT_CI, 32, 0, 0, 0, 31, 63, 0,
                           G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 5, 6, G_TX_NOLOD, G_TX_NOLOD);
-    gSPVertex(gMainGfxPos++, gMsgSpeechBoxLQuad, 4, 0);
-    gSP2Triangles(gMainGfxPos++, 0, 2, 1, 0, 1, 2, 3, 0);
+    nd_mesh_vtx(gMsgSpeechBoxLQuad, 4, 0);
+    nd_mesh_tri2(0, 2, 1, 0, 1, 2, 3, 0);
     gDPLoadTextureTile_4b(gMainGfxPos++, ui_msg_bubble_mid_png, G_IM_FMT_CI, 8, 0, 0, 0, 7, 63, 0,
                           G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 3, 6, G_TX_NOLOD, G_TX_NOLOD);
-    gSPVertex(gMainGfxPos++, gMsgSpeechBoxMQuad, 4, 0);
-    gSP2Triangles(gMainGfxPos++, 0, 2, 1, 0, 1, 2, 3, 0);
+    nd_mesh_vtx(gMsgSpeechBoxMQuad, 4, 0);
+    nd_mesh_tri2(0, 2, 1, 0, 1, 2, 3, 0);
     gDPLoadTextureTile_4b(gMainGfxPos++, ui_msg_bubble_right_png, G_IM_FMT_CI, 32, 0, 0, 0, 31, 63, 0,
                           G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 5, 6, G_TX_NOLOD, G_TX_NOLOD);
-    gSPVertex(gMainGfxPos++, gMsgSpeechBoxRQuad, 4, 0);
-    gSP2Triangles(gMainGfxPos++, 0, 2, 1, 0, 1, 2, 3, 0);
+    nd_mesh_vtx(gMsgSpeechBoxRQuad, 4, 0);
+    nd_mesh_tri2(0, 2, 1, 0, 1, 2, 3, 0);
 }
 
 void msg_draw_speech_arrow(MessagePrintState* printer) {
@@ -2123,8 +2124,8 @@ void msg_draw_speech_arrow(MessagePrintState* printer) {
     guTranslateF(sp10, 0.0f, 0.0f, 0.0f);
     guMtxF2L(sp10, &gDisplayContext->matrixStack[gMatrixListPos]);
     nd_xf_push(VIRTUAL_TO_PHYSICAL(&gDisplayContext->matrixStack[gMatrixListPos++]), G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gSPVertex(gMainGfxPos++, quad, 4, 0);
-    gSP2Triangles(gMainGfxPos++, 0, 2, 1, 0, 1, 2, 3, 0);
+    nd_mesh_vtx(quad, 4, 0);
+    nd_mesh_tri2(0, 2, 1, 0, 1, 2, 3, 0);
 }
 
 void msg_draw_frame(s32 posX, s32 posY, s32 sizeX, s32 sizeY, s32 style, s32 palette, s32 fading, s32 bgAlpha, s32 frameAlpha) {
