@@ -105,19 +105,6 @@ Gfx D_8014C620[] = {
 #include "nd_st.h"
 #include "nd_val.h"
 #include "nd_xf.h"
-/* S5ITEM1: appendGfx_item_entity state as compiled defs. it_setup = the clear of :963 and the units of D_8014C620 (its PipeSync is
- * dropped: a no-op in the state model, nd_state.c). The render-mode and prim-colour units of the transparent and hiding branch. */
-static const Gfx it_setup_u[] = { gsSPClearGeometryMode(G_CULL_BOTH | G_LIGHTING),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON), gsDPSetCombineMode(G_CC_DECALRGBA, G_CC_DECALRGBA),
-    gsDPSetTexturePersp(G_TP_PERSP), gsDPSetTextureDetail(G_TD_CLAMP), gsDPSetTextureLOD(G_TL_TILE), gsDPSetTextureLUT(G_TT_NONE),
-    gsDPSetTextureFilter(G_TF_BILERP), gsDPSetTextureConvert(G_TC_FILT), gsDPSetTextureLUT(G_TT_RGBA16) };
-static const Gfx it_xlu_sh_u[] = { gsDPSetRenderMode(AA_EN | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | G_RM_PASS,
-    AA_EN | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA)) };
-static const Gfx it_xlu_u[] = { gsDPSetRenderMode(AA_EN | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA),
-    AA_EN | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA)),
-    gsDPSetCombineMode(PM_CC_2F, PM_CC_32), gsDPSetPrimColor(0, 0, 0, 0, 0, 0) };
-static NdSDef it_setup = { it_setup_u, 10 }, it_xlu_sh = { it_xlu_sh_u, 1 }, it_xlu = { it_xlu_u, 3 };
-
 Gfx D_8014C678[] = {
     gsSPClearGeometryMode(G_CULL_BACK | G_LIGHTING | G_SHADING_SMOOTH),
     gsSPVertex(D_8014C5A0, 4, 0),
@@ -975,15 +962,26 @@ void appendGfx_item_entity(void* data) {
     } else {
         ND_RM_REC(Gfx_RM1_ALPHATEST);
     }
-    nd_scomp_rec(&it_setup, NULL, 0);
+    nd_pso_geom_clr(G_CULL_BOTH | G_LIGHTING);
+    nd_tex_on(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
+    nd_pso_cc(G_CC_DECALRGBA, G_CC_DECALRGBA);
+    nd_pso_persp(G_TP_PERSP);
+    nd_pso_detail(G_TD_CLAMP);
+    nd_pso_lod(G_TL_TILE);
+    nd_pso_lut(G_TT_NONE);
+    nd_pso_filt(G_TF_BILERP);
+    nd_pso_conv(G_TC_FILT);
+    nd_pso_lut(G_TT_RGBA16);
 
     if (item->flags & (ITEM_ENTITY_FLAG_HIDING | ITEM_ENTITY_FLAG_TRANSPARENT)) {
         if (gSpriteShadingProfile->flags != 0) {
-            nd_scomp_rec(&it_xlu_sh, NULL, 0);
+            nd_pso_rm(AA_EN | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | G_RM_PASS,
+                AA_EN | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA));
         } else {
-            Gfx v[1];
-            gDPSetPrimColor(&v[0], 0, 0, 255, 255, 255, alpha);
-            nd_scomp_rec(&it_xlu, v, 1);
+            nd_pso_rm(AA_EN | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA),
+                AA_EN | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA));
+            nd_pso_cc(PM_CC_2F, PM_CC_32);
+            nd_val_prim(0, 0, 255, 255, 255, alpha);
         }
     }
 
