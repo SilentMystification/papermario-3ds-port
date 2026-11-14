@@ -1,6 +1,6 @@
 #!/bin/sh
 # TEXUNIT: host test of the texture, rectangle, viewport and colour setters (3ds/include/nd_tx.h) against the gbi macros they replace
-# (3ds/tools/nd_tx_test.c). Prints "texunit ok 35/35" or "texunit FAIL <shape>". First a seeded fault (the tlut16 load's tlut count
+# (3ds/tools/nd_tx_test.c). Prints "texunit ok 36/36" or "texunit FAIL <shape>". First a seeded fault (the tlut16 load's tlut count
 # 15 changed to 14 in a copy of nd_tx.h) must fail at tlut16; then the real header must pass.
 FP="-msse2 -mfpmath=sse -ffp-contract=off"
 FL="-m32 -Wall -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I include -I ver/us/build/include -I 3ds/include -I 3ds/stub_include"
