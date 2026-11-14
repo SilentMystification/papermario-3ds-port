@@ -32,6 +32,8 @@ as they are.
 ## Roles
 - Orchestrator: launches, merges, reports, asks. Does not relay a fault: the coder asks the designer directly.
 - Designer (Opus oracle): on call. Reads code, answers in 10 lines or fewer, writes goal pages and the handoff file only.
+  The oracle stays ahead of the coders (user approved, 2026-11-13): while a coder runs, the oracle writes the next closed pages, so
+  no coder slot idles for want of a page. When a workstream ends, the orchestrator asks the oracle for the next pages at once.
   A resume after 5 minutes of idle rewrites the whole context into the cache (FACT, docs). The old oracle used 717M cache-read
   and 26M cache-write tokens in 1521 calls (FACT, transcript). Rule: start a fresh oracle with docs/handoff/oracle_handoff.md
   (60 lines or fewer) when the context passes about 150K tokens. The user allows this (2026-11-13).
