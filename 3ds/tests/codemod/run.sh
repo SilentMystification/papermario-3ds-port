@@ -1,5 +1,5 @@
 #!/bin/sh
-# Host test of 3ds/tools/codemod.py. Run from the repo root: sh 3ds/tests/codemod/run.sh
+# Host test of 3ds/tools/codemod.py. Run from the repo root: sh 3ds/tests/codemod/run.sh (geo_* cases run with --geo)
 # Each cases/<n>.in.c is rewritten in a temp dir; the result must equal cases/<n>.out.c and the keep lines cases/<n>.log, byte for byte.
 # First a seeded fault (a copy of the tool with the env mapping pointing at nd_val_prim) must fail at least one case, so the compare is
 # shown to bite. Prints "codemod: N/N PASS"; exit 0 only when all pass.
@@ -18,7 +18,7 @@ run_all() {
     for in in "$CASES"/*.in.c; do
         n=$(basename "$in" .in.c); total=$((total + 1))
         w="$T/w.$n"; rm -rf "$w"; mkdir -p "$w"; cp "$in" "$w/$n.c"
-        fl=; case "$n" in st_*) fl=--state ;; esac  # the state cases (st_*) run with --state, the others without
+        fl=; case "$n" in st_*) fl=--state ;; geo_*) fl=--geo ;; esac  # the state cases (st_*) run with --state, the others without
         ( cd "$w" && $PY "$tool" $fl "$n.c" > "$n.log" ) || { echo "FAIL $n: tool exit"; continue; }
         if cmp -s "$w/$n.c" "$CASES/$n.out.c" && cmp -s "$w/$n.log" "$CASES/$n.log"; then pass=$((pass + 1)); else echo "FAIL $n"; fi
     done
