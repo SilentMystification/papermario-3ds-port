@@ -1,5 +1,5 @@
 /* nd_geo.c: the target, depth, vertex, triangle and light calls of a call site (nd_geo.h). Each setter records its native record (nd_nr.h)
- * from its own fields into the open NDC_STATE run (nd_rec_state, through nd_nr): the same unit words the macro gave
+ * from its own fields into the open native record run (nd_rec_nr, through nd_nr): the same unit words the macro gave
  * (nd_op.h), so the frame stream is the one the macro gave (the host test 3ds/tools/nd_geo_test.c, geounit). */
 #include <stdint.h>
 #include "ultra64.h"

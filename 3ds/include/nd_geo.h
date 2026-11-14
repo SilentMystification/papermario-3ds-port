@@ -1,5 +1,5 @@
 /* nd_geo.h: the target, depth, vertex, triangle and light calls of a call site (nd_geo.c, design_lookahead.md section 1). Each setter
- * records the typed unit(s) the nd_gbi.h redirect records for the macro (nd_rec_state), so the frame stream is the one the macro gave.
+ * records the typed unit(s) the nd_gbi.h redirect records for the macro (nd_rec_nr), so the frame stream is the one the macro gave.
  * gDPSetColorImage(P, f, s, w, i)        -> nd_tgt_cimg(f, s, w, i)
  * gDPSetDepthImage(P, i)                 -> removed (G_SETZIMG is a NOP unit, nd_op.h)
  * gDPSetDepthSource(P, src)              -> nd_pso_zsrc(src)

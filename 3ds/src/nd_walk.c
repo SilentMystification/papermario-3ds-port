@@ -247,7 +247,7 @@ static void walk_call(unsigned dbg, const Gfx* at, u32 w0, u32 w1) {
     else if (ex_depth < ND_LIST_DEPTH) { ex_depth++; if (nt) nd_ntab_run(nt); else nd_walk_state((const uint32_t*)next, ND_LIST_MAX); ex_depth--; }
     if (__builtin_expect(dbg & WD_ORB, 0) && orb_tag != ot) { pm_gpu_flush(); orb_tag = ot; } /* FX1-3 */
 }
-/* DIRECT D4b-3, D5: NDC_STATE (nd_rec.c): a run of ops recorded by the nd_gbi.h redirect. Each op runs as the walker runs it inside a
+/* DIRECT D4b-3, D5: native record run (nd_rec.c): a run of ops recorded by the nd_gbi.h redirect. Each op runs as the walker runs it inside a
  * list: its skip test (typed ops: nd_op_same, the light memory test of op_geo), else the op prologue (pm_gbi_cur_op, gv_epoch but not for vertex, triangle, matrix and list ops) and the
  * same handler as the walker's arm. The recorder dropped the RDP syncs; the branch form of G_DL stays a list word.
  * D10b: also the op executor of a flat op range (nd_ops_run): an RDP sync or G_SPNOOP is skipped before the prologue, a texture rectangle
@@ -380,6 +380,8 @@ void nd_walk_state(const uint32_t* q, unsigned n) {
     }
     if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1); /* the class span ends with the command */
 }
+void nd_nr_exec(const uint32_t* u, unsigned n) { nd_walk_state(u, n); } /* NSTREAM2: the record runs; stage 1D gives it the arms and deletes nd_walk_state */
+void nd_nr_run(const uint32_t* rec) { nd_nr_exec(rec, (rec[-2] >> 16) & 0xffu); }
 /* DIRECT D10b: a flat op range (no branch, no nested list: the sprite fallback geometry, the pieces of a flattened entity list, the R13 words
  * of a model record, an interpreted map shape group) on the op executor (nd_walk_state), with the list start and end rules of nd_walk_run:
  * gv_epoch, dlc_on, a full combine and render sync unless keep (PERF2: a piece of one list), the vertex and texture streak flush. */
@@ -434,10 +436,10 @@ void nd_parts_run(const uint32_t* u) {
     extern int pm_comb_vprim; pm_comb_vprim = 1; sc_ok = 0; /* S4COL: the particle plan takes PRIM in the vertex slot */
     const uint32_t* p = u + 2;
     for (unsigned k = 0; k < n; k++, p += 2u * m) {
-        nd_walk_state(p, pre);
+        nd_nr_exec(p, pre);
         const NdGTab* t = (const NdGTab*)(uintptr_t)p[2u * pre + 1u]; /* S7CONV: nd_parts_add put the list's table in the call unit */
         if (!nd_part_draw(t)) nd_ops_run(t->list, ND_LIST_MAX, 1);
-        nd_walk_state(p + 2u * (pre + 1u), m - pre - 1u);
+        nd_nr_exec(p + 2u * (pre + 1u), m - pre - 1u);
     }
     pm_comb_vprim = 0; sc_ok = 0; sync_combine(); /* S4COL: the normal plan is back in gs before the next walker draw */
     pm_walk_side--;
@@ -482,10 +484,10 @@ void nd_parts_run_v(const uint32_t* u) {
     extern int pm_comb_vprim; pm_comb_vprim = 1; sc_ok = 0; /* S4COL */
     const uint32_t* p = u + 2;
     for (unsigned k = 0; k < n; k++, p += 2u * m) {
-        if (__builtin_expect(dbg, 0)) nd_walk_state(p, pre); else part_units(p, pre);
+        if (__builtin_expect(dbg, 0)) nd_nr_exec(p, pre); else part_units(p, pre);
         const NdGTab* t = (const NdGTab*)(uintptr_t)p[2u * pre + 1u]; /* S7CONV: nd_parts_add put the list's table in the call unit */
         if (!nd_part_draw(t)) nd_ops_run(t->list, ND_LIST_MAX, 1);
-        if (__builtin_expect(dbg, 0)) nd_walk_state(p + 2u * (pre + 1u), m - pre - 1u); else part_units(p + 2u * (pre + 1u), m - pre - 1u);
+        if (__builtin_expect(dbg, 0)) nd_nr_exec(p + 2u * (pre + 1u), m - pre - 1u); else part_units(p + 2u * (pre + 1u), m - pre - 1u);
     }
     pm_comb_vprim = 0; sc_ok = 0; sync_combine();
     pm_walk_side--;
@@ -545,18 +547,18 @@ static void gt_ops(const NdGTab* t) {
         case NDG_DEF: {
             const NdGDef* g = (const NdGDef*)o->p;
             if (g->d.nv == g->d.pre && nd_scomp_exec_own((NdSDef*)&g->d)) break; /* st is 1: no write to the table */
-            nd_walk_state((const uint32_t*)g->d.u, g->d.n);
+            nd_nr_exec((const uint32_t*)g->d.u, g->d.n);
             break;
         }
-        case NDG_UNIT: nd_walk_state((const uint32_t*)o->p, 1u); break;
+        case NDG_UNIT: nd_nr_exec((const uint32_t*)o->p, 1u); break;
         case NDG_VTX: {
             const uint32_t u[2] = { NDO_W0(NDO_VTX, ((uint32_t)o->a << 12) | ((uint32_t)(o->a + o->b) << 1)), (uint32_t)(uintptr_t)o->p };
-            nd_walk_state(u, 1u);
+            nd_nr_exec(u, 1u);
             break;
         }
         case NDG_TRI: {
             const uint32_t u[2] = { NDO_W0(NDO_TRI1, ((uint32_t)o->a << 17) | ((uint32_t)o->b << 9) | ((uint32_t)o->c << 1)), 0u };
-            nd_walk_state(u, 1u);
+            nd_nr_exec(u, 1u);
             break;
         }
         case NDG_CALL:
@@ -582,8 +584,8 @@ int nd_ent_pieces(const EntPiece* p, unsigned n) {
         if (p[i].kind == ENP_DEF) {
             const NdGDef* g = (const NdGDef*)p[i].p;
             if (g->d.nv == g->d.pre && nd_scomp_exec_own((NdSDef*)&g->d)) { sc++; continue; }
-            nd_walk_state((const uint32_t*)g->d.u, g->d.n);
-        } else if (p[i].kind == ENP_UNIT) nd_walk_state((const uint32_t*)p[i].p, 1u);
+            nd_nr_exec((const uint32_t*)g->d.u, g->d.n);
+        } else if (p[i].kind == ENP_UNIT) nd_nr_exec((const uint32_t*)p[i].p, 1u);
     }
     ex_depth = d;
     pm_walk_side--;
@@ -592,7 +594,7 @@ int nd_ent_pieces(const EntPiece* p, unsigned n) {
     return sc;
 }
 /* CONV2D2: the words of a v2 list (nd_gtab.h NdNDev) run with nd_walk_state: NOPs skipped there, the stop at n. */
-void nd_ntab_run(const NdNDev* e) { nd_walk_state(e->u, e->nu); }
+void nd_ntab_run(const NdNDev* e) { nd_nr_exec(e->u, e->nu); }
 /* CONV2D2: a list's ops: its v2 device entry when it has one, else its v1 table ops (gt_ops). */
 static void gt_body(const NdGTab* t, const NdNDev* nt) {
     if (nt) { nd_gtr_ntab++; nd_ntab_run(nt); }
@@ -603,7 +605,7 @@ static void gt_run(const void* key, const NdGTab* t, const NdNDev* nt, const uin
     if (rec[1]) { /* state-only */
         static const uint32_t lst[2] = { NDO_W0(NDO_MISC, NDO_MISC_LST << 16), 0u };
         pm_walk_side++;
-        nd_walk_state(lst, 1u);
+        nd_nr_exec(lst, 1u);
         gt_body(t, nt);
         pm_walk_side--;
         return;

@@ -6,6 +6,7 @@
 #include "nd.h"
 #include "nd_ops.h"
 #include "nd_cmd.h"
+#include "nd_api.h"
 #include "nd_op.h"
 #include "variables.h"
 extern int pm_texf_centre; int pm_tex_filt_linear(void); /* TEXF: pm_options.c, pm_tex.c */
@@ -258,7 +259,7 @@ void nd_model_log(unsigned f) {
  * mac_00 water list (gfx_build_water) draws the prim depth blocker, then mdl_draw_hidden_panel_surface appends the record of a copy of the model
  * with no geometry. That record sets the whole draw state again (bind, combine, render mode list), so the draw takes it as its record (nr) and only
  * the state ops after it (cw, mo). The record words are skipped (14 words, then its R13 count of words). */
-/* D10a: the list is a custom gfx range of the frame stream (nd_rec.c): NDC_STATE runs (the ops above; the syncs were dropped at record),
+/* D10a: the list is a custom gfx range of the frame stream (nd_rec.c): native record runs (the ops above; the syncs were dropped at record),
  * NDC_MODEL (the nested record, its payload), NDC_JUMP (effect data or the next chunk) and NDC_END (the end of the list, as G_ENDDL). */
 static int nd_r11_op(uint32_t w0, uint32_t w1, int pre, int* pend, int* has_cb, uint32_t* cw, uint32_t* mo, unsigned* nmo) {
     switch (w0 >> 24) {
@@ -282,7 +283,8 @@ static int nd_r11_walk(uint32_t addr, int pre, const uint32_t** nr, uint32_t* cw
         switch (h >> 24) {
         case NDC_END: return !pend;
         case NDC_JUMP: p = (const uint32_t*)(uintptr_t)p[1]; continue;
-        case NDC_STATE:
+        case NDC_NAPI:
+            if (p[1] != (uint32_t)(uintptr_t)nd_nr_run) return 0; /* NSTREAM2: only a run of native records */
             for (unsigned k = 0; k < n; k++, i++) {
                 if ((p[2 + 2 * k] >> 24) == NDO_DROP) { k++; i--; continue; } /* HC4b t4chk: a dropped op is not in the list */
                 if (i >= 16u) return 0;

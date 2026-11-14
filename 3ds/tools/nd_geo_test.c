@@ -46,7 +46,7 @@ uint32_t nd_mkey_a(const uint32_t* rec) { (void)rec; return 0; }
 
 /* the walker side: nd_stream_run hands each state run to nd_walk_state; the double logs each unit (word pair) */
 static uint32_t ulog[512]; static unsigned nulog;
-void nd_walk_state(const uint32_t* q, unsigned n) {
+void nd_nr_run(const uint32_t* q) { const unsigned n = (q[-2] >> 16) & 0xffu;
     for (unsigned i = 0; i < n && nulog < 256u; i++) { ulog[2u * nulog] = q[2u * i]; ulog[2u * nulog + 1u] = q[2u * i + 1u]; nulog++; }
 }
 

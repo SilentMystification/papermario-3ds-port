@@ -127,7 +127,7 @@ unsigned nd_scomp_find(NdSTab* t, unsigned def_id, const uint32_t key[ND_SC_KEYW
 #endif
 void comb_in_walker(NdCombIn* in);                     /* nd_comb.c */
 void pm_tex_set_filter(int linear);                    /* pm_tex.c */
-void nd_rec_state(uint32_t w0, uint32_t w1);           /* nd_rec.c: one typed unit into the open state run */
+void nd_rec_nr(uint32_t w0, uint32_t w1);           /* nd_rec.c: one typed unit into the open state run */
 extern int ls_use, ls_why, ls_cyc, ls_dual, ls_frame;  /* nd_comb.c */
 extern int sl_const, sl_env;
 extern unsigned sl_cc;
@@ -146,7 +146,7 @@ static __attribute__((cold, noinline)) void rec_ops(const NdSDef* d, const uint3
             w0 = v[2u * j]; w1 = v[2u * j + 1u]; j++;
         }
         if (w0 == ND_NOP_A) continue; /* the syncs are dropped (as nd_gx_w) */
-        nd_rec_state(w0, w1);
+        nd_rec_nr(w0, w1);
     }
 }
 void nd_scomp_rec(NdSDef* d, const void* vv, unsigned nv) {
@@ -252,12 +252,12 @@ static void sc_units(const NdSDef* d) {
 }
 
 static void sc_exec(const NdSDef* d, const uint32_t* v) {
-    if (d->pre) nd_walk_state(v, d->pre);
+    if (d->pre) nd_nr_exec(v, d->pre);
     if (d->nsync) sc_units(d); else sc_block(d);
     sr_ok = 0; /* the next draw makes the render state again (as after a range sync that worked) */
     gv_epoch++; /* GV1b */
     pm_gbi_cur_op = d->last_op;
-    if (d->nv > d->pre) nd_walk_state(v + 2u * d->pre, d->nv - d->pre);
+    if (d->nv > d->pre) nd_nr_exec(v + 2u * d->pre, d->nv - d->pre);
 }
 
 /* ---- s6chk (debug switch): both paths on each record, the state fields compared ---- */
@@ -314,7 +314,7 @@ static __attribute__((cold, noinline)) void s6_run(const NdSDef* d, const uint32
         if (d->vmask >> k & 1u) { u[2u * k] = v[2u * j]; u[2u * k + 1u] = v[2u * j + 1u]; j++; }
         else { u[2u * k] = t[2u * k]; u[2u * k + 1u] = t[2u * k + 1u]; }
     }
-    nd_walk_state(u, d->n);
+    nd_nr_exec(u, d->n);
     s6_take(&b);
     for (unsigned i = 0; i < S6F_plan; i++) if (a.f[i] != b.f[i]) { s6_fbad[i]++; bad = 1; }
     if (a.f[S6F_plan_active] && b.f[S6F_plan_active] && memcmp(&a.plan, &b.plan, sizeof a.plan)) { s6_fbad[S6F_plan]++; bad = 1; }

@@ -1,6 +1,6 @@
 /* nd_tx.h: the texture, rectangle, viewport and colour calls of a call site as setters (ws_TEX C1, C2). Header only (no nd_tx.c).
  * Each setter is the gbi macro with the packet argument removed. It records the native record(s) (nd_nr.h, nd_rec_texrect for a texture
- * rectangle) built from the setter's own fields: the same bits the nd_gbi.h redirect records for that macro (nd_rec_state, the nd_gx_w path
+ * rectangle) built from the setter's own fields: the same bits the nd_gbi.h redirect records for that macro (nd_rec_nr, the nd_gx_w path
  * of nd_rec.c). A load is the gbi body of the load macro with its syncs removed (a sync is the no-op unit, which nd_gx_w drops). Each setter
  * is a do { } while (0) statement or an expression. Include gbi.h (with the game's headers) before this file. */
 #ifndef ND_TX_H

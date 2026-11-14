@@ -16,8 +16,7 @@ enum {
     NDC_SPR = 5,   /* D2: payload = the sprite record (G_PM_SPR, 4 pairs), then its gSPVertex and gSP2Triangles words */
     NDC_ENT = 6,   /* D3: payload = an entity record (G_PM_ENT, 4 pairs; DRAW or END form), then for a DRAW record its G_DL word (5 pairs) */
     NDC_TEXRECT = 8, /* D4b-1: gSPTextureRectangle; payload unit 0: w0, w1; unit 1: the RDPHALF_1 and RDPHALF_2 words (s t, dsdx dtdy) */
-    NDC_STATE = 9,   /* D4b-3: a run of state ops (othermode, combine, colours, geometry mode, texture, scissor, fill rectangle, tile and image ops); payload: one unit
-                      * per op (its w0, w1). The replay runs each op with the walker's per-op rules (g2_same and g2_note, gv_epoch, the op handler). */
+    NDC_NRUN = 9,     /* NSTREAM: a counter slot only (nd_rec_cnt_take): the runs of native records; a run is NDC_NAPI with runner nd_nr_run */
     NDC_NAPI = 10,   /* NATIVEAPI: one native draw (nd_api.h); word 1: the core 0 runner (NdNapiRun); payload: its record */
     NDC_N
 };
@@ -32,7 +31,7 @@ void nd_rec_ent_draw(const void* list, unsigned segid, unsigned varray, unsigned
 void nd_rec_ent(const void* rec);                   /* D3: an entity record with no G_DL (the entcheck END record) */
 /* D4b-1, D5: the texture rectangle (the nd_gbi.h redirect records it). */
 void nd_rec_texrect(uint32_t w0, uint32_t w1, uint32_t hs, uint32_t hd);
-void nd_rec_state(uint32_t w0, uint32_t w1); /* D4b-3: one state op, appended to the open NDC_STATE run (a new run after any other command) */
+void nd_rec_nr(uint32_t k, uint32_t v); /* NSTREAM: one native record (nd_nr.h) into the open run (a new run after any other command) */
 const uint32_t* nd_rec_pos(void);                   /* D4b-2: the stream write position (no cut): moves when any command is recorded */
 const uint32_t* nd_rec_mark(void);                  /* D1: cut, then the stream position (a range start or end) */
 void nd_rec_call(const uint32_t* a, const uint32_t* b); /* D1: replay the range [a, b) here */

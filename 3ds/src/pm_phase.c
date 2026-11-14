@@ -630,7 +630,7 @@ static void pf_report(void) {
             sw = (unsigned)((unsigned long long)sw * 10u / pw);
             pm_log_prof_line("prof f%u w%u ndc model %u.%u spr %u.%u ent %u.%u call %u.%u trect %u.%u st %u.%u sw %u.%u kb %u", pf_total, pf_w,
                 C1(n10[NDC_MODEL]), C1(n10[NDC_SPR]), C1(n10[NDC_ENT]), C1(n10[NDC_CALL]), C1(n10[NDC_TEXRECT]),
-                C1(n10[NDC_STATE]), C1(sw), kb);
+                C1(n10[NDC_NRUN]), C1(sw), kb);
         }
 #undef CS
 #undef C1
