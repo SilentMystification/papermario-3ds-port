@@ -48,6 +48,9 @@ extern Gfx Gfx_RM3_SURFACE_XLU[];
 extern Gfx Gfx_RM3_DECAL_XLU[];
 extern Gfx Gfx_RM3_INTERSECTING_XLU[];
 #include "nd_rmdef.h" /* S5EMDL1: the Gfx_RM* lists as compiled ranges */
+#include "nd_st.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 #define EM_RM(l) ND_RM_REC(l)
 /* S5EMDL2: the entity state lines around the render-mode list as S6T defs (nd_scomp.h). The prim colour is an ordered value
  * (class 4), so it leads its def; the syncs are dropped by the compiler (nd_scomp.c, as nd_gx_w). */
@@ -373,7 +376,7 @@ void appendGfx_entity_model(EntityModel* model) {
         entRec[3].words.w1 = 0;
     }
     gDisplayContext->matrixStack[gMatrixListPos] = model->transform;
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     if (!(model->flags & ENTITY_MODEL_FLAG_USE_IMAGE)) {
         if (!(model->flags & ENTITY_MODEL_FLAG_10000)) {
             if (model->renderMode != RENDER_MODE_SHADOW) {
@@ -466,9 +469,8 @@ void appendGfx_entity_model(EntityModel* model) {
             em_tail(entity_fog_enabled && !(model->flags & ENTITY_MODEL_FLAG_FOG_DISABLED), model->renderMode != RENDER_MODE_SHADOW);
         }
         if (model->vertexArray != nullptr) {
-            gSPSegment(gMainGfxPos++, D_80154374, VIRTUAL_TO_PHYSICAL(model->vertexArray));
+            nd_val_seg(D_80154374, VIRTUAL_TO_PHYSICAL(model->vertexArray));
         }
-        gDPPipeSync(gMainGfxPos++);
 
         if (model->fpSetupGfxCallback != nullptr) {
             model->fpSetupGfxCallback(model->setupGfxCallbackArg0);
@@ -480,7 +482,6 @@ void appendGfx_entity_model(EntityModel* model) {
                 }
             }
         }
-        gDPPipeSync(gMainGfxPos++);
 
         if (entRec != nullptr) { /* S6-2c-3, DIRECT D3: the draw record and the model list G_DL go to the frame stream (the walker draws the list from the static pools, or runs the G_DL) */
             nd_rec_ent_draw(model->gfx.displayList, entRec[1].words.w0, entRec[1].words.w1, 0);
@@ -494,8 +495,7 @@ void appendGfx_entity_model(EntityModel* model) {
             endRec[1].words.w0 = endRec[1].words.w1 = endRec[2].words.w0 = endRec[2].words.w1 = endRec[3].words.w0 = endRec[3].words.w1 = 0;
             nd_rec_ent(endRec);
         }
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-        gDPPipeSync(gMainGfxPos++);
+        nd_xf_pop(G_MTX_MODELVIEW);
         if (entRec != nullptr) entcheck_draw(entRec, model);
 
         if (!(model->flags & ENTITY_MODEL_FLAG_REFLECT)) {
@@ -507,18 +507,17 @@ void appendGfx_entity_model(EntityModel* model) {
         guMtxCatF(mtx, mtx2, mtx);
         guMtxF2L(mtx, &model->transform);
         gDisplayContext->matrixStack[gMatrixListPos] = model->transform;
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
         gSPDisplayList(gMainGfxPos++, model->gfx.displayList);
     } else {
         SpriteRasterInfo* imageData;
 
-        gDPPipeSync(gMainGfxPos++);
-        gSPClearGeometryMode(gMainGfxPos++, G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
-        gSPSetGeometryMode(gMainGfxPos++, G_ZBUFFER | G_SHADE | G_LIGHTING | G_SHADING_SMOOTH);
+        nd_pso_geom_clr(G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
+        nd_pso_geom_set(G_ZBUFFER | G_SHADE | G_LIGHTING | G_SHADING_SMOOTH);
         gSPSetLights1(gMainGfxPos++, D_8014C268);
-        gSPTexture(gMainGfxPos++, -1, -1, 0, G_TX_RENDERTILE, G_ON);
-        gDPSetAlphaCompare(gMainGfxPos++, G_AC_NONE);
-        gSPSetOtherMode(gMainGfxPos++, G_SETOTHERMODE_H, G_MDSFT_ALPHADITHER, 18, G_AD_DISABLE | G_CD_DISABLE | G_CK_NONE | G_TC_FILT | G_TF_BILERP | G_TT_NONE | G_TL_TILE | G_TD_CLAMP | G_TP_PERSP | G_CYC_1CYCLE);
+        nd_tex_on(-1, -1, 0, G_TX_RENDERTILE, G_ON);
+        nd_pso_alcmp(G_AC_NONE);
+        nd_pso_som(G_SETOTHERMODE_H, G_MDSFT_ALPHADITHER, 18, G_AD_DISABLE | G_CD_DISABLE | G_CK_NONE | G_TC_FILT | G_TF_BILERP | G_TT_NONE | G_TL_TILE | G_TD_CLAMP | G_TP_PERSP | G_CYC_1CYCLE);
 
         imageData = model->gfx.imageData;
         ifxImg.raster = imageData->raster;
@@ -532,8 +531,7 @@ void appendGfx_entity_model(EntityModel* model) {
         imgfx_appendGfx_component(0, &ifxImg, 0, imgfxMtx);
     }
 
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gDPPipeSync(gMainGfxPos++);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }
 
 void draw_entity_model_A(s32 modelIdx, Mtx* transformMtx) {
@@ -703,7 +701,7 @@ void draw_entity_model_E(s32 modelIdx, Mtx* transformMtx) {
     model->transform = *transformMtx;
     model->vertexArray = nullptr;
     gDisplayContext->matrixStack[gMatrixListPos] = model->transform;
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     if (!(model->flags & ENTITY_MODEL_FLAG_USE_IMAGE)) {
         switch (entity_fog_enabled && !(model->flags & ENTITY_MODEL_FLAG_FOG_DISABLED)) {
             case false:
@@ -790,11 +788,10 @@ void draw_entity_model_E(s32 modelIdx, Mtx* transformMtx) {
         }
         em_tail(entity_fog_enabled && !(model->flags & ENTITY_MODEL_FLAG_FOG_DISABLED), 1);
         if (model->vertexArray != nullptr) {
-            gSPSegment(gMainGfxPos++, D_80154374, VIRTUAL_TO_PHYSICAL(model->vertexArray));
+            nd_val_seg(D_80154374, VIRTUAL_TO_PHYSICAL(model->vertexArray));
         }
         gSPDisplayList(gMainGfxPos++, model->gfx.displayList);
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-        gDPPipeSync(gMainGfxPos++);
+        nd_xf_pop(G_MTX_MODELVIEW);
         if (!(model->flags & ENTITY_MODEL_FLAG_REFLECT)) {
             return;
         }
@@ -804,18 +801,17 @@ void draw_entity_model_E(s32 modelIdx, Mtx* transformMtx) {
         guMtxCatF(mtx, mtx2, mtx);
         guMtxF2L(mtx, &model->transform);
         gDisplayContext->matrixStack[gMatrixListPos] = model->transform;
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
         gSPDisplayList(gMainGfxPos++, model->gfx.displayList);
     } else {
         SpriteRasterInfo* imageData;
 
-        gDPPipeSync(gMainGfxPos++);
-        gSPClearGeometryMode(gMainGfxPos++, G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
-        gSPSetGeometryMode(gMainGfxPos++, G_ZBUFFER | G_SHADE | G_LIGHTING | G_SHADING_SMOOTH);
+        nd_pso_geom_clr(G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
+        nd_pso_geom_set(G_ZBUFFER | G_SHADE | G_LIGHTING | G_SHADING_SMOOTH);
         gSPSetLights1(gMainGfxPos++, D_8014C268);
-        gSPTexture(gMainGfxPos++, -1, -1, 0, G_TX_RENDERTILE, G_ON);
-        gDPSetAlphaCompare(gMainGfxPos++, G_AC_NONE);
-        gSPSetOtherMode(gMainGfxPos++, G_SETOTHERMODE_H, G_MDSFT_ALPHADITHER, 18, G_AD_DISABLE | G_CD_DISABLE | G_CK_NONE | G_TC_FILT | G_TF_BILERP | G_TT_NONE | G_TL_TILE | G_TD_CLAMP | G_TP_PERSP | G_CYC_1CYCLE);
+        nd_tex_on(-1, -1, 0, G_TX_RENDERTILE, G_ON);
+        nd_pso_alcmp(G_AC_NONE);
+        nd_pso_som(G_SETOTHERMODE_H, G_MDSFT_ALPHADITHER, 18, G_AD_DISABLE | G_CD_DISABLE | G_CK_NONE | G_TC_FILT | G_TF_BILERP | G_TT_NONE | G_TL_TILE | G_TD_CLAMP | G_TP_PERSP | G_CYC_1CYCLE);
 
         imageData = model->gfx.imageData;
         ifxImg.raster = imageData->raster;
@@ -829,8 +825,7 @@ void draw_entity_model_E(s32 modelIdx, Mtx* transformMtx) {
         imgfx_appendGfx_component(0, &ifxImg, 0, imgfxMtx);
     }
 
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-    gDPPipeSync(gMainGfxPos++);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }
 
 void set_entity_model_render_command_list(s32 idx, EntityModelScript* cmdList) {

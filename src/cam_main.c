@@ -112,6 +112,9 @@ extern int pm_ph_on;
 extern void pm_gbi_mdl_mark(unsigned id, int pan); /* T1B: names the task tail rows 0xF0E0 + k */
 #define T1_MARK(k) do { if (pm_ph_on) pm_gbi_mdl_mark(0xF0E0u + (k), 0); } while (0)
 #include "nd_scomp.h"
+#include "nd_st.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 /* S6T: the camera setup range of render_frame as a compiled state range (nd_scomp.h). The units in the order of the N64 code below; the
  * viewport, scissor, colour image and matrix are value units (placeholders here, the record carries them per camera). The persp
  * normalize word is a no-op state unit (no field), so the ortho camera, which skips it, runs the same range. */
@@ -258,7 +261,7 @@ void render_frame(s32 isSecondPass) {
                 FI_OPEN("camera_persp_hud", 0);
                 guMtxF2L(camera->mtxPerspective, &gDisplayContext->camPerspMatrix[gCurrentCamID]);
                 FI_CLOSE();
-                gSPMatrix(gMainGfxPos++, &gDisplayContext->camPerspMatrix[gCurrentCamID], G_MTX_NOPUSH |
+                nd_xf_push(&gDisplayContext->camPerspMatrix[gCurrentCamID], G_MTX_NOPUSH |
                             G_MTX_LOAD | G_MTX_PROJECTION);
                 FI_OPEN("cam_hud_elements", 0);
                 render_transformed_hud_elements();
@@ -278,10 +281,8 @@ void render_frame(s32 isSecondPass) {
         }
 
         T1_MARK(14);
-        gDPPipeSync(gMainGfxPos++);
         gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH,
                             osVirtualToPhysical(nuGfxCfb_ptr));
-        gDPPipeSync(gMainGfxPos++);
         FI_CLOSE();
     }
 }

@@ -50,6 +50,9 @@ extern Gfx Gfx_RM3_DECAL_XLU[];
 extern Gfx Gfx_RM3_INTERSECTING_XLU[];
 
 #include "nd_rmdef.h"
+#include "nd_st.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 #define AN_RM(l) ND_RM_REC(l)
 #define AN_NODE_HEAD gsSPTexture(0, 0, 0, G_TX_RENDERTILE, G_OFF), gsDPSetTextureLOD(G_TL_TILE), gsDPSetTextureLUT(G_TT_NONE), gsSPClearGeometryMode(G_LIGHTING)
 /* S5EMDL3: the per-node state of appendGfx_animator_node as four compiled defs (cull x fog, nd_scomp.h). */
@@ -793,11 +796,11 @@ void appendGfx_animator(ModelAnimator* animator) {
     Matrix4f sp10;
 
     if (animator->baseAddr != nullptr) {
-        gSPSegment(gMainGfxPos++, gAnimVtxSegment, VIRTUAL_TO_PHYSICAL(animator->baseAddr));
+        nd_val_seg(gAnimVtxSegment, VIRTUAL_TO_PHYSICAL(animator->baseAddr));
     }
 
     gDisplayContext->matrixStack[gMatrixListPos] = animator->mtx;
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
     //TODO find better match
     switch (gAnimModelFogEnabled != 0) {
@@ -858,7 +861,7 @@ void appendGfx_animator(ModelAnimator* animator) {
 
     guMtxL2F(sp10, &animator->mtx);
     appendGfx_animator_node(animator, animator->rootNode, sp10);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }
 
 void appendGfx_animator_node(ModelAnimator* animator, AnimatorNode* node, Matrix4f mtx) {
@@ -879,18 +882,15 @@ void appendGfx_animator_node(ModelAnimator* animator, AnimatorNode* node, Matrix
 
     guMtxCatF(node->mtx, mtx, node->mtx);
     guMtxF2L(node->mtx, &gDisplayContext->matrixStack[gMatrixListPos]);
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gDPPipeSync(gMainGfxPos++);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
     {
         const int cull = (animator->flags & MODEL_ANIMATOR_FLAG_CULL_BACK) != 0;
         nd_scomp_rec(!gAnimModelFogEnabled ? (cull ? &an_n_dec_cull : &an_n_dec) : (cull ? &an_n_fog_cull : &an_n_fog), NULL, 0);
     }
-    gDPPipeSync(gMainGfxPos++);
 
     if (animator->fpRenderCallback != nullptr) animator->fpRenderCallback(animator->renderCallbackArg);
 
-    gDPPipeSync(gMainGfxPos++);
 
     if (node->displayList != nullptr) {
         if (node->vertexStartOffset < 0) {
@@ -984,7 +984,6 @@ void appendGfx_animator_node(ModelAnimator* animator, AnimatorNode* node, Matrix
             gSPDisplayList(gMainGfxPos++, bufferHandle->addr);
         }
     }
-    gDPPipeSync(gMainGfxPos++);
 
     for (i = 0; i < ARRAY_COUNT(node->children); i++) {
         if (node->children[i] != nullptr) {
