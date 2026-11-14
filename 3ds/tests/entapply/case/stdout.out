@@ -1,0 +1,4 @@
+entapply site src/effects/fx.c:5 pe_fx_5
+entapply multi src/effects/fx.c:6 2
+entapply skip src/effects/fx.c:7
+entapply sites 1 multi 1 skip 1 other 1 files 1
