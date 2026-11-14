@@ -29,20 +29,15 @@
   gDPSetFillColor 10, 30 more names with 8 or fewer. Idiom: design_state_calls.md table rows (nd_tex_img .. nd_tex_load_tlut16, nd_rect_tex,
   nd_rect_scis, nd_rect_fill, nd_xf_viewport, nd_val_fill/fog/blend; syncs removed). Files: new nd_tx.h, nd_tx.c (ws_C owns nd_st.* until R6).
   Same form as ws_GEO: G0 tool group now (no blocker), call-site groups after the owner merges. The oracle writes ws_TEX next.
-## 3. CONV2C2: v2 tables for the inheriting lists (blocker: `Merge EMIT4`, same converter file; ENTRY E3 is merged; Haiku, 3 chunks)
-- Writer 1, chunk C2a: new 3ds/tools/gen_ntab_entries.py <src dir> > <work>/ntab_entries.txt. Per `nd_draw_list(<arg>, <desc>)` with desc not
-  ND_SELF: arg `\w+` gives one pair; arg `<arr>[...]` gives one pair per element of the initializer of `<arr>` in the same file; any other arg prints
-  `gne skip <file>:<line>`. The 20 numbers of the desc come from the `ND_PSO_DESC(<desc>, ...)` text of the file (the entapply.py form, ws_ENTRY E2).
-  Line: `<list> <desc> <file>:<line> <20 numbers>`. Test first: 3ds/tests/gne/run.sh (form of tests/codemod/run.sh), seeded fault.
-- Writer 2, chunk C2b: nd_gfx_conv.c reads the file as a 6th argument (usage :664). New v2_seed(V2St*, const NdPsoDesc*): cw0, cw1, omh, oml, geom,
-  key_c, key_s, conv_k4, tex_on from the desc. has_comb = 1, omh_set |= 3 << G_MDSFT_CYCLETYPE, has_tex = 1 (the three groups of
-  v2_inherit_check, :369-380). A list of ntab_inherit with entries converts once per distinct desc into table ndn_<list>_<desc>, entry = v2_desc_id
-  (:257). A seeded list that still inherits or hits v2_unsup stays in ntab_inherit.txt with the reason. Names go to a new ntab_pairs.txt, never to
-  ntab_tables.txt (codemod --ntab gives ND_SELF to its names, codemod.py:232). ndn_dev_idx keeps one entry per list: the units do not depend on
-  the entry. Host test first: 3ds/tests/host.d/conv2c2.sh, a fixture list that inherits comb and cycle; seeded fault (no cycle seed) must fail.
-- Chunk C2c: gen_gfx_tab.sh:17-18 passes the file, :23 copies ntab_pairs.txt. Device effect: nd_ntab_find now finds these lists, so gt_body
-  (nd_walk.c:596-600) runs the unit copy instead of gt_ops. Gate: CONV2E compare `bad 0` with the same seed in the v1 model, drec cmp
-  gold_12_drec, gold_33/55/63_drec, fxpic_89_drec, fxpic_91_drec byte-equal. World and entity lists: after their entry page (capture scenes).
+## 3. CONV2C2: closed page ws_CONV2C2.md (oracle 2026-11-14; start at `Merge EMIT4`, same converter file; Haiku, 2 groups)
+- Choice: a list of ntab_inherit with site pairs (gen_ntab_entries.py on src/effects: list, ND_PSO_DESC of its nd_draw_list) converts once per distinct desc,
+  seeded with v2_seed (cw0..plod, has_comb, has_tex, cycle bits), table ndn_<list>_e<id>, NdNTab.entry = id + 1. One device entry per list (units do not
+  depend on the seed). Seeded names go to ntab_pairs.txt, never to ntab_tables.txt (codemod --ntab gives ND_SELF to those). The host model seeds from
+  ndn_desc[entry - 1]; the seeded fault is key_c ^ 1 in the model (no convertible list sets key_c: RARE is unsup), so every seeded table must fail.
+- Device effect: nd_ntab_find finds these lists, so gt_body, walk_call (E3), the E2 skip and the EMIT4 flat path take their units. Gate fxpic_91_drec, gold_12_drec.
+- FACT (oracle scratch scan, 2026-11-13 ntab files): 185 site lists, 182 of them inherit; about 203 pairs (GUESS). Callee-only inheriting lists (about 240,
+  GUESS) keep no entry: their seed is the caller state at the call unit (v2_walk knows it). That is the next converter step after GKEY (section 5).
+
 ## 4. NEMIT: a v2 list reads no Gfx word on the device (blocker of GSET, C5, C6, C12; Haiku, no Sonnet core; oracle 2026-11-14)
 - Choice: GSET needs only that the device takes every word of a moved list from its table. The NdNOp runner that replaces the walker (NDN_PSO ..
   NDN_DRAW into nd_native_submit) is the reader removal of plan section 6 phase E (C8), not a GSET blocker. Same words, so each step is draw-equal.
@@ -63,10 +58,23 @@
 - A row: one gset.d file, the tool run, at most 10 keep lines by hand. Gate: G1 host differential, drec byte-equal, listcen C5 and C6 fall by the
   set's counts, elfgate gfxnames falls. Order (largest C5 first): src/entity, assets/us effects, src/world, model.c render modes, battle, pause,
   level_up and starpoint, the rest. Map shapes in the ROM blob: GSET-MAP (plan section 7), not this tool.
+- BLOCKER GKEY (oracle 2026-11-14): the device keys a list by its Gfx address. Key and word reads: nd_rec_dl nd_gtab_find(list) and gt_state_only reads
+  t->list words (nd_gtab.c:101-102); nd_gtab_run next = t->list into ent_gdl and dlc_try (nd_walk.c:618-627, also gt_call :533-537 and walk_call :236-241); ndnu call units hold the callee symbol address
+  (nd_gfx_conv.c:391, :399, :569) and walk_call keys nd_ntab_find on it (EMIT E3); v1 table pieces point into the list (nd_gfx_conv.c:138, :153, :159).
+  Choice: the converter writes one standalone `const NdNDev ndd_X` per list whose list field is its own address after GSET; ndn_dev_idx becomes an array of
+  pointers (the first-find sort, nd_gtab.c:44-48, sorts pointers); ndnu call units take &ndd_callee; nd_rec_dl records the ntab run when nd_ntab_find(list)
+  hits and no v1 table exists; gt_state_only takes e->u, e->nu. Rows GKEY1 (converter + host test), GKEY2 (nd_gtab.c, nd_walk.c device; drec gate), then gset.py.
+  GSET needs every list of the set to have a device entry: effects after CONV2C2 still miss the callee-only inheriting lists and the unsup lists.
 ## 6. Discoveries (for plan_endgame.md section 7)
 - listcen counts src/world/dead (3 files, build 30, gfxpos 32: FACT listcen), but maps.cmake builds no file of it. Choice: listcen.py skips
   src/world/dead after ws_D and ws_GEO G2 merge. Reason: no build or drec can prove an edit there.
 - Plan rows to change: NTGT is no Sonnet core (section 1). NXF2-4 are ws_GEO. NEMIT is ws_EMIT plus E4 (Haiku), before GSET1-6.
 - The 25 world, entity and battle recdl sites are nd_scomp_rec defs (S6E2, S6M6, S5BTL1), not list entries: entcap never sees them
   (it logs nd_gtab_run lists only, nd_walk.c:501-505). Choice: each def becomes setter calls in unit order (ws_SCOMP.md, 18 sites). The 7 sites of
-  mac_01/crystal_ball_gfx.c wait for a design of gsSPLookAtX/Y alone and of gDPSetHilite1Tile/2Tile in a value packet (no codemod map entry).
+  mac_01/crystal_ball_gfx.c: ws_CBALL.md (closed; nd_lit_lookat for the X/Y pair, new nd_tex_hilite1/2 in nd_tx.h; after `Merge GEO2`).
+- recdl effects 127 (FACT listcen e0e468ff6): about 84 all-self sites -> ws_FXSELF.md (ND_SELF is the same record, nd_gtab.c:114). Blocked, GUESS counts: 33 reach
+  an inheriting list with no captured entry (needs an entcap capture of the site; no scenario reached them in ENTRYFX), 6 an unsup list (v2_unsup op kinds,
+  nd_gfx_conv.c:455-456), 3 do not resolve (chapter_change.c:162, cold_breath.c:234, lil_oink.c:195: hand rows), multi-line calls (recover.c:205): hand rows.
+- recdl root 15 (FACT listcen): nd_scomp_rec in animator.c:889 (ternary of 4 defs: if/else), background_gfx.c:45-46, cam_main.c:229-230, entity_model.c:72-73,
+  :383, :481, item_entity.c:976-984, msg.c:616, sprite.c:508 (spr_st_def[si], nv values: a switch per def), status_icons.c:625. The ws_SCOMP rule covers them;
+  every gs macro there has a map entry (oracle census). Blocked by ownership only: GEO G3 runs on root files, TEX T4 follows. Page after `Merge TEX4`.

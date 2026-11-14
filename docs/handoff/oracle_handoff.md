@@ -1,6 +1,6 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main b8fcf0e17, 2026-11-14. Written by the fifth workstream oracle (ws_EMIT4, ws_SCOMP, ws_GEO and ws_TEX refresh).
+State: main e0e468ff6, 2026-11-14. Written by the sixth workstream oracle (ws_CONV2C2, ws_CBALL, ws_FXSELF, GKEY design).
 ## Goal
 Remove the display list system completely (plan_endgame.md v3). Done only when `3ds/tools/elfgate.py` prints
 `func 0 data 0 gfxnames 0` and every LISTCEN2 counter C1..C12 is 0.
@@ -22,11 +22,11 @@ FACT (`codemod.py --dry --geo`, b8fcf0e17): src/world src/battle value 26, root 
 - ws_EMIT4.md (page, closed, Haiku): after `Merge EMIT`. Entity path words through NdNDev.u, ndnu keeps NOPs, host flat test.
 - ws_SCOMP.md (page, closed, Haiku, start now): 18 nd_scomp_rec defs to setter calls (entity S1, hos S2, battle S3 after `Merge GEO2`).
 - ws_GEO.md: G2 (src/world src/battle) and G3 (root) start now. ws_TEX.md: T2 effects starts now, T3 after GEO2 and SCOMP, T4 after GEO3.
-- CONV2C2 (design_lookahead 3): write the closed page next. Blocker: `Merge EMIT4` (same converter file).
-- crystal_ball_gfx.c (7 nd_scomp_rec sites): design open. gsSPLookAtX/Y alone and gDPSetHilite1Tile/2Tile have no setter or map entry.
-- Effects recdl 127: 13 multi sites (entapply skipped) and the lists no fxtest capture reached. Root recdl 15: model.c, entity_model.c, item_entity.c,
-  animator.c, cam_main.c, background_gfx.c, msg.c, sprite.c, status_icons.c. Both need a page (oracle read per site kind first).
-- GSET (design_lookahead 5): after EMIT4 and the set's CONV2C2. Readers C8 and S9DEL: plan section 6 phase E needs C1, C2, C10 at 0.
+- ws_CONV2C2.md (closed, Haiku): start at `Merge EMIT4`. Seeded v2 tables for the effect lists with site pairs; one device entry per list.
+- ws_CBALL.md (closed, Haiku): start at `Merge GEO2`. ws_TEX T3 waits for `Merge CBALL`. ws_FXSELF.md (closed, Haiku): start at `Merge CONV2C2` and `Merge TEX2`.
+- Blocked (design_lookahead 6): effects recdl rest (33 inherit with no capture, 6 unsup, 3 unresolved, multi-line), root recdl 15 (page after `Merge TEX4`).
+- GSET (design_lookahead 5): blocker GKEY (the device keys a list by its Gfx address). Next pages: GKEY1 converter, GKEY2 device, then gset.py.
+  Readers C8 and S9DEL: plan section 6 phase E needs C1, C2, C10 at 0.
 ## Facts that cost time
 - Main moves fast: run `git log --oneline -10 main` before you write a page. Pages wrote "after Merge X" for groups that had merged.
 - codemod.py gives a file's single ND_PSO_DESC to every list call of that file (codemod.py:14). Never run --state or plain codemod on src/effects.
@@ -37,5 +37,5 @@ FACT (`codemod.py --dry --geo`, b8fcf0e17): src/world src/battle value 26, root 
 - Directory ownership: GEO G2 src/world src/battle, TEX T2 src/effects, SCOMP its 8 files, EMIT/EMIT4 the converter, nd_gtab.*, nd_walk.c, nd_ent.c.
 ## What to do first
 1. Answer coder questions (SendMessage, 10 lines, file:line).
-2. Write the CONV2C2 page (design_lookahead 3) so it is ready at `Merge EMIT4`.
-3. Design crystal_ball_gfx.c, then the root and effects recdl pages.
+2. Write ws_GKEY1.md (converter: standalone ndd_X, pointer index, call units to &ndd_callee; host test) from design_lookahead 5.
+3. After `Merge TEX4`: the root recdl page (ws_SCOMP rule). Then the callee seed step of the converter (design_lookahead 3).
