@@ -5,6 +5,9 @@
 #include "ld_addrs.h"
 #include "pm_interp_fi.h"
 #include "nd_api.h"
+#include "nd_st.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 #define MAX_HUD_CACHE_ENTRIES 192
 
@@ -310,36 +313,36 @@ static void hud_rect_emit(const NdHudRec* hudElement, Gfx** gp, s32 anchor) {
 
     switch (fmt) {
         case 0:
-            gDPSetRenderMode(gMainGfxPos++, G_RM_XLU_SURF, G_RM_XLU_SURF2);
-            gDPSetTextureLUT(gMainGfxPos++, G_TT_NONE);
+            nd_pso_rm(G_RM_XLU_SURF, G_RM_XLU_SURF2);
+            nd_pso_lut(G_TT_NONE);
             break;
         case 1:
             if (!(hudElement->flags & HUD_ELEMENT_FLAG_TRANSPARENT)) {
                 if (!(hudElement->flags & HUD_ELEMENT_FLAG_ANTIALIASING)) {
-                    gDPSetRenderMode(gMainGfxPos++, G_RM_TEX_EDGE, G_RM_TEX_EDGE2);
+                    nd_pso_rm(G_RM_TEX_EDGE, G_RM_TEX_EDGE2);
                 } else {
-                    gDPSetRenderMode(gMainGfxPos++, G_RM_AA_TEX_EDGE, G_RM_AA_TEX_EDGE2);
+                    nd_pso_rm(G_RM_AA_TEX_EDGE, G_RM_AA_TEX_EDGE2);
                 }
             } else {
                 if (!(hudElement->flags & HUD_ELEMENT_FLAG_ANTIALIASING)) {
-                    gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
+                    nd_pso_rm(G_RM_CLD_SURF, G_RM_CLD_SURF2);
                 } else {
-                    gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF | AA_EN, G_RM_CLD_SURF2 | AA_EN);
+                    nd_pso_rm(G_RM_CLD_SURF | AA_EN, G_RM_CLD_SURF2 | AA_EN);
                 }
             }
-            gDPSetTextureLUT(gMainGfxPos++, G_TT_RGBA16);
+            nd_pso_lut(G_TT_RGBA16);
             gDPLoadTLUT_pal16(gMainGfxPos++, 0, paletteAddr);
             break;
         case 2:
-            gDPSetRenderMode(gMainGfxPos++, G_RM_XLU_SURF, G_RM_XLU_SURF2);
-            gDPSetTextureLUT(gMainGfxPos++, G_TT_NONE);
+            nd_pso_rm(G_RM_XLU_SURF, G_RM_XLU_SURF2);
+            nd_pso_lut(G_TT_NONE);
             break;
     }
 
     if (hudElement->flags & HUD_ELEMENT_FLAG_FILTER_TEX) {
-        gDPSetTextureFilter(gMainGfxPos++, G_TF_AVERAGE);
+        nd_pso_filt(G_TF_AVERAGE);
     } else {
-        gDPSetTextureFilter(gMainGfxPos++, G_TF_POINT);
+        nd_pso_filt(G_TF_POINT);
     }
 
     for (k = 0; k < hudElement->npc; k++) {
@@ -348,19 +351,18 @@ static void hud_rect_emit(const NdHudRec* hudElement, Gfx** gp, s32 anchor) {
         s32 ulx = pc->ulx, uly = pc->uly, lrx = pc->lrx, lry = pc->lry;
         s32 texStartX = pc->texStartX, texStartY = pc->texStartY, tileMode = pc->tileMode;
 
-        gDPPipeSync(gMainGfxPos++);
 
             switch (fmt) {
                 case 0:
-                    gDPSetCombineMode(gMainGfxPos++, G_CC_DECALRGBA, G_CC_DECALRGBA);
+                    nd_pso_cc(G_CC_DECALRGBA, G_CC_DECALRGBA);
                     if (!(hudElement->flags & HUD_ELEMENT_FLAG_TRANSPARENT)) {
-                        gDPSetCombineMode(gMainGfxPos++, G_CC_DECALRGBA, G_CC_DECALRGBA);
+                        nd_pso_cc(G_CC_DECALRGBA, G_CC_DECALRGBA);
                     } else {
-                        gDPSetCombineMode(gMainGfxPos++, PM_CC_01, PM_CC_02);
+                        nd_pso_cc(PM_CC_01, PM_CC_02);
                     }
 
                     if (hudElement->flags & HUD_ELEMENT_FLAG_TRANSPARENT) {
-                        gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, hudElement->opacity);
+                        nd_val_prim(0, 0, 0, 0, 0, hudElement->opacity);
                     }
 
                     if (!flipX && !flipY) {
@@ -374,20 +376,20 @@ static void hud_rect_emit(const NdHudRec* hudElement, Gfx** gp, s32 anchor) {
                 case 1:
                     if (!dropShadow) {
                         if (hudElement->flags & HUD_ELEMENT_FLAG_TRANSPARENT) {
-                            gDPSetCombineMode(gMainGfxPos++, PM_CC_2F, PM_CC_32);
+                            nd_pso_cc(PM_CC_2F, PM_CC_32);
                         } else {
-                            gDPSetCombineMode(gMainGfxPos++, PM_CC_2F, PM_CC_32);
+                            nd_pso_cc(PM_CC_2F, PM_CC_32);
                         }
 
                         if (hudElement->flags & HUD_ELEMENT_FLAG_TRANSPARENT) {
-                            gDPSetPrimColor(gMainGfxPos++, 0, 0, hudElement->tint.r, hudElement->tint.g, hudElement->tint.b, hudElement->opacity);
+                            nd_val_prim(0, 0, hudElement->tint.r, hudElement->tint.g, hudElement->tint.b, hudElement->opacity);
                         } else {
-                            gDPSetPrimColor(gMainGfxPos++, 0, 0, hudElement->tint.r, hudElement->tint.g, hudElement->tint.b, 255);
+                            nd_val_prim(0, 0, hudElement->tint.r, hudElement->tint.g, hudElement->tint.b, 255);
                         }
                     } else {
-                        gDPSetRenderMode(gMainGfxPos++, G_RM_XLU_SURF, G_RM_XLU_SURF2);
-                        gDPSetCombineMode(gMainGfxPos++, PM_CC_07, PM_CC_07);
-                        gDPSetPrimColor(gMainGfxPos++, 0, 0, 40, 40, 40, 72);
+                        nd_pso_rm(G_RM_XLU_SURF, G_RM_XLU_SURF2);
+                        nd_pso_cc(PM_CC_07, PM_CC_07);
+                        nd_val_prim(0, 0, 40, 40, 40, 72);
                     }
 
                     if (!flipX && !flipY) {
@@ -420,8 +422,8 @@ static void hud_rect_emit(const NdHudRec* hudElement, Gfx** gp, s32 anchor) {
                     }
                     break;
                 case 2:
-                    gDPSetCombineMode(gMainGfxPos++, PM_CC_47, PM_CC_47);
-                    gDPSetPrimColor(gMainGfxPos++, 0, 0, hudElement->tint.r, hudElement->tint.g, hudElement->tint.b, hudElement->opacity);
+                    nd_pso_cc(PM_CC_47, PM_CC_47);
+                    nd_val_prim(0, 0, hudElement->tint.r, hudElement->tint.g, hudElement->tint.b, hudElement->opacity);
 
                     if (!flipX && !flipY) {
                         if (!clamp) {
@@ -464,7 +466,6 @@ static void hud_rect_emit(const NdHudRec* hudElement, Gfx** gp, s32 anchor) {
                 }
             }
     }
-    gDPPipeSync(gMainGfxPos++);
 }
 #undef gMainGfxPos
 
@@ -1697,9 +1698,9 @@ void render_complex_hud_element(HudElement* hudElement) {
 
     if (!cplx_direct) {
         if (hudElement->flags & HUD_ELEMENT_FLAG_FILTER_TEX) {
-            gDPSetTextureFilter(gMainGfxPos++, G_TF_AVERAGE);
+            nd_pso_filt(G_TF_AVERAGE);
         } else {
-            gDPSetTextureFilter(gMainGfxPos++, G_TF_POINT);
+            nd_pso_filt(G_TF_POINT);
         }
     }
 
@@ -1753,7 +1754,7 @@ void render_complex_hud_element(HudElement* hudElement) {
     guMtxF2L(sp60, &gDisplayContext->matrixStack[gMatrixListPos]);
     cplx_mtx = &gDisplayContext->matrixStack[gMatrixListPos++];
     if (!cplx_direct) {
-        gSPMatrix(gMainGfxPos++, VIRTUAL_TO_PHYSICAL(cplx_mtx), G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+        nd_xf_push(VIRTUAL_TO_PHYSICAL(cplx_mtx), G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     }
 
     mode = 0;
@@ -1859,22 +1860,20 @@ void render_complex_hud_element(HudElement* hudElement) {
             vtx[3].v.tc[1] = 0;
 
             if (!cplx_direct) {
-                gDPPipeSync(gMainGfxPos++);
-                gDPSetCombineMode(gMainGfxPos++, PM_CC_47, PM_CC_47);
-                gDPSetPrimColor(gMainGfxPos++, 0, 0,
-                                hudElement->tint.r, hudElement->tint.g, hudElement->tint.b, hudElement->opacity);
+                nd_pso_cc(PM_CC_47, PM_CC_47);
+                nd_val_prim(0, 0, hudElement->tint.r, hudElement->tint.g, hudElement->tint.b, hudElement->opacity);
 
                 if (!(hudElement->flags & HUD_ELEMENT_FLAG_TRANSPARENT)) {
                     if (!(hudElement->flags & HUD_ELEMENT_FLAG_ANTIALIASING)) {
-                        gDPSetRenderMode(gMainGfxPos++, G_RM_TEX_EDGE, G_RM_TEX_EDGE2);
+                        nd_pso_rm(G_RM_TEX_EDGE, G_RM_TEX_EDGE2);
                     } else {
-                        gDPSetRenderMode(gMainGfxPos++, G_RM_AA_TEX_EDGE, G_RM_AA_TEX_EDGE2);
+                        nd_pso_rm(G_RM_AA_TEX_EDGE, G_RM_AA_TEX_EDGE2);
                     }
                 } else {
                     if (!(hudElement->flags & HUD_ELEMENT_FLAG_ANTIALIASING)) {
-                        gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
+                        nd_pso_rm(G_RM_CLD_SURF, G_RM_CLD_SURF2);
                     } else {
-                        gDPSetRenderMode(gMainGfxPos++, AA_EN | G_RM_CLD_SURF, AA_EN | G_RM_CLD_SURF2);
+                        nd_pso_rm(AA_EN | G_RM_CLD_SURF, AA_EN | G_RM_CLD_SURF2);
                     }
                 }
 
@@ -1882,7 +1881,7 @@ void render_complex_hud_element(HudElement* hudElement) {
                                     G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK,
                                     G_TX_NOLOD, G_TX_NOLOD);
 
-                gDPSetTextureLUT(gMainGfxPos++, G_TT_NONE);
+                nd_pso_lut(G_TT_NONE);
                 gSPVertex(gMainGfxPos++, &transform->quadBuffers[FrameQuadIndex], 4, 0);
             }
             { static int ctr_sw = -1; extern void ctr_store(const void* q); extern int pm_debug_has(const char* word); /* BTLUI3: cplxtrace stores the quad for nd_geom_vtx */
@@ -1909,8 +1908,7 @@ void render_complex_hud_element(HudElement* hudElement) {
     }
 
     if (!cplx_direct) {
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
-        gDPPipeSync(gMainGfxPos++);
+        nd_xf_pop(G_MTX_MODELVIEW);
     }
 }
 
@@ -1973,14 +1971,14 @@ void render_transformed_hud_elements(void) {
                         }
                     }
 
-                    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, pm_wide ? 0 : 12, pm_wide ? 0 : 20, pm_wide ? SCREEN_WIDTH : 308, pm_wide ? SCREEN_HEIGHT : 220); /* WIDE4: a transformed HUD element (battle wheel spots, reel, beam) placed in the wide margin is drawn to the screen edge */
+                    nd_pso_scis(G_SC_NON_INTERLACE, pm_wide ? 0 : 12, pm_wide ? 0 : 20, pm_wide ? SCREEN_WIDTH : 308, pm_wide ? SCREEN_HEIGHT : 220); /* WIDE4: a transformed HUD element (battle wheel spots, reel, beam) placed in the wide margin is drawn to the screen edge */
                     gDPPipeSync(gMainGfxPos++);
-                    gSPClearGeometryMode(gMainGfxPos++, G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
-                    gSPSetGeometryMode(gMainGfxPos++, G_ZBUFFER | G_SHADE | G_LIGHTING | G_SHADING_SMOOTH);
+                    nd_pso_geom_clr(G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
+                    nd_pso_geom_set(G_ZBUFFER | G_SHADE | G_LIGHTING | G_SHADING_SMOOTH);
                     gSPSetLights1(gMainGfxPos++, HudElemLights);
-                    gSPTexture(gMainGfxPos++, -1, -1, 0, G_TX_RENDERTILE, G_ON);
-                    gDPSetAlphaCompare(gMainGfxPos++, G_AC_NONE);
-                    gSPSetOtherMode(gMainGfxPos++, G_SETOTHERMODE_H, G_MDSFT_ALPHADITHER, 18, G_AD_DISABLE | G_CD_DISABLE | G_CK_NONE | G_TC_FILT | G_TF_BILERP | G_TT_NONE | G_TL_TILE | G_TD_CLAMP | G_TP_PERSP | G_CYC_1CYCLE);
+                    nd_tex_on(-1, -1, 0, G_TX_RENDERTILE, G_ON);
+                    nd_pso_alcmp(G_AC_NONE);
+                    nd_pso_som(G_SETOTHERMODE_H, G_MDSFT_ALPHADITHER, 18, G_AD_DISABLE | G_CD_DISABLE | G_CK_NONE | G_TC_FILT | G_TF_BILERP | G_TT_NONE | G_TL_TILE | G_TD_CLAMP | G_TP_PERSP | G_CYC_1CYCLE);
 
                     for (i = 0; i < count; i++) {
                         FI_OPEN("HUD Elements", (uintptr_t)(*gHudElements)[sortedElements[i]]);
@@ -2038,14 +2036,14 @@ void render_transformed_hud_elements(void) {
                         }
                     }
 
-                    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, pm_wide ? 0 : 12, pm_wide ? 0 : 20, pm_wide ? SCREEN_WIDTH : 308, pm_wide ? SCREEN_HEIGHT : 220); /* WIDE4: a transformed HUD element (battle wheel spots, reel, beam) placed in the wide margin is drawn to the screen edge */
+                    nd_pso_scis(G_SC_NON_INTERLACE, pm_wide ? 0 : 12, pm_wide ? 0 : 20, pm_wide ? SCREEN_WIDTH : 308, pm_wide ? SCREEN_HEIGHT : 220); /* WIDE4: a transformed HUD element (battle wheel spots, reel, beam) placed in the wide margin is drawn to the screen edge */
                     gDPPipeSync(gMainGfxPos++);
-                    gSPClearGeometryMode(gMainGfxPos++, G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
-                    gSPSetGeometryMode(gMainGfxPos++, G_ZBUFFER | G_SHADE | G_LIGHTING | G_SHADING_SMOOTH);
+                    nd_pso_geom_clr(G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
+                    nd_pso_geom_set(G_ZBUFFER | G_SHADE | G_LIGHTING | G_SHADING_SMOOTH);
                     gSPSetLights1(gMainGfxPos++, HudElemLights);
-                    gSPTexture(gMainGfxPos++, -1, -1, 0, G_TX_RENDERTILE, G_ON);
-                    gDPSetAlphaCompare(gMainGfxPos++, G_AC_NONE);
-                    gSPSetOtherMode(gMainGfxPos++, G_SETOTHERMODE_H, G_MDSFT_ALPHADITHER, 18, G_AD_DISABLE | G_CD_DISABLE | G_CK_NONE | G_TC_FILT | G_TF_BILERP | G_TT_NONE | G_TL_TILE | G_TD_CLAMP | G_TP_PERSP | G_CYC_1CYCLE);
+                    nd_tex_on(-1, -1, 0, G_TX_RENDERTILE, G_ON);
+                    nd_pso_alcmp(G_AC_NONE);
+                    nd_pso_som(G_SETOTHERMODE_H, G_MDSFT_ALPHADITHER, 18, G_AD_DISABLE | G_CD_DISABLE | G_CK_NONE | G_TC_FILT | G_TF_BILERP | G_TT_NONE | G_TL_TILE | G_TD_CLAMP | G_TP_PERSP | G_CYC_1CYCLE);
 
                     for (i = 0; i < count; i++) {
                         FI_OPEN("HUD Elements", (uintptr_t)(*gHudElements)[sortedElements[i]]);
@@ -2069,16 +2067,15 @@ void immediately_render_complex_hud_element(s32 elemID, s32 arg1, s32 camID) {
         gCurrentCamID = camID;
 
         gSPViewport(gMainGfxPos++, PM_VP(&camera->vp));
-        gSPClearGeometryMode(gMainGfxPos++, G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN |
+        nd_pso_geom_clr(G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN |
                                                 G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
-        gSPTexture(gMainGfxPos++, 0, 0, 0, G_TX_RENDERTILE, G_OFF);
+        nd_tex_on(0, 0, 0, G_TX_RENDERTILE, G_OFF);
         gDPPipelineMode(gMainGfxPos++, G_PM_NPRIMITIVE);
-        gDPSetTextureLUT(gMainGfxPos++, G_TT_NONE);
-        gDPSetTextureFilter(gMainGfxPos++, G_TF_BILERP);
-        gDPSetCombineMode(gMainGfxPos++, G_CC_SHADE, G_CC_SHADE);
-        gDPSetRenderMode(gMainGfxPos++, G_RM_OPA_SURF, G_RM_OPA_SURF2);
+        nd_pso_lut(G_TT_NONE);
+        nd_pso_filt(G_TF_BILERP);
+        nd_pso_cc(G_CC_SHADE, G_CC_SHADE);
+        nd_pso_rm(G_RM_OPA_SURF, G_RM_OPA_SURF2);
         gSPClipRatio(gMainGfxPos++, FRUSTRATIO_2);
-        gDPPipeSync(gMainGfxPos++);
         //clear Z buffer inside camera viewport
         gDPSetCycleType(gMainGfxPos++, G_CYC_FILL);
         gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxZBuffer));
@@ -2086,31 +2083,29 @@ void immediately_render_complex_hud_element(s32 elemID, s32 arg1, s32 camID) {
         gDPFillRectangle(gMainGfxPos++, camera->viewportStartX, camera->viewportStartY,
                          camera->viewportStartX + camera->viewportW - 1,
                          camera->viewportStartY + camera->viewportH - 1);
-        gDPPipeSync(gMainGfxPos++);
 
         gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
-        gDPPipeSync(gMainGfxPos++);
 
         guOrthoF(camera->mtxPerspective, 0.0f, 320.0f, -240.0f, 0.0f, -1000.0f, 1000.0f, 1.0f);
         guMtxF2L(camera->mtxPerspective, &gDisplayContext->camPerspMatrix[gCurrentCamID]);
 
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->camPerspMatrix[gCurrentCamID], G_MTX_NOPUSH | G_MTX_LOAD |
+        nd_xf_push(&gDisplayContext->camPerspMatrix[gCurrentCamID], G_MTX_NOPUSH | G_MTX_LOAD |
                                                                                     G_MTX_PROJECTION);
-        gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, pm_wide ? 0 : 12, pm_wide ? 0 : 20, pm_wide ? SCREEN_WIDTH : 308, pm_wide ? SCREEN_HEIGHT : 220); /* WIDE4: a transformed HUD element (battle wheel spots, reel, beam) placed in the wide margin is drawn to the screen edge */
+        nd_pso_scis(G_SC_NON_INTERLACE, pm_wide ? 0 : 12, pm_wide ? 0 : 20, pm_wide ? SCREEN_WIDTH : 308, pm_wide ? SCREEN_HEIGHT : 220); /* WIDE4: a transformed HUD element (battle wheel spots, reel, beam) placed in the wide margin is drawn to the screen edge */
         gDPPipeSync(gMainGfxPos++);
-        gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
-        gSPClearGeometryMode(gMainGfxPos++, G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING |
+        nd_pso_cyc(G_CYC_1CYCLE);
+        nd_pso_geom_clr(G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING |
                                                 G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
-        gSPSetGeometryMode(gMainGfxPos++, G_ZBUFFER | G_SHADE | G_LIGHTING | G_SHADING_SMOOTH);
+        nd_pso_geom_set(G_ZBUFFER | G_SHADE | G_LIGHTING | G_SHADING_SMOOTH);
         gSPSetLights1(gMainGfxPos++, HudElemLights);
-        gSPTexture(gMainGfxPos++, -1, -1, 0, G_TX_RENDERTILE, G_ON);
-        gDPSetTextureLOD(gMainGfxPos++, G_TL_TILE);
-        gDPSetTexturePersp(gMainGfxPos++, G_TP_PERSP);
-        gDPSetColorDither(gMainGfxPos++, G_CD_DISABLE);
-        gDPSetTextureDetail(gMainGfxPos++, G_TD_CLAMP);
-        gDPSetTextureConvert(gMainGfxPos++, G_TC_FILT);
-        gDPSetCombineKey(gMainGfxPos++, G_CK_NONE);
-        gDPSetAlphaCompare(gMainGfxPos++, G_AC_NONE);
+        nd_tex_on(-1, -1, 0, G_TX_RENDERTILE, G_ON);
+        nd_pso_lod(G_TL_TILE);
+        nd_pso_persp(G_TP_PERSP);
+        nd_pso_dither(G_CD_DISABLE);
+        nd_pso_detail(G_TD_CLAMP);
+        nd_pso_conv(G_TC_FILT);
+        nd_pso_combkey(G_CK_NONE);
+        nd_pso_alcmp(G_AC_NONE);
     }
 
     if (elemID >= 0) {
@@ -2172,18 +2167,17 @@ void draw_hud_element_internal(s32 id, s32 clipMode) {
                 if (clipMode == HUD_ELEMENT_DRAW_FIRST_WITH_CLIPPING) {
                     gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, pm_wide ? 0 : 12, pm_wide ? 0 : 20, pm_wide ? SCREEN_WIDTH : SCREEN_WIDTH - 12, pm_wide ? SCREEN_HEIGHT : SCREEN_HEIGHT - 20) /* PT58: the wide view is the whole 240 rows */;
                 }
-                gDPPipeSync(gMainGfxPos++);
-                gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
-                gDPSetTexturePersp(gMainGfxPos++, G_TP_NONE);
-                gDPSetTextureLOD(gMainGfxPos++, G_TL_TILE);
-                gDPSetTextureDetail(gMainGfxPos++, G_TD_CLAMP);
-                gDPSetTextureConvert(gMainGfxPos++, G_TC_FILT);
-                gDPSetCombineKey(gMainGfxPos++, G_CK_NONE);
-                gDPSetAlphaCompare(gMainGfxPos++, G_AC_NONE);
+                nd_pso_cyc(G_CYC_1CYCLE);
+                nd_pso_persp(G_TP_NONE);
+                nd_pso_lod(G_TL_TILE);
+                nd_pso_detail(G_TD_CLAMP);
+                nd_pso_conv(G_TC_FILT);
+                nd_pso_combkey(G_CK_NONE);
+                nd_pso_alcmp(G_AC_NONE);
                 gDPNoOp(gMainGfxPos++);
-                gDPSetColorDither(gMainGfxPos++, G_CD_DISABLE);
-                gDPSetAlphaDither(gMainGfxPos++, G_AD_DISABLE);
-                gSPTexture(gMainGfxPos++, -1, -1, 0, G_TX_RENDERTILE, G_ON);
+                nd_pso_dither(G_CD_DISABLE);
+                nd_pso_aldith(G_AD_DISABLE);
+                nd_tex_on(-1, -1, 0, G_TX_RENDERTILE, G_ON);
             }
 
             if (!(elem->flags & HUD_ELEMENT_FLAG_RESIZING)) {
@@ -2604,12 +2598,12 @@ void pm_anchor_begin(const void* key, unsigned idx, int x, int y) {
     }
     FI_OPEN(key, idx);
     guOrtho(&gDisplayContext->matrixStack[gMatrixListPos], 0.0f, SCREEN_WIDTH, SCREEN_HEIGHT, 0.0f, -1.0f, 1.0f, 1.0f);
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
     guTranslate(&gDisplayContext->matrixStack[gMatrixListPos], x, y, 0.0f);
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     gSPViewport(gMainGfxPos++, &sAnchorViewport);
     gSPLoadGeometryMode(gMainGfxPos++, 0);
-    gSPTexture(gMainGfxPos++, -1, -1, 0, G_TX_RENDERTILE, G_ON);
+    nd_tex_on(-1, -1, 0, G_TX_RENDERTILE, G_ON);
     sAnchorOpen = true;
     sAnchorX = x;
     sAnchorY = y;
@@ -2619,7 +2613,7 @@ void pm_anchor_end(void) {
     if (!sAnchorOpen) {
         return;
     }
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
     FI_CLOSE();
     sAnchorOpen = false;
 }

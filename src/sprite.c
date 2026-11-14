@@ -5,6 +5,9 @@
 #include "nd_op.h"
 #include "nd_api.h"
 #include "nd_scomp.h"
+#include "nd_st.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 #define MAX_SPRITE_ID 0xEA // todo generate this
 
@@ -284,23 +287,22 @@ static void spr_flat_gfx(Gfx** gp, Quad* vertices, IMG_PTR raster, PAL_PTR palet
                               G_TX_CLAMP, G_TX_CLAMP, 8, 8, G_TX_NOLOD, G_TX_NOLOD,
                               256, 256);
         gDPSetTile(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 4, 0x0100, 2, 0, G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
-        gDPSetTileSize(gMainGfxPos++, 2, 0, 0, 63 << 2, 0);
+        nd_val_tile_size(2, 0, 0, 63 << 2, 0);
         if (flags & SPR_SHADING_FLAG_SET_VIEWPORT) {
             gSPViewport(gMainGfxPos++, vpAlt);
 
             if (alpha == 255) {
-                gDPSetRenderMode(gMainGfxPos++, AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA |
+                nd_pso_rm(AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA |
                                  G_RM_PASS, AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA |
                                  GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM));
             } else {
-                gDPSetRenderMode(gMainGfxPos++, G_RM_PASS, G_RM_ZB_CLD_SURF2);
+                nd_pso_rm(G_RM_PASS, G_RM_ZB_CLD_SURF2);
             }
 
-            gDPSetEnvColor(gMainGfxPos++, 0, 0, 0, alpha);
-            gDPSetCombineMode(gMainGfxPos++, PM_CC_0B, PM_CC_0C);
+            nd_val_env(0, 0, 0, alpha);
+            nd_pso_cc(PM_CC_0B, PM_CC_0C);
             gSPVertex(gMainGfxPos++, vertices, 4, 0);
             gSP2Triangles(gMainGfxPos++, 0, 2, 1, 0, 0, 3, 2, 0);
-            gDPPipeSync(gMainGfxPos++);
         }
         create_shading_palette(mtx, 0, 0, width, height, alpha, alpha == 255 ? 0x111238 : 0x104B50); // TODO make macro for render mode
     } else {
@@ -310,30 +312,28 @@ static void spr_flat_gfx(Gfx** gp, Quad* vertices, IMG_PTR raster, PAL_PTR palet
         if (flags & SPR_SHADING_FLAG_SET_VIEWPORT) {
             gSPViewport(gMainGfxPos++, vpAlt);
             if (alpha == 255) {
-                gDPSetRenderMode(gMainGfxPos++, AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA | ALPHA_CVG_SEL | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM), AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA | ALPHA_CVG_SEL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM));
+                nd_pso_rm(AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA | ALPHA_CVG_SEL | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM), AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA | ALPHA_CVG_SEL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM));
             } else {
-                gDPSetRenderMode(gMainGfxPos++, G_RM_ZB_CLD_SURF, G_RM_ZB_CLD_SURF2);
+                nd_pso_rm(G_RM_ZB_CLD_SURF, G_RM_ZB_CLD_SURF2);
             }
 
-            gDPSetEnvColor(gMainGfxPos++, 0, 0, 0, alpha);
-            gDPSetCombineMode(gMainGfxPos++, PM_CC_0A, PM_CC_0A);
+            nd_val_env(0, 0, 0, alpha);
+            nd_pso_cc(PM_CC_0A, PM_CC_0A);
             gSPVertex(gMainGfxPos++, vertices, 4, 0);
             gSP2Triangles(gMainGfxPos++, 0, 2, 1, 0, 0, 3, 2, 0);
-            gDPPipeSync(gMainGfxPos++);
 
             if (alpha == 255) {
-                gDPSetRenderMode(gMainGfxPos++, AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA |
-                                 GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM),
-                                 AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA |
+                nd_pso_rm(AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA |
+                                 GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM), AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA |
                                  GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM));
             } else {
-                gDPSetRenderMode(gMainGfxPos++, G_RM_ZB_CLD_SURF, G_RM_ZB_CLD_SURF2);
+                nd_pso_rm(G_RM_ZB_CLD_SURF, G_RM_ZB_CLD_SURF2);
             }
 
-            gDPSetEnvColor(gMainGfxPos++, 100, 100, 100, 255);
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, alpha);
-            gDPSetCombineMode(gMainGfxPos++, PM_CC_3D, PM_CC_3D);
-            gDPSetColorDither(gMainGfxPos++, G_CD_MAGICSQ);
+            nd_val_env(100, 100, 100, 255);
+            nd_val_prim(0, 0, 0, 0, 0, alpha);
+            nd_pso_cc(PM_CC_3D, PM_CC_3D);
+            nd_pso_dither(G_CD_MAGICSQ);
         }
     }
 
@@ -395,7 +395,6 @@ void spr_appendGfx_component_flat(
     }
     gSPVertex(gMainGfxPos++, vertices, 4, 0);
     gSP2Triangles(gMainGfxPos++, 0, 2, 1, 0, 0, 3, 2, 0);
-    gDPPipeSync(gMainGfxPos++);
 }
 
 /* S4-1: the render mode, combine and dither the flat path leaves for its final draw (the viewport blocks of spr_appendGfx_component_flat).
@@ -531,7 +530,7 @@ void spr_appendGfx_component(
         }
         if (gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED) gPmNdSprShade(gMainGfxPos++, 0);
     }
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }
 
 void spr_transform_point(s32 rotX, s32 rotY, s32 rotZ, f32 inX, f32 inY, f32 inZ, f32* outX, f32* outY, f32* outZ) {

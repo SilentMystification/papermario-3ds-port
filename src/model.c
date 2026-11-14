@@ -1253,6 +1253,9 @@ Gfx Gfx_RM3_CLOUD_NO_ZB[] = {
 
 /* S5EMDL1: the render-mode lists above as S6T defs (nd_rmdef.h). The units are the static classes of nd_scomp.c. */
 #include "nd_rmdef.h"
+#include "nd_st.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 #define ND_RM_DEF(n) NdSDef n##_def = { n, sizeof n / sizeof n[0] - 1 };
 ND_RM_LIST(ND_RM_DEF)
 
@@ -4575,7 +4578,6 @@ bool is_point_visible(f32 x, f32 y, f32 z, s32 depthQueryID, f32* screenX, f32* 
         return outZ > 0.0f;
     }
     if (outX >= 0.0f && outY >= 0.0f && outX < 320.0f && outY < 240.0f) {
-        gDPPipeSync(gMainGfxPos++);
         // Load a 4x1 pixel tile of the depth buffer
         gDPLoadTextureTile(gMainGfxPos++, osVirtualToPhysical(&nuGfxZBuffer[(s32) outY * SCREEN_WIDTH]), G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, 1,
             (s32) outX, 0, (s32) outX + 3, 0,
@@ -4583,21 +4585,19 @@ bool is_point_visible(f32 x, f32 y, f32 z, s32 depthQueryID, f32* screenX, f32* 
             G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP,
             9, G_TX_NOMASK,
             G_TX_NOLOD, G_TX_NOLOD);
-        gDPPipeSync(gMainGfxPos++);
         // Set the current color image to the buffer where copied depth values are stored.
         gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, DepthCopyBuffer);
-        gDPPipeSync(gMainGfxPos++);
         // Set up 1 cycle mode and all other relevant othermode params.
         // One cycle mode must be used here because only one pixel is copied, and copy mode only supports multiples of 4 pixels.
         gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
-        gDPSetRenderMode(gMainGfxPos++, G_RM_OPA_SURF, G_RM_OPA_SURF2);
-        gDPSetCombineMode(gMainGfxPos++, G_CC_DECALRGBA, G_CC_DECALRGBA);
-        gDPSetTextureFilter(gMainGfxPos++, G_TF_POINT);
-        gDPSetTexturePersp(gMainGfxPos++, G_TP_NONE);
-        gSPTexture(gMainGfxPos++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
-        gDPSetTextureLUT(gMainGfxPos++, G_TT_NONE);
-        gDPSetTextureDetail(gMainGfxPos++, G_TD_CLAMP);
-        gDPSetTextureLOD(gMainGfxPos++, G_TL_TILE);
+        nd_pso_rm(G_RM_OPA_SURF, G_RM_OPA_SURF2);
+        nd_pso_cc(G_CC_DECALRGBA, G_CC_DECALRGBA);
+        nd_pso_filt(G_TF_POINT);
+        nd_pso_persp(G_TP_NONE);
+        nd_tex_on(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
+        nd_pso_lut(G_TT_NONE);
+        nd_pso_detail(G_TD_CLAMP);
+        nd_pso_lod(G_TL_TILE);
         // Adjust the scissor to only draw to the specified pixel.
         gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, depthQueryID, 0, depthQueryID + 1, 1);
         // Draw a texrect to copy one pixel of the loaded depth tile to the output buffer.
@@ -4605,7 +4605,6 @@ bool is_point_visible(f32 x, f32 y, f32 z, s32 depthQueryID, f32* screenX, f32* 
         // Sync and swap the color image back to the current framebuffer.
         gDPPipeSync(gMainGfxPos++);
         gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
-        gDPPipeSync(gMainGfxPos++);
         // Reconfigure the frame's normal scissor.
         gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, camera->viewportStartX, camera->viewportStartY, camera->viewportStartX + camera->viewportW, camera->viewportStartY + camera->viewportH);
 
@@ -4802,9 +4801,9 @@ static const uint32_t* nd_range_begin(void) {
 }
 static void nd_range_repeat(const uint32_t* start, Mtx* flipMtx, Mtx* projMtx) {
     const uint32_t* end = nd_rec_mark();
-    gSPMatrix(gMainGfxPos++, flipMtx, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_PROJECTION);
+    nd_xf_push(flipMtx, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_PROJECTION);
     nd_rec_call(start, end);
-    gSPMatrix(gMainGfxPos++, projMtx, G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
+    nd_xf_push(projMtx, G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
 }
 
 void execute_render_tasks(void) {
@@ -4985,9 +4984,9 @@ static void parade_build_copies(s32 index) {
 
             guTranslateF(mtx, slot->copies[i]->stepX * j, 0.0f, 0.0f);
             guMtxF2L(mtx, dispMtx);
-            gSPMatrix(gMainGfxPos++, dispMtx, G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
+            nd_xf_push(dispMtx, G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
             gSPDisplayList(gMainGfxPos++, dl);
-            gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+            nd_xf_pop(G_MTX_MODELVIEW);
         }
     }
 }
