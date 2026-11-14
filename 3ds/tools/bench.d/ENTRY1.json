@@ -1,0 +1,19 @@
+{
+  "benches": [
+    {
+      "name": "fxpic_20_psochk",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "ENTRY1: psochk compare of the entry-form explosion draw (fxtest=20, cold det start). The psochk lines count draws and bad compares.",
+      "scenario": "fxpic_20_psochk",
+      "cap": 40,
+      "until": "psochk f5\\d\\d draws \\d+ bad \\d+",
+      "tags": [
+        "azahar",
+        "det"
+      ],
+      "gates": []
+    }
+  ]
+}
