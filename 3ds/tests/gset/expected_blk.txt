@@ -1,0 +1,37 @@
+gset keep src/gconv_user.c:2
+gset moved 1 files 1 keep 1
+gset FAIL
+== src/entity/model/M.c
+#include "common.h"
+#include "nd_gtab.h"
+#include "include_asset.h"
+
+Vtx M_vtxA[] = {
+    {{{   -10,   -10,     0 }, 0, {     0,     0 }, { 255, 255, 255, 255 }}},
+};
+NDN_DECL(A);
+Gfx B[] = {
+    gsSPEndDisplayList(),
+};
+Gfx C[] = {
+    gsSPDisplayList(B),
+    gsSPEndDisplayList(),
+};
+== 3ds/tools/gfxin/src/entity/model/M.c
+#include "src/entity/model/M.c"
+Gfx A[] = {
+    gsSPVertex(M_vtxA, 1, 0),
+    }
+    gsSPEndDisplayList(),
+};
+== src/user.c
+#include "effects/fake.h"
+#include "nd_gtab.h"
+NDN_DECL(A);
+void user(void) {
+    nd_draw_list(NDN(A), ND_SELF);
+}
+== src/gconv_user.c
+void user2(void) {
+    nd_draw_list(A, ND_SELF);
+}

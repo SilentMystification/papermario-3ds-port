@@ -1,24 +1,31 @@
 """GSET: move the Gfx lists of a device source into the host twin (3ds/tools/gfxin) and rewrite their users.
 
 Usage: gset.py <gset.d file> [gset_ok.txt] [root]
-  gset.d file: one device source per line (src/effects/gfx/<x>.c), '#' comments.
+  gset.d file: one device source per line (src/effects/gfx/<x>.c or src/entity/model/<x>.c), '#' comments.
   gset_ok.txt: the lists the converter (nd_gfx_conv.c, gset_check) marks ok, one name per line.
   root: the repo root (default: the current directory). Run from the repo root.
 
-Per device source: each `#include "<inc>.inc.c"` whose assets/us/<inc> defines Gfx lists, all of them ok, moves to the twin
-3ds/tools/gfxin/<source path> (the twin's first line includes the source; gen_gfx_syms.py reads both). Then every source file under
-src/ and include/ (not src/effects/gfx) rewrites the moved names: `extern Gfx X[];` -> `NDN_DECL(X);`, any other use of X -> `NDN(X)`
+Include mode (src/effects/gfx/<x>.c): each `#include "<inc>.inc.c"` whose assets/us/<inc> defines Gfx lists, all of them ok, moves to the twin
+3ds/tools/gfxin/<source path> (the twin's first line includes the source; gen_gfx_syms.py reads both).
+Block mode (src/entity/model/<x>.c): each block `Gfx X[] = {` .. the first later line that is exactly `};` moves when X is in gset_ok.txt and
+X is not named outside the moved blocks of the file (a fixpoint: a removed name can block another). The block moves to the twin, in file
+order, after the first line `#include "<source path>"`. The device file keeps one line `NDN_DECL(X);` in its place.
+Then every source file under src/ and include/ (not src/effects/gfx) rewrites the moved names: `extern Gfx X[];` -> `NDN_DECL(X);`, any other use of X -> `NDN(X)`
 (nd_gtab.h). A line with `X[`, `&X`, `sizeof` or BranchList stays and prints `gset keep <file>:<line>`: the list has no symbol, so that
-line must be edited by hand. Prints `gset moved <k> files <f> keep <c>` then `gset ok` or `gset FAIL` (exit 1 on a keep line)."""
+line must be edited by hand. A user file listed in a gconv_src.d row keeps every use (the host link has no ndd_ symbol).
+Prints `gset moved <k> files <f> keep <c>` then `gset ok` or `gset FAIL` (exit 1 on a keep line)."""
 import pathlib
 import re
 import sys
 
 KEEP_RULE = True  # the seeded test (3ds/tests/host.d/gset.sh) runs a copy with this False and expects a diff
+BLOCK_END = "};"  # the block closing line (exact, CR dropped); the seeded test in gset.sh changes this and is_block_end
 DEF = re.compile(r"^\s*(?:const\s+)?Gfx\s+(\w+)\s*\[", re.M)
+BLOCK_OPEN = re.compile(r"^Gfx (\w+)\[\] = \{")
 INC = re.compile(r'^(\s*#include\s+"([^"]+\.inc\.c)")\s*$', re.M)
 DECL = re.compile(r"^(\s*)extern\s+Gfx\s+(\w+)\s*\[\s*\]\s*;")
 SKIP_DIR = "src/effects/gfx/"
+BLOCK_SRC = "src/entity/model/"
 
 
 def read_names(p):
@@ -34,12 +41,26 @@ def assets_dir(root):
     if (root / "assets/us").is_dir():
         return root / "assets/us"
     import subprocess
-    common = subprocess.check_output(["git", "-C", str(root), "rev-parse", "--path-format=absolute", "--git-common-dir"], text=True).strip()
+    try:
+        common = subprocess.check_output(["git", "-C", str(root), "rev-parse", "--path-format=absolute", "--git-common-dir"], text=True, stderr=subprocess.DEVNULL).strip()
+    except (subprocess.CalledProcessError, OSError):
+        return root / "assets/us"  # not a git repo (a fixture): no assets, include mode finds none
     return pathlib.Path(common).parent / "assets/us"
 
 
+def add_gtab(out):
+    """Adds `#include "nd_gtab.h"` after the first #include line of the lines (or first line when there is none)."""
+    joined = "\n".join(out)
+    inc = re.search(r'^\s*#include\s+"[^"]+"', joined, re.M)
+    if inc:
+        idx = joined.find(inc.group(0)) + len(inc.group(0))
+        joined = joined[:idx] + '\n#include "nd_gtab.h"' + joined[idx:]
+        return joined.split("\n")
+    return ['#include "nd_gtab.h"'] + out
+
+
 def move_includes(root, src, ok, twin_dir, assets):
-    """Returns (moved names, the twin path or None)."""
+    """Include mode. Returns (moved names, the twin path or None)."""
     p = root / src
     lines = p.read_text(encoding="utf-8").split("\n")
     moved, keep_lines, out = [], [], []
@@ -70,12 +91,88 @@ def move_includes(root, src, ok, twin_dir, assets):
     return moved, twin
 
 
+def is_block_end(ln):
+    return ln.rstrip() == BLOCK_END
+
+
+def find_blocks(lines):
+    """[(name, first line, last line)] of the Gfx blocks with a closing line (indices, both inclusive), in file order."""
+    found, i = [], 0
+    while i < len(lines):
+        m = BLOCK_OPEN.match(lines[i])
+        if m:
+            j = i + 1
+            while j < len(lines) and not is_block_end(lines[j]):
+                j += 1
+            if j < len(lines):
+                found.append((m.group(1), i, j))
+                i = j + 1
+                continue
+        i += 1
+    return found
+
+
+def move_blocks(root, src, ok, twin_dir):
+    """Block mode. Returns (moved names, the twin path or None)."""
+    p = root / src
+    lines = p.read_text(encoding="utf-8").split("\n")
+    blocks = find_blocks(lines)
+    moving = {n for n, _, _ in blocks if n in ok}
+    while True:
+        inside = set()
+        for n, s, e in blocks:
+            if n in moving:
+                inside.update(range(s, e + 1))
+        outside = "\n".join(ln for k, ln in enumerate(lines) if k not in inside)
+        bad = {n for n in moving if re.search(r"\b" + re.escape(n) + r"\b", outside)}
+        if not bad:
+            break
+        moving -= bad
+    if not moving:
+        return [], None
+    out, body, moved, k = [], [], [], 0
+    starts = {s: (n, e) for n, s, e in blocks if n in moving}
+    while k < len(lines):
+        if k in starts:
+            n, e = starts[k]
+            out.append(f"NDN_DECL({n});")
+            body.extend(lines[k:e + 1])
+            moved.append(n)
+            k = e + 1
+            continue
+        out.append(lines[k])
+        k += 1
+    if "nd_gtab.h" not in "\n".join(lines):
+        out = add_gtab(out)
+    p.write_text("\n".join(out), encoding="utf-8")
+    twin = root / twin_dir / src
+    twin.parent.mkdir(parents=True, exist_ok=True)
+    old = twin.read_text(encoding="utf-8").split("\n") if twin.exists() else [f'#include "{src}"']
+    tbody = old[:1] + [x for x in old[1:] if x] + body
+    twin.write_text("\n".join(tbody) + "\n", encoding="utf-8")
+    return moved, twin
+
+
+def gconv_rows(root):
+    """The device sources the converter reads (gconv_src.d rows ending in .c)."""
+    rows = set()
+    d = root / "3ds/tools/gconv_src.d"
+    if d.is_dir():
+        for f in d.glob("*.txt"):
+            for s in f.read_text(encoding="utf-8", errors="replace").splitlines():
+                s = s.strip()
+                if s and not s.startswith("#") and s.endswith(".c"):
+                    rows.add(s)
+    return rows
+
+
 def rewrite_users(root, names):
     """Returns (files rewritten, keep lines printed)."""
     if not names:
         return 0, 0
     alt = "|".join(re.escape(n) for n in names)
     shield = re.compile(r"(?<!NDN\()(?<!NDN_DECL\()(?<!\w)(" + alt + r")(?!\w)")
+    conv = gconv_rows(root)
     files = []
     for pat in ("src/**/*.c", "src/**/*.h", "include/**/*.h"):
         for f in root.glob(pat):
@@ -94,12 +191,12 @@ def rewrite_users(root, names):
                 out.append(ln)
                 continue
             d = DECL.match(ln)
-            if d and d.group(2) in names:
+            if d and d.group(2) in names and rel not in conv:
                 out.append(f"{d.group(1)}NDN_DECL({d.group(2)});")
                 changed = True
                 continue
             hit = shield.findall(ln)
-            bad = KEEP_RULE and ("BranchList" in ln or "sizeof" in ln or any(re.search(r"\b" + re.escape(n) + r"\s*\[|&\s*" + re.escape(n) + r"\b", ln) for n in hit))
+            bad = rel in conv or (KEEP_RULE and ("BranchList" in ln or "sizeof" in ln or any(re.search(r"\b" + re.escape(n) + r"\s*\[|&\s*" + re.escape(n) + r"\b", ln) for n in hit)))
             if bad:
                 print(f"gset keep {rel}:{i}")
                 keep_here += 1
@@ -111,14 +208,7 @@ def rewrite_users(root, names):
         if not changed:
             continue
         if "nd_gtab.h" not in text:
-            inc = re.search(r'^\s*#include\s+"[^"]+"', "\n".join(out), re.M)
-            if inc:
-                idx = "\n".join(out).find(inc.group(0)) + len(inc.group(0))
-                joined = "\n".join(out)
-                joined = joined[:idx] + '\n#include "nd_gtab.h"' + joined[idx:]
-                out = joined.split("\n")
-            else:
-                out = ['#include "nd_gtab.h"'] + out
+            out = add_gtab(out)
         f.write_text("\n".join(out), encoding="utf-8")
         nfiles += 1
     return nfiles, nkeep
@@ -134,7 +224,10 @@ def main(argv):
     all_moved, files_done = [], 0
     assets = assets_dir(root)
     for src in read_names(lst):
-        moved, twin = move_includes(root, src, ok, "3ds/tools/gfxin", assets)
+        if src.startswith(BLOCK_SRC):
+            moved, twin = move_blocks(root, src, ok, "3ds/tools/gfxin")
+        else:
+            moved, twin = move_includes(root, src, ok, "3ds/tools/gfxin", assets)
         if twin is not None:
             all_moved.extend(moved)
     nf, nkeep = rewrite_users(root, sorted(set(all_moved)))
