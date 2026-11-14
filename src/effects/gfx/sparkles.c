@@ -2,7 +2,6 @@
 
 INCLUDE_IMG("effects/gfx/D_09000000_337FC0.png", D_09000000_337FC0);
 
-#include "effects/gfx/D_09000F20_338EE0.gfx.inc.c"
 
 #include "effects/gfx/D_09000FC8_338F88.vtx.inc.c"
 #include "effects/gfx/D_09001008_338FC8.vtx.inc.c"

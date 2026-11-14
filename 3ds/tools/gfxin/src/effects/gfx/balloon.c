@@ -1,0 +1,4 @@
+#include "src/effects/gfx/balloon.c"
+#include "effects/gfx/D_09001280_3958F0.gfx.inc.c"
+#include "effects/gfx/D_09001358_3959C8.gfx.inc.c"
+#include "effects/gfx/D_09001430_395AA0.gfx.inc.c"

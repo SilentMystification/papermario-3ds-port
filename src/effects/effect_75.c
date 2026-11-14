@@ -5,12 +5,12 @@ ND_PSO_DESC(pe_effect_75_224, 0xfc6198c1, 0x1114b83f, 0x1e182c00, 0x0c1849d8, 0x
 #include "nd_val.h"
 #include "nd_xf.h"
 
-extern Gfx D_09001910_3E4270[];
+NDN_DECL(D_09001910_3E4270);
 extern Gfx D_09001A00_3E4360[];
 extern Gfx D_09001A20_3E4380[];
 
 Gfx* D_E00EAA50[2] = { D_09001A00_3E4360, D_09001A20_3E4380 };
-Gfx* D_E00EAA58[2] = { D_09001910_3E4270, nullptr };
+Gfx* D_E00EAA58[2] = { NDN(D_09001910_3E4270), nullptr };
 
 void effect_75_init(EffectInstance* effect);
 void effect_75_update(EffectInstance* effect);

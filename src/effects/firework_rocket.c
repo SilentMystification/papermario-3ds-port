@@ -14,11 +14,11 @@ typedef struct FireworkRocketUnk {
     /* 0x04 */ s32 num;
 } FireworkRocketUnk; // size = 0x8
 
-extern Gfx D_09000080_3E53D0[];
+NDN_DECL(D_09000080_3E53D0);
 extern Gfx D_09000158_3E54A8[];
 
 Gfx* D_E010ACC0[] = { D_09000158_3E54A8, D_09000158_3E54A8, D_09000158_3E54A8 };
-Gfx* D_E010ACCC[] = { D_09000080_3E53D0, D_09000080_3E53D0, D_09000080_3E53D0 };
+Gfx* D_E010ACCC[] = { NDN(D_09000080_3E53D0), NDN(D_09000080_3E53D0), NDN(D_09000080_3E53D0) };
 
 Vec3b D_E010ACD8[] = {
     {   36,    0,   93 }, {   54,  -40,   74 }, {   67,    0,   74 }, {   82,  -36,   45 }, {   89,    0,   45 },

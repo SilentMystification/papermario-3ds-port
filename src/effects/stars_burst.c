@@ -5,7 +5,7 @@ ND_PSO_DESC(pe_stars_burst_167, 0xfcffb3ff, 0xff65feff, 0x1e082cf0, 0x00504340, 
 #include "nd_val.h"
 #include "nd_xf.h"
 
-extern Gfx D_090004C0_343500[];
+NDN_DECL(D_090004C0_343500);
 extern Gfx D_090005E0_343620[];
 
 u8 D_E0042780[] = {
@@ -142,7 +142,7 @@ void stars_burst_appendGfx(void* effect) {
     s32 i;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_draw_list(D_090004C0_343500, ND_SELF);
+    nd_draw_list(NDN(D_090004C0_343500), ND_SELF);
 
     unk_2C = part->unk_2C;
 

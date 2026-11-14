@@ -5,7 +5,7 @@ ND_PSO_DESC(pe_effect_86_133, 0xfc309661, 0x552eff7f, 0x1e082cf0, 0x00504b50, 0x
 #include "nd_val.h"
 #include "nd_xf.h"
 
-extern Gfx D_09000800_415860[];
+NDN_DECL(D_09000800_415860);
 extern Gfx D_09000BA8_415C08[];
 extern Gfx D_09000BC8_415C28[];
 extern Gfx D_09000BE8_415C48[];
@@ -25,7 +25,7 @@ Gfx* D_E0128480[12] = {
     D_09000CA8_415D08, D_09000CC8_415D28, D_09000CE8_415D48, D_09000D08_415D68
 };
 
-Gfx* D_E01284B0[] = { D_09000800_415860 };
+Gfx* D_E01284B0[] = { NDN(D_09000800_415860) };
 
 void effect_86_init(EffectInstance* effect);
 void effect_86_update(EffectInstance* effect);

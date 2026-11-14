@@ -8,7 +8,7 @@ ND_PSO_DESC(pe_got_item_outline_166, 0xfc309661, 0x552eff7f, 0x1e082cf0, 0x00504
 
 extern IMG_BIN D_09000000_345B40[][0x1000];
 extern IMG_BIN D_09004000_349B40[][0x1000];
-extern Gfx D_09008100_34DC40[];
+NDN_DECL(D_09008100_34DC40);
 extern Gfx D_09008170_34DCB0[];
 extern Gfx D_09008190_34DCD0[];
 extern Gfx D_090081A8_34DCE8[];
@@ -122,7 +122,7 @@ void got_item_outline_appendGfx(void* effect) {
 
     if (scale != 0.0f) {
         nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-        nd_draw_list(D_09008100_34DC40, ND_SELF);
+        nd_draw_list(NDN(D_09008100_34DC40), ND_SELF);
 
         if (type == 0) {
             nd_val_prim(0, 0, 255, 255, 255, data->alpha);

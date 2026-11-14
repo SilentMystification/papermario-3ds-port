@@ -6,7 +6,7 @@
 
 s32 D_E001A610 = 0;
 
-extern Gfx D_090002F0_330750[];
+NDN_DECL(D_090002F0_330750);
 
 void floating_flower_init(EffectInstance* effect);
 void floating_flower_update(EffectInstance* effect);
@@ -166,7 +166,7 @@ void floating_flower_appendGfx(void* effect) {
 
     if (alpha != 0) {
         nd_val_prim(0, 0, 0, 0, 0, alpha);
-        nd_draw_list(D_090002F0_330750, ND_SELF);
+        nd_draw_list(NDN(D_090002F0_330750), ND_SELF);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 }

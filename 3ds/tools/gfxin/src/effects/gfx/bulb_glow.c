@@ -1,0 +1,6 @@
+#include "src/effects/gfx/bulb_glow.c"
+#include "effects/gfx/D_09001400_37C1D0.gfx.inc.c"
+#include "effects/gfx/D_090014B8_37C288.gfx.inc.c"
+#include "effects/gfx/D_09001570_37C340.gfx.inc.c"
+#include "effects/gfx/D_09001618_37C3E8.gfx.inc.c"
+#include "effects/gfx/D_090016C0_37C490.gfx.inc.c"

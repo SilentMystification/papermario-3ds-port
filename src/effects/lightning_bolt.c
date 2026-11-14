@@ -41,7 +41,7 @@ LightningPreset D_E00BCD38[] = {
 
 LightningPreset* D_E00BCE40[] = { D_E00BCC30, D_E00BCD38 };
 
-extern Gfx D_09001000_3BBEA0[];
+NDN_DECL(D_09001000_3BBEA0);
 
 void lightning_bolt_init(EffectInstance* effect);
 void lightning_bolt_update(EffectInstance* effect);
@@ -218,7 +218,7 @@ void lightning_bolt_appendGfx(void* effect) {
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_val_prim(0, 0, data->outerColor.r, data->outerColor.g, data->outerColor.b, alpha);
     nd_val_env(data->innerColor.r, data->innerColor.g, data->innerColor.b, 128);
-    nd_draw_list(D_09001000_3BBEA0, ND_SELF);
+    nd_draw_list(NDN(D_09001000_3BBEA0), ND_SELF);
 
     temp_a0 = lifetime - 1;
     if (type != 2) {

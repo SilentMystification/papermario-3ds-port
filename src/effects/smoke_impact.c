@@ -6,7 +6,7 @@ ND_PSO_DESC(pe_smoke_impact_169, 0xfcffabff, 0xff0d92ff, 0x1e182cf0, 0x0c184b50,
 #include "nd_xf.h"
 #include "nd_st.h"
 
-extern Gfx D_09002A38_32B8D8[];
+NDN_DECL(D_09002A38_32B8D8);
 extern Gfx D_09002B60_32BA00[];
 extern Gfx D_09002B80_32BA20[];
 
@@ -15,7 +15,7 @@ Gfx* D_E003A800[] = {
 };
 
 Gfx* D_E003A80C[] = {
-    D_09002A38_32B8D8, D_09002A38_32B8D8, D_09002A38_32B8D8
+    NDN(D_09002A38_32B8D8), NDN(D_09002A38_32B8D8), NDN(D_09002A38_32B8D8)
 };
 
 void smoke_impact_init(EffectInstance* effect);

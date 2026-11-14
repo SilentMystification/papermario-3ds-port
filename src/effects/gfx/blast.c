@@ -14,18 +14,7 @@ INCLUDE_IMG("effects/gfx/D_09001000_37E9D0.png", D_09001000_37E9D0);
 #include "effects/gfx/D_09001240_37EC10.vtx.inc.c"
 #include "effects/gfx/D_090012C0_37EC90.vtx.inc.c"
 
-#include "effects/gfx/D_09001300_37ECD0.gfx.inc.c"
-#include "effects/gfx/D_09001378_37ED48.gfx.inc.c"
-#include "effects/gfx/D_090013F0_37EDC0.gfx.inc.c"
-#include "effects/gfx/D_09001468_37EE38.gfx.inc.c"
-#include "effects/gfx/D_090014E0_37EEB0.gfx.inc.c"
-#include "effects/gfx/D_09001558_37EF28.gfx.inc.c"
-#include "effects/gfx/D_090015D0_37EFA0.gfx.inc.c"
-#include "effects/gfx/D_09001648_37F018.gfx.inc.c"
-#include "effects/gfx/D_090016C0_37F090.gfx.inc.c"
-#include "effects/gfx/D_09001738_37F108.gfx.inc.c"
 #include "effects/gfx/D_090017B0_37F180.gfx.inc.c"
-#include "effects/gfx/D_090017D0_37F1A0.gfx.inc.c"
 #include "effects/gfx/D_090018C0_37F290.gfx.inc.c"
 
 #include "effects/gfx/D_090018E0_37F2B0.vtx.inc.c"

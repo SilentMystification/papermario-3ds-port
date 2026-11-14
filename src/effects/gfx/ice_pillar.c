@@ -5,7 +5,6 @@ INCLUDE_IMG("effects/gfx/D_09000400_40A5C0.png", D_09000400_40A5C0);
 INCLUDE_IMG("effects/gfx/D_09000800_40A9C0.png", D_09000800_40A9C0);
 INCLUDE_IMG("effects/gfx/D_09000C00_40ADC0.png", D_09000C00_40ADC0);
 
-#include "effects/gfx/D_09001000_40B1C0.gfx.inc.c"
 #include "effects/gfx/D_090010A8_40B268.vtx.inc.c"
 #include "effects/gfx/D_090010E8_40B2A8.vtx.inc.c"
 #include "effects/gfx/D_09001128_40B2E8.vtx.inc.c"

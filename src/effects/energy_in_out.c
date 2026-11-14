@@ -5,7 +5,7 @@ ND_PSO_DESC(pe_energy_in_out_286, 0xfc309661, 0x552eff7f, 0x1e082cf0, 0x00504340
 #include "nd_val.h"
 #include "nd_xf.h"
 
-extern Gfx D_09000200_3D6130[];
+NDN_DECL(D_09000200_3D6130);
 extern Gfx D_090003A8_3D62D8[];
 extern Gfx D_090003C8_3D62F8[];
 extern Gfx D_090003E8_3D6318[];
@@ -264,7 +264,7 @@ void energy_in_out_appendGfx(void* effect) {
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_val_prim(0, 0, part->unk_18, part->unk_1C, part->unk_20, unk_24);
     nd_val_env(part->unk_28, part->unk_2C, part->unk_30, 0);
-    nd_draw_list(D_09000200_3D6130, ND_SELF);
+    nd_draw_list(NDN(D_09000200_3D6130), ND_SELF);
 
     part++;
     for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, part++) {

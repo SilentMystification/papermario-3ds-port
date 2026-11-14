@@ -6,7 +6,7 @@ ND_PSO_DESC(pe_smoke_burst_138, 0xfcffabff, 0xff0d92ff, 0x1e182cf0, 0x0c184b53, 
 #include "nd_xf.h"
 #include "nd_st.h"
 
-extern Gfx D_09002950_32B7F0[];
+NDN_DECL(D_09002950_32B7F0);
 extern Gfx D_09002B60_32BA00[];
 extern Gfx D_09002C60_32BB00[];
 
@@ -15,7 +15,7 @@ Gfx* D_E004E5E0[] = {
 };
 
 Gfx* D_E004E5EC[] = {
-    D_09002950_32B7F0, D_09002950_32B7F0, D_09002950_32B7F0
+    NDN(D_09002950_32B7F0), NDN(D_09002950_32B7F0), NDN(D_09002950_32B7F0)
 };
 
 void smoke_burst_init(EffectInstance* effect);

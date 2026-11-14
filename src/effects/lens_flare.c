@@ -6,11 +6,11 @@ ND_PSO_DESC(pe_lens_flare_161, 0xfcffb3ff, 0xff65feff, 0x1e082cf0, 0x00504340, 0
 #include "nd_val.h"
 #include "nd_xf.h"
 
-extern Gfx D_09000240_345420[];
+NDN_DECL(D_09000240_345420);
 extern Gfx D_090002E0_3454C0[];
 
 Gfx* D_E0034780[] = { D_090002E0_3454C0, D_090002E0_3454C0 };
-Gfx* D_E0034788[] = { D_09000240_345420, D_09000240_345420 };
+Gfx* D_E0034788[] = { NDN(D_09000240_345420), NDN(D_09000240_345420) };
 
 u8 D_E0034790[] = {
     255, 255,  82,

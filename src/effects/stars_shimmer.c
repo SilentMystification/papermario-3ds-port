@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "effects_internal.h"
 #include "nd_val.h"
 #include "nd_xf.h"
@@ -9,7 +10,7 @@ void stars_shimmer_update(EffectInstance* effect);
 void stars_shimmer_render(EffectInstance* effect);
 void stars_shimmer_appendGfx(void* effect);
 
-extern Gfx D_09000F20_338EE0[];
+NDN_DECL(D_09000F20_338EE0);
 extern Gfx D_090011C8_339188[];
 extern Gfx D_090011E0_3391A0[];
 extern Gfx D_090011F8_3391B8[];
@@ -295,7 +296,7 @@ void stars_shimmer_appendGfx(void* effect) {
     state = data->state;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    gSPDisplayList(gMainGfxPos++, D_09000F20_338EE0);
+    gSPDisplayList(gMainGfxPos++, NDN(D_09000F20_338EE0));
 
     temp_s4 = (data->lifeTime - 1) * 3;
     guTranslateF(sp18, data->pos.x, data->pos.y, data->pos.z);

@@ -8,7 +8,7 @@
 extern Gfx D_090003A0_396490[];
 extern Gfx D_090003E0_3964D0[];
 extern Gfx D_09000410_396500[];
-extern Gfx D_09000450_396540[];
+NDN_DECL(D_09000450_396540);
 
 Gfx* D_E0098510[] = {
     D_090003A0_396490, D_090003E0_3964D0, D_09000410_396500,
@@ -132,7 +132,7 @@ void floating_rock_appendGfx(void* effect) {
         nd_pso_rm(G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2);
     }
 
-    nd_draw_list(D_09000450_396540, ND_SELF);
+    nd_draw_list(NDN(D_09000450_396540), ND_SELF);
     nd_rec_dl(D_E0098510[data->type]);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

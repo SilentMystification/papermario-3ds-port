@@ -10,7 +10,7 @@ void windy_leaves_update(EffectInstance* effect);
 void windy_leaves_render(EffectInstance* effect);
 void windy_leaves_appendGfx(void* effect);
 
-extern Gfx D_09001180_33E790[];
+NDN_DECL(D_09001180_33E790);
 extern Gfx D_09001258_33E868[];
 extern Gfx D_09001280_33E890[];
 
@@ -246,7 +246,7 @@ void windy_leaves_appendGfx(void* effect) {
     }
 
     nd_val_seg(0x09, OS_K0_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_draw_list(D_09001180_33E790, ND_SELF);
+    nd_draw_list(NDN(D_09001180_33E790), ND_SELF);
     nd_val_prim(0, 0, 20, 100, 20, part->alpha);
     guTranslateF(sp18, part->unk_04.x, part->unk_04.y, part->unk_04.z);
     guRotateF(sp58, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);

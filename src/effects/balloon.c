@@ -5,12 +5,12 @@ ND_PSO_DESC(pe_balloon_106, 0xfcffffff, 0xfffcf279, 0x1e08ac00, 0x00551238, 0x00
 #include "nd_val.h"
 #include "nd_xf.h"
 
-extern Gfx D_09001280_3958F0[];
-extern Gfx D_09001358_3959C8[];
-extern Gfx D_09001430_395AA0[];
+NDN_DECL(D_09001280_3958F0);
+NDN_DECL(D_09001358_3959C8);
+NDN_DECL(D_09001430_395AA0);
 extern Gfx D_09001508_395B78[];
 
-Gfx* D_E00963E0[] = { D_09001280_3958F0, D_09001358_3959C8, D_09001430_395AA0 };
+Gfx* D_E00963E0[] = { NDN(D_09001280_3958F0), NDN(D_09001358_3959C8), NDN(D_09001430_395AA0) };
 
 void balloon_init(EffectInstance* effect);
 void balloon_update(EffectInstance* effect);

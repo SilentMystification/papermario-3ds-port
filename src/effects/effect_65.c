@@ -14,9 +14,9 @@ void effect_65_update(EffectInstance* effect);
 void effect_65_render(EffectInstance* effect);
 void effect_65_appendGfx(void* effect);
 
-extern Gfx D_09000400_3D15E0[];
+NDN_DECL(D_09000400_3D15E0);
 
-Gfx* D_E00CACB0[] = { D_09000400_3D15E0, D_09000400_3D15E0, D_09000400_3D15E0, D_09000400_3D15E0 };
+Gfx* D_E00CACB0[] = { NDN(D_09000400_3D15E0), NDN(D_09000400_3D15E0), NDN(D_09000400_3D15E0), NDN(D_09000400_3D15E0) };
 
 EffectInstance* effect_65_main(
     s32 variation,

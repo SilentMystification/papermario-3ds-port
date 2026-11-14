@@ -5,20 +5,20 @@ ND_PSO_DESC(pe_emote_308, 0xfcffffff, 0xfffdf2f9, 0x1e082cf0, 0x00504b50, 0x0000
 #include "nd_val.h"
 #include "nd_xf.h"
 
-extern Gfx D_09002170_336DE0[];
-extern Gfx D_09002238_336EA8[];
+NDN_DECL(D_09002170_336DE0);
+NDN_DECL(D_09002238_336EA8);
 extern Gfx D_090022E0_336F50[];
-extern Gfx D_09002308_336F78[];
+NDN_DECL(D_09002308_336F78);
 extern Gfx D_090023B0_337020[];
-extern Gfx D_090023D8_337048[];
+NDN_DECL(D_090023D8_337048);
 extern Gfx D_09002480_3370F0[];
-extern Gfx D_090024A8_337118[];
+NDN_DECL(D_090024A8_337118);
 extern Gfx D_09002550_3371C0[];
-extern Gfx D_09002578_3371E8[];
+NDN_DECL(D_09002578_3371E8);
 
 Gfx* D_E0020C90[] = { D_090022E0_336F50, nullptr, D_090023B0_337020, D_09002480_3370F0, D_09002550_3371C0 };
 
-Gfx* D_E0020CA4[] = { D_09002238_336EA8, nullptr, D_09002308_336F78, D_090023D8_337048, D_090024A8_337118 };
+Gfx* D_E0020CA4[] = { NDN(D_09002238_336EA8), nullptr, NDN(D_09002308_336F78), NDN(D_090023D8_337048), NDN(D_090024A8_337118) };
 
 s8 D_E0020CB8[40] = {
     0, 0, 1, 2, 3, 5, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
@@ -238,7 +238,7 @@ void emote_appendGfx(void* effect) {
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-        nd_draw_list(D_09002170_336DE0, ND_SELF);
+        nd_draw_list(NDN(D_09002170_336DE0), ND_SELF);
         nd_xf_pop(G_MTX_MODELVIEW);
     } else {
         if (part->unk_38 == 0) {
@@ -254,7 +254,7 @@ void emote_appendGfx(void* effect) {
 
                 nd_val_prim(0, 0, 235, 28, 0, 255);
                 nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-                nd_draw_list(D_09002578_3371E8, ND_SELF);
+                nd_draw_list(NDN(D_09002578_3371E8), ND_SELF);
                 nd_xf_pop(G_MTX_MODELVIEW);
             }
         }

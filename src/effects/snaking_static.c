@@ -11,7 +11,7 @@ void snaking_static_init(EffectInstance* effect);
 void snaking_static_render(EffectInstance* effect);
 void snaking_static_appendGfx(void* effect);
 
-extern Gfx D_09001000_3B3D90[];
+NDN_DECL(D_09001000_3B3D90);
 extern Gfx D_090010F8_3B3E88[];
 
 EffectInstance* snaking_static_main(s32 type, f32 posX, f32 posY, f32 posZ, f32 scale, s32 timeLeft) {
@@ -185,7 +185,7 @@ void snaking_static_appendGfx(void* effect) {
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_val_env(data->envCol.r, data->envCol.g, data->envCol.b, 0);
-    nd_draw_list(D_09001000_3B3D90, ND_SELF);
+    nd_draw_list(NDN(D_09001000_3B3D90), ND_SELF);
 
     NdParts pb;
     nd_parts_begin(&pb, 4, 1);

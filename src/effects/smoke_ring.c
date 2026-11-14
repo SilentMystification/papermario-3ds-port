@@ -5,7 +5,7 @@ ND_PSO_DESC(pe_smoke_ring_169, 0xfcffabff, 0xff0d92ff, 0x1e182cf0, 0x0c184b50, 0
 #include "nd_val.h"
 #include "nd_xf.h"
 
-extern Gfx D_09002950_32B7F0[];
+NDN_DECL(D_09002950_32B7F0);
 extern Gfx D_09002B40_32B9E0[];
 extern Gfx D_09002B60_32BA00[];
 
@@ -141,7 +141,7 @@ void smoke_ring_appendGfx(void* effect) {
     }
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_draw_list(D_09002950_32B7F0, ND_SELF);
+    nd_draw_list(NDN(D_09002950_32B7F0), ND_SELF);
 
     guTranslateF(sp18, part->unk_04, part->unk_08, part->unk_0C);
     guRotateF(sp58, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);

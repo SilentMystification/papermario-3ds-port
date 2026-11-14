@@ -6,8 +6,8 @@ ND_PSO_DESC(pe_dust_166, 0xfc30b261, 0x5566ff7f, 0x1e083c00, 0x00504b50, 0x00000
 #include "nd_val.h"
 #include "nd_xf.h"
 
-extern Gfx D_09000CC0_33FCC0[];
-extern Gfx D_09000D68_33FD68[];
+NDN_DECL(D_09000CC0_33FCC0);
+NDN_DECL(D_09000D68_33FD68);
 extern Gfx D_09000E18_33FE18[];
 extern Gfx D_09000E38_33FE38[];
 extern Gfx D_09000E58_33FE58[];
@@ -140,7 +140,7 @@ void dust_appendGfx(void* effect) {
     s32 i;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_draw_list(part->unk_00 == 0 ? D_09000CC0_33FCC0 : D_09000D68_33FD68, ND_SELF);
+    nd_draw_list(part->unk_00 == 0 ? NDN(D_09000CC0_33FCC0) : NDN(D_09000D68_33FD68), ND_SELF);
     nd_val_prim(0, 0, part->unk_30, part->unk_34, part->unk_38, part->unk_18);
     nd_val_env(part->unk_3C, part->unk_40, part->unk_44, 0);
 

@@ -5,7 +5,7 @@ ND_PSO_DESC(pe_cloud_puff_138, 0xfc6096c1, 0xff2dfeff, 0x1e08acf0, 0x00504a50, 0
 #include "nd_val.h"
 #include "nd_xf.h"
 
-extern Gfx D_090000E0_32ED30[];
+NDN_DECL(D_090000E0_32ED30);
 extern Gfx D_090001B8_32EE08[];
 
 void cloud_puff_init(EffectInstance* effect);
@@ -124,7 +124,7 @@ void cloud_puff_appendGfx(void* effect) {
     s32 i;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(effectTemp->shared->graphics));
-    nd_draw_list(D_090000E0_32ED30, ND_SELF);
+    nd_draw_list(NDN(D_090000E0_32ED30), ND_SELF);
 
     for (i = 0; i < effectTemp->numParts; i++, part++) {
         if (part->alive) {
