@@ -1,5 +1,6 @@
 #include "pause_common.h"
 #include "message_ids.h"
+#include "nd_st.h"
 
 #if VERSION_PAL
 extern u8 D_PAL_80271B30[4];
@@ -214,7 +215,7 @@ void pause_items_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 width,
     sp6C = baseX + X_VAR1;
     sp70 = baseY + Y_VAR3;
 
-    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, x1, y1, x2, y2);
+    nd_pso_scis(G_SC_NON_INTERLACE, x1, y1, x2, y2);
 
     for (i = 0; i < 3; i++) {
         for (pageIndex = 0; pageIndex < 20; pageIndex++) {
@@ -333,7 +334,7 @@ void pause_items_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 width,
         y2 = SCREEN_HEIGHT - 1;
     }
 
-    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, x1, y1, x2, y2);
+    nd_pso_scis(G_SC_NON_INTERLACE, x1, y1, x2, y2);
 
     if (gPauseMenuCurrentTab == 3 && gPauseItemsLevel == 1) {
         if (gPauseItemsCurrentPage > 0) {

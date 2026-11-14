@@ -5,6 +5,7 @@
 #include "ld_addrs.h"
 #include "game_modes.h"
 #include "nd_val.h"
+#include "nd_st.h"
 
 extern HudScript HES_Spirit1;
 
@@ -170,9 +171,9 @@ void func_filemenu_8024D710(s32 arg0, MenuPanel* menu, s32 baseX, s32 baseY, s32
 
     if (arg0 != gCurrentLanguage) {
         nd_val_prim(0, 0, 255, 255, 255, 128);
-        gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIA_PRIM, G_CC_MODULATEIA_PRIM);
+        nd_pso_cc(G_CC_MODULATEIA_PRIM, G_CC_MODULATEIA_PRIM);
     } else {
-        gDPSetCombineMode(gMainGfxPos++, G_CC_DECALRGBA, G_CC_DECALRGBA);
+        nd_pso_cc(G_CC_DECALRGBA, G_CC_DECALRGBA);
     }
 
     gDPSetTextureImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 1, &D_802517E0[D_filemenu_8024F124][D_filemenu_8024F1C8[arg0]]);

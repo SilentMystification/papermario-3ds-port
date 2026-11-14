@@ -8,6 +8,7 @@
 #include "sprite/npc/Goompa.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 
 extern MenuPanel gPausePanelTabs;
 extern MenuPanel gPausePanelStats;
@@ -511,10 +512,10 @@ void pause_textbox_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 widt
         hud_element_draw_without_clipping(gPauseCommonHIDs[2]);
     }
 
-    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, baseX + 1, baseY + 1, baseX + width - 1, baseY + height - 1);
+    nd_pso_scis(G_SC_NON_INTERLACE, baseX + 1, baseY + 1, baseX + width - 1, baseY + height - 1);
     draw_msg(msgID, baseX + 10, baseY - gPauseDescTextOffset, 255, MSG_PAL_STANDARD, 0);
     if (gPauseShownDescIconScript != 0) {
-        gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+        nd_pso_scis(G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
         hud_element_set_render_pos(gPauseCommonHIDs[3], baseX - 4, baseY + 16);
         hud_element_set_script(gPauseCommonHIDs[3], gPauseShownDescIconScript);
         hud_element_set_flags(gPauseCommonHIDs[3], HUD_ELEMENT_FLAG_DROP_SHADOW);
@@ -546,9 +547,9 @@ void pause_tutorial_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 wid
         return;
     }
 
-    gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
-    gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
-    gDPSetCombineMode(gMainGfxPos++, G_CC_PRIMITIVE, G_CC_PRIMITIVE);
+    nd_pso_cyc(G_CYC_1CYCLE);
+    nd_pso_rm(G_RM_CLD_SURF, G_RM_CLD_SURF2);
+    nd_pso_cc(G_CC_PRIMITIVE, G_CC_PRIMITIVE);
     nd_val_prim(0, 0, 55, 55, 55, 255);
     pause_draw_rect(baseX * 4, baseY * 4, (baseX + width) * 4, (baseY + 12) * 4, 0, 0, 0, 0, 0);
     nd_val_prim(0, 0, 185, 185, 185, 255);
@@ -592,7 +593,7 @@ void pause_tutorial_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 wid
     margin = (s32)(width - msgWidth) >> 1;
     draw_msg(pause_get_menu_msg(PAUSE_MSG_TUT_NAME_BADGES), baseX + margin, baseY, 255, MSG_PAL_WHITE, DRAW_MSG_STYLE_MENU);
     gPauseTutorialScrollPos += pause_interp_text_scroll(gPauseTutorialState * 140 - gPauseTutorialScrollPos);
-    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, baseX + 1, baseY + 1, baseX + width - 1, baseY + height - 1);
+    nd_pso_scis(G_SC_NON_INTERLACE, baseX + 1, baseY + 1, baseX + width - 1, baseY + height - 1);
     state = gPauseTutorialState;
     get_msg_properties(pause_get_menu_msg(gPauseTutorialDescMessages[state]), &msgHeight2, &msgWidth2, &msgMaxLineChars2, &msgNumLines2, &msgMaxLinesPerPage2, nullptr, 1);
     margin2 = (s32)(width - msgWidth2) >> 1;

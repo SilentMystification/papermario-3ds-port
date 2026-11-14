@@ -5,6 +5,7 @@
 #include "script_api/battle.h"
 #include "sprite.h"
 #include "effects.h"
+#include "nd_st.h"
 
 f32 StarPointsIncrementInterp = 0.0f;
 b8 BtlStarPointsBlinking = false;
@@ -874,7 +875,7 @@ void tattle_cam_pre_render(Camera* camera) {
     gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
 
     if (!(gGameStatusPtr->backgroundFlags & BACKGROUND_FLAG_TEXTURE)) {
-        gDPSetCycleType(gMainGfxPos++, G_CYC_FILL);
+        nd_pso_cyc(G_CYC_FILL);
         gDPSetFillColor(gMainGfxPos++, PACK_FILL_COLOR(cam->bgColor[0], cam->bgColor[1], cam->bgColor[2], 1));
         gDPFillRectangle(gMainGfxPos++, cam->viewportStartX, cam->viewportStartY, cam->viewportStartX + cam->viewportW - 1, cam->viewportStartY + cam->viewportH - 1);
     }

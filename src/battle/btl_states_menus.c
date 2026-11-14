@@ -14,6 +14,7 @@
 #include "sprite/npc/BattleSushie.h"
 #include "sprite/npc/BattleLakilester.h"
 #include "sprite/npc/Twink.h"
+#include "nd_st.h"
 
 extern HudScript HES_YellowArrow;
 
@@ -1750,13 +1751,7 @@ void btl_menu_moves_draw_content(void* data, s32 x, s32 y) {
             xPos = x + 2;
             yPos = y + 18;
             var_t0 = yPos + 1 + (MovesMenuLines * 13);
-            gDPSetScissor(
-                gMainGfxPos++, G_SC_NON_INTERLACE,
-                xPos,
-                yPos,
-                x + X_VAR254,
-                var_t0
-            );
+            nd_pso_scis(G_SC_NON_INTERLACE, xPos, yPos, x + X_VAR254, var_t0);
 
             xPos = x + X_VAR255;
             yPos = y + 19 + MovesScrollOffset;
@@ -2400,7 +2395,7 @@ void btl_menu_strats_draw_content(void* data, s32 x, s32 y) {
             xPos = x + 4;
             yPos = y + 18;
             var_t0 = yPos + 1 + (StratsMenuLines * 13);
-            gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, xPos, yPos, x + STRATS_SUBMENU_WIDTH, var_t0);
+            nd_pso_scis(G_SC_NON_INTERLACE, xPos, yPos, x + STRATS_SUBMENU_WIDTH, var_t0);
 
             xPos = x + 33;
             yPos = y + 19 + StratsScrollOffset;
