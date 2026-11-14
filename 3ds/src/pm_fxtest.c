@@ -269,8 +269,10 @@ void pm_fxtest_tick(unsigned f) {
             }
         } else {
             for (p = strtok(sw, ","); p; p = strtok(NULL, ",")) {
-                n = atoi(p);
-                if (n >= 0 && n < FXT_COUNT) sel[nsel++] = n;
+                char* d = strchr(p, '-'); /* fxtest range form a-b (FXREST2): the same indices as a..b listed */
+                int m;
+                n = atoi(p); m = d ? atoi(d + 1) : n;
+                for (; n <= m; n++) if (n >= 0 && n < FXT_COUNT && nsel < FXT_COUNT) sel[nsel++] = n;
             }
         }
         pm_log("fxtest: %d effects selected of %d, slot %d frames, start frame %d", nsel, FXT_COUNT, SLOT, START);
