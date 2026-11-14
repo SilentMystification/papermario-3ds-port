@@ -4,6 +4,7 @@
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_st.h"
+#include "nd_geo.h"
 
 #define MAX_POINTS      30
 #define VTX_BUF_SIZE    2 * MAX_POINTS * sizeof(Vtx) / sizeof(Gfx)
@@ -385,8 +386,8 @@ void effect_65_appendGfx(void* effect) {
 
         // gSPBranchList jumps to here (after the vertex array)
         for (i = firstPointIdx; i < MAX_POINTS - 1; i++) {
-            gSPVertex(gMainGfxPos++, &vtxBuffer[i * 2], 4, 0);
-            gSP2Triangles(gMainGfxPos++, 0, 2, 1, 0, 1, 2, 3, 0);
+            nd_mesh_vtx(&vtxBuffer[i * 2], 4, 0);
+            nd_mesh_tri2(0, 2, 1, 0, 1, 2, 3, 0);
         }
     }
 

@@ -3,6 +3,7 @@
 #include "nd_gtab.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_geo.h"
 
 extern Gfx D_09000200_3B7AD0[];
 
@@ -173,13 +174,11 @@ void waterfall_appendGfx(void* effect) {
 
     savedIdx = i;
 
-    gSPVertex(gMainGfxPos++, savedGfxPos, i * 2, 0);
+    nd_mesh_vtx(savedGfxPos, i * 2, 0);
 
     for (i = 0; i < savedIdx - 1; i++) {
         s32 i2 = i * 2;
-        gSP2Triangles(gMainGfxPos++,
-            i2    , i2 + 2, i2 + 1, i2,
-            i2 + 1, i2 + 2, i2 + 3, i2);
+        nd_mesh_tri2(i2, i2 + 2, i2 + 1, i2, i2 + 1, i2 + 2, i2 + 3, i2);
     }
 
     nd_xf_pop(G_MTX_MODELVIEW);

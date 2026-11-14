@@ -4,6 +4,7 @@
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_st.h"
+#include "nd_geo.h"
 
 void whirlwind_init(EffectInstance* effect);
 void whirlwind_update(EffectInstance* effect);
@@ -209,7 +210,7 @@ void whirlwind_appendGfx(void* effect) {
 
     // Generate display list
     for (i = 0; i < 15; i++) {
-        gSP2Triangles(gMainGfxPos++, i + 0x10, i + 1, i, 0, i + 0x10, i + 0x11, i + 1, 0);
+        nd_mesh_tri2(i + 0x10, i + 1, i, 0, i + 0x10, i + 0x11, i + 1, 0);
     }
 
     nd_sub_close(&triSub);
@@ -238,7 +239,7 @@ void whirlwind_appendGfx(void* effect) {
         guMtxCatF(sp60, sp20, sp20);
         guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        gSPVertex(gMainGfxPos++, vertexBuffer, 16, 0);
+        nd_mesh_vtx(vertexBuffer, 16, 0);
         nd_xf_pop(G_MTX_MODELVIEW);
 
         guPositionF(sp20, 0.0f, 0.0f, data->unk_118[i + 1], 1.0f, data->unk_38[i + 1] * 10.0f, data->unk_58[i + 1] * 10.0f, data->unk_78[i + 1] * 10.0f);
@@ -251,7 +252,7 @@ void whirlwind_appendGfx(void* effect) {
         guMtxCatF(sp60, sp20, sp20);
         guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        gSPVertex(gMainGfxPos++, &vertexBuffer[16], 16, 16);
+        nd_mesh_vtx(&vertexBuffer[16], 16, 16);
         nd_xf_pop(G_MTX_MODELVIEW);
 
         nd_val_tile_size(G_TX_RENDERTILE, spB0 + i * 16, 0, (spB0 + i * 16 + 63) << 2, 31 << 2);

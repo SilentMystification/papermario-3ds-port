@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+#include "nd_geo.h"
 ND_PSO_DESC(pe_attack_result_text_207, 0xfc40fe81, 0xfffff3f9, 0x1e082cf0, 0x0055307c, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
@@ -187,12 +188,12 @@ void func_E0090444(EffectInstance* effect) {
     if (data->isVisible) {
         scale = data->scale;
         nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(effect->shared->graphics));
-        gDPSetDepthSource(gMainGfxPos++, G_ZS_PRIM);
+        nd_pso_zsrc(G_ZS_PRIM);
         z = 200 - unk_1C;
         if (z < 0) {
             z = 0;
         }
-        gDPSetPrimDepth(gMainGfxPos++, z, 0);
+        nd_val_primz(z, 0);
 
         if (type < 5) {
             guTranslateF(mtxA, data->pos.x, data->pos.y, data->pos.z);
@@ -221,6 +222,6 @@ void func_E0090444(EffectInstance* effect) {
                 (data->pos.y + 64.0f) * 4.0f,
                 G_TX_RENDERTILE, 0, 1024, 512, 65024);
         }
-        gDPSetDepthSource(gMainGfxPos++, G_ZS_PIXEL);
+        nd_pso_zsrc(G_ZS_PIXEL);
     }
 }

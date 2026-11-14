@@ -3,6 +3,7 @@
 #include "nd_gtab.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_geo.h"
 
 void sleep_bubble_appendGfx(void* effect);
 void sleep_bubble_init(EffectInstance* effect);
@@ -148,7 +149,7 @@ void sleep_bubble_appendGfx(void* effect) {
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gSPVertex(gMainGfxPos++, &D_09000180_35D690[1], 1, 0);
+    nd_mesh_vtx(&D_09000180_35D690[1], 1, 0);
 
     guRotateF(sp18, data->unk_10, 0.0f, 0.0f, 1.0f);
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
@@ -159,13 +160,13 @@ void sleep_bubble_appendGfx(void* effect) {
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gSPVertex(gMainGfxPos++, &D_09000180_35D690[0], 1, 1);
+    nd_mesh_vtx(&D_09000180_35D690[0], 1, 1);
 
     for (i = 0; i < ARRAY_COUNT(data->points); i++) {
         guTranslateF(sp18, data->points[i].x, data->points[i].y, 0.0f);
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        gSPVertex(gMainGfxPos++, &D_09000180_35D690[i + 2], 1, i + 2);
+        nd_mesh_vtx(&D_09000180_35D690[i + 2], 1, i + 2);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 
@@ -173,17 +174,17 @@ void sleep_bubble_appendGfx(void* effect) {
     nd_xf_pop(G_MTX_MODELVIEW);
 
     if (timeLeft < 100) {
-        gSP1Triangle(gMainGfxPos++, 21, 2, 1, 0);
+        nd_mesh_tri1(21, 2, 1, 0);
 
         for (i = 0; i < ARRAY_COUNT(data->points) - 1; i++) {
-            gSP1Triangle(gMainGfxPos++, i + 2, i + 3, 1, 0);
+            nd_mesh_tri1(i + 2, i + 3, 1, 0);
         }
     } else {
-        gSP1Triangle(gMainGfxPos++, 0, 1, 2, 0);
-        gSP1Triangle(gMainGfxPos++, 0, 21, 1, 0);
+        nd_mesh_tri1(0, 1, 2, 0);
+        nd_mesh_tri1(0, 21, 1, 0);
 
         for (i = 0; i < ARRAY_COUNT(data->points) - 1; i++) {
-            gSP1Triangle(gMainGfxPos++, i + 2, i + 3, 1, 0);
+            nd_mesh_tri1(i + 2, i + 3, 1, 0);
         }
     }
 }

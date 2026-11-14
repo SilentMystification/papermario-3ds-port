@@ -3,6 +3,7 @@
 #include "nd_gtab.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_geo.h"
 
 extern Vtx_t D_09001400_333AA0[];
 extern Gfx D_09001530_333BD0[];
@@ -254,15 +255,13 @@ void star_appendGfx(void* effect) {
             gDisplayContext->matrixStack[gMatrixListPos] = data->trailMatrices[idx];
 
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            gSPVertex(gMainGfxPos++, &D_09001400_333AA0[i * 2], 2, i * 2);
+            nd_mesh_vtx(&D_09001400_333AA0[i * 2], 2, i * 2);
             nd_xf_pop(G_MTX_MODELVIEW);
         }
 
         for (i = 0; i < 4; i++) {
             s32 i2 = i * 2;
-            gSP2Triangles(gMainGfxPos++,
-                i2    , i2 + 1, i2 + 2, i2,
-                i2 + 1, i2 + 3, i2 + 2, i2 + 1);
+            nd_mesh_tri2(i2, i2 + 1, i2 + 2, i2, i2 + 1, i2 + 3, i2 + 2, i2 + 1);
         }
 
     }

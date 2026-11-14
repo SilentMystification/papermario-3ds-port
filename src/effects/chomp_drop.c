@@ -3,6 +3,7 @@
 #include "nd_gtab.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_geo.h"
 
 void chomp_drop_init(EffectInstance* effect);
 void chomp_drop_update(EffectInstance* effect);
@@ -192,13 +193,11 @@ void chomp_drop_appendGfx(void* effect) {
             vtx->tc[1] = i * 128;
         }
 
-        gSPVertex(gMainGfxPos++, vtxTemp, 32, 0);
+        nd_mesh_vtx(vtxTemp, 32, 0);
 
         for (i = 0; i < 15; i++) {
             s32 i2 = i * 2;
-            gSP2Triangles(gMainGfxPos++,
-                i2    , i2 + 2, i2 + 1, i2,
-                i2 + 1, i2 + 2, i2 + 3, i2);
+            nd_mesh_tri2(i2, i2 + 2, i2 + 1, i2, i2 + 1, i2 + 2, i2 + 3, i2);
             };
     }
 

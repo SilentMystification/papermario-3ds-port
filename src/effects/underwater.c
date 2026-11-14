@@ -5,6 +5,7 @@
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_st.h"
+#include "nd_geo.h"
 
 extern Vtx D_09000428_3B9E98[];
 extern Gfx D_09000528_3B9F98[];
@@ -217,7 +218,7 @@ void underwater_appendGfx(void* effect) {
             sTidalGrid[234].v.tc[0], sTidalGrid[234].v.tc[1], alpha);
     }
 
-    gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, nuGfxCfb_ptr);
+    nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, nuGfxCfb_ptr);
     nd_val_prim(0, 0, data->waterColor.r, data->waterColor.g, data->waterColor.b, alpha >> 1);
     nd_pso_cyc(G_CYC_1CYCLE);
     nd_pso_cc(PM_CC_48, PM_CC_48);
@@ -253,9 +254,9 @@ void underwater_appendGfx(void* effect) {
     for (b = 0; b < TIDAL_ROWS - 1; b++) {
         for (c = 0; c < TIDAL_COLS - 1; c += 12) {
             k = (TIDAL_COLS - 1 - c) < 12 ? (TIDAL_COLS - 1 - c) : 12;
-            gSPVertex(gMainGfxPos++, &sTidalGrid[b * TIDAL_COLS + c], k + 20, 0);
+            nd_mesh_vtx(&sTidalGrid[b * TIDAL_COLS + c], k + 20, 0);
             for (i = 0; i < k; i++) {
-                gSP2Triangles(gMainGfxPos++, i, 20 + i, i + 1, 0, i, 19 + i, 20 + i, 0);
+                nd_mesh_tri2(i, 20 + i, i + 1, 0, i, 19 + i, 20 + i, 0);
             }
         }
     }
