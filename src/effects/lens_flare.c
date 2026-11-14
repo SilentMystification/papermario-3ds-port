@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_lens_flare_141, 0xfcffb3ff, 0xff65feff, 0x1e082cf0, 0x00504340, 0x00000005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 4, 0, 0, 0);
+ND_PSO_DESC(pe_lens_flare_161, 0xfcffb3ff, 0xff65feff, 0x1e082cf0, 0x00504340, 0x00000005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 4, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -138,7 +140,7 @@ void lens_flare_appendGfx(void* effect) {
 
         nd_val_prim(0, 0, D_E0034790[idx], D_E0034790[idx + 1], D_E0034790[idx + 2], alpha);
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        nd_rec_dl(D_E0034780[0]);
+        nd_draw_list(D_E0034780[0], pe_lens_flare_141);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 
@@ -158,7 +160,7 @@ void lens_flare_appendGfx(void* effect) {
         nd_val_prim(0, 0, D_E0034790[idx], D_E0034790[idx + 1], D_E0034790[idx + 2], alpha);
         nd_val_prim(0, 0, 255, 255, 255, alpha);
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        nd_rec_dl(D_E0034780[type]);
+        nd_draw_list(D_E0034780[type], pe_lens_flare_161);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 

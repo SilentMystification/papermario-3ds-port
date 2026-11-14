@@ -1,0 +1,94 @@
+{
+  "benches": [
+    {
+      "name": "fxent_a",
+      "kind": "azahar_stream",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "ENTRYFX entcap a: fxtest effects 0 to 42, entcap lines (cold det start). Log only.",
+      "scenario": "fxent_a",
+      "cap": 45,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "det"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fxent_b",
+      "kind": "azahar_stream",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "ENTRYFX entcap b: fxtest effects 43 to 85, entcap lines (cold det start). Log only.",
+      "scenario": "fxent_b",
+      "cap": 45,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "det"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fxent_c",
+      "kind": "azahar_stream",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "ENTRYFX entcap c: fxtest effects 86 to 127, entcap lines (cold det start). Log only.",
+      "scenario": "fxent_c",
+      "cap": 45,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "det"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fxchk_a",
+      "kind": "azahar_stream",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "ENTRYFX psochk a: fxtest effects 0 to 42, psochk lines (cold det start). Log only.",
+      "scenario": "fxchk_a",
+      "cap": 45,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "det"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fxchk_b",
+      "kind": "azahar_stream",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "ENTRYFX psochk b: fxtest effects 43 to 85, psochk lines (cold det start). Log only.",
+      "scenario": "fxchk_b",
+      "cap": 45,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "det"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fxchk_c",
+      "kind": "azahar_stream",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "ENTRYFX psochk c: fxtest effects 86 to 127, psochk lines (cold det start). Log only.",
+      "scenario": "fxchk_c",
+      "cap": 45,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "det"
+      ],
+      "gates": []
+    }
+  ]
+}

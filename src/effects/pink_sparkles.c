@@ -244,7 +244,7 @@ void pink_sparkles_appendGfx(void* effect) {
     s32 i;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_rec_dl(D_09000F20_338EE0);
+    nd_draw_list(D_09000F20_338EE0, ND_SELF);
 
     colorIdx = (part->unk_20 - 1) * 3;
 

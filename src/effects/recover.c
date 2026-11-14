@@ -3,6 +3,7 @@
 #include "nd_gtab.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 
 extern Gfx D_09003200_385000[];
 extern Gfx D_09003298_385098[];
@@ -194,11 +195,11 @@ void func_E0080448(EffectInstance* effect) {
             nd_val_prim(0, 0, 0, 0, 0, part->alpha);
 
             if (part->alpha == 255) {
-                gDPSetRenderMode(gMainGfxPos++, AA_EN | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM), AA_EN | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM));
-                gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIDECALA, G_CC_MODULATEIDECALA);
+                nd_pso_rm(AA_EN | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM), AA_EN | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM));
+                nd_pso_cc(G_CC_MODULATEIDECALA, G_CC_MODULATEIDECALA);
             } else {
-                gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
-                gDPSetCombineMode(gMainGfxPos++, PM_CC_49, PM_CC_49);
+                nd_pso_rm(G_RM_CLD_SURF, G_RM_CLD_SURF2);
+                nd_pso_cc(PM_CC_49, PM_CC_49);
             }
 
             nd_rec_dl((type == 0 || type == 2) ?
@@ -220,7 +221,7 @@ void func_E0080448(EffectInstance* effect) {
             if (i == 1 && type != 2) {
                 nd_rec_dl(D_090033D0_3851D0);
                 nd_xf_pop(G_MTX_MODELVIEW);
-                nd_rec_dl(D_090034D0_3852D0);
+                nd_draw_list(D_090034D0_3852D0, ND_SELF);
 
                 if (unk_40 < 10 && unk_44 == 0) {
                     nd_rec_dl(D_E0080AC0[unk_40]);

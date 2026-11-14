@@ -1,8 +1,10 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_smoke_burst_138, 0xfcffabff, 0xff0d92ff, 0x1e182cf0, 0x0c184b53, 0x00200005, 0x00000000, 0x00000000, 0x0000005c, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 
 extern Gfx D_09002950_32B7F0[];
 extern Gfx D_09002B60_32BA00[];
@@ -123,7 +125,7 @@ void smoke_burst_appendGfx(void* effect) {
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_val_prim(0, 0, data->rgba.r, data->rgba.g, data->rgba.b, data->rgba.a);
     nd_val_env(0, 0, 0, envAlpha);
-    gDPSetAlphaCompare(gMainGfxPos++, G_AC_DITHER);
+    nd_pso_alcmp(G_AC_DITHER);
     nd_val_tile_size(G_TX_RENDERTILE, (unk_20_s32 * 32     ) * 4, 0, (unk_20_s32 * 32 + 31) * 4, 31 * 4);
 
     temp_a1 = unk_20_s32 * 32 + 32;
@@ -134,7 +136,7 @@ void smoke_burst_appendGfx(void* effect) {
         nd_val_tile_size(1, (temp_a1     ) * 4, 0, (temp_a1 + 31) * 4, 31 * 4);
     }
 
-    nd_rec_dl(dlist);
-    gDPSetAlphaCompare(gMainGfxPos++, G_AC_NONE);
+    nd_draw_list(dlist, pe_smoke_burst_138);
+    nd_pso_alcmp(G_AC_NONE);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

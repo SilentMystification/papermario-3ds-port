@@ -1,8 +1,11 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_stat_change_288, 0xfc123224, 0xff67ffff, 0x1e082cf0, 0x00504340, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_stat_change_296, 0xfc123224, 0xff67ffff, 0x1e082cf0, 0x00504340, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 
 enum ArrowType {
     ARROW_TYPE_ATK_UP = 0,
@@ -253,11 +256,11 @@ void func_E00AC2A4(EffectInstance* effect) {
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
         if (data->unk_24 == 255) {
-            gDPSetRenderMode(gMainGfxPos++, AA_EN | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM), AA_EN | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM));
-            gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIDECALA, G_CC_MODULATEIDECALA);
+            nd_pso_rm(AA_EN | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM), AA_EN | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM));
+            nd_pso_cc(G_CC_MODULATEIDECALA, G_CC_MODULATEIDECALA);
         } else {
-            gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
-            gDPSetCombineMode(gMainGfxPos++, PM_CC_49, PM_CC_49);
+            nd_pso_rm(G_RM_CLD_SURF, G_RM_CLD_SURF2);
+            nd_pso_cc(PM_CC_49, PM_CC_49);
         }
 
         guTranslateF(sp20, 0.0f, data->unk_40, 0.0f);
@@ -270,7 +273,7 @@ void func_E00AC2A4(EffectInstance* effect) {
         nd_val_prim(0, 0, 0, 0, 0, data->unk_24);
         nd_rec_dl(D_E00AC7BC[arrowType]);
         nd_xf_pop(G_MTX_MODELVIEW);
-        nd_rec_dl(D_090028E0_3B1FE0);
+        nd_draw_list(D_090028E0_3B1FE0, ND_SELF);
 
         guTranslateF(sp20, 0.0f, data->unk_3C, 0.0f);
         guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
@@ -284,7 +287,7 @@ void func_E00AC2A4(EffectInstance* effect) {
         }
 
         nd_rec_dl(D_E00AC7C8[idx % 10]);
-        nd_rec_dl(D_090028C0_3B1FC0);
+        nd_draw_list(D_090028C0_3B1FC0, pe_stat_change_288);
 
         if (arrowValue >= 0) {
             nd_rec_dl(D_E00AC7C8[11]);
@@ -292,7 +295,7 @@ void func_E00AC2A4(EffectInstance* effect) {
             nd_rec_dl(D_E00AC7C8[10]);
         }
 
-        nd_rec_dl(D_090028A0_3B1FA0);
+        nd_draw_list(D_090028A0_3B1FA0, pe_stat_change_296);
         nd_xf_pop(G_MTX_MODELVIEW);
         nd_xf_pop(G_MTX_MODELVIEW);
     }

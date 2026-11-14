@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_shattering_stones_196, 0xfc309661, 0xff2fffff, 0x1e080cf0, 0x005049d8, 0x00200405, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -150,7 +151,7 @@ void shattering_stones_appendGfx(void* effect) {
     s32 i;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_rec_dl(D_09000C00_341480);
+    nd_draw_list(D_09000C00_341480, ND_SELF);
 
     if (part->unk_24 == 0) {
         guTranslateF(sp20, part->unk_00, part->unk_04, part->unk_08);
@@ -193,7 +194,7 @@ void shattering_stones_appendGfx(void* effect) {
 
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
             nd_val_prim(0, 0, 150, 150, 200, unk_28);
-            nd_rec_dl(dlist);
+            nd_draw_list(dlist, pe_shattering_stones_196);
             nd_xf_pop(G_MTX_MODELVIEW);
         }
     }

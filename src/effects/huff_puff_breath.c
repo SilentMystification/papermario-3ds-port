@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_huff_puff_breath_155, 0xfc30ffff, 0x5f0ef43f, 0x1e182cf0, 0x0c184340, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -152,6 +153,6 @@ void huff_puff_breath_appendGfx(void* effect) {
     nd_val_env(data->envCol.r, data->envCol.g, data->envCol.b, data->envCol.a);
     nd_rec_dl(D_E00DC648[unk_00]);
     nd_val_tile_size(G_TX_RENDERTILE, uls, ult, uls + 31 * 4, ult + 15 * 4);
-    nd_rec_dl(D_E00DC640[unk_00]);
+    nd_draw_list(D_E00DC640[unk_00], pe_huff_puff_breath_155);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

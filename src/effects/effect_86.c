@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_effect_86_133, 0xfc309661, 0x552eff7f, 0x1e082cf0, 0x00504b50, 0x00200005, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 5, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -130,6 +131,6 @@ void effect_86_appendGfx(void* effect) {
     nd_val_prim(0, 0, part->unk_18, part->unk_1C, part->unk_20, primAlpha);
     nd_val_env(part->unk_28, part->unk_2C, part->unk_30, 0);
     nd_rec_dl(D_E01284B0[0]);
-    nd_rec_dl(D_E0128480[dlistIdx % ARRAY_COUNT(D_E0128480)]);
+    nd_draw_list(D_E0128480[dlistIdx % ARRAY_COUNT(D_E0128480)], pe_effect_86_133);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

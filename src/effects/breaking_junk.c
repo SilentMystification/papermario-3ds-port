@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_breaking_junk_154, 0xfc309661, 0x552eff7f, 0x1e082cf0, 0x00504b50, 0x00200005, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 5, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -151,7 +152,7 @@ void breaking_junk_appendGfx(void* effect) {
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
         nd_val_prim(0, 0, data->primR, data->primG, data->primB, alpha);
         nd_val_env(data->envR, data->envG, data->envB, data->envA);
-        nd_rec_dl(D_E01187B0[(u32)i % ARRAY_COUNT(D_E01187B0)]);
+        nd_draw_list(D_E01187B0[(u32)i % ARRAY_COUNT(D_E01187B0)], pe_breaking_junk_154);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 

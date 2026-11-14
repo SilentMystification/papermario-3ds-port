@@ -135,7 +135,7 @@ void fright_jar_appendGfx(void* effect) {
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    nd_rec_dl(D_09008BE0_3CA780);
+    nd_draw_list(D_09008BE0_3CA780, ND_SELF);
 
     idx = 54 - unk_14;
     if (idx < 0) {

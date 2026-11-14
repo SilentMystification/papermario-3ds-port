@@ -4,6 +4,7 @@
 #include "nd_api.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 
 void snaking_static_update(EffectInstance*);
 void snaking_static_init(EffectInstance* effect);
@@ -184,7 +185,7 @@ void snaking_static_appendGfx(void* effect) {
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_val_env(data->envCol.r, data->envCol.g, data->envCol.b, 0);
-    nd_rec_dl(D_09001000_3B3D90);
+    nd_draw_list(D_09001000_3B3D90, ND_SELF);
 
     NdParts pb;
     nd_parts_begin(&pb, 4, 1);
@@ -209,6 +210,6 @@ void snaking_static_appendGfx(void* effect) {
         }
     }
     nd_parts_end(&pb);
-    gDPSetAlphaCompare(gMainGfxPos++, G_AC_NONE);
+    nd_pso_alcmp(G_AC_NONE);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

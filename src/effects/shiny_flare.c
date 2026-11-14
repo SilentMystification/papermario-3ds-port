@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_shiny_flare_127, 0xfcffb3ff, 0xff65feff, 0x1e082cf0, 0x00504340, 0x00000005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 4, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -118,12 +119,12 @@ void shiny_flare_appendGfx(void* effect) {
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    nd_rec_dl(D_09000240_3D79B0);
+    nd_draw_list(D_09000240_3D79B0, ND_SELF);
     nd_val_prim(0, 0, data->unk_18, data->unk_1C, data->unk_20, unk_24);
 
     idx = data->lifeTime * 3;
 
     nd_val_prim(0, 0, D_E00DA500[idx % ARRAY_COUNT(D_E00DA500)    ], D_E00DA500[idx % ARRAY_COUNT(D_E00DA500) + 1], D_E00DA500[idx % ARRAY_COUNT(D_E00DA500) + 2], unk_24);
-    nd_rec_dl(D_090002E0_3D7A50);
+    nd_draw_list(D_090002E0_3D7A50, pe_shiny_flare_127);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

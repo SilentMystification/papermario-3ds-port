@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_cloud_trail_141, 0xfc6096c1, 0xff2dfeff, 0x1e08acf0, 0x00504a50, 0x00000005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -124,7 +125,7 @@ void cloud_trail_appendGfx(void* effect) {
     s32 i;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(effectTemp->shared->graphics));
-    nd_rec_dl(D_090000E0_32ED30);
+    nd_draw_list(D_090000E0_32ED30, ND_SELF);
 
     for (i = 0; i < effectTemp->numParts; i++, part++) {
         if (part->alive) {
@@ -138,7 +139,7 @@ void cloud_trail_appendGfx(void* effect) {
 
             nd_val_prim(0, 0, 112, 96, 24, part->alpha);
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            nd_rec_dl(D_090001B8_32EE08);
+            nd_draw_list(D_090001B8_32EE08, pe_cloud_trail_141);
             nd_xf_pop(G_MTX_MODELVIEW);
         }
     }

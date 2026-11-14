@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_quizmo_assistant_139, 0xfc119623, 0xff2fffff, 0x1e082cf0, 0x00551238, 0x00200005, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -136,6 +137,6 @@ void quizmo_assistant_appendGfx(void* effect) {
             break;
     }
 
-    nd_rec_dl(D_E011C500[idx]);
+    nd_draw_list(D_E011C500[idx], pe_quizmo_assistant_139);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

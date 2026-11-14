@@ -3,6 +3,7 @@
 #include "nd_gtab.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 
 #define MAX_POINTS      30
 #define VTX_BUF_SIZE    2 * MAX_POINTS * sizeof(Vtx) / sizeof(Gfx)
@@ -259,7 +260,7 @@ void effect_65_appendGfx(void* effect) {
     nd_rec_dl(D_E00CACB0[variation]);
 
     if (variation >= 2) {
-        gDPSetCombineMode(gMainGfxPos++, PM_CC_4E, PM_CC_4F);
+        nd_pso_cc(PM_CC_4E, PM_CC_4F);
     }
 
     nd_val_prim(0, 0, data->primR, data->primG, data->primB, primAlpha);

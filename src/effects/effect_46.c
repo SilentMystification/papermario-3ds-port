@@ -215,7 +215,7 @@ void effect_46_appendGfx(void* effect) {
     type = part->type;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_rec_dl(D_09000420_38EDB0);
+    nd_draw_list(D_09000420_38EDB0, ND_SELF);
 
     guTranslateF(mtxTransform, part->pos.x, part->pos.y, part->pos.z);
     guRotateF(mtxTemp, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);

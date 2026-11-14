@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_damage_stars_269, 0xfcffb3ff, 0xff65feff, 0x1e082cf0, 0x00504340, 0x00000005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 4, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -244,7 +245,7 @@ void damage_stars_appendGfx(void* effect) {
     s32 i;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_rec_dl(D_090004C0_343500);
+    nd_draw_list(D_090004C0_343500, ND_SELF);
 
     baseIdx = (part->lifetime - 1) * 3;
     baseIdx %= 36;
@@ -266,7 +267,7 @@ void damage_stars_appendGfx(void* effect) {
         guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        nd_rec_dl(D_090005E0_343620);
+        nd_draw_list(D_090005E0_343620, pe_damage_stars_269);
         nd_xf_pop(G_MTX_MODELVIEW);
         nd_xf_pop(G_MTX_MODELVIEW);
     }

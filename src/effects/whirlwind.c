@@ -3,6 +3,7 @@
 #include "nd_gtab.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 
 void whirlwind_init(EffectInstance* effect);
 void whirlwind_update(EffectInstance* effect);
@@ -181,7 +182,7 @@ void whirlwind_appendGfx(void* effect) {
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    nd_rec_dl(D_09000400_3D3D30);
+    nd_draw_list(D_09000400_3D3D30, ND_SELF);
 
     // Reserve 0x208 bytes (65 commands) for a vertex buffer (2x16 Vtx + space for the current command)
     vertexBuffer = (Vtx*) nd_rec_data(64 * sizeof(Gfx)); /* DIRECT D6c: the vertex buffer is stream data */
@@ -261,7 +262,7 @@ void whirlwind_appendGfx(void* effect) {
     }
 
     nd_sub_close(&mainSub);
-    gSPClearGeometryMode(gMainGfxPos++, G_CULL_BOTH);
+    nd_pso_geom_clr(G_CULL_BOTH);
     nd_val_prim(0, 0, data->primR, data->primG, data->primB, primAlpha);
     nd_val_env(data->envR, data->envG, data->envB, 32);
 

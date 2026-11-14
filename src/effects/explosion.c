@@ -188,7 +188,7 @@ void explosion_appendGfx(void* effect) {
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
     if (part->unk_00 != -1) {
-        nd_rec_dl(D_09000840_3447B0);
+        nd_draw_list(D_09000840_3447B0, ND_SELF);
 
         guScaleF(sp18, part->unk_20, part->unk_20, 1.0f);
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
@@ -201,7 +201,7 @@ void explosion_appendGfx(void* effect) {
 
     part++;
 
-    nd_rec_dl(D_09000910_344880);
+    nd_draw_list(D_09000910_344880, ND_SELF);
 
     guScaleF(sp18, part->unk_20, part->unk_20, part->unk_20);
     guRotateF(sp58, part->unk_28, 0.0f, 0.0f, 1.0f);

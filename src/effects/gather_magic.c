@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_gather_magic_191, 0xfc10fea0, 0xf30ff2ff, 0x1e182cf0, 0x0c184b50, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -172,7 +173,7 @@ void gather_magic_appendGfx(void* effect) {
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    nd_rec_dl(D_09000080_38F790);
+    nd_draw_list(D_09000080_38F790, ND_SELF);
     nd_val_env(part->unk_3C, part->unk_40, part->unk_44, 0);
 
     part++;
@@ -188,7 +189,7 @@ void gather_magic_appendGfx(void* effect) {
             guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            nd_rec_dl(D_E008E890[i & 1]);
+            nd_draw_list(D_E008E890[i & 1], pe_gather_magic_191);
             nd_xf_pop(G_MTX_MODELVIEW);
         }
     }

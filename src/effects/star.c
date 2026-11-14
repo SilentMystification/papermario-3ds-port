@@ -231,9 +231,9 @@ void star_appendGfx(void* effect) {
     nd_xf_pop(G_MTX_MODELVIEW);
 
     if (type == FX_STAR_SMALL_BOUNCING) {
-        nd_rec_dl(D_090017D0_333E70);
+        nd_draw_list(D_090017D0_333E70, ND_SELF);
     } else {
-        nd_rec_dl(D_09001780_333E20);
+        nd_draw_list(D_09001780_333E20, ND_SELF);
     }
 
     data->trailMatrixPos++;

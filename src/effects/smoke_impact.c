@@ -1,8 +1,10 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_smoke_impact_169, 0xfcffabff, 0xff0d92ff, 0x1e182cf0, 0x0c184b50, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 
 extern Gfx D_09002A38_32B8D8[];
 extern Gfx D_09002B60_32BA00[];
@@ -147,7 +149,7 @@ void smoke_impact_appendGfx(void* effect) {
         nd_val_prim(0, 0, 230, 222, 222, 130);
     } else {
         nd_val_prim(0, 0, 255, 40, 10, 160);
-        gDPSetAlphaCompare(gMainGfxPos++, G_AC_DITHER);
+        nd_pso_alcmp(G_AC_DITHER);
     }
 
     nd_val_env(0, 0, 0, envAlpha);
@@ -165,14 +167,14 @@ void smoke_impact_appendGfx(void* effect) {
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        nd_rec_dl(dlist);
+        nd_draw_list(dlist, pe_smoke_impact_169);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 
     nd_xf_pop(G_MTX_MODELVIEW);
 
     if (unk_00 == 2) {
-        gDPSetAlphaCompare(gMainGfxPos++, G_AC_NONE);
+        nd_pso_alcmp(G_AC_NONE);
     }
 
 }

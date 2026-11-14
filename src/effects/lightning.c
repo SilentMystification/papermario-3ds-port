@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_lightning_281, 0xfc10a2c3, 0xf00fd23f, 0x1e182cf0, 0x0c184b50, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -278,7 +279,7 @@ void lightning_appendGfx(void* effect) {
 
         nd_val_tile_size(G_TX_RENDERTILE, uls, ult, uls + 1020, ult + 124);
         nd_val_tile_size(1, uls2, ult2, uls2 + 1020, ult2 + 124);
-        nd_rec_dl(dlist);
+        nd_draw_list(dlist, pe_lightning_281);
         nd_xf_pop(G_MTX_MODELVIEW);
 
         if (unk_00 < 3) {

@@ -1,8 +1,12 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_star_outline_232, 0xfc309661, 0x552eff7f, 0x1e082cf0, 0x00504b50, 0x00200005, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 5, 0, 0, 0);
+ND_PSO_DESC(pe_star_outline_249, 0xfc321664, 0x552eff7f, 0x1e082cf0, 0x00504b50, 0x00200005, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0);
+ND_PSO_DESC(pe_star_outline_260, 0xfc321664, 0x552eff7f, 0x1e082cf0, 0x005049d8, 0x00200005, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 
 extern Gfx D_09000800_4147A0[];
 extern Gfx D_09000B20_414AC0[];
@@ -221,14 +225,14 @@ void star_outline_appendGfx(void* effect) {
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
         if (data->unk_00 == 0) {
-            gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
+            nd_pso_rm(G_RM_CLD_SURF, G_RM_CLD_SURF2);
         } else {
-            gDPSetRenderMode(gMainGfxPos++, G_RM_ZB_CLD_SURF, G_RM_ZB_CLD_SURF2);
+            nd_pso_rm(G_RM_ZB_CLD_SURF, G_RM_ZB_CLD_SURF2);
         }
 
         nd_val_prim(0, 0, unk_18, unk_1C, unk_20, unk_34 >> 1);
         nd_val_env(unk_28, unk_2C, unk_30, unk_34 >> 1);
-        nd_rec_dl(D_E0126BC4[0]);
+        nd_draw_list(D_E0126BC4[0], pe_star_outline_232);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 
@@ -241,21 +245,21 @@ void star_outline_appendGfx(void* effect) {
 
     if (unk_34 != 0) {
         if (data->unk_00 == 0) {
-            gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
+            nd_pso_rm(G_RM_CLD_SURF, G_RM_CLD_SURF2);
         } else {
-            gDPSetRenderMode(gMainGfxPos++, G_RM_ZB_CLD_SURF, G_RM_ZB_CLD_SURF2);
+            nd_pso_rm(G_RM_ZB_CLD_SURF, G_RM_ZB_CLD_SURF2);
         }
-        nd_rec_dl(D_E0126BC4[0]);
+        nd_draw_list(D_E0126BC4[0], pe_star_outline_249);
     }
 
     if (data->unk_00 == 0) {
-        gDPSetRenderMode(gMainGfxPos++, G_RM_AA_XLU_SURF, G_RM_AA_XLU_SURF2);
+        nd_pso_rm(G_RM_AA_XLU_SURF, G_RM_AA_XLU_SURF2);
     } else {
-        gDPSetRenderMode(gMainGfxPos++, G_RM_AA_ZB_XLU_SURF, G_RM_AA_ZB_XLU_SURF2);
+        nd_pso_rm(G_RM_AA_ZB_XLU_SURF, G_RM_AA_ZB_XLU_SURF2);
     }
 
     nd_val_prim(0, 0, unk_18, unk_1C, unk_20, unk_24);
     nd_val_env(unk_28, unk_2C, unk_30, unk_24);
-    nd_rec_dl(D_E0126BC0[0]);
+    nd_draw_list(D_E0126BC0[0], pe_star_outline_260);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

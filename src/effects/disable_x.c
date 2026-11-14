@@ -3,6 +3,7 @@
 #include "nd_gtab.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 
 extern Gfx D_09002100_3884B0[];
 extern Gfx D_09002198_388548[];
@@ -242,14 +243,13 @@ void func_E00826C4(DisableXFXData* data) {
     nd_val_prim(0, 0, 0, 0, 0, data->alpha);
 
     if (data->alpha == 255) {
-        gDPSetRenderMode(gMainGfxPos++, AA_EN | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA |
-                         GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM),
-                         AA_EN | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA |
+        nd_pso_rm(AA_EN | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA |
+                         GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM), AA_EN | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA |
                          GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM));
-        gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIDECALA, G_CC_MODULATEIDECALA);
+        nd_pso_cc(G_CC_MODULATEIDECALA, G_CC_MODULATEIDECALA);
     } else {
-        gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
-        gDPSetCombineMode(gMainGfxPos++, PM_CC_49, PM_CC_49);
+        nd_pso_rm(G_RM_CLD_SURF, G_RM_CLD_SURF2);
+        nd_pso_cc(PM_CC_49, PM_CC_49);
     }
 }
 
@@ -268,9 +268,9 @@ void func_E00828B4(EffectInstance* effect) {
     for (i = 1; i < effect->numParts; i++, data++) {
         if (unk_38 > 0 || type == 10) {
             if (type == 1) {
-                nd_rec_dl(D_09002198_388548);
+                nd_draw_list(D_09002198_388548, ND_SELF);
             } else {
-                nd_rec_dl(D_09002100_3884B0);
+                nd_draw_list(D_09002100_3884B0, ND_SELF);
             }
             func_E00826C4(data);
             nd_rec_dl(D_09002230_3885E0);
@@ -293,7 +293,7 @@ void func_E0082A84(EffectInstance* effect) {
     for (i = 1; i < effect->numParts; i++, data++) {
         func_E00826C4(data);
         if (unk_38 > 0) {
-            nd_rec_dl(D_090022B0_388660);
+            nd_draw_list(D_090022B0_388660, ND_SELF);
             if (unk_38 < 10) {
                 nd_rec_dl(D_E0082D00[unk_38]);
                 nd_rec_dl(D_09002250_388600);

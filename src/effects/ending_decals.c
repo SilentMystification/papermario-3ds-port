@@ -1,8 +1,10 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_ending_decals_174, 0xfc5096a1, 0x332dfeff, 0x1e082c40, 0x00504b50, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 
 extern Gfx D_09001E40_36CD20[];
 extern Gfx D_09001EA8_36CD88[];
@@ -160,8 +162,8 @@ void ending_decals_appendGfx(void* effect) {
     }
 
     nd_val_env(26, 121, 29, 158);
-    gDPSetColorDither(gMainGfxPos++, G_CD_BAYER);
-    gDPSetAlphaDither(gMainGfxPos++, G_AD_PATTERN);
+    nd_pso_dither(G_CD_BAYER);
+    nd_pso_aldith(G_AD_PATTERN);
     nd_rec_dl(dlist1);
     nd_val_prim(0, 0, data->unk_24, data->unk_25, data->unk_26, alpha);
     nd_val_env(data->unk_27, data->unk_28, data->unk_29, 0);
@@ -170,8 +172,8 @@ void ending_decals_appendGfx(void* effect) {
         dlist2 = D_E00685BC[unk_20 % 14];
     }
 
-    nd_rec_dl(dlist2);
+    nd_draw_list(dlist2, pe_ending_decals_174);
     nd_xf_pop(G_MTX_MODELVIEW);
-    gDPSetColorDither(gMainGfxPos++, G_CD_DISABLE);
-    gDPSetAlphaDither(gMainGfxPos++, G_AD_DISABLE);
+    nd_pso_dither(G_CD_DISABLE);
+    nd_pso_aldith(G_AD_DISABLE);
 }

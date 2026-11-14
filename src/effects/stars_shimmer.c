@@ -2,6 +2,7 @@
 #include "effects_internal.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 
 void stars_shimmer_init(EffectInstance* effect);
 void stars_shimmer_update(EffectInstance* effect);
@@ -316,7 +317,7 @@ void stars_shimmer_appendGfx(void* effect) {
             gf = 0.8f;
             bf = 0.7f;
             if (data->unk_00 != 0) {
-                gDPSetRenderMode(gMainGfxPos++, G_RM_ZB_CLD_SURF, G_RM_ZB_CLD_SURF2);
+                nd_pso_rm(G_RM_ZB_CLD_SURF, G_RM_ZB_CLD_SURF2);
             }
             break;
         case 5:

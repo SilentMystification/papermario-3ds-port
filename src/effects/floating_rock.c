@@ -3,6 +3,7 @@
 #include "nd_gtab.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 
 extern Gfx D_090003A0_396490[];
 extern Gfx D_090003E0_3964D0[];
@@ -126,12 +127,12 @@ void floating_rock_appendGfx(void* effect) {
     nd_val_prim(0, 0, 215, 215, 110, alpha);
 
     if (alpha != 255) {
-        gDPSetRenderMode(gMainGfxPos++, G_RM_AA_ZB_XLU_SURF, G_RM_AA_ZB_XLU_SURF2);
+        nd_pso_rm(G_RM_AA_ZB_XLU_SURF, G_RM_AA_ZB_XLU_SURF2);
     } else {
-        gDPSetRenderMode(gMainGfxPos++, G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2);
+        nd_pso_rm(G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2);
     }
 
-    nd_rec_dl(D_09000450_396540);
+    nd_draw_list(D_09000450_396540, ND_SELF);
     nd_rec_dl(D_E0098510[data->type]);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_small_gold_sparkle_148, 0xfc60b2c1, 0x3365feff, 0x1e083cf0, 0x00504340, 0x00000005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -128,7 +129,7 @@ void small_gold_sparkle_appendGfx(void* effect) {
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    nd_rec_dl(D_090002C0_392700);
+    nd_draw_list(D_090002C0_392700, ND_SELF);
     nd_val_prim(0, 0, 255, 255, 15, 255);
 
     part++;
@@ -145,7 +146,7 @@ void small_gold_sparkle_appendGfx(void* effect) {
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
             nd_xf_push(spD8, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
             nd_rec_dl(sDlists[part->unk_04 >> 1]);
-            nd_rec_dl(D_09000470_3928B0);
+            nd_draw_list(D_09000470_3928B0, pe_small_gold_sparkle_148);
             nd_xf_pop(G_MTX_MODELVIEW);
         }
     }

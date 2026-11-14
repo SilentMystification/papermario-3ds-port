@@ -1,8 +1,10 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_merlin_house_stars_165, 0xfcffa7ff, 0xff17723f, 0x1e182cf0, 0x0c1849d8, 0x00200405, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 
 extern Gfx D_09001000_3A6BE0[];
 extern Gfx D_09001418_3A6FF8[];
@@ -150,8 +152,8 @@ void merlin_house_stars_appendGfx(void* effect) {
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_val_prim(0, 0, 0, 0, 0, 127);
     nd_val_env(0, 0, 0, envAlpha);
-    gDPSetCombineMode(gMainGfxPos++, PM_CC1_MERLIN_STARS, PM_CC2_MERLIN_STARS);
-    nd_rec_dl(D_09001000_3A6BE0);
+    nd_pso_cc(PM_CC1_MERLIN_STARS, PM_CC2_MERLIN_STARS);
+    nd_draw_list(D_09001000_3A6BE0, ND_SELF);
 
     uls = data->unk_1C * 4.0f;
     ult = data->unk_20 * 4.0f;
@@ -161,6 +163,6 @@ void merlin_house_stars_appendGfx(void* effect) {
     ult = data->unk_28 * 4.0f;
     nd_val_tile_size(1, uls, ult, uls + 252, ult + 252);
 
-    nd_rec_dl(D_09001418_3A6FF8);
+    nd_draw_list(D_09001418_3A6FF8, pe_merlin_house_stars_165);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

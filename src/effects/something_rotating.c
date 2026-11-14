@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_something_rotating_310, 0xfc20a2aa, 0xf00ffe2d, 0x1e18ac00, 0x0c1849d8, 0x00220405, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -307,7 +308,7 @@ void something_rotating_appendGfx(void* effect) {
                 l = ((unk_14 * 4.0f) * 200.0f) * (1.0 / 1024);
                 t = ((unk_14 * 4.0f) * 90.0f) * (1.0 / 1024);
                 nd_val_tile_size(1, l, t, l + 0xFC, t + 0xFC);
-                nd_rec_dl(D_E0116C64[0]);
+                nd_draw_list(D_E0116C64[0], pe_something_rotating_310);
             } else {
                 nd_rec_dl(D_E0116C68[0]);
                 nd_val_env(data->env.r, data->env.g, data->env.b, data->unk_25);

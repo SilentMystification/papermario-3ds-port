@@ -1,8 +1,14 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_radiating_energy_orb_164, 0xfc6096c1, 0x332dfeff, 0x1e082cf0, 0x00504b50, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_radiating_energy_orb_184, 0xfcff97ff, 0xff2dfeff, 0x1e082cf0, 0x00504b50, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 4, 0, 0, 0);
+ND_PSO_DESC(pe_radiating_energy_orb_195, 0xfcff97ff, 0xff2dfeff, 0x1e082cf0, 0x00504b50, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 4, 0, 0, 0);
+ND_PSO_DESC(pe_radiating_energy_orb_211, 0xfc5096a1, 0x332dfeff, 0x1e082cf0, 0x00504b50, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_radiating_energy_orb_225, 0xfc5096a1, 0x332dfeff, 0x1e082cf0, 0x00504b50, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 
 extern Gfx D_09001200_3A1F60[];
 extern Gfx D_090012A8_3A2008[];
@@ -159,10 +165,10 @@ void radiating_energy_orb_appendGfx(void* effect) {
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    nd_rec_dl(D_090012A8_3A2008);
-    nd_rec_dl(D_09001510_3A2270);
+    nd_draw_list(D_090012A8_3A2008, ND_SELF);
+    nd_draw_list(D_09001510_3A2270, pe_radiating_energy_orb_164);
     nd_xf_pop(G_MTX_MODELVIEW);
-    nd_rec_dl(D_09001200_3A1F60);
+    nd_draw_list(D_09001200_3A1F60, ND_SELF);
 
     part++;
     for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, part++) {
@@ -170,7 +176,7 @@ void radiating_energy_orb_appendGfx(void* effect) {
 
         if (scale != 0.0f) {
             nd_val_prim(0, 0, 255, 255, 255, (part->unk_14 * unk_14) >> 8);
-            gDPSetCombineMode(gMainGfxPos++, PM_CC_07, PM_CC_07);
+            nd_pso_cc(PM_CC_07, PM_CC_07);
 
             guRotateF(sp18, part->unk_20, 0.0f, 0.0f, 1.0f);
             guTranslateF(sp58, part->unk_2C, 0.0f, 0.0f);
@@ -180,7 +186,7 @@ void radiating_energy_orb_appendGfx(void* effect) {
             guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            nd_rec_dl(D_E009EDFC[0]);
+            nd_draw_list(D_E009EDFC[0], pe_radiating_energy_orb_184);
             nd_xf_pop(G_MTX_MODELVIEW);
 
             guRotateF(sp18, part->unk_20, 0.0f, 0.0f, 1.0f);
@@ -191,11 +197,11 @@ void radiating_energy_orb_appendGfx(void* effect) {
             guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            nd_rec_dl(D_E009EDF8[0]);
+            nd_draw_list(D_E009EDF8[0], pe_radiating_energy_orb_195);
             nd_xf_pop(G_MTX_MODELVIEW);
             nd_val_prim(0, 0, 255, 0, 255, (part->unk_14 * unk_14) >> 9);
             nd_val_env(255, 128, 255, 0);
-            gDPSetCombineMode(gMainGfxPos++, PM_CC_4D, PM_CC_4D);
+            nd_pso_cc(PM_CC_4D, PM_CC_4D);
 
             guRotateF(sp18, part->unk_20 + 14.0f, 0.0f, 0.0f, 1.0f);
             guRotateF(sp58, (i * 10) % 45 + unk_1C, 0.0f, 1.0f, 0.0f);
@@ -207,7 +213,7 @@ void radiating_energy_orb_appendGfx(void* effect) {
             guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            nd_rec_dl(D_E009EDF4[0]);
+            nd_draw_list(D_E009EDF4[0], pe_radiating_energy_orb_211);
             nd_xf_pop(G_MTX_MODELVIEW);
             nd_val_prim(0, 0, 255, 64, 64, (part->unk_14 * unk_14) >> 8);
 
@@ -221,7 +227,7 @@ void radiating_energy_orb_appendGfx(void* effect) {
             guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            nd_rec_dl(D_E009EDF0[0]);
+            nd_draw_list(D_E009EDF0[0], pe_radiating_energy_orb_225);
             nd_xf_pop(G_MTX_MODELVIEW);
         }
     }

@@ -1,8 +1,12 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_damage_indicator_273, 0xfc6232c4, 0xff65feff, 0x1e082cf0, 0x00553048, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0);
+ND_PSO_DESC(pe_damage_indicator_278, 0xfc123224, 0xff67ffff, 0x1e082cf0, 0x00504340, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_damage_indicator_288, 0xfc6232c4, 0xff65feff, 0x1e082cf0, 0x00553048, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 
 extern Gfx D_09001D40_351F60[];
 extern Gfx D_09001DE0_352000[];
@@ -218,25 +222,25 @@ void damage_indicator_render_impl(EffectInstance* effect) {
     part = &(effect->data.damageIndicator)[effect->numParts - 1];
 
     if (part->alpha == 255) {
-        gDPSetRenderMode(gMainGfxPos++, G_RM_AA_TEX_EDGE, G_RM_AA_TEX_EDGE2);
-        gDPSetCombineMode(gMainGfxPos++, PM_CC_DAMAGE_INDICATOR, PM_CC_DAMAGE_INDICATOR);
+        nd_pso_rm(G_RM_AA_TEX_EDGE, G_RM_AA_TEX_EDGE2);
+        nd_pso_cc(PM_CC_DAMAGE_INDICATOR, PM_CC_DAMAGE_INDICATOR);
     } else {
-        gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
-        gDPSetCombineMode(gMainGfxPos++, PM_CC_DAMAGE_INDICATOR, PM_CC_DAMAGE_INDICATOR);
+        nd_pso_rm(G_RM_CLD_SURF, G_RM_CLD_SURF2);
+        nd_pso_cc(PM_CC_DAMAGE_INDICATOR, PM_CC_DAMAGE_INDICATOR);
     }
 
     for(i = 1; i < effect->numParts; i++, part--) {
         s32 rIdx = ((i + spA0) % 12) * 3;
 
         nd_val_prim(0, 0, D_E003CCF8[rIdx], D_E003CCF8[rIdx + 1], D_E003CCF8[rIdx + 2], part->alpha);
-        nd_rec_dl(D_09001D40_351F60);
+        nd_draw_list(D_09001D40_351F60, ND_SELF);
 
         if (i == lastPartIdx) {
             guPositionF(mtxTransform, 0.0f, 0.0f, 0.0f, part->scale, part->curPos.x, part->curPos.y, part->curPos.z);
             guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
 
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            nd_rec_dl(D_09002150_352370);
+            nd_draw_list(D_09002150_352370, ND_SELF);
             nd_xf_pop(G_MTX_MODELVIEW);
 
             guPositionF(mtxTransform, 0.0f, 0.0f, 0.0f, part->scale,
@@ -246,11 +250,11 @@ void damage_indicator_render_impl(EffectInstance* effect) {
             guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
 
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            nd_rec_dl(D_09002160_352380);
+            nd_draw_list(D_09002160_352380, ND_SELF);
             nd_xf_pop(G_MTX_MODELVIEW);
         }
 
-        nd_rec_dl(D_09001D40_351F60);
+        nd_draw_list(D_09001D40_351F60, ND_SELF);
 
         guTranslateF(mtxTransform, part->basePos.x, part->basePos.y, part->basePos.z);
         guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
@@ -263,18 +267,18 @@ void damage_indicator_render_impl(EffectInstance* effect) {
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
         if (i == lastPartIdx) {
-            nd_rec_dl(D_09002170_352390);
+            nd_draw_list(D_09002170_352390, ND_SELF);
         } else {
-            nd_rec_dl(D_09002180_3523A0);
+            nd_draw_list(D_09002180_3523A0, ND_SELF);
         }
 
         if (i == lastPartIdx) {
-            nd_rec_dl(D_090021A8_3523C8);
+            nd_draw_list(D_090021A8_3523C8, pe_damage_indicator_273);
             nd_xf_pop(G_MTX_MODELVIEW);
-            nd_rec_dl(D_09001DE0_352000);
+            nd_draw_list(D_09001DE0_352000, ND_SELF);
             if (numParts < 10) {
                 nd_rec_dl(D_E003CCA0[i]);
-                nd_rec_dl(D_090021C0_3523E0);
+                nd_draw_list(D_090021C0_3523E0, pe_damage_indicator_278);
             } else {
                 s32 onesDigit = numParts % 10;
                 s32 tensDigit = numParts / 10;
@@ -284,7 +288,7 @@ void damage_indicator_render_impl(EffectInstance* effect) {
                 nd_rec_dl(D_090021E0_352400); // GfxDrawTensQuad
             }
         } else {
-            nd_rec_dl(D_09002190_3523B0);
+            nd_draw_list(D_09002190_3523B0, pe_damage_indicator_288);
             nd_xf_pop(G_MTX_MODELVIEW);
         }
 

@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_effect_75_224, 0xfc6198c1, 0x1114b83f, 0x1e182c00, 0x0c1849d8, 0x00200005, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 1, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -221,6 +222,6 @@ void effect_75_appendGfx(void* effect) {
     nd_rec_dl(D_E00EAA58[0]);
     nd_val_tile_size(G_TX_RENDERTILE, uls0, ult0, uls0 + 252, ult0 + 252);
     nd_val_tile_size(1, uls1, ult1, uls1 + 252, ult1 + 252);
-    nd_rec_dl(D_E00EAA50[type]);
+    nd_draw_list(D_E00EAA50[type], pe_effect_75_224);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

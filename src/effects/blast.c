@@ -1,6 +1,7 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_blast_131, 0xfc267ec0, 0x1334fed2, 0x1e183cf0, 0x0c184b50, 0x00000005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 3, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -106,7 +107,7 @@ void blast_appendGfx(void* effect) {
     s32 envAlpha = (data->unk_20 - unk_20) * t;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_rec_dl(D_09001300_37ECD0);
+    nd_draw_list(D_09001300_37ECD0, ND_SELF);
     nd_rec_dl(D_E007C510[unk_20]);
 
     guTranslateF(sp18, data->pos.x, data->pos.y, data->pos.z);
@@ -128,6 +129,6 @@ void blast_appendGfx(void* effect) {
     t = !(s32)t; // required to match
     gDPSetEnvColor(gMainGfxPos++, 255, 255, 139, envAlpha);
 
-    nd_rec_dl(dlist);
+    nd_draw_list(dlist, pe_blast_131);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_flashing_box_shockwave_170, 0xfc5099ff, 0x3f0dfe3f, 0x1e182cf0, 0x0c184f50, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 1, 2, 0, 0, 0);
+ND_PSO_DESC(pe_flashing_box_shockwave_186, 0xfc309661, 0x552eff7f, 0x1e082cf0, 0x00504b50, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 5, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -165,9 +167,9 @@ void flashing_box_shockwave_appendGfx(void* effect) {
         guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        nd_rec_dl(D_09000600_3936A0);
+        nd_draw_list(D_09000600_3936A0, ND_SELF);
         nd_val_tile_size(G_TX_RENDERTILE, time * 8, time * 8, time * 8 + 128, time * 8 + 128);
-        nd_rec_dl(D_090008E8_393988);
+        nd_draw_list(D_090008E8_393988, pe_flashing_box_shockwave_170);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 
@@ -182,8 +184,8 @@ void flashing_box_shockwave_appendGfx(void* effect) {
         guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        nd_rec_dl(D_09000950_3939F0);
-        nd_rec_dl(D_09000FF8_394098);
+        nd_draw_list(D_09000950_3939F0, ND_SELF);
+        nd_draw_list(D_09000FF8_394098, pe_flashing_box_shockwave_186);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 
