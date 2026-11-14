@@ -470,6 +470,18 @@ static int pso_same(const NdPsoDesc* a, const NdPsoDesc* b) {
     if (memcmp(&oa, &ob, sizeof oa)) return 0;
     return !memcmp(a, b, sizeof *a);
 }
+/* GSET3: the unit word of a call. A call into a moved list is written as its device key (nd_gfx_conv.c: &ndd_<callee>), so the
+ * expected word is the device entry of the callee table; any other call keeps the host address w1. 0 when the moved callee has no table. */
+static uint32_t v2_unit_w1(uint32_t w0, uint32_t w1) {
+    if ((w0 >> 24) != NDO_CALL) return w1;
+    for (unsigned s = 0; s < gconv_nsym; s++) {
+        if (gconv_sym[s].kind != GS_GFX || (uintptr_t)gconv_sym[s].addr != (uintptr_t)w1) continue;
+        if (!gconv_sym[s].moved) return w1;
+        for (unsigned j = 0; j < ndn_n; j++) if ((uintptr_t)ndn_all[j]->list == (uintptr_t)w1) return (uint32_t)(uintptr_t)ndn_dev_of[j];
+        return 0;
+    }
+    return w1;
+}
 /* CONV2D: the unit stream of a table (its first op, NDN_UNIT) is the depth-0 words of the list from k = 0: NOPs and the end left out, the
  * walk stops after a branch call (the call stays a unit) */
 static void v2_units(const NdNTab* t, const char* name) {
@@ -485,7 +497,7 @@ static void v2_units(const NdNTab* t, const char* name) {
         const uint32_t w0 = L[2u * k], w1 = L[2u * k + 1u];
         if ((w0 >> 24) == NDO_END) break;
         if (n >= u->b) { v2_fail("unit stream", name, n); return; }
-        if (U[2u * n] != w0 || U[2u * n + 1u] != w1) { v2_fail("unit stream", name, n); return; }
+        if (U[2u * n] != w0 || U[2u * n + 1u] != v2_unit_w1(w0, w1)) { v2_fail("unit stream", name, n); return; }
         n++;
         if ((w0 >> 24) == NDO_CALL && (w0 & 1u)) break;
     }
@@ -550,6 +562,8 @@ static int f_list(const uint32_t* l, unsigned nl, uint32_t* o, unsigned* n, int 
     return nl < ND_DLC_MAXOPS;
 }
 static int f_call(uint32_t w1, unsigned* n, int depth) {
+    /* GSET3: a moved callee comes as its device key &ndd_<callee> (v2_unit_w1): the table of the key gives the list */
+    for (unsigned i = 0; i < ndn_n; i++) if ((uintptr_t)ndn_dev_of[i] == (uintptr_t)w1) { w1 = (uint32_t)(uintptr_t)ndn_all[i]->list; break; }
     const GSym* sym = f_sym(w1);
     if (depth >= 5 || !sym) return 0;
     for (unsigned i = 0; i < ndn_n; i++) {

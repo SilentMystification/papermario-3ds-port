@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "effects.h"
 #include "ld_addrs.h"
 #include "entity.h"
@@ -7,8 +8,8 @@
 
 extern EntityScript Entity_Chest_ScriptOpened;
 
-extern Gfx Entity_Chest_RenderBox[];
-extern Gfx Entity_Chest_RenderLid[];
+NDN_DECL(Entity_Chest_RenderBox);
+NDN_DECL(Entity_Chest_RenderLid);
 extern Mtx Entity_Chest_LidMtx;
 
 EvtScript Entity_Chest_AdjustCam_ISK = {
@@ -102,7 +103,7 @@ void entity_Chest_setupGfx(s32 entityIndex) {
     guMtxCatF(sp58, sp18, sp18);
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gfx = ENTITY_ADDR(entity, Gfx*, Entity_Chest_RenderLid);
+    gfx = ENTITY_ADDR(entity, Gfx*, NDN(Entity_Chest_RenderLid));
     gSPDisplayList(gMainGfxPos++, gfx);
     nd_xf_pop(G_MTX_MODELVIEW);
 }
@@ -483,7 +484,7 @@ EntityScript Entity_Chest_Script = {
     es_Restart
     es_End
 };
-EntityModelScript Entity_Chest_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_Chest_RenderBox, RENDER_MODE_SURFACE_OPA);
+EntityModelScript Entity_Chest_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_Chest_RenderBox), RENDER_MODE_SURFACE_OPA);
 
 EntityBlueprint Entity_GiantChest = {
     .flags = ENTITY_FLAG_4000,

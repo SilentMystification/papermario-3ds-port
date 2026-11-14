@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "effects.h"
 #include "ld_addrs.h"
 #include "entity.h"
@@ -9,7 +10,7 @@
 
 extern EntityBlueprint Entity_SuperBlockContent;
 
-extern Gfx Entity_SuperBlock_Render[];
+NDN_DECL(Entity_SuperBlock_Render);
 extern Gfx Entity_UltraBlock_Render[];
 extern Gfx Entity_SuperBlockContent_Render[];
 extern Gfx Entity_SuperBlockContent_Render2[];
@@ -232,7 +233,7 @@ EntityScript Entity_UltraBlockContent_Script = {
     es_End
 };
 
-EntityModelScript Entity_SuperBlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_SuperBlock_Render, RENDER_MODE_ALPHATEST);
+EntityModelScript Entity_SuperBlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_SuperBlock_Render), RENDER_MODE_ALPHATEST);
 EntityModelScript Entity_SuperBlockContent_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_RenderNone, RENDER_MODE_SURFACE_XLU_LAYER2);
 EntityModelScript Entity_UltraBlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_UltraBlock_Render, RENDER_MODE_ALPHATEST);
 EntityModelScript Entity_UltraBlockContent_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_RenderNone, RENDER_MODE_SURFACE_XLU_LAYER2);

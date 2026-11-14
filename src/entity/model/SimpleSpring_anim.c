@@ -1,13 +1,14 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "animation_script.h"
 
-extern Gfx Entity_SimpleSpring_RenderPart1[];
-extern Gfx Entity_SimpleSpring_RenderPart2[];
-extern Gfx Entity_SimpleSpring_RenderPart3[];
-extern Gfx Entity_SimpleSpring_RenderPart4[];
-extern Gfx Entity_SimpleSpring_RenderPart5[];
-extern Gfx Entity_SimpleSpring_RenderPart6[];
-extern Gfx Entity_SimpleSpring_RenderPart7[];
+NDN_DECL(Entity_SimpleSpring_RenderPart1);
+NDN_DECL(Entity_SimpleSpring_RenderPart2);
+NDN_DECL(Entity_SimpleSpring_RenderPart3);
+NDN_DECL(Entity_SimpleSpring_RenderPart4);
+NDN_DECL(Entity_SimpleSpring_RenderPart5);
+NDN_DECL(Entity_SimpleSpring_RenderPart6);
+NDN_DECL(Entity_SimpleSpring_RenderPart7);
 
 StaticAnimatorNode Entity_SimpleSpring_NodePart9 = {
     .displayList = ENTITY_ANIM_NULL,
@@ -24,48 +25,48 @@ StaticAnimatorNode Entity_SimpleSpring_NodePart8 = {
 };
 
 StaticAnimatorNode Entity_SimpleSpring_NodePart7 = {
-    .displayList = Entity_SimpleSpring_RenderPart7,
+    .displayList = NDN(Entity_SimpleSpring_RenderPart7),
     .sibling = &Entity_SimpleSpring_NodePart8,
     .child = ENTITY_ANIM_NULL,
 };
 
 StaticAnimatorNode Entity_SimpleSpring_NodePart6 = {
-    .displayList = Entity_SimpleSpring_RenderPart6,
+    .displayList = NDN(Entity_SimpleSpring_RenderPart6),
     .pos = { 0.0f, 20.0f, 0.0f },
     .sibling = &Entity_SimpleSpring_NodePart7,
     .child = ENTITY_ANIM_NULL,
 };
 
 StaticAnimatorNode Entity_SimpleSpring_NodePart5 = {
-    .displayList = Entity_SimpleSpring_RenderPart5,
+    .displayList = NDN(Entity_SimpleSpring_RenderPart5),
     .pos = { 0.0f, 8.0f, 0.0f },
     .sibling = &Entity_SimpleSpring_NodePart6,
     .child = ENTITY_ANIM_NULL,
 };
 
 StaticAnimatorNode Entity_SimpleSpring_NodePart4 = {
-    .displayList = Entity_SimpleSpring_RenderPart4,
+    .displayList = NDN(Entity_SimpleSpring_RenderPart4),
     .pos = { 0.0f, 12.0f, 0.0f },
     .sibling = &Entity_SimpleSpring_NodePart5,
     .child = ENTITY_ANIM_NULL,
 };
 
 StaticAnimatorNode Entity_SimpleSpring_NodePart3 = {
-    .displayList = Entity_SimpleSpring_RenderPart3,
+    .displayList = NDN(Entity_SimpleSpring_RenderPart3),
     .pos = { 0.0f, 16.0f, 0.0f },
     .sibling = &Entity_SimpleSpring_NodePart4,
     .child = ENTITY_ANIM_NULL,
 };
 
 StaticAnimatorNode Entity_SimpleSpring_NodePart2 = {
-    .displayList = Entity_SimpleSpring_RenderPart2,
+    .displayList = NDN(Entity_SimpleSpring_RenderPart2),
     .pos = { 0.0f, 20.0f, 0.0f },
     .sibling = &Entity_SimpleSpring_NodePart3,
     .child = ENTITY_ANIM_NULL,
 };
 
 StaticAnimatorNode Entity_SimpleSpring_NodePart1 = {
-    .displayList = Entity_SimpleSpring_RenderPart1,
+    .displayList = NDN(Entity_SimpleSpring_RenderPart1),
     .pos = { 0.0f, 20.0f, 0.0f },
     .sibling = &Entity_SimpleSpring_NodePart2,
     .child = ENTITY_ANIM_NULL,

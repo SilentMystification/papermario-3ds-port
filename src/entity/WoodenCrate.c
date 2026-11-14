@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "npc.h"
 #include "ld_addrs.h"
 #include "entity.h"
@@ -7,7 +8,7 @@
 #include "nd_xf.h"
 
 extern Gfx Entity_RenderNone[];
-extern Gfx Entity_WoodenCrate_Render[];
+NDN_DECL(Entity_WoodenCrate_Render);
 extern Gfx* Entity_WoodenCrate_FragmentsRender[];
 extern Mtx Entity_WoodenCrate_FragmentsMatrices[];
 extern s32 Entity_WoodenCrate_RenderShatteredScript[];
@@ -259,7 +260,7 @@ void entity_WoodenCrate_shatter(Entity* entity, f32 arg1) {
     }
 }
 
-EntityModelScript Entity_WoodenCrate_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_WoodenCrate_Render, RENDER_MODE_SURFACE_OPA);
+EntityModelScript Entity_WoodenCrate_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_WoodenCrate_Render), RENDER_MODE_SURFACE_OPA);
 EntityModelScript Entity_WoodenCrate_RenderShatteredScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_RenderNone, RENDER_MODE_SURFACE_XLU_LAYER1);
 
 EntityScript Entity_WoodenCrate_Script = {

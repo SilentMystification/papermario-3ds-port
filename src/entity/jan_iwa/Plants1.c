@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "sprite.h"
 #include "entity.h"
 #include "animation_script.h"
@@ -20,8 +21,8 @@ extern AnimScript Entity_PinkFlower_AnimationIdle;
 extern Mtx D_0A001098_E9C598;
 extern Gfx D_0A0013B8_E9C8B8[];
 extern Mtx D_0A000B70_E9D470;
-extern Gfx D_0A000D18_E9D618[];
-extern Gfx Entity_SpinningFlower_Render[];
+NDN_DECL(D_0A000D18_E9D618);
+NDN_DECL(Entity_SpinningFlower_Render);
 
 BSS f32 D_802BCE20;
 BSS f32 D_802BCE24[3]; // unused
@@ -47,7 +48,7 @@ void entity_SpinningFlower_setupGfx(s32 entityIndex) {
     guMtxF2L(sp18, &data->unk_30);
     gDisplayContext->matrixStack[gMatrixListPos] = data->unk_30;
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gfx = ENTITY_ADDR(entity, Gfx*, D_0A000D18_E9D618);
+    gfx = ENTITY_ADDR(entity, Gfx*, NDN(D_0A000D18_E9D618));
     gSPDisplayList(gMainGfxPos++, gfx);
     nd_xf_pop(G_MTX_MODELVIEW);
 }
@@ -373,7 +374,7 @@ EntityScript Entity_CymbalPlant_Update = {
 };
 
 EntityModelScript Entity_PinkFlowerLight_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_RenderNone, RENDER_MODE_SURFACE_XLU_LAYER2);
-EntityModelScript Entity_SpinningFlower_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_SpinningFlower_Render, RENDER_MODE_SURFACE_XLU_LAYER1);
+EntityModelScript Entity_SpinningFlower_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_SpinningFlower_Render), RENDER_MODE_SURFACE_XLU_LAYER1);
 
 DmaEntry Entity_CymbalPlant_dma[] = { ENTITY_ROM(CymbalPlant_gfx), ENTITY_ROM(CymbalPlant_anim) };
 DmaEntry Entity_PinkFlower_dma[] = { ENTITY_ROM(PinkFlower_gfx), ENTITY_ROM(PinkFlower_anim) };

@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "ld_addrs.h"
 #include "entity.h"
 #include "nd_xf.h"
@@ -13,7 +14,7 @@ extern s32 ERS_AltHiddenPanel[];
 
 extern Gfx Gfx_HiddenPanel_RenderTop[];
 extern Gfx Gfx_AltHiddenPanel_RenderTop[];
-extern Gfx Gfx_HiddenPanel_RenderHole[];
+NDN_DECL(Gfx_HiddenPanel_RenderHole);
 extern Gfx Gfx_HiddenPanel_Render[];
 extern Gfx Gfx_HiddenPanel_Render2[];
 
@@ -29,7 +30,7 @@ void entity_HiddenPanel_setupGfx(s32 entityIndex) {
         guMtxCatF(tempMtx, rotMtx, tempMtx);
         guMtxF2L(tempMtx, &gDisplayContext->matrixStack[gMatrixListPos]);
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-        gSPDisplayList(gMainGfxPos++, ENTITY_ADDR(entity, Gfx*, Gfx_HiddenPanel_RenderHole));
+        gSPDisplayList(gMainGfxPos++, ENTITY_ADDR(entity, Gfx*, NDN(Gfx_HiddenPanel_RenderHole)));
         nd_xf_pop(G_MTX_MODELVIEW);
     }
     mdl_project_tex_coords(data->modelID, data->renderDList, data->entityMatrix, entity->gfxBaseAddr);

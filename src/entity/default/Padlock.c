@@ -1,12 +1,13 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "entity.h"
 #include "effects.h"
 #include "ld_addrs.h"
 #include "sprite/player.h"
 #include "nd_xf.h"
 
-extern Gfx Entity_Padlock_Render[];
-extern Gfx Entity_Padlock_RenderShackle[];
+NDN_DECL(Entity_Padlock_Render);
+NDN_DECL(Entity_Padlock_RenderShackle);
 extern Mtx Entity_Padlock_mtxShackle;
 extern Gfx Entity_PadlockRedFrame_Render[];
 extern Gfx Entity_PadlockRedFrame_RenderShackle[];
@@ -197,7 +198,7 @@ void entity_Padlock_init(Entity* entity) {
     entity->renderSetupFunc = entity_Padlock_setupGfx;
     data = entity->dataBuf.padlock;
     data->shackleMtx = ENTITY_ADDR(entity, Mtx*, &Entity_Padlock_mtxShackle);
-    data->shackleGfx = Entity_Padlock_RenderShackle;
+    data->shackleGfx = NDN(Entity_Padlock_RenderShackle);
 }
 
 void entity_PadlockRedFrame_init(Entity* entity) {
@@ -233,7 +234,7 @@ EntityScript Entity_Padlock_Script = {
     es_End
 };
 
-EntityModelScript Entity_Padlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_Padlock_Render, RENDER_MODE_SURFACE_OPA);
+EntityModelScript Entity_Padlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_Padlock_Render), RENDER_MODE_SURFACE_OPA);
 EntityModelScript Entity_PadlockRedFrame_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_PadlockRedFrame_Render, RENDER_MODE_SURFACE_OPA);
 EntityModelScript Entity_PadlockRedFace_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_PadlockRedFace_Render, RENDER_MODE_SURFACE_OPA);
 EntityModelScript Entity_PadlockBlueFace_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_PadlockBlueFace_Render, RENDER_MODE_SURFACE_OPA);

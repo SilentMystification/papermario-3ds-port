@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "effects.h"
 #include "ld_addrs.h"
 #include "entity.h"
@@ -6,9 +7,9 @@
 #define REFLECTED_SWITCH_HIDDEN 1
 #define REFLECTED_SWITCH_LINKED 2
 
-extern Gfx Entity_RedSwitch_Render[];
-extern Gfx Entity_BlueSwitch_Render[];
-extern Gfx Entity_GreenStompSwitch_Render[];
+NDN_DECL(Entity_RedSwitch_Render);
+NDN_DECL(Entity_BlueSwitch_Render);
+NDN_DECL(Entity_GreenStompSwitch_Render);
 
 BSS Entity* SwitchToLink;
 
@@ -517,13 +518,13 @@ EntityScript Entity_GreenStompSwitch_Script = {
     es_Restart
 };
 
-EntityModelScript Entity_BlueSwitch_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_BlueSwitch_Render, RENDER_MODE_SURFACE_XLU_LAYER1);
+EntityModelScript Entity_BlueSwitch_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_BlueSwitch_Render), RENDER_MODE_SURFACE_XLU_LAYER1);
 
-EntityModelScript Entity_HugeBlueSwitch_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_BlueSwitch_Render, RENDER_MODE_SURFACE_XLU_LAYER1);
+EntityModelScript Entity_HugeBlueSwitch_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_BlueSwitch_Render), RENDER_MODE_SURFACE_XLU_LAYER1);
 
-EntityModelScript Entity_RedSwitch_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_RedSwitch_Render, RENDER_MODE_SURFACE_XLU_LAYER1);
+EntityModelScript Entity_RedSwitch_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_RedSwitch_Render), RENDER_MODE_SURFACE_XLU_LAYER1);
 
-EntityModelScript Entity_GreenStompSwitch_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_GreenStompSwitch_Render, RENDER_MODE_SURFACE_OPA);
+EntityModelScript Entity_GreenStompSwitch_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_GreenStompSwitch_Render), RENDER_MODE_SURFACE_OPA);
 
 EntityBlueprint Entity_RedSwitch = {
     .flags = ENTITY_FLAG_8000 | ENTITY_FLAG_ALWAYS_FACE_CAMERA,
