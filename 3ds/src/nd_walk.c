@@ -13,6 +13,7 @@
 #include "pm_port.h"
 #include "nd_cmd.h"
 #include "variables.h"
+#include "nd_psochk.h"
 #include "nd_int.h"
 #include "nd_op.h"
 #include "nd_api.h"
@@ -637,6 +638,7 @@ void nd_gtab_run(const uint32_t* rec) {
     gv_streak_flush();
     tex_streak_flush();
 }
+void nd_gtab_run_e(const uint32_t* rec) { nd_psochk_draw((const NdPsoDesc*)(uintptr_t)rec[3]); nd_gtab_run(rec); }
 /* DIRECT D10a: a custom gfx range of the frame stream (model record R11, build_custom_gfx), run to its NDC_END as the walker ran the list it
  * replaces: the list start (gv_epoch, dlc_on, a full combine and render sync: DIP2) and the list end (the vertex and texture streak flush). */
 void nd_range_run(const uint32_t* a) {

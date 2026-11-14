@@ -86,6 +86,7 @@ static unsigned gt_state_only(const uint32_t* l) {
     }
     return 0u;
 }
+static const NdPsoDesc* dl_ent; /* ENTRY1: the entry of the nd_rec_dl_e call in progress (null: none) */
 void nd_rec_dl(const void* list) {
     static const void* memo_l[8];
     static const NdGTab* memo_t[8];
@@ -106,8 +107,9 @@ void nd_rec_dl(const void* list) {
         return;
     }
     gtr_tab++;
-    if (__builtin_expect(PMDL("entcap"), 0)) { const uint32_t r4[4] = { (uint32_t)(uintptr_t)t, fl, (uint32_t)(uintptr_t)__builtin_return_address(0), 0u }; nd_rec_napi(nd_gtab_run, r4, 2u); return; }
+    if (dl_ent || __builtin_expect(PMDL("entcap"), 0)) { const uint32_t r4[4] = { (uint32_t)(uintptr_t)t, fl, (uint32_t)(uintptr_t)__builtin_return_address(0), (uint32_t)(uintptr_t)dl_ent }; nd_rec_napi(dl_ent ? nd_gtab_run_e : nd_gtab_run, r4, 2u); return; }
     const uint32_t rec[2] = { (uint32_t)(uintptr_t)t, fl };
     nd_rec_napi(nd_gtab_run, rec, 1u);
 }
+void nd_rec_dl_e(const void* list, const NdPsoDesc* e) { dl_ent = e; nd_rec_dl(list); dl_ent = NULL; }
 #endif

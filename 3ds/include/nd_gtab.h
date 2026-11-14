@@ -69,11 +69,13 @@ const NdGTab* nd_gtab_find(const void* list);
  * line) as G_PM_LST and its state ops; any other list through the walker's G_DL arms (ent_gdl, dlc_try), else its ops. */
 void nd_rec_dl(const void* list);
 void nd_gtab_run(const uint32_t* rec);
+void nd_gtab_run_e(const uint32_t* rec); /* ENTRY1: nd_gtab_run with the psochk compare of rec[3] (NdPsoDesc*) */
 
 /* CONV2F: nd_draw_list(list, ND_SELF) at the call site of a self-contained v2 table (no entry: the table has its own pipeline state).
- * Any other entry is a build error until the entry form (ENTRY1) exists. */
-#define ND_SELF 0
-#define nd_draw_list(list, entry) do { _Static_assert((entry) == ND_SELF, "an entry needs row ENTRY1"); nd_rec_dl(list); } while (0)
+ * ENTRY1: an entry is an NdPsoDesc (ND_PSO_DESC); ND_SELF is the null entry. nd_rec_dl_e (nd_gtab.c) passes it to the entcap record. */
+#define ND_SELF (*(const NdPsoDesc*)0)
+void nd_rec_dl_e(const void* list, const NdPsoDesc* e);
+#define nd_draw_list(list, entry) nd_rec_dl_e((list), &(entry))
 
 /* CONV2A (plan v3 section 2): the native table of one (static list, entry pso) pair. No pointer into a Gfx array, no typed unit.
  * The converter (CONV2C) writes the tables. nd_ntab_run (CONV2D) runs them on core 0 into the native emit. */
