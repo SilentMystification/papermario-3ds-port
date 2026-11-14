@@ -54,6 +54,37 @@ int main(int argc, char** argv) {
         fprintf(f, "\n  },\n");
     }
     fprintf(f, "};\n");
+    /* NPSO2D: the descriptions by id, and the ids sorted by (cw0, cw1) (insertion sort, equal keys keep id order) for nd_pso_find */
+    if (n > 1024) { fprintf(stderr, "gen_pso_main: %u descs, the sort index holds 1024\n", n); fclose(f); return 1; }
+    fprintf(f, "const NdPsoDesc nd_pso_dsc[%u] = {\n", rows);
+    if (n == 0) fprintf(f, "  { 0 }\n");
+    for (i = 0; i < n; i++) {
+        const NdPsoDesc* d = pso_descs[i];
+        fprintf(f, "  { %uu, %uu, %uu, %uu, %uu, %uu, %uu, %uu, %uu, %uu, %uu, %uu, %uu, %uu, %uu, %uu, %uu, %uu, %uu, %uu },\n",
+                (unsigned)d->cw0, (unsigned)d->cw1, (unsigned)d->omh, (unsigned)d->oml, (unsigned)d->geom, (unsigned)d->key_c, (unsigned)d->key_s,
+                (unsigned)d->conv_k4, (unsigned)d->tex_on, (unsigned)d->use_t1, (unsigned)d->t1_valid, (unsigned)d->dual_on, (unsigned)d->box_prod,
+                (unsigned)d->box_folded, (unsigned)d->comb_set, (unsigned)d->comb_alpha_shade, (unsigned)d->leg_prev, (unsigned)d->vprim,
+                (unsigned)d->zimg, (unsigned)d->plod);
+    }
+    fprintf(f, "};\n");
+    {
+        static uint16_t ord[1024];
+        for (i = 0; i < n; i++) {
+            unsigned k = i;
+            while (k > 0) {
+                const NdPsoDesc* a = pso_descs[ord[k - 1]];
+                const NdPsoDesc* b = pso_descs[i];
+                if (a->cw0 < b->cw0 || (a->cw0 == b->cw0 && a->cw1 <= b->cw1)) break;
+                k--;
+            }
+            for (j = i; j > k; j--) ord[j] = ord[j - 1];
+            ord[k] = (uint16_t)i;
+        }
+        fprintf(f, "const uint16_t nd_pso_ord[%u] = {", rows);
+        if (n == 0) fprintf(f, " 0");
+        for (i = 0; i < n; i++) fprintf(f, "%s%u", i ? "," : " ", (unsigned)ord[i]);
+        fprintf(f, " };\n");
+    }
     fprintf(f, "const unsigned nd_pso_n = %u;\n", n);
     fprintf(f, "const NdPsoOut* nd_pso(NdPso id) { return id < nd_pso_n ? (const NdPsoOut*)(const void*)nd_pso_raw[id] : 0; }\n");
     if (fclose(f) != 0) return 1;

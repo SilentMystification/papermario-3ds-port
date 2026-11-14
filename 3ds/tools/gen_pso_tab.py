@@ -15,6 +15,8 @@ import tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 FLAGS = ["-DF3DEX_GBI_2", "-D_LANGUAGE_C", "-DTARGET_3DS", "-DVERSION_US", "-D_MIPS_SZLONG=32",
          "-I", "include", "-I", "ver/us/build/include", "-I", "3ds/include", "-I", "3ds/stub_include", "-I", "src"]
+# NPSO2D: the table is decided with SSE floats (x87 extended precision can flip the use decision, nd_decide.c)
+SSE = ["-msse2", "-mfpmath=sse"]
 PAT = re.compile(r"\bND_PSO_DESC\s*\(")
 NAME = re.compile(r"[A-Za-z_]\w*\Z")
 
@@ -121,9 +123,9 @@ def main(argv):
             fh.write(f"const NdPsoDesc* const pso_descs[] = {{ {ptrs}" + (", 0" if entries else "") + " };\n")
             fh.write(f"const char* const pso_names[] = {{ {names}" + (", 0" if entries else "") + " };\n")
         pmo = os.path.join(tmp, "pm_comb.o")
-        run(["gcc", "-m32", "-w", *FLAGS, "-c", "-o", pmo, "3ds/src/pm_comb.c"])
+        run(["gcc", "-m32", *SSE, "-w", *FLAGS, "-c", "-o", pmo, "3ds/src/pm_comb.c"])
         gen = os.path.join(tmp, "psogen")
-        run(["gcc", "-m32", "-Wall", "-Wextra", "-Werror", *FLAGS, "-o", gen, os.path.join(HERE, "gen_pso_main.c"),
+        run(["gcc", "-m32", *SSE, "-Wall", "-Wextra", "-Werror", *FLAGS, "-o", gen, os.path.join(HERE, "gen_pso_main.c"),
              "3ds/src/nd_decide.c", "3ds/src/nd_tmpl.c", descs_c, pmo, "-lm"])
         run([gen, out])
     finally:

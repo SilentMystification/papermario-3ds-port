@@ -497,6 +497,9 @@ void nd_pso_build(const struct NdPsoDesc* d, struct NdPsoOut* o);
 int nd_pso_cc(const struct NdPsoDesc* d, uint32_t prim, uint32_t env, uint32_t* cc);
 void nd_pso_colour(const struct NdPsoOut* o, uint32_t prim, uint32_t env, uint32_t plod, uint32_t key, uint32_t keys, uint32_t cconst,
                    uint32_t tev_col[6], uint32_t* buf_col, uint32_t* vtx);
+int nd_pso_in_eq(const struct NdPsoDesc* d, const NdCombIn* w, unsigned vprim); /* NPSO2D: w equals d in every input of nd_comb_core but prim, env, leg_mode, box_pat */
+void nd_pso_fix(NdCombOut* o, const NdCombIn* w, int mode5_prev); /* NPSO2D: a table decision under w's colours, box_pat and mode5 */
+const struct NdPsoOut* nd_pso_find(const NdCombIn* w, unsigned vprim); /* nd_psolk.c */
 
 /* S6-2c-1: an entity list cut at its state ops (segment compile, row S6-2c). A segment is the geometry ops [op0, op1) (VTX, TRI1, TRI2; its triangles are
  * tri0 to tri0 + ntri - 1 in list order) and the state ops [sop0, op0) that come before it, decoded into d (the delta, the nd_mode_compile rules).
