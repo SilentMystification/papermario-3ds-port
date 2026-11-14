@@ -23,7 +23,7 @@
 - Local-packet sites stay (codemod keep first-arg): cam_main.c:220, battle/16C8E0.c:868, crystal_ball_gfx.c:145-152, hud_element.c:610-612,
   animator.c:963 and :973. They build a list in a buffer. Choice: each becomes direct setter calls at the place that calls its buffer, one row per
   file after ws_GEO G3 and ws_TEX merge (the setters exist then). Reason: the buffer exists only to be called once in the same frame.
-## 2. The biggest C1 rest: texture, rectangle, viewport and colour calls (page ws_TEX, next)
+## 2. The biggest C1 rest: texture, rectangle, viewport and colour calls (page ws_TEX.md, written 2026-11-14: header-only nd_tx.h macros)
 - FACT (scratch census above): gDPSetTile 43, gDPLoadTextureTile 42, gSPTextureRectangle 38, gDPFillRectangle 26, gSPViewport 24,
   gDPLoadTextureTile_4b 24, gDPLoadTLUT_pal16 21, gSPScisTextureRectangle 20, gDPSetTextureImage 16, gDPLoadSync 16, gDPLoadTile 14,
   gDPSetFillColor 10, 30 more names with 8 or fewer. Idiom: design_state_calls.md table rows (nd_tex_img .. nd_tex_load_tlut16, nd_rect_tex,
@@ -43,12 +43,14 @@
 - Chunk C2c: gen_gfx_tab.sh:17-18 passes the file, :23 copies ntab_pairs.txt. Device effect: nd_ntab_find now finds these lists, so gt_body
   (nd_walk.c:596-600) runs the unit copy instead of gt_ops. Gate: CONV2E compare `bad 0` with the same seed in the v1 model, drec cmp
   gold_12_drec, gold_33/55/63_drec, fxpic_89_drec, fxpic_91_drec byte-equal. World and entity lists: after their entry page (capture scenes).
-## 4. NEMIT: the native runner of the v2 tables (blocker of C5, C6, C12; no unmerged blocker; Sonnet, needs the user's yes)
-- nd_ntab_run (nd_walk.c:594) walks the Gfx array itself (nd_walk_state on e->list). So no Gfx array can leave the device before a native runner
-  exists. NEMIT: nd_ntab_run executes NdNOp (nd_gtab.h:82-92): NDN_PSO applies nd_pso(id) (nd_api.h:36), NDN_TEX nd_tex_bind_desc
-  (nd_tex_set.c:390), NDN_XF the nd_xf runner (load_mtx, gbi_popmtx), NDN_COL the prim, env, fog, blend values, NDN_DRAW the native indexed
-  emit into nd_native_submit (pm_gpu.c:1312). Why not Haiku: a new runner in shared core-0 emit code whose per-draw side effects must stay
-  byte-equal in drec, and the order of the cut is found while moving. Gate: all 9 drec bases byte-equal, psochk bad 0 in the fxchk scenes.
+## 4. NEMIT: a v2 list reads no Gfx word on the device (blocker of GSET, C5, C6, C12; Haiku, no Sonnet core; oracle 2026-11-14)
+- Choice: GSET needs only that the device takes every word of a moved list from its table. The NdNOp runner that replaces the walker (NDN_PSO ..
+  NDN_DRAW into nd_native_submit) is the reader removal of plan section 6 phase E (C8), not a GSET blocker. Same words, so each step is draw-equal.
+- ws_EMIT.md (closed page): E1 the device index carries the unit copy ndnu and nd_ntab_run walks it (nd_walk.c:594), E3 walk_call runs a v2 callee
+  from it (:245), E2 a v2 list with no triangle skips ent_gdl. Then a list with ntri 0 whose callees are free reads no Gfx word (the notri count, E1).
+- E4 (next oracle design): a v2 list with triangles. ent_compile (nd_ent.c:253) flattens the Gfx (ent_flat :133-148), ent_run hashes it per frame
+  (:486), ent_draw (:449-457) reaches it from entity records. Form: the converter writes the ent_flat copy and the ent_hash_walk value per table, and
+  the ent path takes both from the device entry. Host test: the copied functions against the converter output.
 ## 5. GSET: the Gfx arrays leave the device (blocker: NEMIT and CONV2C2 of the set; Haiku, one set per row)
 - Tool (Haiku, test first): new 3ds/tools/gset.py <3ds/tools/gset.d/<set>.txt>. (1) Moves each `Gfx X[] = {...};` of a listed file into the
   host-only twin 3ds/tools/gfxin/<same path>, whose first line is `#include "<path>"` (Vtx and textures stay on the device). (2) Rewrites the uses:
@@ -61,4 +63,4 @@
 ## 6. Discoveries (for plan_endgame.md section 7)
 - listcen counts src/world/dead (3 files, build 30, gfxpos 32: FACT listcen), but maps.cmake builds no file of it. Choice: listcen.py skips
   src/world/dead after ws_D and ws_GEO G2 merge. Reason: no build or drec can prove an edit there.
-- Plan rows to change: NTGT is no Sonnet core (section 1). NXF2-4 are ws_GEO. NEMIT is a new Sonnet core before GSET1-6.
+- Plan rows to change: NTGT is no Sonnet core (section 1). NXF2-4 are ws_GEO. NEMIT is ws_EMIT plus E4 (Haiku), before GSET1-6.
