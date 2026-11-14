@@ -6,7 +6,7 @@ FP="-msse2 -mfpmath=sse -ffp-contract=off"
 gcc -m32 -w $F -c -o /tmp/ndcomb_c.o 3ds/src/pm_comb.c
 gcc -m32 -w $F -I /tmp/gconv -c -o /tmp/gconv/nd_ntab_idx.o /tmp/gconv/nd_ntab_idx.c
 gcc -m32 -Wall -Wextra -Werror $FP -DNTAB_V2 -DND_SCOMP_HOST $F -I 3ds/tools -o /tmp/ndntab 3ds/tools/nd_gtab_test.c 3ds/src/nd_gtab.c 3ds/src/nd_scomp.c 3ds/src/nd_texwin.c \
-    3ds/src/nd_decide.c 3ds/src/nd_tmpl.c /tmp/ndcomb_c.o /tmp/gconv/nd_gfx_tab.o /tmp/gconv/nd_ntab_idx.o /tmp/gconv/gconv_in.o -lm
+    3ds/src/nd_decide.c 3ds/src/nd_tmpl.c /tmp/ndcomb_c.o /tmp/gconv/nd_gfx_tab.o /tmp/gconv/nd_ntab_idx.o /tmp/gconv/gconv_in.o -Wl,--gc-sections -lm
 echo "seeded fault (one NDN_COL value + 1), bad above 0 expected:"
 /tmp/ndntab --fault > /tmp/ndntab_fault.txt || true
 if grep -q "^ntab tables [0-9]* draws [0-9]* bad 0$" /tmp/ndntab_fault.txt; then echo "seeded fault not seen"; exit 1; fi

@@ -9,6 +9,9 @@ typedef struct GSym {
     const void* end;
     int moved; /* GSET: defined in a 3ds/tools/gfxin twin */
 } GSym;
-extern const GSym gconv_sym[];
-extern const unsigned gconv_nsym;
+#define GCONV_SEC __attribute__((section("gconv_sym"), used, aligned(4)))
+extern const GSym __start_gconv_sym[];
+extern const GSym __stop_gconv_sym[];
+#define gconv_sym __start_gconv_sym
+#define gconv_nsym ((unsigned)(__stop_gconv_sym - __start_gconv_sym))
 #endif
