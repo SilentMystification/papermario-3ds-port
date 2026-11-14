@@ -18,9 +18,9 @@ f32 D_E00529E0[] = {
 };
 
 extern Vtx D_09000180_35D690[];
-extern Gfx D_090002E0_35D7F0[];
-extern Gfx D_09000390_35D8A0[];
-extern Gfx D_09000440_35D950[];
+NDN_DECL(D_090002E0_35D7F0);
+NDN_DECL(D_09000390_35D8A0);
+NDN_DECL(D_09000440_35D950);
 
 void sleep_bubble_main(s32 arg0, f32 arg1, f32 arg2, f32 arg3, f32 arg4, f32 arg5, EffectInstance** arg6) {
     EffectBlueprint bp;
@@ -138,11 +138,11 @@ void sleep_bubble_appendGfx(void* effect) {
 
     timeLeft = data->timeLeft;
     if (timeLeft == 0) {
-        nd_draw_list(D_09000440_35D950, ND_SELF);
+        nd_draw_list(NDN(D_09000440_35D950), ND_SELF);
     } else if (timeLeft == 1) {
-        nd_draw_list(D_09000390_35D8A0, ND_SELF);
+        nd_draw_list(NDN(D_09000390_35D8A0), ND_SELF);
     } else {
-        nd_draw_list(D_090002E0_35D7F0, ND_SELF);
+        nd_draw_list(NDN(D_090002E0_35D7F0), ND_SELF);
     }
 
     guTranslateF(sp18, data->pos.x, data->pos.y, data->pos.z);

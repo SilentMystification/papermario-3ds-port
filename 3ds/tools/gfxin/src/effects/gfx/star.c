@@ -1,0 +1,5 @@
+#include "src/effects/gfx/star.c"
+#include "effects/gfx/D_09001530_333BD0.gfx.inc.c"
+#include "effects/gfx/D_09001650_333CF0.gfx.inc.c"
+#include "effects/gfx/D_09001780_333E20.gfx.inc.c"
+#include "effects/gfx/D_090017D0_333E70.gfx.inc.c"

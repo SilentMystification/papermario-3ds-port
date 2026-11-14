@@ -114,5 +114,4 @@ INCLUDE_PAL("effects/gfx/D_09000878_3BE218.pal", D_09000A78_3BE418);
 
 u8 D_090037A0_3C1140[8] = {};
 
-#include "effects/gfx/D_090037A8_3C1148.gfx.inc.c"
 #include "effects/gfx/D_09003818_3C11B8.gfx.inc.c"

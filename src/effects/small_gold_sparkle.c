@@ -5,15 +5,15 @@ ND_PSO_DESC(pe_small_gold_sparkle_148, 0xfc60b2c1, 0x3365feff, 0x1e083cf0, 0x005
 #include "nd_val.h"
 #include "nd_xf.h"
 
-extern Gfx D_090002C0_392700[];
-extern Gfx D_09000330_392770[];
-extern Gfx D_09000370_3927B0[];
-extern Gfx D_090003B0_3927F0[];
-extern Gfx D_090003F0_392830[];
-extern Gfx D_09000430_392870[];
+NDN_DECL(D_090002C0_392700);
+NDN_DECL(D_09000330_392770);
+NDN_DECL(D_09000370_3927B0);
+NDN_DECL(D_090003B0_3927F0);
+NDN_DECL(D_090003F0_392830);
+NDN_DECL(D_09000430_392870);
 extern Gfx D_09000470_3928B0[];
 
-static Gfx* sDlists[] = { D_09000430_392870, D_090003F0_392830, D_090003B0_3927F0, D_09000370_3927B0, D_09000330_392770 };
+static Gfx* sDlists[] = { NDN(D_09000430_392870), NDN(D_090003F0_392830), NDN(D_090003B0_3927F0), NDN(D_09000370_3927B0), NDN(D_09000330_392770) };
 
 static s32 sPartParams[4 * 5] = {
     1, 0, 0, 0, 100,
@@ -129,7 +129,7 @@ void small_gold_sparkle_appendGfx(void* effect) {
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    nd_draw_list(D_090002C0_392700, ND_SELF);
+    nd_draw_list(NDN(D_090002C0_392700), ND_SELF);
     nd_val_prim(0, 0, 255, 255, 15, 255);
 
     part++;

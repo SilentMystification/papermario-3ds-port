@@ -60,7 +60,6 @@ INCLUDE_PAL("effects/gfx/D_090045E8_3EA518.pal", D_09004DE8_3EAD18);
 
 u8 D_09004E08_3EAD38[0x1E0] = {};
 
-#include "effects/gfx/D_09004FE8_3EAF18.gfx.inc.c"
 extern Gfx D_090050F0_3EB020[];
 #define D_09005090_3EAFC0 D_09005090_3EAFC0_body
 #include "effects/gfx/D_09005090_3EAFC0.gfx.inc.c"
@@ -70,13 +69,6 @@ Gfx D_09005090_3EAFC0[] = {
     gsSPBranchList(D_090050F0_3EB020),
 };
 #include "effects/gfx/D_090050F0_3EB020.gfx.inc.c"
-#include "effects/gfx/D_09005168_3EB098.gfx.inc.c"
-#include "effects/gfx/D_090051E0_3EB110.gfx.inc.c"
-#include "effects/gfx/D_09005258_3EB188.gfx.inc.c"
-#include "effects/gfx/D_090052D0_3EB200.gfx.inc.c"
-#include "effects/gfx/D_09005348_3EB278.gfx.inc.c"
-#include "effects/gfx/D_090053C0_3EB2F0.gfx.inc.c"
-#include "effects/gfx/D_09005438_3EB368.gfx.inc.c"
 #include "effects/gfx/D_090054B0_3EB3E0.gfx.inc.c"
 #include "effects/gfx/D_090054F0_3EB420.vtx.inc.c"
 #include "effects/gfx/D_09005530_3EB460.vtx.inc.c"

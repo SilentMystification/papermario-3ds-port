@@ -1,0 +1,5 @@
+#include "src/effects/gfx/sweat.c"
+#include "effects/gfx/D_09000200_35C750.gfx.inc.c"
+#include "effects/gfx/D_090002C8_35C818.gfx.inc.c"
+#include "effects/gfx/D_09000390_35C8E0.gfx.inc.c"
+#include "effects/gfx/D_09000460_35C9B0.gfx.inc.c"

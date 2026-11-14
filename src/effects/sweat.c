@@ -4,10 +4,10 @@
 #include "nd_val.h"
 #include "nd_xf.h"
 
-extern Gfx D_09000200_35C750[];
-extern Gfx D_090002C8_35C818[];
-extern Gfx D_09000390_35C8E0[];
-extern Gfx D_09000460_35C9B0[];
+NDN_DECL(D_09000200_35C750);
+NDN_DECL(D_090002C8_35C818);
+NDN_DECL(D_09000390_35C8E0);
+NDN_DECL(D_09000460_35C9B0);
 
 void sweat_init(EffectInstance* effect);
 void sweat_update(EffectInstance* effect);
@@ -100,9 +100,9 @@ void sweat_appendGfx(void* effect) {
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
     if (data->unk_10 > 0.0f) {
-        nd_draw_list(data->unk_00 == 0 ? D_09000200_35C750 : D_090002C8_35C818, ND_SELF);
+        nd_draw_list(data->unk_00 == 0 ? NDN(D_09000200_35C750) : NDN(D_090002C8_35C818), ND_SELF);
     } else {
-        nd_draw_list(data->unk_00 == 0 ? D_09000390_35C8E0 : D_09000460_35C9B0, ND_SELF);
+        nd_draw_list(data->unk_00 == 0 ? NDN(D_09000390_35C8E0) : NDN(D_09000460_35C9B0), ND_SELF);
     }
 
     nd_xf_pop(G_MTX_MODELVIEW);

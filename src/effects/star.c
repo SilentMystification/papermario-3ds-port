@@ -6,10 +6,10 @@
 #include "nd_geo.h"
 
 extern Vtx_t D_09001400_333AA0[];
-extern Gfx D_09001530_333BD0[];
-extern Gfx D_09001650_333CF0[];
-extern Gfx D_09001780_333E20[];
-extern Gfx D_090017D0_333E70[];
+NDN_DECL(D_09001530_333BD0);
+NDN_DECL(D_09001650_333CF0);
+NDN_DECL(D_09001780_333E20);
+NDN_DECL(D_090017D0_333E70);
 
 void star_init(EffectInstance* effect);
 void star_update(EffectInstance* effect);
@@ -228,13 +228,13 @@ void star_appendGfx(void* effect) {
     nd_val_prim(0, 80, primR, primG, primB, 255);
     nd_val_env(127, 127, 127, 127);
 
-    nd_draw_list((data->type >= FX_STAR_LARGE_BOUNCING) ? D_09001650_333CF0 : D_09001530_333BD0, ND_SELF);
+    nd_draw_list((data->type >= FX_STAR_LARGE_BOUNCING) ? NDN(D_09001650_333CF0) : NDN(D_09001530_333BD0), ND_SELF);
     nd_xf_pop(G_MTX_MODELVIEW);
 
     if (type == FX_STAR_SMALL_BOUNCING) {
-        nd_draw_list(D_090017D0_333E70, ND_SELF);
+        nd_draw_list(NDN(D_090017D0_333E70), ND_SELF);
     } else {
-        nd_draw_list(D_09001780_333E20, ND_SELF);
+        nd_draw_list(NDN(D_09001780_333E20), ND_SELF);
     }
 
     data->trailMatrixPos++;

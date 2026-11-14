@@ -12,8 +12,8 @@ void squirt_update(EffectInstance* effect);
 void squirt_render(EffectInstance* effect);
 void squirt_appendGfx(void* effect);
 
-extern Gfx D_09000800_3B5B40[];
-extern Gfx D_090008A8_3B5BE8[];
+NDN_DECL(D_09000800_3B5B40);
+NDN_DECL(D_090008A8_3B5BE8);
 
 EffectInstance* squirt_main(s32 arg0, f32 arg1, f32 arg2, f32 arg3, f32 arg4, f32 arg5, f32 arg6, f32 arg7, s32 arg8) {
     EffectBlueprint bp;
@@ -247,7 +247,7 @@ void squirt_appendGfx(void* effect) {
     nd_mesh_vtx(savedGfxPos, i * 2, 0);
 
     savedIdx = i;
-    nd_draw_list(unk_00 == 0 ? D_09000800_3B5B40 : D_090008A8_3B5BE8, ND_SELF);
+    nd_draw_list(unk_00 == 0 ? NDN(D_09000800_3B5B40) : NDN(D_090008A8_3B5BE8), ND_SELF);
 
     for (i = 0; i < savedIdx - 1; i++) {
         s32 i2 = i * 2;

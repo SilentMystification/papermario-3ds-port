@@ -6,9 +6,9 @@
 #include "nd_st.h"
 
 extern Gfx D_09000940_359CF0[];
-extern Gfx D_090009A0_359D50[];
+NDN_DECL(D_090009A0_359D50);
 
-Gfx* D_E00D0B10[] = { D_090009A0_359D50, D_090009A0_359D50 };
+Gfx* D_E00D0B10[] = { NDN(D_090009A0_359D50), NDN(D_090009A0_359D50) };
 
 void red_impact_init(EffectInstance* effect);
 void red_impact_update(EffectInstance* effect);

@@ -5,12 +5,10 @@
 Lights1 D_09000000_398BC0 = gdSPDefLights1(255, 255, 255, 255, 255, 255, 255, 65, 109);
 
 INCLUDE_IMG("effects/gfx/D_09000018_398BD8.png", D_09000018_398BD8);
-#include "effects/gfx/D_09000218_398DD8.gfx.inc.c"
 INCLUDE_IMG("effects/gfx/D_09000288_398E48.png", D_09000288_398E48);
 #include "effects/gfx/D_09001288_399E48.gfx.inc.c"
 INCLUDE_IMG("effects/gfx/D_090012F8_399EB8.png", D_090012F8_399EB8);
 INCLUDE_PAL("effects/gfx/D_090012F8_399EB8.pal", D_090014F8_39A0B8);
-#include "effects/gfx/D_09001518_39A0D8.gfx.inc.c"
 INCLUDE_IMG("effects/gfx/D_090015B8_39A178.png", D_090015B8_39A178);
 #include "effects/gfx/D_090017B8_39A378.gfx.inc.c"
 INCLUDE_IMG("effects/gfx/D_09001828_39A3E8.png", D_09001828_39A3E8);
@@ -101,6 +99,4 @@ INCLUDE_IMG("effects/gfx/D_09005378_39DF38.png", D_09005378_39DF38);
 #include "effects/gfx/D_090071D0_39FD90.gfx.inc.c"
 #include "effects/gfx/D_09007200_39FDC0.gfx.inc.c"
 
-#include "effects/gfx/D_09007230_39FDF0.gfx.inc.c"
 #include "effects/gfx/D_09007298_39FE58.vtx.inc.c"
-#include "effects/gfx/D_090072D8_39FE98.gfx.inc.c"

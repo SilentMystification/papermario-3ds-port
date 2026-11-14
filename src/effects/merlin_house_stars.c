@@ -6,7 +6,7 @@ ND_PSO_DESC(pe_merlin_house_stars_165, 0xfcffa7ff, 0xff17723f, 0x1e182cf0, 0x0c1
 #include "nd_xf.h"
 #include "nd_st.h"
 
-extern Gfx D_09001000_3A6BE0[];
+NDN_DECL(D_09001000_3A6BE0);
 extern Gfx D_09001418_3A6FF8[];
 
 void merlin_house_stars_init(EffectInstance* effect);
@@ -153,7 +153,7 @@ void merlin_house_stars_appendGfx(void* effect) {
     nd_val_prim(0, 0, 0, 0, 0, 127);
     nd_val_env(0, 0, 0, envAlpha);
     nd_pso_cc(PM_CC1_MERLIN_STARS, PM_CC2_MERLIN_STARS);
-    nd_draw_list(D_09001000_3A6BE0, ND_SELF);
+    nd_draw_list(NDN(D_09001000_3A6BE0), ND_SELF);
 
     uls = data->unk_1C * 4.0f;
     ult = data->unk_20 * 4.0f;

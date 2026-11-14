@@ -21,7 +21,6 @@ INCLUDE_IMG("effects/gfx/D_09000200_40BDA0.png", D_09000200_40BDA0);
 
 u8 D_09000890_40C430[8] = {};
 
-#include "effects/gfx/D_09000898_40C438.gfx.inc.c"
 #include "effects/gfx/D_09000980_40C520.gfx.inc.c"
 #include "effects/gfx/D_09000998_40C538.gfx.inc.c"
 #include "effects/gfx/D_090009B0_40C550.gfx.inc.c"

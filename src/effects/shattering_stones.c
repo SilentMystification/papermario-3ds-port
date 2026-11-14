@@ -5,7 +5,7 @@ ND_PSO_DESC(pe_shattering_stones_196, 0xfc309661, 0xff2fffff, 0x1e080cf0, 0x0050
 #include "nd_val.h"
 #include "nd_xf.h"
 
-extern Gfx D_09000C00_341480[];
+NDN_DECL(D_09000C00_341480);
 extern Gfx D_09001068_3418E8[];
 extern Gfx D_09001080_341900[];
 extern Gfx D_09001098_341918[];
@@ -151,7 +151,7 @@ void shattering_stones_appendGfx(void* effect) {
     s32 i;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_draw_list(D_09000C00_341480, ND_SELF);
+    nd_draw_list(NDN(D_09000C00_341480), ND_SELF);
 
     if (part->unk_24 == 0) {
         guTranslateF(sp20, part->unk_00, part->unk_04, part->unk_08);

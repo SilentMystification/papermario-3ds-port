@@ -4,7 +4,7 @@
 #include "nd_val.h"
 #include "nd_xf.h"
 
-extern Gfx D_09000440_360E70[];
+NDN_DECL(D_09000440_360E70);
 extern Gfx D_090004F0_360F20[];
 
 void stars_spread_init(EffectInstance* effect);
@@ -130,7 +130,7 @@ void stars_spread_appendGfx(void* effect) {
     s32 i;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_draw_list(D_09000440_360E70, ND_SELF);
+    nd_draw_list(NDN(D_09000440_360E70), ND_SELF);
 
     guTranslateF(sp18, part->unk_04, part->unk_08, part->unk_0C);
     guRotateF(sp58, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);

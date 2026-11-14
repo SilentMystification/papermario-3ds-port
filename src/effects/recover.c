@@ -5,9 +5,9 @@
 #include "nd_xf.h"
 #include "nd_st.h"
 
-extern Gfx D_09003200_385000[];
-extern Gfx D_09003298_385098[];
-extern Gfx D_09003330_385130[];
+NDN_DECL(D_09003200_385000);
+NDN_DECL(D_09003298_385098);
+NDN_DECL(D_09003330_385130);
 extern Gfx D_090033D0_3851D0[];
 extern Gfx D_090033F0_3851F0[];
 extern Gfx D_09003410_385210[];
@@ -16,24 +16,24 @@ extern Gfx D_09003450_385250[];
 extern Gfx D_09003470_385270[];
 extern Gfx D_09003490_385290[];
 extern Gfx D_090034B0_3852B0[];
-extern Gfx D_090034D0_3852D0[];
-extern Gfx D_09003540_385340[];
-extern Gfx D_09003580_385380[];
-extern Gfx D_090035C0_3853C0[];
-extern Gfx D_09003600_385400[];
-extern Gfx D_09003640_385440[];
-extern Gfx D_09003680_385480[];
-extern Gfx D_090036C0_3854C0[];
-extern Gfx D_09003700_385500[];
-extern Gfx D_09003740_385540[];
-extern Gfx D_09003780_385580[];
-extern Gfx D_090037C0_3855C0[];
-extern Gfx D_09003800_385600[];
+NDN_DECL(D_090034D0_3852D0);
+NDN_DECL(D_09003540_385340);
+NDN_DECL(D_09003580_385380);
+NDN_DECL(D_090035C0_3853C0);
+NDN_DECL(D_09003600_385400);
+NDN_DECL(D_09003640_385440);
+NDN_DECL(D_09003680_385480);
+NDN_DECL(D_090036C0_3854C0);
+NDN_DECL(D_09003700_385500);
+NDN_DECL(D_09003740_385540);
+NDN_DECL(D_09003780_385580);
+NDN_DECL(D_090037C0_3855C0);
+NDN_DECL(D_09003800_385600);
 
-Gfx* D_E0080AC0[] = { D_09003540_385340, D_09003580_385380, D_090035C0_3853C0,
-                      D_09003600_385400, D_09003640_385440, D_09003680_385480,
-                      D_090036C0_3854C0, D_09003700_385500, D_09003740_385540,
-                      D_09003780_385580, D_090037C0_3855C0, D_09003800_385600 };
+Gfx* D_E0080AC0[] = { NDN(D_09003540_385340), NDN(D_09003580_385380), NDN(D_090035C0_3853C0),
+                      NDN(D_09003600_385400), NDN(D_09003640_385440), NDN(D_09003680_385480),
+                      NDN(D_090036C0_3854C0), NDN(D_09003700_385500), NDN(D_09003740_385540),
+                      NDN(D_09003780_385580), NDN(D_090037C0_3855C0), NDN(D_09003800_385600) };
 
 f32 D_E0080AF0[] = { 0.25f, 0.5f, 0.75f, 1.0f, 0.9f, 1.1f, 1.0f };
 
@@ -203,8 +203,8 @@ void func_E0080448(EffectInstance* effect) {
             }
 
             nd_rec_dl((type == 0 || type == 2) ?
-                (unk_44 == 0 ? D_09003200_385000 : D_09003298_385098) :
-                D_09003330_385130);
+                (unk_44 == 0 ? NDN(D_09003200_385000) : NDN(D_09003298_385098)) :
+                NDN(D_09003330_385130));
 
             guTranslateF(sp18, part->pos.x + part->offsetX, part->pos.y, part->pos.z);
             guScaleF(sp58, part->scaleX, part->scaleY, 1.0f);
@@ -221,7 +221,7 @@ void func_E0080448(EffectInstance* effect) {
             if (i == 1 && type != 2) {
                 nd_rec_dl(D_090033D0_3851D0);
                 nd_xf_pop(G_MTX_MODELVIEW);
-                nd_draw_list(D_090034D0_3852D0, ND_SELF);
+                nd_draw_list(NDN(D_090034D0_3852D0), ND_SELF);
 
                 if (unk_40 < 10 && unk_44 == 0) {
                     nd_draw_list(D_E0080AC0[unk_40], ND_SELF);

@@ -17,7 +17,7 @@ enum MiniHeartState {
     HEART_STATE_DONE        = 7,
 };
 
-extern Gfx D_09000400_3D2980[];
+NDN_DECL(D_09000400_3D2980);
 extern Gfx D_09000518_3D2A98[];
 
 u8 AnimScalePct[] = { 94, 92, 100, 105, 107, 105, 100 };
@@ -325,7 +325,7 @@ void tubba_heart_attack_appendGfx(void* effect) {
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_val_prim(0, 0, data->primR, data->primG, data->primB, alpha);
     nd_val_env(0, 0, 0, 0);
-    nd_draw_list(D_09000400_3D2980, ND_SELF);
+    nd_draw_list(NDN(D_09000400_3D2980), ND_SELF);
 
     for (i = 0; i < TUBBA_MINI_HEART_COUNT; i++) {
         if (data->state[i] != HEART_STATE_INIT && data->state[i] != HEART_STATE_DONE) {

@@ -12,11 +12,11 @@ void throw_spiny_init(EffectInstance* effect);
 void throw_spiny_update(EffectInstance* effect);
 void throw_spiny_render(EffectInstance* effect);
 
-extern Gfx D_09000800_3D02F0[];
-extern Gfx D_090008D8_3D03C8[];
+NDN_DECL(D_09000800_3D02F0);
+NDN_DECL(D_090008D8_3D03C8);
 extern Gfx D_090009F0_3D04E0[];
 
-Gfx* D_E00C8710[2] = { D_09000800_3D02F0, D_090008D8_3D03C8 };
+Gfx* D_E00C8710[2] = { NDN(D_09000800_3D02F0), NDN(D_090008D8_3D03C8) };
 
 u8 D_E00C8718[8] = { 110, 150, 130, 110, 100, 95, 100, 0 };
 u8 D_E00C8720[8] = { 80, 60, 80, 100, 120, 110, 100, 0 };

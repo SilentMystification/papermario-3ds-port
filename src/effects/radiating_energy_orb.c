@@ -10,8 +10,8 @@ ND_PSO_DESC(pe_radiating_energy_orb_225, 0xfc5096a1, 0x332dfeff, 0x1e082cf0, 0x0
 #include "nd_xf.h"
 #include "nd_st.h"
 
-extern Gfx D_09001200_3A1F60[];
-extern Gfx D_090012A8_3A2008[];
+NDN_DECL(D_09001200_3A1F60);
+NDN_DECL(D_090012A8_3A2008);
 extern Gfx D_09001490_3A21F0[];
 extern Gfx D_090014B0_3A2210[];
 extern Gfx D_090014D0_3A2230[];
@@ -165,10 +165,10 @@ void radiating_energy_orb_appendGfx(void* effect) {
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    nd_draw_list(D_090012A8_3A2008, ND_SELF);
+    nd_draw_list(NDN(D_090012A8_3A2008), ND_SELF);
     nd_draw_list(D_09001510_3A2270, pe_radiating_energy_orb_164);
     nd_xf_pop(G_MTX_MODELVIEW);
-    nd_draw_list(D_09001200_3A1F60, ND_SELF);
+    nd_draw_list(NDN(D_09001200_3A1F60), ND_SELF);
 
     part++;
     for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, part++) {
