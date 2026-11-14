@@ -1,0 +1,25 @@
+gset keep src/user.c:6
+gset keep src/user.c:7
+gset keep src/user.c:8
+gset moved 1 files 1 keep 3
+gset FAIL
+== src/effects/gfx/fake.c
+#include "include_asset.h"
+#include "effects/gfx/B.gfx.inc.c"
+
+void fake_fn(void) { }
+== 3ds/tools/gfxin/src/effects/gfx/fake.c
+#include "src/effects/gfx/fake.c"
+#include "effects/gfx/A.gfx.inc.c"
+== src/user.c
+#include "effects/fake.h"
+#include "nd_gtab.h"
+NDN_DECL(X_OK);
+Gfx* handles[] = { NDN(X_OK), 0 };
+void user(void) {
+    nd_draw_list(NDN(X_OK), ND_SELF);
+    n = sizeof(X_OK);
+    p = &X_OK;
+    q = X_OK[1];
+    nd_draw_list(X_BAD, ND_SELF);
+}
