@@ -1,5 +1,7 @@
 #include "common.h"
 #include "Credits.h"
+#include "nd_st.h"
+#include "nd_xf.h"
 
 #if VERSION_PAL
 #define CREDITS_MESSAGE_BUFFER_COUNT (24)
@@ -741,8 +743,8 @@ void N(credits_worker_render)(void) {
     gSPViewport(gMainGfxPos++, &N(CreditsViewport));
     guOrtho(projMtx, 0.0f, 320.0f, -240.0f, 0.0f, -100.0f, 100.0f, 1.0f);
     nd_xf_push(OS_PHYSICAL_TO_K0(projMtx), G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
-    gSPClearGeometryMode(gMainGfxPos++, G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
-    gSPSetGeometryMode(gMainGfxPos++, G_SHADE | G_SHADING_SMOOTH);
+    nd_pso_geom_clr(G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
+    nd_pso_geom_set(G_SHADE | G_SHADING_SMOOTH);
 
     for (i = 0; i < ARRAY_COUNT(data->lines); i++) {
         if (data->lines[i].flags & CREDITS_LINE_FLAG_1) {

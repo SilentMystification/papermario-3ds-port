@@ -6,6 +6,7 @@
 #include "model.h"
 #include "sprite.h"
 #include "nd_api.h"
+#include "nd_st.h"
 
 EvtScript EVS_ShakeBattleCamPitch = {
     Wait(LVar0)
@@ -3026,8 +3027,8 @@ void btl_appendGfx_prim_quad(u8 r, u8 g, u8 b, u8 a, u16 left, u16 top, u16 righ
         nd_rec_napi(nd_fill_run, &q, 3u);
     }
 
-    gDPSetRenderMode(gMainGfxPos++, G_RM_TEX_EDGE, G_RM_TEX_EDGE2);
-    gDPSetCombineMode(gMainGfxPos++, G_CC_DECALRGBA, G_CC_DECALRGBA);
+    nd_pso_rm(G_RM_TEX_EDGE, G_RM_TEX_EDGE2);
+    nd_pso_cc(G_CC_DECALRGBA, G_CC_DECALRGBA);
 }
 
 void btl_draw_prim_quad(u8 r, u8 g, u8 b, u8 a, u16 left, u16 top, u16 arg6, u16 arg7) {

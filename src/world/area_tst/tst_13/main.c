@@ -1,4 +1,6 @@
 #include "tst_13.h"
+#include "nd_st.h"
+#include "nd_xf.h"
 
 void mdl_project_tex_coords(s32 modelID, Gfx* destGfx, Matrix4f destMtx, void* destVertices);
 
@@ -298,8 +300,8 @@ void N(build_gfx_floor)(void) {
     guMtxF2L(sp10, &gDisplayContext->matrixStack[gMatrixListPos]);
     mdl_project_tex_coords(MODEL_o152, N(shockwave_gfx), sp10, nullptr);
 
-    gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
-    gDPSetRenderMode(gMainGfxPos++, G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2);
+    nd_pso_cyc(G_CYC_1CYCLE);
+    nd_pso_rm(G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2);
     mdl_draw_hidden_panel_surface(&gMainGfxPos, 1);
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     gSPDisplayList(gMainGfxPos++, N(shockwave_gfx));

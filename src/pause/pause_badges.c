@@ -1,6 +1,7 @@
 #include "pause_common.h"
 #include "message_ids.h"
 #include "nd_val.h"
+#include "nd_st.h"
 
 extern Gfx PauseGfxOrbs[];
 
@@ -423,7 +424,7 @@ void pause_badges_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 width
     if (y2 >= SCREEN_HEIGHT - 1) {
         y2 = SCREEN_HEIGHT - 1;
     }
-    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, x1, y1, x2, y2);
+    nd_pso_scis(G_SC_NON_INTERLACE, x1, y1, x2, y2);
 
     badgeIndex = 0;
     for (i = 0; i < 3; i++) {
@@ -565,7 +566,7 @@ void pause_badges_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 width
                     orbColorB1 = 100;
 
                     gSPDisplayList(gMainGfxPos++, PauseGfxOrbs);
-                    gDPSetTextureFilter(gMainGfxPos++, G_TF_BILERP);
+                    nd_pso_filt(G_TF_BILERP);
 
                     if (isEquipped == 0) {
                         for (j = 0; j < numOrbs; j++) {
@@ -584,7 +585,7 @@ void pause_badges_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 width
 #endif
                         }
 
-                        gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
+                        nd_pso_rm(G_RM_CLD_SURF, G_RM_CLD_SURF2);
                         nd_val_prim(0, 0, orbColorR1, orbColorG1, orbColorB1, 128);
 
                         for (j = 0; j < numOrbs; j++) {
@@ -648,7 +649,7 @@ void pause_badges_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 width
         y2 = SCREEN_HEIGHT - 1;
     }
 
-    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, x1, y1, x2, y2);
+    nd_pso_scis(G_SC_NON_INTERLACE, x1, y1, x2, y2);
 
     if (gPauseMenuCurrentTab == 2 && gPauseBadgesLevel == 1) {
         if (gPauseBadgesCurrentPage > 0) {
@@ -691,7 +692,7 @@ void pause_badges_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 width
     orbColorB = 100;
     maxBP = playerData->maxBP;
     gSPDisplayList(gMainGfxPos++, PauseGfxOrbs);
-    gDPSetTextureFilter(gMainGfxPos++, G_TF_BILERP);
+    nd_pso_filt(G_TF_BILERP);
     for (orbIndex = 0; orbIndex < maxBP; orbIndex++) {
         nd_val_prim(0, 0, 227, 227, 227, 255);
         pause_badges_draw_bp_orbs(0, baseX + 11 + (orbIndex % 10) * 6, baseY + 92 + (orbIndex / 10) * 8);
@@ -704,7 +705,7 @@ void pause_badges_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 width
         }
 
         orbBlinkValue = (sin_deg(gGameStatusPtr->frameCounter * 15) + 1.0f) * 0.2 + 0.5;
-        gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
+        nd_pso_rm(G_RM_CLD_SURF, G_RM_CLD_SURF2);
 
         orbBlinkOpacity = orbBlinkValue * 255.0f;
         nd_val_prim(0, 0, orbColorR, orbColorG, orbColorB, orbBlinkOpacity);

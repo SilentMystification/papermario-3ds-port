@@ -1,5 +1,8 @@
 #include "iwa_01.h"
 #include "include_asset.h"
+#include "nd_st.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 
 INCLUDE_IMG("world/area_iwa/iwa_01/splash.png", iwa_01_splash_img);
 #include "world/area_iwa/iwa_01/splash.vtx.inc.c"
@@ -65,7 +68,7 @@ void N(gfx_build_splashes)(s32 index) {
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 
-    gDPSetAlphaCompare(gMainGfxPos++, G_AC_NONE);
+    nd_pso_alcmp(G_AC_NONE);
 }
 
 API_CALLABLE(N(InitSplashes)) {

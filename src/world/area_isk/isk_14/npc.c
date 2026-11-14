@@ -3,6 +3,8 @@
 #include "sprite/player.h"
 
 #include "world/common/enemy/StoneChomp.inc.c"
+#include "nd_st.h"
+#include "nd_xf.h"
 
 typedef struct StoneChompAmbushIsk14 {
     /* 0x00 */ s32 imgfxIdx;
@@ -33,19 +35,19 @@ void N(func_80241610_993D40)(void) {
     guMtxF2L(cam->mtxPerspective, &gDisplayContext->camPerspMatrix[gCurrentCameraID]);
 
     nd_xf_push(&gDisplayContext->camPerspMatrix[gCurrentCameraID], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
-    gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
-    gSPClearGeometryMode(gMainGfxPos++, G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING
+    nd_pso_cyc(G_CYC_1CYCLE);
+    nd_pso_geom_clr(G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING
         | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
-    gSPSetGeometryMode(gMainGfxPos++, G_ZBUFFER | G_SHADE | G_SHADING_SMOOTH);
-    gSPTexture(gMainGfxPos++, -1, -1, 0, G_TX_RENDERTILE, G_ON);
-    gDPSetTextureLOD(gMainGfxPos++, G_TL_TILE);
-    gDPSetTexturePersp(gMainGfxPos++, G_TP_PERSP);
-    gDPSetTextureFilter(gMainGfxPos++, G_TF_BILERP);
-    gDPSetColorDither(gMainGfxPos++, G_CD_DISABLE);
-    gDPSetTextureDetail(gMainGfxPos++, G_TD_CLAMP);
-    gDPSetTextureConvert(gMainGfxPos++, G_TC_FILT);
-    gDPSetCombineKey(gMainGfxPos++, G_CK_NONE);
-    gDPSetAlphaCompare(gMainGfxPos++, G_AC_NONE);
+    nd_pso_geom_set(G_ZBUFFER | G_SHADE | G_SHADING_SMOOTH);
+    nd_tex_on(-1, -1, 0, G_TX_RENDERTILE, G_ON);
+    nd_pso_lod(G_TL_TILE);
+    nd_pso_persp(G_TP_PERSP);
+    nd_pso_filt(G_TF_BILERP);
+    nd_pso_dither(G_CD_DISABLE);
+    nd_pso_detail(G_TD_CLAMP);
+    nd_pso_conv(G_TC_FILT);
+    nd_pso_combkey(G_CK_NONE);
+    nd_pso_alcmp(G_AC_NONE);
 
     guTranslateF(transformMtx, ambush->pos.x, ambush->pos.y, ambush->pos.z);
     guRotateF(tempMtx, ambush->rot.y + gCameras[gCurrentCameraID].curYaw + ambush->renderYaw, 0.0f, 1.0f, 0.0f);

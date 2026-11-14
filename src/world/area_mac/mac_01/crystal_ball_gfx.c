@@ -2,6 +2,7 @@
 #include "model.h"
 #include "nu/nusys.h"
 #include "nd_scomp.h"
+#include "nd_st.h"
 /* S6M1: the crystal ball custom gfx builders as compiled state ranges (nd_scomp.h). The units in the order of the N64 code in each builder
  * (PipeSync lines left out). The value units are placeholders of their kind; the record carries the per-frame values. */
 static const Gfx cb_pre_u[] = {
@@ -159,7 +160,7 @@ void N(gfx_build_inside_crystal_ball)(void) {
         gDPLoadTextureTile(gMainGfxPos++, osVirtualToPhysical(nuGfxCfb_ptr), G_IM_FMT_RGBA, G_IM_SIZ_16b,
                            SCREEN_WIDTH, SCREEN_HEIGHT, ulx, uly, ulx + 31, uly + 31, 0,
                            G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD);
-        gDPSetCombineMode(gMainGfxPos++, PM_CC_0E, PM_CC_0E);
+        nd_pso_cc(PM_CC_0E, PM_CC_0E);
         gSPScisTextureRectangle(gMainGfxPos++, (ulx - 8) * 4, (uly - 8) * 4, (ulx + 24) * 4, (uly + 24) * 4,
                                 G_TX_RENDERTILE, (ulx & 0x1F) << 5, (uly & 0x1F) << 5, 700, 700);
     }

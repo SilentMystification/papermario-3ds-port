@@ -6,6 +6,7 @@
 #include "game_modes.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 
 extern HudScript HES_AnimatedCursorHand;
 
@@ -730,9 +731,9 @@ void filemenu_update_show_name_confirm(
     s32 updateCounter = window->updateCounter;
     u32 counter;
 
-    gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
-    gDPSetCombineMode(gMainGfxPos++, G_CC_PRIMITIVE, G_CC_PRIMITIVE);
-    gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
+    nd_pso_cyc(G_CYC_1CYCLE);
+    nd_pso_cc(G_CC_PRIMITIVE, G_CC_PRIMITIVE);
+    nd_pso_rm(G_RM_CLD_SURF, G_RM_CLD_SURF2);
     nd_val_prim(0, 0, 0, 0, 0, 140);
 
     if (updateCounter < 10) {
@@ -769,9 +770,9 @@ void filemenu_update_hidden_name_confirm(
     s32 updateCounter = window->updateCounter;
 
     if (updateCounter < ARRAY_COUNT(D_80249D48)) {
-        gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
-        gDPSetCombineMode(gMainGfxPos++, G_CC_PRIMITIVE, G_CC_PRIMITIVE);
-        gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
+        nd_pso_cyc(G_CYC_1CYCLE);
+        nd_pso_cc(G_CC_PRIMITIVE, G_CC_PRIMITIVE);
+        nd_pso_rm(G_RM_CLD_SURF, G_RM_CLD_SURF2);
         nd_val_prim(0, 0, 0, 0, 0, 140 - updateCounter * 14);
         filemenu_draw_rect(0, 0, 1280, 960, 0, 0, 0, 0, 0);
         *posY -= D_80249D48[updateCounter];

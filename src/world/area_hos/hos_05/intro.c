@@ -3,6 +3,8 @@
 #include "model.h"
 #include "nu/nusys.h"
 #include "ld_addrs.h"
+#include "nd_st.h"
+#include "nd_val.h"
 
 enum {
     STORY_PAGE_BLANK        = 0,
@@ -1364,21 +1366,21 @@ void N(appendGfx_image_strips)(s32 baseX, s32 baseY, IMG_PTR img, PAL_PTR pal, s
     if (pal != nullptr) {
         gDPLoadTLUT_pal256(gMainGfxPos++, pal);
     } else {
-        gDPSetTextureLUT(gMainGfxPos++, G_TT_NONE);
+        nd_pso_lut(G_TT_NONE);
     }
 
     get_screen_overlay_params(SCREEN_LAYER_BACK, &overlayType, &overlayAlphaBack);
     get_screen_overlay_params(SCREEN_LAYER_FRONT, &overlayType, &overlayAlphaFront);
     alpha = alpha * (255.0f - overlayAlphaBack) * (255.0f - overlayAlphaFront) / 255.0f / 255.0f;
     if (alpha != 255) {
-        gDPSetCombineMode(gMainGfxPos++, PM_CC_01, PM_CC_01);
+        nd_pso_cc(PM_CC_01, PM_CC_01);
         nd_val_prim(0, 0, 0, 0, 0, alpha);
     } else {
-        gDPSetCombineMode(gMainGfxPos++, G_CC_DECALRGBA, G_CC_DECALRGBA);
+        nd_pso_cc(G_CC_DECALRGBA, G_CC_DECALRGBA);
     }
 
-    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-    gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
+    nd_pso_scis(G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    nd_pso_rm(G_RM_CLD_SURF, G_RM_CLD_SURF2);
 
     for (i = 0; i < height / lineHeight; i++) {
         gDPLoadTextureTile(gMainGfxPos++, img, pal != nullptr ? G_IM_FMT_CI : G_IM_FMT_IA, G_IM_SIZ_8b, width, height,
@@ -1432,12 +1434,12 @@ void N(worker_draw_story_graphics)(void) {
     gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, nuGfxCfb_ptr);
 
     if (N(StoryGraphicsPtr)->storyPageAlpha < 255) {
-        gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
+        nd_pso_rm(G_RM_CLD_SURF, G_RM_CLD_SURF2);
         nd_val_prim(0, 0, 0, 0, 0, N(StoryGraphicsPtr)->storyPageAlpha);
     }
     get_screen_overlay_params(SCREEN_LAYER_BACK, &overlayType, &overlayAlpha);
     if (overlayAlpha != 0.0f) {
-        gDPSetCombineMode(gMainGfxPos++, PM_CC_43, PM_CC_43);
+        nd_pso_cc(PM_CC_43, PM_CC_43);
         nd_val_prim(0, 0, 208, 208, 208, (s32) overlayAlpha);
     }
 

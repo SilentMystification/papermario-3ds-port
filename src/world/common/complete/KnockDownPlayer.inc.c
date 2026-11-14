@@ -1,5 +1,7 @@
 #include "common.h"
 #include "sprite.h"
+#include "nd_st.h"
+#include "nd_xf.h"
 
 #ifndef KNOCK_DOWN_MAP_VAR
 #warning KNOCK_DOWN_MAP_VAR must be defined!
@@ -11,20 +13,19 @@ void N(gfx_build_knocked_down_player)(void) {
     SpriteRasterInfo rasterInfo;
     Matrix4f sp40, sp80;
 
-    gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
-    gSPClearGeometryMode(gMainGfxPos++,
-                         G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD |
+    nd_pso_cyc(G_CYC_1CYCLE);
+    nd_pso_geom_clr(G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD |
                          G_SHADING_SMOOTH);
-    gSPSetGeometryMode(gMainGfxPos++, G_ZBUFFER | G_SHADE | G_SHADING_SMOOTH);
-    gSPTexture(gMainGfxPos++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
-    gDPSetTextureLOD(gMainGfxPos++, G_TL_TILE);
-    gDPSetTexturePersp(gMainGfxPos++, G_TP_PERSP);
-    gDPSetTextureFilter(gMainGfxPos++, G_TF_BILERP);
-    gDPSetColorDither(gMainGfxPos++, G_CD_DISABLE);
-    gDPSetTextureDetail(gMainGfxPos++, G_TD_CLAMP);
-    gDPSetTextureConvert(gMainGfxPos++, G_TC_FILT);
-    gDPSetCombineKey(gMainGfxPos++, G_CK_NONE);
-    gDPSetAlphaCompare(gMainGfxPos++, G_AC_NONE);
+    nd_pso_geom_set(G_ZBUFFER | G_SHADE | G_SHADING_SMOOTH);
+    nd_tex_on(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
+    nd_pso_lod(G_TL_TILE);
+    nd_pso_persp(G_TP_PERSP);
+    nd_pso_filt(G_TF_BILERP);
+    nd_pso_dither(G_CD_DISABLE);
+    nd_pso_detail(G_TD_CLAMP);
+    nd_pso_conv(G_TC_FILT);
+    nd_pso_combkey(G_CK_NONE);
+    nd_pso_alcmp(G_AC_NONE);
 
     guTranslateF(sp40, data->pos.x, data->pos.y, data->pos.z);
     guRotateF(sp80, data->rot.y, 0.0f, 1.0f, 0.0f);

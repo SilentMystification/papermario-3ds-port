@@ -4,6 +4,7 @@
 #include "hud_element.h"
 #include "sprite/player.h"
 #include "include_asset.h"
+#include "nd_st.h"
 
 #define NAMESPACE battle_item_strange_cake
 
@@ -54,7 +55,7 @@ void N(func_802A123C_73153C(void)) {
     if (D_802A2DEC < 6) {
         if (D_802A2DEC > 0) {
             draw_box(0, WINDOW_STYLE_7, 106, 86, 0, 36, 36, 255, 0, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, nullptr, nullptr, nullptr, SCREEN_WIDTH, SCREEN_HEIGHT, nullptr);
-            gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 108, 90, 139, 118);
+            nd_pso_scis(G_SC_NON_INTERLACE, 108, 90, 139, 118);
 
             for (i = 0; i < ARRAY_COUNT(D_802A2DD8); i++) {
                 id = D_802A2DD8[i];

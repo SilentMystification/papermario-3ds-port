@@ -3,6 +3,7 @@
 #include "entity.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 
 extern Gfx Entity_RenderNone[];
 extern Gfx* Entity_BoardedFloor_FragmentsRender[];
@@ -179,10 +180,10 @@ void Entity_BoardedFloor_setupGfx(s32 entityIndex) {
 
     for (i = 0; i < 12; i++) {
         if (data->fragmentRebounds[i] < 2) {
-            gDPSetRenderMode(gMainGfxPos++, G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2);
-            gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIA, G_CC_MODULATEIA);
+            nd_pso_rm(G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2);
+            nd_pso_cc(G_CC_MODULATEIA, G_CC_MODULATEIA);
         } else {
-            gDPSetCombineMode(gMainGfxPos++, PM_CC_11, PM_CC_12);
+            nd_pso_cc(PM_CC_11, PM_CC_12);
             nd_val_prim(0, 0, 0, 0, 0, data->fragmentMoveAngle[i]);
         }
 

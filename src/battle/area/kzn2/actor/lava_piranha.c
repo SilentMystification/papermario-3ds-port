@@ -443,7 +443,6 @@ void N(appendGfx_vines)(void* data) {
         N(VineRenderState) = VINE_RENDER_STATE_OK;
     }
 
-    gDPPipeSync(gMainGfxPos++);
     gSPDisplayList(gMainGfxPos++, D_8021CF40_5A3620);
 
     for (i = 0; i < NUM_VINES; i++) {
@@ -513,7 +512,6 @@ void N(appendGfx_vines)(void* data) {
         }
     }
 
-    gDPPipeSync(gMainGfxPos++);
 }
 
 void N(worker_render_piranha_vines)(void) {

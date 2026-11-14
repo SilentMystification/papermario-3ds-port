@@ -1,4 +1,6 @@
 #include "hos_00.h"
+#include "nd_st.h"
+#include "nd_val.h"
 
 void N(setup_gfx_background_shade)(void) {
     s32 alpha = update_lerp(EASING_LINEAR, 0.0f, 216.0f, gPlayerStatus.pos.x - 200.0f, 500);
@@ -9,8 +11,8 @@ void N(setup_gfx_background_shade)(void) {
     if (alpha > 216) {
         alpha = 216;
     }
-    gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
-    gDPSetCombineMode(gMainGfxPos++, PM_CC_HOS_BG_SHADE, PM_CC_HOS_BG_SHADE);
+    nd_pso_cyc(G_CYC_1CYCLE);
+    nd_pso_cc(PM_CC_HOS_BG_SHADE, PM_CC_HOS_BG_SHADE);
     nd_val_prim(0, 0, 0, 0, 0, alpha);
 }
 
