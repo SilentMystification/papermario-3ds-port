@@ -16,7 +16,7 @@ FACT (Merge FXSELF 1149b5513): C10 recdl 57 (42 `nd_rec_dl(` in src/effects + 15
 ## Open work
 - Merged: TEX4, RECROOT, NSTREAM2, NSTREAM3, GKEY2, GSET1-3, FXENT2, FXENT3 (20 sites; nd_rec_dl_k keyed form). PSOLK: check `git log` for its merge.
 - Merged: GCONVW (75d442afb, ntab tables 1153). Ready page: ws_FXREST1 (start now; owns the 21 effect site files, 3ds/tools/fxrest.d/).
-- Write now: ws_FXREST2 (merged FXREST1 b1d32df25; coder question build3ds/wt/FXREST1/build3ds/out/fxrest1.txt: the key design for multi 8, kmiss 2).
+- Ready page: ws_FXREST2 (start now; 10 sites; psochk drops geom, plod, key_c, key_s; B0 666 replaced by B1 from its own capture, `psochk end` line).
   Gate: fxr_chk bucket-21 psochk line bad == 666 (psochk logs only the first checked draw of a 100-frame bucket, nd_comb.c:229-231), fxr_drec byte-equal to merge-base.
   FACT 3ds/tools/fxrest.d/cap.txt (column order nd_walker_desc, nd_comb.c:206-213). The tuples of one key differ in one place only:
   geom 00000205 vs 00000405: green_impact:203#0/#1, red_impact:210#0/#1, shockwave:342#2/#3. Last word high byte 0x33..0x50: misc_particles:331#2/#3/#6/#7 (GUESS plod).
@@ -44,5 +44,5 @@ FACT (Merge FXSELF 1149b5513): C10 recdl 57 (42 `nd_rec_dl(` in src/effects + 15
 ## What to do first
 1. Answer coder questions (SendMessage, 10 lines, file:line). Check each ready page's quoted anchors against main after the merge it waits for.
 2. After `Merge PSOLK`: read its hand-back (lk, miss) and write ws_PSOCAP.
-3. Write ws_FXREST2 (above). Reply to the FXREST1 coder with SendMessage.
+3. Answer FXREST2 coder questions (page ws_FXREST2.md).
 - An uninitialised vtx field from nd_rec_data (nd_rec.c:482 does not clear the memory) makes the drec bytes depend on the stream layout. Such a gate fails only at that draw (chomp_drop, FXENT3).
