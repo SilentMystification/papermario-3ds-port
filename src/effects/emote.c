@@ -300,7 +300,7 @@ void emote_appendGfx(void* effect) {
     }
 
     if (dlist != nullptr) {
-        nd_rec_dl(dlist);
+        nd_draw_list(dlist, ND_SELF);
     }
 
     nd_val_tile_size(G_TX_RENDERTILE, uls * 4, ult * 4, (uls + w) * 4, (ult + h) * 4);

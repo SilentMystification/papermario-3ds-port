@@ -284,7 +284,7 @@ void landing_dust_appendGfx(void* effect) {
     dlist2 = sDlists2[type];
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_rec_dl(dlist2);
+    nd_draw_list(dlist2, ND_SELF);
 
     spD8 = temp_t0 & 7;
     spDC = temp_t0 & 0x40;

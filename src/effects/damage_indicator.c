@@ -277,14 +277,14 @@ void damage_indicator_render_impl(EffectInstance* effect) {
             nd_xf_pop(G_MTX_MODELVIEW);
             nd_draw_list(D_09001DE0_352000, ND_SELF);
             if (numParts < 10) {
-                nd_rec_dl(D_E003CCA0[i]);
+                nd_draw_list(D_E003CCA0[i], ND_SELF);
                 nd_draw_list(D_090021C0_3523E0, pe_damage_indicator_278);
             } else {
                 s32 onesDigit = numParts % 10;
                 s32 tensDigit = numParts / 10;
-                nd_rec_dl(D_E003CCA0[onesDigit]); // GfxLoadDigitTex
+                nd_draw_list(D_E003CCA0[onesDigit], ND_SELF); // GfxLoadDigitTex
                 nd_rec_dl(D_09002200_352420); // GfxDrawOnesQuad
-                nd_rec_dl(D_E003CCA0[tensDigit]);
+                nd_draw_list(D_E003CCA0[tensDigit], ND_SELF);
                 nd_rec_dl(D_090021E0_352400); // GfxDrawTensQuad
             }
         } else {

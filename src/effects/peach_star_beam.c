@@ -204,7 +204,7 @@ void peach_star_beam_appendGfx(void* effect) {
                 nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
                 nd_val_prim(0, 0, 128, 128, 128, 255);
                 nd_val_env(128, 128, 128, 127);
-                nd_rec_dl(D_E010CA38[i]);
+                nd_draw_list(D_E010CA38[i], ND_SELF);
                 nd_draw_list(D_E010CA18[i], pe_peach_star_beam_203);
                 nd_xf_pop(G_MTX_MODELVIEW);
                 FI_CLOSE();
@@ -222,7 +222,7 @@ void peach_star_beam_appendGfx(void* effect) {
     nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_val_prim(0, 0, data->primR, data->primG, data->primB, alpha);
     nd_val_env(data->envR, data->envG, data->envB, data->envA);
-    nd_rec_dl(D_E010CA14[0]);
+    nd_draw_list(D_E010CA14[0], ND_SELF);
     nd_draw_list(D_E010CA10[0], pe_peach_star_beam_221);
     nd_xf_pop(G_MTX_MODELVIEW);
     FI_CLOSE();
@@ -250,7 +250,7 @@ void peach_star_beam_appendGfx(void* effect) {
                 nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
                 nd_val_prim(0, 0, 128, 128, 128, 255);
                 nd_val_env(128, 128, 128, 127);
-                nd_rec_dl(D_E010CA38[i]);
+                nd_draw_list(D_E010CA38[i], ND_SELF);
                 nd_draw_list(D_E010CA18[i], pe_peach_star_beam_249);
                 nd_xf_pop(G_MTX_MODELVIEW);
                 FI_CLOSE();

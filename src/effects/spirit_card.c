@@ -164,8 +164,8 @@ void spirit_card_appendGfx(void* effect) {
     if (unk_00 < 2) {
         func_E0112330(0, data);
 
-        nd_rec_dl(D_E0112638[0]);
-        nd_rec_dl(D_E0112640[data->chapter]);
+        nd_draw_list(D_E0112638[0], ND_SELF);
+        nd_draw_list(D_E0112640[data->chapter], ND_SELF);
         nd_draw_list(D_E0112630[0], pe_spirit_card_168);
         nd_xf_pop(G_MTX_MODELVIEW);
     }

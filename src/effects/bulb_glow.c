@@ -212,7 +212,7 @@ void bulb_glow_appendGfx(void* effect) {
         return;
     }
 
-    nd_rec_dl(D_E0078900[type]);
+    nd_draw_list(D_E0078900[type], ND_SELF);
     color = &D_E00789AC[data->unk_20];
     colorScale = brightness * 2;
     r = color->r * colorScale / 255;

@@ -208,7 +208,7 @@ void cold_breath_appendGfx(void* effect) {
     nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_val_prim(0, 0, data->primCol.r, data->primCol.g, data->primCol.b, 0.5 * unk24);
     nd_pso_aldith(G_AD_NOISE);
-    nd_rec_dl(D_E00DE84C[unk00]);
+    nd_draw_list(D_E00DE84C[unk00], ND_SELF);
 
     unkIndex = (unk14 < 30 ? unk14 : 29) + unk00 * 30;
     temp1 = D_E00DE96C[unkIndex];

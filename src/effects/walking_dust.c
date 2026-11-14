@@ -134,7 +134,7 @@ void walking_dust_appendGfx(void* effect) {
     }
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(effectTemp->shared->graphics));
-    nd_rec_dl(dlist);
+    nd_draw_list(dlist, ND_SELF);
     nd_val_env(0, 0, 0, 127);
     nd_val_prim(0, 0, 230, 222, 222, 110);
 

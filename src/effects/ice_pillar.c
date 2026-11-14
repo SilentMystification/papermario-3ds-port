@@ -173,7 +173,7 @@ void ice_pillar_appendGfx(void* effect) {
     nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_val_prim(0, 0, data->prim.r, data->prim.g, data->prim.b, alpha);
     nd_val_env(data->env.r, data->env.g, data->env.b, data->env.a);
-    nd_rec_dl(D_E011E800[0]);
+    nd_draw_list(D_E011E800[0], ND_SELF);
     nd_draw_list(D_E011E7F0[data->unk_24], pe_ice_pillar_176);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

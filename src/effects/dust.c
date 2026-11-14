@@ -140,7 +140,7 @@ void dust_appendGfx(void* effect) {
     s32 i;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_rec_dl(part->unk_00 == 0 ? D_09000CC0_33FCC0 : D_09000D68_33FD68);
+    nd_draw_list(part->unk_00 == 0 ? D_09000CC0_33FCC0 : D_09000D68_33FD68, ND_SELF);
     nd_val_prim(0, 0, part->unk_30, part->unk_34, part->unk_38, part->unk_18);
     nd_val_env(part->unk_3C, part->unk_40, part->unk_44, 0);
 

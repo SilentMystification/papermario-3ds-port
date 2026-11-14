@@ -295,16 +295,16 @@ void func_E0082A84(EffectInstance* effect) {
         if (unk_38 > 0) {
             nd_draw_list(D_090022B0_388660, ND_SELF);
             if (unk_38 < 10) {
-                nd_rec_dl(D_E0082D00[unk_38]);
+                nd_draw_list(D_E0082D00[unk_38], ND_SELF);
                 nd_rec_dl(D_09002250_388600);
             } else {
                 s32 ones = unk_38 % 10;
                 s32 tens = unk_38 / 10;
 
-                nd_rec_dl(D_E0082D00[ones]);
-                nd_rec_dl(D_E0082D00[tens]);
+                nd_draw_list(D_E0082D00[ones], ND_SELF);
+                nd_draw_list(D_E0082D00[tens], ND_SELF);
                 nd_rec_dl(D_09002290_388640);
-                nd_rec_dl(D_E0082D00[tens]);
+                nd_draw_list(D_E0082D00[tens], ND_SELF);
                 nd_rec_dl(D_09002270_388620);
             }
         }

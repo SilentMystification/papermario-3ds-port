@@ -156,7 +156,7 @@ void ice_shard_appendGfx(void* effect) {
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    nd_rec_dl(D_E01108B4[0]);
+    nd_draw_list(D_E01108B4[0], ND_SELF);
 
     texCoordS = (type % 2) * 32;
     texCoordT = (s32) (data->animFrame * 4.0f) * 32;

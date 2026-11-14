@@ -186,7 +186,7 @@ void butterflies_appendGfx(void* effect) {
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_val_prim(0, 0, primColor, primColor, primColor, 255);
     nd_draw_list(D_09003880_3AE8B0, ND_SELF);
-    nd_rec_dl(D_E00AA6C0[type]);
+    nd_draw_list(D_E00AA6C0[type], ND_SELF);
     nd_mesh_vtx(&D_09002D40_3ADD70[data->unk_2C], 6, 0);
     nd_draw_list(D_09003DC8_3AEDF8, pe_butterflies_189);
     nd_xf_pop(G_MTX_MODELVIEW);

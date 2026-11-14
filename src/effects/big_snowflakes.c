@@ -120,7 +120,7 @@ void big_snowflakes_appendGfx(void* effect) {
     s32 i;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_rec_dl(dlist);
+    nd_draw_list(dlist, ND_SELF);
     nd_val_prim(0, 0, 20, 100, 20, data->unk_24);
 
     guTranslateF(sp18, data->unk_04, data->unk_08, data->unk_0C);
