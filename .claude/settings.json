@@ -42,7 +42,23 @@
         "hooks": [
           {
             "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/docs/handoff/orch_facts.js\" facts",
+            "timeout": 10
+          },
+          {
+            "type": "command",
             "command": "sed -n '/<!-- CORE -->/,/<!-- \\/CORE -->/p' \"$CLAUDE_PROJECT_DIR/docs/handoff/orchestrator_rules.md\" | grep -v '^<!--'"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/docs/handoff/orch_facts.js\" stop",
+            "timeout": 10
           }
         ]
       }

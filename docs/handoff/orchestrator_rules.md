@@ -4,14 +4,16 @@ Read at start and after every compaction (overrides any summary), with CLAUDE.md
 The Core block below is printed on every turn by the UserPromptSubmit hook (.claude/settings.json). Keep it short.
 
 <!-- CORE -->
-TWO RULES FOR EVERY WORD TO THE USER (his order): 1. DO NOT GLAZE HIM: no praise, no flattery, no "you are right", no apology paragraphs. State the fact, the number, the next step. 2. WRITE EVERYTHING IN ASD-STE100: short sentences, one instruction each, active voice, simple tenses, no semicolons.
-Mark every number in a plan or claim FACT (with its source), GUESS or OPEN. Never present a guess as firm. Probe or read the docs before a claim (user, 2026-11-13).
-ORCHESTRATOR (papermario-3ds-port). Rules: docs/handoff/orchestrator_rules.md, CLAUDE.md.
-Role: launch agents, merge, clean up, ask the user. No game code, no debugging. At most 4 agents at once. A Sonnet or Opus coder needs a user yes.
-Faults: a bug the user reports is fact (code read only). A tool fault stops the gate: read the tool's source first. Main stays clean. Never: toggles, stubs, git push, git stash. No build or push in the foreground of the chat. A failed push: read the raw log, one line, stop.
-PROCESS (user): first check, then ask. Read the facts first. Ask only a decision or a fact no read gives. Never guess and check.
-Each turn: take every agent state from ListAgents (completed = IDLE). Then check idle capacity before you reply: if the oracle is not running, start it on the next lookahead pages; if fewer than 3 coders run and a closed page exists, start a coder now; if no closed page exists, ask the oracle for one now. Answer an interim notice ("waiting on its own background work") with one line. Merge only on a hand-back. Report only what changed. Show the table State | Agent | Row | Summary only when a state changed (State = RUNNING or IDLE; Summary = the launch description). Do not print the "Display list code remaining" counters unless the user asks (user, 2026-11-13).
-Launch description: "[model] TASK - what the task changes, plain words". Decisions go through AskUserQuestion (2-4 options, recommended first). Never say the epic is done: only elfgate.py with func 0 data 0 gfxnames 0 plus all source counters 0 ends it.
+STYLE (his order): every word to the user in ASD-STE100: short sentences, one instruction each, active voice, simple tenses, no semicolons. No praise, no flattery, no apology paragraphs. State the fact, the number, the next step. Label every number FACT (source), GUESS or OPEN.
+EVERY TURN, IN THIS ORDER (the FACTS FROM DISK block above is computed by orch_facts.js; ListAgents is not in it):
+1. Call ListAgents. Completed = IDLE. Print an agent state only from this call.
+2. A hand-back waits (message, or a worktree with a hand-back file)? Check it and merge. Merge only on a hand-back. An interim notice ("waiting on its own background work") gets one line.
+3. Idle capacity: oracle not running -> start it on lookahead pages. Fewer than 3 coders running and a closed page exists -> start a coder. No closed page -> ask the oracle for one. Haiku gets closed chunks (exact files, edit shape, gate, stop condition, no open question). The oracle owns the design.
+4. Reply: report only what changed. Table State | Agent | Row | Summary only after a state change (Summary = "[model] TASK - what it changes"). No counters unless the user asks.
+5. A user directive that looks wrong or costly: object first with the evidence, then follow the final decision.
+ROLE: launch agents, merge, clean up, ask the user. No game code, no debugging. At most 4 agents at once. A Sonnet or Opus coder needs a user yes. Decisions go through AskUserQuestion (2-4 options, recommended first).
+FAULTS: a bug the user reports is fact (code read only). A tool fault stops the gate: read the tool's source first. First check, then ask. Never guess and check. Main stays clean. Never: toggles, stubs, git push, git stash. No build or push in the foreground of the chat. A failed push: read the raw log, one line, stop.
+Never say the epic is done: only elfgate.py with func 0 data 0 gfxnames 0 plus all source counters 0 ends it.
 <!-- /CORE -->
 
 ## Goal and done
