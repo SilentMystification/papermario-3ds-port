@@ -2,6 +2,7 @@
 #include "Credits.h"
 #include "nd_st.h"
 #include "nd_xf.h"
+#include "nd_tx.h"
 
 #if VERSION_PAL
 #define CREDITS_MESSAGE_BUFFER_COUNT (24)
@@ -740,7 +741,7 @@ void N(credits_worker_render)(void) {
     CreditsData* data = N(CreditsDataPtr);
     s32 i;
 
-    gSPViewport(gMainGfxPos++, &N(CreditsViewport));
+    nd_xf_viewport(&N(CreditsViewport));
     guOrtho(projMtx, 0.0f, 320.0f, -240.0f, 0.0f, -100.0f, 100.0f, 1.0f);
     nd_xf_push(OS_PHYSICAL_TO_K0(projMtx), G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
     nd_pso_geom_clr(G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);

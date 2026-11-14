@@ -4,6 +4,7 @@
 #include "nd_st.h"
 #include "nd_val.h"
 #include "nd_geo.h"
+#include "nd_tx.h"
 
 s32 N(WavePhase) = {
     0
@@ -91,27 +92,15 @@ void N(UnkModelFunc000)(s32 x1, s32 y1, s32 x2, s32 y2) {
 
                 _g->words.w1 = (unsigned int)(osVirtualToPhysical(img));
             }
-            gDPSetTile(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b,
-                (((((x2 - 1)-(x1)+1) * G_IM_SIZ_16b_TILE_BYTES)+7)>>3), 0,
-                G_TX_LOADTILE, 0 , G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_WRAP, 9,
-                G_TX_NOLOD);
-            gDPLoadSync(gMainGfxPos++);
-            gDPLoadTile(gMainGfxPos++, G_TX_LOADTILE,
-                    (x1)<<G_TEXTURE_IMAGE_FRAC,
-                    (y1 - 6 * i - 6)<<G_TEXTURE_IMAGE_FRAC,
-                    (x2 - 1)<<G_TEXTURE_IMAGE_FRAC,
-                    (y1 - 6 * i - 1)<<G_TEXTURE_IMAGE_FRAC);
-            gDPSetTile(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b,
-                (((((x2 - 1)-(x1)+1) * G_IM_SIZ_16b_LINE_BYTES)+7)>>3), 0,
-                G_TX_RENDERTILE, 0, G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_WRAP, 9,
-                G_TX_NOLOD);
+            nd_tex_tile(G_IM_FMT_RGBA, G_IM_SIZ_16b, (((((x2 - 1)-(x1)+1) * G_IM_SIZ_16b_TILE_BYTES)+7)>>3), 0, G_TX_LOADTILE, 0, G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_WRAP, 9, G_TX_NOLOD);
+            nd_tex_ldtile(G_TX_LOADTILE, (x1)<<G_TEXTURE_IMAGE_FRAC, (y1 - 6 * i - 6)<<G_TEXTURE_IMAGE_FRAC, (x2 - 1)<<G_TEXTURE_IMAGE_FRAC, (y1 - 6 * i - 1)<<G_TEXTURE_IMAGE_FRAC);
+            nd_tex_tile(G_IM_FMT_RGBA, G_IM_SIZ_16b, (((((x2 - 1)-(x1)+1) * G_IM_SIZ_16b_LINE_BYTES)+7)>>3), 0, G_TX_RENDERTILE, 0, G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_WRAP, 9, G_TX_NOLOD);
             gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE,
                     (x1)<<G_TEXTURE_IMAGE_FRAC,
                     (y1 - 6 * i - 6)<<G_TEXTURE_IMAGE_FRAC,
                     (x2 - 1)<<G_TEXTURE_IMAGE_FRAC,
                     (y1 - 6 * i - 1)<<G_TEXTURE_IMAGE_FRAC)
-            gSPTextureRectangle(gMainGfxPos++, x1 * 4, (y1 + i * 6) * 4, x2 * 4, (y1 + i * 6 + 6) * 4,
-                                G_TX_RENDERTILE, x1 * 32, (y1 - i * 6) * 32, 1024, (s32)(sin_deg(N(WavePhase) + i * 30) * 500.0f) - 500);
+            nd_rect_tex(x1 * 4, (y1 + i * 6) * 4, x2 * 4, (y1 + i * 6 + 6) * 4, G_TX_RENDERTILE, x1 * 32, (y1 - i * 6) * 32, 1024, (s32)(sin_deg(N(WavePhase) + i * 30) * 500.0f) - 500);
         }
     }
 
@@ -140,27 +129,15 @@ void N(UnkModelFunc000)(s32 x1, s32 y1, s32 x2, s32 y2) {
 
                 _g->words.w1 = (unsigned int)(osVirtualToPhysical(img));
             }
-            gDPSetTile(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b,
-                (((((x2 - 1)-(x1)+1) * G_IM_SIZ_16b_TILE_BYTES)+7)>>3), 0,
-                G_TX_LOADTILE, 0 , G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_WRAP, 9,
-                G_TX_NOLOD);
-            gDPLoadSync(gMainGfxPos++);
-            gDPLoadTile(gMainGfxPos++, G_TX_LOADTILE,
-                    (x1)<<G_TEXTURE_IMAGE_FRAC,
-                    (y1 - 6 * i - m)<<G_TEXTURE_IMAGE_FRAC,
-                    (x2 - 1)<<G_TEXTURE_IMAGE_FRAC,
-                    (y1 - 6 * i - 1)<<G_TEXTURE_IMAGE_FRAC);
-            gDPSetTile(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b,
-                (((((x2 - 1)-(x1)+1) * G_IM_SIZ_16b_LINE_BYTES)+7)>>3), 0,
-                G_TX_RENDERTILE, 0, G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_WRAP, 9,
-                G_TX_NOLOD);
+            nd_tex_tile(G_IM_FMT_RGBA, G_IM_SIZ_16b, (((((x2 - 1)-(x1)+1) * G_IM_SIZ_16b_TILE_BYTES)+7)>>3), 0, G_TX_LOADTILE, 0, G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_WRAP, 9, G_TX_NOLOD);
+            nd_tex_ldtile(G_TX_LOADTILE, (x1)<<G_TEXTURE_IMAGE_FRAC, (y1 - 6 * i - m)<<G_TEXTURE_IMAGE_FRAC, (x2 - 1)<<G_TEXTURE_IMAGE_FRAC, (y1 - 6 * i - 1)<<G_TEXTURE_IMAGE_FRAC);
+            nd_tex_tile(G_IM_FMT_RGBA, G_IM_SIZ_16b, (((((x2 - 1)-(x1)+1) * G_IM_SIZ_16b_LINE_BYTES)+7)>>3), 0, G_TX_RENDERTILE, 0, G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_WRAP, 9, G_TX_NOLOD);
             gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE,
                     (x1)<<G_TEXTURE_IMAGE_FRAC,
                     (y1 - 6 * i - m)<<G_TEXTURE_IMAGE_FRAC,
                     (x2 - 1)<<G_TEXTURE_IMAGE_FRAC,
                     (y1 - 6 * i - 1)<<G_TEXTURE_IMAGE_FRAC)
-            gSPTextureRectangle(gMainGfxPos++, x1 * 4, (y1 + i * 6) * 4, x2 * 4, (y1 + i * 6 + m) * 4,
-                                G_TX_RENDERTILE, x1 * 32, (y1 - i * 6) * 32, 1024, -1024);
+            nd_rect_tex(x1 * 4, (y1 + i * 6) * 4, x2 * 4, (y1 + i * 6 + m) * 4, G_TX_RENDERTILE, x1 * 32, (y1 - i * 6) * 32, 1024, -1024);
         }
     }
 }

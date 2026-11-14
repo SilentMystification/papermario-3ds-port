@@ -1,6 +1,7 @@
 #include "pause_common.h"
 #include "message_ids.h"
 #include "nd_st.h"
+#include "nd_tx.h"
 
 #if VERSION_PAL
 #define MAP_TITLE_X 36
@@ -163,9 +164,7 @@ void pause_map_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 width, s
             tileHeight = 111 - 4 * i;
         }
 
-        gDPLoadTextureTile(gMainGfxPos++, pause_world_map_png, G_IM_FMT_CI, G_IM_SIZ_8b, 320, 320,
-                        0, i * 4 - cameraY, 319, i * 4 + tileHeight - 1 - cameraY, 0,
-                        G_TX_CLAMP, G_TX_CLAMP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+        nd_tex_load_tile(pause_world_map_png, G_IM_FMT_CI, G_IM_SIZ_8b, 320, 320, 0, i * 4 - cameraY, 319, i * 4 + tileHeight - 1 - cameraY, 0, G_TX_CLAMP, G_TX_CLAMP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
         pause_draw_rect((baseX + 26) * 4, (baseY + 22 + 4 * i) * 4, (baseX + 260) * 4,
         (baseY + 22 + i * 4 + tileHeight) * 4, 0, ult, (-cameraY + i * 4) * 32, 0x400, 0x400);
 

@@ -12,6 +12,7 @@
 #include "sprite/npc/WorldLakilester.h"
 #include "nd_xf.h"
 #include "nd_st.h"
+#include "nd_tx.h"
 extern void pm_ph_ui(const char* what, int v);
 
 extern s8 gPauseBufferPal1[512];
@@ -327,7 +328,7 @@ void pause_partners_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 wid
     s32 portraitOffsetX;
     s32 portraitIndex;
 
-    gSPViewport(gMainGfxPos++, &gPausePartnersViewport);
+    nd_xf_viewport(&gPausePartnersViewport);
     guOrthoF(matrix, 0.0f, 320.0f, 240.0f, 0.0f, -100.0f, 100.0f, 1.0f);
     guMtxF2L(matrix, &gDisplayContext->matrixStack[gMatrixListPos]);
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
@@ -423,7 +424,7 @@ void pause_partners_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 wid
     pause_partners_load_portrait(portraitIndex % gPausePartnersNumPartners);
     for (i = 0; i < ARRAY_COUNT(gPausePartnersPaletteBuffers); portraitOffsetX += 150, i++) {
         gSPDisplayList(gMainGfxPos++, &gPausePartnersDL);
-        gDPLoadTLUT_pal256(gMainGfxPos++, gPausePartnersPaletteBuffers[i]);
+        nd_tex_load_tlut256(gPausePartnersPaletteBuffers[i]);
 
         for (index = 0; index < 20; index++) {
             if (12 * index + 12 <= 105) {
@@ -432,9 +433,7 @@ void pause_partners_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 wid
                 tileHeight = 106 - 12 * index;
             }
 
-            gDPLoadTextureTile(gMainGfxPos++, gPausePartnersImageBuffers[i], G_IM_FMT_CI, G_IM_SIZ_8b, 150, 0,
-                                0, 12 * index, 149, 12 * index + tileHeight - 1, 0,
-                                G_TX_CLAMP, G_TX_CLAMP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+            nd_tex_load_tile(gPausePartnersImageBuffers[i], G_IM_FMT_CI, G_IM_SIZ_8b, 150, 0, 0, 12 * index, 149, 12 * index + tileHeight - 1, 0, G_TX_CLAMP, G_TX_CLAMP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
             pause_draw_rect((baseX + 130 + portraitOffsetX) * 4, (baseY + 24 + 12 * index) * 4, (baseX + 280 + portraitOffsetX) * 4, (baseY + 24 + 12 * index + tileHeight) * 4, 0, 0,
                             12 * index * 32, 0x400, 0x400);
             if (12 * index + 12 >= 105) {

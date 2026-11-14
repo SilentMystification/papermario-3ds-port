@@ -6,6 +6,7 @@
 #include "nd_st.h"
 #include "nd_val.h"
 #include "nd_geo.h"
+#include "nd_tx.h"
 
 enum {
     STORY_PAGE_BLANK        = 0,
@@ -1365,7 +1366,7 @@ void N(appendGfx_image_strips)(s32 baseX, s32 baseY, IMG_PTR img, PAL_PTR pal, s
     gSPDisplayList(gMainGfxPos++, N(gfx_setup_story_viewport));
 
     if (pal != nullptr) {
-        gDPLoadTLUT_pal256(gMainGfxPos++, pal);
+        nd_tex_load_tlut256(pal);
     } else {
         nd_pso_lut(G_TT_NONE);
     }
@@ -1384,11 +1385,8 @@ void N(appendGfx_image_strips)(s32 baseX, s32 baseY, IMG_PTR img, PAL_PTR pal, s
     nd_pso_rm(G_RM_CLD_SURF, G_RM_CLD_SURF2);
 
     for (i = 0; i < height / lineHeight; i++) {
-        gDPLoadTextureTile(gMainGfxPos++, img, pal != nullptr ? G_IM_FMT_CI : G_IM_FMT_IA, G_IM_SIZ_8b, width, height,
-                        0, i * lineHeight, width - 1, i * lineHeight + lineHeight - 1, 0,
-                        G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
-        gSPScisTextureRectangle(gMainGfxPos++, baseX * 4, (baseY + i * lineHeight) * 4, (baseX + width) * 4,
-                        (baseY + i * lineHeight + lineHeight) * 4, G_TX_RENDERTILE, 0, (i * lineHeight) * 32, 1024, 1024);
+        nd_tex_load_tile(img, pal != nullptr ? G_IM_FMT_CI : G_IM_FMT_IA, G_IM_SIZ_8b, width, height, 0, i * lineHeight, width - 1, i * lineHeight + lineHeight - 1, 0, G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+        nd_rect_scis(baseX * 4, (baseY + i * lineHeight) * 4, (baseX + width) * 4, (baseY + i * lineHeight + lineHeight) * 4, G_TX_RENDERTILE, 0, (i * lineHeight) * 32, 1024, 1024);
     }
 
 }
@@ -1405,20 +1403,14 @@ void N(appendGfx_image_ci)(s32 baseX, s32 baseY, IMG_PTR img, PAL_PTR pal) {
     s32 i;
     s32 m = 1;
 
-    gDPLoadTLUT_pal256(gMainGfxPos++, pal);
+    nd_tex_load_tlut256(pal);
     for (i = 0; i < 23; i++) {
-        gDPLoadTextureTile(gMainGfxPos++, img, G_IM_FMT_CI, G_IM_SIZ_8b, 264, 162,
-                           0, i * 7, 263, i * 7 + 7 - 1, 0,
-                           G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
-        gSPScisTextureRectangle(gMainGfxPos++, baseX * 4, (baseY + i * 7) * 4, (baseX + 264) * 4, (baseY + i * 7 + 7) * 4,
-                                G_TX_RENDERTILE, 0, (i * 7) << 5, 1024, 1024);
+        nd_tex_load_tile(img, G_IM_FMT_CI, G_IM_SIZ_8b, 264, 162, 0, i * 7, 263, i * 7 + 7 - 1, 0, G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+        nd_rect_scis(baseX * 4, (baseY + i * 7) * 4, (baseX + 264) * 4, (baseY + i * 7 + 7) * 4, G_TX_RENDERTILE, 0, (i * 7) << 5, 1024, 1024);
     }
     if (m != 0) {
-        gDPLoadTextureTile(gMainGfxPos++, img, G_IM_FMT_CI, G_IM_SIZ_8b, 264, 0,
-                           0, i * 7, 263, i * 7 + m - 1, 0,
-                           G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
-        gSPScisTextureRectangle(gMainGfxPos++, baseX * 4, (baseY + i * 7) * 4, (baseX + 264) * 4, (baseY + i * 7 + m) * 4,
-                                G_TX_RENDERTILE, 0, (i * 7) << 5, 1024, 1024);
+        nd_tex_load_tile(img, G_IM_FMT_CI, G_IM_SIZ_8b, 264, 0, 0, i * 7, 263, i * 7 + m - 1, 0, G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+        nd_rect_scis(baseX * 4, (baseY + i * 7) * 4, (baseX + 264) * 4, (baseY + i * 7 + m) * 4, G_TX_RENDERTILE, 0, (i * 7) << 5, 1024, 1024);
     }
 }
 

@@ -10,6 +10,7 @@
 #include "sprite/npc/WorldKalmar.h"
 #include "nd_xf.h"
 #include "nd_st.h"
+#include "nd_tx.h"
 
 extern Gfx PauseGfxSpiritsBg[];
 extern s8 pause_spirits_bg_png[];
@@ -159,13 +160,11 @@ void pause_spirits_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 widt
     f32 scale;
     PlayerData* playerData = get_player_data();
 
-    gSPViewport(gMainGfxPos++, &gPauseSpiritsViewport);
+    nd_xf_viewport(&gPauseSpiritsViewport);
     gSPDisplayList(gMainGfxPos++, PauseGfxSpiritsBg);
 
     for (i = 0; i < 5; i++) {
-        gDPLoadTextureTile_4b(gMainGfxPos++, pause_spirits_bg_png, G_IM_FMT_CI, 128, 110,
-                               0, i * 22, 127, i * 22 + 21, 0,
-                               G_TX_MIRROR, G_TX_CLAMP, 7, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+        nd_tex_load_tile_4b(pause_spirits_bg_png, G_IM_FMT_CI, 128, 110, 0, i * 22, 127, i * 22 + 21, 0, G_TX_MIRROR, G_TX_CLAMP, 7, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
         pause_draw_rect((baseX + 15) * 4, (baseY + 22 + i * 22) * 4, (baseX + 271) * 4, (baseY + 22 + i * 22 + 22) * 4, 0, 16, 16 + i * 704, 0x400, 0x400);
     }
 

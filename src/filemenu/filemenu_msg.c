@@ -4,6 +4,7 @@
 
 #include "charset/charset.h"
 #include "nd_st.h"
+#include "nd_tx.h"
 
 s32 msg_get_print_char_width(s32 character, s32 charset, s32 variation, f32 msgScale, s32 overrideCharWidth, u8 flags);
 
@@ -720,7 +721,7 @@ s32 filemenu_draw_char(s32 c, s32 x, s32 y, s32 flag1, s32 color, s32 flag2) {
 
         if (filemenu_char_color != color) {
             filemenu_char_color = color;
-            gDPLoadTLUT_pal16(gMainGfxPos++, 0, D_802F4560[color]);
+            nd_tex_load_tlut16(0, D_802F4560[color]);
         }
 
 #if VERSION_JP
@@ -728,14 +729,9 @@ s32 filemenu_draw_char(s32 c, s32 x, s32 y, s32 flag1, s32 color, s32 flag2) {
 #else
         if (texSizeX >= 16 && texSizeX % 16 == 0) {
 #endif
-            gDPLoadTextureBlock_4b(gMainGfxPos++, &raster[charRasterSize * c], G_IM_FMT_CI,
-                                texSizeX, texSizeY, 0,
-                                G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+            nd_tex_load_block_4b(&raster[charRasterSize * c], G_IM_FMT_CI, texSizeX, texSizeY, 0, G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
         } else {
-            gDPLoadTextureTile_4b(gMainGfxPos++, &raster[charRasterSize * c], G_IM_FMT_CI,
-                                texSizeX, texSizeY,
-                                0, 0, texSizeX - 1, texSizeY - 1, 0,
-                                G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+            nd_tex_load_tile_4b(&raster[charRasterSize * c], G_IM_FMT_CI, texSizeX, texSizeY, 0, 0, texSizeX - 1, texSizeY - 1, 0, G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
         }
 
         if (flag2) {
@@ -771,10 +767,10 @@ s32 filemenu_draw_char(s32 c, s32 x, s32 y, s32 flag1, s32 color, s32 flag2) {
 
         if (filemenu_char_color != color) {
             filemenu_char_color = color;
-            gDPLoadTLUT_pal16(gMainGfxPos++, 0, D_802F4560[color]);
+            nd_tex_load_tlut16(0, D_802F4560[color]);
         }
 
-        gDPLoadTextureBlock_4b(gMainGfxPos++, &filemenu_glyphBuffer[*offsetPtr][0], G_IM_FMT_CI, 16, 16, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+        nd_tex_load_block_4b(&filemenu_glyphBuffer[*offsetPtr][0], G_IM_FMT_CI, 16, 16, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
 
         if (flag2) {
             nd_pso_cc(PM_CC_07, PM_CC_07);

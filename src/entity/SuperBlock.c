@@ -5,6 +5,7 @@
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_st.h"
+#include "nd_tx.h"
 
 extern EntityBlueprint Entity_SuperBlockContent;
 
@@ -144,7 +145,7 @@ void entity_SuperBlockContent_setupGfx(s32 entityIndex) {
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_pso_rm(G_RM_AA_ZB_TEX_EDGE, G_RM_AA_ZB_TEX_EDGE2);
     nd_pso_cc(G_CC_MODULATEIA, G_CC_MODULATEIA);
-    gDPLoadTLUT_pal16(gMainGfxPos++, 0, palette);
+    nd_tex_load_tlut16(0, palette);
     gSPDisplayList(gMainGfxPos++, dlist);
     nd_xf_pop(G_MTX_MODELVIEW);
 

@@ -5,6 +5,7 @@
 #include "nd_st.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_tx.h"
 
 // cards used during Merlee's ritual
 typedef struct RitualCard {
@@ -249,10 +250,8 @@ u32 N(appendGfx_ritual_card)(RitualCard* card, Matrix4f mtxParent) {
         if (card->unk_00 == 1 || card->unk_00 == 5) {
             spr_get_player_raster_info(&rasterInfo, card->spriteID, card->rasterIndex);
             nd_pso_lut(G_TT_RGBA16);
-            gDPLoadTLUT_pal16(gMainGfxPos++, 0, rasterInfo.defaultPal);
-            gDPLoadTextureTile_4b(gMainGfxPos++, rasterInfo.raster, G_IM_FMT_CI, rasterInfo.width, rasterInfo.height,
-                                    0, 0, rasterInfo.width - 1, rasterInfo.height - 1, 0,
-                                    G_TX_CLAMP, G_TX_CLAMP, 8, 8, G_TX_NOLOD, G_TX_NOLOD);
+            nd_tex_load_tlut16(0, rasterInfo.defaultPal);
+            nd_tex_load_tile_4b(rasterInfo.raster, G_IM_FMT_CI, rasterInfo.width, rasterInfo.height, 0, 0, rasterInfo.width - 1, rasterInfo.height - 1, 0, G_TX_CLAMP, G_TX_CLAMP, 8, 8, G_TX_NOLOD, G_TX_NOLOD);
             guTranslateF(mtxTransform, card->xoffset + 30 - rasterInfo.width / 2, 0.0f, 0.0f);
             guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
             nd_xf_push(VIRTUAL_TO_PHYSICAL(&gDisplayContext->matrixStack[gMatrixListPos++]), G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);

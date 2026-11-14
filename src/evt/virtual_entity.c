@@ -2,6 +2,7 @@
 #include "entity.h"
 #include "nd_val.h"
 #include "nd_st.h"
+#include "nd_tx.h"
 
 extern VirtualEntityList bBattleVirtualEntityList;
 extern VirtualEntityList wWorldVirtualEntityList;
@@ -19,7 +20,7 @@ void virtual_entity_appendGfx_quad(u8 r, u8 g, u8 b, u8 a, u16 left, u16 top, u1
     }
 
     nd_val_prim(0, 0, r, g, b, a);
-    gDPFillRectangle(gMainGfxPos++, left, top, right, bottom);
+    nd_rect_fill(left, top, right, bottom);
     nd_pso_rm(G_RM_TEX_EDGE, G_RM_TEX_EDGE2);
     nd_pso_cc(G_CC_DECALRGBA, G_CC_DECALRGBA);
 }

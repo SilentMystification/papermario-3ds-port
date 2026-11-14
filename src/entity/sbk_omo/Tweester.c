@@ -4,6 +4,7 @@
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_st.h"
+#include "nd_tx.h"
 
 u8 Entity_Tweester_FaceAnimationData[] = {
       0,  2,
@@ -65,12 +66,12 @@ void entity_Tweester_render_face(s32 entityIndex) {
     TweesterData* data = entity->dataBuf.tweester;
 
     nd_pso_lut(G_TT_RGBA16);
-    gDPLoadTLUT_pal16(gMainGfxPos++, 0, D_0A0018A0_E58700);
+    nd_tex_load_tlut16(0, D_0A0018A0_E58700);
     nd_tex_on(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
     nd_pso_cc(G_CC_MODULATEIA, G_CC_MODULATEIA);
     nd_pso_detail(G_TD_CLAMP);
     nd_pso_lod(G_TL_TILE);
-    gDPLoadTextureBlock_4b(gMainGfxPos++, D_0A0014A0_E58300, G_IM_FMT_CI, 64, 32, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_CLAMP, 6, 5, G_TX_NOLOD, G_TX_NOLOD);
+    nd_tex_load_block_4b(D_0A0014A0_E58300, G_IM_FMT_CI, 64, 32, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_CLAMP, 6, 5, G_TX_NOLOD, G_TX_NOLOD);
     nd_pso_persp(G_TP_PERSP);
     nd_pso_filt(G_TF_BILERP);
     nd_val_tile_size(G_TX_RENDERTILE, data->faceAnimTexOffset * 4, 0, (data->faceAnimTexOffset + 124) * 4, 31 * 4);
@@ -85,17 +86,15 @@ void entity_Tweester_setupGfx(s32 entityIndex) {
     nd_pso_cc(PM_CC_ALT_INTERFERENCE, G_CC_MODULATEIA2);
     nd_pso_detail(G_TD_CLAMP);
     nd_pso_lod(G_TL_TILE);
-    gDPSetTextureImage(gMainGfxPos++, G_IM_FMT_I, G_IM_SIZ_8b, 32, D_0A000BF0_E57A50);
-    gDPSetTile(gMainGfxPos++, G_IM_FMT_I, G_IM_SIZ_8b, 4, 0x0000, G_TX_LOADTILE, 0, G_TX_NOMIRROR | G_TX_WRAP, 5, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_WRAP, 5, G_TX_NOLOD);
-    gDPLoadSync(gMainGfxPos++);
-    gDPLoadTile(gMainGfxPos++, G_TX_LOADTILE, 0, 0, 0x007C, 0x007C);
-    gDPSetTile(gMainGfxPos++, G_IM_FMT_I, G_IM_SIZ_8b, 4, 0x0000, G_TX_RENDERTILE, 0, G_TX_NOMIRROR | G_TX_WRAP, 5, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_WRAP, 5, G_TX_NOLOD);
+    nd_tex_img(G_IM_FMT_I, G_IM_SIZ_8b, 32, D_0A000BF0_E57A50);
+    nd_tex_tile(G_IM_FMT_I, G_IM_SIZ_8b, 4, 0x0000, G_TX_LOADTILE, 0, G_TX_NOMIRROR | G_TX_WRAP, 5, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_WRAP, 5, G_TX_NOLOD);
+    nd_tex_ldtile(G_TX_LOADTILE, 0, 0, 0x007C, 0x007C);
+    nd_tex_tile(G_IM_FMT_I, G_IM_SIZ_8b, 4, 0x0000, G_TX_RENDERTILE, 0, G_TX_NOMIRROR | G_TX_WRAP, 5, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_WRAP, 5, G_TX_NOLOD);
     nd_val_tile_size(G_TX_RENDERTILE, 0, 0, 0x007C, 0x007C);
-    gDPSetTextureImage(gMainGfxPos++, G_IM_FMT_I, G_IM_SIZ_8b, 32, D_0A000FF0_E57E50);
-    gDPSetTile(gMainGfxPos++, G_IM_FMT_I, G_IM_SIZ_8b, 4, 0x0080, G_TX_LOADTILE, 0, G_TX_NOMIRROR | G_TX_WRAP, 5, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_WRAP, 5, G_TX_NOLOD);
-    gDPLoadSync(gMainGfxPos++);
-    gDPLoadTile(gMainGfxPos++, G_TX_LOADTILE, 0, 0, 0x007C, 0x007C);
-    gDPSetTile(gMainGfxPos++, G_IM_FMT_I, G_IM_SIZ_8b, 4, 0x0080, 1, 0, G_TX_NOMIRROR | G_TX_WRAP, 5, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_WRAP, 5, G_TX_NOLOD);
+    nd_tex_img(G_IM_FMT_I, G_IM_SIZ_8b, 32, D_0A000FF0_E57E50);
+    nd_tex_tile(G_IM_FMT_I, G_IM_SIZ_8b, 4, 0x0080, G_TX_LOADTILE, 0, G_TX_NOMIRROR | G_TX_WRAP, 5, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_WRAP, 5, G_TX_NOLOD);
+    nd_tex_ldtile(G_TX_LOADTILE, 0, 0, 0x007C, 0x007C);
+    nd_tex_tile(G_IM_FMT_I, G_IM_SIZ_8b, 4, 0x0080, 1, 0, G_TX_NOMIRROR | G_TX_WRAP, 5, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_WRAP, 5, G_TX_NOLOD);
     nd_val_tile_size(1, 0, 0, 0x007C, 0x007C);
     nd_pso_persp(G_TP_PERSP);
     nd_pso_filt(G_TF_BILERP);

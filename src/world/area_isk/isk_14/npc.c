@@ -6,6 +6,7 @@
 #include "nd_st.h"
 #include "nd_xf.h"
 #include "nd_geo.h"
+#include "nd_tx.h"
 
 typedef struct StoneChompAmbushIsk14 {
     /* 0x00 */ s32 imgfxIdx;
@@ -29,7 +30,7 @@ void N(func_80241610_993D40)(void) {
     SpriteRasterInfo spriteRaster;
     Matrix4f transformMtx, tempMtx;
 
-    gSPViewport(gMainGfxPos++, &cam->vp);
+    nd_xf_viewport(&cam->vp);
     if (!(cam->flags & CAMERA_FLAG_ORTHO)) {
         nd_xf_pnorm(cam->perspNorm);
     }
