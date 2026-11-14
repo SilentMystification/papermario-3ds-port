@@ -1,6 +1,7 @@
 #include "common.h"
 #include "entity.h"
-#include "nd_scomp.h"
+#include "nd_st.h"
+#include "nd_val.h"
 #include "nd_xf.h"
 
 void entity_shattering_setupGfx(s32 entityIndex);
@@ -153,18 +154,6 @@ void entity_shattering_idle(Entity* entity) {
     }
 }
 
-/* S6E2: the state lines of the fragment loop of entity_shattering_setupGfx as compiled state ranges (nd_scomp.h). The PRIM is a value slot. */
-static const Gfx ShatteringBlock_common_st_o[] = {
-    gsDPSetRenderMode(G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2),
-    gsDPSetCombineMode(G_CC_MODULATEIA, G_CC_MODULATEIA),
-};
-static NdSDef ShatteringBlock_common_def_o = { ShatteringBlock_common_st_o, sizeof ShatteringBlock_common_st_o / sizeof ShatteringBlock_common_st_o[0] };
-static const Gfx ShatteringBlock_common_st_t[] = {
-    gsDPSetCombineMode(PM_CC_11, PM_CC_12),
-    gsDPSetPrimColor(0, 0, 0, 0, 0, 0),
-};
-static NdSDef ShatteringBlock_common_def_t = { ShatteringBlock_common_st_t, sizeof ShatteringBlock_common_st_t / sizeof ShatteringBlock_common_st_t[0] };
-
 void entity_shattering_setupGfx(s32 entityIndex) {
     s32 i;
     Matrix4f mtxTransInv;
@@ -185,12 +174,11 @@ void entity_shattering_setupGfx(s32 entityIndex) {
 
     for (i = 0; i < 24; i++) {
         if (data->alpha == 255) {
-            nd_scomp_rec(&ShatteringBlock_common_def_o, NULL, 0);
+            nd_pso_rm(G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2);
+            nd_pso_cc(G_CC_MODULATEIA, G_CC_MODULATEIA);
         } else {
-            Gfx v[1];
-
-            gDPSetPrimColor(&v[0], 0, 0, 0, 0, 0, data->alpha);
-            nd_scomp_rec(&ShatteringBlock_common_def_t, v, 1);
+            nd_pso_cc(PM_CC_11, PM_CC_12);
+            nd_val_prim(0, 0, 0, 0, 0, data->alpha);
         }
 
         guTranslateF(mtxTransInv, x_inv, y_inv, z_inv);

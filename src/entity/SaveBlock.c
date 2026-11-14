@@ -3,7 +3,8 @@
 #include "ld_addrs.h"
 #include "entity.h"
 #include "message_ids.h"
-#include "nd_scomp.h"
+#include "nd_st.h"
+#include "nd_val.h"
 #include "nd_xf.h"
 
 extern Mtx Entity_SaveBlock_Mtx;
@@ -23,22 +24,6 @@ extern Gfx Entity_SaveBlock_RenderBlock_es[];
 extern s32 gCurrentLanguage;
 #endif
 
-/* S6E2: the state lines of entity_SaveBlock_setupGfx as compiled state ranges (nd_scomp.h). The matrix and the PRIM are value slots. */
-static const Gfx SaveBlock_st_a[] = {
-    gsSPMatrix(0, G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW),
-    gsDPSetRenderMode(G_RM_ZB_CLD_SURF, G_RM_ZB_CLD_SURF2),
-    gsDPSetCombineMode(PM_CC_01, PM_CC_02),
-    gsDPSetPrimColor(0, 0, 0, 0, 0, 0),
-};
-static NdSDef SaveBlock_def_a = { SaveBlock_st_a, sizeof SaveBlock_st_a / sizeof SaveBlock_st_a[0] };
-static const Gfx SaveBlock_st_b[] = {
-    gsSPMatrix(0, G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW),
-    gsDPSetRenderMode(G_RM_AA_XLU_SURF | Z_CMP, G_RM_AA_XLU_SURF2 | Z_CMP),
-    gsDPSetCombineMode(PM_CC_01, PM_CC_02),
-    gsDPSetPrimColor(0, 0, 0, 0, 0, 0),
-};
-static NdSDef SaveBlock_def_b = { SaveBlock_st_b, sizeof SaveBlock_st_b / sizeof SaveBlock_st_b[0] };
-
 void entity_SaveBlock_setupGfx(s32 index) {
     Gfx* dlist = Entity_SaveBlock_RenderContent;
     Entity* entity = get_entity_by_index(index);
@@ -53,13 +38,10 @@ void entity_SaveBlock_setupGfx(s32 index) {
     guMtxCatF(sp58, sp18, sp58);
     guMtxF2L(sp58, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    {
-        Gfx v[2];
-
-        gSPMatrix(&v[0], &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        gDPSetPrimColor(&v[1], 0, 0, 0, 0, 0, alpha);
-        nd_scomp_rec(&SaveBlock_def_a, v, 2);
-    }
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_pso_rm(G_RM_ZB_CLD_SURF, G_RM_ZB_CLD_SURF2);
+    nd_pso_cc(PM_CC_01, PM_CC_02);
+    nd_val_prim(0, 0, 0, 0, 0, alpha);
     gSPDisplayList(gMainGfxPos++, dlist);
     nd_xf_pop(G_MTX_MODELVIEW);
 
@@ -80,13 +62,10 @@ void entity_SaveBlock_setupGfx(s32 index) {
     sp58[3][1] += 12.5f;
     guMtxF2L(sp58, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    {
-        Gfx v[2];
-
-        gSPMatrix(&v[0], &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        gDPSetPrimColor(&v[1], 0, 0, 0, 0, 0, alpha);
-        nd_scomp_rec(&SaveBlock_def_b, v, 2);
-    }
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_pso_rm(G_RM_AA_XLU_SURF | Z_CMP, G_RM_AA_XLU_SURF2 | Z_CMP);
+    nd_pso_cc(PM_CC_01, PM_CC_02);
+    nd_val_prim(0, 0, 0, 0, 0, alpha);
     gSPDisplayList(gMainGfxPos++, dlist);
     nd_xf_pop(G_MTX_MODELVIEW);
 

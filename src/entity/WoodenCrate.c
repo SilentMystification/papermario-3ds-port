@@ -2,7 +2,8 @@
 #include "npc.h"
 #include "ld_addrs.h"
 #include "entity.h"
-#include "nd_scomp.h"
+#include "nd_st.h"
+#include "nd_val.h"
 #include "nd_xf.h"
 
 extern Gfx Entity_RenderNone[];
@@ -172,18 +173,6 @@ void entity_WoodenCrate_update_fragments(Entity* entity) {
     }
 }
 
-/* S6E2: the state lines of the fragment loop of entity_WoodenCrate_setupGfx as compiled state ranges (nd_scomp.h). The PRIM is a value slot. */
-static const Gfx WoodenCrate_st_o[] = {
-    gsDPSetRenderMode(G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2),
-    gsDPSetCombineMode(G_CC_MODULATEIA, G_CC_MODULATEIA),
-};
-static NdSDef WoodenCrate_def_o = { WoodenCrate_st_o, sizeof WoodenCrate_st_o / sizeof WoodenCrate_st_o[0] };
-static const Gfx WoodenCrate_st_t[] = {
-    gsDPSetCombineMode(PM_CC_11, PM_CC_12),
-    gsDPSetPrimColor(0, 0, 0, 0, 0, 0),
-};
-static NdSDef WoodenCrate_def_t = { WoodenCrate_st_t, sizeof WoodenCrate_st_t / sizeof WoodenCrate_st_t[0] };
-
 void entity_WoodenCrate_setupGfx(s32 entityIndex) {
     s32 i;
     Matrix4f mtxTransInv;
@@ -204,12 +193,11 @@ void entity_WoodenCrate_setupGfx(s32 entityIndex) {
 
     for (i = 0; i < 35; i++) {
         if (data->fragmentRebounds[i] < 2) {
-            nd_scomp_rec(&WoodenCrate_def_o, NULL, 0);
+            nd_pso_rm(G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2);
+            nd_pso_cc(G_CC_MODULATEIA, G_CC_MODULATEIA);
         } else {
-            Gfx v[1];
-
-            gDPSetPrimColor(&v[0], 0, 0, 0, 0, 0, data->fragmentMoveAngle[i]);
-            nd_scomp_rec(&WoodenCrate_def_t, v, 1);
+            nd_pso_cc(PM_CC_11, PM_CC_12);
+            nd_val_prim(0, 0, 0, 0, 0, data->fragmentMoveAngle[i]);
         }
 
         guTranslateF(mtxTransInv, x_inv, y_inv, z_inv);
