@@ -1,0 +1,9 @@
+selfapply site a.c:8
+selfapply keep a.c:12 D_X_NOT2
+selfapply site a.c:16
+selfapply keep a.c:20 D_X_NOT
+selfapply keep a.c:26 D_Y_NOT
+selfapply keep a.c:30 skip
+selfapply keep a.c:34 skip
+selfapply keep a.c:39 skip
+selfapply total site 2 keep 6
