@@ -232,6 +232,8 @@ void nd_psochk_draw(const NdPsoDesc* stated) {
     }
 }
 
+void nd_psochk_end(void) { if (psochk_on()) pm_log_evt("psochk end f%u draws %u bad %u lk %u miss %u lkbad %u", pm_frame_n, psochk_draws, psochk_bad, pk_hit, pk_miss, pk_bad); }
+
 /* PSOLK: the combine decision of the walker inputs in: the pso table entry (nd_pso_find) with the walker's colours, or nd_comb_core on a miss. */
 static void nd_comb_pick(const NdCombIn* in, NdCombOut* o) {
     if (!nd_pso_find(in, (unsigned)pm_comb_vprim, o)) { pk_miss++; nd_comb_core(in, (unsigned)pm_comb_vprim, comb_mode5, o); return; }

@@ -1,6 +1,14 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_recover_223_k0, 0xfc127e24, 0xfffff3f9, 0x1e082cf0, 0x00551208, 0x00000000, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_recover_223_k1, 0xfc123224, 0xff67ffff, 0x1e082cf0, 0x00504340, 0x00000000, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_recover_223_k2, 0xfc127e24, 0xfffff3f9, 0x1e082cf0, 0x00551208, 0x00000000, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_recover_223_k3, 0xfc123224, 0xff67ffff, 0x1e082cf0, 0x00504340, 0x00000000, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_recover_240_k0, 0xfc127e24, 0xfffff3f9, 0x1e082cf0, 0x00551208, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_recover_240_k1, 0xfc123224, 0xff67ffff, 0x1e082cf0, 0x00504340, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_recover_240_k2, 0xfc127e24, 0xfffff3f9, 0x1e082cf0, 0x00551208, 0x00000000, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_recover_240_k3, 0xfc123224, 0xff67ffff, 0x1e082cf0, 0x00504340, 0x00000000, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 ND_PSO_DESC(pe_recover_226, 0xfc123224, 0xff67ffff, 0x1e082cf0, 0x00504340, 0x00200005, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 ND_PSO_DESC(pe_recover_232, 0xfc123224, 0xff67ffff, 0x1e082cf0, 0x00504340, 0x00200005, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 ND_PSO_DESC(pe_recover_234, 0xfc123224, 0xff67ffff, 0x1e082cf0, 0x00504340, 0x00200005, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
@@ -220,7 +228,12 @@ void func_E0080448(EffectInstance* effect) {
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
             if (i == 1 && type != 2) {
-                nd_rec_dl(D_090033D0_3851D0);
+                switch ((part->alpha != 255) + 2 * unk_44) {
+                    case 0: nd_draw_list(D_090033D0_3851D0, pe_recover_223_k0); break;
+                    case 1: nd_draw_list(D_090033D0_3851D0, pe_recover_223_k1); break;
+                    case 2: nd_draw_list(D_090033D0_3851D0, pe_recover_223_k2); break;
+                    default: nd_draw_list(D_090033D0_3851D0, pe_recover_223_k3); break;
+                }
                 nd_xf_pop(G_MTX_MODELVIEW);
                 nd_draw_list(NDN(D_090034D0_3852D0), ND_SELF);
 
@@ -237,7 +250,12 @@ void func_E0080448(EffectInstance* effect) {
                     nd_draw_list(type == 0 ? D_09003430_385230 : D_09003490_385290, pe_recover_234);
                 }
             } else {
-                nd_rec_dl(D_090033F0_3851F0);
+                switch ((part->alpha != 255) + 2 * unk_44) {
+                    case 0: nd_draw_list(D_090033F0_3851F0, pe_recover_240_k0); break;
+                    case 1: nd_draw_list(D_090033F0_3851F0, pe_recover_240_k1); break;
+                    case 2: nd_draw_list(D_090033F0_3851F0, pe_recover_240_k2); break;
+                    default: nd_draw_list(D_090033F0_3851F0, pe_recover_240_k3); break;
+                }
                 nd_xf_pop(G_MTX_MODELVIEW);
             }
 

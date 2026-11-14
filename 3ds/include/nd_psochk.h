@@ -7,5 +7,6 @@
  * "<field> stated <v> walker <v>" (words in hex, bytes in hex). n: the size of out. */
 int nd_psochk_cmp(const NdPsoDesc* stated, const NdPsoDesc* walker, char* out, unsigned n);
 void nd_psochk_draw(const NdPsoDesc* stated); /* nd_comb.c, device: the psochk debug switch (one test when off) */
+void nd_psochk_end(void); /* nd_comb.c: the psochk end line (FXREST2) */
 
 #endif

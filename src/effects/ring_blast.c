@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_ring_blast_141_k0, 0xfc262a60, 0x16fc9378, 0x1e183cf0, 0x0c184b50, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_ring_blast_141_k1, 0xfc262ac3, 0x10fc9238, 0x1e183cf0, 0x0c184b50, 0x00000000, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_st.h"
@@ -138,6 +140,9 @@ void ring_blast_appendGfx(void* effect) {
         nd_val_tile_size(1, (unk_20_s32 * 32 + 32) * 4, 0, (unk_20_s32 * 32 + 64) * 4, 32 * 4);
     }
 
-    nd_rec_dl(dlist);
+    switch (unk_00 != 0) {
+        case 0: nd_draw_list(dlist, pe_ring_blast_141_k0); break;
+        default: nd_draw_list(dlist, pe_ring_blast_141_k1); break;
+    }
     nd_xf_pop(G_MTX_MODELVIEW);
 }

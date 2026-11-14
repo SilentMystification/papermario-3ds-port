@@ -14,6 +14,7 @@ int atoi(const char*);
 
 int pm_debug_value(const char*, char*, unsigned);
 void pm_gpu_shot_burst(int n);
+void nd_psochk_end(void);
 extern EffectInstance* gEffectInstances[96];
 extern PlayerStatus gPlayerStatus;
 
@@ -168,7 +169,20 @@ E(ice_shard_t1, fx_ice_shard(1, X, Y, Z, 1.0f, 30)) \
 E(recover_d5, fx_recover(0, X, Y, Z, 5)) \
 E(recover_d15, fx_recover(0, X, Y, Z, 15)) \
 E(recover_t1, fx_recover(1, X, Y, Z, 15)) \
-E(rising_bubble_a30, fx_rising_bubble(0, X, Y, Z, 30.0f))
+E(rising_bubble_a30, fx_rising_bubble(0, X, Y, Z, 30.0f)) \
+E(cold_breath_t1, fx_cold_breath(1, X, Y, Z, 2.0f, 45)) \
+E(cold_breath_t2, fx_cold_breath(2, X, Y, Z, 2.0f, 45)) \
+E(ring_blast_t1, fx_ring_blast(1, X, Y, Z, 4.0f, 20)) \
+E(shockwave_t2, fx_shockwave(2, X, Y, Z)) \
+E(recover_n0, fx_recover(0, X, Y, Z, -15)) \
+E(recover_n2, fx_recover(2, X, Y, Z, -15)) \
+E(stat_change_a3, fx_stat_change(3, X, Y, Z, 1.5f, 60)) \
+E(stat_change_a6, fx_stat_change(6, X, Y, Z, 1.5f, 60)) \
+E(misc_particles_v0, fx_misc_particles(0, X, Y, Z, 24.0f, 24.0f, 1.0f, 5, 0)) \
+E(misc_particles_v2, fx_misc_particles(2, X, Y, Z, 24.0f, 24.0f, 1.0f, 5, 0)) \
+E(misc_particles_v3, fx_misc_particles(3, X, Y, Z, 24.0f, 24.0f, 1.0f, 5, 0)) \
+E(misc_particles_v4, fx_misc_particles(4, X, Y, Z, 24.0f, 24.0f, 1.0f, 5, 0)) \
+E(misc_particles_v5, fx_misc_particles(5, X, Y, Z, 24.0f, 24.0f, 1.0f, 5, 0))
 
 static void fxt_lil_oink(void) {
     EffectInstance* o = fx_lil_oink(0, 0.0f, 0.0f, 0.0f, 0.0f, 0);
@@ -255,8 +269,10 @@ void pm_fxtest_tick(unsigned f) {
             }
         } else {
             for (p = strtok(sw, ","); p; p = strtok(NULL, ",")) {
-                n = atoi(p);
-                if (n >= 0 && n < FXT_COUNT) sel[nsel++] = n;
+                char* d = strchr(p, '-'); /* fxtest range form a-b (FXREST2): the same indices as a..b listed */
+                int m;
+                n = atoi(p); m = d ? atoi(d + 1) : n;
+                for (; n <= m; n++) if (n >= 0 && n < FXT_COUNT && nsel < FXT_COUNT) sel[nsel++] = n;
             }
         }
         pm_log("fxtest: %d effects selected of %d, slot %d frames, start frame %d", nsel, FXT_COUNT, SLOT, START);
@@ -268,7 +284,7 @@ void pm_fxtest_tick(unsigned f) {
     slot = (f - START) / SLOT;
     k = (f - START) % SLOT;
     if (slot >= nsel) {
-        if (slot == nsel && k == 0) pm_log_evt("fxtest: done");
+        if (slot == nsel && k == 0) { nd_psochk_end(); pm_log_evt("fxtest: done"); }
         return;
     }
     i = sel[slot];

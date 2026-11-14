@@ -58,7 +58,7 @@ $slotK = 0
 $heldHere = $false
 # The slot covers the later reads of the slot game log and emulator log too: released after the last read (Release-Lock below)
 function Release-Lock { if ($script:heldHere) { $script:heldHere = $false; Exit-Slot $script:slotK } }
-trap { Release-Lock; break }
+trap { Release-Lock; if (Get-Command End-Run -ErrorAction SilentlyContinue) { End-Run 1 ("TRAP: " + $_.Exception.Message + " (line " + $_.InvocationInfo.ScriptLineNumber + ")") }; break } # FXREST2: an uncaught error wrote no end line (azt.ps1 then said NO END LINE)
 if ($Interactive) { $Timeout = [int]::MaxValue }
 $repo = Split-Path -Parent $PSScriptRoot
 $sdMaster = "$env:APPDATA\Azahar\sdmc\3ds\PaperMario" # the user's game folder: only read (tour lists, copied to the slot)

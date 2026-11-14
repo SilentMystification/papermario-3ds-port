@@ -509,6 +509,7 @@ static __attribute__((cold, noinline)) void entcap_rec(const NdGTab* t, uint32_t
     if (ent) return; /* FXENT2: a call with a stated entry (nd_draw_list with an ND_PSO_DESC); ND_SELF and nd_rec_dl calls are logged */
     NdPsoDesc d;
     nd_walker_desc(&d);
+    d.geom = 0; d.key_c = 0; d.key_s = 0; d.plod = 0; /* FXREST2: draw values, not entry state */
     const uint32_t la = (uint32_t)(uintptr_t)t->list;
     uint32_t h = entcap_fnv(2166136261u, &la, 4u);
     h = entcap_fnv(h, &site, 4u);
