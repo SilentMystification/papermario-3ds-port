@@ -2,6 +2,8 @@
 #include "overlay.h"
 #include "include_asset.h"
 #include "nd_api.h"
+#include "nd_tx.h"
+#include "nd_at.h"
 #include "pm_gpu.h"
 #include "nd_st.h"
 #include "nd_val.h"
@@ -202,14 +204,14 @@ void pm_tsten_run(const uint32_t* u) {
     static const unsigned wrapT[3][4] = { { 2, 2, 6, 6 }, { 3, 2, 5, 6 }, { 3, 3, 5, 5 } };
     static const int strideT[3] = { 32, 16, 16 }, ldwT[3] = { 32, 16, 16 }, ldhT[3] = { 64, 64, 32 };
     static const int sizeT[3] = { 0xFC, 0xFC, 0xFC };
-    static Gfx buf[8];
+    static uint32_t buf[16];
     static unsigned n;
     const NdTStenRec* r = (const NdTStenRec*)u;
     const int id = (int)((r->full_and_id >> 1) & 3u), full = (int)(r->full_and_id & 1u);
     const void* img = id == 0 ? (const void*)ui_stencil_mario_png : id == 1 ? (const void*)ui_stencil_star_png : (const void*)ui_stencil_sharp_circle_png;
     NdBindDesc d;
     NdPsoN64 pd;
-    Gfx* p = buf;
+    uint32_t* nrp = buf;
     unsigned wrap[4];
     int ok = 0, k;
 
@@ -236,12 +238,10 @@ void pm_tsten_run(const uint32_t* u) {
     }
     if (ok) return;
 
-    if (full) gDPSetCombineMode(p++, PM_CC_PRIM_FULL_ALPHA, PM_CC_PRIM_FULL_ALPHA);
-    gDPSetPrimColor(p++, 0, 0, (int)(r->prim >> 24), (int)((r->prim >> 16) & 0xFFu), (int)((r->prim >> 8) & 0xFFu), (int)(r->prim & 0xFFu));
-    ND_GX(p++, r->w0, r->w1);
-    gImmp1(p++, G_RDPHALF_1, r->hs);
-    gImmp1(p++, G_RDPHALF_2, r->hd);
-    nd_walk_state((const uint32_t*)buf, (unsigned)(p - buf));
+    if (full) NDST_CC(ND_NR_AT, PM_CC_PRIM_FULL_ALPHA, PM_CC_PRIM_FULL_ALPHA);
+    NDVAL_PRIM(ND_NR_AT, 0, 0, (int)(r->prim >> 24), (int)((r->prim >> 16) & 0xFFu), (int)((r->prim >> 8) & 0xFFu), (int)(r->prim & 0xFFu));
+    NDTX_RECT_W(ND_NR_AT, r->w0, r->w1, r->hs, r->hd);
+    nd_nr_exec(buf, (unsigned)(nrp - buf) / 2u);
 }
 
 void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* overlay) {

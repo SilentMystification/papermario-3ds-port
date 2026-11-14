@@ -8,6 +8,7 @@
 #include "nd_api.h"
 #include "nd_cmd.h"
 #include "nd_nr.h"
+#include "nd_at.h"
 #include "nd_geo.h"
 
 void nd_tgt_cimgw(uint32_t fmt, uint32_t siz, uint32_t width, uint32_t img) {
@@ -21,13 +22,13 @@ void nd_val_primz(uint32_t z, uint32_t dz) {
     nd_nr(NDO_W0(NDO_PRIMZ, 0u), ND_NR_HL(z, dz));
 }
 void nd_mesh_vtxw(uint32_t v, unsigned n, unsigned v0) {
-    nd_nr(ND_NR_VTX(n, v0), v);
+    NDGEO_VTX(nd_nr, v, n, v0);
 }
 void nd_mesh_tri1(unsigned a, unsigned b, unsigned c, unsigned f) {
-    nd_nr(NDO_W0(NDO_TRI1, __gsSP1Triangle_w1f(a, b, c, f)), 0u);
+    NDGEO_TRI1(nd_nr, a, b, c, f);
 }
 void nd_mesh_tri2(unsigned a, unsigned b, unsigned c, unsigned f, unsigned d, unsigned e, unsigned g, unsigned h) {
-    nd_nr(NDO_W0(NDO_TRI2, __gsSP1Triangle_w1f(a, b, c, f)), __gsSP1Triangle_w1f(d, e, g, h));
+    NDGEO_TRI2(nd_nr, a, b, c, f, d, e, g, h);
 }
 void nd_lit_1(uint32_t l0, uint32_t a) {
     nd_nr(ND_NR_MW(NDO_MW_NUMLIGHT, 0u), NUML(NUMLIGHTS_1));

@@ -80,6 +80,8 @@ int nd_tex_win_desc(NdBindDesc* o, const void* timg, int timg_stride, unsigned f
 static uint32_t gx_log[16][2];
 void nd_gx_w(Gfx* g, uint32_t w0, uint32_t w1) { (void)g; if (n_gx < 16) { gx_log[n_gx][0] = w0; gx_log[n_gx][1] = w1; } n_gx++; }
 void nd_walk_state(const uint32_t* q, unsigned n) { (void)q; n_walk += (int)n; }
+/* NSTREAM3: the native record runner of the direct fallbacks (nd_walk.c); the same count as the op walker */
+void nd_nr_exec(const uint32_t* q, unsigned n) { (void)q; n_walk += (int)n; }
 void gp3_t0_surv(void) {}
 unsigned pm_gbi_cur_op; /* NAPI3B: the glyph draw (nd_glyph_draw) is not run by this test, its callees are stubs */
 void nd_tex_bind_glyph(uint32_t r, uint32_t p, int t, int w, int h) { (void)r; (void)p; (void)t; (void)w; (void)h; }
@@ -202,7 +204,7 @@ int main(void) {
         fake_role = ROLE_SLOT;
         n_win = n_gx = n_walk = 0; n_rect = 0;
         nd_trect_run((const uint32_t*)&t);
-        CHECK(n_win == 1 && n_rect == 0 && n_walk >= 4 && n_gx >= 4); /* n_walk counts units: the load ops and the 3 rectangle units */
+        CHECK(n_win == 1 && n_rect == 0 && n_walk >= 4 && n_gx == 0); /* n_walk counts native records (nd_nr_exec): the load records and the 3 rectangle records; the O forms make no gbi call (n_gx) */
         fake_role = ROLE_MAIN;
     }
     /* S5CHUDA: nd_direct_quad runs MTX, VTX, TRI, TRI, POP with the words the typed recorder makes of the old ops (low 24 bits of w0, as op_geo passes them) */

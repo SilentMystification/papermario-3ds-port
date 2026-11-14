@@ -4,6 +4,8 @@
 #include "nd_cmd.h"
 #include "nd_op.h"
 #include "nd_api.h"
+#include "nd_tx.h"
+#include "nd_at.h"
 #include "nd_st.h"
 #include "nd_val.h"
 #include "nd_xf.h"
@@ -237,10 +239,10 @@ static Gfx* spr_geo_out; /* DIRECT D6: set by spr_appendGfx_component around the
  * core 0 runs them for an unshaded component into a local list (spr_state_run), so core 1 records one state record in place of the ops.
  * flags, vpAlt and vpMain are the facts of the component that the ops read from game state (the caller took them). The final vertex and
  * triangle ops are not here (spr_appendGfx_component_flat adds them). */
-#define gMainGfxPos (*gp)
-static void spr_flat_gfx(Gfx** gp, Quad* vertices, IMG_PTR raster, PAL_PTR palette, s32 width, s32 height, Matrix4f mtx, s32 alpha, u32 flags,
+#define HO(k, v) nd_nr_o(o, (k), (v))
+static void spr_flat_gfx(uint32_t** o, Quad* vertices, IMG_PTR raster, PAL_PTR palette, s32 width, s32 height, Matrix4f mtx, s32 alpha, u32 flags,
                          Vp* vpAlt, Vp* vpMain) {
-    gDPLoadTLUT_pal16(gMainGfxPos++, 0, palette);
+    NDTX_LOAD_TLUT16(HO, 0, palette);
     if (flags & SPR_SHADING_FLAG_ENABLED) {
         gDPScrollMultiTile2_4b(gMainGfxPos++, raster, G_IM_FMT_CI, width, height,
                               0, 0, width - 1, height - 1, 0,
@@ -266,51 +268,51 @@ static void spr_flat_gfx(Gfx** gp, Quad* vertices, IMG_PTR raster, PAL_PTR palet
         }
         create_shading_palette(mtx, 0, 0, width, height, alpha, alpha == 255 ? 0x111238 : 0x104B50); // TODO make macro for render mode
     } else {
-        gDPScrollTextureBlock_4b(gMainGfxPos++, raster, G_IM_FMT_CI, width, height, 0,
+        NDTX_SCROLL_BLOCK_4B(HO, raster, G_IM_FMT_CI, width, height, 0,
                                  G_TX_CLAMP, G_TX_CLAMP, 8, 8, G_TX_NOLOD, G_TX_NOLOD,
                                  256, 256);
         if (flags & SPR_SHADING_FLAG_SET_VIEWPORT) {
-            gSPViewport(gMainGfxPos++, vpAlt);
+            NDTX_VIEWPORT(HO, vpAlt);
             if (alpha == 255) {
-                nd_pso_rm(AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA | ALPHA_CVG_SEL | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM), AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA | ALPHA_CVG_SEL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM));
+                NDST_RM(HO, AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA | ALPHA_CVG_SEL | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM), AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA | ALPHA_CVG_SEL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM));
             } else {
-                nd_pso_rm(G_RM_ZB_CLD_SURF, G_RM_ZB_CLD_SURF2);
+                NDST_RM(HO, G_RM_ZB_CLD_SURF, G_RM_ZB_CLD_SURF2);
             }
 
-            nd_val_env(0, 0, 0, alpha);
-            nd_pso_cc(PM_CC_0A, PM_CC_0A);
-            nd_mesh_vtx(vertices, 4, 0);
-            nd_mesh_tri2(0, 2, 1, 0, 0, 3, 2, 0);
+            NDVAL_ENV(HO, 0, 0, 0, alpha);
+            NDST_CC(HO, PM_CC_0A, PM_CC_0A);
+            NDGEO_VTX(HO, vertices, 4, 0);
+            NDGEO_TRI2(HO, 0, 2, 1, 0, 0, 3, 2, 0);
 
             if (alpha == 255) {
-                nd_pso_rm(AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA |
+                NDST_RM(HO, AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA |
                                  GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM), AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA |
                                  GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM));
             } else {
-                nd_pso_rm(G_RM_ZB_CLD_SURF, G_RM_ZB_CLD_SURF2);
+                NDST_RM(HO, G_RM_ZB_CLD_SURF, G_RM_ZB_CLD_SURF2);
             }
 
-            nd_val_env(100, 100, 100, 255);
-            nd_val_prim(0, 0, 0, 0, 0, alpha);
-            nd_pso_cc(PM_CC_3D, PM_CC_3D);
-            nd_pso_dither(G_CD_MAGICSQ);
+            NDVAL_ENV(HO, 100, 100, 100, 255);
+            NDVAL_PRIM(HO, 0, 0, 0, 0, 0, alpha);
+            NDST_CC(HO, PM_CC_3D, PM_CC_3D);
+            NDST_DITHER(HO, G_CD_MAGICSQ);
         }
     }
 
     if (flags & SPR_SHADING_FLAG_SET_VIEWPORT) {
-        gSPViewport(gMainGfxPos++, vpMain);
+        NDTX_VIEWPORT(HO, vpMain);
     }
 }
-#undef gMainGfxPos
+#undef HO
 
 /* S5SPR: the state record of an unshaded component (one NDC_NAPI record in place of its state ops): 4 units. word 0 raster, 1 palette, 2 quad, 3 viewport
  * of the shadow pass, 4 viewport of the main pass, 5 width << 16 | height, 6 alpha | flags << 8, 7 unused. Core 0 expands it to the ops it replaces. */
 static void spr_state_run(const uint32_t* u) {
-    static Gfx buf[64];
-    Gfx* p = buf;
-    spr_flat_gfx(&p, (Quad*)(uintptr_t)u[2], (IMG_PTR)(uintptr_t)u[0], (PAL_PTR)(uintptr_t)u[1], (s32)(u[5] >> 16), (s32)(u[5] & 0xffffu), nullptr,
+    static uint32_t buf[128];
+    uint32_t* nrp = buf;
+    spr_flat_gfx(&nrp, (Quad*)(uintptr_t)u[2], (IMG_PTR)(uintptr_t)u[0], (PAL_PTR)(uintptr_t)u[1], (s32)(u[5] >> 16), (s32)(u[5] & 0xffffu), nullptr,
                  (s32)(u[6] & 0xffu), (u32)(u[6] >> 8), (Vp*)(uintptr_t)u[3], (Vp*)(uintptr_t)u[4]);
-    nd_walk_state((const uint32_t*)buf, (unsigned)(p - buf));
+    nd_nr_exec(buf, (unsigned)(nrp - buf) / 2u);
 }
 void spr_appendGfx_component_flat(
     Quad* vertices,
@@ -343,7 +345,7 @@ void spr_appendGfx_component_flat(
         nd_rec_napi(spr_state_run, st, 4u);
     } else
     {
-        spr_flat_gfx(&gMainGfxPos, vertices, raster, palette, width, height, mtx, alpha, flags, vpAlt, vpMain);
+        spr_flat_gfx(nullptr, vertices, raster, palette, width, height, mtx, alpha, flags, vpAlt, vpMain);
     }
     if (spr_geo_out != nullptr) { /* DIRECT D6: the final vertex and triangle ops go with the sprite record (nd_rec_spr), not to the stream.
                                     * HC4d2 (W5): written as typed ops (nd_op.h), no word */

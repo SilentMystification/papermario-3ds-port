@@ -7,6 +7,7 @@
 #include "nd_api.h"
 #include "nd_cmd.h"
 #include "nd_nr.h"
+#include "nd_at.h"
 #include "nd_val.h"
 
 #define VAL_COL(r, g, b, a) (((uint32_t)(r) & 0xffu) << 24 | ((uint32_t)(g) & 0xffu) << 16 | ((uint32_t)(b) & 0xffu) << 8 | ((uint32_t)(a) & 0xffu))
@@ -16,10 +17,10 @@ static void val_rec(uint32_t id, uint32_t a, uint32_t b) {
 }
 
 void nd_val_prim(unsigned minlod, unsigned lodfrac, unsigned r, unsigned g, unsigned b, unsigned a) {
-    val_rec(NDO_PRIM, ((minlod & 0xffu) << 8) | (lodfrac & 0xffu), VAL_COL(r, g, b, a));
+    NDVAL_PRIM(nd_nr, minlod, lodfrac, r, g, b, a);
 }
 void nd_val_env(unsigned r, unsigned g, unsigned b, unsigned a) {
-    val_rec(NDO_ENV, 0u, VAL_COL(r, g, b, a));
+    NDVAL_ENV(nd_nr, r, g, b, a);
 }
 void nd_val_seg(unsigned seg, uint32_t base) {
     /* the typed form of G_MOVEWORD G_MW_SEGMENT at offset seg * 4 (ND_MW_A); a segment above 15 is not a segment op and is dropped like the macro's */

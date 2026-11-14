@@ -15,6 +15,8 @@
 #include "PR/gbi.h"
 #include "gbi_custom.h"
 #include "nd_gbi.h"
+#include "nd_tx.h"
+#include "nd_at.h"
 
 #ifndef pm_gpu_flush
 #define pm_gpu_flush() pm_gpu_flush_at(__LINE__)
@@ -253,14 +255,15 @@ void nd_walk_state(const uint32_t* q, unsigned n); /* nd_walk.c, core 0: the op 
 /* Off-screen or depth colour image (row S5PQUAD 2b): the walker's fill takes its own path (off_screen_check). The state of the kind and the
  * primitive colour as ops, then one fill rectangle (lower right exclusive, as passed). n = 4 ops (nd_walk_state counts ops). */
 static void nd_fill_walk(const NdFillRec* f, unsigned k) {
-    static Gfx buf[4];
+    static uint32_t buf[8];
+    uint32_t* nrp = buf;
     static unsigned nfb;
     if (nfb++ < 16u) pm_log_d("fill fallback f%u", pm_frame_count());
-    nd_gx_w(&buf[0], ND_X0(kFillKind[k].cc.words.w0, kFillKind[k].cc.words.w1), ND_X1(kFillKind[k].cc.words.w0, kFillKind[k].cc.words.w1));
-    gDPSetRenderMode(&buf[1], kFillKind[k].rm0, kFillKind[k].rm1);
-    gDPSetPrimColor(&buf[2], 0, 0, (f->rgba >> 24) & 0xffu, (f->rgba >> 16) & 0xffu, (f->rgba >> 8) & 0xffu, f->rgba & 0xffu);
-    gDPFillRectangle(&buf[3], f->x0, f->y0, f->x1, f->y1);
-    nd_walk_state((const uint32_t*)buf, 4u);
+    NDST_COMB(ND_NR_AT, kFillKind[k].cc.words.w0, kFillKind[k].cc.words.w1);
+    NDST_RM(ND_NR_AT, kFillKind[k].rm0, kFillKind[k].rm1);
+    NDVAL_PRIM(ND_NR_AT, 0, 0, (f->rgba >> 24) & 0xffu, (f->rgba >> 16) & 0xffu, (f->rgba >> 8) & 0xffu, f->rgba & 0xffu);
+    NDTX_FILL(ND_NR_AT, f->x0, f->y0, f->x1, f->y1);
+    nd_nr_exec(buf, 4u);
 }
 
 /* core 0: the 1-cycle fill of a rectangle, as the walker's fill (nd_rect.c nd_fillrect): primitive colour, lower right exclusive. */
@@ -289,7 +292,7 @@ void nd_fill_run(const uint32_t* u) {
 /* S5TRECT: the NDC_NAPI runner of one NdTRect (nd_api.h): a texture window and one texture rectangle. Direct when the window is valid and the walker
  * state lets a direct rectangle draw (nd_direct_ready == 1); else the same load and rectangle ops into a local list, walked with nd_walk_state. */
 void nd_trect_run(const uint32_t* u) {
-    static Gfx buf[16];
+    static uint32_t buf[32];
     static unsigned nfb;
     const NdTRect* r = (const NdTRect*)u;
     const int is4 = r->siz == G_IM_SIZ_4b;
@@ -298,7 +301,7 @@ void nd_trect_run(const uint32_t* u) {
     const int32_t lu = r->uls << sh, ll = r->lrs << sh;
     const unsigned wrap[4] = { r->cms, r->cmt, r->masks, r->maskt };
     NdBindDesc d;
-    Gfx* p = buf;
+    uint32_t* nrp = buf;
     const int ok = nd_tex_win_desc(&d, r->img, stride, r->fmt, r->siz, wrap, lu >> 2, r->ult, ((ll - lu) >> 2) + 1, r->lrt - r->ult + 1,
                                    r->uls << 2, r->ult << 2, r->lrs << 2, r->lrt << 2, r->pal, (int)r->pal_n);
     if (ok && nd_direct_ready() == 1) {
@@ -314,22 +317,20 @@ void nd_trect_run(const uint32_t* u) {
     if (nfb++ < 16u) pm_log_d("trect fallback f%u", pm_frame_count());
     switch (r->siz) {
         case G_IM_SIZ_4b:
-            gDPLoadTextureTile_4b(p++, r->img, r->fmt, r->width, r->height, r->uls, r->ult, r->lrs, r->lrt, 0, r->cms, r->cmt, r->masks, r->maskt, G_TX_NOLOD, G_TX_NOLOD);
+            NDTX_LOAD_TILE_4B(ND_NR_AT, r->img, r->fmt, r->width, r->height, r->uls, r->ult, r->lrs, r->lrt, 0, r->cms, r->cmt, r->masks, r->maskt, G_TX_NOLOD, G_TX_NOLOD);
             break;
         case G_IM_SIZ_8b:
-            gDPLoadTextureTile(p++, r->img, r->fmt, G_IM_SIZ_8b, r->width, r->height, r->uls, r->ult, r->lrs, r->lrt, 0, r->cms, r->cmt, r->masks, r->maskt, G_TX_NOLOD, G_TX_NOLOD);
+            NDTX_LOAD_TILE(ND_NR_AT, r->img, r->fmt, G_IM_SIZ_8b, r->width, r->height, r->uls, r->ult, r->lrs, r->lrt, 0, r->cms, r->cmt, r->masks, r->maskt, G_TX_NOLOD, G_TX_NOLOD);
             break;
         case G_IM_SIZ_16b:
-            gDPLoadTextureTile(p++, r->img, r->fmt, G_IM_SIZ_16b, r->width, r->height, r->uls, r->ult, r->lrs, r->lrt, 0, r->cms, r->cmt, r->masks, r->maskt, G_TX_NOLOD, G_TX_NOLOD);
+            NDTX_LOAD_TILE(ND_NR_AT, r->img, r->fmt, G_IM_SIZ_16b, r->width, r->height, r->uls, r->ult, r->lrs, r->lrt, 0, r->cms, r->cmt, r->masks, r->maskt, G_TX_NOLOD, G_TX_NOLOD);
             break;
         default:
-            gDPLoadTextureTile(p++, r->img, r->fmt, G_IM_SIZ_32b, r->width, r->height, r->uls, r->ult, r->lrs, r->lrt, 0, r->cms, r->cmt, r->masks, r->maskt, G_TX_NOLOD, G_TX_NOLOD);
+            NDTX_LOAD_TILE(ND_NR_AT, r->img, r->fmt, G_IM_SIZ_32b, r->width, r->height, r->uls, r->ult, r->lrs, r->lrt, 0, r->cms, r->cmt, r->masks, r->maskt, G_TX_NOLOD, G_TX_NOLOD);
             break;
     }
-    ND_GX(p++, r->w0, r->w1);
-    gImmp1(p++, G_RDPHALF_1, r->hs);
-    gImmp1(p++, G_RDPHALF_2, r->hd);
-    nd_walk_state((const uint32_t*)buf, (unsigned)(p - buf));
+    NDTX_RECT_W(ND_NR_AT, r->w0, r->w1, r->hs, r->hd);
+    nd_nr_exec(buf, (unsigned)(nrp - buf) / 2u);
 }
 
 /* S5CHUDA (NATIVEAPI E1): the geometry of one transformed HUD quad on the bound state. nd_dq_on is set for the length of the quad and cleared by
