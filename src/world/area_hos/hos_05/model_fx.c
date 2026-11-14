@@ -52,17 +52,12 @@ API_CALLABLE(N(SetWorldColorParams)) {
 
 #define NAME_SUFFIX
 
-#include "nd_scomp.h"
-/* S6M6: the light beam, starship shimmer and unused custom gfx builders as one compiled state range (nd_scomp.h): combine PM_CC_05 and
- * the prim alpha. The prim colour is a value unit (placeholder here); the record carries the per-frame alpha. */
-static const Gfx N(cc05_u)[] = { gsDPSetCombineMode(PM_CC_05, PM_CC_05), gsDPSetPrimColor(0, 0, 0, 0, 0, 0) };
-static NdSDef N(cc05) = { N(cc05_u), 2 };
+#include "nd_st.h"
+#include "nd_val.h"
 
 void N(setup_gfx_light_beam)(void) {
-    Gfx v[1];
-
-    gDPSetPrimColor(&v[0], 0, 0, 0, 0, 0, StarShrineLightBeamAlpha & 0xFF);
-    nd_scomp_rec(&N(cc05), v, 1);
+    nd_pso_cc(PM_CC_05, PM_CC_05);
+    nd_val_prim(0, 0, 0, 0, 0, StarShrineLightBeamAlpha & 0xFF);
 }
 
 API_CALLABLE(N(SetLightBeamAlpha)) {
@@ -75,10 +70,8 @@ API_CALLABLE(N(SetLightBeamAlpha)) {
 s32 N(StarshipShimmerAmt) = 255;
 
 void N(setup_gfx_starship_shimmer)(void) {
-    Gfx v[1];
-
-    gDPSetPrimColor(&v[0], 0, 0, 0, 0, 0, N(StarshipShimmerAmt));
-    nd_scomp_rec(&N(cc05), v, 1);
+    nd_pso_cc(PM_CC_05, PM_CC_05);
+    nd_val_prim(0, 0, 0, 0, 0, N(StarshipShimmerAmt));
 }
 
 API_CALLABLE(N(SetStarshipShimmerAmt)) {
@@ -91,10 +84,8 @@ API_CALLABLE(N(SetStarshipShimmerAmt)) {
 s32 N(UnusedAlphaParam) = 255;
 
 void N(setup_gfx_unused)(void) {
-    Gfx v[1];
-
-    gDPSetPrimColor(&v[0], 0, 0, 0, 0, 0, N(UnusedAlphaParam));
-    nd_scomp_rec(&N(cc05), v, 1);
+    nd_pso_cc(PM_CC_05, PM_CC_05);
+    nd_val_prim(0, 0, 0, 0, 0, N(UnusedAlphaParam));
 }
 
 API_CALLABLE(N(SetUnusedAlphaParam)) {

@@ -492,7 +492,7 @@ static void v2_units(const NdNTab* t, const char* name) {
 }
 /* CONV2D2: the device index entry of a table's list (nd_gtab.h NdNDev): n is the word pairs from unit 0 to the stop, NOPs counted */
 static unsigned v2_dev_bad;
-static void v2_dev(const NdNTab* t, const char* name) {
+static void v2_dev(const NdNTab* t, const char* name, int fault) {
     const GSym* g = NULL;
     for (unsigned s = 0; s < gconv_nsym; s++) if (gconv_sym[s].kind == GS_GFX && gconv_sym[s].addr == t->list) g = &gconv_sym[s];
     const NdNDev* dv = NULL;
@@ -508,6 +508,10 @@ static void v2_dev(const NdNTab* t, const char* name) {
         if ((w0 >> 24) == NDO_CALL && (w0 & 1u)) { ks = k + 1u; break; }
     }
     if (dv->n != ks) { v2_dev_bad++; v2_fail("device index count", name, ks); }
+    if (dv->u != (const uint32_t*)t->list || dv->nu != dv->n + (fault ? 1u : 0u)) { v2_dev_bad++; v2_fail("device index units", name, 0); }
+    unsigned ntri = 0;
+    for (unsigned k = 0; t->ops[k].op != NDN_END; k++) if (t->ops[k].op == NDN_DRAW) ntri += t->ops[k].b;
+    if (dv->ntri != ntri / 3u) { v2_dev_bad++; v2_fail("device index triangles", name, 0); }
 }
 static void v2_compare(int fault) {
     unsigned tables = 0;
@@ -523,7 +527,7 @@ static void v2_compare(int fault) {
         m_walk(g1);
         v_replay(t, fault);
         v2_units(t, name);
-        v2_dev(t, name);
+        v2_dev(t, name, fault && tables == 0);
         tables++;
         if (m_over) v2_fail("the model could not follow the v1 table", name, 0);
         if (nmtri != nvtri) { v2_fail("triangle count", name, nmtri); continue; }
@@ -542,6 +546,7 @@ static void v2_compare(int fault) {
     }
     printf("ntab tables %u draws %u bad %u\n", tables, v2_draws, v2_bad);
     printf("ntab dev entries %u bad %u\n", ndn_dev_n, v2_dev_bad);
+    { unsigned nt0 = 0; for (unsigned i = 0; i < ndn_dev_n; i++) if (ndn_dev_idx[i].ntri == 0) nt0++; printf("ntab notri %u of %u\n", nt0, ndn_dev_n); }
     printf("ntab inherit %u unsup %u descs %u\n", ndn_inherit, ndn_unsup, ndn_ndesc);
 }
 #endif

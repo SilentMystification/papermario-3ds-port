@@ -1,11 +1,11 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main e0e468ff6, 2026-11-14. Written by the sixth workstream oracle (ws_CONV2C2, ws_CBALL, ws_FXSELF, GKEY design).
+State: main 3eba999c4, 2026-11-14. Written by the seventh workstream oracle (ws_GKEY1, ws_GKEY2, ws_GSET1, design_lookahead 5 and 7).
 ## Goal
 Remove the display list system completely (plan_endgame.md v3). Done only when `3ds/tools/elfgate.py` prints
 `func 0 data 0 gfxnames 0` and every LISTCEN2 counter C1..C12 is 0.
-FACT (`python 3ds/tools/listcen.py`, b8fcf0e17): C1 build 1328, C2 gfxpos 758, C3 0, C4 0, C5 data 22103, C6 data_arrays 2108, C7 gfxtype 2845,
-C8 reader 756, C9 model 15, C10 recdl 167 (effects 127, world 12, entity 10, battle 3, root files 15).
+FACT (`python 3ds/tools/listcen.py`, 3eba999c4): C1 build 1187, C2 gfxpos 617, C3 0, C4 0, C5 data 22103, C6 data_arrays 2108, C7 gfxtype 2845,
+C8 reader 756 (per file: design_lookahead 7), C9 model 15, C10 recdl 167.
 FACT (`codemod.py --dry --geo`, b8fcf0e17): src/world src/battle value 26, root src/*.c value 78.
 ## Tools on main (all in 3ds/tools unless named)
 - listcen.py (C1-C10, regexes :42-49), elfgate.py (C11-C12), codemod.py (MAP :38-49, STATE_MAP :53-73 `--state`, GEO_MAP :75-88 `--geo`, TEX_MAP
@@ -18,15 +18,12 @@ FACT (`codemod.py --dry --geo`, b8fcf0e17): src/world src/battle value 26, root 
   spot_mac01_drec, sbk14_drec at 930de29e1; fxpic_91_drec at d29deacc3. Shot det benches for state defs: ent_kmr03_det, sprshade_hos01_pic,
   battle_wheel_nowide_det.
 ## Open work
-- ws_EMIT (branch EMIT, coder running): E1-E3. Device entry u = the list itself, nu = n until GSET (memory: ndnu costs 73 KB).
-- ws_EMIT4.md (page, closed, Haiku): after `Merge EMIT`. Entity path words through NdNDev.u, ndnu keeps NOPs, host flat test.
-- ws_SCOMP.md (page, closed, Haiku, start now): 18 nd_scomp_rec defs to setter calls (entity S1, hos S2, battle S3 after `Merge GEO2`).
-- ws_GEO.md: G2 (src/world src/battle) and G3 (root) start now. ws_TEX.md: T2 effects starts now, T3 after GEO2 and SCOMP, T4 after GEO3.
-- ws_CONV2C2.md (closed, Haiku): start at `Merge EMIT4`. Seeded v2 tables for the effect lists with site pairs; one device entry per list.
-- ws_CBALL.md (closed, Haiku): start at `Merge GEO2`. ws_TEX T3 waits for `Merge CBALL`. ws_FXSELF.md (closed, Haiku): start at `Merge CONV2C2` and `Merge TEX2`.
-- Blocked (design_lookahead 6): effects recdl rest (33 inherit with no capture, 6 unsup, 3 unresolved, multi-line), root recdl 15 (page after `Merge TEX4`).
-- GSET (design_lookahead 5): blocker GKEY (the device keys a list by its Gfx address). Next pages: GKEY1 converter, GKEY2 device, then gset.py.
-  Readers C8 and S9DEL: plan section 6 phase E needs C1, C2, C10 at 0.
+- Merged: EMIT (E1-E3, margin 322 KB), GEO (G0-G3), TEX2. Running: EMIT4, SCOMP, CBALL (check `git log --oneline -10 main`).
+- Chain (same converter and test files, strictly serial): EMIT4 -> ws_CONV2C2 -> ws_GKEY1 -> ws_GKEY2 -> ws_GSET1 (tool and pilot fright_jar). All closed, Haiku.
+- Parallel: ws_FXSELF after CONV2C2 and TEX2; ws_TEX T3 after CBALL, T4 after GEO3 (merged).
+- Blocked (design_lookahead 6): effects recdl rest, root recdl 15 (page after `Merge TEX4`, ws_SCOMP rule).
+- GSET rows after GSET1: one gset.d file each (design_lookahead 5). src/entity needs a block move in gset.py (arrays in the .c text): page after GSET1.
+- Phase E (design_lookahead 7): no stage can start. Blocker NSTREAM: the setters record NDC_STATE typed units that nd_walk_state runs. Next oracle design.
 ## Facts that cost time
 - Main moves fast: run `git log --oneline -10 main` before you write a page. Pages wrote "after Merge X" for groups that had merged.
 - codemod.py gives a file's single ND_PSO_DESC to every list call of that file (codemod.py:14). Never run --state or plain codemod on src/effects.
@@ -36,6 +33,6 @@ FACT (`codemod.py --dry --geo`, b8fcf0e17): src/world src/battle value 26, root 
 - No game file writes into a static Gfx array (grep `\]\.words\.w[01] *=` in src: record buffers and imgfx heap buffer only).
 - Directory ownership: GEO G2 src/world src/battle, TEX T2 src/effects, SCOMP its 8 files, EMIT/EMIT4 the converter, nd_gtab.*, nd_walk.c, nd_ent.c.
 ## What to do first
-1. Answer coder questions (SendMessage, 10 lines, file:line).
-2. Write ws_GKEY1.md (converter: standalone ndd_X, pointer index, call units to &ndd_callee; host test) from design_lookahead 5.
-3. After `Merge TEX4`: the root recdl page (ws_SCOMP rule). Then the callee seed step of the converter (design_lookahead 3).
+1. Answer coder questions (SendMessage, 10 lines, file:line). Check GKEY1/GKEY2/GSET1 text against main after each merge of the chain (anchors quoted there).
+2. Design NSTREAM (design_lookahead 7): the native record of the setter state, bind, transform and mesh into nd_native_submit; then the S9DEL pages.
+3. After `Merge GSET1`: the gset.py block move for src/entity and the next gset.d rows. After `Merge TEX4`: the root recdl page.

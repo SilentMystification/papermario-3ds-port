@@ -10,5 +10,6 @@ gcc -m32 -Wall -Wextra -Werror $FP -DNTAB_V2 -DND_SCOMP_HOST $F -I 3ds/tools -o 
 echo "seeded fault (one NDN_COL value + 1), bad above 0 expected:"
 /tmp/ndntab --fault > /tmp/ndntab_fault.txt || true
 if grep -q "^ntab tables [0-9]* draws [0-9]* bad 0$" /tmp/ndntab_fault.txt; then echo "seeded fault not seen"; exit 1; fi
+grep -q "^ntab dev entries [0-9]* bad 0$" /tmp/ndntab_fault.txt && { echo "seeded dev fault not seen"; exit 1; }
 grep "^ntab tables" /tmp/ndntab_fault.txt
 /tmp/ndntab | grep -v "^gtab def"
