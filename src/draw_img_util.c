@@ -3,6 +3,7 @@
 #include "nd_api.h"
 #include "nd_st.h"
 #include "nd_val.h"
+#include "nd_tx.h"
 #define DIMG_CW_(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1)     { ND_W0_CMB(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1), ND_W1_CMB(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1) }
 #define DIMG_CW(a, b) DIMG_CW_(a, b)
 static const NdTRect* dimg_tpl; /* S5TIMG: the state of draw_ci_image_with_clipping for the strips of its draw (NULL: old ops) */
@@ -33,9 +34,9 @@ s32 draw_ci_image_with_clipping(IMG_PTR raster, s32 width, s32 height, s32 fmt, 
     if (fmt == G_IM_FMT_CI) {
         nd_pso_lut(G_TT_RGBA16);
         if (bitDepth == G_IM_SIZ_4b) {
-            gDPLoadTLUT_pal16(gMainGfxPos++, 0, palette);
+            nd_tex_load_tlut16(0, palette);
         } else {
-            gDPLoadTLUT_pal256(gMainGfxPos++, palette);
+            nd_tex_load_tlut256(palette);
         }
     } else {
         nd_pso_lut(G_TT_NONE);
@@ -169,21 +170,14 @@ s32 draw_image_with_clipping(IMG_PTR raster, u32 width, u32 height, s32 fmt, s32
             } else
             {
                 if (bitDepth == G_IM_SIZ_4b) {
-                    gDPLoadTextureTile_4b(gMainGfxPos++, raster, fmt, width, height,
-                                    texRect.ulx, texRect.uly, texRect.lrx, texRect.lry, 0,
-                                    G_TX_WRAP, G_TX_WRAP, 6, 5, G_TX_NOLOD, G_TX_NOLOD);
+                    nd_tex_load_tile_4b(raster, fmt, width, height, texRect.ulx, texRect.uly, texRect.lrx, texRect.lry, 0, G_TX_WRAP, G_TX_WRAP, 6, 5, G_TX_NOLOD, G_TX_NOLOD);
                 } else if (bitDepth == G_IM_SIZ_16b) {
-                    gDPLoadTextureTile(gMainGfxPos++, raster, fmt, G_IM_SIZ_16b, width, height,
-                                    texRect.ulx, texRect.uly, texRect.lrx, texRect.lry, 0,
-                                    G_TX_WRAP, G_TX_WRAP, 6, 5, G_TX_NOLOD, G_TX_NOLOD);
+                    nd_tex_load_tile(raster, fmt, G_IM_SIZ_16b, width, height, texRect.ulx, texRect.uly, texRect.lrx, texRect.lry, 0, G_TX_WRAP, G_TX_WRAP, 6, 5, G_TX_NOLOD, G_TX_NOLOD);
                 } else if (bitDepth == G_IM_SIZ_8b) {
-                    gDPLoadTextureTile(gMainGfxPos++, raster, fmt, G_IM_SIZ_8b, width, height,
-                                    texRect.ulx, texRect.uly, texRect.lrx, texRect.lry, 0,
-                                    G_TX_WRAP, G_TX_WRAP, 6, 5, G_TX_NOLOD, G_TX_NOLOD);
+                    nd_tex_load_tile(raster, fmt, G_IM_SIZ_8b, width, height, texRect.ulx, texRect.uly, texRect.lrx, texRect.lry, 0, G_TX_WRAP, G_TX_WRAP, 6, 5, G_TX_NOLOD, G_TX_NOLOD);
                 }
 
-                gSPTextureRectangle(gMainGfxPos++, drawRect.ulx * 4, drawRect.uly * 4, drawRect.lrx * 4, drawRect.lry * 4,
-                                    0, texOffsetX * 32, texOffsetY * 32, 1024, 1024);
+                nd_rect_tex(drawRect.ulx * 4, drawRect.uly * 4, drawRect.lrx * 4, drawRect.lry * 4, 0, texOffsetX * 32, texOffsetY * 32, 1024, 1024);
             }
 
             if (stopDrawingLine) {

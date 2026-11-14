@@ -8,6 +8,7 @@
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_geo.h"
+#include "nd_tx.h"
 
 typedef union ImgFXIntVars {
     s32 raw[2][4];
@@ -1036,7 +1037,7 @@ void imgfx_appendGfx_mesh(ImgFXState* state, Matrix4f mtx) {
                     nd_pso_aldith(G_AD_NOISE);
                     nd_pso_alcmp(G_AC_THRESHOLD);
                     nd_val_prim(0, 0, 0, 0, 0, primAlpha);
-                    gDPSetBlendColor(gMainGfxPos++, 0, 0, 0, blendAlpha);
+                    nd_val_blend(0, 0, 0, blendAlpha);
                 }
                 break;
             case IMGFX_RENDER_COLOR_FILL:
@@ -1504,7 +1505,7 @@ void imgfx_appendGfx_mesh_basic(ImgFXState* state, Matrix4f mtx) {
 
     if (!(state->flags & IMGFX_FLAG_SKIP_TEX_SETUP)) {
         nd_pso_lut(G_TT_RGBA16);
-        gDPLoadTLUT_pal16(gMainGfxPos++, 0, ImgFXCurrentTexturePtr->tex.palette);
+        nd_tex_load_tlut16(0, ImgFXCurrentTexturePtr->tex.palette);
     }
 
     i = state->firstVtxIdx;
@@ -1563,9 +1564,9 @@ void imgfx_appendGfx_mesh_basic(ImgFXState* state, Matrix4f mtx) {
                     cam = &gCameras[gCurrentCamID];
 
                     if (gGameStatusPtr->context == CONTEXT_PAUSE) {
-                        gSPViewport(gMainGfxPos++, &D_8014EE50);
+                        nd_xf_viewport(&D_8014EE50);
                     } else {
-                        gSPViewport(gMainGfxPos++, PM_VP(&cam->vpAlt));
+                        nd_xf_viewport(PM_VP(&cam->vpAlt));
                     }
 
                     nd_pso_rm(G_RM_PASS, state->otherModeL);
@@ -1601,9 +1602,9 @@ void imgfx_appendGfx_mesh_basic(ImgFXState* state, Matrix4f mtx) {
                     cam = &gCameras[gCurrentCamID];
 
                     if (gGameStatusPtr->context == CONTEXT_PAUSE) {
-                        gSPViewport(gMainGfxPos++, &D_8014EE50);
+                        nd_xf_viewport(&D_8014EE50);
                     } else {
-                        gSPViewport(gMainGfxPos++, PM_VP(&cam->vpAlt));
+                        nd_xf_viewport(PM_VP(&cam->vpAlt));
                     }
 
                     if (alpha2 == 255) {
@@ -1655,11 +1656,11 @@ void imgfx_appendGfx_mesh_basic(ImgFXState* state, Matrix4f mtx) {
         ) {
             cam = &gCameras[gCurrentCamID];
             if (gGameStatusPtr->context == CONTEXT_PAUSE) {
-                gSPViewport(gMainGfxPos++, &D_8014EE40);
+                nd_xf_viewport(&D_8014EE40);
                 D_8014EE50.vp.vtrans[0] = D_8014EE40.vp.vtrans[0] + gGameStatusPtr->altViewportOffset.x;
                 D_8014EE50.vp.vtrans[1] = D_8014EE40.vp.vtrans[1] + gGameStatusPtr->altViewportOffset.y;
             } else {
-                gSPViewport(gMainGfxPos++, PM_VP(&cam->vp));
+                nd_xf_viewport(PM_VP(&cam->vp));
             }
         }
 
@@ -1680,7 +1681,7 @@ void imgfx_appendGfx_mesh_grid(ImgFXState* state, Matrix4f mtx) {
 
     if (!(state->flags & IMGFX_FLAG_SKIP_TEX_SETUP)) {
         nd_pso_lut(G_TT_RGBA16);
-        gDPLoadTLUT_pal16(gMainGfxPos++, 0, ImgFXCurrentTexturePtr->tex.palette);
+        nd_tex_load_tlut16(0, ImgFXCurrentTexturePtr->tex.palette);
     }
 
     firstVtxIdx = state->firstVtxIdx;
@@ -1762,7 +1763,7 @@ void imgfx_appendGfx_mesh_anim(ImgFXState* state, Matrix4f mtx) {
 
     if (!(state->flags & IMGFX_FLAG_SKIP_TEX_SETUP)) {
         nd_pso_lut(G_TT_RGBA16);
-        gDPLoadTLUT_pal16(gMainGfxPos++, 0, ImgFXCurrentTexturePtr->tex.palette);
+        nd_tex_load_tlut16(0, ImgFXCurrentTexturePtr->tex.palette);
         if ((gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED)
             && (state->flags & (IMGFX_FLAG_100000 | IMGFX_FLAG_80000))
             && (state->renderType == IMGFX_RENDER_DEFAULT
@@ -1771,13 +1772,8 @@ void imgfx_appendGfx_mesh_anim(ImgFXState* state, Matrix4f mtx) {
                 || state->renderType == IMGFX_RENDER_ANIM)
         ) {
             s32 alpha = 255;
-            gDPScrollMultiTile2_4b(gMainGfxPos++, ImgFXCurrentTexturePtr->tex.raster, G_IM_FMT_CI,
-                                    ImgFXCurrentTexturePtr->tex.width, ImgFXCurrentTexturePtr->tex.height,
-                                    0, 0, ImgFXCurrentTexturePtr->tex.width - 1, ImgFXCurrentTexturePtr->tex.height - 1, 0,
-                                    G_TX_CLAMP, G_TX_CLAMP, 8, 8, G_TX_NOLOD, G_TX_NOLOD,
-                                    256, 256);
-            gDPSetTile(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 4, 0x0100, 2, 0,
-                            G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
+            nd_tex_scroll_mtile2_4b(ImgFXCurrentTexturePtr->tex.raster, G_IM_FMT_CI, ImgFXCurrentTexturePtr->tex.width, ImgFXCurrentTexturePtr->tex.height, 0, 0, ImgFXCurrentTexturePtr->tex.width - 1, ImgFXCurrentTexturePtr->tex.height - 1, 0, G_TX_CLAMP, G_TX_CLAMP, 8, 8, G_TX_NOLOD, G_TX_NOLOD, 256, 256);
+            nd_tex_tile(G_IM_FMT_RGBA, G_IM_SIZ_16b, 4, 0x0100, 2, 0, G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
             nd_val_tile_size(2, 0, 0, 252, 0);
 
             switch (state->renderType) {
@@ -1795,11 +1791,7 @@ void imgfx_appendGfx_mesh_anim(ImgFXState* state, Matrix4f mtx) {
             }
             create_shading_palette(mtx, 0, 0, ImgFXCurrentTexturePtr->tex.width, ImgFXCurrentTexturePtr->tex.height, alpha, state->otherModeL);
         } else {
-            gDPScrollTextureTile_4b(gMainGfxPos++, ImgFXCurrentTexturePtr->tex.raster, G_IM_FMT_CI,
-                                    ImgFXCurrentTexturePtr->tex.width, ImgFXCurrentTexturePtr->tex.height,
-                                    0, 0, ImgFXCurrentTexturePtr->tex.width - 1, ImgFXCurrentTexturePtr->tex.height - 1, 0,
-                                    G_TX_CLAMP, G_TX_CLAMP, 8, 8, G_TX_NOLOD, G_TX_NOLOD,
-                                    256, 256);
+            nd_tex_scroll_tile_4b(ImgFXCurrentTexturePtr->tex.raster, G_IM_FMT_CI, ImgFXCurrentTexturePtr->tex.width, ImgFXCurrentTexturePtr->tex.height, 0, 0, ImgFXCurrentTexturePtr->tex.width - 1, ImgFXCurrentTexturePtr->tex.height - 1, 0, G_TX_CLAMP, G_TX_CLAMP, 8, 8, G_TX_NOLOD, G_TX_NOLOD, 256, 256);
         }
     }
     gSPDisplayList(gMainGfxPos++, state->gfxBufs[gCurrentDisplayContextIndex]);
@@ -1827,11 +1819,8 @@ void imgfx_appendGfx_mesh_strip(ImgFXState* state, Matrix4f mtx) {
         nd_pso_cc(G_CC_MODULATEIA, G_CC_MODULATEIA);
     }
     nd_pso_lut(G_TT_RGBA16);
-    gDPLoadTLUT_pal16(gMainGfxPos++, 0, ufs->palette);
-    gDPScrollTextureTile_4b(gMainGfxPos++, ufs->raster, G_IM_FMT_CI, ufs->width, ufs->height,
-                          0, 0, ufs->width - 1, ufs->height - 1, 0,
-                          G_TX_WRAP, G_TX_WRAP, shifts, shiftt, G_TX_NOLOD, G_TX_NOLOD,
-                          256, 256);
+    nd_tex_load_tlut16(0, ufs->palette);
+    nd_tex_scroll_tile_4b(ufs->raster, G_IM_FMT_CI, ufs->width, ufs->height, 0, 0, ufs->width - 1, ufs->height - 1, 0, G_TX_WRAP, G_TX_WRAP, shifts, shiftt, G_TX_NOLOD, G_TX_NOLOD, 256, 256);
 
     uls = state->floats.overlay.posX;
     ult = state->floats.overlay.posY;

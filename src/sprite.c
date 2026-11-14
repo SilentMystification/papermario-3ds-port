@@ -9,6 +9,7 @@
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_geo.h"
+#include "nd_tx.h"
 
 #define MAX_SPRITE_ID 0xEA // todo generate this
 

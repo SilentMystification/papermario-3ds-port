@@ -9,6 +9,7 @@
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_geo.h"
+#include "nd_tx.h"
 
 #define MAX_HUD_CACHE_ENTRIES 192
 
@@ -1878,9 +1879,7 @@ void render_complex_hud_element(HudElement* hudElement) {
                     }
                 }
 
-                gDPLoadTextureBlock(gMainGfxPos++, hudElement->imageAddr, G_IM_FMT_IA, G_IM_SIZ_8b, width, height, 0,
-                                    G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK,
-                                    G_TX_NOLOD, G_TX_NOLOD);
+                nd_tex_load_block(hudElement->imageAddr, G_IM_FMT_IA, G_IM_SIZ_8b, width, height, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
 
                 nd_pso_lut(G_TT_NONE);
                 nd_mesh_vtx(&transform->quadBuffers[FrameQuadIndex], 4, 0);
@@ -2067,11 +2066,11 @@ void immediately_render_complex_hud_element(s32 elemID, s32 arg1, s32 camID) {
 
         gCurrentCamID = camID;
 
-        gSPViewport(gMainGfxPos++, PM_VP(&camera->vp));
+        nd_xf_viewport(PM_VP(&camera->vp));
         nd_pso_geom_clr(G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN |
                                                 G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
         nd_tex_on(0, 0, 0, G_TX_RENDERTILE, G_OFF);
-        gDPPipelineMode(gMainGfxPos++, G_PM_NPRIMITIVE);
+        nd_pso_pipe(G_PM_NPRIMITIVE);
         nd_pso_lut(G_TT_NONE);
         nd_pso_filt(G_TF_BILERP);
         nd_pso_cc(G_CC_SHADE, G_CC_SHADE);
@@ -2080,10 +2079,8 @@ void immediately_render_complex_hud_element(s32 elemID, s32 arg1, s32 camID) {
         //clear Z buffer inside camera viewport
         gDPSetCycleType(gMainGfxPos++, G_CYC_FILL);
         nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxZBuffer));
-        gDPSetFillColor(gMainGfxPos++, GPACK_ZDZ(G_MAXFBZ, 0)<<16 | GPACK_ZDZ(G_MAXFBZ, 0));
-        gDPFillRectangle(gMainGfxPos++, camera->viewportStartX, camera->viewportStartY,
-                         camera->viewportStartX + camera->viewportW - 1,
-                         camera->viewportStartY + camera->viewportH - 1);
+        nd_val_fill(GPACK_ZDZ(G_MAXFBZ, 0)<<16 | GPACK_ZDZ(G_MAXFBZ, 0));
+        nd_rect_fill(camera->viewportStartX, camera->viewportStartY, camera->viewportStartX + camera->viewportW - 1, camera->viewportStartY + camera->viewportH - 1);
 
         nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
 
@@ -2175,7 +2172,6 @@ void draw_hud_element_internal(s32 id, s32 clipMode) {
                 nd_pso_conv(G_TC_FILT);
                 nd_pso_combkey(G_CK_NONE);
                 nd_pso_alcmp(G_AC_NONE);
-                gDPNoOp(gMainGfxPos++);
                 nd_pso_dither(G_CD_DISABLE);
                 nd_pso_aldith(G_AD_DISABLE);
                 nd_tex_on(-1, -1, 0, G_TX_RENDERTILE, G_ON);
@@ -2602,8 +2598,8 @@ void pm_anchor_begin(const void* key, unsigned idx, int x, int y) {
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
     guTranslate(&gDisplayContext->matrixStack[gMatrixListPos], x, y, 0.0f);
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gSPViewport(gMainGfxPos++, &sAnchorViewport);
-    gSPLoadGeometryMode(gMainGfxPos++, 0);
+    nd_xf_viewport(&sAnchorViewport);
+    nd_pso_geom_load(0);
     nd_tex_on(-1, -1, 0, G_TX_RENDERTILE, G_ON);
     sAnchorOpen = true;
     sAnchorX = x;

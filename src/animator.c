@@ -4,6 +4,7 @@
 #include "pm_interp_fi.h"
 #include "nd_cmd.h"
 #include "nd_op.h" /* HC4e2b: the typed unit of a list word */
+#include "nd_tx.h"
 
 typedef struct DisplayListBufferHandle {
     /* 0x0 */ s32 ttl;
@@ -854,8 +855,8 @@ void appendGfx_animator(ModelAnimator* animator) {
                     break;
             }
 
-            gDPSetFogColor(gMainGfxPos++, gAnimModelFogR, gAnimModelFogG, gAnimModelFogB, gAnimModelFogA);
-            gSPFogPosition(gMainGfxPos++, gAnimModelFogStart, gAnimModelFogEnd);
+            nd_val_fog(gAnimModelFogR, gAnimModelFogG, gAnimModelFogB, gAnimModelFogA);
+            nd_pso_fogpos(gAnimModelFogStart, gAnimModelFogEnd);
             break;
     }
 

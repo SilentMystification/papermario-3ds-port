@@ -12,6 +12,7 @@
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_geo.h"
+#include "nd_tx.h"
 
 extern IMG_BIN ui_msg_bubble_left_png[];
 extern IMG_BIN ui_msg_bubble_mid_png[];
@@ -786,26 +787,16 @@ void appendGfx_message(MessagePrintState* printer, s16 posX, s16 posY, u16 addit
                                                     printer->windowSize.y + 12, 10, 10, 310, 230, temp_s1_5);
                         draw_ci_image_with_clipping(signRaster, 16, 16, G_IM_FMT_CI, G_IM_SIZ_4b, signPalette, 284 - MSG_SIGN_OFFSET_X, printer->windowSize.y + 12,
                                                     10, 10, 310, 230, temp_s1_5);
-                        gDPLoadTextureTile_4b(gMainGfxPos++, ui_msg_sign_side_top_png, G_IM_FMT_CI, 32, 0, 0, 0, 31, 15, 0, G_TX_NOMIRROR | G_TX_WRAP,
-                                              G_TX_NOMIRROR | G_TX_WRAP, 5, 4, G_TX_NOLOD, G_TX_NOLOD);
-                        gSPTextureRectangle(gMainGfxPos++, (36 + MSG_SIGN_OFFSET_X) * 4, 28 * 4, (284 - MSG_SIGN_OFFSET_X) * 4, 44 * 4, G_TX_RENDERTILE, 0, 0,
-                                            0x0400, 0x0400);
-                        gDPLoadTextureTile_4b(gMainGfxPos++, ui_msg_sign_side_left_png, G_IM_FMT_CI, 16, 0, 0, 0, 15, 31, 0, G_TX_NOMIRROR | G_TX_WRAP,
-                                              G_TX_NOMIRROR | G_TX_WRAP, 4, 5, G_TX_NOLOD, G_TX_NOLOD);
-                        gSPTextureRectangle(gMainGfxPos++, (20 + MSG_SIGN_OFFSET_X) * 4, 44 * 4, (36 + MSG_SIGN_OFFSET_X) * 4, (printer->windowSize.y + 12) * 4,
-                                            G_TX_RENDERTILE, 0, 0, 0x0400, 0x0400);
-                        gDPLoadTextureTile_4b(gMainGfxPos++, ui_msg_sign_side_right_png, G_IM_FMT_CI, 16, 0, 0, 0, 15, 31, 0, G_TX_NOMIRROR | G_TX_WRAP,
-                                              G_TX_NOMIRROR | G_TX_WRAP, 4, 5, G_TX_NOLOD, G_TX_NOLOD);
-                        gSPTextureRectangle(gMainGfxPos++, (284 - MSG_SIGN_OFFSET_X) * 4, 44 * 4, (300 - MSG_SIGN_OFFSET_X) * 4, (printer->windowSize.y + 12) * 4,
-                                            G_TX_RENDERTILE, 0, 0, 0x0400, 0x0400);
-                        gDPLoadTextureTile_4b(gMainGfxPos++, ui_msg_sign_side_bottom_png, G_IM_FMT_CI, 32, 0, 0, 0, 31, 15, 0, G_TX_NOMIRROR | G_TX_WRAP,
-                                              G_TX_NOMIRROR | G_TX_WRAP, 5, 4, G_TX_NOLOD, G_TX_NOLOD);
-                        gSPTextureRectangle(gMainGfxPos++, (36 + MSG_SIGN_OFFSET_X) * 4, (printer->windowSize.y + 12) * 4, (284 - MSG_SIGN_OFFSET_X) * 4,
-                                            (printer->windowSize.y + 28) * 4, G_TX_RENDERTILE, 0, 0, 0x0400, 0x0400);
-                        gDPLoadTextureTile_4b(gMainGfxPos++, ui_msg_sign_fill_png, G_IM_FMT_CI, 8, 0, 0, 0, 7, 7, 0, G_TX_NOMIRROR | G_TX_WRAP,
-                                              G_TX_NOMIRROR | G_TX_WRAP, 3, 3, G_TX_NOLOD, G_TX_NOLOD);
-                        gSPTextureRectangle(gMainGfxPos++, (36 + MSG_SIGN_OFFSET_X) * 4, 44 * 4, (283 - MSG_SIGN_OFFSET_X + 1) * 4, (printer->windowSize.y + 12) * 4,
-                                            G_TX_RENDERTILE, 0, 0, 0x0400, 0x0400);
+                        nd_tex_load_tile_4b(ui_msg_sign_side_top_png, G_IM_FMT_CI, 32, 0, 0, 0, 31, 15, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 5, 4, G_TX_NOLOD, G_TX_NOLOD);
+                        nd_rect_tex((36 + MSG_SIGN_OFFSET_X) * 4, 28 * 4, (284 - MSG_SIGN_OFFSET_X) * 4, 44 * 4, G_TX_RENDERTILE, 0, 0, 0x0400, 0x0400);
+                        nd_tex_load_tile_4b(ui_msg_sign_side_left_png, G_IM_FMT_CI, 16, 0, 0, 0, 15, 31, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 4, 5, G_TX_NOLOD, G_TX_NOLOD);
+                        nd_rect_tex((20 + MSG_SIGN_OFFSET_X) * 4, 44 * 4, (36 + MSG_SIGN_OFFSET_X) * 4, (printer->windowSize.y + 12) * 4, G_TX_RENDERTILE, 0, 0, 0x0400, 0x0400);
+                        nd_tex_load_tile_4b(ui_msg_sign_side_right_png, G_IM_FMT_CI, 16, 0, 0, 0, 15, 31, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 4, 5, G_TX_NOLOD, G_TX_NOLOD);
+                        nd_rect_tex((284 - MSG_SIGN_OFFSET_X) * 4, 44 * 4, (300 - MSG_SIGN_OFFSET_X) * 4, (printer->windowSize.y + 12) * 4, G_TX_RENDERTILE, 0, 0, 0x0400, 0x0400);
+                        nd_tex_load_tile_4b(ui_msg_sign_side_bottom_png, G_IM_FMT_CI, 32, 0, 0, 0, 31, 15, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 5, 4, G_TX_NOLOD, G_TX_NOLOD);
+                        nd_rect_tex((36 + MSG_SIGN_OFFSET_X) * 4, (printer->windowSize.y + 12) * 4, (284 - MSG_SIGN_OFFSET_X) * 4, (printer->windowSize.y + 28) * 4, G_TX_RENDERTILE, 0, 0, 0x0400, 0x0400);
+                        nd_tex_load_tile_4b(ui_msg_sign_fill_png, G_IM_FMT_CI, 8, 0, 0, 0, 7, 7, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 3, 3, G_TX_NOLOD, G_TX_NOLOD);
+                        nd_rect_tex((36 + MSG_SIGN_OFFSET_X) * 4, 44 * 4, (283 - MSG_SIGN_OFFSET_X + 1) * 4, (printer->windowSize.y + 12) * 4, G_TX_RENDERTILE, 0, 0, 0x0400, 0x0400);
                         msg_reset_gfx_state();
                         msg_drawState->drawBufferPos += 2;
                         break;
@@ -1899,7 +1890,7 @@ void appendGfx_msg_prim_rect(u8 r, u8 g, u8 b, u8 a, u16 ulX, u16 ulY, u16 lrX, 
     }
 
     nd_val_prim(0, 0, r, g, b, a);
-    gDPFillRectangle(gMainGfxPos++, ulX, ulY, lrX, lrY);
+    nd_rect_fill(ulX, ulY, lrX, lrY);
     nd_pso_rm(G_RM_TEX_EDGE, G_RM_TEX_EDGE2);
 
     switch (msg_drawState->unk_29) {
@@ -1993,23 +1984,16 @@ void msg_draw_speech_bubble(
     }
 
     nd_pso_lut(G_TT_RGBA16);
-    gDPSetTextureImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 1,
-                       ui_msg_palettes[msg_drawState->framePalette]);
-    gDPTileSync(gMainGfxPos++);
-    gDPSetTile(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_4b, 0, 0x0100, G_TX_LOADTILE, 0,
-               G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
-    gDPLoadSync(gMainGfxPos++);
-    gDPLoadTLUTCmd(gMainGfxPos++, G_TX_LOADTILE, 15);
-    gDPLoadTextureTile_4b(gMainGfxPos++, ui_msg_bubble_left_png, G_IM_FMT_CI, 32, 0, 0, 0, 31, 63, 0,
-                          G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 5, 6, G_TX_NOLOD, G_TX_NOLOD);
+    nd_tex_img(G_IM_FMT_RGBA, G_IM_SIZ_16b, 1, ui_msg_palettes[msg_drawState->framePalette]);
+    nd_tex_tile(G_IM_FMT_RGBA, G_IM_SIZ_4b, 0, 0x0100, G_TX_LOADTILE, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
+    nd_tex_ldtlut(G_TX_LOADTILE, 15);
+    nd_tex_load_tile_4b(ui_msg_bubble_left_png, G_IM_FMT_CI, 32, 0, 0, 0, 31, 63, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 5, 6, G_TX_NOLOD, G_TX_NOLOD);
     nd_mesh_vtx(gMsgSpeechBoxLQuad, 4, 0);
     nd_mesh_tri2(0, 2, 1, 0, 1, 2, 3, 0);
-    gDPLoadTextureTile_4b(gMainGfxPos++, ui_msg_bubble_mid_png, G_IM_FMT_CI, 8, 0, 0, 0, 7, 63, 0,
-                          G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 3, 6, G_TX_NOLOD, G_TX_NOLOD);
+    nd_tex_load_tile_4b(ui_msg_bubble_mid_png, G_IM_FMT_CI, 8, 0, 0, 0, 7, 63, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 3, 6, G_TX_NOLOD, G_TX_NOLOD);
     nd_mesh_vtx(gMsgSpeechBoxMQuad, 4, 0);
     nd_mesh_tri2(0, 2, 1, 0, 1, 2, 3, 0);
-    gDPLoadTextureTile_4b(gMainGfxPos++, ui_msg_bubble_right_png, G_IM_FMT_CI, 32, 0, 0, 0, 31, 63, 0,
-                          G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 5, 6, G_TX_NOLOD, G_TX_NOLOD);
+    nd_tex_load_tile_4b(ui_msg_bubble_right_png, G_IM_FMT_CI, 32, 0, 0, 0, 31, 63, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 5, 6, G_TX_NOLOD, G_TX_NOLOD);
     nd_mesh_vtx(gMsgSpeechBoxRQuad, 4, 0);
     nd_mesh_tri2(0, 2, 1, 0, 1, 2, 3, 0);
 }
@@ -2120,7 +2104,7 @@ void msg_draw_speech_arrow(MessagePrintState* printer) {
     nd_pso_cc(PM_CC_0F, PM_CC_0F);
     nd_pso_filt(G_TF_BILERP);
     nd_val_prim(0, 0, 32, 32, 32, 255);
-    gDPLoadTextureTile_4b(gMainGfxPos++, ui_msg_arrow_png, G_IM_FMT_CI, 16, 0, 0, 0, 15, 15, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 4, 4, G_TX_NOLOD, G_TX_NOLOD);
+    nd_tex_load_tile_4b(ui_msg_arrow_png, G_IM_FMT_CI, 16, 0, 0, 0, 15, 15, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 4, 4, G_TX_NOLOD, G_TX_NOLOD);
     guTranslateF(sp10, 0.0f, 0.0f, 0.0f);
     guMtxF2L(sp10, &gDisplayContext->matrixStack[gMatrixListPos]);
     nd_xf_push(VIRTUAL_TO_PHYSICAL(&gDisplayContext->matrixStack[gMatrixListPos++]), G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
@@ -2166,7 +2150,7 @@ void msg_draw_frame(s32 posX, s32 posY, s32 sizeX, s32 sizeY, s32 style, s32 pal
                 nd_pso_cc(G_CC_PRIMITIVE, G_CC_PRIMITIVE);
                 nd_val_prim(0, 0, r, g, b, bgAlpha);
                 if (posX + sizeX - 8 > 0) {
-                    gDPScisFillRectangle(gMainGfxPos++, posX + 8, posY + 8, posX + sizeX - 8, posY + sizeY - 8);
+                    nd_rect_sfill(posX + 8, posY + 8, posX + sizeX - 8, posY + sizeY - 8);
                 }
                 break;
             case MSG_STYLE_INSPECT:
@@ -2182,13 +2166,11 @@ void msg_draw_frame(s32 posX, s32 posY, s32 sizeX, s32 sizeY, s32 style, s32 pal
                     nd_val_prim(0, 0, 0, 0, 0, bgAlpha);
                 }
 
-                gDPLoadTextureBlock_4b(gMainGfxPos++, ui_msg_background_png, G_IM_FMT_I, 64, 64, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 6, 6, G_TX_NOLOD, G_TX_NOLOD);
+                nd_tex_load_block_4b(ui_msg_background_png, G_IM_FMT_I, 64, 64, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 6, 6, G_TX_NOLOD, G_TX_NOLOD);
                 if (style == MSG_STYLE_INSPECT) {
-                    gSPScisTextureRectangle(gMainGfxPos++, (posX + 3) * 4, (posY + 3) * 4, (posX + sizeX - 3) * 4, (posY + sizeY - 3) * 4,
-                                            G_TX_RENDERTILE, gMsgBGScrollAmtX, gMsgBGScrollAmtY, 0x400, 0x400);
+                    nd_rect_scis((posX + 3) * 4, (posY + 3) * 4, (posX + sizeX - 3) * 4, (posY + sizeY - 3) * 4, G_TX_RENDERTILE, gMsgBGScrollAmtX, gMsgBGScrollAmtY, 0x400, 0x400);
                 } else {
-                    gSPScisTextureRectangle(gMainGfxPos++, (posX + 5) * 4, (posY + 5) * 4, (posX + sizeX - 5) * 4, (posY + sizeY - 5) * 4,
-                                            G_TX_RENDERTILE, gMsgBGScrollAmtX, gMsgBGScrollAmtY, 0x400, 0x400);
+                    nd_rect_scis((posX + 5) * 4, (posY + 5) * 4, (posX + sizeX - 5) * 4, (posY + sizeY - 5) * 4, G_TX_RENDERTILE, gMsgBGScrollAmtX, gMsgBGScrollAmtY, 0x400, 0x400);
                 }
                 break;
         }
@@ -2342,13 +2324,12 @@ void msg_draw_frame(s32 posX, s32 posY, s32 sizeX, s32 sizeY, s32 style, s32 pal
     nd_pso_cc(PM_CC_02, PM_CC_02);
     nd_val_prim(0, 0, 0, 0, 0, frameAlpha);
     nd_pso_lut(G_TT_RGBA16);
-    gDPLoadTLUT_pal16(gMainGfxPos++, 0, ui_msg_palettes[palette]);
+    nd_tex_load_tlut16(0, ui_msg_palettes[palette]);
 
     for (i = 0; i < ARRAY_COUNT(textures); i++) {
         if (textures[i] != nullptr && quads[i].ulx < 10000) {
-            gDPLoadTextureTile_4b(gMainGfxPos++, textures[i], G_IM_FMT_CI, 8, 8, 0, 0, 7, 7, 0, G_TX_WRAP, G_TX_WRAP, 3, 3, G_TX_NOLOD, G_TX_NOLOD);
-            gSPScisTextureRectangle(gMainGfxPos++, quads[i].ulx, quads[i].uly, quads[i].lrx, quads[i].lry,
-                                    G_TX_RENDERTILE, 0, 0, 0x400, 0x400);
+            nd_tex_load_tile_4b(textures[i], G_IM_FMT_CI, 8, 8, 0, 0, 7, 7, 0, G_TX_WRAP, G_TX_WRAP, 3, 3, G_TX_NOLOD, G_TX_NOLOD);
+            nd_rect_scis(quads[i].ulx, quads[i].uly, quads[i].lrx, quads[i].lry, G_TX_RENDERTILE, 0, 0, 0x400, 0x400);
         }
     }
 

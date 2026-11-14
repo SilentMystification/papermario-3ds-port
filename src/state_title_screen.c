@@ -469,11 +469,9 @@ void appendGfx_title_screen(void) {
             break;
     }
 
-    gDPPipeSync(gMainGfxPos++);
     nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
     gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
     gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
-    gDPPipeSync(gMainGfxPos++);
     gSPClearGeometryMode(gMainGfxPos++, G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING |
                             G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
     gSPSetGeometryMode(gMainGfxPos++, G_ZBUFFER | G_SHADE | G_LIGHTING | G_SHADING_SMOOTH);
@@ -545,7 +543,6 @@ void title_screen_draw_logo(f32 moveAlpha) {
     s32 i;
 
     gSPDisplayList(gMainGfxPos++, TitleSetupGfx);
-    gDPPipeSync(gMainGfxPos++);
     yOffset = TITLE_LOGO_YOFFSET * moveAlpha;
 
     for (i = 0; i < TITLE_NUM_TILES; i++) {
@@ -560,7 +557,6 @@ void title_screen_draw_logo(f32 moveAlpha) {
         ttl_run(&tr);
     }
 
-    gDPPipeSync(gMainGfxPos++);
 }
 
 #if VERSION_IQUE
@@ -651,7 +647,6 @@ void title_screen_draw_menu(void) {
     gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIA_PRIM, G_CC_MODULATEIA_PRIM);
 #if VERSION_PAL
     gDPSetPrimColor(gMainGfxPos++, 0, 0, 248, 240, 152, (u8)StartGame_Alpha);
-    gDPPipeSync(gMainGfxPos++);
 
     {
         NdTRect tr;
@@ -664,7 +659,6 @@ void title_screen_draw_menu(void) {
         ttl_run(&tr);
     }
     gDPSetPrimColor(gMainGfxPos++, 0, 0, 248, 240, 152, (u8)Languages_Alpha);
-    gDPPipeSync(gMainGfxPos++);
 
     {
         NdTRect tr;
@@ -678,7 +672,6 @@ void title_screen_draw_menu(void) {
     }
 #else
     gDPSetPrimColor(gMainGfxPos++, 0, 0, 248, 240, 152, TitleMenu_Alpha);
-    gDPPipeSync(gMainGfxPos++);
     {
         NdTRect tr;
 
@@ -689,7 +682,6 @@ void title_screen_draw_menu(void) {
         ttl_run(&tr);
     }
 #endif
-    gDPPipeSync(gMainGfxPos++);
 }
 
 #if VERSION_IQUE
@@ -718,7 +710,6 @@ void title_screen_draw_copyright(f32 moveAlpha) {
 #if VERSION_JP
     gDPSetTextureLUT(gMainGfxPos++, G_TT_RGBA16);
 #endif
-    gDPPipeSync(gMainGfxPos++);
 
     alpha = 255.0f - (moveAlpha * 255.0f);
     if (alpha < 255) {
@@ -759,5 +750,4 @@ void title_screen_draw_copyright(f32 moveAlpha) {
         }
     }
 #endif
-    gDPPipeSync(gMainGfxPos++);
 }

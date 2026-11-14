@@ -2,6 +2,7 @@
 #include "model.h"
 #include "gcc/string.h"
 #include "nd_st.h"
+#include "nd_tx.h"
 
 char gCloudyFlowerFieldsBg[] = "fla_bg";
 char gSunnyFlowerFieldsBg[] = "flb_bg";
@@ -101,7 +102,7 @@ static void bg_emit(s32 xl, s32 yl, s32 xh, s32 yh, s32 tile, s32 s, s32 t, s32 
     if (bg_fill) { /* DOORSKY: the pixels of a COPY texrect, first pixel at or after xl, last at or before xh (nd_rect.c COPY rule) */
         s32 fx0 = (xl + 3) >> 2, fy0 = (yl + 3) >> 2, fx1 = xh >> 2, fy1 = yh >> 2;
         if (fx1 >= fx0 && fy1 >= fy0) {
-            gDPFillRectangle(gMainGfxPos++, fx0, fy0, fx1, fy1);
+            nd_rect_fill(fx0, fy0, fx1, fy1);
         }
         return;
     }
@@ -113,7 +114,7 @@ static void bg_emit(s32 xl, s32 yl, s32 xh, s32 yh, s32 tile, s32 s, s32 t, s32 
         if (bgl < 0) bgl = pm_debug_has("bgrect");
         if (bgl) pm_log_d("bgrect f%u xl %d yl %d xh %d yh %d s %d t %d dsdx %d dtdy %d zoom %d", pm_frame_count(), xl, yl, xh, yh, s, t, dsdx, dtdy, bg_zoom);
     }
-    gSPTextureRectangle(gMainGfxPos++, xl, yl, xh, yh, tile, s, t, dsdx, dtdy);
+    nd_rect_tex(xl, yl, xh, yh, tile, s, t, dsdx, dtdy);
 }
 static void bg_texrect(s32 xl, s32 yl, s32 xh, s32 yh, s32 tile, s32 s, s32 t, s32 dsdx, s32 dtdy) {
     s32 shift;
@@ -312,18 +313,18 @@ void appendGfx_background_texture(void) {
     nd_pso_rm(G_RM_NOOP, G_RM_NOOP2);
     if (bgMix) { /* BTLDIM: the mix stage gets P = shroud colour, A = fogA: P * A + M * (1 - A) per sky texel */
         gDPSetFogColor(gMainGfxPos++, fogR, fogG, fogB, fogA);
-        gDPSetBlendColor(gMainGfxPos++, fogR, fogG, fogB, 255);
+        nd_val_blend(fogR, fogG, fogB, 255);
         nd_pso_rm(PM_RM_SHROUD, G_RM_NOOP2);
     }
     nd_pso_filt(G_TF_POINT);
 
     if (bg_fill) {
         nd_pso_cyc(G_CYC_FILL);
-        gDPSetFillColor(gMainGfxPos++, PACK_FILL_COLOR(0, 0, 0, 1)); /* BG_PAL(1): the colour of every entry of the full black palette */
+        nd_val_fill(PACK_FILL_COLOR(0, 0, 0, 1)); /* BG_PAL(1): the colour of every entry of the full black palette */
     } else if (!(gGameStatusPtr->backgroundFlags & BACKGROUND_FLAG_FOG) || bgMix) {
-        gDPLoadTLUT_pal256(gMainGfxPos++, gGameStatusPtr->backgroundPalette);
+        nd_tex_load_tlut256(gGameStatusPtr->backgroundPalette);
     } else {
-        gDPLoadTLUT_pal256(gMainGfxPos++, gBackgroundPalette);
+        nd_tex_load_tlut256(gBackgroundPalette);
     }
 
     if (!gBackroundWaveEnabled) {
@@ -343,9 +344,7 @@ void appendGfx_background_texture(void) {
                 if (bgl) pm_log_d("bgsky f%u w %d h %d y0 %d xoff %d minx %d miny %d", pm_frame_count(), bgMaxX, h, y0, bgXOffset, bgMinX, bgMinY);
             }
             if (!bg_fill) {
-                gDPLoadTextureTile(gMainGfxPos++, gGameStatusPtr->backgroundRaster, G_IM_FMT_CI, G_IM_SIZ_8b, bgMaxX, h,
-                                   0, 0, 295, h - 1, 0,
-                                   G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+                nd_tex_load_tile(gGameStatusPtr->backgroundRaster, G_IM_FMT_CI, G_IM_SIZ_8b, bgMaxX, h, 0, 0, 295, h - 1, 0, G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
             }
             bg_sky_rows(bgMinX, bgMinY, bgXOffset, bgMaxX, 0, h - y0, y0 * 32);
             bg_sky_rows(bgMinX, bgMinY, bgXOffset, bgMaxX, h - y0, y0, 0);
@@ -366,10 +365,7 @@ void appendGfx_background_texture(void) {
             if (texOffsetY > gGameStatusPtr->backgroundMaxY) {
                 texOffsetY -= gGameStatusPtr->backgroundMaxY;
             }
-            gDPLoadTextureTile(gMainGfxPos++, gGameStatusPtr->backgroundRaster + bgMaxX * texOffsetY,
-                               G_IM_FMT_CI, G_IM_SIZ_8b, bgMaxX, 6,
-                               0, 0, 295, 5, 0,
-                               G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+            nd_tex_load_tile(gGameStatusPtr->backgroundRaster + bgMaxX * texOffsetY, G_IM_FMT_CI, G_IM_SIZ_8b, bgMaxX, 6, 0, 0, 295, 5, 0, G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
 
             bg_texrect( bgMinX * 4, (lineHeight * i + bgMinY) * 4,
                                                  (2 * bgXOffset + (bgMinX - 1)) * 4, (lineHeight * i + lineHeight - 1 + bgMinY) * 4,
@@ -385,10 +381,7 @@ void appendGfx_background_texture(void) {
             if (texOffsetY > gGameStatusPtr->backgroundMaxY) {
                 texOffsetY -= gGameStatusPtr->backgroundMaxY;
             }
-            gDPLoadTextureTile(gMainGfxPos++, gGameStatusPtr->backgroundRaster + bgMaxX * texOffsetY,
-                               G_IM_FMT_CI, G_IM_SIZ_8b, bgMaxX, extraHeight,
-                               0, 0, 295, extraHeight - 1, 0,
-                               G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+            nd_tex_load_tile(gGameStatusPtr->backgroundRaster + bgMaxX * texOffsetY, G_IM_FMT_CI, G_IM_SIZ_8b, bgMaxX, extraHeight, 0, 0, 295, extraHeight - 1, 0, G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
             bg_texrect( bgMinX * 4, (lineHeight * i + bgMinY) * 4,
                                                  (2 * bgXOffset + (bgMinX - 1)) * 4, (bgMaxY - 1 + bgMinY) * 4, /// @bug xh = 2 * bgXOffset + (bgMinX - 1) * 4
                                                  G_TX_RENDERTILE, bgMaxX * 32 - bgXOffset * 16, 0, 4096, 1024);

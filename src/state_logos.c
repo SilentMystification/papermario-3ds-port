@@ -6,6 +6,7 @@
 #include "nu/nusys.h"
 #include "game_modes.h"
 #include "nd_st.h"
+#include "nd_tx.h"
 
 void appendGfx_intro_logos(void);
 
@@ -271,8 +272,8 @@ void appendGfx_intro_logos(void) {
     nd_pso_rm(G_RM_NOOP, G_RM_NOOP2);
     nd_pso_cc(G_CC_DECALRGB, G_CC_DECALRGB);
     nd_pso_cyc(G_CYC_FILL);
-    gDPSetFillColor(gMainGfxPos++, PACK_FILL_COLOR(224, 224, 224, 1));
-    gDPFillRectangle(gMainGfxPos++, 0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1);
+    nd_val_fill(PACK_FILL_COLOR(224, 224, 224, 1));
+    nd_rect_fill(0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1);
 
     switch (gGameStatusPtr->startupState) {
         case LOGOS_STATE_N64_FADE_IN:
@@ -280,10 +281,8 @@ void appendGfx_intro_logos(void) {
         case LOGOS_STATE_N64_FADE_OUT:
             gSPDisplayList(gMainGfxPos++, D_80077908);
             for (i = 0; i < 7; i++) {
-                gDPLoadTextureTile(gMainGfxPos++, gLogosImage1 + i * 0x1000, G_IM_FMT_RGBA, G_IM_SIZ_16b, 128, 112,
-                                   0, 0, 127, 15, 0,
-                                   G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
-                gSPTextureRectangle(gMainGfxPos++, 96 * 4, (64 + i * 16) * 4, 224 * 4, (80 + i * 16) * 4, G_TX_RENDERTILE, 0, 0, 1024, 1024);
+                nd_tex_load_tile(gLogosImage1 + i * 0x1000, G_IM_FMT_RGBA, G_IM_SIZ_16b, 128, 112, 0, 0, 127, 15, 0, G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+                nd_rect_tex(96 * 4, (64 + i * 16) * 4, 224 * 4, (80 + i * 16) * 4, G_TX_RENDERTILE, 0, 0, 1024, 1024);
             }
             break;
         case LOGOS_STATE_NINTENDO_FADE_IN:
@@ -298,14 +297,8 @@ void appendGfx_intro_logos(void) {
 #endif
             gSPDisplayList(gMainGfxPos++, D_80077908);
             for (i = 0; i < 6; i++) {
-                gDPLoadTextureTile(gMainGfxPos++, gLogosImage2 + i * 0x1000, G_IM_FMT_RGBA, G_IM_SIZ_16b, 256, 48,
-                                   0, 0, 255, 7, 0,
-                                   G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
-                gSPTextureRectangle(
-                        gMainGfxPos++,
-                        32 * 4, (LOGO_1_Y + i * 8) * 4,
-                        288 * 4, (LOGO_1_Y + 8 + i * 8) * 4,
-                        G_TX_RENDERTILE, 0, 0, 1024, 1024);
+                nd_tex_load_tile(gLogosImage2 + i * 0x1000, G_IM_FMT_RGBA, G_IM_SIZ_16b, 256, 48, 0, 0, 255, 7, 0, G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+                nd_rect_tex(32 * 4, (LOGO_1_Y + i * 8) * 4, 288 * 4, (LOGO_1_Y + 8 + i * 8) * 4, G_TX_RENDERTILE, 0, 0, 1024, 1024);
             }
 #if !VERSION_JP
             break;
@@ -316,13 +309,8 @@ void appendGfx_intro_logos(void) {
             gSPDisplayList(gMainGfxPos++, D_80077908);
 #endif
             for (i = 0; i < 14; i++) {
-                gDPLoadTextureTile(gMainGfxPos++, gLogosImage3 + i * 0x1000, G_IM_FMT_RGBA, G_IM_SIZ_16b, 256, 112,
-                                   0, 0, 255, 7, 0,
-                                   G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
-                gSPTextureRectangle(gMainGfxPos++,
-                                    32 * 4, (LOGO_2_Y + i * 8) * 4,
-                                    288 * 4, (LOGO_2_Y + 8 + i * 8) * 4,
-                                    G_TX_RENDERTILE, 0, 0, 1024, 1024);
+                nd_tex_load_tile(gLogosImage3 + i * 0x1000, G_IM_FMT_RGBA, G_IM_SIZ_16b, 256, 112, 0, 0, 255, 7, 0, G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+                nd_rect_tex(32 * 4, (LOGO_2_Y + i * 8) * 4, 288 * 4, (LOGO_2_Y + 8 + i * 8) * 4, G_TX_RENDERTILE, 0, 0, 1024, 1024);
             }
             break;
     }

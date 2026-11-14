@@ -5,6 +5,7 @@
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_geo.h"
+#include "nd_tx.h"
 
 SpriteShadingProfile* gSpriteShadingProfile;
 SpriteShadingProfile* gAuxSpriteShadingProfile;
@@ -401,12 +402,12 @@ void appendGfx_shading_palette(
     nd_val_prim(0, 0, shadowR, shadowG, shadowB, alpha);
     nd_val_env(highlightR, highlightG, highlightB, 0);
     nd_pso_cc(PM_CC_55, PM_CC_55);
-    gSPTextureRectangle(gMainGfxPos++, 0, 0, 16 << 2, 1 << 2, 2, 0, 0, 4 << 10, 1 << 10);
+    nd_rect_tex(0, 0, 16 << 2, 1 << 2, 2, 0, 0, 4 << 10, 1 << 10);
     nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
 
     nd_pso_scis(0, camera->viewportStartX, camera->viewportStartY, camera->viewportStartX + camera->viewportW, camera->viewportStartY + camera->viewportH);
 
-    gDPLoadTLUT_pal16(gMainGfxPos++, 1, SpriteShadingPalette);
+    nd_tex_load_tlut16(1, SpriteShadingPalette);
 
     nd_pso_som(G_SETOTHERMODE_H, 4, 18, G_AD_DISABLE | G_CD_MAGICSQ | G_CK_NONE | G_TC_FILT | G_TF_BILERP | G_TT_RGBA16 | G_TL_TILE |
                     G_TD_CLAMP | G_TP_PERSP | G_CYC_2CYCLE | G_PM_NPRIMITIVE);

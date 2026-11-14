@@ -6,6 +6,7 @@
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_geo.h"
+#include "nd_tx.h"
 extern u8 gPmStencilId;                      /* screen_overlays.c, NATIVEAPI B2a */
 extern void pm_tsten_run(const uint32_t* u); /* screen_overlays.c, NATIVEAPI B2a */
 
@@ -67,19 +68,13 @@ void appendGfx_draw_prev_frame_buffer(s32 x1, s32 y1, s32 x2, s32 y2, f32 alpha)
     nd_val_prim(0, 0, 255, 255, 255, alpha);
 
     for (i = 0; i < stripY; i++) {
-        gDPLoadTextureTile(gMainGfxPos++, osVirtualToPhysical(prevGfxCfb), G_IM_FMT_RGBA, G_IM_SIZ_16b, 320, 6,
-                           x1, y1 + i * 6, x2 - 1, y1 + i * 6 + 5, 0,
-                           G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
-        gSPTextureRectangle(gMainGfxPos++, x1 * 4, (y1 + i * 6) * 4, x2 * 4, (y1 + i * 6 + 6) * 4,
-                            G_TX_RENDERTILE, x1 * 32, (y1 + i * 6) * 32, 1024, 1024);
+        nd_tex_load_tile(osVirtualToPhysical(prevGfxCfb), G_IM_FMT_RGBA, G_IM_SIZ_16b, 320, 6, x1, y1 + i * 6, x2 - 1, y1 + i * 6 + 5, 0, G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+        nd_rect_tex(x1 * 4, (y1 + i * 6) * 4, x2 * 4, (y1 + i * 6 + 6) * 4, G_TX_RENDERTILE, x1 * 32, (y1 + i * 6) * 32, 1024, 1024);
     }
 
     if (extraY != 0) {
-        gDPLoadTextureTile(gMainGfxPos++, osVirtualToPhysical(prevGfxCfb), G_IM_FMT_RGBA, G_IM_SIZ_16b, 320, extraY,
-                           x1, y1 + i * 6, x2 - 1, y1 + i * 6 + extraY - 1, 0,
-                           G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
-        gSPTextureRectangle(gMainGfxPos++, x1 * 4, (y1 + i * 6) * 4, x2 * 4, (y1 + i * 6 + extraY) * 4,
-                            G_TX_RENDERTILE, x1 * 32, (y1 + i * 6) * 32, 1024, 1024);
+        nd_tex_load_tile(osVirtualToPhysical(prevGfxCfb), G_IM_FMT_RGBA, G_IM_SIZ_16b, 320, extraY, x1, y1 + i * 6, x2 - 1, y1 + i * 6 + extraY - 1, 0, G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+        nd_rect_tex(x1 * 4, (y1 + i * 6) * 4, x2 * 4, (y1 + i * 6 + extraY) * 4, G_TX_RENDERTILE, x1 * 32, (y1 + i * 6) * 32, 1024, 1024);
     }
 }
 
@@ -161,7 +156,7 @@ void appendGfx_darkness_stencil(bool isWorld, s32 posX, s32 posY, f32 alpha, f32
     nd_pso_persp(G_TP_PERSP);
     nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_32b, 64, osVirtualToPhysical(nuGfxZBuffer));
     nd_pso_scis(G_SC_NON_INTERLACE, 0, 0, 64, 64);
-    gSPViewport(gMainGfxPos++, &DarknessStencilViewport);
+    nd_xf_viewport(&DarknessStencilViewport);
     nd_pso_cc(PM_CC_CONST_1, PM_CC_CONST_1);
     guRotate(&gDisplayContext->matrixStack[gMatrixListPos], 0.0f, 0.0f, 0.0f, 1.0f);
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
@@ -199,19 +194,18 @@ void appendGfx_darkness_stencil(bool isWorld, s32 posX, s32 posY, f32 alpha, f32
     nd_pso_cc(PM_CC_0F, PM_CC_0F);
 
     for (i = 0; i < 4; i++) {
-        gDPLoadTextureTile(gMainGfxPos++, osVirtualToPhysical(&nuGfxZBuffer[i * 2048]), G_IM_FMT_RGBA, G_IM_SIZ_32b, 64, 16, 0, 0, 63, 15, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
-        gSPTextureRectangle(gMainGfxPos++, 0, (i * 16) * 4, 64 * 4, (i * 16 + 16) * 4, G_TX_RENDERTILE, 0, 0, 0x400, 0x400);
+        nd_tex_load_tile(osVirtualToPhysical(&nuGfxZBuffer[i * 2048]), G_IM_FMT_RGBA, G_IM_SIZ_32b, 64, 16, 0, 0, 63, 15, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+        nd_rect_tex(0, (i * 16) * 4, 64 * 4, (i * 16 + 16) * 4, G_TX_RENDERTILE, 0, 0, 0x400, 0x400);
     }
 
-    gDPLoadTextureTile(gMainGfxPos++, osVirtualToPhysical(nuGfxZBuffer), G_IM_FMT_I, G_IM_SIZ_8b, 64, 64, 0, 0, 63, 63,
-                       0, G_TX_MIRROR | G_TX_CLAMP, G_TX_MIRROR | G_TX_CLAMP, 6, 6, 15, 15);
+    nd_tex_load_tile(osVirtualToPhysical(nuGfxZBuffer), G_IM_FMT_I, G_IM_SIZ_8b, 64, 64, 0, 0, 63, 63, 0, G_TX_MIRROR | G_TX_CLAMP, G_TX_MIRROR | G_TX_CLAMP, 6, 6, 15, 15);
     nd_val_tile_size(G_TX_RENDERTILE, 0, 0, 0x01FC, 0x01FC);
 
     nd_pso_cyc(G_CYC_FILL);
     nd_pso_rm(G_RM_NOOP, G_RM_NOOP2);
     nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_32b, 64, osVirtualToPhysical(nuGfxZBuffer));
-    gDPSetFillColor(gMainGfxPos++, GPACK_ZDZ(G_MAXFBZ, 0)<<16 | GPACK_ZDZ(G_MAXFBZ, 0));
-    gDPFillRectangle(gMainGfxPos++, 0, 0, 63, 63);
+    nd_val_fill(GPACK_ZDZ(G_MAXFBZ, 0)<<16 | GPACK_ZDZ(G_MAXFBZ, 0));
+    nd_rect_fill(0, 0, 63, 63);
 
     nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
     nd_pso_scis(G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -240,19 +234,9 @@ void appendGfx_darkness_stencil(bool isWorld, s32 posX, s32 posY, f32 alpha, f32
     sShift = (rectLeft - camera->viewportStartX) * 32.0f / texScale;
 
     if (!isWorld) {
-        gSPTextureRectangle(gMainGfxPos++,
-                            rectLeft * 4, camera->viewportStartY * 4,
-                            rectRight * 4, (camera->viewportStartY + camera->viewportH) * 4,
-                            G_TX_RENDERTILE,
-                            (12 - posX) * 32.0f / texScale + 16.0f + 1024.0f + sShift, (19 - posY) * 32.0f / texScale + 16.0f + 1024.0f,
-                            1024.0f / texScale, 1024.0f / texScale);
+        nd_rect_tex(rectLeft * 4, camera->viewportStartY * 4, rectRight * 4, (camera->viewportStartY + camera->viewportH) * 4, G_TX_RENDERTILE, (12 - posX) * 32.0f / texScale + 16.0f + 1024.0f + sShift, (19 - posY) * 32.0f / texScale + 16.0f + 1024.0f, 1024.0f / texScale, 1024.0f / texScale);
     } else {
-        gSPTextureRectangle(gMainGfxPos++,
-                            rectLeft * 4, camera->viewportStartY * 4,
-                            rectRight * 4, (camera->viewportStartY + camera->viewportH) * 4,
-                            G_TX_RENDERTILE,
-                            (9 - posX) * 32.0f / texScale + 1024.0f + sShift, (32 - posY) * 32.0f / texScale + 1024.0f,
-                            1024.0f / texScale, 1024.0f / texScale);
+        nd_rect_tex(rectLeft * 4, camera->viewportStartY * 4, rectRight * 4, (camera->viewportStartY + camera->viewportH) * 4, G_TX_RENDERTILE, (9 - posX) * 32.0f / texScale + 1024.0f + sShift, (32 - posY) * 32.0f / texScale + 1024.0f, 1024.0f / texScale, 1024.0f / texScale);
     }
 }
 

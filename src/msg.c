@@ -14,6 +14,7 @@
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_geo.h"
+#include "nd_tx.h"
 
 enum RewindArrowStates {
     REWIND_ARROW_STATE_INIT = 0,
@@ -2206,8 +2207,8 @@ void msg_update_rewind_arrow(s32 printerIndex) {
 
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
     nd_xf_push(VIRTUAL_TO_PHYSICAL(&gDisplayContext->matrixStack[gMatrixListPos++]), G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gDPLoadTextureTile(gMainGfxPos++, ui_msg_star_png, G_IM_FMT_RGBA, G_IM_SIZ_16b, 16, 0, 0, 0, 15, 17, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 4, 4, G_TX_NOLOD, G_TX_NOLOD);
-    gDPLoadMultiTile_4b(gMainGfxPos++, ui_msg_star_silhouette_png, 0x0100, 1, G_IM_FMT_I, 16, 0, 0, 0, 15, 18, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 4, 5, G_TX_NOLOD, G_TX_NOLOD);
+    nd_tex_load_tile(ui_msg_star_png, G_IM_FMT_RGBA, G_IM_SIZ_16b, 16, 0, 0, 0, 15, 17, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 4, 4, G_TX_NOLOD, G_TX_NOLOD);
+    nd_tex_load_mtile_4b(ui_msg_star_silhouette_png, 0x0100, 1, G_IM_FMT_I, 16, 0, 0, 0, 15, 18, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 4, 5, G_TX_NOLOD, G_TX_NOLOD);
     nd_mesh_vtx(gRewindArrowQuad, 4, 0);
     nd_mesh_tri2(0, 2, 1, 0, 1, 2, 3, 0);
     FI_CLOSE();
@@ -2262,7 +2263,7 @@ void msg_draw_choice_pointer(MessagePrintState* printer) {
     }
 
     nd_pso_lut(G_TT_RGBA16);
-    gDPLoadTLUT_pal16(gMainGfxPos++, 0, ui_point_right_pal);
+    nd_tex_load_tlut16(0, ui_point_right_pal);
     nd_pso_rm(G_RM_XLU_SURF, G_RM_XLU_SURF2);
     nd_pso_cc(PM_CC_07, PM_CC_07);
     nd_val_prim(0, 0, 40, 40, 40, shadowAlpha);
@@ -2295,22 +2296,9 @@ void draw_digit(IMG_PTR img, s32 charset, s32 posX, s32 posY) {
         nd_rec_napi(nd_trect_run, &r, sizeof r / 8u);
         return;
     }
-    gDPLoadTextureTile_4b(gMainGfxPos++,
-        img, G_IM_FMT_CI,
-        num->texWidth , num->texHeight,
-        0, 0,
-        num->texWidth - 1, num->texHeight - 1,
-        0,
-        G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP,
-        G_TX_NOMASK, G_TX_NOMASK,
-        G_TX_NOLOD, G_TX_NOLOD);
+    nd_tex_load_tile_4b(img, G_IM_FMT_CI, num->texWidth, num->texHeight, 0, 0, num->texWidth - 1, num->texHeight - 1, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
     if (!pm_anchor_rect(4 * posX, 4 * posY, 4 * (posX + num->texWidth), 4 * (posY + num->texHeight), G_TX_RENDERTILE, 0, 0, 1 << 10, 1 << 10)) {
-        gSPTextureRectangle(gMainGfxPos++,
-            4 * posX, 4 * posY,
-            4 * (posX + num->texWidth), 4 * (posY + num->texHeight),
-            G_TX_RENDERTILE,
-            0, 0,
-            1 << 10, 1 << 10);
+        nd_rect_tex(4 * posX, 4 * posY, 4 * (posX + num->texWidth), 4 * (posY + num->texHeight), G_TX_RENDERTILE, 0, 0, 1 << 10, 1 << 10);
     }
 }
 
@@ -2389,7 +2377,7 @@ void draw_number(s32 value, s32 x, s32 y, s32 charset, s32 palette, s32 opacity,
         nd_val_prim(0, 0, 255, 255, 255, opacity);
     }
 
-    gDPLoadTLUT_pal16(gMainGfxPos++, 0, D_802F4560[palette]);
+    nd_tex_load_tlut16(0, D_802F4560[palette]);
     memset(&st, 0, sizeof st);
     st.pal = D_802F4560[palette];
     st.pal_n = 16;
