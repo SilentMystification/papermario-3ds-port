@@ -79,11 +79,10 @@
   :383, :481, item_entity.c:976-984, msg.c:616, sprite.c:508 (spr_st_def[si], nv values: a switch per def), status_icons.c:625. The ws_SCOMP rule covers them;
   every gs macro there has a map entry (oracle census). Blocked by ownership only: GEO G3 runs on root files, TEX T4 follows. Page after `Merge TEX4`.
 ## 7. Phase E deletions (S9DEL): readers C8 756 per file and the trigger of each stage (FACT listcen 3eba999c4; no stage can start today)
-- Blocker for stages 1D and 3: every setter (nd_st.c:14, nd_geo.c:14, nd_xf.c, nd_val.c, nd_tx.h) records NDC_STATE typed units that nd_walk_state runs. C1, C2
-  and C10 at 0 do not remove the walker. A design core NSTREAM (the oracle writes it next; reason not Haiku: a new record form for state, bind, transform and mesh
-  into nd_native_submit) must make the setters and nd_ntab_run write native records first. Counters today: C1 1187, C2 617, C10 167, C5 22103, C6 2108.
+- Blocker for stages 1D and 3: NSTREAM (section 8, Haiku pages ws_NSTREAM1, ws_NSTREAM2; NS3 page at its trigger). FACT (listcen a37368582): C1 1166, C2 617,
+  C10 145, C5 22040, C6 2075, C8 757.
 - Order 1 -> 2 -> 5 -> 3 -> 4 (plan section 6). Per stage: trigger, files (reader hits), grep terms that must return nothing after the stage.
-  1 runners. Trigger C1 0, C2 0, C10 0, NSTREAM merged. A nd_rec.c 80, nd_recs.c 48, nd_model.c 33, nd_shape.c 12, pm_phase.c 1; B nd_ent.c 24; C nd_dlc.c 27;
+  1 runners. Trigger C1 0, C2 0, C10 0 (1A-1C need no NSTREAM step; 1D: section 8). A nd_rec.c 80, nd_recs.c 48, nd_model.c 33, nd_shape.c 12, pm_phase.c 1; B nd_ent.c 24; C nd_dlc.c 27;
     D nd_walk.c 81, nd_cen.c 42 (census of list words). Terms: `nd_walk_state|nd_ops_run|walk_call|nd_range_run|ENT_GBI|ent_flat|ent_run|ent_compile|dlc_try|dlc_build|nd_lstcen`.
   2 state model. Trigger stage 1 merged, NPSO3 table lookup on the device, NTGT. nd_set.c 39, nd_direct.c 11, nd_tex_set.c 7, nd_mtx_set.c 3, model hits C9 15
     (nd_comb.c 3, nd_tex_set.c 3, nd_decide.c 2, nd_rect.c 2, nd_texwin.c 2, nd_geom.c 1, nd_mtx_set.c 1, nd_set.c 1). Terms: `sync_combine|nd_comb_decide|sync_render|set_tilesize|ensure_tile|img_role|off_screen_check|gv_tri`.
@@ -93,3 +92,42 @@
   4 Gfx type. Trigger C5 0 and stage 3 merged. C7 2845, gbi.h, gbi_custom.h, gs2dex.h, gt.h. Terms: plan section 4 grep.
 - Gate of every stage row: build rc 0, nd_host PASS, the terms return nothing in 3ds/src 3ds/include src include, elfgate func falls, drec byte-equal
   (gold_12_drec, fxpic_91_drec, spot_mac01_drec, sbk14_drec). Rows: one file or one symbol family; callers first, the definition last.
+## 8. NSTREAM: the native record stream (oracle 8, 2026-11-14, main a37368582). Pages ws_NSTREAM1 (start now), ws_NSTREAM2 (after `Merge GKEY2`, `Merge NSTREAM1`)
+- Record form (choice): NdNr is 8 bytes, k = kind << 24 | a (24 bits), v = b. The kinds are the NDO_* ids and the fields keep the HC4 unit layout bit for bit
+  (nd_op.h:11-51). Reasons: (1) every NSTREAM step is byte-equal by construction, and the host units prove it by memcmp; (2) the core 0 state model reads these
+  fields (nd_set.c:159-184, nd_tex_set.c nd_set_*), and stage 2 replaces that model, so a new packing now edits code that stage 2 deletes; (3) none of the 757
+  readers needs an edit for NSTREAM. A pso-level record (NdPsoDesc id per draw) is not equal by construction: that is stage 2 (below, not Haiku).
+- What NSTREAM removes: NS1 the gbi word build and the ND_X0 translation in the producers (st_rec nd_st.c:13, geo_rec nd_geo.c:13, nd_tx_rec nd_tx.h:14); NS2 the
+  NDC_STATE command (nd_cmd.h:19, st_put nd_rec.c:342, stream_run :578, nd_r11_walk nd_model.c:285) and the list executor name on record runs; NS3 the gbi macros
+  of the core 0 local buffers. Stage 3 renames NDO_ to NDR_ and deletes ND_X0, ND_X1, nd_op_xlate and nd_op_n64: that part of the C8 fall is a rename for the kept
+  kinds, and its commit says so.
+- Kinds (a, b; writer; core 0 handler). State: OMH, OML (sft | len << 8, value; nd_pso_rm..combkey, som, zsrc, pipe; set_om nd_set.c:83), GEOM (kept bits, set bits;
+  nd_pso_geom_*; set_geom :32), COMB (cw0 low 24, cw1; nd_pso_comb, cc; op_setcombine :175), TEXTURE (on, s << 16 | t; nd_tex_on; nd_set_texture :172), SCISSOR
+  (10.2 corners; nd_pso_scis, scisf; set_scissor :46), RARE (KEYR, KEYGB, CONV; set_rare :148), PRIMZ (z << 16 | dz; set_primdepth :64), MW (kind << 16 | arg:
+  NUMLIGHT, FOG, SEG, NONE for pnorm and clip; set_mw :107). Colour: PRIM (minlod << 8 | frac, rgba), ENV, FOG, BLEND, FILL (nd_val_*; :74, :99, :43, :71, :69).
+  Bind: TIMG, TILE, TILESIZE, LOADBLOCK, LOADTILE, LOADTLUT (nd_op.h:29-34; nd_tex_*, nd_val_tile_size; nd_set_* nd_set.c:176-181). Its stage 2 form is NdBindDesc
+  (nd_api.h:54-63). Transform: MTX (0x38 << 16 | flags, Mtx*), POPMTX (64), MOVEMEM (len, offset, index: light, lookat, viewport; nd_xf_*, nd_lit_*; load_mtx,
+  gbi_popmtx, gbi_movemem nd_walk.c:291-296). Mesh: VTX (n << 12 | (v0 + n) << 1, Vtx*), TRI1, TRI2, MISC MODVTX (nd_mesh_*; nd_geom_vtx, draw_tri nd_walk.c:281-290).
+  Target and draw: MISC CIMG (nd_tgt_cimg; gbi_setcimg), RECT fill (nd_rect_fill, sfill; nd_fillrect), MISC ND (G_PM_ND; nd_native_rec), MISC LST (state-only lists).
+  List only, deleted at stage 1D: CALL (b = list key), END, DROP (t4chk), the two RDPHALF units after a texture RECT inside a list.
+- Reused records: NdParts (its units are NdNr; NS2 runs pre and post with nd_nr_exec), NdTRect and NdFillRec (NDC_NAPI already; their fallback buffers go in NS3),
+  NDC_TEXRECT (nd_rect_tex, scis: unchanged). FACT (grep 3ds src include): nd_rect, nd_quad, nd_glyphs and nd_mesh do not exist (plan_nativeapi.md:20-21 names
+  only). NSTREAM adds none: a mesh is VTX and TRI records (slot loads, section 1).
+- Writers and the step that changes each: setters nd_st.c, nd_geo.c, nd_val.c, nd_xf.c, nd_tx.h (NS1). Recorder st_put nd_rec.c:327-349, nd_rec_state :366,
+  rec_inline :390-403, nd_rec_list :516-544, nd_parts_add :302, nd_scomp.c:149 (NS2). Core 0 built units nd_walk.c:553, :558, :606 (NS2), pm_gbi_fallback :754-764
+  (stage 1D). Core 0 local buffers hud_element.c:565, :616, msg_draw.c:1766, screen_overlays.c:244, sprite.c:354, nd_direct.c:263, :332 (NS3). Converter ndnu
+  nd_gfx_conv.c:568 (no edit: same bits). Static Gfx arrays (GSET). The gbi redirect nd_gx_w nd_rec.c:442 (C1 and C2 to 0).
+- Readers: no edit (same bits). After NS2 the record runs enter by nd_nr_run (stream) and nd_nr_exec (parts, gt_ops, ent pieces, scomp defs, ntab units, LST).
+  nd_walk_state keeps the list runs only: walk_call :247, nd_ops_run :409, gt_call :540, the debug call :616, and the NS3 buffers until NS3. The stage of each
+  reader file: section 7.
+- NS3 (choice; page at its trigger): the nd_tx.h and nd_st.h shapes get an emit argument. Body `NDTX_<NAME>(O, ...)` writes with `O(k, v)`; `nd_tex_load_tile(...)` is
+  `NDTX_LOAD_TILE(nd_nr, ...)`; the core 0 form `nd_tex_load_tile_at(...)` is `NDTX_LOAD_TILE(ND_NR_AT, ...)`, `ND_NR_AT(k, v)` writes `nrp[0] = k; nrp[1] = v; nrp += 2`
+  into the site's local `uint32_t* nrp`; the site calls nd_nr_exec(buf, n). Reason: core 1 records while core 0 runs these runners, so one shared sink pointer
+  races. Host test: each _at shape against the gbi macro on a local packet (nd_gx_w writes the typed words there, nd_rec.c:443). Moves C1 by the local packet
+  calls of the 5 files.
+- Triggers. NS1: now. NS2: `Merge GKEY2` and `Merge NSTREAM1`. NS3: `Merge TEX4` (root files) and `Merge NSTREAM2`. Stage 1D: C1 0, C2 0, C10 0, stages 1A-1C
+  merged, GSET done (C5 0, C6 0: every CALL unit names a table with an entry), NS3 merged. Then nd_nr_exec takes the arms of nd_walk_state minus END, branch, DROP
+  and op_unknown, its CALL arm runs the callee entry (the list start of nd_ops_run, then nd_nr_exec(nt->u, nt->nu)), and nd_walk_state goes. Stage 3: stage 1D,
+  C5 0 (no gs macro uses ND_X0), C10 0 (nd_scomp gone).
+- Not Haiku: the stage 2 core (a pso table lookup in place of sync_combine and the decide code). Its draws are not equal by construction (psochk is the proof);
+  plan row NPSO2 needs the user's yes for Sonnet.

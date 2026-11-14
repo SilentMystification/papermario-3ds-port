@@ -731,48 +731,8 @@ u16 blend_tattle_background_channel(u16 a, s32 b, s32 alpha) {
     return a + (b - a) * alpha / 256;
 }
 
-#include "nd_scomp.h"
 #include "nd_xf.h"
-/* S5BTL1: the tattle camera setup ranges as compiled state ranges (nd_scomp.h, the cam_main form). The value units (scissor, viewport,
- * colour image, fill colour) are placeholders; the record carries them. Value units in each def sit at the ends (S6VORD), so R2 is two
- * defs split after the scissor. */
-static const Gfx tc_copy_u[] = {
-    gsDPSetCycleType(G_CYC_COPY),
-    gsDPSetTexturePersp(G_TP_NONE),
-    gsDPSetTextureLUT(G_TT_RGBA16),
-    gsDPSetCombineMode(G_CC_DECALRGB, G_CC_DECALRGB),
-    gsDPSetRenderMode(G_RM_NOOP, G_RM_NOOP2),
-    gsDPSetTextureFilter(G_TF_POINT),
-    gsDPSetScissor(G_SC_NON_INTERLACE, 0, 0, 0, 0),
-};
-static const Gfx tc_cam_a_u[] = {
-    gsSPViewport(0),
-    gsSPClearGeometryMode(G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH),
-    gsSPTexture(0, 0, 0, G_TX_RENDERTILE, G_OFF),
-    gsDPSetCycleType(G_CYC_1CYCLE),
-    gsDPPipelineMode(G_PM_NPRIMITIVE),
-    gsDPSetScissorFrac(G_SC_NON_INTERLACE, 0, 0, 0, 0),
-};
-static const Gfx tc_cam_b_u[] = {
-    gsDPSetTextureLOD(G_TL_TILE),
-    gsDPSetTextureLUT(G_TT_NONE),
-    gsDPSetTextureDetail(G_TD_CLAMP),
-    gsDPSetTexturePersp(G_TP_PERSP),
-    gsDPSetTextureFilter(G_TF_BILERP),
-    gsDPSetTextureConvert(G_TC_FILT),
-    gsDPSetCombineMode(G_CC_SHADE, G_CC_SHADE),
-    gsDPSetCombineKey(G_CK_NONE),
-    gsDPSetAlphaCompare(G_AC_NONE),
-    gsDPSetRenderMode(G_RM_OPA_SURF, G_RM_OPA_SURF2),
-    gsDPSetColorDither(G_CD_DISABLE),
-    gsSPClipRatio(FRUSTRATIO_2),
-    gsDPSetCycleType(G_CYC_FILL),
-    gsDPSetColorImage(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, 0),
-    gsDPSetFillColor(0),
-};
-static NdSDef tc_copy = { tc_copy_u, sizeof tc_copy_u / sizeof tc_copy_u[0] };
-static NdSDef tc_cam_a = { tc_cam_a_u, sizeof tc_cam_a_u / sizeof tc_cam_a_u[0] };
-static NdSDef tc_cam_b = { tc_cam_b_u, sizeof tc_cam_b_u / sizeof tc_cam_b_u[0] };
+#include "nd_tx.h"
 
 void tattle_cam_pre_render(Camera* camera) {
     Camera* cam = &gCameras[gCurrentCamID];
@@ -812,10 +772,13 @@ void tattle_cam_pre_render(Camera* camera) {
     }
 
     if (gGameStatusPtr->backgroundFlags & BACKGROUND_FLAG_TEXTURE) {
-        { Gfx v[1];
-          gDPSetScissor(&v[0], G_SC_NON_INTERLACE, cam->viewportStartX, cam->viewportStartY, cam->viewportStartX + cam->viewportW - 1, cam->viewportStartY + cam->viewportH - 1);
-          nd_scomp_rec(&tc_copy, v, 1);
-        }
+        nd_pso_cyc(G_CYC_COPY);
+        nd_pso_persp(G_TP_NONE);
+        nd_pso_lut(G_TT_RGBA16);
+        nd_pso_cc(G_CC_DECALRGB, G_CC_DECALRGB);
+        nd_pso_rm(G_RM_NOOP, G_RM_NOOP2);
+        nd_pso_filt(G_TF_POINT);
+        nd_pso_scis(G_SC_NON_INTERLACE, cam->viewportStartX, cam->viewportStartY, cam->viewportStartX + cam->viewportW - 1, cam->viewportStartY + cam->viewportH - 1);
         if (!fogEnabled) {
             gDPLoadTLUT_pal256(gMainGfxPos++, gGameStatusPtr->backgroundPalette);
         } else {
@@ -864,14 +827,27 @@ void tattle_cam_pre_render(Camera* camera) {
         }
     }
 
-    { Gfx v[4]; Gfx* p = v;
-        gSPViewport(p++, PM_VP(&cam->vp));
-        gDPSetScissorFrac(p++, G_SC_NON_INTERLACE, cam->viewportStartX * 4.0f, cam->viewportStartY * 4.0f, (cam->viewportStartX + cam->viewportW) * 4.0f, (cam->viewportStartY + cam->viewportH) * 4.0f);
-        gDPSetColorImage(p++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxZBuffer));
-        gDPSetFillColor(p++, PACK_FILL_DEPTH(G_MAXFBZ, 0));
-        nd_scomp_rec(&tc_cam_a, v, 2);
-        nd_scomp_rec(&tc_cam_b, v + 2, 2);
-    }
+    nd_xf_viewport(PM_VP(&cam->vp));
+    nd_pso_geom_clr(G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
+    nd_tex_on(0, 0, 0, G_TX_RENDERTILE, G_OFF);
+    nd_pso_cyc(G_CYC_1CYCLE);
+    nd_pso_pipe(G_PM_NPRIMITIVE);
+    nd_pso_scisf(G_SC_NON_INTERLACE, cam->viewportStartX * 4.0f, cam->viewportStartY * 4.0f, (cam->viewportStartX + cam->viewportW) * 4.0f, (cam->viewportStartY + cam->viewportH) * 4.0f);
+    nd_pso_lod(G_TL_TILE);
+    nd_pso_lut(G_TT_NONE);
+    nd_pso_detail(G_TD_CLAMP);
+    nd_pso_persp(G_TP_PERSP);
+    nd_pso_filt(G_TF_BILERP);
+    nd_pso_conv(G_TC_FILT);
+    nd_pso_cc(G_CC_SHADE, G_CC_SHADE);
+    nd_pso_combkey(G_CK_NONE);
+    nd_pso_alcmp(G_AC_NONE);
+    nd_pso_rm(G_RM_OPA_SURF, G_RM_OPA_SURF2);
+    nd_pso_dither(G_CD_DISABLE);
+    nd_xf_clip(FRUSTRATIO_2);
+    nd_pso_cyc(G_CYC_FILL);
+    nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxZBuffer));
+    nd_val_fill(PACK_FILL_DEPTH(G_MAXFBZ, 0));
     gDPFillRectangle(gMainGfxPos++, cam->viewportStartX, cam->viewportStartY, cam->viewportStartX + cam->viewportW - 1, cam->viewportStartY + cam->viewportH - 1);
     nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
 
