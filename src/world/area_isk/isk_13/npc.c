@@ -32,9 +32,7 @@ void N(func_80241610_990DF0)(void) {
     }
     guMtxF2L(cam->mtxPerspective, &gDisplayContext->camPerspMatrix[gCurrentCameraID]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->camPerspMatrix[gCurrentCameraID],
-        G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
-    gDPPipeSync(gMainGfxPos++);
+    nd_xf_push(&gDisplayContext->camPerspMatrix[gCurrentCameraID], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
     gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
     gSPClearGeometryMode(gMainGfxPos++, G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING
         | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
@@ -59,8 +57,7 @@ void N(func_80241610_990DF0)(void) {
     guScaleF(tempMtx, ambush->scale.x, ambush->scale.y, ambush->scale.z);
     guMtxCatF(tempMtx, transformMtx, transformMtx);
     guMtxF2L(transformMtx, &gDisplayContext->matrixStack[gMatrixListPos]);
-    gSPMatrix(gMainGfxPos++, OS_PHYSICAL_TO_K0(&gDisplayContext->matrixStack[gMatrixListPos++]),
-        G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(OS_PHYSICAL_TO_K0(&gDisplayContext->matrixStack[gMatrixListPos++]), G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
     if (ambush->useBitingAnim) {
         if ((gGameStatusPtr->frameCounter % 10) < 5) {
@@ -80,7 +77,7 @@ void N(func_80241610_990DF0)(void) {
 
     imgfx_update(ambush->imgfxIdx, IMGFX_SET_TINT, ambush->color.r, ambush->color.g, ambush->color.b, ambush->color.a, 0);
     imgfx_appendGfx_component(ambush->imgfxIdx, &ifxImg, 0, transformMtx);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }
 
 API_CALLABLE(N(func_80241BA8_991388)) {

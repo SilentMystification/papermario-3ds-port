@@ -4,6 +4,7 @@
 #include "entity.h"
 #include "message_ids.h"
 #include "nd_scomp.h"
+#include "nd_xf.h"
 
 extern Mtx Entity_SaveBlock_Mtx;
 extern Gfx Entity_SaveBlock_RenderContent[];
@@ -60,7 +61,7 @@ void entity_SaveBlock_setupGfx(s32 index) {
         nd_scomp_rec(&SaveBlock_def_a, v, 2);
     }
     gSPDisplayList(gMainGfxPos++, dlist);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 
 #if VERSION_PAL
     switch (gCurrentLanguage) {
@@ -87,7 +88,7 @@ void entity_SaveBlock_setupGfx(s32 index) {
         nd_scomp_rec(&SaveBlock_def_b, v, 2);
     }
     gSPDisplayList(gMainGfxPos++, dlist);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 
 }
 

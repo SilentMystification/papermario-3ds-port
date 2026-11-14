@@ -10,8 +10,7 @@ void N(build_gfx_lamp_halos)(void) {
 
     N(HaloScalePhaseAngle) += (s32)RAD_TO_BINANG(25.1720);
     guScale(&gDisplayContext->matrixStack[gMatrixListPos], scale, scale, scale);
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-              G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 }
 
 u16 N(YellowStarPhaseAngle) = 0;

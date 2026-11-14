@@ -43,7 +43,7 @@ void N(gfx_build_evil_tree_face)(s32 index) {
     }
 
     gDPSetCycleType(gMainGfxPos++, G_CYC_2CYCLE);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, N(EvilTreeFaceAlpha));
+    nd_val_prim(0, 0, 0, 0, 0, N(EvilTreeFaceAlpha));
     gDPSetCombineMode(gMainGfxPos++, PM_CC_05, PM_CC_06);
     gDPSetRenderMode(gMainGfxPos++, G_RM_FOG_SHADE_A, G_RM_AA_ZB_XLU_DECAL2);
 }

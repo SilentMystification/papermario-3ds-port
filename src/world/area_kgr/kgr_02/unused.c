@@ -48,7 +48,7 @@ void N(func_80240160_8AA5B0)(s32 x1, s32 y1, s32 x2, s32 y2, s32 arg4) {
     x1 = x1 / 4 * 4;
     x2 = x2 / 4 * 4 + 4;
 
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 255, 255);
+    nd_val_prim(0, 0, 255, 255, 255, 255);
 
     n = (y2 - y1) / 6;
     m = (y2 - y1) % 6;
@@ -60,10 +60,7 @@ void N(func_80240160_8AA5B0)(s32 x1, s32 y1, s32 x2, s32 y2, s32 arg4) {
                            x1, y1 + 6 * i, x2 - 1, y1 + 6 * i + 5, 0,
                            G_TX_WRAP, G_TX_WRAP, 9, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
         f0 = sin_deg(N(D_80240970_8AADC0) + i * 30);
-        gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, (x1 + 512) * 4 + arg4 * (s32)(f0 * 4),
-                                                          (y1 + i * 6) * 4,
-                                                          (x1 + 512) * 4 + arg4 * (s32)(f0 * 4) + 512 * 4,
-                                                          (y1 + i * 6) * 4 + 5 * 4);
+        nd_val_tile_size(G_TX_RENDERTILE, (x1 + 512) * 4 + arg4 * (s32)(f0 * 4), (y1 + i * 6) * 4, (x1 + 512) * 4 + arg4 * (s32)(f0 * 4) + 512 * 4, (y1 + i * 6) * 4 + 5 * 4);
         gSPTextureRectangle(gMainGfxPos++, x1 * 4, (y1 + i * 6) * 4, x2 * 4, (y1 + i * 6 + 6) * 4,
                             G_TX_RENDERTILE, x1 * 32, (y1 + i * 6) * 32, 1024, 1024);
     }

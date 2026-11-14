@@ -29,7 +29,6 @@ void N(appendGfx_sticker)(void* renderData) {
     PAL_PTR pal = (PAL_PTR) evt_get_variable(nullptr, MV_StickerPalette);
     u32 imgfxFlags = IMGFX_FLAG_400;
 
-    gDPPipeSync(gMainGfxPos++);
     guTranslateF(mtxTransform, sticker->pos.x, sticker->pos.y, sticker->pos.z);
     guRotateF(mtxTemp, sticker->yaw, 0.0f, 1.0f, 0.0f);
     guMtxCatF(mtxTemp, mtxTransform, mtxTransform);
@@ -38,8 +37,7 @@ void N(appendGfx_sticker)(void* renderData) {
     guScaleF(mtxTemp, sticker->scale.x, sticker->scale.y, sticker->scale.z);
     guMtxCatF(mtxTemp, mtxTransform, mtxTransform);
     guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
-    gSPMatrix(gMainGfxPos++, VIRTUAL_TO_PHYSICAL(&gDisplayContext->matrixStack[gMatrixListPos++]),
-        G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(VIRTUAL_TO_PHYSICAL(&gDisplayContext->matrixStack[gMatrixListPos++]), G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
     ifxImg.raster = img;
     ifxImg.palette = pal;
@@ -55,7 +53,7 @@ void N(appendGfx_sticker)(void* renderData) {
     imgfx_update(0, IMGFX_CLEAR, 0, 0, 0, 0, 0);
     imgfx_appendGfx_component(0, &ifxImg, imgfxFlags, mtxTransform);
 
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }
 
 void N(worker_render_sticker)(void) {

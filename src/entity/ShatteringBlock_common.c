@@ -1,6 +1,7 @@
 #include "common.h"
 #include "entity.h"
 #include "nd_scomp.h"
+#include "nd_xf.h"
 
 void entity_shattering_setupGfx(s32 entityIndex);
 
@@ -201,10 +202,10 @@ void entity_shattering_setupGfx(s32 entityIndex) {
         guMtxCatF(mtxTransInv, mtx, mtx);
         guMtxF2L(mtx, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         fragmentDlist = ENTITY_ADDR(entity, Gfx*, *gfx++);
         gSPDisplayList(gMainGfxPos++, fragmentDlist);
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        nd_xf_pop(G_MTX_MODELVIEW);
     }
 
 }

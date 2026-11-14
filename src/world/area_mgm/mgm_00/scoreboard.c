@@ -100,16 +100,14 @@ void N(draw_record_display)(RecordDisplayData* data, s32 alpha) {
         gSPDisplayList(gMainGfxPos++, N(Gfx_RecordDisplay_Init));
 #if VERSION_PAL
         var_fp = gCurrentLanguage == LANGUAGE_FR ? 36 : 0;
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 0, 0, 0);
+        nd_val_prim(0, 0, 255, 0, 0, 0);
         gDPFillRectangle(gMainGfxPos++, RECORD_BOX_POSX - 1,                 49, RECORD_BOX_POSX + RECORD_BOX_WIDTH + 1,  51);
         gDPFillRectangle(gMainGfxPos++, RECORD_BOX_POSX - 1,                 49, RECORD_BOX_POSX + 1,                    133);
         gDPFillRectangle(gMainGfxPos++, RECORD_BOX_POSX + RECORD_BOX_WIDTH,  49, RECORD_BOX_POSX + RECORD_BOX_WIDTH + 1, 133);
         gDPFillRectangle(gMainGfxPos++, RECORD_BOX_POSX - 1,                132, RECORD_BOX_POSX + RECORD_BOX_WIDTH + 1, 133);
 #endif
-        gDPPipeSync(gMainGfxPos++);
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, 16, 120, 24, alpha * 0.65);
+        nd_val_prim(0, 0, 16, 120, 24, alpha * 0.65);
         gDPFillRectangle(gMainGfxPos++, RECORD_BOX_POSX + 3, 53, RECORD_BOX_POSX + RECORD_BOX_WIDTH - 3, 129);
-        gDPPipeSync(gMainGfxPos++);
         msg_draw_frame(RECORD_BOX_POSX, 50, RECORD_BOX_WIDTH, 82, MSG_STYLE_INSPECT, 0, 1, (s32)(alpha * 0.55), alpha); // cast needed if signature isn't present
         if (data->gameType == MINIGAME_TYPE_JUMP) {
             s32 posX = NUMBER_X_OFFSET(var_fp);  //! required to match

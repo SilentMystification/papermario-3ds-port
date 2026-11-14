@@ -68,7 +68,7 @@ void N(UnkModelFunc000)(s32 x1, s32 y1, s32 x2, s32 y2) {
             if (alpha > 255) {
                 alpha = 255;
             }
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 255, alpha);
+            nd_val_prim(0, 0, 255, 255, 255, alpha);
 
             //gDPLoadTextureTile(gMainGfxPos++, osVirtualToPhysical(img), G_IM_FMT_RGBA, G_IM_SIZ_16b,
                             //SCREEN_WIDTH, 6,
@@ -98,7 +98,6 @@ void N(UnkModelFunc000)(s32 x1, s32 y1, s32 x2, s32 y2) {
                     (y1 - 6 * i - 6)<<G_TEXTURE_IMAGE_FRAC,
                     (x2 - 1)<<G_TEXTURE_IMAGE_FRAC,
                     (y1 - 6 * i - 1)<<G_TEXTURE_IMAGE_FRAC);
-            gDPPipeSync(gMainGfxPos++);
             gDPSetTile(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b,
                 (((((x2 - 1)-(x1)+1) * G_IM_SIZ_16b_LINE_BYTES)+7)>>3), 0,
                 G_TX_RENDERTILE, 0, G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_WRAP, 9,
@@ -119,7 +118,7 @@ void N(UnkModelFunc000)(s32 x1, s32 y1, s32 x2, s32 y2) {
             if (alpha > 255) {
                 alpha = 255;
             }
-            gDPSetPrimColor(gMainGfxPos++, 0, 0, 255, 255, 255, alpha);
+            nd_val_prim(0, 0, 255, 255, 255, alpha);
             //gDPLoadTextureTile(gMainGfxPos++, osVirtualToPhysical(img), G_IM_FMT_RGBA, G_IM_SIZ_16b,
             //                SCREEN_WIDTH, 6,
             //                x1, y1 - 6 * i - m, x2 - 1, y1 - 6 * i - 1, 0,
@@ -148,7 +147,6 @@ void N(UnkModelFunc000)(s32 x1, s32 y1, s32 x2, s32 y2) {
                     (y1 - 6 * i - m)<<G_TEXTURE_IMAGE_FRAC,
                     (x2 - 1)<<G_TEXTURE_IMAGE_FRAC,
                     (y1 - 6 * i - 1)<<G_TEXTURE_IMAGE_FRAC);
-            gDPPipeSync(gMainGfxPos++);
             gDPSetTile(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b,
                 (((((x2 - 1)-(x1)+1) * G_IM_SIZ_16b_LINE_BYTES)+7)>>3), 0,
                 G_TX_RENDERTILE, 0, G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_WRAP, 9,
@@ -308,11 +306,9 @@ void N(UnkModelFunc001)(void) {
         gDPSetColorImage(new_var, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxZBuffer));
 
         gDPSetCombineMode(gMainGfxPos++, PM_CC_PRIM_NO_ALPHA, PM_CC_PRIM_NO_ALPHA);
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, 248, 240, 240, 0);
-        gDPPipeSync(gMainGfxPos++);
+        nd_val_prim(0, 0, 248, 240, 240, 0);
 
         gSPDisplayList(gMainGfxPos++, model->modelNode->displayData->displayList);
-        gDPPipeSync(gMainGfxPos++);
 
         new_var = gMainGfxPos++;
         if ((osVirtualToPhysical(nuGfxCfb_ptr) % 8) != 0) {
@@ -331,11 +327,9 @@ void N(UnkModelFunc001)(void) {
         gDPSetTextureDetail(gMainGfxPos++, G_TD_CLAMP);
         gDPSetTextureLOD(gMainGfxPos++, G_TL_TILE);
         gDPSetCombineMode(gMainGfxPos++, PM_CC_10, PM_CC_10);
-        gDPPipeSync(gMainGfxPos++);
 
         N(UnkModelFunc000)(temp_f24, temp_f26, temp_f20, temp_f22);
 
-        gDPPipeSync(gMainGfxPos++);
         gDPSetCycleType(gMainGfxPos++, G_CYC_2CYCLE);
         gDPSetDepthSource(gMainGfxPos++, G_ZS_PIXEL);
     }

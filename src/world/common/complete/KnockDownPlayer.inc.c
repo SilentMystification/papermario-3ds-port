@@ -11,7 +11,6 @@ void N(gfx_build_knocked_down_player)(void) {
     SpriteRasterInfo rasterInfo;
     Matrix4f sp40, sp80;
 
-    gDPPipeSync(gMainGfxPos++);
     gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
     gSPClearGeometryMode(gMainGfxPos++,
                          G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD |
@@ -37,9 +36,7 @@ void N(gfx_build_knocked_down_player)(void) {
     guScaleF(sp80, data->scale.x, data->scale.y, data->scale.z);
     guMtxCatF(sp80, sp40, sp40);
     guMtxF2L(sp40, &gDisplayContext->matrixStack[gMatrixListPos]);
-    gSPMatrix(gMainGfxPos++,
-              OS_K0_TO_PHYSICAL(&gDisplayContext->matrixStack[gMatrixListPos++]),
-              G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(OS_K0_TO_PHYSICAL(&gDisplayContext->matrixStack[gMatrixListPos++]), G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
     spr_get_player_raster_info(&rasterInfo, data->spriteIndex, data->rasterIndex);
     ifxImg.raster = rasterInfo.raster;
@@ -51,7 +48,7 @@ void N(gfx_build_knocked_down_player)(void) {
     ifxImg.alpha = 255;
 
     imgfx_appendGfx_component(data->imgfxIdx, &ifxImg, 0, sp40);
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }
 
 API_CALLABLE(N(KnockdownCreate)) {

@@ -1359,7 +1359,6 @@ void N(appendGfx_image_strips)(s32 baseX, s32 baseY, IMG_PTR img, PAL_PTR pal, s
         return;
     }
 
-    gDPPipeSync(gMainGfxPos++);
     gSPDisplayList(gMainGfxPos++, N(gfx_setup_story_viewport));
 
     if (pal != nullptr) {
@@ -1373,7 +1372,7 @@ void N(appendGfx_image_strips)(s32 baseX, s32 baseY, IMG_PTR img, PAL_PTR pal, s
     alpha = alpha * (255.0f - overlayAlphaBack) * (255.0f - overlayAlphaFront) / 255.0f / 255.0f;
     if (alpha != 255) {
         gDPSetCombineMode(gMainGfxPos++, PM_CC_01, PM_CC_01);
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, alpha);
+        nd_val_prim(0, 0, 0, 0, 0, alpha);
     } else {
         gDPSetCombineMode(gMainGfxPos++, G_CC_DECALRGBA, G_CC_DECALRGBA);
     }
@@ -1389,7 +1388,6 @@ void N(appendGfx_image_strips)(s32 baseX, s32 baseY, IMG_PTR img, PAL_PTR pal, s
                         (baseY + i * lineHeight + lineHeight) * 4, G_TX_RENDERTILE, 0, (i * lineHeight) * 32, 1024, 1024);
     }
 
-    gDPPipeSync(gMainGfxPos++);
 }
 
 void N(draw_background_tape)(void) {
@@ -1404,7 +1402,6 @@ void N(appendGfx_image_ci)(s32 baseX, s32 baseY, IMG_PTR img, PAL_PTR pal) {
     s32 i;
     s32 m = 1;
 
-    gDPPipeSync(gMainGfxPos++);
     gDPLoadTLUT_pal256(gMainGfxPos++, pal);
     for (i = 0; i < 23; i++) {
         gDPLoadTextureTile(gMainGfxPos++, img, G_IM_FMT_CI, G_IM_SIZ_8b, 264, 162,
@@ -1420,7 +1417,6 @@ void N(appendGfx_image_ci)(s32 baseX, s32 baseY, IMG_PTR img, PAL_PTR pal) {
         gSPScisTextureRectangle(gMainGfxPos++, baseX * 4, (baseY + i * 7) * 4, (baseX + 264) * 4, (baseY + i * 7 + m) * 4,
                                 G_TX_RENDERTILE, 0, (i * 7) << 5, 1024, 1024);
     }
-    gDPPipeSync(gMainGfxPos++);
 }
 
 void N(worker_draw_story_graphics)(void) {
@@ -1437,12 +1433,12 @@ void N(worker_draw_story_graphics)(void) {
 
     if (N(StoryGraphicsPtr)->storyPageAlpha < 255) {
         gDPSetRenderMode(gMainGfxPos++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, N(StoryGraphicsPtr)->storyPageAlpha);
+        nd_val_prim(0, 0, 0, 0, 0, N(StoryGraphicsPtr)->storyPageAlpha);
     }
     get_screen_overlay_params(SCREEN_LAYER_BACK, &overlayType, &overlayAlpha);
     if (overlayAlpha != 0.0f) {
         gDPSetCombineMode(gMainGfxPos++, PM_CC_43, PM_CC_43);
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, 208, 208, 208, (s32) overlayAlpha);
+        nd_val_prim(0, 0, 208, 208, 208, (s32) overlayAlpha);
     }
 
     if (!N(StoryGraphicsPtr)->flipOrder) {

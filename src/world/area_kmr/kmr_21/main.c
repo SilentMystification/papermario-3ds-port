@@ -43,8 +43,7 @@ void worker_render_title_image(void) {
     s32 i;
 
     gSPDisplayList(gMainGfxPos++, N(Gfx_TexSetup_TitleImage));
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, TitlePrimAlpha);
-    gDPPipeSync(gMainGfxPos++);
+    nd_val_prim(0, 0, 0, 0, 0, TitlePrimAlpha);
 
 #if VERSION_JP
     for (i = 0; i < 44; i++) {
@@ -71,7 +70,6 @@ void worker_render_title_image(void) {
             G_TX_RENDERTILE, 0, 0, 1024, 1024);
     }
 #endif
-    gDPPipeSync(gMainGfxPos++);
 }
 
 API_CALLABLE(N(LoadTitleImage)) {

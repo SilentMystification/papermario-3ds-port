@@ -22,7 +22,6 @@ void N(appendGfx_FallingSprite)(void) {
     Matrix4f tempMtx;
     u32 animFrame;
 
-    gDPPipeSync(gMainGfxPos++);
     gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
     gSPClearGeometryMode(gMainGfxPos++, G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN |
                          G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
@@ -47,8 +46,7 @@ void N(appendGfx_FallingSprite)(void) {
     guScaleF(tempMtx, falling->scale.x, falling->scale.y, falling->scale.z);
     guMtxCatF(tempMtx, transformMtx, transformMtx);
     guMtxF2L(transformMtx, &gDisplayContext->matrixStack[gMatrixListPos]);
-    gSPMatrix(gMainGfxPos++, VIRTUAL_TO_PHYSICAL(&gDisplayContext->matrixStack[gMatrixListPos++]),
-        G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(VIRTUAL_TO_PHYSICAL(&gDisplayContext->matrixStack[gMatrixListPos++]), G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
     //TODO use SPR_RASTER_Mario8_XYZ here once they are defined
     falling->playerSpriteID = SPR_MarioW2;
@@ -73,7 +71,7 @@ void N(appendGfx_FallingSprite)(void) {
     ifxImg.alpha = 255;
     imgfx_appendGfx_component(falling->imgfxIdx, &ifxImg, 0, transformMtx);
 
-    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+    nd_xf_pop(G_MTX_MODELVIEW);
 }
 
 API_CALLABLE(N(InitializeFallingSprite)) {

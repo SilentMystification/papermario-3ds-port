@@ -23,7 +23,7 @@ void N(setup_gfx_geyser)(void) {
     f32 scale = temp_f20 + temp_f21;
 
     guScale(&gDisplayContext->matrixStack[gMatrixListPos], (scale * 0.3) + 0.5, scale, (scale * 0.3) + 0.5);
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     N(GeyserAnimPhase)++;
 }
 
