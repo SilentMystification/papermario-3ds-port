@@ -3,6 +3,7 @@
     {
       "name": "fxpic_20_psochk",
       "status": "unverified",
+"reason": "broken: no until in 40 s (AZT11-5, 2026-11-13)",
       "subject": "Toad Town mac_01 at 0 0 200, fxtest=20 (explosion), cold det start with the psochk switch: the entry-form draw of the explosion pilot (explosion.c:229, pe_explosion_0) is compared with the walker description (psochk f<frame> draws <n> bad <n> lines).",
       "proves": "ENTRY1: nd_draw_list(list, entry) with the ND_PSO_DESC entry runs through nd_rec_dl_e and nd_gtab_run_e, and the psochk compare counts the draws with no mismatch (bad 0).",
       "debug": "warp=mac_01:0 pos=0:0:200 fxtest=20 loglevel=debug det psochk",
