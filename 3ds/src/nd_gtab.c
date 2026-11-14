@@ -92,28 +92,31 @@ void nd_tab_init(void) { if (!gt_sorted) gt_sort(); if (!nt_sorted) nt_sort(); }
 
 extern unsigned nd_gtr_ent, nd_gtr_dlc, nd_gtr_ops; /* nd_walk.c, core 0: the arms nd_gtab_run took */
 extern unsigned nd_gtr_ntab; /* nd_walk.c, core 0: the runs of nd_ntab_run */
-static unsigned gtr_tab, gtr_dl, gtr_pt, gtr_pd, gtr_pe, gtr_pc, gtr_po, gtr_pn, gtr_next = 300u, gtr_seen;
+extern unsigned nd_gtr_rec; /* GKEY2: the runs of nd_ntab_rec */
+static unsigned gtr_tab, gtr_dl, gtr_pt, gtr_pd, gtr_pe, gtr_pc, gtr_po, gtr_pn, gtr_pr, gtr_next = 300u, gtr_seen;
 static __attribute__((cold, noinline)) void gtr_cen(unsigned f) {
     const unsigned e = nd_gtr_ent, c = nd_gtr_dlc, o = nd_gtr_ops;
     if (gtr_tab != gtr_pt || gtr_dl != gtr_pd) pm_log_evt("gtabrun f%u tab %u dl %u arm %u/%u/%u", f, gtr_tab - gtr_pt, gtr_dl - gtr_pd, e - gtr_pe, c - gtr_pc, o - gtr_po);
-    if (gtr_tab != gtr_pt || gtr_dl != gtr_pd) pm_log_evt("ntabrun f%u runs %u", f, nd_gtr_ntab - gtr_pn);
-    gtr_pt = gtr_tab; gtr_pd = gtr_dl; gtr_pe = e; gtr_pc = c; gtr_po = o; gtr_pn = nd_gtr_ntab;
+    if (gtr_tab != gtr_pt || gtr_dl != gtr_pd) pm_log_evt("ntabrun f%u runs %u rec %u", f, nd_gtr_ntab - gtr_pn, nd_gtr_rec - gtr_pr);
+    gtr_pt = gtr_tab; gtr_pd = gtr_dl; gtr_pe = e; gtr_pc = c; gtr_po = o; gtr_pn = nd_gtr_ntab; gtr_pr = nd_gtr_rec;
     gtr_next = (f / 300u + 1u) * 300u;
 }
 static const NdPsoDesc* dl_ent; /* ENTRY1: the entry of the nd_rec_dl_e call in progress (null: none) */
 void nd_rec_dl(const void* list) {
     static const void* memo_l[8];
-    static const NdGTab* memo_t[8];
+    static const void* memo_t[8]; /* GKEY2: NdNDev* when memo_f bit 1, else NdGTab* */
     static unsigned memo_f[8], mi;
     const unsigned f = pm_frame_count();
     if (__builtin_expect(!gtr_seen, 0)) { gtr_seen = 1; gtr_next = f + 3u; } /* the first caller: one early line (a scene shorter than 300 frames) */
     if (__builtin_expect(f >= gtr_next, 0)) gtr_cen(f);
-    const NdGTab* t = NULL;
+    const void* t = NULL;
     unsigned fl = 0, k;
     for (k = 0; k < 8u; k++) if (memo_l[k] == list) { t = memo_t[k]; fl = memo_f[k]; break; }
     if (k == 8u) {
-        t = nd_gtab_find(list);
-        if (t) { fl = nd_gt_state_only((const uint32_t*)t->list); memo_l[mi] = list; memo_t[mi] = t; memo_f[mi] = fl; mi = (mi + 1u) & 7u; }
+        const NdNDev* nt = nd_ntab_find(list); /* GKEY2: a list with a device entry runs from the entry */
+        if (nt) { t = nt; fl = nt->fl | 2u; }
+        else { const NdGTab* g = nd_gtab_find(list); if (g) { t = g; fl = nd_gt_state_only((const uint32_t*)g->list); } }
+        if (t) { memo_l[mi] = list; memo_t[mi] = t; memo_f[mi] = fl; mi = (mi + 1u) & 7u; }
     }
     if (!t) {
         gtr_dl++;
@@ -121,9 +124,10 @@ void nd_rec_dl(const void* list) {
         return;
     }
     gtr_tab++;
-    if (dl_ent || __builtin_expect(PMDL("entcap"), 0)) { const uint32_t r4[4] = { (uint32_t)(uintptr_t)t, fl, (uint32_t)(uintptr_t)__builtin_return_address(0), (uint32_t)(uintptr_t)dl_ent }; nd_rec_napi(dl_ent ? nd_gtab_run_e : nd_gtab_run, r4, 2u); return; }
+    const int v2 = (fl & 2u) != 0; fl &= 1u;
+    if (dl_ent || __builtin_expect(PMDL("entcap"), 0)) { const uint32_t r4[4] = { (uint32_t)(uintptr_t)t, fl, (uint32_t)(uintptr_t)__builtin_return_address(0), (uint32_t)(uintptr_t)dl_ent }; nd_rec_napi(v2 ? (dl_ent ? nd_ntab_rec_e : nd_ntab_rec) : (dl_ent ? nd_gtab_run_e : nd_gtab_run), r4, 2u); return; }
     const uint32_t rec[2] = { (uint32_t)(uintptr_t)t, fl };
-    nd_rec_napi(nd_gtab_run, rec, 1u);
+    nd_rec_napi(v2 ? nd_ntab_rec : nd_gtab_run, rec, 1u);
 }
 void nd_rec_dl_e(const void* list, const NdPsoDesc* e) { dl_ent = e; nd_rec_dl(list); dl_ent = NULL; }
 #endif

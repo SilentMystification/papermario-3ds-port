@@ -70,6 +70,7 @@ const NdGTab* nd_gtab_find(const void* list);
 void nd_rec_dl(const void* list);
 void nd_gtab_run(const uint32_t* rec);
 void nd_gtab_run_e(const uint32_t* rec); /* ENTRY1: nd_gtab_run with the psochk compare of rec[3] (NdPsoDesc*) */
+void nd_ntab_rec(const uint32_t* rec); void nd_ntab_rec_e(const uint32_t* rec); /* GKEY2: rec[0] = const NdNDev* */
 
 /* CONV2F: nd_draw_list(list, ND_SELF) at the call site of a self-contained v2 table (no entry: the table has its own pipeline state).
  * ENTRY1: an entry is an NdPsoDesc (ND_PSO_DESC); ND_SELF is the null entry. nd_rec_dl_e (nd_gtab.c) passes it to the entcap record. */

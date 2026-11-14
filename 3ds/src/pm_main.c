@@ -536,6 +536,7 @@ void pm_frame_loop(void) {
     pm_uptime_ms(); /* start the clock */
     { extern unsigned gRandSeed; pm_log("rng start seed %08x%s", gRandSeed, pm_debug_has("fixedseed") ? " (fixedseed)" : ""); } /* R-SEED */
     nuGfxCfb = cfb_list;
+    { void nd_tab_init(void); nd_tab_init(); } /* GKEY2: sort the list indices before core 1 and core 0 both look up */
     pm_lg_start(); /* CORE2C-3: the logic thread (core 1 on the O3DS, core 2 on the N3DS) */
     unsigned presents = 0, drawn = 0; /* PT24: presents = logic steps, drawn = steps with a draw */
     int have_fps = 0;
