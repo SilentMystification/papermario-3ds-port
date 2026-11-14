@@ -269,7 +269,7 @@ void pm_gbi_sticky(unsigned* tss, unsigned* geo, unsigned* cw0, unsigned* cw1) {
 /* S3N-3d: nd_comb_decide. The combine work on the inputs in (nd_comb_core, nd_decide.c, no walker global), then the plan colours of in->prim and in->env.
  * The fields the work leaves as they were keep the walker's value as before (mode5 when leg 4, why without a decision, cc without the constant mode, plan without a plan). */
 void nd_comb_decide(const NdCombIn* in, NdCombOut* out) {
-    nd_comb_core(in, (unsigned)pm_comb_vprim, comb_mode5, out);
+    nd_comb_pick(in, out);
     if (out->plan_on) pm_comb_colours(&out->plan, in->prim, in->env, in->prim_lo8, in->key_c, in->key_s);
     else out->plan = cur_plan;
     if (out->use < 0) out->why = ls_why;
