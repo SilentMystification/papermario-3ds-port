@@ -205,6 +205,7 @@ static NdPsoDesc v2_desc[V2_MAXDESC];
 static unsigned v2_ndesc;
 static const GSym* v2_tab[V2_MAXTAB];
 static unsigned v2_nk[V2_MAXTAB];
+static unsigned v2_ntri[V2_MAXTAB];
 static V2C* cx;
 static unsigned v2_n_tab, v2_n_inh, v2_n_unsup, v2_n_draw;
 
@@ -605,6 +606,7 @@ static void v2_convert_all(const char* descs_path, const char* inh_path, const c
         if (v2_n_tab >= V2_MAXTAB) { fprintf(stderr, "gconv: too many v2 tables\n"); exit(1); }
         v2_emit_table(cx);
         v2_nk[v2_n_tab] = cx->nk;
+        v2_ntri[v2_n_tab] = cx->nidx / 3u;
         v2_tab[v2_n_tab++] = g;
     }
     /* CONV2F: the names of the v2 tables, one per line in table order (codemod.py --ntab reads them) */
@@ -614,8 +616,8 @@ static void v2_convert_all(const char* descs_path, const char* inh_path, const c
     fclose(ft);
     /* CONV2D2: the device index of the tables (nd_gtab.h NdNDev), after the tables in nd_gfx_tab.c */
     printf("NdNDev ndn_dev_idx[%u] = {\n", v2_n_tab ? v2_n_tab : 1u);
-    for (unsigned i = 0; i < v2_n_tab; i++) printf("    { (const void*)%s, %uu },\n", v2_tab[i]->name, v2_nk[i]);
-    if (!v2_n_tab) printf("    { 0, 0 }\n");
+    for (unsigned i = 0; i < v2_n_tab; i++) printf("    { (const void*)%s, %uu, (const uint32_t*)%s, %uu, %uu },\n", v2_tab[i]->name, v2_nk[i], v2_tab[i]->name, v2_nk[i], v2_ntri[i]);
+    if (!v2_n_tab) printf("    { 0, 0, 0, 0, 0 }\n");
     printf("};\nconst unsigned ndn_dev_n = %uu;\n", v2_n_tab);
     fclose(fi); fclose(fu);
     /* the pso descriptions: the file gen_pso_tab.py of NPSO3 scans for the ids (the id of a description is its line order) */

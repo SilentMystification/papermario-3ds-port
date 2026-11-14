@@ -227,6 +227,7 @@ static void walk_call(unsigned dbg, const Gfx* at, u32 w0, u32 w1) {
     if (!next) return;
     if (!is_host((u32)next)) { gbi_cold_bad_next(w1, w0, (u32)(uintptr_t)at); return; }
     __builtin_prefetch(next);
+    const NdNDev* nt = nd_ntab_find(next);
     const unsigned ot = orb_tag;
     int ow = 0; /* FX1-3: a tagged list under orbdbg runs on the executor (no ent or DLC path) */
     if (__builtin_expect(dbg & WD_ORB, 0) && PMDL("orbdbg")) { unsigned t = orb_tag_of(next); if (t) { orb_enter(t); ow = 1; } }
@@ -243,7 +244,7 @@ static void walk_call(unsigned dbg, const Gfx* at, u32 w0, u32 w1) {
     }
     if (__builtin_expect(nd_lc_frame != -1, 0)) nd_lstcen(next, ex_depth ? 2u : 1u);
     if (!ex_depth) nd_ops_run(next, ND_LIST_MAX, 1);
-    else if (ex_depth < ND_LIST_DEPTH) { ex_depth++; nd_walk_state((const uint32_t*)next, ND_LIST_MAX); ex_depth--; }
+    else if (ex_depth < ND_LIST_DEPTH) { ex_depth++; if (nt) nd_ntab_run(nt); else nd_walk_state((const uint32_t*)next, ND_LIST_MAX); ex_depth--; }
     if (__builtin_expect(dbg & WD_ORB, 0) && orb_tag != ot) { pm_gpu_flush(); orb_tag = ot; } /* FX1-3 */
 }
 /* DIRECT D4b-3, D5: NDC_STATE (nd_rec.c): a run of ops recorded by the nd_gbi.h redirect. Each op runs as the walker runs it inside a
@@ -591,7 +592,7 @@ int nd_ent_pieces(const EntPiece* p, unsigned n) {
     return sc;
 }
 /* CONV2D2: the words of a v2 list (nd_gtab.h NdNDev) run with nd_walk_state: NOPs skipped there, the stop at n. */
-void nd_ntab_run(const NdNDev* e) { nd_walk_state((const uint32_t*)e->list, e->n); }
+void nd_ntab_run(const NdNDev* e) { nd_walk_state(e->u, e->nu); }
 /* CONV2D2: a list's ops: its v2 device entry when it has one, else its v1 table ops (gt_ops). */
 static void gt_body(const NdGTab* t) {
     const NdNDev* nt = nd_ntab_find(t->list);
