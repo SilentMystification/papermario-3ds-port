@@ -323,9 +323,10 @@ void pm_cheat_tick(void) {
      * GravityParamsStartJump[0]) with the normal arc accelerations, so the arc decays. Holding A in JUMP keeps the velocity at MOON_RISE with
      * accelerations 0, so he rises at a constant MOON_RISE per step, and timeInAir is held at 18 (MOON4: the window stays closed; update_player puts Mario back on lastGoodPos
      * above 100). The game's own release (A up in JUMP switches to HOP, a fast fall) runs as before. On release in JUMP the normal arc resumes
-     * (the accelerations go back to the jump start values). Cheat off: no change. */
+     * (the accelerations go back to the jump start values). Cheat off: no change.
+     * MOON5: in a moon jump the stick sets targetYaw and curSpeed (run speed times the stick share). */
     {
-        static int moon_held;
+        static int moon_held, moon_air; /* MOON5: moon_air = this air time had a moon push or hold */
         const int moon = pm_cheat_moon_get();
         const int held = (ps->curButtons & BUTTON_A) != 0;
         const int air = ((ps->flags & (PS_FLAG_JUMPING | PS_FLAG_FALLING)) != 0) && !(ps->flags & PS_FLAG_FLYING);
@@ -358,6 +359,12 @@ void pm_cheat_tick(void) {
             if (air) pm_log_d("cheat: jump y %.1f", ps->pos.y);
         }
         moon_held = rising;
+        if (!air) moon_air = 0; else if (pushed || rising) moon_air = 1;
+        if (moon && air && moon_air) { /* MOON5 (user 3a): the stick steers a moon jump; a normal jump is not changed */
+            f32 yaw, mag;
+            player_input_to_move_vector(&yaw, &mag);
+            if (mag > 0.0f) { ps->targetYaw = yaw; ps->curSpeed = pm_moon_air_speed(mag, ps->runSpeed); }
+        }
     }
 }
 
