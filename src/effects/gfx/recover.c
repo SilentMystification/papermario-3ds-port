@@ -25,11 +25,3 @@ INCLUDE_IMG("effects/gfx/D_09002800_384600.png", D_09002800_384600);
 #include "effects/gfx/D_09003180_384F80.vtx.inc.c"
 #include "effects/gfx/D_090031C0_384FC0.vtx.inc.c"
 
-#include "effects/gfx/D_090033D0_3851D0.gfx.inc.c"
-#include "effects/gfx/D_090033F0_3851F0.gfx.inc.c"
-#include "effects/gfx/D_09003410_385210.gfx.inc.c"
-#include "effects/gfx/D_09003430_385230.gfx.inc.c"
-#include "effects/gfx/D_09003450_385250.gfx.inc.c"
-#include "effects/gfx/D_09003470_385270.gfx.inc.c"
-#include "effects/gfx/D_09003490_385290.gfx.inc.c"
-#include "effects/gfx/D_090034B0_3852B0.gfx.inc.c"

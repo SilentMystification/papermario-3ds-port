@@ -14,8 +14,8 @@ s8* D_E000E684[2] = { D_E000E660, D_E000E670 };
 NDN_DECL(D_09002780_32B620);
 NDN_DECL(D_09002868_32B708);
 NDN_DECL(D_09002950_32B7F0);
-extern Gfx D_09002B20_32B9C0[];
-extern Gfx D_09002B40_32B9E0[];
+NDN_DECL(D_09002B20_32B9C0);
+NDN_DECL(D_09002B40_32B9E0);
 
 void walking_dust_init(EffectInstance* effect);
 void walking_dust_update(EffectInstance* effect);
@@ -112,9 +112,9 @@ void walking_dust_appendGfx(void* effect) {
     s32 i;
 
     if (temp_t3 == 0) {
-        dlist2 = D_09002B20_32B9C0;
+        dlist2 = NDN(D_09002B20_32B9C0);
     } else {
-        dlist2 = D_09002B40_32B9E0;
+        dlist2 = NDN(D_09002B40_32B9E0);
     }
 
     switch (temp_t3) {

@@ -12,7 +12,7 @@ NDN_DECL(D_09004100_3FE5B0);
 NDN_DECL(D_09004178_3FE628);
 NDN_DECL(D_090041F0_3FE6A0);
 NDN_DECL(D_09004268_3FE718);
-extern Gfx D_090042E0_3FE790[];
+NDN_DECL(D_090042E0_3FE790);
 NDN_DECL(D_09004360_3FE810);
 extern Gfx D_09004458_3FE908[];
 NDN_DECL(D_09004508_3FE9B8);
@@ -289,7 +289,7 @@ void something_rotating_appendGfx(void* effect) {
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
-    nd_draw_list(D_090042E0_3FE790, ND_SELF);
+    nd_draw_list(NDN(D_090042E0_3FE790), ND_SELF);
     nd_val_env(0, 0, 0, 255);
 
     data++;

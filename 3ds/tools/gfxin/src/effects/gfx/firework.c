@@ -1,2 +1,7 @@
 #include "src/effects/gfx/firework.c"
 #include "effects/gfx/D_09000940_38AC90.gfx.inc.c"
+#include "effects/gfx/D_09000A00_38AD50.gfx.inc.c"
+#include "effects/gfx/D_09000A20_38AD70.gfx.inc.c"
+#include "effects/gfx/D_09000A40_38AD90.gfx.inc.c"
+#include "effects/gfx/D_09000A60_38ADB0.gfx.inc.c"
+#include "effects/gfx/D_09000A80_38ADD0.gfx.inc.c"

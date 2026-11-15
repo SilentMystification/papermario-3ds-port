@@ -15,3 +15,8 @@
 #include "effects/gfx/D_09002110_352330.gfx.inc.c"
 #include "effects/gfx/D_09002160_352380.gfx.inc.c"
 #include "effects/gfx/D_09002170_352390.gfx.inc.c"
+#include "effects/gfx/D_09002150_352370.gfx.inc.c"
+#include "effects/gfx/D_09002180_3523A0.gfx.inc.c"
+#include "effects/gfx/D_090021C0_3523E0.gfx.inc.c"
+#include "effects/gfx/D_090021E0_352400.gfx.inc.c"
+#include "effects/gfx/D_09002200_352420.gfx.inc.c"

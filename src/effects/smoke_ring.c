@@ -6,8 +6,8 @@ ND_PSO_DESC(pe_smoke_ring_169, 0xfcffabff, 0xff0d92ff, 0x1e182cf0, 0x0c184b50, 0
 #include "nd_xf.h"
 
 NDN_DECL(D_09002950_32B7F0);
-extern Gfx D_09002B40_32B9E0[];
-extern Gfx D_09002B60_32BA00[];
+NDN_DECL(D_09002B40_32B9E0);
+NDN_DECL(D_09002B60_32BA00);
 
 s8 D_E002E740[] = {
     0,  1, 2, 26,  3, 27,  4,  28,
@@ -135,9 +135,9 @@ void smoke_ring_appendGfx(void* effect) {
     s32 i;
 
     if (part->unk_00 != 0) {
-        dlist = D_09002B60_32BA00;
+        dlist = NDN(D_09002B60_32BA00);
     } else {
-        dlist = D_09002B40_32B9E0;
+        dlist = NDN(D_09002B40_32B9E0);
     }
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));

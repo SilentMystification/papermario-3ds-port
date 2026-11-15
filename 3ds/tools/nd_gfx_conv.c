@@ -151,6 +151,8 @@ static void conv(const GSym* g) {
                d->oml_m, d->oml_v, d->geom_c, d->geom_s, d->tex_a, d->tex_b, d->cw0, d->cw1, d->nsync, d->sync_k[0], d->sync_k[1], d->sync_k[2], d->sync_k[3], o->inh, NDG_CTX_T1V | NDG_CTX_DUAL | NDG_CTX_VPRIM, o->k);
         fprintf(stderr, "gconv def %s+%u n %u inherit 0x%02x ctx 0x%x\n", g->name, o->k, d->n, o->inh, NDG_CTX_T1V | NDG_CTX_DUAL | NDG_CTX_VPRIM);
     }
+    const int dev = g->moved && parts; /* PMOVE: a moved particle list keeps ndgo and a device ndg (no list word) */
+    if (dev) printf("#endif\n");
     printf("static const NdGOp ndgo_%s[%u] = {\n", g->name, no);
     for (unsigned i = 0; i < no; i++) {
         const Op* o = &ops[i];
@@ -165,7 +167,10 @@ static void conv(const GSym* g) {
         }
         printf(" },\n");
     }
-    printf("};\nconst NdGTab ndg_%s = { (const uint32_t*)%s, ndgo_%s, %u, %u, %u, %u };\n", g->name, g->name, g->name, no, parts ? NDG_F_PARTS : 0u, nvtx, ntri);
+    printf("};\n");
+    if (dev) printf("#ifdef ND_HOST_GFX\n");
+    printf("const NdGTab ndg_%s = { (const uint32_t*)%s, ndgo_%s, %u, %u, %u, %u };\n", g->name, g->name, g->name, no, parts ? NDG_F_PARTS : 0u, nvtx, ntri);
+    if (dev) printf("#else\nconst NdGTab ndg_%s = { (const uint32_t*)&ndd_%s, ndgo_%s, %u, %uu, %u, %u };\n#endif\n#ifdef ND_HOST_GFX\n", g->name, g->name, g->name, no, NDG_F_PARTS | NDG_F_MOVED, nvtx, ntri);
     n_lists++; n_parts += (unsigned)parts; n_defs += defi; n_ops += no;
 }
 
@@ -856,13 +861,12 @@ static void v2_convert_all(const char* descs_path, const char* inh_path, const c
     fprintf(stderr, "gconv ntab tables %u inherit %u unsup %u descs %u triangles %u seeded %u callseed %u itab %u\n", v2_n_tab, v2_n_inh, v2_n_unsup, v2_ndesc, v2_n_draw, v2_n_seed, v2_n_cseed, v2_n_itab);
 }
 
-/* GSET: the lists that may move (gset_ok.txt, one name per line) and the checks of the moved ones. A list may move when it has a device entry, its v1
- * table is not a particle run (NDG_F_PARTS, nd_rec.c), and every call edge with it has both ends ok (an unmoved caller keeps a reference). A moved
+/* GSET: the lists that may move (gset_ok.txt, one name per line) and the checks of the moved ones. A list may move when it has a device entry, and every call edge with it has both ends ok (an unmoved caller keeps a reference). A moved
  * list needs every caller moved too. Returns 1 on a moved list that fails (exit 1 of the tool). */
 static int gset_check(const char* ok_path) {
     static unsigned char ok[GS_MAXSYM], has_ent[GS_MAXSYM];
     for (unsigned j = 0; j < v2_n_tab; j++) if (v2_tab[j] >= gconv_sym && v2_tab[j] < gconv_sym + gconv_nsym) has_ent[v2_tab[j] - gconv_sym] = 1;
-    for (unsigned i = 0; i < gconv_nsym; i++) ok[i] = gconv_sym[i].kind == GS_GFX && has_ent[i] && !g_parts[i];
+    for (unsigned i = 0; i < gconv_nsym; i++) ok[i] = gconv_sym[i].kind == GS_GFX && has_ent[i];
     int changed = 1;
     while (changed) {
         changed = 0;
@@ -876,7 +880,6 @@ static int gset_check(const char* ok_path) {
     for (unsigned i = 0; i < gconv_nsym; i++) {
         if (gconv_sym[i].kind != GS_GFX || !gconv_sym[i].moved) continue;
         if (!has_ent[i]) { fprintf(stderr, "gconv: moved %s: no device entry\n", gconv_sym[i].name); bad = 1; }
-        else if (g_parts[i]) { fprintf(stderr, "gconv: moved %s: particle run (NDG_F_PARTS)\n", gconv_sym[i].name); bad = 1; }
         else if (!ok[i]) { fprintf(stderr, "gconv: moved %s: a call edge with a list that is not ok\n", gconv_sym[i].name); bad = 1; }
         for (unsigned e = 0; e < g_n_ed; e++) {
             if (g_ed_to[e] != i || gconv_sym[g_ed_from[e]].moved) continue;
@@ -916,13 +919,19 @@ int main(int argc, char** argv) {
         if (gconv_sym[i].moved) printf("#endif\n");
     }
     printf("NdGIdx nd_gtab_idx[] = {\n");
+    unsigned n_mp = 0; /* PMOVE: moved particle lists, in the device index too */
     for (unsigned i = 0; i < gconv_nsym; i++) {
         if (gconv_sym[i].kind != GS_GFX) continue;
+        if (gconv_sym[i].moved && g_parts[i]) {
+            n_mp++;
+            printf("#ifdef ND_HOST_GFX\n    { %s, &ndg_%s },\n#else\n    { &ndd_%s, &ndg_%s },\n#endif\n", gconv_sym[i].name, gconv_sym[i].name, gconv_sym[i].name, gconv_sym[i].name);
+            continue;
+        }
         if (gconv_sym[i].moved) printf("#ifdef ND_HOST_GFX\n");
         printf("    { %s, &ndg_%s },\n", gconv_sym[i].name, gconv_sym[i].name);
         if (gconv_sym[i].moved) printf("#endif\n");
     }
-    printf("};\n#ifdef ND_HOST_GFX\nconst unsigned nd_gtab_n = %uu;\n#else\nconst unsigned nd_gtab_n = %uu;\n#endif\n", n_lists, n_lists - n_moved);
+    printf("};\n#ifdef ND_HOST_GFX\nconst unsigned nd_gtab_n = %uu;\n#else\nconst unsigned nd_gtab_n = %uu;\n#endif\n", n_lists, n_lists - n_moved + n_mp);
     if (argc < 9) { fprintf(stderr, "usage: nd_gfx_conv <nd_ntab_descs.c> <ntab_inherit.txt> <ntab_unsup.txt> <nd_ntab_idx.c> <ntab_tables.txt> <ntab_entries.txt> <ntab_pairs.txt> <gset_ok.txt>\n"); return 2; }
     v2_pairs_load(argv[6]);
     v2_convert_all(argv[1], argv[2], argv[3], argv[4], argv[5], argv[7]);

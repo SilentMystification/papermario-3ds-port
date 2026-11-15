@@ -6,7 +6,7 @@
 #include "nd_xf.h"
 
 NDN_DECL(D_09000240_37D3C0);
-extern Gfx D_090002E8_37D468[];
+NDN_DECL(D_090002E8_37D468);
 
 void effect_3D_init(EffectInstance* effect);
 void effect_3D_update(EffectInstance* effect);
@@ -250,7 +250,7 @@ void effect_3D_appendGfx(void* effect) {
             Gfx g[4];
             gDPSetPrimColor(&g[0], 0, 0, 200, 255, 255, part->unk_58);
             gSPMatrix(&g[1], &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            gSPDisplayList(&g[2], D_090002E8_37D468);
+            gSPDisplayList(&g[2], NDN(D_090002E8_37D468));
             gSPPopMatrix(&g[3], G_MTX_MODELVIEW);
             nd_parts_add(&pb, (const uint32_t*)g);
         }

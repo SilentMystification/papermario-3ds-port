@@ -8,3 +8,4 @@
 #include "effects/gfx/D_09004268_3FE718.gfx.inc.c"
 #include "effects/gfx/D_09004360_3FE810.gfx.inc.c"
 #include "effects/gfx/D_09004508_3FE9B8.gfx.inc.c"
+#include "effects/gfx/D_090042E0_3FE790.gfx.inc.c"

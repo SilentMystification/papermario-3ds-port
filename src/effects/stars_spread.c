@@ -7,7 +7,7 @@ ND_PSO_DESC(pe_stars_spread_154_k1, 0xfcffb3ff, 0xff65feff, 0x1e082cf0, 0x005043
 #include "nd_xf.h"
 
 NDN_DECL(D_09000440_360E70);
-extern Gfx D_090004F0_360F20[];
+NDN_DECL(D_090004F0_360F20);
 
 void stars_spread_init(EffectInstance* effect);
 void stars_spread_update(EffectInstance* effect);
@@ -126,7 +126,7 @@ void stars_spread_render(EffectInstance* effect) {
 
 void stars_spread_appendGfx(void* effect) {
     StarsSpreadFXData* part = ((EffectInstance*)effect)->data.starsSpread;
-    Gfx* dlist = D_090004F0_360F20;
+    Gfx* dlist = NDN(D_090004F0_360F20);
     Matrix4f sp18;
     Matrix4f sp58;
     s32 i;

@@ -1,3 +1,6 @@
 #include "src/effects/gfx/dust.c"
 #include "effects/gfx/D_09000CC0_33FCC0.gfx.inc.c"
 #include "effects/gfx/D_09000D68_33FD68.gfx.inc.c"
+#include "effects/gfx/D_09000E18_33FE18.gfx.inc.c"
+#include "effects/gfx/D_09000E38_33FE38.gfx.inc.c"
+#include "effects/gfx/D_09000E58_33FE58.gfx.inc.c"

@@ -1,3 +1,6 @@
 #include "src/effects/gfx/damage_stars.c"
 #include "effects/gfx/D_090004C0_343500.gfx.inc.c"
 #include "effects/gfx/D_09000570_3435B0.gfx.inc.c"
+#include "effects/gfx/D_090005E0_343620.gfx.inc.c"
+#include "effects/gfx/D_09000600_343640.gfx.inc.c"
+#include "effects/gfx/D_09000620_343660.gfx.inc.c"

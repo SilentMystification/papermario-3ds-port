@@ -42,6 +42,7 @@ typedef struct NdGDef {
 } NdGDef;
 
 #define NDG_F_PARTS 1u /* a flat particle list (the parts_ok rule): VTX at slot 0 first, then only VTX and TRI to END, every load and index inside the loaded slots */
+#define NDG_F_MOVED 2u /* PMOVE: the device v1 table of a moved particle list: list = &ndd_<name>; the fallback runs its NdNDev units */
 typedef struct NdGTab {
     const uint32_t* list; /* the source list (its typed units) */
     const NdGOp* op;      /* nop ops, the last NDG_END */

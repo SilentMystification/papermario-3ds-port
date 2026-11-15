@@ -10,8 +10,3 @@ INCLUDE_IMG("effects/gfx/D_09001000_3DA100.png", D_09001000_3DA100);
 #include "effects/gfx/D_09002180_3DB280.vtx.inc.c"
 #include "effects/gfx/D_090021C0_3DB2C0.vtx.inc.c"
 
-#include "effects/gfx/D_09002200_3DB300.gfx.inc.c"
-#include "effects/gfx/D_09002220_3DB320.gfx.inc.c"
-#include "effects/gfx/D_09002240_3DB340.gfx.inc.c"
-#include "effects/gfx/D_09002260_3DB360.gfx.inc.c"
-#include "effects/gfx/D_09002280_3DB380.gfx.inc.c"

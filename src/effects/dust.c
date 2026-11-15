@@ -8,9 +8,9 @@ ND_PSO_DESC(pe_dust_166, 0xfc30b261, 0x5566ff7f, 0x1e083c00, 0x00504b50, 0x00000
 
 NDN_DECL(D_09000CC0_33FCC0);
 NDN_DECL(D_09000D68_33FD68);
-extern Gfx D_09000E18_33FE18[];
-extern Gfx D_09000E38_33FE38[];
-extern Gfx D_09000E58_33FE58[];
+NDN_DECL(D_09000E18_33FE18);
+NDN_DECL(D_09000E38_33FE38);
+NDN_DECL(D_09000E58_33FE58);
 
 void dust_init(EffectInstance* effect);
 void dust_render(EffectInstance* effect);
@@ -163,9 +163,9 @@ void dust_appendGfx(void* effect) {
         nd_xf_push(matrix, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
         if (unk_00 < 2) {
-            nd_draw_list((i % 2) ? D_09000E18_33FE18 : D_09000E38_33FE38, pe_dust_164);
+            nd_draw_list((i % 2) ? NDN(D_09000E18_33FE18) : NDN(D_09000E38_33FE38), pe_dust_164);
         } else {
-            nd_draw_list(D_09000E58_33FE58, pe_dust_166);
+            nd_draw_list(NDN(D_09000E58_33FE58), pe_dust_166);
         }
 
         nd_xf_pop(G_MTX_MODELVIEW);

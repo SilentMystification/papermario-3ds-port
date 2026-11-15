@@ -17,8 +17,8 @@ typedef struct UnkStruct {
 } UnkStruct; // size = 0xA
 
 NDN_DECL(D_09000280_3B8AE0);
-extern Gfx D_09000328_3B8B88[];
-extern Gfx D_09000348_3B8BA8[];
+NDN_DECL(D_09000328_3B8B88);
+NDN_DECL(D_09000348_3B8BA8);
 
 UnkStruct D_E00B8900[] = {
     {   0,  0,  30, 140,    0, 255, { 0 } },
@@ -261,7 +261,7 @@ void water_fountain_appendGfx(void* effect) {
     temp = sp9C + 1;
     if (timeLeft >= var_s6 - temp) {
         nd_val_prim(0, 0, unk_18, unk_1C, unk_20, unk_24);
-        nd_draw_list(D_09000348_3B8BA8, pe_water_fountain_262);
+        nd_draw_list(NDN(D_09000348_3B8BA8), pe_water_fountain_262);
     }
 
     for (i = 0; i < var_s6 / 2; i++) {
@@ -281,7 +281,7 @@ void water_fountain_appendGfx(void* effect) {
 
                     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
                     nd_val_prim(0, 0, unk_18, unk_1C, unk_20, (unk_24 * basePtr[idx].sizeScale) >> 8);
-                    nd_draw_list(D_09000328_3B8B88, pe_water_fountain_282);
+                    nd_draw_list(NDN(D_09000328_3B8B88), pe_water_fountain_282);
                     nd_xf_pop(G_MTX_MODELVIEW);
                 }
             }

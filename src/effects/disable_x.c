@@ -9,10 +9,10 @@ ND_PSO_DESC(pe_disable_x_299, 0xfc123224, 0xff67ffff, 0x1e082cf0, 0x00504340, 0x
 
 NDN_DECL(D_09002100_3884B0);
 NDN_DECL(D_09002198_388548);
-extern Gfx D_09002230_3885E0[];
-extern Gfx D_09002250_388600[];
-extern Gfx D_09002270_388620[];
-extern Gfx D_09002290_388640[];
+NDN_DECL(D_09002230_3885E0);
+NDN_DECL(D_09002250_388600);
+NDN_DECL(D_09002270_388620);
+NDN_DECL(D_09002290_388640);
 NDN_DECL(D_090022B0_388660);
 NDN_DECL(D_09002320_3886D0);
 NDN_DECL(D_09002360_388710);
@@ -275,7 +275,7 @@ void func_E00828B4(EffectInstance* effect) {
                 nd_draw_list(NDN(D_09002100_3884B0), ND_SELF);
             }
             func_E00826C4(data);
-            nd_draw_list(D_09002230_3885E0, pe_disable_x_276);
+            nd_draw_list(NDN(D_09002230_3885E0), pe_disable_x_276);
             nd_xf_pop(G_MTX_MODELVIEW);
         }
     }
@@ -298,16 +298,16 @@ void func_E0082A84(EffectInstance* effect) {
             nd_draw_list(NDN(D_090022B0_388660), ND_SELF);
             if (unk_38 < 10) {
                 nd_draw_list(D_E0082D00[unk_38], ND_SELF);
-                nd_draw_list(D_09002250_388600, pe_disable_x_299);
+                nd_draw_list(NDN(D_09002250_388600), pe_disable_x_299);
             } else {
                 s32 ones = unk_38 % 10;
                 s32 tens = unk_38 / 10;
 
                 nd_draw_list(D_E0082D00[ones], ND_SELF);
                 nd_draw_list(D_E0082D00[tens], ND_SELF);
-                nd_rec_dl(D_09002290_388640);
+                nd_rec_dl(NDN(D_09002290_388640));
                 nd_draw_list(D_E0082D00[tens], ND_SELF);
-                nd_rec_dl(D_09002270_388620);
+                nd_rec_dl(NDN(D_09002270_388620));
             }
         }
         nd_xf_pop(G_MTX_MODELVIEW);

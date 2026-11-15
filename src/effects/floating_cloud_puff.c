@@ -6,7 +6,7 @@ ND_PSO_DESC(pe_floating_cloud_puff_139, 0xfc309661, 0x552eff7f, 0x1e082cf0, 0x00
 #include "nd_xf.h"
 
 NDN_DECL(D_09000080_3D4F10);
-extern Gfx D_09000168_3D4FF8[];
+NDN_DECL(D_09000168_3D4FF8);
 
 u8 D_E00D2500[] = { 0x00, 0x1E, 0x50, 0x78, 0x70, 0x68, 0x64, 0x00 };
 u8 D_E00D2508[] = { 0x5E, 0x5C, 0x64, 0x69, 0x6B, 0x69, 0x64, 0x00 };
@@ -137,6 +137,6 @@ void floating_cloud_puff_appendGfx(void* effect) {
     nd_val_prim(0, 0, data->unk_18, data->unk_1C, data->unk_20, unk_24);
     nd_val_env(data->unk_28, data->unk_2C, data->unk_30, 0);
     nd_draw_list(NDN(D_09000080_3D4F10), ND_SELF);
-    nd_draw_list(D_09000168_3D4FF8, pe_floating_cloud_puff_139);
+    nd_draw_list(NDN(D_09000168_3D4FF8), pe_floating_cloud_puff_139);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

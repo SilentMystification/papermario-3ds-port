@@ -14,3 +14,7 @@
 #include "effects/gfx/D_09002560_388910.gfx.inc.c"
 #include "effects/gfx/D_090025A0_388950.gfx.inc.c"
 #include "effects/gfx/D_090025E0_388990.gfx.inc.c"
+#include "effects/gfx/D_09002230_3885E0.gfx.inc.c"
+#include "effects/gfx/D_09002250_388600.gfx.inc.c"
+#include "effects/gfx/D_09002270_388620.gfx.inc.c"
+#include "effects/gfx/D_09002290_388640.gfx.inc.c"

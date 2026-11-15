@@ -14,4 +14,3 @@ INCLUDE_IMG("effects/gfx/D_09001000_3CE6E0.png", D_09001000_3CE6E0);
 
 #include "effects/gfx/D_09001C58_3CF338.vtx.inc.c"
 
-#include "effects/gfx/D_09001C98_3CF378.gfx.inc.c"

@@ -13,12 +13,3 @@ INCLUDE_IMG("effects/gfx/D_09000000_340880.png", D_09000000_340880);
 #include "effects/gfx/D_09000FA8_341828.vtx.inc.c"
 #include "effects/gfx/D_09001008_341888.vtx.inc.c"
 
-#include "effects/gfx/D_09001068_3418E8.gfx.inc.c"
-#include "effects/gfx/D_09001080_341900.gfx.inc.c"
-#include "effects/gfx/D_09001098_341918.gfx.inc.c"
-#include "effects/gfx/D_090010B8_341938.gfx.inc.c"
-#include "effects/gfx/D_090010D0_341950.gfx.inc.c"
-#include "effects/gfx/D_090010E8_341968.gfx.inc.c"
-#include "effects/gfx/D_09001108_341988.gfx.inc.c"
-#include "effects/gfx/D_09001120_3419A0.gfx.inc.c"
-#include "effects/gfx/D_09001138_3419B8.gfx.inc.c"

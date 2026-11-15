@@ -18,7 +18,7 @@ enum MiniHeartState {
 };
 
 NDN_DECL(D_09000400_3D2980);
-extern Gfx D_09000518_3D2A98[];
+NDN_DECL(D_09000518_3D2A98);
 
 u8 AnimScalePct[] = { 94, 92, 100, 105, 107, 105, 100 };
 
@@ -342,7 +342,7 @@ void tubba_heart_attack_appendGfx(void* effect) {
 
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
             nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            nd_draw_list(D_09000518_3D2A98, pe_tubba_heart_attack_344);
+            nd_draw_list(NDN(D_09000518_3D2A98), pe_tubba_heart_attack_344);
             nd_xf_pop(G_MTX_MODELVIEW);
         }
     }

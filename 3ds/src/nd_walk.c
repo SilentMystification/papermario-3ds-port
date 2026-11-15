@@ -438,7 +438,7 @@ void nd_parts_run(const uint32_t* u) {
     for (unsigned k = 0; k < n; k++, p += 2u * m) {
         nd_nr_exec(p, pre);
         const NdGTab* t = (const NdGTab*)(uintptr_t)p[2u * pre + 1u]; /* S7CONV: nd_parts_add put the list's table in the call unit */
-        if (!nd_part_draw(t)) nd_ops_run(t->list, ND_LIST_MAX, 1);
+        if (!nd_part_draw(t)) { if (t->flags & NDG_F_MOVED) nd_ntab_run((const NdNDev*)(const void*)t->list); else nd_ops_run(t->list, ND_LIST_MAX, 1); } /* PMOVE: a moved list runs its NdNDev units */
         nd_nr_exec(p + 2u * (pre + 1u), m - pre - 1u);
     }
     pm_comb_vprim = 0; sc_ok = 0; sync_combine(); /* S4COL: the normal plan is back in gs before the next walker draw */
@@ -486,7 +486,7 @@ void nd_parts_run_v(const uint32_t* u) {
     for (unsigned k = 0; k < n; k++, p += 2u * m) {
         if (__builtin_expect(dbg, 0)) nd_nr_exec(p, pre); else part_units(p, pre);
         const NdGTab* t = (const NdGTab*)(uintptr_t)p[2u * pre + 1u]; /* S7CONV: nd_parts_add put the list's table in the call unit */
-        if (!nd_part_draw(t)) nd_ops_run(t->list, ND_LIST_MAX, 1);
+        if (!nd_part_draw(t)) { if (t->flags & NDG_F_MOVED) nd_ntab_run((const NdNDev*)(const void*)t->list); else nd_ops_run(t->list, ND_LIST_MAX, 1); } /* PMOVE: a moved list runs its NdNDev units */
         if (__builtin_expect(dbg, 0)) nd_nr_exec(p + 2u * (pre + 1u), m - pre - 1u); else part_units(p + 2u * (pre + 1u), m - pre - 1u);
     }
     pm_comb_vprim = 0; sc_ok = 0; sync_combine();

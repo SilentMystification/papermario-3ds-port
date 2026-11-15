@@ -7,7 +7,7 @@ ND_PSO_DESC(pe_flashing_box_shockwave_186, 0xfc309661, 0x552eff7f, 0x1e082cf0, 0
 #include "nd_xf.h"
 
 NDN_DECL(D_09000600_3936A0);
-extern Gfx D_090008E8_393988[];
+NDN_DECL(D_090008E8_393988);
 NDN_DECL(D_09000950_3939F0);
 extern Gfx D_09000FF8_394098[];
 
@@ -169,7 +169,7 @@ void flashing_box_shockwave_appendGfx(void* effect) {
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         nd_draw_list(NDN(D_09000600_3936A0), ND_SELF);
         nd_val_tile_size(G_TX_RENDERTILE, time * 8, time * 8, time * 8 + 128, time * 8 + 128);
-        nd_draw_list(D_090008E8_393988, pe_flashing_box_shockwave_170);
+        nd_draw_list(NDN(D_090008E8_393988), pe_flashing_box_shockwave_170);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 

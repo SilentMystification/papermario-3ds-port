@@ -12,7 +12,7 @@ void snaking_static_render(EffectInstance* effect);
 void snaking_static_appendGfx(void* effect);
 
 NDN_DECL(D_09001000_3B3D90);
-extern Gfx D_090010F8_3B3E88[];
+NDN_DECL(D_090010F8_3B3E88);
 
 EffectInstance* snaking_static_main(s32 type, f32 posX, f32 posY, f32 posZ, f32 scale, s32 timeLeft) {
     EffectBlueprint effectBp;
@@ -204,7 +204,7 @@ void snaking_static_appendGfx(void* effect) {
             gSPMatrix(&g[1], &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
             gDPSetTileSize(&g[2], G_TX_RENDERTILE, data->unk_40 * 64, 0, (data->unk_40 * 64) | 0x3C, 0x007C);
             gDPSetTileSize(&g[3], 1, (lifeTime * 12), 0, ((lifeTime * 3) + 0x1F) * 4, 0x007C);
-            gSPDisplayList(&g[4], D_090010F8_3B3E88);
+            gSPDisplayList(&g[4], NDN(D_090010F8_3B3E88));
             gSPPopMatrix(&g[5], G_MTX_MODELVIEW);
             nd_parts_add(&pb, (const uint32_t*)g);
         }

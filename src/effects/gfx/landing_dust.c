@@ -10,14 +10,9 @@ INCLUDE_IMG("effects/gfx/D_09001840_32A6E0.png", D_09001840_32A6E0);
 #include "effects/gfx/D_09002700_32B5A0.vtx.inc.c"
 #include "effects/gfx/D_09002740_32B5E0.vtx.inc.c"
 
-#include "effects/gfx/D_09002B20_32B9C0.gfx.inc.c"
-#include "effects/gfx/D_09002B40_32B9E0.gfx.inc.c"
-#include "effects/gfx/D_09002B60_32BA00.gfx.inc.c"
-#include "effects/gfx/D_09002B80_32BA20.gfx.inc.c"
 
 #include "effects/gfx/D_09002BA0_32BA40.vtx.inc.c"
 
-#include "effects/gfx/D_09002C60_32BB00.gfx.inc.c"
 
 INCLUDE_IMG("effects/gfx/D_09002C90_32BB30.png", D_09002C90_32BB30);
 INCLUDE_IMG("effects/gfx/D_09002D10_32BBB0.png", D_09002D10_32BBB0);

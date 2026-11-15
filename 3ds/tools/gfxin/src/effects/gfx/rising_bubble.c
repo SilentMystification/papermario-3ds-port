@@ -1,3 +1,7 @@
 #include "src/effects/gfx/rising_bubble.c"
 #include "effects/gfx/D_09000200_356730.gfx.inc.c"
 #include "effects/gfx/D_09000308_356838.gfx.inc.c"
+#include "effects/gfx/D_090002E8_356818.gfx.inc.c"
+#include "effects/gfx/D_090003F0_356920.gfx.inc.c"
+#include "effects/gfx/D_09000410_356940.gfx.inc.c"
+#include "effects/gfx/D_09000430_356960.gfx.inc.c"
