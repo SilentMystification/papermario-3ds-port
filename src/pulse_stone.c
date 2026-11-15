@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "nd_xf.h"
 #include "include_asset.h"
 
@@ -22,7 +23,7 @@ enum {
 INCLUDE_IMG("pulse_stone_icon.png", pulse_stone_icon_img);
 INCLUDE_PAL("pulse_stone_icon.pal", pulse_stone_icon_1_pal);
 INCLUDE_PAL("pulse_stone_icon.flash.pal", pulse_stone_icon_2_pal);
-#include "pulse_stone_icon.gfx.inc.c"
+NDN_DECL(pulse_stone_icon_gfx);
 
 BSS PulseStoneData PulseStoneNotification;
 PulseStoneData* PulseStonePtr = &PulseStoneNotification;
@@ -95,7 +96,7 @@ void appendGfx_pulse_stone_icon(void) {
         guMtxF2L(sp58, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-        gSPDisplayList(gMainGfxPos++, pulse_stone_icon_gfx);
+        gSPDisplayList(gMainGfxPos++, NDN(pulse_stone_icon_gfx));
 
         dx = abs((gGameStatusPtr->mapID % 7) - 2);
         dy = gGameStatusPtr->mapID / 7;

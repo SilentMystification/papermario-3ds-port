@@ -1,4 +1,5 @@
 #include "iwa_01.h"
+#include "nd_gtab.h"
 #include "include_asset.h"
 #include "nd_st.h"
 #include "nd_val.h"
@@ -7,7 +8,7 @@
 
 INCLUDE_IMG("world/area_iwa/iwa_01/splash.png", iwa_01_splash_img);
 #include "world/area_iwa/iwa_01/splash.vtx.inc.c"
-#include "world/area_iwa/iwa_01/splash.gfx.inc.c"
+NDN_DECL(iwa_01_splash_gfx);
 
 #define NUM_SPLASHES (20)
 

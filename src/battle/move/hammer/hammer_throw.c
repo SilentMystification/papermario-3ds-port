@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "effects.h"
 #include "entity.h"
 #include "sprite/player.h"
@@ -24,10 +25,10 @@ INCLUDE_PAL("battle/move/hammer/ultra_hammer.pal", battle_move_hammer_throw_ultr
 
 #include "battle/move/hammer/hammer_throw.vtx.inc.c"
 
-#include "battle/move/hammer/dusty_hammer.gfx.inc.c"
-#include "battle/move/hammer/basic_hammer.gfx.inc.c"
-#include "battle/move/hammer/super_hammer.gfx.inc.c"
-#include "battle/move/hammer/ultra_hammer.gfx.inc.c"
+NDN_DECL(battle_move_hammer_throw_dusty_hammer_gfx);
+NDN_DECL(battle_move_hammer_throw_basic_hammer_gfx);
+NDN_DECL(battle_move_hammer_throw_super_hammer_gfx);
+NDN_DECL(battle_move_hammer_throw_ultra_hammer_gfx);
 
 EntityModelScript N(EMS_DustyHammer) = STANDARD_ENTITY_MODEL_SCRIPT(N(dusty_hammer_gfx), RENDER_MODE_ALPHATEST);
 EntityModelScript N(EMS_BasicHammer) = STANDARD_ENTITY_MODEL_SCRIPT(N(basic_hammer_gfx), RENDER_MODE_ALPHATEST);

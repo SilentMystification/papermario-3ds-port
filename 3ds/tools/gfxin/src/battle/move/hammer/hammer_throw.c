@@ -1,0 +1,5 @@
+#include "src/battle/move/hammer/hammer_throw.c"
+#include "battle/move/hammer/dusty_hammer.gfx.inc.c"
+#include "battle/move/hammer/basic_hammer.gfx.inc.c"
+#include "battle/move/hammer/super_hammer.gfx.inc.c"
+#include "battle/move/hammer/ultra_hammer.gfx.inc.c"
