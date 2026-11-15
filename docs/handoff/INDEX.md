@@ -23,6 +23,7 @@ Live files only. Older logs are in archive/ (agent_*, diag_*, inv_*, plan_*, tra
 - ws_FXVROM.md (+ ws_FXVROM_code.md): Haiku goal page: the converter splits a vertex load past its array end in ROM order (device layout), the host compare (m_tri) maps the index the same way; seeded host test vrom.sh; gset moves 33 effect lists; conv2c bad 0; 4 drec benches byte-equal.
 - ws_FXTYPE.md (+ ws_FXTYPE_code.md): Haiku goal page, after Merge FXVROM: fxtype.py gives 89 effect list handle arrays the type NdLst (nd_gtab.h typedef const void*); C7 -89; host test fxtype.sh with seed; 4 drec benches byte-equal.
 - ws_LKEY.md (+ ws_LKEY_code.md): Haiku goal page: list readers read the device units of a moved list key (new nd_lkey.h; entity_model.c, energy_orb_wave.c, nd_ent.c, nd_walk.c, nd_rec.c; the VCOUNT fault class) and the reader census host test (lkey_cen.py, allow.txt, seeded); spot_mac01_drec, sbk14_drec byte-equal.
+- ws_GRABSEQ.md (+ ws_GRABSEQ_code.md): Haiku goal page: the grab hold (Tidal Wave, fx_underwater) and the splash grab copy once per drawn frame (pm_gpu_seq), not once per frame number (60 FPS walked key frame: flashing blue rectangle); host grabonce.sh with seed and lint; fxr_drec, spot_mac01_drec byte-equal. Disjoint from GSETI, LKEY, FXVROM.
 - start_here_native_draw.md: current state and what is left (long-form handoff).
 - handoff_native_epic_orchestrator.md: findings and pitfalls of the code session of 2026-11-05.
 - plan_native_system.md: design (large; open only the sections a row names).

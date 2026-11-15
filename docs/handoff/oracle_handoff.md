@@ -29,6 +29,9 @@ C5 data 5149, C6 data_arrays 461, C7 gfxtype 1083, C8 reader 783, C10 recdl 15.
 - model.c (516 data, 169 gfxtype, 67 build): Gfx_RM* lists are NdSDef defs (model.c:1260, nd_rmdef.h), built at run time (nd_rec.c:145 nd_rm_build);
   LKEY H edits nd_rec.c for ModelRenderModes keys. Needs a design (converter emits the compiled defs); Sonnet approved by the user.
 - C7 effects: fxtype dry 89 ok arrays; the other 50 are read by a local `Gfx* dlist = X[i]` (next FXTYPE step: local handle rule).
+## Tidal Wave (user 2026-11-15, build 5798: flashing blue rectangle, slow). Page ws_GRABSEQ ready (60 FPS cause).
+- FACT: Tidal Wave = fx_underwater (sushie.c:336); no src/effects/tidal_wave.c. fxr_drec draws it (fxtest 87) at 30 FPS only.
+- OPEN: the 30 FPS console cause (if the user had 60 FPS off), and the console cost (fxcena/b/c 87 lines from the user).
 ## Older facts that still cost time
 - NDN_DECL/NDN (nd_gtab.h:66-74): host form extern Gfx; device form ndd_<name> NdNDev. gset include mode is src/effects/gfx only.
 - listcen skips an asset that only a gfxin twin includes. gen_gfx_tab copies its logs to /w/build3ds/out when it exists.
