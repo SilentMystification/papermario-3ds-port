@@ -349,6 +349,8 @@ void ent_compile(EntKey* k, const Gfx* l0) {
     if (entchk_on()) ent_refcheck(k, l);
 }
 
+static void ent_compile_t(EntKey* k, const Gfx* l) { const unsigned t0 = pm_ticks(); ent_compile(k, l); if (pm_xf.on) pm_xf.ent_t += pm_ticks() - t0; } /* XFT: a first compile, timed */
+
 void ent_reset(void) {
     for (unsigned i = 0; i < ENT_TAB; i++) if (ent_tab[i]) { ent_sdef_free(ent_tab[i]); free(ent_tab[i]->seg); nd_c2_forget(ent_tab[i]->fw); free(ent_tab[i]->fw); free(ent_tab[i]); ent_tab[i] = NULL; }
     ent_nent = 0; ent_gen_seen = pm_dlc_gen;
@@ -364,7 +366,7 @@ EntKey* ent_lookup(const Gfx* l, u32 vb) {
             if (!k) return NULL;
             k->list = (u32)l; k->vb = vb; k->id = ent_nent;
             ent_tab[h] = k; ent_nent++;
-            ent_compile(k, l);
+            ent_compile_t(k, l);
             return k;
         }
         if (k->list == (u32)l && k->vb == vb) return k;
@@ -440,7 +442,7 @@ int ent_gdl(const Gfx* l) {
         unsigned h = (((u32)l >> 3) * 2654435761u) >> 20 & (ENT_TAB - 1);
         while (ent_tab[h]) h = (h + 1) & (ENT_TAB - 1);
         k->list = (u32)l; k->vb = 0; k->id = ent_nent; ent_tab[h] = k; ent_nent++;
-        ent_compile(k, l);
+        ent_compile_t(k, l);
     }
     if (k->useseg) { /* the vertices sit behind segment addresses: the entry of these segment bases */
         u32 vb = ent_segkey();
