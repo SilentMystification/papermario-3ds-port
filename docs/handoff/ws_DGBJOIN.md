@@ -20,7 +20,7 @@ FACT: the converter stops at depth 8 (nd_gfx_conv.c:592); the device runs 12 lev
 ## Group 2: join (0 builds, commit `DGBJOIN 2: ...`)
 3. New 3ds/tools/gconv_src.d/DGBJOIN.txt (LF), 10 lines: `src/world/area_dgb/dgb_01/gfx.c`, `src/world/area_dgb/dgb_01/img0.c` .. `img7.c`, `src/world/area_dgb/smash_bridges.c`.
 4. `sh 3ds/tools/nd_host_test.sh > build3ds/out/dgbjoin_h1.txt 2>&1`: `ND HOST TESTS PASS`, `bad 0` on `gconv lists` (1746 lists) and on the 2nd and 3rd `ntab tables` lines.
-   DRYFACT. `grep -c dgb_01 build3ds/out/gset_ok.txt` goes in the commit message. Commit.
+   FACT (dry run with steps 1-3): unsup 19, gset ok 1461 -> 1637 (all 176 dgb_01 lists), ntab tables 1722. `grep -c dgb_01 build3ds/out/gset_ok.txt` goes in the commit message. Commit.
 ## Group 3: the move (0 builds, commit `DGBJOIN 3: ...`)
 5. `python 3ds/tools/listcen.py > build3ds/out/dgbjoin_lc0.txt`. `cut -d' ' -f1,2,4- build3ds/out/ntab_entries.txt > build3ds/out/dgbjoin_e0.txt`.
 6. New 3ds/tools/gset.d/DGBJOIN.txt: one line `src/world/area_dgb/dgb_01/gfx.c`. `python 3ds/tools/gset.py 3ds/tools/gset.d/DGBJOIN.txt build3ds/out/gset_ok.txt > build3ds/out/dgbjoin_set.txt 2>&1`:
@@ -33,7 +33,7 @@ FACT: the converter stops at depth 8 (nd_gfx_conv.c:592); the device runs 12 lev
 8. One build: rc 0, memcheck margin above 0 KB (FACT main: 454 KB). For B in spot_mac01_drec sbk14_drec fxr_drec fxp_drec: `bench.py base $B --row DGBJOIN --commit $(git merge-base HEAD main)`,
    `bench.py run $B --row DGBJOIN --why "DGBJOIN 4"`, `bench.py cmp $B --row DGBJOIN --commit $(git merge-base HEAD main)`. Pass: byte-equal (one bit fails).
    FACT: no bench draws the bridge scene. The host unit stream compare (step 7) is the main proof of the moved lists.
-9. `python 3ds/tools/listcen.py > build3ds/out/dgbjoin_lc1.txt` (GUESS C5 -2700..-2833, C6 -150..-168). Delete this page and its INDEX.md line. Commit.
+9. `python 3ds/tools/listcen.py > build3ds/out/dgbjoin_lc1.txt` (GUESS C5 -2833, C6 -168: all 168 gfx.c blocks are ok). Delete this page and its INDEX.md line. Commit.
 Fix rights: a compile error of a rewritten line in your own files. A `gset keep` line: edit that line by hand to the precedent form, note it in the commit.
 Step 6 or 7 not as given: `git checkout -- src 3ds/tools/gfxin`, `git clean -fdq -- 3ds/tools/gfxin`. A cmp difference or a failed base run: write the output to build3ds/out/,
 send the path to the oracle (CLAUDE.md 4 and 5). Never change a base. Stop: group 4 committed and gated. Hand-back build3ds/out/handback_DGBJOIN.txt, first 8 lines:
