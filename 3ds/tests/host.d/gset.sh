@@ -79,4 +79,16 @@ YS="$T.typseed"; rm -rf "$YS"; mkdir -p "$YS"; cp -r 3ds/tests/gset/case_typ/. "
 sed 's/^TYPE_RULE = True/TYPE_RULE = False/' 3ds/tools/gset.py > "$YS.py"
 $PY "$YS.py" "$YS/list.txt" "$YS/gset_ok.txt" "$YS" > "$YS.out" 2>&1 || true
 tr -d '' < "$YS/src/effects/gfx/t.c" | grep -qxF '#include "common.h"' && { echo "gset typ seeded fault not seen"; exit 1; }
+# GSETI blkinc: block source b.c (case_blkinc) includes asset E.gfx.inc.c (all lists ok). The include moves: b.c keeps NDN_DECL(E_gfx) and NDN(E_gfx) uses, the twin gets the include.
+K="$T.blkinc"; rm -rf "$K"; mkdir -p "$K"; cp -r 3ds/tests/gset/case_blkinc/. "$K/"
+rc=0; $PY 3ds/tools/gset.py "$K/list.txt" "$K/gset_ok.txt" "$K" > "$K.out" 2>&1 || rc=$?
+[ "$rc" = 0 ] || { echo "gset blkinc test: exit $rc, want 0"; cat "$K.out"; exit 1; }
+tr -d '\r' < "$K.out" | grep -q "^gset moved 1 files" || { echo "gset blkinc test FAIL: no moved line"; cat "$K.out"; exit 1; }
+tr -d '\r' < "$K/src/b.c" | grep -qxF 'NDN_DECL(E_gfx);' || { echo "gset blkinc test FAIL: b.c lacks NDN_DECL(E_gfx);"; exit 1; }
+tr -d '\r' < "$K/src/b.c" | grep -qxF '    gSPDisplayList(gMainGfxPos++, NDN(E_gfx));' || { echo "gset blkinc test FAIL: b.c lacks the NDN(E_gfx) use"; exit 1; }
+tr -d '\r' < "$K/3ds/tools/gfxin/src/b.c" | grep -qxF '#include "ast/E.gfx.inc.c"' || { echo "gset blkinc test FAIL: twin lacks the include"; exit 1; }
+KS="$T.blkincseed"; rm -rf "$KS"; mkdir -p "$KS"; cp -r 3ds/tests/gset/case_blkinc/. "$KS/"
+sed 's/^INC_BLOCK = True/INC_BLOCK = False/' 3ds/tools/gset.py > "$KS.py"
+$PY "$KS.py" "$KS/list.txt" "$KS/gset_ok.txt" "$KS" > "$KS.out" 2>&1 || true
+tr -d '\r' < "$KS/src/b.c" | grep -qxF '#include "ast/E.gfx.inc.c"' || { echo "gset blkinc seeded fault not seen"; exit 1; }
 echo "gset test ok"
