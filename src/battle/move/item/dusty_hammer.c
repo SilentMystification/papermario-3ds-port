@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "script_api/battle.h"
 #include "entity.h"
 #include "ld_addrs.h"
@@ -23,29 +24,9 @@ Vtx N(DustyHammerVtx)[] = {
     { .v = {{ -16, 15,  0 }, false, { 0,    1024 }, { 0, 0, 0, 255 }}},
 };
 
-Gfx N(DustyHammerGfx)[] = {
-    gsDPPipeSync(),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsDPSetCombineMode(G_CC_DECALRGBA, G_CC_DECALRGBA),
-    gsDPSetTexturePersp(G_TP_PERSP),
-    gsDPSetTextureDetail(G_TD_CLAMP),
-    gsDPSetTextureLOD(G_TL_TILE),
-    gsDPSetTextureLUT(G_TT_NONE),
-    gsDPSetTextureFilter(G_TF_AVERAGE),
-    gsDPSetTextureConvert(G_TC_FILT),
-    gsDPSetTextureLUT(G_TT_RGBA16),
-    gsDPLoadTLUT_pal16(0, battle_item_dusty_hammer_pal),
-    gsDPLoadTextureTile_4b(battle_item_dusty_hammer_png, G_IM_FMT_CI, battle_item_dusty_hammer_png_width, battle_item_dusty_hammer_png_height, 0, 0, battle_item_dusty_hammer_png_width - 1, battle_item_dusty_hammer_png_height - 1, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD),
-    gsSPClearGeometryMode(G_LIGHTING),
-    gsSPClearGeometryMode(G_SHADING_SMOOTH),
-    gsSPVertex(N(DustyHammerVtx), ARRAY_COUNT(N(DustyHammerVtx)), 0),
-    gsSP1Triangle(0, 1, 2, 0),
-    gsSP1Triangle(0, 2, 3, 0),
-    gsDPPipeSync(),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(N(DustyHammerGfx));
 
-EntityModelScript N(EMS_DustyHammer) = STANDARD_ENTITY_MODEL_SCRIPT(N(DustyHammerGfx), RENDER_MODE_ALPHATEST);
+EntityModelScript N(EMS_DustyHammer) = STANDARD_ENTITY_MODEL_SCRIPT(NDN(N(DustyHammerGfx)), RENDER_MODE_ALPHATEST);
 
 EvtScript N(EVS_UseItem) = {
     SetConst(LVarA, ITEM_DUSTY_HAMMER)

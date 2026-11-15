@@ -88,8 +88,10 @@ def scan_source(s, syms):
     m = re.match(r'#include\s+"([^"]+)"', first)
     if not m:
         sys.exit(f"gen_gfx_syms: twin {s} first line is not an #include")
-    scan(pathlib.Path(m.group(1)), syms, False)
-    scan(twin, syms, True)
+    src = pathlib.Path(m.group(1))
+    scan(src, syms, False)
+    # GSETW: the twin's N(x) names take the NAMESPACE of its device source (the twin has none of its own)
+    scan(twin, syms, True, file_ns(src, src.read_text(encoding="utf-8", errors="replace"), None))
 
 
 def entry_lines(entries):
