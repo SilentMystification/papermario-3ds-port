@@ -196,6 +196,7 @@ void whirlwind_appendGfx(void* effect) {
         vtx->v.ob[2] = sin_deg(i * (360 / 15)) * 100.0f;
         vtx->v.tc[0] = i * 128;
         vtx->v.tc[1] = 0;
+        vtx->v.flag = 0; vtx->v.cn[0] = vtx->v.cn[1] = vtx->v.cn[2] = vtx->v.cn[3] = 0;
 
         vtx = &vertexBuffer[i + (360 / 24 + 1)];
         vtx->v.ob[0] = cos_deg(i * (360 / 15)) * 100.0f;
@@ -203,6 +204,7 @@ void whirlwind_appendGfx(void* effect) {
         vtx->v.ob[2] = sin_deg(i * (360 / 15)) * 100.0f;
         vtx->v.tc[0] = i * 512;
         vtx->v.tc[1] = 1024;
+        vtx->v.flag = 0; vtx->v.cn[0] = vtx->v.cn[1] = vtx->v.cn[2] = vtx->v.cn[3] = 0;
     }
 
     // Reserve 0x88 bytes (17 commands, including this one) for a separate dynamically generated display list
