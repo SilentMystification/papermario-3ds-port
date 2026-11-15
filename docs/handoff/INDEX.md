@@ -19,6 +19,7 @@ Live files only. Older logs are in archive/ (agent_*, diag_*, inv_*, plan_*, tra
 - ws_SORTQ.md: Haiku goal page: gt_sort and nt_sort (nd_gtab.c) become qsort (audit_hw3 F3, boot cost); host test sort_check in nd_gtab_test.c (conv2c.sh, seeded swap); spot_mac01_drec, sbk14_drec byte-equal. After Merge MESHST.
 - ws_PIPEFX.md: Haiku goal page: imgfx_load_anim types the raw ROM anim list (new nd_imgfx.h, bounded by gfxCount); Mario visible in pipes; host pipefx.sh with seed; spot_mac01_drec, sbk14_drec byte-equal.
 - ws_DLCRD.md: Haiku goal page: nd_shape.c reads the .dlc whole (fmemopen) and buffers the .seam read (map change lag); spot_mac01_drec, sbk14_drec byte-equal; user sends the xfer2 map line before and after.
+- ws_GSETI.md (+ ws_GSETI_code.md): Haiku goal page: gset.py block mode moves the all-ok asset includes of a block source (INC_BLOCK, OWN rule for include names); 25 world, battle and root sources join the converter; dry run C5 -771, C6 -78; host conv2c and 4 drec benches.
 - start_here_native_draw.md: current state and what is left (long-form handoff).
 - handoff_native_epic_orchestrator.md: findings and pitfalls of the code session of 2026-11-05.
 - plan_native_system.md: design (large; open only the sections a row names).

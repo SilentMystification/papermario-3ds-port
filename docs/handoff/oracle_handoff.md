@@ -1,60 +1,50 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main 5122873178, 2026-11-15. Thirtieth oracle: ws_PIPEFX (imgfx anim list typed, imgfx.c:1260) and ws_DLCRD (.dlc whole via fmemopen, .seam setvbuf), parallel, Haiku.
-FACT crash build 5774 (31st oracle): writer = mdl_project_tex_coords (model.c:4520-4524) via mdl_get_vertex_count (model.c:4226) on NDN(Gfx_HiddenPanel_RenderTop) (HiddenPanel.c:325-330, :36; an NdNDev, not units). Python over pm_3ds_5774.elf: 181378 vertex slots 0x91e9b0..0xbe31d0 written each frame in mac_00. In since GSET3 2 (72d5a22d72, before 5672). Fix page ws_VCOUNT. Value 0x50a301f0/0x00ffffff is in no ROM, romfs or 3dsx file. Luma dumps 0-2: other processes or builds (dump 0 = MarioKar). Crash handler: for 5774 the printed fsr is the FAR (= r2). Twenty-eighth oracle: ws_SORTQ (Haiku, audit_hw3 F3, after Merge MESHST). Twenty-seventh oracle: ws_CHCONV (Haiku, chapter_change join, user OK of the picture change) and ws_MESHST (Haiku, built-once mesh units, user OK of a non-byte-equal jan09 gate), parallel. FACT dry run (CHCONV edits on 1828f683b0): gconv lists 1763 bad 0, gset ok 1660, gset moved 16; listcen data -104, data_arrays -16, gfxtype -16, recdl -1.
-FACT: dgb_01 is NOT an animator mesh: its tree root has vertexStartOffset 0, so load_model_animator_tree (animator.c:1178) runs and add_anim_node sets -1 (:394): static path :898. Its block: 69 loads in 21 lists read past their array end (ROM order); DGBJOIN splits them (vtxsplit.py) and raises the converter call depth 8 -> 11 (D_80251A50 chain of 10); dry run: all 176 lists ok.
-FACT fxr_drec first-run flake: the 512 KB `t 0 dim 01000200` is grab_tex = copy_blk seen as 256 x 512 RGBA8 (pm_gpu.c:2565); drec hashes its bytes on the CPU (pm_gpu.c:666): a hash of earlier GPU output, not a draw input. No unwaited gxCmdQueueRun in our code (pm_gpu.c:2581, :2599 wait -1; C3D_FrameBegin waits, :2918). GUESS: a cold Azahar renders those pixels differently; cold-start rule (bench.py:2023) covers it. Fix option (needs a user OK, it changes what drec compares): drec writes no hash for a copy_blk/full_blk texture. Next after the two pages: ToadHouseBlanket join (assets/us/world/toad_house/blanket.gfx.inc.c, 10 world npc.c), model.c ND_RM_REC, curtains, sprite.c:459, the 19 ntab unsup lists.
-FACT MESHST jan09 diff (29th oracle): 4 lines, r 1200/1201 (uvso[3], uvso[2]; pm_gpu.c:651 writes s[3] first) of draws 69 and 154, 1/32 to 1/64. Both draws have no texture (no `t` line, r 1202/1203 0, combine 0c0 0 = shade replace): nd_model.c:48-49 takes 0.5/tw from the stale pm_tex_size (pm_tex.c:2047), 16 (Munchlesia 16x16 load) in the base, 32 (draw 68) in the row. Same picture. GUESS cause: the old heap list ran ent_gdl (nd_walk.c:237), gt_run skips it for ntri 0 (nd_walk.c:629). The mesh draws no triangle in jan09 (no 16x16 large draw in 170): the host test is the only vertex proof.
-dgb_01 (gfx.c + img0-7.c + area_dgb/smash_bridges.c in the set): 176 lists, 127 tables, 49 `vertex slots` unsup (a triangle across two Vtx arrays, nd_vslot.c:35), gset ok 0 (call edges).
-Its light IS defined (gfx.c:3347, all zero). Next design for dgb_01: cross-array triangles (the device reads only units, nd_gfx_conv.c:808-816; the v2 draw/index data is host only for a moved list).
-Parts rule off (:865): gset ok 1211 -> 1396, gset moved 189. "179 parts" is the v1 NDG_F_PARTS count, not a list group. Unmoved ok lists after both pages: 12 (item_entity.c 2,
-entity_model_icons.c 3, Shadow.c 2, draw_box.c 1, pause_partners.c 1, tst_13 1, kmr_21/nok_04 G_DL users), kkj x6 and isk_01 (SetCustomGfx holds), starpoint/level_up PAL (48).
-FACT crash tools: `docker run pm3ds-build:1 arm-none-eabi-addr2line -f -i -e build3ds/pm_3ds.elf <pc>` works; the map has no static symbols. FACT (converter dry runs in a scratch worktree, docker gen_gfx_tab.sh only): UltraBlock 8 of 9 and
-UltraBlockContent 5 of 6 lists inherit; curtains.c 7 inherit, 2 unsup, 3 tab not ok; sprite.c 8 ok but SprFinal* go into a record word (sprite.c:459), so a move needs design;
-screen_overlays.c 5 stencil lists ok (calls :302-327, :407, :414; no drec bench shows a transition), D_8014E8F0/E9A8 unsup PRIMDEPTH; titlemenu.c fails the host compile (fr/es png).
-Twentieth oracle: ws_MOON2 (after Merge MOON1), ws_XFT (parallel). Nineteenth: ws_PAUSEH (after Merge HWFIX), ws_MOON1. OPEN:
-(a) black coins: ws_COIN (after Merge HWFIX). FACT cause: stale dual_on from a shaded sprite (nd_tex_set.c:508); the item draw with shading on sets no tile 0 size
-(item_entity.c:979-993), so decide is skipped (nd_decide.c:302), legacy mode 2 = texel * vertex colour 0. GUESS only maps with sprite shading. (b) moon air: ws_MOON2.
-(c) map change stutter: ws_XFT, then a console prof run. FACT console 11-11 (build3ds/hw_xl_log.txt #806-#810): seamfix mac_00 103.9 ms inside
-dlc 121.2 ms (seam_get in timed dlc_build, nd_shape.c:375), maxstep dlc 112.6, ent 3 (ent_reset is not the cost). FACT .dlc max 47841 B (sam_11),
-.seam max 13536 B. Fix idea after the measure: read .seam and .dlc whole at pm_map.c:151 (one fread each, the .nds header once).
-Eighteenth oracle: ws_ISTAR (Haiku, starpoint move, C5 -33 C6 -7 C7 -7 by dry run). Design cores, no page: ISEED2 (an entity-path list draws in nd_ent_case, nd_walk.c:166; its G_DL runs only when that refuses, :171; a seed has no C site: needs a seed source for gen_ntab_entries.py), firework.c:293 and firework_rocket.c:277 (GUESS state-only lists: entcap_so logs no tuple, nd_walk.c:611), dgb_01 (its light is .bss of gfx.o in pm_3ds_5672.map, no source value), model.c ND_RM_REC. PAL twin and JP lists (419 + 38 data) are a user choice for listcen. Thirteenth oracle: ws_ROOTCM, ws_GTIN (FACT listcen 40518d695: C1 805, C2 288, C5 12798, C6 1100, C7 1768, C8 777, C10 16).
-Seventeenth oracle: ws_HWFIX extended (audit_hw2 F2 depth drain, F3 menu grey invalidate and PPF loop in group 1; group 3 = F1 sc_sig_now comma fix with WAIT: base reset). Sixteenth oracle (fdf73a739): ws_HWFIX (Haiku; audit_hw A1-A3, B1, B2, B4; B3 = A1; group 2 after Merge ISEED). FACT: memcheck margin counts static size only (mem_budget.json rule); heap chunks come out of leave_kb 3458. Fifteenth oracle (59cd90449): ws_ISEED (Sonnet; effect C-site seeds, converter call-unit seeds). FACT class of the 260 inherit lists: effects 171 = callees 54, C sites 41, seeded-unsup 35 (vertex slots 24, MOVEWORD 9), no reference 41; entity 69 = callees 24, entity-path refs 45 (nd_rec_ent_draw: entcap has no hook there); other 20. Next: ISEED2 (ent-path capture hook). Fourteenth oracle (d7d4d6197): ws_LIT1 (light units, level_up.c, starpoint.c). Next design cores (no Haiku page yet): dgb_01 (168 lists, 2833 data) needs GSET-W (gset.py BLOCK_OPEN :20 misses `Gfx N(x)[]`) and a source definition of its light (`extern Lights1 N(D_80253140_C109C0)` gfx.c:4 only, .bss in the map); inherit seed (260 lists, the seeds are C-site states: needs captures, not Haiku); model.c render modes (readers: nd_rec.c:139 nd_rm_build, model.c:1260 NdSDef defs for ND_RM_REC in animator.c, entity_model.c, item_entity.c:950, model.c:1616 and nd_recs.c:85 combine words); 114 root list calls with no entry. PAL-only files (level_up_letters_*, starpoint_{de,en,es,fr}: 419 data, no cmake builds them) are a listcen skip choice like src/world/dead. Twelfth oracle: FXENT3 fault answers, FXREST2 facts (below). Eleventh oracle: ws_GCONVW. Tenth: ws_FXENT3. Ninth oracle: ws_PSOLK, ws_RECROOT, ws_FXENT2, ws_GSET2, ws_GSET3; design_lookahead 5, 6, 9.
-## Goal
-Remove the display list system completely (plan_endgame.md v3). Done only when `3ds/tools/elfgate.py` prints
-`func 0 data 0 gfxnames 0` and every LISTCEN2 counter C1..C12 is 0.
-FACT (listcen, main f495844bdf): C1 742 (461 are gbi header macros, phase E), C2 225, C5 8914, C6 651, C7 1286, C8 reader 777, C10 recdl 16.
-## Tools on main (all in 3ds/tools unless named)
-- listcen.py (C1-C10, RECDL_RX :47), elfgate.py (C11-C12), codemod.py (MAP :38-49, STATE_MAP :53-73, GEO_MAP :75-88, TEX_MAP :90-127), selfapply.py (FXSELF),
-  entcap.py + entapply.py (ENTRYFX), gen_ntab_entries.py, gen_pso_tab.py + gen_pso_main.c (nd_pso_tab.c, git-ignored, build.sh:114).
-- Setters: nd_st.h, nd_val.h, nd_xf.h, nd_geo.h/.c, nd_tx.h; they write native records (nd_nr.h, NSTREAM1). Host units: stunit 18/18, geounit 13/13, texunit 36/36, hunit 7/7.
-- Entry form: nd_draw_list(list, entry) -> nd_rec_dl_e (nd_gtab.c) -> nd_gtab_run_e (nd_walk.c) = nd_psochk_draw + nd_gtab_run. psochk line: nd_comb.c:230.
-- Drec bases: gold_12_drec, spot_mac01_drec, sbk14_drec at 930de29e1; fxpic_91_drec at d29deacc3. psochk bench fxpic_20_psochk (bench.d/ENTRY1.json, log only).
-  Capture benches fxent_a/b/c and fxchk_a/b/c (bench.d/ENTRYFX.json).
-## Open work
-- Merged: TEX4, RECROOT, NSTREAM2, NSTREAM3, GKEY2, GSET1-3, FXENT2, FXENT3 (20 sites; nd_rec_dl_k keyed form). PSOLK: check `git log` for its merge.
-- After GCONVW: GSET-W (move the joined lists; NDN_DECL(X) pastes ndd_##X, so an N(x) argument needs an expanded name, nd_gtab.h:65-66). Converter light support
-  (MOVEMEM is unsup, nd_gfx_conv.c:475) decides dgb_01/gfx.c (168 lists), level_up*, starpoint* (GUESS by macro grep: their lists hold lights, rects or scissors).
-  model.c (63 lists) are ND_RM_REC scomp defs (nd_rmdef.h): design before it joins.
-- User decision (one part, design_lookahead 9): a draw with no pso table entry after S9DEL2A deletes the decide code.
-- NOT NOW (user 2026-11-15): audit_hw2 F5 pm_mapdata.c:112-123 mallocs the map .data save at first entry (O3DS full commit: GUESS fail); fix later = boot reserve or memcheck sum.
-- NOT NOW (user): psochk compares 16 of 20 NdPsoDesc fields (nd_psochk.c:12-16); geom, key_c, key_s, plod are per-draw values (FXREST2 choice). Never add them back.
-- Perf, user's later round (audit_hw3 F1): nd_ntab_find (nd_gtab.c:68-78) does 11 probes, each 2 dependent loads (pointer, then ->list); fix idea: a sorted {list, NdNDev*} pair array or a 64-entry memo. No page.
-- audit_hw3 F2 verdict (28th oracle): no pause path makes a full-image snapshot while prev_hold holds (effects skip CONTEXT_PAUSE, effects.c:131, :159; pause clears models, entities, workers, state_pause.c:138-150; window off passes never read their own slot). Residue: up to 2 drawn frames after unpause keep prev_hold (pm_gpu.c:2934, :2937): a snapshot there plus an old-frame read next frame reads 5551 bytes. GUESS no scene. Fix if needed: `if (prev_hold) { prev_hold = 0; hold_rst++; }` after pm_gpu.c:396.
-- Later cheap test: gset_check (nd_gfx_conv.c:784-816) has no run-on edge check; moved lists D_09008CB0_3CA850 and D_09000B90_3FFDE0 have no END (unused today, audit_hw2 B).
-## Facts that cost time
-- libctru (objdump of libctru.a in pm3ds-build:1): gsp events are LightEvent RESET_STICKY; gspWaitForEvent(id, false) = wait then clear; the event thread runs gxCmdQueueInterrupt (citro3d onQueueFinish swaps) before LightEvent_Signal.
-- nd_pso_build's table is uncoloured: prim 0, env 0, box_pat 0, mode5 0 (nd_decide.c:335-346). nd_comb_core reads prim/env only for cc, leg_mode never (dc_legacy writes it).
-- Host gcc -m32 is x87 by default: a float decision (nd_decide.c:273) can differ from ARM VFP. Device tables need `-msse2 -mfpmath=sse` (ws_PSOLK step 5).
-- nd_pso() had no device caller before PSOLK; NDN_PSO ops of v2 tables are not read on the device (only NDN_UNIT through nd_walk_state).
-- entcap_rec skips lists with a v2 table (nd_walk.c:509) and state-only lists (gt_run returns at :606 first): FXENT3 adds the `entcap so` line.
-- gen_gfx_syms.py scans text with no #if: a gfx source with `#if VERSION_JP` symbols (chapter_change) cannot join a set until FXENT3 item 6.
-- codemod.py gives a file's single ND_PSO_DESC to every list call of that file (codemod.py:14). Never run --state or plain codemod on src/effects.
-- The v1 table points into the list (nd_gfx_conv.c:138, :153, :159). GSET must drop or repoint it. nd_ntab_find is device-only (nd_gtab.c `#ifndef ND_SCOMP_HOST`).
-- listcen ARRAYS_RX also counts `Gfx v[n];` locals; GFXTYPE counts every `Gfx` word.
-- Core 0 runners (hud, glyph, sprite, overlay, nd_direct) build gbi macros into local buffers and run nd_walk_state on them (NS3).
+State: main 1df64777c0, 2026-11-15. 31st oracle (display list work; a second oracle hunts the build 5774 map-change crash: do not touch pm_mapdata.c,
+pm_map.c map restore, heap.c, nd_mesh.h). Running: ws_PIPEFX (imgfx.c), ws_DLCRD (nd_shape.c, pm_map.c, nd_dlc.c). Ready: ws_GSETI (+ ws_GSETI_code.md).
+User order 2026-11-15: BATCH. One page covers a family or a directory (one codemod, one gset set, one gate). Up to 3 coders.
+## Counters (FACT, listcen in the main folder, 1df64777c0)
+C1 build 738 (461 gbi headers, phase E), C2 gfxpos 224, C5 data 5149, C6 data_arrays 461, C7 gfxtype 1085, C8 reader 779, C10 recdl 15.
+(The orchestrator quoted data 5120, gfxtype 947: other run place. Re-run listcen in the main folder before a page.)
+C5 by place: assets/us 2767 (effects/gfx 1468 in 95 lists, pra_31 323, starpoint 238, kzn2 138, tst_13 114, hammer 76, dgb_01 72, level_up 54),
+src/model.c 516, include 384, src/entity 170, src/world 165, screen_overlays 123, curtains 121, PAL level_up_letters 291, battle 93, pause 72, filemenu 70.
+## Dry-run tools (scratch worktrees, nothing on main)
+- `git worktree add --detach <scratch>/dry HEAD`, then gen_gfx_tab in docker like build.sh:94-111 (mount the worktree as /w, assets of the main
+  folder read-only). Run nd_gtab_test and 3ds/tests/host.d/conv2c.sh in the same container for the host compare. One run is 4-5 min: run it in the background.
+- Host-compile a candidate source first: `gcc -m32 -w <DEF> -DND_GCONV_IN <INC> -fsyntax-only <file>` (flags: gen_gfx_tab.sh:11-13). It saves runs.
+- Base FACT (1df64777c0): gconv lists 1763, tables 1745, inherit 40, unsup 19, gset ok 1660, moved 1578; conv2c ok run `ntab tables 1745 draws 30174 bad 0`.
+## Design FXVROM (next page; dry run done, one host-compare step open)
+- FACT: 93 of the 103 not-ok lists are effect lists. The cause is a call-edge chain from 19 unsup lists (gset_check, nd_gfx_conv.c:889-901).
+- FACT: the main unsup cause is a gsSPVertex that reads past its array end (lil_oink: `&D_09000080_3FF2D0[0], 5` on a [2] array). The device
+  layout is ROM order (pm_3ds_5774.map: D_09000080_3FF2D0 0x50bbf0, D_090000A0_3FF2F0 0x50bc10). The host layout is not.
+- Rule (tested in a scratch copy): at nd_gfx_conv.c:539 split a load past its array end. The next piece reads the Vtx symbol whose name ROM hex
+  (D_..._<hex>) equals hex + 16 * length. No such symbol: the load stays whole (else 4 moved lists lose their table: gconv FAIL).
+  FACT result: tables 1771, inherit 21, unsup 12, gset ok 1693 (+33), gconv bad 0. Then gset.py on all 118 src/effects/gfx sources:
+  gset moved 33, listcen data 5149 -> 4233 (-916), data_arrays -33, gfxtype -4; 2nd gconv run moved 1611, bad 0.
+- OPEN before the page: conv2c then reports `bad 3732` (FAIL triangle vertex triple: D_09001A00_3E4360, D_09001A20_3E4380, both already moved).
+  Cause: nd_gtab_test.c m_tri (:380-381) keeps (array, index past end), the v2 table has (next array, index). Fix design: move vtx_len, rom_of,
+  vtx_rom_next into nd_gconv.h (static inline), and normalise e->base[j]/e->i[j] in m_tri by the same rule. Dry run it: pass = ok-run bad 0.
+- Expected picture: the 2 already-moved lists drew host-layout vertices on the device (their tables came from the host layout). FXVROM corrects
+  them. A drec diff at their draws is a correction: the user decides (one bit differs = gate fails).
+- -fno-toplevel-reorder on the gen_gfx_tab.sh compiles changes nothing (FACT, same counts). Do not use it.
+## Other families (FACT from this session)
+- pra_31 stairs_skele.c (34 includes, 323 data): animator skeleton nodes (`.displayList = &N(unk_01_gfx)`, :201); its lists are unsup
+  `unit address outside the symbol map` and `matrix address outside the symbol map` (Matrix4s N(unk_02_mtx), stairs_vtx.c:120). MESHST-like design.
+- NAMESPACE `A(x)` (battle actors: kzn2/actor/lava_piranha.c:15, sam2/dlist.c:3): gen_gfx_syms.py NS_DEF takes `A`. Fix: expand A(x) like N(x).
+- Host compile fails: dro_02/npc_merlee.c (EffectInstance type), filemenu_selectlanguage.c.
+- model.c (516 data, 169 gfxtype, 67 build): Gfx_RM* lists are NdSDef defs (model.c:1260, nd_rmdef.h), built at run time (nd_rec.c:145 nd_rm_build);
+  SolidCombineModes/AlphaTestCombineModes are combine words (model.c:1616, nd_recs.c:86). Readers: animator.c:43-56/785-828, entity_model.c:29+.
+  Needs a design (converter emits the compiled defs); Sonnet design step.
+- C7 effects (275 Gfx words): `Gfx* X[] = { NDN(..) }` 120+, `Gfx* dlist` 40, `extern Gfx X[]` 40 (unmoved). A typedef handle codemod
+  touches the same lines as FXVROM's gset rewrite: start it after Merge FXVROM. Device build uses -w (CMakeLists.txt:324).
+## Older facts that still cost time
+- NDN_DECL/NDN (nd_gtab.h:64-71): host form extern Gfx; device form ndd_<name> NdNDev. gset include mode is src/effects/gfx only (gset.py:325).
+- listcen skips an asset that only a gfxin twin includes (listcen.py:250-259). gen_gfx_tab copies its logs to /w/build3ds/out when it exists.
+- OPEN crash 5774: logic thread, reset_player_status 7B440.c:123 reads mac_01 entryList; writer not found (other oracle).
+- fxr_drec first run can flake cold (grab_tex hash, pm_gpu.c:2565, :666): warm rerun rule (bench.py:2023).
+- NOT NOW (user): pm_mapdata.c:112-123 save malloc; psochk 16 of 20 fields; perf round (nd_ntab_find probes, audit_hw3 F1).
 ## What to do first
-1. Answer coder questions (SendMessage, 10 lines, file:line). Check each ready page's quoted anchors against main after the merge it waits for.
-2. Answer GSETW and PMOVE coder questions. After each merge: check its lc1 against the page FACT.
-3. Next design: dgb_01 cross-array triangles (49 lists) with GSET-W in place; then the 72 inherit-and-unsup lists (ntab_inherit.txt `itab unsup`).
-- An uninitialised vtx field from nd_rec_data (nd_rec.c:482 does not clear the memory) makes the drec bytes depend on the stream layout. Such a gate fails only at that draw (chomp_drop, FXENT3).
+1. Answer GSETI, PIPEFX, DLCRD coder questions (SendMessage, file:line).
+2. FXVROM: dry-run the nd_gtab_test normalisation, then write ws_FXVROM (Haiku; nd_gfx_conv.c, nd_gconv.h, nd_gtab_test.c, a vrom.sh seeded test,
+   gset.d/FXVROM.txt = the 118 src/effects/gfx sources). Gate: host conv2c bad 0, 4 drec benches; a diff goes to the user.
+3. Then: FXTYPE codemod (after Merge FXVROM), A(x) namespace in gen_gfx_syms.py, model.c design, pra_31 skeleton.
