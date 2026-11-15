@@ -1483,7 +1483,7 @@ def store_base(commit, bench, scenario_name, shots, log, info):
     dst = store_root() / commit / bench
     shutil.rmtree(dst, ignore_errors=True)
     dst.mkdir(parents=True)
-    names = sorted(p.name for p in shots.iterdir() if p.is_file())
+    names = sorted(p.name for p in shots.iterdir() if p.is_file()) if shots.is_dir() else []
     for n in names:
         shutil.copy2(shots / n, dst / n)
     if log.exists():
@@ -1669,7 +1669,9 @@ def base_run(bds, commit, build_no, row, lane, label, why):
             print("base %s: TOOL FAULT: the two runs ran on slots %s and %s, not stored." % (bd["name"], sa.group(1) if sa else "?", sb.group(1) if sb else "?"))
             bad += 1
             continue
-        diff = shots_diff(first.get("shot_path") or "", last.get("shot_path") or "")
+        # ISEED: a log-only bench (needs_picture false) makes no shot folder; the stored base is its log (store_base copies run.log)
+        logonly = not s.get("needs_picture", True) and not Path(last.get("shot_path") or "x").is_dir()
+        diff = "" if logonly else shots_diff(first.get("shot_path") or "", last.get("shot_path") or "")
         if diff:
             # BASEKEEP: keep both shot sets of the pair and name every differing shot
             fails = shots_diff_all(first.get("shot_path") or "", last.get("shot_path") or "")

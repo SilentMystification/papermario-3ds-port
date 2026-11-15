@@ -1,0 +1,34 @@
+{
+  "benches": [
+    {
+      "name": "iseed_cap",
+      "kind": "azahar_stream",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "ISEED capture: entcap lines of 10 effects. Log only.",
+      "scenario": "iseed_cap",
+      "cap": 45,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "det"
+      ],
+      "gates": []
+    },
+    {
+      "name": "iseed_chk",
+      "kind": "azahar_stream",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "ISEED check: psochk lines of the same effects. Log only.",
+      "scenario": "iseed_chk",
+      "cap": 45,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "det"
+      ],
+      "gates": []
+    }
+  ]
+}
