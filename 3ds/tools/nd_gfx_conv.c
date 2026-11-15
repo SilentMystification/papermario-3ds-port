@@ -173,7 +173,7 @@ static void conv(const GSym* g) {
  * called list runs on the state of its call point, and the state it leaves stays), tracks the state groups of an NdPsoDesc, the tile state of tile 0
  * (the walker's set_tile / set_loadtile / set_loadblock / set_timg / set_loadtlut / set_tilesize rules, tex_win0 of nd_texwin.c), the matrices and the
  * colours. A list that reaches a triangle before it has set a combine, the cycle bits of other mode H and G_TEXTURE inherits state from its caller:
- * it gets no table (ntab_inherit.txt). A list with a unit the v2 form has no op for (lights, scissor, rectangles, convert and key words, tile 1, an
+ * it gets no table (ntab_inherit.txt). A list with a unit the v2 form has no op for (lights outside a Lights1 symbol, scissor, rectangles, convert and key words, tile 1, an
  * address outside the set) gets none either (ntab_unsup.txt, the reason). There is never a v1 fallback inside a v2 table. ---- */
 #include "nd_int.h"
 #include "nd_vslot.h"
@@ -207,6 +207,7 @@ typedef struct {
     int emitted_pso, emitted_bind, emitted_bind1;
     char unsup[160];
     int inh; char inh_groups[64], inh_first[160];
+    unsigned lit; /* LIT1: the walk saw a light unit (NDO_MOVEMEM of a Lights1 symbol) */
     uint32_t uw[2u * V2_MAXOPS]; char ue[V2_MAXOPS][160]; unsigned nu; /* the depth-0 typed units (CONV2D): words, and the address text (ue[i][0] == 0: no address) */
     unsigned nk; /* CONV2D2: words to the stop */
     char nm[96]; unsigned entry; /* CONV2C2: table name, NdNTab.entry (0 none, else desc id + 1) */
@@ -404,10 +405,11 @@ static void v2_unit_add(unsigned k, unsigned id, uint32_t w0, uint32_t w1) {
     else if (id == NDO_TIMG) kind = GS_IMG;
     else if (id == NDO_CALL) kind = GS_GFX;
     else if (id == NDO_MTX) kind = GS_MTX;
+    else if (id == NDO_MOVEMEM) kind = GS_LIT;
     if (kind < 0 || !(w1 && (w1 >> 24) >= 16u)) return;
-    if (kind == GS_MTX) { /* an Mtx is not an array: its address is the object itself */
+    if (kind == GS_MTX || kind == GS_LIT) { /* an Mtx or a Lights1 is not an array: its address is the object itself */
         unsigned off = 0;
-        const GSym* ms = sym_of(w1, GS_MTX, &off);
+        const GSym* ms = sym_of(w1, kind, &off);
         if (!ms) { v2_unsup("unit address outside the symbol map", k); return; }
         snprintf(cx->ue[i], sizeof cx->ue[i], "(const char*)&%s + %u", ms->name, off);
     } else if (kind == GS_GFX) { /* GSET: a moved list has no symbol; its call unit is its device key &ndd_<name> (whole list only) */
@@ -471,8 +473,14 @@ static int v2_walk(const GSym* g, unsigned k0, unsigned depth) {
             v2_state_op(NDN_XF, a & 0xffu, 0, w1, NULL);
             break;
         case NDO_POPMTX: v2_state_op(NDN_XF, 0xffu, 0, w1, NULL); break;
-        case NDO_MW: if ((a >> 16) != NDO_MW_NONE) v2_unsup(v2_opname(id), k); break;
-        case NDO_FILL: case NDO_PRIMZ: case NDO_SCISSOR: case NDO_MOVEMEM: case NDO_RARE: case NDO_RECT: case NDO_MISC:
+        case NDO_MW: if ((a >> 16) != NDO_MW_NONE && (a >> 16) != NDO_MW_NUMLIGHT) v2_unsup(v2_opname(id), k); break;
+        case NDO_MOVEMEM: { /* LIT1: a light of a Lights1 symbol is a unit only (nd_ntab_run runs the units, nd_walk.c:599) */
+            unsigned loff;
+            if ((a & 0xffu) != G_MV_LIGHT || !sym_of(w1, GS_LIT, &loff)) v2_unsup(v2_opname(id), k);
+            else cx->lit = 1;
+            break;
+        }
+        case NDO_FILL: case NDO_PRIMZ: case NDO_SCISSOR: case NDO_RARE: case NDO_RECT: case NDO_MISC:
             v2_unsup(v2_opname(id), k);
             break;
         case NDO_TIMG: {
@@ -510,6 +518,7 @@ static int v2_walk(const GSym* g, unsigned k0, unsigned depth) {
             break;
         }
         case NDO_TRI1: case NDO_TRI2: {
+            if (cx->lit && (s->geom & G_LIGHTING)) { v2_unsup("lit draw after a light unit", k); break; }
             v2_inherit_check(k, g, id);
             NdVsOp o;
             memset(&o, 0, sizeof o);
@@ -829,6 +838,7 @@ int main(int argc, char** argv) {
         }
         else if (s->kind == GS_VTX) printf("extern Vtx %s[];\n", s->name);
         else if (s->kind == GS_MTX) printf("extern Mtx %s;\n", s->name);
+        else if (s->kind == GS_LIT) printf("extern Lights1 %s;\n", s->name);
     }
     for (unsigned i = 0; i < gconv_nsym; i++) {
         if (gconv_sym[i].kind != GS_GFX) continue;
