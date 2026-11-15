@@ -5,6 +5,8 @@
 #include "nd_cmd.h"
 #include "nd_op.h" /* HC4e2b: the typed unit of a list word */
 #include "nd_tx.h"
+#include "nd_gtab.h"
+#include "pm_port.h"
 
 typedef struct DisplayListBufferHandle {
     /* 0x0 */ s32 ttl;
@@ -897,31 +899,21 @@ void appendGfx_animator_node(ModelAnimator* animator, AnimatorNode* node, Matrix
              * (vertexStartOffset >= 0) is a fresh heap copy of the list with per frame vertices every frame: named fallback ent_dynvtx, the walker runs it. */
             nd_rec_ent_draw(node->displayList, gAnimVtxSegment, animator->baseAddr != nullptr ? VIRTUAL_TO_PHYSICAL(animator->baseAddr) : 0, 1); /* DIRECT D3: word 2 w0 1 = the animator form (log); the record and its G_DL go to the frame stream */
         } else {
+            const NdNDev* mesh = nd_ntab_find(node->displayList); /* MESH1: the device units of the list (a moved list's key is its entry) */
+            const uint32_t* units = mesh != nullptr ? mesh->u : (const uint32_t*)node->displayList;
+            s32 nu = mesh != nullptr ? (s32)mesh->nu : 0;
             Gfx* gfxPos;
             s32 vtxIdx, dlIdx;
-            s32 j = 0;
+            s32 j;
             s32 k;
 
-            {
-                uint32_t t0[2];
-                t0[0] = node->displayList[0].words.w0; t0[1] = node->displayList[0].words.w1;
-                if ((t0[0] >> 0x18) != NDO_END) {
-                    Gfx* gfxPtr = node->displayList;
-                    s32 endDL = NDO_END;
-
-                    for(;; j++) {
-                        uint32_t t[2];
-                        t[0] = gfxPtr->words.w0; t[1] = gfxPtr->words.w1;
-                        w0 = t[0];
-                        gfxPtr++;
-                        cmd = w0 >> 0x18;
-                        if (cmd == endDL) {
-                            break;
-                        }
-                    }
+            if (mesh == nullptr) {
+                while ((units[2 * nu] >> 24) != NDO_END) {
+                    nu++;
                 }
             }
-            j++;
+            j = nu + 1;
+            { static int s_mesh_log; if (!s_mesh_log) { s_mesh_log = 1; pm_log_evt("anim mesh f%u units %d dev %d", pm_frame_count(), (int)nu, mesh != nullptr); } }
             for (k = 0; k < ARRAY_COUNT(D_801536C0); k++) {
                 bufferHandle = &D_801536C0[k];
                 if (bufferHandle->ttl < 0) {
@@ -937,19 +929,10 @@ void appendGfx_animator_node(ModelAnimator* animator, AnimatorNode* node, Matrix
             vtxIdx = 0;
             dlIdx = 0;
 
-            do {
-                w0 = ((s32*)node->displayList)[dlIdx++];
-                w1 = ((s32*)node->displayList)[dlIdx++];
-                { /* HC4e2b: the copy takes the typed unit (ND_X0/ND_X1 of the word; a typed word stays) */
-                    uint32_t t[2];
-                    t[0] = (uint32_t)w0; t[1] = (uint32_t)w1;
-                    w0 = (s32)t[0];
-                    w1 = (s32)t[1];
-                }
+            for (dlIdx = 0; dlIdx < nu; dlIdx++) {
+                w0 = (s32)units[2 * dlIdx];
+                w1 = (s32)units[2 * dlIdx + 1];
                 cmd = w0 >> 0x18;
-                if (cmd == NDO_END) {
-                    break;
-                }
                 if (cmd == NDO_VTX) {
                     s32 startIdx = _SHIFTR(w0,1,7);
                     s32 vtxCount = _SHIFTR(w0,12,8);
@@ -977,7 +960,7 @@ void appendGfx_animator_node(ModelAnimator* animator, AnimatorNode* node, Matrix
                     temp[0]->words.w0 = w0;
                     temp[0]->words.w1 = w1;
                 }
-            } while (true);
+            }
 
             gSPEndDisplayList(gfxPos++);
             gSPDisplayList(gMainGfxPos++, bufferHandle->addr);
