@@ -1,6 +1,7 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main b1d32df25, 2026-11-14. Twelfth oracle: FXENT3 fault answers, FXREST2 facts (below). Eleventh oracle: ws_GCONVW. Tenth: ws_FXENT3. Ninth oracle: ws_PSOLK, ws_RECROOT, ws_FXENT2, ws_GSET2, ws_GSET3; design_lookahead 5, 6, 9.
+State: main c4d4b7875, 2026-11-15. Thirteenth oracle: ws_ROOTCM, ws_GTIN (FACT listcen 40518d695: C1 805, C2 288, C5 12798, C6 1100, C7 1768, C8 777, C10 16).
+Next design cores (no Haiku page yet): inherit seed at the call unit (entity/model 67 + effects 171 inherit lists), lights in the converter (dgb_01 168), model.c ND_RM_REC, 114 root list calls with no entry. Twelfth oracle: FXENT3 fault answers, FXREST2 facts (below). Eleventh oracle: ws_GCONVW. Tenth: ws_FXENT3. Ninth oracle: ws_PSOLK, ws_RECROOT, ws_FXENT2, ws_GSET2, ws_GSET3; design_lookahead 5, 6, 9.
 ## Goal
 Remove the display list system completely (plan_endgame.md v3). Done only when `3ds/tools/elfgate.py` prints
 `func 0 data 0 gfxnames 0` and every LISTCEN2 counter C1..C12 is 0.
