@@ -12,13 +12,14 @@ X is not named on a hold line (hold_line) or in an unmoved block of the file (a 
 order, after the first line `#include "<source path>"`. The device file keeps one line `NDN_DECL(X);` in its place.
 Then every source file under src/ and include/ (not src/effects/gfx) rewrites the moved names: `extern Gfx X[];` -> `NDN_DECL(X);`, any other use of X -> `NDN(X)`
 (nd_gtab.h). A line with `X[`, `&X`, `sizeof`, BranchList or SetCustomGfx stays and prints `gset keep <file>:<line>`: the list has no symbol, so that
-line must be edited by hand. Prints `gset moved <k> files <f> keep <c>` then `gset ok` or `gset FAIL` (exit 1 on a keep line)."""
+line must be edited by hand. Prints `gset moved <k> files <f> keep <c>` then `gset ok` or `gset FAIL` (exit 1 on a keep line). A user file that defines a moved name itself keeps that name and prints `gset own <file> <n>`."""
 import pathlib
 import re
 import sys
 
 KEEP_RULE = True  # the seeded test (3ds/tests/host.d/gset.sh) runs a copy with this False and expects a diff
 HOLD_RULE = True  # GSETB: the seeded test (gset.sh) runs a copy with this False and expects a diff
+OWN_RULE = True  # ISTAR: a user file that defines a moved name keeps its own copy (PAL twins); the seeded test (gset.sh) runs a copy with this False
 BLOCK_END = "};"  # the block closing line (exact, CR dropped); the seeded test in gset.sh changes this and is_block_end
 DEF = re.compile(r"^\s*(?:const\s+)?Gfx\s+(\w+)\s*\[", re.M)
 BLOCK_OPEN = re.compile(r"^Gfx (\w+)\[\] = \{")
@@ -185,9 +186,17 @@ def rewrite_users(root, names):
         text = f.read_text(encoding="utf-8", errors="replace")
         if not shield.search(text):
             continue
+        own = set(DEF.findall(text)) & set(names) if OWN_RULE else set()
+        sh = shield
+        if own:
+            print(f"gset own {rel} {len(own)}")
+            rest = [n for n in names if n not in own]
+            if not rest:
+                continue
+            sh = re.compile(r"(?<!NDN\()(?<!NDN_DECL\()(?<!\w)(" + "|".join(re.escape(n) for n in rest) + r")(?!\w)")
         out, changed, keep_here = [], False, 0
         for i, ln in enumerate(text.split("\n"), 1):
-            if not shield.search(ln):
+            if not sh.search(ln):
                 out.append(ln)
                 continue
             d = DECL.match(ln)
@@ -195,7 +204,7 @@ def rewrite_users(root, names):
                 out.append(f"{d.group(1)}NDN_DECL({d.group(2)});")
                 changed = True
                 continue
-            hit = shield.findall(ln)
+            hit = sh.findall(ln)
             bad = KEEP_RULE and hold_line(ln, hit)
             if bad:
                 print(f"gset keep {rel}:{i}")
@@ -203,7 +212,7 @@ def rewrite_users(root, names):
                 nkeep += 1
                 out.append(ln)
                 continue
-            out.append(shield.sub(lambda m: f"NDN({m.group(1)})", ln))
+            out.append(sh.sub(lambda m: f"NDN({m.group(1)})", ln))
             changed = True
         if not changed:
             continue
