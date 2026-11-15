@@ -114,6 +114,7 @@ typedef struct NdNTab {
  * list address at the first nd_ntab_find. nd_ntab_find: the table of a list, or NULL. nd_ntab_run: a table as its NDN_UNIT copy in nd_walk.c. */
 /* CONV2D2, core 0 only. n = the word pairs of the list from unit 0 to the stop (NOPs counted): nd_walk_state(list, n) runs the unit copy. */
 typedef struct NdNDev { const void* list; uint32_t fl; const uint32_t* u; uint32_t nu; uint32_t ntri; } NdNDev; /* GKEY1: fl = nd_gt_state_only of the list (converter) */
+void nd_rec_ndev(const NdNDev* e); /* MESHST: record a built NdNDev (nd_mesh.h): it runs as nd_ntab_rec, no list key, no cache */
 extern const NdNDev* ndn_dev_idx[]; /* GKEY1: &ndd_<list> per entry, sorted by ->list at the first nd_ntab_find */
 extern const unsigned ndn_dev_n;
 const NdNDev* nd_ntab_find(const void* list);

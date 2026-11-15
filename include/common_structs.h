@@ -1101,7 +1101,8 @@ typedef struct AnimatorNode {
     /*      */   s32 modelID;
     /*      */   Vtx* vtxList;
     /*      */ } fcData;
-} AnimatorNode; // size = 0x100
+    /* 0x100 */ void* ndMesh; /* MESHST: the NdMesh of a mesh node, nullptr until its first draw */
+} AnimatorNode; // size = 0x104
 
 typedef struct AnimatorNodeBlueprint {
     /* 0x00 */ void* displayList;
