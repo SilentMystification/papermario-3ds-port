@@ -972,7 +972,7 @@ void filemenu_draw_contents_copy_arrow(MenuPanel* menu, s32 baseX, s32 baseY, s3
     guMtxF2L(transformMtx, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
-    gSPDisplayList(gMainGfxPos++, NDN(filemenu_dl_copyarrow));
+    nd_draw_list(NDN(filemenu_dl_copyarrow), ND_SELF);
     nd_val_prim(0, 0, 0, 0, 0, 128);
     nd_val_env(0, 0, 0, 0);
 
@@ -984,7 +984,7 @@ void filemenu_draw_contents_copy_arrow(MenuPanel* menu, s32 baseX, s32 baseY, s3
     guMtxF2L(transformMtx, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gSPDisplayList(gMainGfxPos++, D_8024B6F0);
+    nd_draw_list(D_8024B6F0, ND_SELF);
     nd_xf_pop(G_MTX_MODELVIEW);
 
     guTranslateF(tempMtx, CopyArrowAnimOffsets[gGameStatusPtr->frameCounter % ARRAY_COUNT(CopyArrowAnimOffsets)], 0.0f, 0.0f);
@@ -1006,7 +1006,7 @@ void filemenu_draw_contents_copy_arrow(MenuPanel* menu, s32 baseX, s32 baseY, s3
     guMtxF2L(transformMtx, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gSPDisplayList(gMainGfxPos++, D_8024B6F0);
+    nd_draw_list(D_8024B6F0, ND_SELF);
     nd_xf_pop(G_MTX_MODELVIEW);
 
     guTranslateF(tempMtx, CopyArrowAnimOffsets[(gGameStatusPtr->frameCounter % ARRAY_COUNT(CopyArrowAnimOffsets))], 0.0f, 0.0f);

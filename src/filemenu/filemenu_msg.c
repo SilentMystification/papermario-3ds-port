@@ -702,7 +702,7 @@ s32 filemenu_draw_char(s32 c, s32 x, s32 y, s32 flag1, s32 color, s32 flag2) {
 #endif
         charWidth = charData->charWidthTable[c];
         if (gMainGfxPos != filemenu_savedGfxPos || nd_rec_pos() != filemenu_savedStreamPos) {
-            gSPDisplayList(gMainGfxPos++, NDN(filemenu_dl_draw_char_init));
+            nd_draw_list(NDN(filemenu_dl_draw_char_init), ND_SELF);
             filemenu_char_color = -1;
         }
 
@@ -748,7 +748,7 @@ s32 filemenu_draw_char(s32 c, s32 x, s32 y, s32 flag1, s32 color, s32 flag2) {
         load_font_data(charset_standard_OFFSET + offset * 0x80, 0x80, &filemenu_glyphBuffer[*offsetPtr][0]);
 
         if (gMainGfxPos != filemenu_savedGfxPos || nd_rec_pos() != filemenu_savedStreamPos) {
-            gSPDisplayList(gMainGfxPos++, NDN(filemenu_dl_draw_char_init));
+            nd_draw_list(NDN(filemenu_dl_draw_char_init), ND_SELF);
             filemenu_char_color = -1;
         }
 

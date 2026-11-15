@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_xf.h"
 #include "include_asset.h"
 
 #define NAMESPACE speech_bubble
@@ -57,8 +58,7 @@ void appendGfx_speech_bubble(void) {
         guMtxCatF(mtxTemp, mtxTransform, mtxTransform);
         guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-                  G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
         gSPDisplayList(gMainGfxPos++, &speech_bubble_gfx);
 
         ifxImg.raster  = speech_bubble_img;
@@ -73,7 +73,7 @@ void appendGfx_speech_bubble(void) {
                     SpeechBubblePtr->brightness, SpeechBubblePtr->brightness, SpeechBubblePtr->brightness, 255, 0x440);
         imgfx_appendGfx_component(0, &ifxImg, IMGFX_FLAG_SKIP_ZBUF, mtxTransform);
 
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        nd_xf_pop(G_MTX_MODELVIEW);
     }
 }
 

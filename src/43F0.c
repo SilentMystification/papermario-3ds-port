@@ -771,7 +771,7 @@ f32 update_lerp(s32 easing, f32 start, f32 end, s32 elapsed, s32 duration) {
 }
 
 void appendGfx_startup_prim_rect(u8 r, u8 g, u8 b, u8 a, u16 left, u16 top, u16 right, u16 bottom) {
-    gSPDisplayList(gMainGfxPos++, NDN(D_80074580));
+    nd_draw_list(NDN(D_80074580), ND_SELF);
 
     if (a == 255) {
         nd_pso_rm(G_RM_OPA_SURF, G_RM_OPA_SURF2);

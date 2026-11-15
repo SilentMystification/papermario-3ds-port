@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_xf.h"
 #include "include_asset.h"
 
 typedef struct ISpyNotification {
@@ -45,7 +46,7 @@ void appendGfx_ispy_icon(void) {
         guMtxCatF(matrix1, matrix2, matrix2);
         guMtxF2L(matrix2, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], 3);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], 3);
         gSPDisplayList(gMainGfxPos++, ispy_icon_gfx);
 
         if (ISpyPtr->time < 47) {
@@ -84,7 +85,7 @@ void appendGfx_ispy_icon(void) {
         ifxImg.alpha = 255;
 
         imgfx_appendGfx_component(0, &ifxImg, 0, matrix2);
-        gSPPopMatrix(gMainGfxPos++, 0);
+        nd_xf_pop(0);
     }
 }
 

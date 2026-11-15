@@ -566,7 +566,7 @@ void pause_badges_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 width
                     orbColorG1 = 255;
                     orbColorB1 = 100;
 
-                    gSPDisplayList(gMainGfxPos++, NDN(PauseGfxOrbs));
+                    nd_draw_list(NDN(PauseGfxOrbs), ND_SELF);
                     nd_pso_filt(G_TF_BILERP);
 
                     if (isEquipped == 0) {
@@ -692,7 +692,7 @@ void pause_badges_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 width
     orbColorG = 255;
     orbColorB = 100;
     maxBP = playerData->maxBP;
-    gSPDisplayList(gMainGfxPos++, NDN(PauseGfxOrbs));
+    nd_draw_list(NDN(PauseGfxOrbs), ND_SELF);
     nd_pso_filt(G_TF_BILERP);
     for (orbIndex = 0; orbIndex < maxBP; orbIndex++) {
         nd_val_prim(0, 0, 227, 227, 227, 255);

@@ -844,7 +844,7 @@ void imgfx_appendGfx_mesh(ImgFXState* state, Matrix4f mtx) {
 
 
     if (!(state->flags & IMGFX_FLAG_SKIP_GFX_SETUP)) {
-        gSPDisplayList(gMainGfxPos++, NDN(DefaultImgFXSetupGfx));
+        nd_draw_list(NDN(DefaultImgFXSetupGfx), ND_SELF);
         if (state->flags & IMGFX_FLAG_NO_FILTERING) {
             nd_pso_filt(G_TF_POINT);
         }

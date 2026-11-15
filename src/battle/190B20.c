@@ -3009,7 +3009,7 @@ void btl_update_ko_status(void) {
 }
 
 void btl_appendGfx_prim_quad(u8 r, u8 g, u8 b, u8 a, u16 left, u16 top, u16 right, u16 bottom) {
-    gSPDisplayList(gMainGfxPos++, NDN(D_80293970));
+    nd_draw_list(NDN(D_80293970), ND_SELF);
 
     /* NATIVEAPI E5b (S5PQUAD): the quad is one fill record (nd_api.h NdFillRec): kind 2 opaque (PM_CC_PRIM_FULL_ALPHA), 3 translucent. */
     {
