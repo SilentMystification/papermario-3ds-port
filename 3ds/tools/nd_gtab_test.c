@@ -379,6 +379,12 @@ static void m_tri(unsigned a, unsigned b, unsigned c) {
     for (int j = 0; j < 3; j++) {
         e->base[j] = nl ? mslot[s[j]].base : NULL;
         e->i[j] = nl ? mslot[s[j]].idx : s[j];
+        const GSym* vs = nl ? m_vsym((uint32_t)(uintptr_t)e->base[j]) : NULL; /* FXVROM: an index past the array end is in the next array in ROM order */
+        while (vs && e->i[j] >= gconv_vtx_len(vs)) {
+            const GSym* nx = gconv_vtx_rom_next(vs);
+            if (!nx) break;
+            e->i[j] -= gconv_vtx_len(vs); vs = nx; e->base[j] = nx->addr;
+        }
     }
     e->d = m_desc(&ms);
     e->tex = ms.td_valid && ms.tex_on;

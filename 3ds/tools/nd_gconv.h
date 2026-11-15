@@ -14,4 +14,29 @@ extern const GSym __start_gconv_sym[];
 extern const GSym __stop_gconv_sym[];
 #define gconv_sym __start_gconv_sym
 #define gconv_nsym ((unsigned)(__stop_gconv_sym - __start_gconv_sym))
+/* FXVROM: the device keeps the Vtx arrays of a source in ROM order. A name D_<seg>_<ROM hex> gives the ROM offset of the array; the next
+ * array in ROM order starts at that offset + 16 * length. No libc: the gconv_tu files include this header after the game headers. */
+static inline unsigned gconv_vtx_len(const GSym* s) { return (unsigned)(((const char*)s->end - (const char*)s->addr) / 16); }
+static inline int gconv_rom_of(const char* nm, unsigned long* r) {
+    const char* u = 0;
+    if (nm[0] != 'D' || nm[1] != '_') return 0;
+    for (const char* p = nm; *p; p++) if (*p == '_') u = p;
+    if (!u[1]) return 0;
+    unsigned long v = 0;
+    for (const char* p = u + 1; *p; p++) {
+        const int c = *p;
+        const int d = c >= '0' && c <= '9' ? c - '0' : c >= 'A' && c <= 'F' ? c - 'A' + 10 : c >= 'a' && c <= 'f' ? c - 'a' + 10 : -1;
+        if (d < 0) return 0;
+        v = v * 16ul + (unsigned long)d;
+    }
+    *r = v;
+    return 1;
+}
+static inline const GSym* gconv_vtx_rom_next(const GSym* s) {
+    unsigned long r, q;
+    if (!gconv_rom_of(s->name, &r)) return 0;
+    r += 16ul * gconv_vtx_len(s);
+    for (unsigned i = 0; i < gconv_nsym; i++) if (gconv_sym[i].kind == GS_VTX && gconv_rom_of(gconv_sym[i].name, &q) && q == r) return &gconv_sym[i];
+    return 0;
+}
 #endif
