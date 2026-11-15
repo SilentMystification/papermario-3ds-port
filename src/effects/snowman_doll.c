@@ -6,7 +6,7 @@ ND_PSO_DESC(pe_snowman_doll_320, 0xfc6096c1, 0x332dfeff, 0x1e082cf0, 0x00504340,
 #include "nd_xf.h"
 
 NDN_DECL(D_090037A8_3C1148);
-extern Gfx D_09003818_3C11B8[];
+NDN_DECL(D_09003818_3C11B8);
 
 s8 D_E00C0A10[] = {
     100,  90,  82,  76,  72,  70,  74, 89, 103, 116,
@@ -318,7 +318,7 @@ void snowman_doll_appendGfx(void* effect) {
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_val_prim(0, 0, data->unk_18, data->unk_1C, data->unk_20, unk_24);
     nd_draw_list(NDN(D_090037A8_3C1148), ND_SELF);
-    nd_draw_list(D_09003818_3C11B8, pe_snowman_doll_320);
+    nd_draw_list(NDN(D_09003818_3C11B8), pe_snowman_doll_320);
     nd_xf_pop(G_MTX_MODELVIEW);
     nd_xf_pop(G_MTX_MODELVIEW);
 }
