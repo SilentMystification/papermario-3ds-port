@@ -1,0 +1,4 @@
+src/entity/model/PadlockBlueFace.c
+src/entity/model/PadlockRedFace.c
+src/entity/model/PadlockRedFrame.c
+src/entity/model/UnusedBlock.c
