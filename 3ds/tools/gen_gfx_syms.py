@@ -4,7 +4,7 @@ Writes the shared file <out gconv_in.c> (it includes the shared sources: effects
 array gconv_sym_in[]. Each own-TU source k (any other source) gets its own file gconv_tu<k>.c next to <out gconv_in.c>
 (it includes its source, nd_gconv.h and its entries as gconv_sym_tu<k>[]). Every array sits in the section gconv_sym
 (GCONV_SEC of 3ds/tools/nd_gconv.h). Prints the path of each gconv_tu<k>.c on stdout, one per line.
-Symbols: every non-static `Gfx NAME[] =`, `Vtx NAME[..] =` and `Mtx NAME =` of the sources and their `#include "*.inc.c"`
+Symbols: every non-static `Gfx NAME[] =`, `Vtx NAME[..] =` and `Mtx NAME =`, `Lights1 NAME =` of the sources and their `#include "*.inc.c"`
 files (under assets/us, src or next to the includer), named `N(x)` as NAMESPACE_x; and every INCLUDE_IMG/PAL/RAW NAME (its
 end from the NAME_gend label of 3ds/tools/gconv_inc/include_asset.h). Run from the repo root."""
 import re
@@ -12,8 +12,9 @@ import sys
 import pathlib
 
 DEF = re.compile(r"^(Gfx|Vtx)\s+(?:N\((\w+)\)|(\w+))\s*\[[^\]]*\]\s*=", re.M)
-JP = re.compile(r"^#if VERSION_JP\b.*?^#(?:else|endif)\b", re.M | re.S)  # FXENT3: the JP branch is not in the ELF
+JP = re.compile(r"^#if VERSION_(?:JP|PAL)\b.*?^#(?:else|endif)\b", re.M | re.S)  # FXENT3: the JP branch is not in the ELF; LIT1: nor the PAL one (US build)
 MTX = re.compile(r"^Mtx\s+(?:N\((\w+)\)|(\w+))\s*(\[[^\]]*\])?\s*=", re.M)
+LIT = re.compile(r"^Lights1\s+(?:N\((\w+)\)|(\w+))\s*=", re.M)  # LIT1
 INC = re.compile(r'^\s*#include\s+"([^"]+\.inc\.c)"', re.M)
 INCLUDE = re.compile(r'^\s*#\s*include\s+"([^"]+)"', re.M)
 IMG = re.compile(r"INCLUDE_(?:IMG|PAL|RAW)\(\s*\"[^\"]*\"\s*,\s*(\w+)\s*\)")
@@ -62,6 +63,8 @@ def scan(path, out, moved=False, parent_ns=None):
         out.append((m.group(1), name_of(path, ns, m.group(2), m.group(3), pre_bad), moved))
     for m in MTX.finditer(text):
         out.append(("Mtx", name_of(path, ns, m.group(1), m.group(2), pre_bad), moved))
+    for m in LIT.finditer(text):
+        out.append(("Lit", name_of(path, ns, m.group(1), m.group(2), pre_bad), moved))
     for name in IMG.findall(text):
         out.append(("Img", name, moved))
     for inc in INC.findall(text):
@@ -96,8 +99,8 @@ def entry_lines(entries):
         if k == "Img":
             lines.append(f'    {{ "{n}", GS_IMG, (const void*){n}, (const void*){n}_gend{tail}')
         else:
-            gk = {"Gfx": "GS_GFX", "Vtx": "GS_VTX", "Mtx": "GS_MTX"}[k]
-            if k == "Mtx":
+            gk = {"Gfx": "GS_GFX", "Vtx": "GS_VTX", "Mtx": "GS_MTX", "Lit": "GS_LIT"}[k]
+            if k in ("Mtx", "Lit"):
                 lines.append(f'    {{ "{n}", {gk}, (const void*)&{n}, (const void*)((const char*)&{n} + sizeof {n}){tail}')
             else:
                 lines.append(f'    {{ "{n}", {gk}, (const void*){n}, (const void*)((const char*){n} + sizeof {n}){tail}')
