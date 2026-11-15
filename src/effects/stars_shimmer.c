@@ -358,7 +358,7 @@ void stars_shimmer_appendGfx(void* effect) {
             }
             nd_val_prim(0, 0, r, g, b, 255);
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            gSPDisplayList(gMainGfxPos++, D_E0044DB0[unk_28 & 7]);
+            nd_rec_dl(D_E0044DB0[unk_28 & 7]);
             nd_xf_pop(G_MTX_MODELVIEW);
         }
     }

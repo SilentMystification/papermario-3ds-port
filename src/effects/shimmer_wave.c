@@ -220,7 +220,7 @@ void shimmer_wave_appendGfx(void* effect) {
 
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
             nd_val_prim(0, 0, unk_50, unk_54, unk_58, part->unk_4C * temp_4C);
-            gSPDisplayList(gMainGfxPos++, D_E0074B60[i & 7]);
+            nd_rec_dl(D_E0074B60[i & 7]);
             nd_xf_pop(G_MTX_MODELVIEW);
         }
     }

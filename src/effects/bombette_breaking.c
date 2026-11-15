@@ -232,7 +232,7 @@ void bombette_breaking_appendGfx(void* effect) {
                          data->unk_14.x, data->unk_14.y, data->unk_14.z);
         guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        gSPDisplayList(gMainGfxPos++, D_E0084E1C[type]);
+        nd_rec_dl(D_E0084E1C[type]);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 
@@ -246,7 +246,7 @@ void bombette_breaking_appendGfx(void* effect) {
                          data->center.x, data->center.y, data->center.z);
         guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        gSPDisplayList(gMainGfxPos++, sp60);
+        nd_rec_dl(sp60);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 
