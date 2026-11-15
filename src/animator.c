@@ -7,6 +7,9 @@
 #include "nd_tx.h"
 #include "nd_gtab.h"
 #include "pm_port.h"
+#include "nd_mesh.h"
+
+extern s32 gGeneralHeapGen;
 
 typedef struct DisplayListBufferHandle {
     /* 0x0 */ s32 ttl;
@@ -65,13 +68,9 @@ AnimScript gAnimScriptDefault = {
 
 void appendGfx_animator_node(ModelAnimator*, AnimatorNode*, Matrix4f);
 
-// copy Vtx array from node->fcData.vtxList, but overwrite xyz coordinates with ones from buffer
-// if animator has own vertexArray, buffer is offset within it
-Vtx* animator_copy_vertices_to_buffer(ModelAnimator* animator, AnimatorNode* node, Vec3s* buffer, s32 vtxCount,
-                                      s32 overhead, s32 startIdx) {
+// MESHST: a built mesh (NdMesh) is freed after 3 frames: core 0 may still read it when the node drops it
+static void animator_free_later(void* p) {
     DisplayListBufferHandle* handle;
-    Vtx* bufferMem;
-    Vtx* nodeVtxList;
     s32 i;
 
     for (i = 0; i < ARRAY_COUNT(D_801533C0); i++) {
@@ -82,30 +81,8 @@ Vtx* animator_copy_vertices_to_buffer(ModelAnimator* animator, AnimatorNode* nod
     }
 
     ASSERT(i < ARRAY_COUNT(D_801533C0));
-
-    bufferMem = general_heap_malloc((vtxCount + overhead) * sizeof(*bufferMem));
-    handle->addr = bufferMem;
-
-    ASSERT(bufferMem != nullptr);
-
+    handle->addr = p;
     handle->ttl = 3;
-    nodeVtxList = &node->fcData.vtxList[startIdx];
-
-    if (animator->baseAddr != nullptr) {
-        i = ((s32)buffer & 0xFFFFFF); // needed to match
-        buffer = (Vec3s*)(i + (s32)animator->baseAddr);
-    }
-
-    for (i = 0; i < vtxCount; i++) {
-        *bufferMem = *nodeVtxList;
-        bufferMem->v.ob[0] = buffer->x;
-        bufferMem->v.ob[1] = buffer->y;
-        bufferMem->v.ob[2] = buffer->z;
-        bufferMem++;
-        buffer++;
-        nodeVtxList++;
-    }
-    return handle->addr;
 }
 
 void animator_make_mirrorZ(Matrix4f mtx) {
@@ -190,6 +167,7 @@ void free_animator_nodes(AnimatorNode* root) {
             free_animator_nodes(root->children[i]);
         }
     }
+    if (root->ndMesh != nullptr && ((NdMesh*)root->ndMesh)->gen == (u32)gGeneralHeapGen) animator_free_later(root->ndMesh);
     heap_free(root);
 }
 
@@ -252,6 +230,7 @@ void delete_model_animator_node(AnimatorNode* node) {
         }
     }
 
+    if (node->ndMesh != nullptr && ((NdMesh*)node->ndMesh)->gen == (u32)gGeneralHeapGen) animator_free_later(node->ndMesh);
     heap_free(node);
 }
 
@@ -394,6 +373,7 @@ AnimatorNode* add_anim_node(ModelAnimator* animator, s32 parentNodeID, AnimatorN
     ret->scale.y = 1.0f;
     ret->scale.z = 1.0f;
     ret->vertexStartOffset = -1;
+    ret->ndMesh = nullptr;
 
     for (i = 0; i < ARRAY_COUNT(ret->children); i++) {
         ret->children[i] = nullptr;
@@ -860,9 +840,6 @@ void appendGfx_animator(ModelAnimator* animator) {
 }
 
 void appendGfx_animator_node(ModelAnimator* animator, AnimatorNode* node, Matrix4f mtx) {
-    DisplayListBufferHandle* bufferHandle;
-    u32 w0,w1;
-    s32 cmd;
     s32 i;
 
     if (node->flags & MODEL_ANIMATOR_FLAG_HIDDEN) {
@@ -901,69 +878,27 @@ void appendGfx_animator_node(ModelAnimator* animator, AnimatorNode* node, Matrix
         } else {
             const NdNDev* mesh = nd_ntab_find(node->displayList); /* MESH1: the device units of the list (a moved list's key is its entry) */
             const uint32_t* units = mesh != nullptr ? mesh->u : (const uint32_t*)node->displayList;
-            s32 nu = mesh != nullptr ? (s32)mesh->nu : 0;
-            Gfx* gfxPos;
-            s32 vtxIdx, dlIdx;
-            s32 j;
-            s32 k;
+            u32 nu = mesh != nullptr ? (u32)mesh->nu : 0;
 
             if (mesh == nullptr) {
                 while ((units[2 * nu] >> 24) != NDO_END) {
                     nu++;
                 }
             }
-            j = nu + 1;
             { static int s_mesh_log; if (!s_mesh_log) { s_mesh_log = 1; pm_log_evt("anim mesh f%u units %d dev %d", pm_frame_count(), (int)nu, mesh != nullptr); } }
-            for (k = 0; k < ARRAY_COUNT(D_801536C0); k++) {
-                bufferHandle = &D_801536C0[k];
-                if (bufferHandle->ttl < 0) {
-                    break;
+            {
+                NdMesh* m = (NdMesh*)node->ndMesh;
+                if (m != nullptr && m->gen != (u32)gGeneralHeapGen) m = nullptr; /* the heap was made again: the buffer is gone */
+                else if (m != nullptr && m->base != animator->baseAddr) { animator_free_later(m); m = nullptr; }
+                if (m == nullptr) {
+                    m = general_heap_malloc(nd_mesh_size(units, nu));
+                    ASSERT(m != nullptr);
+                    nd_mesh_build(m, units, nu, node->fcData.vtxList, node->vertexStartOffset, animator->baseAddr);
+                    m->gen = (u32)gGeneralHeapGen;
+                    node->ndMesh = m;
                 }
+                nd_rec_ndev(&m->d);
             }
-            ASSERT(k < ARRAY_COUNT(D_801536C0));
-
-            bufferHandle->addr = gfxPos = general_heap_malloc(j * sizeof(Gfx));
-            ASSERT(gfxPos != nullptr);
-            bufferHandle->ttl = 3;
-
-            vtxIdx = 0;
-            dlIdx = 0;
-
-            for (dlIdx = 0; dlIdx < nu; dlIdx++) {
-                w0 = (s32)units[2 * dlIdx];
-                w1 = (s32)units[2 * dlIdx + 1];
-                cmd = w0 >> 0x18;
-                if (cmd == NDO_VTX) {
-                    s32 startIdx = _SHIFTR(w0,1,7);
-                    s32 vtxCount = _SHIFTR(w0,12,8);
-                    Vtx* newBuffer;
-
-                    startIdx -= vtxCount;
-
-                    if (node->fcData.vtxList == nullptr) {
-                        newBuffer = &((Vtx*)w1)[node->vertexStartOffset + vtxIdx];
-                        gSPVertex(gfxPos++, newBuffer, vtxCount, startIdx);
-                    } else {
-                        newBuffer = animator_copy_vertices_to_buffer(
-                            animator,
-                            node,
-                            (Vec3s*)(w1 + (node->vertexStartOffset + vtxIdx) * 0x6),
-                            vtxCount,
-                            startIdx,
-                            vtxIdx
-                        );
-                        gSPVertex(gfxPos++, newBuffer, vtxCount, startIdx);
-                    }
-                    vtxIdx += vtxCount;
-                } else {
-                    Gfx* temp[1] = {gfxPos++}; // required to match
-                    temp[0]->words.w0 = w0;
-                    temp[0]->words.w1 = w1;
-                }
-            }
-
-            gSPEndDisplayList(gfxPos++);
-            gSPDisplayList(gMainGfxPos++, bufferHandle->addr);
         }
     }
 

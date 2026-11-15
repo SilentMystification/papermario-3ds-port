@@ -3,7 +3,9 @@
 extern HeapNode heap_generalHead;
 extern HeapNode heap_collisionHead;
 
+s32 gGeneralHeapGen; /* MESHST: a buffer kept across frames (animator.c NdMesh) is gone when this changes */
 HeapNode* general_heap_create(void) {
+    gGeneralHeapGen++;
     return _heap_create(&heap_generalHead, GENERAL_HEAP_SIZE);
 }
 

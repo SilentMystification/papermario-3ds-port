@@ -136,4 +136,5 @@ void nd_rec_dl(const void* list) {
 }
 void nd_rec_dl_e(const void* list, const NdPsoDesc* e) { dl_ent = e; nd_rec_dl(list); dl_ent = NULL; }
 void nd_rec_dl_key(const void* list, unsigned k) { dl_site = (uint32_t)(uintptr_t)__builtin_return_address(0) | ((k & 15u) + 1u) << 28; nd_rec_dl(list); dl_site = 0; }
+void nd_rec_ndev(const NdNDev* e) { const uint32_t rec[2] = { (uint32_t)(uintptr_t)e, 0u }; nd_rec_napi(nd_ntab_rec, rec, 1u); }
 #endif
