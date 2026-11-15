@@ -1,3 +1,4 @@
+#include "common.h"
 #include "include_asset.h"
 
 #if VERSION_JP

@@ -1,0 +1,3 @@
+Gfx E[] = {
+    gsSPEndDisplayList(),
+};

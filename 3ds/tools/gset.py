@@ -17,12 +17,14 @@ import pathlib
 import re
 import sys
 
+TYPE_RULE = True  # CHCONV: a device file that names Gfx and has no common.h include gets one when an include moves; seeded test in gset.sh
 KEEP_RULE = True  # the seeded test (3ds/tests/host.d/gset.sh) runs a copy with this False and expects a diff
 HOLD_RULE = True  # GSETB: the seeded test (gset.sh) runs a copy with this False and expects a diff
 OWN_RULE = True  # ISTAR: a user file that defines a moved name keeps its own copy (PAL twins); the seeded test (gset.sh) runs a copy with this False
 NS_RULE = True  # GSETW: N(x) is rewritten only in the files of its namespace; the seeded test (gset.sh) runs a copy with this False
 INC_HOLD = True  # VSLOT2: an include whose list a kept line of the device file names stays; seeded test in gset.sh
 BLOCK_END = "};"  # the block closing line (exact, CR dropped); the seeded test in gset.sh changes this and is_block_end
+COMMON = re.compile(r'^\s*#include\s+"common\.h"\s*$')
 DEF = re.compile(r"^\s*(?:const\s+)?Gfx\s+(\w+)\s*\[", re.M)
 BLOCK_OPEN = re.compile(r"^Gfx (?:N\((\w+)\)|(\w+))\[\] = \{")
 INC = re.compile(r'^(\s*#include\s+"([^"]+\.inc\.c)")\s*$', re.M)
@@ -88,6 +90,8 @@ def move_includes(root, src, ok, twin_dir, assets):
             out.append(ln)
     if not keep_lines:
         return [], None
+    if TYPE_RULE and re.search(r"(?<!\w)Gfx(?!\w)", "\n".join(out)) and not any(COMMON.match(x) for x in out):
+        out = ['#include "common.h"'] + out
     p.write_text("\n".join(out), encoding="utf-8")
     twin = root / twin_dir / src
     twin.parent.mkdir(parents=True, exist_ok=True)
