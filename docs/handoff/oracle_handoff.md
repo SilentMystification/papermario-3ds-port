@@ -1,6 +1,9 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main 2308ccc573, 2026-11-15. Twentieth oracle: ws_MOON2 (after Merge MOON1), ws_XFT (parallel). Nineteenth: ws_PAUSEH (after Merge HWFIX), ws_MOON1. OPEN:
+State: main e31acda20c, 2026-11-15. Twenty-second oracle: ws_ENTPAD. FACT (converter dry runs in a scratch worktree, docker gen_gfx_tab.sh only): UltraBlock 8 of 9 and
+UltraBlockContent 5 of 6 lists inherit; curtains.c 7 inherit, 2 unsup, 3 tab not ok; sprite.c 8 ok but SprFinal* go into a record word (sprite.c:459), so a move needs design;
+screen_overlays.c 5 stencil lists ok (calls :302-327, :407, :414; no drec bench shows a transition), D_8014E8F0/E9A8 unsup PRIMDEPTH; titlemenu.c fails the host compile (fr/es png).
+Twentieth oracle: ws_MOON2 (after Merge MOON1), ws_XFT (parallel). Nineteenth: ws_PAUSEH (after Merge HWFIX), ws_MOON1. OPEN:
 (a) black coins: ws_COIN (after Merge HWFIX). FACT cause: stale dual_on from a shaded sprite (nd_tex_set.c:508); the item draw with shading on sets no tile 0 size
 (item_entity.c:979-993), so decide is skipped (nd_decide.c:302), legacy mode 2 = texel * vertex colour 0. GUESS only maps with sprite shading. (b) moon air: ws_MOON2.
 (c) map change stutter: ws_XFT, then a console prof run. FACT console 11-11 (build3ds/hw_xl_log.txt #806-#810): seamfix mac_00 103.9 ms inside
