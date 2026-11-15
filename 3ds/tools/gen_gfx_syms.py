@@ -72,7 +72,7 @@ def scan(path, out, moved=False, parent_ns=None):
 
 
 TWIN = "3ds/tools/gfxin/"
-SHARED = ("src/effects/", "src/entity/model/", TWIN)
+SHARED = ("src/effects/", "src/entity/model/")  # GSETB: a twin is shared when its device source is
 
 
 def scan_source(s, syms):
@@ -132,7 +132,7 @@ def main():
             if n not in seen:
                 seen.add(n)
                 mine.append((kind, n, mv))
-        if s.startswith(SHARED):
+        if (s[len(TWIN):] if s.startswith(TWIN) else s).startswith(SHARED):
             shared_srcs.append(s)
             shared_entries += mine
         else:
