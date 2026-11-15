@@ -1,7 +1,8 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "animation_script.h"
 
-extern Gfx Entity_MunchlesiaReset_Render[];
+NDN_DECL(Entity_MunchlesiaReset_Render);
 extern Vtx D_0A000000_E6E660[];
 
 AnimScript Entity_MunchlesiaReset_AnimationIdle = {
@@ -154,7 +155,7 @@ AnimScript Entity_MunchlesiaReset_AnimationReset = {
 };
 
 StaticAnimatorNode Entity_MunchlesiaReset_Node8 = {
-    .displayList = Entity_MunchlesiaReset_Render,
+    .displayList = NDN(Entity_MunchlesiaReset_Render),
     .pos = { 0.0f, 4.0f, 0.0f },
     .sibling = ENTITY_ANIM_NULL,
     .child = ENTITY_ANIM_NULL,
@@ -163,7 +164,7 @@ StaticAnimatorNode Entity_MunchlesiaReset_Node8 = {
 };
 
 StaticAnimatorNode Entity_MunchlesiaReset_Node7 = {
-    .displayList = Entity_MunchlesiaReset_Render,
+    .displayList = NDN(Entity_MunchlesiaReset_Render),
     .pos = { 0.0f, 4.0f, 0.0f },
     .sibling = &Entity_MunchlesiaReset_Node8,
     .child = ENTITY_ANIM_NULL,
@@ -172,7 +173,7 @@ StaticAnimatorNode Entity_MunchlesiaReset_Node7 = {
 };
 
 StaticAnimatorNode Entity_MunchlesiaReset_Node6 = {
-    .displayList = Entity_MunchlesiaReset_Render,
+    .displayList = NDN(Entity_MunchlesiaReset_Render),
     .pos = { 0.0f, 5.0f, 0.0f },
     .sibling = &Entity_MunchlesiaReset_Node7,
     .child = ENTITY_ANIM_NULL,
@@ -181,7 +182,7 @@ StaticAnimatorNode Entity_MunchlesiaReset_Node6 = {
 };
 
 StaticAnimatorNode Entity_MunchlesiaReset_Node5 = {
-    .displayList = Entity_MunchlesiaReset_Render,
+    .displayList = NDN(Entity_MunchlesiaReset_Render),
     .pos = { 0.0f, 4.0f, 0.0f },
     .sibling = &Entity_MunchlesiaReset_Node6,
     .child = ENTITY_ANIM_NULL,
@@ -190,7 +191,7 @@ StaticAnimatorNode Entity_MunchlesiaReset_Node5 = {
 };
 
 StaticAnimatorNode Entity_MunchlesiaReset_Node4 = {
-    .displayList = Entity_MunchlesiaReset_Render,
+    .displayList = NDN(Entity_MunchlesiaReset_Render),
     .pos = { 0.0f, 2.0f, 0.0f },
     .sibling = &Entity_MunchlesiaReset_Node5,
     .child = ENTITY_ANIM_NULL,
@@ -199,7 +200,7 @@ StaticAnimatorNode Entity_MunchlesiaReset_Node4 = {
 };
 
 StaticAnimatorNode Entity_MunchlesiaReset_Node3 = {
-    .displayList = Entity_MunchlesiaReset_Render,
+    .displayList = NDN(Entity_MunchlesiaReset_Render),
     .sibling = &Entity_MunchlesiaReset_Node4,
     .child = ENTITY_ANIM_NULL,
     .vertexStartOffset = 399,
@@ -207,7 +208,7 @@ StaticAnimatorNode Entity_MunchlesiaReset_Node3 = {
 };
 
 StaticAnimatorNode Entity_MunchlesiaReset_Node2 = {
-    .displayList = Entity_MunchlesiaReset_Render,
+    .displayList = NDN(Entity_MunchlesiaReset_Render),
     .sibling = &Entity_MunchlesiaReset_Node3,
     .child = ENTITY_ANIM_NULL,
     .vtxList = D_0A000000_E6E660,
