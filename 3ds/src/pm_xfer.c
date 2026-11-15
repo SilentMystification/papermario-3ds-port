@@ -64,13 +64,14 @@ __attribute__((cold, noinline)) static void xf_print(void) {
     unsigned clr = nd_mc_clears() - xf_clr0;
     char m[9][12];
 #define XF_L1 "%s->%s f%u max %s o34 %u | fade %s load %s rom %u/%u yay0 %u/%u/%s inv %u au %s init %s pre %u"
-#define XF_L2 " | dlc %u/%s mdl %u/%u ent %u tex %u/%u/%s warm %u/%u"
+#define XF_L2 " | dlc %u/%s mdl %u/%u ent %u tex %u/%u/%s warm %u/%u seam %s dlcp %s entt %s"
     const char* kn = xf_kname[xf_kind];
     pm_log_prof_line(xf_kind == XF_MAP ? "xfer map " XF_L1 : xf_kind == XF_BTL ? "xfer battle " XF_L1 : "xfer door " XF_L1, xf_from, xf_to, xf_steps, msf(m[0], xf_max), xf_o34, msf(m[1], xf_fade),
                      msf(m[2], pm_xf.load_t), pm_xf.rom_n, pm_xf.rom_b >> 10, pm_xf.yay_n, pm_xf.yay_b >> 10, msf(m[3], pm_xf.yay_t), pm_xf.inv_n,
                      msf(m[4], pm_xf.au_t), msf(m[5], xf_init), pm_xf.yay_pre);
     pm_log_prof_line("xfer2 %s n%u" XF_L2, kn, ++xf_seq, pm_xf.dlc_n, msf(m[6], pm_xf.dlc_t), pm_xf.mdl_miss, clr,
-                     pm_xf.ent_n, pm_xf.tex_n, pm_xf.tex_b >> 10, msf(m[7], pm_xf.tex_t), pm_xf.warm_f, pm_xf.warm_skip);
+                     pm_xf.ent_n, pm_xf.tex_n, pm_xf.tex_b >> 10, msf(m[7], pm_xf.tex_t), pm_xf.warm_f, pm_xf.warm_skip,
+                     msf(m[0], pm_xf.seam_t), msf(m[1], pm_xf.dlcp_t), msf(m[2], pm_xf.ent_t));
     if (xf_kind == XF_BTL) { /* BTLWIPE: the wipe steps and the audio and drain stages of a battle entry */
         unsigned dn, dus, dmax, pb, pi, pd;
         pm_dspa_dec_read(&dn, &dus, &dmax);

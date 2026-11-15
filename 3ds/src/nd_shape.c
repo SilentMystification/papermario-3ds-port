@@ -186,7 +186,7 @@ __attribute__((cold, noinline)) static const NdSeamTab* seam_get(void) {
     unsigned t0 = pm_ticks();
     const int from_file = seam_load(&seam_tab) == 0;
     seam_ok = from_file || nd_seam_build(&seam_tab, gMapShapeData, 0x40000u) == 0;
-    unsigned us = (pm_ticks() - t0) / 268u;
+    const unsigned dt = pm_ticks() - t0; unsigned us = dt / 268u; if (pm_xf.on) pm_xf.seam_t += dt; /* XFT */
     if (!seam_ok) { pm_log_evt("seamfix map %s nomem us %u", pm_shape_name, us); return NULL; }
     pm_log_evt("seamfix map %s tp %u ins %u mtx %u skip_ref %u lists %u tri %u bedge %u kb %u us %u src %s", pm_shape_name, seam_tab.tp_all, seam_tab.ntp,
         seam_tab.tp_mtx, seam_tab.skip_ref, seam_tab.nlist, seam_tab.ntri, seam_tab.nbedge, (seam_tab.ntp * (unsigned)sizeof(NdTp) + seam_tab.nlist * (unsigned)sizeof(NdSeamList) + 1023u) >> 10, us,
@@ -258,7 +258,7 @@ __attribute__((cold, noinline)) static int dlcp_load(NdObj* o, u32 loff, unsigne
     u8* b = NULL;
     u8* rn = NULL;
     u32 sv = 0, si = 0, sg = 0, nvtx = 0, nidx = 0, ngrp, ngop, av, ai, bsz, nrun, nlit;
-    if (!dlcp_open()) return 0;
+    { const unsigned t0 = pm_ticks(); const int ok = dlcp_open(); if (pm_xf.on) pm_xf.dlcp_t += pm_ticks() - t0; if (!ok) return 0; } /* XFT */
     hi = dlcp_n;
     while (lo < hi) {
         unsigned m = (lo + hi) >> 1;
