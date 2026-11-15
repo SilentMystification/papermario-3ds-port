@@ -16,7 +16,7 @@ PYEOF
   tool=$D/dd.py
 fi
 PATH=$D/bin:$PATH $PY -I $tool --crash 3ds/tests/decdump/crash_a.txt --elf 3ds/tests/decdump/pm_3ds_5774.elf > $D/out.txt 2>&1
-if ! diff 3ds/tests/decdump/expect_a.txt $D/out.txt > $D/diff.txt; then echo "decdump FAIL build"; head -20 $D/diff.txt; exit 1; fi
+if ! diff --strip-trailing-cr 3ds/tests/decdump/expect_a.txt $D/out.txt > $D/diff.txt; then echo "decdump FAIL build"; head -20 $D/diff.txt; exit 1; fi
 [ "${DECDUMP_SEED:-0}" = 1 ] && { echo "decdump seed not seen"; exit 1; }
 head -1 $D/out.txt | grep -q "build #5774$" || { echo "decdump FAIL last block"; exit 1; }
 PATH=$D/bin:$PATH $PY -I $tool --crash 3ds/tests/decdump/crash_a.txt --build 2050 --elf 3ds/tests/decdump/pm_3ds_5774.elf 2>&1 | head -1 | grep -q "build #2050$" || { echo "decdump FAIL --build"; exit 1; }
