@@ -13,5 +13,9 @@ if grep -q "^ntab tables [0-9]* draws [0-9]* bad 0$" /tmp/ndntab_fault.txt; then
 grep -q "^ntab dev entries [0-9]* bad 0$" /tmp/ndntab_fault.txt && { echo "seeded dev fault not seen"; exit 1; }
 grep -q "^ntab dev flag bad [1-9]" /tmp/ndntab_fault.txt || { echo "seeded flag fault not seen"; exit 1; }
 if grep -q "^ntab flat v2 [0-9]* words [0-9]* bad 0$" /tmp/ndntab_fault.txt; then echo "seeded flat fault not seen"; exit 1; fi
+grep -q "^sort gtab n [0-9]* diff [1-9]" /tmp/ndntab_fault.txt || { echo "seeded sort gtab fault not seen"; exit 1; }
+grep -q "^sort ntab n [0-9]* diff [1-9]" /tmp/ndntab_fault.txt || { echo "seeded sort ntab fault not seen"; exit 1; }
 grep "^ntab tables" /tmp/ndntab_fault.txt
-/tmp/ndntab | grep -v "^gtab def"
+/tmp/ndntab > /tmp/ndntab_ok.txt || true
+grep -v "^gtab def" /tmp/ndntab_ok.txt
+grep -q "^sort gtab n [0-9]* diff 0 dup 0$" /tmp/ndntab_ok.txt && grep -q "^sort ntab n [0-9]* diff 0 dup 0$" /tmp/ndntab_ok.txt || { echo "FAIL sort"; exit 1; }

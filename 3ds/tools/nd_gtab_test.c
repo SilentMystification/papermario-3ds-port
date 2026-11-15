@@ -5,6 +5,7 @@
  * mask rule; (d) nd_gtab_find gives each table. Any difference fails. */
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include "ultra64.h"
 #include "nd.h"
 #include "nd_op.h"
@@ -674,8 +675,30 @@ static void v2_compare(int fault) {
 #endif
 
 #ifdef NTAB_V2
+void nd_tab_init(void);
+/* SORTQ: nd_tab_init (qsort) must give the arrays of the old insertion sort. --fault swaps entries 0 and 1 of the reference. */
+static void sort_check(int fault) {
+    const unsigned gn = nd_gtab_n, dn = ndn_dev_n;
+    NdGIdx* g = malloc((gn + 1u) * sizeof *g);
+    const NdNDev** d = malloc((dn + 1u) * sizeof *d);
+    memcpy(g, nd_gtab_idx, gn * sizeof *g);
+    memcpy(d, ndn_dev_idx, dn * sizeof *d);
+    for (unsigned i = 1; i < gn; i++) { const NdGIdx e = g[i]; unsigned j = i; for (; j > 0u && (uintptr_t)g[j - 1u].list > (uintptr_t)e.list; j--) g[j] = g[j - 1u]; g[j] = e; }
+    for (unsigned i = 1; i < dn; i++) { const NdNDev* e = d[i]; unsigned j = i; for (; j > 0u && (uintptr_t)d[j - 1u]->list > (uintptr_t)e->list; j--) d[j] = d[j - 1u]; d[j] = e; }
+    if (fault && gn > 1u) { const NdGIdx t = g[0]; g[0] = g[1]; g[1] = t; }
+    if (fault && dn > 1u) { const NdNDev* t = d[0]; d[0] = d[1]; d[1] = t; }
+    nd_tab_init();
+    unsigned gd = 0, gu = 0, dd = 0, du = 0;
+    for (unsigned i = 0; i < gn; i++) { if (memcmp(&g[i], &nd_gtab_idx[i], sizeof *g)) gd++; if (i && (uintptr_t)nd_gtab_idx[i - 1u].list >= (uintptr_t)nd_gtab_idx[i].list) gu++; }
+    for (unsigned i = 0; i < dn; i++) { if (d[i] != ndn_dev_idx[i]) dd++; if (i && (uintptr_t)ndn_dev_idx[i - 1u]->list >= (uintptr_t)ndn_dev_idx[i]->list) du++; }
+    printf("sort gtab n %u diff %u dup %u\n", gn, gd, gu);
+    printf("sort ntab n %u diff %u dup %u\n", dn, dd, du);
+    if (!fault && (gd || gu || dd || du)) { cur = "all"; fail("sorted index differs from the insertion sort", gd + gu + dd + du); }
+    free(g); free(d);
+}
 int main(int argc, char** argv) {
     const int fault = argc > 1 && !strcmp(argv[1], "--fault");
+    sort_check(fault); /* SORTQ: before the first find sorts the indices */
 #else
 int main(void) {
 #endif
