@@ -8,7 +8,7 @@ ND_PSO_DESC(pe_fire_breath_222, 0xfc322bff, 0x5f0e923f, 0x1e182cf0, 0x0c184b50, 
 
 NDN_DECL(D_09000A00_373DE0);
 extern Gfx D_09000B88_373F68[];
-extern Gfx D_09000C00_373FE0[];
+NDN_DECL(D_09000C00_373FE0);
 NDN_DECL(D_09000C20_374000);
 
 Gfx* D_E006EC00[] = { D_09000B88_373F68, D_09000B88_373F68, D_09000B88_373F68 };
@@ -203,7 +203,7 @@ void fire_breath_appendGfx(void* effect) {
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
         nd_draw_list(NDN(D_09000C20_374000), ND_SELF);
-        nd_draw_list(D_09000C00_373FE0, pe_fire_breath_205);
+        nd_draw_list(NDN(D_09000C00_373FE0), pe_fire_breath_205);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 

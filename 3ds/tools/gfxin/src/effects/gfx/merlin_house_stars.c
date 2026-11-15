@@ -1,2 +1,3 @@
 #include "src/effects/gfx/merlin_house_stars.c"
 #include "effects/gfx/D_09001000_3A6BE0.gfx.inc.c"
+#include "effects/gfx/D_09001418_3A6FF8.gfx.inc.c"

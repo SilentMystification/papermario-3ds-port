@@ -11,3 +11,4 @@
 #include "effects/gfx/D_09003C78_3AECA8.gfx.inc.c"
 #include "effects/gfx/D_09003CE8_3AED18.gfx.inc.c"
 #include "effects/gfx/D_09003D58_3AED88.gfx.inc.c"
+#include "effects/gfx/D_09003DC8_3AEDF8.gfx.inc.c"

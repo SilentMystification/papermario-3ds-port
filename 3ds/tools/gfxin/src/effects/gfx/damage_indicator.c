@@ -20,3 +20,5 @@
 #include "effects/gfx/D_090021C0_3523E0.gfx.inc.c"
 #include "effects/gfx/D_090021E0_352400.gfx.inc.c"
 #include "effects/gfx/D_09002200_352420.gfx.inc.c"
+#include "effects/gfx/D_09002190_3523B0.gfx.inc.c"
+#include "effects/gfx/D_090021A8_3523C8.gfx.inc.c"

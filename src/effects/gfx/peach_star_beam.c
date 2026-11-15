@@ -10,12 +10,6 @@
 #include "effects/gfx/D_09000230_3E6160.vtx.inc.c"
 #include "effects/gfx/D_09000240_3E6170.vtx.inc.c"
 #include "effects/gfx/D_09000250_3E6180.vtx.inc.c"
-#include "effects/gfx/D_09000280_3E61B0.gfx.inc.c"
-#include "effects/gfx/D_090002B8_3E61E8.gfx.inc.c"
-#include "effects/gfx/D_090002E8_3E6218.gfx.inc.c"
-#include "effects/gfx/D_090003A0_3E62D0.gfx.inc.c"
-#include "effects/gfx/D_090003C0_3E62F0.gfx.inc.c"
-#include "effects/gfx/D_090003D0_3E6300.gfx.inc.c"
 
 u8 D_090003E0_3E6310[8] = {};
 
@@ -69,8 +63,5 @@ Gfx D_09005090_3EAFC0[] = {
     gsSPBranchList(D_090050F0_3EB020),
 };
 #include "effects/gfx/D_090050F0_3EB020.gfx.inc.c"
-#include "effects/gfx/D_090054B0_3EB3E0.gfx.inc.c"
 #include "effects/gfx/D_090054F0_3EB420.vtx.inc.c"
 #include "effects/gfx/D_09005530_3EB460.vtx.inc.c"
-#include "effects/gfx/D_09005570_3EB4A0.gfx.inc.c"
-#include "effects/gfx/D_09005590_3EB4C0.gfx.inc.c"
