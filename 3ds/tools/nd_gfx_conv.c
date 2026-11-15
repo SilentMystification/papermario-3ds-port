@@ -211,6 +211,7 @@ typedef struct {
     uint32_t uw[2u * V2_MAXOPS]; char ue[V2_MAXOPS][160]; unsigned nu; /* the depth-0 typed units (CONV2D): words, and the address text (ue[i][0] == 0: no address) */
     unsigned nk; /* CONV2D2: words to the stop */
     char nm[96]; unsigned entry; /* CONV2C2: table name, NdNTab.entry (0 none, else desc id + 1) */
+    struct { unsigned sym; NdPsoDesc d; } cl[256]; unsigned ncl; /* ISEED: the call units at offset 0 with a full state (callee symbol, desc of the state) */
 } V2C;
 static NdPsoDesc v2_desc[V2_MAXDESC];
 static unsigned v2_ndesc;
@@ -218,9 +219,11 @@ static const GSym* v2_tab[V2_MAXTAB];
 static unsigned v2_nk[V2_MAXTAB];
 static unsigned v2_ntri[V2_MAXTAB];
 static V2C* cx;
-static unsigned v2_n_tab, v2_n_inh, v2_n_unsup, v2_n_draw;
+static unsigned v2_n_tab, v2_n_inh, v2_n_unsup, v2_n_draw, v2_n_cseed;
 static char v2_nm[V2_MAXTAB][96]; static unsigned char v2_seed_t[V2_MAXTAB], v2_dup[V2_MAXTAB]; static unsigned v2_n_seed;
 typedef struct { char list[96]; NdPsoDesc d; } V2Pair; static V2Pair v2_pr[1024]; static unsigned v2_npr;
+/* ISEED: the call seeds (callee list, desc of the caller state at the call), and the lists that have a table */
+static V2Pair v2_cp[4096]; static unsigned v2_ncp; static unsigned char v2_cp_done[4096]; static unsigned char v2_has[GS_MAXSYM];
 
 static void v2_unsup(const char* what, unsigned k) {
     if (cx->unsup[0]) return;
@@ -568,6 +571,15 @@ static int v2_walk(const GSym* g, unsigned k0, unsigned depth) {
             unsigned off;
             const GSym* cs = sym_of(w1, GS_GFX, &off);
             if (!cs || off % 8u || depth >= 8u) { v2_unsup("call target outside the set or too deep", k); break; }
+            if (off == 0 && cx->st.has_comb && cx->st.has_tex && (cx->st.omh_set & (3u << G_MDSFT_CYCLETYPE)) == (3u << G_MDSFT_CYCLETYPE)) {
+                const NdPsoDesc cd = v2_make_desc(&cx->st);
+                unsigned j;
+                for (j = 0; j < cx->ncl && !(cx->cl[j].sym == (unsigned)(cs - gconv_sym) && !memcmp(&cx->cl[j].d, &cd, sizeof cd)); j++) {}
+                if (j == cx->ncl) {
+                    if (cx->ncl >= 256u) v2_unsup("too many call seeds", k);
+                    else { cx->cl[cx->ncl].sym = (unsigned)(cs - gconv_sym); cx->cl[cx->ncl].d = cd; cx->ncl++; }
+                }
+            }
             const int term = v2_walk(cs, off / 8u, depth + 1u);
             if ((a & 1u) || term) return 1; /* G_DL_NOPUSH: the callee's end ends this list too */
             break;
@@ -663,6 +675,16 @@ static int v2_one(const GSym* g, const NdPsoDesc* seed, FILE* fu) {
     if (cx->unsup[0]) { if (!seed) { fprintf(fu, "%s: %s\n", g->name, cx->unsup); v2_n_unsup++; } return 0; }
     if (v2_n_tab >= V2_MAXTAB) { fprintf(stderr, "gconv: too many v2 tables\n"); exit(1); }
     v2_emit_table(cx);
+    for (unsigned j = 0; j < cx->ncl; j++) {
+        unsigned q;
+        for (q = 0; q < v2_ncp && !(!strcmp(v2_cp[q].list, gconv_sym[cx->cl[j].sym].name) && !memcmp(&v2_cp[q].d, &cx->cl[j].d, sizeof cx->cl[j].d)); q++) {}
+        if (q < v2_ncp) continue;
+        if (v2_ncp >= 4096u) { fprintf(stderr, "gconv: more than 4096 call seeds\n"); exit(1); }
+        snprintf(v2_cp[v2_ncp].list, sizeof v2_cp[0].list, "%s", gconv_sym[cx->cl[j].sym].name);
+        v2_cp[v2_ncp].d = cx->cl[j].d;
+        v2_ncp++;
+    }
+    v2_has[g - gconv_sym] = 1;
     v2_nk[v2_n_tab] = cx->nk;
     v2_ntri[v2_n_tab] = cx->nidx / 3u;
     snprintf(v2_nm[v2_n_tab], sizeof v2_nm[0], "%s", cx->nm);
@@ -690,6 +712,13 @@ static unsigned v2_state_only(const uint32_t* l) {
     return 0u;
 }
 static V2C v2c_mem;
+static void v2_itx(char** t, const char* ln) {
+    const size_t n = *t ? strlen(*t) : 0, m = strlen(ln);
+    char* r = realloc(*t, n + m + 1);
+    if (!r) { fprintf(stderr, "gconv: out of memory\n"); exit(1); }
+    memcpy(r + n, ln, m + 1);
+    *t = r;
+}
 static void v2_convert_all(const char* descs_path, const char* inh_path, const char* uns_path, const char* idx_path, const char* tab_path, const char* pairs_path) {
     FILE* fi = fopen(inh_path, "w");
     FILE* fu = fopen(uns_path, "w");
@@ -698,15 +727,21 @@ static void v2_convert_all(const char* descs_path, const char* inh_path, const c
     for (unsigned i = 0; i < gconv_nsym; i++) if (gconv_sym[i].kind == GS_IMG) printf("extern char %s[];\n", gconv_sym[i].name);
     for (unsigned i = 0; i < gconv_nsym; i++) if (gconv_sym[i].kind == GS_MTX) printf("extern Mtx %s;\n", gconv_sym[i].name);
     cx = &v2c_mem;
+    /* ISEED: the inherit text of a list is kept until the call-seed passes are done (a call seed can still give the list a table) */
+    char** itxt = calloc(gconv_nsym, sizeof *itxt);
+    char (*ig_s)[64] = calloc(gconv_nsym, sizeof *ig_s);
+    char (*ifi_s)[160] = calloc(gconv_nsym, sizeof *ifi_s);
+    unsigned char* isinh = calloc(gconv_nsym, 1);
+    if (!itxt || !ig_s || !ifi_s || !isinh) { fprintf(stderr, "gconv: out of memory\n"); exit(1); }
     for (unsigned i = 0; i < gconv_nsym; i++) {
         const GSym* g = &gconv_sym[i];
         if (g->kind != GS_GFX) continue;
         const int r = v2_one(g, NULL, fu);
         if (r >= 0) continue;
         /* CONV2C2: an inheriting list gets one table per site desc of its pairs (the seeds); the unseeded inherit line stays when none succeeds */
-        char ig[64], ifi[160];
-        memcpy(ig, cx->inh_groups, sizeof ig); memcpy(ifi, cx->inh_first, sizeof ifi);
-        unsigned tried[256]; unsigned ntr = 0; int any = 0;
+        isinh[i] = 1;
+        memcpy(ig_s[i], cx->inh_groups, sizeof ig_s[i]); memcpy(ifi_s[i], cx->inh_first, sizeof ifi_s[i]);
+        unsigned tried[256]; unsigned ntr = 0;
         for (unsigned p = 0; p < v2_npr; p++) {
             if (strcmp(v2_pr[p].list, g->name)) continue;
             const unsigned id = v2_desc_id(&v2_pr[p].d);
@@ -716,12 +751,40 @@ static void v2_convert_all(const char* descs_path, const char* inh_path, const c
             if (ntr >= 256u) { fprintf(stderr, "gconv: more than 256 descs of %s\n", g->name); exit(1); }
             tried[ntr++] = id;
             const int s = v2_one(g, &v2_pr[p].d, fu);
-            if (s > 0) { any = 1; continue; }
-            if (s < 0) fprintf(fi, "%s: seed %u inherits %s\n", g->name, id, cx->inh_groups);
-            else fprintf(fi, "%s: seed %u unsup %s\n", g->name, id, cx->unsup);
+            if (s > 0) continue;
+            char ln[400];
+            if (s < 0) snprintf(ln, sizeof ln, "%s: seed %u inherits %s\n", g->name, id, cx->inh_groups);
+            else snprintf(ln, sizeof ln, "%s: seed %u unsup %s\n", g->name, id, cx->unsup);
+            v2_itx(&itxt[i], ln);
         }
-        if (!any) {
-            fprintf(fi, "%s: inherits %sfirst draw %s\n", g->name, ig, ifi);
+    }
+    /* ISEED: call seeds. A list without a table takes the states its callers hold at a call of it (offset 0, full state). Passes until none makes a table. */
+    for (int again = 1; again;) {
+        again = 0;
+        for (unsigned i = 0; i < gconv_nsym; i++) {
+            const GSym* g = &gconv_sym[i];
+            if (!isinh[i] || v2_has[i]) continue;
+            for (unsigned q = 0; q < v2_ncp; q++) {
+                if (v2_cp_done[q] || strcmp(v2_cp[q].list, g->name)) continue;
+                v2_cp_done[q] = 1;
+                unsigned p;
+                for (p = 0; p < v2_npr && !(!strcmp(v2_pr[p].list, g->name) && !memcmp(&v2_pr[p].d, &v2_cp[q].d, sizeof v2_cp[q].d)); p++) {}
+                if (p < v2_npr) continue; /* a site desc: the first loop did it */
+                const unsigned id = v2_desc_id(&v2_cp[q].d);
+                const int s = v2_one(g, &v2_cp[q].d, fu);
+                if (s > 0) { v2_n_cseed++; again = 1; continue; }
+                char ln[400];
+                if (s < 0) snprintf(ln, sizeof ln, "%s: seed %u inherits %s\n", g->name, id, cx->inh_groups);
+                else snprintf(ln, sizeof ln, "%s: seed %u unsup %s\n", g->name, id, cx->unsup);
+                v2_itx(&itxt[i], ln);
+            }
+        }
+    }
+    for (unsigned i = 0; i < gconv_nsym; i++) {
+        if (!isinh[i]) continue;
+        if (itxt[i]) fputs(itxt[i], fi);
+        if (!v2_has[i]) {
+            fprintf(fi, "%s: inherits %sfirst draw %s\n", gconv_sym[i].name, ig_s[i], ifi_s[i]);
             v2_n_inh++;
         }
     }
@@ -784,7 +847,7 @@ static void v2_convert_all(const char* descs_path, const char* inh_path, const c
     if (!v2_ndesc) fprintf(fx, "    0\n");
     fprintf(fx, "};\nconst unsigned ndn_ndesc = %uu;\nconst unsigned ndn_inherit = %uu, ndn_unsup = %uu;\n", v2_ndesc, v2_n_inh, v2_n_unsup);
     fclose(fx);
-    fprintf(stderr, "gconv ntab tables %u inherit %u unsup %u descs %u triangles %u seeded %u\n", v2_n_tab, v2_n_inh, v2_n_unsup, v2_ndesc, v2_n_draw, v2_n_seed);
+    fprintf(stderr, "gconv ntab tables %u inherit %u unsup %u descs %u triangles %u seeded %u callseed %u\n", v2_n_tab, v2_n_inh, v2_n_unsup, v2_ndesc, v2_n_draw, v2_n_seed, v2_n_cseed);
 }
 
 /* GSET: the lists that may move (gset_ok.txt, one name per line) and the checks of the moved ones. A list may move when it has a device entry, its v1

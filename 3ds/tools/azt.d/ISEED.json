@@ -1,0 +1,60 @@
+{
+  "scenarios": [
+    {
+      "name": "iseed_cap",
+      "status": "unverified",
+      "subject": "ISEED capture: fxtest effects 13,20,29,52,59,60,61,71,105,111 on mac_01 (pos 0 0 200), cold det start, no shots.",
+      "proves": "ISEED: the entcap lines of the effects and the fxtest: done line.",
+      "debug": "warp=mac_01:0 pos=0:0:200 det fxtest=13,20,29,52,59,60,61,71,105,111 loglevel=debug entcap",
+      "until": "fxtest: done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "entcap",
+          "regex": "entcap l [0-9a-f]{8} s [0-9a-f]{8}"
+        },
+        {
+          "name": "done",
+          "regex": "fxtest: done"
+        }
+      ],
+      "reason": "ISEED capture: log only, no picture (CLAUDE.md 2). Cap 45 s, deadline 40 s, until fxtest: done."
+    },
+    {
+      "name": "iseed_chk",
+      "status": "unverified",
+      "subject": "ISEED check: fxtest effects 13,20,29,52,59,60,61,71,105,111 on mac_01 (pos 0 0 200), cold det start, no shots.",
+      "proves": "ISEED: the psochk lines of the effects and the fxtest: done line.",
+      "debug": "warp=mac_01:0 pos=0:0:200 det fxtest=13,20,29,52,59,60,61,71,105,111 loglevel=debug psochk",
+      "until": "fxtest: done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "psochk",
+          "regex": "psochk f[0-9]+ draws [0-9]+ bad [0-9]+"
+        },
+        {
+          "name": "done",
+          "regex": "fxtest: done"
+        }
+      ],
+      "reason": "ISEED check: log only, no picture (CLAUDE.md 2). Cap 45 s, deadline 40 s, until fxtest: done."
+    }
+  ]
+}
