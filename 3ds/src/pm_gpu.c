@@ -1949,7 +1949,7 @@ void pm_gpu_menu_grey(void) {
     u8* fb;
     size_t n, i;
     if (!gs.gpu_ok) return;
-    gspWaitForPPF(); /* the display transfer of the menu present is done */
+    { gxCmdQueue_s* q = (gxCmdQueue_s*)&__C3D_Context; if (q->numEntries && !gxCmdQueueWait(q, 100000000LL)) { pm_log_w("menu: grey skipped, GX queue not done in 100 ms"); return; } } /* HWFIX: wait for the queue of the present (its last entry is the display transfer, C3D_FrameEnd); the PPF event is sticky (libctru: wait, then clear), so gspWaitForPPF returns at once for an older transfer */
     fb = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, &w, &h);
     top_note(fb);
     n = (size_t)w * h * 3;
