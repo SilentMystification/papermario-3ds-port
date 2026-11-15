@@ -1,18 +1,19 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "animation_script.h"
 
-extern Gfx Entity_HitFloatingYellowBlock_RenderBlock2[];
-extern Gfx Entity_HitFloatingYellowBlock_RenderBlock1[];
+NDN_DECL(Entity_HitFloatingYellowBlock_RenderBlock2);
+NDN_DECL(Entity_HitFloatingYellowBlock_RenderBlock1);
 
 StaticAnimatorNode Entity_HitFloatingYellowBlock_NodeBlock2 = {
-    .displayList = Entity_HitFloatingYellowBlock_RenderBlock2,
+    .displayList = NDN(Entity_HitFloatingYellowBlock_RenderBlock2),
     .pos = { 0.0f, 25.0f, 0.0f },
     .sibling = ENTITY_ANIM_NULL,
     .child = ENTITY_ANIM_NULL,
 };
 
 StaticAnimatorNode Entity_HitFloatingYellowBlock_NodeBlock1 = {
-    .displayList = Entity_HitFloatingYellowBlock_RenderBlock1,
+    .displayList = NDN(Entity_HitFloatingYellowBlock_RenderBlock1),
     .sibling = &Entity_HitFloatingYellowBlock_NodeBlock2,
     .child = ENTITY_ANIM_NULL,
 };

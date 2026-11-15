@@ -1,11 +1,12 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "animation_script.h"
 
-extern Gfx Entity_TrumpetPlant_RenderNode1[];
-extern Gfx Entity_TrumpetPlant_RenderNode2[];
+NDN_DECL(Entity_TrumpetPlant_RenderNode1);
+NDN_DECL(Entity_TrumpetPlant_RenderNode2);
 
 StaticAnimatorNode Entity_TrumpetPlant_Node2 = {
-    .displayList = Entity_TrumpetPlant_RenderNode2,
+    .displayList = NDN(Entity_TrumpetPlant_RenderNode2),
     .rot = { 0, 0, 5461 },
     .pos = { 0.0f, 15.0f, 0.0f },
     .sibling = ENTITY_ANIM_NULL,
@@ -13,7 +14,7 @@ StaticAnimatorNode Entity_TrumpetPlant_Node2 = {
 };
 
 StaticAnimatorNode Entity_TrumpetPlant_Node1 = {
-    .displayList = Entity_TrumpetPlant_RenderNode1,
+    .displayList = NDN(Entity_TrumpetPlant_RenderNode1),
     .sibling = ENTITY_ANIM_NULL,
     .child = &Entity_TrumpetPlant_Node2,
 };

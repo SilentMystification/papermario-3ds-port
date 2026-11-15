@@ -1,8 +1,9 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "ld_addrs.h"
 #include "entity.h"
 
-extern Gfx Entity_Signpost_Render[];
+NDN_DECL(Entity_Signpost_Render);
 
 void entity_Signpost_idle(Entity* entity) {
     PlayerStatus* playerStatus = &gPlayerStatus;
@@ -25,7 +26,7 @@ EntityScript Entity_Signpost_Script = {
     es_End
 };
 
-EntityModelScript Entity_Signpost_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_Signpost_Render, RENDER_MODE_SURFACE_OPA);
+EntityModelScript Entity_Signpost_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_Signpost_Render), RENDER_MODE_SURFACE_OPA);
 
 EntityBlueprint Entity_Signpost = {
     .flags = ENTITY_FLAG_CIRCULAR_SHADOW | ENTITY_FLAG_400 | ENTITY_FLAG_FIXED_SHADOW_SIZE,

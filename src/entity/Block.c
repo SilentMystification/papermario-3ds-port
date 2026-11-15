@@ -6,12 +6,12 @@
 #include "nd_st.h"
 #include "nd_val.h"
 
-extern Gfx Entity_InertYellowBlock_Render[];
-extern Gfx Entity_InertRedBlock_Render[];
+NDN_DECL(Entity_InertYellowBlock_Render);
+NDN_DECL(Entity_InertRedBlock_Render);
 NDN_DECL(Entity_BrickBlock_Render);
-extern Gfx Entity_Hammer1Block_Render[];
-extern Gfx Entity_Hammer2Block_Render[];
-extern Gfx Entity_Hammer3Block_Render[];
+NDN_DECL(Entity_Hammer1Block_Render);
+NDN_DECL(Entity_Hammer2Block_Render);
+NDN_DECL(Entity_Hammer3Block_Render);
 NDN_DECL(Entity_PushBlock_Render);
 NDN_DECL(Entity_PowBlock_Render);
 
@@ -529,17 +529,17 @@ EntityScript Entity_MulticoinBlock_Script = {
     es_End
 };
 
-EntityModelScript Entity_InertYellowBlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_InertYellowBlock_Render, RENDER_MODE_SURFACE_OPA);
+EntityModelScript Entity_InertYellowBlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_InertYellowBlock_Render), RENDER_MODE_SURFACE_OPA);
 
-EntityModelScript Entity_InertRedBlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_InertRedBlock_Render, RENDER_MODE_SURFACE_OPA);
+EntityModelScript Entity_InertRedBlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_InertRedBlock_Render), RENDER_MODE_SURFACE_OPA);
 
 EntityModelScript Entity_MulticoinBrick_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_BrickBlock_Render), RENDER_MODE_SURFACE_OPA);
 
-EntityModelScript Entity_Hammer1Block_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_Hammer1Block_Render, RENDER_MODE_SURFACE_OPA);
+EntityModelScript Entity_Hammer1Block_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_Hammer1Block_Render), RENDER_MODE_SURFACE_OPA);
 
-EntityModelScript Entity_Hammer2Block_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_Hammer2Block_Render, RENDER_MODE_SURFACE_OPA);
+EntityModelScript Entity_Hammer2Block_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_Hammer2Block_Render), RENDER_MODE_SURFACE_OPA);
 
-EntityModelScript Entity_Hammer3Block_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_Hammer3Block_Render, RENDER_MODE_SURFACE_OPA);
+EntityModelScript Entity_Hammer3Block_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_Hammer3Block_Render), RENDER_MODE_SURFACE_OPA);
 
 EntityModelScript Entity_PushBlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_PushBlock_Render), RENDER_MODE_SURFACE_OPA);
 

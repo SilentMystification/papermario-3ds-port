@@ -27,13 +27,3 @@ INCLUDE_PAL("effects/gfx/D_09002C90_32BB30.pal", D_09002E90_32BD30);
 
 #include "effects/gfx/D_09002EB0_32BD50.vtx.inc.c"
 
-#include "effects/gfx/D_09002EF0_32BD90.gfx.inc.c"
-#include "effects/gfx/D_09002F68_32BE08.gfx.inc.c"
-#include "effects/gfx/D_09002FB0_32BE50.gfx.inc.c"
-#include "effects/gfx/D_09003008_32BEA8.gfx.inc.c"
-#include "effects/gfx/D_09003060_32BF00.gfx.inc.c"
-#include "effects/gfx/D_090030B8_32BF58.gfx.inc.c"
-#include "effects/gfx/D_09003110_32BFB0.gfx.inc.c"
-#include "effects/gfx/D_09003168_32C008.gfx.inc.c"
-#include "effects/gfx/D_090031C0_32C060.gfx.inc.c"
-#include "effects/gfx/D_09003218_32C0B8.gfx.inc.c"

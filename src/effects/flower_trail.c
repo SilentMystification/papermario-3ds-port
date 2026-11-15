@@ -1,11 +1,12 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "effects_internal.h"
 #include "pm_interp_fi.h"
 #include "nd_val.h"
 #include "nd_xf.h"
 
-extern Gfx D_09000E20_32DCE0[];
-extern Gfx D_09000E38_32DCF8[];
+NDN_DECL(D_09000E20_32DCE0);
+NDN_DECL(D_09000E38_32DCF8);
 
 void flower_trail_init(EffectInstance* effect);
 void flower_trail_update(EffectInstance* effect);
@@ -174,9 +175,9 @@ void flower_trail_appendGfx(void* argEffect) {
     for (i = 0; i < effect->numParts; i++, part++) {
         if (part->alive) {
             if (part->useAltColor) {
-                dlist = D_09000E20_32DCE0;
+                dlist = NDN(D_09000E20_32DCE0);
             } else {
-                dlist = D_09000E38_32DCF8;
+                dlist = NDN(D_09000E38_32DCF8);
             }
 
             gDisplayContext->matrixStack[gMatrixListPos] = part->transformMtx;

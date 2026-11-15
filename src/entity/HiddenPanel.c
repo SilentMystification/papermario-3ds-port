@@ -12,11 +12,11 @@ s32 npc_find_standing_on_entity(s32 entityIndex);
 
 extern s32 ERS_AltHiddenPanel[];
 
-extern Gfx Gfx_HiddenPanel_RenderTop[];
-extern Gfx Gfx_AltHiddenPanel_RenderTop[];
+NDN_DECL(Gfx_HiddenPanel_RenderTop);
+NDN_DECL(Gfx_AltHiddenPanel_RenderTop);
 NDN_DECL(Gfx_HiddenPanel_RenderHole);
-extern Gfx Gfx_HiddenPanel_Render[];
-extern Gfx Gfx_HiddenPanel_Render2[];
+NDN_DECL(Gfx_HiddenPanel_Render);
+NDN_DECL(Gfx_HiddenPanel_Render2);
 
 void entity_HiddenPanel_setupGfx(s32 entityIndex) {
     Entity* entity = get_entity_by_index(entityIndex);
@@ -322,10 +322,10 @@ void entity_HiddenPanel_init(Entity* entity) {
     guMtxCatF(sp58, sp18, data->entityMatrix);
 
     if (gCurrentHiddenPanels.panelsCount & 1) {
-        dlist = Gfx_AltHiddenPanel_RenderTop;
+        dlist = NDN(Gfx_AltHiddenPanel_RenderTop);
         entity_set_render_script(entity, &ERS_AltHiddenPanel);
     } else {
-        dlist = Gfx_HiddenPanel_RenderTop;
+        dlist = NDN(Gfx_HiddenPanel_RenderTop);
     }
     data->renderDList = ENTITY_ADDR(entity, Gfx*, dlist);
 
@@ -346,7 +346,7 @@ EntityScript Entity_HiddenPanel_Script = {
 EntityModelScript ERS_HiddenPanel = {
     ems_SetRenderMode(RENDER_MODE_SURFACE_OPA)
     ems_SetFlags(ENTITY_MODEL_FLAG_10000)
-    ems_Draw(Gfx_HiddenPanel_Render, 60)
+    ems_Draw(NDN(Gfx_HiddenPanel_Render), 60)
     ems_Restart
     ems_End
 };
@@ -354,7 +354,7 @@ EntityModelScript ERS_HiddenPanel = {
 EntityModelScript ERS_AltHiddenPanel = {
     ems_SetRenderMode(RENDER_MODE_SURFACE_OPA)
     ems_SetFlags(ENTITY_MODEL_FLAG_10000)
-    ems_Draw(Gfx_HiddenPanel_Render2, 60)
+    ems_Draw(NDN(Gfx_HiddenPanel_Render2), 60)
     ems_Restart
     ems_End
 };

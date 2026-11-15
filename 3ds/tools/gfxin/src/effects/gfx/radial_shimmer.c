@@ -7,3 +7,4 @@
 #include "effects/gfx/D_09003830_36A590.gfx.inc.c"
 #include "effects/gfx/D_090039A8_36A708.gfx.inc.c"
 #include "effects/gfx/D_09003A88_36A7E8.gfx.inc.c"
+#include "effects/gfx/D_090037A8_36A508.gfx.inc.c"

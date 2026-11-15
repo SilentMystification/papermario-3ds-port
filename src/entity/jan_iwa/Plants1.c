@@ -19,7 +19,7 @@ extern EntityBlueprint Entity_PinkFlowerLight;
 extern StaticAnimatorNode* Entity_PinkFlower_Mesh[];
 extern AnimScript Entity_PinkFlower_AnimationIdle;
 extern Mtx D_0A001098_E9C598;
-extern Gfx D_0A0013B8_E9C8B8[];
+NDN_DECL(D_0A0013B8_E9C8B8);
 extern Mtx D_0A000B70_E9D470;
 NDN_DECL(D_0A000D18_E9D618);
 NDN_DECL(Entity_SpinningFlower_Render);
@@ -174,7 +174,7 @@ void entity_PinkFlowerLight_setupGfx(s32 entityIndex) {
     nd_val_prim(0, 0, 0, 0, 0, entity->alpha);
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gSPDisplayList(gMainGfxPos++, D_0A0013B8_E9C8B8);
+    gSPDisplayList(gMainGfxPos++, NDN(D_0A0013B8_E9C8B8));
     nd_xf_pop(G_MTX_MODELVIEW);
 }
 

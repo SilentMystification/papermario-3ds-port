@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "npc.h"
 #include "sprite.h"
 #include "ld_addrs.h"
@@ -6,8 +7,8 @@
 #include "sprite/player.h"
 #include "nd_xf.h"
 
-extern Gfx Entity_BlueWarpPipe_RenderPipe[];
-extern Gfx Entity_BlueWarpPipe_RenderBase[];
+NDN_DECL(Entity_BlueWarpPipe_RenderPipe);
+NDN_DECL(Entity_BlueWarpPipe_RenderBase);
 
 void entity_BlueWarpPipe_setupGfx(s32 entityIndex);
 
@@ -156,7 +157,7 @@ void entity_BlueWarpPipe_setupGfx(s32 entityIndex) {
     guMtxCatF(sp10, sp50, sp50);
     guMtxF2L(sp50, &gDisplayContext->matrixStack[gMatrixListPos]);
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gSPDisplayList(gMainGfxPos++, Entity_BlueWarpPipe_RenderBase);
+    gSPDisplayList(gMainGfxPos++, NDN(Entity_BlueWarpPipe_RenderBase));
     nd_xf_pop(G_MTX_MODELVIEW);
 }
 
@@ -191,7 +192,7 @@ EntityScript Entity_BlueWarpPipe_Script = {
     es_End
 };
 
-EntityModelScript Entity_BlueWarpPipe_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_BlueWarpPipe_RenderPipe, RENDER_MODE_SURFACE_OPA);
+EntityModelScript Entity_BlueWarpPipe_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_BlueWarpPipe_RenderPipe), RENDER_MODE_SURFACE_OPA);
 
 EntityBlueprint Entity_BlueWarpPipe = {
     .flags = 0,
