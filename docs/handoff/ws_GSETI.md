@@ -1,6 +1,6 @@
 # ws_GSETI (Haiku): gset block mode moves asset includes; 25 sources join the converter
 Objective: move the ok lists of the asset includes (`#include "x.gfx.inc.c"`) of block-mode sources to the twin. Counters (FACT, dry run on 1df64777c0,
-listcen): C5 data 5149 -> 4378 (-771), C6 data_arrays 461 -> 383 (-78), C7 -1. gset moved 78. gconv lists 1763 -> 1828, bad 0. Worktree build3ds/wt/GSETI, branch GSETI.
+listcen): C5 data 5149 -> 4378 (-771), C6 data_arrays 461 -> 383 (-78), C7 -1. gset moved 78. gconv lists 1763 -> 1828, bad 0, moved 1578 -> 1656; conv2c ok run `ntab tables 1789 draws 30428 bad 0`. Worktree build3ds/wt/GSETI, branch GSETI.
 Files: 3ds/tools/gset.py, 3ds/tests/host.d/gset.sh, 3ds/tests/gset/case_blkinc/ (new), 3ds/tools/gconv_src.d/GSETI.txt (new), 3ds/tools/gset.d/GSETI.txt (new),
 and the sources gset.py rewrites. Do not edit imgfx.c, nd_shape.c, pm_map.c, nd_dlc.c, pm_mapdata.c, heap.c, nd_mesh.h.
 ## Edit 1: gset.py
@@ -28,7 +28,7 @@ Before (src/i_spy.c:50): `gSPDisplayList(gMainGfxPos++, ispy_icon_gfx);`. After:
 1. Edit 1 and 3. `sh 3ds/tools/nd_host_test.sh > build3ds/out/gseti_host1.txt 2>&1`. Pass: ND HOST TESTS PASS, `gset test ok`. Commit `GSETI 1`.
 2. Edit 2. Run the host test once more (gen_gfx_tab.sh copies gset_ok.txt to build3ds/out). Then `python 3ds/tools/gset.py 3ds/tools/gset.d/GSETI.txt build3ds/out/gset_ok.txt`.
    Pass: `gset moved 78 files <f> keep 0` and `gset ok` (78 is FACT of the dry run; another number: stop, send the output to the oracle).
-3. Host test again (> build3ds/out/gseti_host2.txt). Pass: PASS, conv2c line 2 `ntab tables <n> draws <d> bad 0`, `ntab dev entries <n> bad 0`.
+3. Host test again (> build3ds/out/gseti_host2.txt). Pass: PASS, conv2c `ntab tables 1789 draws 30428 bad 0`, `ntab dev entries 1748 bad 0`, `ntab moved 1694` (FACT dry run).
 4. One build. memcheck margin above 0 (GUESS: -10 to -40 KB, DGBJOIN moved 176 lists for -24 KB). Commit `GSETI 2` with listcen totals.
 5. Gate: `bench.py base` then `bench.py run <b> --row GSETI --why "GSETI gate"` and `bench.py cmp <b> --row GSETI --commit $(git merge-base HEAD main)`
    for spot_mac01_drec, sbk14_drec, fxr_drec, fxp_drec. Pass: 1/1 byte-equal each. GUESS: no bench shows pra, iwa, kmr_20/22/23, kzn_19, mgm, hos_05, kkj_19.
