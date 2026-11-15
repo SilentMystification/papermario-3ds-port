@@ -566,7 +566,7 @@ static void slot_span(const Slot* s, int d) {
 
 /* Texture pool in VRAM (GPU path). A miss writes its tiled image into this block. One merged
  * GSPGPU_FlushDataCache per span before each command list submit (pm_tex_flush_pending). */
-#define SLAB_EXT 640
+#define SLAB_EXT 1160 /* HWFIX: free extents <= live slab blocks + 2 bank blocks (slab_free merges both sides); live blocks <= SLOTS + PF_N */
 #define PEND_N 24
 #define PEND_GAP (64u * 1024u)
 /* VRAM2: the cache is one block per bank, sized at boot from what the bank has left after every boot reservation (pm_mem.c
@@ -759,6 +759,7 @@ static void gh_check(unsigned key, unsigned bytes) {
  * and the stage replace call pf_add. pm_tex_gate runs before C3D_FrameBegin: when the GX queue of the previous frame is done (pm_gx_done,
  * no wait) the whole list is released. The GPU runs the queue in order, so a done queue covers every entry added before it. */
 enum { PF_N = 128 };
+_Static_assert(SLAB_EXT >= SLOTS + PF_N + 2, "HWFIX: the extent table holds every free gap");
 typedef struct { u8* p; unsigned bytes; unsigned frame; int slab; } PendFree;
 static PendFree pf_ent[PF_N];
 static unsigned pf_n, pf_max, pf_ops, pf_gate_busy, pf_max_age, pf_rel, pf_over;

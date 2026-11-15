@@ -271,6 +271,7 @@ int pm_is_cur_cfb(const void* p) { const void* c = pm_walk_cfb; return c && (in_
 /* Frame buffer and saved-frame memory hold native u16 pixels (the game code reads them as u16). Textures
  * from ROM data hold big-endian bytes. pm_tex reads these two kinds differently. */
 int pm_fb_native(const void* p) { return pm_is_cfb(p) || (nuGfxZBuffer && in_buf(p, nuGfxZBuffer)); }
+void nd_rec_reserve(void); /* nd_rec.c */
 /* PAUSEC: the saved picture (150 KB) is reserved once at boot, after the ROM is in, when the heap is whole. On the O3DS XL the commit is
  * full after the map loads (crash log: mem heap sbrk-used 26868 of 29512 KB, commit 65536 of 65536), so a first allocation at the pause
  * can fail there. A failed reservation logs an error; pm_zbuf_need retries at the pause, and the filter is skipped if it still fails. */
@@ -950,6 +951,7 @@ static void game_thread(void* arg) {
     if (!pm_rom_init()) return; /* the bottom screen showed the reason */
     pm_mem_log("boot");
     pm_zbuf_reserve(); /* PAUSEC: the pause picture, while the heap is whole (after the ROM, so the ROM check is unchanged) */
+    nd_rec_reserve(); /* HWFIX: stream chunks 0 and 1 of both contexts, while the heap is whole */
     pm_game_bind();
     pm_log("boot_main");
     boot_main(NULL);
