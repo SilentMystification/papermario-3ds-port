@@ -51,3 +51,4 @@ Live files only. Older logs are in archive/ (agent_*, diag_*, inv_*, plan_*, tra
 - audit_warm_runs.md: audit of warm restarts (stale ROM, AZT8 and AZT9c) and picture gates (stale shot, AZT7) for 2026-11-06 12:00 to AZT9c: per gate OK or SUSPECT with run lines, and the rerun list.
 - work_queue.md: older queue (stale; check git log first).
 - ws_DECDOCK.md: decode_dump.py runs addr2line in docker and reads a crash.txt entry (tool fix, Haiku).
+- ws_VCOUNT.md: map change crash fix: mdl_get_vertex_count reads the device units of a moved list (hidden panel stomps 2.9 MB of .data), Haiku.
