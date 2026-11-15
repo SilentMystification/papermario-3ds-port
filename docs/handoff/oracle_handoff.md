@@ -1,6 +1,10 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main e31acda20c, 2026-11-15. Twenty-second oracle: ws_ENTPAD. FACT (converter dry runs in a scratch worktree, docker gen_gfx_tab.sh only): UltraBlock 8 of 9 and
+State: main 09607a5033, 2026-11-15. Twenty-third oracle: ws_IENTRY (start now), ws_IMOVE (after Merge IENTRY). ISEED2 is split: FACT the device reads only the units of a
+table (NdNDev, nd_gfx_conv.c:808-810), so a seed moves no device byte; IENTRY gives the 226 inherit lists an unseeded table (itab 154, gset ok 1075 -> 1211 by dry run).
+Real seeds stay open for the walker-free step: the itab lines of ntab_inherit.txt name the lists. Entity seed source (design, no page): STANDARD_ENTITY_MODEL_SCRIPT(gfx, mode)
+(include/entity.h:56), state = EM_RM(mode) (entity_model.c:56) + em_tail (:57); proof needs an entcap hook in nd_walk_ent (nd_walk.c:162), drec cannot see a seed.
+Left after IMOVE: 12 ok lists outside gset form (item_entity.c, entity_model_icons.c, Shadow.c, tst_13), 72 inherit-and-unsup, 179 parts. Twenty-second oracle: ws_ENTPAD. FACT (converter dry runs in a scratch worktree, docker gen_gfx_tab.sh only): UltraBlock 8 of 9 and
 UltraBlockContent 5 of 6 lists inherit; curtains.c 7 inherit, 2 unsup, 3 tab not ok; sprite.c 8 ok but SprFinal* go into a record word (sprite.c:459), so a move needs design;
 screen_overlays.c 5 stencil lists ok (calls :302-327, :407, :414; no drec bench shows a transition), D_8014E8F0/E9A8 unsup PRIMDEPTH; titlemenu.c fails the host compile (fr/es png).
 Twentieth oracle: ws_MOON2 (after Merge MOON1), ws_XFT (parallel). Nineteenth: ws_PAUSEH (after Merge HWFIX), ws_MOON1. OPEN:
@@ -14,8 +18,7 @@ Seventeenth oracle: ws_HWFIX extended (audit_hw2 F2 depth drain, F3 menu grey in
 ## Goal
 Remove the display list system completely (plan_endgame.md v3). Done only when `3ds/tools/elfgate.py` prints
 `func 0 data 0 gfxnames 0` and every LISTCEN2 counter C1..C12 is 0.
-FACT (`python 3ds/tools/listcen.py`, a37368582): C1 build 1166, C2 gfxpos 617, C5 data 22040, C6 data_arrays 2075, C7 gfxtype 2812, C8 reader 757, C9 model 15.
-FACT (Merge FXSELF 1149b5513): C10 recdl 57 (42 `nd_rec_dl(` in src/effects + 15 root nd_scomp_rec), build 1161, data 22012.
+FACT (listcen, main 09607a5033): C1 742 (461 are gbi header macros, phase E), C2 225, C5 12182, C6 1039, C7 1702, C8 reader 777, C10 recdl 16. FXREST1, FXREST2 merged.
 ## Tools on main (all in 3ds/tools unless named)
 - listcen.py (C1-C10, RECDL_RX :47), elfgate.py (C11-C12), codemod.py (MAP :38-49, STATE_MAP :53-73, GEO_MAP :75-88, TEX_MAP :90-127), selfapply.py (FXSELF),
   entcap.py + entapply.py (ENTRYFX), gen_ntab_entries.py, gen_pso_tab.py + gen_pso_main.c (nd_pso_tab.c, git-ignored, build.sh:114).
@@ -25,15 +28,6 @@ FACT (Merge FXSELF 1149b5513): C10 recdl 57 (42 `nd_rec_dl(` in src/effects + 15
   Capture benches fxent_a/b/c and fxchk_a/b/c (bench.d/ENTRYFX.json).
 ## Open work
 - Merged: TEX4, RECROOT, NSTREAM2, NSTREAM3, GKEY2, GSET1-3, FXENT2, FXENT3 (20 sites; nd_rec_dl_k keyed form). PSOLK: check `git log` for its merge.
-- Merged: GCONVW (75d442afb, ntab tables 1153). Ready page: ws_FXREST1 (start now; owns the 21 effect site files, 3ds/tools/fxrest.d/).
-- Ready page: ws_FXREST2 (start now; 10 sites; psochk drops geom, plod, key_c, key_s; B0 666 replaced by B1 from its own capture, `psochk end` line).
-  Gate: fxr_chk bucket-21 psochk line bad == 666 (psochk logs only the first checked draw of a 100-frame bucket, nd_comb.c:229-231), fxr_drec byte-equal to merge-base.
-  FACT 3ds/tools/fxrest.d/cap.txt (column order nd_walker_desc, nd_comb.c:206-213). The tuples of one key differ in one place only:
-  geom 00000205 vs 00000405: green_impact:203#0/#1, red_impact:210#0/#1, shockwave:342#2/#3. Last word high byte 0x33..0x50: misc_particles:331#2/#3/#6/#7 (GUESS plod).
-  key_c d3ffd800/8ca98f00/46554800/0: ring_blast:141#0. Two real combine states (cw0 fc127e24/fc123224, oml 00551208/00504340): recover:240#0, recover:223, stat_change:274.
-  kmiss: cold_breath:234 keys 2-5 and gather_energy_pink:224 keys 1,3 were not seen.
-  First step: read nd_psochk.c (nd_psochk_cmp). For each varying field, decide whether it is a per-draw value (set by a setter, so drop it from the compare or the entry) or a pipeline (so add a branch key).
-  Read each site's code for the key expression. chapter_change:163 stays nd_rec_dl (the user decides). The chomp_drop vtx fix is on main (b31e07f23).
 - After GCONVW: GSET-W (move the joined lists; NDN_DECL(X) pastes ndd_##X, so an N(x) argument needs an expanded name, nd_gtab.h:65-66). Converter light support
   (MOVEMEM is unsup, nd_gfx_conv.c:475) decides dgb_01/gfx.c (168 lists), level_up*, starpoint* (GUESS by macro grep: their lists hold lights, rects or scissors).
   model.c (63 lists) are ND_RM_REC scomp defs (nd_rmdef.h): design before it joins.
@@ -54,6 +48,6 @@ FACT (Merge FXSELF 1149b5513): C10 recdl 57 (42 `nd_rec_dl(` in src/effects + 15
 - Core 0 runners (hud, glyph, sprite, overlay, nd_direct) build gbi macros into local buffers and run nd_walk_state on them (NS3).
 ## What to do first
 1. Answer coder questions (SendMessage, 10 lines, file:line). Check each ready page's quoted anchors against main after the merge it waits for.
-2. After `Merge PSOLK`: read its hand-back (lk, miss) and write ws_PSOCAP.
-3. Answer FXREST2 coder questions (page ws_FXREST2.md).
+2. Answer IENTRY and IMOVE coder questions. After `Merge IMOVE`: check its lc1 against the page FACT (C5 10743, C6 915, C7 1577).
+3. Next design: the 12 ok lists outside gset form, then the 72 inherit-and-unsup lists (ntab_inherit.txt `itab unsup` lines).
 - An uninitialised vtx field from nd_rec_data (nd_rec.c:482 does not clear the memory) makes the drec bytes depend on the stream layout. Such a gate fails only at that draw (chomp_drop, FXENT3).
