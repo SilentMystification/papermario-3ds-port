@@ -157,6 +157,7 @@ __attribute__((cold, noinline)) static int seam_load(NdSeamTab* t) {
     snprintf(path, sizeof path, "romfs:/shape/%s.seam", pm_shape_name);
     f = fopen(path, "rb");
     if (!f) return -1;
+    setvbuf(f, NULL, _IOFBF, 0x10000); /* DLCRD: one FS read for the whole .seam (max 13536 B) */
     if (fread(hdr, 1, sizeof hdr, f) != sizeof hdr || memcmp(hdr, "NDSM", 4) != 0) goto bad;
     if (seam_le32(hdr + 4) != 1 || seam_le32(hdr + 8) != nds_size || seam_le32(hdr + 12) != 0) goto bad;
     t->nlist = seam_le32(hdr + 16);
@@ -200,6 +201,7 @@ __attribute__((cold, noinline)) static void seam_reset(void) { nd_seam_free(&sea
  * the file stays open until dlc_reset. Debug switch dlcchk: dlc_build also compiles the list at run time and compares (dlcpre line, bad). */
 typedef struct { u32 list, var, off, size; } DlcPreIdx;
 static FILE* dlcp_f;
+static u8* dlcp_buf; /* DLCRD: the whole .dlc; dlcp_f reads it (fmemopen) */
 static DlcPreIdx* dlcp_idx;
 static unsigned dlcp_n, dlcp_gen;
 static u32 dlcp_nds; /* shape size of the open .dlc */
@@ -207,8 +209,8 @@ static int dlcp_chk = -1; /* switch dlcchk */
 unsigned nd_dlcp_pre, nd_dlcp_rt, nd_dlcp_full, nd_dlcp_bad; /* lists since the last dlcpre line: loaded from the file, compiled at run time, without pool room, differing from the run-time compile */
 __attribute__((cold, noinline)) static void dlcp_close(void) {
     if (dlcp_f) fclose(dlcp_f);
-    free(dlcp_idx);
-    dlcp_f = NULL; dlcp_idx = NULL; dlcp_n = 0; dlcp_gen = 0;
+    free(dlcp_idx); free(dlcp_buf);
+    dlcp_f = NULL; dlcp_idx = NULL; dlcp_buf = NULL; dlcp_n = 0; dlcp_gen = 0;
 }
 __attribute__((cold, noinline)) static int dlcp_open(void) {
     char path[64];
@@ -227,6 +229,7 @@ __attribute__((cold, noinline)) static int dlcp_open(void) {
     snprintf(path, sizeof path, "romfs:/shape/%s.dlc", pm_shape_name);
     f = fopen(path, "rb");
     if (!f) return 0;
+    setvbuf(f, NULL, _IOFBF, 0x10000); /* DLCRD: a few FS reads (pm_map.c:67) */
     if (fread(hdr, 1, 16, f) != 16 || memcmp(hdr, "NDDC", 4) != 0 || seam_le32(hdr + 4) != 2 || seam_le32(hdr + 8) != nds_size) goto bad;
     dlcp_nds = nds_size;
     dlcp_n = seam_le32(hdr + 12);
@@ -241,12 +244,19 @@ __attribute__((cold, noinline)) static int dlcp_open(void) {
             const u32 key = seam_le32(b + 8 * k);
             dlcp_idx[k].list = key & ~7u; dlcp_idx[k].var = key & 7u; dlcp_idx[k].off = seam_le32(b + 8 * k + 4); dlcp_idx[k].size = seam_le32(b + 8 * k + 12) - dlcp_idx[k].off;
         }
+        const u32 end = seam_le32(b + 8u * dlcp_n + 4u); /* DLCRD: the end offset of the last section */
         free(b);
+        dlcp_buf = (u8*)malloc(end ? end : 1u);
+        if (!dlcp_buf || fseek(f, 0, SEEK_SET) != 0 || fread(dlcp_buf, 1, end, f) != end) goto bad;
+        fclose(f);
+        f = fmemopen(dlcp_buf, end ? end : 1u, "rb"); /* the list reads below stay fseek and fread, now in memory */
+        if (!f) { free(dlcp_buf); free(dlcp_idx); dlcp_buf = NULL; dlcp_idx = NULL; dlcp_n = 0; return 0; }
     }
     dlcp_f = f;
     return 1;
 bad:
     fclose(f);
+    free(dlcp_buf); free(dlcp_idx); dlcp_buf = NULL; dlcp_idx = NULL;
     dlcp_n = 0;
     return 0;
 }
