@@ -11,7 +11,7 @@
 extern EntityBlueprint Entity_SuperBlockContent;
 
 NDN_DECL(Entity_SuperBlock_Render);
-extern Gfx Entity_UltraBlock_Render[];
+NDN_DECL(Entity_UltraBlock_Render);
 NDN_DECL(Entity_SuperBlockContent_Render);
 NDN_DECL(Entity_SuperBlockContent_Render2);
 extern Gfx Entity_UltraBlockContent_Render[];
@@ -235,7 +235,7 @@ EntityScript Entity_UltraBlockContent_Script = {
 
 EntityModelScript Entity_SuperBlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_SuperBlock_Render), RENDER_MODE_ALPHATEST);
 EntityModelScript Entity_SuperBlockContent_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_RenderNone), RENDER_MODE_SURFACE_XLU_LAYER2);
-EntityModelScript Entity_UltraBlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_UltraBlock_Render, RENDER_MODE_ALPHATEST);
+EntityModelScript Entity_UltraBlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_UltraBlock_Render), RENDER_MODE_ALPHATEST);
 EntityModelScript Entity_UltraBlockContent_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_RenderNone), RENDER_MODE_SURFACE_XLU_LAYER2);
 
 EntityBlueprint Entity_SuperBlock = {
