@@ -1,5 +1,7 @@
 #include "common.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_bombette_breaking_235, 0xfcffffff, 0xfffe793c, 0x1e082c00, 0x00552048, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0);
+ND_PSO_DESC(pe_bombette_breaking_249, 0xfc262ac0, 0x130cf4ff, 0x1e183c00, 0x0c184b50, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "model.h"
 #include "effects_internal.h"
 #include "nd_val.h"
@@ -232,7 +234,7 @@ void bombette_breaking_appendGfx(void* effect) {
                          data->unk_14.x, data->unk_14.y, data->unk_14.z);
         guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        nd_rec_dl(D_E0084E1C[type]);
+        nd_draw_list(D_E0084E1C[type], pe_bombette_breaking_235);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 
@@ -246,7 +248,7 @@ void bombette_breaking_appendGfx(void* effect) {
                          data->center.x, data->center.y, data->center.z);
         guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        nd_rec_dl(sp60);
+        nd_draw_list(sp60, pe_bombette_breaking_249);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 

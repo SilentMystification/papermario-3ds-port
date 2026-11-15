@@ -1,5 +1,6 @@
 #include "common.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_stars_shimmer_361, 0xfc60b2c1, 0x3365feff, 0x1e082cf0, 0x00504340, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "effects_internal.h"
 #include "nd_val.h"
 #include "nd_xf.h"
@@ -358,7 +359,7 @@ void stars_shimmer_appendGfx(void* effect) {
             }
             nd_val_prim(0, 0, r, g, b, 255);
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            nd_rec_dl(D_E0044DB0[unk_28 & 7]);
+            nd_draw_list(D_E0044DB0[unk_28 & 7], pe_stars_shimmer_361);
             nd_xf_pop(G_MTX_MODELVIEW);
         }
     }
