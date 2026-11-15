@@ -1,0 +1,7 @@
+commit 12cf279641 (gate; code commit 3cddfe99fa, typed imgfx list nd_imgfx.h)
+host: nd_host_test.sh PASS, imgfx ok (seed gives imgfx FAIL case 0)
+cmp spot_mac01_drec 1/1 byte-equal (base 33c37dc9b, run 3cddfe99f build 5778)
+cmp sbk14_drec 1/1 byte-equal (base 33c37dc9b, run 3cddfe99f build 5778)
+build rc 0, memcheck static 21552 margin 434 device o3ds_xl OK
+counter: Azahar gate starts 2 of 8 used (base runs not charged)
+user checks the pipe on the console (no drec bench draws it: GUESS, not shown by these gates)

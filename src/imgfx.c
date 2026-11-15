@@ -5,6 +5,7 @@
 #include "imgfx.h"
 #include "pm_interp_fi.h"
 #include "nd_op.h" /* HC4e2b: the typed unit of a list word */
+#include "nd_imgfx.h"
 #include "nd_st.h"
 #include "nd_val.h"
 #include "nd_xf.h"
@@ -1255,32 +1256,8 @@ ImgFXAnimHeader* imgfx_load_anim(ImgFXState* state) {
         imgfx_swap32(state->gfxBufs[0], anim->gfxCount * 2);
         imgfx_swap32(state->gfxBufs[1], anim->gfxCount * 2);
 
-        // Search through the state's displaylists for vertex commands
-        // and adjust their addresses to point into the vertex buffers
-        for (i = 0; i < ARRAY_COUNT(state->gfxBufs); i++) {
-            Gfx* gfxBuffer = state->gfxBufs[i];
-            s32 j = 0;
-            u32 cmd;
-
-            // Loop over the displaylist commands until we hit an ENDDL
-            do {
-                u32 w0 = gfxBuffer[j++].words.w0;
-                { /* HC4e2b: the typed unit (a typed word stays) */
-                    uint32_t t[2];
-                    t[0] = w0; t[1] = gfxBuffer[j-1].words.w1;
-                    w0 = t[0];
-                }
-                cmd = w0 >> 0x18;
-
-                // If this command is a vertex command, adjust the vertex buffer address
-                if (cmd == NDO_VTX) {
-                    // ImgFXVtx structs are 0xC bytes while Vtx are 0x10, so we need a (4/3) scaling factor
-                    // to compute a new, equivalent Vtx[i] address for an existing ImgFXVtx[i] address.
-                    // Unfortunately, using sizeof here does not match.
-                    gfxBuffer[j-1].words.w1 = ((((s32) gfxBuffer[j-1].words.w1 - (s32) anim->keyframesOffset) / 3) * 4) +
-                                              (s32) state->vtxBufs[i];
-                }
-            } while (cmd != NDO_END);
+        for (i = 0; i < ARRAY_COUNT(state->gfxBufs); i++) { /* PIPEFX: raw ROM words to typed units, vertex loads into vtxBufs[i] */
+            nd_imgfx_type((uint32_t*)state->gfxBufs[i], anim->gfxCount, (uint32_t)(uintptr_t)anim->keyframesOffset, (uintptr_t)state->vtxBufs[i]);
         }
     }
 
