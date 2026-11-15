@@ -14,6 +14,7 @@
 #include "nd.h"
 #include "nd_scomp.h"
 #include "nd_gtab.h"
+#include "nd_lkey.h"
 #include "pm_tex.h"
 #include "pm_port.h"
 #include "variables.h"
@@ -110,8 +111,10 @@ static inline unsigned ent_uid(u32 w0, u32 w1) { (void)w1; return w0 >> 24; }
 
 /* S6-5: the words of the list and of every nested list (G_DL), then the vertex span */
 u32 ent_hash_walk(const Gfx* l, u32 h, int depth) {
-    for (unsigned i = 0; i < ND_DLC_MAXOPS; i++) {
-        u32 w0 = l[i].words.w0, w1 = l[i].words.w1;
+    unsigned nl;
+    const uint32_t* lu = nd_lkey_units(l, nd_ntab_find(l), ND_DLC_MAXOPS, &nl); /* LKEY: a moved list key hashes its device units */
+    for (unsigned i = 0; i < nl; i++) {
+        u32 w0 = lu[2u * i], w1 = lu[2u * i + 1u];
         h = (h ^ w0) * 16777619u; h = (h ^ w1) * 16777619u;
         uint32_t ut[2]; ut[0] = w0; ut[1] = w1;
         if ((ut[0] >> 24) == NDO_END) return h;
@@ -130,6 +133,7 @@ u32 ent_hash(const Gfx* l, const u8* vp, u32 vlen) {
     return h;
 }
 
+static int ent_flat_call(uint32_t w1, unsigned* n, int depth); /* LKEY: defined below */
 int ent_flat(const Gfx* l, unsigned* n, int depth) {
     for (unsigned i = 0; i < ND_DLC_MAXOPS; i++) {
         u32 w0 = l[i].words.w0, w1 = l[i].words.w1;
@@ -137,8 +141,7 @@ int ent_flat(const Gfx* l, unsigned* n, int depth) {
         unsigned op = ut[0] >> 24;
         if (op == NDO_END) return 1;
         if (op == NDO_CALL) {
-            const Gfx* t = (const Gfx*)ptr_of(w1);
-            if (!t || !is_host((u32)t) || depth >= 5 || !ent_flat(t, n, depth + 1)) return 0;
+            if (!ent_flat_call(w1, n, depth)) return 0; /* LKEY: a callee with a device entry (a moved list key) flattens from its units */
             if (ut[0] & 1) return 1;
             continue;
         }
@@ -230,9 +233,10 @@ static void ent_tpiece(u32 at, u32 n, u8 kind, const void* p) {
     }
 }
 static int ent_tdwalk(const NdGTab* t, unsigned* flat, int depth) {
-    const uint32_t* L = t->list;
+    unsigned nL, k = 0;
+    const uint32_t* L = nd_lkey_tab(t, ND_DLC_MAXOPS, &nL); /* LKEY: a moved list's table (NDG_F_MOVED) walks its device units (no end unit) */
     const NdGOp* o = t->op;
-    for (unsigned k = 0; k < ND_DLC_MAXOPS; ) {
+    for (; k < nL; ) {
         const uint32_t w0 = L[2u * k];
         const unsigned id = w0 >> 24;
         if (id == NDO_END) return 0;
@@ -257,7 +261,7 @@ static int ent_tdwalk(const NdGTab* t, unsigned* flat, int depth) {
         o += (id == NDO_TRI2) ? 2 : 1;
         (*flat)++; k++;
     }
-    return -1;
+    return (k == nL && nL < ND_DLC_MAXOPS) ? 0 : -1; /* LKEY: the end of the device units is the end unit */
 }
 unsigned nd_ent_tab, nd_ent_notab, nd_ent_gapt, nd_ent_gaps, nd_ent_gapn; /* S7ENT census (entsync line): lists compiled with a table, without; gaps run as a chain of table pieces, gaps from ent_sdef in tabled lists, gaps of lists without a table */
 void ent_compile(EntKey* k, const Gfx* l0) {
@@ -523,7 +527,12 @@ int ent_run(const Gfx* l, EntKey* k, u32 segid) {
 
 /* G_PM_ENT in the walk (nd_walk.c): returns 1 when the entity draw ran from the pools (the walk skips the record's G_DL), else 0. */
 int nd_ent_case(const Gfx* rec, u32 w0, u32 w1) {
-    if (w0 & G_PM_ENT_END) { pm_gbi_ent_texchk((const uint32_t*)(const void*)(uintptr_t)w1); pm_gbi_ent_segchk((const uint32_t*)(const void*)(uintptr_t)w1); return 0; }
+    if (w0 & G_PM_ENT_END) { /* LKEY: a moved list key (NDN) gives its device units and an end unit */
+        static uint32_t eb[2u * 256u];
+        const void* el = (const void*)(uintptr_t)w1;
+        const uint32_t* eu = nd_lkey_end(el, nd_ntab_find(el), eb, 256u);
+        pm_gbi_ent_texchk(eu); pm_gbi_ent_segchk(eu); return 0;
+    }
     if (w0 & G_PM_ENT_DRAW) {
         pm_tex_tagi = 4;
         if (ent_draw(rec)) { if (pm_ph_cen) pk_nat[pmx_cur]++; return 1; }

@@ -5,6 +5,7 @@ ND_PSO_DESC(pe_energy_orb_wave_290, 0xfc6196c3, 0x112cfe7f, 0x1e082c40, 0x00504b
 ND_PSO_DESC(pe_energy_orb_wave_298, 0xfc6196c3, 0x112cfe7f, 0x1e082c00, 0x00504b50, 0x00200005, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 ND_PSO_DESC(pe_energy_orb_wave_301, 0xfcff97ff, 0xff2dfeff, 0x1e082c40, 0x00504340, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 4, 0, 0, 0);
 #include "nd_op.h" /* HC4e2b: the typed unit of a list word */
+#include "nd_lkey.h" /* LKEY */
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_st.h"
@@ -255,15 +256,14 @@ void energy_orb_wave_appendGfx(void* effect) {
             pm_gbi_dbg_reg(NDN(D_09001210_3A5530), 5);
             static char orbBuf[640];
             int n = 0;
-            const Gfx* g = NDN(D_09001000_3A5320);
+            unsigned gn;
+            const uint32_t* gu = nd_lkey_units(NDN(D_09001000_3A5320), nd_ntab_find(NDN(D_09001000_3A5320)), 64u, &gn); /* LKEY: the device units of the moved list */
             n += snprintf(orbBuf + n, sizeof orbBuf - n, "orbdbg f%u prim %d %d %d a %d dl", (unsigned)pm_frame_count(),
                           (int)data->unk_20, (int)data->unk_24, (int)data->unk_28, (int)unk_2C);
-            for (; n < 560; g++) {
-                uint32_t t[2]; /* HC4e2b: stop at the typed end (NDO_END) of the unit */
-                t[0] = g->words.w0; t[1] = g->words.w1;
-                if ((t[0] >> 24) == NDO_END) break;
-                n += snprintf(orbBuf + n, sizeof orbBuf - n, " %02x:%06x:%08x", (unsigned)(g->words.w0 >> 24),
-                              (unsigned)(g->words.w0 & 0xFFFFFF), (unsigned)g->words.w1);
+            for (unsigned k = 0; k < gn && n < 560; k++) {
+                if ((gu[2u * k] >> 24) == NDO_END) break; /* HC4e2b: stop at the typed end (NDO_END) of the unit */
+                n += snprintf(orbBuf + n, sizeof orbBuf - n, " %02x:%06x:%08x", (unsigned)(gu[2u * k] >> 24),
+                              (unsigned)(gu[2u * k] & 0xFFFFFF), (unsigned)gu[2u * k + 1u]);
             }
             pm_log("%s", orbBuf);
         }
