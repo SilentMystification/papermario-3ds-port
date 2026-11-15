@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "effects.h"
 #include "entity.h"
 #include "ld_addrs.h"
@@ -6,7 +7,7 @@
 #include "nd_xf.h"
 #include "nd_st.h"
 
-extern Gfx Entity_RenderNone[];
+NDN_DECL(Entity_RenderNone);
 extern Gfx* Entity_BombableRock_FragmentsRender[];
 extern Mtx Entity_BombableRock_FragmentMatrices[];
 
@@ -237,7 +238,7 @@ void entity_BombableRock_idle(Entity* entity) {
     }
 }
 
-EntityModelScript Entity_BombableRock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_RenderNone, RENDER_MODE_SURFACE_XLU_LAYER1);
+EntityModelScript Entity_BombableRock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_RenderNone), RENDER_MODE_SURFACE_XLU_LAYER1);
 
 EntityScript Entity_BombableRock_Script = {
     es_SetCallback(entity_BombableRock_idle, 0)

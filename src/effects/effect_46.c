@@ -6,7 +6,7 @@ ND_PSO_DESC(pe_effect_46_247_k1, 0xfcff97ff, 0xff2dfeff, 0x1e082cf0, 0x00504b50,
 #include "nd_val.h"
 #include "nd_xf.h"
 
-extern Gfx D_090003A0_38ED30[];
+NDN_DECL(D_090003A0_38ED30);
 NDN_DECL(D_09000420_38EDB0);
 
 // perhaps additional, unused colors? 36 bytes would give 12 RGB colors
@@ -247,8 +247,8 @@ void effect_46_appendGfx(void* effect) {
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         switch (fxk) {
-            case 0: nd_draw_list(D_090003A0_38ED30, pe_effect_46_247_k0); break;
-            default: nd_draw_list(D_090003A0_38ED30, pe_effect_46_247_k1); break;
+            case 0: nd_draw_list(NDN(D_090003A0_38ED30), pe_effect_46_247_k0); break;
+            default: nd_draw_list(NDN(D_090003A0_38ED30), pe_effect_46_247_k1); break;
         }
         fxk = 1;
         nd_xf_pop(G_MTX_MODELVIEW);

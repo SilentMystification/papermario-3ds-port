@@ -1,9 +1,10 @@
 #include "pause_common.h"
+#include "nd_gtab.h"
 #include "message_ids.h"
 #include "nd_val.h"
 #include "nd_st.h"
 
-extern Gfx PauseGfxOrbs[];
+NDN_DECL(PauseGfxOrbs);
 
 void pause_badges_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 width, s32 height, s32 opacity, s32 darkening);
 void pause_badges_init(MenuPanel* panel);
@@ -565,7 +566,7 @@ void pause_badges_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 width
                     orbColorG1 = 255;
                     orbColorB1 = 100;
 
-                    gSPDisplayList(gMainGfxPos++, PauseGfxOrbs);
+                    gSPDisplayList(gMainGfxPos++, NDN(PauseGfxOrbs));
                     nd_pso_filt(G_TF_BILERP);
 
                     if (isEquipped == 0) {
@@ -691,7 +692,7 @@ void pause_badges_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 width
     orbColorG = 255;
     orbColorB = 100;
     maxBP = playerData->maxBP;
-    gSPDisplayList(gMainGfxPos++, PauseGfxOrbs);
+    gSPDisplayList(gMainGfxPos++, NDN(PauseGfxOrbs));
     nd_pso_filt(G_TF_BILERP);
     for (orbIndex = 0; orbIndex < maxBP; orbIndex++) {
         nd_val_prim(0, 0, 227, 227, 227, 255);

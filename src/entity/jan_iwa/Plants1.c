@@ -10,7 +10,7 @@
 #include "nd_xf.h"
 #include "nd_st.h"
 
-extern Gfx Entity_RenderNone[];
+NDN_DECL(Entity_RenderNone);
 extern AnimScript Entity_CymbalPlant_AnimationIdle;
 extern AnimScript Entity_CymbalPlant_AnimationGrab;
 extern AnimScript Entity_PinkFlower_AnimationLightUp;
@@ -373,7 +373,7 @@ EntityScript Entity_CymbalPlant_Update = {
     es_End
 };
 
-EntityModelScript Entity_PinkFlowerLight_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_RenderNone, RENDER_MODE_SURFACE_XLU_LAYER2);
+EntityModelScript Entity_PinkFlowerLight_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_RenderNone), RENDER_MODE_SURFACE_XLU_LAYER2);
 EntityModelScript Entity_SpinningFlower_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_SpinningFlower_Render), RENDER_MODE_SURFACE_XLU_LAYER1);
 
 DmaEntry Entity_CymbalPlant_dma[] = { ENTITY_ROM(CymbalPlant_gfx), ENTITY_ROM(CymbalPlant_anim) };

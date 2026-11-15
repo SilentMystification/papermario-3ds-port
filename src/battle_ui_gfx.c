@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "hud_element.h"
 #include "include_asset.h"
 
@@ -225,33 +226,25 @@ INCLUDE_IMG("ui/battle/solid_star.png", ui_battle_solid_star_png);
 INCLUDE_PAL("ui/battle/solid_star.pal", ui_battle_solid_star_pal);
 
 #if !VERSION_PAL
-Gfx D_8028F860[] = {
-    gsSPEndDisplayList(),
-};
+NDN_DECL(D_8028F860);
 #endif
 
 INCLUDE_IMG("ui/battle/projector_spot.png", ui_battle_projector_spot_png);
 
 #if !VERSION_PAL
-Gfx D_8028FC68[] = {
-    gsSPEndDisplayList(),
-};
+NDN_DECL(D_8028FC68);
 #endif
 
 INCLUDE_IMG("ui/battle/projector_beam.png", ui_battle_projector_beam_png);
 
 #if !VERSION_PAL
-Gfx D_80290C70[] = {
-    gsSPEndDisplayList(),
-};
+NDN_DECL(D_80290C70);
 #endif
 
 INCLUDE_IMG("ui/battle/projector_reel.png", ui_battle_projector_reel_png);
 
 #if !VERSION_PAL
-Gfx D_80291C78[] = {
-    gsSPEndDisplayList(),
-};
+NDN_DECL(D_80291C78);
 #endif
 
 INCLUDE_IMG("ui/battle/swap_background.png", ui_battle_swap_background_png);

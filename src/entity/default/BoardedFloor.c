@@ -1,11 +1,12 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "ld_addrs.h"
 #include "entity.h"
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_st.h"
 
-extern Gfx Entity_RenderNone[];
+NDN_DECL(Entity_RenderNone);
 extern Gfx* Entity_BoardedFloor_FragmentsRender[];
 extern Mtx Entity_BoardedFloor_FragmentMatrices[];
 
@@ -216,8 +217,8 @@ void Entity_BoardedFloor_idle(Entity* entity) {
     }
 }
 
-EntityModelScript Entity_BoardedFloor_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_RenderNone, RENDER_MODE_SURFACE_OPA);
-EntityModelScript Entity_BoardedFloor_RenderScriptShattered = STANDARD_ENTITY_MODEL_SCRIPT(Entity_RenderNone, RENDER_MODE_SURFACE_XLU_LAYER1);
+EntityModelScript Entity_BoardedFloor_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_RenderNone), RENDER_MODE_SURFACE_OPA);
+EntityModelScript Entity_BoardedFloor_RenderScriptShattered = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_RenderNone), RENDER_MODE_SURFACE_XLU_LAYER1);
 
 void Entity_BoardedFloor_shatter(Entity* entity) {
     BoardedFloorData* data = entity->dataBuf.boardedFloor;

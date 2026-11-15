@@ -1,4 +1,5 @@
 #include "pm_wide.h"
+#include "nd_gtab.h"
 #include "common.h"
 #include "nu/nusys.h"
 #include "nd_api.h"
@@ -10,9 +11,7 @@
 extern u8 gPmStencilId;                      /* screen_overlays.c, NATIVEAPI B2a */
 extern void pm_tsten_run(const uint32_t* u); /* screen_overlays.c, NATIVEAPI B2a */
 
-Gfx D_8014ED90[] = {
-    gsSPEndDisplayList(),
-};
+NDN_DECL(D_8014ED90);
 
 Vp DarknessStencilViewport = {
     .vp = {

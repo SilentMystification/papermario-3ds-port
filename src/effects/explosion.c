@@ -9,17 +9,17 @@ void explosion_update(EffectInstance* effect);
 void explosion_render(EffectInstance* effect);
 void explosion_appendGfx(void* effect);
 
-extern Gfx D_09000840_3447B0[];
+NDN_DECL(D_09000840_3447B0);
 extern Gfx D_090008F0_344860[];
-extern Gfx D_09000910_344880[];
-extern Gfx D_09000978_3448E8[];
-extern Gfx D_090009D8_344948[];
-extern Gfx D_09000A38_3449A8[];
+NDN_DECL(D_09000910_344880);
+NDN_DECL(D_09000978_3448E8);
+NDN_DECL(D_090009D8_344948);
+NDN_DECL(D_09000A38_3449A8);
 
 /* ENTRY1 pilot (explosion.c:229): the walker description of the three lists of D_E00328B0 (entcap, fxpic_20_entcap). */
 ND_PSO_DESC(pe_explosion_0, 0xfcffb3ff, 0xff65feff, 0x1e080cf0, 0x00504340, 0x00000005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 4, 0, 0, 0);
 
-Gfx* D_E00328B0[] = { D_09000978_3448E8, D_090009D8_344948, D_09000A38_3449A8 };
+Gfx* D_E00328B0[] = { NDN(D_09000978_3448E8), NDN(D_090009D8_344948), NDN(D_09000A38_3449A8) };
 
 void explosion_main(s32 type, f32 x, f32 y, f32 z) {
     EffectBlueprint bp;
@@ -188,7 +188,7 @@ void explosion_appendGfx(void* effect) {
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
     if (part->unk_00 != -1) {
-        nd_draw_list(D_09000840_3447B0, ND_SELF);
+        nd_draw_list(NDN(D_09000840_3447B0), ND_SELF);
 
         guScaleF(sp18, part->unk_20, part->unk_20, 1.0f);
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
@@ -201,7 +201,7 @@ void explosion_appendGfx(void* effect) {
 
     part++;
 
-    nd_draw_list(D_09000910_344880, ND_SELF);
+    nd_draw_list(NDN(D_09000910_344880), ND_SELF);
 
     guScaleF(sp18, part->unk_20, part->unk_20, part->unk_20);
     guRotateF(sp58, part->unk_28, 0.0f, 0.0f, 1.0f);

@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "filemenu.h"
 #include "hud_element.h"
 #include "fio.h"
@@ -161,7 +162,7 @@ MenuWindowBP filemenu_common_windowBPs[3] = {
     },
 };
 
-extern Gfx filemenu_dl_copyarrow[];
+NDN_DECL(filemenu_dl_copyarrow);
 extern Gfx D_8024B6F0[];
 extern Gfx D_8024B708[];
 
@@ -971,7 +972,7 @@ void filemenu_draw_contents_copy_arrow(MenuPanel* menu, s32 baseX, s32 baseY, s3
     guMtxF2L(transformMtx, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
-    gSPDisplayList(gMainGfxPos++, filemenu_dl_copyarrow);
+    gSPDisplayList(gMainGfxPos++, NDN(filemenu_dl_copyarrow));
     nd_val_prim(0, 0, 0, 0, 0, 128);
     nd_val_env(0, 0, 0, 0);
 

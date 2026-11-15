@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "ld_addrs.h"
 #include "sprite.h"
 #include "imgfx.h"
@@ -151,15 +152,7 @@ Vp D_8014EE50 = {
 
 u16 ImgFXVtxBufferCapacity = 300;
 
-Gfx DefaultImgFXSetupGfx[] = {
-    gsSPClearGeometryMode(G_CULL_BOTH | G_LIGHTING),
-    gsSPSetGeometryMode(G_ZBUFFER | G_SHADE | G_SHADING_SMOOTH),
-    gsSPTexture(-1, -1, 0, G_TX_RENDERTILE, G_ON),
-    gsDPSetAlphaCompare(G_AC_NONE),
-    gsSPSetOtherMode(G_SETOTHERMODE_H, G_MDSFT_ALPHADITHER, 18,
-                     G_AD_DISABLE | G_CD_DISABLE | G_TC_FILT | G_TF_BILERP | G_TP_PERSP),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(DefaultImgFXSetupGfx);
 
 #define RM_IMGFX_A1 \
     GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM) | \
@@ -851,7 +844,7 @@ void imgfx_appendGfx_mesh(ImgFXState* state, Matrix4f mtx) {
 
 
     if (!(state->flags & IMGFX_FLAG_SKIP_GFX_SETUP)) {
-        gSPDisplayList(gMainGfxPos++, DefaultImgFXSetupGfx);
+        gSPDisplayList(gMainGfxPos++, NDN(DefaultImgFXSetupGfx));
         if (state->flags & IMGFX_FLAG_NO_FILTERING) {
             nd_pso_filt(G_TF_POINT);
         }

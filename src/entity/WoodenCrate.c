@@ -7,7 +7,7 @@
 #include "nd_val.h"
 #include "nd_xf.h"
 
-extern Gfx Entity_RenderNone[];
+NDN_DECL(Entity_RenderNone);
 NDN_DECL(Entity_WoodenCrate_Render);
 extern Gfx* Entity_WoodenCrate_FragmentsRender[];
 extern Mtx Entity_WoodenCrate_FragmentsMatrices[];
@@ -261,7 +261,7 @@ void entity_WoodenCrate_shatter(Entity* entity, f32 arg1) {
 }
 
 EntityModelScript Entity_WoodenCrate_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_WoodenCrate_Render), RENDER_MODE_SURFACE_OPA);
-EntityModelScript Entity_WoodenCrate_RenderShatteredScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_RenderNone, RENDER_MODE_SURFACE_XLU_LAYER1);
+EntityModelScript Entity_WoodenCrate_RenderShatteredScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_RenderNone), RENDER_MODE_SURFACE_XLU_LAYER1);
 
 EntityScript Entity_WoodenCrate_Script = {
     es_SetCallback(entity_WoodenCrate_idle, 0)

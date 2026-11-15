@@ -8,13 +8,13 @@ ND_PSO_DESC(pe_star_outline_260, 0xfc321664, 0x552eff7f, 0x1e082cf0, 0x005049d8,
 #include "nd_xf.h"
 #include "nd_st.h"
 
-extern Gfx D_09000800_4147A0[];
-extern Gfx D_09000B20_414AC0[];
-extern Gfx D_09000B90_414B30[];
+NDN_DECL(D_09000800_4147A0);
+NDN_DECL(D_09000B20_414AC0);
+NDN_DECL(D_09000B90_414B30);
 
-Gfx* D_E0126BC0[] = { D_09000B90_414B30 };
-Gfx* D_E0126BC4[] = { D_09000B20_414AC0 };
-Gfx* D_E0126BC8[] = { D_09000800_4147A0 };
+Gfx* D_E0126BC0[] = { NDN(D_09000B90_414B30) };
+Gfx* D_E0126BC4[] = { NDN(D_09000B20_414AC0) };
+Gfx* D_E0126BC8[] = { NDN(D_09000800_4147A0) };
 
 void star_outline_init(EffectInstance* effect);
 void star_outline_update(EffectInstance* effect);

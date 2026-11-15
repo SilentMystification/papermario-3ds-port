@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "entity.h"
 #include "include_asset.h"
 
@@ -63,12 +64,10 @@ Gfx Entity_RenderCircularShadow[] = {
     gsSPEndDisplayList(),
 };
 
-Gfx Entity_RenderNone[] = {
-    gsSPEndDisplayList(),
-};
+NDN_DECL(Entity_RenderNone);
 
 EntityModelScript Entity_RenderNone_Script = {
-    ems_Draw(Entity_RenderNone, 60)
+    ems_Draw(NDN(Entity_RenderNone), 60)
     ems_Restart
     ems_End
 };

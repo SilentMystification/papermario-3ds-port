@@ -1,0 +1,7 @@
+#include "src/effects/gfx/lightning.c"
+#include "effects/gfx/D_09003280_371FE0.gfx.inc.c"
+#include "effects/gfx/D_090032F8_372058.gfx.inc.c"
+#include "effects/gfx/D_09003378_3720D8.gfx.inc.c"
+#include "effects/gfx/D_09003778_3724D8.gfx.inc.c"
+#include "effects/gfx/D_09003888_3725E8.gfx.inc.c"
+#include "effects/gfx/D_09003948_3726A8.gfx.inc.c"
