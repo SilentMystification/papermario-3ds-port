@@ -250,6 +250,7 @@ void func_80027774(u16* frameBuffer0, u16* frameBuffer1, u16* zBuffer) {
 // transfers the framebuffer into the depth buffer and applies filters
 extern void pm_tex_invalidate(const void* ptr, unsigned size);
 extern void pm_gpu_want_prev(void); /* PAUSEOPEN: pm_gpu.c, the GPU copy of the last frame */
+extern void pm_gpu_hold_prev(void); /* PAUSEH: pm_gpu.c, the pause keeps the copy of its first frame */
 /* PAUSEOPEN: the colour buffer not drawn now: the last frame (its GPU copy is the texture of this address) */
 static const void* pause_cfb_src(void) { return nuGfxCfb_ptr == nuGfxCfb[0] ? nuGfxCfb[1] : nuGfxCfb[0]; }
 void gfx_transfer_frame_to_depth(u16* frameBuffer0, u16* frameBuffer1, u16* zBuffer) {
@@ -340,7 +341,7 @@ void gfx_draw_background(void) {
             gGameStatusPtr->backgroundFlags |= BACKGROUND_RENDER_STATE_SHOW_PAUSED;
             // fallthrough
         case BACKGROUND_RENDER_STATE_SHOW_PAUSED:
-            pm_gpu_want_prev(); /* PAUSEOPEN: each drawn frame of the pause asks for its copy (the request holds 2 drawn frames) */
+            pm_gpu_hold_prev(); /* PAUSEH: each drawn pause frame keeps the copy of the first one (a new copy is the dimmed frame) */
             // Draw the saved framebuffer to the background, fading in at a rate of 16 opacity per frame until reaching 128 opacity
             gPauseBackgroundFade += 16;
             if (gPauseBackgroundFade > 128) {
