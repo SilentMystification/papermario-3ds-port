@@ -11,6 +11,7 @@
 #include "pm_gpu.h"
 #include "nd.h"
 #include "nd_scsig.h"
+#include "nd_dual.h"
 #include "nd_api.h"
 #include "nd_psochk.h"
 #include "pm_tex.h"
@@ -516,6 +517,7 @@ void op_setcombine(u32 w0, u32 w1) {
                     if (nd_ws.tst1.comb_ad == 2) nd_ws.tst1.comb_ad = 1;
                 }
             }
+            if (dual_on && !nd_dual_keep(nd_ws.tst1.comb_a, nd_ws.tst1.comb_c)) dual_on = 0; /* COIN: a combine that is not the shaded sprite combine ends the shaded sprite mode (a stale dual_on skipped decide: item_entity.c coins drew texel * vertex colour 0) */
             box_folded = 0;
             box_prod = nd_ws.tst1.comb_a == 1 && nd_ws.tst1.comb_b >= 7 && nd_ws.tst1.comb_c == 2 && nd_ws.tst1.comb_d == 7 &&
                        nd_ws.tst1.comb_aa == 7 && nd_ws.tst1.comb_ab == 7 && nd_ws.tst1.comb_ac == 7 && nd_ws.tst1.comb_ad == 2 &&
