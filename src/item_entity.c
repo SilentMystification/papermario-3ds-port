@@ -1145,7 +1145,7 @@ void render_item_entities(void) {
                             gSPDisplayList(gMainGfxPos++, Gfx_RM1_ALPHATEST);
                         }
                         nd_pso_geom_clr(G_LIGHTING);
-                        gSPDisplayList(gMainGfxPos++, NDN(D_8014C620));
+                        nd_draw_list(NDN(D_8014C620), ND_SELF);
 
                         alpha = 255;
                         if (item->flags & (ITEM_ENTITY_FLAG_TRANSPARENT | ITEM_ENTITY_FLAG_HIDING)) {

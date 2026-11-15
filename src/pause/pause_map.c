@@ -156,7 +156,7 @@ void pause_map_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 width, s
     Vec2b* path;
     s32 pathLength;
 
-    gSPDisplayList(gMainGfxPos++, NDN(PauseGfxWorldMap));
+    nd_draw_list(NDN(PauseGfxWorldMap), ND_SELF);
     ult = -cameraX * 32;
     for (i = 0; i < 60; i++) {
         if (4 * i + 4 < 111) {
@@ -174,7 +174,7 @@ void pause_map_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 width, s
         }
     }
 
-    gSPDisplayList(gMainGfxPos++, NDN(PauseGfxPathPoints));
+    nd_draw_list(NDN(PauseGfxPathPoints), ND_SELF);
 
     x1 = baseX + 26;
     y1 = baseY + 22;
@@ -252,7 +252,7 @@ void pause_map_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 width, s
             offsetUp = offset;
             offsetDown = offset;
 
-            gSPDisplayList(gMainGfxPos++, NDN(PauseGfxArrows));
+            nd_draw_list(NDN(PauseGfxArrows), ND_SELF);
 
             if (!(PauseMapCameraX < 0.0f)) {
                 offsetLeft = 0;

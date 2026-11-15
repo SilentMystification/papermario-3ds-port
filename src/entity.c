@@ -1,4 +1,6 @@
 #include "common.h"
+#include "nd_st.h"
+#include "nd_val.h"
 #include "ld_addrs.h"
 #include "entity.h"
 #include "model.h"
@@ -302,11 +304,11 @@ void exec_entity_commandlist(Entity* entity) {
 
 void func_8010FD98(void* arg0, s32 alpha) {
     if (alpha >= 255) {
-        gDPSetRenderMode(gMainGfxPos++, G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2);
-        gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIA, G_CC_MODULATEIA);
+        nd_pso_rm(G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2);
+        nd_pso_cc(G_CC_MODULATEIA, G_CC_MODULATEIA);
     } else {
-        gDPSetCombineMode(gMainGfxPos++, PM_CC_01, PM_CC_02);
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, alpha);
+        nd_pso_cc(PM_CC_01, PM_CC_02);
+        nd_val_prim(0, 0, 0, 0, 0, alpha);
     }
 }
 
@@ -317,8 +319,8 @@ void func_8010FE44(void* arg0) {
 void entity_model_set_shadow_color(void* data) {
     s32 alpha = (s32)data;
 
-    gDPSetCombineMode(gMainGfxPos++, PM_CC1_SHADOW, PM_CC2_SHADOW);
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, alpha);
+    nd_pso_cc(PM_CC1_SHADOW, PM_CC2_SHADOW);
+    nd_val_prim(0, 0, 0, 0, 0, alpha);
 }
 
 void render_entities(void) {

@@ -1,4 +1,7 @@
 #include "common.h"
+#include "nd_st.h"
+#include "nd_val.h"
+#include "nd_xf.h"
 #include "include_asset.h"
 #include "nd_tx.h"
 
@@ -156,14 +159,14 @@ void star_power_shimmer_draw(void) {
     f32 emitterScale;
     s32 i, j;
 
-    gSPSegment(gMainGfxPos++, 0x00, 0x00000000);
-    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    nd_val_seg(0x00, 0x00000000);
+    nd_pso_scis(G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
     nd_xf_viewport(&ShimmerViewport);
 
     guOrthoF(viewMtx, 0.0f, SCREEN_WIDTH, SCREEN_HEIGHT, 0.0f, -100.0f, 100.0f, 1.0f);
     guMtxF2L(viewMtx, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
     gSPDisplayList(gMainGfxPos++, D_80109710); // setup texture
     gDPSetEnvColor(gMainGfxPos++, 127, 127, 127, 127);
 
@@ -180,9 +183,8 @@ void star_power_shimmer_draw(void) {
                                 particle->pos.x, particle->pos.y, 0.0f);
                     guMtxF2L(transformMtx, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-                    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-                              G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-                    gDPSetPrimColor(gMainGfxPos++, 0, 80 - particle->animTime, particle->rgba.r, particle->rgba.g, particle->rgba.b, particle->rgba.a);
+                    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+                    nd_val_prim(0, 80 - particle->animTime, particle->rgba.r, particle->rgba.g, particle->rgba.b, particle->rgba.a);
                     gSPDisplayList(gMainGfxPos++, D_801097D8); // draw particle
                     gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
                 }

@@ -1,4 +1,6 @@
 #include "common.h"
+#include "nd_st.h"
+#include "nd_val.h"
 #include "audio.h"
 #include "audio/public.h"
 #include "nu/nusys.h"
@@ -470,22 +472,22 @@ void appendGfx_title_screen(void) {
     }
 
     nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
-    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-    gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
-    gSPClearGeometryMode(gMainGfxPos++, G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING |
+    nd_pso_scis(G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    nd_pso_cyc(G_CYC_1CYCLE);
+    nd_pso_geom_clr(G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING |
                             G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
-    gSPSetGeometryMode(gMainGfxPos++, G_ZBUFFER | G_SHADE | G_LIGHTING | G_SHADING_SMOOTH);
+    nd_pso_geom_set(G_ZBUFFER | G_SHADE | G_LIGHTING | G_SHADING_SMOOTH);
     nd_lit_set1(D_80077A38);
 
-    gSPTexture(gMainGfxPos++, -1, -1, 0, G_TX_RENDERTILE, G_ON);
-    gDPSetTextureLOD(gMainGfxPos++, G_TL_TILE);
-    gDPSetTexturePersp(gMainGfxPos++, G_TP_PERSP);
-    gDPSetTextureFilter(gMainGfxPos++, G_TF_BILERP);
-    gDPSetColorDither(gMainGfxPos++, G_CD_DISABLE);
-    gDPSetTextureDetail(gMainGfxPos++, G_TD_CLAMP);
-    gDPSetTextureConvert(gMainGfxPos++, G_TC_FILT);
-    gDPSetCombineKey(gMainGfxPos++, G_CK_NONE);
-    gDPSetAlphaCompare(gMainGfxPos++, G_AC_NONE);
+    nd_tex_on(-1, -1, 0, G_TX_RENDERTILE, G_ON);
+    nd_pso_lod(G_TL_TILE);
+    nd_pso_persp(G_TP_PERSP);
+    nd_pso_filt(G_TF_BILERP);
+    nd_pso_dither(G_CD_DISABLE);
+    nd_pso_detail(G_TD_CLAMP);
+    nd_pso_conv(G_TC_FILT);
+    nd_pso_combkey(G_CK_NONE);
+    nd_pso_alcmp(G_AC_NONE);
     render_frame(false);
     render_frame(true);
 }
@@ -644,9 +646,9 @@ void title_screen_draw_menu(void) {
 #endif
 
     gSPDisplayList(gMainGfxPos++, TitleSetupGfx);
-    gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIA_PRIM, G_CC_MODULATEIA_PRIM);
+    nd_pso_cc(G_CC_MODULATEIA_PRIM, G_CC_MODULATEIA_PRIM);
 #if VERSION_PAL
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, 248, 240, 152, (u8)StartGame_Alpha);
+    nd_val_prim(0, 0, 248, 240, 152, (u8)StartGame_Alpha);
 
     {
         NdTRect tr;
@@ -658,7 +660,7 @@ void title_screen_draw_menu(void) {
                  (StartGame_PosX[gCurrentLanguage] + StartGame_Width[gCurrentLanguage]) * 4, (149 + 16) * 4, 0, 0, 0x0400, 0x0400);
         ttl_run(&tr);
     }
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, 248, 240, 152, (u8)Languages_Alpha);
+    nd_val_prim(0, 0, 248, 240, 152, (u8)Languages_Alpha);
 
     {
         NdTRect tr;
@@ -671,7 +673,7 @@ void title_screen_draw_menu(void) {
         ttl_run(&tr);
     }
 #else
-    gDPSetPrimColor(gMainGfxPos++, 0, 0, 248, 240, 152, TitleMenu_Alpha);
+    nd_val_prim(0, 0, 248, 240, 152, TitleMenu_Alpha);
     {
         NdTRect tr;
 
@@ -708,7 +710,7 @@ void title_screen_draw_copyright(f32 moveAlpha) {
 
     gSPDisplayList(gMainGfxPos++, &TitleSetupGfx);
 #if VERSION_JP
-    gDPSetTextureLUT(gMainGfxPos++, G_TT_RGBA16);
+    nd_pso_lut(G_TT_RGBA16);
 #endif
 
     alpha = 255.0f - (moveAlpha * 255.0f);
@@ -716,8 +718,8 @@ void title_screen_draw_copyright(f32 moveAlpha) {
         if (alpha < 0) {
             alpha = 0;
         }
-        gDPSetCombineMode(gMainGfxPos++, PM_CC_02, PM_CC_02);
-        gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, alpha);
+        nd_pso_cc(PM_CC_02, PM_CC_02);
+        nd_val_prim(0, 0, 0, 0, 0, alpha);
     }
     ttlSet = alpha < 255;
     ttlPrim = (u32)alpha;

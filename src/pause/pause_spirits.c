@@ -162,7 +162,7 @@ void pause_spirits_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 widt
     PlayerData* playerData = get_player_data();
 
     nd_xf_viewport(&gPauseSpiritsViewport);
-    gSPDisplayList(gMainGfxPos++, NDN(PauseGfxSpiritsBg));
+    nd_draw_list(NDN(PauseGfxSpiritsBg), ND_SELF);
 
     for (i = 0; i < 5; i++) {
         nd_tex_load_tile_4b(pause_spirits_bg_png, G_IM_FMT_CI, 128, 110, 0, i * 22, 127, i * 22 + 21, 0, G_TX_MIRROR, G_TX_CLAMP, 7, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);

@@ -2100,7 +2100,7 @@ void msg_update_rewind_arrow(s32 printerIndex) {
     Matrix4f sp58;
     f32 temp;
 
-    gSPDisplayList(gMainGfxPos++, NDN(D_8014C2D8));
+    nd_draw_list(NDN(D_8014C2D8), ND_SELF);
 
     switch (printer->rewindArrowAnimState) {
         case REWIND_ARROW_STATE_INIT:
@@ -2297,7 +2297,7 @@ void draw_number(s32 value, s32 x, s32 y, s32 charset, s32 palette, s32 opacity,
     posX = x;
     count = i;
 
-    gSPDisplayList(gMainGfxPos++, NDN(gMsgDlistInitDrawNumber));
+    nd_draw_list(NDN(gMsgDlistInitDrawNumber), ND_SELF);
 
     if (style & DRAW_NUMBER_STYLE_ALIGN_RIGHT) {
         for (i = count - 1; i >= 0; i--) {

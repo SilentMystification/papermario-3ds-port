@@ -262,7 +262,7 @@ void appendGfx_intro_logos(void) {
         case LOGOS_STATE_N64_FADE_IN:
         case LOGOS_STATE_N64_HOLD:
         case LOGOS_STATE_N64_FADE_OUT:
-            gSPDisplayList(gMainGfxPos++, NDN(D_80077908));
+            nd_draw_list(NDN(D_80077908), ND_SELF);
             for (i = 0; i < 7; i++) {
                 nd_tex_load_tile(gLogosImage1 + i * 0x1000, G_IM_FMT_RGBA, G_IM_SIZ_16b, 128, 112, 0, 0, 127, 15, 0, G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
                 nd_rect_tex(96 * 4, (64 + i * 16) * 4, 224 * 4, (80 + i * 16) * 4, G_TX_RENDERTILE, 0, 0, 1024, 1024);
@@ -278,7 +278,7 @@ void appendGfx_intro_logos(void) {
         case LOGOS_STATE_IS_HOLD_2:
         case LOGOS_STATE_IS_FADE_OUT:
 #endif
-            gSPDisplayList(gMainGfxPos++, NDN(D_80077908));
+            nd_draw_list(NDN(D_80077908), ND_SELF);
             for (i = 0; i < 6; i++) {
                 nd_tex_load_tile(gLogosImage2 + i * 0x1000, G_IM_FMT_RGBA, G_IM_SIZ_16b, 256, 48, 0, 0, 255, 7, 0, G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
                 nd_rect_tex(32 * 4, (LOGO_1_Y + i * 8) * 4, 288 * 4, (LOGO_1_Y + 8 + i * 8) * 4, G_TX_RENDERTILE, 0, 0, 1024, 1024);
@@ -289,7 +289,7 @@ void appendGfx_intro_logos(void) {
         case LOGOS_STATE_IS_HOLD_1:
         case LOGOS_STATE_IS_HOLD_2:
         case LOGOS_STATE_IS_FADE_OUT:
-            gSPDisplayList(gMainGfxPos++, NDN(D_80077908));
+            nd_draw_list(NDN(D_80077908), ND_SELF);
 #endif
             for (i = 0; i < 14; i++) {
                 nd_tex_load_tile(gLogosImage3 + i * 0x1000, G_IM_FMT_RGBA, G_IM_SIZ_16b, 256, 112, 0, 0, 255, 7, 0, G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);

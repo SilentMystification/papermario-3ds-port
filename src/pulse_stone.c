@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_xf.h"
 #include "include_asset.h"
 
 typedef struct PulseStoneData {
@@ -93,8 +94,7 @@ void appendGfx_pulse_stone_icon(void) {
         guMtxCatF(sp18, sp58, sp58);
         guMtxF2L(sp58, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-                    G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
         gSPDisplayList(gMainGfxPos++, pulse_stone_icon_gfx);
 
         dx = abs((gGameStatusPtr->mapID % 7) - 2);
@@ -146,7 +146,7 @@ void appendGfx_pulse_stone_icon(void) {
         ifxImg.yOffset = 46;
         ifxImg.alpha = 255;
         imgfx_appendGfx_component(0, &ifxImg, 0, sp58);
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        nd_xf_pop(G_MTX_MODELVIEW);
     }
 }
 

@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_xf.h"
 #include "include_asset.h"
 
 #define NAMESPACE inspect_icon
@@ -70,8 +71,7 @@ void appendGfx_interact_prompt(void) {
         guMtxCatF(sp38, sp78, sp78);
         guMtxF2L(sp78, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-        gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-                  G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+        nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
         gSPDisplayList(gMainGfxPos++, &inspect_icon_gfx);
 
         ifxImg.raster  = inspect_icon_img;
@@ -87,7 +87,7 @@ void appendGfx_interact_prompt(void) {
                     IMGFX_FLAG_400 | IMGFX_FLAG_SKIP_ZBUF | IMGFX_FLAG_8);
         imgfx_appendGfx_component(0, &ifxImg, 0, sp78);
 
-        gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+        nd_xf_pop(G_MTX_MODELVIEW);
     }
 }
 
