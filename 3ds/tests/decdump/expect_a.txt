@@ -1,0 +1,15 @@
+[CRASH] data abort thread=logic (30dea2a8) pc=0023f6c8 lr=001ba2a8 sp=30e2a068 far=00000000 fsr=00000005 cpsr=80010010 build #5774
+ELF 3ds/tests/decdump/pm_3ds_5774.elf
+(crash.txt: no code bytes: the names are right only if the ELF is the build 5774)
+pc 0023f6c8 -> fn_0x23f6c8 (file.c:1)
+lr 001ba2a8 -> fn_0x1ba2a8 (file.c:1)
+  stack word 0013f928 -> fn_0x13f928
+  stack word 0011b404 -> fn_0x11b404
+  stack word 00153554 -> fn_0x153554
+  stack word 0017d624 -> fn_0x17d624
+  stack word 001ba2a8 -> fn_0x1ba2a8
+  stack word 0024dae8 -> fn_0x24dae8
+  stack word 001604b0 -> fn_0x1604b0
+  stack word 0015f7a4 -> fn_0x15f7a4
+  stack word 00119494 -> fn_0x119494
+  stack word 00400000 -> fn_0x400000

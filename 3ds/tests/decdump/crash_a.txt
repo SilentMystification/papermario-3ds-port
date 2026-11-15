@@ -1,0 +1,14 @@
+[CRASH] data abort thread=game (30dea2a8) pc=002e1bd8 lr=002e1b84 sp=30e2a068 far=000000a8 fsr=00000005 cpsr=80010010 build #2050
+[CRASH] r0=00d290f0 r1=00ffce2c r2=00000025 r3=014fd674 
+[CRASH] stack used 820 of 261632, code-like words:
+[CRASH] stack 00427682 005848b0 00172908 00d256f0 00175014 00158ad4
+[CRASH] last game loop phase 5 (game step and display list build (gfx retrace)), steps 15556
+[CRASH] exiting the process
+[CRASH] data abort thread=logic (30dea2a8) pc=0023f6c8 lr=001ba2a8 sp=30e2a068 far=00000000 fsr=00000005 cpsr=80010010 build #5774
+[CRASH] r0=00d290f0 r1=00ffce2c r2=00000025 r3=014fd674 
+[CRASH] r4=00000000 r5=00d290f0 r6=00d256f0 r7=00d256f0 
+[CRASH] stack used 820 of 261632, code-like words:
+[CRASH] stack 0013f928 0011b404 30e2a068 00153554 0017d624 001ba2a8
+[CRASH] stack 0024dae8 001604b0 00d1442c 0015f7a4 00119494 00400000
+[CRASH] last game loop phase 5 (game step and display list build (gfx retrace)), steps 474
+[CRASH] exiting the process
