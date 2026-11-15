@@ -10,6 +10,8 @@
 #include "nd_cmd.h"
 #include "nd_op.h"
 #include "nd_geo.h"
+#include "nd_gtab.h"
+#include "nd_vcount.h"
 
 // models are rendered in two stages by the RDP:
 // (1) main and aux textures are combined in the color combiner
@@ -4224,51 +4226,15 @@ void mdl_get_remap_tint_params(u8* primR, u8* primG, u8* primB, u8* envR, u8* en
 }
 
 void mdl_get_vertex_count(Gfx* gfx, s32* numVertices, Vtx** baseVtx, s32* gfxCount, Vtx* baseAddr) {
-    s8 stuff[2];
-
-    s32 vtxCount;
-    u32 w0, w1;
-    u32 cmd;
-    u32 vtxEndAddr;
-    s32 minVtx;
-    s32 maxVtx;
-    u32 vtxStartAddr;
-
-    minVtx = 0;
-    maxVtx = 0;
-
     if (gfx == nullptr) {
         *numVertices = 0;
         *baseVtx = nullptr;
     } else {
-        Gfx* baseGfx = gfx;
-
-        do {
-            { uint32_t t[2]; t[0] = gfx->words.w0; t[1] = gfx->words.w1; w0 = t[0]; w1 = t[1]; } /* HC4e3: a typed list (gs macros) or a raw one */
-            cmd = _SHIFTR(w0,24,8);
-
-            if (cmd == NDO_VTX) {
-                vtxStartAddr = w1;
-                vtxCount = _SHIFTR(w0,12,8);
-                if (minVtx == 0) {
-                    minVtx = vtxStartAddr;
-                    maxVtx = vtxStartAddr + (vtxCount * sizeof(Vtx));
-                }
-                vtxEndAddr = vtxStartAddr + (vtxCount * sizeof(Vtx));
-                if (maxVtx < vtxEndAddr) {
-                    maxVtx = vtxEndAddr;
-                }
-                if (minVtx > vtxEndAddr) {
-                    minVtx = vtxEndAddr;
-                }
-            }
-            gfx++;
-        } while (cmd != NDO_END);
-
-        *numVertices = (maxVtx - minVtx) >> 4;
-        *baseVtx = (Vtx*)minVtx;
-        *gfxCount = gfx - baseGfx;
-        w1 = 64; // TODO required to match -- can be any operation that stores w1
+        const NdNDev* dev = nd_ntab_find(gfx); /* VCOUNT: a moved list key (NDN, nd_gtab.h:73) is its NdNDev: read its nu device units */
+        u32 lo, hi;
+        *gfxCount = (s32)nd_vcount(dev != nullptr ? dev->u : (const uint32_t*)gfx, dev != nullptr ? (unsigned)dev->nu : 0xFFFFFFFFu, &lo, &hi);
+        *numVertices = ((s32)hi - (s32)lo) >> 4;
+        *baseVtx = (Vtx*)(uintptr_t)lo;
     }
 }
 
