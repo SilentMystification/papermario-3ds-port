@@ -1,6 +1,6 @@
 # ws_MESH1: the animator mesh lists (Munchlesia) become device units; animator.c reads the units, not the list words (C5, C6, C7)
 Model: Sonnet (user yes for design-heavy code). Why not Haiku: 4 converter files and animator.c must agree on one new rule. PM_ROW, PM_LANE = MESH1. Branch MESH1,
-worktree build3ds/wt/MESH1. Budget: 1 build, 8 Azahar starts (base runs not charged). Start now. Parallel with ws_DGBJOIN (no shared file).
+worktree build3ds/wt/MESH1. Budget: 1 build, 8 Azahar starts (base runs not charged). Start now. Parallel with ws_DGBJOIN (it edits only nd_gfx_conv.c:592).
 Owns: 3ds/tools/gen_gfx_syms.py, nd_gconv.h, nd_gfx_conv.c, nd_gtab_test.c, gset.d/MESH1.txt, azt.d/MESH1.json, bench.d/MESH1.json (new), src/animator.c,
 src/entity/model/Munchlesia{BeginChew,Envelop,Grab,Reset,Reset1,SpitOut}_{gfx,anim}.c, their twins in 3ds/tools/gfxin/src/entity/model. Edit no other file.
 FACT (listcen, main f495844bdf): C5 8914, C6 651, C7 1286; each of the 6 Munchlesia*_gfx.c has 138 data (828). FACT (ntab_inherit.txt): all 6 `Entity_Munchlesia*_Render`

@@ -1,19 +1,22 @@
 # ws_DGBJOIN: dgb_01 gfx.c joins the converter set; its vertex loads stay inside their arrays; its ok lists move to the gfxin twin (C5, C6, C7)
 Model: Haiku. PM_ROW, PM_LANE = DGBJOIN. Branch DGBJOIN, worktree build3ds/wt/DGBJOIN. Budget: 1 build, 8 Azahar starts (base runs not charged). Start now.
-Parallel with ws_MESH1 (no shared file). Owns: 3ds/tools/vtxsplit.py, gconv_src.d/DGBJOIN.txt, gset.d/DGBJOIN.txt (new), src/world/area_dgb/dgb_01/gfx.c,
+Parallel with ws_MESH1 (it edits other lines of nd_gfx_conv.c). Owns: 3ds/tools/nd_gfx_conv.c line 592 only, vtxsplit.py, gconv_src.d/DGBJOIN.txt, gset.d/DGBJOIN.txt (new), src/world/area_dgb/dgb_01/gfx.c,
 src/world/area_dgb/dgb_01/smash_bridges_skeleton.inc.c, the twin 3ds/tools/gfxin/src/world/area_dgb/dgb_01/gfx.c. Edit no other file.
 FACT (listcen, main f495844bdf): dgb_01/gfx.c has C5 data 2833 of 8914 and C6 arrays 168 of 651. Its lists draw only in the Tubba bridge scene (bridges.c:10, animator model nodes).
 FACT (oracle dry run, scratch worktree): with the 10 sources of step 3 joined, gconv lists 1570 -> 1746, unsup 19 -> 44: 25 dgb_01 lists `vertex ref outside the set`, gset ok +0.
 FACT cause: 69 loads in 21 lists read past their array end into the next array in ROM order. gfx.c:14 `gsSPVertex(vtx_C2E620, 32, 0)`, but vtx_C2E620 has 25
 (assets/us/world/area_dgb/vtx/C2E620.vtx.inc.c:3). The device map has the arrays in a row (build3ds/pm_3ds.map: vtx_C2E620 0x00bde908, vtx_C2E7B0 0x00bdea98), the host does not.
-The split below makes each load stay inside one array: the same vertices go to the same slots on the device, without a link order rule.
+The split makes each load stay inside one array: the same vertices go to the same slots on the device, without a link order rule. FACT (dry run after the split):
+unsup 1 dgb_01 list, `call target outside the set or too deep` (D_80251A50_C0F2D0 calls a chain of 10 lists, gfx.c:3337), and gset ok +0 (that list blocks the shared img callees).
+FACT: the converter stops at depth 8 (nd_gfx_conv.c:592); the device runs 12 levels (ND_LIST_DEPTH, nd_walk.c:181). FACT: no main list fails by depth (ntab_unsup.txt).
 ## Group 1: vtxsplit (0 builds, commit `DGBJOIN 1: ...`)
 1. New 3ds/tools/vtxsplit.py `<vtx dir> <gfx file>`: read each `Vtx NAME[N]` of `<vtx dir>/*.vtx.inc.c` (size N). For each line `<ind>gsSPVertex(NAME, n, v),` or
    `<ind>gsSPVertex(&NAME[k], n, v),` with k + n > N: write loads of c = min(n, N - k) from `NAME` (k 0) or `&NAME[k]` to slot v, then n -= c, v += c, and go on at k 0 of the
    next array in ROM order: `vtx_%X` of (int(NAME[4:], 16) + N * 16). Exit 1 when that array does not exist. Other lines stay. Print `vtxsplit lines <split lines> loads <new loads>`.
 2. `python 3ds/tools/vtxsplit.py assets/us/world/area_dgb/vtx src/world/area_dgb/dgb_01/gfx.c`: prints `vtxsplit lines 69 loads 173` (FACT, oracle dry run). A second run prints
    `vtxsplit lines 0 loads 0`. Example (gfx.c:14). Before `    gsSPVertex(vtx_C2E620, 32, 0),` After `    gsSPVertex(vtx_C2E620, 25, 0),` `    gsSPVertex(vtx_C2E7B0, 5, 25),`
-   `    gsSPVertex(vtx_C2E800, 2, 30),`. Commit.
+   `    gsSPVertex(vtx_C2E800, 2, 30),`. nd_gfx_conv.c:592 Before `depth >= 8u` After `depth >= 11u` (a comment: the device list depth 12, nd_walk.c:181).
+   Host tests (nd_host_test.sh into dgbjoin_h0.txt): PASS, the gconv and ntab lines equal to main (lists 1570, unsup 19, gset ok 1461). Commit.
 ## Group 2: join (0 builds, commit `DGBJOIN 2: ...`)
 3. New 3ds/tools/gconv_src.d/DGBJOIN.txt (LF), 10 lines: `src/world/area_dgb/dgb_01/gfx.c`, `src/world/area_dgb/dgb_01/img0.c` .. `img7.c`, `src/world/area_dgb/smash_bridges.c`.
 4. `sh 3ds/tools/nd_host_test.sh > build3ds/out/dgbjoin_h1.txt 2>&1`: `ND HOST TESTS PASS`, `bad 0` on `gconv lists` (1746 lists) and on the 2nd and 3rd `ntab tables` lines.
