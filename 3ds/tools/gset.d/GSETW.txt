@@ -1,0 +1,7 @@
+src/battle/move/item/coconut.c
+src/battle/move/item/dusty_hammer.c
+src/battle/move/item/egg_missile.c
+src/battle/move/item/insecticide_herb.c
+src/battle/move/item/mystery.c
+src/battle/move/item/pebble.c
+src/battle/move/item/sleepy_sheep.c

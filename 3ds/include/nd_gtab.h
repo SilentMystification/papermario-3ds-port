@@ -66,8 +66,10 @@ const NdGTab* nd_gtab_find(const void* list);
 #define NDN_DECL(sym) extern Gfx sym[]
 #define NDN(sym) (sym)
 #else
-#define NDN_DECL(sym) extern const NdNDev ndd_##sym
-#define NDN(sym) ((Gfx*)&ndd_##sym) /* GSET: the key of a moved list (nd_draw_list, handles) */
+#define NDN_DECL(sym) NDN_DECL_(sym)
+#define NDN_DECL_(sym) extern const NdNDev ndd_##sym
+#define NDN(sym) NDN_(sym) /* GSETW: N(x) expands first */
+#define NDN_(sym) ((Gfx*)&ndd_##sym) /* GSET: the key of a moved list (nd_draw_list, handles) */
 #endif
 
 /* S7RUN: the static list call from a table. nd_rec_dl(list) replaces gSPDisplayList(gMainGfxPos++, list) at a call site (push form). When the
