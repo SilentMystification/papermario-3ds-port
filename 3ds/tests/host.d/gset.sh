@@ -70,4 +70,13 @@ IS="$T.incseed"; rm -rf "$IS"; mkdir -p "$IS"; cp -r 3ds/tests/gset/case_inc/. "
 sed 's/^INC_HOLD = True/INC_HOLD = False/' 3ds/tools/gset.py > "$IS.py"
 $PY "$IS.py" "$IS/list.txt" "$IS/gset_ok.txt" "$IS" > "$IS.out" 2>&1 || true
 tr -d '\r' < "$IS/src/effects/gfx/w.c" | grep -qxF '#include "effects/gfx/C.gfx.inc.c"' && { echo "gset inc seeded fault not seen"; exit 1; }
+# CHCONV: TYPE_RULE. Fixture case_typ: t.c names Gfx, has no common.h, and its moved include goes: line 1 becomes common.h. Seeded fault: TYPE_RULE off, no common.h line.
+Y="$T.typ"; rm -rf "$Y"; mkdir -p "$Y"; cp -r 3ds/tests/gset/case_typ/. "$Y/"
+rc=0; $PY 3ds/tools/gset.py "$Y/list.txt" "$Y/gset_ok.txt" "$Y" > "$Y.out" 2>&1 || rc=$?
+[ "$rc" = 0 ] || { echo "gset typ test: exit $rc, want 0"; exit 1; }
+tr -d '' < "$Y/src/effects/gfx/t.c" | head -1 | grep -qxF '#include "common.h"' || { echo "gset typ test FAIL: t.c line 1 is not common.h"; exit 1; }
+YS="$T.typseed"; rm -rf "$YS"; mkdir -p "$YS"; cp -r 3ds/tests/gset/case_typ/. "$YS/"
+sed 's/^TYPE_RULE = True/TYPE_RULE = False/' 3ds/tools/gset.py > "$YS.py"
+$PY "$YS.py" "$YS/list.txt" "$YS/gset_ok.txt" "$YS" > "$YS.out" 2>&1 || true
+tr -d '' < "$YS/src/effects/gfx/t.c" | grep -qxF '#include "common.h"' && { echo "gset typ seeded fault not seen"; exit 1; }
 echo "gset test ok"
