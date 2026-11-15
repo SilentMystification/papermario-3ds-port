@@ -1,10 +1,11 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main 09607a5033, 2026-11-15. Twenty-third oracle: ws_IENTRY (start now), ws_IMOVE (after Merge IENTRY). ISEED2 is split: FACT the device reads only the units of a
-table (NdNDev, nd_gfx_conv.c:808-810), so a seed moves no device byte; IENTRY gives the 226 inherit lists an unseeded table (itab 154, gset ok 1075 -> 1211 by dry run).
-Real seeds stay open for the walker-free step: the itab lines of ntab_inherit.txt name the lists. Entity seed source (design, no page): STANDARD_ENTITY_MODEL_SCRIPT(gfx, mode)
-(include/entity.h:56), state = EM_RM(mode) (entity_model.c:56) + em_tail (:57); proof needs an entcap hook in nd_walk_ent (nd_walk.c:162), drec cannot see a seed.
-Left after IMOVE: 12 ok lists outside gset form (item_entity.c, entity_model_icons.c, Shadow.c, tst_13), 72 inherit-and-unsup, 179 parts. Twenty-second oracle: ws_ENTPAD. FACT (converter dry runs in a scratch worktree, docker gen_gfx_tab.sh only): UltraBlock 8 of 9 and
+State: main 2a9ae46068, 2026-11-15. Twenty-fourth oracle: ws_GSETW and ws_PMOVE (both start now, parallel). FACT dry runs (scratch worktree, nd_host only):
+dgb_01 (gfx.c + img0-7.c + area_dgb/smash_bridges.c in the set): 176 lists, 127 tables, 49 `vertex slots` unsup (a triangle across two Vtx arrays, nd_vslot.c:35), gset ok 0 (call edges).
+Its light IS defined (gfx.c:3347, all zero). Next design for dgb_01: cross-array triangles (the device reads only units, nd_gfx_conv.c:808-816; the v2 draw/index data is host only for a moved list).
+Parts rule off (:865): gset ok 1211 -> 1396, gset moved 189. "179 parts" is the v1 NDG_F_PARTS count, not a list group. Unmoved ok lists after both pages: 12 (item_entity.c 2,
+entity_model_icons.c 3, Shadow.c 2, draw_box.c 1, pause_partners.c 1, tst_13 1, kmr_21/nok_04 G_DL users), kkj x6 and isk_01 (SetCustomGfx holds), starpoint/level_up PAL (48).
+Twenty-third oracle: ws_IENTRY, ws_IMOVE (merged). Twenty-second oracle: ws_ENTPAD. FACT (converter dry runs in a scratch worktree, docker gen_gfx_tab.sh only): UltraBlock 8 of 9 and
 UltraBlockContent 5 of 6 lists inherit; curtains.c 7 inherit, 2 unsup, 3 tab not ok; sprite.c 8 ok but SprFinal* go into a record word (sprite.c:459), so a move needs design;
 screen_overlays.c 5 stencil lists ok (calls :302-327, :407, :414; no drec bench shows a transition), D_8014E8F0/E9A8 unsup PRIMDEPTH; titlemenu.c fails the host compile (fr/es png).
 Twentieth oracle: ws_MOON2 (after Merge MOON1), ws_XFT (parallel). Nineteenth: ws_PAUSEH (after Merge HWFIX), ws_MOON1. OPEN:
@@ -18,7 +19,7 @@ Seventeenth oracle: ws_HWFIX extended (audit_hw2 F2 depth drain, F3 menu grey in
 ## Goal
 Remove the display list system completely (plan_endgame.md v3). Done only when `3ds/tools/elfgate.py` prints
 `func 0 data 0 gfxnames 0` and every LISTCEN2 counter C1..C12 is 0.
-FACT (listcen, main 09607a5033): C1 742 (461 are gbi header macros, phase E), C2 225, C5 12182, C6 1039, C7 1702, C8 reader 777, C10 recdl 16. FXREST1, FXREST2 merged.
+FACT (listcen, main 2a9ae46068): C1 742 (461 are gbi header macros, phase E), C2 225, C5 10743, C6 915, C7 1577, C8 reader 777, C10 recdl 16.
 ## Tools on main (all in 3ds/tools unless named)
 - listcen.py (C1-C10, RECDL_RX :47), elfgate.py (C11-C12), codemod.py (MAP :38-49, STATE_MAP :53-73, GEO_MAP :75-88, TEX_MAP :90-127), selfapply.py (FXSELF),
   entcap.py + entapply.py (ENTRYFX), gen_ntab_entries.py, gen_pso_tab.py + gen_pso_main.c (nd_pso_tab.c, git-ignored, build.sh:114).
@@ -48,6 +49,6 @@ FACT (listcen, main 09607a5033): C1 742 (461 are gbi header macros, phase E), C2
 - Core 0 runners (hud, glyph, sprite, overlay, nd_direct) build gbi macros into local buffers and run nd_walk_state on them (NS3).
 ## What to do first
 1. Answer coder questions (SendMessage, 10 lines, file:line). Check each ready page's quoted anchors against main after the merge it waits for.
-2. Answer IENTRY and IMOVE coder questions. After `Merge IMOVE`: check its lc1 against the page FACT (C5 10743, C6 915, C7 1577).
-3. Next design: the 12 ok lists outside gset form, then the 72 inherit-and-unsup lists (ntab_inherit.txt `itab unsup` lines).
+2. Answer GSETW and PMOVE coder questions. After each merge: check its lc1 against the page FACT.
+3. Next design: dgb_01 cross-array triangles (49 lists) with GSET-W in place; then the 72 inherit-and-unsup lists (ntab_inherit.txt `itab unsup`).
 - An uninitialised vtx field from nd_rec_data (nd_rec.c:482 does not clear the memory) makes the drec bytes depend on the stream layout. Such a gate fails only at that draw (chomp_drop, FXENT3).

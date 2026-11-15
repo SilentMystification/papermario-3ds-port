@@ -14,9 +14,8 @@ Live files only. Older logs are in archive/ (agent_*, diag_*, inv_*, plan_*, tra
 - git_branches.md: tip hash of every branch deleted or kept in the row GIT cleanup (recovery record).
 
 ## Native draw epic (current work)
-- ws_ENTPAD.md: Haiku goal page: PadlockBlueFace, PadlockRedFace, PadlockRedFrame, UnusedBlock models join the converter, 44 lists move to the gfxin twin (C5 -458, C6 -44, C7 -50 by oracle dry run).
-- ws_IENTRY.md: Haiku goal page: an inherit list that no seed gives a table gets one unseeded table in nd_gfx_conv.c (itab 154, gset ok 1075 to 1211 by oracle dry run). Start now.
-- ws_IMOVE.md: Haiku goal page: 124 lists of 11 effect and 20 entity model files move to the gfxin twin (C5 -1439, C6 -124, C7 -125 by oracle dry run). After Merge IENTRY.
+- ws_GSETW.md: Haiku goal page: gset.py moves `Gfx N(x)[]` blocks (namespace form, NDN two-level macro, gset.sh case_ns with a seeded fault); the 12 battle item lists move (C5 -228, C6 -12, C7 -12). Start now, parallel with ws_PMOVE.
+- ws_PMOVE.md: Haiku goal page: particle lists (NDG_F_PARTS) may move (device v1 table keyed &ndd_, NDG_F_MOVED fallback in nd_walk.c); 189 effect lists move, new bench fxp_drec (C5 -842, C6 -189, C7 -212 by oracle dry run). Start now.
 - start_here_native_draw.md: current state and what is left (long-form handoff).
 - handoff_native_epic_orchestrator.md: findings and pitfalls of the code session of 2026-11-05.
 - plan_native_system.md: design (large; open only the sections a row names).
