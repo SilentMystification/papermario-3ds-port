@@ -1,4 +1,4 @@
-/* nd_vslot_test.c: host test of nd_vslot_resolve (CONV2B). Prints "vslot ok 6/6", or "vslot FAIL <case>" and exits 1. */
+/* nd_vslot_test.c: host test of nd_vslot_resolve (CONV2B). Prints "vslot ok 7/7", or "vslot FAIL <case>" and exits 1. */
 #include <stdio.h>
 #include <string.h>
 #include "nd_vslot.h"
@@ -40,6 +40,9 @@ static NdVsOp tri2(unsigned a, unsigned b, unsigned c, unsigned d, unsigned e, u
     return o;
 }
 
+static NdVsRef g_ref[16];
+static unsigned g_nref;
+
 static void print_idx(const char* lbl, const uint16_t* v, unsigned n)
 {
     unsigned k;
@@ -59,7 +62,7 @@ static int run_case(const char* name, const NdVsOp* ops, unsigned nops, int want
 
     memset(idx, 0, sizeof idx);
     memset(dr, 0, sizeof dr);
-    rc = nd_vslot_resolve(ops, nops, idx, 64, dr, 8, &ndr, &nidx);
+    rc = nd_vslot_resolve(ops, nops, idx, 64, dr, 8, &ndr, &nidx, g_ref, 16, &g_nref);
     if (rc != want_rc) {
         printf("vslot FAIL %s rc %d want %d\n", name, rc, want_rc);
         return 0;
@@ -116,16 +119,25 @@ int main(void)
         if (!run_case("F3", ops, 4, 0, 2, d, 6, x)) return 1;
         pass++;
     }
-    /* E1: TRI1(5, 6, 7) alone: slots not loaded */
+    /* E1: TRI1(5, 6, 7) alone: slots not loaded, caller slots */
     {
         NdVsOp ops[1] = { tri1(5, 6, 7) };
-        if (!run_case("E1", ops, 1, -1, 0, NULL, 0, NULL)) return 1;
+        NdVsDraw d[1] = { { ND_VS_IN, 0, 3 } };
+        uint16_t x[3] = { 5, 6, 7 };
+        if (!run_case("E1", ops, 1, 0, 1, d, 3, x)) return 1;
         pass++;
     }
     /* E2: VTX(1, 0, 2, 0), VTX(2, 0, 1, 2), TRI1(0, 1, 2): triangle mixes arrays 1 and 2 */
     {
         NdVsOp ops[3] = { vtx(1, 0, 2, 0), vtx(2, 0, 1, 2), tri1(0, 1, 2) };
-        if (!run_case("E2", ops, 3, -3, 0, NULL, 0, NULL)) return 1;
+        NdVsDraw d[1] = { { ND_VS_MIX, 0, 3 } };
+        uint16_t x[3] = { 0, 1, 2 };
+        if (!run_case("E2", ops, 3, 0, 1, d, 3, x)) return 1;
+        if (g_nref != 3 || g_ref[0].arr != 1 || g_ref[0].index != 0 || g_ref[1].arr != 1 || g_ref[1].index != 1 ||
+            g_ref[2].arr != 2 || g_ref[2].index != 0) {
+            printf("vslot FAIL E2 ref\n");
+            return 1;
+        }
         pass++;
     }
     /* E3: VTX(1, 0, 4, 30): slots 30..33 out of range */
@@ -135,10 +147,17 @@ int main(void)
         pass++;
     }
 
-    if (pass != 6) {
+    /* E4: VTX(1, 0, 1, 0), TRI1(0, 5, 6): one loaded slot of three */
+    {
+        NdVsOp ops[2] = { vtx(1, 0, 1, 0), tri1(0, 5, 6) };
+        if (!run_case("E4", ops, 2, -2, 0, NULL, 0, NULL)) return 1;
+        pass++;
+    }
+
+    if (pass != 7) {
         printf("vslot FAIL count %d\n", pass);
         return 1;
     }
-    printf("vslot ok 6/6\n");
+    printf("vslot ok 7/7\n");
     return 0;
 }

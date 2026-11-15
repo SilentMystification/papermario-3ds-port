@@ -21,6 +21,7 @@ KEEP_RULE = True  # the seeded test (3ds/tests/host.d/gset.sh) runs a copy with 
 HOLD_RULE = True  # GSETB: the seeded test (gset.sh) runs a copy with this False and expects a diff
 OWN_RULE = True  # ISTAR: a user file that defines a moved name keeps its own copy (PAL twins); the seeded test (gset.sh) runs a copy with this False
 NS_RULE = True  # GSETW: N(x) is rewritten only in the files of its namespace; the seeded test (gset.sh) runs a copy with this False
+INC_HOLD = True  # VSLOT2: an include whose list a kept line of the device file names stays; seeded test in gset.sh
 BLOCK_END = "};"  # the block closing line (exact, CR dropped); the seeded test in gset.sh changes this and is_block_end
 DEF = re.compile(r"^\s*(?:const\s+)?Gfx\s+(\w+)\s*\[", re.M)
 BLOCK_OPEN = re.compile(r"^Gfx (?:N\((\w+)\)|(\w+))\[\] = \{")
@@ -67,6 +68,7 @@ def move_includes(root, src, ok, twin_dir, assets):
     """Include mode. Returns (moved names, the twin path or None)."""
     p = root / src
     lines = p.read_text(encoding="utf-8").split("\n")
+    rest = "\n".join(x for x in lines if not INC.match(x))
     moved, keep_lines, out = [], [], []
     for ln in lines:
         m = INC.match(ln)
@@ -79,7 +81,7 @@ def move_includes(root, src, ok, twin_dir, assets):
             out.append(ln)
             continue
         names = gfx_names(a.read_text(encoding="utf-8", errors="replace"))
-        if names and all(n in ok for n in names):
+        if names and all(n in ok for n in names) and not (INC_HOLD and any(re.search(r"(?<!\w)" + re.escape(n) + r"(?!\w)", rest) for n in names)):
             moved.extend(names)
             keep_lines.append(f'#include "{inc}"')
         else:

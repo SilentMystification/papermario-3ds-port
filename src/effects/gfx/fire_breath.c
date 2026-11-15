@@ -16,4 +16,3 @@ Gfx D_09000B88_373F68[] = {
 };
 #include "effects/gfx/D_09000BA8_373F88.gfx.inc.c"
 #include "effects/gfx/D_09000BC0_373FA0.vtx.inc.c"
-#include "effects/gfx/D_09000C00_373FE0.gfx.inc.c"

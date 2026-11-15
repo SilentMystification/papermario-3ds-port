@@ -62,8 +62,8 @@ WaterBlockVtxData D_E00B4CF0[] = {
 NDN_DECL(D_09000300_3B6EF0);
 NDN_DECL(D_090003B0_3B6FA0);
 NDN_DECL(D_090004A0_3B7090);
-extern Gfx D_090004D8_3B70C8[];
-extern Gfx D_09000538_3B7128[];
+NDN_DECL(D_090004D8_3B70C8);
+NDN_DECL(D_09000538_3B7128);
 
 void water_block_init(EffectInstance* effect);
 void water_block_update(EffectInstance* effect);
@@ -302,11 +302,11 @@ void water_block_appendGfx(void* effect) {
 
     nd_mesh_vtx(vtxBase, 30, 0);
 
-    nd_draw_list(D_090004D8_3B70C8, pe_water_block_302);
+    nd_draw_list(NDN(D_090004D8_3B70C8), pe_water_block_302);
 
     nd_mesh_vtx(&vtxBase[28], 12, 0);
 
-    nd_draw_list(D_09000538_3B7128, pe_water_block_306);
+    nd_draw_list(NDN(D_09000538_3B7128), pe_water_block_306);
     nd_xf_pop(G_MTX_MODELVIEW);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

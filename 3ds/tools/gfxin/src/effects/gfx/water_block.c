@@ -2,3 +2,5 @@
 #include "effects/gfx/D_09000300_3B6EF0.gfx.inc.c"
 #include "effects/gfx/D_090003B0_3B6FA0.gfx.inc.c"
 #include "effects/gfx/D_090004A0_3B7090.gfx.inc.c"
+#include "effects/gfx/D_090004D8_3B70C8.gfx.inc.c"
+#include "effects/gfx/D_09000538_3B7128.gfx.inc.c"

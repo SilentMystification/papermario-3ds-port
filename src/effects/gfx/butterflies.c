@@ -27,4 +27,3 @@ INCLUDE_PAL("effects/gfx/D_09002920_3AD950.pal", D_09002D20_3ADD50);
 
 #include "effects/gfx/D_09002D40_3ADD70.vtx.inc.c"
 
-#include "effects/gfx/D_09003DC8_3AEDF8.gfx.inc.c"

@@ -6,7 +6,7 @@ ND_PSO_DESC(pe_purple_ring_213, 0xfcffb3ff, 0xff65feff, 0x1e082cf0, 0x00504b50, 
 #include "nd_xf.h"
 
 NDN_DECL(D_09000200_352EE0);
-extern Gfx D_090004E8_3531C8[];
+NDN_DECL(D_090004E8_3531C8);
 
 void purple_ring_init(EffectInstance* effect);
 void purple_ring_update(EffectInstance* effect);
@@ -211,6 +211,6 @@ void purple_ring_appendGfx(void* effect) {
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_val_tile_size(G_TX_RENDERTILE, 0, unk_5C, temp * 4, unk_5C + temp);
-    nd_draw_list(D_090004E8_3531C8, pe_purple_ring_213);
+    nd_draw_list(NDN(D_090004E8_3531C8), pe_purple_ring_213);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

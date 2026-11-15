@@ -26,8 +26,8 @@ NDN_DECL(D_09002150_352370);
 NDN_DECL(D_09002160_352380);
 NDN_DECL(D_09002170_352390);
 NDN_DECL(D_09002180_3523A0);
-extern Gfx D_09002190_3523B0[];
-extern Gfx D_090021A8_3523C8[];
+NDN_DECL(D_09002190_3523B0);
+NDN_DECL(D_090021A8_3523C8);
 NDN_DECL(D_090021C0_3523E0);
 NDN_DECL(D_090021E0_352400);
 NDN_DECL(D_09002200_352420);
@@ -273,7 +273,7 @@ void damage_indicator_render_impl(EffectInstance* effect) {
         }
 
         if (i == lastPartIdx) {
-            nd_draw_list(D_090021A8_3523C8, pe_damage_indicator_273);
+            nd_draw_list(NDN(D_090021A8_3523C8), pe_damage_indicator_273);
             nd_xf_pop(G_MTX_MODELVIEW);
             nd_draw_list(NDN(D_09001DE0_352000), ND_SELF);
             if (numParts < 10) {
@@ -288,7 +288,7 @@ void damage_indicator_render_impl(EffectInstance* effect) {
                 nd_rec_dl(NDN(D_090021E0_352400)); // GfxDrawTensQuad
             }
         } else {
-            nd_draw_list(D_09002190_3523B0, pe_damage_indicator_288);
+            nd_draw_list(NDN(D_09002190_3523B0), pe_damage_indicator_288);
             nd_xf_pop(G_MTX_MODELVIEW);
         }
 
