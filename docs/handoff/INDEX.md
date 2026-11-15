@@ -17,6 +17,8 @@ Live files only. Older logs are in archive/ (agent_*, diag_*, inv_*, plan_*, tra
 - ws_MESHST.md: Haiku goal page: animator mesh nodes draw built-once units (nd_mesh.h, nd_rec_ndev), no per-frame heap list (C1 -4, C2 -1, C7 -3); host test meshst.sh; jan09_mesh_drec judged by drecsum.py (user OK of a non-byte-equal gate, 2026-11-15). Parallel with ws_CHCONV.
 - ws_CHCONV.md: Haiku goal page: chapter_change joins the converter, 16 lists move to the twin (user decision 2026-11-15; fxr_drec differs from frame 1512 only); revert recipe in the page. Parallel with ws_MESHST.
 - ws_SORTQ.md: Haiku goal page: gt_sort and nt_sort (nd_gtab.c) become qsort (audit_hw3 F3, boot cost); host test sort_check in nd_gtab_test.c (conv2c.sh, seeded swap); spot_mac01_drec, sbk14_drec byte-equal. After Merge MESHST.
+- ws_PIPEFX.md: Haiku goal page: imgfx_load_anim types the raw ROM anim list (new nd_imgfx.h, bounded by gfxCount); Mario visible in pipes; host pipefx.sh with seed; spot_mac01_drec, sbk14_drec byte-equal.
+- ws_DLCRD.md: Haiku goal page: nd_shape.c reads the .dlc whole (fmemopen) and buffers the .seam read (map change lag); spot_mac01_drec, sbk14_drec byte-equal; user sends the xfer2 map line before and after.
 - start_here_native_draw.md: current state and what is left (long-form handoff).
 - handoff_native_epic_orchestrator.md: findings and pitfalls of the code session of 2026-11-05.
 - plan_native_system.md: design (large; open only the sections a row names).
