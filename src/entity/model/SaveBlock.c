@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "include_asset.h"
 #include "include_asset.h"
 
@@ -7,30 +8,11 @@
 #include "entity/model/SaveBlock_3.vtx.inc.c"
 
 INCLUDE_IMG("entity/model/SaveBlock_star.png", D_0A000900_E4BBE0);
-Gfx Entity_SaveBlock_LoadTextureStar[] = {
-    gsDPSetTextureLUT(G_TT_NONE),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsDPSetTextureDetail(G_TD_CLAMP),
-    gsDPSetTextureLOD(G_TL_TILE),
-    gsDPLoadTextureBlock(D_0A000900_E4BBE0, G_IM_FMT_RGBA, G_IM_SIZ_16b, 32, 32, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD),
-    gsDPSetTexturePersp(G_TP_PERSP),
-    gsDPSetTextureFilter(G_TF_BILERP),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(Entity_SaveBlock_LoadTextureStar);
 
 #if !VERSION_PAL
 INCLUDE_IMG("entity/model/SaveBlock_face.png", D_0A001170_E4C450);
-Gfx Entity_SaveBlock_LoadTextureFace[] = {
-    gsDPSetTextureLUT(G_TT_NONE),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsDPSetCombineMode(G_CC_MODULATEIA, G_CC_MODULATEIA),
-    gsDPSetTextureDetail(G_TD_CLAMP),
-    gsDPSetTextureLOD(G_TL_TILE),
-    gsDPLoadTextureBlock(D_0A001170_E4C450, G_IM_FMT_RGBA, G_IM_SIZ_32b, 32, 32, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD),
-    gsDPSetTexturePersp(G_TP_PERSP),
-    gsDPSetTextureFilter(G_TF_BILERP),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(Entity_SaveBlock_LoadTextureFace);
 #endif
 
 INCLUDE_IMG("entity/model/SaveBlock_letterS.png", D_0A0021E8_E4D4C8);
@@ -38,17 +20,7 @@ INCLUDE_IMG("entity/model/SaveBlock_letterS.png", D_0A0021E8_E4D4C8);
 INCLUDE_IMG("entity/model/SaveBlock_letterG.png", D_PAL_0A002170_EBA460);
 #endif
 
-Gfx Entity_SaveBlock_LoadTextureLetterS[] = {
-    gsDPSetTextureLUT(G_TT_NONE),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsDPSetCombineMode(G_CC_MODULATEIA, G_CC_MODULATEIA),
-    gsDPSetTextureDetail(G_TD_CLAMP),
-    gsDPSetTextureLOD(G_TL_TILE),
-    gsDPLoadTextureBlock(D_0A0021E8_E4D4C8, G_IM_FMT_RGBA, G_IM_SIZ_16b, 64, 32, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 6, 5, G_TX_NOLOD, G_TX_NOLOD),
-    gsDPSetTexturePersp(G_TP_PERSP),
-    gsDPSetTextureFilter(G_TF_BILERP),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(Entity_SaveBlock_LoadTextureLetterS);
 
 #if VERSION_PAL
 Gfx Entity_SaveBlock_LoadTextureLetterG[] = {
@@ -71,32 +43,7 @@ Mtx Entity_SaveBlock_Mtx = RDP_MATRIX(
     0.000000, 0.000000, 0.000000, 1.000000
 );
 
-Gfx Entity_SaveBlock_RenderLetterS[] = {
-    gsDPPipeSync(),
-    gsDPSetCycleType(G_CYC_1CYCLE),
-    gsSPDisplayList(Entity_SaveBlock_LoadTextureLetterS),
-    gsSPClearGeometryMode(G_LIGHTING),
-    gsSPSetGeometryMode(G_CULL_BACK | G_SHADING_SMOOTH),
-    gsSPVertex(D_0A0006C0_E4B9A0, 31, 0),
-    gsSP2Triangles(0, 1, 2, 0, 0, 2, 3, 0),
-    gsSP2Triangles(4, 5, 0, 0, 4, 0, 3, 0),
-    gsSP2Triangles(2, 6, 7, 0, 2, 7, 3, 0),
-    gsSP2Triangles(8, 4, 3, 0, 8, 3, 7, 0),
-    gsSP2Triangles(9, 10, 11, 0, 9, 11, 12, 0),
-    gsSP2Triangles(13, 14, 9, 0, 13, 9, 12, 0),
-    gsSP2Triangles(12, 11, 15, 0, 12, 15, 16, 0),
-    gsSP2Triangles(17, 13, 12, 0, 17, 12, 16, 0),
-    gsSP2Triangles(18, 19, 20, 0, 18, 20, 21, 0),
-    gsSP2Triangles(20, 22, 23, 0, 20, 23, 21, 0),
-    gsSP2Triangles(24, 25, 21, 0, 24, 21, 23, 0),
-    gsSP2Triangles(25, 26, 18, 0, 25, 18, 21, 0),
-    gsSP2Triangles(27, 28, 29, 0, 27, 29, 30, 0),
-    gsSPVertex(&D_0A0006C0_E4B9A0[28], 8, 0),
-    gsSP2Triangles(0, 3, 4, 0, 0, 4, 1, 0),
-    gsSP2Triangles(4, 6, 5, 0, 4, 5, 1, 0),
-    gsSP2Triangles(5, 7, 2, 0, 5, 2, 1, 0),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(Entity_SaveBlock_RenderLetterS);
 
 #if VERSION_PAL
 Gfx Entity_SaveBlock_RenderLetterG[] = {
@@ -163,34 +110,11 @@ Gfx Entity_SaveBlock_RenderFaces[] = {
     gsSPEndDisplayList(),
 };
 
-Gfx Entity_SaveBlock_RenderStar[] = {
-    gsDPPipeSync(),
-    gsDPSetCycleType(G_CYC_1CYCLE),
-    gsSPDisplayList(Entity_SaveBlock_LoadTextureStar),
-    gsSPClearGeometryMode(G_LIGHTING | G_SHADING_SMOOTH),
-    gsSPSetGeometryMode(G_CULL_BACK),
-    gsSPVertex(D_0A000000_E4B2E0, 20, 0),
-    gsSP2Triangles(0, 1, 2, 0, 0, 2, 3, 0),
-    gsSP2Triangles(0, 3, 4, 0, 0, 5, 1, 0),
-    gsSP2Triangles(0, 4, 6, 0, 1, 7, 2, 0),
-    gsSP2Triangles(2, 8, 3, 0, 3, 9, 4, 0),
-    gsSP2Triangles(10, 11, 12, 0, 11, 13, 14, 0),
-    gsSP2Triangles(11, 14, 15, 0, 11, 15, 12, 0),
-    gsSP2Triangles(11, 16, 13, 0, 15, 17, 12, 0),
-    gsSP2Triangles(13, 18, 14, 0, 14, 19, 15, 0),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(Entity_SaveBlock_RenderStar);
 
-Gfx Entity_SaveBlock_RenderContent[] = {
-    gsSPDisplayList(Entity_SaveBlock_RenderStar),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(Entity_SaveBlock_RenderContent);
 
-Gfx Entity_SaveBlock_RenderBlock[] = {
-    gsSPDisplayList(Entity_SaveBlock_RenderFaces),
-    gsSPDisplayList(Entity_SaveBlock_RenderLetterS),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(Entity_SaveBlock_RenderBlock);
 
 #if VERSION_PAL
 Gfx Entity_SaveBlock_RenderBlock_es[] = {
@@ -200,6 +124,4 @@ Gfx Entity_SaveBlock_RenderBlock_es[] = {
 };
 #endif
 
-Gfx Entity_SaveBlock_RenderNone[] = {
-    gsSPEndDisplayList(),
-};
+NDN_DECL(Entity_SaveBlock_RenderNone);

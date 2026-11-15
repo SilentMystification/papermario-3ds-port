@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "fio.h"
 #include "ld_addrs.h"
 #include "entity.h"
@@ -8,9 +9,9 @@
 #include "nd_xf.h"
 
 extern Mtx Entity_SaveBlock_Mtx;
-extern Gfx Entity_SaveBlock_RenderContent[];
-extern Gfx Entity_SaveBlock_RenderBlock[];
-extern Gfx Entity_SaveBlock_RenderNone[];
+NDN_DECL(Entity_SaveBlock_RenderContent);
+NDN_DECL(Entity_SaveBlock_RenderBlock);
+NDN_DECL(Entity_SaveBlock_RenderNone);
 
 extern s32 Entity_SaveBlock_ScriptResume[];
 
@@ -25,7 +26,7 @@ extern s32 gCurrentLanguage;
 #endif
 
 void entity_SaveBlock_setupGfx(s32 index) {
-    Gfx* dlist = Entity_SaveBlock_RenderContent;
+    Gfx* dlist = NDN(Entity_SaveBlock_RenderContent);
     Entity* entity = get_entity_by_index(index);
     SaveBlockData* blockData = entity->dataBuf.saveBlock;
     s32 alpha = 128;
@@ -48,7 +49,7 @@ void entity_SaveBlock_setupGfx(s32 index) {
 #if VERSION_PAL
     switch (gCurrentLanguage) {
         default:
-            dlist = ENTITY_ADDR(entity, Gfx*, Entity_SaveBlock_RenderBlock);
+            dlist = ENTITY_ADDR(entity, Gfx*, NDN(Entity_SaveBlock_RenderBlock));
             break;
 
         case LANGUAGE_ES:
@@ -56,7 +57,7 @@ void entity_SaveBlock_setupGfx(s32 index) {
             break;
     }
 #else
-    dlist = ENTITY_ADDR(entity, Gfx*, Entity_SaveBlock_RenderBlock);
+    dlist = ENTITY_ADDR(entity, Gfx*, NDN(Entity_SaveBlock_RenderBlock));
 #endif
     guMtxL2F(sp58, ENTITY_ADDR(entity, Mtx*, &Entity_SaveBlock_Mtx));
     sp58[3][1] += 12.5f;
@@ -183,7 +184,7 @@ EntityScript Entity_SaveBlock_ScriptResume = {
     es_End
 };
 
-EntityModelScript Entity_SaveBlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_SaveBlock_RenderNone, RENDER_MODE_SURFACE_XLU_LAYER3);
+EntityModelScript Entity_SaveBlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_SaveBlock_RenderNone), RENDER_MODE_SURFACE_XLU_LAYER3);
 
 EntityBlueprint Entity_SavePoint = {
     .flags = ENTITY_FLAG_4000 | ENTITY_FLAG_FIXED_SHADOW_SIZE,
