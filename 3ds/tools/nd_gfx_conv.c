@@ -213,6 +213,7 @@ typedef struct {
     int emitted_pso, emitted_bind, emitted_bind1;
     char unsup[160];
     int inh; char inh_groups[64], inh_first[160];
+    unsigned mesh; /* MESH1: a VTX unit into a Vec3s symbol (animator.c reads the units) */
     unsigned lit; /* LIT1: the walk saw a light unit (NDO_MOVEMEM of a Lights1 symbol) */
     uint32_t uw[2u * V2_MAXOPS]; char ue[V2_MAXOPS][160]; unsigned nu; /* the depth-0 typed units (CONV2D): words, and the address text (ue[i][0] == 0: no address) */
     unsigned nk; /* CONV2D2: words to the stop */
@@ -442,8 +443,8 @@ static void v2_unit_add(unsigned k, unsigned id, uint32_t w0, uint32_t w1) {
         else if (off) { v2_unsup("call into a moved list at an offset", k); return; }
         else snprintf(cx->ue[i], sizeof cx->ue[i], "(const char*)&ndd_%s", cs->name);
     } else if (!v2_sym_expr(cx->ue[i], sizeof cx->ue[i], (uintptr_t)w1, kind)) {
-        v2_unsup("unit address outside the symbol map", k);
-        return;
+        if (kind == GS_VTX && v2_sym_expr(cx->ue[i], sizeof cx->ue[i], (uintptr_t)w1, GS_V3S)) cx->mesh = 1;
+        else { v2_unsup("unit address outside the symbol map", k); return; }
     }
     cx->uw[2u * i + 1u] = 0;
 }
@@ -697,8 +698,7 @@ static int v2_one(const GSym* g, const NdPsoDesc* seed, FILE* fu) {
         v2_seed(&cx->st, seed);
     }
     v2_units_top(g);
-    v2_walk(g, 0, 0);
-    v2_flush();
+    if (!cx->mesh) { v2_walk(g, 0, 0); v2_flush(); }
     if (cx->inh && !v2_inh_mode) return -1;
     if (cx->unsup[0]) { if (!seed && !v2_inh_mode) { fprintf(fu, "%s: %s\n", g->name, cx->unsup); v2_n_unsup++; } return 0; }
     if (v2_n_tab >= V2_MAXTAB) { fprintf(stderr, "gconv: too many v2 tables\n"); exit(1); }
@@ -933,6 +933,7 @@ int main(int argc, char** argv) {
         else if (s->kind == GS_VTX) printf("extern Vtx %s[];\n", s->name);
         else if (s->kind == GS_MTX) printf("extern Mtx %s;\n", s->name);
         else if (s->kind == GS_LIT) printf("extern Lights1 %s;\n", s->name);
+        else if (s->kind == GS_V3S) printf("extern Vec3s %s[];\n", s->name);
     }
     for (unsigned i = 0; i < gconv_nsym; i++) {
         if (gconv_sym[i].kind != GS_GFX) continue;

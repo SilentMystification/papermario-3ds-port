@@ -603,6 +603,23 @@ static void v2_flat(const NdNTab* t, const char* name, int fault) {
     if (ra && !f_words) f_v2++;
     f_w += f_words;
 }
+/* MESH1: 1 when the list has a VTX unit into a Vec3s symbol (animator.c reads the units; the table has no draws) */
+static unsigned v2_n_mesh;
+static int v2_mesh(const void* list) {
+    const GSym* g = NULL;
+    for (unsigned s = 0; s < gconv_nsym; s++) if (gconv_sym[s].kind == GS_GFX && gconv_sym[s].addr == list) g = &gconv_sym[s];
+    if (!g) return 0;
+    const uint32_t* L = (const uint32_t*)g->addr;
+    const unsigned nl = (unsigned)(((uintptr_t)g->end - (uintptr_t)g->addr) / 8u);
+    for (unsigned k = 0; k < nl; k++) {
+        const uint32_t w0 = L[2u * k], w1 = L[2u * k + 1u];
+        if ((w0 >> 24) == NDO_END) break;
+        if ((w0 >> 24) != NDO_VTX) continue;
+        for (unsigned s = 0; s < gconv_nsym; s++)
+            if (gconv_sym[s].kind == GS_V3S && (uintptr_t)w1 >= (uintptr_t)gconv_sym[s].addr && (uintptr_t)w1 < (uintptr_t)gconv_sym[s].end) return 1;
+    }
+    return 0;
+}
 static void v2_compare(int fault) {
     unsigned tables = 0, n_seed = 0, seed_bad = 0; /* CONV2C2: seeded tables and those with a compare fail */
     for (unsigned n = 0; n < ndn_n; n++) {
@@ -622,8 +639,8 @@ static void v2_compare(int fault) {
             ms.key_c = e->key_c ^ (fault ? 1u : 0u);
         }
         nmtri = nvtri = nmxf = nmcol = nvxf = nvcol = 0; m_over = 0;
-        m_walk(g1);
-        v_replay(t, fault);
+        if (v2_mesh(t->list)) v2_n_mesh++;
+        else { m_walk(g1); v_replay(t, fault); }
         v2_units(t, name);
         v2_dev(t, name, fault && tables == 0, n);
         v2_flat(t, name, fault && tables == 0);
@@ -652,6 +669,7 @@ static void v2_compare(int fault) {
     { unsigned nt0 = 0; for (unsigned i = 0; i < ndn_dev_n; i++) if (ndn_dev_idx[i]->ntri == 0) nt0++; printf("ntab notri %u of %u\n", nt0, ndn_dev_n); }
     printf("ntab inherit %u unsup %u descs %u\n", ndn_inherit, ndn_unsup, ndn_ndesc);
     printf("ntab seeded %u bad %u\n", n_seed, seed_bad);
+    printf("ntab mesh %u\n", v2_n_mesh);
 }
 #endif
 

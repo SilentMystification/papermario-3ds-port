@@ -11,7 +11,7 @@ import re
 import sys
 import pathlib
 
-DEF = re.compile(r"^(Gfx|Vtx)\s+(?:N\((\w+)\)|(\w+))\s*\[[^\]]*\]\s*=", re.M)
+DEF = re.compile(r"^(Gfx|Vtx|Vec3s)\s+(?:N\((\w+)\)|(\w+))\s*\[[^\]]*\]\s*=", re.M)
 JP = re.compile(r"^#if VERSION_(?:JP|PAL)\b.*?^#(?:else|endif)\b", re.M | re.S)  # FXENT3: the JP branch is not in the ELF; LIT1: nor the PAL one (US build)
 MTX = re.compile(r"^Mtx\s+(?:N\((\w+)\)|(\w+))\s*(\[[^\]]*\])?\s*=", re.M)
 LIT = re.compile(r"^Lights1\s+(?:N\((\w+)\)|(\w+))\s*=", re.M)  # LIT1
@@ -101,7 +101,7 @@ def entry_lines(entries):
         if k == "Img":
             lines.append(f'    {{ "{n}", GS_IMG, (const void*){n}, (const void*){n}_gend{tail}')
         else:
-            gk = {"Gfx": "GS_GFX", "Vtx": "GS_VTX", "Mtx": "GS_MTX", "Lit": "GS_LIT"}[k]
+            gk = {"Gfx": "GS_GFX", "Vtx": "GS_VTX", "Mtx": "GS_MTX", "Lit": "GS_LIT", "Vec3s": "GS_V3S"}[k]
             if k in ("Mtx", "Lit"):
                 lines.append(f'    {{ "{n}", {gk}, (const void*)&{n}, (const void*)((const char*)&{n} + sizeof {n}){tail}')
             else:
