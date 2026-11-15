@@ -1,50 +1,40 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main 1df64777c0, 2026-11-15. 31st oracle (display list work; a second oracle hunts the build 5774 map-change crash: do not touch pm_mapdata.c,
-pm_map.c map restore, heap.c, nd_mesh.h). Running: ws_PIPEFX (imgfx.c), ws_DLCRD (nd_shape.c, pm_map.c, nd_dlc.c). Ready: ws_GSETI (+ ws_GSETI_code.md).
+State: main 0db42b31e8, 2026-11-15. 32nd oracle (display list work). A second oracle owns the NDN-pointer reader class (ws_LKEY: nd_lkey.h,
+lkey_cen.py census): do not touch those readers. Running: ws_GSETI (gset.py). Ready: ws_LKEY, ws_FXVROM. After Merge FXVROM: ws_FXTYPE.
 User order 2026-11-15: BATCH. One page covers a family or a directory (one codemod, one gset set, one gate). Up to 3 coders.
-## Counters (FACT, listcen in the main folder, 1df64777c0)
-C1 build 738 (461 gbi headers, phase E), C2 gfxpos 224, C5 data 5149, C6 data_arrays 461, C7 gfxtype 1085, C8 reader 779, C10 recdl 15.
-(The orchestrator quoted data 5120, gfxtype 947: other run place. Re-run listcen in the main folder before a page.)
-C5 by place: assets/us 2767 (effects/gfx 1468 in 95 lists, pra_31 323, starpoint 238, kzn2 138, tst_13 114, hammer 76, dgb_01 72, level_up 54),
-src/model.c 516, include 384, src/entity 170, src/world 165, screen_overlays 123, curtains 121, PAL level_up_letters 291, battle 93, pause 72, filemenu 70.
+## Counters (FACT, listcen on main 1e45bdcad9 + converter edits only)
+C1 build 738 (gbi.h 382, gbi_custom.h 61, gs2dex.h 18; model.c 67, effects 46, world 45, imgfx.c 21, entity 21), C2 gfxpos 224,
+C5 data 5149, C6 data_arrays 461, C7 gfxtype 1083, C8 reader 783, C10 recdl 15.
 ## Dry-run tools (scratch worktrees, nothing on main)
-- `git worktree add --detach <scratch>/dry HEAD`, then gen_gfx_tab in docker like build.sh:94-111 (mount the worktree as /w, assets of the main
-  folder read-only). Run nd_gtab_test and 3ds/tests/host.d/conv2c.sh in the same container for the host compare. One run is 4-5 min: run it in the background.
-- Host-compile a candidate source first: `gcc -m32 -w <DEF> -DND_GCONV_IN <INC> -fsyntax-only <file>` (flags: gen_gfx_tab.sh:11-13). It saves runs.
-- Base FACT (1df64777c0): gconv lists 1763, tables 1745, inherit 40, unsup 19, gset ok 1660, moved 1578; conv2c ok run `ntab tables 1745 draws 30174 bad 0`.
-## Design FXVROM (next page; dry run done, one host-compare step open)
-- FACT: 93 of the 103 not-ok lists are effect lists. The cause is a call-edge chain from 19 unsup lists (gset_check, nd_gfx_conv.c:889-901).
-- FACT: the main unsup cause is a gsSPVertex that reads past its array end (lil_oink: `&D_09000080_3FF2D0[0], 5` on a [2] array). The device
-  layout is ROM order (pm_3ds_5774.map: D_09000080_3FF2D0 0x50bbf0, D_090000A0_3FF2F0 0x50bc10). The host layout is not.
-- Rule (tested in a scratch copy): at nd_gfx_conv.c:539 split a load past its array end. The next piece reads the Vtx symbol whose name ROM hex
-  (D_..._<hex>) equals hex + 16 * length. No such symbol: the load stays whole (else 4 moved lists lose their table: gconv FAIL).
-  FACT result: tables 1771, inherit 21, unsup 12, gset ok 1693 (+33), gconv bad 0. Then gset.py on all 118 src/effects/gfx sources:
-  gset moved 33, listcen data 5149 -> 4233 (-916), data_arrays -33, gfxtype -4; 2nd gconv run moved 1611, bad 0.
-- OPEN before the page: conv2c then reports `bad 3732` (FAIL triangle vertex triple: D_09001A00_3E4360, D_09001A20_3E4380, both already moved).
-  Cause: nd_gtab_test.c m_tri (:380-381) keeps (array, index past end), the v2 table has (next array, index). Fix design: move vtx_len, rom_of,
-  vtx_rom_next into nd_gconv.h (static inline), and normalise e->base[j]/e->i[j] in m_tri by the same rule. Dry run it: pass = ok-run bad 0.
-- Expected picture: the 2 already-moved lists drew host-layout vertices on the device (their tables came from the host layout). FXVROM corrects
-  them. A drec diff at their draws is a correction: the user decides (one bit differs = gate fails).
-- -fno-toplevel-reorder on the gen_gfx_tab.sh compiles changes nothing (FACT, same counts). Do not use it.
-## Other families (FACT from this session)
-- pra_31 stairs_skele.c (34 includes, 323 data): animator skeleton nodes (`.displayList = &N(unk_01_gfx)`, :201); its lists are unsup
-  `unit address outside the symbol map` and `matrix address outside the symbol map` (Matrix4s N(unk_02_mtx), stairs_vtx.c:120). MESHST-like design.
-- NAMESPACE `A(x)` (battle actors: kzn2/actor/lava_piranha.c:15, sam2/dlist.c:3): gen_gfx_syms.py NS_DEF takes `A`. Fix: expand A(x) like N(x).
-- Host compile fails: dro_02/npc_merlee.c (EffectInstance type), filemenu_selectlanguage.c.
+- Script form: scratchpad fxv_dry.sh of oracle 32 (worktree add, edit script, docker gen_gfx_tab + nd_gfx_tab.o + conv2c.sh, seed converter
+  with -D, gset.py on a set, second run, listcen). One gconv run is about 4 min. Run it in the background.
+- Host-compile a candidate source first: `gcc -m32 -w <DEF> -DND_GCONV_IN <INC> -fsyntax-only <file>` (flags: gen_gfx_tab.sh:11-13).
+- Base FACT (1e45bdcad9): gconv lists 1763, tables 1745, inherit 40, unsup 19, gset ok 1660, moved 1578; conv2c ok `ntab tables 1745 draws 30174 bad 0`.
+## FXVROM (page ready: ws_FXVROM.md + _code)
+- FACT run 1 (split + m_tri rule): tables 1771, inherit 21, unsup 12, gset ok 1693, bad 0; conv2c ok `ntab tables 1771 draws 35637 bad 0`.
+  Seed -DROM_SPLIT=0 gives `D_09002CE8_3C0688: vertex ref outside the set` back. gset on 118 sources: moved 33 files 2 keep 0.
+- FACT (code read): the device never reads NdNTab (ndno/ndni/ndnv: no reader in 3ds/src). It runs the unit words ndnu (nd_walk.c:599 nd_ntab_run).
+  The split changes only the host compare form. The ndnu words and the ndd_ keys do not change. The last oracle's GUESS (2 moved lists draw
+  host-layout vertices on the device) is wrong: the device load reads from the array start in ROM-ordered memory (pm_3ds.map 0x4e0a20, +0x70).
+## Other families (FACT from oracles 31-32)
+- C1/C2: the codemod --ntab dry (main) keeps all dl sites `no-entry`: effects 32, world 36, entity 21, battle 6, screen_overlays 16, curtains 5,
+  entity_model 4. They need v2 tables first. Re-run the dry after Merge GSETI: `codemod.py --dry --state --ntab build3ds/out/ntab_tables.txt <dir>`.
+- NAMESPACE A(x) (kzn2/actor/lava_piranha.c, sam2/dlist.c): gen_gfx_syms.py:21 and gset.py:32 NS_DEF take `A`. A(sym) = AREA_sym (macros.h:44,
+  :200). Their users are readers: lava_piranha `ems_Draw(N(DList1), 60)`, sam2 monstar.c:157 `.displayList = N(dlist)`: wait for LKEY census.
+- npc_merlee.c is #included by dro_02/npc.c:53 (not a device source): gset needs an include-twin rule. filemenu_selectlanguage.c is not in the
+  device build (3ds/CMakeLists.txt:291-299): drop it.
+- pra_31 stairs_skele.c (34 includes, 323 data): animator skeleton nodes; unsup `unit address outside the symbol map` and `matrix address
+  outside the symbol map` (Matrix4s N(unk_02_mtx), stairs_vtx.c:120). MESHST-like design.
 - model.c (516 data, 169 gfxtype, 67 build): Gfx_RM* lists are NdSDef defs (model.c:1260, nd_rmdef.h), built at run time (nd_rec.c:145 nd_rm_build);
-  SolidCombineModes/AlphaTestCombineModes are combine words (model.c:1616, nd_recs.c:86). Readers: animator.c:43-56/785-828, entity_model.c:29+.
-  Needs a design (converter emits the compiled defs); Sonnet design step.
-- C7 effects (275 Gfx words): `Gfx* X[] = { NDN(..) }` 120+, `Gfx* dlist` 40, `extern Gfx X[]` 40 (unmoved). A typedef handle codemod
-  touches the same lines as FXVROM's gset rewrite: start it after Merge FXVROM. Device build uses -w (CMakeLists.txt:324).
+  LKEY H edits nd_rec.c for ModelRenderModes keys. Needs a design (converter emits the compiled defs); Sonnet approved by the user.
+- C7 effects: fxtype dry 89 ok arrays; the other 50 are read by a local `Gfx* dlist = X[i]` (next FXTYPE step: local handle rule).
 ## Older facts that still cost time
-- NDN_DECL/NDN (nd_gtab.h:64-71): host form extern Gfx; device form ndd_<name> NdNDev. gset include mode is src/effects/gfx only (gset.py:325).
-- listcen skips an asset that only a gfxin twin includes (listcen.py:250-259). gen_gfx_tab copies its logs to /w/build3ds/out when it exists.
-- OPEN crash 5774: logic thread, reset_player_status 7B440.c:123 reads mac_01 entryList; writer not found (other oracle).
-- fxr_drec first run can flake cold (grab_tex hash, pm_gpu.c:2565, :666): warm rerun rule (bench.py:2023).
-- NOT NOW (user): pm_mapdata.c:112-123 save malloc; psochk 16 of 20 fields; perf round (nd_ntab_find probes, audit_hw3 F1).
+- NDN_DECL/NDN (nd_gtab.h:66-74): host form extern Gfx; device form ndd_<name> NdNDev. gset include mode is src/effects/gfx only.
+- listcen skips an asset that only a gfxin twin includes. gen_gfx_tab copies its logs to /w/build3ds/out when it exists.
+- fxr_drec first run can flake cold (grab_tex hash): warm rerun rule (bench.py:2023).
+- Windows python cannot open /c/... paths: pass `cygpath -m` paths.
 ## What to do first
-1. Answer GSETI, PIPEFX, DLCRD coder questions (SendMessage, file:line).
-2. FXVROM: dry-run the nd_gtab_test normalisation, then write ws_FXVROM (Haiku; nd_gfx_conv.c, nd_gconv.h, nd_gtab_test.c, a vrom.sh seeded test,
-   gset.d/FXVROM.txt = the 118 src/effects/gfx sources). Gate: host conv2c bad 0, 4 drec benches; a diff goes to the user.
-3. Then: FXTYPE codemod (after Merge FXVROM), A(x) namespace in gen_gfx_syms.py, model.c design, pra_31 skeleton.
+1. Answer coder questions (GSETI, LKEY, FXVROM) with SendMessage, file:line.
+2. After Merge GSETI: re-run the codemod --ntab dry and write the C1/C2 dl page per directory.
+3. After Merge LKEY: A(x) namespace + merlee include-twin page; model.c design (Sonnet); pra_31 skeleton design.
