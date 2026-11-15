@@ -1,12 +1,8 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
 State: main 2308ccc573, 2026-11-15. Twentieth oracle: ws_MOON2 (after Merge MOON1), ws_XFT (parallel). Nineteenth: ws_PAUSEH (after Merge HWFIX), ws_MOON1. OPEN:
-(a) black coins and field items (no page, cause OPEN). Vertex colour (0,0,0,255) item_entity.c:77-89. Shade replaces the texel in the TEV at nd_tmpl.c:211-213
-(plan with no texture unit: pm_gpu.c:1601-1611 t = 0) or :261-263 (no texture), or is multiplied at :245-247 (legacy combine 2 = TEX0 * shade, chosen when
-nd_comb_core skips decide: nd_decide.c:302 dual_on or box). FACT D_8014C678/6A0 have a v1 gtab only (nd_gfx_tab.c:28417-28427), k->v2 = 0.
-Comma fault nd_comb.c:191: for DECALRGBA it changes the result only through dual_on (nd_tex_set.c:508 sets, :155 clears with a skipped sync), i.e.
-after a shaded sprite. GUESS not the general cause. User question (via orchestrator): black square or black coin shape; every map or some maps.
-Square = no texture unit (ensure_tile, gv_epoch_enter nd_geom.c:209-211). Coin shape = legacy combine 2 (plan off). (b) moon air: ws_MOON2.
+(a) black coins: ws_COIN (after Merge HWFIX). FACT cause: stale dual_on from a shaded sprite (nd_tex_set.c:508); the item draw with shading on sets no tile 0 size
+(item_entity.c:979-993), so decide is skipped (nd_decide.c:302), legacy mode 2 = texel * vertex colour 0. GUESS only maps with sprite shading. (b) moon air: ws_MOON2.
 (c) map change stutter: ws_XFT, then a console prof run. FACT console 11-11 (build3ds/hw_xl_log.txt #806-#810): seamfix mac_00 103.9 ms inside
 dlc 121.2 ms (seam_get in timed dlc_build, nd_shape.c:375), maxstep dlc 112.6, ent 3 (ent_reset is not the cost). FACT .dlc max 47841 B (sam_11),
 .seam max 13536 B. Fix idea after the measure: read .seam and .dlc whole at pm_map.c:151 (one fread each, the .nds header once).
