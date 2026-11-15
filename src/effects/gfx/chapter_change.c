@@ -36,14 +36,6 @@ INCLUDE_IMG("effects/gfx/world/ch8.png", D_0900AD40_3F6BA0);
 INCLUDE_IMG("effects/gfx/world/chapter_rainbow.png", D_0900BD40_3F7BA0);
 #endif
 
-#include "effects/gfx/D_0900BE40_3F7CA0.gfx.inc.c"
-#include "effects/gfx/D_0900BE88_3F7CE8.gfx.inc.c"
-#include "effects/gfx/D_0900BED0_3F7D30.gfx.inc.c"
-#include "effects/gfx/D_0900BF18_3F7D78.gfx.inc.c"
-#include "effects/gfx/D_0900BF60_3F7DC0.gfx.inc.c"
-#include "effects/gfx/D_0900BFA8_3F7E08.gfx.inc.c"
-#include "effects/gfx/D_0900BFF0_3F7E50.gfx.inc.c"
-#include "effects/gfx/D_0900C038_3F7E98.gfx.inc.c"
 
 #if VERSION_JP
 #include "effects/gfx/D_0900B900_3FFA20.gfx.inc.c"
@@ -51,11 +43,6 @@ INCLUDE_IMG("effects/gfx/world/chapter_rainbow.png", D_0900BD40_3F7BA0);
 #include "effects/gfx/D_0900BA30_3FFB50.gfx.inc.c"
 #include "effects/gfx/D_0900BB18_3FFC38.gfx.inc.c"
 #else
-#include "effects/gfx/D_0900C080_3F7EE0.gfx.inc.c"
-#include "effects/gfx/D_0900C168_3F7FC8.gfx.inc.c"
-#include "effects/gfx/D_0900C1B0_3F8010.gfx.inc.c"
-#include "effects/gfx/D_0900C1F8_3F8058.gfx.inc.c"
-#include "effects/gfx/D_0900C240_3F80A0.gfx.inc.c"
 
 // TODO allow splat to output the reference to halfway into the texture
 //#include "effects/gfx/D_0900C328_3F8188.gfx.inc.c"
@@ -65,8 +52,5 @@ Gfx D_0900C328_3F8188[] = {
     gsSPEndDisplayList(),
 };
 
-#include "effects/gfx/D_0900C370_3F81D0.gfx.inc.c"
 #endif
 
-#include "effects/gfx/D_0900C458_3F82B8.gfx.inc.c"
-#include "effects/gfx/D_0900C540_3F83A0.gfx.inc.c"
