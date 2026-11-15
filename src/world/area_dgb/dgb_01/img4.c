@@ -3,4 +3,4 @@
 #include "include_asset.h"
 
 INCLUDE_IMG("world/area_dgb/dgb_01/img4.png", dgb_01_img4_png);
-NDN_DECL(dgb_01_img4_gfx);
+NDN_DECL(N(img4_gfx));

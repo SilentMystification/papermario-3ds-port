@@ -47,14 +47,14 @@ API_CALLABLE(InitAnimatedModels);
 API_CALLABLE(SetAnimatedModelRenderMode);
 API_CALLABLE(DeleteAnimatedModel);
 
-extern Gfx N(img0_gfx)[];
-extern Gfx N(img1_gfx)[];
-extern Gfx N(img2_gfx)[];
-extern Gfx N(img3_gfx)[];
-extern Gfx N(img4_gfx)[];
-extern Gfx N(img5_gfx)[];
-extern Gfx N(img6_gfx)[];
-extern Gfx N(img7_gfx)[];
+NDN_DECL(N(img0_gfx));
+NDN_DECL(N(img1_gfx));
+NDN_DECL(N(img2_gfx));
+NDN_DECL(N(img3_gfx));
+NDN_DECL(N(img4_gfx));
+NDN_DECL(N(img5_gfx));
+NDN_DECL(N(img6_gfx));
+NDN_DECL(N(img7_gfx));
 NDN_DECL(N(D_8024BCF8_C09578));
 
 extern Mtx N(D_80253160_C109E0);

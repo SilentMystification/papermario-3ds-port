@@ -91,4 +91,14 @@ KS="$T.blkincseed"; rm -rf "$KS"; mkdir -p "$KS"; cp -r 3ds/tests/gset/case_blki
 sed 's/^INC_BLOCK = True/INC_BLOCK = False/' 3ds/tools/gset.py > "$KS.py"
 $PY "$KS.py" "$KS/list.txt" "$KS/gset_ok.txt" "$KS" > "$KS.out" 2>&1 || true
 tr -d '\r' < "$KS/src/b.c" | grep -qxF '#include "ast/E.gfx.inc.c"' || { echo "gset blkinc seeded fault not seen"; exit 1; }
+# GSETI incns: block source c.c (namespace ns) includes asset F.gfx.inc.c, list ns_F_gfx; its N(F_gfx) use must become NDN(N(F_gfx)) (rewrite_ns). Seeded fault: INC_NS off leaves the N use.
+M="$T.incns"; rm -rf "$M"; mkdir -p "$M"; cp -r 3ds/tests/gset/case_incns/. "$M/"
+rc=0; $PY 3ds/tools/gset.py "$M/list.txt" "$M/gset_ok.txt" "$M" > "$M.out" 2>&1 || rc=$?
+[ "$rc" = 0 ] || { echo "gset incns test: exit $rc, want 0"; cat "$M.out"; exit 1; }
+tr -d '\r' < "$M/src/c.c" | grep -qxF 'NDN_DECL(N(F_gfx));' || { echo "gset incns test FAIL: c.c lacks NDN_DECL(N(F_gfx));"; exit 1; }
+tr -d '\r' < "$M/src/c.c" | grep -qxF '    gSPDisplayList(gMainGfxPos++, NDN(N(F_gfx)));' || { echo "gset incns test FAIL: c.c lacks the NDN(N(F_gfx)) use"; exit 1; }
+MS="$T.incnsseed"; rm -rf "$MS"; mkdir -p "$MS"; cp -r 3ds/tests/gset/case_incns/. "$MS/"
+sed 's/^INC_NS = True/INC_NS = False/' 3ds/tools/gset.py > "$MS.py"
+$PY "$MS.py" "$MS/list.txt" "$MS/gset_ok.txt" "$MS" > "$MS.out" 2>&1 || true
+tr -d '\r' < "$MS/src/c.c" | grep -qxF '    gSPDisplayList(gMainGfxPos++, NDN(N(F_gfx)));' && { echo "gset incns seeded fault not seen"; exit 1; }
 echo "gset test ok"

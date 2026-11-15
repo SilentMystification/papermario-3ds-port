@@ -24,6 +24,7 @@ OWN_RULE = True  # ISTAR: a user file that defines a moved name keeps its own co
 NS_RULE = True  # GSETW: N(x) is rewritten only in the files of its namespace; the seeded test (gset.sh) runs a copy with this False
 INC_HOLD = True  # VSLOT2: an include whose list a kept line of the device file names stays; seeded test in gset.sh
 INC_BLOCK = True  # GSETI: block mode moves the all-ok asset includes of a block source; seeded test in gset.sh
+INC_NS = True  # GSETI: the N(x) users of an include-moved list (name ns_x, namespace ns) are rewritten by rewrite_ns; seeded test in gset.sh
 BLOCK_END = "};"  # the block closing line (exact, CR dropped); the seeded test in gset.sh changes this and is_block_end
 COMMON = re.compile(r'^\s*#include\s+"common\.h"\s*$')
 DEF = re.compile(r"^\s*(?:const\s+)?Gfx\s+(\w+)\s*\[", re.M)
@@ -184,6 +185,9 @@ def move_blocks(root, src, ok, twin_dir, assets=None):
             names = gfx_names(at)
             if names and all(n in ok for n in names):
                 incs[k] = (m.group(2), names, at)
+                for n in names:
+                    if INC_NS and ns and n.startswith(ns + "_"):
+                        tok[n] = "N(" + n[len(ns) + 1:] + ")"
     inc_moving = set(incs)
     if HOLD_RULE:
         for k, ln in enumerate(lines):
@@ -193,7 +197,7 @@ def move_blocks(root, src, ok, twin_dir, assets=None):
             if hit and hold_line(ln, {T(n) for n in hit}):
                 moving -= hit
             for ik in list(inc_moving):
-                ihit = {n for n in incs[ik][1] if re.search(W(n), ln)}
+                ihit = {x for n in incs[ik][1] for x in {n, T(n)} if re.search(W(x), ln)}
                 if ihit and hold_line(ln, ihit):
                     inc_moving.discard(ik)
     while True:
@@ -203,7 +207,7 @@ def move_blocks(root, src, ok, twin_dir, assets=None):
                 inside.update(range(s, e + 1))
         unmoved = "\n".join([lines[k] for k in sorted(in_block) if k not in inside] + [incs[k][2] for k in sorted(incs) if k not in inc_moving])
         bad = {n for n in moving if re.search(W(T(n)), unmoved)}
-        ibad = {k for k in inc_moving if any(re.search(W(n), unmoved) for n in incs[k][1])}
+        ibad = {k for k in inc_moving if any(re.search(W(x), unmoved) for n in incs[k][1] for x in {n, T(n)})}
         if not bad and not ibad:
             break
         moving -= bad
@@ -222,7 +226,7 @@ def move_blocks(root, src, ok, twin_dir, assets=None):
             continue
         if k in inc_moving:
             inc, names, _ = incs[k]
-            out.extend(f"NDN_DECL({n});" for n in names)
+            out.extend(f"NDN_DECL({T(n)});" for n in names)
             if f'#include "{inc}"' not in body:  # an include in two #if branches (level_up.c VERSION_JP) goes to the twin once
                 body.append(f'#include "{inc}"')
             moved.extend(names)

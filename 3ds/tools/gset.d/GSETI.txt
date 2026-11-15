@@ -25,7 +25,6 @@ src/world/area_pra/pra_31/stairs_vtx.c
 src/world/area_sam/sam_05/monstar_vtx.c
 src/starpoint.c
 src/level_up.c
-src/world/area_tst/tst_13/main.c
 src/world/area_dgb/dgb_01/img0.c
 src/world/area_dgb/dgb_01/img1.c
 src/world/area_dgb/dgb_01/img2.c

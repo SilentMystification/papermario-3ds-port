@@ -25,15 +25,15 @@ INCLUDE_PAL("battle/move/hammer/ultra_hammer.pal", battle_move_hammer_throw_ultr
 
 #include "battle/move/hammer/hammer_throw.vtx.inc.c"
 
-NDN_DECL(battle_move_hammer_throw_dusty_hammer_gfx);
-NDN_DECL(battle_move_hammer_throw_basic_hammer_gfx);
-NDN_DECL(battle_move_hammer_throw_super_hammer_gfx);
-NDN_DECL(battle_move_hammer_throw_ultra_hammer_gfx);
+NDN_DECL(N(dusty_hammer_gfx));
+NDN_DECL(N(basic_hammer_gfx));
+NDN_DECL(N(super_hammer_gfx));
+NDN_DECL(N(ultra_hammer_gfx));
 
-EntityModelScript N(EMS_DustyHammer) = STANDARD_ENTITY_MODEL_SCRIPT(N(dusty_hammer_gfx), RENDER_MODE_ALPHATEST);
-EntityModelScript N(EMS_BasicHammer) = STANDARD_ENTITY_MODEL_SCRIPT(N(basic_hammer_gfx), RENDER_MODE_ALPHATEST);
-EntityModelScript N(EMS_SuperHammer) = STANDARD_ENTITY_MODEL_SCRIPT(N(super_hammer_gfx), RENDER_MODE_ALPHATEST);
-EntityModelScript N(EMS_UltraHammer) = STANDARD_ENTITY_MODEL_SCRIPT(N(ultra_hammer_gfx), RENDER_MODE_ALPHATEST);
+EntityModelScript N(EMS_DustyHammer) = STANDARD_ENTITY_MODEL_SCRIPT(NDN(N(dusty_hammer_gfx)), RENDER_MODE_ALPHATEST);
+EntityModelScript N(EMS_BasicHammer) = STANDARD_ENTITY_MODEL_SCRIPT(NDN(N(basic_hammer_gfx)), RENDER_MODE_ALPHATEST);
+EntityModelScript N(EMS_SuperHammer) = STANDARD_ENTITY_MODEL_SCRIPT(NDN(N(super_hammer_gfx)), RENDER_MODE_ALPHATEST);
+EntityModelScript N(EMS_UltraHammer) = STANDARD_ENTITY_MODEL_SCRIPT(NDN(N(ultra_hammer_gfx)), RENDER_MODE_ALPHATEST);
 
 extern EvtScript N(EVS_UseMove_Impl);
 

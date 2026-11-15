@@ -1,5 +1,4 @@
 #include "tst_13.h"
-#include "nd_gtab.h"
 #include "nd_st.h"
 #include "nd_xf.h"
 
@@ -276,9 +275,11 @@ NpcGroupList N(DefaultNPCs) = {
 };
 
 #include "world/area_tst/tst_13/shockwave.vtx.inc.c"
-NDN_DECL(tst_13_shockwave_gfx);
+#include "world/area_tst/tst_13/shockwave.gfx.inc.c"
 
-NDN_DECL(N(dummy_gfx));
+Gfx N(dummy_gfx)[] = {
+    gsSPEndDisplayList()
+};
 
 s32 N(BuildGfxCallCount) = 0;
 

@@ -8,7 +8,7 @@
 
 INCLUDE_IMG("world/area_iwa/iwa_01/splash.png", iwa_01_splash_img);
 #include "world/area_iwa/iwa_01/splash.vtx.inc.c"
-NDN_DECL(iwa_01_splash_gfx);
+NDN_DECL(N(splash_gfx));
 
 #define NUM_SPLASHES (20)
 
@@ -66,7 +66,7 @@ void N(gfx_build_splashes)(s32 index) {
                    splash->scale,
                    splash->pos.x, splash->pos.y, splash->pos.z);
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        gSPDisplayList(gMainGfxPos++, N(splash_gfx));
+        gSPDisplayList(gMainGfxPos++, NDN(N(splash_gfx)));
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 

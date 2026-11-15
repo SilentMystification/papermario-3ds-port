@@ -1,4 +1,5 @@
 #include "sam_05.h"
+#include "nd_gtab.h"
 #include "sprite.h"
 #include "include_asset.h"
 
@@ -56,7 +57,7 @@ ImgFXOverlayTexture N(MonstarDetailTexture) = {
     .height  = N(monstar_png_height),
     .offsetX  = -2,
     .offsetY  = 0,
-    .displayList  = N(monstar_gfx),
+    .displayList  = NDN(N(monstar_gfx)),
 };
 
 API_CALLABLE(N(UpdateMonstarSpriteEffects)) {
