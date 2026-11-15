@@ -14,8 +14,8 @@ Live files only. Older logs are in archive/ (agent_*, diag_*, inv_*, plan_*, tra
 - git_branches.md: tip hash of every branch deleted or kept in the row GIT cleanup (recovery record).
 
 ## Native draw epic (current work)
-- ws_MESH1.md: Sonnet goal page: a VTX into a Vec3s symbol makes a mesh list (units only; gen_gfx_syms.py, nd_gconv.h, nd_gfx_conv.c, nd_gtab_test.c), animator.c reads the NdNDev units, the 6 Munchlesia lists move, new bench jan09_mesh_drec (GUESS C5 -828). Start now, parallel with ws_DGBJOIN.
-- ws_DGBJOIN.md: Haiku goal page: vtxsplit.py keeps each dgb_01 vertex load inside its array (69 loads), dgb_01 gfx.c joins the converter set and its ok lists move (GUESS C5 -2700..-2833). Start now, parallel with ws_MESH1.
+- ws_MESHST.md: Haiku goal page: animator mesh nodes draw built-once units (nd_mesh.h, nd_rec_ndev), no per-frame heap list (C1 -4, C2 -1, C7 -3); host test meshst.sh; jan09_mesh_drec judged by drecsum.py (user OK of a non-byte-equal gate, 2026-11-15). Parallel with ws_CHCONV.
+- ws_CHCONV.md: Haiku goal page: chapter_change joins the converter, 16 lists move to the twin (user decision 2026-11-15; fxr_drec differs from frame 1512 only); revert recipe in the page. Parallel with ws_MESHST.
 - start_here_native_draw.md: current state and what is left (long-form handoff).
 - handoff_native_epic_orchestrator.md: findings and pitfalls of the code session of 2026-11-05.
 - plan_native_system.md: design (large; open only the sections a row names).
