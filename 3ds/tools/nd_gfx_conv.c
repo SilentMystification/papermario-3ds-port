@@ -206,6 +206,7 @@ typedef struct {
     V2St st;
     COp ops[V2_MAXOPS]; unsigned nops;
     uint16_t idx[V2_MAXIDX]; unsigned nidx;
+    NdVsRef ref[V2_MAXIDX]; unsigned nref; /* VSLOT2: refs of the mixed draws (ndnv_<nm>) */
     NdBindDesc bind[V2_MAXBIND]; unsigned nbind;
     NdVsOp vs[V2_MAXVS]; unsigned nvs;     /* the loads so far (all segments) */
     NdVsOp seg[V2_MAXVS]; unsigned nseg, seg_tri; /* the ops of the open segment */
@@ -304,19 +305,31 @@ static void v2_flush(void) {
     static NdVsOp all[2u * V2_MAXVS];
     static NdVsDraw dr[V2_MAXVS];
     static uint16_t idx[V2_MAXIDX];
+    static NdVsRef ref[V2_MAXIDX];
     memcpy(all, cx->vs, cx->nvs * sizeof all[0]);
     memcpy(all + cx->nvs, cx->seg, cx->nseg * sizeof all[0]);
-    unsigned ndr = 0, nidx = 0;
-    const int r = nd_vslot_resolve(all, cx->nvs + cx->nseg, idx, V2_MAXIDX, dr, V2_MAXVS, &ndr, &nidx);
+    unsigned ndr = 0, nidx = 0, nref = 0;
+    const int r = nd_vslot_resolve(all, cx->nvs + cx->nseg, idx, V2_MAXIDX, dr, V2_MAXVS, &ndr, &nidx, ref, V2_MAXIDX, &nref);
     v2_commit_loads();
     cx->nseg = 0; cx->seg_tri = 0;
     if (r) { v2_unsup("vertex slots (nd_vslot_resolve)", (unsigned)(-r - 1)); return; }
+    if (cx->nref + nref > V2_MAXIDX) { v2_unsup("too many vertex refs", 0); return; }
+    for (unsigned i = 0; i < nref; i++) {
+        unsigned off;
+        if (!sym_of((uintptr_t)gconv_sym[ref[i].arr].addr + 16u * ref[i].index, GS_VTX, &off)) { v2_unsup("vertex ref outside the set", 0); return; }
+    }
+    const unsigned rb = cx->nref;
+    memcpy(&cx->ref[rb], ref, nref * sizeof ref[0]);
+    cx->nref += nref;
     for (unsigned i = 0; i < ndr; i++) {
         if (cx->nidx + dr[i].nidx > V2_MAXIDX) { v2_unsup("too many indices", 0); break; }
         char p[160];
-        snprintf(p, sizeof p, "(const void*)%s", gconv_sym[dr[i].arr].name);
-        v2_push(NDN_DRAW, 0, dr[i].nidx, 0, p, cx->nidx);
-        memcpy(&cx->idx[cx->nidx], &idx[dr[i].idx0], dr[i].nidx * sizeof idx[0]);
+        const unsigned kind = dr[i].arr == ND_VS_MIX ? 1u : dr[i].arr == ND_VS_IN ? 2u : 0u;
+        if (kind == 1u) snprintf(p, sizeof p, "(const void*)ndnv_%s", cx->nm);
+        else if (kind == 2u) strcpy(p, "0");
+        else snprintf(p, sizeof p, "(const void*)%s", gconv_sym[dr[i].arr].name);
+        v2_push(NDN_DRAW, kind, dr[i].nidx, 0, p, cx->nidx);
+        for (unsigned q = 0; q < dr[i].nidx; q++) cx->idx[cx->nidx + q] = (uint16_t)(idx[dr[i].idx0 + q] + (kind == 1u ? rb : 0u));
         cx->nidx += dr[i].nidx;
     }
 }
@@ -614,6 +627,15 @@ static void v2_emit_table(const V2C* c) {
     for (unsigned i = 0; i < c->nidx; i++) printf("%s%u", i ? "," : "", c->idx[i]);
     if (!c->nidx) printf("0");
     printf("};\n");
+    if (c->nref) {
+        printf("static const void* const ndnv_%s[%u] = {", n, c->nref);
+        for (unsigned i = 0; i < c->nref; i++) {
+            char e[160];
+            if (!v2_sym_expr(e, sizeof e, (uintptr_t)gconv_sym[c->ref[i].arr].addr + 16u * c->ref[i].index, GS_VTX)) { const GSym* rs = &gconv_sym[c->ref[i].arr]; fprintf(stderr, "gconv: %s: vertex ref outside the set (%s index %u of %u)\n", n, rs->name, c->ref[i].index, (unsigned)(((uintptr_t)rs->end - (uintptr_t)rs->addr) / 16u)); exit(1); }
+            printf("%s%s", i ? "," : "", e);
+        }
+        printf("};\n");
+    }
     if (mv) printf("#endif\n");
     printf("static const uint32_t ndnu_%s[%u] = {", n, c->nu ? 2u * c->nu : 1u);
     for (unsigned i = 0; i < c->nu; i++) {

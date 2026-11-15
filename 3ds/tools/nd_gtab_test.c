@@ -219,7 +219,7 @@ extern const unsigned ndn_n, ndn_inherit, ndn_unsup, ndn_ndesc;
 extern const NdNDev* const ndn_dev_of[]; /* GSET1: the device entry of each table (nd_ntab_idx.c) */
 extern const NdPsoDesc* const ndn_desc[];
 
-typedef struct { const void* base; unsigned i[3]; NdPsoDesc d; int tex; NdBindDesc b; unsigned nx, nc; int tex1; NdBindDesc b1; } TriEv;
+typedef struct { const void* base[3]; unsigned i[3]; NdPsoDesc d; int tex; NdBindDesc b; unsigned nx, nc; int tex1; NdBindDesc b1; } TriEv;
 typedef struct { unsigned a, b; uint32_t v; } XcEv;
 #define EVMAX 16384u
 static TriEv mtri[EVMAX], vtri[EVMAX];
@@ -369,12 +369,16 @@ static void m_tri(unsigned a, unsigned b, unsigned c) {
     TriEv* e = &mtri[nmtri++];
     memset(e, 0, sizeof *e);
     const unsigned s[3] = { a, b, c };
+    unsigned nl = 0;
     for (int j = 0; j < 3; j++) {
-        if (s[j] >= 64u || !mslot[s[j]].ok) { m_over = 1; return; }
-        if (j && mslot[s[j]].base != mslot[a].base) { m_over = 1; return; }
-        e->i[j] = mslot[s[j]].idx;
+        if (s[j] >= 64u) { m_over = 1; return; }
+        nl += (unsigned)(mslot[s[j]].ok != 0);
     }
-    e->base = mslot[a].base;
+    if (nl == 1 || nl == 2) { m_over = 1; return; }
+    for (int j = 0; j < 3; j++) {
+        e->base[j] = nl ? mslot[s[j]].base : NULL;
+        e->i[j] = nl ? mslot[s[j]].idx : s[j];
+    }
     e->d = m_desc(&ms);
     e->tex = ms.td_valid && ms.tex_on;
     if (e->tex) e->b = ms.td;
@@ -441,8 +445,18 @@ static void v_replay(const NdNTab* t, int fault) {
                 if (nvtri >= EVMAX) break;
                 TriEv* e = &vtri[nvtri++];
                 memset(e, 0, sizeof *e);
-                e->base = o->p;
-                for (int q = 0; q < 3; q++) e->i[q] = t->idx[o->idx_pos + j + (unsigned)q];
+                for (int q = 0; q < 3; q++) {
+                    const unsigned x = t->idx[o->idx_pos + j + (unsigned)q];
+                    if (o->a == 1u) {
+                        const void* vp = ((const void* const*)o->p)[x];
+                        const GSym* vs = m_vsym((uint32_t)(uintptr_t)vp);
+                        e->base[q] = vs ? vs->addr : NULL;
+                        e->i[q] = vs ? (unsigned)((uintptr_t)vp - (uintptr_t)vs->addr) / 16u : ~0u;
+                    } else {
+                        e->base[q] = o->a == 2u ? NULL : o->p;
+                        e->i[q] = x;
+                    }
+                }
                 if (pso >= 0 && (unsigned)pso < ndn_ndesc) e->d = *ndn_desc[pso];
                 else e->d.cw0 = 0xdeadbeefu;
                 e->tex = bind != NULL;
@@ -622,7 +636,7 @@ static void v2_compare(int fault) {
         for (unsigned i = 0; i < nmtri && nmtri == nvtri; i++) {
             const TriEv *m = &mtri[i], *v = &vtri[i];
             v2_draws++;
-            if (m->base != v->base || m->i[0] != v->i[0] || m->i[1] != v->i[1] || m->i[2] != v->i[2]) v2_fail("triangle vertex triple", name, i);
+            if (memcmp(m->base, v->base, sizeof m->base) || m->i[0] != v->i[0] || m->i[1] != v->i[1] || m->i[2] != v->i[2]) v2_fail("triangle vertex triple", name, i);
             if (!pso_same(&m->d, &v->d)) v2_fail("pso output", name, i);
             if (m->tex && (!v->tex || memcmp(&m->b, &v->b, sizeof m->b))) v2_fail("bind descriptor", name, i);
             if (m->tex1 && (!v->tex1 || memcmp(&m->b1, &v->b1, sizeof m->b1))) v2_fail("tile 1 bind descriptor", name, i);

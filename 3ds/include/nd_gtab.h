@@ -98,7 +98,7 @@ enum {
     NDN_TEX,      /* a = tile (0 or 1), p = const NdBindDesc* */
     NDN_XF,       /* a = gSPMatrix flags (0xFF = pop one modelview matrix), p = const Mtx* (NULL: v = segmented address, input of the caller) */
     NDN_COL,      /* a = 0 prim, 1 env, 2 fog, 3 blend; v = RGBA; b = minlod << 8 | lodfrac for prim */
-    NDN_DRAW,     /* p = const Vtx* base (NULL: v = segmented address), b = index count, a = 0; the indices follow in the table's idx from idx_pos */
+    NDN_DRAW,     /* p = const Vtx* base (NULL: v = segmented address), b = index count, a = 0 (p = vertex base), 1 (p = ndnv pointers) or 2 (p NULL: indices are caller slots); the indices follow in the table's idx from idx_pos */
     NDN_CALL,     /* p = const NdNTab* of another (list, entry) pair */
     NDN_UNIT      /* p = const uint32_t* the depth-0 typed units of the list (word pairs, NOPs kept, the end left out, a call stays a unit), b = their count; the first op of every table; CONV2D2 runs them with nd_walk_state */
 };
