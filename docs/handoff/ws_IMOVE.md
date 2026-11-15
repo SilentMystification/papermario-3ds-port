@@ -4,7 +4,7 @@ Owns: 3ds/tools/gset.d/IMOVE.txt (new). gset.py writes the twins under 3ds/tools
 Edit no other file. Never edit by hand a file that gset.py rewrote.
 FACT (listcen, main 09607a5033): C5 data 12182, C6 data_arrays 1039, C7 gfxtype 1702.
 FACT (oracle dry run of gset.py with the gset_ok.txt of the IENTRY dry run): `gset moved 124 files 22 keep 0`, `gset ok`; 67 files change. listcen after: C5 10743 (-1439),
-C6 915 (-124), C7 1577 (-125). C1 742, C8 777, C10 16 do not change.
+C6 915 (-124), C7 1577 (-125). C1 742, C8 777, C10 16 do not change. Converter on IENTRY dry run + this move: `bad 0 moved 1124`, no `gconv: moved` line.
 ## Group 1: the move (0 builds, 0 runs, commit `IMOVE 1: ...`)
 1. `sh 3ds/tools/nd_host_test.sh > build3ds/out/imove_h0.txt 2>&1`: `ND HOST TESTS PASS`, `ientry ok`, `gconv gset ok 1211 of 1546 lists`. `python 3ds/tools/listcen.py > build3ds/out/imove_lc0.txt`.
    Write imove_e0.txt (step 5 gives the command).
