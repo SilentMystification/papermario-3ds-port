@@ -262,6 +262,7 @@ static int off_used, off_sused, off_fail, off_w = PM_OFF_W, off_h = PM_OFF_H, of
 static unsigned off_mask_f; /* VRAM3 trace: bit i set when full image i is drawn in this frame */
 static unsigned off_trace_n;
 static int prev_want, prev_pre; /* PT12: see pm_gpu_grab_prev */
+static int prev_hold; static unsigned hold_n, hold_rst; /* PAUSEH: the pause keeps the grab_tex copy of its first frame (pm_gpu_hold_prev) */
 static int prev_done; /* GAMEOVER: the slot of the old frame is drawn in this drawn frame (key or t = 0.5 pass). Cleared with the slots (pm_gpu_begin_wait) */
 extern unsigned pm_frame_count(void);
 static unsigned r_mixcol; /* V06: see pm_gpu_set_mix */
@@ -2720,6 +2721,12 @@ typedef struct { int unused; } Wq_pm_gpu_want_prev;
 static void wq_pm_gpu_want_prev(void* a) { Wq_pm_gpu_want_prev* q = (Wq_pm_gpu_want_prev*)a; (void)q; pm_gpu_want_prev_w(); }
 void pm_gpu_want_prev(void) { Wq_pm_gpu_want_prev q = { 0 }; pm_wq_post(wq_pm_gpu_want_prev, &q, sizeof q); }
 static void pm_gpu_want_prev_w(void) { prev_want = 2; }
+/* PAUSEH: a pause frame keeps the copy in grab_tex for the next 2 drawn frames: pm_gpu_begin makes no new copy (src/background_gfx.c SHOW_PAUSED). */
+static void pm_gpu_hold_prev_w(void);
+typedef struct { int unused; } Wq_pm_gpu_hold_prev;
+static void wq_pm_gpu_hold_prev(void* a) { (void)a; pm_gpu_hold_prev_w(); }
+void pm_gpu_hold_prev(void) { Wq_pm_gpu_hold_prev q = { 0 }; pm_wq_post(wq_pm_gpu_hold_prev, &q, sizeof q); }
+static void pm_gpu_hold_prev_w(void) { prev_hold = 2; }
 /* BTRANS caplog: the capture state read by cfb_capture_prev (pm_main.c, switch caplog). */
 void pm_gpu_cap_state(int* o) {
     PM_WALK_OWN(); /* CORE2-3a */
@@ -2780,7 +2787,7 @@ static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
         pm_tex_flush_pend_only();
         sh_clear(); ndunit_scan(); rd_sync(); C3D_FrameSplit(GX_CMDLIST_FLUSH); sc_spl++;
     }
-    if (!prev_frame) grab_queue_copy(); /* PT12: the old frame was copied at pm_gpu_begin */
+    if (!prev_frame) { grab_queue_copy(); if (prev_hold) { prev_hold = 0; hold_rst++; } } /* PT12; PAUSEH: a grab overwrote grab_tex: the next frame copies again */
     pm_gpu_off_begin(cfb, 320, 2, 0);
     {
         int sc[4] = { sci_x0, sci_y0, sci_x1, sci_y1 };
@@ -2924,8 +2931,10 @@ void pm_gpu_begin_wait(void) {
     prev_pre = 0;
     { u32 *b_, sz_, of_; GPUCMD_GetBuffer(&b_, &sz_, &of_); kc_base = b_; }
     kc_rec = pm_interp_on > 0 || fh_on(); kc_arm = 0; kc_n = kc_from = kc_skip_n = 0; kc_over = 0; kc_split0 = cmd_split_n; /* INTERPB3: the record of this frame starts with the queue after C3D_FrameBegin */
-    if (prev_want && grab_tex_init()) { grab_queue_copy(); prev_pre = 1; kc_skip_n = ((gxCmdQueue_s*)&__C3D_Context)->numEntries; } /* PT12: first entry of the queue, before the clear */
+    if (prev_hold) { prev_pre = grab_tex_init(); if (++hold_n == 30u) pm_log("pauseh f%u held 30 resets %u", pm_frame_count(), hold_rst); } /* PAUSEH: no new copy */
+    else if (prev_want && grab_tex_init()) { hold_n = 0; grab_queue_copy(); prev_pre = 1; kc_skip_n = ((gxCmdQueue_s*)&__C3D_Context)->numEntries; } /* PT12: first entry of the queue, before the clear */
     if (prev_want) prev_want--;
+    if (prev_hold) prev_hold--;
     eye_slider = osGet3DSliderState(); /* STEREO: the slider decides per frame. At 0 the frame is mono: one pass, the original perspective, no shift. */
     if (PMDL("stereo")) eye_slider = 1.f;
     { static int st_at = -2; if (st_at == -2) { char v[12]; st_at = pm_debug_value("stereoat", v, sizeof v) ? atoi(v) : -1; }
