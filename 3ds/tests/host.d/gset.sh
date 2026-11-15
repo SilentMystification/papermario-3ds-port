@@ -60,4 +60,14 @@ NS2="$T.nsseed"; rm -rf "$NS2"; mkdir -p "$NS2"; cp -r 3ds/tests/gset/case_ns/. 
 sed 's/^NS_RULE = True/NS_RULE = False/' 3ds/tools/gset.py > "$NS2.py"
 $PY "$NS2.py" "$NS2/list.txt" "$NS2/gset_ok.txt" "$NS2" > "$NS2.out" 2>&1 || true
 cmp -s "$NS2/src/battle/item/b.c" "3ds/tests/gset/case_ns/src/battle/item/b.c" && { echo "gset ns seeded fault not seen"; exit 1; }
+# VSLOT2: include hold (fixture case_inc: w.c includes C and D, its kept line gsSPBranchList(C) names C): C stays, D moves. Seeded fault: INC_HOLD off moves C too.
+I="$T.inc"; rm -rf "$I"; mkdir -p "$I"; cp -r 3ds/tests/gset/case_inc/. "$I/"
+rc=0; $PY 3ds/tools/gset.py "$I/list.txt" "$I/gset_ok.txt" "$I" > "$I.out" 2>&1 || rc=$?
+[ "$rc" = 0 ] || { echo "gset inc test: exit $rc, want 0"; exit 1; }
+tr -d '\r' < "$I.out" | grep -q "^gset moved 1 files" || { echo "gset inc test FAIL: no moved line"; cat "$I.out"; exit 1; }
+tr -d '\r' < "$I/src/effects/gfx/w.c" | grep -qxF '#include "effects/gfx/C.gfx.inc.c"' || { echo "gset inc test FAIL: w.c lost the C include"; exit 1; }
+IS="$T.incseed"; rm -rf "$IS"; mkdir -p "$IS"; cp -r 3ds/tests/gset/case_inc/. "$IS/"
+sed 's/^INC_HOLD = True/INC_HOLD = False/' 3ds/tools/gset.py > "$IS.py"
+$PY "$IS.py" "$IS/list.txt" "$IS/gset_ok.txt" "$IS" > "$IS.out" 2>&1 || true
+tr -d '\r' < "$IS/src/effects/gfx/w.c" | grep -qxF '#include "effects/gfx/C.gfx.inc.c"' && { echo "gset inc seeded fault not seen"; exit 1; }
 echo "gset test ok"
