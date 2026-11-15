@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "entity.h"
 #include "include_asset.h"
 
@@ -69,56 +70,18 @@ Gfx D_802A2B98_7B2608[] = {
 INCLUDE_IMG("starpoint/starpoint.png", D_802A1018_7A89B8);
 #include "starpoint/load_starpoint.gfx.inc.c"
 #include "starpoint/starpoint.vtx.inc.c"
-Gfx D_802A20D0_7A9A70[] = {
-    gsSPSetLights1(starpoint_lights1),
-    gsDPPipeSync(),
-    gsDPSetCycleType(G_CYC_1CYCLE),
-    gsDPSetRenderMode(G_RM_XLU_SURF, G_RM_XLU_SURF2),
-    gsSPDisplayList(D_802A2018_7A99B8),
-    gsSPClearGeometryMode(G_LIGHTING),
-    gsSPSetGeometryMode(G_CULL_BACK | G_SHADING_SMOOTH),
-    gsSPVertex(D_802A2090_7A9A30, 4, 0),
-    gsSP2Triangles(0, 1, 2, 0, 0, 2, 3, 0),
-    gsSPEndDisplayList(),
-};
-Gfx D_802A2130_7A9AD0[] = {
-    gsSPSetLights1(starpoint_lights1),
-    gsSPDisplayList(D_802A20D0_7A9A70),
-    gsSPEndDisplayList(),
-};
-Gfx D_802A2158_7A9AF8[] = {
-    gsSPSetLights1(starpoint_lights1),
-    gsSPDisplayList(D_802A2130_7A9AD0),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(D_802A20D0_7A9A70);
+NDN_DECL(D_802A2130_7A9AD0);
+NDN_DECL(D_802A2158_7A9AF8);
 
 Lights1 starpoint_lights2 = gdSPDefLights1(0, 0, 0, 0, 0, 0, 0, 0, 0);
 #include "starpoint/starpoints.vtx.inc.c"
 INCLUDE_IMG("starpoint/starpoints.png", D_802A21D8_7A9B78);
 #include "starpoint/load_starpoints.gfx.inc.c"
 
-Gfx D_802A3250_7AABF0[] = {
-    gsSPSetLights1(starpoint_lights2),
-    gsDPPipeSync(),
-    gsDPSetCycleType(G_CYC_1CYCLE),
-    gsDPSetRenderMode(G_RM_XLU_SURF, G_RM_XLU_SURF2),
-    gsSPDisplayList(D_802A31D8_7AAB78),
-    gsSPClearGeometryMode(G_LIGHTING),
-    gsSPSetGeometryMode(G_CULL_BACK | G_SHADING_SMOOTH),
-    gsSPVertex(D_802A2198_7A9B38, 4, 0),
-    gsSP2Triangles(0, 1, 2, 0, 0, 2, 3, 0),
-    gsSPEndDisplayList(),
-};
-Gfx D_802A32B0_7AAC50[] = {
-    gsSPSetLights1(starpoint_lights2),
-    gsSPDisplayList(D_802A3250_7AABF0),
-    gsSPEndDisplayList(),
-};
-Gfx D_802A32D8_7AAC78[] = {
-    gsSPSetLights1(starpoint_lights2),
-    gsSPDisplayList(D_802A32B0_7AAC50),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(D_802A3250_7AABF0);
+NDN_DECL(D_802A32B0_7AAC50);
+NDN_DECL(D_802A32D8_7AAC78);
 #endif
 
 #endif
@@ -198,8 +161,8 @@ INCLUDE_IMG("starpoint/digit_9.png", D_802ACD60_7B4700);
 EntityModelScript EMS_starpoint_starpoint = STANDARD_ENTITY_MODEL_SCRIPT(D_802A2B98_7B2608, RENDER_MODE_CLOUD_NO_ZCMP);
 EntityModelScript EMS_starpoint_starpoints = STANDARD_ENTITY_MODEL_SCRIPT(D_802A2B98_7B2608, RENDER_MODE_CLOUD_NO_ZCMP);
 #else
-EntityModelScript EMS_starpoint_starpoint = STANDARD_ENTITY_MODEL_SCRIPT(D_802A2158_7A9AF8, RENDER_MODE_CLOUD_NO_ZCMP);
-EntityModelScript EMS_starpoint_starpoints = STANDARD_ENTITY_MODEL_SCRIPT(D_802A32D8_7AAC78, RENDER_MODE_CLOUD_NO_ZCMP);
+EntityModelScript EMS_starpoint_starpoint = STANDARD_ENTITY_MODEL_SCRIPT(NDN(D_802A2158_7A9AF8), RENDER_MODE_CLOUD_NO_ZCMP);
+EntityModelScript EMS_starpoint_starpoints = STANDARD_ENTITY_MODEL_SCRIPT(NDN(D_802A32D8_7AAC78), RENDER_MODE_CLOUD_NO_ZCMP);
 #endif
 #endif
 EntityModelScript EMS_starpoint_digit_0 = STANDARD_ENTITY_MODEL_SCRIPT(D_802A4410_7ABDB0, RENDER_MODE_CLOUD_NO_ZCMP);
@@ -213,7 +176,5 @@ EntityModelScript EMS_starpoint_digit_7 = STANDARD_ENTITY_MODEL_SCRIPT(D_802ABBF
 EntityModelScript EMS_starpoint_digit_8 = STANDARD_ENTITY_MODEL_SCRIPT(D_802ACD10_7B46B0, RENDER_MODE_CLOUD_NO_ZCMP);
 EntityModelScript EMS_starpoint_digit_9 = STANDARD_ENTITY_MODEL_SCRIPT(D_802ADE30_7B57D0, RENDER_MODE_CLOUD_NO_ZCMP);
 
-Gfx D_802ADF90_7B5930[] = {
-    gsSPEndDisplayList(),
-};
-EntityModelScript EMS_starpoint_dummy = STANDARD_ENTITY_MODEL_SCRIPT(D_802ADF90_7B5930, RENDER_MODE_CLOUD_NO_ZCMP);
+NDN_DECL(D_802ADF90_7B5930);
+EntityModelScript EMS_starpoint_dummy = STANDARD_ENTITY_MODEL_SCRIPT(NDN(D_802ADF90_7B5930), RENDER_MODE_CLOUD_NO_ZCMP);
