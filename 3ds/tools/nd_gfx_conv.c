@@ -589,7 +589,8 @@ static int v2_walk(const GSym* g, unsigned k0, unsigned depth) {
         case NDO_CALL: {
             unsigned off;
             const GSym* cs = sym_of(w1, GS_GFX, &off);
-            if (!cs || off % 8u || depth >= 8u) { v2_unsup("call target outside the set or too deep", k); break; }
+            /* device list depth 12 (ND_LIST_DEPTH, nd_walk.c:181): the converter follows 11 levels */
+            if (!cs || off % 8u || depth >= 11u) { v2_unsup("call target outside the set or too deep", k); break; }
             if (off == 0 && cx->st.has_comb && cx->st.has_tex && (cx->st.omh_set & (3u << G_MDSFT_CYCLETYPE)) == (3u << G_MDSFT_CYCLETYPE)) {
                 const NdPsoDesc cd = v2_make_desc(&cx->st);
                 unsigned j;
