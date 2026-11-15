@@ -48,3 +48,4 @@ Live files only. Older logs are in archive/ (agent_*, diag_*, inv_*, plan_*, tra
 - plan_tours.md: plan TOURS (oracle 2026-11-08): map tour and boss battle tour in one session with prof windows per warp, curated list, perfect action cheat; rows TOUR1, CHEATA, TOUR2, BT1, CUR1.
 - audit_warm_runs.md: audit of warm restarts (stale ROM, AZT8 and AZT9c) and picture gates (stale shot, AZT7) for 2026-11-06 12:00 to AZT9c: per gate OK or SUSPECT with run lines, and the rerun list.
 - work_queue.md: older queue (stale; check git log first).
+- ws_DECDOCK.md: decode_dump.py runs addr2line in docker and reads a crash.txt entry (tool fix, Haiku).
