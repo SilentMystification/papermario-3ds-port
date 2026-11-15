@@ -1,0 +1,23 @@
+# LKEY census (3ds/tools/lkey_cen.py): <path> <count> <verdict> <reason>. A new reader line fails host.d/lcen.sh: the oracle names its verdict first.
+3ds/src/nd_direct.c 3 LOCAL kFillKind combine words (nd_direct.c:262,279-280)
+3ds/src/nd_ent.c 16 KEY ent_hash_walk, ent_flat_call, ent_tdwalk, nd_ent_case through nd_lkey_ (LKEY); ent_draw and ent_refcheck read records and the flat copy
+3ds/src/nd_gtab.c 1 KEY nd_rec_dl: nd_ntab_find before nd_gt_state_only (nd_gtab.c:119-121)
+3ds/src/nd_rec.c 4 KEY nd_rm_build through nd_lkey_units (LKEY); nd_rec_list reads SetCustomGfx lists (HOLD, gset.py:158); stray_word reads nd_rec_top
+3ds/src/nd_recs.c 61 REC model record words (model.c appendGfx_model)
+3ds/src/nd_seam.c 9 OTHER NdSeamList tables, not a Gfx list
+3ds/src/nd_shape.c 8 MAP map shape lists (dlc_try takes only gMapShapeData, nd_shape.c:878) and seam tables
+3ds/src/nd_walk.c 13 KEY walk_call nd_ntab_find (nd_walk.c:230), gt_call nd_lkey_tab (LKEY), NDG_F_MOVED (nd_walk.c:441,489), record words
+src/animator.c 1 KEY MESH1 nd_ntab_find (animator.c:879)
+src/draw_box.c 1 HOLD gBoxCombineModes[] is indexed (gset.py:158 keeps X[)
+src/effects/effect_3D.c 1 LOCAL Gfx g[] on the stack for nd_parts_add
+src/effects/embers.c 1 LOCAL Gfx g[] on the stack for nd_parts_add
+src/effects/pink_sparkles.c 1 LOCAL Gfx g[] on the stack for nd_parts_add
+src/effects/shimmer_burst.c 1 LOCAL Gfx g[] on the stack for nd_parts_add
+src/effects/snaking_static.c 1 LOCAL Gfx g[] on the stack for nd_parts_add
+src/effects/snowfall.c 1 LOCAL Gfx g[] on the stack for nd_parts_add
+src/effects/water_block.c 1 LOCAL Gfx g[] on the stack for nd_parts_add
+src/entity_model.c 2 KEY ent_vtx_range, entcheck_draw through nd_lkey_ (LKEY); entRec record words
+src/imgfx.c 1 LOCAL state->gfxBufs: heap copies of ROM data (imgfx.c:1260)
+src/model.c 10 KEY mdl_get_vertex_count nd_ntab_find (VCOUNT); MAP mdl_local_gfx_update_vtx_pointers and mdl_project_tex_coords (displayData->displayList); LOCAL record words
+src/world/area_omo/omo_02/barricade.c 1 MAP displayData->displayList (barricade.c:114)
+src/world/common/util/GetFirstTriangleNormal.inc.c 1 MAP displayData->displayList (mim_01, mim_03, mim_06 hint.c:13)
