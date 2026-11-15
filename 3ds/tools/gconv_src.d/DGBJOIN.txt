@@ -1,0 +1,10 @@
+src/world/area_dgb/dgb_01/gfx.c
+src/world/area_dgb/dgb_01/img0.c
+src/world/area_dgb/dgb_01/img1.c
+src/world/area_dgb/dgb_01/img2.c
+src/world/area_dgb/dgb_01/img3.c
+src/world/area_dgb/dgb_01/img4.c
+src/world/area_dgb/dgb_01/img5.c
+src/world/area_dgb/dgb_01/img6.c
+src/world/area_dgb/dgb_01/img7.c
+src/world/area_dgb/smash_bridges.c
