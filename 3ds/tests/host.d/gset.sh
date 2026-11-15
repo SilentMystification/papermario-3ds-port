@@ -41,4 +41,23 @@ sed 's/^OWN_RULE = True/OWN_RULE = False/' 3ds/tools/gset.py > "$O.py"
 $PY "$O.py" "$O/list.txt" "$O/gset_ok.txt" "$O" > "$O.out" 2>&1 || true
 { cat "$O.out"; for f in src/entity/model/M.c 3ds/tools/gfxin/src/entity/model/M.c src/own.c 3ds/tools/gfxin/src/own.c src/user.c src/gconv_user.c src/pal.c; do echo "== $f"; cat "$O/$f"; done; } | tr -d '' > "$O.txt"
 cmp -s "$O.txt" "$B.exp" && { echo "gset own seeded fault not seen"; exit 1; }
+# GSETW: N(x) names (fixture case_ns: a.c and m1/gfx.c with m1.h and skel.inc.c; b.c is another namespace and must not change).
+N="$T.ns"; rm -rf "$N"; mkdir -p "$N"; cp -r 3ds/tests/gset/case_ns/. "$N/"
+rc=0; $PY 3ds/tools/gset.py "$N/list.txt" "$N/gset_ok.txt" "$N" > "$N.out" 2>&1 || rc=$?
+[ "$rc" = 0 ] || { echo "gset ns test: exit $rc, want 0"; exit 1; }
+tr -d '\r' < "$N.out" > "$N.o2"
+for want in "gset moved 3 files 3 keep 0" "gset ok"; do grep -qxF "$want" "$N.o2" || { echo "gset ns test FAIL: missing line: $want"; cat "$N.o2"; exit 1; }; done
+chk() { tr -d '\r' < "$N/$1" | grep -qxF "$2" || { echo "gset ns test FAIL: $1 lacks: $2"; exit 1; }; }
+chk src/battle/item/a.c 'NDN_DECL(N(dl));'
+chk src/battle/item/a.c 'EntityModelScript N(ems) = STANDARD_ENTITY_MODEL_SCRIPT(NDN(N(dl)), 1);'
+chk src/world/m1/m1.h 'NDN_DECL(N(g2));'
+chk src/world/m1/skel.inc.c '    .displayList = NDN(N(g1)),'
+chk src/world/m1/gfx.c 'NDN_DECL(N(g1));'
+chk 3ds/tools/gfxin/src/world/m1/gfx.c 'Gfx N(g2)[] = {'
+cmp -s "$N/src/battle/item/b.c" "3ds/tests/gset/case_ns/src/battle/item/b.c" || { echo "gset ns test FAIL: b.c (other namespace) changed"; exit 1; }
+# seeded fault: without the namespace rule the other namespace's b.c must change
+NS2="$T.nsseed"; rm -rf "$NS2"; mkdir -p "$NS2"; cp -r 3ds/tests/gset/case_ns/. "$NS2/"
+sed 's/^NS_RULE = True/NS_RULE = False/' 3ds/tools/gset.py > "$NS2.py"
+$PY "$NS2.py" "$NS2/list.txt" "$NS2/gset_ok.txt" "$NS2" > "$NS2.out" 2>&1 || true
+cmp -s "$NS2/src/battle/item/b.c" "3ds/tests/gset/case_ns/src/battle/item/b.c" && { echo "gset ns seeded fault not seen"; exit 1; }
 echo "gset test ok"

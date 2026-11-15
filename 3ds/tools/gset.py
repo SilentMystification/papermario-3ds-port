@@ -20,11 +20,15 @@ import sys
 KEEP_RULE = True  # the seeded test (3ds/tests/host.d/gset.sh) runs a copy with this False and expects a diff
 HOLD_RULE = True  # GSETB: the seeded test (gset.sh) runs a copy with this False and expects a diff
 OWN_RULE = True  # ISTAR: a user file that defines a moved name keeps its own copy (PAL twins); the seeded test (gset.sh) runs a copy with this False
+NS_RULE = True  # GSETW: N(x) is rewritten only in the files of its namespace; the seeded test (gset.sh) runs a copy with this False
 BLOCK_END = "};"  # the block closing line (exact, CR dropped); the seeded test in gset.sh changes this and is_block_end
 DEF = re.compile(r"^\s*(?:const\s+)?Gfx\s+(\w+)\s*\[", re.M)
-BLOCK_OPEN = re.compile(r"^Gfx (\w+)\[\] = \{")
+BLOCK_OPEN = re.compile(r"^Gfx (?:N\((\w+)\)|(\w+))\[\] = \{")
 INC = re.compile(r'^(\s*#include\s+"([^"]+\.inc\.c)")\s*$', re.M)
 DECL = re.compile(r"^(\s*)extern\s+Gfx\s+(\w+)\s*\[\s*\]\s*;")
+NS_DEF = re.compile(r"^\s*#\s*define\s+NAMESPACE\s+(\w+)", re.M)
+NDECL = re.compile(r"^(\s*)extern\s+Gfx\s+(N\(\w+\))\s*\[\s*\]\s*;")
+NSN = {}  # GSETW: moved N(x) name -> (token, namespace, directory)
 SKIP_DIR = "src/effects/gfx/"
 
 
@@ -95,8 +99,35 @@ def is_block_end(ln):
     return ln.rstrip() == BLOCK_END
 
 
-def find_blocks(lines):
-    """[(name, first line, last line)] of the Gfx blocks with a closing line (indices, both inclusive), in file order."""
+def file_ns(p, seen=None):
+    """GSETW: the namespace of a device source: its NAMESPACE define, else that of an included header, else that of the .c file that includes it."""
+    seen = set() if seen is None else seen
+    if p in seen:
+        return None
+    seen.add(p)
+    text = p.read_text(encoding="utf-8", errors="replace")
+    m = NS_DEF.search(text)
+    if m:
+        return m.group(1)
+    for inc in re.findall(r'^\s*#include\s+"([^"]+\.h)"', text, re.M):
+        h = p.parent / inc
+        if h.is_file():
+            m = NS_DEF.search(h.read_text(encoding="utf-8", errors="replace"))
+            if m:
+                return m.group(1)
+    for q in sorted(p.parent.glob("*.c")):
+        if q == p:
+            continue
+        if re.search(r'^\s*#include\s+"' + re.escape(p.name) + r'"', q.read_text(encoding="utf-8", errors="replace"), re.M):
+            r = file_ns(q, seen)
+            if r:
+                return r
+    return None
+
+
+def find_blocks(lines, ns=None, tok=None):
+    """[(name, first line, last line)] of the Gfx blocks with a closing line (indices, both inclusive), in file order.
+    GSETW: `Gfx N(x)[] = {` gives the name ns_x (with ns) and tok[ns_x] = "N(x)"; without ns it gives no entry."""
     found, i = [], 0
     while i < len(lines):
         m = BLOCK_OPEN.match(lines[i])
@@ -105,7 +136,11 @@ def find_blocks(lines):
             while j < len(lines) and not is_block_end(lines[j]):
                 j += 1
             if j < len(lines):
-                found.append((m.group(1), i, j))
+                if m.group(2):
+                    found.append((m.group(2), i, j))
+                elif ns:
+                    found.append((ns + "_" + m.group(1), i, j))
+                    tok[ns + "_" + m.group(1)] = "N(" + m.group(1) + ")"
                 i = j + 1
                 continue
         i += 1
@@ -114,24 +149,27 @@ def find_blocks(lines):
 
 def hold_line(ln, hit):
     """True when the line needs the list's symbol: an index, an address, sizeof, BranchList or SetCustomGfx (GSETB)."""
-    return "BranchList" in ln or "sizeof" in ln or "SetCustomGfx" in ln or any(re.search(r"\b" + re.escape(n) + r"\s*\[|&\s*" + re.escape(n) + r"\b", ln) for n in hit)
+    return "BranchList" in ln or "sizeof" in ln or "SetCustomGfx" in ln or any(re.search(r"(?<!\w)" + re.escape(n) + r"\s*\[|&\s*" + re.escape(n) + r"(?!\w)", ln) for n in hit)
 
 
 def move_blocks(root, src, ok, twin_dir):
     """Block mode. Returns (moved names, the twin path or None)."""
     p = root / src
     lines = p.read_text(encoding="utf-8").split("\n")
-    blocks = find_blocks(lines)
+    ns = file_ns(p)
+    tok = {}
+    blocks = find_blocks(lines, ns, tok)
+    T = lambda n: tok.get(n, n)
     moving = {n for n, _, _ in blocks if n in ok}
     in_block = set()
     for _, s, e in blocks:
         in_block.update(range(s, e + 1))
     if HOLD_RULE:
         for k, ln in enumerate(lines):
-            if k in in_block or DECL.match(ln):
+            if k in in_block or DECL.match(ln) or NDECL.match(ln):
                 continue
-            hit = {n for n in moving if re.search(r"(?<!\w)" + re.escape(n) + r"(?!\w)", ln)}
-            if hit and hold_line(ln, hit):
+            hit = {n for n in moving if re.search(r"(?<!\w)" + re.escape(T(n)) + r"(?!\w)", ln)}
+            if hit and hold_line(ln, {T(n) for n in hit}):
                 moving -= hit
     while True:
         inside = set()
@@ -139,7 +177,7 @@ def move_blocks(root, src, ok, twin_dir):
             if n in moving:
                 inside.update(range(s, e + 1))
         unmoved = "\n".join(lines[k] for k in sorted(in_block) if k not in inside)
-        bad = {n for n in moving if re.search(r"\b" + re.escape(n) + r"\b", unmoved)}
+        bad = {n for n in moving if re.search(r"(?<!\w)" + re.escape(T(n)) + r"(?!\w)", unmoved)}
         if not bad:
             break
         moving -= bad
@@ -150,7 +188,7 @@ def move_blocks(root, src, ok, twin_dir):
     while k < len(lines):
         if k in starts:
             n, e = starts[k]
-            out.append(f"NDN_DECL({n});")
+            out.append(f"NDN_DECL({T(n)});")
             body.extend(lines[k:e + 1])
             moved.append(n)
             k = e + 1
@@ -165,6 +203,9 @@ def move_blocks(root, src, ok, twin_dir):
     old = twin.read_text(encoding="utf-8").split("\n") if twin.exists() else [f'#include "{src}"']
     tbody = old[:1] + [x for x in old[1:] if x] + body
     twin.write_text("\n".join(tbody) + "\n", encoding="utf-8")
+    for n in moved:
+        if n in tok:
+            NSN[n] = (tok[n], ns, p.parent)
     return moved, twin
 
 
@@ -223,6 +264,48 @@ def rewrite_users(root, names):
     return nfiles, nkeep
 
 
+def rewrite_ns(root):
+    """GSETW: the N(x) names of the moved lists, rewritten in the sources of their directory and namespace (NS_RULE).
+    Returns (files changed, keep lines printed)."""
+    groups = {}
+    for _, (tk, ns, d) in NSN.items():
+        groups.setdefault((d, ns), set()).add(tk)
+    nfiles, nkeep = 0, 0
+    for (d, ns), toks in sorted(groups.items(), key=lambda kv: (kv[0][0].as_posix(), kv[0][1])):
+        alt = "|".join(re.escape(t) for t in sorted(toks))
+        shield = re.compile(r"(?<!NDN\()(?<!NDN_DECL\()(?<!\w)(" + alt + r")(?!\w)")
+        for f in sorted(d.glob("*.c")) + sorted(d.glob("*.h")):
+            if not f.is_file() or (NS_RULE and file_ns(f) != ns):
+                continue
+            rel = f.as_posix()
+            text = f.read_text(encoding="utf-8", errors="replace")
+            out, changed = [], False
+            for i, ln in enumerate(text.split("\n"), 1):
+                dm = NDECL.match(ln)
+                if dm and dm.group(2) in toks:
+                    out.append(f"{dm.group(1)}NDN_DECL({dm.group(2)});")
+                    changed = True
+                    continue
+                if not shield.search(ln):
+                    out.append(ln)
+                    continue
+                hit = shield.findall(ln)
+                if KEEP_RULE and hold_line(ln, set(hit)):
+                    print(f"gset keep {rel}:{i}")
+                    nkeep += 1
+                    out.append(ln)
+                    continue
+                out.append(shield.sub(lambda m: f"NDN({m.group(1)})", ln))
+                changed = True
+            if not changed:
+                continue
+            if "nd_gtab.h" not in text:
+                out = add_gtab(out)
+            f.write_text("\n".join(out), encoding="utf-8")
+            nfiles += 1
+    return nfiles, nkeep
+
+
 def main(argv):
     if len(argv) < 2:
         print(__doc__, file=sys.stderr)
@@ -240,7 +323,9 @@ def main(argv):
         if twin is not None:
             all_moved.extend(moved)
     nf, nkeep = rewrite_users(root, sorted(set(all_moved)))
-    files_done = nf
+    nf2, nk2 = rewrite_ns(root)
+    files_done = nf + nf2
+    nkeep += nk2
     print(f"gset moved {len(set(all_moved))} files {files_done} keep {nkeep}")
     if nkeep:
         print("gset FAIL")

@@ -1,0 +1,2 @@
+src/battle/item/a.c
+src/world/m1/gfx.c
