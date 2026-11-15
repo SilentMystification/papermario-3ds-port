@@ -14,6 +14,7 @@ Live files only. Older logs are in archive/ (agent_*, diag_*, inv_*, plan_*, tra
 - git_branches.md: tip hash of every branch deleted or kept in the row GIT cleanup (recovery record).
 
 ## Native draw epic (current work)
+- ws_ENTPAD.md: Haiku goal page: PadlockBlueFace, PadlockRedFace, PadlockRedFrame, UnusedBlock models join the converter, 44 lists move to the gfxin twin (C5 -458, C6 -44, C7 -50 by oracle dry run).
 - start_here_native_draw.md: current state and what is left (long-form handoff).
 - handoff_native_epic_orchestrator.md: findings and pitfalls of the code session of 2026-11-05.
 - plan_native_system.md: design (large; open only the sections a row names).
