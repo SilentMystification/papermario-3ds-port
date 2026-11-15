@@ -1,0 +1,7 @@
+commit: 9867538e96 (code); page-delete commit follows, see git log
+host: nd_host PASS (build3ds/out/xft_host.txt)
+build: rc 0, memcheck static 21552 margin 434 device o3ds_xl OK
+grep counts: seeded old line 0; run xft log (xfer_door_kmr20) 5 (run record in 3ds/logs/perf/runs.jsonl last line)
+xfer2 line: #243 xfer2 map n1 | dlc 169/99.2 mdl 301/0 ent 10 tex 0/0/0.0 warm 2/148 seam 4.7 dlcp 2.4 entt 1.0
+counter change: none (C1..C12 unchanged, timers only)
+note: INDEX.md entry NOT removed (rule: never edit INDEX.md; orchestrator)
