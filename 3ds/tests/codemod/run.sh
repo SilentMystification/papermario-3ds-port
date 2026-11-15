@@ -18,7 +18,7 @@ run_all() {
     for in in "$CASES"/*.in.c; do
         n=$(basename "$in" .in.c); total=$((total + 1))
         w="$T/w.$n"; rm -rf "$w"; mkdir -p "$w"; cp "$in" "$w/$n.c"
-        fl=; case "$n" in st_*) fl=--state ;; geo_*) fl=--geo ;; tex_*) fl=--tex ;; esac  # the state cases (st_*) run with --state, the geo and tex cases with their maps
+        fl=; case "$n" in nt_*) fl="--ntab $CASES/$n.ntab" ;; st_*) fl=--state ;; geo_*) fl=--geo ;; tex_*) fl=--tex ;; esac  # the state cases (st_*) run with --state, the geo and tex cases with their maps
         ( cd "$w" && $PY "$tool" $fl "$n.c" > "$n.log" ) || { echo "FAIL $n: tool exit"; continue; }
         if cmp -s "$w/$n.c" "$CASES/$n.out.c" && cmp -s "$w/$n.log" "$CASES/$n.log"; then pass=$((pass + 1)); else echo "FAIL $n"; fi
     done

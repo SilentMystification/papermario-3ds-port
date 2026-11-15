@@ -24,7 +24,7 @@ Mapping (P is gMainGfxPos++):
   gSPSegment(P, s, base)                   -> nd_val_seg(s, base)
   gDPSetTileSize(P, t, uls, ult, lrs, lrt) -> nd_val_tile_size(t, uls, ult, lrs, lrt)
   nd_rec_dl(list), gSPDisplayList(P, list) -> nd_draw_list(list, <the ND_PSO_DESC name of the file>)
-  nd_rec_dl(list) of a v2 table (--ntab)      -> nd_draw_list(list, ND_SELF)
+  nd_rec_dl(list), gSPDisplayList(P, list) of a v2 table (--ntab; list X or NDN(X)) -> nd_draw_list(list, ND_SELF)
 
 --dry changes no file and prints per file `codemod file <path> value <v> keep <k> state <s> dl <d>` (v, k: the seven value groups;
 state: the other gDP/gSP/gPm calls the tool leaves to the hand rows; d: static list call sites), then per name
@@ -189,6 +189,11 @@ def lineno(s, pos):
     return s.count('\n', 0, pos) + 1
 
 
+def dl_key(a):
+    a = re.sub(r'\s+', '', a)
+    return a[4:-1] if a.startswith('NDN(') and a.endswith(')') else a
+
+
 def rewrite(path, s):
     """Returns (new text, stats, state count, static list site count, keep lines). stats: name -> [rewritten, kept]."""
     toks = tokenize(s)
@@ -283,8 +288,8 @@ def rewrite(path, s):
             why = 'ctx'
         if not why and native is not None and not (pk == 'pp' or prev_txt in STMT_PREV or prev_txt == ')' or prev_txt == 'else'):
             why = 'ctx'
-        # CONV2F: a v2 table of the file (--ntab) takes ND_SELF and needs no entry
-        self_ok = nm == 'nd_rec_dl' and bool(args) and re.sub(r'\s+', '', args[0]) in NTAB
+        # CONV2F: a v2 table of the file (--ntab) takes ND_SELF and needs no entry; ROOTCM: also gSPDisplayList(P, X) and gSPDisplayList(P, NDN(X))
+        self_ok = nm in DL_NAMES and len(args) == nargs and dl_key(args[-1]) in NTAB
         if not why and nm in DL_NAMES and entry is None and not self_ok:
             why = entry_why
         if why:
