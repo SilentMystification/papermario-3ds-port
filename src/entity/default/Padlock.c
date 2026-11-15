@@ -9,14 +9,14 @@
 NDN_DECL(Entity_Padlock_Render);
 NDN_DECL(Entity_Padlock_RenderShackle);
 extern Mtx Entity_Padlock_mtxShackle;
-extern Gfx Entity_PadlockRedFrame_Render[];
-extern Gfx Entity_PadlockRedFrame_RenderShackle[];
+NDN_DECL(Entity_PadlockRedFrame_Render);
+NDN_DECL(Entity_PadlockRedFrame_RenderShackle);
 extern Mtx Entity_PadlockRedFrame_mtxShackle;
-extern Gfx Entity_PadlockRedFace_Render[];
-extern Gfx Entity_PadlockRedFace_RenderShackle[];
+NDN_DECL(Entity_PadlockRedFace_Render);
+NDN_DECL(Entity_PadlockRedFace_RenderShackle);
 extern Mtx Entity_PadlockRedFace_mtxShackle;
-extern Gfx Entity_PadlockBlueFace_Render[];
-extern Gfx Entity_PadlockBlueFace_RenderShackle[];
+NDN_DECL(Entity_PadlockBlueFace_Render);
+NDN_DECL(Entity_PadlockBlueFace_RenderShackle);
 extern Mtx Entity_PadlockBlueFace_mtxShackle;
 
 void entity_Padlock_setupGfx(s32 entityIndex) {
@@ -207,7 +207,7 @@ void entity_PadlockRedFrame_init(Entity* entity) {
     entity->renderSetupFunc = entity_Padlock_setupGfx;
     data = entity->dataBuf.padlock;
     data->shackleMtx = ENTITY_ADDR(entity, Mtx*, &Entity_PadlockRedFrame_mtxShackle);
-    data->shackleGfx = Entity_PadlockRedFrame_RenderShackle;
+    data->shackleGfx = NDN(Entity_PadlockRedFrame_RenderShackle);
 }
 
 void entity_PadlockRedFace_init(Entity* entity) {
@@ -216,7 +216,7 @@ void entity_PadlockRedFace_init(Entity* entity) {
     entity->renderSetupFunc = entity_Padlock_setupGfx;
     data = entity->dataBuf.padlock;
     data->shackleMtx = ENTITY_ADDR(entity, Mtx*, &Entity_PadlockRedFace_mtxShackle);
-    data->shackleGfx = Entity_PadlockRedFace_RenderShackle;
+    data->shackleGfx = NDN(Entity_PadlockRedFace_RenderShackle);
 }
 
 void entity_PadlockBlueFace_init(Entity* entity) {
@@ -225,7 +225,7 @@ void entity_PadlockBlueFace_init(Entity* entity) {
     entity->renderSetupFunc = entity_Padlock_setupGfx;
     data = entity->dataBuf.padlock;
     data->shackleMtx = ENTITY_ADDR(entity, Mtx*, &Entity_PadlockBlueFace_mtxShackle);
-    data->shackleGfx = Entity_PadlockBlueFace_RenderShackle;
+    data->shackleGfx = NDN(Entity_PadlockBlueFace_RenderShackle);
 }
 
 EntityScript Entity_Padlock_Script = {
@@ -235,9 +235,9 @@ EntityScript Entity_Padlock_Script = {
 };
 
 EntityModelScript Entity_Padlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_Padlock_Render), RENDER_MODE_SURFACE_OPA);
-EntityModelScript Entity_PadlockRedFrame_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_PadlockRedFrame_Render, RENDER_MODE_SURFACE_OPA);
-EntityModelScript Entity_PadlockRedFace_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_PadlockRedFace_Render, RENDER_MODE_SURFACE_OPA);
-EntityModelScript Entity_PadlockBlueFace_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_PadlockBlueFace_Render, RENDER_MODE_SURFACE_OPA);
+EntityModelScript Entity_PadlockRedFrame_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_PadlockRedFrame_Render), RENDER_MODE_SURFACE_OPA);
+EntityModelScript Entity_PadlockRedFace_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_PadlockRedFace_Render), RENDER_MODE_SURFACE_OPA);
+EntityModelScript Entity_PadlockBlueFace_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_PadlockBlueFace_Render), RENDER_MODE_SURFACE_OPA);
 
 EntityBlueprint Entity_Padlock = {
     .flags = ENTITY_FLAG_SHOWS_INSPECT_PROMPT | ENTITY_FLAG_400 | ENTITY_FLAG_HAS_SHADOW,
