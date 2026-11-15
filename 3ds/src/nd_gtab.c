@@ -1,19 +1,19 @@
 /* nd_gtab.c: the lookup of the native list tables (S7CONV, nd_gtab.h). nd_gtab_idx[] is generated (3ds/src/nd_gfx_tab.c) in symbol order;
- * link addresses are not known when it is made, so the first call sorts it by list address (insertion sort, cold, once). Core 1 only: the
+ * link addresses are not known when it is made, so the first call sorts it by list address (qsort, cold, once). Core 1 only: the
  * records carry the table pointer to core 0. */
 #include <stdint.h>
 #include <string.h>
+#include <stdlib.h>
 #include "nd_gtab.h"
 #include "nd_op.h"
 
 static int gt_sorted;
+static int gt_cmp(const void* a, const void* b) { /* SORTQ: the keys are unique (one entry per list): the order equals the old insertion sort */
+    const uintptr_t x = (uintptr_t)((const NdGIdx*)a)->list, y = (uintptr_t)((const NdGIdx*)b)->list;
+    return (x > y) - (x < y);
+}
 static __attribute__((cold, noinline)) void gt_sort(void) {
-    for (unsigned i = 1; i < nd_gtab_n; i++) {
-        const NdGIdx e = nd_gtab_idx[i];
-        unsigned j = i;
-        for (; j > 0u && (uintptr_t)nd_gtab_idx[j - 1u].list > (uintptr_t)e.list; j--) nd_gtab_idx[j] = nd_gtab_idx[j - 1u];
-        nd_gtab_idx[j] = e;
-    }
+    qsort(nd_gtab_idx, nd_gtab_n, sizeof nd_gtab_idx[0], gt_cmp);
     gt_sorted = 1;
 }
 const NdGTab* nd_gtab_find(const void* list) {
@@ -56,13 +56,12 @@ unsigned nd_gt_state_only(const uint32_t* l) {
 }
 /* CONV2D2: nd_ntab_find (nd_gtab.h), core 0 only (nd_gtab_run). The same lookup as nd_gtab_find over the device index ndn_dev_idx. */
 static int nt_sorted;
+static int nt_cmp(const void* a, const void* b) { /* SORTQ: as gt_cmp */
+    const uintptr_t x = (uintptr_t)(*(const NdNDev* const*)a)->list, y = (uintptr_t)(*(const NdNDev* const*)b)->list;
+    return (x > y) - (x < y);
+}
 static __attribute__((cold, noinline)) void nt_sort(void) {
-    for (unsigned i = 1; i < ndn_dev_n; i++) {
-        const NdNDev* e = ndn_dev_idx[i];
-        unsigned j = i;
-        for (; j > 0u && (uintptr_t)ndn_dev_idx[j - 1u]->list > (uintptr_t)e->list; j--) ndn_dev_idx[j] = ndn_dev_idx[j - 1u];
-        ndn_dev_idx[j] = e;
-    }
+    qsort(ndn_dev_idx, ndn_dev_n, sizeof ndn_dev_idx[0], nt_cmp);
     nt_sorted = 1;
 }
 const NdNDev* nd_ntab_find(const void* list) {
