@@ -1,6 +1,6 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main 2a9ae46068, 2026-11-15. Twenty-fourth oracle: ws_GSETW and ws_PMOVE (both start now, parallel). FACT dry runs (scratch worktree, nd_host only):
+State: main 31a2c110b2, 2026-11-15. Twenty-fifth oracle: ws_VSLOT2 (Sonnet) and ws_SBJOIN (Haiku), both start now, parallel. FACT nd_host main: ntab tables 1488 inherit 72 unsup 27, gset ok 1396 of 1546, moved 1319; listcen C5 9714, C6 720, C7 1355. 66 lists fail `vertex slots` (VSLOT2 fixes the resolver). Next design: ANIM (animator meshes: animator.c:899-970 reads the list words when vertexStartOffset >= 0; dgb_01 gfx.c 2833 and Munchlesia*_gfx.c 5 x 138 data; Munchlesia fail `unit address outside the symbol map`, Vec3s vertex arrays). Earlier oracle notes follow.
 dgb_01 (gfx.c + img0-7.c + area_dgb/smash_bridges.c in the set): 176 lists, 127 tables, 49 `vertex slots` unsup (a triangle across two Vtx arrays, nd_vslot.c:35), gset ok 0 (call edges).
 Its light IS defined (gfx.c:3347, all zero). Next design for dgb_01: cross-array triangles (the device reads only units, nd_gfx_conv.c:808-816; the v2 draw/index data is host only for a moved list).
 Parts rule off (:865): gset ok 1211 -> 1396, gset moved 189. "179 parts" is the v1 NDG_F_PARTS count, not a list group. Unmoved ok lists after both pages: 12 (item_entity.c 2,
@@ -19,7 +19,7 @@ Seventeenth oracle: ws_HWFIX extended (audit_hw2 F2 depth drain, F3 menu grey in
 ## Goal
 Remove the display list system completely (plan_endgame.md v3). Done only when `3ds/tools/elfgate.py` prints
 `func 0 data 0 gfxnames 0` and every LISTCEN2 counter C1..C12 is 0.
-FACT (listcen, main 2a9ae46068): C1 742 (461 are gbi header macros, phase E), C2 225, C5 10743, C6 915, C7 1577, C8 reader 777, C10 recdl 16.
+FACT (listcen, main 31a2c110b2): C1 742 (461 are gbi header macros, phase E), C2 225, C5 9714, C6 720, C7 1355, C8 reader 777, C10 recdl 16.
 ## Tools on main (all in 3ds/tools unless named)
 - listcen.py (C1-C10, RECDL_RX :47), elfgate.py (C11-C12), codemod.py (MAP :38-49, STATE_MAP :53-73, GEO_MAP :75-88, TEX_MAP :90-127), selfapply.py (FXSELF),
   entcap.py + entapply.py (ENTRYFX), gen_ntab_entries.py, gen_pso_tab.py + gen_pso_main.c (nd_pso_tab.c, git-ignored, build.sh:114).

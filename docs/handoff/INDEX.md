@@ -14,8 +14,8 @@ Live files only. Older logs are in archive/ (agent_*, diag_*, inv_*, plan_*, tra
 - git_branches.md: tip hash of every branch deleted or kept in the row GIT cleanup (recovery record).
 
 ## Native draw epic (current work)
-- ws_GSETW.md: Haiku goal page: gset.py moves `Gfx N(x)[]` blocks (namespace form, NDN two-level macro, gset.sh case_ns with a seeded fault); the 12 battle item lists move (C5 -228, C6 -12, C7 -12). Start now, parallel with ws_PMOVE.
-- ws_PMOVE.md: Haiku goal page: particle lists (NDG_F_PARTS) may move (device v1 table keyed &ndd_, NDG_F_MOVED fallback in nd_walk.c); 189 effect lists move, new bench fxp_drec (C5 -842, C6 -189, C7 -212 by oracle dry run). Start now.
+- ws_VSLOT2.md: Sonnet goal page: v2 draws for triangles over 2 vertex arrays (ndnv pointers) and of caller slots (nd_vslot.c, nd_gfx_conv.c, nd_gtab_test.c), gset.py include hold rule (snowfall.c), then the effect and CymbalPlant lists that become ok move (GUESS C5 -900..-1300). Start now, parallel with ws_SBJOIN.
+- ws_SBJOIN.md: Haiku goal page: SaveBlock.c, UltraBlock.c, UltraBlockContent.c join the converter set (gconv_src.d/SBJOIN.txt) and their ok lists move (GUESS C5 -150..-250). Start now, parallel with ws_VSLOT2.
 - start_here_native_draw.md: current state and what is left (long-form handoff).
 - handoff_native_epic_orchestrator.md: findings and pitfalls of the code session of 2026-11-05.
 - plan_native_system.md: design (large; open only the sections a row names).
