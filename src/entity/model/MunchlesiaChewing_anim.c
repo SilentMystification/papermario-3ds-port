@@ -1,10 +1,11 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "animation_script.h"
 
-extern Gfx Entity_MunchlesiaChewing_Render[];
+NDN_DECL(Entity_MunchlesiaChewing_Render);
 
 StaticAnimatorNode Entity_MunchlesiaChewing_Node1 = {
-    .displayList = Entity_MunchlesiaChewing_Render,
+    .displayList = NDN(Entity_MunchlesiaChewing_Render),
     .sibling = ENTITY_ANIM_NULL,
     .child = ENTITY_ANIM_NULL,
 };

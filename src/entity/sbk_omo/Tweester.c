@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "entity.h"
 #include "ld_addrs.h"
 #include "nd_val.h"
@@ -21,9 +22,9 @@ extern unsigned char D_0A0018A0_E58700[];
 extern unsigned char D_0A0014A0_E58300[];
 extern Mtx Entity_Tweester_mtxInnerWhirl;
 extern Mtx Entity_Tweester_mtxOuterWhirl;
-extern Gfx Entity_Tweester_RenderInnerWhirl[];
-extern Gfx Entity_Tweester_RenderOuterWhirl[];
-extern Gfx Entity_Tweester_Render[];
+NDN_DECL(Entity_Tweester_RenderInnerWhirl);
+NDN_DECL(Entity_Tweester_RenderOuterWhirl);
+NDN_DECL(Entity_Tweester_Render);
 
 void entity_Tweester_render_inner_whirl(s32 entityIndex) {
     Entity* entity = get_entity_by_index(entityIndex);
@@ -38,7 +39,7 @@ void entity_Tweester_render_inner_whirl(s32 entityIndex) {
     guMtxF2L(sp18, &data->mtxInnerWhirl);
     gDisplayContext->matrixStack[gMatrixListPos] = data->mtxInnerWhirl;
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gfx = ENTITY_ADDR(entity, Gfx*, Entity_Tweester_RenderInnerWhirl);
+    gfx = ENTITY_ADDR(entity, Gfx*, NDN(Entity_Tweester_RenderInnerWhirl));
     gSPDisplayList(gMainGfxPos++, gfx);
     nd_xf_pop(G_MTX_MODELVIEW);
 }
@@ -56,7 +57,7 @@ void entity_Tweester_render_outer_whirl(s32 entityIndex) {
     guMtxF2L(sp18, &data->mtxOuterWhirl);
     gDisplayContext->matrixStack[gMatrixListPos] = data->mtxOuterWhirl;
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gfx = ENTITY_ADDR(entity, Gfx*, Entity_Tweester_RenderOuterWhirl);
+    gfx = ENTITY_ADDR(entity, Gfx*, NDN(Entity_Tweester_RenderOuterWhirl));
     gSPDisplayList(gMainGfxPos++, gfx);
     nd_xf_pop(G_MTX_MODELVIEW);
 }
@@ -307,7 +308,7 @@ EntityScript Entity_Tweester_Script ={
     es_End
 };
 
-EntityModelScript Entity_Tweester_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_Tweester_Render, RENDER_MODE_SURFACE_XLU_LAYER1);
+EntityModelScript Entity_Tweester_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_Tweester_Render), RENDER_MODE_SURFACE_XLU_LAYER1);
 
 EntityBlueprint Entity_Tweester = {
     .flags = ENTITY_FLAG_DISABLE_COLLISION,

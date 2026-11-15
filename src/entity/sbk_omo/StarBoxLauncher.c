@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "effects.h"
 #include "entity.h"
 #include "ld_addrs.h"
@@ -7,8 +8,8 @@
 #include "nd_st.h"
 #include "nd_tx.h"
 
-extern Gfx Entity_StarBoxLauncher_RenderBottom[];
-extern Gfx Entity_StarBoxLauncher_RenderTop[];
+NDN_DECL(Entity_StarBoxLauncher_RenderBottom);
+NDN_DECL(Entity_StarBoxLauncher_RenderTop);
 extern unsigned char D_0A000D08_E56748[];
 extern unsigned char D_0A000508_E55F48[];
 
@@ -44,7 +45,7 @@ void entity_StarBoxLauncher_setupGfx(s32 entityIndex) {
     guMtxCatF(sp50, sp10, sp50);
     guMtxF2L(sp50, &gDisplayContext->matrixStack[gMatrixListPos]);
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gSPDisplayList(gMainGfxPos++, ENTITY_ADDR(entity, Gfx*, Entity_StarBoxLauncher_RenderBottom));
+    gSPDisplayList(gMainGfxPos++, ENTITY_ADDR(entity, Gfx*, NDN(Entity_StarBoxLauncher_RenderBottom)));
     nd_xf_pop(G_MTX_MODELVIEW);
 
     nd_pso_lut(G_TT_RGBA16);
@@ -259,7 +260,7 @@ EntityScript Entity_StarBoxLauncher_Script = {
     es_End
 };
 
-EntityModelScript Entity_StarBoxLauncher_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_StarBoxLauncher_RenderTop, RENDER_MODE_SURFACE_OPA);
+EntityModelScript Entity_StarBoxLauncher_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_StarBoxLauncher_RenderTop), RENDER_MODE_SURFACE_OPA);
 
 EntityBlueprint Entity_StarBoxLauncher = {
     .flags = ENTITY_FLAG_8000,

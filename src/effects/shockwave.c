@@ -5,7 +5,7 @@
 #include "nd_xf.h"
 #include "nd_st.h"
 
-extern Gfx D_09000940_359CF0[];
+NDN_DECL(D_09000940_359CF0);
 NDN_DECL(D_090009A0_359D50);
 NDN_DECL(D_09000A80_359E30);
 
@@ -272,7 +272,7 @@ void shockwave_render(EffectInstance* effect) {
 void shockwave_appendGfx(void* effect) {
     ShockwaveFXData* data = ((EffectInstance*) effect)->data.shockwave;
     Matrix4f sp20, sp60;
-    Gfx* dlist = D_09000940_359CF0;
+    Gfx* dlist = NDN(D_09000940_359CF0);
     Gfx* dlist2;
     s32 primA;
     s32 primR, primG, primB;

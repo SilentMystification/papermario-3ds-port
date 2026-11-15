@@ -1,2 +1,8 @@
 #include "src/effects/gfx/underwater.c"
 #include "effects/gfx/D_09000278_3B9CE8.gfx.inc.c"
+#include "effects/gfx/D_09000200_3B9C70.gfx.inc.c"
+#include "effects/gfx/D_09000248_3B9CB8.gfx.inc.c"
+#include "effects/gfx/D_09000258_3B9CC8.gfx.inc.c"
+#include "effects/gfx/D_09000268_3B9CD8.gfx.inc.c"
+#include "effects/gfx/D_090003A0_3B9E10.gfx.inc.c"
+#include "effects/gfx/D_090003D8_3B9E58.gfx.inc.c"

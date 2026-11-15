@@ -5,7 +5,7 @@
 #include "nd_xf.h"
 #include "nd_st.h"
 
-extern Gfx D_09000540_365EF0[];
+NDN_DECL(D_09000540_365EF0);
 NDN_DECL(D_090005A0_365F50);
 
 Gfx* D_E0064A60[] = { NDN(D_090005A0_365F50), NDN(D_090005A0_365F50) };
@@ -194,7 +194,7 @@ void green_impact_appendGfx(void* effect) {
             guMtxCatF(sp60, sp20, sp20);
             guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-            dlist2 = D_09000540_365EF0;
+            dlist2 = NDN(D_09000540_365EF0);
 
             nd_val_tile_size(G_TX_RENDERTILE, 0, (s32) part->unk_3C, 252, (s32) part->unk_3C + 124);
             nd_val_tile_size(1, 0, (s32) part->unk_44, 124, (s32) part->unk_44 + 124);

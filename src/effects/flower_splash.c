@@ -1,10 +1,11 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "effects_internal.h"
 #include "pm_interp_fi.h"
 #include "nd_val.h"
 #include "nd_xf.h"
 
-extern Gfx D_09000E08_32DCC8[];
+NDN_DECL(D_09000E08_32DCC8);
 
 void flower_splash_init(EffectInstance* effect);
 void flower_splash_update(EffectInstance* effect);
@@ -156,7 +157,7 @@ void flower_splash_appendGfx(void* effect) {
 
     for (i = 0; i < effectTemp->numParts; i++, data++) {
         if (data->alive) {
-            Gfx* dlist = D_09000E08_32DCC8;
+            Gfx* dlist = NDN(D_09000E08_32DCC8);
 
             gDisplayContext->matrixStack[gMatrixListPos] = data->transformMtx;
 

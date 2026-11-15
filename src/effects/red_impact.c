@@ -5,7 +5,7 @@
 #include "nd_xf.h"
 #include "nd_st.h"
 
-extern Gfx D_09000940_359CF0[];
+NDN_DECL(D_09000940_359CF0);
 NDN_DECL(D_090009A0_359D50);
 
 Gfx* D_E00D0B10[] = { NDN(D_090009A0_359D50), NDN(D_090009A0_359D50) };
@@ -201,7 +201,7 @@ void red_impact_appendGfx(void* effect) {
             guMtxCatF(sp60, sp20, sp20);
             guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
-            dlist2 = D_09000940_359CF0;
+            dlist2 = NDN(D_09000940_359CF0);
 
             nd_val_tile_size(G_TX_RENDERTILE, 0, (s32) part->unk_3C, 0x00FC, (s32) part->unk_3C + 0x7C);
             nd_val_tile_size(1, 0, (s32) part->unk_44, 0x007C, (s32) part->unk_44 + 0x7C);

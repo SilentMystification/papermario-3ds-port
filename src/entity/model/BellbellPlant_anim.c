@@ -1,21 +1,22 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "animation_script.h"
 
-extern Gfx Entity_BellbellPlant_RenderNode1[];
-extern Gfx Entity_BellbellPlant_RenderNode2[];
-extern Gfx Entity_BellbellPlant_RenderNode3[];
-extern Gfx Entity_BellbellPlant_RenderNode4[];
-extern Gfx Entity_BellbellPlant_RenderNode5[];
+NDN_DECL(Entity_BellbellPlant_RenderNode1);
+NDN_DECL(Entity_BellbellPlant_RenderNode2);
+NDN_DECL(Entity_BellbellPlant_RenderNode3);
+NDN_DECL(Entity_BellbellPlant_RenderNode4);
+NDN_DECL(Entity_BellbellPlant_RenderNode5);
 
 StaticAnimatorNode Entity_BellbellPlant_Node5 = {
-    .displayList = Entity_BellbellPlant_RenderNode5,
+    .displayList = NDN(Entity_BellbellPlant_RenderNode5),
     .rot = { -1092, 0, 0 },
     .sibling = ENTITY_ANIM_NULL,
     .child = ENTITY_ANIM_NULL,
 };
 
 StaticAnimatorNode Entity_BellbellPlant_Node4 = {
-    .displayList = Entity_BellbellPlant_RenderNode4,
+    .displayList = NDN(Entity_BellbellPlant_RenderNode4),
     .rot = { -2455, 0, 0 },
     .pos = { 15.0f, 39.0f, 0.0f },
     .sibling = ENTITY_ANIM_NULL,
@@ -23,14 +24,14 @@ StaticAnimatorNode Entity_BellbellPlant_Node4 = {
 };
 
 StaticAnimatorNode Entity_BellbellPlant_Node3 = {
-    .displayList = Entity_BellbellPlant_RenderNode3,
+    .displayList = NDN(Entity_BellbellPlant_RenderNode3),
     .rot = { -1092, 0, 0 },
     .sibling = ENTITY_ANIM_NULL,
     .child = ENTITY_ANIM_NULL,
 };
 
 StaticAnimatorNode Entity_BellbellPlant_Node2 = {
-    .displayList = Entity_BellbellPlant_RenderNode2,
+    .displayList = NDN(Entity_BellbellPlant_RenderNode2),
     .rot = { -2455, 0, 0 },
     .pos = { -15.0f, 30.0f, 0.0f },
     .sibling = &Entity_BellbellPlant_Node4,
@@ -38,7 +39,7 @@ StaticAnimatorNode Entity_BellbellPlant_Node2 = {
 };
 
 StaticAnimatorNode Entity_BellbellPlant_Node1 = {
-    .displayList = Entity_BellbellPlant_RenderNode1,
+    .displayList = NDN(Entity_BellbellPlant_RenderNode1),
     .rot = { -2457, 0, 0 },
     .sibling = ENTITY_ANIM_NULL,
     .child = &Entity_BellbellPlant_Node2,

@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "effects.h"
 #include "ld_addrs.h"
 #include "animation_script.h"
@@ -7,8 +8,8 @@
 #include "nd_val.h"
 #include "model.h"
 
-extern Gfx Entity_YellowBlock_Render[];
-extern Gfx Entity_RedBlock_Render[];
+NDN_DECL(Entity_YellowBlock_Render);
+NDN_DECL(Entity_RedBlock_Render);
 extern AnimScript Entity_HitYellowBlock_AnimationHit;
 extern AnimScript Entity_HitYellowBlock_AnimationIdle;
 extern StaticAnimatorNode* Entity_HitYellowBlock_Mesh[];
@@ -331,10 +332,10 @@ DmaEntry Entity_HitYellowBlock_dma[] = { ENTITY_ROM(HitYellowBlock_gfx), ENTITY_
 DmaEntry Entity_HitFloatinYellowBlock_dma[] = { ENTITY_ROM(HitFloatingYellowBlock_gfx), ENTITY_ROM(HitFloatingYellowBlock_anim) };
 DmaEntry Entity_HitRedBlock_dma[] = { ENTITY_ROM(HitRedBlock_gfx), ENTITY_ROM(HitRedBlock_anim) };
 
-EntityModelScript Entity_YellowBlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_YellowBlock_Render, RENDER_MODE_SURFACE_OPA);
-EntityModelScript Entity_HiddenYellowBlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_YellowBlock_Render, RENDER_MODE_SURFACE_XLU_LAYER2);
-EntityModelScript Entity_RedBlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_RedBlock_Render, RENDER_MODE_SURFACE_OPA);
-EntityModelScript Entity_HiddenRedBlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_RedBlock_Render, RENDER_MODE_SURFACE_XLU_LAYER2);
+EntityModelScript Entity_YellowBlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_YellowBlock_Render), RENDER_MODE_SURFACE_OPA);
+EntityModelScript Entity_HiddenYellowBlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_YellowBlock_Render), RENDER_MODE_SURFACE_XLU_LAYER2);
+EntityModelScript Entity_RedBlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_RedBlock_Render), RENDER_MODE_SURFACE_OPA);
+EntityModelScript Entity_HiddenRedBlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_RedBlock_Render), RENDER_MODE_SURFACE_XLU_LAYER2);
 
 EntityBlueprint Entity_YellowBlock = {
     .flags = ENTITY_FLAG_4000 | ENTITY_FLAG_FIXED_SHADOW_SIZE,

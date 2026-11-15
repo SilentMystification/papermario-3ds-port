@@ -15,11 +15,3 @@ INCLUDE_IMG("effects/gfx/D_090000C0_32CF80.png", D_090000C0_32CF80);
 #include "effects/gfx/D_09000AB0_32D970.vtx.inc.c"
 #include "effects/gfx/D_09000AF0_32D9B0.vtx.inc.c"
 
-#include "effects/gfx/D_09000B50_32DA10.gfx.inc.c"
-#include "effects/gfx/D_09000C10_32DAD0.gfx.inc.c"
-#include "effects/gfx/D_09000CD0_32DB90.gfx.inc.c"
-#include "effects/gfx/D_09000D58_32DC18.gfx.inc.c"
-#include "effects/gfx/D_09000D90_32DC50.gfx.inc.c"
-#include "effects/gfx/D_09000E08_32DCC8.gfx.inc.c"
-#include "effects/gfx/D_09000E20_32DCE0.gfx.inc.c"
-#include "effects/gfx/D_09000E38_32DCF8.gfx.inc.c"
