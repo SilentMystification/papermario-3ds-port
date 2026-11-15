@@ -2,6 +2,7 @@
 /// @brief Tubba's Castle - Great Hall
 
 #include "common.h"
+#include "nd_gtab.h"
 #include "message_ids.h"
 #include "map.h"
 
@@ -54,7 +55,7 @@ extern Gfx N(img4_gfx)[];
 extern Gfx N(img5_gfx)[];
 extern Gfx N(img6_gfx)[];
 extern Gfx N(img7_gfx)[];
-extern Gfx N(D_8024BCF8_C09578)[];
+NDN_DECL(N(D_8024BCF8_C09578));
 
 extern Mtx N(D_80253160_C109E0);
 extern Mtx N(D_802531A0_C10A20);
