@@ -297,6 +297,7 @@ void lightning_bolt_appendGfx(void* effect) {
         vtx->cn[0] = i * 50;
         vtx->cn[1] = i * 120;
         vtx->cn[2] = i * 30;
+        vtx->cn[3] = 0; vtx->flag = 0;
         vtx++;
 
         vtx->ob[0] = (data->boltVertexPosX[i] - edgeDeltaX) * 10.0f;
@@ -307,6 +308,7 @@ void lightning_bolt_appendGfx(void* effect) {
         vtx->cn[0] = i * 50;
         vtx->cn[1] = i * 120;
         vtx->cn[2] = i * 30;
+        vtx->cn[3] = 0; vtx->flag = 0;
         vtx++;
     }
 

@@ -215,16 +215,20 @@ void stop_watch_appendGfx(void* effect) {
         vtx->ob[0] = temp_s1 - 3200;
         vtx->ob[1] = i * 400 + temp_f0 - 3000;
         vtx->ob[2] = 0;
+        vtx->flag = 0;
         vtx->tc[0] = 0;
         vtx->tc[1] = i * 128;
+        vtx->cn[0] = vtx->cn[1] = vtx->cn[2] = vtx->cn[3] = 0;
 
         vtx++;
 
         vtx->ob[0] = temp_s1 + 3200;
         vtx->ob[1] = i * 400 + temp_f0 - 3000;
         vtx->ob[2] = 0;
+        vtx->flag = 0;
         vtx->tc[0] = 2048;
         vtx->tc[1] = i * 128;
+        vtx->cn[0] = vtx->cn[1] = vtx->cn[2] = vtx->cn[3] = 0;
     }
 
     nd_sub_open(&sub); /* DIRECT D6c: the list for later is a stream range */

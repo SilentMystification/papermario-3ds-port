@@ -10,6 +10,7 @@
 #include "nd_int.h"
 #include "pm_gpu.h"
 #include "nd.h"
+#include "nd_scsig.h"
 #include "nd_api.h"
 #include "nd_psochk.h"
 #include "pm_tex.h"
@@ -188,7 +189,7 @@ void scm_replay(const ScMemo* m) {
 /* R2B: the sync_combine input hash (the fields the skip test reads); sync_combine and the g2_same skip use the same value */
 unsigned sc_sig_now(void) {
     unsigned parts[] = { nd_ws.comb_w0, nd_ws.comb_w1, nd_ws.omode_h, nd_ws.prim, nd_ws.envc, (unsigned)(u8)nd_ws.prim_lod, keyc, keys, conv_k4, (unsigned)leg_mode,
-                         (unsigned)(nd_ws.tex_on | nd_ws.use_t1 << 1 | nd_ws.td[1].valid << 2 | dual_on << 3 | box_prod << 4 | box_pat << 5 | box_folded << 6 | comb_set << 7 | comb_alpha_shade << 8, (unsigned)pm_comb_vprim << 9) };
+                         nd_sc_flags(nd_ws.tex_on, nd_ws.use_t1, nd_ws.td[1].valid, dual_on, box_prod, box_pat, box_folded, comb_set, comb_alpha_shade, pm_comb_vprim) };
     unsigned sg = 2166136261u;
     for (unsigned k = 0; k < sizeof parts / sizeof parts[0]; k++) sg = (sg ^ parts[k]) * 16777619u;
     return sg;

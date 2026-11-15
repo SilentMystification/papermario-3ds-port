@@ -8,3 +8,11 @@ got=$(/tmp/vps_seed/t)
 if [ "$got" != "vpsnap FAIL dedupe" ]; then echo "vpsnap seed FAIL: got [$got]"; exit 1; fi
 gcc $FL -o /tmp/vps_t 3ds/tools/pm_vpsnap_test.c 3ds/src/pm_vpsnap.c || exit 1
 /tmp/vps_t || exit 1
+# HWFIX: nd_sc_flags (3ds/include/nd_scsig.h, the flag word of sc_sig_now). The seed joins the bits with a comma: only vprim is left, so tex_on fails first.
+mkdir -p /tmp/scs_seed
+sed 's/) | (unsigned)vprim << 9;/, (unsigned)vprim << 9);/' 3ds/include/nd_scsig.h > /tmp/scs_seed/nd_scsig.h
+gcc -m32 -w -I /tmp/scs_seed -o /tmp/scs_seed/t 3ds/tools/nd_scsig_test.c || exit 1
+got=$(/tmp/scs_seed/t)
+if [ "$got" != "scsig FAIL tex_on" ]; then echo "scsig seed FAIL: got [$got]"; exit 1; fi
+gcc -m32 -Wall -Werror -I 3ds/include -o /tmp/scs_t 3ds/tools/nd_scsig_test.c || exit 1
+/tmp/scs_t || exit 1
