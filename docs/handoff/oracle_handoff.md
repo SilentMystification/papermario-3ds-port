@@ -32,6 +32,7 @@ C5 data 5149, C6 data_arrays 461, C7 gfxtype 1083, C8 reader 783, C10 recdl 15.
 ## Tidal Wave (user 2026-11-15, build 5798: flashing blue rectangle, slow). Page ws_GRABSEQ ready (60 FPS cause).
 - FACT: Tidal Wave = fx_underwater (sushie.c:336); no src/effects/tidal_wave.c. fxr_drec draws it (fxtest 87) at 30 FPS only.
 - OPEN: the 30 FPS console cause (if the user had 60 FPS off), and the console cost (fxcena/b/c 87 lines from the user).
+- Ready: ws_MENUFL (Select menu R: colour top frame, after Merge GRABSEQ), ws_STARTLR (start menu L -> N64 L, R -> N64 Z, user confirmed).
 ## Older facts that still cost time
 - NDN_DECL/NDN (nd_gtab.h:66-74): host form extern Gfx; device form ndd_<name> NdNDev. gset include mode is src/effects/gfx only.
 - listcen skips an asset that only a gfxin twin includes. gen_gfx_tab copies its logs to /w/build3ds/out when it exists.
