@@ -1,8 +1,9 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "animation_script.h"
 
 extern Vtx D_0A000000_E74BD0[];
-extern Gfx Entity_MunchlesiaGrab_Render[];
+NDN_DECL(Entity_MunchlesiaGrab_Render);
 
 AnimScript Entity_MunchlesiaGrab_Animation = {
     as_SetRotation(1, 0.0, 0.0, 0.0)
@@ -140,7 +141,7 @@ AnimScript Entity_MunchlesiaGrab_Animation = {
 };
 
 StaticAnimatorNode Entity_MunchlesiaGrab_Node8 = {
-    .displayList = Entity_MunchlesiaGrab_Render,
+    .displayList = NDN(Entity_MunchlesiaGrab_Render),
     .sibling = ENTITY_ANIM_NULL,
     .child = ENTITY_ANIM_NULL,
     .vertexStartOffset = 399 * 6,
@@ -148,7 +149,7 @@ StaticAnimatorNode Entity_MunchlesiaGrab_Node8 = {
 };
 
 StaticAnimatorNode Entity_MunchlesiaGrab_Node7 = {
-    .displayList = Entity_MunchlesiaGrab_Render,
+    .displayList = NDN(Entity_MunchlesiaGrab_Render),
     .sibling = &Entity_MunchlesiaGrab_Node8,
     .child = ENTITY_ANIM_NULL,
     .vertexStartOffset = 399 * 5,
@@ -156,7 +157,7 @@ StaticAnimatorNode Entity_MunchlesiaGrab_Node7 = {
 };
 
 StaticAnimatorNode Entity_MunchlesiaGrab_Node6 = {
-    .displayList = Entity_MunchlesiaGrab_Render,
+    .displayList = NDN(Entity_MunchlesiaGrab_Render),
     .pos = { 0.0f, 1.0f, 0.0f },
     .sibling = &Entity_MunchlesiaGrab_Node7,
     .child = ENTITY_ANIM_NULL,
@@ -165,7 +166,7 @@ StaticAnimatorNode Entity_MunchlesiaGrab_Node6 = {
 };
 
 StaticAnimatorNode Entity_MunchlesiaGrab_Node5 = {
-    .displayList = Entity_MunchlesiaGrab_Render,
+    .displayList = NDN(Entity_MunchlesiaGrab_Render),
     .pos = { 0.0f, 2.0f, 0.0f },
     .sibling = &Entity_MunchlesiaGrab_Node6,
     .child = ENTITY_ANIM_NULL,
@@ -174,7 +175,7 @@ StaticAnimatorNode Entity_MunchlesiaGrab_Node5 = {
 };
 
 StaticAnimatorNode Entity_MunchlesiaGrab_Node4 = {
-    .displayList = Entity_MunchlesiaGrab_Render,
+    .displayList = NDN(Entity_MunchlesiaGrab_Render),
     .pos = { 0.0f, 2.0f, 0.0f },
     .sibling = &Entity_MunchlesiaGrab_Node5,
     .child = ENTITY_ANIM_NULL,
@@ -183,7 +184,7 @@ StaticAnimatorNode Entity_MunchlesiaGrab_Node4 = {
 };
 
 StaticAnimatorNode Entity_MunchlesiaGrab_Node3 = {
-    .displayList = Entity_MunchlesiaGrab_Render,
+    .displayList = NDN(Entity_MunchlesiaGrab_Render),
     .pos = { 0.0f, 3.0f, 0.0f },
     .sibling = &Entity_MunchlesiaGrab_Node4,
     .child = ENTITY_ANIM_NULL,
@@ -192,7 +193,7 @@ StaticAnimatorNode Entity_MunchlesiaGrab_Node3 = {
 };
 
 StaticAnimatorNode Entity_MunchlesiaGrab_Node2 = {
-    .displayList = Entity_MunchlesiaGrab_Render,
+    .displayList = NDN(Entity_MunchlesiaGrab_Render),
     .pos = { 0.0f, 4.0f, 0.0f },
     .sibling = &Entity_MunchlesiaGrab_Node3,
     .child = ENTITY_ANIM_NULL,

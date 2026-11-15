@@ -1,0 +1,21 @@
+{
+  "benches": [
+    {
+      "name": "jan09_mesh_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MESH1: draw records of jan_09 entry 0 frames 200 and 201, cold det start. A head equals the base.",
+      "scenario": "jan09_mesh_drec",
+      "cap": 40,
+      "until": "drec f201 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "drec"
+      ],
+      "gates": []
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+src/entity/model/MunchlesiaBeginChew_gfx.c
+src/entity/model/MunchlesiaEnvelop_gfx.c
+src/entity/model/MunchlesiaGrab_gfx.c
+src/entity/model/MunchlesiaReset_gfx.c
+src/entity/model/MunchlesiaReset1_gfx.c
+src/entity/model/MunchlesiaSpitOut_gfx.c
