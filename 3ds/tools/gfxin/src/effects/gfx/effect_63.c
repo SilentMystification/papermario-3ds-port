@@ -7,3 +7,4 @@
 #include "effects/gfx/D_090019A8_3CF088.gfx.inc.c"
 #include "effects/gfx/D_090019C8_3CF0A8.gfx.inc.c"
 #include "effects/gfx/D_090019E8_3CF0C8.gfx.inc.c"
+#include "effects/gfx/D_09001C98_3CF378.gfx.inc.c"

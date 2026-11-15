@@ -15,4 +15,3 @@ u8 D_09001C20_36CB00[0x1E0] = {};
 
 #include "effects/gfx/D_09002018_36CEF8.vtx.inc.c"
 
-#include "effects/gfx/D_09002058_36CF38.gfx.inc.c"

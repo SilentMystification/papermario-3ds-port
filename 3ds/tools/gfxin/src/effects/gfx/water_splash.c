@@ -1,2 +1,5 @@
 #include "src/effects/gfx/water_splash.c"
 #include "effects/gfx/D_09000100_3BCB90.gfx.inc.c"
+#include "effects/gfx/D_09000268_3BCCF8.gfx.inc.c"
+#include "effects/gfx/D_09000288_3BCD18.gfx.inc.c"
+#include "effects/gfx/D_090002A8_3BCD38.gfx.inc.c"

@@ -1,2 +1,6 @@
 #include "src/effects/gfx/ice_pillar.c"
 #include "effects/gfx/D_09001000_40B1C0.gfx.inc.c"
+#include "effects/gfx/D_090011A8_40B368.gfx.inc.c"
+#include "effects/gfx/D_090011C8_40B388.gfx.inc.c"
+#include "effects/gfx/D_090011E8_40B3A8.gfx.inc.c"
+#include "effects/gfx/D_09001208_40B3C8.gfx.inc.c"

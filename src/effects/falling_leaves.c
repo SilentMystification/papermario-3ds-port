@@ -6,7 +6,7 @@ ND_PSO_DESC(pe_falling_leaves_153, 0xfc40b281, 0xff67ffff, 0x1e082cf0, 0x00504a5
 #include "nd_xf.h"
 
 NDN_DECL(D_09001100_3601E0);
-extern Gfx D_090011B0_360290[];
+NDN_DECL(D_090011B0_360290);
 
 void falling_leaves_init(EffectInstance* effect);
 void falling_leaves_render(EffectInstance* effect);
@@ -151,7 +151,7 @@ void falling_leaves_appendGfx(void* effect) {
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        nd_draw_list(D_090011B0_360290, pe_falling_leaves_153);
+        nd_draw_list(NDN(D_090011B0_360290), pe_falling_leaves_153);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 }

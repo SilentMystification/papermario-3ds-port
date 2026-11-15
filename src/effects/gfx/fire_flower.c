@@ -23,6 +23,3 @@ u8 D_09000AA0_380E40[] = {
 #include "effects/gfx/D_09000CC0_381060.vtx.inc.c"
 #include "effects/gfx/D_09000D00_3810A0.vtx.inc.c"
 
-#include "effects/gfx/D_09000EB8_381258.gfx.inc.c"
-#include "effects/gfx/D_09000ED8_381278.gfx.inc.c"
-#include "effects/gfx/D_09000EF8_381298.gfx.inc.c"

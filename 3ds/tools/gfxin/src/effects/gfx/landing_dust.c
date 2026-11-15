@@ -13,3 +13,8 @@
 #include "effects/gfx/D_09003168_32C008.gfx.inc.c"
 #include "effects/gfx/D_090031C0_32C060.gfx.inc.c"
 #include "effects/gfx/D_09003218_32C0B8.gfx.inc.c"
+#include "effects/gfx/D_09002B20_32B9C0.gfx.inc.c"
+#include "effects/gfx/D_09002B40_32B9E0.gfx.inc.c"
+#include "effects/gfx/D_09002B60_32BA00.gfx.inc.c"
+#include "effects/gfx/D_09002B80_32BA20.gfx.inc.c"
+#include "effects/gfx/D_09002C60_32BB00.gfx.inc.c"

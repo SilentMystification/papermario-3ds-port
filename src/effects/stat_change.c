@@ -31,10 +31,10 @@ typedef struct ArrowDataTableEntry {
 
 NDN_DECL(D_09002700_3B1E00);
 NDN_DECL(D_09002798_3B1E98);
-extern Gfx D_09002860_3B1F60[];
-extern Gfx D_09002880_3B1F80[];
-extern Gfx D_090028A0_3B1FA0[];
-extern Gfx D_090028C0_3B1FC0[];
+NDN_DECL(D_09002860_3B1F60);
+NDN_DECL(D_09002880_3B1F80);
+NDN_DECL(D_090028A0_3B1FA0);
+NDN_DECL(D_090028C0_3B1FC0);
 NDN_DECL(D_090028E0_3B1FE0);
 NDN_DECL(D_09002950_3B2050);
 NDN_DECL(D_09002990_3B2090);
@@ -51,7 +51,7 @@ NDN_DECL(D_09002C10_3B2310);
 
 Gfx* D_E00AC7B0[] = { NDN(D_09002700_3B1E00), NDN(D_09002700_3B1E00), NDN(D_09002798_3B1E98) };
 
-Gfx* D_E00AC7BC[] = { D_09002860_3B1F60, D_09002880_3B1F80, D_09002860_3B1F60 };
+Gfx* D_E00AC7BC[] = { NDN(D_09002860_3B1F60), NDN(D_09002880_3B1F80), NDN(D_09002860_3B1F60) };
 
 Gfx* D_E00AC7C8[] = {
     NDN(D_09002950_3B2050), NDN(D_09002990_3B2090), NDN(D_090029D0_3B20D0), NDN(D_09002A10_3B2110),
@@ -300,7 +300,7 @@ void func_E00AC2A4(EffectInstance* effect) {
         }
 
         nd_draw_list(D_E00AC7C8[idx % 10], ND_SELF);
-        nd_draw_list(D_090028C0_3B1FC0, pe_stat_change_288);
+        nd_draw_list(NDN(D_090028C0_3B1FC0), pe_stat_change_288);
 
         if (arrowValue >= 0) {
             nd_draw_list(D_E00AC7C8[11], ND_SELF);
@@ -308,7 +308,7 @@ void func_E00AC2A4(EffectInstance* effect) {
             nd_draw_list(D_E00AC7C8[10], ND_SELF);
         }
 
-        nd_draw_list(D_090028A0_3B1FA0, pe_stat_change_296);
+        nd_draw_list(NDN(D_090028A0_3B1FA0), pe_stat_change_296);
         nd_xf_pop(G_MTX_MODELVIEW);
         nd_xf_pop(G_MTX_MODELVIEW);
     }

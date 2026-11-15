@@ -9,9 +9,9 @@ ND_PSO_DESC(pe_ring_blast_141_k1, 0xfc262ac3, 0x10fc9238, 0x1e183cf0, 0x0c184b50
 #include "nd_tx.h"
 
 NDN_DECL(D_09001040_3583E0);
-extern Gfx D_090010F8_358498[];
+NDN_DECL(D_090010F8_358498);
 
-Gfx* D_E0048A00[] = { D_090010F8_358498, D_090010F8_358498 };
+Gfx* D_E0048A00[] = { NDN(D_090010F8_358498), NDN(D_090010F8_358498) };
 Gfx* D_E0048A08[] = { NDN(D_09001040_3583E0), NDN(D_09001040_3583E0) };
 
 void ring_blast_init(EffectInstance* effect);

@@ -5,8 +5,8 @@ ND_PSO_DESC(pe_spiky_white_aura_202, 0xfcffb3ff, 0xff65feff, 0x1e082cf0, 0x00504
 #include "nd_val.h"
 #include "nd_xf.h"
 
-extern Gfx* D_09000440_34EBB0[];
-extern Gfx* D_090004E8_34EC58[];
+NDN_DECL(D_09000440_34EBB0);
+NDN_DECL(D_090004E8_34EC58);
 
 // RGB values? unused
 u8 D_E00389F0[] = {
@@ -186,7 +186,7 @@ void spiky_white_aura_appendGfx(void* effect) {
     s32 i;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_draw_list(D_09000440_34EBB0, ND_SELF);
+    nd_draw_list(NDN(D_09000440_34EBB0), ND_SELF);
     nd_val_prim(0, 0, 255, 255, 255, part->unk_24);
 
     for (i = 0; i < ((EffectInstance*)effect)->numParts; i++, part++) {
@@ -200,7 +200,7 @@ void spiky_white_aura_appendGfx(void* effect) {
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        nd_draw_list(D_090004E8_34EC58, pe_spiky_white_aura_202);
+        nd_draw_list(NDN(D_090004E8_34EC58), pe_spiky_white_aura_202);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 }

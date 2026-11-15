@@ -6,9 +6,9 @@ ND_PSO_DESC(pe_debuff_168, 0xfc55b2ab, 0x3365feff, 0x1e082cf0, 0x00504b50, 0x000
 #include "nd_xf.h"
 
 NDN_DECL(D_09000240_364E40);
-extern Gfx D_090002E8_364EE8[];
+NDN_DECL(D_090002E8_364EE8);
 
-Gfx* D_E00628C0[] = { D_090002E8_364EE8 };
+Gfx* D_E00628C0[] = { NDN(D_090002E8_364EE8) };
 Gfx* D_E00628C4[] = { NDN(D_09000240_364E40) };
 
 void debuff_init(EffectInstance* effect);

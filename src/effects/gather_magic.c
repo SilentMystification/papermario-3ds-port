@@ -6,10 +6,10 @@ ND_PSO_DESC(pe_gather_magic_191, 0xfc10fea0, 0xf30ff2ff, 0x1e182cf0, 0x0c184b50,
 #include "nd_xf.h"
 
 NDN_DECL(D_09000080_38F790);
-extern Gfx D_090001A8_38F8B8[];
-extern Gfx D_090001C8_38F8D8[];
+NDN_DECL(D_090001A8_38F8B8);
+NDN_DECL(D_090001C8_38F8D8);
 
-Gfx* D_E008E890[] = { D_090001A8_38F8B8, D_090001C8_38F8D8 };
+Gfx* D_E008E890[] = { NDN(D_090001A8_38F8B8), NDN(D_090001C8_38F8D8) };
 
 void gather_magic_appendGfx(void* effect);
 void gather_magic_init(EffectInstance* effect);

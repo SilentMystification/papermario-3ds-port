@@ -61,7 +61,7 @@ WaterBlockVtxData D_E00B4CF0[] = {
 
 NDN_DECL(D_09000300_3B6EF0);
 NDN_DECL(D_090003B0_3B6FA0);
-extern Gfx D_090004A0_3B7090[];
+NDN_DECL(D_090004A0_3B7090);
 extern Gfx D_090004D8_3B70C8[];
 extern Gfx D_09000538_3B7128[];
 
@@ -287,7 +287,7 @@ void water_block_appendGfx(void* effect) {
             {
                 Gfx g[3];
                 gSPMatrix(&g[0], &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-                gSPDisplayList(&g[1], D_090004A0_3B7090);
+                gSPDisplayList(&g[1], NDN(D_090004A0_3B7090));
                 gSPPopMatrix(&g[2], G_MTX_MODELVIEW);
                 nd_parts_add(&pb, (const uint32_t*)g);
             }

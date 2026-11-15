@@ -12,16 +12,16 @@ ND_PSO_DESC(pe_radiating_energy_orb_225, 0xfc5096a1, 0x332dfeff, 0x1e082cf0, 0x0
 
 NDN_DECL(D_09001200_3A1F60);
 NDN_DECL(D_090012A8_3A2008);
-extern Gfx D_09001490_3A21F0[];
-extern Gfx D_090014B0_3A2210[];
-extern Gfx D_090014D0_3A2230[];
-extern Gfx D_090014F0_3A2250[];
-extern Gfx D_09001510_3A2270[];
+NDN_DECL(D_09001490_3A21F0);
+NDN_DECL(D_090014B0_3A2210);
+NDN_DECL(D_090014D0_3A2230);
+NDN_DECL(D_090014F0_3A2250);
+NDN_DECL(D_09001510_3A2270);
 
-Gfx* D_E009EDF0[] = { D_09001490_3A21F0 };
-Gfx* D_E009EDF4[] = { D_090014B0_3A2210 };
-Gfx* D_E009EDF8[] = { D_090014D0_3A2230 };
-Gfx* D_E009EDFC[] = { D_090014F0_3A2250 };
+Gfx* D_E009EDF0[] = { NDN(D_09001490_3A21F0) };
+Gfx* D_E009EDF4[] = { NDN(D_090014B0_3A2210) };
+Gfx* D_E009EDF8[] = { NDN(D_090014D0_3A2230) };
+Gfx* D_E009EDFC[] = { NDN(D_090014F0_3A2250) };
 
 void radiating_energy_orb_init(EffectInstance* effect);
 void radiating_energy_orb_update(EffectInstance* effect);
@@ -166,7 +166,7 @@ void radiating_energy_orb_appendGfx(void* effect) {
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_draw_list(NDN(D_090012A8_3A2008), ND_SELF);
-    nd_draw_list(D_09001510_3A2270, pe_radiating_energy_orb_164);
+    nd_draw_list(NDN(D_09001510_3A2270), pe_radiating_energy_orb_164);
     nd_xf_pop(G_MTX_MODELVIEW);
     nd_draw_list(NDN(D_09001200_3A1F60), ND_SELF);
 

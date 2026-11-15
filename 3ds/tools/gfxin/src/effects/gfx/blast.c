@@ -10,3 +10,8 @@
 #include "effects/gfx/D_090016C0_37F090.gfx.inc.c"
 #include "effects/gfx/D_09001738_37F108.gfx.inc.c"
 #include "effects/gfx/D_090017D0_37F1A0.gfx.inc.c"
+#include "effects/gfx/D_090017B0_37F180.gfx.inc.c"
+#include "effects/gfx/D_090018C0_37F290.gfx.inc.c"
+#include "effects/gfx/D_09001C80_37F650.gfx.inc.c"
+#include "effects/gfx/D_09001CC8_37F698.gfx.inc.c"
+#include "effects/gfx/D_09001D00_37F6D0.gfx.inc.c"

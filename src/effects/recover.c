@@ -19,14 +19,14 @@ ND_PSO_DESC(pe_recover_234, 0xfc123224, 0xff67ffff, 0x1e082cf0, 0x00504340, 0x00
 NDN_DECL(D_09003200_385000);
 NDN_DECL(D_09003298_385098);
 NDN_DECL(D_09003330_385130);
-extern Gfx D_090033D0_3851D0[];
-extern Gfx D_090033F0_3851F0[];
-extern Gfx D_09003410_385210[];
-extern Gfx D_09003430_385230[];
-extern Gfx D_09003450_385250[];
-extern Gfx D_09003470_385270[];
-extern Gfx D_09003490_385290[];
-extern Gfx D_090034B0_3852B0[];
+NDN_DECL(D_090033D0_3851D0);
+NDN_DECL(D_090033F0_3851F0);
+NDN_DECL(D_09003410_385210);
+NDN_DECL(D_09003430_385230);
+NDN_DECL(D_09003450_385250);
+NDN_DECL(D_09003470_385270);
+NDN_DECL(D_09003490_385290);
+NDN_DECL(D_090034B0_3852B0);
 NDN_DECL(D_090034D0_3852D0);
 NDN_DECL(D_09003540_385340);
 NDN_DECL(D_09003580_385380);
@@ -229,32 +229,32 @@ void func_E0080448(EffectInstance* effect) {
 
             if (i == 1 && type != 2) {
                 switch ((part->alpha != 255) + 2 * unk_44) {
-                    case 0: nd_draw_list(D_090033D0_3851D0, pe_recover_223_k0); break;
-                    case 1: nd_draw_list(D_090033D0_3851D0, pe_recover_223_k1); break;
-                    case 2: nd_draw_list(D_090033D0_3851D0, pe_recover_223_k2); break;
-                    default: nd_draw_list(D_090033D0_3851D0, pe_recover_223_k3); break;
+                    case 0: nd_draw_list(NDN(D_090033D0_3851D0), pe_recover_223_k0); break;
+                    case 1: nd_draw_list(NDN(D_090033D0_3851D0), pe_recover_223_k1); break;
+                    case 2: nd_draw_list(NDN(D_090033D0_3851D0), pe_recover_223_k2); break;
+                    default: nd_draw_list(NDN(D_090033D0_3851D0), pe_recover_223_k3); break;
                 }
                 nd_xf_pop(G_MTX_MODELVIEW);
                 nd_draw_list(NDN(D_090034D0_3852D0), ND_SELF);
 
                 if (unk_40 < 10 && unk_44 == 0) {
                     nd_draw_list(D_E0080AC0[unk_40], ND_SELF);
-                    nd_draw_list(type == 0 ? D_09003410_385210 : D_09003470_385270, pe_recover_226);
+                    nd_draw_list(type == 0 ? NDN(D_09003410_385210) : NDN(D_09003470_385270), pe_recover_226);
                 } else {
                     s32 ones = unk_40 % 10;
                     s32 tens = unk_44 == 0 ? (unk_40 / 10) : 10;
 
                     nd_draw_list(D_E0080AC0[ones], ND_SELF);
-                    nd_draw_list(type == 0 ? D_09003450_385250 : D_090034B0_3852B0, pe_recover_232);
+                    nd_draw_list(type == 0 ? NDN(D_09003450_385250) : NDN(D_090034B0_3852B0), pe_recover_232);
                     nd_draw_list(D_E0080AC0[tens], ND_SELF);
-                    nd_draw_list(type == 0 ? D_09003430_385230 : D_09003490_385290, pe_recover_234);
+                    nd_draw_list(type == 0 ? NDN(D_09003430_385230) : NDN(D_09003490_385290), pe_recover_234);
                 }
             } else {
                 switch ((part->alpha != 255) + 2 * unk_44) {
-                    case 0: nd_draw_list(D_090033F0_3851F0, pe_recover_240_k0); break;
-                    case 1: nd_draw_list(D_090033F0_3851F0, pe_recover_240_k1); break;
-                    case 2: nd_draw_list(D_090033F0_3851F0, pe_recover_240_k2); break;
-                    default: nd_draw_list(D_090033F0_3851F0, pe_recover_240_k3); break;
+                    case 0: nd_draw_list(NDN(D_090033F0_3851F0), pe_recover_240_k0); break;
+                    case 1: nd_draw_list(NDN(D_090033F0_3851F0), pe_recover_240_k1); break;
+                    case 2: nd_draw_list(NDN(D_090033F0_3851F0), pe_recover_240_k2); break;
+                    default: nd_draw_list(NDN(D_090033F0_3851F0), pe_recover_240_k3); break;
                 }
                 nd_xf_pop(G_MTX_MODELVIEW);
             }

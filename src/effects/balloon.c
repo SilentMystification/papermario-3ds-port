@@ -8,7 +8,7 @@ ND_PSO_DESC(pe_balloon_106, 0xfcffffff, 0xfffcf279, 0x1e08ac00, 0x00551238, 0x00
 NDN_DECL(D_09001280_3958F0);
 NDN_DECL(D_09001358_3959C8);
 NDN_DECL(D_09001430_395AA0);
-extern Gfx D_09001508_395B78[];
+NDN_DECL(D_09001508_395B78);
 
 Gfx* D_E00963E0[] = { NDN(D_09001280_3958F0), NDN(D_09001358_3959C8), NDN(D_09001430_395AA0) };
 
@@ -104,6 +104,6 @@ void balloon_appendGfx(void* effect) {
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_draw_list(D_E00963E0[idx], ND_SELF);
-    nd_draw_list(D_09001508_395B78, pe_balloon_106);
+    nd_draw_list(NDN(D_09001508_395B78), pe_balloon_106);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

@@ -6,9 +6,9 @@ ND_PSO_DESC(pe_moving_cloud_201, 0xfc309661, 0x552eff7f, 0x1e082cf0, 0x00504b50,
 #include "nd_xf.h"
 
 NDN_DECL(D_09000100_3E1DD0);
-extern Gfx D_090001E8_3E1EB8[];
+NDN_DECL(D_090001E8_3E1EB8);
 
-Gfx* D_E00E8630[] = { D_090001E8_3E1EB8 };
+Gfx* D_E00E8630[] = { NDN(D_090001E8_3E1EB8) };
 Gfx* D_E00E8634[] = { NDN(D_09000100_3E1DD0) };
 
 void moving_cloud_init(EffectInstance* effect);

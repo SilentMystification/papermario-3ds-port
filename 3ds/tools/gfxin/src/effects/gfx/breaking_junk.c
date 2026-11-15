@@ -1,2 +1,6 @@
 #include "src/effects/gfx/breaking_junk.c"
 #include "effects/gfx/D_09000400_403FF0.gfx.inc.c"
+#include "effects/gfx/D_090005A8_404198.gfx.inc.c"
+#include "effects/gfx/D_090005C8_4041B8.gfx.inc.c"
+#include "effects/gfx/D_090005E8_4041D8.gfx.inc.c"
+#include "effects/gfx/D_09000608_4041F8.gfx.inc.c"

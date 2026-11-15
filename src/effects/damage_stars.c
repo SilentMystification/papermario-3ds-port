@@ -6,7 +6,7 @@ ND_PSO_DESC(pe_damage_stars_269, 0xfcffb3ff, 0xff65feff, 0x1e082cf0, 0x00504340,
 #include "nd_xf.h"
 
 NDN_DECL(D_090004C0_343500);
-extern Gfx D_090005E0_343620[];
+NDN_DECL(D_090005E0_343620);
 
 u8 D_E0030E90[] = {
     254, 172, 172,
@@ -267,7 +267,7 @@ void damage_stars_appendGfx(void* effect) {
         guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        nd_draw_list(D_090005E0_343620, pe_damage_stars_269);
+        nd_draw_list(NDN(D_090005E0_343620), pe_damage_stars_269);
         nd_xf_pop(G_MTX_MODELVIEW);
         nd_xf_pop(G_MTX_MODELVIEW);
     }

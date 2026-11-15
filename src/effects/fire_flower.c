@@ -10,9 +10,9 @@ ND_PSO_DESC(pe_fire_flower_272, 0xfc262bff, 0x1f0c923f, 0x1e18acf0, 0x0c184b50, 
 extern char D_09000000_3803A0[][0x200];
 NDN_DECL(D_09000D40_3810E0);
 NDN_DECL(D_09000DE0_381180);
-extern Gfx D_09000EB8_381258[];
-extern Gfx D_09000ED8_381278[];
-extern Gfx D_09000EF8_381298[];
+NDN_DECL(D_09000EB8_381258);
+NDN_DECL(D_09000ED8_381278);
+NDN_DECL(D_09000EF8_381298);
 
 s8 D_E007EC30[] = { 50, 60, 70, 80, 90, 100, 105, 100 };
 
@@ -244,7 +244,7 @@ void fire_flower_appendGfx(void* effect) {
                 guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
                 nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-                nd_draw_list(part->unk_00 != 0 ? D_09000ED8_381278 : D_09000EB8_381258, pe_fire_flower_244);
+                nd_draw_list(part->unk_00 != 0 ? NDN(D_09000ED8_381278) : NDN(D_09000EB8_381258), pe_fire_flower_244);
                 nd_xf_pop(G_MTX_MODELVIEW);
             }
         }
@@ -264,7 +264,7 @@ void fire_flower_appendGfx(void* effect) {
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    nd_draw_list(D_09000EF8_381298, pe_fire_flower_272);
+    nd_draw_list(NDN(D_09000EF8_381298), pe_fire_flower_272);
     nd_xf_pop(G_MTX_MODELVIEW);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

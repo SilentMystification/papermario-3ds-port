@@ -6,7 +6,7 @@ ND_PSO_DESC(pe_drop_leaves_158, 0xfc40b281, 0xff67ffff, 0x1e082cf0, 0x00504a50, 
 #include "nd_xf.h"
 
 NDN_DECL(D_09001180_33E790);
-extern Gfx D_09001230_33E840[];
+NDN_DECL(D_09001230_33E840);
 
 void drop_leaves_init(EffectInstance* effect);
 void drop_leaves_render(EffectInstance* effect);
@@ -156,7 +156,7 @@ void drop_leaves_appendGfx(void* effect) {
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        nd_draw_list(D_09001230_33E840, pe_drop_leaves_158);
+        nd_draw_list(NDN(D_09001230_33E840), pe_drop_leaves_158);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 }

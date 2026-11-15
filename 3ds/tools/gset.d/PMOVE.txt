@@ -38,7 +38,6 @@ src/effects/gfx/energy_orb_wave.c
 src/effects/gfx/energy_shockwave.c
 src/effects/gfx/explosion.c
 src/effects/gfx/falling_leaves.c
-src/effects/gfx/fire_breath.c
 src/effects/gfx/fire_flower.c
 src/effects/gfx/firework.c
 src/effects/gfx/firework_rocket.c
@@ -70,7 +69,6 @@ src/effects/gfx/motion_blur_flame.c
 src/effects/gfx/moving_cloud.c
 src/effects/gfx/music_note.c
 src/effects/gfx/partner_buff.c
-src/effects/gfx/peach_star_beam.c
 src/effects/gfx/purple_ring.c
 src/effects/gfx/quizmo_answer.c
 src/effects/gfx/quizmo_assistant.c
@@ -88,7 +86,6 @@ src/effects/gfx/shockwave.c
 src/effects/gfx/sleep_bubble.c
 src/effects/gfx/small_gold_sparkle.c
 src/effects/gfx/snaking_static.c
-src/effects/gfx/snowfall.c
 src/effects/gfx/snowflake.c
 src/effects/gfx/snowman_doll.c
 src/effects/gfx/sparkles.c

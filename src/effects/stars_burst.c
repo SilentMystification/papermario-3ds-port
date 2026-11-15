@@ -6,7 +6,7 @@ ND_PSO_DESC(pe_stars_burst_167, 0xfcffb3ff, 0xff65feff, 0x1e082cf0, 0x00504340, 
 #include "nd_xf.h"
 
 NDN_DECL(D_090004C0_343500);
-extern Gfx D_090005E0_343620[];
+NDN_DECL(D_090005E0_343620);
 
 u8 D_E0042780[] = {
     254, 172, 172,
@@ -134,7 +134,7 @@ void stars_burst_render(EffectInstance* effect) {
 
 void stars_burst_appendGfx(void* effect) {
     StarsBurstFXData* part = ((EffectInstance*)effect)->data.starsBurst;
-    Gfx* dlist = D_090005E0_343620;
+    Gfx* dlist = NDN(D_090005E0_343620);
     s32 unk_2C;
     Matrix4f sp18;
     Matrix4f sp58;

@@ -7,4 +7,3 @@ INCLUDE_IMG("effects/gfx/D_09000600_344570.png", D_09000600_344570);
 
 #include "effects/gfx/D_09000800_344770.vtx.inc.c"
 
-#include "effects/gfx/D_090008F0_344860.gfx.inc.c"

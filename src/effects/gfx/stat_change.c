@@ -22,7 +22,3 @@ INCLUDE_PAL("effects/gfx/D_09002000_3B1700.pal", D_09002400_3B1B00);
 #include "effects/gfx/D_09002680_3B1D80.vtx.inc.c"
 #include "effects/gfx/D_090026C0_3B1DC0.vtx.inc.c"
 
-#include "effects/gfx/D_09002860_3B1F60.gfx.inc.c"
-#include "effects/gfx/D_09002880_3B1F80.gfx.inc.c"
-#include "effects/gfx/D_090028A0_3B1FA0.gfx.inc.c"
-#include "effects/gfx/D_090028C0_3B1FC0.gfx.inc.c"

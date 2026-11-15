@@ -19,12 +19,3 @@ INCLUDE_PAL("effects/gfx/D_09000CC0_3270D0.pal", D_09000EC0_3272D0);
 
 #include "effects/gfx/D_09000EE0_3272F0.vtx.inc.c"
 
-#include "effects/gfx/D_09000F20_327330.gfx.inc.c"
-#include "effects/gfx/D_09000F88_327398.gfx.inc.c"
-#include "effects/gfx/D_09000FA0_3273B0.gfx.inc.c"
-#include "effects/gfx/D_09001060_327470.gfx.inc.c"
-#include "effects/gfx/D_09001120_327530.gfx.inc.c"
-#include "effects/gfx/D_090011E0_3275F0.gfx.inc.c"
-#include "effects/gfx/D_090012A0_3276B0.gfx.inc.c"
-#include "effects/gfx/D_09001360_327770.gfx.inc.c"
-#include "effects/gfx/D_09001420_327830.gfx.inc.c"

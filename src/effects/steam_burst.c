@@ -6,9 +6,9 @@ ND_PSO_DESC(pe_steam_burst_150, 0xfcffabff, 0xff0d92ff, 0x1e183cf0, 0x0c184b50, 
 #include "nd_xf.h"
 
 NDN_DECL(D_09000E00_362470);
-extern Gfx D_09000F30_3625A0[];
+NDN_DECL(D_09000F30_3625A0);
 
-Gfx* D_E005C700[] = { D_09000F30_3625A0 };
+Gfx* D_E005C700[] = { NDN(D_09000F30_3625A0) };
 Gfx* D_E005C704[] = { NDN(D_09000E00_362470) };
 
 void steam_burst_init(EffectInstance* effect);

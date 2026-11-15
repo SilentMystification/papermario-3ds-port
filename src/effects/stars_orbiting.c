@@ -6,9 +6,9 @@ ND_PSO_DESC(pe_stars_orbiting_137, 0xfcffb3ff, 0xff65feff, 0x1e082cf0, 0x00504b5
 #include "nd_xf.h"
 
 NDN_DECL(D_09000440_363090);
-extern Gfx D_090004F0_363140[];
+NDN_DECL(D_090004F0_363140);
 
-Gfx* D_E005E670[] = { D_090004F0_363140 };
+Gfx* D_E005E670[] = { NDN(D_090004F0_363140) };
 Gfx* D_E005E674[] = { NDN(D_09000440_363090) };
 
 void stars_orbiting_init(EffectInstance* effect);

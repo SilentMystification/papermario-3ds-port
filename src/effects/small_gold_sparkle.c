@@ -11,7 +11,7 @@ NDN_DECL(D_09000370_3927B0);
 NDN_DECL(D_090003B0_3927F0);
 NDN_DECL(D_090003F0_392830);
 NDN_DECL(D_09000430_392870);
-extern Gfx D_09000470_3928B0[];
+NDN_DECL(D_09000470_3928B0);
 
 static Gfx* sDlists[] = { NDN(D_09000430_392870), NDN(D_090003F0_392830), NDN(D_090003B0_3927F0), NDN(D_09000370_3927B0), NDN(D_09000330_392770) };
 
@@ -146,7 +146,7 @@ void small_gold_sparkle_appendGfx(void* effect) {
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
             nd_xf_push(spD8, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
             nd_draw_list(sDlists[part->unk_04 >> 1], ND_SELF);
-            nd_draw_list(D_09000470_3928B0, pe_small_gold_sparkle_148);
+            nd_draw_list(NDN(D_09000470_3928B0), pe_small_gold_sparkle_148);
             nd_xf_pop(G_MTX_MODELVIEW);
         }
     }

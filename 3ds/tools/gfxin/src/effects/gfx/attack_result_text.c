@@ -6,3 +6,8 @@
 #include "effects/gfx/D_090016A0_391A70.gfx.inc.c"
 #include "effects/gfx/D_090016E8_391AB8.gfx.inc.c"
 #include "effects/gfx/D_09001730_391B00.gfx.inc.c"
+#include "effects/gfx/D_090018B8_391C88.gfx.inc.c"
+#include "effects/gfx/D_090018D8_391CA8.gfx.inc.c"
+#include "effects/gfx/D_090018F8_391CC8.gfx.inc.c"
+#include "effects/gfx/D_09001918_391CE8.gfx.inc.c"
+#include "effects/gfx/D_09001938_391D08.gfx.inc.c"

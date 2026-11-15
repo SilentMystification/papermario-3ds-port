@@ -5,3 +5,7 @@
 #include "effects/gfx/D_090023D8_337048.gfx.inc.c"
 #include "effects/gfx/D_090024A8_337118.gfx.inc.c"
 #include "effects/gfx/D_09002578_3371E8.gfx.inc.c"
+#include "effects/gfx/D_090022E0_336F50.gfx.inc.c"
+#include "effects/gfx/D_090023B0_337020.gfx.inc.c"
+#include "effects/gfx/D_09002480_3370F0.gfx.inc.c"
+#include "effects/gfx/D_09002550_3371C0.gfx.inc.c"

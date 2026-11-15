@@ -10,7 +10,7 @@ void explosion_render(EffectInstance* effect);
 void explosion_appendGfx(void* effect);
 
 NDN_DECL(D_09000840_3447B0);
-extern Gfx D_090008F0_344860[];
+NDN_DECL(D_090008F0_344860);
 NDN_DECL(D_09000910_344880);
 NDN_DECL(D_09000978_3448E8);
 NDN_DECL(D_090009D8_344948);
@@ -195,7 +195,7 @@ void explosion_appendGfx(void* effect) {
 
         nd_val_prim(0, 0, 255, 255, 240, part->unk_38);
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        nd_rec_dl(D_090008F0_344860);
+        nd_rec_dl(NDN(D_090008F0_344860));
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 

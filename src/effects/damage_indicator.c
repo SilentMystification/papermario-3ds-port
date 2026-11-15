@@ -22,15 +22,15 @@ NDN_DECL(D_09002050_352270);
 NDN_DECL(D_09002090_3522B0);
 NDN_DECL(D_090020D0_3522F0);
 NDN_DECL(D_09002110_352330);
-extern Gfx D_09002150_352370[];
+NDN_DECL(D_09002150_352370);
 NDN_DECL(D_09002160_352380);
 NDN_DECL(D_09002170_352390);
-extern Gfx D_09002180_3523A0[];
+NDN_DECL(D_09002180_3523A0);
 extern Gfx D_09002190_3523B0[];
 extern Gfx D_090021A8_3523C8[];
-extern Gfx D_090021C0_3523E0[];
-extern Gfx D_090021E0_352400[];
-extern Gfx D_09002200_352420[];
+NDN_DECL(D_090021C0_3523E0);
+NDN_DECL(D_090021E0_352400);
+NDN_DECL(D_09002200_352420);
 
 Gfx* D_E003CCA0[] = {
     NDN(D_09001E50_352070), NDN(D_09001E90_3520B0), NDN(D_09001ED0_3520F0), NDN(D_09001F10_352130),
@@ -240,7 +240,7 @@ void damage_indicator_render_impl(EffectInstance* effect) {
             guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
 
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            nd_draw_list(D_09002150_352370, ND_SELF);
+            nd_draw_list(NDN(D_09002150_352370), ND_SELF);
             nd_xf_pop(G_MTX_MODELVIEW);
 
             guPositionF(mtxTransform, 0.0f, 0.0f, 0.0f, part->scale,
@@ -269,7 +269,7 @@ void damage_indicator_render_impl(EffectInstance* effect) {
         if (i == lastPartIdx) {
             nd_draw_list(NDN(D_09002170_352390), ND_SELF);
         } else {
-            nd_draw_list(D_09002180_3523A0, ND_SELF);
+            nd_draw_list(NDN(D_09002180_3523A0), ND_SELF);
         }
 
         if (i == lastPartIdx) {
@@ -278,14 +278,14 @@ void damage_indicator_render_impl(EffectInstance* effect) {
             nd_draw_list(NDN(D_09001DE0_352000), ND_SELF);
             if (numParts < 10) {
                 nd_draw_list(D_E003CCA0[i], ND_SELF);
-                nd_draw_list(D_090021C0_3523E0, pe_damage_indicator_278);
+                nd_draw_list(NDN(D_090021C0_3523E0), pe_damage_indicator_278);
             } else {
                 s32 onesDigit = numParts % 10;
                 s32 tensDigit = numParts / 10;
                 nd_draw_list(D_E003CCA0[onesDigit], ND_SELF); // GfxLoadDigitTex
-                nd_rec_dl(D_09002200_352420); // GfxDrawOnesQuad
+                nd_rec_dl(NDN(D_09002200_352420)); // GfxDrawOnesQuad
                 nd_draw_list(D_E003CCA0[tensDigit], ND_SELF);
-                nd_rec_dl(D_090021E0_352400); // GfxDrawTensQuad
+                nd_rec_dl(NDN(D_090021E0_352400)); // GfxDrawTensQuad
             }
         } else {
             nd_draw_list(D_09002190_3523B0, pe_damage_indicator_288);

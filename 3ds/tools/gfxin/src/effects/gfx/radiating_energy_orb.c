@@ -1,3 +1,8 @@
 #include "src/effects/gfx/radiating_energy_orb.c"
 #include "effects/gfx/D_09001200_3A1F60.gfx.inc.c"
 #include "effects/gfx/D_090012A8_3A2008.gfx.inc.c"
+#include "effects/gfx/D_09001490_3A21F0.gfx.inc.c"
+#include "effects/gfx/D_090014B0_3A2210.gfx.inc.c"
+#include "effects/gfx/D_090014D0_3A2230.gfx.inc.c"
+#include "effects/gfx/D_090014F0_3A2250.gfx.inc.c"
+#include "effects/gfx/D_09001510_3A2270.gfx.inc.c"

@@ -6,7 +6,7 @@ ND_PSO_DESC(pe_cloud_puff_138, 0xfc6096c1, 0xff2dfeff, 0x1e08acf0, 0x00504a50, 0
 #include "nd_xf.h"
 
 NDN_DECL(D_090000E0_32ED30);
-extern Gfx D_090001B8_32EE08[];
+NDN_DECL(D_090001B8_32EE08);
 
 void cloud_puff_init(EffectInstance* effect);
 void cloud_puff_update(EffectInstance* effect);
@@ -136,7 +136,7 @@ void cloud_puff_appendGfx(void* effect) {
 
             nd_val_prim(0, 0, 112, 96, 24, part->alpha);
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            nd_draw_list(D_090001B8_32EE08, pe_cloud_puff_138);
+            nd_draw_list(NDN(D_090001B8_32EE08), pe_cloud_puff_138);
             nd_xf_pop(G_MTX_MODELVIEW);
         }
     }

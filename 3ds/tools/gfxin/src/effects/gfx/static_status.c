@@ -1,2 +1,3 @@
 #include "src/effects/gfx/static_status.c"
 #include "effects/gfx/D_09000280_3E1550.gfx.inc.c"
+#include "effects/gfx/D_090003A0_3E1670.gfx.inc.c"

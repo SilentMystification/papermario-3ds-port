@@ -14,7 +14,7 @@ void throw_spiny_render(EffectInstance* effect);
 
 NDN_DECL(D_09000800_3D02F0);
 NDN_DECL(D_090008D8_3D03C8);
-extern Gfx D_090009F0_3D04E0[];
+NDN_DECL(D_090009F0_3D04E0);
 
 Gfx* D_E00C8710[2] = { NDN(D_09000800_3D02F0), NDN(D_090008D8_3D03C8) };
 
@@ -182,6 +182,6 @@ void throw_spiny_appendGfx(void* effect) {
     nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_val_prim(0, 0, data->unk_30, data->unk_34, data->unk_38, temp_s5);
     nd_draw_list(D_E00C8710[temp_s6], ND_SELF);
-    nd_draw_list(D_090009F0_3D04E0, pe_throw_spiny_184);
+    nd_draw_list(NDN(D_090009F0_3D04E0), pe_throw_spiny_184);
     nd_xf_pop(G_MTX_MODELVIEW);
 }
