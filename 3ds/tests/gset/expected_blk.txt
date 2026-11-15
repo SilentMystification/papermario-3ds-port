@@ -1,6 +1,5 @@
-gset keep src/gconv_user.c:2
-gset moved 1 files 1 keep 1
-gset FAIL
+gset moved 2 files 3 keep 0
+gset ok
 == src/entity/model/M.c
 #include "common.h"
 #include "nd_gtab.h"
@@ -24,6 +23,26 @@ Gfx A[] = {
     }
     gsSPEndDisplayList(),
 };
+== src/own.c
+#include "common.h"
+#include "nd_gtab.h"
+NDN_DECL(D);
+Gfx E[] = {
+    gsSPEndDisplayList(),
+};
+Gfx F[] = {
+    gsSPEndDisplayList(),
+};
+void own(void) {
+    gSPDisplayList(gMainGfxPos++, NDN(D));
+    n = sizeof E;
+    evt(SetCustomGfx, F);
+}
+== 3ds/tools/gfxin/src/own.c
+#include "src/own.c"
+Gfx D[] = {
+    gsSPEndDisplayList(),
+};
 == src/user.c
 #include "effects/fake.h"
 #include "nd_gtab.h"
@@ -32,6 +51,7 @@ void user(void) {
     nd_draw_list(NDN(A), ND_SELF);
 }
 == src/gconv_user.c
+#include "nd_gtab.h"
 void user2(void) {
-    nd_draw_list(A, ND_SELF);
+    nd_draw_list(NDN(A), ND_SELF);
 }

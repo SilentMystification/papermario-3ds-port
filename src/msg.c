@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "ld_addrs.h"
 #include "pm_wide.h"
 #include "message_ids.h"
@@ -77,22 +78,7 @@ Vtx gRewindArrowQuad[] = {
     { .v = { .ob = { 0x0010, 0xFFF7, 0x0000 }, .tc = { 0x0400, 0x0240 }, .cn = { 0xFF, 0xFF, 0xFF, 0xFF }}},
 };
 
-Gfx D_8014C2D8[] = {
-    gsDPSetCycleType(G_CYC_2CYCLE),
-    gsSPClearGeometryMode(G_CULL_BOTH | G_LIGHTING),
-    gsSPSetGeometryMode(G_SHADE | G_SHADING_SMOOTH),
-    gsDPSetColorDither(G_CD_DISABLE),
-    gsDPSetAlphaDither(G_AD_DISABLE),
-    gsDPSetAlphaCompare(G_AC_NONE),
-    gsSPTexture(-1, -1, 0, G_TX_RENDERTILE, G_ON),
-    gsDPSetTexturePersp(G_TP_PERSP),
-    gsDPSetTextureLUT(G_TT_NONE),
-    gsDPSetTextureFilter(G_TF_AVERAGE),
-    gsDPSetRenderMode(IM_RD | CVG_DST_SAVE | ZMODE_XLU | FORCE_BL | G_RM_PASS, IM_RD | CVG_DST_SAVE | ZMODE_XLU |
-                      FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA)),
-    gsDPSetCombineMode(PM_CC_MSG_UP_ARROW, G_CC_PASS2),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(D_8014C2D8);
 
 s32 gMsgBGScrollAmtX;
 u16 gMsgGlobalWaveCounter;
@@ -171,19 +157,7 @@ MessageNumber gMsgNumbers[] = {
 #endif
 };
 
-Gfx gMsgDlistInitDrawNumber[] = {
-    gsDPPipeSync(),
-    gsDPSetCycleType(G_CYC_1CYCLE),
-    gsDPSetTextureFilter(G_TF_POINT),
-    gsDPSetTexturePersp(G_TP_NONE),
-    gsDPSetColorDither(G_CD_DISABLE),
-    gsDPSetAlphaDither(G_AD_DISABLE),
-    gsDPSetCombineKey(G_CK_NONE),
-    gsDPSetAlphaCompare(G_AC_NONE),
-    gsDPSetTextureLUT(G_TT_RGBA16),
-    gsSPTexture(-1, -1, 0, G_TX_RENDERTILE, G_ON),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(gMsgDlistInitDrawNumber);
 
 s32 draw_image_with_clipping(IMG_PTR raster, s32 width, s32 height, s32 fmt, s32 bitDepth, s16 posX, s16 posY, u16 clipULx,
                              u16 clipULy, u16 clipLRx, u16 clipRLy);
@@ -2126,7 +2100,7 @@ void msg_update_rewind_arrow(s32 printerIndex) {
     Matrix4f sp58;
     f32 temp;
 
-    gSPDisplayList(gMainGfxPos++, D_8014C2D8);
+    gSPDisplayList(gMainGfxPos++, NDN(D_8014C2D8));
 
     switch (printer->rewindArrowAnimState) {
         case REWIND_ARROW_STATE_INIT:
@@ -2323,7 +2297,7 @@ void draw_number(s32 value, s32 x, s32 y, s32 charset, s32 palette, s32 opacity,
     posX = x;
     count = i;
 
-    gSPDisplayList(gMainGfxPos++, gMsgDlistInitDrawNumber);
+    gSPDisplayList(gMainGfxPos++, NDN(gMsgDlistInitDrawNumber));
 
     if (style & DRAW_NUMBER_STYLE_ALIGN_RIGHT) {
         for (i = count - 1; i >= 0; i--) {

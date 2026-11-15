@@ -5,12 +5,12 @@ ND_PSO_DESC(pe_big_snowflakes_145, 0xfcff97ff, 0xff2f7fbf, 0x1e082cf0, 0x00504b5
 #include "nd_val.h"
 #include "nd_xf.h"
 
-extern Gfx D_09000900_3641C0[];
-extern Gfx D_090009E8_3642A8[];
-extern Gfx D_09000A10_3642D0[];
+NDN_DECL(D_09000900_3641C0);
+NDN_DECL(D_090009E8_3642A8);
+NDN_DECL(D_09000A10_3642D0);
 
-Gfx* D_E0060730[] = { D_090009E8_3642A8, D_09000A10_3642D0 };
-Gfx* D_E0060738[] = { D_09000900_3641C0, D_09000900_3641C0 };
+Gfx* D_E0060730[] = { NDN(D_090009E8_3642A8), NDN(D_09000A10_3642D0) };
+Gfx* D_E0060738[] = { NDN(D_09000900_3641C0), NDN(D_09000900_3641C0) };
 
 void big_snowflakes_init(EffectInstance* effect);
 void big_snowflakes_update(EffectInstance* effect);

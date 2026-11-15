@@ -7,8 +7,8 @@ ND_PSO_DESC(pe_snowflake_145, 0xfcffffff, 0xffff73b9, 0x1e082cf0, 0x00504b50, 0x
 
 s32 D_E001C5E0 = 0;
 
-extern Gfx D_09000900_331800[];
-extern Gfx D_090009E8_3318E8[];
+NDN_DECL(D_09000900_331800);
+NDN_DECL(D_090009E8_3318E8);
 
 void snowflake_init(EffectInstance* effect);
 void snowflake_update(EffectInstance* effect);
@@ -127,7 +127,7 @@ void snowflake_appendGfx(void* effect) {
     SnowflakeFXData* data = effectTemp->data.snowflake;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(effectTemp->shared->graphics));
-    nd_draw_list(D_09000900_331800, ND_SELF);
+    nd_draw_list(NDN(D_09000900_331800), ND_SELF);
 
     guTranslateF(sp18, data->pos.x, data->pos.y, data->pos.z);
     guRotateF(spD8, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);
@@ -143,7 +143,7 @@ void snowflake_appendGfx(void* effect) {
     guMtxF2L(sp118, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    nd_draw_list(D_090009E8_3318E8, pe_snowflake_145);
+    nd_draw_list(NDN(D_090009E8_3318E8), pe_snowflake_145);
     nd_xf_pop(G_MTX_MODELVIEW);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

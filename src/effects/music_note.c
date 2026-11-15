@@ -10,17 +10,17 @@ void music_note_init(EffectInstance* effect);
 void music_note_update(EffectInstance* effect);
 void music_note_render(EffectInstance* effect);
 
-extern Gfx D_09000FC0_35B5A0[];
-extern Gfx D_09001038_35B618[];
-extern Gfx D_090010C0_35B6A0[];
-extern Gfx D_09001148_35B728[];
-extern Gfx D_090011D0_35B7B0[];
-extern Gfx D_09001258_35B838[];
-extern Gfx D_090012E0_35B8C0[];
-extern Gfx D_09001368_35B948[];
+NDN_DECL(D_09000FC0_35B5A0);
+NDN_DECL(D_09001038_35B618);
+NDN_DECL(D_090010C0_35B6A0);
+NDN_DECL(D_09001148_35B728);
+NDN_DECL(D_090011D0_35B7B0);
+NDN_DECL(D_09001258_35B838);
+NDN_DECL(D_090012E0_35B8C0);
+NDN_DECL(D_09001368_35B948);
 
-Gfx* D_E004C660[] = { D_09001038_35B618, D_090010C0_35B6A0, D_09001148_35B728, D_090011D0_35B7B0,
-                      D_09001258_35B838, D_090012E0_35B8C0, D_09001368_35B948 };
+Gfx* D_E004C660[] = { NDN(D_09001038_35B618), NDN(D_090010C0_35B6A0), NDN(D_09001148_35B728), NDN(D_090011D0_35B7B0),
+                      NDN(D_09001258_35B838), NDN(D_090012E0_35B8C0), NDN(D_09001368_35B948) };
 
 s8 D_E004C67C[] = {
     254, 172, 172,
@@ -145,7 +145,7 @@ void music_note_appendGfx(void* data) {
     rgbOffset = (colorIdx * 3) % ARRAY_COUNT(D_E004C67C);
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_draw_list(D_09000FC0_35B5A0, ND_SELF);
+    nd_draw_list(NDN(D_09000FC0_35B5A0), ND_SELF);
     nd_val_prim(0, 0, D_E004C67C[rgbOffset], D_E004C67C[rgbOffset + 1], D_E004C67C[rgbOffset + 2], fxData->alpha);
     guTranslateF(mtxTransform, fxData->pos.x, fxData->pos.y, fxData->pos.z);
     guRotateF(mtxTemp, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);

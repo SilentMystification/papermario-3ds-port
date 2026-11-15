@@ -1,0 +1,6 @@
+#include "src/effects/gfx/star_spirits_energy.c"
+#include "effects/gfx/D_09004E00_412090.gfx.inc.c"
+#include "effects/gfx/D_09005168_4123F8.gfx.inc.c"
+#include "effects/gfx/D_090051C8_412458.gfx.inc.c"
+#include "effects/gfx/D_09005370_412600.gfx.inc.c"
+#include "effects/gfx/D_090053D0_412660.gfx.inc.c"

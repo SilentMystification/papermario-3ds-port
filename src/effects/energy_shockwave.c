@@ -5,8 +5,8 @@ ND_PSO_DESC(pe_energy_shockwave_171, 0xfc119a40, 0x100d737f, 0x1e182cf0, 0x0c184
 #include "nd_val.h"
 #include "nd_xf.h"
 
-extern Gfx D_09000DC0_3762D0[];
-extern Gfx D_09000E60_376370[];
+NDN_DECL(D_09000DC0_3762D0);
+NDN_DECL(D_09000E60_376370);
 
 void energy_shockwave_init(EffectInstance* effect);
 void energy_shockwave_update(EffectInstance* effect);
@@ -151,7 +151,7 @@ void energy_shockwave_appendGfx(void* effect) {
     s32 ult2;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_draw_list(D_09000E60_376370, ND_SELF);
+    nd_draw_list(NDN(D_09000E60_376370), ND_SELF);
     nd_val_prim(0, 0, 255, 179, 30, data->unk_24);
     nd_val_env(data->unk_50, data->unk_51, data->unk_52, 128);
 
@@ -169,6 +169,6 @@ void energy_shockwave_appendGfx(void* effect) {
     guMtxF2L(sp10, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    nd_draw_list(D_09000DC0_3762D0, pe_energy_shockwave_171);
+    nd_draw_list(NDN(D_09000DC0_3762D0), pe_energy_shockwave_171);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

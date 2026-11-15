@@ -57,6 +57,7 @@ def _init(text, name):
         tok = tok.strip()
         if not tok:
             continue
+        tok = re.sub(r"^NDN\((\w+)\)$", r"\1", tok)  # GSETB: a moved list is written NDN(X) (gset.py)
         if not re.fullmatch(r"\w+", tok):
             return None
         if tok in ("NULL", "nullptr", "0"):
@@ -67,6 +68,7 @@ def _init(text, name):
 
 def _names(text, arg, local):
     s = _outer(arg.strip())
+    s = re.sub(r"^NDN\((\w+)\)$", r"\1", s)  # GSETB: a moved list is written NDN(X) (gset.py)
     if "?" in s:
         rest = s.split("?", 1)[1]
         if ":" not in rest:

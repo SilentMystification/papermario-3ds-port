@@ -1,4 +1,5 @@
 #include "pause_common.h"
+#include "nd_gtab.h"
 #include "message_ids.h"
 #include "sprite.h"
 #include "sprite/npc/WorldEldstar.h"
@@ -12,7 +13,7 @@
 #include "nd_st.h"
 #include "nd_tx.h"
 
-extern Gfx PauseGfxSpiritsBg[];
+NDN_DECL(PauseGfxSpiritsBg);
 extern s8 pause_spirits_bg_png[];
 
 void pause_spirits_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 width, s32 height, s32 opacity, s32 darkening);
@@ -161,7 +162,7 @@ void pause_spirits_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 widt
     PlayerData* playerData = get_player_data();
 
     nd_xf_viewport(&gPauseSpiritsViewport);
-    gSPDisplayList(gMainGfxPos++, PauseGfxSpiritsBg);
+    gSPDisplayList(gMainGfxPos++, NDN(PauseGfxSpiritsBg));
 
     for (i = 0; i < 5; i++) {
         nd_tex_load_tile_4b(pause_spirits_bg_png, G_IM_FMT_CI, 128, 110, 0, i * 22, 127, i * 22 + 21, 0, G_TX_MIRROR, G_TX_CLAMP, 7, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);

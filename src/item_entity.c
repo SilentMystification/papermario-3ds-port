@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "effects.h"
 #include "hud_element.h"
 #include "pause/pause_common.h"
@@ -87,19 +88,7 @@ Vtx D_8014C5E0[4] = {
     {{{ -16, 31, 0 }, 0, { 0x2400, 0x2000 }, { 0, 0, 0, 255 }}},
 };
 
-Gfx D_8014C620[] = {
-    gsDPPipeSync(),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsDPSetCombineMode(G_CC_DECALRGBA, G_CC_DECALRGBA),
-    gsDPSetTexturePersp(G_TP_PERSP),
-    gsDPSetTextureDetail(G_TD_CLAMP),
-    gsDPSetTextureLOD(G_TL_TILE),
-    gsDPSetTextureLUT(G_TT_NONE),
-    gsDPSetTextureFilter(G_TF_BILERP),
-    gsDPSetTextureConvert(G_TC_FILT),
-    gsDPSetTextureLUT(G_TT_RGBA16),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(D_8014C620);
 
 #include "nd_rmdef.h"
 #include "nd_st.h"
@@ -1156,7 +1145,7 @@ void render_item_entities(void) {
                             gSPDisplayList(gMainGfxPos++, Gfx_RM1_ALPHATEST);
                         }
                         nd_pso_geom_clr(G_LIGHTING);
-                        gSPDisplayList(gMainGfxPos++, D_8014C620);
+                        gSPDisplayList(gMainGfxPos++, NDN(D_8014C620));
 
                         alpha = 255;
                         if (item->flags & (ITEM_ENTITY_FLAG_TRANSPARENT | ITEM_ENTITY_FLAG_HIDING)) {

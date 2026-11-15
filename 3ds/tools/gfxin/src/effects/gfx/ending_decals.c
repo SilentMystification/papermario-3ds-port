@@ -1,0 +1,6 @@
+#include "src/effects/gfx/ending_decals.c"
+#include "effects/gfx/D_09001E40_36CD20.gfx.inc.c"
+#include "effects/gfx/D_09001EA8_36CD88.gfx.inc.c"
+#include "effects/gfx/D_09001F10_36CDF0.gfx.inc.c"
+#include "effects/gfx/D_09001F78_36CE58.gfx.inc.c"
+#include "effects/gfx/D_09002078_36CF58.gfx.inc.c"

@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "nu/nusys.h"
 #include "effects.h"
 #include "battle/battle.h"
@@ -43,18 +44,7 @@ s32 gDamageCountTimers[] = {
     0, 0, 0, 0,
 };
 
-Gfx D_80293970[] = {
-    gsDPPipeSync(),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF),
-    gsDPSetCycleType(G_CYC_1CYCLE),
-    gsDPSetTexturePersp(G_TP_NONE),
-    gsDPSetTextureDetail(G_TD_CLAMP),
-    gsDPSetTextureLOD(G_TL_TILE),
-    gsDPSetTextureFilter(G_TF_POINT),
-    gsDPSetTextureLUT(G_TT_NONE),
-    gsDPSetTextureConvert(G_TC_FILT),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(D_80293970);
 
 s32 bCurRumbleScript = 0;
 
@@ -3019,7 +3009,7 @@ void btl_update_ko_status(void) {
 }
 
 void btl_appendGfx_prim_quad(u8 r, u8 g, u8 b, u8 a, u16 left, u16 top, u16 right, u16 bottom) {
-    gSPDisplayList(gMainGfxPos++, D_80293970);
+    gSPDisplayList(gMainGfxPos++, NDN(D_80293970));
 
     /* NATIVEAPI E5b (S5PQUAD): the quad is one fill record (nd_api.h NdFillRec): kind 2 opaque (PM_CC_PRIM_FULL_ALPHA), 3 translucent. */
     {

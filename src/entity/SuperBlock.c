@@ -222,7 +222,7 @@ void entity_init_UltraBlockContent(Entity* entity) {
     entity->renderSetupFunc = entity_SuperBlockContent_setupGfx;
 }
 
-extern Gfx Entity_RenderNone[];
+NDN_DECL(Entity_RenderNone);
 
 EntityScript Entity_SuperBlockContent_Script = {
     es_SetCallback(entity_SuperBlockContent_idle, 0)
@@ -234,9 +234,9 @@ EntityScript Entity_UltraBlockContent_Script = {
 };
 
 EntityModelScript Entity_SuperBlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_SuperBlock_Render), RENDER_MODE_ALPHATEST);
-EntityModelScript Entity_SuperBlockContent_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_RenderNone, RENDER_MODE_SURFACE_XLU_LAYER2);
+EntityModelScript Entity_SuperBlockContent_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_RenderNone), RENDER_MODE_SURFACE_XLU_LAYER2);
 EntityModelScript Entity_UltraBlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_UltraBlock_Render, RENDER_MODE_ALPHATEST);
-EntityModelScript Entity_UltraBlockContent_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(Entity_RenderNone, RENDER_MODE_SURFACE_XLU_LAYER2);
+EntityModelScript Entity_UltraBlockContent_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_RenderNone), RENDER_MODE_SURFACE_XLU_LAYER2);
 
 EntityBlueprint Entity_SuperBlock = {
     .flags = ENTITY_FLAG_4000 | ENTITY_FLAG_FIXED_SHADOW_SIZE,

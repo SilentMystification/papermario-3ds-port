@@ -1,0 +1,7 @@
+#include "src/effects/gfx/quizmo_assistant.c"
+#include "effects/gfx/D_09002400_409480.gfx.inc.c"
+#include "effects/gfx/D_09002528_4095A8.gfx.inc.c"
+#include "effects/gfx/D_090025B8_409638.gfx.inc.c"
+#include "effects/gfx/D_09002648_4096C8.gfx.inc.c"
+#include "effects/gfx/D_090026D8_409758.gfx.inc.c"
+#include "effects/gfx/D_090027F0_409870.gfx.inc.c"

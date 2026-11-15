@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "filemenu.h"
 #include "ld_addrs.h"
 
@@ -52,21 +53,7 @@ u8* filemenu_specialSymbols[][5] = {
 s32 filemenu_specialSymbols[] = { (s32)filemenu_msg_C6, (s32)filemenu_msg_C7, (s32)filemenu_msg_C8, (s32)filemenu_msg_C9, (s32)filemenu_msg_CA };
 #endif
 
-Gfx filemenu_dl_draw_char_init[] = {
-    gsDPPipeSync(),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsDPSetCycleType(G_CYC_1CYCLE),
-    gsDPSetTexturePersp(G_TP_NONE),
-    gsDPSetTextureDetail(G_TD_CLAMP),
-    gsDPSetTextureLOD(G_TL_TILE),
-    gsDPSetTextureFilter(G_TF_POINT),
-    gsDPSetTextureLUT(G_TT_RGBA16),
-    gsDPSetTextureConvert(G_TC_FILT),
-    gsDPSetRenderMode(G_RM_TEX_EDGE, G_RM_TEX_EDGE2),
-    gsDPSetCombineMode(G_CC_DECALRGBA, G_CC_DECALRGBA),
-    gsDPSetPrimColor(0, 0, 40, 40, 40, 72),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(filemenu_dl_draw_char_init);
 
 Gfx* filemenu_savedGfxPos = nullptr;
 static const u32* filemenu_savedStreamPos; /* DIRECT D6: the frame stream position after the last char (a recorded char does not move gMainGfxPos) */
@@ -715,7 +702,7 @@ s32 filemenu_draw_char(s32 c, s32 x, s32 y, s32 flag1, s32 color, s32 flag2) {
 #endif
         charWidth = charData->charWidthTable[c];
         if (gMainGfxPos != filemenu_savedGfxPos || nd_rec_pos() != filemenu_savedStreamPos) {
-            gSPDisplayList(gMainGfxPos++, filemenu_dl_draw_char_init);
+            gSPDisplayList(gMainGfxPos++, NDN(filemenu_dl_draw_char_init));
             filemenu_char_color = -1;
         }
 
@@ -761,7 +748,7 @@ s32 filemenu_draw_char(s32 c, s32 x, s32 y, s32 flag1, s32 color, s32 flag2) {
         load_font_data(charset_standard_OFFSET + offset * 0x80, 0x80, &filemenu_glyphBuffer[*offsetPtr][0]);
 
         if (gMainGfxPos != filemenu_savedGfxPos || nd_rec_pos() != filemenu_savedStreamPos) {
-            gSPDisplayList(gMainGfxPos++, filemenu_dl_draw_char_init);
+            gSPDisplayList(gMainGfxPos++, NDN(filemenu_dl_draw_char_init));
             filemenu_char_color = -1;
         }
 

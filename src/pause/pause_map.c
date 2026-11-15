@@ -1,4 +1,5 @@
 #include "pause_common.h"
+#include "nd_gtab.h"
 #include "message_ids.h"
 #include "nd_st.h"
 #include "nd_tx.h"
@@ -14,9 +15,9 @@
 #define MAP_TITLE_WIDTH 180
 #endif
 
-extern Gfx PauseGfxWorldMap[];
-extern Gfx PauseGfxPathPoints[];
-extern Gfx PauseGfxArrows[];
+NDN_DECL(PauseGfxWorldMap);
+NDN_DECL(PauseGfxPathPoints);
+NDN_DECL(PauseGfxArrows);
 extern u8 pause_world_map_png[];
 
 void pause_map_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 width, s32 height, s32 opacity, s32 darkening);
@@ -155,7 +156,7 @@ void pause_map_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 width, s
     Vec2b* path;
     s32 pathLength;
 
-    gSPDisplayList(gMainGfxPos++, PauseGfxWorldMap);
+    gSPDisplayList(gMainGfxPos++, NDN(PauseGfxWorldMap));
     ult = -cameraX * 32;
     for (i = 0; i < 60; i++) {
         if (4 * i + 4 < 111) {
@@ -173,7 +174,7 @@ void pause_map_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 width, s
         }
     }
 
-    gSPDisplayList(gMainGfxPos++, PauseGfxPathPoints);
+    gSPDisplayList(gMainGfxPos++, NDN(PauseGfxPathPoints));
 
     x1 = baseX + 26;
     y1 = baseY + 22;
@@ -251,7 +252,7 @@ void pause_map_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 width, s
             offsetUp = offset;
             offsetDown = offset;
 
-            gSPDisplayList(gMainGfxPos++, PauseGfxArrows);
+            gSPDisplayList(gMainGfxPos++, NDN(PauseGfxArrows));
 
             if (!(PauseMapCameraX < 0.0f)) {
                 offsetLeft = 0;

@@ -7,25 +7,24 @@ Usage: gset.py <gset.d file> [gset_ok.txt] [root]
 
 Include mode (src/effects/gfx/<x>.c): each `#include "<inc>.inc.c"` whose assets/us/<inc> defines Gfx lists, all of them ok, moves to the twin
 3ds/tools/gfxin/<source path> (the twin's first line includes the source; gen_gfx_syms.py reads both).
-Block mode (src/entity/model/<x>.c): each block `Gfx X[] = {` .. the first later line that is exactly `};` moves when X is in gset_ok.txt and
-X is not named outside the moved blocks of the file (a fixpoint: a removed name can block another). The block moves to the twin, in file
+Block mode (any other device source, e.g. src/entity/model/<x>.c): each block `Gfx X[] = {` .. the first later line that is exactly `};` moves when X is in gset_ok.txt and
+X is not named on a hold line (hold_line) or in an unmoved block of the file (a fixpoint: a removed name can block another). The block moves to the twin, in file
 order, after the first line `#include "<source path>"`. The device file keeps one line `NDN_DECL(X);` in its place.
 Then every source file under src/ and include/ (not src/effects/gfx) rewrites the moved names: `extern Gfx X[];` -> `NDN_DECL(X);`, any other use of X -> `NDN(X)`
-(nd_gtab.h). A line with `X[`, `&X`, `sizeof` or BranchList stays and prints `gset keep <file>:<line>`: the list has no symbol, so that
-line must be edited by hand. A user file listed in a gconv_src.d row keeps every use (the host link has no ndd_ symbol).
-Prints `gset moved <k> files <f> keep <c>` then `gset ok` or `gset FAIL` (exit 1 on a keep line)."""
+(nd_gtab.h). A line with `X[`, `&X`, `sizeof`, BranchList or SetCustomGfx stays and prints `gset keep <file>:<line>`: the list has no symbol, so that
+line must be edited by hand. Prints `gset moved <k> files <f> keep <c>` then `gset ok` or `gset FAIL` (exit 1 on a keep line)."""
 import pathlib
 import re
 import sys
 
 KEEP_RULE = True  # the seeded test (3ds/tests/host.d/gset.sh) runs a copy with this False and expects a diff
+HOLD_RULE = True  # GSETB: the seeded test (gset.sh) runs a copy with this False and expects a diff
 BLOCK_END = "};"  # the block closing line (exact, CR dropped); the seeded test in gset.sh changes this and is_block_end
 DEF = re.compile(r"^\s*(?:const\s+)?Gfx\s+(\w+)\s*\[", re.M)
 BLOCK_OPEN = re.compile(r"^Gfx (\w+)\[\] = \{")
 INC = re.compile(r'^(\s*#include\s+"([^"]+\.inc\.c)")\s*$', re.M)
 DECL = re.compile(r"^(\s*)extern\s+Gfx\s+(\w+)\s*\[\s*\]\s*;")
 SKIP_DIR = "src/effects/gfx/"
-BLOCK_SRC = "src/entity/model/"
 
 
 def read_names(p):
@@ -112,19 +111,34 @@ def find_blocks(lines):
     return found
 
 
+def hold_line(ln, hit):
+    """True when the line needs the list's symbol: an index, an address, sizeof, BranchList or SetCustomGfx (GSETB)."""
+    return "BranchList" in ln or "sizeof" in ln or "SetCustomGfx" in ln or any(re.search(r"\b" + re.escape(n) + r"\s*\[|&\s*" + re.escape(n) + r"\b", ln) for n in hit)
+
+
 def move_blocks(root, src, ok, twin_dir):
     """Block mode. Returns (moved names, the twin path or None)."""
     p = root / src
     lines = p.read_text(encoding="utf-8").split("\n")
     blocks = find_blocks(lines)
     moving = {n for n, _, _ in blocks if n in ok}
+    in_block = set()
+    for _, s, e in blocks:
+        in_block.update(range(s, e + 1))
+    if HOLD_RULE:
+        for k, ln in enumerate(lines):
+            if k in in_block or DECL.match(ln):
+                continue
+            hit = {n for n in moving if re.search(r"(?<!\w)" + re.escape(n) + r"(?!\w)", ln)}
+            if hit and hold_line(ln, hit):
+                moving -= hit
     while True:
         inside = set()
         for n, s, e in blocks:
             if n in moving:
                 inside.update(range(s, e + 1))
-        outside = "\n".join(ln for k, ln in enumerate(lines) if k not in inside)
-        bad = {n for n in moving if re.search(r"\b" + re.escape(n) + r"\b", outside)}
+        unmoved = "\n".join(lines[k] for k in sorted(in_block) if k not in inside)
+        bad = {n for n in moving if re.search(r"\b" + re.escape(n) + r"\b", unmoved)}
         if not bad:
             break
         moving -= bad
@@ -153,26 +167,12 @@ def move_blocks(root, src, ok, twin_dir):
     return moved, twin
 
 
-def gconv_rows(root):
-    """The device sources the converter reads (gconv_src.d rows ending in .c)."""
-    rows = set()
-    d = root / "3ds/tools/gconv_src.d"
-    if d.is_dir():
-        for f in d.glob("*.txt"):
-            for s in f.read_text(encoding="utf-8", errors="replace").splitlines():
-                s = s.strip()
-                if s and not s.startswith("#") and s.endswith(".c"):
-                    rows.add(s)
-    return rows
-
-
 def rewrite_users(root, names):
     """Returns (files rewritten, keep lines printed)."""
     if not names:
         return 0, 0
     alt = "|".join(re.escape(n) for n in names)
     shield = re.compile(r"(?<!NDN\()(?<!NDN_DECL\()(?<!\w)(" + alt + r")(?!\w)")
-    conv = gconv_rows(root)
     files = []
     for pat in ("src/**/*.c", "src/**/*.h", "include/**/*.h"):
         for f in root.glob(pat):
@@ -191,12 +191,12 @@ def rewrite_users(root, names):
                 out.append(ln)
                 continue
             d = DECL.match(ln)
-            if d and d.group(2) in names and rel not in conv:
+            if d and d.group(2) in names:
                 out.append(f"{d.group(1)}NDN_DECL({d.group(2)});")
                 changed = True
                 continue
             hit = shield.findall(ln)
-            bad = rel in conv or (KEEP_RULE and ("BranchList" in ln or "sizeof" in ln or any(re.search(r"\b" + re.escape(n) + r"\s*\[|&\s*" + re.escape(n) + r"\b", ln) for n in hit)))
+            bad = KEEP_RULE and hold_line(ln, hit)
             if bad:
                 print(f"gset keep {rel}:{i}")
                 keep_here += 1
@@ -224,10 +224,10 @@ def main(argv):
     all_moved, files_done = [], 0
     assets = assets_dir(root)
     for src in read_names(lst):
-        if src.startswith(BLOCK_SRC):
-            moved, twin = move_blocks(root, src, ok, "3ds/tools/gfxin")
-        else:
+        if src.startswith(SKIP_DIR):
             moved, twin = move_includes(root, src, ok, "3ds/tools/gfxin", assets)
+        else:
+            moved, twin = move_blocks(root, src, ok, "3ds/tools/gfxin")
         if twin is not None:
             all_moved.extend(moved)
     nf, nkeep = rewrite_users(root, sorted(set(all_moved)))

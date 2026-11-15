@@ -5,12 +5,12 @@ ND_PSO_DESC(pe_huff_puff_breath_155, 0xfc30ffff, 0x5f0ef43f, 0x1e182cf0, 0x0c184
 #include "nd_val.h"
 #include "nd_xf.h"
 
-extern Gfx D_09000400_3D84C0[];
+NDN_DECL(D_09000400_3D84C0);
 extern Gfx D_090005E8_3D86A8[];
-extern Gfx D_09000628_3D86E8[];
+NDN_DECL(D_09000628_3D86E8);
 
-Gfx* D_E00DC640[] = { D_09000628_3D86E8, D_090005E8_3D86A8 };
-Gfx* D_E00DC648[] = { D_09000400_3D84C0, D_09000400_3D84C0 };
+Gfx* D_E00DC640[] = { NDN(D_09000628_3D86E8), D_090005E8_3D86A8 };
+Gfx* D_E00DC648[] = { NDN(D_09000400_3D84C0), NDN(D_09000400_3D84C0) };
 
 void huff_puff_breath_init(EffectInstance* effect);
 void huff_puff_breath_update(EffectInstance* effect);

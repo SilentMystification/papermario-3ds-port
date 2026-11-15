@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "nu/nusys.h"
 #include "gcc/string.h"
 #include "nd_st.h"
@@ -42,18 +43,7 @@ f32 sAtanFactors[] = {
     1.036721f, 1.03261f, 1.028504f, 1.024406f, 1.020316f, 1.016234f, 1.01216f, 1.008097f, 1.004043f, 1.0f
 };
 
-Gfx D_80074580[] = {
-    gsDPPipeSync(),
-    gsSPTexture(-1, -1, 0, G_TX_RENDERTILE, G_OFF),
-    gsDPSetCycleType(G_CYC_1CYCLE),
-    gsDPSetTexturePersp(G_TP_NONE),
-    gsDPSetTextureDetail(G_TD_CLAMP),
-    gsDPSetTextureLOD(G_TL_TILE),
-    gsDPSetTextureFilter(G_TF_POINT),
-    gsDPSetTextureLUT(G_TT_NONE),
-    gsDPSetTextureConvert(G_TC_FILT),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(D_80074580);
 
 void dma_write_block(Addr dramAddr, u32 devAddr, s32 size);
 
@@ -781,7 +771,7 @@ f32 update_lerp(s32 easing, f32 start, f32 end, s32 elapsed, s32 duration) {
 }
 
 void appendGfx_startup_prim_rect(u8 r, u8 g, u8 b, u8 a, u16 left, u16 top, u16 right, u16 bottom) {
-    gSPDisplayList(gMainGfxPos++, D_80074580);
+    gSPDisplayList(gMainGfxPos++, NDN(D_80074580));
 
     if (a == 255) {
         nd_pso_rm(G_RM_OPA_SURF, G_RM_OPA_SURF2);
