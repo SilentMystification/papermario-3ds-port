@@ -40,6 +40,7 @@ static __attribute__((noinline)) void rec_fog(u32 col, u32 pos) {
 /* HC4b (W3): the render mode list of index i as the typed ops of the render mode table (nd_rec.c, built by the recorder), run as the list ran
  * (nd_list_run: the list start rules, then the ops; dlc_try never took a render mode list: it is not map shape data). */
 static __attribute__((noinline)) void rec_rm(unsigned i) {
+    if (i >= ND_RM_N) return; /* HWFIX */
     if (__builtin_expect(nd_lc_frame != -1, 0)) nd_lstcen(nd_rm_tab[i], 0u);
     nd_ops_run(nd_rm_tab[i], nd_rm_n[i], 0);
 }
@@ -146,7 +147,7 @@ static __attribute__((cold, noinline)) void hit_delta(const Gfx* q, NdHitD* d) {
     if (q[13].words.w0) hd_run(d, (const uint32_t*)(q + G_PM_REC_WORDS), q[13].words.w0);
     else if (q->words.w1) { const uint32_t* u = (const uint32_t*)(uintptr_t)q->words.w1; for (; (u[0] >> 24) != NDO_END; u += 2) hd_op(d, u); }
     if (q[4].words.w1) hd_op(d, (const uint32_t*)(uintptr_t)q[4].words.w1);
-    { const unsigned i = (q->words.w0 >> 16) & 0xffu; hd_run(d, nd_rm_tab[i], nd_rm_n[i]); }
+    { const unsigned i = (q->words.w0 >> 16) & 0xffu; if (i < ND_RM_N) hd_run(d, nd_rm_tab[i], nd_rm_n[i]); }
     if (f & 32u) {
         hd_t(d, NDO_OML, NDO_A_RENDERMODE, (u32)(PM_RM_SHROUD) | q[7].words.w1);
         hd_t(d, NDO_FOG, 0, q[4].words.w0);
@@ -263,7 +264,7 @@ static __attribute__((cold, noinline)) unsigned rec_miss(const Gfx* q, NdMKey* m
         nd_r11_state((uint32_t)q[11].words.w0, &nr, cwr, &hcb, mo, &nmo);
         if (nr) qs = (const Gfx*)nr;
     }
-    mwp = nd_rm_tab[(qs->words.w0 >> 16) & 0xffu]; /* HC4b: typed render mode ops (nd_mode_compile) */
+    mwp = nd_rm_tab[(qs->words.w0 >> 16) & (ND_RM_N - 1u)]; /* HC4b: typed render mode ops (nd_mode_compile) */
     cwp = qs[4].words.w1 ? (const uint32_t*)(uintptr_t)qs[4].words.w1 : NULL;
     if (hcb) cwp = cwr;
     /* MERLEE: a shroud record sets PM_RM_SHROUD after its render mode list (rec_apply order), so the native draw gets that word after the list ops too;

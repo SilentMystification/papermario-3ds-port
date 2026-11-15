@@ -1953,6 +1953,7 @@ void pm_gpu_menu_grey(void) {
     fb = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, &w, &h);
     top_note(fb);
     n = (size_t)w * h * 3;
+    GSPGPU_InvalidateDataCache(fb, (u32)n); /* HWFIX: the display transfer wrote fb by DMA: drop stale cache lines before the CPU read */
     for (i = 0; i + 2 < n; i += 3) {
         unsigned y = (77u * fb[i + 2] + 150u * fb[i + 1] + 29u * fb[i]) >> 8;
         fb[i] = (u8)y; fb[i + 1] = (u8)y; fb[i + 2] = (u8)y;
@@ -3664,7 +3665,7 @@ int pm_gpu_gvtx_load(const void* vtx, unsigned n) {
     return (int)b;
 }
 /* PBATCH2: the routed plan colour (0xRRGGBBAA) goes into the colour bytes 12-15 of a ring vertex */
-void pm_gpu_gvtx_colour(unsigned v, uint32_t rgba) { if (v >= GRING_VTX) return; u8* c = nb.gring + v * 16u + 12u; c[0] = (u8)(rgba >> 24); c[1] = (u8)(rgba >> 16); c[2] = (u8)(rgba >> 8); c[3] = (u8)rgba; }
+void pm_gpu_gvtx_colour(unsigned v, uint32_t rgba) { if (v >= GRING_VTX) return; u8* c = nb.gring + v * 16u + 12u; c[0] = (u8)(rgba >> 24); c[1] = (u8)(rgba >> 16); c[2] = (u8)(rgba >> 8); c[3] = (u8)rgba; if (v < nb.gring_fl) pm_fl_dc(c, 4); /* HWFIX: the slot is below the flushed mark (a split ran after its load) */ }
 static int plan_vtx_only(const PmPlan* a, const PmPlan* b) { PmPlan x = *a, y = *b; x.vtx = y.vtx = 0; return memcmp(&x, &y, sizeof x) == 0; }
 
 /* R2B: 1 when pm_gpu_set_mode with these bits would return at once */
@@ -4690,6 +4691,7 @@ static int pm_gpu_depth_at_w(int x, int y, unsigned* d24) {
     if (!target || x < 0 || x > 319 || y < 0 || y > 239) return 0;
     src = (const unsigned char*)target->frameBuf.depthBuf;
     if (!src) return 0;
+    if (kick_done || grab_split) pm_gx_drain(); /* HWFIX: a split this frame sent part of it to the GPU, which can still write this depth buffer: wait for it (Azahar runs the part at once: same value) */
     fx = (unsigned)(239 - y);
     fy = (unsigned)(40 + x);
     mx = fx & 7u;

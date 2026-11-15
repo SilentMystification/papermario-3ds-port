@@ -247,6 +247,7 @@ void N(appendGfx_piranha_vines)(void* data) {
             vtx->cn[0] = j * 50;
             vtx->cn[1] = j * 120;
             vtx->cn[2] = j * 30;
+            vtx->cn[3] = 0; vtx->flag = 0; /* HWFIX: nd_rec_data memory is not cleared */
             vtx++;
 
             vtx->ob[0] = posX - deltaX;
@@ -257,6 +258,7 @@ void N(appendGfx_piranha_vines)(void* data) {
             vtx->cn[0] = j * 50;
             vtx->cn[1] = j * 120;
             vtx->cn[2] = j * 30;
+            vtx->cn[3] = 0; vtx->flag = 0; /* HWFIX: nd_rec_data memory is not cleared */
             vtx++;
         }
 

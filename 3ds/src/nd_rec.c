@@ -51,6 +51,15 @@ static void ch_enter(NdChain* c, unsigned i) {
     wp = ch_get(c, i);
     wend = wp + CH_WORDS - 2u;
 }
+/* HWFIX: chunks 0 and 1 of both chains at boot (pm_main.c, before the logic thread). On the O3DS the commit is full after a map load, so a chunk taken in game can fail (ch_get stops the game). */
+void nd_rec_reserve(void) {
+    for (unsigned k = 0; k < 2u; k++)
+        for (unsigned i = chain[k].nch; i < 2u; i++) {
+            chain[k].ch[i] = (uint32_t*)malloc(CH_WORDS * 4u);
+            if (!chain[k].ch[i]) { pm_log_e("ndc: no memory for stream chunk %u of context %u at boot", i, k); return; }
+            chain[k].nch = i + 1u;
+        }
+}
 /* HC4b (plan_hotcode 5.2): the recorder shadow. The recorder drops a typed op that the walker would skip (its old same-test true): per field
  * the value of the last op it wrote and a valid bit. Ops whose skip reads only the walker state they set (othermode L, fog, blend, geometry,
  * light colour) drop while the field is valid; ops whose skip also reads sc_ok and the combine input hash (othermode H, prim, env, texture,
