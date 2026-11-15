@@ -219,6 +219,7 @@ static const GSym* v2_tab[V2_MAXTAB];
 static unsigned v2_nk[V2_MAXTAB];
 static unsigned v2_ntri[V2_MAXTAB];
 static V2C* cx;
+static int v2_inh_mode; static unsigned v2_n_itab; static unsigned char v2_itab_t[V2_MAXTAB]; /* IENTRY: the last pass, an unseeded table of an inherit list */
 static unsigned v2_n_tab, v2_n_inh, v2_n_unsup, v2_n_draw, v2_n_cseed;
 static char v2_nm[V2_MAXTAB][96]; static unsigned char v2_seed_t[V2_MAXTAB], v2_dup[V2_MAXTAB]; static unsigned v2_n_seed;
 typedef struct { char list[96]; NdPsoDesc d; } V2Pair; static V2Pair v2_pr[1024]; static unsigned v2_npr;
@@ -671,8 +672,8 @@ static int v2_one(const GSym* g, const NdPsoDesc* seed, FILE* fu) {
     v2_units_top(g);
     v2_walk(g, 0, 0);
     v2_flush();
-    if (cx->inh) return -1;
-    if (cx->unsup[0]) { if (!seed) { fprintf(fu, "%s: %s\n", g->name, cx->unsup); v2_n_unsup++; } return 0; }
+    if (cx->inh && !v2_inh_mode) return -1;
+    if (cx->unsup[0]) { if (!seed && !v2_inh_mode) { fprintf(fu, "%s: %s\n", g->name, cx->unsup); v2_n_unsup++; } return 0; }
     if (v2_n_tab >= V2_MAXTAB) { fprintf(stderr, "gconv: too many v2 tables\n"); exit(1); }
     v2_emit_table(cx);
     for (unsigned j = 0; j < cx->ncl; j++) {
@@ -689,6 +690,7 @@ static int v2_one(const GSym* g, const NdPsoDesc* seed, FILE* fu) {
     v2_ntri[v2_n_tab] = cx->nidx / 3u;
     snprintf(v2_nm[v2_n_tab], sizeof v2_nm[0], "%s", cx->nm);
     v2_seed_t[v2_n_tab] = seed != NULL;
+    v2_itab_t[v2_n_tab] = (unsigned char)v2_inh_mode;
     v2_dup[v2_n_tab] = 0;
     for (unsigned j = 0; j < v2_n_tab; j++) if (v2_tab[j] == g) v2_dup[v2_n_tab] = 1;
     if (seed) v2_n_seed++;
@@ -780,6 +782,10 @@ static void v2_convert_all(const char* descs_path, const char* inh_path, const c
             }
         }
     }
+    /* IENTRY: an inherit list that no seed gave a table gets one unseeded table (entry 0); the device reads only its units (NdNDev) */
+    for (unsigned i = 0; i < gconv_nsym; i++) { if (!isinh[i] || v2_has[i]) continue; v2_inh_mode = 1; const int s = v2_one(&gconv_sym[i], NULL, fu); v2_inh_mode = 0; char ln[400];
+        if (s > 0) { v2_n_itab++; snprintf(ln, sizeof ln, "%s: itab (unseeded table, its draws inherit the caller state)\n", gconv_sym[i].name); }
+        else { snprintf(ln, sizeof ln, "%s: itab unsup %s\n", gconv_sym[i].name, cx->unsup); } v2_itx(&itxt[i], ln); }
     for (unsigned i = 0; i < gconv_nsym; i++) {
         if (!isinh[i]) continue;
         if (itxt[i]) fputs(itxt[i], fi);
@@ -791,7 +797,7 @@ static void v2_convert_all(const char* descs_path, const char* inh_path, const c
     /* CONV2F: the names of the v2 tables, one per line in table order (codemod.py --ntab reads them); seeded tables are not in it (codemod --ntab gives ND_SELF) */
     FILE* ft = fopen(tab_path, "w");
     if (!ft) { fprintf(stderr, "gconv: cannot write %s\n", tab_path); exit(1); }
-    for (unsigned i = 0; i < v2_n_tab; i++) if (!v2_seed_t[i]) fprintf(ft, "%s\n", v2_tab[i]->name);
+    for (unsigned i = 0; i < v2_n_tab; i++) if (!v2_seed_t[i] && !v2_itab_t[i]) fprintf(ft, "%s\n", v2_tab[i]->name);
     fclose(ft);
     /* CONV2C2: the seeded tables, "<list> <table name>" per line (codemod reads the site pairs from it) */
     FILE* fp = fopen(pairs_path, "w");
@@ -847,7 +853,7 @@ static void v2_convert_all(const char* descs_path, const char* inh_path, const c
     if (!v2_ndesc) fprintf(fx, "    0\n");
     fprintf(fx, "};\nconst unsigned ndn_ndesc = %uu;\nconst unsigned ndn_inherit = %uu, ndn_unsup = %uu;\n", v2_ndesc, v2_n_inh, v2_n_unsup);
     fclose(fx);
-    fprintf(stderr, "gconv ntab tables %u inherit %u unsup %u descs %u triangles %u seeded %u callseed %u\n", v2_n_tab, v2_n_inh, v2_n_unsup, v2_ndesc, v2_n_draw, v2_n_seed, v2_n_cseed);
+    fprintf(stderr, "gconv ntab tables %u inherit %u unsup %u descs %u triangles %u seeded %u callseed %u itab %u\n", v2_n_tab, v2_n_inh, v2_n_unsup, v2_ndesc, v2_n_draw, v2_n_seed, v2_n_cseed, v2_n_itab);
 }
 
 /* GSET: the lists that may move (gset_ok.txt, one name per line) and the checks of the moved ones. A list may move when it has a device entry, its v1
