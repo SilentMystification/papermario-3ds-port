@@ -28,13 +28,9 @@ build 722, gfxpos 201, data 3016, data_arrays 277, gfxtype 885, recdl 15, reader
 - FACT: 62 lists, 552 data, 62 arrays in assets/us/effects/gfx stay, 13 sources. ws_LCNOBUILD drops the 2 unbuilt ones (-20 data, -2 arrays).
 - Gap a (Sonnet): quizmo_stage 7 lists "lit draw after a light unit" (nd_gfx_conv.c:554, LIT1 refused lit draws); 24 more quizmo lists are
   not gset ok through call edges (gset_check nd_gfx_conv.c:899-920). Design needs the device lit-draw path. No page yet.
-- Gap c (Haiku): fire_breath.c:10-15 and peach_star_beam.c:58-63 rename the asset list to X_body by #define and wrap it
-  (DisplayList X_body, BranchList next). gen_gfx_syms.py:62-71 never records X_body (the wrapper takes the name, the asset copy is a dup),
-  so unit 0 is "unit address outside the symbol map" (nd_gfx_conv.c:444). Fix: scan() applies #define/#undef renames to an include.
-  OPEN: the next converter reason after that fix. Needs a drec bench with fxtest of both effects (copy gold_63_drec, azt.d/GOLDFX3.json).
-- Gap f (Haiku): snowfall D_09000C10 is gset ok but held by the BranchList in block D_09000C00 (src/effects/gfx/snowfall.c:13-17, also ok);
-  chapter_change D_0900C328 is a src block (src/effects/gfx/chapter_change.c:50). Both blocks move to the twin by hand (GSETR shape);
-  users src/effects/snowfall.c:13,200 and src/effects/chapter_change.c:29,66 take NDN_DECL/NDN. Benches: gold_63_drec; chapter_change has fxtest 113 shot scenarios only (OPEN: a drec bench).
+- Gap c: page ws_FXREN (+ patch), after Merge AXNS. FACT oracle host run: the 6 fire_breath/peach_star_beam lists (with X_body) become
+  gset ok, no unsup line. Next: a move page for them (src wrapper blocks in src/effects/gfx, FXHOLD shape).
+- Gap f: page ws_FXHOLD (+ patch), start now. FACT oracle run: listcen data -24, data_arrays -3, gfxtype -4; lkey census ok.
 - Gaps b, d, e wait: b tile size on a caller texture (8 lists), d RARE/SCISSOR/FILLCOLOR/RECT ops, e flame render to texture.
 ## Other families (from oracles 31-32, still open)
 - A(x) namespace (kzn2 lava_piranha, sam2 dlist): readers, wait for the LKEY census.

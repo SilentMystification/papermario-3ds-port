@@ -5,9 +5,8 @@ No shared file with CGFX, DLSITE1, AXNS, LCNOBUILD, FXREN.
 - FACT (build3ds/out/gset_ok.txt, main): D_09000C00_38DC70, D_09000C10_38DC80 and D_0900C328_3F8188 are gset ok.
 - FACT (code read): gset.py does not move them. src/effects/gfx/snowfall.c:16 `gsSPBranchList(D_09000C10_38DC80)` holds the include
   (:10). The block :13-17 and the block src/effects/gfx/chapter_change.c:50-54 are src blocks (include mode moves only includes).
-- FACT (oracle run of listcen on main 401b0fcd10 with the patch): data 2239 -> 2215 (-24), data_arrays 211 -> 208 (-3),
-  gfxtype 822 -> 818 (-4). build, gfxpos, recdl, reader, model: 0.
-- Bench difference: none (0 differing bits).
+- FACT (oracle listcen run, main 401b0fcd10 with the patch): data -24, data_arrays -3, (main cf4298551f starts at 2219, 209)
+  gfxtype -4. build, gfxpos, recdl, reader, model: 0. Bench difference: none (0 differing bits).
 ## Files (all in docs/handoff/ws_FXHOLD.patch). Edit only these 6.
 src/effects/gfx/snowfall.c, src/effects/gfx/chapter_change.c, src/effects/snowfall.c, src/effects/chapter_change.c,
 3ds/tools/gfxin/src/effects/gfx/snowfall.c, 3ds/tools/gfxin/src/effects/gfx/chapter_change.c.
@@ -21,7 +20,7 @@ The 2 blocks and the snowfall include go to the end of their twin. The device gf
 1. `python 3ds/tools/listcen.py > build3ds/out/fxhold_lc0.txt`.
 2. `tr -d '\r' < docs/handoff/ws_FXHOLD.patch | git apply -`. A reject: stop, send the output to the oracle.
 3. `sh 3ds/tools/nd_host_test.sh > build3ds/out/fxhold_host.txt 2>&1`. Read the last 20 lines.
-   Pass: `ND HOST TESTS PASS`, `lkey census ok`, conv2c `bad 0`, no line `gconv: moved` in the file.
+   Pass: `ND HOST TESTS PASS`, `lkey census ok`, `gconv lists` line with `bad 0`, no line `gconv: moved`.
 4. `python 3ds/tools/listcen.py > build3ds/out/fxhold_lc1.txt`. Pass vs fxhold_lc0.txt: total data -24, data_arrays -3, gfxtype -4,
    no other total line changes. Commit the 6 files: `FXHOLD 1: snowfall and chapter_change src blocks move to the twin`.
 5. One build. Pass: rc 0, 0 compile errors, memcheck margin above 0.
