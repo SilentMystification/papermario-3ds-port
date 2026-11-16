@@ -1,7 +1,7 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
 State: main 2e0746e540, 2026-11-16. Oracle 36 wrote ws_MAPLAG (+ _code, ready). Earlier pages ready: ws_STARTLR2, ws_MOON7, ws_FSKIP.
-OPEN for the next oracle: WAVEWIDE (Tidal Wave blue square in wide), trace in the Tidal Wave section.
+OPEN for the next oracle: file select flip lag (needs a console flip timing).
 ## Counters (FACT, listcen on main 1e45bdcad9 + converter edits only)
 C1 build 738 (gbi.h 382, gbi_custom.h 61, gs2dex.h 18; model.c 67, effects 46, world 45, imgfx.c 21, entity 21), C2 gfxpos 224,
 C5 data 5149, C6 data_arrays 461, C7 gfxtype 1083, C8 reader 783, C10 recdl 15.
@@ -28,18 +28,13 @@ C5 data 5149, C6 data_arrays 461, C7 gfxtype 1083, C8 reader 783, C10 recdl 15.
 - model.c (516 data, 169 gfxtype, 67 build): Gfx_RM* lists are NdSDef defs (model.c:1260, nd_rmdef.h), built at run time (nd_rec.c:145 nd_rm_build);
   LKEY H edits nd_rec.c for ModelRenderModes keys. Needs a design (converter emits the compiled defs); Sonnet approved by the user.
 - C7 effects: fxtype dry 89 ok arrays; the other 50 are read by a local `Gfx* dlist = X[i]` (next FXTYPE step: local handle rule).
-## Tidal Wave in wide (user 2026-11-16, build 5852, 60 FPS on: blue flickering square in the 4:3 window). GRABSEQ, GRABFL merged.
-- FACT: the mesh is 4:3 by design: underwater.c:183-194 game x 12..308, y 20..220, ortho 0..1280 (:236), tc = the same texels. It never
-  touches game x 0 or 320, so wide_edge_k (pm_gpu.c:3406) never moves it; as ui_ortho it lands at screen 40 + x (pm_gpu.c:229-230): 52..348.
-- FACT: the wide grab is consistent: 400 columns (pm_gpu.c:2775), slot at cfb - 80 (:2245), origin 40 (pm_tex.c:1719), tile_x0 -40
-  (nd_tex_set.c:420): mesh texel s reads screen column s + 40, the same column it covers.
-- FACT: PM_CC_48 (macros.h:501) = PRIM * PRIM_A + TEXEL0: solid blue means TEXEL0 = 0 (empty or wrong slot) in those frames.
-- FACT: hw_tidal1_live.txt has no `tidal:` line; its grab/fbbind lines (#176540-#176579) come with grabw type 2 = gut_tex (pm_gpu.c:1447),
-  the pause screen (background_gfx.c:374), not the wave.
-- FACT: the two cfbs are adjacent (0xff7e10 + 153600 = 0x101d610) and a slot spans 256 rows (pm_tex.h:6): pm_tex.c:1715 matches a load of
-  the upper cfb to the lower cfb's slot (off_oy 240, empty rows) when both cfb slots live in one frame. Not shown for the wave.
-- Next: read the walker tile clamp for a slot (nd_tex_set.c, nd_geom uv) before a design that widens the mesh to game x -40..360 in wide
-  (non-wide byte-equal). Ask the user for a wide wave capture with grablog fbbind (CAPTOOL capture_check first).
+## Tidal Wave in wide: DONE by oracle 37, page ws_WAVEWIDE (+ _code), commit 22966a139d.
+- FACT cause: pm_tex.c:1712-1715 took the first slot. The old frame slot (grab_prev, slot 0) of gFrameBuf0 spans 256 rows and holds
+  gFrameBuf1 at off_oy 240 (hw_tidal2_live.txt #207579-#207682). Fix: pm_offt_pick (nearest base). Mesh ends at game x -40 and 360 in wide.
+## File select flip lag and pause pane flip (oracle 37): same path, cause not named.
+- FACT: both use draw_box ROTSCALE (filemenu_common.c:645/666, pause_main.c:63/66): one off-screen window image per window per frame
+  (draw_box.c:760-830, pm_gpu_off_begin/off_end). FSELLAG branch 4404177f07 is in main (FSELLAG1 8b34e894cd, FSELLAG2 6031d5dca6).
+- OPEN: no console timing of a flip exists. The next name for a page is FSELLAG3 (FSELLAG2 is an old merged row).
 ## Older facts that still cost time
 - NDN_DECL/NDN (nd_gtab.h:66-74): host form extern Gfx; device form ndd_<name> NdNDev. gset include mode is src/effects/gfx only.
 - listcen skips an asset that only a gfxin twin includes. gen_gfx_tab copies its logs to /w/build3ds/out when it exists.
@@ -51,4 +46,4 @@ C5 data 5149, C6 data_arrays 461, C7 gfxtype 1083, C8 reader 783, C10 recdl 15.
 - FACT: with logging off, event lines (pm_log_evt) reach no log.txt: no writer wake (pm_log.c:600), sink waits (:888). Not fixed yet.
 ## What to do first
 1. Answer MAPLAG coder questions (SendMessage, file:line).
-2. WAVEWIDE: finish the trace above, then write ws_WAVEWIDE (+ _code).
+2. Answer WAVEWIDE coder questions. A byte diff in fxr_drec: read the cmp output; the fix changes frames with two cfb slots.
