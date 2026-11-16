@@ -1,0 +1,28 @@
+{
+  "scenarios": [
+    {
+      "name": "pbuf_fx_drec",
+      "status": "unverified",
+      "subject": "PBUF part buffer effects: shimmer_burst 50, effect_3D 55, snowfall 63, snaking_static 81, water_block 84, embers 105, pink_sparkles 124 (pm_fxtest.c FXLIST) on mac_01 (pos 0 0 200), cold det start with the drec switch (frames 412 to 676, step 44), no shots.",
+      "proves": "PBUF: the draw records of the 7 nd_parts_add effects are byte-equal between a base and a head (local Gfx buffers become nd_at.h units).",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=50,55,63,81,84,105,124 loglevel=debug det drec=412:7:44",
+      "until": "drec f676 draws [1-9]\\d* bytes \\d+",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f676 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "reason": "PBUF: copy of fxp_drec (PMOVE) with the 7 part buffer effects. Cap 25 s, deadline 20 s, until the drec line of frame 676."
+    }
+  ]
+}
