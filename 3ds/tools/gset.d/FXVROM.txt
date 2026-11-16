@@ -11,9 +11,6 @@ src/effects/gfx/breaking_junk.c
 src/effects/gfx/bulb_glow.c
 src/effects/gfx/butterflies.c
 src/effects/gfx/chapter_change.c
-src/effects/gfx/chapter_change_de.c
-src/effects/gfx/chapter_change_es.c
-src/effects/gfx/chapter_change_fr.c
 src/effects/gfx/chomp_drop.c
 src/effects/gfx/cloud_puff_trail.c
 src/effects/gfx/cold_breath.c
