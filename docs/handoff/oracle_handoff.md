@@ -1,10 +1,10 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main eaf3865490, 2026-11-16. Oracle DL5 wrote ws_DLSITE2 and ws_CURT (+ patches; parallel, Haiku, start now).
+State: main 01f59e1b6b, 2026-11-16. Oracle DL6 wrote ws_ROOTREST (C1 -12, C2 -12), ws_VINE (C5 -34), ws_DLCCHK (registry only), each + patch, Haiku, start now, parallel.
+FACT (DL6): phase E 1C and 5 still blocked: nd_ent.c:311 calls nd_dlc_compile on the device; trigger C1 0, C2 0 (1C) and C6 0 (5) not met.
+FACT (DL6): build3ds/out/ntab_*.txt in the main folder is stale (15:12); use a worktree copy of the newest build. Converter refusals that block
+  screen_overlays (PRIMDEPTH), kmr_20/mgm_00/curtains (RECT), hos_05 (SCISSOR): v2_walk nd_gfx_conv.c:509 (gap d, oracle design). Copied-gfx sites (22): NMDL rows.
 Goal: remove the N64 display list system. Done when 3ds/tools/elfgate.py prints func 0 data 0 gfxnames 0 and every listcen counter is 0.
-## Counters (FACT, listcen on main 4c02b18543)
-build 551, gfxpos 186, data 2068, data_arrays 196, gfxtype 809, recdl 10, reader 785, model 15.
-- DLSITE2 (codemod skips a comment before a call): build -32, gfxpos -32. CURT (curtains & removal + gset): build -1, gfxpos -1, data -102, arrays -11, gfxtype -11.
 ## Running and ready work
 - GSETR (worktree build3ds/wt/GSETR, HEAD a6b5c569f3 WIP): curtains.c left gset.d only. Pass values: `gset moved 26 files 9 keep 0`;
   listcen vs build3ds/out/gsetr_lc0.txt: data -212, data_arrays -26, gfxtype -27. Steps 3-5 not run; the orchestrator relaunches it.
@@ -56,5 +56,5 @@ build 551, gfxpos 186, data 2068, data_arrays 196, gfxtype 809, recdl 10, reader
 - Small: assets/us/world/dead/lava_piranha/vine.gfx.inc.c (17 data) has no include at all; LCNOBUILD counts it (needs a commented include).
 - OPEN: filemenu_gfx.c data 4, A2BC0/A2C88 (status_star_shimmer.c, DLSITE2 file) 24.
 ## What to do first
-1. Answer coder questions of GSETR, CGFX, DLSITE1, MODELRM (SendMessage, file:line).
-2. After Merge GSETR: re-run the codemod dry on main; write DLSITE2 for the next group with a static list name.
+1. Answer coder questions of ROOTREST, VINE, DLCCHK, NMDL0 (SendMessage, file:line).
+2. Counters (listcen main d644c38ba8): build 518, gfxpos 153, data 1451, data_arrays 110, gfxtype 618, recdl 10, reader 784, model 15.

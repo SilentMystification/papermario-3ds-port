@@ -1,0 +1,154 @@
+diff --git a/src/background.c b/src/background.c
+index e447bc0..466161e 100644
+--- a/src/background.c
++++ b/src/background.c
+@@ -312,7 +312,7 @@ void appendGfx_background_texture(void) {
+     nd_pso_cc(G_CC_DECALRGB, G_CC_DECALRGB);
+     nd_pso_rm(G_RM_NOOP, G_RM_NOOP2);
+     if (bgMix) { /* BTLDIM: the mix stage gets P = shroud colour, A = fogA: P * A + M * (1 - A) per sky texel */
+-        gDPSetFogColor(gMainGfxPos++, fogR, fogG, fogB, fogA);
++        nd_val_fog(fogR, fogG, fogB, fogA);
+         nd_val_blend(fogR, fogG, fogB, 255);
+         nd_pso_rm(PM_RM_SHROUD, G_RM_NOOP2);
+     }
+diff --git a/src/background_gfx.c b/src/background_gfx.c
+index ee5ce49..446e6a1 100644
+--- a/src/background_gfx.c
++++ b/src/background_gfx.c
+@@ -366,7 +366,7 @@ void gfx_draw_background(void) {
+ 
+             /* PAUSE4A: the saved picture is one 320 x 240 image. One load and one texrect draw all of it (the strips below are the N64 TMEM split). */
+             /* PAUSEOPEN: the other colour buffer (not the one drawn now) is the last frame. Its texture load is the GPU copy (nd_tex_set.c set_timg). */
+-            gDPLoadTextureTile(gMainGfxPos++, pause_cfb_src(), G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH,
++            nd_tex_load_tile(pause_cfb_src(), G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH,
+                                SCREEN_HEIGHT, 0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1, 0, G_TX_NOMIRROR | G_TX_WRAP,
+                                G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+             nd_rect_tex(0 << 2, 0, SCREEN_WIDTH << 2, SCREEN_HEIGHT << 2, G_TX_RENDERTILE, 0 << 5, 0 << 5, 1 << 10, 1 << 10);
+diff --git a/src/battle/area/kzn2/actor/lava_piranha.c b/src/battle/area/kzn2/actor/lava_piranha.c
+index 9925d09..717d488 100644
+--- a/src/battle/area/kzn2/actor/lava_piranha.c
++++ b/src/battle/area/kzn2/actor/lava_piranha.c
+@@ -437,7 +437,7 @@ void N(appendGfx_vines)(void* data) {
+         N(VineRenderState) = VINE_RENDER_STATE_OK;
+     }
+ 
+-    gSPDisplayList(gMainGfxPos++, NDN(D_8021CF40_5A3620));
++    nd_draw_list(NDN(D_8021CF40_5A3620), ND_SELF);
+ 
+     for (i = 0; i < NUM_VINES; i++) {
+         LavaPiranhaVine* vine = &N(VineData)[i];
+diff --git a/src/hud_element.c b/src/hud_element.c
+index 9ae806b..994865f 100644
+--- a/src/hud_element.c
++++ b/src/hud_element.c
+@@ -2161,7 +2161,7 @@ void draw_hud_element_internal(s32 id, s32 clipMode) {
+         if (!(elem->flags & (HUD_ELEMENT_FLAG_INVISIBLE | HUD_ELEMENT_FLAG_HIDDEN)) && (elem->drawSizePreset >= 0)) {
+             if (clipMode != HUD_ELEMENT_DRAW_NEXT) {
+                 if (clipMode == HUD_ELEMENT_DRAW_FIRST_WITH_CLIPPING) {
+-                    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, pm_wide ? 0 : 12, pm_wide ? 0 : 20, pm_wide ? SCREEN_WIDTH : SCREEN_WIDTH - 12, pm_wide ? SCREEN_HEIGHT : SCREEN_HEIGHT - 20) /* PT58: the wide view is the whole 240 rows */;
++                    nd_pso_scis(G_SC_NON_INTERLACE, pm_wide ? 0 : 12, pm_wide ? 0 : 20, pm_wide ? SCREEN_WIDTH : SCREEN_WIDTH - 12, pm_wide ? SCREEN_HEIGHT : SCREEN_HEIGHT - 20); /* PT58: the wide view is the whole 240 rows */
+                 }
+                 nd_pso_cyc(G_CYC_1CYCLE);
+                 nd_pso_persp(G_TP_NONE);
+diff --git a/src/inventory.c b/src/inventory.c
+index 22f3908..ec152e2 100644
+--- a/src/inventory.c
++++ b/src/inventory.c
+@@ -1,6 +1,7 @@
+ #include "pm_wide.h"
+ #include "common.h"
+ #include "hud_element.h"
++#include "nd_st.h"
+ 
+ /* ZOOM: the wide world view starts at screen row 0 (the original view started at row 20), so the bar rests 20 rows higher. */
+ #define FULLY_EXTENDED_Y  (pm_wide ? -2 : 18)
+@@ -748,7 +749,7 @@ void update_status_bar(void) {
+             break;
+     }
+ 
+-    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, pm_wide ? 0 : 12, pm_wide ? 0 : 20, pm_wide ? SCREEN_WIDTH : SCREEN_WIDTH - 12, pm_wide ? SCREEN_HEIGHT : SCREEN_HEIGHT - 20) /* PT58: the wide view is the whole 240 rows */;
++    nd_pso_scis(G_SC_NON_INTERLACE, pm_wide ? 0 : 12, pm_wide ? 0 : 20, pm_wide ? SCREEN_WIDTH : SCREEN_WIDTH - 12, pm_wide ? SCREEN_HEIGHT : SCREEN_HEIGHT - 20); /* PT58: the wide view is the whole 240 rows */
+     x = statusBar->drawPosX;
+     y = statusBar->drawPosY;
+     /* wide: the box ends sit on the screen edges (game x -40 and 360, screen x 0 and 399), so the end caps of the frame art are at the screen edges; the join of box 5 and 6 and the items keep their 4:3 place */
+diff --git a/src/sprite.c b/src/sprite.c
+index 85e3252..8196d88 100644
+--- a/src/sprite.c
++++ b/src/sprite.c
+@@ -219,10 +219,10 @@ static void spr_flat_gfx(uint32_t** o, Quad* vertices, IMG_PTR raster, PAL_PTR p
+                               0, 0, width - 1, height - 1, 0,
+                               G_TX_CLAMP, G_TX_CLAMP, 8, 8, G_TX_NOLOD, G_TX_NOLOD,
+                               256, 256);
+-        gDPSetTile(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 4, 0x0100, 2, 0, G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
++        nd_tex_tile(G_IM_FMT_RGBA, G_IM_SIZ_16b, 4, 0x0100, 2, 0, G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
+         nd_val_tile_size(2, 0, 0, 63 << 2, 0);
+         if (flags & SPR_SHADING_FLAG_SET_VIEWPORT) {
+-            gSPViewport(gMainGfxPos++, vpAlt);
++            nd_xf_viewport(vpAlt);
+ 
+             if (alpha == 255) {
+                 nd_pso_rm(AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA |
+diff --git a/src/world/area_dro/dro_02/npc_merlee.c b/src/world/area_dro/dro_02/npc_merlee.c
+index b6bf196..0a12696 100644
+--- a/src/world/area_dro/dro_02/npc_merlee.c
++++ b/src/world/area_dro/dro_02/npc_merlee.c
+@@ -232,7 +232,7 @@ u32 N(appendGfx_ritual_card)(RitualCard* card, Matrix4f mtxParent) {
+         return 1;
+     }
+ 
+-    gSPDisplayList(gMainGfxPos++, NDN(N(card_setup_gfx)));
++    nd_draw_list(NDN(N(card_setup_gfx)), ND_SELF);
+ 
+     if (card->unk_00 == 1 || card->unk_00 == 4 || card->unk_00 == 5) {
+         guTranslateF(mtxTemp, card->pos.x, card->pos.y, card->pos.z);
+diff --git a/src/world/area_iwa/iwa_01/splash.c b/src/world/area_iwa/iwa_01/splash.c
+index 7a19fa3..3a9fd2e 100644
+--- a/src/world/area_iwa/iwa_01/splash.c
++++ b/src/world/area_iwa/iwa_01/splash.c
+@@ -66,7 +66,7 @@ void N(gfx_build_splashes)(s32 index) {
+                    splash->scale,
+                    splash->pos.x, splash->pos.y, splash->pos.z);
+         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+-        gSPDisplayList(gMainGfxPos++, NDN(N(splash_gfx)));
++        nd_draw_list(NDN(N(splash_gfx)), ND_SELF);
+         nd_xf_pop(G_MTX_MODELVIEW);
+     }
+ 
+diff --git a/src/world/area_kmr/kmr_21/main.c b/src/world/area_kmr/kmr_21/main.c
+index f0cfef0..e7653dc 100644
+--- a/src/world/area_kmr/kmr_21/main.c
++++ b/src/world/area_kmr/kmr_21/main.c
+@@ -23,17 +23,13 @@ NDN_DECL(N(Gfx_TexSetup_TitleImage));
+ void worker_render_title_image(void) {
+     s32 i;
+ 
+-    gSPDisplayList(gMainGfxPos++, NDN(N(Gfx_TexSetup_TitleImage)));
++    nd_draw_list(NDN(N(Gfx_TexSetup_TitleImage)), ND_SELF);
+     nd_val_prim(0, 0, 0, 0, 0, TitlePrimAlpha);
+ 
+     for (i = 0; i < 56; i++) {
+         nd_tex_load_tile(&TitleImage[1600 * i], G_IM_FMT_RGBA, G_IM_SIZ_32b, 200, 112, 0, 0, 199, 1, 0, G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+-        gSPTextureRectangle(gMainGfxPos++,
+-            /* ulx */ 60 * 4,
+-            /* uly */ (i * 2 + TitlePosY) * 4,
+-            /* lrx */ 260 * 4,
+-            /* lry */ ((i * 2 + 2) + TitlePosY) * 4,
+-            G_TX_RENDERTILE, 0, 0, 1024, 1024);
++        /* ulx, uly, lrx, lry */
++        nd_rect_tex(60 * 4, (i * 2 + TitlePosY) * 4, 260 * 4, ((i * 2 + 2) + TitlePosY) * 4, G_TX_RENDERTILE, 0, 0, 1024, 1024);
+     }
+ }
+ 
+diff --git a/src/world/area_nok/nok_04/npc.c b/src/world/area_nok/nok_04/npc.c
+index 776cccb..d2d1d1f 100644
+--- a/src/world/area_nok/nok_04/npc.c
++++ b/src/world/area_nok/nok_04/npc.c
+@@ -284,7 +284,7 @@ void N(build_gfx_thread)(void) {
+     }
+     N(ThreadData).overshootVel *= 0.5;
+ 
+-    gSPDisplayList(gMainGfxPos++, NDN(N(ThreadGfx)));
++    nd_draw_list(NDN(N(ThreadGfx)), ND_SELF);
+     guTranslate(&gDisplayContext->matrixStack[gMatrixListPos], N(ThreadData).anchorPos.x, N(ThreadData).anchorPos.y, N(ThreadData).anchorPos.z);
+     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+ 
