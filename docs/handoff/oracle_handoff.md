@@ -43,6 +43,10 @@ C5 data 5149, C6 data_arrays 461, C7 gfxtype 1083, C8 reader 783, C10 recdl 15.
 - listcen skips an asset that only a gfxin twin includes. gen_gfx_tab copies its logs to /w/build3ds/out when it exists.
 - fxr_drec first run can flake cold (grab_tex hash): warm rerun rule (bench.py:2023).
 - Windows python cannot open /c/... paths: pass `cygpath -m` paths.
+## Console log capture (oracle 35, 2026-11-15). Pages ws_CAPLOG, ws_CAPTOOL ready (parallel, disjoint files).
+- FACT: with log_file_on 0 and prof_mode 0 the writer never calls accept (pm_log.c:1040-1043, :1066); options.ini log_on=0 does it (pm_options.c:229);
+  the log profile had no log=on. GUESS: the O3DS XL options.ini has log_on=0 (menu Profiling row saves it, pm_options.c:269).
+- FACT: with logging off, event lines (pm_log_evt) reach no log.txt: no writer wake (pm_log.c:600), sink waits (:888). Not fixed yet.
 ## What to do first
 1. Answer coder questions (GSETI, LKEY, FXVROM) with SendMessage, file:line.
 2. After Merge GSETI: re-run the codemod --ntab dry and write the C1/C2 dl page per directory.
