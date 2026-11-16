@@ -1,0 +1,20 @@
+#include "src/world/area_kmr/kmr_21/main.c"
+Gfx N(Gfx_TexSetup_TitleImage)[] = {
+    gsDPPipeSync(),
+    gsDPSetCycleType(G_CYC_1CYCLE),
+    gsDPSetRenderMode(G_RM_XLU_SURF, G_RM_XLU_SURF2),
+    gsDPSetCombineMode(PM_CC_2E, PM_CC_2E),
+    gsDPSetTextureFilter(G_TF_POINT),
+    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
+    gsDPSetTexturePersp(G_TP_NONE),
+    gsDPSetColorDither(G_CD_DISABLE),
+    gsDPSetAlphaDither(G_AD_DISABLE),
+    gsDPSetTextureLOD(G_TL_TILE),
+    gsDPSetTextureLUT(G_TT_NONE),
+    gsDPSetTextureDetail(G_TD_CLAMP),
+    gsDPSetTextureConvert(G_TC_FILT),
+    gsDPSetCombineKey(G_CK_NONE),
+    gsDPSetAlphaCompare(G_AC_NONE),
+    gsDPNoOp(),
+    gsSPEndDisplayList(),
+};

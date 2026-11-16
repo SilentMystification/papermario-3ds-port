@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "nd_xf.h"
 #include "include_asset.h"
 
@@ -29,7 +30,7 @@ enum {
 #include "inspect_icon.png.h"
 INCLUDE_IMG("inspect_icon.png", inspect_icon_img);
 INCLUDE_PAL("inspect_icon.pal", inspect_icon_pal);
-#include "inspect_icon.gfx.inc.c"
+NDN_DECL(N(gfx));
 
 BSS InspectIconData InspectIcon;
 InspectIconData* InspectIconPtr = &InspectIcon;
@@ -72,7 +73,7 @@ void appendGfx_interact_prompt(void) {
         guMtxF2L(sp78, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-        gSPDisplayList(gMainGfxPos++, inspect_icon_gfx);
+        gSPDisplayList(gMainGfxPos++, NDN(inspect_icon_gfx));
 
         ifxImg.raster  = inspect_icon_img;
         ifxImg.palette = inspect_icon_pal;
