@@ -13,6 +13,7 @@
  * All header words are little endian. Prints "shapeconv maps N bytes B reloc R" on success.
  * Sidecars: <out_dir>/<asset>.seam (the T-point table) and <out_dir>/<asset>.dlc (S7MAP: the compiled static lists, see write_dlc).
  */
+#define _FILE_OFFSET_BITS 64 /* readdir of a 32 bit build on a 64 bit inode mount (the docker host mounts) */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,6 +22,7 @@
 #include "gbi_custom.h"
 #include "nd_op.h"
 #include "nd.h"
+#include <dirent.h>
 
 #define SHAPE_BASE 0x80210000u
 #define ASSET_TABLE 0x1E40020u
@@ -36,6 +38,7 @@ typedef struct ShapeFix {
 } ShapeFix;
 
 static u32 dlc_secs, dlc_bytes; /* S7MAP: sections and bytes written to the .dlc files */
+static u32 dlc_lists, dlc_refused, dlc_missing, dlc_fullbad, dlc_maxb, dlc_maxl; /* MAPCONV census: lists of the seam tables, refusal sections, lists without a section, env2 compiles that differ from the section, largest .dlc, largest seam table */
 static u32 n_nop; /* list words G_NOOP, RDPHALF_1/2, SETZIMG: typed as ND_NOP_A */
 
 static void die(const char* msg, const char* what) {
@@ -372,9 +375,17 @@ static int yay0_decode_raw(const u8* src, u32 src_len, u8* dst, u32 dst_len) {
 }
 
 /* pm_decode_asset (pm_map.c) for a Yay0 asset: decode, then fix_shape. Output buffer is returned in s. */
-static void convert_one(const u8* rom, u32 rom_len, const char* name, ShapeFix* s) {
+static u8* read_file(const char* path, u32* len);
+/* rom NULL: bin_dir holds the decoded asset <name>.bin (the host test: assets/us/mapfs/geom, the same bytes as the Yay0 decode of the ROM asset) */
+static void convert_one(const u8* rom, u32 rom_len, const char* name, ShapeFix* s, const char* bin_dir) {
     u32 rom_off, comp_len, dec_len;
     u8* src;
+    if (!rom) {
+        char path[4096];
+        snprintf(path, sizeof path, "%s/%s.bin", bin_dir, name);
+        s->buf = read_file(path, &dec_len);
+        if (dec_len < 16 || dec_len > 0x200000) die("asset size out of range: ", name);
+    } else {
     if (!find_asset(rom, rom_len, name, &rom_off, &comp_len, &dec_len)) die("asset not in table: ", name);
     if (dec_len < 16 || dec_len > 0x200000 || comp_len > 0x200000) die("asset size out of range: ", name);
     if (rom_off + comp_len > rom_len) die("asset past end of ROM: ", name);
@@ -385,6 +396,7 @@ static void convert_one(const u8* rom, u32 rom_len, const char* name, ShapeFix* 
     memcpy(src, rom + rom_off, comp_len);
     if (!yay0_decode_raw(src, comp_len, s->buf, dec_len)) die("Yay0 decode failed: ", name);
     free(src);
+    }
     s->size = dec_len;
     s->seen = calloc(dec_len, 1);
     s->reloc = NULL;
@@ -497,25 +509,50 @@ static void write_dlc(const NdSeamTab* t, const u8* buf, u32 size, u32 base, con
         const NdSeamList* sl = &t->list[k];
         u32 off = sl->addr - base;
         unsigned nops;
-        if (off >= size || (off & 7u)) continue;
+        int noend;
+        dlc_lists++;
+        if (off >= size || (off & 7u)) { dlc_missing++; continue; }
         for (nops = 0; nops < ND_DLC_MAXOPS && off + 8u * (nops + 1u) <= size; nops++) {
             const u8* p = buf + off + 8u * nops;
             words[2 * nops] = le32(p); words[2 * nops + 1] = le32(p + 4);
             if ((words[2 * nops] >> 24) == NDO_END) break;
         }
-        if (nops >= ND_DLC_MAXOPS || off + 8u * (nops + 1u) > size) continue; /* no end word: the console refuses it too */
+        noend = nops >= ND_DLC_MAXOPS || off + 8u * (nops + 1u) > size; /* no end word: the compile refuses it (NDR_LONG) */
         for (v = 0; v < 2; v++) {
             NdObj o;
             NdDlcEnv env;
             u8* sec;
             u32 pos, ssz, nrun = 0, nlit = 0, r;
+            int rc;
             u32* rn;
             if (v == 1 && !sl->cnt) continue;
-            if (v == 0 && sl->cnt && sl->cls < 2) continue;
             env.vtx = hv_vtx; env.valloc = hv_valloc; env.ialloc = hv_ialloc;
             env.tp = v ? t->tp + sl->first : NULL; env.ntp = v ? sl->cnt : 0u;
             hv_req_v = hv_req_i = 0;
-            if (nd_dlc_compile(&o, words, &env) != NDR_OK) continue;
+            rc = noend ? NDR_LONG : nd_dlc_compile(&o, words, &env);
+            if (rc != NDR_OK) { /* a refusal section: ngrp 0xffff, the code in byte 0 */
+                sec = (u8*)calloc(1, 24);
+                if (!sec) die("out of memory (dlc refusal)", NULL);
+                sec[0] = (u8)rc; w16b(sec + 10, 0xffffu);
+                ix[nsec].list = off; ix[nsec].var = v; ix[nsec].size = 24; ix[nsec].off = 0;
+                secs[nsec++] = sec;
+                dlc_refused++;
+                continue;
+            }
+            if (v == 0) { /* the pool full path of the device: the compile without the pools and without T points must give this object */
+                NdObj o2;
+                NdDlcEnv e2 = { hv_vtx, NULL, NULL, NULL, 0 };
+                int same = nd_dlc_compile(&o2, words, &e2) == NDR_OK;
+                if (same) {
+                    same = o2.nops == o.nops && o2.exit_am == o.exit_am && o2.exit_om == o.exit_om && o2.ngrp == o.ngrp && o2.ngop == o.ngop && o2.nvtx == o.nvtx && o2.nidx == o.nidx && o2.nins == o.nins;
+                    if (same) for (i = 0; i < o.ngrp; i++) if (memcmp(&o.grp[i], &o2.grp[i], sizeof(NdGrp)) != 0) same = 0;
+                    if (same && o.ngop) same = memcmp(o.gop, o2.gop, o.ngop * 8u) == 0 && memcmp(o.gat, o2.gat, o.ngop * 2u) == 0;
+                    if (same && o.nvtx) same = memcmp(o.vtx, o2.vtx, o.nvtx * 16u) == 0;
+                    if (same && o.nidx) same = memcmp(o.idx, o2.idx, o.nidx * 2u) == 0;
+                    nd_dlc_free(&o2);
+                }
+                if (!same) dlc_fullbad++;
+            }
             rn = (u32*)malloc((o.nvtx * 2u + 2u) * 4u); /* runs: offset or 0xffffffff, count */
             if (!rn) die("out of memory (dlc runs)", NULL);
             for (r = 0; r < o.nvtx;) {
@@ -590,7 +627,7 @@ static void write_dlc(const NdSeamTab* t, const u8* buf, u32 size, u32 base, con
     f = fopen(out, "wb");
     if (!f) die("cannot write ", out);
     memcpy(hdr, "NDDC", 4);
-    w32(hdr + 4, 2); w32(hdr + 8, size); w32(hdr + 12, nsec);
+    w32(hdr + 4, 3); w32(hdr + 8, size); w32(hdr + 12, nsec);
     fwrite(hdr, 1, 16, f);
     foff = 16u + (nsec + 1u) * 8u;
     for (k = 0; k < nsec; k++) { ix[k].off = foff; foff += ix[k].size; }
@@ -603,6 +640,8 @@ static void write_dlc(const NdSeamTab* t, const u8* buf, u32 size, u32 base, con
     for (k = 0; k < nsec; k++) { fwrite(secs[k], 1, ix[k].size, f); free(secs[k]); }
     fclose(f);
     dlc_secs += nsec; dlc_bytes += foff;
+    if (foff > dlc_maxb) dlc_maxb = foff;
+    if (t->nlist > dlc_maxl) dlc_maxl = t->nlist;
     free(ix); free(secs);
 }
 static void write_seam(const ShapeFix* s, const char* dir, const char* name) {
@@ -658,30 +697,49 @@ static int ends_with_shape(const char* name) {
 int main(int argc, char** argv) {
     char path[4096];
     char out[4096];
-    u8* rom;
-    u32 rom_len, i, n;
+    u8* rom = NULL;
+    u32 rom_len = 0, i, n;
     u32 maps = 0, total_bytes = 0, total_reloc = 0;
     u32 bytes;
-    if (argc != 3) {
-        fprintf(stderr, "usage: nd_shape_conv <asset_base> <out_dir>\n");
+    char (*names)[17] = NULL; /* bin mode: the *_shape.bin files of the directory */
+    const int bin = argc == 4 && strcmp(argv[3], "bin") == 0;
+    if (argc != 3 && !bin) {
+        fprintf(stderr, "usage: nd_shape_conv <asset_base> <out_dir> [bin]\n  bin: read <asset_base>/assets/us/mapfs/geom/*_shape.bin instead of the ROM\n");
         return 2;
     }
-    snprintf(path, sizeof path, "%s/ver/us/baserom.z64", argv[1]);
-    rom = read_file(path, &rom_len);
-    if (ASSET_TABLE + 0x14 > rom_len) die("ROM too small", NULL);
-    bytes = rbe(rom + ASSET_TABLE + 0x10);
-    if (bytes < ENTRY_SIZE || bytes > 0x20000 || ASSET_TABLE + bytes > rom_len) die("bad asset table size", NULL);
-    n = bytes / ENTRY_SIZE;
+    if (bin) {
+        DIR* d;
+        struct dirent* de;
+        snprintf(path, sizeof path, "%s/assets/us/mapfs/geom", argv[1]);
+        d = opendir(path);
+        if (!d) die("cannot open ", path);
+        names = (char(*)[17])calloc(2048, 17);
+        if (!names) die("out of memory (names)", NULL);
+        n = 0;
+        while ((de = readdir(d)) != NULL) {
+            size_t l = strlen(de->d_name);
+            if (l < 11 || l > 16 + 4 || strcmp(de->d_name + l - 4, ".bin") != 0 || l - 4 > 16 || n >= 2048u) continue;
+            memcpy(names[n], de->d_name, l - 4);
+            if (ends_with_shape(names[n])) n++; else names[n][0] = 0;
+        }
+        closedir(d);
+    } else {
+        snprintf(path, sizeof path, "%s/ver/us/baserom.z64", argv[1]);
+        rom = read_file(path, &rom_len);
+        if (ASSET_TABLE + 0x14 > rom_len) die("ROM too small", NULL);
+        bytes = rbe(rom + ASSET_TABLE + 0x10);
+        if (bytes < ENTRY_SIZE || bytes > 0x20000 || ASSET_TABLE + bytes > rom_len) die("bad asset table size", NULL);
+        n = bytes / ENTRY_SIZE;
+    }
     for (i = 0; i < n; i++) {
-        const u8* e = rom + ASSET_TABLE + i * ENTRY_SIZE;
         char name[17];
         ShapeFix s;
         FILE* f;
         u32 k;
-        memcpy(name, e, 16);
-        name[16] = 0;
+        if (bin) memcpy(name, names[i], 17);
+        else { memcpy(name, rom + ASSET_TABLE + i * ENTRY_SIZE, 16); name[16] = 0; }
         if (!ends_with_shape(name)) continue;
-        convert_one(rom, rom_len, name, &s);
+        convert_one(rom, rom_len, name, &s, bin ? path : NULL);
         snprintf(out, sizeof out, "%s/%s.nds", argv[2], name);
         f = fopen(out, "wb");
         if (!f) die("cannot write ", out);
@@ -708,6 +766,7 @@ int main(int argc, char** argv) {
         free(s.buf);
     }
     printf("shapeconv maps %u bytes %u reloc %u nop %u dlc sections %u bytes %u\n", (unsigned)maps, (unsigned)total_bytes, (unsigned)total_reloc, (unsigned)n_nop, (unsigned)dlc_secs, (unsigned)dlc_bytes);
-    free(rom);
+    printf("dlc lists %u sections %u refused %u missing %u fullbad %u maxkb %u maxlists %u\n", (unsigned)dlc_lists, (unsigned)dlc_secs, (unsigned)dlc_refused, (unsigned)dlc_missing, (unsigned)dlc_fullbad, (unsigned)((dlc_maxb + 1023u) >> 10), (unsigned)dlc_maxl);
+    free(rom); free(names);
     return 0;
 }
