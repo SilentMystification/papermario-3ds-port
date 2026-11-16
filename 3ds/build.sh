@@ -65,8 +65,8 @@ fi
 gen_map_restore
 IMG=pm3ds-build:1
 docker build -q -t $IMG -f docker/Dockerfile.build docker >/dev/null
-IMGID=$(docker image inspect -f '{{.Id}}' $IMG)
-HIMGID=$(docker image inspect -f '{{.Id}}' pm3ds-host:1)
+IMGID=$(docker image inspect -f '{{json .RootFS.Layers}}' $IMG | sha1sum | cut -c1-40)
+HIMGID=$(docker image inspect -f '{{json .RootFS.Layers}}' pm3ds-host:1 | sha1sum | cut -c1-40)
 ROM=$ASSET_BASE/ver/us/baserom.z64; [ -f "$ROM" ] || { echo "missing $ROM" >&2; exit 1; }
 tg=$(date +%s)
 asset_manifest
@@ -278,7 +278,7 @@ MSYS_NO_PATHCONV=1 docker run --rm --memory "${PM_BUILD_MEM:-4g}" --name "$NAME"
     -e IMGID="$IMGID" -e PM_CACHE_V="${PM_CACHE:-on}" -e SHAPE_E="$(cat $OUT/shape_entry.txt 2>/dev/null)" \
     -v "$(pwd)/$OUT:/out" \
     -v $VOL:/work \
-    -v pm3ds-ccache-$(printf '%s' "$IMGID" | cut -c8-19):/ccache \
+    -v pm3ds-ccache-$(printf '%s' "$IMGID" | cut -c1-12):/ccache \
     $IMG sh -c '
     set -e -f
     t0=$(date +%s)
