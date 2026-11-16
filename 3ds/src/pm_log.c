@@ -502,7 +502,7 @@ typedef struct {
     const char* fmt;
     u32 seq;
     u32 th;      /* thread that logged the line (threadGetCurrent) */
-    u8 nargs, nw, lv, flags; /* flags: bit 0 prof line (log.txt only), bit 1 fallback (str holds the formatted text) */
+    u8 nargs, nw, lv, flags; /* flags: bit 0 prof line (log.txt only), bit 1 fallback (str holds the formatted text), bit 3 live only (FLIPLOG) */
     u16 slen;    /* string area in use */
     u8 pad[10];
     u32 w[LF_MAX_ARGS];
@@ -582,7 +582,7 @@ static void vlog(int lv, const char* fmt, va_list ap) {
     sl->seq = __atomic_fetch_add(&seq, 1, __ATOMIC_RELAXED);
     sl->th = (u32)(uintptr_t)threadGetCurrent();
     sl->lv = (u8)lv;
-    sl->flags = (u8)((prof_force ? 1 : 0) | (evt ? 4 : 0));
+    sl->flags = (u8)((prof_force & 9) | (evt ? 4 : 0)); /* FLIPLOG: prof_force 1 = prof line, 9 = prof line for the live log only */
     sl->slen = 0;
     if (d->ok) {
         sl->nargs = d->nargs;
@@ -627,6 +627,12 @@ PM_LOG_FN(pm_log_d, 3)
 void pm_log_prof_line(const char* fmt, ...) {
     va_list ap; va_start(ap, fmt);
     prof_force = 1; vlog(1, fmt, ap); prof_force = 0;
+    va_end(ap);
+}
+/* FLIPLOG: a profiling line for the live log only: never the console; log.txt only with prof_disk, as a prof line. */
+void pm_log_live_line(const char* fmt, ...) {
+    va_list ap; va_start(ap, fmt);
+    prof_force = 9; vlog(1, fmt, ap); prof_force = 0;
     va_end(ap);
 }
 /* PROF4, PROFROW: the lean prof mode and the Profiling row (pm_phase.c prof_row_apply). Mode 0 off, 1 prof (prof lines only, as prof=4),
@@ -999,7 +1005,7 @@ static void drain_locked(void) {
             st_bytes += (unsigned)n + 8;
             int evt = (sl->flags & 4) != 0;
             int tf = (evt || (pad ? prof_disk : lvl <= dl)); /* U2: a profiling line (pad 1) goes to log.txt only with prof_disk on; SIZE-0: an event line always */
-            int tl = (evt || pad || lvl <= ll), tc = (pad || lvl <= cl); /* U2: profiling lines go to the live log and the console */
+            int tl = (evt || pad || lvl <= ll), tc = !(sl->flags & 8) && (pad || lvl <= cl); /* U2: profiling lines go to the live log and the console. FLIPLOG: bit 3 skips the console. */
             cnt_disk += (unsigned)tf; cnt_live += (unsigned)tl; cnt_con += (unsigned)tc; /* LOG3: counted per slot, the beat and drop lines are not */
             int cskip = 0, cn = 0;
             if (tc) { /* the console text is the line after "#<seq> " */

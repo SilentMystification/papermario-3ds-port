@@ -1,0 +1,30 @@
+{
+  "scenarios": [
+    {
+      "name": "fliplog_fsel",
+      "status": "unverified",
+      "subject": "FLIPLOG: the capture launch words (prof=30 flipfps) put flipfps rows in log.txt (run_azahar.ps1:193 adds profdisk=1)",
+      "proves": "FLIPLOG: the flipfps row reaches log.txt with the capture words",
+      "debug": "fileselect prof=30 flipfps",
+      "extra": [],
+      "until": "flipfps f\\d+ cpu \\d+ wait \\d+ gpu \\d+ off \\d+ soff \\d+ spl \\d+ reuse \\d+",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "prof=1 log=off",
+      "expects": "none",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "prof on",
+          "regex": "prof=1 log=off"
+        },
+        {
+          "name": "flipfps row",
+          "regex": "flipfps f\\d+ cpu \\d+ wait \\d+ gpu \\d+ off \\d+ soff \\d+ spl \\d+ reuse \\d+"
+        }
+      ],
+      "reason": "FLIPLOG: capture check of the flipfps switch words",
+      "scenario": "fliplog_fsel"
+    }
+  ]
+}

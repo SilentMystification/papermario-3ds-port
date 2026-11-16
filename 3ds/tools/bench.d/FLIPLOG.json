@@ -1,0 +1,21 @@
+{
+  "benches": [
+    {
+      "name": "fliplog_fsel",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FLIPLOG: capture check, flipfps rows in the live log with prof=30 flipfps (no compare)",
+      "scenario": "fliplog_fsel",
+      "cap": 25,
+      "until": "flipfps f\\d+ cpu \\d+ wait \\d+ gpu \\d+ off \\d+ soff \\d+ spl \\d+ reuse \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "drec"
+      ],
+      "gates": []
+    }
+  ]
+}
