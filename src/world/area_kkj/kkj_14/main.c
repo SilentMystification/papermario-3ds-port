@@ -1,4 +1,5 @@
 #include "kkj_14.h"
+#include "nd_gtab.h"
 
 #include "world/common/atomic/TexturePan.inc.c"
 #include "../common/RestoreFromPeachState.inc.c"
@@ -8,24 +9,7 @@ API_CALLABLE(N(EnableParasol)) {
     return ApiStatus_DONE2;
 }
 
-Gfx N(setup_gfx_candle_lights)[] = {
-    gsDPPipeSync(),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsDPSetCycleType(G_CYC_2CYCLE),
-    gsDPSetTexturePersp(G_TP_PERSP),
-    gsDPSetTextureDetail(G_TD_CLAMP),
-    gsDPSetTextureLOD(G_TL_TILE),
-    gsDPSetTextureLUT(G_TT_NONE),
-    gsDPSetTextureFilter(G_TF_BILERP),
-    gsDPSetTextureConvert(G_TC_FILT),
-    gsDPSetPrimColor(0, 0, 75, 31, 19, 255),
-    gsDPSetEnvColor(255, 118, 77, 0),
-    gsDPSetCombineMode(PM_CC_CANDLE_1, PM_CC_CANDLE_2),
-    gsDPSetRenderMode(G_RM_PASS, G_RM_ZB_CLD_SURF2),
-    gsSPClearGeometryMode(G_LIGHTING),
-    gsSPSetGeometryMode(G_SHADE | G_CULL_BACK | G_SHADING_SMOOTH),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(N(setup_gfx_candle_lights));
 
 EvtScript N(EVS_EndPeachChapter7) = {
     Set(LVar0, GB_KKJ_LastPartner)
@@ -225,7 +209,7 @@ EvtScript N(EVS_Main) = {
         Exec(N(EVS_UpdateTexturePan))
     EndThread
     Call(SetModelCustomGfx, MODEL_o154, CUSTOM_GFX_0, ENV_TINT_UNCHANGED)
-    Call(SetCustomGfx, CUSTOM_GFX_0, Ref(N(setup_gfx_candle_lights)), nullptr)
+    Call(SetCustomGfx, CUSTOM_GFX_0, (Bytecode)NDN(N(setup_gfx_candle_lights)), nullptr)
     Return
     End
 };

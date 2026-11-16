@@ -1,15 +1,13 @@
 #include "isk_01.h"
+#include "nd_gtab.h"
 
-Gfx N(HazePreGfx)[] = {
-    gsDPSetAlphaDither(G_AD_NOISE),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(N(HazePreGfx));
 
 EvtScript N(EVS_SetupHaze) = {
     Call(SetTexPanner, MODEL_o99, TEX_PANNER_2)
     Call(EnableTexPanning, MODEL_o99, true)
     Set(LVar0, 0)
-    Call(SetCustomGfx, 0, Ref(N(HazePreGfx)), nullptr)
+    Call(SetCustomGfx, 0, (Bytecode)NDN(N(HazePreGfx)), nullptr)
     Call(SetModelFlags, MODEL_o99, MODEL_FLAG_USES_CUSTOM_GFX, true)
     Label(0)
         Add(LVar0, 70)

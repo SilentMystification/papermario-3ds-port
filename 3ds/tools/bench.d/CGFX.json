@@ -1,0 +1,38 @@
+{
+  "benches": [
+    {
+      "name": "kkj14_cgfx_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CGFX: draw records of kkj_14 entry 0 frames 200 and 201, cold det start. A head equals the base.",
+      "scenario": "kkj14_cgfx_drec",
+      "cap": 40,
+      "until": "drec f201 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "drec"
+      ],
+      "gates": []
+    },
+    {
+      "name": "isk01_cgfx_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CGFX: draw records of isk_01 entry 0 frames 200 and 201, cold det start. A head equals the base.",
+      "scenario": "isk01_cgfx_drec",
+      "cap": 40,
+      "until": "drec f201 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "drec"
+      ],
+      "gates": []
+    }
+  ]
+}
