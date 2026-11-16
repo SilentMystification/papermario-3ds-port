@@ -28,7 +28,10 @@ build 722, gfxpos 201, data 3016, data_arrays 277, gfxtype 885, recdl 15, reader
 - tst_13 main.c:301: mdl_project_tex_coords (model.c:4326) writes into N(shockwave_gfx): a list writer, after MODELRM.
 - C7 effects: 50 arrays read by a local `Gfx* dlist = X[i]` (FXTYPE next step: local handle rule).
 ## Open (non display list)
-- File select flip lag and pause pane flip: draw_box ROTSCALE off-screen windows (draw_box.c:760-830). No console timing yet. Next name FSELLAG3.
+- File select flip lag and pause pane flip: draw_box ROTSCALE off-screen windows (draw_box.c:760-830). FACT hw_menu1_log.txt: 9 full images
+  per flip frame (f6560-f6569), band clear about 376 KB a frame (pm_gpu.c:2233). OPEN: per-frame time (needs a console prof capture). Next name FSELLAG3.
+- Bug oracle 38: ws_STALEOBJ (+ _code) ready: build.sh sync kept host mtimes, so a worktree build without PM_LANE left older objects in
+  the shared volume; build 5877 lacks STARTLR2 and MOON7 (FSKIP is in). FSKIP2 waits for the user's row choice.
 - With logging off, event lines reach no log.txt (pm_log.c:600, :888). Not fixed.
 ## What to do first
 1. Answer coder questions of GSETR, CGFX, DLSITE1, MODELRM (SendMessage, file:line).
