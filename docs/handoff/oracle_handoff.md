@@ -31,7 +31,12 @@ C5 data 5149, C6 data_arrays 461, C7 gfxtype 1083, C8 reader 783, C10 recdl 15.
 - C7 effects: fxtype dry 89 ok arrays; the other 50 are read by a local `Gfx* dlist = X[i]` (next FXTYPE step: local handle rule).
 ## Tidal Wave (user 2026-11-15, build 5798: flashing blue rectangle, slow). Page ws_GRABSEQ ready (60 FPS cause).
 - FACT: Tidal Wave = fx_underwater (sushie.c:336); no src/effects/tidal_wave.c. fxr_drec draws it (fxtest 87) at 30 FPS only.
-- OPEN: the 30 FPS console cause (if the user had 60 FPS off), and the console cost (fxcena/b/c 87 lines from the user).
+- FACT (oracle 34 code read): at 30 FPS every drawn walk has its own frame number (nd_wq.c:124, pm_main.c:499, :699, :747): the hold skip cannot fire.
+  The copy chain is one ordered GX queue (slot fill :2236, clear, part 1, copy :2629, part 2), the split writes the framebuffer flush (DrawUsed :1342),
+  the slot and grab_tex binds are force 1 (texture cache clear nd_emit.c:89). No console-only gap found there. fxr_drec is a field scene: the battle
+  draw on Azahar is not known. Found: grab_impl splits without the ring flush (:2787-2788) -> page ws_GRABFL (not the blue cause, GUESS).
+- OPEN: the 30 FPS blue cause. Needs from the user: 3D slider and Wide/Fullscreen state in the playtest; one console log of the wave with switches
+  grablog and fbbind, plus the always-on lines `V05 demand`, `R4:`, `vram reserve`, `stereo: replay`. Cost: fxtest=87 fxcena/b/c lines.
 - Ready: ws_MENUFL (Select menu R: colour top frame, after Merge GRABSEQ), ws_STARTLR (start menu L -> N64 L, R -> N64 Z, user confirmed).
 ## Older facts that still cost time
 - NDN_DECL/NDN (nd_gtab.h:66-74): host form extern Gfx; device form ndd_<name> NdNDev. gset include mode is src/effects/gfx only.
