@@ -5,7 +5,7 @@
 3ds/src/nd_rec.c 4 KEY nd_rm_build through nd_lkey_units (LKEY); nd_rec_list reads SetCustomGfx lists (HOLD, gset.py:158); stray_word reads nd_rec_top ; nd_rec_list reads a moved key through nd_lkey_end (CGFX)
 3ds/src/nd_recs.c 61 REC model record words (model.c appendGfx_model)
 3ds/src/nd_seam.c 9 OTHER NdSeamList tables, not a Gfx list
-3ds/src/nd_shape.c 8 MAP map shape lists (dlc_try takes only gMapShapeData, nd_shape.c:878) and seam tables
+3ds/src/nd_shape.c 7 MAP map shape lists (dlc_try takes only gMapShapeData, nd_shape.c:878) and seam tables
 3ds/src/nd_walk.c 13 KEY walk_call nd_ntab_find (nd_walk.c:230), gt_call nd_lkey_tab (LKEY), NDG_F_MOVED (nd_walk.c:441,489), record words
 src/animator.c 1 KEY MESH1 nd_ntab_find (animator.c:879)
 src/draw_box.c 1 HOLD gBoxCombineModes[] is indexed (gset.py:158 keeps X[)
