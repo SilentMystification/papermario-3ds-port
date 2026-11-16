@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include "pm_tex.h"
+#include "pm_tex_offpick.h"
 #include "nd.h"
 #include "pm_texbake.h"
 #include "pm_port.h"
@@ -136,7 +137,7 @@ static int aux = -1; /* S25: the second texture (TEXEL1), bound at unit 1 */
 static GPU_TEXTURE_WRAP_PARAM aux_ws = GPU_REPEAT, aux_wt = GPU_REPEAT;
 static int have;
 /* V05: off-screen images of this frame (render textures owned by pm_gpu.c) */
-static struct { const u8* base; unsigned stride; C3D_Tex* tex; int siz, w, h; } offt[10]; /* siz as pm_gpu_off_begin */
+static PmOffT offt[10]; /* siz as pm_gpu_off_begin; WAVEWIDE: the type is in pm_tex_offpick.h (tex holds the C3D_Tex*) */
 static int offt_n, off_cur = -1, off_ox, off_oy;
 static int aux_off = -1, aux_ox, aux_oy; /* V12c: TEXEL1 is an off-screen slot (the grab of the frame buffer) */
 unsigned pm_tex_epoch_v; /* PG1: bumped by every call that changes what pm_tex_bind or pm_tex_size would give, so a caller can skip a repeated identical load */
@@ -168,9 +169,9 @@ void pm_tex_clear_offscreen(void) { for (int k = 0; k < 10; k++) offt[k].base = 
 int pm_tex_off_rewin(const void* img, unsigned fmt, unsigned siz) {
     if (!have || off_cur < 0 || off_cur >= offt_n || !offt[off_cur].base || !img) return 0;
     const unsigned gs = (fmt == FMT_RGBA && siz == SIZ_32) ? 3u : (fmt == FMT_RGBA && siz == SIZ_16) ? 2u : (fmt == FMT_I && siz == SIZ_8) ? 1u : 0u;
-    if (!gs || (unsigned)offt[off_cur].siz != gs || (const u8*)img < offt[off_cur].base) return 0;
-    const unsigned bpp = gs == 3 ? 4u : gs, d = (unsigned)((const u8*)img - offt[off_cur].base), row = offt[off_cur].stride * bpp;
-    if (d >= row * (unsigned)offt[off_cur].h) return 0;
+    unsigned d;
+    if (!gs || pm_offt_pick(offt, offt_n, img, gs, &d) != off_cur) return 0; /* WAVEWIDE: only the nearest slot (pm_tex_offpick.h) */
+    const unsigned bpp = gs == 3 ? 4u : gs, row = offt[off_cur].stride * bpp;
     if ((row & (row - 1)) == 0) { off_oy = (int)(d >> __builtin_ctz(row)); off_ox = (int)((d & (row - 1)) / bpp); }
     else { off_oy = (int)(d / row); off_ox = (int)((d % row) / bpp); }
     return 1;
@@ -1709,23 +1710,22 @@ static int load_inner(const void* img, unsigned fmt, unsigned siz, int width, in
         /* V05: a window of an off-screen image drawn this frame: sample the render texture, no copy. The load must have the
          * pixel size of the image (X02: the same memory is a 32 bit and an 8 bit image in one frame). */
         unsigned gs = (fmt == FMT_RGBA && siz == SIZ_32) ? 3u : (fmt == FMT_RGBA && siz == SIZ_16) ? 2u : (fmt == FMT_I && siz == SIZ_8) ? 1u : 0u;
-        for (int i = 0; gs && i < offt_n; i++) {
-            if (!offt[i].base) continue;
-            unsigned bpp = gs == 3 ? 4u : gs, d = (unsigned)((const u8*)img - offt[i].base), row = offt[i].stride * bpp;
-            if ((unsigned)offt[i].siz == gs && (const u8*)img >= offt[i].base && d < row * (unsigned)offt[i].h) {
-                /* P15: a power of two row (and bpp) needs no divide. Same result. */
-                if ((row & (row - 1)) == 0) {
-                    off_oy = (int)(d >> __builtin_ctz(row));
-                    off_ox = (int)((d & (row - 1)) / bpp);
-                } else {
-                    off_oy = (int)(d / row);
-                    off_ox = (int)((d % row) / bpp);
-                }
-                off_cur = i;
-                if (offt[i].w == 64) { static int n; if (n++ < 6) pm_log_d("X02: overlay reads 64x64 slot %d bits %d addr %p", i, gs == 3 ? 32 : gs == 2 ? 16 : 8, img); }
-                have = 1;
-                return 1;
+        unsigned d;
+        const int i = pm_offt_pick(offt, offt_n, img, gs, &d); /* WAVEWIDE: the nearest slot, not the first (pm_tex_offpick.h) */
+        if (i >= 0) {
+            unsigned bpp = gs == 3 ? 4u : gs, row = offt[i].stride * bpp;
+            /* P15: a power of two row (and bpp) needs no divide. Same result. */
+            if ((row & (row - 1)) == 0) {
+                off_oy = (int)(d >> __builtin_ctz(row));
+                off_ox = (int)((d & (row - 1)) / bpp);
+            } else {
+                off_oy = (int)(d / row);
+                off_ox = (int)((d % row) / bpp);
             }
+            off_cur = i;
+            if (offt[i].w == 64) { static int n; if (n++ < 6) pm_log_d("X02: overlay reads 64x64 slot %d bits %d addr %p", i, gs == 3 ? 32 : gs == 2 ? 16 : 8, img); }
+            have = 1;
+            return 1;
         }
     }
     if ((unsigned)img < 0x00100000u) {
