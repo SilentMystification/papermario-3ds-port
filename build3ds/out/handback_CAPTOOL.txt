@@ -1,0 +1,9 @@
+31f8260992 (CAPTOOL 1: code commit; host ND HOST TESTS PASS, captool ok; build rc 0, 0 errors)
+Seed: NOT RUN (gate step failed first; step 4 waits for the gate).
+Gate: FAIL, tool fault. Output: build3ds/out/captool_gate.txt. Run 1226884 (bench capchk, row CAPTOOL, build 5838).
+Gate line: "CAPTURE CHECK TOOL FAULT: bench.py run capchk rc 1 with every proof line". Proof lines were found (fxtest: done, options saved).
+Cause (FACT, from captool_gate.txt): scenario check "FAIL boot: no line matches /build \d+ git/". The run warm-restarted the kept Azahar (slot 1 warm), so no boot line was logged.
+GUESS: the boot marker (expected_events "boot", azt.d/CAPCHK.json) needs a cold start, or no warm restart for capchk.
+OPEN: the oracle decides the fix (cold start in CAPCHK.json or drop the boot event). Oracle id not named in ws_CAPTOOL.md: send questions to the designer named in the launch.
+Counters: none moved. Azahar starts used: 1 of 8. Commits: 31f8260992 (CAPTOOL 1); runs.jsonl record 1226884 committed with this file.
+Mechanical fix made: captool.sh seed file moved from /tmp to build3ds/out and a missing seed file now fails (commit 31f8260992).
