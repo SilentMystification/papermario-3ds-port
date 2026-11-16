@@ -28,9 +28,9 @@ hash_tree() { (cd "$1" && find $2 -type f 2>/dev/null | LC_ALL=C sort | xargs -r
 outs_hash() { (cd "$1" && find . -type f ! -name key.txt ! -name outs.sha1 | LC_ALL=C sort | xargs -r sha1sum) | sha1sum | cut -d' ' -f1; }
 IMG_ID=$(docker image inspect -f '{{.Id}}' pm3ds-host:1 2>/dev/null || echo none)
 SELF=$(sha1sum 3ds/tools/nd_host_test.sh | cut -d' ' -f1)
-# GTIN: the gfx inputs, the same list as build.sh gen_gfx_tab (GT_IN).
-GT_IN="3ds/tools/gen_gfx_tab.sh 3ds/tools/gen_gfx_syms.py 3ds/tools/nd_gfx_conv.c 3ds/tools/nd_gconv.h 3ds/tools/nd_vslot.c 3ds/tools/gconv_inc 3ds/tools/gconv_src.d 3ds/tools/gen_ntab_entries.py 3ds/src/nd_scomp.c 3ds/src/nd_texwin.c 3ds/include src/effects src/entity 3ds/tools/gfxin"
-GT_IN="$GT_IN $(sed 's/#.*//' 3ds/tools/gconv_src.d/*.txt | tr -s ' \t\r' '\n' | grep '\.c$' | sort -u | tr '\n' ' ')"
+# GTIN (GFXINC, cache safety rule 1): every folder gen_gfx_tab.sh reads (-I 3ds/tools, 3ds/include, 3ds/stub_include, include,
+# src; the tool links nd_scomp.c and nd_texwin.c), the same list as build.sh gen_gfx_tab (VOLGEN). The assets are ROM_IN below.
+GT_IN="3ds/tools 3ds/include 3ds/stub_include include src 3ds/src/nd_scomp.c 3ds/src/nd_texwin.c"
 ROM_IN="assets/us ver/us/build"
 GFX_KEY=$( { hash_tree . "$GT_IN"; hash_tree "$AR" "$ROM_IN"; echo "$IMG_ID $SELF"; } | sha1sum | cut -d' ' -f1)
 HOST_IN="3ds/tools 3ds/src 3ds/include 3ds/stub_include 3ds/tests include src docker/Dockerfile.build docker/Dockerfile.host"
@@ -42,7 +42,7 @@ k2=$(hash_tree $st gen_gfx_tab.sh); rm -rf $st
 if [ "$k1" = "$k2" ]; then echo "FAIL cache selftest: a changed byte kept the key"; fail=1; else echo "cache selftest ok (a changed byte misses)"; fi
 # Whole-run cache: a passing run with the same TEST_KEY replays its output. The stored output is checked by its sha1 first.
 TC=build3ds/out/hostcache/$TEST_KEY
-if [ -f $TC/rc.txt ] && [ -f $TC/out.txt ] && [ "$(cat $TC/out.sha1 2>/dev/null)" = "$(sha1sum $TC/out.txt | cut -d' ' -f1)" ]; then
+if [ "${PM_CACHE:-on}" != off ] && [ -f $TC/rc.txt ] && [ -f $TC/out.txt ] && [ "$(cat $TC/out.sha1 2>/dev/null)" = "$(sha1sum $TC/out.txt | cut -d' ' -f1)" ]; then
     echo "hostcache: hit ${TEST_KEY}"
     cat $TC/out.txt; exit "$(cat $TC/rc.txt)"
 fi
@@ -57,10 +57,12 @@ TMPLOG=build3ds/out/host_run.txt
 # gfx table entry: hit when key and outs hash match; else rebuilt under a temp name, then renamed.
 GC=build3ds/out/gfxcache; GE=$GC/$GFX_KEY
 gfx_ok() { [ -f "$GE/key.txt" ] && [ "$(cat "$GE/key.txt")" = "$GFX_KEY" ] && [ -f "$GE/outs.sha1" ] && [ "$(outs_hash "$GE")" = "$(cat "$GE/outs.sha1")" ]; }
-if gfx_ok; then echo "gfxcache: hit"; else
+if [ "${PM_CACHE:-on}" != off ] && gfx_ok; then echo "gfxcache: hit"; else # GFXINC: PM_CACHE=off (cold gate) never hits
     echo "gfxcache: miss, build"
     rm -rf "$GE"; mkdir -p "$GC"; TMPE=$GC/.tmp.$$; rm -rf "$TMPE"; mkdir -p "$TMPE/out"
-    MSYS_NO_PATHCONV=1 docker run --rm --memory "${PM_BUILD_MEM:-4g}" -v "$ROOT:/w" -v "$AR/assets:/ar/assets:ro" -v "$AR/ver/us/build:/ar/ver/us/build:ro" -v "$ROOT/$TMPE:/gcw" -w /work pm3ds-host:1 sh -c '
+    # GFXINC: the object cache volume of this host image (3ds/tools/gconv_objcache.py), shared by every worktree and build.sh.
+    MSYS_NO_PATHCONV=1 docker run --rm --memory "${PM_BUILD_MEM:-4g}" -v "$ROOT:/w" -v "$AR/assets:/ar/assets:ro" -v "$AR/ver/us/build:/ar/ver/us/build:ro" -v "$ROOT/$TMPE:/gcw" \
+        -v "pm3ds-gconvobj-$(printf '%s' "$IMG_ID" | cut -c8-23):/gobj" -e GCONV_OBJ=/gobj -e PM_CACHE="${PM_CACHE:-on}" -w /work pm3ds-host:1 sh -c '
       set -e; mkdir -p /work/ver/us
       for d in 3ds include src; do ln -s "/w/$d" "/work/$d"; done
       ln -s /ar/assets /work/assets; ln -s /ar/ver/us/build /work/ver/us/build

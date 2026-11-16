@@ -12,12 +12,17 @@ mkdir -p "$T"
 DEF="-DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -DVERSION=us -D_MIPS_SZLONG=32 -Dnullptr=NULL"
 TINC="-I 3ds/tools -I include -I ver/us/build/include -I 3ds/include -I 3ds/stub_include" # the nd_host order
 INC="-I 3ds/tools/gconv_inc -I 3ds/tools -I 3ds/include -I 3ds/stub_include -I include -I src -I assets/us -I ver/us/build/include -I ."
-TUS=$(python3 3ds/tools/gen_gfx_syms.py "$T/gconv_in.c" $(for g in $GCONV_SRC; do case $g in *.c) p=$g;; *) p=src/effects/gfx/$g.c;; esac; [ -f "3ds/tools/gfxin/$p" ] && p="3ds/tools/gfxin/$p"; echo "$p"; done))
+# GFXINC: the TU files go to one fixed folder (/tmp/gct, the container's own /tmp), so every caller compiles the same paths and
+# shares the object cache entries (the key holds the source path). $T gets the joined object gconv_in.o as before.
+TD=/tmp/gct; rm -rf "$TD"; mkdir -p "$TD"
+TUS=$(python3 3ds/tools/gen_gfx_syms.py "$TD/gconv_in.c" $(for g in $GCONV_SRC; do case $g in *.c) p=$g;; *) p=src/effects/gfx/$g.c;; esac; [ -f "3ds/tools/gfxin/$p" ] && p="3ds/tools/gfxin/$p"; echo "$p"; done))
 # GCONVW: the shared file and each own-TU file are separate objects; ld -r joins them (gconv_sym section)
-gcc -m32 -w -ffunction-sections -fdata-sections $DEF -DND_GCONV_IN $INC -c -o "$T/gconv_sh.o" "$T/gconv_in.c"
+# GFXINC: 3ds/tools/gconv_objcache.py compiles them (4 at once): a hit copies the stored object (GCONV_OBJ, the docker volume
+# pm3ds-gconvobj-<host image id>; unset: no cache). The objects and the link order are the ones of the old loop.
+python3 3ds/tools/gconv_objcache.py --flags "-m32 -w -ffunction-sections -fdata-sections $DEF -DND_GCONV_IN $INC" "$TD/gconv_in.c" $TUS
 TUOBJ=""
-for f in $TUS; do gcc -m32 -w -ffunction-sections -fdata-sections $DEF -DND_GCONV_IN $INC -c -o "${f%.c}.o" "$f"; TUOBJ="$TUOBJ ${f%.c}.o"; done
-gcc -m32 -r -nostdlib -o "$T/gconv_in.o" "$T/gconv_sh.o" $TUOBJ
+for f in $TUS; do TUOBJ="$TUOBJ ${f%.c}.o"; done
+gcc -m32 -r -nostdlib -o "$T/gconv_in.o" "$TD/gconv_in.o" $TUOBJ
 gcc -m32 -Wall -Wextra -Werror -DND_SCOMP_HOST $DEF $TINC -o "$T/nd_gfx_conv" 3ds/tools/nd_gfx_conv.c 3ds/src/nd_scomp.c 3ds/src/nd_texwin.c 3ds/tools/nd_vslot.c "$T/gconv_in.o" -Wl,--gc-sections
 python3 3ds/tools/gen_ntab_entries.py src/effects > "$T/ntab_entries.txt"
 # MODELRM: the lists of nd_rmdef.h also get a static NdSDef (ndsd_<list>)
