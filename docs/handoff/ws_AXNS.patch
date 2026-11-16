@@ -1,0 +1,284 @@
+diff --git a/3ds/tools/gen_gfx_syms.py b/3ds/tools/gen_gfx_syms.py
+index 02de8c8..3392991 100644
+--- a/3ds/tools/gen_gfx_syms.py
++++ b/3ds/tools/gen_gfx_syms.py
+@@ -5,7 +5,7 @@ array gconv_sym_in[]. Each own-TU source k (any other source) gets its own file
+ (it includes its source, nd_gconv.h and its entries as gconv_sym_tu<k>[]). Every array sits in the section gconv_sym
+ (GCONV_SEC of 3ds/tools/nd_gconv.h). Prints the path of each gconv_tu<k>.c on stdout, one per line.
+ Symbols: every non-static `Gfx NAME[] =`, `Vtx NAME[..] =` and `Mtx NAME =` or `Matrix4s NAME =`, `Lights1 NAME =` of the sources and their `#include "*.inc.c"`
+-files (under assets/us, src or next to the includer), named `N(x)` as NAMESPACE_x; and every INCLUDE_IMG/PAL/RAW NAME (its
++files (under assets/us, src or next to the includer), named `N(x)` as NAMESPACE_x (NAMESPACE A(x) as AREA_x); and every INCLUDE_IMG/PAL/RAW NAME (its
+ end from the NAME_gend label of 3ds/tools/gconv_inc/include_asset.h). Run from the repo root."""
+ import re
+ import sys
+@@ -18,7 +18,9 @@ LIT = re.compile(r"^Lights1\s+(?:N\((\w+)\)|(\w+))\s*=", re.M)  # LIT1
+ INC = re.compile(r'^\s*#include\s+"([^"]+\.inc\.c)"', re.M)
+ INCLUDE = re.compile(r'^\s*#\s*include\s+"([^"]+)"', re.M)
+ IMG = re.compile(r"INCLUDE_(?:IMG|PAL|RAW)\(\s*\"[^\"]*\"\s*,\s*(\w+)\s*\)")
+-NS_DEF = re.compile(r"^\s*#\s*define\s+NAMESPACE\s+(\w+)", re.M)
++NS_DEF = re.compile(r"^\s*#\s*define\s+NAMESPACE\s+(A\(\w+\)|\w+)", re.M)
++AREA_DEF = re.compile(r"^\s*#\s*define\s+AREA\s+(\w+)", re.M)  # AXNS
++AREA_RULE = True  # AXNS: NAMESPACE A(x) is <AREA>_x (include/macros.h:44, :200); seeded test in 3ds/tests/host.d/gconvw.sh
+ NAME_DEF = re.compile(r"^[ \t]*#[ \t]*define[ \t]+NAME_(PREFIX|SUFFIX)[ \t]*(\w*)", re.M)
+ 
+ 
+@@ -30,17 +32,30 @@ def resolve(inc, path):
+     return None
+ 
+ 
++def area_ns(path, text, ns):
++    # AXNS: the namespace A(x) is <AREA>_x; AREA comes from the file or a direct include (resolve)
++    a = re.fullmatch(r"A\((\w+)\)", ns)
++    if not AREA_RULE or not a:
++        return ns
++    for t in [text] + [q.read_text(encoding="utf-8", errors="replace") for q in (resolve(i, path) for i in INCLUDE.findall(text)) if q is not None]:
++        m = AREA_DEF.search(t)
++        if m:
++            return f"{m.group(1)}_{a.group(1)}"
++    sys.exit(f"gen_gfx_syms: {path}: NAMESPACE {ns} without AREA")
++
++
+ def file_ns(path, text, parent_ns):
+     # GCONVW: the file's own NAMESPACE, else the one of a direct include, else the one of the includer
+     m = NS_DEF.search(text)
+     if m:
+-        return m.group(1)
++        return area_ns(path, text, m.group(1))
+     for inc in INCLUDE.findall(text):
+         q = resolve(inc, path)
+         if q is not None:
+-            m = NS_DEF.search(q.read_text(encoding="utf-8", errors="replace"))
++            qt = q.read_text(encoding="utf-8", errors="replace")
++            m = NS_DEF.search(qt)
+             if m:
+-                return m.group(1)
++                return area_ns(q, qt, m.group(1))
+     return parent_ns
+ 
+ 
+diff --git a/3ds/tools/gset.py b/3ds/tools/gset.py
+index bca75ad..e96aea5 100644
+--- a/3ds/tools/gset.py
++++ b/3ds/tools/gset.py
+@@ -24,6 +24,7 @@ OWN_RULE = True  # ISTAR: a user file that defines a moved name keeps its own co
+ NS_RULE = True  # GSETW: N(x) is rewritten only in the files of its namespace; the seeded test (gset.sh) runs a copy with this False
+ INC_HOLD = True  # VSLOT2: an include whose list a kept line of the device file names stays; seeded test in gset.sh
+ INC_BLOCK = True  # GSETI: block mode moves the all-ok asset includes of a block source; seeded test in gset.sh
++AREA_RULE = True  # AXNS: NAMESPACE A(x) is <AREA>_x (include/macros.h:44, :200); seeded test in gset.sh
+ INC_NS = True  # GSETI: the N(x) users of an include-moved list (name ns_x, namespace ns) are rewritten by rewrite_ns; seeded test in gset.sh
+ BLOCK_END = "};"  # the block closing line (exact, CR dropped); the seeded test in gset.sh changes this and is_block_end
+ COMMON = re.compile(r'^\s*#include\s+"common\.h"\s*$')
+@@ -31,7 +32,8 @@ DEF = re.compile(r"^\s*(?:const\s+)?Gfx\s+(\w+)\s*\[", re.M)
+ BLOCK_OPEN = re.compile(r"^Gfx (?:N\((\w+)\)|(\w+))\[\] = \{")
+ INC = re.compile(r'^(\s*#include\s+"([^"]+\.inc\.c)")\s*$', re.M)
+ DECL = re.compile(r"^(\s*)extern\s+Gfx\s+(\w+)\s*\[\s*\]\s*;")
+-NS_DEF = re.compile(r"^\s*#\s*define\s+NAMESPACE\s+(\w+)", re.M)
++NS_DEF = re.compile(r"^\s*#\s*define\s+NAMESPACE\s+(A\(\w+\)|\w+)", re.M)
++AREA_DEF = re.compile(r"^\s*#\s*define\s+AREA\s+(\w+)", re.M)  # AXNS
+ NDECL = re.compile(r"^(\s*)extern\s+Gfx\s+(N\(\w+\))\s*\[\s*\]\s*;")
+ NSN = {}  # GSETW: moved N(x) name -> (token, namespace, directory)
+ SKIP_DIR = "src/effects/gfx/"
+@@ -107,6 +109,18 @@ def is_block_end(ln):
+     return ln.rstrip() == BLOCK_END
+ 
+ 
++def area_ns(p, text, ns):
++    """AXNS: the namespace A(x) is <AREA>_x; AREA comes from the file or a header it includes (next to the file). None when there is no AREA."""
++    a = re.fullmatch(r"A\((\w+)\)", ns)
++    if not AREA_RULE or not a:
++        return ns
++    for t in [text] + [h.read_text(encoding="utf-8", errors="replace") for h in (p.parent / i for i in re.findall(r'^\s*#include\s+"([^"]+\.h)"', text, re.M)) if h.is_file()]:
++        m = AREA_DEF.search(t)
++        if m:
++            return m.group(1) + "_" + a.group(1)
++    return None
++
++
+ def file_ns(p, seen=None):
+     """GSETW: the namespace of a device source: its NAMESPACE define, else that of an included header, else that of the .c file that includes it."""
+     seen = set() if seen is None else seen
+@@ -116,13 +130,14 @@ def file_ns(p, seen=None):
+     text = p.read_text(encoding="utf-8", errors="replace")
+     m = NS_DEF.search(text)
+     if m:
+-        return m.group(1)
++        return area_ns(p, text, m.group(1))
+     for inc in re.findall(r'^\s*#include\s+"([^"]+\.h)"', text, re.M):
+         h = p.parent / inc
+         if h.is_file():
+-            m = NS_DEF.search(h.read_text(encoding="utf-8", errors="replace"))
++            ht = h.read_text(encoding="utf-8", errors="replace")
++            m = NS_DEF.search(ht)
+             if m:
+-                return m.group(1)
++                return area_ns(h, ht, m.group(1))
+     for q in sorted(p.parent.glob("*.c")):
+         if q == p:
+             continue
+diff --git a/3ds/tests/host.d/gset.sh b/3ds/tests/host.d/gset.sh
+index a5b62ff..57cd9ce 100644
+--- a/3ds/tests/host.d/gset.sh
++++ b/3ds/tests/host.d/gset.sh
+@@ -101,4 +101,17 @@ MS="$T.incnsseed"; rm -rf "$MS"; mkdir -p "$MS"; cp -r 3ds/tests/gset/case_incns
+ sed 's/^INC_NS = True/INC_NS = False/' 3ds/tools/gset.py > "$MS.py"
+ $PY "$MS.py" "$MS/list.txt" "$MS/gset_ok.txt" "$MS" > "$MS.out" 2>&1 || true
+ tr -d '\r' < "$MS/src/c.c" | grep -qxF '    gSPDisplayList(gMainGfxPos++, NDN(N(F_gfx)));' && { echo "gset incns seeded fault not seen"; exit 1; }
++# AXNS: NAMESPACE A(x) (fixture made here: area.h defines AREA b_area_t; actor/x.c has NAMESPACE A(x) and Gfx N(dl)). The list b_area_t_x_dl moves and its use becomes NDN(N(dl)).
++# Seeded fault: AREA_RULE off gives the name A(x)_dl, which is not in the ok list: nothing moves.
++A="$T.area"; rm -rf "$A" "$A.seed"; mkdir -p "$A/src/battle/area/t/actor"
++printf '#define AREA b_area_t\n' > "$A/src/battle/area/t/area.h"
++printf '#include "../area.h"\n\n#define NAMESPACE A(x)\n\nGfx N(dl)[] = {\n    gsSPEndDisplayList(),\n};\n\nEntityModelScript N(ems) = STANDARD_ENTITY_MODEL_SCRIPT(N(dl), 1);\n' > "$A/src/battle/area/t/actor/x.c"
++printf 'src/battle/area/t/actor/x.c\n' > "$A/list.txt"; printf 'b_area_t_x_dl\n' > "$A/gset_ok.txt"; cp -r "$A" "$A.seed"
++rc=0; $PY 3ds/tools/gset.py "$A/list.txt" "$A/gset_ok.txt" "$A" > "$A.out" 2>&1 || rc=$?
++[ "$rc" = 0 ] || { echo "gset area test: exit $rc, want 0"; cat "$A.out"; exit 1; }
++tr -d '\r' < "$A.out" | grep -qxF "gset moved 1 files 1 keep 0" || { echo "gset area test FAIL: no moved line"; cat "$A.out"; exit 1; }
++tr -d '\r' < "$A/src/battle/area/t/actor/x.c" | grep -qxF 'EntityModelScript N(ems) = STANDARD_ENTITY_MODEL_SCRIPT(NDN(N(dl)), 1);' || { echo "gset area test FAIL: x.c lacks NDN(N(dl))"; exit 1; }
++sed 's/^AREA_RULE = True/AREA_RULE = False/' 3ds/tools/gset.py > "$A.py"
++$PY "$A.py" "$A.seed/list.txt" "$A.seed/gset_ok.txt" "$A.seed" > "$A.seed.out" 2>&1 || true
++tr -d '\r' < "$A.seed.out" | grep -qxF "gset moved 1 files 1 keep 0" && { echo "gset area seeded fault not seen"; exit 1; }
+ echo "gset test ok"
+diff --git a/3ds/tests/host.d/gconvw.sh b/3ds/tests/host.d/gconvw.sh
+index 693774e..0a0e5f4 100644
+--- a/3ds/tests/host.d/gconvw.sh
++++ b/3ds/tests/host.d/gconvw.sh
+@@ -18,4 +18,14 @@ open("/tmp/gcw/gen_fault.py", "w").write(t.replace(old, r"(?:()|(\w+))\s*\[[^\]]
+ PY
+ python3 /tmp/gcw/gen_fault.py /tmp/gcw/f/gconv_in.c 3ds/tests/gconvw/w.c > /dev/null 2>&1
+ if [ ! -f /tmp/gcw/f/gconv_tu0.c ] || cmp -s /tmp/gcw/f/gconv_tu0.c 3ds/tests/gconvw/exp_tu0.c; then echo "gconvw FAIL seeded fault not seen"; exit 1; fi
++# AXNS: NAMESPACE A(x) names a list AREA_x_<name> (fixture made here). Seeded fault: AREA_RULE off gives the name A(actor)_dl.
++R=$(pwd); W=/tmp/gcw3; rm -rf $W && mkdir -p $W/b/a $W/o $W/f
++printf '#define AREA b_area_t\n' > $W/b/area.h
++printf '#include "../area.h"\n#define NAMESPACE A(actor)\nGfx N(dl)[] = {\n    gsSPEndDisplayList(),\n};\n' > $W/b/a/x.c
++(cd $W && python3 "$R/3ds/tools/gen_gfx_syms.py" o/gconv_in.c b/a/x.c > /dev/null) || { echo "gconvw FAIL area gen"; exit 1; }
++grep -q '"b_area_t_actor_dl", GS_GFX' $W/o/gconv_tu0.c || { echo "gconvw FAIL area name"; exit 1; }
++sed 's/^AREA_RULE = True/AREA_RULE = False/' "$R/3ds/tools/gen_gfx_syms.py" > $W/gen_fault.py
++cmp -s $W/gen_fault.py "$R/3ds/tools/gen_gfx_syms.py" && { echo "gconvw FAIL area seeded fault not applied"; exit 1; }
++(cd $W && python3 gen_fault.py f/gconv_in.c b/a/x.c > /dev/null 2>&1)
++grep -q '"b_area_t_actor_dl", GS_GFX' $W/f/gconv_tu0.c 2>/dev/null && { echo "gconvw FAIL area seeded fault not seen"; exit 1; }
+ echo "gconvw ok"
+diff --git a/3ds/tools/azt.d/AXNS.json b/3ds/tools/azt.d/AXNS.json
+new file mode 100644
+index 0000000..79a5030
+--- /dev/null
++++ b/3ds/tools/azt.d/AXNS.json
+@@ -0,0 +1,58 @@
++{
++  "scenarios": [
++    {
++      "name": "axns_kzn2_drec",
++      "status": "unverified",
++      "subject": "AXNS: debug battle Lava Piranha (BTL_KZN2_FORMATION_00:BTL_KZN2_STAGE_06) started at frame 100 from kmr_03, det, draw records of frames 400, 420 and 440 in shots/drec.txt.",
++      "proves": "AXNS: the draw records of frames 400, 420 and 440 are byte-equal between the merge-base build and the head build.",
++      "debug": "warp=kmr_03:0 story=ch0_toad_town battle=BTL_KZN2_FORMATION_00:BTL_KZN2_STAGE_06 battlef=100 loglevel=debug fixedseed fs1off det drec=400:3:20",
++      "extra": [
++        "-Turbo"
++      ],
++      "until": "drec f440 draws [1-9]\\d* bytes \\d+",
++      "cap": 30,
++      "deadline": 30,
++      "first_marker": "warp: kmr_03 entry 0",
++      "expects": "warp",
++      "needs_picture": false,
++      "expected_events": [
++        {
++          "name": "battle",
++          "regex": "debug battle: formation"
++        },
++        {
++          "name": "drec",
++          "regex": "drec f440 draws [1-9]\\d* bytes \\d+"
++        }
++      ],
++      "reason": "AXNS: the lava piranha vine list D_8021CF40_5A3620 and DList1-4 (src/battle/area/kzn2/actor/lava_piranha.c) move to the twin. Copy of lava_piranha_det with drec. Cap 30 s."
++    },
++    {
++      "name": "axns_sam2_drec",
++      "status": "unverified",
++      "subject": "AXNS: debug battle Monstar (BTL_SAM2_FORMATION_00:BTL_SAM2_STAGE_05) started at frame 100 from kmr_03, det, draw records of frames 400, 420 and 440 in shots/drec.txt.",
++      "proves": "AXNS: the draw records of frames 400, 420 and 440 are byte-equal between the merge-base build and the head build.",
++      "debug": "warp=kmr_03:0 story=ch0_toad_town battle=BTL_SAM2_FORMATION_00:BTL_SAM2_STAGE_05 battlef=100 loglevel=debug fixedseed fs1off det drec=400:3:20",
++      "extra": [
++        "-Turbo"
++      ],
++      "until": "drec f440 draws [1-9]\\d* bytes \\d+",
++      "cap": 30,
++      "deadline": 30,
++      "first_marker": "warp: kmr_03 entry 0",
++      "expects": "warp",
++      "needs_picture": false,
++      "expected_events": [
++        {
++          "name": "battle",
++          "regex": "debug battle: formation"
++        },
++        {
++          "name": "drec",
++          "regex": "drec f440 draws [1-9]\\d* bytes \\d+"
++        }
++      ],
++      "reason": "AXNS: the Monstar overlay list N(dlist) (src/battle/area/sam2/dlist.c, drawn by imgfx_appendGfx_mesh_strip, src/imgfx.c:1803) moves to the twin. Cap 30 s."
++    }
++  ]
++}
+diff --git a/3ds/tools/bench.d/AXNS.json b/3ds/tools/bench.d/AXNS.json
+new file mode 100644
+index 0000000..0b9fa6f
+--- /dev/null
++++ b/3ds/tools/bench.d/AXNS.json
+@@ -0,0 +1,38 @@
++{
++  "benches": [
++    {
++      "name": "axns_kzn2_drec",
++      "kind": "azahar_pic",
++      "speed": "turbo",
++      "default": false,
++      "purpose": "AXNS: draw records of the Lava Piranha battle, frames 400, 420, 440, det. A head equals the base.",
++      "scenario": "axns_kzn2_drec",
++      "cap": 30,
++      "until": "drec f440 draws [1-9]\\d* bytes \\d+",
++      "tags": [
++        "azahar",
++        "det",
++        "battle",
++        "drec"
++      ],
++      "gates": []
++    },
++    {
++      "name": "axns_sam2_drec",
++      "kind": "azahar_pic",
++      "speed": "turbo",
++      "default": false,
++      "purpose": "AXNS: draw records of the Monstar battle, frames 400, 420, 440, det. A head equals the base.",
++      "scenario": "axns_sam2_drec",
++      "cap": 30,
++      "until": "drec f440 draws [1-9]\\d* bytes \\d+",
++      "tags": [
++        "azahar",
++        "det",
++        "battle",
++        "drec"
++      ],
++      "gates": []
++    }
++  ]
++}
+diff --git a/3ds/tools/gconv_src.d/AXNS.txt b/3ds/tools/gconv_src.d/AXNS.txt
+new file mode 100644
+index 0000000..4b11e7e
+--- /dev/null
++++ b/3ds/tools/gconv_src.d/AXNS.txt
+@@ -0,0 +1,4 @@
++# AXNS: the A(x) namespace sources (vtx.c holds monstar_bubbles, the vertices of sam2 dlist.c)
++src/battle/area/kzn2/actor/lava_piranha.c
++src/battle/area/sam2/dlist.c
++src/battle/area/sam2/vtx.c
+diff --git a/3ds/tools/gset.d/AXNS.txt b/3ds/tools/gset.d/AXNS.txt
+new file mode 100644
+index 0000000..9ee6ac7
+--- /dev/null
++++ b/3ds/tools/gset.d/AXNS.txt
+@@ -0,0 +1,2 @@
++src/battle/area/kzn2/actor/lava_piranha.c
++src/battle/area/sam2/dlist.c
