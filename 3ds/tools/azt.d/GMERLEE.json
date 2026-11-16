@@ -1,0 +1,33 @@
+{
+  "scenarios": [
+    {
+      "name": "gmerlee_drec",
+      "status": "unverified",
+      "subject": "GMERLEE: Merlee casts the spell in dro_02 (copy of merlee_spell without shots, with det). Draw records of frames 660 to 835, step 25 (the card shuffle and flips are f653 to about f850).",
+      "proves": "GMERLEE: the draw records of the 8 frames are byte-equal between the merge-base build and the head build (the cards draw the moved lists dro_02_card_setup_gfx, dro_02_card_1_gfx, dro_02_card_2_gfx).",
+      "debug": "warp=kmr_02:0 story=ch0_toad_town livewarp=120:dro_02:0 warpitems padscript=@pad_merlee.txt loglevel=debug det drec=660:8:25",
+      "extra": [],
+      "until": "drec f835 draws [1-9]\\d* bytes \\d+",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "livewarp: scene frame 120 to dro_02 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "livewarp: scene frame 120 to dro_02 entry 0"
+        },
+        {
+          "name": "shuffle start",
+          "regex": "merlee: shuffle ret [12], state 3"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f835 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "reason": "GMERLEE: the card lists of npc_merlee.c move to the twin. Cap 45 s (merlee_spell needs about 37 s to the end of the spell)."
+    }
+  ]
+}

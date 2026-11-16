@@ -1,0 +1,2 @@
+# GMERLEE: dro_02/npc.c includes npc_merlee.c; the twin 3ds/tools/gfxin/src/world/area_dro/dro_02/npc_merlee.c includes npc.c
+src/world/area_dro/dro_02/npc_merlee.c

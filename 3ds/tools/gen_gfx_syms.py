@@ -112,7 +112,7 @@ SHARED = ("src/effects/", "src/entity/model/")  # GSETB: a twin is shared when i
 
 
 def scan_source(s, syms):
-    # GSET: a twin holds the moved includes of its device source; its first line names the source
+    # GSET: a twin holds the moved includes of its device source; its first line includes the source or the .c file that includes it
     if not s.startswith(TWIN):
         scan(pathlib.Path(s), syms)
         return
@@ -121,7 +121,7 @@ def scan_source(s, syms):
     m = re.match(r'#include\s+"([^"]+)"', first)
     if not m:
         sys.exit(f"gen_gfx_syms: twin {s} first line is not an #include")
-    src = pathlib.Path(m.group(1))
+    src = pathlib.Path(s[len(TWIN):])  # GMERLEE: the device source is the twin path (dro_02/npc.c includes npc_merlee.c; its twin includes npc.c)
     scan(src, syms, False)
     # GSETW: the twin's N(x) names take the NAMESPACE of its device source (the twin has none of its own)
     scan(twin, syms, True, file_ns(src, src.read_text(encoding="utf-8", errors="replace"), None))
