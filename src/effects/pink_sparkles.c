@@ -2,6 +2,7 @@
 #include "effects_internal.h"
 #include "nd_gtab.h"
 #include "nd_api.h"
+#include "nd_at.h"
 #include "nd_val.h"
 
 NDN_DECL(D_09000F20_338EE0);
@@ -285,12 +286,12 @@ void pink_sparkles_appendGfx(void* effect) {
             }
 
             {
-                Gfx g[4];
-                gDPSetPrimColor(&g[0], 0, 0, primR, primG, primB, 255);
-                gSPMatrix(&g[1], &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-                gSPDisplayList(&g[2], D_E01248A0[unk_28 & 7]);
-                gSPPopMatrix(&g[3], G_MTX_MODELVIEW);
-                nd_parts_add(&pb, (const uint32_t*)g);
+                uint32_t g[8], *nrp = g;
+                NDVAL_PRIM(ND_NR_AT, 0, 0, primR, primG, primB, 255);
+                NDXF_PUSH(ND_NR_AT, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+                NDCTL_CALL(ND_NR_AT, D_E01248A0[unk_28 & 7]);
+                NDXF_POP(ND_NR_AT);
+                nd_parts_add(&pb, g);
             }
         }
     }

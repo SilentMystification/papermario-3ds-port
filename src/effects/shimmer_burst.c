@@ -2,6 +2,7 @@
 #include "nd_gtab.h"
 #include "effects_internal.h"
 #include "nd_api.h"
+#include "nd_at.h"
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -237,12 +238,12 @@ void shimmer_burst_appendGfx(void* effect) {
             guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
             {
-                Gfx g[4];
-                gSPMatrix(&g[0], &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-                gDPSetPrimColor(&g[1], 0, 0, unk_50, unk_54, unk_58, part->unk_4C * temp_f20);
-                gSPDisplayList(&g[2], D_E0070CD0[i & 7]);
-                gSPPopMatrix(&g[3], G_MTX_MODELVIEW);
-                nd_parts_add(&pb, (const uint32_t*)g);
+                uint32_t g[8], *nrp = g;
+                NDXF_PUSH(ND_NR_AT, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+                NDVAL_PRIM(ND_NR_AT, 0, 0, unk_50, unk_54, unk_58, part->unk_4C * temp_f20);
+                NDCTL_CALL(ND_NR_AT, D_E0070CD0[i & 7]);
+                NDXF_POP(ND_NR_AT);
+                nd_parts_add(&pb, g);
             }
         }
     }

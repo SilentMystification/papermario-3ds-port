@@ -8,13 +8,6 @@
 3ds/src/nd_shape.c 7 MAP map shape lists (dlc_try takes only gMapShapeData, nd_shape.c:878) and seam tables
 3ds/src/nd_walk.c 13 KEY walk_call nd_ntab_find (nd_walk.c:230), gt_call nd_lkey_tab (LKEY), NDG_F_MOVED (nd_walk.c:441,489), record words
 src/animator.c 1 KEY MESH1 nd_ntab_find (animator.c:879)
-src/effects/effect_3D.c 1 LOCAL Gfx g[] on the stack for nd_parts_add
-src/effects/embers.c 1 LOCAL Gfx g[] on the stack for nd_parts_add
-src/effects/pink_sparkles.c 1 LOCAL Gfx g[] on the stack for nd_parts_add
-src/effects/shimmer_burst.c 1 LOCAL Gfx g[] on the stack for nd_parts_add
-src/effects/snaking_static.c 1 LOCAL Gfx g[] on the stack for nd_parts_add
-src/effects/snowfall.c 1 LOCAL Gfx g[] on the stack for nd_parts_add
-src/effects/water_block.c 1 LOCAL Gfx g[] on the stack for nd_parts_add
 src/entity_model.c 2 KEY ent_vtx_range, entcheck_draw through nd_lkey_ (LKEY); entRec record words
 src/imgfx.c 1 LOCAL state->gfxBufs: heap copies of ROM data (imgfx.c:1260)
 src/model.c 10 KEY mdl_get_vertex_count nd_ntab_find (VCOUNT); MAP mdl_local_gfx_update_vtx_pointers and mdl_project_tex_coords (displayData->displayList); LOCAL record words

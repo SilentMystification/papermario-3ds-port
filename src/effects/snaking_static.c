@@ -2,6 +2,8 @@
 #include "effects_internal.h"
 #include "nd_gtab.h"
 #include "nd_api.h"
+#include "nd_at.h"
+#include "nd_tx.h"
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_st.h"
@@ -199,14 +201,14 @@ void snaking_static_appendGfx(void* effect) {
         guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         {
-            Gfx g[6];
-            gDPSetPrimColor(&g[0], 0, 0, primR, primG, primB, (data->unk_24 * unk_24) / 255);
-            gSPMatrix(&g[1], &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            gDPSetTileSize(&g[2], G_TX_RENDERTILE, data->unk_40 * 64, 0, (data->unk_40 * 64) | 0x3C, 0x007C);
-            gDPSetTileSize(&g[3], 1, (lifeTime * 12), 0, ((lifeTime * 3) + 0x1F) * 4, 0x007C);
-            gSPDisplayList(&g[4], NDN(D_090010F8_3B3E88));
-            gSPPopMatrix(&g[5], G_MTX_MODELVIEW);
-            nd_parts_add(&pb, (const uint32_t*)g);
+            uint32_t g[12], *nrp = g;
+            NDVAL_PRIM(ND_NR_AT, 0, 0, primR, primG, primB, (data->unk_24 * unk_24) / 255);
+            NDXF_PUSH(ND_NR_AT, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+            NDTX_TSZ(ND_NR_AT, G_TX_RENDERTILE, data->unk_40 * 64, 0, (data->unk_40 * 64) | 0x3C, 0x007C);
+            NDTX_TSZ(ND_NR_AT, 1, (lifeTime * 12), 0, ((lifeTime * 3) + 0x1F) * 4, 0x007C);
+            NDCTL_CALL(ND_NR_AT, NDN(D_090010F8_3B3E88));
+            NDXF_POP(ND_NR_AT);
+            nd_parts_add(&pb, g);
         }
     }
     nd_parts_end(&pb);

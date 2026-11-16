@@ -21,6 +21,9 @@
 #define NDXF_PUSH(O, m, p) O(NDO_W0(NDO_MTX, 0x380000u | (((p) ^ 1u) & 0xffu)), (uint32_t)(uintptr_t)(m))
 #define NDXF_POP(O) O(NDO_W0(NDO_POPMTX, 0x380002u), 64u)
 
+/* PBUF: the push call of a list (gSPDisplayList): the unit nd_gx_w gives for G_DL with G_DL_PUSH */
+#define NDCTL_CALL(O, l) O(ND_OP_CALL_W0, (uint32_t)(uintptr_t)(l))
+
 #define NDGEO_VTX(O, v, n, v0) O(ND_NR_VTX(n, v0), (uint32_t)(uintptr_t)(v))
 #define NDGEO_TRI1(O, a, b, c, f) O(NDO_W0(NDO_TRI1, __gsSP1Triangle_w1f(a, b, c, f)), 0u)
 #define NDGEO_TRI2(O, a, b, c, f, d, e, g, h) O(NDO_W0(NDO_TRI2, __gsSP1Triangle_w1f(a, b, c, f)), __gsSP1Triangle_w1f(d, e, g, h))

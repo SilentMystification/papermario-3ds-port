@@ -2,6 +2,8 @@
 #include "effects_internal.h"
 #include "nd_gtab.h"
 #include "nd_api.h"
+#include "nd_at.h"
+#include "nd_tx.h"
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -219,13 +221,13 @@ void embers_appendGfx(void* effect) {
             guMtxF2L(sp10, &gDisplayContext->matrixStack[gMatrixListPos]);
 
             {
-                Gfx g[5];
-                gSPMatrix(&g[0], &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-                gDPSetTileSize(&g[1], G_TX_RENDERTILE, 0, (i % 4) * 16 * 4, 15 * 4, ((i % 4) * 16 + 15) * 4);
-                gDPSetTileSize(&g[2], 1, (s32) part->unk_5C * 4, (s32) part->unk_60 * 4, ((s32) part->unk_5C + 15) * 4, ((s32) part->unk_60 + 15) * 4);
-                gSPDisplayList(&g[3], D_E00E0A40[0]);
-                gSPPopMatrix(&g[4], G_MTX_MODELVIEW);
-                nd_parts_add(&pb, (const uint32_t*)g);
+                uint32_t g[10], *nrp = g;
+                NDXF_PUSH(ND_NR_AT, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+                NDTX_TSZ(ND_NR_AT, G_TX_RENDERTILE, 0, (i % 4) * 16 * 4, 15 * 4, ((i % 4) * 16 + 15) * 4);
+                NDTX_TSZ(ND_NR_AT, 1, (s32) part->unk_5C * 4, (s32) part->unk_60 * 4, ((s32) part->unk_5C + 15) * 4, ((s32) part->unk_60 + 15) * 4);
+                NDCTL_CALL(ND_NR_AT, D_E00E0A40[0]);
+                NDXF_POP(ND_NR_AT);
+                nd_parts_add(&pb, g);
             }
         }
     }

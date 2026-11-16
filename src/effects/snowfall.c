@@ -3,6 +3,7 @@
 #include "nd_gtab.h"
 #include "pm_interp_fi.h"
 #include "nd_api.h"
+#include "nd_at.h"
 #include "nd_val.h"
 
 void snowfall_init(EffectInstance* effect);
@@ -215,13 +216,12 @@ void snowfall_appendGfx(void* effect) {
                     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
 
                     {
-                        Gfx g[4];
-                        gSPMatrix(&g[0], &gDisplayContext->matrixStack[gMatrixListPos++],
-                                  G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-                        gSPMatrix(&g[1], mtx, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-                        gSPDisplayList(&g[2], dlist);
-                        gSPPopMatrix(&g[3], G_MTX_MODELVIEW);
-                        nd_parts_add(&pb, (const uint32_t*)g);
+                        uint32_t g[8], *nrp = g;
+                        NDXF_PUSH(ND_NR_AT, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+                        NDXF_PUSH(ND_NR_AT, mtx, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+                        NDCTL_CALL(ND_NR_AT, dlist);
+                        NDXF_POP(ND_NR_AT);
+                        nd_parts_add(&pb, g);
                     }
                 }
                 FI_CLOSE();

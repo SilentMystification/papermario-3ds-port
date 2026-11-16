@@ -5,6 +5,7 @@
 ND_PSO_DESC(pe_water_block_302, 0xfc40b260, 0xf5ffdb78, 0x1e182cf0, 0x0c1849d8, 0x00000405, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 ND_PSO_DESC(pe_water_block_306, 0xfc40b260, 0xf5ffdb78, 0x1e182cf0, 0x0c1849d8, 0x00000405, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_api.h"
+#include "nd_at.h"
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_st.h"
@@ -285,11 +286,11 @@ void water_block_appendGfx(void* effect) {
             guPositionF(sp20, 0.0f, 0.0f, 0.0f, data->unk_78[i], data->unk_38[i], data->unk_48[i], 0.0f);
             guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
             {
-                Gfx g[3];
-                gSPMatrix(&g[0], &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-                gSPDisplayList(&g[1], NDN(D_090004A0_3B7090));
-                gSPPopMatrix(&g[2], G_MTX_MODELVIEW);
-                nd_parts_add(&pb, (const uint32_t*)g);
+                uint32_t g[6], *nrp = g;
+                NDXF_PUSH(ND_NR_AT, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+                NDCTL_CALL(ND_NR_AT, NDN(D_090004A0_3B7090));
+                NDXF_POP(ND_NR_AT);
+                nd_parts_add(&pb, g);
             }
         }
     }
