@@ -2,6 +2,7 @@
 /// @brief Mt Shiver - Path to Starborn Valley
 
 #include "common.h"
+#include "nd_gtab.h"
 #include "message_ids.h"
 #include "map.h"
 
@@ -47,5 +48,5 @@ extern EvtScript N(EVS_MakeEntities);
 extern NpcGroupList N(BeforeNPCs);
 extern NpcGroupList N(AfterNPCs);
 
-extern Gfx N(monstar_gfx)[];
+NDN_DECL(N(monstar_gfx));
 extern Vtx N(monstar_vtx)[];

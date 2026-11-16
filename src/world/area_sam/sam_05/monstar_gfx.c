@@ -1,3 +1,4 @@
 #include "sam_05.h"
+#include "nd_gtab.h"
 
-#include "world/area_sam/sam_05/monstar.gfx.inc.c"
+NDN_DECL(N(monstar_gfx));

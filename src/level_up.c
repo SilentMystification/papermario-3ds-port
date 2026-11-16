@@ -21,7 +21,7 @@ INCLUDE_IMG("level_up/big_A.png", D_802A1398_7A6C18);
 INCLUDE_IMG("level_up/big_BE.png", D_802A2410_7A7C90);
 #include "level_up/big_BE.gfx.inc.c"
 INCLUDE_IMG("level_up/big_exclamation_mark.png", D_802A3488_7A8D08);
-#include "level_up/big_exclamation_mark.gfx.inc.c"
+NDN_DECL(D_802A4508_7A2448);
 INCLUDE_IMG("level_up/big_PU.png", D_802A3D00_7A9580);
 #include "level_up/big_PU.gfx.inc.c"
 INCLUDE_IMG("level_up/big_RE.png", D_802A4D78_7AA5F8);
@@ -41,17 +41,17 @@ INCLUDE_IMG("level_up/big_LTSU.png", D_802A6E68_7AC6E8);
 #include "level_up/draw_exclamation_mark.vtx.inc.c"
 
 INCLUDE_IMG("level_up/big_V.png", D_802A1418_79F358);
-#include "level_up/big_V.gfx.inc.c"
+NDN_DECL(D_802A2418_7A0358);
 INCLUDE_IMG("level_up/big_P.png", D_802A2490_7A03D0);
-#include "level_up/big_P.gfx.inc.c"
+NDN_DECL(D_802A3490_7A13D0);
 INCLUDE_IMG("level_up/big_exclamation_mark.png", D_802A3508_7A1448);
-#include "level_up/big_exclamation_mark.gfx.inc.c"
+NDN_DECL(D_802A4508_7A2448);
 INCLUDE_IMG("level_up/big_U.png", D_802A4580_7A24C0);
-#include "level_up/big_U.gfx.inc.c"
+NDN_DECL(D_802A5580_7A34C0);
 INCLUDE_IMG("level_up/big_L.png", D_802A55F8_7A3538);
-#include "level_up/big_L.gfx.inc.c"
+NDN_DECL(D_802A65F8_7A4538);
 INCLUDE_IMG("level_up/big_E.png", D_802A6670_7A45B0);
-#include "level_up/big_E.gfx.inc.c"
+NDN_DECL(D_802A7670_7A55B0);
 #endif
 
 NDN_DECL(D_802A76E8_7A5628);

@@ -23,6 +23,8 @@ HOLD_RULE = True  # GSETB: the seeded test (gset.sh) runs a copy with this False
 OWN_RULE = True  # ISTAR: a user file that defines a moved name keeps its own copy (PAL twins); the seeded test (gset.sh) runs a copy with this False
 NS_RULE = True  # GSETW: N(x) is rewritten only in the files of its namespace; the seeded test (gset.sh) runs a copy with this False
 INC_HOLD = True  # VSLOT2: an include whose list a kept line of the device file names stays; seeded test in gset.sh
+INC_BLOCK = True  # GSETI: block mode moves the all-ok asset includes of a block source; seeded test in gset.sh
+INC_NS = True  # GSETI: the N(x) users of an include-moved list (name ns_x, namespace ns) are rewritten by rewrite_ns; seeded test in gset.sh
 BLOCK_END = "};"  # the block closing line (exact, CR dropped); the seeded test in gset.sh changes this and is_block_end
 COMMON = re.compile(r'^\s*#include\s+"common\.h"\s*$')
 DEF = re.compile(r"^\s*(?:const\s+)?Gfx\s+(\w+)\s*\[", re.M)
@@ -158,36 +160,59 @@ def hold_line(ln, hit):
     return "BranchList" in ln or "sizeof" in ln or "SetCustomGfx" in ln or any(re.search(r"(?<!\w)" + re.escape(n) + r"\s*\[|&\s*" + re.escape(n) + r"(?!\w)", ln) for n in hit)
 
 
-def move_blocks(root, src, ok, twin_dir):
-    """Block mode. Returns (moved names, the twin path or None)."""
+def move_blocks(root, src, ok, twin_dir, assets=None):
+    """Block mode. Returns (moved names, the twin path or None).
+    GSETI: an asset include (`#include "<inc>.inc.c"`, assets/us/<inc> defines Gfx lists, all ok) of the block source moves too. The device
+    file keeps one `NDN_DECL(X);` line per list of the include in its place. The twin gets the include line in file order."""
     p = root / src
     lines = p.read_text(encoding="utf-8").split("\n")
     ns = file_ns(p)
     tok = {}
     blocks = find_blocks(lines, ns, tok)
     T = lambda n: tok.get(n, n)
+    W = lambda n: r"(?<!\w)" + re.escape(n) + r"(?!\w)"
     moving = {n for n, _, _ in blocks if n in ok}
     in_block = set()
     for _, s, e in blocks:
         in_block.update(range(s, e + 1))
+    incs = {}  # GSETI: line index -> (include path, list names, asset text)
+    if INC_BLOCK and assets is not None:
+        for k, ln in enumerate(lines):
+            m = INC.match(ln)
+            if not m or k in in_block or not (assets / m.group(2)).is_file():
+                continue
+            at = (assets / m.group(2)).read_text(encoding="utf-8", errors="replace")
+            names = gfx_names(at)
+            if names and all(n in ok for n in names):
+                incs[k] = (m.group(2), names, at)
+                for n in names:
+                    if INC_NS and ns and n.startswith(ns + "_"):
+                        tok[n] = "N(" + n[len(ns) + 1:] + ")"
+    inc_moving = set(incs)
     if HOLD_RULE:
         for k, ln in enumerate(lines):
-            if k in in_block or DECL.match(ln) or NDECL.match(ln):
+            if k in in_block or k in incs or DECL.match(ln) or NDECL.match(ln):
                 continue
-            hit = {n for n in moving if re.search(r"(?<!\w)" + re.escape(T(n)) + r"(?!\w)", ln)}
+            hit = {n for n in moving if re.search(W(T(n)), ln)}
             if hit and hold_line(ln, {T(n) for n in hit}):
                 moving -= hit
+            for ik in list(inc_moving):
+                ihit = {x for n in incs[ik][1] for x in {n, T(n)} if re.search(W(x), ln)}
+                if ihit and hold_line(ln, ihit):
+                    inc_moving.discard(ik)
     while True:
         inside = set()
         for n, s, e in blocks:
             if n in moving:
                 inside.update(range(s, e + 1))
-        unmoved = "\n".join(lines[k] for k in sorted(in_block) if k not in inside)
-        bad = {n for n in moving if re.search(r"(?<!\w)" + re.escape(T(n)) + r"(?!\w)", unmoved)}
-        if not bad:
+        unmoved = "\n".join([lines[k] for k in sorted(in_block) if k not in inside] + [incs[k][2] for k in sorted(incs) if k not in inc_moving])
+        bad = {n for n in moving if re.search(W(T(n)), unmoved)}
+        ibad = {k for k in inc_moving if any(re.search(W(x), unmoved) for n in incs[k][1] for x in {n, T(n)})}
+        if not bad and not ibad:
             break
         moving -= bad
-    if not moving:
+        inc_moving -= ibad
+    if not moving and not inc_moving:
         return [], None
     out, body, moved, k = [], [], [], 0
     starts = {s: (n, e) for n, s, e in blocks if n in moving}
@@ -198,6 +223,14 @@ def move_blocks(root, src, ok, twin_dir):
             body.extend(lines[k:e + 1])
             moved.append(n)
             k = e + 1
+            continue
+        if k in inc_moving:
+            inc, names, _ = incs[k]
+            out.extend(f"NDN_DECL({T(n)});" for n in names)
+            if f'#include "{inc}"' not in body:  # an include in two #if branches (level_up.c VERSION_JP) goes to the twin once
+                body.append(f'#include "{inc}"')
+            moved.extend(names)
+            k += 1
             continue
         out.append(lines[k])
         k += 1
@@ -215,7 +248,7 @@ def move_blocks(root, src, ok, twin_dir):
     return moved, twin
 
 
-def rewrite_users(root, names):
+def rewrite_users(root, names, assets=None):
     """Returns (files rewritten, keep lines printed)."""
     if not names:
         return 0, 0
@@ -233,7 +266,8 @@ def rewrite_users(root, names):
         text = f.read_text(encoding="utf-8", errors="replace")
         if not shield.search(text):
             continue
-        own = set(DEF.findall(text)) & set(names) if OWN_RULE else set()
+        inc_def = {n for m in INC.finditer(text) if assets is not None and (assets / m.group(2)).is_file() for n in gfx_names((assets / m.group(2)).read_text(encoding="utf-8", errors="replace"))}
+        own = (set(DEF.findall(text)) | inc_def) & set(names) if OWN_RULE else set()
         sh = shield
         if own:
             print(f"gset own {rel} {len(own)}")
@@ -325,10 +359,10 @@ def main(argv):
         if src.startswith(SKIP_DIR):
             moved, twin = move_includes(root, src, ok, "3ds/tools/gfxin", assets)
         else:
-            moved, twin = move_blocks(root, src, ok, "3ds/tools/gfxin")
+            moved, twin = move_blocks(root, src, ok, "3ds/tools/gfxin", assets)
         if twin is not None:
             all_moved.extend(moved)
-    nf, nkeep = rewrite_users(root, sorted(set(all_moved)))
+    nf, nkeep = rewrite_users(root, sorted(set(all_moved)), assets)
     nf2, nk2 = rewrite_ns(root)
     files_done = nf + nf2
     nkeep += nk2

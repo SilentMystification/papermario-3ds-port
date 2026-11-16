@@ -2,6 +2,7 @@
 /// @brief Crystal Palace - Dino Puzzle Room
 
 #include "common.h"
+#include "nd_gtab.h"
 #include "message_ids.h"
 #include "map.h"
 
@@ -47,7 +48,7 @@ extern AnimScript N(AS_Stairs_InitializeBefore);
 extern AnimScript N(AS_Stairs_Unfold);
 extern AnimScript N(AS_Stairs_InitializeAfter);
 
-extern Gfx N(texture_1_gfx)[];
+NDN_DECL(N(texture_1_gfx));
 extern Gfx N(texture_2_gfx)[];
 extern Gfx N(texture_3_gfx)[];
 

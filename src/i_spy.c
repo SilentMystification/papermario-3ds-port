@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "nd_xf.h"
 #include "include_asset.h"
 
@@ -25,7 +26,7 @@ INCLUDE_IMG("ispy_icon.png", ispy_icon_img);
 INCLUDE_PAL("ispy_icon.pal", ispy_icon_1_pal);
 INCLUDE_PAL("ispy_icon.2.pal", ispy_icon_2_pal);
 INCLUDE_PAL("ispy_icon.3.pal", ispy_icon_3_pal);
-#include "ispy_icon.gfx.inc.c"
+NDN_DECL(ispy_icon_gfx);
 
 BSS ISpyNotification ISpyData;
 ISpyNotification* ISpyPtr = &ISpyData;
@@ -47,7 +48,7 @@ void appendGfx_ispy_icon(void) {
         guMtxF2L(matrix2, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], 3);
-        gSPDisplayList(gMainGfxPos++, ispy_icon_gfx);
+        gSPDisplayList(gMainGfxPos++, NDN(ispy_icon_gfx));
 
         if (ISpyPtr->time < 47) {
             ISpyPtr->flashCount++;

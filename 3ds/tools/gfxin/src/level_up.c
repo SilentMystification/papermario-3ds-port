@@ -192,3 +192,9 @@ Gfx D_802A7A88_7A59C8[] = {
     gsSPDisplayList(D_802A7A28_7A5968),
     gsSPEndDisplayList(),
 };
+#include "level_up/big_exclamation_mark.gfx.inc.c"
+#include "level_up/big_V.gfx.inc.c"
+#include "level_up/big_P.gfx.inc.c"
+#include "level_up/big_U.gfx.inc.c"
+#include "level_up/big_L.gfx.inc.c"
+#include "level_up/big_E.gfx.inc.c"
