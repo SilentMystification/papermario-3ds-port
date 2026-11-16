@@ -1,21 +1,18 @@
 # HANDOFF (orchestrator, overwritten at each handoff)
 
-State at 2026-11-16, main d947f064a5, clean (GSETR, STALEOBJ, FSKIP2 and GBIHDR merged). The user ended the session on purpose: start NO new work in the old session.
+State at 2026-11-16, main dea919f9d1, clean. All rows of the session are merged (GSETR, STALEOBJ, FSKIP2, GBIHDR, HOLD1, PRA31, FLIPLOG). NO agent runs. The user ended the session on purpose: start NO new work in the old session.
 Start of the new session: read this file, docs/handoff/orchestrator_rules.md (Core block is printed each turn), CLAUDE.md, the memory index.
 Then ListAgents (status `running` is the only slot count), then merge every hand-back message that arrived, then the list below.
 
 ## Goal and done
 Remove the display list system completely. Done only when `python 3ds/tools/elfgate.py build3ds/pm_3ds.elf` prints `func 0 data 0 gfxnames 0`
 and all `3ds/tools/listcen.py` counters are 0. Never say done before.
-FACT (listcen, main ef3afb3fc9): build 722, gfxpos 201, data 2804, data_arrays 251, gfxtype 858, recdl 15, reader 785, model 15.
-FACT (oracle run, earlier today, not re-run): elfgate func 48, data 807, gfxnames 246. Memcheck margin 434 KB (soft limit, above 0).
+FACT (epic_status.sh, main dea919f9d1): build 566, gfxpos 201, data 2239, data_arrays 211, gfxtype 822, recdl 15, reader 785, model 15; elfgate func 48 data 821 gfxnames 218.
+Memcheck margin 438 to 442 KB (soft limit, above 0).
 
-## Agents at the moment of handoff (a notice or hand-back message from each may arrive in the new session)
+## Agents at the moment of handoff (none runs; the table below is empty on purpose)
 | Row | Agent id | Model, type | State | Page |
 |---|---|---|---|---|
-| HOLD1 (release 4 sources to gset, data -61) | a6baed310287d06b8 | Haiku coder | running | ws_HOLD1 |
-| PRA31 (Matrix4s scan, pra_31 lists, data -311 GUESS) | ad285a439e033e8a8 | Haiku coder | running | ws_PRA31 |
-| FLIPLOG (per-frame flip log row, switch flipfps) | a69f7a550bfc7c3dc | Haiku coder | running | ws_FLIPLOG(+_code) |
 Oracles (all finished, resume the one that wrote a page when its coder asks): DL3 ac7ba50e4977ada89 (GBIHDR, HOLD1, PRA31), bug oracle 39
 ae0d7e8991193de1b (FSKIP2, capture_flip.md), bug oracle 40 af53b666eeb2c5ea1 (FLIPLOG, verify_list.md).
 GBIHDR deleted 132 unused gbi macros (listcen now build 566, data 2611, gfxtype 826). A branch that was built before that merge and uses a deleted macro fails to compile: after each of HOLD1, PRA31 and FLIPLOG, build main and restore the block from `git show 71ea9565ca:include/PR/gbi.h`.
@@ -35,9 +32,9 @@ Open: file select flip and start menu pane flip lag (cause not named: capture wi
 frame skip 3 modes (FSKIP2 running; FSKIP put them on the wrong row); pause background, black coins, chapter_change, Munchlesia (verify_list.md, binchk lines).
 
 ## Next push (the user names the console, XL .131 is the main one)
-1. FSKIP2 and STALEOBJ are merged (3 frame skip modes on the Frame skip row, build.sh keeps no stale objects). Merge the other finished rows first. 2. Build main. 3. `python 3ds/tools/binchk.py build3ds/pm_3ds.elf <string of each merged row>` (strings in verify_list.md).
+1. All finished rows are merged. A main build with the merges was started (build3ds/out/main_build_hold1.txt has the first one: rc 0). Build main again, read the result. 2. Build main. 3. `python 3ds/tools/binchk.py build3ds/pm_3ds.elf <string of each merged row>` (strings in verify_list.md).
 4. ONLY THEN ask the console selector (AskUserQuestion) and push with `--no-build`. Never ask before the build is finished (user, angry, twice).
-5. Test list for the user: only unconfirmed items from verify_list.md. Words: `--profile log log=on moonjump` (add `-GameDebug flipfps` after FLIPLOG).
+5. Test list for the user: only unconfirmed items from verify_list.md. Words: `--profile log log=on moonjump`. FLIPLOG is merged: for the flip lag capture use the words in docs/handoff/capture_flip.md (`-GameDebug flipfps`).
 Capture rule: run the same words in Azahar first (3ds/tools/capture_check.py), read the real command in push_3ds.sh, never the echo line.
 
 ## Documents (cleaned 2026-11-16)

@@ -8,3 +8,4 @@ anim mesh f%u units %d dev %d
 nd_mesh_size
 moon jump tap
 options: live row 0 value
+flipfps f
