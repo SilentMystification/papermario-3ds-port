@@ -41,7 +41,7 @@ function worktrees() {
     let hbAge = null;
     try {
       for (const n of fs.readdirSync(outDir)) {
-        if (/^handback_/.test(n)) {
+        if (n === 'handback_' + id + '.txt') { // only the file of this row: copies of old rows are stale
           const age = (now - fs.statSync(path.join(outDir, n)).mtimeMs) / 60000;
           if (hbAge === null || age < hbAge) { hbAge = age; hb = n; }
         }
