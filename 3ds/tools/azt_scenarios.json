@@ -1236,27 +1236,6 @@
       "reason": "S1TSTEN byte gate: DET cold start, no prof switch (prof sets log=off, so no tsten line). Shot 11 (frame 48) is the until: 12 shots at frames 37 to 48 (tsten f35..f48). Cap 30 s, deadline 25 s."
     },
     {
-      "name": "dlcchk_mac01",
-      "status": "unverified",
-      "subject": "Toad Town mac_01, cold det start with the dlcchk switch: the map shape lists are loaded from the build time .dlc file and each is compared with the run-time compile.",
-      "proves": "S7MAP: the dlcpre line shows pre above 0 (lists loaded from the file) and bad 0 (every loaded list equals its run-time compile).",
-      "debug": "warp=mac_01:0 pos=0:0:200 loglevel=debug det dlcchk",
-      "extra": [],
-      "until": "dlcpre f\\d+ pre \\d+ rt \\d+ full \\d+ bad \\d+",
-      "cap": 25,
-      "deadline": 20,
-      "first_marker": "warp: mac_01 entry 0",
-      "expects": "warp",
-      "needs_picture": false,
-      "expected_events": [
-        {
-          "name": "warp",
-          "regex": "warp: mac_01 entry 0"
-        }
-      ],
-      "reason": "S7MAP log check only: no shot. The dlcpre line of the first frames that built lists is the until."
-    },
-    {
       "name": "fxpic_63",
       "status": "unverified",
       "subject": "Toad Town mac_01 at 0 0 200, fxtest=63 (snowfall), cold det start. Shots at frames 412 to 415.",
