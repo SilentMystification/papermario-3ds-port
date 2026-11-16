@@ -4,12 +4,10 @@
 
 INCLUDE_IMG("effects/gfx/D_09000000_3BD9A0.png", D_09000000_3BD9A0);
 
-#include "effects/gfx/D_09000800_3BE1A0.gfx.inc.c"
 
 INCLUDE_IMG("effects/gfx/D_09000878_3BE218.png", D_09000878_3BE218);
 INCLUDE_PAL("effects/gfx/D_09000878_3BE218.pal", D_09000A78_3BE418);
 
-#include "effects/gfx/D_09000A98_3BE438.gfx.inc.c"
 
 #include "effects/gfx/D_09000B40_3BE4E0.vtx.inc.c"
 #include "effects/gfx/D_09000BC0_3BE560.vtx.inc.c"
@@ -100,18 +98,6 @@ INCLUDE_PAL("effects/gfx/D_09000878_3BE218.pal", D_09000A78_3BE418);
 #include "effects/gfx/D_090027A0_3C0140.vtx.inc.c"
 #include "effects/gfx/D_09002800_3C01A0.vtx.inc.c"
 
-#include "effects/gfx/D_09002860_3C0200.gfx.inc.c"
-#include "effects/gfx/D_090029A0_3C0340.gfx.inc.c"
-#include "effects/gfx/D_09002AE0_3C0480.gfx.inc.c"
-#include "effects/gfx/D_09002B68_3C0508.gfx.inc.c"
-#include "effects/gfx/D_09002CE8_3C0688.gfx.inc.c"
-#include "effects/gfx/D_09003148_3C0AE8.gfx.inc.c"
-#include "effects/gfx/D_09003398_3C0D38.gfx.inc.c"
-#include "effects/gfx/D_09003510_3C0EB0.gfx.inc.c"
-#include "effects/gfx/D_09003730_3C10D0.gfx.inc.c"
-#include "effects/gfx/D_09003778_3C1118.gfx.inc.c"
-#include "effects/gfx/D_09003790_3C1130.gfx.inc.c"
 
 u8 D_090037A0_3C1140[8] = {};
 
-#include "effects/gfx/D_09003818_3C11B8.gfx.inc.c"

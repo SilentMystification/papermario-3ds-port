@@ -21,6 +21,9 @@ static const GSym* sym_of(uintptr_t p, int kind, unsigned* off) {
     }
     return NULL;
 }
+#ifndef ROM_SPLIT
+#define ROM_SPLIT 1 /* FXVROM: vrom.sh builds a copy with -DROM_SPLIT=0 and expects the unsup line back */
+#endif
 static int is_draw(unsigned id) { return id == NDO_VTX || id == NDO_TRI1 || id == NDO_TRI2 || id == NDO_CALL || id == NDO_END; }
 
 /* The inherited inputs of def d (design note 6): the nd_scomp_key groups it does not set before its decision. */
@@ -537,6 +540,13 @@ static int v2_walk(const GSym* g, unsigned k0, unsigned depth) {
             NdVsOp o;
             memset(&o, 0, sizeof o);
             o.kind = ND_VS_VTX; o.n = (uint8_t)n; o.v0 = (uint8_t)(e - n); o.arr = (uint32_t)(vs - gconv_sym); o.first = off / 16u;
+            while (ROM_SPLIT && o.first + o.n > gconv_vtx_len(vs)) { /* FXVROM: a load past its array end reads the next array in ROM order */
+                const GSym* nx = gconv_vtx_rom_next(vs);
+                if (!nx) break; /* no ROM name or no next array: the load stays whole (v2_flush checks its refs) */
+                const unsigned c = gconv_vtx_len(vs) - o.first;
+                if (c) { NdVsOp p = o; p.n = (uint8_t)c; v2_seg_add(&p); }
+                o.n = (uint8_t)(o.n - c); o.v0 = (uint8_t)(o.v0 + c); o.arr = (uint32_t)(nx - gconv_sym); o.first = 0; vs = nx;
+            }
             v2_seg_add(&o);
             break;
         }
