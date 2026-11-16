@@ -4,16 +4,24 @@ Read at start and after every compaction (overrides any summary), with CLAUDE.md
 The Core block below is printed on every turn by the UserPromptSubmit hook (.claude/settings.json). Keep it short.
 
 <!-- CORE -->
-STYLE: ASD-STE100 in every word to the user, no praise, FACT/GUESS/OPEN on every number. Details: docs/handoff/orchestrator_rules.md.
+FACT/GUESS/OPEN on every number. Style: the global style hook. Details: docs/handoff/orchestrator_rules.md.
 EVERY TURN: 1 ListAgents (completed = IDLE; print states only from it). SLOTS: count only status `running`. A `completed` coder waits on its own build and holds no slot (user 2026-11-16). 2 A hand-back MESSAGE (SubagentHandback) arrives: read it, check the commit, merge. No disk file check. A `completed` agent with no hand-back message waits on its own build. Interim notice: one line. 3 Idle capacity: fewer than 3 coders and a closed page -> start a coder. A free slot and no closed page -> ask the oracle (start it only if it does not run). Start the oracle when every closed page is blocked by a running coder: it writes pages that share no file with the blocked ones. 4 Report only changes; table only after a state change; no counters unless asked. 5 Object first if a directive looks wrong or costly. 6 A push question only after the build of main is finished (never before). A state the user reports (game runs, FTP on, console online) is fact: never doubt or probe it; read the tool code. A console capture: same launch line in Azahar first.
 <!-- /CORE -->
+
+## Process rules (user 2026-11-16, from the audit)
+- Pages: the oracle splits work by file so rows run in parallel. A page says 'start after Merge X' only when it edits a file X edits or reads an output X makes.
+- Pages list the expected bench differences (bench, draw, reason) so a coder never stops at an expected diff.
+- Oracle tasks: one run writes 3 to 4 pages. A coder question goes to the oracle that wrote the page (resume it, its context helps). A fresh oracle starts at 150K tokens.
+- Merge: `sh 3ds/tools/merge_row.sh <row>` builds the message from the branch commits. Write a message file only to add a fact the commits lack.
+- An interim notice (agent waits on its own work, no hand-back message) gets one line or no reply. Never a table.
+- Orchestrator context: after about 150 turns, write HANDOFF.md and start a fresh session. Each turn re-reads the whole context.
 
 ## Rules (the long form of the Core, moved out of the per-turn hook text, user 2026-11-14)
 - Style (his order): every word to the user in ASD-STE100: short sentences, one instruction each, active voice, simple tenses, no semicolons. No praise, no flattery, no apology paragraphs. State the fact, the number, the next step. Label every number FACT (source), GUESS or OPEN.
 - Each turn: 1. ListAgents; completed = IDLE; print an agent state only from this call. 2. A hand-back file waits? Check it and merge; merge only on a hand-back; an interim notice ("waiting on its own background work") gets one line. 3. Idle capacity: fewer than 3 coders running and a closed page exists -> start a coder; a free slot and no closed page -> ask the oracle (start it only if it does not run); never start an oracle while a closed page waits (cost about 200K tokens a run). Haiku gets closed chunks (exact files, edit shape, gate, stop condition, no open question); the oracle owns the design. 4. Reply: report only what changed; table State | Agent | Row | Summary only after a state change (Summary = "[model] TASK - what it changes"); no counters unless the user asks. 5. A user directive that looks wrong or costly: object first with the evidence, then follow the final decision.
 - AGENT LABEL (user 2026-11-16, said several times): the `description` of every Agent call is `[Model type] ROW - task`, for example `[Haiku coder] GSETR - move 26 lists` or `[Opus oracle] DL pages`. The same form heads every row of a state table. Never `Coder X` alone.
 - Launch prompt of every coder names the agent id of the oracle that wrote its page (the oracle cannot know its own id). A coder with no id cannot ask and stalls.
-- GATE BEFORE PUSH: the built binary must hold the merged code. Check a distinctive string of each row merged since the last push in build3ds/pm_3ds.elf (python bytes count). A row with count 0: no push (STALEOBJ, 2026-11-16: build 5877 lacked STARTLR2 and MOON7).
+- GATE BEFORE PUSH: the built binary must hold the merged code. Run `python 3ds/tools/binchk.py build3ds/pm_3ds.elf <string of each row merged since the last push>`. A row with count 0: no push (STALEOBJ, 2026-11-16: build 5877 lacked STARTLR2 and MOON7).
 - Role: launch agents, merge, clean up, ask the user. No game code, no debugging. At most 4 agents at once in total (coders plus the oracle). A Sonnet or Opus coder needs a user yes. Decisions go through AskUserQuestion (2-4 options, recommended first).
 - Faults: a bug the user reports is fact (code read only). A tool fault stops the gate: read the tool's source first. First check, then ask. Never guess and check. Main stays clean. Never: toggles, stubs, git push, git stash. No build or push in the foreground of the chat. A failed push: read the raw log, one line, stop.
 - Never say the epic is done: only elfgate.py with func 0 data 0 gfxnames 0 plus all source counters 0 ends it.

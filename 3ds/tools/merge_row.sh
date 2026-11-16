@@ -1,21 +1,32 @@
 #!/bin/sh
 # merge_row.sh <row> <message-file>: merge the finished row branch <row> into main, append its new runs.jsonl lines,
 # then remove the row worktree and the branch. Run in the main folder (Git Bash):
-#   sh 3ds/tools/merge_row.sh <row> <message-file>
+#   sh 3ds/tools/merge_row.sh <row> [<message-file>]   (no file: the message is built from the commit texts of the branch)
 # Exit: 0 merged (summary printed); 2 refused (main dirty, branch missing, not on main); 3 conflict other than the row
 # file and runs.jsonl (or merge-tree failed); 4 conflict marker line added on the branch; 5 merge failed and aborted (or
 # runs commit failed); 6 branch kept (not merged, or still checked out).
 # WT_GC: a wt_gc.sh replacement read by the host test (run as: sh "$WT_GC" --apply --only <row>).
 set -u
 row=${1:-}; msg=${2:-}
-if [ -z "$row" ] || [ -z "$msg" ]; then echo "usage: sh 3ds/tools/merge_row.sh <row> <message-file>" >&2; exit 2; fi
+if [ -z "$row" ]; then echo "usage: sh 3ds/tools/merge_row.sh <row> [<message-file>]" >&2; exit 2; fi
 here=$(pwd)
-case "$msg" in /*|[A-Za-z]:*) ;; *) msg="$here/$msg" ;; esac
+if [ -n "$msg" ]; then case "$msg" in /*|[A-Za-z]:*) ;; *) msg="$here/$msg" ;; esac; fi
 top=$(git rev-parse --show-toplevel 2>/dev/null) || { echo "merge_row: refused: not in a git repo" >&2; exit 2; }
 cd "$top" || exit 2
 rowfile="docs/handoff/row_$row.md"
 tmpd=$(mktemp -d) || exit 2
 trap 'rm -rf "$tmpd"' EXIT
+
+# 0. no message file: build it from the branch (subject of the head commit, then the commit texts, 60 lines at most)
+if [ -z "$msg" ]; then
+    msg="$tmpd/msg"
+    {
+        printf 'Merge %s (ws_%s): %s
+
+' "$row" "$row" "$(git log -1 --format=%s "refs/heads/$row" 2>/dev/null | cut -c1-200)"
+        git log --reverse --format='%h %s%n%b' "main..refs/heads/$row" 2>/dev/null | awk 'NF' | head -60
+    } > "$msg"
+fi
 
 # 1. refuse
 if [ -n "$(git status --porcelain)" ]; then

@@ -35,5 +35,5 @@ Orchestrator: read docs/handoff/orchestrator_rules.md at the start and after eve
    azt_scenarios.json, bench_defs.json) unless the goal page says so. Do not merge main into your branch unless told.
 9. DOCS. State lives in a few files, edited in place. Git history is the log. The commit that completes a task deletes its goal
    or row file. Numbers go into the bench database (runs.jsonl is append-only), not into prose. Only the oracle and the orchestrator add a
-   docs/handoff file, with its INDEX.md line.
+   docs/handoff file. `ls docs/handoff` is the index (INDEX.md is gone, user 2026-11-16).
 10. CLEAN MAIN. The main folder has no uncommitted or untracked files. Every file is committed or listed in .gitignore.

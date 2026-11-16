@@ -30,6 +30,6 @@ Standard answers (do not stop for these):
 - Do not merge main into your branch unless the orchestrator tells you to or the merge-tree check shows a conflict.
 - Ask the oracle at most 2 rounds on one cause. A third round means the gate or the page is wrong: hand back the numbers and stop. Never rewrite a design to chase a buffer or a gate number.
 - After you ask the oracle, commit your work in progress and end your turn. The oracle's reply wakes you. Never hand back to the orchestrator to wait for an answer.
-- Never edit docs/handoff/INDEX.md (it conflicts at every merge). The oracle writes the lines for its pages and the orchestrator the rest. Delete your own goal page only.
+- docs/handoff/INDEX.md does not exist (the file list is `ls docs/handoff`). Delete your own goal page only.
 - Never write a stub or a stand-in for product code (user rule). Never run a push, and never touch the netloader or the console.
 - Before the first edit of a Sonnet or Opus task, check its Facts against the code. If a Fact does not match, hand back the lines.

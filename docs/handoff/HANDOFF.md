@@ -42,7 +42,7 @@ After a freeze: power cycle, FTP on the console, `go.ps1 pull o -ip <ip>`; dumps
 
 ## Tools and facts that cost time
 - A coder's command that runs over about 180 s goes to the background and the coder ends its turn; the completion notice wakes it. Interim notices are normal.
-- merge_row.sh refuses a dirty main: the oracle writes pages into main while it runs, so commit its files first (git add docs/handoff) and merge in the same command. A coder's INDEX.md edit conflicts: coders no longer edit it.
+- merge_row.sh refuses a dirty main: the oracle writes pages into main while it runs, so commit its files first (git add docs/handoff) and merge in the same command. INDEX.md is gone.
 - runs.jsonl: a worktree copy can be huge: `python -I 3ds/tools/dedupe_runs.py <file>`, commit with `git add -f`. A coder's worktree on a branch with another name than its id: pass the branch name to merge_row.
 - Lane build (PM_LANE=<row>) writes build3ds/lane-<row>/, not build3ds/pm_3ds.3dsx. Build main plain before a push, in the background.
 - The HBL netloader accepts one connection and stops listening after minutes. Never test port 17491. Never build between the question and the push.
