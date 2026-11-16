@@ -16,3 +16,12 @@
 #include "effects/gfx/D_090054B0_3EB3E0.gfx.inc.c"
 #include "effects/gfx/D_09005570_3EB4A0.gfx.inc.c"
 #include "effects/gfx/D_09005590_3EB4C0.gfx.inc.c"
+extern Gfx D_090050F0_3EB020[];
+#define D_09005090_3EAFC0 D_09005090_3EAFC0_body
+#include "effects/gfx/D_09005090_3EAFC0.gfx.inc.c"
+#undef D_09005090_3EAFC0
+Gfx D_09005090_3EAFC0[] = {
+    gsSPDisplayList(D_09005090_3EAFC0_body),
+    gsSPBranchList(D_090050F0_3EB020),
+};
+#include "effects/gfx/D_090050F0_3EB020.gfx.inc.c"

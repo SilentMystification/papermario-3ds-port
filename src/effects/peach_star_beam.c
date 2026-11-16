@@ -11,8 +11,8 @@ ND_PSO_DESC(pe_peach_star_beam_249, 0xfc367fff, 0x5ffcf238, 0x1e18acf0, 0x0c1912
 #include "nd_xf.h"
 
 NDN_DECL(D_09004FE8_3EAF18);
-extern Gfx D_09005090_3EAFC0[];
-extern Gfx D_090050F0_3EB020[];
+NDN_DECL(D_09005090_3EAFC0);
+NDN_DECL(D_090050F0_3EB020);
 NDN_DECL(D_09005168_3EB098);
 NDN_DECL(D_090051E0_3EB110);
 NDN_DECL(D_09005258_3EB188);
@@ -34,7 +34,7 @@ NdLst D_E010CA18[8] = {
 };
 
 NdLst D_E010CA38[8] = {
-    D_090050F0_3EB020, NDN(D_09005168_3EB098), NDN(D_090051E0_3EB110), NDN(D_09005258_3EB188),
+    NDN(D_090050F0_3EB020), NDN(D_09005168_3EB098), NDN(D_090051E0_3EB110), NDN(D_09005258_3EB188),
     NDN(D_090052D0_3EB200), NDN(D_09005348_3EB278), NDN(D_090053C0_3EB2F0), NDN(D_09005438_3EB368)
 };
 
@@ -181,7 +181,7 @@ void peach_star_beam_appendGfx(void* effect) {
     s32 i;
 
     nd_val_seg(0x9, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_draw_list(D_09005090_3EAFC0, pe_peach_star_beam_179);
+    nd_draw_list(NDN(D_09005090_3EAFC0), pe_peach_star_beam_179);
 
     for (i = 0; i < ARRAY_COUNT(data->spirits); i++) {
         part = &data->spirits[i];
@@ -226,7 +226,7 @@ void peach_star_beam_appendGfx(void* effect) {
     nd_draw_list(D_E010CA10[0], pe_peach_star_beam_221);
     nd_xf_pop(G_MTX_MODELVIEW);
     FI_CLOSE();
-    nd_draw_list(D_09005090_3EAFC0, pe_peach_star_beam_224);
+    nd_draw_list(NDN(D_09005090_3EAFC0), pe_peach_star_beam_224);
 
     for (i = 0; i < ARRAY_COUNT(data->spirits); i++) {
         part = &data->spirits[i];
