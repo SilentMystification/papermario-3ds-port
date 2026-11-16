@@ -1,10 +1,10 @@
 #!/bin/sh
-# BUILDLOCK: at most 3 Docker builds at once on this host. A slot is the directory build3ds/buildslots/slot<k>.d in the main
+# BUILDLOCK: at most 4 Docker builds (PM_BUILD_SLOTS) at once on this host. A slot is the directory build3ds/buildslots/slot<k>.d in the main
 # folder (mkdir is atomic). Its file pid holds: "<pid> <unix time> <lane> <Windows pid>". Sourced by 3ds/build.sh:
 #   build_slot_take     waits for a free slot, sets BUILD_SLOT (the number) and BUILD_SLOT_DIR
 #   build_slot_release  removes the slot this shell took
 # BUILDSLOT_DIR overrides the folder (the host test 3ds/tests/buildlock/run.sh uses it).
-BUILD_SLOTS_N=3
+BUILD_SLOTS_N=${PM_BUILD_SLOTS:-4} # 4 slots: peak 2.89 GiB per build, 8.62 GiB at 3 builds (memlog 2026-11-16), WSL cap 14 GB
 
 build_slot_dir() {
     if [ -n "$BUILDSLOT_DIR" ]; then echo "$BUILDSLOT_DIR"; return; fi

@@ -4,6 +4,7 @@
 # whose holder pid is dead is taken over. Prints "buildlock test: ok" or "buildlock test: FAIL <check>".
 set -e
 cd "$(dirname "$0")/../../.."
+export PM_BUILD_SLOTS=3 # the test checks 3 slots
 ROOT=$(pwd)
 T="$ROOT/build3ds/out/buildlock_test"
 rm -rf "$T"; mkdir -p "$T/bin" "$T/slots" "$T/rec"
