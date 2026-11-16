@@ -127,7 +127,7 @@ void blast_appendGfx(void* effect) {
         nd_val_prim(0, 0, 255, 255, 128, 127);
     }
     t = !(s32)t; // required to match
-    gDPSetEnvColor(gMainGfxPos++, 255, 255, 139, envAlpha);
+    nd_val_env(255, 255, 139, envAlpha);
 
     nd_draw_list(dlist, pe_blast_131);
     nd_xf_pop(G_MTX_MODELVIEW);

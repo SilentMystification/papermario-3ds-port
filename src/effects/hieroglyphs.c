@@ -140,9 +140,7 @@ void hieroglyphs_appendGfx(void* effect) {
     nd_val_env(data->unk_28, data->unk_2C, data->unk_30, data->unk_34);
     nd_draw_list(D_E00E29F0[0], ND_SELF);
     nd_sub_open(&sub); /* DIRECT D6c: the list for later is a stream range */
-    gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE,
-        (lifeTime * 2      ) * 4, 0,
-        (lifeTime * 2 + 127) * 4, 31 * 4);
+    nd_val_tile_size(G_TX_RENDERTILE, (lifeTime * 2      ) * 4, 0, (lifeTime * 2 + 127) * 4, 31 * 4);
 
     guRotateF(sp20, 20.0f, 1.0f, 0.0f, 0.0f);
     guPositionF(sp60, 0.0f, sin_deg(lifeTime * 8 + 78.75) * -30.0f, 0.0f, 1.0f, 6.0f, 0.0f, 0.0f);

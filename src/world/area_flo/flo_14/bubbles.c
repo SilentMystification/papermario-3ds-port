@@ -1,6 +1,7 @@
 #include "flo_14.h"
 #include "effects.h"
 #include "model.h"
+#include "nd_xf.h"
 
 #include "../common/FlowerSpawnRegion.inc.c"
 #include "../common/DroppingVine.inc.c"
@@ -230,8 +231,7 @@ void N(gfx_build_big_bubble)(void) {
     new_var = 0;
     while (new_var); // TODO required to match
 
-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
-              G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     gSPDisplayList(gMainGfxPos++, mdl_get_copied_gfx(VTX_COPY_0));
 
     N(BubblePhase) += 1.0f;
