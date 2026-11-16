@@ -1282,7 +1282,10 @@ def scratch_build(commit, gitdir, scratch, lane, row):
     """Archive commit into the scratch folder and build it as lane `lane`: own docker volumes and output
     (scratch/build3ds/lane-<lane>/), never the shared build volumes. Returns (build.sh rc, build number or None)."""
     shutil.rmtree(scratch, ignore_errors=True)
-    scratch.mkdir(parents=True)
+    if scratch.exists():  # CGFX: an empty leftover that a handle keeps (rmtree ignores it): one retry, then mkdir exist_ok
+        time.sleep(5)
+        shutil.rmtree(scratch, ignore_errors=True)
+    scratch.mkdir(parents=True, exist_ok=True)
     # VOLMAN: wt_gc.sh and build.sh keep this folder and its lane volumes while the marker is young (12 h).
     (scratch / ".build_at_in_use").write_text(str(os.getpid()))
     arc = subprocess.run(["git", "archive", commit], cwd=REPO, capture_output=True, check=True).stdout
