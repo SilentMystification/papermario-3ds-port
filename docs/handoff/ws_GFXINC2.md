@@ -9,8 +9,8 @@ Start after Merge VOLGEN and Merge GFXINC (VOLGEN owns build.sh; GFXINC adds 3ds
 No new key. The volume and its keys are the ones of GFXINC (pm3ds-gconvobj-<16 hex of the host image id>, gconv_objcache.py).
 ## Edit shape
 Before: `... -v "$ab/ver/us/build:/ar/ver/us/build:ro" -w /work pm3ds-host:1 sh -c "$GT_CMD" || ...`
-After:  `... -v "$ab/ver/us/build:/ar/ver/us/build:ro" -v "pm3ds-gconvobj-$(printf '%s' "$HIMGID" | cut -c8-23):/gobj" -e GCONV_OBJ=/gobj -e PM_CACHE="${PM_CACHE:-on}" -w /work pm3ds-host:1 sh -c "$GT_CMD" || ...`
-(The same volume name form as nd_host_test.sh after GFXINC: `cut -c8-23` of the image id. HIMGID is set by VOLGEN in build.sh.)
+After:  `... -v "$ab/ver/us/build:/ar/ver/us/build:ro" -v "pm3ds-gconvobj-$(docker image inspect -f '{{.Id}}' pm3ds-host:1 | cut -c8-23):/gobj" -e GCONV_OBJ=/gobj -e PM_CACHE="${PM_CACHE:-on}" -w /work pm3ds-host:1 sh -c "$GT_CMD" || ...`
+(The same volume name as nd_host_test.sh after GFXINC: `cut -c8-23` of the host image `.Id`. Do not use HIMGID: VOLGEN 1b makes it a layer hash.)
 ## Loop
 1. Make the edit. `sh -n 3ds/build.sh`: no output. `sh 3ds/tools/nd_host_test.sh > build3ds/out/g2_host.txt 2>&1`: `ND HOST TESTS PASS`.
 2. Commit: `GFXINC2 1: build.sh gen_gfx_tab mounts the shared gconv object cache volume`.
