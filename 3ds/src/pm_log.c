@@ -16,6 +16,7 @@
 #include "pm_thread.h"
 #include "pm_romload.h"
 #include "pm_logfmt.h"
+#include "pm_livesrv.h"
 
 #define RING 262144u /* LOGX1: 256 KB, a power of two (index = count % RING) */
 /* PI6: bytes waiting for log.txt (fb) and for the bottom console (cb). The writer copies into them, the sink thread writes them out.
@@ -162,6 +163,13 @@ static void accept_client(void) {
     socklen_t len = sizeof(addr);
     int fd = accept(listen_fd, (struct sockaddr*)&addr, &len);
     if (fd < 0) return;
+    for (;;) { /* CAPLOG: take every waiting connection, keep the newest: dead PC connections never fill the backlog (listen 2) */
+        len = sizeof(addr);
+        int nx = accept(listen_fd, (struct sockaddr*)&addr, &len);
+        if (nx < 0) break;
+        close(fd);
+        fd = nx;
+    }
     if (client >= 0) { close(client); client = -1; } /* a new client replaces the old one (the PC closed it or the old link is dead) */
     fcntl(fd, F_SETFL, O_NONBLOCK);
     client = fd;
@@ -169,6 +177,9 @@ static void accept_client(void) {
     cmd_done = 0;
     live_ok_tick = 0;
     live_sent = ring_pos - ring_len; /* LOGX1: the pump sends the ring from its oldest byte */
+    char hb[96];
+    int hn = pm_live_hello(hb, sizeof hb, log_file_on, lv_live, lv_disk, prof_mode);
+    if (hn > 0) send(client, hb, (size_t)hn, 0); /* CAPLOG: the client sees the log gate at once (log_on 0 and prof 0: no line follows) */
 }
 
 /* LOGX2: file transfer on the live socket. Frame: "\n#PMFILE <name> <size>\n", exactly <size> raw bytes, "\n#PMEND <name>\n".
@@ -1036,11 +1047,20 @@ static void writer_main(void* arg) {
     for (;;) {
         /* Wakes every 250 ms, so accept_client and read_cmd run before every bounded drain. LOG4 (U1): logging off, no timeout:
          * the writer sleeps until a signal (pm_log_set_file, pm_io_gate, pm_log_stop). No heartbeat, no accept, no beat. */
-        if (qon()) LightEvent_WaitTimeout(&ev_wake, 250000000LL);
+        if (pm_live_serve(qon(), listen_fd >= 0)) LightEvent_WaitTimeout(&ev_wake, 250000000LL); /* CAPLOG: a listen socket keeps the 250 ms pass with logging off */
         else LightEvent_Wait(&ev_wake);
         if (__atomic_load_n(&active_id, __ATOMIC_ACQUIRE) != id) return; /* a replacement thread took over */
         /* LOG5 fix: lines queued before the queue went off (the logging off line) still drain once: skip only with nothing queued */
-        if (!qon() && q_head == q_tail && !io_drain_req && !__atomic_load_n(&writer_stop, __ATOMIC_ACQUIRE) && !__atomic_load_n(&crashed, __ATOMIC_ACQUIRE)) continue;
+        if (!qon() && q_head == q_tail && !io_drain_req && !__atomic_load_n(&writer_stop, __ATOMIC_ACQUIRE) && !__atomic_load_n(&crashed, __ATOMIC_ACQUIRE)) {
+            if (listen_fd >= 0 && __atomic_load_n(&writer_on, __ATOMIC_ACQUIRE) && !pm_io_quiet) { /* CAPLOG: accept, read the command and answer sendlog with logging off */
+                accept_client();
+                read_cmd();
+                LightLock_Lock(&drain_lock);
+                if (dump_req && client >= 0) { dump_req = 0; if (log_fd >= 0) fsync(log_fd); send_file("crash.txt"); send_file("log.txt"); } /* LOGX2 */
+                LightLock_Unlock(&drain_lock);
+            }
+            continue;
+        }
         writer_hb++;
         writer_beat();
         if (io_drain_req && __atomic_load_n(&writer_on, __ATOMIC_ACQUIRE)) {
