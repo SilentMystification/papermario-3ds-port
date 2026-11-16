@@ -19,7 +19,7 @@ After (the patch adds lines after it):
 The patch also adds NOBUILD_RULE, LIVE_INC_RX and DEAD_INC_RX above SRC_GROUPS (listcen.py:40).
 ## Loop (one group, one commit)
 1. `python 3ds/tools/listcen.py > build3ds/out/lcnobuild_lc0.txt` (before the patch).
-2. `git apply docs/handoff/ws_LCNOBUILD.patch`. If it fails, stop and send the output to the oracle.
+2. `tr -d '\r' < docs/handoff/ws_LCNOBUILD.patch | git apply -` (the checkout gives the patch CRLF ends). If it fails, stop and send the output to the oracle.
 3. `sh 3ds/tools/nd_host_test.sh > build3ds/out/lcnobuild_host.txt 2>&1`. Read the last 20 lines.
 4. `python 3ds/tools/listcen.py > build3ds/out/lcnobuild_lc1.txt`.
    `diff build3ds/out/lcnobuild_lc0.txt build3ds/out/lcnobuild_lc1.txt > build3ds/out/lcnobuild_diff.txt`.
