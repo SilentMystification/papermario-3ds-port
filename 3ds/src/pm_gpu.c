@@ -1911,9 +1911,11 @@ typedef struct { int unused; } Wq_pm_gpu_menu_present;
 static void wq_pm_gpu_menu_present(void* a) { Wq_pm_gpu_menu_present* q = (Wq_pm_gpu_menu_present*)a; (void)q; pm_gpu_menu_present_w(); }
 void pm_gpu_menu_present(void) { Wq_pm_gpu_menu_present q = { 0 }; pm_wq_post(wq_pm_gpu_menu_present, &q, sizeof q); }
 static int sr_on; /* the stereo record state, defined with the record below (the present path clears it) */
+static int menu_grey_top; /* MENUFL: the top screen shows the grey picture of this freeze (pm_gpu_menu_grey); a menu redraw does not send the colour target again */
 static void pm_gpu_menu_present_w(void) {
     if (!menu_dirty || !gs.gpu_ok || !target) return;
     menu_dirty = 0;
+    if (menu_grey_top) { gfxFlushBuffers(); return; } /* MENUFL: the bottom text only; the top keeps its grey picture */
     eye_slider = osGet3DSliderState();
     stereo_frame = targetR && u_eye >= 0 && eye_slider > 0.02f;
     gfxSet3D(stereo_frame);
@@ -1940,7 +1942,7 @@ static void pm_gpu_menu_dirty_set_w(void);
 typedef struct { int unused; } Wq_pm_gpu_menu_dirty_set;
 static void wq_pm_gpu_menu_dirty_set(void* a) { Wq_pm_gpu_menu_dirty_set* q = (Wq_pm_gpu_menu_dirty_set*)a; (void)q; pm_gpu_menu_dirty_set_w(); }
 void pm_gpu_menu_dirty_set(void) { Wq_pm_gpu_menu_dirty_set q = { 0 }; pm_wq_post(wq_pm_gpu_menu_dirty_set, &q, sizeof q); }
-static void pm_gpu_menu_dirty_set_w(void) { menu_dirty = 1; }
+static void pm_gpu_menu_dirty_set_w(void) { menu_dirty = 1; menu_grey_top = 0; } /* MENUFL: the freeze open (pm_main.c:601) sends the top once */
 
 /* MN2: the top screen goes grey while the menu is open. One CPU pass over the top back buffer (BGR8, luma (77 r + 150 g + 29 b) >> 8 into all
  * three bytes), then one data cache flush, then the swap shows it. Called at the pause and after each menu present (the transfer is done first). */
@@ -1962,6 +1964,7 @@ void pm_gpu_menu_grey(void) {
     GSPGPU_FlushDataCache(fb, (u32)n);
     if (pm_debug_has("shotgrey")) { static char gn[24]; static unsigned gk; snprintf(gn, sizeof gn, "top_grey%04u", gk++); pm_gpu_shot_top(gn); }
     gfxScreenSwapBuffers(GFX_TOP, false);
+    menu_grey_top = 1; /* MENUFL */
     { u16 w2, h2; top_note(gfxGetFramebuffer(GFX_TOP, GFX_LEFT, &w2, &h2)); }
     pm_log_d("menu: grey top %u x %u", (unsigned)w, (unsigned)h);
 }
