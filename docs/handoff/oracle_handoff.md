@@ -1,6 +1,6 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main 4c02b18543, 2026-11-16. Oracle DL5 wrote ws_DLSITE2 and ws_CURT (+ patches; parallel, Haiku, start now).
+State: main eaf3865490, 2026-11-16. Oracle DL5 wrote ws_DLSITE2 and ws_CURT (+ patches; parallel, Haiku, start now).
 Goal: remove the N64 display list system. Done when 3ds/tools/elfgate.py prints func 0 data 0 gfxnames 0 and every listcen counter is 0.
 ## Counters (FACT, listcen on main 4c02b18543)
 build 551, gfxpos 186, data 2068, data_arrays 196, gfxtype 809, recdl 10, reader 785, model 15.
@@ -47,7 +47,9 @@ build 551, gfxpos 186, data 2068, data_arrays 196, gfxtype 809, recdl 10, reader
   the shared volume; build 5877 lacks STARTLR2 and MOON7 (FSKIP is in). FSKIP2 waits for the user's row choice.
 - With logging off, event lines reach no log.txt (pm_log.c:600, :888). Not fixed.
 ## Next listcen groups (oracle FX3, main 3771a3edbb; data 1942)
-- Pages on main: ws_FXWRAP (-27 data), ws_WSCMB (-114 data). After them the big groups are: assets/us effects/gfx 514 (gaps a, b, d, e:
+- Pages on main: ws_FXWRAP (-27 data), ws_WSCMB (-114 data), ws_PBUF (build -30, arrays -7, gfxtype -7), ws_EVAR (build -11, gfxpos -11).
+- ENTRY form outside src/effects (itab sites: 10 entity, curtains, overlays, title, filemenu, hud, world): no page. entapply.py:29 SITE and
+  gen_gfx_tab.sh:22 (gen_ntab_entries.py src/effects) read only src/effects; the 11-word descs need captures per scene (OPEN). After them the big groups are: assets/us effects/gfx 514 (gaps a, b, d, e:
   converter work), src/model.c 516 (MODELRM), include data 191 / build 308, src/entity/model Heart/Ultra/SaveBlock 102, screen_overlays 83.
 - Entity model blocks (FACT, oracle host run on 3771a3edbb): HeartBlockContent.c 0 of 6 lists gset ok, UltraBlockContent.c 0 of 6
   (converter reasons: read ntab_unsup.txt), SaveBlock.c 1 of 1 ok but its 33 data stay (OPEN: the hold line; run gset.py on SBJOIN.txt dry).
