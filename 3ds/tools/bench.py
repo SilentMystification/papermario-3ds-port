@@ -24,11 +24,17 @@ This is the entry point for every test and profiling run (it replaces the text t
         console_prof: pushes that 3dsx to the O3DS (PM_SRC3DSX) and ingests the live log (dirty false). --dry-run prints the commands only.
         runs the bench on that build, records the run with that commit and dirty false, then deletes the folder.
         The Azahar build copy is put back after the run. --why is optional: a line is written from the bench purpose.
-  python 3ds/tools/bench.py base <bench> [--commit C] [--row R]
+  python 3ds/tools/bench.py base <bench>[,<bench>...] [--commit C] [--row R]
         Stored base shots (BASECACHE): the shots and log of an Azahar bench on the merge-base of HEAD with main (or C), in the
-        shared store <main folder>/build3ds/basecache/<commit>/<bench>/. Stored: returns at once, no build, no run. Missing: builds
-        that commit ONCE (lane base_<short>, the committed tree only), runs the bench, stores the shots, deletes the lane. The store
-        keeps the last 5 commits (index.json).
+        shared store <main folder>/build3ds/basecache/<commit>/<bench>/. Stored: returns at once, no build, no run. Missing: one
+        base build for all named benches (BASEBIN: from the store <main folder>/build3ds/basebin/, else built once as lane
+        base_<short> and stored), runs the benches, stores the shots. The store keeps the last 5 commits (index.json).
+        Cache safety: each stored base and each basebin entry holds its content key and file hashes; every use checks both.
+  python 3ds/tools/bench.py base --prebuild [--commit C]
+        BASEBIN: puts the base build of the merge-base (or C) into the basebin store. No Azahar run. MAINBIN runs it at each merge.
+  python 3ds/tools/bench.py base --check [--row R]
+        Cachecheck (cache safety rule 5): removes basebin entries whose key changed, rebuilds one random entry cold (PM_CACHE=off)
+        and compares the 3dsx bytes, then runs one random stored bench of that commit again and compares the shots.
   python 3ds/tools/bench.py base --fill [--row R]
         Stores the standard byte scenes (mdl5_iwa10_det, spot_mac01_det) of the main folder's build
         (build3ds/pm_3ds.3dsx, its header commit must be main HEAD). Run in the main folder after a merge. No build.
@@ -83,6 +89,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import prof_by_scene as pb  # prof line parser, shared with prof_record.py
+import basebin as bb  # BASEBIN: content-keyed store entries (plan_buildspeed.md "Cache safety")
 
 REPO = HERE.parent.parent
 DEFS = HERE / "bench_defs.json"
@@ -97,7 +104,6 @@ CSV = REPO / "docs" / "handoff" / "perf_history.csv"
 SHOTS = REPO / "build3ds" / "azt" / "shots"
 OUT = REPO / "build3ds" / "bench"
 HOSTS = ("azahar", "o3ds", "n3ds", "host")
-BUILD_UNTRACKED = ("assets/us", "ver/us/build")  # build.sh inputs that are not in git (build-at copies them)
 HOST_ALIAS = {"o3dsxl": "o3ds"}
 DEVICE = {"azahar": "azahar emulator on pc", "host": "host pc (docker)", "o3ds": "o3ds 192.168.1.170"}
 # The O3DS XL at .131 was the console until 2026-11-05. Its runs keep this device string (never rewritten).
@@ -1290,25 +1296,8 @@ def scratch_build(commit, gitdir, scratch, lane, row):
     (scratch / ".build_at_in_use").write_text(str(os.getpid()))
     arc = subprocess.run(["git", "archive", commit], cwd=REPO, capture_output=True, check=True).stdout
     tarfile.open(fileobj=io.BytesIO(arc)).extractall(scratch)
-    main = main_root()  # BASECACHE: a worktree has no ROM assets: they come from the main folder (map_restore_table.c: build.sh generates it)
-    # The build inputs that git does not track (ROM-derived assets) come from the main folder. Read only.
-    # Untracked inputs: git archive holds only some files of ver/us/build, so copy every file the main folder has and the archive lacks.
-    for rel in BUILD_UNTRACKED:
-        for root, _dirs, files in os.walk(main / rel):
-            for fn in files:
-                src = Path(root) / fn
-                dst = scratch / src.relative_to(main)
-                if not dst.exists():
-                    dst.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copy2(src, dst)
-    # TEXKEY2: texkey_bake.py reads ver/us/baserom.z64 of the asset base (git-ignored). Hard link, else copy.
-    rom, rom_dst = main / "ver" / "us" / "baserom.z64", scratch / "ver" / "us" / "baserom.z64"
-    if rom.exists() and not rom_dst.exists():
-        rom_dst.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            os.link(rom, rom_dst)
-        except OSError:
-            shutil.copy2(rom, rom_dst)
+    # BASEBIN: no asset copy. assets/us, ver/us/build and the ROM are untracked (git ls-files: 0 files), so the archive has no
+    # assets/us and build.sh reads all three from the main folder (build.sh ASSET_BASE: the parent of the git common dir = GIT_DIR).
     # build.sh writes its sync lists under build3ds/lane-<lane> of the scratch folder; create it first.
     (scratch / "build3ds" / ("lane-" + lane)).mkdir(parents=True, exist_ok=True)
     env = dict(os.environ, GIT_DIR=gitdir, PM_BUILD_REV=commit, PM_ROW=row, PM_LANE=lane)
@@ -1420,6 +1409,7 @@ def cmd_build_at(a):
 
 
 BASE_KEEP = 5  # the base store keeps this many commits (the oldest is removed first)
+BASEBIN_KEEP = 6  # BASEBIN: the basebin store keeps this many base builds (3dsx 38 MB, elf 246 MB each)
 BASE_FILL = ("mdl5_iwa10_det", "spot_mac01_det")  # TOOLB10: warm byte scenes, in the order the rows run them; battle_start_f182_cold is cold by design (no base)
 BASE_ROW = "BASECACHE"
 
@@ -1463,36 +1453,93 @@ def scen_hash(s):
     return hashlib.sha1(json.dumps(d, sort_keys=True).encode("utf-8")).hexdigest()[:12]
 
 
+_KEYS = {}
+
+
+def basebin_root():
+    """BASEBIN: the shared store of base builds, one folder for every worktree, in the main folder."""
+    return main_root() / "build3ds" / "basebin"
+
+
+def basebin_key(commit):
+    """BASEBIN: the content key of the base build of commit (basebin.build_key). Kept for this process; cleared after a build."""
+    if "assets" not in _KEYS:
+        _KEYS["assets"] = bb.asset_hash(main_root())
+    if commit not in _KEYS:
+        _KEYS[commit] = bb.build_key(REPO, main_root(), commit, build_at_numbers(commit), _KEYS["assets"])
+    return _KEYS[commit]
+
+
+def shots_key(commit, bench):
+    """Cache safety: the content key of the stored base shots of bench at commit. Inputs: the base build key, the bench and
+    scenario definitions (all fields), the Azahar program of slot 1 and the runner scripts azt.ps1, run_azahar.ps1, azslot.ps1."""
+    bd = bench_def(bench) or {}
+    s = scenario(bd.get("scenario") or "") or {}
+    exe = main_root() / "build3ds" / "azslots" / "slot1" / "azahar.exe"
+    run = [REPO / "3ds" / "tools" / "azt.ps1", REPO / "3ds" / "run_azahar.ps1", REPO / "3ds" / "tools" / "azslot.ps1"]
+    return "\n".join(["shots v1", "build %s" % bb.sha1_bytes(basebin_key(commit).encode("utf-8")),
+                      "bench %s" % json.dumps(bd, sort_keys=True), "scenario %s" % json.dumps(s, sort_keys=True),
+                      "azahar %s" % (bb.sha1_file(exe) if exe.exists() else "none")]
+                     + ["runner %s %s" % (p.name, bb.sha1_file(p) if p.exists() else "none") for p in run])
+
+
+def drop_stored(commit, bench):
+    """Removes the stored shots of bench at commit and its index.json entry. True when something was removed."""
+    d = store_root() / commit / bench
+    idx = load_index()
+    ent = idx["commits"].get(commit)
+    listed = bool(ent and bench in ent["benches"])
+    if not d.exists() and not listed:
+        return False
+    shutil.rmtree(d, ignore_errors=True)
+    if ent:
+        ent["benches"] = [b for b in ent["benches"] if b != bench]
+        if not ent["benches"]:
+            del idx["commits"][commit]
+        save_index(idx)
+    return True
+
+
 def stored(commit, bench):
-    """True when the store holds the shots of bench at commit and they were made for the scenario definition bench names now.
-    meta.json is written last, after the shots."""
+    """True when the store holds the shots of bench at commit for the inputs of now. Cache safety: meta.json holds the content
+    key (shots_key) and the sha1 of every stored file; every use checks both, and a failed entry is removed."""
     d = store_root() / commit / bench
     if not ((d / "meta.json").exists() and shot_names(d)):
         return False
-    bd = bench_def(bench)
-    want = scen_hash(scenario(bd["scenario"])) if bd and bd.get("scenario") else None
     try:
-        have = json.loads((d / "meta.json").read_text(encoding="utf-8")).get("scen_hash")
+        meta = json.loads((d / "meta.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        have = None
-    if want and have != want:
-        print("base %s at %s: stored for another scenario definition (hash %s, now %s): stale" % (bench, commit[:9], have or "none", want))
+        meta = {}
+    if meta.get("key") != shots_key(commit, bench):
+        print("base %s at %s: stored for other inputs (content key differs): stale, removed" % (bench, commit[:9]))
+        drop_stored(commit, bench)
+        return False
+    files = sorted(p.name for p in d.iterdir() if p.is_file() and p.name != "meta.json")
+    have = meta.get("out_sha1") or {}
+    if sorted(have) != files or any(bb.sha1_file(d / n) != h for n, h in have.items()):
+        print("base %s at %s: a stored file differs from its hash: removed" % (bench, commit[:9]))
+        drop_stored(commit, bench)
         return False
     return True
 
 
 def store_base(commit, bench, scenario_name, shots, log, info):
-    """Copies the shots and the log of one run into the store, records it in index.json and drops the oldest commits beyond BASE_KEEP."""
+    """Copies the shots and the log of one run into the store, records it in index.json and drops the oldest commits beyond BASE_KEEP.
+    Cache safety: a temp folder gets the files, their sha1 and the content key, then one rename makes it the entry."""
     dst = store_root() / commit / bench
-    shutil.rmtree(dst, ignore_errors=True)
-    dst.mkdir(parents=True)
+    tmp = dst.with_name(bench + ".tmp.%d" % os.getpid())
+    shutil.rmtree(tmp, ignore_errors=True)
+    tmp.mkdir(parents=True)
     names = sorted(p.name for p in shots.iterdir() if p.is_file()) if shots.is_dir() else []
     for n in names:
-        shutil.copy2(shots / n, dst / n)
+        shutil.copy2(shots / n, tmp / n)
     if log.exists():
-        shutil.copy2(log, dst / "run.log")
-    meta = dict(info, commit=commit, bench=bench, scenario=scenario_name, shots=names, stored=now_iso())
-    (dst / "meta.json").write_text(json.dumps(meta, indent=1) + "\n", encoding="utf-8")
+        shutil.copy2(log, tmp / "run.log")
+    out = {p.name: bb.sha1_file(p) for p in sorted(tmp.iterdir()) if p.is_file()}
+    meta = dict(info, commit=commit, bench=bench, scenario=scenario_name, shots=names, stored=now_iso(), key=shots_key(commit, bench), out_sha1=out)
+    (tmp / "meta.json").write_text(json.dumps(meta, indent=1) + "\n", encoding="utf-8")
+    shutil.rmtree(dst, ignore_errors=True)
+    os.rename(tmp, dst)
     idx = load_index()
     ent = idx["commits"].pop(commit, {"short": commit[:9], "benches": []})
     if bench not in ent["benches"]:
@@ -1823,7 +1870,7 @@ def base_build_run(bds, commit, row):
             print("base stored by another run: %s" % short)
             return 0
         try:
-            rc, build_no = scratch_build(commit, gitdir, scratch, lane, row)
+            rc, build_no = basebin_build(commit, gitdir, scratch, lane, row, src3dsx)
             if rc != 0:
                 print("base %s: build.sh exit %d. Nothing stored." % (short, rc))
                 return rc
@@ -1856,6 +1903,124 @@ def base_build_run(bds, commit, row):
             pass
 
 
+def basebin_build(commit, gitdir, scratch, lane, row, src3dsx):
+    """BASEBIN: the base build of commit. From the basebin store when an entry of its content key passes its check (no build),
+    else scratch_build, then the 3dsx, the elf and the build number go into the store. Returns (rc, build number); src3dsx and
+    pm_3ds.elf next to it hold the build."""
+    ent = bb.get(basebin_root(), basebin_key(commit))
+    if ent:
+        src3dsx.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ent / "pm_3ds.3dsx", src3dsx)
+        shutil.copy2(ent / "pm_3ds.elf", src3dsx.with_name("pm_3ds.elf"))
+        print("base %s: build from the basebin store (entry %s), no build" % (commit[:9], ent.name))
+        return 0, int((ent / "build_no.txt").read_text(encoding="utf-8").strip())
+    rc, build_no = scratch_build(commit, gitdir, scratch, lane, row)
+    if rc == 0 and build_no is not None and src3dsx.exists():
+        meta = src3dsx.with_name("build_no.txt")
+        meta.write_text(str(build_no), encoding="utf-8")
+        cfile = src3dsx.with_name("commit.txt")
+        cfile.write_text(commit, encoding="utf-8")
+        _KEYS.pop(commit, None)  # build.sh ran docker build: the key reads the image ids after the build
+        e = bb.put(basebin_root(), basebin_key(commit), {"pm_3ds.3dsx": src3dsx, "pm_3ds.elf": src3dsx.with_name("pm_3ds.elf"),
+                                                       "build_no.txt": meta, "commit.txt": cfile}, BASEBIN_KEEP)
+        print("base %s: build stored in basebin (entry %s)" % (commit[:9], e.name if e else "none"))
+    return rc, build_no
+
+
+def base_lane_paths(commit):
+    """(lane, scratch folder, lane folder, git dir, scratch 3dsx) of the base lane of commit (base_build_run layout)."""
+    lane = "base_" + commit[:9]
+    scratch = REPO / "build3ds" / lane
+    gitdir = subprocess.check_output(["git", "rev-parse", "--absolute-git-dir"], cwd=REPO, text=True).strip()
+    return lane, scratch, REPO / "build3ds" / ("lane-" + lane), gitdir, scratch / "build3ds" / ("lane-" + lane) / "pm_3ds.3dsx"
+
+
+def base_prebuild(a):
+    """BASEBIN: puts the base build of the merge-base (or --commit) into the basebin store. No Azahar run."""
+    commit = base_commit(a.commit)
+    if not commit:
+        print("no base commit (the merge-base of HEAD with main, or --commit %s is unknown). Nothing was built." % a.commit)
+        return 5
+    lane, scratch, lane_dir, gitdir, src3dsx = base_lane_paths(commit)
+    lk = base_lock_take(commit)
+    if lk is None:
+        print("base %s: lock still held after 40 min. Nothing built." % commit[:9])
+        return 6
+    try:
+        rc, build_no = basebin_build(commit, gitdir, scratch, lane, a.row, src3dsx)
+        print("basebin %s: %s" % (commit[:9], ("ready, build %s" % build_no) if rc == 0 else ("build.sh exit %d" % rc)))
+        return rc
+    finally:
+        shutil.rmtree(lane_dir, ignore_errors=True)
+        shutil.rmtree(scratch, ignore_errors=True)
+        drop_base_lane(lane, [])
+        try:
+            lk.unlink()
+        except OSError:
+            pass
+
+
+def base_check(a):
+    """Cachecheck (cache safety rule 5). 1: every basebin entry whose content key changed is removed. 2: one random entry is
+    rebuilt cold (PM_CACHE=off: no cache, no ccache) and its 3dsx bytes are compared; a difference removes the entry.
+    3: one random stored bench of that commit runs again (2 Azahar starts) and its shots are compared with the stored ones."""
+    import random
+    root = basebin_root()
+    ents = sorted(p for p in root.glob("*/commit.txt")) if root.is_dir() else []
+    live = []
+    for c in ents:
+        commit = c.read_text(encoding="utf-8").strip()
+        if c.parent.name != bb.entry_dir(root, basebin_key(commit)).name:
+            print("cachecheck basebin %s: key changed (stale), removed" % commit[:9])
+            shutil.rmtree(c.parent, ignore_errors=True)
+        else:
+            live.append(commit)
+    if not live:
+        print("cachecheck basebin: no entry to check")
+        return 0
+    commit = random.choice(live)
+    ent = bb.get(root, basebin_key(commit))
+    if ent is None:
+        print("CACHECHECK FAIL basebin %s: the entry failed its check (removed)" % commit[:9])
+        return 1
+    lane, scratch, lane_dir, gitdir, src3dsx = base_lane_paths(commit)
+    lane, scratch = "chk_" + commit[:9], REPO / "build3ds" / ("chk_" + commit[:9])
+    src3dsx = scratch / "build3ds" / ("lane-" + lane) / "pm_3ds.3dsx"
+    os.environ["PM_CACHE"] = "off"
+    try:
+        rc, _bn = scratch_build(commit, gitdir, scratch, lane, a.row)
+        same = rc == 0 and src3dsx.exists() and bb.sha1_file(src3dsx) == bb.sha1_file(ent / "pm_3ds.3dsx")
+    finally:
+        os.environ.pop("PM_CACHE", None)
+        shutil.rmtree(scratch, ignore_errors=True)
+        drop_base_lane(lane, [])
+    if not same:
+        print("CACHECHECK FAIL basebin %s: a cold build differs from the entry (build.sh exit %d), entry removed" % (commit[:9], rc))
+        shutil.rmtree(ent, ignore_errors=True)
+        return 1
+    print("cachecheck basebin %s ok: a cold build has the same 3dsx bytes" % commit[:9])
+    benches = [b for b in (load_index()["commits"].get(commit) or {}).get("benches", []) if stored(commit, b)]
+    if not benches:
+        print("cachecheck shots %s: no stored bench to check" % commit[:9])
+        return 0
+    b = random.choice(benches)
+    old = store_root() / commit / b
+    keep = store_root() / commit / (b + ".chk.%d" % os.getpid())
+    shutil.rmtree(keep, ignore_errors=True)
+    shutil.copytree(old, keep)
+    drop_stored(commit, b)
+    try:
+        rc = base_build_run([bench_def(b)], commit, a.row)
+        diff = shots_diff(str(keep), str(old)) if rc == 0 and stored(commit, b) else "the new run was not stored (rc %d)" % rc
+    finally:
+        shutil.rmtree(keep, ignore_errors=True)
+    if diff:
+        print("CACHECHECK FAIL shots %s %s: %s" % (b, commit[:9], diff))
+        return 1
+    print("cachecheck shots %s %s ok: a new run has the same shots" % (b, commit[:9]))
+    return 0
+
+
 def base_drop(a):
     """Removes the stored shots of bench at commit (store folder and its index.json entry). Nothing else is touched."""
     commit = base_commit(a.commit)
@@ -1863,18 +2028,9 @@ def base_drop(a):
         print("no base commit (the merge-base of HEAD with main, or --commit %s is unknown). Nothing was dropped." % a.commit)
         return 5
     d = store_root() / commit / a.bench
-    idx = load_index()
-    ent = idx["commits"].get(commit)
-    listed = bool(ent and a.bench in ent["benches"])
-    if not d.exists() and not listed:
+    if not drop_stored(commit, a.bench):
         print("base %s at %s: not stored. Nothing dropped." % (a.bench, commit[:9]))
         return 0
-    shutil.rmtree(d, ignore_errors=True)
-    if ent:
-        ent["benches"] = [b for b in ent["benches"] if b != a.bench]
-        if not ent["benches"]:
-            del idx["commits"][commit]
-        save_index(idx)
     print("base %s at %s: dropped. Store folder %s removed." % (a.bench, commit[:9], posix(d)))
     return 0
 
@@ -1882,25 +2038,36 @@ def base_drop(a):
 def cmd_base(a):
     if a.fill:
         return base_fill(a)
+    if a.prebuild:
+        return base_prebuild(a)
+    if a.check:
+        return base_check(a)
     if a.drop:
         if not a.bench:
             print("base --drop needs a bench name. Nothing was dropped.")
             return 5
         return base_drop(a)
-    bd = bench_def(a.bench) if a.bench else None
-    if not bd or not bd["kind"].startswith("azahar") or not bd.get("scenario"):
-        print("base needs an Azahar bench (azahar_pic, azahar_stream) with a scenario, or --fill. Nothing was built.")
+    names = [n for n in (a.bench or "").split(",") if n]
+    bds = [bench_def(n) for n in names]
+    if not names or any(not bd or not bd["kind"].startswith("azahar") or not bd.get("scenario") for bd in bds):
+        print("base needs Azahar benches (azahar_pic, azahar_stream) with a scenario, or --fill. Nothing was built.")
         return 5
     commit = base_commit(a.commit)
     if not commit:
         print("no base commit (the merge-base of HEAD with main, or --commit %s is unknown). Nothing was built." % a.commit)
         return 5
-    if stored(commit, bd["name"]):
-        n = len(shot_names(store_root() / commit / bd["name"]))
-        print("base %s at %s: stored, %d shots at %s. No build, no run." % (bd["name"], commit[:9], n, store_root() / commit / bd["name"]))
+    todo = []
+    for bd in bds:
+        if stored(commit, bd["name"]):
+            n = len(shot_names(store_root() / commit / bd["name"]))
+            print("base %s at %s: stored, %d shots at %s. No build, no run." % (bd["name"], commit[:9], n, store_root() / commit / bd["name"]))
+        else:
+            todo.append(bd)
+    if not todo:
         return 0
-    print("base %s at %s: not stored. Building that commit once (lane base_%s), then one run." % (bd["name"], commit[:9], commit[:9]))
-    return base_build_run([bd], commit, a.row)
+    print("base %s at %s: not stored. One base build of that commit (lane base_%s), then the runs." % (
+        ",".join(bd["name"] for bd in todo), commit[:9], commit[:9]))
+    return base_build_run(todo, commit, a.row)
 
 
 def base_fill(a):
@@ -2627,6 +2794,8 @@ def main(argv):
     x.set_defaults(f=cmd_build_at)
     x = sub.add_parser("base"); x.add_argument("bench", nargs="?"); x.add_argument("--fill", action="store_true")
     x.add_argument("--drop", action="store_true", help="remove the stored shots of bench at --commit (or the merge-base)")
+    x.add_argument("--prebuild", action="store_true", help="BASEBIN: put the base build of the merge-base (or --commit) into the basebin store")
+    x.add_argument("--check", action="store_true", help="cachecheck: stale basebin entries, one cold rebuild, one shot rerun")
     x.add_argument("--commit"); x.add_argument("--row", default=BASE_ROW); x.set_defaults(f=cmd_base)
     x = sub.add_parser("cmp"); x.add_argument("bench"); x.add_argument("--row", required=True); x.add_argument("--commit")
     x.set_defaults(f=cmd_cmp)
