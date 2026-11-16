@@ -9,6 +9,9 @@ build 722, gfxpos 201, data 3016, data_arrays 277, gfxtype 885, recdl 15, reader
   listcen vs build3ds/out/gsetr_lc0.txt: data -212, data_arrays -26, gfxtype -27. Steps 3-5 not run; the orchestrator relaunches it.
   Merge note: main has the ws_GSETR.md addendum, the branch deletes the page: resolve by delete.
 - ws_CGFX and ws_DLSITE1: after Merge GSETR, parallel. ws_MODELRM (Sonnet): after Merge CGFX (shared 3ds/src/nd_rec.c).
+- Oracle DL3 pages, start now, parallel, Haiku: ws_GBIHDR (+ _code: gbiprune.py, build -156 data -193 gfxtype -32), ws_HOLD1 (data -61),
+  ws_PRA31 (gen_gfx_syms.py Matrix4s, data -311 if 36 move). Waiting: A(x) after Merge GSETR and PRA31 (gset.py:30-31, gen_gfx_syms.py:14);
+  npc_merlee after Merge GSETR (gset.py); tst_13 after Merge MODELRM (model.c:4326); FXSEED (Sonnet) needs the user's yes.
 ## Facts that cost time
 - gset.py holds a line with `&X`, `X[`, sizeof, BranchList or SetCustomGfx (hold_line, gset.py:158-160). A held caller fails gset_check
   (nd_gfx_conv.c:917-920) for every moved callee. BLOCK_OPEN (gset.py:31) needs `[] = {`: only src/curtains.c:143 has `[] ={`.
