@@ -397,7 +397,7 @@ void star_spirits_energy_appendGfx(void* effect) {
                     nd_pso_filt(G_TF_POINT);
                     nd_rect_tex(-40 * 4, 0, 360 * 4, SCREEN_HEIGHT * 4, G_TX_RENDERTILE, 0, 0, 0, 0);
                 } else {
-                    nd_rec_dl(D_E0122BA0[0]);
+                    nd_draw_list(D_E0122BA0[0], pe_star_spirits_energy_367);
                 }
             }
         }

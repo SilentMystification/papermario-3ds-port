@@ -169,7 +169,7 @@ void shattering_stones_appendGfx(void* effect) {
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         nd_val_prim(0, 0, 102, 109, 123, part->unk_28);
-        nd_rec_dl(D_E002C940[0]);
+        nd_draw_list(D_E002C940[0], pe_shattering_stones_196);
         nd_xf_pop(G_MTX_MODELVIEW);
     } else {
         s32 unk_28 = part->unk_28;

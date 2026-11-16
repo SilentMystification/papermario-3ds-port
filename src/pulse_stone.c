@@ -96,7 +96,7 @@ void appendGfx_pulse_stone_icon(void) {
         guMtxF2L(sp58, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-        gSPDisplayList(gMainGfxPos++, NDN(pulse_stone_icon_gfx));
+        nd_draw_list(NDN(pulse_stone_icon_gfx), ND_SELF);
 
         dx = abs((gGameStatusPtr->mapID % 7) - 2);
         dy = gGameStatusPtr->mapID / 7;

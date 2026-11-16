@@ -313,7 +313,7 @@ void something_rotating_appendGfx(void* effect) {
                 nd_draw_list(D_E0116C68[0], ND_SELF);
                 nd_val_env(data->env.r, data->env.g, data->env.b, data->unk_25);
                 nd_draw_list(D_E0116C70[i - 1], ND_SELF);
-                nd_rec_dl(D_E0116C60[0]);
+                nd_draw_list(D_E0116C60[0], pe_something_rotating_310);
             }
             nd_xf_pop(G_MTX_MODELVIEW);
         }

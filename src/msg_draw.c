@@ -1279,7 +1279,7 @@ void appendGfx_message(MessagePrintState* printer, s16 posX, s16 posY, u16 addit
 
                 if (msg_drawState->printModeFlags & MSG_PRINT_FLAG_2) {
                     sp96 = 0xFF;
-                    gSPDisplayList(gMainGfxPos++, NDN(D_8014C500));
+                    nd_draw_list(NDN(D_8014C500), ND_SELF);
                 }
                 msg_drawState->charScale.x = msg_drawState->msgScale.x;
                 msg_drawState->charScale.y = msg_drawState->msgScale.y;
@@ -1695,7 +1695,7 @@ void appendGfx_message(MessagePrintState* printer, s16 posX, s16 posY, u16 addit
 
 
 void msg_reset_gfx_state(void) {
-    gSPDisplayList(gMainGfxPos++, NDN(D_8014C500));
+    nd_draw_list(NDN(D_8014C500), ND_SELF);
 }
 
 /* NATIVEAPI S3a: one glyph is one NDC_NAPI record. msg_draw_char (core 1) keeps the arithmetic and the printModeFlags update and records

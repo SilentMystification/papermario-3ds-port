@@ -297,7 +297,7 @@ void stars_shimmer_appendGfx(void* effect) {
     state = data->state;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    gSPDisplayList(gMainGfxPos++, NDN(D_09000F20_338EE0));
+    nd_draw_list(NDN(D_09000F20_338EE0), ND_SELF);
 
     temp_s4 = (data->lifeTime - 1) * 3;
     guTranslateF(sp18, data->pos.x, data->pos.y, data->pos.z);
