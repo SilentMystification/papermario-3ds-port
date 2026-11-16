@@ -45,6 +45,12 @@ build 551, gfxpos 186, data 2068, data_arrays 196, gfxtype 809, recdl 10, reader
 - Bug oracle 38: ws_STALEOBJ (+ _code) ready: build.sh sync kept host mtimes, so a worktree build without PM_LANE left older objects in
   the shared volume; build 5877 lacks STARTLR2 and MOON7 (FSKIP is in). FSKIP2 waits for the user's row choice.
 - With logging off, event lines reach no log.txt (pm_log.c:600, :888). Not fixed.
+## Next listcen groups (oracle FX3, main 3771a3edbb; data 1942)
+- Pages on main: ws_FXWRAP (-27 data), ws_WSCMB (-114 data). After them the big groups are: assets/us effects/gfx 514 (gaps a, b, d, e:
+  converter work), src/model.c 516 (MODELRM), include data 191 / build 308, src/entity/model Heart/Ultra/SaveBlock 102, screen_overlays 83.
+- OPEN: why the entity model blocks (HeartBlockContent.c 35, UltraBlockContent.c 34, SaveBlock.c 33) stay. Read gset_ok.txt of a host run first.
+- Small: assets/us/world/dead/lava_piranha/vine.gfx.inc.c (17 data) has no include at all; LCNOBUILD counts it (needs a commented include).
+- OPEN: filemenu_gfx.c data 4, A2BC0/A2C88 (status_star_shimmer.c, DLSITE2 file) 24.
 ## What to do first
 1. Answer coder questions of GSETR, CGFX, DLSITE1, MODELRM (SendMessage, file:line).
 2. After Merge GSETR: re-run the codemod dry on main; write DLSITE2 for the next group with a static list name.
