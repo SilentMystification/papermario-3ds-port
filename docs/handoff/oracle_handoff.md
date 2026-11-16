@@ -1,49 +1,35 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main 2e0746e540, 2026-11-16. Oracle 36 wrote ws_MAPLAG (+ _code, ready). Earlier pages ready: ws_STARTLR2, ws_MOON7, ws_FSKIP.
-OPEN for the next oracle: file select flip lag (needs a console flip timing).
-## Counters (FACT, listcen on main 1e45bdcad9 + converter edits only)
-C1 build 738 (gbi.h 382, gbi_custom.h 61, gs2dex.h 18; model.c 67, effects 46, world 45, imgfx.c 21, entity 21), C2 gfxpos 224,
-C5 data 5149, C6 data_arrays 461, C7 gfxtype 1083, C8 reader 783, C10 recdl 15.
-## Dry-run tools (scratch worktrees, nothing on main)
-- Script form: scratchpad fxv_dry.sh of oracle 32 (worktree add, edit script, docker gen_gfx_tab + nd_gfx_tab.o + conv2c.sh, seed converter
-  with -D, gset.py on a set, second run, listcen). One gconv run is about 4 min. Run it in the background.
-- Host-compile a candidate source first: `gcc -m32 -w <DEF> -DND_GCONV_IN <INC> -fsyntax-only <file>` (flags: gen_gfx_tab.sh:11-13).
-- Base FACT (1e45bdcad9): gconv lists 1763, tables 1745, inherit 40, unsup 19, gset ok 1660, moved 1578; conv2c ok `ntab tables 1745 draws 30174 bad 0`.
-## FXVROM (page ready: ws_FXVROM.md + _code)
-- FACT run 1 (split + m_tri rule): tables 1771, inherit 21, unsup 12, gset ok 1693, bad 0; conv2c ok `ntab tables 1771 draws 35637 bad 0`.
-  Seed -DROM_SPLIT=0 gives `D_09002CE8_3C0688: vertex ref outside the set` back. gset on 118 sources: moved 33 files 2 keep 0.
-- FACT (code read): the device never reads NdNTab (ndno/ndni/ndnv: no reader in 3ds/src). It runs the unit words ndnu (nd_walk.c:599 nd_ntab_run).
-  The split changes only the host compare form. The ndnu words and the ndd_ keys do not change. The last oracle's GUESS (2 moved lists draw
-  host-layout vertices on the device) is wrong: the device load reads from the array start in ROM-ordered memory (pm_3ds.map 0x4e0a20, +0x70).
-## Other families (FACT from oracles 31-32)
-- C1/C2: the codemod --ntab dry (main) keeps all dl sites `no-entry`: effects 32, world 36, entity 21, battle 6, screen_overlays 16, curtains 5,
-  entity_model 4. They need v2 tables first. Re-run the dry after Merge GSETI: `codemod.py --dry --state --ntab build3ds/out/ntab_tables.txt <dir>`.
-- NAMESPACE A(x) (kzn2/actor/lava_piranha.c, sam2/dlist.c): gen_gfx_syms.py:21 and gset.py:32 NS_DEF take `A`. A(sym) = AREA_sym (macros.h:44,
-  :200). Their users are readers: lava_piranha `ems_Draw(N(DList1), 60)`, sam2 monstar.c:157 `.displayList = N(dlist)`: wait for LKEY census.
-- npc_merlee.c is #included by dro_02/npc.c:53 (not a device source): gset needs an include-twin rule. filemenu_selectlanguage.c is not in the
-  device build (3ds/CMakeLists.txt:291-299): drop it.
-- pra_31 stairs_skele.c (34 includes, 323 data): animator skeleton nodes; unsup `unit address outside the symbol map` and `matrix address
-  outside the symbol map` (Matrix4s N(unk_02_mtx), stairs_vtx.c:120). MESHST-like design.
-- model.c (516 data, 169 gfxtype, 67 build): Gfx_RM* lists are NdSDef defs (model.c:1260, nd_rmdef.h), built at run time (nd_rec.c:145 nd_rm_build);
-  LKEY H edits nd_rec.c for ModelRenderModes keys. Needs a design (converter emits the compiled defs); Sonnet approved by the user.
-- C7 effects: fxtype dry 89 ok arrays; the other 50 are read by a local `Gfx* dlist = X[i]` (next FXTYPE step: local handle rule).
-## Tidal Wave in wide: DONE by oracle 37, page ws_WAVEWIDE (+ _code), commit 22966a139d.
-- FACT cause: pm_tex.c:1712-1715 took the first slot. The old frame slot (grab_prev, slot 0) of gFrameBuf0 spans 256 rows and holds
-  gFrameBuf1 at off_oy 240 (hw_tidal2_live.txt #207579-#207682). Fix: pm_offt_pick (nearest base). Mesh ends at game x -40 and 360 in wide.
-## File select flip lag and pause pane flip (oracle 37): same path, cause not named.
-- FACT: both use draw_box ROTSCALE (filemenu_common.c:645/666, pause_main.c:63/66): one off-screen window image per window per frame
-  (draw_box.c:760-830, pm_gpu_off_begin/off_end). FSELLAG branch 4404177f07 is in main (FSELLAG1 8b34e894cd, FSELLAG2 6031d5dca6).
-- OPEN: no console timing of a flip exists. The next name for a page is FSELLAG3 (FSELLAG2 is an old merged row).
-## Older facts that still cost time
-- NDN_DECL/NDN (nd_gtab.h:66-74): host form extern Gfx; device form ndd_<name> NdNDev. gset include mode is src/effects/gfx only.
-- listcen skips an asset that only a gfxin twin includes. gen_gfx_tab copies its logs to /w/build3ds/out when it exists.
-- fxr_drec first run can flake cold (grab_tex hash): warm rerun rule (bench.py:2023).
+State: main e91cff3feb, 2026-11-16. Oracle DL2 (display list work) wrote ws_CGFX, ws_DLSITE1, ws_MODELRM and the GSETR addendum.
+Goal: remove the N64 display list system. Done when 3ds/tools/elfgate.py prints func 0 data 0 gfxnames 0 and every listcen counter is 0.
+## Counters (FACT, listcen on main e91cff3feb)
+build 722, gfxpos 201, data 3016, data_arrays 277, gfxtype 885, recdl 15, reader 785, model 15.
+## Running and ready work
+- GSETR (worktree build3ds/wt/GSETR, HEAD a6b5c569f3 WIP): curtains.c left gset.d only. Pass values: `gset moved 26 files 9 keep 0`;
+  listcen vs build3ds/out/gsetr_lc0.txt: data -212, data_arrays -26, gfxtype -27. Steps 3-5 not run; the orchestrator relaunches it.
+  Merge note: main has the ws_GSETR.md addendum, the branch deletes the page: resolve by delete.
+- ws_CGFX and ws_DLSITE1: after Merge GSETR, parallel. ws_MODELRM (Sonnet): after Merge CGFX (shared 3ds/src/nd_rec.c).
+## Facts that cost time
+- gset.py holds a line with `&X`, `X[`, sizeof, BranchList or SetCustomGfx (hold_line, gset.py:158-160). A held caller fails gset_check
+  (nd_gfx_conv.c:917-920) for every moved callee. BLOCK_OPEN (gset.py:31) needs `[] = {`: only src/curtains.c:143 has `[] ={`.
+- curtains.c needs a row: `&TheaterGfx` (:276), `&TheaterInitGfx` (:257, :301), `&NoControllerSetupTexGfx` (:302) are held.
+- codemod dry: `python 3ds/tools/codemod.py --dry --state --ntab build3ds/out/ntab_tables.txt src`. `dl` = rewritten + kept DL sites.
+  Main: 139 dl, 123 DL keeps (110 gSPDisplayList no-entry, 7 first-arg, 6 nd_rec_dl no-entry). "no-entry" = no ND_PSO_DESC in the file
+  and the list is not in ntab_tables.txt (codemod.py:200-205, :291-294). Main no-entry by group: entity 21, screen_overlays 16, world/area_hos 9,
+  curtains 5, battle/common 5, entity_model 4, world/area_mac 4, effects/flame 4, others 1-3. Most use a variable list (dlist, gfx, ENTITY_ADDR).
+- Scenario and bench defs go in per-row files 3ds/tools/azt.d/<ROW>.json and bench.d/<ROW>.json (example MESH1). bench.py base builds the merge-base.
+- nd_rec_list (nd_rec.c:528) records a static SetCustomGfx list as commands. nd_rec_dl (nd_gtab.c:108) finds a moved key by nd_ntab_find.
+- nd_lkey.h: a reader of a moved key (NDN) reads e->u. lkey census allow file 3ds/tests/lkey/allow.txt.
 - Windows python cannot open /c/... paths: pass `cygpath -m` paths.
-## Console log capture (oracle 35, 2026-11-15). Pages ws_CAPLOG, ws_CAPTOOL ready (parallel, disjoint files).
-- FACT: with log_file_on 0 and prof_mode 0 the writer never calls accept (pm_log.c:1040-1043, :1066); options.ini log_on=0 does it (pm_options.c:229);
-  the log profile had no log=on. GUESS: the O3DS XL options.ini has log_on=0 (menu Profiling row saves it, pm_options.c:269).
-- FACT: with logging off, event lines (pm_log_evt) reach no log.txt: no writer wake (pm_log.c:600), sink waits (:888). Not fixed yet.
+## Other families (from oracles 31-32, still open)
+- A(x) namespace (kzn2 lava_piranha, sam2 dlist): readers, wait for the LKEY census.
+- npc_merlee.c is #included by dro_02/npc.c:53: gset needs an include-twin rule (gset.py edit).
+- pra_31 stairs_skele.c: animator skeleton nodes, MESHST-like design.
+- tst_13 main.c:301: mdl_project_tex_coords (model.c:4326) writes into N(shockwave_gfx): a list writer, after MODELRM.
+- C7 effects: 50 arrays read by a local `Gfx* dlist = X[i]` (FXTYPE next step: local handle rule).
+## Open (non display list)
+- File select flip lag and pause pane flip: draw_box ROTSCALE off-screen windows (draw_box.c:760-830). No console timing yet. Next name FSELLAG3.
+- With logging off, event lines reach no log.txt (pm_log.c:600, :888). Not fixed.
 ## What to do first
-1. Answer MAPLAG coder questions (SendMessage, file:line).
-2. Answer WAVEWIDE coder questions. A byte diff in fxr_drec: read the cmp output; the fix changes frames with two cfb slots.
+1. Answer coder questions of GSETR, CGFX, DLSITE1, MODELRM (SendMessage, file:line).
+2. After Merge GSETR: re-run the codemod dry on main; write DLSITE2 for the next group with a static list name.

@@ -35,3 +35,13 @@ run step 2 again, and write the new moved count in the commit. A host compare fa
 Stop: all 3 gates pass. Final commit `GSETR 3: gate` with the values. That commit deletes this page.
 Hand-back: build3ds/out/handback_GSETR.txt (line 1 commit hash, then gate values, gset moved, listcen totals, memcheck margin).
 Any other failure after 2 tries: write the output to build3ds/out/ and send the path to the oracle (SendMessage). Then stop.
+## Addendum 2026-11-16 (oracle DL2, the designer to ask from now): curtains.c leaves gset.d only
+Cause (FACT, code read): BLOCK_OPEN (gset.py:31) does not match `Gfx TheaterGfx[] ={` (src/curtains.c:143). A BLOCK_OPEN fix does not help:
+`gSPDisplayList(gMainGfxPos++, &TheaterGfx)` (curtains.c:276) is a hold line (gset.py:160, HOLD_RULE gset.py:22), so TheaterGfx stays.
+Its 6 callees move, and gset_check (nd_gfx_conv.c:917-920) fails. Do not edit gset.py.
+1. Remove the line `src/curtains.c` from 3ds/tools/gset.d/GSETR.txt. Keep it in 3ds/tools/gconv_src.d/GSETR.txt.
+2. Before step 2, run `python 3ds/tools/listcen.py > build3ds/out/gsetr_lc0.txt` (the base).
+3. Step 2 pass: `gset moved 26 files 9 keep 0` (FACT: the 35 run moved 9 curtains lists, curtains.c:17-141; coder run gsetr_gset2.txt).
+4. Step 4 pass, against gsetr_lc0.txt: data -212, data_arrays -26, gfxtype -27 (FACT: -292 + 80, -35 + 9, -36 + 9;
+   listcen regexes on curtains.c:17-141 count 80 data, 9 arrays, 9 Gfx, no comments).
+5. Write the new numbers in the commit texts. Curtains goes to a later row (it needs the `&X` sites at curtains.c:257, 276, 301).
