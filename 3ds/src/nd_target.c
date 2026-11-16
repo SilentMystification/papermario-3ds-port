@@ -12,6 +12,7 @@
 #include "pm_tex.h"
 #include "pm_port.h"
 #include "variables.h"
+#include "nd_grabonce.h"
 
 /* GLOB: definitions moved here from the former pm_gbi.c (layout only). */
 int cimg_stride = 320;
@@ -56,6 +57,7 @@ int splash_on; /* HANG1a: set by the G_PM_ND_SPLASH record (water_splash.c, nd_n
 unsigned splash_grab_f = ~0u;
 int grab_hold;                  /* SBLK2 B1: set by the G_PM_ND_GRABHOLD bracket (motion_blur_flame.c, nd_native_rec) */
 unsigned hold_grab_f = ~0u;     /* SBLK2 B1: the frame whose one copy the hold reuses */
+extern unsigned pm_gpu_seq; /* GRABSEQ: keys both grabs on the drawn frame, not on pm_frame_count() */
 /* LS-4: the G_PM_ND payload kinds (gbi_custom.h), called by the walker (nd_walk.c, HC4d2: the NDO_MISC_ND fields). */
 void nd_native_rec(unsigned kind, unsigned on) {
     if (kind == G_PM_ND_SPLASH) splash_on = (int)on;
@@ -67,15 +69,13 @@ void grab_cur(const void* src, int w, int h) {
     int x, y, r;
     if (!src || w < 1 || !pm_is_cur_cfb(src)) return;
     if (grab_hold) { /* SBLK2 B1: one full-screen copy per frame for the whole flame draw; the strips read it (the splash rule) */
-        if (hold_grab_f == pm_frame_count()) return;
-        hold_grab_f = pm_frame_count();
+        if (!nd_grab_once(&hold_grab_f, pm_gpu_seq)) return;
         r = pm_gpu_grab(nd_cfb, 0, 240);
         if (r == 2) { n_grabs++; n_splits++; }
         return;
     }
     if (splash_on) { /* HANG1a: a water splash window: one full-height copy per frame, the other windows of the frame read it */
-        if (splash_grab_f == pm_frame_count()) return;
-        splash_grab_f = pm_frame_count();
+        if (!nd_grab_once(&splash_grab_f, pm_gpu_seq)) return;
         r = pm_gpu_grab(nd_cfb, 0, 240);
         if (r == 2) { n_grabs++; n_splits++; }
         return;

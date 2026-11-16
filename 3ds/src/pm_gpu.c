@@ -2878,10 +2878,12 @@ static void sync60_pace(void) {
  * logic and the draw recording run before the wait for the GPU tail of the last frame. */
 static int begin_pend, begin_clear;
 static int fh_on(void); /* FRAMEHASH3: defined with fh_frame, above pm_gpu_end_w */
+unsigned pm_gpu_seq; /* GRABSEQ: one step per frame begin, where the off-screen slots drop (nd_target.c grab_cur keys the grab hold and the splash grab on it) */
 void pm_gpu_begin_wait(void) {
     PM_WALK_OWN(); /* CORE2-3a */
     if (!begin_pend) return;
     begin_pend = 0;
+    pm_gpu_seq++; /* GRABSEQ: a walked key frame and the next L frame share pm_frame_count(); each begin is a new drawn frame */
     if ((off_mask_f || off_sused) && off_trace_n++ < 400) pm_log_d("offuse f%u full %d mask %x small %d", pm_frame_count(), off_used, off_mask_f, off_sused); /* VRAM3 trace */
     off_mask_f = 0;
     off_dump();
