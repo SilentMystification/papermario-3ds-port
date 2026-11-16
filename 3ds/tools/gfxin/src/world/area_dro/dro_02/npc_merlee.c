@@ -1,0 +1,4 @@
+#include "src/world/area_dro/dro_02/npc.c"
+#include "world/area_dro/dro_02/card_setup.gfx.inc.c"
+#include "world/area_dro/dro_02/card_1.gfx.inc.c"
+#include "world/area_dro/dro_02/card_2.gfx.inc.c"

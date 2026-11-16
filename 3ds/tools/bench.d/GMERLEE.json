@@ -1,0 +1,21 @@
+{
+  "benches": [
+    {
+      "name": "gmerlee_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "GMERLEE: draw records of the Merlee card ritual in dro_02, frames 660 to 835 step 25, det. A head equals the base.",
+      "scenario": "gmerlee_drec",
+      "cap": 45,
+      "until": "drec f835 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "merlee",
+        "drec"
+      ],
+      "gates": []
+    }
+  ]
+}

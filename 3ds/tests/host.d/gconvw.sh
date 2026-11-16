@@ -28,4 +28,16 @@ sed 's/^AREA_RULE = True/AREA_RULE = False/' "$R/3ds/tools/gen_gfx_syms.py" > $W
 cmp -s $W/gen_fault.py "$R/3ds/tools/gen_gfx_syms.py" && { echo "gconvw FAIL area seeded fault not applied"; exit 1; }
 (cd $W && python3 gen_fault.py f/gconv_in.c b/a/x.c > /dev/null 2>&1)
 grep -q '"b_area_t_actor_dl", GS_GFX' $W/f/gconv_tu0.c 2>/dev/null && { echo "gconvw FAIL area seeded fault not seen"; exit 1; }
+# GMERLEE: a twin whose first line includes the includer (dro_02/npc.c includes npc_merlee.c): the symbols come from the device file of the twin path.
+# Seeded fault: the source from the first line (top.c) lacks part_gfx.
+R=$(pwd); W=/tmp/gcw4; rm -rf $W && mkdir -p $W/t $W/3ds/tools/gfxin/t $W/o $W/f
+printf 'int top_val;\n#include "part.c"\n' > $W/t/top.c
+printf 'Gfx part_gfx[] = {\n    gsSPEndDisplayList(),\n};\n' > $W/t/part.c
+printf '#include "t/top.c"\n' > $W/3ds/tools/gfxin/t/part.c
+(cd $W && python3 "$R/3ds/tools/gen_gfx_syms.py" o/gconv_in.c 3ds/tools/gfxin/t/part.c > /dev/null) || { echo "gconvw FAIL twin gen"; exit 1; }
+grep -q '"part_gfx", GS_GFX' $W/o/gconv_tu0.c || { echo "gconvw FAIL twin device symbol"; exit 1; }
+sed 's/^    src = pathlib.Path(s\[len(TWIN):\])  # GMERLEE.*/    src = pathlib.Path(m.group(1))/' "$R/3ds/tools/gen_gfx_syms.py" > $W/gen_fault.py
+cmp -s $W/gen_fault.py "$R/3ds/tools/gen_gfx_syms.py" && { echo "gconvw FAIL twin seeded fault not applied"; exit 1; }
+(cd $W && python3 gen_fault.py f/gconv_in.c 3ds/tools/gfxin/t/part.c > /dev/null 2>&1)
+grep -q '"part_gfx", GS_GFX' $W/f/gconv_tu0.c 2>/dev/null && { echo "gconvw FAIL twin seeded fault not seen"; exit 1; }
 echo "gconvw ok"
