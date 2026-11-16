@@ -17,6 +17,6 @@ src/effects/snowfall.c 1 LOCAL Gfx g[] on the stack for nd_parts_add
 src/effects/water_block.c 1 LOCAL Gfx g[] on the stack for nd_parts_add
 src/entity_model.c 2 KEY ent_vtx_range, entcheck_draw through nd_lkey_ (LKEY); entRec record words
 src/imgfx.c 1 LOCAL state->gfxBufs: heap copies of ROM data (imgfx.c:1260)
-src/model.c 10 KEY mdl_get_vertex_count nd_ntab_find (VCOUNT); MAP mdl_local_gfx_update_vtx_pointers and mdl_project_tex_coords (displayData->displayList); LOCAL record words
+src/model.c 3 KEY mdl_get_vertex_count nd_ntab_find (VCOUNT); MAP mdl_local_gfx_update_vtx_pointers and mdl_project_tex_coords (displayData->displayList) (NMDL0: the record and bind lists are NdNr word pairs, no LOCAL reader)
 src/world/area_omo/omo_02/barricade.c 1 MAP displayData->displayList (barricade.c:114)
 src/world/common/util/GetFirstTriangleNormal.inc.c 1 MAP displayData->displayList (mim_01, mim_03, mim_06 hint.c:13)
