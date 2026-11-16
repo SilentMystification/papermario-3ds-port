@@ -415,7 +415,6 @@ static unsigned pace_iv[4]; /* vblanks between two drawn iterations: 1, 2, 3, 4 
 #define FS1_MAX_RUN 3 /* FS1b: 3 skips cover a stall of 7 vblanks */
 static unsigned fs1_steps, fs1_skipped, fs1_logged, fs1_last_iv, fs1_run, fs1_force;
 static int fs1_off, fs1_on_log;
-void pm_fskip_set(int on) { fs1_off = !on || pm_debug_has("fs1off"); } /* options panel row 9: takes effect at the next step */
 /* PC01: vblanks per game step. 2 = 30 fps. A later 60 fps option (F06) changes only this value. Needs more work
  * than a changed number for 1: FrameBegin(SYNCDRAW) then has to stop waiting for the vblank (not done, not in scope). */
 #define PM_VBLANKS_PER_STEP 2
@@ -565,7 +564,7 @@ void pm_frame_loop(void) {
     const int pos_dbg = pm_debug_has("poshud"); /* POSHUD: the poshud switch, same as the option */
     { /* FS1 switches: fs1off, fs1force=<n> (skip every n-th step) */
         char fv[16];
-        fs1_off = pm_debug_has("fs1off") || !pm_opt.fskip;
+        fs1_off = pm_debug_has("fs1off"); /* FSKIP2: the mode decides FS1 at each step (pm_fps_fs1) */
         fs1_force = pm_debug_value("fs1force", fv, sizeof fv) ? (unsigned)atoi(fv) : 0;
         fs1_on_log = pm_log_level() >= 3;
     }
@@ -686,7 +685,7 @@ void pm_frame_loop(void) {
          * PM_VBLANKS_PER_STEP vblanks and this step starts when that many vblanks have already passed since the last drawn one (on time it starts after 1). At most FS1_MAX_RUN skips in a row.
          * The game logic runs as always (gfxTaskNum 3 in gfxRetrace_Callback), FrameBegin and FrameEnd are not called, the picture on screen stays. */
         int fs_skip = 0, fs_force_skip = 0;
-        if (lp_ever && step_vb_ok && !fs1_off && !PMDL("fast") && !pm_det_on()) { /* PT87: also with fps60: a late step skips its draws (the key frame too), the game logic keeps 30 steps a second. Not with fast (uncapped debug runs). */
+        if (lp_ever && step_vb_ok && !fs1_off && (fs1_force || pm_fps_fs1(pm_fps_mode(pm_opt.fps60, pm_interp_on))) && !PMDL("fast") && !pm_det_on()) { /* PT87: also with fps60: a late step skips its draws (the key frame too), the game logic keeps 30 steps a second. Not with fast (uncapped debug runs). */
             fs1_steps++;
             /* FS1b: skip the draw whenever a whole step of the schedule has passed since the last drawn or skipped step (the step is at least one vblank late).
              * A skip pays two vblanks (step_vb += 2), so the draws stay on the schedule and the game logic runs at the full rate. */
@@ -717,7 +716,7 @@ void pm_frame_loop(void) {
                 pm_ph_iv = iv; /* PI4 */
                 pace_iv[iv < 1 ? 0 : iv > 4 ? 3 : iv - 1]++;
                 if (pm_interp_on > 0) kc_census(); /* FPS60W2: outside the det condition below */
-                if (!pm_det_on() && (pm_interp_on > 0 ? pm_fps_iskip(pm_opt.fps60 == PM_FPS_ON ? PM_FPS_ON : PM_FPS_DYN, interp_heavy(), iv > PM_VBLANKS_PER_STEP) || PMDL("iskipall") : iv > PM_VBLANKS_PER_STEP)) lc.flags |= LGF_ISKIP; /* FSKIP: On never skips the key frame, Dynamic skips it under load or when late (pm_fpsmode.h); interp off as before. DET: never */
+                if (!pm_det_on() && (pm_interp_on > 0 ? pm_fps_iskip(pm_fps_mode(pm_opt.fps60, pm_interp_on), interp_heavy(), iv > PM_VBLANKS_PER_STEP) || PMDL("iskipall") : iv > PM_VBLANKS_PER_STEP)) lc.flags |= LGF_ISKIP; /* FSKIP: On never skips the key frame, Dynamic skips it under load or when late (pm_fpsmode.h); interp off as before. DET: never */
                 fs1_last_iv = iv;
                 if (iv >= 3) late_n++; /* PT15 */
             }

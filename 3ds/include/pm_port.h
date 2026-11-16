@@ -289,7 +289,6 @@ typedef struct PmOpt {
     int dpad_mode; /* UI1c: 0 Multifunction, 1 D-PAD to C-Stick, 2 D-PAD to Analog (N3DS only). options.ini dpad_mode=multi|cstick|analog */
     int dz_pad, dz_cs; /* PT61: dead zone in percent of full travel, circle pad and C-Stick (N3DS). 0 = as before (no port dead zone) */
     int rep_delay, rep_rate; /* PT60: menu key repeat in ms, the first step is at once, the next after rep_delay, then every rep_rate */
-    int fskip; /* FS1: 1 = frame skip on (default, a late step skips its draw), 0 = off: every game step is drawn. options.ini fskip=0|1, panel row 9 */
     int hud_ms; /* HUDINT: refresh interval of the bottom screen memory rows in ms: 250, 500, 1000 (default), 2000, 5000. options.ini hudint=<ms> */
     int pos_hud; /* POSHUD: 1 = the bottom screen HUD has a Mario position row, drawn every frame. options.ini poshud=0|1, Debug tab row 8 */
     int poslog; /* MN7 rest: 1 = the L+R+Y+B combo logs a position line (pm_input.c). options.ini poslog=0|1, Debug row Position log combo (option row 12) */
@@ -297,7 +296,6 @@ typedef struct PmOpt {
 } PmOpt;
 const char* pm_esc_name(int m); /* ESCAPE2: name of the START+SELECT mode (options.ini escmode) */
 void pm_esc_take(void); /* ESCAPE2: the game loop takes the START+SELECT request of the watchdog (pm_wdog.c) */
-void pm_fskip_set(int on); /* pm_main.c: applies fskip at once */
 extern int pm_new3ds; /* 1 on a New 3DS, set in pm_main.c */
 extern PmOpt pm_opt;
 void pm_pos_text(char* out); /* POSHUD: pm_route.c, writes the Mario row text (40 bytes) */
@@ -306,7 +304,7 @@ const char* pm_map_now(void); /* BOTLAYOUT: pm_route.c, the footer map row text 
 void pm_gpu_footer(const char* map, const char* sys); /* BOTLAYOUT: footer rows 28 (map) and 29 (apt, model, build), drawn by the sink thread */
 void pm_options_init(void);
 void pm_options_write(void);
-/* F11-3: the options panel (src/filemenu/filemenu_options.c). Rows 0 to 5 are fps60 wide hud stats nofog nolight, row 8 is Fixed seed, row 9 is Frame skip, row 10 is Position HUD, row 12 is Position log combo. LOG5: the logging rows (Logging, Live log, Log to disk, Console log) are the Logging page, not option rows. */
+/* F11-3: the options panel (src/filemenu/filemenu_options.c). Rows 0 to 5 are fps60 (the Frame skip row: 0 Off, 1 On, 2 Dynamic) wide hud stats nofog nolight, row 8 is Fixed seed, row 10 is Position HUD, row 12 is Position log combo. LOG5: the logging rows (Logging, Live log, Log to disk, Console log) are the Logging page, not option rows. */
 int pm_options_get(int row);
 int pm_optui_grey(int tab, int row); /* LOG5: the Logging rows that grey while logging is off (cursor skip and colour) */
 void pm_options_flip(int row);
