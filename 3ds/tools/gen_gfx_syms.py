@@ -69,24 +69,42 @@ def name_of(path, ns, nx, plain, pre_bad):
     return f"{ns}_{nx}"
 
 
-def scan(path, out, moved=False, parent_ns=None):
+REN = re.compile(r"^[ \t]*#[ \t]*(define|undef)[ \t]+(\w+)(?:[ \t]+([A-Za-z_]\w*))?[ \t]*$", re.M)  # GDEFREN
+REN_RULE = True  # GDEFREN: an include takes the #define A B renames before it; seeded test in 3ds/tests/host.d/gdefren.sh
+
+
+def renames_at(text, pos, ren):
+    # GDEFREN: the renames `#define A B` (B a name) of text before pos, on top of the includer's; `#undef A` ends one
+    r = dict(ren)
+    if not REN_RULE:
+        return r
+    for m in REN.finditer(text, 0, pos):
+        if m.group(1) == "undef":
+            r.pop(m.group(2), None)
+        elif m.group(3):
+            r[m.group(2)] = m.group(3)
+    return r
+
+
+def scan(path, out, moved=False, parent_ns=None, ren=None):
+    ren = ren or {}
     text = path.read_text(encoding="utf-8", errors="replace")
     text = JP.sub("", text)  # FXENT3
     ns = file_ns(path, text, parent_ns)
     pre_bad = any(d.group(2) for d in NAME_DEF.finditer(text))
     for m in DEF.finditer(text):
-        out.append((m.group(1), name_of(path, ns, m.group(2), m.group(3), pre_bad), moved))
+        out.append((m.group(1), name_of(path, ns, m.group(2), ren.get(m.group(3), m.group(3)), pre_bad), moved))
     for m in MTX.finditer(text):
-        out.append(("Mtx", name_of(path, ns, m.group(1), m.group(2), pre_bad), moved))
+        out.append(("Mtx", name_of(path, ns, m.group(1), ren.get(m.group(2), m.group(2)), pre_bad), moved))
     for m in LIT.finditer(text):
-        out.append(("Lit", name_of(path, ns, m.group(1), m.group(2), pre_bad), moved))
+        out.append(("Lit", name_of(path, ns, m.group(1), ren.get(m.group(2), m.group(2)), pre_bad), moved))
     for name in IMG.findall(text):
-        out.append(("Img", name, moved))
-    for inc in INC.findall(text):
-        p = resolve(inc, path)
+        out.append(("Img", ren.get(name, name), moved))
+    for m in INC.finditer(text):
+        p = resolve(m.group(1), path)
         if p is None:
-            sys.exit(f"gen_gfx_syms: include {inc} of {path} not found")
-        scan(p, out, moved, ns)
+            sys.exit(f"gen_gfx_syms: include {m.group(1)} of {path} not found")
+        scan(p, out, moved, ns, renames_at(text, m.start(), ren))
 
 
 TWIN = "3ds/tools/gfxin/"
