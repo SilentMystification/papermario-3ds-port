@@ -4,8 +4,8 @@
 
 static const unsigned short m[4] = { 0x2000, 0x2000, 0x0020, 0x0010 };
 static const struct { const char* n; int l, r, zl, zr, zc, sm; unsigned short want; } c[] = {
-    { "start L", 1, 0, 0, 0, 0, 1, 0x0020 },
-    { "start R", 0, 1, 0, 0, 0, 1, 0x2000 },
+    { "start L", 1, 0, 0, 0, 0, 1, 0x2000 },
+    { "start R", 0, 1, 0, 0, 0, 1, 0x0010 },
     { "start ZL ZR", 0, 0, 1, 1, 0, 1, 0x0030 },
     { "start combo R", 0, 1, 0, 0, 1, 1, 0x0010 },
     { "world L", 1, 0, 0, 0, 0, 0, 0x2000 },
