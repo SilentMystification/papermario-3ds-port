@@ -48,7 +48,8 @@ build 551, gfxpos 186, data 2068, data_arrays 196, gfxtype 809, recdl 10, reader
 ## Next listcen groups (oracle FX3, main 3771a3edbb; data 1942)
 - Pages on main: ws_FXWRAP (-27 data), ws_WSCMB (-114 data). After them the big groups are: assets/us effects/gfx 514 (gaps a, b, d, e:
   converter work), src/model.c 516 (MODELRM), include data 191 / build 308, src/entity/model Heart/Ultra/SaveBlock 102, screen_overlays 83.
-- OPEN: why the entity model blocks (HeartBlockContent.c 35, UltraBlockContent.c 34, SaveBlock.c 33) stay. Read gset_ok.txt of a host run first.
+- Entity model blocks (FACT, oracle host run on 3771a3edbb): HeartBlockContent.c 0 of 6 lists gset ok, UltraBlockContent.c 0 of 6
+  (converter reasons: read ntab_unsup.txt), SaveBlock.c 1 of 1 ok but its 33 data stay (OPEN: the hold line; run gset.py on SBJOIN.txt dry).
 - Small: assets/us/world/dead/lava_piranha/vine.gfx.inc.c (17 data) has no include at all; LCNOBUILD counts it (needs a commented include).
 - OPEN: filemenu_gfx.c data 4, A2BC0/A2C88 (status_star_shimmer.c, DLSITE2 file) 24.
 ## What to do first
