@@ -24,6 +24,13 @@ if [ "${PM_FNCOV:-0}" = 1 ]; then
     FNV=ON; OUT=build3ds/lane-${PM_LANE}_fncov; VOL=pm3ds-build-${PM_LANE}_fncov
 fi
 mkdir -p $OUT
+# VOLGEN: the shared generator cache (3ds/tools/gencache.sh) and the content-id source sync (3ds/tools/src_sync.sh).
+# PM_CACHE=off is the cold gate: no cache read or write, no skip, no ccache, a new build dir and a new asset volume.
+# PM_CACHE=check (cachecheck, with PM_KEY_ONLY=1): the generators run cold and compare with their cache entries.
+ASSET_DIRS="assets/us ver/us/build"
+CODE_DIRS="3ds/CMakeLists.txt 3ds/effects.cmake 3ds/battle.cmake 3ds/maps.cmake 3ds/map_syms.lds LaunchIcon.png 3ds/ld 3ds/shaders 3ds/stub_include 3ds/include 3ds/src 3ds/tools/cov.d src include"
+. 3ds/tools/gencache.sh
+. 3ds/tools/src_sync.sh
 NAME="pm3ds-build-${PM_LANE:-main}"
 # BN1: one build number = V0 + (commit count - C0), V0 and C0 in 3ds/build_base.txt. No -dirty suffix (user decision 2026-10-19). Suffix -<lane> (PM_LANE set) or -laneB (branch lane-b).
 # Written to 3ds/include/pm_build.h (ignored by git). The boot log and the Options panel show PM_BUILD_STR.
@@ -35,7 +42,8 @@ REV=${PM_BUILD_REV:-HEAD}
 BN=$((V0 + $(git rev-list --count "$REV") - C0))
 if [ -n "$PM_LANE" ]; then BN="$BN-$PM_LANE"; elif [ -z "$PM_BUILD_REV" ] && [ "$(git branch --show-current)" = "lane-b" ]; then BN="$BN-laneB"; fi
 # AZT9c-1: a lane build carries a unique tag (time and pid): a dirty build with the same number has its own build id, so a warm restart proves the new ROM by the boot line
-if [ -n "$PM_LANE" ]; then BN="${BN}_$(date +%H%M%S)$$"; fi
+# VOLGEN: a PM_BUILD_REV build (a committed tree) has no time tag, so a cold rebuild of a base gives the same bytes (cachecheck).
+if [ -n "$PM_LANE" ] && [ -z "$PM_BUILD_REV" ]; then BN="${BN}_$(date +%H%M%S)$$"; fi
 
 # MRTGEN: 3ds/src/map_restore_table.c and 3ds/ld/map_restore*.ld are generated from 3ds/map_restore.txt (git-ignored, never
 # committed, never restored by hand). This runs before the key and the sync, so both see the new content. gen_map_restore.py
@@ -55,16 +63,36 @@ trap 'build_slot_release' EXIT
 trap 'build_slot_release; exit 130' INT TERM
 fi
 gen_map_restore
+IMG=pm3ds-build:1
+docker build -q -t $IMG -f docker/Dockerfile.build docker >/dev/null
+IMGID=$(docker image inspect -f '{{.Id}}' $IMG)
+HIMGID=$(docker image inspect -f '{{.Id}}' pm3ds-host:1)
+ROM=$ASSET_BASE/ver/us/baserom.z64; [ -f "$ROM" ] || { echo "missing $ROM" >&2; exit 1; }
+tg=$(date +%s)
+asset_manifest
+ROMSHA=$(sha1sum < "$ROM" | cut -c1-40)
+echo "STAGE asset-hash $(( $(date +%s) - tg )) s" >&2
+tg=$(date +%s)
 
 # TEXKEY2: 3ds/include/texkey_patch.h (git-ignored, generated) holds the palette fix of the map texture archives: the alpha-0
 # key colours of each CI texture, computed from the ROM and the texture sources of ASSET_BASE (3ds/tools/texkey_bake.py, read only).
-# nuPiReadRom (pm_os.c) applies it to the bytes the game reads. Rewritten each build; the key below covers its content.
+# nuPiReadRom (pm_os.c) applies it to the bytes the game reads. VOLGEN: cached (gencache texkey); the key below covers its content.
 gen_texkey() {
     tkb=$ASSET_BASE; command -v cygpath >/dev/null 2>&1 && tkb=$(cygpath -m "$ASSET_BASE")
-    if command -v py >/dev/null 2>&1; then py -3 3ds/tools/texkey_bake.py "$tkb" 3ds/include/texkey_patch.h
-    else python3 3ds/tools/texkey_bake.py "$tkb" 3ds/include/texkey_patch.h; fi || { echo "texkey_bake.py failed" >&2; exit 1; }
+    if command -v py >/dev/null 2>&1; then PYX="py -3"; else PYX=python3; fi
+    # Key inputs: the tool, the python version, the ROM, every asset file (the tool reads assets/us/mapfs/tex).
+    tk_key="texkey v1
+tool $(sha1sum < 3ds/tools/texkey_bake.py | cut -c1-40)
+python $($PYX -c 'import sys; print(sys.version)')
+rom $ROMSHA
+assets $AHASH"
+    if gc_get texkey "$tk_key" texkey_patch.h:3ds/include/texkey_patch.h; then echo "texkey_bake: cache hit"; return 0; fi
+    $PYX 3ds/tools/texkey_bake.py "$tkb" 3ds/include/texkey_patch.h || { echo "texkey_bake.py failed" >&2; exit 1; }
+    gc_put texkey "$tk_key" texkey_patch.h:3ds/include/texkey_patch.h || true
 }
 gen_texkey >&2 # PUSHKEY: stdout of build.sh is the key only (PM_KEY_ONLY)
+# VOLGEN: the content ids of every code and tool file, read by the generator keys (gc_inputs). After texkey (texkey_patch.h is an input).
+in_manifest $CODE_DIRS 3ds/tools > $OUT/in_now.txt
 
 # HC4f1: host shape converter (3ds/tools/nd_shape_conv.c, host C, read only on ASSET_BASE). Writes $OUT/romfs/shape/<asset>.nds
 # for every *_shape table entry: the Yay0 decode with pointer fields as shape offsets and their reloc list.
@@ -73,18 +101,19 @@ gen_shapes() {
     rom=$ASSET_BASE/ver/us/baserom.z64; [ -f "$rom" ] || { echo "gen_shapes: missing $rom" >&2; exit 1; }
     w=$(pwd -W 2>/dev/null || pwd); od=$(cd "$OUT" && pwd -W 2>/dev/null || pwd)/romfs/shape
     rd=$(cd "$ASSET_BASE/ver/us" && pwd -W 2>/dev/null || pwd)
-    # Skip: the stamp holds the hash of the converter source, the ROM size and the file count of the last run.
-    stamp=$OUT/romfs/shape/.stamp
-    SH_IN="3ds/tools/nd_shape_conv.c 3ds/src/nd_seam.c 3ds/src/nd_dlc.c 3ds/include 3ds/src/nd_yay0.c 3ds/tools/yay0_test.c"
-    want="$({ git ls-files -s -- $SH_IN; git diff HEAD -- $SH_IN; git ls-files -o --exclude-standard -- $SH_IN | xargs -r sha1sum; } | sha1sum | cut -d' ' -f1) sse2 $(wc -c < "$rom" | tr -d " ")"
-    if [ -f "$stamp" ] && [ "$(cat "$stamp")" = "$want $(ls "$OUT/romfs/shape"/*.nds 2>/dev/null | wc -l | tr -d ' ')" ]; then
-        echo "gen_shapes: up to date"; return 0
-    fi
+    # VOLGEN: cached (gencache shape). The lane marker $OUT/shape_entry.txt names the entry that $OUT/romfs/shape links to.
+    # Key inputs: the command text, the host image, the ROM, the sources and every header the two compiles can read.
+    SH_CMD='gcc -m32 -O2 -Wall -I /w/3ds/include -o /tmp/yay0_test /w/3ds/tools/yay0_test.c /w/3ds/src/nd_yay0.c && /tmp/yay0_test /ar && gcc -m32 -O2 -Wall -msse2 -mfpmath=sse -ffp-contract=off -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I /w/include -I /w/3ds/include -I /w/3ds/stub_include -o /tmp/nd_shape_conv /w/3ds/tools/nd_shape_conv.c /w/3ds/src/nd_seam.c /w/3ds/src/nd_dlc.c && /tmp/nd_shape_conv /ar /out'
+    want="shape v1
+cmd $SH_CMD
+himg $HIMGID
+rom $ROMSHA
+$(gc_inputs 3ds/tools/nd_shape_conv.c 3ds/tools/yay0_test.c 3ds/src/nd_seam.c 3ds/src/nd_dlc.c 3ds/src/nd_yay0.c 3ds/include 3ds/stub_include include)"
+    if gc_get_dir shape "$want" "$OUT/romfs/shape" "$OUT/shape_entry.txt"; then echo "gen_shapes: cache hit"; return 0; fi
+    rm -rf "$OUT/romfs/shape" "$OUT/shape_entry.txt" # the old files can be hard links of a cache entry: a run writes new files
     mkdir -p "$OUT/romfs/shape"
-    rm -f "$stamp"
-    MSYS_NO_PATHCONV=1 docker run --rm --memory "${PM_BUILD_MEM:-4g}" -v "$w:/w:ro" -v "$od:/out" -v "$rd/baserom.z64:/ar/ver/us/baserom.z64:ro" -w /tmp pm3ds-host:1 sh -c \
-        'gcc -m32 -O2 -Wall -I /w/3ds/include -o /tmp/yay0_test /w/3ds/tools/yay0_test.c /w/3ds/src/nd_yay0.c && /tmp/yay0_test /ar && gcc -m32 -O2 -Wall -msse2 -mfpmath=sse -ffp-contract=off -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I /w/include -I /w/3ds/include -I /w/3ds/stub_include -o /tmp/nd_shape_conv /w/3ds/tools/nd_shape_conv.c /w/3ds/src/nd_seam.c /w/3ds/src/nd_dlc.c && /tmp/nd_shape_conv /ar /out' || { echo "gen_shapes failed" >&2; exit 1; }
-    echo "$want $(ls "$OUT/romfs/shape"/*.nds 2>/dev/null | wc -l | tr -d ' ')" > "$stamp"
+    MSYS_NO_PATHCONV=1 docker run --rm --memory "${PM_BUILD_MEM:-4g}" -v "$w:/w:ro" -v "$od:/out" -v "$rd/baserom.z64:/ar/ver/us/baserom.z64:ro" -w /tmp pm3ds-host:1 sh -c "$SH_CMD" || { echo "gen_shapes failed" >&2; exit 1; }
+    gc_put_dir shape "$want" "$OUT/romfs/shape" "$OUT/shape_entry.txt" || true
 }
 gen_shapes >&2 # PUSHKEY
 
@@ -93,49 +122,65 @@ gen_shapes >&2 # PUSHKEY
 # holds the hashes of the tool, its headers and the gfx sources of the set; the file is replaced only when its content changes.
 gen_gfx_tab() {
     w=$(pwd -W 2>/dev/null || pwd); ab=$(cd "$ASSET_BASE" && pwd -W 2>/dev/null || pwd)
-    stamp=$OUT/gfx_tab.stamp
-    GT_IN="3ds/tools/gen_gfx_tab.sh 3ds/tools/gen_gfx_syms.py 3ds/tools/nd_gfx_conv.c 3ds/tools/nd_gconv.h 3ds/tools/nd_vslot.c 3ds/tools/gconv_inc 3ds/tools/gconv_src.d 3ds/tools/gen_ntab_entries.py 3ds/src/nd_scomp.c 3ds/src/nd_texwin.c 3ds/include src/effects src/entity 3ds/tools/gfxin"
-    GT_IN="$GT_IN $(sed 's/#.*//' 3ds/tools/gconv_src.d/*.txt | tr -s ' \t\r' '\n' | grep '\.c$' | sort -u | tr '\n' ' ')" # GTIN: the own-TU sources of the set
-    want="$({ git ls-files -s -- $GT_IN; git diff HEAD -- $GT_IN; git ls-files -o --exclude-standard -- $GT_IN | xargs -r sha1sum; } | sha1sum | cut -d' ' -f1)"
-    if [ -f "$stamp" ] && [ -f 3ds/src/nd_gfx_tab.c ] && [ "$(cat "$stamp")" = "$want" ]; then echo "gen_gfx_tab: up to date"; return 0; fi
-    mkdir -p "$OUT"
-    rm -f "$stamp" 3ds/src/nd_gfx_tab.c.new
-    MSYS_NO_PATHCONV=1 docker run --rm --memory "${PM_BUILD_MEM:-4g}" -v "$w:/w" -v "$ab/assets:/ar/assets:ro" -v "$ab/ver/us/build:/ar/ver/us/build:ro" -w /work pm3ds-host:1 sh -c '
+    # VOLGEN: cached (gencache gfx_tab). Key inputs: the command text, the host image, every asset file, and all of 3ds/tools,
+    # 3ds/include, 3ds/stub_include, include, src (gen_gfx_tab.sh compiles with -I src -I include) and the 2 port sources.
+    # GTIN (restored in VOLGEN 1: the patch dropped the GT_IN lines that gtin.sh checks). GT_IN is the key input list.
+    GT_IN="3ds/tools 3ds/include 3ds/stub_include include"
+    GT_IN="$GT_IN src 3ds/src/nd_scomp.c 3ds/src/nd_texwin.c" # GTIN: the own-TU sources of the set (under src)
+    GT_CMD='
         set -e; mkdir -p /work/ver/us
         for d in 3ds include src; do ln -s "/w/$d" "/work/$d"; done
         ln -s /ar/assets /work/assets; ln -s /ar/ver/us/build /work/ver/us/build
-        sh 3ds/tools/gen_gfx_tab.sh /w/3ds/src/nd_gfx_tab.c.new /tmp/gconv 2>&1 | grep -v "^gconv def"' || { echo "gen_gfx_tab failed" >&2; exit 1; }
+        sh 3ds/tools/gen_gfx_tab.sh /w/3ds/src/nd_gfx_tab.c.new /tmp/gconv 2>&1 | grep -v "^gconv def"'
+    want="gfx_tab v1
+cmd $GT_CMD
+himg $HIMGID
+assets $AHASH
+$(gc_inputs $GT_IN)"
+    GT_OUT="nd_gfx_tab.c:3ds/src/nd_gfx_tab.c nd_ntab_descs.c:3ds/src/nd_ntab_descs.c ntab_inherit.txt:build3ds/out/ntab_inherit.txt ntab_unsup.txt:build3ds/out/ntab_unsup.txt ntab_tables.txt:build3ds/out/ntab_tables.txt ntab_entries.txt:build3ds/out/ntab_entries.txt ntab_pairs.txt:build3ds/out/ntab_pairs.txt gset_ok.txt:build3ds/out/gset_ok.txt"
+    if gc_get gfx_tab "$want" $GT_OUT; then echo "gen_gfx_tab: cache hit"; return 0; fi
+    mkdir -p "$OUT" build3ds/out # gen_gfx_tab.sh writes its logs to build3ds/out only when the folder exists
+    rm -f 3ds/src/nd_gfx_tab.c.new
+    MSYS_NO_PATHCONV=1 docker run --rm --memory "${PM_BUILD_MEM:-4g}" -v "$w:/w" -v "$ab/assets:/ar/assets:ro" -v "$ab/ver/us/build:/ar/ver/us/build:ro" -w /work pm3ds-host:1 sh -c "$GT_CMD" || { echo "gen_gfx_tab failed" >&2; exit 1; }
     [ -s 3ds/src/nd_gfx_tab.c.new ] || { echo "gen_gfx_tab failed: no output" >&2; exit 1; }
     if cmp -s 3ds/src/nd_gfx_tab.c.new 3ds/src/nd_gfx_tab.c; then rm -f 3ds/src/nd_gfx_tab.c.new; else mv -f 3ds/src/nd_gfx_tab.c.new 3ds/src/nd_gfx_tab.c; fi
-    echo "$want" > "$stamp"
+    gc_put gfx_tab "$want" $GT_OUT || true
 }
 # NPSO3: the build-time pipeline table (3ds/tools/gen_pso_tab.py): every ND_PSO_DESC of src and 3ds/src decided once on the host
 # in the host image, written to 3ds/src/nd_pso_tab.c (git-ignored, in the build key). Skip: the stamp holds the hashes of the two
 # tools and the sources of the scan; the file is replaced only when its content changes.
 gen_pso_tab() {
     w=$(pwd -W 2>/dev/null || pwd); ab=$(cd "$ASSET_BASE" && pwd -W 2>/dev/null || pwd)
-    stamp=$OUT/pso_tab.stamp
-    PT_IN="3ds/tools/gen_pso_tab.py 3ds/tools/gen_pso_main.c src 3ds/src 3ds/include"
-    want="$({ git ls-files -s -- $PT_IN; git diff HEAD -- $PT_IN; git ls-files -o --exclude-standard -- $PT_IN | xargs -r sha1sum; } | sha1sum | cut -d' ' -f1)"
-    if [ -f "$stamp" ] && [ -f 3ds/src/nd_pso_tab.c ] && [ "$(cat "$stamp")" = "$want" ]; then echo "gen_pso_tab: up to date"; return 0; fi
-    mkdir -p "$OUT"
-    rm -f "$stamp" 3ds/src/nd_pso_tab.c.new
-    MSYS_NO_PATHCONV=1 docker run --rm --memory "${PM_BUILD_MEM:-4g}" -v "$w:/w" -v "$ab/assets:/ar/assets:ro" -v "$ab/ver/us/build:/ar/ver/us/build:ro" -w /work pm3ds-host:1 sh -c '
+    # VOLGEN: cached (gencache pso_tab). Key inputs: the command text, the host image, every asset file, all of 3ds/tools,
+    # 3ds/include, 3ds/stub_include, include, src, 3ds/src, and the 2 gen_gfx_tab outputs in 3ds/src (written just before).
+    PT_CMD='
         set -e; mkdir -p /work/ver/us
         for d in 3ds include src; do ln -s "/w/$d" "/work/$d"; done
         ln -s /ar/assets /work/assets; ln -s /ar/ver/us/build /work/ver/us/build
-        python3 3ds/tools/gen_pso_tab.py /w/3ds/src/nd_pso_tab.c.new src 3ds/src' || { echo "gen_pso_tab failed" >&2; exit 1; }
+        python3 3ds/tools/gen_pso_tab.py /w/3ds/src/nd_pso_tab.c.new src 3ds/src'
+    want="pso_tab v1
+cmd $PT_CMD
+himg $HIMGID
+assets $AHASH
+gfxtab $(sha1sum < 3ds/src/nd_gfx_tab.c | cut -c1-40) $(sha1sum < 3ds/src/nd_ntab_descs.c | cut -c1-40)
+$(gc_inputs 3ds/tools 3ds/include 3ds/stub_include include src 3ds/src)"
+    if gc_get pso_tab "$want" nd_pso_tab.c:3ds/src/nd_pso_tab.c; then echo "gen_pso_tab: cache hit"; return 0; fi
+    mkdir -p "$OUT"
+    rm -f 3ds/src/nd_pso_tab.c.new
+    MSYS_NO_PATHCONV=1 docker run --rm --memory "${PM_BUILD_MEM:-4g}" -v "$w:/w" -v "$ab/assets:/ar/assets:ro" -v "$ab/ver/us/build:/ar/ver/us/build:ro" -w /work pm3ds-host:1 sh -c "$PT_CMD" || { echo "gen_pso_tab failed" >&2; exit 1; }
     [ -s 3ds/src/nd_pso_tab.c.new ] || { echo "gen_pso_tab failed: no output" >&2; exit 1; }
     if cmp -s 3ds/src/nd_pso_tab.c.new 3ds/src/nd_pso_tab.c; then rm -f 3ds/src/nd_pso_tab.c.new; else mv -f 3ds/src/nd_pso_tab.c.new 3ds/src/nd_pso_tab.c; fi
-    echo "$want" > "$stamp"
+    gc_put pso_tab "$want" nd_pso_tab.c:3ds/src/nd_pso_tab.c || true
 }
 gen_gfx_tab >&2 # PUSHKEY
 gen_pso_tab >&2 # NPSO3
+echo "STAGE gen $(( $(date +%s) - tg )) s" >&2
+if [ "${PM_CACHE:-on}" = check ]; then
+    if [ "$GC_FAIL" = 0 ]; then echo "CACHECHECK gens ok" >&2; else echo "CACHECHECK gens FAIL" >&2; exit 1; fi
+fi
 
 # The inputs CMake reads (3ds/CMakeLists.txt, DECOMP = repo root). Nothing else reaches the build.
 # CODE_DIRS are read from this worktree; ASSET_DIRS from ASSET_BASE (see above).
-CODE_DIRS="3ds/CMakeLists.txt 3ds/effects.cmake 3ds/battle.cmake 3ds/maps.cmake 3ds/map_syms.lds LaunchIcon.png 3ds/ld 3ds/shaders 3ds/stub_include 3ds/include 3ds/src 3ds/tools/cov.d src include"
-ASSET_DIRS="assets/us ver/us/build"
 for p in $CODE_DIRS; do
     [ -e "$p" ] || { echo "missing build input: $p" >&2; exit 1; }
 done
@@ -156,7 +201,8 @@ key_now() {
         git diff HEAD -- $KEY_IN
         git ls-files -o --exclude-standard -- $KEY_IN | while read -r f; do sha1sum "$f"; done
         sha1sum 3ds/src/map_restore_table.c 3ds/src/nd_gfx_tab.c 3ds/src/nd_pso_tab.c 3ds/ld/map_restore.ld 3ds/ld/map_restore_bss.ld 3ds/include/texkey_patch.h
-        (cd "$ASSET_BASE" && find $ASSET_DIRS -type f -printf '%p %s %T@\n' | sort)
+        cat $OUT/asset_now.txt; cat $OUT/shape_entry.txt 2>/dev/null || true # VOLGEN: asset content ids and the shape entry of the romfs
+        echo "img $IMGID $HIMGID"
     } | sha1sum | cut -d' ' -f1
 }
 # TOOLB1: PM_KEY_ONLY=1 prints the key of the tree (bench.py build_stale compares it with build_key.txt) and stops.
@@ -181,19 +227,16 @@ hotset_line() {
     if command -v py >/dev/null 2>&1; then py -3 3ds/tools/hotset.py --line || echo "hotset: failed (the build is not affected)"
     else python3 3ds/tools/hotset.py --line || echo "hotset: failed (the build is not affected)"; fi
 }
-IMG=pm3ds-build:1
-docker build -q -t $IMG -f docker/Dockerfile.build docker >/dev/null
 # SRCID: the source volume keeps the id of its last sync in /src/.pm_manifest_id, and $VID holds the id the manifest was
 # written with. The manifest is valid only while both match. A missing, recreated or foreign source volume has no id
 # (or another one): the manifest is dropped and every file is copied. Also the skip check needs the match (BSTALE).
-MAN=$OUT/src_manifest.txt
-VID=$OUT/src_volid.txt
-volid_now() { MSYS_NO_PATHCONV=1 docker run --rm -v $SRCVOL:/src $IMG sh -c 'cat /src/.pm_manifest_id 2>/dev/null; true'; }
-VOLID=$(volid_now)
-vol_match() { case "$VOLID" in m*) ;; *) return 1 ;; esac; [ "$VOLID" = "$(cat $VID 2>/dev/null)" ]; } # STALEOBJ: an id without the m tag is from a sync that kept host mtimes
+# VOLGEN: vol_state (src_sync.sh) reads the source volume id and the asset volume key in one container.
+VS=$(vol_state); VOLID=$(printf '%s\n' "$VS" | sed -n 1p); AOK=$(printf '%s\n' "$VS" | grep -c '^assets-ok$' || true)
+# Cache safety: the skip also needs the 3dsx to match the hash written with the key ($OUT/build_out.sha1). PM_CACHE=off never skips.
 if [ -z "$PM_BUILD_REV" ]; then
     KEY=$(key_now)
-    if [ -f $OUT/pm_3ds.3dsx ] && [ "$(cat $KEY_FILE 2>/dev/null)" = "$KEY" ] && vol_match; then
+    if [ "${PM_CACHE:-on}" = on ] && [ -f $OUT/pm_3ds.3dsx ] && [ "$(cat $KEY_FILE 2>/dev/null)" = "$KEY" ] && vol_match && [ "$AOK" = 1 ] \
+        && [ "$(cat $OUT/build_out.sha1 2>/dev/null)" = "$(sha1sum < $OUT/pm_3ds.3dsx | cut -c1-40)" ]; then
         echo "--- build up to date (key $(echo "$KEY" | cut -c1-12)), skipping ---"
         publish_3dsx
         memcheck_line
@@ -209,33 +252,14 @@ printf '#define PM_BUILD_STR "%s"\n' "$BN" > "$PMB_TMP"
 printf '#define PM_GIT_HASH "%s"\n' "$(git rev-parse --short "$REV")" >> "$PMB_TMP"
 cmp -s "$PMB_TMP" 3ds/include/pm_build.h && rm -f "$PMB_TMP" || mv -f "$PMB_TMP" 3ds/include/pm_build.h
 # A failed build must not leave the old key behind: the key file is written only after a successful build.
-rm -f $KEY_FILE
+rm -f $KEY_FILE $OUT/build_out.sha1
 
 # BENCH4: a build of another commit drops the shared source volume first, so no file of the main folder stays in it. The
 # main sync compares against its own manifest, so the volume is dropped again after the build (the next main sync copies all).
 if [ -n "$PM_BUILD_REV" ]; then docker volume rm $SRCVOL >/dev/null 2>&1 || true; VOLID=""; fi
-# Sync: copy only files whose size or mtime changed since the last sync. No id match: copy everything (SRCID).
+# Sync (VOLGEN, 3ds/tools/src_sync.sh): copy only the code files whose content id changed; the assets come from the shared volume.
 t0=$(date +%s)
-if vol_match; then SYNCID=$VOLID; else rm -f $MAN; SYNCID="m$(date +%s)_$$"; fi
-[ -f $MAN ] || : > $MAN
-{ find $CODE_DIRS -type f -printf '%p\t%s\t%T@\n'; (cd "$ASSET_BASE" && find $ASSET_DIRS -type f -printf '%p\t%s\t%T@\n'); } | sort > $OUT/src_now.txt
-# Changed or new: not equal to the manifest. Deleted: in the manifest, not in the current list.
-awk -F'\t' 'FILENAME==ARGV[1]{old[$1]=$2 "\t" $3; next} (old[$1] != $2 "\t" $3){print $1}' $MAN $OUT/src_now.txt > $OUT/src_changed.txt
-awk -F'\t' 'FILENAME==ARGV[1]{now[$1]=1; next} !($1 in now){print $1}' $OUT/src_now.txt $MAN > $OUT/src_deleted.txt
-nchg=$(wc -l < $OUT/src_changed.txt); ndel=$(wc -l < $OUT/src_deleted.txt)
-if [ -s $OUT/src_changed.txt ]; then
-    # Code names are read from this worktree, asset names from ASSET_BASE: one tar with a -C switch between the two lists.
-    LC=$(pwd)/$OUT/src_changed_code.txt; LA=$(pwd)/$OUT/src_changed_asset.txt
-    grep -v -E '^(assets/us|ver/us/build)/' $OUT/src_changed.txt > $LC || true
-    grep -E '^(assets/us|ver/us/build)/' $OUT/src_changed.txt > $LA || true
-    # STALEOBJ: -m stamps each copied file with the copy time, so it is newer than every object in the build volume (a worktree build without PM_LANE wrote older sources there).
-    tar -cf - -T $LC -C "$ASSET_BASE" -T $LA | MSYS_NO_PATHCONV=1 docker run --rm -i -v $SRCVOL:/src $IMG sh -c "tar -xmf - -C /src && printf %s '$SYNCID' > /src/.pm_manifest_id"
-fi
-if [ -s $OUT/src_deleted.txt ]; then
-    MSYS_NO_PATHCONV=1 docker run --rm -i -v $SRCVOL:/src $IMG sh -c 'while read -r f; do rm -f "/src/$f"; done' < $OUT/src_deleted.txt
-fi
-cp -f $OUT/src_now.txt $MAN
-echo "$SYNCID" > $VID
+src_sync
 echo "STAGE sync-host $(( $(date +%s) - t0 )) s (changed $nchg, deleted $ndel)" >&2
 
 # Hang guard: after PM_BUILD_CAP seconds the watchdog kills only this run's container, by name.
@@ -247,15 +271,23 @@ WD=${PM_BUILD_CAP:-600}
   fi ) &
 wdpid=$!
 rc=0
-MSYS_NO_PATHCONV=1 docker run --rm --memory "${PM_BUILD_MEM:-4g}" --name "$NAME" -v $SRCVOL:/src:ro \
+# VOLGEN: the asset volume at /a (read only, checked against its out.sha1 first: exit 7 on a mismatch). The ccache volume is
+# keyed by the build image id. A build dir of another image, or PM_CACHE=off, starts empty. A new shape entry re-makes the 3dsx.
+MSYS_NO_PATHCONV=1 docker run --rm --memory "${PM_BUILD_MEM:-4g}" --name "$NAME" -v $SRCVOL:/src:ro -v $AVOL:/a:ro \
     -e CCACHE_DIR=/ccache -e CCACHE_MAXSIZE="${PM_CCACHE_MAX:-2G}" -e PM_BUILD_NUM="$BN" -e PM_FNCOV_V="$FNV" \
+    -e IMGID="$IMGID" -e PM_CACHE_V="${PM_CACHE:-on}" -e SHAPE_E="$(cat $OUT/shape_entry.txt 2>/dev/null)" \
     -v "$(pwd)/$OUT:/out" \
     -v $VOL:/work \
-    -v pm3ds-ccache:/ccache \
+    -v pm3ds-ccache-$(printf '%s' "$IMGID" | cut -c8-19):/ccache \
     $IMG sh -c '
     set -e -f
     t0=$(date +%s)
     stage() { now=$(date +%s); echo "STAGE $1 $((now - t0)) s" >&2; t0=$now; }
+    if ! (cd /a/c && sha1sum -c --status out.sha1); then echo "ASSET VOLUME CHECK FAILED" >&2; exit 7; fi
+    stage asset-check
+    if [ "$(cat /work/.img 2>/dev/null)" != "$IMGID" ] || [ "$PM_CACHE_V" = off ]; then rm -rf /work/build; printf %s "$IMGID" > /work/.img; fi
+    if [ "$PM_CACHE_V" = off ]; then export CCACHE_DISABLE=1; fi
+    if [ "$(cat /work/.shape 2>/dev/null)" != "$SHAPE_E" ]; then rm -f /work/build/pm_3ds.3dsx; printf %s "$SHAPE_E" > /work/.shape; fi
     # Configure only when the build dir is missing, was made with ccache, points at another source root, or has another build number (the smdh description).
     if ! grep -q "^CMAKE_C_COMPILER_LAUNCHER:STRING=ccache$" /work/build/CMakeCache.txt 2>/dev/null \
         || ! grep -q "^PM_FNCOV:BOOL=$PM_FNCOV_V\$" /work/build/CMakeCache.txt 2>/dev/null \
@@ -274,8 +306,10 @@ MSYS_NO_PATHCONV=1 docker run --rm --memory "${PM_BUILD_MEM:-4g}" --name "$NAME"
 ' || rc=$?
 kill "$wdpid" 2>/dev/null || true
 if [ -n "$PM_BUILD_REV" ]; then docker volume rm $SRCVOL >/dev/null 2>&1 || true; fi
+if [ "${PM_CACHE:-on}" = off ]; then docker volume rm $AVOL >/dev/null 2>&1 || true; fi
+if [ "$rc" -eq 7 ]; then docker volume rm $AVOL >/dev/null 2>&1 || true; echo "BUILD FAULT: the asset volume $AVOL failed its content check and was removed. Build again (the next build makes it new)." >&2; exit 7; fi
 if [ "$rc" -ne 0 ]; then echo "BUILD FAILED exit $rc (container $NAME; stage timings above; memory limit ${PM_BUILD_MEM:-4g}, ${PM_BUILD_JOBS:-8} jobs: a \"Killed signal\" above is an out-of-memory kill)" >&2; exit "$rc"; fi
-if [ -z "$PM_BUILD_REV" ]; then echo "$KEY" > $KEY_FILE; fi
+if [ -z "$PM_BUILD_REV" ]; then sha1sum < $OUT/pm_3ds.3dsx | cut -c1-40 > $OUT/build_out.sha1; echo "$KEY" > $KEY_FILE; fi
 # HW5: keep the ELF of each build under its build number, so a Luma crash dump can be decoded later (3ds/tools/decode_dump.py).
 if [ -f $OUT/pm_3ds.elf ]; then
     mkdir -p 3ds/logs/builds
