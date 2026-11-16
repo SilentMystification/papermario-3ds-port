@@ -8,6 +8,7 @@
 #include "pm_port.h"
 #include "battle/battle.h"
 #include "nd_yay0.h"
+#include "pm_maplag.h"
 
 void partner_enable_input(void);
 int strcmp(const char* a, const char* b);
@@ -35,6 +36,7 @@ u8 pm_hud_aux_cache[0x38000] __asm__("D_80200000") __attribute__((aligned(0x1000
 static const void* last_asset_src;
 static char last_asset_name[24];
 char pm_shape_name[24] = "none"; /* SEAMFIX: the asset name of the shape file in pm_shape_buf */
+int pm_maplag_hold; /* MAPLAG (a): fade-in steps left at full cover, armed by each map load (pm_maplag.h) */
 static void swap_hit_file(u8* hit, u32 size);
 static u32 rbe(const u8* p) {
     return ((u32)p[0] << 24) | ((u32)p[1] << 16) | ((u32)p[2] << 8) | p[3];
@@ -149,6 +151,7 @@ void decode_yay0(void* src, void* dst) {
     /* ROM data is big-endian. The real loaders read these two kinds of file in place, so convert them here, once. */
     if (shp) {
         { extern unsigned pm_dlc_gen; pm_dlc_gen++; } /* DLC1: the shape file is final now */
+        { void pm_walk_drain(const char* why); void pm_dlc_preload(void); pm_walk_drain("dlcpre"); pm_dlc_preload(); } /* MAPLAG (b): the seam table and the .dlc file of the new shape load here (logic thread, core 1); the drain first runs the queued shape invalidation (pm_tex.c:1252 bumps pm_dlc_gen on the walker) */
     } else if (src == last_asset_src) {
         u32 n = strlen(last_asset_name);
         if (n > 4 && strcmp(last_asset_name + n - 4, "_hit") == 0) swap_hit_file(dst, dec);
@@ -411,6 +414,7 @@ void __wrap_load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
         pm_mapdata_probe(gAreas[pa].maps[pmap].id); /* slice MS01 debug switch dataprobe */
     }
     __real_load_map_by_IDs(areaID, mapID, loadType);
+    pm_maplag_hold = PM_MAPLAG_HOLD; /* MAPLAG (a): the fade-in of a map change keeps full cover PM_MAPLAG_HOLD more steps */
     if (pm_xf.on) pm_xf.load_t += pm_ticks() - xt0;
     pm_xfer_map_load(loadType == LOAD_FROM_MAP ? areaID : gGameStatusPtr->areaID, loadType == LOAD_FROM_MAP ? mapID : gGameStatusPtr->mapID);
 }
@@ -421,6 +425,14 @@ void __wrap_load_battle_section(void) {
     unsigned t0 = pm_ticks();
     __real_load_battle_section();
     pm_xfer_btl_load(pm_ticks() - t0);
+}
+/* MAPLAG (a): the real call sets the overlay of this step from the progress, then lowers it; a held step puts the progress back to 255. */
+extern s16 __real_update_enter_map_screen_overlay(s16* progress);
+s16 __wrap_update_enter_map_screen_overlay(s16* progress) {
+    const int full = *progress >= 255;
+    const s16 r = __real_update_enter_map_screen_overlay(progress);
+    if (pm_maplag_keep(&pm_maplag_hold, get_game_mode() == GAME_MODE_CHANGE_MAP, full)) { *progress = 255; return 0; }
+    return r;
 }
 
 /* MS01: a linked map has PM_MAP_DMA_TAG as dmaStart and dmaEnd (3ds/stub_include/map_rom_ranges.h), so load_map_by_IDs calls
