@@ -1,0 +1,104 @@
+diff --git a/3ds/tools/merge_row.sh b/3ds/tools/merge_row.sh
+--- a/3ds/tools/merge_row.sh
++++ b/3ds/tools/merge_row.sh
+@@ -4,8 +4,9 @@
+ #   sh 3ds/tools/merge_row.sh <row> [<message-file>]   (no file: the message is built from the commit texts of the branch)
+ # Exit: 0 merged (summary printed); 2 refused (main dirty, branch missing, not on main); 3 conflict other than the row
+ # file and runs.jsonl (or merge-tree failed); 4 conflict marker line added on the branch; 5 merge failed and aborted (or
+-# runs commit failed); 6 branch kept (not merged, or still checked out).
++# runs commit failed); 6 branch kept (not merged, or still checked out); 7 merged, but post_merge failed (MAINBIN).
+ # WT_GC: a wt_gc.sh replacement read by the host test (run as: sh "$WT_GC" --apply --only <row>).
++# POST_MERGE: a post_merge.sh replacement read by the host test (run as: sh "$POST_MERGE").
+ set -u
+ row=${1:-}; msg=${2:-}
+ if [ -z "$row" ]; then echo "usage: sh 3ds/tools/merge_row.sh <row> [<message-file>]" >&2; exit 2; fi
+@@ -127,10 +128,20 @@
+ gcrc=$?
+ if git branch -d "$row" >/dev/null 2>&1; then bstate=deleted; else bstate=kept; fi
+ 
++# 8. MAINBIN: post-merge work on the new main (3ds/tools/post_merge.sh): generator cachecheck, base build of main HEAD into
++# the basebin store, basebin and shots cachecheck. Its output: build3ds/out/post_merge_<hash>.txt.
++mkdir -p build3ds/out
++pmrc=0
++sh "${POST_MERGE:-3ds/tools/post_merge.sh}" > "build3ds/out/post_merge_$mhash.txt" 2>&1 || pmrc=$?
++
+ # 7. summary
+-echo "merge_row: merge $mhash of $row; runs lines added $added, known skipped $skipped; wt_gc rc $gcrc; branch $row $bstate"
++echo "merge_row: merge $mhash of $row; runs lines added $added, known skipped $skipped; wt_gc rc $gcrc; branch $row $bstate; post_merge rc $pmrc"
+ if [ "$bstate" = kept ]; then
+     echo "merge_row: branch $row kept: not merged into main, or still checked out" >&2
+     exit 6
+ fi
++if [ "$pmrc" -ne 0 ]; then
++    echo "merge_row: POST_MERGE FAIL (step $pmrc): read build3ds/out/post_merge_$mhash.txt" >&2
++    exit 7
++fi
+ exit 0
+diff --git a/3ds/tools/post_merge.sh b/3ds/tools/post_merge.sh
+new file mode 100644
+--- /dev/null
++++ b/3ds/tools/post_merge.sh
+@@ -0,0 +1,21 @@
++#!/bin/sh
++# POSTMERGE (MAINBIN): run by 3ds/tools/merge_row.sh in the main folder after each merge (cache safety rule 5,
++# docs/handoff/plan_buildspeed.md). 1: cachecheck of the generator cache (the generators run cold and compare with their
++# entries). 2: the base build of main HEAD goes into the basebin store, so a row started from this main finds its base built.
++# 3: cachecheck of basebin and of the stored shots (one cold rebuild, one shot rerun). 4: the runs of step 3 are committed
++# (runs.jsonl is tracked; the main folder stays clean). Exit 0 when all pass, else the number of the failing step.
++cd "$(git rev-parse --show-toplevel)" || exit 9
++PY=python; command -v py >/dev/null 2>&1 && PY="py -3"
++unset PM_LANE
++export PM_ROW=MAINBIN
++export PM_BUILD_CAP=${PM_BUILD_CAP:-1800} # step 3 builds with no ccache (GUESS 5-10 min): above the 600 s default cap
++echo "post_merge 1: generator cachecheck"
++PM_CACHE=check PM_KEY_ONLY=1 sh 3ds/build.sh > /dev/null || exit 1
++echo "post_merge 2: basebin prebuild of main HEAD"
++$PY 3ds/tools/bench.py base --prebuild --row MAINBIN || exit 2
++echo "post_merge 3: basebin and shots cachecheck"
++$PY 3ds/tools/bench.py base --check --row MAINBIN || exit 3
++if [ -n "$(git status --porcelain -- 3ds/logs/perf/runs.jsonl)" ]; then
++    git add -- 3ds/logs/perf/runs.jsonl && git commit -q -m "runs.jsonl: post_merge cachecheck runs" || exit 4
++fi
++echo "post_merge ok"
+diff --git a/3ds/tests/mergerow/run.sh b/3ds/tests/mergerow/run.sh
+--- a/3ds/tests/mergerow/run.sh
++++ b/3ds/tests/mergerow/run.sh
+@@ -1,7 +1,7 @@
+ #!/bin/sh
+ # Host test for 3ds/tools/merge_row.sh: seven cases in temp git repos. Run from the repo root:
+ #   sh 3ds/tests/mergerow/run.sh
+-# Prints "mergerow: N/7 PASS"; exit 0 only when all seven pass. wt_gc is a stub (WT_GC).
++# Prints "mergerow: N/8 PASS"; exit 0 only when all eight pass. wt_gc is a stub (WT_GC), post_merge.sh too (POST_MERGE).
+ set -u
+ ROOT=$(git rev-parse --show-toplevel) || exit 2
+ SCRIPT="$ROOT/3ds/tools/merge_row.sh"
+@@ -19,6 +19,14 @@
+ exit 0
+ STUB
+ export WT_GC="$T/wt_gc_stub.sh"
++cat > "$T/post_stub.sh" <<'STUB'
++#!/bin/sh
++# stub for post_merge.sh: fails when the file post_fail exists in the repo top
++echo "post_merge stub"
++[ -f post_fail ] && exit 3
++exit 0
++STUB
++export POST_MERGE="$T/post_stub.sh"
+ 
+ mk() {
+     d="$T/r$1"; mkdir -p "$d"; cd "$d" || exit 2
+@@ -105,5 +113,14 @@
+    && [ -f g.txt ] && [ -z "$(git ls-files -u)" ] && [ -z "$(git rev-parse --verify -q refs/heads/X)" ]; then p=yes; fi
+ result $p "(g) runs.jsonl edited on branch and main: merged, main's version kept rc=$rc"
+ 
++# (h) MAINBIN: post_merge fails: the merge stays, exit 7, the output file names the stub
++mk h; printf 'post_fail
++' >> .gitignore; git commit -q -am "ignore post_fail"; git checkout -q -b X; echo g > g.txt; git add g.txt; git commit -q -m "X: g"
++git checkout -q main; touch post_fail
++rc=$(run)
++p=no
++if [ "$rc" = 7 ] && [ -f g.txt ] && grep -q "post_merge rc 3" "$OUT" && grep -q "post_merge stub" build3ds/out/post_merge_*.txt; then p=yes; fi
++result $p "(h) post_merge fails: merged, exit 7 rc=$rc"
++
+ if [ "$pass" = "$n" ]; then echo "mergerow: $pass/$n PASS"; exit 0; fi
+ echo "mergerow: $pass/$n PASS"; exit 1

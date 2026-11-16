@@ -1,6 +1,6 @@
 # plan_buildspeed: a row gate loop under 10 min (oracle BUILDSPEED, main 4ee5f9508c, 2026-11-16)
-Read-only design. BENCHSPEED (agent a84e568e389461aaf) owns stage timers and shared caches in 3ds/build.sh,
-3ds/tools/nd_host_test.sh and 3ds/tools/bench.py. Every row below that edits one of these 3 files starts after Merge BENCHSPEED.
+Read-only design. BENCHSPEED (agent a84e568e389461aaf) owns stage timers in 3ds/tools/nd_host_test.sh only (orchestrator scope
+change 2026-11-16): BASEBIN and VOLGEN start now. VOLHOST waits for Merge BENCHSPEED and Merge VOLGEN.
 ## Measured facts (row DLSITE2 and the code)
 - FACT (brief): row loop about 70 min. Host test about 9 min, run 2 times. Own build about 11 min. Base build 11-27 min per bench.
 - FACT (brief, logs CGFX/FXREN build3ds/out): sync-host 18-22 s with `changed 24668`. compile-link 30-43 s (3393 ninja steps, ccache hits).
@@ -32,33 +32,49 @@ Read-only design. BENCHSPEED (agent a84e568e389461aaf) owns stage timers and sha
 ## Target loop (per row, 2 benches)
 | step | now | target | label |
 | host test, 1 run, volume, gconv cache hit | 9 min x2 | 2 min | GUESS (OPEN: BENCHSPEED bs_host_stages.txt gives the split) |
-| own build: sync code only, generator caches hit, ccache | 11 min | 1.5 min | GUESS: sync 8 s, compile-link 43 s FACT |
+| own build: sync code only, generator caches hit, ccache | 11 min | 1.5 min | sync 4.2 s (FACT parts), asset hash 3.7 s FACT, compile-link 43 s FACT |
 | base: built at merge, 2 Azahar starts per bench | 11-27 min x2 | 1 min x2 | FACT 16 s per warm run, GUESS start cost |
 | gate: 2 runs + 2 cmp | 2 min | 2 min | FACT 46 s a run |
 | patch, listcen, codemod | 1 min | 1 min | GUESS |
 | total | about 70 min | about 7.5 min | GUESS. Pass: under 10 min, from BENCHSPEED STAGE lines |
-## Rows (Haiku, oracle patch per row; the oracle writes each page after its wait ends)
-- PAGEHOST (docs only, start now, no Haiku needed): pages run the host test 1 time, after the change. The orchestrator removes
-  the baseline host step from docs/handoff/row_BATCHTEMPLATE.md. The oracle writes new pages with 1 host run. Saves 9 min (FACT).
-- BASEBIN (3ds/tools/bench.py only; after Merge BENCHSPEED). (a) `bench.py base b1,b2` builds 1 time for all benches
-  (cmd_base :1882 splits the names, base_build_run takes the list). (b) Keep the build: build3ds/basebin/<commit>/pm_3ds.3dsx and
-  .elf in the main folder, with key.txt (the build.sh PM_KEY_ONLY key). base_build_run uses it and skips scratch_build. Keep the
-  newest 6 (GUESS 1.7 GB). (c) `bench.py base --bin` stores the main folder build when HEAD is clean and the key is equal (the
-  base_fill check, bench.py:1906-1930). Self-test: a basebin with a wrong key.txt: base refuses it and builds.
-- MAINBIN (3ds/tools/merge_row.sh only; after Merge BASEBIN): after the merge commit, run `sh 3ds/build.sh` in the main folder,
-  then `python 3ds/tools/bench.py base --bin`. Then every new row finds its merge-base build. Cost: 1 build per merge.
-- VOLGEN (3ds/build.sh and a new 3ds/tools/src_sync.sh; after Merge BENCHSPEED). (a) Move the sync (build.sh:214-239) into
-  src_sync.sh, run it before the generators. (b) One asset volume pm3ds-assets-<12 hex of the asset manifest>, shared by all lanes.
-  The lane source volume holds code only. (c) The generator docker runs mount the source volume, not C:\. They write their outputs
-  into the volume and copy them to the worktree (the key reads them, build.sh:158). Drop any part BENCHSPEED already did.
-- VOLHOST (3ds/tools/nd_host_test.sh only; after Merge VOLGEN): sync with src_sync.sh, then run the docker block (:20-82) on
-  the source volume and the asset volume. Keep the bind mount only for build3ds/out.
+## Rows (Haiku, oracle patch per row: docs/handoff/ws_<row>.md and .patch)
+- PAGEHOST (docs only, start now): pages run the host test 1 time, after the change. The orchestrator removes the baseline host
+  step from docs/handoff/row_BATCHTEMPLATE.md. Saves 9 min a row (FACT brief).
+- VOLGEN (start now): 3ds/build.sh, new 3ds/tools/gencache.sh, new 3ds/tools/src_sync.sh, 2 new tests. Shared generator cache
+  (texkey, shapes, gfx_tab, pso_tab), one asset volume per asset content, code-only sync by content ids, image-keyed ccache and
+  build dir, PM_CACHE=off|check. Target on a new lane of an unchanged tree: sync 5 s or less, generators 1 s or less.
+  Sync budget: git manifest 0.3 s, tar of 6243 files (40 MB) 3.0 s, one docker run 0.9 s (all FACT, oracle host timing) = 4.2 s.
+  Asset hash 3.1-3.7 s (FACT) moves out of sync into STAGE asset-hash (the old key_now find took 3.9 s FACT).
+- BASEBIN (start now): 3ds/tools/bench.py, new 3ds/tools/basebin.py, 2 new tests. One build for `base b1,b2`; base builds kept
+  in <main>/build3ds/basebin/ by content key; no asset copy in scratch_build; content keys and file hashes on the base shots.
+- MAINBIN (after Merge BASEBIN and Merge VOLGEN): 3ds/tools/merge_row.sh, new 3ds/tools/post_merge.sh, its test. After each merge:
+  generator cachecheck, basebin prebuild of main HEAD, basebin and shot cachecheck. Then the cold gate. Cost GUESS 12-18 min a merge.
+- VOLHOST (after Merge BENCHSPEED and Merge VOLGEN; page not written yet): nd_host_test.sh syncs with src_sync.sh and runs on the
+  source and asset volumes, not on C:\ bind mounts. Its page carries the cache safety rules if it adds a cache.
+- VOLGEN2 (later, not planned in detail): the generators read the volumes, so a miss (an src edit misses gfx_tab and pso_tab) is fast.
+## Cache safety (user rule 2026-11-16; every page carries it)
+1. Key = hash of the content of every input: tool files, sources read, ROM, assets, image id, flags, command text. Never a commit id
+   alone, a path or a time. A dirty tree hashes its files (src_sync.sh in_manifest: blob id or git hash-object of the file).
+2. Each entry stores key.txt and out.sha1. Every use recomputes the key and checks the file hashes. A mismatch deletes the entry
+   and the step builds again (gencache.sh gc_ok, basebin.py check, bench.py stored, build.sh skip with build_out.sha1, the asset
+   volume check in the build container: exit 7 removes the volume).
+3. A temp folder, then one rename (mv -T, os.rename): no half entry. The asset volume: temp folder renamed to /a/c.
+4. Seeded-fault self-tests in the host test: 3ds/tests/host.d/volgen.sh and basebin.sh (one input byte, one stored byte, a key
+   clash, PM_CACHE=off, cachecheck). In-run faults in the pages: VOLGEN steps 6 and 8, BASEBIN steps 6 and 7.
+5. Cachecheck at every merge: post_merge.sh (MAINBIN): generators cold vs entry, one basebin entry rebuilt cold, one shot rerun.
+6. Cold gate at each phase end: PM_CACHE=off build (no cache, no ccache, new build dir, new asset volume) plus all gates (MAINBIN step 5).
+7. Shared caches carry the image id: gencache keys (host image), basebin key (both images), ccache volume and build dir (build image).
+- Exception (OPEN for the user): the lane source volume is a mirror, not a keyed entry. It is guarded by content ids, the volume id
+  check, a new volume on any id mismatch, and the cold gate. A full content check per build would cost GUESS 2.6 s (sha1 of 6243 files).
+- OPEN: ninja does not see a romfs change; build.sh removes the 3dsx when the shape entry changes (VOLGEN).
 ## Gates of each tool row
 1. `sh 3ds/tools/nd_host_test.sh`: ND HOST TESTS PASS. 2. One build. 3. `bench.py run spot_mac01_drec`, then
 `bench.py cmp spot_mac01_drec --commit $(git merge-base HEAD main)`: 1/1 byte-equal. 4. The STAGE lines of a second build and a
 second host run: each value in the target table or lower. The time counters are T1 host, T2 build, T3 base, T4 loop.
 ## Risks
-- A wrong basebin gives a false byte-equal. Key check plus the seeded-fault self-test. Store only a clean HEAD build.
-- A stale asset volume. The volume name holds the manifest hash, so a changed asset makes a new volume.
-- Memory: 3 slots x 4 GB in 14 GB WSL2 (FACT). Do not add slots before the host test leaves the slot pool (OPEN after VOLHOST).
-- All rows except PAGEHOST wait for Merge BENCHSPEED. A BENCHSPEED cache that covers VOLGEN (c) removes that part.
+- A wrong basebin gives a false byte-equal. Content key, file hashes on every use, seeded faults, cachecheck at every merge.
+- A src edit misses gfx_tab and pso_tab (src is in their key: gen_gfx_tab.sh compiles with -I src). Until VOLGEN2 such a build
+  runs gconv: GUESS 2-4 min. Correct before fast.
+- The first build after VOLGEN is fully cold (new image-keyed ccache volume): GUESS 5-10 min, PM_BUILD_CAP=1800 in the page.
+- post_merge.sh blocks merge_row.sh GUESS 12-18 min a merge (rule 5 asks every merge). The user can choose every Nth merge.
+- Memory: 3 slots x 4 GB in 14 GB WSL2 (FACT .wslconfig). Do not add slots before VOLHOST.
