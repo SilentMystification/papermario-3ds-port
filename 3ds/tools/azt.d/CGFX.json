@@ -1,0 +1,54 @@
+{
+  "scenarios": [
+    {
+      "name": "kkj14_cgfx_drec",
+      "status": "unverified",
+      "subject": "kkj_14, Mario at entry 0, cold det start with the drec switch: draw records of frames 200 and 201 go to shots/drec.txt (candle lights, SetCustomGfx CUSTOM_GFX_0).",
+      "proves": "CGFX: draw record text of frames 200 and 201 is byte-equal between a base and a head build (SetCustomGfx lists moved to the gfxin twins).",
+      "debug": "warp=kkj_14:0 loglevel=debug det drec=200:2",
+      "extra": [],
+      "until": "drec f201 draws [1-9]\\d* bytes \\d+",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "warp: kkj_14 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kkj_14 entry 0"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f201 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "reason": "CGFX: cold det start, Mario at entry 0 of kkj_14. Cap 40 s, deadline 35 s."
+    },
+    {
+      "name": "isk01_cgfx_drec",
+      "status": "unverified",
+      "subject": "isk_01, Mario at entry 0, cold det start with the drec switch: draw records of frames 200 and 201 go to shots/drec.txt (HazePreGfx, SetCustomGfx slot 0).",
+      "proves": "CGFX: draw record text of frames 200 and 201 is byte-equal between a base and a head build (SetCustomGfx lists moved to the gfxin twins).",
+      "debug": "warp=isk_01:0 loglevel=debug det drec=200:2",
+      "extra": [],
+      "until": "drec f201 draws [1-9]\\d* bytes \\d+",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "warp: isk_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: isk_01 entry 0"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f201 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "reason": "CGFX: cold det start, Mario at entry 0 of isk_01. Cap 40 s, deadline 35 s."
+    }
+  ]
+}
