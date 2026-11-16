@@ -31,15 +31,6 @@ EvtScript N(D_80243C40_E123E0) = {
     End
 };
 
-#if VERSION_PAL
-s32  N(RecordBox_Widths)[] = {
-  230, 238, 234, 246,
-};
-
-s32 N(RecordBox_OffsetsX)[] = {
-    45, 41, 43, 37
-};
-#endif
 
 Gfx N(Gfx_RecordDisplay_Init)[] = {
     gsDPSetCycleType(G_CYC_1CYCLE),
@@ -50,37 +41,14 @@ Gfx N(Gfx_RecordDisplay_Init)[] = {
     gsDPSetCombineKey(G_CK_NONE),
     gsDPSetAlphaCompare(G_AC_NONE),
     gsDPNoOp(),
-#if VERSION_US || VERSION_IQUE
     gsDPSetPrimColor(0, 0, 255, 0, 0, 0),
     gsDPFillRectangle(44, 49, 276, 51),
     gsDPFillRectangle(44, 49, 46, 133),
     gsDPFillRectangle(275, 49, 276, 133),
     gsDPFillRectangle(44, 132, 276, 133),
-#elif VERSION_JP
-    gsDPSetPrimColor(0, 0, 255, 0, 0, 0),
-    gsDPFillRectangle(64, 49, 256, 51),
-    gsDPFillRectangle(64, 49, 66, 133),
-    gsDPFillRectangle(255, 49, 256, 133),
-    gsDPFillRectangle(64, 132, 256, 133),
-#endif
     gsSPEndDisplayList(),
 };
 
-#if VERSION_PAL
-#define RECORD_BOX_POSX        N(RecordBox_OffsetsX)[gCurrentLanguage]
-#define RECORD_BOX_WIDTH       N(RecordBox_Widths)[gCurrentLanguage]
-#define MSG_RESULT_JUMP_WIDTH  get_msg_width(MSG_MGM_001C, 0)
-#define MSG_RESULT_SMASH_WIDTH get_msg_width(MSG_MGM_001D, 0)
-#define NUMBER_X_OFFSET(x)     (x + 174)
-#elif VERSION_JP
-#define RECORD_BOX_POSX        65
-#define RECORD_BOX_WIDTH       190
-#define MSG_RESULT_JUMP_WIDTH  164
-#define MSG_RESULT_SMASH_WIDTH 164
-#define RESULT_COL1_X          87
-#define RESULT_COL2_X          211
-#define NUMBER_X_OFFSET(x)     144
-#else
 #define RECORD_BOX_POSX        45
 #define RECORD_BOX_WIDTH       230
 #define MSG_RESULT_JUMP_WIDTH  188
@@ -88,26 +56,11 @@ Gfx N(Gfx_RecordDisplay_Init)[] = {
 #define RESULT_COL1_X          (RECORD_BOX_POSX + 13)
 #define RESULT_COL2_X          (RECORD_BOX_POSX + 178)
 #define NUMBER_X_OFFSET(x)     174
-#endif
 
 void N(draw_record_display)(RecordDisplayData* data, s32 alpha) {
-#if VERSION_PAL
-    s32 var_fp;
-    s32 GamePlaysMsg;
-    s32 GameTotalMsg;
-    s32 GameRecordMsg;
-#endif
 
     if (alpha > 0) {
         gSPDisplayList(gMainGfxPos++, N(Gfx_RecordDisplay_Init));
-#if VERSION_PAL
-        var_fp = gCurrentLanguage == LANGUAGE_FR ? 36 : 0;
-        nd_val_prim(0, 0, 255, 0, 0, 0);
-        nd_rect_fill(RECORD_BOX_POSX - 1, 49, RECORD_BOX_POSX + RECORD_BOX_WIDTH + 1, 51);
-        nd_rect_fill(RECORD_BOX_POSX - 1, 49, RECORD_BOX_POSX + 1, 133);
-        nd_rect_fill(RECORD_BOX_POSX + RECORD_BOX_WIDTH, 49, RECORD_BOX_POSX + RECORD_BOX_WIDTH + 1, 133);
-        nd_rect_fill(RECORD_BOX_POSX - 1, 132, RECORD_BOX_POSX + RECORD_BOX_WIDTH + 1, 133);
-#endif
         nd_val_prim(0, 0, 16, 120, 24, alpha * 0.65);
         nd_rect_fill(RECORD_BOX_POSX + 3, 53, RECORD_BOX_POSX + RECORD_BOX_WIDTH - 3, 129);
         msg_draw_frame(RECORD_BOX_POSX, 50, RECORD_BOX_WIDTH, 82, MSG_STYLE_INSPECT, 0, 1, (s32)(alpha * 0.55), alpha); // cast needed if signature isn't present
@@ -119,11 +72,6 @@ void N(draw_record_display)(RecordDisplayData* data, s32 alpha) {
             draw_number(gPlayerData.jumpGameTotal,   RECORD_BOX_POSX + posX, 93,  DRAW_NUMBER_CHARSET_THIN, MSG_PAL_WHITE, alpha, DRAW_NUMBER_STYLE_MONOSPACE | DRAW_NUMBER_STYLE_ALIGN_RIGHT);
             draw_number(gPlayerData.jumpGameRecord,  RECORD_BOX_POSX + posX, 108, DRAW_NUMBER_CHARSET_THIN, MSG_PAL_WHITE, alpha, DRAW_NUMBER_STYLE_MONOSPACE | DRAW_NUMBER_STYLE_ALIGN_RIGHT);
 
-#if VERSION_PAL
-            GamePlaysMsg  = gPlayerData.jumpGamePlays == 1 ? MSG_PAL_MGM_0024 : MSG_MGM_0023;
-            GameTotalMsg  = gPlayerData.jumpGameTotal == 1 ? MSG_PAL_MGM_0021 : MSG_MGM_0021;
-            GameRecordMsg = gPlayerData.jumpGameRecord == 1 ? MSG_PAL_MGM_0021 : MSG_MGM_0021;
-#endif
         } else {
             s32 posX = NUMBER_X_OFFSET(var_fp);  //! required, cannot be merged to the same var above
 
@@ -132,37 +80,14 @@ void N(draw_record_display)(RecordDisplayData* data, s32 alpha) {
             draw_number(gPlayerData.smashGameTotal,  RECORD_BOX_POSX + posX, 93,  DRAW_NUMBER_CHARSET_THIN, MSG_PAL_WHITE, alpha, DRAW_NUMBER_STYLE_MONOSPACE | DRAW_NUMBER_STYLE_ALIGN_RIGHT);
             draw_number(gPlayerData.smashGameRecord, RECORD_BOX_POSX + posX, 108, DRAW_NUMBER_CHARSET_THIN, MSG_PAL_WHITE, alpha, DRAW_NUMBER_STYLE_MONOSPACE | DRAW_NUMBER_STYLE_ALIGN_RIGHT);
 
-#if VERSION_PAL
-            GamePlaysMsg  = gPlayerData.smashGamePlays == 1 ? MSG_PAL_MGM_0024 : MSG_MGM_0023;
-            GameTotalMsg  = gPlayerData.smashGameTotal == 1 ? MSG_PAL_MGM_0021 : MSG_MGM_0021;
-            GameRecordMsg = gPlayerData.smashGameRecord == 1 ? MSG_PAL_MGM_0021 : MSG_MGM_0021;
-#endif
         }
 
-#if VERSION_PAL
-        draw_msg(MSG_MGM_001E, RECORD_BOX_POSX + 13,  78,  alpha, MSG_PAL_WHITE, DRAW_MSG_STYLE_MENU);
-        if (gCurrentLanguage != LANGUAGE_FR) {
-            s32 width2 = var_fp + 178;  //! required to match and can't be merged with the same two below
-            draw_msg(GamePlaysMsg, RECORD_BOX_POSX + width2,  78,  alpha, MSG_PAL_WHITE, DRAW_MSG_STYLE_MENU);
-        }
-        draw_msg(MSG_MGM_001F, RECORD_BOX_POSX + 13,  93,  alpha, MSG_PAL_WHITE, DRAW_MSG_STYLE_MENU);
-        if (gCurrentLanguage != LANGUAGE_FR) {
-            s32 width2 = var_fp + 178;
-            draw_msg(GameTotalMsg, RECORD_BOX_POSX + width2,  93,  alpha, MSG_PAL_WHITE, DRAW_MSG_STYLE_MENU);
-        }
-        draw_msg(MSG_MGM_0020, RECORD_BOX_POSX + 13,  108, alpha, MSG_PAL_WHITE, DRAW_MSG_STYLE_MENU);
-        if (gCurrentLanguage != LANGUAGE_FR) {
-            s32 width2 = var_fp + 178;
-            draw_msg(GameRecordMsg,RECORD_BOX_POSX + width2, 108, alpha, MSG_PAL_WHITE, DRAW_MSG_STYLE_MENU);
-        }
-#else
         draw_msg(MSG_MGM_001E, RESULT_COL1_X, 78,  alpha, MSG_PAL_WHITE, DRAW_MSG_STYLE_MENU);
         draw_msg(MSG_MGM_0023, RESULT_COL2_X, 78,  alpha, MSG_PAL_WHITE, DRAW_MSG_STYLE_MENU);
         draw_msg(MSG_MGM_001F, RESULT_COL1_X, 93,  alpha, MSG_PAL_WHITE, DRAW_MSG_STYLE_MENU);
         draw_msg(MSG_MGM_0021, RESULT_COL2_X, 93,  alpha, MSG_PAL_WHITE, DRAW_MSG_STYLE_MENU);
         draw_msg(MSG_MGM_0020, RESULT_COL1_X, 108, alpha, MSG_PAL_WHITE, DRAW_MSG_STYLE_MENU);
         draw_msg(MSG_MGM_0021, RESULT_COL2_X, 108, alpha, MSG_PAL_WHITE, DRAW_MSG_STYLE_MENU);
-#endif
     }
 }
 

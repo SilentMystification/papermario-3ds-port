@@ -62,71 +62,9 @@ s32 N(RecipeFoundVars)[] = {
 void N(appendGfx_records_impl)(GameRecords* records, s32 alpha) {
     s32 width;
 
-#if VERSION_PAL
-#define CHARSET (1)
-#else
 #define CHARSET (0)
-#endif
 
     if (alpha > 0) {
-#if VERSION_JP
-        gSPDisplayList(gMainGfxPos++, N(records_screen_gfx));
-        nd_val_prim(0, 0, 16, 120, 24, alpha * 0.65);
-        nd_rect_fill(63, 43, 257, 192);
-
-        msg_draw_frame(60, 40, 200, 155, MSG_STYLE_INSPECT, MSG_PAL_WHITE, true, alpha * 0.55, alpha);
-        draw_msg(MSG_CH0_00FC, 88, 50, alpha, MSG_PAL_WHITE, DRAW_MSG_STYLE_MENU);
-        draw_number(gPlayerData.totalCoinsEarned, 194, 50, 1, MSG_PAL_WHITE, alpha, 2);
-        draw_msg(MSG_CH0_00FD, 124, 65, alpha, MSG_PAL_WHITE, DRAW_MSG_STYLE_MENU);
-        draw_number(records->equippedBadges, 209, 65, 1, MSG_PAL_WHITE, alpha, 3);
-        draw_msg(MSG_MenuTip_0034, 210, 63, alpha, MSG_PAL_WHITE, 0);
-        draw_number(80, 222, 65, 1, MSG_PAL_WHITE, alpha, 2);
-        if (gPlayerData.starPiecesCollected == 0) {
-            draw_msg(MSG_CH0_00FA, 139, 80, alpha, MSG_PAL_WHITE, 1);
-        } else {
-            draw_msg(MSG_CH0_00FB, 96, 80, alpha, MSG_PAL_WHITE, DRAW_MSG_STYLE_MENU);
-            draw_number(gPlayerData.starPiecesCollected, 209, 80, 1, MSG_PAL_WHITE, alpha, 3);
-            draw_msg(MSG_MenuTip_0034, 210, 78, alpha, MSG_PAL_WHITE, 0);
-            draw_number(160, 222, 80, 1, MSG_PAL_WHITE, alpha, 2);
-        }
-
-        if (records->recipesFoundCount == 0) {
-            draw_msg(MSG_CH0_00FA, 140, 95, alpha, MSG_PAL_WHITE, DRAW_MSG_STYLE_MENU);
-        } else {
-            if (records->recipesFoundCount == -1) {
-                draw_msg(MSG_CH0_00FE, 103, 95, alpha, MSG_PAL_WHITE, DRAW_MSG_STYLE_MENU);
-                draw_number(0, 209, 95, 1, MSG_PAL_WHITE, alpha, 3);
-            } else {
-                draw_msg(MSG_CH0_00FE, 103, 95, alpha, MSG_PAL_WHITE, DRAW_MSG_STYLE_MENU);
-                draw_number(records->recipesFoundCount, 209, 95, 1, MSG_PAL_WHITE, alpha, 3);
-            }
-            draw_msg(MSG_MenuTip_0034, 210, 93, alpha, MSG_PAL_WHITE, 0);
-            draw_number(records->totalRecipesCount, 222, 95, 1, MSG_PAL_WHITE, alpha, 2);
-        }
-
-        if (gPlayerData.quizzesAnswered == 0) {
-            draw_msg(MSG_CH0_00FA, 139, 110, alpha, MSG_PAL_WHITE, DRAW_MSG_STYLE_MENU);
-        } else {
-            draw_msg(MSG_CH0_00FF, 94, 110, alpha, MSG_PAL_WHITE, DRAW_MSG_STYLE_MENU);
-            draw_number(gPlayerData.quizzesCorrect, 209, 110, 1, MSG_PAL_WHITE, alpha, 3);
-            draw_msg(MSG_MenuTip_0034, 210, 108, alpha, MSG_PAL_WHITE, 0);
-            draw_number(gPlayerData.quizzesAnswered, 222, 110, 1, MSG_PAL_WHITE, alpha, 2);
-        }
-
-        draw_msg(MSG_CH0_00F4, 93, 125, alpha, MSG_PAL_WHITE, DRAW_MSG_STYLE_MENU);
-        draw_number(gPlayerData.battlesCount, 194, 125, 1, MSG_PAL_WHITE, alpha, 2);
-        draw_msg(MSG_CH0_00F7, 84, 140, alpha, MSG_PAL_WHITE, DRAW_MSG_STYLE_MENU);
-        draw_number(gPlayerData.playerFirstStrikes, 194, 140, 1, MSG_PAL_WHITE, alpha, 2);
-        draw_msg(MSG_CH0_00F8, 75, 155, alpha, MSG_PAL_WHITE, DRAW_MSG_STYLE_MENU);
-        draw_number(gPlayerData.enemyFirstStrikes, 194, 155, 1, MSG_PAL_WHITE, alpha, 2);
-
-        if (gPlayerData.powerBounces == 0) {
-            draw_msg(MSG_CH0_00FA, 139, 170, alpha, MSG_PAL_WHITE, DRAW_MSG_STYLE_MENU);
-        } else {
-            draw_msg(MSG_CH0_00F9, 102, 170, alpha, MSG_PAL_WHITE, DRAW_MSG_STYLE_MENU);
-            draw_number(gPlayerData.powerBounces, 194, 170, 1, MSG_PAL_WHITE, alpha, 2);
-        }
-#else
         gSPDisplayList(gMainGfxPos++, N(records_screen_gfx));
         nd_val_prim(0, 0, 16, 120, 24, alpha * 0.65);
         nd_rect_fill(33, 43, 287, 192);
@@ -185,7 +123,6 @@ void N(appendGfx_records_impl)(GameRecords* records, s32 alpha) {
             draw_msg(MSG_CH0_00F9, 206 - get_msg_width(MSG_CH0_00F9, CHARSET), 170, alpha, MSG_PAL_WHITE, DRAW_MSG_STYLE_MENU);
             draw_number(gPlayerData.powerBounces, 216, 171, 1, MSG_PAL_WHITE, alpha, 2);
         }
-#endif
     }
 
 #undef CHARSET
