@@ -18,11 +18,7 @@ Vtx D_8024B6D0[] = {
     {{{ 56, -16, 0 }, 0, { 4096,    0 }, { 0, 0, 0, 255 }}},
 };
 
-Gfx D_8024B6F0[] = {
-    gsSPVertex(D_8024B6B0, 2, 0),
-    gsDPPipeSync(),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(D_8024B6F0);
 
 Gfx D_8024B708[] = {
     gsSPVertex(D_8024B6D0, 2, 2),

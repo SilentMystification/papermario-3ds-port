@@ -12,3 +12,17 @@ Gfx D_8014C620[] = {
     gsDPSetTextureLUT(G_TT_RGBA16),
     gsSPEndDisplayList(),
 };
+Gfx D_8014C678[] = {
+    gsSPClearGeometryMode(G_CULL_BACK | G_LIGHTING | G_SHADING_SMOOTH),
+    gsSPVertex(D_8014C5A0, 4, 0),
+    gsSP2Triangles(0, 1, 2, 0, 0, 2, 3, 0),
+    gsDPPipeSync(),
+    gsSPEndDisplayList(),
+};
+Gfx D_8014C6A0[] = {
+    gsSPClearGeometryMode(G_CULL_BACK | G_LIGHTING | G_SHADING_SMOOTH),
+    gsSPVertex(D_8014C5E0, 4, 0),
+    gsSP2Triangles(0, 1, 2, 0, 0, 2, 3, 0),
+    gsDPPipeSync(),
+    gsSPEndDisplayList(),
+};

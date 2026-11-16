@@ -27,12 +27,7 @@ Vtx Vtx_DarknessStencil[] = {
     {{{ -16, 16, 0 }, 0, { 0x0000, 0x1000 }, { 0, 0, 0, 255 }}},
 };
 
-Gfx Gfx_DarknessStencilQuad[] = {
-    gsSPVertex(Vtx_DarknessStencil, 4, 0),
-    gsSP2Triangles(0, 1, 2, 0, 0, 2, 3, 0),
-    gsDPPipeSync(),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(Gfx_DarknessStencilQuad);
 
 void appendGfx_draw_prev_frame_buffer(s32 x1, s32 y1, s32 x2, s32 y2, f32 alpha) {
     s32 stripY, extraY;
@@ -159,7 +154,7 @@ void appendGfx_darkness_stencil(bool isWorld, s32 posX, s32 posY, f32 alpha, f32
     nd_pso_cc(PM_CC_CONST_1, PM_CC_CONST_1);
     guRotate(&gDisplayContext->matrixStack[gMatrixListPos], 0.0f, 0.0f, 0.0f, 1.0f);
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gSPDisplayList(gMainGfxPos++, Gfx_DarknessStencilQuad);
+    gSPDisplayList(gMainGfxPos++, NDN(Gfx_DarknessStencilQuad));
     nd_xf_pop(G_MTX_MODELVIEW);
     nd_pso_cc(PM_CC_56, PM_CC_56);
 
@@ -183,7 +178,7 @@ void appendGfx_darkness_stencil(bool isWorld, s32 posX, s32 posY, f32 alpha, f32
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
         guScale(&gDisplayContext->matrixStack[gMatrixListPos], f20, f20, 1.0f);
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        gSPDisplayList(gMainGfxPos++, Gfx_DarknessStencilQuad);
+        gSPDisplayList(gMainGfxPos++, NDN(Gfx_DarknessStencilQuad));
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 

@@ -1,5 +1,6 @@
 
 #include "nok_04.h"
+#include "nd_gtab.h"
 #include "effects.h"
 #include "sprite/player.h"
 #include "nd_geo.h"
@@ -100,17 +101,7 @@ Vtx N(ThreadSegmentVertices)[] = {
     {{{   1,   0,     0 }, 0, {   512,     0 }, { 255, 255, 255, 255 }}},
 };
 
-Gfx N(ThreadGfx)[] = {
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF),
-    gsDPPipeSync(),
-    gsDPSetCycleType(G_CYC_1CYCLE),
-    gsDPSetCombineMode(G_CC_SHADE, G_CC_SHADE),
-    gsDPSetTextureFilter(G_TF_POINT),
-    gsDPSetRenderMode(G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2),
-    gsSPClearGeometryMode(G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH),
-    gsSPSetGeometryMode(G_ZBUFFER | G_SHADE | G_SHADING_SMOOTH),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(N(ThreadGfx));
 
 API_CALLABLE(N(SetThreadAnchorPos)) {
     Bytecode* args = script->ptrReadPos;
@@ -293,7 +284,7 @@ void N(build_gfx_thread)(void) {
     }
     N(ThreadData).overshootVel *= 0.5;
 
-    gSPDisplayList(gMainGfxPos++, N(ThreadGfx));
+    gSPDisplayList(gMainGfxPos++, NDN(N(ThreadGfx)));
     guTranslate(&gDisplayContext->matrixStack[gMatrixListPos], N(ThreadData).anchorPos.x, N(ThreadData).anchorPos.y, N(ThreadData).anchorPos.z);
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 

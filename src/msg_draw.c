@@ -1,4 +1,5 @@
 #include "pm_wide.h"
+#include "nd_gtab.h"
 #include "common.h"
 #include "ld_addrs.h"
 #include "message_ids.h"
@@ -125,24 +126,7 @@ Vtx gMsgArrowQuad2[] = {
     { .v = { .ob = {1, 0, 0},           .tc = {0x1E0, 0x1E0},     .cn = {191, 184, 176, 255} } },
 };
 
-Gfx D_8014C500[] = {
-    gsDPSetCycleType(G_CYC_1CYCLE),
-    gsDPSetRenderMode(G_RM_TEX_EDGE, G_RM_TEX_EDGE2),
-    gsDPSetCombineMode(G_CC_DECALRGBA, G_CC_DECALRGBA),
-    gsDPSetTextureFilter(G_TF_AVERAGE),
-    gsSPTexture(-1, -1, 0, G_TX_RENDERTILE, G_ON),
-    gsDPSetTexturePersp(G_TP_NONE),
-    gsDPSetColorDither(G_CD_DISABLE),
-    gsDPSetAlphaDither(G_AD_DISABLE),
-    gsDPSetTextureLOD(G_TL_TILE),
-    gsDPSetTextureLUT(G_TT_RGBA16),
-    gsDPSetTextureDetail(G_TD_CLAMP),
-    gsDPSetTextureConvert(G_TC_FILT),
-    gsDPSetCombineKey(G_CK_NONE),
-    gsDPSetAlphaCompare(G_AC_NONE),
-    gsDPNoOp(),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(D_8014C500);
 
 u8 D_8014C580[] = { 50, 80, 100, 105, 100, 0, 0, 0 };
 u8 D_8014C588[] = { 105, 100, 77, 57, 40, 27, 16, 8, 3, 0, 0, 0};
@@ -1295,7 +1279,7 @@ void appendGfx_message(MessagePrintState* printer, s16 posX, s16 posY, u16 addit
 
                 if (msg_drawState->printModeFlags & MSG_PRINT_FLAG_2) {
                     sp96 = 0xFF;
-                    gSPDisplayList(gMainGfxPos++, D_8014C500);
+                    gSPDisplayList(gMainGfxPos++, NDN(D_8014C500));
                 }
                 msg_drawState->charScale.x = msg_drawState->msgScale.x;
                 msg_drawState->charScale.y = msg_drawState->msgScale.y;
@@ -1711,7 +1695,7 @@ void appendGfx_message(MessagePrintState* printer, s16 posX, s16 posY, u16 addit
 
 
 void msg_reset_gfx_state(void) {
-    gSPDisplayList(gMainGfxPos++, D_8014C500);
+    gSPDisplayList(gMainGfxPos++, NDN(D_8014C500));
 }
 
 /* NATIVEAPI S3a: one glyph is one NDC_NAPI record. msg_draw_char (core 1) keeps the arithmetic and the printModeFlags update and records
