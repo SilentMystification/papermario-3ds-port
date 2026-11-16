@@ -12,9 +12,9 @@ NDN_DECL(D_09000800_4147A0);
 NDN_DECL(D_09000B20_414AC0);
 NDN_DECL(D_09000B90_414B30);
 
-Gfx* D_E0126BC0[] = { NDN(D_09000B90_414B30) };
-Gfx* D_E0126BC4[] = { NDN(D_09000B20_414AC0) };
-Gfx* D_E0126BC8[] = { NDN(D_09000800_4147A0) };
+NdLst D_E0126BC0[] = { NDN(D_09000B90_414B30) };
+NdLst D_E0126BC4[] = { NDN(D_09000B20_414AC0) };
+NdLst D_E0126BC8[] = { NDN(D_09000800_4147A0) };
 
 void star_outline_init(EffectInstance* effect);
 void star_outline_update(EffectInstance* effect);

@@ -1,6 +1,3 @@
-# ws_FXTYPE_code: exact text for ws_FXTYPE.md (copy each block as it is)
-## A: 3ds/tools/fxtype.py (new file)
-```python
 #!/usr/bin/env python3
 """fxtype.py: FXTYPE list handle codemod (ws_FXTYPE.md). In each given file, a pointer array `Gfx* X[..] = {` or `static Gfx* X[..] = {`
 whose every other use in the file is `nd_draw_list(X[`, `gSPDisplayList(gMainGfxPos++, X[` or `nd_rec_dl(X[` gets the type NdLst
@@ -65,35 +62,3 @@ def main(argv):
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
-```
-## B: 3ds/tests/fxtype/a.c (new fixture, LF)
-```c
-#include "common.h"
-
-Gfx* hA[] = { D_1, D_2 };
-Gfx* hB[] = { D_3 };
-
-void f(int i) {
-    gSPDisplayList(gMainGfxPos++, hA[i]);
-    Gfx* dl = hB[i];
-    gSPDisplayList(gMainGfxPos++, dl);
-}
-```
-## C: 3ds/tests/host.d/fxtype.sh (new)
-```sh
-#!/bin/sh
-# FXTYPE: fxtype.py on the fixture 3ds/tests/fxtype/a.c. hA (only a gSPDisplayList use) becomes NdLst and the file gets nd_gtab.h; hB (a local
-# reads it) stays. The seeded fault: a copy with USE_RULE = False rewrites hB, and the test must see that. Prints `fxtype test ok` or fails.
-T=/tmp/fxtype; PY=${PY:-python3}
-rm -rf "$T"; mkdir -p "$T"; tr -d '\r' < 3ds/tests/fxtype/a.c > "$T/a.c"
-$PY 3ds/tools/fxtype.py "$T/a.c" > "$T.out" 2>&1 || { echo "fxtype test FAIL: exit"; cat "$T.out"; exit 1; }
-tr -d '\r' < "$T.out" | grep -qx "fxtype arrays ok 1 other 1 files 1" || { echo "fxtype test FAIL: count line"; cat "$T.out"; exit 1; }
-grep -qx 'NdLst hA\[\] = { D_1, D_2 };' "$T/a.c" || { echo "fxtype test FAIL: hA not NdLst"; exit 1; }
-grep -qx 'Gfx\* hB\[\] = { D_3 };' "$T/a.c" || { echo "fxtype test FAIL: hB changed"; exit 1; }
-[ "$(sed -n 2p "$T/a.c")" = '#include "nd_gtab.h"' ] || { echo "fxtype test FAIL: no nd_gtab.h include on line 2"; exit 1; }
-tr -d '\r' < 3ds/tests/fxtype/a.c > "$T/b.c"
-sed 's/^USE_RULE = True/USE_RULE = False/' 3ds/tools/fxtype.py > "$T/seed.py"
-$PY "$T/seed.py" "$T/b.c" > /dev/null 2>&1
-grep -qx 'NdLst hB\[\] = { D_3 };' "$T/b.c" || { echo "fxtype seeded fault not seen"; exit 1; }
-echo "fxtype test ok"
-```

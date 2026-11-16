@@ -8,8 +8,8 @@ ND_PSO_DESC(pe_moving_cloud_201, 0xfc309661, 0x552eff7f, 0x1e082cf0, 0x00504b50,
 NDN_DECL(D_09000100_3E1DD0);
 NDN_DECL(D_090001E8_3E1EB8);
 
-Gfx* D_E00E8630[] = { NDN(D_090001E8_3E1EB8) };
-Gfx* D_E00E8634[] = { NDN(D_09000100_3E1DD0) };
+NdLst D_E00E8630[] = { NDN(D_090001E8_3E1EB8) };
+NdLst D_E00E8634[] = { NDN(D_09000100_3E1DD0) };
 
 void moving_cloud_init(EffectInstance* effect);
 void moving_cloud_update(EffectInstance* effect);
