@@ -18,7 +18,11 @@ printf 'abd' > d.bin; oc; grep -q "miss 1" $W/log.txt || fail "a changed incbin 
 e=$(ls -d $W/c/*/ | head -1); printf 'x' >> ${e}obj.o; oc; grep -q "failed its check" $W/log.txt || fail "a changed stored byte gave a hit"
 e=$(ls -d $W/c/*/ | head -1); printf 'other' > ${e}key.txt; oc; grep -q "miss 1" $W/log.txt || fail "a key.txt of another key gave a hit"
 PM_CACHE=off oc; grep -q "hit 0 miss 1" $W/log.txt || fail "PM_CACHE=off gave a hit"
-PM_CACHE=check oc; grep -q "cachecheck gconvobj ok 1" $W/log.txt || fail "cachecheck of an equal entry"
+PM_CACHE=check oc; grep -q "cachecheck gconvobj ok 1 stale 0 new 0" $W/log.txt || fail "cachecheck of an equal entry"
+printf '#define H 3
+' > h.h; PM_CACHE=check oc; grep -q "ok 0 stale 1 new 0" $W/log.txt || fail "check mode did not count a stale entry"
+e=$(ls -d $W/c/*/ | head -1); printf 'x' >> ${e}obj.o; if PM_CACHE=check oc; then fail "check mode passed a stored byte changed without out.sha1"; fi
+grep -q "CACHECHECK FAIL gconvobj.*out.sha1" $W/log.txt || fail "no FAIL line for a stored byte changed without out.sha1"
 e=$(ls -d $W/c/*/ | head -1); printf 'x' >> ${e}obj.o; sha1sum ${e}obj.o | cut -d' ' -f1 > ${e}out.sha1
 if PM_CACHE=check oc; then fail "cachecheck missed a changed entry"; fi
 grep -q "CACHECHECK FAIL gconvobj" $W/log.txt || fail "no CACHECHECK FAIL line"

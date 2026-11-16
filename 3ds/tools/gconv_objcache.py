@@ -97,6 +97,16 @@ def compile_one(src, flags):
     return r.returncode, sorted(set(deps))
 
 
+def entry_out_bad(d, key):
+    """True when the key.txt matches and obj.o differs from out.sha1 (a stored byte changed): a FAIL, not a stale entry."""
+    try:
+        if (d / "key.txt").read_bytes().decode("utf-8") != key:
+            return False
+        return (d / "out.sha1").read_text(encoding="utf-8").strip() != sha1_file(d / "obj.o")
+    except (OSError, ValueError, UnicodeDecodeError):
+        return False
+
+
 def store(root, key, obj, deps, tag):
     d = entry_dir(root, key)
     tmp = d.with_name(d.name + ".tmp.%d.%d" % (os.getpid(), tag))
@@ -149,6 +159,7 @@ def main():
         res = dict(zip(todo, ex.map(lambda s: compile_one(s, flags), todo)))
     bad = [s for s in todo if res[s][0] != 0]
     chk_ok, chk_fail = 0, 0
+    chk_stale, chk_new = 0, 0
     if use:
         for i, s in enumerate(todo):
             if res[s][0] != 0:
@@ -162,11 +173,18 @@ def main():
                     else:
                         chk_fail += 1
                         print("CACHECHECK FAIL gconvobj %s: the entry differs from a cold compile, replaced" % s, file=sys.stderr)
+                elif d.is_dir() and entry_out_bad(d, keys[s]):
+                    chk_fail += 1
+                    print("CACHECHECK FAIL gconvobj %s: the stored object does not match its out.sha1, replaced" % s, file=sys.stderr)
+                elif d.is_dir():
+                    chk_stale += 1
+                else:
+                    chk_new += 1
             store(root, keys[s], obj, res[s][1], i)
         trim(root)
     print("gconvobj: hit %d miss %d" % (hits, len(todo)), file=sys.stderr)
     if mode == "check" and use:
-        print("cachecheck gconvobj ok %d" % chk_ok if not chk_fail else "CACHECHECK FAIL gconvobj %d" % chk_fail, file=sys.stderr)
+        print("cachecheck gconvobj ok %d stale %d new %d" % (chk_ok, chk_stale, chk_new) if not chk_fail else "CACHECHECK FAIL gconvobj %d" % chk_fail, file=sys.stderr)
     if bad:
         print("gconvobj: compile failed: %s" % " ".join(bad), file=sys.stderr)
     sys.exit(1 if bad or chk_fail else 0)
