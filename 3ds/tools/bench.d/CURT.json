@@ -1,0 +1,21 @@
+{
+  "benches": [
+    {
+      "name": "curt_title_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CURT: draw records of the title after titleret=240, frames 360 to 540 step 60 (cold det start). A head equals the base.",
+      "scenario": "curt_title_drec",
+      "cap": 40,
+      "until": "drec f540 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "drec"
+      ],
+      "gates": []
+    }
+  ]
+}
