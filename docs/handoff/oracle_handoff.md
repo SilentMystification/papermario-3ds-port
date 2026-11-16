@@ -1,8 +1,7 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main 0db42b31e8, 2026-11-15. 32nd oracle (display list work). A second oracle owns the NDN-pointer reader class (ws_LKEY: nd_lkey.h,
-lkey_cen.py census): do not touch those readers. Running: ws_GSETI (gset.py). Ready: ws_LKEY, ws_FXVROM. After Merge FXVROM: ws_FXTYPE.
-User order 2026-11-15: BATCH. One page covers a family or a directory (one codemod, one gset set, one gate). Up to 3 coders.
+State: main 2e0746e540, 2026-11-16. Oracle 36 wrote ws_MAPLAG (+ _code, ready). Earlier pages ready: ws_STARTLR2, ws_MOON7, ws_FSKIP.
+OPEN for the next oracle: WAVEWIDE (Tidal Wave blue square in wide), trace in the Tidal Wave section.
 ## Counters (FACT, listcen on main 1e45bdcad9 + converter edits only)
 C1 build 738 (gbi.h 382, gbi_custom.h 61, gs2dex.h 18; model.c 67, effects 46, world 45, imgfx.c 21, entity 21), C2 gfxpos 224,
 C5 data 5149, C6 data_arrays 461, C7 gfxtype 1083, C8 reader 783, C10 recdl 15.
@@ -29,15 +28,18 @@ C5 data 5149, C6 data_arrays 461, C7 gfxtype 1083, C8 reader 783, C10 recdl 15.
 - model.c (516 data, 169 gfxtype, 67 build): Gfx_RM* lists are NdSDef defs (model.c:1260, nd_rmdef.h), built at run time (nd_rec.c:145 nd_rm_build);
   LKEY H edits nd_rec.c for ModelRenderModes keys. Needs a design (converter emits the compiled defs); Sonnet approved by the user.
 - C7 effects: fxtype dry 89 ok arrays; the other 50 are read by a local `Gfx* dlist = X[i]` (next FXTYPE step: local handle rule).
-## Tidal Wave (user 2026-11-15, build 5798: flashing blue rectangle, slow). Page ws_GRABSEQ ready (60 FPS cause).
-- FACT: Tidal Wave = fx_underwater (sushie.c:336); no src/effects/tidal_wave.c. fxr_drec draws it (fxtest 87) at 30 FPS only.
-- FACT (oracle 34 code read): at 30 FPS every drawn walk has its own frame number (nd_wq.c:124, pm_main.c:499, :699, :747): the hold skip cannot fire.
-  The copy chain is one ordered GX queue (slot fill :2236, clear, part 1, copy :2629, part 2), the split writes the framebuffer flush (DrawUsed :1342),
-  the slot and grab_tex binds are force 1 (texture cache clear nd_emit.c:89). No console-only gap found there. fxr_drec is a field scene: the battle
-  draw on Azahar is not known. Found: grab_impl splits without the ring flush (:2787-2788) -> page ws_GRABFL (not the blue cause, GUESS).
-- OPEN: the 30 FPS blue cause. Needs from the user: 3D slider and Wide/Fullscreen state in the playtest; one console log of the wave with switches
-  grablog and fbbind, plus the always-on lines `V05 demand`, `R4:`, `vram reserve`, `stereo: replay`. Cost: fxtest=87 fxcena/b/c lines.
-- Ready: ws_MENUFL (Select menu R: colour top frame, after Merge GRABSEQ), ws_STARTLR (start menu L -> N64 L, R -> N64 Z, user confirmed).
+## Tidal Wave in wide (user 2026-11-16, build 5852, 60 FPS on: blue flickering square in the 4:3 window). GRABSEQ, GRABFL merged.
+- FACT: the mesh is 4:3 by design: underwater.c:183-194 game x 12..308, y 20..220, ortho 0..1280 (:236), tc = the same texels. It never
+  touches game x 0 or 320, so wide_edge_k (pm_gpu.c:3406) never moves it; as ui_ortho it lands at screen 40 + x (pm_gpu.c:229-230): 52..348.
+- FACT: the wide grab is consistent: 400 columns (pm_gpu.c:2775), slot at cfb - 80 (:2245), origin 40 (pm_tex.c:1719), tile_x0 -40
+  (nd_tex_set.c:420): mesh texel s reads screen column s + 40, the same column it covers.
+- FACT: PM_CC_48 (macros.h:501) = PRIM * PRIM_A + TEXEL0: solid blue means TEXEL0 = 0 (empty or wrong slot) in those frames.
+- FACT: hw_tidal1_live.txt has no `tidal:` line; its grab/fbbind lines (#176540-#176579) come with grabw type 2 = gut_tex (pm_gpu.c:1447),
+  the pause screen (background_gfx.c:374), not the wave.
+- FACT: the two cfbs are adjacent (0xff7e10 + 153600 = 0x101d610) and a slot spans 256 rows (pm_tex.h:6): pm_tex.c:1715 matches a load of
+  the upper cfb to the lower cfb's slot (off_oy 240, empty rows) when both cfb slots live in one frame. Not shown for the wave.
+- Next: read the walker tile clamp for a slot (nd_tex_set.c, nd_geom uv) before a design that widens the mesh to game x -40..360 in wide
+  (non-wide byte-equal). Ask the user for a wide wave capture with grablog fbbind (CAPTOOL capture_check first).
 ## Older facts that still cost time
 - NDN_DECL/NDN (nd_gtab.h:66-74): host form extern Gfx; device form ndd_<name> NdNDev. gset include mode is src/effects/gfx only.
 - listcen skips an asset that only a gfxin twin includes. gen_gfx_tab copies its logs to /w/build3ds/out when it exists.
@@ -48,6 +50,5 @@ C5 data 5149, C6 data_arrays 461, C7 gfxtype 1083, C8 reader 783, C10 recdl 15.
   the log profile had no log=on. GUESS: the O3DS XL options.ini has log_on=0 (menu Profiling row saves it, pm_options.c:269).
 - FACT: with logging off, event lines (pm_log_evt) reach no log.txt: no writer wake (pm_log.c:600), sink waits (:888). Not fixed yet.
 ## What to do first
-1. Answer coder questions (GSETI, LKEY, FXVROM) with SendMessage, file:line.
-2. After Merge GSETI: re-run the codemod --ntab dry and write the C1/C2 dl page per directory.
-3. After Merge LKEY: A(x) namespace + merlee include-twin page; model.c design (Sonnet); pra_31 skeleton design.
+1. Answer MAPLAG coder questions (SendMessage, file:line).
+2. WAVEWIDE: finish the trace above, then write ws_WAVEWIDE (+ _code).
