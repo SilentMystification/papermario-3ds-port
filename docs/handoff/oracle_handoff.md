@@ -1,9 +1,10 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main e91cff3feb, 2026-11-16. Oracle DL2 (display list work) wrote ws_CGFX, ws_DLSITE1, ws_MODELRM and the GSETR addendum.
+State: main 4c02b18543, 2026-11-16. Oracle DL5 wrote ws_DLSITE2 and ws_CURT (+ patches; parallel, Haiku, start now).
 Goal: remove the N64 display list system. Done when 3ds/tools/elfgate.py prints func 0 data 0 gfxnames 0 and every listcen counter is 0.
-## Counters (FACT, listcen on main e91cff3feb)
-build 722, gfxpos 201, data 3016, data_arrays 277, gfxtype 885, recdl 15, reader 785, model 15.
+## Counters (FACT, listcen on main 4c02b18543)
+build 551, gfxpos 186, data 2068, data_arrays 196, gfxtype 809, recdl 10, reader 785, model 15.
+- DLSITE2 (codemod skips a comment before a call): build -32, gfxpos -32. CURT (curtains & removal + gset): build -1, gfxpos -1, data -102, arrays -11, gfxtype -11.
 ## Running and ready work
 - GSETR (worktree build3ds/wt/GSETR, HEAD a6b5c569f3 WIP): curtains.c left gset.d only. Pass values: `gset moved 26 files 9 keep 0`;
   listcen vs build3ds/out/gsetr_lc0.txt: data -212, data_arrays -26, gfxtype -27. Steps 3-5 not run; the orchestrator relaunches it.

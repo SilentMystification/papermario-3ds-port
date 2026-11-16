@@ -1,0 +1,472 @@
+diff --git a/3ds/tests/codemod/cases/st_ctxcmt.in.c b/3ds/tests/codemod/cases/st_ctxcmt.in.c
+new file mode 100644
+index 0000000..1f23f41
+--- /dev/null
++++ b/3ds/tests/codemod/cases/st_ctxcmt.in.c
+@@ -0,0 +1,9 @@
++void f(void) {
++    a = 1; // a trailing line comment
++    gDPSetEnvColor(gMainGfxPos++, 1, 2, 3, 4);
++    b(); /* a trailing block comment */
++    gDPSetCombineMode(gMainGfxPos++, G_CC_DECALRGBA, G_CC_DECALRGBA);
++    // a comment line
++    gDPPipeSync(gMainGfxPos++);
++    x = /* not a statement start */ gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
++}
+diff --git a/3ds/tests/codemod/cases/st_ctxcmt.log b/3ds/tests/codemod/cases/st_ctxcmt.log
+new file mode 100644
+index 0000000..ecdec26
+--- /dev/null
++++ b/3ds/tests/codemod/cases/st_ctxcmt.log
+@@ -0,0 +1 @@
++codemod keep st_ctxcmt.c:8 gSPPopMatrix ctx
+diff --git a/3ds/tests/codemod/cases/st_ctxcmt.out.c b/3ds/tests/codemod/cases/st_ctxcmt.out.c
+new file mode 100644
+index 0000000..eb15935
+--- /dev/null
++++ b/3ds/tests/codemod/cases/st_ctxcmt.out.c
+@@ -0,0 +1,8 @@
++void f(void) {
++    a = 1; // a trailing line comment
++    nd_val_env(1, 2, 3, 4);
++    b(); /* a trailing block comment */
++    nd_pso_cc(G_CC_DECALRGBA, G_CC_DECALRGBA);
++    // a comment line
++    x = /* not a statement start */ gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
++}
+diff --git a/3ds/tools/azt.d/DLSITE2.json b/3ds/tools/azt.d/DLSITE2.json
+new file mode 100644
+index 0000000..c0425a0
+--- /dev/null
++++ b/3ds/tools/azt.d/DLSITE2.json
+@@ -0,0 +1,28 @@
++{
++  "scenarios": [
++    {
++      "name": "dls2_fx_drec",
++      "status": "unverified",
++      "subject": "DLSITE2 draw records: sparkles, blast, firework and hieroglyphs (fxtest 12, 56, 61, 106) on mac_01 (pos 0 0 200), cold det start with the drec switch (frames 412 to 544, step 44), no shots.",
++      "proves": "DLSITE2: the draw records of the 4 effects with a codemod ctx site are byte-equal between a base and a head build.",
++      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=12,56,61,106 loglevel=debug det drec=412:4:44",
++      "until": "drec f544 draws [1-9]\\d* bytes \\d+",
++      "cap": 30,
++      "deadline": 25,
++      "first_marker": "warp: mac_01 entry 0",
++      "expects": "warp",
++      "needs_picture": false,
++      "expected_events": [
++        {
++          "name": "warp",
++          "regex": "warp: mac_01 entry 0"
++        },
++        {
++          "name": "drec",
++          "regex": "drec f544 draws [1-9]\\d* bytes \\d+"
++        }
++      ],
++      "reason": "DLSITE2: copy of fxr_drec (FXENT3) with 4 effects. Cap 30 s, deadline 25 s, until the drec line of frame 544."
++    }
++  ]
++}
+diff --git a/3ds/tools/bench.d/DLSITE2.json b/3ds/tools/bench.d/DLSITE2.json
+new file mode 100644
+index 0000000..31b5cb9
+--- /dev/null
++++ b/3ds/tools/bench.d/DLSITE2.json
+@@ -0,0 +1,21 @@
++{
++  "benches": [
++    {
++      "name": "dls2_fx_drec",
++      "kind": "azahar_pic",
++      "speed": "normal",
++      "default": false,
++      "purpose": "DLSITE2: draw records of fxtest 12, 56, 61, 106 on mac_01, frames 412 to 544 step 44 (cold det start). A head equals the base.",
++      "scenario": "dls2_fx_drec",
++      "cap": 30,
++      "until": "drec f544 draws [1-9]\\d* bytes \\d+",
++      "tags": [
++        "azahar",
++        "det",
++        "cold",
++        "drec"
++      ],
++      "gates": []
++    }
++  ]
++}
+diff --git a/3ds/tools/codemod.py b/3ds/tools/codemod.py
+index 4aad3ce..d2e1c8e 100644
+--- a/3ds/tools/codemod.py
++++ b/3ds/tools/codemod.py
+@@ -274,7 +274,11 @@ def rewrite(path, s):
+         if nargs == 1 and args == ['']:
+             args = []
+         nxt = toks[sig[close + 1]] if close + 1 < len(sig) else None
+-        prev = toks[sig[i - 1]] if i > 0 else None
++        # CMCTX: a comment before the call (the trailing comment of the line above) is not its context
++        pi = i - 1
++        while pi >= 0 and toks[sig[pi]][0] == 'comment':
++            pi -= 1
++        prev = toks[sig[pi]] if pi >= 0 else None
+         prev_txt = s[prev[1]:prev[2]] if prev else ';'
+         pk = prev[0] if prev else 'pp'
+         why = bad
+diff --git a/src/background_gfx.c b/src/background_gfx.c
+index 07f80d3..ee5ce49 100644
+--- a/src/background_gfx.c
++++ b/src/background_gfx.c
+@@ -320,7 +320,6 @@ void gfx_draw_background(void) {
+     switch (bgRenderState) {
+         case BACKGROUND_RENDER_STATE_BEGIN_PAUSED:
+             // Save coverage to nunGfxCfb[1] using the VISCVG render mode
+-            gDPPipeSync(gMainGfxPos++);
+             nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, nuGfxCfb[1]);
+             nd_pso_cyc(G_CYC_1CYCLE);
+             nd_val_blend(0x80, 0x80, 0x80, 0xFF);
+@@ -361,7 +360,7 @@ void gfx_draw_background(void) {
+             /// @bug In 1-cycle mode, the two combiner cycles should be identical. Using Texel1 here in the second cycle,
+             /// which is the actual cycle of the combiner used on hardware in 1-cycle mode, actually samples the next
+             /// pixel's texel value instead of the current pixel's. This results in a one-pixel offset.
+-            gDPSetCombineMode(gMainGfxPos++, PM_CC_43, PM_CC_44);
++            nd_pso_cc(PM_CC_43, PM_CC_44);
+             nd_val_prim(0, 0, 40, 40, 40, gPauseBackgroundFade);
+             nd_pso_filt(G_TF_POINT);
+ 
+diff --git a/src/effects/blast.c b/src/effects/blast.c
+index 25fef3c..a314821 100644
+--- a/src/effects/blast.c
++++ b/src/effects/blast.c
+@@ -127,7 +127,7 @@ void blast_appendGfx(void* effect) {
+         nd_val_prim(0, 0, 255, 255, 128, 127);
+     }
+     t = !(s32)t; // required to match
+-    gDPSetEnvColor(gMainGfxPos++, 255, 255, 139, envAlpha);
++    nd_val_env(255, 255, 139, envAlpha);
+ 
+     nd_draw_list(dlist, pe_blast_131);
+     nd_xf_pop(G_MTX_MODELVIEW);
+diff --git a/src/effects/firework.c b/src/effects/firework.c
+index 306a4ac..58c881b 100644
+--- a/src/effects/firework.c
++++ b/src/effects/firework.c
+@@ -291,7 +291,7 @@ void func_E00863B4(EffectInstance* effect) {
+ 
+             nd_sub_open(&sub); /* DIRECT D6c: the pass list is a stream range, drawn three times */
+             nd_draw_list(D_E0086AB4[unk_00], ND_SELF); /* S7EFX3: replayed by each nd_sub_call (stream_run NDC_NAPI) */
+-            gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
++            nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+             nd_mesh_vtx(vbuf, nsp * 4, 0);
+             for (i = 0; i < nsp; i++) {
+                 nd_mesh_tri2(4 * i, 4 * i + 1, 4 * i + 2, 0, 4 * i, 4 * i + 2, 4 * i + 3, 0);
+diff --git a/src/effects/hieroglyphs.c b/src/effects/hieroglyphs.c
+index 79e624c..0021a93 100644
+--- a/src/effects/hieroglyphs.c
++++ b/src/effects/hieroglyphs.c
+@@ -140,9 +140,7 @@ void hieroglyphs_appendGfx(void* effect) {
+     nd_val_env(data->unk_28, data->unk_2C, data->unk_30, data->unk_34);
+     nd_draw_list(D_E00E29F0[0], ND_SELF);
+     nd_sub_open(&sub); /* DIRECT D6c: the list for later is a stream range */
+-    gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE,
+-        (lifeTime * 2      ) * 4, 0,
+-        (lifeTime * 2 + 127) * 4, 31 * 4);
++    nd_val_tile_size(G_TX_RENDERTILE, (lifeTime * 2      ) * 4, 0, (lifeTime * 2 + 127) * 4, 31 * 4);
+ 
+     guRotateF(sp20, 20.0f, 1.0f, 0.0f, 0.0f);
+     guPositionF(sp60, 0.0f, sin_deg(lifeTime * 8 + 78.75) * -30.0f, 0.0f, 1.0f, 6.0f, 0.0f, 0.0f);
+diff --git a/src/effects/sparkles.c b/src/effects/sparkles.c
+index c3a5cb5..b640891 100644
+--- a/src/effects/sparkles.c
++++ b/src/effects/sparkles.c
+@@ -3,6 +3,7 @@
+ #include "nd_gtab.h"
+ #include "nd_val.h"
+ #include "nd_xf.h"
++#include "nd_st.h"
+ #include "nd_geo.h"
+ 
+ NDN_DECL(D_09000F20_338EE0);
+@@ -274,8 +275,7 @@ void sparkles_appendGfx(void* effect) {
+     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+     nd_draw_list(NDN(D_09000F20_338EE0), ND_SELF);
+     // The part colour is a vertex colour: one GPU batch for all parts instead of one per PRIM change.
+-    gDPSetCombineLERP(gMainGfxPos++, 1, SHADE, TEXEL0, SHADE, SHADE, 0, TEXEL0, 0,
+-                      1, SHADE, TEXEL0, SHADE, SHADE, 0, TEXEL0, 0);
++    nd_pso_cc(1, SHADE, TEXEL0, SHADE, SHADE, 0, TEXEL0, 0, 1, SHADE, TEXEL0, SHADE, SHADE, 0, TEXEL0, 0);
+     // Per-frame vertices are stream data: the recorded list reads them after this function returns.
+     vtxBuf = (Vtx*) nd_rec_data(((EffectInstance*)effect)->numParts * 4 * sizeof(Vtx));
+ 
+diff --git a/src/hud_element.c b/src/hud_element.c
+index d9f4099..9ae806b 100644
+--- a/src/hud_element.c
++++ b/src/hud_element.c
+@@ -1973,7 +1973,6 @@ void render_transformed_hud_elements(void) {
+                     }
+ 
+                     nd_pso_scis(G_SC_NON_INTERLACE, pm_wide ? 0 : 12, pm_wide ? 0 : 20, pm_wide ? SCREEN_WIDTH : 308, pm_wide ? SCREEN_HEIGHT : 220); /* WIDE4: a transformed HUD element (battle wheel spots, reel, beam) placed in the wide margin is drawn to the screen edge */
+-                    gDPPipeSync(gMainGfxPos++);
+                     nd_pso_geom_clr(G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
+                     nd_pso_geom_set(G_ZBUFFER | G_SHADE | G_LIGHTING | G_SHADING_SMOOTH);
+                     nd_lit_set1(HudElemLights);
+@@ -2038,7 +2037,6 @@ void render_transformed_hud_elements(void) {
+                     }
+ 
+                     nd_pso_scis(G_SC_NON_INTERLACE, pm_wide ? 0 : 12, pm_wide ? 0 : 20, pm_wide ? SCREEN_WIDTH : 308, pm_wide ? SCREEN_HEIGHT : 220); /* WIDE4: a transformed HUD element (battle wheel spots, reel, beam) placed in the wide margin is drawn to the screen edge */
+-                    gDPPipeSync(gMainGfxPos++);
+                     nd_pso_geom_clr(G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
+                     nd_pso_geom_set(G_ZBUFFER | G_SHADE | G_LIGHTING | G_SHADING_SMOOTH);
+                     nd_lit_set1(HudElemLights);
+@@ -2078,7 +2076,7 @@ void immediately_render_complex_hud_element(s32 elemID, s32 arg1, s32 camID) {
+         nd_pso_rm(G_RM_OPA_SURF, G_RM_OPA_SURF2);
+         nd_xf_clip(FRUSTRATIO_2);
+         //clear Z buffer inside camera viewport
+-        gDPSetCycleType(gMainGfxPos++, G_CYC_FILL);
++        nd_pso_cyc(G_CYC_FILL);
+         nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxZBuffer));
+         nd_val_fill(GPACK_ZDZ(G_MAXFBZ, 0)<<16 | GPACK_ZDZ(G_MAXFBZ, 0));
+         nd_rect_fill(camera->viewportStartX, camera->viewportStartY, camera->viewportStartX + camera->viewportW - 1, camera->viewportStartY + camera->viewportH - 1);
+@@ -2091,7 +2089,6 @@ void immediately_render_complex_hud_element(s32 elemID, s32 arg1, s32 camID) {
+         nd_xf_push(&gDisplayContext->camPerspMatrix[gCurrentCamID], G_MTX_NOPUSH | G_MTX_LOAD |
+                                                                                     G_MTX_PROJECTION);
+         nd_pso_scis(G_SC_NON_INTERLACE, pm_wide ? 0 : 12, pm_wide ? 0 : 20, pm_wide ? SCREEN_WIDTH : 308, pm_wide ? SCREEN_HEIGHT : 220); /* WIDE4: a transformed HUD element (battle wheel spots, reel, beam) placed in the wide margin is drawn to the screen edge */
+-        gDPPipeSync(gMainGfxPos++);
+         nd_pso_cyc(G_CYC_1CYCLE);
+         nd_pso_geom_clr(G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING |
+                                                 G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
+diff --git a/src/imgfx.c b/src/imgfx.c
+index 1d3a6f9..103551c 100644
+--- a/src/imgfx.c
++++ b/src/imgfx.c
+@@ -914,7 +914,7 @@ void imgfx_appendGfx_mesh(ImgFXState* state, Matrix4f mtx) {
+             case IMGFX_RENDER_MULTIPLY_RGB:
+                 // color: texture * prim
+                 // alpha: texture
+-                gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIDECALA_PRIM, G_CC_MODULATEIDECALA_PRIM);
++                nd_pso_cc(G_CC_MODULATEIDECALA_PRIM, G_CC_MODULATEIDECALA_PRIM);
+                 nd_val_prim(0, 0, state->ints.color.r, state->ints.color.g, state->ints.color.b, 0);
+                 break;
+             case IMGFX_RENDER_MULTIPLY_ALPHA:
+@@ -938,7 +938,7 @@ void imgfx_appendGfx_mesh(ImgFXState* state, Matrix4f mtx) {
+             case IMGFX_RENDER_MODULATE_PRIM_RGB:
+                 // color: lerp from prim color to 1 based on texture intensity
+                 // alpha: texture
+-                gDPSetCombineMode(gMainGfxPos++, PM_CC_5B, PM_CC_5B);
++                nd_pso_cc(PM_CC_5B, PM_CC_5B);
+                 nd_val_prim(0, 0, state->ints.color.r, state->ints.color.g, state->ints.color.b, 0);
+                 break;
+             case IMGFX_RENDER_MODULATE_PRIM_RGBA:
+@@ -953,35 +953,35 @@ void imgfx_appendGfx_mesh(ImgFXState* state, Matrix4f mtx) {
+             case IMGFX_RENDER_MULTIPLY_SHADE_RGB:
+                 // color: modulate vtx color by texture intensity
+                 // alpha: texture
+-                gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIDECALA, G_CC_MODULATEIDECALA);
++                nd_pso_cc(G_CC_MODULATEIDECALA, G_CC_MODULATEIDECALA);
+                 nd_pso_geom_set(G_SHADE | G_SHADING_SMOOTH);
+                 nd_pso_geom_clr(G_LIGHTING);
+                 break;
+             case IMGFX_RENDER_MODULATE_SHADE_RGB:
+                 // color: lerp from vtx color to 1 based on texture intensity
+                 // alpha: texture
+-                gDPSetCombineMode(gMainGfxPos++, PM_CC_5D, PM_CC_5D);
++                nd_pso_cc(PM_CC_5D, PM_CC_5D);
+                 nd_pso_geom_set(G_SHADE | G_SHADING_SMOOTH);
+                 nd_pso_geom_clr(G_LIGHTING);
+                 break;
+             case IMGFX_RENDER_MULTIPLY_SHADE_ALPHA:
+                 // color: texture
+                 // alpha: texture * vtx color
+-                gDPSetCombineMode(gMainGfxPos++, PM_CC_12, PM_CC_12);
++                nd_pso_cc(PM_CC_12, PM_CC_12);
+                 nd_pso_geom_set(G_SHADE | G_SHADING_SMOOTH);
+                 nd_pso_geom_clr(G_LIGHTING);
+                 break;
+             case IMGFX_RENDER_MULTIPLY_SHADE_RGBA:
+                 // color: modulate vtx color by texture intensity
+                 // alpha: modulate vtx alpha by texture intensity
+-                gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIA, G_CC_MODULATEIA);
++                nd_pso_cc(G_CC_MODULATEIA, G_CC_MODULATEIA);
+                 nd_pso_geom_set(G_SHADE | G_SHADING_SMOOTH);
+                 nd_pso_geom_clr(G_LIGHTING);
+                 break;
+             case IMGFX_RENDER_MODULATE_SHADE_RGBA:
+                 // color: lerp from vtx color to 1 based on texture intensity
+                 // alpha: vtx color * texture
+-                gDPSetCombineMode(gMainGfxPos++, PM_CC_5E, PM_CC_5E);
++                nd_pso_cc(PM_CC_5E, PM_CC_5E);
+                 nd_pso_geom_set(G_SHADE | G_SHADING_SMOOTH);
+                 nd_pso_geom_clr(G_LIGHTING);
+                 break;
+@@ -1010,13 +1010,13 @@ void imgfx_appendGfx_mesh(ImgFXState* state, Matrix4f mtx) {
+                     primAlpha = state->ints.hologram.alphaAmt * ifxImgAlpha;
+                     // color: blend texure and noise
+                     // alpha: texure * prim
+-                    gDPSetCombineMode(gMainGfxPos++, PM_CC_IMGFX_HOLOGRAM, PM_CC_IMGFX_HOLOGRAM);
++                    nd_pso_cc(PM_CC_IMGFX_HOLOGRAM, PM_CC_IMGFX_HOLOGRAM);
+                     nd_val_prim(0, 0, state->ints.hologram.noiseAmt, state->ints.hologram.noiseAmt, state->ints.hologram.noiseAmt, primAlpha);
+                 } else if (state->ints.hologram.mode == IMGFX_HOLOGRAM_DITHER) {
+                     primAlpha = state->ints.hologram.alphaAmt * ifxImgAlpha;
+                     // color: texture
+                     // alpha: texture * prim
+-                    gDPSetCombineMode(gMainGfxPos++, PM_CC_02, PM_CC_02);
++                    nd_pso_cc(PM_CC_02, PM_CC_02);
+                     nd_val_prim(0, 0, 0, 0, 0, primAlpha);
+                     nd_pso_alcmp(G_AC_DITHER);
+                 } else if (state->ints.hologram.mode == IMGFX_HOLOGRAM_THRESHOLD) {
+@@ -1027,7 +1027,7 @@ void imgfx_appendGfx_mesh(ImgFXState* state, Matrix4f mtx) {
+                     primAlpha = state->ints.hologram.alphaAmt * ifxImgAlpha;
+                     // color: texture
+                     // alpha: texture * prim
+-                    gDPSetCombineMode(gMainGfxPos++, PM_CC_02, PM_CC_02);
++                    nd_pso_cc(PM_CC_02, PM_CC_02);
+                     nd_pso_aldith(G_AD_NOISE);
+                     nd_pso_alcmp(G_AC_THRESHOLD);
+                     nd_val_prim(0, 0, 0, 0, 0, primAlpha);
+@@ -1037,7 +1037,7 @@ void imgfx_appendGfx_mesh(ImgFXState* state, Matrix4f mtx) {
+             case IMGFX_RENDER_COLOR_FILL:
+                 // color: prim
+                 // alpha: texture
+-                gDPSetCombineMode(gMainGfxPos++, PM_CC_IMGFX_COLOR_FILL, PM_CC_IMGFX_COLOR_FILL);
++                nd_pso_cc(PM_CC_IMGFX_COLOR_FILL, PM_CC_IMGFX_COLOR_FILL);
+                 nd_val_prim(0, 0, state->ints.color.r, state->ints.color.g, state->ints.color.b, 0);
+                 break;
+             case IMGFX_RENDER_DEFAULT:
+@@ -1045,12 +1045,12 @@ void imgfx_appendGfx_mesh(ImgFXState* state, Matrix4f mtx) {
+             case IMGFX_RENDER_UNUSED:
+                 // color: texture
+                 // alpha: texture
+-                gDPSetCombineMode(gMainGfxPos++, G_CC_DECALRGBA, G_CC_DECALRGBA);
++                nd_pso_cc(G_CC_DECALRGBA, G_CC_DECALRGBA);
+                 break;
+             case IMGFX_RENDER_OVERLAY_RGBA:
+                 // color: texture
+                 // alpha: texture * prim
+-                gDPSetCombineMode(gMainGfxPos++, PM_CC_02, PM_CC_02);
++                nd_pso_cc(PM_CC_02, PM_CC_02);
+                 nd_val_prim(0, 0, 0, 0, 0, state->ints.overlay.alpha);
+                 break;
+         }
+diff --git a/src/inspect_icon.c b/src/inspect_icon.c
+index 88397ec..ae3034b 100644
+--- a/src/inspect_icon.c
++++ b/src/inspect_icon.c
+@@ -73,7 +73,7 @@ void appendGfx_interact_prompt(void) {
+         guMtxF2L(sp78, &gDisplayContext->matrixStack[gMatrixListPos]);
+ 
+         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+-        gSPDisplayList(gMainGfxPos++, NDN(inspect_icon_gfx));
++        nd_draw_list(NDN(inspect_icon_gfx), ND_SELF);
+ 
+         ifxImg.raster  = inspect_icon_img;
+         ifxImg.palette = inspect_icon_pal;
+diff --git a/src/main_loop.c b/src/main_loop.c
+index 3f703d5..c93d304 100644
+--- a/src/main_loop.c
++++ b/src/main_loop.c
+@@ -6,6 +6,7 @@
+ #include "sprite.h"
+ #include "overlay.h"
+ #include "game_modes.h"
++#include "nd_xf.h"
+ 
+ s32 gOverrideFlags;
+ s32 gTimeFreezeMode;
+@@ -199,7 +200,7 @@ void gfx_draw_frame(void) {
+     }
+ 
+     FI_OPEN("gfx_draw_frame"); /* WCEN2: the frame start op (mainGfx[0]) has its own census key */
+-    gSPMatrix(gMainGfxPos++, &MasterIdentityMtx, G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
++    nd_xf_push(&MasterIdentityMtx, G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+     FI_CLOSE();
+ 
+     FI_OPEN("gfx_sprite_init");
+diff --git a/src/pause/pause_partners.c b/src/pause/pause_partners.c
+index 50a0fba..4fadabd 100644
+--- a/src/pause/pause_partners.c
++++ b/src/pause/pause_partners.c
+@@ -409,7 +409,7 @@ void pause_partners_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 wid
+     portraitIndex = portraitScrollIndex;
+     pause_partners_load_portrait(portraitIndex % gPausePartnersNumPartners);
+     for (i = 0; i < ARRAY_COUNT(gPausePartnersPaletteBuffers); portraitOffsetX += 150, i++) {
+-        gSPDisplayList(gMainGfxPos++, NDN(gPausePartnersDL));
++        nd_draw_list(NDN(gPausePartnersDL), ND_SELF);
+         nd_tex_load_tlut256(gPausePartnersPaletteBuffers[i]);
+ 
+         for (index = 0; index < 20; index++) {
+diff --git a/src/screen_overlays.c b/src/screen_overlays.c
+index 1a5b104..e749606 100644
+--- a/src/screen_overlays.c
++++ b/src/screen_overlays.c
+@@ -231,7 +231,7 @@ void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* ove
+     switch (stencilType) {
+         case OVERLAY_SCREEN_COLOR:
+             /* the scissor stays a stream op before the record: later walker draws may inherit it */
+-            gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
++            nd_pso_scis(G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+             /* 1-cycle fill: the lower right is exclusive (HUDB1). The N64 overscan hides the last column and row, the port shows them. */
+             {
+                 const NdFillRec rec = { 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, ((u32)colR << 24) | ((u32)colG << 16) | ((u32)colB << 8) | (u32)(u8)progress,
+diff --git a/src/speech_bubble.c b/src/speech_bubble.c
+index 5dbfcdd..07ebe25 100644
+--- a/src/speech_bubble.c
++++ b/src/speech_bubble.c
+@@ -60,7 +60,7 @@ void appendGfx_speech_bubble(void) {
+         guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
+ 
+         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+-        gSPDisplayList(gMainGfxPos++, NDN(speech_bubble_gfx));
++        nd_draw_list(NDN(speech_bubble_gfx), ND_SELF);
+ 
+         ifxImg.raster  = speech_bubble_img;
+         ifxImg.palette = speech_bubble_pal;
+diff --git a/src/status_star_shimmer.c b/src/status_star_shimmer.c
+index 497a1bc..e8448bc 100644
+--- a/src/status_star_shimmer.c
++++ b/src/status_star_shimmer.c
+@@ -1,4 +1,5 @@
+ #include "common.h"
++#include "nd_gtab.h"
+ #include "nd_st.h"
+ #include "nd_val.h"
+ #include "nd_xf.h"
+@@ -167,8 +168,8 @@ void star_power_shimmer_draw(void) {
+     guMtxF2L(viewMtx, &gDisplayContext->matrixStack[gMatrixListPos]);
+ 
+     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
+-    gSPDisplayList(gMainGfxPos++, D_80109710); // setup texture
+-    gDPSetEnvColor(gMainGfxPos++, 127, 127, 127, 127);
++    nd_draw_list(D_80109710, ND_SELF); // setup texture
++    nd_val_env(127, 127, 127, 127);
+ 
+     for (i = 0; i < ARRAY_COUNT(ShimmerEmitters); i++, emitter++) {
+         emitter = &ShimmerEmitters[i];
+@@ -186,7 +187,7 @@ void star_power_shimmer_draw(void) {
+                     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+                     nd_val_prim(0, 80 - particle->animTime, particle->rgba.r, particle->rgba.g, particle->rgba.b, particle->rgba.a);
+                     gSPDisplayList(gMainGfxPos++, D_801097D8); // draw particle
+-                    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
++                    nd_xf_pop(G_MTX_MODELVIEW);
+                 }
+             }
+         }
+diff --git a/src/world/area_flo/flo_14/bubbles.c b/src/world/area_flo/flo_14/bubbles.c
+index d0c3c16..d83b52a 100644
+--- a/src/world/area_flo/flo_14/bubbles.c
++++ b/src/world/area_flo/flo_14/bubbles.c
+@@ -1,6 +1,7 @@
+ #include "flo_14.h"
+ #include "effects.h"
+ #include "model.h"
++#include "nd_xf.h"
+ 
+ #include "../common/FlowerSpawnRegion.inc.c"
+ #include "../common/DroppingVine.inc.c"
+@@ -230,8 +231,7 @@ void N(gfx_build_big_bubble)(void) {
+     new_var = 0;
+     while (new_var); // TODO required to match
+ 
+-    gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++],
+-              G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
++    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+     gSPDisplayList(gMainGfxPos++, mdl_get_copied_gfx(VTX_COPY_0));
+ 
+     N(BubblePhase) += 1.0f;
