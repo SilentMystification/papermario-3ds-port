@@ -265,68 +265,28 @@ typedef	struct	{
 /*---------------------------------------------------------------------------*
  *	Background wrapped screen
  *---------------------------------------------------------------------------*/
-#define	gSPBgRectangle(pkt, m, mptr)  gDma0p((pkt),(m),(mptr),0)
-#define	gsSPBgRectangle(m, mptr)      gsDma0p(     (m),(mptr),0)
-#define	gSPBgRectCopy(pkt, mptr)      gSPBgRectangle((pkt), G_BG_COPY, (mptr))
-#define	gsSPBgRectCopy(mptr)	      gsSPBgRectangle(      G_BG_COPY, (mptr))
-#define	gSPBgRect1Cyc(pkt, mptr)      gSPBgRectangle((pkt), G_BG_1CYC, (mptr))
-#define	gsSPBgRect1Cyc(mptr)	      gsSPBgRectangle(      G_BG_1CYC, (mptr))
 
 /*---------------------------------------------------------------------------*
  *	2D Objects
  *---------------------------------------------------------------------------*/
-#define	gSPObjSprite(pkt, mptr)       gDma0p((pkt),G_OBJ_SPRITE,     (mptr),0)
-#define	gsSPObjSprite(mptr)           gsDma0p(     G_OBJ_SPRITE,     (mptr),0)
-#define	gSPObjRectangle(pkt, mptr)    gDma0p((pkt),G_OBJ_RECTANGLE,  (mptr),0)
-#define	gsSPObjRectangle(mptr)        gsDma0p(     G_OBJ_RECTANGLE,  (mptr),0)
-#define	gSPObjRectangleR(pkt, mptr)   gDma0p((pkt),G_OBJ_RECTANGLE_R,(mptr),0)
-#define	gsSPObjRectangleR(mptr)       gsDma0p(     G_OBJ_RECTANGLE_R,(mptr),0)
 
 /*---------------------------------------------------------------------------*
  *	2D Matrix
  *---------------------------------------------------------------------------*/
-#define	gSPObjMatrix(pkt, mptr)	      gDma1p((pkt),G_OBJ_MOVEMEM,(mptr),0,23)
-#define	gsSPObjMatrix(mptr)           gsDma1p(     G_OBJ_MOVEMEM,(mptr),0,23)
-#define	gSPObjSubMatrix(pkt, mptr)    gDma1p((pkt),G_OBJ_MOVEMEM,(mptr),2, 7)
-#define	gsSPObjSubMatrix(mptr)        gsDma1p(     G_OBJ_MOVEMEM,(mptr),2, 7)
 
 /*---------------------------------------------------------------------------*
  *	Loading into TMEM
  *---------------------------------------------------------------------------*/
-#define	gSPObjLoadTxtr(pkt, tptr)     gDma0p((pkt),G_OBJ_LOADTXTR,   (tptr),23)
-#define	gsSPObjLoadTxtr(tptr)         gsDma0p(     G_OBJ_LOADTXTR,   (tptr),23)
-#define	gSPObjLoadTxSprite(pkt, tptr) gDma0p((pkt),G_OBJ_LDTX_SPRITE,(tptr),47)
-#define	gsSPObjLoadTxSprite(tptr)     gsDma0p(     G_OBJ_LDTX_SPRITE,(tptr),47)
-#define	gSPObjLoadTxRect(pkt, tptr)   gDma0p((pkt),G_OBJ_LDTX_RECT,  (tptr),47)
-#define	gsSPObjLoadTxRect(tptr)       gsDma0p(     G_OBJ_LDTX_RECT,  (tptr),47)
-#define	gSPObjLoadTxRectR(pkt, tptr)  gDma0p((pkt),G_OBJ_LDTX_RECT_R,(tptr),47)
-#define	gsSPObjLoadTxRectR(tptr)      gsDma0p(     G_OBJ_LDTX_RECT_R,(tptr),47)
 
 /*---------------------------------------------------------------------------*
  *	Select Display List
  *---------------------------------------------------------------------------*/
-#define	gSPSelectDL(pkt, mptr, sid, flag, mask)	\
-{	gDma1p((pkt), G_RDPHALF_0, (flag), (u32)(mptr) & 0xffff, (sid)); \
-	gDma1p((pkt), G_SELECT_DL, (mask), (u32)(mptr) >> 16, G_DL_PUSH); }
-#define	gsSPSelectDL(mptr, sid, flag, mask)	\
-{	gsDma1p(G_RDPHALF_0, (flag), (u32)(mptr) & 0xffff, (sid)); \
-	gsDma1p(G_SELECT_DL, (mask), (u32)(mptr) >> 16, G_DL_PUSH); }
-#define	gSPSelectBranchDL(pkt, mptr, sid, flag, mask)	\
-{	gDma1p((pkt), G_RDPHALF_0, (flag), (u32)(mptr) & 0xffff, (sid)); \
-	gDma1p((pkt), G_SELECT_DL, (mask), (u32)(mptr) >> 16, G_DL_NOPUSH); }
-#define	gsSPSelectBranchDL(mptr, sid, flag, mask)	\
-{	gsDma1p(G_RDPHALF_0, (flag), (u32)(mptr) & 0xffff, (sid)); \
-	gsDma1p(G_SELECT_DL, (mask), (u32)(mptr) >> 16, G_DL_NOPUSH); }
 
 /*---------------------------------------------------------------------------*
  *	Set general status
  *---------------------------------------------------------------------------*/
 #define	G_MW_GENSTAT	0x08	/* Note that it is the same value of G_MW_FOG */
 
-#define	gSPSetStatus(pkt, sid, val)	\
-	gMoveWd((pkt), G_MW_GENSTAT, (sid), (val))
-#define	gsSPSetStatus(sid, val)	\
-	gsMoveWd(      G_MW_GENSTAT, (sid), (val))
 
 /*---------------------------------------------------------------------------*
  *	Set Object Render Mode
@@ -339,8 +299,6 @@ typedef	struct	{
 #define	G_OBJRM_SHRINKSIZE_2	0x20
 #define	G_OBJRM_WIDEN		0x40
 
-#define	gSPObjRenderMode(pkt, mode)   gImmp1((pkt),G_OBJ_RENDERMODE,(mode))
-#define	gsSPObjRenderMode(mode)	      gsImmp1(     G_OBJ_RENDERMODE,(mode))
 
 /*===========================================================================*
  *	Render Mode Macro

@@ -299,18 +299,7 @@ extern void gtDumpTurbo(OSTask *tp,u8 flags);
  * Special macros to init othermode words to all 0's, a good default
  * value.
  */
-#define gDPClearOtherMode(pkt)						\
-{									\
-	Gfx *_g = (Gfx *)(pkt);						\
-									\
-	_g->words.w0 = _SHIFTL(G_RDPSETOTHERMODE, 24, 8);		\
-	_g->words.w1 = 0x0;						\
-}
 
-#define gsDPClearOtherMode()						\
-{									\
-	_SHIFTL(G_RDPSETOTHERMODE, 24, 8), 0x0				\
-}
 
 /*
  * Special macros to end DP blocks (see above). These commands
@@ -318,7 +307,6 @@ extern void gtDumpTurbo(OSTask *tp,u8 flags);
  * real DP commands!
  */
 #define gDPEndDisplayList(pkt)	gSPNoOp(pkt)
-#define gsDPEndDisplayList()	gsSPNoOp()
 
 /*
  * This structure is a turbo 'object', the turbo display list is
