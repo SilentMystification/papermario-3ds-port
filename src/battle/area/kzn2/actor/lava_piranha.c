@@ -1,4 +1,5 @@
 #include "../area.h"
+#include "nd_gtab.h"
 #include "sprite/npc/LavaPiranha.h"
 #include "sprite/npc/BattleKolorado.h"
 #include "sprite/npc/LavaBud.h"
@@ -37,13 +38,11 @@ Vtx N(Quad1)[] = {
     {{{   -16,    39,     0 }, 0, {     0,  1280 }, {   0,   0,   0, 255 }}},
 };
 
-Gfx N(DList1)[] = {
-    gsSPEndDisplayList(),
-};
+NDN_DECL(N(DList1));
 
 EntityModelScript N(ModelScript1) = {
     ems_SetRenderMode(RENDER_MODE_ALPHATEST)
-    ems_Draw(N(DList1), 60)
+    ems_Draw(NDN(N(DList1)), 60)
     ems_Restart
     ems_End
     ems_End
@@ -56,13 +55,11 @@ Vtx N(Quad2)[] = {
     {{{   -16,    39,     0 }, 0, {     0,  1280 }, {   0,   0,   0, 255 }}},
 };
 
-Gfx N(DList2)[] = {
-    gsSPEndDisplayList(),
-};
+NDN_DECL(N(DList2));
 
 EntityModelScript N(ModelScript2) = {
     ems_SetRenderMode(RENDER_MODE_ALPHATEST)
-    ems_Draw(N(DList2), 60)
+    ems_Draw(NDN(N(DList2)), 60)
     ems_Restart
     ems_End
     ems_End
@@ -75,13 +72,11 @@ Vtx N(Quad3)[] = {
     {{{   -16,    39,     0 }, 0, {     0,  1280 }, {   0,   0,   0, 255 }}},
 };
 
-Gfx N(DList3)[] = {
-    gsSPEndDisplayList(),
-};
+NDN_DECL(N(DList3));
 
 EntityModelScript N(ModelScript3) = {
     ems_SetRenderMode(RENDER_MODE_ALPHATEST)
-    ems_Draw(N(DList3), 60)
+    ems_Draw(NDN(N(DList3)), 60)
     ems_Restart
     ems_End
     ems_End
@@ -94,13 +89,11 @@ Vtx N(Quad4)[] = {
     {{{   -16,    39,     0 }, 0, {     0,  1280 }, {   0,   0,   0, 255 }}},
 };
 
-Gfx N(DList4)[] = {
-    gsSPEndDisplayList(),
-};
+NDN_DECL(N(DList4));
 
 EntityModelScript N(ModelScript4) = {
     ems_SetRenderMode(RENDER_MODE_ALPHATEST)
-    ems_Draw(N(DList4), 60)
+    ems_Draw(NDN(N(DList4)), 60)
     ems_Restart
     ems_End
     ems_End
@@ -108,7 +101,7 @@ EntityModelScript N(ModelScript4) = {
 
 INCLUDE_IMG("battle/area/kzn2/lava_piranha_vine.png", D_8021C940_5A3020);
 INCLUDE_PAL("battle/area/kzn2/lava_piranha_vine.pal", D_8021CD40_5A3420);
-#include "battle/area/kzn2/lava_piranha_vine.gfx.inc.c"
+NDN_DECL(D_8021CF40_5A3620);
 
 extern EvtScript N(EVS_Init);
 extern EvtScript N(EVS_Idle);
@@ -444,7 +437,7 @@ void N(appendGfx_vines)(void* data) {
         N(VineRenderState) = VINE_RENDER_STATE_OK;
     }
 
-    gSPDisplayList(gMainGfxPos++, D_8021CF40_5A3620);
+    gSPDisplayList(gMainGfxPos++, NDN(D_8021CF40_5A3620));
 
     for (i = 0; i < NUM_VINES; i++) {
         LavaPiranhaVine* vine = &N(VineData)[i];

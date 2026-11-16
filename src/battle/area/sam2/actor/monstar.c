@@ -3,10 +3,11 @@
 #include "sprite/npc/Monstar.h"
 #include "battle/area/sam2/actor/img.png.h"
 #include "include_asset.h"
+#include "nd_gtab.h"
 
 #define NAMESPACE A(monstar)
 
-extern Gfx N(dlist)[];
+NDN_DECL(N(dlist));
 
 extern s32 N(DefaultAnims)[];
 extern EvtScript N(EVS_Init);
@@ -154,7 +155,7 @@ ImgFXOverlayTexture N(MonstarDetailTexture) = {
     .height = battle_area_sam2_actor_img_png_height,
     .offsetX = -4,
     .offsetY = 0,
-    .displayList = N(dlist),
+    .displayList = NDN(N(dlist)),
 };
 
 API_CALLABLE(N(UpdateMonstarImgFX)) {
