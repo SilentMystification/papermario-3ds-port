@@ -101,4 +101,17 @@ MS="$T.incnsseed"; rm -rf "$MS"; mkdir -p "$MS"; cp -r 3ds/tests/gset/case_incns
 sed 's/^INC_NS = True/INC_NS = False/' 3ds/tools/gset.py > "$MS.py"
 $PY "$MS.py" "$MS/list.txt" "$MS/gset_ok.txt" "$MS" > "$MS.out" 2>&1 || true
 tr -d '\r' < "$MS/src/c.c" | grep -qxF '    gSPDisplayList(gMainGfxPos++, NDN(N(F_gfx)));' && { echo "gset incns seeded fault not seen"; exit 1; }
+# AXNS: NAMESPACE A(x) (fixture made here: area.h defines AREA b_area_t; actor/x.c has NAMESPACE A(x) and Gfx N(dl)). The list b_area_t_x_dl moves and its use becomes NDN(N(dl)).
+# Seeded fault: AREA_RULE off gives the name A(x)_dl, which is not in the ok list: nothing moves.
+A="$T.area"; rm -rf "$A" "$A.seed"; mkdir -p "$A/src/battle/area/t/actor"
+printf '#define AREA b_area_t\n' > "$A/src/battle/area/t/area.h"
+printf '#include "../area.h"\n\n#define NAMESPACE A(x)\n\nGfx N(dl)[] = {\n    gsSPEndDisplayList(),\n};\n\nEntityModelScript N(ems) = STANDARD_ENTITY_MODEL_SCRIPT(N(dl), 1);\n' > "$A/src/battle/area/t/actor/x.c"
+printf 'src/battle/area/t/actor/x.c\n' > "$A/list.txt"; printf 'b_area_t_x_dl\n' > "$A/gset_ok.txt"; cp -r "$A" "$A.seed"
+rc=0; $PY 3ds/tools/gset.py "$A/list.txt" "$A/gset_ok.txt" "$A" > "$A.out" 2>&1 || rc=$?
+[ "$rc" = 0 ] || { echo "gset area test: exit $rc, want 0"; cat "$A.out"; exit 1; }
+tr -d '\r' < "$A.out" | grep -qxF "gset moved 1 files 1 keep 0" || { echo "gset area test FAIL: no moved line"; cat "$A.out"; exit 1; }
+tr -d '\r' < "$A/src/battle/area/t/actor/x.c" | grep -qxF 'EntityModelScript N(ems) = STANDARD_ENTITY_MODEL_SCRIPT(NDN(N(dl)), 1);' || { echo "gset area test FAIL: x.c lacks NDN(N(dl))"; exit 1; }
+sed 's/^AREA_RULE = True/AREA_RULE = False/' 3ds/tools/gset.py > "$A.py"
+$PY "$A.py" "$A.seed/list.txt" "$A.seed/gset_ok.txt" "$A.seed" > "$A.seed.out" 2>&1 || true
+tr -d '\r' < "$A.seed.out" | grep -qxF "gset moved 1 files 1 keep 0" && { echo "gset area seeded fault not seen"; exit 1; }
 echo "gset test ok"

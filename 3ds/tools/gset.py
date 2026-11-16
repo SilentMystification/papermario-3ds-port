@@ -24,6 +24,7 @@ OWN_RULE = True  # ISTAR: a user file that defines a moved name keeps its own co
 NS_RULE = True  # GSETW: N(x) is rewritten only in the files of its namespace; the seeded test (gset.sh) runs a copy with this False
 INC_HOLD = True  # VSLOT2: an include whose list a kept line of the device file names stays; seeded test in gset.sh
 INC_BLOCK = True  # GSETI: block mode moves the all-ok asset includes of a block source; seeded test in gset.sh
+AREA_RULE = True  # AXNS: NAMESPACE A(x) is <AREA>_x (include/macros.h:44, :200); seeded test in gset.sh
 INC_NS = True  # GSETI: the N(x) users of an include-moved list (name ns_x, namespace ns) are rewritten by rewrite_ns; seeded test in gset.sh
 BLOCK_END = "};"  # the block closing line (exact, CR dropped); the seeded test in gset.sh changes this and is_block_end
 COMMON = re.compile(r'^\s*#include\s+"common\.h"\s*$')
@@ -31,7 +32,8 @@ DEF = re.compile(r"^\s*(?:const\s+)?Gfx\s+(\w+)\s*\[", re.M)
 BLOCK_OPEN = re.compile(r"^Gfx (?:N\((\w+)\)|(\w+))\[\] = \{")
 INC = re.compile(r'^(\s*#include\s+"([^"]+\.inc\.c)")\s*$', re.M)
 DECL = re.compile(r"^(\s*)extern\s+Gfx\s+(\w+)\s*\[\s*\]\s*;")
-NS_DEF = re.compile(r"^\s*#\s*define\s+NAMESPACE\s+(\w+)", re.M)
+NS_DEF = re.compile(r"^\s*#\s*define\s+NAMESPACE\s+(A\(\w+\)|\w+)", re.M)
+AREA_DEF = re.compile(r"^\s*#\s*define\s+AREA\s+(\w+)", re.M)  # AXNS
 NDECL = re.compile(r"^(\s*)extern\s+Gfx\s+(N\(\w+\))\s*\[\s*\]\s*;")
 NSN = {}  # GSETW: moved N(x) name -> (token, namespace, directory)
 SKIP_DIR = "src/effects/gfx/"
@@ -107,6 +109,18 @@ def is_block_end(ln):
     return ln.rstrip() == BLOCK_END
 
 
+def area_ns(p, text, ns):
+    """AXNS: the namespace A(x) is <AREA>_x; AREA comes from the file or a header it includes (next to the file). None when there is no AREA."""
+    a = re.fullmatch(r"A\((\w+)\)", ns)
+    if not AREA_RULE or not a:
+        return ns
+    for t in [text] + [h.read_text(encoding="utf-8", errors="replace") for h in (p.parent / i for i in re.findall(r'^\s*#include\s+"([^"]+\.h)"', text, re.M)) if h.is_file()]:
+        m = AREA_DEF.search(t)
+        if m:
+            return m.group(1) + "_" + a.group(1)
+    return None
+
+
 def file_ns(p, seen=None):
     """GSETW: the namespace of a device source: its NAMESPACE define, else that of an included header, else that of the .c file that includes it."""
     seen = set() if seen is None else seen
@@ -116,13 +130,14 @@ def file_ns(p, seen=None):
     text = p.read_text(encoding="utf-8", errors="replace")
     m = NS_DEF.search(text)
     if m:
-        return m.group(1)
+        return area_ns(p, text, m.group(1))
     for inc in re.findall(r'^\s*#include\s+"([^"]+\.h)"', text, re.M):
         h = p.parent / inc
         if h.is_file():
-            m = NS_DEF.search(h.read_text(encoding="utf-8", errors="replace"))
+            ht = h.read_text(encoding="utf-8", errors="replace")
+            m = NS_DEF.search(ht)
             if m:
-                return m.group(1)
+                return area_ns(h, ht, m.group(1))
     for q in sorted(p.parent.glob("*.c")):
         if q == p:
             continue

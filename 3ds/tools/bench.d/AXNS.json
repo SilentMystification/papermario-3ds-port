@@ -1,0 +1,38 @@
+{
+  "benches": [
+    {
+      "name": "axns_kzn2_drec",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "AXNS: draw records of the Lava Piranha battle, frames 400, 420, 440, det. A head equals the base.",
+      "scenario": "axns_kzn2_drec",
+      "cap": 30,
+      "until": "drec f440 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "battle",
+        "drec"
+      ],
+      "gates": []
+    },
+    {
+      "name": "axns_sam2_drec",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "AXNS: draw records of the Monstar battle, frames 400, 420, 440, det. A head equals the base.",
+      "scenario": "axns_sam2_drec",
+      "cap": 30,
+      "until": "drec f440 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "battle",
+        "drec"
+      ],
+      "gates": []
+    }
+  ]
+}
