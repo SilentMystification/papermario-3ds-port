@@ -1,4 +1,5 @@
 #include "pause_common.h"
+#include "nd_gtab.h"
 #include "message_ids.h"
 #include "hud_element.h"
 #include "sprite.h"
@@ -185,22 +186,7 @@ char* gPausePartnersAssetNames[] = {
 s8* gPausePartnersImageBuffers[] = { gPauseBufferImg1, gPauseBufferImg2 };
 s8* gPausePartnersPaletteBuffers[] = { gPauseBufferPal1, gPauseBufferPal2 };
 s32 D_8024F74C = 0;
-Gfx gPausePartnersDL[] = {
-    gsDPPipeSync(),
-    gsSPTexture(-1, -1, 0, G_TX_RENDERTILE, G_ON),
-    gsDPSetCycleType(G_CYC_1CYCLE),
-    gsDPSetTexturePersp(G_TP_NONE),
-    gsDPSetTextureDetail(G_TD_CLAMP),
-    gsDPSetTextureLOD(G_TL_TILE),
-    gsDPSetTextureLUT(G_TT_RGBA16),
-    gsDPSetTextureFilter(G_TF_POINT),
-    gsDPSetTextureConvert(G_TC_FILT),
-    gsDPSetRenderMode(G_RM_OPA_SURF, G_RM_OPA_SURF2),
-    gsDPSetCombineMode(PM_CC_0F, PM_CC_0F),
-    gsSPClearGeometryMode(G_LIGHTING),
-    gsSPSetGeometryMode(G_SHADE | G_CULL_BACK | G_SHADING_SMOOTH),
-    gsSPEndDisplayList()
-};
+NDN_DECL(gPausePartnersDL);
 s32 gPausePartnersCurrentPortraitIndex = -1;
 s32 gPausePartnersNextPortraitIndex = -1;
 MenuWindowBP gPausePartnersWindowBPs[] = {
@@ -423,7 +409,7 @@ void pause_partners_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 wid
     portraitIndex = portraitScrollIndex;
     pause_partners_load_portrait(portraitIndex % gPausePartnersNumPartners);
     for (i = 0; i < ARRAY_COUNT(gPausePartnersPaletteBuffers); portraitOffsetX += 150, i++) {
-        gSPDisplayList(gMainGfxPos++, &gPausePartnersDL);
+        gSPDisplayList(gMainGfxPos++, NDN(gPausePartnersDL));
         nd_tex_load_tlut256(gPausePartnersPaletteBuffers[i]);
 
         for (index = 0; index < 20; index++) {

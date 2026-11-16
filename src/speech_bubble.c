@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "nd_xf.h"
 #include "include_asset.h"
 
@@ -14,7 +15,7 @@ enum {
 #include "speech_bubble.png.h"
 INCLUDE_IMG("speech_bubble.png", speech_bubble_img);
 INCLUDE_PAL("speech_bubble.pal", speech_bubble_pal);
-#include "speech_bubble.gfx.inc.c"
+NDN_DECL(N(gfx));
 
 BSS SpeechBubbleData SpeechBubble;
 SpeechBubbleData* SpeechBubblePtr = &SpeechBubble;
@@ -59,7 +60,7 @@ void appendGfx_speech_bubble(void) {
         guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-        gSPDisplayList(gMainGfxPos++, &speech_bubble_gfx);
+        gSPDisplayList(gMainGfxPos++, NDN(speech_bubble_gfx));
 
         ifxImg.raster  = speech_bubble_img;
         ifxImg.palette = speech_bubble_pal;

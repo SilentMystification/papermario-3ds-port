@@ -1,4 +1,5 @@
 #include "kmr_21.h"
+#include "nd_gtab.h"
 #include "nd_tx.h"
 #include "nd_val.h"
 
@@ -17,30 +18,12 @@ static IMG_PTR TitleImage;
 s32 TitlePrimAlpha = 0;
 s32 TitlePosY = 106;
 
-Gfx N(Gfx_TexSetup_TitleImage)[] = {
-    gsDPPipeSync(),
-    gsDPSetCycleType(G_CYC_1CYCLE),
-    gsDPSetRenderMode(G_RM_XLU_SURF, G_RM_XLU_SURF2),
-    gsDPSetCombineMode(PM_CC_2E, PM_CC_2E),
-    gsDPSetTextureFilter(G_TF_POINT),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsDPSetTexturePersp(G_TP_NONE),
-    gsDPSetColorDither(G_CD_DISABLE),
-    gsDPSetAlphaDither(G_AD_DISABLE),
-    gsDPSetTextureLOD(G_TL_TILE),
-    gsDPSetTextureLUT(G_TT_NONE),
-    gsDPSetTextureDetail(G_TD_CLAMP),
-    gsDPSetTextureConvert(G_TC_FILT),
-    gsDPSetCombineKey(G_CK_NONE),
-    gsDPSetAlphaCompare(G_AC_NONE),
-    gsDPNoOp(),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(N(Gfx_TexSetup_TitleImage));
 
 void worker_render_title_image(void) {
     s32 i;
 
-    gSPDisplayList(gMainGfxPos++, N(Gfx_TexSetup_TitleImage));
+    gSPDisplayList(gMainGfxPos++, NDN(N(Gfx_TexSetup_TitleImage)));
     nd_val_prim(0, 0, 0, 0, 0, TitlePrimAlpha);
 
     for (i = 0; i < 56; i++) {

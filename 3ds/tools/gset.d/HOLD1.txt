@@ -1,0 +1,4 @@
+src/inspect_icon.c
+src/speech_bubble.c
+src/pause/pause_partners.c
+src/world/area_kmr/kmr_21/main.c
