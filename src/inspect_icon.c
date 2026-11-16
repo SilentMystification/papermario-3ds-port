@@ -72,7 +72,7 @@ void appendGfx_interact_prompt(void) {
         guMtxF2L(sp78, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-        gSPDisplayList(gMainGfxPos++, &inspect_icon_gfx);
+        gSPDisplayList(gMainGfxPos++, inspect_icon_gfx);
 
         ifxImg.raster  = inspect_icon_img;
         ifxImg.palette = inspect_icon_pal;

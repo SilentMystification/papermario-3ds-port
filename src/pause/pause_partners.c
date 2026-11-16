@@ -423,7 +423,7 @@ void pause_partners_draw_contents(MenuPanel* menu, s32 baseX, s32 baseY, s32 wid
     portraitIndex = portraitScrollIndex;
     pause_partners_load_portrait(portraitIndex % gPausePartnersNumPartners);
     for (i = 0; i < ARRAY_COUNT(gPausePartnersPaletteBuffers); portraitOffsetX += 150, i++) {
-        gSPDisplayList(gMainGfxPos++, &gPausePartnersDL);
+        gSPDisplayList(gMainGfxPos++, gPausePartnersDL);
         nd_tex_load_tlut256(gPausePartnersPaletteBuffers[i]);
 
         for (index = 0; index < 20; index++) {

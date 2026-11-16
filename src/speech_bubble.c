@@ -59,7 +59,7 @@ void appendGfx_speech_bubble(void) {
         guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-        gSPDisplayList(gMainGfxPos++, &speech_bubble_gfx);
+        gSPDisplayList(gMainGfxPos++, speech_bubble_gfx);
 
         ifxImg.raster  = speech_bubble_img;
         ifxImg.palette = speech_bubble_pal;
