@@ -17,3 +17,8 @@ Gfx filemenu_dl_copyarrow[] = {
     gsSPSetGeometryMode(G_SHADE | G_SHADING_SMOOTH),
     gsSPEndDisplayList(),
 };
+Gfx D_8024B6F0[] = {
+    gsSPVertex(D_8024B6B0, 2, 0),
+    gsDPPipeSync(),
+    gsSPEndDisplayList(),
+};

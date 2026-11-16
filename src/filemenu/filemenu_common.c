@@ -163,7 +163,7 @@ MenuWindowBP filemenu_common_windowBPs[3] = {
 };
 
 NDN_DECL(filemenu_dl_copyarrow);
-extern Gfx D_8024B6F0[];
+NDN_DECL(D_8024B6F0);
 extern Gfx D_8024B708[];
 
 BSS s32 filemenu_iterFileIdx;
@@ -984,7 +984,7 @@ void filemenu_draw_contents_copy_arrow(MenuPanel* menu, s32 baseX, s32 baseY, s3
     guMtxF2L(transformMtx, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    nd_draw_list(D_8024B6F0, ND_SELF);
+    nd_draw_list(NDN(D_8024B6F0), ND_SELF);
     nd_xf_pop(G_MTX_MODELVIEW);
 
     guTranslateF(tempMtx, CopyArrowAnimOffsets[gGameStatusPtr->frameCounter % ARRAY_COUNT(CopyArrowAnimOffsets)], 0.0f, 0.0f);
@@ -1006,7 +1006,7 @@ void filemenu_draw_contents_copy_arrow(MenuPanel* menu, s32 baseX, s32 baseY, s3
     guMtxF2L(transformMtx, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    nd_draw_list(D_8024B6F0, ND_SELF);
+    nd_draw_list(NDN(D_8024B6F0), ND_SELF);
     nd_xf_pop(G_MTX_MODELVIEW);
 
     guTranslateF(tempMtx, CopyArrowAnimOffsets[(gGameStatusPtr->frameCounter % ARRAY_COUNT(CopyArrowAnimOffsets))], 0.0f, 0.0f);

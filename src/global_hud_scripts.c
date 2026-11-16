@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "hud_element.h"
 #include "sparkle_script.h"
 #include "include_asset.h"
@@ -708,15 +709,11 @@ INCLUDE_PAL("ui/move_partner_3.pal", ui_move_partner_3_pal);
 #define ui_move_partner_3_disabled_png ui_move_partner_3_png
 INCLUDE_PAL("ui/move_partner_3.disabled.pal", ui_move_partner_3_disabled_pal);
 
-Gfx D_801041A0[] = {
-    gsSPEndDisplayList(),
-};
+NDN_DECL(D_801041A0);
 
 INCLUDE_IMG("ui/stat_heart.png", ui_stat_heart_png);
 
-Gfx D_801045A8[] = {
-    gsSPEndDisplayList(),
-};
+NDN_DECL(D_801045A8);
 
 INCLUDE_IMG("ui/stat_flower.png", ui_stat_flower_png);
 

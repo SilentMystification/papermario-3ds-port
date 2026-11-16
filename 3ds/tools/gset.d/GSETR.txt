@@ -1,0 +1,10 @@
+src/screen_overlays.c
+src/sprite.c
+src/msg_draw.c
+src/global_hud_scripts.c
+src/entity/Shadow.c
+src/battle/entity_model_icons.c
+src/item_entity.c
+src/screen_render_util.c
+src/filemenu/filemenu_gfx.c
+src/world/area_nok/nok_04/npc.c

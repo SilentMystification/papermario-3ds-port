@@ -1,0 +1,5 @@
+src/screen_overlays.c
+src/curtains.c
+src/sprite.c
+src/msg_draw.c
+src/global_hud_scripts.c

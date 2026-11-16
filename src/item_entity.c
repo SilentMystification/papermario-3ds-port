@@ -94,21 +94,9 @@ NDN_DECL(D_8014C620);
 #include "nd_st.h"
 #include "nd_val.h"
 #include "nd_xf.h"
-Gfx D_8014C678[] = {
-    gsSPClearGeometryMode(G_CULL_BACK | G_LIGHTING | G_SHADING_SMOOTH),
-    gsSPVertex(D_8014C5A0, 4, 0),
-    gsSP2Triangles(0, 1, 2, 0, 0, 2, 3, 0),
-    gsDPPipeSync(),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(D_8014C678);
 
-Gfx D_8014C6A0[] = {
-    gsSPClearGeometryMode(G_CULL_BACK | G_LIGHTING | G_SHADING_SMOOTH),
-    gsSPVertex(D_8014C5E0, 4, 0),
-    gsSP2Triangles(0, 1, 2, 0, 0, 2, 3, 0),
-    gsDPPipeSync(),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(D_8014C6A0);
 
 Lights1 ItemEntityLights = gdSPDefLights1(255, 255, 255, 0, 0, 0, 0, 0, 0);
 
@@ -999,7 +987,7 @@ void appendGfx_item_entity(void* data) {
             nd_tex_tile(G_IM_FMT_CI, G_IM_SIZ_4b, 2, 0x0000, G_TX_RENDERTILE, 0, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD);
             nd_val_tile_size(G_TX_RENDERTILE, 0x0400, 0x0400, 0x045C, 0x045C);
         }
-        nd_rec_ent_draw(D_8014C678, 0, 0, 0); /* S6-3, DIRECT D3: the draw record and its G_DL go to the frame stream */
+        nd_rec_ent_draw(NDN(D_8014C678), 0, 0, 0); /* S6-3, DIRECT D3: the draw record and its G_DL go to the frame stream */
     } else {
         nd_tex_load_tlut16(0, gHudElementCacheTablePalette[item->lookupPaletteIndex].data);
         if (gSpriteShadingProfile->flags != 0) {
@@ -1023,7 +1011,7 @@ void appendGfx_item_entity(void* data) {
             nd_tex_tile(G_IM_FMT_CI, G_IM_SIZ_4b, 2, 0x0000, G_TX_RENDERTILE, 0, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD);
             nd_val_tile_size(G_TX_RENDERTILE, 0x0400, 0x0400, 0x047C, 0x047C);
         }
-        nd_rec_ent_draw(D_8014C6A0, 0, 0, 0); /* S6-3, DIRECT D3: the draw record and its G_DL go to the frame stream */
+        nd_rec_ent_draw(NDN(D_8014C6A0), 0, 0, 0); /* S6-3, DIRECT D3: the draw record and its G_DL go to the frame stream */
     }
     nd_xf_pop(G_MTX_MODELVIEW);
 
@@ -1190,7 +1178,7 @@ void render_item_entities(void) {
                                 nd_tex_tile(G_IM_FMT_CI, G_IM_SIZ_4b, 2, 0x0000, G_TX_RENDERTILE, 0, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD);
                                 nd_val_tile_size(G_TX_RENDERTILE, 0x0400, 0x0400, 0x045C, 0x045C);
                             }
-                            nd_rec_ent_draw(D_8014C678, 0, 0, 0); /* S6-3, DIRECT D3: the draw record and its G_DL go to the frame stream */
+                            nd_rec_ent_draw(NDN(D_8014C678), 0, 0, 0); /* S6-3, DIRECT D3: the draw record and its G_DL go to the frame stream */
                         } else {
                             nd_tex_load_tlut16(0, gHudElementCacheTablePalette[item->lookupPaletteIndex].data);
                             if (gSpriteShadingProfile->flags != 0) {
@@ -1214,7 +1202,7 @@ void render_item_entities(void) {
                                 nd_tex_tile(G_IM_FMT_CI, G_IM_SIZ_4b, 2, 0x0000, G_TX_RENDERTILE, 0, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_CLAMP, 8, G_TX_NOLOD);
                                 nd_val_tile_size(G_TX_RENDERTILE, 0x0400, 0x0400, 0x047C, 0x047C);
                             }
-                            nd_rec_ent_draw(D_8014C6A0, 0, 0, 0); /* S6-3, DIRECT D3: the draw record and its G_DL go to the frame stream */
+                            nd_rec_ent_draw(NDN(D_8014C6A0), 0, 0, 0); /* S6-3, DIRECT D3: the draw record and its G_DL go to the frame stream */
                         }
                         nd_xf_pop(G_MTX_MODELVIEW);
                         FI_CLOSE();
