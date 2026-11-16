@@ -44,7 +44,7 @@ EvtScript N(EVS_Main) = {
         Exec(N(EVS_UpdateTexturePan))
     EndThread
     Call(SetModelCustomGfx, MODEL_o715, CUSTOM_GFX_0, ENV_TINT_UNCHANGED)
-    Call(SetCustomGfx, CUSTOM_GFX_0, Ref(NDN(N(setup_gfx_candle_lights))), nullptr)
+    Call(SetCustomGfx, CUSTOM_GFX_0, (Bytecode)NDN(N(setup_gfx_candle_lights)), nullptr)
     Exec(N(EVS_SetupMusic))
     Call(UseDoorSounds, DOOR_SOUNDS_LARGE)
     Exec(N(EVS_BindExitTriggers))
