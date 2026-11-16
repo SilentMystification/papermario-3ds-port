@@ -1,5 +1,6 @@
 # capture_flip: one console prof capture of the file select flip and the pause pane flip (designer: bug oracle 39)
 Push (real command, go.ps1:176-185, push_3ds.sh:88-99, :386, :396): `powershell -NoProfile -File 3ds/go.ps1 push o -ip 192.168.1.131 -Seconds 240 -Profile prof`.
+After Merge FLIPLOG (ws_FLIPLOG): add `-GameDebug flipfps` to that line. go.ps1:174 adds the word to the game args; the profile words follow (push_3ds.sh:87).
 3dslink gets `--verbose livelog prof=30 livelevel=err disklevel=off conlevel=off` (bench_defs.json:6). No warp word: the file select is the subject.
 Link 1 switch: `prof=30` turns prof mode on (pm_log.c:283, :669-670) and samples 1 frame of 30 (pm_phase.c:811). Launch words win over options.ini (pm_options.c:276-283).
 Link 2 sink: a prof line goes to the live socket and the console, not to log.txt (pm_log.c:1001-1002, prof_disk 0).
@@ -10,6 +11,11 @@ Link 4 proof lines, one set per 300 drawn frames (pm_phase.c:757): `prof f<N> w3
 FACT (code read): prof prints no per-frame line. ft, max, o34 (frames over 34 ms, :360) and wk (CPU work) cover every drawn frame of the window (:732-747).
   gbi and gpu come from the sampled frames only (1 of 30). A flip of about 10 frames can fall between 2 samples: the gpu value of a flip is OPEN.
   A game mode change drops the window (pm_map.c:375, pm_phase.c:70, :521): stay in one screen for each part.
+flipfps links (after Merge FLIPLOG): switch `flipfps` (pm_flipfps.h pm_ff_on). Sink: live log only, never the console (pm_log.c flag bit 3).
+  Tool: the same live log file build3ds/hw_live_log_131.txt. Proof line, one per drawn frame, printed at the next frame begin:
+  `flipfps f<N> cpu <us> wait <us> gpu <us> off <n> soff <n> spl <n> reuse <n>`. Azahar check of the words: bench fliplog_fsel.
+  Read: a flip frame has off 4 or more and reuse 1 or more (OFF_N 3, pm_gpu_int.h:50). wait = the CPU wait for the GPU of that frame.
+  GUESS: about 75 bytes a row, 30 rows a second on the live socket. OPEN: the phase timers of a prof sample frame (1 in 30) add cpu time.
 Ask the user (XL, about 3 min): 1. Title, then the file select. Wait 25 s with no input. 2. Do the file select flip that lags, once every 2 s, for 25 s.
   3. Load the file. In the field press START. Wait 25 s in the pause menu. 4. Change the pause pane once every 2 s for 25 s. 5. Close the menu.
 GUESS: 25 s holds 2 full windows at 24 fps or more (300 frames = 10 s at 30 fps). Read: calm window against flip window of the same m<mode>.
