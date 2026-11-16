@@ -49,8 +49,8 @@ extern AnimScript N(AS_Stairs_Unfold);
 extern AnimScript N(AS_Stairs_InitializeAfter);
 
 NDN_DECL(N(texture_1_gfx));
-extern Gfx N(texture_2_gfx)[];
-extern Gfx N(texture_3_gfx)[];
+NDN_DECL(N(texture_2_gfx));
+NDN_DECL(N(texture_3_gfx));
 
 extern Vtx N(stairs_vtx)[];
 extern Lights1 N(stairs_lights);
