@@ -32,6 +32,7 @@ Live files only. Older logs are in archive/ (agent_*, diag_*, inv_*, plan_*, tra
 - ws_STARTLR2.md (+ ws_STARTLR2_code.md): Haiku goal page: start menu 3DS L gives N64 Z (previous tab) and R gives N64 R (next tab), pm_shoulder.h; host startlr.sh seed "start R"; spot_mac01_drec byte-equal.
 - ws_MOON7.md (+ ws_MOON7_code.md): Haiku goal page: moon jump state machine pm_moon_tick (hold lift with no apex stop, a release keeps the spin window, steer after timeInAir 18); host moon.sh with a jump model and 5 seeds; spot_mac01_drec byte-equal.
 - ws_FSKIP.md (+ ws_FSKIP_code.md): Haiku goal page: 60 FPS option Off, On, Dynamic (pm_fpsmode.h, options.ini fps60=0|1|2; the old heavy latch kept the O3DS at 30 FPS); host fskip.sh with 3 seeds; spot_mac01_drec byte-equal (Off).
+- ws_MAPLAG.md (+ ws_MAPLAG_code.md): Haiku goal page: map change lag: seam table and .dlc file load in the load step on the logic thread (pm_dlc_preload, nd_shape.c), map change fade-in held 3 steps at full cover (pm_maplag.h); host dlcpre.sh and maplag.sh with seeds; spot_mac01_drec, sbk14_drec byte-equal.
 - ws_STARTLR.md (+ ws_STARTLR_code.md): Haiku goal page: in the start (pause) menu 3DS L gives N64 L and 3DS R gives N64 Z (pm_shoulder.h, pm_start_menu); host startlr.sh with seed; spot_mac01_drec byte-equal.
 - start_here_native_draw.md: current state and what is left (long-form handoff).
 - handoff_native_epic_orchestrator.md: findings and pitfalls of the code session of 2026-11-05.
