@@ -62,10 +62,8 @@ if (mode === 'facts') {
   // Token cost: list only worktrees with a file in the last 4 hours or a young hand-back. The rest is one count.
   let old = 0;
   for (const w of wts) {
-    const young = w.hb && w.hbAge !== null && w.hbAge < 180;
-    if (!young && (w.actMin === null || w.actMin > 240)) { old++; continue; }
-    lines.push('worktree ' + w.id + ': ahead ' + w.ahead + ', newest file ' + w.actMin + ' min ago' +
-);
+    if (w.actMin === null || w.actMin > 240) { old++; continue; }
+    lines.push('worktree ' + w.id + ': ahead ' + w.ahead + ', newest file ' + w.actMin + ' min ago');
   }
   if (old) lines.push(old + ' old worktrees with no file in 4 h (parked branches, ignore)');
   let pages = [];
