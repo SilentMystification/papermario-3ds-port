@@ -288,6 +288,17 @@ if ($Debug -notmatch '\bprof\b' -and (Test-Path $optFile)) { # UI1a: no prof wor
     Set-Content $optFile $optText -NoNewline
     Write-Output "options.ini: profmode=off for this run (no prof word in the debug switches)"
 }
+if ($env:PM_OPT_WORST) { # CAPTOOL: the worst saved settings (logging off, Profiling prof, live and disk level off); the launch words must win
+    if (-not (Test-Path $optFile)) { Set-Content $optFile "version=2`r`n" -NoNewline; Copy-Item $optFile $optBak -Force }
+    $optText = Get-Content $optFile -Raw
+    foreach ($kv in @("log_on=0", "profmode=prof", "live_level=-1", "disk_level=-1")) {
+        $k = $kv.Split("=")[0]
+        if ($optText -match "(?m)^$k=[^\r\n]*") { $optText = $optText -replace "(?m)^$k=[^\r\n]*", $kv }
+        else { $optText = $optText.TrimEnd() + "`r`n$kv`r`n" }
+    }
+    Set-Content $optFile $optText -NoNewline
+    Write-Output "options.ini: log_on=0 profmode=prof live_level=-1 disk_level=-1 for this run (PM_OPT_WORST)"
+}
 Remove-Item "$sd\shots", "$out\shots" -Recurse -ErrorAction SilentlyContinue # "shots" switch output
 $emuOff = 0L
 if ($warm) { if (Test-Path $emuLog) { $emuOff = (Get-Item $emuLog).Length } } # the emulator log of a kept Azahar stays open: only text after this offset counts

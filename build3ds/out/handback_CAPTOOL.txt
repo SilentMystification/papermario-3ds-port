@@ -1,0 +1,7 @@
+620eaf2064 (CAPTOOL 3: boot regex; the gate commit follows and holds CAPTOOL 2: gate)
+Seed: FAIL as the page requires. Line: "CAPTURE CHECK FAIL: words "livelog prof=off phase=off loglevel=debug conlevel=info", log gate OFF (no "options: levels run log_on=1" line), missing proof: fxtest: spawn 87, bench rc 1 (run 1228534)". Output: build3ds/out/captool_seed.txt. FACT. The rc is 1, not the GUESS rc 10.
+Gate: CAPTURE CHECK OK. Line: "CAPTURE CHECK OK: words "livelog log=on prof=off phase=off loglevel=debug conlevel=info", log gate on, proof fxtest: spawn 87 1 saved log_on=0 live=-1 disk=-1 1, bench rc 0 (run 1227709)". Output: build3ds/out/captool_gate.txt.
+Host: ND HOST TESTS PASS, captool ok. Build rc 0 (commit 31f8260992, game code unchanged after it).
+Counter change: none. Azahar starts used: 3 of 8.
+Fault history: run 1226884 failed the boot regex (lane build text). Fixed in CAPTOOL 3 (620eaf2064). Mechanical fix: captool.sh seed file path (build3ds/out, not /tmp).
+Next for the orchestrator: CLAUDE.md rule 3 line from the page (capture_check.py before a console log push).

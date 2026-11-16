@@ -517,7 +517,7 @@ if ($CheckLog) {
 }
 
 # Start the run
-$dbgArg = [string]$sc.debug
+$dbgArg = [string]$sc.debug; if ($env:PM_DEBUG_ADD) { $dbgArg = "$($env:PM_DEBUG_ADD) $dbgArg" } # CAPTOOL: capture_check.py puts the push words first (the console reads its launch words before debug3ds.txt)
 $argv = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $repo "3ds\run_azahar.ps1"),
           "-Until", [string]$sc.until, "-Timeout", [string]$cap, "-Force", "-Debug", $dbgArg)
 if ($sc.extra) { $argv += @($sc.extra) }

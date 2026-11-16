@@ -7,6 +7,8 @@ more text and a 100000-byte log.txt frame, split into odd-sized chunks. The test
 the client side and checks the three output files and their sizes. Two cheap cases follow: a silent peer
 (timeout) and a peer that closes early (closed).
 """
+import contextlib
+import io
 import os
 import shutil
 import socket
@@ -152,6 +154,47 @@ def check_closed(out_dir):
     assert got == [], got
 
 
+def check_hello():
+    off = pm_logrecv.hello_diag(b"#PMLIVE log_on 0 live 3 disk 3 prof 0")
+    assert off and off.startswith("[live] GAME LOGGING OFF (#PMLIVE log_on 0 live 3 disk 3 prof 0)"), off
+    assert pm_logrecv.hello_diag(b"#PMLIVE log_on 1 live 3 disk 3 prof 0") is None
+    assert pm_logrecv.hello_diag(b"#PMLIVE log_on 0 live -1 disk -1 prof 1") is None
+    assert pm_logrecv.hello_diag(b"#12 build 5824") is None
+    want = ("[logrecv] no answer on 192.168.1.131:17492 (timeout): the game has no live socket (livelog missing), "
+            "or the accept loop ended, or the network path: see log.old/FTP")
+    assert pm_logrecv.connect_diag("192.168.1.131", 17492, "timeout") == want
+
+
+def check_retry(out_dir):
+    # Seed: no retry to a closed port gives the refused line and exit 1. Then --retry reaches a server that starts 1.5 s late.
+    p = socket.socket()
+    p.bind(("127.0.0.1", 0))
+    port = p.getsockname()[1]
+    p.close()
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        rc = pm_logrecv.main(["--ip", "127.0.0.1", "--port", str(port), "--out", out_dir, "--label", "R0"])
+    assert rc == 1, rc
+    assert buf.getvalue().startswith("[logrecv] refused on 127.0.0.1:%d: nothing listens" % port), buf.getvalue()
+
+    def late():
+        time.sleep(1.5)
+        ls = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        ls.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        ls.bind(("127.0.0.1", port))
+        ls.listen(1)
+        try:
+            serve(ls, build_stream(True, b"#PMLIVE log_on 1 live 3 disk 3 prof 0\n"))
+        finally:
+            ls.close()
+    t = threading.Thread(target=late, daemon=True)
+    t.start()
+    rc = pm_logrecv.main(["--ip", "127.0.0.1", "--port", str(port), "--out", out_dir, "--label", "R1", "--retry", "8", "--timeout", "20"])
+    t.join(timeout=20)
+    assert rc == 0, rc
+    assert read_file(os.path.join(out_dir, "hw_R1_log.txt")) == LOG_PAYLOAD
+
+
 def main():
     base = tempfile.mkdtemp(prefix="logrecv_test_")
     try:
@@ -161,6 +204,8 @@ def main():
         check_stream(base, "C", True, b"partial", b"partial\nmore text\n")
         check_timeout(base)
         check_closed(base)
+        check_hello()
+        check_retry(base)
     finally:
         shutil.rmtree(base, ignore_errors=True)
     print("OK")

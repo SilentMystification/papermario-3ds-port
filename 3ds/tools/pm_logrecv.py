@@ -1,6 +1,6 @@
 """pm_logrecv.py - receive log.txt and crash.txt from the game over the live socket (TCP 17492).
 
-Usage: python 3ds/tools/pm_logrecv.py --ip <3ds-ip> [--label o3ds] [--timeout 60] [--out build3ds]
+Usage: python 3ds/tools/pm_logrecv.py --ip <3ds-ip> [--label o3ds] [--timeout 60] [--out build3ds] [--retry 0] [--port 17492]
 
 Use this when FTP is not available (see pull text in 3ds/go.ps1). The game must be running with the live
 log on. The tool sends "sendlog\\n". The game answers with live text lines and then frames:
@@ -26,6 +26,29 @@ PORT = 17492
 FRAME_PREFIX = b"#PMFILE "
 END_PREFIX = b"#PMEND "
 KIND = {b"log.txt": "log", b"crash.txt": "crash"}
+
+
+HELLO = b"#PMLIVE "
+
+
+def connect_diag(ip, port, cls):
+    """CAPTOOL: one line for a failed connect. It never says that the console is down."""
+    if cls == "refused":
+        return "[logrecv] refused on %s:%d: nothing listens: the game is not running, or it started without the livelog word" % (ip, port)
+    return ("[logrecv] no answer on %s:%d (%s): the game has no live socket (livelog missing), or the accept loop ended, "
+            "or the network path: see log.old/FTP" % (ip, port, cls))
+
+
+def hello_diag(line):
+    """CAPTOOL: the first game line of a connection (pm_livesrv.h). A warning when the game logs nothing, else None."""
+    if not line.startswith(HELLO):
+        return None
+    f = line.split()
+    kv = dict(zip(f[1::2], f[2::2]))
+    if kv.get(b"log_on") == b"0" and kv.get(b"prof") == b"0":
+        return ("[live] GAME LOGGING OFF (%s): no log line follows. Add the launch word log=on (push --profile log has it) "
+                "or set Options > Logging On" % line.decode("ascii", "replace"))
+    return None
 
 
 class _Closed(Exception):
@@ -81,6 +104,9 @@ def receive(sock, label, out_dir, timeout, got):
                     if line == b"":
                         held = True
                         continue
+                    d = hello_diag(line)
+                    if d:
+                        print(d, flush=True)
                     live.write(line + b"\n")
                     live.flush()
                     continue
@@ -122,13 +148,21 @@ def main(argv=None):
     ap.add_argument("--label", default="o3ds")
     ap.add_argument("--timeout", type=float, default=60.0)
     ap.add_argument("--out", default="build3ds")
+    ap.add_argument("--port", type=int, default=PORT)  # CAPTOOL: the tests use a local port
+    ap.add_argument("--retry", type=float, default=0.0, help="retry the connect for this many seconds, 1 s apart")
     args = ap.parse_args(argv)
 
-    try:
-        sock = socket.create_connection((args.ip, PORT), timeout=8)
-    except OSError as e:
-        print("[logrecv] could not connect to %s:%d: %s" % (args.ip, PORT, e))
-        return 1
+    end = time.monotonic() + args.retry
+    while True:
+        try:
+            sock = socket.create_connection((args.ip, args.port), timeout=8)
+            break
+        except OSError as e:
+            cls = "refused" if isinstance(e, ConnectionRefusedError) else "timeout" if isinstance(e, socket.timeout) else "error"
+            if time.monotonic() >= end:
+                print(connect_diag(args.ip, args.port, cls), flush=True)
+                return 1
+            time.sleep(1)
     got = []
     try:
         sock.sendall(b"sendlog\n")
