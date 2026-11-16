@@ -1,7 +1,7 @@
 # papermario-3ds-port rules
 
 Orchestrator: read docs/handoff/orchestrator_rules.md at the start and after every compaction. Code agents: read your goal page
-(docs/handoff/ws_<id>.md, or row_<id>.md for an old row) first, then this file only. Edit rules in place, never append.
+(docs/handoff/ws_<id>.md) first, then this file only. Edit rules in place, never append.
 
 1. BUGS. A fault the user reports is fact. A state the user reports (the game runs, the console is online, FTP or the netloader is open) is fact too: never probe it to doubt it. When a tool cannot reach it, read the tool and the game code for the cause. Read the code (producer, state, draw call, pixel) to a file, line and value. Fix each
    path that can cause it. No repro runs, no debug-log runs, no premise-check runs. No cause found: hand back the trace. The
@@ -36,6 +36,6 @@ Orchestrator: read docs/handoff/orchestrator_rules.md at the start and after eve
    map_restore_table.c and map_restore*.ld (never committed). Never edit a shared registry (gen_gfx_tab.sh GCONV_SRC lines,
    azt_scenarios.json, bench_defs.json) unless the goal page says so. Do not merge main into your branch unless told.
 9. DOCS. State lives in a few files, edited in place. Git history is the log. The commit that completes a task deletes its goal
-   or row file. Numbers go into the bench database (runs.jsonl is append-only), not into prose. Only the oracle and the orchestrator add a
+   page. Numbers go into the bench database (runs.jsonl is append-only), not into prose. Only the oracle and the orchestrator add a
    docs/handoff file. `ls docs/handoff` is the index (INDEX.md is gone, user 2026-11-16).
 10. CLEAN MAIN. The main folder has no uncommitted or untracked files. Every file is committed or listed in .gitignore.

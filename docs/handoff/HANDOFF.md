@@ -1,6 +1,6 @@
 # HANDOFF (orchestrator, overwritten at each handoff)
 
-State at 2026-11-16, main ef3afb3fc9, main clean. The user ended the session on purpose: start NO new work in the old session.
+State at 2026-11-16, main clean (STALEOBJ and GSETR merged). The user ended the session on purpose: start NO new work in the old session.
 Start of the new session: read this file, docs/handoff/orchestrator_rules.md (Core block is printed each turn), CLAUDE.md, the memory index.
 Then ListAgents (status `running` is the only slot count), then merge every hand-back message that arrived, then the list below.
 
@@ -13,7 +13,6 @@ FACT (oracle run, earlier today, not re-run): elfgate func 48, data 807, gfxname
 ## Agents at the moment of handoff (a notice or hand-back message from each may arrive in the new session)
 | Row | Agent id | Model, type | State | Page |
 |---|---|---|---|---|
-| STALEOBJ (build.sh stale objects: lane builds kept old mtimes, build 5877 lacked STARTLR2 and MOON7) | a412e15c9ec0a673d | Haiku coder | waits on own build, 1 commit | ws_STALEOBJ(+_code) |
 | FSKIP2 (3 frame skip modes on the Frame skip row) | a9480233586f58553 | Haiku coder | waits on own build, 1 commit | ws_FSKIP2(+_code) |
 | GBIHDR (prune unused gbi macros, dry run build -156 data -193 gfxtype -32) | ad1461963fde761c3 | Haiku coder | running | ws_GBIHDR(+_code) |
 | HOLD1 (release 4 sources to gset, data -61) | a6baed310287d06b8 | Haiku coder | running | ws_HOLD1 |
@@ -37,10 +36,13 @@ Open: file select flip and start menu pane flip lag (cause not named: capture wi
 frame skip 3 modes (FSKIP2 running; FSKIP put them on the wrong row); pause background, black coins, chapter_change, Munchlesia (verify_list.md, binchk lines).
 
 ## Next push (the user names the console, XL .131 is the main one)
-1. Merge STALEOBJ and FSKIP2 first. 2. Build main. 3. `python 3ds/tools/binchk.py build3ds/pm_3ds.elf <string of each merged row>` (strings in verify_list.md).
+1. Merge FSKIP2 first (STALEOBJ is merged: build.sh no longer keeps stale objects). 2. Build main. 3. `python 3ds/tools/binchk.py build3ds/pm_3ds.elf <string of each merged row>` (strings in verify_list.md).
 4. ONLY THEN ask the console selector (AskUserQuestion) and push with `--no-build`. Never ask before the build is finished (user, angry, twice).
 5. Test list for the user: only unconfirmed items from verify_list.md. Words: `--profile log log=on moonjump` (add `-GameDebug flipfps` after FLIPLOG).
 Capture rule: run the same words in Azahar first (3ds/tools/capture_check.py), read the real command in push_3ds.sh, never the echo line.
+
+## Documents (cleaned 2026-11-16)
+docs/handoff holds 40 files (was 143): the rules, the hooks, the live pages (ws_*), the architecture plans the epic still uses and the capture, verify and push lists. The old rows, agent notes, diagnostics, audits and archive are gone (git history keeps them). 3ds/ORCHESTRATOR.md, 3ds/AGENT_RULES.md and docs/ORCH_STATE.md are gone. `sh 3ds/tools/rules_lint.sh` (run by the Stop hook) stops a rule file that grows past its cap. `sh 3ds/tools/epic_status.sh` prints the epic totals.
 
 ## Process rules the user set today (all are in orchestrator_rules.md or memory)
 - Every reply: short ASD-STE100, no agreement or apology phrases (global style hook `~/.claude/hooks/style_guard.js` blocks them), FACT/GUESS/OPEN on numbers.
