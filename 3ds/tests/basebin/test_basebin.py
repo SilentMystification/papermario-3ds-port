@@ -53,6 +53,10 @@ def main():
         bb.put(root, "k%d" % i, {"f": src}, 6)
     if len([p for p in root.iterdir() if p.is_dir()]) > 6:
         fail("trim kept more than 6 entries")
+    if bb.image_id("pm3ds-build:1") != bb.image_id("pm3ds-build:1"):
+        fail("image_id gave two values for one image")
+    if bb.image_id("pm3ds-no-such-image:0") != "none":
+        fail("image_id of a missing image is not none")
     print("basebin ok")
 
 
