@@ -4,7 +4,7 @@ Writes the shared file <out gconv_in.c> (it includes the shared sources: effects
 array gconv_sym_in[]. Each own-TU source k (any other source) gets its own file gconv_tu<k>.c next to <out gconv_in.c>
 (it includes its source, nd_gconv.h and its entries as gconv_sym_tu<k>[]). Every array sits in the section gconv_sym
 (GCONV_SEC of 3ds/tools/nd_gconv.h). Prints the path of each gconv_tu<k>.c on stdout, one per line.
-Symbols: every non-static `Gfx NAME[] =`, `Vtx NAME[..] =` and `Mtx NAME =`, `Lights1 NAME =` of the sources and their `#include "*.inc.c"`
+Symbols: every non-static `Gfx NAME[] =`, `Vtx NAME[..] =` and `Mtx NAME =` or `Matrix4s NAME =`, `Lights1 NAME =` of the sources and their `#include "*.inc.c"`
 files (under assets/us, src or next to the includer), named `N(x)` as NAMESPACE_x; and every INCLUDE_IMG/PAL/RAW NAME (its
 end from the NAME_gend label of 3ds/tools/gconv_inc/include_asset.h). Run from the repo root."""
 import re
@@ -13,7 +13,7 @@ import pathlib
 
 DEF = re.compile(r"^(Gfx|Vtx|Vec3s)\s+(?:N\((\w+)\)|(\w+))\s*\[[^\]]*\]\s*=", re.M)
 JP = re.compile(r"^#if VERSION_(?:JP|PAL)\b.*?^#(?:else|endif)\b", re.M | re.S)  # FXENT3: the JP branch is not in the ELF; LIT1: nor the PAL one (US build)
-MTX = re.compile(r"^Mtx\s+(?:N\((\w+)\)|(\w+))\s*(\[[^\]]*\])?\s*=", re.M)
+MTX = re.compile(r"^(?:Mtx|Matrix4s)\s+(?:N\((\w+)\)|(\w+))\s*(\[[^\]]*\])?\s*=", re.M)  # PRA31: a Matrix4s object has the 0x40 bytes of an Mtx
 LIT = re.compile(r"^Lights1\s+(?:N\((\w+)\)|(\w+))\s*=", re.M)  # LIT1
 INC = re.compile(r'^\s*#include\s+"([^"]+\.inc\.c)"', re.M)
 INCLUDE = re.compile(r'^\s*#\s*include\s+"([^"]+)"', re.M)
