@@ -272,8 +272,8 @@ if ($env:PM_OPT_WORST) { # CAPTOOL: the worst saved settings (logging off, Profi
   "subject": "mac_01 (entry 0, pos 0 0 200), fxtest=87 (fx_underwater) spawned at frame 402.",
   "proves": "CAPTOOL: with options.ini log_on=0 and profmode=prof the launch words still give the debug lines (options: levels run log_on=1, fxtest: spawn 87).",
   "debug": "warp=mac_01:0 pos=0:0:200 story=ch0_toad_town fxtest=87 fixedseed det", "extra": ["-Turbo"],
-  "until": "fxtest: done", "cap": 25, "deadline": 20, "first_marker": "build \\d+ git", "expects": "warp", "needs_picture": false,
-  "expected_events": [{"name": "boot", "regex": "build \\d+ git"}, {"name": "done", "regex": "fxtest: done"}]}]}
+  "until": "fxtest: done", "cap": 25, "deadline": 20, "first_marker": "build \\d+\\S* git", "expects": "warp", "needs_picture": false,
+  "expected_events": [{"name": "boot", "regex": "build \\d+\\S* git"}, {"name": "done", "regex": "fxtest: done"}]}]}
 ```
 The first marker and the until line pass with logging off: `build N git` is logged before pm_options_init (pm_main.c:942, :946), `fxtest: done` is an event line (pm_fxtest.c:287).
 3ds/tests/host.d/captool.sh (LF endings):
@@ -290,3 +290,27 @@ chk 3ds/push_3ds.sh || { echo "captool FAIL: push echo argv"; exit 1; }
 grep -qF 'if line.startswith(b"#PMLIVE "):' 3ds/tools/livelog.py || { echo "captool FAIL: livelog #PMLIVE"; exit 1; }
 echo "captool ok"
 ```
+## L. Gate fix after run 1226884 (designer: the oracle that sent you part L; reply with SendMessage to the `from` id of that message)
+Cause (FACT, code read). The boot regex `build \d+ git` misses the lane boot line. build.sh:36 and :38 make PM_BUILD_STR `5838-CAPTOOL_214735751746`.
+pm_main.c:942 logs `build 5838-CAPTOOL_214735751746 git 31f8260992` (log line #8 of run 1226884). The warm restart is not the cause.
+The warm restart boots the game again and reads options.ini (log lines #12 `read from options.ini`, #13 `saved log_on=0`). Do not force a cold start.
+L1. 3ds/tools/azt.d/CAPCHK.json. Replace `build \d+ git` with `build \d+\S* git` in 2 places (first_marker and the boot regex).
+Before: `"first_marker": "build \d+ git"` and `{"name": "boot", "regex": "build \d+ git"}`.
+After: `"first_marker": "build \d+\S* git"` and `{"name": "boot", "regex": "build \d+\S* git"}`.
+L2. 3ds/tests/host.d/captool.sh. Before the line `echo "captool ok"` add these lines (LF endings):
+```sh
+python3 - <<'PYEOF' || exit 1
+import json, re
+sc = json.load(open("3ds/tools/azt.d/CAPCHK.json"))["scenarios"][0]
+lines = ["#8 build 5838-CAPTOOL_214735751746 git 31f8260992 loglevel 3", "#8 build 5838 git 31f8260992 loglevel 3"]
+if re.search(r"build \d+ git", lines[0]): raise SystemExit("captool seed FAIL: the old boot regex matches a lane boot line")
+pats = [sc["first_marker"]] + [e["regex"] for e in sc["expected_events"] if e["name"] == "boot"]
+for p in pats:
+    for l in lines:
+        if not re.search(p, l): raise SystemExit("captool FAIL: boot regex %r misses %r" % (p, l))
+PYEOF
+```
+L3. Gate. Run `sh 3ds/tools/nd_host_test.sh > build3ds/out/captool_host.txt 2>&1`. Pass: `ND HOST TESTS PASS` and `captool ok`.
+Commit `CAPTOOL 3: boot regex matches lane builds` (the 2 files and this page). Then run steps 3 and 4 of ws_CAPTOOL.md again.
+If step 3 prints `STALE BUILD`, run `PM_LANE=CAPTOOL sh 3ds/build.sh > build3ds/out/captool_build.txt 2>&1` once. Then run step 3 again.
+Budget: 2 Azahar starts (total 3 of 8). The stop and hand-back rules of ws_CAPTOOL.md stay the same.

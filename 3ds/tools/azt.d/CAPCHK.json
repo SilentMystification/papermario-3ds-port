@@ -3,5 +3,5 @@
   "subject": "mac_01 (entry 0, pos 0 0 200), fxtest=87 (fx_underwater) spawned at frame 402.",
   "proves": "CAPTOOL: with options.ini log_on=0 and profmode=prof the launch words still give the debug lines (options: levels run log_on=1, fxtest: spawn 87).",
   "debug": "warp=mac_01:0 pos=0:0:200 story=ch0_toad_town fxtest=87 fixedseed det", "extra": ["-Turbo"],
-  "until": "fxtest: done", "cap": 25, "deadline": 20, "first_marker": "build \\d+ git", "expects": "warp", "needs_picture": false,
-  "expected_events": [{"name": "boot", "regex": "build \\d+ git"}, {"name": "done", "regex": "fxtest: done"}]}]}
+  "until": "fxtest: done", "cap": 25, "deadline": 20, "first_marker": "build \\d+\\S* git", "expects": "warp", "needs_picture": false,
+  "expected_events": [{"name": "boot", "regex": "build \\d+\\S* git"}, {"name": "done", "regex": "fxtest: done"}]}]}

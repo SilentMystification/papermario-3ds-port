@@ -31,6 +31,6 @@ A host test failure: fix only the files of this page. Do not change the #PMLIVE 
 A `CAPTURE CHECK TOOL FAULT` line, or an azt.ps1 SCENARIO line in step 3: tool fault, stop the gate (CLAUDE.md rule 4), send the output path to the oracle.
 Stop: host PASS, seed FAIL as above, gate OK. Final commit `CAPTOOL 2: gate` with the two result lines. It deletes this page and
 ws_CAPTOOL_code.md. Hand-back: build3ds/out/handback_CAPTOOL.txt (line 1 commit hash, seed line, gate line, counters: none).
-Any other failure after 2 tries: write the output to build3ds/out/ and send the path to the oracle (SendMessage). Then stop.
+Any other failure after 2 tries: write the output to build3ds/out/ and send the path to the oracle (SendMessage). Then stop. Designer: the oracle that sent part L (ws_CAPTOOL_code.md). Reply to the `from` id of its message.
 Orchestrator, after Merge: CLAUDE.md rule 3 gets `Before a console log push: python 3ds/tools/capture_check.py --row <id> --proof "<lines>"
 <push game words>. Push only after CAPTURE CHECK OK.`
