@@ -40,20 +40,6 @@ BSS Matrix4f gAnimTranslateMtx;
 BSS Matrix4f gAnimRotScaleMtx;
 BSS StaticAnimatorNode** gAnimTreeRoot;
 
-extern Gfx Gfx_RM1_SURFACE_OPA[];
-extern Gfx Gfx_RM1_DECAL_OPA[];
-extern Gfx Gfx_RM1_INTERSECTING_OPA[];
-extern Gfx Gfx_RM1_ALPHATEST[];
-extern Gfx Gfx_RM1_SURFACE_XLU[];
-extern Gfx Gfx_RM1_DECAL_XLU[];
-extern Gfx Gfx_RM1_INTERSECTING_XLU[];
-extern Gfx Gfx_RM3_SURFACE_OPA[];
-extern Gfx Gfx_RM3_DECAL_OPA[];
-extern Gfx Gfx_RM3_INTERSECTING_OPA[];
-extern Gfx Gfx_RM3_ALPHATEST[];
-extern Gfx Gfx_RM3_SURFACE_XLU[];
-extern Gfx Gfx_RM3_DECAL_XLU[];
-extern Gfx Gfx_RM3_INTERSECTING_XLU[];
 
 #include "nd_rmdef.h"
 #include "nd_st.h"

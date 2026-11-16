@@ -20,8 +20,8 @@
 
 extern SparkleScript SparkleScript_Coin;
 
-extern Gfx Gfx_RM1_ALPHATEST[];
-extern Gfx Gfx_RM2_ALPHATEST[];
+NDN_DECL(Gfx_RM1_ALPHATEST);
+NDN_DECL(Gfx_RM2_ALPHATEST);
 extern Lights1 ItemEntityLights;
 
 extern HudCacheEntry* gHudElementCacheTableRaster;
@@ -1128,9 +1128,9 @@ void render_item_entities(void) {
                         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
                         if (gSpriteShadingProfile->flags != 0) {
-                            gSPDisplayList(gMainGfxPos++, Gfx_RM2_ALPHATEST);
+                            gSPDisplayList(gMainGfxPos++, NDN(Gfx_RM2_ALPHATEST));
                         } else {
-                            gSPDisplayList(gMainGfxPos++, Gfx_RM1_ALPHATEST);
+                            gSPDisplayList(gMainGfxPos++, NDN(Gfx_RM1_ALPHATEST));
                         }
                         nd_pso_geom_clr(G_LIGHTING);
                         nd_draw_list(NDN(D_8014C620), ND_SELF);

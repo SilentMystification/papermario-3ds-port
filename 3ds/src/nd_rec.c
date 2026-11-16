@@ -16,6 +16,7 @@
 #include "nd_api.h"
 #include "nd_gtab.h"
 #include "nd_lkey.h"
+#include "nd_rmdef.h"
 
 extern s32 gCurrentDisplayContextIndex;
 void nd_walk_rec_model(const Gfx* q);           /* nd_walk.c: a model record, as the walker's G_PM_REC arm */
@@ -136,23 +137,21 @@ static int sh_drop(const uint32_t* t) {
 #define IS_NOP(w0) ((w0) == NDO_W0(NDO_MISC, NDO_MISC_NOP << 16))
 static int t4_sw = -1; /* debug switch t4chk: a dropped op is written after NDO_DROP (nd_walk.c t4_check) */
 
-/* HC4b (W3): the render mode table. Entry i holds the typed ops of ModelRenderModes[i] (src/model.c, 61 static lists) without the syncs,
+/* HC4b (W3): the render mode table. Entry i holds the typed ops of nd_rm_dev[i] (nd_rmtab.c, 61 device entries) without the syncs,
  * then NDO_END. Built by the recorder at the first record of index i; the frame push publishes it to core 0; never written again. */
-extern Gfx* ModelRenderModes[];
-#define ND_RM_LISTS 0x3du /* RENDER_MODE_IDX_00 to RENDER_MODE_IDX_3C */
 uint32_t nd_rm_tab[ND_RM_N][2u * ND_RM_OPS];
 uint8_t nd_rm_n[ND_RM_N];
 static uint8_t rm_built[ND_RM_N];
 __attribute__((cold, noinline)) void nd_rm_build(unsigned i) {
     if (i >= ND_RM_N) return;
     unsigned n = 0, nl = 0;
-    const Gfx* l = i < ND_RM_LISTS ? ModelRenderModes[i] : NULL;
-    const uint32_t* lu = l ? nd_lkey_units(l, nd_ntab_find(l), 4096u, &nl) : NULL; /* LKEY: a moved render mode list (NDN) reads its device units */
+    const NdNDev* e = i < ND_RM_LISTS ? nd_rm_dev[i] : NULL; /* MODELRM: the render mode lists are device entries (nd_rmtab.c) */
+    const uint32_t* lu = e ? nd_lkey_units(e, e, 4096u, &nl) : NULL;
     for (unsigned k = 0; k < nl && n + 1u < ND_RM_OPS; k++) {
         const uint32_t w0 = lu[2u * k], w1 = lu[2u * k + 1u];
         if ((w0 >> 24) == NDO_END) break;
         if (IS_NOP(w0)) continue; /* a typed sync or no-op */
-        nd_rm_tab[i][2u * n] = w0; nd_rm_tab[i][2u * n + 1u] = w1; /* HC4e4: ModelRenderModes is typed (gs forms) */
+        nd_rm_tab[i][2u * n] = w0; nd_rm_tab[i][2u * n + 1u] = w1; /* HC4e4: the device units are typed (gs forms) */
         n++;
     }
     nd_rm_tab[i][2u * n] = NDO_W0(NDO_END, 0);
