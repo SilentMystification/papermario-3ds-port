@@ -14,6 +14,7 @@ build 551, gfxpos 186, data 2068, data_arrays 196, gfxtype 809, recdl 10, reader
   ws_PRA31 (gen_gfx_syms.py Matrix4s, data -311 if 36 move). Waiting: A(x) after Merge GSETR and PRA31 (gset.py:30-31, gen_gfx_syms.py:14);
   npc_merlee after Merge GSETR (gset.py); tst_13 after Merge MODELRM (model.c:4326); FXSEED (Sonnet) needs the user's yes.
 ## Facts that cost time
+- PAGE RULE (user 2026-11-16, loop time): a page runs the host test 1 time, after the change. No baseline host run. Pages for the same main commit share one base: the orchestrator starts rows in waves from one commit (plan_buildspeed.md).
 - gset.py holds a line with `&X`, `X[`, sizeof, BranchList or SetCustomGfx (hold_line, gset.py:158-160). A held caller fails gset_check
   (nd_gfx_conv.c:917-920) for every moved callee. BLOCK_OPEN (gset.py:31) needs `[] = {`: only src/curtains.c:143 has `[] ={`.
 - curtains.c needs a row: `&TheaterGfx` (:276), `&TheaterInitGfx` (:257, :301), `&NoControllerSetupTexGfx` (:302) are held.

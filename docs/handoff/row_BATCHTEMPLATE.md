@@ -28,7 +28,7 @@ New names: {SCENE}, {FNCOV}. Host link: none.
 ## Gate (expected values)
 1. `python 3ds/tools/codemod.py --dry {PATHS}`: value 0 for each file; keep, state and dl as in the table.
 2. Build, memcheck OK. `python 3ds/tools/bench.py run nd_host --row {ID} --why "{ID}"`: PASS (the host unit tests).
-3. Coverage: `python 3ds/tools/gold.py {ID}` prints `pass`. Then `python 3ds/tools/covsites.py build3ds/out/{ID}_{FNCOV}.log
+- Host test: 1 run per row, after the change. No baseline host run (user 2026-11-16, loop time; plan_buildspeed.md PAGEHOST).
    --lane {ID} {PATHS}`: each file `sites h/t` with 10 h >= 9 t. A file below that: revert its edits, take it out of cov.d and of
    the scene ids (fix it in the scenes too), and name it in the hand-back; the gate goes on with the others.
 4. `bench.py base {SCENE}` (merge-base build), `bench.py run {SCENE} --row {ID} --why "{ID} drec gate"`, `bench.py cmp
