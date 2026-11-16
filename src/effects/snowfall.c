@@ -10,7 +10,7 @@ void snowfall_update(EffectInstance* effect);
 void snowfall_render(EffectInstance* effect);
 void snowfall_appendGfx(void* effect);
 
-extern Gfx D_09000C00_38DC70[];
+NDN_DECL(D_09000C00_38DC70);
 NDN_DECL(D_09000D50_38DDC0);
 
 Gfx* D_E008AA50[] = { NDN(D_09000D50_38DDC0), NDN(D_09000D50_38DDC0) };
@@ -197,7 +197,7 @@ void snowfall_appendGfx(void* effect) {
         if (unk_28 != 0) {
             nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
 
-            nd_draw_list(D_09000C00_38DC70, ND_SELF);
+            nd_draw_list(NDN(D_09000C00_38DC70), ND_SELF);
             nd_val_prim(0, 0, 255, 255, 255, unk_28);
 
             guRotateF(sp18, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, 0.0f);

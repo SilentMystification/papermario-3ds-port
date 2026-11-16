@@ -15,3 +15,9 @@
 #include "effects/gfx/D_0900C370_3F81D0.gfx.inc.c"
 #include "effects/gfx/D_0900C458_3F82B8.gfx.inc.c"
 #include "effects/gfx/D_0900C540_3F83A0.gfx.inc.c"
+
+Gfx D_0900C328_3F8188[] = {
+    gsDPSetTextureLUT(G_TT_NONE),
+    gsDPLoadTextureTile(&D_09002A80_3EE8E0[0x820], G_IM_FMT_IA, G_IM_SIZ_8b, 104, 0, 0, 0, 103, 19, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 7, 6, G_TX_NOLOD, G_TX_NOLOD),
+    gsSPEndDisplayList(),
+};
