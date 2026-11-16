@@ -103,8 +103,8 @@ WindowStyleCustom N(IngredientNameWS) = {
         .size4 = { 16, 8},
         .unk_0D = { 0, 0, 0}
     },
-    .opaqueCombineMode = gsDPSetCombineMode(PM_CC_30, PM_CC_BOX2_CYC2),
-    .transparentCombineMode = gsDPSetCombineMode(PM_CC_31, PM_CC_BOX2_CYC2),
+    .opaqueCombineMode = ND_CMB_W(PM_CC_30, PM_CC_BOX2_CYC2),
+    .transparentCombineMode = ND_CMB_W(PM_CC_31, PM_CC_BOX2_CYC2),
     .color1 = { 255, 183, 181, 255 },
     .color2 = { 122,  89,  63, 255 },
 };

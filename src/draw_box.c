@@ -311,11 +311,11 @@ WindowCorners gBoxCorners[] = {
     }
 };
 
-Gfx gBoxCombineModes[] = {
-    gsDPSetCombineMode(PM_CC_BOX1_OPAQUE, PM_CC_BOX1_CYC2),
-    gsDPSetCombineMode(PM_CC_BOX2_OPAQUE, PM_CC_BOX2_CYC2),
-    gsDPSetCombineMode(PM_CC_BOX1_TRANSPARENT, PM_CC_BOX1_CYC2),
-    gsDPSetCombineMode(PM_CC_BOX2_TRANSPARENT, PM_CC_BOX2_CYC2)
+NdCmbW gBoxCombineModes[] = {
+    ND_CMB_W(PM_CC_BOX1_OPAQUE, PM_CC_BOX1_CYC2),
+    ND_CMB_W(PM_CC_BOX2_OPAQUE, PM_CC_BOX2_CYC2),
+    ND_CMB_W(PM_CC_BOX1_TRANSPARENT, PM_CC_BOX1_CYC2),
+    ND_CMB_W(PM_CC_BOX2_TRANSPARENT, PM_CC_BOX2_CYC2)
 };
 
 s32 gBoxQuadIndex = 0;
@@ -457,9 +457,9 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
         }
 
         { /* DIRECT D7: the preset combine word is recorded as a stream state op */
-            const Gfx* cw = defaultStyle != nullptr ? &gBoxCombineModes[defaultStyle->combineModeIndex + (primA != 255 ? 2 : 0)]
+            const NdCmbW* cw = defaultStyle != nullptr ? &gBoxCombineModes[defaultStyle->combineModeIndex + (primA != 255 ? 2 : 0)]
                           : primA != 255 ? &customStyle->transparentCombineMode : &customStyle->opaqueCombineMode;
-            nd_gx_w(gMainGfxPos++, cw->words.w0, cw->words.w1);
+            nd_gx_w(gMainGfxPos++, cw->w0, cw->w1);
         }
         nd_pso_filt(G_TF_POINT);
 

@@ -67,8 +67,8 @@ WindowStyleCustom D_802417D8_909208 = {
         .size3 = { 8, 8 },
         .size4 = { 8, 8 },
     },
-    .opaqueCombineMode = gsDPSetCombineMode(PM_CC_2B, G_CC_PASS2),
-    .transparentCombineMode = gsDPSetCombineMode(PM_CC_2C, G_CC_PASS2),
+    .opaqueCombineMode = ND_CMB_W(PM_CC_2B, G_CC_PASS2),
+    .transparentCombineMode = ND_CMB_W(PM_CC_2C, G_CC_PASS2),
     .color1 = { 224, 224, 224, 255 },
     .color2 = { 0, 0, 0, 255},
 };

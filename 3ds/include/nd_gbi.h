@@ -46,6 +46,10 @@ Gfx* nd_rec_task(void);
 #define gsDPSetCombineLERP(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1) \
     ND_GS(ND_W0_CMB(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1), \
           ND_W1_CMB(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1))
+/* WSCMB: a combine unit (or a no-op unit) as an NdCmbW value (include/common_structs.h); the words of gsDPSetCombineMode and gsDPNoOp */
+#define ND_CMB_W_(w0, w1) { ND_X0(w0, w1), ND_X1(w0, w1) }
+#define ND_CMB_W(...) ND_CMB_W_(ND_W0_CMB(__VA_ARGS__), ND_W1_CMB(__VA_ARGS__))
+#define ND_CMB_NOP ND_CMB_W_(ND_W0_NP(G_NOOP), 0)
 #undef gDPSetColor
 #define gDPSetColor(pkt, c, d) ND_GX(pkt, _SHIFTL(c, 24, 8), (unsigned int)(d))
 #undef gsDPSetColor

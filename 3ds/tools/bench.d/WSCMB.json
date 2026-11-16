@@ -1,0 +1,38 @@
+{
+  "benches": [
+    {
+      "name": "wscmb_pause_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WSCMB: draw records of the pause menu windows (gPauseWS custom styles, src/pause/pause_styles.c), cold det start. Two runs of one build byte-equal.",
+      "scenario": "wscmb_pause_drec",
+      "cap": 30,
+      "until": "drec f141 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "drec"
+      ],
+      "gates": []
+    },
+    {
+      "name": "wscmb_fsel_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WSCMB: draw records of the file select windows (filemenu_windowStyles, src/filemenu/filemenu_styles.c), cold det start. Two runs of one build byte-equal.",
+      "scenario": "wscmb_fsel_drec",
+      "cap": 30,
+      "until": "drec f301 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "drec"
+      ],
+      "gates": []
+    }
+  ]
+}

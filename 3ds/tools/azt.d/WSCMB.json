@@ -1,0 +1,58 @@
+{
+  "scenarios": [
+    {
+      "name": "wscmb_pause_drec",
+      "status": "unverified",
+      "subject": "Toad Town (preset toad), START opens the pause menu at frame 80, cold det start with the drec switch: the draw records of frames 140 and 141 go to shots/drec.txt.",
+      "proves": "WSCMB: the draw records of the pause menu windows (gPauseWS custom styles, src/pause/pause_styles.c) are a function of the build (det); base and row byte-equal when no draw changes.",
+      "debug": "preset=toad padscript=wait80,START*3,wait100 loglevel=debug det drec=140:2",
+      "extra": [],
+      "until": "drec f141 draws [1-9]\\d* bytes \\d+",
+      "cap": 30,
+      "deadline": 25,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "pause mode",
+          "regex": "game mode 10 frame"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f141 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "needs_picture": false,
+      "reason": "WSCMB gate: drec in place of shots. Cold start, cap 30 s, deadline 25 s. The drec log line of the last frame is the until.",
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp"
+    },
+    {
+      "name": "wscmb_fsel_drec",
+      "status": "unverified",
+      "subject": "File select of a fresh save, cold det start with the drec switch: the draw records of frames 300 and 301 go to shots/drec.txt.",
+      "proves": "WSCMB: the draw records of the file select windows (filemenu_windowStyles, src/filemenu/filemenu_styles.c) are a function of the build (det); base and row byte-equal when no draw changes.",
+      "debug": "fileselect freshsave loglevel=debug det drec=300:2",
+      "extra": [],
+      "until": "drec f301 draws [1-9]\\d* bytes \\d+",
+      "cap": 30,
+      "deadline": 25,
+      "expected_events": [
+        {
+          "name": "file select mode",
+          "regex": "game mode 14 frame"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f301 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "needs_picture": false,
+      "reason": "WSCMB gate: drec in place of shots. Cold start, cap 30 s, deadline 25 s. The drec log line of the last frame is the until.",
+      "first_marker": "boot_main",
+      "expects": "none"
+    }
+  ]
+}
