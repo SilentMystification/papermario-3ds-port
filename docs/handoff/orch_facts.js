@@ -65,7 +65,7 @@ if (mode === 'facts') {
     const young = w.hb && w.hbAge !== null && w.hbAge < 180;
     if (!young && (w.actMin === null || w.actMin > 240)) { old++; continue; }
     lines.push('worktree ' + w.id + ': ahead ' + w.ahead + ', newest file ' + w.actMin + ' min ago' +
-      (young ? ', HAND-BACK FILE ' + w.hb + ' (' + Math.round(w.hbAge) + ' min old)' : ''));
+);
   }
   if (old) lines.push(old + ' old worktrees with no file in 4 h (parked branches, ignore)');
   let pages = [];
@@ -85,11 +85,7 @@ if (mode === 'stop') {
   // Files the oracle writes while it runs are not a problem yet: the orchestrator commits them at the hand-back.
   const stray = dirty.filter(l => !/docs\/handoff\/(ws_|design_|oracle_handoff|row_|INDEX\.md|audit_)/.test(l));
   if (stray.length) problems.push('main is dirty (' + stray.slice(0, 3).join(', ') + '): commit or remove the files');
-  for (const w of wts) {
-    if (w.ahead > 0 && w.hb && w.hbAge !== null && w.hbAge < 180) {
-      problems.push('worktree ' + w.id + ' has ' + w.ahead + ' commit(s) ahead and a hand-back file ' + w.hb + ': check it and merge');
-    }
-  }
+  // Hand-backs arrive as agent messages and ListAgents shows the status: no disk check for them (false alarms, user 2026-11-16).
   if (problems.length) {
     process.stdout.write(JSON.stringify({ decision: 'block', reason: 'Disk facts before you end the turn: ' + problems.join('; ') + '.' }));
   }
