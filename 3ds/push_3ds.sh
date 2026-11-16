@@ -383,6 +383,7 @@ cleanup() {
     if [ -n "${outfile:-}" ]; then rm -f "$outfile"; fi
 }
 trap cleanup EXIT INT TERM HUP
+set -- --verbose livelog "$@" # CAPTOOL: one argv: the echo prints what 3dslink gets
 i=1
 while [ "$i" -le "$attempts" ]; do
     echo "netload attempt $i/$attempts (connect timeout ${stall_secs}s, no-progress ${nogrow_secs}s, send cap ${send_cap}s for ${size_mb} MB)..."
@@ -391,15 +392,15 @@ while [ "$i" -le "$attempts" ]; do
     : > "$outfile"
     usedocker=0
     if [ -x "$LINK" ]; then
-        echo "+ $LINK -a $ip $SRC3DSX -- --verbose $*"
-        stdbuf -o0 "$LINK" -a "$ip" "$SRC3DSX" -- --verbose livelog "$@" >"$outfile" 2>&1 &
+        echo "+ $LINK -a $ip $SRC3DSX -- $*"
+        stdbuf -o0 "$LINK" -a "$ip" "$SRC3DSX" -- "$@" >"$outfile" 2>&1 &
     else
         usedocker=1
         src_dir=$(cd "$(dirname "$SRC3DSX")" && pwd)
         src_name=$(basename "$SRC3DSX")
-        echo "+ docker run devkitpro/devkitarm 3dslink -a $ip /out/$src_name -- --verbose $*"
+        echo "+ docker run devkitpro/devkitarm 3dslink -a $ip /out/$src_name -- $*"
         MSYS_NO_PATHCONV=1 docker run --name "$cname" --rm -v "$src_dir:/out:ro" devkitpro/devkitarm:latest \
-            stdbuf -o0 /opt/devkitpro/tools/bin/3dslink -a "$ip" "/out/$src_name" -- --verbose livelog "$@" >"$outfile" 2>&1 &
+            stdbuf -o0 /opt/devkitpro/tools/bin/3dslink -a "$ip" "/out/$src_name" -- "$@" >"$outfile" 2>&1 &
     fi
     dpid=$!
     # --pid: the tail ends when this script's bash ends, even when it is killed without its trap.

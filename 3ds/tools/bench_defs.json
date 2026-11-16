@@ -4,7 +4,7 @@
   "push_base": "",
   "profiles": {
     "prof": "prof=30 livelevel=err disklevel=off conlevel=off",
-    "log": "prof=off phase=off loglevel=debug conlevel=info",
+    "log": "log=on prof=off phase=off loglevel=debug conlevel=info",
     "none": ""
   },
   "consoles": {

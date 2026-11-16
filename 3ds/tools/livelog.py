@@ -30,6 +30,9 @@ import socket
 import sys
 import time
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import pm_logrecv  # noqa: E402  CAPTOOL: hello_diag
+
 SEQ = re.compile(rb"^#(\d+) ")
 IDLE_SECS = 300  # no complete line for this long ends the read (--idle)
 # Game end lines (3ds/src/pm_main.c, pm_log.c, pm_wdog.c). A match stops the read.
@@ -98,8 +101,8 @@ def probe(ip):
         print("[livelog] probe %s:%d %s: %s" % (ip, PORT, err_class(e), e), flush=True)
         sys.exit(1)
     s.close()
-    print("[livelog] probe %s:%d connected (the server listens; the log is then missing a line, see the game side)"
-          % (ip, PORT), flush=True)
+    print("[livelog] probe %s:%d connected: the TCP connect completed. A game that sends no #PMLIVE line at once never accepts "
+          "(a build before CAPLOG with logging off: options.ini log_on=0 and no log=on word)" % (ip, PORT), flush=True)
     sys.exit(0)
 
 
@@ -199,6 +202,12 @@ def main():
             buf += data.replace(b"\r", b"")
             *lines, buf = buf.split(b"\n")
             for line in lines:
+                if line.startswith(b"#PMLIVE "):  # CAPTOOL: the game status line, not a log line (report_log counts file lines)
+                    print("[livelog] %s" % line.decode("ascii", "replace"), flush=True)
+                    d = pm_logrecv.hello_diag(line)
+                    if d:
+                        print(d, flush=True)
+                    continue
                 m = SEQ.match(line)
                 if m:
                     seq = int(m.group(1))

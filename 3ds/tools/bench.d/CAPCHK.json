@@ -1,0 +1,3 @@
+{"benches": [{"name": "capchk", "kind": "azahar_stream", "speed": "turbo", "default": false,
+  "purpose": "CAPTOOL capture check: capture_check.py runs it with PM_DEBUG_ADD (the push words) and PM_OPT_WORST (options.ini log_on=0, profmode=prof). Log only.",
+  "scenario": "capchk_mac01", "cap": 25, "until": "fxtest: done", "tags": ["azahar"], "gates": []}]}
