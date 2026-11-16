@@ -1,0 +1,303 @@
+diff --git a/3ds/tools/gen_gfx_tab.sh b/3ds/tools/gen_gfx_tab.sh
+--- a/3ds/tools/gen_gfx_tab.sh
++++ b/3ds/tools/gen_gfx_tab.sh
+@@ -12,12 +12,17 @@
+ DEF="-DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -DVERSION=us -D_MIPS_SZLONG=32 -Dnullptr=NULL"
+ TINC="-I 3ds/tools -I include -I ver/us/build/include -I 3ds/include -I 3ds/stub_include" # the nd_host order
+ INC="-I 3ds/tools/gconv_inc -I 3ds/tools -I 3ds/include -I 3ds/stub_include -I include -I src -I assets/us -I ver/us/build/include -I ."
+-TUS=$(python3 3ds/tools/gen_gfx_syms.py "$T/gconv_in.c" $(for g in $GCONV_SRC; do case $g in *.c) p=$g;; *) p=src/effects/gfx/$g.c;; esac; [ -f "3ds/tools/gfxin/$p" ] && p="3ds/tools/gfxin/$p"; echo "$p"; done))
++# GFXINC: the TU files go to one fixed folder (/tmp/gct, the container's own /tmp), so every caller compiles the same paths and
++# shares the object cache entries (the key holds the source path). $T gets the joined object gconv_in.o as before.
++TD=/tmp/gct; rm -rf "$TD"; mkdir -p "$TD"
++TUS=$(python3 3ds/tools/gen_gfx_syms.py "$TD/gconv_in.c" $(for g in $GCONV_SRC; do case $g in *.c) p=$g;; *) p=src/effects/gfx/$g.c;; esac; [ -f "3ds/tools/gfxin/$p" ] && p="3ds/tools/gfxin/$p"; echo "$p"; done))
+ # GCONVW: the shared file and each own-TU file are separate objects; ld -r joins them (gconv_sym section)
+-gcc -m32 -w -ffunction-sections -fdata-sections $DEF -DND_GCONV_IN $INC -c -o "$T/gconv_sh.o" "$T/gconv_in.c"
++# GFXINC: 3ds/tools/gconv_objcache.py compiles them (4 at once): a hit copies the stored object (GCONV_OBJ, the docker volume
++# pm3ds-gconvobj-<host image id>; unset: no cache). The objects and the link order are the ones of the old loop.
++python3 3ds/tools/gconv_objcache.py --flags "-m32 -w -ffunction-sections -fdata-sections $DEF -DND_GCONV_IN $INC" "$TD/gconv_in.c" $TUS
+ TUOBJ=""
+-for f in $TUS; do gcc -m32 -w -ffunction-sections -fdata-sections $DEF -DND_GCONV_IN $INC -c -o "${f%.c}.o" "$f"; TUOBJ="$TUOBJ ${f%.c}.o"; done
+-gcc -m32 -r -nostdlib -o "$T/gconv_in.o" "$T/gconv_sh.o" $TUOBJ
++for f in $TUS; do TUOBJ="$TUOBJ ${f%.c}.o"; done
++gcc -m32 -r -nostdlib -o "$T/gconv_in.o" "$TD/gconv_in.o" $TUOBJ
+ gcc -m32 -Wall -Wextra -Werror -DND_SCOMP_HOST $DEF $TINC -o "$T/nd_gfx_conv" 3ds/tools/nd_gfx_conv.c 3ds/src/nd_scomp.c 3ds/src/nd_texwin.c 3ds/tools/nd_vslot.c "$T/gconv_in.o" -Wl,--gc-sections
+ python3 3ds/tools/gen_ntab_entries.py src/effects > "$T/ntab_entries.txt"
+ # MODELRM: the lists of nd_rmdef.h also get a static NdSDef (ndsd_<list>)
+diff --git a/3ds/tools/nd_host_test.sh b/3ds/tools/nd_host_test.sh
+--- a/3ds/tools/nd_host_test.sh
++++ b/3ds/tools/nd_host_test.sh
+@@ -28,9 +28,9 @@
+ outs_hash() { (cd "$1" && find . -type f ! -name key.txt ! -name outs.sha1 | LC_ALL=C sort | xargs -r sha1sum) | sha1sum | cut -d' ' -f1; }
+ IMG_ID=$(docker image inspect -f '{{.Id}}' pm3ds-host:1 2>/dev/null || echo none)
+ SELF=$(sha1sum 3ds/tools/nd_host_test.sh | cut -d' ' -f1)
+-# GTIN: the gfx inputs, the same list as build.sh gen_gfx_tab (GT_IN).
+-GT_IN="3ds/tools/gen_gfx_tab.sh 3ds/tools/gen_gfx_syms.py 3ds/tools/nd_gfx_conv.c 3ds/tools/nd_gconv.h 3ds/tools/nd_vslot.c 3ds/tools/gconv_inc 3ds/tools/gconv_src.d 3ds/tools/gen_ntab_entries.py 3ds/src/nd_scomp.c 3ds/src/nd_texwin.c 3ds/include src/effects src/entity 3ds/tools/gfxin"
+-GT_IN="$GT_IN $(sed 's/#.*//' 3ds/tools/gconv_src.d/*.txt | tr -s ' \t\r' '\n' | grep '\.c$' | sort -u | tr '\n' ' ')"
++# GTIN (GFXINC, cache safety rule 1): every folder gen_gfx_tab.sh reads (-I 3ds/tools, 3ds/include, 3ds/stub_include, include,
++# src; the tool links nd_scomp.c and nd_texwin.c), the same list as build.sh gen_gfx_tab (VOLGEN). The assets are ROM_IN below.
++GT_IN="3ds/tools 3ds/include 3ds/stub_include include src 3ds/src/nd_scomp.c 3ds/src/nd_texwin.c"
+ ROM_IN="assets/us ver/us/build"
+ GFX_KEY=$( { hash_tree . "$GT_IN"; hash_tree "$AR" "$ROM_IN"; echo "$IMG_ID $SELF"; } | sha1sum | cut -d' ' -f1)
+ HOST_IN="3ds/tools 3ds/src 3ds/include 3ds/stub_include 3ds/tests include src docker/Dockerfile.build docker/Dockerfile.host"
+@@ -42,7 +42,7 @@
+ if [ "$k1" = "$k2" ]; then echo "FAIL cache selftest: a changed byte kept the key"; fail=1; else echo "cache selftest ok (a changed byte misses)"; fi
+ # Whole-run cache: a passing run with the same TEST_KEY replays its output. The stored output is checked by its sha1 first.
+ TC=build3ds/out/hostcache/$TEST_KEY
+-if [ -f $TC/rc.txt ] && [ -f $TC/out.txt ] && [ "$(cat $TC/out.sha1 2>/dev/null)" = "$(sha1sum $TC/out.txt | cut -d' ' -f1)" ]; then
++if [ "${PM_CACHE:-on}" != off ] && [ -f $TC/rc.txt ] && [ -f $TC/out.txt ] && [ "$(cat $TC/out.sha1 2>/dev/null)" = "$(sha1sum $TC/out.txt | cut -d' ' -f1)" ]; then
+     echo "hostcache: hit ${TEST_KEY}"
+     cat $TC/out.txt; exit "$(cat $TC/rc.txt)"
+ fi
+@@ -57,10 +57,12 @@
+ # gfx table entry: hit when key and outs hash match; else rebuilt under a temp name, then renamed.
+ GC=build3ds/out/gfxcache; GE=$GC/$GFX_KEY
+ gfx_ok() { [ -f "$GE/key.txt" ] && [ "$(cat "$GE/key.txt")" = "$GFX_KEY" ] && [ -f "$GE/outs.sha1" ] && [ "$(outs_hash "$GE")" = "$(cat "$GE/outs.sha1")" ]; }
+-if gfx_ok; then echo "gfxcache: hit"; else
++if [ "${PM_CACHE:-on}" != off ] && gfx_ok; then echo "gfxcache: hit"; else # GFXINC: PM_CACHE=off (cold gate) never hits
+     echo "gfxcache: miss, build"
+     rm -rf "$GE"; mkdir -p "$GC"; TMPE=$GC/.tmp.$$; rm -rf "$TMPE"; mkdir -p "$TMPE/out"
+-    MSYS_NO_PATHCONV=1 docker run --rm --memory "${PM_BUILD_MEM:-4g}" -v "$ROOT:/w" -v "$AR/assets:/ar/assets:ro" -v "$AR/ver/us/build:/ar/ver/us/build:ro" -v "$ROOT/$TMPE:/gcw" -w /work pm3ds-host:1 sh -c '
++    # GFXINC: the object cache volume of this host image (3ds/tools/gconv_objcache.py), shared by every worktree and build.sh.
++    MSYS_NO_PATHCONV=1 docker run --rm --memory "${PM_BUILD_MEM:-4g}" -v "$ROOT:/w" -v "$AR/assets:/ar/assets:ro" -v "$AR/ver/us/build:/ar/ver/us/build:ro" -v "$ROOT/$TMPE:/gcw" \
++        -v "pm3ds-gconvobj-$(printf '%s' "$IMG_ID" | cut -c8-23):/gobj" -e GCONV_OBJ=/gobj -e PM_CACHE="${PM_CACHE:-on}" -w /work pm3ds-host:1 sh -c '
+       set -e; mkdir -p /work/ver/us
+       for d in 3ds include src; do ln -s "/w/$d" "/work/$d"; done
+       ln -s /ar/assets /work/assets; ln -s /ar/ver/us/build /work/ver/us/build
+diff --git a/3ds/tools/gconv_objcache.py b/3ds/tools/gconv_objcache.py
+new file mode 100644
+--- /dev/null
++++ b/3ds/tools/gconv_objcache.py
+@@ -0,0 +1,176 @@
++#!/usr/bin/env python3
++"""GFXINC: the object cache of the gfx table tool inputs (3ds/tools/gen_gfx_tab.sh). Runs in the host image pm3ds-host:1.
++Usage: gconv_objcache.py --flags "<gcc flags>" <src.c>...   Each object is written next to its source (<src>.o).
++Cache folder: env GCONV_OBJ (the docker volume pm3ds-gconvobj-<host image id>). Unset, missing, or PM_CACHE=off: every source
++compiles and nothing is stored. PM_CACHE=check: every source compiles and its object is compared with the entry (cachecheck).
++Cache safety (docs/handoff/plan_buildspeed.md "Cache safety"):
++- the primary key is the text: tool version, gcc and as versions, the flags, the source path and the sha1 of the source;
++- the entry <GCONV_OBJ>/<16 hex of sha1(primary key)>/ holds key.txt, deps.sha1 (the sha1 of every file the compile read:
++  gcc -MD gives the #include files, as --MD the .incbin files), out.sha1 and obj.o;
++- a hit needs key.txt equal, every dep file equal to its sha1 and obj.o equal to out.sha1; anything else removes the entry and
++  the source compiles; a new entry is a temp folder renamed in one step.
++Prints "gconvobj: hit H miss M" on stderr; check mode also "cachecheck gconvobj ok N" or "CACHECHECK FAIL gconvobj <src>".
++Exit 1 when a compile fails or a cachecheck differs. Host self-test: 3ds/tests/host.d/gfxinc.sh."""
++import concurrent.futures
++import hashlib
++import os
++import shlex
++import shutil
++import subprocess
++import sys
++from pathlib import Path
++
++VERSION = "gconv-obj v1"
++KEEP = int(os.environ.get("GCONV_OBJ_KEEP", "3000"))
++_memo = {}
++
++
++def sha1_file(p):
++    h = hashlib.sha1()
++    with open(p, "rb") as f:
++        for b in iter(lambda: f.read(1 << 20), b""):
++            h.update(b)
++    return h.hexdigest()
++
++
++def dep_hash(p):
++    """sha1 of a dep file, read once per run ("missing" when it is gone)."""
++    if p not in _memo:
++        try:
++            _memo[p] = sha1_file(p)
++        except OSError:
++            _memo[p] = "missing"
++    return _memo[p]
++
++
++def tool_id():
++    out = []
++    for cmd in (["gcc", "--version"], ["as", "--version"]):
++        r = subprocess.run(cmd, capture_output=True, text=True)
++        out.append(r.stdout.splitlines()[0] if r.stdout else "none")
++    return "tools " + " | ".join(out)
++
++
++def primary(src, flags, tool):
++    return "\n".join([VERSION, tool, "flags " + flags, "src " + src, "content " + sha1_file(src)])
++
++
++def entry_dir(root, key):
++    return Path(root) / hashlib.sha1(key.encode("utf-8")).hexdigest()[:16]
++
++
++def entry_ok(d, key):
++    try:
++        if (d / "key.txt").read_bytes().decode("utf-8") != key:
++            return False
++        for ln in (d / "deps.sha1").read_text(encoding="utf-8").splitlines():
++            h, path = ln.split("  ", 1)
++            if dep_hash(path) != h:
++                return False
++        return (d / "out.sha1").read_text(encoding="utf-8").strip() == sha1_file(d / "obj.o")
++    except (OSError, ValueError, UnicodeDecodeError):
++        return False
++
++
++def parse_deps(text):
++    deps = []
++    for line in text.replace("\\\n", " ").splitlines():
++        if ":" in line:
++            deps += line.split(":", 1)[1].split()
++    return [p for p in deps if not p.startswith("/tmp/cc")]
++
++
++def compile_one(src, flags):
++    obj = src[:-2] + ".o"
++    d, ad = obj + ".d", obj + ".ad"
++    cmd = ["gcc"] + shlex.split(flags) + ["-MD", "-MF", d, "-Wa,--MD," + ad, "-c", "-o", obj, src]
++    r = subprocess.run(cmd)
++    deps = []
++    if r.returncode == 0:
++        for f in (d, ad):
++            deps += parse_deps(Path(f).read_text(encoding="utf-8", errors="replace"))
++    for f in (d, ad):
++        try:
++            os.remove(f)
++        except OSError:
++            pass
++    return r.returncode, sorted(set(deps))
++
++
++def store(root, key, obj, deps, tag):
++    d = entry_dir(root, key)
++    tmp = d.with_name(d.name + ".tmp.%d.%d" % (os.getpid(), tag))
++    shutil.rmtree(tmp, ignore_errors=True)
++    tmp.mkdir(parents=True)
++    shutil.copyfile(obj, tmp / "obj.o")
++    (tmp / "key.txt").write_bytes(key.encode("utf-8"))
++    (tmp / "deps.sha1").write_text("".join("%s  %s\n" % (dep_hash(p), p) for p in deps), encoding="utf-8")
++    (tmp / "out.sha1").write_text(sha1_file(tmp / "obj.o") + "\n", encoding="utf-8")
++    shutil.rmtree(d, ignore_errors=True)
++    try:
++        os.rename(tmp, d)
++    except OSError:
++        shutil.rmtree(tmp, ignore_errors=True)
++
++
++def trim(root):
++    ents = [p for p in Path(root).iterdir() if p.is_dir() and ".tmp." not in p.name]
++    if len(ents) > KEEP:
++        ents.sort(key=lambda p: p.stat().st_mtime, reverse=True)
++        for p in ents[KEEP:]:
++            shutil.rmtree(p, ignore_errors=True)
++
++
++def main():
++    a = sys.argv[1:]
++    if len(a) < 2 or a[0] != "--flags":
++        sys.exit("usage: gconv_objcache.py --flags \"<gcc flags>\" <src.c>...")
++    flags, srcs = a[1], a[2:]
++    root = os.environ.get("GCONV_OBJ", "")
++    mode = os.environ.get("PM_CACHE", "on")
++    use = bool(root) and os.path.isdir(root) and mode != "off"
++    tool = tool_id()
++    keys = {s: primary(s, flags, tool) for s in srcs} if use else {}
++    todo, hits = [], 0
++    for s in srcs:
++        if use and mode != "check":
++            d = entry_dir(root, keys[s])
++            if d.is_dir():
++                if entry_ok(d, keys[s]):
++                    shutil.copyfile(d / "obj.o", s[:-2] + ".o")
++                    os.utime(d)
++                    hits += 1
++                    continue
++                print("gconvobj: entry %s of %s failed its check (key, dep or object hash), removed" % (d.name, s), file=sys.stderr)
++                shutil.rmtree(d, ignore_errors=True)
++        todo.append(s)
++    jobs = int(os.environ.get("GCONV_JOBS", "4"))
++    with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as ex:
++        res = dict(zip(todo, ex.map(lambda s: compile_one(s, flags), todo)))
++    bad = [s for s in todo if res[s][0] != 0]
++    chk_ok, chk_fail = 0, 0
++    if use:
++        for i, s in enumerate(todo):
++            if res[s][0] != 0:
++                continue
++            obj = s[:-2] + ".o"
++            if mode == "check":
++                d = entry_dir(root, keys[s])
++                if d.is_dir() and entry_ok(d, keys[s]):
++                    if sha1_file(d / "obj.o") == sha1_file(obj):
++                        chk_ok += 1
++                    else:
++                        chk_fail += 1
++                        print("CACHECHECK FAIL gconvobj %s: the entry differs from a cold compile, replaced" % s, file=sys.stderr)
++            store(root, keys[s], obj, res[s][1], i)
++        trim(root)
++    print("gconvobj: hit %d miss %d" % (hits, len(todo)), file=sys.stderr)
++    if mode == "check" and use:
++        print("cachecheck gconvobj ok %d" % chk_ok if not chk_fail else "CACHECHECK FAIL gconvobj %d" % chk_fail, file=sys.stderr)
++    if bad:
++        print("gconvobj: compile failed: %s" % " ".join(bad), file=sys.stderr)
++    sys.exit(1 if bad or chk_fail else 0)
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/3ds/tests/host.d/gfxinc.sh b/3ds/tests/host.d/gfxinc.sh
+new file mode 100644
+--- /dev/null
++++ b/3ds/tests/host.d/gfxinc.sh
+@@ -0,0 +1,26 @@
++#!/bin/sh
++# GFXINC: self-test of the gconv object cache 3ds/tools/gconv_objcache.py (cache safety rule 4). Seeded faults: one changed
++# byte of an #include file, of an .incbin file and of a stored object; a key.txt of another key; PM_CACHE=off; a cachecheck of a
++# changed entry. Each must give a miss (or CACHECHECK FAIL). A hit must give the bytes of a plain compile. Prints "gfxinc ok".
++set -e
++R=$(pwd); W=/tmp/gfxinc; rm -rf $W; mkdir -p $W/c $W/p; cd $W
++fail() { echo "gfxinc FAIL $1"; exit 1; }
++printf '#define H 1\n' > h.h; printf 'abc' > d.bin
++printf '#include "h.h"\n__asm__(".pushsection .data\\n.incbin \\"d.bin\\"\\n.popsection\\n");\nint x = H;\n' > a.c
++F="-m32 -w -ffunction-sections -fdata-sections -I ."
++oc() { python3 "$R/3ds/tools/gconv_objcache.py" --flags "$F" a.c 2> $W/log.txt; }
++export GCONV_OBJ=$W/c PM_CACHE=on
++oc || fail "first compile"; grep -q "hit 0 miss 1" $W/log.txt || fail "first run is not a miss"
++oc; grep -q "hit 1 miss 0" $W/log.txt || fail "second run is not a hit"
++cp a.o $W/p/hit.o; gcc $F -c -o $W/p/plain.o a.c; cmp -s $W/p/hit.o $W/p/plain.o || fail "a hit gave other bytes than a plain compile"
++printf '#define H 2\n' > h.h; oc; grep -q "miss 1" $W/log.txt || fail "a changed include byte gave a hit"
++printf 'abd' > d.bin; oc; grep -q "miss 1" $W/log.txt || fail "a changed incbin byte gave a hit"
++e=$(ls -d $W/c/*/ | head -1); printf 'x' >> ${e}obj.o; oc; grep -q "failed its check" $W/log.txt || fail "a changed stored byte gave a hit"
++e=$(ls -d $W/c/*/ | head -1); printf 'other' > ${e}key.txt; oc; grep -q "miss 1" $W/log.txt || fail "a key.txt of another key gave a hit"
++PM_CACHE=off oc; grep -q "hit 0 miss 1" $W/log.txt || fail "PM_CACHE=off gave a hit"
++PM_CACHE=check oc; grep -q "cachecheck gconvobj ok 1" $W/log.txt || fail "cachecheck of an equal entry"
++e=$(ls -d $W/c/*/ | head -1); printf 'x' >> ${e}obj.o; sha1sum ${e}obj.o | cut -d' ' -f1 > ${e}out.sha1
++if PM_CACHE=check oc; then fail "cachecheck missed a changed entry"; fi
++grep -q "CACHECHECK FAIL gconvobj" $W/log.txt || fail "no CACHECHECK FAIL line"
++cd "$R"; rm -rf $W
++echo "gfxinc ok"
+diff --git a/3ds/tests/gfxinc/run_gen.sh b/3ds/tests/gfxinc/run_gen.sh
+new file mode 100644
+--- /dev/null
++++ b/3ds/tests/gfxinc/run_gen.sh
+@@ -0,0 +1,21 @@
++#!/bin/sh
++# GFXINC gate tool: runs a gen_gfx_tab.sh script in pm3ds-host:1 with the nd_host_test.sh layout and writes its 8 outputs to <out dir>.
++# Usage (repo root): sh 3ds/tests/gfxinc/run_gen.sh <script> <out dir> <cache volume | none>
++# PM_CACHE (on, off, check) goes to the container. Prints "run_gen: <s> s rc <rc>" last; the gconvobj lines are in <out dir>/log.txt.
++S=$1; O=$2; V=$3
++ROOT=$(pwd -W 2>/dev/null || pwd)
++AR=$ROOT
++if [ ! -d assets/us ] || [ ! -d ver/us/build ]; then AR=$(cd "$(git rev-parse --git-common-dir)/.." && pwd -W 2>/dev/null || pwd); fi
++rm -rf "$O"; mkdir -p "$O"
++CV=""; [ "$V" != none ] && CV="-v $V:/gobj -e GCONV_OBJ=/gobj"
++t0=$(date +%s)
++MSYS_NO_PATHCONV=1 docker run --rm --memory "${PM_BUILD_MEM:-4g}" -v "$ROOT:/w" -v "$AR/assets:/ar/assets:ro" -v "$AR/ver/us/build:/ar/ver/us/build:ro" \
++    $CV -e PM_CACHE="${PM_CACHE:-on}" -e S="$S" -e O="$O" -w /work pm3ds-host:1 sh -c '
++    set -e; mkdir -p /work/ver/us /tmp/o
++    for d in 3ds include src; do ln -s "/w/$d" "/work/$d"; done
++    ln -s /ar/assets /work/assets; ln -s /ar/ver/us/build /work/ver/us/build
++    sh "/w/$S" /tmp/o/nd_gfx_tab.c /tmp/o
++    for f in nd_gfx_tab.c nd_ntab_descs.c ntab_inherit.txt ntab_unsup.txt ntab_tables.txt ntab_entries.txt ntab_pairs.txt gset_ok.txt; do cp /tmp/o/$f "/w/$O/$f"; done' > "$O/log.txt" 2>&1
++rc=$?
++echo "run_gen: $(( $(date +%s) - t0 )) s rc $rc"
++exit $rc

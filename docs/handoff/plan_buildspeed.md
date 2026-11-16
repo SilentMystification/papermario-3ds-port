@@ -49,7 +49,11 @@ change 2026-11-16): BASEBIN and VOLGEN start now. VOLHOST waits for Merge BENCHS
   in <main>/build3ds/basebin/ by content key; no asset copy in scratch_build; content keys and file hashes on the base shots.
 - MAINBIN (after Merge BASEBIN and Merge VOLGEN): 3ds/tools/merge_row.sh, new 3ds/tools/post_merge.sh, its test. After each merge:
   generator cachecheck, basebin prebuild of main HEAD, basebin and shot cachecheck. Then the cold gate. Cost GUESS 12-18 min a merge.
-- VOLHOST (after Merge BENCHSPEED and Merge VOLGEN; page not written yet): nd_host_test.sh syncs with src_sync.sh and runs on the
+- GFXINC (start now; BENCHSPEED is merged): gen_gfx_tab.sh, nd_host_test.sh, new gconv_objcache.py, 2 new tests. One cache
+  entry per gconv object (80, FACT), checked by the sha1 of every file the compile read (gcc -MD, as --MD for .incbin), in the
+  volume pm3ds-gconvobj-<host image id> shared by nd_host_test.sh and build.sh. Fixes the gfxcache key of nd_host_test.sh:31-33.
+- GFXINC2 (after Merge VOLGEN and Merge GFXINC): one line in build.sh mounts that volume for gen_gfx_tab.
+- VOLHOST (after Merge GFXINC and Merge VOLGEN; page not written yet): nd_host_test.sh syncs with src_sync.sh and runs on the
   source and asset volumes, not on C:\ bind mounts. Its page carries the cache safety rules if it adds a cache.
 - VOLGEN2 (later, not planned in detail): the generators read the volumes, so a miss (an src edit misses gfx_tab and pso_tab) is fast.
 ## Cache safety (user rule 2026-11-16; every page carries it)
