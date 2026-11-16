@@ -1,0 +1,2 @@
+src/battle/area/kzn2/actor/lava_piranha.c
+src/battle/area/sam2/dlist.c

@@ -1,0 +1,58 @@
+{
+  "scenarios": [
+    {
+      "name": "axns_kzn2_drec",
+      "status": "unverified",
+      "subject": "AXNS: debug battle Lava Piranha (BTL_KZN2_FORMATION_00:BTL_KZN2_STAGE_06) started at frame 100 from kmr_03, det, draw records of frames 400, 420 and 440 in shots/drec.txt.",
+      "proves": "AXNS: the draw records of frames 400, 420 and 440 are byte-equal between the merge-base build and the head build.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle=BTL_KZN2_FORMATION_00:BTL_KZN2_STAGE_06 battlef=100 loglevel=debug fixedseed fs1off det drec=400:3:20",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "drec f440 draws [1-9]\\d* bytes \\d+",
+      "cap": 30,
+      "deadline": 30,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "battle",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f440 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "reason": "AXNS: the lava piranha vine list D_8021CF40_5A3620 and DList1-4 (src/battle/area/kzn2/actor/lava_piranha.c) move to the twin. Copy of lava_piranha_det with drec. Cap 30 s."
+    },
+    {
+      "name": "axns_sam2_drec",
+      "status": "unverified",
+      "subject": "AXNS: debug battle Monstar (BTL_SAM2_FORMATION_00:BTL_SAM2_STAGE_05) started at frame 100 from kmr_03, det, draw records of frames 400, 420 and 440 in shots/drec.txt.",
+      "proves": "AXNS: the draw records of frames 400, 420 and 440 are byte-equal between the merge-base build and the head build.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle=BTL_SAM2_FORMATION_00:BTL_SAM2_STAGE_05 battlef=100 loglevel=debug fixedseed fs1off det drec=400:3:20",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "drec f440 draws [1-9]\\d* bytes \\d+",
+      "cap": 30,
+      "deadline": 30,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "battle",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f440 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "reason": "AXNS: the Monstar overlay list N(dlist) (src/battle/area/sam2/dlist.c, drawn by imgfx_appendGfx_mesh_strip, src/imgfx.c:1803) moves to the twin. Cap 30 s."
+    }
+  ]
+}

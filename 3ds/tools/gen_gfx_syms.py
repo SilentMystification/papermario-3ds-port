@@ -5,7 +5,7 @@ array gconv_sym_in[]. Each own-TU source k (any other source) gets its own file 
 (it includes its source, nd_gconv.h and its entries as gconv_sym_tu<k>[]). Every array sits in the section gconv_sym
 (GCONV_SEC of 3ds/tools/nd_gconv.h). Prints the path of each gconv_tu<k>.c on stdout, one per line.
 Symbols: every non-static `Gfx NAME[] =`, `Vtx NAME[..] =` and `Mtx NAME =` or `Matrix4s NAME =`, `Lights1 NAME =` of the sources and their `#include "*.inc.c"`
-files (under assets/us, src or next to the includer), named `N(x)` as NAMESPACE_x; and every INCLUDE_IMG/PAL/RAW NAME (its
+files (under assets/us, src or next to the includer), named `N(x)` as NAMESPACE_x (NAMESPACE A(x) as AREA_x); and every INCLUDE_IMG/PAL/RAW NAME (its
 end from the NAME_gend label of 3ds/tools/gconv_inc/include_asset.h). Run from the repo root."""
 import re
 import sys
@@ -18,7 +18,9 @@ LIT = re.compile(r"^Lights1\s+(?:N\((\w+)\)|(\w+))\s*=", re.M)  # LIT1
 INC = re.compile(r'^\s*#include\s+"([^"]+\.inc\.c)"', re.M)
 INCLUDE = re.compile(r'^\s*#\s*include\s+"([^"]+)"', re.M)
 IMG = re.compile(r"INCLUDE_(?:IMG|PAL|RAW)\(\s*\"[^\"]*\"\s*,\s*(\w+)\s*\)")
-NS_DEF = re.compile(r"^\s*#\s*define\s+NAMESPACE\s+(\w+)", re.M)
+NS_DEF = re.compile(r"^\s*#\s*define\s+NAMESPACE\s+(A\(\w+\)|\w+)", re.M)
+AREA_DEF = re.compile(r"^\s*#\s*define\s+AREA\s+(\w+)", re.M)  # AXNS
+AREA_RULE = True  # AXNS: NAMESPACE A(x) is <AREA>_x (include/macros.h:44, :200); seeded test in 3ds/tests/host.d/gconvw.sh
 NAME_DEF = re.compile(r"^[ \t]*#[ \t]*define[ \t]+NAME_(PREFIX|SUFFIX)[ \t]*(\w*)", re.M)
 
 
@@ -30,17 +32,30 @@ def resolve(inc, path):
     return None
 
 
+def area_ns(path, text, ns):
+    # AXNS: the namespace A(x) is <AREA>_x; AREA comes from the file or a direct include (resolve)
+    a = re.fullmatch(r"A\((\w+)\)", ns)
+    if not AREA_RULE or not a:
+        return ns
+    for t in [text] + [q.read_text(encoding="utf-8", errors="replace") for q in (resolve(i, path) for i in INCLUDE.findall(text)) if q is not None]:
+        m = AREA_DEF.search(t)
+        if m:
+            return f"{m.group(1)}_{a.group(1)}"
+    sys.exit(f"gen_gfx_syms: {path}: NAMESPACE {ns} without AREA")
+
+
 def file_ns(path, text, parent_ns):
     # GCONVW: the file's own NAMESPACE, else the one of a direct include, else the one of the includer
     m = NS_DEF.search(text)
     if m:
-        return m.group(1)
+        return area_ns(path, text, m.group(1))
     for inc in INCLUDE.findall(text):
         q = resolve(inc, path)
         if q is not None:
-            m = NS_DEF.search(q.read_text(encoding="utf-8", errors="replace"))
+            qt = q.read_text(encoding="utf-8", errors="replace")
+            m = NS_DEF.search(qt)
             if m:
-                return m.group(1)
+                return area_ns(q, qt, m.group(1))
     return parent_ns
 
 

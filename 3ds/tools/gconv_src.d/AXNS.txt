@@ -1,0 +1,4 @@
+# AXNS: the A(x) namespace sources (vtx.c holds monstar_bubbles, the vertices of sam2 dlist.c)
+src/battle/area/kzn2/actor/lava_piranha.c
+src/battle/area/sam2/dlist.c
+src/battle/area/sam2/vtx.c
