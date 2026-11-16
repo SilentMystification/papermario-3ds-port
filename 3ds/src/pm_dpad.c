@@ -16,3 +16,4 @@ int pm_free_overworld(void) {
     if (gPopupMenu != NULL && gPopupMenu->result == POPUP_RESULT_CHOOSING) return 0;
     return 1;
 }
+int pm_start_menu(void) { return get_game_mode() == GAME_MODE_PAUSE; } /* STARTLR: the start (pause) menu */
