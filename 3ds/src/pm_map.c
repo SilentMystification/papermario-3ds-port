@@ -149,6 +149,7 @@ void decode_yay0(void* src, void* dst) {
     /* ROM data is big-endian. The real loaders read these two kinds of file in place, so convert them here, once. */
     if (shp) {
         { extern unsigned pm_dlc_gen; pm_dlc_gen++; } /* DLC1: the shape file is final now */
+        { void pm_walk_drain(const char* why); void pm_dlc_preload(void); pm_walk_drain("dlcpre"); pm_dlc_preload(); } /* MAPLAG (b): the seam table and the .dlc file of the new shape load here (logic thread, core 1); the drain first runs the queued shape invalidation (pm_tex.c:1252 bumps pm_dlc_gen on the walker) */
     } else if (src == last_asset_src) {
         u32 n = strlen(last_asset_name);
         if (n > 4 && strcmp(last_asset_name + n - 4, "_hit") == 0) swap_hit_file(dst, dec);

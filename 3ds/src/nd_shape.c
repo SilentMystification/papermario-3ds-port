@@ -260,6 +260,17 @@ bad:
     dlcp_n = 0;
     return 0;
 }
+/* MAPLAG (b): the file part of the static list build of a new shape file: the T-point table (seam_get) and the .dlc file (dlcp_open).
+ * decode_yay0 (pm_map.c) calls it in the load step on the logic thread (core 1 on the O3DS; inline in the serial mode), after pm_walk_drain:
+ * no walk and no queued entry reads these statics then, and the walker's pm_dlc_gen bump of the shape invalidation (pm_tex.c:1252) has run.
+ * The next walker entry is queued after these writes (nd_wq.c wq_put barrier). dlc_reset keeps the tables of the current pm_dlc_gen, so the
+ * first drawn step reads them and does not load them. Same files, same bytes as the walker build: only the thread and the time change. */
+__attribute__((cold, noinline)) void pm_dlc_preload(void) {
+    if (!seam_get()) return; /* as dlc_build: no seam table, no .dlc read */
+    const unsigned t0 = pm_ticks();
+    (void)dlcp_open();
+    if (pm_xf.on) pm_xf.dlcp_t += pm_ticks() - t0; /* XFT */
+}
 /* 1: o filled from the file, 0: no section (nothing allocated), -1: no pool room or a read fault (the caller runs the no-pool path) */
 __attribute__((cold, noinline)) static int dlcp_load(NdObj* o, u32 loff, unsigned var) {
     unsigned lo = 0, hi, k, nv;
@@ -645,8 +656,8 @@ __attribute__((cold, noinline)) void dlc_reset(void) {
     for (unsigned k = 0; k < DLC_TAB; k++) if (dlc_tab[k]) { dlc_free(dlc_tab[k]); free(dlc_tab[k]); dlc_tab[k] = NULL; }
     dlc_nent = 0;
     pm_gpu_gstat_reset();
-    seam_reset();
-    dlcp_close();
+    if (seam_gen != pm_dlc_gen || !seam_ok) seam_reset(); /* MAPLAG: keep the tables pm_dlc_preload built for this shape (a failed one is built again after the frees above) */
+    if (dlcp_gen != pm_dlc_gen || !dlcp_f) dlcp_close();
 }
 unsigned dlc_seen_gen;
 /* A G_DL to l. Returns 1 when the list is done (replayed), 0 when the interpreter must run it. */
