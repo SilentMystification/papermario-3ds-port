@@ -114,7 +114,10 @@ def asset_hash(main):
 def image_id(name):
     """Stable id of a docker image: sha1 of its layer digests. The .Id changes on every docker build -q (BuildKit
     attestation), so a key on .Id would miss after every build.sh run (coordinator fix, 2026-11-16)."""
-    r = subprocess.run(["docker", "image", "inspect", "-f", "{{json .RootFS.Layers}}", name], capture_output=True, text=True)
+    try:
+        r = subprocess.run(["docker", "image", "inspect", "-f", "{{json .RootFS.Layers}}", name], capture_output=True, text=True)
+    except OSError:
+        return "none"  # no docker binary (host test container): no image
     return hashlib.sha1(r.stdout.strip().encode()).hexdigest() if r.returncode == 0 and r.stdout.strip() else "none"
 
 
