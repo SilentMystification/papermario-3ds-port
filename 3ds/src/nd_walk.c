@@ -18,6 +18,7 @@
 #include "nd_op.h"
 #include "nd_api.h"
 #include "nd_gtab.h"
+#include "nd_lkey.h"
 
 extern int nd_c2_on; /* CORE2-2 census (nd_c2haz.c, switch c2haz) */
 void nd_c2_rec(const Gfx* rec, unsigned words);
@@ -541,7 +542,7 @@ static void gt_call(const NdGTab* c) { /* a table call inside a list: the walker
     }
     if (dlc_on && !ring && dlc_try(next)) { nd_gtr_dlc++; return; }
     if (ex_depth < ND_LIST_DEPTH) { ex_depth++; gt_ops(c); ex_depth--; }
-    else nd_walk_state((const uint32_t*)c->list, ND_LIST_MAX); /* at the limit: the walker drops a deeper G_DL; its own check decides */
+    else { unsigned nc; const uint32_t* cu = nd_lkey_tab(c, ND_LIST_MAX, &nc); nd_walk_state(cu, nc); } /* at the limit: the walker drops a deeper G_DL; its own check decides; LKEY: a moved list's units */
 }
 static void gt_ops(const NdGTab* t) {
     for (const NdGOp* o = t->op;; o++) {

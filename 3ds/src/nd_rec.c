@@ -15,6 +15,7 @@
 #include "gbi_custom.h"
 #include "nd_api.h"
 #include "nd_gtab.h"
+#include "nd_lkey.h"
 
 extern s32 gCurrentDisplayContextIndex;
 void nd_walk_rec_model(const Gfx* q);           /* nd_walk.c: a model record, as the walker's G_PM_REC arm */
@@ -144,10 +145,11 @@ uint8_t nd_rm_n[ND_RM_N];
 static uint8_t rm_built[ND_RM_N];
 __attribute__((cold, noinline)) void nd_rm_build(unsigned i) {
     if (i >= ND_RM_N) return;
-    unsigned n = 0;
+    unsigned n = 0, nl = 0;
     const Gfx* l = i < ND_RM_LISTS ? ModelRenderModes[i] : NULL;
-    for (unsigned k = 0; l && n + 1u < ND_RM_OPS; k++) {
-        const uint32_t w0 = l[k].words.w0, w1 = l[k].words.w1;
+    const uint32_t* lu = l ? nd_lkey_units(l, nd_ntab_find(l), 4096u, &nl) : NULL; /* LKEY: a moved render mode list (NDN) reads its device units */
+    for (unsigned k = 0; k < nl && n + 1u < ND_RM_OPS; k++) {
+        const uint32_t w0 = lu[2u * k], w1 = lu[2u * k + 1u];
         if ((w0 >> 24) == NDO_END) break;
         if (IS_NOP(w0)) continue; /* a typed sync or no-op */
         nd_rm_tab[i][2u * n] = w0; nd_rm_tab[i][2u * n + 1u] = w1; /* HC4e4: ModelRenderModes is typed (gs forms) */

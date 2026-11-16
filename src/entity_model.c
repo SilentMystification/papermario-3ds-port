@@ -4,6 +4,7 @@
 #include "nd_cmd.h" /* DIRECT D3 */
 #include "nd_op.h" /* HC4e2b: the typed unit of a list word */
 #include "nd_geo.h"
+#include "nd_lkey.h" /* LKEY: the units of a moved list key */
 
 EntityModelScript D_8014C260 = {
     ems_End
@@ -278,13 +279,14 @@ static struct { const Gfx* dl; const void* va; u32 range; u32 h; unsigned f; uns
 static unsigned ent_vk_n, ent_vs_draw[3], ent_vs_ovf;
 static u32 ent_vtx_range(const Gfx* dl, s32 seg) {
     u32 range = 0;
-    for (int k = 0; k < 2048; k++) {
-        uint32_t t[2];
-        t[0] = dl[k].words.w0; t[1] = dl[k].words.w1;
-        const u32 op = t[0] >> 24;
+    unsigned n;
+    const uint32_t* u = nd_lkey_units(dl, nd_ntab_find(dl), 2048u, &n); /* LKEY: a moved list key (NDN) reads its device units */
+    for (unsigned k = 0; k < n; k++) {
+        const u32 w0 = u[2u * k], w1 = u[2u * k + 1u];
+        const u32 op = w0 >> 24;
         if (op == (u32)NDO_END) break;
-        if (op == (u32)NDO_VTX && (dl[k].words.w1 >> 24) == ((u32)seg & 0xffu)) {
-            const u32 end = (dl[k].words.w1 & 0xffffffu) + (((dl[k].words.w0 >> 12) & 0xffu) * 16u);
+        if (op == (u32)NDO_VTX && (w1 >> 24) == ((u32)seg & 0xffu)) {
+            const u32 end = (w1 & 0xffffffu) + (((w0 >> 12) & 0xffu) * 16u);
             if (end > range) range = end;
         }
     }
@@ -319,9 +321,11 @@ static void entcheck_draw(const Gfx* rec, const EntityModel* model) { /* DIRECT 
         const Gfx* q = model->gfx.displayList;
         unsigned dlm = 0, cls = 0;
         NdTexDec tdec;
-        for (int k = 0; q != nullptr && k < 2048; k++) {
+        static uint32_t qb[2u * 256u]; /* LKEY: a moved list key (NDN) gives its device units and an end unit */
+        const uint32_t* qu = q != nullptr ? nd_lkey_end(q, nd_ntab_find(q), qb, 256u) : nullptr;
+        for (int k = 0; qu != nullptr && k < 2048; k++) {
             uint32_t t[2];
-            t[0] = q[k].words.w0; t[1] = q[k].words.w1;
+            t[0] = qu[2 * k]; t[1] = qu[2 * k + 1];
             const u32 op = t[0] >> 24;
             if (op == (u32)NDO_END) break;
             if (op == (u32)NDO_CALL) dlm |= 2u;
@@ -334,7 +338,7 @@ static void entcheck_draw(const Gfx* rec, const EntityModel* model) { /* DIRECT 
         if (model->vertexArray != nullptr) cls = 1;
         else if (rec[0].words.w0 & 1u) cls = 2;
         else if (model->flags & ENTITY_MODEL_FLAG_REFLECT) cls = 3;
-        else if (dlm & 1u) cls = (nd_dlc_tex_decode((const uint32_t*)(const void*)q, &tdec) == NDTX_OK) ? 7 : 4; /* S6-2a: 7 texok, native-ready texture form */
+        else if (dlm & 1u) cls = (nd_dlc_tex_decode(qu, &tdec) == NDTX_OK) ? 7 : 4; /* S6-2a: 7 texok, native-ready texture form */
         else if (dlm & 2u) cls = 5;
         else if (dlm & 4u) cls = 6;
         ent_cls[cls]++;
