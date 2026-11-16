@@ -10,6 +10,8 @@ int main(void) {
     if (pm_fps_iskip(PM_FPS_DYN, 0, 0) != 0 || pm_fps_iskip(PM_FPS_DYN, 1, 0) != 1 || pm_fps_iskip(PM_FPS_DYN, 0, 1) != 1) { printf("fskip FAIL iskip dyn\n"); return 1; }
     if (pm_fps_next(PM_FPS_OFF) != PM_FPS_ON || pm_fps_next(PM_FPS_ON) != PM_FPS_DYN || pm_fps_next(PM_FPS_DYN) != PM_FPS_OFF) { printf("fskip FAIL next\n"); return 1; }
     if (strcmp(pm_fps_name(0), "Off") || strcmp(pm_fps_name(1), "On") || strcmp(pm_fps_name(2), "Dynamic")) { printf("fskip FAIL name\n"); return 1; }
+    if (pm_fps_mode(PM_FPS_ON, 0) != PM_FPS_OFF || pm_fps_mode(PM_FPS_OFF, 1) != PM_FPS_DYN || pm_fps_mode(PM_FPS_ON, 1) != PM_FPS_ON || pm_fps_mode(PM_FPS_DYN, 1) != PM_FPS_DYN) { printf("fskip FAIL mode\n"); return 1; }
+    if (pm_fps_fs1(PM_FPS_OFF) != 1 || pm_fps_fs1(PM_FPS_ON) != 0 || pm_fps_fs1(PM_FPS_DYN) != 1) { printf("fskip FAIL fs1\n"); return 1; }
     memset(&d, 0, sizeof d);
     if (feed(&d, 22440u, 7364u, 300) != 0) { printf("fskip FAIL calm start\n"); return 1; }
     d.heavy = 1; d.calm = 0;
@@ -23,6 +25,6 @@ int main(void) {
     feed(&d, 28000u, 7364u, 1); /* one step that is not calm starts the count again */
     if (feed(&d, 22440u, 7364u, PM_DYN_CALM - 1) != 1) { printf("fskip FAIL hysteresis\n"); return 1; }
     if (feed(&d, 22440u, 7364u, 1) != 0) { printf("fskip FAIL calm end\n"); return 1; }
-    printf("fskip ok 12/12\n");
+    printf("fskip ok 14/14\n");
     return 0;
 }
