@@ -1,5 +1,6 @@
 #include <3ds.h>
 #include "pm_port.h"
+#include "pm_shoulder.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -198,15 +199,16 @@ static int clamp_stick(int v) {
 
 /* C-O3DS and F11-5: pm_map[i] is the N64 button of 3DS input i (options.ini map.*, the Select menu). Default: A, B, START as is, the D-pad and
  * X, Y and the C-stick give N64 C, L and R give Z, ZL and ZR give N64 L and R. O3DS (no ZL, ZR): with the Z key held (X, or Y by options.ini
- * o3dsz=1) L gives N64 L and R gives N64 R. SELECT is reserved for the port menu. */
+ * o3dsz=1) L gives N64 L and R gives N64 R. SELECT is reserved for the port menu.
+ * STARTLR: in the start menu L gives N64 L and R gives N64 Z (pm_shoulder.h). */
 int pm_new3ds;
 static unsigned short prev_sh;
 static const u32 in_key[PM_NIN] = { KEY_A, KEY_B, KEY_X, KEY_Y, KEY_L, KEY_R, KEY_ZL, KEY_ZR, KEY_START, KEY_DUP, KEY_DDOWN, KEY_DLEFT, KEY_DRIGHT,
                                     KEY_CSTICK_UP, KEY_CSTICK_DOWN, KEY_CSTICK_LEFT, KEY_CSTICK_RIGHT };
+int pm_start_menu(void); /* pm_dpad.c */
 static unsigned short shoulder_map(u32 k) {
-    if (!pm_new3ds && (k & (pm_opt.o3ds_z ? KEY_Y : KEY_X)))
-        return (unsigned short)(((k & KEY_L) ? 0x0020 : 0) | ((k & KEY_R) ? 0x0010 : 0));
-    return (unsigned short)(((k & KEY_L) ? pm_map[PM_IN_L] : 0) | ((k & KEY_R) ? pm_map[PM_IN_R] : 0) | ((k & KEY_ZL) ? pm_map[PM_IN_ZL] : 0) | ((k & KEY_ZR) ? pm_map[PM_IN_ZR] : 0));
+    return pm_shoulder_bits((k & KEY_L) != 0, (k & KEY_R) != 0, (k & KEY_ZL) != 0, (k & KEY_ZR) != 0, &pm_map[PM_IN_L],
+                            !pm_new3ds && (k & (pm_opt.o3ds_z ? KEY_Y : KEY_X)), pm_start_menu()); /* STARTLR */
 }
 
 void pm_pad_scan(void) {
