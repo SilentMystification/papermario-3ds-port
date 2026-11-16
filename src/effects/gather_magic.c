@@ -9,7 +9,7 @@ NDN_DECL(D_09000080_38F790);
 NDN_DECL(D_090001A8_38F8B8);
 NDN_DECL(D_090001C8_38F8D8);
 
-Gfx* D_E008E890[] = { NDN(D_090001A8_38F8B8), NDN(D_090001C8_38F8D8) };
+NdLst D_E008E890[] = { NDN(D_090001A8_38F8B8), NDN(D_090001C8_38F8D8) };
 
 void gather_magic_appendGfx(void* effect);
 void gather_magic_init(EffectInstance* effect);

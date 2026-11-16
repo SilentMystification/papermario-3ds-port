@@ -18,10 +18,10 @@ NDN_DECL(D_090014D0_3A2230);
 NDN_DECL(D_090014F0_3A2250);
 NDN_DECL(D_09001510_3A2270);
 
-Gfx* D_E009EDF0[] = { NDN(D_09001490_3A21F0) };
-Gfx* D_E009EDF4[] = { NDN(D_090014B0_3A2210) };
-Gfx* D_E009EDF8[] = { NDN(D_090014D0_3A2230) };
-Gfx* D_E009EDFC[] = { NDN(D_090014F0_3A2250) };
+NdLst D_E009EDF0[] = { NDN(D_09001490_3A21F0) };
+NdLst D_E009EDF4[] = { NDN(D_090014B0_3A2210) };
+NdLst D_E009EDF8[] = { NDN(D_090014D0_3A2230) };
+NdLst D_E009EDFC[] = { NDN(D_090014F0_3A2250) };
 
 void radiating_energy_orb_init(EffectInstance* effect);
 void radiating_energy_orb_update(EffectInstance* effect);

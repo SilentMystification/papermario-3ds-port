@@ -11,8 +11,8 @@ NDN_DECL(D_09001000_3F9CC0);
 NDN_DECL(D_09001148_3F9E08);
 NDN_DECL(D_09001168_3F9E28);
 
-Gfx* D_E01108B0[] = { NDN(D_09001148_3F9E08) };
-Gfx* D_E01108B4[] = { NDN(D_09001000_3F9CC0) };
+NdLst D_E01108B0[] = { NDN(D_09001148_3F9E08) };
+NdLst D_E01108B4[] = { NDN(D_09001000_3F9CC0) };
 
 void ice_shard_init(EffectInstance* effect);
 void ice_shard_update(EffectInstance* effect);
