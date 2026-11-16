@@ -19,7 +19,7 @@
 /* the redirect target of the macro form: gMainGfxPos is the top-level packet pointer (nd_gbi.h D9) */
 Gfx* gMainGfxPos;
 s32 gCurrentDisplayContextIndex;
-Gfx* ModelRenderModes[128]; /* nd_rec.c: the render mode table of src/model.c (61 lists), all NULL here */
+const NdNDev* const nd_rm_dev[0x3d]; /* nd_rmtab.c: the render mode lists, all NULL here */
 int is_host(u32 p) { (void)p; return 0; }
 char __end__[1];
 u8 gMapShapeData[1];

@@ -759,6 +759,20 @@ static void v2_itx(char** t, const char* ln) {
     memcpy(r + n, ln, m + 1);
     *t = r;
 }
+/* MODELRM: the lists that also get a static S6T def (NdSDef ndsd_<list>: the units of the device entry), one name per line (gen_gfx_tab.sh reads nd_rmdef.h) */
+static char sd_name[96][64]; static unsigned sd_n;
+static void sdef_load(const char* path) {
+    FILE* f = fopen(path, "r");
+    if (!f) { fprintf(stderr, "gconv: cannot read %s\n", path); exit(1); }
+    char line[256];
+    while (fgets(line, sizeof line, f)) {
+        char* t = strtok(line, " \t\r\n");
+        if (!t) continue;
+        if (sd_n >= 96u || strlen(t) >= 64u) { fprintf(stderr, "gconv: sdef list too long\n"); exit(1); }
+        snprintf(sd_name[sd_n++], 64, "%s", t);
+    }
+    fclose(f);
+}
 static void v2_convert_all(const char* descs_path, const char* inh_path, const char* uns_path, const char* idx_path, const char* tab_path, const char* pairs_path) {
     FILE* fi = fopen(inh_path, "w");
     FILE* fu = fopen(uns_path, "w");
@@ -852,6 +866,10 @@ static void v2_convert_all(const char* descs_path, const char* inh_path, const c
             printf("const NdNDev ndd_%s __attribute__((aligned(8))) = { (const void*)&ndd_%s, %uu, ndnu_%s, %uu, %uu };\n", nm, nm, v2_state_only((const uint32_t*)v2_tab[i]->addr), v2_nm[i], v2_nk[i], v2_ntri[i]);
         else
             printf("const NdNDev ndd_%s = { (const void*)%s, %uu, (const uint32_t*)%s, %uu, %uu };\n", nm, nm, v2_state_only((const uint32_t*)v2_tab[i]->addr), nm, v2_nk[i], v2_ntri[i]);
+        for (unsigned q = 0; q < sd_n; q++) if (!strcmp(sd_name[q], nm)) { /* MODELRM */
+            if (v2_nk[i] > 32u || !v2_tab[i]->moved) { fprintf(stderr, "gconv: sdef %s: %u units (most 32) or not moved\n", nm, v2_nk[i]); exit(1); }
+            printf("NdSDef ndsd_%s = { (const void*)ndnu_%s, %uu };\n", nm, v2_nm[i], v2_nk[i]);
+        }
         ndev++;
     }
     printf("const NdNDev* ndn_dev_idx[%u] = {\n", ndev ? ndev : 1u);
@@ -967,6 +985,7 @@ int main(int argc, char** argv) {
     }
     printf("};\n#ifdef ND_HOST_GFX\nconst unsigned nd_gtab_n = %uu;\n#else\nconst unsigned nd_gtab_n = %uu;\n#endif\n", n_lists, n_lists - n_moved + n_mp);
     if (argc < 9) { fprintf(stderr, "usage: nd_gfx_conv <nd_ntab_descs.c> <ntab_inherit.txt> <ntab_unsup.txt> <nd_ntab_idx.c> <ntab_tables.txt> <ntab_entries.txt> <ntab_pairs.txt> <gset_ok.txt>\n"); return 2; }
+    if (argc > 9) sdef_load(argv[9]);
     v2_pairs_load(argv[6]);
     v2_convert_all(argv[1], argv[2], argv[3], argv[4], argv[5], argv[7]);
     if (gset_check(argv[8])) return 1;

@@ -27,28 +27,6 @@ BSS s32 entity_fog_alpha;
 BSS s32 entity_fog_dist_min;
 BSS s32 entity_fog_dist_max;
 
-extern Gfx Gfx_RM1_SURFACE_OPA[];
-extern Gfx Gfx_RM1_DECAL_OPA[];
-extern Gfx Gfx_RM1_INTERSECTING_OPA[];
-extern Gfx Gfx_RM1_ALPHATEST[];
-extern Gfx Gfx_RM1_SURFACE_XLU[];
-extern Gfx Gfx_RM1_DECAL_XLU[];
-extern Gfx Gfx_RM1_INTERSECTING_XLU[];
-extern Gfx Gfx_RM1_ALPHATEST_ONESIDED[];
-extern Gfx Gfx_RM1_SURFACE_XLU_NO_AA[];
-extern Gfx Gfx_RM1_DECAL_XLU_NO_AA[];
-extern Gfx Gfx_RM1_PASS_THROUGH[];
-extern Gfx Gfx_RM1_SURFACE_OPA_NO_ZB[];
-extern Gfx Gfx_RM1_ALPHATEST_NO_ZB[];
-extern Gfx Gfx_RM1_SURFACE_XLU_NO_ZB[];
-extern Gfx Gfx_RM1_CLOUD_NO_ZCMP[];
-extern Gfx Gfx_RM3_SURFACE_OPA[];
-extern Gfx Gfx_RM3_DECAL_OPA[];
-extern Gfx Gfx_RM3_INTERSECTING_OPA[];
-extern Gfx Gfx_RM3_ALPHATEST[];
-extern Gfx Gfx_RM3_SURFACE_XLU[];
-extern Gfx Gfx_RM3_DECAL_XLU[];
-extern Gfx Gfx_RM3_INTERSECTING_XLU[];
 #include "nd_rmdef.h" /* S5EMDL1: the Gfx_RM* lists as compiled ranges */
 #include "nd_st.h"
 #include "nd_tx.h"

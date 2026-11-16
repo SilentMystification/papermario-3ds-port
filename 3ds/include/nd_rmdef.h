@@ -3,6 +3,9 @@
 #ifndef ND_RMDEF_H
 #define ND_RMDEF_H
 #include "nd_scomp.h"
+#include "nd_gtab.h"
+#define ND_RM_LISTS 0x3du /* RENDER_MODE_IDX_00 to RENDER_MODE_IDX_3C */
+extern const NdNDev* const nd_rm_dev[ND_RM_LISTS]; /* nd_rmtab.c: the device entry of each list */
 #define ND_RM_LIST(X) \
     X(Gfx_RM1_SURFACE_OPA) \
     X(Gfx_RM1_DECAL_OPA) \
@@ -66,7 +69,8 @@
     X(Gfx_RM3_SURFACE_XLU_NO_ZB) \
     X(Gfx_RM3_CLOUD) \
     X(Gfx_RM3_CLOUD_NO_ZB)
-#define ND_RM_EXT(n) extern NdSDef n##_def;
+/* MODELRM: ndsd_<list> is made by nd_gfx_conv.c (gen_gfx_tab.sh) from the device entry of the list */
+#define ND_RM_EXT(n) extern NdSDef ndsd_##n;
 ND_RM_LIST(ND_RM_EXT)
-#define ND_RM_REC(n) nd_scomp_rec(&n##_def, NULL, 0)
+#define ND_RM_REC(n) nd_scomp_rec(&ndsd_##n, NULL, 0)
 #endif
