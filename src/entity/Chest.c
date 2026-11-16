@@ -104,7 +104,7 @@ void entity_Chest_setupGfx(s32 entityIndex) {
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     gfx = ENTITY_ADDR(entity, Gfx*, NDN(Entity_Chest_RenderLid));
-    gSPDisplayList(gMainGfxPos++, gfx);
+    nd_draw_list(gfx, ND_SELF);
     nd_xf_pop(G_MTX_MODELVIEW);
 }
 

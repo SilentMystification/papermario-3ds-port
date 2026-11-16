@@ -49,7 +49,7 @@ void entity_SpinningFlower_setupGfx(s32 entityIndex) {
     gDisplayContext->matrixStack[gMatrixListPos] = data->unk_30;
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     gfx = ENTITY_ADDR(entity, Gfx*, NDN(D_0A000D18_E9D618));
-    gSPDisplayList(gMainGfxPos++, gfx);
+    nd_draw_list(gfx, ND_SELF);
     nd_xf_pop(G_MTX_MODELVIEW);
 }
 

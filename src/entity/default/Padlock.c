@@ -46,7 +46,7 @@ void entity_Padlock_setupGfx(s32 entityIndex) {
     guMtxF2L(sp58, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gSPDisplayList(gMainGfxPos++, data->shackleGfx);
+    nd_draw_list(data->shackleGfx, ND_SELF);
     nd_xf_pop(G_MTX_MODELVIEW);
 }
 

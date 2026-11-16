@@ -1,0 +1,21 @@
+{
+  "benches": [
+    {
+      "name": "evar_iwa01_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "EVAR: draw records (drec.txt) of iwa_01 entry 0 frames 200 and 201, cold det start. A head equals the base.",
+      "scenario": "evar_iwa01_drec",
+      "cap": 40,
+      "until": "drec f201 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "drec"
+      ],
+      "gates": []
+    }
+  ]
+}

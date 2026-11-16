@@ -30,7 +30,7 @@ void entity_HiddenPanel_setupGfx(s32 entityIndex) {
         guMtxCatF(tempMtx, rotMtx, tempMtx);
         guMtxF2L(tempMtx, &gDisplayContext->matrixStack[gMatrixListPos]);
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-        gSPDisplayList(gMainGfxPos++, ENTITY_ADDR(entity, Gfx*, NDN(Gfx_HiddenPanel_RenderHole)));
+        nd_draw_list(ENTITY_ADDR(entity, Gfx*, NDN(Gfx_HiddenPanel_RenderHole)), ND_SELF);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
     mdl_project_tex_coords(data->modelID, data->renderDList, data->entityMatrix, entity->gfxBaseAddr);
