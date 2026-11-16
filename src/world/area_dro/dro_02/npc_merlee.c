@@ -1,4 +1,5 @@
 #include "dro_02.h"
+#include "nd_gtab.h"
 #include "model.h"
 #include "sprite/player.h"
 #include "include_asset.h"
@@ -82,9 +83,9 @@ INCLUDE_IMG("world/area_dro/dro_02/card.png", dro_02_card);
 INCLUDE_PAL("world/area_dro/dro_02/card.pal", dro_02_card_pal);
 #include "world/area_dro/dro_02/card_1.vtx.inc.c"
 #include "world/area_dro/dro_02/card_2.vtx.inc.c"
-#include "world/area_dro/dro_02/card_setup.gfx.inc.c"
-#include "world/area_dro/dro_02/card_1.gfx.inc.c"
-#include "world/area_dro/dro_02/card_2.gfx.inc.c"
+NDN_DECL(N(card_setup_gfx));
+NDN_DECL(N(card_1_gfx));
+NDN_DECL(N(card_2_gfx));
 
 void N(card_worker_update)(void);
 void N(card_worker_render)(void);
@@ -231,7 +232,7 @@ u32 N(appendGfx_ritual_card)(RitualCard* card, Matrix4f mtxParent) {
         return 1;
     }
 
-    gSPDisplayList(gMainGfxPos++, N(card_setup_gfx));
+    gSPDisplayList(gMainGfxPos++, NDN(N(card_setup_gfx)));
 
     if (card->unk_00 == 1 || card->unk_00 == 4 || card->unk_00 == 5) {
         guTranslateF(mtxTemp, card->pos.x, card->pos.y, card->pos.z);
@@ -244,7 +245,7 @@ u32 N(appendGfx_ritual_card)(RitualCard* card, Matrix4f mtxParent) {
         nd_xf_push(VIRTUAL_TO_PHYSICAL(&gDisplayContext->matrixStack[gMatrixListPos++]), G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
         if (card->unk_00 == 1 || card->unk_00 == 4) {
-            gSPDisplayList(gMainGfxPos++, N(card_1_gfx));
+            gSPDisplayList(gMainGfxPos++, NDN(N(card_1_gfx)));
         }
 
         if (card->unk_00 == 1 || card->unk_00 == 5) {
@@ -255,7 +256,7 @@ u32 N(appendGfx_ritual_card)(RitualCard* card, Matrix4f mtxParent) {
             guTranslateF(mtxTransform, card->xoffset + 30 - rasterInfo.width / 2, 0.0f, 0.0f);
             guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
             nd_xf_push(VIRTUAL_TO_PHYSICAL(&gDisplayContext->matrixStack[gMatrixListPos++]), G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            gSPDisplayList(gMainGfxPos++, N(card_2_gfx));
+            gSPDisplayList(gMainGfxPos++, NDN(N(card_2_gfx)));
             nd_xf_pop(G_MTX_MODELVIEW);
         }
         nd_xf_pop(G_MTX_MODELVIEW);
