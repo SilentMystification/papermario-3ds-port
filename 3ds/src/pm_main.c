@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include "pm_port.h"
+#include "pm_fpsmode.h"
 #include "pm_thread.h"
 #include "pm_crash_page.h"
 unsigned pm_log_late_con(void); /* pm_log.c: B1 check */
@@ -507,13 +508,11 @@ void pm_step_run(const LgCmd* c) {
 extern unsigned pm_iw_us[3]; /* pm_nusys.c */
 extern unsigned pm_kc_n[2], pm_kc_why[5], pm_kc_fb[4], pm_kc_plain; /* INTERPB3: copies shown, key walks; copies refused by cause */
 static int interp_heavy(void) {
-    static int heavy, calm;
+    static PmFpsDyn dyn; /* FSKIP: the Dynamic rule (pm_fpsmode.h) */
     static unsigned n, nh, sl, sk, sp, sg;
-    unsigned w = heavy ? pm_iw_us[2] : (pm_iw_us[0] > pm_iw_us[1] ? pm_iw_us[0] : pm_iw_us[1]);
+    unsigned w = dyn.heavy ? pm_iw_us[2] : (pm_iw_us[0] > pm_iw_us[1] ? pm_iw_us[0] : pm_iw_us[1]);
     unsigned g = (unsigned)(C3D_GetDrawingTime() * 1000.f);
-    if (w > 26000u || g > 13000u) { heavy = 1; calm = 0; } /* INTERPB3: one walk a step (the key frame is the K copy): the walk limit is 26 ms, calm under 20 ms; two GPU frames a step: the GPU limit stays 13 ms */
-    else if (heavy && w < 20000u && g < 10000u) { if (++calm >= 30) heavy = 0; }
-    else calm = 0;
+    const int heavy = pm_fps_dyn_step(&dyn, w, g);
     n++; nh += heavy; sl += pm_iw_us[0]; sk += pm_iw_us[1]; sp += pm_iw_us[2]; sg += g;
     if (n == 300) {
         pm_log_hw("interp f%u steps %u heavy %u lerp_us %u key_us %u plain_us %u gpu_us %u kcopy %u kwalk %u why %u %u %u %u %u kfb %u %u %u %u kplain %u", pm_frame_count(), n, nh, sl / n, sk / n, sp / n, sg / n, pm_kc_n[0], pm_kc_n[1], pm_kc_why[0], pm_kc_why[1], pm_kc_why[2], pm_kc_why[3], pm_kc_why[4], pm_kc_fb[0], pm_kc_fb[1], pm_kc_fb[2], pm_kc_fb[3], pm_kc_plain);
@@ -718,7 +717,7 @@ void pm_frame_loop(void) {
                 pm_ph_iv = iv; /* PI4 */
                 pace_iv[iv < 1 ? 0 : iv > 4 ? 3 : iv - 1]++;
                 if (pm_interp_on > 0) kc_census(); /* FPS60W2: outside the det condition below */
-                if (!pm_det_on() && (iv > PM_VBLANKS_PER_STEP || (pm_interp_on > 0 && (interp_heavy() || PMDL("iskipall"))))) lc.flags |= LGF_ISKIP; /* F06-5; DET: the key path is never taken on the vblank count. INTERP1: heavy walks skip the key frame */
+                if (!pm_det_on() && (pm_interp_on > 0 ? pm_fps_iskip(pm_opt.fps60 == PM_FPS_ON ? PM_FPS_ON : PM_FPS_DYN, interp_heavy(), iv > PM_VBLANKS_PER_STEP) || PMDL("iskipall") : iv > PM_VBLANKS_PER_STEP)) lc.flags |= LGF_ISKIP; /* FSKIP: On never skips the key frame, Dynamic skips it under load or when late (pm_fpsmode.h); interp off as before. DET: never */
                 fs1_last_iv = iv;
                 if (iv >= 3) late_n++; /* PT15 */
             }

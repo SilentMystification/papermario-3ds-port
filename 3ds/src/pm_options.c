@@ -5,6 +5,7 @@
 #include <unistd.h>
 
 #include "pm_port.h"
+#include "pm_fpsmode.h"
 #include "pm_build.h"
 
 int pm_debug_value(const char* key, char* out, unsigned n);
@@ -205,7 +206,7 @@ void pm_options_init(void) {
             }
             fld = opt_field(line);
             v = strtol(eq + 1, &end, 10);
-            if (!fld || end == eq + 1 || *end || v < 0 || v > 1) {
+            if (!fld || end == eq + 1 || *end || v < 0 || v > (fld == &pm_opt.fps60 ? 2 : 1)) { /* FSKIP: fps60 is 0, 1 or 2 */
                 pm_log_w("options: skip key '%s' value '%s'", line, eq + 1);
                 continue;
             }
@@ -311,6 +312,14 @@ void pm_options_flip(int row) {
     if (row == 9) { pm_opt.fskip = !pm_opt.fskip; pm_fskip_set(pm_opt.fskip); changed = 1; return; }
     if (row == 10) { pm_opt.pos_hud = !pm_opt.pos_hud; changed = 1; return; } /* POSHUD: the Debug tab row 8 */
     if (row == 12) { pm_opt.poslog = !pm_opt.poslog; changed = 1; return; } /* MN7 rest: the combo logs a position line */
+    if (row == 0) { /* FSKIP: Off, On, Dynamic. On and Dynamic both run the interpolation; the mode is read at each drawn step */
+        extern int pm_interp_want;
+        pm_opt.fps60 = pm_fps_next(pm_opt.fps60);
+        pm_interp_want = pm_opt.fps60 != PM_FPS_OFF;
+        changed = 1;
+        pm_log("options: live row 0 value %d (%s)", pm_opt.fps60, pm_fps_name(pm_opt.fps60));
+        return;
+    }
     int* f = row == 0 ? &pm_opt.fps60 : row == 1 ? &pm_opt.wide : row == 2 ? &pm_opt.dbg_hud : row == 3 ? &pm_opt.dbg_stats
            : row == 4 ? &pm_opt.dbg_nofog : row == 5 ? &pm_opt.dbg_nolight : NULL;
     if (!f) return;
@@ -727,7 +736,7 @@ const char* pm_optui_value(int tab, int row, int mode) {
     if (id >= RW_MAP) return pm_n64_name(pm_map[id - RW_MAP]);
     switch (id) {
         case RW_WIDE: return res_name();
-        case RW_FPS: return pm_options_get(0) ? "On" : "Off";
+        case RW_FPS: return pm_fps_name(pm_opt.fps60);
         case RW_DPAD: return pm_dpad_mode_name();
         case RW_ESC: return esc_label[pm_opt.esc_mode];
         case RW_DZPAD: case RW_DZCS: case RW_RDELAY: case RW_RRATE: {
