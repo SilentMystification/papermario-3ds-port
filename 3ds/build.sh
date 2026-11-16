@@ -141,7 +141,7 @@ $(gc_inputs $GT_IN)"
     if gc_get gfx_tab "$want" $GT_OUT; then echo "gen_gfx_tab: cache hit"; return 0; fi
     mkdir -p "$OUT" build3ds/out # gen_gfx_tab.sh writes its logs to build3ds/out only when the folder exists
     rm -f 3ds/src/nd_gfx_tab.c.new
-    MSYS_NO_PATHCONV=1 docker run --rm --memory "${PM_BUILD_MEM:-4g}" -v "$w:/w" -v "$ab/assets:/ar/assets:ro" -v "$ab/ver/us/build:/ar/ver/us/build:ro" -w /work pm3ds-host:1 sh -c "$GT_CMD" || { echo "gen_gfx_tab failed" >&2; exit 1; }
+    MSYS_NO_PATHCONV=1 docker run --rm --memory "${PM_BUILD_MEM:-4g}" -v "$w:/w" -v "$ab/assets:/ar/assets:ro" -v "$ab/ver/us/build:/ar/ver/us/build:ro" -v "pm3ds-gconvobj-$(docker image inspect -f '{{.Id}}' pm3ds-host:1 | cut -c8-23):/gobj" -e GCONV_OBJ=/gobj -e PM_CACHE="${PM_CACHE:-on}" -w /work pm3ds-host:1 sh -c "$GT_CMD" || { echo "gen_gfx_tab failed" >&2; exit 1; }
     [ -s 3ds/src/nd_gfx_tab.c.new ] || { echo "gen_gfx_tab failed: no output" >&2; exit 1; }
     if cmp -s 3ds/src/nd_gfx_tab.c.new 3ds/src/nd_gfx_tab.c; then rm -f 3ds/src/nd_gfx_tab.c.new; else mv -f 3ds/src/nd_gfx_tab.c.new 3ds/src/nd_gfx_tab.c; fi
     gc_put gfx_tab "$want" $GT_OUT || true
