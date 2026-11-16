@@ -2760,6 +2760,12 @@ static void grab_raw_quad(int x1, int mo) {
     ix[3] = (unsigned short)b; ix[4] = (unsigned short)(b + 2); ix[5] = (unsigned short)(b + 3);
     nb.gidx_n += 6; nb.gni += 6;
 }
+/* GRABFL: the grab split queues part 1, and grab_queue_copy can run the queue at once (pm_gx_room, copy_guard). The ring words of part 1 leave the
+ * data cache here. gring_fl and gidx_fl stay, so gtrip and the frame end flush see the same state as before: every draw keeps its words. */
+static void grab_ring_flush(void) {
+    if (nb.gring && nb.gring_n > nb.gring_fl) pm_fl_dc(nb.gring + nb.gring_fl * 16, (nb.gring_n - nb.gring_fl) * 16);
+    if (nb.gidx && nb.gidx_n > nb.gidx_fl) pm_fl_dc(nb.gidx + nb.gidx_fl, (nb.gidx_n - nb.gidx_fl) * 2);
+}
 static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
     pm_gpu_begin_wait();
     if (nb.rect_open) flush(); /* DR1 */
@@ -2788,6 +2794,7 @@ static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
             want_clear = 0;
         }
         pm_tex_flush_pend_only();
+        grab_ring_flush(); /* GRABFL: part 1 can run before the frame end flush */
         sh_clear(); ndunit_scan(); rd_sync(); C3D_FrameSplit(GX_CMDLIST_FLUSH); sc_spl++;
     }
     if (!prev_frame) { grab_queue_copy(); if (prev_hold) { prev_hold = 0; hold_rst++; } } /* PT12; PAUSEH: a grab overwrote grab_tex: the next frame copies again */
