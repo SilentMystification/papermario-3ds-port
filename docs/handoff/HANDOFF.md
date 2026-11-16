@@ -1,6 +1,6 @@
 # HANDOFF (orchestrator, overwritten at each handoff)
 
-State at 2026-11-16, main 80570d126c, clean (GSETR, STALEOBJ and FSKIP2 merged). The user ended the session on purpose: start NO new work in the old session.
+State at 2026-11-16, main d947f064a5, clean (GSETR, STALEOBJ, FSKIP2 and GBIHDR merged). The user ended the session on purpose: start NO new work in the old session.
 Start of the new session: read this file, docs/handoff/orchestrator_rules.md (Core block is printed each turn), CLAUDE.md, the memory index.
 Then ListAgents (status `running` is the only slot count), then merge every hand-back message that arrived, then the list below.
 
@@ -13,12 +13,12 @@ FACT (oracle run, earlier today, not re-run): elfgate func 48, data 807, gfxname
 ## Agents at the moment of handoff (a notice or hand-back message from each may arrive in the new session)
 | Row | Agent id | Model, type | State | Page |
 |---|---|---|---|---|
-| GBIHDR (prune unused gbi macros, dry run build -156 data -193 gfxtype -32) | ad1461963fde761c3 | Haiku coder | running | ws_GBIHDR(+_code) |
 | HOLD1 (release 4 sources to gset, data -61) | a6baed310287d06b8 | Haiku coder | running | ws_HOLD1 |
 | PRA31 (Matrix4s scan, pra_31 lists, data -311 GUESS) | ad285a439e033e8a8 | Haiku coder | running | ws_PRA31 |
 | FLIPLOG (per-frame flip log row, switch flipfps) | a69f7a550bfc7c3dc | Haiku coder | running | ws_FLIPLOG(+_code) |
 Oracles (all finished, resume the one that wrote a page when its coder asks): DL3 ac7ba50e4977ada89 (GBIHDR, HOLD1, PRA31), bug oracle 39
 ae0d7e8991193de1b (FSKIP2, capture_flip.md), bug oracle 40 af53b666eeb2c5ea1 (FLIPLOG, verify_list.md).
+GBIHDR deleted 132 unused gbi macros (listcen now build 566, data 2611, gfxtype 826). A branch that was built before that merge and uses a deleted macro fails to compile: after each of HOLD1, PRA31 and FLIPLOG, build main and restore the block from `git show 71ea9565ca:include/PR/gbi.h`.
 Merge: `sh 3ds/tools/merge_row.sh <row>` (message is built from the branch commits). When main holds the oracle's page of the same row, `git rm` it first.
 
 ## Ready pages, not started (GSETR is merged, nothing blocks them)
