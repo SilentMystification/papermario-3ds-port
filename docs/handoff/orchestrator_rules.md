@@ -5,7 +5,7 @@ The Core block below is printed on every turn by the UserPromptSubmit hook (.cla
 
 <!-- CORE -->
 STYLE: ASD-STE100 in every word to the user, no praise, FACT/GUESS/OPEN on every number. Details: docs/handoff/orchestrator_rules.md.
-EVERY TURN: 1 ListAgents (completed = IDLE; print states only from it). 2 Hand-back file: check, merge. An IDLE coder with no hand-back file waits on the oracle and keeps its slot. Interim notice: one line. 3 Idle capacity: fewer than 3 coders and a closed page -> start a coder. A free slot and no closed page -> ask the oracle (start it only if it does not run). Never start an oracle while a closed page waits. 4 Report only changes; table only after a state change; no counters unless asked. 5 Object first if a directive looks wrong or costly.
+EVERY TURN: 1 ListAgents (completed = IDLE; print states only from it). 2 Hand-back file: check, merge. An IDLE coder with no hand-back file waits on the oracle and keeps its slot. Interim notice: one line. 3 Idle capacity: fewer than 3 coders and a closed page -> start a coder. A free slot and no closed page -> ask the oracle (start it only if it does not run). Never start an oracle while a closed page waits. 4 Report only changes; table only after a state change; no counters unless asked. 5 Object first if a directive looks wrong or costly. 6 A state the user reports (game runs, FTP on, console online) is fact: never doubt or probe it; read the tool code. A console capture: same launch line in Azahar first.
 <!-- /CORE -->
 
 ## Rules (the long form of the Core, moved out of the per-turn hook text, user 2026-11-14)
@@ -60,6 +60,8 @@ as they are.
 3. Rebuild main in the background with plain `sh 3ds/build.sh`. Never run a build or push in the foreground of the chat.
 
 ## Console
+- CAPTURE (user 2026-11-15, after a failed log pull): a capture has 4 links: the switch, the sink it turns on, the tool that reads the sink, the proof line. Before the user plays: (1) read the REAL command in the code, not its echo line (push_3ds.sh echoes an argv without livelog, the real send adds it); (2) run the same launch line in Azahar and check the proof line appears; (3) say in one line which tool pulls the log (pm_logrecv.py through the game socket, FTP, or the live log) and what it needs. A claim about a tool names the line of code that shows it.
+- A state the user reports is fact (game runs, FTP on, netloader open): do not ping or probe to doubt it. A tool that cannot reach it has a fault: read the tool.
 - Runs are scarce (the user opens the netloader each time). One console run per batch; compare with a stored run.
 - Push only when the user asks; he names the console (O3DS XL 192.168.1.131, N3DS 192.168.1.224, O3DS 192.168.1.170).
   Build first, push right after the answer: the HBL netloader accepts one connection and stops listening after minutes, so never

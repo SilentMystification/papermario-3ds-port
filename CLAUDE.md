@@ -3,12 +3,12 @@
 Orchestrator: read docs/handoff/orchestrator_rules.md at the start and after every compaction. Code agents: read your goal page
 (docs/handoff/ws_<id>.md, or row_<id>.md for an old row) first, then this file only. Edit rules in place, never append.
 
-1. BUGS. A fault the user reports is fact. Read the code (producer, state, draw call, pixel) to a file, line and value. Fix each
+1. BUGS. A fault the user reports is fact. A state the user reports (the game runs, the console is online, FTP or the netloader is open) is fact too: never probe it to doubt it. When a tool cannot reach it, read the tool and the game code for the cause. Read the code (producer, state, draw call, pixel) to a file, line and value. Fix each
    path that can cause it. No repro runs, no debug-log runs, no premise-check runs. No cause found: hand back the trace. The
    orchestrator asks the user.
 2. NO VISUAL CHECKS. No agent looks at a shot, describes a picture or counts pixels. Proof is the code read, the host unit tests
    (nd_host) and the mechanical byte compare (`bench.py base <bench>`, then `bench.py cmp <bench> --row <id>`).
-3. TESTS. The main proof is the host unit tests (`sh 3ds/tools/nd_host_test.sh`): they run in seconds. The emulator runs once per
+3. TESTS. CAPTURE: before the user spends console time on a capture, run the same launch line once in Azahar and check that the expected log lines appear. State each link in the hand-back (switch, sink, tool, proof line). Read the real command in the code, never its echo line. The main proof is the host unit tests (`sh 3ds/tools/nd_host_test.sh`): they run in seconds. The emulator runs once per
    group of files, never per file. A gate costs at most 1 build and 2 Azahar runs. Every run uses
    `python 3ds/tools/bench.py run <bench> --row <id> --why "<text>"` with PM_ROW=<id> and PM_LANE=<id>. A scenario has an
    until-line (a log event of the subject), ends within 5 s of it, and has a cap of 10-25 s (45 s max). A new scenario and its
