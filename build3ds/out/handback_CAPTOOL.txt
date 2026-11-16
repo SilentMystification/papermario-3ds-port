@@ -1,9 +1,7 @@
-31f8260992 (CAPTOOL 1: code commit; host ND HOST TESTS PASS, captool ok; build rc 0, 0 errors)
-Seed: NOT RUN (gate step failed first; step 4 waits for the gate).
-Gate: FAIL, tool fault. Output: build3ds/out/captool_gate.txt. Run 1226884 (bench capchk, row CAPTOOL, build 5838).
-Gate line: "CAPTURE CHECK TOOL FAULT: bench.py run capchk rc 1 with every proof line". Proof lines were found (fxtest: done, options saved).
-Cause (FACT, from captool_gate.txt): scenario check "FAIL boot: no line matches /build \d+ git/". The run warm-restarted the kept Azahar (slot 1 warm), so no boot line was logged.
-GUESS: the boot marker (expected_events "boot", azt.d/CAPCHK.json) needs a cold start, or no warm restart for capchk.
-OPEN: the oracle decides the fix (cold start in CAPCHK.json or drop the boot event). Oracle id not named in ws_CAPTOOL.md: send questions to the designer named in the launch.
-Counters: none moved. Azahar starts used: 1 of 8. Commits: 31f8260992 (CAPTOOL 1); runs.jsonl record 1226884 committed with this file.
-Mechanical fix made: captool.sh seed file moved from /tmp to build3ds/out and a missing seed file now fails (commit 31f8260992).
+620eaf2064 (CAPTOOL 3: boot regex; the gate commit follows and holds CAPTOOL 2: gate)
+Seed: FAIL as the page requires. Line: "CAPTURE CHECK FAIL: words "livelog prof=off phase=off loglevel=debug conlevel=info", log gate OFF (no "options: levels run log_on=1" line), missing proof: fxtest: spawn 87, bench rc 1 (run 1228534)". Output: build3ds/out/captool_seed.txt. FACT. The rc is 1, not the GUESS rc 10.
+Gate: CAPTURE CHECK OK. Line: "CAPTURE CHECK OK: words "livelog log=on prof=off phase=off loglevel=debug conlevel=info", log gate on, proof fxtest: spawn 87 1 saved log_on=0 live=-1 disk=-1 1, bench rc 0 (run 1227709)". Output: build3ds/out/captool_gate.txt.
+Host: ND HOST TESTS PASS, captool ok. Build rc 0 (commit 31f8260992, game code unchanged after it).
+Counter change: none. Azahar starts used: 3 of 8.
+Fault history: run 1226884 failed the boot regex (lane build text). Fixed in CAPTOOL 3 (620eaf2064). Mechanical fix: captool.sh seed file path (build3ds/out, not /tmp).
+Next for the orchestrator: CLAUDE.md rule 3 line from the page (capture_check.py before a console log push).
