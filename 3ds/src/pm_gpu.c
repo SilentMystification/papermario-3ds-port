@@ -22,6 +22,7 @@ void pm_gx_room(void); /* HANG1a */
 #include "pm_port.h"
 #include "pm_thread.h"
 #include "pm_gpu_int.h"
+#include "pm_flipfps.h"
 
 static int drew;
 /* 3D writes the depth buffer. A later texrect has to win even if the test stays on. */
@@ -2923,10 +2924,12 @@ void pm_gpu_begin_wait(void) {
     PH_PUSH(PH_FBEGIN); /* C3D_FRAME_SYNCDRAW: waits for the previous frame on the GPU */
     /* SLP2: for pm_wd_wake_frames frames after a wake, the frame begin does not wait for the GPU. A long sleep may leave the GSP event
      * unsignalled (not verified); the wait then may never return, and the game thread would not reach aptMainLoop. The flag is set in wake_hook (pm_log.c). */
+    const int ff_on = pm_ff_on(); const unsigned ff_t0 = ff_on ? pm_ticks() : 0u; /* FLIPLOG: the wait for the GPU of the last frame starts here */
     unsigned fb_flags = 0; /* SYNC60: the begin waits only for the GX queue; 60 FPS is paced by time */
     if (pm_interp_on > 0 && !pm_wd_wake_frames) sync60_pace();
     if (pm_wd_wake_frames) pm_wd_wake_frames--;
     raw1_reset(); sh_clear(); C3D_FrameBegin(fb_flags);
+    if (__builtin_expect(ff_on, 0)) pm_ff_wait(ff_t0, pm_ticks(), (unsigned)(C3D_GetDrawingTime() * 1000.f)); /* FLIPLOG: the wait and the GPU time of the last frame */
     nb.ring_done = nb.ring_fr; /* FB-1: C3D_FrameBegin waits for the GX queue (C3Di_WaitAndClearQueue) with or without SYNCDRAW: every chunk used before this frame is finished */
     if (gb_on) { gb_sum += (unsigned)(pm_ticks() - gb_sub); gb_n++; gb_on = 0; pm_pf_late++; } /* S0-6: the sync of the previous frame returned. PROF2-1: this read belongs to the sample (ssvc), it lands in the next frame */ /* PT88: at 30 steps the loop paces itself by time and the frame begin waits only for the GPU (the previous frame, so the buffers are free); with fps60 the begin is paced by time (SYNC60): two draws a step, one per LCD period */
     FS_MARK(FS_REST);
@@ -2968,6 +2971,7 @@ static void wq_pm_gpu_begin(void* a) { Wq_pm_gpu_begin* q = (Wq_pm_gpu_begin*)a;
 void pm_gpu_begin(int clear) { Wq_pm_gpu_begin q = { clear }; pm_wq_post(wq_pm_gpu_begin, &q, sizeof q); }
 static void pm_gpu_begin_w(int clear) {
     ndref_begin(); if (__builtin_expect(drec_win != -1, 0)) drec_begin();
+    if (__builtin_expect(pm_ff_on(), 0)) pm_ff_begin(pm_ticks()); /* FLIPLOG: the frame begin tick */
     begin_clear = clear;
     begin_pend = 1;
     if (pm_interp_on > 0) pm_gpu_begin_wait();
@@ -3221,6 +3225,7 @@ static void pm_gpu_end_w(void) {
     kc_build(); /* INTERPB3: the K copy of an L frame, from the recorded entries and the used command buffer */
     if (__builtin_expect(PMDL("icmp"), 0)) icmp_frame((gxCmdQueue_s*)&__C3D_Context); /* INTERP2M: after the frame-end take, before the queue is cleared */
     ndunit_scan(); rd_sync(); C3D_FrameEnd(GX_CMDLIST_FLUSH);
+    if (__builtin_expect(pm_ff_on(), 0)) pm_ff_end(pm_frame_count(), pm_ticks(), off_used, off_sused, grab_split + kick_done, OFF_N); /* FLIPLOG: the counts of this frame */
     if (pm_ph_on) { gb_sub = pm_ticks(); gb_on = 1; } /* S0-6: submit tick of a sampled frame */
     PH_POP();
 }
