@@ -4,11 +4,15 @@
 #   sh 3ds/tools/merge_row.sh <row> [<message-file>]   (no file: the message is built from the commit texts of the branch)
 # Exit: 0 merged (summary printed); 2 refused (main dirty, branch missing, not on main); 3 conflict other than the row
 # file and runs.jsonl (or merge-tree failed); 4 conflict marker line added on the branch; 5 merge failed and aborted (or
-# runs commit failed); 6 branch kept (not merged, or still checked out).
+# runs commit failed); 6 branch kept (not merged, or still checked out); 7 merged, but post_merge failed (MAINBIN).
 # WT_GC: a wt_gc.sh replacement read by the host test (run as: sh "$WT_GC" --apply --only <row>).
+# POST_MERGE: a post_merge.sh replacement read by the host test (run as: sh "$POST_MERGE").
 set -u
 row=${1:-}; msg=${2:-}
 if [ -z "$row" ]; then echo "usage: sh 3ds/tools/merge_row.sh <row> [<message-file>]" >&2; exit 2; fi
+# PM_POSTMERGE_EVERY (MAINBIN): post_merge.sh runs after every Nth merge (merge commits of main); default 1
+pmevery=${PM_POSTMERGE_EVERY:-1}
+case "$pmevery" in ''|*[!0-9]*|0) echo "merge_row: PM_POSTMERGE_EVERY must be a whole number >= 1: $pmevery" >&2; exit 2;; esac
 here=$(pwd)
 if [ -n "$msg" ]; then case "$msg" in /*|[A-Za-z]:*) ;; *) msg="$here/$msg" ;; esac; fi
 top=$(git rev-parse --show-toplevel 2>/dev/null) || { echo "merge_row: refused: not in a git repo" >&2; exit 2; }
@@ -127,10 +131,26 @@ if [ -n "${WT_GC:-}" ]; then sh "$WT_GC" --apply --only "$row"; else sh 3ds/tool
 gcrc=$?
 if git branch -d "$row" >/dev/null 2>&1; then bstate=deleted; else bstate=kept; fi
 
+# 8. MAINBIN: post-merge work on the new main (3ds/tools/post_merge.sh): generator cachecheck, base build of main HEAD into
+# the basebin store, basebin and shots cachecheck. Its output: build3ds/out/post_merge_<hash>.txt.
+mkdir -p build3ds/out
+pmrc=0; pmtxt="post_merge rc 0"
+nmerge=$(git rev-list --merges --first-parent --count HEAD)
+if [ $((nmerge % pmevery)) -eq 0 ]; then
+    sh "${POST_MERGE:-3ds/tools/post_merge.sh}" > "build3ds/out/post_merge_$mhash.txt" 2>&1 || pmrc=$?
+    pmtxt="post_merge rc $pmrc"
+else
+    pmtxt="post_merge skipped (merge $nmerge, every $pmevery)"
+fi
+
 # 7. summary
-echo "merge_row: merge $mhash of $row; runs lines added $added, known skipped $skipped; wt_gc rc $gcrc; branch $row $bstate"
+echo "merge_row: merge $mhash of $row; runs lines added $added, known skipped $skipped; wt_gc rc $gcrc; branch $row $bstate; $pmtxt"
 if [ "$bstate" = kept ]; then
     echo "merge_row: branch $row kept: not merged into main, or still checked out" >&2
     exit 6
+fi
+if [ "$pmrc" -ne 0 ]; then
+    echo "merge_row: POST_MERGE FAIL (step $pmrc): read build3ds/out/post_merge_$mhash.txt" >&2
+    exit 7
 fi
 exit 0
