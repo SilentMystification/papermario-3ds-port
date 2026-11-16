@@ -14,8 +14,18 @@
 #define NDST_DITHER(O, t) O(ND_NR_OM(1, G_MDSFT_RGBDITHER, 2), (unsigned)(t))
 #define NDST_CC(O, ...) O(NDO_W0(NDO_COMB, ND_W0_CMB(__VA_ARGS__)), ND_W1_CMB(__VA_ARGS__))
 #define NDST_COMB(O, w0, w1) O(NDO_W0(NDO_COMB, (w0)), (w1))
+/* NMDL0: texture on or off (gSPTexture: level and tile are not in the unit), alpha dither, an upper other mode word (gSPSetOtherMode H), the end unit
+ * of a bind list (gSPEndDisplayList) */
+#define NDST_TEX(O, s, t, level, tile, on) O(ND_NR_TEXON(on), ND_NR_HL(s, t))
+#define NDST_ADITHER(O, t) O(ND_NR_OM(1, G_MDSFT_ALPHADITHER, 2), (unsigned)(t))
+#define NDST_OMH(O, sft, len, data) O(ND_NR_OM(1, sft, len), (unsigned)(data))
+#define NDST_END(O) O(NDO_W0(NDO_END, 0u), 0u)
 
 #define NDVAL_PRIM(O, minlod, lodfrac, r, g, b, a) O(NDO_W0(NDO_PRIM, (((minlod) & 0xffu) << 8) | ((lodfrac) & 0xffu)), ND_NR_RGBA(r, g, b, a))
+/* the b field of gDPSetFogColor and of gSPFogPosition (a value of a record word), and their O forms */
+#define ND_NR_FOGPOS(min, max) ND_NR_HL((128000/((max)-(min))), ((500-(min))*256/((max)-(min))))
+#define NDVAL_FOG(O, r, g, b, a) O(NDO_W0(NDO_FOG, 0u), ND_NR_RGBA(r, g, b, a))
+#define NDVAL_FOGPOS(O, min, max) O(ND_NR_MW(NDO_MW_FOG, 0u), ND_NR_FOGPOS(min, max))
 #define NDVAL_ENV(O, r, g, b, a) O(NDO_W0(NDO_ENV, 0u), ND_NR_RGBA(r, g, b, a))
 
 #define NDXF_PUSH(O, m, p) O(NDO_W0(NDO_MTX, 0x380000u | (((p) ^ 1u) & 0xffu)), (uint32_t)(uintptr_t)(m))

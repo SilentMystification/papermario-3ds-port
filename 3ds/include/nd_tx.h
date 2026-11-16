@@ -178,4 +178,60 @@
                ((width)-1 + scrolls) << G_TEXTURE_IMAGE_FRAC, ((height)-1 + scrollt) << G_TEXTURE_IMAGE_FRAC); \
 } while (0)
 #define nd_tex_scroll_block_4b(...) NDTX_SCROLL_BLOCK_4B(nd_nr, __VA_ARGS__)
+/* NMDL0: the multi-tile loads, the scrolling loads and the 256 colour palette load of make_texture_gfx (gbi.h gDPLoadMultiTile and its _4b,
+ * gDPLoadTLUT_pal256; gbi_custom.h gDPScrollMultiTile, gDPScrollMultiTile_4b, gDPScrollTextureBlockHalfHeight and its _4b). Each sync is dropped.
+ * The size argument is a literal G_IM_SIZ_* token (it is pasted). */
+#define NDTX_LOAD_MTILE(O, timg, tmem, rtile, fmt, siz, width, height, uls, ult, lrs, lrt, pal, cms, cmt, masks, maskt, shifts, shiftt) do { \
+    NDTX_IMG(O, fmt, siz, width, timg); \
+    NDTX_TILE(O, fmt, siz, (((((lrs)-(uls)+1) * siz##_TILE_BYTES)+7)>>3), tmem, G_TX_LOADTILE, 0, cmt, maskt, shiftt, cms, masks, shifts); \
+    NDTX_LDTILE(O, G_TX_LOADTILE, (uls)<<G_TEXTURE_IMAGE_FRAC, (ult)<<G_TEXTURE_IMAGE_FRAC, (lrs)<<G_TEXTURE_IMAGE_FRAC, (lrt)<<G_TEXTURE_IMAGE_FRAC); \
+    NDTX_TILE(O, fmt, siz, (((((lrs)-(uls)+1) * siz##_LINE_BYTES)+7)>>3), tmem, rtile, pal, cmt, maskt, shiftt, cms, masks, shifts); \
+    NDTX_TSZ(O, rtile, (uls)<<G_TEXTURE_IMAGE_FRAC, (ult)<<G_TEXTURE_IMAGE_FRAC, (lrs)<<G_TEXTURE_IMAGE_FRAC, (lrt)<<G_TEXTURE_IMAGE_FRAC); \
+} while (0)
+#define NDTX_LOAD_MTILE_4B(O, timg, tmem, rtile, fmt, width, height, uls, ult, lrs, lrt, pal, cms, cmt, masks, maskt, shifts, shiftt) do { \
+    NDTX_IMG(O, fmt, G_IM_SIZ_8b, ((width)>>1), timg); \
+    NDTX_TILE(O, fmt, G_IM_SIZ_8b, (((((lrs)-(uls)+1)>>1)+7)>>3), tmem, G_TX_LOADTILE, 0, cmt, maskt, shiftt, cms, masks, shifts); \
+    NDTX_LDTILE(O, G_TX_LOADTILE, (uls)<<(G_TEXTURE_IMAGE_FRAC-1), (ult)<<(G_TEXTURE_IMAGE_FRAC), (lrs)<<(G_TEXTURE_IMAGE_FRAC-1), (lrt)<<(G_TEXTURE_IMAGE_FRAC)); \
+    NDTX_TILE(O, fmt, G_IM_SIZ_4b, (((((lrs)-(uls)+1)>>1)+7)>>3), tmem, rtile, pal, cmt, maskt, shiftt, cms, masks, shifts); \
+    NDTX_TSZ(O, rtile, (uls)<<G_TEXTURE_IMAGE_FRAC, (ult)<<G_TEXTURE_IMAGE_FRAC, (lrs)<<G_TEXTURE_IMAGE_FRAC, (lrt)<<G_TEXTURE_IMAGE_FRAC); \
+} while (0)
+#define NDTX_SCROLL_MTILE(O, timg, tmem, rtile, fmt, siz, width, height, uls, ult, lrs, lrt, pal, cms, cmt, masks, maskt, shifts, shiftt, scrolls, scrollt) do { \
+    NDTX_IMG(O, fmt, siz, width, timg); \
+    NDTX_TILE(O, fmt, siz, (((((lrs)-(uls)+1) * siz##_TILE_BYTES)+7)>>3), tmem, G_TX_LOADTILE, 0, cmt, maskt, shiftt, cms, masks, shifts); \
+    NDTX_LDTILE(O, G_TX_LOADTILE, (uls)<<G_TEXTURE_IMAGE_FRAC, (ult)<<G_TEXTURE_IMAGE_FRAC, (lrs)<<G_TEXTURE_IMAGE_FRAC, (lrt)<<G_TEXTURE_IMAGE_FRAC); \
+    NDTX_TILE(O, fmt, siz, (((((lrs)-(uls)+1) * siz##_LINE_BYTES)+7)>>3), tmem, rtile, pal, cmt, maskt, shiftt, cms, masks, shifts); \
+    NDTX_TSZ(O, rtile, ((uls)<<G_TEXTURE_IMAGE_FRAC) + scrolls, ((ult)<<G_TEXTURE_IMAGE_FRAC) + scrollt, \
+             ((lrs)<<G_TEXTURE_IMAGE_FRAC) + scrolls, ((lrt)<<G_TEXTURE_IMAGE_FRAC) + scrollt); \
+} while (0)
+#define NDTX_SCROLL_MTILE_4B(O, timg, tmem, rtile, fmt, width, height, uls, ult, lrs, lrt, pal, cms, cmt, masks, maskt, shifts, shiftt, scrolls, scrollt) do { \
+    NDTX_IMG(O, fmt, G_IM_SIZ_8b, ((width)>>1), timg); \
+    NDTX_TILE(O, fmt, G_IM_SIZ_8b, (((((lrs)-(uls)+1)>>1)+7)>>3), tmem, G_TX_LOADTILE, 0, cmt, maskt, shiftt, cms, masks, shifts); \
+    NDTX_LDTILE(O, G_TX_LOADTILE, (uls)<<(G_TEXTURE_IMAGE_FRAC-1), (ult)<<(G_TEXTURE_IMAGE_FRAC), (lrs)<<(G_TEXTURE_IMAGE_FRAC-1), (lrt)<<(G_TEXTURE_IMAGE_FRAC)); \
+    NDTX_TILE(O, fmt, G_IM_SIZ_4b, (((((lrs)-(uls)+1)>>1)+7)>>3), tmem, rtile, pal, cmt, maskt, shiftt, cms, masks, shifts); \
+    NDTX_TSZ(O, rtile, ((uls)<<G_TEXTURE_IMAGE_FRAC) + scrolls, ((ult)<<G_TEXTURE_IMAGE_FRAC) + scrollt, \
+             ((lrs)<<G_TEXTURE_IMAGE_FRAC) + scrolls, ((lrt)<<G_TEXTURE_IMAGE_FRAC) + scrollt); \
+} while (0)
+#define NDTX_SCROLL_HH(O, timg, fmt, siz, width, height, pal, cms, cmt, masks, maskt, shifts, shiftt, scrolls, scrollt, shifts2, shiftt2) do { \
+    NDTX_IMG(O, fmt, siz##_LOAD_BLOCK, 1, timg); \
+    NDTX_TILE(O, fmt, siz##_LOAD_BLOCK, 0, 0, G_TX_LOADTILE, 0, cmt, maskt, shiftt, cms, masks, shifts); \
+    NDTX_LDBLK(O, G_TX_LOADTILE, 0, 0, (((width)*(height) + siz##_INCR) >> siz##_SHIFT) -1, CALC_DXT(width, siz##_BYTES)); \
+    NDTX_TILE(O, fmt, siz, (((width) * siz##_LINE_BYTES)+7)>>3, 0, G_TX_RENDERTILE, pal, cmt, maskt - 1, shiftt, cms, masks, shifts); \
+    NDTX_TSZ(O, G_TX_RENDERTILE, 0, 0, ((width)-1) << G_TEXTURE_IMAGE_FRAC, (((height) >> 1)-1) << G_TEXTURE_IMAGE_FRAC); \
+    NDTX_TILE(O, fmt, siz, (((width) * siz##_LINE_BYTES)+7)>>3, (((width) * ((height) >> 1) * siz##_LINE_BYTES)+7)>>3, G_TX_RENDERTILE + 1, pal, cmt, maskt - 1, shiftt2, cms, masks, shifts2); \
+    NDTX_TSZ(O, G_TX_RENDERTILE + 1, (scrolls), (scrollt), (((width)-1) << G_TEXTURE_IMAGE_FRAC) + (scrolls), ((((height) >> 1)-1) << G_TEXTURE_IMAGE_FRAC) + (scrollt)); \
+} while (0)
+#define NDTX_SCROLL_HH_4B(O, timg, fmt, width, height, pal, cms, cmt, masks, maskt, shifts, shiftt, scrolls, scrollt, shifts2, shiftt2) do { \
+    NDTX_IMG(O, fmt, G_IM_SIZ_16b, 1, timg); \
+    NDTX_TILE(O, fmt, G_IM_SIZ_16b, 0, 0, G_TX_LOADTILE, 0, cmt, maskt, shiftt, cms, masks, shifts); \
+    NDTX_LDBLK(O, G_TX_LOADTILE, 0, 0, (((width)*(height)+3)>>2)-1, CALC_DXT_4b(width)); \
+    NDTX_TILE(O, fmt, G_IM_SIZ_4b, ((((width)>>1)+7)>>3), 0, G_TX_RENDERTILE, pal, cmt, maskt - 1, shiftt, cms, masks, shifts); \
+    NDTX_TSZ(O, G_TX_RENDERTILE, 0, 0, ((width)-1) << G_TEXTURE_IMAGE_FRAC, (((height) >> 1)-1) << G_TEXTURE_IMAGE_FRAC); \
+    NDTX_TILE(O, fmt, G_IM_SIZ_4b, (((width)>>1)+7)>>3, (((width) * ((height) >> 1) / 2)+7)>>3, G_TX_RENDERTILE + 1, pal, cmt, maskt - 1, shiftt2, cms, masks, shifts2); \
+    NDTX_TSZ(O, G_TX_RENDERTILE + 1, scrolls, scrollt, (((width)-1) << G_TEXTURE_IMAGE_FRAC) + scrolls, ((((height) >> 1)-1) << G_TEXTURE_IMAGE_FRAC) + scrollt); \
+} while (0)
+#define NDTX_LOAD_TLUT256(O, dram) do { \
+    NDTX_IMG(O, G_IM_FMT_RGBA, G_IM_SIZ_16b, 1, dram); \
+    NDTX_TILE(O, 0, 0, 0, 256, G_TX_LOADTILE, 0, 0, 0, 0, 0, 0, 0); \
+    NDTX_LDTLUT(O, G_TX_LOADTILE, 255); \
+} while (0)
 #endif
