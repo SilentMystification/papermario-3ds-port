@@ -321,7 +321,7 @@ void pm_cheat_tick(void) {
      * upward push: if he is falling, the action goes back to JUMP (flags JUMPING on, FALLING off; the action is not re-initialized, because
      * set_action_state would reset the integrator to the full start jump on the next step). The push is velocity MOON_RISE (half of
      * GravityParamsStartJump[0]) with the normal arc accelerations, so the arc decays. Holding A in JUMP keeps the velocity at MOON_RISE with
-     * accelerations 0, so he rises at a constant MOON_RISE per step, and timeInAir is held at 18 (MOON4: the window stays closed; update_player puts Mario back on lastGoodPos
+     * accelerations 0, so he rises at a constant MOON_RISE per step, and timeInAir is capped at 18 (MOON6: it counts as in a normal jump, so the window closes at 18; update_player puts Mario back on lastGoodPos
      * above 100). The game's own release (A up in JUMP switches to HOP, a fast fall) runs as before. On release in JUMP the normal arc resumes
      * (the accelerations go back to the jump start values). Cheat off: no change.
      * MOON5: in a moon jump the stick sets targetYaw and curSpeed (run speed times the stick share). */
@@ -330,7 +330,7 @@ void pm_cheat_tick(void) {
         const int moon = pm_cheat_moon_get();
         const int held = (ps->curButtons & BUTTON_A) != 0;
         const int air = ((ps->flags & (PS_FLAG_JUMPING | PS_FLAG_FALLING)) != 0) && !(ps->flags & PS_FLAG_FLYING);
-        const int ok = moon && air && pm_moon_allowed(p->bootsLevel, ps->timeInAir); /* MOON4: the midair window first */
+        const int ok = moon && air && pm_moon_allowed(p->bootsLevel, ps->timeInAir, ps->peakJumpTime); /* MOON6: the window opens at the apex */
         const int pushed = ok && (ps->pressedButtons & BUTTON_A) != 0;
         int rising;
         if (ok && held && ps->actionState != ACTION_STATE_JUMP) { /* MOON4: a hold after the window enters JUMP as a tap does */
@@ -347,7 +347,7 @@ void pm_cheat_tick(void) {
             ps->gravityIntegrator[1] = 0.0f;
             ps->gravityIntegrator[2] = 0.0f;
             ps->gravityIntegrator[3] = 0.0f;
-            ps->timeInAir = PM_MOON_AIR_TIME; /* MOON4: the window stays closed */
+            ps->timeInAir = (s16)pm_moon_air_cap(ps->timeInAir); /* MOON6: a normal count, capped at 18 */
             pm_log_d("cheat: moon jump y %.1f x %.1f", ps->pos.y, ps->pos.x);
         } else {
             if (air && moon_held && moon && ps->actionState == ACTION_STATE_JUMP) {
