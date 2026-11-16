@@ -190,7 +190,7 @@ MAN=$OUT/src_manifest.txt
 VID=$OUT/src_volid.txt
 volid_now() { MSYS_NO_PATHCONV=1 docker run --rm -v $SRCVOL:/src $IMG sh -c 'cat /src/.pm_manifest_id 2>/dev/null; true'; }
 VOLID=$(volid_now)
-vol_match() { [ -n "$VOLID" ] && [ "$VOLID" = "$(cat $VID 2>/dev/null)" ]; }
+vol_match() { case "$VOLID" in m*) ;; *) return 1 ;; esac; [ "$VOLID" = "$(cat $VID 2>/dev/null)" ]; } # STALEOBJ: an id without the m tag is from a sync that kept host mtimes
 if [ -z "$PM_BUILD_REV" ]; then
     KEY=$(key_now)
     if [ -f $OUT/pm_3ds.3dsx ] && [ "$(cat $KEY_FILE 2>/dev/null)" = "$KEY" ] && vol_match; then
@@ -216,7 +216,7 @@ rm -f $KEY_FILE
 if [ -n "$PM_BUILD_REV" ]; then docker volume rm $SRCVOL >/dev/null 2>&1 || true; VOLID=""; fi
 # Sync: copy only files whose size or mtime changed since the last sync. No id match: copy everything (SRCID).
 t0=$(date +%s)
-if vol_match; then SYNCID=$VOLID; else rm -f $MAN; SYNCID="$(date +%s)_$$"; fi
+if vol_match; then SYNCID=$VOLID; else rm -f $MAN; SYNCID="m$(date +%s)_$$"; fi
 [ -f $MAN ] || : > $MAN
 { find $CODE_DIRS -type f -printf '%p\t%s\t%T@\n'; (cd "$ASSET_BASE" && find $ASSET_DIRS -type f -printf '%p\t%s\t%T@\n'); } | sort > $OUT/src_now.txt
 # Changed or new: not equal to the manifest. Deleted: in the manifest, not in the current list.
@@ -228,7 +228,8 @@ if [ -s $OUT/src_changed.txt ]; then
     LC=$(pwd)/$OUT/src_changed_code.txt; LA=$(pwd)/$OUT/src_changed_asset.txt
     grep -v -E '^(assets/us|ver/us/build)/' $OUT/src_changed.txt > $LC || true
     grep -E '^(assets/us|ver/us/build)/' $OUT/src_changed.txt > $LA || true
-    tar -cf - -T $LC -C "$ASSET_BASE" -T $LA | MSYS_NO_PATHCONV=1 docker run --rm -i -v $SRCVOL:/src $IMG sh -c "tar -xf - -C /src && printf %s '$SYNCID' > /src/.pm_manifest_id"
+    # STALEOBJ: -m stamps each copied file with the copy time, so it is newer than every object in the build volume (a worktree build without PM_LANE wrote older sources there).
+    tar -cf - -T $LC -C "$ASSET_BASE" -T $LA | MSYS_NO_PATHCONV=1 docker run --rm -i -v $SRCVOL:/src $IMG sh -c "tar -xmf - -C /src && printf %s '$SYNCID' > /src/.pm_manifest_id"
 fi
 if [ -s $OUT/src_deleted.txt ]; then
     MSYS_NO_PATHCONV=1 docker run --rm -i -v $SRCVOL:/src $IMG sh -c 'while read -r f; do rm -f "/src/$f"; done' < $OUT/src_deleted.txt
