@@ -300,7 +300,7 @@ void pm_cheat_set(int k, int on) {
     if (on) cheat_bits |= cheat_bit[k]; else cheat_bits &= ~cheat_bit[k];
     pm_log("cheat: %s %s", cheat_name[k], on ? "on" : "off");
 }
-extern f32 GravityParamsStartJump[]; /* src/world/actions.c */
+extern f32 GravityParamsStartJump[], GravityParamsStartFall[]; /* src/world/actions.c */
 #define MOON_RISE (GravityParamsStartJump[0] * 0.5f) /* MOON3: the rise velocity of a hold or a tap push, half the jump start */
 void pm_cheat_tick(void) {
     PlayerStatus* ps = &gPlayerStatus;
@@ -317,50 +317,31 @@ void pm_cheat_tick(void) {
         for (k = 0; k < 6; k++) if ((cheat_bits & ~cheat_seen) & cheat_bit[k]) pm_log("cheat: %s active, star power %d, walk %.2f", cheat_name[k], (int)p->starPower, ps->walkSpeed);
         cheat_seen = cheat_bits;
     }
-    /* MOON3 (user): with the moon jump on, A raises Mario in the air (JUMPING or FALLING, not FLYING). A press of A (the rising edge) gives an
-     * upward push: if he is falling, the action goes back to JUMP (flags JUMPING on, FALLING off; the action is not re-initialized, because
-     * set_action_state would reset the integrator to the full start jump on the next step). The push is velocity MOON_RISE (half of
-     * GravityParamsStartJump[0]) with the normal arc accelerations, so the arc decays. Holding A in JUMP keeps the velocity at MOON_RISE with
-     * accelerations 0, so he rises at a constant MOON_RISE per step, and timeInAir is capped at 18 (MOON6: it counts as in a normal jump, so the window closes at 18; update_player puts Mario back on lastGoodPos
-     * above 100). The game's own release (A up in JUMP switches to HOP, a fast fall) runs as before. On release in JUMP the normal arc resumes
-     * (the accelerations go back to the jump start values). Cheat off: no change.
-     * MOON5: in a moon jump the stick sets targetYaw and curSpeed (run speed times the stick share). */
+    /* MOON7 (user 2026-11-16): the moon jump state machine is pm_moon_tick (pm_moon.h). A hold from the take-off lifts Mario with no stop at
+     * the apex. A release while the cheat lifts is the fall of a normal apex (FALLING, peakJumpTime set), so a new press gets the spin or
+     * tornado jump (src/7BB60.c:1092-1110). A later press or hold waits until the window has ended (timeInAir >= 18). The stick steers only
+     * while A is held after the window. This code applies the action change and the stick. Cheat off: no change. */
     {
-        static int moon_held, moon_air; /* MOON5: moon_air = this air time had a moon push or hold */
-        const int moon = pm_cheat_moon_get();
+        static PmMoon mst;
         const int held = (ps->curButtons & BUTTON_A) != 0;
-        const int air = ((ps->flags & (PS_FLAG_JUMPING | PS_FLAG_FALLING)) != 0) && !(ps->flags & PS_FLAG_FLYING);
-        const int ok = moon && air && pm_moon_allowed(p->bootsLevel, ps->timeInAir, ps->peakJumpTime); /* MOON6: the window opens at the apex */
-        const int pushed = ok && (ps->pressedButtons & BUTTON_A) != 0;
-        int rising;
-        if (ok && held && ps->actionState != ACTION_STATE_JUMP) { /* MOON4: a hold after the window enters JUMP as a tap does */
+        const int air = pm_cheat_moon_get() && ((ps->flags & (PS_FLAG_JUMPING | PS_FLAG_FALLING)) != 0) && !(ps->flags & PS_FLAG_FLYING);
+        int tia = ps->timeInAir, peak = ps->peakJumpTime, steer;
+        const int r = pm_moon_tick(&mst, air, held, ps->actionState == ACTION_STATE_JUMP, p->bootsLevel, &tia, &peak, ps->gravityIntegrator,
+                                   GravityParamsStartFall, MOON_RISE, &steer);
+        ps->timeInAir = (s16)tia;
+        ps->peakJumpTime = (s16)peak;
+        if (r == PM_MOON_REENTER) { /* MOON4: back to JUMP as a tap does (set_action_state would reset the integrator to the full start jump) */
             ps->prevActionState = ps->actionState;
             ps->actionState = ACTION_STATE_JUMP;
             ps->flags &= ~PS_FLAG_FALLING;
             ps->flags |= PS_FLAG_JUMPING;
-            pm_log("cheat: moon jump re-entered JUMP from a fall, y %.1f", ps->pos.y);
+            pm_log("cheat: moon jump re-entered JUMP, y %.1f", ps->pos.y);
+        } else if (r == PM_MOON_RELEASE) { /* MOON7: the fall of a normal apex instead of the game's HOP */
+            set_action_state(ACTION_STATE_FALLING);
+            pm_log("cheat: moon jump release y %.1f", ps->pos.y);
         }
-        if (pushed) pm_log("cheat: moon jump tap y %.1f", ps->pos.y);
-        rising = ok && held && ps->actionState == ACTION_STATE_JUMP;
-        if (rising) {
-            ps->gravityIntegrator[0] = MOON_RISE;
-            ps->gravityIntegrator[1] = 0.0f;
-            ps->gravityIntegrator[2] = 0.0f;
-            ps->gravityIntegrator[3] = 0.0f;
-            ps->timeInAir = (s16)pm_moon_air_cap(ps->timeInAir); /* MOON6: a normal count, capped at 18 */
-            pm_log_d("cheat: moon jump y %.1f x %.1f", ps->pos.y, ps->pos.x);
-        } else {
-            if (air && moon_held && moon && ps->actionState == ACTION_STATE_JUMP) {
-                ps->gravityIntegrator[1] = GravityParamsStartJump[1];
-                ps->gravityIntegrator[2] = GravityParamsStartJump[2];
-                ps->gravityIntegrator[3] = GravityParamsStartJump[3];
-                pm_log("cheat: moon jump release y %.1f", ps->pos.y);
-            }
-            if (air) pm_log_d("cheat: jump y %.1f", ps->pos.y);
-        }
-        moon_held = rising;
-        if (!air) moon_air = 0; else if (pushed || rising) moon_air = 1;
-        if (moon && air && moon_air) { /* MOON5 (user 3a): the stick steers a moon jump; a normal jump is not changed */
+        if (air && held && mst.up) pm_log_d("cheat: moon jump y %.1f x %.1f", ps->pos.y, ps->pos.x);
+        if (steer) { /* MOON5 (user 3a): the stick steers a moon jump */
             f32 yaw, mag;
             player_input_to_move_vector(&yaw, &mag);
             if (mag > 0.0f) { ps->targetYaw = yaw; ps->curSpeed = pm_moon_air_speed(mag, ps->runSpeed); }
