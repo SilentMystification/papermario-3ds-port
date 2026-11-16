@@ -2201,12 +2201,17 @@ typedef struct WindowCorners {
     /* 0x0D */ char unk_0D[3];
 } WindowCorners; // size = 0x10
 
+typedef struct NdCmbW { /* WSCMB: the 2 words of a combine or no-op unit (3ds/include/nd_gbi.h ND_CMB_W, ND_CMB_NOP) */
+    u32 w0;
+    u32 w1;
+} NdCmbW;
+
 typedef struct WindowStyleCustom {
     /* 0x00 */ WindowBackground background;
     /* 0x0C */ WindowCorners corners;
     /* 0x1C */ char unk_1C[0x4];
-    /* 0x20 */ Gfx opaqueCombineMode; // used when alpha == 255
-    /* 0x28 */ Gfx transparentCombineMode; // used when alpha < 255
+    /* 0x20 */ NdCmbW opaqueCombineMode; // used when alpha == 255
+    /* 0x28 */ NdCmbW transparentCombineMode; // used when alpha < 255
     /* 0x30 */ Color_RGBA8 color1;
     /* 0x34 */ Color_RGBA8 color2;
 } WindowStyleCustom; // size = 0x38;

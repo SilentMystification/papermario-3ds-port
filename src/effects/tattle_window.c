@@ -23,8 +23,8 @@ WindowStyleCustom TattleWindowStyle = {
         .size3 = { 16, 8 },
         .size4 = { 16, 8 },
     },
-    .opaqueCombineMode = gsDPSetCombineMode(PM_CC_15, G_CC_PASS2),
-    .transparentCombineMode = gsDPSetCombineMode(PM_CC_14, G_CC_PASS2),
+    .opaqueCombineMode = ND_CMB_W(PM_CC_15, G_CC_PASS2),
+    .transparentCombineMode = ND_CMB_W(PM_CC_14, G_CC_PASS2),
     .color1 = { 61, 74, 188, 255 },
     .color2 = { 0, 25, 28, 255},
 };

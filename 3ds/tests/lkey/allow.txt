@@ -8,7 +8,6 @@
 3ds/src/nd_shape.c 8 MAP map shape lists (dlc_try takes only gMapShapeData, nd_shape.c:878) and seam tables
 3ds/src/nd_walk.c 13 KEY walk_call nd_ntab_find (nd_walk.c:230), gt_call nd_lkey_tab (LKEY), NDG_F_MOVED (nd_walk.c:441,489), record words
 src/animator.c 1 KEY MESH1 nd_ntab_find (animator.c:879)
-src/draw_box.c 1 HOLD gBoxCombineModes[] is indexed (gset.py:158 keeps X[)
 src/effects/effect_3D.c 1 LOCAL Gfx g[] on the stack for nd_parts_add
 src/effects/embers.c 1 LOCAL Gfx g[] on the stack for nd_parts_add
 src/effects/pink_sparkles.c 1 LOCAL Gfx g[] on the stack for nd_parts_add
