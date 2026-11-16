@@ -198,15 +198,16 @@ __attribute__((cold, noinline)) static void seam_reset(void) { nd_seam_free(&sea
 /* S7MAP: the static lists compiled at build time. romfs:/shape/<map>.dlc (nd_shape_conv.c write_dlc, the format is described there) holds the
  * nd_dlc_compile result of each list and variant (variant 1 with the T points of the seam table, 0 without). dlcp_load copies it into the pools in place of the
  * run-time compile: the vertices and indices are read into the pool memory and rebased by the first pool vertex number. The index stays in the heap and
- * the file stays open until dlc_reset. Debug switch dlcchk: dlc_build also compiles the list at run time and compares (dlcpre line, bad). */
+ * the file stays open until dlc_reset. MAPCONV: the converter writes a section for every list of the shape tree and every variant the device asks for (variant 0 also serves
+ * the pool full case); a list the compiler refuses has a refusal section (ngrp 0xffff, the code in byte 0). The device compiles no list. The host test mapconv.sh checks
+ * every section against the compiler (the dlcchk compare moved there). */
 typedef struct { u32 list, var, off, size; } DlcPreIdx;
 static FILE* dlcp_f;
 static u8* dlcp_buf; /* DLCRD: the whole .dlc; dlcp_f reads it (fmemopen) */
 static DlcPreIdx* dlcp_idx;
 static unsigned dlcp_n, dlcp_gen;
 static u32 dlcp_nds; /* shape size of the open .dlc */
-static int dlcp_chk = -1; /* switch dlcchk */
-unsigned nd_dlcp_pre, nd_dlcp_rt, nd_dlcp_full, nd_dlcp_bad; /* lists since the last dlcpre line: loaded from the file, compiled at run time, without pool room, differing from the run-time compile */
+unsigned nd_dlcp_pre, nd_dlcp_rt, nd_dlcp_full; /* lists since the last dlcpre line: loaded from the file, without a section (a fault: nd_dlcp_rt), without pool room (groups only) */
 __attribute__((cold, noinline)) static void dlcp_close(void) {
     if (dlcp_f) fclose(dlcp_f);
     free(dlcp_idx); free(dlcp_buf);
@@ -230,7 +231,7 @@ __attribute__((cold, noinline)) static int dlcp_open(void) {
     f = fopen(path, "rb");
     if (!f) return 0;
     setvbuf(f, NULL, _IOFBF, 0x10000); /* DLCRD: a few FS reads (pm_map.c:67) */
-    if (fread(hdr, 1, 16, f) != 16 || memcmp(hdr, "NDDC", 4) != 0 || seam_le32(hdr + 4) != 2 || seam_le32(hdr + 8) != nds_size) goto bad;
+    if (fread(hdr, 1, 16, f) != 16 || memcmp(hdr, "NDDC", 4) != 0 || seam_le32(hdr + 4) != 3 || seam_le32(hdr + 8) != nds_size) goto bad;
     dlcp_nds = nds_size;
     dlcp_n = seam_le32(hdr + 12);
     if (dlcp_n > 0x10000u) goto bad;
@@ -271,8 +272,9 @@ __attribute__((cold, noinline)) void pm_dlc_preload(void) {
     (void)dlcp_open();
     if (pm_xf.on) pm_xf.dlcp_t += pm_ticks() - t0; /* XFT */
 }
-/* 1: o filled from the file, 0: no section (nothing allocated), -1: no pool room or a read fault (the caller runs the no-pool path) */
-__attribute__((cold, noinline)) static int dlcp_load(NdObj* o, u32 loff, unsigned var) {
+/* 1: o filled from the file, 0: no section (nothing allocated), 2: the section is a refusal (*refuse is the code), -1: no pool room or a read fault.
+ * nopool: the groups, the geometry ops and the counts only (the pool full case: no vertex and index copies, vfirst 0, as the compile without the pools). */
+__attribute__((cold, noinline)) static int dlcp_load(NdObj* o, u32 loff, unsigned var, int nopool, int* refuse) {
     unsigned lo = 0, hi, k, nv;
     const DlcPreIdx* x = NULL;
     u8 h[24];
@@ -289,6 +291,11 @@ __attribute__((cold, noinline)) static int dlcp_load(NdObj* o, u32 loff, unsigne
     if (lo < dlcp_n && dlcp_idx[lo].list == loff && dlcp_idx[lo].var == var) x = &dlcp_idx[lo];
     if (!x || fseek(dlcp_f, (long)x->off, SEEK_SET) != 0 || fread(h, 1, 24, dlcp_f) != 24) return 0;
     ngrp = h[10] | (h[11] << 8); ngop = h[12] | (h[13] << 8); nrun = h[14] | (h[15] << 8); nlit = h[16] | (h[17] << 8);
+    if (ngrp == 0xffffu) { /* a refusal section */
+        if (x->size != 24u || !h[0]) return 0;
+        *refuse = h[0];
+        return 2;
+    }
     if (ngrp > ND_DLC_MAXGRP || ngop > ND_DLC_MAXGOP) return 0;
     bsz = ngrp * 20u + ngop * 10u;
     b = (u8*)malloc(bsz + 1u);
@@ -303,12 +310,14 @@ __attribute__((cold, noinline)) static int dlcp_load(NdObj* o, u32 loff, unsigne
     o->gop = ngop ? (u32(*)[2])malloc(ngop * 8u) : NULL;
     o->gat = ngop ? (u16*)malloc(ngop * 2u) : NULL;
     if ((ngrp && !o->grp) || (ngop && (!o->gop || !o->gat))) goto fault;
-    o->vtx = av ? nd_env_valloc(av, &o->vfirst) : NULL; /* the pools, as nd_dlc_compile asks for them */
-    if (av && !o->vtx) goto fault;
-    o->idx = ai ? nd_env_ialloc(ai) : NULL;
-    if (ai && !o->idx) goto fault;
-    o->pooled = 1;
-    for (k = 0, nv = 0; k < nrun; k++) { /* the vertices: runs of shape Vtx (flag word 0) and the literals of the file (14 bytes: without the flag word) */
+    if (!nopool) {
+        o->vtx = av ? nd_env_valloc(av, &o->vfirst) : NULL; /* the pools, as nd_dlc_compile asks for them */
+        if (av && !o->vtx) goto fault;
+        o->idx = ai ? nd_env_ialloc(ai) : NULL;
+        if (ai && !o->idx) goto fault;
+        o->pooled = 1;
+    }
+    for (k = 0, nv = 0; !nopool && k < nrun; k++) { /* the vertices: runs of shape Vtx (flag word 0) and the literals of the file (14 bytes: without the flag word) */
         const u32 w = seam_le32(rn + 4 * k), cnt = w & 0xffu, so = (w >> 8) << 2;
         if (cnt > nvtx - nv) goto fault;
         if ((w >> 8) == 0xffffffu) {
@@ -324,7 +333,7 @@ __attribute__((cold, noinline)) static int dlcp_load(NdObj* o, u32 loff, unsigne
         }
         nv += cnt;
     }
-    if (nv != nvtx) goto fault;
+    if (!nopool && nv != nvtx) goto fault;
     for (k = 0; k < ngop; k++) { o->gop[k][0] = seam_le32(b + ngrp * 20u + 8u * k); o->gop[k][1] = seam_le32(b + ngrp * 20u + 8u * k + 4u); }
     for (k = 0; k < ngop; k++) o->gat[k] = (u16)(b[ngrp * 20u + ngop * 8u + 2u * k] | (b[ngrp * 20u + ngop * 8u + 2u * k + 1u] << 8));
     { /* the groups: the derived fields (see nd_shape_conv.c) */
@@ -343,7 +352,7 @@ __attribute__((cold, noinline)) static int dlcp_load(NdObj* o, u32 loff, unsigne
         }
         o->exit_am = cam; o->exit_om = com;
     }
-    if (nidx) { /* the indices: 7 bit fields relative to the group's first vertex */
+    if (nidx && !nopool) { /* the indices: 7 bit fields relative to the group's first vertex */
         const u32 pb = (nidx * 7u + 7u) / 8u;
         u8* ib = (u8*)malloc(pb + 1u);
         if (!ib || fread(ib, 1, pb, dlcp_f) != pb) { free(ib); goto fault; }
@@ -368,58 +377,33 @@ none:
     free(b); free(rn);
     return 0;
 }
-/* dlcchk: the run-time compile of the same list against the loaded object. Returns the number of differing parts. */
-__attribute__((cold, noinline)) static unsigned dlcp_check(const NdObj* o, const NdTp* tp, unsigned ntp) {
-    NdObj r;
-    NdDlcEnv env = { nd_env_vtx, NULL, NULL, tp, ntp };
-    unsigned bad = 0, k;
-    if (nd_dlc_compile(&r, dlc_words, &env) != NDR_OK) return 1;
-    if (r.nops != o->nops || r.exit_am != o->exit_am || r.exit_om != o->exit_om || r.ngrp != o->ngrp || r.ngop != o->ngop || r.nvtx != o->nvtx || r.nidx != o->nidx || r.nins != o->nins) bad++;
-    else {
-        for (k = 0; k < r.ngrp; k++) { NdGrp a = o->grp[k]; a.vbase -= o->vfirst; if (memcmp(&a, &r.grp[k], sizeof a) != 0) { bad++; break; } }
-        if (r.ngop && (memcmp(r.gop, o->gop, r.ngop * 8u) != 0 || memcmp(r.gat, o->gat, r.ngop * 2u) != 0)) bad++;
-        if (r.nvtx && memcmp(r.vtx, o->vtx, r.nvtx * 16u) != 0) bad++;
-        for (k = 0; k < r.nidx; k++) if ((u16)(o->idx[k] - o->vfirst) != r.idx[k]) { bad++; break; }
-    }
-    nd_dlc_free(&r);
-    return bad;
-}
 /* the dlcpre line: per frame that built lists (pm_gpu_end) */
 __attribute__((cold, noinline)) void nd_dlcp_line(unsigned f) {
-    if (dlcp_chk > 0) pm_log_evt("dlcpre f%u pre %u rt %u full %u bad %u", f, nd_dlcp_pre, nd_dlcp_rt, nd_dlcp_full, nd_dlcp_bad);
-    else pm_log_evt("dlcpre f%u pre %u rt %u full %u", f, nd_dlcp_pre, nd_dlcp_rt, nd_dlcp_full);
-    nd_dlcp_pre = nd_dlcp_rt = nd_dlcp_full = nd_dlcp_bad = 0;
+    pm_log_evt("dlcpre f%u pre %u miss %u full %u", f, nd_dlcp_pre, nd_dlcp_rt, nd_dlcp_full);
+    nd_dlcp_pre = nd_dlcp_rt = nd_dlcp_full = 0;
 }
 extern int nd_mtx_static; /* SEAM2: the last model matrix load was a static matrix (nd_mtx_set.c) */
 __attribute__((cold, noinline)) int dlc_build(DlcEnt* e, const Gfx* l, int stat) {
-    unsigned i;
     const NdSeamTab* st = seam_get();
     const NdSeamList* sl = st ? nd_seam_find(st, (u32)(uintptr_t)l) : NULL;
     const int use_tp = sl && sl->cnt && (sl->cls < 2 || stat); /* SEAM2: a T point list under a moving matrix is split in object space: not used */
     if (sl && sl->cnt && !use_tp) pm_log_evt("seamfix dyn map %s list %08x skip %u", pm_shape_name, (u32)(uintptr_t)l, (unsigned)sl->cnt);
-    int rc = NDR_OK, pooled = 1;
-    const int pre = sl ? dlcp_load(&e->o, (u32)(uintptr_t)l - (u32)(uintptr_t)gMapShapeData, use_tp ? 1u : 0u) : 0; /* S7MAP: the build time result */
-    if (dlcp_chk < 0) dlcp_chk = pm_debug_has("dlcchk");
-    if (pre != 1 || dlcp_chk > 0)
-        for (i = 0; i < ND_DLC_MAXOPS; i++) { dlc_words[2 * i] = l[i].words.w0; dlc_words[2 * i + 1] = l[i].words.w1; { uint32_t t[2]; t[0] = l[i].words.w0; t[1] = l[i].words.w1; if ((t[0] >> 24) == NDO_END) break; } }
-    if (pre == 1) {
-        nd_dlcp_pre++;
-        if (dlcp_chk > 0) { unsigned bad = dlcp_check(&e->o, use_tp ? st->tp + sl->first : NULL, use_tp ? sl->cnt : 0u); if (bad) { nd_dlcp_bad++; pm_log_evt("dlcpre bad map %s list %08x var %u parts %u", pm_shape_name, (u32)(uintptr_t)l, (unsigned)use_tp, bad); } }
-    } else {
-        NdDlcEnv env = { nd_env_vtx, nd_env_valloc, nd_env_ialloc, use_tp ? st->tp + sl->first : NULL, use_tp ? sl->cnt : 0u }; /* SEAMFIX: the T points of this list */
-        unsigned dp_t0 = pm_ticks(); /* DPCEN2: compile time of the static list */
-        if (pre < 0) rc = NDR_FULL; /* S7MAP: the pools had no room for the stored copy */
-        else { nd_dlcp_rt++; rc = nd_dlc_compile(&e->o, dlc_words, &env); { extern unsigned pm_dp_cmp_n, pm_dp_cmp_us; pm_dp_cmp_n++; pm_dp_cmp_us += (pm_ticks() - dp_t0) / 268u; } }
-        if (rc == NDR_FULL) { /* no room in the static areas: compile without the copies, every group runs through the ring (the source words: no T points) */
-            NdDlcEnv env2 = { nd_env_vtx, NULL, NULL, NULL, 0 };
-            dlc_c.sfull++; nd_dlcp_full++;
-            if (use_tp) pm_log_evt("seamfix pool map %s list %08x skip %u", pm_shape_name, (u32)(uintptr_t)l, (unsigned)sl->cnt);
-            dp_t0 = pm_ticks();
-            rc = nd_dlc_compile(&e->o, dlc_words, &env2);
-            { extern unsigned pm_dp_cmp_n, pm_dp_cmp_us; pm_dp_cmp_n++; pm_dp_cmp_us += (pm_ticks() - dp_t0) / 268u; }
-            pooled = 0;
-            if (rc == NDR_OK) { free(e->o.vtx); free(e->o.idx); e->o.vtx = NULL; e->o.idx = NULL; }
-        }
+    int rc = NDR_OK, pooled = 1, refuse = 0;
+    const u32 loff = (u32)(uintptr_t)l - (u32)(uintptr_t)gMapShapeData;
+    int pre = dlcp_load(&e->o, loff, use_tp ? 1u : 0u, 0, &refuse); /* MAPCONV: the build time result of every list */
+    if (pre < 0) { /* no room in the static areas: the groups of the section without the T points and without the copies, every group runs through the ring */
+        dlc_c.sfull++; nd_dlcp_full++;
+        if (use_tp) pm_log_evt("seamfix pool map %s list %08x skip %u", pm_shape_name, (u32)(uintptr_t)l, (unsigned)sl->cnt);
+        pre = dlcp_load(&e->o, loff, 0, 1, &refuse);
+        pooled = 0;
+        if (pre < 0) { rc = NDR_LONG; pre = 2; }
+    }
+    if (pre == 1) nd_dlcp_pre += (unsigned)pooled;
+    else if (pre == 2) { if (!rc) rc = refuse; }
+    else if (pre == 0) { /* no section: a fault of the converter or of the file, the list is refused */
+        nd_dlcp_rt++;
+        pm_log_evt("dlcpre missing map %s list %08x var %u", pm_shape_name, (u32)(uintptr_t)l, (unsigned)use_tp);
+        rc = NDR_OP;
     }
     if (rc) return rc;
     e->nops = e->o.nops; e->exit_am = e->o.exit_am; e->exit_om = e->o.exit_om; e->ngrp = e->o.ngrp; e->gop = e->o.gop;
