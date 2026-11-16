@@ -1,6 +1,3 @@
-# ws_DEADSRC_code: exact text for ws_DEADSRC.md (copy each block as it is, LF line ends)
-## A: 3ds/tools/unver.py (new file)
-```python
 #!/usr/bin/env python3
 """unver.py: DEADSRC. Resolve the version conditionals of the given C files for the device build (VERSION_US 1; VERSION_PAL, VERSION_JP,
 VERSION_IQUE 0). A conditional chain (#if/#ifdef/#ifndef .. #elif .. #else .. #endif) is resolved only when each of its conditions uses
@@ -116,29 +113,3 @@ def main(argv):
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
-```
-## B: build3ds/out/deadsrc_unver.sh (gate script, not committed)
-```sh
-#!/bin/sh
-# DEADSRC gate (ws_DEADSRC.md): run unver.py on the 8 files and compare the device preprocessor output of each file before and after.
-# Seed: a copy of unver.py with EVAL_RULE False on src/starpoint.c must give another output. Run from the repo root (Git Bash).
-O=build3ds/out/unver
-FILES="src/starpoint.c src/entity/model/SaveBlock.c src/world/area_mgm/mgm_00/scoreboard.c src/effects/chapter_change.c src/entity/SaveBlock.c src/world/area_kmr/kmr_20/records.c src/world/area_kmr/kmr_21/main.c src/filemenu/filemenu_msg.c"
-rm -rf $O
-for f in $FILES; do mkdir -p $O/before/$(dirname $f) $O/seed/$(dirname $f); cp $f $O/before/$f; cp $f $O/seed/$f; done
-sed 's/^EVAL_RULE = True/EVAL_RULE = False/' 3ds/tools/unver.py > $O/unver_seed.py
-python $O/unver_seed.py $O/seed/src/starpoint.c
-python 3ds/tools/unver.py $FILES
-MSYS_NO_PATHCONV=1 docker run --rm -v "$(pwd -W):/w" -w /w pm3ds-host:1 sh -c '
-DEF="-DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -DVERSION=us -D_MIPS_SZLONG=32 -Dnullptr=NULL"
-INC="-I 3ds/tools/gconv_inc -I 3ds/tools -I 3ds/include -I 3ds/stub_include -I include -I src -I assets/us -I ver/us/build/include -I ."
-O=build3ds/out/unver; bad=0
-pp() { gcc -m32 -w $DEF $INC -I $(dirname $2) -E -P $1 > $3 2>>$O/pp_err.txt || { echo "unver cpp FAIL $1"; bad=1; }; }
-for f in '"$FILES"'; do
-  pp $O/before/$f $f /tmp/a.i; pp $f $f /tmp/b.i
-  if cmp -s /tmp/a.i /tmp/b.i; then echo "unver same $f"; else echo "unver DIFF $f"; bad=1; fi
-done
-pp $O/seed/src/starpoint.c src/starpoint.c /tmp/s.i; pp $O/before/src/starpoint.c src/starpoint.c /tmp/a.i
-if cmp -s /tmp/s.i /tmp/a.i; then echo "unver seed FAIL (EVAL_RULE False gave the same output)"; bad=1; else echo "unver seed ok"; fi
-if [ $bad = 0 ]; then echo "unver check ok"; else echo "unver check FAIL"; fi'
-```

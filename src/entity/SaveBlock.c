@@ -20,10 +20,6 @@ BSS bool SaveBlockResultPrinterClosed;
 BSS MessagePrintState* SaveBlockTutorialPrinter;
 BSS MessagePrintState* SaveBlockResultPrinter;
 
-#if VERSION_PAL
-extern Gfx Entity_SaveBlock_RenderBlock_es[];
-extern s32 gCurrentLanguage;
-#endif
 
 void entity_SaveBlock_setupGfx(s32 index) {
     Gfx* dlist = NDN(Entity_SaveBlock_RenderContent);
@@ -46,19 +42,7 @@ void entity_SaveBlock_setupGfx(s32 index) {
     gSPDisplayList(gMainGfxPos++, dlist);
     nd_xf_pop(G_MTX_MODELVIEW);
 
-#if VERSION_PAL
-    switch (gCurrentLanguage) {
-        default:
-            dlist = ENTITY_ADDR(entity, Gfx*, NDN(Entity_SaveBlock_RenderBlock));
-            break;
-
-        case LANGUAGE_ES:
-            dlist = ENTITY_ADDR(entity, Gfx*, Entity_SaveBlock_RenderBlock_es);
-            break;
-    }
-#else
     dlist = ENTITY_ADDR(entity, Gfx*, NDN(Entity_SaveBlock_RenderBlock));
-#endif
     guMtxL2F(sp58, ENTITY_ADDR(entity, Mtx*, &Entity_SaveBlock_Mtx));
     sp58[3][1] += 12.5f;
     guMtxF2L(sp58, &gDisplayContext->matrixStack[gMatrixListPos]);
