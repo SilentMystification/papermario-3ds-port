@@ -1,0 +1,28 @@
+{
+  "scenarios": [
+    {
+      "name": "dls2_fx_drec",
+      "status": "unverified",
+      "subject": "DLSITE2 draw records: sparkles, blast, firework and hieroglyphs (fxtest 12, 56, 61, 106) on mac_01 (pos 0 0 200), cold det start with the drec switch (frames 412 to 544, step 44), no shots.",
+      "proves": "DLSITE2: the draw records of the 4 effects with a codemod ctx site are byte-equal between a base and a head build.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=12,56,61,106 loglevel=debug det drec=412:4:44",
+      "until": "drec f544 draws [1-9]\\d* bytes \\d+",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f544 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "reason": "DLSITE2: copy of fxr_drec (FXENT3) with 4 effects. Cap 30 s, deadline 25 s, until the drec line of frame 544."
+    }
+  ]
+}

@@ -231,7 +231,7 @@ void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* ove
     switch (stencilType) {
         case OVERLAY_SCREEN_COLOR:
             /* the scissor stays a stream op before the record: later walker draws may inherit it */
-            gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+            nd_pso_scis(G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
             /* 1-cycle fill: the lower right is exclusive (HUDB1). The N64 overscan hides the last column and row, the port shows them. */
             {
                 const NdFillRec rec = { 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, ((u32)colR << 24) | ((u32)colG << 16) | ((u32)colB << 8) | (u32)(u8)progress,

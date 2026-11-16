@@ -320,7 +320,6 @@ void gfx_draw_background(void) {
     switch (bgRenderState) {
         case BACKGROUND_RENDER_STATE_BEGIN_PAUSED:
             // Save coverage to nunGfxCfb[1] using the VISCVG render mode
-            gDPPipeSync(gMainGfxPos++);
             nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, nuGfxCfb[1]);
             nd_pso_cyc(G_CYC_1CYCLE);
             nd_val_blend(0x80, 0x80, 0x80, 0xFF);
@@ -361,7 +360,7 @@ void gfx_draw_background(void) {
             /// @bug In 1-cycle mode, the two combiner cycles should be identical. Using Texel1 here in the second cycle,
             /// which is the actual cycle of the combiner used on hardware in 1-cycle mode, actually samples the next
             /// pixel's texel value instead of the current pixel's. This results in a one-pixel offset.
-            gDPSetCombineMode(gMainGfxPos++, PM_CC_43, PM_CC_44);
+            nd_pso_cc(PM_CC_43, PM_CC_44);
             nd_val_prim(0, 0, 40, 40, 40, gPauseBackgroundFade);
             nd_pso_filt(G_TF_POINT);
 

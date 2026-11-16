@@ -1973,7 +1973,6 @@ void render_transformed_hud_elements(void) {
                     }
 
                     nd_pso_scis(G_SC_NON_INTERLACE, pm_wide ? 0 : 12, pm_wide ? 0 : 20, pm_wide ? SCREEN_WIDTH : 308, pm_wide ? SCREEN_HEIGHT : 220); /* WIDE4: a transformed HUD element (battle wheel spots, reel, beam) placed in the wide margin is drawn to the screen edge */
-                    gDPPipeSync(gMainGfxPos++);
                     nd_pso_geom_clr(G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
                     nd_pso_geom_set(G_ZBUFFER | G_SHADE | G_LIGHTING | G_SHADING_SMOOTH);
                     nd_lit_set1(HudElemLights);
@@ -2038,7 +2037,6 @@ void render_transformed_hud_elements(void) {
                     }
 
                     nd_pso_scis(G_SC_NON_INTERLACE, pm_wide ? 0 : 12, pm_wide ? 0 : 20, pm_wide ? SCREEN_WIDTH : 308, pm_wide ? SCREEN_HEIGHT : 220); /* WIDE4: a transformed HUD element (battle wheel spots, reel, beam) placed in the wide margin is drawn to the screen edge */
-                    gDPPipeSync(gMainGfxPos++);
                     nd_pso_geom_clr(G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);
                     nd_pso_geom_set(G_ZBUFFER | G_SHADE | G_LIGHTING | G_SHADING_SMOOTH);
                     nd_lit_set1(HudElemLights);
@@ -2078,7 +2076,7 @@ void immediately_render_complex_hud_element(s32 elemID, s32 arg1, s32 camID) {
         nd_pso_rm(G_RM_OPA_SURF, G_RM_OPA_SURF2);
         nd_xf_clip(FRUSTRATIO_2);
         //clear Z buffer inside camera viewport
-        gDPSetCycleType(gMainGfxPos++, G_CYC_FILL);
+        nd_pso_cyc(G_CYC_FILL);
         nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxZBuffer));
         nd_val_fill(GPACK_ZDZ(G_MAXFBZ, 0)<<16 | GPACK_ZDZ(G_MAXFBZ, 0));
         nd_rect_fill(camera->viewportStartX, camera->viewportStartY, camera->viewportStartX + camera->viewportW - 1, camera->viewportStartY + camera->viewportH - 1);
@@ -2091,7 +2089,6 @@ void immediately_render_complex_hud_element(s32 elemID, s32 arg1, s32 camID) {
         nd_xf_push(&gDisplayContext->camPerspMatrix[gCurrentCamID], G_MTX_NOPUSH | G_MTX_LOAD |
                                                                                     G_MTX_PROJECTION);
         nd_pso_scis(G_SC_NON_INTERLACE, pm_wide ? 0 : 12, pm_wide ? 0 : 20, pm_wide ? SCREEN_WIDTH : 308, pm_wide ? SCREEN_HEIGHT : 220); /* WIDE4: a transformed HUD element (battle wheel spots, reel, beam) placed in the wide margin is drawn to the screen edge */
-        gDPPipeSync(gMainGfxPos++);
         nd_pso_cyc(G_CYC_1CYCLE);
         nd_pso_geom_clr(G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING |
                                                 G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH);

@@ -914,7 +914,7 @@ void imgfx_appendGfx_mesh(ImgFXState* state, Matrix4f mtx) {
             case IMGFX_RENDER_MULTIPLY_RGB:
                 // color: texture * prim
                 // alpha: texture
-                gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIDECALA_PRIM, G_CC_MODULATEIDECALA_PRIM);
+                nd_pso_cc(G_CC_MODULATEIDECALA_PRIM, G_CC_MODULATEIDECALA_PRIM);
                 nd_val_prim(0, 0, state->ints.color.r, state->ints.color.g, state->ints.color.b, 0);
                 break;
             case IMGFX_RENDER_MULTIPLY_ALPHA:
@@ -938,7 +938,7 @@ void imgfx_appendGfx_mesh(ImgFXState* state, Matrix4f mtx) {
             case IMGFX_RENDER_MODULATE_PRIM_RGB:
                 // color: lerp from prim color to 1 based on texture intensity
                 // alpha: texture
-                gDPSetCombineMode(gMainGfxPos++, PM_CC_5B, PM_CC_5B);
+                nd_pso_cc(PM_CC_5B, PM_CC_5B);
                 nd_val_prim(0, 0, state->ints.color.r, state->ints.color.g, state->ints.color.b, 0);
                 break;
             case IMGFX_RENDER_MODULATE_PRIM_RGBA:
@@ -953,35 +953,35 @@ void imgfx_appendGfx_mesh(ImgFXState* state, Matrix4f mtx) {
             case IMGFX_RENDER_MULTIPLY_SHADE_RGB:
                 // color: modulate vtx color by texture intensity
                 // alpha: texture
-                gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIDECALA, G_CC_MODULATEIDECALA);
+                nd_pso_cc(G_CC_MODULATEIDECALA, G_CC_MODULATEIDECALA);
                 nd_pso_geom_set(G_SHADE | G_SHADING_SMOOTH);
                 nd_pso_geom_clr(G_LIGHTING);
                 break;
             case IMGFX_RENDER_MODULATE_SHADE_RGB:
                 // color: lerp from vtx color to 1 based on texture intensity
                 // alpha: texture
-                gDPSetCombineMode(gMainGfxPos++, PM_CC_5D, PM_CC_5D);
+                nd_pso_cc(PM_CC_5D, PM_CC_5D);
                 nd_pso_geom_set(G_SHADE | G_SHADING_SMOOTH);
                 nd_pso_geom_clr(G_LIGHTING);
                 break;
             case IMGFX_RENDER_MULTIPLY_SHADE_ALPHA:
                 // color: texture
                 // alpha: texture * vtx color
-                gDPSetCombineMode(gMainGfxPos++, PM_CC_12, PM_CC_12);
+                nd_pso_cc(PM_CC_12, PM_CC_12);
                 nd_pso_geom_set(G_SHADE | G_SHADING_SMOOTH);
                 nd_pso_geom_clr(G_LIGHTING);
                 break;
             case IMGFX_RENDER_MULTIPLY_SHADE_RGBA:
                 // color: modulate vtx color by texture intensity
                 // alpha: modulate vtx alpha by texture intensity
-                gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIA, G_CC_MODULATEIA);
+                nd_pso_cc(G_CC_MODULATEIA, G_CC_MODULATEIA);
                 nd_pso_geom_set(G_SHADE | G_SHADING_SMOOTH);
                 nd_pso_geom_clr(G_LIGHTING);
                 break;
             case IMGFX_RENDER_MODULATE_SHADE_RGBA:
                 // color: lerp from vtx color to 1 based on texture intensity
                 // alpha: vtx color * texture
-                gDPSetCombineMode(gMainGfxPos++, PM_CC_5E, PM_CC_5E);
+                nd_pso_cc(PM_CC_5E, PM_CC_5E);
                 nd_pso_geom_set(G_SHADE | G_SHADING_SMOOTH);
                 nd_pso_geom_clr(G_LIGHTING);
                 break;
@@ -1010,13 +1010,13 @@ void imgfx_appendGfx_mesh(ImgFXState* state, Matrix4f mtx) {
                     primAlpha = state->ints.hologram.alphaAmt * ifxImgAlpha;
                     // color: blend texure and noise
                     // alpha: texure * prim
-                    gDPSetCombineMode(gMainGfxPos++, PM_CC_IMGFX_HOLOGRAM, PM_CC_IMGFX_HOLOGRAM);
+                    nd_pso_cc(PM_CC_IMGFX_HOLOGRAM, PM_CC_IMGFX_HOLOGRAM);
                     nd_val_prim(0, 0, state->ints.hologram.noiseAmt, state->ints.hologram.noiseAmt, state->ints.hologram.noiseAmt, primAlpha);
                 } else if (state->ints.hologram.mode == IMGFX_HOLOGRAM_DITHER) {
                     primAlpha = state->ints.hologram.alphaAmt * ifxImgAlpha;
                     // color: texture
                     // alpha: texture * prim
-                    gDPSetCombineMode(gMainGfxPos++, PM_CC_02, PM_CC_02);
+                    nd_pso_cc(PM_CC_02, PM_CC_02);
                     nd_val_prim(0, 0, 0, 0, 0, primAlpha);
                     nd_pso_alcmp(G_AC_DITHER);
                 } else if (state->ints.hologram.mode == IMGFX_HOLOGRAM_THRESHOLD) {
@@ -1027,7 +1027,7 @@ void imgfx_appendGfx_mesh(ImgFXState* state, Matrix4f mtx) {
                     primAlpha = state->ints.hologram.alphaAmt * ifxImgAlpha;
                     // color: texture
                     // alpha: texture * prim
-                    gDPSetCombineMode(gMainGfxPos++, PM_CC_02, PM_CC_02);
+                    nd_pso_cc(PM_CC_02, PM_CC_02);
                     nd_pso_aldith(G_AD_NOISE);
                     nd_pso_alcmp(G_AC_THRESHOLD);
                     nd_val_prim(0, 0, 0, 0, 0, primAlpha);
@@ -1037,7 +1037,7 @@ void imgfx_appendGfx_mesh(ImgFXState* state, Matrix4f mtx) {
             case IMGFX_RENDER_COLOR_FILL:
                 // color: prim
                 // alpha: texture
-                gDPSetCombineMode(gMainGfxPos++, PM_CC_IMGFX_COLOR_FILL, PM_CC_IMGFX_COLOR_FILL);
+                nd_pso_cc(PM_CC_IMGFX_COLOR_FILL, PM_CC_IMGFX_COLOR_FILL);
                 nd_val_prim(0, 0, state->ints.color.r, state->ints.color.g, state->ints.color.b, 0);
                 break;
             case IMGFX_RENDER_DEFAULT:
@@ -1045,12 +1045,12 @@ void imgfx_appendGfx_mesh(ImgFXState* state, Matrix4f mtx) {
             case IMGFX_RENDER_UNUSED:
                 // color: texture
                 // alpha: texture
-                gDPSetCombineMode(gMainGfxPos++, G_CC_DECALRGBA, G_CC_DECALRGBA);
+                nd_pso_cc(G_CC_DECALRGBA, G_CC_DECALRGBA);
                 break;
             case IMGFX_RENDER_OVERLAY_RGBA:
                 // color: texture
                 // alpha: texture * prim
-                gDPSetCombineMode(gMainGfxPos++, PM_CC_02, PM_CC_02);
+                nd_pso_cc(PM_CC_02, PM_CC_02);
                 nd_val_prim(0, 0, 0, 0, 0, state->ints.overlay.alpha);
                 break;
         }

@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "nd_st.h"
 #include "nd_val.h"
 #include "nd_xf.h"
@@ -167,8 +168,8 @@ void star_power_shimmer_draw(void) {
     guMtxF2L(viewMtx, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
-    gSPDisplayList(gMainGfxPos++, D_80109710); // setup texture
-    gDPSetEnvColor(gMainGfxPos++, 127, 127, 127, 127);
+    nd_draw_list(D_80109710, ND_SELF); // setup texture
+    nd_val_env(127, 127, 127, 127);
 
     for (i = 0; i < ARRAY_COUNT(ShimmerEmitters); i++, emitter++) {
         emitter = &ShimmerEmitters[i];
@@ -186,7 +187,7 @@ void star_power_shimmer_draw(void) {
                     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
                     nd_val_prim(0, 80 - particle->animTime, particle->rgba.r, particle->rgba.g, particle->rgba.b, particle->rgba.a);
                     gSPDisplayList(gMainGfxPos++, D_801097D8); // draw particle
-                    gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
+                    nd_xf_pop(G_MTX_MODELVIEW);
                 }
             }
         }

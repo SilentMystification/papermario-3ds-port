@@ -274,7 +274,11 @@ def rewrite(path, s):
         if nargs == 1 and args == ['']:
             args = []
         nxt = toks[sig[close + 1]] if close + 1 < len(sig) else None
-        prev = toks[sig[i - 1]] if i > 0 else None
+        # CMCTX: a comment before the call (the trailing comment of the line above) is not its context
+        pi = i - 1
+        while pi >= 0 and toks[sig[pi]][0] == 'comment':
+            pi -= 1
+        prev = toks[sig[pi]] if pi >= 0 else None
         prev_txt = s[prev[1]:prev[2]] if prev else ';'
         pk = prev[0] if prev else 'pp'
         why = bad

@@ -3,6 +3,7 @@
 #include "nd_gtab.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_st.h"
 #include "nd_geo.h"
 
 NDN_DECL(D_09000F20_338EE0);
@@ -274,8 +275,7 @@ void sparkles_appendGfx(void* effect) {
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
     nd_draw_list(NDN(D_09000F20_338EE0), ND_SELF);
     // The part colour is a vertex colour: one GPU batch for all parts instead of one per PRIM change.
-    gDPSetCombineLERP(gMainGfxPos++, 1, SHADE, TEXEL0, SHADE, SHADE, 0, TEXEL0, 0,
-                      1, SHADE, TEXEL0, SHADE, SHADE, 0, TEXEL0, 0);
+    nd_pso_cc(1, SHADE, TEXEL0, SHADE, SHADE, 0, TEXEL0, 0, 1, SHADE, TEXEL0, SHADE, SHADE, 0, TEXEL0, 0);
     // Per-frame vertices are stream data: the recorded list reads them after this function returns.
     vtxBuf = (Vtx*) nd_rec_data(((EffectInstance*)effect)->numParts * 4 * sizeof(Vtx));
 
