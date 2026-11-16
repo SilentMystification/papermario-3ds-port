@@ -255,32 +255,32 @@ void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* ove
 
     switch (stencilType) {
         case OVERLAY_VIEWPORT_MARIO:
-            gSPDisplayList(gMainGfxPos++, NDN(Gfx_LoadStencilTex_Mario));
+            nd_draw_list(NDN(Gfx_LoadStencilTex_Mario), ND_SELF);
             gPmStencilId = 0;
             appendGfx_screen_transition_stencil(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, progress, colR, colG, colB, progress * alpha / 255.0f, gCurrentCameraID);
             break;
         case OVERLAY_SCREEN_MARIO:
-            gSPDisplayList(gMainGfxPos++, NDN(Gfx_LoadStencilTex_Mario));
+            nd_draw_list(NDN(Gfx_LoadStencilTex_Mario), ND_SELF);
             gPmStencilId = 0;
             appendGfx_screen_transition_stencil(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, progress, colR, colG, colB, progress * alpha / 255.0f, -1);
             break;
         case OVERLAY_VIEWPORT_STAR:
-            gSPDisplayList(gMainGfxPos++, NDN(Gfx_LoadStencilTex_Star));
+            nd_draw_list(NDN(Gfx_LoadStencilTex_Star), ND_SELF);
             gPmStencilId = 1;
             appendGfx_screen_transition_stencil(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, progress, colR, colG, colB, progress * alpha / 255.0f, gCurrentCameraID);
             break;
         case OVERLAY_SCREEN_STAR:
-            gSPDisplayList(gMainGfxPos++, NDN(Gfx_LoadStencilTex_Star));
+            nd_draw_list(NDN(Gfx_LoadStencilTex_Star), ND_SELF);
             gPmStencilId = 1;
             appendGfx_screen_transition_stencil(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, progress, colR, colG, colB, progress * alpha / 255.0f, -1);
             break;
         case OVERLAY_VIEWPORT_SPOTLIGHT:
-            gSPDisplayList(gMainGfxPos++, NDN(Gfx_LoadStencilTex_SharpCircle));
+            nd_draw_list(NDN(Gfx_LoadStencilTex_SharpCircle), ND_SELF);
             gPmStencilId = 2;
             appendGfx_screen_transition_stencil(x1, y1, progress, 0, 0, 0, 0, gCurrentCameraID);
             break;
         case OVERLAY_SCREEN_SPOTLIGHT:
-            gSPDisplayList(gMainGfxPos++, NDN(Gfx_LoadStencilTex_SharpCircle));
+            nd_draw_list(NDN(Gfx_LoadStencilTex_SharpCircle), ND_SELF);
             gPmStencilId = 2;
             appendGfx_screen_transition_stencil(x1, y1, progress, 0, 0, 0, 0, -1);
             break;
@@ -360,14 +360,14 @@ void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* ove
             draw_prev_frame_buffer_at_screen_pos(0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1, v0);
             break;
         case OVERLAY_WORLD_DARKNESS:
-            gSPDisplayList(gMainGfxPos++, NDN(Gfx_LoadStencilTex_BlurryCircle));
+            nd_draw_list(NDN(Gfx_LoadStencilTex_BlurryCircle), ND_SELF);
             appendGfx_darkness_stencil(true, x2, y2, alpha, progress);
             break;
         case OVERLAY_BLUR:
             draw_prev_frame_buffer_at_screen_pos(x1, y1, x2, y2, progress);
             break;
         case OVERLAY_BATTLE_DARKNESS:
-            gSPDisplayList(gMainGfxPos++, NDN(Gfx_LoadStencilTex_BlurryCircle));
+            nd_draw_list(NDN(Gfx_LoadStencilTex_BlurryCircle), ND_SELF);
             appendGfx_darkness_stencil(false, x1, y1, alpha, progress);
             break;
         case OVERLAY_INTRO_1:

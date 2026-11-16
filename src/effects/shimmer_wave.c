@@ -209,7 +209,7 @@ void shimmer_wave_appendGfx(void* effect) {
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_val_env(part->unk_40, part->unk_44, part->unk_48, part->unk_5C);
-    gSPDisplayList(gMainGfxPos++, NDN(D_09000F20_338EE0));
+    nd_draw_list(NDN(D_09000F20_338EE0), ND_SELF);
 
     nd_sub_open(&sub); /* DIRECT D6c: the list for later is a stream range */
 

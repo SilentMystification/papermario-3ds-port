@@ -195,7 +195,7 @@ void explosion_appendGfx(void* effect) {
 
         nd_val_prim(0, 0, 255, 255, 240, part->unk_38);
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        nd_rec_dl(NDN(D_090008F0_344860));
+        nd_draw_list(NDN(D_090008F0_344860), pe_explosion_0);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 

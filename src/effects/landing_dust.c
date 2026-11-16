@@ -328,7 +328,7 @@ void landing_dust_appendGfx(void* effect) {
     }
 
     if (type == 2) {
-        nd_rec_dl(dlist1);
+        nd_draw_list(dlist1, pe_landing_dust_339);
     }
 
     part++;

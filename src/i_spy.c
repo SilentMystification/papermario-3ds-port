@@ -48,7 +48,7 @@ void appendGfx_ispy_icon(void) {
         guMtxF2L(matrix2, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], 3);
-        gSPDisplayList(gMainGfxPos++, NDN(ispy_icon_gfx));
+        nd_draw_list(NDN(ispy_icon_gfx), ND_SELF);
 
         if (ISpyPtr->time < 47) {
             ISpyPtr->flashCount++;
