@@ -51,7 +51,7 @@ void entity_SaveBlock_setupGfx(s32 index) {
     nd_pso_rm(G_RM_AA_XLU_SURF | Z_CMP, G_RM_AA_XLU_SURF2 | Z_CMP);
     nd_pso_cc(PM_CC_01, PM_CC_02);
     nd_val_prim(0, 0, 0, 0, 0, alpha);
-    gSPDisplayList(gMainGfxPos++, dlist);
+    nd_draw_list(dlist, ND_SELF);
     nd_xf_pop(G_MTX_MODELVIEW);
 
 }

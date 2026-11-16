@@ -45,7 +45,7 @@ void entity_StarBoxLauncher_setupGfx(s32 entityIndex) {
     guMtxCatF(sp50, sp10, sp50);
     guMtxF2L(sp50, &gDisplayContext->matrixStack[gMatrixListPos]);
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gSPDisplayList(gMainGfxPos++, ENTITY_ADDR(entity, Gfx*, NDN(Entity_StarBoxLauncher_RenderBottom)));
+    nd_draw_list(ENTITY_ADDR(entity, Gfx*, NDN(Entity_StarBoxLauncher_RenderBottom)), ND_SELF);
     nd_xf_pop(G_MTX_MODELVIEW);
 
     nd_pso_lut(G_TT_RGBA16);

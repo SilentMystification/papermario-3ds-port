@@ -3,6 +3,7 @@
 #include "nd_st.h"
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_gtab.h"
 
 void entity_shattering_setupGfx(s32 entityIndex);
 
@@ -192,7 +193,7 @@ void entity_shattering_setupGfx(s32 entityIndex) {
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         fragmentDlist = ENTITY_ADDR(entity, Gfx*, *gfx++);
-        gSPDisplayList(gMainGfxPos++, fragmentDlist);
+        nd_draw_list(fragmentDlist, ND_SELF);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 

@@ -22,7 +22,7 @@ void entity_ArrowSign_setupGfx(s32 entityIndex) {
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     gfx = ENTITY_ADDR(entity, Gfx*, NDN(Entity_ArrowSign_RenderRotatedSign));
-    gSPDisplayList(gMainGfxPos++, gfx);
+    nd_draw_list(gfx, ND_SELF);
     nd_xf_pop(G_MTX_MODELVIEW);
 }
 
