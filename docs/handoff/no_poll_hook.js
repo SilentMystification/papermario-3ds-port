@@ -8,6 +8,8 @@ process.stdin.on('end', () => {
   const cmd = String((j.tool_input || {}).command || '');
   const re = /(?:^|[;&|(\n]|\bdo\b|\bthen\b)\s*(?:sleep\s+\d|ping\s+-[nc]\s|tail\s[^;&|\n]*--pid|timeout\s+\/t|start-sleep\b)/i;
   if (!re.test(cmd)) process.exit(0);
+  // One foreground wait call on a done file is allowed (user 2026-11-16): it costs one tool call, not a polling loop of calls.
+  if (/^\s*until\s+test\s+-f\s+\S+\s*;\s*do\s+sleep\s+\d+\s*;\s*done\s*$/.test(cmd)) process.exit(0);
   process.stderr.write('Blocked (user rule 2026-11-13, CLAUDE.md rule 6): no polling, no sleep, no ping loop, no tail --pid. ' +
     'Run the job in the foreground or in the background, then end your turn. The harness sends a notice when the job ends.\n');
   process.exit(2);

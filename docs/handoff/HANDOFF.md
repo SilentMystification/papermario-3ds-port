@@ -1,55 +1,57 @@
 # HANDOFF (orchestrator, overwritten at each handoff)
 
-State at 2026-11-14, main cdba8653d. Main is clean. No coder runs. The user asked for a stopping point and a process audit; both are done
-(docs/handoff/audit_process.md, fixes applied in cdba8653d). Start by reading: this file, orchestrator_rules.md (its Core block is printed
-every turn by the hook), CLAUDE.md. Then ListAgents, then the free pages below.
+State at 2026-11-16, main ef3afb3fc9, main clean. The user ended the session on purpose: start NO new work in the old session.
+Start of the new session: read this file, docs/handoff/orchestrator_rules.md (Core block is printed each turn), CLAUDE.md, the memory index.
+Then ListAgents (status `running` is the only slot count), then merge every hand-back message that arrived, then the list below.
 
 ## Goal and done
-Remove the display list system completely. Done only when `3ds/tools/elfgate.py build3ds/pm_3ds.elf` prints `func 0 data 0 gfxnames 0` and all
-LISTCEN2 counters C1..C12 are 0. Never say done before. Print counters only when the user asks.
-FACT (listcen and elfgate, 2026-11-14, main 139abd3c3 build): C1 846 (start of the 2026-11-13 session 3612), C2 315 (3042), C3 0 (272), C4 0 (280),
-C5 data 19190 (22103), C6 arrays 1778 (2108), C7 gfxtype 2493 (2845), C8 readers 766 (732), C9 model 15, C10 recdl 42 (361).
-ELF gate: func 48 (50), data 3260 (4152), gfxnames 1496 (1806). Memcheck margin 358 KB (the real limit is a margin above 0 KB, soft).
+Remove the display list system completely. Done only when `python 3ds/tools/elfgate.py build3ds/pm_3ds.elf` prints `func 0 data 0 gfxnames 0`
+and all `3ds/tools/listcen.py` counters are 0. Never say done before.
+FACT (listcen, main ef3afb3fc9): build 722, gfxpos 201, data 2804, data_arrays 251, gfxtype 858, recdl 15, reader 785, model 15.
+FACT (oracle run, earlier today, not re-run): elfgate func 48, data 807, gfxnames 246. Memcheck margin 434 KB (soft limit, above 0).
 
-## How the work runs now (user decisions 2026-11-13 and 14)
-- Haiku coders get closed chunks (exact files, edit shape with a real example, gate, stop condition, no open question). The oracle (Opus) owns the design.
-- The oracle gets a short brief in its prompt (task, merges since its last run, files to check). It does not read the process files. FACT: the audit run cost 51K tokens, earlier runs 160K to 350K.
-- Start an oracle only when no closed page exists for a free slot. A coder asks the oracle that wrote its page (its id is in the launch prompt), at most 2 rounds per cause, commits and ends its turn, the reply wakes it.
-- A coder hands back only through build3ds/out/handback_<id>.txt (first 8 lines) and one short last line. The facts hook shows the file. The orchestrator merges with `sh 3ds/tools/merge_row.sh <branch> <msgfile>`.
-- Gates: exact byte compare, base = `git merge-base HEAD main`, memcheck margin above 0 KB. No made-up gate numbers.
-- Hooks: orch_facts.js (facts from disk each turn, and a Stop hook), orchestrator_rules.md Core (567 characters), no_poll_hook.js, no_guess_hook.js.
-- FACT (2026-11-13 17:00 to 2026-11-14 05:00): 43 merges in 11 h 41 min, coders about 2.9 M tokens, oracles about 2.3 M (GUESS: sums of the last notice values).
+## Agents at the moment of handoff (a notice or hand-back message from each may arrive in the new session)
+| Row | Agent id | Model, type | State | Page |
+|---|---|---|---|---|
+| STALEOBJ (build.sh stale objects: lane builds kept old mtimes, build 5877 lacked STARTLR2 and MOON7) | a412e15c9ec0a673d | Haiku coder | waits on own build, 1 commit | ws_STALEOBJ(+_code) |
+| FSKIP2 (3 frame skip modes on the Frame skip row) | a9480233586f58553 | Haiku coder | waits on own build, 1 commit | ws_FSKIP2(+_code) |
+| GBIHDR (prune unused gbi macros, dry run build -156 data -193 gfxtype -32) | ad1461963fde761c3 | Haiku coder | running | ws_GBIHDR(+_code) |
+| HOLD1 (release 4 sources to gset, data -61) | a6baed310287d06b8 | Haiku coder | running | ws_HOLD1 |
+| PRA31 (Matrix4s scan, pra_31 lists, data -311 GUESS) | ad285a439e033e8a8 | Haiku coder | running | ws_PRA31 |
+| FLIPLOG (per-frame flip log row, switch flipfps) | a69f7a550bfc7c3dc | Haiku coder | running | ws_FLIPLOG(+_code) |
+Oracles (all finished, resume the one that wrote a page when its coder asks): DL3 ac7ba50e4977ada89 (GBIHDR, HOLD1, PRA31), bug oracle 39
+ae0d7e8991193de1b (FSKIP2, capture_flip.md), bug oracle 40 af53b666eeb2c5ea1 (FLIPLOG, verify_list.md).
+Merge: `sh 3ds/tools/merge_row.sh <row>` (message is built from the branch commits). When main holds the oracle's page of the same row, `git rm` it first.
 
-## Next steps (in order)
-1. Free pages, both unblocked: ws_FXENT2.md (the 42 kept effect sites, after NSTREAM2: merged) and ws_GSET3.md (entity lists, after GSET2: merged). A coder starts each with the oracle id that wrote it.
-2. Oracle tasks (brief them): NSTREAM3 (core 0 local buffers in hud_element.c, msg_draw.c, sprite.c, screen_overlays.c, nd_direct.c; its page waited for TEX4: merged);
-   GCONVW (world, model.c, battle, pause and UI lists are not in the converter set: design_lookahead.md section 5); the stage rows of phase E with their triggers (design_lookahead.md sections 7 and 8).
-3. Open facts: nd_gfx_conv.c:800 has_ent is false after the twin move (GSET2 left 22 lists with no device entry out); src/sprite.c:315-336 older setters record from core 0 (unchecked);
-   spiky_white_aura.c:8 extern Gfx* stays. The decision for a draw with no pso table entry after S9DEL2A: a fixed fallback mode with a log line (user, 2026-11-14).
-4. Phase E (deletes) waits for C1, C2, C10 at 0 and the NSTREAM stages (design_lookahead.md section 7). Before S9DEL1A tag main `pre-list-removal`.
+## Ready pages, not started (GSETR is merged, nothing blocks them)
+- ws_CGFX (Haiku, 7 lists, new kkj bench), ws_DLSITE1 (Haiku, 21 sites in 13 files; resume the GSETR coder ace9cc3ba6cd67c64, it knows gset output).
+- ws_MODELRM (Sonnet, user approved earlier) after CGFX merges (both edit nd_rec.c).
+- Waiting rows with no page: A(x) namespace (needs GSETR and PRA31 merged), npc_merlee (gset.py), tst_13 (after MODELRM). Readers 785: phase E with the walker.
+- FXSEED (Sonnet, 198 effect lists with no seed, 552 data): the user has NOT answered. Ask once.
 
-## Parked branches (nothing deleted; each waits on the user)
-BOTHUD (ahead 1, ON HOLD, needs the user's answer), CONV2MIX (ahead 1, the plan calls MIX closed), FPS60FL (ahead 1, the 60 fps freeze), FSELLAG (ahead 0, file select flip, console check owed),
-SEEDPROBE1 (ahead 2, cancelled seed-probe chain, superseded by host unit tests; the user said keep unless resumed).
+## User-reported console faults (FACT, user)
+Confirmed fixed by the user: select menu flash, pipe animation, map change crash.
+Merged, NOT yet seen on the console (build 5877 was stale for the first two): moon jump (MOON7), start menu L/R (STARTLR2), Tidal Wave in wide (WAVEWIDE),
+map change lag (MAPLAG; the startup menu entry has no hold, a hold there changes every drec bench base: needs the user).
+Open: file select flip and start menu pane flip lag (cause not named: capture with flipfps after FLIPLOG, plan in capture_flip.md);
+frame skip 3 modes (FSKIP2 running; FSKIP put them on the wrong row); pause background, black coins, chapter_change, Munchlesia (verify_list.md, binchk lines).
 
-## Console and the 60 fps freeze (user fact, still open)
-Build #5018 with 60 fps on froze the O3DS .170 in Toad Town (mac_01). The game thread waits in phase 7 (gpu end), step 555, pm_gpu_end_w:2986.
-FPS60W2 fixed one defect and did not remove the freeze. Open path: the key frame queues the L frame's fills and VRAM copies again (pm_gpu.c:2946-2955).
-Details: memory project_fps60-freeze-open. Console owed by the user: AMBTITLE, AMBWARP, FSELLAG1/2, the v2 runner. GOLDWLD0 needs the user's fortune scene.
-Consoles: O3DS XL 192.168.1.131, N3DS .224, O3DS .170. Push only on the user's word: `powershell -NoProfile -File 3ds/go.ps1 push o -ip <ip> -Interactive -Profile prof warp=mac_01:0 pos=0:0:200`
-in the background, build first with plain `sh 3ds/build.sh`. Ask the console with a multi-select (memory feedback_push-selector).
-After a freeze: power cycle, FTP on the console, `go.ps1 pull o -ip <ip>`; dumps with 3ds/tools/decode_dump.py. Nothing of this session was run on a console (OPEN).
+## Next push (the user names the console, XL .131 is the main one)
+1. Merge STALEOBJ and FSKIP2 first. 2. Build main. 3. `python 3ds/tools/binchk.py build3ds/pm_3ds.elf <string of each merged row>` (strings in verify_list.md).
+4. ONLY THEN ask the console selector (AskUserQuestion) and push with `--no-build`. Never ask before the build is finished (user, angry, twice).
+5. Test list for the user: only unconfirmed items from verify_list.md. Words: `--profile log log=on moonjump` (add `-GameDebug flipfps` after FLIPLOG).
+Capture rule: run the same words in Azahar first (3ds/tools/capture_check.py), read the real command in push_3ds.sh, never the echo line.
 
-## Tools and facts that cost time
-- A coder's command that runs over about 180 s goes to the background and the coder ends its turn; the completion notice wakes it. Interim notices are normal.
-- merge_row.sh refuses a dirty main: the oracle writes pages into main while it runs, so commit its files first (git add docs/handoff) and merge in the same command. INDEX.md is gone.
-- runs.jsonl: a worktree copy can be huge: `python -I 3ds/tools/dedupe_runs.py <file>`, commit with `git add -f`. A coder's worktree on a branch with another name than its id: pass the branch name to merge_row.
-- Lane build (PM_LANE=<row>) writes build3ds/lane-<row>/, not build3ds/pm_3ds.3dsx. Build main plain before a push, in the background.
-- The HBL netloader accepts one connection and stops listening after minutes. Never test port 17491. Never build between the question and the push.
-- Repo repair: local history was rewritten (blobs over 100 MB removed). The push to GitHub is the user's action. origin/main is an ancestor of main.
-  Backups: C:\Users\Andrew\Documents\papermario-3ds-port-backup-2026-11-12.git and the old-branches bundle. Before a push, check for no blob over 100 MB.
+## Process rules the user set today (all are in orchestrator_rules.md or memory)
+- Every reply: short ASD-STE100, no agreement or apology phrases (global style hook `~/.claude/hooks/style_guard.js` blocks them), FACT/GUESS/OPEN on numbers.
+- Agent label: `[Model type] ROW - task` in every Agent description and state table. Resume a finished agent when its context helps.
+- Slots: count only status `running`. Start the oracle when all closed pages are blocked. Coder launch prompt names the oracle's agent id.
+- A state the user reports is fact. Never probe the console. A bug: read the code to file, line and value.
+- Hand-backs arrive as SubagentHandback messages. The disk hand-back check is gone.
 
-## User communication rules (memory feedback files hold the why)
-No flattery, no apologies. ASD-STE100 in every word. Label numbers FACT (source), GUESS or OPEN. First check the facts, then ask only a decision. Object first when a directive looks wrong.
-Take agent states from ListAgents each turn. Edit rule files in place, never append. Table only when a state changed. A user-reported bug is fact. Never invent a rule or a gate number.
-Never: toggles, stubs, git push, git stash, a build or push in the foreground of the chat. Never launch an agent when the user says not to.
+## Process decisions for the new session (user: "Lets fix those", 1 to 5 of the token audit)
+1. Interim wake-ups: let a coder wait for a background job inside ONE foreground call (`until test -f <done file>; do sleep 10; done`, timeout 590000), see CLAUDE.md rule 6.
+2. This handoff replaces a long session. Start the next session fresh.
+3. Smaller coder runs: pages touch few files, patch files for mechanical edits.
+4. Resume relevant agents and reuse oracles (user decision).
+5. Pages as patch files: the oracle writes `docs/handoff/ws_<id>.patch` for mechanical edits, the coder runs `git apply` and the gates.

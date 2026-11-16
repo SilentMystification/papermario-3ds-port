@@ -23,9 +23,11 @@ Orchestrator: read docs/handoff/orchestrator_rules.md at the start and after eve
    when only the user can decide, or after 90 minutes without a commit.
 6. WORK. One command per step: write a script, not many small commands (every command re-reads your whole context). Grep and read
    line ranges. Write tool output to build3ds/out/ of your own worktree and read the last 20 lines. Run builds and benches in the
-   foreground (timeout up to 600000 ms). No polling: never sleep, tail --pid, Monitor or ping loops. When the harness moves a
-   command to the background, end your turn and wait for the notice. Stop every background task you start. Hand back only through
-   build3ds/out/handback_<id>.txt (first 8 lines: commit hash, gate values, counter change) and one short last line. Send no hand-back message.
+   foreground (timeout up to 600000 ms). No model polling: never sleep, tail --pid, Monitor or ping loops as separate calls. A job
+   the harness moved to the background: wait for it in ONE foreground call of exactly this form: until test -f <done file>; do sleep 10; done
+   (timeout 590000). Repeat that one call. Never end your turn while your own job runs: each stop wakes the orchestrator (user 2026-11-16).
+   Stop every background task you start. Hand back with ONE SubagentHandback message (commit hash, gate values, counter change) and
+   one short last line. No hand-back file.
 7. CODE. Commit each finished piece (changed files only). No feature toggles, no stubs, no git push, no git stash. Claude
    attribution lines in commits are allowed (user, 2026-11-12). Debug tools may stay. Untested code stays on a branch. Follow
    docs/handoff/hw_guidelines.md (ARM11: hot loops fit 16 KB L1, no division, no double, sequential access).
