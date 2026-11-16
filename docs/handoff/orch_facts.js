@@ -82,6 +82,10 @@ if (mode === 'stop') {
   const problems = [];
   // Files the oracle writes while it runs are not a problem yet: the orchestrator commits them at the hand-back.
   const stray = dirty.filter(l => !/docs\/handoff\/(ws_|design_|oracle_handoff|row_|INDEX\.md|audit_)/.test(l));
+  { // rules_lint: the rule files are edited in place, never appended (user 2026-11-16)
+    const r = require('child_process').spawnSync('sh', ['3ds/tools/rules_lint.sh'], { cwd: root, encoding: 'utf8', timeout: 4000 });
+    if (r.status === 1) problems.push(String(r.stdout || '').trim().split('\n').join(' | '));
+  }
   if (stray.length) problems.push('main is dirty (' + stray.slice(0, 3).join(', ') + '): commit or remove the files');
   // Hand-backs arrive as agent messages and ListAgents shows the status: no disk check for them (false alarms, user 2026-11-16).
   if (problems.length) {

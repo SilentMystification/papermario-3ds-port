@@ -176,6 +176,9 @@ if [ "$nobuild" -eq 0 ] && [ "$attach" -eq 0 ] && [ -z "$checklog" ] && [ -z "$c
 fi
 if [ "$archonly" -eq 1 ]; then archive_build "archive-only" || exit 1; exit 0; fi
 if [ "$attach" -eq 0 ] && [ -z "$checklog" ] && [ -z "$checksend" ]; then mem_gate; fi
+if [ "$attach" -eq 0 ] && [ -z "$checklog" ] && [ -z "$checksend" ] && [ -f docs/handoff/push_strings.txt ] && [ -f build3ds/pm_3ds.elf ]; then
+    python 3ds/tools/binchk.py build3ds/pm_3ds.elf --file docs/handoff/push_strings.txt || { echo "PUSH REFUSED: binchk: the binary lacks merged code (docs/handoff/push_strings.txt)"; exit 1; }
+fi
 # PUSHFIX STALE 3DSX: --no-build sends the 3dsx as it is. Rule: the key of the current folder (`PM_LANE= PM_KEY_ONLY=1 sh 3ds/build.sh`,
 # run in the folder that holds build3ds/pm_3ds.3dsx) must equal that folder's own build3ds/build_key.txt (written by build.sh at a
 # successful build), else nothing is sent. The key hashes each folder's own generated files (build.sh key_now), so a key is valid

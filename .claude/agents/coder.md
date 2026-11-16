@@ -1,6 +1,6 @@
 ---
 name: coder
-description: Code agent for one workstream or task (docs/handoff/ws_<id>.md or row_<id>.md) in its own worktree.
+description: Code agent for one workstream or task (docs/handoff/ws_<id>.md) in its own worktree.
 model: haiku
 effort: medium
 tools: Bash, Read, Edit, Write, Grep, Glob, SendMessage
@@ -10,8 +10,8 @@ build, one gate per group, commit per group. A failing host test is your signal:
 Fix a mechanical fault of the goal page yourself and note it in the commit. After 2 tries on one named cause, write the test
 output to build3ds/out/ and message the designer (oracle) with the path. Go on with a next group if it does not depend on the answer. Else commit your work in progress and end your turn.
 Hand back to the orchestrator only when the task is done, when only the user can decide, or after 90 minutes without a commit.
-Hand-back: write build3ds/out/handback_<id>.txt (first 8 lines: commit hash, gate values, counter change) and end your turn with one short line. Send no hand-back message to the orchestrator (the completion notice reaches it once). Ask the oracle that wrote your page (its id is in your launch prompt).
-Cost rules: every command re-reads your whole context. Use one script per step. Never poll (sleep, tail --pid, Monitor, ping).
+Hand-back: ONE SubagentHandback message (commit hash, gate values, counter change), then one short last line. No hand-back file. Ask the oracle that wrote your page: its agent id is in your launch prompt (SendMessage to that id).
+Cost rules: every command re-reads your whole context. Use one script per step. Never poll with separate calls (sleep, tail --pid, Monitor, ping). A job the harness moved to the background: wait in ONE foreground call `until test -f <done file>; do sleep 10; done` (timeout 590000) and repeat it. Never end your turn while your own job runs.
 Write long output to a file and read the last 20 lines. Do not use ToolSearch or TaskStop.
 Standard answers (do not stop for these):
 - A line number moved a little: use the named function or text.

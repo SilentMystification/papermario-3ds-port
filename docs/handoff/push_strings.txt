@@ -1,0 +1,10 @@
+# push_strings.txt: one string per row merged since the last push. push_3ds.sh refuses to send when the binary lacks one.
+# Edit in place at each merge: remove the strings of rows the user confirmed, add the strings of new rows. Lines starting with # are comments.
+# FACT (oracle 2026-11-16): nd_dual_keep, nd_mesh_size are in the ELF debug data (check the ELF, not the 3dsx).
+pauseh f%u held 30 resets %u
+nd_dual_keep
+ndnu_D_0900BE40_3F7CA0
+anim mesh f%u units %d dev %d
+nd_mesh_size
+moon jump tap
+options: live row 0 value
