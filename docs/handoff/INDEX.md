@@ -68,3 +68,5 @@ Live files only. Older logs are in archive/ (agent_*, diag_*, inv_*, plan_*, tra
 - work_queue.md: older queue (stale; check git log first).
 - ws_DECDOCK.md: decode_dump.py runs addr2line in docker and reads a crash.txt entry (tool fix, Haiku).
 - ws_VCOUNT.md: map change crash fix: mdl_get_vertex_count reads the device units of a moved list (hidden panel stomps 2.9 MB of .data), Haiku.
+- ws_DEADSRC.md (+ _code): Haiku goal page (oracle DL1): git rm of the sources the device never builds (src/world/dead, src/bss, PAL letters and starpoints, titlemenu, selectlanguage, chapter_change_de/es/fr, nugfxinit, nugfxtaskmgr); unver.py resolves the version branches of 8 files, gate = same gcc -E output with a seed; C5 -561, C6 -75, C7 -92, C1 -16, C2 -23.
+- ws_GSETR.md: Haiku goal page (oracle DL1): 5 root sources (screen_overlays, curtains, sprite, msg_draw, global_hud_scripts) join the converter; gset.py moves 35 ok lists of 11 sources (dry run FACT); C5 -292, C6 -35, C7 -36; parallel with ws_DEADSRC.
