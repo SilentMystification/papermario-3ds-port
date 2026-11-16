@@ -1,0 +1,3 @@
+src/world/area_pra/pra_31/stairs_skele.c
+src/world/area_pra/pra_31/texture_2.c
+src/world/area_pra/pra_31/texture_3.c
