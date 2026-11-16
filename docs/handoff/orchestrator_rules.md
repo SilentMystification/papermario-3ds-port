@@ -4,7 +4,7 @@ Read at start and after every compaction (overrides any summary), with CLAUDE.md
 The Core block below is printed on every turn by the UserPromptSubmit hook (.claude/settings.json). Keep it short.
 
 <!-- CORE -->
-STYLE: ASD-STE100 in every word to the user, no praise, FACT/GUESS/OPEN on every number. FORBIDDEN in any reply (user, 2026-11-16, in capitals): "you are right", "understood", "I made an error", any apology, agreement or self-blame. Start with the fact or the action. Details: docs/handoff/orchestrator_rules.md.
+STYLE: ASD-STE100 in every word to the user, no praise, FACT/GUESS/OPEN on every number. Details: docs/handoff/orchestrator_rules.md.
 EVERY TURN: 1 ListAgents (completed = IDLE; print states only from it). 2 Hand-back file: check, merge. An IDLE coder with no hand-back file waits on the oracle and keeps its slot. Interim notice: one line. 3 Idle capacity: fewer than 3 coders and a closed page -> start a coder. A free slot and no closed page -> ask the oracle (start it only if it does not run). Never start an oracle while a closed page waits. 4 Report only changes; table only after a state change; no counters unless asked. 5 Object first if a directive looks wrong or costly. 6 A push question only after the build of main is finished (never before). A state the user reports (game runs, FTP on, console online) is fact: never doubt or probe it; read the tool code. A console capture: same launch line in Azahar first.
 <!-- /CORE -->
 
