@@ -13,6 +13,16 @@ uint64_t nd_drec_fnv(const void* p, uint32_t n) {
     return h;
 }
 
+int nd_drec_in_span(uintptr_t a, const NdDrecSpan* s, uint32_t ns) {
+    uint32_t i;
+#ifdef ND_DREC_SEED_FAULT
+    for (i = 0; i < ns; i++) if (s[i].n && a - s[i].lo <= s[i].n) return 1; /* DRECTEX seeded fault: the end byte counts */
+#else
+    for (i = 0; i < ns; i++) if (s[i].n && a - s[i].lo < s[i].n) return 1;
+#endif
+    return 0;
+}
+
 void nd_drec_write(FILE* f, const NdDrec* r) {
     uint32_t i, u, k, j;
     uint32_t bits;
@@ -24,9 +34,10 @@ void nd_drec_write(FILE* f, const NdDrec* r) {
     }
     for (u = 0; u < 3; u++) {
         if (r->tex[u].n > 0) {
-            fprintf(f, "t %u type %08x dim %08x bytes %u h %016llx\n", (unsigned)u,
-                    (unsigned)r->tex_type[u], (unsigned)r->tex_dim[u], (unsigned)r->tex[u].n,
-                    (unsigned long long)nd_drec_fnv(r->tex[u].p, r->tex[u].n));
+            fprintf(f, "t %u type %08x dim %08x bytes %u h ", (unsigned)u,
+                    (unsigned)r->tex_type[u], (unsigned)r->tex_dim[u], (unsigned)r->tex[u].n);
+            if (r->tex_gpu[u]) fprintf(f, "gpu\n");
+            else fprintf(f, "%016llx\n", (unsigned long long)nd_drec_fnv(r->tex[u].p, r->tex[u].n));
         }
     }
     fprintf(f, "v bytes %u h %016llx\n", (unsigned)r->vtx.n,
