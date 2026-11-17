@@ -1,0 +1,98 @@
+diff --git a/3ds/include/nd_gtab.h b/3ds/include/nd_gtab.h
+index 965a7cc..478d645 100644
+--- a/3ds/include/nd_gtab.h
++++ b/3ds/include/nd_gtab.h
+@@ -6,6 +6,7 @@
+ #ifndef ND_GTAB_H
+ #define ND_GTAB_H
+ #include <stdint.h>
++#include <string.h>
+ #include "nd_scomp.h"
+ #include "nd_api.h"
+ 
+@@ -116,6 +117,18 @@ typedef struct NdNTab {
+ /* CONV2D2, core 0 only. n = the word pairs of the list from unit 0 to the stop (NOPs counted): nd_walk_state(list, n) runs the unit copy. */
+ typedef struct NdNDev { const void* list; uint32_t fl; const uint32_t* u; uint32_t nu; uint32_t ntri; } NdNDev; /* GKEY1: fl = nd_gt_state_only of the list (converter) */
+ void nd_rec_ndev(const NdNDev* e); /* MESHST: record a built NdNDev (nd_mesh.h): it runs as nd_ntab_rec, no list key, no cache */
++/* NTABFIND: the record of nd_rec_ndev holds a copy of the entry, not its address. Core 0 runs the record after core 1 goes on, and the owner
++ * changes the entry first: imgfx.c imgfx_cache_instance_data and imgfx_load_anim set gfxDev[i].list to NULL (then gt_run gave ent_gdl(NULL) and
++ * ent_flat read 0x0..0x7FFC), imgfx_init allocates ImgFXInstances again, animator.c frees a mesh later. rec[0] 0, rec[1] 0 (not state-only),
++ * rec[2] the call site, rec[3] 0 (no entry), rec[4..8] the NdNDev, rec[9] 0. nd_ndev_rec (nd_walk.c, core 0) runs the copy as nd_ntab_rec. */
++#define ND_NDEV_REC_UNITS 5u
++_Static_assert(sizeof(NdNDev) == 20u, "NTABFIND: the record holds the 5 words of an NdNDev");
++static inline void nd_ndev_pack(uint32_t* rec, const NdNDev* e, uint32_t site) {
++    rec[0] = 0u; rec[1] = 0u; rec[2] = site; rec[3] = 0u; rec[9] = 0u;
++    memcpy(rec + 4, e, sizeof *e);
++}
++static inline void nd_ndev_unpack(NdNDev* d, const uint32_t* rec) { memcpy(d, rec + 4, sizeof *d); }
++void nd_ndev_rec(const uint32_t* rec);
+ extern const NdNDev* ndn_dev_idx[]; /* GKEY1: &ndd_<list> per entry, sorted by ->list at the first nd_ntab_find */
+ extern const unsigned ndn_dev_n;
+ const NdNDev* nd_ntab_find(const void* list);
+diff --git a/3ds/src/nd_gtab.c b/3ds/src/nd_gtab.c
+index 12c59e8..1f8129e 100644
+--- a/3ds/src/nd_gtab.c
++++ b/3ds/src/nd_gtab.c
+@@ -135,5 +135,5 @@ void nd_rec_dl(const void* list) {
+ }
+ void nd_rec_dl_e(const void* list, const NdPsoDesc* e) { dl_ent = e; nd_rec_dl(list); dl_ent = NULL; }
+ void nd_rec_dl_key(const void* list, unsigned k) { dl_site = (uint32_t)(uintptr_t)__builtin_return_address(0) | ((k & 15u) + 1u) << 28; nd_rec_dl(list); dl_site = 0; }
+-void nd_rec_ndev(const NdNDev* e) { const uint32_t rec[2] = { (uint32_t)(uintptr_t)e, 0u }; nd_rec_napi(nd_ntab_rec, rec, 1u); }
++void nd_rec_ndev(const NdNDev* e) { uint32_t rec[2u * ND_NDEV_REC_UNITS]; nd_ndev_pack(rec, e, (uint32_t)(uintptr_t)__builtin_return_address(0)); nd_rec_napi(nd_ndev_rec, rec, ND_NDEV_REC_UNITS); } /* NTABFIND: a copy (nd_gtab.h) */
+ #endif
+diff --git a/3ds/src/nd_walk.c b/3ds/src/nd_walk.c
+index c488074..fbd4df6 100644
+--- a/3ds/src/nd_walk.c
++++ b/3ds/src/nd_walk.c
+@@ -650,6 +650,7 @@ void nd_gtab_run(const uint32_t* rec) { const NdGTab* t = (const NdGTab*)(uintpt
+ unsigned nd_gtr_rec; /* GKEY2: the runs of nd_ntab_rec */
+ void nd_ntab_rec(const uint32_t* rec) { const NdNDev* nt = (const NdNDev*)(uintptr_t)rec[0]; nd_gtr_rec++; gt_run(nt->list, NULL, nt, rec); }
+ void nd_ntab_rec_e(const uint32_t* rec) { nd_psochk_draw((const NdPsoDesc*)(uintptr_t)rec[3]); nd_ntab_rec(rec); }
++void nd_ndev_rec(const uint32_t* rec) { NdNDev d; nd_ndev_unpack(&d, rec); nd_gtr_rec++; gt_run(d.list, NULL, &d, rec); } /* NTABFIND: the record-time copy (nd_gtab.h) */
+ void nd_gtab_run_e(const uint32_t* rec) { nd_psochk_draw((const NdPsoDesc*)(uintptr_t)rec[3]); nd_gtab_run(rec); }
+ /* DIRECT D10a: a custom gfx range of the frame stream (model record R11, build_custom_gfx), run to its NDC_END as the walker ran the list it
+  * replaces: the list start (gv_epoch, dlc_on, a full combine and render sync: DIP2) and the list end (the vertex and texture streak flush). */
+diff --git a/3ds/tools/nd_ndev_rec_test.c b/3ds/tools/nd_ndev_rec_test.c
+new file mode 100644
+index 0000000..9018b2c
+--- /dev/null
++++ b/3ds/tools/nd_ndev_rec_test.c
+@@ -0,0 +1,22 @@
++/* NTABFIND host test: nd_ndev_pack (nd_gtab.h) keeps the record-time NdNDev when its owner clears the entry before core 0 runs the record
++ * (imgfx.c imgfx_cache_instance_data sets gfxDev[i].list to NULL). Case 0: the copy survives the clear. Case 1: the words gt_run reads. */
++#include <stdio.h>
++#include <string.h>
++#include <stdint.h>
++#include "common.h"
++#include "nd_gtab.h"
++
++int main(void) {
++    static uint32_t buf[8] = { 0x01020304u, 0x05060708u };
++    NdNDev e = { buf, 0u, buf, 3u, 2u };
++    uint32_t rec[2u * ND_NDEV_REC_UNITS];
++    NdNDev d;
++    memset(rec, 0, sizeof rec);
++    nd_ndev_pack(rec, &e, 0x00123456u);
++    e.list = NULL; e.u = NULL; e.nu = 0u; e.ntri = 0u; /* the owner clears the entry (imgfx.c:476) */
++    nd_ndev_unpack(&d, rec);
++    if (d.list != (const void*)buf || d.u != buf || d.nu != 3u || d.ntri != 2u || d.fl != 0u) { printf("ndev FAIL case 0\n"); return 1; }
++    if (rec[1] != 0u || rec[2] != 0x00123456u || rec[3] != 0u) { printf("ndev FAIL case 1\n"); return 1; }
++    printf("ndev ok\n");
++    return 0;
++}
+diff --git a/3ds/tests/host.d/ntabfind.sh b/3ds/tests/host.d/ntabfind.sh
+new file mode 100644
+index 0000000..9d88c42
+--- /dev/null
++++ b/3ds/tests/host.d/ntabfind.sh
+@@ -0,0 +1,10 @@
++#!/bin/sh
++# NTABFIND: nd_ndev_pack (nd_gtab.h) copies a built NdNDev into its record. The seed (the record holds the entry address) must fail case 0.
++F="-DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I include -I src -I ver/us/build/include -I 3ds/include -I 3ds/stub_include"
++mkdir -p /tmp/ntabfind_seed
++sed 's/memcpy(rec + 4, e, sizeof \*e);/memcpy(rec + 4, \&e, sizeof e);/' 3ds/include/nd_gtab.h > /tmp/ntabfind_seed/nd_gtab.h
++if cmp -s 3ds/include/nd_gtab.h /tmp/ntabfind_seed/nd_gtab.h; then echo "ntabfind seed FAIL: the sed changed nothing"; exit 1; fi
++gcc -m32 -w -I /tmp/ntabfind_seed $F -o /tmp/ntabfind_seed/t 3ds/tools/nd_ndev_rec_test.c || exit 1
++got=$(/tmp/ntabfind_seed/t); if [ "$got" != "ndev FAIL case 0" ]; then echo "ntabfind seed FAIL: got [$got]"; exit 1; fi
++gcc -m32 -Wall -Wextra $F -o /tmp/ntabfind_t 3ds/tools/nd_ndev_rec_test.c && /tmp/ntabfind_t || exit 1
++echo "ntabfind ok"
