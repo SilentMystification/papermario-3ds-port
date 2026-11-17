@@ -2,3 +2,4 @@
 #include "world/area_dro/dro_02/card_setup.gfx.inc.c"
 #include "world/area_dro/dro_02/card_1.gfx.inc.c"
 #include "world/area_dro/dro_02/card_2.gfx.inc.c"
+#include "world/toad_house/blanket.gfx.inc.c"
