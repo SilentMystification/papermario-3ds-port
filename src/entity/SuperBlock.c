@@ -17,8 +17,8 @@ NDN_DECL(Entity_SuperBlock_Render);
 NDN_DECL(Entity_UltraBlock_Render);
 NDN_DECL(Entity_SuperBlockContent_Render);
 NDN_DECL(Entity_SuperBlockContent_Render2);
-extern Gfx Entity_UltraBlockContent_Render[];
-extern Gfx Entity_UltraBlockContent_Render2[];
+NDN_DECL(Entity_UltraBlockContent_Render);
+NDN_DECL(Entity_UltraBlockContent_Render2);
 extern unsigned char D_0A000200_E4A8A0[];
 extern unsigned char D_0A000220_E4A8C0[];
 extern unsigned char D_0A000240_E4A8E0[];
@@ -220,8 +220,8 @@ void entity_init_SuperBlockContent(Entity* entity) {
 void entity_init_UltraBlockContent(Entity* entity) {
     SuperBlockContentData* data = entity->dataBuf.superBlockContent;
 
-    data->gfx1 = Entity_UltraBlockContent_Render;
-    data->gfx2 = Entity_UltraBlockContent_Render2;
+    data->gfx1 = NDN(Entity_UltraBlockContent_Render);
+    data->gfx2 = NDN(Entity_UltraBlockContent_Render2);
     entity->renderSetupFunc = entity_SuperBlockContent_setupGfx;
 }
 

@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 
 unsigned char D_0A000000_E4AA80[] = {
 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 119, 119, 119, 119, 112, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 119, 119, 119, 119, 119, 119, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 113, 17, 34, 34, 34, 39, 112, 0, 0, 0, 0, 0, 0, 0, 0, 119, 18, 102, 102, 102, 102, 34, 119, 0, 0, 0, 0, 0, 0, 0, 7, 113, 102, 0, 0, 0, 0, 102, 39, 112, 0, 0, 0, 0, 0, 0, 119, 22, 0, 0, 0, 0, 0, 0, 98, 119, 0, 0, 0, 0, 0, 7, 113, 96, 0, 0, 0, 0, 0, 0, 6, 39, 112, 0, 0, 0, 0, 119, 22, 0, 0, 0, 0, 0, 0, 0, 0, 98, 119, 0, 0, 0, 7, 118, 102, 0, 0, 0, 0, 0, 0, 0, 0, 102, 39, 112, 0, 0, 7, 118, 32, 0, 0, 0, 0, 0, 0, 0, 0, 2, 103, 112, 0, 0, 7, 118, 32, 0, 0, 0, 0, 0, 0, 0, 0, 2, 103, 112, 0, 0, 7, 118, 16, 0, 0, 0, 0, 0, 0, 0, 0, 1, 103, 112, 0, 0, 7, 118, 16, 0, 0, 0, 0, 0, 0, 0, 0, 1, 103, 112, 0, 0, 7, 118, 16, 0, 0, 0, 0, 0, 0, 0, 0, 1, 103, 112, 0, 0, 7, 118, 16, 0, 0, 0, 0, 0, 0, 0, 0, 1, 103, 112, 0, 0, 7, 118, 16, 0, 0, 0, 0, 0, 0, 0, 0, 1, 103, 112, 0, 0, 7, 118, 16, 0, 0, 0, 0, 0, 0, 0, 0, 1, 103, 112, 0, 0, 7, 118, 34, 0, 0, 0, 0, 0, 0, 0, 0, 1, 103, 112, 0, 0, 0, 119, 98, 0, 0, 0, 0, 0, 0, 0, 0, 33, 103, 112, 0, 0, 0, 7, 118, 32, 0, 0, 0, 0, 0, 0, 0, 22, 119, 0, 0, 0, 0, 0, 119, 98, 0, 0, 0, 0, 0, 0, 1, 103, 112, 0, 0, 0, 0, 0, 7, 118, 34, 0, 0, 0, 0, 2, 22, 119, 0, 0, 0, 0, 0, 0, 0, 119, 98, 17, 17, 18, 34, 34, 103, 112, 0, 0, 0, 0, 0, 0, 0, 7, 118, 102, 102, 102, 102, 102, 119, 0, 0, 0, 0, 0, 0, 0, 0, 0, 119, 119, 119, 119, 119, 119, 112, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 119, 119, 119, 119, 119, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -19,54 +20,14 @@ Vtx Entity_UltraBlockContent_vtx[] = {
     {{{    13,   -13,     0 }, 0, {     0,  1024 }, { 255, 255, 255, 255 }}},
 };
 
-Gfx Entity_UltraBlockContent_LoadPalette[] = {
-    gsDPSetTextureLUT(G_TT_RGBA16),
-    gsDPLoadTLUT_pal16(0, D_0A000600_E4B080),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsDPSetTextureDetail(G_TD_CLAMP),
-    gsDPSetTextureLOD(G_TL_TILE),
-    gsDPSetTexturePersp(G_TP_PERSP),
-    gsDPSetTextureFilter(G_TF_BILERP),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(Entity_UltraBlockContent_LoadPalette);
 
-Gfx Entity_UltraBlockContent_RenderImage[] = {
-    gsDPSetCycleType(G_CYC_1CYCLE),
-    gsSPDisplayList(Entity_UltraBlockContent_LoadPalette),
-    gsSPClearGeometryMode(G_CULL_BACK | G_LIGHTING | G_SHADING_SMOOTH),
-    gsSPVertex(Entity_UltraBlockContent_vtx, 4, 0),
-    gsSP2Triangles(0, 1, 2, 0, 0, 2, 3, 0),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(Entity_UltraBlockContent_RenderImage);
 
-Gfx Entity_UltraBlockContent_Render4[] = {
-    gsDPPipeSync(),
-    gsDPSetRenderMode(G_RM_AA_ZB_TEX_EDGE, G_RM_AA_ZB_TEX_EDGE2),
-    gsDPLoadTextureBlock_4b(D_0A000400_E4AE80, G_IM_FMT_CI, 32, 32, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD),
-    gsSPDisplayList(Entity_UltraBlockContent_RenderImage),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(Entity_UltraBlockContent_Render4);
 
-Gfx Entity_UltraBlockContent_Render2[] = {
-    gsDPPipeSync(),
-    gsDPSetRenderMode(G_RM_AA_ZB_XLU_SURF, G_RM_AA_ZB_XLU_SURF2),
-    gsDPLoadTextureBlock_4b(D_0A000400_E4AE80, G_IM_FMT_CI, 32, 32, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD),
-    gsSPDisplayList(Entity_UltraBlockContent_RenderImage),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(Entity_UltraBlockContent_Render2);
 
-Gfx Entity_UltraBlockContent_Render3[] = {
-    gsDPPipeSync(),
-    gsDPSetRenderMode(G_RM_AA_ZB_TEX_EDGE, G_RM_AA_ZB_TEX_EDGE2),
-    gsDPLoadTextureBlock_4b(D_0A000200_E4AC80, G_IM_FMT_CI, 32, 32, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD),
-    gsSPDisplayList(Entity_UltraBlockContent_RenderImage),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(Entity_UltraBlockContent_Render3);
 
-Gfx Entity_UltraBlockContent_Render[] = {
-    gsDPPipeSync(),
-    gsDPSetRenderMode(G_RM_AA_ZB_XLU_SURF, G_RM_AA_ZB_XLU_SURF2),
-    gsDPLoadTextureBlock_4b(D_0A000200_E4AC80, G_IM_FMT_CI, 32, 32, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD),
-    gsSPDisplayList(Entity_UltraBlockContent_RenderImage),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(Entity_UltraBlockContent_Render);

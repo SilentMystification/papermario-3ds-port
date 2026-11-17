@@ -18,6 +18,8 @@ DEF = re.compile(r"^(Gfx|Vtx|Vec3s)\s+(?:N\((\w+)\)|(\w+))\s*\[[^\]]*\]\s*=", re
 JP = re.compile(r"^#if VERSION_(?:JP|PAL)\b.*?^#(?:else|endif)\b", re.M | re.S)  # FXENT3: the JP branch is not in the ELF; LIT1: nor the PAL one (US build)
 MTX = re.compile(r"^(?:Mtx|Matrix4s)\s+(?:N\((\w+)\)|(\w+))\s*(\[[^\]]*\])?\s*=", re.M)  # PRA31: a Matrix4s object has the 0x40 bytes of an Mtx
 LIT = re.compile(r"^Lights1\s+(?:N\((\w+)\)|(\w+))\s*=", re.M)  # LIT1
+RAW = re.compile(r"^unsigned char\s+(?:N\((\w+)\)|(\w+))\s*\[\w*\]\s*=", re.M)  # RAWIMG: a texture or palette as a C byte array
+RAW_RULE = True  # RAWIMG: seeded test in 3ds/tests/host.d/rawimg.sh
 INC = re.compile(r'^\s*#include\s+"([^"]+\.inc\.c)"', re.M)
 INCLUDE = re.compile(r'^\s*#\s*include\s+"([^"]+)"', re.M)
 IMG = re.compile(r"INCLUDE_(?:IMG|PAL|RAW)\(\s*\"[^\"]*\"\s*,\s*(\w+)\s*\)")
@@ -103,6 +105,8 @@ def scan(path, out, moved=False, parent_ns=None, ren=None):
         out.append(("Lit", name_of(path, ns, m.group(1), ren.get(m.group(2), m.group(2)), pre_bad), moved))
     for name in IMG.findall(text):
         out.append(("Img", ren.get(name, name), moved))
+    for m in RAW.finditer(text) if RAW_RULE else ():
+        out.append(("Raw", name_of(path, ns, m.group(1), ren.get(m.group(2), m.group(2)), pre_bad), moved))
     for m in INC.finditer(text):
         p = resolve(m.group(1), path)
         if p is None:
@@ -143,7 +147,7 @@ def entry_lines(entries):
         if k == "Img":
             lines.append(f'    {{ "{n}", GS_IMG, (const void*){n}, (const void*){n}_gend{tail}')
         else:
-            gk = {"Gfx": "GS_GFX", "Vtx": "GS_VTX", "Mtx": "GS_MTX", "Lit": "GS_LIT", "Vec3s": "GS_V3S"}[k]
+            gk = {"Gfx": "GS_GFX", "Vtx": "GS_VTX", "Mtx": "GS_MTX", "Lit": "GS_LIT", "Vec3s": "GS_V3S", "Raw": "GS_IMG"}[k]
             if k in ("Mtx", "Lit"):
                 lines.append(f'    {{ "{n}", {gk}, (const void*)&{n}, (const void*)((const char*)&{n} + sizeof {n}){tail}')
             else:

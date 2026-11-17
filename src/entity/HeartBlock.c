@@ -17,9 +17,9 @@ extern EntityModelScript Entity_HeartBlockContent_RenderScriptHit;
 extern EntityBlueprint Entity_HeartBlockContent;
 
 NDN_DECL(Entity_HeartBlock_Render);
-extern Gfx Entity_HeartBlockContent_RenderHeartSleeping[];
-extern Gfx Entity_HeartBlockContent_RenderHeartAwake[];
-extern Gfx Entity_HeartBlockContent_RenderHeartHappy[];
+NDN_DECL(Entity_HeartBlockContent_RenderHeartSleeping);
+NDN_DECL(Entity_HeartBlockContent_RenderHeartAwake);
+NDN_DECL(Entity_HeartBlockContent_RenderHeartHappy);
 
 BSS bool HeartBlockPrinterClosed;
 
@@ -76,7 +76,7 @@ void entity_HeartBlockContent__setupGfx(s32 entityIndex, Gfx* arg1) {
 }
 
 void entity_HeartBlockContent_setupGfx(s32 entityIndex) {
-    entity_HeartBlockContent__setupGfx(entityIndex, Entity_HeartBlockContent_RenderHeartHappy);
+    entity_HeartBlockContent__setupGfx(entityIndex, NDN(Entity_HeartBlockContent_RenderHeartHappy));
 }
 
 void entity_HeartBlockContent_set_initial_pos(Entity* entity) {
@@ -426,9 +426,9 @@ EntityScript Entity_HeartBlock_Script = {
     es_End
 };
 
-EntityModelScript Entity_HeartBlockContent_RenderScriptIdle = STANDARD_ENTITY_MODEL_SCRIPT(Entity_HeartBlockContent_RenderHeartSleeping, RENDER_MODE_ALPHATEST);
-EntityModelScript Entity_HeartBlockContent_RenderScriptHit = STANDARD_ENTITY_MODEL_SCRIPT(Entity_HeartBlockContent_RenderHeartAwake, RENDER_MODE_SURFACE_XLU_LAYER2);
-EntityModelScript Entity_HeartBlockContent_RenderScriptAfterHit = STANDARD_ENTITY_MODEL_SCRIPT(Entity_HeartBlockContent_RenderHeartHappy, RENDER_MODE_SURFACE_XLU_LAYER2);
+EntityModelScript Entity_HeartBlockContent_RenderScriptIdle = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_HeartBlockContent_RenderHeartSleeping), RENDER_MODE_ALPHATEST);
+EntityModelScript Entity_HeartBlockContent_RenderScriptHit = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_HeartBlockContent_RenderHeartAwake), RENDER_MODE_SURFACE_XLU_LAYER2);
+EntityModelScript Entity_HeartBlockContent_RenderScriptAfterHit = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_HeartBlockContent_RenderHeartHappy), RENDER_MODE_SURFACE_XLU_LAYER2);
 EntityModelScript Entity_HeartBlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_HeartBlock_Render), RENDER_MODE_SURFACE_XLU_LAYER3);
 
 EntityBlueprint Entity_HeartBlockFrame = {
