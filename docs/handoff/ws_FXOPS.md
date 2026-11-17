@@ -35,7 +35,6 @@ After: `{ NDN(D_090003B0_3DC2F0), NDN(D_09000280_3DC1C0) }`.
 ## Fail
 - A failing test or a compile error: edit only the 21 files. Compare each with the patch. 2 tries for one cause. Then write the output to build3ds/out/ and send the path to the oracle.
 - A base run that fails or hangs, or a byte diff in a gate: stop. Send the output path to the oracle.
-## Stop
-Both gates pass. The last commit `FXOPS 2: gate` deletes ws_FXOPS.md and ws_FXOPS.patch.
+## Stop: both gates pass. The last commit `FXOPS 2: gate` deletes ws_FXOPS.md and ws_FXOPS.patch.
 ## Hand-back (one SubagentHandback message)
 Commits. listcen data, data_arrays, gfxtype before and after. `ntab moved` line. memcheck margin. The 2 cmp lines.
