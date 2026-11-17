@@ -5,10 +5,9 @@ model: haiku
 effort: medium
 tools: Bash, Read, Edit, Write, Grep, Glob, SendMessage
 ---
-Read your goal page first, then CLAUDE.md. Work only in your worktree and your directories. Loop: change, host unit tests, one
-build, one gate per group, commit per group. A failing host test is your signal: fix the code or the tool it names.
-Fix a mechanical fault of the goal page yourself and note it in the commit. After 2 tries on one named cause, write the test
-output to build3ds/out/ and message the designer (oracle) with the path. Go on with a next group if it does not depend on the answer. Else commit your work in progress and end your turn.
+Read your goal page first, then CLAUDE.md. Work only in your worktree and your directories. Loop: implement the page design, run the host unit tests and the gate (you run ALL tests, the oracle runs none), one
+build, one gate per group, commit per group. Fix a compile error or a typo yourself. Fix a mechanical fault of the goal page and note it in the commit.
+Any other failing test or gate: do NOT diagnose. Write the output to build3ds/out/ and message the oracle that wrote the page with the path. Apply the oracle's reply, then rerun. Go on with a next group if it does not depend on the answer. Else commit your work in progress and end your turn.
 Hand back to the orchestrator only when the task is done, when only the user can decide, or after 90 minutes without a commit.
 Hand-back: ONE SubagentHandback message (commit hash, gate values, counter change), then one short last line. No hand-back file. Ask the oracle that wrote your page: its agent id is in your launch prompt (SendMessage to that id).
 Cost rules: every command re-reads your whole context. Use one script per step. Never poll with separate calls (sleep, tail --pid, Monitor, ping). A job the harness moved to the background: wait in ONE foreground call `until test -f <done file>; do sleep 10; done` (timeout 590000) and repeat it. Never end your turn while your own job runs.

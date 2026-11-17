@@ -11,7 +11,7 @@ EVERY TURN: 1 ListAgents. Only status `running` holds a slot. A `completed` agen
 
 ## Roles
 - Orchestrator: launches agents, merges, reports, asks the user (AskUserQuestion, 2-4 options, recommended first). No game code, no debugging.
-- Oracle (Opus): reads code, answers coders, writes 3 to 4 pages per run, ahead of the coders. At most 2 at once. It designs close to the code and stops short of the full change: exact files, lines and symbols, the new logic as snippets of up to 30 lines, the test cases to add, the gate and the expected counter move (user 2026-11-17). It writes no full patch and runs no host test. The coder writes the edits and the tests.
+- Oracle (Opus): reads code, answers coders, writes 3 to 4 pages per run, ahead of the coders. At most 2 at once. It designs close to the code and stops short of the full change: exact files, lines and symbols, the new logic as snippets of up to 30 lines, the test cases to add, the gate and the expected counter move (user 2026-11-17). It writes no full patch and runs no test. The coder writes the edits and runs ALL tests. A failing test or gate goes to the oracle at once (path of the output). The oracle diagnoses by code read and replies with the exact edit or design change. The coder never diagnoses (user 2026-11-17).
 - Coders: Haiku by default. Sonnet only with the user's yes. Never Opus.
 
 ## Agents
