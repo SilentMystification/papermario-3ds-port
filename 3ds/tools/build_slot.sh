@@ -35,13 +35,17 @@ build_slot_reap() {
         [ $((now - m)) -lt 30 ] && return 1
         p=none
     fi
-    g="$s.dead.$$"
-    mv "$s" "$g" 2>/dev/null || return 1
-    if [ "$(cat "$g/pid" 2>/dev/null)" != "$pl" ]; then
-        mv -T "$g" "$s" 2>/dev/null || rm -rf "$g" # the slot was retaken meanwhile: give it back (taken again: its holder ends)
+    # RACE2: one reaper at a time per slot (mkdir lock). Under the lock the dir is judged again and removed in place: a slot is never
+    # moved away, so no taker can retake it while a reaper holds it and no live slot is lost (FACT post_merge 8dcacbfb95: 'lost slot 1').
+    lk="$s.reap"
+    if ! mkdir "$lk" 2>/dev/null; then
+        lm=$(date -r "$lk" +%s 2>/dev/null || date +%s)
+        [ $(( $(date +%s) - lm )) -ge 30 ] && rm -rf "$lk" # a reaper that died under the lock
         return 1
     fi
-    rm -rf "$g"
+    if [ -d "$s" ] && [ "$(cat "$s/pid" 2>/dev/null)" = "$pl" ]; then rm -rf "$s"; rc=0; else rc=1; fi
+    rmdir "$lk" 2>/dev/null
+    [ "$rc" -eq 0 ] || return 1
     echo "buildslot: slot $k of dead pid $p removed"
     return 0
 }
