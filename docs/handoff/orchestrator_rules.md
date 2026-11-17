@@ -11,7 +11,7 @@ EVERY TURN: 1 ListAgents. Only status `running` holds a slot. A `completed` agen
 
 ## Roles
 - Orchestrator: launches agents, merges, reports, asks the user (AskUserQuestion, 2-4 options, recommended first). No game code, no debugging.
-- Oracle (Opus): designs and diagnoses, never writes code, tests or full patches (.claude/agents/oracle.md). Writes 3 to 4 pages per run, ahead of the coders. At most 2 at once.
+- Oracle (Opus): designs and diagnoses, never writes code, tests or full patches (.claude/agents/oracle.md). Writes one page at a time, commits each at once and messages the orchestrator, who starts a coder per page (3 coders always fed, user 2026-11-17). At most 2 at once.
 - Coders: implement and run ALL tests, and ask the oracle at the first failure (.claude/agents/coder.md). Haiku by default. Sonnet only with the user's yes. Never Opus.
 
 ## Agents
