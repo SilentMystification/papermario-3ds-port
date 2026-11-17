@@ -27,6 +27,8 @@ static Npc* fx_npc;
 
 /* FX3f: lil_oink draws only the pigs a script sets visible (mac_03 LoadLilOinks): show one. */
 static void fxt_lil_oink(void);
+/* FXSLOT: star power +4 segments, the status bar shimmer starts. */
+static void fxt_star_shimmer(void);
 /* FX3g: emote follows the player (PTR_LIST_END), the first NPC of the map was off screen. */
 /* E(name, call). Names follow src/effects/<name>.c. */
 #define FXLIST(E) \
@@ -182,7 +184,8 @@ E(misc_particles_v0, fx_misc_particles(0, X, Y, Z, 24.0f, 24.0f, 1.0f, 5, 0)) \
 E(misc_particles_v2, fx_misc_particles(2, X, Y, Z, 24.0f, 24.0f, 1.0f, 5, 0)) \
 E(misc_particles_v3, fx_misc_particles(3, X, Y, Z, 24.0f, 24.0f, 1.0f, 5, 0)) \
 E(misc_particles_v4, fx_misc_particles(4, X, Y, Z, 24.0f, 24.0f, 1.0f, 5, 0)) \
-E(misc_particles_v5, fx_misc_particles(5, X, Y, Z, 24.0f, 24.0f, 1.0f, 5, 0))
+E(misc_particles_v5, fx_misc_particles(5, X, Y, Z, 24.0f, 24.0f, 1.0f, 5, 0)) \
+E(star_shimmer, fxt_star_shimmer())
 
 static void fxt_lil_oink(void) {
     EffectInstance* o = fx_lil_oink(0, 0.0f, 0.0f, 0.0f, 0.0f, 0);
@@ -190,6 +193,13 @@ static void fxt_lil_oink(void) {
     d->type[0] = 0;
     d->x[0] = X; d->y[0] = Y - 25.0f; d->z[0] = Z; d->rot[0] = 270.0f;
     d->flags[0] |= LIL_OINK_FLAG_VISIBLE;
+}
+
+/* FXSLOT: star power +4 segments: the status bar opens and the shimmer starts (inventory.c:925-931, :2011-2018). */
+static void fxt_star_shimmer(void) {
+    gPlayerData.maxStarPower = 1;
+    gPlayerData.starPower = 0;
+    add_star_power(SP_PER_SEG * 4);
 }
 
 #define E_ENUM(n, c) FXT_##n,
@@ -203,6 +213,7 @@ static void fx_spawn(int i) {
 }
 
 #define SLOT 44
+static int slot_len = SLOT; /* FXSLOT: switch fxslot=<n> (48..300) */
 #define START 400
 static unsigned char sel[FXT_COUNT];
 static int nsel = -1, shotn;
@@ -275,14 +286,15 @@ void pm_fxtest_tick(unsigned f) {
                 for (; n <= m; n++) if (n >= 0 && n < FXT_COUNT && nsel < FXT_COUNT) sel[nsel++] = n;
             }
         }
-        pm_log("fxtest: %d effects selected of %d, slot %d frames, start frame %d", nsel, FXT_COUNT, SLOT, START);
+        { char v[8]; if (pm_debug_value("fxslot", v, sizeof v) && atoi(v) >= 48 && atoi(v) <= 300) slot_len = atoi(v); }
+        pm_log("fxtest: %d effects selected of %d, slot %d frames, start frame %d", nsel, FXT_COUNT, slot_len, START);
         if (nsel > 0) pm_cnt_on = 1; /* FXCEN1: the census runs with fxtest */
     }
     if (nsel > 0 && f == START - 40) fxc_take(&fxc_base, f); /* FXCEN1: base window 360..400, no effect */
     if (nsel <= 0 || f < START) return;
     if (f == START) fxc_print(-1, "base", &fxc_base, f);
-    slot = (f - START) / SLOT;
-    k = (f - START) % SLOT;
+    slot = (f - START) / slot_len;
+    k = (f - START) % slot_len;
     if (slot >= nsel) {
         if (slot == nsel && k == 0) { nd_psochk_end(); pm_log_evt("fxtest: done"); }
         return;
@@ -303,5 +315,5 @@ void pm_fxtest_tick(unsigned f) {
         fx_spawn(i);
     } else if (k == (i == FXT_shiny_flare || i == FXT_emote ? 7 : 12)) shot("a", i); /* FX3f: shiny_flare lives 10 frames */
     else if (k == 32) shot("b", i);
-    else if (k == 40) { fxc_print(i, fx_names[i], &fxc_eff, f); clear_all(); } /* FXCEN1: the slot's census before the clear */
+    else if (k == slot_len - 4) { fxc_print(i, fx_names[i], &fxc_eff, f); clear_all(); } /* FXCEN1: the slot's census before the clear */
 }

@@ -1,0 +1,60 @@
+{
+  "scenarios": [
+    {
+      "name": "fxslot_cap",
+      "status": "unverified",
+      "subject": "FXSLOT capture: Toad Town mac_01 at 0 0 200, fxtest=153,71,132 (star_shimmer, chomp_drop, disable_x) with fxslot=110 frames per slot, entcap and entcapt on, log only.",
+      "proves": "FXSLOT: the entcap lines of the sites status_star_shimmer.c:189, chomp_drop.c:163, :166, disable_x.c:308, :310 (nd_walk.c entcap_rec).",
+      "debug": "warp=mac_01:0 pos=0:0:200 det fxtest=153,71,132 fxslot=110 loglevel=debug entcap entcapt psochk",
+      "until": "fxtest: done",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "entcap",
+          "regex": "entcap l [0-9a-f]{8} s [0-9a-f]{8}"
+        },
+        {
+          "name": "done",
+          "regex": "fxtest: done"
+        }
+      ],
+      "reason": "FXSLOT capture of the unseen sites. Until the fxtest: done line. Cap 40 s, deadline 35 s."
+    },
+    {
+      "name": "fxslot_drec",
+      "status": "unverified",
+      "subject": "FXSLOT gate: Toad Town mac_01 at 0 0 200, fxtest=153,71,132 fxslot=110, cold det start with the drec switch: the draw records of frame 722 go to shots/drec.txt.",
+      "proves": "FXSLOT: the draw records of a slot built with fxslot=110 are a function of the build (det), so a base and a head build give a byte-equal drec.txt.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=153,71,132 fxslot=110 loglevel=debug det drec=412:3:155 psochk",
+      "until": "fxtest: done",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f722 draws [1-9]\\d* bytes \\d+"
+        },
+        {
+          "name": "done",
+          "regex": "fxtest: done"
+        }
+      ],
+      "reason": "FXSLOT byte gate for the fxslot=110 slots (k 12, 57, 102 of the 3 slots). Cold det start, cap 40 s, deadline 35 s."
+    }
+  ]
+}
