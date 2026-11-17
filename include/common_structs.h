@@ -1086,7 +1086,7 @@ typedef struct CollisionData {
 } CollisionData; // size = 0x10
 
 typedef struct AnimatorNode {
-    /* 0x00 */ Gfx* displayList;
+    /* 0x00 */ void* displayList; /* a list handle */
     /* 0x04 */ struct AnimatorNode* children[32];
     /* 0x84 */ Vec3f basePos; // ?
     /* 0x90 */ Vec3f pos;
@@ -2418,7 +2418,7 @@ typedef struct ImgFXOverlayTexture {
     /* 0x0A */ u16 height;
     /* 0x0C */ s32 offsetX;
     /* 0x10 */ s32 offsetY;
-    /* 0x14 */ Gfx* displayList;
+    /* 0x14 */ void* displayList; /* a list handle */
 } ImgFXOverlayTexture; // size = 0x18
 
 typedef struct ImgFXTexture {
@@ -2430,7 +2430,7 @@ typedef struct ImgFXTexture {
     /* 0x0E */ s16 yOffset;
     /* 0x10 */ u8 alpha;
     /* 0x11 */ char unk_11[3];
-    /* 0x14 */ Gfx* dlist;
+    /* 0x14 */ void* dlist; /* unused */
 } ImgFXTexture; // size = 0x18
 
 typedef struct ImgFXWorkingTexture {

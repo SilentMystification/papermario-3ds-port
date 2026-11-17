@@ -13,7 +13,7 @@ typedef struct ImgFXVtx {
 
 typedef struct ImgFXAnimHeader {
     /* 0x00 */ ImgFXVtx* keyframesOffset;
-    /* 0x04 */ Gfx* gfxOffset; // Gfx for creating mesh from vertices
+    /* 0x04 */ void* gfxOffset; // ROM offset of the mesh list units
     /* 0x08 */ u16 vtxCount; // conserved across keyframes
     /* 0x0A */ u16 gfxCount;
     /* 0x0C */ u16 keyframesCount;
