@@ -1,0 +1,5 @@
+src/screen_overlays.c
+src/curtains.c
+src/world/area_kmr/kmr_20/records.c
+src/world/area_mgm/mgm_00/scoreboard.c
+src/world/area_hos/hos_05/intro.c

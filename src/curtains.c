@@ -84,11 +84,7 @@ INCLUDE_IMG("ui/no_controller.png", ui_no_controller_png);
 
 NDN_DECL(NoControllerSetupTexGfx);
 
-Gfx NoControllerGfx[] = {
-    gsSPTextureRectangle(0x0180, 0x0260, 0x0380, 0x02E0, G_TX_RENDERTILE, 0, 0, 0x0400, 0x0400),
-    gsDPPipeSync(),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(NoControllerGfx);
 
 BSS f32 gCurtainScale;
 BSS f32 gCurtainScaleGoal;
@@ -180,7 +176,7 @@ void render_curtains(void) {
                 gSPDisplayList(gMainGfxPos++, TheaterInitGfx);
                 nd_draw_list(NDN(NoControllerSetupTexGfx), ND_SELF);
                 nd_val_prim(0, 0, 0xFF, 0x20, 0x10, alpha);
-                gSPDisplayList(gMainGfxPos++, NoControllerGfx);
+                nd_draw_list(NDN(NoControllerGfx), ND_SELF);
 #if VERSION_PAL
             }
             
