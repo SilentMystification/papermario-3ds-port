@@ -226,7 +226,7 @@ void bombette_breaking_appendGfx(void* effect) {
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
-    mdl_draw_hidden_panel_surface(&gMainGfxPos, data->treeIndex);
+    mdl_draw_hidden_panel_surface(data->treeIndex);
 
     data++;
     for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, data++) {

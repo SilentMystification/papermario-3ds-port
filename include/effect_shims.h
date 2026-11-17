@@ -20,7 +20,7 @@ f32 shim_atan2(f32 startX, f32 startZ, f32 endX, f32 endZ);
 bool shim_npc_raycast_down_sides(s32, f32*, f32*, f32*, f32*);
 s32 shim_load_effect(s32 effectIndex);
 float shim_sqrtf(float value);
-void shim_mdl_draw_hidden_panel_surface(Gfx**, u16 treeIndex);
+void shim_mdl_draw_hidden_panel_surface(u16 treeIndex);
 bool shim_is_point_visible(f32, f32, f32, s32, f32*, f32*);
 void shim_guPerspectiveF(f32 mf[4][4], u16* perspNorm, f32 fovy, f32 aspect, f32 near, f32 far, f32 scale);
 void shim_transform_point(Matrix4f mtx, f32 inX, f32 inY, f32 inZ, f32 inS, f32* outX, f32* outY, f32* outZ, f32* outW);

@@ -3952,17 +3952,12 @@ bool is_point_visible(f32 x, f32 y, f32 z, s32 depthQueryID, f32* screenX, f32* 
     }
     if (outX >= 0.0f && outY >= 0.0f && outX < 320.0f && outY < 240.0f) {
         // Load a 4x1 pixel tile of the depth buffer
-        gDPLoadTextureTile(gMainGfxPos++, osVirtualToPhysical(&nuGfxZBuffer[(s32) outY * SCREEN_WIDTH]), G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, 1,
-            (s32) outX, 0, (s32) outX + 3, 0,
-            0,
-            G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP,
-            9, G_TX_NOMASK,
-            G_TX_NOLOD, G_TX_NOLOD);
+        nd_tex_load_tile(osVirtualToPhysical(&nuGfxZBuffer[(s32) outY * SCREEN_WIDTH]), G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, 1, (s32) outX, 0, (s32) outX + 3, 0, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 9, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
         // Set the current color image to the buffer where copied depth values are stored.
-        gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, DepthCopyBuffer);
+        nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, DepthCopyBuffer);
         // Set up 1 cycle mode and all other relevant othermode params.
         // One cycle mode must be used here because only one pixel is copied, and copy mode only supports multiples of 4 pixels.
-        gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
+        nd_pso_cyc(G_CYC_1CYCLE);
         nd_pso_rm(G_RM_OPA_SURF, G_RM_OPA_SURF2);
         nd_pso_cc(G_CC_DECALRGBA, G_CC_DECALRGBA);
         nd_pso_filt(G_TF_POINT);
@@ -3972,14 +3967,13 @@ bool is_point_visible(f32 x, f32 y, f32 z, s32 depthQueryID, f32* screenX, f32* 
         nd_pso_detail(G_TD_CLAMP);
         nd_pso_lod(G_TL_TILE);
         // Adjust the scissor to only draw to the specified pixel.
-        gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, depthQueryID, 0, depthQueryID + 1, 1);
+        nd_pso_scis(G_SC_NON_INTERLACE, depthQueryID, 0, depthQueryID + 1, 1);
         // Draw a texrect to copy one pixel of the loaded depth tile to the output buffer.
-        gSPTextureRectangle(gMainGfxPos++, depthQueryID << 2, 0 << 2, (depthQueryID + 1) << 2, 1 << 2, G_TX_RENDERTILE, (s32) outX << 5, 0, 1 << 10, 1 << 10);
+        nd_rect_tex(depthQueryID << 2, 0 << 2, (depthQueryID + 1) << 2, 1 << 2, G_TX_RENDERTILE, (s32) outX << 5, 0, 1 << 10, 1 << 10);
         // Sync and swap the color image back to the current framebuffer.
-        gDPPipeSync(gMainGfxPos++);
         nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
         // Reconfigure the frame's normal scissor.
-        gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, camera->viewportStartX, camera->viewportStartY, camera->viewportStartX + camera->viewportW, camera->viewportStartY + camera->viewportH);
+        nd_pso_scis(G_SC_NON_INTERLACE, camera->viewportStartX, camera->viewportStartY, camera->viewportStartX + camera->viewportW, camera->viewportStartY + camera->viewportH);
 
         // The following code will use last frame's depth value, since the copy that was just written won't be executed until the current frame is drawn.
 
@@ -4000,27 +3994,13 @@ bool is_point_visible(f32 x, f32 y, f32 z, s32 depthQueryID, f32* screenX, f32* 
     return outZ > 0.0f;
 }
 
-void mdl_draw_hidden_panel_surface(Gfx** arg0, u16 treeIndex) {
+/* GPOSREST: every caller passed &gMainGfxPos (the frame stream), so the packet swap was a no-op */
+void mdl_draw_hidden_panel_surface(u16 treeIndex) {
     Model* model = get_model_from_list_index(get_model_list_index_from_tree_index(treeIndex));
     Model copied = *model;
-    Gfx* oldGfxPos;
-    s32 flag;
-
-    if (*arg0 == gMainGfxPos) {
-        flag = 1;
-    }
-
-    oldGfxPos = gMainGfxPos;
-    gMainGfxPos = *arg0;
 
     copied.flags = MODEL_FLAG_HAS_LOCAL_VERTEX_COPY | MODEL_FLAG_VALID;
     appendGfx_model(&copied);
-
-    *arg0 = gMainGfxPos;
-
-    if (flag == 0) {
-        gMainGfxPos = oldGfxPos;
-    }
 }
 
 void* mdl_get_next_texture_address(s32 size) {

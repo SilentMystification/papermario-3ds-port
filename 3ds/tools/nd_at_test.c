@@ -117,6 +117,10 @@ static void b_rscis(void) { NDTX_RECT_SCIS(ND_NR_AT, 10, 20, 300, 200, 0, 0x8000
 static uint32_t gRw0, gRw1, gRhs, gRhd; /* set in main: the texture rectangle words of screen_overlays.c */
 static void a_rw(void) { ND_GX(p++, gRw0, gRw1); gImmp1(p++, G_RDPHALF_1, gRhs); gImmp1(p++, G_RDPHALF_2, gRhd); }
 static void b_rw(void) { NDTX_RECT_W(ND_NR_AT, gRw0, gRw1, gRhs, gRhd); }
+static void a_ndsp(void) { gPmNdSplash(p++, 1); }
+static void b_ndsp(void) { NDCTL_ND(ND_NR_AT, G_PM_ND_SPLASH, 1); }
+static void a_ndgut(void) { gPmNdGutter(p++, 0x1a7); }
+static void b_ndgut(void) { NDCTL_ND(ND_NR_AT, G_PM_ND_GUTTER, 0x1a7); }
 static void a_ho(void) { nrp = bb; ND_NR_AT(0x12345678u, 0x9abcdef0u); a_is_nr = 1; }
 static void b_ho(void) { uint32_t* q = nrp; nd_nr_o(&q, 0x12345678u, 0x9abcdef0u); nrp = q; }
 
@@ -128,7 +132,7 @@ static const Shape shapes[] = {
     { "tri2", a_tri2, b_tri2 }, { "viewport", a_viewport, b_viewport }, { "fill", a_fill, b_fill },
     { "ltile", a_ltile, b_ltile }, { "ltile4", a_ltile4, b_ltile4 }, { "lblk", a_lblk, b_lblk }, { "lblk4", a_lblk4, b_lblk4 },
     { "tlut16", a_tlut16, b_tlut16 }, { "sblk4", a_sblk4, b_sblk4 }, { "rtex", a_rtex, b_rtex }, { "rscis", a_rscis, b_rscis },
-    { "rw", a_rw, b_rw }, { "ho", a_ho, b_ho },
+    { "rw", a_rw, b_rw }, { "ho", a_ho, b_ho }, { "ndsp", a_ndsp, b_ndsp }, { "ndgut", a_ndgut, b_ndgut },
 };
 
 /* one shape: the gbi side units (the sync units dropped, the two halves after a texture rectangle kept) against the O side units */
