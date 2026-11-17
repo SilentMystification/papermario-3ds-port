@@ -1,0 +1,154 @@
+diff --git a/3ds/tests/host.d/ovlimg.sh b/3ds/tests/host.d/ovlimg.sh
+new file mode 100644
+index 0000000000..561c479b5c
+--- /dev/null
++++ b/3ds/tests/host.d/ovlimg.sh
+@@ -0,0 +1,17 @@
++#!/bin/sh
++# OVLIMG: D_80156910 (src/screen_overlays.c) is the 160 x 120 RGBA16 image of D_8014EA48: an unsigned char array of 0x9600 bytes with an
++# initializer, so gen_gfx_syms.py maps it as GS_IMG (RAW rule) and D_8014EA48 gets an itab and is gset ok (/tmp/gconv of nd_host_test.sh).
++# Seeded fault: a copy of src/screen_overlays.c with the old `BSS s32 D_80156910;` gives no GS_IMG entry.
++W=/tmp/ovlimg; rm -rf $W && mkdir -p $W/o $W/f $W/src
++grep -q "^D_8014EA48: itab (" /tmp/gconv/ntab_inherit.txt || { echo "ovlimg FAIL: D_8014EA48 has no itab"; exit 1; }
++grep -qx D_8014EA48 /tmp/gconv/gset_ok.txt || { echo "ovlimg FAIL: D_8014EA48 is not gset ok"; exit 1; }
++E='{ "D_80156910", GS_IMG, (const void*)D_80156910, (const void*)((const char*)D_80156910 + sizeof D_80156910) },'
++grep -q '^unsigned char D_80156910\[0x9600\] = { 0 };' src/screen_overlays.c || { echo "ovlimg FAIL: D_80156910 is not 0x9600 bytes"; exit 1; }
++python3 3ds/tools/gen_gfx_syms.py $W/o/gconv_in.c src/screen_overlays.c > /dev/null 2>&1 || { echo "ovlimg FAIL gen"; exit 1; }
++grep -qF "$E" $W/o/gconv_tu_src_screen_overlays_c.c || { echo "ovlimg FAIL: no GS_IMG entry"; exit 1; }
++sed 's/^unsigned char D_80156910\[0x9600\] = { 0 };.*/BSS s32 D_80156910;/' src/screen_overlays.c > $W/src/screen_overlays.c
++cmp -s $W/src/screen_overlays.c src/screen_overlays.c && { echo "ovlimg FAIL seeded fault not applied"; exit 1; }
++python3 3ds/tools/gen_gfx_syms.py $W/f/gconv_in.c $W/src/screen_overlays.c > /dev/null 2>&1 || { echo "ovlimg FAIL gen of the seeded copy"; exit 1; }
++cat $W/f/gconv_tu_*.c | grep -q '"vtx_stencil2", GS_VTX' || { echo "ovlimg FAIL seeded copy not scanned"; exit 1; }
++cat $W/f/gconv_tu_*.c | grep -qF "$E" && { echo "ovlimg FAIL seeded fault not seen"; exit 1; }
++echo "ovlimg ok"
+diff --git a/3ds/tools/gfxin/src/screen_overlays.c b/3ds/tools/gfxin/src/screen_overlays.c
+index 394e76b41b..2b32379bef 100644
+--- a/3ds/tools/gfxin/src/screen_overlays.c
++++ b/3ds/tools/gfxin/src/screen_overlays.c
+@@ -96,3 +96,45 @@ Gfx D_8014E9A8[] = {
+     gsDPSetDepthSource(G_ZS_PIXEL),
+     gsSPEndDisplayList()
+ };
++Gfx D_8014EA48[] = {
++    gsDPSetDepthSource(G_ZS_PRIM),
++    gsDPSetPrimDepth(20, 0),
++    gsDPSetRenderMode(Z_CMP | CVG_DST_FULL | ZMODE_OPA | ALPHA_CVG_SEL | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM), Z_CMP | CVG_DST_FULL | ZMODE_OPA | ALPHA_CVG_SEL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM)),
++    gsSPClearGeometryMode(G_CULL_BOTH | G_LIGHTING),
++    gsSPClearGeometryMode(G_SHADING_SMOOTH),
++    gsSPTexture(0x8000, 0x8000, 0, G_TX_RENDERTILE, G_ON),
++    gsDPPipeSync(),
++    gsDPSetCombineMode(G_CC_MODULATEIA, G_CC_MODULATEIA),
++    gsDPSetTexturePersp(G_TP_PERSP),
++    gsDPSetTextureDetail(G_TD_CLAMP),
++    gsDPSetTextureLOD(G_TL_TILE),
++    gsDPSetTextureLUT(G_TT_NONE),
++    gsDPSetTextureFilter(G_TF_BILERP),
++    gsDPSetTextureConvert(G_TC_FILT),
++    gsSPVertex(&vtx_stencil2, 24, 0),
++    gsDPLoadTextureTile(&D_80156910, G_IM_FMT_RGBA, G_IM_SIZ_16b, 160, 0, 0, 0, 159, 11, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 4, G_TX_NOLOD, G_TX_NOLOD),
++    gsSP2Triangles(0, 2, 1, 0, 3, 1, 2, 0),
++    gsDPLoadTextureTile(&D_80156910, G_IM_FMT_RGBA, G_IM_SIZ_16b, 160, 0, 0, 11, 159, 22, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 4, G_TX_NOLOD, G_TX_NOLOD),
++    gsSP2Triangles(2, 4, 3, 0, 5, 3, 4, 0),
++    gsDPLoadTextureTile(&D_80156910, G_IM_FMT_RGBA, G_IM_SIZ_16b, 160, 0, 0, 22, 159, 33, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 4, G_TX_NOLOD, G_TX_NOLOD),
++    gsSP2Triangles(4, 6, 5, 0, 7, 5, 6, 0),
++    gsDPLoadTextureTile(&D_80156910, G_IM_FMT_RGBA, G_IM_SIZ_16b, 160, 0, 0, 33, 159, 44, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 4, G_TX_NOLOD, G_TX_NOLOD),
++    gsSP2Triangles(6, 8, 7, 0, 9, 7, 8, 0),
++    gsDPLoadTextureTile(&D_80156910, G_IM_FMT_RGBA, G_IM_SIZ_16b, 160, 0, 0, 44, 159, 55, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 4, G_TX_NOLOD, G_TX_NOLOD),
++    gsSP2Triangles(8, 10, 9, 0, 11, 9, 10, 0),
++    gsDPLoadTextureTile(&D_80156910, G_IM_FMT_RGBA, G_IM_SIZ_16b, 160, 0, 0, 55, 159, 66, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 4, G_TX_NOLOD, G_TX_NOLOD),
++    gsSP2Triangles(10, 12, 11, 0, 13, 11, 12, 0),
++    gsDPLoadTextureTile(&D_80156910, G_IM_FMT_RGBA, G_IM_SIZ_16b, 160, 0, 0, 66, 159, 77, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 4, G_TX_NOLOD, G_TX_NOLOD),
++    gsSP2Triangles(12, 14, 13, 0, 15, 13, 14, 0),
++    gsDPLoadTextureTile(&D_80156910, G_IM_FMT_RGBA, G_IM_SIZ_16b, 160, 0, 0, 77, 159, 88, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 4, G_TX_NOLOD, G_TX_NOLOD),
++    gsSP2Triangles(14, 16, 15, 0, 17, 15, 16, 0),
++    gsDPLoadTextureTile(&D_80156910, G_IM_FMT_RGBA, G_IM_SIZ_16b, 160, 0, 0, 88, 159, 99, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 4, G_TX_NOLOD, G_TX_NOLOD),
++    gsSP2Triangles(16, 18, 17, 0, 19, 17, 18, 0),
++    gsDPLoadTextureTile(&D_80156910, G_IM_FMT_RGBA, G_IM_SIZ_16b, 160, 0, 0, 99, 159, 110, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 4, G_TX_NOLOD, G_TX_NOLOD),
++    gsSP2Triangles(18, 20, 19, 0, 21, 19, 20, 0),
++    gsDPLoadTextureTile(&D_80156910, G_IM_FMT_RGBA, G_IM_SIZ_16b, 160, 0, 0, 110, 159, 119, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 4, G_TX_NOLOD, G_TX_NOLOD),
++    gsSP2Triangles(20, 22, 21, 0, 23, 21, 22, 0),
++    gsDPPipeSync(),
++    gsDPSetDepthSource(G_ZS_PIXEL),
++    gsSPEndDisplayList() // ROM has df000000 at 0xE5490, the decomp lacks it (V22b)
++};
+diff --git a/3ds/tools/gset.d/OVLIMG.txt b/3ds/tools/gset.d/OVLIMG.txt
+new file mode 100644
+index 0000000000..84b2ca5377
+--- /dev/null
++++ b/3ds/tools/gset.d/OVLIMG.txt
+@@ -0,0 +1,2 @@
++# OVLIMG: D_8014EA48 (screen_overlays.c:55) moves after D_80156910 became a 160 x 120 RGBA16 image symbol (GS_IMG, RAW rule)
++src/screen_overlays.c
+diff --git a/src/screen_overlays.c b/src/screen_overlays.c
+index fc3652efce..3a42668e7f 100644
+--- a/src/screen_overlays.c
++++ b/src/screen_overlays.c
+@@ -18,7 +18,8 @@ BSS s32 screen_overlay_frontType;
+ BSS f32 screen_overlay_frontProgress;
+ BSS s32 screen_overlay_backType;
+ BSS f32 screen_overlay_backProgress;
+-BSS s32 D_80156910;
++extern unsigned char D_80156910[] ALIGNED(8); /* OVLIMG: the 160 x 120 RGBA16 image of the stencil list of OVERLAY_TYPE_2 (11 tile loads, rows 0 to 119); no code writes it */
++unsigned char D_80156910[0x9600] = { 0 }; /* 160 * 120 * 2 bytes; the initializer makes it a GS_IMG symbol (gen_gfx_syms.py RAW) */
+ ScreenOverlay ScreenOverlays[2];
+ 
+ ScreenTransition CurrentScreenTransition = TRANSITION_END_DEMO_SCENE_BLACK;
+@@ -52,48 +53,7 @@ NDN_DECL(D_8014E8F0);
+ 
+ NDN_DECL(D_8014E9A8);
+ 
+-Gfx D_8014EA48[] = {
+-    gsDPSetDepthSource(G_ZS_PRIM),
+-    gsDPSetPrimDepth(20, 0),
+-    gsDPSetRenderMode(Z_CMP | CVG_DST_FULL | ZMODE_OPA | ALPHA_CVG_SEL | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM), Z_CMP | CVG_DST_FULL | ZMODE_OPA | ALPHA_CVG_SEL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM)),
+-    gsSPClearGeometryMode(G_CULL_BOTH | G_LIGHTING),
+-    gsSPClearGeometryMode(G_SHADING_SMOOTH),
+-    gsSPTexture(0x8000, 0x8000, 0, G_TX_RENDERTILE, G_ON),
+-    gsDPPipeSync(),
+-    gsDPSetCombineMode(G_CC_MODULATEIA, G_CC_MODULATEIA),
+-    gsDPSetTexturePersp(G_TP_PERSP),
+-    gsDPSetTextureDetail(G_TD_CLAMP),
+-    gsDPSetTextureLOD(G_TL_TILE),
+-    gsDPSetTextureLUT(G_TT_NONE),
+-    gsDPSetTextureFilter(G_TF_BILERP),
+-    gsDPSetTextureConvert(G_TC_FILT),
+-    gsSPVertex(&vtx_stencil2, 24, 0),
+-    gsDPLoadTextureTile(&D_80156910, G_IM_FMT_RGBA, G_IM_SIZ_16b, 160, 0, 0, 0, 159, 11, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 4, G_TX_NOLOD, G_TX_NOLOD),
+-    gsSP2Triangles(0, 2, 1, 0, 3, 1, 2, 0),
+-    gsDPLoadTextureTile(&D_80156910, G_IM_FMT_RGBA, G_IM_SIZ_16b, 160, 0, 0, 11, 159, 22, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 4, G_TX_NOLOD, G_TX_NOLOD),
+-    gsSP2Triangles(2, 4, 3, 0, 5, 3, 4, 0),
+-    gsDPLoadTextureTile(&D_80156910, G_IM_FMT_RGBA, G_IM_SIZ_16b, 160, 0, 0, 22, 159, 33, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 4, G_TX_NOLOD, G_TX_NOLOD),
+-    gsSP2Triangles(4, 6, 5, 0, 7, 5, 6, 0),
+-    gsDPLoadTextureTile(&D_80156910, G_IM_FMT_RGBA, G_IM_SIZ_16b, 160, 0, 0, 33, 159, 44, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 4, G_TX_NOLOD, G_TX_NOLOD),
+-    gsSP2Triangles(6, 8, 7, 0, 9, 7, 8, 0),
+-    gsDPLoadTextureTile(&D_80156910, G_IM_FMT_RGBA, G_IM_SIZ_16b, 160, 0, 0, 44, 159, 55, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 4, G_TX_NOLOD, G_TX_NOLOD),
+-    gsSP2Triangles(8, 10, 9, 0, 11, 9, 10, 0),
+-    gsDPLoadTextureTile(&D_80156910, G_IM_FMT_RGBA, G_IM_SIZ_16b, 160, 0, 0, 55, 159, 66, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 4, G_TX_NOLOD, G_TX_NOLOD),
+-    gsSP2Triangles(10, 12, 11, 0, 13, 11, 12, 0),
+-    gsDPLoadTextureTile(&D_80156910, G_IM_FMT_RGBA, G_IM_SIZ_16b, 160, 0, 0, 66, 159, 77, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 4, G_TX_NOLOD, G_TX_NOLOD),
+-    gsSP2Triangles(12, 14, 13, 0, 15, 13, 14, 0),
+-    gsDPLoadTextureTile(&D_80156910, G_IM_FMT_RGBA, G_IM_SIZ_16b, 160, 0, 0, 77, 159, 88, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 4, G_TX_NOLOD, G_TX_NOLOD),
+-    gsSP2Triangles(14, 16, 15, 0, 17, 15, 16, 0),
+-    gsDPLoadTextureTile(&D_80156910, G_IM_FMT_RGBA, G_IM_SIZ_16b, 160, 0, 0, 88, 159, 99, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 4, G_TX_NOLOD, G_TX_NOLOD),
+-    gsSP2Triangles(16, 18, 17, 0, 19, 17, 18, 0),
+-    gsDPLoadTextureTile(&D_80156910, G_IM_FMT_RGBA, G_IM_SIZ_16b, 160, 0, 0, 99, 159, 110, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 4, G_TX_NOLOD, G_TX_NOLOD),
+-    gsSP2Triangles(18, 20, 19, 0, 21, 19, 20, 0),
+-    gsDPLoadTextureTile(&D_80156910, G_IM_FMT_RGBA, G_IM_SIZ_16b, 160, 0, 0, 110, 159, 119, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 4, G_TX_NOLOD, G_TX_NOLOD),
+-    gsSP2Triangles(20, 22, 21, 0, 23, 21, 22, 0),
+-    gsDPPipeSync(),
+-    gsDPSetDepthSource(G_ZS_PIXEL),
+-    gsSPEndDisplayList() // ROM has df000000 at 0xE5490, the decomp lacks it (V22b)
+-};
++NDN_DECL(D_8014EA48);
+ 
+ /* NATIVEAPI B2a (S1TSTEN): the transition stencil rectangle is one native record (screen_render_util.c writes it). full_and_id = full | id << 1,
+  * id 0 Mario, 1 Star, 2 SharpCircle (gPmStencilId, set by _render_transition_stencil on core 1). */
+@@ -261,7 +221,7 @@ void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* ove
+ 
+             guTranslate(&matrixStack[gMatrixListPos], 0.0f, 0.0f, 0.0f);
+             nd_xf_push(&matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+-            gSPDisplayList(gMainGfxPos++, D_8014EA48);
++            nd_draw_list(NDN(D_8014EA48), ND_SELF);
+             nd_xf_pop(G_MTX_MODELVIEW);
+             break;
+         case OVERLAY_TYPE_9:

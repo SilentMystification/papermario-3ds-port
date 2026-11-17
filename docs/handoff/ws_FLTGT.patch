@@ -1,0 +1,251 @@
+diff --git a/3ds/tests/host.d/fltgt.sh b/3ds/tests/host.d/fltgt.sh
+new file mode 100644
+index 0000000000..23e43f6412
+--- /dev/null
++++ b/3ds/tests/host.d/fltgt.sh
+@@ -0,0 +1,15 @@
++#!/bin/sh
++# FLTGT: a colour image unit (gsDPSetColorImage) of an image symbol is a unit only (nd_gfx_conv.c CIMG_UNIT), so the flame lists
++# D_090009E0_354590 and D_09000800_3543B0 (3ds/tools/gfxin/src/effects/gfx/flame.c) have v2 tables and are gset ok. Seeded fault: the
++# converter built with -DCIMG_UNIT=0 on the same objects (/tmp/gconv of nd_host_test.sh) reports D_090009E0_354590 unsup again.
++T=/tmp/gconv; V=/tmp/fltgt; rm -rf "$V"; mkdir -p "$V"
++for l in D_090009E0_354590 D_09000800_3543B0; do
++  grep -qx "$l" "$T/gset_ok.txt" || { echo "fltgt FAIL: $l is not gset ok"; exit 1; }
++  grep -qx "$l" "$T/ntab_tables.txt" || { echo "fltgt FAIL: $l has no v2 table"; exit 1; }
++done
++DEF="-DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -DVERSION=us -D_MIPS_SZLONG=32 -Dnullptr=NULL"
++gcc -m32 -Wall -Wextra -Werror -DCIMG_UNIT=0 -DND_SCOMP_HOST $DEF -I 3ds/tools -I include -I ver/us/build/include -I 3ds/include -I 3ds/stub_include \
++    -o "$V/conv" 3ds/tools/nd_gfx_conv.c 3ds/src/nd_scomp.c 3ds/src/nd_texwin.c 3ds/tools/nd_vslot.c "$T/gconv_in.o" -Wl,--gc-sections
++"$V/conv" "$V/d.c" "$V/i.txt" "$V/u.txt" "$V/x.c" "$V/t.txt" "$T/ntab_entries.txt" "$V/p.txt" "$V/g.txt" "$T/sdef_names.txt" > "$V/tab.c" 2> "$V/err.txt" || true
++grep -q "^D_090009E0_354590: MISC (unit 0 of D_090009E0_354590)" "$V/u.txt" || { echo "fltgt seeded fault not seen"; exit 1; }
++echo "fltgt ok"
+diff --git a/3ds/tools/gfxin/src/effects/gfx/flame.c b/3ds/tools/gfxin/src/effects/gfx/flame.c
+index 5e3cd35016..bdba9bfacd 100644
+--- a/3ds/tools/gfxin/src/effects/gfx/flame.c
++++ b/3ds/tools/gfxin/src/effects/gfx/flame.c
+@@ -1,5 +1,59 @@
+ #include "src/effects/gfx/flame.c"
+-unsigned char D_800B32E0[0x800]; /* FXOPS: the flame render target (src/main.c:15-16 is not in the gconv set) */
+-unsigned char D_800B3AE0[0x800];
++unsigned char D_800B32E0[0x800] = { 0 }; /* FXOPS: the flame render target (src/main.c:15-16 is not in the gconv set). FLTGT: the initializer makes it a GS_IMG symbol (gen_gfx_syms.py RAW) */
++unsigned char D_800B3AE0[0x800] = { 0 };
+ #include "effects/gfx/D_090008F8_3544A8.gfx.inc.c"
+ #include "effects/gfx/D_09000918_3544C8.gfx.inc.c"
++Gfx D_09000800_3543B0[] = {
++    gsDPPipeSync(),
++    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
++    gsDPSetCycleType(G_CYC_2CYCLE),
++    gsDPSetTexturePersp(G_TP_PERSP),
++    gsDPSetTextureDetail(G_TD_CLAMP),
++    gsDPSetTextureLOD(G_TL_TILE),
++    gsDPSetTextureFilter(G_TF_BILERP),
++    gsDPSetTextureConvert(G_TC_FILT),
++    gsDPSetColorDither(G_CD_MAGICSQ),
++    gsDPSetAlphaDither(G_AD_PATTERN),
++    gsDPSetTextureLUT(G_TT_NONE),
++    gsDPSetRenderMode(G_RM_PASS, G_RM_ZB_CLD_SURF2),
++    gsDPLoadTextureTile(OS_K0_TO_PHYSICAL(&D_800B32E0), G_IM_FMT_I, G_IM_SIZ_8b, 32, 0, 0, 0, 31, 63, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 5, 6, G_TX_NOLOD, G_TX_NOLOD),
++    gsDPSetCombineMode(PM_CC_34, PM_CC_35),
++    gsSPClearGeometryMode(G_CULL_BOTH | G_LIGHTING),
++    gsSPSetGeometryMode(G_ZBUFFER | G_SHADE | G_SHADING_SMOOTH),
++    gsSPEndDisplayList(),
++};
++
++Gfx D_090009E0_354590[] = {
++    gsDPSetColorImage(G_IM_FMT_I, G_IM_SIZ_8b, 32, OS_K0_TO_PHYSICAL(&D_800B3AE0)),
++    gsDPSetScissor(G_SC_NON_INTERLACE, 0, 0, 32, 64),
++    gsDPSetTexturePersp(G_TP_NONE),
++    gsDPSetTextureFilter(G_TF_BILERP),
++    gsDPSetRenderMode(G_RM_PASS, G_RM_CLD_SURF2),
++    gsDPSetCombineMode(PM_CC_CONST_ALPHA_1, PM_CC_CONST_ALPHA_1),
++    gsSPTextureRectangle(0, 0, 0x0080, 0x0100, G_TX_RENDERTILE, 0, 0, 0x0400, 0x0400),
++    gsDPPipeSync(),
++    gsDPSetCombineMode(PM_CC_36, PM_CC_37),
++    gsSPTextureRectangle(0, 0, 0x0080, 0x0100, G_TX_RENDERTILE, 0, 0, 0x0400, 0x0400),
++    gsDPPipeSync(),
++    gsDPLoadTextureTile(OS_K0_TO_PHYSICAL(&D_800B3AE0), G_IM_FMT_I, G_IM_SIZ_8b, 32, 0, 0, 0, 31, 63, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 5, 6, G_TX_NOLOD, G_TX_NOLOD),
++    gsDPSetColorImage(G_IM_FMT_I, G_IM_SIZ_8b, 32, OS_K0_TO_PHYSICAL(&D_800B32E0)),
++    gsDPSetRenderMode(G_RM_OPA_SURF, G_RM_OPA_SURF2),
++    gsDPSetTextureFilter(G_TF_POINT),
++    gsDPSetCombineMode(PM_CC_38, PM_CC_39),
++    gsDPSetConvert(0, 0, 0, 0, 92, 0),
++    gsDPSetPrimColor(0, 0, 0x00, 0x00, 0x00, 0x78),
++    gsDPSetEnvColor(0x00, 0x00, 0x00, 0xA4),
++    gsDPLoadMultiTile(OS_K0_TO_PHYSICAL(&D_800B32E0), 0x0100, 1, G_IM_FMT_I, G_IM_SIZ_8b, 32, 0, 0, 0, 31, 63, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_CLAMP, 5, 6, G_TX_NOLOD, G_TX_NOLOD),
++    gsDPSetTileSize(1, 0x0004, 0, 0x007C, 0x00FC),
++    gsSPTextureRectangle(0, 0, 0x0080, 0x0100, G_TX_RENDERTILE, 0, 0, 0x0400, 0x0400),
++    gsDPPipeSync(),
++    gsDPLoadMultiTile(OS_K0_TO_PHYSICAL(&D_800B32E0), 0x0100, 1, G_IM_FMT_I, G_IM_SIZ_8b, 32, 0, 0, 0, 31, 63, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_CLAMP, 5, 6, G_TX_NOLOD, G_TX_NOLOD),
++    gsDPSetTileSize(1, 0x007C, 0, 0x007C, 0x00FC),
++    gsSPTextureRectangle(0, 0, 0x0080, 0x0100, G_TX_RENDERTILE, 0, 0, 0x0400, 0x0400),
++    gsDPPipeSync(),
++    gsDPLoadMultiTile(OS_K0_TO_PHYSICAL(&D_800B32E0), 0x0100, 1, G_IM_FMT_I, G_IM_SIZ_8b, 32, 0, 0, 0, 31, 63, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_CLAMP, 5, 6, G_TX_NOLOD, G_TX_NOLOD),
++    gsDPSetTileSize(1, 0, 0x0004, 0x007C, 0x00FC),
++    gsSPTextureRectangle(0, 0, 0x0080, 0x0100, G_TX_RENDERTILE, 0, 0, 0x0400, 0x0400),
++    gsDPPipeSync(),
++    gsSPEndDisplayList(),
++};
+diff --git a/3ds/tools/nd_gfx_conv.c b/3ds/tools/nd_gfx_conv.c
+index dd1787174f..14552dffea 100644
+--- a/3ds/tools/nd_gfx_conv.c
++++ b/3ds/tools/nd_gfx_conv.c
+@@ -24,6 +24,9 @@ static const GSym* sym_of(uintptr_t p, int kind, unsigned* off) {
+ #ifndef ROM_SPLIT
+ #define ROM_SPLIT 1 /* FXVROM: vrom.sh builds a copy with -DROM_SPLIT=0 and expects the unsup line back */
+ #endif
++#ifndef CIMG_UNIT
++#define CIMG_UNIT 1 /* FLTGT: fltgt.sh builds a copy with -DCIMG_UNIT=0 and expects the unsup line back */
++#endif
+ static int is_draw(unsigned id) { return id == NDO_VTX || id == NDO_TRI1 || id == NDO_TRI2 || id == NDO_CALL || id == NDO_END; }
+ 
+ /* The inherited inputs of def d (design note 6): the nd_scomp_key groups it does not set before its decision. */
+@@ -438,6 +441,7 @@ static void v2_unit_add(unsigned k, unsigned id, uint32_t w0, uint32_t w1) {
+     else if (id == NDO_CALL) kind = GS_GFX;
+     else if (id == NDO_MTX) kind = GS_MTX;
+     else if (id == NDO_MOVEMEM) kind = (w0 & 0xffu) == G_MV_VIEWPORT ? GS_VP : GS_LIT; /* THEATVP: a viewport unit names a Vp */
++    else if (CIMG_UNIT && id == NDO_MISC && ((w0 >> 16) & 0xffu) == NDO_MISC_CIMG) kind = GS_IMG; /* FLTGT: a colour image unit names its image (the flame targets) */
+     if (kind < 0 || !(w1 && (w1 >> 24) >= 16u)) return;
+     if (kind == GS_MTX || kind == GS_LIT || kind == GS_VP) { /* an Mtx, a Lights1 or a Vp is not an array: its address is the object itself */
+         unsigned off = 0;
+@@ -530,6 +534,7 @@ static int v2_walk(const GSym* g, unsigned k0, unsigned depth) {
+         case NDO_PRIMZ: /* FXLIT: a unit only, no v2 op (a value: set_primdepth runs on the device; the depth source is other mode L, in the desc) */
+             break;
+         case NDO_MISC:
++            if (CIMG_UNIT && (a >> 16) == NDO_MISC_CIMG) break; /* FLTGT: a unit only, no v2 op (nd_ntab_run runs it: gbi_setcimg, nd_walk.c:346) */
+             v2_unsup(v2_opname(id), k);
+             break;
+         case NDO_TIMG: {
+diff --git a/src/effects/flame.c b/src/effects/flame.c
+index dc28ca68d8..b5403e3fd7 100644
+--- a/src/effects/flame.c
++++ b/src/effects/flame.c
+@@ -16,10 +16,10 @@ typedef struct FlamePreset {
+     /* 0x0C */ Gfx* dlist;
+ } FlamePreset; // size = 0x10
+ 
+-extern Gfx D_09000800_3543B0[];
++NDN_DECL(D_09000800_3543B0);
+ NDN_DECL(D_090008F8_3544A8);
+ NDN_DECL(D_09000918_3544C8);
+-extern Gfx D_090009E0_354590[];
++NDN_DECL(D_090009E0_354590);
+ 
+ FlamePreset FlamePresets[] = {
+     [FX_FLAME_BLUE] {
+@@ -28,7 +28,7 @@ FlamePreset FlamePresets[] = {
+         .envColor = { 102, 191, 255 },
+         .primIntensity = 75,
+         .sizeScale = 50,
+-        .dlist = D_09000800_3543B0,
++        .dlist = NDN(D_09000800_3543B0),
+     },
+     [FX_FLAME_RED] {
+         .colorScale = { 255, 255, 255 },
+@@ -36,7 +36,7 @@ FlamePreset FlamePresets[] = {
+         .envColor = { 255, 32, 0 },
+         .primIntensity = 75,
+         .sizeScale = 100,
+-        .dlist = D_09000800_3543B0,
++        .dlist = NDN(D_09000800_3543B0),
+     },
+     [FX_FLAME_SMALL_BLUE] {
+         .colorScale = { 255, 0, 255 },
+@@ -44,7 +44,7 @@ FlamePreset FlamePresets[] = {
+         .envColor = { 107, 168, 255 },
+         .primIntensity = 75,
+         .sizeScale = 10,
+-        .dlist = D_09000800_3543B0,
++        .dlist = NDN(D_09000800_3543B0),
+     },
+     [FX_FLAME_PINK] {
+         .colorScale = { 255, 255, 255 },
+@@ -52,7 +52,7 @@ FlamePreset FlamePresets[] = {
+         .envColor = { 247, 175, 175 },
+         .primIntensity = 22,
+         .sizeScale = 30,
+-        .dlist = D_09000800_3543B0,
++        .dlist = NDN(D_09000800_3543B0),
+     },
+ };
+ 
+@@ -187,14 +187,14 @@ void flame_appendGfx(void* effect) {
+         LastFlameRenderFrame = gGameStatusPtr->frameCounter;
+         gSPDisplayList(gMainGfxPos++, NDN(D_09000918_3544C8));
+         nd_val_tile_size(1, uls, ult, uls + 128, ult + 256);
+-        gSPDisplayList(gMainGfxPos++, D_090009E0_354590);
++        nd_draw_list(NDN(D_090009E0_354590), ND_SELF);
+         nd_target_end();
+         nd_pso_scisf(G_SC_NON_INTERLACE, camera->viewportStartX * 4.0f, camera->viewportStartY * 4.0f, (camera->viewportStartX + camera->viewportW) * 4.0f, (camera->viewportStartY + camera->viewportH) * 4.0f);
+     }
+ 
+     preset = &FlamePresets[type];
+ 
+-    gSPDisplayList(gMainGfxPos++, preset->dlist);
++    nd_draw_list(preset->dlist, ND_SELF);
+     nd_pso_keyr(preset->keyCenter, preset->colorScale.r, 0);
+     nd_pso_keygb(preset->keyCenter, preset->colorScale.g, 0, preset->keyCenter, preset->colorScale.b, 0);
+     nd_val_prim(0, 0, preset->primIntensity, preset->primIntensity, preset->primIntensity, 0);
+diff --git a/src/effects/gfx/flame.c b/src/effects/gfx/flame.c
+index c0261bc597..abf446bb38 100644
+--- a/src/effects/gfx/flame.c
++++ b/src/effects/gfx/flame.c
+@@ -10,59 +10,5 @@ extern unsigned char D_800B3AE0[];
+ 
+ //#include "effects/gfx/D_09000800_3543B0.gfx.inc.c"
+ #include "common.h"
+-Gfx D_09000800_3543B0[] = {
+-    gsDPPipeSync(),
+-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
+-    gsDPSetCycleType(G_CYC_2CYCLE),
+-    gsDPSetTexturePersp(G_TP_PERSP),
+-    gsDPSetTextureDetail(G_TD_CLAMP),
+-    gsDPSetTextureLOD(G_TL_TILE),
+-    gsDPSetTextureFilter(G_TF_BILERP),
+-    gsDPSetTextureConvert(G_TC_FILT),
+-    gsDPSetColorDither(G_CD_MAGICSQ),
+-    gsDPSetAlphaDither(G_AD_PATTERN),
+-    gsDPSetTextureLUT(G_TT_NONE),
+-    gsDPSetRenderMode(G_RM_PASS, G_RM_ZB_CLD_SURF2),
+-    gsDPLoadTextureTile(OS_K0_TO_PHYSICAL(&D_800B32E0), G_IM_FMT_I, G_IM_SIZ_8b, 32, 0, 0, 0, 31, 63, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 5, 6, G_TX_NOLOD, G_TX_NOLOD),
+-    gsDPSetCombineMode(PM_CC_34, PM_CC_35),
+-    gsSPClearGeometryMode(G_CULL_BOTH | G_LIGHTING),
+-    gsSPSetGeometryMode(G_ZBUFFER | G_SHADE | G_SHADING_SMOOTH),
+-    gsSPEndDisplayList(),
+-};
+ 
+ #include "effects/gfx/D_090008B8_354468.vtx.inc.c"
+-
+-Gfx D_090009E0_354590[] = {
+-    gsDPSetColorImage(G_IM_FMT_I, G_IM_SIZ_8b, 32, OS_K0_TO_PHYSICAL(&D_800B3AE0)),
+-    gsDPSetScissor(G_SC_NON_INTERLACE, 0, 0, 32, 64),
+-    gsDPSetTexturePersp(G_TP_NONE),
+-    gsDPSetTextureFilter(G_TF_BILERP),
+-    gsDPSetRenderMode(G_RM_PASS, G_RM_CLD_SURF2),
+-    gsDPSetCombineMode(PM_CC_CONST_ALPHA_1, PM_CC_CONST_ALPHA_1),
+-    gsSPTextureRectangle(0, 0, 0x0080, 0x0100, G_TX_RENDERTILE, 0, 0, 0x0400, 0x0400),
+-    gsDPPipeSync(),
+-    gsDPSetCombineMode(PM_CC_36, PM_CC_37),
+-    gsSPTextureRectangle(0, 0, 0x0080, 0x0100, G_TX_RENDERTILE, 0, 0, 0x0400, 0x0400),
+-    gsDPPipeSync(),
+-    gsDPLoadTextureTile(OS_K0_TO_PHYSICAL(&D_800B3AE0), G_IM_FMT_I, G_IM_SIZ_8b, 32, 0, 0, 0, 31, 63, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 5, 6, G_TX_NOLOD, G_TX_NOLOD),
+-    gsDPSetColorImage(G_IM_FMT_I, G_IM_SIZ_8b, 32, OS_K0_TO_PHYSICAL(&D_800B32E0)),
+-    gsDPSetRenderMode(G_RM_OPA_SURF, G_RM_OPA_SURF2),
+-    gsDPSetTextureFilter(G_TF_POINT),
+-    gsDPSetCombineMode(PM_CC_38, PM_CC_39),
+-    gsDPSetConvert(0, 0, 0, 0, 92, 0),
+-    gsDPSetPrimColor(0, 0, 0x00, 0x00, 0x00, 0x78),
+-    gsDPSetEnvColor(0x00, 0x00, 0x00, 0xA4),
+-    gsDPLoadMultiTile(OS_K0_TO_PHYSICAL(&D_800B32E0), 0x0100, 1, G_IM_FMT_I, G_IM_SIZ_8b, 32, 0, 0, 0, 31, 63, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_CLAMP, 5, 6, G_TX_NOLOD, G_TX_NOLOD),
+-    gsDPSetTileSize(1, 0x0004, 0, 0x007C, 0x00FC),
+-    gsSPTextureRectangle(0, 0, 0x0080, 0x0100, G_TX_RENDERTILE, 0, 0, 0x0400, 0x0400),
+-    gsDPPipeSync(),
+-    gsDPLoadMultiTile(OS_K0_TO_PHYSICAL(&D_800B32E0), 0x0100, 1, G_IM_FMT_I, G_IM_SIZ_8b, 32, 0, 0, 0, 31, 63, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_CLAMP, 5, 6, G_TX_NOLOD, G_TX_NOLOD),
+-    gsDPSetTileSize(1, 0x007C, 0, 0x007C, 0x00FC),
+-    gsSPTextureRectangle(0, 0, 0x0080, 0x0100, G_TX_RENDERTILE, 0, 0, 0x0400, 0x0400),
+-    gsDPPipeSync(),
+-    gsDPLoadMultiTile(OS_K0_TO_PHYSICAL(&D_800B32E0), 0x0100, 1, G_IM_FMT_I, G_IM_SIZ_8b, 32, 0, 0, 0, 31, 63, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_CLAMP, 5, 6, G_TX_NOLOD, G_TX_NOLOD),
+-    gsDPSetTileSize(1, 0, 0x0004, 0x007C, 0x00FC),
+-    gsSPTextureRectangle(0, 0, 0x0080, 0x0100, G_TX_RENDERTILE, 0, 0, 0x0400, 0x0400),
+-    gsDPPipeSync(),
+-    gsSPEndDisplayList(),
+-};
