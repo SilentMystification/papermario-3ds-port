@@ -1,0 +1,62 @@
+{
+  "scenarios": [
+    {
+      "name": "imgovl_cap",
+      "status": "unverified",
+      "subject": "IMGOVL: debug battle Monstar (BTL_SAM2_FORMATION_00:BTL_SAM2_STAGE_05) from kmr_03, det, capture of the draw record of frame 400 (entcap entcapt psochk) for the imgfx overlay strip.",
+      "proves": "IMGOVL: the imgfx overlay strip list is captured at frame 400 (cap5.txt).",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle=BTL_SAM2_FORMATION_00:BTL_SAM2_STAGE_05 battlef=100 loglevel=debug fixedseed fs1off det drec=400:1 entcap entcapt psochk",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "drec f400 draws [1-9]\\d* bytes \\d+",
+      "cap": 30,
+      "deadline": 30,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "battle",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f400 draws [1-9]\\d* bytes \\d+"
+        },
+        {
+          "name": "strip",
+          "regex": "imgfx strip f\\d+"
+        }
+      ],
+      "reason": "IMGOVL: capture scenario for cap5.txt (copy of axns_sam2_drec). Cap 30 s."
+    },
+    {
+      "name": "imgovl_drec",
+      "status": "unverified",
+      "subject": "IMGOVL: debug battle Monstar, det, psochk; draw records of frames 400, 420, 440.",
+      "proves": "IMGOVL: the imgfx overlay list entry gives byte-equal draw records; psochk bad count equal to the base.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle=BTL_SAM2_FORMATION_00:BTL_SAM2_STAGE_05 battlef=100 loglevel=debug fixedseed fs1off det drec=400:3:20 psochk",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "drec f440 draws [1-9]\\d* bytes \\d+",
+      "cap": 30,
+      "deadline": 30,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "battle",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f440 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "reason": "IMGOVL: gate scenario (copy of axns_sam2_drec plus psochk). Cap 30 s."
+    }
+  ]
+}
