@@ -7,7 +7,7 @@
 s32 entity_HiddenPanel_is_item_on_top(Entity*);
 void entity_HiddenPanel_flip_over(Entity*);
 
-void mdl_project_tex_coords(s32 modelID, Gfx* destGfx, Matrix4f destMtx, void* destVertices);
+void mdl_project_tex_coords(s32 modelID, const void* destGfx, Matrix4f destMtx, void* destVertices);
 s32 npc_find_standing_on_entity(s32 entityIndex);
 
 extern s32 ERS_AltHiddenPanel[];

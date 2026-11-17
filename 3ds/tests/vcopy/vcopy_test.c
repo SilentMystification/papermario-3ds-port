@@ -4,7 +4,7 @@
 #include "nd_vcopy.h"
 #include <stdio.h>
 #include <string.h>
-void mdl_local_gfx_update_vtx_pointers(Gfx *nodeDlist, Vtx *baseVtx, Gfx *arg2, Vtx *arg3);
+void mdl_local_gfx_update_vtx_pointers(const void* nodeDlist, Vtx* baseVtx, uint32_t* arg2, Vtx* arg3);
 
 static void ref_copy(const uint32_t* src, uint32_t* dst, uintptr_t baseVtx, uintptr_t newVtx) {
     unsigned i = 0;
@@ -31,7 +31,7 @@ int main(void) {
         }
         nu = k;
         src[2 * k] = (uint32_t)NDO_END << 24; src[2 * k + 1] = 0;
-        mdl_local_gfx_update_vtx_pointers((Gfx*)src, base, (Gfx*)a, nv);
+        mdl_local_gfx_update_vtx_pointers(src, base, a, nv);
         ref_copy(src, b, (uintptr_t)base, (uintptr_t)nv);
         if (memcmp(a, b, 8 * (nu + 1))) { printf("vcopy FAIL words case %d\n", c); return 1; }
         nd_vcopy_dev(&d, a);

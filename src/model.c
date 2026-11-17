@@ -3518,7 +3518,7 @@ void set_mdl_custom_gfx_set(Model* model, s32 customGfxIndex, u32 tintType) {
     PM_REC_BUMP(model);
 }
 
-void set_custom_gfx(s32 customGfxIndex, Gfx* pre, Gfx* post) {
+void set_custom_gfx(s32 customGfxIndex, void* pre, void* post) {
     (*gCurrentCustomModelGfxPtr)[customGfxIndex * 2] = pre;
     (*gCurrentCustomModelGfxPtr)[customGfxIndex * 2 + 1] = post;
 }
@@ -3533,7 +3533,7 @@ void set_custom_gfx_builders(s32 customGfxIndex, ModelCustomGfxBuilderFunc pre, 
  * as commands (nd_rec_list). The ranges sit inside one NDC_JUMP (the task replay skips them); the model record names its pre and post range
  * (R11, from nd_cgfx_rng) and the replay runs it (nd_range_run). */
 static void nd_cgfx_one(s32 k, ModelCustomGfxBuilderFunc fn, s32 i) {
-    const Gfx* l = (*gCurrentCustomModelGfxPtr)[k];
+    const void* l = (*gCurrentCustomModelGfxPtr)[k];
     nd_cgfx_rng[k] = nullptr;
     if (fn == nullptr && l == nullptr) return;
     nd_cgfx_rng[k] = nd_rec_mark();
@@ -3632,7 +3632,7 @@ void mdl_get_remap_tint_params(u8* primR, u8* primG, u8* primB, u8* envR, u8* en
     *envB = RemapTintMinB;
 }
 
-void mdl_get_vertex_count(Gfx* gfx, s32* numVertices, Vtx** baseVtx, s32* gfxCount, Vtx* baseAddr) {
+void mdl_get_vertex_count(const void* gfx, s32* numVertices, Vtx** baseVtx, s32* gfxCount, Vtx* baseAddr) {
     if (gfx == nullptr) {
         *numVertices = 0;
         *baseVtx = nullptr;
@@ -3645,21 +3645,20 @@ void mdl_get_vertex_count(Gfx* gfx, s32* numVertices, Vtx** baseVtx, s32* gfxCou
     }
 }
 
-void mdl_local_gfx_update_vtx_pointers(Gfx *nodeDlist, Vtx *baseVtx, Gfx *arg2, Vtx *arg3) {
+void mdl_local_gfx_update_vtx_pointers(const void* nodeDlist, Vtx *baseVtx, uint32_t* arg2, Vtx *arg3) {
+    const uint32_t* src = (const uint32_t*)nodeDlist; /* MDLTYPE: unit word pairs (lkey MAP reader) */
     u32 w0;
     Vtx* w1;
     do { /* HC4e2b: the copy takes the typed unit (ND_X0/ND_X1 of the word; a typed word stays) */
-        uint32_t t[2];
-        t[0] = nodeDlist->words.w0; t[1] = nodeDlist->words.w1;
-        w0 = t[0];
-        w1 = (Vtx*)(uintptr_t)t[1];
+        w0 = src[0];
+        w1 = (Vtx*)(uintptr_t)src[1];
         if (w0 >> 0x18 == NDO_VTX) {
             w1 = arg3 + (w1 - baseVtx);
         }
-        arg2->words.w0 = w0;
-        arg2->words.w1 = (u32)w1;
-        nodeDlist++;
-        arg2++;
+        arg2[0] = w0;
+        arg2[1] = (u32)w1;
+        src += 2;
+        arg2 += 2;
     } while (w0 >> 0x18 != NDO_END);
 }
 
@@ -3675,7 +3674,7 @@ void mdl_make_local_vertex_copy(s32 copyIndex, u16 modelID, s32 isMakingCopy) {
     s32 numVertices;
     Vtx* baseVtx;
     s32 gfxCount;
-    Gfx* nodeDlist;
+    void* nodeDlist;
     Model* model;
     ModelLocalVertexCopy* copy;
     s32 i;
@@ -3688,7 +3687,7 @@ void mdl_make_local_vertex_copy(s32 copyIndex, u16 modelID, s32 isMakingCopy) {
 
     if (isMakingCopy) {
         for (i = 0; i < ARRAY_COUNT(copy->gfxCopy); i++) {
-            copy->gfxCopy[i] = heap_malloc(gfxCount * sizeof(*copy->gfxCopy[i]));
+            copy->gfxCopy[i] = heap_malloc(gfxCount * 2 * sizeof(uint32_t));
             copy->vtxCopy[i] = heap_malloc(numVertices * sizeof(*copy->vtxCopy[i]));
             mdl_local_gfx_update_vtx_pointers(nodeDlist, baseVtx, copy->gfxCopy[i], copy->vtxCopy[i]);
             mdl_local_gfx_copy_vertices(baseVtx, numVertices, copy->vtxCopy[i]);
@@ -3736,7 +3735,7 @@ void mdl_draw_vertex_copy(s32 copyIndex) {
     nd_rec_ndev(&mlvc->dev[selector]);
 }
 
-void mdl_project_tex_coords(s32 modelID, Gfx* outGfx, Matrix4f arg2, Vtx* arg3) {
+void mdl_project_tex_coords(s32 modelID, const void* outGfx, Matrix4f arg2, Vtx* arg3) {
     s32 sp18;
     Vtx* baseVtx;
     s32 sp20;
@@ -3772,7 +3771,7 @@ void mdl_project_tex_coords(s32 modelID, Gfx* outGfx, Matrix4f arg2, Vtx* arg3) 
 
     s32 listIndex;
     Model* model;
-    Gfx* dlist;
+    const uint32_t* dlist;
     s32 cmd;
     Vtx* tempVert;
 
@@ -3780,10 +3779,10 @@ void mdl_project_tex_coords(s32 modelID, Gfx* outGfx, Matrix4f arg2, Vtx* arg3) 
 
     listIndex = get_model_list_index_from_tree_index(modelID & 0xFFFF);
     model = get_model_from_list_index(listIndex);
-    dlist = model->modelNode->displayData->displayList;
+    dlist = (const uint32_t*)model->modelNode->displayData->displayList; /* MDLTYPE: unit word pairs (lkey MAP reader) */
 
     while (true) {
-        { uint32_t t[2]; t[0] = dlist->words.w0; t[1] = dlist->words.w1; cmd = t[0] >> 0x18; tempVert = (Vtx*)t[1]; } /* HC4e3 */
+        cmd = dlist[0] >> 0x18; tempVert = (Vtx*)(uintptr_t)dlist[1]; /* HC4e3 */
         if (cmd == NDO_END) {
             break;
         }
@@ -3791,7 +3790,7 @@ void mdl_project_tex_coords(s32 modelID, Gfx* outGfx, Matrix4f arg2, Vtx* arg3) 
             baseVtx = tempVert;
             break;
         }
-        dlist++;
+        dlist += 2;
     }
 
     v0ob0 = baseVtx[zero].v.ob[0];

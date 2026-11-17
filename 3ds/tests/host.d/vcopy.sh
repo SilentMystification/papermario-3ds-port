@@ -18,4 +18,6 @@ tr -d '' < src/model.c | awk '/^void mdl_make_local_vertex_copy/ {on=1} on {pri
 grep -q 'nd_vcopy_dev(&copy->dev\[i\], copy->gfxCopy\[i\]);' $N/mk.c || { echo "vcopy FAIL dev not filled"; exit 1; }
 sed '/nd_vcopy_dev(&copy->dev/d' $N/mk.c > $N/seed/mk.c
 grep -q 'nd_vcopy_dev(&copy->dev\[i\], copy->gfxCopy\[i\]);' $N/seed/mk.c && { echo "vcopy seeded fault not seen (dev)"; exit 1; }
+grep -q 'heap_malloc(gfxCount \* 2 \* sizeof(uint32_t))' $N/mk.c || { echo "vcopy FAIL copy size"; exit 1; }
+sed 's/gfxCount \* 2 \*/gfxCount */' $N/mk.c > $N/seed/mk2.c; grep -q 'gfxCount \* 2 \* sizeof' $N/seed/mk2.c && { echo "vcopy seeded fault not seen (size)"; exit 1; }
 $N/t || exit 1
