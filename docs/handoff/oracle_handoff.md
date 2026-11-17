@@ -1,6 +1,6 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main 358070e292, 2026-11-17. Oracle BACKLOG5 wrote the 3 pages below.
+State: main 3ad3164cdd, 2026-11-17. Oracle DESIGN1 wrote ws_NMDL6 and ws_VSLOT3 (groups 3 and 4 below).
 Counters on 358070e292 (FACT listcen): build 326 (include 308, src 18), gfxpos 29, data 339, data_arrays 10, gfxtype 424, recdl 11,
 reader 792, model 15. After GFXPOS7 + THEATVP (FACT, oracle listcen of main + both patches): build 324, gfxpos 22, data 323,
 data_arrays 9, gfxtype 420.
@@ -18,13 +18,9 @@ Goal: elfgate.py prints func 0 data 0 gfxnames 0 and every listcen counter is 0 
    symbol rule. D_09000800 unit 12 the same kind (ntab_unsup). :188 :211 need captured entries (fxtest of EFFECT_FLAME). :197 after them.
 2. screen_overlays.c:264 D_8014EA48 (data 40 with D_8014E8F0/E9A8): its 11 tile loads read 160x120 RGBA16 from `BSS s32 D_80156910`
    (screen_overlays.c:21, 4 bytes). A symbol rule needs an image extent decision: user or Sonnet. Not paged.
-3. filemenu_common.c:996 :1018 D_8024B708 (build 2, gfxpos 2, data 4). FACT ntab_inherit.txt: `itab unsup vertex slots
-   (nd_vslot_resolve) (unit 1)`: its TRI2 uses caller slots 0-1 (D_8024B6F0 under the matrix of :987) and own slots 2-3. Move: a
-   mixed caller/own slot form in nd_vslot.c (VSLOT2 was Sonnet). Not Haiku.
-4. entity_model.c:490 :772 :784, model.c:4340, flo_10 waterfx.c:231, mac_00 water_gfx.c:20, mac_01 crystal_ball_gfx.c:95. Design
-   (Sonnet, the user has not approved): :490 (reflect arm of the image path) takes the producer of :468, nd_rec_ent_draw(list,
-   entRec[1] words, 0), under the flipped matrix. :784 (reflect arm of the E path) takes the producer of :772. :772 needs an entity
-   record form with the per-model vertex segment (nd_val_seg D_80154374 at :770): NMDL6. model.c:4340 and the 3 world lists: NMDL7.
+3. filemenu_common.c:996 :1018 D_8024B708: PAGED ws_VSLOT3 (Sonnet, user yes 2026-11-17; patch, apply --check OK on 3ad3164cdd).
+4. entity_model.c:490 :772 :784, model.c:4340, flo_10 waterfx.c:231, mac_00 water_gfx.c:20, mac_01 crystal_ball_gfx.c:95: PAGED ws_NMDL6
+   (Sonnet, user yes 2026-11-17; patch, apply --check OK). Oracle host run of both patches (PM_CACHE=off): ND HOST TESTS PASS.
 5. status_star_shimmer.c:189 D_801097D8 itab: an entcap capture (star power scene OPEN).
 6. tst_13 main.c:306: an entry needs the state of mdl_draw_hidden_panel_surface (main.c:302); no Azahar capture (pm_warp.c:747).
 7. gfxpos only after GFXPOS7: cam_main.c:29 (definition), main.c:151, main_loop.c:178 :195 (task start: stage 4B), model.c:4258
@@ -33,6 +29,7 @@ Goal: elfgate.py prints func 0 data 0 gfxnames 0 and every listcen counter is 0 
 (group 2), blanket.gfx.inc.c 39 (the StaticAnimatorNode .displayList fields of ToadHouseBlanketAnim.inc.c: animator form, NMDL), filemenu_gfx.c 4.
 ## Phase E: no trigger holds within the next 15 rows (groups 1-4 need NTGT, Sonnet or user designs). No phase E page.
 ## Facts that cost time
+- Host test with the cache on: nmdl0.sh failed on a missing /tmp/ndcombs.c after a src/model.c edit (hostsel skips the inline prep). PM_CACHE=off passes. Tool fault, not paged.
 - Scratch worktree: `git worktree add --detach <scratchpad>/wt main` took 5 s this time. Remove it with the full path.
 - Git Bash PATH: a C:/ path breaks PATH (colon). Use /c/... A python3 shim dir is needed to run host.d/*.sh locally.
 - Source files are CRLF in the worktree: edit with a CRLF-aware script; git diff gives LF patches.
