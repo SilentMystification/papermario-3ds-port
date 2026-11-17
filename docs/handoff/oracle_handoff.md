@@ -13,12 +13,14 @@ nd_host_test.sh, bench.py, merge_row.sh, post_merge.sh, postmerge_bg.sh, push_3d
 - ws_ENTCAPE (after Merge ENTSRC): 10 entity sites, capture tour entcape_cap (5 spots, GUESS in view), gate entcape_kmr03_drec.
 - ws_ENTCAPR (after Merge ENTSRC): curtains:155, filemenu_common:996 :1018, npc_merlee:248 :259. Captures reuse curt/fsel/gmerlee words.
 - ws_ENTCAPD (after Merge ENTSRC): screen_render_util:157 :181 (kgr_01 darkness), gate entcapd_kgr01_drec.
+- ws_TSTSHK (Haiku, start now): tst_13 shockwave gset + entity_model.c:470. ws_RAWIMG (Haiku, after Merge ENTCAPE): RAW rule, Heart/Ultra.
 ## Open work, in this order (orchestrator 2026-11-17)
 1. SaveBlock: one gset.py line (src/entity/model/SaveBlock.c) moves Entity_SaveBlock_RenderFaces: data -33, data_arrays -1, gfxtype -1
    (ASSET_C oracle dry run). Gate bench spot_mac01_drec. Not yet paged.
 2. listcen.py rule: do not count an asset that no source includes (blanket.gfx.inc.c 39 data, world/dead/lava_piranha/vine.gfx.inc.c
    17 data), LCNOBUILD shape (NOBUILD_RULE, 3ds/tests/host.d/lcnobuild.sh). Dry run it, then page.
-3. entity_model.c (build 4, gfxpos 4, data_arrays 2, gfxtype 8; :470 :492 :774 :786 model->gfx.displayList): page it only if closed.
+3. entity_model.c: :470 dead arm is in ws_TSTSHK. :492 (reflect, ent_gdl ring rule nd_ent.c:458) and :774 :786 (draw_entity_model_E,
+   no scene known) are not closed: they wait for NMDL6/NMDL7 (entity record form). nd_rec_dl only moves them to recdl.
 4. Phase E pages, each with its trigger (listcen totals and a grep), function names to delete, terms that must return nothing:
    1A-1C need build 0, gfxpos 0, recdl 0 (1C also: no device caller of nd_dlc_compile; FACT nd_ent.c:311 is the last one); 1D needs
    data 0, data_arrays 0 and NS3; stage 2 needs stage 1 and PSOCAP; the user decided (2026-11-17): a draw with no table entry uses a
