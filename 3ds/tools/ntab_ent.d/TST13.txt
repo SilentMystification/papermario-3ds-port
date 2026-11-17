@@ -1,0 +1,2 @@
+# TST13: sites with a captured entry
+src/world/area_tst/tst_13/main.c=tst_13

@@ -1,0 +1,37 @@
+{
+  "benches": [
+    {
+      "name": "tst13_cap",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "TST13: capture run of the tst_13 shockwave nd_rec_dl site (entcap, entcapt).",
+      "scenario": "tst13_cap",
+      "cap": 25,
+      "until": "drec f200 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "drec",
+        "capture"
+      ],
+      "gates": []
+    },
+    {
+      "name": "tst13_drec",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "TST13: draw records of frames 200 and 201 of tst_13 with the captured shockwave entry, det. A head equals the base.",
+      "scenario": "tst13_drec",
+      "cap": 25,
+      "until": "drec f201 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "drec"
+      ],
+      "gates": []
+    }
+  ]
+}

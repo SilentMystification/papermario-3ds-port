@@ -1,5 +1,6 @@
 #include "tst_13.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_main_306, 0xfc121824, 0xff33ffff, 0x1e08ac00, 0x00552078, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 0, 0, 0, 0, 1, 1, 2, 0, 0, 0);
 #include "nd_st.h"
 #include "nd_xf.h"
 
@@ -303,7 +304,7 @@ void N(build_gfx_floor)(void) {
     nd_pso_rm(G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2);
     mdl_draw_hidden_panel_surface(1);
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gSPDisplayList(gMainGfxPos++, NDN(N(shockwave_gfx)));
+    nd_draw_list(NDN(N(shockwave_gfx)), pe_main_306);
     nd_xf_pop(G_MTX_MODELVIEW);
 }
 
