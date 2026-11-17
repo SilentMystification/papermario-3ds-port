@@ -236,9 +236,24 @@ void nd_psochk_draw(const NdPsoDesc* stated) {
 
 void nd_psochk_end(void) { if (psochk_on()) pm_log_evt("psochk end f%u draws %u bad %u lk %u miss %u lkbad %u", pm_frame_n, psochk_draws, psochk_bad, pk_hit, pk_miss, pk_bad); }
 
+/* PSOSEEN: one log entry per distinct missed key (256 at most) */
+static __attribute__((cold, noinline)) void pso_seen_note(const NdCombIn* in) {
+    static uint32_t seen[256]; static unsigned n; uint32_t h = 2166136261u;
+    if ((unsigned)(in->tex_on | in->use_t1 | in->t1_valid | in->dual_on | in->box_prod | in->box_folded | in->comb_set | in->comb_alpha_shade) > 1u) return;
+    const uint32_t k[9] = { in->w0, in->w1, in->omode_h, in->prim_lo8 & 0xffu, in->key_c, in->key_s, in->conv_k4, (uint32_t)pm_comb_vprim,
+        nd_pso_flags(in->tex_on, in->use_t1, in->t1_valid, in->dual_on, in->box_prod, in->box_folded, in->comb_set, in->comb_alpha_shade) };
+    for (unsigned i = 0; i < 9u; i++) h = (h ^ k[i]) * 16777619u;
+    for (unsigned i = 0; i < n; i++) { if (seen[i] == h) return; }
+    if (n >= 256u) return;
+    seen[n++] = h;
+    pm_log_evt("psoseen 0x%x, 0x%x, 0x%x, 0x0, 0x0, 0x%x, 0x%x, 0x%x, %d, %d, %d, %d, %d, %d, %d, %d, 0, %u, 0, %u", (unsigned)in->w0, (unsigned)in->w1,
+        (unsigned)in->omode_h, (unsigned)in->key_c, (unsigned)in->key_s, (unsigned)in->conv_k4, in->tex_on, in->use_t1, in->t1_valid, in->dual_on,
+        in->box_prod, in->box_folded, in->comb_set, in->comb_alpha_shade, (unsigned)pm_comb_vprim, (unsigned)(in->prim_lo8 & 0xffu));
+}
+
 /* PSOLK: the combine decision of the walker inputs in: the pso table entry (nd_pso_find) with the walker's colours, or nd_comb_core on a miss. */
 static void nd_comb_pick(const NdCombIn* in, NdCombOut* o) {
-    if (!nd_pso_find(in, (unsigned)pm_comb_vprim, o)) { pk_miss++; nd_comb_core(in, (unsigned)pm_comb_vprim, comb_mode5, o); return; }
+    if (!nd_pso_find(in, (unsigned)pm_comb_vprim, o)) { pso_seen_note(in); pk_miss++; nd_comb_core(in, (unsigned)pm_comb_vprim, comb_mode5, o); return; }
     pk_hit++;
     nd_pso_fix(o, in, comb_mode5);
     if (psochk_on()) {
