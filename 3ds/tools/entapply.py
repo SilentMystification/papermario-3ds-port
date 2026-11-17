@@ -28,7 +28,7 @@ import re
 import sys
 
 WORDS = re.compile(r"((?: [0-9a-f]{8}){11})\s*$")
-SITE = re.compile(r"(?<![\w.])(src/(?:\w+/)*\w+(?:\.inc)?\.c):(\d+)(?: \(discriminator \d+\))?(?:#(\d+))?")  # ENTSRC site
+SITE = re.compile(r"(?<=\s)(?:/[\w.]+/)?(src/(?:\w+/)*\w+(?:\.inc)?\.c):(\d+)(?: \(discriminator \d+\))?(?:#(\d+))?")  # ENTSRC site; ENTCAPD: the container root (/src/, /w/) is skipped, so /src/src/x.c -> src/x.c and 3ds/src/x.c is other
 NDREC = re.compile(r"^(\s*)nd_rec_dl\((.+)\);\s*$")
 NDKEY = re.compile(r"^(\s*)nd_rec_dl_k\((.+), (.+), (\d+)\);\s*$")
 INC = '#include "nd_gtab.h"'

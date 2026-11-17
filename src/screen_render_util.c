@@ -1,5 +1,7 @@
 #include "pm_wide.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_screen_render_util_157, 0xfcffffff, 0xffff7dbe, 0x00080c00, 0x00504340, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0);
+ND_PSO_DESC(pe_screen_render_util_181, 0xfcffb7ff, 0xff6f9fcf, 0x00080c00, 0x00504340, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0);
 #include "common.h"
 #include "nu/nusys.h"
 #include "nd_api.h"
@@ -154,7 +156,7 @@ void appendGfx_darkness_stencil(bool isWorld, s32 posX, s32 posY, f32 alpha, f32
     nd_pso_cc(PM_CC_CONST_1, PM_CC_CONST_1);
     guRotate(&gDisplayContext->matrixStack[gMatrixListPos], 0.0f, 0.0f, 0.0f, 1.0f);
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gSPDisplayList(gMainGfxPos++, NDN(Gfx_DarknessStencilQuad));
+    nd_draw_list(NDN(Gfx_DarknessStencilQuad), pe_screen_render_util_157);
     nd_xf_pop(G_MTX_MODELVIEW);
     nd_pso_cc(PM_CC_56, PM_CC_56);
 
@@ -178,7 +180,7 @@ void appendGfx_darkness_stencil(bool isWorld, s32 posX, s32 posY, f32 alpha, f32
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
         guScale(&gDisplayContext->matrixStack[gMatrixListPos], f20, f20, 1.0f);
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        gSPDisplayList(gMainGfxPos++, NDN(Gfx_DarknessStencilQuad));
+        nd_draw_list(NDN(Gfx_DarknessStencilQuad), pe_screen_render_util_181);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 
