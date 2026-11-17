@@ -109,6 +109,7 @@ cmd $SH_CMD
 himg $HIMGID
 rom $ROMSHA
 $(gc_inputs 3ds/tools/nd_shape_conv.c 3ds/tools/yay0_test.c 3ds/src/nd_seam.c 3ds/src/nd_dlc.c 3ds/src/nd_yay0.c 3ds/include 3ds/stub_include include)"
+    printf '%s' "$(printf '%s' "$want" | sha1sum | cut -c1-40)" > "$OUT/shape_key.txt" # the content key of the romfs shapes, in every cache mode (build key, 3dsx re-make)
     if gc_get_dir shape "$want" "$OUT/romfs/shape" "$OUT/shape_entry.txt"; then echo "gen_shapes: cache hit"; return 0; fi
     rm -rf "$OUT/romfs/shape" "$OUT/shape_entry.txt" # the old files can be hard links of a cache entry: a run writes new files
     mkdir -p "$OUT/romfs/shape"
@@ -201,7 +202,7 @@ key_now() {
         git diff HEAD -- $KEY_IN
         git ls-files -o --exclude-standard -- $KEY_IN | while read -r f; do sha1sum "$f"; done
         sha1sum 3ds/src/map_restore_table.c 3ds/src/nd_gfx_tab.c 3ds/src/nd_pso_tab.c 3ds/ld/map_restore.ld 3ds/ld/map_restore_bss.ld 3ds/include/texkey_patch.h
-        cat $OUT/asset_now.txt; cat $OUT/shape_entry.txt 2>/dev/null || true # VOLGEN: asset content ids and the shape entry of the romfs
+        cat $OUT/asset_now.txt; cat $OUT/shape_key.txt # asset content ids and the content key of the romfs shapes (not the cache marker: it exists only with the cache on)
         echo "img $IMGID $HIMGID"
     } | sha1sum | cut -d' ' -f1
 }
@@ -275,7 +276,7 @@ rc=0
 # keyed by the build image id. A build dir of another image, or PM_CACHE=off, starts empty. A new shape entry re-makes the 3dsx.
 MSYS_NO_PATHCONV=1 docker run --rm --memory "${PM_BUILD_MEM:-4g}" --name "$NAME" -v $SRCVOL:/src:ro -v $AVOL:/a:ro \
     -e CCACHE_DIR=/ccache -e CCACHE_MAXSIZE="${PM_CCACHE_MAX:-2G}" -e PM_BUILD_NUM="$BN" -e PM_FNCOV_V="$FNV" \
-    -e IMGID="$IMGID" -e PM_CACHE_V="${PM_CACHE:-on}" -e SHAPE_E="$(cat $OUT/shape_entry.txt 2>/dev/null)" \
+    -e IMGID="$IMGID" -e PM_CACHE_V="${PM_CACHE:-on}" -e SHAPE_E="$(cat $OUT/shape_key.txt)" \
     -v "$(pwd)/$OUT:/out" \
     -v $VOL:/work \
     -v pm3ds-ccache-$(printf '%s' "$IMGID" | cut -c1-12):/ccache \
