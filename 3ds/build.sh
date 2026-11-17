@@ -64,7 +64,12 @@ trap 'build_slot_release; exit 130' INT TERM
 fi
 gen_map_restore
 IMG=pm3ds-build:1
-docker build -q -t $IMG -f docker/Dockerfile.build docker >/dev/null
+# LINKFAST: docker build (FACT 1.4 s) only when the content ids of docker/ or the image id differ from the stamp.
+DKEY=$(in_manifest docker | sha1sum | cut -c1-40); DSTAMP=$MAIN_ROOT/build3ds/img_build_stamp.txt
+if [ "$(cat "$DSTAMP" 2>/dev/null)" != "$DKEY $(docker image inspect -f '{{.Id}}' $IMG 2>/dev/null)" ]; then
+    docker build -q -t $IMG -f docker/Dockerfile.build docker >/dev/null
+    mkdir -p "$MAIN_ROOT/build3ds"; printf '%s %s\n' "$DKEY" "$(docker image inspect -f '{{.Id}}' $IMG)" > "$DSTAMP.$$" && mv -f "$DSTAMP.$$" "$DSTAMP"
+fi
 IMGID=$(docker image inspect -f '{{json .RootFS.Layers}}' $IMG | sha1sum | cut -c1-40)
 HIMGID=$(docker image inspect -f '{{json .RootFS.Layers}}' pm3ds-host:1 | sha1sum | cut -c1-40)
 ROM=$ASSET_BASE/ver/us/baserom.z64; [ -f "$ROM" ] || { echo "missing $ROM" >&2; exit 1; }
@@ -301,6 +306,16 @@ MSYS_NO_PATHCONV=1 docker run --rm --memory "${PM_BUILD_MEM:-4g}" --name "$NAME"
     if [ "$(cat /work/.img 2>/dev/null)" != "$IMGID" ] || [ "$PM_CACHE_V" = off ]; then rm -rf /work/build; printf %s "$IMGID" > /work/.img; fi
     if [ "$PM_CACHE_V" = off ]; then export CCACHE_DISABLE=1; fi
     if [ "$(cat /work/.shape 2>/dev/null)" != "$SHAPE_E" ]; then rm -f /work/build/pm_3ds.3dsx; printf %s "$SHAPE_E" > /work/.shape; fi
+    # LINKFAST: the romfs in the build volume. Key: the shape content key. Every build checks the files (romfs.sha1); a new key,
+    # a failed check or PM_CACHE=off copies it again (temp folder, check against /out/romfs, one mv) and removes the 3dsx.
+    if [ "$PM_CACHE_V" = off ] || [ "$(cat /work/.romfs_key 2>/dev/null)" != "$SHAPE_E" ] || ! (cd /work/romfs 2>/dev/null && sha1sum -c --status /work/romfs.sha1 2>/dev/null); then
+        rm -rf /work/romfs /work/romfs.tmp /work/romfs.sha1 /work/.romfs_key /work/build/pm_3ds.3dsx; mkdir -p /work/romfs.tmp
+        cp -a /out/romfs/. /work/romfs.tmp/
+        (cd /work/romfs.tmp && find . -type f | LC_ALL=C sort | xargs -r -d "\n" sha1sum) > /work/romfs.sha1
+        (cd /out/romfs && sha1sum -c --status /work/romfs.sha1) || { echo "ROMFS COPY CHECK FAILED" >&2; exit 1; }
+        mv -T /work/romfs.tmp /work/romfs; printf %s "$SHAPE_E" > /work/.romfs_key
+    fi
+    stage romfs
     # Configure only when the build dir is missing, was made with ccache, points at another source root, or has another build number (the smdh description).
     if ! grep -q "^CMAKE_C_COMPILER_LAUNCHER:STRING=ccache$" /work/build/CMakeCache.txt 2>/dev/null \
         || ! grep -q "^PM_FNCOV:BOOL=$PM_FNCOV_V\$" /work/build/CMakeCache.txt 2>/dev/null \
@@ -346,10 +361,9 @@ KEEP=${PM_LANE_KEEP:-5}
 # A build-at folder (build3ds/at_<short> of the main folder, marker .build_at_in_use under 12 h old) is live too.
 MAIN=$(git worktree list --porcelain | sed -n '1s|^worktree ||p')
 LIVE=$( (git worktree list --porcelain | sed -n 's|^worktree .*/build3ds/wt/||p'; find "$MAIN/build3ds" -maxdepth 2 -name .build_at_in_use -mmin -720 2>/dev/null | sed -n 's|.*/build3ds/\(at_[^/]*\)/.build_at_in_use$|\1|p') )
-docker volume ls -q | sed -n -E 's/^pm3ds-build-(.+)$/\1/p' | while read -r l; do
-    printf '%s\n' "$LIVE" | grep -qx -- "$l" && continue
-    echo "$(docker volume inspect --format '{{.CreatedAt}}' pm3ds-build-$l) $l"
-done | sort -r | awk '{print $2}' | {
+# LINKFAST: one docker volume inspect for all candidates (FACT oracle FASTLOOP: about 0.7 s per inspect call, 11 calls 7.9 s).
+VL=$(docker volume ls -q | sed -n -E 's/^pm3ds-build-(.+)$/\1/p' | while read -r l; do printf '%s\n' "$LIVE" | grep -qx -- "$l" || echo "pm3ds-build-$l"; done)
+[ -z "$VL" ] || docker volume inspect --format '{{.CreatedAt}} {{.Name}}' $VL | sed 's/ pm3ds-build-/ /' | sort -r | awk '{print $2}' | {
     n=0
     while read -r l; do
         n=$((n + 1))

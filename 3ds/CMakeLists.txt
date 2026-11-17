@@ -6,7 +6,9 @@ set(CMAKE_C_EXTENSIONS ON)
 
 set(DECOMP "${CMAKE_CURRENT_SOURCE_DIR}/..")
 
-add_compile_options(-O2 -fsigned-char -fno-strict-aliasing -fwrapv -ffunction-sections -fdata-sections)
+# LINKFAST: -g1 (after the toolchain -g, the last level wins) keeps function names and line tables for decode_dump.py and
+# entcap.py. FACT (oracle FASTLOOP, 84 objects): debug bytes -g 10.3 MB, -g1 0.42 MB, .text equal. The link reads 391 MB at -g.
+add_compile_options(-O2 -g1 -fsigned-char -fno-strict-aliasing -fwrapv -ffunction-sections -fdata-sections)
 add_compile_options($<$<COMPILE_LANGUAGE:C>:-Dnullptr=NULL> $<$<COMPILE_LANGUAGE:C>:-Wa,-I${DECOMP}>)
 add_compile_definitions(
     TARGET_3DS
@@ -407,7 +409,7 @@ target_include_directories(pm_3ds PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 # through -B before its own copy: the 3dsx.specs link spec names 3dsx.ld.
 set(MS_LD_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ld)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ld/3dsx.ld.in ${CMAKE_BINARY_DIR}/ldscripts/3dsx.ld @ONLY)
-target_link_options(pm_3ds PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/map_syms.lds -B${CMAKE_BINARY_DIR}/ldscripts/ -Wl,--gc-sections -Wl,-Map,${CMAKE_BINARY_DIR}/pm_3ds.map
+target_link_options(pm_3ds PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/map_syms.lds -B${CMAKE_BINARY_DIR}/ldscripts/ -Wl,--gc-sections -Wl,-Map,${CMAKE_BINARY_DIR}/pm_3ds.map -Wl,--no-enum-size-warning
     -Wl,--wrap=set_game_mode -Wl,--wrap=load_map_by_IDs -Wl,--wrap=load_battle_section -Wl,--wrap=dma_copy -Wl,--wrap=load_asset_by_name -Wl,--wrap=update_enter_map_screen_overlay
     -Wl,--wrap=step_game_loop -Wl,--wrap=gfx_draw_frame -Wl,--wrap=gfx_task_background -Wl,--wrap=appendGfx_darkness_stencil
     -Wl,--wrap=_heap_create -Wl,--wrap=linearAlloc -Wl,--wrap=linearMemAlign -Wl,--wrap=linearFree -Wl,--wrap=linearRealloc
@@ -483,8 +485,9 @@ target_link_options(pm_3ds PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/map_syms.lds -B${
 set_target_properties(pm_3ds PROPERTIES LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/map_syms.lds;${CMAKE_CURRENT_SOURCE_DIR}/ld/3dsx.ld.in;${CMAKE_CURRENT_SOURCE_DIR}/ld/hot_order.ld;${CMAKE_CURRENT_SOURCE_DIR}/ld/map_restore.ld;${CMAKE_CURRENT_SOURCE_DIR}/ld/map_restore_bss.ld")
 target_link_libraries(pm_3ds pm_shader4_lib pm_shader5_lib citro3d ctru m)
 
-# HC4f2: the romfs image is the build output folder (docker mounts it at /out). build.sh gen_shapes fills /out/romfs/shape.
-ctr_create_3dsx(pm_3ds SMDH "${CMAKE_CURRENT_BINARY_DIR}/pm_3ds.smdh" ROMFS /out/romfs)
+# HC4f2: build.sh gen_shapes fills /out/romfs/shape. LINKFAST: build.sh copies it into the build volume (/work/romfs, checked by
+# romfs.sha1): 3dsxtool reads it in 0.6 s there, 4.5 s from the C:\ bind mount (FACT oracle FASTLOOP).
+ctr_create_3dsx(pm_3ds SMDH "${CMAKE_CURRENT_BINARY_DIR}/pm_3ds.smdh" ROMFS /work/romfs)
 # CONCOL: the build number comes from build.sh (-DPM_BUILD_NUM). It sets the smdh description at configure time.
 if(NOT PM_BUILD_NUM)
     set(PM_BUILD_NUM "dev")
