@@ -1,6 +1,5 @@
 #include "common.h"
 #include "nd_gtab.h"
-#include "pm_port.h"
 #include "ld_addrs.h"
 #include "sprite.h"
 #include "imgfx.h"
@@ -95,8 +94,7 @@ typedef struct ImgFXState {
     /* 0x68 */ Vtx* vtxBufs[2];
     /* 0x70 */ Gfx* gfxBufs[2];
     /* 0x78 */ s32 otherModeL;
-    /* 0x7C */ NdNDev gfxDev[2]; /* NIMGM: the device entry of each gfxBufs[i] (units in place, no copy) */
-} ImgFXState;
+} ImgFXState; // size = 0x7C
 
 typedef struct ImgFXCacheEntry {
     /* 0x00 */ s32* data;
@@ -473,12 +471,10 @@ void imgfx_cache_instance_data(ImgFXState* state) {
     if (state->gfxBufs[0] != nullptr) {
         imgfx_add_to_cache(state->gfxBufs[0], true);
         state->gfxBufs[0] = nullptr;
-        state->gfxDev[0].list = nullptr;
     }
     if (state->gfxBufs[1] != nullptr) {
         imgfx_add_to_cache(state->gfxBufs[1], true);
         state->gfxBufs[1] = nullptr;
-        state->gfxDev[1].list = nullptr;
     }
 }
 
@@ -488,8 +484,6 @@ void imgfx_clear_instance_data(ImgFXState* state) {
     state->vtxBufs[1] = nullptr;
     state->gfxBufs[0] = nullptr;
     state->gfxBufs[1] = nullptr;
-    state->gfxDev[0].list = nullptr;
-    state->gfxDev[1].list = nullptr;
     state->colorBuf = nullptr;
     state->colorBufCount = 0;
 }
@@ -1215,31 +1209,6 @@ void imgfx_mesh_make_grid(ImgFXState* state) {
     state->lastVtxIdx = imgfx_vtxCount - 1;
 }
 
-/* NIMGM: the device entry of a typed heap list: its units in place (nu = the units before NDO_END). ntri is the triangle count: not zero, so the
- * walker takes ent_gdl for the list as walk_call did for a heap list without an entry (gt_run: !(nt && !nt->ntri)); dlc_try refuses a heap list in both paths. */
-static void imgfx_make_dev(NdNDev* d, Gfx* buf, unsigned n) {
-    const uint32_t* u = (const uint32_t*)buf;
-    unsigned ntri = 0;
-    unsigned i;
-
-    for (i = 0; i < n; i++) {
-        const uint32_t op = u[2 * i] >> 24;
-        if (op == NDO_END) {
-            break;
-        }
-        if (op == NDO_TRI1) {
-            ntri += 1;
-        } else if (op == NDO_TRI2) {
-            ntri += 2;
-        }
-    }
-    d->list = buf;
-    d->fl = 0;
-    d->u = u;
-    d->nu = i;
-    d->ntri = ntri;
-}
-
 ImgFXAnimHeader* imgfx_load_anim(ImgFXState* state) {
     u8* romStart = (s32) ImgFXAnimOffsets[state->ints.anim.type] + imgfx_data_ROM_START;
     ImgFXAnimHeader* anim = &ImgFXAnimHeaders[state->arrayIdx];
@@ -1268,14 +1237,12 @@ ImgFXAnimHeader* imgfx_load_anim(ImgFXState* state) {
         if (state->gfxBufs[0] != nullptr) {
             imgfx_add_to_cache(state->gfxBufs[0], 1);
             state->gfxBufs[0] = nullptr;
-            state->gfxDev[0].list = nullptr;
         }
         if (state->gfxBufs[1] != nullptr) {
             // imgfx_add_to_cache(state->gfxBufs[1], 1);
             romEnd = (u8*) state->gfxBufs[1]; // required to match
             imgfx_add_to_cache(state->gfxBufs[1], 1);
             state->gfxBufs[1] = nullptr;
-            state->gfxDev[1].list = nullptr;
         }
         state->vtxBufs[0] = heap_malloc(anim->vtxCount * sizeof(Vtx));
         state->vtxBufs[1] = heap_malloc(anim->vtxCount * sizeof(Vtx));
@@ -1290,8 +1257,7 @@ ImgFXAnimHeader* imgfx_load_anim(ImgFXState* state) {
         imgfx_swap32(state->gfxBufs[1], anim->gfxCount * 2);
 
         for (i = 0; i < ARRAY_COUNT(state->gfxBufs); i++) { /* PIPEFX: raw ROM words to typed units, vertex loads into vtxBufs[i] */
-            const unsigned nd = nd_imgfx_type((uint32_t*)state->gfxBufs[i], anim->gfxCount, (uint32_t)(uintptr_t)anim->keyframesOffset, (uintptr_t)state->vtxBufs[i]);
-            imgfx_make_dev(&state->gfxDev[i], state->gfxBufs[i], nd);
+            nd_imgfx_type((uint32_t*)state->gfxBufs[i], anim->gfxCount, (uint32_t)(uintptr_t)anim->keyframesOffset, (uintptr_t)state->vtxBufs[i]);
         }
     }
 
@@ -1533,9 +1499,19 @@ void imgfx_appendGfx_mesh_basic(ImgFXState* state, Matrix4f mtx) {
                     || state->renderType == IMGFX_RENDER_OVERLAY_RGBA
                     || state->renderType == IMGFX_RENDER_MULTIPLY_SHADE_ALPHA)
             ) {
-                /* args: img size, top left, bottom right, palette, clamp wrap mirror, mask, shift, scroll */
-                nd_tex_scroll_mtile2_4b(ImgFXCurrentTexturePtr->tex.raster, G_IM_FMT_CI, ImgFXCurrentTexturePtr->tex.width, ImgFXCurrentTexturePtr->tex.height, uls, ult, lrs - 1, lrt - 1, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 8, G_TX_NOLOD, G_TX_NOLOD, 0x100, 0x100);
-                nd_tex_tile(G_IM_FMT_RGBA, G_IM_SIZ_16b, 4, 0x100, 2, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
+                gDPScrollMultiTile2_4b(gMainGfxPos++,
+                    ImgFXCurrentTexturePtr->tex.raster, G_IM_FMT_CI,
+                    ImgFXCurrentTexturePtr->tex.width, ImgFXCurrentTexturePtr->tex.height, // img size
+                    uls, ult, // top left
+                    lrs - 1, lrt - 1, // bottom right
+                    0, // palette
+                    G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, // clamp wrap mirror
+                    8, 8, // mask
+                    G_TX_NOLOD, G_TX_NOLOD, // shift,
+                    0x100, 0x100); // scroll
+                gDPSetTile(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 4, 0x100, 2, 0,
+                            G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_WRAP,
+                            G_TX_NOMASK, G_TX_NOLOD);
                 nd_val_tile_size(2, 0, 0, 252, 0);
 
                 alpha = 255;
@@ -1577,8 +1553,16 @@ void imgfx_appendGfx_mesh_basic(ImgFXState* state, Matrix4f mtx) {
                 }
                 create_shading_palette(mtx, uls, ult, lrs, lrt, alpha, state->otherModeL);
             } else {
-                /* args: img size, top left, bottom right, palette, clamp wrap mirror, mask, shift, scroll */
-                nd_tex_scroll_tile_4b(ImgFXCurrentTexturePtr->tex.raster, G_IM_FMT_CI, ImgFXCurrentTexturePtr->tex.width, ImgFXCurrentTexturePtr->tex.height, uls, ult, lrs - 1, lrt - 1, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 8, G_TX_NOLOD, G_TX_NOLOD, 0x100, 0x100);
+                gDPScrollTextureTile_4b(gMainGfxPos++,
+                    ImgFXCurrentTexturePtr->tex.raster, G_IM_FMT_CI,
+                    ImgFXCurrentTexturePtr->tex.width, ImgFXCurrentTexturePtr->tex.height, // img size
+                    uls, ult, // top left
+                    lrs - 1, lrt - 1, // bottom right
+                    0, // palette
+                    G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, // clamp wrap mirror
+                    8, 8, // mask
+                    G_TX_NOLOD, G_TX_NOLOD, // shift,
+                    0x100, 0x100); // scroll
 
                 if ((gSpriteShadingProfile->flags & SPR_SHADING_FLAG_SET_VIEWPORT)
                     && state->arrayIdx != 0
@@ -1686,9 +1670,17 @@ void imgfx_appendGfx_mesh_grid(ImgFXState* state, Matrix4f mtx) {
                         || state->renderType == IMGFX_RENDER_MULTIPLY_SHADE_ALPHA)
                 ) {
                     s32 alpha = 255;
-                    /* args: img size, top left, bottom right, palette, clamp wrap mirror, mask, shift, scroll */
-                    nd_tex_scroll_mtile2_4b(ImgFXCurrentTexturePtr->tex.raster, G_IM_FMT_CI, ImgFXCurrentTexturePtr->tex.width, ImgFXCurrentTexturePtr->tex.height, (imgfx_vtxBuf[ulIdx].v.tc[0] >> 5) - 0x100, (imgfx_vtxBuf[ulIdx].v.tc[1] >> 5) - 0x100, (imgfx_vtxBuf[lrIdx].v.tc[0] >> 5) - 0x100 - 1, (imgfx_vtxBuf[lrIdx].v.tc[1] >> 5) - 0x100 - 1, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 8, G_TX_NOLOD, G_TX_NOLOD, 0x100, 0x100);
-                    nd_tex_tile(G_IM_FMT_RGBA, G_IM_SIZ_16b, 4, 0x0100, 2, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
+                    gDPScrollMultiTile2_4b(gMainGfxPos++,
+                        ImgFXCurrentTexturePtr->tex.raster, G_IM_FMT_CI,
+                        ImgFXCurrentTexturePtr->tex.width, ImgFXCurrentTexturePtr->tex.height, // img size
+                        (imgfx_vtxBuf[ulIdx].v.tc[0] >> 5) - 0x100, (imgfx_vtxBuf[ulIdx].v.tc[1] >> 5) - 0x100, // top left
+                        (imgfx_vtxBuf[lrIdx].v.tc[0] >> 5) - 0x100 - 1, (imgfx_vtxBuf[lrIdx].v.tc[1] >> 5) - 0x100 - 1, // bottom right
+                        0, // palette
+                        G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, // clamp wrap mirror
+                        8, 8, // mask
+                        G_TX_NOLOD, G_TX_NOLOD, // shift,
+                        0x100, 0x100); // scroll
+                    gDPSetTile(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 4, 0x0100, 2, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
                     nd_val_tile_size(2, 0, 0, 63 << 2, 0);
                     switch (state->renderType) {
                         case IMGFX_RENDER_DEFAULT:
@@ -1707,8 +1699,16 @@ void imgfx_appendGfx_mesh_grid(ImgFXState* state, Matrix4f mtx) {
                                            (imgfx_vtxBuf[lrIdx].v.tc[0] >> 5) - 0x100, (imgfx_vtxBuf[lrIdx].v.tc[1] >> 5) - 0x100,
                                            alpha, state->otherModeL);
                 } else {
-                    /* args: img size, top left, bottom right, palette, clamp wrap mirror, mask, shift, scroll */
-                    nd_tex_scroll_tile_4b(ImgFXCurrentTexturePtr->tex.raster, G_IM_FMT_CI, ImgFXCurrentTexturePtr->tex.width, ImgFXCurrentTexturePtr->tex.height, (imgfx_vtxBuf[ulIdx].v.tc[0] >> 5) - 0x100, (imgfx_vtxBuf[ulIdx].v.tc[1] >> 5) - 0x100, (imgfx_vtxBuf[lrIdx].v.tc[0] >> 5) - 0x100 - 1, (imgfx_vtxBuf[lrIdx].v.tc[1] >> 5) - 0x100 - 1, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 8, G_TX_NOLOD, G_TX_NOLOD, 0x100, 0x100);
+                    gDPScrollTextureTile_4b(gMainGfxPos++,
+                        ImgFXCurrentTexturePtr->tex.raster, G_IM_FMT_CI,
+                        ImgFXCurrentTexturePtr->tex.width, ImgFXCurrentTexturePtr->tex.height, // img size
+                        (imgfx_vtxBuf[ulIdx].v.tc[0] >> 5) - 0x100, (imgfx_vtxBuf[ulIdx].v.tc[1] >> 5) - 0x100, // top left
+                        (imgfx_vtxBuf[lrIdx].v.tc[0] >> 5) - 0x100 - 1, (imgfx_vtxBuf[lrIdx].v.tc[1] >> 5) - 0x100 - 1, // bottom right
+                        0, // palette
+                        G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, // clamp wrap mirror
+                        8, 8, // mask
+                        G_TX_NOLOD, G_TX_NOLOD, // shift,
+                        0x100, 0x100); // scroll
                 }
             }
 
@@ -1764,8 +1764,7 @@ void imgfx_appendGfx_mesh_anim(ImgFXState* state, Matrix4f mtx) {
             nd_tex_scroll_tile_4b(ImgFXCurrentTexturePtr->tex.raster, G_IM_FMT_CI, ImgFXCurrentTexturePtr->tex.width, ImgFXCurrentTexturePtr->tex.height, 0, 0, ImgFXCurrentTexturePtr->tex.width - 1, ImgFXCurrentTexturePtr->tex.height - 1, 0, G_TX_CLAMP, G_TX_CLAMP, 8, 8, G_TX_NOLOD, G_TX_NOLOD, 256, 256);
         }
     }
-    { static int s_log; if (!s_log) { s_log = 1; pm_log_evt("imgfx anim f%u", pm_frame_count()); } }
-    nd_rec_ndev(&state->gfxDev[gCurrentDisplayContextIndex]);
+    gSPDisplayList(gMainGfxPos++, state->gfxBufs[gCurrentDisplayContextIndex]);
     nd_xf_pop(G_MTX_MODELVIEW);
 }
 
@@ -1801,8 +1800,7 @@ void imgfx_appendGfx_mesh_strip(ImgFXState* state, Matrix4f mtx) {
 
     state->floats.overlay.posX = (s32)(state->floats.overlay.posX + ufs->offsetX) % (ufs->width * 4);
     state->floats.overlay.posY = (s32)(state->floats.overlay.posY + ufs->offsetY) % (ufs->height * 4);
-    { static int s_log; if (!s_log) { s_log = 1; pm_log_evt("imgfx strip f%u", pm_frame_count()); } }
-    nd_rec_dl(ufs->displayList);
+    gSPDisplayList(gMainGfxPos++, ufs->displayList);
     nd_xf_pop(G_MTX_MODELVIEW);
 }
 
