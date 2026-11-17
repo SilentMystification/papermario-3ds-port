@@ -217,7 +217,7 @@ void nd_walker_desc(NdPsoDesc* d) {
 /* NPSO4: the psochk debug switch (read once). Each draw that states a description compares it with the walker's; the first 8 bad ones are logged, and a line every 100 frames. Off: one test. */
 static int psochk_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("psochk"); return v; }
 static unsigned psochk_draws, psochk_bad, psochk_nlog, psochk_bucket;
-static unsigned pk_hit, pk_miss, pk_bad; /* PSOLK: table hits, misses, and hits whose core decision differs (psochk only) */
+static unsigned pk_hit, pk_miss; /* PSOLK: table hits and misses */
 extern unsigned pm_frame_n; /* pm_main.c: the logic step counter */
 void nd_psochk_draw(const NdPsoDesc* stated) {
     if (!psochk_on()) return;
@@ -230,16 +230,18 @@ void nd_psochk_draw(const NdPsoDesc* stated) {
     }
     if (pm_frame_n / 100 != psochk_bucket) {
         psochk_bucket = pm_frame_n / 100;
-        pm_log_evt("psochk f%u draws %u bad %u lk %u miss %u lkbad %u", pm_frame_n, psochk_draws, psochk_bad, pk_hit, pk_miss, pk_bad);
+        pm_log_evt("psochk f%u draws %u bad %u lk %u miss %u", pm_frame_n, psochk_draws, psochk_bad, pk_hit, pk_miss);
     }
 }
 
-void nd_psochk_end(void) { if (psochk_on()) pm_log_evt("psochk end f%u draws %u bad %u lk %u miss %u lkbad %u", pm_frame_n, psochk_draws, psochk_bad, pk_hit, pk_miss, pk_bad); }
+void nd_psochk_end(void) { if (psochk_on()) pm_log_evt("psochk end f%u draws %u bad %u lk %u miss %u", pm_frame_n, psochk_draws, psochk_bad, pk_hit, pk_miss); }
 
 /* PSOSEEN: one log entry per distinct missed key (256 at most) */
 static __attribute__((cold, noinline)) void pso_seen_note(const NdCombIn* in) {
     static uint32_t seen[256]; static unsigned n; uint32_t h = 2166136261u;
-    if ((unsigned)(in->tex_on | in->use_t1 | in->t1_valid | in->dual_on | in->box_prod | in->box_folded | in->comb_set | in->comb_alpha_shade) > 1u) return;
+    if ((unsigned)(in->tex_on | in->use_t1 | in->t1_valid | in->dual_on | in->box_prod | in->box_folded | in->comb_set | in->comb_alpha_shade) > 1u) {
+        static int once; if (!once) { once = 1; pm_log_evt("psomiss flags above 1"); } return;
+    }
     const uint32_t k[9] = { in->w0, in->w1, in->omode_h, in->prim_lo8 & 0xffu, in->key_c, in->key_s, in->conv_k4, (uint32_t)pm_comb_vprim,
         nd_pso_flags(in->tex_on, in->use_t1, in->t1_valid, in->dual_on, in->box_prod, in->box_folded, in->comb_set, in->comb_alpha_shade) };
     for (unsigned i = 0; i < 9u; i++) h = (h ^ k[i]) * 16777619u;
@@ -251,16 +253,17 @@ static __attribute__((cold, noinline)) void pso_seen_note(const NdCombIn* in) {
         in->box_prod, in->box_folded, in->comb_set, in->comb_alpha_shade, (unsigned)pm_comb_vprim, (unsigned)(in->prim_lo8 & 0xffu));
 }
 
+/* PSOFB (user 2026-11-16): a key that the pso table does not hold draws with vertex colour only (legacy mode 0) and logs its key once. */
+static __attribute__((cold, noinline)) void pso_fallback(const NdCombIn* in, NdCombOut* o) {
+    pso_seen_note(in); memset(o, 0, sizeof *o);
+    o->use = -1; o->cyc = (int)((in->omode_h >> G_MDSFT_CYCLETYPE) & 3); o->dual = in->dual_on | in->box_prod << 1;
+}
+
 /* PSOLK: the combine decision of the walker inputs in: the pso table entry (nd_pso_find) with the walker's colours, or nd_comb_core on a miss. */
 static void nd_comb_pick(const NdCombIn* in, NdCombOut* o) {
-    if (!nd_pso_find(in, (unsigned)pm_comb_vprim, o)) { pso_seen_note(in); pk_miss++; nd_comb_core(in, (unsigned)pm_comb_vprim, comb_mode5, o); return; }
+    if (!nd_pso_find(in, (unsigned)pm_comb_vprim, o)) { pk_miss++; pso_fallback(in, o); return; }
     pk_hit++;
     nd_pso_fix(o, in, comb_mode5);
-    if (psochk_on()) {
-        NdCombOut r;
-        nd_comb_core(in, (unsigned)pm_comb_vprim, comb_mode5, &r);
-        if (memcmp(&r, o, sizeof r)) pk_bad++;
-    }
 }
 
 uint32_t gvk_bits(float f) { uint32_t u; memcpy(&u, &f, 4); return u; }

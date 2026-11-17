@@ -126,7 +126,7 @@ def main(argv):
         run(["gcc", "-m32", *SSE, "-w", *FLAGS, "-c", "-o", pmo, "3ds/src/pm_comb.c"])
         gen = os.path.join(tmp, "psogen")
         run(["gcc", "-m32", *SSE, "-Wall", "-Wextra", "-Werror", *FLAGS, "-o", gen, os.path.join(HERE, "gen_pso_main.c"),
-             "3ds/src/nd_decide.c", "3ds/src/nd_tmpl.c", descs_c, pmo, "-lm"])
+             "3ds/tools/nd_decide.c", "3ds/src/nd_psokey.c", "3ds/src/nd_tmpl.c", descs_c, pmo, "-lm"])
         run([gen, out])
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
