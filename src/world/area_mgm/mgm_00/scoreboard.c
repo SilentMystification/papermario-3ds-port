@@ -1,4 +1,5 @@
 #include "mgm_00.h"
+#include "nd_gtab.h"
 #include "nd_tx.h"
 #include "nd_val.h"
 
@@ -32,22 +33,7 @@ EvtScript N(D_80243C40_E123E0) = {
 };
 
 
-Gfx N(Gfx_RecordDisplay_Init)[] = {
-    gsDPSetCycleType(G_CYC_1CYCLE),
-    gsDPSetRenderMode(G_RM_XLU_SURF, G_RM_XLU_SURF2),
-    gsDPSetCombineMode(G_CC_PRIMITIVE, G_CC_PRIMITIVE),
-    gsDPSetColorDither(G_CD_DISABLE),
-    gsDPSetAlphaDither(G_AD_DISABLE),
-    gsDPSetCombineKey(G_CK_NONE),
-    gsDPSetAlphaCompare(G_AC_NONE),
-    gsDPNoOp(),
-    gsDPSetPrimColor(0, 0, 255, 0, 0, 0),
-    gsDPFillRectangle(44, 49, 276, 51),
-    gsDPFillRectangle(44, 49, 46, 133),
-    gsDPFillRectangle(275, 49, 276, 133),
-    gsDPFillRectangle(44, 132, 276, 133),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(N(Gfx_RecordDisplay_Init));
 
 #define RECORD_BOX_POSX        45
 #define RECORD_BOX_WIDTH       230
@@ -60,7 +46,7 @@ Gfx N(Gfx_RecordDisplay_Init)[] = {
 void N(draw_record_display)(RecordDisplayData* data, s32 alpha) {
 
     if (alpha > 0) {
-        gSPDisplayList(gMainGfxPos++, N(Gfx_RecordDisplay_Init));
+        nd_draw_list(NDN(N(Gfx_RecordDisplay_Init)), ND_SELF);
         nd_val_prim(0, 0, 16, 120, 24, alpha * 0.65);
         nd_rect_fill(RECORD_BOX_POSX + 3, 53, RECORD_BOX_POSX + RECORD_BOX_WIDTH - 3, 129);
         msg_draw_frame(RECORD_BOX_POSX, 50, RECORD_BOX_WIDTH, 82, MSG_STYLE_INSPECT, 0, 1, (s32)(alpha * 0.55), alpha); // cast needed if signature isn't present

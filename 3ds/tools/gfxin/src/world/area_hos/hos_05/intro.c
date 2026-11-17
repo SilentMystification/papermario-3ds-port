@@ -1,0 +1,20 @@
+#include "src/world/area_hos/hos_05/intro.c"
+Gfx N(gfx_setup_story_viewport)[] = {
+    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
+    gsDPPipeSync(),
+    gsDPSetCycleType(G_CYC_1CYCLE),
+    gsDPSetTextureDetail(G_TD_CLAMP),
+    gsDPSetTextureLOD(G_TL_TILE),
+    gsDPSetTextureFilter(G_TF_POINT),
+    gsDPSetTextureConvert(G_TC_FILT),
+    gsDPSetTexturePersp(G_TP_NONE),
+    gsDPSetTextureLUT(G_TT_RGBA16),
+    gsDPSetCombineMode(PM_CC_10, PM_CC_10),
+    gsDPSetScissor(G_SC_NON_INTERLACE, 29, 28, 291, 190),
+    gsDPSetColorDither(G_CD_DISABLE),
+    gsDPSetAlphaDither(G_AD_PATTERN),
+    gsDPSetRenderMode(CVG_DST_FULL | ZMODE_OPA | FORCE_BL | G_RM_PASS, CVG_DST_FULL | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_0, G_BL_CLR_IN, G_BL_1)),
+    gsSPClearGeometryMode(G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH | G_CLIPPING | 0x0040F9FA),
+    gsSPSetGeometryMode(G_SHADE | G_SHADING_SMOOTH),
+    gsSPEndDisplayList(),
+};
