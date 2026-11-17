@@ -1978,7 +1978,14 @@ def base_check(a):
     if not live:
         print("cachecheck basebin: no entry to check")
         return 0
-    commit = random.choice(live)
+    REPRO = "5f0da7a0fc"  # VOLGEN 1: the first build.sh without a time tag in a PM_BUILD_REV build number
+    rep = [c for c in live if subprocess.run(["git", "merge-base", "--is-ancestor", REPRO, c], cwd=REPO).returncode == 0]
+    if len(rep) < len(live):
+        print("cachecheck basebin: %d entries are older than VOLGEN 1 (time tag in the build number): no byte check" % (len(live) - len(rep)))
+    if not rep:
+        print("cachecheck basebin: no entry to check")
+        return 0
+    commit = random.choice(rep)
     ent = bb.get(root, basebin_key(commit))
     if ent is None:
         print("CACHECHECK FAIL basebin %s: the entry failed its check (removed)" % commit[:9])
