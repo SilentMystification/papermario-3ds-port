@@ -231,7 +231,7 @@ typedef struct {
     uint32_t cw0, cw1, omh, oml, geom, plod, key_c, key_s, conv_k4; /* CONV2C2: the key and convert words of the seed (cw0 kind) */
     unsigned tex_on, has_comb;
     NdTst t; NdTexM m;
-    const void* timg; const void* tlut; int tlut_n;
+    const void* timg; const void* tlut; int tlut_n; int timg_set; /* FXLT: timg_set 0 = no SetTImg yet (the caller's image) */
     int td_valid; NdBindDesc td;
     int td1_valid; NdBindDesc td1;
 } MSt;
@@ -275,6 +275,11 @@ static void m_xf(unsigned a, uint32_t v) { if (nmxf < EVMAX) { mxf[nmxf].a = a; 
 static void m_col(unsigned a, unsigned b, uint32_t v) { if (nmcol < EVMAX) { mcol[nmcol].a = a; mcol[nmcol].b = b; mcol[nmcol].v = v; nmcol++; } else m_over = 1; }
 static void m_tilesize(unsigned tile, int uls, int ult, int lrs, int lrt) {
     ms.t.tile_sz[tile][0] = uls; ms.t.tile_sz[tile][1] = ult; ms.t.tile_sz[tile][2] = lrs; ms.t.tile_sz[tile][3] = lrt;
+    if (tile <= 1u && !ms.timg_set) { /* FXLT: the caller's image: no bind, one tile size event (NDN_TSZ) in the colour stream */
+        if (tile == 1) ms.td1_valid = 0; else ms.td_valid = 0;
+        m_col(8u + tile, ((uint32_t)uls << 12) | (uint32_t)ult, ((uint32_t)lrs << 12) | (uint32_t)lrt);
+        return;
+    }
     if (tile == 1) {
         ms.td1_valid = 0;
         NdWin w1;
@@ -325,7 +330,7 @@ static void m_unit(const uint32_t* u) {
         else { ms.key_c = (ms.key_c & 0xff000000u) | ((w1 >> 24 & 0xffu) << 16) | ((w1 >> 8 & 0xffu) << 8); ms.key_s = (ms.key_s & 0xff000000u) | ((w1 >> 16 & 0xffu) << 16) | ((w1 & 0xffu) << 8); }
         break;
     case NDO_TIMG:
-        ms.timg = (const void*)(uintptr_t)w1; ms.t.timg_fmt = (a >> 21) & 7u; ms.t.timg_siz = (a >> 19) & 3u; ms.t.timg_stride = (int)(a & 0xfffu) + 1; ms.m.ld_valid = 0;
+        ms.timg = (const void*)(uintptr_t)w1; ms.t.timg_fmt = (a >> 21) & 7u; ms.t.timg_siz = (a >> 19) & 3u; ms.t.timg_stride = (int)(a & 0xfffu) + 1; ms.m.ld_valid = 0; ms.timg_set = 1;
         break;
     case NDO_TILE: {
         const unsigned tile = (w1 >> 24) & 7u;
@@ -363,6 +368,8 @@ static void m_unit(const uint32_t* u) {
         break;
     }
     case NDO_TILESIZE: m_tilesize((w1 >> 24) & 7u, (int)((a >> 12) & 0xfffu), (int)(a & 0xfffu), (int)((w1 >> 12) & 0xfffu), (int)(w1 & 0xfffu)); break;
+    case NDO_MOVEMEM: if ((a & 0xffu) == G_MV_LIGHT) m_col(16u, a, w1); break; /* FXLT: NDN_LIT a 0 */
+    case NDO_MW: if ((a >> 16) == NDO_MW_NUMLIGHT) m_col(17u, a, w1); break; /* FXLT: NDN_LIT a 1 */
     default: break; /* no-op units; a list with another unit has no v2 table */
     }
 }
@@ -434,6 +441,8 @@ static int m_walk(const NdGTab* t) {
     return 0;
 }
 
+static int fault_tsz, fault_lit; /* FXLT: --fault-tsz / --fault-lit: the first NDN_TSZ / NDN_LIT event + 1 in the compare's copy */
+static void v_ev(unsigned a, unsigned b, uint32_t v, int* f) { if (nvcol >= EVMAX) return; if (*f == 1) { v += 1u; *f = 2; } vcol[nvcol].a = a; vcol[nvcol].b = b; vcol[nvcol].v = v; nvcol++; }
 static void v_replay(const NdNTab* t, int fault) {
     int pso = -1;
     const NdBindDesc* bind = NULL;
@@ -478,6 +487,8 @@ static void v_replay(const NdNTab* t, int fault) {
                 e->nx = nvxf; e->nc = nvcol;
             }
             break;
+        case NDN_TSZ: v_ev(8u + o->a, o->v, o->idx_pos, &fault_tsz); break;
+        case NDN_LIT: v_ev(16u + o->a, o->v, o->a ? o->idx_pos : (uint32_t)(uintptr_t)o->p, &fault_lit); break;
         default: break;
         }
     }
@@ -709,6 +720,7 @@ static void sort_check(int fault) {
 }
 int main(int argc, char** argv) {
     const int fault = argc > 1 && !strcmp(argv[1], "--fault");
+    fault_tsz = argc > 1 && !strcmp(argv[1], "--fault-tsz"); fault_lit = argc > 1 && !strcmp(argv[1], "--fault-lit");
     sort_check(fault); /* SORTQ: before the first find sorts the indices */
 #else
 int main(void) {

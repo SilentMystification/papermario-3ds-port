@@ -199,7 +199,7 @@ typedef struct {
     uint32_t cw0, cw1, omh, oml, geom, key_c, key_s, conv_k4, omh_set, plod;
     unsigned has_comb, has_tex, tex_on;
     NdTst t; NdTexM m;
-    const void* timg; int timg_ok;
+    const void* timg; int timg_ok, timg_set; /* FXLT: timg_set 0 = no SetTImg in the walk yet (the caller's image) */
     const void* tlut; int tlut_n;
     int td_valid; NdBindDesc td;
     int td1_valid; NdBindDesc td1;
@@ -374,6 +374,12 @@ static void v2_loadtile(V2St* s, unsigned tile, int uls, int ult, int lrs, int l
 static void v2_tilesize(V2St* s, unsigned k, unsigned tile, int uls, int ult, int lrs, int lrt) {
     if (((lrs - uls) >> 2) + 1 <= 0 || ((lrt - ult) >> 2) + 1 <= 0) { v2_unsup("tile size window not positive", k); return; }
     s->t.tile_sz[tile][0] = uls; s->t.tile_sz[tile][1] = ult; s->t.tile_sz[tile][2] = lrs; s->t.tile_sz[tile][3] = lrt;
+    if (tile <= 1u && !s->timg_set) { /* FXLT: the caller's image: no bind of the tile, one NDN_TSZ op */
+        if (tile == 1) s->td1_valid = 0; else s->td_valid = 0;
+        v2_flush();
+        v2_push(NDN_TSZ, tile, 0, ((uint32_t)uls << 12) | (uint32_t)ult, NULL, ((uint32_t)lrs << 12) | (uint32_t)lrt);
+        return;
+    }
     if (tile == 1) {
         s->td1_valid = 0;
         if (!s->timg_ok) { v2_unsup("texture image outside the set", k); return; }
@@ -499,11 +505,18 @@ static int v2_walk(const GSym* g, unsigned k0, unsigned depth) {
             v2_state_op(NDN_XF, a & 0xffu, 0, w1, NULL);
             break;
         case NDO_POPMTX: v2_state_op(NDN_XF, 0xffu, 0, w1, NULL); break;
-        case NDO_MW: if ((a >> 16) != NDO_MW_NONE && (a >> 16) != NDO_MW_NUMLIGHT) v2_unsup(v2_opname(id), k); break;
-        case NDO_MOVEMEM: { /* LIT1: a light of a Lights1 symbol is a unit only (nd_ntab_run runs the units, nd_walk.c:599) */
+        case NDO_MW:
+            if ((a >> 16) == NDO_MW_NUMLIGHT) { v2_flush(); v2_push(NDN_LIT, 1, 0, a, NULL, w1); } /* FXLT: the light count */
+            else if ((a >> 16) != NDO_MW_NONE) v2_unsup(v2_opname(id), k);
+            break;
+        case NDO_MOVEMEM: { /* LIT1: a light of a Lights1 symbol; FXLT: one NDN_LIT op (p = the light) */
             unsigned loff;
-            if ((a & 0xffu) != G_MV_LIGHT || !sym_of(w1, GS_LIT, &loff)) v2_unsup(v2_opname(id), k);
-            else cx->lit = 1;
+            const GSym* ls = (a & 0xffu) == G_MV_LIGHT ? sym_of(w1, GS_LIT, &loff) : NULL;
+            if (!ls) { v2_unsup(v2_opname(id), k); break; }
+            char lp[160];
+            snprintf(lp, sizeof lp, "(const char*)&%s + %u", ls->name, loff);
+            v2_state_op(NDN_LIT, 0, 0, a, lp);
+            cx->lit = 1;
             break;
         }
         case NDO_RARE: /* FXOPS: the convert and key words are desc state (set_rare, nd_set.c:148); the unit runs on the device */
@@ -520,6 +533,7 @@ static int v2_walk(const GSym* g, unsigned k0, unsigned depth) {
             unsigned off;
             s->timg = (const void*)(uintptr_t)w1;
             s->timg_ok = !w1 || sym_of(w1, GS_IMG, &off) != NULL;
+            s->timg_set = 1;
             s->t.timg_fmt = (a >> 21) & 7u; s->t.timg_siz = (a >> 19) & 3u; s->t.timg_stride = (int)(a & 0xfffu) + 1;
             s->m.ld_valid = 0;
             break;
@@ -558,7 +572,6 @@ static int v2_walk(const GSym* g, unsigned k0, unsigned depth) {
             break;
         }
         case NDO_TRI1: case NDO_TRI2: {
-            if (cx->lit && (s->geom & G_LIGHTING)) { v2_unsup("lit draw after a light unit", k); break; }
             v2_inherit_check(k, g, id);
             NdVsOp o;
             memset(&o, 0, sizeof o);
