@@ -65,7 +65,10 @@ change 2026-11-16): BASEBIN and VOLGEN start now. VOLHOST waits for Merge BENCHS
 3. A temp folder, then one rename (mv -T, os.rename): no half entry. The asset volume: temp folder renamed to /a/c.
 4. Seeded-fault self-tests in the host test: 3ds/tests/host.d/volgen.sh and basebin.sh (one input byte, one stored byte, a key
    clash, PM_CACHE=off, cachecheck). In-run faults in the pages: VOLGEN steps 6 and 8, BASEBIN steps 6 and 7.
-5. Cachecheck at every merge: post_merge.sh (MAINBIN): generators cold vs entry, one basebin entry rebuilt cold, one shot rerun.
+5. Cachecheck after every merge, detached (POSTASYNC: postmerge_bg.sh queue, one runner, worktree build3ds/wt/postmerge):
+   generators and gconv objects cold vs entry, basebin prebuild and key sweep on every merge; the cold rebuild (PM_CACHE=off)
+   on merge count mod 3 = 0, the shot rerun on mod 3 = 1; after a FAIL every check runs all. postmerge_FAIL.txt stops
+   merge_row.sh and push_3ds.sh until a full pass on a newer main commit.
 6. Cold gate at each phase end: PM_CACHE=off build (no cache, no ccache, new build dir, new asset volume) plus all gates (MAINBIN step 5).
 7. Shared caches carry the image id: gencache keys (host image), basebin key (both images), ccache volume and build dir (build image).
 - Exception (OPEN for the user): the lane source volume is a mirror, not a keyed entry. It is guarded by content ids, the volume id
@@ -80,5 +83,5 @@ second host run: each value in the target table or lower. The time counters are 
 - A src edit misses gfx_tab and pso_tab (src is in their key: gen_gfx_tab.sh compiles with -I src). Until VOLGEN2 such a build
   runs gconv: GUESS 2-4 min. Correct before fast.
 - The first build after VOLGEN is fully cold (new image-keyed ccache volume): GUESS 5-10 min, PM_BUILD_CAP=1800 in the page.
-- post_merge.sh blocks merge_row.sh GUESS 12-18 min a merge (rule 5 asks every merge). The user can choose every Nth merge.
+- The post-merge check runs detached (POSTASYNC): the merge lane waits GUESS 1-2 s. A ccache fault shows within 3 merges.
 - Memory: 3 slots x 4 GB in 14 GB WSL2 (FACT .wslconfig). Do not add slots before VOLHOST.

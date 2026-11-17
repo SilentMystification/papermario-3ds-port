@@ -169,6 +169,14 @@ archive_build() {
     echo "ARCHIVED $dst (sha256 $sha)"
 }
 
+# POSTASYNC: the post-merge check of main failed (build3ds/out/postmerge_FAIL.txt of the main folder, 3ds/tools/postmerge_bg.sh):
+# no build and no send until a full check passes on a newer main commit. PM_POSTMERGE_FAIL (tests only) names another file.
+pmfail=${PM_POSTMERGE_FAIL:-$(cd "$(git rev-parse --git-common-dir)" && cd .. && pwd)/build3ds/out/postmerge_FAIL.txt}
+if [ "$attach" -eq 0 ] && [ -z "$checklog" ] && [ -z "$checksend" ] && [ "$archonly" -eq 0 ] && [ -f "$pmfail" ]; then
+    echo "POST-MERGE CHECK FAILED: $(tr '
+' ' ' < "$pmfail")"
+    end_push 8 failed "post-merge check failed (build3ds/out/postmerge_FAIL.txt), nothing sent"
+fi
 # build.sh is the only stale check (content key, BSTALE): it skips the build when nothing changed.
 # This script never stashes or changes user files.
 if [ "$nobuild" -eq 0 ] && [ "$attach" -eq 0 ] && [ -z "$checklog" ] && [ -z "$checksend" ]; then
