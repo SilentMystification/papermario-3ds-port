@@ -29,11 +29,11 @@ Main at release: 038ac581fe. Shares no file with ENTLST, EFXGT, RECBUF, EFFCEN, 
 5. For each path P of step 4: new 3ds/tools/gfxin/P, 2 lines: `#include "P"`, `#include "world/toad_house/blanket.gfx.inc.c"` (form of the kmr_20 records.c
    twin). Append the second line to 3ds/tools/gfxin/src/world/area_dro/dro_02/npc_merlee.c.
 ## Loop (each output to build3ds/out/, read the last 20 lines)
-1. Edits 1-2. `sh 3ds/tests/host.d/blanket.sh` and `sh 3ds/tests/host.d/gconvw.sh` print `blanket ok` and `gconvw ok`. Commit `BLANKET 1: gen_gfx_syms N() image, twin top scan`.
+1. Edits 1-2. `sh 3ds/tests/host.d/blanket.sh` prints `blanket ok` (gconvw.sh needs gcc: docker only, step 4). Commit `BLANKET 1: gen_gfx_syms N() image, twin top scan`.
 2. Edits 3-5. Commit `BLANKET 2: toad house blanket list to 12 world twins`.
 3. `python 3ds/tools/bench.py base spot_mac01_drec --row BLANKET` (base run, not charged).
 4. `PM_HOSTSEL=all sh 3ds/tools/rowloop.sh --row BLANKET --bench spot_mac01_drec --why "BLANKET gate" > build3ds/out/blanket_loop.txt 2>&1`.
-## Tests that decide: `LOOP PASS`: host PASS (holds `blanket ok`), build rc 0 (no `gconv: moved` line), spot_mac01_drec byte-equal. Budget: 2 builds, 2 Azahar starts.
+## Tests that decide: `LOOP PASS`: host PASS (holds `blanket ok`, `gconvw ok`), build rc 0 (no `gconv: moved` line), spot_mac01_drec byte-equal. Budget: 2 builds, 2 Azahar starts.
 - `python 3ds/tools/listcen.py | grep "^listcen total"`: data 39 lower, data_arrays 1 lower, gfxtype 1 lower than on the merge-base (read both).
 ## Fix rights: only the files above. A twin compile error, a `gconv:` line, a host FAIL or a cmp DIFF: stop, send the output path to the oracle, wait.
 ## Stop and hand-back
