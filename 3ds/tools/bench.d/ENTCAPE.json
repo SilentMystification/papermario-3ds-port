@@ -1,0 +1,36 @@
+{
+  "benches": [
+    {
+      "name": "entcape_cap",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "ENTCAPE: entcap lines of the entity list sites over a 5 spot tour (log only).",
+      "scenario": "entcape_cap",
+      "cap": 45,
+      "until": "tour: done items 5",
+      "tags": [
+        "azahar",
+        "entcap"
+      ],
+      "gates": []
+    },
+    {
+      "name": "entcape_kmr03_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "ENTCAPE: drec.txt of kmr_03 at the heart block, frames 200 and 201 (cold det start). A head equals the base.",
+      "scenario": "entcape_kmr03_drec",
+      "cap": 25,
+      "until": "drec f201 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "drec"
+      ],
+      "gates": []
+    }
+  ]
+}

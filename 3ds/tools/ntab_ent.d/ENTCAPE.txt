@@ -1,0 +1,7 @@
+# ENTCAPE: entity sites with a captured entry
+src/entity/BlueWarpPipe.c
+src/entity/HeartBlock.c
+src/entity/SaveBlock.c
+src/entity/SuperBlock.c
+src/entity/jan_iwa/Plants1.c
+src/entity/sbk_omo/Tweester.c

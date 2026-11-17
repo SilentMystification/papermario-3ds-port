@@ -147,7 +147,7 @@ void entity_SuperBlockContent_setupGfx(s32 entityIndex) {
     nd_pso_rm(G_RM_AA_ZB_TEX_EDGE, G_RM_AA_ZB_TEX_EDGE2);
     nd_pso_cc(G_CC_MODULATEIA, G_CC_MODULATEIA);
     nd_tex_load_tlut16(0, palette);
-    gSPDisplayList(gMainGfxPos++, dlist);
+    nd_rec_dl(dlist);
     nd_xf_pop(G_MTX_MODELVIEW);
 
     alpha = 120;
@@ -162,7 +162,7 @@ void entity_SuperBlockContent_setupGfx(s32 entityIndex) {
     nd_pso_rm(AA_EN | Z_CMP | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA), AA_EN | Z_CMP | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA));
     nd_pso_cc(PM_CC_01, PM_CC_02);
     nd_val_prim(0, 0, 0, 0, 0, alpha);
-    gSPDisplayList(gMainGfxPos++, dlist);
+    nd_rec_dl(dlist);
     nd_xf_pop(G_MTX_MODELVIEW);
 
     alpha = 80;
@@ -177,7 +177,7 @@ void entity_SuperBlockContent_setupGfx(s32 entityIndex) {
     nd_pso_rm(AA_EN | Z_CMP | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA), AA_EN | Z_CMP | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA));
     nd_pso_cc(PM_CC_01, PM_CC_02);
     nd_val_prim(0, 0, 0, 0, 0, alpha);
-    gSPDisplayList(gMainGfxPos++, dlist);
+    nd_rec_dl(dlist);
     nd_xf_pop(G_MTX_MODELVIEW);
 
 }

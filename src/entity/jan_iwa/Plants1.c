@@ -174,7 +174,7 @@ void entity_PinkFlowerLight_setupGfx(s32 entityIndex) {
     nd_val_prim(0, 0, 0, 0, 0, entity->alpha);
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gSPDisplayList(gMainGfxPos++, NDN(D_0A0013B8_E9C8B8));
+    nd_rec_dl(NDN(D_0A0013B8_E9C8B8));
     nd_xf_pop(G_MTX_MODELVIEW);
 }
 

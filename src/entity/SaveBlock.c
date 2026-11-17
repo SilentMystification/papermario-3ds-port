@@ -39,7 +39,7 @@ void entity_SaveBlock_setupGfx(s32 index) {
     nd_pso_rm(G_RM_ZB_CLD_SURF, G_RM_ZB_CLD_SURF2);
     nd_pso_cc(PM_CC_01, PM_CC_02);
     nd_val_prim(0, 0, 0, 0, 0, alpha);
-    gSPDisplayList(gMainGfxPos++, dlist);
+    nd_rec_dl(dlist);
     nd_xf_pop(G_MTX_MODELVIEW);
 
     dlist = ENTITY_ADDR(entity, Gfx*, NDN(Entity_SaveBlock_RenderBlock));
