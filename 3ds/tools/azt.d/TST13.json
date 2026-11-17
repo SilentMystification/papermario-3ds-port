@@ -1,0 +1,50 @@
+{
+  "scenarios": [
+    {
+      "name": "tst13_cap",
+      "status": "unverified",
+      "subject": "TST13: tst_13 floor shockwave list (main.c:306 nd_rec_dl) captured by entcap at draw record frame 200.",
+      "proves": "TST13: the capture log holds the tst_13/main.c:306 site with a tuple.",
+      "debug": "warp=tst_13:0 warptest loglevel=debug det drec=200:1 entcap entcapt psochk",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "drec f200 draws [1-9]\\d* bytes \\d+",
+      "cap": 25,
+      "deadline": 25,
+      "first_marker": "warp: tst_13 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "drec",
+          "regex": "drec f200 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "reason": "TST13: capture run for the tst_13 shockwave nd_rec_dl site. Cap 25 s."
+    },
+    {
+      "name": "tst13_drec",
+      "status": "unverified",
+      "subject": "TST13: tst_13 floor shockwave draw records of frames 200 and 201 with the captured entry, det.",
+      "proves": "TST13: the draw records of frames 200 and 201 are byte-equal between the merge-base build and the head build.",
+      "debug": "warp=tst_13:0 warptest loglevel=debug det drec=200:2 psochk",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "drec f201 draws [1-9]\\d* bytes \\d+",
+      "cap": 25,
+      "deadline": 25,
+      "first_marker": "warp: tst_13 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "drec",
+          "regex": "drec f201 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "reason": "TST13: gate scenario for the tst_13 shockwave captured entry. Cap 25 s."
+    }
+  ]
+}

@@ -303,7 +303,7 @@ void N(build_gfx_floor)(void) {
     nd_pso_rm(G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2);
     mdl_draw_hidden_panel_surface(1);
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gSPDisplayList(gMainGfxPos++, NDN(N(shockwave_gfx)));
+    nd_rec_dl(NDN(N(shockwave_gfx)));
     nd_xf_pop(G_MTX_MODELVIEW);
 }
 
