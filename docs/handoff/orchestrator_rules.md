@@ -11,14 +11,14 @@ EVERY TURN: 1 ListAgents. Only status `running` holds a slot. A `completed` agen
 
 ## Roles
 - Orchestrator: launches agents, merges, reports, asks the user (AskUserQuestion, 2-4 options, recommended first). No game code, no debugging.
-- Oracle (Opus): reads code, answers coders, writes 3 to 4 pages per run, ahead of the coders. At most 2 at once.
+- Oracle (Opus): reads code, answers coders, writes 3 to 4 pages per run, ahead of the coders. At most 2 at once. It designs close to the code and stops short of the full change: exact files, lines and symbols, the new logic as snippets of up to 30 lines, the test cases to add, the gate and the expected counter move (user 2026-11-17). It writes no full patch and runs no host test. The coder writes the edits and the tests.
 - Coders: Haiku by default. Sonnet only with the user's yes. Never Opus.
 
 ## Agents
 - Label every Agent call `[Model type] ROW - task`, for example `[Haiku coder] GSETR - move 26 lists`.
 - A coder prompt names the oracle id that wrote its page. The coder asks that oracle.
 - Resume a finished agent when its context helps. Start a fresh one when it does not.
-- Pages split by file so rows run in parallel. A page says "start after Merge X" only for a shared file or output. A page lists the expected bench differences. Mechanical edits go in `ws_<id>.patch` (`git apply`).
+- Pages split by file so rows run in parallel. A page says "start after Merge X" only for a shared file or output. A page lists the expected bench differences. A purely mechanical edit (same change at many sites) may go in `ws_<id>.patch` (`git apply`).
 - A hand-back is one SubagentHandback message. No hand-back file.
 
 ## Goal and faults
