@@ -1,7 +1,7 @@
 # ws_NST2A (Haiku): static lists feed the core 1 state nd_ds (stage S3; counter: dschk bad lower than base)
 Designer: oracle PHASEE2. WAIT: branch from main after the NST3 merge (dschk, fxrest.d/dschk_base.txt). Worktree build3ds/wt/NST2A,
 branch NST2A. PM_ROW=NST2A PM_LANE=NST2A. Edit only: 3ds/src/nd_ds.c, 3ds/include/nd_ds.h, 3ds/src/nd_rec.c, 3ds/src/nd_gtab.c,
-3ds/tools/nd_ds_test.c, 3ds/tests/host.d/nst1.sh.
+3ds/tools/nd_ds_test.c, 3ds/tests/host.d/nst1.sh, 3ds/tools/fxrest.d/dschk_base.txt.
 ## Facts (code read, main ba48ccb6bb)
 - nd_rec_dl (nd_gtab.c:108) records a table call with no unit through nd_rec_nr: core 1 nd_ds misses the list state. Table kinds: v2
   NdNDev (nd_ntab_find :67; units nt->u, count nt->nu), v1 NdGTab (nd_gtab_find :19; ops NDG_DEF d.u d.n, NDG_UNIT p, NDG_CALL p,
@@ -14,14 +14,16 @@ branch NST2A. PM_ROW=NST2A PM_LANE=NST2A. Edit only: 3ds/src/nd_ds.c, 3ds/includ
    recurse with p's list, return after a branch). Else: the raw typed words to NDO_END (at most 200000). Per unit: NDO_CALL -> recurse
    (w1, depth + 1), and return after it when w0 bit 0 is set; any other unit -> nd_ds_apply(s, u[0], u[1]). nd_ds.c stays host-built:
    take nd_ntab_find and nd_gtab_find as declared in nd_gtab.h.
-2. nd_gtab.c nd_rec_dl: at the table path (after `gtr_tab++;`, :130) add `nd_ds_list(&nd_ds, list, 0);`.
+2. nd_gtab.c nd_rec_dl: add `nd_ds_list(&nd_ds, list, 0);` after the record: in the :132 branch after nd_rec_napi (before `return`),
+   and after :134. Do not put it before nd_rec_napi: dschk copies nd_ds when rec_take records the command (NST3 edit 2).
 3. nd_rec.c nd_rec_nr: when `(w0 >> 24) == NDO_CALL` call `nd_ds_list(&nd_ds, (const void*)(uintptr_t)w1, 1)` after nd_ds_apply.
 4. nd_ds_test.c: one case: a raw typed list {PRIM, CALL(list B), END} with B = {ENV, END}: nd_ds_list sets prim and env. Fault case:
    B without its ENV must fail the expected table.
 ## Steps (each output to build3ds/out/, read the last 20 lines)
 1. Edits 1-4. Host test. Commit `NST2A 1: static lists feed nd_ds (nd_ds_list)`.
 2. bench.py base spot_mac01_drec,wscmb_pause_drec (merge-base, not charged). rowloop --row NST2A --bench spot_mac01_drec,wscmb_pause_drec.
-3. bench.py run for the 4 dschk scenes (azt.d/NST3.json). grep their dschk lines > build3ds/out/nst2a_dschk.txt.
+3. bench.py run for the 4 dschk scenes (azt.d/NST3.json). grep their dschk lines > build3ds/out/nst2a_dschk.txt. After a pass,
+   write the same grep (form of NST3 step 3) into 3ds/tools/fxrest.d/dschk_base.txt (replace) and commit it: the next NST2 row reads it.
 ## Tests that decide (1 build, 6 Azahar starts)
 - Host PASS. LOOP PASS (both benches byte-equal: core 0 does not change).
 - In each of the 4 scenes the last `dschk f` or `dschk end` line has bad not higher than in dschk_base.txt, and the sum of bad of the
