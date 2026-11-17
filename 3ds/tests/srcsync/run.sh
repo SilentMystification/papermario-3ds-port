@@ -20,7 +20,9 @@ grep -q "^d/u.c${TAB}h:" $T/m2.txt || fail "an untracked file is missing"
 grep -q "^d/ign${TAB}h:" $T/m2.txt || fail "an ignored file is missing"
 rm d/b.c; in_manifest d > $T/m3.txt
 grep -q "^d/b.c${TAB}" $T/m3.txt && fail "a deleted file is listed"
-PM_BUILD_REV=x in_manifest d > $T/m4.txt
-grep -q "^d/a.c${TAB}h:" $T/m4.txt || fail "PM_BUILD_REV: a file has no h: id"
+git checkout -q -- d/a.c d/b.c; in_manifest d > $T/m5.txt
+PM_BUILD_REV=HEAD in_manifest d > $T/m4.txt
+[ "$(grep "^d/a.c${TAB}" $T/m4.txt)" = "$(grep "^d/a.c${TAB}" $T/m5.txt)" ] || fail "PM_BUILD_REV: a tracked file has another id than in a worktree build"
+grep -q "^d/u.c${TAB}h:" $T/m4.txt || fail "PM_BUILD_REV: an untracked file has no h: id"
 cd "$R"; rm -rf "$T"
 echo "srcsync ok"

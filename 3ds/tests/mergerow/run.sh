@@ -1,7 +1,7 @@
 #!/bin/sh
 # Host test for 3ds/tools/merge_row.sh: seven cases in temp git repos. Run from the repo root:
 #   sh 3ds/tests/mergerow/run.sh
-# Prints "mergerow: N/7 PASS"; exit 0 only when all seven pass. wt_gc is a stub (WT_GC).
+# Prints "mergerow: N/9 PASS"; exit 0 only when all nine pass. wt_gc is a stub (WT_GC), post_merge.sh too (POST_MERGE).
 set -u
 ROOT=$(git rev-parse --show-toplevel) || exit 2
 SCRIPT="$ROOT/3ds/tools/merge_row.sh"
@@ -19,6 +19,14 @@ if [ -d "build3ds/wt/$row" ]; then git worktree remove --force "build3ds/wt/$row
 exit 0
 STUB
 export WT_GC="$T/wt_gc_stub.sh"
+cat > "$T/post_stub.sh" <<'STUB'
+#!/bin/sh
+# stub for post_merge.sh: fails when the file post_fail exists in the repo top
+echo "post_merge stub"
+[ -f post_fail ] && exit 3
+exit 0
+STUB
+export POST_MERGE="$T/post_stub.sh"
 
 mk() {
     d="$T/r$1"; mkdir -p "$d"; cd "$d" || exit 2
@@ -104,6 +112,23 @@ p=no
 if [ "$rc" = 0 ] && [ "$(cat 3ds/logs/perf/runs.jsonl)" = "$(printf '{"run_id":1}\n{"run_id":4,"main":1}')" ] \
    && [ -f g.txt ] && [ -z "$(git ls-files -u)" ] && [ -z "$(git rev-parse --verify -q refs/heads/X)" ]; then p=yes; fi
 result $p "(g) runs.jsonl edited on branch and main: merged, main's version kept rc=$rc"
+
+# (h) MAINBIN: post_merge fails: the merge stays, exit 7, the output file names the stub
+mk h; printf 'post_fail
+' >> .gitignore; git commit -q -am "ignore post_fail"; git checkout -q -b X; echo g > g.txt; git add g.txt; git commit -q -m "X: g"
+git checkout -q main; touch post_fail
+rc=$(run)
+p=no
+if [ "$rc" = 7 ] && [ -f g.txt ] && grep -q "post_merge rc 3" "$OUT" && grep -q "post_merge stub" build3ds/out/post_merge_*.txt; then p=yes; fi
+result $p "(h) post_merge fails: merged, exit 7 rc=$rc"
+
+# (i) MAINBIN: PM_POSTMERGE_EVERY=2 after the first merge: post_merge skipped, exit 0, no output file
+mk i; git checkout -q -b X; echo g > g.txt; git add g.txt; git commit -q -m "X: g"
+git checkout -q main; echo m > main.txt; git add main.txt; git commit -q -m "main: m"
+PM_POSTMERGE_EVERY=2 sh "$SCRIPT" X "$MSG" > "$OUT" 2>&1; rc=$?
+p=no
+if [ "$rc" = 0 ] && [ -f g.txt ] && grep -q "post_merge skipped (merge 1, every 2)" "$OUT"    && ! ls build3ds/out/post_merge_* >/dev/null 2>&1; then p=yes; fi
+result $p "(i) PM_POSTMERGE_EVERY=2, merge 1: post_merge skipped rc=$rc"
 
 if [ "$pass" = "$n" ]; then echo "mergerow: $pass/$n PASS"; exit 0; fi
 echo "mergerow: $pass/$n PASS"; exit 1

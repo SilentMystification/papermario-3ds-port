@@ -1978,14 +1978,23 @@ def base_check(a):
     if not live:
         print("cachecheck basebin: no entry to check")
         return 0
-    commit = random.choice(live)
+    REPRO = "5f0da7a0fc"  # VOLGEN 1: the first build.sh without a time tag in a PM_BUILD_REV build number
+    rep = [c for c in live if subprocess.run(["git", "merge-base", "--is-ancestor", REPRO, c], cwd=REPO).returncode == 0]
+    if len(rep) < len(live):
+        print("cachecheck basebin: %d entries are older than VOLGEN 1 (time tag in the build number): no byte check" % (len(live) - len(rep)))
+    if not rep:
+        print("cachecheck basebin: no entry to check")
+        return 0
+    commit = random.choice(rep)
     ent = bb.get(root, basebin_key(commit))
     if ent is None:
         print("CACHECHECK FAIL basebin %s: the entry failed its check (removed)" % commit[:9])
         return 1
     lane, scratch, lane_dir, gitdir, src3dsx = base_lane_paths(commit)
-    lane, scratch = "chk_" + commit[:9], REPO / "build3ds" / ("chk_" + commit[:9])
-    src3dsx = scratch / "build3ds" / ("lane-" + lane) / "pm_3ds.3dsx"
+    lk = base_lock_take(commit)
+    if lk is None:
+        print("cachecheck basebin %s: base lock held after 40 min" % commit[:9])
+        return 6
     os.environ["PM_CACHE"] = "off"
     try:
         rc, _bn = scratch_build(commit, gitdir, scratch, lane, a.row)
@@ -1994,6 +2003,11 @@ def base_check(a):
         os.environ.pop("PM_CACHE", None)
         shutil.rmtree(scratch, ignore_errors=True)
         drop_base_lane(lane, [])
+        shutil.rmtree(lane_dir, ignore_errors=True)
+        try:
+            lk.unlink()
+        except OSError:
+            pass
     if not same:
         print("CACHECHECK FAIL basebin %s: a cold build differs from the entry (build.sh exit %d), entry removed" % (commit[:9], rc))
         shutil.rmtree(ent, ignore_errors=True)
