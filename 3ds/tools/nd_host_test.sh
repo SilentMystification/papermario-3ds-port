@@ -49,7 +49,7 @@ img $IMG_ID
 self $SELF
 assets $AHASH
 rk $(rk_id)
-paths $(sha1sum < $OUT/host_files.txt | cut -c1-40)"
+paths $(rk_pathsum $OUT/host_files.txt)"
 TEST_KEY=$( { echo "host v3"; cat $OUT/host_in.txt; echo "assets $AHASH"; echo "$IMG_ID $SELF gfx v3 $(rk_id)"; } | sha1sum | cut -d' ' -f1)
 stage keys
 # SELFTEST: one changed byte of one input changes its key line (in_manifest of an untracked file; a stale entry can never match).

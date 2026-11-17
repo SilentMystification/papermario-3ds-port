@@ -17,6 +17,11 @@ RK_TRACE='RT_LOG=/tmp/rt/log RT_ROOT=/work/ LD_PRELOAD=/tmp/rt/\$PLATFORM/rt.so'
 # RKID: the trace tool is part of every K0 (it is compiled before the trace starts, so no trace names it).
 rk_id() { cat 3ds/tools/readtrace.c 3ds/tools/readkey.sh | sha1sum | cut -c1-40; }
 
+# rk_pathsum <paths file>: the K0 line of the path list. A new, a removed, or a created (once probed and missing) file under the
+# step's tar paths changes it: this covers every directory listing, glob and failed open of the step (the container sees only
+# the tar below /work). The command line and the environment of the step are in K0 as the command text (cmd) and the image id.
+rk_pathsum() { sha1sum < "$1" | cut -c1-40; }
+
 # rk_paths <idfile> <path>...: the tar list of a step: the files of <idfile> (in_manifest lines) under the paths, plus the
 # generator outputs of GC_EXCL under the paths that exist on the disk now (their idfile lines can be older).
 rk_paths() {
