@@ -41,6 +41,9 @@ nd_host_test.sh, bench.py, merge_row.sh, post_merge.sh, postmerge_bg.sh, push_3d
 - Writing Python through a Bash heredoc on this host mangles backslashes (\b, \r, \n became control chars): use the Edit tool or chr(92).
 - Tour items `map:entry@x:y:z` run in one Azahar start (pm_warp.c:368-374), end line `tour: done items <n>` (:1462). Cap 45 s: 5 items.
 - Scratch worktree for patches: create one in the scratchpad with `git worktree add --detach`, remove it when done.
+- OPEN (ENTSELF 11-17): nd_draw_list(PauseGfxLabels[index], ND_SELF) at pause_gfx.c:425 crashed wscmb_pause_drec in ent_compile
+  nd_ent.c:278 (raw ent_flat, nd_ntab_find NULL) via gt_run nd_walk.c:630. All 9 labels have ndd entries. The site stays gSPDisplayList.
+Output: build3ds/wt/ENTSELF/build3ds/out/loop_ENTSELF_wscmb_crash.txt.
 ## What to do first
 1. Answer coder questions of ENTSRC, ENTSELF, ENTCAP* (SendMessage, file:line).
 2. Open work items 1 to 4 in order. Commit each page alone (`git add -f`).
