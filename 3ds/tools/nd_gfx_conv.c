@@ -24,6 +24,9 @@ static const GSym* sym_of(uintptr_t p, int kind, unsigned* off) {
 #ifndef ROM_SPLIT
 #define ROM_SPLIT 1 /* FXVROM: vrom.sh builds a copy with -DROM_SPLIT=0 and expects the unsup line back */
 #endif
+#ifndef CIMG_UNIT
+#define CIMG_UNIT 1 /* FLTGT: fltgt.sh builds a copy with -DCIMG_UNIT=0 and expects the unsup line back */
+#endif
 static int is_draw(unsigned id) { return id == NDO_VTX || id == NDO_TRI1 || id == NDO_TRI2 || id == NDO_CALL || id == NDO_END; }
 
 /* The inherited inputs of def d (design note 6): the nd_scomp_key groups it does not set before its decision. */
@@ -439,6 +442,7 @@ static void v2_unit_add(unsigned k, unsigned id, uint32_t w0, uint32_t w1) {
     else if (id == NDO_CALL) kind = GS_GFX;
     else if (id == NDO_MTX) kind = GS_MTX;
     else if (id == NDO_MOVEMEM) kind = (w0 & 0xffu) == G_MV_VIEWPORT ? GS_VP : GS_LIT; /* THEATVP: a viewport unit names a Vp */
+    else if (CIMG_UNIT && id == NDO_MISC && ((w0 >> 16) & 0xffu) == NDO_MISC_CIMG) kind = GS_IMG; /* FLTGT: a colour image unit names its image (the flame targets) */
     if (kind < 0 || !(w1 && (w1 >> 24) >= 16u)) return;
     if (kind == GS_MTX || kind == GS_LIT || kind == GS_VP) { /* an Mtx, a Lights1 or a Vp is not an array: its address is the object itself */
         unsigned off = 0;
@@ -531,6 +535,7 @@ static int v2_walk(const GSym* g, unsigned k0, unsigned depth) {
         case NDO_PRIMZ: /* FXLIT: a unit only, no v2 op (a value: set_primdepth runs on the device; the depth source is other mode L, in the desc) */
             break;
         case NDO_MISC:
+            if (CIMG_UNIT && (a >> 16) == NDO_MISC_CIMG) break; /* FLTGT: a unit only, no v2 op (nd_ntab_run runs it: gbi_setcimg, nd_walk.c:346) */
             v2_unsup(v2_opname(id), k);
             break;
         case NDO_TIMG: {
