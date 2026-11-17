@@ -11,7 +11,8 @@ Files: 3ds/include/nd_gtab.h, 3ds/src/nd_gtab.c, 3ds/src/nd_walk.c, new 3ds/tool
 - Counters: C1..C12 do not change (no list call site changes).
 ## Design (all in docs/handoff/ws_NTABFIND.patch; edit only these 5 files)
 nd_gtab.h: nd_ndev_pack and nd_ndev_unpack (rec[2] site, rec[4..8] the NdNDev copy, 5 units). nd_walk.c: nd_ndev_rec runs
-the copy through gt_run. FACT: `git apply --check` OK on e73be922a1, ENTSELF 66cea2c7c5 and ENTCAPE 91d9d591ee.
+the copy through gt_run. nd_gtab.h uses __builtin_memcpy, not <string.h> (FACT: <string.h> breaks 43F0.c with include/gcc/memory.h).
+FACT: `git apply --check` OK on main de02cb1eb4. FACT: ENTCAPE 7c8391e8df+f8a9b52284 ran entcape_cap to the end, rc 0, no unmapped read.
 ## Edit shape (nd_gtab.c:138)
 Before: `void nd_rec_ndev(const NdNDev* e) { const uint32_t rec[2] = { (uint32_t)(uintptr_t)e, 0u }; nd_rec_napi(nd_ntab_rec, rec, 1u); }`
 After: `void nd_rec_ndev(const NdNDev* e) { uint32_t rec[2u * ND_NDEV_REC_UNITS]; nd_ndev_pack(rec, e, ...); nd_rec_napi(nd_ndev_rec, rec, ND_NDEV_REC_UNITS); }`
