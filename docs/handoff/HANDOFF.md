@@ -15,7 +15,7 @@ ENTCAPR2, INITGS, ENTSELF2, TSTSHK2, BASEKEEP2 (tool fix), THEATVP, GFXPOS7, RAC
 Earlier: process rows, NMDL0, NIMGM, NTABFIND, RAWIMG, FXLOC, ENTSRC and more. Git history is the log.
 
 ## Agents at handoff (ListAgents)
-No agent runs. Oracles DESIGN1 and DESIGN2 are done (contexts above 150K: start fresh oracles with a short brief). The coders listed in older handoffs are done.
+No agent runs. Oracles DESIGN1 and DESIGN2 are done (oracle limit 500K, new work past 250K goes to a new agent). The coders listed in older handoffs are done.
 The user stopped all new work at 2026-11-17 12:30. Start coders only when the user says so.
 
 ## New working split (user 2026-11-17, committed 46ddb85612, a1ddec2f38, ab9bd8c0f5)
@@ -24,7 +24,7 @@ The user stopped all new work at 2026-11-17 12:30. Start coders only when the us
 - The oracle replies with the cause (file:line) and the exact edit text. It never applies an edit and never runs a command for the coder.
 - Rules are in CLAUDE.md, .claude/agents/coder.md, .claude/agents/oracle.md and docs/handoff/orchestrator_rules.md, each rule stated once.
 - OPEN: the five pages below still hold full patches from the old split. The user has not chosen: coders use those patches as the design and run the tests, or an oracle rewrites them as design-only pages. Measure rounds and tokens on the first 2 or 3 rows.
-- Start a fresh oracle for each diagnosis wave. A resumed 250K-token oracle is costly (GUESS).
+- Past 250K tokens an oracle takes only work that needs its context. The orchestrator decides (user 2026-11-17).
 
 ## Ready pages on main (all dry-run on main, host PASS)
 - ws_NMDL6 (Sonnet, user approved): entity_model.c, model.c and 3 world lists. build -7, gfxpos -7, gfxtype -1. Gate direct_pra13_det and spot_mac01_drec. Run the host test with PM_CACHE=off, then rowloop --no-host.

@@ -17,7 +17,7 @@ EVERY TURN: 1 ListAgents. Only status `running` holds a slot. A `completed` agen
 ## Agents
 - Label every Agent call `[Model type] ROW - task`, for example `[Haiku coder] GSETR - move 26 lists`.
 - A coder prompt names the oracle id that wrote its page. The coder asks that oracle.
-- Resume a finished agent when its context helps. Start a fresh one when it does not.
+- Resume a finished agent when its context helps. Start a fresh one when it does not. Oracle context limit is 500K. Past 250K, new work goes to a new agent and the old oracle takes only work that needs its context. The orchestrator decides which (user 2026-11-17).
 - Pages split by file so rows run in parallel. A page says "start after Merge X" only for a shared file or output. A page lists the expected bench differences. A purely mechanical edit (same change at many sites) may go in `ws_<id>.patch` (`git apply`).
 - A hand-back is one SubagentHandback message. No hand-back file.
 
