@@ -17,7 +17,7 @@ NDN_DECL(D_090012A0_3276B0);
 NDN_DECL(D_09001360_327770);
 NDN_DECL(D_09001420_327830);
 
-static Gfx* sDlists[7] = {
+static NdLst sDlists[7] = {
     NDN(D_09000FA0_3273B0), NDN(D_09001060_327470), NDN(D_09001120_327530), NDN(D_090011E0_3275F0), NDN(D_090012A0_3276B0), NDN(D_09001360_327770),
     NDN(D_09001420_327830)
 };
@@ -140,7 +140,7 @@ void big_smoke_puff_appendGfx(void* effect) {
             s32 primAlpha = data->unk_02;
             f32 temp_f12;
             s32 envAlpha;
-            Gfx* dlist;
+            NdLst dlist;
 
             if (primAlpha > 16) {
                 primAlpha = 16;

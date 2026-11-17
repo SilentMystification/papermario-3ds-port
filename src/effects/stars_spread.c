@@ -126,7 +126,7 @@ void stars_spread_render(EffectInstance* effect) {
 
 void stars_spread_appendGfx(void* effect) {
     StarsSpreadFXData* part = ((EffectInstance*)effect)->data.starsSpread;
-    Gfx* dlist = NDN(D_090004F0_360F20);
+    NdLst dlist = NDN(D_090004F0_360F20);
     Matrix4f sp18;
     Matrix4f sp58;
     s32 i;

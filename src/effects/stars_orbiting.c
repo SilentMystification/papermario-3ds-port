@@ -8,8 +8,8 @@ ND_PSO_DESC(pe_stars_orbiting_137, 0xfcffb3ff, 0xff65feff, 0x1e082cf0, 0x00504b5
 NDN_DECL(D_09000440_363090);
 NDN_DECL(D_090004F0_363140);
 
-Gfx* D_E005E670[] = { NDN(D_090004F0_363140) };
-Gfx* D_E005E674[] = { NDN(D_09000440_363090) };
+NdLst D_E005E670[] = { NDN(D_090004F0_363140) };
+NdLst D_E005E674[] = { NDN(D_09000440_363090) };
 
 void stars_orbiting_init(EffectInstance* effect);
 void stars_orbiting_update(EffectInstance* effect);
@@ -113,8 +113,8 @@ void func_E005E334(EffectInstance* effect) {
     s32 i;
 
     if (part->enabled) {
-        Gfx* dlist = D_E005E670[0];
-        Gfx* dlist2 = D_E005E674[0];
+        NdLst dlist = D_E005E670[0];
+        NdLst dlist2 = D_E005E674[0];
 
         nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
         nd_draw_list(dlist2, ND_SELF);

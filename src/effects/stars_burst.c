@@ -134,7 +134,7 @@ void stars_burst_render(EffectInstance* effect) {
 
 void stars_burst_appendGfx(void* effect) {
     StarsBurstFXData* part = ((EffectInstance*)effect)->data.starsBurst;
-    Gfx* dlist = NDN(D_090005E0_343620);
+    NdLst dlist = NDN(D_090005E0_343620);
     s32 unk_2C;
     Matrix4f sp18;
     Matrix4f sp58;

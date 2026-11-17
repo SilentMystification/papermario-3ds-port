@@ -167,7 +167,7 @@ void flower_trail_dispose(EffectInstance* effect) {
 void flower_trail_appendGfx(void* argEffect) {
     EffectInstance* effect = argEffect;
     FlowerFXData* part = effect->data.flowerTrail;
-    Gfx* dlist;
+    NdLst dlist;
     s32 i;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(effect->shared->graphics));

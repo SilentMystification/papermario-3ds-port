@@ -157,7 +157,7 @@ void flower_splash_appendGfx(void* effect) {
 
     for (i = 0; i < effectTemp->numParts; i++, data++) {
         if (data->alive) {
-            Gfx* dlist = NDN(D_09000E08_32DCC8);
+            NdLst dlist = NDN(D_09000E08_32DCC8);
 
             gDisplayContext->matrixStack[gMatrixListPos] = data->transformMtx;
 

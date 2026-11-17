@@ -9,7 +9,7 @@ NDN_DECL(D_09000940_359CF0);
 NDN_DECL(D_090009A0_359D50);
 NDN_DECL(D_09000A80_359E30);
 
-Gfx* D_E004AE60[] = {
+NdLst D_E004AE60[] = {
     NDN(D_090009A0_359D50), NDN(D_090009A0_359D50), NDN(D_09000A80_359E30),
     NDN(D_09000A80_359E30), NDN(D_09000A80_359E30), NDN(D_09000A80_359E30)
 };
@@ -272,8 +272,8 @@ void shockwave_render(EffectInstance* effect) {
 void shockwave_appendGfx(void* effect) {
     ShockwaveFXData* data = ((EffectInstance*) effect)->data.shockwave;
     Matrix4f sp20, sp60;
-    Gfx* dlist = NDN(D_09000940_359CF0);
-    Gfx* dlist2;
+    NdLst dlist = NDN(D_09000940_359CF0);
+    NdLst dlist2;
     s32 primA;
     s32 primR, primG, primB;
     s32 envR, envG, envB;

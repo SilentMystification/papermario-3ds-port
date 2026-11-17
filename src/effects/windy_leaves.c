@@ -237,7 +237,7 @@ void windy_leaves_render(EffectInstance* effect) {
 void windy_leaves_appendGfx(void* effect) {
     WindyLeavesFXData* part = ((EffectInstance*)effect)->data.windyLeaves;
     Matrix4f sp18, sp58, sp98;
-    Gfx* dlist;
+    NdLst dlist;
     s32 i;
 
     dlist = NDN(D_09001280_33E890);

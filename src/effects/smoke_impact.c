@@ -10,11 +10,11 @@ NDN_DECL(D_09002A38_32B8D8);
 NDN_DECL(D_09002B60_32BA00);
 NDN_DECL(D_09002B80_32BA20);
 
-Gfx* D_E003A800[] = {
+NdLst D_E003A800[] = {
     NDN(D_09002B60_32BA00), NDN(D_09002B80_32BA20), NDN(D_09002B60_32BA00)
 };
 
-Gfx* D_E003A80C[] = {
+NdLst D_E003A80C[] = {
     NDN(D_09002A38_32B8D8), NDN(D_09002A38_32B8D8), NDN(D_09002A38_32B8D8)
 };
 
@@ -127,8 +127,8 @@ void smoke_impact_appendGfx(void* effect) {
     f32 unk_30 = part->unk_30;
     s32 unk_30_s32 = unk_30;
     s32 envAlpha = (unk_30 - unk_30_s32) * 256.0f;
-    Gfx* dlist = D_E003A800[unk_00];
-    Gfx* dlist2 = D_E003A80C[unk_00];
+    NdLst dlist = D_E003A800[unk_00];
+    NdLst dlist2 = D_E003A80C[unk_00];
     s32 cond = (unk_30_s32 == 7);
     Matrix4f sp18;
     Matrix4f sp58;

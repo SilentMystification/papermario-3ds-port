@@ -11,8 +11,8 @@ ND_PSO_DESC(pe_ring_blast_141_k1, 0xfc262ac3, 0x10fc9238, 0x1e183cf0, 0x0c184b50
 NDN_DECL(D_09001040_3583E0);
 NDN_DECL(D_090010F8_358498);
 
-Gfx* D_E0048A00[] = { NDN(D_090010F8_358498), NDN(D_090010F8_358498) };
-Gfx* D_E0048A08[] = { NDN(D_09001040_3583E0), NDN(D_09001040_3583E0) };
+NdLst D_E0048A00[] = { NDN(D_090010F8_358498), NDN(D_090010F8_358498) };
+NdLst D_E0048A08[] = { NDN(D_09001040_3583E0), NDN(D_09001040_3583E0) };
 
 void ring_blast_init(EffectInstance* effect);
 void ring_blast_update(EffectInstance* effect);
@@ -96,8 +96,8 @@ void ring_blast_appendGfx(void* effect) {
     s32 unk_20_s32 = data->unk_20;
     s32 envAlpha = (data->unk_20 - unk_20_s32) * 256.0f;
     s32 cond = (unk_20_s32 == 7);
-    Gfx* dlist = D_E0048A00[unk_00];
-    Gfx* dlist2 = D_E0048A08[unk_00];
+    NdLst dlist = D_E0048A00[unk_00];
+    NdLst dlist2 = D_E0048A08[unk_00];
     Matrix4f sp20;
     Matrix4f sp60;
 
