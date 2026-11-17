@@ -31,5 +31,9 @@ done
 [ -z "$miss" ] || { echo "readtrace FAIL: not logged:$miss"; exit 1; }
 cut -f2 $T/log.txt | grep -qx sub/unread.txt && { echo "readtrace FAIL: an unread file was logged"; exit 1; }
 grep -q "^fo32	sub/fo32.txt$" $T/log.txt || { echo "readtrace FAIL: the 32-bit reader has no exe name"; exit 1; }
+# HSDEP: RT_ROOT2 logs a read below a second root as "@<path>"
+mkdir -p $T/g; echo g > $T/g/two.txt
+( cd $T/r && RT_LOG=$T/log2.txt RT_ROOT=$T/r/ RT_ROOT2=$T/g/ LD_PRELOAD="$T/so/\$PLATFORM/rt.so" cat $T/g/two.txt sub/cat.txt > /dev/null )
+grep -q "	@two.txt$" $T/log2.txt && grep -q "	sub/cat.txt$" $T/log2.txt || { echo "readtrace FAIL: RT_ROOT2 read not logged as @two.txt"; exit 1; }
 rm -rf $T
-echo "readtrace ok (sh, cat, sed, awk, grep, tar, python, gcc, as, 32-bit fopen)"
+echo "readtrace ok (sh, cat, sed, awk, grep, tar, python, gcc, as, 32-bit fopen, root2)"

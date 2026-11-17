@@ -1,3 +1,4 @@
+# HOSTSEL needs: 3ds/tests/host.d/conv2c.sh
 #!/bin/sh
 # CONV2C2 C2b: the seeded v2 tables (one per site desc of an inheriting list) against the v1 tables seeded the same way. Needs the
 # /tmp/ndntab binary and the --fault output of conv2c.sh (it runs first, name order). The seeded fault (key_c ^ 1 in the model of every
