@@ -1,7 +1,8 @@
 #!/bin/sh
-# Host test for 3ds/tools/merge_row.sh: seven cases in temp git repos. Run from the repo root:
+# Host test for 3ds/tools/merge_row.sh: eleven cases in temp git repos. Run from the repo root:
 #   sh 3ds/tests/mergerow/run.sh
-# Prints "mergerow: N/9 PASS"; exit 0 only when all nine pass. wt_gc is a stub (WT_GC), post_merge.sh too (POST_MERGE).
+# Prints "mergerow: N/11 PASS"; exit 0 only when all pass. wt_gc is a stub (WT_GC). The real postmerge_bg.sh (POSTMERGE_BG)
+# runs a post_merge.sh stub (POST_MERGE) detached; each case waits for its .done file (60 s cap).
 set -u
 ROOT=$(git rev-parse --show-toplevel) || exit 2
 SCRIPT="$ROOT/3ds/tools/merge_row.sh"
@@ -21,12 +22,15 @@ STUB
 export WT_GC="$T/wt_gc_stub.sh"
 cat > "$T/post_stub.sh" <<'STUB'
 #!/bin/sh
-# stub for post_merge.sh: fails when the file post_fail exists in the repo top
-echo "post_merge stub"
-[ -f post_fail ] && exit 3
+# stub for post_merge.sh <commit> <cold> <shots>: PM_STUB_RUN: a line for runs.jsonl; PM_STUB_SLEEP: seconds; PM_STUB_FAIL: exit 3
+echo "post_merge stub $*"
+[ -n "${PM_STUB_RUN:-}" ] && printf '%s\n' "$PM_STUB_RUN" >> 3ds/logs/perf/runs.jsonl
+sleep "${PM_STUB_SLEEP:-0}"
+[ -n "${PM_STUB_FAIL:-}" ] && exit 3
 exit 0
 STUB
 export POST_MERGE="$T/post_stub.sh"
+export POSTMERGE_BG="$ROOT/3ds/tools/postmerge_bg.sh"
 
 mk() {
     d="$T/r$1"; mkdir -p "$d"; cd "$d" || exit 2
@@ -38,7 +42,12 @@ mk() {
     printf 'build3ds/\n' > .gitignore
     git add -A && git commit -q -m base
 }
-run() { sh "$SCRIPT" X "$MSG" > "$OUT" 2>&1; echo $?; }
+# pmwait: wait (60 s cap) for the .done file of the main HEAD when merge_row queued a check
+pmwait() {
+    grep -q "post_merge queued" "$OUT" || return 0
+    i=0; while [ ! -f "build3ds/out/post_merge_$(git rev-parse --short HEAD).done" ] && [ $i -lt 60 ]; do sleep 1; i=$((i+1)); done
+}
+run() { sh "$SCRIPT" X "$MSG" > "$OUT" 2>&1; r=$?; pmwait; echo $r; }
 pass=0; n=0
 result() {
     n=$((n+1))
@@ -113,22 +122,44 @@ if [ "$rc" = 0 ] && [ "$(cat 3ds/logs/perf/runs.jsonl)" = "$(printf '{"run_id":1
    && [ -f g.txt ] && [ -z "$(git ls-files -u)" ] && [ -z "$(git rev-parse --verify -q refs/heads/X)" ]; then p=yes; fi
 result $p "(g) runs.jsonl edited on branch and main: merged, main's version kept rc=$rc"
 
-# (h) MAINBIN: post_merge fails: the merge stays, exit 7, the output file names the stub
-mk h; printf 'post_fail
-' >> .gitignore; git commit -q -am "ignore post_fail"; git checkout -q -b X; echo g > g.txt; git add g.txt; git commit -q -m "X: g"
-git checkout -q main; touch post_fail
+# (h) POSTASYNC: a postmerge_FAIL.txt in main: exit 8, nothing merged, branch kept
+mk h; git checkout -q -b X; echo g > g.txt; git add g.txt; git commit -q -m "X: g"
+git checkout -q main; mkdir -p build3ds/out; printf 'commit 0123\nstep 3\n' > build3ds/out/postmerge_FAIL.txt
 rc=$(run)
 p=no
-if [ "$rc" = 7 ] && [ -f g.txt ] && grep -q "post_merge rc 3" "$OUT" && grep -q "post_merge stub" build3ds/out/post_merge_*.txt; then p=yes; fi
-result $p "(h) post_merge fails: merged, exit 7 rc=$rc"
+if [ "$rc" = 8 ] && [ ! -f g.txt ] && [ -n "$(git rev-parse --verify -q refs/heads/X)" ] && grep -q "commit 0123" "$OUT"; then p=yes; fi
+result $p "(h) post-merge FAIL file: refused, exit 8 rc=$rc"
 
-# (i) MAINBIN: PM_POSTMERGE_EVERY=2 after the first merge: post_merge skipped, exit 0, no output file
+# (i) POSTASYNC: merge_row returns before the check ends (stub sleeps 6 s); the check ends rc 0 on the merge commit
 mk i; git checkout -q -b X; echo g > g.txt; git add g.txt; git commit -q -m "X: g"
-git checkout -q main; echo m > main.txt; git add main.txt; git commit -q -m "main: m"
-PM_POSTMERGE_EVERY=2 sh "$SCRIPT" X "$MSG" > "$OUT" 2>&1; rc=$?
+git checkout -q main
+t0=$(date +%s); PM_STUB_SLEEP=6 sh "$SCRIPT" X "$MSG" > "$OUT" 2>&1; rc=$?; t1=$(date +%s); pmwait
+h=$(git rev-parse HEAD); s=$(git rev-parse --short HEAD)
 p=no
-if [ "$rc" = 0 ] && [ -f g.txt ] && grep -q "post_merge skipped (merge 1, every 2)" "$OUT"    && ! ls build3ds/out/post_merge_* >/dev/null 2>&1; then p=yes; fi
-result $p "(i) PM_POSTMERGE_EVERY=2, merge 1: post_merge skipped rc=$rc"
+if [ "$rc" = 0 ] && [ $((t1 - t0)) -lt 5 ] && grep -q "post_merge queued $s" "$OUT" \
+   && grep -q "^post_merge $h rc 0 " "build3ds/out/post_merge_$s.done" && grep -q "post_merge stub $h" "build3ds/out/post_merge_$s.txt" \
+   && [ ! -f build3ds/out/postmerge_FAIL.txt ]; then p=yes; fi
+result $p "(i) detached check: merge_row took $((t1 - t0)) s, check rc 0 rc=$rc"
+
+# (j) POSTASYNC: the check fails: postmerge_FAIL.txt names the commit; the next merge is refused (exit 8)
+mk j; git checkout -q -b X; echo g > g.txt; git add g.txt; git commit -q -m "X: g"
+git checkout -q -b Y main; echo y > y.txt; git add y.txt; git commit -q -m "Y: y"; git checkout -q main
+PM_STUB_FAIL=1 sh "$SCRIPT" X "$MSG" > "$OUT" 2>&1; rc=$?; pmwait; h=$(git rev-parse HEAD)
+sh "$SCRIPT" Y "$MSG" > "$T/out2.txt" 2>&1; rc2=$?
+p=no
+if [ "$rc" = 0 ] && grep -q "^commit $h" build3ds/out/postmerge_FAIL.txt && [ "$rc2" = 8 ] && [ ! -f y.txt ]; then p=yes; fi
+result $p "(j) failed check writes the FAIL file, next merge refused rc=$rc rc2=$rc2"
+
+# (k) POSTASYNC: a run line of the check (stub) reaches main runs.jsonl at the next merge
+mk k; git checkout -q -b X; echo g > g.txt; git add g.txt; git commit -q -m "X: g"
+git checkout -q -b Y main; echo y > y.txt; git add y.txt; git commit -q -m "Y: y"; git checkout -q main
+PM_STUB_RUN='{"run_id":7}' sh "$SCRIPT" X "$MSG" > "$OUT" 2>&1; rc=$?; pmwait
+grep -q '"run_id":7' build3ds/out/postmerge_runs.jsonl 2>/dev/null && r7=yes || r7=no
+sh "$SCRIPT" Y "$MSG" > "$OUT" 2>&1; rc2=$?; pmwait
+p=no
+if [ "$rc" = 0 ] && [ "$rc2" = 0 ] && [ "$r7" = yes ] && [ "$(tail -n 1 3ds/logs/perf/runs.jsonl)" = '{"run_id":7}' ] \
+   && [ "$(git log -1 --format=%s)" = "runs.jsonl: Y runs" ]; then p=yes; fi
+result $p "(k) check run line added to main at the next merge rc=$rc rc2=$rc2 r7=$r7"
 
 if [ "$pass" = "$n" ]; then echo "mergerow: $pass/$n PASS"; exit 0; fi
 echo "mergerow: $pass/$n PASS"; exit 1

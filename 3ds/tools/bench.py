@@ -32,9 +32,9 @@ This is the entry point for every test and profiling run (it replaces the text t
         Cache safety: each stored base and each basebin entry holds its content key and file hashes; every use checks both.
   python 3ds/tools/bench.py base --prebuild [--commit C]
         BASEBIN: puts the base build of the merge-base (or C) into the basebin store. No Azahar run. MAINBIN runs it at each merge.
-  python 3ds/tools/bench.py base --check [--row R]
-        Cachecheck (cache safety rule 5): removes basebin entries whose key changed, rebuilds one random entry cold (PM_CACHE=off)
-        and compares the 3dsx bytes, then runs one random stored bench of that commit again and compares the shots.
+  python 3ds/tools/bench.py base --check [--cold] [--shots] [--commit C] [--row R]
+        Cachecheck (cache safety rule 5): removes basebin entries whose key changed. --cold: rebuilds the entry of C (else a random
+        entry) cold (PM_CACHE=off) and compares the 3dsx bytes. --shots: runs one random stored bench again and compares the shots.
   python 3ds/tools/bench.py base --fill [--row R]
         Stores the standard byte scenes (mdl5_iwa10_det, spot_mac01_det) of the main folder's build
         (build3ds/pm_3ds.3dsx, its header commit must be main HEAD). Run in the main folder after a merge. No build.
@@ -1961,9 +1961,10 @@ def base_prebuild(a):
 
 
 def base_check(a):
-    """Cachecheck (cache safety rule 5). 1: every basebin entry whose content key changed is removed. 2: one random entry is
-    rebuilt cold (PM_CACHE=off: no cache, no ccache) and its 3dsx bytes are compared; a difference removes the entry.
-    3: one random stored bench of that commit runs again (2 Azahar starts) and its shots are compared with the stored ones."""
+    """Cachecheck (cache safety rule 5; POSTASYNC split). 1 (always): every basebin entry whose content key changed is removed.
+    2 (--cold): the entry of --commit (else one random entry) is rebuilt cold (PM_CACHE=off: no cache, no ccache) and its 3dsx
+    bytes are compared; a difference removes the entry. 3 (--shots): one random stored bench of a commit with a basebin entry
+    runs again (2 Azahar starts) and its shots are compared with the stored ones."""
     import random
     root = basebin_root()
     ents = sorted(p for p in root.glob("*/commit.txt")) if root.is_dir() else []
@@ -1975,17 +1976,32 @@ def base_check(a):
             shutil.rmtree(c.parent, ignore_errors=True)
         else:
             live.append(commit)
-    if not live:
-        print("cachecheck basebin: no entry to check")
-        return 0
+    print("cachecheck basebin: %d entries with a current key" % len(live))
+    if a.cold:
+        rc = base_check_cold(a, root, live, random)
+        if rc:
+            return rc
+    if a.shots:
+        return base_check_shots(a, live, random)
+    return 0
+
+
+def base_check_cold(a, root, live, random):
+    """base --check --cold: the cold rebuild of one basebin entry (--commit, else a random one) must have the same 3dsx bytes."""
     REPRO = "5f0da7a0fc"  # VOLGEN 1: the first build.sh without a time tag in a PM_BUILD_REV build number
     rep = [c for c in live if subprocess.run(["git", "merge-base", "--is-ancestor", REPRO, c], cwd=REPO).returncode == 0]
     if len(rep) < len(live):
         print("cachecheck basebin: %d entries are older than VOLGEN 1 (time tag in the build number): no byte check" % (len(live) - len(rep)))
-    if not rep:
+    if a.commit:
+        commit = base_commit(a.commit)
+        if commit not in rep:
+            print("CACHECHECK FAIL basebin %s: no entry of this commit to rebuild (run base --prebuild --commit first)" % (commit or a.commit)[:9])
+            return 1
+    elif not rep:
         print("cachecheck basebin: no entry to check")
         return 0
-    commit = random.choice(rep)
+    else:
+        commit = random.choice(rep)
     ent = bb.get(root, basebin_key(commit))
     if ent is None:
         print("CACHECHECK FAIL basebin %s: the entry failed its check (removed)" % commit[:9])
@@ -2013,11 +2029,17 @@ def base_check(a):
         shutil.rmtree(ent, ignore_errors=True)
         return 1
     print("cachecheck basebin %s ok: a cold build has the same 3dsx bytes" % commit[:9])
-    benches = [b for b in (load_index()["commits"].get(commit) or {}).get("benches", []) if stored(commit, b)]
-    if not benches:
-        print("cachecheck shots %s: no stored bench to check" % commit[:9])
+    return 0
+
+
+def base_check_shots(a, live, random):
+    """base --check --shots: one random stored bench of a commit with a basebin entry runs again; its shots must be equal."""
+    idx = load_index()["commits"]
+    cands = [(c, b) for c in live for b in (idx.get(c) or {}).get("benches", []) if stored(c, b)]
+    if not cands:
+        print("cachecheck shots: no stored bench of a commit with a basebin entry")
         return 0
-    b = random.choice(benches)
+    commit, b = random.choice(cands)
     old = store_root() / commit / b
     keep = store_root() / commit / (b + ".chk.%d" % os.getpid())
     shutil.rmtree(keep, ignore_errors=True)
@@ -2809,7 +2831,9 @@ def main(argv):
     x = sub.add_parser("base"); x.add_argument("bench", nargs="?"); x.add_argument("--fill", action="store_true")
     x.add_argument("--drop", action="store_true", help="remove the stored shots of bench at --commit (or the merge-base)")
     x.add_argument("--prebuild", action="store_true", help="BASEBIN: put the base build of the merge-base (or --commit) into the basebin store")
-    x.add_argument("--check", action="store_true", help="cachecheck: stale basebin entries, one cold rebuild, one shot rerun")
+    x.add_argument("--check", action="store_true", help="cachecheck: stale basebin entries (with --cold: one cold rebuild; --shots: one shot rerun)")
+    x.add_argument("--cold", action="store_true", help="base --check: rebuild the entry of --commit (else a random one) cold, compare the 3dsx bytes")
+    x.add_argument("--shots", action="store_true", help="base --check: run one random stored bench again, compare the shots")
     x.add_argument("--commit"); x.add_argument("--row", default=BASE_ROW); x.set_defaults(f=cmd_base)
     x = sub.add_parser("cmp"); x.add_argument("bench"); x.add_argument("--row", required=True); x.add_argument("--commit")
     x.set_defaults(f=cmd_cmp)

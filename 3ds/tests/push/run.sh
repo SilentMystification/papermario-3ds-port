@@ -49,6 +49,14 @@ ob=$(env PM_SRC3DSX= PM_BUILD_KEY_FILE="$tmp/build_key_old.txt" sh 3ds/push_3ds.
 if [ "$rb" -eq 5 ] && echo "$ob" | grep -q 'STALE 3DSX'; then echo "ok   stale 3dsx exit 5"
 else echo "FAIL stale 3dsx (rc $rb)"; echo "$ob" | tail -n 20; fail=1; fi
 
+# (b1) POSTASYNC: a post-merge FAIL file: exit 8, one PUSH RESULT failed line, nothing sent.
+printf 'commit 0123456789
+step 3
+' >"$tmp/pmfail.txt"
+of=$(env PM_POSTMERGE_FAIL="$tmp/pmfail.txt" PM_SRC3DSX="$tmp/pm_3ds.3dsx" PM_3DSLINK="$fake_ok" PM_ARCHIVE_DIR="$tmp" PM_PUSH_LOG="$tmp/pushed.txt"     sh 3ds/push_3ds.sh --no-build --ip 127.0.0.1 -t 1 --idle 1 2>&1) && rf=0 || rf=$?
+if [ "$rf" -eq 8 ] && echo "$of" | grep -q '^PUSH RESULT failed rc 8: post-merge check failed' && ! echo "$of" | grep -q 'Sending'; then echo "ok   post-merge FAIL file: exit 8, nothing sent"
+else echo "FAIL post-merge FAIL file (rc $rf)"; echo "$of" | tail -n 20; fail=1; fi
+
 # (b2) a build key file holding the worktree's own key: no STALE line, SEND FILE printed, the fake 3dslink sends.
 PM_LANE= PM_KEY_ONLY=1 sh 3ds/build.sh >"$tmp/build_key_now.txt"
 ob2=$(env PM_SRC3DSX="$tmp/pm_3ds.3dsx" PM_BUILD_KEY_FILE="$tmp/build_key_now.txt" PM_3DSLINK="$fake_ok" PM_ARCHIVE_DIR="$tmp" PM_PUSH_LOG="$tmp/pushed.txt" \

@@ -4,15 +4,13 @@
 #   sh 3ds/tools/merge_row.sh <row> [<message-file>]   (no file: the message is built from the commit texts of the branch)
 # Exit: 0 merged (summary printed); 2 refused (main dirty, branch missing, not on main); 3 conflict other than the row
 # file and runs.jsonl (or merge-tree failed); 4 conflict marker line added on the branch; 5 merge failed and aborted (or
-# runs commit failed); 6 branch kept (not merged, or still checked out); 7 merged, but post_merge failed (MAINBIN).
+# runs commit failed); 6 branch kept (not merged, or still checked out); 7 merged, but the post-merge check was not queued;
+# 8 refused: the post-merge check of main failed (build3ds/out/postmerge_FAIL.txt, POSTASYNC).
 # WT_GC: a wt_gc.sh replacement read by the host test (run as: sh "$WT_GC" --apply --only <row>).
-# POST_MERGE: a post_merge.sh replacement read by the host test (run as: sh "$POST_MERGE").
+# POSTMERGE_BG: a postmerge_bg.sh path read by the host test (run as: sh "$POSTMERGE_BG" --queue <commit>).
 set -u
 row=${1:-}; msg=${2:-}
 if [ -z "$row" ]; then echo "usage: sh 3ds/tools/merge_row.sh <row> [<message-file>]" >&2; exit 2; fi
-# PM_POSTMERGE_EVERY (MAINBIN): post_merge.sh runs after every Nth merge (merge commits of main); default 1
-pmevery=${PM_POSTMERGE_EVERY:-1}
-case "$pmevery" in ''|*[!0-9]*|0) echo "merge_row: PM_POSTMERGE_EVERY must be a whole number >= 1: $pmevery" >&2; exit 2;; esac
 here=$(pwd)
 if [ -n "$msg" ]; then case "$msg" in /*|[A-Za-z]:*) ;; *) msg="$here/$msg" ;; esac; fi
 top=$(git rev-parse --show-toplevel 2>/dev/null) || { echo "merge_row: refused: not in a git repo" >&2; exit 2; }
@@ -35,6 +33,11 @@ fi
 # 1. refuse
 if [ -n "$(git status --porcelain)" ]; then
     echo "merge_row: refused: main folder has uncommitted or untracked files" >&2; exit 2
+fi
+# POSTASYNC: a failed post-merge check stops the merge lane until a full check passes on a newer main commit (postmerge_bg.sh)
+if [ -f build3ds/out/postmerge_FAIL.txt ]; then
+    echo "merge_row: refused: the post-merge check of main failed (build3ds/out/postmerge_FAIL.txt):" >&2
+    sed 's/^/  /' build3ds/out/postmerge_FAIL.txt >&2; exit 8
 fi
 if ! git rev-parse --verify -q "refs/heads/$row" >/dev/null; then
     echo "merge_row: refused: branch $row does not exist" >&2; exit 2
@@ -94,11 +97,17 @@ if ! git merge --no-ff -F "$msg" "$row" > "$tmpd/merge" 2>&1; then
 fi
 mhash=$(git rev-parse --short HEAD)
 
-# 5. runs.jsonl: lines of the row worktree copy whose run_id main does not have, appended in file order
+# 5. runs.jsonl: lines of the row worktree copy whose run_id main does not have, appended in file order. POSTASYNC: also the
+# lines of the post-merge checks (build3ds/out/postmerge_runs.jsonl, taken by one rename; a file still open stays for the next merge)
 wrun="$top/build3ds/wt/$row/3ds/logs/perf/runs.jsonl"
 mrun="$top/3ds/logs/perf/runs.jsonl"
+pmr="$top/build3ds/out/postmerge_runs.jsonl"
 added=0; skipped=0
-if [ -f "$wrun" ]; then
+: > "$tmpd/src"
+if [ -f "$wrun" ]; then cat "$wrun" >> "$tmpd/src"; printf '
+' >> "$tmpd/src"; fi
+if [ -f "$pmr" ] && mv -f "$pmr" "$tmpd/pmr" 2>/dev/null; then cat "$tmpd/pmr" >> "$tmpd/src"; fi
+if [ -s "$tmpd/src" ]; then
     awk -v sk="$tmpd/skip" '
         function rid(s,  v) {
             if (match(s, /"run_id":[^,}]*/)) { v = substr(s, RSTART + 9, RLENGTH - 9); gsub(/\r/, "", v); return v }
@@ -112,7 +121,7 @@ if [ -f "$wrun" ]; then
           else if (!(r in known)) { print; known[r] = 1 }
           else skip++ }
         END { print skip + 0 > sk }
-    ' "$mrun" "$wrun" > "$tmpd/new"
+    ' "$mrun" "$tmpd/src" > "$tmpd/new"
     added=$(awk 'END {print NR}' "$tmpd/new")
     skipped=$(cat "$tmpd/skip")
     if [ "$added" -gt 0 ]; then
@@ -121,6 +130,7 @@ if [ -f "$wrun" ]; then
         cat "$tmpd/new" >> "$mrun"
         git add -- 3ds/logs/perf/runs.jsonl
         if ! git commit -q -m "runs.jsonl: $row runs"; then
+            [ -f "$tmpd/pmr" ] && cat "$tmpd/pmr" >> "$pmr"
             echo "merge_row: runs.jsonl commit failed" >&2; exit 5
         fi
     fi
@@ -131,16 +141,14 @@ if [ -n "${WT_GC:-}" ]; then sh "$WT_GC" --apply --only "$row"; else sh 3ds/tool
 gcrc=$?
 if git branch -d "$row" >/dev/null 2>&1; then bstate=deleted; else bstate=kept; fi
 
-# 8. MAINBIN: post-merge work on the new main (3ds/tools/post_merge.sh): generator cachecheck, base build of main HEAD into
-# the basebin store, basebin and shots cachecheck. Its output: build3ds/out/post_merge_<hash>.txt.
-mkdir -p build3ds/out
-pmrc=0; pmtxt="post_merge rc 0"
-nmerge=$(git rev-list --merges --first-parent --count HEAD)
-if [ $((nmerge % pmevery)) -eq 0 ]; then
-    sh "${POST_MERGE:-3ds/tools/post_merge.sh}" > "build3ds/out/post_merge_$mhash.txt" 2>&1 || pmrc=$?
-    pmtxt="post_merge rc $pmrc"
+# 8. POSTASYNC: the post-merge check of the new main commit (3ds/tools/post_merge.sh) runs detached: postmerge_bg.sh queues it
+# and returns at once (one runner at a time, in the worktree build3ds/wt/postmerge). Output: build3ds/out/post_merge_<hash>.txt;
+# a failure writes build3ds/out/postmerge_FAIL.txt (this script and push_3ds.sh refuse while it exists).
+pmrc=0
+if pq=$(sh "${POSTMERGE_BG:-3ds/tools/postmerge_bg.sh}" --queue "$(git rev-parse HEAD)" 2>&1); then
+    pmtxt="post_merge queued $(git rev-parse --short HEAD)"
 else
-    pmtxt="post_merge skipped (merge $nmerge, every $pmevery)"
+    pmrc=1; pmtxt="POST_MERGE NOT QUEUED: $pq"
 fi
 
 # 7. summary
@@ -150,7 +158,7 @@ if [ "$bstate" = kept ]; then
     exit 6
 fi
 if [ "$pmrc" -ne 0 ]; then
-    echo "merge_row: POST_MERGE FAIL (step $pmrc): read build3ds/out/post_merge_$mhash.txt" >&2
+    echo "merge_row: merged, but the post-merge check was not queued: run sh 3ds/tools/postmerge_bg.sh --queue" >&2
     exit 7
 fi
 exit 0
