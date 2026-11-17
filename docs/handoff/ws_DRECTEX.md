@@ -37,5 +37,4 @@ G4. Expected difference: B=$(git rev-parse --git-common-dir)/../build3ds/basecac
     Self-test of G4: `cmp $B <row drec.txt>` must differ. A plain `bench.py cmp fxops_drec` fails by design (the base has hashes). Max 1 build, 3 starts.
 ## Edit rights, stop, hand-back
 To fix a failing host test, edit only the 5 files above. Do not edit bench.py, bench_defs.json or azt_scenarios.json. Old stored bases stay valid
-(key basecache/<commit>/<bench>, bench.py:1436, :1486). Stop when G1-G4 pass. Commit the 5 files and delete this page in that commit.
-Hand back: commit hash, G1-G4 values, the `h gpu` count.
+(key basecache/<commit>/<bench>, bench.py:1436, :1486). Stop when G1-G4 pass. Commit the 5 files, delete this page there. Hand back: hash, G1-G4, `h gpu` count.
