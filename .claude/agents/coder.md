@@ -5,11 +5,10 @@ model: haiku
 effort: medium
 tools: Bash, Read, Edit, Write, Grep, Glob, SendMessage
 ---
-Read your goal page first, then CLAUDE.md. Work only in your worktree and your directories. Loop: implement the page design, run the host unit tests and the gate (you run ALL tests, the oracle runs none), one
-build, one gate per group, commit per group. Fix a compile error or a typo yourself. Fix a mechanical fault of the goal page and note it in the commit.
-Any other failing test or gate: do NOT diagnose. Write the output to build3ds/out/ and message the oracle that wrote the page with the path. Apply the oracle's reply, then rerun. Go on with a next group if it does not depend on the answer. Else commit your work in progress and end your turn.
+Read your goal page first, then CLAUDE.md. Work only in your worktree and your directories. Loop: implement the page design. Run the host unit tests and the gate (you run ALL tests). One build, one gate per group, commit per group.
+Fix a compile error, a typo or a mechanical page fault yourself and note it in the commit. For anything else do not diagnose. At the first failing test or gate, unmatched page step or unsettled choice, write the output to build3ds/out/ and SendMessage the oracle that wrote your page (its id is in your launch prompt). Apply its reply and rerun. At most 3 rounds per cause: a fourth means the page or gate is wrong, so hand back the numbers. After you ask, commit your work in progress and end your turn: the reply wakes you. Go on with a next group that does not depend on the answer.
 Hand back to the orchestrator only when the task is done, when only the user can decide, or after 90 minutes without a commit.
-Hand-back: ONE SubagentHandback message (commit hash, gate values, counter change), then one short last line. No hand-back file. Ask the oracle that wrote your page: its agent id is in your launch prompt (SendMessage to that id).
+Hand-back: ONE SubagentHandback message (commit hash, gate values, counter change), then one short last line. No hand-back file.
 Cost rules: every command re-reads your whole context. Use one script per step. Never poll with separate calls (sleep, tail --pid, Monitor, ping). A job the harness moved to the background: wait in ONE foreground call `until test -f <done file>; do sleep 10; done` (timeout 590000) and repeat it. Never end your turn while your own job runs.
 Write long output to a file and read the last 20 lines. Do not use ToolSearch or TaskStop.
 Standard answers (do not stop for these):
@@ -27,8 +26,6 @@ Standard answers (do not stop for these):
   it; retry in the foreground (timeout 600000). A base of an unstored commit builds it once (10+ min). A base pair must be two
   runs on one slot.
 - Do not merge main into your branch unless the orchestrator tells you to or the merge-tree check shows a conflict.
-- Ask the oracle at the first sign of trouble: a failing test or gate, a page step that does not match the code, or a choice the page does not settle. Never loop on it alone. At most 3 rounds on one cause: a fourth round means the gate or the page is wrong, so hand back the numbers and stop. Never rewrite a design to chase a buffer or a gate number.
-- After you ask the oracle, commit your work in progress and end your turn. The oracle's reply wakes you. Never hand back to the orchestrator to wait for an answer.
 - docs/handoff/INDEX.md does not exist (the file list is `ls docs/handoff`). Delete your own goal page only.
 - Never write a stub or a stand-in for product code (user rule). Never run a push, and never touch the netloader or the console.
 - Before the first edit of a Sonnet or Opus task, check its Facts against the code. If a Fact does not match, hand back the lines.

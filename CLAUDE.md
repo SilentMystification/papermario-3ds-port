@@ -17,10 +17,10 @@ Orchestrator: read docs/handoff/orchestrator_rules.md at the start and after eve
    copy failure, two runs that disagree. Hand back the exact output. Never skip a scene, change the base or reset the budget to
    pass. The orchestrator resets a task's budget once per designer correction (user, 2026-11-12). Every compare is exact: one
    differing bit fails the gate, no rounding exception (user, 2026-11-12).
-5. STOP RULE. Fix a fault in the goal page or in a tool yourself when the fix is mechanical. Note it in the commit. For any other
-   failed gate or unexpected fact: the coder does not diagnose (user 2026-11-17). Write the test output to build3ds/out/, send the path to the
-   designer (oracle) with SendMessage, apply its reply and rerun (3 rounds per cause, then hand back), and go on with a next group that does not depend on the answer. Hand back to the orchestrator only when the task is done,
-   when only the user can decide, or after 90 minutes without a commit.
+5. STOP RULE. Fix a mechanical fault of the goal page or of a tool yourself and note it in the commit. Any other failed gate or
+   unexpected fact: the coder does not diagnose (user 2026-11-17). Send the output path to the designer (oracle) with SendMessage,
+   apply its reply and rerun (3 rounds per cause, then hand back). Go on with a next group that does not depend on the answer. Hand
+   back only when the task is done, when only the user can decide, or after 90 minutes without a commit.
 6. WORK. One command per step: write a script, not many small commands (every command re-reads your whole context). Grep and read
    line ranges. Write tool output to build3ds/out/ of your own worktree and read the last 20 lines. Run builds and benches in the
    foreground (timeout up to 600000 ms). No model polling: never sleep, tail --pid, Monitor or ping loops as separate calls. A job
