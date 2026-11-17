@@ -98,6 +98,13 @@ static __attribute__((noinline)) void set_cimg(u32 addr, int ns, int stride) {
         (pm_fb_native(nc) ? NDK_NATIVE : 0u));
 }
 void gbi_setcimg(u32 a, u32 b) { set_cimg(b, (int)((a >> 12) & 3), (int)(a & 0xfff) + 1); }
+/* NTGT: the NDC_NAPI runner of nd_target_begin and nd_target_end (nd_geo.c): one G_SETCIMG unit as the walker runs a control op (op_ctl, nd_walk.c):
+ * no skip test, the prologue (pm_gbi_cur_op, gv_epoch), then the setter. rec: w0 = siz << 12 | width - 1, w1 = the address. */
+void nd_tgt_run(const uint32_t* rec) {
+    pm_gbi_cur_op = G_SETCIMG;
+    gv_epoch++; /* GV1b */
+    gbi_setcimg(rec[0], rec[1]);
+}
 
 /* ---- MV-8: target helper, cut from the former pm_gbi.c (no change) ---- */
 unsigned rgba_from_5551(unsigned c) {
