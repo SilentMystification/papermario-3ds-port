@@ -27,7 +27,7 @@ Standard answers (do not stop for these):
   it; retry in the foreground (timeout 600000). A base of an unstored commit builds it once (10+ min). A base pair must be two
   runs on one slot.
 - Do not merge main into your branch unless the orchestrator tells you to or the merge-tree check shows a conflict.
-- Ask the oracle at most 2 rounds on one cause. A third round means the gate or the page is wrong: hand back the numbers and stop. Never rewrite a design to chase a buffer or a gate number.
+- Ask the oracle at the first sign of trouble: a failing test or gate, a page step that does not match the code, or a choice the page does not settle. Never loop on it alone. At most 3 rounds on one cause: a fourth round means the gate or the page is wrong, so hand back the numbers and stop. Never rewrite a design to chase a buffer or a gate number.
 - After you ask the oracle, commit your work in progress and end your turn. The oracle's reply wakes you. Never hand back to the orchestrator to wait for an answer.
 - docs/handoff/INDEX.md does not exist (the file list is `ls docs/handoff`). Delete your own goal page only.
 - Never write a stub or a stand-in for product code (user rule). Never run a push, and never touch the netloader or the console.
