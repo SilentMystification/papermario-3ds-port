@@ -1,0 +1,2 @@
+# OVLIMG: D_8014EA48 (screen_overlays.c:55) moves after D_80156910 became a 160 x 120 RGBA16 image symbol (GS_IMG, RAW rule)
+src/screen_overlays.c

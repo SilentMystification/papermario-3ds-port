@@ -18,7 +18,8 @@ BSS s32 screen_overlay_frontType;
 BSS f32 screen_overlay_frontProgress;
 BSS s32 screen_overlay_backType;
 BSS f32 screen_overlay_backProgress;
-BSS s32 D_80156910;
+extern unsigned char D_80156910[] ALIGNED(8); /* OVLIMG: the 160 x 120 RGBA16 image of the stencil list of OVERLAY_TYPE_2 (11 tile loads, rows 0 to 119); no code writes it */
+unsigned char D_80156910[0x9600] = { 0 }; /* 160 * 120 * 2 bytes; the initializer makes it a GS_IMG symbol (gen_gfx_syms.py RAW) */
 ScreenOverlay ScreenOverlays[2];
 
 ScreenTransition CurrentScreenTransition = TRANSITION_END_DEMO_SCENE_BLACK;
@@ -52,48 +53,7 @@ NDN_DECL(D_8014E8F0);
 
 NDN_DECL(D_8014E9A8);
 
-Gfx D_8014EA48[] = {
-    gsDPSetDepthSource(G_ZS_PRIM),
-    gsDPSetPrimDepth(20, 0),
-    gsDPSetRenderMode(Z_CMP | CVG_DST_FULL | ZMODE_OPA | ALPHA_CVG_SEL | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM), Z_CMP | CVG_DST_FULL | ZMODE_OPA | ALPHA_CVG_SEL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM)),
-    gsSPClearGeometryMode(G_CULL_BOTH | G_LIGHTING),
-    gsSPClearGeometryMode(G_SHADING_SMOOTH),
-    gsSPTexture(0x8000, 0x8000, 0, G_TX_RENDERTILE, G_ON),
-    gsDPPipeSync(),
-    gsDPSetCombineMode(G_CC_MODULATEIA, G_CC_MODULATEIA),
-    gsDPSetTexturePersp(G_TP_PERSP),
-    gsDPSetTextureDetail(G_TD_CLAMP),
-    gsDPSetTextureLOD(G_TL_TILE),
-    gsDPSetTextureLUT(G_TT_NONE),
-    gsDPSetTextureFilter(G_TF_BILERP),
-    gsDPSetTextureConvert(G_TC_FILT),
-    gsSPVertex(&vtx_stencil2, 24, 0),
-    gsDPLoadTextureTile(&D_80156910, G_IM_FMT_RGBA, G_IM_SIZ_16b, 160, 0, 0, 0, 159, 11, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 4, G_TX_NOLOD, G_TX_NOLOD),
-    gsSP2Triangles(0, 2, 1, 0, 3, 1, 2, 0),
-    gsDPLoadTextureTile(&D_80156910, G_IM_FMT_RGBA, G_IM_SIZ_16b, 160, 0, 0, 11, 159, 22, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 4, G_TX_NOLOD, G_TX_NOLOD),
-    gsSP2Triangles(2, 4, 3, 0, 5, 3, 4, 0),
-    gsDPLoadTextureTile(&D_80156910, G_IM_FMT_RGBA, G_IM_SIZ_16b, 160, 0, 0, 22, 159, 33, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 4, G_TX_NOLOD, G_TX_NOLOD),
-    gsSP2Triangles(4, 6, 5, 0, 7, 5, 6, 0),
-    gsDPLoadTextureTile(&D_80156910, G_IM_FMT_RGBA, G_IM_SIZ_16b, 160, 0, 0, 33, 159, 44, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 4, G_TX_NOLOD, G_TX_NOLOD),
-    gsSP2Triangles(6, 8, 7, 0, 9, 7, 8, 0),
-    gsDPLoadTextureTile(&D_80156910, G_IM_FMT_RGBA, G_IM_SIZ_16b, 160, 0, 0, 44, 159, 55, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 4, G_TX_NOLOD, G_TX_NOLOD),
-    gsSP2Triangles(8, 10, 9, 0, 11, 9, 10, 0),
-    gsDPLoadTextureTile(&D_80156910, G_IM_FMT_RGBA, G_IM_SIZ_16b, 160, 0, 0, 55, 159, 66, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 4, G_TX_NOLOD, G_TX_NOLOD),
-    gsSP2Triangles(10, 12, 11, 0, 13, 11, 12, 0),
-    gsDPLoadTextureTile(&D_80156910, G_IM_FMT_RGBA, G_IM_SIZ_16b, 160, 0, 0, 66, 159, 77, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 4, G_TX_NOLOD, G_TX_NOLOD),
-    gsSP2Triangles(12, 14, 13, 0, 15, 13, 14, 0),
-    gsDPLoadTextureTile(&D_80156910, G_IM_FMT_RGBA, G_IM_SIZ_16b, 160, 0, 0, 77, 159, 88, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 4, G_TX_NOLOD, G_TX_NOLOD),
-    gsSP2Triangles(14, 16, 15, 0, 17, 15, 16, 0),
-    gsDPLoadTextureTile(&D_80156910, G_IM_FMT_RGBA, G_IM_SIZ_16b, 160, 0, 0, 88, 159, 99, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 4, G_TX_NOLOD, G_TX_NOLOD),
-    gsSP2Triangles(16, 18, 17, 0, 19, 17, 18, 0),
-    gsDPLoadTextureTile(&D_80156910, G_IM_FMT_RGBA, G_IM_SIZ_16b, 160, 0, 0, 99, 159, 110, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 4, G_TX_NOLOD, G_TX_NOLOD),
-    gsSP2Triangles(18, 20, 19, 0, 21, 19, 20, 0),
-    gsDPLoadTextureTile(&D_80156910, G_IM_FMT_RGBA, G_IM_SIZ_16b, 160, 0, 0, 110, 159, 119, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 4, G_TX_NOLOD, G_TX_NOLOD),
-    gsSP2Triangles(20, 22, 21, 0, 23, 21, 22, 0),
-    gsDPPipeSync(),
-    gsDPSetDepthSource(G_ZS_PIXEL),
-    gsSPEndDisplayList() // ROM has df000000 at 0xE5490, the decomp lacks it (V22b)
-};
+NDN_DECL(D_8014EA48);
 
 /* NATIVEAPI B2a (S1TSTEN): the transition stencil rectangle is one native record (screen_render_util.c writes it). full_and_id = full | id << 1,
  * id 0 Mario, 1 Star, 2 SharpCircle (gPmStencilId, set by _render_transition_stencil on core 1). */
@@ -261,7 +221,7 @@ void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* ove
 
             guTranslate(&matrixStack[gMatrixListPos], 0.0f, 0.0f, 0.0f);
             nd_xf_push(&matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-            gSPDisplayList(gMainGfxPos++, D_8014EA48);
+            nd_draw_list(NDN(D_8014EA48), ND_SELF);
             nd_xf_pop(G_MTX_MODELVIEW);
             break;
         case OVERLAY_TYPE_9:
