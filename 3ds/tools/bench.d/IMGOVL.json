@@ -1,0 +1,38 @@
+{
+  "benches": [
+    {
+      "name": "imgovl_cap",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "IMGOVL: capture of the Monstar overlay strip entry (cap5.txt).",
+      "scenario": "imgovl_cap",
+      "cap": 30,
+      "until": "drec f400 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "battle",
+        "drec"
+      ],
+      "gates": []
+    },
+    {
+      "name": "imgovl_drec",
+      "kind": "azahar_pic",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "IMGOVL: draw records of the Monstar battle, frames 400, 420, 440, det, psochk. A head equals the base.",
+      "scenario": "imgovl_drec",
+      "cap": 30,
+      "until": "drec f440 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "battle",
+        "drec"
+      ],
+      "gates": []
+    }
+  ]
+}

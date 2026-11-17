@@ -1,5 +1,6 @@
 #include "common.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_imgfx_1805, 0xfc121824, 0xff33ffff, 0x0008acf0, 0x00504e50, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 1, 2, 0, 0, 0);
 #include "pm_port.h"
 #include "ld_addrs.h"
 #include "sprite.h"
@@ -1802,7 +1803,7 @@ void imgfx_appendGfx_mesh_strip(ImgFXState* state, Matrix4f mtx) {
     state->floats.overlay.posX = (s32)(state->floats.overlay.posX + ufs->offsetX) % (ufs->width * 4);
     state->floats.overlay.posY = (s32)(state->floats.overlay.posY + ufs->offsetY) % (ufs->height * 4);
     { static int s_log; if (!s_log) { s_log = 1; pm_log_evt("imgfx strip f%u", pm_frame_count()); } }
-    nd_rec_dl(ufs->displayList);
+    nd_draw_list(ufs->displayList, pe_imgfx_1805);
     nd_xf_pop(G_MTX_MODELVIEW);
 }
 
