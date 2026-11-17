@@ -205,7 +205,7 @@ void spr_clear_quad_cache(void) {
     }
 }
 
-static Gfx* spr_geo_out; /* DIRECT D6: set by spr_appendGfx_component around the flat path of a recorded sprite */
+static u32* spr_geo_out; /* DIRECT D6: set by spr_appendGfx_component around the flat path of a recorded sprite */
 /* S5SPR: the state ops of one sprite component. Core 1 runs them on gMainGfxPos for a shaded component (create_shading_palette writes ops too);
  * core 0 runs them for an unshaded component into a local list (spr_state_run), so core 1 records one state record in place of the ops.
  * flags, vpAlt and vpMain are the facts of the component that the ops read from game state (the caller took them). The final vertex and
@@ -317,10 +317,10 @@ void spr_appendGfx_component_flat(
     }
     if (spr_geo_out != nullptr) { /* DIRECT D6: the final vertex and triangle ops go with the sprite record (nd_rec_spr), not to the stream.
                                     * HC4d2 (W5): written as typed ops (nd_op.h), no word */
-        spr_geo_out[0].words.w0 = ND_OP_VTX_W0(4, 0);
-        spr_geo_out[0].words.w1 = (u32)(uintptr_t)vertices;
-        spr_geo_out[1].words.w0 = NDO_W0(NDO_TRI2, ND_OP_TRI_A(0, 2, 1));
-        spr_geo_out[1].words.w1 = ND_OP_TRI_A(0, 3, 2);
+        spr_geo_out[0] = ND_OP_VTX_W0(4, 0);
+        spr_geo_out[1] = (u32)(uintptr_t)vertices;
+        spr_geo_out[2] = NDO_W0(NDO_TRI2, ND_OP_TRI_A(0, 2, 1));
+        spr_geo_out[3] = ND_OP_TRI_A(0, 3, 2);
         return;
     }
     nd_mesh_vtx(vertices, 4, 0);
@@ -333,7 +333,7 @@ NDN_DECL(SprFinalA255);
 NDN_DECL(SprFinalAT);
 NDN_DECL(SprFinalB255);
 NDN_DECL(SprFinalBT);
-static Gfx* spr_final_list(u32 flags, u8 opacity) {
+static NdLst spr_final_list(u32 flags, u8 opacity) {
     if (!(flags & SPR_SHADING_FLAG_SET_VIEWPORT)) return nullptr;
     if (flags & SPR_SHADING_FLAG_ENABLED) return opacity == 255 ? NDN(SprFinalA255) : NDN(SprFinalAT);
     return opacity == 255 ? NDN(SprFinalB255) : NDN(SprFinalBT);
@@ -386,27 +386,27 @@ void spr_appendGfx_component(
         cache->quadCacheIndex = quadIndex;
     }
 
-    Gfx* rmList;
-    Gfx* sprRec = nullptr; /* S4-3: the record of this component (TARGET_3DS), its header gets the geometry offset below */
-    Gfx sprBuf[G_PM_SPR_WORDS]; /* DIRECT D2: the record goes to the frame stream at the final vertex word */
+    NdLst rmList;
+    u32* sprRec = nullptr; /* S4-3: the record of this component (TARGET_3DS), its header gets the geometry offset below */
+    u32 sprBuf[2 * G_PM_SPR_WORDS] __attribute__((aligned(8))); /* DIRECT D2: the record goes to the frame stream at the final vertex word */
     if (gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED) {
         rmList = ((u8) opacity == 255) ? NDN(OpaqueShadedSpriteGfx) : NDN(TranslucentShadedSpriteGfx);
     } else {
         rmList = ((u8) opacity == 255) ? NDN(OpaqueSpriteGfx) : NDN(TranslucentSpriteGfx);
     }
     if (quad != nullptr) { /* S4-1: the sprite record (G_PM_SPR). pm_gbi.c reads it; the old words below still draw. */
-        Gfx* rec = sprBuf;
+        u32* rec = sprBuf;
         sprRec = rec;
-        rec[0].words.w0 = ((u32)G_PM_SPR << 24) | ((((gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED) ? 1u : 0u) |
+        rec[0] = ((u32)G_PM_SPR << 24) | ((((gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED) ? 1u : 0u) |
                           ((gSpriteShadingProfile->flags & SPR_SHADING_FLAG_SET_VIEWPORT) ? 2u : 0u) |
                           ((gGameStatusPtr->context == CONTEXT_BATTLE) ? 4u : 0u)) << 16) | ((u32)(u8) opacity << 8); /* bit 2: battle context, the native build refuses it (spr_battle) */
-        rec[0].words.w1 = (u32)(uintptr_t) rmList;
-        rec[1].words.w0 = (u32)(uintptr_t) cache->image;
-        rec[1].words.w1 = (u32)(uintptr_t) palette;
-        rec[2].words.w0 = (u32)(uintptr_t) &gDisplayContext->matrixStack[gMatrixListPos - 1];
-        rec[2].words.w1 = (u32)(uintptr_t) quad;
-        rec[3].words.w0 = ((u32) width << 16) | (u32) height;
-        rec[3].words.w1 = (u32)(uintptr_t) spr_final_list(gSpriteShadingProfile->flags, (u8) opacity);
+        rec[1] = (u32)(uintptr_t) rmList;
+        rec[2] = (u32)(uintptr_t) cache->image;
+        rec[3] = (u32)(uintptr_t) palette;
+        rec[4] = (u32)(uintptr_t) &gDisplayContext->matrixStack[gMatrixListPos - 1];
+        rec[5] = (u32)(uintptr_t) quad;
+        rec[6] = ((u32) width << 16) | (u32) height;
+        rec[7] = (u32)(uintptr_t) spr_final_list(gSpriteShadingProfile->flags, (u8) opacity);
     }
     { /* RECROOT: the state range of the component (was spr_st_def[si], S5SPR3): the matrix, then one setter sequence per def */
         const int si = ((gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED) ? 2 : 0) + ((u8) opacity == 255 ? 0 : 1);
@@ -449,7 +449,7 @@ void spr_appendGfx_component(
     }
 
     if (quad != nullptr) {
-        Gfx sprGeo[2];
+        u32 sprGeo[4] __attribute__((aligned(8)));
         spr_geo_out = sprRec != nullptr ? sprGeo : nullptr;
         spr_appendGfx_component_flat(quad, cache->image, palette, width, height, rotY, mtxTransform, (u8) opacity);
         spr_geo_out = nullptr;

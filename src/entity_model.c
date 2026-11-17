@@ -201,7 +201,7 @@ s32 step_entity_model_commandlist(EntityModel* entityModel) {
             return 1;
         case ENTITY_MODEL_SCRIPT_OP_Draw: // set display list ptr
             entityModel->nextFrameTime = (f32) *curPos++;
-            entityModel->gfx.displayList = (Gfx*) *curPos++;
+            entityModel->gfx.displayList = (void*) *curPos++;
             entityModel->cmdListReadPos = (EntityModelScript*) curPos;
             break;
         case ENTITY_MODEL_SCRIPT_OP_Restart: // restore saved position
@@ -253,9 +253,9 @@ static int entcheck_on(void) { static int on = -1; if (on < 0) on = pm_debug_has
 /* S6-2b: vertex segment static check. A draw with a vertex array (B and D) is keyed by (list, array). The bytes the list reads through its vertex segment
  * (the G_VTX ranges, off + n * 16) are hashed once per frame. Equal on two frames: static. A change later makes the key dynamic (sticky). Table of 64 keys. */
 #define ENT_VK_N 64
-static struct { const Gfx* dl; const void* va; u32 range; u32 h; unsigned f; unsigned st; } ent_vk[ENT_VK_N]; /* st: 0 new, 1 static, 2 dynamic */
+static struct { const void* dl; const void* va; u32 range; u32 h; unsigned f; unsigned st; } ent_vk[ENT_VK_N]; /* st: 0 new, 1 static, 2 dynamic */
 static unsigned ent_vk_n, ent_vs_draw[3], ent_vs_ovf;
-static u32 ent_vtx_range(const Gfx* dl, s32 seg) {
+static u32 ent_vtx_range(const void* dl, s32 seg) {
     u32 range = 0;
     unsigned n;
     const uint32_t* u = nd_lkey_units(dl, nd_ntab_find(dl), 2048u, &n); /* LKEY: a moved list key (NDN) reads its device units */
@@ -291,12 +291,12 @@ static void entcheck_vtxseg(const EntityModel* model, unsigned f) {
     }
     ent_vs_draw[ent_vk[i].st]++;
 }
-static void entcheck_draw(const Gfx* rec, const EntityModel* model) { /* DIRECT D6: the draw is stream commands (no list words to compare with the record) */
+static void entcheck_draw(const u32* rec, const EntityModel* model) { /* DIRECT D6: the draw is stream commands (no list words to compare with the record) */
     unsigned f;
     if (!entcheck_on()) return;
     ent_recs_n++;
     { /* S6-2 census (diagnostic): why the draw cannot be native yet. Priority: vertex segment, fog, reflect, texture op, nested list, other op, static. */
-        const Gfx* q = model->gfx.displayList;
+        const void* q = model->gfx.displayList;
         unsigned dlm = 0, cls = 0;
         NdTexDec tdec;
         static uint32_t qb[2u * 256u]; /* LKEY: a moved list key (NDN) gives its device units and an end unit */
@@ -314,7 +314,7 @@ static void entcheck_draw(const Gfx* rec, const EntityModel* model) { /* DIRECT 
                 dlm |= 4u;
         }
         if (model->vertexArray != nullptr) cls = 1;
-        else if (rec[0].words.w0 & 1u) cls = 2;
+        else if (rec[0] & 1u) cls = 2;
         else if (model->flags & ENTITY_MODEL_FLAG_REFLECT) cls = 3;
         else if (dlm & 1u) cls = (nd_dlc_tex_decode(qu, &tdec) == NDTX_OK) ? 7 : 4; /* S6-2a: 7 texok, native-ready texture form */
         else if (dlm & 2u) cls = 5;
@@ -338,19 +338,19 @@ void appendGfx_entity_model(EntityModel* model) {
     Matrix4f mtx2;
     ImgFXTexture ifxImg;
     Matrix4f imgfxMtx;
-    Gfx* entRec = nullptr; /* S6-1: entity record (G_PM_ENT) of a model draw, 4 words, see gbi_custom.h. DIRECT D3: a local record (the walker reads only the draw record) */
-    Gfx entBuf[G_PM_ENT_WORDS];
+    u32* entRec = nullptr; /* S6-1: entity record (G_PM_ENT) of a model draw, 4 words, see gbi_custom.h. DIRECT D3: a local record (the walker reads only the draw record) */
+    u32 entBuf[2 * G_PM_ENT_WORDS] __attribute__((aligned(8)));
 
     if (!(model->flags & ENTITY_MODEL_FLAG_USE_IMAGE)) { /* S6-1: the entity record. w3 (render mode list) is set after the render mode switch. */
         entRec = entBuf;
-        entRec[0].words.w0 = ((u32)G_PM_ENT << 24) | (((u32)model->renderMode & 0xffu) << 16) | ((entity_fog_enabled && !(model->flags & ENTITY_MODEL_FLAG_FOG_DISABLED)) ? 1u : 0u);
-        entRec[0].words.w1 = (u32)(uintptr_t)model->gfx.displayList;
-        entRec[1].words.w0 = (model->vertexArray != nullptr) ? (u32)D_80154374 : 0u;
-        entRec[1].words.w1 = (model->vertexArray != nullptr) ? (u32)VIRTUAL_TO_PHYSICAL(model->vertexArray) : 0u;
-        entRec[2].words.w0 = (u32)(G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-        entRec[2].words.w1 = (u32)(uintptr_t)&gDisplayContext->matrixStack[gMatrixListPos];
-        entRec[3].words.w0 = 0;
-        entRec[3].words.w1 = 0;
+        entRec[0] = ((u32)G_PM_ENT << 24) | (((u32)model->renderMode & 0xffu) << 16) | ((entity_fog_enabled && !(model->flags & ENTITY_MODEL_FLAG_FOG_DISABLED)) ? 1u : 0u);
+        entRec[1] = (u32)(uintptr_t)model->gfx.displayList;
+        entRec[2] = (model->vertexArray != nullptr) ? (u32)D_80154374 : 0u;
+        entRec[3] = (model->vertexArray != nullptr) ? (u32)VIRTUAL_TO_PHYSICAL(model->vertexArray) : 0u;
+        entRec[4] = (u32)(G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+        entRec[5] = (u32)(uintptr_t)&gDisplayContext->matrixStack[gMatrixListPos];
+        entRec[6] = 0;
+        entRec[7] = 0;
     }
     gDisplayContext->matrixStack[gMatrixListPos] = model->transform;
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
@@ -466,12 +466,12 @@ void appendGfx_entity_model(EntityModel* model) {
 
         /* S6-2c-3, DIRECT D3: the draw record and the model list G_DL go to the frame stream (the walker draws the list from the static pools, or runs the G_DL).
          * TSTSHK: entRec is set here (the same USE_IMAGE test at the top), so the old gSPDisplayList arm never ran. */
-        nd_rec_ent_draw(model->gfx.displayList, entRec[1].words.w0, entRec[1].words.w1, 0);
+        nd_rec_ent_draw(model->gfx.displayList, entRec[2], entRec[3], 0);
         if (entRec != nullptr && entcheck_on()) { /* S6-2a: end record, the walker checks its tile 0 state against the decode of the list (pm_gbi.c G_PM_ENT) */
-            Gfx endRec[G_PM_ENT_WORDS];
-            endRec[0].words.w0 = ((u32)G_PM_ENT << 24) | (u32)G_PM_ENT_END;
-            endRec[0].words.w1 = (u32)(uintptr_t)model->gfx.displayList;
-            endRec[1].words.w0 = endRec[1].words.w1 = endRec[2].words.w0 = endRec[2].words.w1 = endRec[3].words.w0 = endRec[3].words.w1 = 0;
+            u32 endRec[2 * G_PM_ENT_WORDS] __attribute__((aligned(8)));
+            endRec[0] = ((u32)G_PM_ENT << 24) | (u32)G_PM_ENT_END;
+            endRec[1] = (u32)(uintptr_t)model->gfx.displayList;
+            endRec[2] = endRec[3] = endRec[4] = endRec[5] = endRec[6] = endRec[7] = 0;
             nd_rec_ent(endRec);
         }
         nd_xf_pop(G_MTX_MODELVIEW);
@@ -488,7 +488,7 @@ void appendGfx_entity_model(EntityModel* model) {
         gDisplayContext->matrixStack[gMatrixListPos] = model->transform;
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
         nd_rec_ent_draw(model->gfx.displayList, (model->vertexArray != nullptr) ? (u32)D_80154374 : 0u,
-                        (model->vertexArray != nullptr) ? (u32)VIRTUAL_TO_PHYSICAL(model->vertexArray) : 0u, 0); /* NMDL6: the reflect draw takes the producer of the main draw (the words of entRec[1], :348) */
+                        (model->vertexArray != nullptr) ? (u32)VIRTUAL_TO_PHYSICAL(model->vertexArray) : 0u, 0); /* NMDL6: the reflect draw takes the producer of the main draw (the words of entRec[2], entRec[3], :348) */
     } else {
         SpriteRasterInfo* imageData;
 
@@ -767,7 +767,7 @@ void draw_entity_model_E(s32 modelIdx, Mtx* transformMtx) {
                 break;
         }
         em_tail(entity_fog_enabled && !(model->flags & ENTITY_MODEL_FLAG_FOG_DISABLED), 1);
-        const u32 entSeg = (model->vertexArray != nullptr) ? (u32)D_80154374 : 0u; /* NMDL6: the vertex segment words of the entity record (as entRec[1], :348) */
+        const u32 entSeg = (model->vertexArray != nullptr) ? (u32)D_80154374 : 0u; /* NMDL6: the vertex segment words of the entity record (as entRec[2], entRec[3], :348) */
         const u32 entArr = (model->vertexArray != nullptr) ? (u32)VIRTUAL_TO_PHYSICAL(model->vertexArray) : 0u;
         if (model->vertexArray != nullptr) {
             nd_val_seg(D_80154374, VIRTUAL_TO_PHYSICAL(model->vertexArray));
