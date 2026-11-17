@@ -1,0 +1,12 @@
+# BLANKET: twins that hold world/toad_house/blanket.gfx.inc.c
+src/world/area_hos/hos_03/npc.c
+src/world/area_jan/jan_03/npc.c
+src/world/area_kkj/kkj_20/npc.c
+src/world/area_kpa/kpa_91/npc.c
+src/world/area_kpa/kpa_95/npc.c
+src/world/area_mac/mac_01/npc.c
+src/world/area_nok/nok_01/npc.c
+src/world/area_sam/sam_02/npc.c
+src/world/area_sam/sam_06/npc.c
+src/world/area_kmr/kmr_02/rooms_1.c
+src/world/area_kmr/kmr_20/bed.c
