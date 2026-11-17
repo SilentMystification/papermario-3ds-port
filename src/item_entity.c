@@ -1128,9 +1128,9 @@ void render_item_entities(void) {
                         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
                         if (gSpriteShadingProfile->flags != 0) {
-                            gSPDisplayList(gMainGfxPos++, NDN(Gfx_RM2_ALPHATEST));
+                            nd_draw_list(NDN(Gfx_RM2_ALPHATEST), ND_SELF);
                         } else {
-                            gSPDisplayList(gMainGfxPos++, NDN(Gfx_RM1_ALPHATEST));
+                            nd_draw_list(NDN(Gfx_RM1_ALPHATEST), ND_SELF);
                         }
                         nd_pso_geom_clr(G_LIGHTING);
                         nd_draw_list(NDN(D_8014C620), ND_SELF);

@@ -422,7 +422,7 @@ void pause_draw_menu_label(s32 index, s32 x, s32 y) {
         xOffset = 160;
     }
 
-    gSPDisplayList(gMainGfxPos++, PauseGfxLabels[index]);
+    nd_draw_list(PauseGfxLabels[index], ND_SELF); /* ENTSELF: every label is a v2 table (ntab_tables.txt) */
     pause_draw_rect(x * 4, y * 4, (x + xOffset) * 4, (y + 16) * 4, 0, 0, 0, 0x400, 0x400);
 
 #if VERSION_PAL

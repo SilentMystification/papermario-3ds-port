@@ -1,0 +1,28 @@
+{
+  "scenarios": [
+    {
+      "name": "entself_fx_drec",
+      "status": "unverified",
+      "subject": "ENTSELF effects: flower_splash 3, flower_trail 4, bombette_breaking 60 (pm_fxtest.c FXLIST) on mac_01 (pos 0 0 200), cold det start with the drec switch (frames 412 to 500, step 44), no shots.",
+      "proves": "ENTSELF: the draw records of the 3 effects are byte-equal between a base and a head (gSPDisplayList of a v2 table list becomes nd_draw_list with ND_SELF).",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=3,4,60 loglevel=debug det drec=412:3:44",
+      "until": "drec f500 draws [1-9]\\d* bytes \\d+",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f500 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "reason": "ENTSELF: copy of pbuf_fx_drec (PBUF) with the 3 effects. Cap 25 s, deadline 20 s, until the drec line of frame 500."
+    }
+  ]
+}
