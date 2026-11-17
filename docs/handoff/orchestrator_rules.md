@@ -6,7 +6,7 @@ The Core block is printed every turn by the UserPromptSubmit hook (.claude/setti
 
 <!-- CORE -->
 FACT/GUESS/OPEN on every number. Style: the global style hook. Details: docs/handoff/orchestrator_rules.md.
-EVERY TURN: 1 ListAgents. Only status `running` holds a slot. A `completed` agent waits on its own build. 2 A hand-back MESSAGE arrives: read it, check the commit, merge (`sh 3ds/tools/merge_row.sh <row>`). An interim notice gets one line, no table. 3 Fewer than 3 coders running and a ready page: start a coder. All ready pages blocked: start the oracle for pages that share no file with the blocked ones. 4 Report only changes. 5 Object first if a directive looks wrong or costly. 6 Ask the push question only when the build of main is finished. A state the user reports is fact: never probe it, read the tool code. A console capture: same launch line in Azahar first.
+EVERY TURN: 1 ListAgents. Only status `running` holds a slot. A `completed` agent waits on its own build. 2 A hand-back MESSAGE arrives: read it, check the commit, merge (`sh 3ds/tools/merge_row.sh <row>`). An interim notice gets one line, no table. 3 Fewer than 3 coders running and a ready page: start a coder. All ready pages blocked: start the oracle for pages that share no file with the blocked ones. 4 Report only changes. 5 Object first if a directive looks wrong or costly. 6 Ask the push question only when the build of main is finished. 7 Never end a turn while a job or a blocked merge waits: a post-merge check sends NO notice, so read `postmerge_bg.sh --status` and use one wait call or ScheduleWakeup (user 2026-11-17: 6.5 h idle). A state the user reports is fact: never probe it, read the tool code. A console capture: same launch line in Azahar first.
 <!-- /CORE -->
 
 ## Roles
@@ -32,6 +32,8 @@ EVERY TURN: 1 ListAgents. Only status `running` holds a slot. A `completed` agen
 ## Merge
 1. `sh 3ds/tools/merge_row.sh <row>` (main must be clean). It builds the message from the branch commits. Pass a message file only to add a fact the commits lack. A goal page that the branch deletes and main changed: `git rm` it on main first. A huge worktree runs.jsonl: `python -I 3ds/tools/dedupe_runs.py <file>` first.
 2. Rebuild main in the background with `sh 3ds/build.sh`.
+3. `postmerge_FAIL.txt` blocks merges (exit 8). A tool fault: fix it with plain git, then `postmerge_bg.sh --queue`. A code fault: never override. A full pass on a newer commit clears it.
+4. Budget reset: run `run_azahar.ps1 -ResetBudget <row>` from the row worktree (azt.ps1 reads the worktree copy of test_budget.csv).
 
 ## Console
 - CAPTURE (user 2026-11-15): 4 links: the switch, the sink, the reading tool, the proof line. Read the REAL command in the code, never its echo line. Run `python 3ds/tools/capture_check.py` (same words in Azahar) before the user plays. Name the tool that pulls the log (pm_logrecv.py through the game socket, FTP, or the live log).
