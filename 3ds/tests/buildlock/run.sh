@@ -103,4 +103,71 @@ echo "$out_c"
 [ "$rc" -eq 0 ] || fail "docker case c: exit $rc, want 0: $out_c"
 echo "$out_c" | grep -q "BUILD GOES ON" || fail "docker case c: build did not go on: $out_c"
 [ ! -f "$D/restarted" ] || fail "docker case c: restart ran with the engine up"
+# SLOTFIX seeded race: 12 fake builders on 4 slots while a cleaner loop plants dead-holder slots in free slot names and reaps
+# every slot (FACT post_merge 6600a1eedd: a reaper moved a fresh slot away, 'slot4.d/pid: No such file'). Each builder must take
+# a slot, still own it at its end, and exit 0; at most 4 builders hold a slot at once; no slot dir is left.
+R="$T/race"; rm -rf "$R"; mkdir -p "$R/slots" "$R/rec"
+cat > "$R/b.sh" <<'RB'
+#!/bin/sh
+. "$ROOT/3ds/tools/build_slot.sh"
+build_slot_take || exit 11
+echo "start $(date +%s%N)" > "$R/rec/$1"
+sleep 1
+[ "$(cut -d' ' -f1 "$BUILD_SLOT_DIR/pid" 2>/dev/null)" = "$$" ] || { echo "lost slot $BUILD_SLOT" >> "$R/rec/$1"; exit 12; }
+echo "end $(date +%s%N)" >> "$R/rec/$1"
+build_slot_release
+RB
+cat > "$R/clean.sh" <<'RC'
+#!/bin/sh
+. "$ROOT/3ds/tools/build_slot.sh"
+sh -c 'exit 0' & dp=$!; wait $dp
+while [ ! -f "$R/stop" ]; do
+    for k in 1 2 3 4; do
+        s="$R/slots/slot$k.d"
+        if [ ! -e "$s" ] && mkdir "$R/slots/.plant" 2>/dev/null; then
+            printf '%s %s plant\n' "$dp" "$(date +%s)" > "$R/slots/.plant/pid"; mv -T "$R/slots/.plant" "$s" 2>/dev/null || rm -rf "$R/slots/.plant"
+        fi
+        build_slot_reap "$s" "$k" >/dev/null
+    done
+done
+RC
+export R
+( BUILDSLOT_DIR="$R/slots" sh "$R/clean.sh" ) & cp=$!
+pids=""
+for i in 1 2 3 4 5 6 7 8 9 10 11 12; do ( BUILDSLOT_DIR="$R/slots" PM_BUILD_SLOTS=4 PM_LANE=race$i sh "$R/b.sh" r$i > "$R/rec/r$i.out" 2>&1; echo $? > "$R/rec/r$i.rc" ) & pids="$pids $!"; done
+for p in $pids; do wait $p || true; done
+touch "$R/stop"; wait $cp || true
+for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+    [ "$(cat "$R/rec/r$i.rc" 2>/dev/null)" = 0 ] || fail "race builder $i exit $(cat "$R/rec/r$i.rc"): $(cat "$R/rec/r$i" "$R/rec/r$i.out" 2>/dev/null | tr '\n' ' ')"
+done
+cat "$R"/rec/r? "$R"/rec/r1? | awk '$1=="start"{print $2, 1} $1=="end"{print $2, 0}' | sort -k1,1n -k2,2n > "$R/events.txt"
+rov=$(awk '{ if ($2==1) c++; else c--; if (c>m) m=c } END{print m+0}' "$R/events.txt")
+echo "race: 12 builders, 4 slots, cleaner with planted dead slots: all exit 0, max overlap $rov"
+[ "$rov" -le 4 ] || fail "race overlap $rov > 4"
+# A slot dir can stay only with a dead holder (a reaper that gave a moved slot back after its holder ended): the next take
+# reaps it. One reap pass must leave no slot dir.
+. 3ds/tools/build_slot.sh
+for k in 1 2 3 4; do s="$R/slots/slot$k.d"; [ -e "$s" ] || continue; build_slot_reap "$s" "$k" >/dev/null || fail "race: slot $k held after the end: $(cat "$s/pid" 2>/dev/null)"; done
+ls -d "$R/slots"/.take.* >/dev/null 2>&1 && fail "race: a .take dir was left"
+# SLOTFIX seeded interleaving (deterministic): reaper A judges a dead slot, then its mv waits 2 s (a PATH mv shim); builder B
+# reaps the same slot, takes it and holds it; then A's mv runs. A must not take B's slot away (the old code moved and removed it).
+Q="$T/ilv"; rm -rf "$Q"; mkdir -p "$Q/slots/slot1.d" "$Q/slow"
+REALMV=$(command -v mv)
+printf '#!/bin/sh\ncase "$2" in *.dead.*) sleep 2 ;; esac\nexec %s "$@"\n' "$REALMV" > "$Q/slow/mv"; chmod +x "$Q/slow/mv"
+sh -c 'exit 0' & dq=$!; wait $dq
+printf '%s %s deadilv\n' "$dq" "$(date +%s)" > "$Q/slots/slot1.d/pid"
+cat > "$Q/b.sh" <<'QB'
+#!/bin/sh
+. "$ROOT/3ds/tools/build_slot.sh"
+build_slot_take || exit 11
+sleep 4
+[ "$(cut -d' ' -f1 "$BUILD_SLOT_DIR/pid" 2>/dev/null)" = "$$" ] || { echo "lost slot"; exit 12; }
+build_slot_release
+QB
+( PATH="$Q/slow:$PATH"; BUILDSLOT_DIR="$Q/slots"; . 3ds/tools/build_slot.sh; build_slot_reap "$Q/slots/slot1.d" 1 >/dev/null; true ) & ap=$!
+sleep 1
+qrc=0; qout=$(BUILDSLOT_DIR="$Q/slots" PM_BUILD_SLOTS=1 PM_LANE=ilv sh "$Q/b.sh" 2>&1) || qrc=$?
+wait $ap || true
+[ "$qrc" = 0 ] || fail "interleaving: builder B lost its slot to a late reaper (exit $qrc): $qout"
+echo "interleaving: a late reaper left the retaken slot to its holder"
 echo "buildlock test: ok"

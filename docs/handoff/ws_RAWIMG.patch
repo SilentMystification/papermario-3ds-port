@@ -1,0 +1,374 @@
+diff --git a/3ds/tests/host.d/rawimg.sh b/3ds/tests/host.d/rawimg.sh
+new file mode 100644
+index 0000000000..df47991200
+--- /dev/null
++++ b/3ds/tests/host.d/rawimg.sh
+@@ -0,0 +1,13 @@
++#!/bin/sh
++# RAWIMG: gen_gfx_syms.py maps a top-level `unsigned char NAME[] =` array (a texture or palette written as C bytes, e.g.
++# src/entity/model/HeartBlockContent.c) as GS_IMG with its sizeof end. Seeded fault: RAW_RULE off drops the entry.
++R=$(pwd); W=/tmp/rawimg; rm -rf $W && mkdir -p $W/a $W/o $W/f
++printf 'unsigned char img_a[] = {\n    1, 2, 3, 4,\n};\nGfx dl_a[] = {\n    gsSPEndDisplayList(),\n};\n' > $W/a/x.c
++(cd $W && python3 "$R/3ds/tools/gen_gfx_syms.py" o/gconv_in.c a/x.c > /dev/null) || { echo "rawimg FAIL gen"; exit 1; }
++grep -q '{ "img_a", GS_IMG, (const void\*)img_a, (const void\*)((const char\*)img_a + sizeof img_a) },' $W/o/gconv_tu_a_x_c.c || { echo "rawimg FAIL no img_a entry"; exit 1; }
++grep -q '"dl_a", GS_GFX' $W/o/gconv_tu_a_x_c.c || { echo "rawimg FAIL no dl_a entry"; exit 1; }
++sed 's/^RAW_RULE = True/RAW_RULE = False/' "$R/3ds/tools/gen_gfx_syms.py" > $W/gen_fault.py
++cmp -s $W/gen_fault.py "$R/3ds/tools/gen_gfx_syms.py" && { echo "rawimg FAIL seeded fault not applied"; exit 1; }
++(cd $W && python3 gen_fault.py f/gconv_in.c a/x.c > /dev/null 2>&1)
++grep -q '"img_a", GS_IMG' $W/f/gconv_tu_a_x_c.c 2>/dev/null && { echo "rawimg FAIL seeded fault not seen"; exit 1; }
++echo "rawimg ok"
+diff --git a/3ds/tools/gen_gfx_syms.py b/3ds/tools/gen_gfx_syms.py
+index d4eb3f1746..e175fe1bf9 100644
+--- a/3ds/tools/gen_gfx_syms.py
++++ b/3ds/tools/gen_gfx_syms.py
+@@ -18,6 +18,8 @@ DEF = re.compile(r"^(Gfx|Vtx|Vec3s)\s+(?:N\((\w+)\)|(\w+))\s*\[[^\]]*\]\s*=", re
+ JP = re.compile(r"^#if VERSION_(?:JP|PAL)\b.*?^#(?:else|endif)\b", re.M | re.S)  # FXENT3: the JP branch is not in the ELF; LIT1: nor the PAL one (US build)
+ MTX = re.compile(r"^(?:Mtx|Matrix4s)\s+(?:N\((\w+)\)|(\w+))\s*(\[[^\]]*\])?\s*=", re.M)  # PRA31: a Matrix4s object has the 0x40 bytes of an Mtx
+ LIT = re.compile(r"^Lights1\s+(?:N\((\w+)\)|(\w+))\s*=", re.M)  # LIT1
++RAW = re.compile(r"^unsigned char\s+(?:N\((\w+)\)|(\w+))\s*\[\w*\]\s*=", re.M)  # RAWIMG: a texture or palette as a C byte array
++RAW_RULE = True  # RAWIMG: seeded test in 3ds/tests/host.d/rawimg.sh
+ INC = re.compile(r'^\s*#include\s+"([^"]+\.inc\.c)"', re.M)
+ INCLUDE = re.compile(r'^\s*#\s*include\s+"([^"]+)"', re.M)
+ IMG = re.compile(r"INCLUDE_(?:IMG|PAL|RAW)\(\s*\"[^\"]*\"\s*,\s*(\w+)\s*\)")
+@@ -103,6 +105,8 @@ def scan(path, out, moved=False, parent_ns=None, ren=None):
+         out.append(("Lit", name_of(path, ns, m.group(1), ren.get(m.group(2), m.group(2)), pre_bad), moved))
+     for name in IMG.findall(text):
+         out.append(("Img", ren.get(name, name), moved))
++    for m in RAW.finditer(text) if RAW_RULE else ():
++        out.append(("Raw", name_of(path, ns, m.group(1), ren.get(m.group(2), m.group(2)), pre_bad), moved))
+     for m in INC.finditer(text):
+         p = resolve(m.group(1), path)
+         if p is None:
+@@ -143,7 +147,7 @@ def entry_lines(entries):
+         if k == "Img":
+             lines.append(f'    {{ "{n}", GS_IMG, (const void*){n}, (const void*){n}_gend{tail}')
+         else:
+-            gk = {"Gfx": "GS_GFX", "Vtx": "GS_VTX", "Mtx": "GS_MTX", "Lit": "GS_LIT", "Vec3s": "GS_V3S"}[k]
++            gk = {"Gfx": "GS_GFX", "Vtx": "GS_VTX", "Mtx": "GS_MTX", "Lit": "GS_LIT", "Vec3s": "GS_V3S", "Raw": "GS_IMG"}[k]
+             if k in ("Mtx", "Lit"):
+                 lines.append(f'    {{ "{n}", {gk}, (const void*)&{n}, (const void*)((const char*)&{n} + sizeof {n}){tail}')
+             else:
+diff --git a/3ds/tools/gfxin/src/entity/model/HeartBlockContent.c b/3ds/tools/gfxin/src/entity/model/HeartBlockContent.c
+new file mode 100644
+index 0000000000..821691c01a
+--- /dev/null
++++ b/3ds/tools/gfxin/src/entity/model/HeartBlockContent.c
+@@ -0,0 +1,48 @@
++#include "src/entity/model/HeartBlockContent.c"
++Gfx Entity_HeartBlockContent_LoadPalette[] = {
++    gsDPSetTextureLUT(G_TT_RGBA16),
++    gsDPLoadTLUT_pal16(0, D_0A000600_E4A440),
++    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
++    gsDPSetTextureDetail(G_TD_CLAMP),
++    gsDPSetTextureLOD(G_TL_TILE),
++    gsDPSetTexturePersp(G_TP_PERSP),
++    gsDPSetTextureFilter(G_TF_BILERP),
++    gsDPSetTextureConvert(G_TC_FILT),
++    gsSPEndDisplayList(),
++};
++Gfx Entity_HeartBlockContent_RenderImage[] = {
++    gsDPSetCycleType(G_CYC_1CYCLE),
++    gsSPDisplayList(Entity_HeartBlockContent_LoadPalette),
++    gsSPClearGeometryMode(G_CULL_BACK | G_LIGHTING | G_SHADING_SMOOTH),
++    gsSPVertex(Entity_HeartBlockContent_vtx, 4, 0),
++    gsSP2Triangles(0, 1, 2, 0, 0, 2, 3, 0),
++    gsSPEndDisplayList(),
++};
++Gfx Entity_HeartBlockContent_RenderHeartSleeping[] = {
++    gsDPPipeSync(),
++    gsDPSetRenderMode(G_RM_AA_ZB_TEX_EDGE, G_RM_AA_ZB_TEX_EDGE2),
++    gsDPLoadTextureBlock_4b(D_0A000000_E49E40, G_IM_FMT_CI, 32, 32, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD),
++    gsSPDisplayList(Entity_HeartBlockContent_RenderImage),
++    gsSPEndDisplayList(),
++};
++Gfx D_0A000758_E4A598[] = {
++    gsDPPipeSync(),
++    gsDPSetRenderMode(G_RM_AA_ZB_TEX_EDGE, G_RM_AA_ZB_TEX_EDGE2),
++    gsDPLoadTextureBlock_4b(D_0A000200_E4A040, G_IM_FMT_CI, 32, 32, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD),
++    gsSPDisplayList(Entity_HeartBlockContent_RenderImage),
++    gsSPEndDisplayList(),
++};
++Gfx Entity_HeartBlockContent_RenderHeartAwake[] = {
++    gsDPPipeSync(),
++    gsDPSetRenderMode(G_RM_ZB_CLD_SURF, G_RM_ZB_CLD_SURF2),
++    gsDPLoadTextureBlock_4b(D_0A000200_E4A040, G_IM_FMT_CI, 32, 32, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD),
++    gsSPDisplayList(Entity_HeartBlockContent_RenderImage),
++    gsSPEndDisplayList(),
++};
++Gfx Entity_HeartBlockContent_RenderHeartHappy[] = {
++    gsDPPipeSync(),
++    gsDPSetRenderMode(G_RM_ZB_CLD_SURF, G_RM_ZB_CLD_SURF2),
++    gsDPLoadTextureBlock_4b(D_0A000400_E4A240, G_IM_FMT_CI, 32, 32, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD),
++    gsSPDisplayList(Entity_HeartBlockContent_RenderImage),
++    gsSPEndDisplayList(),
++};
+diff --git a/3ds/tools/gfxin/src/entity/model/UltraBlockContent.c b/3ds/tools/gfxin/src/entity/model/UltraBlockContent.c
+new file mode 100644
+index 0000000000..0ff335c063
+--- /dev/null
++++ b/3ds/tools/gfxin/src/entity/model/UltraBlockContent.c
+@@ -0,0 +1,47 @@
++#include "src/entity/model/UltraBlockContent.c"
++Gfx Entity_UltraBlockContent_LoadPalette[] = {
++    gsDPSetTextureLUT(G_TT_RGBA16),
++    gsDPLoadTLUT_pal16(0, D_0A000600_E4B080),
++    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
++    gsDPSetTextureDetail(G_TD_CLAMP),
++    gsDPSetTextureLOD(G_TL_TILE),
++    gsDPSetTexturePersp(G_TP_PERSP),
++    gsDPSetTextureFilter(G_TF_BILERP),
++    gsSPEndDisplayList(),
++};
++Gfx Entity_UltraBlockContent_RenderImage[] = {
++    gsDPSetCycleType(G_CYC_1CYCLE),
++    gsSPDisplayList(Entity_UltraBlockContent_LoadPalette),
++    gsSPClearGeometryMode(G_CULL_BACK | G_LIGHTING | G_SHADING_SMOOTH),
++    gsSPVertex(Entity_UltraBlockContent_vtx, 4, 0),
++    gsSP2Triangles(0, 1, 2, 0, 0, 2, 3, 0),
++    gsSPEndDisplayList(),
++};
++Gfx Entity_UltraBlockContent_Render4[] = {
++    gsDPPipeSync(),
++    gsDPSetRenderMode(G_RM_AA_ZB_TEX_EDGE, G_RM_AA_ZB_TEX_EDGE2),
++    gsDPLoadTextureBlock_4b(D_0A000400_E4AE80, G_IM_FMT_CI, 32, 32, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD),
++    gsSPDisplayList(Entity_UltraBlockContent_RenderImage),
++    gsSPEndDisplayList(),
++};
++Gfx Entity_UltraBlockContent_Render2[] = {
++    gsDPPipeSync(),
++    gsDPSetRenderMode(G_RM_AA_ZB_XLU_SURF, G_RM_AA_ZB_XLU_SURF2),
++    gsDPLoadTextureBlock_4b(D_0A000400_E4AE80, G_IM_FMT_CI, 32, 32, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD),
++    gsSPDisplayList(Entity_UltraBlockContent_RenderImage),
++    gsSPEndDisplayList(),
++};
++Gfx Entity_UltraBlockContent_Render3[] = {
++    gsDPPipeSync(),
++    gsDPSetRenderMode(G_RM_AA_ZB_TEX_EDGE, G_RM_AA_ZB_TEX_EDGE2),
++    gsDPLoadTextureBlock_4b(D_0A000200_E4AC80, G_IM_FMT_CI, 32, 32, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD),
++    gsSPDisplayList(Entity_UltraBlockContent_RenderImage),
++    gsSPEndDisplayList(),
++};
++Gfx Entity_UltraBlockContent_Render[] = {
++    gsDPPipeSync(),
++    gsDPSetRenderMode(G_RM_AA_ZB_XLU_SURF, G_RM_AA_ZB_XLU_SURF2),
++    gsDPLoadTextureBlock_4b(D_0A000200_E4AC80, G_IM_FMT_CI, 32, 32, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD),
++    gsSPDisplayList(Entity_UltraBlockContent_RenderImage),
++    gsSPEndDisplayList(),
++};
+diff --git a/3ds/tools/gset.d/RAWIMG.txt b/3ds/tools/gset.d/RAWIMG.txt
+new file mode 100644
+index 0000000000..42ed35ac76
+--- /dev/null
++++ b/3ds/tools/gset.d/RAWIMG.txt
+@@ -0,0 +1,3 @@
++# RAWIMG: Heart and Ultra block content lists (their textures are unsigned char arrays: gen_gfx_syms.py RAW rule)
++src/entity/model/HeartBlockContent.c
++src/entity/model/UltraBlockContent.c
+diff --git a/src/entity/HeartBlock.c b/src/entity/HeartBlock.c
+index 313cae7d89..6c997f8ae5 100644
+--- a/src/entity/HeartBlock.c
++++ b/src/entity/HeartBlock.c
+@@ -15,9 +15,9 @@ extern EntityModelScript Entity_HeartBlockContent_RenderScriptHit;
+ extern EntityBlueprint Entity_HeartBlockContent;
+ 
+ NDN_DECL(Entity_HeartBlock_Render);
+-extern Gfx Entity_HeartBlockContent_RenderHeartSleeping[];
+-extern Gfx Entity_HeartBlockContent_RenderHeartAwake[];
+-extern Gfx Entity_HeartBlockContent_RenderHeartHappy[];
++NDN_DECL(Entity_HeartBlockContent_RenderHeartSleeping);
++NDN_DECL(Entity_HeartBlockContent_RenderHeartAwake);
++NDN_DECL(Entity_HeartBlockContent_RenderHeartHappy);
+ 
+ BSS bool HeartBlockPrinterClosed;
+ 
+@@ -74,7 +74,7 @@ void entity_HeartBlockContent__setupGfx(s32 entityIndex, Gfx* arg1) {
+ }
+ 
+ void entity_HeartBlockContent_setupGfx(s32 entityIndex) {
+-    entity_HeartBlockContent__setupGfx(entityIndex, Entity_HeartBlockContent_RenderHeartHappy);
++    entity_HeartBlockContent__setupGfx(entityIndex, NDN(Entity_HeartBlockContent_RenderHeartHappy));
+ }
+ 
+ void entity_HeartBlockContent_set_initial_pos(Entity* entity) {
+@@ -424,9 +424,9 @@ EntityScript Entity_HeartBlock_Script = {
+     es_End
+ };
+ 
+-EntityModelScript Entity_HeartBlockContent_RenderScriptIdle = STANDARD_ENTITY_MODEL_SCRIPT(Entity_HeartBlockContent_RenderHeartSleeping, RENDER_MODE_ALPHATEST);
+-EntityModelScript Entity_HeartBlockContent_RenderScriptHit = STANDARD_ENTITY_MODEL_SCRIPT(Entity_HeartBlockContent_RenderHeartAwake, RENDER_MODE_SURFACE_XLU_LAYER2);
+-EntityModelScript Entity_HeartBlockContent_RenderScriptAfterHit = STANDARD_ENTITY_MODEL_SCRIPT(Entity_HeartBlockContent_RenderHeartHappy, RENDER_MODE_SURFACE_XLU_LAYER2);
++EntityModelScript Entity_HeartBlockContent_RenderScriptIdle = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_HeartBlockContent_RenderHeartSleeping), RENDER_MODE_ALPHATEST);
++EntityModelScript Entity_HeartBlockContent_RenderScriptHit = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_HeartBlockContent_RenderHeartAwake), RENDER_MODE_SURFACE_XLU_LAYER2);
++EntityModelScript Entity_HeartBlockContent_RenderScriptAfterHit = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_HeartBlockContent_RenderHeartHappy), RENDER_MODE_SURFACE_XLU_LAYER2);
+ EntityModelScript Entity_HeartBlock_RenderScript = STANDARD_ENTITY_MODEL_SCRIPT(NDN(Entity_HeartBlock_Render), RENDER_MODE_SURFACE_XLU_LAYER3);
+ 
+ EntityBlueprint Entity_HeartBlockFrame = {
+diff --git a/src/entity/SuperBlock.c b/src/entity/SuperBlock.c
+index 836a4b1737..4ee9dce6a8 100644
+--- a/src/entity/SuperBlock.c
++++ b/src/entity/SuperBlock.c
+@@ -14,8 +14,8 @@ NDN_DECL(Entity_SuperBlock_Render);
+ NDN_DECL(Entity_UltraBlock_Render);
+ NDN_DECL(Entity_SuperBlockContent_Render);
+ NDN_DECL(Entity_SuperBlockContent_Render2);
+-extern Gfx Entity_UltraBlockContent_Render[];
+-extern Gfx Entity_UltraBlockContent_Render2[];
++NDN_DECL(Entity_UltraBlockContent_Render);
++NDN_DECL(Entity_UltraBlockContent_Render2);
+ extern unsigned char D_0A000200_E4A8A0[];
+ extern unsigned char D_0A000220_E4A8C0[];
+ extern unsigned char D_0A000240_E4A8E0[];
+@@ -217,8 +217,8 @@ void entity_init_SuperBlockContent(Entity* entity) {
+ void entity_init_UltraBlockContent(Entity* entity) {
+     SuperBlockContentData* data = entity->dataBuf.superBlockContent;
+ 
+-    data->gfx1 = Entity_UltraBlockContent_Render;
+-    data->gfx2 = Entity_UltraBlockContent_Render2;
++    data->gfx1 = NDN(Entity_UltraBlockContent_Render);
++    data->gfx2 = NDN(Entity_UltraBlockContent_Render2);
+     entity->renderSetupFunc = entity_SuperBlockContent_setupGfx;
+ }
+ 
+diff --git a/src/entity/model/HeartBlockContent.c b/src/entity/model/HeartBlockContent.c
+index 389dccd239..aaa6e3ab9c 100644
+--- a/src/entity/model/HeartBlockContent.c
++++ b/src/entity/model/HeartBlockContent.c
+@@ -1,4 +1,5 @@
+ #include "common.h"
++#include "nd_gtab.h"
+ 
+ //TODO make images
+ unsigned char D_0A000000_E49E40[] = {
+@@ -24,55 +25,14 @@ Vtx Entity_HeartBlockContent_vtx[] = {
+     {{{    13,   -13,     0 }, 0, {     0,  1024 }, { 255, 255, 255, 255 }}},
+ };
+ 
+-Gfx Entity_HeartBlockContent_LoadPalette[] = {
+-    gsDPSetTextureLUT(G_TT_RGBA16),
+-    gsDPLoadTLUT_pal16(0, D_0A000600_E4A440),
+-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
+-    gsDPSetTextureDetail(G_TD_CLAMP),
+-    gsDPSetTextureLOD(G_TL_TILE),
+-    gsDPSetTexturePersp(G_TP_PERSP),
+-    gsDPSetTextureFilter(G_TF_BILERP),
+-    gsDPSetTextureConvert(G_TC_FILT),
+-    gsSPEndDisplayList(),
+-};
++NDN_DECL(Entity_HeartBlockContent_LoadPalette);
+ 
+-Gfx Entity_HeartBlockContent_RenderImage[] = {
+-    gsDPSetCycleType(G_CYC_1CYCLE),
+-    gsSPDisplayList(Entity_HeartBlockContent_LoadPalette),
+-    gsSPClearGeometryMode(G_CULL_BACK | G_LIGHTING | G_SHADING_SMOOTH),
+-    gsSPVertex(Entity_HeartBlockContent_vtx, 4, 0),
+-    gsSP2Triangles(0, 1, 2, 0, 0, 2, 3, 0),
+-    gsSPEndDisplayList(),
+-};
++NDN_DECL(Entity_HeartBlockContent_RenderImage);
+ 
+-Gfx Entity_HeartBlockContent_RenderHeartSleeping[] = {
+-    gsDPPipeSync(),
+-    gsDPSetRenderMode(G_RM_AA_ZB_TEX_EDGE, G_RM_AA_ZB_TEX_EDGE2),
+-    gsDPLoadTextureBlock_4b(D_0A000000_E49E40, G_IM_FMT_CI, 32, 32, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD),
+-    gsSPDisplayList(Entity_HeartBlockContent_RenderImage),
+-    gsSPEndDisplayList(),
+-};
++NDN_DECL(Entity_HeartBlockContent_RenderHeartSleeping);
+ 
+-Gfx D_0A000758_E4A598[] = {
+-    gsDPPipeSync(),
+-    gsDPSetRenderMode(G_RM_AA_ZB_TEX_EDGE, G_RM_AA_ZB_TEX_EDGE2),
+-    gsDPLoadTextureBlock_4b(D_0A000200_E4A040, G_IM_FMT_CI, 32, 32, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD),
+-    gsSPDisplayList(Entity_HeartBlockContent_RenderImage),
+-    gsSPEndDisplayList(),
+-};
++NDN_DECL(D_0A000758_E4A598);
+ 
+-Gfx Entity_HeartBlockContent_RenderHeartAwake[] = {
+-    gsDPPipeSync(),
+-    gsDPSetRenderMode(G_RM_ZB_CLD_SURF, G_RM_ZB_CLD_SURF2),
+-    gsDPLoadTextureBlock_4b(D_0A000200_E4A040, G_IM_FMT_CI, 32, 32, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD),
+-    gsSPDisplayList(Entity_HeartBlockContent_RenderImage),
+-    gsSPEndDisplayList(),
+-};
++NDN_DECL(Entity_HeartBlockContent_RenderHeartAwake);
+ 
+-Gfx Entity_HeartBlockContent_RenderHeartHappy[] = {
+-    gsDPPipeSync(),
+-    gsDPSetRenderMode(G_RM_ZB_CLD_SURF, G_RM_ZB_CLD_SURF2),
+-    gsDPLoadTextureBlock_4b(D_0A000400_E4A240, G_IM_FMT_CI, 32, 32, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD),
+-    gsSPDisplayList(Entity_HeartBlockContent_RenderImage),
+-    gsSPEndDisplayList(),
+-};
++NDN_DECL(Entity_HeartBlockContent_RenderHeartHappy);
+diff --git a/src/entity/model/UltraBlockContent.c b/src/entity/model/UltraBlockContent.c
+index e5f165df46..e5c30a3b6e 100644
+--- a/src/entity/model/UltraBlockContent.c
++++ b/src/entity/model/UltraBlockContent.c
+@@ -1,4 +1,5 @@
+ #include "common.h"
++#include "nd_gtab.h"
+ 
+ unsigned char D_0A000000_E4AA80[] = {
+ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 119, 119, 119, 119, 112, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 119, 119, 119, 119, 119, 119, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 113, 17, 34, 34, 34, 39, 112, 0, 0, 0, 0, 0, 0, 0, 0, 119, 18, 102, 102, 102, 102, 34, 119, 0, 0, 0, 0, 0, 0, 0, 7, 113, 102, 0, 0, 0, 0, 102, 39, 112, 0, 0, 0, 0, 0, 0, 119, 22, 0, 0, 0, 0, 0, 0, 98, 119, 0, 0, 0, 0, 0, 7, 113, 96, 0, 0, 0, 0, 0, 0, 6, 39, 112, 0, 0, 0, 0, 119, 22, 0, 0, 0, 0, 0, 0, 0, 0, 98, 119, 0, 0, 0, 7, 118, 102, 0, 0, 0, 0, 0, 0, 0, 0, 102, 39, 112, 0, 0, 7, 118, 32, 0, 0, 0, 0, 0, 0, 0, 0, 2, 103, 112, 0, 0, 7, 118, 32, 0, 0, 0, 0, 0, 0, 0, 0, 2, 103, 112, 0, 0, 7, 118, 16, 0, 0, 0, 0, 0, 0, 0, 0, 1, 103, 112, 0, 0, 7, 118, 16, 0, 0, 0, 0, 0, 0, 0, 0, 1, 103, 112, 0, 0, 7, 118, 16, 0, 0, 0, 0, 0, 0, 0, 0, 1, 103, 112, 0, 0, 7, 118, 16, 0, 0, 0, 0, 0, 0, 0, 0, 1, 103, 112, 0, 0, 7, 118, 16, 0, 0, 0, 0, 0, 0, 0, 0, 1, 103, 112, 0, 0, 7, 118, 16, 0, 0, 0, 0, 0, 0, 0, 0, 1, 103, 112, 0, 0, 7, 118, 34, 0, 0, 0, 0, 0, 0, 0, 0, 1, 103, 112, 0, 0, 0, 119, 98, 0, 0, 0, 0, 0, 0, 0, 0, 33, 103, 112, 0, 0, 0, 7, 118, 32, 0, 0, 0, 0, 0, 0, 0, 22, 119, 0, 0, 0, 0, 0, 119, 98, 0, 0, 0, 0, 0, 0, 1, 103, 112, 0, 0, 0, 0, 0, 7, 118, 34, 0, 0, 0, 0, 2, 22, 119, 0, 0, 0, 0, 0, 0, 0, 119, 98, 17, 17, 18, 34, 34, 103, 112, 0, 0, 0, 0, 0, 0, 0, 7, 118, 102, 102, 102, 102, 102, 119, 0, 0, 0, 0, 0, 0, 0, 0, 0, 119, 119, 119, 119, 119, 119, 112, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 119, 119, 119, 119, 119, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+@@ -19,54 +20,14 @@ Vtx Entity_UltraBlockContent_vtx[] = {
+     {{{    13,   -13,     0 }, 0, {     0,  1024 }, { 255, 255, 255, 255 }}},
+ };
+ 
+-Gfx Entity_UltraBlockContent_LoadPalette[] = {
+-    gsDPSetTextureLUT(G_TT_RGBA16),
+-    gsDPLoadTLUT_pal16(0, D_0A000600_E4B080),
+-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
+-    gsDPSetTextureDetail(G_TD_CLAMP),
+-    gsDPSetTextureLOD(G_TL_TILE),
+-    gsDPSetTexturePersp(G_TP_PERSP),
+-    gsDPSetTextureFilter(G_TF_BILERP),
+-    gsSPEndDisplayList(),
+-};
++NDN_DECL(Entity_UltraBlockContent_LoadPalette);
+ 
+-Gfx Entity_UltraBlockContent_RenderImage[] = {
+-    gsDPSetCycleType(G_CYC_1CYCLE),
+-    gsSPDisplayList(Entity_UltraBlockContent_LoadPalette),
+-    gsSPClearGeometryMode(G_CULL_BACK | G_LIGHTING | G_SHADING_SMOOTH),
+-    gsSPVertex(Entity_UltraBlockContent_vtx, 4, 0),
+-    gsSP2Triangles(0, 1, 2, 0, 0, 2, 3, 0),
+-    gsSPEndDisplayList(),
+-};
++NDN_DECL(Entity_UltraBlockContent_RenderImage);
+ 
+-Gfx Entity_UltraBlockContent_Render4[] = {
+-    gsDPPipeSync(),
+-    gsDPSetRenderMode(G_RM_AA_ZB_TEX_EDGE, G_RM_AA_ZB_TEX_EDGE2),
+-    gsDPLoadTextureBlock_4b(D_0A000400_E4AE80, G_IM_FMT_CI, 32, 32, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD),
+-    gsSPDisplayList(Entity_UltraBlockContent_RenderImage),
+-    gsSPEndDisplayList(),
+-};
++NDN_DECL(Entity_UltraBlockContent_Render4);
+ 
+-Gfx Entity_UltraBlockContent_Render2[] = {
+-    gsDPPipeSync(),
+-    gsDPSetRenderMode(G_RM_AA_ZB_XLU_SURF, G_RM_AA_ZB_XLU_SURF2),
+-    gsDPLoadTextureBlock_4b(D_0A000400_E4AE80, G_IM_FMT_CI, 32, 32, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD),
+-    gsSPDisplayList(Entity_UltraBlockContent_RenderImage),
+-    gsSPEndDisplayList(),
+-};
++NDN_DECL(Entity_UltraBlockContent_Render2);
+ 
+-Gfx Entity_UltraBlockContent_Render3[] = {
+-    gsDPPipeSync(),
+-    gsDPSetRenderMode(G_RM_AA_ZB_TEX_EDGE, G_RM_AA_ZB_TEX_EDGE2),
+-    gsDPLoadTextureBlock_4b(D_0A000200_E4AC80, G_IM_FMT_CI, 32, 32, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD),
+-    gsSPDisplayList(Entity_UltraBlockContent_RenderImage),
+-    gsSPEndDisplayList(),
+-};
++NDN_DECL(Entity_UltraBlockContent_Render3);
+ 
+-Gfx Entity_UltraBlockContent_Render[] = {
+-    gsDPPipeSync(),
+-    gsDPSetRenderMode(G_RM_AA_ZB_XLU_SURF, G_RM_AA_ZB_XLU_SURF2),
+-    gsDPLoadTextureBlock_4b(D_0A000200_E4AC80, G_IM_FMT_CI, 32, 32, 0, G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD),
+-    gsSPDisplayList(Entity_UltraBlockContent_RenderImage),
+-    gsSPEndDisplayList(),
+-};
++NDN_DECL(Entity_UltraBlockContent_Render);

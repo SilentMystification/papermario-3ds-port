@@ -1,0 +1,2 @@
+# SBLOCK: Entity_SaveBlock_RenderFaces moves to the twin 3ds/tools/gfxin/src/entity/model/SaveBlock.c (gset.d row SBLOCK.txt)
+src/entity/model/SaveBlock.c

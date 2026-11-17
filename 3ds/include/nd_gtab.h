@@ -101,7 +101,9 @@ enum {
     NDN_COL,      /* a = 0 prim, 1 env, 2 fog, 3 blend; v = RGBA; b = minlod << 8 | lodfrac for prim */
     NDN_DRAW,     /* p = const Vtx* base (NULL: v = segmented address), b = index count, a = 0 (p = vertex base), 1 (p = ndnv pointers) or 2 (p NULL: indices are caller slots); the indices follow in the table's idx from idx_pos */
     NDN_CALL,     /* p = const NdNTab* of another (list, entry) pair */
-    NDN_UNIT      /* p = const uint32_t* the depth-0 typed units of the list (word pairs, NOPs kept, the end left out, a call stays a unit), b = their count; the first op of every table; CONV2D2 runs them with nd_walk_state */
+    NDN_UNIT,     /* p = const uint32_t* the depth-0 typed units of the list (word pairs, NOPs kept, the end left out, a call stays a unit), b = their count; the first op of every table; CONV2D2 runs them with nd_walk_state */
+    NDN_TSZ,      /* FXLT: a tile size on the caller's texture image (no SetTImg before it in the walk): a = tile (0 or 1), v = uls << 12 | ult, idx_pos = lrs << 12 | lrt; the bind of that tile stays the caller's */
+    NDN_LIT       /* FXLT: a light unit: a = 0 a Lights1 light (gSPLight: v = the 24-bit unit argument, p = the light), a = 1 the light count (gSPNumLights: v = the 24-bit unit argument, idx_pos = the word) */
 };
 typedef struct NdNOp { uint8_t op, a; uint16_t b; uint32_t v; const void* p; uint32_t idx_pos; } NdNOp;
 typedef struct NdNTab {
@@ -116,6 +118,18 @@ typedef struct NdNTab {
 /* CONV2D2, core 0 only. n = the word pairs of the list from unit 0 to the stop (NOPs counted): nd_walk_state(list, n) runs the unit copy. */
 typedef struct NdNDev { const void* list; uint32_t fl; const uint32_t* u; uint32_t nu; uint32_t ntri; } NdNDev; /* GKEY1: fl = nd_gt_state_only of the list (converter) */
 void nd_rec_ndev(const NdNDev* e); /* MESHST: record a built NdNDev (nd_mesh.h): it runs as nd_ntab_rec, no list key, no cache */
+/* NTABFIND: the record of nd_rec_ndev holds a copy of the entry, not its address. Core 0 runs the record after core 1 goes on, and the owner
+ * changes the entry first: imgfx.c imgfx_cache_instance_data and imgfx_load_anim set gfxDev[i].list to NULL (then gt_run gave ent_gdl(NULL) and
+ * ent_flat read 0x0..0x7FFC), imgfx_init allocates ImgFXInstances again, animator.c frees a mesh later. rec[0] 0, rec[1] 0 (not state-only),
+ * rec[2] the call site, rec[3] 0 (no entry), rec[4..8] the NdNDev, rec[9] 0. nd_ndev_rec (nd_walk.c, core 0) runs the copy as nd_ntab_rec. */
+#define ND_NDEV_REC_UNITS 5u
+_Static_assert(sizeof(NdNDev) == 20u, "NTABFIND: the record holds the 5 words of an NdNDev");
+static inline void nd_ndev_pack(uint32_t* rec, const NdNDev* e, uint32_t site) {
+    rec[0] = 0u; rec[1] = 0u; rec[2] = site; rec[3] = 0u; rec[9] = 0u;
+    __builtin_memcpy(rec + 4, e, sizeof *e); /* no <string.h>: include/gcc/memory.h (43F0.c) conflicts with it */
+}
+static inline void nd_ndev_unpack(NdNDev* d, const uint32_t* rec) { __builtin_memcpy(d, rec + 4, sizeof *d); }
+void nd_ndev_rec(const uint32_t* rec);
 extern const NdNDev* ndn_dev_idx[]; /* GKEY1: &ndd_<list> per entry, sorted by ->list at the first nd_ntab_find */
 extern const unsigned ndn_dev_n;
 const NdNDev* nd_ntab_find(const void* list);

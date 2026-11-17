@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "effects_internal.h"
 #include "nu/nusys.h"
 #include "nd_val.h"
@@ -16,8 +17,8 @@ typedef struct FlamePreset {
 } FlamePreset; // size = 0x10
 
 extern Gfx D_09000800_3543B0[];
-extern Gfx D_090008F8_3544A8[]; //TODO rename EffectGfx_Flame_DrawQuad
-extern Gfx D_09000918_3544C8[];
+NDN_DECL(D_090008F8_3544A8);
+NDN_DECL(D_09000918_3544C8);
 extern Gfx D_090009E0_354590[];
 
 FlamePreset FlamePresets[] = {
@@ -184,7 +185,7 @@ void flame_appendGfx(void* effect) {
 
     if (LastFlameRenderFrame != gGameStatusPtr->frameCounter) {
         LastFlameRenderFrame = gGameStatusPtr->frameCounter;
-        gSPDisplayList(gMainGfxPos++, D_09000918_3544C8);
+        gSPDisplayList(gMainGfxPos++, NDN(D_09000918_3544C8));
         nd_val_tile_size(1, uls, ult, uls + 128, ult + 256);
         gSPDisplayList(gMainGfxPos++, D_090009E0_354590);
         nd_target_end();
@@ -207,6 +208,6 @@ void flame_appendGfx(void* effect) {
     guMtxF2L(sp98, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gSPDisplayList(gMainGfxPos++, D_090008F8_3544A8);
+    gSPDisplayList(gMainGfxPos++, NDN(D_090008F8_3544A8));
     nd_xf_pop(G_MTX_MODELVIEW);
 }

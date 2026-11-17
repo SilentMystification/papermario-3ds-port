@@ -502,16 +502,16 @@ static uint32_t entcap_fnv(uint32_t h, const void* p, unsigned n) {
     for (unsigned i = 0; i < n; i++) h = (h ^ b[i]) * 16777619u;
     return h;
 }
-static __attribute__((cold, noinline)) void entcap_rec(const NdGTab* t, uint32_t site, uint32_t ent) { /* a static list call with no stated entry */
+static __attribute__((cold, noinline)) void entcap_rec(const void* list, uint32_t site, uint32_t ent) { /* a static list call with no stated entry */
     static uint32_t keys[4096];
     static unsigned nkeys, over;
     void nd_walker_desc(NdPsoDesc* d);
-    if (nd_ntab_find(t->list)) return; /* a v2 table: not a list without one */
+    if (!PMDL("entcapt") && nd_ntab_find(list)) return; /* a v2 table: not a list without one (ENTSRC: the switch entcapt logs it too) */
     if (ent) return; /* FXENT2: a call with a stated entry (nd_draw_list with an ND_PSO_DESC); ND_SELF and nd_rec_dl calls are logged */
     NdPsoDesc d;
     nd_walker_desc(&d);
     d.geom = 0; d.key_c = 0; d.key_s = 0; d.plod = 0; /* FXREST2: draw values, not entry state */
-    const uint32_t la = (uint32_t)(uintptr_t)t->list;
+    const uint32_t la = (uint32_t)(uintptr_t)list;
     uint32_t h = entcap_fnv(2166136261u, &la, 4u);
     h = entcap_fnv(h, &site, 4u);
     h = entcap_fnv(h, &d, sizeof d);
@@ -617,7 +617,7 @@ static void gt_run(const void* key, const NdGTab* t, const NdNDev* nt, const uin
         pm_walk_side--;
         return;
     }
-    if (__builtin_expect(PMDL("entcap") && !nt, 0)) entcap_rec(t, rec[2], rec[3]);
+    if (__builtin_expect(PMDL("entcap") && (!nt || PMDL("entcapt")), 0)) entcap_rec(key, rec[2], rec[3]); /* ENTSRC: entcapt adds the lists with a v2 table */
     if (__builtin_expect(pm_walk_dbg, 0)) {
         const uint32_t u[2] = { ND_OP_CALL_W0, (uint32_t)(uintptr_t)key };
         nd_walk_state(u, 1u);
@@ -650,6 +650,7 @@ void nd_gtab_run(const uint32_t* rec) { const NdGTab* t = (const NdGTab*)(uintpt
 unsigned nd_gtr_rec; /* GKEY2: the runs of nd_ntab_rec */
 void nd_ntab_rec(const uint32_t* rec) { const NdNDev* nt = (const NdNDev*)(uintptr_t)rec[0]; nd_gtr_rec++; gt_run(nt->list, NULL, nt, rec); }
 void nd_ntab_rec_e(const uint32_t* rec) { nd_psochk_draw((const NdPsoDesc*)(uintptr_t)rec[3]); nd_ntab_rec(rec); }
+void nd_ndev_rec(const uint32_t* rec) { NdNDev d; nd_ndev_unpack(&d, rec); nd_gtr_rec++; gt_run(d.list, NULL, &d, rec); } /* NTABFIND: the record-time copy (nd_gtab.h) */
 void nd_gtab_run_e(const uint32_t* rec) { nd_psochk_draw((const NdPsoDesc*)(uintptr_t)rec[3]); nd_gtab_run(rec); }
 /* DIRECT D10a: a custom gfx range of the frame stream (model record R11, build_custom_gfx), run to its NDC_END as the walker ran the list it
  * replaces: the list start (gv_epoch, dlc_on, a full combine and render sync: DIP2) and the list end (the vertex and texture streak flush). */

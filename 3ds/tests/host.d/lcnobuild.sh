@@ -9,7 +9,7 @@ printf '//#include "fx/dead.gfx.inc.c"\n#include "fx/live.gfx.inc.c"\n' > "$T/sr
 printf 'Gfx D_dead[] = {\n    gsSPEndDisplayList(),\n};\n' > "$T/assets/us/fx/dead.gfx.inc.c"
 printf 'Gfx D_live[] = {\n    gsSPEndDisplayList(),\n};\n' > "$T/assets/us/fx/live.gfx.inc.c"
 got=$($PY "$T/3ds/tools/listcen.py" | grep -E '^listcen total data(_arrays)? ' | tr '\n' ' ')
-sed -i 's/^NOBUILD_RULE = True/NOBUILD_RULE = False/' "$T/3ds/tools/listcen.py"
+sed -i -e 's/^NOBUILD_RULE = True/NOBUILD_RULE = False/' -e 's/^NOINC_RULE = True/NOINC_RULE = False/' "$T/3ds/tools/listcen.py"
 seed=$($PY "$T/3ds/tools/listcen.py" | grep -E '^listcen total data(_arrays)? ' | tr '\n' ' ')
 rm -rf "$T"
 if [ "$got" != "listcen total data 1 listcen total data_arrays 1 " ]; then echo "lcnobuild FAIL rule: [$got]"; exit 1; fi

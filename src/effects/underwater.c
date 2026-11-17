@@ -10,8 +10,8 @@
 #include "nd_at.h"
 
 extern Vtx D_09000428_3B9E98[];
-extern Gfx D_09000528_3B9F98[];
-extern Gfx D_09000570_3B9FE0[];
+NDN_DECL(D_09000528_3B9F98);
+NDN_DECL(D_09000570_3B9FE0);
 
 void underwater_init(EffectInstance* effect);
 void underwater_update(EffectInstance* effect);
@@ -217,7 +217,7 @@ void underwater_appendGfx(void* effect) {
     s32 b, c, k, i;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_draw_list(D_09000528_3B9F98, ND_SELF);
+    nd_draw_list(NDN(D_09000528_3B9F98), ND_SELF);
 
     tidal_grid_fill(data);
     if (!tidal_logged) {

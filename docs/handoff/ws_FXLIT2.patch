@@ -1,0 +1,153 @@
+diff --git a/src/curtains.c b/src/curtains.c
+index 93cd894453..84b420689f 100644
+--- a/src/curtains.c
++++ b/src/curtains.c
+@@ -180,7 +180,7 @@ void render_curtains(void) {
+                 gSPDisplayList(gMainGfxPos++, TheaterInitGfx);
+                 nd_draw_list(NDN(NoControllerSetupTexGfx), ND_SELF);
+                 nd_val_prim(0, 0, 0xFF, 0x20, 0x10, alpha);
+-                gSPDisplayList(gMainGfxPos++, NoControllerGfx);
++                nd_draw_list(NoControllerGfx, ND_SELF);
+ #if VERSION_PAL
+             }
+             
+diff --git a/src/screen_overlays.c b/src/screen_overlays.c
+index e749606c30..50d12693d1 100644
+--- a/src/screen_overlays.c
++++ b/src/screen_overlays.c
+@@ -292,7 +292,7 @@ void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* ove
+             nd_xf_push(&matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+             guRotate(&matrixStack[gMatrixListPos], s0 * 0.5f, 0.0f, 0.0f, 1.0f);
+             nd_xf_push(&matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+-            gSPDisplayList(gMainGfxPos++, D_8014E8F0);
++            nd_draw_list(D_8014E8F0, ND_SELF);
+             nd_xf_pop(G_MTX_MODELVIEW);
+ 
+             guTranslate(&matrixStack[gMatrixListPos], 240.0f, 120.0f, 0.0f);
+@@ -301,7 +301,7 @@ void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* ove
+             nd_xf_push(&matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+             guRotate(&matrixStack[gMatrixListPos], s0 * 0.5f, 0.0f, 0.0f, 1.0f);
+             nd_xf_push(&matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+-            gSPDisplayList(gMainGfxPos++, D_8014E8F0);
++            nd_draw_list(D_8014E8F0, ND_SELF);
+             nd_xf_pop(G_MTX_MODELVIEW);
+ 
+             guTranslate(&matrixStack[gMatrixListPos], 0.0f, 0.0f, 0.0f);
+@@ -318,7 +318,7 @@ void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* ove
+             nd_xf_push(&matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+             guRotate(&matrixStack[gMatrixListPos], -s0, 0.0f, 0.0f, 1.0f);
+             nd_xf_push(&matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+-            gSPDisplayList(gMainGfxPos++, D_8014E8F0);
++            nd_draw_list(D_8014E8F0, ND_SELF);
+             nd_xf_pop(G_MTX_MODELVIEW);
+ 
+             guTranslate(&matrixStack[gMatrixListPos], x2, SCREEN_HEIGHT - y2, 0.0f);
+@@ -327,13 +327,13 @@ void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* ove
+             nd_xf_push(&matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+             guRotate(&matrixStack[gMatrixListPos], -s0, 0.0f, 0.0f, 1.0f);
+             nd_xf_push(&matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+-            gSPDisplayList(gMainGfxPos++, D_8014E8F0);
++            nd_draw_list(D_8014E8F0, ND_SELF);
+             nd_xf_pop(G_MTX_MODELVIEW);
+ 
+             guTranslate(&matrixStack[gMatrixListPos], 0.0f, 0.0f, 0.0f);
+             nd_xf_push(&matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+             nd_val_prim(0, 0, 0, 0, 0, alpha);
+-            gSPDisplayList(gMainGfxPos++, D_8014E9A8);
++            nd_draw_list(D_8014E9A8, ND_SELF);
+             nd_xf_pop(G_MTX_MODELVIEW);
+             break;
+         case OVERLAY_START_BATTLE:
+@@ -345,13 +345,13 @@ void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* ove
+             nd_xf_push(&matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+             guRotate(&matrixStack[gMatrixListPos], (f32)(-s0) * 0.5, 0.0f, 0.0f, 1.0f);
+             nd_xf_push(&matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+-            gSPDisplayList(gMainGfxPos++, D_8014E8F0);
++            nd_draw_list(D_8014E8F0, ND_SELF);
+             nd_xf_pop(G_MTX_MODELVIEW);
+ 
+             guTranslate(&matrixStack[gMatrixListPos], 0.0f, 0.0f, 0.0f);
+             nd_xf_push(&matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+             nd_val_prim(0, 0, 0, 0, 0, alpha);
+-            gSPDisplayList(gMainGfxPos++, D_8014E9A8);
++            nd_draw_list(D_8014E9A8, ND_SELF);
+             nd_xf_pop(G_MTX_MODELVIEW);
+             v0 = progress + 40;
+             if (progress > 170) {
+diff --git a/src/world/area_hos/hos_05/intro.c b/src/world/area_hos/hos_05/intro.c
+index 57dda50ada..b18c8f260b 100644
+--- a/src/world/area_hos/hos_05/intro.c
++++ b/src/world/area_hos/hos_05/intro.c
+@@ -1,4 +1,5 @@
+ #include "hos_05.h"
++#include "nd_gtab.h"
+ #include "effects.h"
+ #include "model.h"
+ #include "nu/nusys.h"
+@@ -1363,7 +1364,7 @@ void N(appendGfx_image_strips)(s32 baseX, s32 baseY, IMG_PTR img, PAL_PTR pal, s
+         return;
+     }
+ 
+-    gSPDisplayList(gMainGfxPos++, N(gfx_setup_story_viewport));
++    nd_draw_list(N(gfx_setup_story_viewport), ND_SELF);
+ 
+     if (pal != nullptr) {
+         nd_tex_load_tlut256(pal);
+@@ -1423,7 +1424,7 @@ void N(worker_draw_story_graphics)(void) {
+ 
+     N(draw_background_tape)();
+ 
+-    gSPDisplayList(gMainGfxPos++, N(gfx_setup_story_viewport));
++    nd_draw_list(N(gfx_setup_story_viewport), ND_SELF);
+     nd_target_end();
+ 
+     if (N(StoryGraphicsPtr)->storyPageAlpha < 255) {
+diff --git a/src/world/area_kmr/kmr_20/records.c b/src/world/area_kmr/kmr_20/records.c
+index 48ff604a1a..0f9d63690f 100644
+--- a/src/world/area_kmr/kmr_20/records.c
++++ b/src/world/area_kmr/kmr_20/records.c
+@@ -1,4 +1,5 @@
+ #include "kmr_20.h"
++#include "nd_gtab.h"
+ 
+ #include "world/area_kmr/kmr_20/records_screen.gfx.inc.c"
+ #include "nd_tx.h"
+@@ -65,7 +66,7 @@ void N(appendGfx_records_impl)(GameRecords* records, s32 alpha) {
+ #define CHARSET (0)
+ 
+     if (alpha > 0) {
+-        gSPDisplayList(gMainGfxPos++, N(records_screen_gfx));
++        nd_draw_list(N(records_screen_gfx), ND_SELF);
+         nd_val_prim(0, 0, 16, 120, 24, alpha * 0.65);
+         nd_rect_fill(33, 43, 287, 192);
+ 
+diff --git a/src/world/area_mgm/mgm_00/scoreboard.c b/src/world/area_mgm/mgm_00/scoreboard.c
+index ac8bc0b392..94aca1e6c8 100644
+--- a/src/world/area_mgm/mgm_00/scoreboard.c
++++ b/src/world/area_mgm/mgm_00/scoreboard.c
+@@ -1,4 +1,5 @@
+ #include "mgm_00.h"
++#include "nd_gtab.h"
+ #include "nd_tx.h"
+ #include "nd_val.h"
+ 
+@@ -60,7 +61,7 @@ Gfx N(Gfx_RecordDisplay_Init)[] = {
+ void N(draw_record_display)(RecordDisplayData* data, s32 alpha) {
+ 
+     if (alpha > 0) {
+-        gSPDisplayList(gMainGfxPos++, N(Gfx_RecordDisplay_Init));
++        nd_draw_list(N(Gfx_RecordDisplay_Init), ND_SELF);
+         nd_val_prim(0, 0, 16, 120, 24, alpha * 0.65);
+         nd_rect_fill(RECORD_BOX_POSX + 3, 53, RECORD_BOX_POSX + RECORD_BOX_WIDTH - 3, 129);
+         msg_draw_frame(RECORD_BOX_POSX, 50, RECORD_BOX_WIDTH, 82, MSG_STYLE_INSPECT, 0, 1, (s32)(alpha * 0.55), alpha); // cast needed if signature isn't present
+diff --git a/3ds/tools/gset.d/FXLIT.txt b/3ds/tools/gset.d/FXLIT.txt
+new file mode 100644
+index 0000000000..d141812bca
+--- /dev/null
++++ b/3ds/tools/gset.d/FXLIT.txt
+@@ -0,0 +1,5 @@
++src/screen_overlays.c
++src/curtains.c
++src/world/area_kmr/kmr_20/records.c
++src/world/area_mgm/mgm_00/scoreboard.c
++src/world/area_hos/hos_05/intro.c

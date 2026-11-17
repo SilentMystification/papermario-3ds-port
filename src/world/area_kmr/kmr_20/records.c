@@ -1,6 +1,7 @@
 #include "kmr_20.h"
+#include "nd_gtab.h"
 
-#include "world/area_kmr/kmr_20/records_screen.gfx.inc.c"
+NDN_DECL(N(records_screen_gfx));
 #include "nd_tx.h"
 #include "nd_val.h"
 
@@ -65,7 +66,7 @@ void N(appendGfx_records_impl)(GameRecords* records, s32 alpha) {
 #define CHARSET (0)
 
     if (alpha > 0) {
-        gSPDisplayList(gMainGfxPos++, N(records_screen_gfx));
+        nd_draw_list(NDN(N(records_screen_gfx)), ND_SELF);
         nd_val_prim(0, 0, 16, 120, 24, alpha * 0.65);
         nd_rect_fill(33, 43, 287, 192);
 

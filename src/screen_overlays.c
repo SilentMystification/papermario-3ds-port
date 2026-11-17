@@ -48,54 +48,9 @@ NDN_DECL(Gfx_LoadStencilTex_BlurryCircle);
 
 #include "vtx/stencil2.vtx.inc.c"
 
-Gfx D_8014E8F0[] = {
-    gsSPTexture(0x8000, 0x8000, 0, G_TX_RENDERTILE, G_OFF),
-    gsDPPipeSync(),
-    gsDPSetCycleType(G_CYC_1CYCLE),
-    gsDPSetDepthSource(G_ZS_PRIM),
-    gsDPSetPrimDepth(0, 0),
-    gsDPSetRenderMode(Z_UPD | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c1(G_BL_CLR_MEM, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA), Z_UPD | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_MEM, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA)),
-    gsDPSetCombineMode(PM_CC_SCREEN_OVERLAY, PM_CC_SCREEN_OVERLAY),
-    gsDPSetTexturePersp(G_TP_PERSP),
-    gsDPSetTextureDetail(G_TD_CLAMP),
-    gsDPSetTextureLOD(G_TL_TILE),
-    gsDPSetTextureLUT(G_TT_NONE),
-    gsDPSetTextureFilter(G_TF_BILERP),
-    gsDPSetTextureConvert(G_TC_FILT),
-    gsSPClearGeometryMode(G_CULL_BOTH | G_LIGHTING | G_SHADING_SMOOTH),
-    gsSPSetGeometryMode(G_ZBUFFER | G_SHADE | G_CULL_BACK),
-    gsSPVertex(&vtx_stencil1, 10, 0),
-    gsSP2Triangles(0, 1, 2, 0, 3, 0, 2, 0),
-    gsSP2Triangles(0, 4, 1, 0, 3, 5, 0, 0),
-    gsSP2Triangles(1, 6, 2, 0, 7, 3, 2, 0),
-    gsSP2Triangles(8, 7, 2, 0, 7, 9, 3, 0),
-    gsDPPipeSync(),
-    gsDPSetDepthSource(G_ZS_PIXEL),
-    gsSPEndDisplayList()
-};
+NDN_DECL(D_8014E8F0);
 
-Gfx D_8014E9A8[] = {
-    gsDPPipeSync(),
-    gsDPSetDepthSource(G_ZS_PRIM),
-    gsDPSetPrimDepth(20, 0),
-    gsDPSetRenderMode(G_RM_ZB_XLU_SURF, G_RM_ZB_XLU_SURF2),
-    gsDPSetCombineMode(PM_CC_SCREEN_OVERLAY, PM_CC_SCREEN_OVERLAY),
-    gsSPClearGeometryMode(G_CULL_BOTH | G_LIGHTING | G_SHADING_SMOOTH),
-    gsSPSetGeometryMode(G_ZBUFFER | G_SHADE),
-    gsDPSetColorDither(G_CD_MAGICSQ),
-    gsDPSetCycleType(G_CYC_1CYCLE),
-    gsDPSetTextureFilter(G_TF_BILERP),
-    gsDPSetTexturePersp(G_TP_NONE),
-    gsDPSetTextureLOD(G_TL_TILE),
-    gsDPSetTextureLUT(G_TT_NONE),
-    gsDPSetTextureDetail(G_TD_CLAMP),
-    gsDPSetTextureConvert(G_TC_FILT),
-    gsDPFillRectangle(0, 0, 320, 240),
-    gsDPSetColorDither(G_CD_DISABLE),
-    gsDPPipeSync(),
-    gsDPSetDepthSource(G_ZS_PIXEL),
-    gsSPEndDisplayList()
-};
+NDN_DECL(D_8014E9A8);
 
 Gfx D_8014EA48[] = {
     gsDPSetDepthSource(G_ZS_PRIM),
@@ -292,7 +247,7 @@ void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* ove
             nd_xf_push(&matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
             guRotate(&matrixStack[gMatrixListPos], s0 * 0.5f, 0.0f, 0.0f, 1.0f);
             nd_xf_push(&matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            gSPDisplayList(gMainGfxPos++, D_8014E8F0);
+            nd_draw_list(NDN(D_8014E8F0), ND_SELF);
             nd_xf_pop(G_MTX_MODELVIEW);
 
             guTranslate(&matrixStack[gMatrixListPos], 240.0f, 120.0f, 0.0f);
@@ -301,7 +256,7 @@ void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* ove
             nd_xf_push(&matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
             guRotate(&matrixStack[gMatrixListPos], s0 * 0.5f, 0.0f, 0.0f, 1.0f);
             nd_xf_push(&matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            gSPDisplayList(gMainGfxPos++, D_8014E8F0);
+            nd_draw_list(NDN(D_8014E8F0), ND_SELF);
             nd_xf_pop(G_MTX_MODELVIEW);
 
             guTranslate(&matrixStack[gMatrixListPos], 0.0f, 0.0f, 0.0f);
@@ -318,7 +273,7 @@ void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* ove
             nd_xf_push(&matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
             guRotate(&matrixStack[gMatrixListPos], -s0, 0.0f, 0.0f, 1.0f);
             nd_xf_push(&matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            gSPDisplayList(gMainGfxPos++, D_8014E8F0);
+            nd_draw_list(NDN(D_8014E8F0), ND_SELF);
             nd_xf_pop(G_MTX_MODELVIEW);
 
             guTranslate(&matrixStack[gMatrixListPos], x2, SCREEN_HEIGHT - y2, 0.0f);
@@ -327,13 +282,13 @@ void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* ove
             nd_xf_push(&matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
             guRotate(&matrixStack[gMatrixListPos], -s0, 0.0f, 0.0f, 1.0f);
             nd_xf_push(&matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            gSPDisplayList(gMainGfxPos++, D_8014E8F0);
+            nd_draw_list(NDN(D_8014E8F0), ND_SELF);
             nd_xf_pop(G_MTX_MODELVIEW);
 
             guTranslate(&matrixStack[gMatrixListPos], 0.0f, 0.0f, 0.0f);
             nd_xf_push(&matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
             nd_val_prim(0, 0, 0, 0, 0, alpha);
-            gSPDisplayList(gMainGfxPos++, D_8014E9A8);
+            nd_draw_list(NDN(D_8014E9A8), ND_SELF);
             nd_xf_pop(G_MTX_MODELVIEW);
             break;
         case OVERLAY_START_BATTLE:
@@ -345,13 +300,13 @@ void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* ove
             nd_xf_push(&matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
             guRotate(&matrixStack[gMatrixListPos], (f32)(-s0) * 0.5, 0.0f, 0.0f, 1.0f);
             nd_xf_push(&matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            gSPDisplayList(gMainGfxPos++, D_8014E8F0);
+            nd_draw_list(NDN(D_8014E8F0), ND_SELF);
             nd_xf_pop(G_MTX_MODELVIEW);
 
             guTranslate(&matrixStack[gMatrixListPos], 0.0f, 0.0f, 0.0f);
             nd_xf_push(&matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
             nd_val_prim(0, 0, 0, 0, 0, alpha);
-            gSPDisplayList(gMainGfxPos++, D_8014E9A8);
+            nd_draw_list(NDN(D_8014E9A8), ND_SELF);
             nd_xf_pop(G_MTX_MODELVIEW);
             v0 = progress + 40;
             if (progress > 170) {

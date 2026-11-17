@@ -12,13 +12,13 @@ NDN_DECL(D_09005168_4123F8);
 NDN_DECL(D_090051C8_412458);
 NDN_DECL(D_09005370_412600);
 NDN_DECL(D_090053D0_412660);
-extern Gfx D_09005440_4126D0[];
+NDN_DECL(D_09005440_4126D0);
 
 NdLst D_E0122B90[] = {
     NDN(D_09005168_4123F8), NDN(D_090051C8_412458), NDN(D_09005370_412600), NDN(D_090053D0_412660)
 };
 
-NdLst D_E0122BA0[] = { D_09005440_4126D0 };
+NdLst D_E0122BA0[] = { NDN(D_09005440_4126D0) };
 NdLst D_E0122BA4[] = { NDN(D_09004E00_412090) };
 
 typedef struct UnkStarSpiritsEnergy {
@@ -387,7 +387,7 @@ void star_spirits_energy_appendGfx(void* effect) {
 
         if (alpha > 0) {
             nd_val_prim(0, 0, 208, 208, 208, alpha);
-            {   /* F07-6: with wide the flash reaches both screen edges (D_09005440_4126D0 is 0 to 320) */
+            {   /* F07-6: with wide the flash reaches both screen edges (NDN(D_09005440_4126D0) is 0 to 320) */
                 extern int pm_wide;
                 if (pm_wide) {
                     nd_pso_cyc(G_CYC_1CYCLE);

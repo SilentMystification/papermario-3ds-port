@@ -1,4 +1,5 @@
 #include "hos_05.h"
+#include "nd_gtab.h"
 #include "effects.h"
 #include "model.h"
 #include "nu/nusys.h"
@@ -1320,25 +1321,7 @@ s32 N(StarSpiritLeapBackScalars)[] = {
 
 StoryGraphicData* N(StoryGraphicsPtr) = &N(StoryGraphics);
 
-Gfx N(gfx_setup_story_viewport)[] = {
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
-    gsDPPipeSync(),
-    gsDPSetCycleType(G_CYC_1CYCLE),
-    gsDPSetTextureDetail(G_TD_CLAMP),
-    gsDPSetTextureLOD(G_TL_TILE),
-    gsDPSetTextureFilter(G_TF_POINT),
-    gsDPSetTextureConvert(G_TC_FILT),
-    gsDPSetTexturePersp(G_TP_NONE),
-    gsDPSetTextureLUT(G_TT_RGBA16),
-    gsDPSetCombineMode(PM_CC_10, PM_CC_10),
-    gsDPSetScissor(G_SC_NON_INTERLACE, 29, 28, 291, 190),
-    gsDPSetColorDither(G_CD_DISABLE),
-    gsDPSetAlphaDither(G_AD_PATTERN),
-    gsDPSetRenderMode(CVG_DST_FULL | ZMODE_OPA | FORCE_BL | G_RM_PASS, CVG_DST_FULL | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_0, G_BL_CLR_IN, G_BL_1)),
-    gsSPClearGeometryMode(G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH | G_CLIPPING | 0x0040F9FA),
-    gsSPSetGeometryMode(G_SHADE | G_SHADING_SMOOTH),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(N(gfx_setup_story_viewport));
 
 void N(draw_foreground_bowser_silhouette)(void) {
     s32 x = N(StoryGraphicsPtr)->silhouettePosX << 0x10;
@@ -1363,7 +1346,7 @@ void N(appendGfx_image_strips)(s32 baseX, s32 baseY, IMG_PTR img, PAL_PTR pal, s
         return;
     }
 
-    gSPDisplayList(gMainGfxPos++, N(gfx_setup_story_viewport));
+    nd_draw_list(NDN(N(gfx_setup_story_viewport)), ND_SELF);
 
     if (pal != nullptr) {
         nd_tex_load_tlut256(pal);
@@ -1423,7 +1406,7 @@ void N(worker_draw_story_graphics)(void) {
 
     N(draw_background_tape)();
 
-    gSPDisplayList(gMainGfxPos++, N(gfx_setup_story_viewport));
+    nd_draw_list(NDN(N(gfx_setup_story_viewport)), ND_SELF);
     nd_target_end();
 
     if (N(StoryGraphicsPtr)->storyPageAlpha < 255) {

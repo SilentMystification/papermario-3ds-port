@@ -2,7 +2,8 @@
 r"""ENTRYFX E2: apply entcap walker descriptions to the effect sources (nd_rec_dl site -> nd_draw_list with a ND_PSO_DESC).
 
 Usage: entapply.py [--dry] <entcap.py output>...   (run from the repo root; site paths are relative to it)
-A log line with 11 hex words counts as an entry. Its site is (src/effects/\w+\.c):(\d+) in the line; no site: counts as other.
+A log line with 11 hex words counts as an entry. Its site is a src/ path (ENTSRC: any directory below src, a .c or .inc.c file):(\d+)
+in the line; no site: counts as other.
 A site may carry a key `#<k>` (FXENT3: nd_rec_dl_k sites, entcap.py prints the key on the loc).
 A line `so <list> <fn> <file:line>` (FXENT3: a state-only list, no words) marks its site as so.
 Per site: the set of distinct 11-word tuples per key (unkeyed sites: key None).
@@ -27,7 +28,7 @@ import re
 import sys
 
 WORDS = re.compile(r"((?: [0-9a-f]{8}){11})\s*$")
-SITE = re.compile(r"(src/effects/\w+\.c):(\d+)(?: \(discriminator \d+\))?(?:#(\d+))?")
+SITE = re.compile(r"(?<![\w.])(src/(?:\w+/)*\w+(?:\.inc)?\.c):(\d+)(?: \(discriminator \d+\))?(?:#(\d+))?")  # ENTSRC site
 NDREC = re.compile(r"^(\s*)nd_rec_dl\((.+)\);\s*$")
 NDKEY = re.compile(r"^(\s*)nd_rec_dl_k\((.+), (.+), (\d+)\);\s*$")
 INC = '#include "nd_gtab.h"'

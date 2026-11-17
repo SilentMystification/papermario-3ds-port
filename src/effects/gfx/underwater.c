@@ -13,5 +13,3 @@ Vp D_09000418_3B9E88 = {
 };
 
 #include "effects/gfx/D_09000428_3B9E98.vtx.inc.c"
-#include "effects/gfx/D_09000528_3B9F98.gfx.inc.c"
-#include "effects/gfx/D_09000570_3B9FE0.gfx.inc.c"

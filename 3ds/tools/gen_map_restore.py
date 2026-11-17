@@ -56,9 +56,13 @@ def bss_lines(fl):
     per_file = ['    *%s(.bss .bss.* COMMON)' % f for f in fl]
     dirs = set(os.path.dirname(f) for f in fl)
     if not fl or cm_glob_area or len(dirs) != 1: return per_file
-    pat = '*%s/*.o' % dirs.pop()
-    hit = set(o for o in cm_objs if fnmatch.fnmatchcase(o, pat))
-    want = set(o for o in cm_objs if any(o.endswith('/' + f) for f in fl))
+    dirn = dirs.pop()
+    pat = '*%s/*.o' % dirn
+    # LOOP2: only an object that holds "<dir>/" can match the pattern or end with "/<file>" (the files are in <dir>): the
+    # substring test first, the exact tests on those few (FACT: the full scan of every object per map cost 3 s of each build).
+    cand = [o for o in cm_objs if dirn + '/' in o]
+    hit = set(o for o in cand if fnmatch.fnmatchcase(o, pat))
+    want = set(o for o in cand if any(o.endswith('/' + f) for f in fl))
     if hit != want or len(want) != len(set(fl)): return per_file
     return ['    SORT_BY_NAME(%s)(.bss .bss.* COMMON)' % pat]
 nm = lambda o: o.lstrip('@')
