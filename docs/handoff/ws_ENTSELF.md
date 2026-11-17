@@ -24,7 +24,7 @@ After: `            nd_draw_list(dlist, ND_SELF);`
 ## Tests that decide
 - `LOOP PASS`: host PASS, build rc 0, the 3 cmp lines byte-equal. GUESS: wscmb_pause_drec draws the HP label (pause_stats.c:295).
 - `python 3ds/tools/listcen.py | grep "^listcen total"`: build 380, gfxpos 83, recdl 11. Other totals as main.
-- Seeded fault (new bench self-test): in flower_splash.c:166 write `nd_draw_list(NDN(D_09000E20_32DCE0), ND_SELF);`, rebuild with
+- Seeded fault (new bench self-test): in flower_splash.c:164 change `112, 96, 24` to `113, 96, 24` (uncommitted), rebuild with
   `sh 3ds/tools/rowloop.sh --row ENTSELF --bench entself_fx_drec --no-host`: the cmp must say DIFF. Undo it (git checkout the file).
 ## What you may edit to fix a fail
 Only the 7 files. A base run that fails or a DIFF of the real edit: stop. Send build3ds/out/loop_ENTSELF_cmp_<bench>.txt to the
