@@ -478,6 +478,13 @@ void set_cam_viewport(s16 id, s16 x, s16 y, s16 width, s16 height) {
     camera->vpAlt.vp.vtrans[1] = gGameStatusPtr->altViewportOffset.y + 4 * (s16) ((u16) camera->viewportStartY + (camera->viewportH / 2));
     camera->vpAlt.vp.vtrans[2] = 0x200;
     camera->vpAlt.vp.vtrans[3] = 0;
+
+    if (pm_wide && id == CAM_TATTLE) { /* TATTLEAR: the 3D view fills the 2D tattle window (40 + x, 1:1): 3D x = (x + 40) * 4 / 5 */
+        camera->vp.vp.vscale[0] = (s16) (camera->viewportW * 8 / 5);
+        camera->vp.vp.vtrans[0] = (s16) ((camera->viewportStartX * 2 + camera->viewportW + 80) * 8 / 5);
+        camera->vpAlt.vp.vscale[0] = camera->vp.vp.vscale[0];
+        camera->vpAlt.vp.vtrans[0] = gGameStatusPtr->altViewportOffset.x + camera->vp.vp.vtrans[0];
+    }
 }
 
 void get_cam_viewport(s32 camID, u16* x, u16* y, u16* width, u16* height) {
@@ -508,6 +515,11 @@ f32 pm_debug_draw_px(s32 camID, f32 x, f32 y, f32 z) {
  * 40 px gutter, so game x = 1.25 x - 40 (UA1). Shared by get_screen_coords and the shop prices (shops.c). 4:3 and other views: x unchanged. */
 s32 pm_wide_draw_x(Camera* camera, s32 x) {
     return pm_wide_cam(camera) ? (s32) (x * 1.25f) - 40 : x;
+}
+
+/* TATTLEAR: the 3D game x that lands on the 2D game x with wide (3D 1.25 x, pm_gpu.c:230; 2D 40 + x, pm_gpu_rect.c:161). up 1 rounds up. */
+s32 pm_wide_x3d(s32 x, s32 up) {
+    return ((x + 40) * 4 + (up ? 4 : 0)) / 5;
 }
 
 void get_screen_coords(s32 camID, f32 x, f32 y, f32 z, s32* screenX, s32* screenY, s32* screenZ) {
