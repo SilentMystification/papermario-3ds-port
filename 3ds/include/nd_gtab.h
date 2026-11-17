@@ -6,7 +6,6 @@
 #ifndef ND_GTAB_H
 #define ND_GTAB_H
 #include <stdint.h>
-
 #include "nd_scomp.h"
 #include "nd_api.h"
 
@@ -125,7 +124,7 @@ void nd_rec_ndev(const NdNDev* e); /* MESHST: record a built NdNDev (nd_mesh.h):
 _Static_assert(sizeof(NdNDev) == 20u, "NTABFIND: the record holds the 5 words of an NdNDev");
 static inline void nd_ndev_pack(uint32_t* rec, const NdNDev* e, uint32_t site) {
     rec[0] = 0u; rec[1] = 0u; rec[2] = site; rec[3] = 0u; rec[9] = 0u;
-    __builtin_memcpy(rec + 4, e, sizeof *e);
+    __builtin_memcpy(rec + 4, e, sizeof *e); /* no <string.h>: include/gcc/memory.h (43F0.c) conflicts with it */
 }
 static inline void nd_ndev_unpack(NdNDev* d, const uint32_t* rec) { __builtin_memcpy(d, rec + 4, sizeof *d); }
 void nd_ndev_rec(const uint32_t* rec);
