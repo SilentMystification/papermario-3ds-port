@@ -12,7 +12,7 @@ NDN_DECL(D_09000A40_38AD90);
 NDN_DECL(D_09000A60_38ADB0);
 NDN_DECL(D_09000A80_38ADD0);
 
-Gfx* D_E0086AA0[] = {
+NdLst D_E0086AA0[] = {
     NDN(D_09000A00_38AD50), NDN(D_09000A20_38AD70), NDN(D_09000A40_38AD90),
     NDN(D_09000A60_38ADB0), NDN(D_09000A80_38ADD0)
 };
@@ -175,7 +175,6 @@ void func_E0086398(EffectInstance* effect) {
 
 void func_E00863B4(EffectInstance* effect) {
     FireworkFXData* part = effect->data.firework;
-    Gfx* savedGfxPos;
     NdSub sub;
     f32 temp_f32 = part->unk_38 * 5.0f;
     s32 envA;

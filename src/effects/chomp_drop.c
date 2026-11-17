@@ -145,7 +145,6 @@ void chomp_drop_appendGfx(void* effect) {
     s32 primA = data->unk_3C;
     s32 temp_s6 = data->unk_44;
     Matrix4f sp20, sp60;
-    Gfx* savedGfxPos;
     Vtx_t* vtxTemp;
     s32 i;
 

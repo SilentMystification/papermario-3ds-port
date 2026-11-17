@@ -7,7 +7,7 @@
 #include "nd_geo.h"
 
 #define MAX_POINTS      30
-#define VTX_BUF_SIZE    2 * MAX_POINTS * sizeof(Vtx) / sizeof(Gfx)
+#define VTX_BUF_SIZE    (2 * MAX_POINTS * sizeof(Vtx))
 
 void effect_65_init(EffectInstance* effect);
 void effect_65_update(EffectInstance* effect);
@@ -266,7 +266,7 @@ void effect_65_appendGfx(void* effect) {
 
     nd_val_prim(0, 0, data->primR, data->primG, data->primB, primAlpha);
     nd_val_env(data->envR, data->envG, data->envB, 0);
-    vtxBuffer = (Vtx_t*) nd_rec_data(VTX_BUF_SIZE * sizeof(Gfx)); /* DIRECT D6c: the vertex buffer is stream data */
+    vtxBuffer = (Vtx_t*) nd_rec_data(VTX_BUF_SIZE); /* DIRECT D6c: the vertex buffer is stream data */
 
     firstPointIdx = -1;
     baseTexOffset = (lifeTime & 0x3F) << 5;

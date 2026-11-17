@@ -156,13 +156,10 @@ void whirlwind_appendGfx(void* effect) {
     Matrix4f sp60;
     s32 spA0;
     s32 primAlpha;
-    Gfx* triangleDisplayList;
     Vtx* vertexBuffer;
     s32 spB0;
     s32 spB4;
     f32 spB8;
-    Gfx* whirlwindMainDisplayList;
-    Gfx* savedPos;
     NdSub triSub, mainSub;
     f32 temp_f20_2;
     f32 temp_f20_3;
@@ -186,7 +183,7 @@ void whirlwind_appendGfx(void* effect) {
     nd_draw_list(NDN(D_09000400_3D3D30), ND_SELF);
 
     // Reserve 0x208 bytes (65 commands) for a vertex buffer (2x16 Vtx + space for the current command)
-    vertexBuffer = (Vtx*) nd_rec_data(64 * sizeof(Gfx)); /* DIRECT D6c: the vertex buffer is stream data */
+    vertexBuffer = (Vtx*) nd_rec_data(32 * sizeof(Vtx)); /* DIRECT D6c: the vertex buffer is stream data */
 
     // fill the vertex buffer; 2 sets of 16 verticies
     for (i = 0; i <= (360 / 24); i++) {

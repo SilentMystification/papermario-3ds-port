@@ -164,7 +164,7 @@ void squirt_appendGfx(void* effect) {
     SquirtFXData* data = ((EffectInstance*)effect)->data.squirt;
     s32 zero = 0;
     s32 unk_00 = data->unk_00;
-    Gfx* savedGfxPos;
+    Vtx* savedGfxPos;
     f32 unk_50 = data->unk_50;
     Matrix4f sp10, sp50;
     Vtx_t* vtx;
@@ -187,7 +187,7 @@ void squirt_appendGfx(void* effect) {
     nd_val_prim(0, 0, data->unk_34, data->unk_38, data->unk_3C, data->unk_40);
     nd_val_env(data->unk_44, data->unk_48, data->unk_4C, 200);
 
-    savedGfxPos = (Gfx*) nd_rec_data(48 * sizeof(Gfx)); /* DIRECT D6c: the vertex buffer is stream data */
+    savedGfxPos = (Vtx*) nd_rec_data(24 * sizeof(Vtx)); /* DIRECT D6c: the vertex buffer is stream data */
 
     vtx = (Vtx_t*) savedGfxPos;
     for (i = 0; i < 12; i++) {
