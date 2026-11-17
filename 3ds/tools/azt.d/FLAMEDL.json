@@ -1,0 +1,60 @@
+{
+  "scenarios": [
+    {
+      "name": "flamedl_cap",
+      "status": "unverified",
+      "subject": "FLAMEDL capture: Toad Town mac_01 at 0 0 200, fxtest=27 (flame), entcap and entcapt on, log only.",
+      "proves": "FLAMEDL: the entcap lines of the sites flame.c:188 and flame.c:211 (nd_walk.c entcap_rec).",
+      "debug": "warp=mac_01:0 pos=0:0:200 det fxtest=27 loglevel=debug entcap entcapt psochk",
+      "until": "fxtest: done",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "entcap",
+          "regex": "entcap l [0-9a-f]{8} s [0-9a-f]{8}"
+        },
+        {
+          "name": "done",
+          "regex": "fxtest: done"
+        }
+      ],
+      "reason": "FLAMEDL capture of the two list calls of flame.c. Until the fxtest: done line. Cap 25 s, deadline 20 s."
+    },
+    {
+      "name": "flamedl_drec",
+      "status": "unverified",
+      "subject": "FLAMEDL gate: Toad Town mac_01 at 0 0 200, fxtest=27, cold det start with the drec switch: the draw records of frames 412 and 432 go to shots/drec.txt.",
+      "proves": "FLAMEDL: the draw records of flame (fxtest 27) are a function of the build (det), so a base and a head build give a byte-equal drec.txt.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=27 loglevel=debug det drec=412:2:20 psochk",
+      "until": "fxtest: done",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f432 draws [1-9]\\d* bytes \\d+"
+        },
+        {
+          "name": "done",
+          "regex": "fxtest: done"
+        }
+      ],
+      "reason": "FLAMEDL byte gate for the flame list calls (fxtest 27). Cold det start, cap 25 s, deadline 20 s."
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 #include "common.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_flame_211, 0xfc137fe0, 0x63fef378, 0x1e182c00, 0x0c184b50, 0x00000000, 0x00000000, 0x00000000, 0x0000005c, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "effects_internal.h"
 #include "nu/nusys.h"
 #include "nd_val.h"
@@ -185,7 +186,7 @@ void flame_appendGfx(void* effect) {
 
     if (LastFlameRenderFrame != gGameStatusPtr->frameCounter) {
         LastFlameRenderFrame = gGameStatusPtr->frameCounter;
-        gSPDisplayList(gMainGfxPos++, NDN(D_09000918_3544C8));
+        nd_draw_list(NDN(D_09000918_3544C8), ND_SELF);
         nd_val_tile_size(1, uls, ult, uls + 128, ult + 256);
         nd_draw_list(NDN(D_090009E0_354590), ND_SELF);
         nd_target_end();
@@ -208,6 +209,6 @@ void flame_appendGfx(void* effect) {
     guMtxF2L(sp98, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gSPDisplayList(gMainGfxPos++, NDN(D_090008F8_3544A8));
+    nd_draw_list(NDN(D_090008F8_3544A8), pe_flame_211);
     nd_xf_pop(G_MTX_MODELVIEW);
 }
