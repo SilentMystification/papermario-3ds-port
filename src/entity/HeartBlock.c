@@ -1,5 +1,7 @@
 #include "common.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_HeartBlock_54, 0xfcffb3ff, 0xff2cfe7f, 0x1e000cf0, 0x00504358, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_HeartBlock_69, 0xfcffb3ff, 0xff2cfe7f, 0x1e08acf0, 0x00504358, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "effects.h"
 #include "message_ids.h"
 #include "ld_addrs.h"
@@ -51,7 +53,7 @@ void entity_HeartBlockContent__setupGfx(s32 entityIndex, Gfx* arg1) {
     gDisplayContext->matrixStack[gMatrixListPos] = data->unk_58;
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_pso_rm(AA_EN | Z_CMP | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA), AA_EN | Z_CMP | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA));
-    nd_rec_dl(dlist);
+    nd_draw_list(dlist, pe_HeartBlock_54);
     nd_pso_cc(PM_CC_01, PM_CC_02);
     nd_val_prim(0, 0, 0, 0, 0, alpha);
     nd_xf_pop(G_MTX_MODELVIEW);
@@ -66,7 +68,7 @@ void entity_HeartBlockContent__setupGfx(s32 entityIndex, Gfx* arg1) {
     gDisplayContext->matrixStack[gMatrixListPos] = data->unk_98;
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_pso_rm(AA_EN | Z_CMP | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c1(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA), AA_EN | Z_CMP | IM_RD | CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA));
-    nd_rec_dl(dlist);
+    nd_draw_list(dlist, pe_HeartBlock_69);
     nd_pso_cc(PM_CC_01, PM_CC_02);
     nd_val_prim(0, 0, 0, 0, 0, alpha);
     nd_xf_pop(G_MTX_MODELVIEW);

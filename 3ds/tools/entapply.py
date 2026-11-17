@@ -28,7 +28,7 @@ import re
 import sys
 
 WORDS = re.compile(r"((?: [0-9a-f]{8}){11})\s*$")
-SITE = re.compile(r"(?<![\w.])(src/(?:\w+/)*\w+(?:\.inc)?\.c):(\d+)(?: \(discriminator \d+\))?(?:#(\d+))?")  # ENTSRC site
+SITE = re.compile(r"(?<![\w.])(?:/src/|(?=src/))((?:\w+/)*\w+(?:\.inc)?\.c):(\d+)(?: \(discriminator \d+\))?(?:#(\d+))?")  # ENTSRC site
 NDREC = re.compile(r"^(\s*)nd_rec_dl\((.+)\);\s*$")
 NDKEY = re.compile(r"^(\s*)nd_rec_dl_k\((.+), (.+), (\d+)\);\s*$")
 INC = '#include "nd_gtab.h"'

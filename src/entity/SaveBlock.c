@@ -1,5 +1,6 @@
 #include "common.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_SaveBlock_42, 0xfcffb3ff, 0xff2cfe7f, 0x1e000cf0, 0x00504b50, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "fio.h"
 #include "ld_addrs.h"
 #include "entity.h"
@@ -39,7 +40,7 @@ void entity_SaveBlock_setupGfx(s32 index) {
     nd_pso_rm(G_RM_ZB_CLD_SURF, G_RM_ZB_CLD_SURF2);
     nd_pso_cc(PM_CC_01, PM_CC_02);
     nd_val_prim(0, 0, 0, 0, 0, alpha);
-    nd_rec_dl(dlist);
+    nd_draw_list(dlist, pe_SaveBlock_42);
     nd_xf_pop(G_MTX_MODELVIEW);
 
     dlist = ENTITY_ADDR(entity, Gfx*, NDN(Entity_SaveBlock_RenderBlock));

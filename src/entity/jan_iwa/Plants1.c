@@ -1,5 +1,6 @@
 #include "common.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_Plants1_177, 0xfcffb3ff, 0xff2cfe7f, 0x1e000cf0, 0x005049d8, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "sprite.h"
 #include "entity.h"
 #include "animation_script.h"
@@ -174,7 +175,7 @@ void entity_PinkFlowerLight_setupGfx(s32 entityIndex) {
     nd_val_prim(0, 0, 0, 0, 0, entity->alpha);
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    nd_rec_dl(NDN(D_0A0013B8_E9C8B8));
+    nd_draw_list(NDN(D_0A0013B8_E9C8B8), pe_Plants1_177);
     nd_xf_pop(G_MTX_MODELVIEW);
 }
 

@@ -1,5 +1,6 @@
 #include "common.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_BlueWarpPipe_160, 0xfc121824, 0xff33ffff, 0x1e000cf0, 0x00552078, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0, 0, 1, 0, 0, 0, 1, 1, 2, 0, 0, 0);
 #include "npc.h"
 #include "sprite.h"
 #include "ld_addrs.h"
@@ -157,7 +158,7 @@ void entity_BlueWarpPipe_setupGfx(s32 entityIndex) {
     guMtxCatF(sp10, sp50, sp50);
     guMtxF2L(sp50, &gDisplayContext->matrixStack[gMatrixListPos]);
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    nd_rec_dl(NDN(Entity_BlueWarpPipe_RenderBase));
+    nd_draw_list(NDN(Entity_BlueWarpPipe_RenderBase), pe_BlueWarpPipe_160);
     nd_xf_pop(G_MTX_MODELVIEW);
 }
 

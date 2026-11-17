@@ -1,5 +1,7 @@
 #include "common.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_Tweester_43, 0xfc20a204, 0xff13ffff, 0x1e082cf0, 0x005049d8, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_Tweester_61, 0xfc20a204, 0xff13ffff, 0x1e182cf0, 0x0c1849d8, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "entity.h"
 #include "ld_addrs.h"
 #include "nd_val.h"
@@ -40,7 +42,7 @@ void entity_Tweester_render_inner_whirl(s32 entityIndex) {
     gDisplayContext->matrixStack[gMatrixListPos] = data->mtxInnerWhirl;
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     gfx = ENTITY_ADDR(entity, Gfx*, NDN(Entity_Tweester_RenderInnerWhirl));
-    nd_rec_dl(gfx);
+    nd_draw_list(gfx, pe_Tweester_43);
     nd_xf_pop(G_MTX_MODELVIEW);
 }
 
@@ -58,7 +60,7 @@ void entity_Tweester_render_outer_whirl(s32 entityIndex) {
     gDisplayContext->matrixStack[gMatrixListPos] = data->mtxOuterWhirl;
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     gfx = ENTITY_ADDR(entity, Gfx*, NDN(Entity_Tweester_RenderOuterWhirl));
-    nd_rec_dl(gfx);
+    nd_draw_list(gfx, pe_Tweester_61);
     nd_xf_pop(G_MTX_MODELVIEW);
 }
 
