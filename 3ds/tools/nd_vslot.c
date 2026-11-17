@@ -33,24 +33,25 @@ int nd_vslot_resolve(const NdVsOp* ops, unsigned nops, uint16_t* idx, unsigned i
                     if (s[j] >= VS_SLOTS) return -(int)(i + 1);
                     nl += slot[s[j]].loaded;
                 }
-                if (nl == 1 || nl == 2) return -(int)(i + 1);
                 if (nl == 0) {
                     tarr = ND_VS_IN;
                     for (j = 0; j < 3; j++) tix[j] = s[j];
                 } else {
-                    tarr = slot[s[0]].arr;
+                    tarr = slot[s[0]].loaded ? slot[s[0]].arr : ND_VS_MIX; /* VSLOT3: a slot this list did not load is a caller slot */
                     for (j = 1; j < 3; j++)
-                        if (slot[s[j]].arr != tarr) tarr = ND_VS_MIX;
+                        if (!slot[s[j]].loaded || slot[s[j]].arr != tarr) tarr = ND_VS_MIX;
                     if (tarr != ND_VS_MIX) {
                         for (j = 0; j < 3; j++) tix[j] = slot[s[j]].index;
                     } else {
                         for (j = 0; j < 3; j++) {
+                            const uint32_t ra = slot[s[j]].loaded ? slot[s[j]].arr : ND_VS_IN; /* VSLOT3: {ND_VS_IN, slot} is a caller slot */
+                            const uint32_t rx = slot[s[j]].loaded ? slot[s[j]].index : s[j];
                             for (r = 0; r < nr; r++)
-                                if (ref[r].arr == slot[s[j]].arr && ref[r].index == slot[s[j]].index) break;
+                                if (ref[r].arr == ra && ref[r].index == rx) break;
                             if (r == nr) {
                                 if (nr >= ref_max) return -(int)(i + 1);
-                                ref[nr].arr = slot[s[j]].arr;
-                                ref[nr].index = slot[s[j]].index;
+                                ref[nr].arr = ra;
+                                ref[nr].index = rx;
                                 nr++;
                             }
                             tix[j] = r;

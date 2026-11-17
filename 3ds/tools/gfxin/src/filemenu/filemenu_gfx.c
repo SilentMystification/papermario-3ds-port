@@ -22,3 +22,9 @@ Gfx D_8024B6F0[] = {
     gsDPPipeSync(),
     gsSPEndDisplayList(),
 };
+Gfx D_8024B708[] = {
+    gsSPVertex(D_8024B6D0, 2, 2),
+    gsSP2Triangles(0, 1, 2, 0, 0, 2, 3, 0),
+    gsDPPipeSync(),
+    gsSPEndDisplayList(),
+};

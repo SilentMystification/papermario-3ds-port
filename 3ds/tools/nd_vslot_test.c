@@ -1,4 +1,4 @@
-/* nd_vslot_test.c: host test of nd_vslot_resolve (CONV2B). Prints "vslot ok 7/7", or "vslot FAIL <case>" and exits 1. */
+/* nd_vslot_test.c: host test of nd_vslot_resolve (CONV2B). Prints "vslot ok 10/10", or "vslot FAIL <case>" and exits 1. */
 #include <stdio.h>
 #include <string.h>
 #include "nd_vslot.h"
@@ -147,17 +147,51 @@ int main(void)
         pass++;
     }
 
-    /* E4: VTX(1, 0, 1, 0), TRI1(0, 5, 6): one loaded slot of three */
+    /* E4 (VSLOT3): VTX(1, 0, 1, 0), TRI1(0, 5, 6): one loaded slot of three: a mixed draw, refs {1, 0}, caller slots 5 and 6 */
     {
         NdVsOp ops[2] = { vtx(1, 0, 1, 0), tri1(0, 5, 6) };
-        if (!run_case("E4", ops, 2, -2, 0, NULL, 0, NULL)) return 1;
+        NdVsDraw d[1] = { { ND_VS_MIX, 0, 3 } };
+        uint16_t x[3] = { 0, 1, 2 };
+        if (!run_case("E4", ops, 2, 0, 1, d, 3, x)) return 1;
+        if (g_nref != 3 || g_ref[0].arr != 1 || g_ref[0].index != 0 || g_ref[1].arr != ND_VS_IN || g_ref[1].index != 5 ||
+            g_ref[2].arr != ND_VS_IN || g_ref[2].index != 6) {
+            printf("vslot FAIL E4 ref\n");
+            return 1;
+        }
+        pass++;
+    }
+    /* M1 (VSLOT3, filemenu_gfx.c D_8024B708): VTX(5, 0, 2, 2), TRI2(0, 1, 2, 0, 2, 3): caller slots 0-1, own slots 2-3 */
+    {
+        NdVsOp ops[2] = { vtx(5, 0, 2, 2), tri2(0, 1, 2, 0, 2, 3) };
+        NdVsDraw d[1] = { { ND_VS_MIX, 0, 6 } };
+        uint16_t x[6] = { 0, 1, 2, 0, 2, 3 };
+        if (!run_case("M1", ops, 2, 0, 1, d, 6, x)) return 1;
+        if (g_nref != 4 || g_ref[0].arr != ND_VS_IN || g_ref[0].index != 0 || g_ref[1].arr != ND_VS_IN || g_ref[1].index != 1 ||
+            g_ref[2].arr != 5 || g_ref[2].index != 0 || g_ref[3].arr != 5 || g_ref[3].index != 1) {
+            printf("vslot FAIL M1 ref\n");
+            return 1;
+        }
+        pass++;
+    }
+    /* M2 (VSLOT3): a mixed triangle, then VTX(5, 2, 3, 0) and TRI1(0, 1, 2) over own slots only: a second draw on array 5 */
+    {
+        NdVsOp ops[4] = { vtx(5, 0, 2, 2), tri1(0, 1, 2), vtx(5, 2, 3, 0), tri1(0, 1, 2) };
+        NdVsDraw d[2] = { { ND_VS_MIX, 0, 3 }, { 5, 3, 3 } };
+        uint16_t x[6] = { 0, 1, 2, 2, 3, 4 };
+        if (!run_case("M2", ops, 4, 0, 2, d, 6, x)) return 1;
+        pass++;
+    }
+    /* E5: VTX(1, 0, 1, 0), TRI1(0, 40, 2): slot 40 out of range in a mixed triangle */
+    {
+        NdVsOp ops[2] = { vtx(1, 0, 1, 0), tri1(0, 40, 2) };
+        if (!run_case("E5", ops, 2, -2, 0, NULL, 0, NULL)) return 1;
         pass++;
     }
 
-    if (pass != 7) {
+    if (pass != 10) {
         printf("vslot FAIL count %d\n", pass);
         return 1;
     }
-    printf("vslot ok 7/7\n");
+    printf("vslot ok 10/10\n");
     return 0;
 }
