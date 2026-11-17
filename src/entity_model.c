@@ -464,11 +464,9 @@ void appendGfx_entity_model(EntityModel* model) {
             }
         }
 
-        if (entRec != nullptr) { /* S6-2c-3, DIRECT D3: the draw record and the model list G_DL go to the frame stream (the walker draws the list from the static pools, or runs the G_DL) */
-            nd_rec_ent_draw(model->gfx.displayList, entRec[1].words.w0, entRec[1].words.w1, 0);
-        } else {
-            gSPDisplayList(gMainGfxPos++, model->gfx.displayList);
-        }
+        /* S6-2c-3, DIRECT D3: the draw record and the model list G_DL go to the frame stream (the walker draws the list from the static pools, or runs the G_DL).
+         * TSTSHK: entRec is set here (the same USE_IMAGE test at the top), so the old gSPDisplayList arm never ran. */
+        nd_rec_ent_draw(model->gfx.displayList, entRec[1].words.w0, entRec[1].words.w1, 0);
         if (entRec != nullptr && entcheck_on()) { /* S6-2a: end record, the walker checks its tile 0 state against the decode of the list (pm_gbi.c G_PM_ENT) */
             Gfx endRec[G_PM_ENT_WORDS];
             endRec[0].words.w0 = ((u32)G_PM_ENT << 24) | (u32)G_PM_ENT_END;

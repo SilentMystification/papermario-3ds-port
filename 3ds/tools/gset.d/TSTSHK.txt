@@ -1,0 +1,2 @@
+# TSTSHK: tst_13 shockwave include and dummy_gfx (mdl_project_tex_coords reads a key through mdl_get_vertex_count, VCOUNT model.c:3639)
+src/world/area_tst/tst_13/main.c
