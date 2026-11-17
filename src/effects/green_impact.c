@@ -150,8 +150,6 @@ void green_impact_appendGfx(void* effect) {
     s32 envR2;
     s32 envG2;
     s32 envB2;
-    Gfx* savedGfxPos;
-    Gfx* savedGfxPos2;
     NdSub sub;
     Matrix4f sp20;
     Matrix4f sp60;

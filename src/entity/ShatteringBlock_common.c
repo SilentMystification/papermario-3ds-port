@@ -11,7 +11,7 @@ void entity_BrickBlock_idle(Entity* entity) {
     entity_base_block_idle(entity);
 }
 
-void entity_shattering_init_pieces(Entity* entity, Gfx** dlists, Mtx* matrices) {
+void entity_shattering_init_pieces(Entity* entity, NdLst* dlists, Mtx* matrices) {
     ShatteringBlockData* data = entity->dataBuf.shatteringBlock;
     s32 s7;
     s32 i;
@@ -20,7 +20,7 @@ void entity_shattering_init_pieces(Entity* entity, Gfx** dlists, Mtx* matrices) 
     s32 rotSpeed;
     f32 fallSpeed;
 
-    data->fragmentDisplayLists = ENTITY_ADDR(entity, Gfx**, dlists);
+    data->fragmentDisplayLists = ENTITY_ADDR(entity, NdLst*, dlists);
     entity->renderSetupFunc = entity_shattering_setupGfx;
     entity->alpha = 255;
     entity->pos.y = data->originalPosY;
@@ -166,8 +166,8 @@ void entity_shattering_setupGfx(s32 entityIndex) {
     f32 z_inv;
     Entity* entity = get_entity_by_index(entityIndex);
     ShatteringBlockData* data = entity->dataBuf.shatteringBlock;
-    Gfx* fragmentDlist;
-    Gfx** gfx = data->fragmentDisplayLists;
+    NdLst fragmentDlist;
+    NdLst* gfx = data->fragmentDisplayLists;
 
     x_inv = -entity->pos.x;
     y_inv = -entity->pos.y;
@@ -192,7 +192,7 @@ void entity_shattering_setupGfx(s32 entityIndex) {
         guMtxF2L(mtx, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        fragmentDlist = ENTITY_ADDR(entity, Gfx*, *gfx++);
+        fragmentDlist = ENTITY_ADDR(entity, NdLst, *gfx++);
         nd_draw_list(fragmentDlist, ND_SELF);
         nd_xf_pop(G_MTX_MODELVIEW);
     }

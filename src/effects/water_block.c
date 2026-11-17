@@ -241,7 +241,7 @@ void water_block_appendGfx(void* effect) {
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
-    vtxBase = (Vtx*) nd_rec_data(80 * sizeof(Gfx)); /* DIRECT D6c: the vertex buffer is stream data */
+    vtxBase = (Vtx*) nd_rec_data(40 * sizeof(Vtx)); /* DIRECT D6c: the vertex buffer is stream data */
 
     timePhase = gGameStatusPtr->frameCounter * 4;
 

@@ -479,7 +479,7 @@ NDN_DECL(D_0A003178_E35598);
 
 NDN_DECL(D_0A0031C8_E355E8);
 
-Gfx* Entity_ShatteringHammer1Block_FragmentsRender[] = {
+NdLst Entity_ShatteringHammer1Block_FragmentsRender[] = {
     NDN(D_0A0031C8_E355E8),
     NDN(D_0A003108_E35528),
     NDN(D_0A003040_E35460),

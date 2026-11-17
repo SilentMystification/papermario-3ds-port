@@ -6,7 +6,7 @@
 #include "nd_tx.h"
 
 typedef struct {
-    /* 0x00 */ Gfx* displayList;
+    /* 0x00 */ NdLst displayList;
     /* 0x04 */ s16 x;
     /* 0x06 */ s16 y;
     /* 0x08 */ s16 width;

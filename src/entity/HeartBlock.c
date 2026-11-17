@@ -31,14 +31,14 @@ f32 entity_HeartBlockContent_get_previous_yaw(HeartBlockContentData* data, s32 l
     return data->yawBuffer[bufIdx];
 }
 
-void entity_HeartBlockContent__setupGfx(s32 entityIndex, Gfx* arg1) {
+void entity_HeartBlockContent__setupGfx(s32 entityIndex, NdLst arg1) {
     Entity* entity = get_entity_by_index(entityIndex);
     HeartBlockContentData* data = entity->dataBuf.heartBlockContent;
     s32 alpha;
     Matrix4f sp18;
-    Gfx* dlist;
+    NdLst dlist;
 
-    dlist = ENTITY_ADDR(entity, Gfx*, arg1);
+    dlist = ENTITY_ADDR(entity, NdLst, arg1);
 
     nd_pso_cc(PM_CC_01, PM_CC_02);
     nd_val_prim(0, 0, 0, 0, 0, entity->alpha);

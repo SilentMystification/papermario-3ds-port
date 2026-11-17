@@ -8,12 +8,12 @@
 #include "nd_st.h"
 
 NDN_DECL(Entity_RenderNone);
-extern Gfx* Entity_BombableRock_FragmentsRender[];
+extern NdLst Entity_BombableRock_FragmentsRender[];
 extern Mtx Entity_BombableRock_FragmentMatrices[];
 
 void entity_BombableRock_setupGfx(s32);
 
-void entity_BombableRock_init_fragments(Entity* entity, Gfx** dlists, Mtx* matrices) {
+void entity_BombableRock_init_fragments(Entity* entity, NdLst* dlists, Mtx* matrices) {
     BombableRockData* data = entity->dataBuf.bombableRock;
     Matrix4f mtxFragment;
     Matrix4f mtxTrans;
@@ -22,7 +22,7 @@ void entity_BombableRock_init_fragments(Entity* entity, Gfx** dlists, Mtx* matri
     s32 moveAngle = 0;
     s32 lateralSpeed = 0;
 
-    data->fragmentsGfx = ENTITY_ADDR(entity, Gfx**, dlists);
+    data->fragmentsGfx = ENTITY_ADDR(entity, NdLst*, dlists);
     entity->renderSetupFunc = entity_BombableRock_setupGfx;
     entity->alpha = 255;
     entity->pos.y = data->inititalY;
@@ -197,8 +197,8 @@ void entity_BombableRock_setupGfx(s32 entityIndex) {
     f32 z_inv;
     Entity* entity = get_entity_by_index(entityIndex);
     BombableRockData* data = entity->dataBuf.bombableRock;
-    Gfx* fragmentDlist;
-    Gfx** gfx = data->fragmentsGfx;
+    NdLst fragmentDlist;
+    NdLst* gfx = data->fragmentsGfx;
 
     x_inv = -entity->pos.x;
     y_inv = -entity->pos.y;
@@ -223,7 +223,7 @@ void entity_BombableRock_setupGfx(s32 entityIndex) {
         guMtxF2L(mtx, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        fragmentDlist = ENTITY_ADDR(entity, Gfx*, *gfx++);
+        fragmentDlist = ENTITY_ADDR(entity, NdLst, *gfx++);
         nd_draw_list(fragmentDlist, ND_SELF);
         nd_xf_pop(G_MTX_MODELVIEW);
     }

@@ -8,7 +8,7 @@ A site that does not resolve (an arg form names() does not know, or no ND_PSO_DE
     gne skip <file>:<line>
 Module form: names(text, arg) returns the list names (a list, or None for a skip); ws_FXSELF imports it.
 ENTSRC: after the files of <dir>, each extra <file> (gen_gfx_tab.sh passes the lines of 3ds/tools/ntab_ent.d/*.txt) is scanned the same
-way. With =<NAMESPACE>, N(x) in an argument is <NAMESPACE>_x (the gen_gfx_syms.py name). ENTITY_ADDR(e, Gfx*, x) is x (include/entity.h:66).
+way. With =<NAMESPACE>, N(x) in an argument is <NAMESPACE>_x (the gen_gfx_syms.py name). ENTITY_ADDR(e, Gfx*, x) or ENTITY_ADDR(e, NdLst, x) is x (include/entity.h:66).
 """
 import os
 import re
@@ -72,7 +72,7 @@ def _names(text, arg, local, ns=None):
     s = _outer(arg.strip())
     if ns:  # ENTSRC namespace
         s = re.sub(r"\bN\((\w+)\)", lambda m: ns + "_" + m.group(1), s)
-    me = re.fullmatch(r"ENTITY_ADDR\(\s*\w+\s*,\s*Gfx\s*\*\s*,\s*(.+)\)", s)  # ENTSRC entity
+    me = re.fullmatch(r"ENTITY_ADDR\(\s*\w+\s*,\s*(?:Gfx\s*\*|NdLst)\s*,\s*(.+)\)", s)  # ENTSRC entity
     if me:
         return _names(text, me.group(1), local, ns)
     s = re.sub(r"^NDN\((\w+)\)$", r"\1", s)  # GSETB: a moved list is written NDN(X) (gset.py)

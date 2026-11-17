@@ -128,7 +128,7 @@ void waterfall_appendGfx(void* effect) {
     f32 scale = data->unk_28 * 0.1;
     s32 savedIdx;
     Vtx_t* vtx;
-    Gfx* savedGfxPos;
+    Vtx* savedGfxPos;
     Matrix4f sp10;
     Matrix4f sp50;
     s32 i;
@@ -144,7 +144,7 @@ void waterfall_appendGfx(void* effect) {
     nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_val_prim(0, 0, data->unk_18, data->unk_1C, data->unk_20, unk_24);
     nd_draw_list(NDN(D_09000200_3B7AD0), ND_SELF);
-    savedGfxPos = (Gfx*) nd_rec_data(48 * sizeof(Gfx)); /* DIRECT D6c: the vertex buffer is stream data */
+    savedGfxPos = (Vtx*) nd_rec_data(24 * sizeof(Vtx)); /* DIRECT D6c: the vertex buffer is stream data */
 
     vtx = (Vtx_t*) savedGfxPos;
 

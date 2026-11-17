@@ -593,6 +593,7 @@ static __attribute__((cold, noinline)) void ndref_end(void) { /* end of frame: w
 static int drec_win = -2; static unsigned drec_first, drec_count, drec_step = 1u;
 static int drec_on;
 static FILE* drec_f; static char* drec_vb; static NdDrecReg* drec_regs; static uint16_t* drec_idx; static unsigned drec_idx_cap, drec_seq, drec_over;
+static NdDrecSpan drec_span[1 + OFF_N + SMALL_N]; static uint32_t drec_nspan; /* DRECTEX */
 #define DREC_REGS 640u
 static __attribute__((cold, noinline)) void drec_begin(void) { /* per frame, from pm_gpu_begin_w */
     if (drec_win == -2) {
@@ -609,6 +610,10 @@ static __attribute__((cold, noinline)) void drec_begin(void) { /* per frame, fro
     if (!drec_f || !drec_vb || !drec_regs) { pm_log_e("drec: no file or memory"); if (drec_f) fclose(drec_f); free(drec_vb); free(drec_regs); drec_f = NULL; drec_vb = NULL; drec_regs = NULL; drec_on = 0; drec_win = -1; return; }
     setvbuf(drec_f, drec_vb, _IOFBF, 1u << 20);
     drec_seq = drec_over = 0;
+    drec_nspan = 0; /* DRECTEX: the spans the GPU writes */
+    if (copy_blk) { drec_span[drec_nspan].lo = (uintptr_t)copy_blk; drec_span[drec_nspan++].n = BLK_FULL; }
+    for (int i = 0; i < OFF_N; i++) if (full_blk[i]) { drec_span[drec_nspan].lo = (uintptr_t)full_blk[i]; drec_span[drec_nspan++].n = BLK_FULL16; }
+    for (int k = 0; k < small_n; k++) { drec_span[drec_nspan].lo = (uintptr_t)small_blk[k]; drec_span[drec_nspan++].n = SMALL_BLK; }
     if (drec_step > 1u) fprintf(drec_f, "frame %u\n", fr);
 }
 static __attribute__((cold, noinline)) void drec_end(void) { /* end of a frame, from cen_frame_end: the last frame of the window closes the file */
@@ -666,6 +671,7 @@ static __attribute__((cold, noinline)) void drec_draw(const NdDraw* d, int stat)
         if (ty > 13u) { drec_over = 1; continue; }
         rec.tex[u].p = drec_p2v(d->u[u].addr << 3, dl); rec.tex[u].n = w * h * bits[ty] / 8u;
         rec.tex_type[u] = d->u[u].type; rec.tex_dim[u] = d->u[u].dim;
+        rec.tex_gpu[u] = (uint8_t)nd_drec_in_span((uintptr_t)rec.tex[u].p, drec_span, drec_nspan); /* DRECTEX */
     }
     const uint16_t* ix = (const uint16_t*)(const void*)drec_p2v((d->idx_word & 0x7FFFFFFFu) + 0x18000000u, dl);
     if (d->nidx > drec_idx_cap) { free(drec_idx); drec_idx_cap = d->nidx; drec_idx = (uint16_t*)malloc(drec_idx_cap * 2u); }

@@ -210,7 +210,6 @@ void shimmer_burst_appendGfx(void* effect) {
     s32 unk_54 = part->unk_54;
     s32 unk_58 = part->unk_58;
     f32 temp_f20 = part->unk_4C / 255.0f;
-    Gfx* savedGfxPos;
     NdSub sub;
     NdParts pb;
     Matrix4f sp20;

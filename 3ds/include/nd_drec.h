@@ -8,14 +8,17 @@
 
 typedef struct NdDrecReg { uint16_t reg; uint8_t mask; uint32_t val; } NdDrecReg; /* a state register write; an address register carries 0 */
 typedef struct NdDrecBlob { const void* p; uint32_t n; } NdDrecBlob;          /* bytes the draw reads (n 0: none) */
+typedef struct NdDrecSpan { uintptr_t lo; uint32_t n; } NdDrecSpan; /* bytes [lo, lo + n) the GPU writes */
 typedef struct NdDrec {
     uint32_t seq, kind, n;                 /* draw number from 0; 1 indexed triangles, 2 arrays; index or vertex count */
     const NdDrecReg* regs; uint32_t nregs; /* in emit order */
     NdDrecBlob tex[3]; uint32_t tex_type[3], tex_dim[3]; /* level 0 texels of units 0-2 */
+    uint8_t tex_gpu[3]; /* 1: GPU-written texels: the t line says h gpu */
     NdDrecBlob vtx, idx;
     const float (*mtx)[16]; uint32_t nmtx; /* palette matrices, memory order */
 } NdDrec;
 uint64_t nd_drec_fnv(const void* p, uint32_t n);
 void nd_drec_write(FILE* f, const NdDrec* r);
+int nd_drec_in_span(uintptr_t a, const NdDrecSpan* s, uint32_t ns);
 
 #endif

@@ -474,7 +474,7 @@ NDN_DECL(D_0A003F10_E42170);
 
 NDN_DECL(D_0A003F58_E421B8);
 
-Gfx* Entity_ShatteringBrickBlock_FragmentsRender[] = {
+NdLst Entity_ShatteringBrickBlock_FragmentsRender[] = {
     NDN(D_0A003F58_E421B8),
     NDN(D_0A003E98_E420F8),
     NDN(D_0A003DD8_E42038),

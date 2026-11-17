@@ -264,7 +264,6 @@ void confetti_appendGfx(void* effect) {
     s32 unk_2C;
     NdLst spA0;
     s32 spA4;
-    Gfx* savedGfxPos;
     s32 unk_24;
     Color_RGB8* color;
 

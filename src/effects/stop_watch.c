@@ -187,7 +187,6 @@ void stop_watch_appendGfx(void* effect) {
     s32 unk_14 = data->unk_14;
     s32 unk_24 = data->unk_24;
     Vtx_t* vtxBuffer;
-    Gfx* savedGfxPos;
     NdSub sub;
     Matrix4f sp20;
     Matrix4f sp60;
@@ -204,7 +203,7 @@ void stop_watch_appendGfx(void* effect) {
     nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     nd_draw_list(NDN(D_09001000_3CC890), ND_SELF);
     nd_val_env(0, 0, 0, data->unk_2C);
-    vtxBuffer = (Vtx_t*) nd_rec_data(64 * sizeof(Gfx)); /* DIRECT D6c: the vertex buffer is stream data */
+    vtxBuffer = (Vtx_t*) nd_rec_data(32 * sizeof(Vtx)); /* DIRECT D6c: the vertex buffer is stream data */
 
     for (i = 0; i < 16; i++) {
         Vtx_t* vtx = &vtxBuffer[i * 2];

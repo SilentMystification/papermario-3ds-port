@@ -23,7 +23,7 @@ BSS MessagePrintState* SaveBlockResultPrinter;
 
 
 void entity_SaveBlock_setupGfx(s32 index) {
-    Gfx* dlist = NDN(Entity_SaveBlock_RenderContent);
+    NdLst dlist = NDN(Entity_SaveBlock_RenderContent);
     Entity* entity = get_entity_by_index(index);
     SaveBlockData* blockData = entity->dataBuf.saveBlock;
     s32 alpha = 128;
@@ -43,7 +43,7 @@ void entity_SaveBlock_setupGfx(s32 index) {
     nd_draw_list(dlist, pe_SaveBlock_42);
     nd_xf_pop(G_MTX_MODELVIEW);
 
-    dlist = ENTITY_ADDR(entity, Gfx*, NDN(Entity_SaveBlock_RenderBlock));
+    dlist = ENTITY_ADDR(entity, NdLst, NDN(Entity_SaveBlock_RenderBlock));
     guMtxL2F(sp58, ENTITY_ADDR(entity, Mtx*, &Entity_SaveBlock_Mtx));
     sp58[3][1] += 12.5f;
     guMtxF2L(sp58, &gDisplayContext->matrixStack[gMatrixListPos]);

@@ -105,8 +105,6 @@ void thunderbolt_ring_appendGfx(void* effect) {
     s32 lifeTime = data->lifeTime;
     s32 unk_24 = data->unk_24;
     f32 scaleY = 1.0f;
-    Gfx* savedGfxPos;
-    Gfx* savedGfxPos2;
     NdSub sub;
     Matrix4f sp20;
     Matrix4f sp60;
