@@ -4322,7 +4322,7 @@ static ParadeSlot sParadeSlots[16];
 
 static void parade_build_copies(s32 index) {
     ParadeSlot* slot = &sParadeSlots[index];
-    Gfx* dl;
+    NdLst dl;
     s32 i, j;
 
     if (slot->model == nullptr || slot->model->modelNode->displayData == nullptr) {
@@ -4337,7 +4337,7 @@ static void parade_build_copies(s32 index) {
             guTranslateF(mtx, slot->copies[i]->stepX * j, 0.0f, 0.0f);
             guMtxF2L(mtx, dispMtx);
             nd_xf_push(dispMtx, G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
-            gSPDisplayList(gMainGfxPos++, dl);
+            NDCTL_CALL(nd_nr, dl); /* NMDL7: the list call unit (nd_at.h:35) */
             nd_xf_pop(G_MTX_MODELVIEW);
         }
     }

@@ -5,6 +5,7 @@
 #include "nd_val.h"
 #include "nd_geo.h"
 #include "nd_tx.h"
+#include "nd_at.h"
 
 s32 N(WavePhase) = {
     0
@@ -228,7 +229,7 @@ void N(UnkModelFunc001)(void) {
         nd_pso_cc(PM_CC_PRIM_NO_ALPHA, PM_CC_PRIM_NO_ALPHA);
         nd_val_prim(0, 0, 248, 240, 240, 0);
 
-        gSPDisplayList(gMainGfxPos++, model->modelNode->displayData->displayList);
+        NDCTL_CALL(nd_nr, model->modelNode->displayData->displayList); /* NMDL7: the list call unit (nd_at.h:35) */
 
         nd_target_end();
         nd_pso_zsrc(G_ZS_PRIM);
