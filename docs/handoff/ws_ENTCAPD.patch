@@ -1,0 +1,134 @@
+diff --git a/3ds/tools/azt.d/ENTCAPD.json b/3ds/tools/azt.d/ENTCAPD.json
+new file mode 100644
+index 0000000000..5ce113fd36
+--- /dev/null
++++ b/3ds/tools/azt.d/ENTCAPD.json
+@@ -0,0 +1,56 @@
++{
++  "scenarios": [
++    {
++      "name": "entcapd_kgr01_cap",
++      "status": "unverified",
++      "subject": "ENTCAPD capture: kgr_01 darkness stencil (dark_kgr01 words), entcap and entcapt on, log only.",
++      "proves": "ENTCAPD: the entcap lines of the sites (nd_walk.c entcap_rec) and the drec line.",
++      "debug": "warp=kgr_01:0 wide loglevel=debug det drec=150:2 entcap entcapt",
++      "until": "drec f151 draws [1-9]\\d* bytes \\d+",
++      "cap": 30,
++      "deadline": 25,
++      "first_marker": "warp: kgr_01 entry 0",
++      "expects": "warp",
++      "needs_picture": false,
++      "expected_events": [
++        {
++          "name": "warp",
++          "regex": "warp: kgr_01 entry 0"
++        },
++        {
++          "name": "entcap",
++          "regex": "entcap l [0-9a-f]{8} s [0-9a-f]{8}"
++        },
++        {
++          "name": "drec",
++          "regex": "drec f151 draws [1-9]\\d* bytes \\d+"
++        }
++      ],
++      "reason": "ENTCAPD: copy of the words of the named scenario plus the switches. Until the drec line of frame 151."
++    },
++    {
++      "name": "entcapd_kgr01_drec",
++      "status": "unverified",
++      "subject": "ENTCAPD gate: kgr_01 darkness stencil (dark_kgr01 words), cold det start, drec.",
++      "proves": "ENTCAPD: the draw records are byte-equal between a base and a head.",
++      "debug": "warp=kgr_01:0 wide loglevel=debug det drec=150:2",
++      "until": "drec f151 draws [1-9]\\d* bytes \\d+",
++      "cap": 30,
++      "deadline": 25,
++      "first_marker": "warp: kgr_01 entry 0",
++      "expects": "warp",
++      "needs_picture": false,
++      "expected_events": [
++        {
++          "name": "warp",
++          "regex": "warp: kgr_01 entry 0"
++        },
++        {
++          "name": "drec",
++          "regex": "drec f151 draws [1-9]\\d* bytes \\d+"
++        }
++      ],
++      "reason": "ENTCAPD: copy of the words of the named scenario plus the switches. Until the drec line of frame 151."
++    }
++  ]
++}
+diff --git a/3ds/tools/bench.d/ENTCAPD.json b/3ds/tools/bench.d/ENTCAPD.json
+new file mode 100644
+index 0000000000..316eab9cf8
+--- /dev/null
++++ b/3ds/tools/bench.d/ENTCAPD.json
+@@ -0,0 +1,36 @@
++{
++  "benches": [
++    {
++      "name": "entcapd_kgr01_cap",
++      "kind": "azahar_stream",
++      "speed": "normal",
++      "default": false,
++      "purpose": "ENTCAPD: entcap lines of the list sites (log only).",
++      "scenario": "entcapd_kgr01_cap",
++      "cap": 30,
++      "until": "drec f151 draws [1-9]\\d* bytes \\d+",
++      "tags": [
++        "azahar",
++        "entcap"
++      ],
++      "gates": []
++    },
++    {
++      "name": "entcapd_kgr01_drec",
++      "kind": "azahar_pic",
++      "speed": "normal",
++      "default": false,
++      "purpose": "ENTCAPD: drec.txt of frames 150 and 151 (cold det start). A head equals the base.",
++      "scenario": "entcapd_kgr01_drec",
++      "cap": 30,
++      "until": "drec f151 draws [1-9]\\d* bytes \\d+",
++      "tags": [
++        "azahar",
++        "det",
++        "cold",
++        "drec"
++      ],
++      "gates": []
++    }
++  ]
++}
+diff --git a/3ds/tools/ntab_ent.d/ENTCAPD.txt b/3ds/tools/ntab_ent.d/ENTCAPD.txt
+new file mode 100644
+index 0000000000..ba6d6cad18
+--- /dev/null
++++ b/3ds/tools/ntab_ent.d/ENTCAPD.txt
+@@ -0,0 +1,2 @@
++# ENTCAPD: sites with a captured entry
++src/screen_render_util.c
+diff --git a/src/screen_render_util.c b/src/screen_render_util.c
+index 7f7d9168d0..5474d2aa13 100644
+--- a/src/screen_render_util.c
++++ b/src/screen_render_util.c
+@@ -154,7 +154,7 @@ void appendGfx_darkness_stencil(bool isWorld, s32 posX, s32 posY, f32 alpha, f32
+     nd_pso_cc(PM_CC_CONST_1, PM_CC_CONST_1);
+     guRotate(&gDisplayContext->matrixStack[gMatrixListPos], 0.0f, 0.0f, 0.0f, 1.0f);
+     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+-    gSPDisplayList(gMainGfxPos++, NDN(Gfx_DarknessStencilQuad));
++    nd_rec_dl(NDN(Gfx_DarknessStencilQuad));
+     nd_xf_pop(G_MTX_MODELVIEW);
+     nd_pso_cc(PM_CC_56, PM_CC_56);
+ 
+@@ -178,7 +178,7 @@ void appendGfx_darkness_stencil(bool isWorld, s32 posX, s32 posY, f32 alpha, f32
+         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+         guScale(&gDisplayContext->matrixStack[gMatrixListPos], f20, f20, 1.0f);
+         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+-        gSPDisplayList(gMainGfxPos++, NDN(Gfx_DarknessStencilQuad));
++        nd_rec_dl(NDN(Gfx_DarknessStencilQuad));
+         nd_xf_pop(G_MTX_MODELVIEW);
+     }
+ 
