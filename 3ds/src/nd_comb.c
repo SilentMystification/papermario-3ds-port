@@ -240,7 +240,7 @@ void nd_psochk_end(void) { if (psochk_on()) pm_log_evt("psochk end f%u draws %u 
 static __attribute__((cold, noinline)) void pso_seen_note(const NdCombIn* in) {
     static uint32_t seen[256]; static unsigned n; uint32_t h = 2166136261u;
     if ((unsigned)(in->tex_on | in->use_t1 | in->t1_valid | in->dual_on | in->box_prod | in->box_folded | in->comb_set | in->comb_alpha_shade) > 1u) {
-        static int once; if (!once) { once = 1; pm_log_evt("psomiss flags above 1"); } return;
+        static int once; if (!once) { once = 1; pm_log_evt("psomiss flags above 1: %d %d %d %d %d %d %d %d", in->tex_on, in->use_t1, in->t1_valid, in->dual_on, in->box_prod, in->box_folded, in->comb_set, in->comb_alpha_shade); } return;
     }
     const uint32_t k[9] = { in->w0, in->w1, in->omode_h, in->prim_lo8 & 0xffu, in->key_c, in->key_s, in->conv_k4, (uint32_t)pm_comb_vprim,
         nd_pso_flags(in->tex_on, in->use_t1, in->t1_valid, in->dual_on, in->box_prod, in->box_folded, in->comb_set, in->comb_alpha_shade) };
