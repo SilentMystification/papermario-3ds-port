@@ -1,0 +1,129 @@
+diff --git a/3ds/tools/azt.d/ENTSELF.json b/3ds/tools/azt.d/ENTSELF.json
+new file mode 100644
+index 0000000000..331c03c429
+--- /dev/null
++++ b/3ds/tools/azt.d/ENTSELF.json
+@@ -0,0 +1,28 @@
++{
++  "scenarios": [
++    {
++      "name": "entself_fx_drec",
++      "status": "unverified",
++      "subject": "ENTSELF effects: flower_splash 3, flower_trail 4, bombette_breaking 60 (pm_fxtest.c FXLIST) on mac_01 (pos 0 0 200), cold det start with the drec switch (frames 412 to 500, step 44), no shots.",
++      "proves": "ENTSELF: the draw records of the 3 effects are byte-equal between a base and a head (gSPDisplayList of a v2 table list becomes nd_draw_list with ND_SELF).",
++      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=3,4,60 loglevel=debug det drec=412:3:44",
++      "until": "drec f500 draws [1-9]\\d* bytes \\d+",
++      "cap": 25,
++      "deadline": 20,
++      "first_marker": "warp: mac_01 entry 0",
++      "expects": "warp",
++      "needs_picture": false,
++      "expected_events": [
++        {
++          "name": "warp",
++          "regex": "warp: mac_01 entry 0"
++        },
++        {
++          "name": "drec",
++          "regex": "drec f500 draws [1-9]\\d* bytes \\d+"
++        }
++      ],
++      "reason": "ENTSELF: copy of pbuf_fx_drec (PBUF) with the 3 effects. Cap 25 s, deadline 20 s, until the drec line of frame 500."
++    }
++  ]
++}
+diff --git a/3ds/tools/bench.d/ENTSELF.json b/3ds/tools/bench.d/ENTSELF.json
+new file mode 100644
+index 0000000000..310baa899a
+--- /dev/null
++++ b/3ds/tools/bench.d/ENTSELF.json
+@@ -0,0 +1,21 @@
++{
++  "benches": [
++    {
++      "name": "entself_fx_drec",
++      "kind": "azahar_pic",
++      "speed": "normal",
++      "default": false,
++      "purpose": "ENTSELF: drec.txt of flower_splash, flower_trail and bombette_breaking, frames 412 to 500 step 44 (cold det start). A head equals the base.",
++      "scenario": "entself_fx_drec",
++      "cap": 25,
++      "until": "drec f500 draws [1-9]\\d* bytes \\d+",
++      "tags": [
++        "azahar",
++        "det",
++        "cold",
++        "drec"
++      ],
++      "gates": []
++    }
++  ]
++}
+diff --git a/src/effects/bombette_breaking.c b/src/effects/bombette_breaking.c
+index b500bc64a7..8380ed51eb 100644
+--- a/src/effects/bombette_breaking.c
++++ b/src/effects/bombette_breaking.c
+@@ -238,7 +238,7 @@ void bombette_breaking_appendGfx(void* effect) {
+         nd_xf_pop(G_MTX_MODELVIEW);
+     }
+ 
+-    gSPDisplayList(gMainGfxPos++, sp64);
++    nd_draw_list(sp64, ND_SELF);
+ 
+     data = ((EffectInstance*)effect)->data.bombetteBreaking;
+     data++;
+diff --git a/src/effects/flower_splash.c b/src/effects/flower_splash.c
+index 7bf5bc031b..21980746c3 100644
+--- a/src/effects/flower_splash.c
++++ b/src/effects/flower_splash.c
+@@ -163,7 +163,7 @@ void flower_splash_appendGfx(void* effect) {
+ 
+             nd_val_prim(0, 0, 112, 96, 24, data->primAlpha);
+             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+-            gSPDisplayList(gMainGfxPos++, dlist);
++            nd_draw_list(dlist, ND_SELF);
+             nd_xf_pop(G_MTX_MODELVIEW);
+         }
+     }
+diff --git a/src/effects/flower_trail.c b/src/effects/flower_trail.c
+index 5ea587f5bf..17d954d139 100644
+--- a/src/effects/flower_trail.c
++++ b/src/effects/flower_trail.c
+@@ -184,7 +184,7 @@ void flower_trail_appendGfx(void* argEffect) {
+ 
+             nd_val_prim(0, 0, 112, 96, 24, part->primAlpha);
+             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+-            gSPDisplayList(gMainGfxPos++, dlist);
++            nd_draw_list(dlist, ND_SELF);
+             nd_xf_pop(G_MTX_MODELVIEW);
+         }
+     }
+diff --git a/src/item_entity.c b/src/item_entity.c
+index fc39f668b6..a24558d2df 100644
+--- a/src/item_entity.c
++++ b/src/item_entity.c
+@@ -1128,9 +1128,9 @@ void render_item_entities(void) {
+                         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+ 
+                         if (gSpriteShadingProfile->flags != 0) {
+-                            gSPDisplayList(gMainGfxPos++, NDN(Gfx_RM2_ALPHATEST));
++                            nd_draw_list(NDN(Gfx_RM2_ALPHATEST), ND_SELF);
+                         } else {
+-                            gSPDisplayList(gMainGfxPos++, NDN(Gfx_RM1_ALPHATEST));
++                            nd_draw_list(NDN(Gfx_RM1_ALPHATEST), ND_SELF);
+                         }
+                         nd_pso_geom_clr(G_LIGHTING);
+                         nd_draw_list(NDN(D_8014C620), ND_SELF);
+diff --git a/src/pause/pause_gfx.c b/src/pause/pause_gfx.c
+index a89a517cc7..3981f79c28 100644
+--- a/src/pause/pause_gfx.c
++++ b/src/pause/pause_gfx.c
+@@ -422,7 +422,7 @@ void pause_draw_menu_label(s32 index, s32 x, s32 y) {
+         xOffset = 160;
+     }
+ 
+-    gSPDisplayList(gMainGfxPos++, PauseGfxLabels[index]);
++    nd_draw_list(PauseGfxLabels[index], ND_SELF); /* ENTSELF: every label is a v2 table (ntab_tables.txt) */
+     pause_draw_rect(x * 4, y * 4, (x + xOffset) * 4, (y + 16) * 4, 0, 0, 0, 0x400, 0x400);
+ 
+ #if VERSION_PAL
