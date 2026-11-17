@@ -1,51 +1,52 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main 3d552f33b3, 2026-11-17. Oracle ENTRY (this file) wrote the ENTRY pages below. Counters (FACT listcen 9bc7a6f298, src not
-changed since): build 386 (include 308, src 78), gfxpos 89, data 1207, data_arrays 92, gfxtype 580, recdl 11, reader 789, model 15.
-Goal: remove the N64 display list system. Done when 3ds/tools/elfgate.py prints func 0 data 0 gfxnames 0 and every listcen counter is 0.
-Scope (orchestrator 2026-11-17): at most 2 oracles. assets/us/effects/gfx belongs to the effects oracles (a-m, n-z). FXSEED gap a,
-mdl_get_copied_gfx and the converter-refused lists belong to the other oracle. The loop-fix files are not ours (3ds/build.sh,
-nd_host_test.sh, bench.py, merge_row.sh, post_merge.sh, postmerge_bg.sh, push_3ds.sh, gen_gfx_tab.sh, rowloop.sh, run_azahar.ps1, CMake, .ld).
-## Ready pages (each: page + patch, `git apply --check` OK on main at release)
-- ws_ENTSRC (Haiku, start when the loop fix leaves gen_gfx_tab.sh): switch entcapt (nd_walk.c entcap_rec takes the key), entapply
-  SITE any src/, gen_ntab_entries.py extra files `<path>[=NS]` from 3ds/tools/ntab_ent.d/*.txt (gen_gfx_tab.sh:28), host test entsrc.sh.
-- ws_ENTSELF (Haiku, start now): 6 sites of self-contained tables to nd_draw_list(X, ND_SELF). C1 -6, C2 -6. New bench entself_fx_drec.
-- ws_ENTCAPE (after Merge ENTSRC): 10 entity sites, capture tour entcape_cap (5 spots, GUESS in view), gate entcape_kmr03_drec.
-- ws_ENTCAPR (after Merge ENTSRC): curtains:155, filemenu_common:996 :1018, npc_merlee:248 :259. Captures reuse curt/fsel/gmerlee words.
-- ws_ENTCAPD (after Merge ENTSRC): screen_render_util:157 :181 (kgr_01 darkness), gate entcapd_kgr01_drec.
-- ws_TSTSHK (Haiku, start now): tst_13 shockwave gset + entity_model.c:470. ws_RAWIMG (Haiku, after Merge ENTCAPE): RAW rule, Heart/Ultra.
-## Open work, in this order (orchestrator 2026-11-17)
-1. SaveBlock: one gset.py line (src/entity/model/SaveBlock.c) moves Entity_SaveBlock_RenderFaces: data -33, data_arrays -1, gfxtype -1
-   (ASSET_C oracle dry run). Gate bench spot_mac01_drec. Not yet paged.
-2. listcen.py rule: do not count an asset that no source includes (blanket.gfx.inc.c 39 data, world/dead/lava_piranha/vine.gfx.inc.c
-   17 data), LCNOBUILD shape (NOBUILD_RULE, 3ds/tests/host.d/lcnobuild.sh). Dry run it, then page.
-3. entity_model.c: :470 dead arm is in ws_TSTSHK. :492 (reflect, ent_gdl ring rule nd_ent.c:458) and :774 :786 (draw_entity_model_E,
-   no scene known) are not closed: they wait for NMDL6/NMDL7 (entity record form). nd_rec_dl only moves them to recdl.
-4. Phase E pages, each with its trigger (listcen totals and a grep), function names to delete, terms that must return nothing:
-   1A-1C need build 0, gfxpos 0, recdl 0 (1C also: no device caller of nd_dlc_compile; FACT nd_ent.c:311 is the last one); 1D needs
-   data 0, data_arrays 0 and NS3; stage 2 needs stage 1 and PSOCAP; the user decided (2026-11-17): a draw with no table entry uses a
-   fixed fallback mode and writes one log line, nd_comb_core does not stay; stage 5 needs data 0; stage 3 needs 1, 2, 5 and recdl 0;
-   stage 4 needs data 0 and stage 3. Terms per stage: design_lookahead.md section 7. Not written.
-## src build/gfxpos sites by group (FACT grep, 023db9ca81; build 78, gfxpos 89 in src)
-- ENTRY pages above: 23 sites. Not paged, no scene known: status_star_shimmer.c:189 (itab), screen_overlays.c:309 D_8014EA48 (itab).
-- Other oracle: copied gfx 21 (hos_01.inc 4, Snowflakes 1, flo_14 2, hos_02 4, hos_03 3, kgr_01 1, rowf 1, club64 1, pra_29 2, Whale 2),
-  model node lists 3 (flo_10 waterfx:231, mac_00 water_gfx:20, crystal_ball_gfx:95), model.c:4341, entity_model.c 4 (item 3 above).
-- Converter refused (other oracle): curtains:136 :180 (TheaterInitGfx), :183 NoControllerGfx RECT, screen_overlays 7 PRIMDEPTH,
-  hos_05 intro 2 SCISSOR, kmr_20 records 1 RECT, mgm_00 scoreboard 1 RECT, state_title_screen 3 and hud_element 2 (state lists with
-  SCISSOR, not in the converter set yet). Effects oracles: flame.c 4 (gap e). tst_13 main.c:307 (list writer).
-- gfxpos only (11): cam_main.c:29, main.c:151, main_loop.c:178 :195 (frame task: S9DEL4B), model.c:4259 :4274, msg_draw.c:334 :1692,
-  filemenu_msg.c:184 :209 (stream position compares), draw_box.c:462 nd_gx_w. No page yet.
+State: main 808bd98f15, 2026-11-17. Oracle ENDGAME1 (the only oracle) wrote the 4 pages below.
+Counters on 52f9b15c42 (FACT listcen): build 341 (include 308 = gbi.h 245, gbi_custom.h 61, gt.h 2; src 33), gfxpos 44, data 482,
+data_arrays 15, gfxtype 428, recdl 11, reader 792, model 15. After the 4 pages (FACT, oracle listcen of main + all 4 patches):
+build 326 (src 18), gfxpos 29, data 339, data_arrays 10, gfxtype 424, recdl 11.
+Goal: elfgate.py prints func 0 data 0 gfxnames 0 and every listcen counter is 0.
+Not ours: 3ds/build.sh, nd_host_test.sh, bench.py, merge_row.sh, post_merge.sh, postmerge_bg.sh, rowloop.sh, gen_gfx_tab.sh, run_azahar.ps1, CMake, .ld.
+## Ready pages (Haiku, start now, disjoint files; page + patch, apply --check OK on 52f9b15c42, one host run PASS on all 4)
+- ws_ENTSELF (row ENTSELF2): 6 ND_SELF sites incl. pause_gfx.c:425. build -6 gfxpos -6. New bench entself_fx_drec.
+- ws_TSTSHK (row TSTSHK2): tst_13 shockwave gset, entity_model.c:470 dead arm. Gate decision in the page (tst13 blocked, host proof).
+- ws_ENTCAPR2: curtains.c:151 and npc_merlee.c:248 :259 entries. build -3. Gate curt_title_drec, gmerlee_drec. Old ws_ENTCAPR goes.
+- ws_INITGS: HudElemBack/FrontInitGfx, TitleSetupGfx gset, 5 ND_SELF sites. build -5 data -28.
+## Remaining src build 18 and gfxpos 29 after the 4 pages, by group, with the move (FACT grep 52f9b15c42 unless marked)
+1. Converter refusals ("unit address outside the symbol map", FACT ntab_unsup.txt of the oracle host run):
+   screen_overlays.c:264 D_8014EA48 (unit 15 loads `BSS s32 D_80156910`, screen_overlays.c:21, a screen copy buffer; also itab),
+   effects flame.c:190 D_090009E0 (unit 15, kind OPEN), curtains.c:132 :176 TheaterInitGfx (unit 0 gsSPViewport(&TheaterViewport)).
+   Move: a converter symbol rule row (RAWIMG form: gen_gfx_syms + host test with seeded fault), then gset, then entries. Not paged.
+2. itab with no capture yet: status_star_shimmer.c:189 D_801097D8, flame.c:188 :211 (D_09000918, D_090008F8 itab). Move: entcap
+   capture (ENTCAPE form). Scene OPEN for the shimmer (star power use). flame: fxtest scene of the flame effect (id OPEN).
+3. flame.c:197 preset->dlist (handle of the flame lists): after 1 and 2, nd_draw_list with the entry of each preset. Data: gfx/flame.c 49.
+4. entity_model.c:492 (reflect), :774 :786 (draw_entity_model_E); model.c:4340; world node lists flo_10 waterfx.c:231,
+   mac_00 water_gfx.c:20, mac_01 crystal_ball_gfx.c:95. Move: NMDL6/NMDL7 (entity and model record form). Design OPEN (Sonnet needs the user).
+5. filemenu_common.c:996 :1018 D_8024B708 (+ filemenu_gfx.c data 4): it draws vertex slots 0-1 of D_8024B6F0 under another matrix.
+   Move: a design (both quads on the CPU, or one list per arrow). Not Haiku until the oracle writes it.
+6. tst_13 main.c:307 gSPDisplayList(NDN(N(shockwave_gfx))) after TSTSHK2: needs an entry; no Azahar capture (pm_warp.c:747).
+   Move: an entry from the code read of main.c:302-305 (cycle 1, AA_ZB_OPA_SURF, mdl_draw_hidden_panel_surface state), host proof only.
+7. gfxpos only (11): cam_main.c:29 (definition), main.c:151, main_loop.c:178 :195 (task start: stage 4B), model.c:4258 :4273 (effcen
+   probe ec_g0), msg_draw.c:334 :1692 and filemenu_msg.c:184 :209 (gMainGfxPos half of a stream position compare), draw_box.c:462
+   (nd_gx_w writes words to gMainGfxPos). Move after build 0: one Haiku page drops the gMainGfxPos halves (only nd_rec_task moves
+   it then: GUESS until build is 0), draw_box.c:462 needs a read of nd_gx_w (OPEN).
+## Remaining data 339 after the 4 pages (FACT)
+include/PR/gbi.h 191 (macro definitions: they go with stage 4D, never by a row), blanket.gfx.inc.c 39 (named by
+ToadHouseBlanketAnim.inc.c, included by dro_02/npc.c:59, hos_03/npc.c:7, jan_03/npc.c:20: gset include mode of those 3 files, not
+checked), gfx/flame.c 49 (group 1-3), screen_overlays.c 40 (group 1), curtains.c 16 (TheaterInitGfx, group 1), filemenu_gfx.c 4 (group 5).
+## Phase E triggers (plan_endgame.md section 6). FACT: include build 308 and include data 191 are gbi.h macro definitions. They reach
+0 only in stage 4D. So read every "build 0" and "data 0" trigger as "src and assets 0" (oracle rule, 2026-11-17).
+- Stage 1A-1C: src build 0, gfxpos 0 (except cam_main.c:29 and the task lines of group 7), recdl 0, no device caller of nd_dlc_compile.
+  Holders: groups 1-7 and the recdl 11 (effects 10, imgfx.c 1). Not within the next 15 rows: group 4 and 5 need designs.
+- Stage 5: data 0 outside gbi.h. Holders: groups 1, 3, 5 and blanket. Not within 15 rows (group 5 design).
+- No phase E page is written: no trigger can hold within the next 15 rows.
 ## Facts that cost time
-- entcap logs a list only when it has no v2 table (nd_walk.c:620 `!nt`). Every itab list has an NdNDev (IENTRY), so before ENTSRC no
-  itab site can be captured. ND_SELF is a null entry: nd_draw_list(X, ND_SELF) == nd_rec_dl(X) on the device (nd_gtab.h:88, nd_gtab.c:132).
-- gen_ntab_entries.py names(): a member access (data->gfx2) or a function parameter (HeartBlock arg1) gives no pair. Not a fail.
-- GENKEY (branch): a new file in a traced tar path changes K0 (readkey.sh header), so a new ntab_ent.d/<ROW>.txt rebuilds gfx_tab.
-- Writing Python through a Bash heredoc on this host mangles backslashes (\b, \r, \n became control chars): use the Edit tool or chr(92).
-- Tour items `map:entry@x:y:z` run in one Azahar start (pm_warp.c:368-374), end line `tour: done items <n>` (:1462). Cap 45 s: 5 items.
-- Scratch worktree for patches: create one in the scratchpad with `git worktree add --detach`, remove it when done.
-- OPEN (ENTSELF 11-17): nd_draw_list(PauseGfxLabels[index], ND_SELF) at pause_gfx.c:425 crashed wscmb_pause_drec in ent_compile
-  nd_ent.c:278 (raw ent_flat, nd_ntab_find NULL) via gt_run nd_walk.c:630. All 9 labels have ndd entries. The site stays gSPDisplayList.
-Output: build3ds/wt/ENTSELF/build3ds/out/loop_ENTSELF_wscmb_crash.txt.
+- Write patches in a scratch worktree (`git worktree add --detach <scratchpad>/wt main`); the add takes over 2 min (run it alone).
+  Remove it with the full path. Source files are CRLF: replace with a newline-aware script, git diff gives LF patches.
+- gset.py holds a list that its device file names with `&X` (hold_line, gset.py:173). Change `&X` to `X` first (same address).
+- A new file needs gconv_src.d/<row>.txt to reach the converter: gset_ok.txt lists only lists of gconv sources.
+- host.d/buildlock.sh failed once in the oracle run (`docker engine not answering`, race), passed on the rerun: a tool fault, not a page fault.
+- entcap logs a list only when it has no v2 table (nd_walk.c `!nt`). ND_SELF is the null entry (nd_gtab.h:88, nd_gtab.c:136).
+- Writing Python through a Bash heredoc mangles backslashes: use the Edit tool or chr(92).
 ## What to do first
-1. Answer coder questions of ENTSRC, ENTSELF, ENTCAP* (SendMessage, file:line).
-2. Open work items 1 to 4 in order. Commit each page alone (`git add -f`).
+1. Answer coder questions of ENTSELF2, TSTSHK2, ENTCAPR2, INITGS (SendMessage, file:line).
+2. Page group 1 (converter symbol rule for D_80156910, TheaterViewport, flame unit 15), then group 2 captures, then group 7.
