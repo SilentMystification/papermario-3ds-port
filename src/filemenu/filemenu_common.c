@@ -164,7 +164,7 @@ MenuWindowBP filemenu_common_windowBPs[3] = {
 
 NDN_DECL(filemenu_dl_copyarrow);
 NDN_DECL(D_8024B6F0);
-extern Gfx D_8024B708[];
+NDN_DECL(D_8024B708);
 
 BSS s32 filemenu_iterFileIdx;
 BSS s32 filemenu_pressedButtons;
@@ -993,7 +993,7 @@ void filemenu_draw_contents_copy_arrow(MenuPanel* menu, s32 baseX, s32 baseY, s3
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_val_tile_size(1, (gGameStatusPtr->frameCounter * 8) % 512, 0, ((gGameStatusPtr->frameCounter * 8) % 512) + 60, 0);
-    gSPDisplayList(gMainGfxPos++, D_8024B708);
+    nd_draw_list(NDN(D_8024B708), ND_SELF); /* VSLOT3: a moved list with an itab (its triangles use the caller slots 0-1 of D_8024B6F0) */
     nd_xf_pop(G_MTX_MODELVIEW);
     nd_val_prim(0, 0, 230, 230, 230, 255);
     nd_val_env(232, 40, 160, 0);
@@ -1015,7 +1015,7 @@ void filemenu_draw_contents_copy_arrow(MenuPanel* menu, s32 baseX, s32 baseY, s3
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_val_tile_size(1, (gGameStatusPtr->frameCounter * 8) % 512, 0, ((gGameStatusPtr->frameCounter * 8) % 512) + 60, 0);
-    gSPDisplayList(gMainGfxPos++, D_8024B708);
+    nd_draw_list(NDN(D_8024B708), ND_SELF); /* VSLOT3: a moved list with an itab (its triangles use the caller slots 0-1 of D_8024B6F0) */
     nd_xf_pop(G_MTX_MODELVIEW);
 
 }

@@ -320,6 +320,7 @@ static void v2_flush(void) {
     if (cx->nref + nref > V2_MAXIDX) { v2_unsup("too many vertex refs", 0); return; }
     for (unsigned i = 0; i < nref; i++) {
         unsigned off;
+        if (ref[i].arr == ND_VS_IN) continue; /* VSLOT3: a caller slot */
         if (!sym_of((uintptr_t)gconv_sym[ref[i].arr].addr + 16u * ref[i].index, GS_VTX, &off)) { v2_unsup("vertex ref outside the set", 0); return; }
     }
     const unsigned rb = cx->nref;
@@ -666,6 +667,7 @@ static void v2_emit_table(const V2C* c) {
         printf("static const void* const ndnv_%s[%u] = {", n, c->nref);
         for (unsigned i = 0; i < c->nref; i++) {
             char e[160];
+            if (c->ref[i].arr == ND_VS_IN) { printf("%s(const void*)(uintptr_t)%uu", i ? "," : "", c->ref[i].index); continue; } /* VSLOT3: a caller slot (nd_gtab.h NDN_DRAW) */
             if (!v2_sym_expr(e, sizeof e, (uintptr_t)gconv_sym[c->ref[i].arr].addr + 16u * c->ref[i].index, GS_VTX)) { const GSym* rs = &gconv_sym[c->ref[i].arr]; fprintf(stderr, "gconv: %s: vertex ref outside the set (%s index %u of %u)\n", n, rs->name, c->ref[i].index, (unsigned)(((uintptr_t)rs->end - (uintptr_t)rs->addr) / 16u)); exit(1); }
             printf("%s%s", i ? "," : "", e);
         }

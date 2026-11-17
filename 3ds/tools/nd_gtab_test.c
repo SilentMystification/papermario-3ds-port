@@ -382,16 +382,12 @@ static void m_tri(unsigned a, unsigned b, unsigned c) {
     TriEv* e = &mtri[nmtri++];
     memset(e, 0, sizeof *e);
     const unsigned s[3] = { a, b, c };
-    unsigned nl = 0;
+    for (int j = 0; j < 3; j++) if (s[j] >= 64u) { m_over = 1; return; }
     for (int j = 0; j < 3; j++) {
-        if (s[j] >= 64u) { m_over = 1; return; }
-        nl += (unsigned)(mslot[s[j]].ok != 0);
-    }
-    if (nl == 1 || nl == 2) { m_over = 1; return; }
-    for (int j = 0; j < 3; j++) {
-        e->base[j] = nl ? mslot[s[j]].base : NULL;
-        e->i[j] = nl ? mslot[s[j]].idx : s[j];
-        const GSym* vs = nl ? m_vsym((uint32_t)(uintptr_t)e->base[j]) : NULL; /* FXVROM: an index past the array end is in the next array in ROM order */
+        const int ok = mslot[s[j]].ok != 0; /* VSLOT3: a slot the list did not load is a caller slot (also in a mixed triangle) */
+        e->base[j] = ok ? mslot[s[j]].base : NULL;
+        e->i[j] = ok ? mslot[s[j]].idx : s[j];
+        const GSym* vs = ok ? m_vsym((uint32_t)(uintptr_t)e->base[j]) : NULL; /* FXVROM: an index past the array end is in the next array in ROM order */
         while (vs && e->i[j] >= gconv_vtx_len(vs)) {
             const GSym* nx = gconv_vtx_rom_next(vs);
             if (!nx) break;
@@ -470,6 +466,7 @@ static void v_replay(const NdNTab* t, int fault) {
                     const unsigned x = t->idx[o->idx_pos + j + (unsigned)q];
                     if (o->a == 1u) {
                         const void* vp = ((const void* const*)o->p)[x];
+                        if ((uintptr_t)vp < 32u) { e->base[q] = NULL; e->i[q] = (unsigned)(uintptr_t)vp; continue; } /* VSLOT3: a caller slot */
                         const GSym* vs = m_vsym((uint32_t)(uintptr_t)vp);
                         e->base[q] = vs ? vs->addr : NULL;
                         e->i[q] = vs ? (unsigned)((uintptr_t)vp - (uintptr_t)vs->addr) / 16u : ~0u;
