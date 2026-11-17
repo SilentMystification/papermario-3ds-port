@@ -760,7 +760,7 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
 #endif
                 void* mdl_address = mdl_get_next_texture_address(width * height * 2);
                 if(mdl_address != 0) {
-                    nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, width, OS_K0_TO_PHYSICAL(mdl_address));
+                    nd_target_begin(OS_K0_TO_PHYSICAL(mdl_address), G_IM_SIZ_16b, width);
                     nd_pso_scis(G_SC_NON_INTERLACE, 0, 0, width, height);
                     nd_pso_cyc(G_CYC_FILL);
                     nd_val_fill(PACK_FILL_COLOR(primR, primG, primB, 0));
@@ -771,7 +771,7 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
 
                     fpDrawContents((s32)drawContentsArg0, 0, 0, width, height, opacity, darkening);
 
-                    nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, 320, OS_K0_TO_PHYSICAL(nuGfxCfb_ptr));
+                    nd_target_end();
                     nd_pso_scis(G_SC_NON_INTERLACE, 0, 0, 320, 240);
                     nd_xf_viewport(&gBoxViewport);
                     nd_xf_push(sp154, G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);

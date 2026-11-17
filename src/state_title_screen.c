@@ -471,7 +471,7 @@ void appendGfx_title_screen(void) {
             break;
     }
 
-    nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
+    nd_target_end();
     nd_pso_scis(G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
     nd_pso_cyc(G_CYC_1CYCLE);
     nd_pso_geom_clr(G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING |

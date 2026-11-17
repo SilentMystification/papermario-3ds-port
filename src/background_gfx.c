@@ -321,7 +321,7 @@ void gfx_draw_background(void) {
     switch (bgRenderState) {
         case BACKGROUND_RENDER_STATE_BEGIN_PAUSED:
             // Save coverage to nunGfxCfb[1] using the VISCVG render mode
-            nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, nuGfxCfb[1]);
+            nd_target_begin(nuGfxCfb[1], G_IM_SIZ_16b, SCREEN_WIDTH);
             nd_pso_cyc(G_CYC_1CYCLE);
             nd_val_blend(0x80, 0x80, 0x80, 0xFF);
             nd_val_primz(0xFFFF, 0xFFFF);
@@ -351,7 +351,7 @@ void gfx_draw_background(void) {
             nd_pso_scis(G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
             nd_pso_cyc(G_CYC_FILL);
             nd_pso_rm(G_RM_NOOP, G_RM_NOOP2);
-            nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, nuGfxCfb_ptr);
+            nd_target_end();
             nd_val_fill(PACK_FILL_COLOR(0, 0, 0, 1));
             nd_rect_fill(0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1);
             nd_pso_cyc(G_CYC_1CYCLE);
@@ -376,16 +376,16 @@ void gfx_draw_background(void) {
         default:
             // Draw the scene's background as normal
             if (gOverrideFlags & GLOBAL_OVERRIDES_DISABLE_DRAW_FRAME) {
-                nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
+                nd_target_end();
                 return;
             }
 
             nd_pso_cyc(G_CYC_FILL);
             nd_pso_rm(G_RM_NOOP, G_RM_NOOP2);
-            nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, OS_K0_TO_PHYSICAL(nuGfxZBuffer));
+            nd_target_begin(OS_K0_TO_PHYSICAL(nuGfxZBuffer), G_IM_SIZ_16b, SCREEN_WIDTH);
             nd_val_fill(PACK_FILL_DEPTH(G_MAXFBZ, 0));
             nd_rect_fill(0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1);
-            nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
+            nd_target_end();
             nd_val_fill(PACK_FILL_COLOR(camera->bgColor[0], camera->bgColor[1], camera->bgColor[2], 1));
 
             backgroundMinX = gGameStatusPtr->backgroundMinX;

@@ -1,6 +1,6 @@
 #!/bin/sh
 # GEOUNIT: host test of the target, depth, vertex, triangle and light calls (3ds/src/nd_geo.c) against the macros they replace (3ds/tools/nd_geo_test.c).
-# Prints "geounit ok 13/13" or "geounit FAIL <shape>". First a seeded fault (the zsrc shift changed in a copy of nd_geo.c) must fail at zsrc; then the real link must pass.
+# Prints "geounit ok 14/14" or "geounit FAIL <shape>". First a seeded fault (the zsrc shift changed in a copy of nd_geo.c) must fail at zsrc; then the real link must pass.
 FP="-msse2 -mfpmath=sse -ffp-contract=off"
 FL="-m32 -Wall -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I include -I ver/us/build/include -I 3ds/include -I 3ds/stub_include"
 LIBS="3ds/src/nd_xf.c 3ds/src/nd_rec.c 3ds/src/nd_model.c 3ds/src/nd_op.c 3ds/src/nd_mtx.c 3ds/src/nd_tmpl.c /tmp/ndcomb.o /tmp/ndcombs.c /tmp/ndlogs.c -lm"

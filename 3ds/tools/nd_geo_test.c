@@ -1,7 +1,7 @@
 /* nd_geo_test.c: host test of the target, depth, vertex, triangle and light calls (nd_geo.h) against the macros they replace (GEOUNIT).
  * Each shape records the macro form under the redirect of nd_gbi.h (A) and the setter form (B) in a custom gfx range. The two must agree on
  * (1) the stream words from the mark to the NDC_END word, (2) the unit log of nd_stream_run(mark), (3) the nd_r11_state result (return, cw,
- * has_cb, nmo, mo). Prints "geounit ok 13/13", or "geounit FAIL <name>" for the first shape that differs, and exits 1. The depth image
+ * has_cb, nmo, mo). Prints "geounit ok 14/14", or "geounit FAIL <name>" for the first shape that differs, and exits 1. The depth image
  * shape (zimg) has no setter: its macro records a NOP unit, so both forms are empty. */
 #include <stdint.h>
 #include <stdio.h>
@@ -45,6 +45,9 @@ const NdGTab* nd_gtab_find(const void* list) { (void)list; return 0; }
 uint32_t nd_mkey_a(const uint32_t* rec) { (void)rec; return 0; }
 
 /* the walker side: nd_stream_run hands each state run to nd_walk_state; the double logs each unit (word pair) */
+/* NTGT: the runner of nd_target_begin and nd_target_end (nd_walk.c); the double logs its payload */
+static uint32_t tlog[8]; static unsigned ntlog;
+void nd_tgt_run(const uint32_t* rec) { if (ntlog < 4u) { tlog[2u * ntlog] = rec[0]; tlog[2u * ntlog + 1u] = rec[1]; ntlog++; } }
 static uint32_t ulog[512]; static unsigned nulog;
 void nd_nr_run(const uint32_t* q) { const unsigned n = (q[-2] >> 16) & 0xffu;
     for (unsigned i = 0; i < n && nulog < 256u; i++) { ulog[2u * nulog] = q[2u * i]; ulog[2u * nulog + 1u] = q[2u * i + 1u]; nulog++; }
@@ -63,8 +66,9 @@ static struct { Light l[1]; Light a; } gl1;
 static struct { Light l[2]; Light a; } gl2;
 
 /* the macro form (A) and the setter form (B) of each shape */
-static void m_cimg(void) { gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 320, gpal); }
-static void n_cimg(void) { nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, 320, gpal); }
+static void n_begin(void) { nd_target_begin(gpal, G_IM_SIZ_16b, 320); }
+static void n_end(void) { nd_target_end(); }
+unsigned short* nuGfxCfb_ptr = (unsigned short*)(void*)gpal;
 static void m_zimg(void) { gDPSetDepthImage(gMainGfxPos++, gzbuf); }
 static void n_zimg(void) { }
 static void m_zsrc(void) { gDPSetDepthSource(gMainGfxPos++, G_ZS_PRIM); }
@@ -124,7 +128,7 @@ static int same(const Res* a, const Res* b) {
 
 typedef struct { const char* name; void (*mac)(void); void (*nat)(void); } Shape;
 static const Shape shapes[] = {
-    { "cimg", m_cimg, n_cimg }, { "zimg", m_zimg, n_zimg }, { "zsrc", m_zsrc, n_zsrc }, { "primz", m_primz, n_primz },
+    { "zimg", m_zimg, n_zimg }, { "zsrc", m_zsrc, n_zsrc }, { "primz", m_primz, n_primz },
     { "vtx", m_vtx, n_vtx }, { "tri2", m_tri2, n_tri2 }, { "tri1", m_tri1, n_tri1 }, { "lit1", m_lit1, n_lit1 },
     { "lit2", m_lit2, n_lit2 }, { "lookat", m_lookat, n_lookat }, { "lookatxy", m_lookatxy, n_lookatxy }, { "pnorm", m_pnorm, n_pnorm }, { "clip", m_clip, n_clip },
 };
@@ -137,6 +141,16 @@ int main(void) {
         run_one(shapes[i].nat, &b);
         if (!same(&a, &b)) { printf("geounit FAIL %s\n", shapes[i].name); return 1; }
         ok++;
+    }
+    /* NTGT: nd_target_begin and nd_target_end each record one NDC_NAPI record: header (1 unit), the runner nd_tgt_run, the payload (siz << 12 | width - 1, address) */
+    static const struct { const char* name; void (*fn)(void); } tg[2] = { { "tbegin", n_begin }, { "tend", n_end } };
+    for (unsigned i = 0; i < 2u; i++) {
+        const uint32_t want = i == 0 ? (uint32_t)(uintptr_t)gpal : (uint32_t)(uintptr_t)nuGfxCfb_ptr;
+        ntlog = 0;
+        run_one(tg[i].fn, &b);
+        const uint32_t pw[4] = { NDC_HDR(NDC_NAPI, 1, 0), (uint32_t)(uintptr_t)nd_tgt_run, (2u << 12) | 319u, want };
+        if (b.nw < 4u || memcmp(b.w, pw, sizeof pw) != 0 || ntlog != 1u || tlog[0] != pw[2] || tlog[1] != pw[3]) { printf("geounit FAIL %s\n", tg[i].name); return 1; }
+        ok++; n++;
     }
     printf("geounit ok %u/%u\n", ok, n);
     return 0;

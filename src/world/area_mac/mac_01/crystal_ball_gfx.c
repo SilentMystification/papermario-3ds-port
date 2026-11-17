@@ -89,11 +89,11 @@ void N(gfx_build_inside_crystal_ball)(void) {
 
     nd_pso_cyc(G_CYC_1CYCLE);
     nd_pso_rm(Z_CMP | CVG_DST_CLAMP | ZMODE_OPA | FORCE_BL | G_RM_PASS, Z_CMP | CVG_DST_CLAMP | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_0, G_BL_CLR_IN, G_BL_1));
-    nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxZBuffer));
+    nd_target_begin(osVirtualToPhysical(nuGfxZBuffer), G_IM_SIZ_16b, SCREEN_WIDTH);
     nd_pso_cc(PM_CC_PRIM_NO_ALPHA, PM_CC_PRIM_NO_ALPHA);
     nd_val_prim(0, 0, 248, 240, 240, 0);
     gSPDisplayList(gMainGfxPos++, model->modelNode->displayData->displayList);
-    nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
+    nd_target_end();
     nd_pso_zsrc(G_ZS_PRIM);
     nd_val_primz(32734, 0);
     nd_pso_rm(G_RM_ZB_OPA_DECAL, G_RM_ZB_OPA_DECAL2);

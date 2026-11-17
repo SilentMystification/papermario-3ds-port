@@ -1,6 +1,6 @@
 /* nd_geo.h: the target, depth, vertex, triangle and light calls of a call site (nd_geo.c, design_lookahead.md section 1). Each setter
  * records the typed unit(s) the nd_gbi.h redirect records for the macro (nd_rec_nr), so the frame stream is the one the macro gave.
- * gDPSetColorImage(P, f, s, w, i)        -> nd_tgt_cimg(f, s, w, i)
+ * gDPSetColorImage(P, f, s, w, i)        -> nd_target_begin(i, s, w) (an image other than nuGfxCfb_ptr), nd_target_end() (nuGfxCfb_ptr, 16 bit, 320 wide)
  * gDPSetDepthImage(P, i)                 -> removed (G_SETZIMG is a NOP unit, nd_op.h)
  * gDPSetDepthSource(P, src)              -> nd_pso_zsrc(src)
  * gDPSetPrimDepth(P, z, dz)              -> nd_val_primz(z, dz)
@@ -15,8 +15,11 @@
 #define ND_GEO_H
 #include <stdint.h>
 
-void nd_tgt_cimgw(uint32_t fmt, uint32_t siz, uint32_t width, uint32_t img);
-#define nd_tgt_cimg(f, s, w, i) nd_tgt_cimgw(f, s, w, (uint32_t)(uintptr_t)(i))
+/* NTGT: one NDC_NAPI record with the runner nd_tgt_run (nd_walk.c): the walker's G_SETCIMG unit, then set_cimg (nd_target.c) decides the address class once. */
+void nd_target_beginw(uint32_t img, uint32_t siz, uint32_t width);
+#define nd_target_begin(i, s, w) nd_target_beginw((uint32_t)(uintptr_t)(i), s, w)
+void nd_target_end(void);
+void nd_tgt_run(const uint32_t* rec);
 
 void nd_pso_zsrc(uint32_t src);
 void nd_val_primz(uint32_t z, uint32_t dz);

@@ -187,7 +187,7 @@ void flame_appendGfx(void* effect) {
         gSPDisplayList(gMainGfxPos++, D_09000918_3544C8);
         nd_val_tile_size(1, uls, ult, uls + 128, ult + 256);
         gSPDisplayList(gMainGfxPos++, D_090009E0_354590);
-        nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, VIRTUAL_TO_PHYSICAL(nuGfxCfb_ptr));
+        nd_target_end();
         nd_pso_scisf(G_SC_NON_INTERLACE, camera->viewportStartX * 4.0f, camera->viewportStartY * 4.0f, (camera->viewportStartX + camera->viewportW) * 4.0f, (camera->viewportStartY + camera->viewportH) * 4.0f);
     }
 

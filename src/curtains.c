@@ -132,7 +132,7 @@ void render_curtains(void) {
         f32 scale;
         s8 rgb;
 
-        nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
+        nd_target_end();
         gSPDisplayList(gMainGfxPos++, TheaterInitGfx);
 
         guFrustumF(m, -80.0f * (pm_wide ? 1.25f : 1.0f), 80.0f * (pm_wide ? 1.25f : 1.0f), -60.0f, 60.0f, 160.0f, 640.0f, 1.0f);

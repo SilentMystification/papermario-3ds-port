@@ -832,10 +832,10 @@ void tattle_cam_pre_render(Camera* camera) {
     nd_pso_dither(G_CD_DISABLE);
     nd_xf_clip(FRUSTRATIO_2);
     nd_pso_cyc(G_CYC_FILL);
-    nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxZBuffer));
+    nd_target_begin(osVirtualToPhysical(nuGfxZBuffer), G_IM_SIZ_16b, SCREEN_WIDTH);
     nd_val_fill(PACK_FILL_DEPTH(G_MAXFBZ, 0));
     nd_rect_fill(cam->viewportStartX, cam->viewportStartY, cam->viewportStartX + cam->viewportW - 1, cam->viewportStartY + cam->viewportH - 1);
-    nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
+    nd_target_end();
 
     if (!(gGameStatusPtr->backgroundFlags & BACKGROUND_FLAG_TEXTURE)) {
         nd_pso_cyc(G_CYC_FILL);

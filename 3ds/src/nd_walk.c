@@ -298,6 +298,17 @@ static __attribute__((noinline)) void op_geo(unsigned dbg, const uint32_t* u, co
     }
     if (__builtin_expect(fp, 0)) pm_ph_pop();
 }
+/* NTGT: the NDC_NAPI runner of nd_target_begin and nd_target_end (nd_geo.c): one NDO_MISC_CIMG unit as op_ctl runs it (no skip test: a control op;
+ * the prologue pm_gbi_cur_op = G_SETCIMG and gv_epoch++; the debug op hook), then set_cimg through gbi_setcimg. rec: w0 = siz << 12 | width - 1, w1 = the address. */
+void nd_tgt_run(const uint32_t* rec) {
+    const unsigned dbg = pm_walk_dbg;
+    pm_gbi_cur_op = G_SETCIMG;
+    gv_epoch++; /* GV1b */
+    int fp = 0;
+    if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const Gfx*)rec, 0, G_SETCIMG, NDO_W0(NDO_MISC, (uint32_t)NDO_MISC_CIMG << 16 | rec[0]), rec[1]);
+    gbi_setcimg(rec[0], rec[1]);
+    if (__builtin_expect(fp, 0)) pm_ph_pop();
+}
 /* HC4b t4chk (debug switch, plan_hotcode 5.2): the recorder writes each op its shadow dropped after NDO_DROP. The walker runs the old skip
  * test on it: a drop it would skip counts as good; else it is bad and runs (so the picture is the one without the dedupe). One log line per
  * 100 frames: "t4chk f<n> drops <d> bad <b>". Gate: bad 0. */
