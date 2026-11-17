@@ -31,6 +31,7 @@ ASSET_DIRS="assets/us ver/us/build"
 CODE_DIRS="3ds/CMakeLists.txt 3ds/effects.cmake 3ds/battle.cmake 3ds/maps.cmake 3ds/map_syms.lds LaunchIcon.png 3ds/ld 3ds/shaders 3ds/stub_include 3ds/include 3ds/src 3ds/tools/cov.d src include"
 . 3ds/tools/gencache.sh
 . 3ds/tools/src_sync.sh
+. 3ds/tools/readkey.sh
 NAME="pm3ds-build-${PM_LANE:-main}"
 # BN1: one build number = V0 + (commit count - C0), V0 and C0 in 3ds/build_base.txt. No -dirty suffix (user decision 2026-10-19). Suffix -<lane> (PM_LANE set) or -laneB (branch lane-b).
 # Written to 3ds/include/pm_build.h (ignored by git). The boot log and the Options panel show PM_BUILD_STR.
@@ -103,17 +104,19 @@ in_manifest $CODE_DIRS 3ds/tools > $OUT/in_now.txt
 # FACT (oracle timing 2026-11-16, gconv objects cached): gfx_tab 71 s on the bind mount (WSL2 9p), 2.4 s on ext4; pso_tab 28 s
 # and 2.1 s. The container sees only the key folders, so a read outside the key fails the step. /w is mounted for the outputs.
 GEN_AV='mkdir -p /work/ver/us; tar -xf - -C /work; (cd /a/c && sha1sum -c --status out.sha1) || { echo "ASSET VOLUME CHECK FAILED" >&2; exit 7; }; ln -s /a/c/assets /work/assets; ln -s /a/c/ver/us/build /work/ver/us/build'
-# gen_run <name> <command> <key folder>...: makes the asset volume when it is missing (once per run), writes $OUT/gen_in.tar of
-# the key folders and runs the command in the host image with the tar on stdin. Exit 7 removes the asset volume (as the build does).
+# gen_run <name> <command> <paths file>: makes the asset volume when it is missing (once per run), writes $OUT/gen_in.tar of
+# the files of <paths file> (GENKEY: exactly the key path list, rk_paths) and runs the command in the host image with the tar on
+# stdin. RKO names the trace log the command writes ($OUT/rk_<name>.log). Exit 7 removes the asset volume (as the build does).
 gen_run() {
-    gn=$1; gcmd=$2; shift 2
+    gn=$1; gcmd=$2; gpl=$3
     if [ "$GEN_AOK" != 1 ]; then case "$(vol_state)" in *assets-ok*) ;; *) asset_vol_make ;; esac; GEN_AOK=1; fi
-    tar -cf - --exclude=__pycache__ "$@" > $OUT/gen_in.tar || { rm -f $OUT/gen_in.tar; echo "$gn failed: tar of $*" >&2; exit 1; }
-    w=$(pwd -W 2>/dev/null || pwd); grc=0
-    MSYS_NO_PATHCONV=1 docker run --rm -i --memory "${PM_BUILD_MEM:-4g}" -v "$w:/w" -v $AVOL:/a:ro -v "pm3ds-gconvobj-$(docker image inspect -f '{{.Id}}' pm3ds-host:1 | cut -c8-23):/gobj" -e GCONV_OBJ=/gobj -e PM_CACHE="${PM_CACHE:-on}" -w /work pm3ds-host:1 sh -c "$gcmd" < $OUT/gen_in.tar || grc=$?
+    tar -cf - -T "$gpl" > $OUT/gen_in.tar || { rm -f $OUT/gen_in.tar; echo "$gn failed: tar of $gpl" >&2; exit 1; }
+    w=$(pwd -W 2>/dev/null || pwd); grc=0; rm -f "$OUT/rk_$gn.log"
+    MSYS_NO_PATHCONV=1 docker run --rm -i --memory "${PM_BUILD_MEM:-4g}" -v "$w:/w" -v $AVOL:/a:ro -v "pm3ds-gconvobj-$(docker image inspect -f '{{.Id}}' pm3ds-host:1 | cut -c8-23):/gobj" -e GCONV_OBJ=/gobj -e PM_CACHE="${PM_CACHE:-on}" -e RKO="/w/$OUT/rk_$gn.log" -w /work pm3ds-host:1 sh -c "$gcmd" < $OUT/gen_in.tar || grc=$?
     rm -f $OUT/gen_in.tar
     if [ "$grc" -eq 7 ]; then docker volume rm $AVOL >/dev/null 2>&1 || true; echo "BUILD FAULT: the asset volume $AVOL failed its content check and was removed. Build again (the next build makes it new)." >&2; exit 7; fi
     [ "$grc" = 0 ] || { echo "$gn failed" >&2; exit 1; }
+    [ -s "$OUT/rk_$gn.log" ] || { echo "GENKEY FAULT: $gn wrote no read trace ($OUT/rk_$gn.log)" >&2; exit 1; }
 }
 
 # HC4f1: host shape converter (3ds/tools/nd_shape_conv.c, host C, read only on ASSET_BASE). Writes $OUT/romfs/shape/<asset>.nds
@@ -144,51 +147,68 @@ gen_shapes >&2 # PUSHKEY
 # committed, in the build key). Run in the host image by gen_run (GENSPEED: key folders copied, assets from the asset volume). Skip: the stamp
 # holds the hashes of the tool, its headers and the gfx sources of the set; the file is replaced only when its content changes.
 gen_gfx_tab() {
-    # VOLGEN: cached (gencache gfx_tab). Key inputs: the command text, the host image, every asset file, and all of 3ds/tools,
-    # 3ds/include, 3ds/stub_include, include, src (gen_gfx_tab.sh compiles with -I src -I include) and the 2 port sources.
-    # GTIN (restored in VOLGEN 1: the patch dropped the GT_IN lines that gtin.sh checks). GT_IN is the key input list.
+    # GENKEY (3ds/tools/readkey.sh): the key is K0 (command, host image, assets, trace tool, the path list of GT_IN) plus the
+    # content id of every file the step read (traced). An edit to a file under GT_IN that the step does not read hits.
+    # GTIN (restored in VOLGEN 1: the patch dropped the GT_IN lines that gtin.sh checks). GT_IN is the tar list of the step.
     GT_IN="3ds/tools 3ds/include 3ds/stub_include include"
     GT_IN="$GT_IN src 3ds/src/nd_scomp.c 3ds/src/nd_texwin.c" # GTIN: the own-TU sources of the set (under src)
     GT_CMD='
-        set -e; '"$GEN_AV"'
-        sh 3ds/tools/gen_gfx_tab.sh /w/3ds/src/nd_gfx_tab.c.new /tmp/gconv 2>&1 | grep -v "^gconv def"'
-    want="gfx_tab v2
+        set -e; '"$GEN_AV"'; '"$RK_SO"'
+        '"$RK_TRACE"' sh 3ds/tools/gen_gfx_tab.sh /w/3ds/src/nd_gfx_tab.c.new /tmp/gconv 2>&1 | grep -v "^gconv def"
+        cp /tmp/rt/log "$RKO"'
+    rk_paths $OUT/in_now.txt $GT_IN > $OUT/rk_gfx_tab_paths.txt
+    k0="gfx_tab v3
 cmd $GT_CMD
 himg $HIMGID
 assets $AHASH
-$(gc_inputs $GT_IN)"
+rk $(rk_id)
+paths $(rk_pathsum $OUT/rk_gfx_tab_paths.txt)"
     GT_OUT="nd_gfx_tab.c:3ds/src/nd_gfx_tab.c nd_ntab_descs.c:3ds/src/nd_ntab_descs.c ntab_inherit.txt:build3ds/out/ntab_inherit.txt ntab_unsup.txt:build3ds/out/ntab_unsup.txt ntab_tables.txt:build3ds/out/ntab_tables.txt ntab_entries.txt:build3ds/out/ntab_entries.txt ntab_pairs.txt:build3ds/out/ntab_pairs.txt gset_ok.txt:build3ds/out/gset_ok.txt"
-    if gc_get gfx_tab "$want" $GT_OUT; then echo "gen_gfx_tab: cache hit"; return 0; fi
+    if rk_get gfx_tab "$k0" $OUT/in_now.txt $GT_OUT; then echo "gen_gfx_tab: cache hit"; return 0; fi
     mkdir -p "$OUT" build3ds/out # gen_gfx_tab.sh writes its logs to build3ds/out only when the folder exists
     rm -f 3ds/src/nd_gfx_tab.c.new
-    gen_run gen_gfx_tab "$GT_CMD" $GT_IN
+    gen_run gen_gfx_tab "$GT_CMD" $OUT/rk_gfx_tab_paths.txt
     [ -s 3ds/src/nd_gfx_tab.c.new ] || { echo "gen_gfx_tab failed: no output" >&2; exit 1; }
     if cmp -s 3ds/src/nd_gfx_tab.c.new 3ds/src/nd_gfx_tab.c; then rm -f 3ds/src/nd_gfx_tab.c.new; else mv -f 3ds/src/nd_gfx_tab.c.new 3ds/src/nd_gfx_tab.c; fi
-    gc_put gfx_tab "$want" $GT_OUT || true
+    rk_reads $OUT/rk_gen_gfx_tab.log $OUT/rk_gfx_tab_paths.txt $OUT/rk_gfx_tab_reads.txt 3ds/tools/gen_gfx_tab.sh 3ds/tools/nd_gfx_conv.c 3ds/include/nd_rmdef.h
+    gc_put "$RK_DIR" "$(rk_full "$k0" $OUT/in_now.txt $OUT/rk_gfx_tab_reads.txt)" $GT_OUT reads.txt:$OUT/rk_gfx_tab_reads.txt || true
+    gc_trim gfx_tab
 }
 # NPSO3: the build-time pipeline table (3ds/tools/gen_pso_tab.py): every ND_PSO_DESC of src and 3ds/src decided once on the host
-# in the host image, written to 3ds/src/nd_pso_tab.c (git-ignored, in the build key). Skip: the stamp holds the hashes of the two
-# tools and the sources of the scan; the file is replaced only when its content changes.
+# in the host image, written to 3ds/src/nd_pso_tab.c (git-ignored, in the build key). The file is replaced only when its content changes.
 gen_pso_tab() {
-    # VOLGEN: cached (gencache pso_tab). Key inputs: the command text, the host image, every asset file, all of 3ds/tools,
-    # 3ds/include, 3ds/stub_include, include, src, 3ds/src, and the 2 gen_gfx_tab outputs in 3ds/src (written just before).
-    PT_IN="3ds/tools 3ds/include 3ds/stub_include include src 3ds/src" # GENSPEED: the key folders, also the tar list of gen_run
+    # GENKEY: K0 as gen_gfx_tab (path list of PT_IN) plus the 2 gen_gfx_tab outputs, and the traced reads. The scan of
+    # gen_pso_tab.py reads every .c of src and 3ds/src, but a file without the text ND_PSO_DESC gives nothing (calls() returns
+    # at the "not in text" test): those python reads are dropped, and the .c files that hold the text (git grep, the scan set) are
+    # reads. So an edit that neither adds nor holds ND_PSO_DESC hits.
+    PT_IN="3ds/tools 3ds/include 3ds/stub_include include src 3ds/src" # the tar list of the step
     PT_CMD='
-        set -e; '"$GEN_AV"'
-        python3 3ds/tools/gen_pso_tab.py /w/3ds/src/nd_pso_tab.c.new src 3ds/src'
-    want="pso_tab v2
+        set -e; '"$GEN_AV"'; '"$RK_SO"'
+        '"$RK_TRACE"' python3 3ds/tools/gen_pso_tab.py /w/3ds/src/nd_pso_tab.c.new src 3ds/src
+        cp /tmp/rt/log "$RKO"'
+    # its own old output stays out of the tar (no self input: a first build and a later one see the same list)
+    rk_paths $OUT/in_now.txt $PT_IN | grep -vxF 3ds/src/nd_pso_tab.c > $OUT/rk_pso_tab_paths.txt
+    git grep -a --untracked --no-exclude-standard -lF ND_PSO_DESC -- src 3ds/src | grep '\.c$' | LC_ALL=C sort -u | LC_ALL=C comm -12 - $OUT/rk_pso_tab_paths.txt > $OUT/rk_pso_tab_scan.txt
+    k0="pso_tab v3
 cmd $PT_CMD
 himg $HIMGID
 assets $AHASH
+rk $(rk_id)
 gfxtab $(sha1sum < 3ds/src/nd_gfx_tab.c | cut -c1-40) $(sha1sum < 3ds/src/nd_ntab_descs.c | cut -c1-40)
-$(gc_inputs $PT_IN)"
-    if gc_get pso_tab "$want" nd_pso_tab.c:3ds/src/nd_pso_tab.c; then echo "gen_pso_tab: cache hit"; return 0; fi
+paths $(rk_pathsum $OUT/rk_pso_tab_paths.txt)
+scan
+$(rk_ids $OUT/in_now.txt $OUT/rk_pso_tab_scan.txt)"
+    if rk_get pso_tab "$k0" $OUT/in_now.txt nd_pso_tab.c:3ds/src/nd_pso_tab.c; then echo "gen_pso_tab: cache hit"; return 0; fi
     mkdir -p "$OUT"
     rm -f 3ds/src/nd_pso_tab.c.new
-    gen_run gen_pso_tab "$PT_CMD" $PT_IN
+    gen_run gen_pso_tab "$PT_CMD" $OUT/rk_pso_tab_paths.txt
     [ -s 3ds/src/nd_pso_tab.c.new ] || { echo "gen_pso_tab failed: no output" >&2; exit 1; }
     if cmp -s 3ds/src/nd_pso_tab.c.new 3ds/src/nd_pso_tab.c; then rm -f 3ds/src/nd_pso_tab.c.new; else mv -f 3ds/src/nd_pso_tab.c.new 3ds/src/nd_pso_tab.c; fi
-    gc_put pso_tab "$want" nd_pso_tab.c:3ds/src/nd_pso_tab.c || true
+    # the scan reads of python (.c under src and 3ds/src) leave; the compiles (cc1) of 3ds/src files stay
+    awk -F'	' '!($1 ~ /^python/ && $2 ~ /^(src|3ds\/src)\/.*\.c$/)' $OUT/rk_gen_pso_tab.log > $OUT/rk_pso_tab_log2.txt
+    rk_reads $OUT/rk_pso_tab_log2.txt $OUT/rk_pso_tab_paths.txt $OUT/rk_pso_tab_reads.txt 3ds/tools/gen_pso_tab.py 3ds/tools/gen_pso_main.c 3ds/src/nd_decide.c
+    gc_put "$RK_DIR" "$(rk_full "$k0" $OUT/in_now.txt $OUT/rk_pso_tab_reads.txt)" nd_pso_tab.c:3ds/src/nd_pso_tab.c reads.txt:$OUT/rk_pso_tab_reads.txt || true
+    gc_trim pso_tab
 }
 gen_gfx_tab >&2 # PUSHKEY
 gen_pso_tab >&2 # NPSO3

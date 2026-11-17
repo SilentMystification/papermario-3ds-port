@@ -30,9 +30,6 @@ stage checks
 outs_hash() { (cd "$1" && find . -type f ! -name key.txt ! -name outs.sha1 | LC_ALL=C sort | xargs -r sha1sum) | sha1sum | cut -d' ' -f1; }
 IMG_ID=$(docker image inspect -f '{{.Id}}' pm3ds-host:1 2>/dev/null || echo none)
 SELF=$(sha1sum 3ds/tools/nd_host_test.sh | cut -d' ' -f1)
-# GTIN (GFXINC, cache safety rule 1): every folder gen_gfx_tab.sh reads (-I 3ds/tools, 3ds/include, 3ds/stub_include, include,
-# src; the tool links nd_scomp.c and nd_texwin.c), the same list as build.sh gen_gfx_tab (VOLGEN). The assets are AHASH (asset_manifest).
-GT_IN="3ds/tools 3ds/include 3ds/stub_include include src 3ds/src/nd_scomp.c 3ds/src/nd_texwin.c"
 # VOLHOST: HOST_IN is every file a host test reads (gtin.sh reads 3ds/build.sh, captool.sh 3ds/push_3ds.sh, maplag.sh
 # 3ds/CMakeLists.txt). It is the key list and the tar list. The asset files are AHASH (asset_manifest).
 HOST_IN="3ds/tools 3ds/src 3ds/include 3ds/stub_include 3ds/tests 3ds/build.sh 3ds/push_3ds.sh 3ds/CMakeLists.txt include src docker/Dockerfile.build docker/Dockerfile.host"
@@ -40,13 +37,20 @@ HOST_AV='mkdir -p /work/ver/us; tar -xf - -C /work; (cd /a/c && sha1sum -c --sta
 OUT=build3ds/out/hostkey; mkdir -p $OUT
 ASSET_BASE=$AR; ASSET_DIRS="assets/us ver/us/build"; IMG=pm3ds-host:1
 . 3ds/tools/src_sync.sh
+GC_EXCL=""; . 3ds/tools/readkey.sh # GENKEY: every id comes from host_in.txt (the host test writes no generator output)
 asset_manifest
 in_manifest $HOST_IN > $OUT/host_in.txt
 [ -s $OUT/host_in.txt ] || { echo "FAIL host key: no files in HOST_IN"; exit 1; }
-# gt_lines: the lines of host_in.txt under GT_IN (the files gen_gfx_tab.sh reads; the rule of gencache.sh gc_inputs).
-gt_lines() { awk -F'\t' -v L="$GT_IN" 'BEGIN { n = split(L, a, " ") } { for (i = 1; i <= n; i++) if ($1 == a[i] || index($1, a[i] "/") == 1) { print; next } }' $OUT/host_in.txt; }
-GFX_KEY=$( { echo "gfx v2"; gt_lines; echo "assets $AHASH"; echo "$IMG_ID $SELF"; } | sha1sum | cut -d' ' -f1)
-TEST_KEY=$( { echo "host v2"; cat $OUT/host_in.txt; echo "assets $AHASH"; echo "$IMG_ID $SELF $GFX_KEY"; } | sha1sum | cut -d' ' -f1)
+# GENKEY (3ds/tools/readkey.sh): the gfx table key is K0 (image, this script, assets, trace tool, the path list of HOST_IN, the
+# tar of the step) plus the content id of every file gen_gfx_tab.sh read (traced). An edit to a file it does not read hits.
+cut -f1 $OUT/host_in.txt > $OUT/host_files.txt
+GFX_K0="gfx v3
+img $IMG_ID
+self $SELF
+assets $AHASH
+rk $(rk_id)
+paths $(rk_pathsum $OUT/host_files.txt)"
+TEST_KEY=$( { echo "host v3"; cat $OUT/host_in.txt; echo "assets $AHASH"; echo "$IMG_ID $SELF gfx v3 $(rk_id)"; } | sha1sum | cut -d' ' -f1)
 stage keys
 # SELFTEST: one changed byte of one input changes its key line (in_manifest of an untracked file; a stale entry can never match).
 st=build3ds/out/cache_selftest; rm -rf $st; mkdir -p $st; cp 3ds/tools/gen_gfx_tab.sh $st/gen_gfx_tab.sh
@@ -79,8 +83,8 @@ TMPLOG=build3ds/out/host_run.txt
 END { for (b = 1; b <= nb; b++) print bl[b] }' > build3ds/out/hostd_batches.txt
 stage batches
 # VOLHOST: the tar of the key files (and the batch list), and the asset volume of AHASH (made once when it is missing).
-cut -f1 $OUT/host_in.txt > $OUT/host_files.txt; echo build3ds/out/hostd_batches.txt >> $OUT/host_files.txt
-tar -cf $OUT/host_in.tar -T $OUT/host_files.txt || { echo "FAIL host tar of HOST_IN"; exit 1; }
+{ cat $OUT/host_files.txt; echo build3ds/out/hostd_batches.txt; } > $OUT/host_tar.txt
+tar -cf $OUT/host_in.tar -T $OUT/host_tar.txt || { echo "FAIL host tar of HOST_IN"; exit 1; }
 case "$(MSYS_NO_PATHCONV=1 docker run --rm -v $AVOL:/a:ro -e K=$AHASH $IMG sh -c '[ "$(cat /a/c/key.txt 2>/dev/null)" = "$K" ] && echo assets-ok; true')" in
     *assets-ok*) ;;
     *) asset_vol_make ;;
@@ -88,27 +92,44 @@ esac
 # av_fault <rc>: exit 7 of a container (the asset volume failed its check) removes the volume.
 av_fault() { if [ "$1" = 7 ]; then docker volume rm $AVOL >/dev/null 2>&1 || true; echo "HOST FAULT: the asset volume $AVOL failed its content check and was removed. Run again (the next run makes it new)."; fi; }
 stage tar-assets
-# gfx table entry: hit when key and outs hash match; else rebuilt under a temp name, then renamed.
-GC=build3ds/out/gfxcache; GE=$GC/$GFX_KEY
-gfx_ok() { [ -f "$GE/key.txt" ] && [ "$(cat "$GE/key.txt")" = "$GFX_KEY" ] && [ -f "$GE/outs.sha1" ] && [ "$(outs_hash "$GE")" = "$(cat "$GE/outs.sha1")" ]; }
-if [ "${PM_CACHE:-on}" != off ] && gfx_ok; then echo "gfxcache: hit"; else # GFXINC: PM_CACHE=off (cold gate) never hits
+# gfx table entry (GENKEY): build3ds/out/gfxcache/<16 hex of K0>/<16 hex of the full key>/. A hit needs a stored read list whose
+# full key equals key.txt and an outs hash that matches; else the step runs traced under a temp name, then one rename.
+GC=build3ds/out/gfxcache; GK0=$GC/$(printf '%s' "$GFX_K0" | sha1sum | cut -c1-16)
+gfx_ok() { [ -f "$1/key.txt" ] && [ "$(cat "$1/key.txt")" = "$2" ] && [ -f "$1/outs.sha1" ] && [ "$(outs_hash "$1")" = "$(cat "$1/outs.sha1")" ]; }
+GE=
+if [ "${PM_CACHE:-on}" != off ]; then # GFXINC: PM_CACHE=off (cold gate) never hits
+    for c in "$GK0"/*/; do
+        case $c in *.tmp.*) continue ;; esac
+        [ -f "$c/reads.txt" ] || continue
+        fk=$(rk_full "$GFX_K0" $OUT/host_in.txt "$c/reads.txt")
+        d=$GK0/$(printf '%s' "$fk" | sha1sum | cut -c1-16)
+        if gfx_ok "$d" "$fk"; then GE=$d; break; fi
+    done
+fi
+if [ -n "$GE" ]; then echo "gfxcache: hit"; else
     echo "gfxcache: miss, build"
-    rm -rf "$GE"; mkdir -p "$GC"; TMPE=$GC/.tmp.$$; rm -rf "$TMPE"; mkdir -p "$TMPE/out"
+    mkdir -p "$GK0"; TMPE=$GK0/.tmp.$$; rm -rf "$TMPE"; mkdir -p "$TMPE/out"
     # GFXINC: the object cache volume of this host image (3ds/tools/gconv_objcache.py), shared by every worktree and build.sh.
     grc=0
     MSYS_NO_PATHCONV=1 docker run --rm -i --memory "${PM_BUILD_MEM:-4g}" -v $AVOL:/a:ro -v "$ROOT/$TMPE:/gcw" \
         -v "pm3ds-gconvobj-$(printf '%s' "$IMG_ID" | cut -c8-23):/gobj" -e GCONV_OBJ=/gobj -e PM_CACHE="${PM_CACHE:-on}" -w /work pm3ds-host:1 sh -c "
-      set -e; $HOST_AV
-      sh 3ds/tools/gen_gfx_tab.sh /gcw/nd_gfx_tab.c /gcw" < $OUT/host_in.tar || grc=$?
+      set -e; $HOST_AV; $RK_SO
+      $RK_TRACE sh 3ds/tools/gen_gfx_tab.sh /gcw/nd_gfx_tab.c /gcw
+      cp /tmp/rt/log /gcw/rk.log" < $OUT/host_in.tar || grc=$?
     [ "$grc" = 0 ] || { av_fault "$grc" >&2; rm -rf "$TMPE"; echo "gen_gfx_tab failed" >&2; exit 1; }
     [ -s "$TMPE/nd_gfx_tab.c" ] || { rm -rf "$TMPE"; echo "gen_gfx_tab failed: no output" >&2; exit 1; }
+    ( rk_reads "$TMPE/rk.log" $OUT/host_files.txt "$TMPE/reads.txt" 3ds/tools/gen_gfx_tab.sh 3ds/tools/nd_gfx_conv.c 3ds/include/nd_rmdef.h ) || { rm -rf "$TMPE"; echo "FAIL gfx table read trace"; exit 1; }
+    rm -f "$TMPE/rk.log"
     for lg in ntab_inherit.txt ntab_unsup.txt ntab_tables.txt ntab_entries.txt ntab_pairs.txt gset_ok.txt; do cp "$TMPE/$lg" "$TMPE/out/$lg"; done
-    echo "$GFX_KEY" > "$TMPE/key.txt"; outs_hash "$TMPE" > "$TMPE/outs.sha1"
+    fk=$(rk_full "$GFX_K0" $OUT/host_in.txt "$TMPE/reads.txt")
+    GE=$GK0/$(printf '%s' "$fk" | sha1sum | cut -c1-16)
+    printf '%s' "$fk" > "$TMPE/key.txt"; outs_hash "$TMPE" > "$TMPE/outs.sha1"
     rm -rf "$GE"; mv "$TMPE" "$GE"
+    ls -dt "$GK0"/*/ 2>/dev/null | grep -v '\.tmp\.' | tail -n +5 | xargs -r rm -rf # 4 read states per K0
 fi
 cp -f "$GE"/out/* build3ds/out/
-# Keep the 8 newest gfxcache entries (an entry is 13 MB, FACT oracle 2026-11-16). The entry of this run is made newest first.
-touch "$GE"; ls -dt $GC/*/ 2>/dev/null | tail -n +9 | xargs -r rm -rf
+# Keep the 8 newest K0 folders (an entry is 13 MB, FACT oracle 2026-11-16). The entry of this run is made newest first.
+touch "$GE" "$GK0"; ls -dt $GC/*/ 2>/dev/null | tail -n +9 | xargs -r rm -rf
 stage gfx-table
 hrc=0
 MSYS_NO_PATHCONV=1 docker run --rm -i --memory "${PM_BUILD_MEM:-4g}" -v $AVOL:/a:ro -v "$ROOT/$GE:/gcache:ro" -w /work pm3ds-host:1 sh -c "set -e; $HOST_AV"'
