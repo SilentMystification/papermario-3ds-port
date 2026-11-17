@@ -1,0 +1,20 @@
+{
+  "benches": [
+    {
+      "name": "fxcull_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FXCULL: draw records (drec.txt) of the impact and shockwave parts (fxtest 32, 44, 98, 143), frame 544, cold det start. Two runs of one build byte-equal; the head equals the base. The psochk line shows the bad count.",
+      "scenario": "fxcull_drec",
+      "cap": 45,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "det",
+        "drec"
+      ],
+      "gates": []
+    }
+  ]
+}
