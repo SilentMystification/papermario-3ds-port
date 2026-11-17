@@ -1,0 +1,56 @@
+{
+  "scenarios": [
+    {
+      "name": "nimgm_strip_drec",
+      "status": "unverified",
+      "subject": "NIMGM: debug battle Monstar (BTL_SAM2_FORMATION_00:BTL_SAM2_STAGE_05) started at frame 100 from kmr_03, det, draw records of frames 400 and 420 in shots/drec.txt (copy of axns_sam2_drec).",
+      "proves": "NIMGM: the draw records of frames 400 and 420 are byte-equal between the merge-base build and the head build (the Monstar overlay strip, imgfx.c imgfx_appendGfx_mesh_strip, draws the list N(dlist) with nd_rec_dl).",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle=BTL_SAM2_FORMATION_00:BTL_SAM2_STAGE_05 battlef=100 loglevel=debug fixedseed fs1off det drec=400:2:20",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "drec f420 draws [1-9]\\d* bytes \\d+",
+      "cap": 30,
+      "deadline": 30,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "battle",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f420 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "reason": "NIMGM: strip list call of imgfx.c becomes nd_rec_dl. Cap 30 s. The imgfx strip f / imgfx anim f lines exist only in a head build (scene proof, not an event: the base run has none)."
+    },
+    {
+      "name": "nimgm_anim_drec",
+      "status": "unverified",
+      "subject": "NIMGM: Merlee shuffles the cards in dro_02 (copy of gmerlee_drec), draw records of frames 660 and 685.",
+      "proves": "NIMGM: the draw records of frames 660 and 685 are byte-equal between the merge-base build and the head build (the imgfx anim list gfxBufs[ctx] draws with nd_rec_ndev).",
+      "debug": "warp=kmr_02:0 story=ch0_toad_town livewarp=120:dro_02:0 warpitems padscript=@pad_merlee.txt loglevel=debug det drec=660:2:25",
+      "extra": [],
+      "until": "drec f685 draws [1-9]\\d* bytes \\d+",
+      "cap": 35,
+      "deadline": 32,
+      "first_marker": "livewarp: scene frame 120 to dro_02 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "map",
+          "regex": "livewarp: scene frame 120 to dro_02 entry 0"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f685 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "reason": "NIMGM: anim list call of imgfx.c becomes nd_rec_ndev. Cap 35 s. The imgfx strip f / imgfx anim f lines exist only in a head build (scene proof, not an event: the base run has none)."
+    }
+  ]
+}
