@@ -73,6 +73,8 @@ def site_name(addr2line, elf, site):
     out = subprocess.run(addr2line + ["-f", "-C", "-e", elf, "0x%x" % site], capture_output=True, text=True).stdout.split("\n")
     fn = out[0].strip() if out and out[0].strip() else "??"
     loc = out[1].strip() if len(out) > 1 and out[1].strip() else "??:0"
+    if loc.startswith("/src/"):  # ENTCAPR: the build image mounts the worktree at /src; site paths are repo-relative
+        loc = loc[len("/src/"):]
     return fn, loc
 
 

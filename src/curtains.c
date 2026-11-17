@@ -1,5 +1,6 @@
 #include "common.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_curtains_151, 0xfcffffff, 0xfffe793c, 0x1e182c00, 0x0f0a4000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0); /* ENTCAPR2: the first of 3 captured word sets; TheaterFloorGfx sets the combine and render mode before its first draw */
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_geo.h"
@@ -148,7 +149,7 @@ void render_curtains(void) {
         nd_xf_push(&D_8009BAA8[1], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
         rgb = 255.0f - (gCurtainFade * 255.0f);
         nd_val_prim(0, 0, rgb, rgb, rgb, 255);
-        gSPDisplayList(gMainGfxPos++, NDN(TheaterGfx));
+        nd_draw_list(NDN(TheaterGfx), pe_curtains_151);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 

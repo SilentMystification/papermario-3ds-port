@@ -1,5 +1,8 @@
 #include "dro_02.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_npc_merlee_248, 0xfcffffff, 0xfffcf279, 0x0008acf0, 0x00553078, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_npc_merlee_259a, 0xfcffffff, 0xffff73b9, 0x0008acf0, 0x00553078, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0); /* ENTCAPR2: card_1_gfx drew before (unk_00 1) */
+ND_PSO_DESC(pe_npc_merlee_259b, 0xfcffffff, 0xfffcf279, 0x0008acf0, 0x00553078, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0); /* ENTCAPR2: only card_setup_gfx before (unk_00 5) */
 #include "model.h"
 #include "sprite/player.h"
 #include "include_asset.h"
@@ -245,7 +248,7 @@ u32 N(appendGfx_ritual_card)(RitualCard* card, Matrix4f mtxParent) {
         nd_xf_push(VIRTUAL_TO_PHYSICAL(&gDisplayContext->matrixStack[gMatrixListPos++]), G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
         if (card->unk_00 == 1 || card->unk_00 == 4) {
-            gSPDisplayList(gMainGfxPos++, NDN(N(card_1_gfx)));
+            nd_draw_list(NDN(N(card_1_gfx)), pe_npc_merlee_248);
         }
 
         if (card->unk_00 == 1 || card->unk_00 == 5) {
@@ -256,7 +259,11 @@ u32 N(appendGfx_ritual_card)(RitualCard* card, Matrix4f mtxParent) {
             guTranslateF(mtxTransform, card->xoffset + 30 - rasterInfo.width / 2, 0.0f, 0.0f);
             guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
             nd_xf_push(VIRTUAL_TO_PHYSICAL(&gDisplayContext->matrixStack[gMatrixListPos++]), G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            gSPDisplayList(gMainGfxPos++, NDN(N(card_2_gfx)));
+            if (card->unk_00 == 1) {
+                nd_draw_list(NDN(N(card_2_gfx)), pe_npc_merlee_259a);
+            } else {
+                nd_draw_list(NDN(N(card_2_gfx)), pe_npc_merlee_259b);
+            }
             nd_xf_pop(G_MTX_MODELVIEW);
         }
         nd_xf_pop(G_MTX_MODELVIEW);
