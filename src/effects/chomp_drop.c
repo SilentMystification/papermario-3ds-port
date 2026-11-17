@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_chomp_drop_163, 0xfcffb3ff, 0xff65feff, 0x1e082c00, 0x00504b50, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 4, 0, 0, 0);
+ND_PSO_DESC(pe_chomp_drop_166, 0xfcff97ff, 0xff2cfe7f, 0x1e082c00, 0x00504b50, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_geo.h"
@@ -160,10 +162,10 @@ void chomp_drop_appendGfx(void* effect) {
 
     if (data->unk_2C == 1) {
         nd_draw_list(NDN(D_09001040_398080), ND_SELF);
-        nd_rec_dl(NDN(D_09001190_3981D0));
+        nd_draw_list(NDN(D_09001190_3981D0), pe_chomp_drop_163);
         nd_val_prim(0, 0, 0, 0, 0, ((30 - data->unk_30) * 255) / 30);
         nd_draw_list(NDN(D_090010E8_398128), ND_SELF);
-        nd_rec_dl(NDN(D_09001190_3981D0));
+        nd_draw_list(NDN(D_09001190_3981D0), pe_chomp_drop_166);
     } else {
         if (data->unk_2C > 0) {
             nd_draw_list(NDN(D_090010E8_398128), ND_SELF);

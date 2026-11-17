@@ -1,6 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_disable_x_308, 0xfc123224, 0xff67ffff, 0x1e082cf0, 0x00504340, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_disable_x_310, 0xfc123224, 0xff67ffff, 0x1e082cf0, 0x00504340, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 ND_PSO_DESC(pe_disable_x_276, 0xfc127e24, 0xfffff3f9, 0x1e082cf0, 0x00551208, 0x00200005, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 ND_PSO_DESC(pe_disable_x_299, 0xfc123224, 0xff67ffff, 0x1e082cf0, 0x00504340, 0x00200005, 0x00000000, 0x00000000, 0x0000007f, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
@@ -305,9 +307,9 @@ void func_E0082A84(EffectInstance* effect) {
 
                 nd_draw_list(D_E0082D00[ones], ND_SELF);
                 nd_draw_list(D_E0082D00[tens], ND_SELF);
-                nd_rec_dl(NDN(D_09002290_388640));
+                nd_draw_list(NDN(D_09002290_388640), pe_disable_x_308);
                 nd_draw_list(D_E0082D00[tens], ND_SELF);
-                nd_rec_dl(NDN(D_09002270_388620));
+                nd_draw_list(NDN(D_09002270_388620), pe_disable_x_310);
             }
         }
         nd_xf_pop(G_MTX_MODELVIEW);

@@ -1,5 +1,6 @@
 #include "common.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_status_star_shimmer_189, 0xfc16120b, 0x540dc93f, 0x1e102cf0, 0x0c184b50, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 1, 2, 0, 0, 0);
 #include "nd_st.h"
 #include "nd_val.h"
 #include "nd_xf.h"
@@ -186,7 +187,7 @@ void star_power_shimmer_draw(void) {
 
                     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
                     nd_val_prim(0, 80 - particle->animTime, particle->rgba.r, particle->rgba.g, particle->rgba.b, particle->rgba.a);
-                    nd_rec_dl(NDN(D_801097D8));
+                    nd_draw_list(NDN(D_801097D8), pe_status_star_shimmer_189);
                     nd_xf_pop(G_MTX_MODELVIEW);
                 }
             }
