@@ -6,7 +6,7 @@ ND_PSO_DESC(pe_misc_particles_330_k1, 0xfc3116c2, 0x50fefe38, 0x1e182cf0, 0x0c18
 ND_PSO_DESC(pe_misc_particles_330_k2, 0xfcfffe60, 0xf50cf37f, 0x1e182cf0, 0x0c184b50, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 ND_PSO_DESC(pe_misc_particles_330_k3, 0xfcfffe60, 0xf50cf37f, 0x1e182cf0, 0x0c184b50, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 ND_PSO_DESC(pe_misc_particles_330_k4, 0xfc1617ff, 0x5ffdfe38, 0x1e182cf0, 0x0c184b50, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
-ND_PSO_DESC(pe_misc_particles_330_k5, 0xfc1617ff, 0x5ffdfe38, 0x1e182cf0, 0x0c184b50, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_misc_particles_330_k4b, 0xfcffcdff, 0xffff7fb8, 0x1e182cf0, 0x0c184b50, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -319,6 +319,7 @@ void misc_particles_appendGfx(void* effect) {
     nd_val_env(particle->glowColor.r, particle->glowColor.g, particle->glowColor.b, particle->glowColor.a);
     nd_draw_list(D_E00E4DA8[variation], ND_SELF);
 
+    s32 first45 = TRUE; /* MISCP: the v4/v5 list leaves its own combine for the next particle */
     particle++;
     for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, particle++) {
         if (particle->animTime >= 0) {
@@ -338,8 +339,15 @@ void misc_particles_appendGfx(void* effect) {
                 case 1: nd_draw_list(D_E00E4D90[variation], pe_misc_particles_330_k1); break;
                 case 2: nd_draw_list(D_E00E4D90[variation], pe_misc_particles_330_k2); break;
                 case 3: nd_draw_list(D_E00E4D90[variation], pe_misc_particles_330_k3); break;
-                case 4: nd_draw_list(D_E00E4D90[variation], pe_misc_particles_330_k4); break;
-                default: nd_draw_list(D_E00E4D90[variation], pe_misc_particles_330_k5); break;
+                case 4:
+                default:
+                    if (first45) {
+                        first45 = FALSE;
+                        nd_draw_list(D_E00E4D90[variation], pe_misc_particles_330_k4);
+                    } else {
+                        nd_draw_list(D_E00E4D90[variation], pe_misc_particles_330_k4b);
+                    }
+                    break;
             }
             nd_xf_pop(G_MTX_MODELVIEW);
         }
