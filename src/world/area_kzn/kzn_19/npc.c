@@ -2,6 +2,7 @@
 #include "ld_addrs.h"
 #include "sprite/player.h"
 #include "include_asset.h"
+#include "nd_gtab.h"
 
 #include "world/common/npc/Kolorado.h"
 #include "world/common/npc/StarSpirit.h"
@@ -11,7 +12,7 @@
 
 INCLUDE_IMG("world/lava_piranha/vine.png", kzn_19_lava_piranha_vine_img);
 INCLUDE_PAL("world/lava_piranha/vine.pal", kzn_19_lava_piranha_vine_pal);
-#include "world/lava_piranha/vine.gfx.inc.c"
+NDN_DECL(N(lava_piranha_vine_gfx));
 
 #include "world/common/lava_piranha/part2.inc.c"
 

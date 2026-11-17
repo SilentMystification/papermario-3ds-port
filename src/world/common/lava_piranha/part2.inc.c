@@ -196,7 +196,7 @@ void N(appendGfx_piranha_vines)(void* data) {
         N(VineRenderState) = 1;
     }
 
-    gSPDisplayList(gMainGfxPos++, N(lava_piranha_vine_gfx));
+    nd_draw_list(NDN(N(lava_piranha_vine_gfx)), ND_SELF);
 
     for (i = 0; i < NUM_VINES; i++) {
         LavaPiranhaVine* vines = (LavaPiranhaVine*) evt_get_variable(nullptr, MV_VinesData);
