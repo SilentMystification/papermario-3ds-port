@@ -21,7 +21,10 @@ unsigned pm_frame_count(void) { return 0; }
 void pm_fatal_stop(const char* msg) { printf("FAIL nd_direct fatal %s\n", msg); exit(1); }
 
 NdWs nd_ws;
-int dual_on, box_prod, box_pat, box_folded, comb_set, comb_alpha_shade, plan_active, leg_mode, comb_mode5, sc_ok, cimg_zero, rm_frame;
+int dual_on, box_prod, box_pat, box_folded, comb_set, comb_alpha_shade, plan_active, leg_mode, comb_mode5, sc_ok, rm_frame;
+NdTgt nd_tgt;
+int zcol;
+void pm_zbuf_need(void) {}
 unsigned keyc, keys, conv_k4, gv_epoch;
 int ls_use, ls_why, ls_cyc, ls_dual, ls_frame;
 int pm_comb_vprim;
@@ -33,7 +36,9 @@ static int n_decide, n_setcomb, n_prim, n_plan, n_leg, n_const, n_rect, n_render
 static unsigned last_prim, last_const, last_leg;
 static int last_rect[4];
 static float last_st[4];
-static int fake_role, fake_aux = -1;
+static int fake_aux = -1;
+/* the role comes from the target record (nd_tgt_role): MAIN = no image, SLOT = an image that is not a frame buffer */
+static void fake_role_set(int r) { nd_tgt.img = NULL; nd_tgt.siz = 2; nd_tgt.kind = r == ROLE_MAIN ? NDK_NULL : 0; }
 
 void comb_in_walker(NdCombIn* in) { memset(in, 0, sizeof *in); in->w0 = nd_ws.comb_w0; in->w1 = nd_ws.comb_w1; in->omode_h = nd_ws.omode_h; }
 void nd_comb_decide(const NdCombIn* in, NdCombOut* out) {
@@ -49,7 +54,6 @@ void op_setcombine(u32 w0, u32 w1) { n_setcomb++; nd_ws.comb_w0 = w0; nd_ws.comb
 void sync_render(void) { n_render++; }
 void nd_sr_forget(void) { n_forget++; }
 void ens_clear(void) { n_end_clear++; }
-int img_role(int for_fill) { (void)for_fill; return fake_role; }
 int pm_is_cfb(const void* p) { return p != NULL; }
 int pm_tex_aux_off_idx(void) { return fake_aux; }
 void pm_tex_set_filter(int linear) { (void)linear; n_filter++; }
@@ -167,11 +171,11 @@ int main(void) {
     CHECK(nd_direct_bind(ia, 0u, 0u) == 0);
     nd_ws.omode_h = 0;
     /* ready: the main colour image only */
-    fake_role = ROLE_MAIN; nd_ws.cimg = NULL;
+    fake_role_set(ROLE_MAIN); nd_tgt.img = NULL;
     CHECK(nd_direct_ready() == 1);
-    fake_role = ROLE_SLOT;
+    fake_role_set(ROLE_SLOT);
     CHECK(nd_direct_ready() < 1);
-    fake_role = ROLE_MAIN; m1.valid = 1;
+    fake_role_set(ROLE_MAIN); m1.valid = 1;
     CHECK(nd_direct_ready() < 1);
     m1.valid = 0; fake_aux = 3;
     CHECK(nd_direct_ready() < 1);
@@ -194,18 +198,18 @@ int main(void) {
         t.lrs = 31; t.lrt = 31; t.masks = 5; t.maskt = 5;
         t.w0 = (42u * 4u) << 12 | (36u * 4u); t.w1 = (10u * 4u) << 12 | (20u * 4u); t.hs = 0u; t.hd = (1024u << 16) | 1024u;
         t.cw0 = 0xfc000010u; t.cw1 = 0x11111111u; t.oml = 0x00504340u; t.omh = 0u; t.prim = 0xff00ff00u;
-        nd_ws.omode_h = 0; nd_ws.cimg = NULL; fake_role = ROLE_MAIN; fake_aux = -1; m1.valid = 0;
+        nd_ws.omode_h = 0; nd_tgt.img = NULL; fake_role_set(ROLE_MAIN); fake_aux = -1; m1.valid = 0;
         n_win = n_gx = n_walk = 0; n_rect = 0;
         nd_trect_run((const uint32_t*)&t);
         CHECK(n_win == 1 && win_a[0] == 32 && win_a[1] == 0 && win_a[2] == 0 && win_a[3] == 32 && win_a[4] == 32);
         CHECK(win_a[5] == 0 && win_a[6] == 0 && win_a[7] == 124 && win_a[8] == 124);
         CHECK(n_walk == 0 && n_gx == 0 && n_rect == 1 && last_rect[0] == 10 && last_rect[1] == 20 && last_rect[2] == 41 && last_rect[3] == 35);
         /* not ready (a slot role): the same ops go to the walker in a local list */
-        fake_role = ROLE_SLOT;
+        fake_role_set(ROLE_SLOT);
         n_win = n_gx = n_walk = 0; n_rect = 0;
         nd_trect_run((const uint32_t*)&t);
         CHECK(n_win == 1 && n_rect == 0 && n_walk >= 4 && n_gx == 0); /* n_walk counts native records (nd_nr_exec): the load records and the 3 rectangle records; the O forms make no gbi call (n_gx) */
-        fake_role = ROLE_MAIN;
+        fake_role_set(ROLE_MAIN);
     }
     /* S5CHUDA: nd_direct_quad runs MTX, VTX, TRI, TRI, POP with the words the typed recorder makes of the old ops (low 24 bits of w0, as op_geo passes them) */
     {

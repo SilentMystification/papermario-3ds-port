@@ -6,8 +6,10 @@
 #include <string.h>
 #include "nd.h"
 #include "nd_ops.h"
+#include "nd_tgt.h"
 
-ND_HOTD NdWs nd_ws = { .geom = 0, .omode_h = 0, .omode_l = 0x00000030u, .cimg = 0, .cimg_siz = 2, .prim = 0xffffffffu, .envc = 0xffffffffu, .fill = 0xffffffffu, .tex_ss = 0xFFFF, .tex_ts = 0xFFFF };
+ND_HOTD NdWs nd_ws = { .geom = 0, .omode_h = 0, .omode_l = 0x00000030u, .prim = 0xffffffffu, .envc = 0xffffffffu, .fill = 0xffffffffu, .tex_ss = 0xFFFF, .tex_ts = 0xFFFF };
+ND_HOTD NdTgt nd_tgt = { .img = 0, .stride = 320, .siz = 2, .kind = NDK_NULL }; /* NTGT: the target record; the initial target is the main image (no address, not the zero word) */
 
 #define MW_SEGMENT 0x06
 #define MV_VIEWPORT 8
@@ -34,7 +36,7 @@ void nd_words(const unsigned* w, unsigned n) {
         case OP_SETFILLCOLOR: s->fill = w1; break;
         case OP_SETPRIMDEPTH: s->prim_z = (w1 >> 16) & 0x7FFFu; break; /* as the walker (nd_set.c set_primdepth) */
         case OP_TEXTURE: s->tex_on = (w0 & 0xFF) != 0; s->tex_ss = w1 >> 16; s->tex_ts = w1 & 0xFFFFu; break;
-        case OP_SETCIMG: s->cimg_siz = (int)((w0 >> 19) & 3); break;
+        case OP_SETCIMG: nd_tgt.siz = (uint8_t)((w0 >> 19) & 3); break;
         case OP_SETTIMG: s->timg = (const void*)(uintptr_t)w1; break;
         case OP_MOVEWORD: if (((w0 >> 16) & 0xFF) == MW_SEGMENT && (w0 & 0xFFFF) / 4 < 16) s->segbase[(w0 & 0xFFFF) / 4] = w1; break;
         default: break;

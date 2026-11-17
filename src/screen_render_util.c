@@ -148,7 +148,7 @@ void appendGfx_darkness_stencil(bool isWorld, s32 posX, s32 posY, f32 alpha, f32
     nd_pso_aldith(G_AD_PATTERN);
     nd_pso_filt(G_TF_POINT);
     nd_pso_persp(G_TP_PERSP);
-    nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_32b, 64, osVirtualToPhysical(nuGfxZBuffer));
+    nd_target_begin(osVirtualToPhysical(nuGfxZBuffer), G_IM_SIZ_32b, 64);
     nd_pso_scis(G_SC_NON_INTERLACE, 0, 0, 64, 64);
     nd_xf_viewport(&DarknessStencilViewport);
     nd_pso_cc(PM_CC_CONST_1, PM_CC_CONST_1);
@@ -183,7 +183,7 @@ void appendGfx_darkness_stencil(bool isWorld, s32 posX, s32 posY, f32 alpha, f32
     }
 
     nd_pso_persp(G_TP_NONE);
-    nd_tgt_cimg(G_IM_FMT_I, G_IM_SIZ_8b, 64, osVirtualToPhysical(nuGfxZBuffer));
+    nd_target_begin(osVirtualToPhysical(nuGfxZBuffer), G_IM_SIZ_8b, 64);
     nd_pso_scis(G_SC_NON_INTERLACE, 0, 0, 64, 64);
     nd_pso_cc(PM_CC_0F, PM_CC_0F);
 
@@ -197,11 +197,11 @@ void appendGfx_darkness_stencil(bool isWorld, s32 posX, s32 posY, f32 alpha, f32
 
     nd_pso_cyc(G_CYC_FILL);
     nd_pso_rm(G_RM_NOOP, G_RM_NOOP2);
-    nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_32b, 64, osVirtualToPhysical(nuGfxZBuffer));
+    nd_target_begin(osVirtualToPhysical(nuGfxZBuffer), G_IM_SIZ_32b, 64);
     nd_val_fill(GPACK_ZDZ(G_MAXFBZ, 0)<<16 | GPACK_ZDZ(G_MAXFBZ, 0));
     nd_rect_fill(0, 0, 63, 63);
 
-    nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
+    nd_target_end();
     nd_pso_scis(G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
     nd_pso_cyc(G_CYC_1CYCLE);
     nd_pso_dither(G_CD_MAGICSQ);

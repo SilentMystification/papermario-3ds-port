@@ -1424,7 +1424,7 @@ void N(worker_draw_story_graphics)(void) {
     N(draw_background_tape)();
 
     gSPDisplayList(gMainGfxPos++, N(gfx_setup_story_viewport));
-    nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, nuGfxCfb_ptr);
+    nd_target_end();
 
     if (N(StoryGraphicsPtr)->storyPageAlpha < 255) {
         nd_pso_rm(G_RM_CLD_SURF, G_RM_CLD_SURF2);

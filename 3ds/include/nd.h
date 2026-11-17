@@ -142,8 +142,6 @@ typedef struct NdTd {
 typedef struct NdWs {
     unsigned geom;                     /* geometry mode */
     unsigned omode_h, omode_l;         /* other mode high and low */
-    void* cimg;                        /* colour image address */
-    int cimg_siz;                      /* G_IM_SIZ of the colour image: 1 8 bit, 2 16 bit, 3 32 bit */
     unsigned prim;                     /* primitive colour */
     unsigned envc;                     /* env colour */
     unsigned fill;                     /* fill colour */

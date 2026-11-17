@@ -124,7 +124,6 @@
 		*(.text.gv_lit_ok)  /* 0.7 calls/frame, 64 B */
 		*(.text.nd_prim_clip_z)  /* 0.3 calls/frame, 52 B */
 		/* class G: texrect and fillrect */
-		*(.text.img_role)  /* 176.0 calls/frame, 372 B */
 		*(.text.tile_bound)  /* 41.7 calls/frame, 428 B */
 		*(.text.pm_tex_off_idx)  /* 24.3 calls/frame, 48 B */
 		*(.text.pm_tex_cell_bound)  /* 23.0 calls/frame, 96 B */

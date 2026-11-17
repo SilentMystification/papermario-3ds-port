@@ -3954,7 +3954,7 @@ bool is_point_visible(f32 x, f32 y, f32 z, s32 depthQueryID, f32* screenX, f32* 
         // Load a 4x1 pixel tile of the depth buffer
         nd_tex_load_tile(osVirtualToPhysical(&nuGfxZBuffer[(s32) outY * SCREEN_WIDTH]), G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, 1, (s32) outX, 0, (s32) outX + 3, 0, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 9, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
         // Set the current color image to the buffer where copied depth values are stored.
-        nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, DepthCopyBuffer);
+        nd_target_begin(DepthCopyBuffer, G_IM_SIZ_16b, SCREEN_WIDTH);
         // Set up 1 cycle mode and all other relevant othermode params.
         // One cycle mode must be used here because only one pixel is copied, and copy mode only supports multiples of 4 pixels.
         nd_pso_cyc(G_CYC_1CYCLE);
@@ -3971,7 +3971,7 @@ bool is_point_visible(f32 x, f32 y, f32 z, s32 depthQueryID, f32* screenX, f32* 
         // Draw a texrect to copy one pixel of the loaded depth tile to the output buffer.
         nd_rect_tex(depthQueryID << 2, 0 << 2, (depthQueryID + 1) << 2, 1 << 2, G_TX_RENDERTILE, (s32) outX << 5, 0, 1 << 10, 1 << 10);
         // Sync and swap the color image back to the current framebuffer.
-        nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
+        nd_target_end();
         // Reconfigure the frame's normal scissor.
         nd_pso_scis(G_SC_NON_INTERLACE, camera->viewportStartX, camera->viewportStartY, camera->viewportStartX + camera->viewportW, camera->viewportStartY + camera->viewportH);
 

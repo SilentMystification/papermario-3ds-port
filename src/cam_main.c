@@ -207,7 +207,7 @@ void render_frame(s32 isSecondPass) {
             nd_pso_rm(G_RM_OPA_SURF, G_RM_OPA_SURF2);
             nd_pso_dither(G_CD_DISABLE);
             nd_xf_clip(FRUSTRATIO_2);
-            nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
+            nd_target_end();
             nd_xf_pnorm(0);
             nd_xf_push(&gDisplayContext->camPerspMatrix[gCurrentCamID], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
         }
@@ -263,7 +263,7 @@ void render_frame(s32 isSecondPass) {
         }
 
         T1_MARK(14);
-        nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
+        nd_target_end();
         FI_CLOSE();
     }
 }

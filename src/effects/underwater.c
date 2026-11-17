@@ -228,7 +228,7 @@ void underwater_appendGfx(void* effect) {
             sTidalGrid[234].v.tc[0], sTidalGrid[234].v.tc[1], alpha);
     }
 
-    nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, nuGfxCfb_ptr);
+    nd_target_end();
     nd_val_prim(0, 0, data->waterColor.r, data->waterColor.g, data->waterColor.b, alpha >> 1);
     nd_pso_cyc(G_CYC_1CYCLE);
     nd_pso_cc(PM_CC_48, PM_CC_48);

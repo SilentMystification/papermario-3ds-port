@@ -152,7 +152,7 @@ void appendGfx_reset_tile_pattern(void) {
     frozenFrame = ResetSavedFrameImg;
     gfx_init_state();
 
-    nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(frozenFrame));
+    nd_target_begin(osVirtualToPhysical(frozenFrame), G_IM_SIZ_16b, SCREEN_WIDTH);
     nd_pso_scis(G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
     nd_tex_on(-1, -1, 0, G_TX_RENDERTILE, G_ON);
     nd_pso_cyc(G_CYC_1CYCLE);

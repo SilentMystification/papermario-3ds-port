@@ -2077,11 +2077,11 @@ void immediately_render_complex_hud_element(s32 elemID, s32 arg1, s32 camID) {
         nd_xf_clip(FRUSTRATIO_2);
         //clear Z buffer inside camera viewport
         nd_pso_cyc(G_CYC_FILL);
-        nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxZBuffer));
+        nd_target_begin(osVirtualToPhysical(nuGfxZBuffer), G_IM_SIZ_16b, SCREEN_WIDTH);
         nd_val_fill(GPACK_ZDZ(G_MAXFBZ, 0)<<16 | GPACK_ZDZ(G_MAXFBZ, 0));
         nd_rect_fill(camera->viewportStartX, camera->viewportStartY, camera->viewportStartX + camera->viewportW - 1, camera->viewportStartY + camera->viewportH - 1);
 
-        nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
+        nd_target_end();
 
         guOrthoF(camera->mtxPerspective, 0.0f, 320.0f, -240.0f, 0.0f, -1000.0f, 1000.0f, 1.0f);
         guMtxF2L(camera->mtxPerspective, &gDisplayContext->camPerspMatrix[gCurrentCamID]);

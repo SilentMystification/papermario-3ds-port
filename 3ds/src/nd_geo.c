@@ -11,9 +11,14 @@
 #include "nd_at.h"
 #include "nd_geo.h"
 
-void nd_tgt_cimgw(uint32_t fmt, uint32_t siz, uint32_t width, uint32_t img) {
-    (void)fmt;
-    nd_nr(ND_NR_CIMG(siz, width), img);
+extern unsigned short* nuGfxCfb_ptr;
+/* the record: one unit, w0 = the G_SETCIMG fields of the walker (siz << 12 | width - 1), w1 = the physical address (the identity for host addresses) */
+void nd_target_beginw(uint32_t img, uint32_t siz, uint32_t width) {
+    const uint32_t rec[2] = { (siz & 3u) << 12 | ((width - 1u) & 0xfffu), img };
+    nd_rec_napi(nd_tgt_run, rec, 1u);
+}
+void nd_target_end(void) {
+    nd_target_beginw((uint32_t)(uintptr_t)nuGfxCfb_ptr, G_IM_SIZ_16b, 320u);
 }
 void nd_pso_zsrc(uint32_t src) {
     nd_nr(ND_NR_OM(0, G_MDSFT_ZSRCSEL, 1), src);

@@ -376,7 +376,7 @@ void render_window_root(void) {
     nd_pso_alcmp(G_AC_NONE);
     nd_pso_som(G_SETOTHERMODE_H, G_MDSFT_ALPHADITHER, 16, G_AD_DISABLE | G_CD_DISABLE | G_CK_NONE | G_TC_FILT | G_TF_BILERP | G_TT_NONE | G_TL_TILE | G_TD_CLAMP | G_TP_NONE);
     nd_xf_clip(FRUSTRATIO_2);
-    nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
+    nd_target_end();
     render_windows(priorityArray, WIN_NONE, 0, 0, 0, 255, 0, nullptr);
 }
 
