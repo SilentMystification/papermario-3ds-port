@@ -6,7 +6,7 @@ INC="-I 3ds/tools/gconv_inc -I 3ds/tools -I 3ds/include -I 3ds/stub_include -I i
 rm -rf /tmp/gcw && mkdir -p /tmp/gcw/f
 python3 3ds/tools/gen_gfx_syms.py /tmp/gcw/gconv_in.c 3ds/tests/gconvw/w.c > /tmp/gcw/tus.txt || { echo "gconvw FAIL gen"; exit 1; }
 TU=gconv_tu_3ds_tests_gconvw_w_c.c # GCONVSPLIT: the TU name of 3ds/tests/gconvw/w.c
-[ "$(tr -d '\r' < /tmp/gcw/tus.txt | sed 's#.*[\\/]##')" = "$TU" ] || { echo "gconvw FAIL tu list"; exit 1; }
+[ "$(cat /tmp/gcw/tus.txt)" = "/tmp/gcw/$TU" ] || { echo "gconvw FAIL tu list"; exit 1; }
 tr -d '\r' < /tmp/gcw/$TU > /tmp/gcw/tu0.n && tr -d '\r' < 3ds/tests/gconvw/exp_tu0.c > /tmp/gcw/exp.n && cmp /tmp/gcw/tu0.n /tmp/gcw/exp.n || { echo "gconvw FAIL tu0 differs"; exit 1; }
 gcc -m32 -w -ffunction-sections -fdata-sections $F $INC -c -o /tmp/gcw/gconv_tu0.o /tmp/gcw/$TU || { echo "gconvw FAIL compile"; exit 1; }
 readelf -S /tmp/gcw/gconv_tu0.o | grep -q "gconv_sym" || { echo "gconvw FAIL no gconv_sym section"; exit 1; }
