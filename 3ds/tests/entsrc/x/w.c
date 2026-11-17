@@ -5,4 +5,5 @@ void f(Entity* entity) {
 
     nd_draw_list(gfx, pe_w_7);
     nd_draw_list(NDN(N(card_gfx)), pe_w_7);
+    nd_draw_list(ENTITY_ADDR(entity, NdLst, NDN(Ent_B)), pe_w_7);
 }

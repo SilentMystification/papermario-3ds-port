@@ -1,0 +1,8 @@
+LOOP ENTLST host rc 0, build rc 0, 152 s
+ND HOST TESTS PASS
+STAGE asset-hash 3 s STAGE gen 55 s STAGE sync-host 8 s (changed 6245, deleted 0) STAGE asset-check 0 s STAGE romfs 18 s STAGE configure 1 s STAGE compile-link 31 s STAGE copy-out 1 s 
+
+cmp sbk14_drec: 1/1 byte-equal 
+cmp entcape_kmr03_drec: 1/1 byte-equal 
+LOOP TIME host+build 152 s, run+cmp 82 s, total 234 s
+LOOP PASS

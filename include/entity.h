@@ -93,7 +93,7 @@ typedef struct SwitchData {
 
 typedef struct ShatteringBlockData {
     /* 0x000 */ u16 fragmentFlags[25];
-    /* 0x034 */ Gfx** fragmentDisplayLists;
+    /* 0x034 */ const void** fragmentDisplayLists;
     /* 0x038 */ f32 originalPosY;
     /* 0x03C */ s16 alpha;
     /* 0x03E */ s16 fadeOutCounter;
@@ -142,8 +142,8 @@ typedef struct SuperBlockContentData {
     /* 0x0D0 */ u16 yawBufferPos;
     /* 0x0D4 */ f32 yawBuffer[20];
     /* 0x124 */ s32 unk_124;
-    /* 0x128 */ Gfx* gfx1;
-    /* 0x12C */ Gfx* gfx2;
+    /* 0x128 */ const void* gfx1;
+    /* 0x12C */ const void* gfx2;
 } SuperBlockContentData; // size = 0x130
 
 // size unknown
@@ -176,7 +176,7 @@ typedef struct WoodenCrateData {
     /* 0x000 */ s32 itemID;
     /* 0x004 */ u16 globalFlagIndex;
     /* 0x006 */ u8 unk_06[2];
-    /* 0x008 */ Gfx** fragmentsGfx;
+    /* 0x008 */ const void** fragmentsGfx; /* NdLst* */
     /* 0x00C */ f32 basePosY;
     /* 0x010 */ s8 fragmentRebounds[36];
     /* 0x034 */ u8 fragmentMoveAngle[36]; // X,Z plane -- scaled to map [0,255] -> [0,360], also used as fragment alpha
@@ -262,13 +262,13 @@ typedef struct PadlockData {
     /* 0x12 */ s8 state;
     /* 0x13 */ char unk_13;
     /* 0x14 */ Mtx* shackleMtx;
-    /* 0x18 */ Gfx* shackleGfx;
+    /* 0x18 */ const void* shackleGfx;
 } PadlockData; // size = 0x1C
 
 #define FRAGMENT_BUF_SIZE 13
 
 typedef struct BoardedFloorData {
-    /* 0x000 */ Gfx** fragmentsGfx;
+    /* 0x000 */ const void** fragmentsGfx;
     /* 0x004 */ f32 inititalY;
     /* 0x008 */ s8 fragmentRebounds[FRAGMENT_BUF_SIZE];
     /* 0x015 */ u8 fragmentMoveAngle[FRAGMENT_BUF_SIZE];
@@ -283,7 +283,7 @@ typedef struct BoardedFloorData {
 } BoardedFloorData; // size = 0x150
 
 typedef struct BombableRockData {
-    /* 0x00 */ Gfx** fragmentsGfx;
+    /* 0x00 */ const void** fragmentsGfx;
     /* 0x04 */ f32 inititalY;
     /* 0x08 */ s8 fragmentRebounds[6];
     /* 0x0E */ u8 fragmentMoveAngle[6];

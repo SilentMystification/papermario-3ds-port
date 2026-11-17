@@ -9,20 +9,20 @@
 
 NDN_DECL(Entity_RenderNone);
 NDN_DECL(Entity_WoodenCrate_Render);
-extern Gfx* Entity_WoodenCrate_FragmentsRender[];
+extern NdLst Entity_WoodenCrate_FragmentsRender[];
 extern Mtx Entity_WoodenCrate_FragmentsMatrices[];
 extern s32 Entity_WoodenCrate_RenderShatteredScript[];
 
 void entity_WoodenCrate_setupGfx(s32);
 
-void entity_WoodenCrate_init_fragments(Entity* entity, Gfx** dlists, Mtx* matrices) {
+void entity_WoodenCrate_init_fragments(Entity* entity, NdLst* dlists, Mtx* matrices) {
     WoodenCrateData* data = entity->dataBuf.crate;
     Matrix4f mtxFragment;
     Matrix4f mtxTrans;
     s32 i;
     s32 rotationSpeed;
 
-    data->fragmentsGfx = ENTITY_ADDR(entity, Gfx**, dlists);
+    data->fragmentsGfx = ENTITY_ADDR(entity, NdLst*, dlists);
     entity->renderSetupFunc = entity_WoodenCrate_setupGfx;
     entity->alpha = 255;
     entity->pos.y = data->basePosY;
@@ -185,8 +185,8 @@ void entity_WoodenCrate_setupGfx(s32 entityIndex) {
     f32 z_inv;
     Entity* entity = get_entity_by_index(entityIndex);
     WoodenCrateData* data = entity->dataBuf.crate;
-    Gfx* fragmentDlist;
-    Gfx** gfx = data->fragmentsGfx;
+    NdLst fragmentDlist;
+    NdLst* gfx = data->fragmentsGfx;
 
     x_inv = -entity->pos.x;
     y_inv = -entity->pos.y;
@@ -211,7 +211,7 @@ void entity_WoodenCrate_setupGfx(s32 entityIndex) {
         guMtxF2L(mtx, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        fragmentDlist = ENTITY_ADDR(entity, Gfx*, *gfx++);
+        fragmentDlist = ENTITY_ADDR(entity, NdLst, *gfx++);
         nd_draw_list(fragmentDlist, ND_SELF);
         nd_xf_pop(G_MTX_MODELVIEW);
     }

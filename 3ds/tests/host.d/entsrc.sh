@@ -10,6 +10,9 @@ if ! tr -d '\r' < 3ds/tests/entsrc/a.txt | cmp -s "$T/gne.txt" -; then echo "ent
 sed 's/ENTITY_ADDR/ENTITY_ADDX/' 3ds/tools/gen_ntab_entries.py > "$T/gne_fault.py"
 python3 -I "$T/gne_fault.py" 3ds/tests/entsrc 3ds/tests/entsrc/x/w.c=dro_02 > "$T/gne_fault.txt" || true
 if tr -d '\r' < 3ds/tests/entsrc/a.txt | cmp -s "$T/gne_fault.txt" -; then echo "entsrc FAIL gne seeded fault not seen"; exit 1; fi
+sed 's/|NdLst//' 3ds/tools/gen_ntab_entries.py > "$T/gne_fault2.py"
+python3 -I "$T/gne_fault2.py" 3ds/tests/entsrc 3ds/tests/entsrc/x/w.c=dro_02 > "$T/gne_fault2.txt" || true
+if tr -d '\r' < 3ds/tests/entsrc/a.txt | cmp -s "$T/gne_fault2.txt" -; then echo "entsrc FAIL gne NdLst seeded fault not seen"; exit 1; fi
 printf '#include "nd_gtab.h"\nvoid f(void) {\n    nd_rec_dl(NDN(Ent_A));\n}\n' > "$T/src/entity/E.c"
 cp "$T/src/entity/E.c" "$T/E.orig"
 printf 'ndd_Ent_A f /w/src/entity/E.c:3 00000001 00000002 00000003 00000004 00000000 00000000 00000000 00000000 00000001 00000000 00000000\n' > "$T/log.txt"
