@@ -4,7 +4,8 @@
 # nd_tx.h) must fail at rtex; then the real headers must pass.
 FP="-msse2 -mfpmath=sse -ffp-contract=off"
 FL="-m32 -Wall -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I include -I ver/us/build/include -I 3ds/include -I 3ds/stub_include"
-LIBS="3ds/src/nd_xf.c 3ds/src/nd_rec.c 3ds/src/nd_model.c 3ds/src/nd_op.c 3ds/src/nd_mtx.c 3ds/src/nd_tmpl.c /tmp/ndcomb.o /tmp/ndcombs.c /tmp/ndlogs.c -lm"
+RO=/tmp # HOSTD2: read-only inputs that nd_host_test.sh makes before the host.d loop; the batch rule does not count $RO paths
+LIBS="3ds/src/nd_xf.c 3ds/src/nd_rec.c 3ds/src/nd_model.c 3ds/src/nd_op.c 3ds/src/nd_mtx.c 3ds/src/nd_tmpl.c $RO/ndcomb.o $RO/ndcombs.c $RO/ndlogs.c -lm"
 mkdir -p /tmp/n3seed
 sed 's/NDO_RECT_TEX | ND_NR_TXY(tile, xl, yl)/ND_NR_TXY(tile, xl, yl)/' 3ds/include/nd_tx.h > /tmp/n3seed/nd_tx.h
 gcc -I /tmp/n3seed $FL $FP -o /tmp/ns3unit_seed 3ds/tools/nd_at_test.c $LIBS || exit 1
