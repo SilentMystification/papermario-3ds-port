@@ -1,11 +1,10 @@
 # ws_PSOFB (Haiku): pso table miss draws a fixed fallback; nd_decide.c leaves the device (stage S1; C9 model -2)
-Designer: oracle PHASEE2. WAIT: branch from main only after the PSOSEEN merge (pso_seen_note in nd_comb.c, 3ds/src/nd_pso_seen.c).
-Worktree build3ds/wt/PSOFB, branch PSOFB. PM_ROW=PSOFB PM_LANE=PSOFB. Edit only the files of the edits below and 3ds/src/nd_pso_seen.c.
+Designer: oracle PHASEE2. WAIT for the PSOSEEN merge (pso_seen_note, nd_pso_seen.c). Worktree build3ds/wt/PSOFB, branch PSOFB.
+PM_ROW=PSOFB PM_LANE=PSOFB. Edit only the files of the edits below and 3ds/src/nd_pso_seen.c.
 ## Facts (code read, main d5325e4e73 and branch PSOSEEN 2dd5cb26e5)
 - Device calls into nd_decide.c (FACT, git grep): nd_comb_core (nd_comb.c:241, :246), nd_pso_fix (:243), nd_const_rgb (:77), nd_pso_in_eq
   (nd_psolk.c:29), nd_pso_flags (pso_seen_note). nd_pso_in_eq calls nd_comb_tst. nd_pso_fix calls nd_const_rgb.
-- nd_psolk.c references the generated table. The host links of nd_decide.c have no table: the helpers go to a new file, not nd_psolk.c.
-- 3ds/CMakeLists.txt:348 globs 3ds/src/*.c: a file moved to 3ds/tools leaves the device build. listcen model: decide, decide_miss (-2).
+- nd_psolk.c references the generated table: the helpers go to a new file. CMakeLists.txt:348 globs 3ds/src/*.c (device).
 ## Edits
 1. `git mv 3ds/src/nd_decide.c 3ds/tools/nd_decide.c`.
 2. New 3ds/src/nd_psokey.c: line 1 `/* nd_psokey.c: PSOFB, the device part of the pso decision: the key compare of the table lookup
@@ -19,8 +18,7 @@ Worktree build3ds/wt/PSOFB, branch PSOFB. PM_ROW=PSOFB PM_LANE=PSOFB. Edit only 
 ```c
 /* PSOFB (user 2026-11-16): a key that the pso table does not hold draws with vertex colour only (legacy mode 0) and logs its key once. */
 static __attribute__((cold, noinline)) void pso_fallback(const NdCombIn* in, NdCombOut* o) {
-    pso_seen_note(in);
-    memset(o, 0, sizeof *o);
+    pso_seen_note(in); memset(o, 0, sizeof *o);
     o->use = -1; o->cyc = (int)((in->omode_h >> G_MDSFT_CYCLETYPE) & 3); o->dual = in->dual_on | in->box_prod << 1;
 }
 ```
@@ -30,12 +28,11 @@ static __attribute__((cold, noinline)) void pso_fallback(const NdCombIn* in, NdC
 5. pso_seen_note, the line `if ((unsigned)(in->tex_on | ... ) > 1u) return;`: keep the condition text, change `return;` to
    `{ static int once; if (!once) { once = 1; pm_log_evt("psomiss flags above 1"); } return; }`.
 ## Steps (each output to build3ds/out/, read the last 20 lines)
-1. Edits 1-5. `sh 3ds/tools/nd_host_test.sh > build3ds/out/psofb_host.txt 2>&1`. Commit `PSOFB 1: fixed fallback on a pso miss;
-   nd_decide.c to 3ds/tools, device helpers in nd_psokey.c`.
+1. Edits 1-5. `sh 3ds/tools/nd_host_test.sh > build3ds/out/psofb_host.txt 2>&1`. Commit `PSOFB 1: pso miss fallback; nd_psokey.c`.
 2. `python 3ds/tools/bench.py base spot_mac01_drec,wscmb_pause_drec --row PSOFB --commit $(git merge-base HEAD main)` (not charged).
 3. `PM_HOSTSEL=all sh 3ds/tools/rowloop.sh --row PSOFB --bench spot_mac01_drec,wscmb_pause_drec --why "PSOFB gate" > build3ds/out/psofb_loop.txt 2>&1`.
-4. `grep -cE "psoseen |psomiss " <each gate run.log of step 3> > build3ds/out/psofb_miss.txt`.
-## Tests that decide (1 build, 2 Azahar starts; 1 more round after a fix)
+   Then `grep -cE "psoseen |psomiss " <each gate run.log of step 3> > build3ds/out/psofb_miss.txt`.
+## Tests that decide (1 build, 2 Azahar starts, 1 more round after a fix). listcen model: decide, decide_miss -2
 - Host PASS (decide, coin, conv2c, psolk, psotab use the new paths). `git grep -n "nd_comb_core(" 3ds/src` prints nothing.
 - `LOOP PASS`: both benches byte-equal. psofb_miss.txt: 0 and 0. `listcen.py` total model 2 lower than main, other totals equal.
 ## Fix rights: `psoseen ` lines only: `python 3ds/tools/psoseen.py <those run.logs>` (it writes 3ds/src/nd_pso_seen.c), commit, repeat
