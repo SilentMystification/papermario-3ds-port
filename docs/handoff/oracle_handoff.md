@@ -13,12 +13,14 @@ FLAMEDL build -2 gfxpos -2, TST13 build -1 gfxpos -1 (page values). Run listcen 
 - ws_NST1 (Sonnet, no wait): nd_ds.h/nd_ds.c (core 1 copy of the state writes, nd_ds_apply), hook in nd_rec_nr, host nst1.sh.
 - ws_NST3 (Haiku, after NST1): dschk switch (nd_dschk.c, nd_ds_cmp, ep bit in nd_rec.c, nd_st_epoch), 4 dschk scenes, dschk_base.txt.
 - ws_NST2A (Haiku, after NST3): nd_ds_list for static lists at nd_rec_dl and NDO_CALL units.
-## Open work (in order)
-1. Answer coder questions (PSOFB, NST1, NST3, NST2A). The NST3 epbad rule is design section 6; GEOM after rects is a GUESS.
-2. Write NST2B (model records: R0 render-mode units and R13 aux units at nd_rec_model, scomp defs), NST2C (entity nd_rec_ent_draw,
-   sprite nd_rec_spr, particles nd_parts_add pre/post units and parts_tab lists), NST2D (nd_rec_list, map shapes dlc, ranges
-   nd_rec_call: walk the units of [a, b) of the core 1 stream). Each: call nd_ds_apply / nd_ds_list at the core 1 producer; gate
-   drec equal + dschk bad lower; NST2D ends with bad 0 and epbad 0 in the 4 scenes. Form: ws_NST2A.
+## Open work (in order; oracle NSTO since 2026-11-17: ws_NST2B c8b0159131, ws_NST2C 9366c70294 on main)
+1. Answer coder questions (PSOFB, NST1, NST3, NST2A-C). The NST3 epbad rule is design section 6; GEOM after rects is a GUESS.
+1b. PSOFB psomiss (from PHASEE2): each gate bench (spot_mac01_drec, wscmb_pause_drec) has 1 psomiss entry whose combine inputs hold a
+   one-bit flag above 1 or below 0. The 4 builders (nd_comb.c:199, nd_model.c:209, pm_gpu.c:3925, nd_scomp.c:226) and the flag writers
+   write 0 or 1 (code read). After the PSOFB merge: read the 8 flag values in the PSOFB 2 commit text, find the writer, write a Haiku page.
+2. NST2D (ranges: unit log + marks + sub save/restore, model R11 ranges, map shape geom nd_shape.c:499), then NST2E (core 0 draw-time
+   writers: nd_direct.c:105-116, HUD/glyph/fill/trect/tsten runners, box fold nd_comb.c:381-387, dual_on nd_tex_set.c:508). NST2E
+   ends with bad 0 and epbad 0 in the 4 scenes. Each NST2 row writes its dschk lines into fxrest.d/dschk_base.txt.
 3. Then NDR0 (Sonnet): design section 7. Then NCONV1 (section 8), NREC1 (section 9).
 4. Add the listcen class core1 (UD1) in the first row that adds ND_FS_ ids (NCONV1).
 ## Facts that cost time
