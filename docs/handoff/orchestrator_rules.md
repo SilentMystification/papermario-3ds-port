@@ -23,8 +23,7 @@ EVERY TURN: 1 ListAgents. Only status `running` holds a slot. A `completed` agen
 
 ## Goal and faults
 - Goal: remove the display list system (plan_endgame.md). Done only when `elfgate.py` prints `func 0 data 0 gfxnames 0` and all `listcen.py` totals are 0. Read totals from `sh 3ds/tools/epic_status.sh`. ASSETFREE, CIA and QTM stay parked.
-- A reported bug is fact: read the code to file, line and value. A tool fault stops the gate: read the tool source first. Never guess and check.
-- Never: toggles, stubs, `git push`, `git stash`. Main stays clean. No build or push in the foreground of the chat.
+- Bug, test, gate and code rules: CLAUDE.md rules 1 to 10. A tool fault stops the gate: read the tool source first. Never guess and check. No build or push in the foreground of the chat.
 - Memcheck margin above 0 KB is the real limit (soft).
 
 ## Merge
@@ -34,10 +33,8 @@ EVERY TURN: 1 ListAgents. Only status `running` holds a slot. A `completed` agen
 4. Budget reset: run `run_azahar.ps1 -ResetBudget <row>` from the row worktree (azt.ps1 reads the worktree copy of test_budget.csv).
 
 ## Console
-- CAPTURE: 4 links (switch, sink, reading tool, proof line). Read the REAL command in the code. Run `capture_check.py` in Azahar before the user plays.
 - PUSH ORDER: merge, build main, wait for the notice, `binchk` gate (`docs/handoff/push_strings.txt`, edited in place at each merge), THEN ask the console selector, then push with `--no-build`.
 - Push only when the user asks. Consoles: O3DS XL 192.168.1.131, N3DS 192.168.1.224, O3DS 192.168.1.170. Never test port 17491.
-- A reported console state (game runs, FTP on, netloader open) is fact: no ping, no probe.
 - A failed push: read `build3ds/out/push_<ip>_*.txt`, one line, stop. Pull logs with `pm_logrecv.py --ip <addr> --label <name>`, fallback `go.ps1 pull o|n -ip <ip>`.
 - The user's test list holds only unconfirmed items (`docs/handoff/verify_list.md`).
 
