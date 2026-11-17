@@ -1,6 +1,6 @@
 # HANDOFF (orchestrator, overwritten at each handoff)
 
-State at 2026-11-17 12:30, main 82b3a5bf65 plus this file. The user stopped the previous orchestrator. A new session starts from this file.
+State at 2026-11-17 about 14:00, main ab9bd8c0f5. The user stopped the previous orchestrator. A new session starts from this file.
 Read this file, docs/handoff/orchestrator_rules.md, CLAUDE.md and the memory index. Then ListAgents (status `running` is the ONLY slot count).
 
 ## Goal and counters (FACT, listcen, main bb16921f75)
@@ -15,8 +15,16 @@ ENTCAPR2, INITGS, ENTSELF2, TSTSHK2, BASEKEEP2 (tool fix), THEATVP, GFXPOS7, RAC
 Earlier: process rows, NMDL0, NIMGM, NTABFIND, RAWIMG, FXLOC, ENTSRC and more. Git history is the log.
 
 ## Agents at handoff (ListAgents)
-No agent runs. Oracles DESIGN1 and DESIGN2 are done (contexts above 150K: start fresh oracles). Coders a4f2ded3c4729fa08, ad433f22f062b9e41, a989e26b373144922, a3826c55761c6a920 are done.
+No agent runs. Oracles DESIGN1 and DESIGN2 are done (contexts above 150K: start fresh oracles with a short brief). The coders listed in older handoffs are done.
 The user stopped all new work at 2026-11-17 12:30. Start coders only when the user says so.
+
+## New working split (user 2026-11-17, committed 46ddb85612, a1ddec2f38, ab9bd8c0f5)
+- Oracle designs and diagnoses. It runs no test and writes no full patch or test file (a patch only for a purely mechanical edit at many sites).
+- Coder implements and runs ALL tests. At the first failure, unmatched page step or unsettled choice it writes the output to build3ds/out/ and messages the oracle (id in the launch prompt). It never diagnoses. It applies the oracle's reply and reruns. Max 3 rounds per cause.
+- The oracle replies with the cause (file:line) and the exact edit text. It never applies an edit and never runs a command for the coder.
+- Rules are in CLAUDE.md, .claude/agents/coder.md, .claude/agents/oracle.md and docs/handoff/orchestrator_rules.md, each rule stated once.
+- OPEN: the five pages below still hold full patches from the old split. The user has not chosen: coders use those patches as the design and run the tests, or an oracle rewrites them as design-only pages. Measure rounds and tokens on the first 2 or 3 rows.
+- Start a fresh oracle for each diagnosis wave. A resumed 250K-token oracle is costly (GUESS).
 
 ## Ready pages on main (all dry-run on main, host PASS)
 - ws_NMDL6 (Sonnet, user approved): entity_model.c, model.c and 3 world lists. build -7, gfxpos -7, gfxtype -1. Gate direct_pra13_det and spot_mac01_drec. Run the host test with PM_CACHE=off, then rowloop --no-host.
