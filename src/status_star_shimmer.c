@@ -187,7 +187,6 @@ void star_power_shimmer_draw(void) {
                     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
                     nd_val_prim(0, 80 - particle->animTime, particle->rgba.r, particle->rgba.g, particle->rgba.b, particle->rgba.a);
                     nd_rec_dl(NDN(D_801097D8));
-                    gSPDisplayList(gMainGfxPos++, NDN(D_801097D8)); // draw particle
                     nd_xf_pop(G_MTX_MODELVIEW);
                 }
             }
