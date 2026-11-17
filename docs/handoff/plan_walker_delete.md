@@ -23,9 +23,9 @@ FXSLOT1, FXSLOT2 and TST13 give gfxpos 2, not 0 (FACT, sum of their pages). Row 
 | stage | rows (model) | files | counter move | gate benches |
 |---|---|---|---|---|
 | S0 now | OPMOVE (Haiku, page on main) | nd_op.c to 3ds/tools, 7 host.d scripts, nd_host_test.sh, CMakeLists.txt | reader -62 (FACT) | spot_mac01_drec |
-| S0 now | PSOSEEN (Haiku, page next) | nd_comb.c:240 miss log, new 3ds/tools/psoseen.py, new 3ds/src/nd_pso_seen.c | none (pk_miss falls, OPEN) | 6 psochk scenes of azt.d ENTRY1, ENTRYFX, FXCULL, FXDIG, FXENT3, ISEED |
+| S0 now | PSOSEEN (Haiku, page next) | nd_comb.c:240 miss log, new 3ds/tools/psoseen.py, new 3ds/src/nd_pso_seen.c | none (pk_miss falls, OPEN) | the psochk scenes (42 lines with psochk in azt.d ENTRY1, ENTRYFX, FXCULL, FXDIG, FXENT3, ISEED; PSOSEEN picks 6) |
 | S0 after FXSLOT1 | FLAMEDL (Haiku) | src/effects/flame.c :188 :211: capture form, entcap, entry | build -2, gfxpos -2 (FACT) | fxops_drec |
-| S1 pso table only | PSOFB (Haiku) | nd_comb.c:241 fixed fallback and one log line (user 2026-11-16), nd_decide.c split: device helpers (nd_pso_in_eq, nd_pso_flags, nd_pso_fix, nd_const_rgb, nd_comb_tst) to nd_psolk.c, the rest to 3ds/tools/nd_decide.c (gen_pso_tab.py:129, build.sh:211, host.d coin.sh, conv2c.sh, decide.sh) | model -2 (FACT, nd_decide.c 2) | the 6 psochk scenes, miss 0 |
+| S1 pso table only | PSOFB (Haiku) | nd_comb.c:241 fixed fallback and one log line (user 2026-11-16), nd_decide.c split: device helpers (nd_pso_in_eq, nd_pso_flags, nd_pso_fix, nd_const_rgb, nd_comb_tst) to nd_psolk.c, the rest to 3ds/tools/nd_decide.c (gen_pso_tab.py:129, build.sh:211, host.d coin.sh, conv2c.sh, decide.sh) | model -2 (FACT, nd_decide.c 2) | the 6 PSOSEEN scenes, miss 0 |
 | S2 design | NSTATE (oracle design, Opus) | docs/handoff/design_nstate.md: the core 1 draw state, the native draw record, the v2 field-set op | none | none |
 | S3 setters | NST1..NST4 (Haiku) | nd_st.c, nd_val.c, nd_geo.c, nd_xf.c, nd_tx.h, nd_at.h, nd_nr.h: write core 1 fields, no NDO unit | reader about -95 (GUESS, listcen of these files) | spot_mac01_drec, wscmb_pause_drec |
 | S4 draws | NDR1..NDR4 (Haiku) | nd_geom.c, nd_rect.c, nd_direct.c, nd_model_set.c: run the native record (pso id, bind, colours) | model -6 (nd_geom 1, nd_rect 2, nd_comb 3) GUESS | spot_mac01_drec, nimgm_anim_drec, axns_sam2_drec |
@@ -35,7 +35,7 @@ FXSLOT1, FXSLOT2 and TST13 give gfxpos 2, not 0 (FACT, sum of their pages). Row 
 | S8 end | S9GATE (Haiku) | none | elfgate func 0 data 0 gfxnames 0 | plan_endgame.md:80-90 |
 Pre per stage:
 - S0: none. OPMOVE and PSOSEEN share no file with FXSLOT1/2, TST13, IMGOVL, MISCP (FACT, their pages).
-- S1: PSOSEEN merged. psochk `miss 0` in the 6 scenes on main.
+- S1: PSOSEEN merged. psochk `miss 0` in the 6 PSOSEEN scenes on main.
 - S2: user decision D1 (section 4). S3 to S6: design_nstate.md on main.
 - S5: CONV2 tables complete (nd_gfx_conv.c). NCONV1 is Sonnet: one algorithm over 922 tables (FACT, plan_endgame.md:159), its error
   cases are not known per list before it runs (the CONV2C reason).
