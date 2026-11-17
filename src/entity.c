@@ -921,7 +921,7 @@ void entity_swizzle_anim_pointers(EntityBlueprint* entityData, void* baseAnim, v
         *ptr++ = (s32)node;
 
         if ((s32)node->displayList != -1) {
-            node->displayList = (Gfx*)((s32)baseGfx + ((s32)(node->displayList) & 0xFFFF));
+            node->displayList = (void*)((s32)baseGfx + ((s32)(node->displayList) & 0xFFFF));
         } else {
             node->displayList = nullptr;
         }

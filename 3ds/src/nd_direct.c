@@ -238,12 +238,12 @@ void nd_glyph_draw(uint32_t raster, uint32_t pal, int tlut, int w, int h, int ul
 }
 
 /* NATIVEAPI E5b (S5PQUAD): the combine and other mode low bits of each NdFillRec kind (the walker's words for the same macros). */
-static const struct { Gfx cc; uint32_t rm0, rm1; } kFillKind[4] = {
-    { gsDPSetCombineMode(G_CC_PRIMITIVE, G_CC_PRIMITIVE), G_RM_CLD_SURF, G_RM_CLD_SURF2 },
-    { gsDPSetCombineMode(G_CC_PRIMITIVE, G_CC_PRIMITIVE), CVG_DST_SAVE | G_RM_OPA_SURF, CVG_DST_SAVE | G_RM_OPA_SURF2 },
+static const struct { struct { uint32_t w0, w1; } cc; uint32_t rm0, rm1; } kFillKind[4] = {
+    { ND_CMB_W(G_CC_PRIMITIVE, G_CC_PRIMITIVE), G_RM_CLD_SURF, G_RM_CLD_SURF2 },
+    { ND_CMB_W(G_CC_PRIMITIVE, G_CC_PRIMITIVE), CVG_DST_SAVE | G_RM_OPA_SURF, CVG_DST_SAVE | G_RM_OPA_SURF2 },
     /* PM_CC_PRIM_FULL_ALPHA (include/macros.h:328) written out: macros.h is not included here */
-    { gsDPSetCombineLERP(0, 0, 0, PRIMITIVE, 0, 0, 0, 1, 0, 0, 0, PRIMITIVE, 0, 0, 0, 1), G_RM_OPA_SURF, G_RM_OPA_SURF2 },
-    { gsDPSetCombineMode(G_CC_PRIMITIVE, G_CC_PRIMITIVE), G_RM_XLU_SURF, G_RM_XLU_SURF2 },
+    { ND_CMB_W(0, 0, 0, PRIMITIVE, 0, 0, 0, 1, 0, 0, 0, PRIMITIVE, 0, 0, 0, 1), G_RM_OPA_SURF, G_RM_OPA_SURF2 },
+    { ND_CMB_W(G_CC_PRIMITIVE, G_CC_PRIMITIVE), G_RM_XLU_SURF, G_RM_XLU_SURF2 },
 };
 
 void nd_walk_state(const uint32_t* q, unsigned n); /* nd_walk.c, core 0: the op executor */
@@ -259,7 +259,7 @@ static void nd_fill_walk(const NdFillRec* f, unsigned k) {
     uint32_t* nrp = buf;
     static unsigned nfb;
     if (nfb++ < 16u) pm_log_d("fill fallback f%u", pm_frame_count());
-    NDST_COMB(ND_NR_AT, kFillKind[k].cc.words.w0, kFillKind[k].cc.words.w1);
+    NDST_COMB(ND_NR_AT, kFillKind[k].cc.w0, kFillKind[k].cc.w1);
     NDST_RM(ND_NR_AT, kFillKind[k].rm0, kFillKind[k].rm1);
     NDVAL_PRIM(ND_NR_AT, 0, 0, (f->rgba >> 24) & 0xffu, (f->rgba >> 16) & 0xffu, (f->rgba >> 8) & 0xffu, f->rgba & 0xffu);
     NDTX_FILL(ND_NR_AT, f->x0, f->y0, f->x1, f->y1);
@@ -276,8 +276,8 @@ void nd_fill_run(const uint32_t* u) {
         nd_fill_walk(f, k);
         return;
     }
-    d.cw0 = kFillKind[k].cc.words.w0;
-    d.cw1 = kFillKind[k].cc.words.w1;
+    d.cw0 = kFillKind[k].cc.w0;
+    d.cw1 = kFillKind[k].cc.w1;
     d.oml = kFillKind[k].rm0 | kFillKind[k].rm1;
     d.omh = G_CYC_1CYCLE;
     d.omh_m = 3u << G_MDSFT_CYCLETYPE;

@@ -245,8 +245,8 @@ API_CALLABLE(SetTexPanOffset) {
 API_CALLABLE(SetCustomGfx) {
     Bytecode* args = script->ptrReadPos;
     s32 idx = evt_get_variable(script, *args++);
-    Gfx* pre = (Gfx*) evt_get_variable(script, *args++);
-    Gfx* post = (Gfx*) evt_get_variable(script, *args++);
+    void* pre = (void*) evt_get_variable(script, *args++);
+    void* post = (void*) evt_get_variable(script, *args++);
 
     set_custom_gfx(idx, pre, post);
     return ApiStatus_DONE2;
