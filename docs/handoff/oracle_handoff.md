@@ -1,7 +1,7 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main d9038b0907, 2026-11-17. Oracle NEXT2 wrote ws_BLANKET, ws_GTSMALL, ws_FXDIG, ws_IMGFXT, ws_VCFIX.
-Counters FACT (listcen on 5e7ac3c413): build 314, gfxpos 10, data 279, data_arrays 3, gfxtype 297, recdl 11, reader 792, model 15.
+State: main 5b86d616e2, 2026-11-17. NEXT2 wrote ws_BLANKET, ws_GTSMALL, ws_FXDIG, ws_IMGFXT, ws_VCFIX. NEXT3 wrote ws_MDLTYPE, ws_BARRICADE.
+Counters FACT (listcen on 3b890c6d7f, after FLTGT): build 312, gfxpos 8, data 191, data_arrays 0, gfxtype 284, recdl 11, reader 792, model 15.
 Goal: elfgate.py prints func 0 data 0 gfxnames 0 and every listcen counter is 0 (include/PR/gbi.h definitions go in stage 4D).
 ## Pages on main (Haiku, disjoint files)
 - ws_BLANKET: data -39, data_arrays -1, gfxtype -1. gen_gfx_syms.py N() image rule + twin top scan (dro_02), 11 new world twins. Coder ran.
@@ -10,13 +10,11 @@ Goal: elfgate.py prints func 0 data 0 gfxnames 0 and every listcen counter is 0 
 - ws_IMGFXT: gfxtype -9 (imgfx.c, imgfx.h, common_structs.h 3 members). Coder running; its :1115 comment check is answered.
 - ws_VCFIX: bug fix. mdl_draw_vertex_copy records ModelLocalVertexCopy.dev, which no code writes (nd_vcopy_dev had no caller).
   New bench vcfix_hos01_drec (no base run: the base has the fault). verify_list has the console check.
-- FLTGT (branch): flame data -49, data_arrays -2.
+- ws_MDLTYPE (NEXT3): gfxtype -16 (model.c 9, model.h 3, functions.h 2, HiddenPanel.c:10, tst_13 main.c:6). Starts after the VCFIX merge.
+  lkey stays 3: each word walk keeps one (const uint32_t*) cast line. vcopy.sh gets a copy size check (gfxCount * 2 * sizeof(uint32_t)).
+- ws_BARRICADE (NEXT3): gfxtype -6, new host test barricade.sh (maplist_test.c, seeded fault += 4). No wait, no shared file.
 ## Open groups, by the design they need
-1. model.c types (model.c 7 tokens, model.h :48 :112 :146, functions.h:509): Haiku page after VCFIX merges (model.c). Facts:
-   gfxCopy as uint32_t* changes `sizeof(*copy->gfxCopy[i])` (model.c:3690) from 8 to 4: write `gfxCount * 2 * sizeof(uint32_t)`.
-   mdl_local_gfx_update_vtx_pointers (:3647) index rule w0 -> [0], w1 -> [1], ++ -> += 2; lkey allow `src/model.c 3` -> 2.
-   mdl_project_tex_coords has 2 more prototypes: HiddenPanel.c:10, tst_13 main.c:6. set_custom_gfx callers pass void* (map_api.c after GTSMALL).
-2. barricade.c:44-55 and GetFirstTriangleNormal.inc.c:17-48 (gfxtype 6): map shape list readers. u32 index rewrite, lkey MAP lines change. After group 1.
+1-2. model.c types and map shape walkers: paged (ws_MDLTYPE, ws_BARRICADE).
 3. Capture rows: status_star_shimmer.c:189 (star power scene), tst_13 main.c:306 (no Azahar route, pm_warp.c:747). Need a scene first.
 4. recdl left after FXDIG (9): misc_particles.c:330 multi 30 (a per-particle value is in the tuple: move it out of the entry, design);
    green_impact :202, red_impact :209, shockwave :341 multi 2 (EFXGT owns the files; find the key of the 2 tuples in fxrest.d/cap.txt);
@@ -26,6 +24,11 @@ Goal: elfgate.py prints func 0 data 0 gfxnames 0 and every listcen counter is 0 
 6. 3ds/src walker gfxtype (nd_walk 33, nd_ent 29, nd_shape 20, nd_rec 15, nd_recs 15, nd_cen 7, nd_geom 1): goes with the walker deletion.
    A rename to another 8-byte type only hides the counter. Not paged.
 7. include gbi.h, gbi_custom.h, gt.h, sp.h, gs2dex.h, gu.h: stage 4D.
+8. reader 792 (C8) and model 15 (C9): the walker op stream (NDO_ tokens: nd_op.h 173, nd_walk.c 71, nd_rec.c 68, nd_op.c 62, nd_recs.c 48,
+   nd_scomp.c 44, nd_cen.c 42, nd_tx.h 40, nd_set.c 39, nd_model.c 32, nd_dlc.c 27) and the state model definitions (nd_comb.c 3, nd_tex_set.c 3,
+   nd_decide.c 2, nd_rect.c 2, nd_texwin.c 2, nd_geom.c, nd_mtx_set.c, nd_set.c 1 each). Phase E stages 1-3 (plan_endgame.md:188-196). Precondition
+   C1, C2, C10 at 0: not met. No Haiku page. Design choices: nd_st.c, nd_val.c, nd_nr.h, nd_at.h write NDO_ unit words for native records
+   (stage 3 needs a native record form); gen_pso_tab.py links nd_decide.c (host keeps decide: move it to 3ds/tools?); nd_cen.c is a debug census.
 ## Facts that cost time
 - host.d scripts need gcc: run them only through nd_host_test.sh (docker). blanket.sh is pure python and runs in Git Bash.
 - lkey_cen.py:71-72 fails a listed file whose reader count drops (RECBUF, GTSMALL). Each page that removes `.words.w*` reads edits allow.txt.
@@ -36,6 +39,6 @@ Goal: elfgate.py prints func 0 data 0 gfxnames 0 and every listcen counter is 0 
 - fxrest.d/cap.txt tuples can be stale: FXDIG psochk showed conv_k4 (w7) stated 0x7f, walker 0. Check w7 against a live site desc first.
 - fxtest numbers are 0-based FXLIST indices (flame 27, damage_indicator_12 129). Slot 44 frames, start 400, spawn at k 2.
 ## What to do first
-1. Answer coder questions (IMGFXT, GTSMALL, FXDIG, VCFIX, BLANKET).
-2. After VCFIX merges, page group 1 (model.c types). Then group 2.
-3. Then the recdl keys of green_impact, red_impact, shockwave (after EFXGT merges): read fxrest.d/cap.txt for the 2 tuples.
+1. Answer coder questions (MDLTYPE, BARRICADE, GTSMALL, FXDIG, IMGFXT, VCFIX).
+2. green_impact, red_impact, shockwave recdl: paged by DESIGN3 (ws_FXCULL, recdl -3). Do not page them again.
+3. Group 5 (gfxpos 8) task start design, then group 8 needs the user's choice.
