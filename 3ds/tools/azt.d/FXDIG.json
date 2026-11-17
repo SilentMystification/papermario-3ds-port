@@ -1,0 +1,33 @@
+{
+  "scenarios": [
+    {
+      "name": "fxdig_drec",
+      "status": "unverified",
+      "subject": "FXDIG: Toad Town mac_01 at 0 0 200, fxtest=129 (damage_indicator_12, two-digit path), cold det start with the drec switch: the draw records of frame 432 go to shots/drec.txt.",
+      "proves": "FXDIG: the damage_indicator ones and tens quads (damage_indicator.c nd_draw_list with pe_damage_indicator_ones and pe_damage_indicator_tens) give a draw record that is a function of the build (det), so a base and a head build give a byte-equal drec.txt.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=129 loglevel=debug det drec=412:3:10 psochk",
+      "extra": [],
+      "until": "fxtest: done",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f432 draws [1-9]\\d* bytes \\d+"
+        },
+        {
+          "name": "done",
+          "regex": "fxtest: done"
+        }
+      ],
+      "reason": "FXDIG byte gate for damage_indicator_12 (fxtest=129), the two-digit quad path. Cold det start, cap 40 s, deadline 35 s. The fxtest: done line is the until."
+    }
+  ]
+}

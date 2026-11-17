@@ -1,0 +1,20 @@
+{
+  "benches": [
+    {
+      "name": "fxdig_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FXDIG: draw records (drec.txt) of damage_indicator_12 (fxtest=129, two-digit path), frame 432, cold det start. Two runs of one build byte-equal; the head equals the base. The psochk line shows the bad count.",
+      "scenario": "fxdig_drec",
+      "cap": 40,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "det",
+        "drec"
+      ],
+      "gates": []
+    }
+  ]
+}
