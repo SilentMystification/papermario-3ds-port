@@ -93,7 +93,7 @@ typedef struct ImgFXState {
     /* 0x62 */ char unk_62[0x2];
     /* 0x64 */ u8* curAnimOffset;
     /* 0x68 */ Vtx* vtxBufs[2];
-    /* 0x70 */ Gfx* gfxBufs[2];
+    /* 0x70 */ uint32_t* gfxBufs[2]; /* typed units, 2 words each */
     /* 0x78 */ s32 otherModeL;
     /* 0x7C */ NdNDev gfxDev[2]; /* NIMGM: the device entry of each gfxBufs[i] (units in place, no copy) */
 } ImgFXState;
@@ -1217,7 +1217,7 @@ void imgfx_mesh_make_grid(ImgFXState* state) {
 
 /* NIMGM: the device entry of a typed heap list: its units in place (nu = the units before NDO_END). ntri is the triangle count: not zero, so the
  * walker takes ent_gdl for the list as walk_call did for a heap list without an entry (gt_run: !(nt && !nt->ntri)); dlc_try refuses a heap list in both paths. */
-static void imgfx_make_dev(NdNDev* d, Gfx* buf, unsigned n) {
+static void imgfx_make_dev(NdNDev* d, uint32_t* buf, unsigned n) {
     const uint32_t* u = (const uint32_t*)buf;
     unsigned ntri = 0;
     unsigned i;
@@ -1279,11 +1279,11 @@ ImgFXAnimHeader* imgfx_load_anim(ImgFXState* state) {
         }
         state->vtxBufs[0] = heap_malloc(anim->vtxCount * sizeof(Vtx));
         state->vtxBufs[1] = heap_malloc(anim->vtxCount * sizeof(Vtx));
-        state->gfxBufs[0] = heap_malloc(anim->gfxCount * sizeof(Gfx));
-        state->gfxBufs[1] = heap_malloc(anim->gfxCount * sizeof(Gfx));
+        state->gfxBufs[0] = heap_malloc(anim->gfxCount * 2 * sizeof(uint32_t));
+        state->gfxBufs[1] = heap_malloc(anim->gfxCount * 2 * sizeof(uint32_t));
 
         romStart = imgfx_data_ROM_START + (s32)anim->gfxOffset;
-        romEnd = romStart + anim->gfxCount * sizeof(Gfx);
+        romEnd = romStart + anim->gfxCount * 2 * sizeof(uint32_t);
         dma_copy(romStart, romEnd, state->gfxBufs[0]);
         dma_copy(romStart, romEnd, state->gfxBufs[1]);
         imgfx_swap32(state->gfxBufs[0], anim->gfxCount * 2);
