@@ -616,9 +616,12 @@ foreach ($l in ($lines | Where-Object { $_ -match "^\[CRASH\]" -and $_ -match "p
     $addrs += [regex]::Matches($l, "(?:pc=|lr=| )([0-9a-f]{8})") | ForEach-Object { $_.Groups[1].Value }
 }
 $emu = ""
-for ($k = 0; $k -lt 10 -and $emu -notmatch "Exception Type:"; $k++) { # the log can stay locked briefly after the kill
+# AZTFAST: only an abnormal end waits for the dump (10 reads, 0.3 s apart). A normal stop (until line, azt stop, timeout) reads
+# the log once: FACT (oracle FASTLOOP) the old loop slept 3 s after every normal run.
+$emuTries = if ($reason -match '^(crash|emulator exception|Azahar dialog|Azahar exited|unmapped access)') { 10 } else { 1 }
+for ($k = 0; $k -lt $emuTries -and $emu -notmatch "Exception Type:"; $k++) { # the log can stay locked briefly after the kill
     $emu = Read-Tail $emuLog 262144
-    if ($emu -notmatch "Exception Type:") { Start-Sleep -Milliseconds 300 }
+    if ($emu -notmatch "Exception Type:" -and $k + 1 -lt $emuTries) { Start-Sleep -Milliseconds 300 }
 }
 $i = $emu.LastIndexOf("Exception Type:") # Azahar repeats the dump: keep the last one
 if ($i -ge 0) {

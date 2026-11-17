@@ -83,7 +83,7 @@ sample has one row per window (win "f<frame> w<size>"; ts is the run wall time; 
 a window count and no window records (imported history) gets one row with win "agg" and extra_json agg_windows = count.
 Gate: {metric, op, value} or {metric, op, ref: baseline}. The baseline is the earliest run of the bench with that metric.
 """
-import argparse, collections, csv, datetime, hashlib, io, json, os, re, shutil, sqlite3, struct, subprocess, sys, tarfile, time, zlib
+import argparse, collections, concurrent.futures, csv, datetime, hashlib, io, json, os, re, shutil, sqlite3, struct, subprocess, sys, tarfile, time, zlib
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -1215,10 +1215,14 @@ def cmd_run(a):
         if lane_problem(a.lane):
             print("%s. Nothing was run." % lane_problem(a.lane))
             return 5
-        stale = "" if os.environ.get("PM_BASE_SNAP") or a.build is not None else build_stale(a.lane)
-        if stale:
-            print("%s. Nothing was run." % stale)
-            return 5
+        # AZTFAST: the key check (build_stale: one key-only build.sh, FACT oracle FASTLOOP 11.7-12.3 s) runs during the Azahar run.
+        # A stale build voids the run after it: STALE.txt in its shot folder, and cmd_cmp refuses a folder with STALE.txt.
+        chk = None
+        if not (os.environ.get("PM_BASE_SNAP") or a.build is not None):
+            prev = row_shots_run(bd["name"], a.row)
+            if prev:
+                (Path(prev["shot_path"]) / "STALE.txt").unlink(missing_ok=True)
+            chk = concurrent.futures.ThreadPoolExecutor(1).submit(build_stale, a.lane)
         speed = a.speed or bd.get("speed", "normal")
         queue_line()
         PERF.mkdir(parents=True, exist_ok=True)
@@ -1240,6 +1244,13 @@ def cmd_run(a):
             cmd.append("-Try")
         rc = subprocess.run(cmd, cwd=REPO, env=env).returncode
         print("bench %s: azt.ps1 exit %d. azt.ps1 wrote the run record (ingest-last) to 3ds/logs/perf/runs.jsonl." % (bd["name"], rc))
+        stale = chk.result() if chk is not None else ""
+        if stale:
+            rr = row_shots_run(bd["name"], a.row)
+            if rr:
+                (Path(rr["shot_path"]) / "STALE.txt").write_text(stale + "\n", encoding="utf-8")
+            print("%s. The run is void (STALE.txt in its shot folder)." % stale)
+            return 5
         return rc
     if kind == "host_test":
         OUT.mkdir(parents=True, exist_ok=True)
@@ -2213,10 +2224,14 @@ def cmd_cmp(a):
     if not commit:
         print("no base commit (the merge-base of HEAD with main, or --commit %s is unknown). Nothing was compared." % a.commit)
         return 5
+    rr = row_shots_run(a.bench, a.row)
+    # AZTFAST: bench.py run found the build stale during this run. Checked before the base, so a void run never touches the store.
+    if rr is not None and (Path(rr["shot_path"]) / "STALE.txt").exists():
+        print("cmp %s: the row run is void: %s" % (a.bench, (Path(rr["shot_path"]) / "STALE.txt").read_text(encoding="utf-8").strip()))
+        return 5
     if not stored(commit, a.bench):
         print("no stored base of %s at %s. Run: bench.py base %s" % (a.bench, commit[:9], a.bench))
         return 5
-    rr = row_shots_run(a.bench, a.row)
     if rr is None:
         print("no run of %s under row %s with shots. Run the bench first." % (a.bench, a.row))
         return 5
