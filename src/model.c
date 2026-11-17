@@ -3716,17 +3716,16 @@ void mdl_get_copied_vertices(s32 copyIndex, Vtx** firstVertex, Vtx** copiedVerti
     *numCopied = mlvc->numVertices;
 }
 
-Gfx* mdl_get_copied_gfx(s32 copyIndex) {
+void mdl_draw_vertex_copy(s32 copyIndex) {
     ModelLocalVertexCopy* mlvc = (*gCurrentModelLocalVtxBuffers)[copyIndex];
     s32 selector = mlvc->selector;
-    Gfx* gfxCopy = mlvc->gfxCopy[selector];
 
     mlvc->selector++;
     if (mlvc->selector > ARRAY_COUNT(mlvc->gfxCopy) - 1) {
         mlvc->selector = 0;
     }
 
-    return gfxCopy;
+    nd_rec_ndev(&mlvc->dev[selector]);
 }
 
 void mdl_project_tex_coords(s32 modelID, Gfx* outGfx, Matrix4f arg2, Vtx* arg3) {

@@ -63,7 +63,7 @@ void N(make_tongue_gfx)(s32 index) {
 
     mdl_get_copied_vertices(VTX_COPY_1, &vtxSrc, &vtxCopy, &numCopied);
     N(add_tongue_deformation)(vtxSrc, vtxCopy, numCopied, N(TongueWiggleTime));
-    gSPDisplayList(gMainGfxPos++, mdl_get_copied_gfx(VTX_COPY_1));
+    mdl_draw_vertex_copy(VTX_COPY_1);
 
     N(TongueWiggleTime) += TONGUE_WIGGLE_RATE;
 }

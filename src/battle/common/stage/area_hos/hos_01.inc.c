@@ -26,7 +26,7 @@ void N(build_gfx_yellow_stars)(s32 index) {
         vtx->v.cn[2] = vtx->v.cn[0] * temp3 / 0x10000;
     }
 
-    gSPDisplayList(gMainGfxPos++, mdl_get_copied_gfx(index));
+    mdl_draw_vertex_copy(index);
     N(StarPhaseAngles)[index] += (s32)RAD_TO_BINANG(25.1898);
 }
 
@@ -50,7 +50,7 @@ void N(build_gfx_blue_stars)(s32 index) {
         colors[2] = colors[0] * temp3 / 0x10000 + 99.6078431372549;
     }
 
-    gSPDisplayList(gMainGfxPos++, mdl_get_copied_gfx(index));
+    mdl_draw_vertex_copy(index);
     N(StarPhaseAngles)[index] += (s32)RAD_TO_BINANG(25.1898);
 }
 
@@ -74,7 +74,7 @@ void N(build_gfx_green_stars)(s32 index) {
         colors[2] = colors[0] * temp3 / 0x10000 + 59.21568627450981;
     }
 
-    gSPDisplayList(gMainGfxPos++, mdl_get_copied_gfx(index));
+    mdl_draw_vertex_copy(index);
     N(StarPhaseAngles)[index] += (s32)RAD_TO_BINANG(25.1898);
 }
 
@@ -98,7 +98,7 @@ void N(build_gfx_pink_stars)(s32 index) {
         colors[2] = colors[0] * temp3 / 0x10000 + 96.07843137254902;
     }
 
-    gSPDisplayList(gMainGfxPos++, mdl_get_copied_gfx(index));
+    mdl_draw_vertex_copy(index);
     N(StarPhaseAngles)[index] += (s32)RAD_TO_BINANG(25.1898);
 }
 
