@@ -1,0 +1,36 @@
+{
+  "benches": [
+    {
+      "name": "nimgm_strip_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "NIMGM: draw records of the Monstar overlay strip, frames 400 and 420, det. A head equals the base.",
+      "scenario": "nimgm_strip_drec",
+      "cap": 30,
+      "until": "drec f420 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "drec"
+      ],
+      "gates": []
+    },
+    {
+      "name": "nimgm_anim_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "NIMGM: draw records of the Merlee card shuffle (imgfx anim) in dro_02, frames 660 and 685, det. A head equals the base.",
+      "scenario": "nimgm_anim_drec",
+      "cap": 35,
+      "until": "drec f685 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "drec"
+      ],
+      "gates": []
+    }
+  ]
+}

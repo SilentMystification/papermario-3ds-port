@@ -1,5 +1,6 @@
 #include "common.h"
 #include "nd_gtab.h"
+#include "pm_port.h"
 #include "ld_addrs.h"
 #include "sprite.h"
 #include "imgfx.h"
@@ -94,7 +95,8 @@ typedef struct ImgFXState {
     /* 0x68 */ Vtx* vtxBufs[2];
     /* 0x70 */ Gfx* gfxBufs[2];
     /* 0x78 */ s32 otherModeL;
-} ImgFXState; // size = 0x7C
+    /* 0x7C */ NdNDev gfxDev[2]; /* NIMGM: the device entry of each gfxBufs[i] (units in place, no copy) */
+} ImgFXState;
 
 typedef struct ImgFXCacheEntry {
     /* 0x00 */ s32* data;
@@ -471,10 +473,12 @@ void imgfx_cache_instance_data(ImgFXState* state) {
     if (state->gfxBufs[0] != nullptr) {
         imgfx_add_to_cache(state->gfxBufs[0], true);
         state->gfxBufs[0] = nullptr;
+        state->gfxDev[0].list = nullptr;
     }
     if (state->gfxBufs[1] != nullptr) {
         imgfx_add_to_cache(state->gfxBufs[1], true);
         state->gfxBufs[1] = nullptr;
+        state->gfxDev[1].list = nullptr;
     }
 }
 
@@ -484,6 +488,8 @@ void imgfx_clear_instance_data(ImgFXState* state) {
     state->vtxBufs[1] = nullptr;
     state->gfxBufs[0] = nullptr;
     state->gfxBufs[1] = nullptr;
+    state->gfxDev[0].list = nullptr;
+    state->gfxDev[1].list = nullptr;
     state->colorBuf = nullptr;
     state->colorBufCount = 0;
 }
@@ -1209,6 +1215,31 @@ void imgfx_mesh_make_grid(ImgFXState* state) {
     state->lastVtxIdx = imgfx_vtxCount - 1;
 }
 
+/* NIMGM: the device entry of a typed heap list: its units in place (nu = the units before NDO_END). ntri is the triangle count: not zero, so the
+ * walker takes ent_gdl for the list as walk_call did for a heap list without an entry (gt_run: !(nt && !nt->ntri)); dlc_try refuses a heap list in both paths. */
+static void imgfx_make_dev(NdNDev* d, Gfx* buf, unsigned n) {
+    const uint32_t* u = (const uint32_t*)buf;
+    unsigned ntri = 0;
+    unsigned i;
+
+    for (i = 0; i < n; i++) {
+        const uint32_t op = u[2 * i] >> 24;
+        if (op == NDO_END) {
+            break;
+        }
+        if (op == NDO_TRI1) {
+            ntri += 1;
+        } else if (op == NDO_TRI2) {
+            ntri += 2;
+        }
+    }
+    d->list = buf;
+    d->fl = 0;
+    d->u = u;
+    d->nu = i;
+    d->ntri = ntri;
+}
+
 ImgFXAnimHeader* imgfx_load_anim(ImgFXState* state) {
     u8* romStart = (s32) ImgFXAnimOffsets[state->ints.anim.type] + imgfx_data_ROM_START;
     ImgFXAnimHeader* anim = &ImgFXAnimHeaders[state->arrayIdx];
@@ -1237,12 +1268,14 @@ ImgFXAnimHeader* imgfx_load_anim(ImgFXState* state) {
         if (state->gfxBufs[0] != nullptr) {
             imgfx_add_to_cache(state->gfxBufs[0], 1);
             state->gfxBufs[0] = nullptr;
+            state->gfxDev[0].list = nullptr;
         }
         if (state->gfxBufs[1] != nullptr) {
             // imgfx_add_to_cache(state->gfxBufs[1], 1);
             romEnd = (u8*) state->gfxBufs[1]; // required to match
             imgfx_add_to_cache(state->gfxBufs[1], 1);
             state->gfxBufs[1] = nullptr;
+            state->gfxDev[1].list = nullptr;
         }
         state->vtxBufs[0] = heap_malloc(anim->vtxCount * sizeof(Vtx));
         state->vtxBufs[1] = heap_malloc(anim->vtxCount * sizeof(Vtx));
@@ -1257,7 +1290,8 @@ ImgFXAnimHeader* imgfx_load_anim(ImgFXState* state) {
         imgfx_swap32(state->gfxBufs[1], anim->gfxCount * 2);
 
         for (i = 0; i < ARRAY_COUNT(state->gfxBufs); i++) { /* PIPEFX: raw ROM words to typed units, vertex loads into vtxBufs[i] */
-            nd_imgfx_type((uint32_t*)state->gfxBufs[i], anim->gfxCount, (uint32_t)(uintptr_t)anim->keyframesOffset, (uintptr_t)state->vtxBufs[i]);
+            const unsigned nd = nd_imgfx_type((uint32_t*)state->gfxBufs[i], anim->gfxCount, (uint32_t)(uintptr_t)anim->keyframesOffset, (uintptr_t)state->vtxBufs[i]);
+            imgfx_make_dev(&state->gfxDev[i], state->gfxBufs[i], nd);
         }
     }
 
@@ -1730,7 +1764,8 @@ void imgfx_appendGfx_mesh_anim(ImgFXState* state, Matrix4f mtx) {
             nd_tex_scroll_tile_4b(ImgFXCurrentTexturePtr->tex.raster, G_IM_FMT_CI, ImgFXCurrentTexturePtr->tex.width, ImgFXCurrentTexturePtr->tex.height, 0, 0, ImgFXCurrentTexturePtr->tex.width - 1, ImgFXCurrentTexturePtr->tex.height - 1, 0, G_TX_CLAMP, G_TX_CLAMP, 8, 8, G_TX_NOLOD, G_TX_NOLOD, 256, 256);
         }
     }
-    gSPDisplayList(gMainGfxPos++, state->gfxBufs[gCurrentDisplayContextIndex]);
+    { static int s_log; if (!s_log) { s_log = 1; pm_log_evt("imgfx anim f%u", pm_frame_count()); } }
+    nd_rec_ndev(&state->gfxDev[gCurrentDisplayContextIndex]);
     nd_xf_pop(G_MTX_MODELVIEW);
 }
 
@@ -1766,7 +1801,8 @@ void imgfx_appendGfx_mesh_strip(ImgFXState* state, Matrix4f mtx) {
 
     state->floats.overlay.posX = (s32)(state->floats.overlay.posX + ufs->offsetX) % (ufs->width * 4);
     state->floats.overlay.posY = (s32)(state->floats.overlay.posY + ufs->offsetY) % (ufs->height * 4);
-    gSPDisplayList(gMainGfxPos++, ufs->displayList);
+    { static int s_log; if (!s_log) { s_log = 1; pm_log_evt("imgfx strip f%u", pm_frame_count()); } }
+    nd_rec_dl(ufs->displayList);
     nd_xf_pop(G_MTX_MODELVIEW);
 }
 
