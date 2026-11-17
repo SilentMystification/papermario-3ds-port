@@ -42,8 +42,7 @@ extern u16 gMsgGlobalWaveCounter;
 extern MessageImageDataList gMsgVarImages;
 extern s32 gMsgBGScrollAmtY;
 extern u8* D_8015131C;
-extern Gfx* D_80151338;
-static const u32* msgStreamPos; /* DIRECT D4b-2: the frame stream position at the end of the last message (with D_80151338) */
+extern const u32* D_80151338; /* GFXPOS7: the frame stream position after the last message (msg.c) */
 extern IMG_BIN D_80159B50[0x200];
 extern PAL_BIN D_8015C7E0[0x10];
 
@@ -329,9 +328,9 @@ void appendGfx_message(MessagePrintState* printer, s16 posX, s16 posY, u16 addit
     msg_drawState = &D_80155D20;
     msg_drawState->printBuffer = printer->printBuffer;
     msg_drawState->printModeFlags = 0;
-    /* DIRECT D4b-2: a producer that records only stream commands (models, sprites, entities, the redirected texture macros) changes the draw
-     * state without moving gMainGfxPos: the state is the message state only when neither moved since the last message */
-    if (gMainGfxPos != D_80151338 || nd_rec_pos() != msgStreamPos) {
+    /* DIRECT D4b-2, GFXPOS7: every producer records into the frame stream (nd_gx_w takes each gMainGfxPos packet back, nd_rec.c D9):
+     * the state is the message state only when the stream did not move since the last message */
+    if (nd_rec_pos() != D_80151338) {
         msg_reset_gfx_state();
     }
     msg_drawState->printModeFlags |= (MSG_PRINT_FLAG_1 | MSG_PRINT_FLAG_100);
@@ -1689,8 +1688,7 @@ void appendGfx_message(MessagePrintState* printer, s16 posX, s16 posY, u16 addit
         }
 
     }
-    D_80151338 = gMainGfxPos;
-    msgStreamPos = nd_rec_pos();
+    D_80151338 = nd_rec_pos();
 }
 
 

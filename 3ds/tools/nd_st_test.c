@@ -89,6 +89,13 @@ static void m_tex(void) { gSPTexture(gMainGfxPos++, 0x8000, 0x8000, 0, G_TX_REND
 static void n_tex(void) { nd_tex_on(0x8000, 0x8000, 0, G_TX_RENDERTILE, G_ON); }
 static void m_scis(void) { gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, 10.0F, 20.0F, 300.0F, 200.0F); }
 static void n_scis(void) { nd_pso_scis(G_SC_NON_INTERLACE, 10.0F, 20.0F, 300.0F, 200.0F); }
+/* GFXPOS7: a stored typed unit (draw_box.c:462) through the redirect and through nd_pso_unit: a combine unit and the no-op unit */
+static const uint32_t unit_cc[2] = ND_CMB_W(G_CC_DECALRGBA, G_CC_DECALRGBA);
+static const uint32_t unit_nop[2] = ND_CMB_NOP;
+static void m_unit(void) { nd_gx_w(gMainGfxPos++, unit_cc[0], unit_cc[1]); }
+static void n_unit(void) { nd_pso_unit(unit_cc[0], unit_cc[1]); }
+static void m_unop(void) { nd_gx_w(gMainGfxPos++, unit_nop[0], unit_nop[1]); }
+static void n_unop(void) { nd_pso_unit(unit_nop[0], unit_nop[1]); }
 
 /* one run of a shape: the words of the range, its unit log, and the r11 result */
 typedef struct {
@@ -128,7 +135,7 @@ static const Shape shapes[] = {
     { "lut", m_lut, n_lut }, { "dither", m_dither, n_dither }, { "alcmp", m_alcmp, n_alcmp }, { "aldith", m_aldith, n_aldith },
     { "lod", m_lod, n_lod }, { "detail", m_detail, n_detail }, { "conv", m_conv, n_conv }, { "combkey", m_combkey, n_combkey },
     { "cc", m_cc, n_cc }, { "som", m_som, n_som }, { "geom_set", m_geom_set, n_geom_set }, { "geom_clr", m_geom_clr, n_geom_clr },
-    { "tex", m_tex, n_tex }, { "scis", m_scis, n_scis },
+    { "tex", m_tex, n_tex }, { "scis", m_scis, n_scis }, { "unit", m_unit, n_unit }, { "unop", m_unop, n_unop },
 };
 
 int main(void) {
