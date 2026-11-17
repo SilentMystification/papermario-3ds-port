@@ -1,0 +1,3 @@
+# ENTCAPR2: sites with a captured entry (curtains.c:151, npc_merlee.c:248 :259)
+src/curtains.c
+src/world/area_dro/dro_02/npc_merlee.c=dro_02
