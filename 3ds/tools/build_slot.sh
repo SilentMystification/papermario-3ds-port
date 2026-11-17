@@ -19,41 +19,59 @@ build_slot_alive() {
 }
 
 # $1 slot dir, $2 slot number. Removes the dir when its holder is dead. 0 when removed, 1 when kept.
+# SLOTFIX: the dir is judged by the pid line read once (pl). A dir without a pid line (an older take that writes the pid after
+# its mkdir) is dead only when it is 30 s old. The dir is moved away, then the moved dir must still hold the judged line: two
+# reapers can judge the same dead slot, and between the judgement and the mv another taker can free and retake the slot.
+# On a different line the slot is live: it is moved back (FACT post_merge 6600a1eedd: 'slot4.d/pid: No such file').
 build_slot_reap() {
     s=$1; k=$2
     [ -d "$s" ] || return 1
-    p=$(cut -d' ' -f1 "$s/pid" 2>/dev/null)
+    pl=$(cat "$s/pid" 2>/dev/null); p=${pl%% *}
     if [ -n "$p" ]; then
-        w=$(cut -d' ' -f4 "$s/pid" 2>/dev/null)
+        w=$(printf '%s\n' "$pl" | cut -d' ' -f4)
         build_slot_alive "$p" "$w" && return 1
     else
-        # no holder file yet: a take is writing it. Dead only when the dir is 30 s old without one.
         now=$(date +%s); m=$(date -r "$s" +%s 2>/dev/null || echo "$now")
         [ $((now - m)) -lt 30 ] && return 1
         p=none
     fi
-    # mv is atomic: of two takers that see the same dead slot, one moves it, the other fails and goes on.
-    mv "$s" "$s.dead.$$" 2>/dev/null || return 1
-    rm -rf "$s.dead.$$"
+    g="$s.dead.$$"
+    mv "$s" "$g" 2>/dev/null || return 1
+    if [ "$(cat "$g/pid" 2>/dev/null)" != "$pl" ]; then
+        mv -T "$g" "$s" 2>/dev/null || rm -rf "$g" # the slot was retaken meanwhile: give it back (taken again: its holder ends)
+        return 1
+    fi
+    rm -rf "$g"
     echo "buildslot: slot $k of dead pid $p removed"
     return 0
 }
 
+# SLOTFIX: a slot dir appears with its pid file. The take writes the pid into a private dir (.take.<pid>) and renames it to
+# slot<k>.d in one step; the rename fails while slot<k>.d exists (a held slot holds its pid file). So no reaper sees a fresh
+# slot without a pid, and the pid write never goes to a dir that a reaper moved away.
+build_slot_newtk() {
+    rm -rf "$BUILD_SLOT_TK"; mkdir "$BUILD_SLOT_TK" 2>/dev/null && printf '%s %s %s %s\n' "$$" "$(date +%s)" "$lane" "$(cat /proc/$$/winpid 2>/dev/null)" > "$BUILD_SLOT_TK/pid"
+}
 build_slot_take() {
     dir=$(build_slot_dir)
     mkdir -p "$dir"
     lane=${PM_LANE:-main}
     t0=$(date +%s); last=0
+    BUILD_SLOT_TK="$dir/.take.$$"
+    build_slot_newtk || { echo "buildslot: cannot write $BUILD_SLOT_TK" >&2; return 1; }
     while :; do
         k=1
         while [ "$k" -le "$BUILD_SLOTS_N" ]; do
             s="$dir/slot$k.d"
-            if mkdir "$s" 2>/dev/null || { build_slot_reap "$s" "$k" && mkdir "$s" 2>/dev/null; }; then
-                printf '%s %s %s %s\n' "$$" "$(date +%s)" "$lane" "$(cat /proc/$$/winpid 2>/dev/null)" > "$s/pid"
-                BUILD_SLOT=$k; BUILD_SLOT_DIR=$s; BUILD_SLOT_SHELL=${BASHPID:-$$}
-                export BUILD_SLOT
-                echo "buildslot: slot $k taken"
-                return 0
+            if [ -e "$s" ] && ! build_slot_reap "$s" "$k"; then k=$((k + 1)); continue; fi
+            if [ ! -e "$s" ] && mv -T "$BUILD_SLOT_TK" "$s" 2>/dev/null; then
+                if [ "$(cut -d' ' -f1 "$s/pid" 2>/dev/null)" = "$$" ]; then
+                    BUILD_SLOT=$k; BUILD_SLOT_DIR=$s; BUILD_SLOT_SHELL=${BASHPID:-$$}
+                    export BUILD_SLOT
+                    echo "buildslot: slot $k taken"
+                    return 0
+                fi
+                build_slot_newtk || { echo "buildslot: cannot write $BUILD_SLOT_TK" >&2; return 1; } # an older taker wrote over it
             fi
             k=$((k + 1))
         done
@@ -69,6 +87,7 @@ build_slot_take() {
 }
 
 build_slot_release() {
+    [ -n "$BUILD_SLOT_TK" ] && [ "${BASHPID:-$$}" = "$$" ] && rm -rf "$BUILD_SLOT_TK" # a take that never got a slot
     [ -n "$BUILD_SLOT_DIR" ] || return 0
     # Only the shell that took the slot removes it: a subshell inherits the EXIT trap.
     if [ "${BASHPID:-$$}" = "$BUILD_SLOT_SHELL" ] && [ "$(cut -d' ' -f1 "$BUILD_SLOT_DIR/pid" 2>/dev/null)" = "$$" ]; then
