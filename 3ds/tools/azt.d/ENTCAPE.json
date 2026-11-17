@@ -1,0 +1,56 @@
+{
+  "scenarios": [
+    {
+      "name": "entcape_cap",
+      "status": "unverified",
+      "subject": "ENTCAPE capture: a tour of 5 entity spots (kmr_02 pipe and save block, kmr_03 heart block, flo_08 super block, sbk_14 Tweester, jan_06 pink flower), entcap and entcapt on, no shots.",
+      "proves": "ENTCAPE: the entcap lines of the 10 entity list sites (nd_walk.c entcap_rec) and the tour end line (pm_warp.c tour: done).",
+      "debug": "warp=mac_00:4 story=ch0_toad_town tour=kmr_02:0@125:0:300,kmr_03:0@96:0:96,flo_08:0@-780:0:40,sbk_14:3,jan_06:0@84:0:-170 tourtime=1 loglevel=debug entcap entcapt",
+      "until": "tour: done items 5",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "entcap",
+          "regex": "entcap l [0-9a-f]{8} s [0-9a-f]{8}"
+        },
+        {
+          "name": "done",
+          "regex": "tour: done items 5"
+        }
+      ],
+      "reason": "ENTCAPE capture: log only, no picture (CLAUDE.md 2). Cap 45 s, deadline 40 s, until the tour end line."
+    },
+    {
+      "name": "entcape_kmr03_drec",
+      "status": "unverified",
+      "subject": "ENTCAPE gate: kmr_03 tour spot (96 0 96) with the heart block at 130 60 0 (kmr_03/entity.c:68), cold det start, drec frames 200 and 201.",
+      "proves": "ENTCAPE: the draw records of the heart block content are byte-equal between a base and a head.",
+      "debug": "warp=kmr_03:0 pos=96:0:96 story=ch0_toad_town loglevel=debug det drec=200:2",
+      "until": "drec f201 draws [1-9]\\d* bytes \\d+",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f201 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "reason": "ENTCAPE: copy of sbk14_drec (GOLDENT1) on kmr_03. Cap 25 s, deadline 20 s, until the drec line of frame 201."
+    }
+  ]
+}
