@@ -20,7 +20,7 @@ int main(void) {
     static Vtx base[64], nv[64];
     int n = 0, c;
     for (c = 0; c < 6; c++) {
-        uint32_t src[64], a[64], b[64];
+        uint32_t src[256], a[256], b[256];
         unsigned k = 0, ntri = 0, nu, j;
         NdNDev d;
         memset(a, 0, sizeof a); memset(b, 0, sizeof b);
