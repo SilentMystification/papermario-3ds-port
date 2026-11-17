@@ -33,6 +33,7 @@ Goal: elfgate.py prints func 0 data 0 gfxnames 0 and every listcen counter is 0 
 - Coders often hand back before the oracle reply arrives. Tell the orchestrator to resume them with the reply.
 - gen_gfx_syms.py: IMG matched only plain names before BLANKET; only the dro_02 twin has a first line that is not its own source.
 - A list without cycle bits gets an itab (nd_gfx_conv.c:863), so it can move without an entry.
+- fxrest.d/cap.txt tuples can be stale: FXDIG psochk showed conv_k4 (w7) stated 0x7f, walker 0. Check w7 against a live site desc first.
 - fxtest numbers are 0-based FXLIST indices (flame 27, damage_indicator_12 129). Slot 44 frames, start 400, spawn at k 2.
 ## What to do first
 1. Answer coder questions (IMGFXT, GTSMALL, FXDIG, VCFIX, BLANKET).
