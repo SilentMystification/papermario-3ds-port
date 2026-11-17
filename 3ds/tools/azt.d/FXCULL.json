@@ -1,0 +1,33 @@
+{
+  "scenarios": [
+    {
+      "name": "fxcull_drec",
+      "status": "unverified",
+      "subject": "FXCULL: green_impact 44, red_impact 98, shockwave 32 and shockwave_t2 143 (pm_fxtest.c FXLIST) on mac_01 at 0 0 200, cold det start with the drec switch: the draw records of frame 544 go to shots/drec.txt.",
+      "proves": "FXCULL: the impact and shockwave part draws (nd_draw_list with the named descs pe_green_impact_200, pe_red_impact_207, pe_shockwave_339) give a draw record that is a function of the build (det), so a base and a head build give a byte-equal drec.txt.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=32,44,98,143 loglevel=debug det drec=412:4:44 psochk",
+      "extra": [],
+      "until": "fxtest: done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f544 draws [1-9]\\d* bytes \\d+"
+        },
+        {
+          "name": "done",
+          "regex": "fxtest: done"
+        }
+      ],
+      "reason": "FXCULL byte gate for the impact and shockwave parts (fxtest 32, 44, 98, 143), cold det start, cap 45 s, deadline 40 s. The fxtest: done line is the until."
+    }
+  ]
+}

@@ -4,6 +4,7 @@
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_st.h"
+ND_PSO_DESC(pe_green_impact_200, 0xfc3133ff, 0x5ffefe38, 0x1e182cf0, 0x0c184b50, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0);
 
 NDN_DECL(D_09000540_365EF0);
 NDN_DECL(D_090005A0_365F50);
@@ -197,7 +198,7 @@ void green_impact_appendGfx(void* effect) {
             nd_val_tile_size(G_TX_RENDERTILE, 0, (s32) part->unk_3C, 252, (s32) part->unk_3C + 124);
             nd_val_tile_size(1, 0, (s32) part->unk_44, 124, (s32) part->unk_44 + 124);
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            nd_rec_dl(dlist2);
+            nd_draw_list(dlist2, pe_green_impact_200);
             nd_xf_pop(G_MTX_MODELVIEW);
         }
     }

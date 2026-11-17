@@ -4,6 +4,7 @@
 #include "nd_val.h"
 #include "nd_xf.h"
 #include "nd_st.h"
+ND_PSO_DESC(pe_shockwave_339, 0xfc60b2a0, 0x23fffef8, 0x1e182ca0, 0x0c184b50, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 
 NDN_DECL(D_09000940_359CF0);
 NDN_DECL(D_090009A0_359D50);
@@ -336,7 +337,7 @@ void shockwave_appendGfx(void* effect) {
             nd_val_tile_size(1, 0, (s32) data->unk_44, 0x007C, (s32) data->unk_44 + 0x7C);
 
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            nd_rec_dl(dlist);
+            nd_draw_list(dlist, pe_shockwave_339);
             nd_xf_pop(G_MTX_MODELVIEW);
         }
     }
