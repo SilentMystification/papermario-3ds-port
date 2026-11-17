@@ -100,7 +100,7 @@ void blast_appendGfx(void* effect) {
     Matrix4f sp18;
     Matrix4f sp58;
     Matrix4f sp98;
-    Gfx* dlist = NDN(D_090017B0_37F180);
+    NdLst dlist = NDN(D_090017B0_37F180);
     BlastFXData* data = ((EffectInstance*) effect)->data.blast;
     s32 unk_20 = data->unk_20;
     f32 t = 256.0f;

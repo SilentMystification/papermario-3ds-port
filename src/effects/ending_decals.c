@@ -13,18 +13,18 @@ NDN_DECL(D_09001F78_36CE58);
 NDN_DECL(D_09002058_36CF38);
 NDN_DECL(D_09002078_36CF58);
 
-Gfx* D_E00685B0[] = {
+NdLst D_E00685B0[] = {
     NDN(D_09001E40_36CD20), NDN(D_09001E40_36CD20), NDN(D_09002058_36CF38)
 };
 
-Gfx* D_E00685BC[] = {
+NdLst D_E00685BC[] = {
     NDN(D_09001E40_36CD20), NDN(D_09001E40_36CD20), NDN(D_09001E40_36CD20), NDN(D_09001E40_36CD20),
     NDN(D_09001E40_36CD20), NDN(D_09001EA8_36CD88), NDN(D_09001EA8_36CD88), NDN(D_09001F10_36CDF0),
     NDN(D_09001F10_36CDF0), NDN(D_09001F10_36CDF0), NDN(D_09001F10_36CDF0), NDN(D_09001F10_36CDF0),
     NDN(D_09001EA8_36CD88), NDN(D_09001EA8_36CD88)
 };
 
-Gfx* D_E00685F4[] = {
+NdLst D_E00685F4[] = {
     NDN(D_09001F78_36CE58), NDN(D_09001F78_36CE58), NDN(D_09002078_36CF58)
 };
 
@@ -136,8 +136,8 @@ void ending_decals_render(EffectInstance* effect) {
 
 void ending_decals_appendGfx(void* effect) {
     EndingDecalsFXData* data = ((EffectInstance*)effect)->data.endingDecals;
-    Gfx* dlist1;
-    Gfx* dlist2;
+    NdLst dlist1;
+    NdLst dlist2;
     u32 unk_20;
     s32 alpha;
     f64 temp_f64;

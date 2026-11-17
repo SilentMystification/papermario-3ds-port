@@ -17,7 +17,7 @@ NDN_DECL(D_090009E8_38C588);
 NDN_DECL(D_09000A00_38C5A0);
 NDN_DECL(D_09000940_38C4E0);
 
-Gfx* D_E0088CC0[] = {
+NdLst D_E0088CC0[] = {
     NDN(D_090009E8_38C588), NDN(D_090009E8_38C588), NDN(D_090009E8_38C588), NDN(D_09000A00_38C5A0),
     NDN(D_090009E8_38C588), NDN(D_090009E8_38C588), NDN(D_090009E8_38C588)
 };
@@ -262,7 +262,7 @@ void confetti_appendGfx(void* effect) {
     s32 ulx = 0;
     s32 unk_28;
     s32 unk_2C;
-    Gfx* spA0;
+    NdLst spA0;
     s32 spA4;
     Gfx* savedGfxPos;
     s32 unk_24;

@@ -8,8 +8,8 @@ ND_PSO_DESC(pe_steam_burst_150, 0xfcffabff, 0xff0d92ff, 0x1e183cf0, 0x0c184b50, 
 NDN_DECL(D_09000E00_362470);
 NDN_DECL(D_09000F30_3625A0);
 
-Gfx* D_E005C700[] = { NDN(D_09000F30_3625A0) };
-Gfx* D_E005C704[] = { NDN(D_09000E00_362470) };
+NdLst D_E005C700[] = { NDN(D_09000F30_3625A0) };
+NdLst D_E005C704[] = { NDN(D_09000E00_362470) };
 
 void steam_burst_init(EffectInstance* effect);
 void steam_burst_update(EffectInstance* effect);
@@ -116,8 +116,8 @@ void steam_burst_appendGfx(void* effect) {
     s32 unk_30_s32 = part->unk_30;
     s32 envAlpha = (part->unk_30 - unk_30_s32) * 256.0f;
     s32 cond = (unk_30_s32 == 6);
-    Gfx* dlist = D_E005C700[part->unk_00];
-    Gfx* dlist2 = D_E005C704[part->unk_00];
+    NdLst dlist = D_E005C700[part->unk_00];
+    NdLst dlist2 = D_E005C704[part->unk_00];
     Matrix4f sp18;
     Matrix4f sp58;
     Matrix4f sp98;

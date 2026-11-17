@@ -9,8 +9,8 @@ NDN_DECL(D_09000900_3641C0);
 NDN_DECL(D_090009E8_3642A8);
 NDN_DECL(D_09000A10_3642D0);
 
-Gfx* D_E0060730[] = { NDN(D_090009E8_3642A8), NDN(D_09000A10_3642D0) };
-Gfx* D_E0060738[] = { NDN(D_09000900_3641C0), NDN(D_09000900_3641C0) };
+NdLst D_E0060730[] = { NDN(D_090009E8_3642A8), NDN(D_09000A10_3642D0) };
+NdLst D_E0060738[] = { NDN(D_09000900_3641C0), NDN(D_09000900_3641C0) };
 
 void big_snowflakes_init(EffectInstance* effect);
 void big_snowflakes_update(EffectInstance* effect);
@@ -116,7 +116,7 @@ void big_snowflakes_appendGfx(void* effect) {
     Matrix4f sp18;
     Matrix4f sp58;
     Matrix4f sp98;
-    Gfx* dlist = D_E0060738[0];
+    NdLst dlist = D_E0060738[0];
     s32 i;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
@@ -129,7 +129,7 @@ void big_snowflakes_appendGfx(void* effect) {
 
     data++;
     for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, data++) {
-        Gfx* dlist2 = D_E0060730[i & 1]; // should be able to be i % 2 (ARRAY_COUNT(D_E0060730))
+        NdLst dlist2 = D_E0060730[i & 1]; // should be able to be i % 2 (ARRAY_COUNT(D_E0060730))
 
         guTranslateF(sp58, data->unk_04, data->unk_08, data->unk_0C);
         guMtxCatF(sp58, sp98, sp18);

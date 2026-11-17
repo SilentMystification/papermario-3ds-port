@@ -11,8 +11,8 @@ NDN_DECL(D_09000B88_373F68);
 NDN_DECL(D_09000C00_373FE0);
 NDN_DECL(D_09000C20_374000);
 
-Gfx* D_E006EC00[] = { NDN(D_09000B88_373F68), NDN(D_09000B88_373F68), NDN(D_09000B88_373F68) };
-Gfx* D_E006EC0C[] = { NDN(D_09000A00_373DE0), NDN(D_09000A00_373DE0), NDN(D_09000A00_373DE0) };
+NdLst D_E006EC00[] = { NDN(D_09000B88_373F68), NDN(D_09000B88_373F68), NDN(D_09000B88_373F68) };
+NdLst D_E006EC0C[] = { NDN(D_09000A00_373DE0), NDN(D_09000A00_373DE0), NDN(D_09000A00_373DE0) };
 
 void fire_breath_init(EffectInstance* effect);
 void fire_breath_update(EffectInstance* effect);
@@ -189,8 +189,8 @@ void fire_breath_appendGfx(void* effect) {
     FireBreathFXData* data = ((EffectInstance*)effect)->data.fireBreath;
     s32 type = data->type;
     s32 envAlpha = (data->animTime - (s32)data->animTime) * 256.0f;
-    Gfx* dlist = D_E006EC00[type];
-    Gfx* dlist2 = D_E006EC0C[type];
+    NdLst dlist = D_E006EC00[type];
+    NdLst dlist2 = D_E006EC0C[type];
     s32 imgFrame = data->animTime;
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));

@@ -128,7 +128,7 @@ void smoke_ring_appendGfx(void* effect) {
     s32 envAlpha = (part->unk_40 & 0x38) * 4;
     s32 spD8 = part->unk_40 & 0x40;
     s32 temp_a3;
-    Gfx* dlist;
+    NdLst dlist;
     Matrix4f sp18;
     Matrix4f sp58;
     Matrix4f sp98;

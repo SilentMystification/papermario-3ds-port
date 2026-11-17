@@ -14,12 +14,12 @@ NDN_DECL(D_09003778_3724D8);
 NDN_DECL(D_09003888_3725E8);
 NDN_DECL(D_09003948_3726A8);
 
-Gfx* D_E006CB60[] = {
+NdLst D_E006CB60[] = {
     NDN(D_09003778_3724D8), NDN(D_09003580_3722E0), NDN(D_090033E0_372140),
     NDN(D_09003378_3720D8), NDN(D_090032F8_372058), NDN(D_09003280_371FE0)
 };
 
-Gfx* D_E006CB78[] = {
+NdLst D_E006CB78[] = {
     NDN(D_09003888_3725E8), NDN(D_09003888_3725E8), NDN(D_09003888_3725E8),
     NDN(D_09003948_3726A8), NDN(D_09003948_3726A8), NDN(D_09003948_3726A8)
 };
@@ -225,8 +225,8 @@ void lightning_appendGfx(void* effect) {
     LightningFXData* data = ((EffectInstance*)effect)->data.lightning;
     s32 unk_00 = data->unk_00;
     s32 unk_18 = data->unk_18;
-    Gfx* dlist = D_E006CB60[unk_00];
-    Gfx* dlist2 = D_E006CB78[unk_00];
+    NdLst dlist = D_E006CB60[unk_00];
+    NdLst dlist2 = D_E006CB78[unk_00];
     Camera* camera = &gCameras[gCurrentCameraID];
     Matrix4f sp20;
     Matrix4f sp60;

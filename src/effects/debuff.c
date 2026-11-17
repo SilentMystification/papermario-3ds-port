@@ -8,8 +8,8 @@ ND_PSO_DESC(pe_debuff_168, 0xfc55b2ab, 0x3365feff, 0x1e082cf0, 0x00504b50, 0x000
 NDN_DECL(D_09000240_364E40);
 NDN_DECL(D_090002E8_364EE8);
 
-Gfx* D_E00628C0[] = { NDN(D_090002E8_364EE8) };
-Gfx* D_E00628C4[] = { NDN(D_09000240_364E40) };
+NdLst D_E00628C0[] = { NDN(D_090002E8_364EE8) };
+NdLst D_E00628C4[] = { NDN(D_09000240_364E40) };
 
 void debuff_init(EffectInstance* effect);
 void debuff_update(EffectInstance* effect);
@@ -137,8 +137,8 @@ void debuff_render(EffectInstance* effect) {
 void debuff_appendGfx(void* effect) {
     EffectInstance* eff = (EffectInstance*)effect;
     DebuffFXData* data = eff->data.debuff;
-    Gfx* dlist = D_E00628C0[0];
-    Gfx* dlist2 = D_E00628C4[0];
+    NdLst dlist = D_E00628C0[0];
+    NdLst dlist2 = D_E00628C4[0];
     Matrix4f mtxTranslate;
     Matrix4f mtxRotate;
     Matrix4f mtxTransform;

@@ -19,7 +19,7 @@ NDN_DECL(D_09000A38_3449A8);
 /* ENTRY1 pilot (explosion.c:229): the walker description of the three lists of D_E00328B0 (entcap, fxpic_20_entcap). */
 ND_PSO_DESC(pe_explosion_0, 0xfcffb3ff, 0xff65feff, 0x1e080cf0, 0x00504340, 0x00000005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 4, 0, 0, 0);
 
-Gfx* D_E00328B0[] = { NDN(D_09000978_3448E8), NDN(D_090009D8_344948), NDN(D_09000A38_3449A8) };
+NdLst D_E00328B0[] = { NDN(D_09000978_3448E8), NDN(D_090009D8_344948), NDN(D_09000A38_3449A8) };
 
 void explosion_main(s32 type, f32 x, f32 y, f32 z) {
     EffectBlueprint bp;

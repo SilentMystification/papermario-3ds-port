@@ -16,7 +16,7 @@ NDN_DECL(D_09001108_341988);
 NDN_DECL(D_09001120_3419A0);
 NDN_DECL(D_09001138_3419B8);
 
-Gfx* D_E002C940[] = {
+NdLst D_E002C940[] = {
     NDN(D_09001138_3419B8), NDN(D_09001120_3419A0), NDN(D_09001108_341988),
     NDN(D_090010E8_341968), NDN(D_090010D0_341950), NDN(D_090010B8_341938),
     NDN(D_09001098_341918), NDN(D_09001080_341900), NDN(D_09001068_3418E8)
@@ -183,7 +183,7 @@ void shattering_stones_appendGfx(void* effect) {
 
         part++;
         for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, part++) {
-            Gfx* dlist = D_E002C940[i];
+            NdLst dlist = D_E002C940[i];
 
             guTranslateF(sp60, part->unk_00, part->unk_04, part->unk_08);
             guMtxCatF(sp60, spA0, sp20);

@@ -10,11 +10,11 @@ NDN_DECL(D_09002950_32B7F0);
 NDN_DECL(D_09002B60_32BA00);
 NDN_DECL(D_09002C60_32BB00);
 
-Gfx* D_E004E5E0[] = {
+NdLst D_E004E5E0[] = {
     NDN(D_09002B60_32BA00), NDN(D_09002C60_32BB00), NDN(D_09002B60_32BA00)
 };
 
-Gfx* D_E004E5EC[] = {
+NdLst D_E004E5EC[] = {
     NDN(D_09002950_32B7F0), NDN(D_09002950_32B7F0), NDN(D_09002950_32B7F0)
 };
 
@@ -109,8 +109,8 @@ void smoke_burst_appendGfx(void* effect) {
     s32 envAlpha = (data->unk_20 - unk_20_s32) * 256.0f;
     s32 cond = (unk_20_s32 == 7);
     s32 temp_a1;
-    Gfx* dlist = D_E004E5E0[data->unk_00];
-    Gfx* dlist2 = D_E004E5EC[0];
+    NdLst dlist = D_E004E5E0[data->unk_00];
+    NdLst dlist2 = D_E004E5EC[0];
     Matrix4f sp20;
     Matrix4f sp60;
 

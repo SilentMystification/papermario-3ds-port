@@ -13,8 +13,8 @@ NDN_DECL(D_09002B20_32B9C0);
 NDN_DECL(D_09002B40_32B9E0);
 NDN_DECL(D_09002B60_32BA00);
 
-static Gfx* sDlists[] = { NDN(D_09002B20_32B9C0), NDN(D_09002B40_32B9E0), NDN(D_09002B60_32BA00), NDN(D_09002B60_32BA00), NDN(D_09002B60_32BA00) };
-static Gfx* sDlists2[] = { NDN(D_09002780_32B620), NDN(D_09002868_32B708), NDN(D_09002950_32B7F0), NDN(D_09002A38_32B8D8), NDN(D_09002A38_32B8D8) };
+static NdLst sDlists[] = { NDN(D_09002B20_32B9C0), NDN(D_09002B40_32B9E0), NDN(D_09002B60_32BA00), NDN(D_09002B60_32BA00), NDN(D_09002B60_32BA00) };
+static NdLst sDlists2[] = { NDN(D_09002780_32B620), NDN(D_09002868_32B708), NDN(D_09002950_32B7F0), NDN(D_09002A38_32B8D8), NDN(D_09002A38_32B8D8) };
 
 static s8 D_E000CC38[] = { 0x00, 0x01, 0x02, 0x1A, 0x03, 0x1B, 0x04, 0x1C, 0x05, 0x15, 0x35, 0x46, 0x46, 0x46, 0xFF,
                            0x00 };
@@ -272,8 +272,8 @@ void landing_dust_appendGfx(void* effect) {
     s32 spDC;
     s32 temp_lo;
     s32 envAlpha;
-    Gfx* dlist1;
-    Gfx* dlist2;
+    NdLst dlist1;
+    NdLst dlist2;
     s32 phi_a0;
     s32 temp;
     s32 i;

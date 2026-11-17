@@ -14,7 +14,7 @@ void snowfall_appendGfx(void* effect);
 NDN_DECL(D_09000C00_38DC70);
 NDN_DECL(D_09000D50_38DDC0);
 
-Gfx* D_E008AA50[] = { NDN(D_09000D50_38DDC0), NDN(D_09000D50_38DDC0) };
+NdLst D_E008AA50[] = { NDN(D_09000D50_38DDC0), NDN(D_09000D50_38DDC0) };
 
 void func_E008A000(SnowfallFXData* data) {
     Camera* camera = &gCameras[gCurrentCameraID];
@@ -177,7 +177,7 @@ void snowfall_appendGfx(void* effect) {
     EffectInstance* effectTemp = effect;
     SnowfallFXData* data = effectTemp->data.snowfall;
     Matrix4f sp18;
-    Gfx* dlist;
+    NdLst dlist;
     Mtx* mtx;
     u8 bgRGB;
     u8 bgAlpha;

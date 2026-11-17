@@ -16,9 +16,9 @@ NDN_DECL(D_090024A8_337118);
 NDN_DECL(D_09002550_3371C0);
 NDN_DECL(D_09002578_3371E8);
 
-Gfx* D_E0020C90[] = { NDN(D_090022E0_336F50), nullptr, NDN(D_090023B0_337020), NDN(D_09002480_3370F0), NDN(D_09002550_3371C0) };
+NdLst D_E0020C90[] = { NDN(D_090022E0_336F50), nullptr, NDN(D_090023B0_337020), NDN(D_09002480_3370F0), NDN(D_09002550_3371C0) };
 
-Gfx* D_E0020CA4[] = { NDN(D_09002238_336EA8), nullptr, NDN(D_09002308_336F78), NDN(D_090023D8_337048), NDN(D_090024A8_337118) };
+NdLst D_E0020CA4[] = { NDN(D_09002238_336EA8), nullptr, NDN(D_09002308_336F78), NDN(D_090023D8_337048), NDN(D_090024A8_337118) };
 
 s8 D_E0020CB8[40] = {
     0, 0, 1, 2, 3, 5, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
@@ -209,8 +209,8 @@ void emote_appendGfx(void* effect) {
     EmoteFXData* part = ((EffectInstance*)effect)->data.emote;
     s32 type = part->unk_00;
     s32 unk_38;
-    Gfx* dlist;
-    Gfx* dlist2;
+    NdLst dlist;
+    NdLst dlist2;
     Mtx* matrix;
     s32 w = 0; /* types other than 0, 2, 3, 4 leave the size unset: zero-size tile */
     s32 h = 0;

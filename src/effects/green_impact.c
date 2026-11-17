@@ -8,7 +8,7 @@
 NDN_DECL(D_09000540_365EF0);
 NDN_DECL(D_090005A0_365F50);
 
-Gfx* D_E0064A60[] = { NDN(D_090005A0_365F50), NDN(D_090005A0_365F50) };
+NdLst D_E0064A60[] = { NDN(D_090005A0_365F50), NDN(D_090005A0_365F50) };
 
 void green_impact_init(EffectInstance* effect);
 void green_impact_update(EffectInstance* effect);
@@ -135,8 +135,8 @@ void green_impact_render(EffectInstance* effect) {
 
 void green_impact_appendGfx(void* effect) {
     GreenImpactFXData* part = ((EffectInstance*)effect)->data.greenImpact;
-    Gfx* dlist = D_E0064A60[part->unk_00];
-    Gfx* dlist2;
+    NdLst dlist = D_E0064A60[part->unk_00];
+    NdLst dlist2;
     s32 alpha;
     s32 primR;
     s32 primG;

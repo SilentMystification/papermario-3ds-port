@@ -10,11 +10,11 @@ NDN_DECL(D_09000110_36E0A0);
 NDN_DECL(D_09000130_36E0C0);
 NDN_DECL(D_090001D8_36E168);
 
-Gfx* D_E006ADF0[] = {
+NdLst D_E006ADF0[] = {
     NDN(D_09000110_36E0A0), NDN(D_09000110_36E0A0), NDN(D_090000B0_36E040), NDN(D_090000B0_36E040)
 };
 
-Gfx* D_E006AE00[] = {
+NdLst D_E006AE00[] = {
     NDN(D_09000130_36E0C0), NDN(D_09000130_36E0C0), NDN(D_090001D8_36E168), NDN(D_090001D8_36E168)
 };
 
@@ -284,8 +284,8 @@ void func_E006A85C(LightRaysFXData* part) {
 void light_rays_appendGfx(void* effect) {
     LightRaysFXData* part = ((EffectInstance*)effect)->data.lightRays;
     s32 type = part->type;
-    Gfx* dlist = D_E006ADF0[type];
-    Gfx* dlist2 = D_E006AE00[type];
+    NdLst dlist = D_E006ADF0[type];
+    NdLst dlist2 = D_E006AE00[type];
     Matrix4f mtxTransform;
     Matrix4f mtxTemp;
     Matrix4f mtxTranslate;

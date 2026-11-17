@@ -30,7 +30,7 @@ NDN_DECL(D_09001B08_406A48);
 NDN_DECL(D_09001B80_406AC0);
 
 NdLst D_E011AC20[] = { NDN(D_09001800_406740) };
-Gfx* D_E011AC24[] = {
+NdLst D_E011AC24[] = {
     NDN(D_090019A0_4068E0), NDN(D_09001A18_406958), NDN(D_09001A90_4069D0), NDN(D_09001B08_406A48), NDN(D_09001B80_406AC0),
     nullptr, nullptr, nullptr, nullptr, nullptr
 };
@@ -209,7 +209,7 @@ void func_E011A700(EffectInstance* effect) {
     s32 temp1;
     s32 temp2;
     f32 scale;
-    Gfx* dlist;
+    NdLst dlist;
     f32 x, y;
     s32 i;
 

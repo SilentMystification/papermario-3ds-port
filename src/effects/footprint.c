@@ -126,7 +126,7 @@ void footprint_appendGfx(void* effect) {
 
     for (i = 0; i < effectInst->numParts; i++, part++) {
         if (part->alive) {
-            Gfx* dlist = NDN(D_09000240_32FD90);
+            NdLst dlist = NDN(D_09000240_32FD90);
 
             gDisplayContext->matrixStack[gMatrixListPos] = part->mtx;
 

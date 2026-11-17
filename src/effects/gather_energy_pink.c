@@ -11,8 +11,8 @@ NDN_DECL(D_09000E28_33C9F8);
 NDN_DECL(D_090010B0_33CC80);
 NDN_DECL(D_09001138_33CD08);
 
-Gfx* D_E00269F0[] = { NDN(D_090010B0_33CC80), NDN(D_09000DA0_33C970) };
-Gfx* D_E00269F8[] = { NDN(D_09001138_33CD08), NDN(D_09000E28_33C9F8) };
+NdLst D_E00269F0[] = { NDN(D_090010B0_33CC80), NDN(D_09000DA0_33C970) };
+NdLst D_E00269F8[] = { NDN(D_09001138_33CD08), NDN(D_09000E28_33C9F8) };
 
 u8 D_E0026A00[] = {
     0xFF, 0xC5, 0x9C, 0xFF, 0x9C, 0xFF, 0xFF, 0x73, 0xD6, 0xFF, 0x9C, 0xFF, 0xFF, 0xC5, 0x7B, 0xFF,
@@ -165,8 +165,8 @@ void gather_energy_pink_render(EffectInstance* effect) {
 void gather_energy_pink_appendGfx(void* effect) {
     GatherEnergyPinkFXData* part = ((EffectInstance*)effect)->data.gatherEnergyPink;
     s32 unk_00 = part->unk_00;
-    Gfx* dlist = D_E00269F8[unk_00];
-    Gfx* dlist2 = D_E00269F0[unk_00];
+    NdLst dlist = D_E00269F8[unk_00];
+    NdLst dlist2 = D_E00269F0[unk_00];
     Camera* camera = &gCameras[gCurrentCameraID];
     Matrix4f sp20;
     Matrix4f sp60;

@@ -106,8 +106,8 @@ void walking_dust_appendGfx(void* effect) {
     Matrix4f sp58;
     s32 temp_a0;
     s32 temp_lo;
-    Gfx* dlist;
-    Gfx* dlist2;
+    NdLst dlist;
+    NdLst dlist2;
     s32 phi_t1;
     s32 i;
 
