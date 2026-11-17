@@ -1,0 +1,33 @@
+{
+  "scenarios": [
+    {
+      "name": "miscp_drec",
+      "status": "unverified",
+      "subject": "MISCP: Toad Town mac_01 at 0 0 200, fxtest=107,148-152 (misc_particles, one keyed entry per variation), cold det start with the drec switch: the draw records of frame 632 go to shots/drec.txt.",
+      "proves": "MISCP: the misc_particles part draw (misc_particles.c switch on variation, six ND_PSO_DESC entries) gives a draw record that is a function of the build (det), so a base and a head build give a byte-equal drec.txt, and the psochk bad count does not rise.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=107,148-152 loglevel=debug det drec=412:6:44 psochk",
+      "extra": [],
+      "until": "fxtest: done",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f632 draws [1-9]\\d* bytes \\d+"
+        },
+        {
+          "name": "done",
+          "regex": "fxtest: done"
+        }
+      ],
+      "reason": "MISCP byte gate for misc_particles (fxtest=107,148-152), one entry per variation. Cold det start, cap 40 s, deadline 35 s. The fxtest: done line is the until."
+    }
+  ]
+}

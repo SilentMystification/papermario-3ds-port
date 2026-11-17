@@ -1,6 +1,12 @@
 #include "common.h"
 #include "effects_internal.h"
 #include "nd_gtab.h"
+ND_PSO_DESC(pe_misc_particles_330_k0, 0xfc3117ff, 0x5ffefe38, 0x1e182cf0, 0x0c184b50, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0);
+ND_PSO_DESC(pe_misc_particles_330_k1, 0xfc3116c2, 0x50fefe38, 0x1e182cf0, 0x0c184b50, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0);
+ND_PSO_DESC(pe_misc_particles_330_k2, 0xfcfffe60, 0xf50cf37f, 0x1e182cf0, 0x0c184b50, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_misc_particles_330_k3, 0xfcfffe60, 0xf50cf37f, 0x1e182cf0, 0x0c184b50, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_misc_particles_330_k4, 0xfc1617ff, 0x5ffdfe38, 0x1e182cf0, 0x0c184b50, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
+ND_PSO_DESC(pe_misc_particles_330_k5, 0xfc1617ff, 0x5ffdfe38, 0x1e182cf0, 0x0c184b50, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
 
@@ -327,7 +333,14 @@ void misc_particles_appendGfx(void* effect) {
                 nd_val_tile_size(G_TX_RENDERTILE, ((i & 0x1F) * 32     ) * 4, 31 * 4, ((i & 0x1F) * 32 + 31) * 4, 31 * 4);
             }
 
-            nd_rec_dl(D_E00E4D90[variation]);
+            switch (variation) {
+                case 0: nd_draw_list(D_E00E4D90[variation], pe_misc_particles_330_k0); break;
+                case 1: nd_draw_list(D_E00E4D90[variation], pe_misc_particles_330_k1); break;
+                case 2: nd_draw_list(D_E00E4D90[variation], pe_misc_particles_330_k2); break;
+                case 3: nd_draw_list(D_E00E4D90[variation], pe_misc_particles_330_k3); break;
+                case 4: nd_draw_list(D_E00E4D90[variation], pe_misc_particles_330_k4); break;
+                default: nd_draw_list(D_E00E4D90[variation], pe_misc_particles_330_k5); break;
+            }
             nd_xf_pop(G_MTX_MODELVIEW);
         }
     }

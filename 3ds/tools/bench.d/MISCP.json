@@ -1,0 +1,20 @@
+{
+  "benches": [
+    {
+      "name": "miscp_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MISCP: draw records (drec.txt) of misc_particles (fxtest=107,148-152), frame 632, cold det start. Two runs of one build byte-equal; the head equals the base. The psochk line shows the bad count.",
+      "scenario": "miscp_drec",
+      "cap": 40,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "det",
+        "drec"
+      ],
+      "gates": []
+    }
+  ]
+}
