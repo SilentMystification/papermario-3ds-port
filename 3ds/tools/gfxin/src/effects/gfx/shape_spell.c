@@ -1,2 +1,8 @@
 #include "src/effects/gfx/shape_spell.c"
 #include "effects/gfx/D_09001080_33AFE0.gfx.inc.c"
+#include "effects/gfx/D_09001128_33B088.gfx.inc.c"
+#include "effects/gfx/D_09001150_33B0B0.gfx.inc.c"
+#include "effects/gfx/D_09001178_33B0D8.gfx.inc.c"
+#include "effects/gfx/D_090011A0_33B100.gfx.inc.c"
+#include "effects/gfx/D_090011C8_33B128.gfx.inc.c"
+#include "effects/gfx/D_090011F0_33B150.gfx.inc.c"

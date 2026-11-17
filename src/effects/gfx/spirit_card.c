@@ -62,7 +62,3 @@ char D_09003C20_3FE0D0[0x1E0] = { 0 };
 Lights1 D_09003F80_3FE430 = gdSPDefLights1(200, 200, 200, 255, 255, 255, 231, 93, 82);
 
 #include "effects/gfx/D_090043D8_3FE888.vtx.inc.c"
-#include "effects/gfx/D_09004418_3FE8C8.gfx.inc.c"
-#include "effects/gfx/D_09004438_3FE8E8.gfx.inc.c"
-#include "effects/gfx/D_09004458_3FE908.gfx.inc.c"
-#include "effects/gfx/D_09004600_3FEAB0.gfx.inc.c"

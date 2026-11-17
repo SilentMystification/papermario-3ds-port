@@ -9,3 +9,7 @@
 #include "effects/gfx/D_09004360_3FE810.gfx.inc.c"
 #include "effects/gfx/D_09004508_3FE9B8.gfx.inc.c"
 #include "effects/gfx/D_090042E0_3FE790.gfx.inc.c"
+#include "effects/gfx/D_09004418_3FE8C8.gfx.inc.c"
+#include "effects/gfx/D_09004438_3FE8E8.gfx.inc.c"
+#include "effects/gfx/D_09004458_3FE908.gfx.inc.c"
+#include "effects/gfx/D_09004600_3FEAB0.gfx.inc.c"
