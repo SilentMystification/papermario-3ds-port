@@ -24,7 +24,9 @@ VP = re.compile(r"^Vp\s+(?:N\((\w+)\)|(\w+))\s*=", re.M)  # THEATVP: a viewport 
 VP_RULE = True  # THEATVP: seeded test in 3ds/tests/host.d/vpsym.sh
 INC = re.compile(r'^\s*#include\s+"([^"]+\.inc\.c)"', re.M)
 INCLUDE = re.compile(r'^\s*#\s*include\s+"([^"]+)"', re.M)
-IMG = re.compile(r"INCLUDE_(?:IMG|PAL|RAW)\(\s*\"[^\"]*\"\s*,\s*(\w+)\s*\)")
+IMG = re.compile(r"INCLUDE_(?:IMG|PAL|RAW)\(\s*\"[^\"]*\"\s*,\s*(?:N\((\w+)\)|(\w+))\s*\)")
+IMGNS_RULE = True  # BLANKET: INCLUDE_IMG(.., N(x)) is NAMESPACE_x; seeded test in 3ds/tests/host.d/blanket.sh
+TOPSCAN_RULE = True  # BLANKET: a twin also scans its first-line include when that is not its device source; seeded test in blanket.sh
 NS_DEF = re.compile(r"^\s*#\s*define\s+NAMESPACE\s+(A\(\w+\)|\w+)", re.M)
 AREA_DEF = re.compile(r"^\s*#\s*define\s+AREA\s+(\w+)", re.M)  # AXNS
 AREA_RULE = True  # AXNS: NAMESPACE A(x) is <AREA>_x (include/macros.h:44, :200); seeded test in 3ds/tests/host.d/gconvw.sh
@@ -105,8 +107,9 @@ def scan(path, out, moved=False, parent_ns=None, ren=None):
         out.append(("Mtx", name_of(path, ns, m.group(1), ren.get(m.group(2), m.group(2)), pre_bad), moved))
     for m in LIT.finditer(text):
         out.append(("Lit", name_of(path, ns, m.group(1), ren.get(m.group(2), m.group(2)), pre_bad), moved))
-    for name in IMG.findall(text):
-        out.append(("Img", ren.get(name, name), moved))
+    for m in IMG.finditer(text):
+        if m.group(1) and not IMGNS_RULE: continue
+        out.append(("Img", name_of(path, ns, m.group(1), ren.get(m.group(2), m.group(2)), pre_bad), moved))
     for m in RAW.finditer(text) if RAW_RULE else ():
         out.append(("Raw", name_of(path, ns, m.group(1), ren.get(m.group(2), m.group(2)), pre_bad), moved))
     for m in VP.finditer(text) if VP_RULE else ():
@@ -140,6 +143,9 @@ def scan_source(s, syms):
         sys.exit(f"gen_gfx_syms: twin {s} first line is not an #include")
     src = pathlib.Path(s[len(TWIN):])  # GMERLEE: the device source is the twin path (dro_02/npc.c includes npc_merlee.c; its twin includes npc.c)
     scan(src, syms, False)
+    top = pathlib.Path(m.group(1))
+    if TOPSCAN_RULE and top != src and top.is_file():
+        scan(top, syms, False)  # BLANKET: dro_02/npc.c holds the blanket vtx and img
     # GSETW: the twin's N(x) names take the NAMESPACE of its device source (the twin has none of its own)
     scan(twin, syms, True, file_ns(src, src.read_text(encoding="utf-8", errors="replace"), None))
 
