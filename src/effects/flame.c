@@ -16,10 +16,10 @@ typedef struct FlamePreset {
     /* 0x0C */ Gfx* dlist;
 } FlamePreset; // size = 0x10
 
-extern Gfx D_09000800_3543B0[];
+NDN_DECL(D_09000800_3543B0);
 NDN_DECL(D_090008F8_3544A8);
 NDN_DECL(D_09000918_3544C8);
-extern Gfx D_090009E0_354590[];
+NDN_DECL(D_090009E0_354590);
 
 FlamePreset FlamePresets[] = {
     [FX_FLAME_BLUE] {
@@ -28,7 +28,7 @@ FlamePreset FlamePresets[] = {
         .envColor = { 102, 191, 255 },
         .primIntensity = 75,
         .sizeScale = 50,
-        .dlist = D_09000800_3543B0,
+        .dlist = NDN(D_09000800_3543B0),
     },
     [FX_FLAME_RED] {
         .colorScale = { 255, 255, 255 },
@@ -36,7 +36,7 @@ FlamePreset FlamePresets[] = {
         .envColor = { 255, 32, 0 },
         .primIntensity = 75,
         .sizeScale = 100,
-        .dlist = D_09000800_3543B0,
+        .dlist = NDN(D_09000800_3543B0),
     },
     [FX_FLAME_SMALL_BLUE] {
         .colorScale = { 255, 0, 255 },
@@ -44,7 +44,7 @@ FlamePreset FlamePresets[] = {
         .envColor = { 107, 168, 255 },
         .primIntensity = 75,
         .sizeScale = 10,
-        .dlist = D_09000800_3543B0,
+        .dlist = NDN(D_09000800_3543B0),
     },
     [FX_FLAME_PINK] {
         .colorScale = { 255, 255, 255 },
@@ -52,7 +52,7 @@ FlamePreset FlamePresets[] = {
         .envColor = { 247, 175, 175 },
         .primIntensity = 22,
         .sizeScale = 30,
-        .dlist = D_09000800_3543B0,
+        .dlist = NDN(D_09000800_3543B0),
     },
 };
 
@@ -187,14 +187,14 @@ void flame_appendGfx(void* effect) {
         LastFlameRenderFrame = gGameStatusPtr->frameCounter;
         gSPDisplayList(gMainGfxPos++, NDN(D_09000918_3544C8));
         nd_val_tile_size(1, uls, ult, uls + 128, ult + 256);
-        gSPDisplayList(gMainGfxPos++, D_090009E0_354590);
+        nd_draw_list(NDN(D_090009E0_354590), ND_SELF);
         nd_target_end();
         nd_pso_scisf(G_SC_NON_INTERLACE, camera->viewportStartX * 4.0f, camera->viewportStartY * 4.0f, (camera->viewportStartX + camera->viewportW) * 4.0f, (camera->viewportStartY + camera->viewportH) * 4.0f);
     }
 
     preset = &FlamePresets[type];
 
-    gSPDisplayList(gMainGfxPos++, preset->dlist);
+    nd_draw_list(preset->dlist, ND_SELF);
     nd_pso_keyr(preset->keyCenter, preset->colorScale.r, 0);
     nd_pso_keygb(preset->keyCenter, preset->colorScale.g, 0, preset->keyCenter, preset->colorScale.b, 0);
     nd_val_prim(0, 0, preset->primIntensity, preset->primIntensity, preset->primIntensity, 0);
