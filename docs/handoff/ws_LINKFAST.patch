@@ -1,0 +1,157 @@
+diff --git a/3ds/CMakeLists.txt b/3ds/CMakeLists.txt
+index 1554fe5615..82f134a5d0 100644
+--- a/3ds/CMakeLists.txt
++++ b/3ds/CMakeLists.txt
+@@ -6,7 +6,9 @@ set(CMAKE_C_EXTENSIONS ON)
+ 
+ set(DECOMP "${CMAKE_CURRENT_SOURCE_DIR}/..")
+ 
+-add_compile_options(-O2 -fsigned-char -fno-strict-aliasing -fwrapv -ffunction-sections -fdata-sections)
++# LINKFAST: -g1 (after the toolchain -g, the last level wins) keeps function names and line tables for decode_dump.py and
++# entcap.py. FACT (oracle FASTLOOP, 84 objects): debug bytes -g 10.3 MB, -g1 0.42 MB, .text equal. The link reads 391 MB at -g.
++add_compile_options(-O2 -g1 -fsigned-char -fno-strict-aliasing -fwrapv -ffunction-sections -fdata-sections)
+ add_compile_options($<$<COMPILE_LANGUAGE:C>:-Dnullptr=NULL> $<$<COMPILE_LANGUAGE:C>:-Wa,-I${DECOMP}>)
+ add_compile_definitions(
+     TARGET_3DS
+@@ -407,7 +409,7 @@ target_include_directories(pm_3ds PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+ # through -B before its own copy: the 3dsx.specs link spec names 3dsx.ld.
+ set(MS_LD_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ld)
+ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ld/3dsx.ld.in ${CMAKE_BINARY_DIR}/ldscripts/3dsx.ld @ONLY)
+-target_link_options(pm_3ds PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/map_syms.lds -B${CMAKE_BINARY_DIR}/ldscripts/ -Wl,--gc-sections -Wl,-Map,${CMAKE_BINARY_DIR}/pm_3ds.map
++target_link_options(pm_3ds PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/map_syms.lds -B${CMAKE_BINARY_DIR}/ldscripts/ -Wl,--gc-sections -Wl,-Map,${CMAKE_BINARY_DIR}/pm_3ds.map -Wl,--no-enum-size-warning
+     -Wl,--wrap=set_game_mode -Wl,--wrap=load_map_by_IDs -Wl,--wrap=load_battle_section -Wl,--wrap=dma_copy -Wl,--wrap=load_asset_by_name -Wl,--wrap=update_enter_map_screen_overlay
+     -Wl,--wrap=step_game_loop -Wl,--wrap=gfx_draw_frame -Wl,--wrap=gfx_task_background -Wl,--wrap=appendGfx_darkness_stencil
+     -Wl,--wrap=_heap_create -Wl,--wrap=linearAlloc -Wl,--wrap=linearMemAlign -Wl,--wrap=linearFree -Wl,--wrap=linearRealloc
+@@ -483,8 +485,9 @@ target_link_options(pm_3ds PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/map_syms.lds -B${
+ set_target_properties(pm_3ds PROPERTIES LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/map_syms.lds;${CMAKE_CURRENT_SOURCE_DIR}/ld/3dsx.ld.in;${CMAKE_CURRENT_SOURCE_DIR}/ld/hot_order.ld;${CMAKE_CURRENT_SOURCE_DIR}/ld/map_restore.ld;${CMAKE_CURRENT_SOURCE_DIR}/ld/map_restore_bss.ld")
+ target_link_libraries(pm_3ds pm_shader4_lib pm_shader5_lib citro3d ctru m)
+ 
+-# HC4f2: the romfs image is the build output folder (docker mounts it at /out). build.sh gen_shapes fills /out/romfs/shape.
+-ctr_create_3dsx(pm_3ds SMDH "${CMAKE_CURRENT_BINARY_DIR}/pm_3ds.smdh" ROMFS /out/romfs)
++# HC4f2: build.sh gen_shapes fills /out/romfs/shape. LINKFAST: build.sh copies it into the build volume (/work/romfs, checked by
++# romfs.sha1): 3dsxtool reads it in 0.6 s there, 4.5 s from the C:\ bind mount (FACT oracle FASTLOOP).
++ctr_create_3dsx(pm_3ds SMDH "${CMAKE_CURRENT_BINARY_DIR}/pm_3ds.smdh" ROMFS /work/romfs)
+ # CONCOL: the build number comes from build.sh (-DPM_BUILD_NUM). It sets the smdh description at configure time.
+ if(NOT PM_BUILD_NUM)
+     set(PM_BUILD_NUM "dev")
+diff --git a/3ds/build.sh b/3ds/build.sh
+index af3225e3a8..9950247209 100644
+--- a/3ds/build.sh
++++ b/3ds/build.sh
+@@ -64,7 +64,12 @@ trap 'build_slot_release; exit 130' INT TERM
+ fi
+ gen_map_restore
+ IMG=pm3ds-build:1
+-docker build -q -t $IMG -f docker/Dockerfile.build docker >/dev/null
++# LINKFAST: docker build (FACT 1.4 s) only when the content ids of docker/ or the image id differ from the stamp.
++DKEY=$(in_manifest docker | sha1sum | cut -c1-40); DSTAMP=$MAIN_ROOT/build3ds/img_build_stamp.txt
++if [ "$(cat "$DSTAMP" 2>/dev/null)" != "$DKEY $(docker image inspect -f '{{.Id}}' $IMG 2>/dev/null)" ]; then
++    docker build -q -t $IMG -f docker/Dockerfile.build docker >/dev/null
++    mkdir -p "$MAIN_ROOT/build3ds"; printf '%s %s\n' "$DKEY" "$(docker image inspect -f '{{.Id}}' $IMG)" > "$DSTAMP.$$" && mv -f "$DSTAMP.$$" "$DSTAMP"
++fi
+ IMGID=$(docker image inspect -f '{{json .RootFS.Layers}}' $IMG | sha1sum | cut -c1-40)
+ HIMGID=$(docker image inspect -f '{{json .RootFS.Layers}}' pm3ds-host:1 | sha1sum | cut -c1-40)
+ ROM=$ASSET_BASE/ver/us/baserom.z64; [ -f "$ROM" ] || { echo "missing $ROM" >&2; exit 1; }
+@@ -301,6 +306,16 @@ MSYS_NO_PATHCONV=1 docker run --rm --memory "${PM_BUILD_MEM:-4g}" --name "$NAME"
+     if [ "$(cat /work/.img 2>/dev/null)" != "$IMGID" ] || [ "$PM_CACHE_V" = off ]; then rm -rf /work/build; printf %s "$IMGID" > /work/.img; fi
+     if [ "$PM_CACHE_V" = off ]; then export CCACHE_DISABLE=1; fi
+     if [ "$(cat /work/.shape 2>/dev/null)" != "$SHAPE_E" ]; then rm -f /work/build/pm_3ds.3dsx; printf %s "$SHAPE_E" > /work/.shape; fi
++    # LINKFAST: the romfs in the build volume. Key: the shape content key. Every build checks the files (romfs.sha1); a new key,
++    # a failed check or PM_CACHE=off copies it again (temp folder, check against /out/romfs, one mv) and removes the 3dsx.
++    if [ "$PM_CACHE_V" = off ] || [ "$(cat /work/.romfs_key 2>/dev/null)" != "$SHAPE_E" ] || ! (cd /work/romfs 2>/dev/null && sha1sum -c --status /work/romfs.sha1 2>/dev/null); then
++        rm -rf /work/romfs /work/romfs.tmp /work/romfs.sha1 /work/.romfs_key /work/build/pm_3ds.3dsx; mkdir -p /work/romfs.tmp
++        cp -a /out/romfs/. /work/romfs.tmp/
++        (cd /work/romfs.tmp && find . -type f | LC_ALL=C sort | xargs -r -d "\n" sha1sum) > /work/romfs.sha1
++        (cd /out/romfs && sha1sum -c --status /work/romfs.sha1) || { echo "ROMFS COPY CHECK FAILED" >&2; exit 1; }
++        mv -T /work/romfs.tmp /work/romfs; printf %s "$SHAPE_E" > /work/.romfs_key
++    fi
++    stage romfs
+     # Configure only when the build dir is missing, was made with ccache, points at another source root, or has another build number (the smdh description).
+     if ! grep -q "^CMAKE_C_COMPILER_LAUNCHER:STRING=ccache$" /work/build/CMakeCache.txt 2>/dev/null \
+         || ! grep -q "^PM_FNCOV:BOOL=$PM_FNCOV_V\$" /work/build/CMakeCache.txt 2>/dev/null \
+@@ -346,10 +361,9 @@ KEEP=${PM_LANE_KEEP:-5}
+ # A build-at folder (build3ds/at_<short> of the main folder, marker .build_at_in_use under 12 h old) is live too.
+ MAIN=$(git worktree list --porcelain | sed -n '1s|^worktree ||p')
+ LIVE=$( (git worktree list --porcelain | sed -n 's|^worktree .*/build3ds/wt/||p'; find "$MAIN/build3ds" -maxdepth 2 -name .build_at_in_use -mmin -720 2>/dev/null | sed -n 's|.*/build3ds/\(at_[^/]*\)/.build_at_in_use$|\1|p') )
+-docker volume ls -q | sed -n -E 's/^pm3ds-build-(.+)$/\1/p' | while read -r l; do
+-    printf '%s\n' "$LIVE" | grep -qx -- "$l" && continue
+-    echo "$(docker volume inspect --format '{{.CreatedAt}}' pm3ds-build-$l) $l"
+-done | sort -r | awk '{print $2}' | {
++# LINKFAST: one docker volume inspect for all candidates (FACT oracle FASTLOOP: about 0.7 s per inspect call, 11 calls 7.9 s).
++VL=$(docker volume ls -q | sed -n -E 's/^pm3ds-build-(.+)$/\1/p' | while read -r l; do printf '%s\n' "$LIVE" | grep -qx -- "$l" || echo "pm3ds-build-$l"; done)
++[ -z "$VL" ] || docker volume inspect --format '{{.CreatedAt}} {{.Name}}' $VL | sed 's/ pm3ds-build-/ /' | sort -r | awk '{print $2}' | {
+     n=0
+     while read -r l; do
+         n=$((n + 1))
+diff --git a/3ds/tests/host.d/romfscache.sh b/3ds/tests/host.d/romfscache.sh
+new file mode 100644
+index 0000000000..8836d4be13
+--- /dev/null
++++ b/3ds/tests/host.d/romfscache.sh
+@@ -0,0 +1,20 @@
++# LINKFAST: seeded faults of the romfs copy in 3ds/build.sh (the block "LINKFAST: the romfs in the build volume" .. "stage romfs").
++# Cases: first copy, hit, one changed byte in the copy, a new shape key, PM_CACHE=off. Each miss copies again and removes the 3dsx.
++T=/tmp/romfscache; rm -rf $T; mkdir -p $T/out/romfs/shape
++printf 'a' > $T/out/romfs/shape/a.nds; printf 'b' > $T/out/romfs/shape/b.nds
++awk '/LINKFAST: the romfs in the build volume/{f=1} f{print} /stage romfs/{exit}' 3ds/build.sh | sed -e "s|/work|$T/work|g" -e "s|/out/romfs|$T/out/romfs|g" > $T/frag.sh
++grep -q "stage romfs" $T/frag.sh || { echo "romfscache FAIL: the romfs block is missing in 3ds/build.sh"; exit 1; }
++run() { ( set -e -f; stage() { :; }; SHAPE_E=$1; PM_CACHE_V=$2; mkdir -p $T/work/build; touch $T/work/build/pm_3ds.3dsx; . $T/frag.sh ) || { echo "romfscache FAIL: the block failed (key $1, cache $2)"; exit 1; }; }
++want() { # want <case> <3dsx kept 1|0>
++    k=0; [ -f $T/work/build/pm_3ds.3dsx ] && k=1
++    [ "$k" = "$2" ] || { echo "romfscache FAIL $1: 3dsx kept $k, want $2"; exit 1; }
++    [ "$(cat $T/work/romfs/shape/a.nds)$(cat $T/work/romfs/shape/b.nds)" = ab ] || { echo "romfscache FAIL $1: the copy differs from the source"; exit 1; }
++}
++run k1 on; want first 0
++run k1 on; want hit 1
++printf X > $T/work/romfs/shape/b.nds; run k1 on; want byte 0
++run k2 on; want key 0
++run k2 off; want off 0
++run k2 on; want hit2 1
++rm -rf $T
++echo "romfscache ok (first, hit, byte, key, off)"
+diff --git a/3ds/tools/gen_map_restore.py b/3ds/tools/gen_map_restore.py
+index d52a58fa3b..2096f84954 100644
+--- a/3ds/tools/gen_map_restore.py
++++ b/3ds/tools/gen_map_restore.py
+@@ -7,7 +7,7 @@ map_restore.txt: lines "<owner> <object path from area_..> <input section>" = .d
+ (pristine copy is taken at the first entry, memcpy back at later entries). All .bss of a linked map is grouped in a second
+ block and zeroed at entry (the N64 data of a map starts from its initial value, an initialised zero is .bss here).
+ MEM-A: the .bss block is NOBITS (placed at the start of .bss, file ld/map_restore_bss.ld), so it is not stored in the 3dsx."""
+-import os, re, sys, collections
++import os, re, sys, collections, fnmatch, glob
+ here = os.path.dirname(os.path.abspath(__file__)); root = os.path.normpath(os.path.join(here, '..', '..'))
+ sys.path.insert(0, here)
+ RST = os.path.join(root, '3ds', 'map_restore.txt')
+@@ -44,6 +44,23 @@ for l in open(os.path.join(root, '3ds', 'maps.cmake')):
+ rst = collections.defaultdict(list)
+ for own, obj, sec in load_rst(): rst[own].append((obj, sec))
+ owners = sorted(set(files) | set(rst))
++# LINKFAST: ld.bfd tests each input section against every script statement that names a file (FACT oracle FASTLOOP: the
++# 2143 per-file .bss lines cost 10.6 s of a 23 s link). One SORT_BY_NAME(*<area>/<map>/*.o) line per map keeps the order of
++# the sorted per-file lines (FACT: byte-equal ELF). It is used only when the pattern names exactly the files of this owner
++# among every source that a CMake list of the build names; else the per-file lines stay.
++cm_files = [os.path.join(root, '3ds', 'CMakeLists.txt')] + sorted(glob.glob(os.path.join(root, '3ds', '*.cmake')))
++cm_text = [l for f in cm_files for l in open(f)]
++cm_objs = set(m.group(1) + '.o' for l in cm_text for m in re.finditer(r'\}/([^\s)"]+)\.(?:c|s|S)\b', l))
++cm_glob_area = any('GLOB' in l and 'area_' in l for l in cm_text)
++def bss_lines(fl):
++    per_file = ['    *%s(.bss .bss.* COMMON)' % f for f in fl]
++    dirs = set(os.path.dirname(f) for f in fl)
++    if not fl or cm_glob_area or len(dirs) != 1: return per_file
++    pat = '*%s/*.o' % dirs.pop()
++    hit = set(o for o in cm_objs if fnmatch.fnmatchcase(o, pat))
++    want = set(o for o in cm_objs if any(o.endswith('/' + f) for f in fl))
++    if hit != want or len(want) != len(set(fl)): return per_file
++    return ['    SORT_BY_NAME(%s)(.bss .bss.* COMMON)' % pat]
+ nm = lambda o: o.lstrip('@')
+ ld = ['/* Generated by tools/gen_map_restore.py (slice MS01). One block per map: changing .data symbols (d), PROGBITS, in .mapstat. */',
+       '  .mapstat : ALIGN(4)', '  {', '    LONG(0);']
+@@ -53,7 +70,7 @@ for o in owners:
+     ld += ['    *%s(%s)' % (obj, sec) for obj, sec in sorted(rst[o])]
+     ld += ['    . = ALIGN(4); __ms_%s_d1 = .;' % nm(o)]
+     bss += ['    . = ALIGN(4); __ms_%s_b0 = .;' % nm(o)]
+-    bss += ['    *%s(.bss .bss.* COMMON)' % f for f in sorted(files[o])]
++    bss += bss_lines(sorted(files[o]))
+     bss += ['    . = ALIGN(4); __ms_%s_b1 = .;' % nm(o)]
+ ld += ['  } : data']
+ NL = chr(10)
