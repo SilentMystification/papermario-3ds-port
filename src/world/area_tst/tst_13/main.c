@@ -3,7 +3,7 @@
 #include "nd_st.h"
 #include "nd_xf.h"
 
-void mdl_project_tex_coords(s32 modelID, Gfx* destGfx, Matrix4f destMtx, void* destVertices);
+void mdl_project_tex_coords(s32 modelID, const void* destGfx, Matrix4f destMtx, void* destVertices);
 
 extern EvtScript N(EVS_Main);
 extern EvtScript N(D_80240510_B1DC70);

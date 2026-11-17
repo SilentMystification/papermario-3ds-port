@@ -45,7 +45,7 @@ typedef struct ModelGroupData {
 } ModelGroupData; // size = 0x14
 
 typedef struct ModelDisplayData {
-    /* 0x0 */ Gfx* displayList;
+    /* 0x0 */ void* displayList; /* map shape list, unit word pairs */
     /* 0x4 */ char unk_04[0x4];
 } ModelDisplayData; // size = 0x8
 
@@ -109,7 +109,7 @@ typedef struct ModelIDList {
 typedef struct ModelLocalVertexCopy {
     /* 0x00 */ s32 numVertices;
     /* 0x04 */ Vtx* minVertexAddr;
-    /* 0x08 */ Gfx* gfxCopy[2];
+    /* 0x08 */ uint32_t* gfxCopy[2];
     /* 0x10 */ Vtx* vtxCopy[2];
     /* 0x18 */ s32 selector;
     NdNDev dev[2]; /* VCOPY: the device entry of each gfxCopy[i] */
@@ -143,7 +143,7 @@ typedef struct ModelBlueprint {
 
 typedef void(*ModelCustomGfxBuilderFunc)(s32 index);
 
-typedef Gfx* ModelCustomGfxList[32];
+typedef void* ModelCustomGfxList[32];
 typedef ModelCustomGfxBuilderFunc ModelCustomGfxBuilderList[32];
 
 typedef enum ModelPropertyKeys {
