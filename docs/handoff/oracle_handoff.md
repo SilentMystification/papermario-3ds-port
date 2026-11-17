@@ -1,6 +1,6 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main 9e091b034e, 2026-11-17. PHASEE2 (Opus) wrote ws_FLAMEDL (merged), ws_PSOFB (coder aa0ba759af9c83fdf runs), design_nstate.md
+State: main 969ac09f71, 2026-11-17 (NSTO). PHASEE2 (Opus) wrote ws_FLAMEDL (merged), ws_PSOFB (coder aa0ba759af9c83fdf runs), design_nstate.md
 (S2, revised 8aabea0190: no NST0), ws_NST1 (Sonnet), ws_NST3, ws_NST2A. Merged since b4de08e55b: OPMOVE, FXSLOT2, PSOSEEN, FLAMEDL, TST13, TATTLEAR.
 Counters FACT (listcen on b4de08e55b): build 311, gfxpos 3, recdl 5, reader 792, model 15. Moves since: OPMOVE reader -62, FXSLOT2 recdl -5,
 FLAMEDL build -2 gfxpos -2, TST13 build -1 gfxpos -1 (page values). Run listcen for fresh numbers.
@@ -8,20 +8,21 @@ FLAMEDL build -2 gfxpos -2, TST13 build -1 gfxpos -1 (page values). Run listcen 
 - D1 A, D2 A. UD1 option 1 (user): core 1 keeps the N64 field model; listcen reports a class core1 outside the end proof.
   UD2 option 1: core 0 keeps a native transform stack. UD3 option 1: prof push at the NST1 gate. Sonnet yes: NST1, NDR0, NCONV1, NREC1.
 - User 2026-11-16: a table miss uses a fixed fallback and one log entry (PSOFB). Option B 2026-11-17: gbi.h etc. stay until S7.
-## Pages on main and their waits
-- ws_PSOFB (Haiku, running): model -2. Its psochk lines lose lkbad. nd_psokey.c holds the device pso helpers.
-- ws_NST1 (Sonnet, no wait): nd_ds.h/nd_ds.c (core 1 copy of the state writes, nd_ds_apply), hook in nd_rec_nr, host nst1.sh.
-- ws_NST3 (Haiku, after NST1): dschk switch (nd_dschk.c, nd_ds_cmp, ep bit in nd_rec.c, nd_st_epoch), 4 dschk scenes, dschk_base.txt.
-- ws_NST2A (Haiku, after NST3): nd_ds_list for static lists at nd_rec_dl and NDO_CALL units.
-## Open work (in order; oracle NSTO since 2026-11-17: ws_NST2B c8b0159131, ws_NST2C 9366c70294 on main)
-1. Answer coder questions (PSOFB, NST1, NST3, NST2A-C). The NST3 epbad rule is design section 6; GEOM after rects is a GUESS.
-1b. PSOFB psomiss (from PHASEE2): each gate bench (spot_mac01_drec, wscmb_pause_drec) has 1 psomiss entry whose combine inputs hold a
+## Pages on main and their waits (chain: NST1 -> NST3 -> NST2A -> NST2B -> NST2C -> NST2D -> NST2E -> NST2F -> NDR0)
+- ws_PSOFB (Haiku, running): model -2. ws_NST1 (Sonnet, running; worktree build3ds/wt/NST1 has nd_ds.c, NdDs holds lt[], lk, vp_*, tm).
+- ws_NST3: dschk switch, 4 dschk scenes, dschk_base.txt. ws_NST2A: static lists (fixed by NSTO: nd_ds_list after nd_rec_napi).
+- NSTO pages (oracle NSTO): NST2B model records (nd_ds_model; dschk adopts the groups a model cache hit skips), NST2C entity draw, sprite
+  state, compiled def, particles (nd_ds_unit, nd_ds_feed), NST2D ranges (unit log of core 1 applies, marks, sub save/restore, R11 replay;
+  dschk skips compares inside replays), NST2E the 6 direct-draw runners feed their fallback units, NST2F adopt after direct draws, box fold
+  unfold values, shaded sprite dual_on on core 1; S3 end gate bad 0 epbad 0. Every NST2 row replaces fxrest.d/dschk_base.txt.
+## Open work (in order)
+1. Answer coder questions (PSOFB, NST1, NST3, NST2A-F). epbad is OPEN: no data; NST2F expects a diagnose round.
+2. PSOFB psomiss (from PHASEE2): each gate bench (spot_mac01_drec, wscmb_pause_drec) has 1 psomiss entry whose combine inputs hold a
    one-bit flag above 1 or below 0. The 4 builders (nd_comb.c:199, nd_model.c:209, pm_gpu.c:3925, nd_scomp.c:226) and the flag writers
    write 0 or 1 (code read). After the PSOFB merge: read the 8 flag values in the PSOFB 2 commit text, find the writer, write a Haiku page.
-2. NST2D (ranges: unit log + marks + sub save/restore, model R11 ranges, map shape geom nd_shape.c:499), then NST2E (core 0 draw-time
-   writers: nd_direct.c:105-116, HUD/glyph/fill/trect/tsten runners, box fold nd_comb.c:381-387, dual_on nd_tex_set.c:508). NST2E
-   ends with bad 0 and epbad 0 in the 4 scenes. Each NST2 row writes its dschk lines into fxrest.d/dschk_base.txt.
-3. Then NDR0 (Sonnet): design section 7. Then NCONV1 (section 8), NREC1 (section 9).
+3. NDR0 (Sonnet, design section 7) after the NST2F gate data. Reads it needs: gv_epoch_enter nd_geom.c:203-228, sync_combine_work
+   nd_comb.c:312-333 (leg_mode and comb_mode5 are decision inputs and outputs), sync_render nd_set.c:210, ensure_tile_slow nd_tex_set.c:335,
+   box_fold_sync nd_comb.c:374, nd_mesh_* are VTX/TRI state-run units (nd_geo.c:29-37), not commands. Then NCONV1 (section 8), NREC1 (9).
 4. Add the listcen class core1 (UD1) in the first row that adds ND_FS_ ids (NCONV1).
 ## Facts that cost time
 - Every setter unit passes nd_rec_nr (nd_rec.c:375); core 0 runs it in nd_walk_state (nd_walk.c:390). reader falls only in S5-S7.
@@ -42,6 +43,9 @@ FLAMEDL build -2 gfxpos -2, TST13 build -1 gfxpos -1 (page values). Run listcen 
 - Hooks: SendMessage text must not hold the words "log line" (no_guess_hook.js). No sleep loops (no_poll_hook.js).
 - Other oracles edit this file and the orchestrator commits stray files: read `git log -- <file>` and the file before a write.
 - Coders often hand back before the oracle reply arrives. Tell the orchestrator to resume them with the reply.
+- Core 0 leaves state that core 1 cannot follow: a model cache hit (nd_recs.c:198) skips lights, tile/load units, panner sizes, filter bits;
+  a direct draw (nd_direct.c:103-116) writes pso state and binds without tile ops. dschk adopts core 1 values there (NST2B, NST2F) and counts adiff.
+- dschk copies nd_ds at rec_take of a command: every core 1 apply of a record goes after its nd_rec_* call.
 ## What to do first
-1. Read design_nstate.md and plan_walker_delete.md. Answer coder questions.
-2. Write ws_NST2B, then NST2C, NST2D (open work 2).
+1. Read design_nstate.md, plan_walker_delete.md and the ws_NST2* pages. Answer coder questions.
+2. Open work 2, then 3.
