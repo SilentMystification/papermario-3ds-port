@@ -14,9 +14,9 @@ enum {
     READ_STATE_TRIANGLE    = 2,
 };
 
-void N(GetFirstTriangleNormal)(Gfx* inGfx, f32* outNx, f32* outNy, f32* outNz) {
+void N(GetFirstTriangleNormal)(const void* inGfx, f32* outNx, f32* outNy, f32* outNz) {
     s32 dummy[2];
-    Gfx* gfx = inGfx;
+    const uint32_t* gfx = (const uint32_t*)inGfx; /* BARRICADE: unit word pairs (lkey MAP) */
     s32 readState;
     f32 v1x, v1y, v1z;
     f32 v2x, v2y, v2z;
@@ -36,8 +36,7 @@ void N(GetFirstTriangleNormal)(Gfx* inGfx, f32* outNx, f32* outNy, f32* outNz) {
     v3x = v3y = v3z = 0.0f;
 
     while (true) {
-        uint32_t t[2]; t[0] = gfx->words.w0; t[1] = gfx->words.w1; /* HC4f3: the typed unit */
-        u32 w0 = t[0]; u32 w1 = t[1];
+        u32 w0 = gfx[0]; u32 w1 = gfx[1];
         s32 op = w0 >> 24;
         readState = READ_STATE_CONTINUE;
         switch (op) {
@@ -45,7 +44,7 @@ void N(GetFirstTriangleNormal)(Gfx* inGfx, f32* outNx, f32* outNy, f32* outNz) {
                 readState = READ_STATE_DONE;
                 break;
             case GFTN_DL:
-                N(GetFirstTriangleNormal)((Gfx* ) w1, outNx, outNy, outNz);
+                N(GetFirstTriangleNormal)((const void*)(uintptr_t)w1, outNx, outNy, outNz);
                 break;
             case GFTN_VTX:
                 vtxCount = (w0 >> 0xC) & 0xFF;
@@ -84,7 +83,7 @@ void N(GetFirstTriangleNormal)(Gfx* inGfx, f32* outNx, f32* outNy, f32* outNz) {
         if (readState != READ_STATE_CONTINUE) {
             break;
         }
-        gfx++;
+        gfx += 2;
     }
 
     if (readState == READ_STATE_TRIANGLE) {
