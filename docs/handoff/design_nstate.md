@@ -34,26 +34,24 @@ Tags: FACT (file:line), GUESS, OPEN. Core 1 = the recorder (game thread). Core 0
 - A static list runs on core 1: its field-set ops change NdDs, each of its draws makes one NdSnap (section 7).
 - The N64 field meaning stays on core 1 because the game API states it (UD1, section 10).
 
-## 3. NdDs (new 3ds/include/nd_ds.h)
-- `typedef struct NdDs { NdWs w; } NdDs;` after row NST0 moved the F3 globals into NdWs. One NdWs type serves both cores.
-- Core 1 owns `NdDs nd_ds`. Core 0 keeps `nd_ws` until S7. dschk (section 5) proves nd_ds.w equals nd_ws at every command.
-- Fields that core 0 writes at draw time are not inputs and are left out of the compare: td[0..1] (ensure_tile), tile_x0, tile_y0,
-  tile_fx, tile_fy, cur_tile, box_folded, the decision outputs (leg_mode, comb_mode5, box_pat, plan). Core 1 makes them at snap time (S4).
+## 3. NdDs (new 3ds/include/nd_ds.h; revised 2026-11-17: no NST0, core 0 code does not change in S3)
+- NdDs = `NdWs w` plus the F3 globals as fields of the same names (conv_k4, keyc, keys, dual_on, box_prod, comb_set, comb_alpha_shade,
+  sci_x0..sci_y1, fog_fm, fog_fo, fogmix_on, fogc, blendc, lt_n, the light colours of lt[], the viewport block pointer).
+- Core 1 owns `NdDs nd_ds`. Core 0 keeps nd_ws and the globals until S7. dschk (section 5) proves the two equal at every command.
+- Left out of the compare (core 0 writes them at draw time; core 1 makes them at snap time, S4): td[0..1], tile_x0, tile_y0, tile_fx,
+  tile_fy, cur_tile, box_folded, leg_mode, comb_mode5, box_pat, the plan.
+- Reason for a copy, not a shared function: the globals have struct-field and parameter twins (in->dual_on, nd_pso_flags(int dual_on))
+  in 20+ files, so a rename is not mechanical. The core 0 handlers leave in S7, so the copy is the only code at the end.
 
-## 4. One pure apply for both cores (row NST1, Sonnet)
-- New `unsigned nd_ws_apply(NdWs* w, uint32_t k, uint32_t v)` in new 3ds/src/nd_wsap.c: the state writes of nd_op_apply (nd_set.c:159-183),
-  set_om, set_geom, nd_set_prim, gbi_setenv, set_fog/blend/fill/primdepth, set_scissor (with the pm_wide sign rule), set_mw, set_rare,
-  op_setcombine (nd_comb.c:473) and the nd_tex_set.c setters of TIMG, TILE, TILESIZE, LOADBLOCK, LOADTILE, LOADTLUT, and the light and
-  viewport state of gbi_movemem (nd_mtx_set.c:180). It returns a mask: bit 0 a value changed, bit 1 the filter bits changed (F2).
-- Core 0 handlers call nd_ws_apply(&nd_ws, ...) first, then their GPU side effects in the old order. Read old values before the call.
-- Example (nd_set.c:99-104), after: `void gbi_setenv(u32 w1) { GP_SET(2, nd_ws.envc == w1); nd_ws_apply(&nd_ws, NDO_W0(NDO_ENV, 0), w1);
-  pm_gpu_set_env(nd_ws.envc); sync_combine(); }`.
-- Core 1 hook: nd_rec_nr (nd_rec.c:375) calls `nd_ws_apply(&nd_ds.w, w0, w1)` before rec_op_t. Geometry units (VTX, TRI, MTX, POPMTX)
-  change no NdWs field. Gate: drec byte-equal (the core 0 output does not change).
+## 4. The core 1 apply (row NST1, Sonnet)
+- New `unsigned nd_ds_apply(NdDs* s, uint32_t k, uint32_t v)` in new 3ds/src/nd_ds.c: a copy of the state writes (not the GPU calls,
+  not the flush, not sync_combine) of nd_op_apply (nd_set.c:159-183) and its handlers. Returns bit 0 when a field value changed.
+- Core 1 hook: nd_rec_nr (nd_rec.c:375) calls `nd_ds_apply(&nd_ds, w0, w1)` before rec_op_t. Core 0 does not change: drec equal.
 
 ## 5. Feed every producer, prove it (rows NST2a-d, NST3; Haiku)
 - NST3 first: switch dschk. With it on, core 1 records one NDC_NAPI record `nd_dschk_run` before each non-state command: the FNV-1a 32 of
-  nd_ds.w (section 3 fields only) and the ep bit (section 6). Core 0 compares with the hash of nd_ws and with `st_epoch` (a counter that
+  the compared NdDs fields (section 3) and the ep bit (section 6). Core 0 hashes the same fields of nd_ws and the F3 globals in the same
+  order (one function nd_ds_hash over an NdDs that core 0 fills from them) and compares; it compares ep with `st_epoch` (a counter that
   op_typed and the MOVEMEM arm of op_geo raise, reset at each command). Log `dschk f<n> cmds <c> bad <b> epbad <e>` every 100 frames,
   the first 8 bad field names, and `dschk end` at fxtest done. The first value of bad is the S3 counter.
 - NST2a static lists: at nd_rec_dl (nd_gtab.c:108) and rec_inline (nd_rec.c:399) core 1 applies the list units (nt->u, nt->nu; a
@@ -65,7 +63,7 @@ Tags: FACT (file:line), GUESS, OPEN. Core 1 = the recorder (game thread). Core 0
 
 ## 6. The batch rule: the ep bit (R3)
 - Core 1 sets ep = 1 between two commands when one of these occurs:
-  (a) nd_ws_apply returns bit 0 for a unit other than VTX, TRI1, TRI2, MTX, POPMTX;
+  (a) nd_ds_apply returns bit 0 for a unit other than VTX, TRI1, TRI2, MTX, POPMTX;
   (b) a unit OMH, PRIM, ENV, TEXTURE or COMB arrives while sc_lost = 1;
   (c) a MOVEMEM unit that is not a light with the same bytes (lt_mem_same rule, nd_walk.c:741, on core 1 data).
 - sc_lost = 1 after core 1 records a command of a kind in F6. sc_lost = 0 after it records a draw.
@@ -74,7 +72,7 @@ Tags: FACT (file:line), GUESS, OPEN. Core 1 = the recorder (game thread). Core 0
 - S4 core 0 snap runner: `if (s->ep) gv_epoch++;` before the draw. Nothing else bumps gv_epoch for state.
 
 ## 7. NdSnap and the pso id (row NDR0, Sonnet; then NDR1-4, Haiku)
-- Core 1 resolves the pso at snap time. Memo: the key index stays while no pso input changed (a dirty bit that nd_ws_apply sets for
+- Core 1 resolves the pso at snap time. Memo: the key index stays while no pso input changed (a dirty bit that nd_ds_apply sets for
   cw0, cw1, omh, key_c, key_s, conv_k4, the 8 flags, vprim, prim_lo8). A change runs nd_pso_find (binary search) and nd_pso_fix with the
   core 1 copies of comb_mode5 and box_pat. A miss gives the PSOFB fallback and its log entry.
 - NdSnap (8-byte units in the record): key index (16 bits), ep, cc (leg 4 colour), mode5, pat, dual, the NdRender block (memo on omh,
@@ -87,7 +85,7 @@ Tags: FACT (file:line), GUESS, OPEN. Core 1 = the recorder (game thread). Core 0
   dschk bad 0. model falls by the walker functions the kind no longer calls (nd_texrect, nd_fillrect: -2, FACT listcen file nd_rect.c 2).
 
 ## 8. The v2 field-set op (rows NCONV1 Sonnet, NCONV2 Haiku)
-- NDN_UNIT (nd_gtab.h:104) is replaced by NDN_FS: `a` = field id (enum NdFs in nd_ds.h, one per NdWs field group of nd_ws_apply),
+- NDN_UNIT (nd_gtab.h:104) is replaced by NDN_FS: `a` = field id (enum NdFs in nd_ds.h, one per NdWs field group of nd_ds_apply),
   `v` = value, `idx_pos` = mask (othermode, geometry clear), `p` = pointer value (image, palette, light, viewport; a segment address stays
   a value and core 1 resolves it with nd_ds.w.segbase).
 - Core 1 runs a table at nd_draw_list: NDN_FS through `nd_ds_fs(&nd_ds, op)`, NDN_XF as a transform record, each NDN_DRAW as one NdSnap
@@ -101,15 +99,14 @@ Tags: FACT (file:line), GUESS, OPEN. Core 1 = the recorder (game thread). Core 0
 ## 10. Rows and order (S3 moves no listcen counter; its counter is dschk bad)
 | row | model | blocker | counter |
 |---|---|---|---|
-| NST0 globals of F3 into NdWs (ws_NST0.patch, mechanical) | Haiku | PSOFB | none, drec equal |
-| NST1 nd_ws_apply, core 0 handlers call it, core 1 hook | Sonnet | NST0 | none, drec equal |
+| NST1 nd_ds.c nd_ds_apply (copy of the state writes), core 1 hook, host test | Sonnet | none | none, drec equal |
 | NST3 dschk switch and 4 scenes | Haiku | NST1 | dschk bad base value |
 | NST2a-d producers | Haiku | NST3 | dschk bad to 0, epbad 0 |
 | NDR0 NdSnap, core 1 resolve, nd_snap_run, pilot nd_mesh | Sonnet | NST2d | model -1 GUESS |
 | NDR1-4 | Haiku | NDR0 | model -2 (nd_rect.c) and more |
 | NCONV1, NCONV2 | Sonnet, Haiku | NDR0 | reader GUESS -40 |
 | NREC1, NREC2-5 | Sonnet, Haiku | NCONV2 | reader GUESS -190 |
-Sonnet reasons: NST1 cuts shared handler code in 5 files with byte-equal output and an order of side effects that only the cut shows.
+Sonnet reasons: NST1 separates the state writes from the GPU side effects in 4 handler files (nd_set.c, nd_tex_set.c, nd_comb.c, nd_mtx_set.c).
 NDR0 is a new record form shared by every draw kind. NCONV1 is one algorithm over 922 tables. NREC1 changes a record with 3 writers.
 
 ## 11. Risks
@@ -117,10 +114,8 @@ NDR0 is a new record form shared by every draw kind. NCONV1 is one algorithm ove
 - R2 epbad above 0 from a core 0 skip rule that core 1 cannot see (F6 GEOM). The dschk count finds it before S4.
 - R3 Stream size: NdSnap is about 64 bytes per draw. GUESS 1500 draws per frame: 96 KB per context. memcheck decides.
 
-## 12. User decisions (open until the user answers; the rows S3-S6 follow option 1 of each)
-- UD1 census of the core 1 field model. Evidence: F10, section 2 (the N64 field meaning stays on core 1 under D1 A). Option 1: accept;
-  listcen gets a reported class `core1` (ND_FS_ uses), not part of the end proof. Option 2: D1 B (static desc at every draw, about 84 rows).
-- UD2 matrix composition. Evidence: load_mtx (nd_mtx_set.c:130) is in the model and elfgate name lists. Option 1: core 0 keeps a native
-  transform stack (push, load, mul, pop as native enums; the G_MTX flags are translated on core 1). Option 2: core 1 composes and the
-  record carries the final 64-byte matrices.
-- UD3 core 1 time of R1. Option 1: accept and measure at the NST1 gate with one prof push. Option 2: one prof push before NST1 starts.
+## 12. User decisions (answered 2026-11-17)
+- UD1 option 1 (user): accept the core 1 field model. listcen reports a class core1 (ND_FS_ uses) outside the end proof.
+- UD2 option 1 (orchestrator, the user may override): core 0 keeps a native transform stack; core 1 translates the G_MTX flags.
+- UD3 option 1: one prof push at the NST1 gate measures the core 1 cost (R1).
+- Sonnet rows NST1, NDR0, NCONV1, NREC1: user yes.

@@ -27,16 +27,16 @@ FXSLOT1, FXSLOT2 and TST13 give gfxpos 2, not 0 (FACT, sum of their pages). Row 
 | S0 after FXSLOT1 | FLAMEDL (Haiku) | src/effects/flame.c :188 :211: capture form, entcap, entry | build -2, gfxpos -2 (FACT) | fxops_drec |
 | S1 pso table only | PSOFB (Haiku) | nd_comb.c:241 fixed fallback and one log line (user 2026-11-16), nd_decide.c split: device helpers (nd_pso_in_eq, nd_pso_flags, nd_pso_fix, nd_const_rgb, nd_comb_tst) to nd_psolk.c, the rest to 3ds/tools/nd_decide.c (gen_pso_tab.py:129, build.sh:211, host.d coin.sh, conv2c.sh, decide.sh) | model -2 (FACT, nd_decide.c 2) | the 6 PSOSEEN scenes, miss 0 |
 | S2 design | NSTATE (oracle design, Opus) | docs/handoff/design_nstate.md: the core 1 draw state, the native draw record, the v2 field-set op | none | none |
-| S3 setters | NST1..NST4 (Haiku) | nd_st.c, nd_val.c, nd_geo.c, nd_xf.c, nd_tx.h, nd_at.h, nd_nr.h: write core 1 fields, no NDO unit | reader about -95 (GUESS, listcen of these files) | spot_mac01_drec, wscmb_pause_drec |
-| S4 draws | NDR1..NDR4 (Haiku) | nd_geom.c, nd_rect.c, nd_direct.c, nd_model_set.c: run the native record (pso id, bind, colours) | model -6 (nd_geom 1, nd_rect 2, nd_comb 3) GUESS | spot_mac01_drec, nimgm_anim_drec, axns_sam2_drec |
-| S5 static lists | NCONV1 (Sonnet, reason below), NCONV2 (Haiku) | nd_gfx_conv.c v2 output: field-set ops and draws, no NDN_UNIT; gt_run (nd_walk.c:633) | reader about -40 (GUESS) | fxops_drec, fxcull_drec, entcape_kmr03_drec |
-| S6 records | NREC1..NREC5 (Haiku, after NSTATE) | nd_recs.c and nd_model.c (R0, R13), nd_walk.c nd_walk_spr, nd_ent.c ENT_GBI, nd_shape.c and nd_dlc.c, nd_parts_run | reader about -190 (GUESS) | vcfix_hos01_drec, spot_mac01_drec, sbk14_drec |
+| S3 core 1 state | NST1 (Sonnet), NST3, NST2a-d (Haiku) | new nd_ds.c/nd_ds.h (core 1 copy of the state writes), nd_rec.c hook, dschk switch, the producers (lists, records, entity, sprite, particles, shapes, ranges) feed nd_ds. Core 0 does not change | none in listcen (FACT: the units stay until S4-S6). S3 counter: dschk bad to 0, epbad 0 | spot_mac01_drec, wscmb_pause_drec, the 4 dschk scenes |
+| S4 draws | NDR0 (Sonnet), NDR1-4 (Haiku) | NdSnap per draw (pso key index resolved on core 1, render block, binds, colours, ep), nd_snap_run on core 0; pilot nd_mesh, then rectangles, direct, glyphs, sprite records | model -2 nd_rect.c (FACT), more GUESS | spot_mac01_drec, nimgm_anim_drec, axns_sam2_drec, dschk |
+| S5 static lists | NCONV1 (Sonnet), NCONV2 (Haiku) | nd_gfx_conv.c v2 output: NDN_FS field-set ops and NDN_DRAW, no NDN_UNIT; core 1 runs the table; delete gt_run (nd_walk.c:633), nd_ntab_run | reader about -40 (GUESS) | fxops_drec, fxcull_drec, entcape_kmr03_drec |
+| S6 records | NREC1 (Sonnet), NREC2-5 (Haiku) | model record (nd_recs.c, nd_model.c, model.c writers), entity, sprite, shapes (nd_shape.c, nd_dlc.c), particles: NDN_FS and NdSnap | reader about -190 (GUESS) | vcfix_hos01_drec, spot_mac01_drec, sbk14_drec |
 | S7 delete | S9DEL rows of plan_endgame.md:193-197 (Haiku) | nd_walk.c op arms, nd_op.h, nd_set.c, nd_scomp.c, nd_tex_set.c tile model, nd_mtx_set.c list stack, nd_cen.c, nd_gbi.h, gMainGfxPos (variables.h:111), then gbi.h, gbi_custom.h, gt.h (user option B 2026-11-17: headers go here) | reader to 0, model to 0, build 308 to 0, data 191 to 0, gfxtype to 0 | the full drec set, then the end proof |
 | S8 end | S9GATE (Haiku) | none | elfgate func 0 data 0 gfxnames 0 | plan_endgame.md:80-90 |
 Pre per stage:
 - S0: none. OPMOVE and PSOSEEN share no file with FXSLOT1/2, TST13, IMGOVL, MISCP (FACT, their pages).
 - S1: PSOSEEN merged. psochk `miss 0` in the 6 PSOSEEN scenes on main.
-- S2: user decision D1 (section 4). S3 to S6: design_nstate.md on main.
+- S2: done (design_nstate.md, 05f18ca04d; UD1-UD3 answered 2026-11-17). S3 to S6 follow its section 10. NST1 waits for nothing.
 - S5: CONV2 tables complete (nd_gfx_conv.c). NCONV1 is Sonnet: one algorithm over 922 tables (FACT, plan_endgame.md:159), its error
   cases are not known per list before it runs (the CONV2C reason).
 - S7: reader 0 for the file of the row except its own grep terms. build 0 and gfxpos 0 in src (S0 rows merged).
@@ -58,6 +58,6 @@ A row with more than 2 benches runs them in 2 rowloop calls (1 build, at most 2 
 - R2 (S3-S4): core 1 does the lookup per state change. GUESS: one binary search per changed key. PROF rows on the console decide.
 - R3 (S3): the skip test nd_op_same (nd_walk.c:280) and gv_epoch (:283) shape the draw batches today. The native record must keep
   the same batches, else drec differs. design_nstate.md names the rule.
-- R4 (S3): 9 host tests use NDO units (stunit, geounit, texunit, hunit, nmdl0, ns3unit, nxf, nd_cmd_test, nd_gv_test). Each S3
+- R4 (S5-S7, not S3: S3 changes no core 0 code): 9 host tests use NDO units (stunit, geounit, texunit, hunit, nmdl0, ns3unit, nxf, nd_cmd_test, nd_gv_test). Each S3
   row rewrites the test of its setter file in the same commit.
 - R5 (S6): the replay rule (nd_cmd.h:5): eye 2 and interp replay the stream. A record holds values, never a pointer to core 1 state.
