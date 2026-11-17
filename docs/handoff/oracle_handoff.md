@@ -1,55 +1,49 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main d74594f376, 2026-11-17. NEXT3 wrote ws_MDLTYPE, ws_BARRICADE. DESIGN3 wrote ws_GPOS1, ws_FXCULL, ws_MISCP, ws_FXSLOT1,
-ws_TST13, ws_IMGOVL. Merged since NEXT2: BLANKET, FLTGT, GTSMALL, FXDIG, VCFIX.
-Counters FACT (listcen on 3b890c6d7f, after FLTGT): build 312, gfxpos 8, data 191, data_arrays 0, gfxtype 284, recdl 11, reader 792, model 15.
-Goal: elfgate.py prints func 0 data 0 gfxnames 0 and every listcen counter is 0 (include/PR/gbi.h definitions go in stage 4D).
-## Pages on main (Haiku, disjoint files)
-- ws_IMGFXT: gfxtype -9 (imgfx.c, imgfx.h, common_structs.h). Coder running.
-- ws_MDLTYPE (NEXT3): gfxtype -16 (model.c, model.h, functions.h, HiddenPanel.c:10, tst_13 main.c:6).
-- ws_BARRICADE (NEXT3): gfxtype -6, host test barricade.sh.
-- ws_GPOS1: gfxpos -4, gfxtype -2. Deletes the 3 task-start gMainGfxPos writes (value is always nd_rec_top), moves the definition
-  to game_stubs.c (host tests define their own: not nd_rec.c), nuGfxTaskStart(ucode, flag). Gate spot_mac01_drec.
-- ws_FXCULL: recdl -3 (green_impact, red_impact, shockwave: one desc per site from cap2.txt). New bench fxcull_drec.
-- ws_MISCP: recdl -1 (misc_particles keyed switch on variation, 6 descs from cap2.txt). New bench miscp_drec.
-- ws_FXSLOT1: fxslot=<n> switch, fxtest entry star_shimmer (153), warptest switch (pm_warp.c:846), shimmer line -> nd_rec_dl,
-  capture fxslot_cap -> fxrest.d/cap3.txt (5 sites). build -1, gfxpos -1, recdl +1.
-- ws_TST13 (after MDLTYPE, FXSLOT1): tst_13 main.c:306 capture (warptest) and entry. build -1, gfxpos -1.
-- ws_IMGOVL (after IMGFXT): imgfx.c overlay capture (monstar battle), entry. recdl -1. Loop check: no loop; N(dlist) has no state.
-## Open work
-1. FXSLOT2 page (after FXSLOT1 merges and cap3.txt exists): `python 3ds/tools/entapply.py 3ds/tools/fxrest.d/cap3.txt` gives 5
-   sites (chomp_drop 2, disable_x 2, shimmer 1); add ntab_ent.d/FXSLOT2.txt with src/status_star_shimmer.c (src root file);
-   gate fxslot_drec (already in FXSLOT1) byte-equal, psochk bad equal. recdl -5. A multi line: design a key from cap3.txt.
-   Loop check (DIAG1, code read): the 5 lists hold only vertex, triangle and pipesync (no combine). chomp_drop.c:163,:166 run
-   once per call. disable_x numParts 2 (disable_x.c:46), so its loop runs once. Shimmer D_801097D8 is drawn per particle
-   (status_star_shimmer.c:174-189): leg_prev of particle 1 comes from the draw before, later particles from the shimmer draw.
-   A shimmer `multi 2` in cap3.txt: use the MISCP 1b form (first particle desc A, later particles desc B).
-2. After GPOS1, FXSLOT2, TST13: gfxpos 0 and src build 0 (FACT, listcen.py:291-292 scan src and include only). gMainGfxPos then
-   lives in 3ds/src (nd_rec.c stray_word/nd_gx_w redirect, nd_gtab.c:127 fallback, nd_cen.c census) and variables.h:111.
-   It leaves with the nd_gbi.h redirect (stage 3). Host tests nd_geo/st/tx/val/at_test.c use the macro form on gMainGfxPos.
-3. USER QUESTION sent to main (stage 4D): option A move gDP/gSP/gs definitions and Gfx out of include into a walker-only header
-   (build about -300, data -191 by scan set; listcen must then count that header) or option B keep the headers until the walker goes.
-4. reader 792, model 15, walker gfxtype in 3ds/src: Phase E. Every static list still runs its NDN_UNIT words on the walker
-   (nd_gtab.h:104, CONV2D2); no native emit from NdPsoOut exists. That is a Sonnet design core, not a Haiku page.
+State: main a6b7a1b09b, 2026-11-17. PHASEE wrote plan_walker_delete.md, ws_OPMOVE, ws_PSOSEEN. DIAG1 wrote ws_FXSLOT2.
+Counters FACT (listcen on d74594f376): build 312, gfxpos 4, data 191, data_arrays 0, gfxtype 251, recdl 6, reader 792, model 15.
+Merged after that: MISCP (recdl -1), FXSLOT1 (build -1, gfxpos -1, recdl +1).
+Goal: elfgate.py prints func 0 data 0 gfxnames 0 and every listcen counter is 0.
+## The chain to the end: docs/handoff/plan_walker_delete.md (stages S0-S8, decisions D1 D2, risks). Read it first.
+- D1, D2: orchestrator chose A (core 1 draw state, table lookup per draw; walk census deleted with the walker). The user may override.
+- User 2026-11-16: a table miss uses a fixed fallback and writes one log entry. nd_comb_core leaves the device.
+- User option B 2026-11-17: gbi.h, gbi_custom.h, gt.h stay until the walker goes (stage S7).
+## Pages on main (Haiku)
+- ws_OPMOVE (no wait): git mv 3ds/src/nd_op.c to 3ds/tools (host only), 10 script paths, CMakeLists.txt. reader -62.
+- ws_PSOSEEN (no wait): nd_comb.c:241 miss arm logs `psoseen <ND_PSO_DESC fields>` once per key; psoseen.py writes nd_pso_seen.c.
+- ws_FXSLOT2 (recdl -5), ws_TST13 (build -1, gfxpos -1), ws_IMGOVL (recdl -1).
+## Open work (in order)
+1. FLAMEDL page (FXSLOT1 merged): src/effects/flame.c:188 `gSPDisplayList(gMainGfxPos++, NDN(D_09000918_3544C8))` (state only:
+   loads, cycle type) and :211 `NDN(D_090008F8_3544A8)` (4 vertices, 2 triangles, inherits the preset combine). Form: FXDIG and
+   FXSLOT1 (git show of the deleted pages): nd_rec_dl capture form, entcap run, entapply, entry desc. Bench fxops_drec runs flame
+   (FLTGT gate). Read pm_fxtest.c for the flame index. build -2, gfxpos -2. With TST13 and FXSLOT2: gfxpos 0, src build 0.
+2. PSOFB page (after PSOSEEN): nd_comb.c:241 miss gives a fixed fallback NdCombOut and one log entry. All decisions pass
+   nd_comb_pick (nd_comb.c:240, callers :276 :302). Split nd_decide.c: nd_pso_in_eq, nd_pso_flags, nd_pso_fix, nd_const_rgb,
+   nd_comb_tst stay on the device (to nd_psolk.c). Check them for calls into the static decide code first. The rest goes to
+   3ds/tools/nd_decide.c. Path readers: gen_pso_tab.py:129, build.sh:211, host.d coin.sh:6 :8, conv2c.sh:9, decide.sh:5. model -2.
+3. S2: write docs/handoff/design_nstate.md (Opus oracle): core 1 draw state, native draw record, when core 1 resolves the pso id,
+   the batch rule that keeps drec equal (nd_op_same nd_walk.c:280, gv_epoch :283), the v2 field-set op instead of NDN_UNIT
+   (nd_gtab.h:104). Then the S3-S6 Haiku pages.
+4. gMainGfxPos after src gfxpos 0: nd_rec.c redirect, nd_gtab.c:127, nd_cen.c, variables.h:111. It leaves in S7 with nd_gbi.h.
 ## Facts that cost time
-- fxrest.d/cap.txt is the FXREST1 capture: geom and plod were still in the tuple (old "multi 2" and "multi 30"). cap2.txt is
-  the FXREST2 capture: entcap zeroes geom, key_c, key_s, plod (nd_walk.c:537); psochk skips them (nd_psochk.c:12-16). Use cap2.
-- Loop lists: a list drawn more than once in a loop can enter later draws with other state than the first draw. A list that
-  sets its own combine does this (MISCP 1b, 7b25b8b3af: D_09001A80 later particles enter with cw0 fcffcdff), and so can
-  leg_prev (nd_comb.c:214, set by each decision at nd_comb.c:183, :306). Check each loop site before a page. Give it
-  2 descs (first draw, later draws) when the capture shows 2 tuples. A capture that runs only 1 draw does not show it.
-- conv_k4 (w7) is sticky state from earlier draws: 0x7f in multi-effect runs, 0 in a one-effect run (FXDIG). psochk compares it.
+- Every setter writes an NDO typed unit through nd_nr (nd_nr.h:11). Core 0 runs it in nd_walk_state (nd_walk.c:390). The game
+  has no gbi call left, but the stream is still the N64 state model. reader and model fall only with the new stream (S3-S6).
+- fxslot_cap psochk (6ff72ad823): lk 5185 miss 26091 lkbad 0. Most decisions miss the table today. Keys come only from ND_PSO_DESC.
+- psochk scenes (azt.d debug): fxpic_20_psochk, fxchk_a/b/c, fxr_cap, fxr_chk, iseed_chk, fxcull_drec, fxdig_drec, miscp_drec, imgovl_*.
+- cap.txt is the FXREST1 capture (geom and plod in the tuple). Use cap2.txt: entcap zeroes geom, key_c, key_s, plod (nd_walk.c:537).
+- Loop lists: a list drawn more than once in a loop can enter later draws with other state (MISCP 1b, 7b25b8b3af). leg_prev too
+  (nd_comb.c:214, :183, :306). Give 2 descs (first draw, later draws) when the capture shows 2 tuples. Shimmer `multi 2`: MISCP 1b form.
+- conv_k4 (w7) is sticky: 0x7f in multi-effect runs, 0 in a one-effect run (FXDIG). psochk compares it.
 - entcap logs a list with a v2 table only with the switch entcapt (nd_walk.c:533, :644). NDN(x) lists all have one (ndd_x).
-- entapply edits every site of its input file: filter the entcap.py output to the row's sites first. It needs the plain line
-  `nd_rec_dl(...);` with no trailing comment (entapply.py:32). gen_ntab_entries.py:17 reads only a named desc (no `*e`).
-- bench.py run does not build (bench.py:1218-1225): build the lane with `sh 3ds/build.sh` before a capture run.
-- A new debug switch used by a gate scene must be on main before the gate row: the base is the merge-base (FXSLOT1 then FXSLOT2).
-- shockwave_main maps every type to unk_00 2..5 (shockwave.c:31-43): D_E004AE60[0..1] never run.
-- fxtest index = FXLIST line - 33 (pm_fxtest.c). Slot 44, start 400, spawn at k 2, clear at k 40 (slot_len - 4 after FXSLOT1).
-- host.d scripts need gcc: run them only through nd_host_test.sh. PM_HOSTSEL=all on rowloop lines (host cache fault).
+- entapply edits every site of its input: filter the entcap.py output first. It needs a plain `nd_rec_dl(...);` (entapply.py:32).
+- bench.py run does not build (bench.py:1218-1225): `sh 3ds/build.sh` before a capture run.
+- A new debug switch of a gate scene must be on main before the gate row (the base is the merge-base).
+- fxtest index = FXLIST line - 33 (pm_fxtest.c). host.d scripts run only through nd_host_test.sh. PM_HOSTSEL=all on rowloop lines.
 - lkey_cen.py:71-72 fails a listed file whose reader count drops: a page that removes `.words.w*` reads edits allow.txt.
+- Hooks: SendMessage text must not hold the words "log line" (no_guess_hook.js). No sleep loops (no_poll_hook.js).
+- Other oracles edit this file and the orchestrator commits stray files: read `git log -- <file>` and the file before a write.
 - Coders often hand back before the oracle reply arrives. Tell the orchestrator to resume them with the reply.
 ## What to do first
-1. Answer coder questions (GPOS1, FXCULL, MISCP, FXSLOT1, TST13, IMGOVL, MDLTYPE, BARRICADE, IMGFXT).
-2. Write ws_FXSLOT2 when cap3.txt is on main.
-3. Read the user's answer to the stage 4D question before any include page.
+1. Answer coder questions (OPMOVE, PSOSEEN, FXSLOT2, TST13, IMGOVL).
+2. Write ws_FLAMEDL, then ws_PSOFB when PSOSEEN is merged.
+3. Write design_nstate.md (S2) before any S3 page.
