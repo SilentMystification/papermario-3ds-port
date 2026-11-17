@@ -1,7 +1,7 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
 State: main 05f18ca04d, 2026-11-17. PHASEE2 wrote ws_FLAMEDL, ws_PSOFB (waits PSOSEEN merge), design_nstate.md (S2).
-Counters FACT (listcen on 51332ca38e+FXSLOT2): build 311, gfxpos 3, data 191, gfxtype 251, recdl 5 (FXSLOT2 -5 after), reader 730, model 15.
+Counters FACT (listcen on b4de08e55b): build 311, gfxpos 3, data 191, gfxtype 251, recdl 5, reader 792, model 15. Since: OPMOVE reader -62, FXSLOT2 recdl -5.
 Merged: OPMOVE (reader -62), FXSLOT2 (recdl -5). PSOSEEN branch 2f1e9c7d06: gen_pso_tab fails in its build 2 (no oracle answer seen).
 ## The chain to the end: docs/handoff/plan_walker_delete.md (stages S0-S8, decisions D1 D2, risks). Read it first.
 - D1, D2: orchestrator chose A (core 1 draw state, table lookup per draw; walk census deleted with the walker). The user may override.
