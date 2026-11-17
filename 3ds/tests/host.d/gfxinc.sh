@@ -2,6 +2,8 @@
 # GFXINC: self-test of the gconv object cache 3ds/tools/gconv_objcache.py (cache safety rule 4). Seeded faults: one changed
 # byte of an #include file, of an .incbin file and of a stored object; a key.txt of another key; PM_CACHE=off; a cachecheck of a
 # changed entry. Each must give a miss (or CACHECHECK FAIL). A hit must give the bytes of a plain compile. Prints "gfxinc ok".
+# GCONVSPLIT: an entry is <primary>/<dep state>/ (ls -dt: the newest is the one of the current files); the last check: after
+# other header states, the first state is still a hit (a header edit does not evict).
 set -e
 R=$(pwd); W=/tmp/gfxinc; rm -rf $W; mkdir -p $W/c $W/p; cd $W
 fail() { echo "gfxinc FAIL $1"; exit 1; }
@@ -15,16 +17,17 @@ oc; grep -q "hit 1 miss 0" $W/log.txt || fail "second run is not a hit"
 cp a.o $W/p/hit.o; gcc $F -c -o $W/p/plain.o a.c; cmp -s $W/p/hit.o $W/p/plain.o || fail "a hit gave other bytes than a plain compile"
 printf '#define H 2\n' > h.h; oc; grep -q "miss 1" $W/log.txt || fail "a changed include byte gave a hit"
 printf 'abd' > d.bin; oc; grep -q "miss 1" $W/log.txt || fail "a changed incbin byte gave a hit"
-e=$(ls -d $W/c/*/ | head -1); printf 'x' >> ${e}obj.o; oc; grep -q "failed its check" $W/log.txt || fail "a changed stored byte gave a hit"
-e=$(ls -d $W/c/*/ | head -1); printf 'other' > ${e}key.txt; oc; grep -q "miss 1" $W/log.txt || fail "a key.txt of another key gave a hit"
+e=$(ls -dt $W/c/*/*/ | head -1); printf 'x' >> ${e}obj.o; oc; grep -q "failed its check" $W/log.txt || fail "a changed stored byte gave a hit"
+e=$(ls -dt $W/c/*/*/ | head -1); printf 'other' > ${e}key.txt; oc; grep -q "miss 1" $W/log.txt || fail "a key.txt of another key gave a hit"
 PM_CACHE=off oc; grep -q "hit 0 miss 1" $W/log.txt || fail "PM_CACHE=off gave a hit"
 PM_CACHE=check oc; grep -q "cachecheck gconvobj ok 1 stale 0 new 0" $W/log.txt || fail "cachecheck of an equal entry"
 printf '#define H 3
 ' > h.h; PM_CACHE=check oc; grep -q "ok 0 stale 1 new 0" $W/log.txt || fail "check mode did not count a stale entry"
-e=$(ls -d $W/c/*/ | head -1); printf 'x' >> ${e}obj.o; if PM_CACHE=check oc; then fail "check mode passed a stored byte changed without out.sha1"; fi
+e=$(ls -dt $W/c/*/*/ | head -1); printf 'x' >> ${e}obj.o; if PM_CACHE=check oc; then fail "check mode passed a stored byte changed without out.sha1"; fi
 grep -q "CACHECHECK FAIL gconvobj.*out.sha1" $W/log.txt || fail "no FAIL line for a stored byte changed without out.sha1"
-e=$(ls -d $W/c/*/ | head -1); printf 'x' >> ${e}obj.o; sha1sum ${e}obj.o | cut -d' ' -f1 > ${e}out.sha1
+e=$(ls -dt $W/c/*/*/ | head -1); printf 'x' >> ${e}obj.o; sha1sum ${e}obj.o | cut -d' ' -f1 > ${e}out.sha1
 if PM_CACHE=check oc; then fail "cachecheck missed a changed entry"; fi
 grep -q "CACHECHECK FAIL gconvobj" $W/log.txt || fail "no CACHECHECK FAIL line"
+printf '#define H 1\n' > h.h; printf 'abc' > d.bin; oc; grep -q "hit 1 miss 0" $W/log.txt || fail "a header edit evicted the entry of the first state"
 cd "$R"; rm -rf $W
 echo "gfxinc ok"

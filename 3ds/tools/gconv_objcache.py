@@ -5,10 +5,13 @@ Cache folder: env GCONV_OBJ (the docker volume pm3ds-gconvobj-<host image id>). 
 compiles and nothing is stored. PM_CACHE=check: every source compiles and its object is compared with the entry (cachecheck).
 Cache safety (docs/handoff/plan_buildspeed.md "Cache safety"):
 - the primary key is the text: tool version, gcc and as versions, the flags, the source path and the sha1 of the source;
-- the entry <GCONV_OBJ>/<16 hex of sha1(primary key)>/ holds key.txt, deps.sha1 (the sha1 of every file the compile read:
-  gcc -MD gives the #include files, as --MD the .incbin files), out.sha1 and obj.o;
-- a hit needs key.txt equal, every dep file equal to its sha1 and obj.o equal to out.sha1; anything else removes the entry and
-  the source compiles; a new entry is a temp folder renamed in one step.
+- GCONVSPLIT (v2): the folder <GCONV_OBJ>/<16 hex of sha1(primary key)>/ holds up to CAND entries, one per dep state:
+  <16 hex of sha1(deps.sha1)>/ with key.txt, deps.sha1 (the sha1 of every file the compile read: gcc -MD gives the #include
+  files, as --MD the .incbin files), out.sha1 and obj.o. A header edit adds an entry and keeps the others (no evict between
+  lanes with different headers);
+- every entry that a lookup reads is checked: key.txt other than the key, or obj.o other than out.sha1, removes the entry;
+- a hit needs one entry whose dep files all equal their sha1; else the source compiles; a new entry is a temp folder renamed
+  in one step; v1 entries (key.txt at the top) are removed at the start.
 Prints "gconvobj: hit H miss M" on stderr; check mode also "cachecheck gconvobj ok N" or "CACHECHECK FAIL gconvobj <src>".
 Exit 1 when a compile fails or a cachecheck differs. Host self-test: 3ds/tests/host.d/gfxinc.sh."""
 import concurrent.futures
@@ -20,8 +23,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-VERSION = "gconv-obj v1"
+VERSION = "gconv-obj v2"
 KEEP = int(os.environ.get("GCONV_OBJ_KEEP", "3000"))
+CAND = int(os.environ.get("GCONV_OBJ_CAND", "4"))  # GCONVSPLIT: entries (dep states) kept per primary key
 _memo = {}
 
 
@@ -59,17 +63,55 @@ def entry_dir(root, key):
     return Path(root) / hashlib.sha1(key.encode("utf-8")).hexdigest()[:16]
 
 
-def entry_ok(d, key):
+def cand_state(c, key):
+    """GCONVSPLIT: "key" (key.txt differs), "out" (obj.o differs from out.sha1), "hit" (every dep file equals its sha1) or
+    "other" (another dep state)."""
     try:
-        if (d / "key.txt").read_bytes().decode("utf-8") != key:
-            return False
-        for ln in (d / "deps.sha1").read_text(encoding="utf-8").splitlines():
+        if (c / "key.txt").read_bytes().decode("utf-8") != key:
+            return "key"
+        if (c / "out.sha1").read_text(encoding="utf-8").strip() != sha1_file(c / "obj.o"):
+            return "out"
+        for ln in (c / "deps.sha1").read_text(encoding="utf-8").splitlines():
             h, path = ln.split("  ", 1)
             if dep_hash(path) != h:
-                return False
-        return (d / "out.sha1").read_text(encoding="utf-8").strip() == sha1_file(d / "obj.o")
+                return "other"
+        return "hit"
     except (OSError, ValueError, UnicodeDecodeError):
-        return False
+        return "key"
+
+
+def cands(d):
+    """The entries of a primary folder, newest first (no temp folder)."""
+    try:
+        cs = [c for c in d.iterdir() if c.is_dir() and ".tmp." not in c.name]
+    except OSError:
+        return []
+    cs.sort(key=mtime, reverse=True)
+    return cs
+
+
+def mtime(c):
+    try:
+        return c.stat().st_mtime
+    except OSError:
+        return 0
+
+
+def lookup(root, key, src):
+    """(hit entry or None, entries of other dep states, entries removed for a changed object). Every entry read is checked."""
+    d = entry_dir(root, key)
+    hit, other, outbad = None, 0, 0
+    for c in cands(d):
+        st = cand_state(c, key)
+        if st in ("key", "out"):
+            print("gconvobj: entry %s/%s of %s failed its check (%s), removed" % (d.name, c.name, src, "key" if st == "key" else "object hash"), file=sys.stderr)
+            shutil.rmtree(c, ignore_errors=True)
+            outbad += st == "out"
+        elif st == "hit" and hit is None:
+            hit = c
+        else:
+            other += 1
+    return hit, other, outbad
 
 
 def parse_deps(text):
@@ -97,30 +139,40 @@ def compile_one(src, flags):
     return r.returncode, sorted(set(deps))
 
 
-def entry_out_bad(d, key):
-    """True when the key.txt matches and obj.o differs from out.sha1 (a stored byte changed): a FAIL, not a stale entry."""
-    try:
-        if (d / "key.txt").read_bytes().decode("utf-8") != key:
-            return False
-        return (d / "out.sha1").read_text(encoding="utf-8").strip() != sha1_file(d / "obj.o")
-    except (OSError, ValueError, UnicodeDecodeError):
-        return False
-
-
 def store(root, key, obj, deps, tag):
     d = entry_dir(root, key)
-    tmp = d.with_name(d.name + ".tmp.%d.%d" % (os.getpid(), tag))
+    dtext = "".join("%s  %s\n" % (dep_hash(p), p) for p in deps)
+    c = d / hashlib.sha1(dtext.encode("utf-8")).hexdigest()[:16]
+    tmp = d / (c.name + ".tmp.%d.%d" % (os.getpid(), tag))
     shutil.rmtree(tmp, ignore_errors=True)
     tmp.mkdir(parents=True)
     shutil.copyfile(obj, tmp / "obj.o")
     (tmp / "key.txt").write_bytes(key.encode("utf-8"))
-    (tmp / "deps.sha1").write_text("".join("%s  %s\n" % (dep_hash(p), p) for p in deps), encoding="utf-8")
+    (tmp / "deps.sha1").write_text(dtext, encoding="utf-8")
     (tmp / "out.sha1").write_text(sha1_file(tmp / "obj.o") + "\n", encoding="utf-8")
-    shutil.rmtree(d, ignore_errors=True)
+    shutil.rmtree(c, ignore_errors=True)
     try:
-        os.rename(tmp, d)
+        os.rename(tmp, c)
     except OSError:
         shutil.rmtree(tmp, ignore_errors=True)
+    os.utime(d)
+    for old in cands(d)[CAND:]:
+        shutil.rmtree(old, ignore_errors=True)
+
+
+def weight(s):
+    """GCONVSPLIT: bytes of the sources a TU file includes (the largest compile starts first)."""
+    n = 0
+    try:
+        for ln in Path(s).read_text(encoding="utf-8", errors="replace").splitlines():
+            if ln.startswith('#include "') and not ln.startswith('#include "nd_gconv.h"'):
+                try:
+                    n += os.path.getsize(ln.split('"')[1])
+                except OSError:
+                    pass
+    except OSError:
+        pass
+    return n
 
 
 def trim(root):
@@ -141,22 +193,31 @@ def main():
     use = bool(root) and os.path.isdir(root) and mode != "off"
     tool = tool_id()
     keys = {s: primary(s, flags, tool) for s in srcs} if use else {}
+    if use:
+        # GCONVSPLIT: a v1 entry (key.txt at the top of the folder) is never read by v2: remove it.
+        v1 = [p for p in Path(root).iterdir() if (p / "key.txt").is_file()]
+        for p in v1:
+            shutil.rmtree(p, ignore_errors=True)
+        if v1:
+            print("gconvobj: removed %d v1 entries" % len(v1), file=sys.stderr)
     todo, hits = [], 0
     for s in srcs:
         if use and mode != "check":
-            d = entry_dir(root, keys[s])
-            if d.is_dir():
-                if entry_ok(d, keys[s]):
-                    shutil.copyfile(d / "obj.o", s[:-2] + ".o")
-                    os.utime(d)
+            hit, _, _ = lookup(root, keys[s], s)
+            if hit is not None:
+                try:  # another run can replace the entry at this moment: then compile
+                    shutil.copyfile(hit / "obj.o", s[:-2] + ".o")
+                    os.utime(hit)
+                    os.utime(hit.parent)
                     hits += 1
                     continue
-                print("gconvobj: entry %s of %s failed its check (key, dep or object hash), removed" % (d.name, s), file=sys.stderr)
-                shutil.rmtree(d, ignore_errors=True)
+                except OSError:
+                    pass
         todo.append(s)
-    jobs = int(os.environ.get("GCONV_JOBS", "4"))
+    jobs = int(os.environ.get("GCONV_JOBS", "16"))  # GCONVSPLIT: 16 at once fit the 4 GB container (FACT oracle probe 2026-11-16)
+    order = sorted(todo, key=weight, reverse=True)
     with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as ex:
-        res = dict(zip(todo, ex.map(lambda s: compile_one(s, flags), todo)))
+        res = dict(zip(order, ex.map(lambda s: compile_one(s, flags), order)))
     bad = [s for s in todo if res[s][0] != 0]
     chk_ok, chk_fail = 0, 0
     chk_stale, chk_new = 0, 0
@@ -166,17 +227,17 @@ def main():
                 continue
             obj = s[:-2] + ".o"
             if mode == "check":
-                d = entry_dir(root, keys[s])
-                if d.is_dir() and entry_ok(d, keys[s]):
-                    if sha1_file(d / "obj.o") == sha1_file(obj):
+                hit, other, outbad = lookup(root, keys[s], s)
+                if hit is not None:
+                    if sha1_file(hit / "obj.o") == sha1_file(obj):
                         chk_ok += 1
                     else:
                         chk_fail += 1
                         print("CACHECHECK FAIL gconvobj %s: the entry differs from a cold compile, replaced" % s, file=sys.stderr)
-                elif d.is_dir() and entry_out_bad(d, keys[s]):
+                elif outbad:
                     chk_fail += 1
                     print("CACHECHECK FAIL gconvobj %s: the stored object does not match its out.sha1, replaced" % s, file=sys.stderr)
-                elif d.is_dir():
+                elif other:
                     chk_stale += 1
                 else:
                     chk_new += 1

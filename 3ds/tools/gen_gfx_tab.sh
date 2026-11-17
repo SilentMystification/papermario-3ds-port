@@ -16,8 +16,9 @@ INC="-I 3ds/tools/gconv_inc -I 3ds/tools -I 3ds/include -I 3ds/stub_include -I i
 # shares the object cache entries (the key holds the source path). $T gets the joined object gconv_in.o as before.
 TD=/tmp/gct; rm -rf "$TD"; mkdir -p "$TD"
 TUS=$(python3 3ds/tools/gen_gfx_syms.py "$TD/gconv_in.c" $(for g in $GCONV_SRC; do case $g in *.c) p=$g;; *) p=src/effects/gfx/$g.c;; esac; [ -f "3ds/tools/gfxin/$p" ] && p="3ds/tools/gfxin/$p"; echo "$p"; done))
-# GCONVW: the shared file and each own-TU file are separate objects; ld -r joins them (gconv_sym section)
-# GFXINC: 3ds/tools/gconv_objcache.py compiles them (4 at once): a hit copies the stored object (GCONV_OBJ, the docker volume
+# GCONVW: the shared file and each own-TU file are separate objects; ld -r joins them (gconv_sym section). GCONVSPLIT: every
+# source is an own-TU file (gconv_tu_<path>.c); gconv_in.c holds no source.
+# GFXINC: 3ds/tools/gconv_objcache.py compiles them (16 at once): a hit copies the stored object (GCONV_OBJ, the docker volume
 # pm3ds-gconvobj-<host image id>; unset: no cache). The objects and the link order are the ones of the old loop.
 python3 3ds/tools/gconv_objcache.py --flags "-m32 -w -ffunction-sections -fdata-sections $DEF -DND_GCONV_IN $INC" "$TD/gconv_in.c" $TUS
 TUOBJ=""

@@ -1,9 +1,12 @@
 """S7CONV: the symbol scan of the gfx table tool (gen_gfx_tab.sh, row S7CONV design note 2).
 Usage: gen_gfx_syms.py <out gconv_in.c> <gfx source .c> ...
-Writes the shared file <out gconv_in.c> (it includes the shared sources: effects, model and GSET twins) with the
-array gconv_sym_in[]. Each own-TU source k (any other source) gets its own file gconv_tu<k>.c next to <out gconv_in.c>
-(it includes its source, nd_gconv.h and its entries as gconv_sym_tu<k>[]). Every array sits in the section gconv_sym
-(GCONV_SEC of 3ds/tools/nd_gconv.h). Prints the path of each gconv_tu<k>.c on stdout, one per line.
+GCONVSPLIT: every source gets its own file gconv_tu_<path>.c next to <out gconv_in.c> (<path>: the source path with each
+character other than A-Z a-z 0-9 replaced by _). It includes its source, nd_gconv.h and its entries as gconv_sym_tu_<path>[].
+A name does not depend on the place of the source in the list, so a new source leaves the other names (and their object cache
+entries) as they are. <out gconv_in.c> includes only nd_gconv.h (no entry). Every array sits in the section gconv_sym
+(GCONV_SEC of 3ds/tools/nd_gconv.h). Prints the path of each TU file on stdout, one per line: first the sources of SHARED
+(src/effects, src/entity/model and their twins), then the others, each group in list order. That is the link order of the old
+shared file, so the section (and the tables) keep their order.
 Symbols: every non-static `Gfx NAME[] =`, `Vtx NAME[..] =` and `Mtx NAME =` or `Matrix4s NAME =`, `Lights1 NAME =` of the sources and their `#include "*.inc.c"`
 files (under assets/us, src or next to the includer), named `N(x)` as NAMESPACE_x (NAMESPACE A(x) as AREA_x); and every INCLUDE_IMG/PAL/RAW NAME (its
 end from the NAME_gend label of 3ds/tools/gconv_inc/include_asset.h). Run from the repo root."""
@@ -108,7 +111,13 @@ def scan(path, out, moved=False, parent_ns=None, ren=None):
 
 
 TWIN = "3ds/tools/gfxin/"
-SHARED = ("src/effects/", "src/entity/model/")  # GSETB: a twin is shared when its device source is
+SHARED = ("src/effects/", "src/entity/model/")  # GSETB: a twin is shared when its device source is; GCONVSPLIT: link order only
+TU_CHAR = re.compile(r"[^A-Za-z0-9]")
+
+
+def tu_tag(s):
+    # GCONVSPLIT: tu_<path>, the path with every other character as _
+    return "tu_" + TU_CHAR.sub("_", s)
 
 
 def scan_source(s, syms):
@@ -160,8 +169,8 @@ def main():
     out_c, srcs = sys.argv[1], list(dict.fromkeys(sys.argv[2:]))
     out_dir = pathlib.Path(out_c).parent
     seen = set()
-    shared_srcs, shared_entries = [], []
-    tu_files = []
+    tags = set()
+    shared_tus, tu_files = [], []
     for k, s in enumerate(srcs):
         syms = []
         scan_source(s, syms)
@@ -170,16 +179,19 @@ def main():
             if n not in seen:
                 seen.add(n)
                 mine.append((kind, n, mv))
+        tag = tu_tag(s)
+        if tag in tags:
+            sys.exit(f"gen_gfx_syms: TU name gconv_{tag}.c of {s} is taken by another source")
+        tags.add(tag)
+        path = out_dir / f"gconv_{tag}.c"
+        write_file(path, [s], mine, tag)
         if (s[len(TWIN):] if s.startswith(TWIN) else s).startswith(SHARED):
-            shared_srcs.append(s)
-            shared_entries += mine
+            shared_tus.append(str(path))
         else:
-            path = out_dir / f"gconv_tu{k}.c"
-            write_file(path, [s], mine, f"tu{k}")
             tu_files.append(str(path))
-    write_file(out_c, shared_srcs, shared_entries, "in")
+    write_file(out_c, [], [], "in")
     print(f"gen_gfx_syms: {len(srcs)} sources {len(seen)} symbols", file=sys.stderr)
-    for f in tu_files:
+    for f in shared_tus + tu_files:
         print(f)
 
 

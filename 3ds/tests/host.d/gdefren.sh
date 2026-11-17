@@ -8,10 +8,11 @@ printf '#define A A_body\n#include "a.gfx.inc.c"\n#undef A\nGfx A[] = {\n    gsS
 printf 'Gfx A[] = {\n    gsSPEndDisplayList(),\n};\n' > $W/a.gfx.inc.c
 printf 'Gfx M[] = {\n    gsSPEndDisplayList(),\n};\n' > $W/m.gfx.inc.c
 python3 3ds/tools/gen_gfx_syms.py $W/o/gconv_in.c $W/x.c > /dev/null || { echo "gdefren FAIL gen"; exit 1; }
-for n in A_body A M; do grep -q "\"$n\", GS_GFX" $W/o/gconv_tu0.c || { echo "gdefren FAIL no $n"; exit 1; }; done
-grep -q '"M_x"' $W/o/gconv_tu0.c && { echo "gdefren FAIL undef not seen"; exit 1; }
+TU=gconv_tu__tmp_gdefren_x_c.c # GCONVSPLIT: the TU name of /tmp/gdefren/x.c
+for n in A_body A M; do grep -q "\"$n\", GS_GFX" $W/o/$TU || { echo "gdefren FAIL no $n"; exit 1; }; done
+grep -q '"M_x"' $W/o/$TU && { echo "gdefren FAIL undef not seen"; exit 1; }
 sed 's/^REN_RULE = True/REN_RULE = False/' 3ds/tools/gen_gfx_syms.py > $W/gen_fault.py
 cmp -s $W/gen_fault.py 3ds/tools/gen_gfx_syms.py && { echo "gdefren FAIL seeded fault not applied"; exit 1; }
 python3 $W/gen_fault.py $W/f/gconv_in.c $W/x.c > /dev/null 2>&1
-grep -q '"A_body", GS_GFX' $W/f/gconv_tu0.c 2>/dev/null && { echo "gdefren FAIL seeded fault not seen"; exit 1; }
+grep -q '"A_body", GS_GFX' $W/f/$TU 2>/dev/null && { echo "gdefren FAIL seeded fault not seen"; exit 1; }
 echo "gdefren ok"
