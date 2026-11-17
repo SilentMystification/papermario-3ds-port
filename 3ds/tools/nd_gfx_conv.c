@@ -181,7 +181,7 @@ static void conv(const GSym* g) {
  * called list runs on the state of its call point, and the state it leaves stays), tracks the state groups of an NdPsoDesc, the tile state of tile 0
  * (the walker's set_tile / set_loadtile / set_loadblock / set_timg / set_loadtlut / set_tilesize rules, tex_win0 of nd_texwin.c), the matrices and the
  * colours. A list that reaches a triangle before it has set a combine, the cycle bits of other mode H and G_TEXTURE inherits state from its caller:
- * it gets no table (ntab_inherit.txt). A list with a unit the v2 form has no op for (lights outside a Lights1 symbol, scissor, rectangles, convert and key words, tile 1, an
+ * it gets no table (ntab_inherit.txt). A list with a unit the v2 form has no op for (lights outside a Lights1 symbol, prim depth, image and marker units, tile 1, an
  * address outside the set) gets none either (ntab_unsup.txt, the reason). There is never a v1 fallback inside a v2 table. ---- */
 #include "nd_int.h"
 #include "nd_vslot.h"
@@ -506,7 +506,14 @@ static int v2_walk(const GSym* g, unsigned k0, unsigned depth) {
             else cx->lit = 1;
             break;
         }
-        case NDO_FILL: case NDO_PRIMZ: case NDO_SCISSOR: case NDO_RARE: case NDO_RECT: case NDO_MISC:
+        case NDO_RARE: /* FXOPS: the convert and key words are desc state (set_rare, nd_set.c:148); the unit runs on the device */
+            if (a == NDO_RARE_CONV) s->conv_k4 = (w1 >> 9) & 0xffu;
+            else if (a == NDO_RARE_KEYR) { s->key_c = (s->key_c & 0x00ffffffu) | ((w1 >> 8 & 0xffu) << 24); s->key_s = (s->key_s & 0x00ffffffu) | ((w1 & 0xffu) << 24); }
+            else { s->key_c = (s->key_c & 0xff000000u) | ((w1 >> 24 & 0xffu) << 16) | ((w1 >> 8 & 0xffu) << 8); s->key_s = (s->key_s & 0xff000000u) | ((w1 >> 16 & 0xffu) << 16) | ((w1 & 0xffu) << 8); }
+            break;
+        case NDO_FILL: case NDO_SCISSOR: case NDO_RECT: /* FXOPS: a unit only, no v2 op (nd_ntab_run runs the units, nd_walk.c:600; a texture RECT keeps its 2 NOP units) */
+            break;
+        case NDO_PRIMZ: case NDO_MISC:
             v2_unsup(v2_opname(id), k);
             break;
         case NDO_TIMG: {

@@ -31,8 +31,6 @@ Gfx D_09000800_3543B0[] = {
 };
 
 #include "effects/gfx/D_090008B8_354468.vtx.inc.c"
-#include "effects/gfx/D_090008F8_3544A8.gfx.inc.c"
-#include "effects/gfx/D_09000918_3544C8.gfx.inc.c"
 
 Gfx D_090009E0_354590[] = {
     gsDPSetColorImage(G_IM_FMT_I, G_IM_SIZ_8b, 32, OS_K0_TO_PHYSICAL(&D_800B3AE0)),

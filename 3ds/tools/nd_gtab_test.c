@@ -319,6 +319,11 @@ static void m_unit(const uint32_t* u) {
     case NDO_BLEND: m_col(3, 0, w1); break;
     case NDO_MTX: m_xf(a & 0xffu, w1); break;
     case NDO_POPMTX: m_xf(0xffu, w1); break;
+    case NDO_RARE: /* FXOPS: the convert and key words (set_rare, nd_set.c:148) */
+        if (a == NDO_RARE_CONV) ms.conv_k4 = (w1 >> 9) & 0xffu;
+        else if (a == NDO_RARE_KEYR) { ms.key_c = (ms.key_c & 0x00ffffffu) | ((w1 >> 8 & 0xffu) << 24); ms.key_s = (ms.key_s & 0x00ffffffu) | ((w1 & 0xffu) << 24); }
+        else { ms.key_c = (ms.key_c & 0xff000000u) | ((w1 >> 24 & 0xffu) << 16) | ((w1 >> 8 & 0xffu) << 8); ms.key_s = (ms.key_s & 0xff000000u) | ((w1 >> 16 & 0xffu) << 16) | ((w1 & 0xffu) << 8); }
+        break;
     case NDO_TIMG:
         ms.timg = (const void*)(uintptr_t)w1; ms.t.timg_fmt = (a >> 21) & 7u; ms.t.timg_siz = (a >> 19) & 3u; ms.t.timg_stride = (int)(a & 0xfffu) + 1; ms.m.ld_valid = 0;
         break;
