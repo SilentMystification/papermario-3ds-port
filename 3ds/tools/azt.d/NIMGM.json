@@ -21,15 +21,11 @@
           "regex": "debug battle: formation"
         },
         {
-          "name": "strip",
-          "regex": "imgfx strip f\\d+"
-        },
-        {
           "name": "drec",
           "regex": "drec f420 draws [1-9]\\d* bytes \\d+"
         }
       ],
-      "reason": "NIMGM: strip list call of imgfx.c becomes nd_rec_dl. Cap 30 s."
+      "reason": "NIMGM: strip list call of imgfx.c becomes nd_rec_dl. Cap 30 s. The imgfx strip f / imgfx anim f lines exist only in a head build (scene proof, not an event: the base run has none)."
     },
     {
       "name": "nimgm_anim_drec",
@@ -50,15 +46,11 @@
           "regex": "livewarp: scene frame 120 to dro_02 entry 0"
         },
         {
-          "name": "anim",
-          "regex": "imgfx anim f\\d+"
-        },
-        {
           "name": "drec",
           "regex": "drec f685 draws [1-9]\\d* bytes \\d+"
         }
       ],
-      "reason": "NIMGM: anim list call of imgfx.c becomes nd_rec_ndev. Cap 35 s."
+      "reason": "NIMGM: anim list call of imgfx.c becomes nd_rec_ndev. Cap 35 s. The imgfx strip f / imgfx anim f lines exist only in a head build (scene proof, not an event: the base run has none)."
     }
   ]
 }
