@@ -21,7 +21,7 @@ Shares no file with ENTLST, EFXGT, EFFCEN, FLTGT, BLANKET, GTSMALL, FXDIG. Model
 5. include/common_structs.h:1089 `/* 0x00 */ Gfx* displayList;` -> `/* 0x00 */ void* displayList; /* a list handle */`.
    :2421 `/* 0x14 */ Gfx* displayList;` -> `/* 0x14 */ void* displayList; /* a list handle */`. :2433 `/* 0x14 */ Gfx* dlist;` -> `/* 0x14 */ void* dlist; /* unused */`.
 ## Loop (each output to build3ds/out/, read the last 20 lines)
-1. Edit. `grep -nw Gfx src/imgfx.c include/imgfx.h` prints nothing. `grep -cw Gfx include/common_structs.h` prints 0.
+1. Edit. `grep -nw Gfx src/imgfx.c include/imgfx.h` prints nothing. `grep -cw Gfx include/common_structs.h` prints 1 (the :1115 comment; listcen strips comments).
    `python 3ds/tools/lkey_cen.py 3ds/tests/lkey/allow.txt .` prints `lkey census ok`. Do not run host.d scripts in Git Bash (docker only).
 2. Commit `IMGFXT 1: imgfx buffers as u32 words; imgfx, overlay and animator list members void*`.
 3. `python 3ds/tools/bench.py base <b> --row IMGFXT` for b = nimgm_anim_drec, axns_sam2_drec, axns_kzn2_drec (base runs, not charged).
