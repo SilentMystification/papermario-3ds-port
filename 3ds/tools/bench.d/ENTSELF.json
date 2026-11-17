@@ -1,0 +1,21 @@
+{
+  "benches": [
+    {
+      "name": "entself_fx_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "ENTSELF: drec.txt of flower_splash, flower_trail and bombette_breaking, frames 412 to 500 step 44 (cold det start). A head equals the base.",
+      "scenario": "entself_fx_drec",
+      "cap": 25,
+      "until": "drec f500 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "drec"
+      ],
+      "gates": []
+    }
+  ]
+}

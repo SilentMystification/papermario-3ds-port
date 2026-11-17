@@ -238,7 +238,7 @@ void bombette_breaking_appendGfx(void* effect) {
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 
-    gSPDisplayList(gMainGfxPos++, sp64);
+    nd_draw_list(sp64, ND_SELF);
 
     data = ((EffectInstance*)effect)->data.bombetteBreaking;
     data++;

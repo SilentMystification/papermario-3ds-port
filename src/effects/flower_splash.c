@@ -163,7 +163,7 @@ void flower_splash_appendGfx(void* effect) {
 
             nd_val_prim(0, 0, 112, 96, 24, data->primAlpha);
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            gSPDisplayList(gMainGfxPos++, dlist);
+            nd_draw_list(dlist, ND_SELF);
             nd_xf_pop(G_MTX_MODELVIEW);
         }
     }
