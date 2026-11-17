@@ -694,7 +694,7 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
                     }
                     /* PAUSEFLK: corner idx reads its own 4 vertices of the slot (the decomp SHIFT form). The US form moved quads by 4, 8 and 12 after
                      * corners 1 to 3, so corner 3 wrote slot + 24..27: past the 16-vertex slot, and past the array for slot 20 (InspectIcon, ISpyData). */
-                    gSPVertex(gMainGfxPos++, &quads[idx * 4], 4, 0);
+                    nd_mesh_vtx(&quads[idx * 4], 4, 0);
                     nd_mesh_tri2(0, 3, 1, 0, 0, 2, 3, 0);
                 } else {
                     switch (idx) {

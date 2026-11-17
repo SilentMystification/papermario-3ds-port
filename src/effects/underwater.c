@@ -7,6 +7,7 @@
 #include "nd_st.h"
 #include "nd_geo.h"
 #include "nd_tx.h"
+#include "nd_at.h"
 
 extern Vtx D_09000428_3B9E98[];
 extern Gfx D_09000528_3B9F98[];
@@ -235,7 +236,7 @@ void underwater_appendGfx(void* effect) {
     nd_pso_rm(CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | G_RM_PASS, CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_0, G_BL_CLR_IN, G_BL_1));
     nd_pso_persp(G_TP_PERSP);
     nd_pso_filt(G_TF_BILERP);
-    gPmNdGrabHold(gMainGfxPos++, 1); /* SBLK2 B1: one frame copy for the mesh */
+    nd_mark(G_PM_ND_GRABHOLD, 1); /* SBLK2 B1: one frame copy for the mesh */
 
     guOrthoF(mtx, 0.0f, 1280.0f, 960.0f, 0.0f, -16384.0f, 16384.0f, 1.0f);
     guMtxF2L(mtx, &gDisplayContext->matrixStack[gMatrixListPos]);
@@ -245,11 +246,7 @@ void underwater_appendGfx(void* effect) {
     nd_tex_on(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
 
     // one tile: the whole frame (320 x 240, RGBA16, line 80 words), clamp
-    gDPSetTile(
-        gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b,
-        80, 0x0000, G_TX_LOADTILE, 0,
-        G_TX_NOMIRROR | G_TX_CLAMP, 0, G_TX_NOLOD,
-        G_TX_NOMIRROR | G_TX_CLAMP, 0, G_TX_NOLOD);
+    nd_tex_tile(G_IM_FMT_RGBA, G_IM_SIZ_16b, 80, 0x0000, G_TX_LOADTILE, 0, G_TX_NOMIRROR | G_TX_CLAMP, 0, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_CLAMP, 0, G_TX_NOLOD);
     nd_tex_ldtile(G_TX_LOADTILE, 0, 0, (SCREEN_WIDTH - 1) * 4, (240 - 1) * 4);
     nd_tex_tile(G_IM_FMT_RGBA, G_IM_SIZ_16b, 80, 0x0000, G_TX_RENDERTILE, 0, G_TX_NOMIRROR | G_TX_CLAMP, 0, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_CLAMP, 0, G_TX_NOLOD);
     nd_val_tile_size(G_TX_RENDERTILE, 0, 0, (SCREEN_WIDTH - 1) * 4, (240 - 1) * 4);
@@ -265,7 +262,7 @@ void underwater_appendGfx(void* effect) {
         }
     }
 
-    gPmNdGrabHold(gMainGfxPos++, 0);
+    nd_mark(G_PM_ND_GRABHOLD, 0);
     nd_tex_on(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF);
     nd_xf_push(&gDisplayContext->camPerspMatrix[gCurrentCameraID], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
 }

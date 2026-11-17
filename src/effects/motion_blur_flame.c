@@ -4,6 +4,7 @@
 #include "nd_gtab.h"
 #include "nd_val.h"
 #include "nd_tx.h"
+#include "nd_at.h"
 
 NDN_DECL(D_09000200_3A35D0);
 NDN_DECL(D_090002A8_3A3678);
@@ -158,7 +159,7 @@ void motion_blur_flame_appendGfx(void* effect) {
 
     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
     nd_draw_list(D_E00A29D0[temp_a2], ND_SELF);
-    gPmNdGrabHold(gMainGfxPos++, 1); /* SBLK2 B1: the strips share one frame copy */
+    nd_mark(G_PM_ND_GRABHOLD, 1); /* SBLK2 B1: the strips share one frame copy */
 
     for (i = 0; i < UNK_ARRAY_SIZE_1; i++) {
         f32 temp_f12 = data->unk_1C[i];
@@ -247,7 +248,7 @@ void motion_blur_flame_appendGfx(void* effect) {
         }
     }
 
-    gPmNdGrabHold(gMainGfxPos++, 0);
+    nd_mark(G_PM_ND_GRABHOLD, 0);
 
     for (i = 0; i < ARRAY_COUNT(data->unk_3C) - 1; i++) {
         data->unk_3C[i + 1] = sp18[i];

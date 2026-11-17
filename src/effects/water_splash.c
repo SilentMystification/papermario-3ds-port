@@ -5,6 +5,8 @@
 ND_PSO_DESC(pe_water_splash_222, 0xfc2196c2, 0xf0fefe38, 0x1e182cf0, 0x0c184b50, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0);
 #include "nd_val.h"
 #include "nd_xf.h"
+#include "nd_tx.h"
+#include "nd_at.h"
 
 NDN_DECL(D_09000100_3BCB90);
 NDN_DECL(D_09000268_3BCCF8);
@@ -190,7 +192,7 @@ void water_splash_appendGfx(void* effect) {
     nd_draw_list(NDN(D_09000100_3BCB90), ND_SELF);
 
     data++;
-    gPmNdSplash(gMainGfxPos++, 1);
+    nd_mark(G_PM_ND_SPLASH, 1);
     for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, data++) {
         s32 temp_t2 = (s32)data->unk_04.x + sp94;
         s32 temp_t3 = (s32)data->unk_04.y + temp_fp;
@@ -209,9 +211,7 @@ void water_splash_appendGfx(void* effect) {
 
         u16* refrBuf = nuGfxCfb[0]; { u32 k_; for (k_ = 0; k_ < nuGfxCfbNum; k_++) if (nuGfxCfb[k_] == nuGfxCfb_ptr) { refrBuf = nuGfxCfb[(k_ + nuGfxCfbNum - 1) % nuGfxCfbNum]; break; } }
         /* SPLASHPREV2: the buffer before the current one (2 or 3 buffers), the one pm_cfb_capture_prev copies on the GPU */
-        gDPLoadMultiTile(gMainGfxPos++, OS_K0_TO_PHYSICAL(refrBuf), 0x100, 1, G_IM_FMT_RGBA, G_IM_SIZ_16b, 320, 0,
-                         temp_t2 + 0xA0, temp_t3 + 0x78, temp_t2 + 0xBF, temp_t3 + 0x97, 0,
-                         G_TX_WRAP, G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD);
+        nd_tex_load_mtile(OS_K0_TO_PHYSICAL(refrBuf), 0x100, 1, G_IM_FMT_RGBA, G_IM_SIZ_16b, 320, 0, temp_t2 + 0xA0, temp_t3 + 0x78, temp_t2 + 0xBF, temp_t3 + 0x97, 0, G_TX_WRAP, G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD);
 
         guTranslateF(sp10, data->unk_04.x, data->unk_04.y, data->unk_04.z);
         guScaleF(sp50, data->unk_34, data->unk_34, data->unk_34);
@@ -223,6 +223,6 @@ void water_splash_appendGfx(void* effect) {
         nd_draw_list(D_E00BEAF0[(i + (gGameStatusPtr->frameCounter / 2)) & 3], pe_water_splash_222);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
-    gPmNdSplash(gMainGfxPos++, 0);
+    nd_mark(G_PM_ND_SPLASH, 0);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

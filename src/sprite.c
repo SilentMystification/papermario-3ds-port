@@ -215,10 +215,7 @@ static void spr_flat_gfx(uint32_t** o, Quad* vertices, IMG_PTR raster, PAL_PTR p
                          Vp* vpAlt, Vp* vpMain) {
     NDTX_LOAD_TLUT16(HO, 0, palette);
     if (flags & SPR_SHADING_FLAG_ENABLED) {
-        gDPScrollMultiTile2_4b(gMainGfxPos++, raster, G_IM_FMT_CI, width, height,
-                              0, 0, width - 1, height - 1, 0,
-                              G_TX_CLAMP, G_TX_CLAMP, 8, 8, G_TX_NOLOD, G_TX_NOLOD,
-                              256, 256);
+        nd_tex_scroll_mtile2_4b(raster, G_IM_FMT_CI, width, height, 0, 0, width - 1, height - 1, 0, G_TX_CLAMP, G_TX_CLAMP, 8, 8, G_TX_NOLOD, G_TX_NOLOD, 256, 256);
         nd_tex_tile(G_IM_FMT_RGBA, G_IM_SIZ_16b, 4, 0x0100, 2, 0, G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
         nd_val_tile_size(2, 0, 0, 63 << 2, 0);
         if (flags & SPR_SHADING_FLAG_SET_VIEWPORT) {
@@ -467,11 +464,11 @@ void spr_appendGfx_component(
         ifxImg.xOffset = -(width / 2);
         ifxImg.yOffset = height;
         ifxImg.alpha = opacity;
-        if (gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED) gPmNdSprShade(gMainGfxPos++, 1); /* SHADEIMG: the shade colour inside the imgfx draw */
+        if (gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED) nd_mark(G_PM_ND_SPRSHADE, 1); /* SHADEIMG: the shade colour inside the imgfx draw */
         if (imgfx_appendGfx_component((u8) CurSpriteImgFX, &ifxImg, IMGFX_FLAG_80000, mtxTransform) == 1) {
             CurSpriteImgFX &= ~SPR_IMGFX_FLAG_ALL;
         }
-        if (gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED) gPmNdSprShade(gMainGfxPos++, 0);
+        if (gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED) nd_mark(G_PM_ND_SPRSHADE, 0);
     }
     nd_xf_pop(G_MTX_MODELVIEW);
 }
