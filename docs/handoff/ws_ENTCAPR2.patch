@@ -1,0 +1,77 @@
+diff --git a/3ds/tools/entcap.py b/3ds/tools/entcap.py
+index 18a82f1bf5..c0a4ecf3fd 100644
+--- a/3ds/tools/entcap.py
++++ b/3ds/tools/entcap.py
+@@ -73,6 +73,8 @@ def site_name(addr2line, elf, site):
+     out = subprocess.run(addr2line + ["-f", "-C", "-e", elf, "0x%x" % site], capture_output=True, text=True).stdout.split("\n")
+     fn = out[0].strip() if out and out[0].strip() else "??"
+     loc = out[1].strip() if len(out) > 1 and out[1].strip() else "??:0"
++    if loc.startswith("/src/"):  # ENTCAPR: the build image mounts the worktree at /src; site paths are repo-relative
++        loc = loc[len("/src/"):]
+     return fn, loc
+ 
+ 
+diff --git a/3ds/tools/ntab_ent.d/ENTCAPR2.txt b/3ds/tools/ntab_ent.d/ENTCAPR2.txt
+new file mode 100644
+index 0000000000..fa2937ddc9
+--- /dev/null
++++ b/3ds/tools/ntab_ent.d/ENTCAPR2.txt
+@@ -0,0 +1,3 @@
++# ENTCAPR2: sites with a captured entry (curtains.c:151, npc_merlee.c:248 :259)
++src/curtains.c
++src/world/area_dro/dro_02/npc_merlee.c=dro_02
+diff --git a/src/curtains.c b/src/curtains.c
+index 17e4efc068..518f3dd034 100644
+--- a/src/curtains.c
++++ b/src/curtains.c
+@@ -1,5 +1,6 @@
+ #include "common.h"
+ #include "nd_gtab.h"
++ND_PSO_DESC(pe_curtains_151, 0xfcffffff, 0xfffe793c, 0x1e182c00, 0x0f0a4000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0); /* ENTCAPR2: the first of 3 captured word sets; TheaterFloorGfx sets the combine and render mode before its first draw */
+ #include "nd_val.h"
+ #include "nd_xf.h"
+ #include "nd_geo.h"
+@@ -148,7 +149,7 @@ void render_curtains(void) {
+         nd_xf_push(&D_8009BAA8[1], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+         rgb = 255.0f - (gCurtainFade * 255.0f);
+         nd_val_prim(0, 0, rgb, rgb, rgb, 255);
+-        gSPDisplayList(gMainGfxPos++, NDN(TheaterGfx));
++        nd_draw_list(NDN(TheaterGfx), pe_curtains_151);
+         nd_xf_pop(G_MTX_MODELVIEW);
+     }
+ 
+diff --git a/src/world/area_dro/dro_02/npc_merlee.c b/src/world/area_dro/dro_02/npc_merlee.c
+index 0a12696286..b402cd49b4 100644
+--- a/src/world/area_dro/dro_02/npc_merlee.c
++++ b/src/world/area_dro/dro_02/npc_merlee.c
+@@ -1,5 +1,8 @@
+ #include "dro_02.h"
+ #include "nd_gtab.h"
++ND_PSO_DESC(pe_npc_merlee_248, 0xfcffffff, 0xfffcf279, 0x0008acf0, 0x00553078, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0);
++ND_PSO_DESC(pe_npc_merlee_259a, 0xfcffffff, 0xffff73b9, 0x0008acf0, 0x00553078, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0); /* ENTCAPR2: card_1_gfx drew before (unk_00 1) */
++ND_PSO_DESC(pe_npc_merlee_259b, 0xfcffffff, 0xfffcf279, 0x0008acf0, 0x00553078, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0); /* ENTCAPR2: only card_setup_gfx before (unk_00 5) */
+ #include "model.h"
+ #include "sprite/player.h"
+ #include "include_asset.h"
+@@ -245,7 +248,7 @@ u32 N(appendGfx_ritual_card)(RitualCard* card, Matrix4f mtxParent) {
+         nd_xf_push(VIRTUAL_TO_PHYSICAL(&gDisplayContext->matrixStack[gMatrixListPos++]), G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+ 
+         if (card->unk_00 == 1 || card->unk_00 == 4) {
+-            gSPDisplayList(gMainGfxPos++, NDN(N(card_1_gfx)));
++            nd_draw_list(NDN(N(card_1_gfx)), pe_npc_merlee_248);
+         }
+ 
+         if (card->unk_00 == 1 || card->unk_00 == 5) {
+@@ -256,7 +259,11 @@ u32 N(appendGfx_ritual_card)(RitualCard* card, Matrix4f mtxParent) {
+             guTranslateF(mtxTransform, card->xoffset + 30 - rasterInfo.width / 2, 0.0f, 0.0f);
+             guMtxF2L(mtxTransform, &gDisplayContext->matrixStack[gMatrixListPos]);
+             nd_xf_push(VIRTUAL_TO_PHYSICAL(&gDisplayContext->matrixStack[gMatrixListPos++]), G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+-            gSPDisplayList(gMainGfxPos++, NDN(N(card_2_gfx)));
++            if (card->unk_00 == 1) {
++                nd_draw_list(NDN(N(card_2_gfx)), pe_npc_merlee_259a);
++            } else {
++                nd_draw_list(NDN(N(card_2_gfx)), pe_npc_merlee_259b);
++            }
+             nd_xf_pop(G_MTX_MODELVIEW);
+         }
+         nd_xf_pop(G_MTX_MODELVIEW);
