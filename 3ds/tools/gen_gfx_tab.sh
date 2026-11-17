@@ -25,7 +25,7 @@ TUOBJ=""
 for f in $TUS; do TUOBJ="$TUOBJ ${f%.c}.o"; done
 gcc -m32 -r -nostdlib -o "$T/gconv_in.o" "$TD/gconv_in.o" $TUOBJ
 gcc -m32 -Wall -Wextra -Werror -DND_SCOMP_HOST $DEF $TINC -o "$T/nd_gfx_conv" 3ds/tools/nd_gfx_conv.c 3ds/src/nd_scomp.c 3ds/src/nd_texwin.c 3ds/tools/nd_vslot.c "$T/gconv_in.o" -Wl,--gc-sections
-python3 3ds/tools/gen_ntab_entries.py src/effects > "$T/ntab_entries.txt"
+python3 3ds/tools/gen_ntab_entries.py src/effects $(cat $(ls 3ds/tools/ntab_ent.d/*.txt | LC_ALL=C sort) | sed 's/#.*//' | tr -s ' \t\r\n' ' ') > "$T/ntab_entries.txt" # ENTSRC: plus the files of ntab_ent.d
 # MODELRM: the lists of nd_rmdef.h also get a static NdSDef (ndsd_<list>)
 sed -n 's/^ *X(\(Gfx_RM[A-Za-z0-9_]*\)).*/\1/p' 3ds/include/nd_rmdef.h > "$T/sdef_names.txt"
 "$T/nd_gfx_conv" "$T/nd_ntab_descs.c" "$T/ntab_inherit.txt" "$T/ntab_unsup.txt" "$T/nd_ntab_idx.c" "$T/ntab_tables.txt" "$T/ntab_entries.txt" "$T/ntab_pairs.txt" "$T/gset_ok.txt" "$T/sdef_names.txt" > "$T/nd_gfx_tab.c"

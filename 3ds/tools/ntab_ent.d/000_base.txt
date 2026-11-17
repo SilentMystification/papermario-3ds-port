@@ -1,0 +1,1 @@
+# ENTSRC: extra source files of gen_ntab_entries.py (gen_gfx_tab.sh). One per line: <path>[=<NAMESPACE>]. A row adds its own <ROW>.txt.

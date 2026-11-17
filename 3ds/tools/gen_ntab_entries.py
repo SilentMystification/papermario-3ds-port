@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""gen_ntab_entries.py <dir>: the device entry writer of CONV2C2 (ws_CONV2C2.md, group 1).
+"""gen_ntab_entries.py <dir> [<file>[=<NAMESPACE>] ...]: the device entry writer of CONV2C2 (ws_CONV2C2.md, group 1).
 
 For every nd_draw_list(<arg>, <desc>) site of <dir>/*.c (sorted; <desc> not ND_SELF) the list names of <arg> (names()) paired with
 the 20 tokens of the line ND_PSO_DESC(<desc>, ...); of the same file. One output line per distinct (list, desc) of a site:
@@ -7,6 +7,8 @@ the 20 tokens of the line ND_PSO_DESC(<desc>, ...); of the same file. One output
 A site that does not resolve (an arg form names() does not know, or no ND_PSO_DESC line of the desc) prints:
     gne skip <file>:<line>
 Module form: names(text, arg) returns the list names (a list, or None for a skip); ws_FXSELF imports it.
+ENTSRC: after the files of <dir>, each extra <file> (gen_gfx_tab.sh passes the lines of 3ds/tools/ntab_ent.d/*.txt) is scanned the same
+way. With =<NAMESPACE>, N(x) in an argument is <NAMESPACE>_x (the gen_gfx_syms.py name). ENTITY_ADDR(e, Gfx*, x) is x (include/entity.h:66).
 """
 import os
 import re
@@ -66,16 +68,21 @@ def _init(text, name):
     return _uniq(vals)
 
 
-def _names(text, arg, local):
+def _names(text, arg, local, ns=None):
     s = _outer(arg.strip())
+    if ns:  # ENTSRC namespace
+        s = re.sub(r"\bN\((\w+)\)", lambda m: ns + "_" + m.group(1), s)
+    me = re.fullmatch(r"ENTITY_ADDR\(\s*\w+\s*,\s*Gfx\s*\*\s*,\s*(.+)\)", s)  # ENTSRC entity
+    if me:
+        return _names(text, me.group(1), local, ns)
     s = re.sub(r"^NDN\((\w+)\)$", r"\1", s)  # GSETB: a moved list is written NDN(X) (gset.py)
     if "?" in s:
         rest = s.split("?", 1)[1]
         if ":" not in rest:
             return None
         a, b = rest.split(":", 1)
-        na = _names(text, a, local)
-        nb = _names(text, b, local)
+        na = _names(text, a, local, ns)
+        nb = _names(text, b, local, ns)
         if na is None or nb is None:
             return None
         return _uniq(na + nb)
@@ -87,7 +94,7 @@ def _names(text, arg, local):
             found = False
             for mm in re.finditer(r"\b%s\s*=\s*([^;=][^;]*);" % re.escape(s), text):
                 found = True
-                r = _names(text, mm.group(1).strip(), False)
+                r = _names(text, mm.group(1).strip(), False, ns)
                 if r is None:
                     return None
                 vals += r
@@ -97,47 +104,52 @@ def _names(text, arg, local):
     return None
 
 
-def names(text, arg):
-    return _names(strip_comments(text), arg, True)
+def names(text, arg, ns=None):
+    return _names(strip_comments(text), arg, True, ns)
+
+
+def scan(path, ns, seen):
+    with open(path, encoding="utf-8", errors="replace") as fh:
+        text = fh.read()
+    lines = [l.rstrip("\r") for l in text.split("\n")]
+    descs = {}
+    for l in lines:
+        m = DESC.match(l)
+        if m and m.group(1) not in descs:
+            descs[m.group(1)] = [t.strip() for t in m.group(2).split(",")]
+    for i, l in enumerate(lines, 1):
+        m = CALL.search(l)
+        if not m or m.group(2) == "ND_SELF":
+            continue
+        where = "%s:%d" % (path, i)
+        desc = m.group(2)
+        if desc not in descs or len(descs[desc]) != 20:
+            print("gne skip " + where)
+            continue
+        ns_ = names(text, m.group(1), ns)
+        if ns_ is None:
+            print("gne skip " + where)
+            continue
+        for n in ns_:
+            if (n, desc) in seen:
+                continue
+            seen.add((n, desc))
+            print(" ".join([n, desc, where] + descs[desc]))
 
 
 def main(argv):
     if len(argv) < 2:
-        print("usage: gen_ntab_entries.py <dir>", file=sys.stderr)
+        print("usage: gen_ntab_entries.py <dir> [<file>[=<NAMESPACE>] ...]", file=sys.stderr)
         return 2
     sys.stdout.reconfigure(newline="\n")  # LF on every host (the expected output a.txt is LF)
     d = argv[1].rstrip("/")
     seen = set()
     for f in sorted(os.listdir(d)):
-        if not f.endswith(".c"):
-            continue
-        path = d + "/" + f
-        with open(path, encoding="utf-8", errors="replace") as fh:
-            text = fh.read()
-        lines = [l.rstrip("\r") for l in text.split("\n")]
-        descs = {}
-        for l in lines:
-            m = DESC.match(l)
-            if m and m.group(1) not in descs:
-                descs[m.group(1)] = [t.strip() for t in m.group(2).split(",")]
-        for i, l in enumerate(lines, 1):
-            m = CALL.search(l)
-            if not m or m.group(2) == "ND_SELF":
-                continue
-            where = "%s:%d" % (path, i)
-            desc = m.group(2)
-            if desc not in descs or len(descs[desc]) != 20:
-                print("gne skip " + where)
-                continue
-            ns = names(text, m.group(1))
-            if ns is None:
-                print("gne skip " + where)
-                continue
-            for n in ns:
-                if (n, desc) in seen:
-                    continue
-                seen.add((n, desc))
-                print(" ".join([n, desc, where] + descs[desc]))
+        if f.endswith(".c"):
+            scan(d + "/" + f, None, seen)
+    for x in argv[2:]:  # ENTSRC: the extra files, in argument order
+        path, _, ns = x.partition("=")
+        scan(path, ns or None, seen)
     return 0
 
 
