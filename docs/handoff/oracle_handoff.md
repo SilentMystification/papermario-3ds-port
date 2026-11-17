@@ -1,52 +1,45 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main 808bd98f15, 2026-11-17. Oracle ENDGAME1 (the only oracle) wrote the 4 pages below.
-Counters on 52f9b15c42 (FACT listcen): build 341 (include 308 = gbi.h 245, gbi_custom.h 61, gt.h 2; src 33), gfxpos 44, data 482,
-data_arrays 15, gfxtype 428, recdl 11, reader 792, model 15. After the 4 pages (FACT, oracle listcen of main + all 4 patches):
-build 326 (src 18), gfxpos 29, data 339, data_arrays 10, gfxtype 424, recdl 11.
-Goal: elfgate.py prints func 0 data 0 gfxnames 0 and every listcen counter is 0.
-Not ours: 3ds/build.sh, nd_host_test.sh, bench.py, merge_row.sh, post_merge.sh, postmerge_bg.sh, rowloop.sh, gen_gfx_tab.sh, run_azahar.ps1, CMake, .ld.
-## Ready pages (Haiku, start now, disjoint files; page + patch, apply --check OK on 52f9b15c42, one host run PASS on all 4)
-- ws_ENTSELF (row ENTSELF2): 6 ND_SELF sites incl. pause_gfx.c:425. build -6 gfxpos -6. New bench entself_fx_drec.
-- ws_TSTSHK (row TSTSHK2): tst_13 shockwave gset, entity_model.c:470 dead arm. Gate decision in the page (tst13 blocked, host proof).
-- ws_ENTCAPR2: curtains.c:151 and npc_merlee.c:248 :259 entries. build -3. Gate curt_title_drec, gmerlee_drec. Old ws_ENTCAPR goes.
-- ws_INITGS: HudElemBack/FrontInitGfx, TitleSetupGfx gset, 5 ND_SELF sites. build -5 data -28.
-## Remaining src build 18 and gfxpos 29 after the 4 pages, by group, with the move (FACT grep 52f9b15c42 unless marked)
-1. Converter refusals ("unit address outside the symbol map", FACT ntab_unsup.txt of the oracle host run):
-   screen_overlays.c:264 D_8014EA48 (unit 15 loads `BSS s32 D_80156910`, screen_overlays.c:21, a screen copy buffer; also itab),
-   effects flame.c:190 D_090009E0 (unit 15, kind OPEN), curtains.c:132 :176 TheaterInitGfx (unit 0 gsSPViewport(&TheaterViewport)).
-   Move: a converter symbol rule row (RAWIMG form: gen_gfx_syms + host test with seeded fault), then gset, then entries. Not paged.
-2. itab with no capture yet: status_star_shimmer.c:189 D_801097D8, flame.c:188 :211 (D_09000918, D_090008F8 itab). Move: entcap
-   capture (ENTCAPE form). Scene OPEN for the shimmer (star power use). flame: fxtest scene of the flame effect (id OPEN).
-3. flame.c:197 preset->dlist (handle of the flame lists): after 1 and 2, nd_draw_list with the entry of each preset. Data: gfx/flame.c 49.
-4. entity_model.c:492 (reflect), :774 :786 (draw_entity_model_E); model.c:4340; world node lists flo_10 waterfx.c:231,
-   mac_00 water_gfx.c:20, mac_01 crystal_ball_gfx.c:95. Move: NMDL6/NMDL7 (entity and model record form). Design OPEN (Sonnet needs the user).
-5. filemenu_common.c:996 :1018 D_8024B708 (+ filemenu_gfx.c data 4): it draws vertex slots 0-1 of D_8024B6F0 under another matrix.
-   Move: a design (both quads on the CPU, or one list per arrow). Not Haiku until the oracle writes it.
-6. tst_13 main.c:307 gSPDisplayList(NDN(N(shockwave_gfx))) after TSTSHK2: needs an entry; no Azahar capture (pm_warp.c:747).
-   Move: an entry from the code read of main.c:302-305 (cycle 1, AA_ZB_OPA_SURF, mdl_draw_hidden_panel_surface state), host proof only.
-7. gfxpos only (11): cam_main.c:29 (definition), main.c:151, main_loop.c:178 :195 (task start: stage 4B), model.c:4258 :4273 (effcen
-   probe ec_g0), msg_draw.c:334 :1692 and filemenu_msg.c:184 :209 (gMainGfxPos half of a stream position compare), draw_box.c:462
-   (nd_gx_w writes words to gMainGfxPos). Move after build 0: one Haiku page drops the gMainGfxPos halves (only nd_rec_task moves
-   it then: GUESS until build is 0), draw_box.c:462 needs a read of nd_gx_w (OPEN).
-## Remaining data 339 after the 4 pages (FACT)
-include/PR/gbi.h 191 (macro definitions: they go with stage 4D, never by a row), blanket.gfx.inc.c 39 (named by
-ToadHouseBlanketAnim.inc.c, included by dro_02/npc.c:59, hos_03/npc.c:7, jan_03/npc.c:20: gset include mode of those 3 files, not
-checked), gfx/flame.c 49 (group 1-3), screen_overlays.c 40 (group 1), curtains.c 16 (TheaterInitGfx, group 1), filemenu_gfx.c 4 (group 5).
-## Phase E triggers (plan_endgame.md section 6). FACT: include build 308 and include data 191 are gbi.h macro definitions. They reach
-0 only in stage 4D. So read every "build 0" and "data 0" trigger as "src and assets 0" (oracle rule, 2026-11-17).
-- Stage 1A-1C: src build 0, gfxpos 0 (except cam_main.c:29 and the task lines of group 7), recdl 0, no device caller of nd_dlc_compile.
-  Holders: groups 1-7 and the recdl 11 (effects 10, imgfx.c 1). Not within the next 15 rows: group 4 and 5 need designs.
-- Stage 5: data 0 outside gbi.h. Holders: groups 1, 3, 5 and blanket. Not within 15 rows (group 5 design).
-- No phase E page is written: no trigger can hold within the next 15 rows.
+State: main 358070e292, 2026-11-17. Oracle BACKLOG5 wrote the 3 pages below.
+Counters on 358070e292 (FACT listcen): build 326 (include 308, src 18), gfxpos 29, data 339, data_arrays 10, gfxtype 424, recdl 11,
+reader 792, model 15. After GFXPOS7 + THEATVP (FACT, oracle listcen of main + both patches): build 324, gfxpos 22, data 323,
+data_arrays 9, gfxtype 420.
+Goal: elfgate.py prints func 0 data 0 gfxnames 0 and every listcen counter is 0 (include/gbi.h definitions go in stage 4D).
+## Ready pages (Haiku, start now, disjoint files; page + patch, apply --check OK on 358070e292, one host run PASS on all 3)
+- ws_GFXPOS7: msg_draw.c:334 :1692, filemenu_msg.c:184 :209 drop the gMainGfxPos half; draw_box.c:462 -> nd_pso_unit. gfxpos -5.
+  Gate wscmb_pause_drec, wscmb_fsel_drec.
+- ws_THEATVP: GS_VP symbol kind (gen_gfx_syms VP rule, nd_gfx_conv.c viewport lookup), TheaterInitGfx moves, curtains.c:133 :177
+  ND_SELF. build -2 gfxpos -2 data -16. Gate curt_title_drec.
+- ws_BASEKEEP2 (tool fault, no counter): bench.py base_check_shots removed row bases (stored() with the defs of the postmerge
+  checkout). FACT post_merge_f1216481d1.txt:8978. Host test basecheck.sh with 2 seeded faults. No build, no Azahar.
+## Remaining src build 16 and gfxpos 22 after the 3 pages, by group (FACT grep 358070e292)
+1. flame.c:188 :190 :197 :211 (build 4, gfxpos 4, data gfx/flame.c 49). :190 D_090009E0 unit 15 is gsDPLoadTextureTile of
+   OS_K0_TO_PHYSICAL(&D_800B3AE0), a render target buffer (gfx/flame.c:47), and unit 0 is gsDPSetColorImage of it: NTGT form, not a
+   symbol rule. D_09000800 unit 12 the same kind (ntab_unsup). :188 :211 need captured entries (fxtest of EFFECT_FLAME). :197 after them.
+2. screen_overlays.c:264 D_8014EA48 (data 40 with D_8014E8F0/E9A8): its 11 tile loads read 160x120 RGBA16 from `BSS s32 D_80156910`
+   (screen_overlays.c:21, 4 bytes). A symbol rule needs an image extent decision: user or Sonnet. Not paged.
+3. filemenu_common.c:996 :1018 D_8024B708 (build 2, gfxpos 2, data 4). FACT ntab_inherit.txt: `itab unsup vertex slots
+   (nd_vslot_resolve) (unit 1)`: its TRI2 uses caller slots 0-1 (D_8024B6F0 under the matrix of :987) and own slots 2-3. Move: a
+   mixed caller/own slot form in nd_vslot.c (VSLOT2 was Sonnet). Not Haiku.
+4. entity_model.c:490 :772 :784, model.c:4340, flo_10 waterfx.c:231, mac_00 water_gfx.c:20, mac_01 crystal_ball_gfx.c:95. Design
+   (Sonnet, the user has not approved): :490 (reflect arm of the image path) takes the producer of :468, nd_rec_ent_draw(list,
+   entRec[1] words, 0), under the flipped matrix. :784 (reflect arm of the E path) takes the producer of :772. :772 needs an entity
+   record form with the per-model vertex segment (nd_val_seg D_80154374 at :770): NMDL6. model.c:4340 and the 3 world lists: NMDL7.
+5. status_star_shimmer.c:189 D_801097D8 itab: an entcap capture (star power scene OPEN).
+6. tst_13 main.c:306: an entry needs the state of mdl_draw_hidden_panel_surface (main.c:302); no Azahar capture (pm_warp.c:747).
+7. gfxpos only after GFXPOS7: cam_main.c:29 (definition), main.c:151, main_loop.c:178 :195 (task start: stage 4B), model.c:4258
+   :4273 (effcen probe ec_g0).
+## Remaining data 323 after the 3 pages (FACT): include/PR/gbi.h 191 (stage 4D), gfx/flame.c 49 (group 1), screen_overlays.c 40
+(group 2), blanket.gfx.inc.c 39 (the StaticAnimatorNode .displayList fields of ToadHouseBlanketAnim.inc.c: animator form, NMDL), filemenu_gfx.c 4.
+## Phase E: no trigger holds within the next 15 rows (groups 1-4 need NTGT, Sonnet or user designs). No phase E page.
 ## Facts that cost time
-- Write patches in a scratch worktree (`git worktree add --detach <scratchpad>/wt main`); the add takes over 2 min (run it alone).
-  Remove it with the full path. Source files are CRLF: replace with a newline-aware script, git diff gives LF patches.
-- gset.py holds a list that its device file names with `&X` (hold_line, gset.py:173). Change `&X` to `X` first (same address).
-- A new file needs gconv_src.d/<row>.txt to reach the converter: gset_ok.txt lists only lists of gconv sources.
-- host.d/buildlock.sh failed once in the oracle run (`docker engine not answering`, race), passed on the rerun: a tool fault, not a page fault.
-- entcap logs a list only when it has no v2 table (nd_walk.c `!nt`). ND_SELF is the null entry (nd_gtab.h:88, nd_gtab.c:136).
-- Writing Python through a Bash heredoc mangles backslashes: use the Edit tool or chr(92).
+- Scratch worktree: `git worktree add --detach <scratchpad>/wt main` took 5 s this time. Remove it with the full path.
+- Git Bash PATH: a C:/ path breaks PATH (colon). Use /c/... A python3 shim dir is needed to run host.d/*.sh locally.
+- Source files are CRLF in the worktree: edit with a CRLF-aware script; git diff gives LF patches.
+- gset.py holds a list named with `&X` (gset.py:173). A new file needs gconv_src.d/<row>.txt.
+- ws_FXLIT.md, ws_FXLT.md, ws_POSTASYNC.md (+ patches, ws_DLCCHK.patch) are still on main. GUESS: done rows (NDN_TSZ is in
+  nd_gtab.h, postmerge_bg.sh exists). The orchestrator decides the delete.
 ## What to do first
-1. Answer coder questions of ENTSELF2, TSTSHK2, ENTCAPR2, INITGS (SendMessage, file:line).
-2. Page group 1 (converter symbol rule for D_80156910, TheaterViewport, flame unit 15), then group 2 captures, then group 7.
+1. Answer coder questions of GFXPOS7, THEATVP, BASEKEEP2 (SendMessage, file:line).
+2. Ask the user for the Sonnet designs of groups 1 (NTGT flame), 3 (mixed vertex slots) and 4 (NMDL6/7).
+3. Then page the flame entry capture (:188 :211) and the shimmer capture.
