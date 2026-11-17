@@ -741,7 +741,7 @@ NDN_DECL(D_0A004268_E558A8);
 
 NDN_DECL(Entity_WoodenCrate_Render);
 
-Gfx* Entity_WoodenCrate_FragmentsRender[] = {
+NdLst Entity_WoodenCrate_FragmentsRender[] = {
     NDN(D_0A004130_E55770),
     NDN(D_0A0040E0_E55720),
     NDN(D_0A004090_E556D0),

@@ -213,7 +213,7 @@ NDN_DECL(D_0A002D78_E51568);
 
 NDN_DECL(D_0A002E08_E515F8);
 
-Gfx* Entity_BoardedFloor_FragmentsRender[] = {
+NdLst Entity_BoardedFloor_FragmentsRender[] = {
     NDN(D_0A002E08_E515F8),
     NDN(D_0A002D68_E51558),
     NDN(D_0A002CC8_E514B8),

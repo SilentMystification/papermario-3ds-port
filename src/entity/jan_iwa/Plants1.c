@@ -37,7 +37,7 @@ void entity_SpinningFlower_setupGfx(s32 entityIndex) {
     Matrix4f sp18;
     Matrix4f sp58;
     Matrix4f sp98;
-    Gfx* gfx;
+    NdLst gfx;
 
     guMtxL2F(sp18, ENTITY_ADDR(entity, Mtx*, &D_0A000B70_E9D470));
     guRotateF(sp58, data->rot.x, 1.0f, 0.0f, 0.0f);
@@ -49,7 +49,7 @@ void entity_SpinningFlower_setupGfx(s32 entityIndex) {
     guMtxF2L(sp18, &data->unk_30);
     gDisplayContext->matrixStack[gMatrixListPos] = data->unk_30;
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gfx = ENTITY_ADDR(entity, Gfx*, NDN(D_0A000D18_E9D618));
+    gfx = ENTITY_ADDR(entity, NdLst, NDN(D_0A000D18_E9D618));
     nd_draw_list(gfx, ND_SELF);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

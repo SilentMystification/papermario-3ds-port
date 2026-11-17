@@ -119,7 +119,7 @@ s8 Entity_SuperBlock_PalData[] = {
 };
 
 void entity_SuperBlockContent_setupGfx(s32 entityIndex) {
-    Gfx* dlist;
+    NdLst dlist;
     u8* palette;
     Entity* entity = get_entity_by_index(entityIndex);
     SuperBlockContentData* data = entity->dataBuf.superBlockContent;

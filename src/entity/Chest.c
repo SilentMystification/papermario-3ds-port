@@ -96,14 +96,14 @@ void entity_Chest_setupGfx(s32 entityIndex) {
     ChestData* data = entity->dataBuf.chest;
     Matrix4f sp18;
     Matrix4f sp58;
-    Gfx* gfx;
+    NdLst gfx;
 
     guRotateF(sp58, data->lidAngle, 1.0f, 0.0f, 0.0f);
     guMtxL2F(sp18, ENTITY_ADDR(entity, Mtx*, &Entity_Chest_LidMtx));
     guMtxCatF(sp58, sp18, sp18);
     guMtxF2L(sp18, &gDisplayContext->matrixStack[gMatrixListPos]);
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gfx = ENTITY_ADDR(entity, Gfx*, NDN(Entity_Chest_RenderLid));
+    gfx = ENTITY_ADDR(entity, NdLst, NDN(Entity_Chest_RenderLid));
     nd_draw_list(gfx, ND_SELF);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

@@ -99,7 +99,7 @@ NDN_DECL(D_0A001620_E9EC70);
 
 NDN_DECL(D_0A001650_E9ECA0);
 
-Gfx* Entity_BombableRock_FragmentsRender[] = {
+NdLst Entity_BombableRock_FragmentsRender[] = {
     NDN(D_0A001610_E9EC60),
     NDN(D_0A001508_E9EB58),
     NDN(D_0A001458_E9EAA8),
