@@ -148,7 +148,6 @@ void appendGfx_reset_tile_pattern(void) {
 
     gMatrixListPos = 0;
     gDisplayContext = &D_80164000[gCurrentDisplayContextIndex];
-    gMainGfxPos = nd_rec_task(); /* DIRECT D9: the task is a frame stream (no list) */
     frozenFrame = ResetSavedFrameImg;
     gfx_init_state();
 
@@ -183,7 +182,7 @@ void appendGfx_reset_tile_pattern(void) {
     }
 
     D_80074010++;
-    nuGfxTaskStart(nullptr, 0, NU_GFX_UCODE_F3DEX, NU_SC_TASK_LODABLE); /* DIRECT D9: the task is a frame stream */
+    nuGfxTaskStart(NU_GFX_UCODE_F3DEX, NU_SC_TASK_LODABLE); /* DIRECT D9: the task is a frame stream */
     gCurrentDisplayContextIndex ^= 1;
 }
 

@@ -6,6 +6,8 @@
 extern PlayerData gPlayerData;
 extern PlayerStatus gPlayerStatus;
 
+Gfx* gMainGfxPos; /* GPOS1: the packet of the redirected gbi macros (nd_gbi.h); pm_game_bind sets it once (was cam_main.c) */
+
 void pm_game_bind(void) {
     gGameStatusPtr = &gGameStatus;
     gDisplayContext = &D_80164000[0];

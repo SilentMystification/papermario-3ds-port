@@ -787,7 +787,7 @@ extern void nuGfxInit(void);
 extern void nuGfxInitEX2(void);
 extern void nuGfxThreadStart(void);
 extern void nuGfxTaskMgrInit(void);
-extern void nuGfxTaskStart(Gfx *gfxList_ptr, u32 gfxListSize, u32 ucode, u32 flag);
+extern void nuGfxTaskStart(u32 ucode, u32 flag);
 extern void nuGfxFuncSet(NUGfxFunc func);
 extern void nuGfxPreNMIFuncSet(NUGfxPreNMIFunc func);
 extern void nuGfxSwapCfbFuncSet(NUGfxSwapCfbFunc func);
