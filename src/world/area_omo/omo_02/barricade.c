@@ -41,18 +41,17 @@ enum {
 
 // iterate through the display list, checking each vertex's distance from (0,0,0) and return the minimum distance
 // this creates a spherical collision volume for the flying debris
-void N(DetermineSphericalSize)(Gfx* displayList, s32* outDist) {
+void N(DetermineSphericalSize)(const void* displayList, s32* outDist) {
     char pad[0x8];
-    Gfx* dlist = displayList;
+    const uint32_t* dlist = (const uint32_t*)displayList; /* BARRICADE: unit word pairs (lkey MAP) */
     u8 cmd;
 
     do {
-        uint32_t t[2]; t[0] = dlist->words.w0; t[1] = dlist->words.w1; /* HC4f3: the typed unit */
-        u32 w0 = t[0]; u32 w1 = t[1];
+        u32 w0 = dlist[0]; u32 w1 = dlist[1];
 
         cmd = w0 >> 0x18;
         if (cmd == BAR_DL) {
-            N(DetermineSphericalSize)((Gfx*) w1, outDist);
+            N(DetermineSphericalSize)((const void*)(uintptr_t)w1, outDist);
         }
         if (cmd == BAR_VTX) {
             s32 numVertices = (w0 >> 0xC) & 0xFF;
@@ -75,7 +74,7 @@ void N(DetermineSphericalSize)(Gfx* displayList, s32* outDist) {
                 }
             }
         }
-        dlist++;
+        dlist += 2;
     } while (cmd != BAR_END);
 }
 
