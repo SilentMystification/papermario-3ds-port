@@ -1,0 +1,2 @@
+# THEATVP: TheaterInitGfx (curtains.c:59) moves after the GS_VP rule (gen_gfx_syms.py VP, nd_gfx_conv.c v2_unit_add)
+src/curtains.c
