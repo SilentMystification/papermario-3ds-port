@@ -18,3 +18,5 @@ Fix 2 (Munchlesia): Merge MESH1 1828f683b0 and Merge MESHST 6a94add657. Proof: `
 User: at a chapter start, read the chapter title card: every letter and the chapter name draw whole.
 User: in Jade Jungle jan_09, walk into the Munchlesia: its mesh draws whole while it grabs, chews and spits Mario.
 Row VINE (merge 006a7015ad, no bench reaches kzn_19 or kmr_22): lava piranha vine lists moved to twins. User: in kzn_19 and kmr_22, look at the lava piranha vine: it draws whole.
+Row VCFIX (vertex copy entry, model.c mdl_make_local_vertex_copy). User: in Toad Town mac_01 look at Rowf's rug (it ripples); in a Shooting Star
+  Summit battle look at the stage stars (they twinkle); in Club 64 (mac_05) look at the sign. Each draws whole, no crash.
