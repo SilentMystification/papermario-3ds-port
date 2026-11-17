@@ -260,10 +260,12 @@ memcheck_line() {
     else python3 3ds/tools/memcheck.py --map $OUT/pm_3ds.map || true; fi
 }
 # HC0: one hot code line after the memcheck line (3ds/tools/hotset.py: M1 per class and union, M2 linker group). Normal lane only;
-# a failure prints a note and does not fail the build.
+# a failure prints a note and does not fail the build. LOOP2: it runs detached (FACT 7.6 s a build: objdump of the new ELF in
+# docker and its parse); the line goes to $OUT/hotset_line.txt (temp name, one mv), and nothing waits for it.
 hotset_line() {
-    if command -v py >/dev/null 2>&1; then py -3 3ds/tools/hotset.py --line || echo "hotset: failed (the build is not affected)"
-    else python3 3ds/tools/hotset.py --line || echo "hotset: failed (the build is not affected)"; fi
+    ht=$OUT/hotset_line.tmp.$$
+    ( if command -v py >/dev/null 2>&1; then py -3 3ds/tools/hotset.py --line; else python3 3ds/tools/hotset.py --line; fi > $ht 2>&1         || echo "hotset: failed (the build is not affected)" >> $ht; mv -f $ht $OUT/hotset_line.txt ) < /dev/null > /dev/null 2>&1 &
+    echo "hotset: detached, its line goes to $OUT/hotset_line.txt"
 }
 # SRCID: the source volume keeps the id of its last sync in /src/.pm_manifest_id, and $VID holds the id the manifest was
 # written with. The manifest is valid only while both match. A missing, recreated or foreign source volume has no id
