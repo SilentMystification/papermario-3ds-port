@@ -1,0 +1,3 @@
+# INITGS: HudElemBackInitGfx, HudElemFrontInitGfx (hud_element.c), TitleSetupGfx (state_title_screen.c)
+src/hud_element.c
+src/state_title_screen.c

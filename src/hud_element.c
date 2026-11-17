@@ -1,4 +1,5 @@
 #include "pm_wide.h"
+#include "nd_gtab.h"
 #include "common.h"
 #include "hud_element.h"
 #include "nu/nusys.h"
@@ -57,20 +58,8 @@ HudElementSize HudElemSizes[] = {
 };
 
 s16 D_8014F068[] = { 34, 32, 0, 40, 40, 968, 0, 0 };
-Gfx HudElemBackInitGfx[] = {
-    gsDPSetScissor(G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT),
-    gsDPPipeSync(),
-    gsSPSetOtherMode(G_SETOTHERMODE_H, G_MDSFT_ALPHADITHER, 18, G_AD_DISABLE | G_CD_DISABLE | G_CK_NONE | G_TC_FILT | G_TF_BILERP | G_TT_NONE | G_TL_TILE | G_TD_CLAMP | G_TP_NONE | G_CYC_1CYCLE),
-    gsDPSetAlphaCompare(G_AC_NONE),
-    gsSPEndDisplayList()
-};
-Gfx HudElemFrontInitGfx[] = {
-    gsDPSetScissor(G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT),
-    gsDPPipeSync(),
-    gsSPSetOtherMode(G_SETOTHERMODE_H, G_MDSFT_ALPHADITHER, 18, G_AD_DISABLE | G_CD_DISABLE | G_CK_NONE | G_TC_FILT | G_TF_BILERP | G_TT_NONE | G_TL_TILE | G_TD_CLAMP | G_TP_NONE | G_CYC_1CYCLE),
-    gsDPSetAlphaCompare(G_AC_NONE),
-    gsSPEndDisplayList()
-};
+NDN_DECL(HudElemBackInitGfx);
+NDN_DECL(HudElemFrontInitGfx);
 
 Vtx HudElemTemplateQuad[] = {
     {
@@ -1445,7 +1434,7 @@ void render_hud_elements_backUI(void) {
     if (FrameQuadIndex > 2) {
         FrameQuadIndex = 0;
     }
-    gSPDisplayList(gMainGfxPos++, VIRTUAL_TO_PHYSICAL(HudElemBackInitGfx));
+    nd_draw_list(NDN(HudElemBackInitGfx), ND_SELF);
 
     count = 0;
     for (i = 0; i < ARRAY_COUNT(*gHudElements); i++) {
@@ -1565,7 +1554,7 @@ void render_hud_elements_frontUI(void) {
     s32 drawSizeX, drawSizeY, offsetX, offsetY;
     HudElement* hudElement;
 
-    gSPDisplayList(gMainGfxPos++, VIRTUAL_TO_PHYSICAL(HudElemFrontInitGfx));
+    nd_draw_list(NDN(HudElemFrontInitGfx), ND_SELF);
 
     count = 0;
     for (i = 0; i < ARRAY_COUNT(*gHudElements); i++) {

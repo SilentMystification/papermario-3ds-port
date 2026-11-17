@@ -1,0 +1,21 @@
+#include "src/state_title_screen.c"
+Gfx TitleSetupGfx[] = {
+    gsDPPipeSync(),
+    gsDPSetCycleType(G_CYC_1CYCLE),
+    gsDPSetRenderMode(G_RM_CLD_SURF, G_RM_CLD_SURF2),
+    gsDPSetCombineMode(G_CC_DECALRGBA, G_CC_DECALRGBA),
+    gsDPSetTextureFilter(G_TF_POINT),
+    gsSPTexture(-1, -1, 0, G_TX_RENDERTILE, G_ON),
+    gsDPSetTexturePersp(G_TP_NONE),
+    gsDPSetColorDither(G_CD_DISABLE),
+    gsDPSetAlphaDither(G_AD_DISABLE),
+    gsDPSetTextureLOD(G_TL_TILE),
+    gsDPSetTextureLUT(G_TT_NONE),
+    gsDPSetTextureDetail(G_TD_CLAMP),
+    gsDPSetTextureConvert(G_TC_FILT),
+    gsDPSetCombineKey(G_CK_NONE),
+    gsDPSetAlphaCompare(G_AC_NONE),
+    gsDPNoOp(),
+    gsDPSetScissor(G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT),
+    gsSPEndDisplayList(),
+};

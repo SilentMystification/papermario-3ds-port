@@ -1,4 +1,5 @@
 #include "common.h"
+#include "nd_gtab.h"
 #include "nd_st.h"
 #include "nd_val.h"
 #include "audio.h"
@@ -93,26 +94,7 @@ bool LanguageSelected = false;
 
 Lights1 D_80077A38 = gdSPDefLights1(255, 255, 255, 0, 0, 0, 0, 0, 0);
 
-Gfx TitleSetupGfx[] = {
-    gsDPPipeSync(),
-    gsDPSetCycleType(G_CYC_1CYCLE),
-    gsDPSetRenderMode(G_RM_CLD_SURF, G_RM_CLD_SURF2),
-    gsDPSetCombineMode(G_CC_DECALRGBA, G_CC_DECALRGBA),
-    gsDPSetTextureFilter(G_TF_POINT),
-    gsSPTexture(-1, -1, 0, G_TX_RENDERTILE, G_ON),
-    gsDPSetTexturePersp(G_TP_NONE),
-    gsDPSetColorDither(G_CD_DISABLE),
-    gsDPSetAlphaDither(G_AD_DISABLE),
-    gsDPSetTextureLOD(G_TL_TILE),
-    gsDPSetTextureLUT(G_TT_NONE),
-    gsDPSetTextureDetail(G_TD_CLAMP),
-    gsDPSetTextureConvert(G_TC_FILT),
-    gsDPSetCombineKey(G_CK_NONE),
-    gsDPSetAlphaCompare(G_AC_NONE),
-    gsDPNoOp(),
-    gsDPSetScissor(G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(TitleSetupGfx);
 
 #if VERSION_PAL
 s32 StartGame_Width[] = { 96,   88,   144,  120 };
@@ -544,7 +526,7 @@ void title_screen_draw_logo(f32 moveAlpha) {
     s32 yOffset;
     s32 i;
 
-    gSPDisplayList(gMainGfxPos++, TitleSetupGfx);
+    nd_draw_list(NDN(TitleSetupGfx), ND_SELF);
     yOffset = TITLE_LOGO_YOFFSET * moveAlpha;
 
     for (i = 0; i < TITLE_NUM_TILES; i++) {
@@ -645,7 +627,7 @@ void title_screen_draw_menu(void) {
     }
 #endif
 
-    gSPDisplayList(gMainGfxPos++, TitleSetupGfx);
+    nd_draw_list(NDN(TitleSetupGfx), ND_SELF);
     nd_pso_cc(G_CC_MODULATEIA_PRIM, G_CC_MODULATEIA_PRIM);
 #if VERSION_PAL
     nd_val_prim(0, 0, 248, 240, 152, (u8)StartGame_Alpha);
@@ -708,7 +690,7 @@ void title_screen_draw_copyright(f32 moveAlpha) {
     s32 ttlSet; /* S5TTL: the pre-loop block set PM_CC_02 and the prim alpha (the US loop overwrites alpha) */
     u32 ttlPrim;
 
-    gSPDisplayList(gMainGfxPos++, &TitleSetupGfx);
+    nd_draw_list(NDN(TitleSetupGfx), ND_SELF);
 #if VERSION_JP
     nd_pso_lut(G_TT_RGBA16);
 #endif
