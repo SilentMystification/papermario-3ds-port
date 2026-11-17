@@ -1499,19 +1499,9 @@ void imgfx_appendGfx_mesh_basic(ImgFXState* state, Matrix4f mtx) {
                     || state->renderType == IMGFX_RENDER_OVERLAY_RGBA
                     || state->renderType == IMGFX_RENDER_MULTIPLY_SHADE_ALPHA)
             ) {
-                gDPScrollMultiTile2_4b(gMainGfxPos++,
-                    ImgFXCurrentTexturePtr->tex.raster, G_IM_FMT_CI,
-                    ImgFXCurrentTexturePtr->tex.width, ImgFXCurrentTexturePtr->tex.height, // img size
-                    uls, ult, // top left
-                    lrs - 1, lrt - 1, // bottom right
-                    0, // palette
-                    G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, // clamp wrap mirror
-                    8, 8, // mask
-                    G_TX_NOLOD, G_TX_NOLOD, // shift,
-                    0x100, 0x100); // scroll
-                gDPSetTile(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 4, 0x100, 2, 0,
-                            G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_WRAP,
-                            G_TX_NOMASK, G_TX_NOLOD);
+                /* args: img size, top left, bottom right, palette, clamp wrap mirror, mask, shift, scroll */
+                nd_tex_scroll_mtile2_4b(ImgFXCurrentTexturePtr->tex.raster, G_IM_FMT_CI, ImgFXCurrentTexturePtr->tex.width, ImgFXCurrentTexturePtr->tex.height, uls, ult, lrs - 1, lrt - 1, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 8, G_TX_NOLOD, G_TX_NOLOD, 0x100, 0x100);
+                nd_tex_tile(G_IM_FMT_RGBA, G_IM_SIZ_16b, 4, 0x100, 2, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
                 nd_val_tile_size(2, 0, 0, 252, 0);
 
                 alpha = 255;
@@ -1553,16 +1543,8 @@ void imgfx_appendGfx_mesh_basic(ImgFXState* state, Matrix4f mtx) {
                 }
                 create_shading_palette(mtx, uls, ult, lrs, lrt, alpha, state->otherModeL);
             } else {
-                gDPScrollTextureTile_4b(gMainGfxPos++,
-                    ImgFXCurrentTexturePtr->tex.raster, G_IM_FMT_CI,
-                    ImgFXCurrentTexturePtr->tex.width, ImgFXCurrentTexturePtr->tex.height, // img size
-                    uls, ult, // top left
-                    lrs - 1, lrt - 1, // bottom right
-                    0, // palette
-                    G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, // clamp wrap mirror
-                    8, 8, // mask
-                    G_TX_NOLOD, G_TX_NOLOD, // shift,
-                    0x100, 0x100); // scroll
+                /* args: img size, top left, bottom right, palette, clamp wrap mirror, mask, shift, scroll */
+                nd_tex_scroll_tile_4b(ImgFXCurrentTexturePtr->tex.raster, G_IM_FMT_CI, ImgFXCurrentTexturePtr->tex.width, ImgFXCurrentTexturePtr->tex.height, uls, ult, lrs - 1, lrt - 1, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 8, G_TX_NOLOD, G_TX_NOLOD, 0x100, 0x100);
 
                 if ((gSpriteShadingProfile->flags & SPR_SHADING_FLAG_SET_VIEWPORT)
                     && state->arrayIdx != 0
@@ -1670,17 +1652,9 @@ void imgfx_appendGfx_mesh_grid(ImgFXState* state, Matrix4f mtx) {
                         || state->renderType == IMGFX_RENDER_MULTIPLY_SHADE_ALPHA)
                 ) {
                     s32 alpha = 255;
-                    gDPScrollMultiTile2_4b(gMainGfxPos++,
-                        ImgFXCurrentTexturePtr->tex.raster, G_IM_FMT_CI,
-                        ImgFXCurrentTexturePtr->tex.width, ImgFXCurrentTexturePtr->tex.height, // img size
-                        (imgfx_vtxBuf[ulIdx].v.tc[0] >> 5) - 0x100, (imgfx_vtxBuf[ulIdx].v.tc[1] >> 5) - 0x100, // top left
-                        (imgfx_vtxBuf[lrIdx].v.tc[0] >> 5) - 0x100 - 1, (imgfx_vtxBuf[lrIdx].v.tc[1] >> 5) - 0x100 - 1, // bottom right
-                        0, // palette
-                        G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, // clamp wrap mirror
-                        8, 8, // mask
-                        G_TX_NOLOD, G_TX_NOLOD, // shift,
-                        0x100, 0x100); // scroll
-                    gDPSetTile(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 4, 0x0100, 2, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
+                    /* args: img size, top left, bottom right, palette, clamp wrap mirror, mask, shift, scroll */
+                    nd_tex_scroll_mtile2_4b(ImgFXCurrentTexturePtr->tex.raster, G_IM_FMT_CI, ImgFXCurrentTexturePtr->tex.width, ImgFXCurrentTexturePtr->tex.height, (imgfx_vtxBuf[ulIdx].v.tc[0] >> 5) - 0x100, (imgfx_vtxBuf[ulIdx].v.tc[1] >> 5) - 0x100, (imgfx_vtxBuf[lrIdx].v.tc[0] >> 5) - 0x100 - 1, (imgfx_vtxBuf[lrIdx].v.tc[1] >> 5) - 0x100 - 1, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 8, G_TX_NOLOD, G_TX_NOLOD, 0x100, 0x100);
+                    nd_tex_tile(G_IM_FMT_RGBA, G_IM_SIZ_16b, 4, 0x0100, 2, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
                     nd_val_tile_size(2, 0, 0, 63 << 2, 0);
                     switch (state->renderType) {
                         case IMGFX_RENDER_DEFAULT:
@@ -1699,16 +1673,8 @@ void imgfx_appendGfx_mesh_grid(ImgFXState* state, Matrix4f mtx) {
                                            (imgfx_vtxBuf[lrIdx].v.tc[0] >> 5) - 0x100, (imgfx_vtxBuf[lrIdx].v.tc[1] >> 5) - 0x100,
                                            alpha, state->otherModeL);
                 } else {
-                    gDPScrollTextureTile_4b(gMainGfxPos++,
-                        ImgFXCurrentTexturePtr->tex.raster, G_IM_FMT_CI,
-                        ImgFXCurrentTexturePtr->tex.width, ImgFXCurrentTexturePtr->tex.height, // img size
-                        (imgfx_vtxBuf[ulIdx].v.tc[0] >> 5) - 0x100, (imgfx_vtxBuf[ulIdx].v.tc[1] >> 5) - 0x100, // top left
-                        (imgfx_vtxBuf[lrIdx].v.tc[0] >> 5) - 0x100 - 1, (imgfx_vtxBuf[lrIdx].v.tc[1] >> 5) - 0x100 - 1, // bottom right
-                        0, // palette
-                        G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, // clamp wrap mirror
-                        8, 8, // mask
-                        G_TX_NOLOD, G_TX_NOLOD, // shift,
-                        0x100, 0x100); // scroll
+                    /* args: img size, top left, bottom right, palette, clamp wrap mirror, mask, shift, scroll */
+                    nd_tex_scroll_tile_4b(ImgFXCurrentTexturePtr->tex.raster, G_IM_FMT_CI, ImgFXCurrentTexturePtr->tex.width, ImgFXCurrentTexturePtr->tex.height, (imgfx_vtxBuf[ulIdx].v.tc[0] >> 5) - 0x100, (imgfx_vtxBuf[ulIdx].v.tc[1] >> 5) - 0x100, (imgfx_vtxBuf[lrIdx].v.tc[0] >> 5) - 0x100 - 1, (imgfx_vtxBuf[lrIdx].v.tc[1] >> 5) - 0x100 - 1, 0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 8, 8, G_TX_NOLOD, G_TX_NOLOD, 0x100, 0x100);
                 }
             }
 
