@@ -3,26 +3,32 @@
 State at 2026-11-17 12:30, main 82b3a5bf65 plus this file. The user stopped the previous orchestrator. A new session starts from this file.
 Read this file, docs/handoff/orchestrator_rules.md, CLAUDE.md and the memory index. Then ListAgents (status `running` is the ONLY slot count).
 
-## Goal and counters (FACT, epic_status.sh, main 82b3a5bf65)
+## Goal and counters (FACT, listcen, main bb16921f75)
 Goal: remove the display list system. Done only when elfgate prints `func 0 data 0 gfxnames 0` and all listcen totals are 0.
 Now: build 324, gfxpos 22, data 323, data_arrays 9, gfxtype 420, recdl 11, reader 792, model 15.
+All 5 ready pages merged: build 315 -> after NMDL6 and VSLOT3 -> with FLTGT and OVLIMG: build about 313, gfxpos about 11, data about 190 (GUESS, sum of page moves).
 elfgate func 47 data 615 gfxnames 62 comes from a stale ELF. Build main to read real values.
 Start of the 2026-11-16 session: build 566, gfxpos 201, data 2239, data_arrays 211, gfxtype 822.
 
 ## Merged since the last handoff (all gated byte-equal unless noted)
-ENTCAPR2, INITGS, ENTSELF2 (seeded fault gives DIFF), TSTSHK2 (tst_13 proof is the host test), BASEKEEP2 (tool fix), THEATVP, GFXPOS7.
-Tool fix RACE2 (4f6d4d3ff7): build_slot_reap removes a dead slot in place under a mkdir lock.
-Earlier this session: process rows (BASEBIN, VOLGEN, GFXINC, GENSPEED, MAINBIN, LINKFAST, GENKEY, HOSTSEL and others), then NMDL0, NIMGM, NTABFIND, RAWIMG, FXLOC, ENTSRC and more. Git history is the log.
+ENTCAPR2, INITGS, ENTSELF2, TSTSHK2, BASEKEEP2 (tool fix), THEATVP, GFXPOS7, RACE2 (tool fix 4f6d4d3ff7).
+Earlier: process rows, NMDL0, NIMGM, NTABFIND, RAWIMG, FXLOC, ENTSRC and more. Git history is the log.
 
 ## Agents at handoff (ListAgents)
-Running: oracle a99888970b61c266f (DESIGN1) and oracle a0c5559d594930012 (DESIGN2). The user said: do not start more work when they end.
-DESIGN1 writes Sonnet pages for NMDL6/7 (entity_model.c :490 :772 :784, model.c:4340, 3 world lists) and filemenu vertex slots (filemenu_common.c:996 :1018, nd_vslot.c).
-DESIGN2 writes Sonnet pages for flame.c:190 (render target buffer) and screen_overlays.c:264 (160x120 image). It also diagnoses the gbi_viewport crash under row POSTFAIL2 (3 Azahar starts).
-The user approved Sonnet coders for all four designs (2026-11-17 12:20). Start them after the pages land and the user allows work.
-Completed coders (a4f2ded3c4729fa08, ad433f22f062b9e41, a989e26b373144922, a3826c55761c6a920) are done. Their rows are merged.
+No agent runs. Oracles DESIGN1 and DESIGN2 are done (contexts above 150K: start fresh oracles). Coders a4f2ded3c4729fa08, ad433f22f062b9e41, a989e26b373144922, a3826c55761c6a920 are done.
+The user stopped all new work at 2026-11-17 12:30. Start coders only when the user says so.
+
+## Ready pages on main (all dry-run on main, host PASS)
+- ws_NMDL6 (Sonnet, user approved): entity_model.c, model.c and 3 world lists. build -7, gfxpos -7, gfxtype -1. Gate direct_pra13_det and spot_mac01_drec. Run the host test with PM_CACHE=off, then rowloop --no-host.
+- ws_VSLOT3 (Sonnet, user approved): filemenu D_8024B708, nd_vslot.c. build -2, gfxpos -2, data -4, data_arrays -1. Gate wscmb_fsel_drec and spot_mac01_drec. OPEN: the copy arrow has no det scene.
+- ws_FLTGT (Haiku, the patch is complete): flame lists D_09000800 and D_090009E0, CIMG_UNIT in nd_gfx_conv.c. build -2, gfxpos -2, data -49, data_arrays -2, gfxtype -4. Gate fxops_drec.
+- ws_OVLIMG (Haiku): screen_overlays image D_80156910 becomes 0x9600 bytes (BSS +38396). build -1, gfxpos -1, data -40. No scene runs :264. Gate host test and spot_mac01_drec.
+- ws_POSTFAIL2 (Haiku, row POSTFAIL2, up to 3 Azahar starts): debug tool gbi_cold_bad_vp logs one line `POSTFAIL2 bad vp ...` to find who writes w1 = 1.
+FLTGT and VSLOT3 both edit nd_gfx_conv.c: each applies after the other. Start them in 2 waves or merge one first.
 
 ## Open faults and decisions
-- gbi_viewport crash (OPEN): one call got vp 0x00000001 in run 2 of the stored base 0610a41868 spot_mac01_drec (trace build3ds/out/postfail1_trace.txt). The full re-check of main passed (rc 0). Nothing in 3ds/src changed. The user said "figure it out". DESIGN2 owns it.
+- gbi_viewport crash (OPEN): one call got vp 0x00000001 in run 2 of the stored base 0610a41868 spot_mac01_drec (trace build3ds/out/postfail1_trace.txt). The full re-check of main passed. Code read: no producer writes 1. GUESS: a recycled stream chunk (core 1 records into chain[rec_ctx], nd_rec.c:164-172, while core 0 runs a chain, nd_rec.c:579). The user said "figure it out": row POSTFAIL2 holds the debug tool and its hit line.
+- Tool faults (OPEN, no fix page): the host test cache fails inline units (/tmp/ndcombs.c missing) after an edit of model.c or nd_rec.c, workaround PM_CACHE=off or PM_HOSTSEL=all. hostsel.py:123 gave WinError 5 once (GUESS: store race).
 - Parked branches ENTCAPR, ENTSELF, TSTSHK, LOOPT, SLOTFIX are superseded. The orchestrator may delete them.
 - Stale pages on main (ws_FXLIT, ws_FXLT, ws_POSTASYNC and patches, ws_DLCCHK.patch): GUESS that their rows are finished. Check `git log` and delete them.
 - No phase E page exists. gbi.h macro definitions leave in stage 4D. Stage 1C needs build and gfxpos at 0.
